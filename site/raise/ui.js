@@ -7,19 +7,47 @@
   let S = null, shown = 0, ui = { chisel: false, note: null, noteT: 0 }, installEvt = null;
 
   const save = () => { try { localStorage.setItem(KEY, G.serialize(S)); } catch (e) {} };
+  const STATS = "raise.stats.v1";
+  const stats = () => { try { return Object.assign({ runs: 0, wins: 0, best: 0, bestScore: 0 }, JSON.parse(localStorage.getItem(STATS) || "{}")); } catch (e) { return { runs: 0, wins: 0, best: 0, bestScore: 0 }; } };
+  function recordEnd(won) {
+    const st = stats(); st.runs += 1; if (won) st.wins += 1;
+    st.best = Math.max(st.best, S.ante + (won ? 1 : 0)); st.bestScore = Math.max(st.bestScore, S.score);
+    try { localStorage.setItem(STATS, JSON.stringify(st)); } catch (e) {}
+  }
   const load = () => { try { return G.restore(localStorage.getItem(KEY)); } catch (e) { return null; } };
 
-  function begin(seed) { S = G.newRun(seed); ui.chisel = false; ui.note = null; shown = 0; save(); render(); }
+  function begin(seed) { S = G.newRun(seed); ui.chisel = false; ui.note = null; shown = 0; save(); hideStart(); render(); }
   function resumeOrBegin() {
     const saved = load();
-    if (saved) {
-      S = saved; shown = S.score; render();
-      if (S.phase === "shop") sheetShop(null, null);
-      else if (S.phase === "lost") sheetLose();
-      else if (S.phase === "won") sheetWin();
-      return;
-    }
-    begin(G.todaySeed());
+    if (saved) { S = saved; shown = S.score; render(); }
+    showStart(saved && saved.phase !== "lost" && saved.phase !== "won" ? saved : null);
+  }
+  /* ---------- start screen ---------- */
+  const FAN = [{ r: 10, si: 0 }, { r: 11, si: 2 }, { r: 12, si: 3 }, { r: 13, si: 1 }, { r: 14, si: 0 }];
+  function showStart(resume) {
+    const st = stats();
+    $("fan").innerHTML = FAN.map((c, i) => '<span class="fan__c" style="--i:' + i + '">' + cardHTML(c, null, false, true, i, 5) + '</span>').join("");
+    $("startBtns").innerHTML =
+      (resume ? '<button class="big" data-continue="1">Continue · ante ' + (resume.ante + 1) + ' · ' + resume.score + ' pts</button>' : "") +
+      '<button class="big' + (resume ? " ghost" : "") + '" data-daily="1">Daily · ' + G.todaySeed() + '</button>' +
+      '<div class="row2"><button class="big ghost" data-random="1">Random run</button><button class="big ghost" data-howto="1">How to play</button></div>';
+    $("stats").innerHTML = st.runs
+      ? '<div><b>' + st.runs + '</b><span>runs</span></div><div><b>' + st.best + '</b><span>best ante</span></div><div><b>' + st.wins + '</b><span>summits</span></div><div><b>' + st.bestScore + '</b><span>best hand</span></div>'
+      : "";
+    $("start").hidden = false; document.body.classList.add("on-start");
+    FX.embers(true);
+  }
+  function hideStart() { $("start").hidden = true; document.body.classList.remove("on-start"); FX.embers(false); }
+  function sheetHowTo() {
+    openS('<h2>How to play</h2>' +
+      '<div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
+      '<p><b>Pick cards, make a poker hand, play it.</b> Pair, Trips, Straight, Flush, Full House, Quads.</p>' +
+      '<p><b>Every hand must climb</b> — beat the last one by rank, or by a higher hand. Score = base × chain.</p>' +
+      '<p><b>Stuck?</b> Pass resets the rung but breaks the chain and costs a breath. A lone <b>Ace</b> resets and keeps it.</p>' +
+      '<p><b>Reach the target</b> before the cards run out. Then bank it — or <b>Raise</b> for double.</p>' +
+      '<p><b>Twelve antes.</b> Shop between them: upgrades and enhanced cards. Challenges at 3, 6, 9. The Summit at 12.</p>' +
+      '<p>Orphans kill rounds, not weak cards. <b>Chisel</b> rewrites a rank.</p></div>' +
+      '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
 
   /* ---------- cards ---------- */
@@ -147,9 +175,9 @@
   function end() {
     const r = G.finish(S); if (!r) return;
     save();
-    if (!r.cleared) { FX.sfx.bust(); FX.buzz([60, 40, 90]); sheetLose(); return; }
-    FX.sfx.clear(); FX.spark(innerWidth / 2, innerHeight * 0.42, 120, 6.5); FX.buzz([12, 60, 12]); FX.pulse($("app"), "shake");
-    if (r.won) sheetWin(); else sheetShop(r.earn, r.ex, r.raiseResult);
+    if (!r.cleared) { recordEnd(false); FX.sfx.bust(); FX.buzz([60, 40, 90]); sheetLose(); return; }
+    FX.sfx.clear(); FX.flash(); FX.spark(innerWidth / 2, innerHeight * 0.42, 120, 6.5); FX.buzz([12, 60, 12]); FX.pulse($("app"), "shake");
+    if (r.won) { recordEnd(true); sheetWin(); } else sheetShop(r.earn, r.ex, r.raiseResult);
   }
 
   /* ---------- sheets ---------- */
@@ -225,7 +253,8 @@
         '<input id="sd" value="" placeholder="custom seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Go</button></div>' +
         '<div class="row2"><button class="big ghost" data-today="1">Daily · ' + G.todaySeed() + '</button><button class="big ghost" data-fresh="1">Random</button></div></div>' +
       '<div class="row2" style="margin-top:1.1rem"><button class="big ghost" data-sound="1">Sound · ' + (FX.isMuted() ? "off" : "on") + '</button>' +
-      (installEvt ? '<button class="big ghost" data-install="1">Add to home</button>' : "") + '</div>' +
+      '<button class="big ghost" data-title="1">Title screen</button></div>' +
+      (installEvt ? '<button class="big" data-install="1" style="margin-top:.4rem">Add to home screen</button>' : "") +
       '<button class="big ghost" data-close="1" style="margin-top:.5rem">Back</button>');
   }
 
@@ -271,12 +300,19 @@
     if (e.target.closest("[data-today]")) { closeS(); begin(G.todaySeed()); return; }
     if (e.target.closest("[data-seed]")) { const v = $("sd").value.trim(); if (v) { closeS(); begin(v); } return; }
     if (e.target.closest("[data-sound]")) { FX.toggleMute(); FX.sfx.tick(); sheetMenu(); return; }
+    if (e.target.closest("[data-title]")) { closeS(); showStart(S && (S.phase === "round" || S.phase === "shop") ? S : null); return; }
     if (e.target.closest("[data-install]")) { if (installEvt) { installEvt.prompt(); installEvt = null; } closeS(); return; }
-    if (e.target.closest("[data-close]") || e.target === $("veil")) { if (S.phase === "round") closeS(); }
+    if (e.target.closest("[data-close]") || e.target === $("veil")) { if ((S && S.phase === "round") || !$("start").hidden) closeS(); }
   });
-  addEventListener("resize", () => { if (S) render(); });
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; });
   document.addEventListener("visibilitychange", () => { if (document.hidden && S) save(); });
+  addEventListener("resize", () => { if (S) render(); });
 
+  $("start").addEventListener("click", (e) => {
+    if (e.target.closest("[data-continue]")) { hideStart(); FX.sfx.open(); render(); if (S.phase === "shop") sheetShop(null, null); return; }
+    if (e.target.closest("[data-daily]")) { FX.sfx.open(); begin(G.todaySeed()); return; }
+    if (e.target.closest("[data-random]")) { FX.sfx.open(); begin(""); return; }
+    if (e.target.closest("[data-howto]")) { sheetHowTo(); return; }
+  });
   resumeOrBegin();
 })();

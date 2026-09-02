@@ -20,7 +20,7 @@
     cx.clearRect(0, 0, innerWidth, innerHeight);
     for (let i = P.length - 1; i >= 0; i--) {
       const p = P[i];
-      p.x += p.vx; p.y += p.vy; p.vy += 0.055; p.vx *= 0.99; p.l -= p.d;
+      p.x += p.vx; p.y += p.vy; p.vy += (p.g == null ? 0.055 : p.g); p.vx *= 0.99; p.l -= p.d;
       if (p.l <= 0) { P.splice(i, 1); continue; }
       cx.globalAlpha = Math.max(0, p.l); cx.fillStyle = p.h;
       cx.beginPath(); cx.arc(p.x, p.y, p.r * p.l, 0, 6.284); cx.fill();
@@ -29,6 +29,18 @@
     raf = P.length ? requestAnimationFrame(tick) : 0;
     if (!raf) cx.clearRect(0, 0, innerWidth, innerHeight);
   }
+  let emberT = 0;
+  /* Αργές χρυσές σπίθες που ανεβαίνουν — μόνο όσο είναι ανοιχτή η αρχική οθόνη. */
+  function embers(on) {
+    clearInterval(emberT); emberT = 0;
+    if (!on || RM) return;
+    emberT = setInterval(() => {
+      if (P.length > 90) return;
+      P.push({ x: Math.random() * innerWidth, y: innerHeight + 6, vx: (Math.random() - 0.5) * 0.25, vy: -(0.35 + Math.random() * 0.55), r: 0.8 + Math.random() * 1.6, l: 1, d: 0.0035 + Math.random() * 0.004, h: Math.random() < 0.8 ? "#f2d68c" : "#ffffff", g: 0 });
+      if (!raf) raf = requestAnimationFrame(tick);
+    }, 140);
+  }
+  function flash() { const f = document.getElementById("flash"); if (!f || RM) return; pulse(f, "on"); }
   function burstAt(el, n, pow, hue) { const r = el.getBoundingClientRect(); spark(r.left + r.width / 2, r.top + r.height / 2, n, pow, hue); }
 
   /* ---- floats, count-up, pulse, shake ---- */
@@ -93,5 +105,5 @@
   };
   function toggleMute() { muted = !muted; try { localStorage.setItem("raise.mute", muted ? "1" : "0"); } catch (e) {} return muted; }
 
-  root.FX = { spark, burstAt, floatIn, countUp, pulse, fly, buzz, sfx, toggleMute, isMuted: () => muted, RM };
+  root.FX = { spark, burstAt, floatIn, countUp, pulse, fly, buzz, sfx, toggleMute, isMuted: () => muted, embers, flash, RM };
 })(window);
