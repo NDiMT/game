@@ -76,7 +76,7 @@ button:disabled{cursor:default}
 .rung__dots i.under{background:rgba(147,170,156,.1)}
 .rung__dots i.at{background:var(--brass);box-shadow:0 0 .5rem rgba(212,169,79,.6)}
 .tcards{display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center;align-content:center;min-height:0}
-.tcards:empty::before{
+.tcards.fresh:empty::before{
   content:"Start low. Every hand must climb.";
   font-family:var(--display);font-size:1.3rem;line-height:1.3;color:rgba(147,170,156,.75);text-align:center;max-width:16rem;text-wrap:balance;
 }
@@ -211,3 +211,92 @@ button:disabled{cursor:default}
 .row2{display:flex;gap:.4rem;margin-top:.4rem}
 .row2 .big{height:2.9rem;font-size:.74rem}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===================== v3: enhancements, challenges, heat, polish ===================== */
+.deckn{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;color:var(--muted)}
+.deckn b{color:var(--cream);font-weight:600}
+
+/* ambient light drifting over the felt */
+body::after{content:"";position:fixed;inset:-25%;pointer-events:none;z-index:1;
+  background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.055),transparent 38%);
+  animation:drift 26s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translate(0,0)}to{transform:translate(12%,9%)}}
+
+/* card polish: inner frame, thin edge */
+.card::before{content:"";position:absolute;inset:3px;border-radius:inherit;border:1px solid rgba(0,0,0,.09);pointer-events:none}
+.hud__score b.on{text-shadow:0 0 1.1rem rgba(95,199,154,.55)}
+
+/* face-down cards (Blind Deal) */
+.card.down{background:repeating-linear-gradient(135deg,#1b3f66 0 3px,#173757 3px 6px);box-shadow:0 2px 5px rgba(0,0,0,.45),0 0 0 1px #0f2a45;color:transparent;cursor:default}
+.card.down::before{border-color:rgba(212,169,79,.35);inset:4px}
+.card__back{position:absolute;inset:22% 24%;border-radius:50%;border:1px solid rgba(212,169,79,.5);background:radial-gradient(circle,rgba(212,169,79,.28),transparent 70%)}
+
+/* enhancements */
+.card__e{position:absolute;left:0;right:0;bottom:0;font:600 calc(var(--cw) * .17)/1.6 var(--mono);letter-spacing:.14em;text-transform:uppercase;text-align:center;background:rgba(0,0,0,.42);color:#fff}
+.card.e-gold{background:linear-gradient(150deg,#f7e7b3 0%,#d9b25a 55%,#b98a30 100%);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 2px 6px rgba(0,0,0,.45),0 0 0 1px #8a6f2c,0 0 .9rem rgba(212,169,79,.35)}
+.card.e-gold .card__r,.card.e-gold .card__rs{color:#3a2a08;-webkit-text-fill-color:initial;background:none}
+.card.e-gold.red .card__r,.card.e-gold.red .card__rs,.card.e-gold.red .card__pip{color:#8f1e19}
+.card.e-gold .card__pip{opacity:.28}
+.card.e-glass{background:linear-gradient(150deg,rgba(228,244,248,.96),rgba(176,212,222,.9));box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 2px 6px rgba(0,0,0,.4),0 0 0 1px #7fb5c4}
+.card.e-glass::after{background:linear-gradient(118deg,rgba(255,255,255,.75) 0%,transparent 30%,transparent 55%,rgba(255,255,255,.35) 56%,transparent 60%)}
+.card.e-glass .card__e{background:rgba(40,90,110,.55)}
+.card.e-steel{background:linear-gradient(150deg,#e2e6ea,#a9b2bb 60%,#8e98a2);box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 2px 6px rgba(0,0,0,.45),0 0 0 1px #5f6a74}
+.card.e-steel .card__e{background:rgba(30,38,46,.6)}
+.card.e-wild{background:linear-gradient(150deg,#2b3f66,#1a2742 65%,#121b31);color:#f2d68c;box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 2px 6px rgba(0,0,0,.5),0 0 0 1px #4e6aa0,0 0 .9rem rgba(110,140,220,.35)}
+.card.e-wild .card__r,.card.e-wild .card__rs{color:#f2d68c}
+.card.e-wild .card__pip{opacity:.35;color:#9fb4ff}
+.card.e-wild .card__e{background:rgba(212,169,79,.9);color:#1d1607}
+
+/* table cards flying in via FLIP: no landing animation */
+.tcards .card.fly{animation:none}
+
+/* challenge ribbon */
+.chal{display:inline-flex;align-items:center;gap:.5rem;margin-top:.35rem;padding:.28rem .75rem;border-radius:99px;
+  background:rgba(194,43,37,.16);border:1px solid rgba(224,115,106,.5);box-shadow:0 0 .8rem rgba(194,43,37,.25)}
+.chal span{font-family:var(--mono);font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--pip-lt)}
+.chal b{font-family:var(--mono);font-size:.78rem;font-weight:700;color:var(--cream)}
+.chalnext{display:grid;gap:.15rem;margin:.9rem 0;padding:.7rem .85rem;border-radius:10px;background:rgba(194,43,37,.12);border:1px solid rgba(224,115,106,.45)}
+.chalnext .lbl{color:var(--pip-lt)}
+.chalnext b{font-family:var(--mono);font-size:1rem}
+.chalnext span:last-child{font-size:.82rem;color:var(--muted)}
+
+/* named hands */
+.callout{position:absolute;left:50%;top:60%;transform:translateX(-50%);pointer-events:none;z-index:3;
+  font-family:var(--display);font-style:italic;font-weight:600;font-size:1.55rem;letter-spacing:.01em;color:var(--brass-hi);
+  text-shadow:0 0 1.2rem rgba(212,169,79,.7),0 2px 4px rgba(0,0,0,.5);opacity:0;white-space:nowrap}
+.callout.show{animation:callout 1.5s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes callout{0%{opacity:0;transform:translate(-50%,.6rem) scale(.9)}18%{opacity:1;transform:translate(-50%,0) scale(1.04)}70%{opacity:1;transform:translate(-50%,-.2rem) scale(1)}100%{opacity:0;transform:translate(-50%,-.9rem) scale(.98)}}
+
+/* chain heat */
+#heat{position:fixed;inset:0;pointer-events:none;z-index:1;transition:box-shadow .7s ease}
+body[data-heat="1"] #heat{box-shadow:inset 0 0 5rem rgba(212,169,79,.16)}
+body[data-heat="2"] #heat{box-shadow:inset 0 0 7rem rgba(255,140,60,.28)}
+body[data-heat="3"] #heat{box-shadow:inset 0 0 9rem rgba(255,90,50,.42);animation:flick 1.1s ease-in-out infinite alternate}
+@keyframes flick{from{opacity:.75}to{opacity:1}}
+body[data-heat="1"] .chain b{color:var(--brass-hi)}
+body[data-heat="2"] .chain b{color:#ffb15a;text-shadow:0 0 .8rem rgba(255,150,60,.7)}
+body[data-heat="3"] .chain b{color:#ff8a4a;text-shadow:0 0 1rem rgba(255,110,50,.9);animation:flick .6s ease-in-out infinite alternate}
+body[data-heat="2"] .chain span::after{content:" · hot"}
+body[data-heat="3"] .chain span::after{content:" · on fire"}
+
+/* Ace in the Hole button state */
+.go.ace{border-color:rgba(159,180,255,.45);background:linear-gradient(178deg,#3a4f7c,#26365a)}
+.go.ace .go__t{color:#dfe6ff}
+.go.ace .go__s{color:#9fb4ff}
+.go.ace .go__p{color:#f2d68c;font-size:1.8rem}
+
+/* shop card offers */
+.offer--card{grid-template-columns:auto 1fr auto}
+.offer--card .offer__card{grid-row:span 2;--cw:2.35rem;display:block}
+.offer--card .offer__card .card{animation:none;display:block}
+span.card{display:block}
+.offer--card span:last-child{grid-column:2}
+.offer--card em{grid-column:3}
+
+/* toast variants */
+.toast.gold{border-left-color:var(--brass);background:rgba(212,169,79,.1)}
+
+/* shake on ante clear */
+.app.shake{animation:shake .42s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{10%,90%{transform:translate3d(-1px,0,0)}20%,80%{transform:translate3d(2px,0,0)}30%,50%,70%{transform:translate3d(-3px,0,0)}40%,60%{transform:translate3d(3px,0,0)}}
+@media (prefers-reduced-motion:reduce){body::after{animation:none}}

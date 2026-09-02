@@ -16,6 +16,7 @@ function playRound(S) {
     const m = G.cheapest(S);
     if (m) { S.sel = m.idx.slice(); G.play(S); continue; }
     if (!S.rung && tryChisel(S)) continue;
+    if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); continue; } }
     if (G.stuck(S)) { G.finish(S); break; }
     if (S.rung && S.descend > 0) { G.descend(S); continue; }
     if (S.rung && S.breaths > 0) { G.pass(S); continue; }
@@ -27,7 +28,8 @@ function shop(S) {
   let bought = true;
   while (bought) {
     bought = false;
-    const order = S.offers.map((o, i) => ({ o, i, pr: PRIO.indexOf(o.id), cost: G.poolById[o.id].cost }))
+    const CARD_PR = { wild: 2.5, gold: 3.5, steel: 5.5, glass: 7.5 };
+    const order = S.offers.map((o, i) => ({ o, i, pr: o.kind === "card" ? CARD_PR[o.card.e] : PRIO.indexOf(o.id), cost: G.offerCost(o) }))
       .filter((x) => !x.o.bought && x.cost <= S.money).sort((a, b) => a.pr - b.pr);
     if (order.length) { G.buy(S, order[0].i); bought = true; }
   }

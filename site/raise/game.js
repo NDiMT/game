@@ -25,25 +25,26 @@
     { name: "Full House", short: "FULL", base: 80, size: 5 },
     { name: "Quads", short: "QUADS", base: 120, size: 4 },
   ];
-  /* Βαθμονομημένο με tools/sweep.js: άπληστο bot με Σμίλη κερδίζει ~23%,
-     θάνατοι ομοιόμορφοι από το ante 2 ως το 8 — κανένας γκρεμός. */
+  /* Βαθμονομημένο με tools/sweep.js — βλ. README. */
   const TARGETS = [100, 145, 215, 320, 470, 700, 1030, 1500];
-  /* Οικονομία: ρυθμίζεται από το tools/sim.js για βαθμονόμηση. */
   const CFG = {
     rewardBase: 12, rewardPer: 60,
-    offers: 4,
-    /* Το πρώτο χέρι του run ξαναμοιράζεται μέχρι να καθαρίζει τον στόχο με
-       απλό, άπληστο παίξιμο. Onboarding: κανείς δεν πεθαίνει στο ante 1
-       από νεκρό χέρι. Από το ante 2 και μετά, τα ορφανά είναι το παιχνίδι. */
-    firstHandFloor: 1.0,
-    firstHandTries: 40,
-    chisel0: 1, // Σμίλες με τις οποίες ξεκινά το run — το εργαλείο που διδάσκει το παιχνίδι
+    offers: 3,        // αναβαθμίσεις στο κατάστημα
+    cardOffers: 2,    // ενισχυμένα φύλλα στο κατάστημα
+    firstHandFloor: 1.0, firstHandTries: 40,
+    chisel0: 1,
+    challengeAntes: [2, 5],  // 0-indexed: ante 3 και 6
+    /* ένταση των challenges — βαθμονομείται από το sweep */
+    chalTargetMul: 0.85,  // στόχος σε challenge ante: το twist είναι η δυσκολία, όχι ο αριθμός
+    thinAirCap: 4,
+    highGroundRank: 10,
+    shortHand: 14,
+    richAirMul: 1.15,
+    blindCount: 7,
   };
   const HAND_BASE = 15;
   const BREATHS_BASE = 3;
 
-  /* Οι αναβαθμίσεις είναι δεδομένα, όχι συναρτήσεις, ώστε το state να
-     σειριοποιείται ακέραιο. Το `apply` τις εφαρμόζει. */
   const POOL = [
     { id: "m1", name: "Pairs +", desc: "Pairs pay one step more.", cost: 5 },
     { id: "m2", name: "Trips +", desc: "Trips pay one step more.", cost: 7 },
@@ -60,6 +61,29 @@
   ];
   const poolById = Object.fromEntries(POOL.map((o) => [o.id, o]));
 
+  /* Ενισχύσεις φύλλων: ζουν στην τράπουλα, όχι στο χέρι. */
+  const ENH = {
+    gold:  { name: "Gold",  desc: "Base ×2 when played.",               cost: 6, w: 35 },
+    glass: { name: "Glass", desc: "Base ×3. Shatters after one play.",  cost: 5, w: 30 },
+    wild:  { name: "Wild",  desc: "Any rank, any suit. Also an Ace.",   cost: 9, w: 15 },
+    steel: { name: "Steel", desc: "Dealt into every hand.",             cost: 8, w: 20 },
+  };
+
+  /* Challenges: κάθε ένα είναι σημαία που διαβάζει η λογική. */
+  const CHALLENGES = [
+    { id: "nopass",     name: "No Pass",          desc: "Passing is off. Step Down and Aces still reset." },
+    { id: "short",      name: "Short Hand",       desc: "One card fewer this round." },
+    { id: "blind",      name: "Blind Deal",       desc: "Seven cards start face down. Your first play turns them." },
+    { id: "highground", name: "High Ground",      desc: "The rung starts at Pair K." },
+    { id: "onebreath",  name: "One Breath",       desc: "A single pass this round." },
+    { id: "thinair",    name: "Thin Air",         desc: "The chain caps at ×3." },
+    { id: "richair",    name: "Rich Air",         desc: "Target ×1.15. Payout ×2." },
+  ];
+  const chalById = Object.fromEntries(CHALLENGES.map((c) => [c.id, c]));
+
+  /* Ονόματα χεριών, από το πιο σπάνιο στο πιο κοινό. */
+  const TAG_ORDER = ["Clean Sheet", "Ladder to Heaven", "Four Horsemen", "Royal", "Ace in the Hole", "Leap", "Shatter", "Tight Step", "Humble"];
+
   function apply(S, id) {
     switch (id) {
       case "m1": case "m2": case "m3": case "m4": case "m5": case "m6":
@@ -69,14 +93,19 @@
       case "de": S.descendMax += 1; break;
       case "wi": S.handSize += 1; break;
       case "cs": S.chainStart += 1; break;
-      case "th":
-        for (let r = 2; r <= 14; r++) if (!S.removed.includes(r)) { S.removed.push(r); break; }
+      case "th": {
+        const ranks = S.deck.filter((c) => c.e !== "wild").map((c) => c.r);
+        if (!ranks.length) break;
+        const lo = Math.min.apply(null, ranks);
+        S.deck = S.deck.filter((c) => c.e === "wild" || c.r !== lo);
+        S.removed.push(lo);
         break;
+      }
     }
     S.bought[id] = (S.bought[id] || 0) + 1;
   }
 
-  /* ---------- RNG (σειριοποιήσιμη κατάσταση) ---------- */
+  /* ---------- RNG ---------- */
   function hash(str) {
     let h = 1779033703 ^ str.length;
     for (let i = 0; i < str.length; i++) {
@@ -86,47 +115,49 @@
     return (h ^ (h >>> 16)) >>> 0;
   }
   function next(S) {
-    // mulberry32 πάνω στο S.rng, ώστε να αποθηκεύεται μαζί με το run
     S.rng = (S.rng + 0x6d2b79f5) | 0;
     let t = Math.imul(S.rng ^ (S.rng >>> 15), 1 | S.rng);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
-  /* ---------- run / γύρος ---------- */
+  /* ---------- run ---------- */
   function newRun(seedStr) {
     const seed = String(seedStr || "").trim() || String(Math.floor(Math.random() * 1e9));
     const S = {
-      v: 1, seed, rng: hash(seed) | 0,
+      v: 2, seed, rng: hash(seed) | 0,
       ante: 0, money: 0,
       handSize: HAND_BASE, breathsMax: BREATHS_BASE, chiselMax: CFG.chisel0, descendMax: 0, chainStart: 0,
       mult: [0, 1, 1, 1, 1, 1, 1], removed: [], bought: {},
-      phase: "round", // round | shop | lost | won
-      offers: [],
+      deck: [], nextId: 1, chals: {},
+      phase: "round", offers: [],
     };
+    for (let r = 2; r <= 14; r++) for (let si = 0; si < 4; si++) S.deck.push({ id: S.nextId++, r, si });
+    // ένα challenge ανά προγραμματισμένο ante, χωρίς επανάληψη
+    const pool = CHALLENGES.map((c) => c.id);
+    CFG.challengeAntes.forEach((a) => { S.chals[a] = pool.splice(Math.floor(next(S) * pool.length), 1)[0]; });
     startRound(S);
     return S;
   }
 
   const cmp = (a, b) => a.r - b.r || a.si - b.si;
-  const target = (S) => TARGETS[S.ante];
+  const chal = (S) => S.chal || null;
+  const target = (S) => Math.round(TARGETS[S.ante] * (chal(S) === "richair" ? CFG.richAirMul : 1) * (chal(S) && chal(S) !== "richair" ? CFG.chalTargetMul : 1));
+  const roundHandSize = (S) => (chal(S) === "short" ? Math.min(CFG.shortHand, S.handSize) : S.handSize);
 
-  function deal(S) {
-    const d = [];
-    for (let r = 2; r <= 14; r++) {
-      if (S.removed.includes(r)) continue;
-      for (let si = 0; si < 4; si++) d.push({ r, si });
-    }
-    for (let i = d.length - 1; i > 0; i--) {
+  function deal(S, n) {
+    const steel = S.deck.filter((c) => c.e === "steel");
+    const rest = S.deck.filter((c) => c.e !== "steel").slice();
+    for (let i = rest.length - 1; i > 0; i--) {
       const j = Math.floor(next(S) * (i + 1));
-      [d[i], d[j]] = [d[j], d[i]];
+      [rest[i], rest[j]] = [rest[j], rest[i]];
     }
-    return d.slice(0, S.handSize).sort(cmp);
+    return steel.slice(0, n).concat(rest.slice(0, Math.max(0, n - steel.length)))
+      .map((c) => Object.assign({}, c)).sort(cmp);
   }
-  /* Άπληστο σκορ ενός χεριού: φθηνότερη νόμιμη ανάβαση, πάσο όταν κολλάει. */
   function greedyScore(S, hand) {
     const T = Object.assign({}, S, { hand: hand.slice(), sel: [], rung: null, chain: 0, score: 0,
-      breaths: S.breathsMax, descend: S.descendMax, played: [], log: [], phase: "round" });
+      breaths: S.breathsMax, descend: S.descendMax, played: [], log: [], phase: "round", deck: S.deck.slice() });
     for (let guard = 0; guard < 60; guard++) {
       const m = cheapest(T);
       if (m) { T.sel = m.idx.slice(); play(T); if (!T.hand.length) break; continue; }
@@ -136,19 +167,26 @@
     return T.score;
   }
   function startRound(S) {
-    let hand = deal(S);
+    S.chal = S.chals[S.ante] || null;
+    const n = roundHandSize(S);
+    let hand = deal(S, n);
     if (S.ante === 0 && CFG.firstHandFloor > 0) {
       for (let t = 0; t < CFG.firstHandTries; t++) {
         if (greedyScore(S, hand) >= target(S) * CFG.firstHandFloor) break;
-        hand = deal(S);
+        hand = deal(S, n);
       }
+    }
+    if (chal(S) === "blind") {
+      const idx = hand.map((_, i) => i);
+      for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(next(S) * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+      idx.slice(0, Math.min(CFG.blindCount, hand.length - 4)).forEach((i) => { hand[i].h = true; });
     }
     S.hand = hand;
     S.sel = [];
-    S.rung = null;
+    S.rung = chal(S) === "highground" ? { tier: 1, rank: CFG.highGroundRank } : null;
     S.chain = 0;
     S.score = 0;
-    S.breaths = S.breathsMax;
+    S.breaths = chal(S) === "onebreath" ? 1 : S.breathsMax;
     S.chisel = S.chiselMax;
     S.descend = S.descendMax;
     S.played = [];
@@ -157,8 +195,8 @@
     S.offers = [];
   }
 
-  /* ---------- αξιολόγηση χεριού ---------- */
-  function classify(cs) {
+  /* ---------- αξιολόγηση ---------- */
+  function classifyPlain(cs) {
     if (!cs || cs.length < 2) return null;
     const bR = {}, bS = {};
     cs.forEach((c) => { (bR[c.r] = bR[c.r] || []).push(c); (bS[c.si] = bS[c.si] || []).push(c); });
@@ -173,7 +211,7 @@
         if (t && p) return { tier: 5, rank: t[0] };
       }
       const hi = Math.max.apply(null, cs.map((c) => c.r));
-      if (Object.keys(bS).length === 1) return { tier: 4, rank: hi }; // κέντα-χρώμα = χρώμα
+      if (Object.keys(bS).length === 1) return { tier: 4, rank: hi };
       if (co.length === 5) {
         const rs = co.map((c) => c[0]).sort((a, b) => a - b);
         if (rs[4] - rs[0] === 4) return { tier: 3, rank: hi };
@@ -181,28 +219,79 @@
     }
     return null;
   }
+  const isWild = (c) => c && c.e === "wild";
+  const kKey = (k) => (k ? k.tier * 100 + k.rank : -1);
+  /* Wilds: δοκιμάζουμε κάθε ανάθεση αξίας/χρώματος και κρατάμε την καλύτερη. */
+  function classify(cs) {
+    if (!cs || cs.length < 2) return null;
+    const wild = cs.filter(isWild), fixed = cs.filter((c) => !isWild(c));
+    if (!wild.length) return classifyPlain(cs);
+    if (!fixed.length) {
+      const n = cs.length;
+      return n === 2 ? { tier: 1, rank: 14 } : n === 3 ? { tier: 2, rank: 14 } : n === 4 ? { tier: 6, rank: 14 } : n === 5 ? { tier: 5, rank: 14 } : null;
+    }
+    // οι αξίες που έχουν νόημα: υπάρχουσες, γειτονικές για κέντες, και ο άσος
+    const ranks = new Set([14]);
+    fixed.forEach((c) => { for (let d = -4; d <= 4; d++) { const r = c.r + d; if (r >= 2 && r <= 14) ranks.add(r); } });
+    const suits = [...new Set(fixed.map((c) => c.si))];
+    const opts = [];
+    ranks.forEach((r) => suits.forEach((si) => opts.push({ r, si })));
+    let best = null;
+    (function rec(i, acc) {
+      if (i === wild.length) {
+        const k = classifyPlain(fixed.concat(acc));
+        if (kKey(k) > kKey(best)) best = k;
+        return;
+      }
+      for (const o of opts) rec(i + 1, acc.concat([o]));
+    })(0, []);
+    return best;
+  }
   function isLegal(S, k) {
     if (!k) return false;
     if (!S.rung) return true;
     return k.tier > S.rung.tier || (k.tier === S.rung.tier && k.rank > S.rung.rank);
   }
-  const chainPos = (S) => S.chain + 1 + S.chainStart;
+  function chainPos(S) {
+    const p = S.chain + 1 + S.chainStart;
+    return chal(S) === "thinair" ? Math.min(CFG.thinAirCap, p) : p;
+  }
   const cbase = (S, k) => TIERS[k.tier].base * S.mult[k.tier];
-  const cscore = (S, k) => cbase(S, k) * chainPos(S);
+  const factor = (cs) => 1 + cs.filter((c) => c.e === "gold").length + 2 * cs.filter((c) => c.e === "glass").length;
   const clabel = (k) => TIERS[k.tier].name + " " + rname(k.rank);
-  const selection = (S) => classify(S.sel.map((i) => S.hand[i]));
+  const isAce = (c) => c && (c.r === 14 || isWild(c));
+  const selCards = (S) => S.sel.map((i) => S.hand[i]);
+
+  /* Τι σημαίνει η τρέχουσα επιλογή — ένα αντικείμενο για UI και bot. */
+  function evalSel(S) {
+    const cs = selCards(S);
+    if (cs.length === 1 && isAce(cs[0]) && S.rung) return { ace: true, legal: true, cs, k: null };
+    const k = classify(cs);
+    if (!k) return { k: null, legal: false, cs };
+    const legal = isLegal(S, k), base = cbase(S, k), f = factor(cs), pos = chainPos(S);
+    return { k, legal, cs, base, factor: f, pos, pts: base * f * pos };
+  }
+  const selection = (S) => evalSel(S).k;
+  const cscore = (S, k, cs) => cbase(S, k) * factor(cs || []) * chainPos(S);
 
   /* ---------- υποψήφιες κινήσεις ---------- */
   function candidates(S) {
-    const out = [], bR = {}, bS = {};
-    S.hand.forEach((c, i) => { (bR[c.r] = bR[c.r] || []).push(i); (bS[c.si] = bS[c.si] || []).push(i); });
+    const out = [], bR = {}, bS = {}, W = [];
+    S.hand.forEach((c, i) => {
+      if (c.h) return;
+      if (isWild(c)) { W.push(i); return; }
+      (bR[c.r] = bR[c.r] || []).push(i); (bS[c.si] = bS[c.si] || []).push(i);
+    });
     const rs = Object.keys(bR).map(Number).sort((a, b) => a - b);
     rs.forEach((r) => {
       const g = bR[r];
-      if (g.length >= 2) out.push(g.slice(0, 2));
-      if (g.length >= 3) out.push(g.slice(0, 3));
-      if (g.length >= 4) out.push(g.slice(0, 4));
+      [2, 3, 4].forEach((total) => {
+        for (let use = 0; use <= Math.min(W.length, total - 1); use++) {
+          if (g.length >= total - use) out.push(g.slice(0, total - use).concat(W.slice(0, use)));
+        }
+      });
     });
+    if (W.length >= 2) out.push(W.slice(0, 2));
     rs.forEach((t) => {
       if (bR[t].length < 3) return;
       rs.forEach((p) => { if (p !== t && bR[p].length >= 2) out.push(bR[t].slice(0, 3).concat(bR[p].slice(0, 2))); });
@@ -216,11 +305,12 @@
       for (let r = st; r < st + 5; r++) { if (!bR[r]) { ok = false; break; } pk.push(bR[r][0]); }
       if (ok) out.push(pk);
     }
-    return out.map((idx) => ({ idx, k: classify(idx.map((i) => S.hand[i])) })).filter((o) => o.k);
+    const seen = new Set();
+    return out.filter((idx) => { const key = idx.slice().sort().join(","); if (seen.has(key)) return false; seen.add(key); return true; })
+      .map((idx) => ({ idx, k: classify(idx.map((i) => S.hand[i])) })).filter((o) => o.k);
   }
   const legalMoves = (S) => candidates(S).filter((o) => isLegal(S, o.k));
   const hasLegal = (S) => legalMoves(S).length > 0;
-  /* Η φθηνότερη νόμιμη ανάβαση κρατά την κλίμακα ανοιχτή. */
   function cheapest(S) {
     let b = null;
     legalMoves(S).forEach((o) => {
@@ -229,36 +319,68 @@
     });
     return b;
   }
+  const aceIndex = (S) => S.hand.findIndex((c) => !c.h && isAce(c));
 
-  /* ---------- ενέργειες: επιστρέφουν ένα event για το UI ---------- */
+  /* ---------- ενέργειες ---------- */
+  const reveal = (S) => { S.hand.forEach((c) => { if (c.h) delete c.h; }); };
   function toggle(S, i) {
-    if (S.phase !== "round") return false;
+    if (S.phase !== "round" || !S.hand[i] || S.hand[i].h) return false;
     const at = S.sel.indexOf(i);
     if (at >= 0) S.sel.splice(at, 1);
     else if (S.sel.length < 5) S.sel.push(i);
     else return false;
     return true;
   }
+  function shatter(S, cs) {
+    const glass = cs.filter((c) => c.e === "glass");
+    if (glass.length) { const ids = new Set(glass.map((c) => c.id)); S.deck = S.deck.filter((d) => !ids.has(d.id)); }
+    return glass.length;
+  }
+  function removeSel(S) { S.hand = S.hand.filter((_, i) => !S.sel.includes(i)); S.sel = []; }
+  function clearBonus(S, ev) {
+    if (S.hand.length) return;
+    ev.emptied = true;
+    ev.bonus = Math.round(S.score * 0.5);
+    S.score += ev.bonus;
+    S.log.push({ t: "Clean Sheet", c: "+50%", p: ev.bonus, cls: "bonus" });
+    ev.tags.unshift("Clean Sheet");
+  }
   function play(S) {
-    const k = selection(S);
-    if (!k || !isLegal(S, k) || S.phase !== "round") return null;
-    const pos = chainPos(S), pts = cscore(S, k), cs = S.sel.map((i) => S.hand[i]);
-    S.score += pts; S.chain += 1; S.rung = { tier: k.tier, rank: k.rank };
-    S.played = cs.slice();
-    S.log.push({ t: clabel(k), c: cbase(S, k) + " × " + pos, p: pts });
-    S.hand = S.hand.filter((_, i) => !S.sel.includes(i));
-    S.sel = [];
-    const ev = { type: "play", k, pts, pos, emptied: false, bonus: 0 };
-    if (S.hand.length === 0) {
-      ev.emptied = true;
-      ev.bonus = Math.round(S.score * 0.5);
-      S.score += ev.bonus;
-      S.log.push({ t: "Hand cleared", c: "+50%", p: ev.bonus, cls: "bonus" });
+    if (S.phase !== "round") return null;
+    const e = evalSel(S);
+    if (e.ace) {
+      const cs = e.cs, kept = chainPos(S);
+      S.rung = null; S.played = cs.slice();
+      const sh = shatter(S, cs);
+      removeSel(S); reveal(S);
+      S.log.push({ t: "Ace in the Hole", c: "rung reset · chain ×" + kept + " kept", p: "", cls: "bonus" });
+      const ev = { type: "ace", pts: 0, tags: ["Ace in the Hole"], shattered: sh, emptied: false, bonus: 0 };
+      if (sh) ev.tags.push("Shatter");
+      clearBonus(S, ev);
+      return ev;
     }
+    if (!e.k || !e.legal) return null;
+    const k = e.k, cs = e.cs, prev = S.rung, pos = e.pos, pts = e.pts;
+    const tags = [];
+    if (S.chain === 0 && k.tier === 1 && k.rank <= 3) tags.push("Humble");
+    if (prev && k.tier === prev.tier && k.rank === prev.rank + 1) tags.push("Tight Step");
+    if (prev && k.tier - prev.tier >= 2) tags.push("Leap");
+    if (k.tier === 6) tags.push("Four Horsemen");
+    if (k.tier === 4 && cs.some(isAce)) tags.push("Royal");
+    S.score += pts; S.chain += 1; S.rung = { tier: k.tier, rank: k.rank };
+    if (S.chain + S.chainStart === 7) tags.push("Ladder to Heaven");
+    S.played = cs.slice();
+    const sh = shatter(S, cs);
+    if (sh) tags.push("Shatter");
+    S.log.push({ t: clabel(k), c: e.base + (e.factor > 1 ? " × " + e.factor : "") + " × " + pos, p: pts });
+    removeSel(S); reveal(S);
+    tags.sort((a, b) => TAG_ORDER.indexOf(a) - TAG_ORDER.indexOf(b));
+    const ev = { type: "play", k, pts, pos, tags, shattered: sh, emptied: false, bonus: 0 };
+    clearBonus(S, ev);
     return ev;
   }
   function pass(S) {
-    if (S.phase !== "round" || S.breaths <= 0 || !S.rung) return false;
+    if (S.phase !== "round" || S.breaths <= 0 || !S.rung || chal(S) === "nopass") return false;
     S.breaths -= 1; S.rung = null; S.chain = 0; S.sel = []; S.played = [];
     S.log.push({ t: "Pass", c: "rung reset · chain reset", p: "−1", cls: "pass" });
     return true;
@@ -270,51 +392,59 @@
     return true;
   }
   function chisel(S, i, nr) {
-    if (S.phase !== "round" || S.chisel <= 0 || !S.hand[i] || nr < 2 || nr > 14) return false;
+    if (S.phase !== "round" || S.chisel <= 0 || !S.hand[i] || S.hand[i].h || isWild(S.hand[i]) || nr < 2 || nr > 14) return false;
     const old = S.hand[i].r;
-    S.hand[i] = { r: nr, si: S.hand[i].si };
+    S.hand[i] = Object.assign({}, S.hand[i], { r: nr });
     S.hand.sort(cmp);
     S.chisel -= 1; S.sel = [];
     S.log.push({ t: "Chisel", c: rname(old) + " → " + rname(nr), p: "", cls: "bonus" });
     return true;
   }
-  /* Ο γύρος έχει κολλήσει όταν δεν υπάρχει νόμιμη κίνηση και κανένα
-     εργαλείο δεν αλλάζει αυτό — Πάσο και Κατέβασμα βοηθούν μόνο με Σκαλί. */
+  const canPass = (S) => S.phase === "round" && S.breaths > 0 && !!S.rung && chal(S) !== "nopass";
   function stuck(S) {
     if (S.phase !== "round" || hasLegal(S)) return false;
-    if (S.rung && (S.descend > 0 || S.breaths > 0)) return false;
+    if (S.rung && (S.descend > 0 || canPass(S) || aceIndex(S) >= 0)) return false;
     return true;
   }
   function stuckReason(S) {
     if (!S.rung) return "No hand left in these cards. Round over.";
+    if (aceIndex(S) >= 0) return "Nothing climbs. An Ace alone resets the rung — chain kept.";
     if (S.descend > 0) return "Nothing climbs. Step Down keeps your chain.";
-    if (S.breaths > 0) return "Nothing climbs. Pass to reset — costs a breath.";
+    if (canPass(S)) return "Nothing climbs. Pass to reset — costs a breath.";
+    if (chal(S) === "nopass") return "Nothing climbs, and passing is off. Round over.";
     return "Nothing climbs, no breaths left. Round over.";
   }
   function finish(S) {
     if (S.phase !== "round") return null;
-    const cleared = S.score >= target(S);
-    if (!cleared) { S.phase = "lost"; return { cleared: false }; }
-    const ex = S.score - target(S), earn = CFG.rewardBase + Math.floor(ex / CFG.rewardPer);
+    const T = target(S);
+    if (S.score < T) { S.phase = "lost"; return { cleared: false }; }
+    const ex = S.score - T;
+    const earn = (CFG.rewardBase + Math.floor(ex / CFG.rewardPer)) * (chal(S) === "richair" ? 2 : 1);
     S.money += earn;
     if (S.ante === TARGETS.length - 1) { S.phase = "won"; return { cleared: true, won: true, ex, earn }; }
     S.phase = "shop";
-    S.offers = pick3(S);
+    S.offers = makeOffers(S);
     return { cleared: true, won: false, ex, earn };
   }
-  function pick3(S) {
+  function makeOffers(S) {
     const p = POOL.filter((o) => o.id !== "th" || S.removed.length < 5).map((o) => o.id);
     const out = [];
-    while (out.length < CFG.offers && p.length) out.push(p.splice(Math.floor(next(S) * p.length), 1)[0]);
-    return out.map((id) => ({ id, bought: false }));
+    while (out.length < CFG.offers && p.length) out.push({ kind: "up", id: p.splice(Math.floor(next(S) * p.length), 1)[0], bought: false });
+    const keys = Object.keys(ENH), tw = keys.reduce((a, k) => a + ENH[k].w, 0);
+    for (let i = 0; i < CFG.cardOffers; i++) {
+      let x = next(S) * tw, e = keys[0];
+      for (const k of keys) { x -= ENH[k].w; if (x <= 0) { e = k; break; } }
+      out.push({ kind: "card", card: { r: 2 + Math.floor(next(S) * 13), si: Math.floor(next(S) * 4), e }, bought: false });
+    }
+    return out;
   }
+  const offerCost = (o) => (o.kind === "card" ? ENH[o.card.e].cost : poolById[o.id].cost);
   function buy(S, i) {
     const o = S.offers[i];
-    if (S.phase !== "shop" || !o || o.bought) return false;
-    const item = poolById[o.id];
-    if (item.cost > S.money) return false;
-    S.money -= item.cost;
-    apply(S, o.id);
+    if (S.phase !== "shop" || !o || o.bought || offerCost(o) > S.money) return false;
+    S.money -= offerCost(o);
+    if (o.kind === "card") S.deck.push(Object.assign({ id: S.nextId++ }, o.card));
+    else apply(S, o.id);
     o.bought = true;
     return true;
   }
@@ -324,13 +454,15 @@
     startRound(S);
     return true;
   }
+  const upcoming = (S) => (S.chals[S.ante + 1] ? chalById[S.chals[S.ante + 1]] : null);
+  const current = (S) => (S.chal ? chalById[S.chal] : null);
 
   /* ---------- σειριοποίηση ---------- */
   const serialize = (S) => JSON.stringify(S);
   function restore(json) {
     try {
       const S = JSON.parse(json);
-      if (!S || S.v !== 1 || !Array.isArray(S.hand)) return null;
+      if (!S || S.v !== 2 || !Array.isArray(S.hand) || !Array.isArray(S.deck)) return null;
       return S;
     } catch (e) { return null; }
   }
@@ -340,11 +472,11 @@
   };
 
   return {
-    SUITS, TIERS, TARGETS, CFG, POOL, poolById, rname,
-    newRun, startRound, target,
-    classify, isLegal, chainPos, cbase, cscore, clabel, selection,
-    candidates, legalMoves, hasLegal, cheapest,
-    toggle, play, pass, descend, chisel, stuck, stuckReason, finish, buy, nextAnte,
+    SUITS, TIERS, TARGETS, CFG, POOL, poolById, ENH, CHALLENGES, chalById, rname,
+    newRun, startRound, target, roundHandSize,
+    classify, isLegal, chainPos, cbase, factor, cscore, clabel, evalSel, selection, isAce, isWild,
+    candidates, legalMoves, hasLegal, cheapest, aceIndex,
+    toggle, reveal, play, pass, canPass, descend, chisel, stuck, stuckReason, finish, buy, offerCost, nextAnte, upcoming, current,
     serialize, restore, todaySeed,
   };
 });

@@ -15,20 +15,21 @@
 <title>RAISE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Fira+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Fira+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<div id="grain"></div><div id="vig"></div>
+<div id="grain"></div><div id="vig"></div><div id="heat"></div>
 <canvas id="fx"></canvas>
 
-<div class="app">
+<div class="app" id="app">
   <header class="hud">
     <div class="hud__score"><b id="score">0</b><span id="tgt">/ 100</span></div>
     <div class="hud__r">
       <span class="ante">ANTE <b id="ante">1</b>/8</span>
       <span class="coin"><span id="money">0</span>◎</span>
       <div class="breaths" id="breaths"></div>
+      <span class="deckn">DECK <b id="deckN">52</b></span>
     </div>
     <div class="meter"><i id="fill"></i></div>
   </header>
@@ -38,8 +39,10 @@
       <span class="lbl">Rung</span>
       <b class="rung__val free" id="rungVal">open</b>
       <div class="rung__dots" id="rungDots"></div>
+      <div class="chal" id="chal" hidden><span>Challenge</span><b id="chalName"></b></div>
     </div>
     <div class="tcards" id="tcards"></div>
+    <div class="callout" id="callout" aria-live="polite"></div>
     <div class="tfoot">
       <span class="tnote" id="tnote"></span>
       <div class="chain" id="chain"><span>Chain</span><b id="chainN">×1</b></div>
