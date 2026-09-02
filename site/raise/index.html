@@ -67,8 +67,16 @@
 <script src="fx.js"></script>
 <script src="ui.js"></script>
 <script>
-if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost"))
-  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").then((reg) => reg.update()).catch(() => {}));
+  // Νέος worker ανέλαβε: φόρτωσε τη νέα έκδοση μία φορά, χωρίς loop.
+  let hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (hadController && !sessionStorage.getItem("raise.reloaded")) { sessionStorage.setItem("raise.reloaded", "1"); location.reload(); }
+    hadController = true;
+  });
+  addEventListener("load", () => sessionStorage.removeItem("raise.reloaded"));
+}
 </script>
 </body>
 </html>

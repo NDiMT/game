@@ -30,6 +30,9 @@ jobs:
       # by integration". Το Pages πρέπει να ενεργοποιηθεί μία φορά από
       # Settings -> Pages -> Source: GitHub Actions.
       - uses: actions/configure-pages@v5
+      # Σφραγίδα build στο service worker: κάθε deploy = νέα cache, νέος worker.
+      - name: Stamp service worker with commit SHA
+        run: sed -i "s/__BUILD__/${GITHUB_SHA::12}/" site/raise/sw.js && grep -n 'const V' site/raise/sw.js
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
