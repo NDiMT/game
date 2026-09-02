@@ -89,6 +89,7 @@
     bust: () => { tone({ f: 196, t: 0.5, type: "sawtooth", g: 0.08, slide: 0.7 }); tone({ f: 147, t: 0.6, type: "sawtooth", g: 0.08, delay: 0.16, slide: 0.7 }); },
     buy: () => tone({ f: 880, t: 0.13, type: "sine", g: 0.1, slide: 1.5 }),
     open: () => tone({ f: 520, t: 0.08, type: "sine", g: 0.05, slide: 1.2 }),
+    raise: () => { tone({ f: 440, t: 0.12, type: "triangle", g: 0.12 }); tone({ f: 660, t: 0.2, type: "triangle", g: 0.12, delay: 0.1 }); tone({ f: 880, t: 0.3, type: "sine", g: 0.08, delay: 0.2 }); },
   };
   function toggleMute() { muted = !muted; try { localStorage.setItem("raise.mute", muted ? "1" : "0"); } catch (e) {} return muted; }
 

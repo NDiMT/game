@@ -4,7 +4,7 @@
 const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 300;
 
-const PRIO = ["m1", "cs", "de", "wi", "ch", "br", "m2", "m3", "m4", "m5", "m6", "th"];
+const PRIO = ["m1", "cs", "wi", "ch", "de", "br", "m2", "m3", "m4", "m5", "m6", "th"];
 function tryChisel(S) {
   if (S.chisel <= 0) return false;
   const cnt = {}; S.hand.forEach((c) => { cnt[c.r] = (cnt[c.r] || 0) + 1; });
@@ -13,13 +13,14 @@ function tryChisel(S) {
 }
 function playRound(S) {
   while (S.phase === "round") {
+    if (G.canRaise(S) && S.hand.length >= 8 && G.legalMoves(S).length >= 3) G.raise(S);
     const m = G.cheapest(S);
     if (m) { S.sel = m.idx.slice(); G.play(S); continue; }
     if (!S.rung && tryChisel(S)) continue;
     if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); continue; } }
     if (G.stuck(S)) { G.finish(S); break; }
-    if (S.rung && S.descend > 0) { G.descend(S); continue; }
-    if (S.rung && S.breaths > 0) { G.pass(S); continue; }
+    if (G.canDescend(S)) { G.descend(S); continue; }
+    if (G.canPass(S)) { G.pass(S); continue; }
     G.finish(S); break;
   }
 }
@@ -29,7 +30,7 @@ function shop(S) {
   while (bought) {
     bought = false;
     const CARD_PR = { wild: 2.5, gold: 3.5, steel: 5.5, glass: 7.5 };
-    const order = S.offers.map((o, i) => ({ o, i, pr: o.kind === "card" ? CARD_PR[o.card.e] : PRIO.indexOf(o.id), cost: G.offerCost(o) }))
+    const order = S.offers.map((o, i) => ({ o, i, pr: o.kind === "card" ? CARD_PR[o.card.e] : PRIO.indexOf(o.id), cost: G.offerCost(S, o) }))
       .filter((x) => !x.o.bought && x.cost <= S.money).sort((a, b) => a.pr - b.pr);
     if (order.length) { G.buy(S, order[0].i); bought = true; }
   }

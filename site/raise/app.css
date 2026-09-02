@@ -293,6 +293,14 @@ span.card{display:block}
 .offer--card span:last-child{grid-column:2}
 .offer--card em{grid-column:3}
 
+/* raise */
+.tb.raise{background:linear-gradient(178deg,var(--brass-hi),var(--brass) 55%,#b48c33);color:#1d1607;border-color:transparent;box-shadow:0 2px 0 #6f5620,0 4px 10px rgba(0,0,0,.35)}
+.tb.raise em{background:#1d1607;color:var(--brass-hi)}
+.toast.raised{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;font-weight:600;color:var(--brass-hi)}
+.hud__score span.raised{color:var(--brass);font-weight:700}
+.tally b.good{color:var(--good)}
+.tally b.bad{color:var(--pip-lt)}
+
 /* toast variants */
 .toast.gold{border-left-color:var(--brass);background:rgba(212,169,79,.1)}
 

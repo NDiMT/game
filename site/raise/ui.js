@@ -45,12 +45,14 @@
 
   /* ---------- render ---------- */
   function render() {
-    const T = G.target(S), e = G.evalSel(S), ch = G.current(S), pos = G.chainPos(S);
+    const T = G.goal(S), e = G.evalSel(S), ch = G.current(S), pos = G.chainPos(S);
 
     FX.countUp($("score"), shown, S.score); shown = S.score;
     $("score").classList.toggle("on", S.score >= T);
-    $("tgt").textContent = "/ " + T;
+    $("tgt").textContent = "/ " + T + (S.raised ? " ↑" : "");
+    $("tgt").classList.toggle("raised", !!S.raised);
     $("ante").textContent = S.ante + 1;
+    $("anteN").textContent = G.TARGETS.length;
     $("money").textContent = S.money;
     $("deckN").textContent = S.deck.length;
     let b = ""; for (let i = 0; i < (ch && ch.id === "onebreath" ? 1 : S.breathsMax); i++) b += '<i class="' + (i < S.breaths ? "" : "spent") + '"></i>';
@@ -84,6 +86,8 @@
         : '<span class="toast gold" style="flex:1">Tap a card to rewrite.</span><button class="tb on" data-act="chisel">Cancel</button>';
     } else {
       if (ui.note && Date.now() < ui.noteT) tools += '<span class="toast" style="flex:1">' + ui.note + '</span>';
+      if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise <em>×' + G.CFG.raiseMul + ' · pay ×' + G.CFG.raisePayout + '</em></button>';
+      if (S.raised) tools += '<span class="toast gold raised">RAISED · reach ' + S.raiseTarget + ' or the payout is gone</span>';
       if (S.descendMax) tools += '<button class="tb" data-act="descend"' + (S.descend <= 0 || !S.rung ? " disabled" : "") + '>Step Down <em>' + S.descend + '</em></button>';
       if (S.chiselMax) tools += '<button class="tb" data-act="chisel"' + (S.chisel <= 0 ? " disabled" : "") + '>Chisel <em>' + S.chisel + '</em></button>';
     }
@@ -98,7 +102,7 @@
       const done = S.score >= T;
       go.classList.add(done ? "done" : "idle"); go.disabled = !done;
       go.innerHTML = done
-        ? '<span class="go__t">Bank it</span><span class="go__s">or keep climbing for more</span>'
+        ? '<span class="go__t">Bank it</span><span class="go__s">' + (S.raised ? "raise made · payout ×" + G.CFG.raisePayout : "or raise the stakes") + '</span>'
         : '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "beat " + G.TIERS[S.rung.tier].name + " " + G.rname(S.rung.rank) : "swipe up to play") + '</span>';
     } else if (e.ace) {
       go.classList.add("ace"); go.disabled = false;
@@ -145,7 +149,7 @@
     save();
     if (!r.cleared) { FX.sfx.bust(); FX.buzz([60, 40, 90]); sheetLose(); return; }
     FX.sfx.clear(); FX.spark(innerWidth / 2, innerHeight * 0.42, 120, 6.5); FX.buzz([12, 60, 12]); FX.pulse($("app"), "shake");
-    if (r.won) sheetWin(); else sheetShop(r.earn, r.ex);
+    if (r.won) sheetWin(); else sheetShop(r.earn, r.ex, r.raiseResult);
   }
 
   /* ---------- sheets ---------- */
@@ -166,7 +170,7 @@
   }
   function offersHTML() {
     return S.offers.map((o, i) => {
-      const cost = G.offerCost(o), dis = o.bought || cost > S.money ? " disabled" : "";
+      const cost = G.offerCost(S, o), dis = o.bought || cost > S.money ? " disabled" : "";
       if (o.kind === "card") {
         const c = o.card, su = G.SUITS[c.si];
         return '<button class="offer offer--card' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '>' +
@@ -177,15 +181,17 @@
       return '<button class="offer' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '><strong>' + it.name + '</strong><em>' + cost + '◎</em><span>' + it.desc + '</span></button>';
     }).join("");
   }
-  function sheetShop(earn, ex) {
+  function sheetShop(earn, ex, rr) {
     const T = G.target(S), up = G.upcoming(S);
-    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + '</p>' +
+    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + (rr === "won" ? " · raise made" : rr === "lost" ? " · raise missed" : "") + '</p>' +
       '<div class="tally"><div>Round<b>' + S.score + '</b></div>' +
-      (ex != null ? '<div>Over target<b>+' + ex + '</b></div><div>Payout<b>+' + earn + '◎</b></div>' : "") +
+      (ex != null ? '<div>Over target<b>+' + ex + '</b></div>' +
+        (rr === "won" ? '<div>Raise<b class="good">×' + G.CFG.raisePayout + '</b></div>' : rr === "lost" ? '<div>Raise<b class="bad">missed · ×0</b></div>' : "") +
+        '<div>Payout<b>+' + earn + '◎</b></div>' : "") +
       '<div>Chips<b id="mn">' + S.money + '◎</b></div></div>' +
       (up ? '<div class="chalnext"><span class="lbl">Next · Challenge</span><b>' + up.name + '</b><span>' + up.desc + '</span></div>' : "") +
       '<span class="lbl">Shop</span><div class="offers" id="offers">' + offersHTML() + '</div>' +
-      '<button class="big" data-next="1">Ante ' + (S.ante + 2) + ' · target ' + Math.round(G.TARGETS[S.ante + 1] * (up && up.id !== "richair" ? G.CFG.chalTargetMul : up ? G.CFG.richAirMul : 1)) + '</button>');
+      '<button class="big" data-next="1">Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</button>');
   }
   function sheetLose() {
     openS('<h2 class="bad">Busted</h2><p class="sub">Ante ' + (S.ante + 1) + ' · ' + S.score + ' of ' + G.target(S) + ' · ' + S.hand.length + ' cards left</p>' +
@@ -194,7 +200,7 @@
       '<button class="big" data-restart="1">Same seed, again</button><button class="big ghost" data-fresh="1">New seed</button>');
   }
   function sheetWin() {
-    openS('<h2 class="good">All eight</h2><p class="sub">Last hand: ' + S.score + ' of ' + G.target(S) + '</p>' +
+    openS('<h2 class="good">The Summit</h2><p class="sub">Last hand: ' + S.score + ' of ' + G.target(S) + '</p>' +
       '<div class="tally"><div>Chips<b>' + S.money + '◎</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
       '<span class="lbl">Your build</span><div class="chips">' + chipsHTML() + '</div>' +
       '<button class="big" data-fresh="1" style="margin-top:1rem">New run</button>');
@@ -210,7 +216,9 @@
       '<div class="sec"><span class="lbl">Rules</span><div class="rulz">' +
         '<p><b>Every hand must climb</b> — higher rank, or a higher hand.</p>' +
         '<p>Score = <b>base × chain</b>. Pass resets both and costs a breath.</p>' +
-        '<p><b>An Ace alone</b> resets the rung and keeps the chain.</p>' +
+        '<p><b>An Ace alone</b> resets the rung and keeps the chain. <b>Step Down</b> keeps half.</p>' +
+        '<p>Cleared the target? <b>Raise</b>: reach ×' + G.CFG.raiseMul + ' with the cards left for a ×' + G.CFG.raisePayout + ' payout — miss and the payout is gone.</p>' +
+        '<p>Challenges at antes 3, 6, 9. Ante 12 is <b>the Summit</b>: no Pass, no Step Down.</p>' +
         '<p>Empty your hand: <b>+50%</b>. Straight flush counts as flush. Ace is high only.</p>' +
         '<p><b>Swipe up</b> to play, <b>swipe down</b> to clear.</p></div></div>' +
       '<div class="sec"><span class="lbl">Seed · ' + S.seed + '</span><div class="seedrow">' +
@@ -245,6 +253,7 @@
     const a = e.target.closest("[data-act]"); if (!a) return;
     if (a.dataset.act === "chisel") { ui.chisel = !ui.chisel; S.sel = []; render(); }
     if (a.dataset.act === "descend") doDescend();
+    if (a.dataset.act === "raise") { if (G.raise(S)) { FX.sfx.raise(); FX.buzz([10, 30, 10]); FX.burstAt($("bPlay"), 26, 3.5); render(); save(); } }
   });
   $("bPlay").addEventListener("click", () => { if ($("bPlay").classList.contains("done")) { end(); return; } doPlay(); });
   $("bPass").addEventListener("click", doPass);

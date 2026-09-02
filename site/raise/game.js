@@ -26,14 +26,15 @@
     { name: "Quads", short: "QUADS", base: 120, size: 4 },
   ];
   /* Βαθμονομημένο με tools/sweep.js — βλ. README. */
-  const TARGETS = [100, 145, 215, 320, 470, 700, 1030, 1500];
+  /* Βαθμονομημένο με tools/sweep.js (bot με Chisel, Άσους και συντηρητικό Raise). */
+  const TARGETS = [100, 135, 185, 250, 340, 460, 620, 830, 1110, 1480, 1970, 2600];
   const CFG = {
     rewardBase: 12, rewardPer: 60,
     offers: 3,        // αναβαθμίσεις στο κατάστημα
     cardOffers: 2,    // ενισχυμένα φύλλα στο κατάστημα
     firstHandFloor: 1.0, firstHandTries: 40,
     chisel0: 1,
-    challengeAntes: [2, 5],  // 0-indexed: ante 3 και 6
+    challengeAntes: [2, 5, 8],  // 0-indexed: ante 3, 6, 9 — το τελευταίο είναι πάντα The Summit
     /* ένταση των challenges — βαθμονομείται από το sweep */
     chalTargetMul: 0.85,  // στόχος σε challenge ante: το twist είναι η δυσκολία, όχι ο αριθμός
     thinAirCap: 4,
@@ -41,6 +42,16 @@
     shortHand: 14,
     richAirMul: 1.15,
     blindCount: 7,
+    /* Το Step Down κρατά αυτό το μέρος της αλυσίδας· ο Άσος κοστίζει ήδη ένα
+       φύλλο και είναι σπάνιος, οπότε κρατά περισσότερο. */
+    resetKeep: 0.5,
+    aceKeep: 1.0,
+    /* Κάθε επανάληψη της ίδιας αναβάθμισης κοστίζει τόσο παραπάνω. */
+    priceStep: 0.5,
+    maxBuy: { cs: 2, de: 2, br: 3, wi: 3, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
+    /* Raise: όταν καθαρίσεις, στοιχηματίζεις ότι φτάνεις target×raiseMul με ό,τι έμεινε. */
+    raiseMul: 1.6,
+    raisePayout: 2,
   };
   const HAND_BASE = 15;
   const BREATHS_BASE = 3;
@@ -78,7 +89,9 @@
     { id: "onebreath",  name: "One Breath",       desc: "A single pass this round." },
     { id: "thinair",    name: "Thin Air",         desc: "The chain caps at ×3." },
     { id: "richair",    name: "Rich Air",         desc: "Target ×1.15. Payout ×2." },
+    { id: "summit",     name: "The Summit",       desc: "No Pass, no Step Down. Only an Ace resets." },
   ];
+  const RANDOM_CHALLENGES = CHALLENGES.filter((c) => c.id !== "summit").map((c) => c.id);
   const chalById = Object.fromEntries(CHALLENGES.map((c) => [c.id, c]));
 
   /* Ονόματα χεριών, από το πιο σπάνιο στο πιο κοινό. */
@@ -134,8 +147,9 @@
     };
     for (let r = 2; r <= 14; r++) for (let si = 0; si < 4; si++) S.deck.push({ id: S.nextId++, r, si });
     // ένα challenge ανά προγραμματισμένο ante, χωρίς επανάληψη
-    const pool = CHALLENGES.map((c) => c.id);
+    const pool = RANDOM_CHALLENGES.slice();
     CFG.challengeAntes.forEach((a) => { S.chals[a] = pool.splice(Math.floor(next(S) * pool.length), 1)[0]; });
+    S.chals[TARGETS.length - 1] = "summit";
     startRound(S);
     return S;
   }
@@ -143,6 +157,7 @@
   const cmp = (a, b) => a.r - b.r || a.si - b.si;
   const chal = (S) => S.chal || null;
   const target = (S) => Math.round(TARGETS[S.ante] * (chal(S) === "richair" ? CFG.richAirMul : 1) * (chal(S) && chal(S) !== "richair" ? CFG.chalTargetMul : 1));
+  const goal = (S) => (S.raised ? S.raiseTarget : target(S));
   const roundHandSize = (S) => (chal(S) === "short" ? Math.min(CFG.shortHand, S.handSize) : S.handSize);
 
   function deal(S, n) {
@@ -193,6 +208,8 @@
     S.log = [];
     S.phase = "round";
     S.offers = [];
+    S.raised = false;
+    S.raiseTarget = 0;
   }
 
   /* ---------- αξιολόγηση ---------- */
@@ -220,6 +237,12 @@
     return null;
   }
   const isWild = (c) => c && c.e === "wild";
+  /* Ένα reset κρατά μέρος της αλυσίδας: ×6 → ×3. */
+  function keepPart(S, frac) {
+    const np = Math.max(1, Math.ceil(chainPos(S) * (frac == null ? CFG.resetKeep : frac)));
+    S.chain = Math.max(0, np - 1 - S.chainStart);
+    return np;
+  }
   const kKey = (k) => (k ? k.tier * 100 + k.rank : -1);
   /* Wilds: δοκιμάζουμε κάθε ανάθεση αξίας/χρώματος και κρατάμε την καλύτερη. */
   function classify(cs) {
@@ -349,11 +372,12 @@
     if (S.phase !== "round") return null;
     const e = evalSel(S);
     if (e.ace) {
-      const cs = e.cs, kept = chainPos(S);
+      const cs = e.cs, was = chainPos(S);
       S.rung = null; S.played = cs.slice();
+      const kept = keepPart(S, CFG.aceKeep);
       const sh = shatter(S, cs);
       removeSel(S); reveal(S);
-      S.log.push({ t: "Ace in the Hole", c: "rung reset · chain ×" + kept + " kept", p: "", cls: "bonus" });
+      S.log.push({ t: "Ace in the Hole", c: "rung reset · chain ×" + was + " → ×" + kept, p: "", cls: "bonus" });
       const ev = { type: "ace", pts: 0, tags: ["Ace in the Hole"], shattered: sh, emptied: false, bonus: 0 };
       if (sh) ev.tags.push("Shatter");
       clearBonus(S, ev);
@@ -386,9 +410,21 @@
     return true;
   }
   function descend(S) {
-    if (S.phase !== "round" || S.descend <= 0 || !S.rung) return false;
+    if (S.phase !== "round" || S.descend <= 0 || !S.rung || chal(S) === "summit") return false;
+    const was = chainPos(S);
     S.descend -= 1; S.rung = null; S.sel = [];
-    S.log.push({ t: "Step Down", c: "chain ×" + chainPos(S) + " kept", p: "", cls: "bonus" });
+    const kept = keepPart(S);
+    S.log.push({ t: "Step Down", c: "chain ×" + was + " → ×" + kept, p: "", cls: "bonus" });
+    return true;
+  }
+  const canDescend = (S) => S.phase === "round" && S.descend > 0 && !!S.rung && chal(S) !== "summit";
+  /* Raise: μετά τον στόχο, στοιχηματίζεις ότι φτάνεις target×raiseMul πριν τελειώσουν τα φύλλα. */
+  const canRaise = (S) => S.phase === "round" && !S.raised && S.score >= target(S) && S.hand.length > 0;
+  function raise(S) {
+    if (!canRaise(S)) return false;
+    S.raised = true;
+    S.raiseTarget = Math.round(target(S) * CFG.raiseMul);
+    S.log.push({ t: "Raise", c: "target → " + S.raiseTarget + " · payout ×" + CFG.raisePayout, p: "", cls: "bonus" });
     return true;
   }
   function chisel(S, i, nr) {
@@ -400,16 +436,17 @@
     S.log.push({ t: "Chisel", c: rname(old) + " → " + rname(nr), p: "", cls: "bonus" });
     return true;
   }
-  const canPass = (S) => S.phase === "round" && S.breaths > 0 && !!S.rung && chal(S) !== "nopass";
+  const canPass = (S) => S.phase === "round" && S.breaths > 0 && !!S.rung && chal(S) !== "nopass" && chal(S) !== "summit";
   function stuck(S) {
     if (S.phase !== "round" || hasLegal(S)) return false;
-    if (S.rung && (S.descend > 0 || canPass(S) || aceIndex(S) >= 0)) return false;
+    if (S.rung && (canDescend(S) || canPass(S) || aceIndex(S) >= 0)) return false;
     return true;
   }
   function stuckReason(S) {
     if (!S.rung) return "No hand left in these cards. Round over.";
-    if (aceIndex(S) >= 0) return "Nothing climbs. An Ace alone resets the rung — chain kept.";
-    if (S.descend > 0) return "Nothing climbs. Step Down keeps your chain.";
+    if (aceIndex(S) >= 0) return "Nothing climbs. An Ace alone resets the rung and keeps the chain.";
+    if (chal(S) === "summit") return "Nothing climbs, and the Summit allows no Pass or Step Down. Round over.";
+    if (canDescend(S)) return "Nothing climbs. Step Down keeps half your chain.";
     if (canPass(S)) return "Nothing climbs. Pass to reset — costs a breath.";
     if (chal(S) === "nopass") return "Nothing climbs, and passing is off. Round over.";
     return "Nothing climbs, no breaths left. Round over.";
@@ -419,15 +456,20 @@
     const T = target(S);
     if (S.score < T) { S.phase = "lost"; return { cleared: false }; }
     const ex = S.score - T;
-    const earn = (CFG.rewardBase + Math.floor(ex / CFG.rewardPer)) * (chal(S) === "richair" ? 2 : 1);
+    let earn = (CFG.rewardBase + Math.floor(ex / CFG.rewardPer)) * (chal(S) === "richair" ? 2 : 1);
+    let raiseResult = null;
+    if (S.raised) {
+      if (S.score >= S.raiseTarget) { earn *= CFG.raisePayout; raiseResult = "won"; S.log.push({ t: "Raise won", c: "payout ×" + CFG.raisePayout, p: "+" + earn, cls: "bonus" }); }
+      else { earn = 0; raiseResult = "lost"; S.log.push({ t: "Raise lost", c: "payout ×0", p: "", cls: "pass" }); }
+    }
     S.money += earn;
-    if (S.ante === TARGETS.length - 1) { S.phase = "won"; return { cleared: true, won: true, ex, earn }; }
+    if (S.ante === TARGETS.length - 1) { S.phase = "won"; return { cleared: true, won: true, ex, earn, raiseResult }; }
     S.phase = "shop";
     S.offers = makeOffers(S);
-    return { cleared: true, won: false, ex, earn };
+    return { cleared: true, won: false, ex, earn, raiseResult };
   }
   function makeOffers(S) {
-    const p = POOL.filter((o) => o.id !== "th" || S.removed.length < 5).map((o) => o.id);
+    const p = POOL.filter((o) => (o.id !== "th" || S.removed.length < 5) && (!CFG.maxBuy[o.id] || (S.bought[o.id] || 0) < CFG.maxBuy[o.id])).map((o) => o.id);
     const out = [];
     while (out.length < CFG.offers && p.length) out.push({ kind: "up", id: p.splice(Math.floor(next(S) * p.length), 1)[0], bought: false });
     const keys = Object.keys(ENH), tw = keys.reduce((a, k) => a + ENH[k].w, 0);
@@ -438,11 +480,15 @@
     }
     return out;
   }
-  const offerCost = (o) => (o.kind === "card" ? ENH[o.card.e].cost : poolById[o.id].cost);
+  function offerCost(S, o) {
+    if (o.kind === "card") return ENH[o.card.e].cost;
+    const n = (S.bought && S.bought[o.id]) || 0;
+    return Math.round(poolById[o.id].cost * (1 + CFG.priceStep * n));
+  }
   function buy(S, i) {
     const o = S.offers[i];
-    if (S.phase !== "shop" || !o || o.bought || offerCost(o) > S.money) return false;
-    S.money -= offerCost(o);
+    if (S.phase !== "shop" || !o || o.bought || offerCost(S, o) > S.money) return false;
+    S.money -= offerCost(S, o);
     if (o.kind === "card") S.deck.push(Object.assign({ id: S.nextId++ }, o.card));
     else apply(S, o.id);
     o.bought = true;
@@ -455,6 +501,11 @@
     return true;
   }
   const upcoming = (S) => (S.chals[S.ante + 1] ? chalById[S.chals[S.ante + 1]] : null);
+  const nextTarget = (S) => {
+    const a = S.ante + 1, id = S.chals[a];
+    if (a >= TARGETS.length) return null;
+    return Math.round(TARGETS[a] * (id === "richair" ? CFG.richAirMul : id ? CFG.chalTargetMul : 1));
+  };
   const current = (S) => (S.chal ? chalById[S.chal] : null);
 
   /* ---------- σειριοποίηση ---------- */
@@ -473,10 +524,10 @@
 
   return {
     SUITS, TIERS, TARGETS, CFG, POOL, poolById, ENH, CHALLENGES, chalById, rname,
-    newRun, startRound, target, roundHandSize,
+    newRun, startRound, target, goal, nextTarget, roundHandSize,
     classify, isLegal, chainPos, cbase, factor, cscore, clabel, evalSel, selection, isAce, isWild,
     candidates, legalMoves, hasLegal, cheapest, aceIndex,
-    toggle, reveal, play, pass, canPass, descend, chisel, stuck, stuckReason, finish, buy, offerCost, nextAnte, upcoming, current,
+    toggle, reveal, play, pass, canPass, descend, canDescend, raise, canRaise, chisel, stuck, stuckReason, finish, buy, offerCost, nextAnte, upcoming, current,
     serialize, restore, todaySeed,
   };
 });
