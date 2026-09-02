@@ -39,10 +39,18 @@
     <div class="hud__r">
       <span class="ante">ANTE <b id="ante">1</b>/<span id="anteN">12</span></span>
       <span class="coin"><span id="money">0</span>◎</span>
-      <div class="breaths" id="breaths"></div>
-      <span class="deckn">DECK <b id="deckN">52</b></span>
     </div>
     <div class="meter"><i id="fill"></i></div>
+    <div class="res">
+      <div class="res__i"><span class="lbl">Plays</span><div class="pips pips--play" id="plays"></div></div>
+      <div class="res__i"><span class="lbl">Breaths</span><div class="pips pips--breath" id="breaths"></div></div>
+      <div class="res__i"><span class="lbl">Discards</span><div class="pips pips--disc" id="discards"></div></div>
+      <div class="piles">
+        <span class="pile" id="pile" title="Pile"><i></i><b id="pileN">44</b></span>
+        <span class="pile pile--d" id="dpile" title="Discards"><i></i><b id="dpileN">0</b></span>
+      </div>
+    </div>
+    <div class="charms" id="charms" aria-label="Charms"></div>
   </header>
 
   <main class="table" id="table">
@@ -56,6 +64,7 @@
     <div class="callout" id="callout" aria-live="polite"></div>
     <div class="tfoot">
       <span class="tnote" id="tnote"></span>
+      <div class="peek" id="peek" hidden><span class="lbl">Next</span><span id="peekCard"></span></div>
       <div class="chain" id="chain"><span>Chain</span><b id="chainN">×1</b></div>
     </div>
   </main>
@@ -65,8 +74,8 @@
   <div class="tools" id="tools"></div>
 
   <nav class="dock">
-    <button class="rb" id="bHint" aria-label="Hint"><span class="ic">?</span><span>Hint</span></button>
-    <button class="rb" id="bPass"><span>Pass</span><em id="passN">3</em></button>
+    <button class="rb" id="bPass"><span>Pass</span><em id="passN">2</em></button>
+    <button class="rb" id="bDisc"><span>Discard</span><em id="discN">3</em></button>
     <button class="go idle" id="bPlay" disabled><span class="go__t">Pick cards</span></button>
     <button class="rb" id="bMenu" aria-label="Menu"><span class="ic">⋯</span></button>
   </nav>
@@ -80,7 +89,6 @@
 <script>
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
   addEventListener("load", () => navigator.serviceWorker.register("sw.js").then((reg) => reg.update()).catch(() => {}));
-  // Νέος worker ανέλαβε: φόρτωσε τη νέα έκδοση μία φορά, χωρίς loop.
   let hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (hadController && !sessionStorage.getItem("raise.reloaded")) { sessionStorage.setItem("raise.reloaded", "1"); location.reload(); }

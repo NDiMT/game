@@ -69,6 +69,19 @@
     });
   }
 
+  /* Φαντάσματα φύλλων που πετούν σε έναν στόχο (π.χ. στη στοίβα των discards). */
+  function ghostTo(rects, targetEl) {
+    if (RM || !targetEl) return;
+    const t = targetEl.getBoundingClientRect(), tx = t.left + t.width / 2, ty = t.top + t.height / 2;
+    rects.forEach((r, i) => {
+      if (!r) return;
+      const g = document.createElement("div"); g.className = "ghost";
+      g.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;transition-delay:${i * 30}ms`;
+      document.body.appendChild(g);
+      requestAnimationFrame(() => requestAnimationFrame(() => { g.style.transform = `translate(${tx - r.left - r.width / 2}px,${ty - r.top - r.height / 2}px) scale(.25) rotate(20deg)`; g.style.opacity = "0"; }));
+      setTimeout(() => g.remove(), 700 + i * 30);
+    });
+  }
   const buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
   /* ---- synth ---- */
@@ -101,9 +114,12 @@
     bust: () => { tone({ f: 196, t: 0.5, type: "sawtooth", g: 0.08, slide: 0.7 }); tone({ f: 147, t: 0.6, type: "sawtooth", g: 0.08, delay: 0.16, slide: 0.7 }); },
     buy: () => tone({ f: 880, t: 0.13, type: "sine", g: 0.1, slide: 1.5 }),
     open: () => tone({ f: 520, t: 0.08, type: "sine", g: 0.05, slide: 1.2 }),
+    discard: () => { tone({ f: 900, t: 0.06, type: "square", g: 0.04, slide: 0.6 }); tone({ f: 600, t: 0.08, type: "square", g: 0.03, delay: 0.05, slide: 0.6 }); },
+    draw: () => tone({ f: 1200, t: 0.04, type: "sine", g: 0.03, slide: 1.3 }),
+    unlock: () => [660, 880, 1320].forEach((f, i) => tone({ f, t: 0.3, type: "triangle", g: 0.1, delay: i * 0.08 })),
     raise: () => { tone({ f: 440, t: 0.12, type: "triangle", g: 0.12 }); tone({ f: 660, t: 0.2, type: "triangle", g: 0.12, delay: 0.1 }); tone({ f: 880, t: 0.3, type: "sine", g: 0.08, delay: 0.2 }); },
   };
   function toggleMute() { muted = !muted; try { localStorage.setItem("raise.mute", muted ? "1" : "0"); } catch (e) {} return muted; }
 
-  root.FX = { spark, burstAt, floatIn, countUp, pulse, fly, buzz, sfx, toggleMute, isMuted: () => muted, embers, flash, RM };
+  root.FX = { spark, burstAt, floatIn, countUp, pulse, fly, ghostTo, buzz, sfx, toggleMute, isMuted: () => muted, embers, flash, RM };
 })(window);
