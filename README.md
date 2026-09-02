@@ -34,12 +34,22 @@ seeded RNG, κατάστημα ανάμεσα στους γύρους.
 ## Δημοσίευση
 
 Το `.github/workflows/pages.yml` ανεβάζει τον φάκελο `site/` στο GitHub Pages.
-Απαιτεί μία φορά, από τα settings του repository:
 
-1. **Settings → Pages → Source: GitHub Actions**
-2. Το repository να είναι public (ή GitHub Pro/Team για Pages σε private repo)
+Απαιτείται **μία χειροκίνητη ενέργεια, μία φορά**, από κάποιον με δικαιώματα
+admin στο repository:
 
-Μετά, κάθε push που αγγίζει το `site/` κάνει redeploy.
+> **Settings → Pages → Build and deployment → Source: GitHub Actions**
+
+Δεν γίνεται από το workflow. Το `actions/configure-pages` έχει παράμετρο
+`enablement: true` που υποτίθεται ότι δημιουργεί το Pages site μέσω API, αλλά
+η δημιουργία απαιτεί δικαιώματα admin στο repository — το `GITHUB_TOKEN` ενός
+workflow απαντά `Resource not accessible by integration`. Δοκιμασμένο, δεν
+δουλεύει.
+
+Μετά την ενεργοποίηση, κάθε push που αγγίζει το `site/` κάνει redeploy, ή
+τρέχεις το workflow χειροκίνητα από την καρτέλα Actions.
+
+Διεύθυνση μετά την ενεργοποίηση: **https://ndimt.github.io/game/**
 
 ## Νομικές σημειώσεις
 

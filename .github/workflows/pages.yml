@@ -27,11 +27,12 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      # Ενεργοποιεί το Pages μέσω API, ώστε να μη χρειάζεται χειροκίνητο
+      # Το `enablement: true` δοκιμάστηκε και ΔΕΝ δουλεύει εδώ: η δημιουργία
+      # του Pages site απαιτεί δικαιώματα admin στο repository, που το
+      # GITHUB_TOKEN ενός workflow δεν έχει — απαντά "Resource not accessible
+      # by integration". Το Pages πρέπει να ενεργοποιηθεί μία φορά από
       # Settings -> Pages -> Source: GitHub Actions.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
