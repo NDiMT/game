@@ -1,8 +1,8 @@
 {
   "name": "RAISE",
   "short_name": "RAISE",
-  "description": "Σόλο χαρτοπαίγνιο: η ιεραρχία των χεριών πόκερ, παιγμένη ως σκάλα που ανεβαίνει.",
-  "lang": "el",
+  "description": "A solo card game. Every hand must climb.",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

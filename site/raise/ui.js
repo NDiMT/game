@@ -62,12 +62,12 @@
 
     const rv = $("rungVal");
     if (S.rung) { rv.textContent = G.TIERS[S.rung.tier].name + " " + G.rname(S.rung.rank); rv.classList.remove("free"); }
-    else { rv.textContent = "ελεύθερο"; rv.classList.add("free"); }
+    else { rv.textContent = "open"; rv.classList.add("free"); }
     $("rungDots").innerHTML = G.TIERS.slice(1).map((t, i) => {
       const tier = i + 1, at = S.rung && S.rung.tier === tier, un = S.rung && tier < S.rung.tier;
       return '<i class="' + (at ? "at" : un ? "under" : "") + '" title="' + t.name + '"></i>';
     }).join("");
-    $("tnote").textContent = S.rung ? "ίδια κατηγορία ψηλότερα, ή ανώτερη κατηγορία" : "παίξε ό,τι θέλεις — κράτα την κλίμακα ανοιχτή";
+    $("tnote").textContent = S.rung ? "beat it: higher rank or higher hand" : "any hand opens";
     $("chainN").textContent = "×" + G.chainPos(S);
     $("tcards").innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, S.played.length)).join("");
 
@@ -80,12 +80,12 @@
     let tools = "";
     if (ui.chisel) {
       tools = S.sel.length === 1
-        ? '<div class="picker">' + rankButtons() + '</div><button class="tb on" data-act="chisel">Άκυρο</button>'
-        : '<span class="toast" style="flex:1;border-left-color:var(--brass);background:rgba(212,169,79,.1)">Σμίλη: πάτα το φύλλο που θέλεις να αλλάξεις.</span><button class="tb on" data-act="chisel">Άκυρο</button>';
+        ? '<div class="picker">' + rankButtons() + '</div><button class="tb on" data-act="chisel">Cancel</button>'
+        : '<span class="toast" style="flex:1;border-left-color:var(--brass);background:rgba(212,169,79,.1)">Tap a card to rewrite.</span><button class="tb on" data-act="chisel">Cancel</button>';
     } else {
       if (ui.note && Date.now() < ui.noteT) tools += '<span class="toast" style="flex:1">' + ui.note + '</span>';
-      if (S.descendMax) tools += '<button class="tb" data-act="descend"' + (S.descend <= 0 || !S.rung ? " disabled" : "") + '>Κατέβα <em>' + S.descend + '</em></button>';
-      if (S.chiselMax) tools += '<button class="tb" data-act="chisel"' + (S.chisel <= 0 ? " disabled" : "") + '>Σμίλη <em>' + S.chisel + '</em></button>';
+      if (S.descendMax) tools += '<button class="tb" data-act="descend"' + (S.descend <= 0 || !S.rung ? " disabled" : "") + '>Step Down <em>' + S.descend + '</em></button>';
+      if (S.chiselMax) tools += '<button class="tb" data-act="chisel"' + (S.chisel <= 0 ? " disabled" : "") + '>Chisel <em>' + S.chisel + '</em></button>';
     }
     $("tools").innerHTML = tools;
 
@@ -94,22 +94,22 @@
     go.className = "go";
     if (ui.chisel) {
       go.classList.add("idle"); go.disabled = true;
-      go.innerHTML = '<span class="go__t">Σμίλη</span><span class="go__s">διάλεξε φύλλο και νέα αξία</span>';
+      go.innerHTML = '<span class="go__t">Chisel</span><span class="go__s">pick a card, then a rank</span>';
     } else if (!S.sel.length) {
       const done = S.score >= T;
       go.classList.add(done ? "done" : "idle"); go.disabled = !done;
       go.innerHTML = done
-        ? '<span class="go__t">Κλείσε τον γύρο</span><span class="go__s">ή συνέχισε για περισσότερο χρήμα</span>'
-        : '<span class="go__t">Διάλεξε φύλλα</span><span class="go__s">' + (S.rung ? "ανέβα πάνω από " + G.TIERS[S.rung.tier].name + " " + G.rname(S.rung.rank) : "σύρε πάνω για να παίξεις") + '</span>';
+        ? '<span class="go__t">Bank it</span><span class="go__s">or keep climbing for more</span>'
+        : '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "beat " + G.TIERS[S.rung.tier].name + " " + G.rname(S.rung.rank) : "swipe up to play") + '</span>';
     } else if (!k) {
       go.classList.add("no"); go.disabled = true;
-      go.innerHTML = '<span class="go__t">' + S.sel.length + ' φύλλα</span><span class="go__s">δεν σχηματίζουν χέρι</span>';
+      go.innerHTML = '<span class="go__t">' + S.sel.length + ' cards</span><span class="go__s">not a hand</span>';
     } else if (!legal) {
       go.classList.add("no"); go.disabled = true;
-      go.innerHTML = '<span class="go__t">' + G.clabel(k) + '</span><span class="go__s">δεν ξεπερνά το σκαλί</span>';
+      go.innerHTML = '<span class="go__t">' + G.clabel(k) + '</span><span class="go__s">won\'t climb</span>';
     } else {
       go.classList.add("ok"); go.disabled = false;
-      go.innerHTML = '<span class="go__t">' + G.clabel(k) + '</span><span class="go__s">' + G.cbase(S, k) + ' × ' + G.chainPos(S) + ' — πάτα ή σύρε πάνω</span><span class="go__p">+' + G.cscore(S, k) + '</span>';
+      go.innerHTML = '<span class="go__t">' + G.clabel(k) + '</span><span class="go__s">' + G.cbase(S, k) + ' × ' + G.chainPos(S) + '</span><span class="go__p">+' + G.cscore(S, k) + '</span>';
     }
     $("bPass").disabled = ui.chisel || S.breaths <= 0 || !S.rung;
     $("passN").textContent = S.breaths;
@@ -149,13 +149,13 @@
   function chipsHTML() {
     const c = [];
     G.TIERS.slice(1).forEach((t, i) => { if (S.mult[i + 1] > 1) c.push(t.short + " <b>×" + S.mult[i + 1] + "</b>"); });
-    if (S.breathsMax > 3) c.push("Ανάσες <b>" + S.breathsMax + "</b>");
-    if (S.chiselMax) c.push("Σμίλη <b>" + S.chiselMax + "</b>");
-    if (S.descendMax) c.push("Κατέβασμα <b>" + S.descendMax + "</b>");
-    if (S.handSize > 15) c.push("Χέρι <b>" + S.handSize + "</b>");
-    if (S.chainStart) c.push("Αλυσίδα <b>+" + S.chainStart + "</b>");
-    if (S.removed.length) c.push("Έφυγαν <b>" + S.removed.map(G.rname).join(",") + "</b>");
-    return c.length ? c.map((x) => '<span class="chip">' + x + '</span>').join("") : '<span class="chip">καμία ακόμα</span>';
+    if (S.breathsMax > 3) c.push("Breaths <b>" + S.breathsMax + "</b>");
+    if (S.chiselMax) c.push("Chisel <b>" + S.chiselMax + "</b>");
+    if (S.descendMax) c.push("Step Down <b>" + S.descendMax + "</b>");
+    if (S.handSize > 15) c.push("Hand <b>" + S.handSize + "</b>");
+    if (S.chainStart) c.push("Chain <b>+" + S.chainStart + "</b>");
+    if (S.removed.length) c.push("Culled <b>" + S.removed.map(G.rname).join(",") + "</b>");
+    return c.length ? c.map((x) => '<span class="chip">' + x + '</span>').join("") : '<span class="chip">none yet</span>';
   }
   function offersHTML() {
     return S.offers.map((o, i) => {
@@ -166,43 +166,43 @@
   }
   function sheetShop(earn, ex) {
     const T = G.target(S);
-    openS('<h2>Ante ' + (S.ante + 1) + ' καθαρό</h2><p class="sub">' + S.score + ' με στόχο ' + T + '.</p>' +
-      '<div class="tally"><div>Σκορ γύρου<b>' + S.score + '</b></div>' +
-      (ex != null ? '<div>Πάνω από τον στόχο<b>+' + ex + '</b></div><div>Αμοιβή<b>+' + earn + '◎</b></div>' : "") +
-      '<div>Χρήμα<b id="mn">' + S.money + '◎</b></div></div>' +
-      '<span class="lbl">Κατάστημα</span><div class="offers" id="offers">' + offersHTML() + '</div>' +
-      '<button class="big" data-next="1">Ante ' + (S.ante + 2) + ' · στόχος ' + G.TARGETS[S.ante + 1] + '</button>');
+    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + '</p>' +
+      '<div class="tally"><div>Round<b>' + S.score + '</b></div>' +
+      (ex != null ? '<div>Over target<b>+' + ex + '</b></div><div>Payout<b>+' + earn + '◎</b></div>' : "") +
+      '<div>Chips<b id="mn">' + S.money + '◎</b></div></div>' +
+      '<span class="lbl">Shop</span><div class="offers" id="offers">' + offersHTML() + '</div>' +
+      '<button class="big" data-next="1">Ante ' + (S.ante + 2) + ' · target ' + G.TARGETS[S.ante + 1] + '</button>');
   }
   function sheetLose() {
-    openS('<h2 class="bad">Δεν έφτασε</h2><p class="sub">Ante ' + (S.ante + 1) + ': ' + S.score + ' από ' + G.target(S) + '. Έμειναν ' + S.hand.length + ' φύλλα.</p>' +
-      '<div class="tally"><div>Antes που πέρασες<b>' + S.ante + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
-      '<p class="sub" style="margin-bottom:1rem">Τα ορφανά φύλλα σκοτώνουν τους γύρους, όχι τα αδύναμα χαρτιά. Η Σμίλη και το Κατέβασμα λύνουν το σχήμα του χεριού.</p>' +
-      '<button class="big" data-restart="1">Ίδιο seed, ξανά</button><button class="big ghost" data-fresh="1">Νέο seed</button>');
+    openS('<h2 class="bad">Busted</h2><p class="sub">Ante ' + (S.ante + 1) + ' · ' + S.score + ' of ' + G.target(S) + ' · ' + S.hand.length + ' cards left</p>' +
+      '<div class="tally"><div>Antes cleared<b>' + S.ante + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
+      '<p class="sub" style="margin-bottom:1rem">Orphans kill rounds, not weak cards.</p>' +
+      '<button class="big" data-restart="1">Same seed, again</button><button class="big ghost" data-fresh="1">New seed</button>');
   }
   function sheetWin() {
-    openS('<h2 class="good">Και τα οκτώ</h2><p class="sub">Το τελευταίο χέρι έβγαλε ' + S.score + ' με στόχο ' + G.target(S) + '.</p>' +
-      '<div class="tally"><div>Τελικό χρήμα<b>' + S.money + '◎</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
-      '<span class="lbl">Το build σου</span><div class="chips">' + chipsHTML() + '</div>' +
-      '<button class="big" data-fresh="1" style="margin-top:1rem">Νέο run</button>');
+    openS('<h2 class="good">All eight</h2><p class="sub">Last hand: ' + S.score + ' of ' + G.target(S) + '</p>' +
+      '<div class="tally"><div>Chips<b>' + S.money + '◎</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
+      '<span class="lbl">Your build</span><div class="chips">' + chipsHTML() + '</div>' +
+      '<button class="big" data-fresh="1" style="margin-top:1rem">New run</button>');
   }
   function sheetMenu() {
-    openS('<h2>Ο γύρος</h2>' +
+    openS('<h2>This round</h2>' +
       '<div class="log" style="margin-top:.5rem">' + (S.log.length ? S.log.slice().reverse().map((e) =>
         '<div class="' + (e.cls || "") + '"><span>' + e.t + '</span><em>' + e.c + '</em><b>' + (typeof e.p === "number" ? "+" + e.p : e.p) + '</b></div>').join("")
-        : '<div style="border:0;color:var(--muted)">καμία κίνηση ακόμα</div>') + '</div>' +
-      '<div class="sec"><span class="lbl">Αγορές</span><div class="chips">' + chipsHTML() + '</div></div>' +
-      '<div class="sec"><span class="lbl">Πίνακας</span><div class="rtab">' +
+        : '<div style="border:0;color:var(--muted)">no plays yet</div>') + '</div>' +
+      '<div class="sec"><span class="lbl">Build</span><div class="chips">' + chipsHTML() + '</div></div>' +
+      '<div class="sec"><span class="lbl">Paytable</span><div class="rtab">' +
         G.TIERS.slice(1).map((t, i) => '<div><span>' + t.name + '</span><b>' + (t.base * S.mult[i + 1]) + '</b></div>').join("") + '</div></div>' +
-      '<div class="sec"><span class="lbl">Κανόνες</span><div class="rulz">' +
-        '<p>Κάθε χέρι πρέπει να ξεπερνά το προηγούμενο: <b>ανώτερη κατηγορία, ή ίδια κατηγορία με ψηλότερη αξία</b>.</p>' +
-        '<p>Σκορ = <b>βάση × θέση στην Αλυσίδα</b>. Το Πάσο μηδενίζει το Σκαλί, σπάει την Αλυσίδα και κοστίζει Ανάση.</p>' +
-        '<p>Άδειασμα χεριού <b>+50%</b>. Κέντα-χρώμα μετράει ως Χρώμα. Ο άσος είναι μόνο ψηλός.</p>' +
-        '<p><b>Σύρε πάνω</b> στα φύλλα για να παίξεις, <b>σύρε κάτω</b> για να ξεδιαλέξεις.</p></div></div>' +
+      '<div class="sec"><span class="lbl">Rules</span><div class="rulz">' +
+        '<p><b>Every hand must climb</b> — higher rank, or a higher hand.</p>' +
+        '<p>Score = <b>base × chain</b>. Pass resets both and costs a breath.</p>' +
+        '<p>Empty your hand: <b>+50%</b>. Straight flush counts as flush. Ace is high only.</p>' +
+        '<p><b>Swipe up</b> to play, <b>swipe down</b> to clear.</p></div></div>' +
       '<div class="sec"><span class="lbl">Seed · ' + S.seed + '</span><div class="seedrow">' +
-        '<input id="sd" value="" placeholder="νέο seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Ξεκίνα</button></div>' +
-        '<div class="row2"><button class="big ghost" data-today="1">Σήμερα · ' + G.todaySeed() + '</button><button class="big ghost" data-fresh="1">Τυχαίο</button></div></div>' +
-      (installEvt ? '<div class="sec"><button class="big" data-install="1">Εγκατάσταση στην αρχική οθόνη</button></div>' : "") +
-      '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Πίσω στο παιχνίδι</button>');
+        '<input id="sd" value="" placeholder="custom seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Go</button></div>' +
+        '<div class="row2"><button class="big ghost" data-today="1">Daily · ' + G.todaySeed() + '</button><button class="big ghost" data-fresh="1">Random</button></div></div>' +
+      (installEvt ? '<div class="sec"><button class="big" data-install="1">Add to home screen</button></div>' : "") +
+      '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
 
   /* ---------- events ---------- */

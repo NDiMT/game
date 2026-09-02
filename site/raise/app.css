@@ -77,8 +77,8 @@ button:disabled{cursor:default}
 .rung__dots i.at{background:var(--brass);box-shadow:0 0 .5rem rgba(212,169,79,.6)}
 .tcards{display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center;align-content:center;min-height:0}
 .tcards:empty::before{
-  content:"Ξεκίνα χαμηλά — ένα ζεύγος. Κάθε επόμενο χέρι πρέπει να ανεβαίνει: ίδια κατηγορία ψηλότερα, ή ανώτερη κατηγορία.";
-  font-family:var(--display);font-size:1.12rem;line-height:1.35;color:rgba(147,170,156,.8);text-align:center;max-width:19rem;text-wrap:balance;
+  content:"Start low. Every hand must climb.";
+  font-family:var(--display);font-size:1.3rem;line-height:1.3;color:rgba(147,170,156,.75);text-align:center;max-width:16rem;text-wrap:balance;
 }
 .tcards .card{width:calc(var(--cw) * 1.22);animation:land .34s cubic-bezier(.2,.9,.3,1) backwards}
 @keyframes land{0%{opacity:0;transform:translateY(1.5rem) rotate(-7deg) scale(.86)}100%{opacity:1;transform:none}}

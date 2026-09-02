@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="el">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a2019">
-<meta name="description" content="RAISE — σόλο χαρτοπαίγνιο: η ιεραρχία των χεριών πόκερ παιγμένη ως σκάλα που ανεβαίνει.">
+<meta name="description" content="RAISE — a solo card game. Every hand must climb.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -35,26 +35,26 @@
 
   <main class="table" id="table">
     <div class="rung">
-      <span class="lbl">Σκαλί</span>
-      <b class="rung__val free" id="rungVal">ελεύθερο</b>
+      <span class="lbl">Rung</span>
+      <b class="rung__val free" id="rungVal">open</b>
       <div class="rung__dots" id="rungDots"></div>
     </div>
     <div class="tcards" id="tcards"></div>
     <div class="tfoot">
       <span class="tnote" id="tnote"></span>
-      <div class="chain" id="chain"><span>Αλυσίδα</span><b id="chainN">×1</b></div>
+      <div class="chain" id="chain"><span>Chain</span><b id="chainN">×1</b></div>
     </div>
   </main>
 
-  <section class="hand" id="hand" aria-label="Το χέρι σου"></section>
+  <section class="hand" id="hand" aria-label="Your hand"></section>
 
   <div class="tools" id="tools"></div>
 
   <nav class="dock">
-    <button class="rb" id="bHint" aria-label="Πρόταση"><span class="ic">?</span><span>Ιδέα</span></button>
-    <button class="rb" id="bPass"><span>Πάσο</span><em id="passN">3</em></button>
-    <button class="go idle" id="bPlay" disabled><span class="go__t">Διάλεξε φύλλα</span></button>
-    <button class="rb" id="bMenu" aria-label="Μενού"><span class="ic">⋯</span></button>
+    <button class="rb" id="bHint" aria-label="Hint"><span class="ic">?</span><span>Hint</span></button>
+    <button class="rb" id="bPass"><span>Pass</span><em id="passN">3</em></button>
+    <button class="go idle" id="bPlay" disabled><span class="go__t">Pick cards</span></button>
+    <button class="rb" id="bMenu" aria-label="Menu"><span class="ic">⋯</span></button>
   </nav>
 </div>
 

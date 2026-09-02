@@ -18,12 +18,12 @@
 
   const TIERS = [
     null,
-    { name: "Ζεύγος", short: "ΖΕΥ", base: 10, size: 2 },
-    { name: "Τριάδα", short: "ΤΡΙ", base: 25, size: 3 },
-    { name: "Κέντα", short: "ΚΕΝ", base: 40, size: 5 },
-    { name: "Χρώμα", short: "ΧΡΩ", base: 60, size: 5 },
-    { name: "Φουλ", short: "ΦΟΥΛ", base: 80, size: 5 },
-    { name: "Καρέ", short: "ΚΑΡΕ", base: 120, size: 4 },
+    { name: "Pair", short: "PAIR", base: 10, size: 2 },
+    { name: "Trips", short: "TRIPS", base: 25, size: 3 },
+    { name: "Straight", short: "STR8", base: 40, size: 5 },
+    { name: "Flush", short: "FLUSH", base: 60, size: 5 },
+    { name: "Full House", short: "FULL", base: 80, size: 5 },
+    { name: "Quads", short: "QUADS", base: 120, size: 4 },
   ];
   /* Βαθμονομημένο με tools/sweep.js: άπληστο bot με Σμίλη κερδίζει ~23%,
      θάνατοι ομοιόμορφοι από το ante 2 ως το 8 — κανένας γκρεμός. */
@@ -45,18 +45,18 @@
   /* Οι αναβαθμίσεις είναι δεδομένα, όχι συναρτήσεις, ώστε το state να
      σειριοποιείται ακέραιο. Το `apply` τις εφαρμόζει. */
   const POOL = [
-    { id: "m1", name: "Ζεύγη ×2", desc: "Η βάση των ζευγαριών ανεβαίνει ένα βήμα.", cost: 5 },
-    { id: "m2", name: "Τριάδες ×2", desc: "Η βάση των τριάδων ανεβαίνει ένα βήμα.", cost: 7 },
-    { id: "m3", name: "Κέντες ×2", desc: "Η βάση των κεντών ανεβαίνει ένα βήμα.", cost: 8 },
-    { id: "m4", name: "Χρώματα ×2", desc: "Η βάση των χρωμάτων ανεβαίνει ένα βήμα.", cost: 9 },
-    { id: "m5", name: "Φουλ ×2", desc: "Η βάση των φουλ ανεβαίνει ένα βήμα.", cost: 10 },
-    { id: "m6", name: "Καρέ ×2", desc: "Η βάση των καρέ ανεβαίνει ένα βήμα.", cost: 10 },
-    { id: "br", name: "Ανάση", desc: "+1 Ανάση σε κάθε γύρο.", cost: 6 },
-    { id: "ch", name: "Σμίλη", desc: "+1 χρήση ανά γύρο: αλλάζεις την αξία ενός φύλλου. Σβήνει ορφανά.", cost: 7 },
-    { id: "de", name: "Κατέβασμα", desc: "+1 χρήση ανά γύρο: μηδενίζεις το Σκαλί χωρίς να σπάσεις την Αλυσίδα.", cost: 11 },
-    { id: "wi", name: "Πλατύ χέρι", desc: "+1 φύλλο στο χέρι κάθε γύρο.", cost: 8 },
-    { id: "cs", name: "Ενίσχυση Αλυσίδας", desc: "Η Αλυσίδα ξεκινά ένα σκαλί ψηλότερα.", cost: 12 },
-    { id: "th", name: "Καθαριστής", desc: "Αφαιρεί μόνιμα τη χαμηλότερη αξία από την τράπουλα. Πυκνώνει τα χέρια.", cost: 7 },
+    { id: "m1", name: "Pairs +", desc: "Pairs pay one step more.", cost: 5 },
+    { id: "m2", name: "Trips +", desc: "Trips pay one step more.", cost: 7 },
+    { id: "m3", name: "Straights +", desc: "Straights pay one step more.", cost: 8 },
+    { id: "m4", name: "Flushes +", desc: "Flushes pay one step more.", cost: 9 },
+    { id: "m5", name: "Full Houses +", desc: "Full houses pay one step more.", cost: 10 },
+    { id: "m6", name: "Quads +", desc: "Quads pay one step more.", cost: 10 },
+    { id: "br", name: "Breath", desc: "+1 pass per round.", cost: 6 },
+    { id: "ch", name: "Chisel", desc: "+1 per round: rewrite a card's rank.", cost: 7 },
+    { id: "de", name: "Step Down", desc: "+1 per round: reset the rung, keep the chain.", cost: 11 },
+    { id: "wi", name: "Wide Hand", desc: "+1 card every round.", cost: 8 },
+    { id: "cs", name: "Head Start", desc: "The chain starts at ×2.", cost: 12 },
+    { id: "th", name: "Cull", desc: "Remove the lowest rank from the deck. For good.", cost: 7 },
   ];
   const poolById = Object.fromEntries(POOL.map((o) => [o.id, o]));
 
@@ -253,20 +253,20 @@
       ev.emptied = true;
       ev.bonus = Math.round(S.score * 0.5);
       S.score += ev.bonus;
-      S.log.push({ t: "Άδειασμα χεριού", c: "+50%", p: ev.bonus, cls: "bonus" });
+      S.log.push({ t: "Hand cleared", c: "+50%", p: ev.bonus, cls: "bonus" });
     }
     return ev;
   }
   function pass(S) {
     if (S.phase !== "round" || S.breaths <= 0 || !S.rung) return false;
     S.breaths -= 1; S.rung = null; S.chain = 0; S.sel = []; S.played = [];
-    S.log.push({ t: "Πάσο", c: "σκαλί 0 · αλυσίδα 0", p: "−1", cls: "pass" });
+    S.log.push({ t: "Pass", c: "rung reset · chain reset", p: "−1", cls: "pass" });
     return true;
   }
   function descend(S) {
     if (S.phase !== "round" || S.descend <= 0 || !S.rung) return false;
     S.descend -= 1; S.rung = null; S.sel = [];
-    S.log.push({ t: "Κατέβασμα", c: "αλυσίδα ×" + chainPos(S), p: "", cls: "bonus" });
+    S.log.push({ t: "Step Down", c: "chain ×" + chainPos(S) + " kept", p: "", cls: "bonus" });
     return true;
   }
   function chisel(S, i, nr) {
@@ -275,7 +275,7 @@
     S.hand[i] = { r: nr, si: S.hand[i].si };
     S.hand.sort(cmp);
     S.chisel -= 1; S.sel = [];
-    S.log.push({ t: "Σμίλη", c: rname(old) + " → " + rname(nr), p: "", cls: "bonus" });
+    S.log.push({ t: "Chisel", c: rname(old) + " → " + rname(nr), p: "", cls: "bonus" });
     return true;
   }
   /* Ο γύρος έχει κολλήσει όταν δεν υπάρχει νόμιμη κίνηση και κανένα
@@ -286,10 +286,10 @@
     return true;
   }
   function stuckReason(S) {
-    if (!S.rung) return "Κανένα νόμιμο χέρι με αυτά τα φύλλα. Ο γύρος κλείνει — τα ορφανά έμειναν αδιαμέλιστα.";
-    if (S.descend > 0) return "Κανένα νόμιμο χέρι. Κατέβα για να μηδενίσεις το Σκαλί χωρίς να σπάσεις την Αλυσίδα.";
-    if (S.breaths > 0) return "Κανένα νόμιμο χέρι. Πάσο για να μηδενίσεις το Σκαλί — κοστίζει Ανάση.";
-    return "Κανένα νόμιμο χέρι και καμία Ανάση. Ο γύρος κλείνει.";
+    if (!S.rung) return "No hand left in these cards. Round over.";
+    if (S.descend > 0) return "Nothing climbs. Step Down keeps your chain.";
+    if (S.breaths > 0) return "Nothing climbs. Pass to reset — costs a breath.";
+    return "Nothing climbs, no breaths left. Round over.";
   }
   function finish(S) {
     if (S.phase !== "round") return null;
