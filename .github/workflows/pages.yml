@@ -5,9 +5,6 @@ on:
     branches:
       - claude/solo-game-ideas-balatro-yj6hqw
       - main
-    paths:
-      - "site/**"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -26,7 +23,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Το `enablement: true` δοκιμάστηκε και ΔΕΝ δουλεύει εδώ: η δημιουργία
       # του Pages site απαιτεί δικαιώματα admin στο repository, που το
       # GITHUB_TOKEN ενός workflow δεν έχει — απαντά "Resource not accessible
