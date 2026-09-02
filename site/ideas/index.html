@@ -1,0 +1,1042 @@
+<title>Εννέα Χέρια</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Fira+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f3f4f0;
+  --surface:#fbfbf9;
+  --surface-2:#e8ebe3;
+  --fg:#16181d;
+  --muted:#666c62;
+  --rule:#d4d9ce;
+  --rule-strong:#b9c0b2;
+  --felt:#1f5c4a;
+  --felt-tint:#e2ece7;
+  --pip:#b3231f;
+  --pip-tint:#f6e4e2;
+  --brass:#8e6820;
+  --brass-tint:#f0e8d6;
+  --shadow:0 1px 0 rgba(22,24,29,.05), 0 8px 24px -18px rgba(22,24,29,.35);
+
+  --display:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --body:"Fira Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono","DejaVu Sans Mono",ui-monospace,monospace;
+  --card-sym:"IBM Plex Mono","Segoe UI Symbol","Apple Symbols","Noto Sans Symbols 2",monospace;
+
+  --measure:64ch;
+  --pad:clamp(1.1rem,3.2vw,2.1rem);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1210;
+    --surface:#171b17;
+    --surface-2:#1e241e;
+    --fg:#e7eae1;
+    --muted:#98a193;
+    --rule:#2b322b;
+    --rule-strong:#3d463c;
+    --felt:#59ab8b;
+    --felt-tint:#152420;
+    --pip:#e46960;
+    --pip-tint:#2a1a19;
+    --brass:#cfa759;
+    --brass-tint:#241f14;
+    --shadow:0 1px 0 rgba(0,0,0,.4), 0 10px 28px -20px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1210;
+  --surface:#171b17;
+  --surface-2:#1e241e;
+  --fg:#e7eae1;
+  --muted:#98a193;
+  --rule:#2b322b;
+  --rule-strong:#3d463c;
+  --felt:#59ab8b;
+  --felt-tint:#152420;
+  --pip:#e46960;
+  --pip-tint:#2a1a19;
+  --brass:#cfa759;
+  --brass-tint:#241f14;
+  --shadow:0 1px 0 rgba(0,0,0,.4), 0 10px 28px -20px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:var(--display);font-weight:600;text-wrap:balance;margin:0;line-height:1.14}
+p{margin:0}
+a{color:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid var(--felt);outline-offset:3px;border-radius:2px}
+
+.wrap{max-width:1160px;margin:0 auto;padding:0 var(--pad)}
+
+/* ---------- eyebrow / labels ---------- */
+.eyebrow{
+  font-family:var(--mono);font-size:.68rem;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+}
+
+/* ---------- masthead ---------- */
+.mast{border-bottom:1px solid var(--rule-strong);background:var(--surface)}
+.mast__in{padding:clamp(2.4rem,6vw,4rem) 0 clamp(1.8rem,4vw,2.6rem);display:grid;gap:1.4rem}
+.mast h1{
+  font-size:clamp(2.9rem,8vw,5.1rem);font-weight:700;letter-spacing:-.015em;
+}
+.mast__lede{max-width:58ch;font-size:1.06rem;color:var(--muted)}
+.mast__lede strong{color:var(--fg);font-weight:500}
+.mast__meta{
+  display:flex;flex-wrap:wrap;gap:.4rem 1.4rem;padding-top:.3rem;
+  border-top:1px solid var(--rule);
+}
+.mast__meta span{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;color:var(--muted)}
+.mast__meta b{color:var(--fg);font-weight:500}
+
+/* ---------- legend ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:.5rem}
+.legend .key{
+  display:inline-flex;align-items:center;gap:.42rem;
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.05em;
+  padding:.24rem .55rem;border:1px solid var(--rule);border-radius:2px;
+  background:var(--bg);
+}
+.sym{font-family:var(--card-sym);font-size:.95em;line-height:1}
+.sym--spade{color:var(--fg)}
+.sym--club{color:var(--felt)}
+.sym--diamond{color:var(--pip)}
+
+/* ---------- section frames ---------- */
+section{padding:clamp(2.6rem,6vw,4.4rem) 0}
+.sec-head{display:grid;gap:.6rem;margin-bottom:2rem;max-width:var(--measure)}
+.sec-head h2{font-size:clamp(1.7rem,4vw,2.4rem)}
+.sec-head p{color:var(--muted)}
+
+/* ---------- index table ---------- */
+.index{border-top:1px solid var(--rule-strong)}
+.idx-row{
+  display:grid;grid-template-columns:2.2rem minmax(9rem,14rem) 1fr auto;
+  gap:.4rem 1.1rem;align-items:baseline;
+  padding:.85rem .35rem;border-bottom:1px solid var(--rule);
+  text-decoration:none;transition:background .14s ease;
+}
+.idx-row:hover{background:var(--surface)}
+.idx-row .sym{font-size:1.05rem;justify-self:center}
+.idx-row__name{font-family:var(--mono);font-weight:600;font-size:.95rem;letter-spacing:.02em}
+.idx-row__pitch{color:var(--muted);font-size:.92rem}
+.idx-row__eff{font-family:var(--mono);font-size:.75rem;color:var(--brass);white-space:nowrap;font-variant-numeric:tabular-nums}
+@media (max-width:680px){
+  .idx-row{grid-template-columns:1.8rem 1fr;grid-template-areas:"s n" ". p" ". e"}
+  .idx-row .sym{grid-area:s}
+  .idx-row__name{grid-area:n}
+  .idx-row__pitch{grid-area:p}
+  .idx-row__eff{grid-area:e}
+}
+
+/* ---------- engines ---------- */
+.engines{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.engine{background:var(--surface);padding:1.05rem 1.15rem;display:grid;gap:.3rem;align-content:start}
+.engine__n{font-family:var(--mono);font-size:.7rem;color:var(--brass);letter-spacing:.1em}
+.engine__t{font-family:var(--display);font-size:1.18rem;font-weight:600}
+.engine__d{font-size:.88rem;color:var(--muted);line-height:1.5}
+.rule-of-thumb{
+  margin-top:1.3rem;padding:.85rem 1.1rem;border-left:3px solid var(--felt);
+  background:var(--felt-tint);font-size:.95rem;
+}
+.rule-of-thumb b{font-weight:600}
+
+/* ---------- game entry ---------- */
+.games{display:grid;gap:clamp(2.2rem,5vw,3.4rem)}
+.game{
+  background:var(--surface);border:1px solid var(--rule);
+  box-shadow:var(--shadow);scroll-margin-top:1.5rem;
+}
+.game__head{
+  display:grid;grid-template-columns:auto 1fr;gap:.1rem 1rem;
+  padding:1.4rem var(--pad) 1.2rem;border-bottom:1px solid var(--rule);
+  background:linear-gradient(to bottom,var(--surface-2),var(--surface));
+}
+.game__badge{
+  grid-row:span 3;align-self:start;
+  width:2.7rem;height:3.6rem;border:1px solid var(--rule-strong);border-radius:3px;
+  background:var(--bg);display:grid;place-items:center;
+  font-family:var(--card-sym);font-size:1.5rem;line-height:1;
+}
+.game__head h3{font-size:clamp(1.6rem,4vw,2.15rem);font-family:var(--mono);font-weight:600;letter-spacing:.01em}
+.game__pitch{font-family:var(--display);font-size:1.15rem;color:var(--fg)}
+.game__tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.55rem}
+.tag{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.05em;
+  padding:.18rem .5rem;border-radius:2px;border:1px solid transparent;
+}
+.tag--base{background:var(--felt-tint);color:var(--felt);border-color:var(--felt)}
+.tag--eff{background:var(--brass-tint);color:var(--brass);border-color:var(--brass)}
+
+.game__body{display:grid;grid-template-columns:1.08fr .92fr;gap:0}
+@media (max-width:900px){.game__body{grid-template-columns:1fr}}
+.rules{padding:1.5rem var(--pad);display:grid;gap:1.25rem;align-content:start}
+.rules > div{max-width:var(--measure)}
+.rules h4{
+  font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;
+}
+.rules p + p{margin-top:.5rem}
+.steps{margin:0;padding-left:1.5rem;display:grid;gap:.34rem}
+.steps li{padding-left:.15rem}
+.steps li::marker{font-family:var(--mono);font-size:.82em;color:var(--felt)}
+
+/* transcript panel */
+.transcript{
+  padding:1.5rem var(--pad);background:var(--surface-2);
+  border-left:1px solid var(--rule);display:grid;gap:.95rem;align-content:start;
+}
+@media (max-width:900px){.transcript{border-left:0;border-top:1px solid var(--rule)}}
+.transcript h4{
+  font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--felt);
+}
+.hand{
+  font-family:var(--card-sym);font-size:.9rem;line-height:2.1;
+  padding:.6rem .7rem;background:var(--surface);border:1px solid var(--rule);
+  overflow-x:auto;
+}
+.hand .sep{color:var(--rule-strong);padding:0 .25rem}
+.card{
+  display:inline-block;padding:.06rem .3rem;margin:0 .06rem;
+  border:1px solid var(--rule-strong);border-radius:2px;background:var(--bg);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.card--red{color:var(--pip);border-color:var(--pip)}
+.beat{display:grid;gap:.45rem}
+.beat li{list-style:none;display:grid;gap:.15rem;font-size:.9rem;line-height:1.5}
+.beat ul{margin:0;padding:0;display:grid;gap:.6rem}
+.beat .mv{font-family:var(--mono);font-size:.78rem;letter-spacing:.04em;color:var(--felt)}
+.verdict{
+  padding:.75rem .85rem;border-left:3px solid var(--pip);background:var(--pip-tint);
+  font-size:.92rem;
+}
+.verdict.good{border-left-color:var(--felt);background:var(--felt-tint)}
+.verdict b{font-weight:600}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;color:var(--brass)}
+
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+.tw{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+th,td{padding:.42rem .6rem;text-align:left;border-bottom:1px solid var(--rule)}
+th{
+  font-family:var(--mono);font-size:.68rem;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);background:var(--surface-2);
+}
+tbody tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+tr.hi td{background:var(--felt-tint);font-weight:500}
+
+.game__foot{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:1px;
+  background:var(--rule);border-top:1px solid var(--rule);
+}
+.game__foot > div{background:var(--surface);padding:1rem var(--pad);display:grid;gap:.25rem}
+.game__foot .lbl{
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);
+}
+.game__foot p{font-size:.9rem;line-height:1.55}
+
+/* ---------- annex ---------- */
+.annex{display:grid;grid-template-columns:repeat(auto-fit,minmax(17.5rem,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.mini{background:var(--surface);padding:1.15rem 1.25rem;display:grid;gap:.45rem;align-content:start}
+.mini h3{font-family:var(--mono);font-size:1.02rem;font-weight:600;letter-spacing:.02em;display:flex;align-items:center;gap:.45rem}
+.mini__what{font-size:.9rem;line-height:1.55}
+.mini__hold{font-size:.85rem;color:var(--muted);border-top:1px dashed var(--rule-strong);padding-top:.45rem;line-height:1.5}
+.mini__hold b{color:var(--fg);font-weight:500;font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;display:block}
+
+/* ---------- close ---------- */
+.close{border-top:1px solid var(--rule-strong);background:var(--surface)}
+.pick{
+  margin-top:1.6rem;display:grid;gap:.9rem;
+  padding:1.2rem 1.35rem;border:1px solid var(--felt);background:var(--felt-tint);
+}
+.pick h3{font-size:1.35rem}
+.pick p{font-size:.95rem;max-width:var(--measure)}
+.laws{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:1.8rem}
+.laws > div{background:var(--surface);padding:.9rem 1.1rem;display:grid;grid-template-columns:auto 1fr;gap:.9rem;align-items:baseline}
+.laws .sym{color:var(--brass)}
+.laws p{font-size:.92rem}
+.laws b{font-weight:600}
+.foot{padding:2rem 0 3rem;color:var(--muted);font-size:.82rem;display:grid;gap:.35rem;max-width:var(--measure)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="mast">
+  <div class="wrap mast__in">
+    <p class="eyebrow">Σχεδιαστικός κατάλογος · σόλο χαρτοπαίγνια</p>
+    <h1>Εννέα Χέρια</h1>
+    <p class="mast__lede">Εννέα αυτόνομα σόλο παιχνίδια χτισμένα σε δύο βάσεις: <strong>πόκερ</strong> και <strong>climbing</strong> μηχανική. Κάθε εγγραφή έχει κανόνες, ένα πραγματικό παράδειγμα γύρου, συνθήκη ήττας και σύστημα ανάπτυξης. Έξι ακόμα ιδέες στον πάτο της τράπουλας.</p>
+    <div class="legend">
+      <span class="key"><span class="sym sym--spade">&#9824;</span> βάση: πόκερ</span>
+      <span class="key"><span class="sym sym--club">&#9827;</span> βάση: climbing</span>
+      <span class="key"><span class="sym sym--diamond">&#9830;</span> υβρίδιο</span>
+    </div>
+    <div class="mast__meta">
+      <span><b>9</b> παιχνίδια</span>
+      <span><b>6</b> ιδέες στον πάτο</span>
+      <span><b>8</b> μηχανές εθισμού</span>
+      <span>Σεπτέμβριος 2026</span>
+    </div>
+  </div>
+</header>
+
+<section class="wrap">
+  <div class="sec-head">
+    <h2>Ο πίνακας</h2>
+    <p>Το σύμβολο δηλώνει τη βάση. Ο χρόνος είναι εκτίμηση για playable prototype, όχι για shippable προϊόν.</p>
+  </div>
+  <nav class="index">
+    <a class="idx-row" href="#raise"><span class="sym sym--diamond">&#9830;</span><span class="idx-row__name">RAISE</span><span class="idx-row__pitch">Η ιεραρχία των χεριών πόκερ, παιγμένη ως σκάλα που ανεβαίνει.</span><span class="idx-row__eff">1,5 εβδ.</span></a>
+    <a class="idx-row" href="#house-rules"><span class="sym sym--spade">&#9824;</span><span class="idx-row__name">HOUSE RULES</span><span class="idx-row__pitch">Δεν παίζεις το μηχάνημα — γράφεις τον πίνακα πληρωμών του.</span><span class="idx-row__eff">6–7 ημ.</span></a>
+    <a class="idx-row" href="#pyramid-scheme"><span class="sym sym--spade">&#9824;</span><span class="idx-row__name">PYRAMID SCHEME</span><span class="idx-row__pitch">Τρεις σειρές, αμετάκλητες τοποθετήσεις, και μία κατάρρευση.</span><span class="idx-row__eff">1,5 εβδ.</span></a>
+    <a class="idx-row" href="#vig"><span class="sym sym--spade">&#9824;</span><span class="idx-row__name">VIG</span><span class="idx-row__pitch">Ο στόχος είναι φανερός. Η μόνη απόφαση είναι πόσο ρισκάρεις.</span><span class="idx-row__eff">1,5 εβδ.</span></a>
+    <a class="idx-row" href="#tells"><span class="sym sym--spade">&#9824;</span><span class="idx-row__name">TELLS</span><span class="idx-row__pitch">Θαμώνες με σπασμένους κανόνες, και ένα σημάδι που τους προδίδει.</span><span class="idx-row__eff">2–3 εβδ.</span></a>
+    <a class="idx-row" href="#anabasis"><span class="sym sym--club">&#9827;</span><span class="idx-row__name">ANABASIS</span><span class="idx-row__pitch">Άδειασε το χέρι σου απέναντι σε μια ράχη που πάντα απαντά.</span><span class="idx-row__eff">2 εβδ.</span></a>
+    <a class="idx-row" href="#called-shot"><span class="sym sym--club">&#9827;</span><span class="idx-row__name">CALLED SHOT</span><span class="idx-row__pitch">Δηλώνεις το σκορ πριν δεις το χέρι. Όσο λιγότερο ξέρεις, τόσο πληρώνει.</span><span class="idx-row__eff">2 εβδ.</span></a>
+    <a class="idx-row" href="#tribute"><span class="sym sym--club">&#9827;</span><span class="idx-row__name">TRIBUTE</span><span class="idx-row__pitch">Οπλίζεις τον επόμενο εχθρό σου από το δικό σου χέρι.</span><span class="idx-row__eff">1,5 εβδ.</span></a>
+    <a class="idx-row" href="#fuse"><span class="sym sym--club">&#9827;</span><span class="idx-row__name">FUSE</span><span class="idx-row__pitch">Τέσσερις πάγκοι, τέσσερα ίδια φύλλα, και φυτίλια που τρέχουν.</span><span class="idx-row__eff">1,5 εβδ.</span></a>
+  </nav>
+</section>
+
+<section class="wrap">
+  <div class="sec-head">
+    <h2>Οι οκτώ μηχανές</h2>
+    <p>Το «εθιστικό» δεν είναι το θέμα ούτε το base game. Είναι ποιους μηχανισμούς επανάληψης στοιβάζεις. Κάθε παιχνίδι παρακάτω δηλώνει ποιους χρησιμοποιεί.</p>
+  </div>
+  <div class="engines">
+    <div class="engine"><span class="engine__n">01</span><span class="engine__t">Break-the-system</span><span class="engine__d">Combo που σπάει το scoring κατά τάξεις μεγέθους. Το fun είναι το exploit.</span></div>
+    <div class="engine"><span class="engine__n">02</span><span class="engine__t">Σύντομο run</span><span class="engine__d">Restart σε ένα κλικ, μηδέν loading. Κάθε δευτερόλεπτο ανάμεσα στα runs κόβει retention.</span></div>
+    <div class="engine"><span class="engine__n">03</span><span class="engine__t">Drip ξεκλειδωμάτων</span><span class="engine__d">Περιέργεια που κρατάει μετά τον κορεσμό. Ένα ξεκλείδωμα ανά δύο runs περίπου.</span></div>
+    <div class="engine"><span class="engine__n">04</span><span class="engine__t">Variable reward</span><span class="engine__d">Ψυχολογία κουλοχέρη. Το «έφτασα δύο πόντους μακριά» είναι ισχυρότερο από τη νίκη.</span></div>
+    <div class="engine"><span class="engine__n">05</span><span class="engine__t">Puzzle πλήρους πληροφορίας</span><span class="engine__d">«Λυνόταν, δεν το βρήκα.» Ενοχή αντί για παράπονο για την τύχη.</span></div>
+    <div class="engine"><span class="engine__n">06</span><span class="engine__t">Ημερήσιο seed</span><span class="engine__d">Ίδιο μοίρασμα για όλους, σκορ που μοιράζεται. Ο φθηνότερος viral μηχανισμός που υπάρχει.</span></div>
+    <div class="engine"><span class="engine__n">07</span><span class="engine__t">Engine building</span><span class="engine__d">«Χτίζω κάτι που θα δουλέψει.» Ο παίκτης εθίζεται στην πρόβλεψη, όχι στην ανταμοιβή.</span></div>
+    <div class="engine"><span class="engine__n">08</span><span class="engine__t">Loss aversion</span><span class="engine__d">Φόβος απώλειας, όχι ελπίδα κέρδους. Απαιτεί να μπορείς να χάσεις πόρους.</span></div>
+  </div>
+  <p class="rule-of-thumb"><b>Ο κανόνας:</b> δύο μηχανές δίνουν καλό παιχνίδι. Τέσσερις δίνουν παιχνίδι που δεν αφήνεις κάτω.</p>
+</section>
+
+<section class="wrap">
+  <div class="sec-head">
+    <h2>Τα εννέα παιχνίδια</h2>
+    <p>Κάθε παράδειγμα γύρου είναι πραγματικό: αληθινά φύλλα, αληθινοί υπολογισμοί, αληθινό αποτέλεσμα — συμπεριλαμβανομένων των ηττών.</p>
+  </div>
+
+  <div class="games">
+
+    <!-- 1 RAISE -->
+    <article class="game" id="raise">
+      <div class="game__head">
+        <div class="game__badge"><span class="sym sym--diamond">&#9830;</span></div>
+        <h3>RAISE</h3>
+        <p class="game__pitch">Η ιεραρχία των χεριών πόκερ, παιγμένη ως σκάλα που ανεβαίνει.</p>
+        <div class="game__tags">
+          <span class="tag tag--base">υβρίδιο: πόκερ × climbing</span>
+          <span class="tag tag--base">μηχανές 05 · 01 · 02</span>
+          <span class="tag tag--eff">1,5 εβδομάδα</span>
+        </div>
+      </div>
+      <div class="game__body">
+        <div class="rules">
+          <div>
+            <h4>Το όνομα</h4>
+            <p>Στο πόκερ «raise» σημαίνει ανεβάζω το στοίχημα. Εδώ σημαίνει και ανεβάζω το χέρι. Μία λέξη, όλο το παιχνίδι.</p>
+          </div>
+          <div>
+            <h4>Τι βλέπεις</h4>
+            <p>Δεκαπέντε κάρτες. Έναν δείκτη <b>Σκαλί</b> που δείχνει τι πρέπει να ξεπεράσεις, μετρητή <b>Αλυσίδα</b>, τρεις <b>Ανάσες</b>, και τον στόχο σκορ του γύρου.</p>
+          </div>
+          <div>
+            <h4>Πώς παίζεται</h4>
+            <ol class="steps">
+              <li>Το Σκαλί ξεκινά στο μηδέν — παίζεις ό,τι θέλεις.</li>
+              <li>Παίζεις χέρι πόκερ: ζεύγος (2 κάρτες) &lt; τριάδα (3) &lt; κέντα (5) &lt; χρώμα (5) &lt; φουλ (5) &lt; καρέ (4).</li>
+              <li>Κάθε επόμενο χέρι πρέπει να είναι ψηλότερα: ανώτερη κατηγορία, <b>ή ίδια κατηγορία με ψηλότερη αξία</b>.</li>
+              <li>Σκορ = <b>βάση κατηγορίας × θέση στην Αλυσίδα</b>. Ζεύγος <span class="num">10</span> · τριάδα <span class="num">25</span> · κέντα <span class="num">40</span> · χρώμα <span class="num">60</span> · φουλ <span class="num">80</span> · καρέ <span class="num">120</span>.</li>
+              <li><b>Πάσο:</b> το Σκαλί μηδενίζεται, η Αλυσίδα σπάει, χάνεις μία Ανάσα.</li>
+              <li>Άδειασμα χεριού → μεγάλο μπόνους.</li>
+            </ol>
+          </div>
+          <div>
+            <h4>Γιατί δουλεύει</h4>
+            <p>Το σκορ δεν το καθορίζει το πόσο δυνατά είναι τα χαρτιά σου, αλλά <b>αν διαμελίζονται καθαρά</b>. Γι' αυτό οι αγορές στο κατάστημα δεν είναι «+σκορ» — είναι «σβήσε το ορφανό».</p>
+          </div>
+        </div>
+        <aside class="transcript">
+          <h4>Παράδειγμα γύρου</h4>
+          <div class="hand">
+            <span class="card">3&#9827;</span><span class="card card--red">3&#9830;</span><span class="sep">|</span>
+            <span class="card">7&#9824;</span><span class="card card--red">7&#9829;</span><span class="sep">|</span>
+            <span class="card">K&#9827;</span><span class="card">K&#9824;</span><span class="sep">|</span>
+            <span class="card card--red">9&#9830;</span><span class="card card--red">9&#9829;</span><span class="card">9&#9827;</span><span class="sep">|</span>
+            <span class="card">4&#9824;</span><span class="card">5&#9824;</span><span class="card">6&#9824;</span><span class="card">8&#9824;</span><span class="card">10&#9824;</span><span class="sep">|</span>
+            <span class="card card--red">J&#9830;</span>
+          </div>
+          <div class="tw">
+            <table>
+              <thead><tr><th class="n">#</th><th>Παίζεις</th><th>Υπολογισμός</th><th class="n">Σκορ</th></tr></thead>
+              <tbody>
+                <tr><td class="n">1</td><td>Ζεύγος 3</td><td>10 × 1</td><td class="n">10</td></tr>
+                <tr><td class="n">2</td><td>Ζεύγος 7</td><td>10 × 2</td><td class="n">20</td></tr>
+                <tr><td class="n">3</td><td>Ζεύγος K</td><td>10 × 3</td><td class="n">30</td></tr>
+                <tr><td class="n">4</td><td>Τριάδα 9</td><td>25 × 4</td><td class="n">100</td></tr>
+                <tr class="hi"><td class="n">5</td><td>Χρώμα &#9824;</td><td>60 × 5</td><td class="n">300</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="verdict"><b>Σύνολο 460.</b> Μένει το <span class="card card--red">J&#9830;</span> — ορφανό, δεν σχηματίζει τίποτα. Χάνεις το μπόνους αδειάσματος <b>για μία κάρτα</b>.</p>
+        </aside>
+      </div>
+      <div class="game__foot">
+        <div><span class="lbl">Πώς χάνεις</span><p>Δεν φτάνεις τον στόχο σκορ του γύρου.</p></div>
+        <div><span class="lbl">Πώς μεγαλώνει</span><p>Αλλαγή αξίας κάρτας (σβήνει ορφανά), +1 Ανάση, πολλαπλασιαστές ανά κατηγορία, και το <b>Κατέβασμα</b>: μηδενίζεις το Σκαλί χωρίς να σπάσεις την Αλυσίδα — το ισχυρότερο εργαλείο του παιχνιδιού.</p></div>
+      </div>
+    </article>
+
+    <!-- 2 HOUSE RULES -->
+    <article class="game" id="house-rules">
+      <div class="game__head">
+        <div class="game__badge"><span class="sym sym--spade">&#9824;</span></div>
+        <h3>HOUSE RULES</h3>
+        <p class="game__pitch">Δεν παίζεις το μηχάνημα — γράφεις τον πίνακα πληρωμών του.</p>
+        <div class="game__tags">
+          <span class="tag tag--base">βάση: video poker</span>
+          <span class="tag tag--base">μηχανές 04 · 07 · 02</span>
+          <span class="tag tag--eff">6–7 ημέρες</span>
+        </div>
+      </div>
+      <div class="game__body">
+        <div class="rules">
+          <div>
+            <h4>Το όνομα</h4>
+            <p>«House rules» είναι οι κανόνες του καζίνο. Εδώ τους γράφεις εσύ — άρα εσύ είσαι το σπίτι.</p>
+          </div>
+          <div>
+            <h4>Τι βλέπεις</h4>
+            <p>Το μηχάνημά σου: εννέα γραμμές πίνακα πληρωμών, ένα bankroll, το <b>νοίκι</b> της βραδιάς, και ένα <b>ζωντανό RTP</b> — τι ποσοστό επιστρέφει η μηχανή σου με άριστο παίξιμο.</p>
+            <p>Ο αρχικός πίνακας είναι σκόπιμα κακός, γύρω στο <span class="num">92%</span>. Χάνεις αργά και μαθηματικά. Η αγωνία δεν είναι «θα πιάσω το χέρι;» αλλά <b>«θα προλάβω να διορθώσω τη μηχανή;»</b></p>
+          </div>
+          <div>
+            <h4>Πώς παίζεται μια βραδιά</h4>
+            <ol class="steps">
+              <li>Είκοσι χέρια. Κάθε χέρι: βάζεις ένα credit, παίρνεις πέντε κάρτες.</li>
+              <li>Κρατάς όσες θέλεις, τραβάς αντικαταστάσεις. Ένα draw.</li>
+              <li>Πληρώνεσαι <b>κατά τον πίνακά σου</b>, όχι κατά κάποιον σταθερό.</li>
+              <li>Στο τέλος της βραδιάς πληρώνεις το νοίκι.</li>
+              <li>Κατάστημα: επεξεργάζεσαι <b>μία γραμμή πίνακα</b>, ή βάζεις ένα mod μηχανής.</li>
+            </ol>
+          </div>
+          <div>
+            <h4>Το κρίσιμο πλεονέκτημα</h4>
+            <p>Ο χώρος χεριών είναι <span class="num">2.598.960</span> — πλήρως απαριθμήσιμος σε λιγότερο από ένα δευτερόλεπτο. Κάθε αλλαγή πίνακα είναι <b>υπολογίσιμη αλλαγή RTP</b>, όχι εικασία. Το balance γίνεται μαθηματικά, όχι με αίσθηση.</p>
+          </div>
+        </div>
+        <aside class="transcript">
+          <h4>Ο αρχικός πίνακας</h4>
+          <div class="tw">
+            <table>
+              <thead><tr><th>Χέρι</th><th class="n">Πληρωμή</th></tr></thead>
+              <tbody>
+                <tr><td>Ζεύγος από J ή πάνω</td><td class="n">1</td></tr>
+                <tr><td>Δύο ζεύγη</td><td class="n">2</td></tr>
+                <tr><td>Τριάδα</td><td class="n">3</td></tr>
+                <tr><td>Κέντα</td><td class="n">4</td></tr>
+                <tr><td>Χρώμα</td><td class="n">5</td></tr>
+                <tr><td>Φουλ</td><td class="n">6</td></tr>
+                <tr><td>Καρέ</td><td class="n">20</td></tr>
+                <tr><td>Κέντα-χρώμα</td><td class="n">50</td></tr>
+                <tr><td>Ρουαγιάλ</td><td class="n">250</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h4>Ένα χέρι</h4>
+          <div class="hand">
+            <span class="card card--red">4&#9829;</span><span class="card">9&#9824;</span><span class="card card--red">J&#9830;</span><span class="card">J&#9827;</span><span class="card">K&#9824;</span>
+          </div>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">HOLD</span><span>Κρατάς <span class="card card--red">J&#9830;</span><span class="card">J&#9827;</span>, τραβάς τρεις.</span></li>
+              <li><span class="mv">DRAW</span><span>Έρχονται <span class="card">2&#9827;</span><span class="card">J&#9824;</span><span class="card card--red">7&#9830;</span> → <b>τριάδα από J</b>, πληρώνει <span class="num">3</span>.</span></li>
+            </ul>
+          </div>
+          <h4>Η απόφαση του καταστήματος</h4>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">ΔΥΟ ΖΕΥΓΗ 2 → 3</span><span>Βγαίνουν <span class="num">4,75%</span> σε τυχαίο χέρι — αλλά <span class="num">~16%</span> όταν κρατάς ζεύγος και τραβάς τρεις. Και κρατάς ζεύγος στα μισά χέρια. Η γραμμή χτυπάει συνεχώς.</span></li>
+              <li><span class="mv">ΧΡΩΜΑ 5 → 9</span><span>Βγαίνει <span class="num">0,197%</span> σε τυχαίο χέρι, αλλά <span class="num">~19%</span> όταν κρατάς τέσσερα στο ίδιο χρώμα. Αξίζει μόνο αν παίζεις χρώματα.</span></li>
+            </ul>
+          </div>
+          <p class="verdict good">Η κεντρική απόφαση κάθε βραδιάς: <b>αναβαθμίζεις τις γραμμές που πραγματικά χτυπάς.</b> Το ζωντανό RTP σου λέει αν ο πίνακας και η στρατηγική hold σου συμφώνησαν.</p>
+        </aside>
+      </div>
+      <div class="game__foot">
+        <div><span class="lbl">Πώς χάνεις</span><p>Δεν πληρώνεις το νοίκι της βραδιάς.</p></div>
+        <div><span class="lbl">Πώς μεγαλώνει</span><p>Δεύτερο draw · Deuces Wild (αλλάζει όλη την κατανομή συχνοτήτων) · multi-hand ×3 και ×10, όπου ένα hold παίζει πολλά ανεξάρτητα draws — εκθετική κλιμάκωση και εκκωφαντικό οπτικά · χειρουργική τράπουλας · προοδευτικό τζάκποτ στο ρουαγιάλ.</p></div>
+      </div>
+    </article>
+
+    <!-- 3 PYRAMID SCHEME -->
+    <article class="game" id="pyramid-scheme">
+      <div class="game__head">
+        <div class="game__badge"><span class="sym sym--spade">&#9824;</span></div>
+        <h3>PYRAMID SCHEME</h3>
+        <p class="game__pitch">Τρεις σειρές, αμετάκλητες τοποθετήσεις, και μία κατάρρευση που σβήνει τα πάντα.</p>
+        <div class="game__tags">
+          <span class="tag tag--base">βάση: chinese poker</span>
+          <span class="tag tag--base">μηχανές 05 · 08 · 02</span>
+          <span class="tag tag--eff">1,5 εβδομάδα</span>
+        </div>
+      </div>
+      <div class="game__body">
+        <div class="rules">
+          <div>
+            <h4>Το όνομα</h4>
+            <p>Το πυραμιδικό σχήμα είναι απάτη που καταρρέει όταν η βάση δεν στηρίζει την κορυφή. Ο κανόνας του παιχνιδιού είναι κυριολεκτικά αυτό.</p>
+          </div>
+          <div>
+            <h4>Τι βλέπεις</h4>
+            <p><b>Βάση</b> (πέντε θέσεις), <b>Μέση</b> (πέντε), <b>Κορυφή</b> (τρεις). Και έναν κανόνα σε κόκκινο: <b>Βάση ≥ Μέση ≥ Κορυφή</b>.</p>
+          </div>
+          <div>
+            <h4>Πώς παίζεται</h4>
+            <ol class="steps">
+              <li>Παίρνεις πέντε κάρτες και τις τοποθετείς όλες, όπου θέλεις.</li>
+              <li>Μετά παίρνεις <b>μία κάρτα τη φορά</b>, οκτώ φορές. Κάθε μία τοποθετείται αμέσως και <b>αμετάκλητα</b>.</li>
+              <li>Στο τέλος κάθε σειρά αξιολογείται χωριστά ως χέρι πόκερ.</li>
+              <li>Παραβίαση της ιεραρχίας → <b>ΚΑΤΑΡΡΕΥΣΗ: μηδέν πόντοι για τον γύρο</b>.</li>
+              <li>Η Κορυφή πληρώνει δυσανάλογα. Γι' αυτό μπαίνεις στον πειρασμό, και γι' αυτό καταρρέεις.</li>
+            </ol>
+          </div>
+          <div>
+            <h4>Γιατί δουλεύει</h4>
+            <p>Είναι <b>Tetris με χαρτιά</b>: αμετάκλητες τοποθετήσεις, αυξανόμενη πίεση, και αποτυχία που είναι πάντα σαφώς δικό σου λάθος. Και οι τρεις σειρές είναι τρία build slots ταυτόχρονα — το να δυναμώσεις την Κορυφή σε <b>υποχρεώνει</b> να δυναμώσεις και τις δύο από κάτω.</p>
+          </div>
+        </div>
+        <aside class="transcript">
+          <h4>Παράδειγμα γύρου</h4>
+          <div class="hand">
+            <span class="card">A&#9824;</span><span class="card">K&#9824;</span><span class="card card--red">7&#9830;</span><span class="card">7&#9827;</span><span class="card card--red">2&#9829;</span>
+          </div>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">ΤΟΠΟΘΕΤΗΣΗ</span><span><span class="card">A&#9824;</span> → Κορυφή · <span class="card">K&#9824;</span><span class="card card--red">7&#9830;</span><span class="card">7&#9827;</span> → Βάση · <span class="card card--red">2&#9829;</span> → Μέση</span></li>
+              <li><span class="mv">+ 7&#9829;</span><span>Βάση. <b>Τριάδα από 7.</b> Στέρεο θεμέλιο.</span></li>
+              <li><span class="mv">+ A&#9830;</span><span>Κορυφή. <b>Ζεύγος άσων στην Κορυφή</b> — τεράστιο μπόνους. Αλλά τώρα <b>και η Μέση</b> πρέπει να νικήσει ζεύγος άσων, κι έχει μόνο ένα <span class="card card--red">2&#9829;</span>.</span></li>
+              <li><span class="mv">+ A&#9827;</span><span>Η Κορυφή θα γινόταν τριάδα άσων — τερατώδες. Αλλά τότε Βάση (τριάδα 7) &lt; Κορυφή → <b>κατάρρευση</b>. Απαγορεύεται. Πάει στη Μέση.</span></li>
+              <li><span class="mv">+ 3&#9827;</span><span>Μέση: <span class="card card--red">2&#9829;</span><span class="card">A&#9827;</span><span class="card">3&#9827;</span> — χωρίς ζεύγος ακόμα.</span></li>
+            </ul>
+          </div>
+          <p class="verdict">Δύο κάρτες μένουν, και η Μέση <b>πρέπει</b> να βγάλει ζεύγος άσων. Χρειάζεσαι τον τέταρτο άσο, σε <span class="num">~46</span> άγνωστες κάρτες. Το ζεύγος άσων στην Κορυφή ήταν άπλυτο κέρδος που δημιούργησε <b>υποχρέωση την οποία δεν μπορείς να εκπληρώσεις</b>.</p>
+        </aside>
+      </div>
+      <div class="game__foot">
+        <div><span class="lbl">Πώς χάνεις</span><p>Κατάρρευση σε γύρο που έπρεπε να περάσεις.</p></div>
+        <div><span class="lbl">Πώς μεγαλώνει</span><p>Ο <b>Ελεγκτής</b> (μία κατάρρευση συγχωρείται ανά run) · θέσεις αναμονής εκτός πυραμίδας · προεπισκόπηση επόμενης κάρτας · και το <b>Fantasyland</b>: ζεύγος ντάμες ή πάνω στην Κορυφή χωρίς κατάρρευση, και ο επόμενος γύρος μοιράζεται ολόκληρος από την αρχή, με πλήρη πληροφορία.</p></div>
+      </div>
+    </article>
+
+    <!-- 4 VIG -->
+    <article class="game" id="vig">
+      <div class="game__head">
+        <div class="game__badge"><span class="sym sym--spade">&#9824;</span></div>
+        <h3>VIG</h3>
+        <p class="game__pitch">Ο στόχος είναι φανερός. Η μόνη απόφαση είναι πόσο ρισκάρεις.</p>
+        <div class="game__tags">
+          <span class="tag tag--base">βάση: draw poker</span>
+          <span class="tag tag--base">μηχανές 08 · 04 · 02</span>
+          <span class="tag tag--eff">1,5 εβδομάδα</span>
+        </div>
+      </div>
+      <div class="game__body">
+        <div class="rules">
+          <div>
+            <h4>Το όνομα</h4>
+            <p>«Vig», από το vigorish: το κόψιμο που κρατά ο τοκογλύφος. Μία συλλαβή, ορολογία εμπιστευτικού, και δηλώνει ότι το παιχνίδι είναι για το χρέος — όχι για τα χαρτιά.</p>
+          </div>
+          <div>
+            <h4>Τι βλέπεις</h4>
+            <p>Χρέος <span class="num">500</span>. Πίνακα δόσεων που ανεβαίνει: <span class="num">50 · 80 · 120 · 180 · 260 · 380</span>. Το bankroll σου. Πέντε χέρια τη βδομάδα.</p>
+          </div>
+          <div>
+            <h4>Πώς παίζεται ένα χέρι</h4>
+            <ol class="steps">
+              <li>Μοιράζεται ένα <b>χέρι-στόχος φανερό</b>. Πρέπει να το νικήσεις.</li>
+              <li><b>Ορίζεις το στοίχημά σου</b> — οποιοδήποτε ποσό από το bankroll.</li>
+              <li>Παίρνεις πέντε κάρτες, ένα draw.</li>
+              <li>Νικάς → <b>διπλασιάζεις</b> το στοίχημα. Χάνεις → το χάνεις.</li>
+              <li><b>Πάσο</b> πριν το draw → χάνεις το μισό.</li>
+              <li>Μετά από πέντε χέρια πληρώνεις τη δόση. Δεν μπορείς → τέλος.</li>
+            </ol>
+          </div>
+          <div>
+            <h4>Γιατί δουλεύει</h4>
+            <p>Το φανερό χέρι-στόχος λύνει το βασικό πρόβλημα: χωρίς αντίπαλο να διαβάσεις, το bet sizing θα ήταν άδεια απόφαση. Εδώ ξέρεις ακριβώς τι πρέπει να πιάσεις, άρα <b>υπολογίζεις πιθανότητα και τιμολογείς</b>. Ο θάνατος είναι πάντα δική σου κακή τιμολόγηση.</p>
+          </div>
+        </div>
+        <aside class="transcript">
+          <h4>Βδομάδα 3 · bankroll <span class="num">210</span> · δόση <span class="num">120</span></h4>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">ΧΕΡΙ 1 · ΣΤΟΧΟΣ: ΖΕΥΓΟΣ ΑΠΟ 9</span>
+                <span>Παίρνεις <span class="card">4&#9827;</span><span class="card card--red">8&#9830;</span><span class="card">8&#9824;</span><span class="card card--red">Q&#9829;</span><span class="card">2&#9824;</span></span></li>
+            </ul>
+          </div>
+          <p>Κρατάς <span class="card card--red">8&#9830;</span><span class="card">8&#9824;</span> — αλλά ζεύγος από 8 <b>χάνει</b> από ζεύγος από 9. Πρέπει να βελτιωθείς.</p>
+          <div class="tw">
+            <table>
+              <thead><tr><th>Βελτίωση</th><th class="n">Πιθανότητα</th></tr></thead>
+              <tbody>
+                <tr><td>Δύο ζεύγη</td><td class="n">16%</td></tr>
+                <tr><td>Τριάδα</td><td class="n">11%</td></tr>
+                <tr><td>Φουλ</td><td class="n">1%</td></tr>
+                <tr><td>Καρέ</td><td class="n">0,3%</td></tr>
+                <tr class="hi"><td>Σύνολο</td><td class="n">≈ 29%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="verdict">Διπλασιασμός με <span class="num">29%</span> είναι σαφώς αρνητικός. Ελάχιστο στοίχημα <span class="num">10</span> και <b>πάσο</b>: <span class="num">−5</span>. Bankroll <span class="num">205</span>.</p>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">ΧΕΡΙ 2 · ΣΤΟΧΟΣ: ΖΕΥΓΟΣ ΑΠΟ 3</span>
+                <span>Παίρνεις <span class="card">K&#9824;</span><span class="card card--red">K&#9830;</span><span class="card">5&#9827;</span><span class="card">9&#9824;</span><span class="card card--red">2&#9830;</span></span></li>
+            </ul>
+          </div>
+          <p class="verdict good">Κρατάς <span class="card">K&#9824;</span><span class="card card--red">K&#9830;</span> — <b>νικάς ήδη, πριν το draw</b>. Βεβαιότητα. Στοίχημα <span class="num">190</span>, κερδίζεις <span class="num">190</span>. Bankroll <b>395</b>. Πληρώνεις <span class="num">120</span> και μπαίνεις στη βδομάδα 4 με <span class="num">275</span>.</p>
+        </aside>
+      </div>
+      <div class="game__foot">
+        <div><span class="lbl">Πώς χάνεις</span><p>Δεν πληρώνεις τη δόση της βδομάδας.</p></div>
+        <div><span class="lbl">Πώς μεγαλώνει</span><p>Δανείζεσαι για εργαλεία — και η δόση ανεβαίνει. Δεύτερο draw · «ξαναδιάβασε τον στόχο» (αλλάζεις το χέρι-στόχο) · ασφάλιστρο, όπου η ήττα κοστίζει το μισό · μπόνους all-in.</p></div>
+      </div>
+    </article>
+
+    <!-- 5 TELLS -->
+    <article class="game" id="tells">
+      <div class="game__head">
+        <div class="game__badge"><span class="sym sym--spade">&#9824;</span></div>
+        <h3>TELLS</h3>
+        <p class="game__pitch">Θαμώνες με σπασμένους κανόνες, και ένα σημάδι που τους προδίδει.</p>
+        <div class="game__tags">
+          <span class="tag tag--base">βάση: heads-up draw poker</span>
+          <span class="tag tag--base">μηχανές 03 · 05 · 02</span>
+          <span class="tag tag--eff">2–3 εβδομάδες</span>
+        </div>
+      </div>
+      <div class="game__body">
+        <div class="rules">
+          <div>
+            <h4>Το όνομα</h4>
+            <p>«Tell» είναι το ακούσιο σημάδι που προδίδει τον παίκτη. Μία λέξη που λέει αμέσως: εδώ διαβάζεις ανθρώπους, όχι χαρτιά.</p>
+          </div>
+          <div>
+            <h4>Τι βλέπεις</h4>
+            <p>Χάρτη ενός υπόγειου κλαμπ με <b>τους θαμώνες</b>. Καθένας έχει στοίβα μάρκες, ένα <b>Tell</b>, και έναν <b>Κανόνα</b> που σπάει το πόκερ.</p>
+          </div>
+          <div>
+            <h4>Πώς παίζεται</h4>
+            <ol class="steps">
+              <li>Διαλέγεις θαμώνα από τον χάρτη.</li>
+              <li>Heads-up: ante, πέντε κάρτες ο καθένας, ένα draw, showdown.</li>
+              <li>Παίζετε μέχρι να ξεμείνει κάποιος από μάρκες.</li>
+              <li>Ο Κανόνας του ισχύει σε κάθε χέρι. Το Tell του διαρρέει πληροφορία — αν το προσέξεις.</li>
+              <li>Νίκη → οι μάρκες του, συν ένα από τα εργαλεία του.</li>
+            </ol>
+          </div>
+          <div>
+            <h4>Σημείωση υλοποίησης</h4>
+            <p>Δεν χρειάζεται <b>δυνατό</b> AI πόκερ, που είναι από τα δυσκολότερα προβλήματα σε card game AI. Χρειάζεται <b>χαρακτηριστικό</b> AI: ντετερμινιστικά μοτίβα που ο παίκτης μπορεί να μάθει και να εκμεταλλευτεί. Φθηνότερο να γραφτεί, <b>και</b> πιο διασκεδαστικό. Η διάκριση ρίχνει το κόστος κατά τάξη μεγέθους.</p>
+          </div>
+        </div>
+        <aside class="transcript">
+          <h4>Τρεις θαμώνες</h4>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">Ο ΡΟΛΟΓΑΣ</span>
+                <span><b>Κανόνας:</b> τα draws λύνονται ανάποδα — βλέπει τι πέταξες πριν διαλέξει.<br>
+                <b>Tell:</b> κουρδίζει το ρολόι του όταν κρατά έτοιμο χέρι.<br>
+                <b>Λύση:</b> πετάς παραπλανητικά, ή κρύβεις τα discards με εργαλείο. Μόλις πιάσεις το κούρδισμα, πασάρεις φθηνά όταν κουρδίζει και πιέζεις όταν όχι.</span></li>
+              <li><span class="mv">Η ΜΟΔΙΣΤΡΑ</span>
+                <span><b>Κανόνας:</b> στο showdown αλλάζει το χρώμα μιας κάρτας σου.<br>
+                <b>Tell:</b> αγγίζει το μανίκι στο χρώμα που θα διαλέξει.<br>
+                <b>Λύση:</b> το χρώμα είναι άχρηστο απέναντί της. Χτίζεις βάσει αξιών — τριάδες, φουλ, καρέ. Σε αναγκάζει να αλλάξεις build, κι αυτό είναι το puzzle.</span></li>
+              <li><span class="mv">Ο ΛΟΓΙΣΤΗΣ</span>
+                <span><b>Κανόνας:</b> ξέρει πάντα την πρώτη κάρτα της τράπουλας.<br>
+                <b>Tell:</b> χτυπά δύο φορές το δάχτυλο όταν η πρώτη κάρτα τον βοηθά.<br>
+                <b>Λύση:</b> εργαλεία που ανακατεύουν μετά τα discards, ή τραβάς λιγότερες κάρτες όταν χτυπά.</span></li>
+            </ul>
+          </div>
+          <p class="verdict good">Το μοτίβο είναι σταθερό: <b>κάθε θαμώνας ακυρώνει μία στρατηγική και ανταμείβει μία αντι-στρατηγική.</b> Η νίκη έρχεται από κατανόηση, όχι από grinding — γι' αυτό το παιχνίδι ξαναπαίζεται.</p>
+        </aside>
+      </div>
+      <div class="game__foot">
+        <div><span class="lbl">Πώς χάνεις</span><p>Ξεμένεις από μάρκες.</p></div>
+        <div><span class="lbl">Πώς μεγαλώνει</span><p>Κάθε θαμώνας που νικάς σου δίνει το εργαλείο του — και τα εργαλεία τους είναι φτιαγμένα για να σπάνε τους κανόνες <b>άλλων</b> θαμώνων. Το build σου γίνεται συλλογή αντι-μέτρων.</p></div>
+      </div>
+    </article>
+
+    <!-- 6 ANABASIS -->
+    <article class="game" id="anabasis">
+      <div class="game__head">
+        <div class="game__badge"><span class="sym sym--club">&#9827;</span></div>
+        <h3>ANABASIS</h3>
+        <p class="game__pitch">Άδειασε το χέρι σου απέναντι σε μια ράχη που πάντα απαντά.</p>
+        <div class="game__tags">
+          <span class="tag tag--base">βάση: climbing</span>
+          <span class="tag tag--base">μηχανές 05 · 02 · 01</span>
+          <span class="tag tag--eff">2 εβδομάδες</span>
+        </div>
+      </div>
+      <div class="game__body">
+        <div class="rules">
+          <div>
+            <h4>Το όνομα</h4>
+            <p>«Ανάβασις» — η πορεία προς τα πάνω και προς τα έξω. Ελληνικό, λόγιο, περιγράφει κυριολεκτικά τη μηχανική, και δουλεύει και στα λατινικά χωρίς μετάφραση.</p>
+          </div>
+          <div>
+            <h4>Τι βλέπεις</h4>
+            <p>Δεκατέσσερις κάρτες. Απέναντι, η <b>Ράχη</b> — αυτόματη τράπουλα που απαντά. Τέσσερα <b>Σημάδια</b>: ο Άνεμος, ο Λύκος, ο Οδηγός, ο Βράχος.</p>
+          </div>
+          <div>
+            <h4>Πώς παίζεται</h4>
+            <ol class="steps">
+              <li>Ανοίγεις με συνδυασμό: μονή, ζεύγος, <b>σκάλα</b> (διαδοχικά ζεύγη), τριάδα, φουλ, ή κέντα πέντε καρτών και πάνω.</li>
+              <li>Η Ράχη απαντά με τον <b>μικρότερο έγκυρο συνδυασμό ίδιου σχήματος</b> που σε νικά. Αν δεν μπορεί, κρατάς την πρωτοβουλία.</li>
+              <li>Πρέπει να την ξεπεράσεις <b>στο ίδιο σχήμα</b>.</li>
+              <li>Δεν μπορείς → <b>Πάσο</b>: χάνεις την πρωτοβουλία και η Ράχη ανεβαίνει ένα σκαλί δυσκολίας.</li>
+              <li>Στόχος: <b>άδειασε το χέρι σου</b>. Κάθε συνδυασμός σκοράρει, το άδειασμα δίνει μεγάλο μπόνους.</li>
+              <li><b>Βόμβες</b> — καρέ ή κέντα-χρώμα — νικούν οποιοδήποτε σχήμα, οποτεδήποτε.</li>
+            </ol>
+          </div>
+          <div>
+            <h4>Εγγύηση δικαιοσύνης</h4>
+            <p>Μοιράζονται <b>μόνο χέρια που αποδεδειγμένα αδειάζουν</b>: ένας solver το επαληθεύει πριν το μοίρασμα. Άρα η αποτυχία είναι πάντα δικό σου λάθος, ποτέ της τύχης. Είναι μη διαπραγματεύσιμο, και το πρώτο πράγμα που πρέπει να γραφτεί.</p>
+          </div>
+        </div>
+        <aside class="transcript">
+          <h4>Παράδειγμα γύρου</h4>
+          <div class="hand">
+            <span class="card">2&#9824;</span><span class="card">3&#9824;</span><span class="card">4&#9824;</span><span class="card">5&#9824;</span><span class="card">6&#9824;</span><span class="sep">|</span>
+            <span class="card card--red">8&#9829;</span><span class="card card--red">8&#9830;</span><span class="card">9&#9827;</span><span class="card">9&#9824;</span><span class="sep">|</span>
+            <span class="card card--red">J&#9830;</span><span class="card card--red">J&#9829;</span><span class="sep">|</span>
+            <span class="card">K&#9827;</span><span class="card card--red">A&#9830;</span><span class="card">Q&#9824;</span>
+          </div>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">ΑΝΟΙΓΕΙΣ</span><span>Σκάλα <span class="card card--red">8&#9829;</span><span class="card card--red">8&#9830;</span><span class="card">9&#9827;</span><span class="card">9&#9824;</span> — δύο διαδοχικά ζεύγη.</span></li>
+              <li><span class="mv">Η ΡΑΧΗ</span><span>Απαντά <span class="card">10</span><span class="card">10</span><span class="card">J</span><span class="card">J</span>.</span></li>
+              <li><span class="mv">ΚΟΛΛΗΜΑ</span><span>Χρειάζεσαι ψηλότερη σκάλα. Έχεις <span class="card card--red">J&#9830;</span><span class="card card--red">J&#9829;</span> αλλά και ζεύγος από Q — κι έχεις μόνο <span class="card">Q&#9824;</span> μονό. <b>Δεν μπορείς.</b></span></li>
+              <li><span class="mv">ΒΟΜΒΑ</span><span>Ρίχνεις <span class="card">2&#9824;</span><span class="card">3&#9824;</span><span class="card">4&#9824;</span><span class="card">5&#9824;</span><span class="card">6&#9824;</span> — κέντα-χρώμα, νικά τα πάντα. <b>Ξεφορτώνεσαι πέντε κάρτες μονομιάς</b> και κρατάς την πρωτοβουλία.</span></li>
+              <li><span class="mv">ΣΥΝΕΧΕΙΑ</span><span>Ανοίγεις ζεύγος J. Η Ράχη απαντά ζεύγος K — έχεις <span class="card">K&#9827;</span> μονό. Πάσο.</span></li>
+            </ul>
+          </div>
+          <p class="verdict">Μένουν τρία ορφανά: <span class="card">K&#9827;</span><span class="card card--red">A&#9830;</span><span class="card">Q&#9824;</span>. Το μάθημα: <b>οι ορφανές κάρτες είναι ο πραγματικός εχθρός.</b> Χέρι με τρεις ψηλές μονές είναι χειρότερο από χέρι με έξι μέτρια ζεύγη. Και η βόμβα δεν είναι για σκορ — είναι λύση σε <b>αναντιστοιχία σχήματος</b>.</p>
+        </aside>
+      </div>
+      <div class="game__foot">
+        <div><span class="lbl">Πώς χάνεις</span><p>Δεν φτάνεις τον στόχο σκορ πριν η Ράχη σε αποκλείσει.</p></div>
+        <div><span class="lbl">Πώς μεγαλώνει</span><p>Σφυρηλάτηση βομβών · εργαλεία που αλλάζουν αξία κάρτας, δηλαδή θεραπεία ορφανών · αναβαθμίσεις των τεσσάρων Σημαδιών · εργαλεία πρωτοβουλίας.</p></div>
+      </div>
+    </article>
+
+    <!-- 7 CALLED SHOT -->
+    <article class="game" id="called-shot">
+      <div class="game__head">
+        <div class="game__badge"><span class="sym sym--club">&#9827;</span></div>
+        <h3>CALLED SHOT</h3>
+        <p class="game__pitch">Δηλώνεις το σκορ πριν δεις το χέρι. Όσο λιγότερο ξέρεις, τόσο πληρώνει.</p>
+        <div class="game__tags">
+          <span class="tag tag--base">βάση: climbing</span>
+          <span class="tag tag--base">μηχανές 04 · 08 · 02</span>
+          <span class="tag tag--eff">2 εβδομάδες</span>
+        </div>
+      </div>
+      <div class="game__body">
+        <div class="rules">
+          <div>
+            <h4>Το όνομα</h4>
+            <p>«Called shot»: δηλώνεις τη βολή πριν την εκτελέσεις. Λέει ακριβώς τη μηχανική — δηλώνεις πρώτα, αποδεικνύεις μετά.</p>
+          </div>
+          <div>
+            <h4>Πώς παίζεται</h4>
+            <ol class="steps">
+              <li>Διαλέγεις <b>παράθυρο δήλωσης</b>. Βλέπεις τόσες κάρτες.</li>
+              <li><b>Δηλώνεις έναν αριθμό</b> — το σκορ που υπόσχεσαι.</li>
+              <li>Αποκαλύπτεται όλο το χέρι.</li>
+              <li>Παίζεις κανονικά και μαζεύεις σκορ βάσης.</li>
+              <li>Έφτασες ή ξεπέρασες τη δήλωση → <b>σκορ × πολλαπλασιαστής παραθύρου</b>. Την έχασες → <b>μηδέν</b>.</li>
+            </ol>
+          </div>
+          <div>
+            <h4>Η κρίσιμη λύση</h4>
+            <p>Το παιχνίδι απαιτεί ένστικτο πιθανοτήτων που ο παίκτης δεν έχει στην αρχή — άρα τα πρώτα είκοσι λεπτά νιώθουν τυχαία, κι εκεί χάνεις παίκτες.</p>
+            <p>Η λύση: μετά από κάθε δήλωση, <b>δείχνε τη στατιστική</b>. Ο παίκτης χτίζει μοντέλο σε πέντε runs αντί σε πενήντα. Δεν είναι βοηθητικό UI — <b>είναι το tutorial και η ανταμοιβή μαζί</b>.</p>
+          </div>
+        </div>
+        <aside class="transcript">
+          <h4>Τα τέσσερα παράθυρα</h4>
+          <div class="tw">
+            <table>
+              <thead><tr><th>Παράθυρο</th><th class="n">Βλέπεις</th><th class="n">Πληρώνει</th></tr></thead>
+              <tbody>
+                <tr><td>Στα τυφλά</td><td class="n">0 / 14</td><td class="n">×5</td></tr>
+                <tr><td>Ματιά</td><td class="n">4 / 14</td><td class="n">×3</td></tr>
+                <tr class="hi"><td>Μισό</td><td class="n">8 / 14</td><td class="n">×2</td></tr>
+                <tr><td>Ανοιχτά</td><td class="n">14 / 14</td><td class="n">×1</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h4>Γύρος 4 · στόχος <span class="num">900</span></h4>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">ΠΑΡΑΘΥΡΟ: ΜΙΣΟ (×2)</span>
+                <span>Βλέπεις <span class="card">A&#9824;</span><span class="card card--red">A&#9830;</span><span class="card">K&#9824;</span><span class="card card--red">K&#9830;</span><span class="card">7&#9827;</span><span class="card card--red">7&#9829;</span><span class="card">3&#9824;</span><span class="card card--red">2&#9830;</span> — τρία ζεύγη και δύο σκουπίδια. Δυνατή εικόνα.</span></li>
+              <li><span class="mv">ΣΤΑΤΙΣΤΙΚΗ</span><span>«Χέρια σαν αυτό βγάζουν κατά μέσο όρο <span class="num">470 ± 60</span>.»</span></li>
+              <li><span class="mv">ΔΗΛΩΣΗ</span><span><span class="num">500</span> → 500 × 2 = <span class="num">1000</span>, πάνω από τον στόχο.</span></li>
+              <li><span class="mv">ΟΙ ΚΡΥΦΕΣ ΕΞΙ</span><span><span class="card">9&#9827;</span><span class="card">9&#9824;</span><span class="card card--red">4&#9830;</span><span class="card card--red">8&#9829;</span><span class="card">J&#9824;</span><span class="card">Q&#9827;</span> — ένα τέταρτο ζεύγος και τέσσερα ορφανά.</span></li>
+              <li><span class="mv">ΑΠΟΤΕΛΕΣΜΑ</span><span>Παίζεις καθαρά. Σκορ βάσης <b>480</b>.</span></li>
+            </ul>
+          </div>
+          <p class="verdict"><b>Έχασες τη δήλωση κατά 20. Μηδέν πόντοι. Τέλος run.</b> Η δήλωση <span class="num">450</span> θα πλήρωνε <span class="num">900</span> — ακριβώς τον στόχο. Και η στατιστική σου το έλεγε: το 500 ήταν πάνω από τον μέσο όρο, περίπου <b>μία στις τρεις</b>. Η απληστία σε σκότωσε, με πλήρη προειδοποίηση.</p>
+        </aside>
+      </div>
+      <div class="game__foot">
+        <div><span class="lbl">Πώς χάνεις</span><p>Χάνεις τη δήλωση σε γύρο που έπρεπε να περάσεις.</p></div>
+        <div><span class="lbl">Πώς μεγαλώνει</span><p>Εργαλεία που αγοράζουν φθηνή μερική πληροφορία, όπως «πόσα ζεύγη υπάρχουν στις κρυφές κάρτες» · εργαλεία που σώζουν χαμένη δήλωση · μπόνους ανά παράθυρο, που επιτρέπουν build το οποίο παίζει <b>μόνο</b> στα τυφλά.</p></div>
+      </div>
+    </article>
+
+    <!-- 8 TRIBUTE -->
+    <article class="game" id="tribute">
+      <div class="game__head">
+        <div class="game__badge"><span class="sym sym--club">&#9827;</span></div>
+        <h3>TRIBUTE</h3>
+        <p class="game__pitch">Οπλίζεις τον επόμενο εχθρό σου από το δικό σου χέρι.</p>
+        <div class="game__tags">
+          <span class="tag tag--base">βάση: climbing</span>
+          <span class="tag tag--base">μηχανές 05 · 08</span>
+          <span class="tag tag--eff">1,5 εβδομάδα</span>
+        </div>
+      </div>
+      <div class="game__body">
+        <div class="rules">
+          <div>
+            <h4>Το όνομα</h4>
+            <p>«Tribute» είναι ο φόρος υποτέλειας που πληρώνεις στον ισχυρότερο. Εδώ τον πληρώνεις στον <b>επόμενο εχθρό σου</b>. Το όνομα κρύβει την ανατροπή.</p>
+          </div>
+          <div>
+            <h4>Τι βλέπεις</h4>
+            <p>Έναν πύργο δέκα ορόφων. Σε κάθε όροφο έναν <b>Φύλακα</b> — και στο χέρι του, <b>τρεις κάρτες σημασμένες με χρυσό</b>: αυτές που του έδωσες.</p>
+          </div>
+          <div>
+            <h4>Πώς παίζεται ένας όροφος</h4>
+            <ol class="steps">
+              <li>Έχεις δεκατέσσερις κάρτες. Ο Φύλακας έχει χέρι που περιλαμβάνει τις τρεις δικές σου, ορατά σημασμένες.</li>
+              <li>Climbing παιχνίδι: παίζεις για να αδειάσεις το χέρι σου.</li>
+              <li>Πέρασες τον όροφο → λάφυρο.</li>
+              <li>Μετά, <b>ο Φόρος</b>: διαλέγεις τρεις κάρτες και τις δίνεις στον επόμενο Φύλακα.</li>
+              <li><b>Ό,τι δεν δώσεις, το κρατάς</b> για τον επόμενο όροφο. Άρα κάθε καλή κάρτα που δίνεις τη χάνεις δύο φορές.</li>
+            </ol>
+          </div>
+          <div>
+            <h4>Γιατί δουλεύει</h4>
+            <p>Η απόφαση είναι <b>αυτο-σαμποτάζ με πρόθεση</b> — να διαμορφώνεις εσύ την πρόκλησή σου. Και δίνει φυσική δικαιοσύνη: κάθε δυσκολία που αντιμετωπίζεις την επέλεξες, και φαίνεται κυριολεκτικά, σημασμένη με χρυσό, στο χέρι που σε σκότωσε.</p>
+          </div>
+        </div>
+        <aside class="transcript">
+          <h4>Όροφος 3 · η απόφαση του Φόρου</h4>
+          <div class="hand">
+            <span class="card">A&#9824;</span><span class="card card--red">A&#9830;</span><span class="card">A&#9827;</span><span class="sep">|</span>
+            <span class="card card--red">5&#9829;</span><span class="card card--red">6&#9829;</span><span class="card card--red">7&#9829;</span><span class="sep">|</span>
+            <span class="card">2&#9827;</span><span class="sep">|</span><span class="card card--red">K&#9830;</span>
+          </div>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">Α · ΔΙΝΕΙΣ ΤΑ ΣΚΟΥΠΙΔΙΑ</span>
+                <span><span class="card">2&#9827;</span><span class="card card--red">5&#9829;</span><span class="card card--red">6&#9829;</span> — κρατάς την τριάδα άσων. Αλλά αφήνεις το <span class="card card--red">7&#9829;</span> ορφανό, <b>και</b> δίνεις χαμηλές κάρτες. Σε climbing παιχνίδι η χαμηλή κάρτα είναι <b>όπλο tempo</b>: ο Φύλακας ανοίγει με το <span class="card">2&#9827;</span>, εσύ απαντάς με κάτι ψηλό, και ξοδεύεις τα καλά σου σε φθηνή μπάζα.</span></li>
+              <li><span class="mv">Β · ΔΙΝΕΙΣ ΤΗΝ ΤΡΙΑΔΑ ΑΣΩΝ</span>
+                <span>Ξεκοιλιάζεσαι — αλλά ο Φύλακας μπορεί να την παίξει <b>μία φορά μόνο, ως τριάδα</b>, χωρίς να του δώσει tempo. Κι εσύ κρατάς καθαρή αρχή κέντας <span class="card card--red">5&#9829;</span><span class="card card--red">6&#9829;</span><span class="card card--red">7&#9829;</span> και το <span class="card card--red">K&#9830;</span> ως τερματικό.</span></li>
+              <li><span class="mv">Γ · ΙΣΟΡΡΟΠΗΜΕΝΑ</span>
+                <span><span class="card card--red">K&#9830;</span><span class="card">2&#9827;</span><span class="card card--red">5&#9829;</span> — χάνεις τερματικό, δίνεις ένα φθηνό όπλο, αφήνεις το <span class="card card--red">6&#9829;</span><span class="card card--red">7&#9829;</span> μισό.</span></li>
+            </ul>
+          </div>
+          <p class="verdict good">Το εύρημα που κάνει το παιχνίδι έξυπνο: <b>οι χαμηλές κάρτες είναι πιο επικίνδυνες στο χέρι του εχθρού από τις ψηλές.</b> Άρα η ενστικτώδης κίνηση — «πέτα τα σκουπίδια» — είναι λάθος. Ο παίκτης το ανακαλύπτει γύρω στο τρίτο run, και η αίσθηση είναι αποκάλυψη.</p>
+        </aside>
+      </div>
+      <div class="game__foot">
+        <div><span class="lbl">Πώς χάνεις</span><p>Δεν περνάς τον όροφο.</p></div>
+        <div><span class="lbl">Πώς μεγαλώνει</span><p>Build <b>Καθρέφτης</b>: εργαλεία που κερδίζουν όταν ο Φύλακας παίζει τις κάρτες σου · ανακύκλωση, όπου παίρνεις πίσω κάτι που έδωσες · μείωση του φόρου σε δύο κάρτες — ή αύξηση σε πέντε, για πολύ μεγαλύτερα λάφυρα.</p></div>
+      </div>
+    </article>
+
+    <!-- 9 FUSE -->
+    <article class="game" id="fuse">
+      <div class="game__head">
+        <div class="game__badge"><span class="sym sym--club">&#9827;</span></div>
+        <h3>FUSE</h3>
+        <p class="game__pitch">Τέσσερις πάγκοι, τέσσερα ίδια φύλλα, και φυτίλια που τρέχουν.</p>
+        <div class="game__tags">
+          <span class="tag tag--base">βάση: climbing (το καρέ ως βόμβα)</span>
+          <span class="tag tag--base">μηχανές 07 · 01 · 04</span>
+          <span class="tag tag--eff">1,5 εβδομάδα</span>
+        </div>
+      </div>
+      <div class="game__body">
+        <div class="rules">
+          <div>
+            <h4>Το όνομα</h4>
+            <p>«Fuse» — το φυτίλι. Εικόνα χρονικής πίεσης, και δηλώνει ότι το παιχνίδι είναι για το <b>πότε</b>, όχι για το τι.</p>
+          </div>
+          <div>
+            <h4>Τι βλέπεις</h4>
+            <p><b>Τέσσερις πάγκους</b>, καθένας κρατά μέχρι τέσσερις κάρτες <b>ίδιας αξίας</b>. Μετρητή αστοχιών, 0 από 3. Τον στόχο σκορ.</p>
+          </div>
+          <div>
+            <h4>Πώς παίζεται</h4>
+            <ol class="steps">
+              <li>Τραβάς <b>τρεις κάρτες</b> τον γύρο.</li>
+              <li>Κάθε κάρτα πάει σε πάγκο — ίδιας αξίας ή άδειο — ή πετιέται.</li>
+              <li>Πάγκος με τέσσερις ίδιες = <b>ΒΟΜΒΑ</b>, με φυτίλι τριών γύρων.</li>
+              <li><b>Πυροδότηση:</b> αξία × 100 × αλυσίδα. Πολλές βόμβες τον ίδιο γύρο → ×1, ×2, ×3…</li>
+              <li>Κάρτα που δεν χωράει πετιέται. Τρεις πεταμένες = μία <b>αστοχία</b>.</li>
+              <li>Φυτίλι που τελειώνει → η βόμβα ξεφουσκώνει, μισό σκορ.</li>
+            </ol>
+          </div>
+          <div>
+            <h4>Γιατί δουλεύει</h4>
+            <p><b>Απληστία εναντίον χώρου.</b> Και εθίζει γιατί βλέπεις τη βόμβα να χτίζεται — η ευχαρίστηση είναι στην <b>προσδοκία</b>, όχι στην ανταμοιβή. Ίδια μηχανή με το engine building, σε τρία λεπτά ανά γύρο.</p>
+          </div>
+        </div>
+        <aside class="transcript">
+          <h4>Δύο γύροι</h4>
+          <div class="hand">
+            <span class="sep">[</span><span class="card">7&#9824;</span><span class="card card--red">7&#9830;</span><span class="card card--red">7&#9829;</span> _<span class="sep">]</span>
+            <span class="sep">[</span><span class="card">K&#9827;</span><span class="card">K&#9824;</span> _ _<span class="sep">]</span>
+            <span class="sep">[</span><span class="card card--red">3&#9830;</span> _ _ _<span class="sep">]</span>
+            <span class="sep">[</span> άδειος <span class="sep">]</span>
+          </div>
+          <div class="beat">
+            <ul>
+              <li><span class="mv">ΓΥΡΟΣ 1 · ΤΡΑΒΑΣ 7&#9827; K&#9829; 9&#9824;</span>
+                <span><span class="card">7&#9827;</span> → <b>ΒΟΜΒΑ από 7άρια</b>, φυτίλι 3.<br>
+                <span class="card card--red">K&#9829;</span> → πάγκος K στα 3 από 4.<br>
+                <span class="card">9&#9824;</span> → ο άδειος πάγκος. <b>Και οι τέσσερις πάγκοι κατειλημμένοι.</b></span></li>
+              <li><span class="mv">ΓΥΡΟΣ 2 · ΤΡΑΒΑΣ K&#9830; 2&#9824; 9&#9830;</span>
+                <span><span class="card card--red">K&#9830;</span> → <b>ΒΟΜΒΑ από Ρήγες</b>, φυτίλι 3.<br>
+                <span class="card card--red">9&#9830;</span> → πάγκος 9 στα 2 από 4.<br>
+                <span class="card">2&#9824;</span> → κανένας πάγκος ελεύθερος, κανένας με 2άρια. <b>Πετιέται. Αστοχία 1/3.</b></span></li>
+            </ul>
+          </div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>Πυροδοτείς τώρα</th><th>Υπολογισμός</th><th class="n">Σκορ</th></tr></thead>
+              <tbody>
+                <tr><td>Βόμβα 7</td><td>7 × 100 × 1</td><td class="n">700</td></tr>
+                <tr><td>Βόμβα K</td><td>13 × 100 × 2</td><td class="n">2.600</td></tr>
+                <tr class="hi"><td>Σύνολο</td><td>δύο πάγκοι ελευθερώνονται</td><td class="n">3.300</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="verdict">Ή <b>περιμένεις έναν γύρο</b> για τρίτη βόμβα — ο πάγκος 9 είναι στα 2 από 4. Αν έρθει, η αλυσίδα φτάνει ×3 και το σκορ εκτοξεύεται. Αλλά τα φυτίλια τρέχουν, οι πάγκοι είναι γεμάτοι, και <b>κάθε κάρτα που δεν χωράει είναι αστοχία</b>.</p>
+        </aside>
+      </div>
+      <div class="game__foot">
+        <div><span class="lbl">Πώς χάνεις</span><p>Τρεις αστοχίες, ή δεν φτάνεις τον στόχο σκορ.</p></div>
+        <div><span class="lbl">Πώς μεγαλώνει</span><p>Πέμπτος πάγκος · μακρύτερα φυτίλια · «καθαρές» βόμβες, τέσσερις ίδιας αξίας <b>και</b> διαδοχικών χρωμάτων, για ×3 · εργαλεία που αλλάζουν αξία κάρτας · αποθήκη, όπου κρατάς μία κάρτα εκτός πάγκων.</p></div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="sec-head">
+    <h2>Ο πάτος της τράπουλας</h2>
+    <p>Έξι ιδέες που δεν έγιναν πλήρη παιχνίδια, με το τι τις κρατά πίσω. Καμία δεν είναι κακή — καθεμία έχει ένα συγκεκριμένο εμπόδιο.</p>
+  </div>
+  <div class="annex">
+    <div class="mini">
+      <h3><span class="sym sym--diamond">&#9830;</span> FIFTEEN</h3>
+      <p class="mini__what">Cribbage ως βάση. Το ίδιο 5-κάρτο χέρι σκοράρει σε <b>πέντε ορθογώνιους άξονες μαζί</b> — δεκαπεντάρια, ζεύγη, σειρές, χρώμα, nobs — άρα πέντε archetypes χωρίς να σχεδιάσεις τίποτα. Και ο χώρος χεριών απαριθμείται πλήρως, όπως στο πόκερ.</p>
+      <p class="mini__hold"><b>Τι το κρατά πίσω</b>Στην Ελλάδα και στο μεγαλύτερο μέρος της ΕΕ σχεδόν κανείς δεν ξέρει cribbage. Χάνεις εντελώς το «μηδέν tutorial» που είναι το βασικό δώρο του πόκερ.</p>
+    </div>
+    <div class="mini">
+      <h3><span class="sym sym--spade">&#9824;</span> BOARD MEETING</h3>
+      <p class="mini__what">Πέντε κοινές κάρτες, δέκα δικές σου, και <b>τρία χέρια που χτίζεις ταυτόχρονα</b> από το ίδιο board. Το board είναι κοινός πόρος: το <span class="card">A&#9824;</span> στο πρώτο χέρι σημαίνει ότι δεν το έχεις στο δεύτερο. Μετά το μοίρασμα, μηδέν τύχη — ιδανικό για ημερήσιο seed.</p>
+      <p class="mini__hold"><b>Τι το κρατά πίσω</b>Παράλυση ανάλυσης. Ο χώρος επιλογών είναι τεράστιος και ο παίκτης κολλάει. Θέλει όριο κινήσεων ή απαλό χρονόμετρο.</p>
+    </div>
+    <div class="mini">
+      <h3><span class="sym sym--spade">&#9824;</span> STACKED</h3>
+      <p class="mini__what">Deckbuilding χωρίς κανένα joker: όλο το build είναι <b>η σύνθεση της τράπουλας</b>. Αφαιρείς, κλωνοποιείς, τροποποιείς μεμονωμένες κάρτες. Κάθε απόφαση μόνιμη, οπότε το run έχει ιστορία αντί για inventory.</p>
+      <p class="mini__hold"><b>Τι το κρατά πίσω</b>Το deck thinning είναι εύκολα degenerate — τράπουλα πέντε καρτών σημαίνει εγγυημένο ρουαγιάλ. Θέλει σκληρό κατώτατο όριο και εκθετικό κόστος αφαίρεσης.</p>
+    </div>
+    <div class="mini">
+      <h3><span class="sym sym--spade">&#9824;</span> PEEK</h3>
+      <p class="mini__what">Παίζεις με τα φύλλα ανάποδα. <b>Ξοδεύεις πόρο για να κοιτάξεις</b> μεμονωμένες κάρτες, δηλώνεις τι πιστεύεις ότι έχεις, και μετά αποκαλύπτεται. Λιγότερες ματιές, μεγαλύτερος πολλαπλασιαστής — τιμολογείς την άγνοιά σου.</p>
+      <p class="mini__hold"><b>Τι το κρατά πίσω</b>Υψηλό ρίσκο να νιώθεται αγχωτικό αντί για διασκεδαστικό. Ζει ή πεθαίνει στη βαθμονόμηση της τιμής της πληροφορίας.</p>
+    </div>
+    <div class="mini">
+      <h3><span class="sym sym--club">&#9827;</span> TEMPO</h3>
+      <p class="mini__what">Σε climbing παιχνίδια ο κρίσιμος πόρος είναι αφανής: <b>ποιος έχει τη σειρά</b>. Εδώ γίνεται ρητό, ορατό νόμισμα που δαπανάς και κερδίζεις. Ένας πόρος, διαφανείς κανόνες, βαθιές αποφάσεις — το πιο τακτικά καθαρό σύστημα της λίστας.</p>
+      <p class="mini__hold"><b>Τι το κρατά πίσω</b>Δεν επικοινωνείται σε screenshot, κι αυτό είναι πραγματικό εμπορικό πρόβλημα: τα roguelike πωλούνται με screenshots και GIF.</p>
+    </div>
+    <div class="mini">
+      <h3><span class="sym sym--club">&#9827;</span> WINGMAN</h3>
+      <p class="mini__what">Ο συμπαίκτης <b>είναι</b> το build σου: του δίνεις κανόνες συμπεριφοράς — «πάντα κρατάει βόμβες», «παίζει πρώτα τα μικρά». Ο παίκτης δεν χτίζει build, χτίζει σχέση. Και το «γιατί το έκανε αυτό;» γίνεται διασκεδαστικό, γιατί εσύ όρισες τους κανόνες.</p>
+      <p class="mini__hold"><b>Τι το κρατά πίσω</b>Χρειάζεται προγραμματιζόμενο AI για τον σύμμαχο — εφικτό — αλλά και τρεις αντιπάλους με ατελή πληροφορία. Τέσσερις έως έξι εβδομάδες, το ακριβότερο της λίστας.</p>
+    </div>
+  </div>
+</section>
+
+<section class="close">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Ποιο πρώτο</h2>
+      <p>Ο χρόνος είναι για playable prototype με seeded RNG και μετρήσιμη καμπύλη σκορ — όχι για shippable προϊόν, που είναι τρεις έως έξι μήνες σε κάθε περίπτωση.</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Παιχνίδι</th><th>Βάση</th><th>Δυνατό σημείο</th><th>Κύριο ρίσκο</th><th class="n">Effort</th></tr></thead>
+        <tbody>
+          <tr class="hi"><td>HOUSE RULES</td><td>πόκερ</td><td>Ακριβή μαθηματικά, μηδέν tutorial</td><td>Οπτική τζόγου</td><td class="n">6–7 ημ.</td></tr>
+          <tr class="hi"><td>RAISE</td><td>υβρίδιο</td><td>Γνωστό λεξιλόγιο, νέα γραμματική</td><td>Κοντές αλυσίδες</td><td class="n">1,5 εβδ.</td></tr>
+          <tr><td>PYRAMID SCHEME</td><td>πόκερ</td><td>Ψυχολογία Tetris</td><td>Τιμωρητική κατάρρευση</td><td class="n">1,5 εβδ.</td></tr>
+          <tr><td>VIG</td><td>πόκερ</td><td>Το δυνατότερο «άλλη μία»</td><td>Οπτική τζόγου</td><td class="n">1,5 εβδ.</td></tr>
+          <tr><td>FUSE</td><td>climbing</td><td>Engine building, εύκολο balance</td><td>Μονοδιάστατο</td><td class="n">1,5 εβδ.</td></tr>
+          <tr><td>TRIBUTE</td><td>climbing</td><td>Η πιο έξυπνη μεμονωμένη απόφαση</td><td>Αφηρημένο</td><td class="n">1,5 εβδ.</td></tr>
+          <tr><td>CALLED SHOT</td><td>climbing</td><td>Πιο καθαρή ψυχολογία στοιχήματος</td><td>Αργό onboarding</td><td class="n">2 εβδ.</td></tr>
+          <tr><td>ANABASIS</td><td>climbing</td><td>Βαθύτερο puzzle</td><td>Θέλει solver</td><td class="n">2 εβδ.</td></tr>
+          <tr><td>TELLS</td><td>πόκερ</td><td>Μέγιστη επαναληψιμότητα</td><td>Βαρύ σε περιεχόμενο</td><td class="n">2–3 εβδ.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pick">
+      <h3>Η σύσταση</h3>
+      <p><b>HOUSE RULES πρώτο, ως πείραμα μιας εβδομάδας.</b> Τα μαθηματικά είναι ακριβή, το tutorial μηδενικό, και σε έξι ημέρες ξέρεις με νούμερα — όχι με αίσθηση — αν υπάρχει το «άλλη μία».</p>
+      <p>Αν το επιβεβαιώσει, το πλαίσιο μεταφέρεται σχεδόν αυτούσιο στο <b>RAISE</b>, που είναι το πιο εμπορικό της λίστας: ο παίκτης ξέρει ήδη την ιεραρχία των χεριών πόκερ, αλλά το πρόβλημα που του δίνεις είναι εντελώς νέο.</p>
+    </div>
+
+    <div class="laws">
+      <div><span class="sym">&#9670;</span><p><b>Seeded RNG από την πρώτη γραμμή κώδικα.</b> Χωρίς αυτό δεν έχεις ημερήσιο seed, ούτε reproducible bugs, ούτε balance testing. Δεν προστίθεται μετά.</p></div>
+      <div><span class="sym">&#9670;</span><p><b>Headless simulator πριν από κάθε οθόνη.</b> Στο πόκερ έχεις πλήρη απαρίθμηση, στα climbing Monte Carlo. Και στα δύο, οι αριθμοί βγαίνουν πριν σχεδιαστεί UI.</p></div>
+      <div><span class="sym">&#9670;</span><p><b>Το juice είναι μηχανική, όχι polish.</b> Αριθμοί που ανεβαίνουν με animation και ήχο είναι το 30% του εθισμού, και το φθηνότερο 30% που θα αγοράσεις ποτέ. Μη το αφήσεις τελευταίο.</p></div>
+    </div>
+
+    <div class="foot">
+      <p>Όπου η βάση είναι climbing, όλη η ορολογία είναι νέα — Ράχη, Σημάδια, Φύλακες, πάγκοι. Οι μηχανισμοί των climbing games είναι δημόσιο κτήμα· τα ονόματα, οι ειδικές κάρτες και τα εικαστικά των εμπορικών εκδόσεων όχι.</p>
+      <p>Το πόκερ και το cribbage είναι δημόσιο κτήμα χωρίς περιορισμό.</p>
+    </div>
+  </div>
+</section>

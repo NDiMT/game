@@ -1,0 +1,697 @@
+<title>RAISE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Fira+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --felt:#123328; --felt-2:#17402f; --felt-3:#1c4b38; --felt-line:#2a6049;
+  --stock:#f4f1e8; --stock-edge:#cdc7b6; --ink:#1a1c20;
+  --pip:#c02a24; --brass:#c9a24a; --brass-dim:#8f7333;
+  --cream:#e9e7db; --muted:#9db3a5; --bad:#e0736a; --good:#5fc79a;
+  --display:"Cormorant Garamond",Georgia,serif;
+  --body:"Fira Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sym:"IBM Plex Mono","Segoe UI Symbol","Apple Symbols",monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--felt);color:var(--cream);
+  font-family:var(--body);font-size:15px;line-height:1.55;
+  background-image:radial-gradient(ellipse 120% 80% at 50% -10%,rgba(255,255,255,.045),transparent 60%);
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;line-height:1.1;text-wrap:balance}
+p{margin:0}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+button:disabled{cursor:not-allowed}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.lbl{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+.shell{max-width:1120px;margin:0 auto;padding:1rem clamp(.7rem,2.5vw,1.4rem) 2.5rem}
+
+/* ---- top bar ---- */
+.top{display:flex;flex-wrap:wrap;gap:.7rem 1.1rem;align-items:flex-end;padding-bottom:.8rem;border-bottom:1px solid var(--felt-line)}
+.brand{display:flex;align-items:baseline;gap:.55rem;margin-right:auto}
+.brand h1{font-family:var(--mono);font-weight:600;font-size:1.5rem;letter-spacing:.1em;color:var(--brass)}
+.brand span{font-size:.78rem;color:var(--muted)}
+.stat{display:grid;gap:.05rem;min-width:4.2rem}
+.stat b{font-family:var(--mono);font-size:1.15rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat.target b{color:var(--brass)}
+.stat.score b{color:var(--good)}
+.breaths{display:flex;gap:.22rem;padding-top:.3rem}
+.breaths i{width:.62rem;height:.62rem;border-radius:50%;background:var(--brass);display:block}
+.breaths i.spent{background:transparent;box-shadow:inset 0 0 0 1px var(--brass-dim)}
+
+/* ---- progress ---- */
+.prog{height:5px;background:var(--felt-3);margin:.75rem 0 1rem;overflow:hidden}
+.prog i{display:block;height:100%;background:linear-gradient(90deg,var(--brass-dim),var(--brass));width:0;transition:width .35s ease}
+.prog i.done{background:linear-gradient(90deg,#3f8f6e,var(--good))}
+
+/* ---- board ---- */
+.board{display:grid;grid-template-columns:1fr 15rem;gap:1.1rem;align-items:start}
+@media (max-width:860px){.board{grid-template-columns:1fr}}
+
+.panel{background:var(--felt-2);border:1px solid var(--felt-line);padding:.85rem .95rem}
+
+/* ladder */
+.ladder{display:grid;gap:.55rem}
+.rungs{display:flex;gap:2px}
+.rungs div{
+  flex:1;text-align:center;padding:.38rem .1rem;background:var(--felt-3);
+  font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;color:var(--muted);
+  border-bottom:2px solid transparent;
+}
+.rungs div.at{background:var(--felt-line);color:var(--brass);border-bottom-color:var(--brass)}
+.rungs div.under{color:rgba(157,179,165,.4)}
+.rung-now{display:flex;flex-wrap:wrap;gap:.3rem .6rem;align-items:baseline}
+.rung-now strong{font-family:var(--mono);font-size:.95rem;color:var(--cream)}
+.chain{margin-left:auto;font-family:var(--mono);font-size:.8rem;color:var(--brass)}
+
+/* played area */
+.played{min-height:5.6rem;display:flex;flex-wrap:wrap;gap:.35rem;align-items:center}
+.played .empty{color:var(--muted);font-size:.86rem}
+
+/* cards */
+.card{
+  width:3.5rem;height:4.95rem;flex:0 0 auto;
+  background:var(--stock);border:1px solid var(--stock-edge);border-radius:5px;
+  color:var(--ink);padding:.2rem .25rem;position:relative;
+  display:grid;place-items:start stretch;
+  box-shadow:0 2px 5px rgba(0,0,0,.35);
+  transition:transform .13s ease,box-shadow .13s ease;
+}
+.card--sm{width:2.55rem;height:3.6rem;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.card__r{font-family:var(--mono);font-size:.78rem;font-weight:600;line-height:1}
+.card--sm .card__r{font-size:.64rem}
+.card__s{
+  font-family:var(--sym);font-size:1.5rem;line-height:1;
+  position:absolute;inset:auto .22rem .1rem auto;
+}
+.card--sm .card__s{font-size:1.05rem}
+.card.red{color:var(--pip)}
+.hand .card:hover:not(:disabled){transform:translateY(-6px)}
+.hand .card.sel{transform:translateY(-14px);box-shadow:0 8px 14px rgba(0,0,0,.45),0 0 0 2px var(--brass)}
+.hand .card:disabled{opacity:.55}
+.hand{display:flex;flex-wrap:wrap;gap:.35rem;padding:.4rem 0 .2rem;min-height:5.8rem;align-items:flex-end}
+
+/* readout */
+.readout{
+  display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:baseline;
+  padding:.6rem .8rem;background:var(--felt-3);border-left:3px solid var(--felt-line);
+  min-height:2.9rem;
+}
+.readout.ok{border-left-color:var(--good)}
+.readout.no{border-left-color:var(--bad)}
+.readout .what{font-family:var(--mono);font-size:.95rem}
+.readout .calc{font-family:var(--mono);font-size:.85rem;color:var(--muted)}
+.readout .pts{margin-left:auto;font-family:var(--mono);font-size:1.3rem;font-weight:600;color:var(--brass)}
+.readout .why{font-size:.85rem;color:var(--bad)}
+
+/* actions */
+.acts{display:flex;flex-wrap:wrap;gap:.45rem;padding-top:.7rem}
+.btn{
+  padding:.5rem .9rem;background:var(--felt-3);border:1px solid var(--felt-line);
+  font-family:var(--mono);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;
+  transition:background .12s ease,border-color .12s ease;
+}
+.btn:hover:not(:disabled){background:var(--felt-line)}
+.btn:disabled{opacity:.4}
+.btn--go{background:var(--brass);border-color:var(--brass);color:#20180a;font-weight:600}
+.btn--go:hover:not(:disabled){background:#dbb45a;border-color:#dbb45a}
+.btn--ghost{background:transparent}
+.btn small{font-size:.9em;opacity:.75;text-transform:none;letter-spacing:0}
+
+/* side */
+.side{display:grid;gap:.8rem}
+.log{display:grid;gap:.3rem;max-height:17rem;overflow-y:auto;font-family:var(--mono);font-size:.75rem}
+.log div{display:flex;gap:.5rem;padding:.2rem 0;border-bottom:1px dotted var(--felt-line)}
+.log b{margin-left:auto;color:var(--brass)}
+.log .pass{color:var(--bad)}
+.log .bonus{color:var(--good)}
+.owned{display:flex;flex-wrap:wrap;gap:.25rem}
+.chip{
+  font-family:var(--mono);font-size:.66rem;padding:.16rem .42rem;
+  background:var(--felt-3);border:1px solid var(--felt-line);
+}
+.chip b{color:var(--brass)}
+.seedrow{display:flex;gap:.35rem;align-items:center}
+.seedrow input{
+  flex:1;min-width:0;background:var(--felt);border:1px solid var(--felt-line);color:var(--cream);
+  font-family:var(--mono);font-size:.75rem;padding:.35rem .45rem;
+}
+details.rules{border-top:1px solid var(--felt-line);padding-top:.6rem;margin-top:.2rem}
+details.rules summary{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+details.rules table{border-collapse:collapse;width:100%;font-size:.78rem;margin-top:.5rem}
+details.rules td{padding:.18rem .3rem;border-bottom:1px solid var(--felt-line)}
+details.rules td:last-child{text-align:right;font-family:var(--mono);color:var(--brass)}
+details.rules p{font-size:.8rem;color:var(--muted);margin-top:.5rem}
+
+/* overlay */
+.veil{
+  position:fixed;inset:0;background:rgba(8,20,15,.86);backdrop-filter:blur(3px);
+  display:grid;place-items:center;padding:1.2rem;z-index:20;
+}
+.veil[hidden]{display:none!important}
+.sheet{
+  width:min(40rem,100%);max-height:calc(100dvh - 2.4rem);overflow-y:auto;
+  background:var(--felt-2);border:1px solid var(--felt-line);padding:1.3rem 1.4rem;
+  box-shadow:0 24px 60px rgba(0,0,0,.6);
+}
+.sheet h2{font-size:1.8rem;color:var(--brass)}
+.sheet .sub{color:var(--muted);font-size:.9rem;margin-top:.3rem}
+.tally{display:grid;gap:1px;background:var(--felt-line);border:1px solid var(--felt-line);margin:1rem 0}
+.tally div{background:var(--felt-2);padding:.45rem .7rem;display:flex;gap:1rem;font-size:.9rem}
+.tally b{margin-left:auto;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.offers{display:grid;gap:.5rem;margin:1rem 0}
+.offer{
+  display:grid;grid-template-columns:1fr auto;gap:.2rem .9rem;align-items:center;
+  padding:.7rem .85rem;background:var(--felt-3);border:1px solid var(--felt-line);text-align:left;width:100%;
+}
+.offer:hover:not(:disabled){border-color:var(--brass)}
+.offer strong{font-family:var(--mono);font-size:.9rem}
+.offer span{font-size:.83rem;color:var(--muted);grid-column:1}
+.offer em{
+  grid-row:span 2;font-family:var(--mono);font-size:1.05rem;font-weight:600;font-style:normal;color:var(--brass);
+}
+.offer:disabled em{color:var(--bad)}
+.offer.bought{opacity:.45}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="shell">
+  <header class="top">
+    <div class="brand"><h1>RAISE</h1><span>ανέβα ή πάσο</span></div>
+    <div class="stat"><span class="lbl">Ante</span><b id="sAnte">1 / 8</b></div>
+    <div class="stat target"><span class="lbl">Στόχος</span><b id="sTarget">100</b></div>
+    <div class="stat score"><span class="lbl">Σκορ γύρου</span><b id="sScore">0</b></div>
+    <div class="stat"><span class="lbl">Χρήμα</span><b id="sMoney">0</b></div>
+    <div class="stat"><span class="lbl">Ανάσες</span><div class="breaths" id="sBreaths"></div></div>
+  </header>
+
+  <div class="prog"><i id="progBar"></i></div>
+
+  <div class="board">
+    <main>
+      <section class="panel ladder">
+        <div class="rungs" id="rungs"></div>
+        <div class="rung-now">
+          <span class="lbl">Σκαλί</span>
+          <strong id="rungNow">ελεύθερο — παίξε ό,τι θέλεις</strong>
+          <span class="chain" id="chainNow">Αλυσίδα ×1</span>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:.7rem">
+        <span class="lbl">Στο τραπέζι</span>
+        <div class="played" id="played"><span class="empty">Κανένα χέρι ακόμα.</span></div>
+      </section>
+
+      <section style="margin-top:.7rem">
+        <span class="lbl">Το χέρι σου — <span id="handCount">15</span> κάρτες</span>
+        <div class="hand" id="hand"></div>
+      </section>
+
+      <div class="readout" id="readout"><span class="what" style="color:var(--muted)">Διάλεξε κάρτες για να σχηματίσεις χέρι.</span></div>
+
+      <div class="acts">
+        <button class="btn btn--go" id="bPlay" disabled>Παίξε</button>
+        <button class="btn" id="bPass">Πάσο <small>−1 ανάση</small></button>
+        <button class="btn" id="bDescend" hidden>Κατέβασμα <small id="dCount"></small></button>
+        <button class="btn" id="bChisel" hidden>Σμίλη <small id="cCount"></small></button>
+        <button class="btn btn--ghost" id="bHint">Πρόταση</button>
+        <button class="btn btn--ghost" id="bClose" disabled>Κλείσε τον γύρο</button>
+      </div>
+    </main>
+
+    <aside class="side">
+      <section class="panel">
+        <span class="lbl">Αγορές</span>
+        <div class="owned" id="owned"><span class="chip">καμία</span></div>
+      </section>
+      <section class="panel">
+        <span class="lbl">Ιστορικό γύρου</span>
+        <div class="log" id="log"></div>
+      </section>
+      <section class="panel">
+        <span class="lbl">Seed</span>
+        <div class="seedrow" style="margin-top:.35rem">
+          <input id="seedIn" value="" spellcheck="false" aria-label="Seed">
+          <button class="btn" id="bNew">Νέο run</button>
+        </div>
+        <details class="rules">
+          <summary>Κανόνες</summary>
+          <table>
+            <tr><td>Ζεύγος <span class="lbl">2 κάρτες</span></td><td>10</td></tr>
+            <tr><td>Τριάδα <span class="lbl">3</span></td><td>25</td></tr>
+            <tr><td>Κέντα <span class="lbl">5</span></td><td>40</td></tr>
+            <tr><td>Χρώμα <span class="lbl">5</span></td><td>60</td></tr>
+            <tr><td>Φουλ <span class="lbl">5</span></td><td>80</td></tr>
+            <tr><td>Καρέ <span class="lbl">4</span></td><td>120</td></tr>
+          </table>
+          <p>Κάθε χέρι πρέπει να είναι ψηλότερα από το προηγούμενο: ανώτερη κατηγορία, ή ίδια κατηγορία με ψηλότερη αξία. Σκορ = βάση × θέση στην Αλυσίδα.</p>
+          <p>Το Πάσο μηδενίζει το Σκαλί, σπάει την Αλυσίδα και κοστίζει μία Ανάση. Άδειασμα χεριού → +50% μπόνους.</p>
+          <p>Κέντα-χρώμα μετράει ως Χρώμα. Ο άσος είναι μόνο ψηλός.</p>
+        </details>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div class="veil" id="veil" hidden><div class="sheet" id="sheet"></div></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- rng ---------- */
+function hash(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19}return (h^h>>>16)>>>0}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
+
+/* ---------- cards ---------- */
+const SUITS=[{s:"♠",red:false},{s:"♥",red:true},{s:"♦",red:true},{s:"♣",red:false}];
+const RANKNAME={11:"J",12:"Q",13:"K",14:"A"};
+const rname=r=>RANKNAME[r]||String(r);
+
+const TIERS=[
+  null,
+  {key:"pair",  name:"Ζεύγος", short:"ΖΕΥ",  base:10,  size:2},
+  {key:"trips", name:"Τριάδα", short:"ΤΡΙ",  base:25,  size:3},
+  {key:"str",   name:"Κέντα",  short:"ΚΕΝ",  base:40,  size:5},
+  {key:"flush", name:"Χρώμα",  short:"ΧΡΩ",  base:60,  size:5},
+  {key:"full",  name:"Φουλ",   short:"ΦΟΥΛ", base:80,  size:5},
+  {key:"quads", name:"Καρέ",   short:"ΚΑΡΕ", base:120, size:4}
+];
+
+const TARGETS=[100,160,250,380,570,850,1250,1800];
+
+/* ---------- state ---------- */
+let S=null;
+
+function newRun(seedStr){
+  const seed=String(seedStr||"").trim()||String(Math.floor(Math.random()*1e9));
+  S={
+    seed, rnd:mulberry32(hash(seed)),
+    ante:0, money:0,
+    handSize:15, breathsMax:3, chiselMax:0, descendMax:0, chainStart:0,
+    mult:[0,1,1,1,1,1,1],
+    removed:[],
+    bought:{}
+  };
+  document.getElementById("seedIn").value=seed;
+  startRound();
+}
+
+function startRound(){
+  const deck=[];
+  for(let r=2;r<=14;r++){
+    if(S.removed.includes(r)) continue;
+    for(let si=0;si<4;si++) deck.push({r,si});
+  }
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(S.rnd()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}
+  S.hand=deck.slice(0,S.handSize).sort(cmpCard);
+  S.sel=[];
+  S.rung=null;          // {tier, rank}
+  S.chain=0;
+  S.score=0;
+  S.breaths=S.breathsMax;
+  S.chisel=S.chiselMax;
+  S.descend=S.descendMax;
+  S.played=[];
+  S.log=[];
+  S.chiselMode=false;
+  S.over=false;
+  render();
+}
+const cmpCard=(a,b)=>a.r-b.r||a.si-b.si;
+const target=()=>TARGETS[S.ante];
+
+/* ---------- classification ---------- */
+function classify(cs){
+  if(!cs||cs.length<2) return null;
+  const byRank={}, bySuit={};
+  cs.forEach(c=>{(byRank[c.r]=byRank[c.r]||[]).push(c);(bySuit[c.si]=bySuit[c.si]||[]).push(c)});
+  const counts=Object.keys(byRank).map(r=>[+r,byRank[r].length]);
+  const n=cs.length;
+
+  if(n===2&&counts.length===1) return {tier:1,rank:counts[0][0]};
+  if(n===3&&counts.length===1) return {tier:2,rank:counts[0][0]};
+  if(n===4&&counts.length===1) return {tier:6,rank:counts[0][0]};
+  if(n===5){
+    if(counts.length===2){
+      const t=counts.find(c=>c[1]===3), p=counts.find(c=>c[1]===2);
+      if(t&&p) return {tier:5,rank:t[0]};
+    }
+    const hi=Math.max.apply(null,cs.map(c=>c.r));
+    if(Object.keys(bySuit).length===1) return {tier:4,rank:hi};       // κέντα-χρώμα = χρώμα
+    if(counts.length===5){
+      const rs=counts.map(c=>c[0]).sort((a,b)=>a-b);
+      if(rs[4]-rs[0]===4) return {tier:3,rank:hi};
+    }
+  }
+  return null;
+}
+function isLegal(k){
+  if(!k) return false;
+  if(!S.rung) return true;
+  if(k.tier>S.rung.tier) return true;
+  return k.tier===S.rung.tier && k.rank>S.rung.rank;
+}
+const chainPos=()=>S.chain+1+S.chainStart;
+const comboScore=k=>TIERS[k.tier].base*S.mult[k.tier]*chainPos();
+const comboLabel=k=>TIERS[k.tier].name+" "+rname(k.rank);
+
+/* ---------- candidate enumeration (για Πρόταση) ---------- */
+function candidates(){
+  const out=[], byRank={}, bySuit={};
+  S.hand.forEach((c,i)=>{(byRank[c.r]=byRank[c.r]||[]).push(i);(bySuit[c.si]=bySuit[c.si]||[]).push(i)});
+  const ranks=Object.keys(byRank).map(Number).sort((a,b)=>a-b);
+
+  ranks.forEach(r=>{
+    const g=byRank[r];
+    if(g.length>=2) out.push(g.slice(0,2));
+    if(g.length>=3) out.push(g.slice(0,3));
+    if(g.length>=4) out.push(g.slice(0,4));
+  });
+  ranks.forEach(t=>{
+    if(byRank[t].length<3) return;
+    ranks.forEach(p=>{
+      if(p===t||byRank[p].length<2) return;
+      out.push(byRank[t].slice(0,3).concat(byRank[p].slice(0,2)));
+    });
+  });
+  Object.keys(bySuit).forEach(si=>{
+    const g=bySuit[si];
+    if(g.length>=5){
+      const sorted=g.slice().sort((a,b)=>S.hand[b].r-S.hand[a].r);
+      out.push(sorted.slice(0,5));
+    }
+  });
+  for(let st=2;st<=10;st++){
+    let ok=true,pick=[];
+    for(let r=st;r<st+5;r++){ if(!byRank[r]){ok=false;break} pick.push(byRank[r][0]) }
+    if(ok) out.push(pick);
+  }
+  return out.map(idx=>({idx,k:classify(idx.map(i=>S.hand[i]))})).filter(o=>o.k);
+}
+function legalMoves(){ return candidates().filter(o=>isLegal(o.k)) }
+/* Η πρόταση δίνει τη ΦΘΗΝΟΤΕΡΗ νόμιμη ανάβαση: κρατά την κλίμακα ανοιχτή
+   και τα φύλλα στο χέρι. Το ψηλότερο σκορ τώρα κλείνει τον γύρο αργότερα. */
+function cheapestLegal(){
+  let best=null;
+  legalMoves().forEach(o=>{
+    const key=[o.k.tier,o.k.rank,o.idx.length];
+    if(!best||key<best.key) best={idx:o.idx,k:o.k,key};
+  });
+  return best;
+}
+const hasLegal=()=>legalMoves().length>0;
+
+/* ---------- actions ---------- */
+function play(){
+  const cs=S.sel.map(i=>S.hand[i]);
+  const k=classify(cs);
+  if(!k||!isLegal(k)) return;
+  const pos=chainPos(), pts=comboScore(k);
+  S.score+=pts; S.chain++; S.rung={tier:k.tier,rank:k.rank};
+  S.played=cs.slice(); S.note=null;
+  S.log.push({t:comboLabel(k),c:TIERS[k.tier].base*S.mult[k.tier]+" × "+pos,p:pts});
+  S.hand=S.hand.filter((_,i)=>!S.sel.includes(i));
+  S.sel=[];
+  if(S.hand.length===0){
+    const bonus=Math.round(S.score*0.5);
+    S.score+=bonus;
+    S.log.push({t:"Άδειασμα χεριού",c:"+50%",p:bonus,cls:"bonus"});
+    render(); finishRound(); return;
+  }
+  render(); checkStuck();
+}
+function pass(){
+  if(S.breaths<=0||!S.rung) return;   /* με ελεύθερο Σκαλί το πάσο δεν προσφέρει τίποτα */
+  S.breaths--; S.rung=null; S.chain=0; S.sel=[]; S.played=[]; S.note=null;
+  S.log.push({t:"Πάσο",c:"σκαλί 0 · αλυσίδα 0",p:"−1 ανάση",cls:"pass"});
+  render(); checkStuck();
+}
+function descend(){
+  if(S.descend<=0) return;
+  S.descend--; S.rung=null; S.sel=[]; S.note=null;
+  S.log.push({t:"Κατέβασμα",c:"σκαλί 0 · αλυσίδα ×"+chainPos(),p:"",cls:"bonus"});
+  render();
+}
+function checkStuck(){
+  if(S.over) return;
+  if(hasLegal()) return;
+  /* Πάσο και Κατέβασμα βοηθούν μόνο όσο υπάρχει Σκαλί να μηδενιστεί. */
+  if(S.rung&&(S.descend>0||S.breaths>0)) return;
+  finishRound();
+}
+function finishRound(){
+  if(S.over) return;
+  S.over=true;
+  const cleared=S.score>=target();
+  if(!cleared){ sheetLose(); return; }
+  const excess=S.score-target();
+  const earn=6+Math.floor(excess/150);
+  S.money+=earn;
+  if(S.ante===TARGETS.length-1){ sheetWin(); return; }
+  sheetShop(earn,excess);
+}
+
+/* ---------- shop ---------- */
+const POOL=[
+  {id:"pair2", name:"Ζεύγη ×2",  desc:"Η βάση των ζευγαριών ανεβαίνει ένα βήμα.", cost:5,  go:()=>S.mult[1]++},
+  {id:"tri2",  name:"Τριάδες ×2",desc:"Η βάση των τριάδων ανεβαίνει ένα βήμα.",   cost:7,  go:()=>S.mult[2]++},
+  {id:"str2",  name:"Κέντες ×2", desc:"Η βάση των κεντών ανεβαίνει ένα βήμα.",    cost:8,  go:()=>S.mult[3]++},
+  {id:"fl2",   name:"Χρώματα ×2",desc:"Η βάση των χρωμάτων ανεβαίνει ένα βήμα.",  cost:9,  go:()=>S.mult[4]++},
+  {id:"fu2",   name:"Φουλ ×2",   desc:"Η βάση των φουλ ανεβαίνει ένα βήμα.",      cost:10, go:()=>S.mult[5]++},
+  {id:"qu2",   name:"Καρέ ×2",   desc:"Η βάση των καρέ ανεβαίνει ένα βήμα.",      cost:10, go:()=>S.mult[6]++},
+  {id:"breath",name:"Ανάση",     desc:"+1 Ανάση σε κάθε γύρο.",                   cost:6,  go:()=>S.breathsMax++},
+  {id:"chisel",name:"Σμίλη",     desc:"+1 χρήση ανά γύρο: αλλάζεις την αξία μιας κάρτας. Σβήνει ορφανά.", cost:7, go:()=>S.chiselMax++},
+  {id:"desc",  name:"Κατέβασμα", desc:"+1 χρήση ανά γύρο: μηδενίζεις το Σκαλί χωρίς να σπάσεις την Αλυσίδα.", cost:11, go:()=>S.descendMax++},
+  {id:"wide",  name:"Πλατύ χέρι",desc:"+1 κάρτα στο χέρι κάθε γύρο.",             cost:8,  go:()=>S.handSize++},
+  {id:"cstart",name:"Ενίσχυση Αλυσίδας",desc:"Η Αλυσίδα ξεκινά ένα σκαλί ψηλότερα.", cost:12, go:()=>S.chainStart++},
+  {id:"thin",  name:"Καθαριστής",desc:"Αφαιρεί μόνιμα τη χαμηλότερη αξία από την τράπουλα. Πυκνώνει τα χέρια.", cost:7,
+   go:()=>{for(let r=2;r<=14;r++) if(!S.removed.includes(r)){S.removed.push(r);break}}}
+];
+function pick3(){
+  const p=POOL.filter(o=>o.id!=="thin"||S.removed.length<5).slice();
+  const out=[];
+  while(out.length<3&&p.length){ out.push(p.splice(Math.floor(S.rnd()*p.length),1)[0]) }
+  return out;
+}
+
+/* ---------- rendering ---------- */
+const $=id=>document.getElementById(id);
+function cardHTML(c,sm,i,sel,dis){
+  const su=SUITS[c.si];
+  return '<button class="card'+(sm?" card--sm":"")+(su.red?" red":"")+(sel?" sel":"")+'"'+
+    (i==null?" disabled tabindex=\"-1\"":' data-i="'+i+'" aria-pressed="'+(sel?"true":"false")+'"')+
+    (dis?" disabled":"")+
+    '><span class="card__r">'+rname(c.r)+'</span><span class="card__s">'+su.s+'</span></button>';
+}
+function render(){
+  $("sAnte").textContent=(S.ante+1)+" / "+TARGETS.length;
+  $("sTarget").textContent=target();
+  $("sScore").textContent=S.score;
+  $("sMoney").textContent=S.money;
+  $("handCount").textContent=S.hand.length;
+
+  let b="";
+  for(let i=0;i<S.breathsMax;i++) b+='<i class="'+(i<S.breaths?"":"spent")+'"></i>';
+  $("sBreaths").innerHTML=b;
+
+  const pct=Math.min(100,S.score/target()*100);
+  const bar=$("progBar"); bar.style.width=pct+"%"; bar.classList.toggle("done",S.score>=target());
+
+  $("rungs").innerHTML=TIERS.slice(1).map((t,idx)=>{
+    const tier=idx+1, at=S.rung&&S.rung.tier===tier, under=S.rung&&tier<S.rung.tier;
+    return '<div class="'+(at?"at":under?"under":"")+'">'+t.short+'</div>';
+  }).join("");
+  $("rungNow").textContent=S.rung?(TIERS[S.rung.tier].name+" από "+rname(S.rung.rank)+" — ανέβα ψηλότερα"):"ελεύθερο — παίξε ό,τι θέλεις";
+  $("chainNow").textContent="Αλυσίδα ×"+chainPos();
+
+  $("played").innerHTML=S.played.length
+    ? S.played.map(c=>cardHTML(c,true,null,false,false)).join("")
+    : '<span class="empty">Κανένα χέρι ακόμα.</span>';
+
+  $("hand").innerHTML=S.hand.map((c,i)=>cardHTML(c,false,i,S.sel.includes(i),false)).join("");
+
+  /* readout */
+  const cs=S.sel.map(i=>S.hand[i]), k=classify(cs), ro=$("readout");
+  ro.className="readout";
+  if(S.chiselMode){
+    ro.className="readout ok";
+    ro.innerHTML='<span class="what">Σμίλη: διάλεξε μία κάρτα, μετά νέα αξία.</span>'+
+      '<span class="calc">'+(S.sel.length===1?rankPickerHTML():"καμία επιλεγμένη")+'</span>';
+  }else if(!cs.length){
+    if(S.note){
+      ro.className="readout no";
+      ro.innerHTML='<span class="what">'+S.note+'</span>';
+    }else{
+      ro.innerHTML='<span class="what" style="color:var(--muted)">Διάλεξε κάρτες για να σχηματίσεις χέρι.</span>';
+    }
+  }else if(!k){
+    ro.className="readout no";
+    ro.innerHTML='<span class="what">'+cs.length+' κάρτες</span><span class="why">Δεν σχηματίζουν έγκυρο χέρι.</span>';
+  }else if(!isLegal(k)){
+    ro.className="readout no";
+    ro.innerHTML='<span class="what">'+comboLabel(k)+'</span><span class="why">Δεν ξεπερνά το Σκαλί.</span>';
+  }else{
+    ro.className="readout ok";
+    ro.innerHTML='<span class="what">'+comboLabel(k)+'</span>'+
+      '<span class="calc">'+(TIERS[k.tier].base*S.mult[k.tier])+' × '+chainPos()+'</span>'+
+      '<span class="pts">'+comboScore(k)+'</span>';
+  }
+
+  $("bPlay").disabled=S.chiselMode||!k||!isLegal(k);
+  $("bPass").disabled=S.chiselMode||S.breaths<=0||!S.rung;
+  $("bHint").disabled=S.chiselMode;
+  $("bClose").disabled=S.chiselMode||S.score<target();
+  const bd=$("bDescend"); bd.hidden=S.descendMax===0; bd.disabled=S.chiselMode||S.descend<=0||!S.rung;
+  $("dCount").textContent=S.descend+"/"+S.descendMax;
+  const bc=$("bChisel"); bc.hidden=S.chiselMax===0; bc.disabled=S.chisel<=0&&!S.chiselMode;
+  bc.textContent=S.chiselMode?"Άκυρο":"Σμίλη ";
+  if(!S.chiselMode){const sm=document.createElement("small");sm.textContent=S.chisel+"/"+S.chiselMax;bc.appendChild(sm)}
+
+  $("log").innerHTML=S.log.length?S.log.slice().reverse().map(e=>
+    '<div class="'+(e.cls||"")+'"><span>'+e.t+'</span><span style="color:var(--muted)">'+e.c+'</span><b>'+(typeof e.p==="number"?"+"+e.p:e.p)+'</b></div>'
+  ).join(""):'<div style="color:var(--muted);border:0">—</div>';
+
+  const chips=[];
+  TIERS.slice(1).forEach((t,i)=>{ if(S.mult[i+1]>1) chips.push(t.short+" <b>×"+S.mult[i+1]+"</b>") });
+  if(S.breathsMax>3) chips.push("Ανάσες <b>"+S.breathsMax+"</b>");
+  if(S.chiselMax) chips.push("Σμίλη <b>"+S.chiselMax+"</b>");
+  if(S.descendMax) chips.push("Κατέβασμα <b>"+S.descendMax+"</b>");
+  if(S.handSize>15) chips.push("Χέρι <b>"+S.handSize+"</b>");
+  if(S.chainStart) chips.push("Αλυσίδα <b>+"+S.chainStart+"</b>");
+  if(S.removed.length) chips.push("Αφαιρέθηκαν <b>"+S.removed.map(rname).join(",")+"</b>");
+  $("owned").innerHTML=chips.length?chips.map(c=>'<span class="chip">'+c+'</span>').join(""):'<span class="chip">καμία</span>';
+}
+function rankPickerHTML(){
+  let h="";
+  for(let r=2;r<=14;r++) h+='<button class="btn" style="padding:.2rem .4rem" data-chisel="'+r+'">'+rname(r)+'</button> ';
+  return h;
+}
+
+/* ---------- sheets ---------- */
+function openSheet(html){ $("sheet").innerHTML=html; $("veil").hidden=false; }
+function closeSheet(){ $("veil").hidden=true; }
+
+function sheetShop(earn,excess){
+  const offers=pick3();
+  S.offers=offers;
+  openSheet(
+    '<h2>Ante '+(S.ante+1)+' — καθαρό</h2>'+
+    '<p class="sub">Το χέρι σου έβγαλε '+S.score+' με στόχο '+target()+'.</p>'+
+    '<div class="tally">'+
+      '<div>Σκορ γύρου <b>'+S.score+'</b></div>'+
+      '<div>Πάνω από τον στόχο <b>+'+excess+'</b></div>'+
+      '<div>Αμοιβή <b>+'+earn+'</b></div>'+
+      '<div>Χρήμα <b>'+S.money+'</b></div>'+
+    '</div>'+
+    '<span class="lbl">Κατάστημα — τρεις προσφορές</span>'+
+    '<div class="offers" id="offers">'+offers.map((o,i)=>
+      '<button class="offer" data-buy="'+i+'"'+(o.cost>S.money?" disabled":"")+'>'+
+        '<strong>'+o.name+'</strong><em>'+o.cost+'</em><span>'+o.desc+'</span></button>'
+    ).join("")+'</div>'+
+    '<button class="btn btn--go" data-next="1" style="width:100%">Επόμενο ante — στόχος '+TARGETS[S.ante+1]+'</button>'
+  );
+}
+function refreshShop(){
+  const box=$("offers"); if(!box) return;
+  Array.prototype.forEach.call(box.children,(el,i)=>{
+    const o=S.offers[i];
+    if(el.classList.contains("bought")) return;
+    el.disabled=o.cost>S.money;
+  });
+  const t=$("sheet").querySelector(".tally b:last-of-type");
+  const rows=$("sheet").querySelectorAll(".tally div b");
+  if(rows.length) rows[rows.length-1].textContent=S.money;
+}
+function sheetLose(){
+  openSheet(
+    '<h2 style="color:var(--bad)">Δεν έφτασε</h2>'+
+    '<p class="sub">Ante '+(S.ante+1)+': '+S.score+' από '+target()+'. Έμειναν '+S.hand.length+' κάρτες στο χέρι.</p>'+
+    '<div class="tally">'+
+      '<div>Antes που πέρασες <b>'+S.ante+'</b></div>'+
+      '<div>Seed <b>'+S.seed+'</b></div>'+
+    '</div>'+
+    '<p style="font-size:.9rem;color:var(--muted);margin-bottom:1rem">Τα ορφανά φύλλα σκοτώνουν τους γύρους, όχι τα αδύναμα χαρτιά. Η Σμίλη και το Κατέβασμα είναι οι αγορές που λύνουν το σχήμα του χεριού.</p>'+
+    '<button class="btn btn--go" data-restart="1" style="width:100%">Ίδιο seed, ξανά</button>'+
+    '<button class="btn btn--ghost" data-fresh="1" style="width:100%;margin-top:.4rem">Νέο seed</button>'
+  );
+}
+function sheetWin(){
+  openSheet(
+    '<h2 style="color:var(--good)">Καθάρισες και τα οκτώ</h2>'+
+    '<p class="sub">Το τελευταίο χέρι έβγαλε '+S.score+' με στόχο '+target()+'.</p>'+
+    '<div class="tally">'+
+      '<div>Τελικό χρήμα <b>'+S.money+'</b></div>'+
+      '<div>Seed <b>'+S.seed+'</b></div>'+
+    '</div>'+
+    '<button class="btn btn--go" data-fresh="1" style="width:100%">Νέο run</button>'
+  );
+}
+
+/* ---------- events ---------- */
+$("hand").addEventListener("click",e=>{
+  const b=e.target.closest("[data-i]"); if(!b||S.over) return;
+  const i=+b.dataset.i;
+  S.note=null;
+  if(S.chiselMode){ S.sel=[i]; render(); return; }
+  const at=S.sel.indexOf(i);
+  if(at>=0) S.sel.splice(at,1);
+  else{ if(S.sel.length>=5) return; S.sel.push(i) }
+  render();
+});
+$("readout").addEventListener("click",e=>{
+  const b=e.target.closest("[data-chisel]"); if(!b) return;
+  const nr=+b.dataset.chisel, i=S.sel[0];
+  if(i==null) return;
+  const old=S.hand[i].r;
+  S.hand[i]={r:nr,si:S.hand[i].si};
+  S.hand.sort(cmpCard);
+  S.chisel--; S.chiselMode=false; S.sel=[];
+  S.log.push({t:"Σμίλη",c:rname(old)+" → "+rname(nr),p:"",cls:"bonus"});
+  render();
+});
+$("bPlay").addEventListener("click",play);
+$("bPass").addEventListener("click",pass);
+$("bDescend").addEventListener("click",descend);
+$("bChisel").addEventListener("click",()=>{ S.chiselMode=!S.chiselMode; S.sel=[]; render() });
+$("bHint").addEventListener("click",()=>{
+  const b=cheapestLegal();
+  S.sel=b?b.idx.slice():[];
+  S.note=b?null:(!S.rung
+    ? "Κανένα νόμιμο χέρι με αυτά τα φύλλα. Ο γύρος κλείνει — τα ορφανά έμειναν αδιαμέλιστα."
+    : S.descend>0
+      ? "Κανένα νόμιμο χέρι. Κατέβασμα για να μηδενίσεις το Σκαλί χωρίς να σπάσεις την Αλυσίδα."
+      : S.breaths>0
+        ? "Κανένα νόμιμο χέρι. Πάσο για να μηδενίσεις το Σκαλί — κοστίζει μία Ανάση."
+        : "Κανένα νόμιμο χέρι και καμία Ανάση. Ο γύρος κλείνει.");
+  render();
+});
+$("bClose").addEventListener("click",()=>{ if(S.score>=target()) finishRound() });
+$("bNew").addEventListener("click",()=>{ closeSheet(); newRun($("seedIn").value) });
+$("seedIn").addEventListener("keydown",e=>{ if(e.key==="Enter"){ closeSheet(); newRun(e.target.value) } });
+
+$("veil").addEventListener("click",e=>{
+  const buy=e.target.closest("[data-buy]");
+  if(buy){
+    const i=+buy.dataset.buy, o=S.offers[i];
+    if(buy.classList.contains("bought")||o.cost>S.money) return;
+    S.money-=o.cost; o.go(); S.bought[o.id]=(S.bought[o.id]||0)+1;
+    buy.classList.add("bought"); buy.disabled=true;
+    refreshShop();
+    return;
+  }
+  if(e.target.closest("[data-next]")){ closeSheet(); S.ante++; startRound(); return }
+  if(e.target.closest("[data-restart]")){ closeSheet(); newRun(S.seed); return }
+  if(e.target.closest("[data-fresh]")){ closeSheet(); newRun(""); return }
+});
+
+/* ---------- boot ---------- */
+const d=new Date();
+newRun(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));
+})();
+</script>

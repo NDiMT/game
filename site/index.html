@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Εννέα Χέρια</title>
+<meta name="description" content="Σχεδιαστικός κατάλογος και playable demo για σόλο χαρτοπαίγνια με βάση πόκερ και climbing μηχανική.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Fira+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --felt:#123328;--felt-2:#17402f;--felt-line:#2a6049;
+  --cream:#e9e7db;--muted:#9db3a5;--brass:#c9a24a;--pip:#c02a24;
+  --display:"Cormorant Garamond",Georgia,serif;
+  --body:"Fira Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100dvh;background:var(--felt);color:var(--cream);
+  font-family:var(--body);line-height:1.6;
+  background-image:radial-gradient(ellipse 110% 70% at 50% 0%,rgba(255,255,255,.05),transparent 60%);
+  display:grid;place-items:center;padding:2rem 1.2rem;
+}
+main{max-width:44rem;width:100%}
+.eyebrow{font-family:var(--mono);font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--mono);font-weight:600;font-size:clamp(2.2rem,7vw,3.4rem);letter-spacing:.06em;color:var(--brass);margin:.5rem 0 0}
+.lede{font-family:var(--display);font-size:clamp(1.1rem,3vw,1.45rem);margin-top:.7rem;max-width:34rem;text-wrap:balance}
+.cards{display:grid;gap:1px;background:var(--felt-line);border:1px solid var(--felt-line);margin-top:2rem}
+a.card{
+  background:var(--felt-2);padding:1.1rem 1.25rem;text-decoration:none;color:inherit;
+  display:grid;grid-template-columns:2.2rem 1fr;gap:.15rem 1rem;transition:background .14s ease;
+}
+a.card:hover,a.card:focus-visible{background:#1c4b38;outline:none}
+a.card:focus-visible{box-shadow:inset 0 0 0 2px var(--brass)}
+a.card .sym{grid-row:span 2;align-self:center;font-size:1.6rem;line-height:1;text-align:center}
+a.card .sym.red{color:var(--pip)}
+a.card strong{font-family:var(--mono);font-size:1rem;letter-spacing:.03em}
+a.card span{font-size:.9rem;color:var(--muted)}
+footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--felt-line);font-size:.82rem;color:var(--muted)}
+footer p+p{margin-top:.4rem}
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Σόλο χαρτοπαίγνια · σχεδιαστική δουλειά</p>
+  <h1>ΕΝΝΕΑ ΧΕΡΙΑ</h1>
+  <p class="lede">Εννέα αυτόνομα σόλο παιχνίδια χτισμένα σε δύο βάσεις: πόκερ και climbing μηχανική. Το πρώτο από αυτά παίζεται εδώ.</p>
+
+  <nav class="cards">
+    <a class="card" href="raise/">
+      <span class="sym red">&#9830;</span>
+      <strong>RAISE — playable demo</strong>
+      <span>Οκτώ antes, seeded RNG, κατάστημα. Η ιεραρχία των χεριών πόκερ παιγμένη ως σκάλα που ανεβαίνει.</span>
+    </a>
+    <a class="card" href="ideas/">
+      <span class="sym">&#9824;</span>
+      <strong>Ο κατάλογος</strong>
+      <span>Και τα εννέα παιχνίδια με κανόνες και πραγματικά παραδείγματα γύρου, συν έξι ιδέες που δεν έγιναν παιχνίδια.</span>
+    </a>
+  </nav>
+
+  <footer>
+    <p>Όπου η βάση είναι climbing, η ορολογία είναι εξ ολοκλήρου νέα. Οι μηχανισμοί των climbing games είναι δημόσιο κτήμα· τα ονόματα και τα εικαστικά των εμπορικών εκδόσεων όχι. Το πόκερ είναι δημόσιο κτήμα χωρίς περιορισμό.</p>
+    <p>Πρωτότυπα σε στάδιο σχεδίασης — όχι εμπορικά προϊόντα.</p>
+  </footer>
+</main>
+</body>
+</html>
