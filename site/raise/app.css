@@ -540,8 +540,8 @@ body{background:radial-gradient(ellipse 110% 62% at 50% -8%,var(--felt-3) 0%,var
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 -12px 40px rgba(0,0,0,.6)}
 .grip{background:rgba(255,255,255,.28)}
 .sheet h2{background:linear-gradient(180deg,#fff4cf,var(--candy-1) 60%,var(--candy-2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 rgba(0,0,0,.4))}
-.sheet h2.bad{background:linear-gradient(180deg,#ffd0c8,#e0736a 60%,#c0483f)}
-.sheet h2.good{background:linear-gradient(180deg,#c9ffe3,#5fc79a 60%,#3a9d70)}
+.sheet h2.bad{background-image:linear-gradient(180deg,#ffd0c8,#e0736a 60%,#c0483f);-webkit-background-clip:text;background-clip:text}
+.sheet h2.good{background-image:linear-gradient(180deg,#c9ffe3,#5fc79a 60%,#3a9d70);-webkit-background-clip:text;background-clip:text}
 .offer,.owned__row,.tally div,.rtab div,.stats div,.chip{background:var(--gloss),rgba(0,0,0,.26)}
 .offer{border-radius:14px;border-color:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 3px 8px rgba(0,0,0,.3);transition:transform .25s var(--pop)}
 .offer:active:not(:disabled){transform:scale(.97)}
@@ -708,3 +708,8 @@ body.lastplay .pips--play i:not(.spent){animation:heartbeat 1s ease-in-out infin
 .tfoot .piles{align-self:end;margin-right:auto;padding-left:.5rem;padding-bottom:.15rem}
 .chain{margin-left:auto;align-self:end;padding-right:.5rem}
 .chain b{font-size:1.75rem;line-height:.95}
+
+/* shop: bought cards shown next to the carried hand */
+.keepc.new{outline:2px solid var(--good);outline-offset:1px;box-shadow:0 0 12px rgba(95,199,154,.45)}
+.keepc.new::after{content:"New";position:absolute;left:50%;bottom:-.55rem;transform:translateX(-50%);font-family:var(--mono);font-size:.5rem;letter-spacing:.06em;text-transform:uppercase;color:var(--good);background:var(--felt-0);padding:0 .25rem;border-radius:3px}
+.keeprow{row-gap:.7rem;margin-bottom:.7rem}

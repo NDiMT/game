@@ -58,12 +58,13 @@ UI στα αγγλικά. Τράπουλα 4 χρωμάτων (♠ μπλε-μα
 
 | Αναβαθμίσεις | Ενισχυμένα φύλλα |
 | --- | --- |
-| Pairs+ (και τα πολλαπλά ζευγάρια) · Trips+ · Stairs+ · Straights+ · Full Houses+ · Bombs+ (έως ×3), Extra Play (έως 7), Breath, Discards, Wide Hand, Head Start, Cull | **Gold** ×2 · **Glass** ×3 και σπάει · **Joker** · **Steel** (+15 βάση, επιστρέφει πάντα στο χέρι) |
+| Pairs+ (και τα πολλαπλά ζευγάρια) · Sets+ (τρίο, φουλ) · Runs+ (κέντες, σκάλες) · Fuse (βόμβες, έως ×4), Extra Play (έως 7), Discards, Wide Hand, Head Start, Tip Jar (+2◎ ανά ante), Cull | **Gold** ×2 · **Glass** ×3 και σπάει · **Joker** · **Steel** (+15 βάση, επιστρέφει πάντα στο χέρι). Το φύλλο που αγοράζεις **μπαίνει στο χέρι** του επόμενου γύρου· αν δεν χωρά, φεύγει το χαμηλότερο κρατημένο (το βλέπεις πριν συνεχίσεις). |
 
-### Charms (5 θέσεις, 18 συνολικά, 5 κλειδωμένα)
+### Charms (5 θέσεις, 20 συνολικά, 5 κλειδωμένα)
 
 Ladder · Overkill · Low Road · Court · Loyalty · Cheap Breath · Second Wind · Sleight ·
-Encore · Mirror · Vault · Thrift · Scout — και κλειδωμένα με επιτεύγματα ζωής:
+Encore · Mirror (πρώτο χέρι ×2 και δύο σκαλιά) · Vault (+1◎ ανά 3, έως 6) · Thrift · Scout (δύο επόμενα φύλλα) ·
+**Kingmaker** (Ace in the Hole σκοράρει 50 × chain) · **Afterburner** (το χέρι μετά από βόμβα ×3) — και κλειδωμένα με επιτεύγματα ζωής:
 **Goldsmith** (3 Gold), **Glassblower** (5 Glass σπασμένα), **Summiteer** (3 βόμβες),
 **Gambler** (3 Raise), **Ember** (chain ×7). Η **Collection** φαίνεται στην αρχική οθόνη.
 

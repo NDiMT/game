@@ -23,7 +23,7 @@
     { id: "pairs", name: "Two Pair", short: "PAIRS", base: 20, step: 20, min: 4, tier: 2 },
   ];
   const BY_TIER = KINDS.slice(1).sort((a, b) => a.tier - b.tier);
-  const MULT_KIND = { m1: [1, 8], m2: [2], m3: [4], m4: [3], m5: [5], m6: [6, 7] };
+  const MULT_KIND = { m1: [1, 8], m2: [2, 5], m3: [4, 3], m4: [3], m5: [5], m6: [6, 7] };
   function kbase(k) {
     const K = KINDS[k.kind];
     if (k.kind === 4) return K.table[Math.min(K.table.length - 1, k.size - 5)];
@@ -44,22 +44,20 @@
     chalTargetMul: 0.75, thinAirCap: 4, ruleChance: 0.75, perfectChips: 3, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
     raiseMul: 2.0, raisePayout: 2, gamblerMul: 2.4,
     priceStep: 0.5,
-    maxBuy: { cs: 2, br: 2, wi: 2, di: 3, pl: 2, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
+    maxBuy: { cs: 2, br: 2, wi: 2, di: 3, pl: 2, tip: 3, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
   };
 
   const POOL = [
-    { id: "m1", name: "Pairs +", desc: "Pairs pay one step more.", cost: 5 },
-    { id: "m2", name: "Trips +", desc: "Trips pay one step more.", cost: 7 },
-    { id: "m3", name: "Straights +", desc: "Straights pay one step more.", cost: 8 },
-    { id: "m4", name: "Stairs +", desc: "Stairs pay one step more.", cost: 8 },
-    { id: "m5", name: "Full Houses +", desc: "Full houses pay one step more.", cost: 10 },
-    { id: "m6", name: "Bombs +", desc: "Bombs pay 1000 more.", cost: 10 },
+    { id: "m1", name: "Pairs +", desc: "Pairs and multi-pairs pay one step more.", cost: 6 },
+    { id: "m2", name: "Sets +", desc: "Trips and full houses pay one step more.", cost: 7 },
+    { id: "m3", name: "Runs +", desc: "Straights and stairs pay one step more.", cost: 8 },
+    { id: "m6", name: "Fuse", desc: "Bombs pay one step more: +1000 and up.", cost: 6 },
     { id: "pl", name: "Extra Play", desc: "+1 play per round.", cost: 12 },
-    { id: "br", name: "Breath", desc: "+1 pass per round.", cost: 7 },
-    { id: "di", name: "Discards", desc: "+2 discards for the rest of the run.", cost: 8 },
+    { id: "di", name: "Discards", desc: "+2 discards for the rest of the run.", cost: 7 },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card.", cost: 9 },
     { id: "cs", name: "Head Start", desc: "The chain starts one step higher.", cost: 12 },
-    { id: "th", name: "Cull", desc: "Remove the lowest rank from the deck. For good.", cost: 7 },
+    { id: "tip", name: "Tip Jar", desc: "+2 chips at the end of every ante.", cost: 6 },
+    { id: "th", name: "Cull", desc: "Remove the lowest rank from the deck. For good.", cost: 6 },
   ];
   const poolById = Object.fromEntries(POOL.map((o) => [o.id, o]));
 
@@ -73,18 +71,20 @@
   /* Charms: παθητικά εφέ. `lock` = συνθήκη ξεκλειδώματος (UI, lifetime stats). */
   const CHARMS = [
     { id: "ladder", name: "Ladder", glyph: "≡", desc: "Tight step — same hand, exactly one rank up: +1 chain.", cost: 8 },
-    { id: "leap", name: "Overkill", glyph: "⤒", desc: "Beat the rung by four ranks or more: the hand pays ×1.5.", cost: 8 },
+    { id: "leap", name: "Overkill", glyph: "⤒", desc: "Beat the rung by four ranks or more: the hand pays ×1.5.", cost: 7 },
     { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6 pay ×2.", cost: 6 },
     { id: "court", name: "Court", glyph: "♛", desc: "Hands with a face card: +20 base.", cost: 7 },
     { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: +1 chain.", cost: 9 },
     { id: "cheap", name: "Cheap Breath", glyph: "½", desc: "Pass keeps the whole chain.", cost: 10 },
-    { id: "wind", name: "Second Wind", glyph: "∞", desc: "The first pass each round costs no breath.", cost: 9 },
-    { id: "sleight", name: "Sleight", glyph: "✂", desc: "Gain a discard at the start of every round.", cost: 7 },
+    { id: "wind", name: "Second Wind", glyph: "∞", desc: "The first pass each round costs no breath.", cost: 6 },
+    { id: "sleight", name: "Sleight", glyph: "✂", desc: "Gain a discard at the start of every round.", cost: 8 },
     { id: "encore", name: "Encore", glyph: "⧗", desc: "Your last play of the round pays ×2.", cost: 9 },
-    { id: "mirror", name: "Mirror", glyph: "◐", desc: "The first hand of each round pays ×2.", cost: 9 },
-    { id: "vault", name: "Vault", glyph: "◎", desc: "Interest: +1 chip per 5 held at ante end, up to 5.", cost: 6 },
+    { id: "mirror", name: "Mirror", glyph: "◐", desc: "The first hand of each round pays ×2 and counts as two chain steps.", cost: 9 },
+    { id: "vault", name: "Vault", glyph: "◎", desc: "Interest: +1 chip per 3 held at ante end, up to 6.", cost: 6 },
     { id: "thrift", name: "Thrift", glyph: "−", desc: "Everything in the shop costs 2 less.", cost: 7 },
-    { id: "scout", name: "Scout", glyph: "◉", desc: "See the next card of the pile.", cost: 5 },
+    { id: "scout", name: "Scout", glyph: "◉", desc: "See the next two cards of the pile.", cost: 4 },
+    { id: "kingmaker", name: "Kingmaker", glyph: "A", desc: "Ace in the Hole also scores 50 × chain.", cost: 8 },
+    { id: "afterburner", name: "Afterburner", glyph: "»", desc: "The hand right after a bomb pays ×3.", cost: 9 },
     { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards pay ×3.", cost: 8, lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
     { id: "glassblower", name: "Glassblower", glyph: "◇", desc: "Glass survives half the time.", cost: 8, lock: { key: "glass", n: 5, text: "Shatter 5 Glass cards" } },
     { id: "summiteer", name: "Summiteer", glyph: "▲", desc: "Bombs pay ×1.5.", cost: 10, lock: { key: "quads", n: 3, text: "Play 3 bombs" } },
@@ -162,6 +162,7 @@
       case "ch": S.chiselMax += 1; break;
       case "wi": S.handSize += 1; break;
       case "cs": S.chainStart += 1; break;
+      case "tip": S.tip = (S.tip || 0) + 2; break;
       case "th": {
         const ranks = S.deck.filter((c) => !isWild(c)).map((c) => c.r);
         if (!ranks.length) break;
@@ -219,10 +220,11 @@
     /* Το χέρι μένει από γύρο σε γύρο· στο κατάστημα διαλέγεις ποια φύλλα φεύγουν. */
     /* Steel φύλλα γυρίζουν πάντα στο χέρι, έστω κι αν παίχτηκαν· μετά τα κρατημένα. */
     const steel = S.deck.filter((c) => c.e === "steel").map((c) => Object.assign({}, c));
-    const kept = (S.keep || []).map((i) => S.hand[i]).filter((c) => c && c.e !== "steel");
-    const first = steel.concat(kept).slice(0, n), firstIds = new Set(first.map((c) => c.id));
+    const fresh = freshCards(S).map((c) => Object.assign({}, c));
+    const kept = (S.keep || []).map((i) => S.hand[i]).filter((c) => c && c.e !== "steel" && !fresh.some((f) => f.id === c.id));
+    const first = steel.concat(fresh, kept).slice(0, n), firstIds = new Set(first.map((c) => c.id));
     const rest = shuffle(S, S.deck.filter((c) => !firstIds.has(c.id)).map((c) => Object.assign({}, c)));
-    S.pile = rest; S.discardPile = []; S.keep = [];
+    S.pile = rest; S.discardPile = []; S.keep = []; S.fresh = [];
     S.hand = first.map((c) => { const k = Object.assign({}, c); delete k.h; delete k.n; return k; });
     draw(S, n - S.hand.length);
     S.hand.forEach((c) => { delete c.n; });
@@ -317,6 +319,7 @@
     if (has(S, "mirror") && S.plays === 0) { hm *= 2; notes.push("Mirror ×2"); }
     if (has(S, "ember") && pos >= 5) { hm *= 1.5; notes.push("Ember +50%"); }
     if (has(S, "encore") && S.playsLeft === 1) { hm *= 2; notes.push("Encore ×2"); }
+    if (has(S, "afterburner") && S.lastK && isBomb(S.lastK) && !isBomb(k)) { hm *= 3; notes.push("Afterburner ×3"); }
     if (R === "r_red" || R === "r_black") { const ls = leadSuit(cs), red = ls === 1 || ls === 2; if (ls != null && (R === "r_red") === red) { hm *= 1.5; notes.push((R === "r_red" ? "Red" : "Black") + " Night ×1.5"); } }
     if ((R === "r_str2" && k.kind === 4) || (R === "r_trips2" && k.kind === 2) || (R === "r_full2" && k.kind === 5)) { hm *= 2; notes.push(ruleById[R].name + " ×2"); }
     if (R === "r_low2" && !isBomb(k) && k.rank <= 6) { hm *= 2; notes.push("Underdogs ×2"); }
@@ -472,8 +475,10 @@
     if (e.ace) {
       const cs = removeSel(S, false);
       S.played = cs.slice(); S.rung = null; S.stats.aces += 1; S.races += 1;
-      S.log.push({ t: "Ace in the Hole", c: "rung reset · chain ×" + chainPos(S) + " kept", p: "", cls: "bonus" });
-      const ev = { type: "ace", pts: 0, tags: ["Ace in the Hole"] };
+      let apts = 0;
+      if (has(S, "kingmaker")) { apts = 50 * chainPos(S); S.score += apts; }
+      S.log.push({ t: "Ace in the Hole", c: "rung reset · chain ×" + chainPos(S) + " kept" + (apts ? " · Kingmaker" : ""), p: apts || "", cls: "bonus" });
+      const ev = { type: "ace", pts: apts, tags: ["Ace in the Hole"] };
       afterPlay(S, cs, ev);
       return ev;
     }
@@ -492,6 +497,7 @@
     if (!S.firstK) S.firstK = k; S.lastK = k; S.rkinds[k.kind] = (S.rkinds[k.kind] || 0) + 1; if (bomb) S.rbombs += 1;
     /* Η βόμβα σκάει: 1000 σταθερά, το τραπέζι ανοίγει, η αλυσίδα συνεχίζει κανονικά. */
     S.chain += 1;
+    if (has(S, "mirror") && S.plays === 0) { S.chain += 1; tags.push("Mirror"); }
     S.rung = bomb ? null : { kind: k.kind, rank: Math.min(14, k.rank + (chal(S) === "sticky" ? 1 : 0)), size: k.size };
     { const pos = chainPos(S); if (pos > S.rmax) S.rmax = pos;
       if (pos > S.stats.maxChain) S.stats.maxChain = pos;
@@ -602,15 +608,15 @@
       else { earn = 0; raiseResult = "lost"; S.log.push({ t: "Raise lost", c: "payout ×0", p: "", cls: "pass" }); }
     }
     let interest = 0;
-    if (has(S, "vault")) { interest = Math.min(5, Math.floor(S.money / 5)); }
-    const perfectChips = perfect ? CFG.perfectChips : 0;
-    S.money += earn + interest + perfectChips;
-    if (S.ante === TARGETS.length - 1) { S.phase = "won"; return { cleared: true, won: true, ex, earn, interest, raiseResult, contract, perfect, perfectChips }; }
+    if (has(S, "vault")) { interest = Math.min(6, Math.floor(S.money / 3)); }
+    const tip = S.tip || 0, perfectChips = perfect ? CFG.perfectChips : 0;
+    S.money += earn + interest + perfectChips + tip;
+    if (S.ante === TARGETS.length - 1) { S.phase = "won"; return { cleared: true, won: true, ex, earn, interest, tip, raiseResult, contract, perfect, perfectChips }; }
     S.phase = "shop"; S.rerolls = 0;
-    S.keep = S.hand.map((_, i) => i);
+    S.keep = S.hand.map((_, i) => i); S.fresh = [];
     S.offers = makeOffers(S);
     S.contract = null; S.contractOffers = [];
-    return { cleared: true, won: false, ex, earn, interest, raiseResult, contract, perfect, perfectChips };
+    return { cleared: true, won: false, ex, earn, interest, tip, raiseResult, contract, perfect, perfectChips };
   }
 
   /* ============================== κατάστημα ============================== */
@@ -655,7 +661,7 @@
     if (!canBuy(S, i).ok) return false;
     const o = S.offers[i];
     S.money -= offerCost(S, o);
-    if (o.kind === "card") S.deck.push(Object.assign({ id: S.nextId++ }, o.card));
+    if (o.kind === "card") { const c = Object.assign({ id: S.nextId++ }, o.card); S.deck.push(c); S.fresh = (S.fresh || []).concat(c.id); trimKeep(S); }
     else if (o.kind === "charm") S.charms.push(o.id);
     else apply(S, o.id);
     o.bought = true;
@@ -668,12 +674,25 @@
     S.charms.splice(idx, 1);
     return true;
   }
+  /* Φύλλα που αγοράστηκαν σε αυτό το κατάστημα: μπαίνουν στο χέρι του επόμενου γύρου. */
+  const freshCards = (S) => { const ids = new Set(S.fresh || []); return S.deck.filter((c) => ids.has(c.id) && c.e !== "steel"); };
+  /* Αν το χέρι δεν χωρά steel + νέα + κρατημένα, βγαίνει το χαμηλότερο κρατημένο (όχι steel/τζόκερ αν γίνεται). */
+  function trimKeep(S) {
+    const room = S.handSize - S.deck.filter((c) => c.e === "steel").length - freshCards(S).length;
+    S.keep = S.keep || [];
+    while (S.keep.length > Math.max(0, room)) {
+      const kept = S.keep.map((i) => S.hand[i]).filter(Boolean).sort(cmp);
+      const pick = kept.find((c) => c.e !== "steel" && !isWild(c)) || kept[0];
+      if (!pick) break;
+      S.keep.splice(S.keep.indexOf(S.hand.indexOf(pick)), 1);
+    }
+  }
   /* Στο κατάστημα: κάθε φύλλο είναι κρατημένο εξ ορισμού· το πάτημα το βγάζει (θα αντικατασταθεί). */
   function toggleKeep(S, i) {
     if (S.phase !== "shop" || !S.hand[i]) return false;
     S.keep = S.keep || [];
     const at = S.keep.indexOf(i);
-    if (at >= 0) S.keep.splice(at, 1); else S.keep.push(i);
+    if (at >= 0) S.keep.splice(at, 1); else { S.keep.push(i); trimKeep(S); }
     return true;
   }
   function nextAnte(S) { if (S.phase !== "shop") return false; S.ante += 1; S.contract = (S.contracts && S.contracts[S.ante]) || null; startRound(S); return true; }
@@ -683,7 +702,7 @@
   const currentRule = (S) => (rule(S) ? ruleById[rule(S)] : null);
   const upcomingRule = (S) => { const a = S.ante + 1; return !S.chals[a] && S.rules && S.rules[a] ? ruleById[S.rules[a]] : null; };
   const nextTarget = (S) => { const a = S.ante + 1, id = S.chals[a]; if (a >= TARGETS.length) return null; return Math.round(TARGETS[a] * (id === "richair" ? CFG.richAirMul : id ? CFG.chalTargetMul : 1)); };
-  const peek = (S) => (has(S, "scout") && S.pile.length ? S.pile[S.pile.length - 1] : null);
+  const peek = (S) => (has(S, "scout") && S.pile.length ? S.pile.slice(-2).reverse() : null);
 
   /* ============================== σειριοποίηση ============================== */
   const serialize = (S) => JSON.stringify(S);
@@ -696,7 +715,7 @@
     classify, isLegal, chainPos, scoreOf, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit, over,
     candidates, legalMoves, hasLegal, cheapest, suggest, aceIndex, orphans,
     toggle, reveal, play, discard, canDiscard, pass, canPass, raise, canRaise, chisel, stuck, stuckReason, finish,
-    makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, toggleKeep, nextAnte, upcoming, current, currentRule, upcomingRule, upcomingContract, peek, has,
+    makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, toggleKeep, freshCards, nextAnte, upcoming, current, currentRule, upcomingRule, upcomingContract, peek, has,
     contractStatus, contractMet, contractBonus, chooseContract,
     serialize, restore, todaySeed,
   };

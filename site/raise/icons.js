@@ -20,6 +20,9 @@
     summiteer: '<path d="M3 20l6-11 4 6 2-3 6 8zM9 9l2-4 3 5"/>',
     gambler: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/>',
     ember: '<path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-6 1 1 2 2 2 4 1-2 1-5 1-8z"/>',
+    kingmaker: '<path d="M5 20L12 4l7 16M8 14h8"/><path d="M4 20h16"/>',
+    afterburner: '<path d="M4 6l7 6-7 6M12 6l7 6-7 6"/>',
+    tip: '<path d="M8 4h8v3H8zM6 7h12l-1 13H7z"/><path d="M9.5 14h5M12 11.5v5"/>',
     m1: '<rect x="3" y="6" width="9" height="13" rx="1.5"/><rect x="12" y="4" width="9" height="13" rx="1.5"/>',
     m2: '<rect x="2" y="7" width="8" height="12" rx="1.5"/><rect x="8" y="5" width="8" height="12" rx="1.5"/><rect x="14" y="3" width="8" height="12" rx="1.5"/>',
     m3: '<path d="M3 19h4v-4h4v-4h4V7h6"/>',
@@ -36,8 +39,8 @@
   };
   const HUE = {
     ladder: 45, leap: 20, lowroad: 200, court: 48, loyal: 230, cheap: 170, wind: 195, sleight: 350, encore: 280, mirror: 260, vault: 40, thrift: 130,
-    scout: 190, goldsmith: 50, glassblower: 185, summiteer: 210, gambler: 330, ember: 15,
-    m1: 45, m2: 30, m3: 330, m4: 280, m5: 150, m6: 5, pl: 120, br: 195, di: 200, ch: 30, wi: 260, cs: 100, th: 350,
+    scout: 190, goldsmith: 50, glassblower: 185, summiteer: 210, gambler: 330, ember: 15, kingmaker: 48, afterburner: 10, tip: 95,
+    m1: 45, m2: 150, m3: 330, m4: 280, m5: 150, m6: 5, pl: 120, br: 195, di: 200, ch: 30, wi: 260, cs: 100, th: 350,
   };
   /* χρώμα ανά είδος χεριού (kind id) */
   const KIND_HUE = { 1: 45, 8: 30, 2: 200, 3: 280, 4: 330, 5: 150, 6: 5, 7: 5 };

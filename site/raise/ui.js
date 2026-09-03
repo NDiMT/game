@@ -99,7 +99,7 @@
     $("tnote").textContent = "";
     $("chainN").textContent = "×" + pos;
     document.body.dataset.heat = pos >= 7 ? 3 : pos >= 5 ? 2 : pos >= 3 ? 1 : 0;
-    const pk = G.peek(S); $("peek").hidden = !pk; if (pk) $("peekCard").innerHTML = cardHTML(pk, null, false, true, 0, 1);
+    const pk = G.peek(S); $("peek").hidden = !pk; if (pk) $("peekCard").innerHTML = pk.map((c) => cardHTML(c, null, false, true, 0, 1)).join("");
     const tc = $("tcards");
     tc.innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, S.played.length)).join("");
     { const tn = S.played.length, tw = ($("table").clientWidth || 340) - 28, cw = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 44;
@@ -243,9 +243,10 @@
     }).join("");
   }
   function keepHTML() {
-    const k = S.keep || [], out = S.hand.length - k.length;
-    return '<div class="sec"><span class="lbl">Your hand carries over' + (out ? ' · swapping ' + out : '') + '</span><p class="sub" style="margin:.2rem 0 .45rem">Tap a card to swap it for a fresh one next round.</p><div class="keeprow">' +
-      S.hand.map((c, i) => { const on = k.indexOf(i) >= 0; return '<button class="keepc' + (on ? " on" : " off") + '" data-keep="' + i + '" aria-pressed="' + on + '">' + cardHTML(c, null, false, true, 0, 1) + '</button>'; }).join("") + '</div></div>';
+    const k = S.keep || [], out = S.hand.length - k.length, fresh = G.freshCards(S);
+    return '<div class="sec"><span class="lbl">Your hand carries over' + (out ? ' · swapping ' + out : '') + (fresh.length ? ' · +' + fresh.length + ' new' : '') + '</span><p class="sub" style="margin:.2rem 0 .45rem">Tap a card to swap it for a fresh one next round. Bought cards join your hand.</p><div class="keeprow">' +
+      S.hand.map((c, i) => { const on = k.indexOf(i) >= 0; return '<button class="keepc' + (on ? " on" : " off") + '" data-keep="' + i + '" aria-pressed="' + on + '">' + cardHTML(c, null, false, true, 0, 1) + '</button>'; }).join("") +
+      fresh.map((c) => '<span class="keepc new" title="New card">' + cardHTML(c, null, false, true, 0, 1) + '</span>').join("") + '</div></div>';
   }
   function contractHTML() {
     const c = G.upcomingContract(S); if (!c) return "";
@@ -259,7 +260,7 @@
     const T = G.target(S), up = G.upcoming(S), rr = r && r.raiseResult;
     openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + (rr === "won" ? " · raise made" : rr === "lost" ? " · raise missed" : "") + '</p>' +
       '<div class="tally"><div>Round<b>' + S.score + '</b></div>' +
-      (r ? '<div>Over target<b>+' + r.ex + '</b></div>' + (rr === "won" ? '<div>Raise<b class="good">×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</b></div>' : rr === "lost" ? '<div>Raise<b class="bad">missed · ×0</b></div>' : "") + (r.contract ? '<div>Contract · ' + r.contract.name + '<b class="' + (r.contract.met ? "good" : "bad") + '">' + (r.contract.met ? "+" + r.contract.bonus : "missed") + '</b></div>' : "") + (r.perfect ? '<div>Perfect round<b class="good">+' + r.perfectChips + '◎</b></div>' : "") + (r.interest ? '<div>Vault interest<b>+' + r.interest + '◎</b></div>' : "") + '<div>Payout<b>+' + r.earn + '◎</b></div>' : "") +
+      (r ? '<div>Over target<b>+' + r.ex + '</b></div>' + (rr === "won" ? '<div>Raise<b class="good">×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</b></div>' : rr === "lost" ? '<div>Raise<b class="bad">missed · ×0</b></div>' : "") + (r.contract ? '<div>Contract · ' + r.contract.name + '<b class="' + (r.contract.met ? "good" : "bad") + '">' + (r.contract.met ? "+" + r.contract.bonus : "missed") + '</b></div>' : "") + (r.perfect ? '<div>Perfect round<b class="good">+' + r.perfectChips + '◎</b></div>' : "") + (r.interest ? '<div>Vault interest<b>+' + r.interest + '◎</b></div>' : "") + (r.tip ? '<div>Tip Jar<b>+' + r.tip + '◎</b></div>' : "") + '<div>Payout<b>+' + r.earn + '◎</b></div>' : "") +
       '<div>Chips<b id="mn">' + S.money + '◎</b></div></div>' +
       (fresh && fresh.length ? '<div class="unlocked">✦ Unlocked · ' + fresh.map((id) => G.charmById[id].name).join(", ") + '</div>' : "") +
       (up ? '<div class="chalnext"><span class="lbl">Next · Challenge</span><b>' + up.name + '</b><span>' + up.desc + '</span></div>' : (G.upcomingRule(S) ? '<div class="chalnext rulenext"><span class="lbl">Next · Table rule</span><b>' + G.upcomingRule(S).name + '</b><span>' + G.upcomingRule(S).desc + '</span></div>' : "")) +
