@@ -36,7 +36,7 @@
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
   const TARGETS = [60, 65, 75, 85, 100, 115, 130, 155, 180, 215, 255, 300, 370, 450, 540, 670, 830, 1030, 1290, 1630, 2070, 2650, 3400, 4400, 5700, 7500, 9850, 13050, 17400, 23300];
   const CFG = {
-    handSize: 8, plays: 5, breaths: 2, discards: 2, discardCards: 4, chisel0: 1, carry: 2,
+    handSize: 8, plays: 5, breaths: 2, discards: 2, discardCards: 4, chisel0: 1,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
     offersUp: 2, offersCard: 1, offersCharm: 2, rerollCost: 3, rerollStep: 2,
     charmSlots: 5,
@@ -44,7 +44,7 @@
     chalTargetMul: 0.75, thinAirCap: 4, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
     raiseMul: 1.6, raisePayout: 2,
     priceStep: 0.5,
-    maxBuy: { cs: 2, br: 2, wi: 2, di: 2, ch: 3, pl: 2, kp: 2, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
+    maxBuy: { cs: 2, br: 2, wi: 2, di: 2, ch: 3, pl: 2, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
   };
 
   const POOL = [
@@ -59,7 +59,6 @@
     { id: "di", name: "Discard", desc: "+1 discard per round.", cost: 8 },
     { id: "ch", name: "Chisel", desc: "+1 per round: rewrite a card's rank.", cost: 7 },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card.", cost: 9 },
-    { id: "kp", name: "Pocket", desc: "Keep one more card between rounds.", cost: 9 },
     { id: "cs", name: "Head Start", desc: "The chain starts one step higher.", cost: 12 },
     { id: "th", name: "Cull", desc: "Remove the lowest rank from the deck. For good.", cost: 7 },
   ];
@@ -133,7 +132,6 @@
       case "di": S.discardsMax += 1; break;
       case "ch": S.chiselMax += 1; break;
       case "wi": S.handSize += 1; break;
-      case "kp": S.carryMax += 1; break;
       case "cs": S.chainStart += 1; break;
       case "th": {
         const ranks = S.deck.filter((c) => !isWild(c)).map((c) => c.r);
@@ -154,7 +152,7 @@
       v: 4, seed, rng: hash(seed) | 0,
       ante: 0, money: 0, phase: "round", offers: [], rerolls: 0,
       handSize: CFG.handSize, playsMax: CFG.plays, breathsMax: CFG.breaths, discardsMax: CFG.discards, chiselMax: CFG.chisel0, chainStart: 0,
-      carryMax: CFG.carry, keep: [], hand: [],
+      keep: [], hand: [],
       mult: [0, 1, 1, 1, 1, 1, 1, 1, 1], removed: [], bought: {},
       deck: [], nextId: 1, charms: [], charmSlots: CFG.charmSlots,
       unlocked: (unlocked || []).slice(),
@@ -184,8 +182,8 @@
   function startRound(S) {
     S.chal = S.chals[S.ante] || null;
     const n = roundHandSize(S);
-    /* Κρατημένα φύλλα από τον προηγούμενο γύρο (επιλογή στο κατάστημα). */
-    const kept = (S.keep || []).map((i) => S.hand[i]).filter(Boolean).slice(0, Math.min(S.carryMax, n));
+    /* Το χέρι μένει από γύρο σε γύρο· στο κατάστημα διαλέγεις ποια φύλλα φεύγουν. */
+    const kept = (S.keep || []).map((i) => S.hand[i]).filter(Boolean).slice(0, n);
     const keptIds = new Set(kept.map((c) => c.id));
     let cards = S.deck.filter((c) => !keptIds.has(c.id)).map((c) => Object.assign({}, c));
     const steel = cards.filter((c) => c.e === "steel"), rest = shuffle(S, cards.filter((c) => c.e !== "steel"));
@@ -195,7 +193,7 @@
     draw(S, n - S.hand.length);
     S.hand.forEach((c) => { delete c.n; });
     if (chal(S) === "blind") {
-      const idx = shuffle(S, S.hand.map((_, i) => i).filter((i) => !keptIds.has(S.hand[i].id)));
+      const idx = shuffle(S, S.hand.map((_, i) => i));
       idx.slice(0, Math.min(CFG.blindCount, S.hand.length - 2)).forEach((i) => { S.hand[i].h = true; });
     }
     S.sel = [];
@@ -534,6 +532,7 @@
     S.money += earn + interest;
     if (S.ante === TARGETS.length - 1) { S.phase = "won"; return { cleared: true, won: true, ex, earn, interest, raiseResult }; }
     S.phase = "shop"; S.rerolls = 0;
+    S.keep = S.hand.map((_, i) => i);
     S.offers = makeOffers(S);
     return { cleared: true, won: false, ex, earn, interest, raiseResult };
   }
@@ -593,12 +592,12 @@
     S.charms.splice(idx, 1);
     return true;
   }
-  /* Κράτημα φύλλου για τον επόμενο γύρο — μόνο στο κατάστημα, έως carryMax. */
+  /* Στο κατάστημα: κάθε φύλλο είναι κρατημένο εξ ορισμού· το πάτημα το βγάζει (θα αντικατασταθεί). */
   function toggleKeep(S, i) {
     if (S.phase !== "shop" || !S.hand[i]) return false;
     S.keep = S.keep || [];
     const at = S.keep.indexOf(i);
-    if (at >= 0) S.keep.splice(at, 1); else if (S.keep.length < S.carryMax) S.keep.push(i); else return false;
+    if (at >= 0) S.keep.splice(at, 1); else S.keep.push(i);
     return true;
   }
   function nextAnte(S) { if (S.phase !== "shop") return false; S.ante += 1; startRound(S); return true; }

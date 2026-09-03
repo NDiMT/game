@@ -202,7 +202,6 @@
     if (S.discardsMax > G.CFG.discards) c.push("Discards <b>" + S.discardsMax + "</b>");
     if (S.chiselMax > 1) c.push("Chisel <b>" + S.chiselMax + "</b>");
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
-    if (S.carryMax > G.CFG.carry) c.push("Pocket <b>" + S.carryMax + "</b>");
     if (S.chainStart) c.push("Head Start <b>+" + S.chainStart + "</b>");
     if (S.removed.length) c.push("Culled <b>" + S.removed.map(G.rname).join(",") + "</b>");
     const enh = {}; S.deck.forEach((d) => { if (d.e) enh[d.e] = (enh[d.e] || 0) + 1; });
@@ -230,9 +229,9 @@
     }).join("");
   }
   function keepHTML() {
-    const k = S.keep || [];
-    return '<div class="sec"><span class="lbl">Keep for next round · ' + k.length + '/' + S.carryMax + '</span><p class="sub" style="margin:.2rem 0 .45rem">Tap cards to carry them over. The rest is dealt fresh.</p><div class="keeprow">' +
-      S.hand.map((c, i) => '<button class="keepc' + (k.indexOf(i) >= 0 ? " on" : "") + '" data-keep="' + i + '" aria-pressed="' + (k.indexOf(i) >= 0) + '">' + cardHTML(c, null, false, true, 0, 1) + '</button>').join("") + '</div></div>';
+    const k = S.keep || [], out = S.hand.length - k.length;
+    return '<div class="sec"><span class="lbl">Your hand carries over' + (out ? ' · swapping ' + out : '') + '</span><p class="sub" style="margin:.2rem 0 .45rem">Tap a card to swap it for a fresh one next round.</p><div class="keeprow">' +
+      S.hand.map((c, i) => { const on = k.indexOf(i) >= 0; return '<button class="keepc' + (on ? " on" : " off") + '" data-keep="' + i + '" aria-pressed="' + on + '">' + cardHTML(c, null, false, true, 0, 1) + '</button>'; }).join("") + '</div></div>';
   }
   function shopBody() {
     return keepHTML() + '<div class="shophead"><span class="lbl">Shop</span><button class="tb" data-reroll="1"' + (S.money < G.rerollCost(S) ? " disabled" : "") + '>Reroll <em>' + G.rerollCost(S) + '◎</em></button></div><div class="offers" id="offers">' + offersHTML() + '</div>' +
@@ -286,7 +285,7 @@
       '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b> (no chain multiplier). Then the chain resets to ×1 and the table opens.</p>' +
       '<p><b>Discard</b> up to four cards, twice a round, and draw new ones. <b>Pass</b> resets the rung but breaks the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
-      '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Keep</b> up to two cards from your hand for the next round.</p>' +
+      '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
       '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
