@@ -48,20 +48,17 @@
     return '<' + tag + ' class="' + cls + '"' + st +
       (tbl ? ' aria-hidden="true"' : ' data-i="' + i + '" aria-pressed="' + (sel ? "true" : "false") + '" aria-label="' + (wild ? "wild" : G.rname(c.r) + " " + su.s) + (e ? " " + e : "") + '"') +
       '><span class="card__ix"><span class="card__r">' + (wild ? "W" : G.rname(c.r)) + '</span><span class="card__rs">' + (wild ? "★" : su.s) + '</span></span>' +
-      '<span class="card__pip">' + (wild ? "★" : su.s) + '</span><span class="card__ix card__ix2"><span class="card__r">' + (wild ? "W" : G.rname(c.r)) + '</span><span class="card__rs">' + (wild ? "★" : su.s) + '</span></span>' + (e ? '<span class="card__e">' + e + '</span>' : "") + '</' + tag + '>';
+      '<span class="card__pip">' + (wild ? "★" : su.s) + '</span>' + (e ? '<span class="card__e">' + e + '</span>' : "") + '</' + tag + '>';
   }
-  /* Μέγεθος φύλλου από πλάτος ΚΑΙ ύψος: το χέρι παίρνει το πολύ ~26% της οθόνης. */
+  /* Μέγεθος φύλλου όπως στο v2: από το πλάτος, με οροφή· δύο ίσες σειρές. */
   function fitHand(n) {
     const W = $("hand").clientWidth || 360, H = innerHeight || 700;
     const rows = n <= 10 ? 2 : 3, per = Math.max(1, Math.ceil(n / rows));
-    const byW = Math.floor((W - (per - 1) * 6) / per);
-    const budget = Math.max(104, Math.min(215, H * 0.26));
-    const byH = Math.floor((budget - (rows - 1) * 5) / rows / 1.4);
-    const cw = Math.max(38, Math.min(70, byW, byH));
+    const byW = Math.floor((W - (per - 1) * 4) / per);
+    const byH = Math.floor((Math.min(150, H * 0.2) - (rows - 1) * 5) / rows / 1.4);
+    const cw = Math.max(36, Math.min(52, byW, byH));
     document.documentElement.style.setProperty("--cw", cw + "px");
-    $("hand").style.maxWidth = (per * (cw + 6)) + "px";  // ίσες σειρές: 4+4, όχι 5+3
-    $("hand").classList.toggle("big", cw >= 58);
-    document.body.classList.toggle("short", H < 720);
+    $("hand").style.maxWidth = (per * (cw + 4) + 2) + "px";
   }
   const pips = (n, max, cls) => { let h = ""; for (let i = 0; i < max; i++) h += '<i class="' + (i < n ? "" : "spent") + '"></i>'; return h; };
   const charmToken = (id, extra) => { const c = G.charmById[id]; return '<button class="charm" data-charm="' + id + '" aria-label="' + c.name + '"' + (extra || "") + '><span>' + c.glyph + '</span></button>'; };
@@ -83,7 +80,6 @@
     const discMax = Math.max(S.discards, ch && ch.id === "nodiscard" ? 1 : S.discardsMax + (ch && ch.id === "fewplays" ? 1 : 0) + (G.has(S, "sleight") ? 2 : 0));
     $("discards").innerHTML = pips(S.discards, discMax);
     $("pileN").textContent = S.pile.length; $("dpileN").textContent = S.discardPile.length;
-    $("pile").classList.toggle("empty", !S.pile.length);
 
     let cm = S.charms.map((id) => charmToken(id)).join("");
     for (let i = S.charms.length; i < S.charmSlots; i++) cm += '<span class="charm charm--empty"></span>';
@@ -116,7 +112,6 @@
     } else {
       if (ui.note && Date.now() < ui.noteT) tools += '<span class="toast" style="flex:1">' + ui.note + '</span>';
       else {
-        tools += '<button class="tb" data-act="hint">Hint</button>';
         if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise <em>×' + (G.has(S, "gambler") ? 1.8 : G.CFG.raiseMul) + ' · pay ×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</em></button>';
         if (S.raised) tools += '<span class="toast gold raised" style="flex:1">RAISED · reach ' + S.raiseTarget + '</span>';
         if (S.chiselMax) tools += '<button class="tb" data-act="chisel"' + (S.chisel <= 0 ? " disabled" : "") + '>Chisel <em>' + S.chisel + '</em></button>';
@@ -142,6 +137,7 @@
     }
     $("bPass").disabled = ui.chisel || !G.canPass(S); $("passN").textContent = S.breaths;
     $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = S.discards;
+    $("bHint").disabled = ui.chisel || S.playsLeft <= 0;
   }
   function rankButtons() { let h = ""; for (let r = 2; r <= 14; r++) h += '<button data-rank="' + r + '">' + G.rname(r) + '</button>'; return h; }
   function note(msg, ms) { ui.note = msg; ui.noteT = Date.now() + (ms || 3800); render(); setTimeout(() => { if (Date.now() >= ui.noteT) render(); }, (ms || 3800) + 100); }
@@ -297,7 +293,7 @@
       (resume ? '<button class="big" data-continue="1">Continue · ante ' + (resume.ante + 1) + ' · ' + resume.score + ' pts</button>' : "") +
       '<button class="big' + (resume ? " ghost" : "") + '" data-daily="1">Daily · ' + G.todaySeed() + '</button>' +
       '<div class="row2"><button class="big ghost" data-random="1">Random run</button><button class="big ghost" data-howto="1">How to play</button></div>' +
-      '<button class="big ghost" data-collection="1">Collection · ' + un.length + '/' + G.CHARMS.length + '</button>';
+      '<button class="colllink" data-collection="1">Collection · ' + un.length + ' / ' + G.CHARMS.length + ' charms ›</button>';
     $("stats").innerHTML = l.runs ? '<div><b>' + l.runs + '</b><span>runs</span></div><div><b>' + l.best + '</b><span>best ante</span></div><div><b>' + l.wins + '</b><span>summits</span></div><div><b>' + l.bestScore + '</b><span>best round</span></div>' : "";
     $("start").hidden = false; document.body.classList.add("on-start"); FX.embers(true);
   }
@@ -337,6 +333,7 @@
   $("bPass").addEventListener("click", doPass);
   $("bDisc").addEventListener("click", doDiscard);
   $("bMenu").addEventListener("click", sheetMenu);
+  $("bHint").addEventListener("click", doHint);
   $("veil").addEventListener("click", (e) => {
     const t = e.target;
     const buy = t.closest("[data-buy]");

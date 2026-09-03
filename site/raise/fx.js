@@ -75,7 +75,7 @@
     const t = targetEl.getBoundingClientRect(), tx = t.left + t.width / 2, ty = t.top + t.height / 2;
     rects.forEach((r, i) => {
       if (!r) return;
-      const g = document.createElement("div"); g.className = "ghost";
+      const g = document.createElement("div"); g.className = "flycard";
       g.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;transition-delay:${i * 30}ms`;
       document.body.appendChild(g);
       requestAnimationFrame(() => requestAnimationFrame(() => { g.style.transform = `translate(${tx - r.left - r.width / 2}px,${ty - r.top - r.height / 2}px) scale(.25) rotate(20deg)`; g.style.opacity = "0"; }));

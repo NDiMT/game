@@ -37,24 +37,17 @@
   <header class="hud">
     <div class="hud__score"><b id="score">0</b><span id="tgt">/ 100</span></div>
     <div class="hud__r">
-      <span class="ante">ANTE <b id="ante">1</b>/<span id="anteN">12</span></span>
-      <span class="coin"><span id="money">0</span>◎</span>
+      <div class="row"><span class="ante">ANTE <b id="ante">1</b>/<span id="anteN">12</span></span><span class="coin"><span id="money">0</span>◎</span></div>
+      <div class="row"><div class="pips pips--play" id="plays" aria-label="Plays"></div></div>
+      <div class="row"><div class="pips pips--breath" id="breaths" aria-label="Breaths"></div><div class="pips pips--disc" id="discards" aria-label="Discards"></div></div>
     </div>
     <div class="meter"><i id="fill"></i></div>
-    <div class="res">
-      <div class="res__i"><span class="lbl">Plays</span><div class="pips pips--play" id="plays"></div></div>
-      <div class="res__i"><span class="lbl">Breaths</span><div class="pips pips--breath" id="breaths"></div></div>
-      <div class="res__i"><span class="lbl">Discards</span><div class="pips pips--disc" id="discards"></div></div>
-      <div class="piles">
-        <span class="pile" id="pile" title="Pile"><i></i><b id="pileN">44</b></span>
-        <span class="pile pile--d" id="dpile" title="Discards"><i></i><b id="dpileN">0</b></span>
-      </div>
-    </div>
-    <div class="charms" id="charms" aria-label="Charms"></div>
   </header>
 
   <main class="table" id="table">
+    <button class="hintb" id="bHint" aria-label="Hint">?</button>
     <div class="rung">
+      <div class="charms" id="charms" aria-label="Charms"></div>
       <span class="lbl">Rung</span>
       <b class="rung__val free" id="rungVal">open</b>
       <div class="rung__dots" id="rungDots"></div>
@@ -65,7 +58,7 @@
     <div class="tfoot">
       <span class="tnote" id="tnote"></span>
       <div class="peek" id="peek" hidden><span class="lbl">Next</span><span id="peekCard"></span></div>
-      <div class="chain" id="chain"><span>Chain</span><b id="chainN">×1</b></div>
+      <div class="chain" id="chain"><span>Chain</span><b id="chainN">×1</b><span class="piles" id="piles">pile <b id="pileN">44</b> · out <b id="dpileN">0</b></span></div>
     </div>
   </main>
 
