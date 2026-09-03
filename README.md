@@ -41,12 +41,13 @@ UI στα αγγλικά. Τράπουλα 4 χρωμάτων (♠ μπλε-μα
   πολλαπλασιαστή αλυσίδας. Μετά η αλυσίδα γυρίζει στο ×1 και το τραπέζι ανοίγει. Το σκορ συνεχίζει.
 - Σκορ = βάση × **Chain** (θέση στην αλυσίδα) × ενισχύσεις × charms. Το δίλημμα:
   μακριές κέντες πληρώνουν πολύ αλλά δύσκολα χτυπιούνται· χαμηλά ζευγάρια χτίζουν αλυσίδα.
-- Πόροι ανά γύρο: **5 Plays**, **2 Discards** (πετάς έως 4 φύλλα, τραβάς νέα), **2 Breaths**
+- Πόροι: **5 Plays** και **2 Breaths** ανά γύρο· **5 Discards για όλο το run** (πετάς έως 4 φύλλα,
+  τραβάς νέα· +2 από την αναβάθμιση Discards, +1 ανά γύρο με Sleight)
   (Pass: το Rung ανοίγει, το Chain πέφτει στο μισό). Ο γύρος τελειώνει όταν τελειώσουν τα Plays.
 - **Ace in the Hole:** Άσος μόνος του → Rung μηδενίζει, Chain μένει, δεν κοστίζει Play.
 - **Raise:** μόλις καθαρίσεις τον στόχο, ανέβασέ τον σε ×2 για τα Plays που έμειναν.
   Πιάνεις → αμοιβή ×2. Χάνεις → αμοιβή ×0.
-- Ξεκινάς με μία **Chisel**. **Το χέρι σου μένει από ante σε ante**: στο κατάστημα
+- Η τράπουλα έχει **2 Τζόκερ** (μπαλαντέρ). **Το χέρι σου μένει από ante σε ante**: στο κατάστημα
   πατάς όσα φύλλα θέλεις να φύγουν και αντικαθίστανται με νέα.
 
 ### Κατάστημα
@@ -57,7 +58,7 @@ UI στα αγγλικά. Τράπουλα 4 χρωμάτων (♠ μπλε-μα
 
 | Αναβαθμίσεις | Ενισχυμένα φύλλα |
 | --- | --- |
-| Pairs+ (και τα πολλαπλά ζευγάρια) · Trips+ · Stairs+ · Straights+ · Full Houses+ · Bombs+ (έως ×3), Extra Play (έως 7), Breath, Discard, Chisel, Wide Hand, Head Start, Cull | **Gold** ×2 · **Glass** ×3 και σπάει · **Wild** · **Steel** (+15 βάση, επιστρέφει πάντα στο χέρι) |
+| Pairs+ (και τα πολλαπλά ζευγάρια) · Trips+ · Stairs+ · Straights+ · Full Houses+ · Bombs+ (έως ×3), Extra Play (έως 7), Breath, Discards, Wide Hand, Head Start, Cull | **Gold** ×2 · **Glass** ×3 και σπάει · **Joker** · **Steel** (+15 βάση, επιστρέφει πάντα στο χέρι) |
 
 ### Charms (5 θέσεις, 18 συνολικά, 5 κλειδωμένα)
 
@@ -69,7 +70,7 @@ Encore · Mirror · Vault · Thrift · Scout — και κλειδωμένα μ�
 ### Challenges
 
 Antes 4, 9, 14, 19, 24 (seeded, με στόχο ×0,75): No Pass · Short Hand · Blind Deal ·
-High Ground · One Breath · Thin Air · Rich Air · One Discard · Four Plays · Sticky Rung.
+High Ground · One Breath · Thin Air · Rich Air · No Discards · Four Plays · Sticky Rung.
 Το ante 30 είναι πάντα **The Summit**: μόνο Άσος μηδενίζει το Rung.
 
 ### Δομή
@@ -89,7 +90,7 @@ High Ground · One Breath · Thin Air · Rich Air · One Discard · Four Plays �
 
 Δύο εργαλεία: `tools/sweep.js` (σάρωση καμπυλών) και `tools/study.js` (instrumented runs
 με στρατηγικές `base`, `finisher`, `bombfish` — βλ. `docs/playtest.md`). Οι στόχοι
-(`105 → 12 750`, άνοδος ~×1,15 ανά ante) προέκυψαν από το διάμεσο σκορ του finisher bot ανά
+(`105 → 17 200`, άνοδος ~×1,15 ανά ante, +35% σταδιακά από το ante 15) προέκυψαν από το διάμεσο σκορ του finisher bot ανά
 ante, διαιρεμένο με λόγο-στόχο που πέφτει γραμμικά από 3,0 (ante 1) σε 1,0 (ante 30): η
 δυσκολία ακολουθεί την κλιμάκωση του παίκτη μέσω του καταστήματος, χωρίς γκρεμό.
 Finisher bot: **0% νίκες**, μέσος θάνατος στο ante 11, λόγος σκορ/στόχου p50 ≈ 2,6 στην

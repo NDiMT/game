@@ -4,7 +4,7 @@ const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 150, STRAT = process.argv[3] || "base";
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = ["ladder", "cheap", "lowroad", "mirror", "encore", "wind", "court", "loyal", "vault", "sleight", "thrift", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "br", "wi", "ch", "m2", "m3", "m4", "m5", "m6", "th"];
+  "pl", "m1", "cs", "di", "br", "wi", "m2", "m3", "m4", "m5", "m6", "th"];
 const CARD_PR = { wild: 12.5, gold: 14.5, steel: 16.5, glass: 18.5 };
 
 const st = { kinds: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, passes: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(30).fill(0), wins: 0,

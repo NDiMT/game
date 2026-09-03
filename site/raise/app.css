@@ -613,3 +613,9 @@ body.boom .table{animation:boomring .8s ease-out}
 .chal{background:var(--gloss),linear-gradient(180deg,hsl(350 80% 55% / .35),hsl(350 80% 45% / .2));border-color:hsl(350 90% 75% / .6)}
 .pips--disc i{background:radial-gradient(circle at 35% 28%,#e6f7ff,#5cc4ff 45%,#1f6fb8)}
 .stats b{color:#ffcb5c}
+
+/* run-long discards: pips + overflow count; off during No Discards */
+.pips--disc b{font-family:var(--mono);font-size:.62rem;font-weight:700;color:#8fd0e2;margin-left:.1rem}
+.pips--disc.off{opacity:.35}
+.card.e-wild .card__r{font-size:calc(var(--cw) * .42)}
+.card.e-wild .card__e{display:none}

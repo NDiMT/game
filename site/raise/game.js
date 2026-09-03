@@ -34,9 +34,9 @@
   }
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
-  const TARGETS = [105, 120, 145, 185, 240, 310, 370, 440, 550, 690, 840, 1020, 1170, 1390, 1590, 1880, 2240, 2660, 3100, 3800, 4250, 4800, 5550, 6150, 7150, 8150, 9300, 10250, 11500, 12750];
+  const TARGETS = [105, 120, 145, 185, 240, 310, 370, 440, 550, 690, 840, 1020, 1170, 1390, 1590, 1920, 2340, 2850, 3400, 4250, 4850, 5600, 6600, 7450, 8800, 10250, 11900, 13350, 15250, 17200];
   const CFG = {
-    handSize: 8, plays: 5, breaths: 2, discards: 2, discardCards: 4, chisel0: 1,
+    handSize: 8, plays: 5, breaths: 2, discards: 5, discardCards: 4, chisel0: 0, jokers: 2,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
     offersUp: 2, offersCard: 1, offersCharm: 2, rerollCost: 3, rerollStep: 2,
     charmSlots: 5,
@@ -44,7 +44,7 @@
     chalTargetMul: 0.75, thinAirCap: 4, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
     raiseMul: 2.0, raisePayout: 2, gamblerMul: 2.4,
     priceStep: 0.5,
-    maxBuy: { cs: 2, br: 2, wi: 2, di: 2, ch: 3, pl: 2, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
+    maxBuy: { cs: 2, br: 2, wi: 2, di: 3, pl: 2, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
   };
 
   const POOL = [
@@ -56,8 +56,7 @@
     { id: "m6", name: "Bombs +", desc: "Bombs pay 1000 more.", cost: 10 },
     { id: "pl", name: "Extra Play", desc: "+1 play per round.", cost: 12 },
     { id: "br", name: "Breath", desc: "+1 pass per round.", cost: 7 },
-    { id: "di", name: "Discard", desc: "+1 discard per round.", cost: 8 },
-    { id: "ch", name: "Chisel", desc: "+1 per round: rewrite a card's rank.", cost: 7 },
+    { id: "di", name: "Discards", desc: "+2 discards for the rest of the run.", cost: 8 },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card.", cost: 9 },
     { id: "cs", name: "Head Start", desc: "The chain starts one step higher.", cost: 12 },
     { id: "th", name: "Cull", desc: "Remove the lowest rank from the deck. For good.", cost: 7 },
@@ -67,7 +66,7 @@
   const ENH = {
     gold: { name: "Gold", desc: "Base ×2 when played.", cost: 6, w: 35 },
     glass: { name: "Glass", desc: "Base ×3. Shatters after one play.", cost: 5, w: 30 },
-    wild: { name: "Wild", desc: "Any rank, any suit. Also an Ace.", cost: 9, w: 15 },
+    wild: { name: "Joker", desc: "Any rank, any suit. Also an Ace.", cost: 9, w: 15 },
     steel: { name: "Steel", desc: "+15 base when played. Always back in your hand next round.", cost: 8, w: 20 },
   };
 
@@ -80,7 +79,7 @@
     { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: +1 chain.", cost: 9 },
     { id: "cheap", name: "Cheap Breath", glyph: "½", desc: "Pass keeps the whole chain.", cost: 10 },
     { id: "wind", name: "Second Wind", glyph: "∞", desc: "The first pass each round costs no breath.", cost: 9 },
-    { id: "sleight", name: "Sleight", glyph: "✂", desc: "+1 discard per round.", cost: 7 },
+    { id: "sleight", name: "Sleight", glyph: "✂", desc: "Gain a discard at the start of every round.", cost: 7 },
     { id: "encore", name: "Encore", glyph: "⧗", desc: "Your last play of the round pays ×2.", cost: 9 },
     { id: "mirror", name: "Mirror", glyph: "◐", desc: "The first hand of each round pays ×2.", cost: 9 },
     { id: "vault", name: "Vault", glyph: "◎", desc: "Interest: +1 chip per 5 held at ante end, up to 5.", cost: 6 },
@@ -102,8 +101,8 @@
     { id: "onebreath", name: "One Breath", desc: "A single pass this round." },
     { id: "thinair", name: "Thin Air", desc: "The chain caps at ×4." },
     { id: "richair", name: "Rich Air", desc: "Target ×1.1. Payout ×2." },
-    { id: "nodiscard", name: "One Discard", desc: "A single discard this round." },
-    { id: "fewplays", name: "Four Plays", desc: "One play fewer, one discard more." },
+    { id: "nodiscard", name: "No Discards", desc: "Discarding is off this round." },
+    { id: "fewplays", name: "Four Plays", desc: "One play fewer. Gain a discard." },
     { id: "sticky", name: "Sticky Rung", desc: "After every play the rung climbs one more rank." },
     { id: "summit", name: "The Summit", desc: "No Pass. Only an Ace resets. One clean ascent." },
   ];
@@ -129,7 +128,7 @@
       case "m1": case "m2": case "m3": case "m4": case "m5": case "m6": MULT_KIND[id].forEach((k) => { S.mult[k] += 1; }); break;
       case "br": S.breathsMax += 1; break;
       case "pl": S.playsMax += 1; break;
-      case "di": S.discardsMax += 1; break;
+      case "di": S.discards += 2; break;
       case "ch": S.chiselMax += 1; break;
       case "wi": S.handSize += 1; break;
       case "cs": S.chainStart += 1; break;
@@ -151,7 +150,7 @@
     const S = {
       v: 4, seed, rng: hash(seed) | 0,
       ante: 0, money: 0, phase: "round", offers: [], rerolls: 0,
-      handSize: CFG.handSize, playsMax: CFG.plays, breathsMax: CFG.breaths, discardsMax: CFG.discards, chiselMax: CFG.chisel0, chainStart: 0,
+      handSize: CFG.handSize, playsMax: CFG.plays, breathsMax: CFG.breaths, discards: CFG.discards, chiselMax: CFG.chisel0, chainStart: 0,
       keep: [], hand: [],
       mult: [0, 1, 1, 1, 1, 1, 1, 1, 1], removed: [], bought: {},
       deck: [], nextId: 1, charms: [], charmSlots: CFG.charmSlots,
@@ -160,6 +159,7 @@
       stats: { quads: 0, gold: 0, glass: 0, raiseWon: 0, chain7: 0, maxChain: 0, plays: 0, aces: 0 },
     };
     for (let r = 2; r <= 14; r++) for (let si = 0; si < 4; si++) S.deck.push({ id: S.nextId++, r, si });
+    for (let j = 0; j < CFG.jokers; j++) S.deck.push({ id: S.nextId++, r: 0, si: j % 4, e: "wild" });
     const pool = RANDOM_CHALLENGES.slice();
     CFG.challengeAntes.forEach((a) => { S.chals[a] = pool.splice(Math.floor(next(S) * pool.length), 1)[0]; });
     S.chals[TARGETS.length - 1] = "summit";
@@ -201,7 +201,8 @@
     S.chain = 0; S.score = 0; S.plays = 0; S.lastSuit = null; S.passes = 0;
     S.playsLeft = S.playsMax - (chal(S) === "fewplays" ? 1 : 0);
     S.breaths = chal(S) === "onebreath" ? 1 : S.breathsMax;
-    S.discards = (chal(S) === "nodiscard" ? 1 : S.discardsMax + (chal(S) === "fewplays" ? 1 : 0)) + (has(S, "sleight") ? 1 : 0);
+    /* Τα discards είναι πόρος όλου του run· ο γύρος μόνο προσθέτει. */
+    if (S.ante > 0 || S.plays > 0) S.discards += (chal(S) === "fewplays" ? 1 : 0) + (has(S, "sleight") ? 1 : 0);
     S.chisel = S.chiselMax;
     S.played = []; S.log = [];
     S.phase = "round"; S.offers = []; S.rerolls = 0;
@@ -463,7 +464,7 @@
     afterPlay(S, cs, ev);
     return ev;
   }
-  const canDiscard = (S) => S.phase === "round" && S.discards > 0 && S.sel.length > 0 && S.sel.length <= CFG.discardCards && S.pile.length > 0;
+  const canDiscard = (S) => S.phase === "round" && chal(S) !== "nodiscard" && S.discards > 0 && S.sel.length > 0 && S.sel.length <= CFG.discardCards && S.pile.length > 0;
   function discard(S) {
     if (!canDiscard(S)) return false;
     const cs = removeSel(S, true);
@@ -508,7 +509,7 @@
     if (S.phase !== "round") return false;
     if (S.playsLeft <= 0) return true;
     if (hasLegal(S)) return false;
-    if (S.discards > 0 && S.pile.length > 0 && S.hand.length) return false;
+    if (chal(S) !== "nodiscard" && S.discards > 0 && S.pile.length > 0 && S.hand.length) return false;
     if (S.rung && (canPass(S) || aceIndex(S) >= 0)) return false;
     return true;
   }
@@ -517,9 +518,10 @@
     if (!S.rung) return S.pile.length ? "No hand in these cards and no discards left. Round over." : "The pile is dry and nothing climbs. Round over.";
     if (aceIndex(S) >= 0) return "Nothing climbs. An Ace alone resets the rung and keeps the chain.";
     if (canPass(S)) return "Nothing climbs. Pass to reset — costs a breath, keeps half the chain.";
-    if (S.discards > 0 && S.pile.length) return "Nothing climbs. Discard and draw.";
+    if (chal(S) !== "nodiscard" && S.discards > 0 && S.pile.length) return "Nothing climbs. Discard and draw.";
+    if (chal(S) === "nodiscard") return "Nothing climbs, and discarding is off. Round over.";
     if (chal(S) === "summit" || chal(S) === "nopass") return "Nothing climbs, and passing is off. Round over.";
-    return "Nothing climbs, no breaths, no discards. Round over.";
+    return "Nothing climbs, no breaths, no discards left. Round over.";
   }
   function finish(S) {
     if (S.phase !== "round") return null;
