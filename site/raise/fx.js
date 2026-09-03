@@ -12,7 +12,7 @@
     if (RM) return;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, s = (0.4 + Math.random()) * pow;
-      P.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - pow * 0.35, r: 1 + Math.random() * 2.4, l: 1, d: 0.012 + Math.random() * 0.016, h: hue || "#f2d68c" });
+      P.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - pow * 0.35, r: 1 + Math.random() * 2.4, l: 1, d: 0.012 + Math.random() * 0.016, h: Array.isArray(hue) ? hue[i % hue.length] : (hue || "#f2d68c") });
     }
     if (!raf) raf = requestAnimationFrame(tick);
   }

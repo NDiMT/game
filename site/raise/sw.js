@@ -5,7 +5,7 @@
    Το __BUILD__ αντικαθίσταται από το CI με το commit SHA: κάθε deploy = νέα
    cache, νέος worker, παλιές caches σβήνουν στο activate. */
 const V = "raise-__BUILD__";
-const SHELL = ["./", "./index.html", "./app.css", "./game.js", "./fx.js", "./ui.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png"];
+const SHELL = ["./", "./index.html", "./app.css", "./game.js", "./fx.js", "./icons.js", "./ui.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png"];
 const CODE = /\.(html|js|css)$|\/$/;
 
 self.addEventListener("install", (e) => {

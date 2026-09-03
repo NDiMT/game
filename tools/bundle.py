@@ -17,7 +17,7 @@ links = re.findall(r'<link\b[^>]*rel="(?:preconnect|stylesheet)"[^>]*href="https
 css = (src / "app.css").read_text(encoding="utf-8")
 
 # scripts: inline τα τοπικά, πέτα το register του SW
-body = re.sub(r'<script src="(game|fx|ui)\.js"></script>',
+body = re.sub(r'<script src="(game|fx|icons|ui)\.js"></script>',
               lambda m: "<script>\n" + (src / (m.group(1) + ".js")).read_text(encoding="utf-8") + "\n</script>", body)
 body = re.sub(r"<script>\s*if \(\"serviceWorker\".*?</script>", "", body, flags=re.S)
 

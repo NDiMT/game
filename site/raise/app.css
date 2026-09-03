@@ -576,3 +576,40 @@ body.boom .table{animation:boomring .8s ease-out}
 .keepc .card{display:block;animation:none}
 .keepc.off{opacity:.38;transform:translateY(.25rem) scale(.94)}
 .keepc.off::after{content:"✕";position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:1.3rem;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+
+
+/* ===================== v8: cheerful colour — charm bubbles per hue, kind colours, 4-colour deck ===================== */
+:root{--felt-3:#25714f;--felt-2:#1a533b}
+/* charm bubbles: hue per charm via --h, SVG icon */
+.charm{color:#2a1a05;
+  background:radial-gradient(circle at 35% 26%,rgba(255,255,255,.75),rgba(255,255,255,0) 40%),radial-gradient(circle at 50% 62%,hsl(var(--h,45) 88% 66%),hsl(var(--h,45) 72% 40%));
+  box-shadow:0 0 0 1px hsl(var(--h,45) 55% 30%),inset 0 -2px 3px rgba(0,0,0,.28),0 3px 7px rgba(0,0,0,.45)}
+.charm svg{width:64%;height:64%;fill:none;stroke:#2a1a05;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;color:#2a1a05;filter:drop-shadow(0 1px 0 rgba(255,255,255,.35))}
+.charm--s svg{width:60%;height:60%}
+.charm--empty{background:none;box-shadow:inset 0 0 0 1px rgba(147,170,156,.35),inset 0 1px 0 rgba(255,255,255,.1)}
+.charm--lock{color:var(--muted);background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(147,170,156,.35);font-family:var(--mono);font-weight:700}
+.coll__i.locked .charm{background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(147,170,156,.35)}
+/* kind colours: rung label, dots, play button, callout */
+.rung__val:not(.free){background:linear-gradient(180deg,hsl(var(--kh,45) 95% 90%) 0%,hsl(var(--kh,45) 85% 65%) 55%,hsl(var(--kh,45) 70% 48%) 100%);-webkit-background-clip:text;background-clip:text;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.45)) drop-shadow(0 0 .8rem hsl(var(--kh,45) 85% 60% / .45))}
+.rung__dots i.at{background:linear-gradient(180deg,hsl(var(--kh,45) 95% 88%),hsl(var(--kh,45) 75% 52%));box-shadow:inset 0 1px 0 #fff,0 0 .5rem hsl(var(--kh,45) 85% 60% / .7)}
+.go.ok{background:var(--gloss),linear-gradient(180deg,hsl(var(--kh,45) 95% 88%) 0%,hsl(var(--kh,45) 85% 66%) 48%,hsl(var(--kh,45) 78% 52%) 52%,hsl(var(--kh,45) 85% 66%) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 3px 0 hsl(var(--kh,45) 60% 22%),0 8px 18px rgba(0,0,0,.45),0 0 1.4rem hsl(var(--kh,45) 85% 60% / .35)}
+.go.ok:active:not(:disabled){box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 0 hsl(var(--kh,45) 60% 22%),0 4px 10px rgba(0,0,0,.4)}
+.go.ok .go__s{color:hsl(var(--kh,45) 60% 22%)}
+.callout{color:hsl(var(--kh,45) 95% 92%);text-shadow:0 2px 0 hsl(var(--kh,45) 60% 25%),0 0 1.4rem hsl(var(--kh,45) 85% 60% / .8),0 4px 10px rgba(0,0,0,.5)}
+/* 4-colour deck: ♠ ink, ♥ red, ♦ blue, ♣ green */
+.card.s0{color:#1c2438}
+.card.s1{color:#e0342c}
+.card.s2{color:#2a6fdb}
+.card.s3{color:#1f9a57}
+.card.face .card__r{background:none;-webkit-text-fill-color:currentColor;color:inherit}
+.card.e-gold .card__r,.card.e-gold .card__rs,.card.e-gold .card__pip{color:#3a2a08}
+.card.e-gold.s1 .card__r,.card.e-gold.s1 .card__rs,.card.e-gold.s1 .card__pip{color:#8f1e19}
+/* cheerful HUD accents */
+.ante b{color:#fff}
+.coin{color:#ffcb5c}
+.hud__score span{color:#a9c9b6}
+.chal{background:var(--gloss),linear-gradient(180deg,hsl(350 80% 55% / .35),hsl(350 80% 45% / .2));border-color:hsl(350 90% 75% / .6)}
+.pips--disc i{background:radial-gradient(circle at 35% 28%,#e6f7ff,#5cc4ff 45%,#1f6fb8)}
+.stats b{color:#ffcb5c}

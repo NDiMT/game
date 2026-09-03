@@ -1,7 +1,7 @@
 /* RAISE — UI v3. DOM και είσοδος· η λογική ζει στο game.js (window.RAISE). */
 (function () {
   "use strict";
-  const G = window.RAISE, FX = window.FX;
+  const G = window.RAISE, FX = window.FX, IC = window.ICONS;
   const $ = (id) => document.getElementById(id);
   const KEY = "raise.run.v4", LIFE = "raise.life.v1";
   let S = null, shown = 0, ui = { chisel: false, note: null, noteT: 0 }, installEvt = null;
@@ -43,7 +43,7 @@
     if (tbl) st = ' style="animation-delay:' + (idx * 60) + 'ms"';
     if (c.h && !tbl) return '<button class="card down" disabled aria-label="face down"' + st + '><span class="card__back"></span></button>';
     const wild = G.isWild(c), su = G.SUITS[c.si], e = c.e, face = c.r >= 11 && !e;
-    const cls = "card" + (e ? " e-" + e : "") + (!wild && su.red ? " red" : "") + (sel ? " sel" : "") + (face ? " face" : "") + (c.n && !tbl ? " new" : "");
+    const cls = "card" + (e ? " e-" + e : "") + (!wild && su.red ? " red" : "") + (wild ? "" : " s" + c.si) + (sel ? " sel" : "") + (face ? " face" : "") + (c.n && !tbl ? " new" : "");
     const tag = tbl ? "span" : "button";
     return '<' + tag + ' class="' + cls + '"' + st +
       (tbl ? ' aria-hidden="true"' : ' data-i="' + i + '" aria-pressed="' + (sel ? "true" : "false") + '" aria-label="' + (wild ? "wild" : G.rname(c.r) + " " + su.s) + (e ? " " + e : "") + '"') +
@@ -61,7 +61,7 @@
     $("hand").style.maxWidth = (per * (cw + 4) + 2) + "px";
   }
   const pips = (n, max, cls) => { let h = ""; for (let i = 0; i < max; i++) h += '<i class="' + (i < n ? "" : "spent") + '"></i>'; return h; };
-  const charmToken = (id, extra) => { const c = G.charmById[id]; return '<button class="charm" data-charm="' + id + '" aria-label="' + c.name + '"' + (extra || "") + '><span>' + c.glyph + '</span></button>'; };
+  const charmToken = (id, extra) => { const c = G.charmById[id]; return '<button class="charm" data-charm="' + id + '" aria-label="' + c.name + '" style="--h:' + IC.hue(id) + '"' + (extra || "") + '>' + IC.svg(id) + '</button>'; };
 
   /* ---------- render ---------- */
   function render() {
@@ -86,7 +86,7 @@
     $("charms").innerHTML = cm;
 
     const rv = $("rungVal");
-    if (S.rung) { const lb = G.clabel(S.rung); rv.textContent = lb; rv.classList.remove("free"); rv.classList.toggle("long", lb.length > 11); }
+    if (S.rung) { const lb = G.clabel(S.rung); rv.textContent = lb; rv.classList.remove("free"); rv.classList.toggle("long", lb.length > 11); rv.style.setProperty("--kh", IC.kindHue(S.rung.kind)); $("rungDots").style.setProperty("--kh", IC.kindHue(S.rung.kind)); }
     else { rv.textContent = "open"; rv.classList.add("free"); rv.classList.remove("long"); }
     $("rungDots").innerHTML = S.rung ? Array.from({ length: S.rung.size }, () => '<i class="' + (G.isBomb(S.rung) ? "bomb" : "at") + '"></i>').join("") : "";
     $("chal").hidden = !ch; if (ch) $("chalName").textContent = ch.name;
@@ -133,7 +133,7 @@
     else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + S.sel.length + (S.sel.length === 1 ? ' card' : ' cards') + '</span><span class="go__s">' + (S.sel.length > G.CFG.discardCards ? 'not a hand · discard up to ' + G.CFG.discardCards : 'not a hand · discard?') + '</span>'; }
     else if (!e.legal) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + (e.k.kind === S.rung.kind ? (e.k.size < S.rung.size ? (S.rung.kind === 8 ? "need " + S.rung.size / 2 + " pairs or more" : "too short · " + S.rung.size + " cards or more") : "not higher than " + G.rname(S.rung.rank)) : "lower hand than " + G.KINDS[S.rung.kind].name.toLowerCase()) + '</span>'; }
     else {
-      go.classList.add("ok"); go.disabled = false;
+      go.classList.add("ok"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind));
       const extra = e.notes.length ? " · " + e.notes.join(", ") : "";
       go.innerHTML = '<span class="go__t">' + goLabel(e.k) + '</span><span class="go__s">' + (G.crange(e.k) ? G.crange(e.k) + ' · ' : '') + e.base + (e.factor > 1 ? '×' + e.factor : '') + ' × ' + e.pos + (e.hm !== 1 ? ' ×' + e.hm : '') + extra + '</span><span class="go__p">+' + e.pts + '</span>';
     }
@@ -160,7 +160,7 @@
     ui.note = null;
     if (ev.type === "ace") { FX.sfx.ace(); FX.buzz(14); }
     else if (ev.bomb) { FX.sfx.bomb(); FX.buzz([30, 40, 120]); FX.boom($("table")); FX.flash(); FX.pulse($("app"), "shake"); FX.floatIn($("table"), "+" + ev.pts); document.body.classList.add("boom"); setTimeout(() => document.body.classList.remove("boom"), 900); }
-    else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300)); FX.floatIn($("table"), "+" + ev.pts); }
+    else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300), ["#ffd166", "#ff6b6b", "#4ecdc4", "#c77dff", "#ffffff", "hsl(" + IC.kindHue(ev.k.kind) + " 90% 70%)"]); FX.floatIn($("table"), "+" + ev.pts); $("callout").style.setProperty("--kh", IC.kindHue(ev.k.kind)); }
     if (ev.shattered) { FX.sfx.shatter(); FX.burstAt($("table"), 18, 3.2, "#cfe9f2"); }
     render();
     FX.fly(from, Array.prototype.slice.call($("tcards").children));
@@ -210,7 +210,7 @@
   }
   function ownedCharmsHTML(sellable) {
     if (!S.charms.length) return '<p class="sub">No charms yet · ' + S.charmSlots + ' slots</p>';
-    return '<div class="owned">' + S.charms.map((id, i) => { const c = G.charmById[id]; return '<div class="owned__row"><span class="charm charm--s"><span>' + c.glyph + '</span></span><div><strong>' + c.name + '</strong><span>' + c.desc + '</span></div>' + (sellable ? '<button class="sellb" data-sell="' + i + '">Sell ' + Math.ceil(c.cost / 2) + '◎</button>' : "") + '</div>'; }).join("") + '</div>';
+    return '<div class="owned">' + S.charms.map((id, i) => { const c = G.charmById[id]; return '<div class="owned__row">' + IC.bubble(id, "charm charm--s") + '<div><strong>' + c.name + '</strong><span>' + c.desc + '</span></div>' + (sellable ? '<button class="sellb" data-sell="' + i + '">Sell ' + Math.ceil(c.cost / 2) + '◎</button>' : "") + '</div>'; }).join("") + '</div>';
   }
   function offersHTML() {
     return S.offers.map((o, i) => {
@@ -222,10 +222,10 @@
       }
       if (o.kind === "charm") {
         const c = G.charmById[o.id];
-        return '<button class="offer offer--charm' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '><span class="charm charm--s"><span>' + c.glyph + '</span></span><strong>' + c.name + '</strong><em>' + cost + '◎</em><span>' + c.desc + why + '</span></button>';
+        return '<button class="offer offer--charm' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '>' + IC.bubble(o.id, "charm charm--s") + '<strong>' + c.name + '</strong><em>' + cost + '◎</em><span>' + c.desc + why + '</span></button>';
       }
       const it = G.poolById[o.id];
-      return '<button class="offer' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '><strong>' + it.name + '</strong><em>' + cost + '◎</em><span>' + it.desc + '</span></button>';
+      return '<button class="offer offer--charm' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '>' + IC.bubble(o.id, "charm charm--s") + '<strong>' + it.name + '</strong><em>' + cost + '◎</em><span>' + it.desc + '</span></button>';
     }).join("");
   }
   function keepHTML() {
@@ -292,7 +292,7 @@
   function sheetCollection() {
     const l = life(), un = unlockedFrom(l);
     openS('<h2>Collection</h2><p class="sub">' + un.length + ' of ' + G.CHARMS.length + ' charms</p>' +
-      '<div class="coll">' + G.CHARMS.map((c) => { const ok = un.indexOf(c.id) >= 0; return '<div class="coll__i' + (ok ? "" : " locked") + '"><span class="charm charm--s"><span>' + (ok ? c.glyph : "?") + '</span></span><div><strong>' + c.name + '</strong><span>' + (ok ? c.desc : c.lock.text + " · " + Math.min(l[c.lock.key] || 0, c.lock.n) + "/" + c.lock.n) + '</span></div></div>'; }).join("") + '</div>' +
+      '<div class="coll">' + G.CHARMS.map((c) => { const ok = un.indexOf(c.id) >= 0; return '<div class="coll__i' + (ok ? "" : " locked") + '">' + (ok ? IC.bubble(c.id, "charm charm--s") : '<span class="charm charm--s charm--lock"><span>?</span></span>') + '<div><strong>' + c.name + '</strong><span>' + (ok ? c.desc : c.lock.text + " · " + Math.min(l[c.lock.key] || 0, c.lock.n) + "/" + c.lock.n) + '</span></div></div>'; }).join("") + '</div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
   function sheetCharm(id) { const c = G.charmById[id]; note(c.name + " — " + c.desc, 5000); }
