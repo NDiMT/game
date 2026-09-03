@@ -135,12 +135,14 @@
     else {
       go.classList.add("ok"); go.disabled = false;
       const extra = e.notes.length ? " · " + e.notes.join(", ") : "";
-      go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + (G.crange(e.k) ? G.crange(e.k) + ' · ' : '') + e.base + (e.factor > 1 ? '×' + e.factor : '') + ' × ' + e.pos + (e.hm !== 1 ? ' ×' + e.hm : '') + extra + '</span><span class="go__p">+' + e.pts + '</span>';
+      go.innerHTML = '<span class="go__t">' + goLabel(e.k) + '</span><span class="go__s">' + (G.crange(e.k) ? G.crange(e.k) + ' · ' : '') + e.base + (e.factor > 1 ? '×' + e.factor : '') + ' × ' + e.pos + (e.hm !== 1 ? ' ×' + e.hm : '') + extra + '</span><span class="go__p">+' + e.pts + '</span>';
     }
     $("bPass").disabled = ui.chisel || !G.canPass(S); $("passN").textContent = S.breaths;
     $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = S.discards;
     $("bHint").disabled = ui.chisel || S.playsLeft <= 0;
   }
+  /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
+  const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : G.clabel(k);
   function rankButtons() { let h = ""; for (let r = 2; r <= 14; r++) h += '<button data-rank="' + r + '">' + G.rname(r) + '</button>'; return h; }
   function note(msg, ms) { ui.note = msg; ui.noteT = Date.now() + (ms || 3800); render(); setTimeout(() => { if (Date.now() >= ui.noteT) render(); }, (ms || 3800) + 100); }
   function callout(t) { if (!t) return; const el = $("callout"); el.textContent = t; FX.pulse(el, "show"); }
