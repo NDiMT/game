@@ -633,3 +633,32 @@ body.boom .table{animation:boomring .8s ease-out}
 .go.ok .go__t--pts{font-size:1.35rem;letter-spacing:-.02em;text-transform:none;line-height:1}
 .go.ok .go__s{font-size:.68rem;font-weight:600}
 .go.ok .go__s{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.2;font-size:.64rem}
+
+/* ribbons: challenge (red), rule (blue), contract (purple) */
+.ribbons{display:flex;flex-wrap:wrap;justify-content:center;gap:.3rem}
+.chal.rule{background:var(--gloss),linear-gradient(180deg,hsl(205 80% 55% / .35),hsl(205 80% 45% / .2));border-color:hsl(205 90% 75% / .6);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 .9rem hsl(205 80% 55% / .3)}
+.chal.rule span{color:#9fd3ff}
+.chal.contract{background:var(--gloss),linear-gradient(180deg,hsl(275 70% 60% / .35),hsl(275 70% 45% / .2));border-color:hsl(275 90% 80% / .6);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 .9rem hsl(275 70% 60% / .3)}
+.chal.contract span{color:#d9b8ff}
+.chal.contract i{font-style:normal;font-family:var(--mono);font-weight:700;font-size:.8rem;color:#d9b8ff}
+.chal.contract.done{border-color:hsl(150 80% 70% / .8)}
+.chal.contract.done i{color:#8ff0bf}
+.chal.contract.broken{opacity:.55;text-decoration:line-through}
+.chal.contract.broken i{color:#ffb3a8;text-decoration:none}
+.chal.contract.ok i{color:#ffe08a}
+/* contract picker in the shop */
+.ctrs{display:grid;gap:.4rem}
+.ctr{display:grid;grid-template-columns:1fr auto;gap:.1rem .6rem;align-items:center;text-align:left;padding:.65rem .8rem;border-radius:14px;background:var(--gloss),rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 3px 8px rgba(0,0,0,.3);transition:transform .25s var(--pop),border-color .2s ease}
+.ctr strong{font-family:var(--mono);font-size:.86rem}
+.ctr span{grid-column:1;font-size:.78rem;color:var(--muted);line-height:1.3}
+.ctr em{grid-row:span 2;font-family:var(--mono);font-style:normal;font-weight:700;font-size:1rem;color:#d9b8ff}
+.ctr.on{border-color:hsl(275 90% 78%);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 0 2px hsl(275 80% 65% / .55),0 0 1rem hsl(275 70% 60% / .35)}
+.ctr--none{opacity:.8}
+.ctr--none.on{border-color:rgba(255,255,255,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 0 2px rgba(255,255,255,.3)}
+.chalnext.rulenext{background:rgba(60,140,220,.14);border-color:rgba(150,200,255,.45)}
+.chalnext.rulenext .lbl{color:#9fd3ff}
+/* drama: last play + target */
+body.lastplay #vig{box-shadow:inset 0 0 12rem rgba(0,0,0,.75),inset 0 0 3rem rgba(0,0,0,.4);transition:box-shadow .6s ease}
+body.lastplay .pips--play i:not(.spent){animation:heartbeat 1s ease-in-out infinite}
+@keyframes heartbeat{0%,100%{transform:scale(1)}30%{transform:scale(1.35)}45%{transform:scale(1)}60%{transform:scale(1.25)}}
+.callout.target{font-family:var(--mono);font-style:normal;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:1.9rem;color:#d8ffe9;text-shadow:0 2px 0 #1e6b48,0 0 1.6rem rgba(95,199,154,.95)}

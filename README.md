@@ -67,6 +67,17 @@ Encore · Mirror · Vault · Thrift · Scout — και κλειδωμένα μ�
 **Goldsmith** (3 Gold), **Glassblower** (5 Glass σπασμένα), **Summiteer** (3 βόμβες),
 **Gambler** (3 Raise), **Ember** (chain ×7). Η **Collection** φαίνεται στην αρχική οθόνη.
 
+### Κανόνες τραπεζιού και συμβόλαια
+
+- **Table rules:** στα ~75% των antes χωρίς challenge ισχύει ένας μικρός κανόνας (seeded): Red Night /
+  Black Night (×1,5 σε χέρια με κόκκινο / μαύρο lead), Running Start (chain από ×2), Low Ceiling
+  (chain έως ×5), Cheap Pairs (ζευγάρι = 0 πόντοι αλλά ανεβάζει), Runway / Triplets / Open House
+  (×2 σε κέντες / τρίο / φουλ), Underdogs (×2 σε χέρια με κορυφή ≤ 6), Spare Card (+1 discard).
+- **Contracts:** στο κατάστημα διαλέγεις προαιρετικά 1 από 2 συμβόλαια για τον επόμενο γύρο
+  (π.χ. «Don't pass +30%», «End on a full house +50%», «Play a bomb +500»). Αν πετύχει, το
+  μπόνους μπαίνει στο σκορ του γύρου πριν τη σύγκριση με τον στόχο· αν σπάσει, χάνεις μόνο το μπόνους.
+- **Perfect round** (χωρίς Pass και discard, όλα τα παιξίματα): +3 chips.
+
 ### Challenges
 
 Antes 4, 9, 14, 19, 24 (seeded, με στόχο ×0,75): No Pass · Short Hand · Blind Deal ·
@@ -90,7 +101,7 @@ High Ground · One Breath · Thin Air · Rich Air · No Discards · Four Plays �
 
 Δύο εργαλεία: `tools/sweep.js` (σάρωση καμπυλών) και `tools/study.js` (instrumented runs
 με στρατηγικές `base`, `finisher`, `bombfish` — βλ. `docs/playtest.md`). Οι στόχοι
-(`105 → 17 200`, άνοδος ~×1,15 ανά ante, +35% σταδιακά από το ante 15) προέκυψαν από το διάμεσο σκορ του finisher bot ανά
+(`105 → 19 800`, άνοδος ~×1,15 ανά ante, σφιγμένη σταδιακά μετά το ante 5 και το 15) προέκυψαν από το διάμεσο σκορ του finisher bot ανά
 ante, διαιρεμένο με λόγο-στόχο που πέφτει γραμμικά από 3,0 (ante 1) σε 1,0 (ante 30): η
 δυσκολία ακολουθεί την κλιμάκωση του παίκτη μέσω του καταστήματος, χωρίς γκρεμό.
 Finisher bot: **0% νίκες**, μέσος θάνατος στο ante 11, λόγος σκορ/στόχου p50 ≈ 2,6 στην

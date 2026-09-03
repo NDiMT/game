@@ -34,14 +34,14 @@
   }
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
-  const TARGETS = [105, 120, 145, 185, 240, 310, 370, 440, 550, 690, 840, 1020, 1170, 1390, 1590, 1920, 2340, 2850, 3400, 4250, 4850, 5600, 6600, 7450, 8800, 10250, 11900, 13350, 15250, 17200];
+  const TARGETS = [105, 120, 145, 185, 240, 310, 370, 450, 560, 710, 870, 1060, 1230, 1470, 1690, 2050, 2510, 3050, 3700, 4650, 5300, 6150, 7300, 8300, 9850, 11550, 13450, 15200, 17450, 19800];
   const CFG = {
     handSize: 8, plays: 5, breaths: 2, discards: 5, discardCards: 4, chisel0: 0, jokers: 2,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
     offersUp: 2, offersCard: 1, offersCharm: 2, rerollCost: 3, rerollStep: 2,
     charmSlots: 5,
     challengeAntes: [3, 8, 13, 18, 23],
-    chalTargetMul: 0.75, thinAirCap: 4, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
+    chalTargetMul: 0.75, thinAirCap: 4, ruleChance: 0.75, perfectChips: 3, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
     raiseMul: 2.0, raisePayout: 2, gamblerMul: 2.4,
     priceStep: 0.5,
     maxBuy: { cs: 2, br: 2, wi: 2, di: 3, pl: 2, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
@@ -107,6 +107,35 @@
     { id: "summit", name: "The Summit", desc: "No Pass. Only an Ace resets. One clean ascent." },
   ];
   const chalById = Object.fromEntries(CHALLENGES.map((c) => [c.id, c]));
+  /* Συμβόλαια: προαιρετικός στόχος γύρου, επιλογή στο κατάστημα. pct = % του σκορ, flat = πόντοι. */
+  const CONTRACTS = [
+    { id: "c_nopass", name: "Steady Hands", desc: "Don't pass this round.", pct: 30, avoid: true },
+    { id: "c_nodisc", name: "No Waste", desc: "Don't discard this round.", pct: 40, avoid: true },
+    { id: "c_noace", name: "Hold the Ace", desc: "Don't play a lone Ace.", pct: 25, avoid: true },
+    { id: "c_full", name: "Big Finish", desc: "End the round on a full house.", pct: 50 },
+    { id: "c_str3", name: "Runner", desc: "Play three straights.", flat: 300 },
+    { id: "c_chain6", name: "High Wire", desc: "Reach chain ×6.", pct: 40 },
+    { id: "c_all", name: "Full Effort", desc: "Use every play.", pct: 20 },
+    { id: "c_bomb", name: "Detonate", desc: "Play a bomb.", flat: 500 },
+    { id: "c_low", name: "Humble Start", desc: "Open with a pair of 2, 3 or 4.", pct: 25 },
+    { id: "c_stairs", name: "Staircase", desc: "Play stairs.", flat: 200 },
+    { id: "c_pairs", name: "Collector", desc: "Play two, three or four pairs.", flat: 150 },
+  ];
+  const contractById = Object.fromEntries(CONTRACTS.map((c) => [c.id, c]));
+  /* Κανόνες τραπεζιού: ένας μικρός θετικός ή αρνητικός κανόνας στα antes χωρίς challenge. */
+  const RULES = [
+    { id: "r_red", name: "Red Night", desc: "Hands led by red cards pay ×1.5." },
+    { id: "r_black", name: "Black Night", desc: "Hands led by black cards pay ×1.5." },
+    { id: "r_head", name: "Running Start", desc: "The chain starts at ×2." },
+    { id: "r_cap", name: "Low Ceiling", desc: "The chain caps at ×5." },
+    { id: "r_pair0", name: "Cheap Pairs", desc: "Single pairs pay nothing — but still climb." },
+    { id: "r_str2", name: "Runway", desc: "Straights pay ×2." },
+    { id: "r_trips2", name: "Triplets", desc: "Trips pay ×2." },
+    { id: "r_full2", name: "Open House", desc: "Full houses pay ×2." },
+    { id: "r_low2", name: "Underdogs", desc: "Hands topped by a 6 or lower pay ×2." },
+    { id: "r_gift", name: "Spare Card", desc: "One free discard this round." },
+  ];
+  const ruleById = Object.fromEntries(RULES.map((r) => [r.id, r]));
   const RANDOM_CHALLENGES = CHALLENGES.filter((c) => c.id !== "summit").map((c) => c.id);
   const TAG_ORDER = ["Bomb!", "Ladder to Heaven", "Royal", "Four Horsemen", "Ace in the Hole", "Overkill", "Long Run", "Staircase", "Shatter", "Tight Step", "Humble"];
 
@@ -118,6 +147,7 @@
   /* ============================== helpers ============================== */
   const has = (S, id) => S.charms.indexOf(id) >= 0;
   const chal = (S) => S.chal || null;
+  const rule = (S) => (S.chal ? null : (S.rules && S.rules[S.ante]) || null);
   const cmp = (a, b) => a.r - b.r || a.si - b.si;
   const isWild = (c) => !!c && c.e === "wild";
   const isAce = (c) => !!c && (c.r === 14 || isWild(c));
@@ -155,7 +185,7 @@
       mult: [0, 1, 1, 1, 1, 1, 1, 1, 1], removed: [], bought: {},
       deck: [], nextId: 1, charms: [], charmSlots: CFG.charmSlots,
       unlocked: (unlocked || []).slice(),
-      chals: {},
+      chals: {}, rules: {}, contract: null, contractOffers: [],
       stats: { quads: 0, gold: 0, glass: 0, raiseWon: 0, chain7: 0, maxChain: 0, plays: 0, aces: 0 },
     };
     for (let r = 2; r <= 14; r++) for (let si = 0; si < 4; si++) S.deck.push({ id: S.nextId++, r, si });
@@ -163,6 +193,7 @@
     const pool = RANDOM_CHALLENGES.slice();
     CFG.challengeAntes.forEach((a) => { S.chals[a] = pool.splice(Math.floor(next(S) * pool.length), 1)[0]; });
     S.chals[TARGETS.length - 1] = "summit";
+    for (let a = 1; a < TARGETS.length - 1; a++) if (!S.chals[a] && next(S) < CFG.ruleChance) S.rules[a] = RULES[Math.floor(next(S) * RULES.length)].id;
     startRound(S);
     return S;
   }
@@ -199,6 +230,9 @@
     S.sel = [];
     S.rung = chal(S) === "highground" ? { kind: 1, rank: CFG.highGroundRank, size: 2 } : null;
     S.chain = 0; S.score = 0; S.plays = 0; S.lastSuit = null; S.passes = 0;
+    S.rdisc = 0; S.races = 0; S.rbombs = 0; S.rkinds = {}; S.rmax = 0; S.firstK = null; S.lastK = null;
+    S.chainBonus = rule(S) === "r_head" ? 1 : 0;
+    if (rule(S) === "r_gift") S.discards += 1;
     S.playsLeft = S.playsMax - (chal(S) === "fewplays" ? 1 : 0);
     S.breaths = chal(S) === "onebreath" ? 1 : S.breathsMax;
     /* Τα discards είναι πόρος όλου του run· ο γύρος μόνο προσθέτει. */
@@ -251,7 +285,7 @@
   }
   const isLegal = (S, k) => beats(k, S.rung);
   const sameShape = (a, b) => !!a && !!b && a.kind === b.kind && a.size === b.size;
-  function chainPos(S) { const p = S.chain + 1 + S.chainStart; return chal(S) === "thinair" ? Math.min(CFG.thinAirCap, p) : p; }
+  function chainPos(S) { const p = S.chain + 1 + S.chainStart + (S.chainBonus || 0); return chal(S) === "thinair" ? Math.min(CFG.thinAirCap, p) : rule(S) === "r_cap" ? Math.min(5, p) : p; }
   function leadSuit(cs) {
     const cnt = {}; cs.forEach((c) => { if (!isWild(c)) cnt[c.si] = (cnt[c.si] || 0) + 1; });
     let best = null; Object.keys(cnt).forEach((k) => { if (best == null || cnt[k] > cnt[best]) best = +k; });
@@ -260,7 +294,8 @@
   /* Πλήρης υπολογισμός πόντων ενός υποψήφιου χεριού — UI και bot βλέπουν το ίδιο. */
   function scoreOf(S, k, cs) {
     let base = kbase(k) * S.mult[k.kind];
-    const notes = [];
+    const notes = [], R = rule(S);
+    if (R === "r_pair0" && k.kind === 1) { base = 0; notes.push("Cheap Pairs"); }
     if (has(S, "court") && cs.some(isFace)) { base += 20; notes.push("Court +20"); }
     const steels = cs.filter((c) => c.e === "steel").length;
     if (steels) { base += 15 * steels; notes.push("Steel +" + 15 * steels); }
@@ -279,6 +314,9 @@
     if (has(S, "mirror") && S.plays === 0) { hm *= 2; notes.push("Mirror ×2"); }
     if (has(S, "ember") && pos >= 5) { hm *= 1.5; notes.push("Ember +50%"); }
     if (has(S, "encore") && S.playsLeft === 1) { hm *= 2; notes.push("Encore ×2"); }
+    if (R === "r_red" || R === "r_black") { const ls = leadSuit(cs), red = ls === 1 || ls === 2; if (ls != null && (R === "r_red") === red) { hm *= 1.5; notes.push((R === "r_red" ? "Red" : "Black") + " Night ×1.5"); } }
+    if ((R === "r_str2" && k.kind === 4) || (R === "r_trips2" && k.kind === 2) || (R === "r_full2" && k.kind === 5)) { hm *= 2; notes.push(ruleById[R].name + " ×2"); }
+    if (R === "r_low2" && !isBomb(k) && k.rank <= 6) { hm *= 2; notes.push("Underdogs ×2"); }
     return { base, factor, pos, hm, pts: Math.round(base * factor * pos * hm), notes };
   }
   const selCards = (S) => S.sel.map((i) => S.hand[i]);
@@ -429,7 +467,7 @@
     if (!e.ace && S.playsLeft <= 0) return null;
     if (e.ace) {
       const cs = removeSel(S, false);
-      S.played = cs.slice(); S.rung = null; S.stats.aces += 1;
+      S.played = cs.slice(); S.rung = null; S.stats.aces += 1; S.races += 1;
       S.log.push({ t: "Ace in the Hole", c: "rung reset · chain ×" + chainPos(S) + " kept", p: "", cls: "bonus" });
       const ev = { type: "ace", pts: 0, tags: ["Ace in the Hole"] };
       afterPlay(S, cs, ev);
@@ -447,10 +485,11 @@
     if (k.kind === 3 && k.size >= 6) tags.push("Staircase");
     S.score += e.pts; S.playsLeft -= 1;
     S.lastSuit = leadSuit(cs);
+    if (!S.firstK) S.firstK = k; S.lastK = k; S.rkinds[k.kind] = (S.rkinds[k.kind] || 0) + 1; if (bomb) S.rbombs += 1;
     /* Η βόμβα σκάει: 1000 σταθερά, το τραπέζι ανοίγει, η αλυσίδα συνεχίζει κανονικά. */
     S.chain += 1;
     S.rung = bomb ? null : { kind: k.kind, rank: Math.min(14, k.rank + (chal(S) === "sticky" ? 1 : 0)), size: k.size };
-    { const pos = chainPos(S);
+    { const pos = chainPos(S); if (pos > S.rmax) S.rmax = pos;
       if (pos > S.stats.maxChain) S.stats.maxChain = pos;
       if (pos >= 7) { S.stats.chain7 = 1; if (pos === 7) tags.push("Ladder to Heaven"); } }
     S.played = cs.slice();
@@ -464,7 +503,7 @@
   function discard(S) {
     if (!canDiscard(S)) return false;
     const cs = removeSel(S, true);
-    S.discards -= 1;
+    S.discards -= 1; S.rdisc += 1;
     const d = draw(S, roundHandSize(S) - S.hand.length);
     S.log.push({ t: "Discard", c: cs.length + " out, " + d.length + " in", p: "", cls: "pass" });
     return true;
@@ -499,6 +538,28 @@
     S.log.push({ t: "Raise", c: "target → " + S.raiseTarget, p: "", cls: "bonus" });
     return true;
   }
+  /* Κατάσταση συμβολαίου: ok (ισχύει ακόμη), done (πέτυχε), broken, pending. */
+  function contractStatus(S) {
+    const id = S.contract; if (!id) return null;
+    const k = S.rkinds || {};
+    switch (id) {
+      case "c_nopass": return S.passes > 0 ? "broken" : "ok";
+      case "c_nodisc": return (S.rdisc || 0) > 0 ? "broken" : "ok";
+      case "c_noace": return (S.races || 0) > 0 ? "broken" : "ok";
+      case "c_full": return S.lastK && S.lastK.kind === 5 ? (S.playsLeft === 0 ? "done" : "ok") : "pending";
+      case "c_str3": return (k[4] || 0) >= 3 ? "done" : "pending";
+      case "c_chain6": return (S.rmax || 0) >= 6 ? "done" : "pending";
+      case "c_all": return S.playsLeft === 0 ? "done" : "pending";
+      case "c_bomb": return (S.rbombs || 0) > 0 ? "done" : "pending";
+      case "c_low": return !S.firstK ? "pending" : S.firstK.kind === 1 && S.firstK.rank <= 4 ? "done" : "broken";
+      case "c_stairs": return (k[3] || 0) >= 1 ? "done" : "pending";
+      case "c_pairs": return (k[8] || 0) >= 1 ? "done" : "pending";
+    }
+    return null;
+  }
+  const contractMet = (S) => { const st = contractStatus(S); if (!st) return false; if (S.contract === "c_full") return !!(S.lastK && S.lastK.kind === 5); if (S.contract === "c_all") return S.playsLeft === 0; return st === "done" || st === "ok"; };
+  const contractBonus = (S) => { const c = contractById[S.contract]; if (!c) return 0; return c.pct ? Math.round(S.score * c.pct / 100) : c.flat; };
+  function chooseContract(S, id) { if (S.phase !== "shop") return false; if (id && S.contractOffers.indexOf(id) < 0) return false; S.contract = id || null; return true; }
   /* Κόλλησες όταν καμία κίνηση δεν αλλάζει τίποτα. */
   const over = (S) => S.phase === "round" && S.playsLeft <= 0;
   function stuck(S) {
@@ -522,7 +583,14 @@
   function finish(S) {
     if (S.phase !== "round") return null;
     const T = target(S);
-    if (S.score < T) { S.phase = "lost"; return { cleared: false }; }
+    let contract = null;
+    if (S.contract) {
+      const c = contractById[S.contract], met = contractMet(S), bonus = met ? contractBonus(S) : 0;
+      if (bonus) { S.score += bonus; S.log.push({ t: "Contract · " + c.name, c: c.pct ? "+" + c.pct + "%" : "", p: bonus, cls: "bonus" }); }
+      contract = { id: c.id, name: c.name, met, bonus };
+    }
+    const perfect = S.passes === 0 && (S.rdisc || 0) === 0 && S.playsLeft === 0;
+    if (S.score < T) { S.phase = "lost"; return { cleared: false, contract }; }
     const ex = S.score - T;
     let earn = (CFG.rewardBase + Math.min(CFG.rewardCap, Math.floor(ex / Math.max(1, T * CFG.rewardFrac)))) * (chal(S) === "richair" ? 2 : 1), raiseResult = null;
     if (S.raised) {
@@ -531,12 +599,16 @@
     }
     let interest = 0;
     if (has(S, "vault")) { interest = Math.min(5, Math.floor(S.money / 5)); }
-    S.money += earn + interest;
-    if (S.ante === TARGETS.length - 1) { S.phase = "won"; return { cleared: true, won: true, ex, earn, interest, raiseResult }; }
+    const perfectChips = perfect ? CFG.perfectChips : 0;
+    S.money += earn + interest + perfectChips;
+    if (S.ante === TARGETS.length - 1) { S.phase = "won"; return { cleared: true, won: true, ex, earn, interest, raiseResult, contract, perfect, perfectChips }; }
     S.phase = "shop"; S.rerolls = 0;
     S.keep = S.hand.map((_, i) => i);
     S.offers = makeOffers(S);
-    return { cleared: true, won: false, ex, earn, interest, raiseResult };
+    S.contract = null;
+    const pool = CONTRACTS.map((c) => c.id); S.contractOffers = [];
+    for (let i = 0; i < 2 && pool.length; i++) S.contractOffers.push(pool.splice(Math.floor(next(S) * pool.length), 1)[0]);
+    return { cleared: true, won: false, ex, earn, interest, raiseResult, contract, perfect, perfectChips };
   }
 
   /* ============================== κατάστημα ============================== */
@@ -605,6 +677,8 @@
   function nextAnte(S) { if (S.phase !== "shop") return false; S.ante += 1; startRound(S); return true; }
   const upcoming = (S) => (S.chals[S.ante + 1] ? chalById[S.chals[S.ante + 1]] : null);
   const current = (S) => (S.chal ? chalById[S.chal] : null);
+  const currentRule = (S) => (rule(S) ? ruleById[rule(S)] : null);
+  const upcomingRule = (S) => { const a = S.ante + 1; return !S.chals[a] && S.rules && S.rules[a] ? ruleById[S.rules[a]] : null; };
   const nextTarget = (S) => { const a = S.ante + 1, id = S.chals[a]; if (a >= TARGETS.length) return null; return Math.round(TARGETS[a] * (id === "richair" ? CFG.richAirMul : id ? CFG.chalTargetMul : 1)); };
   const peek = (S) => (has(S, "scout") && S.pile.length ? S.pile[S.pile.length - 1] : null);
 
@@ -614,12 +688,13 @@
   const todaySeed = (d) => { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 
   return {
-    SUITS, KINDS, BY_TIER, TARGETS, CFG, POOL, kbase, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
+    SUITS, KINDS, BY_TIER, TARGETS, CONTRACTS, contractById, RULES, ruleById, CFG, POOL, kbase, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, goal, nextTarget, roundHandSize,
     classify, isLegal, chainPos, scoreOf, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit, over,
     candidates, legalMoves, hasLegal, cheapest, suggest, aceIndex, orphans,
     toggle, reveal, play, discard, canDiscard, pass, canPass, raise, canRaise, chisel, stuck, stuckReason, finish,
-    makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, toggleKeep, nextAnte, upcoming, current, peek, has,
+    makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, toggleKeep, nextAnte, upcoming, current, currentRule, upcomingRule, peek, has,
+    contractStatus, contractMet, contractBonus, chooseContract,
     serialize, restore, todaySeed,
   };
 });

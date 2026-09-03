@@ -91,6 +91,11 @@
     else { rv.textContent = "Open"; rv.classList.add("free"); rv.classList.remove("long"); }
     $("rungDots").innerHTML = S.rung ? Array.from({ length: S.rung.size }, () => '<i class="' + (G.isBomb(S.rung) ? "bomb" : "at") + '"></i>').join("") : "";
     $("chal").hidden = !ch; if (ch) $("chalName").textContent = ch.name;
+    const rl = G.currentRule(S); $("rule").hidden = !rl; if (rl) $("ruleName").textContent = rl.name;
+    const ct = S.contract ? G.contractById[S.contract] : null, cst = G.contractStatus(S);
+    $("contract").hidden = !ct;
+    if (ct) { $("contractName").textContent = ct.name + " · " + (ct.pct ? "+" + ct.pct + "%" : "+" + ct.flat); $("contractSt").textContent = cst === "broken" ? "✕" : cst === "done" ? "✓" : cst === "ok" ? "…" : "○"; $("contract").className = "chal contract " + cst; }
+    document.body.classList.toggle("lastplay", S.playsLeft === 1 && !cleared);
     $("tnote").textContent = cap(ch ? ch.desc : G.beatText(S));
     $("chainN").textContent = "×" + pos;
     document.body.dataset.heat = pos >= 7 ? 3 : pos >= 5 ? 2 : pos >= 3 ? 1 : 0;
@@ -151,7 +156,7 @@
   const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : k.kind === 8 ? G.clabel(k).replace(/ \S+$/, "") : G.clabel(k);
   function rankButtons() { let h = ""; for (let r = 2; r <= 14; r++) h += '<button data-rank="' + r + '">' + G.rname(r) + '</button>'; return h; }
   function note(msg, ms) { ui.note = cap(msg); ui.noteT = Date.now() + (ms || 3800); render(); setTimeout(() => { if (Date.now() >= ui.noteT) render(); }, (ms || 3800) + 100); }
-  function callout(t) { if (!t) return; const el = $("callout"); el.textContent = t; el.classList.toggle("bomb", t === "Bomb!"); FX.pulse(el, "show"); }
+  function callout(t) { if (!t) return; const el = $("callout"); el.textContent = t; el.classList.toggle("bomb", t === "Bomb!"); el.classList.toggle("target", t === "Target!"); FX.pulse(el, "show"); }
   function selRects() { return S.sel.map((i) => { const el = $("hand").querySelector('[data-i="' + i + '"]'); return el ? el.getBoundingClientRect() : null; }); }
   function afterMove() {
     save();
@@ -168,7 +173,9 @@
     else if (ev.bomb) { FX.sfx.bomb(); FX.buzz([30, 40, 120]); FX.boom($("table")); FX.flash(); FX.pulse($("app"), "shake"); FX.floatIn($("table"), "+" + ev.pts); document.body.classList.add("boom"); setTimeout(() => document.body.classList.remove("boom"), 900); }
     else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300), ["#ffd166", "#ff6b6b", "#4ecdc4", "#c77dff", "#ffffff", "hsl(" + IC.kindHue(ev.k.kind) + " 90% 70%)"]); FX.floatIn($("table"), "+" + ev.pts); $("callout").style.setProperty("--kh", IC.kindHue(ev.k.kind)); }
     if (ev.shattered) { FX.sfx.shatter(); FX.burstAt($("table"), 18, 3.2, "#cfe9f2"); }
+    const crossed = S.score >= G.goal(S) && S.score - ev.pts < G.goal(S);
     render();
+    if (crossed) { setTimeout(() => { callout("Target!"); FX.sfx.clear(); FX.burstAt($("score"), 30, 4, ["#8ff0bf", "#ffffff", "#ffd166"]); }, 420); }
     FX.fly(from, Array.prototype.slice.call($("tcards").children));
     if (ev.drawn) setTimeout(() => FX.sfx.draw(), 180);
     FX.pulse($("chain"), "bump");
@@ -239,18 +246,24 @@
     return '<div class="sec"><span class="lbl">Your hand carries over' + (out ? ' · swapping ' + out : '') + '</span><p class="sub" style="margin:.2rem 0 .45rem">Tap a card to swap it for a fresh one next round.</p><div class="keeprow">' +
       S.hand.map((c, i) => { const on = k.indexOf(i) >= 0; return '<button class="keepc' + (on ? " on" : " off") + '" data-keep="' + i + '" aria-pressed="' + on + '">' + cardHTML(c, null, false, true, 0, 1) + '</button>'; }).join("") + '</div></div>';
   }
+  function contractHTML() {
+    const offs = S.contractOffers || []; if (!offs.length) return "";
+    return '<div class="sec"><span class="lbl">Next round · contract (optional)</span><p class="sub" style="margin:.2rem 0 .45rem">Pick a side goal for a bonus. Break it and you only lose the bonus.</p><div class="ctrs">' +
+      offs.map((id) => { const c = G.contractById[id], on = S.contract === id; return '<button class="ctr' + (on ? " on" : "") + '" data-contract="' + id + '" aria-pressed="' + on + '"><strong>' + c.name + '</strong><span>' + c.desc + '</span><em>' + (c.pct ? "+" + c.pct + "%" : "+" + c.flat) + '</em></button>'; }).join("") +
+      '<button class="ctr ctr--none' + (S.contract ? "" : " on") + '" data-contract="" aria-pressed="' + !S.contract + '"><strong>No contract</strong><span>Play it safe.</span></button></div></div>';
+  }
   function shopBody() {
-    return keepHTML() + '<div class="shophead"><span class="lbl">Shop</span><button class="tb" data-reroll="1"' + (S.money < G.rerollCost(S) ? " disabled" : "") + '>Reroll <em>' + G.rerollCost(S) + '◎</em></button></div><div class="offers" id="offers">' + offersHTML() + '</div>' +
+    return contractHTML() + keepHTML() + '<div class="shophead"><span class="lbl">Shop</span><button class="tb" data-reroll="1"' + (S.money < G.rerollCost(S) ? " disabled" : "") + '>Reroll <em>' + G.rerollCost(S) + '◎</em></button></div><div class="offers" id="offers">' + offersHTML() + '</div>' +
       '<div class="sec"><span class="lbl">Your charms · ' + S.charms.length + '/' + S.charmSlots + '</span>' + ownedCharmsHTML(true) + '</div>';
   }
   function sheetShop(r, fresh) {
     const T = G.target(S), up = G.upcoming(S), rr = r && r.raiseResult;
     openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + (rr === "won" ? " · raise made" : rr === "lost" ? " · raise missed" : "") + '</p>' +
       '<div class="tally"><div>Round<b>' + S.score + '</b></div>' +
-      (r ? '<div>Over target<b>+' + r.ex + '</b></div>' + (rr === "won" ? '<div>Raise<b class="good">×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</b></div>' : rr === "lost" ? '<div>Raise<b class="bad">missed · ×0</b></div>' : "") + (r.interest ? '<div>Vault interest<b>+' + r.interest + '◎</b></div>' : "") + '<div>Payout<b>+' + r.earn + '◎</b></div>' : "") +
+      (r ? '<div>Over target<b>+' + r.ex + '</b></div>' + (rr === "won" ? '<div>Raise<b class="good">×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</b></div>' : rr === "lost" ? '<div>Raise<b class="bad">missed · ×0</b></div>' : "") + (r.contract ? '<div>Contract · ' + r.contract.name + '<b class="' + (r.contract.met ? "good" : "bad") + '">' + (r.contract.met ? "+" + r.contract.bonus : "missed") + '</b></div>' : "") + (r.perfect ? '<div>Perfect round<b class="good">+' + r.perfectChips + '◎</b></div>' : "") + (r.interest ? '<div>Vault interest<b>+' + r.interest + '◎</b></div>' : "") + '<div>Payout<b>+' + r.earn + '◎</b></div>' : "") +
       '<div>Chips<b id="mn">' + S.money + '◎</b></div></div>' +
       (fresh && fresh.length ? '<div class="unlocked">✦ Unlocked · ' + fresh.map((id) => G.charmById[id].name).join(", ") + '</div>' : "") +
-      (up ? '<div class="chalnext"><span class="lbl">Next · Challenge</span><b>' + up.name + '</b><span>' + up.desc + '</span></div>' : "") +
+      (up ? '<div class="chalnext"><span class="lbl">Next · Challenge</span><b>' + up.name + '</b><span>' + up.desc + '</span></div>' : (G.upcomingRule(S) ? '<div class="chalnext rulenext"><span class="lbl">Next · Table rule</span><b>' + G.upcomingRule(S).name + '</b><span>' + G.upcomingRule(S).desc + '</span></div>' : "")) +
       '<div id="shopBody">' + shopBody() + '</div>' +
       '<button class="big" data-next="1" style="margin-top:1rem">Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</button>');
     if (fresh && fresh.length) FX.sfx.unlock();
@@ -292,6 +305,7 @@
       '<p><b>Discard</b> up to four cards and draw new ones. You get five discards for the whole run — spend them wisely, buy more in the shop. <b>Pass</b> resets the rung, keeps half the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
       '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
+      '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. <b>Contracts</b> are optional side goals you pick in the shop for a bonus — break one and you only lose the bonus. A round with no pass and no discard is a <b>Perfect round</b>: +3 chips.</p>' +
       '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
@@ -348,6 +362,9 @@
     if (act === "raise") { if (G.raise(S)) { FX.sfx.raise(); FX.buzz([10, 30, 10]); FX.burstAt($("bPlay"), 26, 3.5); render(); save(); } }
   });
   $("charms").addEventListener("click", (e) => { const c = e.target.closest("[data-charm]"); if (c) sheetCharm(c.dataset.charm); });
+  $("chal").addEventListener("click", () => { const c = G.current(S); if (c) note(c.name + " — " + c.desc, 4500); });
+  $("rule").addEventListener("click", () => { const r = G.currentRule(S); if (r) note(r.name + " — " + r.desc, 4500); });
+  $("contract").addEventListener("click", () => { const c = S.contract && G.contractById[S.contract]; if (c) note("Contract · " + c.name + " — " + c.desc + " Reward " + (c.pct ? "+" + c.pct + "% of the round" : "+" + c.flat + " points") + ".", 5000); });
   $("bPlay").addEventListener("click", doPlay);
   $("bPass").addEventListener("click", doPass);
   $("bDisc").addEventListener("click", doDiscard);
@@ -359,6 +376,8 @@
     if (buy) { if (G.buy(S, +buy.dataset.buy)) { FX.sfx.buy(); FX.buzz(10); save(); refreshShop(); } return; }
     const sellb = t.closest("[data-sell]");
     if (sellb) { if (G.sell(S, +sellb.dataset.sell)) { FX.sfx.discard(); save(); refreshShop(); } return; }
+    const cb2 = t.closest("[data-contract]");
+    if (cb2) { if (G.chooseContract(S, cb2.dataset.contract || null)) { FX.sfx.tick(); save(); refreshShop(); } return; }
     const kb = t.closest("[data-keep]");
     if (kb) { if (G.toggleKeep(S, +kb.dataset.keep)) { FX.sfx.tick(); save(); refreshShop(); } return; }
     if (t.closest("[data-reroll]")) { if (G.reroll(S)) { FX.sfx.discard(); save(); refreshShop(); } return; }
