@@ -52,7 +52,7 @@
   }
   /* Μέγεθος φύλλου όπως στο v2: από το πλάτος, με οροφή· δύο ίσες σειρές. */
   function fitHand(n) {
-    const W = $("hand").clientWidth || 360, H = innerHeight || 700;
+    const W = ($("hand").parentElement || document.body).clientWidth || 360, H = innerHeight || 700;
     const rows = n <= 10 ? 2 : 3, per = Math.max(1, Math.ceil(n / rows));
     const byW = Math.floor((W - (per - 1) * 4) / per);
     const byH = Math.floor((Math.min(150, H * 0.2) - (rows - 1) * 5) / rows / 1.4);
