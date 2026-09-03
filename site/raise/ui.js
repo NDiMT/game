@@ -3,7 +3,7 @@
   "use strict";
   const G = window.RAISE, FX = window.FX;
   const $ = (id) => document.getElementById(id);
-  const KEY = "raise.run.v3", LIFE = "raise.life.v1";
+  const KEY = "raise.run.v4", LIFE = "raise.life.v1";
   let S = null, shown = 0, ui = { chisel: false, note: null, noteT: 0 }, installEvt = null;
 
   /* ---------- storage ---------- */
@@ -77,7 +77,7 @@
     const playsMax = S.playsMax - (ch && ch.id === "fewplays" ? 1 : 0);
     $("plays").innerHTML = pips(S.playsLeft, playsMax);
     $("breaths").innerHTML = pips(S.breaths, ch && ch.id === "onebreath" ? 1 : S.breathsMax);
-    const discMax = Math.max(S.discards, ch && ch.id === "nodiscard" ? 1 : S.discardsMax + (ch && ch.id === "fewplays" ? 1 : 0) + (G.has(S, "sleight") ? 2 : 0));
+    const discMax = Math.max(S.discards, ch && ch.id === "nodiscard" ? 1 : S.discardsMax + (ch && ch.id === "fewplays" ? 1 : 0) + (G.has(S, "sleight") ? 1 : 0));
     $("discards").innerHTML = pips(S.discards, discMax);
     $("pileN").textContent = S.pile.length; $("dpileN").textContent = S.discardPile.length;
 
@@ -86,16 +86,18 @@
     $("charms").innerHTML = cm;
 
     const rv = $("rungVal");
-    if (S.rung) { rv.textContent = G.TIERS[S.rung.tier].name + " " + G.rname(S.rung.rank); rv.classList.remove("free"); }
-    else { rv.textContent = "open"; rv.classList.add("free"); }
-    $("rungDots").innerHTML = G.TIERS.slice(1).map((t, i) => { const tier = i + 1, at = S.rung && S.rung.tier === tier, un = S.rung && tier < S.rung.tier; return '<i class="' + (at ? "at" : un ? "under" : "") + '"></i>'; }).join("");
+    if (S.rung) { const lb = G.clabel(S.rung); rv.textContent = lb; rv.classList.remove("free"); rv.classList.toggle("long", lb.length > 11); }
+    else { rv.textContent = "open"; rv.classList.add("free"); rv.classList.remove("long"); }
+    $("rungDots").innerHTML = S.rung ? Array.from({ length: S.rung.size }, () => '<i class="' + (G.isBomb(S.rung) ? "bomb" : "at") + '"></i>').join("") : "";
     $("chal").hidden = !ch; if (ch) $("chalName").textContent = ch.name;
-    $("tnote").textContent = ch ? ch.desc : S.rung ? "beat it: higher rank or higher hand" : "any hand opens";
+    $("tnote").textContent = ch ? ch.desc : G.beatText(S);
     $("chainN").textContent = "×" + pos;
     document.body.dataset.heat = pos >= 7 ? 3 : pos >= 5 ? 2 : pos >= 3 ? 1 : 0;
     const pk = G.peek(S); $("peek").hidden = !pk; if (pk) $("peekCard").innerHTML = cardHTML(pk, null, false, true, 0, 1);
     const tc = $("tcards");
     tc.innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, S.played.length)).join("");
+    { const tn = S.played.length, tw = ($("table").clientWidth || 340) - 28, cw = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 44;
+      tc.style.setProperty("--tcw", Math.max(26, Math.min(Math.round(cw * 0.9), tn ? Math.floor((tw - (tn - 1) * 4) / tn) : 99)) + "px"); }
     tc.classList.toggle("fresh", S.ante === 0 && !S.rung && !S.log.length);
 
     const n = S.hand.length; fitHand(n);
@@ -125,15 +127,15 @@
     else if (S.playsLeft <= 0) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "cleared" : "short of the target") + '</span>'; }
     else if (!S.sel.length) {
       go.classList.add("idle"); go.disabled = true;
-      go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "beat " + G.TIERS[S.rung.tier].name + " " + G.rname(S.rung.rank) : "any hand opens") + (S.playsLeft === 1 ? " · last play" : "") + '</span>';
+      go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "beat " + G.clabel(S.rung) : "any hand opens") + (S.playsLeft === 1 ? " · last play" : "") + '</span>';
     }
     else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">rung resets · keep chain ×' + pos + ' · no play used</span><span class="go__p">↺</span>'; }
-    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + S.sel.length + (S.sel.length === 1 ? ' card' : ' cards') + '</span><span class="go__s">not a hand · discard?</span>'; }
-    else if (!e.legal) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">won\'t climb · discard?</span>'; }
+    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + S.sel.length + (S.sel.length === 1 ? ' card' : ' cards') + '</span><span class="go__s">' + (S.sel.length > G.CFG.discardCards ? 'not a hand · discard up to ' + G.CFG.discardCards : 'not a hand · discard?') + '</span>'; }
+    else if (!e.legal) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + (G.isBomb(S.rung) ? "only a bigger bomb" : "won\'t beat it · " + (S.rung.size !== e.k.size || S.rung.kind !== e.k.kind ? "need " + G.clabel(S.rung).split(" ")[0].toLowerCase() + " of " + S.rung.size : "higher")) + '</span>'; }
     else {
       go.classList.add("ok"); go.disabled = false;
       const extra = e.notes.length ? " · " + e.notes.join(", ") : "";
-      go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + e.base + (e.factor > 1 ? '×' + e.factor : '') + ' × ' + e.pos + (e.hm !== 1 ? ' ×' + e.hm : '') + extra + '</span><span class="go__p">+' + e.pts + '</span>';
+      go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + (G.crange(e.k) ? G.crange(e.k) + ' · ' : '') + e.base + (e.factor > 1 ? '×' + e.factor : '') + ' × ' + e.pos + (e.hm !== 1 ? ' ×' + e.hm : '') + extra + '</span><span class="go__p">+' + e.pts + '</span>';
     }
     $("bPass").disabled = ui.chisel || !G.canPass(S); $("passN").textContent = S.breaths;
     $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = S.discards;
@@ -165,16 +167,17 @@
     afterMove();
   }
   function doDiscard() {
+    if (S.sel.length > G.CFG.discardCards) { note("Discard up to " + G.CFG.discardCards + " cards at a time."); return; }
     if (!G.canDiscard(S)) return;
     const rects = selRects();
     if (G.discard(S)) { FX.sfx.discard(); FX.buzz(10); FX.ghostTo(rects, $("dpile")); ui.note = null; render(); setTimeout(() => FX.sfx.draw(), 160); afterMove(); }
   }
   function doPass() { if (G.pass(S)) { FX.sfx.pass(); FX.buzz(40); ui.note = null; render(); afterMove(); } }
   function doHint() {
-    const m = G.cheapest(S);
+    const m = G.suggest(S);
     if (m) { S.sel = m.idx.slice(); ui.note = null; FX.sfx.tick(); render(); return; }
     const o = G.orphans(S);
-    if (S.discards > 0 && S.pile.length && o.length) { S.sel = o.slice(0, 3); note("Nothing climbs. These are orphans — discard them and draw."); return; }
+    if (S.discards > 0 && S.pile.length && o.length) { S.sel = o.slice(0, G.CFG.discardCards); note("Nothing beats it. These fit no hand — discard them and draw."); return; }
     note(G.stuckReason(S));
   }
   function end() {
@@ -190,7 +193,7 @@
   const closeS = () => { $("veil").hidden = true; };
   function chipsHTML() {
     const c = [];
-    G.TIERS.slice(1).forEach((t, i) => { if (S.mult[i + 1] > 1) c.push(t.short + " <b>×" + S.mult[i + 1] + "</b>"); });
+    G.KINDS.slice(1).forEach((t, i) => { if (S.mult[i + 1] > 1) c.push(t.short + " <b>×" + S.mult[i + 1] + "</b>"); });
     if (S.playsMax > G.CFG.plays) c.push("Plays <b>" + S.playsMax + "</b>");
     if (S.breathsMax > G.CFG.breaths) c.push("Breaths <b>" + S.breathsMax + "</b>");
     if (S.discardsMax > G.CFG.discards) c.push("Discards <b>" + S.discardsMax + "</b>");
@@ -248,7 +251,7 @@
       '<button class="big" data-restart="1">Same seed, again</button><div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>');
   }
   function sheetWin() {
-    openS('<h2 class="good">The Summit</h2><p class="sub">All twelve · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
+    openS('<h2 class="good">The Summit</h2><p class="sub">All thirty · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
       '<div class="tally"><div>Chips<b>' + S.money + '◎</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
       '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' +
       '<div class="row2" style="margin-top:1rem"><button class="big" data-fresh="1">New run</button><button class="big ghost" data-share="1">Share</button></div>');
@@ -258,7 +261,7 @@
       '<div class="log" style="margin-top:.5rem">' + (S.log.length ? S.log.slice().reverse().map((e) => '<div class="' + (e.cls || "") + '"><span>' + e.t + '</span><em>' + e.c + '</em><b>' + (typeof e.p === "number" ? "+" + e.p : e.p) + '</b></div>').join("") : '<div style="border:0;color:var(--muted)">no plays yet</div>') + '</div>' +
       '<div class="sec"><span class="lbl">Charms</span>' + ownedCharmsHTML(false) + '</div>' +
       '<div class="sec"><span class="lbl">Build</span><div class="chips">' + chipsHTML() + '</div></div>' +
-      '<div class="sec"><span class="lbl">Paytable</span><div class="rtab">' + G.TIERS.slice(1).map((t, i) => '<div><span>' + t.name + '</span><b>' + (t.base * S.mult[i + 1]) + '</b></div>').join("") + '</div></div>' +
+      '<div class="sec"><span class="lbl">Paytable</span><div class="rtab">' + G.KINDS.slice(1).map((t, i) => '<div><span>' + t.name + (t.min ? ' <em>' + (i + 1 === 3 ? '2 pairs' : '5 cards') + ' · longer pays more</em>' : '') + '</span><b>' + (t.base * S.mult[i + 1]) + '</b></div>').join("") + '</div></div>' +
       '<div class="sec"><span class="lbl">Seed · ' + S.seed + '</span><div class="seedrow"><input id="sd" value="" placeholder="custom seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Go</button></div>' +
       '<div class="row2"><button class="big ghost" data-today="1">Daily · ' + G.todaySeed() + '</button><button class="big ghost" data-fresh="1">Random</button></div></div>' +
       '<div class="row2" style="margin-top:1.1rem"><button class="big ghost" data-howto="1">How to play</button><button class="big ghost" data-collection="1">Collection</button></div>' +
@@ -268,12 +271,13 @@
   }
   function sheetHowTo() {
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
-      '<p><b>Five plays a round.</b> Pick cards, make a poker hand, play it. Draw back to eight.</p>' +
-      '<p><b>Every hand must climb</b> — beat the rung by rank, or by a higher hand. Score = base × chain.</p>' +
-      '<p><b>Discard</b> what does not climb (three a round). <b>Pass</b> resets the rung but breaks the chain and costs a breath. A lone <b>Ace</b> resets for free.</p>' +
+      '<p><b>Five plays a round.</b> Pick cards, make a hand, play it. Draw back to eight.</p>' +
+      '<p><b>Hands, Tichu style:</b> pair · trips · full house · <b>straight</b> of five or more · <b>stairs</b> of consecutive pairs (22 33 44) · bombs: quads and straight flush.</p>' +
+      '<p><b>Every hand must beat the last</b> — same hand, same number of cards, higher rank. A <b>bomb</b> beats anything; only a bigger bomb beats a bomb. Score = base × chain. Longer straights and stairs pay more.</p>' +
+      '<p><b>Discard</b> up to four cards, twice a round, and draw new ones. <b>Pass</b> resets the rung but breaks the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
       '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room.</p>' +
-      '<p>Twelve antes. Challenges at 3, 6, 9. The Summit at 12.</p></div>' +
+      '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
   function sheetCollection() {

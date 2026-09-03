@@ -406,7 +406,10 @@ body.on-start .app{filter:blur(6px);pointer-events:none}
 .peek{display:flex;align-items:center;gap:.3rem;--cw:1.55rem}
 .peek .card{display:block;animation:none}
 /* table cards a touch smaller than the hand */
-.tcards .card{width:calc(var(--cw) * .9)}
+.tcards .card{width:var(--tcw, calc(var(--cw) * .9))}
+.rung__val.long{font-size:1.1rem}
+.rung__dots i.bomb{background:#e0684f;box-shadow:0 0 .5rem rgba(224,104,79,.6)}
+.rtab em{display:block;font-style:normal;font-size:.62rem;color:var(--muted)}
 /* hand: v2 sizing, no second index */
 .card__ix2{display:none}
 .hand .card.new{animation:drawin .38s cubic-bezier(.2,.85,.25,1) backwards}

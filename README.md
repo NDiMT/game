@@ -15,9 +15,9 @@
 
 ## RAISE — το prototype
 
-Ιεραρχία χεριών πόκερ παιγμένη ως climbing σκάλα, με **τράβηγμα**: κρατάς 8 φύλλα,
+Συνδυασμοί **Tichu** παιγμένοι ως climbing αλυσίδα, με **τράβηγμα**: κρατάς 8 φύλλα,
 τραβάς πίσω στα 8 μετά από κάθε παίξιμο, και έχεις **5 παιξίματα** τον γύρο.
-Δώδεκα antes, seeded RNG, κατάστημα με charms. Σχεδιασμένο για κινητό, με ένα χέρι.
+Τριάντα antes, seeded RNG, κατάστημα με charms. Σχεδιασμένο για κινητό, με ένα χέρι.
 UI στα αγγλικά.
 
 ### Γιατί άλλαξε το μοντέλο
@@ -30,15 +30,20 @@ UI στα αγγλικά.
 
 ### Κανόνες
 
-- **Pair** 10 · **Trips** 25 · **Straight** 40 · **Flush** 60 · **Full House** 80 · **Quads** 120
-- Κάθε χέρι πρέπει να ξεπερνά το **Rung**: ανώτερη κατηγορία, ή ίδια με ψηλότερη αξία.
-- Σκορ = βάση × **Chain** (θέση στην αλυσίδα) × ενισχύσεις × charms.
-- Πόροι ανά γύρο: **5 Plays**, **3 Discards** (πετάς 1–5 φύλλα, τραβάς), **2 Breaths**
+- Συνδυασμοί κατά Tichu: **Pair** 10 · **Trips** 25 · **Stairs** (συνεχόμενα ζευγάρια,
+  22 33 44) 40 / 75 / 110 για 2 / 3 / 4 ζευγάρια · **Straight** 5+ φύλλων 40 / 60 / 85 /
+  115 / 150… · **Full House** 80 · βόμβες: **Quads** 120, **Straight Flush** 150 (+40 ανά φύλλο).
+- Κάθε χέρι **χτυπάει το προηγούμενο όπως στο Tichu**: ίδιος τύπος, ίδιο πλήθος φύλλων,
+  ψηλότερη αξία. Βόμβα χτυπάει οτιδήποτε· βόμβα χτυπιέται μόνο από μεγαλύτερη βόμβα.
+  Ο άσος είναι μόνο ψηλός. Wild = οποιοδήποτε φύλλο.
+- Σκορ = βάση × **Chain** (θέση στην αλυσίδα) × ενισχύσεις × charms. Το δίλημμα:
+  μακριές κέντες πληρώνουν πολύ αλλά δύσκολα χτυπιούνται· χαμηλά ζευγάρια χτίζουν αλυσίδα.
+- Πόροι ανά γύρο: **5 Plays**, **2 Discards** (πετάς έως 4 φύλλα, τραβάς νέα), **2 Breaths**
   (Pass: Rung και Chain μηδενίζουν). Ο γύρος τελειώνει όταν τελειώσουν τα Plays.
 - **Ace in the Hole:** Άσος μόνος του → Rung μηδενίζει, Chain μένει, δεν κοστίζει Play.
 - **Raise:** μόλις καθαρίσεις τον στόχο, ανέβασέ τον σε ×1,6 για τα Plays που έμειναν.
   Πιάνεις → αμοιβή ×2. Χάνεις → αμοιβή ×0.
-- Ξεκινάς με μία **Chisel**. Straight flush = Flush. Ο άσος είναι μόνο ψηλός.
+- Ξεκινάς με μία **Chisel**.
 
 ### Κατάστημα
 
@@ -48,20 +53,20 @@ UI στα αγγλικά.
 
 | Αναβαθμίσεις | Ενισχυμένα φύλλα |
 | --- | --- |
-| Pairs+ … Quads+ (έως ×3), Extra Play (έως 7), Breath, Discard, Chisel, Wide Hand, Head Start, Cull | **Gold** ×2 · **Glass** ×3 και σπάει · **Wild** · **Steel** (πάντα στο αρχικό χέρι) |
+| Pairs+ · Trips+ · Stairs+ · Straights+ · Full Houses+ · Bombs+ (έως ×3), Extra Play (έως 7), Breath, Discard, Chisel, Wide Hand, Head Start, Cull | **Gold** ×2 · **Glass** ×3 και σπάει · **Wild** · **Steel** (πάντα στο αρχικό χέρι) |
 
 ### Charms (5 θέσεις, 18 συνολικά, 5 κλειδωμένα)
 
-Ladder · Leapfrog · Low Road · Court · Loyalty · Cheap Breath · Second Wind · Sleight ·
+Ladder · Overkill · Low Road · Court · Loyalty · Cheap Breath · Second Wind · Sleight ·
 Encore · Mirror · Vault · Thrift · Scout — και κλειδωμένα με επιτεύγματα ζωής:
-**Goldsmith** (3 Gold), **Glassblower** (5 Glass σπασμένα), **Summiteer** (3 Quads),
+**Goldsmith** (3 Gold), **Glassblower** (5 Glass σπασμένα), **Summiteer** (3 βόμβες),
 **Gambler** (3 Raise), **Ember** (chain ×7). Η **Collection** φαίνεται στην αρχική οθόνη.
 
 ### Challenges
 
-Antes 3, 6, 9 (seeded, με στόχο ×0,75): No Pass · Short Hand · Blind Deal · High Ground ·
-One Breath · Thin Air · Rich Air · One Discard · Four Plays · Sticky Rung. Το ante 12
-είναι πάντα **The Summit**: μόνο Άσος μηδενίζει το Rung.
+Antes 4, 9, 14, 19, 24 (seeded, με στόχο ×0,75): No Pass · Short Hand · Blind Deal ·
+High Ground · One Breath · Thin Air · Rich Air · One Discard · Four Plays · Sticky Rung.
+Το ante 30 είναι πάντα **The Summit**: μόνο Άσος μηδενίζει το Rung.
 
 ### Δομή
 
@@ -78,10 +83,12 @@ One Breath · Thin Air · Rich Air · One Discard · Four Plays · Sticky Rung. 
 
 ### Βαθμονόμηση
 
-Bot: cheapest legal climb, discards ορφανά, Άσος όταν κολλά, συντηρητικό Raise,
-charms πρώτα. Στόχοι `100 → 2950` (×1,36): **~2% νίκες bot**, θάνατοι ανά ante
-`12/14/39/63/58/35/26/21/12/9/4/1` — καμπάνα στα 4–5, ουρά ως το 12. Ο άνθρωπος
-υπολογίζεται 3–6× καλύτερος: στόχος ~1/10 νίκες.
+Bot (`tools/sweep.js`): στο άνοιγμα παίζει το σχήμα με τη μακρύτερη αλυσίδα στο χέρι,
+μετά το φθηνότερο χτύπημα (βόμβες τελευταίες), discards ορφανά ×4, Άσος όταν κολλά,
+συντηρητικό Raise, charms πρώτα. Στόχοι `60 → 14 650` σε 30 antes, λόγος από ×1,12
+(αρχή) σε ×1,32 (τέλος): **0% νίκες bot**, μέσος θάνατος στο ante 20, μόλις ~10% των
+runs χάνονται στα πρώτα 10 antes, κορύφωση θανάτων στα 22–25. Ο άνθρωπος υπολογίζεται
+αρκετά καλύτερος από το bot: ζητούμενο, η κορυφή να είναι σπάνια.
 
 ## Δημοσίευση
 
