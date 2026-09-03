@@ -5,7 +5,7 @@ const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 400;
 
 const PRIO = ["ladder", "cheap", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "wind", "court", "loyal", "vault", "sleight", "thrift", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "wi", "tip", "m2", "m3", "m6", "th"];
+  "pl", "m1", "cs", "di", "wi", "tip", "m2", "m3", "m6", "th"];
 const CARD_PR = { wild: 12.5, gold: 14.5, steel: 16.5, glass: 18.5 };
 const ALL_UNLOCKED = G.CHARMS.map((c) => c.id);
 
