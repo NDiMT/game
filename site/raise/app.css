@@ -779,3 +779,7 @@ body[data-heat="3"] .hud__score b{color:#ffb15a;text-shadow:0 0 1rem rgba(255,14
 .tip{filter:drop-shadow(0 0 0 transparent)}
 .tip__in{position:relative}
 @keyframes tipin{from{opacity:0;transform:translateY(.5rem) scale(.96)}to{opacity:1;transform:none}}
+
+/* free round discard: green pip in front of the run-long ones */
+.pips--disc i.free{background:radial-gradient(circle at 35% 28%,#e6ffef,#8ff0bf 45%,#2f8562);box-shadow:inset 0 -1px 1px rgba(0,0,0,.25),0 1px 2px rgba(0,0,0,.45),0 0 .35rem rgba(143,240,191,.6)}
+.pips--disc i.free+i:not(.free){margin-left:.25rem}

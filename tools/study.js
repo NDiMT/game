@@ -22,17 +22,17 @@ function playRound(S) {
   let bombThis = false;
   for (let guard = 0; guard < 200 && S.phase === "round"; guard++) {
     if (S.playsLeft <= 0) break;
-    if (G.canRaise(S) && S.playsLeft >= 3 && S.discards >= 1) { G.raise(S); st.raises++; }
+    if (G.canRaise(S) && S.playsLeft >= 3 && G.discardsLeft(S) >= 1) { G.raise(S); st.raises++; }
     let m = G.suggest(S);
     if (STRAT === "finisher" && S.playsLeft === 1) { let best = null, bp = -1; G.legalMoves(S).forEach((o) => { const p = G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts; if (p > bp) { bp = p; best = o; } }); if (best) m = best; }
     if (STRAT === "bombfish" && m && !G.isBomb(m.k)) {
       /* μην παίζεις ζευγάρια/τρίο που μπορούν να γίνουν καρέ, αν έχεις discards για ψάρεμα */
       const g = rankGroups(S), all = G.legalMoves(S).filter((o) => !o.idx.some((i) => (g[S.hand[i].r] || []).length >= 2 && (g[S.hand[i].r] || []).length < 4));
-      if (all.length) m = all.reduce((b, o) => (!b || o.k.rank < b.k.rank ? o : b), null); else if (S.discards > 0 && S.pile.length) { if (discardStep(S)) continue; }
+      if (all.length) m = all.reduce((b, o) => (!b || o.k.rank < b.k.rank ? o : b), null); else if (G.discardsLeft(S) > 0 && S.pile.length) { if (discardStep(S)) continue; }
     }
     if (m) { S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; } continue; }
     if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); st.aces++; continue; } }
-    if (S.discards > 0 && S.pile.length > 0 && discardStep(S)) { st.discards++; continue; }
+    if (G.discardsLeft(S) > 0 && S.pile.length > 0 && discardStep(S)) { st.discards++; continue; }
     if (G.canPass(S)) { G.pass(S); st.passes++; continue; }
     break;
   }

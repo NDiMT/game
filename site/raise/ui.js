@@ -87,8 +87,7 @@
 
     const playsMax = S.playsMax - (ch && ch.id === "fewplays" ? 1 : 0);
     $("plays").innerHTML = pips(S.playsLeft, playsMax);
-    $("breaths").innerHTML = pips(S.breaths, ch && ch.id === "onebreath" ? 1 : S.breathsMax);
-    $("discards").innerHTML = pips(Math.min(S.discards, 5), 5) + (S.discards > 5 ? '<b>+' + (S.discards - 5) + '</b>' : '');
+    $("discards").innerHTML = Array.from({ length: S.roundDisc || 0 }, () => '<i class="free"></i>').join("") + pips(Math.min(S.discards, 5), 5) + (S.discards > 5 ? '<b>+' + (S.discards - 5) + '</b>' : '');
     $("discards").classList.toggle("off", !!(ch && ch.id === "nodiscard"));
     $("pileN").textContent = S.pile.length; $("dpileN").textContent = S.discardPile.length;
 
@@ -130,7 +129,7 @@
         : '<span class="toast gold" style="flex:1">Tap a card to rewrite.</span><button class="tb on" data-act="chisel">Cancel</button>';
     } else {
       {
-        if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise <em>×' + (G.has(S, "gambler") ? G.CFG.gamblerMul : G.CFG.raiseMul) + ' · pay ×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</em></button>';
+        if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise <em>×' + G.raiseMulFor(S) + ' · pay ×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</em></button>';
         if (S.raised) tools += '<span class="toast gold raised" style="flex:1">RAISED · reach ' + S.raiseTarget + '</span>';
         if (S.chiselMax) tools += '<button class="tb" data-act="chisel"' + (S.chisel <= 0 ? " disabled" : "") + '>Chisel <em>' + S.chisel + '</em></button>';
         if (cleared && S.playsLeft > 0 && !S.raised) tools += '<button class="tb" data-act="end">End round</button>';
@@ -162,8 +161,8 @@
     pv.innerHTML = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       : cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + "</span>").join(' <i>·</i> ');
     Array.prototype.forEach.call(go.querySelectorAll(".go__s"), (el) => { el.textContent = cap(el.textContent); });
-    $("bPass").disabled = ui.chisel || !G.canPass(S); $("passN").textContent = S.breaths;
-    $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = S.discards;
+    $("bPass").disabled = ui.chisel || !G.canPass(S); { const kp = G.passKeep(S); $("passN").textContent = kp === 1 ? "×1" : kp > 0.5 ? "×¾" : "×½"; }
+    $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = G.discardsLeft(S);
     $("bHint").disabled = ui.chisel || S.playsLeft <= 0;
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
@@ -224,7 +223,6 @@
     const c = [];
     G.BY_TIER.forEach((t) => { const m = S.mult[G.KINDS.indexOf(t)]; if (m > 1) c.push(t.short + " <b>×" + m + "</b>"); });
     if (S.playsMax > G.CFG.plays) c.push("Plays <b>" + S.playsMax + "</b>");
-    if (S.breathsMax > G.CFG.breaths) c.push("Breaths <b>" + S.breathsMax + "</b>");
     c.push("Discards <b>" + S.discards + "</b>");
     if (S.chiselMax > 1) c.push("Chisel <b>" + S.chiselMax + "</b>");
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
@@ -329,9 +327,9 @@
       '<p><b>Five plays a round.</b> Pick cards, make a hand, play it. Draw back to eight. Two <b>Jokers</b> in the deck stand for any card.</p>' +
       '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
       '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = (hand base + <b>card values</b>) × chain: every card pays its rank, J 11 up to A 14, so two Aces beat two 3s. Longer straights and stairs pay more.</p>' +
-      '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b> (no chain multiplier). The table opens and the chain carries on.</p>' +
-      '<p><b>Discard</b> any number of cards and draw new ones. You get five discards for the whole run — spend them wisely, buy more in the shop. <b>Pass</b> resets the rung, keeps half the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
-      '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
+      '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b>, or (200 + card values) × chain when that pays more. The table opens and the chain carries on.</p>' +
+      '<p><b>Discard</b> any number of cards and draw new ones. One discard is free every round; five more last the whole run — buy extra in the shop. <b>Pass</b> resets the rung at the cost of half your chain, as often as you like. A lone <b>Ace</b> resets and keeps the chain, but your hand stays one card short for the round.</p>' +
+      '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> — ×1.8 the target with two plays left, ×2 with one — for a double payout, or bust it.</p>' +
       '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
       '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with no pass and no discard is a <b>Perfect round</b>: +3 chips.</p>' +
       '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
