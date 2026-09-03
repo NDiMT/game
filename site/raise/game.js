@@ -34,9 +34,11 @@
   }
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
-  const TARGETS = [215, 265, 330, 445, 560, 695, 855, 1050, 1290, 1580, 1940, 2340, 2850, 3440, 4150, 4990, 6000, 7200, 8600, 10300, 12250, 14100, 16150, 18650, 21500, 25000, 29000, 33900, 39700, 46900];
+  const TARGETS = [215, 270, 365, 500, 630, 830, 1230, 1590, 2300, 2820, 3470, 4180, 5100, 6450, 7800, 9400, 11250, 13500, 16150, 19350, 23000, 26500, 27200, 28900, 35300, 37800, 42800, 51700, 64100, 84300];
   const CFG = {
-    handSize: 8, plays: 5, breaths: 2, discards: 5, discardCards: 99, chisel0: 0, jokers: 2,
+    handSize: 8, plays: 5, breaths: 2, discards: 0, discardCards: 99, chisel0: 0, jokers: 2,
+    /* ενισχύσεις: δεν αγοράζονται· «σκάνε» τυχαία σε φύλλα που τραβάς μέσα στον γύρο */
+    enhChance: 0.05, enhWeights: { gold: 45, glass: 35, steel: 20 }, steelCap: 3, jokerOffers: 2, jokerOfferChance: 0.6,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
     offersUp: 2, offersCard: 1, offersCharm: 2, rerollCost: 3, rerollStep: 2,
     charmSlots: 5,
@@ -44,7 +46,7 @@
     chalTargetMul: 0.75, thinAirCap: 4, ruleChance: 0.75, perfectChips: 3, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
     raiseMul: 2.0, raiseMulEarly: 1.8, raisePayout: 2, gamblerMul: 2.4, gamblerMulEarly: 2.2, passKeep: 0.5, cheapKeep: 0.75, roundDiscards: 1,
     priceStep: 0.5,
-    maxBuy: { cs: 2, br: 2, wi: 2, di: 3, pl: 3, tip: 3, sl: 2, gt: 1, sd: 1, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
+    maxBuy: { cs: 2, br: 2, wi: 2, di: 2, pl: 3, tip: 3, sl: 2, gt: 1, sd: 1, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
   };
 
   const POOL = [
@@ -53,7 +55,7 @@
     { id: "m3", name: "Runs +", desc: "Straights and stairs pay one step more.", cost: 8 },
     { id: "m6", name: "Fuse", desc: "Bombs pay one step more: +1000 and up.", cost: 6 },
     { id: "pl", name: "Extra Play", desc: "+1 play per round.", cost: 12 },
-    { id: "di", name: "Discards", desc: "+2 discards for the rest of the run.", cost: 7 },
+    { id: "di", name: "Discards", desc: "One more discard every round.", cost: 8 },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card.", cost: 9 },
     { id: "cs", name: "Head Start", desc: "The chain starts one step higher.", cost: 12 },
     { id: "tip", name: "Tip Jar", desc: "+2 chips at the end of every ante.", cost: 6 },
@@ -81,7 +83,7 @@
     { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: +1 chain.", cost: 9 },
     { id: "cheap", name: "Cheap Breath", glyph: "¾", desc: "Every pass keeps three quarters of the chain instead of half.", cost: 8 },
     { id: "wind", name: "Second Wind", glyph: "∞", desc: "Your first pass each round keeps the whole chain.", cost: 7 },
-    { id: "sleight", name: "Sleight", glyph: "✂", desc: "Gain a discard at the start of every round.", cost: 8 },
+    { id: "sleight", name: "Sleight", glyph: "✂", desc: "One extra discard every round.", cost: 8 },
     { id: "encore", name: "Encore", glyph: "⧗", desc: "Your last play of the round pays ×2.", cost: 9 },
     { id: "mirror", name: "Mirror", glyph: "◐", desc: "The first hand of each round pays ×2 and counts as two chain steps.", cost: 9 },
     { id: "vault", name: "Vault", glyph: "◎", desc: "Interest: +1 chip per 3 held at ante end, up to 6.", cost: 6 },
@@ -145,7 +147,7 @@
   /* Τράπουλες: διαφορετικό ξεκίνημα. lock = επίτευγμα ζωής (best = καλύτερο ante). */
   const DECKS = [
     { id: "classic", name: "Classic", desc: "52 cards, two Jokers, five discards.", glyph: "♠" },
-    { id: "wild", name: "Wild Deck", desc: "Four Jokers and six discards.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
+    { id: "wild", name: "Wild Deck", desc: "Four Jokers and two discards a round.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
     { id: "headless", name: "Headless", desc: "No Aces — no Ace in the Hole. The chain starts two steps higher.", glyph: "♛", lock: { key: "best", n: 20, text: "Clear ante 20" } },
   ];
   const deckById = {}; DECKS.forEach((d) => { deckById[d.id] = d; });
@@ -189,7 +191,7 @@
       case "m1": case "m2": case "m3": case "m4": case "m5": case "m6": MULT_KIND[id].forEach((k) => { S.mult[k] += 1; }); break;
       case "br": S.breathsMax += 1; break;
       case "pl": S.playsMax += 1; break;
-      case "di": S.discards += 2; break;
+      case "di": S.roundDiscBonus = (S.roundDiscBonus || 0) + 1; break;
       case "ch": S.chiselMax += 1; break;
       case "wi": S.handSize += 1; break;
       case "cs": S.chainStart += 1; break;
@@ -231,7 +233,7 @@
     const topR = D.id === "headless" ? 13 : 14, jokers = D.id === "wild" ? 4 : CFG.jokers;
     for (let r = 2; r <= topR; r++) for (let si = 0; si < 4; si++) S.deck.push({ id: S.nextId++, r, si });
     for (let j = 0; j < jokers; j++) S.deck.push({ id: S.nextId++, r: 0, si: j % 4, e: "wild" });
-    if (D.id === "wild") S.discards = 6;
+    if (D.id === "wild") S.roundDiscBonus = 1;
     if (D.id === "headless") S.chainStart = 2;
     const pool = RANDOM_CHALLENGES.slice();
     CFG.challengeAntes.forEach((a) => { S.chals[a] = pool.splice(Math.floor(next(S) * pool.length), 1)[0]; });
@@ -249,11 +251,23 @@
   /* Κάθε Ace in the Hole αφήνει το χέρι ένα φύλλο πιο κοντό μέχρι το τέλος του γύρου. */
   const handCap = (S) => Math.max(2, roundHandSize(S) - (S.races || 0));
 
-  function draw(S, n) {
+  /* Τυχαία ενίσχυση σε φύλλο που μόλις τράβηξες: μένει για πάντα (και στην τράπουλα). */
+  function maybeEnhance(S, c) {
+    if (c.e || isWild(c) || next(S) >= CFG.enhChance) return;
+    const W = Object.assign({}, CFG.enhWeights);
+    if (S.deck.filter((d) => d.e === "steel").length >= CFG.steelCap) delete W.steel;
+    const keys = Object.keys(W), tw = keys.reduce((a, k) => a + W[k], 0);
+    let x = next(S) * tw, e = keys[0];
+    for (const k of keys) { x -= W[k]; if (x <= 0) { e = k; break; } }
+    c.e = e; c.x = e;
+    const d = S.deck.find((k) => k.id === c.id); if (d) d.e = e;
+    (S.enhNew = S.enhNew || []).push(e);
+  }
+  function draw(S, n, deal) {
     const drawn = [];
     while (n > 0) {
       if (!S.pile.length) break;
-      const c = S.pile.pop(); c.n = true; S.hand.push(c); drawn.push(c); n--;
+      const c = S.pile.pop(); c.n = true; if (!deal) maybeEnhance(S, c); S.hand.push(c); drawn.push(c); n--;
     }
     S.hand.sort(cmp);
     return drawn;
@@ -270,8 +284,9 @@
     const rest = shuffle(S, S.deck.filter((c) => !firstIds.has(c.id)).map((c) => Object.assign({}, c)));
     S.pile = rest; S.discardPile = []; S.keep = []; S.fresh = [];
     S.hand = first.map((c) => { const k = Object.assign({}, c); delete k.h; delete k.n; return k; });
-    draw(S, n - S.hand.length);
+    draw(S, n - S.hand.length, true);
     S.hand.forEach((c) => { delete c.n; });
+    S.enhNew = [];
     if (chal(S) === "blind") {
       const idx = shuffle(S, S.hand.map((_, i) => i));
       idx.slice(0, Math.min(CFG.blindCount, S.hand.length - 2)).forEach((i) => { S.hand[i].h = true; });
@@ -282,10 +297,8 @@
     S.rdisc = 0; S.races = 0; S.rbombs = 0; S.rkinds = {}; S.rmax = 0; S.firstK = null; S.lastK = null;
     S.chainBonus = rule(S) === "r_head" ? 1 : 0;
     /* Ένα δωρεάν discard κάθε γύρο (δεν μαζεύεται)· το Spare Card δίνει δεύτερο. */
-    S.roundDisc = CFG.roundDiscards + (rule(S) === "r_gift" ? 1 : 0);
+    S.roundDisc = CFG.roundDiscards + (S.roundDiscBonus || 0) + (has(S, "sleight") ? 1 : 0) + (rule(S) === "r_gift" ? 1 : 0) + (chal(S) === "fewplays" ? 1 : 0);
     S.playsLeft = S.playsMax - (chal(S) === "fewplays" ? 1 : 0);
-    /* Τα discards είναι πόρος όλου του run· ο γύρος μόνο προσθέτει. */
-    if (S.ante > 0 || S.plays > 0) S.discards += (chal(S) === "fewplays" ? 1 : 0) + (has(S, "sleight") ? 1 : 0);
     S.chisel = S.chiselMax;
     S.played = []; S.log = [];
     S.phase = "round"; S.offers = []; S.rerolls = 0;
@@ -568,14 +581,17 @@
     return ev;
   }
   const discardsLeft = (S) => S.discards + (S.roundDisc || 0);
-  const canDiscard = (S) => S.phase === "round" && chal(S) !== "nodiscard" && discardsLeft(S) > 0 && S.sel.length > 0 && S.sel.length <= CFG.discardCards && S.pile.length > 0;
+  /* Χέρι χωρίς κανέναν συνδυασμό (ούτε ανοιχτό τραπέζι το σώζει): το discard είναι δωρεάν. */
+  const deadHand = (S) => S.phase === "round" && S.hand.length > 0 && candidates(S).length === 0;
+  const canDiscard = (S) => S.phase === "round" && chal(S) !== "nodiscard" && (discardsLeft(S) > 0 || deadHand(S)) && S.sel.length > 0 && S.sel.length <= CFG.discardCards && S.pile.length > 0;
   function discard(S) {
     if (!canDiscard(S)) return false;
+    const free = deadHand(S);
     const cs = removeSel(S, true);
-    if ((S.roundDisc || 0) > 0) S.roundDisc -= 1; else S.discards -= 1;
+    if (free) { /* δωρεάν: νεκρό χέρι */ } else if ((S.roundDisc || 0) > 0) S.roundDisc -= 1; else S.discards -= 1;
     S.rdisc += 1;
     const d = draw(S, handCap(S) - S.hand.length);
-    S.log.push({ t: "Discard", c: cs.length + " out, " + d.length + " in", p: "", cls: "pass" });
+    S.log.push({ t: "Discard", c: cs.length + " out, " + d.length + " in" + (free ? " · free" : ""), p: "", cls: "pass" });
     return true;
   }
   const canPass = (S) => S.phase === "round" && !!S.rung && chal(S) !== "nopass" && chal(S) !== "summit" && (chal(S) !== "onebreath" || S.passes === 0);
@@ -640,7 +656,7 @@
     if (S.phase !== "round") return false;
     if (S.playsLeft <= 0) return true;
     if (hasLegal(S)) return false;
-    if (chal(S) !== "nodiscard" && discardsLeft(S) > 0 && S.pile.length > 0 && S.hand.length) return false;
+    if (chal(S) !== "nodiscard" && (discardsLeft(S) > 0 || deadHand(S)) && S.pile.length > 0 && S.hand.length) return false;
     if (S.rung && (canPass(S) || aceIndex(S) >= 0)) return false;
     return true;
   }
@@ -649,6 +665,7 @@
     if (!S.rung) return S.pile.length ? "No hand in these cards and no discards left. Round over." : "The pile is dry and nothing climbs. Round over.";
     if (aceIndex(S) >= 0) return "Nothing climbs. An Ace alone resets the rung and keeps the chain.";
     if (canPass(S)) return "Nothing climbs. Pass to reset — the chain keeps " + (passKeep(S) === 1 ? "everything" : passKeep(S) > 0.5 ? "three quarters" : "half") + ".";
+    if (chal(S) !== "nodiscard" && deadHand(S) && S.pile.length) return "No hand in these cards — this discard is free.";
     if (chal(S) !== "nodiscard" && discardsLeft(S) > 0 && S.pile.length) return "Nothing climbs. Discard and draw.";
     if (chal(S) === "nodiscard") return "Nothing climbs, and discarding is off. Round over.";
     if (chal(S) === "summit" || chal(S) === "nopass") return "Nothing climbs, and passing is off. Round over.";
@@ -689,12 +706,10 @@
     const out = [];
     const up = POOL.filter((o) => (o.id !== "th" || S.removed.length < 5) && (!o.min || S.ante + 1 >= o.min) && (o.id !== "gt" || S.deck.concat(S.hand).some((c) => c.r === 14 && !c.e)) && (!CFG.maxBuy[o.id] || (S.bought[o.id] || 0) < CFG.maxBuy[o.id])).map((o) => o.id);
     for (let i = 0; i < CFG.offersUp && up.length; i++) out.push({ kind: "up", id: up.splice(Math.floor(next(S) * up.length), 1)[0], bought: false });
-    const keys = Object.keys(ENH), tw = keys.reduce((a, k) => a + ENH[k].w, 0);
-    for (let i = 0; i < CFG.offersCard; i++) {
-      let x = next(S) * tw, e = keys[0];
-      for (const k of keys) { x -= ENH[k].w; if (x <= 0) { e = k; break; } }
-      out.push({ kind: "card", card: { r: 2 + Math.floor(next(S) * 13), si: Math.floor(next(S) * 4), e }, bought: false });
-    }
+    /* Μόνο Joker πωλείται (και όχι πάντα)· Gold/Glass/Steel σκάνε τυχαία στα φύλλα που τραβάς. */
+    const jokersBought = (S.bought && S.bought.wild) || 0;
+    if (jokersBought < CFG.jokerOffers && next(S) < CFG.jokerOfferChance) out.push({ kind: "card", card: { r: 2 + Math.floor(next(S) * 13), si: Math.floor(next(S) * 4), e: "wild" }, bought: false });
+    else if (up.length) out.push({ kind: "up", id: up.splice(Math.floor(next(S) * up.length), 1)[0], bought: false });
     const ch = CHARMS.filter((c) => charmAvailable(S, c)).map((c) => c.id);
     for (let i = 0; i < CFG.offersCharm && ch.length; i++) out.push({ kind: "charm", id: ch.splice(Math.floor(next(S) * ch.length), 1)[0], bought: false });
     return out;
@@ -725,7 +740,7 @@
     if (!canBuy(S, i).ok) return false;
     const o = S.offers[i];
     S.money -= offerCost(S, o);
-    if (o.kind === "card") { const c = Object.assign({ id: S.nextId++ }, o.card); S.deck.push(c); S.fresh = (S.fresh || []).concat(c.id); trimKeep(S); }
+    if (o.kind === "card") { const c = Object.assign({ id: S.nextId++ }, o.card); S.deck.push(c); S.fresh = (S.fresh || []).concat(c.id); trimKeep(S); if (c.e === "wild") S.bought.wild = ((S.bought && S.bought.wild) || 0) + 1; }
     else if (o.kind === "charm") S.charms.push(o.id);
     else apply(S, o.id);
     o.bought = true;
@@ -810,7 +825,7 @@
     newRun, startRound, target, goal, nextTarget, roundHandSize,
     classify, isLegal, chainPos, scoreOf, cardSum, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit, over,
     candidates, legalMoves, hasLegal, cheapest, suggest, aceIndex, orphans,
-    toggle, reveal, play, discard, canDiscard, discardsLeft, pass, canPass, passKeep, raise, canRaise, raiseMulFor, handCap, chisel, stuck, stuckReason, finish,
+    toggle, reveal, play, discard, canDiscard, discardsLeft, deadHand, pass, canPass, passKeep, raise, canRaise, raiseMulFor, handCap, chisel, stuck, stuckReason, finish,
     makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, toggleKeep, freshCards, nextAnte, upcoming, current, currentRule, upcomingRule, upcomingContract, peek, has,
     contractStatus, contractMet, contractBonus, chooseContract,
     serialize, restore, todaySeed,

@@ -32,7 +32,7 @@ function playRound(S) {
     }
     if (m) { S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; } continue; }
     if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); st.aces++; continue; } }
-    if (G.discardsLeft(S) > 0 && S.pile.length > 0 && discardStep(S)) { st.discards++; continue; }
+    if ((G.discardsLeft(S) > 0 || G.deadHand(S)) && S.pile.length > 0 && discardStep(S)) { st.discards++; continue; }
     if (G.canPass(S)) { G.pass(S); st.passes++; continue; }
     break;
   }

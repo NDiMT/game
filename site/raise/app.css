@@ -965,3 +965,7 @@ body[data-heat="3"] .table{box-shadow:0 0 0 2px var(--px-red),5px 5px 0 rgba(0,0
 .stats span{font-size:.48rem}
 .chip{font-size:.6rem}
 .log{font-size:.62rem}
+
+/* a freshly enhanced card flashes when it lands in the hand */
+.hand .card.enh-new{animation:enhpop .9s steps(6,end) both}
+@keyframes enhpop{0%{transform:translateY(-1.2rem) scale(1.15);box-shadow:0 0 0 3px var(--px-yel),3px 3px 0 rgba(0,0,0,.5)}100%{transform:none}}

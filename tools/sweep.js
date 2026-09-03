@@ -23,7 +23,7 @@ function playRound(S) {
     const m = G.suggest(S);
     if (m) { S.sel = m.idx.slice(); G.play(S); continue; }
     if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); continue; } }
-    if (G.discardsLeft(S) > 0 && S.pile.length > 0 && discardOrphans(S)) continue;
+    if ((G.discardsLeft(S) > 0 || G.deadHand(S)) && S.pile.length > 0 && discardOrphans(S)) continue;
     if (G.canPass(S)) { G.pass(S); continue; }
     G.finish(S); break;
   }

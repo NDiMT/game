@@ -54,7 +54,7 @@
     if (tbl) st = ' style="animation-delay:' + (idx * 60) + 'ms"';
     if (c.h && !tbl) return '<button class="card down" disabled aria-label="face down"' + st + '><span class="card__back"></span></button>';
     const wild = G.isWild(c), su = G.SUITS[c.si], e = c.e, face = c.r >= 11 && !e;
-    const cls = "card" + (e ? " e-" + e : "") + (!wild && su.red ? " red" : "") + (wild ? "" : " s" + c.si) + (sel ? " sel" : "") + (face ? " face" : "") + (c.n && !tbl ? " new" : "");
+    const cls = "card" + (e ? " e-" + e : "") + (!wild && su.red ? " red" : "") + (wild ? "" : " s" + c.si) + (sel ? " sel" : "") + (face ? " face" : "") + (c.n && !tbl ? " new" : "") + (c.x && !tbl ? " enh-new" : "");
     const tag = tbl ? "span" : "button";
     return '<' + tag + ' class="' + cls + '"' + st +
       (tbl ? ' aria-hidden="true"' : ' data-i="' + i + '" aria-pressed="' + (sel ? "true" : "false") + '" aria-label="' + (wild ? "Joker" : G.rname(c.r) + " " + su.s) + (e ? " " + e : "") + '"') +
@@ -87,7 +87,7 @@
 
     const playsMax = S.playsMax - (ch && ch.id === "fewplays" ? 1 : 0);
     $("plays").innerHTML = pips(S.playsLeft, playsMax);
-    $("discards").innerHTML = Array.from({ length: S.roundDisc || 0 }, () => '<i class="free"></i>').join("") + pips(Math.min(S.discards, 5), 5) + (S.discards > 5 ? '<b>+' + (S.discards - 5) + '</b>' : '');
+    $("discards").innerHTML = Array.from({ length: Math.min(4, S.roundDisc || 0) }, () => '<i class="free"></i>').join("") + ((S.roundDisc || 0) > 4 ? '<b>+' + (S.roundDisc - 4) + '</b>' : '') + (S.discards > 0 ? pips(Math.min(S.discards, 5), 5) + (S.discards > 5 ? '<b>+' + (S.discards - 5) + '</b>' : '') : '');
     $("discards").classList.toggle("off", !!(ch && ch.id === "nodiscard"));
     $("pileN").textContent = S.pile.length; $("dpileN").textContent = S.discardPile.length;
 
@@ -120,7 +120,7 @@
     const hand = $("hand");
     hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n)).join("");
     hand.classList.toggle("chisel", ui.chisel);
-    S.hand.forEach((c) => { delete c.n; });
+    S.hand.forEach((c) => { delete c.n; delete c.x; });
 
     let tools = "";
     if (ui.chisel) {
@@ -194,14 +194,21 @@
     if (crossed) { setTimeout(() => { callout("Target!"); FX.sfx.clear(); FX.burstAt($("score"), 30, 4, ["#8ff0bf", "#ffffff", "#ffd166"]); }, 420); }
     FX.fly(from, Array.prototype.slice.call($("tcards").children));
     if (ev.drawn) setTimeout(() => FX.sfx.draw(), 180);
+    enhPop();
     FX.pulse($("chain"), "bump");
     callout(ev.tags[0]);
     afterMove();
   }
+  /* Ένα φύλλο που τράβηξες «έσκασε» σε Gold/Glass/Steel: μικρή γιορτή. */
+  function enhPop() {
+    const e = S.enhNew && S.enhNew.length ? S.enhNew : null; S.enhNew = [];
+    if (!e) return;
+    setTimeout(() => { callout(G.ENH[e[0]].name + " card!"); FX.sfx.unlock(); FX.burstAt($("hand"), 26, 3.5, e[0] === "gold" ? ["#f5cf6a", "#fff1bf"] : e[0] === "glass" ? ["#dff5fa", "#8fd0e2"] : ["#e2e6ea", "#a9b2bb"]); }, 520);
+  }
   function doDiscard() {
     if (!G.canDiscard(S)) return;
     const rects = selRects();
-    if (G.discard(S)) { FX.sfx.discard(); FX.buzz(10); FX.ghostTo(rects, $("dpile")); ui.note = null; render(); setTimeout(() => FX.sfx.draw(), 160); afterMove(); }
+    if (G.discard(S)) { FX.sfx.discard(); FX.buzz(10); FX.ghostTo(rects, $("dpile")); ui.note = null; render(); setTimeout(() => FX.sfx.draw(), 160); enhPop(); afterMove(); }
   }
   function doPass() { if (G.pass(S)) { FX.sfx.pass(); FX.buzz(40); ui.note = null; render(); afterMove(); } }
   function doHint() {
@@ -226,7 +233,7 @@
     const c = [];
     G.BY_TIER.forEach((t) => { const m = S.mult[G.KINDS.indexOf(t)]; if (m > 1) c.push(t.short + " <b>×" + m + "</b>"); });
     if (S.playsMax > G.CFG.plays) c.push("Plays <b>" + S.playsMax + "</b>");
-    c.push("Discards <b>" + S.discards + "</b>");
+    c.push("Discards / round <b>" + (G.CFG.roundDiscards + (S.roundDiscBonus || 0) + (G.has(S, "sleight") ? 1 : 0)) + "</b>");
     if (S.chiselMax > 1) c.push("Chisel <b>" + S.chiselMax + "</b>");
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
     if (S.chainStart) c.push("Head Start <b>+" + S.chainStart + "</b>");
@@ -331,9 +338,9 @@
       '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
       '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = (hand base + <b>card values</b>) × chain: every card pays its rank, J 11 up to A 14, so two Aces beat two 3s. Longer straights and stairs pay more.</p>' +
       '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b>, or (200 + card values) × chain when that pays more. The table opens and the chain carries on.</p>' +
-      '<p><b>Discard</b> any number of cards and draw new ones. One discard is free every round; five more last the whole run — buy extra in the shop. <b>Pass</b> resets the rung at the cost of half your chain, as often as you like. A lone <b>Ace</b> resets and keeps the chain, but your hand stays one card short for the round.</p>' +
+      '<p><b>Discard</b> any number of cards and draw new ones. You get one discard a round — buy more per round in the shop. <b>Pass</b> resets the rung at the cost of half your chain, as often as you like. A lone <b>Ace</b> resets and keeps the chain, but your hand stays one card short for the round.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> — ×1.8 the target with two plays left, ×2 with one — for a double payout, or bust it.</p>' +
-      '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
+      '<p><b>Shop:</b> upgrades, the odd Joker, and <b>charms</b> — five slots, passive powers. <b>Gold</b>, <b>Glass</b> and <b>Steel</b> can't be bought: now and then a card you draw turns out enhanced, for good. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
       '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with no pass and no discard is a <b>Perfect round</b>: +3 chips.</p>' +
       '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
