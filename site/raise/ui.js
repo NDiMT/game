@@ -114,7 +114,7 @@
     } else {
       if (ui.note && Date.now() < ui.noteT) tools += '<span class="toast" style="flex:1">' + ui.note + '</span>';
       else {
-        if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise <em>×' + (G.has(S, "gambler") ? 1.8 : G.CFG.raiseMul) + ' · pay ×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</em></button>';
+        if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise <em>×' + (G.has(S, "gambler") ? G.CFG.gamblerMul : G.CFG.raiseMul) + ' · pay ×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</em></button>';
         if (S.raised) tools += '<span class="toast gold raised" style="flex:1">RAISED · reach ' + S.raiseTarget + '</span>';
         if (S.chiselMax) tools += '<button class="tb" data-act="chisel"' + (S.chisel <= 0 ? " disabled" : "") + '>Chisel <em>' + S.chisel + '</em></button>';
         if (cleared && S.playsLeft > 0 && !S.raised) tools += '<button class="tb" data-act="end">End round</button>';
@@ -283,7 +283,7 @@
       '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
       '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = base × chain. Longer straights and stairs pay more.</p>' +
       '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b> (no chain multiplier). Then the chain resets to ×1 and the table opens.</p>' +
-      '<p><b>Discard</b> up to four cards, twice a round, and draw new ones. <b>Pass</b> resets the rung but breaks the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
+      '<p><b>Discard</b> up to four cards, twice a round, and draw new ones. <b>Pass</b> resets the rung, keeps half the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
       '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
       '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +

@@ -34,7 +34,7 @@
   }
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
-  const TARGETS = [60, 65, 75, 85, 100, 115, 130, 155, 180, 215, 255, 300, 370, 450, 540, 670, 830, 1030, 1290, 1630, 2070, 2650, 3400, 4400, 5700, 7500, 9850, 13050, 17400, 23300];
+  const TARGETS = [105, 120, 145, 185, 240, 310, 370, 440, 550, 690, 840, 1020, 1170, 1390, 1590, 1880, 2240, 2660, 3100, 3800, 4250, 4800, 5550, 6150, 7150, 8150, 9300, 10250, 11500, 12750];
   const CFG = {
     handSize: 8, plays: 5, breaths: 2, discards: 2, discardCards: 4, chisel0: 1,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
@@ -42,7 +42,7 @@
     charmSlots: 5,
     challengeAntes: [3, 8, 13, 18, 23],
     chalTargetMul: 0.75, thinAirCap: 4, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
-    raiseMul: 1.6, raisePayout: 2,
+    raiseMul: 2.0, raisePayout: 2, gamblerMul: 2.4,
     priceStep: 0.5,
     maxBuy: { cs: 2, br: 2, wi: 2, di: 2, ch: 3, pl: 2, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
   };
@@ -78,7 +78,7 @@
     { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6 pay ×2.", cost: 6 },
     { id: "court", name: "Court", glyph: "♛", desc: "Hands with a face card: +20 base.", cost: 7 },
     { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: +1 chain.", cost: 9 },
-    { id: "cheap", name: "Cheap Breath", glyph: "½", desc: "Pass keeps half the chain.", cost: 10 },
+    { id: "cheap", name: "Cheap Breath", glyph: "½", desc: "Pass keeps the whole chain.", cost: 10 },
     { id: "wind", name: "Second Wind", glyph: "∞", desc: "The first pass each round costs no breath.", cost: 9 },
     { id: "sleight", name: "Sleight", glyph: "✂", desc: "+1 discard per round.", cost: 7 },
     { id: "encore", name: "Encore", glyph: "⧗", desc: "Your last play of the round pays ×2.", cost: 9 },
@@ -89,7 +89,7 @@
     { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards pay ×3.", cost: 8, lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
     { id: "glassblower", name: "Glassblower", glyph: "◇", desc: "Glass survives half the time.", cost: 8, lock: { key: "glass", n: 5, text: "Shatter 5 Glass cards" } },
     { id: "summiteer", name: "Summiteer", glyph: "▲", desc: "Bombs pay ×1.5.", cost: 10, lock: { key: "quads", n: 3, text: "Play 3 bombs" } },
-    { id: "gambler", name: "Gambler", glyph: "⚄", desc: "Raise pays ×3 — but the target is ×1.8.", cost: 8, lock: { key: "raiseWon", n: 3, text: "Win 3 Raises" } },
+    { id: "gambler", name: "Gambler", glyph: "⚄", desc: "Raise pays ×3 — but the target is ×2.4.", cost: 8, lock: { key: "raiseWon", n: 3, text: "Win 3 Raises" } },
     { id: "ember", name: "Ember", glyph: "✦", desc: "Chain ×5 and above: hands pay +50%.", cost: 11, lock: { key: "chain7", n: 1, text: "Reach chain ×7" } },
   ];
   const charmById = Object.fromEntries(CHARMS.map((c) => [c.id, c]));
@@ -477,7 +477,9 @@
     if (!free) S.breaths -= 1;
     S.passes += 1;
     const was = chainPos(S);
-    if (has(S, "cheap")) { const np = Math.max(1, Math.ceil(was / 2)); S.chain = Math.max(0, np - 1 - S.chainStart); } else S.chain = 0;
+    /* Το Pass κρατά τη μισή αλυσίδα (στρογγυλά πάνω)· με Cheap Breath ολόκληρη. */
+    const np = has(S, "cheap") ? was : Math.max(1, Math.ceil(was / 2));
+    S.chain = Math.max(0, np - 1 - S.chainStart);
     S.rung = null; S.sel = []; S.played = [];
     S.log.push({ t: "Pass", c: (free ? "free · " : "") + "chain ×" + was + " → ×" + chainPos(S), p: free ? "" : "−1", cls: "pass" });
     return true;
@@ -493,7 +495,7 @@
   const canRaise = (S) => S.phase === "round" && !S.raised && S.score >= target(S) && S.playsLeft > 0;
   function raise(S) {
     if (!canRaise(S)) return false;
-    const mul = has(S, "gambler") ? 1.8 : CFG.raiseMul;
+    const mul = has(S, "gambler") ? CFG.gamblerMul : CFG.raiseMul;
     S.raised = true; S.raiseTarget = Math.round(target(S) * mul);
     S.log.push({ t: "Raise", c: "target → " + S.raiseTarget, p: "", cls: "bonus" });
     return true;
@@ -512,7 +514,7 @@
     if (S.playsLeft <= 0) return "No plays left. Round over.";
     if (!S.rung) return S.pile.length ? "No hand in these cards and no discards left. Round over." : "The pile is dry and nothing climbs. Round over.";
     if (aceIndex(S) >= 0) return "Nothing climbs. An Ace alone resets the rung and keeps the chain.";
-    if (canPass(S)) return "Nothing climbs. Pass to reset — costs a breath.";
+    if (canPass(S)) return "Nothing climbs. Pass to reset — costs a breath, keeps half the chain.";
     if (S.discards > 0 && S.pile.length) return "Nothing climbs. Discard and draw.";
     if (chal(S) === "summit" || chal(S) === "nopass") return "Nothing climbs, and passing is off. Round over.";
     return "Nothing climbs, no breaths, no discards. Round over.";
