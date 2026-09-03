@@ -131,7 +131,7 @@
     }
     else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">rung resets · keep chain ×' + pos + ' · no play used</span><span class="go__p">↺</span>'; }
     else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + S.sel.length + (S.sel.length === 1 ? ' card' : ' cards') + '</span><span class="go__s">' + (S.sel.length > G.CFG.discardCards ? 'not a hand · discard up to ' + G.CFG.discardCards : 'not a hand · discard?') + '</span>'; }
-    else if (!e.legal) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + (e.k.kind === S.rung.kind ? (e.k.size < S.rung.size ? "too short · " + S.rung.size + " cards or more" : "not higher than " + G.rname(S.rung.rank)) : "lower hand than " + G.KINDS[S.rung.kind].name.toLowerCase()) + '</span>'; }
+    else if (!e.legal) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + (e.k.kind === S.rung.kind ? (e.k.size < S.rung.size ? (S.rung.kind === 8 ? "need " + S.rung.size / 2 + " pairs or more" : "too short · " + S.rung.size + " cards or more") : "not higher than " + G.rname(S.rung.rank)) : "lower hand than " + G.KINDS[S.rung.kind].name.toLowerCase()) + '</span>'; }
     else {
       go.classList.add("ok"); go.disabled = false;
       const extra = e.notes.length ? " · " + e.notes.join(", ") : "";
@@ -142,10 +142,10 @@
     $("bHint").disabled = ui.chisel || S.playsLeft <= 0;
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
-  const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : G.clabel(k);
+  const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : k.kind === 8 ? G.clabel(k).replace(/ \S+$/, "") : G.clabel(k);
   function rankButtons() { let h = ""; for (let r = 2; r <= 14; r++) h += '<button data-rank="' + r + '">' + G.rname(r) + '</button>'; return h; }
   function note(msg, ms) { ui.note = msg; ui.noteT = Date.now() + (ms || 3800); render(); setTimeout(() => { if (Date.now() >= ui.noteT) render(); }, (ms || 3800) + 100); }
-  function callout(t) { if (!t) return; const el = $("callout"); el.textContent = t; FX.pulse(el, "show"); }
+  function callout(t) { if (!t) return; const el = $("callout"); el.textContent = t; el.classList.toggle("bomb", t === "Bomb!"); FX.pulse(el, "show"); }
   function selRects() { return S.sel.map((i) => { const el = $("hand").querySelector('[data-i="' + i + '"]'); return el ? el.getBoundingClientRect() : null; }); }
   function afterMove() {
     save();
@@ -159,6 +159,7 @@
     const ev = G.play(S); if (!ev) return;
     ui.note = null;
     if (ev.type === "ace") { FX.sfx.ace(); FX.buzz(14); }
+    else if (ev.bomb) { FX.sfx.bomb(); FX.buzz([30, 40, 120]); FX.boom($("table")); FX.flash(); FX.pulse($("app"), "shake"); FX.floatIn($("table"), "+" + ev.pts); document.body.classList.add("boom"); setTimeout(() => document.body.classList.remove("boom"), 900); }
     else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300)); FX.floatIn($("table"), "+" + ev.pts); }
     if (ev.shattered) { FX.sfx.shatter(); FX.burstAt($("table"), 18, 3.2, "#cfe9f2"); }
     render();
@@ -195,12 +196,13 @@
   const closeS = () => { $("veil").hidden = true; };
   function chipsHTML() {
     const c = [];
-    G.KINDS.slice(1).forEach((t, i) => { if (S.mult[i + 1] > 1) c.push(t.short + " <b>×" + S.mult[i + 1] + "</b>"); });
+    G.BY_TIER.forEach((t) => { const m = S.mult[G.KINDS.indexOf(t)]; if (m > 1) c.push(t.short + " <b>×" + m + "</b>"); });
     if (S.playsMax > G.CFG.plays) c.push("Plays <b>" + S.playsMax + "</b>");
     if (S.breathsMax > G.CFG.breaths) c.push("Breaths <b>" + S.breathsMax + "</b>");
     if (S.discardsMax > G.CFG.discards) c.push("Discards <b>" + S.discardsMax + "</b>");
     if (S.chiselMax > 1) c.push("Chisel <b>" + S.chiselMax + "</b>");
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
+    if (S.carryMax > G.CFG.carry) c.push("Pocket <b>" + S.carryMax + "</b>");
     if (S.chainStart) c.push("Head Start <b>+" + S.chainStart + "</b>");
     if (S.removed.length) c.push("Culled <b>" + S.removed.map(G.rname).join(",") + "</b>");
     const enh = {}; S.deck.forEach((d) => { if (d.e) enh[d.e] = (enh[d.e] || 0) + 1; });
@@ -227,8 +229,13 @@
       return '<button class="offer' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '><strong>' + it.name + '</strong><em>' + cost + '◎</em><span>' + it.desc + '</span></button>';
     }).join("");
   }
+  function keepHTML() {
+    const k = S.keep || [];
+    return '<div class="sec"><span class="lbl">Keep for next round · ' + k.length + '/' + S.carryMax + '</span><p class="sub" style="margin:.2rem 0 .45rem">Tap cards to carry them over. The rest is dealt fresh.</p><div class="keeprow">' +
+      S.hand.map((c, i) => '<button class="keepc' + (k.indexOf(i) >= 0 ? " on" : "") + '" data-keep="' + i + '" aria-pressed="' + (k.indexOf(i) >= 0) + '">' + cardHTML(c, null, false, true, 0, 1) + '</button>').join("") + '</div></div>';
+  }
   function shopBody() {
-    return '<div class="shophead"><span class="lbl">Shop</span><button class="tb" data-reroll="1"' + (S.money < G.rerollCost(S) ? " disabled" : "") + '>Reroll <em>' + G.rerollCost(S) + '◎</em></button></div><div class="offers" id="offers">' + offersHTML() + '</div>' +
+    return keepHTML() + '<div class="shophead"><span class="lbl">Shop</span><button class="tb" data-reroll="1"' + (S.money < G.rerollCost(S) ? " disabled" : "") + '>Reroll <em>' + G.rerollCost(S) + '◎</em></button></div><div class="offers" id="offers">' + offersHTML() + '</div>' +
       '<div class="sec"><span class="lbl">Your charms · ' + S.charms.length + '/' + S.charmSlots + '</span>' + ownedCharmsHTML(true) + '</div>';
   }
   function sheetShop(r, fresh) {
@@ -263,7 +270,7 @@
       '<div class="log" style="margin-top:.5rem">' + (S.log.length ? S.log.slice().reverse().map((e) => '<div class="' + (e.cls || "") + '"><span>' + e.t + '</span><em>' + e.c + '</em><b>' + (typeof e.p === "number" ? "+" + e.p : e.p) + '</b></div>').join("") : '<div style="border:0;color:var(--muted)">no plays yet</div>') + '</div>' +
       '<div class="sec"><span class="lbl">Charms</span>' + ownedCharmsHTML(false) + '</div>' +
       '<div class="sec"><span class="lbl">Build</span><div class="chips">' + chipsHTML() + '</div></div>' +
-      '<div class="sec"><span class="lbl">Paytable</span><div class="rtab">' + G.KINDS.slice(1).map((t, i) => '<div><span>' + t.name + (t.min ? ' <em>' + (i + 1 === 3 ? '2 pairs' : '5 cards') + ' · longer pays more</em>' : '') + '</span><b>' + (t.base * S.mult[i + 1]) + '</b></div>').join("") + '</div></div>' +
+      '<div class="sec"><span class="lbl">Paytable</span><div class="rtab">' + G.BY_TIER.map((t) => '<div><span>' + t.name + (t.min ? ' <em>' + (t.id === "stairs" ? '2 pairs in a row · longer pays more' : t.id === "pairs" ? 'up to 4 pairs · more pay more' : '5 cards · longer pays more') + '</em>' : '') + '</span><b>' + (t.base * S.mult[G.KINDS.indexOf(t)]) + '</b></div>').join("") + '</div></div>' +
       '<div class="sec"><span class="lbl">Seed · ' + S.seed + '</span><div class="seedrow"><input id="sd" value="" placeholder="custom seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Go</button></div>' +
       '<div class="row2"><button class="big ghost" data-today="1">Daily · ' + G.todaySeed() + '</button><button class="big ghost" data-fresh="1">Random</button></div></div>' +
       '<div class="row2" style="margin-top:1.1rem"><button class="big ghost" data-howto="1">How to play</button><button class="big ghost" data-collection="1">Collection</button></div>' +
@@ -274,11 +281,12 @@
   function sheetHowTo() {
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
       '<p><b>Five plays a round.</b> Pick cards, make a hand, play it. Draw back to eight.</p>' +
-      '<p><b>Hands, Tichu style:</b> pair · trips · full house · <b>straight</b> of five or more · <b>stairs</b> of consecutive pairs (22 33 44) · bombs: quads and straight flush.</p>' +
-      '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; trips &lt; stairs &lt; straight &lt; full house &lt; quads &lt; straight flush), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = base × chain. Longer straights and stairs pay more.</p>' +
+      '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
+      '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = base × chain. Longer straights and stairs pay more.</p>' +
+      '<p><b>Bombs</b> — quads and straight flush — go off on anything: they score big, then the chain resets to ×1 and the table opens.</p>' +
       '<p><b>Discard</b> up to four cards, twice a round, and draw new ones. <b>Pass</b> resets the rung but breaks the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
-      '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room.</p>' +
+      '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Keep</b> up to two cards from your hand for the next round.</p>' +
       '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
@@ -346,6 +354,8 @@
     if (buy) { if (G.buy(S, +buy.dataset.buy)) { FX.sfx.buy(); FX.buzz(10); save(); refreshShop(); } return; }
     const sellb = t.closest("[data-sell]");
     if (sellb) { if (G.sell(S, +sellb.dataset.sell)) { FX.sfx.discard(); save(); refreshShop(); } return; }
+    const kb = t.closest("[data-keep]");
+    if (kb) { if (G.toggleKeep(S, +kb.dataset.keep)) { FX.sfx.tick(); save(); refreshShop(); } return; }
     if (t.closest("[data-reroll]")) { if (G.reroll(S)) { FX.sfx.discard(); save(); refreshShop(); } return; }
     if (t.closest("[data-next]")) { G.nextAnte(S); ui.chisel = false; closeS(); render(); save(); return; }
     if (t.closest("[data-restart]")) { closeS(); begin(S.seed); return; }

@@ -11,28 +11,32 @@
   const RN = { 11: "J", 12: "Q", 13: "K", 14: "A" };
   const rname = (r) => RN[r] || String(r);
   /* Συνδυασμοί κατά Tichu. size = φύλλα. Βόμβες χτυπούν οτιδήποτε. */
+  /* tier = σειρά ισχύος (ανώτερο χτυπάει κατώτερο). Το kind μένει σταθερό για τα saves. */
   const KINDS = [null,
-    { id: "pair", name: "Pair", short: "PAIR", base: 10, size: 2 },
-    { id: "trips", name: "Trips", short: "TRIPS", base: 25, size: 3 },
-    { id: "stairs", name: "Stairs", short: "STAIRS", base: 40, step: 35, min: 4 },
-    { id: "straight", name: "Straight", short: "STR8", base: 40, min: 5, table: [40, 60, 85, 115, 150, 190, 235, 285, 340] },
-    { id: "full", name: "Full House", short: "FULL", base: 80, size: 5 },
-    { id: "quads", name: "Quads", short: "QUADS", base: 120, size: 4, bomb: true },
-    { id: "sflush", name: "Straight Flush", short: "SFLUSH", base: 150, step: 40, min: 5, bomb: true },
+    { id: "pair", name: "Pair", short: "PAIR", base: 10, size: 2, tier: 1 },
+    { id: "trips", name: "Trips", short: "TRIPS", base: 25, size: 3, tier: 3 },
+    { id: "stairs", name: "Stairs", short: "STAIRS", base: 40, step: 35, min: 4, tier: 4 },
+    { id: "straight", name: "Straight", short: "STR8", base: 40, min: 5, table: [40, 60, 85, 115, 150, 190, 235, 285, 340], tier: 5 },
+    { id: "full", name: "Full House", short: "FULL", base: 80, size: 5, tier: 6 },
+    { id: "quads", name: "Quads", short: "QUADS", base: 120, size: 4, bomb: true, tier: 7 },
+    { id: "sflush", name: "Straight Flush", short: "SFLUSH", base: 150, step: 40, min: 5, bomb: true, tier: 8 },
+    { id: "pairs", name: "Two Pair", short: "PAIRS", base: 20, step: 20, min: 4, tier: 2 },
   ];
-  const MULT_KIND = { m1: [1], m2: [2], m3: [4], m4: [3], m5: [5], m6: [6, 7] };
+  const BY_TIER = KINDS.slice(1).sort((a, b) => a.tier - b.tier);
+  const MULT_KIND = { m1: [1, 8], m2: [2], m3: [4], m4: [3], m5: [5], m6: [6, 7] };
   function kbase(k) {
     const K = KINDS[k.kind];
     if (k.kind === 4) return K.table[Math.min(K.table.length - 1, k.size - 5)];
     if (k.kind === 3) return K.base + K.step * (k.size / 2 - 2);
     if (k.kind === 7) return K.base + K.step * (k.size - 5);
+    if (k.kind === 8) return K.base + K.step * (k.size / 2 - 2);
     return K.base;
   }
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
   const TARGETS = [60, 65, 75, 85, 100, 115, 130, 155, 180, 215, 255, 300, 370, 450, 540, 670, 830, 1030, 1290, 1630, 2070, 2650, 3400, 4400, 5700, 7500, 9850, 13050, 17400, 23300];
   const CFG = {
-    handSize: 8, plays: 5, breaths: 2, discards: 2, discardCards: 4, chisel0: 1,
+    handSize: 8, plays: 5, breaths: 2, discards: 2, discardCards: 4, chisel0: 1, carry: 2,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
     offersUp: 2, offersCard: 1, offersCharm: 2, rerollCost: 3, rerollStep: 2,
     charmSlots: 5,
@@ -40,7 +44,7 @@
     chalTargetMul: 0.75, thinAirCap: 4, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
     raiseMul: 1.6, raisePayout: 2,
     priceStep: 0.5,
-    maxBuy: { cs: 2, br: 2, wi: 2, di: 2, ch: 3, pl: 2, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
+    maxBuy: { cs: 2, br: 2, wi: 2, di: 2, ch: 3, pl: 2, kp: 2, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
   };
 
   const POOL = [
@@ -55,6 +59,7 @@
     { id: "di", name: "Discard", desc: "+1 discard per round.", cost: 8 },
     { id: "ch", name: "Chisel", desc: "+1 per round: rewrite a card's rank.", cost: 7 },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card.", cost: 9 },
+    { id: "kp", name: "Pocket", desc: "Keep one more card between rounds.", cost: 9 },
     { id: "cs", name: "Head Start", desc: "The chain starts one step higher.", cost: 12 },
     { id: "th", name: "Cull", desc: "Remove the lowest rank from the deck. For good.", cost: 7 },
   ];
@@ -105,7 +110,7 @@
   ];
   const chalById = Object.fromEntries(CHALLENGES.map((c) => [c.id, c]));
   const RANDOM_CHALLENGES = CHALLENGES.filter((c) => c.id !== "summit").map((c) => c.id);
-  const TAG_ORDER = ["Ladder to Heaven", "Royal", "Four Horsemen", "Ace in the Hole", "Overkill", "Long Run", "Staircase", "Shatter", "Tight Step", "Humble"];
+  const TAG_ORDER = ["Bomb!", "Ladder to Heaven", "Royal", "Four Horsemen", "Ace in the Hole", "Overkill", "Long Run", "Staircase", "Shatter", "Tight Step", "Humble"];
 
   /* ============================== RNG ============================== */
   function hash(str) { let h = 1779033703 ^ str.length; for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); } return (h ^ (h >>> 16)) >>> 0; }
@@ -128,6 +133,7 @@
       case "di": S.discardsMax += 1; break;
       case "ch": S.chiselMax += 1; break;
       case "wi": S.handSize += 1; break;
+      case "kp": S.carryMax += 1; break;
       case "cs": S.chainStart += 1; break;
       case "th": {
         const ranks = S.deck.filter((c) => !isWild(c)).map((c) => c.r);
@@ -148,7 +154,8 @@
       v: 4, seed, rng: hash(seed) | 0,
       ante: 0, money: 0, phase: "round", offers: [], rerolls: 0,
       handSize: CFG.handSize, playsMax: CFG.plays, breathsMax: CFG.breaths, discardsMax: CFG.discards, chiselMax: CFG.chisel0, chainStart: 0,
-      mult: [0, 1, 1, 1, 1, 1, 1, 1], removed: [], bought: {},
+      carryMax: CFG.carry, keep: [], hand: [],
+      mult: [0, 1, 1, 1, 1, 1, 1, 1, 1], removed: [], bought: {},
       deck: [], nextId: 1, charms: [], charmSlots: CFG.charmSlots,
       unlocked: (unlocked || []).slice(),
       chals: {},
@@ -176,16 +183,19 @@
   }
   function startRound(S) {
     S.chal = S.chals[S.ante] || null;
-    let cards = S.deck.map((c) => Object.assign({}, c));
-    const steel = cards.filter((c) => c.e === "steel"), rest = shuffle(S, cards.filter((c) => c.e !== "steel"));
-    S.pile = rest; S.discardPile = [];
-    S.hand = [];
     const n = roundHandSize(S);
-    steel.slice(0, n).forEach((c) => S.hand.push(c));
+    /* Κρατημένα φύλλα από τον προηγούμενο γύρο (επιλογή στο κατάστημα). */
+    const kept = (S.keep || []).map((i) => S.hand[i]).filter(Boolean).slice(0, Math.min(S.carryMax, n));
+    const keptIds = new Set(kept.map((c) => c.id));
+    let cards = S.deck.filter((c) => !keptIds.has(c.id)).map((c) => Object.assign({}, c));
+    const steel = cards.filter((c) => c.e === "steel"), rest = shuffle(S, cards.filter((c) => c.e !== "steel"));
+    S.pile = rest; S.discardPile = []; S.keep = [];
+    S.hand = kept.map((c) => { const k = Object.assign({}, c); delete k.h; delete k.n; return k; });
+    steel.slice(0, Math.max(0, n - S.hand.length)).forEach((c) => S.hand.push(c));
     draw(S, n - S.hand.length);
     S.hand.forEach((c) => { delete c.n; });
     if (chal(S) === "blind") {
-      const idx = shuffle(S, S.hand.map((_, i) => i));
+      const idx = shuffle(S, S.hand.map((_, i) => i).filter((i) => !keptIds.has(S.hand[i].id)));
       idx.slice(0, Math.min(CFG.blindCount, S.hand.length - 2)).forEach((i) => { S.hand[i].h = true; });
     }
     S.sel = [];
@@ -216,6 +226,7 @@
       if (n === 2) take(K(1, lo, 2)); else if (n === 3) take(K(2, lo, 3)); else if (n === 4) take(K(6, lo, 4));
       else if (n === 5) { if (bR[lo] === 3) take(K(5, lo, 5)); else if (bR[lo] <= 2 && w >= 3) take(K(5, 14, 5)); }
     }
+    if (n >= 4 && n % 2 === 0 && n <= 8 && d === n / 2 && maxC <= 2) take(K(8, hi, n));
     if (n === 5 && d === 2) {
       const a = hi, b = lo;
       if (bR[a] <= 3 && bR[b] <= 2) take(K(5, a, 5)); else if (bR[b] <= 3 && bR[a] <= 2) take(K(5, b, 5));
@@ -235,7 +246,7 @@
   function beats(k, r) {
     if (!k) return false;
     if (!r) return true;
-    if (k.kind !== r.kind) return k.kind > r.kind;
+    if (k.kind !== r.kind) return KINDS[k.kind].tier > KINDS[r.kind].tier;
     if (k.size !== r.size) return k.size > r.size;
     return k.rank > r.rank;
   }
@@ -277,7 +288,9 @@
     return Object.assign({ k, legal, cs }, sc);
   }
   /* "Pair 8" · "Stairs 3 to 6" · "Straight 7 to J" · "Str. Flush 5 to 9" */
+  const PAIRS_NAME = { 4: "Two Pair", 6: "Three Pair", 8: "Four Pair" };
   function clabel(k) {
+    if (k.kind === 8) return PAIRS_NAME[k.size] + " " + rname(k.rank);
     if (k.kind === 3) return "Stairs " + k.size / 2 + " to " + rname(k.rank);
     if (k.kind === 4) return "Straight " + k.size + " to " + rname(k.rank);
     if (k.kind === 7) return "Str. Flush " + k.size + " to " + rname(k.rank);
@@ -292,7 +305,7 @@
   /* Τι χρειάζεται για να χτυπηθεί το rung. */
   function beatText(S) {
     const r = S.rung; if (!r) return "any hand opens";
-    if (r.kind === 7) return "only a longer or higher straight flush";
+    if (r.kind === 8) return "higher hand · or more pairs, or higher";
     return "higher hand · or " + KINDS[r.kind].name.toLowerCase() + (r.kind === 3 || r.kind === 4 ? " longer or higher" : " higher");
   }
 
@@ -303,6 +316,12 @@
     const out = [], rs = Object.keys(bR).map(Number).sort((a, b) => a - b), nw = W.length, wl = (n) => W.slice(0, n);
     rs.forEach((r) => { const g = bR[r]; [2, 3, 4].forEach((tot) => { for (let use = 0; use <= Math.min(nw, tot - 1); use++) if (g.length >= tot - use) out.push(g.slice(0, tot - use).concat(wl(use))); }); });
     for (let n = 2; n <= Math.min(4, nw); n++) out.push(wl(n));
+    /* 2–4 ζευγάρια σε οποιεσδήποτε βαθμίδες (wilds γεμίζουν) */
+    (function pairsets(start, acc, need) {
+      if (acc.length >= 2 && need <= nw) out.push(acc.reduce((a, r) => a.concat(bR[r].slice(0, 2)), []).concat(wl(need)));
+      if (acc.length === 4) return;
+      for (let i = start; i < rs.length; i++) pairsets(i + 1, acc.concat([rs[i]]), need + Math.max(0, 2 - bR[rs[i]].length));
+    })(0, [], 0);
     rs.forEach((t) => rs.forEach((p) => {
       if (t === p) return;
       const nt = Math.max(0, 3 - bR[t].length), np = Math.max(0, 2 - bR[p].length);
@@ -331,7 +350,7 @@
   const legalMoves = (S) => candidates(S).filter((o) => isLegal(S, o.k));
   const hasLegal = (S) => legalMoves(S).length > 0;
   /* Πόσα σκαλιά ανεβαίνει άπληστα από εδώ με ξένα φύλλα, παίρνοντας κάθε φορά το φθηνότερο που χτυπάει. */
-  const costKey = (k) => k.kind * 10000 + k.size * 100 + k.rank;
+  const costKey = (k) => KINDS[k.kind].tier * 10000 + k.size * 100 + k.rank;
   function chainLen(S, c, all) {
     const used = new Set(c.idx); let cur = c.k, len = 1;
     for (;;) {
@@ -419,20 +438,26 @@
     if (S.chain === 0 && k.kind === 1 && k.rank <= 3) tags.push("Humble");
     if (sameShape(k, prev) && k.rank === prev.rank + 1) tags.push("Tight Step");
     if (sameShape(k, prev) && k.rank - prev.rank >= 4) tags.push("Overkill");
-    if (k.kind === 6) { tags.push("Four Horsemen"); S.stats.quads += 1; }
-    if (k.kind === 7) { tags.push("Royal"); S.stats.quads += 1; }
+    const bomb = isBomb(k);
+    if (bomb) { tags.push("Bomb!"); S.stats.quads += 1; }
     if (k.kind === 4 && k.size >= 7) tags.push("Long Run");
     if (k.kind === 3 && k.size >= 6) tags.push("Staircase");
-    S.score += e.pts; S.chain += 1; S.playsLeft -= 1;
-    S.rung = { kind: k.kind, rank: Math.min(14, k.rank + (chal(S) === "sticky" ? 1 : 0)), size: k.size };
+    S.score += e.pts; S.playsLeft -= 1;
     S.lastSuit = leadSuit(cs);
-    const pos = chainPos(S);
-    if (pos > S.stats.maxChain) S.stats.maxChain = pos;
-    if (pos >= 7) { S.stats.chain7 = 1; if (pos === 7) tags.push("Ladder to Heaven"); }
+    if (bomb) {
+      /* Η βόμβα σκάει: παίρνει τους πόντους της, μετά η αλυσίδα γυρίζει στο ×1 και το τραπέζι ανοίγει. */
+      S.chain = 0; S.rung = null;
+    } else {
+      S.chain += 1;
+      S.rung = { kind: k.kind, rank: Math.min(14, k.rank + (chal(S) === "sticky" ? 1 : 0)), size: k.size };
+      const pos = chainPos(S);
+      if (pos > S.stats.maxChain) S.stats.maxChain = pos;
+      if (pos >= 7) { S.stats.chain7 = 1; if (pos === 7) tags.push("Ladder to Heaven"); }
+    }
     S.played = cs.slice();
-    S.log.push({ t: clabel(k), c: e.base + (e.factor > 1 ? "×" + e.factor : "") + " × " + e.pos + (e.hm !== 1 ? " ×" + e.hm : ""), p: e.pts });
+    S.log.push({ t: clabel(k), c: e.base + (e.factor > 1 ? "×" + e.factor : "") + " × " + e.pos + (e.hm !== 1 ? " ×" + e.hm : "") + (bomb ? " · chain reset" : ""), p: e.pts });
     tags.sort((a, b) => TAG_ORDER.indexOf(a) - TAG_ORDER.indexOf(b));
-    const ev = { type: "play", k, pts: e.pts, pos: e.pos, notes: e.notes, tags };
+    const ev = { type: "play", k, pts: e.pts, pos: e.pos, notes: e.notes, tags, bomb };
     afterPlay(S, cs, ev);
     return ev;
   }
@@ -566,6 +591,14 @@
     S.charms.splice(idx, 1);
     return true;
   }
+  /* Κράτημα φύλλου για τον επόμενο γύρο — μόνο στο κατάστημα, έως carryMax. */
+  function toggleKeep(S, i) {
+    if (S.phase !== "shop" || !S.hand[i]) return false;
+    S.keep = S.keep || [];
+    const at = S.keep.indexOf(i);
+    if (at >= 0) S.keep.splice(at, 1); else if (S.keep.length < S.carryMax) S.keep.push(i); else return false;
+    return true;
+  }
   function nextAnte(S) { if (S.phase !== "shop") return false; S.ante += 1; startRound(S); return true; }
   const upcoming = (S) => (S.chals[S.ante + 1] ? chalById[S.chals[S.ante + 1]] : null);
   const current = (S) => (S.chal ? chalById[S.chal] : null);
@@ -578,12 +611,12 @@
   const todaySeed = (d) => { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 
   return {
-    SUITS, KINDS, TARGETS, CFG, POOL, kbase, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
+    SUITS, KINDS, BY_TIER, TARGETS, CFG, POOL, kbase, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, goal, nextTarget, roundHandSize,
     classify, isLegal, chainPos, scoreOf, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit, over,
     candidates, legalMoves, hasLegal, cheapest, suggest, aceIndex, orphans,
     toggle, reveal, play, discard, canDiscard, pass, canPass, raise, canRaise, chisel, stuck, stuckReason, finish,
-    makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, nextAnte, upcoming, current, peek, has,
+    makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, toggleKeep, nextAnte, upcoming, current, peek, has,
     serialize, restore, todaySeed,
   };
 });

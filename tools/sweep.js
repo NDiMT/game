@@ -5,7 +5,7 @@ const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 400;
 
 const PRIO = ["ladder", "cheap", "lowroad", "mirror", "encore", "wind", "court", "loyal", "vault", "sleight", "thrift", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "br", "wi", "ch", "m2", "m3", "m4", "m5", "m6", "th"];
+  "pl", "m1", "cs", "kp", "di", "br", "wi", "ch", "m2", "m3", "m4", "m5", "m6", "th"];
 const CARD_PR = { wild: 12.5, gold: 14.5, steel: 16.5, glass: 18.5 };
 const ALL_UNLOCKED = G.CHARMS.map((c) => c.id);
 
@@ -37,6 +37,8 @@ function shop(S) {
       .filter((x) => !x.o.bought && x.pr >= 0 && G.canBuy(S, x.i).ok).sort((a, b) => a.pr - b.pr);
     if (opts.length) { G.buy(S, opts[0].i); again = true; }
   }
+  /* κρατά wilds και Άσους για τον επόμενο γύρο */
+  S.hand.forEach((c, i) => { if (G.isWild(c) || c.r === 14) G.toggleKeep(S, i); });
   G.nextAnte(S);
 }
 function run(targets, opts) {

@@ -41,6 +41,13 @@
     }, 140);
   }
   function flash() { const f = document.getElementById("flash"); if (!f || RM) return; pulse(f, "on"); }
+  /* Βόμβα: τριπλή έκρηξη σε πορτοκαλί / κόκκινο / λευκό, από το κέντρο του στοιχείου. */
+  function boom(el) {
+    if (RM) return;
+    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    spark(x, y, 70, 7.5, "#ffb15a"); spark(x, y, 40, 5.5, "#ff6a3d"); spark(x, y, 30, 9, "#ffffff");
+    setTimeout(() => spark(x, y, 40, 6, "#f2d68c"), 120);
+  }
   function burstAt(el, n, pow, hue) { const r = el.getBoundingClientRect(); spark(r.left + r.width / 2, r.top + r.height / 2, n, pow, hue); }
 
   /* ---- floats, count-up, pulse, shake ---- */
@@ -117,9 +124,10 @@
     discard: () => { tone({ f: 900, t: 0.06, type: "square", g: 0.04, slide: 0.6 }); tone({ f: 600, t: 0.08, type: "square", g: 0.03, delay: 0.05, slide: 0.6 }); },
     draw: () => tone({ f: 1200, t: 0.04, type: "sine", g: 0.03, slide: 1.3 }),
     unlock: () => [660, 880, 1320].forEach((f, i) => tone({ f, t: 0.3, type: "triangle", g: 0.1, delay: i * 0.08 })),
+    bomb: () => { tone({ f: 90, t: 0.55, type: "sawtooth", g: 0.22, slide: 0.35 }); tone({ f: 60, t: 0.7, type: "square", g: 0.14, delay: 0.04, slide: 0.5 }); tone({ f: 1400, t: 0.12, type: "square", g: 0.05, slide: 0.2 }); [880, 1320, 1760].forEach((f, i) => tone({ f, t: 0.25, type: "triangle", g: 0.08, delay: 0.25 + i * 0.07 })); },
     raise: () => { tone({ f: 440, t: 0.12, type: "triangle", g: 0.12 }); tone({ f: 660, t: 0.2, type: "triangle", g: 0.12, delay: 0.1 }); tone({ f: 880, t: 0.3, type: "sine", g: 0.08, delay: 0.2 }); },
   };
   function toggleMute() { muted = !muted; try { localStorage.setItem("raise.mute", muted ? "1" : "0"); } catch (e) {} return muted; }
 
-  root.FX = { spark, burstAt, floatIn, countUp, pulse, fly, ghostTo, buzz, sfx, toggleMute, isMuted: () => muted, embers, flash, RM };
+  root.FX = { spark, burstAt, boom, floatIn, countUp, pulse, fly, ghostTo, buzz, sfx, toggleMute, isMuted: () => muted, embers, flash, RM };
 })(window);
