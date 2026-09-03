@@ -151,7 +151,7 @@
       go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Beat " + G.clabel(S.rung) : "Any hand opens") + (S.playsLeft === 1 ? " · last play" : "") + '</span>';
     }
     else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">Keep chain ×' + pos + '</span><span class="go__p">↺</span>'; pvt = "Ace in the Hole · the rung opens, the chain stays at ×" + pos + ", no play used"; pv.classList.add("ace"); }
-    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (S.sel.length > G.CFG.discardCards ? 'Discard up to ' + G.CFG.discardCards : 'Discard?') + '</span>'; pvt = S.sel.length + " cards · not a hand" + (G.canDiscard(S) ? " · swipe down to discard" : ""); pv.classList.add("bad"); }
+    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + 'Discard?' + '</span>'; pvt = S.sel.length + " cards · not a hand" + (G.canDiscard(S) ? " · swipe down to discard" : ""); pv.classList.add("bad"); }
     else if (!e.legal) { const w = whyNot(); go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + goLabel(e.k) + '</span><span class="go__s">' + cap(w.split(" · ")[0]) + '</span>'; pvt = G.clabel(e.k) + " won't beat " + G.clabel(S.rung) + " · " + w; pv.classList.add("bad"); }
     else {
       go.classList.add("ok"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.classList.add("ok");
@@ -197,7 +197,6 @@
     afterMove();
   }
   function doDiscard() {
-    if (S.sel.length > G.CFG.discardCards) { note("Discard up to " + G.CFG.discardCards + " cards at a time."); return; }
     if (!G.canDiscard(S)) return;
     const rects = selRects();
     if (G.discard(S)) { FX.sfx.discard(); FX.buzz(10); FX.ghostTo(rects, $("dpile")); ui.note = null; render(); setTimeout(() => FX.sfx.draw(), 160); afterMove(); }
@@ -317,7 +316,7 @@
       '<div class="log" style="margin-top:.5rem">' + (S.log.length ? S.log.slice().reverse().map((e) => '<div class="' + (e.cls || "") + '"><span>' + e.t + '</span><em>' + cap(e.c) + '</em><b>' + (typeof e.p === "number" ? "+" + e.p : e.p) + '</b></div>').join("") : '<div style="border:0;color:var(--muted)">No plays yet</div>') + '</div>' +
       '<div class="sec"><span class="lbl">Charms</span>' + ownedCharmsHTML(false) + '</div>' +
       '<div class="sec"><span class="lbl">Build</span><div class="chips">' + chipsHTML() + '</div></div>' +
-      '<div class="sec"><span class="lbl">Paytable</span><div class="rtab">' + G.BY_TIER.map((t) => '<div><span>' + t.name + (t.min ? ' <em>' + (t.id === "stairs" ? 'Two pairs in a row · longer pays more' : t.id === "pairs" ? 'Up to 4 pairs · more pay more' : '5 cards · longer pays more') + '</em>' : '') + '</span><b>' + (t.base * S.mult[G.KINDS.indexOf(t)]) + '</b></div>').join("") + '</div></div>' +
+      '<div class="sec"><span class="lbl">Paytable · base, plus the value of every card (2–14)</span><div class="rtab">' + G.BY_TIER.map((t) => '<div><span>' + t.name + (t.min ? ' <em>' + (t.id === "stairs" ? 'Two pairs in a row · longer pays more' : t.id === "pairs" ? 'Up to 4 pairs · more pay more' : '5 cards · longer pays more') + '</em>' : '') + '</span><b>' + (t.base * S.mult[G.KINDS.indexOf(t)]) + '</b></div>').join("") + '</div></div>' +
       '<div class="sec"><span class="lbl">Seed · ' + S.seed + '</span><div class="seedrow"><input id="sd" value="" placeholder="custom seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Go</button></div>' +
       '<div class="row2"><button class="big ghost" data-today="1">Daily · ' + G.todaySeed() + '</button><button class="big ghost" data-fresh="1">Random</button></div></div>' +
       '<div class="row2" style="margin-top:1.1rem"><button class="big ghost" data-howto="1">How to play</button><button class="big ghost" data-collection="1">Collection</button></div>' +
@@ -329,9 +328,9 @@
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
       '<p><b>Five plays a round.</b> Pick cards, make a hand, play it. Draw back to eight. Two <b>Jokers</b> in the deck stand for any card.</p>' +
       '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
-      '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = base × chain. Longer straights and stairs pay more.</p>' +
+      '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = (hand base + <b>card values</b>) × chain: every card pays its rank, J 11 up to A 14, so two Aces beat two 3s. Longer straights and stairs pay more.</p>' +
       '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b> (no chain multiplier). The table opens and the chain carries on.</p>' +
-      '<p><b>Discard</b> up to four cards and draw new ones. You get five discards for the whole run — spend them wisely, buy more in the shop. <b>Pass</b> resets the rung, keeps half the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
+      '<p><b>Discard</b> any number of cards and draw new ones. You get five discards for the whole run — spend them wisely, buy more in the shop. <b>Pass</b> resets the rung, keeps half the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
       '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
       '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with no pass and no discard is a <b>Perfect round</b>: +3 chips.</p>' +

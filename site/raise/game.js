@@ -34,9 +34,9 @@
   }
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
-  const TARGETS = [105, 120, 145, 185, 240, 310, 370, 450, 560, 710, 870, 1060, 1230, 1470, 1690, 2050, 2510, 3050, 3700, 4650, 5300, 6150, 7300, 8300, 9850, 11550, 13450, 15200, 17450, 19800];
+  const TARGETS = [215, 265, 330, 405, 510, 630, 775, 955, 1170, 1440, 1760, 2130, 2590, 3130, 3770, 4540, 5450, 6550, 7800, 9350, 11150, 12800, 14700, 16950, 19550, 22700, 26400, 30800, 36100, 42600];
   const CFG = {
-    handSize: 8, plays: 5, breaths: 2, discards: 5, discardCards: 4, chisel0: 0, jokers: 2,
+    handSize: 8, plays: 5, breaths: 2, discards: 5, discardCards: 99, chisel0: 0, jokers: 2,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
     offersUp: 2, offersCard: 1, offersCharm: 2, rerollCost: 3, rerollStep: 2,
     charmSlots: 5,
@@ -339,8 +339,11 @@
     return best;
   }
   /* Πλήρης υπολογισμός πόντων ενός υποψήφιου χεριού — UI και bot βλέπουν το ίδιο. */
+  /* Αξία φύλλων: κάθε φύλλο δίνει τη βαθμίδα του (J 11, Q 12, K 13, A 14)· ο τζόκερ την κορυφή του χεριού. */
+  const cardSum = (k, cs) => cs.reduce((a, c) => a + (isWild(c) ? k.rank : c.r), 0);
   function scoreOf(S, k, cs) {
-    let base = kbase(k) * S.mult[k.kind];
+    /* Βόμβες: σταθερή βάση. Αλλιώς βάση = είδος + αξία φύλλων — δύο Άσοι πληρώνουν πάνω από δύο τριάρια. */
+    let base = (kbase(k) + (isBomb(k) ? 0 : cardSum(k, cs))) * S.mult[k.kind];
     const notes = [], R = rule(S);
     if (R === "r_pair0" && k.kind === 1) { base = 0; notes.push("Cheap Pairs"); }
     if (has(S, "court") && cs.some(isFace)) { const jw = syn(S, "jewels") && cs.some((c) => isFace(c) && c.e === "gold"); base += jw ? 40 : 20; notes.push(jw ? "Crown Jewels +40" : "Court +20"); }
@@ -791,7 +794,7 @@
   return {
     SUITS, KINDS, BY_TIER, TARGETS, tgtAt, CONTRACTS, contractById, RULES, ruleById, CFG, POOL, DECKS, deckById, SYNERGIES, synById, syn, activeSynergies, synergyFor, goEndless, nearMiss, kbase, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, goal, nextTarget, roundHandSize,
-    classify, isLegal, chainPos, scoreOf, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit, over,
+    classify, isLegal, chainPos, scoreOf, cardSum, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit, over,
     candidates, legalMoves, hasLegal, cheapest, suggest, aceIndex, orphans,
     toggle, reveal, play, discard, canDiscard, pass, canPass, raise, canRaise, chisel, stuck, stuckReason, finish,
     makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, toggleKeep, freshCards, nextAnte, upcoming, current, currentRule, upcomingRule, upcomingContract, peek, has,
