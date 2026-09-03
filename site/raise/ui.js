@@ -50,12 +50,18 @@
       '><span class="card__ix"><span class="card__r">' + (wild ? "W" : G.rname(c.r)) + '</span><span class="card__rs">' + (wild ? "★" : su.s) + '</span></span>' +
       '<span class="card__pip">' + (wild ? "★" : su.s) + '</span><span class="card__ix card__ix2"><span class="card__r">' + (wild ? "W" : G.rname(c.r)) + '</span><span class="card__rs">' + (wild ? "★" : su.s) + '</span></span>' + (e ? '<span class="card__e">' + e + '</span>' : "") + '</' + tag + '>';
   }
+  /* Μέγεθος φύλλου από πλάτος ΚΑΙ ύψος: το χέρι παίρνει το πολύ ~26% της οθόνης. */
   function fitHand(n) {
-    const W = $("hand").clientWidth || 360;
+    const W = $("hand").clientWidth || 360, H = innerHeight || 700;
     const rows = n <= 10 ? 2 : 3, per = Math.max(1, Math.ceil(n / rows));
-    const cw = Math.max(40, Math.min(78, Math.floor((W - (per - 1) * 6) / per)));
+    const byW = Math.floor((W - (per - 1) * 6) / per);
+    const budget = Math.max(104, Math.min(215, H * 0.26));
+    const byH = Math.floor((budget - (rows - 1) * 5) / rows / 1.4);
+    const cw = Math.max(38, Math.min(70, byW, byH));
     document.documentElement.style.setProperty("--cw", cw + "px");
-    $("hand").classList.toggle("big", cw >= 60);
+    $("hand").style.maxWidth = (per * (cw + 6)) + "px";  // ίσες σειρές: 4+4, όχι 5+3
+    $("hand").classList.toggle("big", cw >= 58);
+    document.body.classList.toggle("short", H < 720);
   }
   const pips = (n, max, cls) => { let h = ""; for (let i = 0; i < max; i++) h += '<i class="' + (i < n ? "" : "spent") + '"></i>'; return h; };
   const charmToken = (id, extra) => { const c = G.charmById[id]; return '<button class="charm" data-charm="' + id + '" aria-label="' + c.name + '"' + (extra || "") + '><span>' + c.glyph + '</span></button>'; };

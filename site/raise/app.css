@@ -444,3 +444,46 @@ body.on-start .app{filter:blur(6px);pointer-events:none}
 .shophead{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}
 .shophead .tb{padding:.4rem .65rem}
 .offer__card .card__e{display:none}
+
+/* ===================== v5.1: fit every phone ===================== */
+.app{height:100vh;height:100dvh}
+.table{overflow:hidden;min-height:6.5rem}
+/* φύλλα στο τραπέζι: μία κέντα 5 φύλλων πρέπει να χωρά σε 360px */
+.tcards .card{width:clamp(2.4rem,10.5vw,3.3rem)}
+.tcards{gap:.25rem}
+.hand{padding:.55rem 0 .1rem;gap:5px 6px}
+.hud{gap:.2rem .6rem}
+.res{margin-top:.1rem}
+.charms{margin-top:.25rem;gap:.35rem}
+.charm{width:1.75rem;height:1.75rem;font-size:.8rem}
+.charm--empty{width:1.2rem;height:1.2rem;align-self:center}
+.charm--s{width:2.4rem;height:2.4rem;font-size:1.05rem}
+/* κοντές οθόνες (browser με bar, μικρά Android) */
+body.short .hud__score b{font-size:1.75rem}
+body.short .hud__score span{font-size:.72rem}
+body.short .meter{height:.36rem}
+body.short .res{gap:.55rem}
+body.short .res .lbl{font-size:.5rem}
+body.short .pips i{width:.5rem;height:.5rem}
+body.short .pips--play i{width:.7rem;height:.4rem}
+body.short .pile i{width:.85rem;height:1.15rem}
+body.short .pile{font-size:.7rem}
+body.short .charm{width:1.5rem;height:1.5rem;font-size:.7rem}
+body.short .charms{margin-top:.15rem}
+body.short .rung__val{font-size:1.1rem}
+body.short .rung__dots i{width:1rem;height:.22rem}
+body.short .table{padding:.45rem .5rem;gap:.25rem}
+body.short .table .lbl{display:none}
+body.short .tnote{font-size:.58rem}
+body.short .chain b{font-size:1.2rem}
+body.short .tcards.fresh:empty::before{font-size:1rem}
+body.short .rb,body.short .go{height:3.1rem}
+body.short .rb{flex-basis:3rem}
+body.short .go__t{font-size:.72rem}
+body.short .go__p{font-size:1.35rem}
+body.short .tb{padding:.35rem .55rem;font-size:.62rem}
+body.short .tools{min-height:0}
+body.short .hand{padding-top:.4rem}
+body.short .app{gap:.3rem;padding-top:calc(.35rem + var(--st))}
+
+.hand{margin:0 auto;width:100%}
