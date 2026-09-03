@@ -88,7 +88,7 @@
 
     const rv = $("rungVal");
     if (S.rung) { const lb = G.clabel(S.rung); rv.textContent = lb; rv.classList.remove("free"); rv.classList.toggle("long", lb.length > 11); rv.style.setProperty("--kh", IC.kindHue(S.rung.kind)); $("rungDots").style.setProperty("--kh", IC.kindHue(S.rung.kind)); }
-    else { rv.textContent = "open"; rv.classList.add("free"); rv.classList.remove("long"); }
+    else { rv.textContent = "Open"; rv.classList.add("free"); rv.classList.remove("long"); }
     $("rungDots").innerHTML = S.rung ? Array.from({ length: S.rung.size }, () => '<i class="' + (G.isBomb(S.rung) ? "bomb" : "at") + '"></i>').join("") : "";
     $("chal").hidden = !ch; if (ch) $("chalName").textContent = ch.name;
     $("tnote").textContent = cap(ch ? ch.desc : G.beatText(S));
@@ -124,20 +124,24 @@
     $("tools").innerHTML = tools;
 
     const go = $("bPlay"); go.className = "go";
-    if (ui.chisel) { go.classList.add("idle"); go.disabled = true; go.innerHTML = '<span class="go__t">Chisel</span><span class="go__s">pick a card, then a rank</span>'; }
-    else if (S.playsLeft <= 0) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "cleared" : "short of the target") + '</span>'; }
+    const pv = $("preview"); pv.className = "preview"; let pvt = "";
+    const whyNot = () => (e.k.kind === S.rung.kind ? (e.k.size < S.rung.size ? (S.rung.kind === 8 ? "need " + S.rung.size / 2 + " pairs or more" : "too short · " + S.rung.size + " cards or more") : "not higher than " + G.rname(S.rung.rank)) : "lower hand than " + G.KINDS[S.rung.kind].name.toLowerCase());
+    if (ui.chisel) { go.classList.add("idle"); go.disabled = true; go.innerHTML = '<span class="go__t">Chisel</span><span class="go__s">Pick a card, then a rank</span>'; }
+    else if (S.playsLeft <= 0) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "Cleared" : "Short of the target") + '</span>'; }
     else if (!S.sel.length) {
       go.classList.add("idle"); go.disabled = true;
-      go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "beat " + G.clabel(S.rung) : "any hand opens") + (S.playsLeft === 1 ? " · last play" : "") + '</span>';
+      go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Beat " + G.clabel(S.rung) : "Any hand opens") + (S.playsLeft === 1 ? " · last play" : "") + '</span>';
     }
-    else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">rung resets · keep chain ×' + pos + ' · no play used</span><span class="go__p">↺</span>'; }
-    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + S.sel.length + (S.sel.length === 1 ? ' card' : ' cards') + '</span><span class="go__s">' + (S.sel.length > G.CFG.discardCards ? 'not a hand · discard up to ' + G.CFG.discardCards : 'not a hand · discard?') + '</span>'; }
-    else if (!e.legal) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + (e.k.kind === S.rung.kind ? (e.k.size < S.rung.size ? (S.rung.kind === 8 ? "need " + S.rung.size / 2 + " pairs or more" : "too short · " + S.rung.size + " cards or more") : "not higher than " + G.rname(S.rung.rank)) : "lower hand than " + G.KINDS[S.rung.kind].name.toLowerCase()) + '</span>'; }
+    else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">Keep chain ×' + pos + '</span><span class="go__p">↺</span>'; pvt = "Ace in the Hole · the rung opens, the chain stays at ×" + pos + ", no play used"; pv.classList.add("ace"); }
+    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (S.sel.length > G.CFG.discardCards ? 'Discard up to ' + G.CFG.discardCards : 'Discard?') + '</span>'; pvt = S.sel.length + " cards · not a hand" + (G.canDiscard(S) ? " · swipe down to discard" : ""); pv.classList.add("bad"); }
+    else if (!e.legal) { const w = whyNot(); go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + goLabel(e.k) + '</span><span class="go__s">' + cap(w.split(" · ")[0]) + '</span>'; pvt = G.clabel(e.k) + " won't beat " + G.clabel(S.rung) + " · " + w; pv.classList.add("bad"); }
     else {
-      go.classList.add("ok"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind));
-      const extra = e.notes.length ? " · " + e.notes.join(", ") : "";
-      go.innerHTML = '<span class="go__t">' + goLabel(e.k) + '</span><span class="go__s">' + (G.crange(e.k) ? G.crange(e.k) + ' · ' : '') + e.base + (e.factor > 1 ? '×' + e.factor : '') + ' × ' + e.pos + (e.hm !== 1 ? ' ×' + e.hm : '') + extra + '</span><span class="go__p">+' + e.pts + '</span>';
+      go.classList.add("ok"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.classList.add("ok");
+      const calc = e.base + (e.factor > 1 ? "×" + e.factor : "") + " × " + e.pos + (e.hm !== 1 ? " ×" + e.hm : "");
+      go.innerHTML = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + goLabel(e.k) + ' · ' + calc + '</span>';
+      pvt = G.clabel(e.k) + (G.crange(e.k) ? " · " + G.crange(e.k) : "") + " · " + calc + " = " + e.pts + (e.notes.length ? " · " + e.notes.join(", ") : "");
     }
+    pv.innerHTML = pvt ? cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</span>").join(' <i>·</i> ') : "";
     Array.prototype.forEach.call(go.querySelectorAll(".go__s"), (el) => { el.textContent = cap(el.textContent); });
     $("bPass").disabled = ui.chisel || !G.canPass(S); $("passN").textContent = S.breaths;
     $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = S.discards;
@@ -284,7 +288,7 @@
       '<p><b>Five plays a round.</b> Pick cards, make a hand, play it. Draw back to eight. Two <b>Jokers</b> in the deck stand for any card.</p>' +
       '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
       '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = base × chain. Longer straights and stairs pay more.</p>' +
-      '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b> (no chain multiplier). Then the chain resets to ×1 and the table opens.</p>' +
+      '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b> (no chain multiplier). The table opens and the chain carries on.</p>' +
       '<p><b>Discard</b> up to four cards and draw new ones. You get five discards for the whole run — spend them wisely, buy more in the shop. <b>Pass</b> resets the rung, keeps half the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
       '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +

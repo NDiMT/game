@@ -266,7 +266,7 @@
     if (steels) { base += 15 * steels; notes.push("Steel +" + 15 * steels); }
     const golds = cs.filter((c) => c.e === "gold").length, glass = cs.filter((c) => c.e === "glass").length;
     const factor = 1 + golds * (has(S, "goldsmith") ? 2 : 1) + 2 * glass;
-    /* Βόμβα: σταθεροί πόντοι, χωρίς πολλαπλασιαστή αλυσίδας — μετά η αλυσίδα μηδενίζει. */
+    /* Βόμβα: σταθεροί πόντοι, χωρίς πολλαπλασιαστή αλυσίδας. */
     let pos = isBomb(k) ? 1 : chainPos(S);
     const prev = S.rung;
     if (has(S, "ladder") && sameShape(k, prev) && k.rank === prev.rank + 1) { pos += 1; notes.push("Ladder +1"); }
@@ -447,18 +447,14 @@
     if (k.kind === 3 && k.size >= 6) tags.push("Staircase");
     S.score += e.pts; S.playsLeft -= 1;
     S.lastSuit = leadSuit(cs);
-    if (bomb) {
-      /* Η βόμβα σκάει: παίρνει τους πόντους της, μετά η αλυσίδα γυρίζει στο ×1 και το τραπέζι ανοίγει. */
-      S.chain = 0; S.rung = null;
-    } else {
-      S.chain += 1;
-      S.rung = { kind: k.kind, rank: Math.min(14, k.rank + (chal(S) === "sticky" ? 1 : 0)), size: k.size };
-      const pos = chainPos(S);
+    /* Η βόμβα σκάει: 1000 σταθερά, το τραπέζι ανοίγει, η αλυσίδα συνεχίζει κανονικά. */
+    S.chain += 1;
+    S.rung = bomb ? null : { kind: k.kind, rank: Math.min(14, k.rank + (chal(S) === "sticky" ? 1 : 0)), size: k.size };
+    { const pos = chainPos(S);
       if (pos > S.stats.maxChain) S.stats.maxChain = pos;
-      if (pos >= 7) { S.stats.chain7 = 1; if (pos === 7) tags.push("Ladder to Heaven"); }
-    }
+      if (pos >= 7) { S.stats.chain7 = 1; if (pos === 7) tags.push("Ladder to Heaven"); } }
     S.played = cs.slice();
-    S.log.push({ t: clabel(k), c: e.base + (e.factor > 1 ? "×" + e.factor : "") + " × " + e.pos + (e.hm !== 1 ? " ×" + e.hm : "") + (bomb ? " · chain reset" : ""), p: e.pts });
+    S.log.push({ t: clabel(k), c: e.base + (e.factor > 1 ? "×" + e.factor : "") + " × " + e.pos + (e.hm !== 1 ? " ×" + e.hm : "") + (bomb ? " · table opens" : ""), p: e.pts });
     tags.sort((a, b) => TAG_ORDER.indexOf(a) - TAG_ORDER.indexOf(b));
     const ev = { type: "play", k, pts: e.pts, pos: e.pos, notes: e.notes, tags, bomb };
     afterPlay(S, cs, ev);
