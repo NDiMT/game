@@ -30,7 +30,7 @@
   }
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
-  const TARGETS = [60, 65, 75, 85, 100, 115, 130, 150, 175, 210, 245, 295, 350, 430, 520, 630, 770, 950, 1180, 1480, 1850, 2340, 2970, 3800, 4900, 6300, 8200, 10700, 14000, 18500];
+  const TARGETS = [60, 65, 75, 85, 100, 115, 130, 155, 180, 215, 255, 300, 370, 450, 540, 670, 830, 1030, 1290, 1630, 2070, 2650, 3400, 4400, 5700, 7500, 9850, 13050, 17400, 23300];
   const CFG = {
     handSize: 8, plays: 5, breaths: 2, discards: 2, discardCards: 4, chisel0: 1,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
@@ -230,18 +230,16 @@
     }
     return best;
   }
-  /* Tichu: ίδιος τύπος, ίδιο μήκος, ψηλότερο. Βόμβες χτυπούν τα πάντα, μεγαλύτερη βόμβα χτυπά μικρότερη. */
-  function isLegal(S, k) {
+  /* Υβρίδιο: ανώτερος τύπος χτυπάει κατώτερο (Pair < Trips < Stairs < Straight < Full < Quads < Str.Flush).
+     Στον ίδιο τύπο, Tichu: ίδιο μήκος και ψηλότερη αξία — ή μακρύτερη κέντα / σκάλα. */
+  function beats(k, r) {
     if (!k) return false;
-    const r = S.rung; if (!r) return true;
-    if (isBomb(k)) {
-      if (!isBomb(r)) return true;
-      if (k.kind !== r.kind) return k.kind === 7;
-      return k.size !== r.size ? k.size > r.size : k.rank > r.rank;
-    }
-    if (isBomb(r)) return false;
-    return k.kind === r.kind && k.size === r.size && k.rank > r.rank;
+    if (!r) return true;
+    if (k.kind !== r.kind) return k.kind > r.kind;
+    if (k.size !== r.size) return k.size > r.size;
+    return k.rank > r.rank;
   }
+  const isLegal = (S, k) => beats(k, S.rung);
   const sameShape = (a, b) => !!a && !!b && a.kind === b.kind && a.size === b.size;
   function chainPos(S) { const p = S.chain + 1 + S.chainStart; return chal(S) === "thinair" ? Math.min(CFG.thinAirCap, p) : p; }
   function leadSuit(cs) {
@@ -294,8 +292,8 @@
   /* Τι χρειάζεται για να χτυπηθεί το rung. */
   function beatText(S) {
     const r = S.rung; if (!r) return "any hand opens";
-    if (isBomb(r)) return "only a bigger bomb beats it";
-    return "same hand · " + r.size + " cards · higher — or a bomb";
+    if (r.kind === 7) return "only a longer or higher straight flush";
+    return "higher hand · or " + KINDS[r.kind].name.toLowerCase() + (r.kind === 3 || r.kind === 4 ? " longer or higher" : " higher");
   }
 
   /* ============================== κινήσεις ============================== */
@@ -332,12 +330,13 @@
   }
   const legalMoves = (S) => candidates(S).filter((o) => isLegal(S, o.k));
   const hasLegal = (S) => legalMoves(S).length > 0;
-  /* Πόσα σκαλιά ανεβαίνει άπληστα από εδώ με ίδιο σχήμα και ξένα φύλλα. */
+  /* Πόσα σκαλιά ανεβαίνει άπληστα από εδώ με ξένα φύλλα, παίρνοντας κάθε φορά το φθηνότερο που χτυπάει. */
+  const costKey = (k) => k.kind * 10000 + k.size * 100 + k.rank;
   function chainLen(S, c, all) {
     const used = new Set(c.idx); let cur = c.k, len = 1;
     for (;;) {
       let nx = null;
-      all.forEach((o) => { if (!sameShape(o.k, cur) || o.k.rank <= cur.rank || isBomb(o.k) || o.idx.some((i) => used.has(i))) return; if (!nx || o.k.rank < nx.k.rank) nx = o; });
+      all.forEach((o) => { if (!beats(o.k, cur) || isBomb(o.k) || o.idx.some((i) => used.has(i))) return; if (!nx || costKey(o.k) < costKey(nx.k)) nx = o; });
       if (!nx) break;
       nx.idx.forEach((i) => used.add(i)); cur = nx.k; len++;
     }
@@ -350,12 +349,12 @@
     if (!legal.length) return null;
     if (S.rung) {
       const nb = legal.filter((o) => !isBomb(o.k)), pool = nb.length ? nb : legal;
-      return pool.reduce((b, o) => (!b || o.k.rank < b.k.rank || (o.k.rank === b.k.rank && o.idx.length < b.idx.length) ? o : b), null);
+      return pool.reduce((b, o) => (!b || costKey(o.k) < costKey(b.k) ? o : b), null);
     }
     let best = null, bk = -1;
     legal.forEach((o) => {
       const len = isBomb(o.k) ? 1 : chainLen(S, o, all), pts = scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts;
-      const key = len * 1e6 + (len >= 2 ? (20 - o.k.rank) * 1e4 : 0) + Math.min(9999, pts);
+      const key = len * 1e6 + (len >= 2 ? (90000 - costKey(o.k)) : 0) + Math.min(9999, pts);
       if (key > bk) { bk = key; best = o; }
     });
     return best;
@@ -579,7 +578,7 @@
   const todaySeed = (d) => { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 
   return {
-    SUITS, KINDS, TARGETS, CFG, POOL, kbase, isBomb, sameShape, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
+    SUITS, KINDS, TARGETS, CFG, POOL, kbase, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, goal, nextTarget, roundHandSize,
     classify, isLegal, chainPos, scoreOf, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit, over,
     candidates, legalMoves, hasLegal, cheapest, suggest, aceIndex, orphans,

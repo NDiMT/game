@@ -131,7 +131,7 @@
     }
     else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">rung resets · keep chain ×' + pos + ' · no play used</span><span class="go__p">↺</span>'; }
     else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + S.sel.length + (S.sel.length === 1 ? ' card' : ' cards') + '</span><span class="go__s">' + (S.sel.length > G.CFG.discardCards ? 'not a hand · discard up to ' + G.CFG.discardCards : 'not a hand · discard?') + '</span>'; }
-    else if (!e.legal) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + (G.isBomb(S.rung) ? "only a bigger bomb" : "won\'t beat it · " + (S.rung.size !== e.k.size || S.rung.kind !== e.k.kind ? "need " + G.clabel(S.rung).split(" ")[0].toLowerCase() + " of " + S.rung.size : "higher")) + '</span>'; }
+    else if (!e.legal) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + '</span><span class="go__s">' + (e.k.kind === S.rung.kind ? (e.k.size < S.rung.size ? "too short · " + S.rung.size + " cards or more" : "not higher than " + G.rname(S.rung.rank)) : "lower hand than " + G.KINDS[S.rung.kind].name.toLowerCase()) + '</span>'; }
     else {
       go.classList.add("ok"); go.disabled = false;
       const extra = e.notes.length ? " · " + e.notes.join(", ") : "";
@@ -275,7 +275,7 @@
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
       '<p><b>Five plays a round.</b> Pick cards, make a hand, play it. Draw back to eight.</p>' +
       '<p><b>Hands, Tichu style:</b> pair · trips · full house · <b>straight</b> of five or more · <b>stairs</b> of consecutive pairs (22 33 44) · bombs: quads and straight flush.</p>' +
-      '<p><b>Every hand must beat the last</b> — same hand, same number of cards, higher rank. A <b>bomb</b> beats anything; only a bigger bomb beats a bomb. Score = base × chain. Longer straights and stairs pay more.</p>' +
+      '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; trips &lt; stairs &lt; straight &lt; full house &lt; quads &lt; straight flush), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = base × chain. Longer straights and stairs pay more.</p>' +
       '<p><b>Discard</b> up to four cards, twice a round, and draw new ones. <b>Pass</b> resets the rung but breaks the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
       '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room.</p>' +
