@@ -18,8 +18,8 @@
     { id: "stairs", name: "Stairs", short: "STAIRS", base: 40, step: 35, min: 4, tier: 4 },
     { id: "straight", name: "Straight", short: "STR8", base: 40, min: 5, table: [40, 60, 85, 115, 150, 190, 235, 285, 340], tier: 5 },
     { id: "full", name: "Full House", short: "FULL", base: 80, size: 5, tier: 6 },
-    { id: "quads", name: "Quads", short: "QUADS", base: 120, size: 4, bomb: true, tier: 7 },
-    { id: "sflush", name: "Straight Flush", short: "SFLUSH", base: 150, step: 40, min: 5, bomb: true, tier: 8 },
+    { id: "quads", name: "Quads", short: "QUADS", base: 1000, size: 4, bomb: true, tier: 7 },
+    { id: "sflush", name: "Straight Flush", short: "SFLUSH", base: 1000, step: 250, min: 5, bomb: true, tier: 8 },
     { id: "pairs", name: "Two Pair", short: "PAIRS", base: 20, step: 20, min: 4, tier: 2 },
   ];
   const BY_TIER = KINDS.slice(1).sort((a, b) => a.tier - b.tier);
@@ -53,7 +53,7 @@
     { id: "m3", name: "Straights +", desc: "Straights pay one step more.", cost: 8 },
     { id: "m4", name: "Stairs +", desc: "Stairs pay one step more.", cost: 8 },
     { id: "m5", name: "Full Houses +", desc: "Full houses pay one step more.", cost: 10 },
-    { id: "m6", name: "Bombs +", desc: "Quads and straight flushes pay one step more.", cost: 10 },
+    { id: "m6", name: "Bombs +", desc: "Bombs pay 1000 more.", cost: 10 },
     { id: "pl", name: "Extra Play", desc: "+1 play per round.", cost: 12 },
     { id: "br", name: "Breath", desc: "+1 pass per round.", cost: 7 },
     { id: "di", name: "Discard", desc: "+1 discard per round.", cost: 8 },
@@ -89,7 +89,7 @@
     { id: "scout", name: "Scout", glyph: "◉", desc: "See the next card of the pile.", cost: 5 },
     { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards pay ×3.", cost: 8, lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
     { id: "glassblower", name: "Glassblower", glyph: "◇", desc: "Glass survives half the time.", cost: 8, lock: { key: "glass", n: 5, text: "Shatter 5 Glass cards" } },
-    { id: "summiteer", name: "Summiteer", glyph: "▲", desc: "Bombs: +3 chain.", cost: 10, lock: { key: "quads", n: 3, text: "Play 3 bombs" } },
+    { id: "summiteer", name: "Summiteer", glyph: "▲", desc: "Bombs pay ×1.5.", cost: 10, lock: { key: "quads", n: 3, text: "Play 3 bombs" } },
     { id: "gambler", name: "Gambler", glyph: "⚄", desc: "Raise pays ×3 — but the target is ×1.8.", cost: 8, lock: { key: "raiseWon", n: 3, text: "Win 3 Raises" } },
     { id: "ember", name: "Ember", glyph: "✦", desc: "Chain ×5 and above: hands pay +50%.", cost: 11, lock: { key: "chain7", n: 1, text: "Reach chain ×7" } },
   ];
@@ -265,12 +265,14 @@
     if (has(S, "court") && cs.some(isFace)) { base += 20; notes.push("Court +20"); }
     const golds = cs.filter((c) => c.e === "gold").length, glass = cs.filter((c) => c.e === "glass").length;
     const factor = 1 + golds * (has(S, "goldsmith") ? 2 : 1) + 2 * glass;
-    let pos = chainPos(S);
+    /* Βόμβα: σταθεροί πόντοι, χωρίς πολλαπλασιαστή αλυσίδας — μετά η αλυσίδα μηδενίζει. */
+    let pos = isBomb(k) ? 1 : chainPos(S);
     const prev = S.rung;
     if (has(S, "ladder") && sameShape(k, prev) && k.rank === prev.rank + 1) { pos += 1; notes.push("Ladder +1"); }
     if (has(S, "loyal") && S.lastSuit != null && leadSuit(cs) === S.lastSuit) { pos += 1; notes.push("Loyalty +1"); }
-    if (has(S, "summiteer") && isBomb(k)) { pos += 3; notes.push("Summiteer +3"); }
+    if (has(S, "summiteer") && isBomb(k)) { notes.push("Summiteer ×1.5"); }
     let hm = 1;
+    if (has(S, "summiteer") && isBomb(k)) hm *= 1.5;
     if (has(S, "leap") && sameShape(k, prev) && k.rank - prev.rank >= 4) { hm *= 1.5; notes.push("Overkill ×1.5"); }
     if (has(S, "lowroad") && k.kind === 1 && k.rank <= 6) { hm *= 2; notes.push("Low Road ×2"); }
     if (has(S, "mirror") && S.plays === 0) { hm *= 2; notes.push("Mirror ×2"); }
