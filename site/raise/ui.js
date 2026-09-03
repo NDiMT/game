@@ -96,7 +96,7 @@
     $("contract").hidden = !ct;
     if (ct) { $("contractName").textContent = ct.name + " · " + (ct.pct ? "+" + ct.pct + "%" : "+" + ct.flat); $("contractSt").textContent = cst === "broken" ? "✕" : cst === "done" ? "✓" : cst === "ok" ? "…" : "○"; $("contract").className = "chal contract " + cst; }
     document.body.classList.toggle("lastplay", S.playsLeft === 1 && !cleared);
-    $("tnote").textContent = cap(ch ? ch.desc : G.beatText(S));
+    $("tnote").textContent = "";
     $("chainN").textContent = "×" + pos;
     document.body.dataset.heat = pos >= 7 ? 3 : pos >= 5 ? 2 : pos >= 3 ? 1 : 0;
     const pk = G.peek(S); $("peek").hidden = !pk; if (pk) $("peekCard").innerHTML = cardHTML(pk, null, false, true, 0, 1);
@@ -134,7 +134,7 @@
     if (ui.chisel) { go.classList.add("idle"); go.disabled = true; go.innerHTML = '<span class="go__t">Chisel</span><span class="go__s">Pick a card, then a rank</span>'; }
     else if (S.playsLeft <= 0) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "Cleared" : "Short of the target") + '</span>'; }
     else if (!S.sel.length) {
-      go.classList.add("idle"); go.disabled = true;
+      go.classList.add("idle"); go.disabled = true; pvt = G.beatText(S) + (S.playsLeft === 1 ? " · last play" : ""); pv.classList.add("hint");
       go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Beat " + G.clabel(S.rung) : "Any hand opens") + (S.playsLeft === 1 ? " · last play" : "") + '</span>';
     }
     else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">Keep chain ×' + pos + '</span><span class="go__p">↺</span>'; pvt = "Ace in the Hole · the rung opens, the chain stays at ×" + pos + ", no play used"; pv.classList.add("ace"); }
@@ -146,7 +146,8 @@
       go.innerHTML = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + goLabel(e.k) + ' · ' + calc + '</span>';
       pvt = G.clabel(e.k) + (G.crange(e.k) ? " · " + G.crange(e.k) : "") + " · " + calc + " = " + e.pts + (e.notes.length ? " · " + e.notes.join(", ") : "");
     }
-    pv.innerHTML = pvt ? cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</span>").join(' <i>·</i> ') : "";
+    pv.innerHTML = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      : cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + "</span>").join(' <i>·</i> ');
     Array.prototype.forEach.call(go.querySelectorAll(".go__s"), (el) => { el.textContent = cap(el.textContent); });
     $("bPass").disabled = ui.chisel || !G.canPass(S); $("passN").textContent = S.breaths;
     $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = S.discards;

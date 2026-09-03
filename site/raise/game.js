@@ -345,9 +345,10 @@
   }
   /* Τι χρειάζεται για να χτυπηθεί το rung. */
   function beatText(S) {
-    const r = S.rung; if (!r) return "any hand opens";
-    if (r.kind === 8) return "higher hand · or more pairs, or higher";
-    return "higher hand · or " + KINDS[r.kind].name.toLowerCase() + (r.kind === 3 || r.kind === 4 ? " longer or higher" : " higher");
+    const r = S.rung; if (!r) return "Any hand opens";
+    if (r.kind === 8) return "Beat it: more pairs, or a better hand";
+    if (r.kind === 3 || r.kind === 4) return "Beat it: longer or higher " + KINDS[r.kind].name.toLowerCase() + ", or a better hand";
+    return "Beat it: higher " + KINDS[r.kind].name.toLowerCase() + ", or a better hand";
   }
 
   /* ============================== κινήσεις ============================== */

@@ -622,7 +622,7 @@ body.boom .table{animation:boomring .8s ease-out}
 
 /* full-width preview of the selected hand, inside the table */
 .preview{font-family:var(--mono);font-size:.7rem;line-height:1.35;color:var(--cream);text-align:center;padding:0 .2rem}
-.preview span{white-space:nowrap}
+.preview span{white-space:normal}
 .preview i{font-style:normal;opacity:.6}
 .preview:empty{display:none}
 .preview.ok{color:hsl(var(--kh,45) 90% 82%);text-shadow:0 0 .6rem hsl(var(--kh,45) 85% 60% / .45)}
@@ -662,3 +662,42 @@ body.lastplay #vig{box-shadow:inset 0 0 12rem rgba(0,0,0,.75),inset 0 0 3rem rgb
 body.lastplay .pips--play i:not(.spent){animation:heartbeat 1s ease-in-out infinite}
 @keyframes heartbeat{0%,100%{transform:scale(1)}30%{transform:scale(1.35)}45%{transform:scale(1)}60%{transform:scale(1.25)}}
 .callout.target{font-family:var(--mono);font-style:normal;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:1.9rem;color:#d8ffe9;text-shadow:0 2px 0 #1e6b48,0 0 1.6rem rgba(95,199,154,.95)}
+
+
+/* ===================== v9: typography & centring inside boxes and buttons ===================== */
+/* play button: centred column */
+.go{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:.15rem;padding:0 .7rem}
+.go__t,.go__s{max-width:100%}
+.go__s{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.2;text-align:center}
+.go__p{display:none}
+.go.ace .go__p{display:none}
+.go.ok .go__t--pts{font-size:1.4rem;line-height:1;letter-spacing:-.02em}
+/* side buttons: small label, big number */
+.rb{gap:.05rem}
+.rb span{font-size:.58rem;letter-spacing:.1em;color:rgba(236,234,223,.85)}
+.rb em{font-size:1.05rem;font-weight:700;line-height:1}
+.rb .ic{font-size:1.25rem}
+/* tools row centred, pills with even padding */
+.tools{justify-content:center}
+.tb{justify-content:center;padding:.55rem .9rem}
+.toast{text-align:center;padding:.5rem .8rem;border-left:0;border:1px solid rgba(255,150,140,.4);border-radius:12px}
+.toast.gold{border-color:rgba(245,207,106,.45)}
+/* table foot: tidy note */
+.tnote{max-width:52%;line-height:1.35;font-size:.66rem;letter-spacing:.02em}
+.chain{gap:.05rem}
+.piles{margin-top:.15rem}
+/* ribbons: centred text, even spacing */
+.chal{justify-content:center;padding:.3rem .8rem;gap:.45rem}
+.chal span{letter-spacing:.14em}
+/* sheet titles and tallies */
+.sheet h2{text-align:left}
+.tally div{align-items:center}
+.tally b{padding-left:.5rem}
+/* keep/contract tiles text alignment */
+.ctr strong,.offer strong,.owned__row strong,.coll__i strong{letter-spacing:.01em}
+/* empty table hint */
+.tcards.fresh:empty::before{padding:0 .5rem}
+.preview.hint{color:var(--muted);text-shadow:none}
+.tnote:empty{display:none}
+.preview{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.table{overflow:hidden}
