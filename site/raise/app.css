@@ -703,3 +703,8 @@ body.lastplay .pips--play i:not(.spent){animation:heartbeat 1s ease-in-out infin
 .table{overflow:hidden}
 .chalnext.ctrnext{background:rgba(150,90,220,.14);border-color:rgba(217,184,255,.45)}
 .chalnext.ctrnext .lbl{color:#d9b8ff}
+/* table foot: piles bottom-left, chain ×N pinned bottom-right */
+.tfoot{align-items:end}
+.tfoot .piles{align-self:end;margin-right:auto}
+.chain{margin-left:auto;align-self:end}
+.chain b{font-size:1.75rem;line-height:.95}
