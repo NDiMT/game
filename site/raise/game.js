@@ -725,11 +725,13 @@
   const freshCards = (S) => { const ids = new Set(S.fresh || []); return S.deck.filter((c) => ids.has(c.id) && c.e !== "steel"); };
   /* Αν το χέρι δεν χωρά steel + νέα + κρατημένα, βγαίνει το χαμηλότερο κρατημένο (όχι steel/τζόκερ αν γίνεται). */
   function trimKeep(S) {
+    /* Τα steel μετριούνται μία φορά (ξαναμπαίνουν μόνα τους), όχι και ως κρατημένα. */
     const room = S.handSize - S.deck.filter((c) => c.e === "steel").length - freshCards(S).length;
     S.keep = S.keep || [];
-    while (S.keep.length > Math.max(0, room)) {
-      const kept = S.keep.map((i) => S.hand[i]).filter(Boolean).sort(cmp);
-      const pick = kept.find((c) => c.e !== "steel" && !isWild(c)) || kept[0];
+    const plain = () => S.keep.map((i) => S.hand[i]).filter((c) => c && c.e !== "steel");
+    while (plain().length > Math.max(0, room)) {
+      const kept = plain().sort(cmp);
+      const pick = kept.find((c) => !isWild(c)) || kept[0];
       if (!pick) break;
       S.keep.splice(S.keep.indexOf(S.hand.indexOf(pick)), 1);
     }

@@ -129,8 +129,7 @@
         ? '<div class="picker">' + rankButtons() + '</div><button class="tb on" data-act="chisel">Cancel</button>'
         : '<span class="toast gold" style="flex:1">Tap a card to rewrite.</span><button class="tb on" data-act="chisel">Cancel</button>';
     } else {
-      if (ui.note && Date.now() < ui.noteT) tools += '<span class="toast" style="flex:1">' + ui.note + '</span>';
-      else {
+      {
         if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise <em>×' + (G.has(S, "gambler") ? G.CFG.gamblerMul : G.CFG.raiseMul) + ' · pay ×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</em></button>';
         if (S.raised) tools += '<span class="toast gold raised" style="flex:1">RAISED · reach ' + S.raiseTarget + '</span>';
         if (S.chiselMax) tools += '<button class="tb" data-act="chisel"' + (S.chisel <= 0 ? " disabled" : "") + '>Chisel <em>' + S.chisel + '</em></button>';
@@ -138,6 +137,9 @@
       }
     }
     $("tools").innerHTML = tools;
+    /* Σημειώσεις/tooltips: αιωρούμενη κάρτα πάνω από το dock, δεν μετακινεί τίποτα· κλείνει με άγγιγμα. */
+    const tipOn = !!ui.note && Date.now() < ui.noteT;
+    $("tip").hidden = !tipOn; if (tipOn) $("tip").innerHTML = '<div class="tip__in">' + ui.note + '</div>';
 
     const go = $("bPlay"); go.className = "go";
     const pv = $("preview"); pv.className = "preview"; let pvt = "";
@@ -354,6 +356,7 @@
     clearTimeout(bossIntro.t); bossIntro.t = setTimeout(() => { el.hidden = true; }, 2800);
   }
   $("boss").addEventListener("click", () => { $("boss").hidden = true; });
+  $("tip").addEventListener("click", () => { ui.noteT = 0; render(); });
 
   /* ---------- start screen ---------- */
   const FAN = [{ r: 10, si: 0 }, { r: 11, si: 2 }, { r: 12, si: 3 }, { r: 13, si: 1 }, { r: 14, si: 0 }];

@@ -769,3 +769,13 @@ body[data-heat="3"] .hud__score b{color:#ffb15a;text-shadow:0 0 1rem rgba(255,14
 .miss>em{font-family:var(--mono);font-style:normal;font-size:.78rem;color:#ffe08a}
 .miss__cards{display:flex;gap:.3rem;--cw:2.1rem;margin:.2rem 0}
 .miss__cards .card{display:block;animation:none}
+
+/* floating tip card (tooltips) — out of the flow, above the dock */
+.tip{position:fixed;left:50%;bottom:calc(var(--sb) + 6.4rem);transform:translateX(-50%);z-index:5;width:min(92vw,26rem);padding:0 .5rem;pointer-events:auto}
+.tip__in{padding:.65rem .9rem;border-radius:14px;text-align:center;font-size:.84rem;line-height:1.4;color:var(--cream);
+  background:var(--gloss),rgba(12,32,26,.94);border:1px solid rgba(255,207,106,.45);box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12);
+  animation:tipin .28s var(--pop) both}
+.tip__in::after{content:"";position:absolute;left:50%;bottom:-.45rem;width:.9rem;height:.9rem;transform:translateX(-50%) rotate(45deg);background:rgba(12,32,26,.94);border-right:1px solid rgba(255,207,106,.45);border-bottom:1px solid rgba(255,207,106,.45)}
+.tip{filter:drop-shadow(0 0 0 transparent)}
+.tip__in{position:relative}
+@keyframes tipin{from{opacity:0;transform:translateY(.5rem) scale(.96)}to{opacity:1;transform:none}}
