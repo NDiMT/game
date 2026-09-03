@@ -73,8 +73,8 @@ Encore · Mirror · Vault · Thrift · Scout — και κλειδωμένα μ�
   Black Night (×1,5 σε χέρια με κόκκινο / μαύρο lead), Running Start (chain από ×2), Low Ceiling
   (chain έως ×5), Cheap Pairs (ζευγάρι = 0 πόντοι αλλά ανεβάζει), Runway / Triplets / Open House
   (×2 σε κέντες / τρίο / φουλ), Underdogs (×2 σε χέρια με κορυφή ≤ 6), Spare Card (+1 discard).
-- **Contracts:** στο κατάστημα διαλέγεις προαιρετικά 1 από 2 συμβόλαια για τον επόμενο γύρο
-  (π.χ. «Don't pass +30%», «End on a full house +50%», «Play a bomb +500»). Αν πετύχει, το
+- **Contracts:** κάθε πίστα έρχεται με ένα τυχαίο (seeded) προαιρετικό συμβόλαιο
+  (π.χ. «Don't pass +30%», «End on a full house +50%», «Play a bomb +500»)· το κατάστημα δείχνει το επόμενο. Αν πετύχει, το
   μπόνους μπαίνει στο σκορ του γύρου πριν τη σύγκριση με τον στόχο· αν σπάσει, χάνεις μόνο το μπόνους.
 - **Perfect round** (χωρίς Pass και discard, όλα τα παιξίματα): +3 chips.
 

@@ -51,10 +51,6 @@ function shop(S) {
   const g = rankGroups(S);
   const swap = STRAT === "bombfish" ? S.hand.map((_, i) => i).filter((i) => { const c = S.hand[i]; return !G.isWild(c) && c.r !== 14 && (g[c.r] || []).length < 2; }) : G.orphans(S);
   swap.forEach((i) => G.toggleKeep(S, i)); st.keptSwaps += swap.length;
-  /* συμβόλαιο: το πιο εύκολο από τις προσφορές */
-  const CPREF = ["c_all", "c_noace", "c_nopass", "c_low", "c_pairs", "c_nodisc", "c_chain6", "c_stairs", "c_str3", "c_full", "c_bomb"];
-  const co = (S.contractOffers || []).slice().sort((a, b) => CPREF.indexOf(a) - CPREF.indexOf(b))[0];
-  if (co) G.chooseContract(S, co);
   G.nextAnte(S);
 }
 for (let s = 0; s < N; s++) {

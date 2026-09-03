@@ -39,10 +39,6 @@ function shop(S) {
   }
   /* το χέρι μένει· πετά τα ορφανά (εκτός Άσων και wilds) */
   G.orphans(S).forEach((i) => G.toggleKeep(S, i));
-  /* συμβόλαιο: το πιο εύκολο από τις προσφορές */
-  const CPREF = ["c_all", "c_noace", "c_nopass", "c_low", "c_pairs", "c_nodisc", "c_chain6", "c_stairs", "c_str3", "c_full", "c_bomb"];
-  const co = (S.contractOffers || []).slice().sort((a, b) => CPREF.indexOf(a) - CPREF.indexOf(b))[0];
-  if (co) G.chooseContract(S, co);
   G.nextAnte(S);
 }
 function run(targets, opts) {

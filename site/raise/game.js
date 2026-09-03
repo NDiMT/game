@@ -194,6 +194,9 @@
     CFG.challengeAntes.forEach((a) => { S.chals[a] = pool.splice(Math.floor(next(S) * pool.length), 1)[0]; });
     S.chals[TARGETS.length - 1] = "summit";
     for (let a = 1; a < TARGETS.length - 1; a++) if (!S.chals[a] && next(S) < CFG.ruleChance) S.rules[a] = RULES[Math.floor(next(S) * RULES.length)].id;
+    /* ένα τυχαίο συμβόλαιο ανά πίστα (seeded), χωρίς επιλογή */
+    S.contracts = {}; for (let a = 0; a < TARGETS.length; a++) S.contracts[a] = CONTRACTS[Math.floor(next(S) * CONTRACTS.length)].id;
+    S.contract = S.contracts[0];
     startRound(S);
     return S;
   }
@@ -606,9 +609,7 @@
     S.phase = "shop"; S.rerolls = 0;
     S.keep = S.hand.map((_, i) => i);
     S.offers = makeOffers(S);
-    S.contract = null;
-    const pool = CONTRACTS.map((c) => c.id); S.contractOffers = [];
-    for (let i = 0; i < 2 && pool.length; i++) S.contractOffers.push(pool.splice(Math.floor(next(S) * pool.length), 1)[0]);
+    S.contract = null; S.contractOffers = [];
     return { cleared: true, won: false, ex, earn, interest, raiseResult, contract, perfect, perfectChips };
   }
 
@@ -675,7 +676,8 @@
     if (at >= 0) S.keep.splice(at, 1); else S.keep.push(i);
     return true;
   }
-  function nextAnte(S) { if (S.phase !== "shop") return false; S.ante += 1; startRound(S); return true; }
+  function nextAnte(S) { if (S.phase !== "shop") return false; S.ante += 1; S.contract = (S.contracts && S.contracts[S.ante]) || null; startRound(S); return true; }
+  const upcomingContract = (S) => { const a = S.ante + 1, id = S.contracts && S.contracts[a]; return id ? contractById[id] : null; };
   const upcoming = (S) => (S.chals[S.ante + 1] ? chalById[S.chals[S.ante + 1]] : null);
   const current = (S) => (S.chal ? chalById[S.chal] : null);
   const currentRule = (S) => (rule(S) ? ruleById[rule(S)] : null);
@@ -694,7 +696,7 @@
     classify, isLegal, chainPos, scoreOf, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit, over,
     candidates, legalMoves, hasLegal, cheapest, suggest, aceIndex, orphans,
     toggle, reveal, play, discard, canDiscard, pass, canPass, raise, canRaise, chisel, stuck, stuckReason, finish,
-    makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, toggleKeep, nextAnte, upcoming, current, currentRule, upcomingRule, peek, has,
+    makeOffers, offerCost, rerollCost, reroll, canBuy, buy, sell, toggleKeep, nextAnte, upcoming, current, currentRule, upcomingRule, upcomingContract, peek, has,
     contractStatus, contractMet, contractBonus, chooseContract,
     serialize, restore, todaySeed,
   };

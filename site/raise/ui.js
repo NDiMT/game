@@ -248,13 +248,11 @@
       S.hand.map((c, i) => { const on = k.indexOf(i) >= 0; return '<button class="keepc' + (on ? " on" : " off") + '" data-keep="' + i + '" aria-pressed="' + on + '">' + cardHTML(c, null, false, true, 0, 1) + '</button>'; }).join("") + '</div></div>';
   }
   function contractHTML() {
-    const offs = S.contractOffers || []; if (!offs.length) return "";
-    return '<div class="sec"><span class="lbl">Next round · contract (optional)</span><p class="sub" style="margin:.2rem 0 .45rem">Pick a side goal for a bonus. Break it and you only lose the bonus.</p><div class="ctrs">' +
-      offs.map((id) => { const c = G.contractById[id], on = S.contract === id; return '<button class="ctr' + (on ? " on" : "") + '" data-contract="' + id + '" aria-pressed="' + on + '"><strong>' + c.name + '</strong><span>' + c.desc + '</span><em>' + (c.pct ? "+" + c.pct + "%" : "+" + c.flat) + '</em></button>'; }).join("") +
-      '<button class="ctr ctr--none' + (S.contract ? "" : " on") + '" data-contract="" aria-pressed="' + !S.contract + '"><strong>No contract</strong><span>Play it safe.</span></button></div></div>';
+    const c = G.upcomingContract(S); if (!c) return "";
+    return '<div class="chalnext ctrnext"><span class="lbl">Next · Contract</span><b>' + c.name + ' · ' + (c.pct ? "+" + c.pct + "%" : "+" + c.flat) + '</b><span>' + c.desc + ' Optional side goal — miss it and you only lose the bonus.</span></div>';
   }
   function shopBody() {
-    return contractHTML() + keepHTML() + '<div class="shophead"><span class="lbl">Shop</span><button class="tb" data-reroll="1"' + (S.money < G.rerollCost(S) ? " disabled" : "") + '>Reroll <em>' + G.rerollCost(S) + '◎</em></button></div><div class="offers" id="offers">' + offersHTML() + '</div>' +
+    return keepHTML() + '<div class="shophead"><span class="lbl">Shop</span><button class="tb" data-reroll="1"' + (S.money < G.rerollCost(S) ? " disabled" : "") + '>Reroll <em>' + G.rerollCost(S) + '◎</em></button></div><div class="offers" id="offers">' + offersHTML() + '</div>' +
       '<div class="sec"><span class="lbl">Your charms · ' + S.charms.length + '/' + S.charmSlots + '</span>' + ownedCharmsHTML(true) + '</div>';
   }
   function sheetShop(r, fresh) {
@@ -265,7 +263,7 @@
       '<div>Chips<b id="mn">' + S.money + '◎</b></div></div>' +
       (fresh && fresh.length ? '<div class="unlocked">✦ Unlocked · ' + fresh.map((id) => G.charmById[id].name).join(", ") + '</div>' : "") +
       (up ? '<div class="chalnext"><span class="lbl">Next · Challenge</span><b>' + up.name + '</b><span>' + up.desc + '</span></div>' : (G.upcomingRule(S) ? '<div class="chalnext rulenext"><span class="lbl">Next · Table rule</span><b>' + G.upcomingRule(S).name + '</b><span>' + G.upcomingRule(S).desc + '</span></div>' : "")) +
-      '<div id="shopBody">' + shopBody() + '</div>' +
+      contractHTML() + '<div id="shopBody">' + shopBody() + '</div>' +
       '<button class="big" data-next="1" style="margin-top:1rem">Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</button>');
     if (fresh && fresh.length) FX.sfx.unlock();
   }
@@ -306,7 +304,7 @@
       '<p><b>Discard</b> up to four cards and draw new ones. You get five discards for the whole run — spend them wisely, buy more in the shop. <b>Pass</b> resets the rung, keeps half the chain and costs a breath. A lone <b>Ace</b> resets for free and keeps the chain.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> for double — or bust the payout.</p>' +
       '<p><b>Shop:</b> upgrades, enhanced cards, and <b>charms</b> — five slots, passive powers. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
-      '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. <b>Contracts</b> are optional side goals you pick in the shop for a bonus — break one and you only lose the bonus. A round with no pass and no discard is a <b>Perfect round</b>: +3 chips.</p>' +
+      '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with no pass and no discard is a <b>Perfect round</b>: +3 chips.</p>' +
       '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
