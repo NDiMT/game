@@ -34,13 +34,13 @@
   }
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
-  const TARGETS = [215, 270, 365, 500, 630, 830, 1230, 1590, 2300, 2820, 3470, 4180, 5100, 6450, 7800, 9400, 11250, 13500, 16150, 19350, 23000, 26500, 27200, 28900, 35300, 37800, 42800, 51700, 64100, 84300];
+  const TARGETS = [215, 270, 365, 500, 630, 830, 1230, 1590, 2300, 2820, 3750, 4510, 5500, 6950, 8400, 10150, 12150, 14600, 17450, 20900, 26400, 30500, 31300, 33200, 40600, 43500, 49200, 59500, 73700, 96900];
   const CFG = {
     handSize: 8, plays: 5, breaths: 2, discards: 0, discardCards: 99, chisel0: 0, jokers: 2,
     /* ενισχύσεις: δεν αγοράζονται· «σκάνε» τυχαία σε φύλλα που τραβάς μέσα στον γύρο */
-    enhChance: 0.05, enhWeights: { gold: 45, glass: 35, steel: 20 }, steelCap: 3, jokerOffers: 2, jokerOfferChance: 0.6,
+    enhChance: 0.06, enhWeights: { gold: 40, glass: 30, steel: 15, wild: 15 }, steelCap: 3, jokerCap: 4,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
-    offersUp: 2, offersCard: 1, offersCharm: 2, rerollCost: 3, rerollStep: 2,
+    offersUp: 3, offersCard: 0, offersCharm: 2, rerollCost: 3, rerollStep: 2,
     charmSlots: 5,
     challengeAntes: [3, 8, 13, 18, 23],
     chalTargetMul: 0.75, thinAirCap: 4, ruleChance: 0.75, perfectChips: 3, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
@@ -55,7 +55,6 @@
     { id: "m3", name: "Runs +", desc: "Straights and stairs pay one step more.", cost: 8 },
     { id: "m6", name: "Fuse", desc: "Bombs pay one step more: +1000 and up.", cost: 6 },
     { id: "pl", name: "Extra Play", desc: "+1 play per round.", cost: 12 },
-    { id: "di", name: "Discards +", desc: "One more discard every round, for the rest of the run.", cost: 8 },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card.", cost: 9 },
     { id: "cs", name: "Head Start", desc: "The chain starts one step higher.", cost: 12 },
     { id: "tip", name: "Tip Jar", desc: "+2 chips at the end of every ante.", cost: 6 },
@@ -83,7 +82,7 @@
     { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: +1 chain.", cost: 9 },
     { id: "cheap", name: "Cheap Breath", glyph: "¾", desc: "Every pass keeps three quarters of the chain instead of half.", cost: 8 },
     { id: "wind", name: "Second Wind", glyph: "∞", desc: "Your first pass each round keeps the whole chain.", cost: 7 },
-    { id: "sleight", name: "Sleight", glyph: "✂", desc: "One extra discard every round.", cost: 8 },
+    { id: "sleight", name: "Sleight", glyph: "✂", desc: "Your discard adds a chain step.", cost: 7 },
     { id: "encore", name: "Encore", glyph: "⧗", desc: "Your last play of the round pays ×2.", cost: 9 },
     { id: "mirror", name: "Mirror", glyph: "◐", desc: "The first hand of each round pays ×2 and counts as two chain steps.", cost: 9 },
     { id: "vault", name: "Vault", glyph: "◎", desc: "Interest: +1 chip per 3 held at ante end, up to 6.", cost: 6 },
@@ -108,7 +107,7 @@
     { id: "thinair", name: "Thin Air", desc: "The chain caps at ×4.", tell: "The Altitude. The air runs out at ×4.", tip: "Big hands, not long chains." },
     { id: "richair", name: "Rich Air", desc: "Target ×1.1. Payout ×2.", tell: "The Patron. Pays double, asks more.", tip: "A Raise here is worth ×4." },
     { id: "nodiscard", name: "No Discards", desc: "Discarding is off this round.", tell: "The Miser. What you hold is what you play.", tip: "Bring a clean hand from the shop." },
-    { id: "fewplays", name: "Four Plays", desc: "One play fewer. One extra discard this round.", tell: "The Clock. Four swings.", tip: "Every hand must count double." },
+    { id: "fewplays", name: "Four Plays", desc: "One play fewer. The chain starts one step higher.", tell: "The Clock. Four swings.", tip: "Every hand must count double." },
     { id: "sticky", name: "Sticky Rung", desc: "After every play the rung climbs one more rank.", tell: "The Escalator. It climbs without you.", tip: "Jump kinds instead of ranks." },
     { id: "summit", name: "The Summit", desc: "No Pass. Only an Ace resets. One clean ascent.", tell: "The Summit. One clean ascent.", tip: "Bring Aces and a bomb." },
   ];
@@ -139,15 +138,15 @@
     { id: "r_trips2", name: "Triplets", desc: "Trips pay ×2." },
     { id: "r_full2", name: "Open House", desc: "Full houses pay ×2." },
     { id: "r_low2", name: "Underdogs", desc: "Hands topped by a 6 or lower pay ×2." },
-    { id: "r_gift", name: "Spare Card", desc: "One extra free discard this round." },
+    { id: "r_gift", name: "Spare Card", desc: "You hold one more card this round." },
   ];
   const ruleById = Object.fromEntries(RULES.map((r) => [r.id, r]));
   const RANDOM_CHALLENGES = CHALLENGES.filter((c) => c.id !== "summit").map((c) => c.id);
 
   /* Τράπουλες: διαφορετικό ξεκίνημα. lock = επίτευγμα ζωής (best = καλύτερο ante). */
   const DECKS = [
-    { id: "classic", name: "Classic", desc: "52 cards, two Jokers, one discard a round.", glyph: "♠" },
-    { id: "wild", name: "Wild Deck", desc: "Four Jokers and two discards a round.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
+    { id: "classic", name: "Classic", desc: "52 cards and two Jokers.", glyph: "♠" },
+    { id: "wild", name: "Wild Deck", desc: "Four Jokers. Jokers pop up twice as often.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
     { id: "headless", name: "Headless", desc: "No Aces — no Ace in the Hole. The chain starts two steps higher.", glyph: "♛", lock: { key: "best", n: 20, text: "Clear ante 20" } },
   ];
   const deckById = {}; DECKS.forEach((d) => { deckById[d.id] = d; });
@@ -233,7 +232,6 @@
     const topR = D.id === "headless" ? 13 : 14, jokers = D.id === "wild" ? 4 : CFG.jokers;
     for (let r = 2; r <= topR; r++) for (let si = 0; si < 4; si++) S.deck.push({ id: S.nextId++, r, si });
     for (let j = 0; j < jokers; j++) S.deck.push({ id: S.nextId++, r: 0, si: j % 4, e: "wild" });
-    if (D.id === "wild") S.roundDiscBonus = 1;
     if (D.id === "headless") S.chainStart = 2;
     const pool = RANDOM_CHALLENGES.slice();
     CFG.challengeAntes.forEach((a) => { S.chals[a] = pool.splice(Math.floor(next(S) * pool.length), 1)[0]; });
@@ -247,7 +245,7 @@
   }
   const target = (S) => Math.round(tgtAt(S.ante) * (chal(S) === "richair" ? CFG.richAirMul : 1) * (chal(S) && chal(S) !== "richair" ? CFG.chalTargetMul : 1));
   const goal = (S) => (S.raised ? S.raiseTarget : target(S));
-  const roundHandSize = (S) => (chal(S) === "short" ? Math.min(CFG.shortHand, S.handSize) : S.handSize);
+  const roundHandSize = (S) => (chal(S) === "short" ? Math.min(CFG.shortHand, S.handSize) : S.handSize + (rule(S) === "r_gift" ? 1 : 0));
   /* Κάθε Ace in the Hole αφήνει το χέρι ένα φύλλο πιο κοντό μέχρι το τέλος του γύρου. */
   const handCap = (S) => Math.max(2, roundHandSize(S) - (S.races || 0));
 
@@ -256,11 +254,12 @@
     if (c.e || isWild(c) || next(S) >= CFG.enhChance) return;
     const W = Object.assign({}, CFG.enhWeights);
     if (S.deck.filter((d) => d.e === "steel").length >= CFG.steelCap) delete W.steel;
+    if (S.deck.filter(isWild).length >= CFG.jokerCap) delete W.wild; else if (S.deckId === "wild") W.wild *= 2;
     const keys = Object.keys(W), tw = keys.reduce((a, k) => a + W[k], 0);
     let x = next(S) * tw, e = keys[0];
     for (const k of keys) { x -= W[k]; if (x <= 0) { e = k; break; } }
-    c.e = e; c.x = e;
-    const d = S.deck.find((k) => k.id === c.id); if (d) d.e = e;
+    c.e = e; c.x = e; if (e === "wild") c.r = 0;
+    const d = S.deck.find((k) => k.id === c.id); if (d) { d.e = e; if (e === "wild") d.r = 0; }
     (S.enhNew = S.enhNew || []).push(e);
   }
   function draw(S, n, deal) {
@@ -295,9 +294,9 @@
     S.rung = chal(S) === "highground" ? { kind: 1, rank: CFG.highGroundRank, size: 2 } : null;
     S.chain = 0; S.score = 0; S.plays = 0; S.lastSuit = null; S.passes = 0;
     S.rdisc = 0; S.races = 0; S.rbombs = 0; S.rkinds = {}; S.rmax = 0; S.firstK = null; S.lastK = null;
-    S.chainBonus = rule(S) === "r_head" ? 1 : 0;
+    S.chainBonus = (rule(S) === "r_head" ? 1 : 0) + (chal(S) === "fewplays" ? 1 : 0);
     /* Ένα δωρεάν discard κάθε γύρο (δεν μαζεύεται)· το Spare Card δίνει δεύτερο. */
-    S.roundDisc = CFG.roundDiscards + (S.roundDiscBonus || 0) + (has(S, "sleight") ? 1 : 0) + (rule(S) === "r_gift" ? 1 : 0) + (chal(S) === "fewplays" ? 1 : 0);
+    S.roundDisc = CFG.roundDiscards;
     S.playsLeft = S.playsMax - (chal(S) === "fewplays" ? 1 : 0);
     S.chisel = S.chiselMax;
     S.played = []; S.log = [];
@@ -590,6 +589,7 @@
     const cs = removeSel(S, true);
     if (free) { /* δωρεάν: νεκρό χέρι */ } else if ((S.roundDisc || 0) > 0) S.roundDisc -= 1; else S.discards -= 1;
     S.rdisc += 1;
+    if (has(S, "sleight") && !free) S.chain += 1;
     const d = draw(S, handCap(S) - S.hand.length);
     S.log.push({ t: "Discard", c: cs.length + " out, " + d.length + " in" + (free ? " · free" : ""), p: "", cls: "pass" });
     return true;
@@ -706,10 +706,7 @@
     const out = [];
     const up = POOL.filter((o) => (o.id !== "th" || S.removed.length < 5) && (!o.min || S.ante + 1 >= o.min) && (o.id !== "gt" || S.deck.concat(S.hand).some((c) => c.r === 14 && !c.e)) && (!CFG.maxBuy[o.id] || (S.bought[o.id] || 0) < CFG.maxBuy[o.id])).map((o) => o.id);
     for (let i = 0; i < CFG.offersUp && up.length; i++) out.push({ kind: "up", id: up.splice(Math.floor(next(S) * up.length), 1)[0], bought: false });
-    /* Μόνο Joker πωλείται (και όχι πάντα)· Gold/Glass/Steel σκάνε τυχαία στα φύλλα που τραβάς. */
-    const jokersBought = (S.bought && S.bought.wild) || 0;
-    if (jokersBought < CFG.jokerOffers && next(S) < CFG.jokerOfferChance) out.push({ kind: "card", card: { r: 2 + Math.floor(next(S) * 13), si: Math.floor(next(S) * 4), e: "wild" }, bought: false });
-    else if (up.length) out.push({ kind: "up", id: up.splice(Math.floor(next(S) * up.length), 1)[0], bought: false });
+    /* Καμία κάρτα προς αγορά: Gold/Glass/Steel/Joker σκάνε τυχαία στα φύλλα που τραβάς. */
     const ch = CHARMS.filter((c) => charmAvailable(S, c)).map((c) => c.id);
     for (let i = 0; i < CFG.offersCharm && ch.length; i++) out.push({ kind: "charm", id: ch.splice(Math.floor(next(S) * ch.length), 1)[0], bought: false });
     return out;

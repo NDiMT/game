@@ -233,7 +233,6 @@
     const c = [];
     G.BY_TIER.forEach((t) => { const m = S.mult[G.KINDS.indexOf(t)]; if (m > 1) c.push(t.short + " <b>×" + m + "</b>"); });
     if (S.playsMax > G.CFG.plays) c.push("Plays <b>" + S.playsMax + "</b>");
-    c.push("Discards / round <b>" + (G.CFG.roundDiscards + (S.roundDiscBonus || 0) + (G.has(S, "sleight") ? 1 : 0)) + "</b>");
     if (S.chiselMax > 1) c.push("Chisel <b>" + S.chiselMax + "</b>");
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
     if (S.chainStart) c.push("Head Start <b>+" + S.chainStart + "</b>");
@@ -334,13 +333,13 @@
   }
   function sheetHowTo() {
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
-      '<p><b>Five plays a round.</b> Pick cards, make a hand, play it. Draw back to eight. Two <b>Jokers</b> in the deck stand for any card.</p>' +
+      '<p><b>Five plays a round.</b> Pick cards, make a hand, play it. Draw back to eight. <b>Jokers</b> stand for any card.</p>' +
       '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
       '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = (hand base + <b>card values</b>) × chain: every card pays its rank, J 11 up to A 14, so two Aces beat two 3s. Longer straights and stairs pay more.</p>' +
       '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b>, or (200 + card values) × chain when that pays more. The table opens and the chain carries on.</p>' +
-      '<p><b>Discard</b> any number of cards and draw new ones. You get one discard a round — buy more per round in the shop. <b>Pass</b> resets the rung at the cost of half your chain, as often as you like. A lone <b>Ace</b> resets and keeps the chain, but your hand stays one card short for the round.</p>' +
+      '<p><b>Discard</b> any number of cards and draw new ones. You get exactly one discard a round. <b>Pass</b> resets the rung at the cost of half your chain, as often as you like. A lone <b>Ace</b> resets and keeps the chain, but your hand stays one card short for the round.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> — ×1.8 the target with two plays left, ×2 with one — for a double payout, or bust it.</p>' +
-      '<p><b>Shop:</b> upgrades, the odd Joker, and <b>charms</b> — five slots, passive powers. <b>Gold</b>, <b>Glass</b> and <b>Steel</b> cannot be bought: now and then a card you draw turns out enhanced, for good. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
+      '<p><b>Shop:</b> upgrades and <b>charms</b> — five slots, passive powers. Cards are never for sale: now and then a card you draw turns out <b>Gold</b>, <b>Glass</b>, <b>Steel</b> or a <b>Joker</b>, for good. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
       '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with no pass and no discard is a <b>Perfect round</b>: +3 chips.</p>' +
       '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
