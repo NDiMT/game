@@ -44,7 +44,7 @@
     chalTargetMul: 0.75, thinAirCap: 4, ruleChance: 0.75, perfectChips: 3, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
     raiseMul: 2.0, raisePayout: 2, gamblerMul: 2.4,
     priceStep: 0.5,
-    maxBuy: { cs: 2, br: 2, wi: 2, di: 3, pl: 2, tip: 3, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
+    maxBuy: { cs: 2, br: 2, wi: 2, di: 3, pl: 3, tip: 3, sl: 2, gt: 1, sd: 1, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
   };
 
   const POOL = [
@@ -58,6 +58,10 @@
     { id: "cs", name: "Head Start", desc: "The chain starts one step higher.", cost: 12 },
     { id: "tip", name: "Tip Jar", desc: "+2 chips at the end of every ante.", cost: 6 },
     { id: "th", name: "Cull", desc: "Remove the lowest rank from the deck. For good.", cost: 6 },
+    /* ακριβά, μόνο από τη μέση του run και μετά */
+    { id: "sl", name: "Charm Slot", desc: "One more charm slot.", cost: 25, min: 8 },
+    { id: "gt", name: "Golden Touch", desc: "Every Ace in your deck turns Gold.", cost: 20, min: 10 },
+    { id: "sd", name: "Second Deck", desc: "Shuffle a second copy of your eight highest cards into the deck.", cost: 22, min: 12 },
   ];
   const poolById = Object.fromEntries(POOL.map((o) => [o.id, o]));
 
@@ -94,17 +98,17 @@
   const charmById = Object.fromEntries(CHARMS.map((c) => [c.id, c]));
 
   const CHALLENGES = [
-    { id: "nopass", name: "No Pass", desc: "Passing is off. Aces still reset." },
-    { id: "short", name: "Short Hand", desc: "You hold seven cards." },
-    { id: "blind", name: "Blind Deal", desc: "Four cards start face down. Your first play turns them." },
-    { id: "highground", name: "High Ground", desc: "The rung starts at Pair 5." },
-    { id: "onebreath", name: "One Breath", desc: "A single pass this round." },
-    { id: "thinair", name: "Thin Air", desc: "The chain caps at ×4." },
-    { id: "richair", name: "Rich Air", desc: "Target ×1.1. Payout ×2." },
-    { id: "nodiscard", name: "No Discards", desc: "Discarding is off this round." },
-    { id: "fewplays", name: "Four Plays", desc: "One play fewer. Gain a discard." },
-    { id: "sticky", name: "Sticky Rung", desc: "After every play the rung climbs one more rank." },
-    { id: "summit", name: "The Summit", desc: "No Pass. Only an Ace resets. One clean ascent." },
+    { id: "nopass", name: "No Pass", desc: "Passing is off. Aces still reset.", tell: "The Warden. Nobody leaves the table.", tip: "Keep an Ace for the wall." },
+    { id: "short", name: "Short Hand", desc: "You hold seven cards.", tell: "The Pickpocket. One card lighter.", tip: "Pairs, not projects." },
+    { id: "blind", name: "Blind Deal", desc: "Four cards start face down. Your first play turns them.", tell: "The Dealer. Face down, no questions.", tip: "Open cheap, then look." },
+    { id: "highground", name: "High Ground", desc: "The rung starts at Pair 5.", tell: "The Bouncer. Low pairs stay outside.", tip: "Swap your low cards in the shop." },
+    { id: "onebreath", name: "One Breath", desc: "A single pass this round.", tell: "The Diver. One breath, then down.", tip: "Save the pass for the last climb." },
+    { id: "thinair", name: "Thin Air", desc: "The chain caps at ×4.", tell: "The Altitude. The air runs out at ×4.", tip: "Big hands, not long chains." },
+    { id: "richair", name: "Rich Air", desc: "Target ×1.1. Payout ×2.", tell: "The Patron. Pays double, asks more.", tip: "A Raise here is worth ×4." },
+    { id: "nodiscard", name: "No Discards", desc: "Discarding is off this round.", tell: "The Miser. What you hold is what you play.", tip: "Bring a clean hand from the shop." },
+    { id: "fewplays", name: "Four Plays", desc: "One play fewer. Gain a discard.", tell: "The Clock. Four swings.", tip: "Every hand must count double." },
+    { id: "sticky", name: "Sticky Rung", desc: "After every play the rung climbs one more rank.", tell: "The Escalator. It climbs without you.", tip: "Jump kinds instead of ranks." },
+    { id: "summit", name: "The Summit", desc: "No Pass. Only an Ace resets. One clean ascent.", tell: "The Summit. One clean ascent.", tip: "Bring Aces and a bomb." },
   ];
   const chalById = Object.fromEntries(CHALLENGES.map((c) => [c.id, c]));
   /* Συμβόλαια: προαιρετικός στόχος γύρου, επιλογή στο κατάστημα. pct = % του σκορ, flat = πόντοι. */
@@ -137,6 +141,27 @@
   ];
   const ruleById = Object.fromEntries(RULES.map((r) => [r.id, r]));
   const RANDOM_CHALLENGES = CHALLENGES.filter((c) => c.id !== "summit").map((c) => c.id);
+
+  /* Τράπουλες: διαφορετικό ξεκίνημα. lock = επίτευγμα ζωής (best = καλύτερο ante). */
+  const DECKS = [
+    { id: "classic", name: "Classic", desc: "52 cards, two Jokers, five discards.", glyph: "♠" },
+    { id: "wild", name: "Wild Deck", desc: "Four Jokers and six discards.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
+    { id: "headless", name: "Headless", desc: "No Aces — no Ace in the Hole. The chain starts two steps higher.", glyph: "♛", lock: { key: "best", n: 20, text: "Clear ante 20" } },
+  ];
+  const deckById = {}; DECKS.forEach((d) => { deckById[d.id] = d; });
+
+  /* Συνέργειες: δύο charms μαζί ξεκλειδώνουν ένα τρίτο εφέ. */
+  const SYNERGIES = [
+    { id: "royal", a: "kingmaker", b: "loyal", name: "Royal Court", desc: "Ace in the Hole also adds a chain step." },
+    { id: "reaction", a: "afterburner", b: "summiteer", name: "Chain Reaction", desc: "The hand after a bomb pays ×4 instead of ×3." },
+    { id: "backstairs", a: "lowroad", b: "ladder", name: "Back Stairs", desc: "A tight step onto a low pair adds two chain steps." },
+    { id: "lockstep", a: "ladder", b: "loyal", name: "Lockstep", desc: "Ladder and Loyalty on the same hand: one step more." },
+    { id: "bookends", a: "encore", b: "mirror", name: "Bookends", desc: "A last hand of the same kind as your first pays ×3." },
+    { id: "banker", a: "vault", b: "thrift", name: "Banker", desc: "Interest caps at 9 and rerolls cost 1." },
+    { id: "lungs", a: "cheap", b: "wind", name: "Deep Lungs", desc: "Your free first pass adds a chain step." },
+    { id: "jewels", a: "court", b: "goldsmith", name: "Crown Jewels", desc: "A Gold face card adds +40 base instead of +20." },
+  ];
+  const synById = {}; SYNERGIES.forEach((s) => { synById[s.id] = s; });
   const TAG_ORDER = ["Bomb!", "Ladder to Heaven", "Royal", "Four Horsemen", "Ace in the Hole", "Overkill", "Long Run", "Staircase", "Shatter", "Tight Step", "Humble"];
 
   /* ============================== RNG ============================== */
@@ -147,6 +172,12 @@
   /* ============================== helpers ============================== */
   const has = (S, id) => S.charms.indexOf(id) >= 0;
   const chal = (S) => S.chal || null;
+  const syn = (S, id) => { const s = synById[id]; return !!s && has(S, s.a) && has(S, s.b); };
+  const activeSynergies = (S) => SYNERGIES.filter((s) => has(S, s.a) && has(S, s.b));
+  /* Συνέργειες που θα ενεργοποιούσε το charm `id` με όσα ήδη κρατάς. */
+  const synergyFor = (S, id) => SYNERGIES.filter((s) => (s.a === id && has(S, s.b)) || (s.b === id && has(S, s.a)));
+  /* Στόχος πέρα από το 30 (Endless): ×1.15 ανά ante. */
+  const tgtAt = (a) => (a < TARGETS.length ? TARGETS[a] : Math.round(TARGETS[TARGETS.length - 1] * Math.pow(1.15, a - TARGETS.length + 1)));
   const rule = (S) => (S.chal ? null : (S.rules && S.rules[S.ante]) || null);
   const cmp = (a, b) => a.r - b.r || a.si - b.si;
   const isWild = (c) => !!c && c.e === "wild";
@@ -163,6 +194,13 @@
       case "wi": S.handSize += 1; break;
       case "cs": S.chainStart += 1; break;
       case "tip": S.tip = (S.tip || 0) + 2; break;
+      case "sl": S.charmSlots += 1; break;
+      case "gt": S.deck.concat(S.hand).forEach((c) => { if (c.r === 14 && !c.e) c.e = "gold"; }); break;
+      case "sd": {
+        const top = S.deck.filter((c) => !isWild(c)).sort((a, b) => b.r - a.r || a.si - b.si).slice(0, 8);
+        top.forEach((c) => S.deck.push(Object.assign({}, c, { id: S.nextId++ })));
+        break;
+      }
       case "th": {
         const ranks = S.deck.filter((c) => !isWild(c)).map((c) => c.r);
         if (!ranks.length) break;
@@ -176,10 +214,11 @@
   }
 
   /* ============================== run ============================== */
-  function newRun(seedStr, unlocked) {
+  function newRun(seedStr, unlocked, deckId) {
     const seed = String(seedStr || "").trim() || String(Math.floor(Math.random() * 1e9));
+    const D = deckById[deckId] || DECKS[0];
     const S = {
-      v: 4, seed, rng: hash(seed) | 0,
+      v: 4, seed, rng: hash(seed) | 0, deckId: D.id, endless: false,
       ante: 0, money: 0, phase: "round", offers: [], rerolls: 0,
       handSize: CFG.handSize, playsMax: CFG.plays, breathsMax: CFG.breaths, discards: CFG.discards, chiselMax: CFG.chisel0, chainStart: 0,
       keep: [], hand: [],
@@ -189,8 +228,11 @@
       chals: {}, rules: {}, contract: null, contractOffers: [],
       stats: { quads: 0, gold: 0, glass: 0, raiseWon: 0, chain7: 0, maxChain: 0, plays: 0, aces: 0 },
     };
-    for (let r = 2; r <= 14; r++) for (let si = 0; si < 4; si++) S.deck.push({ id: S.nextId++, r, si });
-    for (let j = 0; j < CFG.jokers; j++) S.deck.push({ id: S.nextId++, r: 0, si: j % 4, e: "wild" });
+    const topR = D.id === "headless" ? 13 : 14, jokers = D.id === "wild" ? 4 : CFG.jokers;
+    for (let r = 2; r <= topR; r++) for (let si = 0; si < 4; si++) S.deck.push({ id: S.nextId++, r, si });
+    for (let j = 0; j < jokers; j++) S.deck.push({ id: S.nextId++, r: 0, si: j % 4, e: "wild" });
+    if (D.id === "wild") S.discards = 6;
+    if (D.id === "headless") S.chainStart = 2;
     const pool = RANDOM_CHALLENGES.slice();
     CFG.challengeAntes.forEach((a) => { S.chals[a] = pool.splice(Math.floor(next(S) * pool.length), 1)[0]; });
     S.chals[TARGETS.length - 1] = "summit";
@@ -201,7 +243,7 @@
     startRound(S);
     return S;
   }
-  const target = (S) => Math.round(TARGETS[S.ante] * (chal(S) === "richair" ? CFG.richAirMul : 1) * (chal(S) && chal(S) !== "richair" ? CFG.chalTargetMul : 1));
+  const target = (S) => Math.round(tgtAt(S.ante) * (chal(S) === "richair" ? CFG.richAirMul : 1) * (chal(S) && chal(S) !== "richair" ? CFG.chalTargetMul : 1));
   const goal = (S) => (S.raised ? S.raiseTarget : target(S));
   const roundHandSize = (S) => (chal(S) === "short" ? Math.min(CFG.shortHand, S.handSize) : S.handSize);
 
@@ -301,7 +343,7 @@
     let base = kbase(k) * S.mult[k.kind];
     const notes = [], R = rule(S);
     if (R === "r_pair0" && k.kind === 1) { base = 0; notes.push("Cheap Pairs"); }
-    if (has(S, "court") && cs.some(isFace)) { base += 20; notes.push("Court +20"); }
+    if (has(S, "court") && cs.some(isFace)) { const jw = syn(S, "jewels") && cs.some((c) => isFace(c) && c.e === "gold"); base += jw ? 40 : 20; notes.push(jw ? "Crown Jewels +40" : "Court +20"); }
     const steels = cs.filter((c) => c.e === "steel").length;
     if (steels) { base += 15 * steels; notes.push("Steel +" + 15 * steels); }
     const golds = cs.filter((c) => c.e === "gold").length, glass = cs.filter((c) => c.e === "glass").length;
@@ -309,8 +351,11 @@
     /* Βόμβα: σταθεροί πόντοι, χωρίς πολλαπλασιαστή αλυσίδας. */
     let pos = isBomb(k) ? 1 : chainPos(S);
     const prev = S.rung;
-    if (has(S, "ladder") && sameShape(k, prev) && k.rank === prev.rank + 1) { pos += 1; notes.push("Ladder +1"); }
-    if (has(S, "loyal") && S.lastSuit != null && leadSuit(cs) === S.lastSuit) { pos += 1; notes.push("Loyalty +1"); }
+    const ladder = has(S, "ladder") && sameShape(k, prev) && k.rank === prev.rank + 1, loyal = has(S, "loyal") && S.lastSuit != null && leadSuit(cs) === S.lastSuit;
+    if (ladder) { pos += 1; notes.push("Ladder +1"); }
+    if (ladder && syn(S, "backstairs") && k.kind === 1 && k.rank <= 6) { pos += 1; notes.push("Back Stairs +1"); }
+    if (loyal) { pos += 1; notes.push("Loyalty +1"); }
+    if (ladder && loyal && syn(S, "lockstep")) { pos += 1; notes.push("Lockstep +1"); }
     if (has(S, "summiteer") && isBomb(k)) { notes.push("Summiteer ×1.5"); }
     let hm = 1;
     if (has(S, "summiteer") && isBomb(k)) hm *= 1.5;
@@ -318,8 +363,8 @@
     if (has(S, "lowroad") && k.kind === 1 && k.rank <= 6) { hm *= 2; notes.push("Low Road ×2"); }
     if (has(S, "mirror") && S.plays === 0) { hm *= 2; notes.push("Mirror ×2"); }
     if (has(S, "ember") && pos >= 5) { hm *= 1.5; notes.push("Ember +50%"); }
-    if (has(S, "encore") && S.playsLeft === 1) { hm *= 2; notes.push("Encore ×2"); }
-    if (has(S, "afterburner") && S.lastK && isBomb(S.lastK) && !isBomb(k)) { hm *= 3; notes.push("Afterburner ×3"); }
+    if (has(S, "encore") && S.playsLeft === 1) { const be = syn(S, "bookends") && S.firstK && S.firstK.kind === k.kind; hm *= be ? 3 : 2; notes.push(be ? "Bookends ×3" : "Encore ×2"); }
+    if (has(S, "afterburner") && S.lastK && isBomb(S.lastK) && !isBomb(k)) { const cr = syn(S, "reaction"); hm *= cr ? 4 : 3; notes.push(cr ? "Chain Reaction ×4" : "Afterburner ×3"); }
     if (R === "r_red" || R === "r_black") { const ls = leadSuit(cs), red = ls === 1 || ls === 2; if (ls != null && (R === "r_red") === red) { hm *= 1.5; notes.push((R === "r_red" ? "Red" : "Black") + " Night ×1.5"); } }
     if ((R === "r_str2" && k.kind === 4) || (R === "r_trips2" && k.kind === 2) || (R === "r_full2" && k.kind === 5)) { hm *= 2; notes.push(ruleById[R].name + " ×2"); }
     if (R === "r_low2" && !isBomb(k) && k.rank <= 6) { hm *= 2; notes.push("Underdogs ×2"); }
@@ -477,6 +522,7 @@
       S.played = cs.slice(); S.rung = null; S.stats.aces += 1; S.races += 1;
       let apts = 0;
       if (has(S, "kingmaker")) { apts = 50 * chainPos(S); S.score += apts; }
+      if (syn(S, "royal")) S.chain += 1;
       S.log.push({ t: "Ace in the Hole", c: "rung reset · chain ×" + chainPos(S) + " kept" + (apts ? " · Kingmaker" : ""), p: apts || "", cls: "bonus" });
       const ev = { type: "ace", pts: apts, tags: ["Ace in the Hole"] };
       afterPlay(S, cs, ev);
@@ -528,6 +574,7 @@
     /* Το Pass κρατά τη μισή αλυσίδα (στρογγυλά πάνω)· με Cheap Breath ολόκληρη. */
     const np = has(S, "cheap") ? was : Math.max(1, Math.ceil(was / 2));
     S.chain = Math.max(0, np - 1 - S.chainStart);
+    if (free && syn(S, "lungs")) S.chain += 1;
     S.rung = null; S.sel = []; S.played = [];
     S.log.push({ t: "Pass", c: (free ? "free · " : "") + "chain ×" + was + " → ×" + chainPos(S), p: free ? "" : "−1", cls: "pass" });
     return true;
@@ -608,10 +655,10 @@
       else { earn = 0; raiseResult = "lost"; S.log.push({ t: "Raise lost", c: "payout ×0", p: "", cls: "pass" }); }
     }
     let interest = 0;
-    if (has(S, "vault")) { interest = Math.min(6, Math.floor(S.money / 3)); }
+    if (has(S, "vault")) { interest = Math.min(syn(S, "banker") ? 9 : 6, Math.floor(S.money / 3)); }
     const tip = S.tip || 0, perfectChips = perfect ? CFG.perfectChips : 0;
     S.money += earn + interest + perfectChips + tip;
-    if (S.ante === TARGETS.length - 1) { S.phase = "won"; return { cleared: true, won: true, ex, earn, interest, tip, raiseResult, contract, perfect, perfectChips }; }
+    if (S.ante === TARGETS.length - 1 && !S.endless) { S.phase = "won"; return { cleared: true, won: true, ex, earn, interest, tip, raiseResult, contract, perfect, perfectChips }; }
     S.phase = "shop"; S.rerolls = 0;
     S.keep = S.hand.map((_, i) => i); S.fresh = [];
     S.offers = makeOffers(S);
@@ -623,7 +670,7 @@
   const charmAvailable = (S, c) => !has(S, c.id) && (!c.lock || S.unlocked.indexOf(c.id) >= 0);
   function makeOffers(S) {
     const out = [];
-    const up = POOL.filter((o) => (o.id !== "th" || S.removed.length < 5) && (!CFG.maxBuy[o.id] || (S.bought[o.id] || 0) < CFG.maxBuy[o.id])).map((o) => o.id);
+    const up = POOL.filter((o) => (o.id !== "th" || S.removed.length < 5) && (!o.min || S.ante + 1 >= o.min) && (o.id !== "gt" || S.deck.concat(S.hand).some((c) => c.r === 14 && !c.e)) && (!CFG.maxBuy[o.id] || (S.bought[o.id] || 0) < CFG.maxBuy[o.id])).map((o) => o.id);
     for (let i = 0; i < CFG.offersUp && up.length; i++) out.push({ kind: "up", id: up.splice(Math.floor(next(S) * up.length), 1)[0], bought: false });
     const keys = Object.keys(ENH), tw = keys.reduce((a, k) => a + ENH[k].w, 0);
     for (let i = 0; i < CFG.offersCard; i++) {
@@ -643,7 +690,7 @@
     if (has(S, "thrift")) c = Math.max(1, c - 2);
     return c;
   }
-  const rerollCost = (S) => Math.max(1, CFG.rerollCost + CFG.rerollStep * S.rerolls - (has(S, "thrift") ? 2 : 0));
+  const rerollCost = (S) => (syn(S, "banker") ? 1 : Math.max(1, CFG.rerollCost + CFG.rerollStep * S.rerolls - (has(S, "thrift") ? 2 : 0)));
   function reroll(S) {
     if (S.phase !== "shop" || S.money < rerollCost(S)) return false;
     S.money -= rerollCost(S); S.rerolls += 1;
@@ -695,13 +742,43 @@
     if (at >= 0) S.keep.splice(at, 1); else { S.keep.push(i); trimKeep(S); }
     return true;
   }
-  function nextAnte(S) { if (S.phase !== "shop") return false; S.ante += 1; S.contract = (S.contracts && S.contracts[S.ante]) || null; startRound(S); return true; }
+  function nextAnte(S) {
+    if (S.phase !== "shop") return false;
+    S.ante += 1;
+    const a = S.ante;
+    if (a >= TARGETS.length) {
+      /* Endless: κάθε 5ο ante ένα challenge, αλλιώς κανόνας τραπεζιού με την ίδια πιθανότητα· πάντα συμβόλαιο. */
+      if (a % 5 === 0) S.chals[a] = RANDOM_CHALLENGES[Math.floor(next(S) * RANDOM_CHALLENGES.length)];
+      else if (next(S) < CFG.ruleChance) S.rules[a] = RULES[Math.floor(next(S) * RULES.length)].id;
+      S.contracts[a] = CONTRACTS[Math.floor(next(S) * CONTRACTS.length)].id;
+    }
+    S.contract = (S.contracts && S.contracts[a]) || null;
+    startRound(S);
+    return true;
+  }
+  /* Μετά την κορυφή: συνέχεια χωρίς τέλος. Ανοίγει το κατάστημα του ante 30. */
+  function goEndless(S) {
+    if (S.phase !== "won") return false;
+    S.endless = true; S.phase = "shop"; S.rerolls = 0;
+    S.keep = S.hand.map((_, i) => i); S.fresh = [];
+    S.offers = makeOffers(S); S.contract = null;
+    return true;
+  }
+  /* Σχεδόν: πόσο έλειψε και ποιο χέρι από το τελικό χέρι θα το έπιανε (για την οθόνη Busted). */
+  function nearMiss(S) {
+    const T = target(S), gap = T - S.score;
+    if (gap <= 0) return null;
+    const P = Object.assign({}, S, { phase: "round", playsLeft: 1 });
+    let best = null;
+    legalMoves(P).forEach((o) => { const sc = scoreOf(P, o.k, o.idx.map((i) => S.hand[i])); if (!best || sc.pts > best.pts) best = { k: o.k, idx: o.idx, pts: sc.pts }; });
+    return { gap, close: gap <= Math.max(15, T * 0.12), T, best, enough: !!best && best.pts >= gap };
+  }
   const upcomingContract = (S) => { const a = S.ante + 1, id = S.contracts && S.contracts[a]; return id ? contractById[id] : null; };
   const upcoming = (S) => (S.chals[S.ante + 1] ? chalById[S.chals[S.ante + 1]] : null);
   const current = (S) => (S.chal ? chalById[S.chal] : null);
   const currentRule = (S) => (rule(S) ? ruleById[rule(S)] : null);
   const upcomingRule = (S) => { const a = S.ante + 1; return !S.chals[a] && S.rules && S.rules[a] ? ruleById[S.rules[a]] : null; };
-  const nextTarget = (S) => { const a = S.ante + 1, id = S.chals[a]; if (a >= TARGETS.length) return null; return Math.round(TARGETS[a] * (id === "richair" ? CFG.richAirMul : id ? CFG.chalTargetMul : 1)); };
+  const nextTarget = (S) => { const a = S.ante + 1, id = S.chals[a]; if (a >= TARGETS.length && !S.endless) return null; return Math.round(tgtAt(a) * (id === "richair" ? CFG.richAirMul : id ? CFG.chalTargetMul : 1)); };
   const peek = (S) => (has(S, "scout") && S.pile.length ? S.pile.slice(-2).reverse() : null);
 
   /* ============================== σειριοποίηση ============================== */
@@ -710,7 +787,7 @@
   const todaySeed = (d) => { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 
   return {
-    SUITS, KINDS, BY_TIER, TARGETS, CONTRACTS, contractById, RULES, ruleById, CFG, POOL, kbase, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
+    SUITS, KINDS, BY_TIER, TARGETS, tgtAt, CONTRACTS, contractById, RULES, ruleById, CFG, POOL, DECKS, deckById, SYNERGIES, synById, syn, activeSynergies, synergyFor, goEndless, nearMiss, kbase, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, goal, nextTarget, roundHandSize,
     classify, isLegal, chainPos, scoreOf, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit, over,
     candidates, legalMoves, hasLegal, cheapest, suggest, aceIndex, orphans,

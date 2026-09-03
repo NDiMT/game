@@ -113,7 +113,14 @@
   const sfx = {
     tick: () => tone({ f: 1700, t: 0.035, type: "square", g: 0.035 }),
     /* ο τόνος ανεβαίνει με κάθε σκαλί της αλυσίδας — ο ήχος είναι η σκάλα */
-    climb: (pos) => { const f = 330 * Math.pow(2, (Math.min(pos, 10) - 1) / 6); tone({ f, t: 0.16, type: "triangle", g: 0.14 }); tone({ f: f * 1.5, t: 0.24, type: "sine", g: 0.06, delay: 0.05 }); },
+    /* Streak: όσο ψηλότερα η αλυσίδα, τόσο πιο γρήγορο και πλούσιο το αρπέζ· από ×7 μπαίνει λάμψη. */
+    climb: (pos) => {
+      const p = Math.min(pos, 12), f = 330 * Math.pow(2, (Math.min(p, 10) - 1) / 6), n = Math.min(5, 1 + Math.floor(p / 2)), gap = Math.max(0.035, 0.09 - p * 0.005);
+      for (let i = 0; i < n; i++) tone({ f: f * Math.pow(2, i / 12 * (i % 2 ? 4 : 3)), t: 0.14, type: "triangle", g: 0.13 - i * 0.015, delay: i * gap });
+      tone({ f: f * 1.5, t: 0.26, type: "sine", g: 0.06, delay: n * gap });
+      if (p >= 7) tone({ f: f * 4, t: 0.35, type: "sine", g: 0.035, delay: n * gap + 0.04, slide: 1.25 });
+    },
+    boss: () => { tone({ f: 110, t: 0.55, type: "sawtooth", g: 0.11, slide: 0.55 }); tone({ f: 55, t: 0.7, type: "square", g: 0.08, delay: 0.08, slide: 0.7 }); tone({ f: 880, t: 0.12, type: "sine", g: 0.05, delay: 0.3 }); },
     pass: () => tone({ f: 220, t: 0.28, type: "sawtooth", g: 0.07, slide: 0.5 }),
     ace: () => { tone({ f: 660, t: 0.12, type: "sine", g: 0.1 }); tone({ f: 440, t: 0.3, type: "sine", g: 0.1, delay: 0.09, slide: 0.75 }); },
     shatter: () => { tone({ f: 2600, t: 0.16, type: "square", g: 0.05, slide: 0.35 }); tone({ f: 1900, t: 0.2, type: "square", g: 0.04, delay: 0.03, slide: 0.3 }); },

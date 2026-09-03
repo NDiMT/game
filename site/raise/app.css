@@ -713,3 +713,59 @@ body.lastplay .pips--play i:not(.spent){animation:heartbeat 1s ease-in-out infin
 .keepc.new{outline:2px solid var(--good);outline-offset:1px;box-shadow:0 0 12px rgba(95,199,154,.45)}
 .keepc.new::after{content:"New";position:absolute;left:50%;bottom:-.55rem;transform:translateX(-50%);font-family:var(--mono);font-size:.5rem;letter-spacing:.06em;text-transform:uppercase;color:var(--good);background:var(--felt-0);padding:0 .25rem;border-radius:3px}
 .keeprow{row-gap:.7rem;margin-bottom:.7rem}
+
+/* ===================== v10: heat, boss antes, synergies, endless, decks, near miss ===================== */
+.chain b{transform:scale(calc(1 + (var(--pos,1) - 1) * .025));transform-origin:right bottom;transition:transform .25s var(--pop)}
+body[data-heat="3"] .table{animation:tremble .38s ease-in-out infinite}
+@keyframes tremble{0%,100%{transform:translate(0,0)}25%{transform:translate(.6px,-.5px)}50%{transform:translate(-.5px,.6px)}75%{transform:translate(.5px,.4px)}}
+body[data-heat="3"] .hud__score b{color:#ffb15a;text-shadow:0 0 1rem rgba(255,140,60,.7)}
+.chal b svg{width:.85rem;height:.85rem;vertical-align:-2px;margin-right:.3rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* boss ante card in the shop */
+.chalnext.bossnext{grid-template-columns:auto 1fr;align-items:center;gap:.2rem .8rem}
+.chalnext.bossnext>div{display:grid;gap:.15rem}
+.chalnext.bossnext em{font-style:italic;font-family:var(--display);font-size:.98rem;color:#ffd0c8}
+/* boss intro overlay */
+.boss{position:fixed;inset:0;z-index:7;display:grid;place-items:center;padding:1.5rem;background:radial-gradient(ellipse at 50% 45%,rgba(120,20,20,.55),rgba(0,0,0,.82));backdrop-filter:blur(3px)}
+.boss.show{animation:bossin 2.8s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes bossin{0%{opacity:0}8%{opacity:1}82%{opacity:1}100%{opacity:0}}
+.boss__in{display:grid;justify-items:center;gap:.35rem;text-align:center;max-width:22rem}
+.boss.show .boss__in{animation:bosspop .7s var(--pop) both}
+@keyframes bosspop{0%{transform:scale(.6) translateY(1rem);opacity:0}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+.boss__lbl{font-family:var(--mono);font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:#ffb3a8}
+.boss__ico{width:4.2rem;height:4.2rem;margin:.3rem 0;box-shadow:0 0 2.2rem hsl(350 90% 60% / .7),0 6px 18px rgba(0,0,0,.6)}
+.boss__ico svg{width:2.4rem;height:2.4rem}
+.boss__in b{font-family:var(--display);font-size:2.3rem;line-height:1;background:linear-gradient(180deg,#ffd0c8,#e0736a 60%,#c0483f);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 rgba(0,0,0,.5))}
+.boss__in em{font-family:var(--display);font-style:italic;font-size:1.15rem;color:var(--cream)}
+.boss__tip{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:.3rem}
+/* synergies */
+.syn{display:block;font-style:normal;font-family:var(--mono);font-size:.68rem;line-height:1.35;color:#ffe08a;margin-top:.3rem}
+.synlist{display:grid;gap:.3rem;margin-top:.35rem}
+.synrow{display:grid;gap:.1rem;padding:.5rem .7rem;border-radius:10px;background:var(--gloss),rgba(255,200,80,.1);border:1px solid rgba(255,220,120,.35)}
+.synrow b{font-family:var(--mono);font-size:.82rem;color:#ffe08a}
+.synrow span{font-size:.78rem;color:var(--muted);line-height:1.35}
+.charm[data-syn]{box-shadow:0 0 0 2px rgba(255,224,138,.9),0 0 .9rem rgba(255,200,80,.7),0 3px 8px rgba(0,0,0,.4)}
+.charm[data-syn]::after{content:"⚡";position:absolute;right:-.3rem;top:-.35rem;font-size:.6rem;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6))}
+.charm{position:relative}
+/* deck picker on the start screen */
+.decks{display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem;width:100%;margin-top:.3rem}
+.deckc{display:grid;gap:.15rem;padding:.5rem .45rem;border-radius:12px;text-align:center;background:var(--gloss),rgba(0,0,0,.28);border:1px solid var(--line);color:var(--cream);min-height:4.6rem;align-content:start}
+.deckc b{font-family:var(--mono);font-size:.74rem;letter-spacing:.04em}
+.deckc span{font-size:.64rem;line-height:1.3;color:var(--muted)}
+.deckc.on{border-color:var(--candy-1);box-shadow:inset 0 0 0 1px var(--candy-1),0 0 .8rem rgba(255,207,106,.35)}
+.deckc.on b{color:var(--candy-1)}
+.deckc.locked{opacity:.55}
+/* ledger */
+.ledger{display:grid;gap:.25rem;width:100%}
+.ledger:empty{display:none}
+.ledger .lbl{margin-top:.2rem}
+.ledg{display:grid;grid-template-columns:auto 1fr auto;gap:.6rem;align-items:center;padding:.45rem .7rem;border-radius:10px;background:var(--gloss),rgba(0,0,0,.26);border:1px solid var(--line);color:var(--cream);text-align:left}
+.ledg b{font-family:var(--mono);font-size:.78rem;color:var(--candy-1)}
+.ledg span{font-family:var(--mono);font-size:.66rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ledg em{font-family:var(--mono);font-style:normal;font-size:.78rem;font-variant-numeric:tabular-nums}
+/* near miss on the Busted sheet */
+.miss{display:grid;justify-items:center;gap:.35rem;text-align:center;margin:.8rem 0;padding:.8rem .9rem;border-radius:12px;background:var(--gloss),rgba(224,80,70,.14);border:1px solid rgba(255,150,140,.5)}
+.miss>b{font-family:var(--display);font-size:1.7rem;line-height:1;color:#ffb3a8}
+.miss>span{font-size:.84rem;color:var(--cream);line-height:1.35}
+.miss>em{font-family:var(--mono);font-style:normal;font-size:.78rem;color:#ffe08a}
+.miss__cards{display:flex;gap:.3rem;--cw:2.1rem;margin:.2rem 0}
+.miss__cards .card{display:block;animation:none}

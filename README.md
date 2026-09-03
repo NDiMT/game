@@ -60,13 +60,31 @@ UI στα αγγλικά. Τράπουλα 4 χρωμάτων (♠ μπλε-μα
 | --- | --- |
 | Pairs+ (και τα πολλαπλά ζευγάρια) · Sets+ (τρίο, φουλ) · Runs+ (κέντες, σκάλες) · Fuse (βόμβες, έως ×4), Extra Play (έως 7), Discards, Wide Hand, Head Start, Tip Jar (+2◎ ανά ante), Cull | **Gold** ×2 · **Glass** ×3 και σπάει · **Joker** · **Steel** (+15 βάση, επιστρέφει πάντα στο χέρι). Το φύλλο που αγοράζεις **μπαίνει στο χέρι** του επόμενου γύρου· αν δεν χωρά, φεύγει το χαμηλότερο κρατημένο (το βλέπεις πριν συνεχίσεις). |
 
-### Charms (5 θέσεις, 20 συνολικά, 5 κλειδωμένα)
+### Charms (5 θέσεις +2 αγοραστές, 20 συνολικά, 5 κλειδωμένα)
 
 Ladder · Overkill · Low Road · Court · Loyalty · Cheap Breath · Second Wind · Sleight ·
 Encore · Mirror (πρώτο χέρι ×2 και δύο σκαλιά) · Vault (+1◎ ανά 3, έως 6) · Thrift · Scout (δύο επόμενα φύλλα) ·
 **Kingmaker** (Ace in the Hole σκοράρει 50 × chain) · **Afterburner** (το χέρι μετά από βόμβα ×3) — και κλειδωμένα με επιτεύγματα ζωής:
 **Goldsmith** (3 Gold), **Glassblower** (5 Glass σπασμένα), **Summiteer** (3 βόμβες),
 **Gambler** (3 Raise), **Ember** (chain ×7). Η **Collection** φαίνεται στην αρχική οθόνη.
+
+### Boss antes, συνέργειες, Endless, τράπουλες
+
+- **Boss antes:** τα challenge antes (4, 9, 14, 19, 24 και η Κορυφή) έχουν εικονίδιο, «tell» και
+  συμβουλή. Τα βλέπεις στο κατάστημα πριν μπεις και σε μια σύντομη εισαγωγή στην αρχή του γύρου.
+- **Συνέργειες (8):** δύο συγκεκριμένα charms μαζί δίνουν ένα τρίτο εφέ — Royal Court
+  (Kingmaker + Loyalty), Chain Reaction (Afterburner + Summiteer), Back Stairs (Low Road + Ladder),
+  Lockstep (Ladder + Loyalty), Bookends (Encore + Mirror), Banker (Vault + Thrift), Deep Lungs
+  (Cheap Breath + Second Wind), Crown Jewels (Court + Goldsmith). Το κατάστημα δείχνει ποια
+  συνέργεια θα έκλεινε κάθε προσφορά· τα ενεργά charms έχουν ⚡.
+- **Endless:** μετά την Κορυφή, «Keep climbing». Στόχος ×1,15 ανά ante, boss κάθε 5ο ante.
+- **Τράπουλες:** Classic · **Wild Deck** (4 Joker, 6 discards — ξεκλειδώνει στο ante 10) ·
+  **Headless** (χωρίς Άσους, η αλυσίδα ξεκινά δύο σκαλιά ψηλότερα — ante 20).
+- **Ledger:** το καλύτερο ante ανά seed αποθηκεύεται τοπικά· η αρχική οθόνη δείχνει τα 5
+  κορυφαία και το καλύτερο σημερινό Daily. Το «Busted» δείχνει πόσο έλειψε και ποιο χέρι από
+  τα φύλλα σου θα το έπιανε (near miss).
+- **Ακριβά αντικείμενα** από τη μέση του run: Charm Slot (25◎), Golden Touch (20◎, όλοι οι
+  Άσοι Gold), Second Deck (22◎, δεύτερο αντίγραφο των 8 ψηλότερων φύλλων).
 
 ### Κανόνες τραπεζιού και συμβόλαια
 
