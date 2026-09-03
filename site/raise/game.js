@@ -68,7 +68,7 @@
     gold: { name: "Gold", desc: "Base ×2 when played.", cost: 6, w: 35 },
     glass: { name: "Glass", desc: "Base ×3. Shatters after one play.", cost: 5, w: 30 },
     wild: { name: "Wild", desc: "Any rank, any suit. Also an Ace.", cost: 9, w: 15 },
-    steel: { name: "Steel", desc: "Always in your opening hand.", cost: 8, w: 20 },
+    steel: { name: "Steel", desc: "+15 base when played. Always back in your hand next round.", cost: 8, w: 20 },
   };
 
   /* Charms: παθητικά εφέ. `lock` = συνθήκη ξεκλειδώματος (UI, lifetime stats). */
@@ -183,13 +183,13 @@
     S.chal = S.chals[S.ante] || null;
     const n = roundHandSize(S);
     /* Το χέρι μένει από γύρο σε γύρο· στο κατάστημα διαλέγεις ποια φύλλα φεύγουν. */
-    const kept = (S.keep || []).map((i) => S.hand[i]).filter(Boolean).slice(0, n);
-    const keptIds = new Set(kept.map((c) => c.id));
-    let cards = S.deck.filter((c) => !keptIds.has(c.id)).map((c) => Object.assign({}, c));
-    const steel = cards.filter((c) => c.e === "steel"), rest = shuffle(S, cards.filter((c) => c.e !== "steel"));
+    /* Steel φύλλα γυρίζουν πάντα στο χέρι, έστω κι αν παίχτηκαν· μετά τα κρατημένα. */
+    const steel = S.deck.filter((c) => c.e === "steel").map((c) => Object.assign({}, c));
+    const kept = (S.keep || []).map((i) => S.hand[i]).filter((c) => c && c.e !== "steel");
+    const first = steel.concat(kept).slice(0, n), firstIds = new Set(first.map((c) => c.id));
+    const rest = shuffle(S, S.deck.filter((c) => !firstIds.has(c.id)).map((c) => Object.assign({}, c)));
     S.pile = rest; S.discardPile = []; S.keep = [];
-    S.hand = kept.map((c) => { const k = Object.assign({}, c); delete k.h; delete k.n; return k; });
-    steel.slice(0, Math.max(0, n - S.hand.length)).forEach((c) => S.hand.push(c));
+    S.hand = first.map((c) => { const k = Object.assign({}, c); delete k.h; delete k.n; return k; });
     draw(S, n - S.hand.length);
     S.hand.forEach((c) => { delete c.n; });
     if (chal(S) === "blind") {
@@ -261,6 +261,8 @@
     let base = kbase(k) * S.mult[k.kind];
     const notes = [];
     if (has(S, "court") && cs.some(isFace)) { base += 20; notes.push("Court +20"); }
+    const steels = cs.filter((c) => c.e === "steel").length;
+    if (steels) { base += 15 * steels; notes.push("Steel +" + 15 * steels); }
     const golds = cs.filter((c) => c.e === "gold").length, glass = cs.filter((c) => c.e === "glass").length;
     const factor = 1 + golds * (has(S, "goldsmith") ? 2 : 1) + 2 * glass;
     /* Βόμβα: σταθεροί πόντοι, χωρίς πολλαπλασιαστή αλυσίδας — μετά η αλυσίδα μηδενίζει. */

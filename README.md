@@ -56,7 +56,7 @@ UI στα αγγλικά.
 
 | Αναβαθμίσεις | Ενισχυμένα φύλλα |
 | --- | --- |
-| Pairs+ (και τα πολλαπλά ζευγάρια) · Trips+ · Stairs+ · Straights+ · Full Houses+ · Bombs+ (έως ×3), Extra Play (έως 7), Breath, Discard, Chisel, Wide Hand, Head Start, Cull | **Gold** ×2 · **Glass** ×3 και σπάει · **Wild** · **Steel** (πάντα στο αρχικό χέρι) |
+| Pairs+ (και τα πολλαπλά ζευγάρια) · Trips+ · Stairs+ · Straights+ · Full Houses+ · Bombs+ (έως ×3), Extra Play (έως 7), Breath, Discard, Chisel, Wide Hand, Head Start, Cull | **Gold** ×2 · **Glass** ×3 και σπάει · **Wild** · **Steel** (+15 βάση, επιστρέφει πάντα στο χέρι) |
 
 ### Charms (5 θέσεις, 18 συνολικά, 5 κλειδωμένα)
 
