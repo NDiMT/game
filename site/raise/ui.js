@@ -161,6 +161,9 @@
     pv.innerHTML = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       : cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + "</span>").join(' <i>·</i> ');
     Array.prototype.forEach.call(go.querySelectorAll(".go__s"), (el) => { el.textContent = cap(el.textContent); });
+    /* Τα φύλλα του τραπεζιού χωράνε και σε ύψος: μετά το preview, μέτρα τον ελεύθερο χώρο και ψαλίδισε. */
+    { const tn = S.played.length; if (tn) { const free = tc.clientHeight, cur = parseInt(tc.style.getPropertyValue("--tcw")) || 40;
+      if (free > 0) tc.style.setProperty("--tcw", Math.max(24, Math.min(cur, Math.floor((free - 6) / 1.42))) + "px"); } }
     $("bPass").disabled = ui.chisel || !G.canPass(S); { const kp = G.passKeep(S); $("passN").textContent = kp === 1 ? "×1" : kp > 0.5 ? "×¾" : "×½"; }
     $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = G.discardsLeft(S);
     $("bHint").disabled = ui.chisel || S.playsLeft <= 0;
