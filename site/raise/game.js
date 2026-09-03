@@ -55,7 +55,7 @@
     { id: "m3", name: "Runs +", desc: "Straights and stairs pay one step more.", cost: 8 },
     { id: "m6", name: "Fuse", desc: "Bombs pay one step more: +1000 and up.", cost: 6 },
     { id: "pl", name: "Extra Play", desc: "+1 play per round.", cost: 12 },
-    { id: "di", name: "Discards", desc: "One more discard every round.", cost: 8 },
+    { id: "di", name: "Discards +", desc: "One more discard every round, for the rest of the run.", cost: 8 },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card.", cost: 9 },
     { id: "cs", name: "Head Start", desc: "The chain starts one step higher.", cost: 12 },
     { id: "tip", name: "Tip Jar", desc: "+2 chips at the end of every ante.", cost: 6 },
@@ -108,7 +108,7 @@
     { id: "thinair", name: "Thin Air", desc: "The chain caps at ×4.", tell: "The Altitude. The air runs out at ×4.", tip: "Big hands, not long chains." },
     { id: "richair", name: "Rich Air", desc: "Target ×1.1. Payout ×2.", tell: "The Patron. Pays double, asks more.", tip: "A Raise here is worth ×4." },
     { id: "nodiscard", name: "No Discards", desc: "Discarding is off this round.", tell: "The Miser. What you hold is what you play.", tip: "Bring a clean hand from the shop." },
-    { id: "fewplays", name: "Four Plays", desc: "One play fewer. Gain a discard.", tell: "The Clock. Four swings.", tip: "Every hand must count double." },
+    { id: "fewplays", name: "Four Plays", desc: "One play fewer. One extra discard this round.", tell: "The Clock. Four swings.", tip: "Every hand must count double." },
     { id: "sticky", name: "Sticky Rung", desc: "After every play the rung climbs one more rank.", tell: "The Escalator. It climbs without you.", tip: "Jump kinds instead of ranks." },
     { id: "summit", name: "The Summit", desc: "No Pass. Only an Ace resets. One clean ascent.", tell: "The Summit. One clean ascent.", tip: "Bring Aces and a bomb." },
   ];
@@ -146,7 +146,7 @@
 
   /* Τράπουλες: διαφορετικό ξεκίνημα. lock = επίτευγμα ζωής (best = καλύτερο ante). */
   const DECKS = [
-    { id: "classic", name: "Classic", desc: "52 cards, two Jokers, five discards.", glyph: "♠" },
+    { id: "classic", name: "Classic", desc: "52 cards, two Jokers, one discard a round.", glyph: "♠" },
     { id: "wild", name: "Wild Deck", desc: "Four Jokers and two discards a round.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
     { id: "headless", name: "Headless", desc: "No Aces — no Ace in the Hole. The chain starts two steps higher.", glyph: "♛", lock: { key: "best", n: 20, text: "Clear ante 20" } },
   ];
