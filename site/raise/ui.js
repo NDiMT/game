@@ -267,9 +267,12 @@
     return '<div class="chalnext ctrnext"><span class="lbl">Next · Contract</span><b>' + c.name + ' · +' + c.pct + '% of the round</b><span>' + c.desc + ' Optional — miss it and you simply do not get the bonus.</span></div>';
   }
   const synHint = (id) => G.synergyFor(S, id).map((s) => { const p = G.charmById[s.a === id ? s.b : s.a]; return '<i class="syn">⚡ ' + s.name + ' with ' + p.name + ' — ' + s.desc + '</i>'; }).join("");
+  /* Υπάρχει ακόμη κάτι που μπορείς να πάρεις; Αν όχι, το κατάστημα δεν σε κρατά. */
+  const canPickMore = () => G.picksLeft(S) > 0 && S.offers.some((o, i) => G.canTake(S, i).ok);
   function shopBody() {
-    const left = G.picksLeft(S);
-    return '<div class="picks' + (left ? " on" : "") + '">' + (left > 1 ? "Pick " + left : left ? "Pick one" : "Picked") + '</div>' +
+    const left = G.picksLeft(S), took = S.offers.some((o) => o.bought);
+    const label = left > 1 ? "Pick " + left + " to continue" : left ? "Pick one to continue" : took ? "Taken · on to the next ante" : "No pick this ante";
+    return '<div class="picks' + (left ? " on" : "") + '">' + label + '</div>' +
       '<div class="offers" id="offers">' + offersHTML() + '</div>' + ownedRowHTML();
   }
   function sheetShop(r, fresh) {
@@ -283,13 +286,23 @@
     }
     openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + (bonus.length ? ' · ' + bonus.join(' · ') : '') + '</p>' +
       (fresh && fresh.length ? '<div class="unlocked">✦ Unlocked · ' + fresh.map((id) => G.charmById[id].name).join(", ") + '</div>' : "") +
-      '<div id="shopBody">' + shopBody() + '</div>' +
-      (up ? '<div class="chalnext bossnext">' + IC.bubble(up.id, "charm charm--s") + '<div><span class="lbl">Next · Boss ante</span><b>' + up.name + '</b><span>' + up.desc + '</span><em>' + up.tell + ' ' + up.tip + '</em></div></div>' : (G.upcomingRule(S) ? '<div class="chalnext rulenext"><span class="lbl">Next · Table rule</span><b>' + G.upcomingRule(S).name + '</b><span>' + G.upcomingRule(S).desc + '</span></div>' : "")) +
-      contractHTML() +
-      '<button class="big" data-next="1" style="margin-top:.9rem">Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</button>');
+      '<div class="nextup"><span class="lbl">Next · Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</span>' +
+        (up ? '<div class="chalnext bossnext">' + IC.bubble(up.id, "charm charm--s") + '<div><span class="lbl">Boss ante</span><b>' + up.name + '</b><span>' + up.desc + '</span><em>' + up.tell + ' ' + up.tip + '</em></div></div>' : (G.upcomingRule(S) ? '<div class="chalnext rulenext"><span class="lbl">Table rule</span><b>' + G.upcomingRule(S).name + '</b><span>' + G.upcomingRule(S).desc + '</span></div>' : "")) +
+        contractHTML() + '</div>' +
+      '<div id="shopBody">' + shopBodyFull() + '</div>');
     if (fresh && fresh.length) FX.sfx.unlock();
   }
-  const refreshShop = () => { $("shopBody").innerHTML = shopBody(); };
+  /* Το κουμπί «επόμενο ante» υπάρχει μόνο όταν δεν έχεις τίποτα να διαλέξεις — αλλιώς
+     η επιλογή είναι υποχρεωτική και προχωράει μόνη της. */
+  const shopBodyFull = () => shopBody() +
+    (canPickMore() ? "" : '<button class="big" data-next="1" style="margin-top:.9rem">Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</button>');
+  const refreshShop = () => { $("shopBody").innerHTML = shopBodyFull(); };
+  function goNextAnte() {
+    if (S.phase !== "shop") return;
+    $("sheet").classList.remove("leaving");
+    G.nextAnte(S); closeS(); render(); save();
+    const bc = G.current(S); if (bc) bossIntro(bc);
+  }
   const shareText = () => "RAISE · " + S.seed + (S.deckId && S.deckId !== "classic" ? " · " + G.deckById[S.deckId].name : "") + " · " + (S.phase === "won" ? "Summit ▲" : (S.endless ? "Endless ante " : "Ante ") + (S.ante + 1)) + " · " + S.score + " pts" + (S.charms.length ? " · " + S.charms.map((id) => G.charmById[id].name).join(", ") : "");
   function missHTML() {
     const nm = G.nearMiss(S); if (!nm || !nm.close) return "";
@@ -431,10 +444,18 @@
   $("veil").addEventListener("click", (e) => {
     const t = e.target;
     const pick = t.closest("[data-take]");
-    if (pick) { if (G.take(S, +pick.dataset.take)) { FX.sfx.buy(); FX.buzz(10); FX.burstAt(pick, 22, 3, ["#ffd166", "#fff6d4"]); save(); refreshShop(); } return; }
+    if (pick) {
+      if (G.take(S, +pick.dataset.take)) {
+        FX.sfx.buy(); FX.buzz(10); FX.burstAt(pick, 22, 3, ["#ffd166", "#fff6d4"]);
+        save(); refreshShop();
+        /* Τελευταία επιλογή: μια στιγμή να δεις τι πήρες, και συνεχίζει μόνο του. */
+        if (!canPickMore()) { $("sheet").classList.add("leaving"); setTimeout(goNextAnte, 620); }
+      }
+      return;
+    }
     const cm = t.closest("[data-charm]");
     if (cm) { sheetCharm(cm.dataset.charm); return; }
-    if (t.closest("[data-next]")) { G.nextAnte(S); closeS(); render(); save(); const bc = G.current(S); if (bc) bossIntro(bc); return; }
+    if (t.closest("[data-next]")) { goNextAnte(); return; }
     if (t.closest("[data-endless]")) { if (G.goEndless(S)) { FX.sfx.open(); save(); sheetShop(null, []); } return; }
     if (t.closest("[data-restart]")) { closeS(); begin(S.seed); return; }
     if (t.closest("[data-fresh]")) { closeS(); begin(""); return; }

@@ -1026,3 +1026,14 @@ body{background:
 .hand .card:active:not(.sel){transform:rotate(var(--rot,0deg)) translateY(2px) scale(.97)}
 /* τα μη επιλεγμένα ξεθωριάζουν λίγο μόλις υπάρχει επιλογή: η επιλογή διαβάζεται χωρίς κίνηση */
 .hand.picking .card:not(.sel){filter:brightness(.82) saturate(.85)}
+
+/* ---- v14b: το κατάστημα είναι μία υποχρεωτική επιλογή που προχωράει μόνη της ---- */
+.nextup{display:grid;gap:.35rem;margin:.9rem 0 .2rem}
+.nextup>.lbl{color:#ffd977}
+.nextup .chalnext,.nextup .ctrnext{margin:0}
+.picks{margin:1rem 0 .55rem;font-size:.62rem}
+.sheet.leaving{animation:leave .6s cubic-bezier(.4,0,.7,.2) forwards}
+@keyframes leave{0%{transform:none;opacity:1}100%{transform:translateY(12%);opacity:0}}
+@media (prefers-reduced-motion:reduce){.sheet.leaving{animation:none;opacity:.4}}
+/* ένα ✓ αρκεί: το παλιό .offer.bought em::after πρόσθετε δεύτερο πάνω στο δικό μας */
+.offer--pick.bought em::after{content:none}
