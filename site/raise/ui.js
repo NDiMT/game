@@ -236,7 +236,7 @@
     if (S.chiselMax > 1) c.push("Chisel <b>" + S.chiselMax + "</b>");
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
     if (S.chainStart) c.push("Head Start <b>+" + S.chainStart + "</b>");
-    if (S.discLevel) c.push("Discards <b>" + (S.discLevel >= 2 ? "free" : "½ play") + "</b>");
+    if (S.discLevel) c.push("Discards <b>free</b>");
     if (S.removed.length) c.push("Culled <b>" + S.removed.map(G.rname).join(",") + "</b>");
     const enh = {}; S.deck.forEach((d) => { if (d.e) enh[d.e] = (enh[d.e] || 0) + 1; });
     Object.keys(enh).forEach((k) => c.push(G.ENH[k].name + " <b>" + enh[k] + "</b>"));
@@ -338,7 +338,7 @@
       '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
       '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = (hand base + <b>card values</b>) × chain: every card pays its rank, J 11 up to A 14, so two Aces beat two 3s. Longer straights and stairs pay more.</p>' +
       '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b>, or (200 + card values) × chain when that pays more. The table opens and the chain carries on.</p>' +
-      '<p><b>Discard</b> any number of cards and draw new ones, as often as you like — each discard costs one <b>play</b> (half with Nimble Hands, nothing with it twice). <b>Pass</b> resets the rung at the cost of half your chain, as often as you like. A lone <b>Ace</b> resets and keeps the chain, but your hand stays one card short for the round.</p>' +
+      '<p><b>Discard</b> any number of cards and draw new ones, as often as you like — each discard costs one <b>play</b> (nothing with Nimble Hands). <b>Pass</b> resets the rung at the cost of half your chain, as often as you like. A lone <b>Ace</b> resets and keeps the chain, but your hand stays one card short for the round.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> — ×1.8 the target with two plays left, ×2 with one — for a double payout, or bust it.</p>' +
       '<p><b>Shop:</b> upgrades and <b>charms</b> — five slots, passive powers. Cards are never for sale: now and then a card you draw turns out <b>Gold</b>, <b>Glass</b>, <b>Steel</b> or a <b>Joker</b>, for good. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
       '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with no pass and no discard is a <b>Perfect round</b>: +3 chips.</p>' +

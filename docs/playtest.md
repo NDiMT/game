@@ -189,7 +189,6 @@
 
 - Discards χωρίς όριο· κάθε discard κοστίζει **1 Play** (τα άσπρα κουτάκια). Το Pass συνεχίζει να
   κοστίζει μόνο αλυσίδα: Pass = αλυσίδα, Discard = play — δύο διαφορετικά νομίσματα.
-- **Nimble Hands** (αναβάθμιση, 9◎, έως 2): discard ½ play, μετά δωρεάν. Μισό play φαίνεται ως μισό
-  κουτάκι στο HUD· χέρι παίζεται μόνο με ≥1 play.
-- Sleight / Spare Card / Four Plays: το πρώτο discard του γύρου δωρεάν. Wild Deck ξεκινά με ½.
+- **Nimble Hands** (αναβάθμιση, 14◎, μία φορά): τα discards δεν κοστίζουν τίποτα.
+- Sleight / Spare Card / Four Plays: το πρώτο discard του γύρου δωρεάν.
 - Νεκρό χέρι (κανένας συνδυασμός): discard δωρεάν, όπως πριν.

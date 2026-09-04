@@ -44,9 +44,9 @@
     charmSlots: 5,
     challengeAntes: [3, 8, 13, 18, 23],
     chalTargetMul: 0.75, thinAirCap: 4, ruleChance: 0.75, perfectChips: 3, highGroundRank: 5, shortHand: 7, richAirMul: 1.1, blindCount: 4,
-    raiseMul: 2.0, raiseMulEarly: 1.8, raisePayout: 2, gamblerMul: 2.4, gamblerMulEarly: 2.2, passKeep: 0.5, cheapKeep: 0.75, roundDiscards: 0, discCosts: [1, 0.5, 0],
+    raiseMul: 2.0, raiseMulEarly: 1.8, raisePayout: 2, gamblerMul: 2.4, gamblerMulEarly: 2.2, passKeep: 0.5, cheapKeep: 0.75, roundDiscards: 0, discCosts: [1, 0],
     priceStep: 0.5,
-    maxBuy: { cs: 2, br: 2, wi: 2, di: 2, pl: 3, tip: 3, sl: 2, gt: 1, sd: 1, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
+    maxBuy: { cs: 2, br: 2, wi: 2, di: 1, pl: 3, tip: 3, sl: 2, gt: 1, sd: 1, m1: 3, m2: 3, m3: 3, m4: 3, m5: 3, m6: 3 },
   };
 
   const POOL = [
@@ -55,7 +55,7 @@
     { id: "m3", name: "Runs +", desc: "Straights and stairs pay one step more.", cost: 8 },
     { id: "m6", name: "Fuse", desc: "Bombs pay one step more: +1000 and up.", cost: 6 },
     { id: "pl", name: "Extra Play", desc: "+1 play per round.", cost: 12 },
-    { id: "di", name: "Nimble Hands", desc: "Discards cost half a play. Buy it twice and they cost nothing.", cost: 9 },
+    { id: "di", name: "Nimble Hands", desc: "Discards cost nothing.", cost: 14 },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card.", cost: 9 },
     { id: "cs", name: "Head Start", desc: "The chain starts one step higher.", cost: 12 },
     { id: "tip", name: "Tip Jar", desc: "+2 chips at the end of every ante.", cost: 6 },
@@ -147,7 +147,7 @@
   /* Τράπουλες: διαφορετικό ξεκίνημα. lock = επίτευγμα ζωής (best = καλύτερο ante). */
   const DECKS = [
     { id: "classic", name: "Classic", desc: "52 cards and two Jokers.", glyph: "♠" },
-    { id: "wild", name: "Wild Deck", desc: "Four Jokers. Discards cost half a play. Jokers pop up twice as often.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
+    { id: "wild", name: "Wild Deck", desc: "Four Jokers. Jokers pop up twice as often.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
     { id: "headless", name: "Headless", desc: "No Aces — no Ace in the Hole. The chain starts two steps higher.", glyph: "♛", lock: { key: "best", n: 20, text: "Clear ante 20" } },
   ];
   const deckById = {}; DECKS.forEach((d) => { deckById[d.id] = d; });
@@ -191,7 +191,7 @@
       case "m1": case "m2": case "m3": case "m4": case "m5": case "m6": MULT_KIND[id].forEach((k) => { S.mult[k] += 1; }); break;
       case "br": S.breathsMax += 1; break;
       case "pl": S.playsMax += 1; break;
-      case "di": S.discLevel = Math.min(2, (S.discLevel || 0) + 1); break;
+      case "di": S.discLevel = 1; break;
       case "ch": S.chiselMax += 1; break;
       case "wi": S.handSize += 1; break;
       case "cs": S.chainStart += 1; break;
@@ -233,7 +233,6 @@
     const topR = D.id === "headless" ? 13 : 14, jokers = D.id === "wild" ? 4 : CFG.jokers;
     for (let r = 2; r <= topR; r++) for (let si = 0; si < 4; si++) S.deck.push({ id: S.nextId++, r, si });
     for (let j = 0; j < jokers; j++) S.deck.push({ id: S.nextId++, r: 0, si: j % 4, e: "wild" });
-    if (D.id === "wild") S.discLevel = 1;
     if (D.id === "headless") S.chainStart = 2;
     const pool = RANDOM_CHALLENGES.slice();
     CFG.challengeAntes.forEach((a) => { S.chals[a] = pool.splice(Math.floor(next(S) * pool.length), 1)[0]; });
@@ -581,9 +580,9 @@
     afterPlay(S, cs, ev);
     return ev;
   }
-  /* Discard: απεριόριστα, αλλά κάθε ένα κοστίζει ένα play (½ ή 0 με Nimble Hands). Το πρώτο δωρεάν με Sleight / Spare Card / Four Plays. */
+  /* Discard: απεριόριστα, αλλά κάθε ένα κοστίζει ένα play (0 με Nimble Hands). Το πρώτο δωρεάν με Sleight / Spare Card / Four Plays. */
   const firstFree = (S) => (S.rdisc || 0) === 0 && (has(S, "sleight") || rule(S) === "r_gift" || chal(S) === "fewplays");
-  const discardCost = (S) => (firstFree(S) ? 0 : CFG.discCosts[Math.min(2, S.discLevel || 0)]);
+  const discardCost = (S) => (firstFree(S) ? 0 : CFG.discCosts[Math.min(1, S.discLevel || 0)]);
   const discardsLeft = (S) => { const c = discardCost(S); return c > 0 ? Math.floor(S.playsLeft / c) : 99; };
   /* Χέρι χωρίς κανέναν συνδυασμό (ούτε ανοιχτό τραπέζι το σώζει): το discard είναι δωρεάν. */
   const deadHand = (S) => S.phase === "round" && S.hand.length > 0 && candidates(S).length === 0;
