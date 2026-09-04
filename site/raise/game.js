@@ -15,13 +15,13 @@
   /* Κάθε χέρι έχει Chips και Mult (όπως στο Balatro). cstep/mstep = ανά επιπλέον βήμα μήκους. */
   const KINDS = [null,
     { id: "pair", name: "Pair", short: "PAIR", chips: 30, mult: 2, size: 2, tier: 1 },
-    { id: "trips", name: "Trips", short: "TRIPS", chips: 50, mult: 4, size: 3, tier: 3 },
-    { id: "stairs", name: "Stairs", short: "STAIRS", chips: 60, mult: 5, cstep: 25, mstep: 1, min: 4, tier: 4 },
-    { id: "straight", name: "Straight", short: "STR8", chips: 70, mult: 6, cstep: 20, mstep: 1, min: 5, tier: 5 },
-    { id: "full", name: "Full House", short: "FULL", chips: 90, mult: 8, size: 5, tier: 6 },
-    { id: "quads", name: "Quads", short: "QUADS", chips: 120, mult: 10, size: 4, bomb: true, tier: 7 },
-    { id: "sflush", name: "Straight Flush", short: "SFLUSH", chips: 160, mult: 14, cstep: 35, mstep: 2, min: 5, bomb: true, tier: 8 },
-    { id: "pairs", name: "Two Pair", short: "PAIRS", chips: 40, mult: 3, cstep: 20, mstep: 1, min: 4, tier: 2 },
+    { id: "trips", name: "Trips", short: "TRIPS", chips: 45, mult: 3, size: 3, tier: 3 },
+    { id: "stairs", name: "Stairs", short: "STAIRS", chips: 50, mult: 3, cstep: 20, mstep: 1, min: 4, tier: 4 },
+    { id: "straight", name: "Straight", short: "STR8", chips: 55, mult: 4, cstep: 15, mstep: 1, min: 5, tier: 5 },
+    { id: "full", name: "Full House", short: "FULL", chips: 65, mult: 4, size: 5, tier: 6 },
+    { id: "quads", name: "Quads", short: "QUADS", chips: 80, mult: 5, size: 4, bomb: true, tier: 7 },
+    { id: "sflush", name: "Straight Flush", short: "SFLUSH", chips: 100, mult: 6, cstep: 25, mstep: 1, min: 5, bomb: true, tier: 8 },
+    { id: "pairs", name: "Two Pair", short: "PAIRS", chips: 40, mult: 2, cstep: 15, mstep: 1, min: 4, tier: 2 },
   ];
   const BY_TIER = KINDS.slice(1).sort((a, b) => a.tier - b.tier);
   const MULT_KIND = { m1: [1, 8], m2: [2, 5], m3: [4, 3], m4: [3], m5: [5], m6: [6, 7] };
@@ -33,11 +33,11 @@
   const kbase = (k) => kchips(k) * kmult(k);
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 30 antes. Βαθμονομείται από tools/sweep.js. */
-  const TARGETS = [500, 520, 700, 900, 1200, 1700, 2100, 2700, 3500, 4600, 5800, 7000, 8200, 11000, 13500, 16000, 18500, 23000, 28000, 33000, 36000, 40000, 43000, 50000, 54000, 59000, 68000, 78000, 92000, 118000];
+  const TARGETS = [350, 440, 560, 700, 880, 1100, 1400, 1800, 2200, 2800, 3500, 4400, 5600, 6600, 7700, 9000, 11000, 12000, 14000, 17000, 20000, 23000, 27000, 32000, 37000, 43000, 50000, 59000, 69000, 81000];
   const CFG = {
     handSize: 8, plays: 5, discards: 3, discardCards: 99, chisel0: 0, jokers: 2,
     /* Κάθε βήμα αλυσίδας πάνω από το πρώτο προσθέτει τόσο Mult. */
-    chainMult: 2,
+    chainMult: 1,
     /* ενισχύσεις: δεν αγοράζονται· «σκάνε» τυχαία σε φύλλα που τραβάς μέσα στον γύρο */
     enhChance: 0.06, enhWeights: { gold: 40, glass: 30, steel: 15, wild: 15 }, steelCap: 3, jokerCap: 4,
     rewardBase: 8, rewardFrac: 0.25, rewardCap: 6,
@@ -53,10 +53,10 @@
   };
 
   const POOL = [
-    { id: "m1", name: "Pairs +", desc: "Pairs and multi-pairs: +2 Mult.", cost: 6 },
-    { id: "m2", name: "Sets +", desc: "Trips and full houses: +2 Mult.", cost: 7 },
-    { id: "m3", name: "Runs +", desc: "Straights and stairs: +2 Mult.", cost: 8 },
-    { id: "m6", name: "Fuse", desc: "Bombs: +2 Mult.", cost: 6 },
+    { id: "m1", name: "Pairs +", desc: "Pairs and multi-pairs: +1 Mult.", cost: 5 },
+    { id: "m2", name: "Sets +", desc: "Trips and full houses: +1 Mult.", cost: 6 },
+    { id: "m3", name: "Runs +", desc: "Straights and stairs: +1 Mult.", cost: 7 },
+    { id: "m6", name: "Fuse", desc: "Bombs: +1 Mult.", cost: 5 },
     { id: "pl", name: "Extra Play", desc: "+1 play per round.", cost: 12 },
     { id: "di", name: "Nimble Hands", desc: "+1 discard per round.", cost: 8 },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card.", cost: 9 },
@@ -74,7 +74,7 @@
     gold: { name: "Gold", desc: "Mult ×2 when played.", cost: 6, w: 35 },
     glass: { name: "Glass", desc: "Mult ×3. Shatters after one play.", cost: 5, w: 30 },
     wild: { name: "Joker", desc: "Any rank, any suit. Also an Ace.", cost: 9, w: 15 },
-    steel: { name: "Steel", desc: "+30 Chips when played. Always back in your hand next round.", cost: 8, w: 20 },
+    steel: { name: "Steel", desc: "+20 Chips when played. Always back in your hand next round.", cost: 8, w: 20 },
   };
 
   /* Charms: παθητικά εφέ. `lock` = συνθήκη ξεκλειδώματος (UI, lifetime stats). */
@@ -82,7 +82,7 @@
     { id: "ladder", name: "Ladder", glyph: "≡", desc: "Tight step — same hand, exactly one rank up: +1 chain.", cost: 8 },
     { id: "leap", name: "Overkill", glyph: "⤒", desc: "Beat the rung by four ranks or more: Mult ×1.5.", cost: 7 },
     { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6: Mult ×2.", cost: 6 },
-    { id: "court", name: "Court", glyph: "♛", desc: "Hands with a face card: +30 Chips.", cost: 7 },
+    { id: "court", name: "Court", glyph: "♛", desc: "Hands with a face card: +20 Chips.", cost: 7 },
     { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: +1 chain.", cost: 9 },
     { id: "cheap", name: "Slipstream", glyph: "~", desc: "A hand that does not climb keeps half the chain instead of breaking it.", cost: 8 },
     { id: "wind", name: "Second Wind", glyph: "∞", desc: "The first break of the round keeps the whole chain.", cost: 7 },
@@ -92,7 +92,7 @@
     { id: "vault", name: "Vault", glyph: "◎", desc: "Interest: +1 chip per 3 held at ante end, up to 6.", cost: 6 },
     { id: "thrift", name: "Thrift", glyph: "−", desc: "Everything in the shop costs 2 less.", cost: 7 },
     { id: "scout", name: "Scout", glyph: "◉", desc: "See the next two cards of the pile.", cost: 4 },
-    { id: "kingmaker", name: "Kingmaker", glyph: "A", desc: "Ace in the Hole also scores 60 per chain step.", cost: 8 },
+    { id: "kingmaker", name: "Kingmaker", glyph: "A", desc: "Ace in the Hole also scores 40 per chain step.", cost: 8 },
     { id: "afterburner", name: "Afterburner", glyph: "»", desc: "The hand right after a bomb: Mult ×3.", cost: 9 },
     { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards: Mult ×3.", cost: 8, lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
     { id: "glassblower", name: "Glassblower", glyph: "◇", desc: "Glass survives half the time.", cost: 8, lock: { key: "glass", n: 5, text: "Shatter 5 Glass cards" } },
@@ -164,7 +164,7 @@
     { id: "bookends", a: "encore", b: "mirror", name: "Bookends", desc: "A last hand of the same kind as your first: Mult ×3." },
     { id: "banker", a: "vault", b: "thrift", name: "Banker", desc: "Interest caps at 9 and rerolls cost 1." },
     { id: "lungs", a: "cheap", b: "wind", name: "Deep Lungs", desc: "A broken chain never falls below ×3." },
-    { id: "jewels", a: "court", b: "goldsmith", name: "Crown Jewels", desc: "A Gold face card adds +60 Chips instead of +30." },
+    { id: "jewels", a: "court", b: "goldsmith", name: "Crown Jewels", desc: "A Gold face card adds +40 Chips instead of +20." },
   ];
   const synById = {}; SYNERGIES.forEach((s) => { synById[s.id] = s; });
   const TAG_ORDER = ["Bomb!", "Ladder to Heaven", "Royal", "Four Horsemen", "Ace in the Hole", "Overkill", "Long Run", "Staircase", "Shatter", "Tight Step", "Humble"];
@@ -191,7 +191,7 @@
 
   function apply(S, id) {
     switch (id) {
-      case "m1": case "m2": case "m3": case "m4": case "m5": case "m6": MULT_KIND[id].forEach((k) => { S.mult[k] += 2; }); break;
+      case "m1": case "m2": case "m3": case "m4": case "m5": case "m6": MULT_KIND[id].forEach((k) => { S.mult[k] += 1; }); break;
       case "pl": S.playsMax += 1; break;
       case "di": S.discMore = (S.discMore || 0) + 1; break;
       case "ch": S.chiselMax += 1; break;
@@ -371,9 +371,9 @@
     let chips = kchips(k) + cardChips(cs);
     let mult = kmult(k) + (S.mult[k.kind] || 0);
     if (R === "r_pair0" && k.kind === 1) { chips = 0; notes.push("Cheap Pairs"); }
-    if (has(S, "court") && cs.some(isFace)) { const jw = syn(S, "jewels") && cs.some((c) => isFace(c) && c.e === "gold"); chips += jw ? 60 : 30; notes.push(jw ? "Crown Jewels +60" : "Court +30"); }
+    if (has(S, "court") && cs.some(isFace)) { const jw = syn(S, "jewels") && cs.some((c) => isFace(c) && c.e === "gold"); chips += jw ? 40 : 20; notes.push(jw ? "Crown Jewels +40" : "Court +20"); }
     const steels = cs.filter((c) => c.e === "steel").length;
-    if (steels) { chips += 30 * steels; notes.push("Steel +" + 30 * steels); }
+    if (steels) { chips += 20 * steels; notes.push("Steel +" + 20 * steels); }
     /* Αλυσίδα: κάθε βήμα πάνω από το πρώτο δίνει +Mult — μόνο αν το χέρι ανεβαίνει.
        Χέρι που δεν ανεβαίνει γράφει σκέτο chips × mult και σπάει την αλυσίδα. */
     const prev = S.rung, up = beats(k, prev);
@@ -562,7 +562,7 @@
       const cs = removeSel(S, false);
       S.played = cs.slice(); S.rung = null; S.stats.aces += 1; S.races += 1;
       let apts = 0;
-      if (has(S, "kingmaker")) { apts = 60 * chainPos(S); S.score += apts; }
+      if (has(S, "kingmaker")) { apts = 40 * chainPos(S); S.score += apts; }
       if (syn(S, "royal")) S.chain += 1;
       S.log.push({ t: "Ace in the Hole", c: "rung reset · chain ×" + chainPos(S) + " kept" + (apts ? " · Kingmaker" : ""), p: apts || "", cls: "bonus" });
       const ev = { type: "ace", pts: apts, tags: ["Ace in the Hole"] };
