@@ -1012,3 +1012,17 @@ body{background:
 .offer--pick.bought em{color:var(--good);font-size:1rem}
 .ownedrow{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.4rem}
 .ownedrow .charm--empty{width:2.4rem;height:2.4rem}
+
+/* ===================== v14: η επιλογή είναι κατάσταση, όχι animation =====================
+   Το `selglow` ήταν `infinite`: κάθε διαλεγμένο φύλλο πάλλονταν για πάντα, και κάθε tap
+   πρόσθετε ένα `pop` bounce από πάνω. Το χέρι δεν ησύχαζε ποτέ. Τώρα η επιλογή είναι μια
+   καθαρή μετάβαση: το φύλλο ανεβαίνει μια φορά, μένει εκεί, τέλος. */
+.hand .card{transition:transform .16s cubic-bezier(.2,.8,.3,1),box-shadow .16s ease,filter .16s ease}
+.hand .card.sel,
+.hand .card.sel:active{animation:none!important}
+.hand .card.sel{transform:translateY(-.85rem) rotate(0deg) scale(1.05);z-index:3}
+/* το ήδη επιλεγμένο φύλλο δεν ξανακουνιέται όταν πατάς άλλο */
+.hand .card.new{animation:drawin .34s cubic-bezier(.2,.85,.25,1) backwards}
+.hand .card:active:not(.sel){transform:rotate(var(--rot,0deg)) translateY(2px) scale(.97)}
+/* τα μη επιλεγμένα ξεθωριάζουν λίγο μόλις υπάρχει επιλογή: η επιλογή διαβάζεται χωρίς κίνηση */
+.hand.picking .card:not(.sel){filter:brightness(.82) saturate(.85)}

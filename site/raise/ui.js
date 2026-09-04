@@ -126,8 +126,11 @@
     } else {
       fitHand(n);
       hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n)).join("");
-      S.hand.forEach((c) => { delete c.n; delete c.x; });
     }
+    /* Τα σημάδια «μόλις τραβήχτηκε» σβήνουν πάντα — αλλιώς ένα επόμενο πλήρες render
+       ξαναπαίζει το drawin σε φύλλα που είναι στο χέρι εδώ και ώρα. */
+    S.hand.forEach((c) => { delete c.n; delete c.x; });
+    hand.classList.toggle("picking", S.sel.length > 0);
 
     let tools = "";
     if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise to ' + Math.round(G.target(S) * G.raiseMulFor(S)) + ' <em>+' + (G.has(S, "gambler") ? 2 : 1) + ' pick</em></button>';
