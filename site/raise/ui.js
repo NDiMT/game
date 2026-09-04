@@ -78,7 +78,7 @@
   function render(keepHand) {
     const T = G.goal(S), e = G.evalSel(S), ch = G.current(S), pos = G.chainPos(S), cleared = S.score >= T;
 
-    FX.countUp($("score"), shown, S.score); shown = S.score;
+    FX.countUp($("score"), shown, S.score, ui.scoreDelay || 0); ui.scoreDelay = 0; shown = S.score;
     $("score").classList.toggle("on", cleared);
     $("tgt").textContent = "/ " + T + (S.raised ? " ↑" : ""); $("tgt").classList.toggle("raised", !!S.raised);
     $("ante").textContent = S.ante + 1; $("anteN").textContent = S.endless && S.ante >= G.TARGETS.length ? "∞" : G.TARGETS.length;
@@ -86,9 +86,11 @@
 
     const playsMax = S.playsMax - (ch && ch.id === "fewplays" ? 1 : 0);
     $("plays").innerHTML = pips(S.playsLeft, playsMax);
+    $("plays").setAttribute("aria-label", S.playsLeft + " of " + playsMax + " plays left");
     const dmax = S.discMax == null ? G.discMaxOf(S) : S.discMax, dleft = G.discardsLeft(S);
     $("discards").hidden = false;
     $("discards").innerHTML = dmax ? pips(dleft, dmax) : '<b>none</b>';
+    $("discards").setAttribute("aria-label", dmax ? dleft + " of " + dmax + " discards left" : "no discards");
     $("discards").classList.toggle("off", dmax === 0);
     $("pileN").textContent = S.pile.length; $("dpileN").textContent = S.discardPile.length;
 
@@ -106,9 +108,13 @@
     $("contract").hidden = !ct;
     if (ct) { $("contractName").textContent = ct.name + " · +" + ct.pct + "%"; $("contractSt").textContent = cst === "broken" ? "✕" : cst === "done" ? "✓" : cst === "ok" ? "…" : "○"; $("contract").className = "chal contract " + cst; }
     document.body.classList.toggle("lastplay", S.playsLeft >= 1 && S.playsLeft < 2 && !cleared);
-    $("chainN").textContent = "×" + pos;
+    /* Η αλυσίδα λέει μόνη της τι αξίζει — αλλιώς ο πιο σημαντικός αριθμός δεν εξηγείται πουθενά. */
+    { const step = G.CFG.chainMult + (G.syn(S, "tempo") ? 2 : S.charms.indexOf("climber") >= 0 ? 1 : 0),
+        add = Math.min(G.CFG.chainAddCap, Math.max(0, pos - 1 + G.CFG.chainFloor) * step);
+      $("chainN").textContent = "×" + pos;
+      $("chain").firstElementChild.textContent = add ? "Chain +" + add + " Mult" : "Chain"; }
     $("chain").classList.toggle("cold", pos <= 1);
-    document.body.dataset.heat = pos >= 7 ? 3 : pos >= 5 ? 2 : pos >= 3 ? 1 : 0;
+    document.body.dataset.heat = pos >= 6 ? 3 : pos >= 4 ? 2 : pos >= 2 ? 1 : 0;
     $("chain").style.setProperty("--pos", Math.min(pos, 12));
     const pk = G.peek(S); $("peek").hidden = !pk; if (pk) $("peekCard").innerHTML = pk.map((c) => cardHTML(c, null, false, true, 0, 1)).join("");
     const tc = $("tcards");
@@ -143,9 +149,13 @@
 
     const go = $("bPlay"); go.className = "go";
     const pv = $("preview"); pv.className = "preview"; let pvt = "";
+    const held = ui.hold && Date.now() < ui.hold.until ? ui.hold : null;
     if (S.playsLeft < 1) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "Cleared · tap for your bonus" : "Short by " + (T - S.score)) + '</span>'; }
     else if (!S.sel.length) {
-      go.classList.add("idle"); go.disabled = true; pvt = G.beatText(S) + (S.playsLeft < 2 ? " · last play" : ""); pv.classList.add("hint");
+      go.classList.add("idle"); go.disabled = true;
+      /* Μόλις έπαιξες: η ανάλυση του χεριού μένει λίγο ακόμα — «γιατί έκανε τόσους;» με μια ματιά. */
+      if (held) { pvt = held.t; pv.classList.add(held.c); }
+      else { pv.classList.add("hint"); pvt = (S.rung ? "Beat " + G.clabel(S.rung) + " to climb · anything lower still scores" : "Table is open · any hand starts the chain") + (S.playsLeft < 2 ? " · last play" : ""); }
       go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
     else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">Open the rung · keep chain ×' + pos + '</span><span class="go__p">↺</span>'; pvt = "Ace in the Hole · the rung opens and the chain stays at ×" + pos + " · it costs no play, but your hand is one card shorter for the rest of the round"; pv.classList.add("ace"); }
@@ -169,8 +179,19 @@
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
   const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : k.kind === 8 ? G.clabel(k).replace(/ \S+$/, "") : G.clabel(k);
-  function note(msg, ms) { ui.note = cap(msg); ui.noteT = Date.now() + (ms || 3800); render(); setTimeout(() => { if (Date.now() >= ui.noteT) render(); }, (ms || 3800) + 100); }
-  function callout(t) { if (!t) return; const el = $("callout"); el.textContent = t; el.classList.toggle("bomb", t === "Bomb!"); el.classList.toggle("target", t === "Target!"); FX.pulse(el, "show"); }
+  function note(msg, ms) { ui.note = cap(msg); ui.noteT = Date.now() + (ms || 3800); render(true); setTimeout(() => { if (Date.now() >= ui.noteT) render(true); }, (ms || 3800) + 100); }
+  /* Ένα callout τη φορά: τα υπόλοιπα μπαίνουν σε ουρά αντί να σκοτώνουν το προηγούμενο. */
+  const CQ = [];
+  function callout(t) { if (!t) return; CQ.push(t); if (CQ.length === 1) calloutNext(); }
+  function calloutNext() {
+    const t = CQ[0]; if (!t) return;
+    const el = $("callout"); el.textContent = t;
+    el.classList.toggle("bomb", t === "Bomb!"); el.classList.toggle("target", t === "Target!");
+    FX.pulse(el, "show");
+    if (FX.RM) el.style.opacity = "1";
+    clearTimeout(callout.t);
+    callout.t = setTimeout(() => { if (FX.RM) { el.style.opacity = ""; el.textContent = ""; } CQ.shift(); calloutNext(); }, FX.RM ? 1100 : 900);
+  }
   function selRects() { return S.sel.map((i) => { const el = $("hand").querySelector('[data-i="' + i + '"]'); return el ? el.getBoundingClientRect() : null; }); }
   function afterMove() {
     save();
@@ -188,13 +209,16 @@
     else if (!ev.up) { FX.sfx.pass(); FX.buzz(40); FX.floatIn($("table"), "+" + ev.pts); }
     else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300), ["#ffd166", "#ff6b6b", "#4ecdc4", "#c77dff", "#ffffff", "hsl(" + IC.kindHue(ev.k.kind) + " 90% 70%)"]); FX.floatIn($("table"), "+" + ev.pts); $("callout").style.setProperty("--kh", IC.kindHue(ev.k.kind)); }
     if (ev.shattered) { FX.sfx.shatter(); FX.burstAt($("table"), 18, 3.2, "#cfe9f2"); }
+    if (ev.k) ui.hold = { t: G.clabel(ev.k) + " · " + ev.chips + " × " + ev.mult + " = " + ev.pts + (ev.up ? "" : " · chain broken") + (ev.notes && ev.notes.length ? " · " + ev.notes.slice(0, 3).join(", ") : ""), c: ev.up ? "ok" : "warn", until: Date.now() + 1800 };
     const crossed = S.score >= G.goal(S) && S.score - ev.pts < G.goal(S);
+    ui.scoreDelay = 300;   /* τα φύλλα προσγειώνονται πρώτα, μετά ανεβαίνει ο αριθμός */
     render();
-    if (crossed) { setTimeout(() => { callout("Target!"); FX.sfx.clear(); FX.burstAt($("score"), 30, 4, ["#8ff0bf", "#ffffff", "#ffd166"]); }, 420); }
+    if (crossed) { setTimeout(() => { callout("Target!"); FX.sfx.clear(); FX.burstAt($("score"), 30, 4, ["#8ff0bf", "#ffffff", "#ffd166"]); }, 1100); }
     FX.fly(from, Array.prototype.slice.call($("tcards").children));
+    setTimeout(() => { if (ui.hold && Date.now() >= ui.hold.until) { ui.hold = null; render(true); } }, 1900);
     if (ev.drawn) setTimeout(() => FX.sfx.draw(), 180);
     enhPop();
-    FX.pulse($("chain"), "bump");
+    if (ev.up) FX.pulse($("chain"), "bump"); else FX.pulse($("chain"), "drop");
     callout(ev.tags[0]);
     afterMove();
   }
@@ -225,7 +249,7 @@
   }
 
   /* ---------- sheets ---------- */
-  const openS = (h) => { $("sheet").innerHTML = '<div class="grip"></div>' + h; $("veil").hidden = false; FX.sfx.open(); };
+  const openS = (h) => { $("sheet").innerHTML = '<div class="grip"></div>' + h; $("veil").hidden = false; $("sheet").focus(); FX.sfx.open(); };
   const closeS = () => { $("veil").hidden = true; };
   function chipsHTML() {
     const c = [];
@@ -322,12 +346,23 @@
     "Bombs beat anything and the chain carries on through them. Save one for a wall.",
     "The shape of the hand matters far more than the rank of the cards. Build shapes.",
   ];
+  /* Ο λόγος να πατήσεις «ξανά»: το πιο κοντινό κλειδωμένο charm, με το πόσο σου λείπει. */
+  function nextUnlock() {
+    const l = life();
+    const near = G.CHARMS.filter((c) => c.lock && (l[c.lock.key] || 0) < c.lock.n)
+      .map((c) => ({ c, left: c.lock.n - (l[c.lock.key] || 0) }))
+      .sort((a, b) => a.left - b.left)[0];
+    if (!near) return "";
+    return '<div class="nextun"><span class="lbl">Closest unlock</span><b>' + near.c.name + '</b>' +
+      '<span>' + near.c.lock.text + ' · ' + (near.c.lock.n - near.left) + '/' + near.c.lock.n + '</span></div>';
+  }
   function sheetLose(newBest) {
     const rec = (life().seeds || {})[S.seed];
     openS('<h2 class="bad">Busted</h2><p class="sub">Ante ' + (S.ante + 1) + ' · ' + S.score + ' of ' + G.target(S) + '</p>' + missHTML() +
       (newBest && S.ante > 0 ? '<div class="unlocked">✦ New best on this seed</div>' : "") +
       '<div class="tally"><div>Antes cleared<b>' + S.ante + '</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div>' + (rec && !newBest ? '<div>Best on this seed<b>Ante ' + rec.ante + ' · ' + rec.score + '</b></div>' : "") + '<div>Seed<b>' + S.seed + '</b></div></div>' +
       (S.charms.length ? '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' : "") +
+      nextUnlock() +
       '<p class="sub" style="margin:.9rem 0">' + BUSTED_TIPS[(S.ante + S.stats.plays) % BUSTED_TIPS.length] + '</p>' +
       '<button class="big" data-restart="1">Same seed, again</button><div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>');
   }
@@ -357,15 +392,15 @@
       '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out.</p>' +
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
       '<p><b>The hands</b>, weakest to strongest: pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
-      '<p><b>Score = Chips × Mult.</b> The shape sets both — a pair is 30 × 2, a full house 65 × 4, a straight flush 100 × 6. Then every card adds chips: 2 to 10 as printed, J Q K ten, an Ace eleven. Two Aces make 104 and two 3s make 72 — the card matters, it does not decide the round.</p>' +
-      '<p><b>The chain is where the points are.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step above the first is +1 Mult</b>, up to ×8. Play something lower and it still scores its plain Chips × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
+      '<p><b>Score = Chips × Mult.</b> The shape sets both — a pair is 30 × 4, a full house 46 × 6, a straight flush 60 × 8. Then every card adds chips: 2 to 10 as printed, J Q K ten, an Ace eleven. Two Aces make 208 and two 3s make 144 before the chain — the card matters, it does not decide the round.</p>' +
+      '<p><b>The chain is where the points are.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +1 Mult, the first climb included</b>, up to +6. Play something lower and it still scores its plain Chips × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b></p>' +
       '<p>A lone <b>Ace</b> is the escape hatch: it opens the table and keeps your chain, costs no play, but leaves your hand one card shorter for the rest of the round. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. If your hand makes no combination at all, the discard is free.</p>' +
       '<p><b>Cleared it early? Raise.</b> The target goes up — ×1.8 with two plays left, ×2 with one — and if you make it you leave with an extra bonus. Miss it and you leave with one fewer.</p>' +
       '<p><b>Clear an ante, pick one bonus.</b> Three on offer, upgrades and <b>charms</b> together. No money, no prices, no selling — one tap and you are back at the table. Double the target and a fourth appears; a perfect round (chain never broken, no discard, every play used) gives a second pick. Charms are passive and permanent: five slots to start.</p>' +
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Gold</b> (Mult ×2, and two of them is ×4), <b>Glass</b> (Mult ×3, then it shatters), <b>Steel</b> (+20 Chips and it always comes back to your hand) or a <b>Joker</b>.</p>' +
-      '<p>Most antes carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway — and every one carries a <b>contract</b>, an optional side goal worth a slice of your round score. Tap either ribbon to read it. Every fifth ante is a <b>boss</b> with a rule that bites and a target three quarters as high.</p>' +
+      '<p>Most antes carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway — and every one carries a <b>contract</b>, an optional side goal worth a slice of your round score. Tap either ribbon to read it. Every fifth ante is a <b>boss</b> with a rule that bites and a target a tenth lower.</p>' +
       '<p>Thirty antes. Gentle at first, steep at the end. The Summit at 30 — and Endless after that.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
@@ -387,7 +422,7 @@
     clearTimeout(bossIntro.t); bossIntro.t = setTimeout(() => { el.hidden = true; }, 2800);
   }
   $("boss").addEventListener("click", () => { $("boss").hidden = true; });
-  $("tip").addEventListener("click", () => { ui.noteT = 0; render(); });
+  $("tip").addEventListener("click", () => { ui.noteT = 0; render(true); });
 
   /* ---------- start screen ---------- */
   const FAN = [{ r: 10, si: 0 }, { r: 11, si: 2 }, { r: 12, si: 3 }, { r: 13, si: 1 }, { r: 14, si: 0 }];
@@ -412,6 +447,8 @@
   let swipe = { y0: 0, t0: 0, did: false };
   const hand = $("hand");
   hand.addEventListener("pointerdown", (e) => { swipe = { y0: e.clientY, t0: Date.now(), did: false }; });
+  /* Ακυρωμένος pointer δεν καταπίνει τη σειρά: το επόμενο click ξαναμετράει ως άγγιγμα. */
+  hand.addEventListener("pointercancel", () => { swipe.did = false; });
   hand.addEventListener("pointerup", (e) => {
     const dy = e.clientY - swipe.y0;
     if (Math.abs(dy) < 45 || Date.now() - swipe.t0 > 700) return;

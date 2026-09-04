@@ -1037,3 +1037,59 @@ body{background:
 @media (prefers-reduced-motion:reduce){.sheet.leaving{animation:none;opacity:.4}}
 /* ένα ✓ αρκεί: το παλιό .offer.bought em::after πρόσθετε δεύτερο πάνω στο δικό μας */
 .offer--pick.bought em::after{content:none}
+
+/* ================= v15: το χέρι, ο πήχης και ο αντίχειρας ================= */
+/* 1. Οι δύο βασικές χειρονομίες ήταν νεκρές στο κινητό: το `touch-action:pan-y`
+   άφηνε τον compositor να αρπάξει κάθε κάθετο σύρσιμο στα ~23px και να στείλει
+   pointercancel — το pointerup δεν ερχόταν ποτέ. Η σελίδα δεν κάνει scroll·
+   ο άξονας είναι δικός μας. */
+.hand{touch-action:none}
+.hand .card{touch-action:none}
+
+/* 2. Η σειρά εργαλείων δεν επιτρέπεται να κουνήσει τον αντίχειρα.
+   Μετρημένο: όταν εμφανιζόταν, το #hand ανέβαινε 34.8px (50px στα 360×600) και
+   το dock κατέβαινε 7.2px, μέσα σε ένα καρέ, ακριβώς πάνω στο κλείσιμο του στόχου. */
+.tools{min-height:2.75rem;justify-content:center}
+.tools:empty{display:flex}
+.tb{min-height:2.75rem;flex:1 1 0;justify-content:center;text-align:center;padding:.4rem .5rem}
+
+/* 4. Η αλυσίδα δεν πανηγυρίζει όταν σπάει. */
+.chain.drop b{animation:chdrop .45s ease}
+@keyframes chdrop{0%{transform:scale(1)}35%{transform:scale(.8);color:var(--pip-lt)}100%{transform:scale(1)}}
+
+/* 5. Η προεπισκόπηση άλλαζε 1↔2↔3 γραμμές και έκλεβε ύψος από τα παιγμένα φύλλα:
+   τα φύλλα γλιστρούσαν 15–30px σε κάθε άγγιγμα. Δύο γραμμές, πάντα. */
+.preview{min-height:2.7em;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0 .3em}
+.preview:empty{display:flex}
+
+/* 8. Στο reduced motion το «+N» μένει ακίνητο αντί να εξαφανίζεται. */
+@media (prefers-reduced-motion:reduce){.float.still{opacity:1;transform:translate(-50%,-60%)}}
+
+/* 9. Στόχοι αφής ≥44px χωρίς να αλλάξει το σχέδιο (μετρημένοι: 30×30, 27×27, 30 ύψος). */
+.hintb,.charms .charm,.chal{position:relative}
+.hintb::after,.charms .charm::after,.chal::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:max(100%,44px);height:max(100%,44px);border-radius:inherit}
+.charms{gap:.45rem}
+
+/* 10. Πολύ κοντές οθόνες: ο πήχης δίνει χώρο στο τραπέζι, αλλιώς το παιγμένο
+   φύλλο βγαίνει έξω από το κουτί του (μετρημένο: κουτί 2.3px, φύλλο 29px). */
+@media (max-height:660px){
+  .rung{gap:.1rem}
+  .rung__val{font-size:1.15rem}
+  .rung .lbl{display:none}
+  .rung__dots i{height:.2rem;width:1rem}
+  .table{padding:.45rem .5rem;gap:.25rem}
+  .hand{padding:.6rem 0 .1rem}
+  .preview{font-size:.66rem}
+}
+
+/* 12. Ο λόγος για άλλη μια παρτίδα: το επόμενο κλειδωμένο charm, στην οθόνη Busted. */
+.nextun{display:grid;gap:.15rem;margin:.9rem 0 .2rem;padding:.6rem .7rem;border-radius:.7rem;
+  background:linear-gradient(180deg,rgba(255,209,102,.10),rgba(255,209,102,.03));border:1px solid rgba(255,209,102,.22)}
+.nextun b{font-size:1rem;color:#ffd977}
+.nextun>span:last-child{font-size:.72rem;opacity:.75}
+
+/* 13. Τίποτα δεν ανασαίνει για πάντα. Το κουμπί «τραβάει» τρεις φορές μόλις το χέρι
+   γίνει νόμιμο και μετά ησυχάζει· το τραπέζι τρέμει δύο δευτερόλεπτα, όχι όσο κρατά η φωτιά. */
+.go.ok,.go.ace,.go.done{animation:ready 1.6s ease-in-out 3}
+body[data-heat="3"] .table{animation:tremble .38s ease-in-out 5}

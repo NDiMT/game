@@ -39,7 +39,7 @@
 
 <div class="app" id="app">
   <header class="hud">
-    <div class="hud__score"><b id="score">0</b><span id="tgt">/ 100</span></div>
+    <div class="hud__score" role="status" aria-live="polite" aria-atomic="true"><b id="score">0</b><span id="tgt">/ 100</span></div>
     <div class="hud__r">
       <div class="row"><span class="ante">ANTE <b id="ante">1</b>/<span id="anteN">12</span></span></div>
       <div class="row"><div class="pips pips--play" id="plays" aria-label="Plays"></div></div>
@@ -63,7 +63,7 @@
     </div>
     <div class="tcards" id="tcards"></div>
     <div class="callout" id="callout" aria-live="polite"></div>
-    <div class="preview" id="preview" aria-live="polite"></div>
+    <div class="preview" id="preview"></div>
     <div class="tfoot">
       <span class="piles" id="piles">Pile <b id="pileN">44</b> · Out <b id="dpileN">0</b></span>
       <div class="peek" id="peek" hidden><span class="lbl">Next</span><span id="peekCard"></span></div>
@@ -82,7 +82,7 @@
   </nav>
 </div>
 
-<div class="veil" id="veil" hidden><div class="sheet" id="sheet"></div></div>
+<div class="veil" id="veil" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" tabindex="-1"></div></div>
 
 <script src="game.js"></script>
 <script src="fx.js"></script>
