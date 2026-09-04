@@ -4,7 +4,7 @@
   const G = window.RAISE, FX = window.FX, IC = window.ICONS;
   const $ = (id) => document.getElementById(id);
   const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
-  const KEY = "raise.run.v5", LIFE = "raise.life.v1";
+  const KEY = "raise.run.v6", LIFE = "raise.life.v1";
   let S = null, shown = 0, ui = { chisel: false, note: null, noteT: 0 }, installEvt = null;
 
   /* ---------- storage ---------- */
@@ -82,7 +82,6 @@
     $("score").classList.toggle("on", cleared);
     $("tgt").textContent = "/ " + T + (S.raised ? " ↑" : ""); $("tgt").classList.toggle("raised", !!S.raised);
     $("ante").textContent = S.ante + 1; $("anteN").textContent = S.endless && S.ante >= G.TARGETS.length ? "∞" : G.TARGETS.length;
-    $("money").textContent = S.money;
     const f = $("fill"); f.style.width = Math.min(100, S.score / T * 100) + "%"; f.classList.toggle("done", cleared);
 
     const playsMax = S.playsMax - (ch && ch.id === "fewplays" ? 1 : 0);
@@ -237,63 +236,62 @@
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
     if (S.chainStart) c.push("Head Start <b>+" + S.chainStart + "</b>");
     if (S.discMore) c.push("Discards <b>" + (G.CFG.discards + S.discMore) + "</b>");
+    if (S.charmSlots > G.CFG.charmSlots) c.push("Slots <b>" + S.charmSlots + "</b>");
     if (S.removed.length) c.push("Culled <b>" + S.removed.map(G.rname).join(",") + "</b>");
     const enh = {}; S.deck.forEach((d) => { if (d.e) enh[d.e] = (enh[d.e] || 0) + 1; });
     Object.keys(enh).forEach((k) => c.push(G.ENH[k].name + " <b>" + enh[k] + "</b>"));
     return c.length ? c.map((x) => '<span class="chip">' + x + '</span>').join("") : '<span class="chip">none yet</span>';
   }
-  function ownedCharmsHTML(sellable) {
+  function ownedCharmsHTML() {
     if (!S.charms.length) return '<p class="sub">No charms yet · ' + S.charmSlots + ' slots</p>';
-    return '<div class="owned">' + S.charms.map((id, i) => { const c = G.charmById[id]; return '<div class="owned__row">' + IC.bubble(id, "charm charm--s") + '<div><strong>' + c.name + '</strong><span>' + c.desc + '</span></div>' + (sellable ? '<button class="sellb" data-sell="' + i + '">Sell ' + Math.ceil(c.cost / 2) + '◎</button>' : "") + '</div>'; }).join("") + '</div>';
+    return '<div class="owned">' + S.charms.map((id) => { const c = G.charmById[id]; return '<div class="owned__row">' + IC.bubble(id, "charm charm--s") + '<div><strong>' + c.name + '</strong><span>' + c.desc + '</span></div></div>'; }).join("") + '</div>';
   }
   function offersHTML() {
+    const left = G.picksLeft(S);
     return S.offers.map((o, i) => {
-      const cost = G.offerCost(S, o), cb = G.canBuy(S, i), dis = o.bought || !cb.ok ? " disabled" : "";
-      const why = !o.bought && !cb.ok && cb.why === "full" ? '<span class="why">Slots full — sell one</span>' : "";
-      if (o.kind === "card") {
-        const c = o.card, su = G.SUITS[c.si];
-        return '<button class="offer offer--card' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '><span class="offer__card">' + cardHTML(c, null, false, true, 0, 1) + '</span><strong>' + G.ENH[c.e].name + (c.e === "wild" ? "" : " " + G.rname(c.r) + su.s) + '</strong><em>' + cost + '◎</em><span>' + G.ENH[c.e].desc + '</span></button>';
-      }
-      if (o.kind === "charm") {
-        const c = G.charmById[o.id];
-        return '<button class="offer offer--charm' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '>' + IC.bubble(o.id, "charm charm--s") + '<strong>' + c.name + '</strong><em>' + cost + '◎</em><span>' + c.desc + why + synHint(o.id) + '</span></button>';
-      }
-      const it = G.poolById[o.id];
-      return '<button class="offer offer--charm' + (o.bought ? " bought" : "") + '" data-buy="' + i + '"' + dis + '>' + IC.bubble(o.id, "charm charm--s") + '<strong>' + it.name + '</strong><em>' + cost + '◎</em><span>' + it.desc + '</span></button>';
+      const cb = G.canTake(S, i), dis = o.bought || !cb.ok ? " disabled" : "";
+      const it = o.kind === "charm" ? G.charmById[o.id] : G.poolById[o.id];
+      const tag = o.kind === "charm" ? "Charm" : "Upgrade";
+      const why = !o.bought && !cb.ok && cb.why === "full" ? '<span class="why">Charm slots full</span>' : "";
+      return '<button class="offer offer--pick' + (o.bought ? " bought" : "") + (left > 0 && !o.bought && cb.ok ? " open" : "") + '" data-take="' + i + '"' + dis + '>' +
+        IC.bubble(o.id, "charm charm--s") + '<strong>' + it.name + '</strong><em>' + (o.bought ? "✓" : tag) + '</em><span>' + it.desc + why + (o.kind === "charm" ? synHint(o.id) : "") + '</span></button>';
     }).join("");
   }
-  function keepHTML() {
-    const k = S.keep || [], out = S.hand.length - k.length, fresh = G.freshCards(S);
-    return '<div class="sec"><span class="lbl">Your hand carries over' + (out ? ' · swapping ' + out : '') + (fresh.length ? ' · +' + fresh.length + ' new' : '') + '</span><p class="sub" style="margin:.2rem 0 .45rem">Tap a card to swap it for a fresh one next round. Bought cards join your hand.</p><div class="keeprow">' +
-      S.hand.map((c, i) => { const on = k.indexOf(i) >= 0; return '<button class="keepc' + (on ? " on" : " off") + '" data-keep="' + i + '" aria-pressed="' + on + '">' + cardHTML(c, null, false, true, 0, 1) + '</button>'; }).join("") +
-      fresh.map((c) => '<span class="keepc new" title="New card">' + cardHTML(c, null, false, true, 0, 1) + '</span>').join("") + '</div></div>';
+  /* Τα charms που κρατάς, σαν σειρά από εικονίδια — δεν πωλούνται, δεν χρειάζονται λίστα. */
+  function ownedRowHTML() {
+    if (!S.charms.length) return "";
+    let h = S.charms.map((id) => '<button class="charm charm--s" data-charm="' + id + '" aria-label="' + G.charmById[id].name + '" style="--h:' + IC.hue(id) + '"' + (G.synergyFor(S, id).length ? ' data-syn="1"' : "") + '>' + IC.svg(id) + '</button>').join("");
+    for (let i = S.charms.length; i < S.charmSlots; i++) h += '<span class="charm charm--s charm--empty"></span>';
+    return '<div class="sec"><span class="lbl">Your charms · ' + S.charms.length + '/' + S.charmSlots + ' · tap to read</span><div class="ownedrow">' + h + '</div></div>';
   }
   function contractHTML() {
     const c = G.upcomingContract(S); if (!c) return "";
     return '<div class="chalnext ctrnext"><span class="lbl">Next · Contract</span><b>' + c.name + ' · ' + (c.pct ? "+" + c.pct + "%" : "+" + c.flat) + '</b><span>' + c.desc + ' Optional side goal — miss it and you only lose the bonus.</span></div>';
   }
   const synHint = (id) => G.synergyFor(S, id).map((s) => { const p = G.charmById[s.a === id ? s.b : s.a]; return '<i class="syn">⚡ ' + s.name + ' with ' + p.name + ' — ' + s.desc + '</i>'; }).join("");
-  function synergiesHTML() {
-    const act = G.activeSynergies(S); if (!act.length) return "";
-    return '<div class="sec"><span class="lbl">Synergies · ' + act.length + '</span><div class="synlist">' + act.map((s) => '<div class="synrow"><b>⚡ ' + s.name + '</b><span>' + G.charmById[s.a].name + ' + ' + G.charmById[s.b].name + ' — ' + s.desc + '</span></div>').join("") + '</div></div>';
-  }
   function shopBody() {
-    return keepHTML() + '<div class="shophead"><span class="lbl">Shop</span><button class="tb" data-reroll="1"' + (S.money < G.rerollCost(S) ? " disabled" : "") + '>Reroll <em>' + G.rerollCost(S) + '◎</em></button></div><div class="offers" id="offers">' + offersHTML() + '</div>' +
-      '<div class="sec"><span class="lbl">Your charms · ' + S.charms.length + '/' + S.charmSlots + '</span>' + ownedCharmsHTML(true) + '</div>' + synergiesHTML();
+    const left = G.picksLeft(S);
+    return '<div class="picks' + (left ? " on" : "") + '">' + (left > 1 ? "Pick " + left : left ? "Pick one" : "Picked") + '</div>' +
+      '<div class="offers" id="offers">' + offersHTML() + '</div>' + ownedRowHTML();
   }
   function sheetShop(r, fresh) {
     const T = G.target(S), up = G.upcoming(S), rr = r && r.raiseResult;
-    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + (rr === "won" ? " · raise made" : rr === "lost" ? " · raise missed" : "") + '</p>' +
-      '<div class="tally"><div>Round<b>' + S.score + '</b></div>' +
-      (r ? '<div>Over target<b>+' + r.ex + '</b></div>' + (rr === "won" ? '<div>Raise<b class="good">×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</b></div>' : rr === "lost" ? '<div>Raise<b class="bad">missed · ×0</b></div>' : "") + (r.contract ? '<div>Contract · ' + r.contract.name + '<b class="' + (r.contract.met ? "good" : "bad") + '">' + (r.contract.met ? "+" + r.contract.bonus : "missed") + '</b></div>' : "") + (r.perfect ? '<div>Perfect round<b class="good">+' + r.perfectChips + '◎</b></div>' : "") + (r.interest ? '<div>Vault interest<b>+' + r.interest + '◎</b></div>' : "") + (r.tip ? '<div>Tip Jar<b>+' + r.tip + '◎</b></div>' : "") + '<div>Payout<b>+' + r.earn + '◎</b></div>' : "") +
-      '<div>Chips<b id="mn">' + S.money + '◎</b></div></div>' +
+    const bonus = [];
+    if (r) {
+      if (rr === "won") bonus.push("raise made");
+      if (rr === "lost") bonus.push("raise missed");
+      if (r.perfect) bonus.push("perfect round");
+      if (r.contract && r.contract.met) bonus.push(r.contract.name + " +" + r.contract.bonus);
+    }
+    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + (bonus.length ? ' · ' + bonus.join(' · ') : '') + '</p>' +
       (fresh && fresh.length ? '<div class="unlocked">✦ Unlocked · ' + fresh.map((id) => G.charmById[id].name).join(", ") + '</div>' : "") +
+      '<div id="shopBody">' + shopBody() + '</div>' +
       (up ? '<div class="chalnext bossnext">' + IC.bubble(up.id, "charm charm--s") + '<div><span class="lbl">Next · Boss ante</span><b>' + up.name + '</b><span>' + up.desc + '</span><em>' + up.tell + ' ' + up.tip + '</em></div></div>' : (G.upcomingRule(S) ? '<div class="chalnext rulenext"><span class="lbl">Next · Table rule</span><b>' + G.upcomingRule(S).name + '</b><span>' + G.upcomingRule(S).desc + '</span></div>' : "")) +
-      contractHTML() + '<div id="shopBody">' + shopBody() + '</div>' +
-      '<button class="big" data-next="1" style="margin-top:1rem">Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</button>');
+      contractHTML() +
+      '<button class="big" data-next="1" style="margin-top:.9rem">Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</button>');
     if (fresh && fresh.length) FX.sfx.unlock();
   }
-  const refreshShop = () => { $("shopBody").innerHTML = shopBody(); const mn = $("mn"); if (mn) mn.textContent = S.money + "◎"; };
+  const refreshShop = () => { $("shopBody").innerHTML = shopBody(); };
   const shareText = () => "RAISE · " + S.seed + (S.deckId && S.deckId !== "classic" ? " · " + G.deckById[S.deckId].name : "") + " · " + (S.phase === "won" ? "Summit ▲" : (S.endless ? "Endless ante " : "Ante ") + (S.ante + 1)) + " · " + S.score + " pts" + (S.charms.length ? " · " + S.charms.map((id) => G.charmById[id].name).join(", ") : "");
   function missHTML() {
     const nm = G.nearMiss(S); if (!nm || !nm.close) return "";
@@ -314,7 +312,7 @@
   }
   function sheetWin() {
     openS('<h2 class="good">The Summit</h2><p class="sub">All thirty · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
-      '<div class="tally"><div>Chips<b>' + S.money + '◎</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
+      '<div class="tally"><div>Charms<b>' + S.charms.length + '</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
       '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' +
       '<button class="big" data-endless="1" style="margin-top:1rem">Keep climbing · Endless</button>' +
       '<div class="row2"><button class="big ghost" data-fresh="1">New run</button><button class="big ghost" data-share="1">Share</button></div>');
@@ -322,7 +320,7 @@
   function sheetMenu() {
     openS('<h2>This round</h2>' +
       '<div class="log" style="margin-top:.5rem">' + (S.log.length ? S.log.slice().reverse().map((e) => '<div class="' + (e.cls || "") + '"><span>' + e.t + '</span><em>' + cap(e.c) + '</em><b>' + (typeof e.p === "number" ? "+" + e.p : e.p) + '</b></div>').join("") : '<div style="border:0;color:var(--muted)">No plays yet</div>') + '</div>' +
-      '<div class="sec"><span class="lbl">Charms</span>' + ownedCharmsHTML(false) + '</div>' +
+      '<div class="sec"><span class="lbl">Charms</span>' + ownedCharmsHTML() + '</div>' +
       '<div class="sec"><span class="lbl">Build</span><div class="chips">' + chipsHTML() + '</div></div>' +
       '<div class="sec"><span class="lbl">Paytable · chips × mult, before cards and chain</span><div class="rtab">' + G.BY_TIER.map((t) => { const ki = G.KINDS.indexOf(t), k = { kind: ki, size: t.size || t.min, rank: 14 };
         return '<div><span>' + t.name + (t.min ? ' <em>' + (t.id === "stairs" ? 'Two pairs in a row · longer pays more' : t.id === "pairs" ? 'Up to 4 pairs · more pay more' : '5 cards · longer pays more') + '</em>' : '') + '</span><b>' + G.kchips(k) + ' × ' + (G.kmult(k) + S.mult[ki]) + '</b></div>'; }).join("") + '</div></div>' +
@@ -335,15 +333,16 @@
   }
   function sheetHowTo() {
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
-      '<p><b>Five plays and three discards a round.</b> Pick cards, make a hand, play it. Draw back to eight. <b>Jokers</b> stand for any card.</p>' +
+      '<p><b>Five plays and two discards a round.</b> Pick cards, make a hand, play it. Draw back to eight. <b>Jokers</b> stand for any card.</p>' +
       '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
       '<p><b>Score = Chips × Mult.</b> Every hand brings its own chips and mult — a pair 30 × 2, a full house 65 × 4, a straight flush 100 × 6. Each card adds its value in chips: 2 to 10 as printed, J Q K ten, an Ace eleven. So two Aces pay a little more than two 3s (104 against 72), not five times more. Longer straights and stairs bring more of both.</p>' +
       '<p><b>The chain is optional.</b> Beat the last hand — a higher kind (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs — and the chain climbs: <b>+1 Mult per step</b>. Play something lower and it still scores, but without the chain bonus, and the chain breaks back to ×1. A lone <b>Ace</b> opens the rung and keeps the chain, at the cost of one hand slot for the round.</p>' +
       '<p><b>Bombs</b> — quads 80 × 5 and straight flush 100 × 6 — beat anything. The table opens and the chain carries on.</p>' +
-      '<p><b>Discards</b> are three a round, separate from your plays. Throw any number of cards, draw the same back. A hand with no combination at all discards for free.</p>' +
-      '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> — ×1.8 the target with two plays left, ×2 with one — for a double payout, or bust it.</p>' +
-      '<p><b>Shop:</b> upgrades and <b>charms</b> — five slots, passive powers. Cards are never for sale: now and then a card you draw turns out <b>Gold</b>, <b>Glass</b>, <b>Steel</b> or a <b>Joker</b>, for good. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
-      '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with an unbroken chain and no discard is a <b>Perfect round</b>: +3 chips.</p>' +
+      '<p><b>Discards</b> are two a round, separate from your plays. Throw any number of cards, draw the same back. A hand with no combination at all discards for free.</p>' +
+      '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> — ×1.8 the target with two plays left, ×2 with one — for an extra bonus pick, or lose one.</p>' +
+      '<p><b>Clear an ante, pick one bonus.</b> Three on offer — upgrades and <b>charms</b> (five slots, passive powers) in one pile. No money, no prices, no selling: one choice and you are back at the table. Double the target and you get a fourth to choose from; a perfect round or a won Raise gives a second pick.</p>' +
+      '<p><b>Your hand carries over</b> and refreshes itself: cards that fit no combination are swapped for new ones automatically. Nothing is for sale — now and then a card you draw turns out <b>Gold</b>, <b>Glass</b>, <b>Steel</b> or a <b>Joker</b>, for good.</p>' +
+      '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with an unbroken chain and no discard is a <b>Perfect round</b>: one extra pick.</p>' +
       '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
@@ -425,15 +424,10 @@
   $("bHint").addEventListener("click", doHint);
   $("veil").addEventListener("click", (e) => {
     const t = e.target;
-    const buy = t.closest("[data-buy]");
-    if (buy) { if (G.buy(S, +buy.dataset.buy)) { FX.sfx.buy(); FX.buzz(10); save(); refreshShop(); } return; }
-    const sellb = t.closest("[data-sell]");
-    if (sellb) { if (G.sell(S, +sellb.dataset.sell)) { FX.sfx.discard(); save(); refreshShop(); } return; }
-    const cb2 = t.closest("[data-contract]");
-    if (cb2) { if (G.chooseContract(S, cb2.dataset.contract || null)) { FX.sfx.tick(); save(); refreshShop(); } return; }
-    const kb = t.closest("[data-keep]");
-    if (kb) { if (G.toggleKeep(S, +kb.dataset.keep)) { FX.sfx.tick(); save(); refreshShop(); } return; }
-    if (t.closest("[data-reroll]")) { if (G.reroll(S)) { FX.sfx.discard(); save(); refreshShop(); } return; }
+    const pick = t.closest("[data-take]");
+    if (pick) { if (G.take(S, +pick.dataset.take)) { FX.sfx.buy(); FX.buzz(10); FX.burstAt(pick, 22, 3, ["#ffd166", "#fff6d4"]); save(); refreshShop(); } return; }
+    const cm = t.closest("[data-charm]");
+    if (cm) { sheetCharm(cm.dataset.charm); return; }
     if (t.closest("[data-next]")) { G.nextAnte(S); ui.chisel = false; closeS(); render(); save(); const bc = G.current(S); if (bc) bossIntro(bc); return; }
     if (t.closest("[data-endless]")) { if (G.goEndless(S)) { FX.sfx.open(); save(); sheetShop(null, []); } return; }
     if (t.closest("[data-restart]")) { closeS(); begin(S.seed); return; }

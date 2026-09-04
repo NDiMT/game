@@ -6,7 +6,6 @@ const N = +process.argv[2] || 400;
 
 const PRIO = ["ladder", "cheap", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "wind", "court", "loyal", "vault", "sleight", "thrift", "ember", "goldsmith", "summiteer",
   "pl", "m1", "cs", "di", "wi", "tip", "m2", "m3", "m6", "th"];
-const CARD_PR = { wild: 12.5, gold: 14.5, steel: 16.5, glass: 18.5 };
 const ALL_UNLOCKED = G.CHARMS.map((c) => c.id);
 
 function discardOrphans(S) {
@@ -29,15 +28,11 @@ function playRound(S) {
   if (S.phase === "round") G.finish(S);
 }
 function shop(S) {
-  let again = true;
-  while (again) {
-    again = false;
-    const opts = S.offers.map((o, i) => ({ o, i, pr: o.kind === "card" ? CARD_PR[o.card.e] : PRIO.indexOf(o.id), cost: G.offerCost(S, o) }))
-      .filter((x) => !x.o.bought && x.pr >= 0 && G.canBuy(S, x.i).ok).sort((a, b) => a.pr - b.pr);
-    if (opts.length) { G.buy(S, opts[0].i); again = true; }
+  while (G.picksLeft(S) > 0) {
+    const opts = S.offers.map((o, i) => ({ o, i, pr: PRIO.indexOf(o.id) })).filter((x) => !x.o.bought && x.pr >= 0 && G.canTake(S, x.i).ok).sort((a, b) => a.pr - b.pr);
+    if (!opts.length) break;
+    G.take(S, opts[0].i);
   }
-  /* το χέρι μένει· πετά τα ορφανά (εκτός Άσων και wilds) */
-  G.orphans(S).forEach((i) => G.toggleKeep(S, i));
   G.nextAnte(S);
 }
 function run(targets, opts) {

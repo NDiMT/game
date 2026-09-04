@@ -3,12 +3,11 @@
 const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 150, STRAT = process.argv[3] || "base";
 const ALL = G.CHARMS.map((c) => c.id);
-const PRIO = ["ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "vault", "sleight", "cheap", "wind", "thrift", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "tip", "m2", "m3", "m6", "th"];
-const CARD_PR = { wild: 12.5, gold: 14.5, steel: 16.5, glass: 18.5 };
+const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
+  "pl", "m1", "cs", "di", "wi", "m2", "m3", "m6", "th", "sl", "gt", "sd"];
 
 const st = { kinds: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, breaks: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(30).fill(0), wins: 0,
-  ratio: Array.from({ length: 30 }, () => []), score: Array.from({ length: 30 }, () => []), bought: {}, money: Array.from({ length: 30 }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, raises: 0, raiseWon: 0, aceRounds: 0 };
+  ratio: Array.from({ length: 30 }, () => []), score: Array.from({ length: 30 }, () => []), bought: {}, picks: Array.from({ length: 30 }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, raises: 0, raiseWon: 0, aceRounds: 0 };
 
 function rankGroups(S) { const g = {}; S.hand.forEach((c, i) => { if (!c.h && !G.isWild(c)) (g[c.r] = g[c.r] || []).push(i); }); return g; }
 function discardStep(S) {
@@ -42,14 +41,13 @@ function playRound(S) {
   if (S.phase === "round") G.finish(S);
 }
 function shop(S) {
-  let again = true;
-  while (again) { again = false;
-    const opts = S.offers.map((o, i) => ({ o, i, pr: o.kind === "card" ? CARD_PR[o.card.e] : PRIO.indexOf(o.id), cost: G.offerCost(S, o) })).filter((x) => !x.o.bought && x.pr >= 0 && G.canBuy(S, x.i).ok).sort((a, b) => a.pr - b.pr);
-    if (opts.length) { const o = opts[0].o; G.buy(S, opts[0].i); const id = o.kind === "card" ? "card:" + o.card.e : o.id; st.bought[id] = (st.bought[id] || 0) + 1; again = true; } }
-  st.money[S.ante].push(S.money);
-  const g = rankGroups(S);
-  const swap = STRAT === "bombfish" ? S.hand.map((_, i) => i).filter((i) => { const c = S.hand[i]; return !G.isWild(c) && c.r !== 14 && (g[c.r] || []).length < 2; }) : G.orphans(S);
-  swap.forEach((i) => G.toggleKeep(S, i)); st.keptSwaps += swap.length;
+  /* Μία (ή δύο) επιλογές bonus, με προτεραιότητα από τη λίστα PRIO. */
+  while (G.picksLeft(S) > 0) {
+    const opts = S.offers.map((o, i) => ({ o, i, pr: PRIO.indexOf(o.id) })).filter((x) => !x.o.bought && x.pr >= 0 && G.canTake(S, x.i).ok).sort((a, b) => a.pr - b.pr);
+    if (!opts.length) break;
+    G.take(S, opts[0].i); st.bought[opts[0].o.id] = (st.bought[opts[0].o.id] || 0) + 1;
+  }
+  st.picks[S.ante].push(S.picks || 0);
   G.nextAnte(S);
 }
 for (let s = 0; s < N; s++) {
@@ -67,12 +65,12 @@ console.log(`strategy ${STRAT} · runs ${N} · wins ${st.wins} · mean death ant
 console.log("deaths/ante:", st.lost.join(" "));
 console.log("kinds played:", Object.entries(st.kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + (100 * v / st.plays).toFixed(0) + "%").join(" · "));
 console.log(`bombs: ${st.bombs} in ${st.rounds} rounds (${(100 * st.bombRounds / st.rounds).toFixed(1)}% of rounds) · bomb share of all points ${(100 * st.bombPts / st.totalPts).toFixed(1)}%`);
-console.log(`per round: plays ${(st.plays / st.rounds).toFixed(2)} · chain breaks ${(st.breaks / st.rounds).toFixed(2)} · aces ${(st.aces / st.rounds).toFixed(2)} · discards ${(st.discards / st.rounds).toFixed(2)} · swaps at shop ${(st.keptSwaps / st.rounds).toFixed(2)} · max chain p50 ${q(st.maxChain, .5)} p90 ${q(st.maxChain, .9)}`);
+console.log(`per round: plays ${(st.plays / st.rounds).toFixed(2)} · chain breaks ${(st.breaks / st.rounds).toFixed(2)} · aces ${(st.aces / st.rounds).toFixed(2)} · discards ${(st.discards / st.rounds).toFixed(2)} · max chain p50 ${q(st.maxChain, .5)} p90 ${q(st.maxChain, .9)}`);
 console.log("score/target p50 by ante:", st.ratio.map((a) => a.length ? q(a, .5).toFixed(1) : "-").join(" "));
 console.log("score/target p10 by ante:", st.ratio.map((a) => a.length ? q(a, .1).toFixed(2) : "-").join(" "));
 console.log("score p50 by ante:", st.score.map((a) => a.length ? q(a, .5) : "-").join(" "));
 console.log("score p25 by ante:", st.score.map((a) => a.length ? q(a, .25) : "-").join(" "));
-console.log("chips after shop p50:", st.money.map((a) => a.length ? q(a, .5) : "-").join(" "));
+console.log("unspent picks p50:", st.picks.map((a) => a.length ? q(a, .5) : "-").join(" "));
 console.log("bought:", Object.entries(st.bought).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + v).join(" · "));
 console.log(`rounds ended stuck with plays left: ${(100 * st.stuckEarly / st.rounds).toFixed(1)}% · raises ${st.raises} won ${st.raiseWon}`);
 console.log("death by challenge:", JSON.stringify(st.deathCause));
