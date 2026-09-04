@@ -184,3 +184,12 @@
   Wild Deck: οι Joker σκάνε διπλά συχνά.
 - Discards: βάση 1 ανά γύρο. Τα bonus μένουν και προσθέτουν: Discards+ (+1/γύρο, έως 2), Sleight
   (+1/γύρο), Spare Card και Four Plays (+1 στον γύρο τους), Wild Deck (2/γύρο).
+
+## Ενημέρωση 03/09 (λ) — discard = play
+
+- Discards χωρίς όριο· κάθε discard κοστίζει **1 Play** (τα άσπρα κουτάκια). Το Pass συνεχίζει να
+  κοστίζει μόνο αλυσίδα: Pass = αλυσίδα, Discard = play — δύο διαφορετικά νομίσματα.
+- **Nimble Hands** (αναβάθμιση, 9◎, έως 2): discard ½ play, μετά δωρεάν. Μισό play φαίνεται ως μισό
+  κουτάκι στο HUD· χέρι παίζεται μόνο με ≥1 play.
+- Sleight / Spare Card / Four Plays: το πρώτο discard του γύρου δωρεάν. Wild Deck ξεκινά με ½.
+- Νεκρό χέρι (κανένας συνδυασμός): discard δωρεάν, όπως πριν.

@@ -18,12 +18,12 @@ function discardOrphans(S) {
 }
 function playRound(S) {
   for (let guard = 0; guard < 200 && S.phase === "round"; guard++) {
-    if (S.playsLeft <= 0) { G.finish(S); break; }
-    if (G.canRaise(S) && S.playsLeft >= 3 && G.discardsLeft(S) >= 1) G.raise(S);
+    if (S.playsLeft < 1) { G.finish(S); break; }
+    if (G.canRaise(S) && S.playsLeft >= 3) G.raise(S);
     const m = G.suggest(S);
     if (m) { S.sel = m.idx.slice(); G.play(S); continue; }
     if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); continue; } }
-    if ((G.discardsLeft(S) > 0 || G.deadHand(S)) && S.pile.length > 0 && discardOrphans(S)) continue;
+    if ((G.deadHand(S) || S.playsLeft - G.discardCost(S) >= 1) && S.pile.length > 0 && discardOrphans(S)) continue;
     if (G.canPass(S)) { G.pass(S); continue; }
     G.finish(S); break;
   }

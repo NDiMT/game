@@ -86,8 +86,8 @@
     const f = $("fill"); f.style.width = Math.min(100, S.score / T * 100) + "%"; f.classList.toggle("done", cleared);
 
     const playsMax = S.playsMax - (ch && ch.id === "fewplays" ? 1 : 0);
-    $("plays").innerHTML = pips(S.playsLeft, playsMax);
-    $("discards").innerHTML = Array.from({ length: Math.min(4, S.roundDisc || 0) }, () => '<i class="free"></i>').join("") + ((S.roundDisc || 0) > 4 ? '<b>+' + (S.roundDisc - 4) + '</b>' : '') + (S.discards > 0 ? pips(Math.min(S.discards, 5), 5) + (S.discards > 5 ? '<b>+' + (S.discards - 5) + '</b>' : '') : '');
+    { const full = Math.floor(S.playsLeft), half = S.playsLeft - full >= 0.5; let ph = ""; for (let i = 0; i < playsMax; i++) ph += '<i class="' + (i < full ? "" : i === full && half ? "half" : "spent") + '"></i>'; $("plays").innerHTML = ph; }
+    $("discards").innerHTML = ""; $("discards").hidden = true;
     $("discards").classList.toggle("off", !!(ch && ch.id === "nodiscard"));
     $("pileN").textContent = S.pile.length; $("dpileN").textContent = S.discardPile.length;
 
@@ -104,7 +104,7 @@
     const ct = S.contract ? G.contractById[S.contract] : null, cst = G.contractStatus(S);
     $("contract").hidden = !ct;
     if (ct) { $("contractName").textContent = ct.name + " · " + (ct.pct ? "+" + ct.pct + "%" : "+" + ct.flat); $("contractSt").textContent = cst === "broken" ? "✕" : cst === "done" ? "✓" : cst === "ok" ? "…" : "○"; $("contract").className = "chal contract " + cst; }
-    document.body.classList.toggle("lastplay", S.playsLeft === 1 && !cleared);
+    document.body.classList.toggle("lastplay", S.playsLeft >= 1 && S.playsLeft < 2 && !cleared);
     $("tnote").textContent = "";
     $("chainN").textContent = "×" + pos;
     document.body.dataset.heat = pos >= 7 ? 3 : pos >= 5 ? 2 : pos >= 3 ? 1 : 0;
@@ -132,7 +132,7 @@
         if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise <em>×' + G.raiseMulFor(S) + ' · pay ×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</em></button>';
         if (S.raised) tools += '<span class="toast gold raised" style="flex:1">RAISED · reach ' + S.raiseTarget + '</span>';
         if (S.chiselMax) tools += '<button class="tb" data-act="chisel"' + (S.chisel <= 0 ? " disabled" : "") + '>Chisel <em>' + S.chisel + '</em></button>';
-        if (cleared && S.playsLeft > 0 && !S.raised) tools += '<button class="tb" data-act="end">End round</button>';
+        if (cleared && S.playsLeft >= 1 && !S.raised) tools += '<button class="tb" data-act="end">End round</button>';
       }
     }
     $("tools").innerHTML = tools;
@@ -144,10 +144,10 @@
     const pv = $("preview"); pv.className = "preview"; let pvt = "";
     const whyNot = () => (e.k.kind === S.rung.kind ? (e.k.size < S.rung.size ? (S.rung.kind === 8 ? "need " + S.rung.size / 2 + " pairs or more" : "too short · " + S.rung.size + " cards or more") : "not higher than " + G.rname(S.rung.rank)) : "lower hand than " + G.KINDS[S.rung.kind].name.toLowerCase());
     if (ui.chisel) { go.classList.add("idle"); go.disabled = true; go.innerHTML = '<span class="go__t">Chisel</span><span class="go__s">Pick a card, then a rank</span>'; }
-    else if (S.playsLeft <= 0) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "Cleared" : "Short of the target") + '</span>'; }
+    else if (S.playsLeft < 1) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "Cleared" : "Short of the target") + '</span>'; }
     else if (!S.sel.length) {
-      go.classList.add("idle"); go.disabled = true; pvt = G.beatText(S) + (S.playsLeft === 1 ? " · last play" : ""); pv.classList.add("hint");
-      go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Beat " + G.clabel(S.rung) : "Any hand opens") + (S.playsLeft === 1 ? " · last play" : "") + '</span>';
+      go.classList.add("idle"); go.disabled = true; pvt = G.beatText(S) + (S.playsLeft < 2 ? " · last play" : ""); pv.classList.add("hint");
+      go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Beat " + G.clabel(S.rung) : "Any hand opens") + (S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
     else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">Keep chain ×' + pos + '</span><span class="go__p">↺</span>'; pvt = "Ace in the Hole · the rung opens, the chain stays at ×" + pos + ", no play used"; pv.classList.add("ace"); }
     else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + 'Discard?' + '</span>'; pvt = S.sel.length + " cards · not a hand" + (G.canDiscard(S) ? " · swipe down to discard" : ""); pv.classList.add("bad"); }
@@ -165,8 +165,8 @@
     { const tn = S.played.length; if (tn) { const free = tc.clientHeight, cur = parseInt(tc.style.getPropertyValue("--tcw")) || 40;
       if (free > 0) tc.style.setProperty("--tcw", Math.max(24, Math.min(cur, Math.floor((free - 6) / 1.42))) + "px"); } }
     $("bPass").disabled = ui.chisel || !G.canPass(S); { const kp = G.passKeep(S); $("passN").textContent = kp === 1 ? "×1" : kp > 0.5 ? "×¾" : "×½"; }
-    $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = G.discardsLeft(S);
-    $("bHint").disabled = ui.chisel || S.playsLeft <= 0;
+    $("bDisc").disabled = ui.chisel || !G.canDiscard(S); { const dc = G.deadHand(S) ? 0 : G.discardCost(S); $("discN").textContent = dc === 0 ? "Free" : dc === 1 ? "−1 ▢" : "−½ ▢"; }
+    $("bHint").disabled = ui.chisel || S.playsLeft < 1;
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
   const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : k.kind === 8 ? G.clabel(k).replace(/ \S+$/, "") : G.clabel(k);
@@ -181,7 +181,7 @@
 
   /* ---------- actions ---------- */
   function doPlay() {
-    if (S.playsLeft <= 0) { end(); return; }
+    if (S.playsLeft < 1) { end(); return; }
     const from = selRects();
     const ev = G.play(S); if (!ev) return;
     ui.note = null;
@@ -236,7 +236,7 @@
     if (S.chiselMax > 1) c.push("Chisel <b>" + S.chiselMax + "</b>");
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
     if (S.chainStart) c.push("Head Start <b>+" + S.chainStart + "</b>");
-    { const d = G.CFG.roundDiscards + (S.roundDiscBonus || 0) + (G.has(S, "sleight") ? 1 : 0); if (d > 1) c.push("Discards / round <b>" + d + "</b>"); }
+    if (S.discLevel) c.push("Discards <b>" + (S.discLevel >= 2 ? "free" : "½ play") + "</b>");
     if (S.removed.length) c.push("Culled <b>" + S.removed.map(G.rname).join(",") + "</b>");
     const enh = {}; S.deck.forEach((d) => { if (d.e) enh[d.e] = (enh[d.e] || 0) + 1; });
     Object.keys(enh).forEach((k) => c.push(G.ENH[k].name + " <b>" + enh[k] + "</b>"));
@@ -338,7 +338,7 @@
       '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
       '<p><b>Every hand must beat the last</b> — a higher kind of hand (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs. Score = (hand base + <b>card values</b>) × chain: every card pays its rank, J 11 up to A 14, so two Aces beat two 3s. Longer straights and stairs pay more.</p>' +
       '<p><b>Bombs</b> — quads and straight flush — go off on anything for a flat <b>1000</b>, or (200 + card values) × chain when that pays more. The table opens and the chain carries on.</p>' +
-      '<p><b>Discard</b> any number of cards and draw new ones. You get one discard a round; upgrades and charms can add more per round. <b>Pass</b> resets the rung at the cost of half your chain, as often as you like. A lone <b>Ace</b> resets and keeps the chain, but your hand stays one card short for the round.</p>' +
+      '<p><b>Discard</b> any number of cards and draw new ones, as often as you like — each discard costs one <b>play</b> (half with Nimble Hands, nothing with it twice). <b>Pass</b> resets the rung at the cost of half your chain, as often as you like. A lone <b>Ace</b> resets and keeps the chain, but your hand stays one card short for the round.</p>' +
       '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> — ×1.8 the target with two plays left, ×2 with one — for a double payout, or bust it.</p>' +
       '<p><b>Shop:</b> upgrades and <b>charms</b> — five slots, passive powers. Cards are never for sale: now and then a card you draw turns out <b>Gold</b>, <b>Glass</b>, <b>Steel</b> or a <b>Joker</b>, for good. Sell to make room. <b>Your hand carries over</b> to the next round — in the shop, tap any card to swap it for a fresh one.</p>' +
       '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with no pass and no discard is a <b>Perfect round</b>: +3 chips.</p>' +
