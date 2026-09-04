@@ -1,7 +1,7 @@
 {
   "name": "RAISE",
   "short_name": "RAISE",
-  "description": "A solo card game. Every hand must climb.",
+  "description": "A solo card game. Climb the chain, or cash in.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",

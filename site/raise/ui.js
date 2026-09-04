@@ -5,7 +5,7 @@
   const $ = (id) => document.getElementById(id);
   const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
   const KEY = "raise.run.v6", LIFE = "raise.life.v1";
-  let S = null, shown = 0, ui = { chisel: false, note: null, noteT: 0 }, installEvt = null;
+  let S = null, shown = 0, ui = { note: null, noteT: 0 }, installEvt = null;
 
   /* ---------- storage ---------- */
   const save = () => { try { localStorage.setItem(KEY, G.serialize(S)); } catch (e) {} };
@@ -40,7 +40,7 @@
   }
 
   /* ---------- run lifecycle ---------- */
-  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.chisel = false; ui.note = null; shown = 0; save(); hideStart(); render(); }
+  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.note = null; shown = 0; save(); hideStart(); render(); }
   function resumeOrBegin() {
     const saved = load();
     if (saved) { S = saved; shown = S.score; render(); }
@@ -75,7 +75,7 @@
   const charmToken = (id, extra) => { const c = G.charmById[id]; return '<button class="charm" data-charm="' + id + '" aria-label="' + c.name + '" style="--h:' + IC.hue(id) + '"' + (extra || "") + '>' + IC.svg(id) + '</button>'; };
 
   /* ---------- render ---------- */
-  function render() {
+  function render(keepHand) {
     const T = G.goal(S), e = G.evalSel(S), ch = G.current(S), pos = G.chainPos(S), cleared = S.score >= T;
 
     FX.countUp($("score"), shown, S.score); shown = S.score;
@@ -104,9 +104,8 @@
     const rl = G.currentRule(S); $("rule").hidden = !rl; if (rl) $("ruleName").textContent = rl.name;
     const ct = S.contract ? G.contractById[S.contract] : null, cst = G.contractStatus(S);
     $("contract").hidden = !ct;
-    if (ct) { $("contractName").textContent = ct.name + " · " + (ct.pct ? "+" + ct.pct + "%" : "+" + ct.flat); $("contractSt").textContent = cst === "broken" ? "✕" : cst === "done" ? "✓" : cst === "ok" ? "…" : "○"; $("contract").className = "chal contract " + cst; }
+    if (ct) { $("contractName").textContent = ct.name + " · +" + ct.pct + "%"; $("contractSt").textContent = cst === "broken" ? "✕" : cst === "done" ? "✓" : cst === "ok" ? "…" : "○"; $("contract").className = "chal contract " + cst; }
     document.body.classList.toggle("lastplay", S.playsLeft >= 1 && S.playsLeft < 2 && !cleared);
-    $("tnote").textContent = "";
     $("chainN").textContent = "×" + pos;
     $("chain").classList.toggle("cold", pos <= 1);
     document.body.dataset.heat = pos >= 7 ? 3 : pos >= 5 ? 2 : pos >= 3 ? 1 : 0;
@@ -118,25 +117,22 @@
       tc.style.setProperty("--tcw", Math.max(26, Math.min(Math.round(cw * 0.9), tn ? Math.floor((tw - (tn - 1) * 4) / tn) : 99)) + "px"); }
     tc.classList.toggle("fresh", S.ante === 0 && !S.rung && !S.log.length);
 
-    const n = S.hand.length; fitHand(n);
-    const hand = $("hand");
-    hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n)).join("");
-    hand.classList.toggle("chisel", ui.chisel);
-    S.hand.forEach((c) => { delete c.n; delete c.x; });
+    const n = S.hand.length, hand = $("hand");
+    if (keepHand && hand.children.length === n) {
+      Array.prototype.forEach.call(hand.children, (el, i) => {
+        const on = S.sel.indexOf(i) >= 0;
+        el.classList.toggle("sel", on); el.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    } else {
+      fitHand(n);
+      hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n)).join("");
+      S.hand.forEach((c) => { delete c.n; delete c.x; });
+    }
 
     let tools = "";
-    if (ui.chisel) {
-      tools = S.sel.length === 1
-        ? '<div class="picker">' + rankButtons() + '</div><button class="tb on" data-act="chisel">Cancel</button>'
-        : '<span class="toast gold" style="flex:1">Tap a card to rewrite.</span><button class="tb on" data-act="chisel">Cancel</button>';
-    } else {
-      {
-        if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise <em>×' + G.raiseMulFor(S) + ' · pay ×' + (G.has(S, "gambler") ? 3 : G.CFG.raisePayout) + '</em></button>';
-        if (S.raised) tools += '<span class="toast gold raised" style="flex:1">RAISED · reach ' + S.raiseTarget + '</span>';
-        if (S.chiselMax) tools += '<button class="tb" data-act="chisel"' + (S.chisel <= 0 ? " disabled" : "") + '>Chisel <em>' + S.chisel + '</em></button>';
-        if (cleared && S.playsLeft >= 1 && !S.raised) tools += '<button class="tb" data-act="end">End round</button>';
-      }
-    }
+    if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise to ' + Math.round(G.target(S) * G.raiseMulFor(S)) + ' <em>+' + (G.has(S, "gambler") ? 2 : 1) + ' pick</em></button>';
+    if (S.raised) tools += '<span class="toast gold raised" style="flex:1">RAISED · reach ' + S.raiseTarget + ' or lose a pick</span>';
+    if (cleared && S.playsLeft >= 1 && !S.raised) tools += '<button class="tb" data-act="end">Bank it · end round</button>';
     $("tools").innerHTML = tools;
     /* Σημειώσεις/tooltips: αιωρούμενη κάρτα πάνω από το dock, δεν μετακινεί τίποτα· κλείνει με άγγιγμα. */
     const tipOn = !!ui.note && Date.now() < ui.noteT;
@@ -144,19 +140,20 @@
 
     const go = $("bPlay"); go.className = "go";
     const pv = $("preview"); pv.className = "preview"; let pvt = "";
-    if (ui.chisel) { go.classList.add("idle"); go.disabled = true; go.innerHTML = '<span class="go__t">Chisel</span><span class="go__s">Pick a card, then a rank</span>'; }
-    else if (S.playsLeft < 1) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "Cleared" : "Short of the target") + '</span>'; }
+    if (S.playsLeft < 1) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "Cleared · tap for your bonus" : "Short by " + (T - S.score)) + '</span>'; }
     else if (!S.sel.length) {
       go.classList.add("idle"); go.disabled = true; pvt = G.beatText(S) + (S.playsLeft < 2 ? " · last play" : ""); pv.classList.add("hint");
       go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
-    else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">Keep chain ×' + pos + '</span><span class="go__p">↺</span>'; pvt = "Ace in the Hole · the rung opens, the chain stays at ×" + pos + ", no play used"; pv.classList.add("ace"); }
-    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + 'Discard?' + '</span>'; pvt = S.sel.length + " cards · not a hand" + (G.canDiscard(S) ? " · swipe down to discard" : ""); pv.classList.add("bad"); }
+    else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">Open the rung · keep chain ×' + pos + '</span><span class="go__p">↺</span>'; pvt = "Ace in the Hole · the rung opens and the chain stays at ×" + pos + " · it costs no play, but your hand is one card shorter for the rest of the round"; pv.classList.add("ace"); }
+    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? "Discard these instead?" : "Pick a pair, a run or a set") + '</span>'; pvt = S.sel.length + (S.sel.length === 1 ? " card" : " cards") + " · these make no hand" + (G.canDiscard(S) ? " · swipe down to discard them" : ""); pv.classList.add("bad"); }
     else {
       go.classList.add(e.up ? "ok" : "down"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.classList.add(e.up ? "ok" : "warn");
       const calc = e.chips + " × " + e.mult;
-      go.innerHTML = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + goLabel(e.k) + ' · ' + calc + '</span>';
-      pvt = G.clabel(e.k) + (G.crange(e.k) ? " · " + G.crange(e.k) : "") + " · " + calc + " = " + e.pts + (e.up ? "" : " · breaks the chain") + (e.notes.length ? " · " + e.notes.join(", ") : "");
+      go.innerHTML = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc : 'Breaks the chain · ' + calc) + '</span>';
+      /* Η προεπισκόπηση δείχνει το άθροισμα και το πολύ τρεις λόγους — αλλιώς γίνεται σεντόνι. */
+      const why = e.notes.slice(0, 3).concat(e.notes.length > 3 ? ["+" + (e.notes.length - 3) + " more"] : []);
+      pvt = G.clabel(e.k) + (G.crange(e.k) ? " · " + G.crange(e.k) : "") + " · " + calc + " = " + e.pts + (e.up ? "" : " · the chain breaks back to ×1") + (why.length ? " · " + why.join(", ") : "");
     }
     pv.innerHTML = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       : cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + "</span>").join(' <i>·</i> ');
@@ -164,12 +161,11 @@
     /* Τα φύλλα του τραπεζιού χωράνε και σε ύψος: μετά το preview, μέτρα τον ελεύθερο χώρο και ψαλίδισε. */
     { const tn = S.played.length; if (tn) { const free = tc.clientHeight, cur = parseInt(tc.style.getPropertyValue("--tcw")) || 40;
       if (free > 0) tc.style.setProperty("--tcw", Math.max(24, Math.min(cur, Math.floor((free - 6) / 1.42))) + "px"); } }
-    $("bDisc").disabled = ui.chisel || !G.canDiscard(S); $("discN").textContent = G.deadHand(S) && dleft <= 0 ? "Free" : dleft;
-    $("bHint").disabled = ui.chisel || S.playsLeft < 1;
+    $("bDisc").disabled = !G.canDiscard(S); $("discN").textContent = G.deadHand(S) && dleft <= 0 ? "Free" : dleft;
+    $("bHint").disabled = S.playsLeft < 1;
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
   const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : k.kind === 8 ? G.clabel(k).replace(/ \S+$/, "") : G.clabel(k);
-  function rankButtons() { let h = ""; for (let r = 2; r <= 14; r++) h += '<button data-rank="' + r + '">' + G.rname(r) + '</button>'; return h; }
   function note(msg, ms) { ui.note = cap(msg); ui.noteT = Date.now() + (ms || 3800); render(); setTimeout(() => { if (Date.now() >= ui.noteT) render(); }, (ms || 3800) + 100); }
   function callout(t) { if (!t) return; const el = $("callout"); el.textContent = t; el.classList.toggle("bomb", t === "Bomb!"); el.classList.toggle("target", t === "Target!"); FX.pulse(el, "show"); }
   function selRects() { return S.sel.map((i) => { const el = $("hand").querySelector('[data-i="' + i + '"]'); return el ? el.getBoundingClientRect() : null; }); }
@@ -203,7 +199,7 @@
   function enhPop() {
     const e = S.enhNew && S.enhNew.length ? S.enhNew : null; S.enhNew = [];
     if (!e) return;
-    setTimeout(() => { callout(G.ENH[e[0]].name + " card!"); FX.sfx.unlock(); FX.burstAt($("hand"), 26, 3.5, e[0] === "gold" ? ["#f5cf6a", "#fff1bf"] : e[0] === "glass" ? ["#dff5fa", "#8fd0e2"] : ["#e2e6ea", "#a9b2bb"]); }, 520);
+    setTimeout(() => { callout(e[0] === "wild" ? "Joker!" : G.ENH[e[0]].name + " card!"); FX.sfx.unlock(); FX.burstAt($("hand"), 26, 3.5, e[0] === "gold" ? ["#f5cf6a", "#fff1bf"] : e[0] === "glass" ? ["#dff5fa", "#8fd0e2"] : ["#e2e6ea", "#a9b2bb"]); }, 520);
   }
   function doDiscard() {
     if (!G.canDiscard(S)) return;
@@ -212,9 +208,9 @@
   }
   function doHint() {
     const m = G.suggest(S);
-    if (m) { S.sel = m.idx.slice(); ui.note = null; FX.sfx.tick(); render(); return; }
+    if (m) { S.sel = m.idx.slice(); ui.note = null; FX.sfx.tick(); render(true); return; }
     const o = G.orphans(S);
-    if (G.canDiscardAny(S) && o.length) { S.sel = o.slice(0, Math.min(4, o.length)); note("These fit no hand — discard them and draw."); return; }
+    if (G.canDiscardAny(S) && o.length) { S.sel = o.slice(0, Math.min(4, o.length)); note("These fit no hand — swipe down or tap Discard to swap them."); return; }
     note(G.stuckReason(S));
   }
   function end() {
@@ -232,7 +228,6 @@
     const c = [];
     G.BY_TIER.forEach((t) => { const m = S.mult[G.KINDS.indexOf(t)]; if (m > 0) c.push(t.short + " <b>+" + m + " mult</b>"); });
     if (S.playsMax > G.CFG.plays) c.push("Plays <b>" + S.playsMax + "</b>");
-    if (S.chiselMax > 1) c.push("Chisel <b>" + S.chiselMax + "</b>");
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
     if (S.chainStart) c.push("Head Start <b>+" + S.chainStart + "</b>");
     if (S.discMore) c.push("Discards <b>" + (G.CFG.discards + S.discMore) + "</b>");
@@ -266,7 +261,7 @@
   }
   function contractHTML() {
     const c = G.upcomingContract(S); if (!c) return "";
-    return '<div class="chalnext ctrnext"><span class="lbl">Next · Contract</span><b>' + c.name + ' · ' + (c.pct ? "+" + c.pct + "%" : "+" + c.flat) + '</b><span>' + c.desc + ' Optional side goal — miss it and you only lose the bonus.</span></div>';
+    return '<div class="chalnext ctrnext"><span class="lbl">Next · Contract</span><b>' + c.name + ' · +' + c.pct + '% of the round</b><span>' + c.desc + ' Optional — miss it and you simply do not get the bonus.</span></div>';
   }
   const synHint = (id) => G.synergyFor(S, id).map((s) => { const p = G.charmById[s.a === id ? s.b : s.a]; return '<i class="syn">⚡ ' + s.name + ' with ' + p.name + ' — ' + s.desc + '</i>'; }).join("");
   function shopBody() {
@@ -301,13 +296,23 @@
     else body = '<span>Nothing in your hand made a combination. One more discard would have opened it up.</span>';
     return '<div class="miss"><b>Short by ' + nm.gap + '</b>' + body + '</div>';
   }
+  /* Μία συμβουλή τη φορά στην οθόνη Busted — κάθε φορά διαφορετική. */
+  const BUSTED_TIPS = [
+    "Every step of chain is +1 Mult. Four cheap hands that climb beat one fat hand that does not.",
+    "A hand that does not climb still scores — it just scores flat. Sometimes that is the right call.",
+    "Discards do not cost you a play. Two hands you cannot use are two hands you should throw.",
+    "Clear the target with plays to spare and Raise: an extra bonus is worth more than a safe round.",
+    "A lone Ace opens the table and keeps the chain. It costs a card, not a play.",
+    "Bombs beat anything and the chain carries on through them. Save one for a wall.",
+    "The shape of the hand matters far more than the rank of the cards. Build shapes.",
+  ];
   function sheetLose(newBest) {
     const rec = (life().seeds || {})[S.seed];
     openS('<h2 class="bad">Busted</h2><p class="sub">Ante ' + (S.ante + 1) + ' · ' + S.score + ' of ' + G.target(S) + '</p>' + missHTML() +
       (newBest && S.ante > 0 ? '<div class="unlocked">✦ New best on this seed</div>' : "") +
       '<div class="tally"><div>Antes cleared<b>' + S.ante + '</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div>' + (rec && !newBest ? '<div>Best on this seed<b>Ante ' + rec.ante + ' · ' + rec.score + '</b></div>' : "") + '<div>Seed<b>' + S.seed + '</b></div></div>' +
       (S.charms.length ? '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' : "") +
-      '<p class="sub" style="margin:.9rem 0">Five plays. Chips × Mult. The chain is where the mult comes from.</p>' +
+      '<p class="sub" style="margin:.9rem 0">' + BUSTED_TIPS[(S.ante + S.stats.plays) % BUSTED_TIPS.length] + '</p>' +
       '<button class="big" data-restart="1">Same seed, again</button><div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>');
   }
   function sheetWin() {
@@ -333,17 +338,19 @@
   }
   function sheetHowTo() {
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
-      '<p><b>Five plays and two discards a round.</b> Pick cards, make a hand, play it. Draw back to eight. <b>Jokers</b> stand for any card.</p>' +
-      '<p><b>Hands:</b> pair · two, three or four pairs · trips · <b>stairs</b> of consecutive pairs (22 33 44) · <b>straight</b> of five or more · full house · bombs: quads and straight flush.</p>' +
-      '<p><b>Score = Chips × Mult.</b> Every hand brings its own chips and mult — a pair 30 × 2, a full house 65 × 4, a straight flush 100 × 6. Each card adds its value in chips: 2 to 10 as printed, J Q K ten, an Ace eleven. So two Aces pay a little more than two 3s (104 against 72), not five times more. Longer straights and stairs bring more of both.</p>' +
-      '<p><b>The chain is optional.</b> Beat the last hand — a higher kind (pair &lt; pairs &lt; trips &lt; stairs &lt; straight &lt; full house), or the same kind Tichu-style: same length and higher rank, or a longer straight / stairs — and the chain climbs: <b>+1 Mult per step</b>. Play something lower and it still scores, but without the chain bonus, and the chain breaks back to ×1. A lone <b>Ace</b> opens the rung and keeps the chain, at the cost of one hand slot for the round.</p>' +
-      '<p><b>Bombs</b> — quads 80 × 5 and straight flush 100 × 6 — beat anything. The table opens and the chain carries on.</p>' +
-      '<p><b>Discards</b> are two a round, separate from your plays. Throw any number of cards, draw the same back. A hand with no combination at all discards for free.</p>' +
-      '<p><b>Reach the target</b> in five plays. Cleared early? <b>Raise</b> — ×1.8 the target with two plays left, ×2 with one — for an extra bonus pick, or lose one.</p>' +
-      '<p><b>Clear an ante, pick one bonus.</b> Three on offer — upgrades and <b>charms</b> (five slots, passive powers) in one pile. No money, no prices, no selling: one choice and you are back at the table. Double the target and you get a fourth to choose from; a perfect round or a won Raise gives a second pick.</p>' +
-      '<p><b>Your hand carries over</b> and refreshes itself: cards that fit no combination are swapped for new ones automatically. Nothing is for sale — now and then a card you draw turns out <b>Gold</b>, <b>Glass</b>, <b>Steel</b> or a <b>Joker</b>, for good.</p>' +
-      '<p><b>Table rules</b> change most antes (Red Night, Cheap Pairs, Runway…). Tap the ribbon to read one. Every round also brings a <b>contract</b>: an optional side goal for a bonus — break it and you only lose the bonus. A round with an unbroken chain and no discard is a <b>Perfect round</b>: one extra pick.</p>' +
-      '<p>Thirty antes, gentle at first, steep at the end. A challenge every five. The Summit at 30.</p></div>' +
+      '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out.</p>' +
+      '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
+      '<p><b>The hands</b>, weakest to strongest: pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
+      '<p><b>Score = Chips × Mult.</b> The shape sets both — a pair is 30 × 2, a full house 65 × 4, a straight flush 100 × 6. Then every card adds chips: 2 to 10 as printed, J Q K ten, an Ace eleven. Two Aces make 104 and two 3s make 72 — the card matters, it does not decide the round.</p>' +
+      '<p><b>The chain is where the points are.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step above the first is +1 Mult</b>, up to ×8. Play something lower and it still scores its plain Chips × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
+      '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b></p>' +
+      '<p>A lone <b>Ace</b> is the escape hatch: it opens the table and keeps your chain, costs no play, but leaves your hand one card shorter for the rest of the round. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
+      '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. If your hand makes no combination at all, the discard is free.</p>' +
+      '<p><b>Cleared it early? Raise.</b> The target goes up — ×1.8 with two plays left, ×2 with one — and if you make it you leave with an extra bonus. Miss it and you leave with one fewer.</p>' +
+      '<p><b>Clear an ante, pick one bonus.</b> Three on offer, upgrades and <b>charms</b> together. No money, no prices, no selling — one tap and you are back at the table. Double the target and a fourth appears; a perfect round (chain never broken, no discard, every play used) gives a second pick. Charms are passive and permanent: five slots to start.</p>' +
+      '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Gold</b> (Mult ×2, and two of them is ×4), <b>Glass</b> (Mult ×3, then it shatters), <b>Steel</b> (+20 Chips and it always comes back to your hand) or a <b>Joker</b>.</p>' +
+      '<p>Most antes carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway — and every one carries a <b>contract</b>, an optional side goal worth a slice of your round score. Tap either ribbon to read it. Every fifth ante is a <b>boss</b> with a rule that bites and a target three quarters as high.</p>' +
+      '<p>Thirty antes. Gentle at first, steep at the end. The Summit at 30 — and Endless after that.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
   function sheetCollection() {
@@ -395,21 +402,17 @@
     swipe.did = true;
     const go = $("bPlay");
     if (dy < 0 && !go.disabled && (go.classList.contains("ok") || go.classList.contains("ace"))) doPlay();
-    else if (dy > 0 && S.sel.length) { if (G.canDiscard(S) && !G.evalSel(S).legal) doDiscard(); else { S.sel = []; render(); } }
+    else if (dy > 0 && S.sel.length) { if (G.canDiscard(S)) doDiscard(); else { S.sel = []; render(true); } }
   });
   hand.addEventListener("click", (e) => {
     if (swipe.did) { swipe.did = false; return; }
     const b = e.target.closest("[data-i]"); if (!b || S.phase !== "round") return;
     const i = +b.dataset.i; ui.note = null;
-    if (ui.chisel) { if (!G.isWild(S.hand[i])) { S.sel = [i]; render(); } return; }
-    if (G.toggle(S, i)) { FX.sfx.tick(); FX.buzz(6); render(); }
+    if (G.toggle(S, i)) { FX.sfx.tick(); FX.buzz(6); render(true); }
   });
   $("tools").addEventListener("click", (e) => {
-    const rk = e.target.closest("[data-rank]");
-    if (rk) { if (G.chisel(S, S.sel[0], +rk.dataset.rank)) { ui.chisel = false; FX.sfx.buy(); FX.buzz(12); render(); save(); } return; }
     const a = e.target.closest("[data-act]"); if (!a) return;
     const act = a.dataset.act;
-    if (act === "chisel") { ui.chisel = !ui.chisel; S.sel = []; render(); }
     if (act === "hint") doHint();
     if (act === "end") end();
     if (act === "raise") { if (G.raise(S)) { FX.sfx.raise(); FX.buzz([10, 30, 10]); FX.burstAt($("bPlay"), 26, 3.5); render(); save(); } }
@@ -417,7 +420,7 @@
   $("charms").addEventListener("click", (e) => { const c = e.target.closest("[data-charm]"); if (c) sheetCharm(c.dataset.charm); });
   $("chal").addEventListener("click", () => { const c = G.current(S); if (c) note(c.name + " — " + c.desc, 4500); });
   $("rule").addEventListener("click", () => { const r = G.currentRule(S); if (r) note(r.name + " — " + r.desc, 4500); });
-  $("contract").addEventListener("click", () => { const c = S.contract && G.contractById[S.contract]; if (c) note("Contract · " + c.name + " — " + c.desc + " Reward " + (c.pct ? "+" + c.pct + "% of the round" : "+" + c.flat + " points") + ".", 5000); });
+  $("contract").addEventListener("click", () => { const c = S.contract && G.contractById[S.contract]; if (c) note("Contract · " + c.name + " — " + c.desc + " Reward: +" + c.pct + "% of the round score, added before the target is checked.", 5000); });
   $("bPlay").addEventListener("click", doPlay);
   $("bDisc").addEventListener("click", doDiscard);
   $("bMenu").addEventListener("click", sheetMenu);
@@ -428,7 +431,7 @@
     if (pick) { if (G.take(S, +pick.dataset.take)) { FX.sfx.buy(); FX.buzz(10); FX.burstAt(pick, 22, 3, ["#ffd166", "#fff6d4"]); save(); refreshShop(); } return; }
     const cm = t.closest("[data-charm]");
     if (cm) { sheetCharm(cm.dataset.charm); return; }
-    if (t.closest("[data-next]")) { G.nextAnte(S); ui.chisel = false; closeS(); render(); save(); const bc = G.current(S); if (bc) bossIntro(bc); return; }
+    if (t.closest("[data-next]")) { G.nextAnte(S); closeS(); render(); save(); const bc = G.current(S); if (bc) bossIntro(bc); return; }
     if (t.closest("[data-endless]")) { if (G.goEndless(S)) { FX.sfx.open(); save(); sheetShop(null, []); } return; }
     if (t.closest("[data-restart]")) { closeS(); begin(S.seed); return; }
     if (t.closest("[data-fresh]")) { closeS(); begin(""); return; }
