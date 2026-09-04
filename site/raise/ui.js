@@ -4,13 +4,13 @@
   const G = window.RAISE, FX = window.FX, IC = window.ICONS;
   const $ = (id) => document.getElementById(id);
   const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
-  const KEY = "raise.run.v6", LIFE = "raise.life.v1";
+  const KEY = "raise.run.v7", LIFE = "raise.life.v1";
   let S = null, shown = 0, ui = { note: null, noteT: 0 }, installEvt = null;
 
   /* ---------- storage ---------- */
   const save = () => { try { localStorage.setItem(KEY, G.serialize(S)); } catch (e) {} };
   const load = () => { try { return G.restore(localStorage.getItem(KEY)); } catch (e) { return null; } };
-  const life = () => { try { return Object.assign({ runs: 0, wins: 0, best: 0, bestScore: 0, gold: 0, glass: 0, quads: 0, raiseWon: 0, chain7: 0, plays: 0, aces: 0 }, JSON.parse(localStorage.getItem(LIFE) || "{}")); } catch (e) { return { runs: 0, wins: 0, best: 0, bestScore: 0, gold: 0, glass: 0, quads: 0, raiseWon: 0, chain7: 0, plays: 0, aces: 0 }; } };
+  const life = () => { try { return Object.assign({ runs: 0, wins: 0, best: 0, bestScore: 0, gold: 0, glass: 0, quads: 0, chain7: 0, plays: 0, aces: 0 }, JSON.parse(localStorage.getItem(LIFE) || "{}")); } catch (e) { return { runs: 0, wins: 0, best: 0, bestScore: 0, gold: 0, glass: 0, quads: 0, chain7: 0, plays: 0, aces: 0 }; } };
   const saveLife = (l) => { try { localStorage.setItem(LIFE, JSON.stringify(l)); } catch (e) {} };
   const unlockedFrom = (l) => G.CHARMS.filter((c) => !c.lock || (l[c.lock.key] || 0) >= c.lock.n).map((c) => c.id);
   const DECK_KEY = "raise.deck.v1";
@@ -76,11 +76,11 @@
 
   /* ---------- render ---------- */
   function render(keepHand) {
-    const T = G.goal(S), e = G.evalSel(S), ch = G.current(S), pos = G.chainPos(S), cleared = S.score >= T;
+    const T = G.target(S), e = G.evalSel(S), ch = G.current(S), pos = G.chainPos(S), cleared = S.score >= T;
 
     FX.countUp($("score"), shown, S.score, ui.scoreDelay || 0); ui.scoreDelay = 0; shown = S.score;
     $("score").classList.toggle("on", cleared);
-    $("tgt").textContent = "/ " + T + (S.raised ? " ↑" : ""); $("tgt").classList.toggle("raised", !!S.raised);
+    $("tgt").textContent = "/ " + T;
     $("ante").textContent = S.ante + 1; $("anteN").textContent = S.endless && S.ante >= G.TARGETS.length ? "∞" : G.TARGETS.length;
     const f = $("fill"); f.style.width = Math.min(100, S.score / T * 100) + "%"; f.classList.toggle("done", cleared);
 
@@ -104,9 +104,6 @@
     $("rungDots").innerHTML = S.rung ? Array.from({ length: S.rung.size }, () => '<i class="' + (G.isBomb(S.rung) ? "bomb" : "at") + '"></i>').join("") : "";
     $("chal").hidden = !ch; if (ch) $("chalName").innerHTML = IC.svg(ch.id) + ch.name;
     const rl = G.currentRule(S); $("rule").hidden = !rl; if (rl) $("ruleName").textContent = rl.name;
-    const ct = S.contract ? G.contractById[S.contract] : null, cst = G.contractStatus(S);
-    $("contract").hidden = !ct;
-    if (ct) { $("contractName").textContent = ct.name + " · +" + ct.pct + "%"; $("contractSt").textContent = cst === "broken" ? "✕" : cst === "done" ? "✓" : cst === "ok" ? "…" : "○"; $("contract").className = "chal contract " + cst; }
     document.body.classList.toggle("lastplay", S.playsLeft >= 1 && S.playsLeft < 2 && !cleared);
     /* Η αλυσίδα λέει μόνη της τι αξίζει — αλλιώς ο πιο σημαντικός αριθμός δεν εξηγείται πουθενά. */
     { const step = G.CFG.chainMult + (G.syn(S, "tempo") ? 2 : S.charms.indexOf("climber") >= 0 ? 1 : 0),
@@ -139,9 +136,7 @@
     hand.classList.toggle("picking", S.sel.length > 0);
 
     let tools = "";
-    if (G.canRaise(S)) tools += '<button class="tb raise" data-act="raise">Raise to ' + Math.round(G.target(S) * G.raiseMulFor(S)) + ' <em>+' + (G.has(S, "gambler") ? 2 : 1) + ' pick</em></button>';
-    if (S.raised) tools += '<span class="toast gold raised" style="flex:1">RAISED · reach ' + S.raiseTarget + ' or lose a pick</span>';
-    if (cleared && S.playsLeft >= 1 && !S.raised) tools += '<button class="tb" data-act="end">Bank it · end round</button>';
+    if (cleared && S.playsLeft >= 1) tools += '<button class="tb" data-act="end">Bank it · end round</button>';
     $("tools").innerHTML = tools;
     /* Σημειώσεις/tooltips: αιωρούμενη κάρτα πάνω από το dock, δεν μετακινεί τίποτα· κλείνει με άγγιγμα. */
     const tipOn = !!ui.note && Date.now() < ui.noteT;
@@ -158,7 +153,6 @@
       else { pv.classList.add("hint"); pvt = (S.rung ? "Beat " + G.clabel(S.rung) + " to climb · anything lower still scores" : "Table is open · any hand starts the chain") + (S.playsLeft < 2 ? " · last play" : ""); }
       go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
-    else if (e.ace) { go.classList.add("ace"); go.disabled = false; go.innerHTML = '<span class="go__t">Ace in the Hole</span><span class="go__s">Open the rung · keep chain ×' + pos + '</span><span class="go__p">↺</span>'; pvt = "Ace in the Hole · the rung opens and the chain stays at ×" + pos + " · it costs no play, but your hand is one card shorter for the rest of the round"; pv.classList.add("ace"); }
     else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? "Discard these instead?" : "Pick a pair, a run or a set") + '</span>'; pvt = S.sel.length + (S.sel.length === 1 ? " card" : " cards") + " · these make no hand" + (G.canDiscard(S) ? " · swipe down to discard them" : ""); pv.classList.add("bad"); }
     else {
       go.classList.add(e.up ? "ok" : "down"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.classList.add(e.up ? "ok" : "warn");
@@ -204,13 +198,13 @@
     const from = selRects();
     const ev = G.play(S); if (!ev) return;
     ui.note = null;
-    if (ev.type === "ace") { FX.sfx.ace(); FX.buzz(14); }
-    else if (ev.bomb) { FX.sfx.bomb(); FX.buzz([30, 40, 120]); FX.boom($("table")); FX.flash(); FX.pulse($("app"), "shake"); FX.floatIn($("table"), "+" + ev.pts); document.body.classList.add("boom"); setTimeout(() => document.body.classList.remove("boom"), 900); }
+    if (ev.k && ev.k.kind === 9) { FX.sfx.ace(); FX.buzz(14); }
+    if (ev.bomb) { FX.sfx.bomb(); FX.buzz([30, 40, 120]); FX.boom($("table")); FX.flash(); FX.pulse($("app"), "shake"); FX.floatIn($("table"), "+" + ev.pts); document.body.classList.add("boom"); setTimeout(() => document.body.classList.remove("boom"), 900); }
     else if (!ev.up) { FX.sfx.pass(); FX.buzz(40); FX.floatIn($("table"), "+" + ev.pts); }
     else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300), ["#ffd166", "#ff6b6b", "#4ecdc4", "#c77dff", "#ffffff", "hsl(" + IC.kindHue(ev.k.kind) + " 90% 70%)"]); FX.floatIn($("table"), "+" + ev.pts); $("callout").style.setProperty("--kh", IC.kindHue(ev.k.kind)); }
     if (ev.shattered) { FX.sfx.shatter(); FX.burstAt($("table"), 18, 3.2, "#cfe9f2"); }
     if (ev.k) ui.hold = { t: G.clabel(ev.k) + " · " + ev.chips + " × " + ev.mult + " = " + ev.pts + (ev.up ? "" : " · chain broken") + (ev.notes && ev.notes.length ? " · " + ev.notes.slice(0, 3).join(", ") : ""), c: ev.up ? "ok" : "warn", until: Date.now() + 1800 };
-    const crossed = S.score >= G.goal(S) && S.score - ev.pts < G.goal(S);
+    const crossed = S.score >= G.target(S) && S.score - ev.pts < G.target(S);
     ui.scoreDelay = 300;   /* τα φύλλα προσγειώνονται πρώτα, μετά ανεβαίνει ο αριθμός */
     render();
     if (crossed) { setTimeout(() => { callout("Target!"); FX.sfx.clear(); FX.burstAt($("score"), 30, 4, ["#8ff0bf", "#ffffff", "#ffd166"]); }, 1100); }
@@ -286,10 +280,6 @@
     for (let i = S.charms.length; i < S.charmSlots; i++) h += '<span class="charm charm--s charm--empty"></span>';
     return '<div class="sec"><span class="lbl">Your charms · ' + S.charms.length + '/' + S.charmSlots + ' · tap to read</span><div class="ownedrow">' + h + '</div></div>';
   }
-  function contractHTML() {
-    const c = G.upcomingContract(S); if (!c) return "";
-    return '<div class="chalnext ctrnext"><span class="lbl">Next · Contract</span><b>' + c.name + ' · +' + c.pct + '% of the round</b><span>' + c.desc + ' Optional — miss it and you simply do not get the bonus.</span></div>';
-  }
   const synHint = (id) => G.synergyFor(S, id).map((s) => { const p = G.charmById[s.a === id ? s.b : s.a]; return '<i class="syn">⚡ ' + s.name + ' with ' + p.name + ' — ' + s.desc + '</i>'; }).join("");
   /* Υπάρχει ακόμη κάτι που μπορείς να πάρεις; Αν όχι, το κατάστημα δεν σε κρατά. */
   const canPickMore = () => G.picksLeft(S) > 0 && S.offers.some((o, i) => G.canTake(S, i).ok);
@@ -300,19 +290,15 @@
       '<div class="offers" id="offers">' + offersHTML() + '</div>' + ownedRowHTML();
   }
   function sheetShop(r, fresh) {
-    const T = G.target(S), up = G.upcoming(S), rr = r && r.raiseResult;
+    const T = G.target(S), up = G.upcoming(S);
     const bonus = [];
-    if (r) {
-      if (rr === "won") bonus.push("raise made");
-      if (rr === "lost") bonus.push("raise missed");
-      if (r.perfect) bonus.push("perfect round");
-      if (r.contract && r.contract.met) bonus.push(r.contract.name + " +" + r.contract.bonus);
-    }
+    if (r && r.perfect) bonus.push("perfect round");
+    if (r && r.dbl) bonus.push("double the target");
     openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + (bonus.length ? ' · ' + bonus.join(' · ') : '') + '</p>' +
       (fresh && fresh.length ? '<div class="unlocked">✦ Unlocked · ' + fresh.map((id) => G.charmById[id].name).join(", ") + '</div>' : "") +
       '<div class="nextup"><span class="lbl">Next · Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</span>' +
         (up ? '<div class="chalnext bossnext">' + IC.bubble(up.id, "charm charm--s") + '<div><span class="lbl">Boss ante</span><b>' + up.name + '</b><span>' + up.desc + '</span><em>' + up.tell + ' ' + up.tip + '</em></div></div>' : (G.upcomingRule(S) ? '<div class="chalnext rulenext"><span class="lbl">Table rule</span><b>' + G.upcomingRule(S).name + '</b><span>' + G.upcomingRule(S).desc + '</span></div>' : "")) +
-        contractHTML() + '</div>' +
+        '</div>' +
       '<div id="shopBody">' + shopBodyFull() + '</div>');
     if (fresh && fresh.length) FX.sfx.unlock();
   }
@@ -341,8 +327,8 @@
     "Every step of chain is +1 Mult. Four cheap hands that climb beat one fat hand that does not.",
     "A hand that does not climb still scores — it just scores flat. Sometimes that is the right call.",
     "Discards do not cost you a play. Two hands you cannot use are two hands you should throw.",
-    "Clear the target with plays to spare and Raise: an extra bonus is worth more than a safe round.",
-    "A lone Ace opens the table and keeps the chain. It costs a card, not a play.",
+    "A lone Ace is the cheapest hand there is, and it is the first step of the chain. Open with it.",
+    "A perfect round — chain never broken, no discard, every play used — is a second bonus.",
     "Bombs beat anything and the chain carries on through them. Save one for a wall.",
     "The shape of the hand matters far more than the rank of the cards. Build shapes.",
   ];
@@ -379,7 +365,7 @@
       '<div class="sec"><span class="lbl">Charms</span>' + ownedCharmsHTML() + '</div>' +
       '<div class="sec"><span class="lbl">Build</span><div class="chips">' + chipsHTML() + '</div></div>' +
       '<div class="sec"><span class="lbl">Paytable · chips × mult, before cards and chain</span><div class="rtab">' + G.BY_TIER.map((t) => { const ki = G.KINDS.indexOf(t), k = { kind: ki, size: t.size || t.min, rank: 14 };
-        return '<div><span>' + t.name + (t.min ? ' <em>' + (t.id === "stairs" ? 'Two pairs in a row · longer pays more' : t.id === "pairs" ? 'Up to 4 pairs · more pay more' : '5 cards · longer pays more') + '</em>' : '') + '</span><b>' + G.kchips(k) + ' × ' + (G.kmult(k) + S.mult[ki]) + '</b></div>'; }).join("") + '</div></div>' +
+        return '<div><span>' + t.name + (t.id === "single" ? ' <em>One card · the first step</em>' : t.min ? ' <em>' + (t.id === "stairs" ? 'Two pairs in a row · longer pays more' : t.id === "pairs" ? 'Up to 4 pairs · more pay more' : '5 cards · longer pays more') + '</em>' : '') + '</span><b>' + G.kchips(k) + ' × ' + (G.kmult(k) + S.mult[ki]) + '</b></div>'; }).join("") + '</div></div>' +
       '<div class="sec"><span class="lbl">Seed · ' + S.seed + '</span><div class="seedrow"><input id="sd" value="" placeholder="custom seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Go</button></div>' +
       '<div class="row2"><button class="big ghost" data-today="1">Daily · ' + G.todaySeed() + '</button><button class="big ghost" data-fresh="1">Random</button></div></div>' +
       '<div class="row2" style="margin-top:1.1rem"><button class="big ghost" data-howto="1">How to play</button><button class="big ghost" data-collection="1">Collection</button></div>' +
@@ -391,16 +377,15 @@
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
       '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out.</p>' +
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
-      '<p><b>The hands</b>, weakest to strongest: pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
+      '<p><b>The hands</b>, weakest to strongest: a lone <b>Ace</b> · pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
       '<p><b>Score = Chips × Mult.</b> The shape sets both — a pair is 30 × 4, a full house 46 × 6, a straight flush 60 × 8. Then every card adds chips: 2 to 10 as printed, J Q K ten, an Ace eleven. Two Aces make 208 and two 3s make 144 before the chain — the card matters, it does not decide the round.</p>' +
       '<p><b>The chain is where the points are.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +1 Mult, the first climb included</b>, up to +6. Play something lower and it still scores its plain Chips × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b></p>' +
-      '<p>A lone <b>Ace</b> is the escape hatch: it opens the table and keeps your chain, costs no play, but leaves your hand one card shorter for the rest of the round. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
+      '<p>A lone <b>Ace</b> is a hand of its own — the cheapest one, and the first step of every chain. Anything else beats it, so it is the natural way to open. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. If your hand makes no combination at all, the discard is free.</p>' +
-      '<p><b>Cleared it early? Raise.</b> The target goes up — ×1.8 with two plays left, ×2 with one — and if you make it you leave with an extra bonus. Miss it and you leave with one fewer.</p>' +
-      '<p><b>Clear an ante, pick one bonus.</b> Three on offer, upgrades and <b>charms</b> together. No money, no prices, no selling — one tap and you are back at the table. Double the target and a fourth appears; a perfect round (chain never broken, no discard, every play used) gives a second pick. Charms are passive and permanent: five slots to start.</p>' +
+      '<p><b>Clear an ante, pick one bonus.</b> Three on offer, upgrades and <b>charms</b> together. No money, no prices, no selling — one tap and you are back at the table. Two things pay a second pick: a <b>perfect round</b> (chain never broken, no discard, every play used) and clearing at <b>double the target</b>, which also puts a fourth offer on the table. Charms are passive and permanent: five slots to start.</p>' +
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Gold</b> (Mult ×2, and two of them is ×4), <b>Glass</b> (Mult ×3, then it shatters), <b>Steel</b> (+20 Chips and it always comes back to your hand) or a <b>Joker</b>.</p>' +
-      '<p>Most antes carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway — and every one carries a <b>contract</b>, an optional side goal worth a slice of your round score. Tap either ribbon to read it. Every fifth ante is a <b>boss</b> with a rule that bites and a target a tenth lower.</p>' +
+      '<p>Most antes carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. Every fifth ante is a <b>boss</b> with a rule that bites and a target a tenth lower.</p>' +
       '<p>Thirty antes. Gentle at first, steep at the end. The Summit at 30 — and Endless after that.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
@@ -454,7 +439,7 @@
     if (Math.abs(dy) < 45 || Date.now() - swipe.t0 > 700) return;
     swipe.did = true;
     const go = $("bPlay");
-    if (dy < 0 && !go.disabled && (go.classList.contains("ok") || go.classList.contains("ace"))) doPlay();
+    if (dy < 0 && !go.disabled && (go.classList.contains("ok") || go.classList.contains("down"))) doPlay();
     else if (dy > 0 && S.sel.length) { if (G.canDiscard(S)) doDiscard(); else { S.sel = []; render(true); } }
   });
   hand.addEventListener("click", (e) => {
@@ -468,12 +453,10 @@
     const act = a.dataset.act;
     if (act === "hint") doHint();
     if (act === "end") end();
-    if (act === "raise") { if (G.raise(S)) { FX.sfx.raise(); FX.buzz([10, 30, 10]); FX.burstAt($("bPlay"), 26, 3.5); render(); save(); } }
   });
   $("charms").addEventListener("click", (e) => { const c = e.target.closest("[data-charm]"); if (c) sheetCharm(c.dataset.charm); });
   $("chal").addEventListener("click", () => { const c = G.current(S); if (c) note(c.name + " — " + c.desc, 4500); });
   $("rule").addEventListener("click", () => { const r = G.currentRule(S); if (r) note(r.name + " — " + r.desc, 4500); });
-  $("contract").addEventListener("click", () => { const c = S.contract && G.contractById[S.contract]; if (c) note("Contract · " + c.name + " — " + c.desc + " Reward: +" + c.pct + "% of the round score, added before the target is checked.", 5000); });
   $("bPlay").addEventListener("click", doPlay);
   $("bDisc").addEventListener("click", doDiscard);
   $("bMenu").addEventListener("click", sheetMenu);

@@ -36,7 +36,7 @@ function handsTable() {
     ["Str.Flush 5-9", [card(5, 0), card(6, 0), card(7, 0), card(8, 0), card(9, 0)]],
   ];
   const S = G.newRun("hands-table", []);
-  S.chal = null; S.rules = {}; S.contract = null; S.charms = []; S.rung = null;
+  S.chal = null; S.rules = {}; S.charms = []; S.rung = null;
   /* ante 1 = ο πρώτος γύρος = TARGETS[0] */
   const antes = [1, 5, 10];
   const chains = [0, 4];
@@ -127,7 +127,6 @@ function playRound(S) {
   let n = 0;
   for (let guard = 0; guard < 200 && S.phase === "round"; guard++) {
     if (S.playsLeft < 1) break;
-    if (G.canRaise(S) && S.playsLeft >= 3) G.raise(S);
     let m = G.suggest(S);
     if (STRAT === "finisher" && S.playsLeft < 2) { let best = null, bp = -1; G.candidates(S).forEach((o) => { const p = G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts; if (p > bp) { bp = p; best = o; } }); if (best) m = best; }
     if (m) {
@@ -140,7 +139,6 @@ function playRound(S) {
       }
       continue;
     }
-    if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); continue; } }
     if (G.canDiscardAny(S) && discardStep(S)) continue;
     break;
   }

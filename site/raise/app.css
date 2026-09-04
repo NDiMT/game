@@ -280,10 +280,6 @@ body[data-heat="2"] .chain span::after{content:" · hot"}
 body[data-heat="3"] .chain span::after{content:" · on fire"}
 
 /* Ace in the Hole button state */
-.go.ace{border-color:rgba(159,180,255,.45);background:linear-gradient(178deg,#3a4f7c,#26365a)}
-.go.ace .go__t{color:#dfe6ff}
-.go.ace .go__s{color:#9fb4ff}
-.go.ace .go__p{color:#f2d68c;font-size:1.8rem}
 
 /* shop card offers */
 .offer--card{grid-template-columns:auto 1fr auto}
@@ -294,10 +290,6 @@ span.card{display:block}
 .offer--card em{grid-column:3}
 
 /* raise */
-.tb.raise{background:linear-gradient(178deg,var(--brass-hi),var(--brass) 55%,#b48c33);color:#1d1607;border-color:transparent;box-shadow:0 2px 0 #6f5620,0 4px 10px rgba(0,0,0,.35)}
-.tb.raise em{background:#1d1607;color:var(--brass-hi)}
-.toast.raised{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;font-weight:600;color:var(--brass-hi)}
-.hud__score span.raised{color:var(--brass);font-weight:700}
 .tally b.good{color:var(--good)}
 .tally b.bad{color:var(--pip-lt)}
 
@@ -529,10 +521,8 @@ body{background:radial-gradient(ellipse 110% 62% at 50% -8%,var(--felt-3) 0%,var
 .go.ok .go__s{color:#6a4f12}
 .go.no{background:var(--gloss),linear-gradient(180deg,rgba(224,80,70,.22),rgba(224,80,70,.1));border-color:rgba(255,140,130,.35)}
 .go.done{background:var(--gloss),linear-gradient(180deg,rgba(95,199,154,.28),rgba(95,199,154,.1));border-color:rgba(143,240,191,.45)}
-.go.ace{background:var(--gloss),linear-gradient(180deg,#4a63a0,#2a3c66);border-color:rgba(180,200,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 #16213d,0 8px 18px rgba(0,0,0,.45)}
 .tb{background:var(--gloss),rgba(245,207,106,.1);border-color:rgba(245,207,106,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 4px rgba(0,0,0,.3)}
 .tb em{background:linear-gradient(180deg,var(--candy-0),var(--candy-2));color:#3d2a08;box-shadow:inset 0 1px 0 #fff}
-.tb.raise{background:var(--gloss),linear-gradient(180deg,var(--candy-0),var(--candy-1) 50%,var(--candy-2));box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 2px 0 var(--candy-sh),0 4px 10px rgba(0,0,0,.35)}
 .picker button{background:var(--gloss),rgba(245,207,106,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
 
 /* sheets & shop: glossy tiles, candy buttons */
@@ -627,34 +617,16 @@ body.boom .table{animation:boomring .8s ease-out}
 .preview:empty{display:none}
 .preview.ok{color:hsl(var(--kh,45) 90% 82%);text-shadow:0 0 .6rem hsl(var(--kh,45) 85% 60% / .45)}
 .preview.bad{color:#ffb3a8}
-.preview.ace{color:#c9d6ff}
 
 /* play button: points as the title, hand + calc underneath */
 .go.ok .go__t--pts{font-size:1.35rem;letter-spacing:-.02em;text-transform:none;line-height:1}
 .go.ok .go__s{font-size:.68rem;font-weight:600}
 .go.ok .go__s{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.2;font-size:.64rem}
 
-/* ribbons: challenge (red), rule (blue), contract (purple) */
+/* ribbons: challenge (red), rule (blue) */
 .ribbons{display:flex;flex-wrap:wrap;justify-content:center;gap:.3rem}
 .chal.rule{background:var(--gloss),linear-gradient(180deg,hsl(205 80% 55% / .35),hsl(205 80% 45% / .2));border-color:hsl(205 90% 75% / .6);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 .9rem hsl(205 80% 55% / .3)}
 .chal.rule span{color:#9fd3ff}
-.chal.contract{background:var(--gloss),linear-gradient(180deg,hsl(275 70% 60% / .35),hsl(275 70% 45% / .2));border-color:hsl(275 90% 80% / .6);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 .9rem hsl(275 70% 60% / .3)}
-.chal.contract span{color:#d9b8ff}
-.chal.contract i{font-style:normal;font-family:var(--mono);font-weight:700;font-size:.8rem;color:#d9b8ff}
-.chal.contract.done{border-color:hsl(150 80% 70% / .8)}
-.chal.contract.done i{color:#8ff0bf}
-.chal.contract.broken{opacity:.55;text-decoration:line-through}
-.chal.contract.broken i{color:#ffb3a8;text-decoration:none}
-.chal.contract.ok i{color:#ffe08a}
-/* contract picker in the shop */
-.ctrs{display:grid;gap:.4rem}
-.ctr{display:grid;grid-template-columns:1fr auto;gap:.1rem .6rem;align-items:center;text-align:left;padding:.65rem .8rem;border-radius:14px;background:var(--gloss),rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 3px 8px rgba(0,0,0,.3);transition:transform .25s var(--pop),border-color .2s ease}
-.ctr strong{font-family:var(--mono);font-size:.86rem}
-.ctr span{grid-column:1;font-size:.78rem;color:var(--muted);line-height:1.3}
-.ctr em{grid-row:span 2;font-family:var(--mono);font-style:normal;font-weight:700;font-size:1rem;color:#d9b8ff}
-.ctr.on{border-color:hsl(275 90% 78%);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 0 2px hsl(275 80% 65% / .55),0 0 1rem hsl(275 70% 60% / .35)}
-.ctr--none{opacity:.8}
-.ctr--none.on{border-color:rgba(255,255,255,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 0 2px rgba(255,255,255,.3)}
 .chalnext.rulenext{background:rgba(60,140,220,.14);border-color:rgba(150,200,255,.45)}
 .chalnext.rulenext .lbl{color:#9fd3ff}
 /* drama: last play + target */
@@ -670,7 +642,6 @@ body.lastplay .pips--play i:not(.spent){animation:heartbeat 1s ease-in-out infin
 .go__t,.go__s{max-width:100%}
 .go__s{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.2;text-align:center}
 .go__p{display:none}
-.go.ace .go__p{display:none}
 .go.ok .go__t--pts{font-size:1.4rem;line-height:1;letter-spacing:-.02em}
 /* side buttons: small label, big number */
 .rb{gap:.05rem}
@@ -693,16 +664,13 @@ body.lastplay .pips--play i:not(.spent){animation:heartbeat 1s ease-in-out infin
 .sheet h2{text-align:left}
 .tally div{align-items:center}
 .tally b{padding-left:.5rem}
-/* keep/contract tiles text alignment */
-.ctr strong,.offer strong,.owned__row strong,.coll__i strong{letter-spacing:.01em}
+/* tile text alignment */
 /* empty table hint */
 .tcards.fresh:empty::before{padding:0 .5rem}
 .preview.hint{color:var(--muted);text-shadow:none}
 .tnote:empty{display:none}
 .preview{min-width:0;max-width:100%;overflow-wrap:anywhere}
 .table{overflow:hidden}
-.chalnext.ctrnext{background:rgba(150,90,220,.14);border-color:rgba(217,184,255,.45)}
-.chalnext.ctrnext .lbl{color:#d9b8ff}
 /* table foot: piles bottom-left, chain ×N pinned bottom-right */
 .tfoot{align-items:end}
 .tfoot .piles{align-self:end;margin-right:auto;padding-left:.5rem;padding-bottom:.15rem}
@@ -916,7 +884,6 @@ body[data-heat="3"] .table{box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 
 .go.down .go__t--pts{font-size:1.4rem;line-height:1;letter-spacing:-.02em}
 .go.down .go__s{color:#6a3c08;font-size:.64rem;font-weight:600}
 .go.no{background:var(--gloss),linear-gradient(180deg,rgba(240,90,80,.26),rgba(200,60,55,.12))}
-.go.ace{background:var(--gloss),linear-gradient(180deg,#5d78bd,#2c3f6d);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 3px 0 #16213d,0 8px 18px rgba(0,0,0,.45)}
 .go.done{background:var(--gloss),linear-gradient(180deg,rgba(110,230,180,.3),rgba(80,190,145,.12))}
 
 /* preview lines */
@@ -992,7 +959,6 @@ body{background:
 /* ribbons: πιο ζωντανά */
 .chal{background:var(--gloss),linear-gradient(180deg,hsl(350 90% 58% / .45),hsl(350 85% 42% / .25))}
 .chal.rule{background:var(--gloss),linear-gradient(180deg,hsl(202 90% 58% / .45),hsl(202 85% 42% / .25))}
-.chal.contract{background:var(--gloss),linear-gradient(180deg,hsl(276 85% 64% / .45),hsl(276 80% 44% / .25))}
 /* κατάστημα: κάθε πλακίδιο με ελαφρύ χρώμα */
 .offer{background:var(--gloss),linear-gradient(180deg,rgba(255,255,255,.09),rgba(0,0,0,.30))}
 .offer--charm{border-color:rgba(255,214,140,.24)}
@@ -1030,7 +996,7 @@ body{background:
 /* ---- v14b: το κατάστημα είναι μία υποχρεωτική επιλογή που προχωράει μόνη της ---- */
 .nextup{display:grid;gap:.35rem;margin:.9rem 0 .2rem}
 .nextup>.lbl{color:#ffd977}
-.nextup .chalnext,.nextup .ctrnext{margin:0}
+.nextup .chalnext{margin:0}
 .picks{margin:1rem 0 .55rem;font-size:.62rem}
 .sheet.leaving{animation:leave .6s cubic-bezier(.4,0,.7,.2) forwards}
 @keyframes leave{0%{transform:none;opacity:1}100%{transform:translateY(12%);opacity:0}}
@@ -1091,5 +1057,5 @@ body{background:
 
 /* 13. Τίποτα δεν ανασαίνει για πάντα. Το κουμπί «τραβάει» τρεις φορές μόλις το χέρι
    γίνει νόμιμο και μετά ησυχάζει· το τραπέζι τρέμει δύο δευτερόλεπτα, όχι όσο κρατά η φωτιά. */
-.go.ok,.go.ace,.go.done{animation:ready 1.6s ease-in-out 3}
+.go.ok,.go.done{animation:ready 1.6s ease-in-out 3}
 body[data-heat="3"] .table{animation:tremble .38s ease-in-out 5}

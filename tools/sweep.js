@@ -1,6 +1,6 @@
 /* Σάρωση δυσκολίας v4 (Tichu combos, 30 antes). Bot: G.suggest (μακρύτερη αλυσίδα
    στο άνοιγμα, φθηνότερο χτύπημα μετά), discards ορφανά ×4, Άσος όταν κολλά,
-   συντηρητικό Raise, charms πρώτα.   node tools/sweep.js [N] ['[["name",[targets],{cfg}]]'] */
+   charms πρώτα.   node tools/sweep.js [N] ['[["name",[targets],{cfg}]]'] */
 const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 400;
 
@@ -18,10 +18,8 @@ function discardOrphans(S) {
 function playRound(S) {
   for (let guard = 0; guard < 200 && S.phase === "round"; guard++) {
     if (S.playsLeft < 1) { G.finish(S); break; }
-    if (G.canRaise(S) && S.playsLeft >= 3) G.raise(S);
     const m = G.suggest(S);
     if (m) { S.sel = m.idx.slice(); G.play(S); continue; }
-    if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); continue; } }
     if (G.canDiscardAny(S) && discardOrphans(S)) continue;
     G.finish(S); break;
   }

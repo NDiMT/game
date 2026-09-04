@@ -79,7 +79,6 @@ function playRound(S) {
   const T = G.target(S); let cum = 0, cross = 0, n = 0, big = 0;
   for (let guard = 0; guard < 200 && S.phase === "round"; guard++) {
     if (S.playsLeft < 1) break;
-    if (G.canRaise(S) && S.playsLeft >= 3) G.raise(S);
     let m = G.suggest(S);
     if (S.playsLeft < 2) { let best = null, bp = -1; G.candidates(S).forEach((o) => { const p = G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts; if (p > bp) { bp = p; best = o; } }); if (best) m = best; }
     if (m) {
@@ -88,7 +87,6 @@ function playRound(S) {
       if (ev && ev.k) { n++; cum += ev.pts; if (ev.pts > big) big = ev.pts; if (!cross && cum >= T) cross = n; }
       continue;
     }
-    if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); continue; } }
     if (G.canDiscardAny(S) && discardStep(S)) continue;
     break;
   }
@@ -116,7 +114,7 @@ function sweepRuns(immortal) {
       playRound(S);
       if (S.phase === "lost") {
         if (!immortal) { st.lost[S.ante]++; break; }
-        S.phase = "shop"; S.picks = G.CFG.picks; S.nOffers = G.CFG.offers; S.offers = G.makeOffers(S); S.contract = null;
+        S.phase = "shop"; S.picks = G.CFG.picks; S.nOffers = G.CFG.offers; S.offers = G.makeOffers(S);
       }
       if (S.phase === "won") { st.wins++; break; }
       if (S.ante >= MAXA - 1) break;

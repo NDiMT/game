@@ -7,7 +7,7 @@ const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "af
   "pl", "m1", "cs", "di", "wi", "m2", "m3", "m6", "th", "sl", "gt", "sd"];
 
 const st = { kinds: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, breaks: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(30).fill(0), wins: 0,
-  ratio: Array.from({ length: 30 }, () => []), score: Array.from({ length: 30 }, () => []), bought: {}, picks: Array.from({ length: 30 }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, raises: 0, raiseWon: 0, aceRounds: 0 };
+  ratio: Array.from({ length: 30 }, () => []), score: Array.from({ length: 30 }, () => []), bought: {}, picks: Array.from({ length: 30 }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, aceRounds: 0 };
 
 function rankGroups(S) { const g = {}; S.hand.forEach((c, i) => { if (!c.h && !G.isWild(c)) (g[c.r] = g[c.r] || []).push(i); }); return g; }
 function discardStep(S) {
@@ -21,7 +21,6 @@ function playRound(S) {
   let bombThis = false;
   for (let guard = 0; guard < 200 && S.phase === "round"; guard++) {
     if (S.playsLeft < 1) break;
-    if (G.canRaise(S) && S.playsLeft >= 3) { G.raise(S); st.raises++; }
     let m = G.suggest(S);
     if (STRAT === "finisher" && S.playsLeft < 2) { let best = null, bp = -1; G.candidates(S).forEach((o) => { const p = G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts; if (p > bp) { bp = p; best = o; } }); if (best) m = best; }
     if (STRAT === "bombfish" && m && !G.isBomb(m.k)) {
@@ -29,13 +28,11 @@ function playRound(S) {
       const g = rankGroups(S), all = G.candidates(S).filter((o) => G.climbs(S, o.k) && !o.idx.some((i) => (g[S.hand[i].r] || []).length >= 2 && (g[S.hand[i].r] || []).length < 4));
       if (all.length) m = all.reduce((b, o) => (!b || o.k.rank < b.k.rank ? o : b), null); else if (G.discardsLeft(S) > 0 && S.pile.length) { if (discardStep(S)) continue; }
     }
-    if (m) { S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; if (ev.broke) st.breaks++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; } continue; }
-    if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); st.aces++; continue; } }
+    if (m) { S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; if (ev.broke) st.breaks++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; if (ev.k.kind === 9) st.aces++; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; } continue; }
     if (G.canDiscardAny(S) && discardStep(S)) { st.discards++; continue; }
     break;
   }
   st.rounds++; if (bombThis) st.bombRounds++; if (S.phase === "round" && S.playsLeft >= 1) st.stuckEarly++;
-  if (S.raised && S.score >= S.raiseTarget) st.raiseWon++;
   st.maxChain.push(S.stats.maxChain);
   st.ratio[S.ante].push(S.score / G.target(S)); st.score[S.ante].push(S.score);
   if (S.phase === "round") G.finish(S);
@@ -72,5 +69,5 @@ console.log("score p50 by ante:", st.score.map((a) => a.length ? q(a, .5) : "-")
 console.log("score p25 by ante:", st.score.map((a) => a.length ? q(a, .25) : "-").join(" "));
 console.log("unspent picks p50:", st.picks.map((a) => a.length ? q(a, .5) : "-").join(" "));
 console.log("bought:", Object.entries(st.bought).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + v).join(" · "));
-console.log(`rounds ended stuck with plays left: ${(100 * st.stuckEarly / st.rounds).toFixed(1)}% · raises ${st.raises} won ${st.raiseWon}`);
+console.log(`rounds ended stuck with plays left: ${(100 * st.stuckEarly / st.rounds).toFixed(1)}%`);
 console.log("death by challenge:", JSON.stringify(st.deathCause));

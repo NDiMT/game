@@ -142,7 +142,6 @@
     draw: () => tone({ f: 1200, t: 0.04, type: "sine", g: 0.03, slide: 1.3 }),
     unlock: () => [660, 880, 1320].forEach((f, i) => tone({ f, t: 0.3, type: "triangle", g: 0.1, delay: i * 0.08 })),
     bomb: () => { tone({ f: 90, t: 0.55, type: "sawtooth", g: 0.22, slide: 0.35 }); tone({ f: 60, t: 0.7, type: "square", g: 0.14, delay: 0.04, slide: 0.5 }); tone({ f: 1400, t: 0.12, type: "square", g: 0.05, slide: 0.2 }); [880, 1320, 1760].forEach((f, i) => tone({ f, t: 0.25, type: "triangle", g: 0.08, delay: 0.25 + i * 0.07 })); },
-    raise: () => { tone({ f: 440, t: 0.12, type: "triangle", g: 0.12 }); tone({ f: 660, t: 0.2, type: "triangle", g: 0.12, delay: 0.1 }); tone({ f: 880, t: 0.3, type: "sine", g: 0.08, delay: 0.2 }); },
   };
   function toggleMute() { muted = !muted; try { localStorage.setItem("raise.mute", muted ? "1" : "0"); } catch (e) {} return muted; }
 
