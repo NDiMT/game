@@ -27,11 +27,11 @@
     gt: '<path d="M12 3l2.8 6 6.2.7-4.6 4.3 1.3 6.4L12 17.3 6.3 20.4l1.3-6.4L3 9.7 9.2 9z" fill="currentColor"/>',
     sd: '<rect x="3" y="7" width="11" height="14" rx="1.5"/><rect x="10" y="3" width="11" height="14" rx="1.5"/>',
     /* boss antes */
-    nopass: '<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+    noace: '<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
     short: '<path d="M6 20l3-12h6l3 12M9 12h6"/>',
     blind: '<path d="M3 3l18 18M2 12s4-7 10-7c2 0 3.5.5 5 1.3M22 12s-4 7-10 7c-2 0-3.5-.5-5-1.3"/>',
     highground: '<path d="M3 20h18M6 20V10l6-6 6 6v10M12 4v16"/>',
-    onebreath: '<path d="M12 3c-3 4-6 6-6 10a6 6 0 0 0 12 0c0-4-3-6-6-10z"/>',
+    onedisc: '<path d="M12 3c-3 4-6 6-6 10a6 6 0 0 0 12 0c0-4-3-6-6-10z"/>',
     thinair: '<path d="M3 20l5-10 4 5 3-3 6 8zM3 8h5M16 5h5M9 3h3"/>',
     richair: '<circle cx="12" cy="12" r="8"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/>',
     nodiscard: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M3 3l18 18"/>',
@@ -55,7 +55,7 @@
   const HUE = {
     ladder: 45, leap: 20, lowroad: 200, court: 48, loyal: 230, cheap: 170, wind: 195, sleight: 350, encore: 280, mirror: 260, vault: 40, thrift: 130,
     scout: 190, goldsmith: 50, glassblower: 185, summiteer: 210, gambler: 330, ember: 15, kingmaker: 48, afterburner: 10, tip: 95, sl: 265, gt: 45, sd: 215,
-    nopass: 350, short: 350, blind: 350, highground: 350, onebreath: 350, thinair: 350, richair: 350, nodiscard: 350, fewplays: 350, sticky: 350, summit: 45,
+    noace: 350, short: 350, blind: 350, highground: 350, onedisc: 350, thinair: 350, richair: 350, nodiscard: 350, fewplays: 350, sticky: 350, summit: 45,
     m1: 45, m2: 150, m3: 330, m4: 280, m5: 150, m6: 5, pl: 120, br: 195, di: 200, ch: 30, wi: 260, cs: 100, th: 350,
   };
   /* χρώμα ανά είδος χεριού (kind id) */

@@ -13,7 +13,7 @@ function discardOrphans(S) {
   let o = G.orphans(S);
   if (!o.length) o = S.hand.map((_, i) => i).filter((i) => !S.hand[i].h && S.hand[i].r !== 14 && !G.isWild(S.hand[i])).slice(0, 2);
   if (!o.length) return false;
-  S.sel = o.slice(0, G.CFG.discardCards);
+  S.sel = o.slice(0, Math.min(3, o.length));
   return G.discard(S);
 }
 function playRound(S) {
@@ -23,8 +23,7 @@ function playRound(S) {
     const m = G.suggest(S);
     if (m) { S.sel = m.idx.slice(); G.play(S); continue; }
     if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); continue; } }
-    if ((G.deadHand(S) || S.playsLeft - G.discardCost(S) >= 1) && S.pile.length > 0 && discardOrphans(S)) continue;
-    if (G.canPass(S)) { G.pass(S); continue; }
+    if (G.canDiscardAny(S) && discardOrphans(S)) continue;
     G.finish(S); break;
   }
   if (S.phase === "round") G.finish(S);

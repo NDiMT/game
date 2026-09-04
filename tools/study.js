@@ -3,11 +3,11 @@
 const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 150, STRAT = process.argv[3] || "base";
 const ALL = G.CHARMS.map((c) => c.id);
-const PRIO = ["ladder", "cheap", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "wind", "court", "loyal", "vault", "sleight", "thrift", "ember", "goldsmith", "summiteer",
+const PRIO = ["ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "vault", "sleight", "cheap", "wind", "thrift", "ember", "goldsmith", "summiteer",
   "pl", "m1", "cs", "di", "wi", "tip", "m2", "m3", "m6", "th"];
 const CARD_PR = { wild: 12.5, gold: 14.5, steel: 16.5, glass: 18.5 };
 
-const st = { kinds: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, passes: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(30).fill(0), wins: 0,
+const st = { kinds: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, breaks: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(30).fill(0), wins: 0,
   ratio: Array.from({ length: 30 }, () => []), score: Array.from({ length: 30 }, () => []), bought: {}, money: Array.from({ length: 30 }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, raises: 0, raiseWon: 0, aceRounds: 0 };
 
 function rankGroups(S) { const g = {}; S.hand.forEach((c, i) => { if (!c.h && !G.isWild(c)) (g[c.r] = g[c.r] || []).push(i); }); return g; }
@@ -16,7 +16,7 @@ function discardStep(S) {
   if (STRAT === "bombfish") { const g = rankGroups(S); o = S.hand.map((_, i) => i).filter((i) => { const c = S.hand[i]; return !c.h && !G.isWild(c) && c.r !== 14 && (g[c.r] || []).length < 2; }); }
   if (!o.length) o = S.hand.map((_, i) => i).filter((i) => !S.hand[i].h && S.hand[i].r !== 14 && !G.isWild(S.hand[i])).slice(0, 2);
   if (!o.length) return false;
-  S.sel = o.slice(0, G.CFG.discardCards); return G.discard(S);
+  S.sel = o.slice(0, Math.min(3, o.length)); return G.discard(S);
 }
 function playRound(S) {
   let bombThis = false;
@@ -24,16 +24,15 @@ function playRound(S) {
     if (S.playsLeft < 1) break;
     if (G.canRaise(S) && S.playsLeft >= 3) { G.raise(S); st.raises++; }
     let m = G.suggest(S);
-    if (STRAT === "finisher" && S.playsLeft < 2) { let best = null, bp = -1; G.legalMoves(S).forEach((o) => { const p = G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts; if (p > bp) { bp = p; best = o; } }); if (best) m = best; }
+    if (STRAT === "finisher" && S.playsLeft < 2) { let best = null, bp = -1; G.candidates(S).forEach((o) => { const p = G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts; if (p > bp) { bp = p; best = o; } }); if (best) m = best; }
     if (STRAT === "bombfish" && m && !G.isBomb(m.k)) {
       /* μην παίζεις ζευγάρια/τρίο που μπορούν να γίνουν καρέ, αν έχεις discards για ψάρεμα */
-      const g = rankGroups(S), all = G.legalMoves(S).filter((o) => !o.idx.some((i) => (g[S.hand[i].r] || []).length >= 2 && (g[S.hand[i].r] || []).length < 4));
-      if (all.length) m = all.reduce((b, o) => (!b || o.k.rank < b.k.rank ? o : b), null); else if (S.playsLeft - G.discardCost(S) >= 1 && S.pile.length) { if (discardStep(S)) continue; }
+      const g = rankGroups(S), all = G.candidates(S).filter((o) => G.climbs(S, o.k) && !o.idx.some((i) => (g[S.hand[i].r] || []).length >= 2 && (g[S.hand[i].r] || []).length < 4));
+      if (all.length) m = all.reduce((b, o) => (!b || o.k.rank < b.k.rank ? o : b), null); else if (G.discardsLeft(S) > 0 && S.pile.length) { if (discardStep(S)) continue; }
     }
-    if (m) { S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; } continue; }
+    if (m) { S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; if (ev.broke) st.breaks++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; } continue; }
     if (S.rung) { const a = G.aceIndex(S); if (a >= 0) { S.sel = [a]; G.play(S); st.aces++; continue; } }
-    if ((G.deadHand(S) || S.playsLeft - G.discardCost(S) >= 1) && S.pile.length > 0 && discardStep(S)) { st.discards++; continue; }
-    if (G.canPass(S)) { G.pass(S); st.passes++; continue; }
+    if (G.canDiscardAny(S) && discardStep(S)) { st.discards++; continue; }
     break;
   }
   st.rounds++; if (bombThis) st.bombRounds++; if (S.phase === "round" && S.playsLeft >= 1) st.stuckEarly++;
@@ -68,7 +67,7 @@ console.log(`strategy ${STRAT} · runs ${N} · wins ${st.wins} · mean death ant
 console.log("deaths/ante:", st.lost.join(" "));
 console.log("kinds played:", Object.entries(st.kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + (100 * v / st.plays).toFixed(0) + "%").join(" · "));
 console.log(`bombs: ${st.bombs} in ${st.rounds} rounds (${(100 * st.bombRounds / st.rounds).toFixed(1)}% of rounds) · bomb share of all points ${(100 * st.bombPts / st.totalPts).toFixed(1)}%`);
-console.log(`per round: plays ${(st.plays / st.rounds).toFixed(2)} · passes ${(st.passes / st.rounds).toFixed(2)} · aces ${(st.aces / st.rounds).toFixed(2)} · discards ${(st.discards / st.rounds).toFixed(2)} · swaps at shop ${(st.keptSwaps / st.rounds).toFixed(2)} · max chain p50 ${q(st.maxChain, .5)} p90 ${q(st.maxChain, .9)}`);
+console.log(`per round: plays ${(st.plays / st.rounds).toFixed(2)} · chain breaks ${(st.breaks / st.rounds).toFixed(2)} · aces ${(st.aces / st.rounds).toFixed(2)} · discards ${(st.discards / st.rounds).toFixed(2)} · swaps at shop ${(st.keptSwaps / st.rounds).toFixed(2)} · max chain p50 ${q(st.maxChain, .5)} p90 ${q(st.maxChain, .9)}`);
 console.log("score/target p50 by ante:", st.ratio.map((a) => a.length ? q(a, .5).toFixed(1) : "-").join(" "));
 console.log("score/target p10 by ante:", st.ratio.map((a) => a.length ? q(a, .1).toFixed(2) : "-").join(" "));
 console.log("score p50 by ante:", st.score.map((a) => a.length ? q(a, .5) : "-").join(" "));
