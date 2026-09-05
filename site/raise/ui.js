@@ -4,13 +4,13 @@
   const G = window.RAISE, FX = window.FX, IC = window.ICONS;
   const $ = (id) => document.getElementById(id);
   const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
-  const KEY = "raise.run.v10", LIFE = "raise.life.v1";
+  const KEY = "raise.run.v11", LIFE = "raise.life.v1";
   let S = null, shown = 0, ui = { note: null, noteT: 0, ending: false }, installEvt = null;
 
   /* ---------- storage ---------- */
   const save = () => { try { localStorage.setItem(KEY, G.serialize(S)); } catch (e) {} };
   const load = () => { try { return G.restore(localStorage.getItem(KEY)); } catch (e) { return null; } };
-  const life = () => { try { return Object.assign({ runs: 0, wins: 0, best: 0, bestScore: 0, gold: 0, glass: 0, quads: 0, chain7: 0, plays: 0, aces: 0 }, JSON.parse(localStorage.getItem(LIFE) || "{}")); } catch (e) { return { runs: 0, wins: 0, best: 0, bestScore: 0, gold: 0, glass: 0, quads: 0, chain7: 0, plays: 0, aces: 0 }; } };
+  const life = () => { try { return Object.assign({ runs: 0, wins: 0, best: 0, bestScore: 0, gold: 0, silver: 0, quads: 0, chain7: 0, plays: 0, aces: 0 }, JSON.parse(localStorage.getItem(LIFE) || "{}")); } catch (e) { return { runs: 0, wins: 0, best: 0, bestScore: 0, gold: 0, silver: 0, quads: 0, chain7: 0, plays: 0, aces: 0 }; } };
   const saveLife = (l) => { try { localStorage.setItem(LIFE, JSON.stringify(l)); } catch (e) {} };
   const unlockedFrom = (l) => G.CHARMS.filter((c) => !c.lock || (l[c.lock.key] || 0) >= c.lock.n).map((c) => c.id);
   const DECK_KEY = "raise.deck.v1";
@@ -106,10 +106,12 @@
     const rl = G.currentRule(S); $("rule").hidden = !rl; if (rl) $("ruleName").textContent = rl.name;
     document.body.classList.toggle("lastplay", S.playsLeft >= 1 && S.playsLeft < 2 && !cleared);
     /* Η αλυσίδα λέει μόνη της τι αξίζει — αλλιώς ο πιο σημαντικός αριθμός δεν εξηγείται πουθενά. */
-    { const step = G.CFG.chainMult + (G.syn(S, "tempo") ? 2 : S.charms.indexOf("climber") >= 0 ? 1 : 0),
-        add = Math.min(G.CFG.chainAddCap, Math.max(0, pos - 1 + G.CFG.chainFloor) * step);
+    { const step = G.syn(S, "tempo") ? 3 : S.charms.indexOf("climber") >= 0 ? 2 : 1,
+        steps = Math.min(G.CFG.chainStepCap, Math.max(0, pos - 1 + G.CFG.chainFloor) * step),
+        mul = Math.round((1 + G.CFG.chainStep * steps) * 10) / 10;
       $("chainN").textContent = "×" + pos;
-      $("chain").firstElementChild.textContent = add ? "Chain +" + add + " Mult" : "Chain"; }
+      /* Ο μεγάλος αριθμός είναι το σκαλί· η ετικέτα λέει τι αξίζει, χωρίς να το ξαναπεί. */
+      $("chain").firstElementChild.textContent = steps ? "Mult ×" + mul : "Chain"; }
     $("chain").classList.toggle("cold", pos <= 1);
     document.body.dataset.heat = pos >= 6 ? 3 : pos >= 4 ? 2 : pos >= 2 ? 1 : 0;
     $("chain").style.setProperty("--pos", Math.min(pos, 12));
@@ -199,7 +201,6 @@
     if (ev.bomb) { FX.sfx.bomb(); FX.buzz([30, 40, 120]); FX.boom($("table")); FX.flash(); FX.pulse($("app"), "shake"); FX.floatIn($("table"), "+" + ev.pts); document.body.classList.add("boom"); setTimeout(() => document.body.classList.remove("boom"), 900); }
     else if (!ev.up) { FX.sfx.pass(); FX.buzz(40); FX.floatIn($("table"), "+" + ev.pts); }
     else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300), ["#ffd166", "#ff6b6b", "#4ecdc4", "#c77dff", "#ffffff", "hsl(" + IC.kindHue(ev.k.kind) + " 90% 70%)"]); FX.floatIn($("table"), "+" + ev.pts); $("callout").style.setProperty("--kh", IC.kindHue(ev.k.kind)); }
-    if (ev.shattered) { FX.sfx.shatter(); FX.burstAt($("table"), 18, 3.2, "#cfe9f2"); }
     const crossed = S.score >= G.target(S) && S.score - ev.pts < G.target(S);
     ui.scoreDelay = 300;   /* τα φύλλα προσγειώνονται πρώτα, μετά ανεβαίνει ο αριθμός */
     render();
@@ -213,11 +214,11 @@
     callout(ev.tags[0]);
     afterMove();
   }
-  /* Ένα φύλλο που τράβηξες «έσκασε» σε Gold/Glass/Steel: μικρή γιορτή. */
+  /* Ένα φύλλο που τράβηξες «έσκασε» σε Gold/Silver/Joker: μικρή γιορτή. */
   function enhPop() {
     const e = S.enhNew && S.enhNew.length ? S.enhNew : null; S.enhNew = [];
     if (!e) return;
-    setTimeout(() => { callout(e[0] === "wild" ? "Joker!" : G.ENH[e[0]].name + " card!"); FX.sfx.unlock(); FX.burstAt($("hand"), 26, 3.5, e[0] === "gold" ? ["#f5cf6a", "#fff1bf"] : e[0] === "glass" ? ["#dff5fa", "#8fd0e2"] : ["#e2e6ea", "#a9b2bb"]); }, 520);
+    setTimeout(() => { callout(e[0] === "wild" ? "Joker!" : G.ENH[e[0]].name + " card!"); FX.sfx.unlock(); FX.burstAt($("hand"), 26, 3.5, e[0] === "gold" ? ["#f5cf6a", "#fff1bf"] : e[0] === "silver" ? ["#eef3f8", "#a9b7c6"] : ["#c9a6ff", "#8fd0e2"]); }, 520);
   }
   function doDiscard() {
     if (!G.canDiscard(S)) return;
@@ -394,13 +395,13 @@
       '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out — <b>the moment you reach it the round is over</b> and the next ante starts on its own.</p>' +
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
       '<p><b>The hands</b>, weakest to strongest: a lone <b>Ace</b> · pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
-      '<p><b>Score = Chips × Mult.</b> The shape sets both — a pair is 30 × 4, a full house 46 × 6, a straight flush 60 × 8. Then every card adds chips: 2 to 10 as printed, J Q K ten, an Ace eleven. Two Aces make 208 and two 3s make 144 before the chain — the card matters, it does not decide the round.</p>' +
-      '<p><b>The chain is where the points are.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +1 Mult, the first climb included</b>, up to +6. Play something lower and it still scores its plain Chips × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
-      '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b></p>' +
+      '<p><b>Score = Chips × Mult.</b> The shape sets both, and the ladder is steep: a pair is 30 × 3, two pair 36 × 5, trips 40 × 7, a straight 50 × 11, a full house 56 × 14, a straight flush 80 × 24. A full house is worth about ten pairs. Then every card adds chips: 2 to 10 as printed, J Q K ten, an Ace eleven — two Aces make 208 and two 3s 144, so the card matters a little and the shape matters enormously.</p>' +
+      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +35% Mult, the first climb included</b>, up to ×5.2 at the top. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Chips × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
+      '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b> A chain of five pairs is worth less than one full house — build combinations.</p>' +
       '<p>A lone <b>Ace</b> is a hand of its own — the cheapest one, and the first step of every chain. Anything else beats it, so it is the natural way to open. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. If your hand makes no combination at all, the discard is free.</p>' +
       '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together. It gives you <b>one thing</b>, three on offer: a <b>perk</b> at one station, a <b>charm</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) and repeat forever; charms are passive and permanent, and you only ever hold <b>four</b> — so each one is a pillar of the run, not a trinket. Once all four slots are full, the charm stations pay a perk instead.</p>' +
-      '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Gold</b> (Mult ×2, and two of them is ×4), <b>Glass</b> (Mult ×3, then it shatters), <b>Steel</b> (+20 Chips and it always comes back to your hand) or a <b>Joker</b>.</p>' +
+      '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Silver</b> (Mult ×1.5, the common one), <b>Gold</b> (Mult ×2, and two of them is ×4) or a <b>Joker</b>.</p>' +
       '<p>Most of the antes in between carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. A boss ante has a rule that bites instead, and a target a tenth lower to pay for it.</p>' +
       '<p>Fifty antes. Gentle at first, steep at the end. The Summit at 50 — and Endless after that.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');

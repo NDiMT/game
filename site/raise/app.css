@@ -237,11 +237,8 @@ body::after{content:"";position:fixed;inset:-25%;pointer-events:none;z-index:1;
 .card.e-gold .card__r,.card.e-gold .card__rs{color:#3a2a08;-webkit-text-fill-color:initial;background:none}
 .card.e-gold.red .card__r,.card.e-gold.red .card__rs,.card.e-gold.red .card__pip{color:#8f1e19}
 .card.e-gold .card__pip{opacity:.28}
-.card.e-glass{background:linear-gradient(150deg,rgba(228,244,248,.96),rgba(176,212,222,.9));box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 2px 6px rgba(0,0,0,.4),0 0 0 1px #7fb5c4}
-.card.e-glass::after{background:linear-gradient(118deg,rgba(255,255,255,.75) 0%,transparent 30%,transparent 55%,rgba(255,255,255,.35) 56%,transparent 60%)}
-.card.e-glass .card__e{background:rgba(40,90,110,.55)}
-.card.e-steel{background:linear-gradient(150deg,#e2e6ea,#a9b2bb 60%,#8e98a2);box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 2px 6px rgba(0,0,0,.45),0 0 0 1px #5f6a74}
-.card.e-steel .card__e{background:rgba(30,38,46,.6)}
+.card.e-silver{background:linear-gradient(150deg,#f4f7fa 0%,#c3ced9 55%,#96a3b1 100%);box-shadow:0 1px 0 rgba(255,255,255,.85) inset,0 2px 6px rgba(0,0,0,.45),0 0 0 1px #7d8b99,0 0 .9rem rgba(180,200,220,.3)}
+.card.e-silver .card__e{background:rgba(38,48,60,.65)}
 .card.e-wild{background:linear-gradient(150deg,#2b3f66,#1a2742 65%,#121b31);color:#f2d68c;box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 2px 6px rgba(0,0,0,.5),0 0 0 1px #4e6aa0,0 0 .9rem rgba(110,140,220,.35)}
 .card.e-wild .card__r,.card.e-wild .card__rs{color:#f2d68c}
 .card.e-wild .card__pip{opacity:.35;color:#9fb4ff}
@@ -326,7 +323,7 @@ span.card{display:block}
 .card.down::before{background-image:none;opacity:1}
 .tcards .card .card__pip{opacity:.24}
 /* gold foil shine on Gold cards and the wordmark */
-.card.e-gold{background-size:220% 100%;animation:foil 4.5s ease-in-out infinite}
+.card.e-gold,.card.e-silver{background-size:220% 100%;animation:foil 4.5s ease-in-out infinite}
 @keyframes foil{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 
 /* GO button shine when a legal hand is ready */
@@ -367,7 +364,7 @@ span.card{display:block}
 .stats span{font-family:var(--mono);font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .start__foot{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
 body.on-start .app{filter:blur(6px);pointer-events:none}
-@media (prefers-reduced-motion:reduce){.wordmark,.card.e-gold,.go.ok::after,.hand .card.sel{animation:none}.fan__c{animation:none}}
+@media (prefers-reduced-motion:reduce){.wordmark,.card.e-gold,.card.e-silver,.go.ok::after,.hand .card.sel{animation:none}.fan__c{animation:none}}
 
 
 /* ===================== v6: v2 layout, v3 mechanics ===================== */
@@ -849,16 +846,18 @@ body[data-heat="3"] .table{box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 
 .hand .card.sel{box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 14px 22px rgba(0,0,0,.55),0 0 0 2.5px var(--candy-1),0 0 1.4rem rgba(255,209,102,.65)}
 .hand .card.sel::after{background:linear-gradient(118deg,rgba(255,255,255,.6) 0%,rgba(255,255,255,.1) 32%,transparent 46%)}
 
-/* enhancements: foil, iridescent glass, brushed steel, holo joker */
+/* enhancements: gold foil, silver foil, holo joker */
 .card.e-gold{background:linear-gradient(158deg,#fff3c0 0%,#ffd873 40%,#e8ab2e 72%,#ffe9a8 100%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 3px 9px rgba(0,0,0,.5),0 0 0 1px #b3801d,0 0 .8rem rgba(255,200,80,.5)}
 .card.e-gold .card__r,.card.e-gold .card__rs,.card.e-gold .card__pip{color:#5a3c05}
 .card.e-gold.s1 .card__r,.card.e-gold.s1 .card__rs{color:#a01a16}
-.card.e-glass{background:linear-gradient(158deg,rgba(226,250,255,.96),rgba(190,232,246,.9) 50%,rgba(232,244,255,.96));
   box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 3px 9px rgba(0,0,0,.4),0 0 0 1px rgba(150,215,235,.9),0 0 .9rem rgba(160,225,245,.55)}
-.card.e-glass::after{background:linear-gradient(118deg,rgba(255,255,255,.75) 0%,rgba(190,255,240,.25) 28%,rgba(255,200,255,.18) 42%,transparent 56%)}
-.card.e-steel{background:linear-gradient(158deg,#f2f5f8 0%,#cdd5dd 45%,#e8edf2 60%,#b8c2cc 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 3px 9px rgba(0,0,0,.45),0 0 0 1px #8e9aa5}
+/* Silver: ίδια οικογένεια με το Gold — ίδιο foil, ψυχρή παλέτα, λιγότερη λάμψη. */
+.card.e-silver{background:linear-gradient(158deg,#ffffff 0%,#dbe3ec 40%,#a9b7c6 72%,#eef3f8 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 3px 9px rgba(0,0,0,.45),0 0 0 1px #8fa0b0,0 0 .7rem rgba(190,210,230,.45)}
+.card.e-silver .card__r,.card.e-silver .card__rs,.card.e-silver .card__pip{color:#2c3846}
+.card.e-silver.s1 .card__r,.card.e-silver.s1 .card__rs{color:#9c2420}
+.card.e-silver .card__e{background:rgba(40,54,70,.7)}
 .card.e-wild{background:linear-gradient(150deg,#2a1a5e 0%,#5b2b8f 28%,#1f6fb8 55%,#1aa07a 78%,#3b1f6e 100%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 10px rgba(0,0,0,.55),0 0 0 1px #7a5cc4,0 0 1rem rgba(140,90,220,.55)}
 .card.e-wild .card__r{color:#ffe9a8;text-shadow:0 0 .5rem rgba(255,220,120,.8)}

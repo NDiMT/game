@@ -133,7 +133,6 @@
     boss: () => { tone({ f: 110, t: 0.55, type: "sawtooth", g: 0.11, slide: 0.55 }); tone({ f: 55, t: 0.7, type: "square", g: 0.08, delay: 0.08, slide: 0.7 }); tone({ f: 880, t: 0.12, type: "sine", g: 0.05, delay: 0.3 }); },
     pass: () => tone({ f: 220, t: 0.28, type: "sawtooth", g: 0.07, slide: 0.5 }),
     ace: () => { tone({ f: 660, t: 0.12, type: "sine", g: 0.1 }); tone({ f: 440, t: 0.3, type: "sine", g: 0.1, delay: 0.09, slide: 0.75 }); },
-    shatter: () => { tone({ f: 2600, t: 0.16, type: "square", g: 0.05, slide: 0.35 }); tone({ f: 1900, t: 0.2, type: "square", g: 0.04, delay: 0.03, slide: 0.3 }); },
     clear: () => [523, 659, 784, 1046].forEach((f, i) => tone({ f, t: 0.38, type: "triangle", g: 0.11, delay: i * 0.09 })),
     bust: () => { tone({ f: 196, t: 0.5, type: "sawtooth", g: 0.08, slide: 0.7 }); tone({ f: 147, t: 0.6, type: "sawtooth", g: 0.08, delay: 0.16, slide: 0.7 }); },
     buy: () => tone({ f: 880, t: 0.13, type: "sine", g: 0.1, slide: 1.5 }),

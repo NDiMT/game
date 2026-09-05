@@ -1,12 +1,13 @@
 /* Μελέτη ροής: instrumented bot runs. node tools/study.js [N] [strategy]
-   strategy: base | finisher (φθηνά για αλυσίδα, το πιο ακριβό στο τελευταίο παίξιμο) | bombfish (ψαρεύει καρέ) */
+   strategy: base | finisher (φθηνά για αλυσίδα, το πιο ακριβό στο τελευταίο παίξιμο) |
+             bombfish (ψαρεύει καρέ) | builder (πάντα το μεγαλύτερο σχήμα που ανεβαίνει) */
 const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 150, STRAT = process.argv[3] || "base", PLAYOUT = !!process.env.PLAYOUT;
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
   "pl", "m1", "cs", "di", "wi", "m2", "th", "gt"];
 
-const st = { kinds: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, breaks: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(G.TARGETS.length).fill(0), wins: 0,
+const st = { kinds: {}, kpts: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, breaks: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(G.TARGETS.length).fill(0), wins: 0,
   ratio: Array.from({ length: G.TARGETS.length }, () => []), score: Array.from({ length: G.TARGETS.length }, () => []), bought: {}, picks: Array.from({ length: G.TARGETS.length }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, aceRounds: 0, used: [] };
 
 function rankGroups(S) { const g = {}; S.hand.forEach((c, i) => { if (!c.h && !G.isWild(c)) (g[c.r] = g[c.r] || []).push(i); }); return g; }
@@ -22,6 +23,13 @@ function playRound(S) {
   for (let guard = 0; guard < 200 && S.phase === "round"; guard++) {
     if (S.playsLeft < 1) break;
     let m = G.suggest(S);
+    /* builder: κρατά την αλυσίδα αλλά διαλέγει πάντα το ΜΕΓΑΛΥΤΕΡΟ σχήμα που ανεβαίνει —
+       ο έλεγχος του «σε σπρώχνει σε συνδυασμούς;» είναι αν κερδίζει τον finisher. */
+    if (STRAT === "builder") {
+      const up = G.candidates(S).filter((o) => G.climbs(S, o.k));
+      const pool = up.length ? up : G.candidates(S);
+      if (pool.length) m = pool.reduce((b, o) => (!b || G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts > G.scoreOf(S, b.k, b.idx.map((i) => S.hand[i])).pts ? o : b), null);
+    }
     if (STRAT === "finisher" && S.playsLeft < 2) { let best = null, bp = -1; G.candidates(S).forEach((o) => { const p = G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts; if (p > bp) { bp = p; best = o; } }); if (best) m = best; }
     if (STRAT === "bombfish" && m && !G.isBomb(m.k)) {
       /* μην παίζεις ζευγάρια/τρίο που μπορούν να γίνουν καρέ, αν έχεις discards για ψάρεμα */
@@ -31,7 +39,7 @@ function playRound(S) {
     if (m) {
       const need = Math.max(0, G.target(S) - S.score), share = need / Math.max(1, S.playsLeft);
       if (!PLAYOUT && S.playsLeft > 1 && G.scoreOf(S, m.k, m.idx.map((i) => S.hand[i])).pts < 0.55 * share && G.canDiscardAny(S) && discardStep(S)) { st.discards++; continue; }
-      S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; if (ev.broke) st.breaks++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; if (ev.k.kind === 9) st.aces++; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; }
+      S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; if (ev.broke) st.breaks++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; st.kpts[G.KINDS[ev.k.kind].id] = (st.kpts[G.KINDS[ev.k.kind].id] || 0) + ev.pts; if (ev.k.kind === 9) st.aces++; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; }
       /* Φτάνεις τον στόχο, ο γύρος τελειώνει εκεί — όπως και στο παιχνίδι. */
       if (ev.cleared && !PLAYOUT) { done = true; break; }
       continue; }
@@ -72,6 +80,8 @@ const mean = st.lost.reduce((a, n, i) => a + n * (i + 1), 0) / (N - st.wins) || 
 console.log(`strategy ${STRAT} · runs ${N} · wins ${st.wins} · mean death ante ${mean.toFixed(1)}`);
 console.log("deaths/ante:", st.lost.join(" "));
 console.log("kinds played:", Object.entries(st.kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + (100 * v / st.plays).toFixed(0) + "%").join(" · "));
+console.log("share of POINTS:", Object.entries(st.kpts).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + (100 * v / st.totalPts).toFixed(0) + "%").join(" · "));
+console.log("points per play:", Object.entries(st.kpts).sort((a, b) => b[1] / st.kinds[b[0]] - a[1] / st.kinds[a[0]]).map(([k, v]) => k + " " + Math.round(v / st.kinds[k])).join(" · "));
 console.log(`bombs: ${st.bombs} in ${st.rounds} rounds (${(100 * st.bombRounds / st.rounds).toFixed(1)}% of rounds) · bomb share of all points ${(100 * st.bombPts / st.totalPts).toFixed(1)}%`);
 console.log(`per round: plays ${(st.plays / st.rounds).toFixed(2)} · chain breaks ${(st.breaks / st.rounds).toFixed(2)} · aces ${(st.aces / st.rounds).toFixed(2)} · discards ${(st.discards / st.rounds).toFixed(2)} · max chain p50 ${q(st.maxChain, .5)} p90 ${q(st.maxChain, .9)}`);
 console.log("score/target p50 by ante:", st.ratio.map((a) => a.length ? q(a, .5).toFixed(1) : "-").join(" "));

@@ -24,10 +24,12 @@ function discardStep(S) {
    Το discard δεν είναι πια έσχατη λύση: αν το καλύτερο χέρι δεν βγάζει το μερίδιο που του
    αναλογεί (ό,τι λείπει, διά τα plays που μένουν), το bot ψαρεύει αντί να το σπαταλήσει.
    Χωρίς αυτό, το bot έκανε 0,09 discard τον γύρο και κάθε αναβάθμιση discard μετριόταν νεκρή. */
+/* Το bot παίζει όπως πρέπει να παίζεται το παιχνίδι: το μεγαλύτερο σχήμα που ανεβαίνει.
+   Το σπαμ ζευγαριών είναι πια μετρήσιμα κακή στρατηγική, οπότε δεν είναι βάση μέτρησης. */
 function bestMove(S) {
-  let m = G.suggest(S);
-  if (S.playsLeft < 2) { let best = null, bp = -1; G.candidates(S).forEach((o) => { const p = G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts; if (p > bp) { bp = p; best = o; } }); if (best) m = best; }
-  return m;
+  const all = G.candidates(S); if (!all.length) return null;
+  const up = all.filter((o) => G.climbs(S, o.k)), pool = up.length ? up : all;
+  return pool.reduce((b, o) => (!b || G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts > G.scoreOf(S, b.k, b.idx.map((i) => S.hand[i])).pts ? o : b), null);
 }
 const movePts = (S, m) => G.scoreOf(S, m.k, m.idx.map((i) => S.hand[i])).pts;
 function playRound(S, tally) {
