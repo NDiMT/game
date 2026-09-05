@@ -91,7 +91,7 @@
   const poolById = Object.fromEntries(POOL.map((o) => [o.id, o]));
 
   const ENH = {
-    gold: { name: "Gold", desc: "Mult ×2 when played — they stack, up to ×4" },
+    gold: { name: "Gold", desc: "Mult ×2 when played — they stack, up to ×3" },
     wild: { name: "Joker", desc: "Any rank, any suit — and an Ace" },
     silver: { name: "Silver", desc: "Mult ×1.5 when played — the common cousin of Gold" },
   };
@@ -104,7 +104,7 @@
     { id: "leap", name: "Overkill", glyph: "⤒", desc: "Same hand four ranks or more above the rung: Mult ×2" },
     { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6: Mult ×2, and +40 Chips" },
     { id: "court", name: "Court", glyph: "♛", desc: "A face card in the hand you play: +60 Chips" },
-    { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: a chain step higher, and +60 Chips" },
+    { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: a chain step higher, and +60 Chips on the way up" },
     { id: "cheap", name: "Slipstream", glyph: "~", desc: "A broken chain drops one step instead of resetting" },
     { id: "wind", name: "Second Wind", glyph: "∞", desc: "The first two breaks of the round keep everything" },
     { id: "sleight", name: "Sleight", glyph: "✂", desc: "+3 discards a round" },
@@ -162,7 +162,7 @@
   const SYNERGIES = [
     { id: "royal", a: "kingmaker", b: "loyal", name: "Royal Court", desc: "Aces are worth +90 Chips instead of +45." },
     { id: "reaction", a: "afterburner", b: "summiteer", name: "Chain Reaction", desc: "The hand after a bomb: Mult ×3.5 instead of ×2.5." },
-    { id: "backstairs", a: "lowroad", b: "ladder", name: "Back Stairs", desc: "A tight step onto a low pair scores two chain steps higher." },
+    { id: "backstairs", a: "lowroad", b: "ladder", name: "Back Stairs", desc: "A tight step onto a low pair scores one more chain step — three in all." },
     { id: "lockstep", a: "ladder", b: "loyal", name: "Lockstep", desc: "Ladder and Loyalty together: one more step on top." },
     { id: "bookends", a: "encore", b: "mirror", name: "Bookends", desc: "A last hand of the same kind as your first: Mult ×3 instead of ×2." },
     { id: "tempo", a: "climber", b: "patient", name: "Tempo", desc: "Every chain step counts triple." },
@@ -214,6 +214,8 @@
         if (!ranks.length) break;
         const lo = Math.min.apply(null, ranks);
         S.deck = S.deck.filter((c) => isWild(c) || c.r !== lo);
+        /* «Για πάντα» σημαίνει και από το χέρι: αλλιώς κουβαλάς το κομμένο φύλλο από γύρο σε γύρο. */
+        S.hand = S.hand.filter((c) => isWild(c) || c.r !== lo);
         S.removed.push(lo);
         break;
       }
@@ -384,7 +386,7 @@
     if (has(S, "kingmaker")) { const na = cs.filter(isAce).length; if (na) { const per = syn(S, "royal") ? 90 : 45; chips += per * na; notes.push((syn(S, "royal") ? "Royal Court +" : "Kingmaker +") + per * na); } }
     /* Αλυσίδα: κάθε σκαλί πολλαπλασιάζει το Mult — μόνο αν το χέρι ανεβαίνει.
        Χέρι που δεν ανεβαίνει γράφει σκέτο chips × mult και σπάει την αλυσίδα. */
-    const prev = S.rung, up = beats(k, prev);
+    const prev = S.rung, up = climbs(S, k);
     let pos = chainPos(S);
     const ladder = has(S, "ladder") && sameShape(k, prev) && k.rank === prev.rank + 1, loyal = has(S, "loyal") && S.lastSuit != null && leadSuit(cs) === S.lastSuit;
     if (up) {
@@ -618,7 +620,7 @@
     return ev;
   }
   /* Discard: σταθερός αριθμός ανά γύρο, ξεχωριστός από τα plays (όπως στο Balatro).
-     Βάση 2 · +1 ανά Nimble Hands · +1 με Sleight, Spare Card ή Four Plays. */
+     Βάση 2 · +1 ανά Nimble Hands · +3 με Sleight · +1 με Spare Card ή Short Hand. */
   function discMaxOf(S) {
     if (chal(S) === "nodiscard") return 0;
     if (chal(S) === "onedisc") return 1;
@@ -655,7 +657,7 @@
     if (hasLegal(S)) return "";
     if (canDiscardAny(S)) return deadHand(S) && discardsLeft(S) <= 0 ? "These cards make no hand at all, so this discard is free." : "These cards make no hand. Discard and draw — " + discardsLeft(S) + " discard" + (discardsLeft(S) === 1 ? "" : "s") + " left.";
     if (!S.pile.length) return "The pile is empty and nothing here makes a hand — the round is over.";
-    return "These cards make no hand and there are no discards left — the round is over.";
+    return chal(S) === "nodiscard" ? "These cards make no hand, and this round has no discards — the round is over." : "These cards make no hand and there are no discards left — the round is over.";
   }
   function finish(S) {
     if (S.phase !== "round") return null;
@@ -718,7 +720,8 @@
     if (S.phase !== "won") return false;
     S.endless = true; S.phase = "shop";
     rollEndless(S, S.ante + 1);
-    S.offers = makeOffers(S);
+    /* Η Κορυφή δεν είναι σταθμός πληρωμής: χωρίς picks δεν βγαίνουν προσφορές. */
+    S.offers = picksLeft(S) ? makeOffers(S) : [];
     return true;
   }
   /* Endless: το επόμενο ante κληρώνεται όσο είσαι ακόμη στο κατάστημα, ώστε η
@@ -748,7 +751,17 @@
 
   /* ============================== σειριοποίηση ============================== */
   const serialize = (S) => JSON.stringify(S);
-  function restore(json) { try { const S = JSON.parse(json); if (!S || S.v !== 12 || !Array.isArray(S.hand) || !Array.isArray(S.pile)) return null; return S; } catch (e) { return null; } }
+  function restore(json) {
+    try {
+      const S = JSON.parse(json);
+      if (!S || S.v !== 12) return null;
+      /* Έλεγχος σχήματος, όχι μόνο έκδοσης: ένα save με λείπον πίνακα περνούσε και έσκαγε αργότερα. */
+      const arrays = ["hand", "pile", "deck", "charms", "mult", "sel", "removed", "unlocked", "discardPile", "played", "log"];
+      if (!arrays.every((k) => Array.isArray(S[k]))) return null;
+      if (!S.hand.every(Boolean) || !S.chals || !S.rules || !S.bought || !S.stats) return null;
+      return S;
+    } catch (e) { return null; }
+  }
   const todaySeed = (d) => { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 
   return {

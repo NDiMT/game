@@ -40,11 +40,12 @@
   }
 
   /* ---------- run lifecycle ---------- */
-  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.note = null; shown = 0; save(); hideStart(); render(); }
+  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.note = null; shown = 0; save(); hideStart(); render(); afterMove(); }
   function resumeOrBegin() {
     const saved = load();
     if (saved) { S = saved; shown = S.score; render(); }
-    showStart(saved && saved.phase !== "lost" && saved.phase !== "won" ? saved : null);
+    /* Και η νικημένη Κορυφή είναι «συνέχισε»: αλλιώς ένα reload έτρωγε το Endless. */
+    showStart(saved && saved.phase !== "lost" ? saved : null);
   }
 
   /* ---------- cards ---------- */
@@ -159,7 +160,7 @@
     /* Η γραμμή κάτω από το τραπέζι δεν αλλάζει με την επιλογή: λέει τι θέλει το rung, και μόνο.
        Ο αριθμός του χεριού ζει στο κουμπί, εκεί που πέφτει ο αντίχειρας. */
     pv.classList.add("hint");
-    pvt = (S.rung ? "Beat " + G.clabel(S.rung) + " to climb" : "Table is open · any hand starts the chain") + (S.playsLeft < 2 ? " · last play" : "");
+    pvt = (S.rung ? "Beat " + G.clabel(S.rung) + " to climb" : G.beatText(S)) + (S.playsLeft < 2 ? " · last play" : "");
     pv.innerHTML = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       : cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + "</span>").join(' <i>·</i> ');
     Array.prototype.forEach.call(go.querySelectorAll(".go__s"), (el) => { el.textContent = cap(el.textContent); });
@@ -251,7 +252,7 @@
     if (S.playsMax > G.CFG.plays) c.push("Plays <b>" + S.playsMax + "</b>");
     if (S.handSize > G.CFG.handSize) c.push("Hand <b>" + S.handSize + "</b>");
     if (S.chainStart) c.push("Head Start <b>+" + S.chainStart + "</b>");
-    if (S.discMore) c.push("Discards <b>" + (G.CFG.discards + S.discMore) + "</b>");
+    { const d = G.discMaxOf(S); if (d !== G.CFG.discards) c.push("Discards <b>" + d + "</b>"); }
     if (S.charmSlots > G.CFG.charmSlots) c.push("Slots <b>" + S.charmSlots + "</b>");
     if (S.removed.length) c.push("Culled <b>" + S.removed.map(G.rname).join(",") + "</b>");
     const enh = {}; S.deck.forEach((d) => { if (d.e) enh[d.e] = (enh[d.e] || 0) + 1; });
@@ -327,7 +328,7 @@
     if (S.phase !== "shop") return;
     clearTimeout(sheetNext.t);
     $("sheet").classList.remove("leaving");
-    G.nextAnte(S); closeS(); render(); save();
+    G.nextAnte(S); closeS(); render(); afterMove();
     const bc = G.current(S); if (bc) bossIntro(bc);
   }
   const shareText = () => "RAISE · " + S.seed + (S.deckId && S.deckId !== "classic" ? " · " + G.deckById[S.deckId].name : "") + " · " + (S.phase === "won" ? "Summit ▲" : (S.endless ? "Endless ante " : "Ante ") + (S.ante + 1)) + " · " + S.score + " pts" + (S.charms.length ? " · " + S.charms.map((id) => G.charmById[id].name).join(", ") : "");
@@ -341,11 +342,11 @@
   }
   /* Μία συμβουλή τη φορά στην οθόνη Busted — κάθε φορά διαφορετική. */
   const BUSTED_TIPS = [
-    "Every step of chain is +1 Mult. Four cheap hands that climb beat one fat hand that does not.",
+    "Every step of chain is +22% Mult. Four cheap hands that climb beat one fat hand that does not.",
     "A hand that does not climb still scores — it just scores flat. Sometimes that is the right call.",
     "Discards do not cost you a play. Two hands you cannot use are two hands you should throw.",
     "A lone Ace is the cheapest hand there is, and it is the first step of the chain. Open with it.",
-    "Every third ante pays: one perk and one charm. The two before it are the run-up.",
+    "Every third ante pays: one perk, or one charm, turn and turn about. The two before it are the run-up.",
     "Bombs beat anything and the chain carries on through them. Save one for a wall.",
     "The shape of the hand matters far more than the rank of the cards. Build shapes.",
   ];
@@ -370,7 +371,7 @@
       '<button class="big" data-restart="1">Same seed, again</button><div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>');
   }
   function sheetWin() {
-    openS('<h2 class="good">The Summit</h2><p class="sub">All thirty · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
+    openS('<h2 class="good">The Summit</h2><p class="sub">All fifty · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
       '<div class="tally"><div>Charms<b>' + S.charms.length + '</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
       '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' +
       '<button class="big" data-endless="1" style="margin-top:1rem">Keep climbing · Endless</button>' +
@@ -396,12 +397,12 @@
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
       '<p><b>The hands</b>, weakest to strongest: a lone <b>Ace</b> · pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
       '<p><b>Score = Chips × Mult.</b> The shape sets both: a pair is 25 × 3, two pair 30 × 4, trips 34 × 5, a straight 38 × 5, a full house 42 × 6, a straight flush 62 × 8. Measured over real runs, a full house pays about <b>four times</b> a pair — enough that combinations are always worth building, not so much that one lucky hand ends the round. Then every card adds chips: 2 to 10 as printed, J Q K ten, an Ace eleven.</p>' +
-      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +22% Mult, the first climb included</b>, up to ×2.8 at the top. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Chips × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
+      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +22% Mult, the first climb included</b>, up to ×2.3 once the chain caps at ×6. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Chips × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
       '<p>A lone <b>Ace</b> is a hand of its own — the cheapest one, and the first step of every chain. Anything else beats it, so it is the natural way to open. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. If your hand makes no combination at all, the discard is free.</p>' +
-      '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together. It gives you <b>one thing</b>, three on offer: a <b>perk</b> at one station, a <b>charm</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) and repeat forever; charms are passive and permanent, and you only ever hold <b>four</b> — so each one is a pillar of the run, not a trinket. Once all four slots are full, the charm stations pay a perk instead.</p>' +
-      '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Silver</b> (Mult ×1.5, the common one), <b>Gold</b> (Mult ×2, and two of them is ×4) or a <b>Joker</b>.</p>' +
+      '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together (the Summit at 50 is a boss too, but there is nothing left to spend it on). It gives you <b>one thing</b>, three on offer: a <b>perk</b> at one station, a <b>charm</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) — the Mult ones repeat forever, the rest run out; charms are passive and permanent, and you only ever hold <b>four</b> — so each one is a pillar of the run, not a trinket. Once all four slots are full, the charm stations pay a perk instead.</p>' +
+      '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Silver</b> (Mult ×1.5, the common one), <b>Gold</b> (Mult ×2, and two of them ×3 — the cap on enhanced cards) or a <b>Joker</b>.</p>' +
       '<p>Most of the antes in between carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. A boss ante has a rule that bites instead, and a target a tenth lower to pay for it.</p>' +
       '<p>Fifty antes. Gentle at first, steep at the end. The Summit at 50 — and Endless after that.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
@@ -432,7 +433,7 @@
     const l = life(), un = unlockedFrom(l);
     $("fan").innerHTML = FAN.map((c, i) => '<span class="fan__c" style="--i:' + i + '">' + cardHTML(c, null, false, true, i, 5) + '</span>').join("");
     $("startBtns").innerHTML =
-      (resume ? '<button class="big" data-continue="1">Continue · ante ' + (resume.ante + 1) + ' · ' + resume.score + ' pts</button>' : "") +
+      (resume ? '<button class="big" data-continue="1">' + (resume.phase === "won" ? "The Summit · keep climbing" : "Continue · ante " + (resume.ante + 1) + " · " + resume.score + " pts") + '</button>' : "") +
       '<button class="big' + (resume ? " ghost" : "") + '" data-daily="1">Daily · ' + G.todaySeed() + (l.seeds && l.seeds[G.todaySeed()] ? ' · best ante ' + l.seeds[G.todaySeed()].ante : "") + '</button>' +
       '<div class="row2"><button class="big ghost" data-random="1">Random run</button><button class="big ghost" data-howto="1">How to play</button></div>' +
       '<button class="colllink" data-collection="1">Collection · ' + un.length + ' / ' + G.CHARMS.length + ' charms ›</button>';
@@ -492,7 +493,7 @@
     const cm = t.closest("[data-charm]");
     if (cm) { sheetCharm(cm.dataset.charm); return; }
     if (t.closest("[data-next]")) { goNextAnte(); return; }
-    if (S.phase === "shop" && !S.offers.length) { clearTimeout(sheetNext.t); goNextAnte(); return; }
+    if (S && S.phase === "shop" && !S.offers.length) { clearTimeout(sheetNext.t); goNextAnte(); return; }
     if (t.closest("[data-endless]")) { if (G.goEndless(S)) { FX.sfx.open(); save(); sheetShop(null, []); } return; }
     if (t.closest("[data-restart]")) { closeS(); begin(S.seed); return; }
     if (t.closest("[data-fresh]")) { closeS(); begin(""); return; }
@@ -507,7 +508,7 @@
     if (t.closest("[data-close]") || t === $("veil")) { if ((S && S.phase === "round") || !$("start").hidden) closeS(); }
   });
   $("start").addEventListener("click", (e) => {
-    if (e.target.closest("[data-continue]")) { hideStart(); FX.sfx.open(); render(); if (S.phase === "shop") sheetShop(null, []); return; }
+    if (e.target.closest("[data-continue]")) { hideStart(); FX.sfx.open(); render(); if (S.phase === "shop") sheetShop(null, []); else if (S.phase === "won") sheetWin(); else afterMove(); return; }
     const dk = e.target.closest("[data-deck]"); if (dk) { try { localStorage.setItem(DECK_KEY, dk.dataset.deck); } catch (x) {} FX.sfx.tick(); showStart(S && (S.phase === "round" || S.phase === "shop") ? S : null); return; }
     const rp = e.target.closest("[data-replay]"); if (rp) { FX.sfx.open(); begin(rp.dataset.replay); return; }
     if (e.target.closest("[data-daily]")) { FX.sfx.open(); begin(G.todaySeed()); return; }
