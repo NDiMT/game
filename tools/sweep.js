@@ -5,7 +5,7 @@ const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 400;
 
 const PRIO = ["ladder", "cheap", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "wind", "court", "loyal", "vault", "sleight", "thrift", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "tip", "m2", "m3", "m6", "th"];
+  "pl", "m1", "cs", "di", "wi", "tip", "m2", "th"];
 const ALL_UNLOCKED = G.CHARMS.map((c) => c.id);
 
 function discardOrphans(S) {
@@ -26,6 +26,7 @@ function playRound(S) {
   if (S.phase === "round") G.finish(S);
 }
 function shop(S) {
+  if (!S.offers.length) { G.nextAnte(S); return; }
   while (G.picksLeft(S) > 0) {
     const opts = S.offers.map((o, i) => ({ o, i, pr: PRIO.indexOf(o.id) })).filter((x) => !x.o.bought && x.pr >= 0 && G.canTake(S, x.i).ok).sort((a, b) => a.pr - b.pr);
     if (!opts.length) break;

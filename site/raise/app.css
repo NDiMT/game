@@ -1059,3 +1059,10 @@ body{background:
    γίνει νόμιμο και μετά ησυχάζει· το τραπέζι τρέμει δύο δευτερόλεπτα, όχι όσο κρατά η φωτιά. */
 .go.ok,.go.done{animation:ready 1.6s ease-in-out 3}
 body[data-heat="3"] .table{animation:tremble .38s ease-in-out 5}
+
+/* ===== v16: το κατάστημα έχει δύο διαδρόμους — ένα perk και ένα charm ===== */
+.lane{margin:.2rem 0 .9rem}
+.lane__h{display:flex;align-items:baseline;justify-content:space-between;margin:0 .15rem .35rem}
+.lane__n{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lane__n.on{color:#ffd977}
+.lane .offers{margin:0}

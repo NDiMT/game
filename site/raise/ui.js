@@ -4,8 +4,8 @@
   const G = window.RAISE, FX = window.FX, IC = window.ICONS;
   const $ = (id) => document.getElementById(id);
   const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
-  const KEY = "raise.run.v7", LIFE = "raise.life.v1";
-  let S = null, shown = 0, ui = { note: null, noteT: 0 }, installEvt = null;
+  const KEY = "raise.run.v8", LIFE = "raise.life.v1";
+  let S = null, shown = 0, ui = { note: null, noteT: 0, ending: false }, installEvt = null;
 
   /* ---------- storage ---------- */
   const save = () => { try { localStorage.setItem(KEY, G.serialize(S)); } catch (e) {} };
@@ -136,7 +136,6 @@
     hand.classList.toggle("picking", S.sel.length > 0);
 
     let tools = "";
-    if (cleared && S.playsLeft >= 1) tools += '<button class="tb" data-act="end">Bank it · end round</button>';
     $("tools").innerHTML = tools;
     /* Σημειώσεις/tooltips: αιωρούμενη κάρτα πάνω από το dock, δεν μετακινεί τίποτα· κλείνει με άγγιγμα. */
     const tipOn = !!ui.note && Date.now() < ui.noteT;
@@ -145,7 +144,7 @@
     const go = $("bPlay"); go.className = "go";
     const pv = $("preview"); pv.className = "preview"; let pvt = "";
     const held = ui.hold && Date.now() < ui.hold.until ? ui.hold : null;
-    if (S.playsLeft < 1) { go.classList.add("done"); go.disabled = false; go.innerHTML = '<span class="go__t">Round over</span><span class="go__s">' + (cleared ? "Cleared · tap for your bonus" : "Short by " + (T - S.score)) + '</span>'; }
+    if (ui.ending || S.playsLeft < 1 || cleared) { go.classList.add("done"); go.disabled = true; go.innerHTML = '<span class="go__t">' + (cleared ? "Target!" : "Round over") + '</span><span class="go__s">' + (cleared ? "Ante " + (S.ante + 1) + " cleared" : "Short by " + (T - S.score)) + '</span>'; }
     else if (!S.sel.length) {
       go.classList.add("idle"); go.disabled = true;
       /* Μόλις έπαιξες: η ανάλυση του χεριού μένει λίγο ακόμα — «γιατί έκανε τόσους;» με μια ματιά. */
@@ -194,6 +193,7 @@
 
   /* ---------- actions ---------- */
   function doPlay() {
+    if (ui.ending) return;
     if (S.playsLeft < 1) { end(); return; }
     const from = selRects();
     const ev = G.play(S); if (!ev) return;
@@ -208,6 +208,8 @@
     ui.scoreDelay = 300;   /* τα φύλλα προσγειώνονται πρώτα, μετά ανεβαίνει ο αριθμός */
     render();
     if (crossed) { setTimeout(() => { callout("Target!"); FX.sfx.clear(); FX.burstAt($("score"), 30, 4, ["#8ff0bf", "#ffffff", "#ffd166"]); }, 1100); }
+    /* Φτάνεις τον στόχο ή τελειώνουν τα plays: ο γύρος κλείνει μόνος του, χωρίς άλλο πάτημα. */
+    if (ev.cleared || S.playsLeft < 1) { ui.ending = true; setTimeout(() => { ui.ending = false; end(); }, ev.cleared ? 1700 : 1000); }
     FX.fly(from, Array.prototype.slice.call($("tcards").children));
     setTimeout(() => { if (ui.hold && Date.now() >= ui.hold.until) { ui.hold = null; render(true); } }, 1900);
     if (ev.drawn) setTimeout(() => FX.sfx.draw(), 180);
@@ -239,7 +241,9 @@
     const fresh = commitStats(); save();
     if (!r.cleared) { const nb = recordEnd(false); FX.sfx.bust(); FX.buzz([60, 40, 90]); sheetLose(nb); return; }
     FX.sfx.clear(); FX.flash(); FX.spark(innerWidth / 2, innerHeight * 0.42, 120, 6.5); FX.buzz([12, 60, 12]); FX.pulse($("app"), "shake");
-    if (r.won) { recordEnd(true); sheetWin(); } else sheetShop(r, fresh);
+    if (r.won) { recordEnd(true); sheetWin(); }
+    else if (r.reward) sheetShop(r, fresh);
+    else sheetNext(fresh);
   }
 
   /* ---------- sheets ---------- */
@@ -262,16 +266,20 @@
     if (!S.charms.length) return '<p class="sub">No charms yet · ' + S.charmSlots + ' slots</p>';
     return '<div class="owned">' + S.charms.map((id) => { const c = G.charmById[id]; return '<div class="owned__row">' + IC.bubble(id, "charm charm--s") + '<div><strong>' + c.name + '</strong><span>' + c.desc + '</span></div></div>'; }).join("") + '</div>';
   }
-  function offersHTML() {
-    const left = G.picksLeft(S);
-    return S.offers.map((o, i) => {
+  /* Δύο διάδρομοι, ένα από τον καθένα: ένα perk και ένα charm. */
+  function laneHTML(kind) {
+    const rows = S.offers.map((o, i) => ({ o, i })).filter((x) => x.o.kind === kind);
+    if (!rows.length) return "";
+    const left = G.laneLeft(S, kind);
+    const title = kind === "charm" ? "Charm" : "Perk";
+    const head = '<div class="lane__h"><span class="lbl">' + title + '</span><span class="lane__n' + (left ? " on" : "") + '">' + (left ? "pick " + (left > 1 ? left : "one") : "taken ✓") + '</span></div>';
+    return '<div class="lane">' + head + '<div class="offers">' + rows.map(({ o, i }) => {
       const cb = G.canTake(S, i), dis = o.bought || !cb.ok ? " disabled" : "";
-      const it = o.kind === "charm" ? G.charmById[o.id] : G.poolById[o.id];
-      const tag = o.kind === "charm" ? "Charm" : "Upgrade";
+      const it = kind === "charm" ? G.charmById[o.id] : G.poolById[o.id];
       const why = !o.bought && !cb.ok && cb.why === "full" ? '<span class="why">Charm slots full</span>' : "";
-      return '<button class="offer offer--pick' + (o.bought ? " bought" : "") + (left > 0 && !o.bought && cb.ok ? " open" : "") + '" data-take="' + i + '"' + dis + '>' +
-        IC.bubble(o.id, "charm charm--s") + '<strong>' + it.name + '</strong><em>' + (o.bought ? "✓" : tag) + '</em><span>' + it.desc + why + (o.kind === "charm" ? synHint(o.id) : "") + '</span></button>';
-    }).join("");
+      return '<button class="offer offer--pick' + (o.bought ? " bought" : "") + (!o.bought && cb.ok ? " open" : "") + '" data-take="' + i + '"' + dis + '>' +
+        IC.bubble(o.id, "charm charm--s") + '<strong>' + it.name + '</strong><em>' + (o.bought ? "✓" : title) + '</em><span>' + it.desc + why + (kind === "charm" ? synHint(o.id) : "") + '</span></button>';
+    }).join("") + '</div></div>';
   }
   /* Τα charms που κρατάς, σαν σειρά από εικονίδια — δεν πωλούνται, δεν χρειάζονται λίστα. */
   function ownedRowHTML() {
@@ -285,20 +293,30 @@
   const canPickMore = () => G.picksLeft(S) > 0 && S.offers.some((o, i) => G.canTake(S, i).ok);
   function shopBody() {
     const left = G.picksLeft(S), took = S.offers.some((o) => o.bought);
-    const label = left > 1 ? "Pick " + left + " to continue" : left ? "Pick one to continue" : took ? "Taken · on to the next ante" : "No pick this ante";
+    const label = left > 1 ? "A perk and a charm" : left ? "One more to go" : took ? "Taken · on to the next ante" : "Nothing left to take";
     return '<div class="picks' + (left ? " on" : "") + '">' + label + '</div>' +
-      '<div class="offers" id="offers">' + offersHTML() + '</div>' + ownedRowHTML();
+      laneHTML("up") + laneHTML("charm") + ownedRowHTML();
+  }
+  const nextUpHTML = () => {
+    const up = G.upcoming(S);
+    return '<div class="nextup"><span class="lbl">Next · Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</span>' +
+      (up ? '<div class="chalnext bossnext">' + IC.bubble(up.id, "charm charm--s") + '<div><span class="lbl">Boss ante</span><b>' + up.name + '</b><span>' + up.desc + '</span><em>' + up.tell + ' ' + up.tip + '</em></div></div>'
+          : (G.upcomingRule(S) ? '<div class="chalnext rulenext"><span class="lbl">Table rule</span><b>' + G.upcomingRule(S).name + '</b><span>' + G.upcomingRule(S).desc + '</span></div>' : "")) + '</div>';
+  };
+  /* Πίστα χωρίς ανταμοιβή: μια ανάσα να δεις τι έρχεται, και συνεχίζει μόνη της. */
+  function sheetNext(fresh) {
+    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + G.target(S) + '</p>' +
+      (fresh && fresh.length ? '<div class="unlocked">✦ Unlocked · ' + fresh.map((id) => G.charmById[id].name).join(", ") + '</div>' : "") +
+      nextUpHTML() + '<div class="picks">Straight on · tap to skip</div>');
+    if (fresh && fresh.length) FX.sfx.unlock();
+    clearTimeout(sheetNext.t);
+    sheetNext.t = setTimeout(() => { $("sheet").classList.add("leaving"); setTimeout(goNextAnte, 520); }, fresh && fresh.length ? 2200 : 1500);
   }
   function sheetShop(r, fresh) {
-    const T = G.target(S), up = G.upcoming(S);
-    const bonus = [];
-    if (r && r.perfect) bonus.push("perfect round");
-    if (r && r.dbl) bonus.push("double the target");
-    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + (bonus.length ? ' · ' + bonus.join(' · ') : '') + '</p>' +
+    const T = G.target(S);
+    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + ' · a perk and a charm</p>' +
       (fresh && fresh.length ? '<div class="unlocked">✦ Unlocked · ' + fresh.map((id) => G.charmById[id].name).join(", ") + '</div>' : "") +
-      '<div class="nextup"><span class="lbl">Next · Ante ' + (S.ante + 2) + ' · target ' + G.nextTarget(S) + '</span>' +
-        (up ? '<div class="chalnext bossnext">' + IC.bubble(up.id, "charm charm--s") + '<div><span class="lbl">Boss ante</span><b>' + up.name + '</b><span>' + up.desc + '</span><em>' + up.tell + ' ' + up.tip + '</em></div></div>' : (G.upcomingRule(S) ? '<div class="chalnext rulenext"><span class="lbl">Table rule</span><b>' + G.upcomingRule(S).name + '</b><span>' + G.upcomingRule(S).desc + '</span></div>' : "")) +
-        '</div>' +
+      nextUpHTML() +
       '<div id="shopBody">' + shopBodyFull() + '</div>');
     if (fresh && fresh.length) FX.sfx.unlock();
   }
@@ -309,6 +327,7 @@
   const refreshShop = () => { $("shopBody").innerHTML = shopBodyFull(); };
   function goNextAnte() {
     if (S.phase !== "shop") return;
+    clearTimeout(sheetNext.t);
     $("sheet").classList.remove("leaving");
     G.nextAnte(S); closeS(); render(); save();
     const bc = G.current(S); if (bc) bossIntro(bc);
@@ -328,7 +347,7 @@
     "A hand that does not climb still scores — it just scores flat. Sometimes that is the right call.",
     "Discards do not cost you a play. Two hands you cannot use are two hands you should throw.",
     "A lone Ace is the cheapest hand there is, and it is the first step of the chain. Open with it.",
-    "A perfect round — chain never broken, no discard, every play used — is a second bonus.",
+    "Every third ante pays: one perk and one charm. The two before it are the run-up.",
     "Bombs beat anything and the chain carries on through them. Save one for a wall.",
     "The shape of the hand matters far more than the rank of the cards. Build shapes.",
   ];
@@ -375,7 +394,7 @@
   }
   function sheetHowTo() {
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
-      '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out.</p>' +
+      '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out — <b>the moment you reach it the round is over</b> and the next ante starts on its own.</p>' +
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
       '<p><b>The hands</b>, weakest to strongest: a lone <b>Ace</b> · pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
       '<p><b>Score = Chips × Mult.</b> The shape sets both — a pair is 30 × 4, a full house 46 × 6, a straight flush 60 × 8. Then every card adds chips: 2 to 10 as printed, J Q K ten, an Ace eleven. Two Aces make 208 and two 3s make 144 before the chain — the card matters, it does not decide the round.</p>' +
@@ -383,9 +402,9 @@
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b></p>' +
       '<p>A lone <b>Ace</b> is a hand of its own — the cheapest one, and the first step of every chain. Anything else beats it, so it is the natural way to open. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. If your hand makes no combination at all, the discard is free.</p>' +
-      '<p><b>Clear an ante, pick one bonus.</b> Three on offer, upgrades and <b>charms</b> together. No money, no prices, no selling — one tap and you are back at the table. Two things pay a second pick: a <b>perfect round</b> (chain never broken, no discard, every play used) and clearing at <b>double the target</b>, which also puts a fourth offer on the table. Charms are passive and permanent: five slots to start.</p>' +
+      '<p><b>Every third ante is the one that pays.</b> It is also the <b>boss</b> — the two go together. Clear it and you take <b>one perk and one charm</b>, three on offer of each. No money, no prices, no selling: two taps and you are back at the table. The two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand); charms are passive and permanent, six slots to start.</p>' +
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Gold</b> (Mult ×2, and two of them is ×4), <b>Glass</b> (Mult ×3, then it shatters), <b>Steel</b> (+20 Chips and it always comes back to your hand) or a <b>Joker</b>.</p>' +
-      '<p>Most antes carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. Every fifth ante is a <b>boss</b> with a rule that bites and a target a tenth lower.</p>' +
+      '<p>Most of the antes in between carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. A boss ante has a rule that bites instead, and a target a tenth lower to pay for it.</p>' +
       '<p>Thirty antes. Gentle at first, steep at the end. The Summit at 30 — and Endless after that.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
@@ -452,7 +471,6 @@
     const a = e.target.closest("[data-act]"); if (!a) return;
     const act = a.dataset.act;
     if (act === "hint") doHint();
-    if (act === "end") end();
   });
   $("charms").addEventListener("click", (e) => { const c = e.target.closest("[data-charm]"); if (c) sheetCharm(c.dataset.charm); });
   $("chal").addEventListener("click", () => { const c = G.current(S); if (c) note(c.name + " — " + c.desc, 4500); });
@@ -476,6 +494,7 @@
     const cm = t.closest("[data-charm]");
     if (cm) { sheetCharm(cm.dataset.charm); return; }
     if (t.closest("[data-next]")) { goNextAnte(); return; }
+    if (S.phase === "shop" && !S.offers.length) { clearTimeout(sheetNext.t); goNextAnte(); return; }
     if (t.closest("[data-endless]")) { if (G.goEndless(S)) { FX.sfx.open(); save(); sheetShop(null, []); } return; }
     if (t.closest("[data-restart]")) { closeS(); begin(S.seed); return; }
     if (t.closest("[data-fresh]")) { closeS(); begin(""); return; }

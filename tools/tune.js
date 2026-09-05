@@ -9,7 +9,7 @@ const G = require("../site/raise/game.js");
 const RUNS = +process.argv[2] || 60, MAXA = +process.argv[3] || 12, VAR = process.argv[4] || "current";
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "m2", "m3", "m6", "th", "sl", "gt", "sd"];
+  "pl", "m1", "cs", "di", "wi", "m2", "th", "sl", "gt"];
 
 const kind = (id) => G.KINDS.find((k) => k && k.id === id);
 const setK = (id, o) => Object.assign(kind(id), o);
@@ -82,6 +82,8 @@ function playRound(S) {
     let m = G.suggest(S);
     if (S.playsLeft < 2) { let best = null, bp = -1; G.candidates(S).forEach((o) => { const p = G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts; if (p > bp) { bp = p; best = o; } }); if (best) m = best; }
     if (m) {
+      const need = Math.max(0, T - S.score), share = need / Math.max(1, S.playsLeft);
+      if (S.playsLeft > 1 && G.scoreOf(S, m.k, m.idx.map((i) => S.hand[i])).pts < 0.55 * share && G.canDiscardAny(S) && discardStep(S)) continue;
       S.sel = m.idx.slice();
       const ev = G.play(S);
       if (ev && ev.k) { n++; cum += ev.pts; if (ev.pts > big) big = ev.pts; if (!cross && cum >= T) cross = n; }
@@ -97,6 +99,7 @@ function playRound(S) {
   if (S.phase === "round") G.finish(S);
 }
 function shop(S) {
+  if (!S.offers.length) { G.nextAnte(S); return; }
   while (G.picksLeft(S) > 0) {
     const opts = S.offers.map((o, i) => ({ o, i, pr: PRIO.indexOf(o.id) })).filter((x) => !x.o.bought && x.pr >= 0 && G.canTake(S, x.i).ok).sort((a, b) => a.pr - b.pr);
     if (!opts.length) break;
@@ -114,7 +117,7 @@ function sweepRuns(immortal) {
       playRound(S);
       if (S.phase === "lost") {
         if (!immortal) { st.lost[S.ante]++; break; }
-        S.phase = "shop"; S.picks = G.CFG.picks; S.nOffers = G.CFG.offers; S.offers = G.makeOffers(S);
+        S.phase = "shop"; S.pickUp = G.isReward(S.ante) ? 1 : 0; S.pickCharm = G.isReward(S.ante) ? 1 : 0; S.nOffers = G.CFG.offers; S.offers = G.makeOffers(S);
       }
       if (S.phase === "won") { st.wins++; break; }
       if (S.ante >= MAXA - 1) break;

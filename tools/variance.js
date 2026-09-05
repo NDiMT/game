@@ -12,7 +12,7 @@ const MODE = process.argv[2] === "hands" ? "hands" : "runs";
 const N = +process.argv[2] || 40, STRAT = process.argv[3] || "finisher";
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "m2", "m3", "m6", "th", "sl", "gt", "sd"];
+  "pl", "m1", "cs", "di", "wi", "m2", "th", "sl", "gt"];
 
 const q = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(p * (b.length - 1))] : NaN; };
 const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
@@ -149,6 +149,7 @@ function playRound(S) {
   if (S.phase === "round") G.finish(S);
 }
 function shop(S) {
+  if (!S.offers.length) { G.nextAnte(S); return; }
   while (G.picksLeft(S) > 0) {
     const opts = S.offers.map((o, i) => ({ o, i, pr: PRIO.indexOf(o.id) })).filter((x) => !x.o.bought && x.pr >= 0 && G.canTake(S, x.i).ok).sort((a, b) => a.pr - b.pr);
     if (!opts.length) break;

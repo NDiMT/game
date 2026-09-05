@@ -1,13 +1,13 @@
 /* Μελέτη ροής: instrumented bot runs. node tools/study.js [N] [strategy]
    strategy: base | finisher (φθηνά για αλυσίδα, το πιο ακριβό στο τελευταίο παίξιμο) | bombfish (ψαρεύει καρέ) */
 const G = require("../site/raise/game.js");
-const N = +process.argv[2] || 150, STRAT = process.argv[3] || "base";
+const N = +process.argv[2] || 150, STRAT = process.argv[3] || "base", PLAYOUT = !!process.env.PLAYOUT;
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "m2", "m3", "m6", "th", "sl", "gt", "sd"];
+  "pl", "m1", "cs", "di", "wi", "m2", "th", "sl", "gt"];
 
 const st = { kinds: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, breaks: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(30).fill(0), wins: 0,
-  ratio: Array.from({ length: 30 }, () => []), score: Array.from({ length: 30 }, () => []), bought: {}, picks: Array.from({ length: 30 }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, aceRounds: 0 };
+  ratio: Array.from({ length: 30 }, () => []), score: Array.from({ length: 30 }, () => []), bought: {}, picks: Array.from({ length: 30 }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, aceRounds: 0, used: [] };
 
 function rankGroups(S) { const g = {}; S.hand.forEach((c, i) => { if (!c.h && !G.isWild(c)) (g[c.r] = g[c.r] || []).push(i); }); return g; }
 function discardStep(S) {
@@ -18,7 +18,7 @@ function discardStep(S) {
   S.sel = o.slice(0, Math.min(3, o.length)); return G.discard(S);
 }
 function playRound(S) {
-  let bombThis = false;
+  let bombThis = false, done = false;
   for (let guard = 0; guard < 200 && S.phase === "round"; guard++) {
     if (S.playsLeft < 1) break;
     let m = G.suggest(S);
@@ -28,23 +28,34 @@ function playRound(S) {
       const g = rankGroups(S), all = G.candidates(S).filter((o) => G.climbs(S, o.k) && !o.idx.some((i) => (g[S.hand[i].r] || []).length >= 2 && (g[S.hand[i].r] || []).length < 4));
       if (all.length) m = all.reduce((b, o) => (!b || o.k.rank < b.k.rank ? o : b), null); else if (G.discardsLeft(S) > 0 && S.pile.length) { if (discardStep(S)) continue; }
     }
-    if (m) { S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; if (ev.broke) st.breaks++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; if (ev.k.kind === 9) st.aces++; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; } continue; }
+    if (m) {
+      const need = Math.max(0, G.target(S) - S.score), share = need / Math.max(1, S.playsLeft);
+      if (!PLAYOUT && S.playsLeft > 1 && G.scoreOf(S, m.k, m.idx.map((i) => S.hand[i])).pts < 0.55 * share && G.canDiscardAny(S) && discardStep(S)) { st.discards++; continue; }
+      S.sel = m.idx.slice(); const ev = G.play(S); st.plays++; if (ev.broke) st.breaks++; st.kinds[G.KINDS[ev.k.kind].id] = (st.kinds[G.KINDS[ev.k.kind].id] || 0) + 1; if (ev.k.kind === 9) st.aces++; st.totalPts += ev.pts; if (ev.bomb) { st.bombs++; st.bombPts += ev.pts; bombThis = true; }
+      /* Φτάνεις τον στόχο, ο γύρος τελειώνει εκεί — όπως και στο παιχνίδι. */
+      if (ev.cleared && !PLAYOUT) { done = true; break; }
+      continue; }
     if (G.canDiscardAny(S) && discardStep(S)) { st.discards++; continue; }
     break;
   }
-  st.rounds++; if (bombThis) st.bombRounds++; if (S.phase === "round" && S.playsLeft >= 1) st.stuckEarly++;
+  const cleared = S.score >= G.target(S);
+  if (cleared) st.used.push(S.playsMax - S.playsLeft);
+  st.rounds++; if (bombThis) st.bombRounds++;
+  /* «Κόλλησε»: τελείωσε ο γύρος χωρίς να πιάσει τον στόχο ενώ του έμεναν παιξίματα. */
+  if (!cleared && !done && S.playsLeft >= 1) st.stuckEarly++;
   st.maxChain.push(S.stats.maxChain);
   st.ratio[S.ante].push(S.score / G.target(S)); st.score[S.ante].push(S.score);
   if (S.phase === "round") G.finish(S);
 }
 function shop(S) {
+  if (!S.offers.length) { G.nextAnte(S); return; }
   /* Μία (ή δύο) επιλογές bonus, με προτεραιότητα από τη λίστα PRIO. */
   while (G.picksLeft(S) > 0) {
     const opts = S.offers.map((o, i) => ({ o, i, pr: PRIO.indexOf(o.id) })).filter((x) => !x.o.bought && x.pr >= 0 && G.canTake(S, x.i).ok).sort((a, b) => a.pr - b.pr);
     if (!opts.length) break;
     G.take(S, opts[0].i); st.bought[opts[0].o.id] = (st.bought[opts[0].o.id] || 0) + 1;
   }
-  st.picks[S.ante].push(S.picks || 0);
+  st.picks[S.ante].push(G.picksLeft(S));
   G.nextAnte(S);
 }
 for (let s = 0; s < N; s++) {
@@ -69,5 +80,5 @@ console.log("score p50 by ante:", st.score.map((a) => a.length ? q(a, .5) : "-")
 console.log("score p25 by ante:", st.score.map((a) => a.length ? q(a, .25) : "-").join(" "));
 console.log("unspent picks p50:", st.picks.map((a) => a.length ? q(a, .5) : "-").join(" "));
 console.log("bought:", Object.entries(st.bought).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + v).join(" · "));
-console.log(`rounds ended stuck with plays left: ${(100 * st.stuckEarly / st.rounds).toFixed(1)}%`);
+console.log(`plays used to clear: p50 ${q(st.used, .5)} p90 ${q(st.used, .9)} · rounds ended stuck with plays left: ${(100 * st.stuckEarly / st.rounds).toFixed(1)}%`);
 console.log("death by challenge:", JSON.stringify(st.deathCause));
