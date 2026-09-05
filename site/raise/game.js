@@ -58,7 +58,7 @@
        Οι άλλες δύο περνούν χωρίς στάση: φτάνεις τον στόχο, συνεχίζεις. */
     rewardEvery: 3, offers: 3, chainCap: 6, lowCeiling: 4,
     charmSlots: 6,
-    chalTargetMul: 0.9, thinAirCap: 2, ruleChance: 0.75, highGroundRank: 8, shortHand: 7, richAirMul: 1.15, blindCount: 5,
+    chalTargetMul: 0.9, thinAirCap: 2, ruleChance: 0.75, highGroundRank: 8, shortHand: 7, richAirMul: 1.15, blindCount: 5, blindKeep: 2,
     /* Σπασμένη αλυσίδα: πόσο κρατά με Slipstream / με Second Wind την πρώτη φορά. */
     slipKeep: 0.5,
     maxBuy: { cs: 3, wi: 2, di: 2, pl: 2, sl: 3, gt: 1, m1: 20, m2: 20 },
@@ -110,10 +110,10 @@
   const charmById = Object.fromEntries(CHARMS.map((c) => [c.id, c]));
 
   const CHALLENGES = [
-    { id: "noace", name: "No Aces", desc: "A lone Ace is not a hand this round.", tell: "The Warden. The side door is bricked up.", tip: "Open with a low pair instead." },
+    { id: "noace", name: "No Aces", desc: "Aces cannot be played at all this round. Jokers still work.", tell: "The Warden. No Ace leaves the cell.", tip: "They are dead weight — spend a discard and be rid of them." },
     { id: "short", name: "Short Hand", desc: "You hold seven cards.", tell: "The Pickpocket. One card lighter.", tip: "Pairs, not projects." },
-    { id: "blind", name: "Blind Deal", desc: "Five cards start face down. Your first play turns them.", tell: "The Dealer. Face down, no questions.", tip: "Open cheap, then look." },
-    { id: "highground", name: "High Ground", desc: "The rung starts at Pair 8.", tell: "The Bouncer. Low pairs stay outside.", tip: "A pair of 9 is enough to get started." },
+    { id: "blind", name: "Blind Deal", desc: "Five cards start face down, and two of the cards you draw stay down after every play. A discard turns them all up.", tell: "The Dealer. Face down, no questions.", tip: "A discard is how you look." },
+    { id: "highground", name: "High Ground", desc: "Nothing under a pair of 8 climbs — all round.", tell: "The Bouncer. Small hands do not get in.", tip: "Lone Aces and low pairs still score, but the chain will not move." },
     { id: "onedisc", name: "One Discard", desc: "A single discard this round.", tell: "The Diver. One dive, no coming up.", tip: "Save it for a hand you truly cannot use." },
     { id: "thinair", name: "Thin Air", desc: "The chain caps at ×2.", tell: "The Altitude. The air runs out at ×2.", tip: "Big hands, not long chains." },
     { id: "richair", name: "Rich Air", desc: "Target ×1.15, and one extra perk.", tell: "The Patron. Asks more, gives more.", tip: "Clear it and you leave with three bonuses." },
@@ -184,6 +184,9 @@
   const isWild = (c) => !!c && c.e === "wild";
   const isAce = (c) => !!c && (c.r === 14 || isWild(c));
   const isFace = (c) => !!c && !isWild(c) && c.r >= 11 && c.r <= 13;
+  /* No Aces: οι άσοι παγώνουν τελείως — δεν παίζονται ούτε μόνοι ούτε μέσα σε χέρι.
+     Ο τζόκερ δεν είναι άσος εδώ: μένει μπαλαντέρ. */
+  const frozen = (S, c) => chal(S) === "noace" && !isWild(c) && c.r === 14;
 
   function apply(S, id) {
     switch (id) {
@@ -287,7 +290,7 @@
       }
     }
     S.sel = [];
-    S.rung = chal(S) === "highground" ? { kind: 1, rank: CFG.highGroundRank, size: 2 } : null;
+    S.rung = null;
     S.chain = 0; S.score = 0; S.plays = 0; S.lastSuit = null; S.breaks = 0;
     S.rdisc = 0; S.rfree = 0; S.rbombs = 0; S.rkinds = {}; S.rmax = 0; S.firstK = null; S.lastK = null;
     S.chainBonus = rule(S) === "r_head" ? 1 : 0;
@@ -341,7 +344,10 @@
     return k.rank > r.rank;
   }
   /* Όλα τα χέρια παίζονται. Το «climbs» λέει μόνο αν συνεχίζει η αλυσίδα. */
-  const climbs = (S, k) => beats(k, S.rung);
+  /* High Ground: ο φραγμός δεν είναι αρχικό rung (θα ίσχυε μόνο για το πρώτο χέρι) — είναι
+     όρος που κρατά όλο τον γύρο. Μοναχικός άσος και μικρά ζευγάρια γράφουν, αλλά δεν ανεβάζουν. */
+  const tooSmall = (S, k) => chal(S) === "highground" && (k.kind === 9 || (k.kind === 1 && k.rank < CFG.highGroundRank));
+  const climbs = (S, k) => beats(k, S.rung) && !tooSmall(S, k);
   const sameShape = (a, b) => !!a && !!b && a.kind === b.kind && a.size === b.size;
   /* Το πλαφόν σε ένα σημείο, ώστε να μην το προσπερνά κανείς προσθέτοντας βήματα μετά. */
   function capPos(S, p) { p = Math.min(CFG.chainCap, p); return chal(S) === "thinair" ? Math.min(CFG.thinAirCap, p) : rule(S) === "r_cap" ? Math.min(CFG.lowCeiling, p) : p; }
@@ -416,7 +422,7 @@
   function evalSel(S) {
     const cs = selCards(S);
     const k = classify(cs);
-    if (!k || (k.kind === 9 && chal(S) === "noace")) return { k: null, legal: false, cs };
+    if (!k || cs.some((c) => frozen(S, c))) return { k: null, legal: false, cs };
     const sc = scoreOf(S, k, cs);
     return Object.assign({ k, legal: true, up: climbs(S, k), cs }, sc);
   }
@@ -438,7 +444,9 @@
   }
   /* Τι χρειάζεται για να χτυπηθεί το rung. */
   function beatText(S) {
-    const r = S.rung; if (!r) return "Table is open · any hand starts the chain";
+    const r = S.rung;
+    if (chal(S) === "highground" && !r) return "Nothing under a pair of " + CFG.highGroundRank + " climbs · smaller hands still score";
+    if (!r) return "Table is open · any hand starts the chain";
     const n = KINDS[r.kind].name.toLowerCase();
     const how = r.kind === 8 ? "more pairs" : r.kind === 3 || r.kind === 4 ? "a longer or higher " + n : "a higher " + n;
     return "To climb: " + how + ", or a better kind of hand · anything lower still scores, but the chain breaks";
@@ -447,10 +455,10 @@
   /* ============================== κινήσεις ============================== */
   function candidates(S) {
     const bR = {}, W = [], vis = [];
-    S.hand.forEach((c, i) => { if (c.h) return; vis.push(i); if (isWild(c)) { W.push(i); return; } (bR[c.r] = bR[c.r] || []).push(i); });
+    S.hand.forEach((c, i) => { if (c.h || frozen(S, c)) return; vis.push(i); if (isWild(c)) { W.push(i); return; } (bR[c.r] = bR[c.r] || []).push(i); });
     const out = [], rs = Object.keys(bR).map(Number).sort((a, b) => a - b), nw = W.length, wl = (n) => W.slice(0, n);
     /* Ο μοναχικός άσος παίζεται σαν κάθε άλλο χέρι — εκτός αν ο γύρος τον απαγορεύει. */
-    if (chal(S) !== "noace") vis.forEach((i) => { if (isAce(S.hand[i])) out.push([i]); });
+    vis.forEach((i) => { if (isAce(S.hand[i])) out.push([i]); });
     rs.forEach((r) => { const g = bR[r]; [2, 3, 4].forEach((tot) => { for (let use = 0; use <= Math.min(nw, tot - 1); use++) if (g.length >= tot - use) out.push(g.slice(0, tot - use).concat(wl(use))); }); });
     for (let n = 2; n <= Math.min(4, nw); n++) out.push(wl(n));
     /* 2–4 ζευγάρια σε οποιεσδήποτε βαθμίδες (wilds γεμίζουν) */
@@ -521,7 +529,7 @@
   /* Ορφανά: φύλλα που δεν μπαίνουν σε κανέναν συνδυασμό (εκτός Άσων και Wild). */
   function orphans(S) {
     const inUse = new Set(); candidates(S).forEach((o) => o.idx.forEach((i) => inUse.add(i)));
-    const o = S.hand.map((c, i) => i).filter((i) => { const c = S.hand[i]; return !c.h && !isWild(c) && c.r !== 14 && !inUse.has(i); });
+    const o = S.hand.map((c, i) => i).filter((i) => { const c = S.hand[i]; return !c.h && !isWild(c) && (c.r !== 14 || frozen(S, c)) && !inUse.has(i); });
     return o.sort((a, b) => S.hand[a].r - S.hand[b].r);
   }
 
@@ -555,7 +563,10 @@
     if (ev.shattered) ev.tags.push("Shatter");
     S.stats.gold += cs.filter((c) => c.e === "gold").length;
     reveal(S);
-    ev.drawn = draw(S, handCap(S) - S.hand.length).length;
+    const drawn = draw(S, handCap(S) - S.hand.length);
+    /* Blind Deal: δύο από τα φύλλα που μόλις τράβηξες μένουν μπρούμυτα μέχρι το επόμενο παίξιμο. */
+    if (chal(S) === "blind") drawn.slice(0, CFG.blindKeep).forEach((c) => { c.h = true; });
+    ev.drawn = drawn.length;
     S.plays += 1; S.stats.plays += 1;
   }
   /* Καταγράφει την κορυφή της αλυσίδας. */
@@ -626,6 +637,7 @@
     const cs = removeSel(S, true);
     if (scout) S.rfree = 1;
     if (!free) S.rdisc += 1;
+    reveal(S);   /* το discard είναι η αντίδραση στο Blind Deal: γυρίζει τα κρυφά φύλλα */
     const d = draw(S, handCap(S) - S.hand.length);
     S.log.push({ t: "Discard", c: cs.length + " out, " + d.length + " in", p: free ? "free" : discardsLeft(S) + " left", cls: "pass" });
     return true;
