@@ -8,8 +8,12 @@
 const G = require("../site/raise/game.js");
 const RUNS = +process.argv[2] || 60, MAXA = +process.argv[3] || 12, VAR = process.argv[4] || "current";
 const ALL = G.CHARMS.map((c) => c.id);
-const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "m2", "th", "gt"];
+/* Σειρά επιλογής. Η παλιά ήταν μετρημένα κακή: το m1 έχει maxBuy 20, οπότε ρουφούσε κάθε
+   μεταγενέστερη επιλογή και το bot δεν έπαιρνε ΠΟΤΕ Wide Hand ή Cull· και έλειπαν τα leap/scout,
+   που φιλτράρονταν έξω από το `pr >= 0`. Μετρημένο (tools/prio.js 800, ίδια seeds, ίδια πολιτική
+   παιξίματος): μέσο ante θανάτου 19,23 → 32,01 και νίκες 9/800 → 267/800 μόνο από τη σειρά.
+   Βαθμονόμηση πάνω στην παλιά σειρά σήμαινε βαθμονόμηση πάνω σε παίκτη που ψωνίζει λάθος. */
+const PRIO = (process.env.PRIO || "patient,court,kingmaker,mirror,climber,encore,loyal,lowroad,sleight,wind,ember,scout,leap,summiteer,cheap,goldsmith,ladder,afterburner,wi,pl,th,m2,cs,m1,gt,di").split(",");
 
 const kind = (id) => G.KINDS.find((k) => k && k.id === id);
 const setK = (id, o) => Object.assign(kind(id), o);
@@ -66,7 +70,7 @@ const f1 = (x) => (isFinite(x) ? x.toFixed(1) : "-");
 const f2 = (x) => (isFinite(x) ? x.toFixed(2) : "-");
 
 let st;
-function reset() { st = { score: [], cross: [], big: [], plays: [], lost: new Array(G.TARGETS.length + 4).fill(0), maxChain: [], wins: 0, obs: [] }; for (let a = 0; a < G.TARGETS.length + 4; a++) { st.score[a] = []; st.cross[a] = []; st.big[a] = []; } }
+function reset() { st = { score: [], ratio: [], cross: [], big: [], plays: [], lost: new Array(G.TARGETS.length + 4).fill(0), maxChain: [], wins: 0, obs: [] }; for (let a = 0; a < G.TARGETS.length + 4; a++) { st.score[a] = []; st.ratio[a] = []; st.cross[a] = []; st.big[a] = []; } }
 reset();
 
 function discardStep(S) {
@@ -96,7 +100,7 @@ function playRound(S) {
     break;
   }
   const a = S.ante;
-  st.score[a].push(S.score); st.cross[a].push(cross || 99); st.big[a].push(big / T); st.plays.push(n);
+  st.score[a].push(S.score); st.ratio[a].push(S.score / T); st.cross[a].push(cross || 99); st.big[a].push(big / T); st.plays.push(n);
   st.obs.push({ run: S.seed, a, s: S.score, plays: S.playsMax, mult: S.mult.slice(), ch: S.charms.length });
   st.maxChain.push(S.stats.maxChain);
   if (S.phase === "round") G.finish(S);
@@ -166,21 +170,29 @@ if (process.env.HAZ) {
   for (let it = 0; it < +process.env.HAZ; it++) {
     sweepRuns(false);
     const t = [];
+    /* ΛΟΓΟΣ, όχι σκορ. Ο έλεγχος του παιχνιδιού είναι score >= round(T × chalTargetMul ×
+       richAir), οπότε βάζοντας T = το h-ποσοστημόριο του ΣΚΟΡ άφηνες τα boss antes 11% πιο
+       φτηνά απ' ό,τι νόμιζες. Στον λόγο score/target ο πολλαπλασιαστής φεύγει μόνος του. */
     for (let a = 0; a < G.TARGETS.length; a++) {
-      const A = st.score[a];
-      t.push(A.length >= 10 ? q(A, haz(a)) : null);
+      const A = st.ratio[a];
+      t.push(A.length >= 10 ? G.TARGETS[a] * q(A, haz(a)) : null);
     }
-    /* εξομάλυνση σε log, μετά μονοτονία */
+    /* Εξομάλυνση σε log — ΧΩΡΙΣΤΑ για boss antes και για κενά antes. Με ενιαίο παράθυρο ±2 το
+       φιλτράρισμα ανακάτευε τις δύο σειρές και έσβηνε τη διαφορά τους: τα boss έπαιρναν στόχο
+       φτιαγμένο για κενό ante και σκότωναν 9,7% έναντι 3,6%. */
+    const cls = (a) => (G.isReward(a) || a === G.TARGETS.length - 1 ? 1 : 0);
     const sm = t.map((x, a) => {
       const w = [];
-      for (let j = Math.max(0, a - 2); j <= Math.min(t.length - 1, a + 2); j++) if (t[j]) w.push(Math.log(t[j] / Math.pow(gr, j - a)));
+      for (let j = Math.max(0, a - 6); j <= Math.min(t.length - 1, a + 6); j++) if (t[j] && cls(j) === cls(a)) w.push(Math.log(t[j] / Math.pow(gr, j - a)));
       return w.length ? Math.exp(mean(w)) : null;
     });
     let last = null, lastI = -1;
     sm.forEach((x, a) => { if (x) { last = x; lastI = a; } });
     for (let a = 0; a < sm.length; a++) if (!sm[a] && a > lastI) sm[a] = last * Math.pow(gr, a - lastI);
     const fin = sm.map((x) => (x ? nice(x) : null));
-    for (let a = 1; a < fin.length; a++) if (fin[a] && fin[a - 1] && fin[a] <= fin[a - 1]) fin[a] = nice(fin[a - 1] * 1.05);
+    /* Μονοτονία ΜΕΣΑ στην κάθε σειρά (boss με boss, κενά με κενά): οι δύο σειρές έχουν
+       διαφορετικό επίπεδο, οπότε καθολική μονοτονία θα τις ισοπέδωνε ξανά. */
+    for (let a = 1; a < fin.length; a++) { const p = a - 3; if (p >= 0 && fin[a] && fin[p] && fin[a] <= fin[p]) fin[a] = nice(fin[p] * 1.16); }
     /* ήπια κίνηση προς τον νέο στόχο, για να μην ταλαντώνεται */
     fin.forEach((x, a) => { if (x) G.TARGETS[a] = nice(Math.exp(0.35 * Math.log(G.TARGETS[a]) + 0.65 * Math.log(x))); });
   }

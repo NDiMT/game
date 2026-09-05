@@ -4,8 +4,12 @@
 const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 150, STRAT = process.argv[3] || "base", PLAYOUT = !!process.env.PLAYOUT;
 const ALL = G.CHARMS.map((c) => c.id);
-const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "m2", "th", "gt"];
+/* Σειρά επιλογής. Η παλιά ήταν μετρημένα κακή: το m1 έχει maxBuy 20, οπότε ρουφούσε κάθε
+   μεταγενέστερη επιλογή και το bot δεν έπαιρνε ΠΟΤΕ Wide Hand ή Cull· και έλειπαν τα leap/scout,
+   που φιλτράρονταν έξω από το `pr >= 0`. Μετρημένο (tools/prio.js 800, ίδια seeds, ίδια πολιτική
+   παιξίματος): μέσο ante θανάτου 19,23 → 32,01 και νίκες 9/800 → 267/800 μόνο από τη σειρά.
+   Βαθμονόμηση πάνω στην παλιά σειρά σήμαινε βαθμονόμηση πάνω σε παίκτη που ψωνίζει λάθος. */
+const PRIO = (process.env.PRIO || "patient,court,kingmaker,mirror,climber,encore,loyal,lowroad,sleight,wind,ember,scout,leap,summiteer,cheap,goldsmith,ladder,afterburner,wi,pl,th,m2,cs,m1,gt,di").split(",");
 
 const st = { kinds: {}, kpts: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, breaks: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(G.TARGETS.length).fill(0), wins: 0,
   ratio: Array.from({ length: G.TARGETS.length }, () => []), score: Array.from({ length: G.TARGETS.length }, () => []), bought: {}, picks: Array.from({ length: G.TARGETS.length }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, aceRounds: 0, used: [] };

@@ -4,8 +4,12 @@
 const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 400;
 
-const PRIO = ["ladder", "cheap", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "wind", "court", "loyal", "vault", "sleight", "thrift", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "tip", "m2", "th"];
+/* Σειρά επιλογής. Η παλιά ήταν μετρημένα κακή: το m1 έχει maxBuy 20, οπότε ρουφούσε κάθε
+   μεταγενέστερη επιλογή και το bot δεν έπαιρνε ΠΟΤΕ Wide Hand ή Cull· και έλειπαν τα leap/scout,
+   που φιλτράρονταν έξω από το `pr >= 0`. Μετρημένο (tools/prio.js 800, ίδια seeds, ίδια πολιτική
+   παιξίματος): μέσο ante θανάτου 19,23 → 32,01 και νίκες 9/800 → 267/800 μόνο από τη σειρά.
+   Βαθμονόμηση πάνω στην παλιά σειρά σήμαινε βαθμονόμηση πάνω σε παίκτη που ψωνίζει λάθος. */
+const PRIO = (process.env.PRIO || "patient,court,kingmaker,mirror,climber,encore,loyal,lowroad,sleight,wind,ember,scout,leap,summiteer,cheap,goldsmith,ladder,afterburner,wi,pl,th,m2,cs,m1,gt,di").split(",");
 const ALL_UNLOCKED = G.CHARMS.map((c) => c.id);
 
 function discardOrphans(S) {

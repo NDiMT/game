@@ -70,7 +70,16 @@
     const byH = Math.floor((Math.min(150, H * 0.2) - (rows - 1) * 5) / rows / 1.4);
     const cw = Math.max(36, Math.min(52, byW, byH));
     document.documentElement.style.setProperty("--cw", cw + "px");
-    $("hand").style.maxWidth = (per * (cw + 4) + 2) + "px";
+    /* Το χέρι πιάνει όλο το πλάτος και στενεύει με padding, όχι με max-width: η σειρά των
+       φύλλων μένει ίδια, αλλά η χειρονομία ζει και στα κενά δεξιά κι αριστερά — εκεί που
+       πέφτει ο αντίχειρας. Μετρημένο: το #hand ήταν 222px σε οθόνη 393px, δηλαδή το 44%
+       του πλάτους ήταν νεκρό για το swipe. */
+    const el = $("hand"), row = per * (cw + 4) + 2;
+    el.style.maxWidth = ""; el.style.paddingLeft = el.style.paddingRight = "0px";
+    const pad = Math.max(0, Math.floor((el.clientWidth - row) / 2));
+    el.style.paddingLeft = el.style.paddingRight = pad + "px";
+    const key = n + "/" + cw + "/" + pad, changed = key !== fitHand.key; fitHand.key = key;
+    return changed;
   }
   const pips = (n, max, cls) => { let h = ""; for (let i = 0; i < max; i++) h += '<i class="' + (i < n ? "" : "spent") + '"></i>'; return h; };
   const charmToken = (id, extra) => { const c = G.charmById[id]; return '<button class="charm" data-charm="' + id + '" aria-label="' + c.name + '" style="--h:' + IC.hue(id) + '"' + (extra || "") + '>' + IC.svg(id) + '</button>'; };
@@ -118,7 +127,11 @@
     $("chain").style.setProperty("--pos", Math.min(pos, 12));
     const pk = G.peek(S); $("peek").hidden = !pk; if (pk) $("peekCard").innerHTML = pk.map((c) => cardHTML(c, null, false, true, 0, 1)).join("");
     const tc = $("tcards");
-    tc.innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, S.played.length)).join("");
+    /* Ο πήχης ξαναχτιζόταν σε κάθε render — δηλαδή σε κάθε άγγιγμα φύλλου — και ξανάπαιζε
+       το `land`: opacity 0→1, άλμα 33px, 500ms, με stagger, και το δεύτερο άγγιγμα διέκοπτε
+       το πρώτο. Το πιο σημαντικό πράγμα στην οθόνη αναβόσβηνε κάθε φορά που διάλεγες. */
+    const tsig = S.log.length + "·" + S.played.map((c) => c.r + "/" + c.si + "/" + (c.e || "")).join(",");
+    if (tc.dataset.sig !== tsig) { tc.dataset.sig = tsig; tc.innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, S.played.length)).join(""); }
     { const tn = S.played.length, tw = ($("table").clientWidth || 340) - 28, cw = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 44;
       tc.style.setProperty("--tcw", Math.max(26, Math.min(Math.round(cw * 0.9), tn ? Math.floor((tw - (tn - 1) * 4) / tn) : 99)) + "px"); }
     tc.classList.toggle("fresh", S.ante === 0 && !S.rung && !S.log.length);
@@ -176,6 +189,8 @@
   /* Ένα callout τη φορά: τα υπόλοιπα μπαίνουν σε ουρά αντί να σκοτώνουν το προηγούμενο. */
   const CQ = [];
   function callout(t) { if (!t) return; CQ.push(t); if (CQ.length === 1) calloutNext(); }
+  /* «Target!» δεν περιμένει στην ουρά πίσω από το «Chain broken»: είναι η στιγμή του γύρου. */
+  function calloutNow(t) { CQ.length = 0; clearTimeout(callout.t); CQ.push(t); calloutNext(); }
   function calloutNext() {
     const t = CQ[0]; if (!t) return;
     const el = $("callout"); el.textContent = t;
@@ -199,15 +214,17 @@
     const ev = G.play(S); if (!ev) return;
     ui.note = null;
     if (ev.k && ev.k.kind === 9) { FX.sfx.ace(); FX.buzz(14); }
-    if (ev.bomb) { FX.sfx.bomb(); FX.buzz([30, 40, 120]); FX.boom($("table")); FX.flash(); FX.pulse($("app"), "shake"); FX.floatIn($("table"), "+" + ev.pts); document.body.classList.add("boom"); setTimeout(() => document.body.classList.remove("boom"), 900); }
-    else if (!ev.up) { FX.sfx.pass(); FX.buzz(40); FX.floatIn($("table"), "+" + ev.pts); }
-    else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300), ["#ffd166", "#ff6b6b", "#4ecdc4", "#c77dff", "#ffffff", "hsl(" + IC.kindHue(ev.k.kind) + " 90% 70%)"]); FX.floatIn($("table"), "+" + ev.pts); $("callout").style.setProperty("--kh", IC.kindHue(ev.k.kind)); }
+    if (ev.bomb) { FX.sfx.bomb(); FX.buzz([30, 40, 120]); FX.boom($("table")); FX.flash(); FX.pulse($("app"), "shake"); setTimeout(() => FX.floatIn($("table"), "+" + ev.pts), 320); document.body.classList.add("boom"); setTimeout(() => document.body.classList.remove("boom"), 900); }
+    else if (!ev.up) { FX.sfx.pass(); FX.buzz(40); setTimeout(() => FX.floatIn($("table"), "+" + ev.pts), 320); }
+    else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300), ["#ffd166", "#ff6b6b", "#4ecdc4", "#c77dff", "#ffffff", "hsl(" + IC.kindHue(ev.k.kind) + " 90% 70%)"]); setTimeout(() => FX.floatIn($("table"), "+" + ev.pts), 320); $("callout").style.setProperty("--kh", IC.kindHue(ev.k.kind)); }
     const crossed = S.score >= G.target(S) && S.score - ev.pts < G.target(S);
     ui.scoreDelay = 300;   /* τα φύλλα προσγειώνονται πρώτα, μετά ανεβαίνει ο αριθμός */
     render();
-    if (crossed) { setTimeout(() => { callout("Target!"); FX.sfx.clear(); FX.burstAt($("score"), 30, 4, ["#8ff0bf", "#ffffff", "#ffd166"]); }, 1100); }
-    /* Φτάνεις τον στόχο ή τελειώνουν τα plays: ο γύρος κλείνει μόνος του, χωρίς άλλο πάτημα. */
-    if (ev.cleared || S.playsLeft < 1) { ui.ending = true; setTimeout(() => { ui.ending = false; end(); }, ev.cleared ? 1700 : 1000); }
+    if (crossed) { setTimeout(() => { calloutNow("Target!"); FX.sfx.clear(); FX.burstAt($("score"), 30, 4, ["#8ff0bf", "#ffffff", "#ffd166"]); }, 1100); }
+    /* Φτάνεις τον στόχο ή τελειώνουν τα plays: ο γύρος κλείνει μόνος του, χωρίς άλλο πάτημα.
+       Μετρημένο: το «Target!» έμενε 365ms πριν το φύλλο το σκεπάσει — δεν προλάβαινε ούτε
+       να μπει, και η τετράφωνη καμπάνα έπαιζε ακόμα. Ο στόχος θέλει τον χρόνο του. */
+    if (ev.cleared || S.playsLeft < 1) { ui.ending = true; setTimeout(() => { ui.ending = false; end(); }, ev.cleared ? 2400 : 1500); }
     FX.fly(from, Array.prototype.slice.call($("tcards").children));
     if (ev.drawn) setTimeout(() => FX.sfx.draw(), 180);
     enhPop();
@@ -224,7 +241,10 @@
   function doDiscard() {
     if (!G.canDiscard(S)) return;
     const rects = selRects();
-    if (G.discard(S)) { FX.sfx.discard(); FX.buzz(10); FX.ghostTo(rects, $("dpile")); ui.note = null; render(); setTimeout(() => FX.sfx.draw(), 160); enhPop(); afterMove(); }
+    /* Το `$("dpile")` δεν υπήρξε ποτέ στο index.html: το ghostTo έβγαινε αμέσως και το
+       discard ήταν η μόνη χειρονομία χωρίς κίνηση — τα φύλλα απλώς εξαφανίζονταν.
+       Στόχος είναι ο μετρητής «Out», που χτυπά όταν προσγειώνονται. */
+    if (G.discard(S)) { FX.sfx.discard(); FX.buzz(10); FX.ghostTo(rects, $("dpileN")); ui.note = null; render(); setTimeout(() => FX.sfx.draw(), 160); setTimeout(() => FX.pulse($("dpileN"), "hit"), 430); enhPop(); afterMove(); }
   }
   function doHint() {
     const m = G.suggest(S);
@@ -328,7 +348,12 @@
     if (S.phase !== "shop") return;
     clearTimeout(sheetNext.t);
     $("sheet").classList.remove("leaving");
-    G.nextAnte(S); closeS(); render(); afterMove();
+    /* Ο μετρητής ξεκινούσε τον νέο γύρο μετρώντας ΑΝΑΠΟΔΑ από το σκορ του προηγούμενου
+       ante ως το μηδέν — ένα δευτερόλεπτο με τον ήχο του ταμείου να σου παίρνει πίσω ό,τι
+       μόλις κέρδισες. Μετρημένο: 726 → 0 σε 1063ms, με ~19 τικ. */
+    G.nextAnte(S); shown = S.score; closeS(); render(); afterMove();
+    /* 47 από τις 50 πίστες δεν έχουν τελετή: μία λέξη τους δίνει ακμή. */
+    setTimeout(() => { if (S && S.phase === "round") calloutNow("Ante " + (S.ante + 1)); }, 260);
     const bc = G.current(S); if (bc) bossIntro(bc);
   }
   const shareText = () => "RAISE · " + S.seed + (S.deckId && S.deckId !== "classic" ? " · " + G.deckById[S.deckId].name : "") + " · " + (S.phase === "won" ? "Summit ▲" : (S.endless ? "Endless ante " : "Ante ") + (S.ante + 1)) + " · " + S.score + " pts" + (S.charms.length ? " · " + S.charms.map((id) => G.charmById[id].name).join(", ") : "");
@@ -447,15 +472,34 @@
   function hideStart() { $("start").hidden = true; document.body.classList.remove("on-start"); FX.embers(false); }
 
   /* ---------- events ---------- */
-  let swipe = { y0: 0, t0: 0, did: false };
+  const SWIPE = 45;
+  let swipe = { y0: 0, x0: 0, did: false, moved: 0, armed: false };
   const hand = $("hand");
-  hand.addEventListener("pointerdown", (e) => { swipe = { y0: e.clientY, t0: Date.now(), did: false }; });
-  /* Ακυρωμένος pointer δεν καταπίνει τη σειρά: το επόμενο click ξαναμετράει ως άγγιγμα. */
-  hand.addEventListener("pointercancel", () => { swipe.did = false; });
-  hand.addEventListener("pointerup", (e) => {
+  /* Το χέρι ακολουθεί τον αντίχειρα όσο σέρνεις. Πριν, τίποτα δεν κουνιόταν κατά τη
+     χειρονομία: ένα σύρσιμο που απορριπτόταν ήταν εντελώς αδιάκριτο από αστοχία. */
+  const dragTo = (dy) => { hand.style.transform = dy ? "translateY(" + Math.max(-18, Math.min(18, dy * 0.35)).toFixed(1) + "px)" : ""; };
+  const dragEnd = () => { hand.classList.remove("dragging"); hand.style.transform = ""; };
+  hand.addEventListener("pointerdown", (e) => { swipe = { y0: e.clientY, x0: e.clientX, did: false, moved: 0, armed: false }; });
+  hand.addEventListener("pointermove", (e) => {
     const dy = e.clientY - swipe.y0;
-    if (Math.abs(dy) < 45 || Date.now() - swipe.t0 > 700) return;
-    swipe.did = true;
+    swipe.moved = Math.max(swipe.moved, Math.abs(dy));
+    if (swipe.moved > 8) { hand.classList.add("dragging"); dragTo(dy); }
+    /* Ένα χτύπημα τη στιγμή που περνάς το κατώφλι: το όριο γίνεται αισθητό, όχι αόρατο. */
+    if (!swipe.armed && Math.abs(dy) >= SWIPE) { swipe.armed = true; FX.buzz(4); }
+  });
+  /* Ακυρωμένος pointer δεν καταπίνει τη σειρά: το επόμενο click ξαναμετράει ως άγγιγμα. */
+  hand.addEventListener("pointercancel", () => { swipe.did = false; dragEnd(); });
+  hand.addEventListener("pointerup", (e) => {
+    dragEnd();
+    const dy = e.clientY - swipe.y0, dx = e.clientX - swipe.x0;
+    /* Ένα σύρσιμο δεν είναι ποτέ άγγιγμα. Πριν, μια χειρονομία που απορριπτόταν άφηνε το
+       click να περάσει και *άλλαζε την επιλογή* κάτω από τον αντίχειρα. */
+    if (Math.abs(dy) > 12 || swipe.moved > 12) swipe.did = true;
+    /* Το παλιό όριο των 700ms έκοβε κάθε αργό, σκόπιμο σύρσιμο: μετρημένο, σύρσιμο 95px σε
+       717ms (132 px/δευτ — απολύτως φυσιολογικός αντίχειρας) δεν έπαιζε ΤΙΠΟΤΑ. Η σελίδα δεν
+       κάνει scroll· ο κάθετος άξονας είναι δικός μας, οπότε κρίνει η απόσταση, όχι το ρολόι.
+       Απορρίπτεται μόνο ένα κυρίως οριζόντιο σύρσιμο — ο αντίχειρας γράφει τόξο. */
+    if (Math.abs(dy) < SWIPE || Math.abs(dx) > Math.abs(dy) * 1.4) return;
     const go = $("bPlay");
     if (dy < 0 && !go.disabled && (go.classList.contains("ok") || go.classList.contains("down"))) doPlay();
     else if (dy > 0 && S.sel.length) { if (G.canDiscard(S)) doDiscard(); else { S.sel = []; render(true); } }
@@ -486,7 +530,9 @@
         FX.sfx.buy(); FX.buzz(10); FX.burstAt(pick, 22, 3, ["#ffd166", "#fff6d4"]);
         save(); refreshShop();
         /* Τελευταία επιλογή: μια στιγμή να δεις τι πήρες, και συνεχίζει μόνο του. */
-        if (!canPickMore()) { $("sheet").classList.add("leaving"); setTimeout(goNextAnte, 620); }
+        /* Μετρημένο: το φύλλο άρχιζε να φεύγει 156ms μετά το χτύπημα — η μοναδική
+           ανταμοιβή τριών antes περνούσε χωρίς να προλάβεις να τη δεις. Μία ανάσα πρώτα. */
+        if (!canPickMore()) setTimeout(() => { $("sheet").classList.add("leaving"); setTimeout(goNextAnte, 620); }, 850);
       }
       return;
     }
@@ -516,7 +562,10 @@
     if (e.target.closest("[data-howto]")) { sheetHowTo(); return; }
     if (e.target.closest("[data-collection]")) { sheetCollection(); return; }
   });
-  addEventListener("resize", () => { if (S) render(); });
+  /* Στο κινητό η μπάρα διεύθυνσης κρύβεται και ξαναεμφανίζεται όσο παίζεις, και κάθε φορά
+     πέφτει resize. Μετρημένο: ένα resize ξανάχτιζε και τα 8 φύλλα του χεριού ακόμη κι όταν
+     το --cw έμενε ίδιο — αντικαθιστούσε DOM κάτω από τον αντίχειρα χωρίς λόγο. */
+  addEventListener("resize", () => { if (S) { if (fitHand(S.hand.length)) render(); else render(true); } });
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; });
   document.addEventListener("visibilitychange", () => { if (document.hidden && S) save(); });
 

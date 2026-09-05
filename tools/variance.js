@@ -4,15 +4,18 @@
    node tools/variance.js hands            πίνακας: τι ποσοστό του στόχου πληρώνει κάθε σχήμα
 
    Το κάθε παίξιμο αποσυντίθεται σε
-       pts = chips × (base + upgrades + chain + patient) × enh × charms/rules
+       pts = chips × (base + upgrades + patient) × chain × enh × charms/rules
    και ξαναϋπολογίζεται με έναν όρο κάθε φορά ουδετεροποιημένο. Ο όρος που, όταν φύγει,
    μαζεύει περισσότερο το p90/p10 του γύρου, είναι ο πραγματικός οδηγός της διασποράς. */
 const G = require("../site/raise/game.js");
 const MODE = process.argv[2] === "hands" ? "hands" : "runs";
 const N = +process.argv[2] || 40, STRAT = process.argv[3] || "finisher";
 const ALL = G.CHARMS.map((c) => c.id);
-const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "m2", "th", "gt"];
+/* Σειρά επιλογής, ταξινομημένη κατά ΜΕΤΡΗΜΕΝΗ οριακή αξία (tools/audit2.js).
+   Η παλιά σειρά έβαζε το m1 δεύτερο ανάμεσα στα perks· επειδή το m1 έχει maxBuy 20 ρουφούσε
+   κάθε επιλογή και το bot δεν έπαιρνε ποτέ Wide Hand ή Cull. Μετρημένο (tools/prio.js 800,
+   ίδια seeds, ίδια πολιτική παιξίματος): μέσο ante θανάτου 19,23 → 32,01 · νίκες 9/800 → 267/800. */
+const PRIO = (process.env.PRIO || "patient,court,kingmaker,mirror,climber,encore,loyal,lowroad,sleight,wind,ember,scout,leap,summiteer,cheap,goldsmith,ladder,afterburner,wi,pl,th,m2,cs,m1,gt,di").split(",");
 
 const q = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(p * (b.length - 1))] : NaN; };
 const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
@@ -77,18 +80,20 @@ function handsTable() {
 }
 
 /* ---------- 2. instrumented runs ---------- */
-const NUM = /-?[\d.]+/;
+/* Η αλυσίδα ΔΕΝ προσθέτει πια Mult — το πολλαπλασιάζει. Τα regex είχαν μείνει στο παλιό
+   μοντέλο («Chain ×N · +X Mult», «Gold + Glass»), οπότε chain=0 και enh=1 ΠΑΝΤΑ και όλη η
+   αλυσίδα κρυβόταν μέσα στο υπόλοιπο `hm`: η στήλη fixChain δεν πάγωνε τίποτα. */
 function parts(S, ev, cs) {
   const k = ev.k, base = G.kmult(k), up = S.mult[k.kind] || 0;
-  let chain = 0, patient = 0, enh = 1;
+  let chain = 1, patient = 0, enh = 1;
   (ev.notes || []).forEach((n) => {
     let m;
-    if ((m = /^Chain ×\d+ · \+([\d.]+) Mult$/.exec(n))) chain = +m[1];
+    if ((m = /^Chain ×\d+ · Mult ×([\d.]+)$/.exec(n))) chain = +m[1];
     else if ((m = /^Patient \+([\d.]+) Mult$/.exec(n))) patient = +m[1];
-    else if ((m = /^(?:Gold|Glass|Gold \+ Glass) ×([\d.]+)$/.exec(n))) enh = +m[1];
+    else if ((m = /^(?:Gold|Silver|Gold \+ Silver) ×([\d.]+)$/.exec(n))) enh = +m[1];
   });
-  const add = base + up + chain + patient;
-  const hm = add * enh > 0 ? ev.mult / (add * enh) : 1;
+  const add = base + up + patient;
+  const hm = add * chain * enh > 0 ? ev.mult / (add * chain * enh) : 1;
   return { chips: ev.chips, base, up, chain, patient, add, enh, hm: Math.round(hm * 1000) / 1000, kchips: G.kchips(k), cards: G.cardChips(cs || []) };
 }
 /* Counterfactual: ο όρος παίρνει την τυπική του τιμή (διάμεσο) αντί για τη δική του.
@@ -96,16 +101,16 @@ function parts(S, ev, cs) {
 const VKEYS = ["act", "fixChain", "fixEnh", "fixCharm", "fixUp", "fixKind", "fixCards", "noChain"];
 function variants(p, M) {
   const extra = p.chips - p.kchips - p.cards;
-  const mk = (add, chips, enh, hm) => chips * add * enh * hm;
+  const mk = (add, chips, chain, enh, hm) => chips * add * chain * enh * hm;
   return {
-    act: mk(p.add, p.chips, p.enh, p.hm),
-    fixChain: mk(p.add - p.chain + M.chain, p.chips, p.enh, p.hm),
-    fixEnh: mk(p.add, p.chips, M.enh, p.hm),
-    fixCharm: mk(p.add, p.chips, p.enh, M.hm),
-    fixUp: mk(p.add - p.up + M.up, p.chips, p.enh, p.hm),
-    fixKind: mk(p.add - p.base + M.base, p.cards + M.kchips + extra, p.enh, p.hm),
-    fixCards: mk(p.add, p.kchips + M.cards + extra, p.enh, p.hm),
-    noChain: mk(p.add - p.chain, p.chips, p.enh, p.hm),
+    act: mk(p.add, p.chips, p.chain, p.enh, p.hm),
+    fixChain: mk(p.add, p.chips, M.chain, p.enh, p.hm),
+    fixEnh: mk(p.add, p.chips, p.chain, M.enh, p.hm),
+    fixCharm: mk(p.add, p.chips, p.chain, p.enh, M.hm),
+    fixUp: mk(p.add - p.up + M.up, p.chips, p.chain, p.enh, p.hm),
+    fixKind: mk(p.add - p.base + M.base, p.cards + M.kchips + extra, p.chain, p.enh, p.hm),
+    fixCards: mk(p.add, p.kchips + M.cards + extra, p.chain, p.enh, p.hm),
+    noChain: mk(p.add, p.chips, 1, p.enh, p.hm),
   };
 }
 
@@ -220,10 +225,10 @@ function runs() {
         if (keys.indexOf("fixEnh") >= 0) p.enh = M.enh;
         if (keys.indexOf("fixCharm") >= 0) p.hm = M.hm;
         if (keys.indexOf("fixKind") >= 0) { p.add = p.add - p.base + M.base; p.chips = p.chips - p.kchips + M.kchips; }
-        if (keys.indexOf("fixChain") >= 0) p.add = p.add - p.chain + M.chain;
+        if (keys.indexOf("fixChain") >= 0) p.chain = M.chain;
         if (keys.indexOf("fixUp") >= 0) p.add = p.add - p.up + M.up;
         if (keys.indexOf("fixCards") >= 0) p.chips = p.chips - p.cards + M.cards;
-        return x + p.chips * p.add * p.enh * p.hm;
+        return x + p.chips * p.add * p.chain * p.enh * p.hm;
       }, 0));
       const med = q(sums, .5) || 1;
       sums.forEach((x) => { if (x > 0) all.push(x / med); });
@@ -241,7 +246,7 @@ function runs() {
   early.forEach((r) => { (byAnte[r.a] = byAnte[r.a] || []).push(r); });
   const buckets = { low: [], mid: [], high: [] };
   Object.values(byAnte).forEach((rs) => {
-    const withS = rs.map((r) => ({ r, s: r.pp.reduce((x, p) => x + p.chips * p.add * p.enh * p.hm, 0) })).sort((a, b) => a.s - b.s);
+    const withS = rs.map((r) => ({ r, s: r.pp.reduce((x, p) => x + p.chips * p.add * p.chain * p.enh * p.hm, 0) })).sort((a, b) => a.s - b.s);
     const n = withS.length;
     withS.forEach((o, i) => { const f = i / (n - 1 || 1); buckets[f <= 0.2 ? "low" : f >= 0.8 ? "high" : "mid"].push(o); });
   });
@@ -259,15 +264,16 @@ function runs() {
   const P = st.parts;
   const sum = (f) => mean(P.map(f));
   console.log("  additive: base " + f2(sum((p) => p.base)) + " · upgrades " + f2(sum((p) => p.up)) +
-    " · chain " + f2(sum((p) => p.chain)) + " · patient " + f2(sum((p) => p.patient)) + " = " + f2(sum((p) => p.add)));
+    " · patient " + f2(sum((p) => p.patient)) + " = " + f2(sum((p) => p.add)));
   console.log("  shares:   base " + f2(100 * sum((p) => p.base / p.add)) + "% · upgrades " + f2(100 * sum((p) => p.up / p.add)) +
-    "% · chain " + f2(100 * sum((p) => p.chain / p.add)) + "% · patient " + f2(100 * sum((p) => p.patient / p.add)) + "%");
+    "% · patient " + f2(100 * sum((p) => p.patient / p.add)) + "%");
+  console.log("  chain mult: mean " + f2(sum((p) => p.chain)) + " (p50 " + f2(q(P.map((p) => p.chain), .5)) + " p90 " + f2(q(P.map((p) => p.chain), .9)) + " max " + f2(Math.max.apply(null, P.map((p) => p.chain))) + ")");
   console.log("  multiplicative: enh mean " + f2(sum((p) => p.enh)) + " (p50 " + f2(q(P.map((p) => p.enh), .5)) + " p90 " + f2(q(P.map((p) => p.enh), .9)) + " max " + f1(Math.max.apply(null, P.map((p) => p.enh))) + ")" +
     " · charms/rules mean " + f2(sum((p) => p.hm)) + " (p50 " + f2(q(P.map((p) => p.hm), .5)) + " p90 " + f2(q(P.map((p) => p.hm), .9)) + " max " + f1(Math.max.apply(null, P.map((p) => p.hm))) + ")");
-  console.log("  total mult: p10 " + f1(q(P.map((p) => p.add * p.enh * p.hm), .1)) + " p50 " + f1(q(P.map((p) => p.add * p.enh * p.hm), .5)) +
-    " p90 " + f1(q(P.map((p) => p.add * p.enh * p.hm), .9)) + " p99 " + f1(q(P.map((p) => p.add * p.enh * p.hm), .99)));
+  console.log("  total mult: p10 " + f1(q(P.map((p) => p.add * p.chain * p.enh * p.hm), .1)) + " p50 " + f1(q(P.map((p) => p.add * p.chain * p.enh * p.hm), .5)) +
+    " p90 " + f1(q(P.map((p) => p.add * p.chain * p.enh * p.hm), .9)) + " p99 " + f1(q(P.map((p) => p.add * p.chain * p.enh * p.hm), .99)));
   console.log("  chips:      p10 " + f1(q(P.map((p) => p.chips), .1)) + " p50 " + f1(q(P.map((p) => p.chips), .5)) + " p90 " + f1(q(P.map((p) => p.chips), .9)));
-  console.log("  chain steps p50 " + f1(q(P.map((p) => p.chain), .5)) + " p90 " + f1(q(P.map((p) => p.chain), .9)) + " max " + f1(Math.max.apply(null, P.map((p) => p.chain))));
+
   console.log("");
   console.log("deaths/ante: " + st.lost.slice(0, 30).join(" "));
   const md = st.lost.reduce((x, n2, i) => x + n2 * (i + 1), 0) / Math.max(1, N - st.wins);

@@ -45,9 +45,13 @@
   const kbase = (k) => kchips(k) * kmult(k);
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
   /* 50 antes. Κάθε στόχος είναι το h(a)-ποσοστημόριο των σκορ όσων φτάνουν εκεί, με τον ρυθμό
-     θανάτου h να πάει από 3% (ante 1) σε 20% (ante 50):
-     `HAZ=12 H1=0.03 H30=0.20 node tools/tune.js 220 50`. */
-  const TARGETS = [720, 850, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 3000, 3200, 3700, 4300, 4600, 5100, 5800, 5900, 6400, 7200, 7600, 8200, 9300, 9900, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 20000, 21000, 22000, 25000, 26000, 28000, 30000, 32000, 34000, 37000, 39000, 41000, 45000, 48000, 49000, 56000, 62000, 67000];
+     θανάτου h να πάει από 3% (ante 1) σε 20% (ante 50).
+     ΠΡΟΣΟΧΗ: τα antes ΧΩΡΙΣ challenge έχουν +10% εδώ μέσα, και τα challenge antes πληρώνουν
+     ×0,8 (chalTargetMul) αντί για ×0,9 — αλλιώς ο κίνδυνος ήταν πριονωτός: τα boss σκότωναν
+     9,7% και τα «κενά» 3,6% (2,67×), δηλαδή δύο στους τρεις γύρους ήταν γέμισμα.
+     Μετά: 6,1% / 5,1%. Το tune.js εξομαλύνει πλέον ΧΩΡΙΣΤΑ τις δύο σειρές και προσαρμόζει
+     σε ΛΟΓΟ score/target, όχι σε σκέτο score — αλλιώς αγνοούσε το chalTargetMul. */
+  const TARGETS = [972, 1190, 1320, 1790, 2150, 2300, 2920, 3270, 3340, 3960, 4320, 4550, 5370, 6230, 6620, 7830, 8720, 9060, 10200, 11100, 11400, 13400, 14400, 15000, 17700, 19600, 20100, 23500, 25400, 26000, 29300, 31200, 33600, 38900, 41100, 42600, 49000, 52900, 54200, 61100, 65100, 66600, 75400, 79600, 81600, 94000, 96500, 101000, 123000, 126000];
   const CFG = {
     handSize: 8, plays: 5, discards: 2, jokers: 2,
     /* Η αλυσίδα ΠΟΛΛΑΠΛΑΣΙΑΖΕΙ το Mult του χεριού, δεν του προσθέτει.
@@ -59,21 +63,32 @@
        Είναι το πάτωμα της αλυσίδας — μαζεύει την ουρά p10 χωρίς να πειράζει την κορυφή. */
     chainFloor: 1,
     /* Οροφή στο Mult που δίνει η αλυσίδα — δένει Climber/Tempo, που αλλιώς έτρεχαν ως +30. */
-    chainStepCap: 8,
+    /* chainStepCap = chainCap × 2, ώστε ο Climber («κάθε σκαλί διπλό») να πληρώνει μέχρι
+       την κορυφή. Στο 8 έδενε: με Climber τα σκαλιά 5 και 6 έδιναν ακριβώς μηδέν, και το
+       Tempo («τριπλό») ήταν ίδιο με το Climber από το σκαλί 3 και πάνω. */
+    chainStepCap: 12, patientCap: 9,
     /* Οροφή στο γινόμενο των ενισχυμένων φύλλων και στο γινόμενο charms/κανόνων ενός χεριού. */
     /* Οροφή στα ενισχυμένα φύλλα και στα charms. Χαμηλά επίτηδες: στο Balatro οι xMult
        ισχύουν σε ΚΑΘΕ χέρι· εδώ οι μεγάλοι πολλαπλασιαστές ήταν δεμένοι σε ένα παίξιμο
        (Encore, Mirror) και έφτιαχναν ακριβώς το «ένα φουλ καθαρίζει το ante». */
-    enhCap: 3, hmCap: 3,
+    /* enhCap: το πλαφόν στο γινόμενο Gold/Silver. Ο Goldsmith («Gold: Mult ×3») ήταν ΝΕΚΡΟΣ:
+       ένα Gold έφτανε ήδη το πλαφόν, και δύο Gold έδιναν ×3 με ή χωρίς αυτόν. Τώρα σηκώνει
+       το δικό του πλαφόν — αλλιώς δεν αγοράζει τίποτα (μετρημένο: ×1,06 → ×1,30). */
+    enhCap: 3, goldsmithCap: 6, hmCap: 3,
     /* ενισχύσεις: δεν αγοράζονται· «σκάνε» τυχαία σε φύλλα που τραβάς μέσα στον γύρο */
     enhChance: 0.06, enhWeights: { silver: 55, gold: 25, wild: 20 }, jokerCap: 4,
     /* Ρυθμός: κάθε 3η πίστα είναι challenge ΚΑΙ η μόνη που πληρώνει — ένα perk και ένα charm.
        Οι άλλες δύο περνούν χωρίς στάση: φτάνεις τον στόχο, συνεχίζεις. */
-    rewardEvery: 3, offers: 3, chainCap: 6, lowCeiling: 4,
+    rewardEvery: 3, offers: 3, chainCap: 6, lowCeiling: 4, endlessStep: 1.08,
     /* Τέσσερις θέσεις, και τέλος. Με τόσο λίγες, το κάθε charm πρέπει να είναι στύλος του
        build — γι' αυτό όλα τα bonus ανέβηκαν μαζί με τα πλαφόν. */
     charmSlots: 4,
-    chalTargetMul: 0.9, thinAirCap: 2, ruleChance: 0.75, highGroundRank: 8, shortHand: 7, richAirMul: 1.15, blindCount: 3, blindKeep: 1,
+    /* chalMul: ένας πολλαπλασιαστής ανά challenge, από τον μετρημένο ρυθμό θανάτου του
+       (ελαστικότητα dlnh/dlnT ≈ 3,5 → m = (6%/h)^(1/3,5)). Χωρίς αυτόν, με τον ίδιο στόχο
+       το Blind σκότωνε 11% και το Sticky 3%. Μετά: 5–7% όλα. */
+    chalTargetMul: 0.8,
+    chalMul: { nodiscard: 0.70, summit: 0.83, blind: 0.92, onedisc: 0.89, short: 0.95, fewplays: 0.95, richair: 1.05, highground: 1.23, thinair: 1.13, noace: 1.22, sticky: 1.22 },
+    thinAirCap: 2, ruleChance: 0.75, highGroundRank: 8, shortHand: 7, richAirMul: 1.15, blindCount: 3, blindKeep: 1,
     maxBuy: { cs: 3, wi: 2, di: 2, pl: 1, gt: 1, m1: 20, m2: 20 },
   };
 
@@ -91,7 +106,7 @@
   const poolById = Object.fromEntries(POOL.map((o) => [o.id, o]));
 
   const ENH = {
-    gold: { name: "Gold", desc: "Mult ×2 when played — they stack, up to ×3" },
+    gold: { name: "Gold", desc: "Mult ×2 when played — they stack, up to ×3 (×6 with Goldsmith)" },
     wild: { name: "Joker", desc: "Any rank, any suit — and an Ace" },
     silver: { name: "Silver", desc: "Mult ×1.5 when played — the common cousin of Gold" },
   };
@@ -99,7 +114,7 @@
   /* Charms: παθητικά εφέ. `lock` = συνθήκη ξεκλειδώματος (UI, lifetime stats). */
   const CHARMS = [
     { id: "climber", name: "Climber", glyph: "↑", desc: "Every chain step counts double" },
-    { id: "patient", name: "Patient", glyph: "◷", desc: "+3 Mult for every discard you still hold" },
+    { id: "patient", name: "Patient", glyph: "◷", desc: "+3 Mult for every discard you still hold, up to +9" },
     { id: "ladder", name: "Ladder", glyph: "≡", desc: "Same hand exactly one rank higher: this hand scores two chain steps higher" },
     { id: "leap", name: "Overkill", glyph: "⤒", desc: "Same hand four ranks or more above the rung: Mult ×2" },
     { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6: Mult ×2, and +40 Chips" },
@@ -113,7 +128,7 @@
     { id: "scout", name: "Scout", glyph: "◉", desc: "See the next three cards — and your first discard each round is free" },
     { id: "kingmaker", name: "Kingmaker", glyph: "A", desc: "Every Ace in the hand you play: +45 Chips" },
     { id: "afterburner", name: "Afterburner", glyph: "»", desc: "The hand after a bomb: Mult ×2.5" },
-    { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards: Mult ×3", lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
+    { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards: Mult ×3, and their ceiling rises to ×6", lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
     { id: "summiteer", name: "Summiteer", glyph: "▲", desc: "Bombs: Mult ×2", lock: { key: "quads", n: 3, text: "Play 3 bombs" } },
     { id: "ember", name: "Ember", glyph: "✦", desc: "Chain ×4 and above: Mult ×1.8", lock: { key: "chain7", n: 1, text: "Reach chain ×6" } },
   ];
@@ -126,7 +141,7 @@
     { id: "highground", name: "High Ground", desc: "Nothing under a pair of 8 climbs — all round.", tell: "The Bouncer. Small hands do not get in.", tip: "Lone Aces and low pairs still score, but the chain will not move." },
     { id: "onedisc", name: "One Discard", desc: "A single discard this round.", tell: "The Diver. One dive, no coming up.", tip: "Save it for a hand you truly cannot use." },
     { id: "thinair", name: "Thin Air", desc: "The chain caps at ×2.", tell: "The Altitude. The air runs out at ×2.", tip: "Big hands, not long chains." },
-    { id: "richair", name: "Rich Air", desc: "Target ×1.15, and five offers instead of three.", tell: "The Patron. Asks more, gives more.", tip: "A harder round for a better pick." },
+    { id: "richair", name: "Rich Air", desc: "A target 15% above what this boss would otherwise ask — and five offers instead of three.", tell: "The Patron. Asks more, gives more.", tip: "A harder round for a better pick." },
     { id: "nodiscard", name: "No Discards", desc: "No discards — but you hold one more card.", tell: "The Miser. What you hold is what you play.", tip: "A bigger hand instead of a second chance." },
     { id: "fewplays", name: "Four Plays", desc: "One play fewer.", tell: "The Clock. Four swings.", tip: "Every hand must count double." },
     { id: "sticky", name: "Sticky Rung", desc: "After every play the rung climbs two more ranks.", tell: "The Escalator. It climbs without you.", tip: "Jump kinds instead of ranks." },
@@ -185,13 +200,16 @@
   const activeSynergies = (S) => SYNERGIES.filter((s) => has(S, s.a) && has(S, s.b));
   /* Συνέργειες που θα ενεργοποιούσε το charm `id` με όσα ήδη κρατάς. */
   const synergyFor = (S, id) => SYNERGIES.filter((s) => (s.a === id && has(S, s.b)) || (s.b === id && has(S, s.a)));
-  /* Στόχος πέρα από το 30 (Endless): ×1.15 ανά ante. */
-  const tgtAt = (a) => (a < TARGETS.length ? TARGETS[a] : Math.round(TARGETS[TARGETS.length - 1] * Math.pow(1.15, a - TARGETS.length + 1)));
+  /* Στόχος πέρα από την Κορυφή (Endless). Ήταν καρφωμένο ×1,15 ανά ante ενώ η μόνη ανταμοιβή
+     εκεί είναι ένα perk ανά 3 antes (≈ +10% δύναμη): ο στόχος τριπλασιαζόταν στον χρόνο που
+     η δύναμη ανέβαινε 10%, και το Endless κρατούσε 4 antes (p50 θάνατος 54). Τώρα από το CFG,
+     και στο Endless πληρώνει ΚΑΘΕ ante — αλλιώς γεωμετρικός στόχος vs προσθετική ανταμοιβή. */
+  const tgtAt = (a) => (a < TARGETS.length ? TARGETS[a] : Math.round(TARGETS[TARGETS.length - 1] * Math.pow(CFG.endlessStep, a - TARGETS.length + 1)));
   const rule = (S) => (S.chal ? null : (S.rules && S.rules[S.ante]) || null);
   /* Κάθε 3η πίστα: challenge και ανταμοιβή μαζί — αλλά ΕΝΑ πράγμα, εναλλάξ.
      Σταθμός 1 perk, σταθμός 2 charm, σταθμός 3 perk… Ένα charm κάθε έξι πίστες, τρεις θέσεις:
      το build κλειδώνει νωρίς και μετά χτίζεις γύρω του με perks. */
-  const isReward = (a) => a % CFG.rewardEvery === CFG.rewardEvery - 1;
+  const isReward = (a) => a >= TARGETS.length || a % CFG.rewardEvery === CFG.rewardEvery - 1;
   const rewardKind = (a) => (Math.floor(a / CFG.rewardEvery) % 2 === 0 ? "up" : "charm");
   const cmp = (a, b) => a.r - b.r || a.si - b.si;
   const isWild = (c) => !!c && c.e === "wild";
@@ -213,9 +231,14 @@
         const ranks = S.deck.filter((c) => !isWild(c)).map((c) => c.r);
         if (!ranks.length) break;
         const lo = Math.min.apply(null, ranks);
-        S.deck = S.deck.filter((c) => isWild(c) || c.r !== lo);
-        /* «Για πάντα» σημαίνει και από το χέρι: αλλιώς κουβαλάς το κομμένο φύλλο από γύρο σε γύρο. */
-        S.hand = S.hand.filter((c) => isWild(c) || c.r !== lo);
+        /* «For good» σημαίνει τράπουλα, χέρι ΚΑΙ στοίβα. Πριν έφευγαν μόνο από την τράπουλα:
+           ό,τι κρατούσες τη στιγμή της αγοράς έμενε για πάντα, γιατί το startRound κρατά ό,τι
+           δεν είναι ορφανό — και ένα ζευγάρι διάρια δεν είναι ορφανό. Μετρημένο: 8/8 κομμένα
+           φύλλα ακόμη στο χέρι έξι γύρους αργότερα, στο 3ο πιο πολύτιμο perk του παιχνιδιού. */
+        const keep = (c) => isWild(c) || c.r !== lo;
+        S.deck = S.deck.filter(keep);
+        S.hand = S.hand.filter(keep);
+        if (S.pile) S.pile = S.pile.filter(keep);
         S.removed.push(lo);
         break;
       }
@@ -251,7 +274,8 @@
     return S;
   }
   /* Κάθε challenge ante παίρνει την ίδια έκπτωση· το Rich Air χτίζει πάνω σε αυτήν. */
-  const target = (S) => Math.round(tgtAt(S.ante) * (chal(S) ? CFG.chalTargetMul : 1) * (chal(S) === "richair" ? CFG.richAirMul : 1));
+  const chalMulOf = (id) => (id ? CFG.chalTargetMul * (CFG.chalMul[id] || 1) : 1);
+  const target = (S) => Math.round(tgtAt(S.ante) * chalMulOf(chal(S)) * (chal(S) === "richair" ? CFG.richAirMul : 1));
   const roundHandSize = (S) => (chal(S) === "short" ? Math.min(CFG.shortHand, S.handSize) : chal(S) === "nodiscard" || chal(S) === "noace" ? S.handSize + 1 : S.handSize);
   const handCap = (S) => roundHandSize(S);
 
@@ -364,10 +388,21 @@
   /* Το πλαφόν σε ένα σημείο, ώστε να μην το προσπερνά κανείς προσθέτοντας βήματα μετά. */
   function capPos(S, p) { p = Math.min(CFG.chainCap, p); return chal(S) === "thinair" ? Math.min(CFG.thinAirCap, p) : rule(S) === "r_cap" ? Math.min(CFG.lowCeiling, p) : p; }
   function chainPos(S) { return capPos(S, S.chain + 1 + S.chainStart + (S.chainBonus || 0)); }
+  /* Χρώμα που «οδηγεί» το χέρι: τα περισσότερα φύλλα, και στην ισοπαλία το ΨΗΛΟΤΕΡΟ φύλλο.
+     Χωρίς το δεύτερο κριτήριο η ισοπαλία έσπαγε με τη σειρά των κλειδιών — δηλαδή πάντα ♠ —
+     οπότε το 43,7% των χεριών «οδηγούνταν» από μπαστούνι, το Black Night χτυπούσε 55% έναντι
+     45% του Red Night με ταυτόσημο κείμενο, και το Loyalty ήταν κρυφά charm για μπαστούνια. */
   function leadSuit(cs) {
-    const cnt = {}; cs.forEach((c) => { if (!isWild(c)) cnt[c.si] = (cnt[c.si] || 0) + 1; });
-    let best = null; Object.keys(cnt).forEach((k) => { if (best == null || cnt[k] > cnt[best]) best = +k; });
-    return best;
+    const cnt = {}, top = {};
+    let ids = 0;
+    cs.forEach((c) => { if (isWild(c)) return; cnt[c.si] = (cnt[c.si] || 0) + 1; if (!(top[c.si] >= c.r)) top[c.si] = c.r; ids += c.id | 0; });
+    const ks = Object.keys(cnt).map(Number);
+    if (!ks.length) return null;
+    let bc = 0, bt = 0;
+    ks.forEach((k) => { if (cnt[k] > bc || (cnt[k] === bc && top[k] > bt)) { bc = cnt[k]; bt = top[k]; } });
+    /* Ισοπαλία (π.χ. ζευγάρι ♠♥): ντετερμινιστικό αλλά ομοιόμορφο σπάσιμο πάνω στα ids. */
+    const tied = ks.filter((k) => cnt[k] === bc && top[k] === bt);
+    return tied.length === 1 ? tied[0] : tied[Math.abs(ids) % tied.length];
   }
   /* Πλήρης υπολογισμός πόντων ενός υποψήφιου χεριού — UI και bot βλέπουν το ίδιο.
      Chips × Mult, όπως στο Balatro:
@@ -398,7 +433,10 @@
       pos = capPos(S, pos + steps);
     }
     /* Patient μπαίνει ΠΡΙΝ την αλυσίδα, ώστε να πολλαπλασιάζεται μαζί με το υπόλοιπο Mult. */
-    if (has(S, "patient")) { const d = discardsLeft(S) * 3; if (d) { mult += d; notes.push("Patient +" + d + " Mult"); } }
+    /* Το Patient μπαίνει πριν την αλυσίδα και πριν ΚΑΙ ΤΑ ΔΥΟ πλαφόν ×, οπότε ό,τι το ταΐζει
+       (Sleight +3 discards) πολλαπλασιαζόταν ανεμπόδιστα: μετρημένα το ζευγάρι Patient+Sleight
+       άξιζε +0,92 πάνω από την πρόβλεψη — 3,5× την καλύτερη δηλωμένη συνέργεια. Δικό του πλαφόν. */
+    if (has(S, "patient")) { const d = Math.min(CFG.patientCap, discardsLeft(S) * 3); if (d) { mult += d; notes.push("Patient +" + d + " Mult"); } }
     /* Climber μετράει κάθε σκαλί διπλό, το Tempo τριπλό — μέχρι την οροφή του chainStepCap. */
     const stepMult = syn(S, "tempo") ? 3 : has(S, "climber") ? 2 : 1;
     const steps = up ? Math.min(CFG.chainStepCap, Math.max(0, pos - 1 + CFG.chainFloor) * stepMult) : 0;
@@ -409,7 +447,8 @@
     let factor = 1;
     if (golds) factor *= Math.pow(has(S, "goldsmith") ? 3 : 2, golds);
     if (silvers) factor *= Math.pow(1.5, silvers);
-    if (factor > CFG.enhCap) factor = CFG.enhCap;
+    const ecap = has(S, "goldsmith") ? CFG.goldsmithCap : CFG.enhCap;
+    if (factor > ecap) factor = ecap;
     factor = Math.round(factor * 100) / 100;
     if (factor > 1) notes.push((golds && silvers ? "Gold + Silver" : golds ? "Gold" : "Silver") + " ×" + factor);
     let hm = 1;
@@ -518,23 +557,22 @@
     }
     return len;
   }
-  /* Πρόταση: με rung, το φθηνότερο που χτυπάει (βόμβες τελευταίες). Ανοιχτό: το σχήμα με τη
-     μεγαλύτερη αλυσίδα στο χέρι, αλλιώς το πιο ακριβό. */
+  /* Πρόταση = το ΜΕΓΑΛΥΤΕΡΟ σχήμα που ανεβαίνει, με το μήκος της αλυσίδας μόνο για ισοπαλίες.
+     Έδινε πριν «το φθηνότερο που χτυπάει το rung» — δηλαδή ακριβώς τη στρατηγική που τα ίδια
+     τα εργαλεία μετρούν ως κακή. Μετρημένο σε ίδια seeds: παίκτης που ακολουθεί το Hint σε
+     κάθε παίξιμο πεθαίνει στο ante 3,89· ο builder στο 17,45 (Δ −13,56 ± 0,44). Το κουμπί
+     «?» του παιχνιδιού συμβούλευε να χάσεις. */
   function suggest(S) {
     const all = candidates(S);
     if (!all.length) return null;
-    const up = all.filter((o) => climbs(S, o.k));
-    if (S.rung && up.length) {
-      const nb = up.filter((o) => !isBomb(o.k)), pool = nb.length ? nb : up;
-      return pool.reduce((b, o) => (!b || costKey(o.k) < costKey(b.k) ? o : b), null);
-    }
-    /* Ανοιχτό τραπέζι: το σχήμα με τη μεγαλύτερη αλυσίδα μπροστά. Τίποτα δεν ανεβαίνει: το πιο παχύ. */
-    if (S.rung) return all.reduce((b, o) => (!b || scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts > scoreOf(S, b.k, b.idx.map((i) => S.hand[i])).pts ? o : b), null);
-    let best = null, bk = -1;
-    all.forEach((o) => {
-      const len = isBomb(o.k) ? 1 : chainLen(S, o, all), pts = scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts;
-      const key = len * 1e6 + (len >= 2 ? (90000 - costKey(o.k)) : 0) + Math.min(9999, pts);
-      if (key > bk) { bk = key; best = o; }
+    const up = all.filter((o) => climbs(S, o.k)), pool = up.length ? up : all;
+    const val = (o) => scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts;
+    let best = null, bv = -1, bl = -1;
+    pool.forEach((o) => {
+      const v = val(o);
+      if (v < bv) return;
+      const len = isBomb(o.k) ? 1 : chainLen(S, o, all);
+      if (v > bv || len > bl) { best = o; bv = v; bl = len; }
     });
     return best;
   }
@@ -570,9 +608,12 @@
     ev.drawn = drawn.length;
     S.plays += 1; S.stats.plays += 1;
   }
-  /* Καταγράφει την κορυφή της αλυσίδας. */
-  function noteChain(S) {
-    const pos = chainPos(S), fresh = pos > S.rmax;
+  /* Καταγράφει την κορυφή της αλυσίδας — τη θέση που ΠΛΗΡΩΣΕ το χέρι, όχι την επόμενη.
+     Καλούνταν μετά το `S.chain += 1`, άρα έγραφε πάντα +1 σκαλί: το «Ladder to Heaven» και το
+     ξεκλείδωμα του Ember («Reach chain ×6») έσκαγαν ενώ είχε πληρωθεί μόνο ×5 (743 από 757
+     γύρους διαφωνούσαν με το πραγματικό μέγιστο). */
+  function noteChain(S, at) {
+    const pos = at == null ? chainPos(S) : at, fresh = pos > S.rmax;
     if (fresh) S.rmax = pos;
     if (pos > S.stats.maxChain) S.stats.maxChain = pos;
     if (pos >= CFG.chainCap) S.stats.chain7 = 1;
@@ -611,7 +652,7 @@
     if (has(S, "mirror") && S.plays === 0) { S.chain += 1; tags.push("Mirror"); }
     S.rung = bomb ? null : { kind: k.kind, rank: Math.min(14, k.rank + (chal(S) === "sticky" ? 2 : 0)), size: k.size };
     /* Το «Ladder to Heaven» βγαίνει μία φορά, όταν η αλυσίδα φτάσει πρώτη φορά στην οροφή. */
-    { const n = noteChain(S); if (n.fresh && n.pos >= CFG.chainCap) tags.push("Ladder to Heaven"); }
+    { const n = noteChain(S, up ? e.pos : 0); if (n.fresh && n.pos >= CFG.chainCap) tags.push("Ladder to Heaven"); }
     S.played = cs.slice();
     S.log.push({ t: clabel(k), c: e.chips + " × " + e.mult + (bomb ? " · table opens" : broke ? " · chain ×" + broke + " broken" : ""), p: e.pts, cls: broke ? "pass" : "" });
     tags.sort((a, b) => TAG_ORDER.indexOf(a) - TAG_ORDER.indexOf(b));
@@ -746,7 +787,7 @@
   const current = (S) => (S.chal ? chalById[S.chal] : null);
   const currentRule = (S) => (rule(S) ? ruleById[rule(S)] : null);
   const upcomingRule = (S) => { const a = S.ante + 1; return !S.chals[a] && S.rules && S.rules[a] ? ruleById[S.rules[a]] : null; };
-  const nextTarget = (S) => { const a = S.ante + 1, id = S.chals[a]; if (a >= TARGETS.length && !S.endless) return null; return Math.round(tgtAt(a) * (id ? CFG.chalTargetMul : 1) * (id === "richair" ? CFG.richAirMul : 1)); };
+  const nextTarget = (S) => { const a = S.ante + 1, id = S.chals[a]; if (a >= TARGETS.length && !S.endless) return null; return Math.round(tgtAt(a) * chalMulOf(id) * (id === "richair" ? CFG.richAirMul : 1)); };
   const peek = (S) => (has(S, "scout") && S.pile.length ? S.pile.slice(-3).reverse() : null);
 
   /* ============================== σειριοποίηση ============================== */

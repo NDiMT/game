@@ -851,7 +851,6 @@ body[data-heat="3"] .table{box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 
   box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 3px 9px rgba(0,0,0,.5),0 0 0 1px #b3801d,0 0 .8rem rgba(255,200,80,.5)}
 .card.e-gold .card__r,.card.e-gold .card__rs,.card.e-gold .card__pip{color:#5a3c05}
 .card.e-gold.s1 .card__r,.card.e-gold.s1 .card__rs{color:#a01a16}
-  box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 3px 9px rgba(0,0,0,.4),0 0 0 1px rgba(150,215,235,.9),0 0 .9rem rgba(160,225,245,.55)}
 /* Silver: ίδια οικογένεια με το Gold — ίδιο foil, ψυχρή παλέτα, λιγότερη λάμψη. */
 .card.e-silver{background:linear-gradient(158deg,#ffffff 0%,#dbe3ec 40%,#a9b7c6 72%,#eef3f8 100%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 3px 9px rgba(0,0,0,.45),0 0 0 1px #8fa0b0,0 0 .7rem rgba(190,210,230,.45)}
@@ -1072,3 +1071,30 @@ body[data-heat="3"] .table{animation:tremble .38s ease-in-out 5}
    Μετρημένο: 16px από την πάνω άκρη, δηλαδή ~6px μέσα από το ::before περίγραμμα. */
 .charms{margin:.55rem 0 .5rem}
 @media (max-height:660px){.charms{margin:.3rem 0 .25rem}}
+
+/* ===================== v18: ο χρόνος και ο αντίχειρας ===================== */
+/* 1. Η σειρά εργαλείων δεν υπάρχει πια στον κώδικα (το ui.js γράφει πάντα ""), αλλά το
+   v15 της κρατούσε 44px για να μη «χοροπηδά» όταν εμφανίζεται. Μετρημένο: μια νεκρή
+   ζώνη 44px ανάμεσα στο χέρι και το dock, σε κάθε οθόνη — 7% ενός τηλεφώνου 360×600
+   (το τραπέζι πάει 262 → 306px, τα παιγμένα φύλλα 109 → 153px). Αν κάποτε ξαναγεμίσει,
+   το min-height από πάνω κρατά ακόμη τη θέση της. */
+.tools:empty{display:none}
+
+/* 2. Το «Out» δέχεται τα φύλλα που πετάς: ο μετρητής χτυπά όταν προσγειώνονται. */
+.piles b.hit{display:inline-block;animation:pilehit .45s var(--pop)}
+@keyframes pilehit{0%{transform:scale(1)}40%{transform:scale(1.5);color:#8fd0e2}100%{transform:scale(1)}}
+
+/* 3. Η ανταμοιβή που διάλεξες πρέπει να λάμπει, όχι να σβήνει: το `.bought` την έριχνε
+   στο 50% opacity — το μόνο πράγμα που κερδίζεις σε τρία antes γινόταν το πιο αχνό
+   πλακίδιο της οθόνης. Τώρα ανάβει, και τα άλλα δύο σβήνουν από το :disabled. */
+.offer--pick.bought{opacity:1;border-color:rgba(255,209,102,.85);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 0 1px rgba(255,209,102,.55),0 0 1.6rem rgba(255,209,102,.4);
+  animation:took .5s var(--pop)}
+@keyframes took{0%{transform:scale(1)}45%{transform:scale(1.045)}100%{transform:scale(1)}}
+
+/* 4. Τίποτα δεν ανασαίνει για πάντα — το v15 το είχε πει και είχε ξεχάσει τη λάμψη. */
+.go.ok::after{animation:shine 2.6s ease-in-out 3}
+
+/* 5. Το χέρι ακολουθεί τον αντίχειρα όσο σέρνεις: η χειρονομία ήταν εντελώς αόρατη. */
+.hand.dragging{transition:none}
+@media (prefers-reduced-motion:reduce){.offer--pick.bought{animation:none}.piles b.hit{animation:none}.hand.dragging{transform:none!important}}
