@@ -4,10 +4,10 @@ const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 150, STRAT = process.argv[3] || "base", PLAYOUT = !!process.env.PLAYOUT;
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "m2", "th", "sl", "gt"];
+  "pl", "m1", "cs", "di", "wi", "m2", "th", "gt"];
 
-const st = { kinds: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, breaks: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(30).fill(0), wins: 0,
-  ratio: Array.from({ length: 30 }, () => []), score: Array.from({ length: 30 }, () => []), bought: {}, picks: Array.from({ length: 30 }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, aceRounds: 0, used: [] };
+const st = { kinds: {}, bombs: 0, bombPts: 0, totalPts: 0, plays: 0, breaks: 0, aces: 0, discards: 0, rounds: 0, maxChain: [], lost: new Array(G.TARGETS.length).fill(0), wins: 0,
+  ratio: Array.from({ length: G.TARGETS.length }, () => []), score: Array.from({ length: G.TARGETS.length }, () => []), bought: {}, picks: Array.from({ length: G.TARGETS.length }, () => []), keptSwaps: 0, deathCause: {}, bombRounds: 0, stuckEarly: 0, aceRounds: 0, used: [] };
 
 function rankGroups(S) { const g = {}; S.hand.forEach((c, i) => { if (!c.h && !G.isWild(c)) (g[c.r] = g[c.r] || []).push(i); }); return g; }
 function discardStep(S) {

@@ -1032,7 +1032,9 @@ body{background:
 @media (prefers-reduced-motion:reduce){.float.still{opacity:1;transform:translate(-50%,-60%)}}
 
 /* 9. Στόχοι αφής ≥44px χωρίς να αλλάξει το σχέδιο (μετρημένοι: 30×30, 27×27, 30 ύψος). */
-.hintb,.charms .charm,.chal{position:relative}
+/* Το .hintb είναι ήδη absolute στη γωνία του τραπεζιού — δεν το κάνουμε relative, γιατί
+   τότε το top/right γίνονταν μετατόπιση μέσα στη ροή και το «?» έπεφτε αριστερά. */
+.charms .charm,.chal{position:relative}
 .hintb::after,.charms .charm::after,.chal::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   width:max(100%,44px);height:max(100%,44px);border-radius:inherit}
 .charms{gap:.45rem}

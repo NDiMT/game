@@ -12,7 +12,7 @@ const MODE = process.argv[2] === "hands" ? "hands" : "runs";
 const N = +process.argv[2] || 40, STRAT = process.argv[3] || "finisher";
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "m2", "th", "sl", "gt"];
+  "pl", "m1", "cs", "di", "wi", "m2", "th", "gt"];
 
 const q = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(p * (b.length - 1))] : NaN; };
 const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);

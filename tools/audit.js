@@ -12,7 +12,7 @@ const G = require("../site/raise/game.js");
 const N = +process.argv[2] || 60, WHAT = process.argv[3] || "all";
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer", "leap", "scout", "glassblower",
-  "pl", "m1", "cs", "di", "wi", "m2", "th", "sl", "gt"];
+  "pl", "m1", "cs", "di", "wi", "m2", "th", "gt"];
 
 function discardStep(S) {
   let o = G.orphans(S);

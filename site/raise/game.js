@@ -30,7 +30,7 @@
      το 74% των χεριών, τα σχήματα το 15%, οι βόμβες το 1% — άρα το βήμα μεγαλώνει όσο πιο
      σπάνιο είναι το σχήμα, αλλιώς η προσφορά είναι νεκρή (Sets+ έβγαζε Δ +0,10 στα 60 runs). */
   const MULT_KIND = { m1: [1, 8], m2: [2, 3, 4, 5, 6, 7] };
-  const MULT_STEP = { m1: 1, m2: 2 };
+  const MULT_STEP = { m1: 2, m2: 3 };
   /* Πόσα βήματα μήκους πάνω από το ελάχιστο: ζεύγη/σκάλες μετρούν ζευγάρια, κέντες φύλλα. */
   const kunits = (k) => (k.kind === 3 || k.kind === 8 ? k.size / 2 - 2 : k.kind === 4 || k.kind === 7 ? k.size - 5 : 0);
   const kchips = (k) => { const K = KINDS[k.kind]; return K.chips + (K.cstep || 0) * kunits(k); };
@@ -38,9 +38,10 @@
   /* Ονομαστική αξία του σχήματος (χωρίς φύλλα): για ταξινόμηση και για τον πίνακα πληρωμών. */
   const kbase = (k) => kchips(k) * kmult(k);
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
-  /* 30 antes. Κάθε στόχος είναι το h(a)-ποσοστημόριο των σκορ όσων φτάνουν εκεί, με τον ρυθμό
-     θανάτου h να πάει από 4% (ante 1) σε 33% (ante 30): `HAZ=8 node tools/tune.js 200 30`. */
-  const TARGETS = [830, 870, 920, 1000, 1100, 1200, 1500, 1800, 2000, 2200, 2500, 2700, 3000, 3500, 4000, 4500, 5000, 5800, 6200, 7000, 7600, 8300, 8900, 10000, 11000, 12000, 13000, 14000, 15000, 16000];
+  /* 50 antes. Κάθε στόχος είναι το h(a)-ποσοστημόριο των σκορ όσων φτάνουν εκεί, με τον ρυθμό
+     θανάτου h να πάει από 3% (ante 1) σε 20% (ante 50):
+     `HAZ=12 H1=0.03 H30=0.20 node tools/tune.js 220 50`. */
+  const TARGETS = [830, 870, 900, 950, 990, 1100, 1300, 1600, 1700, 1800, 1900, 2000, 2200, 2400, 2600, 2900, 3300, 3600, 4000, 4400, 5000, 5300, 5800, 6400, 6800, 7600, 8500, 9300, 10000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 21000, 22000, 24000, 25000, 26000, 28000, 31000, 33000, 36000, 41000, 47000, 54000, 63000];
   const CFG = {
     handSize: 8, plays: 5, discards: 2, jokers: 2,
     /* Πόσο Mult αξίζει κάθε σκαλί της αλυσίδας. */
@@ -49,31 +50,30 @@
        Είναι το πάτωμα της αλυσίδας — μαζεύει την ουρά p10 χωρίς να πειράζει την κορυφή. */
     chainFloor: 1,
     /* Οροφή στο Mult που δίνει η αλυσίδα — δένει Climber/Tempo, που αλλιώς έτρεχαν ως +30. */
-    chainAddCap: 6,
+    chainAddCap: 12,
     /* Οροφή στο γινόμενο Gold/Glass και στο γινόμενο charms/κανόνων ενός χεριού. */
-    enhCap: 4, hmCap: 4,
+    enhCap: 6, hmCap: 8,
     /* ενισχύσεις: δεν αγοράζονται· «σκάνε» τυχαία σε φύλλα που τραβάς μέσα στον γύρο */
     enhChance: 0.06, enhWeights: { gold: 40, glass: 30, steel: 15, wild: 15 }, steelCap: 3, jokerCap: 4,
     /* Ρυθμός: κάθε 3η πίστα είναι challenge ΚΑΙ η μόνη που πληρώνει — ένα perk και ένα charm.
        Οι άλλες δύο περνούν χωρίς στάση: φτάνεις τον στόχο, συνεχίζεις. */
     rewardEvery: 3, offers: 3, chainCap: 6, lowCeiling: 4,
-    charmSlots: 6,
+    /* Τέσσερις θέσεις, και τέλος. Με τόσο λίγες, το κάθε charm πρέπει να είναι στύλος του
+       build — γι' αυτό όλα τα bonus ανέβηκαν μαζί με τα πλαφόν. */
+    charmSlots: 4,
     chalTargetMul: 0.9, thinAirCap: 2, ruleChance: 0.75, highGroundRank: 8, shortHand: 7, richAirMul: 1.15, blindCount: 5, blindKeep: 2,
-    /* Σπασμένη αλυσίδα: πόσο κρατά με Slipstream / με Second Wind την πρώτη φορά. */
-    slipKeep: 0.5,
-    maxBuy: { cs: 3, wi: 2, di: 2, pl: 2, sl: 3, gt: 1, m1: 20, m2: 20 },
+    maxBuy: { cs: 3, wi: 2, di: 2, pl: 2, gt: 1, m1: 20, m2: 20 },
   };
 
   const POOL = [
-    { id: "m1", name: "Pairs +", desc: "Pairs and two pair: +1 Mult" },
-    { id: "m2", name: "Big Hands +", desc: "Trips, stairs, straights, full houses and bombs: +2 Mult" },
+    { id: "m1", name: "Pairs +", desc: "Pairs and two pair: +2 Mult" },
+    { id: "m2", name: "Big Hands +", desc: "Trips, stairs, straights, full houses and bombs: +3 Mult" },
     { id: "pl", name: "Extra Play", desc: "+1 play a round" },
     { id: "di", name: "Nimble Hands", desc: "+1 discard a round" },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card" },
     { id: "cs", name: "Head Start", desc: "The chain starts a step higher" },
     { id: "th", name: "Cull", desc: "Drop the lowest rank from your deck, for good" },
     /* μόνο από τη μέση του run και μετά */
-    { id: "sl", name: "Charm Slot", desc: "One more charm slot", min: 5 },
     { id: "gt", name: "Golden Touch", desc: "Every Ace in your deck turns Gold", min: 8 },
   ];
   const poolById = Object.fromEntries(POOL.map((o) => [o.id, o]));
@@ -87,25 +87,25 @@
 
   /* Charms: παθητικά εφέ. `lock` = συνθήκη ξεκλειδώματος (UI, lifetime stats). */
   const CHARMS = [
-    { id: "climber", name: "Climber", glyph: "↑", desc: "Chain steps are worth +2 Mult, up to +6" },
-    { id: "patient", name: "Patient", glyph: "◷", desc: "+1 Mult for every discard you still hold" },
-    { id: "ladder", name: "Ladder", glyph: "≡", desc: "Same hand exactly one rank higher: this hand scores a chain step higher" },
-    { id: "leap", name: "Overkill", glyph: "⤒", desc: "Same hand four ranks or more above the rung: Mult ×1.5" },
-    { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6: Mult ×2" },
-    { id: "court", name: "Court", glyph: "♛", desc: "A face card in the hand you play: +20 Chips" },
-    { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: a chain step higher, and +20 Chips" },
-    { id: "cheap", name: "Slipstream", glyph: "~", desc: "A broken chain keeps half instead of resetting" },
-    { id: "wind", name: "Second Wind", glyph: "∞", desc: "The first break of the round keeps everything" },
-    { id: "sleight", name: "Sleight", glyph: "✂", desc: "+2 discards a round" },
-    { id: "encore", name: "Encore", glyph: "⧗", desc: "Your last play of the round: Mult ×2" },
-    { id: "mirror", name: "Mirror", glyph: "◐", desc: "First hand of the round: Mult ×2 and two chain steps" },
-    { id: "scout", name: "Scout", glyph: "◉", desc: "See the next two cards — and your first discard each round is free" },
-    { id: "kingmaker", name: "Kingmaker", glyph: "A", desc: "Every Ace in the hand you play: +20 Chips" },
-    { id: "afterburner", name: "Afterburner", glyph: "»", desc: "The hand after a bomb: Mult ×3" },
-    { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards: Mult ×3", lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
-    { id: "glassblower", name: "Glassblower", glyph: "◇", desc: "Glass is Mult ×4 and survives half the time", lock: { key: "glass", n: 5, text: "Shatter 5 Glass cards" } },
-    { id: "summiteer", name: "Summiteer", glyph: "▲", desc: "Bombs: Mult ×1.5", lock: { key: "quads", n: 3, text: "Play 3 bombs" } },
-    { id: "ember", name: "Ember", glyph: "✦", desc: "Chain ×5 and above: Mult ×1.5", lock: { key: "chain7", n: 1, text: "Reach chain ×6" } },
+    { id: "climber", name: "Climber", glyph: "↑", desc: "Chain steps are worth +4 Mult, up to +12" },
+    { id: "patient", name: "Patient", glyph: "◷", desc: "+3 Mult for every discard you still hold" },
+    { id: "ladder", name: "Ladder", glyph: "≡", desc: "Same hand exactly one rank higher: this hand scores two chain steps higher" },
+    { id: "leap", name: "Overkill", glyph: "⤒", desc: "Same hand four ranks or more above the rung: Mult ×2.5" },
+    { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6: Mult ×2.5, and +40 Chips" },
+    { id: "court", name: "Court", glyph: "♛", desc: "A face card in the hand you play: +60 Chips" },
+    { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: a chain step higher, and +60 Chips" },
+    { id: "cheap", name: "Slipstream", glyph: "~", desc: "A broken chain drops one step instead of resetting" },
+    { id: "wind", name: "Second Wind", glyph: "∞", desc: "The first two breaks of the round keep everything" },
+    { id: "sleight", name: "Sleight", glyph: "✂", desc: "+3 discards a round" },
+    { id: "encore", name: "Encore", glyph: "⧗", desc: "Your last play of the round: Mult ×3.5" },
+    { id: "mirror", name: "Mirror", glyph: "◐", desc: "First hand of the round: Mult ×3.5 and two chain steps" },
+    { id: "scout", name: "Scout", glyph: "◉", desc: "See the next three cards — and your first discard each round is free" },
+    { id: "kingmaker", name: "Kingmaker", glyph: "A", desc: "Every Ace in the hand you play: +45 Chips" },
+    { id: "afterburner", name: "Afterburner", glyph: "»", desc: "The hand after a bomb: Mult ×5" },
+    { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards: Mult ×5", lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
+    { id: "glassblower", name: "Glassblower", glyph: "◇", desc: "Glass is Mult ×5 and never shatters", lock: { key: "glass", n: 5, text: "Shatter 5 Glass cards" } },
+    { id: "summiteer", name: "Summiteer", glyph: "▲", desc: "Bombs: Mult ×2.5", lock: { key: "quads", n: 3, text: "Play 3 bombs" } },
+    { id: "ember", name: "Ember", glyph: "✦", desc: "Chain ×4 and above: Mult ×2.5", lock: { key: "chain7", n: 1, text: "Reach chain ×6" } },
   ];
   const charmById = Object.fromEntries(CHARMS.map((c) => [c.id, c]));
 
@@ -116,7 +116,7 @@
     { id: "highground", name: "High Ground", desc: "Nothing under a pair of 8 climbs — all round.", tell: "The Bouncer. Small hands do not get in.", tip: "Lone Aces and low pairs still score, but the chain will not move." },
     { id: "onedisc", name: "One Discard", desc: "A single discard this round.", tell: "The Diver. One dive, no coming up.", tip: "Save it for a hand you truly cannot use." },
     { id: "thinair", name: "Thin Air", desc: "The chain caps at ×2.", tell: "The Altitude. The air runs out at ×2.", tip: "Big hands, not long chains." },
-    { id: "richair", name: "Rich Air", desc: "Target ×1.15, and one extra perk.", tell: "The Patron. Asks more, gives more.", tip: "Clear it and you leave with three bonuses." },
+    { id: "richair", name: "Rich Air", desc: "Target ×1.15, and five offers instead of three.", tell: "The Patron. Asks more, gives more.", tip: "A harder round for a better pick." },
     { id: "nodiscard", name: "No Discards", desc: "No discards — but you hold two more cards.", tell: "The Miser. What you hold is what you play.", tip: "A bigger hand instead of a second chance." },
     { id: "fewplays", name: "Four Plays", desc: "One play fewer.", tell: "The Clock. Four swings.", tip: "Every hand must count double." },
     { id: "sticky", name: "Sticky Rung", desc: "After every play the rung climbs one more rank.", tell: "The Escalator. It climbs without you.", tip: "Jump kinds instead of ranks." },
@@ -150,14 +150,14 @@
 
   /* Συνέργειες: δύο charms μαζί ξεκλειδώνουν ένα τρίτο εφέ. */
   const SYNERGIES = [
-    { id: "royal", a: "kingmaker", b: "loyal", name: "Royal Court", desc: "Aces are worth +40 Chips instead of +20." },
+    { id: "royal", a: "kingmaker", b: "loyal", name: "Royal Court", desc: "Aces are worth +90 Chips instead of +45." },
     { id: "reaction", a: "afterburner", b: "summiteer", name: "Chain Reaction", desc: "The hand after a bomb: Mult ×4 instead of ×3." },
     { id: "backstairs", a: "lowroad", b: "ladder", name: "Back Stairs", desc: "A tight step onto a low pair scores two chain steps higher." },
     { id: "lockstep", a: "ladder", b: "loyal", name: "Lockstep", desc: "Ladder and Loyalty together: one more step on top." },
     { id: "bookends", a: "encore", b: "mirror", name: "Bookends", desc: "A last hand of the same kind as your first: Mult ×3." },
-    { id: "tempo", a: "climber", b: "patient", name: "Tempo", desc: "Chain steps are worth +3 Mult." },
+    { id: "tempo", a: "climber", b: "patient", name: "Tempo", desc: "Chain steps are worth +5 Mult." },
     { id: "lungs", a: "cheap", b: "wind", name: "Deep Lungs", desc: "A broken chain never falls below ×3." },
-    { id: "jewels", a: "court", b: "goldsmith", name: "Crown Jewels", desc: "A Gold face card adds +40 Chips instead of +20." },
+    { id: "jewels", a: "court", b: "goldsmith", name: "Crown Jewels", desc: "A Gold face card adds +120 Chips instead of +60." },
   ];
   const synById = {}; SYNERGIES.forEach((s) => { synById[s.id] = s; });
   /* Ποιο «όνομα» φωνάζει η οθόνη όταν ένα χέρι αξίζει περισσότερα από ένα. */
@@ -178,8 +178,11 @@
   /* Στόχος πέρα από το 30 (Endless): ×1.15 ανά ante. */
   const tgtAt = (a) => (a < TARGETS.length ? TARGETS[a] : Math.round(TARGETS[TARGETS.length - 1] * Math.pow(1.15, a - TARGETS.length + 1)));
   const rule = (S) => (S.chal ? null : (S.rules && S.rules[S.ante]) || null);
-  /* Κάθε 3η πίστα: challenge και ανταμοιβή μαζί. Το ante 30 (index 29) πέφτει πάνω της. */
+  /* Κάθε 3η πίστα: challenge και ανταμοιβή μαζί — αλλά ΕΝΑ πράγμα, εναλλάξ.
+     Σταθμός 1 perk, σταθμός 2 charm, σταθμός 3 perk… Ένα charm κάθε έξι πίστες, τρεις θέσεις:
+     το build κλειδώνει νωρίς και μετά χτίζεις γύρω του με perks. */
   const isReward = (a) => a % CFG.rewardEvery === CFG.rewardEvery - 1;
+  const rewardKind = (a) => (Math.floor(a / CFG.rewardEvery) % 2 === 0 ? "up" : "charm");
   const cmp = (a, b) => a.r - b.r || a.si - b.si;
   const isWild = (c) => !!c && c.e === "wild";
   const isAce = (c) => !!c && (c.r === 14 || isWild(c));
@@ -195,7 +198,6 @@
       case "di": S.discMore = (S.discMore || 0) + 1; break;
       case "wi": S.handSize += 1; break;
       case "cs": S.chainStart += 1; break;
-      case "sl": S.charmSlots += 1; break;
       case "gt": S.deck.concat(S.hand).forEach((c) => { if (c.r === 14 && !c.e) c.e = "gold"; }); break;
       case "th": {
         const ranks = S.deck.filter((c) => !isWild(c)).map((c) => c.r);
@@ -214,7 +216,7 @@
     const seed = String(seedStr || "").trim() || String(Math.floor(Math.random() * 1e9));
     const D = deckById[deckId] || DECKS[0];
     const S = {
-      v: 8, seed, rng: hash(seed) | 0, deckId: D.id, endless: false,
+      v: 10, seed, rng: hash(seed) | 0, deckId: D.id, endless: false,
       ante: 0, phase: "round", offers: [], picks: 0, nOffers: CFG.offers,
       handSize: CFG.handSize, playsMax: CFG.plays, discMore: 0, chainStart: 0,
       hand: [],
@@ -370,8 +372,8 @@
     const notes = [], R = rule(S);
     let chips = kchips(k) + cardChips(cs);
     let mult = kmult(k) + (S.mult[k.kind] || 0);
-    if (has(S, "court") && cs.some(isFace)) { const jw = syn(S, "jewels") && cs.some((c) => isFace(c) && c.e === "gold"); chips += jw ? 40 : 20; notes.push(jw ? "Crown Jewels +40" : "Court +20"); }
-    if (has(S, "kingmaker")) { const na = cs.filter(isAce).length; if (na) { const per = syn(S, "royal") ? 40 : 20; chips += per * na; notes.push((syn(S, "royal") ? "Royal Court +" : "Kingmaker +") + per * na); } }
+    if (has(S, "court") && cs.some(isFace)) { const jw = syn(S, "jewels") && cs.some((c) => isFace(c) && c.e === "gold"); chips += jw ? 120 : 60; notes.push(jw ? "Crown Jewels +120" : "Court +60"); }
+    if (has(S, "kingmaker")) { const na = cs.filter(isAce).length; if (na) { const per = syn(S, "royal") ? 90 : 45; chips += per * na; notes.push((syn(S, "royal") ? "Royal Court +" : "Kingmaker +") + per * na); } }
     const steels = cs.filter((c) => c.e === "steel").length;
     if (steels) { chips += 20 * steels; notes.push("Steel +" + 20 * steels); }
     /* Αλυσίδα: κάθε βήμα πάνω από το πρώτο δίνει +Mult — μόνο αν το χέρι ανεβαίνει.
@@ -381,33 +383,33 @@
     const ladder = has(S, "ladder") && sameShape(k, prev) && k.rank === prev.rank + 1, loyal = has(S, "loyal") && S.lastSuit != null && leadSuit(cs) === S.lastSuit;
     if (up) {
       let steps = 0;
-      if (ladder) { steps += 1; notes.push("Ladder +1 step"); }
+      if (ladder) { steps += 2; notes.push("Ladder +2 steps"); }
       if (ladder && syn(S, "backstairs") && k.kind === 1 && k.rank <= 6) { steps += 1; notes.push("Back Stairs +1 step"); }
-      if (loyal) { steps += 1; chips += 20; notes.push("Loyalty +1 step, +20"); }
+      if (loyal) { steps += 1; chips += 60; notes.push("Loyalty +1 step, +60"); }
       if (ladder && loyal && syn(S, "lockstep")) { steps += 1; notes.push("Lockstep +1 step"); }
       pos = capPos(S, pos + steps);
     }
     /* Climber κάνει το σκαλί +2, το Tempo +3 — μέχρι την οροφή του chainAddCap. */
-    const stepMult = CFG.chainMult + (syn(S, "tempo") ? 2 : has(S, "climber") ? 1 : 0);
+    const stepMult = CFG.chainMult + (syn(S, "tempo") ? 4 : has(S, "climber") ? 3 : 0);
     const chainAdd = up ? Math.min(CFG.chainAddCap, Math.max(0, pos - 1 + CFG.chainFloor) * stepMult) : 0;
     if (chainAdd) { mult += chainAdd; notes.push("Chain ×" + pos + " · +" + chainAdd + " Mult"); }
     /* Patient: κάθε discard που δεν ξόδεψες μετράει σαν +1 Mult. */
-    if (has(S, "patient")) { const d = discardsLeft(S); if (d) { mult += d; notes.push("Patient +" + d + " Mult"); } }
+    if (has(S, "patient")) { const d = discardsLeft(S) * 3; if (d) { mult += d; notes.push("Patient +" + d + " Mult"); } }
     /* Gold και Glass πολλαπλασιάζουν, ένα φύλλο τη φορά — όπως ακριβώς το λένε οι περιγραφές. */
     const golds = cs.filter((c) => c.e === "gold").length, glass = cs.filter((c) => c.e === "glass").length;
     let factor = 1;
-    if (golds) factor *= Math.pow(has(S, "goldsmith") ? 3 : 2, golds);
-    if (glass) factor *= Math.pow(has(S, "glassblower") ? 4 : 3, glass);
+    if (golds) factor *= Math.pow(has(S, "goldsmith") ? 5 : 2, golds);
+    if (glass) factor *= Math.pow(has(S, "glassblower") ? 5 : 3, glass);
     if (factor > CFG.enhCap) factor = CFG.enhCap;
     if (factor > 1) notes.push((golds && glass ? "Gold + Glass" : golds ? "Gold" : "Glass") + " ×" + factor);
     let hm = 1;
-    if (has(S, "summiteer") && isBomb(k)) { hm *= 1.5; notes.push("Summiteer ×1.5"); }
-    if (has(S, "leap") && sameShape(k, prev) && k.rank - prev.rank >= 4) { hm *= 1.5; notes.push("Overkill ×1.5"); }
-    if (has(S, "lowroad") && k.kind === 1 && k.rank <= 6) { hm *= 2; notes.push("Low Road ×2"); }
-    if (has(S, "mirror") && S.plays === 0) { hm *= 2; notes.push("Mirror ×2"); }
-    if (has(S, "ember") && pos >= 5) { hm *= 1.5; notes.push("Ember ×1.5"); }
-    if (has(S, "encore") && S.playsLeft < 2) { const be = syn(S, "bookends") && S.firstK && S.firstK.kind === k.kind; hm *= be ? 3 : 2; notes.push(be ? "Bookends ×3" : "Encore ×2"); }
-    if (has(S, "afterburner") && S.lastK && isBomb(S.lastK) && !isBomb(k)) { const cr = syn(S, "reaction"); hm *= cr ? 4 : 3; notes.push(cr ? "Chain Reaction ×4" : "Afterburner ×3"); }
+    if (has(S, "summiteer") && isBomb(k)) { hm *= 2.5; notes.push("Summiteer ×2.5"); }
+    if (has(S, "leap") && sameShape(k, prev) && k.rank - prev.rank >= 4) { hm *= 2.5; notes.push("Overkill ×2.5"); }
+    if (has(S, "lowroad") && k.kind === 1 && k.rank <= 6) { hm *= 2.5; chips += 40; notes.push("Low Road ×2.5, +40"); }
+    if (has(S, "mirror") && S.plays === 0) { hm *= 3.5; notes.push("Mirror ×3.5"); }
+    if (has(S, "ember") && pos >= 4) { hm *= 2.5; notes.push("Ember ×2.5"); }
+    if (has(S, "encore") && S.playsLeft < 2) { const be = syn(S, "bookends") && S.firstK && S.firstK.kind === k.kind; hm *= be ? 5 : 3.5; notes.push(be ? "Bookends ×5" : "Encore ×3.5"); }
+    if (has(S, "afterburner") && S.lastK && isBomb(S.lastK) && !isBomb(k)) { const cr = syn(S, "reaction"); hm *= cr ? 7 : 5; notes.push(cr ? "Chain Reaction ×7" : "Afterburner ×5"); }
     if (R === "r_red" || R === "r_black") { const ls = leadSuit(cs), red = ls === 1 || ls === 2; if (ls != null && (R === "r_red") === red) { hm *= 1.5; notes.push((R === "r_red" ? "Red" : "Black") + " Night ×1.5"); } }
     if ((R === "r_str2" && k.kind === 4) || (R === "r_trips2" && k.kind === 2) || (R === "r_full2" && k.kind === 5)) { hm *= 2; notes.push(ruleById[R].name + " ×2"); }
     if (R === "r_low2" && !isBomb(k) && k.rank <= 6) { hm *= 2; notes.push("Underdogs ×2"); }
@@ -449,7 +451,7 @@
     if (!r) return "Table is open · any hand starts the chain";
     const n = KINDS[r.kind].name.toLowerCase();
     const how = r.kind === 8 ? "more pairs" : r.kind === 3 || r.kind === 4 ? "a longer or higher " + n : "a higher " + n;
-    return "To climb: " + how + ", or a better kind of hand · anything lower still scores, but the chain breaks";
+    return "To climb: " + how + ", or a better kind of hand";
   }
 
   /* ============================== κινήσεις ============================== */
@@ -552,7 +554,7 @@
     let n = 0;
     cs.forEach((c) => {
       if (c.e !== "glass") return;
-      if (has(S, "glassblower") && next(S) < 0.5) return;
+      if (has(S, "glassblower")) return;
       S.deck = S.deck.filter((d) => d.id !== c.id); n++;
     });
     if (n) S.stats.glass += n;
@@ -600,8 +602,8 @@
     if (up) S.chain += 1;
     else {
       const was = chainPos(S);
-      const keep = (has(S, "wind") && S.breaks === 0) ? 1 : has(S, "cheap") ? CFG.slipKeep : 0;
-      let np = keep >= 1 ? was : Math.max(1, Math.ceil(was * keep));
+      const keep = has(S, "wind") && S.breaks < 2;
+      let np = keep ? was : has(S, "cheap") ? Math.max(1, was - 1) : 0;
       if (syn(S, "lungs")) np = Math.max(np, Math.min(was, 3));
       S.chain = Math.max(0, np - 1 - S.chainStart - (S.chainBonus || 0));
       S.breaks += 1; S.stats.breaks += 1; broke = was;
@@ -623,7 +625,7 @@
   function discMaxOf(S) {
     if (chal(S) === "nodiscard") return 0;
     if (chal(S) === "onedisc") return 1;
-    return CFG.discards + (S.discMore || 0) + (has(S, "sleight") ? 2 : 0) + (rule(S) === "r_gift" ? 1 : 0);
+    return CFG.discards + (S.discMore || 0) + (has(S, "sleight") ? 3 : 0) + (rule(S) === "r_gift" ? 1 : 0);
   }
   const discardsLeft = (S) => Math.max(0, (S.discMax == null ? discMaxOf(S) : S.discMax) - (S.rdisc || 0));
   /* Χέρι χωρίς κανέναν συνδυασμό: το discard είναι δωρεάν, για να μη σε κλειδώνει η τράπουλα. */
@@ -662,11 +664,11 @@
     if (S.phase !== "round") return null;
     const T = target(S);
     if (S.score < T) { S.phase = "lost"; return { cleared: false }; }
-    const ex = S.score - T, reward = isReward(S.ante);
-    /* Ανταμοιβή μόνο στις πίστες-σταθμούς: ένα perk και ένα charm. Rich Air δίνει ένα perk ακόμη. */
-    S.pickUp = reward ? 1 + (chal(S) === "richair" ? 1 : 0) : 0;
-    S.pickCharm = reward ? 1 : 0;
-    S.nOffers = CFG.offers;
+    const ex = S.score - T, reward = isReward(S.ante), kind = rewardKind(S.ante);
+    /* Ένα πράγμα ανά σταθμό. Το Rich Air δεν δίνει δεύτερο — δίνει περισσότερα να διαλέξεις. */
+    S.pickUp = reward && kind === "up" ? 1 : 0;
+    S.pickCharm = reward && kind === "charm" ? 1 : 0;
+    S.nOffers = CFG.offers + (chal(S) === "richair" ? 2 : 0);
     if (S.ante === TARGETS.length - 1 && !S.endless) { S.phase = "won"; return { cleared: true, won: true, ex, reward }; }
     S.phase = "shop";
     if (S.endless) rollEndless(S, S.ante + 1);
@@ -684,9 +686,10 @@
     const up = POOL.filter((o) => (o.id !== "th" || S.removed.length < 5) && (!o.min || S.ante + 1 >= o.min) && (o.id !== "gt" || S.deck.concat(S.hand).some((c) => c.r === 14 && !c.e)) && (!CFG.maxBuy[o.id] || (S.bought[o.id] || 0) < CFG.maxBuy[o.id])).map((o) => o.id);
     const ch = S.charms.length < S.charmSlots ? CHARMS.filter((c) => charmAvailable(S, c)).map((c) => c.id) : [];
     const pull = (a) => a.splice(Math.floor(next(S) * a.length), 1)[0];
+    /* Γεμάτες θέσεις ή τελείωσαν τα charms; Ο σταθμός πληρώνει perk — τα perks δεν αδειάζουν. */
     if (!ch.length && S.pickCharm) { S.pickUp += S.pickCharm; S.pickCharm = 0; }
-    for (let i = 0; i < n && up.length; i++) out.push({ kind: "up", id: pull(up), bought: false });
-    for (let i = 0; i < n && ch.length; i++) out.push({ kind: "charm", id: pull(ch), bought: false });
+    const kind = S.pickCharm ? "charm" : "up", pool = kind === "charm" ? ch : up;
+    for (let i = 0; i < n && pool.length; i++) out.push({ kind, id: pull(pool), bought: false });
     return out;
   }
   const picksLeft = (S) => Math.max(0, S.pickUp || 0) + Math.max(0, S.pickCharm || 0);
@@ -744,11 +747,11 @@
   const currentRule = (S) => (rule(S) ? ruleById[rule(S)] : null);
   const upcomingRule = (S) => { const a = S.ante + 1; return !S.chals[a] && S.rules && S.rules[a] ? ruleById[S.rules[a]] : null; };
   const nextTarget = (S) => { const a = S.ante + 1, id = S.chals[a]; if (a >= TARGETS.length && !S.endless) return null; return Math.round(tgtAt(a) * (id ? CFG.chalTargetMul : 1) * (id === "richair" ? CFG.richAirMul : 1)); };
-  const peek = (S) => (has(S, "scout") && S.pile.length ? S.pile.slice(-2).reverse() : null);
+  const peek = (S) => (has(S, "scout") && S.pile.length ? S.pile.slice(-3).reverse() : null);
 
   /* ============================== σειριοποίηση ============================== */
   const serialize = (S) => JSON.stringify(S);
-  function restore(json) { try { const S = JSON.parse(json); if (!S || S.v !== 8 || !Array.isArray(S.hand) || !Array.isArray(S.pile)) return null; return S; } catch (e) { return null; } }
+  function restore(json) { try { const S = JSON.parse(json); if (!S || S.v !== 10 || !Array.isArray(S.hand) || !Array.isArray(S.pile)) return null; return S; } catch (e) { return null; } }
   const todaySeed = (d) => { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 
   return {
@@ -757,7 +760,7 @@
     classify, climbs, chainPos, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
     candidates, legalMoves, hasLegal, suggest, orphans,
     toggle, reveal, play, discard, canDiscard, canDiscardAny, discardsLeft, discMaxOf, deadHand, handCap, stuck, stuckReason, finish,
-    makeOffers, canTake, take, picksLeft, laneLeft, isReward, nextAnte, applyFree: apply, upcoming, current, currentRule, upcomingRule, peek, has,
+    makeOffers, canTake, take, picksLeft, laneLeft, isReward, rewardKind, nextAnte, applyFree: apply, upcoming, current, currentRule, upcomingRule, peek, has,
     serialize, restore, todaySeed,
   };
 });

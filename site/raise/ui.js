@@ -4,7 +4,7 @@
   const G = window.RAISE, FX = window.FX, IC = window.ICONS;
   const $ = (id) => document.getElementById(id);
   const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
-  const KEY = "raise.run.v8", LIFE = "raise.life.v1";
+  const KEY = "raise.run.v10", LIFE = "raise.life.v1";
   let S = null, shown = 0, ui = { note: null, noteT: 0, ending: false }, installEvt = null;
 
   /* ---------- storage ---------- */
@@ -143,24 +143,21 @@
 
     const go = $("bPlay"); go.className = "go";
     const pv = $("preview"); pv.className = "preview"; let pvt = "";
-    const held = ui.hold && Date.now() < ui.hold.until ? ui.hold : null;
     if (ui.ending || S.playsLeft < 1 || cleared) { go.classList.add("done"); go.disabled = true; go.innerHTML = '<span class="go__t">' + (cleared ? "Target!" : "Round over") + '</span><span class="go__s">' + (cleared ? "Ante " + (S.ante + 1) + " cleared" : "Short by " + (T - S.score)) + '</span>'; }
     else if (!S.sel.length) {
       go.classList.add("idle"); go.disabled = true;
-      /* Μόλις έπαιξες: η ανάλυση του χεριού μένει λίγο ακόμα — «γιατί έκανε τόσους;» με μια ματιά. */
-      if (held) { pvt = held.t; pv.classList.add(held.c); }
-      else { pv.classList.add("hint"); pvt = (S.rung ? "Beat " + G.clabel(S.rung) + " to climb · anything lower still scores" : "Table is open · any hand starts the chain") + (S.playsLeft < 2 ? " · last play" : ""); }
       go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
-    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? "Discard these instead?" : "Pick a pair, a run or a set") + '</span>'; pvt = S.sel.length + (S.sel.length === 1 ? " card" : " cards") + " · these make no hand" + (G.canDiscard(S) ? " · swipe down to discard them" : ""); pv.classList.add("bad"); }
+    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? "Discard these instead?" : "Pick a pair, a run or a set") + '</span>'; }
     else {
-      go.classList.add(e.up ? "ok" : "down"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.style.setProperty("--kh", IC.kindHue(e.k.kind)); pv.classList.add(e.up ? "ok" : "warn");
+      go.classList.add(e.up ? "ok" : "down"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind));
       const calc = e.chips + " × " + e.mult;
       go.innerHTML = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc : 'Breaks the chain · ' + calc) + '</span>';
-      /* Η προεπισκόπηση δείχνει το άθροισμα και το πολύ τρεις λόγους — αλλιώς γίνεται σεντόνι. */
-      const why = e.notes.slice(0, 3).concat(e.notes.length > 3 ? ["+" + (e.notes.length - 3) + " more"] : []);
-      pvt = G.clabel(e.k) + (G.crange(e.k) ? " · " + G.crange(e.k) : "") + " · " + calc + " = " + e.pts + (e.up ? "" : " · the chain breaks back to ×1") + (why.length ? " · " + why.join(", ") : "");
     }
+    /* Η γραμμή κάτω από το τραπέζι δεν αλλάζει με την επιλογή: λέει τι θέλει το rung, και μόνο.
+       Ο αριθμός του χεριού ζει στο κουμπί, εκεί που πέφτει ο αντίχειρας. */
+    pv.classList.add("hint");
+    pvt = (S.rung ? "Beat " + G.clabel(S.rung) + " to climb" : "Table is open · any hand starts the chain") + (S.playsLeft < 2 ? " · last play" : "");
     pv.innerHTML = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       : cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + "</span>").join(' <i>·</i> ');
     Array.prototype.forEach.call(go.querySelectorAll(".go__s"), (el) => { el.textContent = cap(el.textContent); });
@@ -203,7 +200,6 @@
     else if (!ev.up) { FX.sfx.pass(); FX.buzz(40); FX.floatIn($("table"), "+" + ev.pts); }
     else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300), ["#ffd166", "#ff6b6b", "#4ecdc4", "#c77dff", "#ffffff", "hsl(" + IC.kindHue(ev.k.kind) + " 90% 70%)"]); FX.floatIn($("table"), "+" + ev.pts); $("callout").style.setProperty("--kh", IC.kindHue(ev.k.kind)); }
     if (ev.shattered) { FX.sfx.shatter(); FX.burstAt($("table"), 18, 3.2, "#cfe9f2"); }
-    if (ev.k) ui.hold = { t: G.clabel(ev.k) + " · " + ev.chips + " × " + ev.mult + " = " + ev.pts + (ev.up ? "" : " · chain broken") + (ev.notes && ev.notes.length ? " · " + ev.notes.slice(0, 3).join(", ") : ""), c: ev.up ? "ok" : "warn", until: Date.now() + 1800 };
     const crossed = S.score >= G.target(S) && S.score - ev.pts < G.target(S);
     ui.scoreDelay = 300;   /* τα φύλλα προσγειώνονται πρώτα, μετά ανεβαίνει ο αριθμός */
     render();
@@ -211,7 +207,6 @@
     /* Φτάνεις τον στόχο ή τελειώνουν τα plays: ο γύρος κλείνει μόνος του, χωρίς άλλο πάτημα. */
     if (ev.cleared || S.playsLeft < 1) { ui.ending = true; setTimeout(() => { ui.ending = false; end(); }, ev.cleared ? 1700 : 1000); }
     FX.fly(from, Array.prototype.slice.call($("tcards").children));
-    setTimeout(() => { if (ui.hold && Date.now() >= ui.hold.until) { ui.hold = null; render(true); } }, 1900);
     if (ev.drawn) setTimeout(() => FX.sfx.draw(), 180);
     enhPop();
     if (ev.up) FX.pulse($("chain"), "bump"); else FX.pulse($("chain"), "drop");
@@ -272,7 +267,7 @@
     if (!rows.length) return "";
     const left = G.laneLeft(S, kind);
     const title = kind === "charm" ? "Charm" : "Perk";
-    const head = '<div class="lane__h"><span class="lbl">' + title + '</span><span class="lane__n' + (left ? " on" : "") + '">' + (left ? "pick " + (left > 1 ? left : "one") : "taken ✓") + '</span></div>';
+    const head = '<div class="lane__h"><span class="lbl">' + title + '</span><span class="lane__n' + (left ? " on" : "") + '">' + (left ? "pick one" : "taken ✓") + '</span></div>';
     return '<div class="lane">' + head + '<div class="offers">' + rows.map(({ o, i }) => {
       const cb = G.canTake(S, i), dis = o.bought || !cb.ok ? " disabled" : "";
       const it = kind === "charm" ? G.charmById[o.id] : G.poolById[o.id];
@@ -293,7 +288,8 @@
   const canPickMore = () => G.picksLeft(S) > 0 && S.offers.some((o, i) => G.canTake(S, i).ok);
   function shopBody() {
     const left = G.picksLeft(S), took = S.offers.some((o) => o.bought);
-    const label = left > 1 ? "A perk and a charm" : left ? "One more to go" : took ? "Taken · on to the next ante" : "Nothing left to take";
+    const kind = S.offers.length && S.offers[0].kind === "charm" ? "charm" : "perk";
+    const label = left ? "Take one " + kind : took ? "Taken · on to the next ante" : "Nothing left to take";
     return '<div class="picks' + (left ? " on" : "") + '">' + label + '</div>' +
       laneHTML("up") + laneHTML("charm") + ownedRowHTML();
   }
@@ -314,7 +310,8 @@
   }
   function sheetShop(r, fresh) {
     const T = G.target(S);
-    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + ' · a perk and a charm</p>' +
+    const one = S.offers.length && S.offers[0].kind === "charm" ? "a charm" : "a perk";
+    openS('<h2>Ante ' + (S.ante + 1) + ' cleared</h2><p class="sub">' + S.score + ' of ' + T + ' · ' + one + '</p>' +
       (fresh && fresh.length ? '<div class="unlocked">✦ Unlocked · ' + fresh.map((id) => G.charmById[id].name).join(", ") + '</div>' : "") +
       nextUpHTML() +
       '<div id="shopBody">' + shopBodyFull() + '</div>');
@@ -402,10 +399,10 @@
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b></p>' +
       '<p>A lone <b>Ace</b> is a hand of its own — the cheapest one, and the first step of every chain. Anything else beats it, so it is the natural way to open. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. If your hand makes no combination at all, the discard is free.</p>' +
-      '<p><b>Every third ante is the one that pays.</b> It is also the <b>boss</b> — the two go together. Clear it and you take <b>one perk and one charm</b>, three on offer of each. No money, no prices, no selling: two taps and you are back at the table. The two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand); charms are passive and permanent, six slots to start.</p>' +
+      '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together. It gives you <b>one thing</b>, three on offer: a <b>perk</b> at one station, a <b>charm</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) and repeat forever; charms are passive and permanent, and you only ever hold <b>four</b> — so each one is a pillar of the run, not a trinket. Once all four slots are full, the charm stations pay a perk instead.</p>' +
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Gold</b> (Mult ×2, and two of them is ×4), <b>Glass</b> (Mult ×3, then it shatters), <b>Steel</b> (+20 Chips and it always comes back to your hand) or a <b>Joker</b>.</p>' +
       '<p>Most of the antes in between carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. A boss ante has a rule that bites instead, and a target a tenth lower to pay for it.</p>' +
-      '<p>Thirty antes. Gentle at first, steep at the end. The Summit at 30 — and Endless after that.</p></div>' +
+      '<p>Fifty antes. Gentle at first, steep at the end. The Summit at 50 — and Endless after that.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
   function sheetCollection() {

@@ -21,7 +21,6 @@
     afterburner: '<path d="M4 6l7 6-7 6M12 6l7 6-7 6"/>',
     climber: '<path d="M6 19l6-6 6 6M6 12l6-6 6 6"/>',
     patient: '<circle cx="12" cy="13" r="7.5"/><path d="M12 8.5v5l3.5 2M4.6 5.2l2.8 2.8M19.4 5.2l-2.8 2.8"/>',
-    sl: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>',
     gt: '<path d="M12 3l2.8 6 6.2.7-4.6 4.3 1.3 6.4L12 17.3 6.3 20.4l1.3-6.4L3 9.7 9.2 9z" fill="currentColor"/>',
     /* boss antes */
     noace: '<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
@@ -45,7 +44,7 @@
   };
   const HUE = {
     climber: 88, patient: 250, ladder: 45, leap: 20, lowroad: 200, court: 48, loyal: 230, cheap: 170, wind: 195, sleight: 350, encore: 280, mirror: 260, thrift: 130,
-    scout: 190, goldsmith: 50, glassblower: 185, summiteer: 210, ember: 15, kingmaker: 48, afterburner: 10, sl: 265, gt: 45,
+    scout: 190, goldsmith: 50, glassblower: 185, summiteer: 210, ember: 15, kingmaker: 48, afterburner: 10, gt: 45,
     noace: 350, short: 350, blind: 350, highground: 350, onedisc: 350, thinair: 350, richair: 350, nodiscard: 350, fewplays: 350, sticky: 350, summit: 45,
     m1: 45, m2: 150, pl: 120, di: 200, wi: 260, cs: 100, th: 350,
   };

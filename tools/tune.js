@@ -9,7 +9,7 @@ const G = require("../site/raise/game.js");
 const RUNS = +process.argv[2] || 60, MAXA = +process.argv[3] || 12, VAR = process.argv[4] || "current";
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = ["climber", "patient", "ladder", "lowroad", "mirror", "encore", "afterburner", "kingmaker", "court", "loyal", "sleight", "cheap", "wind", "ember", "goldsmith", "summiteer",
-  "pl", "m1", "cs", "di", "wi", "m2", "th", "sl", "gt"];
+  "pl", "m1", "cs", "di", "wi", "m2", "th", "gt"];
 
 const kind = (id) => G.KINDS.find((k) => k && k.id === id);
 const setK = (id, o) => Object.assign(kind(id), o);
@@ -66,7 +66,7 @@ const f1 = (x) => (isFinite(x) ? x.toFixed(1) : "-");
 const f2 = (x) => (isFinite(x) ? x.toFixed(2) : "-");
 
 let st;
-function reset() { st = { score: [], cross: [], big: [], plays: [], lost: new Array(40).fill(0), maxChain: [], wins: 0, obs: [] }; for (let a = 0; a < 40; a++) { st.score[a] = []; st.cross[a] = []; st.big[a] = []; } }
+function reset() { st = { score: [], cross: [], big: [], plays: [], lost: new Array(G.TARGETS.length + 4).fill(0), maxChain: [], wins: 0, obs: [] }; for (let a = 0; a < G.TARGETS.length + 4; a++) { st.score[a] = []; st.cross[a] = []; st.big[a] = []; } }
 reset();
 
 function discardStep(S) {
@@ -128,7 +128,7 @@ function sweepRuns(immortal) {
 /* Στόχοι από τη μέτρηση: ο διάμεσος σε λόγο r(a), αλλά ποτέ πάνω από p10/0.92 στα πρώτα antes. */
 function fitTargets() {
   const R1 = +(process.env.R1 || 1.8), R30 = +(process.env.R30 || 1.1);
-  const r = (a) => R1 * Math.pow(R30 / R1, Math.min(1, a / 29));
+  const r = (a) => R1 * Math.pow(R30 / R1, Math.min(1, a / (G.TARGETS.length - 1)));
   const raw = [];
   for (let a = 0; a < G.TARGETS.length; a++) {
     const A = st.score[a];
@@ -158,7 +158,7 @@ sweepRuns();
    Με h από 2% (ante 1) σε 22% (ante 30): μέσος θάνατος ~16, νίκες ~6%. */
 if (process.env.HAZ) {
   const H1 = +(process.env.H1 || 0.02), H30 = +(process.env.H30 || 0.22);
-  const haz = (a) => H1 * Math.pow(H30 / H1, a / 29);
+  const haz = (a) => H1 * Math.pow(H30 / H1, a / (G.TARGETS.length - 1));
   const nice = (x) => { const e = Math.pow(10, Math.floor(Math.log10(x)) - 1); return Math.round(x / e) * e; };
   for (let it = 0; it < +process.env.HAZ; it++) {
     sweepRuns(false);
@@ -214,7 +214,7 @@ console.log("deaths/ante: " + st.lost.slice(0, MAXA).join(" "));
 /* Πόση από τη διασπορά είναι «αυτό το run είναι δυνατό» και πόση «αυτός ο γύρος πήγε καλά»; */
 {
   const med = [];
-  for (let a = 0; a < 40; a++) med[a] = st.score[a].length >= 8 ? q(st.score[a], .5) : null;
+  for (let a = 0; a < G.TARGETS.length + 4; a++) med[a] = st.score[a].length >= 8 ? q(st.score[a], .5) : null;
   const O = st.obs.filter((o) => med[o.a] && o.s > 0 && o.a < MAXA).map((o) => ({ run: o.run, r: Math.log(o.s / med[o.a]), plays: o.plays }));
   const byRun = {}; O.forEach((o) => { (byRun[o.run] = byRun[o.run] || []).push(o.r); });
   const runEff = Object.keys(byRun).filter((k) => byRun[k].length >= 3).map((k) => mean(byRun[k]));
