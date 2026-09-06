@@ -188,7 +188,7 @@
   const CHARMS = [
     { id: "climber", name: "Climber", glyph: "↑", desc: "Every chain step counts double" },
     { id: "patient", name: "Patient", glyph: "◷", desc: "+3 Mult for every discard you still hold, up to +9" },
-    { id: "ladder", name: "Ladder", glyph: "≡", desc: "A hand one to three ranks above the rung: two chain steps instead of one" },
+    { id: "ladder", name: "Ladder", glyph: "≡", desc: "A hand one to three ranks above the rung: two extra chain steps for that hand" },
     { id: "leap", name: "Overkill", glyph: "⤒", desc: "Climb four ranks or more above the rung: Mult ×2" },
     { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6: Mult ×2, and +40 Base" },
     { id: "court", name: "Court", glyph: "♛", desc: "A face card in the hand you play: +60 Base" },
@@ -448,7 +448,10 @@
     /* Ένα φύλλο είναι χέρι μόνο αν είναι άσος (ή τζόκερ): το πρώτο σκαλί της αλυσίδας. */
     if (cs.length === 1) return isAce(cs[0]) ? K(9, 14, 1) : null;
     const n = cs.length, F = cs.filter((c) => !isWild(c)), w = n - F.length;
-    if (!F.length) return n === 2 ? K(1, 14, 2) : n === 3 ? K(2, 14, 3) : n === 4 ? K(6, 14, 4) : n >= 5 ? K(4, 14, n) : null;
+    /* Όλα τζόκερ: το `n >= 5` έδινε Straight (base 190) αντί Straight Flush (496) — και
+       χανόταν το bomb, δηλαδή δεν άνοιγε το τραπέζι. Οι μπαλαντέρ παίρνουν όποιο χρώμα θέλουν,
+       άρα μια ατόφια σκάλα από τζόκερ είναι εξ ορισμού και χρωματιστή. */
+    if (!F.length) return n === 2 ? K(1, 14, 2) : n === 3 ? K(2, 14, 3) : n === 4 ? K(6, 14, 4) : n >= 5 ? K(7, 14, n) : null;
     const bR = {}; F.forEach((c) => { bR[c.r] = (bR[c.r] || 0) + 1; });
     const ranks = Object.keys(bR).map(Number).sort((x, y) => x - y), d = ranks.length, lo = ranks[0], hi = ranks[d - 1], span = hi - lo + 1;
     const maxC = Math.max.apply(null, ranks.map((r) => bR[r]));
@@ -576,7 +579,9 @@
     let factor = 1;
     if (golds) factor *= Math.pow(has(S, "goldsmith") ? 3 : 2, golds);
     if (silvers) factor *= Math.pow(1.5, silvers);
-    const ecap = has(S, "goldsmith") ? CFG.goldsmithCap : CFG.enhCap;
+    /* Η ψηλή οροφή είναι του Goldsmith ΚΑΙ του χρυσού: χωρίς gold στο χέρι, τρία silver
+       πληρώνονταν ×3,38 αντί ×3 μόνο επειδή ο παίκτης κρατούσε το charm. */
+    const ecap = has(S, "goldsmith") && golds ? CFG.goldsmithCap : CFG.enhCap;
     if (factor > ecap) factor = ecap;
     factor = Math.round(factor * 100) / 100;
     if (factor > 1) notes.push((golds && silvers ? "Gold + Silver" : golds ? "Gold" : "Silver") + " ×" + factor);
@@ -865,8 +870,12 @@
          Second Wind κρατά τα δύο πρώτα σπασίματα — η κατάσταση δεν προλάβαινε να προκύψει. */
       if (syn(S, "lungs") && S.rdisc > 0) { S.rdisc -= 1; tags.push("Deep Lungs"); }
       S.chain = Math.max(0, np - 1 - S.chainStart - (S.chainBonus || 0));
-      S.breaks += 1; S.stats.breaks += 1; broke = was; S.hot = 0;
-      tags.push("Chain broken");
+      /* Όταν το Second Wind ΑΠΟΡΡΟΦΑ το σπάσιμο, δεν έχει σπάσει τίποτα: το λογιστικό του
+         σπασίματος έτρεχε και σε αυτόν τον δρόμο, οπότε έσβηνε το `hot` (δηλαδή σκότωνε το
+         Afterburner που ο παίκτης πλήρωσε μια θέση για να έχει) και το χέρι έγραφε «Chain
+         broken» ενώ η αλυσίδα κρατήθηκε ολόκληρη. */
+      if (keep) { S.breaks += 1; tags.push("Second Wind"); }
+      else { S.breaks += 1; S.stats.breaks += 1; broke = was; S.hot = 0; tags.push("Chain broken"); }
     }
     if (has(S, "mirror") && S.plays === 0) { S.chain += 1; tags.push("Mirror"); }
     S.rung = rungAfter(S, k);
@@ -916,7 +925,7 @@
   /* Κόλλησες όταν καμία κίνηση δεν αλλάζει τίποτα. */
   function stuck(S) {
     if (S.phase !== "round") return false;
-    if (isSurv(S)) return !!S.done || (!hasLegal(S) && !canDiscardAny(S));
+    if (isSurv(S)) return !!S.done || S.playsLeft < 1 || (!hasLegal(S) && !canDiscardAny(S));
     if (S.playsLeft < 1) return true;
     if (hasLegal(S)) return false;
     if (canDiscardAny(S)) return false;
@@ -929,6 +938,9 @@
   function stuckReason(S) {
     if (isSurv(S)) {
       if (S.done) return "You broke the chain with no breath left — that is the run.";
+      /* Το ταβάνι των 999 χεριών: αόρατο στην πράξη (μέγιστο μετρημένο 104), αλλά όταν το
+         `stuck()` το βλέπει πρέπει να έχει και λόγο να δείξει. */
+      if (S.playsLeft < 1) return "Nine hundred and ninety-nine hands. That is the ceiling of the mode — and the run.";
       if (hasClimb(S)) return "";
       if (discardsLeft(S) > 0) return "Nothing climbs. Breathe to open the table, or play anyway — breaking costs a breath too.";
       if (hasLegal(S)) return "No breath left — and nothing climbs. The next hand you play is your last, so make it count.";
@@ -1043,6 +1055,11 @@
       if (!arrays.every((k) => Array.isArray(S[k]))) return null;
       if (!S.hand.every(Boolean) || !S.chals || !S.rules || !S.bought || !S.stats) return null;
       if (S.mode !== "run" && S.mode !== "surv") return null;
+      /* Το rung μπαίνει σε `KINDS[k.kind]` χωρίς έλεγχο: ένα πειραγμένο save με `kind: 42`
+         περνούσε και έσκαγε μέσα στο `beats()` με TypeError. Και τα φύλλα των σωρών θέλουν
+         τον ίδιο έλεγχο που κάνει ήδη το χέρι. */
+      if (S.rung != null && !(S.rung && S.rung.kind >= 0 && S.rung.kind < KINDS.length)) return null;
+      if (!S.pile.every(Boolean) || !S.deck.every(Boolean) || !S.played.every(Boolean)) return null;
       return S;
     } catch (e) { return null; }
   }

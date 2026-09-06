@@ -88,13 +88,13 @@
 <script src="ui.js"></script>
 <script>
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
-  addEventListener("load", () => navigator.serviceWorker.register("sw.js").then((reg) => reg.update()).catch(() => {}));
-  let hadController = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (hadController && !sessionStorage.getItem("raise.reloaded")) { sessionStorage.setItem("raise.reloaded", "1"); location.reload(); }
-    hadController = true;
-  });
-  addEventListener("load", () => sessionStorage.removeItem("raise.reloaded"));
+  /* Στο `load`, όχι στο `DOMContentLoaded`, το register περίμενε το stylesheet των Google
+     Fonts: με αργό ή μπλοκαρισμένο fetch έφτανε ~15s μέσα στη συνεδρία. */
+  addEventListener("DOMContentLoaded", () => navigator.serviceWorker.register("sw.js").then((reg) => reg.update()).catch(() => {}));
+  /* ΚΑΝΕΝΑ αυτόματο reload στο `controllerchange`. Με το `cache:"reload"` του sw.js, το ΠΡΩΤΟ
+     φόρτωμα μετά από deploy τρέχει ΗΔΗ τον νέο κώδικα — το reload ήταν περιττό και έπεφτε
+     ~15s αφού είχε ξεκινήσει ο γύρος, δηλαδή πάνω στο χέρι του παίκτη (μετρημένο: 300ms μετά
+     το πάτημα του Play). Ό,τι χρειάζεται καθάρισμα το κάνει το «Force update» στο μενού. */
 }
 </script>
 </body>

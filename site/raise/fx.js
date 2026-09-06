@@ -6,7 +6,14 @@
   /* ---- particles ---- */
   const cv = document.getElementById("fx"), cx = cv.getContext("2d");
   let P = [], raf = 0;
-  function fit() { const d = Math.min(devicePixelRatio || 1, 2); cv.width = innerWidth * d; cv.height = innerHeight * d; cx.setTransform(d, 0, 0, d, 0, 0); }
+  /* Το backing store σε φυσικά pixel, το ΚΟΥΤΙ σε λογικά — και τα δύο ρητά, γιατί το
+     `cv.width` είναι το εγγενές μέγεθος και χωρίς CSS μέγεθος νικά το `inset:0`. */
+  function fit() {
+    const d = Math.min(devicePixelRatio || 1, 2);
+    cv.width = innerWidth * d; cv.height = innerHeight * d;
+    cv.style.width = innerWidth + "px"; cv.style.height = innerHeight + "px";
+    cx.setTransform(d, 0, 0, d, 0, 0);
+  }
   addEventListener("resize", fit); fit();
   function spark(x, y, n, pow, hue) {
     if (RM) return;

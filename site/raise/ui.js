@@ -138,8 +138,14 @@
     const rl = G.currentRule(S); $("rule").hidden = !rl; if (rl) $("ruleName").textContent = rl.name;
     document.body.classList.toggle("lastplay", !surv && S.playsLeft >= 1 && S.playsLeft < 2 && !cleared);
     /* Η αλυσίδα λέει μόνη της τι αξίζει — αλλιώς ο πιο σημαντικός αριθμός δεν εξηγείται πουθενά. */
+    /* Στο Survival η αλυσίδα ΔΕΝ έχει οροφή — αυτό είναι όλο το mode. Η ετικέτα έβαζε το
+       `chainStepCap` ασυζητητί, οπότε από τη θέση 13 και πάνω έγραφε σταθερά «Mult ×3.6» ενώ
+       το χέρι πλήρωνε ×7,8 ή ×17,5. Και το 100% των runs περνά τη θέση 12 (p50 μέγιστη
+       αλυσίδα ×75), δηλαδή η ετικέτα έλεγε ψέματα σχεδόν σε όλο το mode, πάνω στον αριθμό
+       που κοιτάς για να αποφασίσεις αν θα σπάσεις. */
     { const step = G.syn(S, "tempo") ? 3 : S.charms.indexOf("climber") >= 0 ? 2 : 1,
-        steps = Math.min(G.CFG.chainStepCap, Math.max(0, pos - 1 + G.CFG.chainFloor) * step),
+        raw = Math.max(0, pos - 1 + G.CFG.chainFloor) * step,
+        steps = surv ? raw : Math.min(G.CFG.chainStepCap, raw),
         mul = Math.round((1 + G.CFG.chainStep * steps) * 10) / 10;
       $("chainN").textContent = "×" + pos;
       /* Ο μεγάλος αριθμός είναι το σκαλί· η ετικέτα λέει τι αξίζει, χωρίς να το ξαναπεί. */
@@ -227,9 +233,12 @@
     /* Τα φύλλα του τραπεζιού χωράνε και σε ύψος: μετά το preview, μέτρα τον ελεύθερο χώρο και ψαλίδισε. */
     { const tn = S.played.length; if (tn) { const free = tc.clientHeight, cur = parseInt(tc.style.getPropertyValue("--tcw")) || 40;
       if (free > 0) tc.style.setProperty("--tcw", Math.max(24, Math.min(cur, Math.floor((free - 6) / 1.42))) + "px"); } }
-    $("bDisc").disabled = !G.canDiscard(S); $("discN").textContent = G.deadHand(S) && dleft <= 0 ? "Free" : dleft;
+    /* Το δωρεάν discard του νεκρού χεριού ΔΕΝ υπάρχει στο Survival (`canDiscard` το κόβει),
+       οπότε το «Free» εμφανιζόταν πάνω σε κουμπί που δεν πατιέται. */
+    const freeD = !surv && G.deadHand(S) && dleft <= 0;
+    $("bDisc").disabled = !G.canDiscard(S); $("discN").textContent = freeD ? "Free" : dleft;
     /* Στο Survival ένα πληρωμένο discard ανοίγει και το τραπέζι — άλλο πράγμα, άλλο όνομα. */
-    $("bDisc").firstElementChild.textContent = surv && !(G.deadHand(S) && dleft <= 0) ? "Breathe" : "Discard";
+    $("bDisc").firstElementChild.textContent = surv ? "Breathe" : "Discard";
     $("bHint").disabled = S.playsLeft < 1;
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
@@ -324,10 +333,13 @@
   }
   function end() {
     const r = G.finish(S); if (!r) return;
-    const fresh = commitStats(); save();
-    if (!r.cleared) { const nb = recordEnd(false); FX.sfx.bust(); FX.buzz([60, 40, 90]); sheetLose(nb); return; }
+    /* Το `save()` έτρεχε ΠΡΙΝ το `recordEnd()`, οπότε το `S.recorded = true` δεν αποθηκευόταν
+       ποτέ: κλείσιμο της εφαρμογής στο sheet της νίκης και συνέχεια σε Endless μέτραγε το ίδιο
+       run δύο φορές στο `l.runs`. */
+    const fresh = commitStats();
+    if (!r.cleared) { const nb = recordEnd(false); save(); FX.sfx.bust(); FX.buzz([60, 40, 90]); sheetLose(nb); return; }
     FX.sfx.clear(); FX.flash(); FX.spark(innerWidth / 2, innerHeight * 0.42, 120, 6.5); FX.buzz([12, 60, 12]); FX.pulse($("app"), "shake");
-    if (r.won) { recordEnd(true); sheetWin(); }
+    if (r.won) { recordEnd(true); save(); sheetWin(); }
     else if (r.reward) sheetShop(r, fresh);
     else sheetNext(fresh);
   }
@@ -524,14 +536,18 @@
       '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +22% Mult, the first climb included</b>, up to ×2.3 once the chain caps at ×6. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
       '<p>A lone <b>Ace</b> is a hand of its own — the cheapest one, and the first step of every chain. Anything else beats it, so it is the natural way to open. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
-      '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. If your hand makes no combination at all, the discard is free.</p>' +
-      '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together (the Summit at 50 is a boss too, but there is nothing left to spend it on). It gives you <b>one thing</b>, three on offer: a <b>charm</b> at the first station, a <b>perk</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) — the Mult ones repeat forever, the rest run out; charms are passive and permanent, and you only ever hold <b>five</b> — so each one is a pillar of the run, not a trinket. Once all five slots are full a charm station does not turn into a perk: it offers a <b>swap</b>, and you pick which charm goes. Measured, that turns the last three charm stations of a long run from nothing into a real decision.</p>' +
+      '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. Once your discards are spent, a hand that makes no combination at all still gets one free.</p>' +
+      '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together (the Summit at 50 is a boss too, but there is nothing left to spend it on). It gives you <b>one thing</b>, three on offer: a <b>charm</b> at the first station, a <b>perk</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) — the Mult ones repeat forever, the rest run out; charms are passive and permanent, and you only ever hold <b>five</b> — so each one is a pillar of the run, not a trinket. Once all five slots are full, a charm station pays a perk instead.</p>' +
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Silver</b> (Mult ×1.5, the common one), <b>Gold</b> (Mult ×2, and two of them ×3 — the cap on enhanced cards) or a <b>Joker</b>.</p>' +
       '<p>Most of the antes in between carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. A boss ante has a rule that bites instead, and a target a tenth lower to pay for it.</p>' +
       '<p>Fifty antes. Gentle at first, steep at the end. The Summit at 50 — and Endless after that.</p>' +
       '<p><b>Survival</b> is the third choice in the row on the start screen, next to the two decks — and a different game. <b>No targets, no antes, no perks or charms</b>, and the cards never run out — the deck comes round again, shuffled, for as long as you last. Three things change:</p>' +
-      '<p>· <b>Every hand has to climb.</b> A hand that does not beat the rung cannot be played at all.<br>· <b>The chain has no ceiling</b> — no cap at ×6, so step forty is worth forty steps of Mult.<br>· A discard also <b>opens the table</b>: a <b>breath</b>. It is the only way out when nothing in your hand climbs. You start with <b>five</b>, and <b>earn one more every time your score passes the next mark</b> — 1 500, then 3 300, then 7 260, each mark a little over twice the last. The bar under your score is how close the next one is.</p>' +
-      '<p>The run ends the moment nothing climbs and you have no breath left. So it is one long question: <b>the cheapest climb keeps the rung low and the chain alive</b> — spend the big hands and the rung gets too high to beat. Measured, playing the biggest hand every time scores about <b>20 000</b> over sixteen hands; playing the smallest climb scores about <b>45 000</b> over forty. That gap is the mode.</p></div>' +
+      /* Τα νούμερα βγαίνουν από το CFG, δεν γράφονται με το χέρι: η προηγούμενη έκδοση αυτής
+         της παραγράφου έλεγε «πέντε ανάσες» και «1 500, 3 300, 7 260» για ώρες αφού ο κώδικας
+         είχε γίνει δέκα και 1 200 / 2 640 / 5 808 — και, το χειρότερο, έλεγε ότι το σπάσιμο
+         της αλυσίδας ΑΠΑΓΟΡΕΥΕΤΑΙ, δηλαδή έκρυβε τη μόνη απόφαση του mode. */
+      '<p>· <b>Climbing is not compulsory — it costs.</b> A hand that does not beat the rung plays and scores as normal, but it <b>breaks the chain and costs a breath</b>. With no breath left you cannot break it while something in your hand still climbs; when nothing does, that hand is your last.<br>· <b>The chain has no ceiling</b> — no cap at ×6, so step forty is worth forty steps of Mult.<br>· A discard also <b>opens the table</b>: a <b>breath</b>. You start with <b>' + G.CFG.survDiscards + '</b>, and <b>earn one more every time your score passes the next mark</b> — ' + [0, 1, 2].map((i) => G.survMilestone(i).toLocaleString("en-US")).join(", then ") + ', each mark ' + G.CFG.survGrow + '× the last. The bar under your score is how close the next one is.</p>' +
+      '<p>The run ends the moment nothing climbs and you have no breath left. So it is one long question: <b>the cheapest climb keeps the rung low and the chain alive</b> — spend the big hands and the rung gets too high to beat. Measured, playing the biggest hand every time scores about <b>10 000</b> over twenty-six hands; playing the smallest climb scores about <b>122 000</b> over seventy-three. That gap is the mode.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
   function sheetCollection() {

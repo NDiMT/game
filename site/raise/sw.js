@@ -27,13 +27,19 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== V && k !== V + "-fonts").map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
+/* Το κλειδί του cache χωρίς query string. */
+function bare(req) { try { const u = new URL(req.url); return u.origin + u.pathname; } catch (e) { return req; } }
+
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const u = new URL(e.request.url);
   if (u.origin === location.origin) {
     if (CODE.test(u.pathname) || e.request.mode === "navigate") {
       e.respondWith(fetch(fresh(e.request)).then((res) => {
-        if (res.ok) { const copy = res.clone(); caches.open(V).then((c) => c.put(e.request, copy)); }
+        /* Χωρίς query: το «Force update» φορτώνει `?fresh=<ms>` και το cache μάζευε μία
+           εγγραφή ανά πάτημα, ενώ η ανάγνωση γίνεται με `ignoreSearch:true` και δεν τις
+           έβλεπε ποτέ ξανά. */
+        if (res.ok) { const copy = res.clone(); caches.open(V).then((c) => c.put(bare(e.request), copy)); }
         return res;
       }).catch(() => caches.match(e.request, { ignoreSearch: true })));
     } else {
