@@ -567,7 +567,10 @@
     const pick = deckPick(), mp = G.deckById[pick] && G.deckById[pick].mode === "surv" ? "surv" : "run";
     $("decks").innerHTML = G.DECKS.map((d) => { const ok = deckOpen(l, d), on = d.id === pick; return '<button class="deckc' + (on ? " on" : "") + (ok ? "" : " locked") + '" data-deck="' + d.id + '"' + (ok ? "" : " disabled") + '><b>' + d.glyph + ' ' + d.name + '</b><span>' + (ok ? d.desc : "🔒 " + d.lock.text) + '</span></button>'; }).join("");
     const lg = ledger(l).slice(0, 5);
-    $("ledger").innerHTML = lg.length ? '<span class="lbl">Ledger · best climbs</span>' + lg.map((r) => '<button class="ledg" data-replay="' + r.seed + '"><b>Ante ' + r.ante + '</b><span>' + r.seed + (r.deck && r.deck !== "classic" ? " · " + G.deckById[r.deck].name : "") + '</span><em>' + r.score + '</em></button>').join("") : "";
+    /* Καμία ετικέτα στο κάτω μέρος της αρχικής. Η προηγούμενη («Solo card game · one thumb…»)
+       βγήκε, αυτή του ledger έμεινε — κι αυτή ήταν το μόνο πράγμα που έφτανε στο ορατό.
+       Οι σειρές μιλούν μόνες τους: ante, seed, σκορ. */
+    $("ledger").innerHTML = lg.map((r) => '<button class="ledg" data-replay="' + r.seed + '" aria-label="Replay seed ' + r.seed + '"><b>Ante ' + r.ante + '</b><span>' + r.seed + (r.deck && r.deck !== "classic" ? " · " + G.deckById[r.deck].name : "") + '</span><em>' + r.score + '</em></button>').join("");
     $("stats").innerHTML = l.runs ? '<div><b>' + l.runs + '</b><span>runs</span></div><div><b>' + l.best + '</b><span>best ante</span></div><div><b>' + l.wins + '</b><span>summits</span></div><div><b>' + (mp === "surv" ? (l.bestSurv || 0) + '</b><span>best survival' : l.bestScore + '</b><span>best round') + '</span></div>' : "";
     $("start").hidden = false; document.body.classList.add("on-start"); FX.embers(true);
   }
