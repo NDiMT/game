@@ -10,8 +10,18 @@
   /* ---------- storage ---------- */
   const save = () => { try { localStorage.setItem(KEY, G.serialize(S)); } catch (e) {} };
   const load = () => { try { return G.restore(localStorage.getItem(KEY)); } catch (e) { return null; } };
-  const life = () => { try { return Object.assign({ runs: 0, wins: 0, best: 0, bestScore: 0, bestSurv: 0, gold: 0, silver: 0, quads: 0, chain7: 0, plays: 0, aces: 0 }, JSON.parse(localStorage.getItem(LIFE) || "{}")); } catch (e) { return { runs: 0, wins: 0, best: 0, bestScore: 0, bestSurv: 0, gold: 0, silver: 0, quads: 0, chain7: 0, plays: 0, aces: 0 }; } };
-  const saveLife = (l) => { try { localStorage.setItem(LIFE, JSON.stringify(l)); } catch (e) {} };
+  /* Τα stats ζωής διαβάζονταν από το localStorage — με JSON.parse — μέσα στο `render()`,
+     δηλαδή σε ΚΑΘΕ άγγιγμα φύλλου (η γραμμή του Survival ρωτά το bestSurv). Μετρημένο:
+     4,0ms σε 32 αγγίγματα στα 4× CPU, για μια τιμή που αλλάζει μόνο στο τέλος ενός run.
+     Τώρα μένει στη μνήμη· ακυρώνεται στην αρχική οθόνη, όπου η αλήθεια έχει σημασία. */
+  let lifeC = null;
+  const lifeDefaults = () => ({ runs: 0, wins: 0, best: 0, bestScore: 0, bestSurv: 0, gold: 0, silver: 0, quads: 0, chain7: 0, plays: 0, aces: 0 });
+  const life = () => {
+    if (lifeC) return lifeC;
+    try { lifeC = Object.assign(lifeDefaults(), JSON.parse(localStorage.getItem(LIFE) || "{}")); } catch (e) { lifeC = lifeDefaults(); }
+    return lifeC;
+  };
+  const saveLife = (l) => { lifeC = l; try { localStorage.setItem(LIFE, JSON.stringify(l)); } catch (e) {} };
   const unlockedFrom = (l) => G.CHARMS.filter((c) => !c.lock || (l[c.lock.key] || 0) >= c.lock.n).map((c) => c.id);
   const DECK_KEY = "raise.deck.v1";
   const deckOpen = (l, d) => !d.lock || (l[d.lock.key] || 0) >= d.lock.n;
@@ -42,7 +52,7 @@
   }
 
   /* ---------- run lifecycle ---------- */
-  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.note = null; shown = 0; FX.music.start(); FX.music.key(0); save(); hideStart(); render(); afterMove(); }
+  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.note = null; ui.countT = 0; shown = 0; FX.music.start(); FX.music.key(0); save(); hideStart(); render(); afterMove(); }
   /* Ένα run ΑΞΙΖΕΙ «Continue» μόνο αν έχει γίνει κάτι μέσα του. Ένα φρέσκο, άθικτο run στο
      ante 1 με μηδέν πόντους είναι ακριβώς ό,τι και το Play — και επειδή το `begin()` σώζει
      αμέσως, κάθε επιστροφή στον τίτλο έδειχνε «Continue · ante 1» για πάντα. */
@@ -51,7 +61,7 @@
      r.charms.length > 0 || r.phase === "shop" || r.phase === "won");
   function resumeOrBegin() {
     const saved = load();
-    if (saved) { S = saved; shown = S.score; render(); }
+    if (saved) { S = saved; shown = S.score; ui.countT = 0; render(); }
     /* Και η νικημένη Κορυφή είναι «συνέχισε»: αλλιώς ένα reload έτρωγε το Endless. */
     showStart(worthResuming(saved) ? saved : null);
   }
@@ -78,6 +88,9 @@
     const byH = Math.floor((Math.min(150, H * 0.2) - (rows - 1) * 5) / rows / 1.4);
     const cw = Math.max(36, Math.min(52, byW, byH));
     document.documentElement.style.setProperty("--cw", cw + "px");
+    /* Το `--cw` το ξαναδιάβαζε το render με getComputedStyle — αναγκαστικός επαναϋπολογισμός
+       στιλ σε κάθε άγγιγμα φύλλου, για έναν αριθμό που μόλις γράψαμε εμείς. */
+    fitHand.cw = cw;
     /* Το χέρι πιάνει όλο το πλάτος και στενεύει με padding, όχι με max-width: η σειρά των
        φύλλων μένει ίδια, αλλά η χειρονομία ζει και στα κενά δεξιά κι αριστερά — εκεί που
        πέφτει ο αντίχειρας. Μετρημένο: το #hand ήταν 222px σε οθόνη 393px, δηλαδή το 44%
@@ -97,45 +110,63 @@
   const charmToken = (id, extra) => { const c = G.charmById[id]; return '<button class="charm" data-charm="' + id + '" aria-label="' + c.name + '" style="--h:' + IC.hue(id) + '"' + (extra || "") + '>' + IC.svg(id) + '</button>'; };
 
   /* ---------- render ---------- */
+  /* `render()` τρέχει σε ΚΑΘΕ άγγιγμα, και ξανάγραφε innerHTML σε επτά κόμβους που δεν
+     είχαν αλλάξει: τα charms, τα dots του rung, τις πινέζες των plays/discards, το peek,
+     τα ribbons, το κουμπί και τη γραμμή κάτω από το τραπέζι. Κάθε γράψιμο είναι parse +
+     καταστροφή κόμβων + επαναϋπολογισμός στιλ. Η υπογραφή κρατιέται σε JS property, όχι
+     σε dataset: ένα attribute write θα ακύρωνε το στιλ μόνο του. */
+  const setHTML = (el, sig, html) => { if (el.__sig !== sig) { el.__sig = sig; el.innerHTML = typeof html === "function" ? html() : html; } };
+  const setTXT = (el, t) => { if (el.__t !== t) { el.__t = t; el.textContent = t; } };
+  let tcwC = { key: "", v: "" };
   function render(keepHand) {
     const T = G.target(S), e = G.evalSel(S), ch = G.current(S), pos = G.chainPos(S), cleared = S.score >= T;
 
     const surv = G.isSurv(S);
     document.body.classList.toggle("surv", surv);
-    FX.countUp($("score"), shown, S.score, ui.scoreDelay || 0); ui.scoreDelay = 0; shown = S.score;
+    /* Το `countUp` με from === to γράφει ΑΜΕΣΩΣ την τελική τιμή — και το render τρέχει σε
+       κάθε άγγιγμα. Δηλαδή ένα άγγιγμα φύλλου πάνω στο μέτρημα πετούσε το τελικό νούμερο
+       στην οθόνη και μετά το μέτρημα συνέχιζε από κάτω: ένα καρέ με λάθος σκορ. Και όταν
+       το render καλείται για να κλειδώσει το dock στο τέλος του γύρου, το μέτρημα πέθαινε
+       εντελώς (μετρημένο: 971 → 1447 σε 150ms, αντί για ένα δευτερόλεπτο ανεβάσματος).
+       Ο μετρητής ξεκινά μόνο όταν αλλάζει το σκορ· αλλιώς δεν τον αγγίζουμε. */
+    if (shown !== S.score) { ui.countT = Date.now() + 2100; FX.countUp($("score"), shown, S.score, ui.scoreDelay || 0); shown = S.score; }
+    else if (Date.now() > (ui.countT || 0)) setTXT($("score"), String(S.score));
+    ui.scoreDelay = 0;
     $("score").classList.toggle("on", surv ? S.score > (life().bestSurv || 0) : cleared);
     /* Survival: δεν υπάρχει στόχος. Στη θέση του, η επόμενη ανάσα — και η μπάρα τη δείχνει,
        που είναι ο μόνος αριθμός στην οθόνη που ο παίκτης κυνηγά ενεργά. */
     const ms = surv ? G.survMilestone(S.survEarned || 0) : 0;
     const msPrev = surv ? (S.survEarned ? G.survMilestone((S.survEarned || 0) - 1) : 0) : 0;
-    $("tgt").textContent = surv ? "breath at " + ms.toLocaleString("en-US") : "/ " + T;
-    $("ante").textContent = surv ? S.stats.plays : S.ante + 1;
-    $("anteN").textContent = surv ? "hands" : S.endless && S.ante >= G.TARGETS.length ? "∞" : G.TARGETS.length;
+    setTXT($("tgt"), surv ? "breath at " + ms.toLocaleString("en-US") : "/ " + T);
+    setTXT($("ante"), String(surv ? S.stats.plays : S.ante + 1));
+    setTXT($("anteN"), String(surv ? "hands" : S.endless && S.ante >= G.TARGETS.length ? "∞" : G.TARGETS.length));
     const f = $("fill");
     f.style.width = (surv ? Math.max(0, Math.min(100, 100 * (S.score - msPrev) / Math.max(1, ms - msPrev))) : Math.min(100, S.score / T * 100)) + "%";
     f.classList.toggle("done", surv ? false : cleared);
     f.classList.toggle("spend", surv);
 
     const playsMax = S.playsMax - (ch && ch.id === "fewplays" ? 1 : 0);
-    $("plays").innerHTML = surv ? "" : pips(S.playsLeft, playsMax);
+    setHTML($("plays"), surv ? "surv" : S.playsLeft + "/" + playsMax, () => (surv ? "" : pips(S.playsLeft, playsMax)));
     $("plays").setAttribute("aria-label", surv ? "no play limit" : S.playsLeft + " of " + playsMax + " plays left");
     const dmax = S.discMax == null ? G.discMaxOf(S) : S.discMax, dleft = G.discardsLeft(S);
     $("discards").hidden = false;
-    $("discards").innerHTML = dmax ? pips(dleft, dmax) : '<b>none</b>';
+    setHTML($("discards"), dmax + "/" + dleft, () => (dmax ? pips(dleft, dmax) : '<b>none</b>'));
     $("discards").setAttribute("aria-label", dmax ? dleft + " of " + dmax + " discards left" : "no discards");
     $("discards").classList.toggle("off", dmax === 0);
-    $("pileN").textContent = S.pile.length; $("dpileN").textContent = S.discardPile.length;
+    setTXT($("pileN"), String(S.pile.length)); setTXT($("dpileN"), String(S.discardPile.length));
 
-    let cm = S.charms.map((id) => charmToken(id, G.synergyFor(S, id).length ? ' data-syn="1"' : "")).join("");
-    for (let i = S.charms.length; i < S.charmSlots; i++) cm += '<span class="charm charm--empty"></span>';
-    $("charms").innerHTML = cm;
+    setHTML($("charms"), S.charms.join(",") + "/" + S.charmSlots + "/" + S.charms.map((id) => G.synergyFor(S, id).length).join(""), () => {
+      let cm = S.charms.map((id) => charmToken(id, G.synergyFor(S, id).length ? ' data-syn="1"' : "")).join("");
+      for (let i = S.charms.length; i < S.charmSlots; i++) cm += '<span class="charm charm--empty"></span>';
+      return cm;
+    });
 
     const rv = $("rungVal");
-    if (S.rung) { const lb = G.clabel(S.rung); rv.textContent = lb; rv.classList.remove("free"); rv.classList.toggle("long", lb.length > 11); rv.style.setProperty("--kh", IC.kindHue(S.rung.kind)); $("rungDots").style.setProperty("--kh", IC.kindHue(S.rung.kind)); }
-    else { rv.textContent = "Open"; rv.classList.add("free"); rv.classList.remove("long"); }
-    $("rungDots").innerHTML = S.rung ? Array.from({ length: S.rung.size }, () => '<i class="' + (G.isBomb(S.rung) ? "bomb" : "at") + '"></i>').join("") : "";
-    $("chal").hidden = !ch; if (ch) $("chalName").innerHTML = IC.svg(ch.id) + ch.name;
-    const rl = G.currentRule(S); $("rule").hidden = !rl; if (rl) $("ruleName").textContent = rl.name;
+    if (S.rung) { const lb = G.clabel(S.rung); setTXT(rv, lb); rv.classList.remove("free"); rv.classList.toggle("long", lb.length > 11); rv.style.setProperty("--kh", IC.kindHue(S.rung.kind)); $("rungDots").style.setProperty("--kh", IC.kindHue(S.rung.kind)); }
+    else { setTXT(rv, "Open"); rv.classList.add("free"); rv.classList.remove("long"); }
+    setHTML($("rungDots"), S.rung ? S.rung.kind + "/" + S.rung.size : "-", () => (S.rung ? Array.from({ length: S.rung.size }, () => '<i class="' + (G.isBomb(S.rung) ? "bomb" : "at") + '"></i>').join("") : ""));
+    $("chal").hidden = !ch; if (ch) setHTML($("chalName"), ch.id, () => IC.svg(ch.id) + ch.name);
+    const rl = G.currentRule(S); $("rule").hidden = !rl; if (rl) setTXT($("ruleName"), rl.name);
     document.body.classList.toggle("lastplay", !surv && S.playsLeft >= 1 && S.playsLeft < 2 && !cleared);
     /* Η αλυσίδα λέει μόνη της τι αξίζει — αλλιώς ο πιο σημαντικός αριθμός δεν εξηγείται πουθενά. */
     /* Στο Survival η αλυσίδα ΔΕΝ έχει οροφή — αυτό είναι όλο το mode. Η ετικέτα έβαζε το
@@ -147,24 +178,32 @@
         raw = Math.max(0, pos - 1 + G.CFG.chainFloor) * step,
         steps = surv ? raw : Math.min(G.CFG.chainStepCap, raw),
         mul = Math.round((1 + G.CFG.chainStep * steps) * 10) / 10;
-      $("chainN").textContent = "×" + pos;
+      setTXT($("chainN"), "×" + pos);
       /* Ο μεγάλος αριθμός είναι το σκαλί· η ετικέτα λέει τι αξίζει, χωρίς να το ξαναπεί. */
-      $("chain").firstElementChild.textContent = steps ? "Mult ×" + mul : "Chain"; }
+      setTXT($("chain").firstElementChild, steps ? "Mult ×" + mul : "Chain"); }
     $("chain").classList.toggle("cold", pos <= 1);
     /* Το κομμάτι χτίζεται μαζί με την αλυσίδα. Στο Survival η αλυσίδα δεν έχει οροφή,
        οπότε η αναφορά είναι πιο μακριά — αλλιώς το κομμάτι θα ήταν φουλ στο τέταρτο χέρι. */
     FX.music.chain(pos, surv ? 14 : G.CFG.chainCap);
     document.body.dataset.heat = pos >= 6 ? 3 : pos >= 4 ? 2 : pos >= 2 ? 1 : 0;
     $("chain").style.setProperty("--pos", Math.min(pos, 12));
-    const pk = G.peek(S); $("peek").hidden = !pk; if (pk) $("peekCard").innerHTML = pk.map((c) => cardHTML(c, null, false, true, 0, 1)).join("");
+    const pk = G.peek(S); $("peek").hidden = !pk; if (pk) setHTML($("peekCard"), pk.map((c) => c.r + "/" + c.si + "/" + (c.e || "")).join(","), () => pk.map((c) => cardHTML(c, null, false, true, 0, 1)).join(""));
     const tc = $("tcards");
     /* Ο πήχης ξαναχτιζόταν σε κάθε render — δηλαδή σε κάθε άγγιγμα φύλλου — και ξανάπαιζε
        το `land`: opacity 0→1, άλμα 33px, 500ms, με stagger, και το δεύτερο άγγιγμα διέκοπτε
        το πρώτο. Το πιο σημαντικό πράγμα στην οθόνη αναβόσβηνε κάθε φορά που διάλεγες. */
     const tsig = S.log.length + "·" + S.played.map((c) => c.r + "/" + c.si + "/" + (c.e || "")).join(",");
     if (tc.dataset.sig !== tsig) { tc.dataset.sig = tsig; tc.innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, S.played.length)).join(""); }
-    { const tn = S.played.length, tw = ($("table").clientWidth || 340) - 28, cw = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 44;
-      tc.style.setProperty("--tcw", Math.max(26, Math.min(Math.round(cw * 0.9), tn ? Math.floor((tw - (tn - 1) * 4) / tn) : 99)) + "px"); }
+    /* Το πλάτος των φύλλων του τραπεζιού είναι δύο περάσματα: γράψε --tcw, ΔΙΑΒΑΣΕ
+       `clientHeight`, ξαναγράψε. Κάθε ανάγνωση μετά από γράψιμο είναι αναγκαστικό layout —
+       και έτρεχαν και τα δύο σε κάθε άγγιγμα φύλλου, για ένα νούμερο που εξαρτάται μόνο
+       από τα φύλλα στο τραπέζι και το μέγεθος της οθόνης. Τώρα κρατιέται σε cache. */
+    const tKey = tsig + "|" + (fitHand.cw || 0) + "|" + innerWidth + "x" + innerHeight;
+    if (tcwC.key !== tKey) {
+      const tn = S.played.length, tw = ($("table").clientWidth || 340) - 28, cw = fitHand.cw || parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 44;
+      tcwC = { key: tKey, v: Math.max(26, Math.min(Math.round(cw * 0.9), tn ? Math.floor((tw - (tn - 1) * 4) / tn) : 99)) + "px", second: true };
+      tc.style.setProperty("--tcw", tcwC.v);
+    }
     tc.classList.toggle("fresh", S.ante === 0 && !S.rung && !S.log.length);
 
     const n = S.hand.length, hand = $("hand");
@@ -179,32 +218,36 @@
     }
     /* Τα φύλλα δείχνουν ΟΛΑ ίδια. Το Survival έσβηνε όσα δεν ανεβαίνουν και τόνιζε τα
        υπόλοιπα: ο παίκτης το είδε ως «το παιχνίδι διαλέγει για μένα» — το ίδιο πράγμα με το
-       tap-to-complete που είχε απορριφθεί. Το χέρι το διαβάζει εκείνος. */
+       tap-to-complete που είχε απορριφθεί. Το χέρι το διαβάζει εκείνος. (Μαζί φεύγει και ο
+       λόγος να τρέχει το `climbCards()` σε κάθε render.) */
     /* Τα σημάδια «μόλις τραβήχτηκε» σβήνουν πάντα — αλλιώς ένα επόμενο πλήρες render
        ξαναπαίζει το drawin σε φύλλα που είναι στο χέρι εδώ και ώρα. */
     S.hand.forEach((c) => { delete c.n; delete c.x; });
     hand.classList.toggle("picking", S.sel.length > 0);
 
-    let tools = "";
-    $("tools").innerHTML = tools;
+    /* Το #tools δεν έχει περιεχόμενο από τότε που το «?» μετακόμισε στο τραπέζι — έμενε ένα
+       `innerHTML = ""` που έτρεχε σε κάθε άγγιγμα χωρίς να γράφει τίποτα. */
     /* Σημειώσεις/tooltips: αιωρούμενη κάρτα πάνω από το dock, δεν μετακινεί τίποτα· κλείνει με άγγιγμα. */
     const tipOn = !!ui.note && Date.now() < ui.noteT;
-    $("tip").hidden = !tipOn; if (tipOn) $("tip").innerHTML = '<div class="tip__in">' + ui.note + '</div>';
+    $("tip").hidden = !tipOn;
+    /* Η υπογραφή κρατά και το `noteT`: δύο ίδιες σημειώσεις στη σειρά είναι δύο σημειώσεις,
+       και η δεύτερη θέλει το δικό της μπάσιμο. */
+    if (tipOn) setHTML($("tip"), ui.noteT + "\u00b7" + ui.note, () => '<div class="tip__in">' + ui.note + '</div>');
 
     const go = $("bPlay"); go.className = "go";
-    const pv = $("preview"); pv.className = "preview"; let pvt = "";
-    if (ui.ending || (!surv && S.playsLeft < 1) || cleared) { go.classList.add("done"); go.disabled = true; go.innerHTML = '<span class="go__t">' + (surv ? "No way up" : cleared ? "Target!" : "Round over") + '</span><span class="go__s">' + (surv ? S.score.toLocaleString("en-US") + " points" : cleared ? "Ante " + (S.ante + 1) + " cleared" : "Short by " + (T - S.score)) + '</span>'; }
-    else if (surv && !S.sel.length && !G.hasClimb(S)) { go.classList.add("idle"); go.disabled = true; go.innerHTML = '<span class="go__t">Nothing climbs</span><span class="go__s">' + (G.discardsLeft(S) > 0 ? "Breathe (" + G.discardsLeft(S) + " left) · or break it, which costs one too" : "No breath left · the next hand you play is your last") + '</span>'; }
+    const pv = $("preview"); pv.className = "preview"; let pvt = "", gh = "";
+    if (ui.ending || (!surv && S.playsLeft < 1) || cleared) { go.classList.add("done"); go.disabled = true; gh = '<span class="go__t">' + (surv ? "No way up" : cleared ? "Target!" : "Round over") + '</span><span class="go__s">' + (surv ? S.score.toLocaleString("en-US") + " points" : cleared ? "Ante " + (S.ante + 1) + " cleared" : "Short by " + (T - S.score)) + '</span>'; }
+    else if (surv && !S.sel.length && !G.hasClimb(S)) { go.classList.add("idle"); go.disabled = true; gh = '<span class="go__t">Nothing climbs</span><span class="go__s">' + (G.discardsLeft(S) > 0 ? "Breathe (" + G.discardsLeft(S) + " left) · or break it, which costs one too" : "No breath left · the next hand you play is your last") + '</span>'; }
     else if (!S.sel.length) {
       go.classList.add("idle"); go.disabled = true;
-      go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (!surv && S.playsLeft < 2 ? " · last play" : "") + '</span>';
+      gh = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (!surv && S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
-    else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? (surv ? "Breathe these away instead?" : "Discard these instead?") : "Pick a pair, a run or a set") + '</span>'; }
+    else if (!e.k) { go.classList.add("no"); go.disabled = true; gh = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? (surv ? "Breathe these away instead?" : "Discard these instead?") : "Pick a pair, a run or a set") + '</span>'; }
     /* Μηδέν ανάσες και υπάρχει ανέβασμα στο χέρι: το σπάσιμο είναι κλειδωμένο, γιατί θα
        τερμάτιζε το run ενώ υπάρχει δρόμος πάνω. Το κουμπί λέει ότι υπάρχει. */
     else if (surv && !e.up && G.discardsLeft(S) <= 0 && G.hasClimb(S)) {
       go.classList.add("no"); go.disabled = true;
-      go.innerHTML = '<span class="go__t">Will not climb</span><span class="go__s">No breath left · something in your hand does climb</span>';
+      gh = '<span class="go__t">Will not climb</span><span class="go__s">No breath left · something in your hand does climb</span>';
     }
     else {
       go.classList.add(e.up ? "ok" : "down"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind));
@@ -215,7 +258,14 @@
         ? (G.discardsLeft(S) > 0 ? "Breaks the chain · −1 breath (" + G.discardsLeft(S) + ")" : "Breaks the chain · your last hand")
         : "Breaks the chain · " + calc;
       if (surv && !e.up) go.classList.add("cost");
-      go.innerHTML = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc : brk) + '</span>';
+      gh = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc : brk) + '</span>';
+    }
+    /* Το κουμπί ξαναγραφόταν κάθε render, ακόμη κι όταν έλεγε ακριβώς το ίδιο πράγμα —
+       parse, καταστροφή δύο κόμβων, και μετά ένα δεύτερο πέρασμα με querySelectorAll για
+       τα κεφαλαία. Τώρα γράφεται μόνο όταν αλλάζει το κείμενο. */
+    if (go.__sig !== gh) {
+      go.__sig = gh; go.innerHTML = gh;
+      Array.prototype.forEach.call(go.querySelectorAll(".go__s"), (el) => { el.textContent = cap(el.textContent); });
     }
     /* Η γραμμή κάτω από το τραπέζι δεν αλλάζει με την επιλογή: λέει τι θέλει το rung, και μόνο.
        Ο αριθμός του χεριού ζει στο κουμπί, εκεί που πέφτει ο αντίχειρας. */
@@ -227,19 +277,28 @@
       (!surv && S.playsLeft < 2 ? " · last play" : "") +
       (surv && S.rung ? " · or breathe (" + G.discardsLeft(S) + ")" : "");
     if (why) pv.classList.add("bad");
-    pv.innerHTML = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    const pvh = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       : cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + "</span>").join(' <i>·</i> ');
-    Array.prototype.forEach.call(go.querySelectorAll(".go__s"), (el) => { el.textContent = cap(el.textContent); });
-    /* Τα φύλλα του τραπεζιού χωράνε και σε ύψος: μετά το preview, μέτρα τον ελεύθερο χώρο και ψαλίδισε. */
-    { const tn = S.played.length; if (tn) { const free = tc.clientHeight, cur = parseInt(tc.style.getPropertyValue("--tcw")) || 40;
-      if (free > 0) tc.style.setProperty("--tcw", Math.max(24, Math.min(cur, Math.floor((free - 6) / 1.42))) + "px"); } }
-    /* Το δωρεάν discard του νεκρού χεριού ΔΕΝ υπάρχει στο Survival (`canDiscard` το κόβει),
-       οπότε το «Free» εμφανιζόταν πάνω σε κουμπί που δεν πατιέται. */
-    const freeD = !surv && G.deadHand(S) && dleft <= 0;
-    $("bDisc").disabled = !G.canDiscard(S); $("discN").textContent = freeD ? "Free" : dleft;
+    setHTML(pv, pvh, pvh);
+    /* Τα φύλλα του τραπεζιού χωράνε και σε ύψος: μετά το preview, μέτρα τον ελεύθερο χώρο και ψαλίδισε.
+       Το `clientHeight` εδώ είναι ΑΝΑΓΚΑΣΤΙΚΟ layout — τρέχει μόνο όταν άλλαξε κάτι που το
+       μετακινεί (τα φύλλα του τραπεζιού, το μέγεθος της οθόνης, ή το κείμενο του preview). */
+    if (tcwC.second && tcwC.pvh !== pvh) {
+      tcwC.pvh = pvh;
+      const tn = S.played.length;
+      tc.style.setProperty("--tcw", tcwC.v);   /* ξεκίνα από το πλάτος, όπως πριν, και μετά ψαλίδισε στο ύψος */
+      if (tn) { const free = tc.clientHeight, cur = parseInt(tc.style.getPropertyValue("--tcw")) || 40;
+        if (free > 0) tc.style.setProperty("--tcw", Math.max(24, Math.min(cur, Math.floor((free - 6) / 1.42))) + "px"); }
+    }
+    /* Ο έλεγχος «νεκρό χέρι» τρέχει το `candidates()` — και έτρεχε δύο φορές σε κάθε
+       άγγιγμα φύλλου, ακόμη κι όταν είχες ανάσες (τότε δεν υπάρχει δωρεάν discard) και
+       ακόμη και στο Survival, όπου δωρεάν ανάσα δεν υπάρχει καθόλου. */
+    const freeDisc = !surv && dleft <= 0 && G.deadHand(S);
+    $("bDisc").disabled = ui.ending || !G.canDiscard(S);
+    setTXT($("discN"), freeDisc ? "Free" : String(dleft));
     /* Στο Survival ένα πληρωμένο discard ανοίγει και το τραπέζι — άλλο πράγμα, άλλο όνομα. */
-    $("bDisc").firstElementChild.textContent = surv ? "Breathe" : "Discard";
-    $("bHint").disabled = S.playsLeft < 1;
+    setTXT($("bDisc").firstElementChild, surv && !freeDisc ? "Breathe" : "Discard");
+    $("bHint").disabled = ui.ending || S.playsLeft < 1;
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
   const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : k.kind === 8 ? G.clabel(k).replace(/ \S+$/, "") : G.clabel(k);
@@ -261,10 +320,28 @@
   function selRects() { return S.sel.map((i) => { const el = $("hand").querySelector('[data-i="' + i + '"]'); return el ? el.getBoundingClientRect() : null; }); }
   function afterMove() {
     save();
-    if (G.stuck(S)) { note(G.stuckReason(S) || "Round over.", 1800); setTimeout(end, 1500); }
+    /* Ο γύρος κλείνει σε 1500ms — και μέσα σε αυτά ο πίνακας ήταν ακόμη ζωντανός: ένα
+       πάτημα στο Discard/Breathe ή ένα σύρσιμο κάτω ΞΟΔΕΥΕ πραγματικό resource για έναν
+       γύρο που είχε τελειώσει. Μετρημένο: discards 2 → 1, out 6 → 8, pile 40 → 38 μέσα στη
+       γιορτή του «Target!». Το `ui.ending` είναι η κλειδαριά — και το render το δείχνει. */
+    if (!G.stuck(S)) return;
+    const why = G.stuckReason(S) || "Round over.";
+    if (ui.ending) { if (why) note(why, 1800); return; }   /* το κλείσιμο τρέχει ήδη */
+    ui.ending = true;
+    note(why, 1800);
+    setTimeout(() => { ui.ending = false; end(); }, 1500);
   }
 
   /* ---------- actions ---------- */
+  /* Ένα χτύπημα, ένα φύλλο. Δοκιμάστηκε συντόμευση όπου το χτύπημα διάλεγε ολόκληρο το
+     καλύτερο χέρι που περιέχει το φύλλο, με κύκλο στα εναλλακτικά — και αφαιρέθηκε: το
+     παιχνίδι ΕΙΝΑΙ η επιλογή των φύλλων, και μια συντόμευση που τη μαντεύει την παίρνει
+     από τα χέρια του παίκτη. Η ταχύτητα δεν αξίζει τον έλεγχο. */
+  function tapCard(el) {
+    if (!el || ui.ending || !S || S.phase !== "round") return;
+    ui.note = null;
+    if (G.toggle(S, +el.dataset.i)) { FX.sfx.tick(); FX.buzz(6); render(true); }
+  }
   function doPlay() {
     if (ui.ending) return;
     if (!G.isSurv(S) && S.playsLeft < 1) { end(); return; }
@@ -282,7 +359,10 @@
     /* Φτάνεις τον στόχο ή τελειώνουν τα plays: ο γύρος κλείνει μόνος του, χωρίς άλλο πάτημα.
        Μετρημένο: το «Target!» έμενε 365ms πριν το φύλλο το σκεπάσει — δεν προλάβαινε ούτε
        να μπει, και η τετράφωνη καμπάνα έπαιζε ακόμα. Ο στόχος θέλει τον χρόνο του. */
-    if (ev.cleared || (!G.isSurv(S) && S.playsLeft < 1) || (G.isSurv(S) && G.stuck(S))) { ui.ending = true; setTimeout(() => { ui.ending = false; end(); }, ev.cleared ? 2400 : 1500); }
+    if (ev.cleared || (!G.isSurv(S) && S.playsLeft < 1) || (G.isSurv(S) && G.stuck(S))) {
+      ui.ending = true; render(true);   /* κλείδωσε το dock ΤΩΡΑ, όχι στο επόμενο render */
+      setTimeout(() => { ui.ending = false; end(); }, ev.cleared ? 2400 : 1500);
+    }
     FX.fly(from, Array.prototype.slice.call($("tcards").children));
     if (ev.drawn) setTimeout(() => FX.sfx.draw(), 180);
     enhPop();
@@ -299,7 +379,7 @@
     setTimeout(() => { callout(e[0] === "wild" ? "Joker!" : G.ENH[e[0]].name + " card!"); FX.sfx.unlock(); FX.burstAt($("hand"), 26, 3.5, e[0] === "gold" ? ["#f5cf6a", "#fff1bf"] : e[0] === "silver" ? ["#eef3f8", "#a9b7c6"] : ["#c9a6ff", "#8fd0e2"]); }, 520);
   }
   function doDiscard() {
-    if (!G.canDiscard(S)) return;
+    if (ui.ending || !G.canDiscard(S)) return;
     const rects = selRects();
     /* Το `$("dpile")` δεν υπήρξε ποτέ στο index.html: το ghostTo έβγαινε αμέσως και το
        discard ήταν η μόνη χειρονομία χωρίς κίνηση — τα φύλλα απλώς εξαφανίζονταν.
@@ -308,11 +388,12 @@
       FX.sfx.discard(); FX.buzz(10); FX.ghostTo(rects, $("dpileN")); ui.note = null; render();
       setTimeout(() => FX.sfx.draw(), 160); setTimeout(() => FX.pulse($("dpileN"), "hit"), 430); enhPop();
       /* Η ανάσα ανοίγει το τραπέζι — και μπορεί να ήταν η τελευταία. */
-      if (G.isSurv(S)) { if (!S.rung) calloutNow("Table open"); if (G.stuck(S)) { ui.ending = true; setTimeout(() => { ui.ending = false; end(); }, 1500); return; } }
+      if (G.isSurv(S)) { if (!S.rung) calloutNow("Table open"); if (G.stuck(S)) { ui.ending = true; render(true); setTimeout(() => { ui.ending = false; end(); }, 1500); return; } }
       afterMove();
     }
   }
   function doHint() {
+    if (ui.ending) return;
     const m = G.suggest(S);
     if (m) { S.sel = m.idx.slice(); ui.note = null; FX.sfx.tick(); render(true); return; }
     const o = G.orphans(S);
@@ -438,7 +519,7 @@
     /* Ο μετρητής ξεκινούσε τον νέο γύρο μετρώντας ΑΝΑΠΟΔΑ από το σκορ του προηγούμενου
        ante ως το μηδέν — ένα δευτερόλεπτο με τον ήχο του ταμείου να σου παίρνει πίσω ό,τι
        μόλις κέρδισες. Μετρημένο: 726 → 0 σε 1063ms, με ~19 τικ. */
-    G.nextAnte(S); shown = S.score; closeS(); render(); afterMove();
+    G.nextAnte(S); shown = S.score; ui.countT = 0; closeS(); render(); afterMove();
     /* 47 από τις 50 πίστες δεν έχουν τελετή: μία λέξη τους δίνει ακμή. */
     setTimeout(() => { if (S && S.phase === "round") calloutNow("Ante " + (S.ante + 1)); }, 260);
     const bc = G.current(S); if (bc) bossIntro(bc);
@@ -574,6 +655,7 @@
   const FAN = [{ r: 10, si: 0 }, { r: 11, si: 2 }, { r: 12, si: 3 }, { r: 13, si: 1 }, { r: 14, si: 0 }];
   function showStart(resume) {
     FX.music.level(0.1);
+    lifeC = null;   /* στην αρχική οθόνη τα stats διαβάζονται φρέσκα από τον δίσκο */
     const l = life(), un = unlockedFrom(l);
     $("fan").innerHTML = FAN.map((c, i) => '<span class="fan__c" style="--i:' + i + '">' + cardHTML(c, null, false, true, i, 5) + '</span>').join("");
     $("startBtns").innerHTML =
@@ -606,7 +688,17 @@
      χειρονομία: ένα σύρσιμο που απορριπτόταν ήταν εντελώς αδιάκριτο από αστοχία. */
   const dragTo = (dy) => { hand.style.transform = dy ? "translateY(" + Math.max(-18, Math.min(18, dy * 0.35)).toFixed(1) + "px)" : ""; };
   const dragEnd = () => { hand.classList.remove("dragging"); hand.style.transform = ""; };
-  hand.addEventListener("pointerdown", (e) => { swipe = { y0: e.clientY, x0: e.clientX, did: false, moved: 0, armed: false }; });
+  /* ΤΟ ΑΓΓΙΓΜΑ ΚΛΕΙΝΕΙ ΣΤΟ ΣΗΚΩΜΑ ΤΟΥ ΔΑΧΤΥΛΟΥ, ΟΧΙ ΣΤΟ `click`.
+     Μετρημένο σε mobile Chromium με πραγματικά touch events: ο browser βγάζει το `click`
+     10,9ms (p50) / 24,3ms (max) μετά το `pointerup` στα 4× CPU. Πάνω σε αυτό κάθεται ο
+     χρόνος του handler, οπότε από το σήκωμα του δαχτύλου ως το φύλλο που γυρίζει περνούσαν
+     18,3ms (p50) / 29,9ms (max). Στο `pointerup` ξέρουμε ΗΔΗ την απόσταση της χειρονομίας —
+     άρα ξέρουμε αν ήταν άγγιγμα ή σύρσιμο — και δεν υπάρχει λόγος να περιμένουμε το click:
+     5,3ms (p50) / 10,9ms (max). Το `click` που ακολουθεί καταπίνεται· μένει ενεργό μόνο
+     για πληκτρολόγιο, όπου δεν προηγείται pointer. */
+  hand.addEventListener("pointerdown", (e) => {
+    swipe = { y0: e.clientY, x0: e.clientX, did: false, moved: 0, armed: false, el: e.target.closest("[data-i]"), tapT: 0 };
+  });
   hand.addEventListener("pointermove", (e) => {
     const dy = e.clientY - swipe.y0;
     swipe.moved = Math.max(swipe.moved, Math.abs(dy));
@@ -615,13 +707,19 @@
     if (!swipe.armed && Math.abs(dy) >= SWIPE) { swipe.armed = true; FX.buzz(4); }
   });
   /* Ακυρωμένος pointer δεν καταπίνει τη σειρά: το επόμενο click ξαναμετράει ως άγγιγμα. */
-  hand.addEventListener("pointercancel", () => { swipe.did = false; dragEnd(); });
+  hand.addEventListener("pointercancel", () => { swipe.did = false; swipe.tapT = 0; dragEnd(); });
   hand.addEventListener("pointerup", (e) => {
     dragEnd();
     const dy = e.clientY - swipe.y0, dx = e.clientX - swipe.x0;
     /* Ένα σύρσιμο δεν είναι ποτέ άγγιγμα. Πριν, μια χειρονομία που απορριπτόταν άφηνε το
        click να περάσει και *άλλαζε την επιλογή* κάτω από τον αντίχειρα. */
     if (Math.abs(dy) > 12 || swipe.moved > 12) swipe.did = true;
+    /* Δεν κουνήθηκε: είναι άγγιγμα, και το φύλλο γυρίζει ΤΩΡΑ. Το `swipe.el` είναι το
+       φύλλο του `pointerdown` — το ίδιο που θα έδινε το click, χωρίς την αναμονή. */
+    if (!swipe.did && Math.abs(dx) <= 14) {
+      if (swipe.el) { swipe.tapT = performance.now(); tapCard(swipe.el); }
+      return;
+    }
     /* Το παλιό όριο των 700ms έκοβε κάθε αργό, σκόπιμο σύρσιμο: μετρημένο, σύρσιμο 95px σε
        717ms (132 px/δευτ — απολύτως φυσιολογικός αντίχειρας) δεν έπαιζε ΤΙΠΟΤΑ. Η σελίδα δεν
        κάνει scroll· ο κάθετος άξονας είναι δικός μας, οπότε κρίνει η απόσταση, όχι το ρολόι.
@@ -629,7 +727,26 @@
     if (Math.abs(dy) < SWIPE || Math.abs(dx) > Math.abs(dy) * 1.4) return;
     const go = $("bPlay");
     if (dy < 0 && !go.disabled && (go.classList.contains("ok") || go.classList.contains("down"))) doPlay();
-    else if (dy > 0 && S.sel.length) { if (G.canDiscard(S)) doDiscard(); else { S.sel = []; render(true); } }
+    /* Ένα σύρσιμο πάνω που δεν μπορεί να παιχτεί δεν έκανε ΤΙΠΟΤΑ — καμία εικόνα, κανένας
+       λόγος. Ο παίκτης δεν ξέρει αν αστόχησε τη χειρονομία ή αν το χέρι δεν παίζεται.
+       Τώρα το κουμπί απαντά με τον δικό του λόγο, που είναι πάντα γραμμένο πάνω του. */
+    else if (dy < 0 && S.sel.length && !ui.ending) {
+      const t = go.querySelector(".go__t"), sub = go.querySelector(".go__s");
+      if (t) note(t.textContent + (sub && sub.textContent ? " — " + sub.textContent : ""), 2400);
+      FX.buzz(8);
+    }
+    /* Σύρσιμο κάτω που δεν μπορεί να πετάξει: πριν, η επιλογή απλώς ΕΞΑΦΑΝΙΖΟΤΑΝ, χωρίς
+       λέξη — και ο παίκτης δεν είχε τρόπο να ξέρει αν πέταξε τα φύλλα ή όχι. */
+    else if (dy > 0 && S.sel.length) {
+      if (G.canDiscard(S)) doDiscard();
+      else {
+        const dm = S.discMax == null ? G.discMaxOf(S) : S.discMax;
+        S.sel = [];
+        note(dm === 0 ? "This round has no discards — the cards are back in your hand."
+          : G.isSurv(S) ? "No breath left — the cards are back in your hand."
+          : "No discards left — the cards are back in your hand.", 2400);
+      }
+    }
     /* Survival: σύρσιμο κάτω με ΑΔΕΙΑ επιλογή = ανάσα με τα άχρηστα φύλλα. Όταν τίποτα δεν
        ανεβαίνει, η ανάσα είναι η κίνηση — δεν έχει νόημα να διαλέξεις πρώτα τι θα πετάξεις. */
     else if (dy > 0 && !S.sel.length && G.isSurv(S) && G.canDiscardAny(S) && G.discardsLeft(S) > 0) {
@@ -637,16 +754,14 @@
       S.sel = (o.length ? o : S.hand.map((_, i) => i).sort((a, b) => S.hand[a].r - S.hand[b].r)).slice(0, Math.max(1, Math.min(3, o.length || 2)));
       if (G.canDiscard(S)) doDiscard(); else { S.sel = []; render(true); }
     }
+    /* Σύρσιμο κάτω με άδεια επιλογή και καμία ανάσα: η χειρονομία έπεφτε στο κενό. */
+    else if (dy > 0 && !ui.ending) note(G.isSurv(S) ? "No breath left — every hand from here has to climb." : "Pick the cards you want to throw first.", 2400);
   });
-  /* Ένα χτύπημα, ένα φύλλο. Δοκιμάστηκε συντόμευση όπου το χτύπημα διάλεγε ολόκληρο το
-     καλύτερο χέρι που περιέχει το φύλλο, με κύκλο στα εναλλακτικά — και αφαιρέθηκε: το
-     παιχνίδι ΕΙΝΑΙ η επιλογή των φύλλων, και μια συντόμευση που τη μαντεύει την παίρνει
-     από τα χέρια του παίκτη. Η ταχύτητα δεν αξίζει τον έλεγχο. */
   hand.addEventListener("click", (e) => {
     if (swipe.did) { swipe.did = false; return; }
-    const b = e.target.closest("[data-i]"); if (!b || S.phase !== "round") return;
-    const i = +b.dataset.i; ui.note = null;
-    if (G.toggle(S, i)) { FX.sfx.tick(); FX.buzz(6); render(true); }
+    /* Το άγγιγμα το χειρίστηκε ήδη το pointerup· αυτό εδώ είναι ο απόηχός του. */
+    if (swipe.tapT && performance.now() - swipe.tapT < 900) { swipe.tapT = 0; return; }
+    tapCard(e.target.closest("[data-i]"));
   });
   $("tools").addEventListener("click", (e) => {
     const a = e.target.closest("[data-act]"); if (!a) return;
@@ -710,7 +825,13 @@
   /* Στο κινητό η μπάρα διεύθυνσης κρύβεται και ξαναεμφανίζεται όσο παίζεις, και κάθε φορά
      πέφτει resize. Μετρημένο: ένα resize ξανάχτιζε και τα 8 φύλλα του χεριού ακόμη κι όταν
      το --cw έμενε ίδιο — αντικαθιστούσε DOM κάτω από τον αντίχειρα χωρίς λόγο. */
-  addEventListener("resize", () => { if (S) { if (fitHand(S.hand.length)) render(); else render(true); } });
+  /* Η μπάρα διεύθυνσης δίνει μια ΡΙΠΗ από resize όσο γλιστράει (μετρημένο: 9 σε ~250ms) —
+     ένα render το καθένα. Ένα ανά καρέ αρκεί: το layout δεν μπορεί να αλλάξει πιο συχνά. */
+  let rzRaf = 0;
+  addEventListener("resize", () => {
+    if (!S || rzRaf) return;
+    rzRaf = requestAnimationFrame(() => { rzRaf = 0; if (!S) return; if (fitHand(S.hand.length)) render(); else render(true); });
+  });
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; });
   document.addEventListener("visibilitychange", () => { if (document.hidden && S) save(); });
 
