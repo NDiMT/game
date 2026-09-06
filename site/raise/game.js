@@ -692,7 +692,9 @@
     const e = evalSel(S);
     if (S.playsLeft < 1) return null;
     if (!e.k) return null;
-    /* Survival: μόνο ανέβασμα. Χωρίς αυτό, με ατέλειωτη τράπουλα το run δεν τελειώνει ποτέ. */
+    /* Survival: μόνο ανέβασμα. Χωρίς αυτό η αλυσίδα παύει να είναι το παιχνίδι — μετρημένο,
+       το άπληστο παίξιμο κέρδιζε το χτίσιμο αλυσίδας (p50 116 347 έναντι 98 264) και τα run
+       τραβούσαν 183-232 χέρια. */
     if (isSurv(S) && !climbs(S, e.k)) return null;
     const k = e.k, prev = S.rung, up = climbs(S, k), cs = removeSel(S, true);
     const tags = [];
@@ -746,7 +748,7 @@
   /* Χέρι χωρίς κανέναν συνδυασμό: το discard είναι δωρεάν, για να μη σε κλειδώνει η τράπουλα. */
   const deadHand = (S) => S.phase === "round" && S.hand.length > 0 && candidates(S).length === 0;
   /* Στο Survival δεν υπάρχει δωρεάν ανάσα: θα ήταν ατέλειωτη διαφυγή σε ατέλειωτη τράπουλα. */
-  const canDiscard = (S) => S.phase === "round" && chal(S) !== "nodiscard" && (deadHand(S) || freeScout(S) || discardsLeft(S) > 0) && S.sel.length > 0 && survStock(S);
+  const canDiscard = (S) => S.phase === "round" && chal(S) !== "nodiscard" && (discardsLeft(S) > 0 || (!isSurv(S) && (deadHand(S) || freeScout(S)))) && S.sel.length > 0 && survStock(S);
   /* Scout: το πρώτο discard του γύρου δεν κοστίζει — μία φορά, όχι κάθε φορά. */
   const freeScout = (S) => has(S, "scout") && !S.rfree;
   function discard(S) {
@@ -764,8 +766,8 @@
     S.log.push({ t: "Discard", c: cs.length + " out, " + d.length + " in", p: free ? "free" : discardsLeft(S) + " left", cls: "pass" });
     return true;
   }
-  /* Survival: μόνο χέρια που ανεβαίνουν παίζονται — αλλιώς με ατέλειωτη τράπουλα το run
-     δεν θα τελείωνε ποτέ. Τέλος όταν τίποτα δεν ανεβαίνει ΚΑΙ δεν έχεις ανάσα. */
+  /* Survival: μόνο χέρια που ανεβαίνουν παίζονται. Τέλος όταν τίποτα δεν ανεβαίνει ΚΑΙ
+     δεν έχεις ανάσα να ανοίξεις το τραπέζι. */
   const hasClimb = (S) => candidates(S).some((o) => climbs(S, o.k));
   /* Κόλλησες όταν καμία κίνηση δεν αλλάζει τίποτα. */
   function stuck(S) {
@@ -777,7 +779,9 @@
     return true;
   }
   const survStock = (S) => S.pile.length > 0 || (isSurv(S) && S.deck.length > S.hand.length);
-  const canDiscardAny = (S) => chal(S) !== "nodiscard" && (discardsLeft(S) > 0 || deadHand(S) || freeScout(S)) && survStock(S) && S.hand.length > 0;
+  /* Στο Survival δεν υπάρχει δωρεάν ανάσα σε νεκρό χέρι: η ατέλειωτη τράπουλα θα την έκανε
+     ατέλειωτη διαφυγή (μετρημένο: 61 ανάσες ξοδεμένες από budget 14). */
+  const canDiscardAny = (S) => chal(S) !== "nodiscard" && (discardsLeft(S) > 0 || (!isSurv(S) && (deadHand(S) || freeScout(S)))) && survStock(S) && S.hand.length > 0;
   function stuckReason(S) {
     if (isSurv(S)) {
       if (hasClimb(S)) return "";
