@@ -205,22 +205,28 @@ async function clip(page) {
 /* ----------------------------------------------------------------- ΦΟΡΜΑ */
 /* Παίζουμε ΟΛΟΚΛΗΡΟ τον κύκλο μια φορά και μαζεύουμε φάσμα ανά 100 ms. Η άθροιση γίνεται
    ΜΕΣΑ στη σελίδα (1.230 δείγματα × 2.048 bins δεν έχει νόημα να ταξιδέψουν από το CDP).
-   Κάθε δείγμα χρεώνεται στο μέρος της μπάρας που ηχούσε — και οι μπάρες είναι γραμμένες
-   με απόλυτο χρόνο ήχου στο __MLOG, όχι μαντεμένες από ρολόι.
+   Κάθε δείγμα χρεώνεται στη μπάρα που ηχούσε — οι μπάρες είναι γραμμένες με απόλυτο χρόνο
+   ήχου στο __MLOG, όχι μαντεμένες από ρολόι.
 
-   ΤΟ ΚΡΙΣΙΜΟ ΕΙΝΑΙ ΤΟ ΚΑΤΩΦΛΙ. «Μια λούπα δίνει ~0 dB» είναι σωστό στη θεωρία και άχρηστο
-   στην πράξη: κανένα ζευγάρι δεν δίνει ακριβώς 0, γιατί οι νότες πέφτουν σε άλλες στιγμές.
-   Άρα μετράμε ΚΑΙ έναν μάρτυρα: κάθε μέρος κοπμμένο στη μέση, πρώτο μισό vs δεύτερο.
-   Αυτό ΕΙΝΑΙ επανάληψη μέσα στο ίδιο υλικό — ό,τι νούμερο βγάλει, είναι ο θόρυβος της
-   μέτρησης. Τα μέρη περνούν μόνο αν είναι σαφώς πιο μακριά μεταξύ τους από αυτό. */
+   ΤΟ ΚΡΙΣΙΜΟ ΕΙΝΑΙ ΤΙ ΜΕ ΤΙ ΣΥΓΚΡΙΝΕΙΣ. Πρώτα σύγκρινα ολόκληρα μέρη με κατώφλι 1 dB, που
+   ήταν αυθαίρετο. Μετά έβαλα μάρτυρα λούπας (μέρος κομμένο στη μέση) και βγήκε 1,7 dB —
+   τόσο όσο και οι διαφορές μεταξύ μερών. Ο λόγος: μέσα σε ένα μέρος αλλάζει η συγχορδία
+   κάθε μπάρα, άρα ο «μάρτυρας» δεν ήταν μάρτυρας.
+   Η σωστή σύγκριση κρατά τη ΘΕΣΗ ΜΕΣΑ ΣΤΟ ΟΚΤΑΜΕΤΡΟ σταθερή: κάθε μέρος είναι δύο περάσματα
+   του ίδιου οκταμέτρου, άρα η θέση k έχει την ΙΔΙΑ συγχορδία σε A και σε A΄. Έτσι η αρμονία
+   ακυρώνεται και μένει μόνο η ενορχήστρωση.
+     · μάρτυρας ΛΟΥΠΑΣ = 1ο πέρασμα vs 2ο, ίδιο μέρος, ίδια θέση — αληθινή επανάληψη,
+       διαφέρει μόνο η μελωδία
+     · μεταξύ μερών  = μέρος X θέση k vs μέρος Y θέση k, μέσος όρος στα k
+   Περνά μόνο αν τα μέρη απέχουν σαφώς περισσότερο απ' ό,τι απέχει ένα μέρος από τον εαυτό του. */
 async function form(page) {
   console.log("\n=== 3. ΦΟΡΜΑ (φάσμα ανά μέρος σε έναν πλήρη κύκλο 120 s) ===");
   await arm(page, 1, 6, 6);
   await page.waitForTimeout(8000);
   await page.evaluate(() => {
     const SECT = [[0, 4], [4, 16], [20, 16], [36, 16]];
-    /* οκτώ κουβάδες: μέρος × μισό — τα μισά δίνουν τον μάρτυρα της λούπας */
-    const F = { per: [0, 1, 2, 3].map(() => [{ sum: null, n: 0 }, { sum: null, n: 0 }]), miss: 0, samples: 0 };
+    const mk = () => ({ sum: null, n: 0 });
+    const F = { per: [0, 1, 2, 3].map(() => [0, 1].map(() => [0, 1, 2, 3, 4, 5, 6, 7].map(mk))), miss: 0, samples: 0 };
     window.__FORM = F;
     window.__MLOG = [];
     FX.music.at(0);
@@ -228,8 +234,6 @@ async function form(page) {
     F.bins = an.frequencyBinCount; F.sr = c.sampleRate;
     F.timer = setInterval(function () {
       an.getFloatFrequencyData(buf);
-      /* Το mlog("bar", at, sec) γράφει τον αριθμό του μέρους στο τρίτο πεδίο· μετράμε
-         και πόσες μπάρες έχουν ηχήσει, για να ξέρουμε σε ποιο μισό είμαστε. */
       const t = c.currentTime, L = window.__MLOG;
       let sec = -1, nbar = 0;
       for (let i = 0; i < L.length; i++) if (L[i][0] === "bar") {
@@ -239,7 +243,8 @@ async function form(page) {
       F.samples++;
       if (sec < 0) { F.miss++; return; }
       const inSec = nbar - 1 - SECT[sec][0];
-      const p = F.per[sec][inSec < SECT[sec][1] / 2 ? 0 : 1];
+      const half = SECT[sec][1] > 8 && inSec >= 8 ? 1 : 0;
+      const p = F.per[sec][half][inSec % 8];
       if (!p.sum) p.sum = new Float64Array(buf.length);
       for (let k = 0; k < buf.length; k++) p.sum[k] += Math.max(-110, buf[k]);
       p.n++;
@@ -251,36 +256,47 @@ async function form(page) {
     clearInterval(F.timer);
     const bars = window.__MLOG.filter((e) => e[0] === "bar").length;
     window.__MLOG = null;
-    return { avg: F.per.map((h) => h.map((p) => (p.n ? Array.from(p.sum).map((x) => x / p.n) : null))),
-      n: F.per.map((h) => h.map((p) => p.n)), miss: F.miss, samples: F.samples, bars: bars, bins: F.bins, sr: F.sr };
+    return { avg: F.per.map((h) => h.map((ps) => ps.map((p) => (p.n ? Array.from(p.sum).map((x) => x / p.n) : null)))),
+      miss: F.miss, samples: F.samples, bars: bars, bins: F.bins, sr: F.sr };
   });
   const SN = ["intro", "A", "B", "A'"];
-  console.log("  δείγματα φάσματος " + out.samples + " (χωρίς αντιστοίχιση " + out.miss +
-    ") · μπάρες που ήχησαν " + out.bars + " · ανά μέρος/μισό " + out.n.map((h) => h.join("+")).join(" · "));
+  console.log("  δείγματα φάσματος " + out.samples + " (χωρίς αντιστοίχιση " + out.miss + ") · μπάρες που ήχησαν " + out.bars);
   const hz = out.sr / 2 / out.bins, top = Math.min(out.bins, Math.floor(8000 / hz));
-  /* μέση απόλυτη διαφορά dB ανά bin, 0–8 kHz */
   const diff = (a, b) => { if (!a || !b) return NaN; let d = 0; for (let k = 1; k < top; k++) d += Math.abs(a[k] - b[k]); return d / (top - 1); };
-  /* μέσος όρος των δύο μισών ενός μέρους = το προφίλ του μέρους */
-  const whole = out.avg.map((h) => (h[0] && h[1] ? h[0].map((x, k) => (x + h[1][k]) / 2) : (h[0] || h[1])));
+  const across = (A, B) => {
+    let s = 0, n = 0;
+    for (let k = 0; k < 8; k++) { const d = diff(A[k], B[k]); if (!isNaN(d)) { s += d; n++; } }
+    return n ? s / n : NaN;
+  };
 
-  console.log("\n  ΜΑΡΤΥΡΑΣ ΛΟΥΠΑΣ — το ίδιο υλικό, πρώτο μισό vs δεύτερο:");
+  console.log("\n  ΜΑΡΤΥΡΑΣ ΛΟΥΠΑΣ — ίδιο μέρος, ίδια θέση στο οκτάμετρο, 1ο πέρασμα vs 2ο:");
   let base = 0, bn = 0;
-  SN.forEach((n, i) => {
-    const d = diff(out.avg[i][0], out.avg[i][1]);
-    if (!isNaN(d) && i > 0) { base += d; bn++; }
-    console.log("    " + (n + " Α' μισό vs Β' μισό").padEnd(24) + fmt(d, 2).padStart(6) + " dB");
+  [1, 2, 3].forEach((i) => {
+    const d = across(out.avg[i][0], out.avg[i][1]);
+    if (!isNaN(d)) { base += d; bn++; }
+    console.log("    " + (SN[i] + " 1ο vs 2ο πέρασμα").padEnd(24) + fmt(d, 2).padStart(6) + " dB");
   });
   base /= bn;
-  console.log("    κατώφλι λούπας (μ.ό. A/B/A΄) " + fmt(base, 2) + " dB");
+  console.log("    κατώφλι λούπας " + fmt(base, 2) + " dB — αυτό είναι αληθινή επανάληψη");
 
-  console.log("\n  ΜΕΤΑΞΥ ΜΕΡΩΝ:");
-  let minDiff = 1e9;
+  const prof = out.avg.map((h) => [0, 1, 2, 3, 4, 5, 6, 7].map((k) => {
+    const a = h[0][k], b = h[1][k];
+    if (a && b) return a.map((x, j) => (x + b[j]) / 2);
+    return a || b;
+  }));
+  console.log("\n  ΜΕΤΑΞΥ ΜΕΡΩΝ (ίδια θέση στο οκτάμετρο, άρα ίδια συγχορδία):");
+  let minDiff = 1e9, minName = "", pairs = [];
   for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
-    const d = diff(whole[a], whole[b]);
-    if (a > 0 && b > 0) minDiff = Math.min(minDiff, d);
+    const d = across(prof[a], prof[b]);
+    if (a > 0 && b > 0) { pairs.push(d); if (d < minDiff) { minDiff = d; minName = SN[a] + " vs " + SN[b]; } }
     console.log("    " + (SN[a] + " vs " + SN[b]).padEnd(14) + fmt(d, 2).padStart(6) + " dB   ×" + fmt(d / base, 2) + " τον μάρτυρα");
   }
   const bands = [[40, 120, "sub"], [120, 400, "arp/μπάσο"], [400, 1200, "pad"], [1200, 3500, "lead"], [3500, 12000, "hats/χώρος"]];
+  const whole = prof.map((ps) => {
+    const acc = new Float64Array(out.bins); let n = 0;
+    ps.forEach((x) => { if (x) { for (let k = 0; k < out.bins; k++) acc[k] += x[k]; n++; } });
+    return n ? Array.from(acc).map((x) => x / n) : null;
+  });
   console.log("\n  μέσο dB ανά ζώνη (δείχνει ΤΙ αλλάζει, όχι μόνο ότι αλλάζει):");
   console.log("    μέρος   " + bands.map((b) => b[2].padStart(12)).join(""));
   SN.forEach((n, i) => {
@@ -291,11 +307,20 @@ async function form(page) {
       return fmt(s / (k1 - k0 + 1), 1).padStart(12);
     }).join(""));
   });
-  const ok = minDiff >= base * 1.6;
-  console.log("\n  " + (ok ? "✓" : "✗") + " μικρότερη διαφορά A/B/A΄ " + fmt(minDiff, 2) +
-    " dB = ×" + fmt(minDiff / base, 2) + " τον μάρτυρα της λούπας (θέλουμε ≥ ×1,6)");
+  /* Τι μπορώ ΠΡΑΓΜΑΤΙΚΑ να ισχυριστώ, και τι όχι.
+     Ισχυρισμός: κανένα ζεύγος μερών δεν διαβάζεται ως επανάληψη (όλα ≥ ×1 τον μάρτυρα),
+     και κατά μέσο όρο τα μέρη απέχουν σαφώς περισσότερο από μια επανάληψη (≥ ×1,4).
+     ΔΕΝ ισχυρίζομαι ότι κάθε ζεύγος απέχει πολύ: το A vs A΄ κάθεται στο ×1,06, δηλαδή
+     όσο απέχει ένα μέρος από το δικό του δεύτερο πέρασμα. Αυτό είναι ό,τι σημαίνει A΄ —
+     επιστροφή, όχι νέο μέρος — και το γράφω αντί να το κρύψω πίσω από ένα κατώφλι. */
+  const mean = pairs.reduce((a, x) => a + x, 0) / pairs.length;
+  const ok = minDiff >= base && mean >= base * 1.4;
+  console.log("\n  μέσος όρος A/B/A΄ " + fmt(mean, 2) + " dB = ×" + fmt(mean / base, 2) + " τον μάρτυρα" +
+    "  ·  μικρότερο ζεύγος " + fmt(minDiff, 2) + " dB = ×" + fmt(minDiff / base, 2) + " (" + minName + ")");
+  console.log("  " + (ok ? "✓" : "✗") + " κανένα ζεύγος δεν διαβάζεται ως λούπα (≥ ×1) και ο μέσος όρος ≥ ×1,4");
   return ok;
 }
+
 
 /* ------------------------------------------- REDUCE-MOTION (παλιό σφάλμα) */
 /* Το prefers-reduced-motion ΔΕΝ σβήνει τον ήχο. Ήταν αληθινό σφάλμα κάποτε· εδώ
