@@ -177,8 +177,9 @@
   const DECKS = [
     { id: "classic", name: "Classic", desc: "52 cards and two Jokers.", glyph: "♠" },
     { id: "wild", name: "Wild Deck", desc: "Four Jokers. Jokers pop up twice as often.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
-    /* Το Headless βγήκε: ήταν άλλη τράπουλα για το ίδιο παιχνίδι. Στη θέση του μπήκε το
-       Survival, που είναι άλλος ΤΡΟΠΟΣ — μία τράπουλα, καθόλου στόχοι, μόνο σκορ. */
+    /* Στη θέση του Headless, που ήταν άλλη τράπουλα για το ίδιο παιχνίδι. Ίδια σειρά, τρίτη
+       επιλογή — αλλά αυτή αλλάζει τον τρόπο, όχι τα φύλλα: καθόλου στόχοι, καθόλου perks. */
+    { id: "survival", name: "Survival", desc: "No targets, no perks. The cards never run out — climb until nothing does.", glyph: "∞", mode: "surv", lock: { key: "best", n: 6, text: "Clear ante 6" } },
   ];
   const deckById = {}; DECKS.forEach((d) => { deckById[d.id] = d; });
 
@@ -194,12 +195,6 @@
     { id: "jewels", a: "court", b: "goldsmith", name: "Crown Jewels", desc: "A Gold face card adds +120 Base instead of +60." },
   ];
   const synById = {}; SYNERGIES.forEach((s) => { synById[s.id] = s; });
-  /* Οι δύο τρόποι παιχνιδιού. Το Survival είναι σκορ, όχι πίστες. */
-  const MODES = [
-    { id: "run", name: "The Climb", glyph: "▲", desc: "Fifty antes, perks, charms and a boss every third." },
-    { id: "surv", name: "Survival", glyph: "∞", desc: "One deck, no targets, no perks. Score as much as it holds.", lock: { key: "best", n: 6, text: "Clear ante 6" } },
-  ];
-  const modeById = {}; MODES.forEach((m) => { modeById[m.id] = m; });
   /* Ποιο «όνομα» φωνάζει η οθόνη όταν ένα χέρι αξίζει περισσότερα από ένα. */
   const TAG_ORDER = ["Bomb!", "Ladder to Heaven", "Ace", "Chain broken", "Overkill", "Long Run", "Staircase", "Mirror", "Tight Step", "Humble"];
 
@@ -264,11 +259,11 @@
   }
 
   /* ============================== run ============================== */
-  function newRun(seedStr, unlocked, deckId, mode) {
+  function newRun(seedStr, unlocked, deckId) {
     const seed = String(seedStr || "").trim() || String(Math.floor(Math.random() * 1e9));
     const D = deckById[deckId] || DECKS[0];
     const S = {
-      v: 13, seed, rng: hash(seed) | 0, deckId: D.id, endless: false, mode: mode === "surv" ? "surv" : "run",
+      v: 13, seed, rng: hash(seed) | 0, deckId: D.id, endless: false, mode: D.mode === "surv" ? "surv" : "run",
       ante: 0, phase: "round", offers: [], picks: 0, nOffers: CFG.offers,
       handSize: CFG.handSize, playsMax: CFG.plays, discMore: 0, chainStart: 0,
       hand: [],
@@ -904,7 +899,7 @@
   const todaySeed = (d) => { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 
   return {
-    SUITS, KINDS, isSurv, MODES, modeById, BY_TIER, TARGETS, tgtAt, RULES, ruleById, CFG, POOL, DECKS, deckById, SYNERGIES, synById, syn, activeSynergies, synergyFor, goEndless, nearMiss, kbase, kchips, kmult, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
+    SUITS, KINDS, isSurv, BY_TIER, TARGETS, tgtAt, RULES, ruleById, CFG, POOL, DECKS, deckById, SYNERGIES, synById, syn, activeSynergies, synergyFor, goEndless, nearMiss, kbase, kchips, kmult, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, nextTarget, roundHandSize,
     classify, climbs, hasClimb, chainPos, survMilestone, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
     candidates, legalMoves, hasLegal, suggest, orphans,

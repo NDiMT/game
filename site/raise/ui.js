@@ -14,17 +14,14 @@
   const saveLife = (l) => { try { localStorage.setItem(LIFE, JSON.stringify(l)); } catch (e) {} };
   const unlockedFrom = (l) => G.CHARMS.filter((c) => !c.lock || (l[c.lock.key] || 0) >= c.lock.n).map((c) => c.id);
   const DECK_KEY = "raise.deck.v1";
-  const MODE_KEY = "raise.mode.v1";
   const deckOpen = (l, d) => !d.lock || (l[d.lock.key] || 0) >= d.lock.n;
-  const modeOpen = deckOpen;
-  const modePick = () => { try { const id = localStorage.getItem(MODE_KEY) || "run"; const m = G.modeById[id]; return m && modeOpen(life(), m) ? id : "run"; } catch (e) { return "run"; } };
   const deckPick = () => { try { const id = localStorage.getItem(DECK_KEY) || "classic"; const d = G.deckById[id]; return d && deckOpen(life(), d) ? id : "classic"; } catch (e) { return "classic"; } };
   /* Το καλύτερο ανά seed (τοπικό ledger): ante, σκορ, τράπουλα. */
   const ledger = (l) => Object.keys(l.seeds || {}).map((seed) => Object.assign({ seed }, l.seeds[seed])).sort((a, b) => b.ante - a.ante || b.score - a.score);
   /* Μεταφέρει τα stats του run στα stats ζωής και ξεκλειδώνει charms. */
   function commitStats() {
     /* Survival δεν ξεκλειδώνει τίποτα: η αλυσίδα ×6 πιάνεται εύκολα εκεί (p50 ×16), οπότε
-       θα χάριζε τη σκάλα των unlocks του Climb. Μετράει μόνο για το δικό του ρεκόρ. */
+       θα χάριζε τη σκάλα των unlocks του κανονικού run. Μετράει μόνο για το δικό του ρεκόρ. */
     if (G.isSurv(S)) return [];
     const l = life(), was = S.statsCommitted || {};
     Object.keys(S.stats).forEach((k) => { l[k] = (l[k] || 0) + (S.stats[k] - (was[k] || 0)); });
@@ -47,7 +44,7 @@
   }
 
   /* ---------- run lifecycle ---------- */
-  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick(), modePick()); ui.note = null; shown = 0; save(); hideStart(); render(); afterMove(); }
+  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.note = null; shown = 0; save(); hideStart(); render(); afterMove(); }
   function resumeOrBegin() {
     const saved = load();
     if (saved) { S = saved; shown = S.score; render(); }
@@ -479,7 +476,7 @@
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Silver</b> (Mult ×1.5, the common one), <b>Gold</b> (Mult ×2, and two of them ×3 — the cap on enhanced cards) or a <b>Joker</b>.</p>' +
       '<p>Most of the antes in between carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. A boss ante has a rule that bites instead, and a target a tenth lower to pay for it.</p>' +
       '<p>Fifty antes. Gentle at first, steep at the end. The Summit at 50 — and Endless after that.</p>' +
-      '<p><b>Survival</b> is the other mode, and a different game. <b>No targets, no antes, no perks or charms</b>, and the cards never run out — the deck comes round again, shuffled, for as long as you last. Three things change:</p>' +
+      '<p><b>Survival</b> is the third choice in the row on the start screen, next to the two decks — and a different game. <b>No targets, no antes, no perks or charms</b>, and the cards never run out — the deck comes round again, shuffled, for as long as you last. Three things change:</p>' +
       '<p>· <b>Every hand has to climb.</b> A hand that does not beat the rung cannot be played at all.<br>· <b>The chain has no ceiling</b> — no cap at ×6, so step forty is worth forty steps of Mult.<br>· A discard also <b>opens the table</b>: a <b>breath</b>. It is the only way out when nothing in your hand climbs. You start with <b>five</b>, and <b>earn one more every time your score passes the next mark</b> — 1 500, then 3 300, then 7 260, each mark a little over twice the last. The bar under your score is how close the next one is.</p>' +
       '<p>The run ends the moment nothing climbs and you have no breath left. So it is one long question: <b>the cheapest climb keeps the rung low and the chain alive</b> — spend the big hands and the rung gets too high to beat. Measured, playing the biggest hand every time scores about <b>20 000</b> over sixteen hands; playing the smallest climb scores about <b>45 000</b> over forty. That gap is the mode.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
@@ -514,10 +511,7 @@
       '<button class="big' + (resume ? " ghost" : "") + '" data-daily="1">Daily' + (l.seeds && l.seeds[G.todaySeed()] ? ' · best ante ' + l.seeds[G.todaySeed()].ante : "") + '</button>' +
       '<div class="row2"><button class="big ghost" data-random="1">Random run</button><button class="big ghost" data-howto="1">How to play</button></div>' +
       '<button class="colllink" data-collection="1">Collection · ' + un.length + ' / ' + G.CHARMS.length + ' charms ›</button>';
-    const mp = modePick();
-    $("modes").innerHTML = G.MODES.map((m) => { const ok = modeOpen(l, m), on = m.id === mp; return '<button class="deckc' + (on ? " on" : "") + (ok ? "" : " locked") + '" data-mode="' + m.id + '"' + (ok ? "" : " disabled") + '><b>' + m.glyph + ' ' + m.name + '</b><span>' + (ok ? m.desc : "🔒 " + m.lock.text) + '</span></button>'; }).join("");
-    $("decks").hidden = mp === "surv";
-    const pick = deckPick();
+    const pick = deckPick(), mp = G.deckById[pick] && G.deckById[pick].mode === "surv" ? "surv" : "run";
     $("decks").innerHTML = G.DECKS.map((d) => { const ok = deckOpen(l, d), on = d.id === pick; return '<button class="deckc' + (on ? " on" : "") + (ok ? "" : " locked") + '" data-deck="' + d.id + '"' + (ok ? "" : " disabled") + '><b>' + d.glyph + ' ' + d.name + '</b><span>' + (ok ? d.desc : "🔒 " + d.lock.text) + '</span></button>'; }).join("");
     const lg = ledger(l).slice(0, 5);
     $("ledger").innerHTML = lg.length ? '<span class="lbl">Ledger · best climbs</span>' + lg.map((r) => '<button class="ledg" data-replay="' + r.seed + '"><b>Ante ' + r.ante + '</b><span>' + r.seed + (r.deck && r.deck !== "classic" ? " · " + G.deckById[r.deck].name : "") + '</span><em>' + r.score + '</em></button>').join("") : "";
@@ -610,7 +604,6 @@
   });
   $("start").addEventListener("click", (e) => {
     if (e.target.closest("[data-continue]")) { hideStart(); FX.sfx.open(); render(); if (S.phase === "shop") sheetShop(null, []); else if (S.phase === "won") sheetWin(); else afterMove(); return; }
-    const md = e.target.closest("[data-mode]"); if (md) { try { localStorage.setItem(MODE_KEY, md.dataset.mode); } catch (x) {} FX.sfx.tick(); showStart(S && (S.phase === "round" || S.phase === "shop") ? S : null); return; }
     const dk = e.target.closest("[data-deck]"); if (dk) { try { localStorage.setItem(DECK_KEY, dk.dataset.deck); } catch (x) {} FX.sfx.tick(); showStart(S && (S.phase === "round" || S.phase === "shop") ? S : null); return; }
     const rp = e.target.closest("[data-replay]"); if (rp) { FX.sfx.open(); begin(rp.dataset.replay); return; }
     if (e.target.closest("[data-daily]")) { FX.sfx.open(); begin(G.todaySeed()); return; }

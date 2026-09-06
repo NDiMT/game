@@ -9,7 +9,7 @@ const cost = (k) => G.KINDS[k.kind].tier * 1e6 + k.size * 1e3 + k.rank;
 /* greedy = πάντα το ακριβότερο ανέβασμα · cheap = το φθηνότερο (κρατά το rung χαμηλά)
    sharp  = cheap, αλλά το τελευταίο ανέβασμα (χωρίς ανάσα να ξοδέψεις) το ακριβότερο */
 function run(seed, pol) {
-  const S = G.newRun(seed, [], "classic", "surv");
+  const S = G.newRun(seed, [], "survival");
   let breaths = 0, guard = 0;
   for (; guard < 4000 && S.phase === "round"; guard++) {
     const up = G.candidates(S).filter((o) => G.climbs(S, o.k));
