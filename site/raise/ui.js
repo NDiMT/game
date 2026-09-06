@@ -438,7 +438,10 @@
       '<div>Bombs<b>' + (S.stats.quads || 0) + '</b></div>' +
       '<div>Seed<b>' + S.seed + '</b></div></div>' +
       '<p class="sub" style="margin:.9rem 0">Every hand has to climb, and every chain step is worth 22% more Mult than the last — with no ceiling. So the cheapest climb is usually the right one: it keeps the rung low and the chain alive. Measured, playing the biggest hand every time scores about 20 000 over sixteen hands; playing the smallest climb scores about 45 000 over forty.</p>' +
-      '<button class="big" data-restart="1">Same seed, again</button><div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>');
+      '<button class="big" data-restart="1">Same seed, again</button>' +
+      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>' +
+      /* Χωρίς αυτό, το φύλλο του τέλους ήταν αδιέξοδο: μόνο «ξανά» — καμία έξοδος στο μενού. */
+      '<button class="big ghost" data-title="1" style="margin-top:.4rem">Menu</button>');
   }
   function sheetLose(newBest) {
     if (G.isSurv(S)) return sheetSurv(newBest);
@@ -449,14 +452,18 @@
       (S.charms.length ? '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' : "") +
       nextUnlock() +
       '<p class="sub" style="margin:.9rem 0">' + BUSTED_TIPS[(S.ante + S.stats.plays) % BUSTED_TIPS.length] + '</p>' +
-      '<button class="big" data-restart="1">Same seed, again</button><div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>');
+      '<button class="big" data-restart="1">Same seed, again</button>' +
+      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>' +
+      /* Χωρίς αυτό, το φύλλο του τέλους ήταν αδιέξοδο: μόνο «ξανά» — καμία έξοδος στο μενού. */
+      '<button class="big ghost" data-title="1" style="margin-top:.4rem">Menu</button>');
   }
   function sheetWin() {
     openS('<h2 class="good">The Summit</h2><p class="sub">All fifty · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
       '<div class="tally"><div>Charms<b>' + S.charms.length + '</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
       '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' +
       '<button class="big" data-endless="1" style="margin-top:1rem">Keep climbing · Endless</button>' +
-      '<div class="row2"><button class="big ghost" data-fresh="1">New run</button><button class="big ghost" data-share="1">Share</button></div>');
+      '<div class="row2"><button class="big ghost" data-fresh="1">New run</button><button class="big ghost" data-share="1">Share</button></div>' +
+      '<button class="big ghost" data-title="1" style="margin-top:.4rem">Menu</button>');
   }
   function sheetMenu() {
     openS('<h2>This round</h2>' +
