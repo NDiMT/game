@@ -508,6 +508,9 @@
          αυτή η γραμμή απαντά αντί να μαντεύουμε. */
       '<p class="build">' + buildTag() + ' · audio: ' + FX.audioState() + '</p>' +
       '<button class="big ghost" data-title="1" style="margin-top:.4rem">Title screen</button>' +
+      /* Διέξοδος όταν το τηλέφωνο κρατά παλιά έκδοση: σβήνει ΚΑΘΕ cache, ξεγράφει τον
+         service worker, και ξαναφορτώνει καθαρά. */
+      '<button class="big ghost" data-hardreload="1" style="margin-top:.4rem">Force update · clear cache</button>' +
       (installEvt ? '<button class="big" data-install="1" style="margin-top:.4rem">Add to home screen</button>' : "") +
       '<button class="big ghost" data-close="1" style="margin-top:.5rem">Back</button>');
   }
@@ -664,6 +667,15 @@
     if (t.closest("[data-fresh]")) { closeS(); begin(""); return; }
     if (t.closest("[data-seed]")) { const v = $("sd").value.trim(); if (v) { closeS(); begin(v); } return; }
     if (t.closest("[data-sound]")) { FX.toggleMute(); FX.sfx.tick(); sheetMenu(); return; }
+    if (t.closest("[data-hardreload]")) {
+      note("Clearing cache…", 4000);
+      Promise.resolve()
+        .then(() => (self.caches ? caches.keys().then((ks) => Promise.all(ks.map((k) => caches.delete(k)))) : null))
+        .then(() => (navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.map((r) => r.unregister()))) : null))
+        .catch(() => {})
+        .then(() => { try { sessionStorage.removeItem("raise.reloaded"); } catch (x) {} location.replace(location.pathname + "?fresh=" + Date.now()); });
+      return;
+    }
     if (t.closest("[data-music]")) { FX.toggleMusic(); FX.sfx.tick(); sheetMenu(); return; }
     if (t.closest("[data-howto]")) { sheetHowTo(); return; }
     if (t.closest("[data-collection]")) { sheetCollection(); return; }
