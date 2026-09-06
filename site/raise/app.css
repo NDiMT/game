@@ -1284,3 +1284,34 @@ body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-sha
 .go.down.cost .go__s{color:#6b3512;font-weight:600}
 .go.down.cost:active{transform:translateY(2px) scale(.985);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 0 #8a4718,0 4px 10px rgba(0,0,0,.4)}
 @media (prefers-reduced-motion:reduce){.go.down.cost::before{animation:none}}
+
+/* ===================== v26: η αρχική οθόνη δεν κόβεται ===================== */
+/* Ήταν `display:grid; place-items:center` σε `position:fixed` χωρίς κύλιση: μόλις το
+   περιεχόμενο ξεπέρασε το ύψος της οθόνης (βεντάλια + wordmark + τρία κουμπιά + πλακίδια +
+   στατιστικά + ledger), κόβονταν ΚΑΙ οι δύο άκρες και δεν υπήρχε τρόπος να τις δεις.
+   Flex με `margin:auto` στο παιδί: κεντράρει όταν χωράει, κυλά όταν δεν χωράει — και το
+   `margin:auto` (σε αντίθεση με το `place-items:center`) δεν ψαλιδίζει την κορυφή. */
+.start{
+  display:flex;align-items:center;justify-content:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  padding:calc(1.1rem + var(--st)) 1.1rem calc(1.1rem + var(--sb));
+}
+.start__in{margin:auto;flex:0 0 auto}
+
+/* Κοντές οθόνες (640-740px ύψος, δηλαδή τα πιο κοινά τηλέφωνα): η αρχική χωράει ολόκληρη
+   χωρίς κύλιση, αντί να θέλει σύρσιμο για την τελευταία γραμμή του ledger. */
+@media (max-height:760px){
+  .start{padding:calc(.7rem + var(--st)) 1rem calc(.7rem + var(--sb))}
+  .start__in{gap:.5rem}
+  .fan{height:4.6rem;--cw:2.9rem}
+  .tag{font-size:1.1rem;margin-top:-.35rem}
+  .start__btns{gap:.35rem;margin-top:.15rem}
+  .start__btns .big{height:3rem}
+  .colllink{min-height:38px;padding:.15rem .6rem}
+  .deckc{padding:.5rem .55rem}
+  .deckc b{font-size:.8rem}
+  .deckc span{font-size:.66rem;line-height:1.25}
+  .stats div{padding:.4rem .2rem}
+  .stats b{font-size:1rem}
+  .ledg{padding:.34rem .6rem}
+}

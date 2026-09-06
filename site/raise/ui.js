@@ -569,7 +569,7 @@
       '<button class="colllink" data-collection="1">Collection · ' + un.length + ' / ' + G.CHARMS.length + ' charms ›</button>';
     const pick = deckPick(), mp = G.deckById[pick] && G.deckById[pick].mode === "surv" ? "surv" : "run";
     $("decks").innerHTML = G.DECKS.map((d) => { const ok = deckOpen(l, d), on = d.id === pick; return '<button class="deckc' + (on ? " on" : "") + (ok ? "" : " locked") + '" data-deck="' + d.id + '"' + (ok ? "" : " disabled") + '><b>' + d.glyph + ' ' + d.name + '</b><span>' + (ok ? d.desc : "🔒 " + d.lock.text) + '</span></button>'; }).join("");
-    const lg = ledger(l).slice(0, 5);
+    const lg = ledger(l).slice(0, 3);   /* τρεις, όχι πέντε: πέντε ξεχείλιζαν την οθόνη */
     /* Καμία ετικέτα στο κάτω μέρος της αρχικής. Η προηγούμενη («Solo card game · one thumb…»)
        βγήκε, αυτή του ledger έμεινε — κι αυτή ήταν το μόνο πράγμα που έφτανε στο ορατό.
        Οι σειρές μιλούν μόνες τους: ante, seed, σκορ. */
