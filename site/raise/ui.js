@@ -44,7 +44,7 @@
   }
 
   /* ---------- run lifecycle ---------- */
-  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.note = null; shown = 0; save(); hideStart(); render(); afterMove(); }
+  function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.note = null; shown = 0; FX.music.start(); FX.music.key(0); save(); hideStart(); render(); afterMove(); }
   function resumeOrBegin() {
     const saved = load();
     if (saved) { S = saved; shown = S.score; render(); }
@@ -141,6 +141,9 @@
       /* Ο μεγάλος αριθμός είναι το σκαλί· η ετικέτα λέει τι αξίζει, χωρίς να το ξαναπεί. */
       $("chain").firstElementChild.textContent = steps ? "Mult ×" + mul : "Chain"; }
     $("chain").classList.toggle("cold", pos <= 1);
+    /* Το κομμάτι χτίζεται μαζί με την αλυσίδα. Στο Survival η αλυσίδα δεν έχει οροφή,
+       οπότε η αναφορά είναι πιο μακριά — αλλιώς το κομμάτι θα ήταν φουλ στο τέταρτο χέρι. */
+    FX.music.chain(pos, surv ? 14 : G.CFG.chainCap);
     document.body.dataset.heat = pos >= 6 ? 3 : pos >= 4 ? 2 : pos >= 2 ? 1 : 0;
     $("chain").style.setProperty("--pos", Math.min(pos, 12));
     const pk = G.peek(S); $("peek").hidden = !pk; if (pk) $("peekCard").innerHTML = pk.map((c) => cardHTML(c, null, false, true, 0, 1)).join("");
@@ -377,6 +380,7 @@
   const refreshShop = () => { $("shopBody").innerHTML = shopBodyFull(); };
   function goNextAnte() {
     if (S.phase !== "shop") return;
+    FX.music.key((S.ante + 1) * 7);
     clearTimeout(sheetNext.t);
     $("sheet").classList.remove("leaving");
     /* Ο μετρητής ξεκινούσε τον νέο γύρο μετρώντας ΑΝΑΠΟΔΑ από το σκορ του προηγούμενου
@@ -387,7 +391,7 @@
     setTimeout(() => { if (S && S.phase === "round") calloutNow("Ante " + (S.ante + 1)); }, 260);
     const bc = G.current(S); if (bc) bossIntro(bc);
   }
-  const shareText = () => (G.isSurv(S) ? "RAISE · Survival · " + S.seed + " · " + S.score + " pts · " + S.stats.plays + " hands · best chain ×" + S.stats.maxChain : "RAISE · " + S.seed + (S.deckId && S.deckId !== "classic" ? " · " + G.deckById[S.deckId].name : "") + " · " + (S.phase === "won" ? "Summit ▲" : (S.endless ? "Endless ante " : "Ante ") + (S.ante + 1)) + " · " + S.score + " pts" + (S.charms.length ? " · " + S.charms.map((id) => G.charmById[id].name).join(", ") : ""));
+  const shareText = () => (G.isSurv(S) ? "ANABASIS · Survival · " + S.seed + " · " + S.score + " pts · " + S.stats.plays + " hands · best chain ×" + S.stats.maxChain : "ANABASIS · " + S.seed + (S.deckId && S.deckId !== "classic" ? " · " + G.deckById[S.deckId].name : "") + " · " + (S.phase === "won" ? "Summit ▲" : (S.endless ? "Endless ante " : "Ante ") + (S.ante + 1)) + " · " + S.score + " pts" + (S.charms.length ? " · " + S.charms.map((id) => G.charmById[id].name).join(", ") : ""));
   function missHTML() {
     const nm = G.nearMiss(S); if (!nm || !nm.close) return "";
     let body;
@@ -458,7 +462,8 @@
       '<div class="sec"><span class="lbl">Seed · ' + S.seed + '</span><div class="seedrow"><input id="sd" value="" placeholder="custom seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Go</button></div>' +
       '<button class="big ghost" data-fresh="1" style="margin-top:.4rem">Random seed</button></div>' +
       '<div class="row2" style="margin-top:1.1rem"><button class="big ghost" data-howto="1">How to play</button><button class="big ghost" data-collection="1">Collection</button></div>' +
-      '<div class="row2"><button class="big ghost" data-sound="1">Sound · ' + (FX.isMuted() ? "off" : "on") + '</button><button class="big ghost" data-title="1">Title screen</button></div>' +
+      '<div class="row2"><button class="big ghost" data-sound="1">Sound · ' + (FX.isMuted() ? "off" : "on") + '</button><button class="big ghost" data-music="1">Music · ' + (FX.musicOn() && !FX.isMuted() ? "on" : "off") + '</button></div>' +
+      '<button class="big ghost" data-title="1" style="margin-top:.4rem">Title screen</button>' +
       (installEvt ? '<button class="big" data-install="1" style="margin-top:.4rem">Add to home screen</button>' : "") +
       '<button class="big ghost" data-close="1" style="margin-top:.5rem">Back</button>');
   }
@@ -504,11 +509,14 @@
   /* ---------- start screen ---------- */
   const FAN = [{ r: 10, si: 0 }, { r: 11, si: 2 }, { r: 12, si: 3 }, { r: 13, si: 1 }, { r: 14, si: 0 }];
   function showStart(resume) {
+    FX.music.level(0.1);
     const l = life(), un = unlockedFrom(l);
     $("fan").innerHTML = FAN.map((c, i) => '<span class="fan__c" style="--i:' + i + '">' + cardHTML(c, null, false, true, i, 5) + '</span>').join("");
     $("startBtns").innerHTML =
-      (resume ? '<button class="big" data-continue="1">' + (resume.phase === "won" ? "The Summit · keep climbing" : "Continue · ante " + (resume.ante + 1) + " · " + resume.score + " pts") + '</button>' : "") +
-      '<button class="big' + (resume ? " ghost" : "") + '" data-random="1">Play</button>' +
+      /* Ένα κύριο κουμπί, όχι δύο: Continue αν τρέχει run, αλλιώς Play. */
+      (resume
+        ? '<button class="big" data-continue="1">' + (resume.phase === "won" ? "Keep climbing · Endless" : "Continue · ante " + (resume.ante + 1)) + '</button>'
+        : '<button class="big" data-random="1">Play</button>') +
       '<button class="big ghost" data-howto="1">How to play</button>' +
       '<button class="colllink" data-collection="1">Collection · ' + un.length + ' / ' + G.CHARMS.length + ' charms ›</button>';
     const pick = deckPick(), mp = G.deckById[pick] && G.deckById[pick].mode === "surv" ? "surv" : "run";
@@ -519,6 +527,9 @@
     $("start").hidden = false; document.body.classList.add("on-start"); FX.embers(true);
   }
   function hideStart() { $("start").hidden = true; document.body.classList.remove("on-start"); FX.embers(false); }
+  /* Ο ήχος δεν επιτρέπεται πριν από χειρονομία — η μουσική μπαίνει στο πρώτο άγγιγμα,
+     χαμηλά, και ανεβαίνει μόνη της μαζί με την αλυσίδα. */
+  addEventListener("pointerdown", () => { FX.music.start(); if ($("start") && !$("start").hidden) FX.music.level(0.1); }, { once: true, passive: true });
 
   /* ---------- events ---------- */
   const SWIPE = 45;
@@ -594,6 +605,7 @@
     if (t.closest("[data-fresh]")) { closeS(); begin(""); return; }
     if (t.closest("[data-seed]")) { const v = $("sd").value.trim(); if (v) { closeS(); begin(v); } return; }
     if (t.closest("[data-sound]")) { FX.toggleMute(); FX.sfx.tick(); sheetMenu(); return; }
+    if (t.closest("[data-music]")) { FX.toggleMusic(); FX.sfx.tick(); sheetMenu(); return; }
     if (t.closest("[data-howto]")) { sheetHowTo(); return; }
     if (t.closest("[data-collection]")) { sheetCollection(); return; }
     if (t.closest("[data-share]")) { const txt = shareText(); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { t.closest("[data-share]").textContent = "Copied"; }).catch(() => { prompt("Copy your result", txt); }); return; }

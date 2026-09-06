@@ -8,12 +8,12 @@
 | Διαδρομή | Τι είναι |
 | --- | --- |
 | `site/index.html` | Αρχική σελίδα |
-| `site/raise/index.html` | **RAISE** — playable demo, ένα αυτόνομο αρχείο HTML χωρίς build |
+| `site/raise/index.html` | **ANABASIS** — playable demo, ένα αυτόνομο αρχείο HTML χωρίς build |
 | `site/ideas/index.html` | Ο κατάλογος των εννέα παιχνιδιών |
 | `docs/games.md` | Οι εννέα σχεδιασμοί με κανόνες και παραδείγματα γύρου |
 | `docs/concepts-poker-tichu.md` | Ο πλήρης κατάλογος concepts, με ανάλυση ανά ιδέα |
 
-## RAISE — το prototype
+## ANABASIS — το prototype
 
 Συνδυασμοί **Tichu** παιγμένοι ως climbing αλυσίδα, με **τράβηγμα**: κρατάς 8 φύλλα,
 τραβάς πίσω στα 8 μετά από κάθε παίξιμο, και έχεις **5 παιξίματα** τον γύρο.
@@ -253,7 +253,7 @@ Blind Deal κρατά δύο φύλλα μπρούμυτα μετά από **κ�
 
 | Αρχείο | Ρόλος |
 | --- | --- |
-| `site/raise/game.js` | Καθαρή λογική, χωρίς DOM. Browser (`window.RAISE`) και Node. |
+| `site/raise/game.js` | Καθαρή λογική, χωρίς DOM. Browser (`window.ANABASIS`) και Node. |
 | `site/raise/ui.js` | DOM, είσοδος, sheets, αποθήκευση run, lifetime stats, unlocks. |
 | `site/raise/fx.js` | Σωματίδια, ήχος (Web Audio), FLIP, δόνηση. |
 | `site/raise/app.css` | Οπτική ταυτότητα. |

@@ -1,4 +1,4 @@
-/* RAISE service worker.
+/* ANABASIS service worker.
    Κώδικας (HTML/JS/CSS): network-first, cache fallback — ώστε κάθε deploy να
    φτάνει στον παίκτη με το επόμενο άνοιγμα, και offline να παίζει από την cache.
    Εικονίδια/manifest: cache-first. Fonts: stale-while-revalidate.
