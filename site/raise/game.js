@@ -96,6 +96,7 @@
        Η γεωμετρική κλίμακα είναι αυτή που εγγυάται ότι το run τελειώνει: το σκορ μεγαλώνει
        τετραγωνικά με τα χέρια, οι ανάσες λογαριθμικά — 0 ατέρμονα σε 27 κελιά × 150 runs. */
     survDiscards: 5, survStep: 1500, survGrow: 2.2, survEarnCap: 99,
+    bombMul: 1.25,
     thinAirCap: 2, ruleChance: 0.75, highGroundRank: 8, shortHand: 7, richAirMul: 1.15, blindCount: 3, blindKeep: 1,
     maxBuy: { cs: 3, wi: 2, di: 2, pl: 1, gt: 1, m1: 20, m2: 20 },
   };
@@ -512,7 +513,13 @@
     /* Μηδενισμοί στο τέλος, ώστε «κανένα Chip» να σημαίνει πραγματικά κανένα. */
     if (R === "r_pair0" && k.kind === 1) { chips = 0; notes.push("Cheap Pairs · no base"); }
     if (chal(S) === "summit" && !up) { chips = 0; notes.push("Summit · no climb, no score"); }
-    const total = roundMult(mult * factor * hm);
+    /* Οι βόμβες είναι το σπανιότερο χέρι και πλήρωναν ΛΙΓΟΤΕΡΟ από ένα φουλ: μετρημένο σε
+       πραγματικό παίξιμο, καρέ 5 225 πόντοι ανά παίξιμο έναντι 6 534 του φουλ, γιατί τέσσερα
+       φύλλα ίδιας αξίας φέρνουν λιγότερα chips από πέντε. Δικός τους πολλαπλασιαστής, ΕΞΩ από
+       το hmCap, ώστε το Summiteer να προσθέτει αντί να τον καταπίνει. */
+    const bombMul = isBomb(k) ? CFG.bombMul : 1;
+    if (bombMul > 1) notes.push("Bomb ×" + bombMul);
+    const total = roundMult(mult * factor * hm * bombMul);
     return { chips, mult: total, kchips: kchips(k), kmult: kmult(k), cards: cardChips(cs), pos, notes, pts: Math.round(chips * total) };
   }
   const selCards = (S) => S.sel.map((i) => S.hand[i]);
