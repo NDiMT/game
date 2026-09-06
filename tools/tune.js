@@ -8,7 +8,9 @@
 const G = require("../site/raise/game.js");
 /* Μοχλοί για σάρωση χωρίς να πειραχτεί το game.js: BOMB=1.35 node tools/tune.js 200 50 */
 if (process.env.BOMB) G.CFG.bombMul = +process.env.BOMB;
-if (process.env.TGT) G.CFG.tgtScale = +process.env.TGT;
+/* TGT: κλίμακα σε ΟΛΟΥΣ τους στόχους, για σάρωση χωρίς να πειραχτεί ο πίνακας.
+   (Ήταν `G.CFG.tgtScale`, που δεν το διαβάζει κανείς μετά την επαναφορά — δηλαδή no-op.) */
+if (process.env.TGT) { const s = +process.env.TGT; for (let a = 0; a < G.TARGETS.length; a++) G.TARGETS[a] = Math.round(G.TARGETS[a] * s); }
 const RUNS = +process.argv[2] || 60, MAXA = +process.argv[3] || 12, VAR = process.argv[4] || "current";
 const ALL = G.CHARMS.map((c) => c.id);
 /* Σειρά επιλογής. Η παλιά ήταν μετρημένα κακή: το m1 έχει maxBuy 20, οπότε ρουφούσε κάθε

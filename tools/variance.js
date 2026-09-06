@@ -114,10 +114,13 @@ function variants(p, M) {
   };
 }
 
+/* Το μήκος ήταν καρφωμένο στο 34 όταν οι στόχοι ήταν 30· με 50 antes (και Endless από πάνω)
+   το `st.score[a]` ήταν undefined και το εργαλείο έσκαγε στο πρώτο run που περνούσε το 34. */
+const NA = G.TARGETS.length + 12;
 const st = {
-  score: Array.from({ length: 34 }, () => []), ratio: Array.from({ length: 34 }, () => []),
+  score: Array.from({ length: NA }, () => []), ratio: Array.from({ length: NA }, () => []),
   rounds: [],
-  plays: [], parts: [], lost: new Array(34).fill(0), wins: 0, nplays: 0,
+  plays: [], parts: [], lost: new Array(NA).fill(0), wins: 0, nplays: 0,
 };
 
 function rankGroups(S) { const g = {}; S.hand.forEach((c, i) => { if (!c.h && !G.isWild(c)) (g[c.r] = g[c.r] || []).push(i); }); return g; }
