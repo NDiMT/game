@@ -399,7 +399,7 @@ async function groove(page) {
 }
 
 (async () => {
-  const b = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required"] });
+  const b = await chromium.launch({ executablePath: process.env.CHROME || "/opt/pw-browsers/chromium/chrome-linux/chrome", args: ["--autoplay-policy=no-user-gesture-required"] });
   const page = await b.newPage();
   page.on("pageerror", (e) => console.log("[σφάλμα σελίδας]", e.message));
   await boot(page);
