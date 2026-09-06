@@ -1520,3 +1520,29 @@ Survival ήταν reload της σελίδας. Το ίδιο ίσχυε και 
 κανονικό run που χάθηκε (κουμπιά `Same seed, again · New seed · Share · Menu`, και το Menu
 γυρίζει στην αρχική με **Play**, όχι Continue, αφού το run είναι χαμένο) και Survival που
 τελείωσε (ίδια τετράδα).
+
+
+## (ώβ) «Γιατί αυτό δεν ανεβαίνει;»
+
+Στιγμιότυπο από κινητό: rung **Stairs 2 to J** (10 10 J J), και ο παίκτης διαλέγει **10 10 K K**.
+Το κουμπί έγραφε «DOES NOT CLIMB · Survival plays climbs only · beat Stairs 2 to J or breathe» —
+δηλαδή *τι* χρειάζεται, ποτέ *γιατί* αυτό απέτυχε.
+
+Δεν ήταν bug: τα δύο ζευγάρια είναι **χαμηλότερο είδος** (tier 2) από τα stairs (tier 4), γιατί
+τα συνεχόμενα ζευγάρια είναι δυσκολότερα — και η **αξία μετράει μόνο μέσα στο ίδιο είδος και
+μήκος**. Ένας Κ δεν περνά πάνω από ένα J όταν το είδος είναι κατώτερο. Αλλά τίποτα στην οθόνη
+δεν το έλεγε, οπότε το σωστό μοιάζει με χαλασμένο.
+
+Νέο `whyNoClimb(S, k)`: λέει τον λόγο με τα λόγια του, στη γραμμή κάτω από το τραπέζι (και στο
+κουμπί στο Survival), κόκκινο:
+
+| επιλογή πάνω σε rung | τι λέει |
+| --- | --- |
+| δύο ζευγάρια 10+Κ πάνω σε Stairs 2 to J | *Two Pair ranks below Stairs · a higher card does not carry across kinds* |
+| stairs 2 ζευγαριών πάνω σε Stairs 3 to K | *needs more than 3 pairs, not a higher one* |
+| ζευγάρι J πάνω σε Pair K | *same kind and length · needs to top K* |
+| ζευγάρι 3 στο High Ground | *High Ground · nothing under a pair of 8 climbs this round* |
+
+Επαληθευμένο στη μηχανή (πέντε περιπτώσεις, συν δύο που όντως ανεβαίνουν) και στην οθόνη σε
+πραγματικό παίξιμο: με rung `Two Pair K` και επιλογή `Pair 3`, η γραμμή γράφει *«Pair ranks
+below Two Pair · a higher card does not carry across kinds»* με την κόκκινη κλάση.

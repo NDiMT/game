@@ -556,6 +556,23 @@
     return "To climb: " + how + ", or a better kind of hand";
   }
 
+  /* Γιατί ΑΥΤΟ το χέρι δεν ανεβαίνει. Χωρίς αυτό, ο παίκτης διαλέγει δύο ζευγάρια με Κ πάνω
+     σε stairs με J, βλέπει «δεν ανεβαίνει», και δεν έχει τρόπο να μάθει ότι η αξία μετράει
+     ΜΟΝΟ μέσα στο ίδιο είδος και μήκος — το είδος αποφασίζει πρώτο. */
+  function whyNoClimb(S, k) {
+    if (!k) return "";
+    if (tooSmall(S, k)) return "High Ground · nothing under a pair of " + CFG.highGroundRank + " climbs this round";
+    const r = S.rung;
+    if (!r || beats(k, r)) return "";
+    const K = KINDS[k.kind], R = KINDS[r.kind];
+    if (k.kind !== r.kind) return K.name + " ranks below " + R.name + " · a higher card does not carry across kinds";
+    const pairish = k.kind === 3 || k.kind === 8;
+    if (k.size !== r.size) return pairish
+      ? "needs more than " + (r.size / 2) + " pairs, not a higher one"
+      : "needs more than " + r.size + " cards, not a higher one";
+    return "same kind and length · needs to top " + rname(r.rank);
+  }
+
   /* ============================== κινήσεις ============================== */
   function candidates(S) {
     const bR = {}, W = [], vis = [];
@@ -912,7 +929,7 @@
   return {
     SUITS, KINDS, isSurv, BY_TIER, TARGETS, tgtAt, RULES, ruleById, CFG, POOL, DECKS, deckById, SYNERGIES, synById, syn, activeSynergies, synergyFor, goEndless, nearMiss, kbase, kchips, kmult, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, nextTarget, roundHandSize,
-    classify, climbs, hasClimb, chainPos, survMilestone, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
+    classify, climbs, hasClimb, whyNoClimb, chainPos, survMilestone, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
     candidates, legalMoves, hasLegal, suggest, orphans,
     toggle, reveal, play, discard, canDiscard, canDiscardAny, discardsLeft, discMaxOf, deadHand, handCap, stuck, stuckReason, finish,
     makeOffers, canTake, take, picksLeft, laneLeft, isReward, rewardKind, nextAnte, applyFree: apply, upcoming, current, currentRule, upcomingRule, peek, has,

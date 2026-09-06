@@ -193,7 +193,7 @@
       go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (!surv && S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
     else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? (surv ? "Breathe these away instead?" : "Discard these instead?") : "Pick a pair, a run or a set") + '</span>'; }
-    else if (surv && !e.up) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Does not climb</span><span class="go__s">Survival plays climbs only · beat ' + G.clabel(S.rung) + ' or breathe</span>'; }
+    else if (surv && !e.up) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + ' does not climb</span><span class="go__s">' + (G.whyNoClimb(S, e.k) || "beat " + G.clabel(S.rung) + " or breathe") + '</span>'; }
     else {
       go.classList.add(e.up ? "ok" : "down"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind));
       const calc = e.chips + " × " + e.mult;
@@ -202,8 +202,13 @@
     /* Η γραμμή κάτω από το τραπέζι δεν αλλάζει με την επιλογή: λέει τι θέλει το rung, και μόνο.
        Ο αριθμός του χεριού ζει στο κουμπί, εκεί που πέφτει ο αντίχειρας. */
     pv.classList.add("hint");
-    pvt = (S.rung ? "Beat " + G.clabel(S.rung) + " to climb" : G.beatText(S)) + (!surv && S.playsLeft < 2 ? " · last play" : "") +
+    /* Όταν έχεις διαλέξει κάτι που δεν ανεβαίνει, η γραμμή εξηγεί ΓΙΑΤΙ — αυτή είναι η
+       στιγμή που ο παίκτης μαθαίνει τη σκάλα, όχι το φύλλο των κανόνων. */
+    const why = e.k && !e.up ? G.whyNoClimb(S, e.k) : "";
+    pvt = (why ? why : S.rung ? "Beat " + G.clabel(S.rung) + " to climb" : G.beatText(S)) +
+      (!surv && S.playsLeft < 2 ? " · last play" : "") +
       (surv && S.rung ? " · or breathe (" + G.discardsLeft(S) + ")" : "");
+    if (why) pv.classList.add("bad");
     pv.innerHTML = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       : cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + "</span>").join(' <i>·</i> ');
     Array.prototype.forEach.call(go.querySelectorAll(".go__s"), (el) => { el.textContent = cap(el.textContent); });
