@@ -4,7 +4,7 @@
   const G = window.RAISE, FX = window.FX, IC = window.ICONS;
   const $ = (id) => document.getElementById(id);
   const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
-  const KEY = "raise.run.v14", LIFE = "raise.life.v1";
+  const KEY = "raise.run.v15", LIFE = "raise.life.v1";
   let S = null, shown = 0, ui = { note: null, noteT: 0, ending: false }, installEvt = null;
 
   /* ---------- storage ---------- */
@@ -67,13 +67,13 @@
   }
 
   /* ---------- cards ---------- */
-  function cardHTML(c, i, sel, tbl, idx, n, extra) {
+  function cardHTML(c, i, sel, tbl, idx, n) {
     let st = "";
     if (!tbl && n > 1) st = ' style="--rot:' + (((idx / (n - 1)) - 0.5) * 3).toFixed(2) + 'deg"';
     if (tbl) st = ' style="animation-delay:' + (idx * 60) + 'ms"';
     if (c.h && !tbl) return '<button class="card down" disabled aria-label="face down"' + st + '><span class="card__back"></span></button>';
     const wild = G.isWild(c), su = G.SUITS[c.si], e = c.e, face = c.r >= 11 && !e;
-    const cls = "card" + (e ? " e-" + e : "") + (!wild && su.red ? " red" : "") + (wild ? "" : " s" + c.si) + (sel ? " sel" : "") + (face ? " face" : "") + (c.n && !tbl ? " new" : "") + (c.x && !tbl ? " enh-new" : "") + (extra || "");
+    const cls = "card" + (e ? " e-" + e : "") + (!wild && su.red ? " red" : "") + (wild ? "" : " s" + c.si) + (sel ? " sel" : "") + (face ? " face" : "") + (c.n && !tbl ? " new" : "") + (c.x && !tbl ? " enh-new" : "");
     const tag = tbl ? "span" : "button";
     return '<' + tag + ' class="' + cls + '"' + st +
       (tbl ? ' aria-hidden="true"' : ' data-i="' + i + '" aria-pressed="' + (sel ? "true" : "false") + '" aria-label="' + (wild ? "Joker" : G.rname(c.r) + " " + su.s) + (e ? " " + e : "") + '"') +
@@ -161,9 +161,8 @@
     f.classList.toggle("spend", surv);
 
     const playsMax = S.playsMax - (ch && ch.id === "fewplays" ? 1 : 0);
-    /* Στο Survival ο πόρος είναι τα ΧΕΡΙΑ — ίδια για όλους, γι' αυτό συγκρίνεται το σκορ. */
-    setHTML($("plays"), surv ? "h" + S.playsLeft : S.playsLeft + "/" + playsMax, () => (surv ? '<b>' + S.playsLeft + '</b><span>hands</span>' : pips(S.playsLeft, playsMax)));
-    $("plays").setAttribute("aria-label", surv ? S.playsLeft + " hands left" : S.playsLeft + " of " + playsMax + " plays left");
+    setHTML($("plays"), surv ? "surv" : S.playsLeft + "/" + playsMax, () => (surv ? "" : pips(S.playsLeft, playsMax)));
+    $("plays").setAttribute("aria-label", surv ? "no play limit" : S.playsLeft + " of " + playsMax + " plays left");
     const dmax = S.discMax == null ? G.discMaxOf(S) : S.discMax, dleft = G.discardsLeft(S);
     $("discards").hidden = false;
     setHTML($("discards"), dmax + "/" + dleft, () => (dmax ? pips(dleft, dmax) : '<b>none</b>'));
@@ -193,7 +192,7 @@
     { const step = G.syn(S, "tempo") ? 3 : S.charms.indexOf("climber") >= 0 ? 2 : 1,
         raw = Math.max(0, pos - 1 + G.CFG.chainFloor) * step,
         steps = surv ? raw : Math.min(G.CFG.chainStepCap, raw),
-        mul = Math.round((1 + (surv ? G.CFG.survChainStep : G.CFG.chainStep) * steps) * 10) / 10;
+        mul = Math.round((1 + G.CFG.chainStep * steps) * 10) / 10;
       setTXT($("chainN"), "×" + pos);
       /* Ο μεγάλος αριθμός είναι το σκαλί· η ετικέτα λέει τι αξίζει, χωρίς να το ξαναπεί. */
       setTXT($("chain").firstElementChild, steps ? "Mult ×" + mul : "Chain"); }
@@ -208,41 +207,29 @@
     /* Ο πήχης ξαναχτιζόταν σε κάθε render — δηλαδή σε κάθε άγγιγμα φύλλου — και ξανάπαιζε
        το `land`: opacity 0→1, άλμα 33px, 500ms, με stagger, και το δεύτερο άγγιγμα διέκοπτε
        το πρώτο. Το πιο σημαντικό πράγμα στην οθόνη αναβόσβηνε κάθε φορά που διάλεγες. */
-    /* Στο τραπέζι πάνε ΚΑΙ τα σκουπίδια που έριξες μαζί — σβηστά, δίπλα στα φύλλα που
-       πλήρωσαν, τα οποία ανάβουν. Αυτό είναι όλο το μάθημα του κανόνα σε μια εικόνα. */
-    const junkT = S.playedJunk || [];
-    const tsig = S.log.length + "·" + S.played.concat(junkT).map((c) => c.r + "/" + c.si + "/" + (c.e || "")).join(",") + "·" + junkT.length;
-    if (tc.dataset.sig !== tsig) {
-      tc.dataset.sig = tsig;
-      const tn = S.played.length + junkT.length;
-      tc.innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, tn, junkT.length ? " scoring" : "")).join("") +
-        junkT.map((c, i) => cardHTML(c, null, false, true, S.played.length + i, tn, " junk")).join("");
-    }
+    const tsig = S.log.length + "·" + S.played.map((c) => c.r + "/" + c.si + "/" + (c.e || "")).join(",");
+    if (tc.dataset.sig !== tsig) { tc.dataset.sig = tsig; tc.innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, S.played.length)).join(""); }
     /* Το πλάτος των φύλλων του τραπεζιού είναι δύο περάσματα: γράψε --tcw, ΔΙΑΒΑΣΕ
        `clientHeight`, ξαναγράψε. Κάθε ανάγνωση μετά από γράψιμο είναι αναγκαστικό layout —
        και έτρεχαν και τα δύο σε κάθε άγγιγμα φύλλου, για ένα νούμερο που εξαρτάται μόνο
        από τα φύλλα στο τραπέζι και το μέγεθος της οθόνης. Τώρα κρατιέται σε cache. */
     const tKey = tsig + "|" + (fitHand.cw || 0) + "|" + innerWidth + "x" + innerHeight;
     if (tcwC.key !== tKey) {
-      const tn = S.played.length + junkT.length, tw = ($("table").clientWidth || 340) - 28, cw = fitHand.cw || parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 44;
+      const tn = S.played.length, tw = ($("table").clientWidth || 340) - 28, cw = fitHand.cw || parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 44;
       tcwC = { key: tKey, v: Math.max(26, Math.min(Math.round(cw * 0.9), tn ? Math.floor((tw - (tn - 1) * 4) / tn) : 99)) + "px", second: true };
       tc.style.setProperty("--tcw", tcwC.v);
     }
     tc.classList.toggle("fresh", S.ante === 0 && !S.rung && !S.log.length);
 
     const n = S.hand.length, hand = $("hand");
-    /* Ποια από τα ΔΙΚΑ ΣΟΥ επιλεγμένα φύλλα θα πληρώσουν. Δεν είναι πρόταση — είναι
-       καθρέφτης της επιλογής σου, πριν πατήσεις. */
-    const coreIds = new Set((e.core || []).map((c) => c.id));
-    const junkSel = (c, on) => (on && e.k && !coreIds.has(c.id) ? " junk" : "");
     if (keepHand && hand.children.length === n) {
       Array.prototype.forEach.call(hand.children, (el, i) => {
         const on = S.sel.indexOf(i) >= 0;
-        el.classList.toggle("sel", on); el.classList.toggle("junk", !!junkSel(S.hand[i], on)); el.setAttribute("aria-pressed", on ? "true" : "false");
+        el.classList.toggle("sel", on); el.setAttribute("aria-pressed", on ? "true" : "false");
       });
     } else {
       fitHand(n);
-      hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n, junkSel(c, S.sel.includes(i)))).join("");
+      hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n)).join("");
     }
     /* Τα φύλλα δείχνουν ΟΛΑ ίδια. Το Survival έσβηνε όσα δεν ανεβαίνουν και τόνιζε τα
        υπόλοιπα: ο παίκτης το είδε ως «το παιχνίδι διαλέγει για μένα» — το ίδιο πράγμα με το
@@ -265,23 +252,28 @@
     const go = $("bPlay"); go.className = "go";
     const pv = $("preview"); pv.className = "preview"; let pvt = "", gh = "";
     if (ui.ending || (!surv && S.playsLeft < 1) || cleared) { go.classList.add("done"); go.disabled = true; gh = '<span class="go__t">' + (surv ? "No way up" : cleared ? "Target!" : "Round over") + '</span><span class="go__s">' + (surv ? S.score.toLocaleString("en-US") + " points" : cleared ? "Ante " + (S.ante + 1) + " cleared" : "Short by " + (T - S.score)) + '</span>'; }
-    else if (surv && !S.sel.length && !G.hasClimb(S)) { go.classList.add("idle"); go.disabled = true; gh = '<span class="go__t">Nothing climbs</span><span class="go__s">' + (G.discardsLeft(S) > 0 ? "Play anyway — the chain restarts · or breathe (" + G.discardsLeft(S) + ")" : "Play anyway — the chain restarts") + '</span>'; }
+    else if (surv && !S.sel.length && !G.hasClimb(S)) { go.classList.add("idle"); go.disabled = true; gh = '<span class="go__t">Nothing climbs</span><span class="go__s">' + (G.discardsLeft(S) > 0 ? "Breathe (" + G.discardsLeft(S) + " left) · or break it, which costs one too" : "No breath left · the next hand you play is your last") + '</span>'; }
     else if (!S.sel.length) {
       go.classList.add("idle"); go.disabled = true;
       gh = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (!surv && S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
-    else if (!e.k) { go.classList.add("no"); go.disabled = true; gh = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? (surv ? "Breathe these away instead?" : "Discard these instead?") : "A pair, a run or a set — plus up to " + G.CFG.junkCap + " spare cards") + '</span>'; }
+    else if (!e.k) { go.classList.add("no"); go.disabled = true; gh = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? (surv ? "Breathe these away instead?" : "Discard these instead?") : "Pick a pair, a run or a set") + '</span>'; }
+    /* Μηδέν ανάσες και υπάρχει ανέβασμα στο χέρι: το σπάσιμο είναι κλειδωμένο, γιατί θα
+       τερμάτιζε το run ενώ υπάρχει δρόμος πάνω. Το κουμπί λέει ότι υπάρχει. */
+    else if (surv && !e.up && G.discardsLeft(S) <= 0 && G.hasClimb(S)) {
+      go.classList.add("no"); go.disabled = true;
+      gh = '<span class="go__t">Will not climb</span><span class="go__s">No breath left · something in your hand does climb</span>';
+    }
     else {
       go.classList.add(e.up ? "ok" : "down"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind));
       const calc = e.chips + " × " + e.mult;
       /* Survival: το σπάσιμο επιτρέπεται και κοστίζει μία ανάσα — και στο μηδέν είναι το
          τελευταίο σου χέρι. Το κουμπί το λέει, ώστε η απόφαση να είναι δική σου. */
-      /* Το σπάσιμο στο Survival είναι δωρεάν: χάνεις την αλυσίδα, όχι ανάσα. Το κουμπί λέει
-         ΤΙ χάνεις, γιατί αυτό είναι το κόστος — και είναι μεγάλο. */
-      const brk = surv ? "Chain back to ×1 · " + calc : "Breaks the chain · " + calc;
+      const brk = surv
+        ? (G.discardsLeft(S) > 0 ? "Breaks the chain · −1 breath (" + G.discardsLeft(S) + ")" : "Breaks the chain · your last hand")
+        : "Breaks the chain · " + calc;
       if (surv && !e.up) go.classList.add("cost");
-      const thrown = e.rest && e.rest.length ? " · " + e.rest.length + " thrown" : "";
-      gh = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc + thrown : brk + thrown) + '</span>';
+      gh = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc : brk) + '</span>';
     }
     /* Το κουμπί ξαναγραφόταν κάθε render, ακόμη κι όταν έλεγε ακριβώς το ίδιο πράγμα —
        parse, καταστροφή δύο κόμβων, και μετά ένα δεύτερο πέρασμα με querySelectorAll για
@@ -296,10 +288,7 @@
     /* Όταν έχεις διαλέξει κάτι που δεν ανεβαίνει, η γραμμή εξηγεί ΓΙΑΤΙ — αυτή είναι η
        στιγμή που ο παίκτης μαθαίνει τη σκάλα, όχι το φύλλο των κανόνων. */
     const why = e.k && !e.up ? G.whyNoClimb(S, e.k) : "";
-    const thrownWhy = e.rest && e.rest.length
-      ? e.rest.length + (e.rest.length === 1 ? " card goes with it and scores nothing" : " cards go with it and score nothing") + " · you draw back the lot"
-      : "";
-    pvt = (thrownWhy ? thrownWhy : why ? why : S.rung ? "Beat " + G.clabel(S.rung) + " to climb" : G.beatText(S)) +
+    pvt = (why ? why : S.rung ? "Beat " + G.clabel(S.rung) + " to climb" : G.beatText(S)) +
       (!surv && S.playsLeft < 2 ? " · last play" : "") +
       (surv && S.rung ? " · or breathe (" + G.discardsLeft(S) + ")" : "");
     if (why) pv.classList.add("bad");
@@ -311,7 +300,7 @@
        μετακινεί (τα φύλλα του τραπεζιού, το μέγεθος της οθόνης, ή το κείμενο του preview). */
     if (tcwC.second && tcwC.pvh !== pvh) {
       tcwC.pvh = pvh;
-      const tn = S.played.length + (S.playedJunk || []).length;
+      const tn = S.played.length;
       tc.style.setProperty("--tcw", tcwC.v);   /* ξεκίνα από το πλάτος, όπως πριν, και μετά ψαλίδισε στο ύψος */
       if (tn) { const free = tc.clientHeight, cur = parseInt(tc.style.getPropertyValue("--tcw")) || 40;
         if (free > 0) tc.style.setProperty("--tcw", Math.max(24, Math.min(cur, Math.floor((free - 6) / 1.42))) + "px"); }
@@ -327,8 +316,7 @@
     setOff($("bHint"), ui.ending || S.playsLeft < 1);
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
-  /* Στο κουμπί χωράει σύντομη ετικέτα: το εύρος της κέντας φαίνεται στη γραμμή του preview. */
-  const goLabel = (k) => (k.kind === 4 || k.kind === 7 || k.kind === 3 ? G.KINDS[k.kind].name : G.clabel(k));
+  const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : k.kind === 8 ? G.clabel(k).replace(/ \S+$/, "") : G.clabel(k);
   function note(msg, ms) { ui.note = cap(msg); ui.noteT = Date.now() + (ms || 3800); render(true); setTimeout(() => { if (Date.now() >= ui.noteT) render(true); }, (ms || 3800) + 100); }
   /* Ένα callout τη φορά: τα υπόλοιπα μπαίνουν σε ουρά αντί να σκοτώνουν το προηγούμενο. */
   const CQ = [];
@@ -375,7 +363,7 @@
     const from = selRects();
     const ev = G.play(S); if (!ev) return;
     ui.note = null;
-    if (ev.tags && ev.tags.indexOf("Aces!") >= 0) { FX.sfx.ace(); FX.buzz(14); }
+    if (ev.k && ev.k.kind === 9) { FX.sfx.ace(); FX.buzz(14); }
     if (ev.bomb) { FX.sfx.bomb(); FX.buzz([30, 40, 120]); FX.boom($("table")); FX.flash(); FX.pulse($("app"), "shake"); setTimeout(() => FX.floatIn($("table"), "+" + ev.pts), 320); document.body.classList.add("boom"); setTimeout(() => document.body.classList.remove("boom"), 900); }
     else if (!ev.up) { FX.sfx.pass(); FX.buzz(40); setTimeout(() => FX.floatIn($("table"), "+" + ev.pts), 320); }
     else { FX.sfx.climb(ev.pos); FX.buzz(18); FX.burstAt($("table"), Math.min(50, 10 + Math.round(ev.pts / 24)), 2.4 + Math.min(3, ev.pts / 300), ["#ffd166", "#ff6b6b", "#4ecdc4", "#c77dff", "#ffffff", "hsl(" + IC.kindHue(ev.k.kind) + " 90% 70%)"]); setTimeout(() => FX.floatIn($("table"), "+" + ev.pts), 320); $("callout").style.setProperty("--kh", IC.kindHue(ev.k.kind)); }
@@ -641,24 +629,23 @@
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
       '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out — <b>the moment you reach it the round is over</b> and the next ante starts on its own.</p>' +
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
-      '<p><b>The hands are poker hands</b>, weakest to strongest: pair · two pair · trips · straight · flush · full house · then the two bombs, <b>quads</b> and <b>straight flush</b>. There is no high card — a pair is the floor. Nothing is longer than <b>five cards</b>, straights run five in a row with the Ace high only, and <b>Jokers</b> stand in for any card.</p>' +
-      '<p><b>Score = Base × Mult.</b> Every hand has a <b>Base</b> and a <b>Mult</b>, and the score is the two multiplied. The shape sets both: a pair 25 × 3, two pair 32 × 4, trips 36 × 5, a straight 40 × 5, a flush 45 × 6, a full house 50 × 7, quads 58 × 8, a straight flush 70 × 9. Then every card adds to the Base: 2 to 10 as printed, J Q K ten, an Ace eleven. <b>There is no currency in this game</b> — Base is half of the score, not money.</p>' +
-      '<p><b>The chain multiplies.</b> Beat the hand on the table — a better poker hand, or the same hand with a higher rank — and the chain climbs one step. <b>Every step is +22% Mult, the first climb included</b>, up to ×2.3 once the chain caps at ×6. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
-      '<p>So the round is one question, five times over: <b>climb for the multiplier, or spend a big hand and start the chain again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
-      '<p><b>A pair is the smallest hand there is</b> — nothing below it can be played, so a hand with no combination at all is a dead hand, and that is what discards are for. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
-      '<p><b>A play is up to five cards, and the spares are yours to dump.</b> Play a pair and add three loose cards, or trips and add two: only the poker hand scores, the rest are gone. The cards that paid <b>light up on the table</b>; the ones that came along for the ride sit dark beside them. It costs no discard — but <b>you do not draw the spares back this turn</b>, so the next hand is that much shorter. Dead cards, yes; every hand, no.</p>' +
+      '<p><b>The hands</b>, weakest to strongest: a lone <b>Ace</b> · pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
+      '<p><b>Score = Base × Mult.</b> Every hand has a <b>Base</b> and a <b>Mult</b>, and the score is the two multiplied. The shape sets both: a pair is 25 × 3, two pair 30 × 4, trips 34 × 5, a straight 38 × 5, a full house 42 × 6, a straight flush 62 × 8. Measured over real runs, a full house pays about <b>four times</b> a pair — enough that combinations are always worth building, not so much that one lucky hand ends the round. Then every card adds to the Base: 2 to 10 as printed, J Q K ten, an Ace eleven. <b>There is no currency in this game</b> — Base is half of the score, not money.</p>' +
+      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +22% Mult, the first climb included</b>, up to ×2.3 once the chain caps at ×6. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
+      '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
+      '<p>A lone <b>Ace</b> is a hand of its own — the cheapest one, and the first step of every chain. Anything else beats it, so it is the natural way to open. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. Once your discards are spent, a hand that makes no combination at all still gets one free.</p>' +
       '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together (the Summit at 50 is a boss too, but there is nothing left to spend it on). It gives you <b>one thing</b>, three on offer: a <b>charm</b> at the first station, a <b>perk</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) — the Mult ones repeat forever, the rest run out; charms are passive and permanent, and you only ever hold <b>five</b> — so each one is a pillar of the run, not a trinket. Once all five slots are full, a charm station pays a perk instead.</p>' +
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Silver</b> (Mult ×1.5, the common one), <b>Gold</b> (Mult ×2, and two of them ×3 — the cap on enhanced cards) or a <b>Joker</b>.</p>' +
       '<p>Most of the antes in between carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. A boss ante has a rule that bites instead, and a target a tenth lower to pay for it.</p>' +
       '<p>Fifty antes. Gentle at first, steep at the end. The Summit at 50 — and Endless after that.</p>' +
-      '<p><b>Survival</b> is the third choice in the row on the start screen, next to the two decks — and a different game. <b>No targets, no antes, no perks or charms</b>, and the deck never runs out. Four things change:</p>' +
+      '<p><b>Survival</b> is the third choice in the row on the start screen, next to the two decks — and a different game. <b>No targets, no antes, no perks or charms</b>, and the cards never run out — the deck comes round again, shuffled, for as long as you last. Three things change:</p>' +
       /* Τα νούμερα βγαίνουν από το CFG, δεν γράφονται με το χέρι: η προηγούμενη έκδοση αυτής
          της παραγράφου έλεγε «πέντε ανάσες» και «1 500, 3 300, 7 260» για ώρες αφού ο κώδικας
          είχε γίνει δέκα και 1 200 / 2 640 / 5 808 — και, το χειρότερο, έλεγε ότι το σπάσιμο
          της αλυσίδας ΑΠΑΓΟΡΕΥΕΤΑΙ, δηλαδή έκρυβε τη μόνη απόφαση του mode. */
-      '<p>· <b>You get ' + G.CFG.survPlays + ' hands, or until your hand dies</b> — whichever comes first. A hand with no combination in it needs a breath; with no breath left, that is the run.<br>· <b>Breaking the chain is free.</b> A hand that does not beat the rung plays and scores as normal — it only sends the chain <b>back to ×1</b>. No breath, no penalty beyond the one that matters.<br>· <b>The chain has no ceiling</b>, and each step is worth <b>+' + Math.round(G.CFG.survChainStep * 100) + '% Mult</b> instead of +' + Math.round(G.CFG.chainStep * 100) + '%. Step forty is worth forty steps.<br>· <b>Breaths are for discards only.</b> You start with <b>' + G.CFG.survDiscards + '</b>, earn one every time your score passes the next mark — ' + [0, 1, 2].map((i) => G.survMilestone(i).toLocaleString("en-US")).join(", then ") + ' — and every <b>bomb</b> pays one as well. A discard also opens the table.<br>· <b>A bomb clears the ladder and keeps the chain.</b> The table opens behind it, so your next hand — anything at all — still counts as a climb, at the full multiplier.<br>· <b>The rung climbs on its own</b>: after ' + G.CFG.survSteep + ' hands it gains a rank after every play, after ' + (G.CFG.survSteep * 2) + ' two ranks, and so on. The mountain gets steeper the longer you last.</p>' +
-      '<p>So it is one long question, ' + G.CFG.survPlays + ' times: <b>the cheapest climb keeps the rung low and the chain alive.</b> Spend the big hands and the rung gets too high to beat, and every break puts you back at the bottom. Measured, playing the biggest hand every time scores about <b>23 000</b>; climbing as cheaply as possible scores about <b>61 000</b> with the same hands. That gap is the mode.</p></div>' +
+      '<p>· <b>Climbing is not compulsory — it costs.</b> A hand that does not beat the rung plays and scores as normal, but it <b>breaks the chain and costs a breath</b>. With no breath left you cannot break it while something in your hand still climbs; when nothing does, that hand is your last.<br>· <b>The chain has no ceiling</b> — no cap at ×6, so step forty is worth forty steps of Mult.<br>· <b>A bomb clears the ladder and keeps the chain.</b> Quads or a straight flush beat anything, so the table opens behind them: your next hand can be a <b>lone Ace</b> and it still counts as a climb, at the full multiplier. A breath does the same for the price of one breath — that is the way back down when the rung has climbed out of reach.<br>· A discard also <b>opens the table</b>: a <b>breath</b>. You start with <b>' + G.CFG.survDiscards + '</b>, and <b>earn one more every time your score passes the next mark</b> — ' + [0, 1, 2].map((i) => G.survMilestone(i).toLocaleString("en-US")).join(", then ") + ', each mark ' + G.CFG.survGrow + '× the last. The bar under your score is how close the next one is.</p>' +
+      '<p>The run ends the moment nothing climbs and you have no breath left. So it is one long question: <b>the cheapest climb keeps the rung low and the chain alive</b> — spend the big hands and the rung gets too high to beat. Measured, playing the biggest hand every time scores about <b>10 000</b> over twenty-six hands; playing the smallest climb scores about <b>122 000</b> over seventy-three. That gap is the mode.</p></div>' +
       '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
   }
   function sheetCollection() {
