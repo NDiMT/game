@@ -108,7 +108,9 @@
   const AC = root.AudioContext || root.webkitAudioContext;
   let ac = null, muted = false, musicOff = false;
   try { muted = localStorage.getItem("raise.mute") === "1"; } catch (e) {}
-  try { musicOff = localStorage.getItem("raise.music") === "0"; } catch (e) {}
+  /* Σβηστή από προεπιλογή. Ένα κομμάτι που παίζει σε λούπα όσο σκέφτεσαι ένα χέρι γίνεται
+     ενοχλητικό πολύ πριν γίνει εθιστικό — ας το ανάψει όποιος το θέλει. */
+  try { musicOff = localStorage.getItem("raise.music") !== "1"; } catch (e) { musicOff = true; }
   let master = null, send = null, duckG = null;
 
   function ctx() {
@@ -189,7 +191,7 @@
   /* ---------------- μουσική ----------------
      Δώδεκα δέκατα-έκτα ανά μπάρα, τέσσερις μπάρες ανά κύκλο, μία συγχορδία η καθεμιά.
      Το `inten` (0-1) έρχεται από τη θέση της αλυσίδας και ανοίγει στρώματα ΚΑΙ το φίλτρο. */
-  const BPM = 92, STEP = 60 / BPM / 4, BARS = 4, SPB = 16;
+  const BPM = 74, STEP = 60 / BPM / 4, BARS = 4, SPB = 16;
   const PROG = [0, 8, 3, 10];            /* i · VI · III · VII — ο πιο υπνωτικός κύκλος */
   const TRIAD = [[0, 3, 7], [0, 4, 7], [0, 4, 7], [0, 4, 7]];
   const PENT = [0, 3, 5, 7, 10, 12, 15, 17];
@@ -204,36 +206,34 @@
   }
   function chordAt(bar) { return (PROG[bar % PROG.length] + keyOff) % 12 + (bar % PROG.length === 0 ? 0 : 0); }
 
+  /* Αραιό επίτηδες. Η πρώτη εκδοχή έπαιζε αρπέζ σε ΚΑΘΕ δέκατο-έκτο με κοφτό φάκελο: σε
+     ένα παιχνίδι όπου κοιτάς το χέρι σου για ένα λεπτό, αυτό είναι γρατζούνισμα, όχι μουσική.
+     Τώρα η βάση είναι ένα pad που αναπνέει, και ο ρυθμός μπαίνει μόνο ψηλά στην αλυσίδα. */
   function schedule(t, i) {
     const bar = Math.floor(i / SPB) % BARS, s = i % SPB, root = chordAt(bar), bus = musicG;
     const q = inten;                     /* 0 ήρεμα · 1 φουλ */
-    const cut = 620 + q * 4200;
-    /* πάντα: μπάσο-καρδιά στο 1 και στο 11 */
-    if (s === 0 || s === 10) voice({ f: hz(root + 12), t: s === 0 ? 0.5 : 0.32, g: 0.09 + q * 0.05, type: "sine", cut: 500, bus: bus, delay: t, atk: 0.01 });
-    /* πάντα: pad, μία φορά ανά μπάρα */
+    const cut = 520 + q * 2600;
+    /* πάντα: μια χαμηλή καρδιά στην αρχή της μπάρας */
+    if (s === 0) voice({ f: hz(root + 12), t: 1.1, g: 0.055 + q * 0.03, type: "sine", cut: 380, bus: bus, delay: t, atk: 0.06 });
+    /* πάντα: pad που κρατά όλη τη μπάρα και σβήνει αργά */
     if (s === 0) TRIAD[bar % TRIAD.length].forEach(function (iv, n) {
-      voice({ f: hz(root + 36 + iv), t: STEP * SPB * 0.98, g: 0.028 + q * 0.016, type: "sawtooth", cut: cut * 0.55, bus: bus, delay: t, atk: 0.25, detune: (n - 1) * 7, space: 0.5 });
+      voice({ f: hz(root + 36 + iv), t: STEP * SPB * 1.15, g: 0.022 + q * 0.01, type: "sawtooth", cut: cut * 0.5, bus: bus, delay: t, atk: 0.6, detune: (n - 1) * 6, space: 0.65 });
     });
-    /* ≥0.18: γραμμή μπάσου στα όγδοα */
-    if (q > 0.18 && s % 4 === 2) voice({ f: hz(root + 24 + (s === 6 ? 7 : 0)), t: 0.16, g: 0.05, type: "triangle", cut: 900, bus: bus, delay: t });
-    /* ≥0.32: αρπέζ — η μελωδία που κολλάει */
-    if (q > 0.32) {
-      const n = ARP[s], deg = PENT[n % PENT.length];
-      voice({ f: hz(root + 48 + deg), t: 0.13 + q * 0.06, g: 0.03 + q * 0.035, type: "triangle", cut: cut, bus: bus, delay: t, space: 0.42 });
+    /* ≥0.35: μια αραιή πένα στο μισό της μπάρας */
+    if (q > 0.35 && s === 8) voice({ f: hz(root + 48 + PENT[bar % PENT.length]), t: 0.5, g: 0.024, type: "triangle", cut: cut, bus: bus, delay: t, atk: 0.02, space: 0.7 });
+    /* ≥0.55: αρπέζ στα τέταρτα — τέσσερις νότες τη μπάρα, όχι δεκαέξι */
+    if (q > 0.55 && s % 4 === 0) {
+      const deg = PENT[ARP[s] % PENT.length];
+      voice({ f: hz(root + 48 + deg), t: 0.28, g: 0.02 + q * 0.014, type: "triangle", cut: cut, bus: bus, delay: t, atk: 0.015, space: 0.55 });
     }
-    /* ≥0.46: hats — στα όγδοα, στα δέκατα-έκτα από 0.75 */
-    if (q > 0.46 && (s % 4 === 0 || (q > 0.75 && s % 2 === 0))) noise({ f: 7800, g: 0.018 + q * 0.014, t: 0.035, bus: bus, delay: t, space: 0.25 });
-    /* ≥0.6: κικ και χειροκρότημα */
-    if (q > 0.6) {
-      if (s === 0 || s === 10) voice({ f: 120, t: 0.19, g: 0.19, type: "sine", slide: 0.35, bus: bus, delay: t });
-      if (s === 8) noise({ f: 1900, q: 0.7, type: "bandpass", g: 0.06 + q * 0.04, t: 0.11, bus: bus, delay: t, space: 0.5 });
-    }
-    /* ≥0.86: αντι-μελωδία ψηλά, μόνο στην κορυφή */
-    if (q > 0.86 && (s === 6 || s === 14)) voice({ f: hz(root + 60 + PENT[(s + bar) % PENT.length]), t: 0.4, g: 0.03, type: "sine", bus: bus, delay: t, space: 0.8 });
+    /* ≥0.72: μαλακά hats στα όγδοα */
+    if (q > 0.72 && s % 8 === 4) noise({ f: 8600, g: 0.009 + q * 0.006, t: 0.03, bus: bus, delay: t, space: 0.35 });
+    /* ≥0.85: μια κλωτσιά στην αρχή κάθε μπάρας — τίποτα άλλο */
+    if (q > 0.85 && s === 0) voice({ f: 110, t: 0.16, g: 0.1, type: "sine", slide: 0.4, bus: bus, delay: t });
   }
   function pump() {
     const c = ac; if (!c || !mOn) return;
-    inten += (want - inten) * 0.06;      /* η ένταση κινείται ομαλά, δεν πηδά */
+    inten += (want - inten) * 0.035;     /* η ένταση κινείται ομαλά, δεν πηδά */
     while (mNext < c.currentTime + 0.12) {
       schedule(Math.max(0, mNext - c.currentTime), mStep);
       mStep = (mStep + 1) % (SPB * BARS);
@@ -247,7 +247,7 @@
       musicBus(); mOn = true; mStep = 0; mNext = c.currentTime + 0.08;
       musicG.gain.cancelScheduledValues(c.currentTime);
       musicG.gain.setValueAtTime(0.0001, c.currentTime);
-      musicG.gain.linearRampToValueAtTime(0.85, c.currentTime + 2.4);
+      musicG.gain.linearRampToValueAtTime(0.42, c.currentTime + 3.5);
       mTimer = setInterval(pump, 25);
     },
     stop: function (fade) {

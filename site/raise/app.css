@@ -272,7 +272,7 @@ body[data-heat="3"] #heat{box-shadow:inset 0 0 9rem rgba(255,90,50,.42);animatio
 @keyframes flick{from{opacity:.75}to{opacity:1}}
 body[data-heat="1"] .chain b{color:var(--brass-hi)}
 body[data-heat="2"] .chain b{color:#ffb15a;text-shadow:0 0 .8rem rgba(255,150,60,.7)}
-body[data-heat="3"] .chain b{color:#ff8a4a;text-shadow:0 0 1rem rgba(255,110,50,.9);animation:flick .6s ease-in-out infinite alternate}
+body[data-heat="3"] .chain b{color:#ff8a4a;text-shadow:0 0 1rem rgba(255,110,50,.9)}
 body[data-heat="2"] .chain span::after{content:" · hot"}
 body[data-heat="3"] .chain span::after{content:" · on fire"}
 
@@ -1220,3 +1220,24 @@ body[data-heat="3"] .chain b{animation-duration:2s}
 .go.ok::before{opacity:.34}
 .wordmark{letter-spacing:.08em}
 .start__in{gap:.9rem}
+
+/* ===================== v23: ο αριθμός της αλυσίδας, καθαρός =====================
+   Ο αριθμός μεγάλωνε με `transform:scale()` και origin `right bottom`, δηλαδή μεγάλωνε
+   ΠΡΟΣ ΤΑ ΠΑΝΩ — και το transform δεν πιάνει χώρο, οπότε στο heat 3 (scale 1,28) έμπαινε
+   7px μέσα στην ετικέτα από πάνω του. Τώρα μεγαλώνει με font-size, που ΠΙΑΝΕΙ χώρο και
+   το grid του κρατά θέση. */
+.chain b{
+  transform:none;
+  font-size:calc(1.55rem + (var(--pos,1) - 1) * .05rem);
+  line-height:1.05;
+  transition:font-size .25s var(--pop);
+}
+.chain{gap:.12rem}
+.chain span{white-space:nowrap}
+/* Σε σεντεφένιο κείμενο το text-shadow περνά ΜΕΣΑ από τα διάφανα γράμματα και τα λασπώνει:
+   η λάμψη γίνεται drop-shadow, που ακολουθεί το σχήμα των ψηφίων. */
+body[data-heat="2"] .chain b,body[data-heat="3"] .chain b{
+  text-shadow:none;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.55)) drop-shadow(0 0 .7rem rgba(255,190,140,.75));
+}
+body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-shadow(0 0 1rem rgba(255,150,90,.9))}
