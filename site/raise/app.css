@@ -1098,3 +1098,15 @@ body[data-heat="3"] .table{animation:tremble .38s ease-in-out 5}
 /* 5. Το χέρι ακολουθεί τον αντίχειρα όσο σέρνεις: η χειρονομία ήταν εντελώς αόρατη. */
 .hand.dragging{transition:none}
 @media (prefers-reduced-motion:reduce){.offer--pick.bought{animation:none}.piles b.hit{animation:none}.hand.dragging{transform:none!important}}
+
+/* ===================== v20: Survival — μία τράπουλα, χωρίς στόχους ===================== */
+body.surv .meter i.spend{background-image:repeating-linear-gradient(-55deg,rgba(255,255,255,.18) 0 .45rem,transparent .45rem .9rem),linear-gradient(180deg,#cfe9f2,#7fb5c4 45%,#3f7f93 55%,#7fb5c4);box-shadow:0 0 .6rem rgba(143,208,226,.55)}
+body.surv .hud__score span{color:#8fd0e2}
+body.surv .ante{letter-spacing:.08em}
+body.surv .pips--play{display:none}
+body.surv .meter{height:.42rem}
+body.surv .hud__score span{font-size:.72rem;letter-spacing:.02em}
+.pips--disc b{white-space:nowrap}
+body.surv .charms{display:none}
+body.surv .hintb{top:.55rem}
+.decks[hidden]{display:none!important}
