@@ -79,7 +79,7 @@
     enhChance: 0.06, enhWeights: { silver: 55, gold: 25, wild: 20 }, jokerCap: 4,
     /* Ρυθμός: κάθε 3η πίστα είναι challenge ΚΑΙ η μόνη που πληρώνει — ένα perk και ένα charm.
        Οι άλλες δύο περνούν χωρίς στάση: φτάνεις τον στόχο, συνεχίζεις. */
-    rewardEvery: 3, offers: 3, chainCap: 6, lowCeiling: 4, endlessStep: 1.08,
+    rewardEvery: 3, offers: 3, chainCap: 6, lowCeiling: 4, endlessStep: 1.08, charmFirst: 1,
     /* Τέσσερις θέσεις, και τέλος. Με τόσο λίγες, το κάθε charm πρέπει να είναι στύλος του
        build — γι' αυτό όλα τα bonus ανέβηκαν μαζί με τα πλαφόν. */
     charmSlots: 5,
@@ -96,7 +96,64 @@
        τραβά ~28% παραπάνω από τις 7 ανάσες (57 χέρια). Αν χρειαστεί να κοντύνει χωρίς να
        πειραχτούν οι αρχικές, το survGrow ×2,8 δίνει 66 χέρια και spread ×2,76. */
     survDiscards: 10, survStep: 1200, survGrow: 2.2, survEarnCap: 99,
+    /* Το Survival δεν είχε ΚΑΜΙΑ καμπύλη. Μετρημένο ανά δεκάδα χεριών (tools/decide.js 60):
+       από το χέρι 1 ώς το 80 τα νούμερα της απόφασης είναι ταυτόσημα — υποψήφια χέρια 4,4→5,0,
+       ανεβάσματα 3,4→3,1, είδη που ανεβαίνουν 1,96→1,82, «καμία επιλογή» 40%→45%, κόστος
+       λάθους ×1,77→×1,77. Δηλαδή μία απόφαση, 73 φορές. (Το Classic ΕΧΕΙ καμπύλη: υποψήφια
+       6,1→20,2, «καμία επιλογή» 53%→21%, γιατί το χέρι μεγαλώνει και η τράπουλα λεπταίνει.)
+
+       ΔΟΚΙΜΑΣΜΕΝΟ ΚΑΙ ΑΠΟΡΡΙΦΘΕΝ: «κάθε πέρασμα της τράπουλας παίρνει τη χαμηλότερη
+       βαθμίδα». Είναι ΔΩΡΟ, όχι πίεση: λιγότερες βαθμίδες σε χέρι 8 φύλλων σημαίνει
+       ΠΥΚΝΟΤΕΡΟ χέρι, άρα φουλ και καρέ συνεχώς. Μετρημένο (200 runs): 73 → 212 χέρια,
+       p50 123 060 → 2 998 906, spread ×3,04 → ×46,4. Η πυκνότητα κερδίζει τη στενότητα.
+
+       Ό,τι δουλεύει είναι το ΑΝΤΙΘΕΤΟ άκρο: το βουνό γίνεται πιο απότομο. Κάθε survSteep
+       χέρια, το rung ανεβαίνει μία βαθμίδα παραπάνω μετά από κάθε παίξιμο (ο ίδιος
+       μηχανισμός με το challenge «Sticky Rung», κλιμακωτά). Τα ανεβάσματα κατά βαθμίδα
+       στερεύουν, μένουν τα άλματα είδους — δηλαδή αλλάζει η ΑΠΟΦΑΣΗ, όχι μόνο η δυσκολία.
+       Σαρωμένο (tools/steep.js 200, ίδια seeds· χέρια / p50 σωστού / headroom / spread):
+         0 → 73 · 121 995 · +1131% · ×2,70   (η επίπεδη βάση — καμία καμπύλη)
+         6 → 53 ·  79 118 ·  +741% · ×2,53   (κοντύτερο, αλλά −35% στην κορυφή)
+         8 → 55 ·  85 925 ·  +803% · ×2,36
+        10 → 57 ·  90 920 ·  +846% · ×2,52
+        12 → 59 ·  88 983 ·  +808% · ×2,17   ← διαλεγμένο
+        16 → 61 ·  97 146 ·  +885% · ×2,70   (σχεδόν σαν σβηστό)
+        20 → 63 · 104 933 ·  +964% · ×2,78
+       ΔΟΚΙΜΑΣΜΕΝΟ ΚΑΙ ΑΠΟΡΡΙΦΘΕΝ, το άλλο μισό: «κάθε δεύτερο ορόσημο μεγαλώνει το χέρι»
+       (survWide). Το Survival είναι ΥΠΕΡΕΥΑΙΣΘΗΤΟ στον αριθμό επιλογών: ένα φύλλο παραπάνω
+       στο χέρι μακραίνει το run κατά 30% και ΜΕΓΑΛΩΝΕΙ το skill cliff, δηλαδή ακριβώς το
+       αντίθετο από τον σκοπό (tools/steep2.js 150, steep=12: wide 0 → 59 χέρια/+808%,
+       wide 1 → 76/+1370%, wide 2 → 97/+3027%). Καμία τιμή του steep δεν το αντισταθμίζει. */
+    survSteep: 12,
     bombMul: 1.25,
+    /* Παράθυρα των charms που είναι δεμένα στο rung. Μετρημένος ρυθμός ενεργοποίησης
+       (tools/trig.js 100, με το charm χαρισμένο): Ladder 3,5% και Overkill 6,0% των
+       παιξιμάτων — δηλαδή ένα Ladder μιλούσε μία φορά κάθε τέσσερις γύρους. Και τα δύο
+       μετρούσαν ΑΡΝΗΤΙΚΗ αξία (−0,90 και −0,56 ante): μια θέση charm ξοδεμένη στο τίποτα.
+       Η αιτία είναι δομική, όχι μέγεθος bonus: η σκάλα ανεβάσματος είναι κατά ΕΙΔΟΣ, οπότε
+       δύο διαδοχικά χέρια σπάνια δένουν σε βαθμίδα (tools/rung.js: ακριβώς +1 βαθμός στο
+       4,7% των χεριών με rung, ίδιο σχήμα στο 13,7%).
+       Τώρα: Ladder 1–3 βαθμίδες (10,4%, +1,50), Overkill 4+ χωρίς όρο σχήματος (11,8%, +3,67).
+       Τα δύο παράθυρα ΕΦΑΠΤΟΝΤΑΙ χωρίς κενό και χωρίς επικάλυψη — «σφιχτό βήμα» έναντι
+       «άλμα». Σάρωση ladderWindow (200 ζευγαρωμένα, μέσο τελικό ante του κατόχου):
+         3 → 17,76 ← διαλεγμένο · 4 → 18,49 · 5 → 20,15
+       Το 4 και το 5 πληρώνουν παραπάνω, αλλά το 4 επικαλύπτεται με το Overkill και το 5
+       ακυρώνει τη συνέργεια Back Stairs. Η καθαρή ανάγνωση αξίζει τα 2,4 ante.
+       slipKeep: τι κρατά το σπασμένο χέρι από την αλυσίδα. Σάρωση (200 ζευγαρωμένα):
+         0 → 17,29 (η παλιά συμπεριφορά) · 0,34 → 18,41 · 0,5 → 20,61 ← διαλεγμένο
+         0,67 → 21,08 · 1 → 21,58 (εκεί το σπάσιμο παύει να κοστίζει — ο πυρήνας του
+         παιχνιδιού διαλύεται). Το «μισή» είναι και το μόνο κλάσμα που διαβάζεται σε κάρτα. */
+    ladderWindow: 3, backStairsWindow: 5, overkillGap: 4, slipKeep: 0.5,
+    /* Ο ΡΗΤΟΣ κανόνας «κανένα μεμονωμένο χέρι δεν καθαρίζει ante» ΔΕΝ κρατιόταν, και το
+       νούμερο που τον φύλαγε (maxPlay/T ≤ 0,90) δεν μπορούσε να τον δει: είναι ΔΙΑΜΕΣΟΣ
+       ανά ante, ενώ ο κανόνας μιλάει για την ουρά. Μετρημένο σωστά (tools/tune.js, πόσοι
+       γύροι έκλεισαν στο 1ο παίξιμο): 7,71% πριν από αυτό το πέρασμα. Το Mirror φτιάχνει
+       το ένα τρίτο τους — βγάζοντάς το από τη λίστα αγορών, το 9,43% γίνεται 6,48%.
+       Σάρωση mirrorMul (200 runs, ίδια seeds): 2 → 9,43% · 1,75 → 8,60% · 1,5 → 7,71%.
+       Το 1,5 επαναφέρει ακριβώς τη βάση και διαβάζεται σαν το Silver και το Red Night· το
+       1,75 απορρίφθηκε ως άσχημος αριθμός σε κάρτα παίκτη. Κόστος: το Mirror χάνει
+       2,92 ± 2,87 ante από τα +9,32 του. */
+    mirrorMul: 1.5,
     thinAirCap: 2, ruleChance: 0.75, highGroundRank: 8, shortHand: 7, richAirMul: 1.15, blindCount: 3, blindKeep: 1,
     maxBuy: { cs: 3, wi: 2, di: 2, pl: 1, gt: 1, m1: 20, m2: 20 },
   };
@@ -124,19 +181,19 @@
   const CHARMS = [
     { id: "climber", name: "Climber", glyph: "↑", desc: "Every chain step counts double" },
     { id: "patient", name: "Patient", glyph: "◷", desc: "+3 Mult for every discard you still hold, up to +9" },
-    { id: "ladder", name: "Ladder", glyph: "≡", desc: "Any hand one rank above the rung: two chain steps instead of one" },
-    { id: "leap", name: "Overkill", glyph: "⤒", desc: "Same hand four ranks or more above the rung: Mult ×2" },
+    { id: "ladder", name: "Ladder", glyph: "≡", desc: "A hand one to three ranks above the rung: two chain steps instead of one" },
+    { id: "leap", name: "Overkill", glyph: "⤒", desc: "Climb four ranks or more above the rung: Mult ×2" },
     { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6: Mult ×2, and +40 Base" },
     { id: "court", name: "Court", glyph: "♛", desc: "A face card in the hand you play: +60 Base" },
     { id: "loyal", name: "Loyalty", glyph: "♠", desc: "Same lead suit as your last play: a chain step higher, and +60 Base on the way up" },
-    { id: "cheap", name: "Slipstream", glyph: "~", desc: "A broken chain drops one step instead of resetting" },
+    { id: "cheap", name: "Slipstream", glyph: "~", desc: "A break still pays half the chain, and drops one step instead of resetting" },
     { id: "wind", name: "Second Wind", glyph: "∞", desc: "The first two breaks of the round keep everything" },
     { id: "sleight", name: "Sleight", glyph: "✂", desc: "+3 discards a round" },
     { id: "encore", name: "Encore", glyph: "⧗", desc: "Your last play of the round: Mult ×2" },
-    { id: "mirror", name: "Mirror", glyph: "◐", desc: "First hand of the round: Mult ×2 and two chain steps" },
+    { id: "mirror", name: "Mirror", glyph: "◐", desc: "First hand of the round: Mult ×1.5 and two chain steps" },
     { id: "scout", name: "Scout", glyph: "◉", desc: "See the next three cards — and your first discard each round is free" },
     { id: "kingmaker", name: "Kingmaker", glyph: "A", desc: "Every Ace in the hand you play: +45 Base" },
-    { id: "afterburner", name: "Afterburner", glyph: "»", desc: "Every hand after a bomb, until the chain breaks: Mult ×2" },
+    { id: "afterburner", name: "Afterburner", glyph: "»", desc: "A bomb and every hand after it, until the chain breaks: Mult ×2" },
     { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards: Mult ×3, and their ceiling rises to ×6", lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
     { id: "summiteer", name: "Summiteer", glyph: "▲", desc: "Bombs: Mult ×2", lock: { key: "quads", n: 3, text: "Play 3 bombs" } },
     { id: "ember", name: "Ember", glyph: "✦", desc: "Chain ×3 and above: Mult ×2", lock: { key: "chain7", n: 1, text: "Reach chain ×6" } },
@@ -188,7 +245,7 @@
   const SYNERGIES = [
     { id: "royal", a: "kingmaker", b: "loyal", name: "Royal Court", desc: "Aces are worth +70 Base instead of +45." },
     { id: "reaction", a: "afterburner", b: "ember", name: "Chain Reaction", desc: "Chain ×3 and above: Mult ×3 instead of ×2 — bomb or no bomb." },
-    { id: "backstairs", a: "lowroad", b: "ladder", name: "Back Stairs", desc: "Ladder counts two ranks above the rung too — and the tight step pays Mult ×1.5." },
+    { id: "backstairs", a: "lowroad", b: "ladder", name: "Back Stairs", desc: "Ladder reaches five ranks above the rung — and every Ladder step pays Mult ×1.5." },
     { id: "lockstep", a: "ladder", b: "loyal", name: "Lockstep", desc: "Loyalty counts any suit you have already led this round, not just the last one." },
     { id: "bookends", a: "encore", b: "mirror", name: "Bookends", desc: "A last hand of the same kind as your first: Mult ×3 instead of ×2." },
     { id: "tempo", a: "climber", b: "patient", name: "Tempo", desc: "Every chain step counts triple." },
@@ -223,7 +280,12 @@
      Σταθμός 1 perk, σταθμός 2 charm, σταθμός 3 perk… Ένα charm κάθε έξι πίστες, τρεις θέσεις:
      το build κλειδώνει νωρίς και μετά χτίζεις γύρω του με perks. */
   const isReward = (a) => a >= TARGETS.length || a % CFG.rewardEvery === CFG.rewardEvery - 1;
-  const rewardKind = (a) => (Math.floor(a / CFG.rewardEvery) % 2 === 0 ? "up" : "charm");
+  /* Ο ΠΡΩΤΟΣ σταθμός πληρώνει charm, όχι perk. Μετρημένο (tools/cadence.js 250, ίδια seeds,
+     ίδια πολιτική): με perk πρώτο το 32% των runs τελείωνε χωρίς να έχει δει ΠΟΤΕ charm και
+     το 1ο charm έφτανε στο ante 6 — δηλαδή ένα στα τρία runs δεν συναντούσε καθόλου το
+     επίπεδο build του παιχνιδιού. Με charm πρώτο: 12% και ante 3. Η δύναμη δεν αλλάζει
+     (μέσο ante θανάτου 14,73 → 14,61, νίκες 13 → 14): αλλάζει μόνο η ΣΕΙΡΑ. */
+  const rewardKind = (a) => (Math.floor(a / CFG.rewardEvery) % 2 === (CFG.charmFirst ? 0 : 1) ? "charm" : "up");
   const cmp = (a, b) => a.r - b.r || a.si - b.si;
   const isWild = (c) => !!c && c.e === "wild";
   const isAce = (c) => !!c && (c.r === 14 || isWild(c));
@@ -293,6 +355,9 @@
   /* Κάθε challenge ante παίρνει την ίδια έκπτωση· το Rich Air χτίζει πάνω σε αυτήν. */
   const chalMulOf = (id) => (id ? CFG.chalTargetMul * (CFG.chalMul[id] || 1) : 1);
   const isSurv = (S) => S.mode === "surv";
+  /* Πόσο απότομο είναι το βουνό τώρα: πόσες ΕΠΙΠΛΕΟΝ βαθμίδες ανεβαίνει το rung μετά από
+     κάθε παίξιμο. Μόνο στο Survival, και μεγαλώνει με τα χέρια που έχεις παίξει. */
+  const steepOf = (S) => (isSurv(S) && CFG.survSteep ? Math.floor((S.stats.plays || 0) / CFG.survSteep) : 0);
   const target = (S) => (isSurv(S) ? Infinity : Math.round(tgtAt(S.ante) * chalMulOf(chal(S)) * (chal(S) === "richair" ? CFG.richAirMul : 1)));
   const roundHandSize = (S) => (chal(S) === "short" ? Math.min(CFG.shortHand, S.handSize) : chal(S) === "nodiscard" || chal(S) === "noace" ? S.handSize + 1 : S.handSize);
   const handCap = (S) => roundHandSize(S);
@@ -317,9 +382,9 @@
     const held = new Set(S.hand.map((c) => c.id));
     const back = S.deck.filter((c) => !held.has(c.id)).map((c) => Object.assign({}, c));
     if (!back.length) return;
+    S.shuffles = (S.shuffles || 0) + 1;
     S.pile = shuffle(S, back);
     S.discardPile = [];
-    S.shuffles = (S.shuffles || 0) + 1;
     S.log.push({ t: "Shuffle", c: "the deck comes round again · " + S.pile.length + " cards", p: "", cls: "bonus" });
   }
   function draw(S, n, deal) {
@@ -416,6 +481,10 @@
   const tooSmall = (S, k) => chal(S) === "highground" && (k.kind === 9 || (k.kind === 1 && k.rank < CFG.highGroundRank));
   const climbs = (S, k) => beats(k, S.rung) && !tooSmall(S, k);
   const sameShape = (a, b) => !!a && !!b && a.kind === b.kind && a.size === b.size;
+  /* Πού θα βρεθεί το rung ΜΕΤΑ από αυτό το χέρι. Το UI χρειάζεται να το δείχνει: με το
+     Sticky Rung ή με απότομο βουνό, το rung πηδάει μόνο του και χωρίς αυτό διαβάζεται ως bug. */
+  const rungAfter = (S, k) => (!k ? S.rung || null : isBomb(k) ? null
+    : { kind: k.kind, rank: Math.min(14, k.rank + (chal(S) === "sticky" ? 2 : 0) + steepOf(S)), size: k.size });
   /* Το πλαφόν σε ένα σημείο, ώστε να μην το προσπερνά κανείς προσθέτοντας βήματα μετά. */
   /* Στο Survival η αλυσίδα ΔΕΝ έχει οροφή: όλο το mode είναι «πόσο κρατάς μία αλυσίδα».
      Μετρημένο με οροφή ×6, το skill headroom ήταν +6% (greedy 4885 → σωστό παίξιμο 5164),
@@ -461,7 +530,8 @@
        στατιστικά αδιάκριτο από το τίποτα. Ο περιορισμός στο σχήμα έφυγε — μένει το σφιχτό βήμα. */
     const lgap = prev ? k.rank - prev.rank : 0;
     let bshm = 1;
-    const ladder = has(S, "ladder") && !!prev && (lgap === 1 || (lgap === 2 && syn(S, "backstairs")));
+    const lwin = syn(S, "backstairs") ? CFG.backStairsWindow : CFG.ladderWindow;
+    const ladder = has(S, "ladder") && !!prev && lgap >= 1 && lgap <= lwin;
     /* Lockstep: το Loyalty κοιτούσε ΜΟΝΟ το αμέσως προηγούμενο lead suit — δύο σφιχτοί όροι
        μαζί (Ladder + ίδιο χρώμα) ήταν μετρημένα νεκρή συνέργεια (Δ +0,01 ante). Τώρα δέχεται
        κάθε χρώμα που οδήγησες μέσα στον γύρο. */
@@ -469,7 +539,7 @@
     const loyal = has(S, "loyal") && ls != null && (syn(S, "lockstep") ? (S.rsuits || []).indexOf(ls) >= 0 : S.lastSuit === ls);
     if (up) {
       let steps = 0;
-      if (ladder) { steps += 2; notes.push(lgap === 2 ? "Back Stairs +2 steps" : "Ladder +2 steps"); }
+      if (ladder) { steps += 2; notes.push(lgap > CFG.ladderWindow ? "Back Stairs +2 steps" : "Ladder +2 steps"); }
       /* Τα σκαλιά κόβονται στο chainCap, οπότε ένα charm που δίνει ΜΟΝΟ σκαλιά είναι δομικά
          νεκρό μόλις η αλυσίδα ακουμπήσει την οροφή. Το Back Stairs πληρώνει και σε Mult. */
       if (ladder && syn(S, "backstairs")) { bshm = 1.5; }
@@ -484,9 +554,16 @@
     /* Climber μετράει κάθε σκαλί διπλό, το Tempo τριπλό — μέχρι την οροφή του chainStepCap. */
     const stepMult = syn(S, "tempo") ? 3 : has(S, "climber") ? 2 : 1;
     const rawSteps = Math.max(0, pos - 1 + CFG.chainFloor) * stepMult;
-    const steps = up ? (isSurv(S) ? rawSteps : Math.min(CFG.chainStepCap, rawSteps)) : 0;
+    const capSteps = (n) => (isSurv(S) ? n : Math.min(CFG.chainStepCap, n));
+    /* Το σπάσιμο τιμωρεί ΔΥΟ φορές: το χέρι χάνει ΟΛΟ τον πολλαπλασιαστή αλυσίδας, και η
+       αλυσίδα μηδενίζει. Το Slipstream μάλωνε μόνο με το δεύτερο — μετρημένο άξιζε −1,49
+       ante, το χειρότερο charm του παιχνιδιού, παρότι μιλούσε στο 73% των γύρων: ένα σκαλί
+       πίσω σε γύρο 3,4 παιξιμάτων δεν είναι τίποτα. Τώρα πιάνει το ΠΡΩΤΟ, που είναι το
+       ακριβό: το σπασμένο χέρι πληρώνεται μισή αλυσίδα. */
+    let steps = up ? capSteps(rawSteps) : 0;
+    if (!up && has(S, "cheap")) steps = Math.floor(capSteps(rawSteps) * CFG.slipKeep);
     const chainMul = 1 + CFG.chainStep * steps;
-    if (steps) { mult = roundMult(mult * chainMul); notes.push("Chain ×" + pos + " · Mult ×" + roundMult(chainMul)); }
+    if (steps) { mult = roundMult(mult * chainMul); notes.push(up ? "Chain ×" + pos + " · Mult ×" + roundMult(chainMul) : "Slipstream · half chain, Mult ×" + roundMult(chainMul)); }
     /* Gold και Silver πολλαπλασιάζουν, ένα φύλλο τη φορά — όπως ακριβώς το λένε οι περιγραφές. */
     const golds = cs.filter((c) => c.e === "gold").length, silvers = cs.filter((c) => c.e === "silver").length;
     let factor = 1;
@@ -499,13 +576,20 @@
     let hm = bshm;
     if (bshm > 1) notes.push("Back Stairs ×" + bshm);
     if (has(S, "summiteer") && isBomb(k)) { hm *= 2; notes.push("Summiteer ×2"); }
-    if (has(S, "leap") && sameShape(k, prev) && k.rank - prev.rank >= 4) { hm *= 2; notes.push("Overkill ×2"); }
+    /* Το Overkill ζητούσε ΙΔΙΟ σχήμα ΚΑΙ +4 βαθμούς. Μετρημένο (tools/trig.js) μιλούσε στο
+       6,0% των παιξιμάτων και άξιζε −0,56 ante: αόρατο. Η αιτία είναι δομική — η σκάλα
+       ανεβάσματος είναι κατά ΕΙΔΟΣ, οπότε δύο διαδοχικά χέρια σπάνια έχουν ίδιο σχήμα
+       (13,7% των παιξιμάτων, tools/rung.js). Μένει το «πολύ ψηλότερα από το rung». */
+    if (has(S, "leap") && up && !!prev && k.rank - prev.rank >= CFG.overkillGap) { hm *= 2; notes.push("Overkill ×2"); }
     if (has(S, "lowroad") && k.kind === 1 && k.rank <= 6) { hm *= 2; chips += 40; notes.push("Low Road ×2, +40"); }
-    if (has(S, "mirror") && S.plays === 0) { hm *= 2; notes.push("Mirror ×2"); }
+    if (has(S, "mirror") && S.plays === 0) { hm *= CFG.mirrorMul; notes.push("Mirror ×" + CFG.mirrorMul); }
     if (has(S, "ember") && pos >= 3) { const cr = syn(S, "reaction"); hm *= cr ? 3 : 2; notes.push(cr ? "Chain Reaction ×3" : "Ember ×2"); }
     if (has(S, "encore") && S.playsLeft < 2) { const be = syn(S, "bookends") && S.firstK && S.firstK.kind === k.kind; hm *= be ? 3 : 2; notes.push(be ? "Bookends ×3" : "Encore ×2"); }
     /* S.hot: άναψε στη βόμβα, σβήνει στο σπάσιμο της αλυσίδας. */
-    if (has(S, "afterburner") && S.hot && !isBomb(k)) { hm *= 2; notes.push("Afterburner ×2"); }
+    /* Η βόμβα ΜΕΤΡΑΕΙ και η ίδια. Πριν, το Afterburner πλήρωνε μόνο τα χέρια ΜΕΤΑ τη βόμβα —
+       και ο γύρος έχει 3,4 παιξίματα, οπότε μετά μια βόμβα μένει ~1 χέρι: 4,5% ρυθμός και
+       −1,00 ante. */
+    if (has(S, "afterburner") && (S.hot || isBomb(k))) { hm *= 2; notes.push("Afterburner ×2"); }
     if (R === "r_red" || R === "r_black") { const red = ls === 1 || ls === 2; if (ls != null && (R === "r_red") === red) { hm *= 1.5; notes.push((R === "r_red" ? "Red" : "Black") + " Night ×1.5"); } }
     if ((R === "r_str2" && k.kind === 4) || (R === "r_trips2" && k.kind === 2) || (R === "r_full2" && k.kind === 5)) { hm *= 2; notes.push(ruleById[R].name + " ×2"); }
     if (R === "r_low2" && !isBomb(k) && k.rank <= 6) { hm *= 2; notes.push("Underdogs ×2"); }
@@ -550,10 +634,12 @@
   function beatText(S) {
     const r = S.rung;
     if (chal(S) === "highground" && !r) return "Nothing under a pair of " + CFG.highGroundRank + " climbs · smaller hands still score";
-    if (!r) return "Table is open · any hand starts the chain";
+    const st = steepOf(S) + (chal(S) === "sticky" ? 2 : 0);
+    const tail = st ? " · the rung climbs " + st + " rank" + (st === 1 ? "" : "s") + " on its own after every play" : "";
+    if (!r) return "Table is open · any hand starts the chain" + tail;
     const n = KINDS[r.kind].name.toLowerCase();
     const how = r.kind === 8 ? "more pairs" : r.kind === 3 || r.kind === 4 ? "a longer or higher " + n : "a higher " + n;
-    return "To climb: " + how + ", or a better kind of hand";
+    return "To climb: " + how + ", or a better kind of hand" + tail;
   }
 
   /* Γιατί ΑΥΤΟ το χέρι δεν ανεβαίνει. Χωρίς αυτό, ο παίκτης διαλέγει δύο ζευγάρια με Κ πάνω
@@ -697,7 +783,10 @@
     if (!isSurv(S)) return 0;
     let got = 0;
     while ((S.survEarned || 0) + got < CFG.survEarnCap && S.score >= survMilestone((S.survEarned || 0) + got)) got += 1;
-    if (got) { S.survEarned = (S.survEarned || 0) + got; S.discMax = discMaxOf(S); }
+    if (got) {
+      S.survEarned = (S.survEarned || 0) + got;
+      S.discMax = discMaxOf(S);
+    }
     return got;
   }
   function afterPlay(S, cs, ev) {
@@ -711,7 +800,10 @@
     if (S.brokeCost) { ev.brokeCost = 1; S.brokeCost = 0; }
     if (isSurv(S) && S.done) ev.last = 1;
     const earned = survEarn(S);
-    if (earned) { ev.breaths = earned; S.log.push({ t: earned > 1 ? earned + " breaths earned" : "Breath earned", c: "past " + survMilestone((S.survEarned || 0) - 1).toLocaleString("en-US"), p: "+" + earned, cls: "bonus" }); }
+    if (earned) {
+      ev.breaths = earned;
+      S.log.push({ t: earned > 1 ? earned + " breaths earned" : "Breath earned", c: "past " + survMilestone((S.survEarned || 0) - 1).toLocaleString("en-US"), p: "+" + earned, cls: "bonus" });
+    }
     S.plays += 1; S.stats.plays += 1;
   }
   /* Καταγράφει την κορυφή της αλυσίδας — τη θέση που ΠΛΗΡΩΣΕ το χέρι, όχι την επόμενη.
@@ -738,7 +830,9 @@
     const tags = [];
     if (S.chain === 0 && k.kind === 1 && k.rank <= 3) tags.push("Humble");
     if (sameShape(k, prev) && k.rank === prev.rank + 1) tags.push("Tight Step");
-    if (sameShape(k, prev) && k.rank - prev.rank >= 4) tags.push("Overkill");
+    /* Το callout ακολουθεί τον όρο του charm Overkill — αλλιώς η οθόνη φωνάζει «Overkill»
+       σε χέρια που το charm δεν πληρώνει, και αντίστροφα. */
+    if (up && !!prev && k.rank - prev.rank >= CFG.overkillGap) tags.push("Overkill");
     const bomb = isBomb(k);
     if (bomb) { tags.push("Bomb!"); S.stats.quads += 1; }
     if (k.kind === 9) { tags.push("Ace"); S.stats.aces += 1; }
@@ -768,11 +862,11 @@
       tags.push("Chain broken");
     }
     if (has(S, "mirror") && S.plays === 0) { S.chain += 1; tags.push("Mirror"); }
-    S.rung = bomb ? null : { kind: k.kind, rank: Math.min(14, k.rank + (chal(S) === "sticky" ? 2 : 0)), size: k.size };
+    S.rung = rungAfter(S, k);
     /* Το «Ladder to Heaven» βγαίνει μία φορά, όταν η αλυσίδα φτάσει πρώτη φορά στην οροφή. */
     { const n = noteChain(S, up ? e.pos : 0); if (n.fresh && n.pos >= CFG.chainCap) tags.push("Ladder to Heaven"); }
     S.played = cs.slice();
-    S.log.push({ t: clabel(k), c: e.chips + " × " + e.mult + (bomb ? " · table opens" : broke ? " · chain ×" + broke + " broken" : ""), p: e.pts, cls: broke ? "pass" : "" });
+    S.log.push({ t: clabel(k), c: e.chips + " × " + e.mult + (bomb ? " · table opens" : broke ? " · chain ×" + broke + " broken" : steepOf(S) ? " · rung +" + steepOf(S) : ""), p: e.pts, cls: broke ? "pass" : "" });
     tags.sort((a, b) => TAG_ORDER.indexOf(a) - TAG_ORDER.indexOf(b));
     const ev = { type: "play", k, pts: e.pts, pos: e.pos, chips: e.chips, mult: e.mult, notes: e.notes, tags, bomb, up, broke, cleared: S.score >= target(S) };
     afterPlay(S, cs, ev);
@@ -950,7 +1044,7 @@
   return {
     SUITS, KINDS, isSurv, BY_TIER, TARGETS, tgtAt, RULES, ruleById, CFG, POOL, DECKS, deckById, SYNERGIES, synById, syn, activeSynergies, synergyFor, goEndless, nearMiss, kbase, kchips, kmult, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, nextTarget, roundHandSize,
-    classify, climbs, hasClimb, whyNoClimb, climbCards, chainPos, survMilestone, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
+    classify, climbs, hasClimb, steepOf, rungAfter, whyNoClimb, climbCards, chainPos, survMilestone, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
     candidates, legalMoves, hasLegal, suggest, orphans,
     toggle, reveal, play, discard, canDiscard, canDiscardAny, discardsLeft, discMaxOf, deadHand, handCap, stuck, stuckReason, finish,
     makeOffers, canTake, take, picksLeft, laneLeft, isReward, rewardKind, nextAnte, applyFree: apply, upcoming, current, currentRule, upcomingRule, peek, has,

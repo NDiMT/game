@@ -222,6 +222,26 @@ for (let a = 0; a < MAXA; a++) {
     f2(p10 / T).padStart(7) + f2(p50 / T).padStart(7) + f2(p90 / T).padStart(7) + f2(p50 / p10).padStart(9) +
     f1(q(cr, .5)).padStart(12) + f2(q(st.big[a], .5)).padStart(11) + String(st.lost[a]).padStart(6));
 }
+/* Ο ΡΗΤΟΣ κανόνας του παίκτη: κανένα μεμονωμένο χέρι δεν καθαρίζει ολόκληρο ante.
+   Ο πίνακας από πάνω δείχνει τη ΔΙΑΜΕΣΟ του μεγαλύτερου χεριού· εδώ η ουρά, που είναι
+   και το μόνο που μετράει για έναν κανόνα «κανένα». */
+{
+  const big = [];
+  for (let a = 0; a < G.TARGETS.length + 4; a++) big.push.apply(big, st.big[a]);
+  const over = big.filter((x) => x >= 1).length;
+  /* ΠΡΟΣΟΧΗ στην ερμηνεία: big/T ≥ 1 ΔΕΝ σημαίνει «ένα χέρι καθάρισε το ante» — το
+     μεγαλύτερο χέρι του γύρου είναι σχεδόν πάντα το ΤΕΛΕΥΤΑΙΟ, φουσκωμένο από αλυσίδα
+     που την έφτιαξαν τα προηγούμενα χέρια. Ο ρητός κανόνας του παίκτη μετριέται στο
+     `cross`: σε πόσους γύρους ο στόχος έπεσε με το ΠΡΩΤΟ παίξιμο. */
+  const cr = [];
+  for (let a = 0; a < G.TARGETS.length + 4; a++) cr.push.apply(cr, st.cross[a]);
+  const one = cr.filter((x) => x === 1).length;
+  console.log("μέγιστο χέρι / στόχος: p50 " + f2(q(big, .5)) + " p90 " + f2(q(big, .9)) + " p99 " + f2(q(big, .99)) +
+    " max " + f2(Math.max.apply(null, big)) + " · big/T ≥ 1 σε " + (100 * over / big.length).toFixed(1) + "% των γύρων");
+  console.log("στόχος έπεσε στο 1ο παίξιμο: " + one + "/" + cr.length + " (" + (100 * one / cr.length).toFixed(2) +
+    "%) · στο 2ο " + (100 * cr.filter((x) => x === 2).length / cr.length).toFixed(1) + "% · κατανομή cross p10 " +
+    q(cr.filter((x) => x < 99), .1) + " p50 " + q(cr.filter((x) => x < 99), .5) + " p90 " + q(cr.filter((x) => x < 99), .9));
+}
 console.log("mean p50/T " + f2(mean(acc50)) + " · mean p10/T " + f2(mean(acc10)) + " · mean p50/p10 " + f2(mean(accR)) +
   " · deaths " + st.lost.reduce((x, y) => x + y, 0) + "/" + RUNS + " · wins " + st.wins +
   " · mean death ante " + f1(st.lost.reduce((x, n, i) => x + n * (i + 1), 0) / Math.max(1, RUNS - st.wins)));
