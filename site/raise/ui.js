@@ -456,7 +456,7 @@
       '<div class="sec"><span class="lbl">Paytable · base × mult, before cards and chain</span><div class="rtab">' + G.BY_TIER.map((t) => { const ki = G.KINDS.indexOf(t), k = { kind: ki, size: t.size || t.min, rank: 14 };
         return '<div><span>' + t.name + (t.id === "single" ? ' <em>One card · the first step</em>' : t.min ? ' <em>' + (t.id === "stairs" ? 'Two pairs in a row · longer pays more' : t.id === "pairs" ? 'Up to 4 pairs · more pay more' : '5 cards · longer pays more') + '</em>' : '') + '</span><b>' + G.kchips(k) + ' × ' + (G.kmult(k) + S.mult[ki]) + '</b></div>'; }).join("") + '</div></div>' +
       '<div class="sec"><span class="lbl">Seed · ' + S.seed + '</span><div class="seedrow"><input id="sd" value="" placeholder="custom seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Go</button></div>' +
-      '<div class="row2"><button class="big ghost" data-today="1">Daily</button><button class="big ghost" data-fresh="1">Random</button></div></div>' +
+      '<button class="big ghost" data-fresh="1" style="margin-top:.4rem">Random seed</button></div>' +
       '<div class="row2" style="margin-top:1.1rem"><button class="big ghost" data-howto="1">How to play</button><button class="big ghost" data-collection="1">Collection</button></div>' +
       '<div class="row2"><button class="big ghost" data-sound="1">Sound · ' + (FX.isMuted() ? "off" : "on") + '</button><button class="big ghost" data-title="1">Title screen</button></div>' +
       (installEvt ? '<button class="big" data-install="1" style="margin-top:.4rem">Add to home screen</button>' : "") +
@@ -508,8 +508,8 @@
     $("fan").innerHTML = FAN.map((c, i) => '<span class="fan__c" style="--i:' + i + '">' + cardHTML(c, null, false, true, i, 5) + '</span>').join("");
     $("startBtns").innerHTML =
       (resume ? '<button class="big" data-continue="1">' + (resume.phase === "won" ? "The Summit · keep climbing" : "Continue · ante " + (resume.ante + 1) + " · " + resume.score + " pts") + '</button>' : "") +
-      '<button class="big' + (resume ? " ghost" : "") + '" data-daily="1">Daily' + (l.seeds && l.seeds[G.todaySeed()] ? ' · best ante ' + l.seeds[G.todaySeed()].ante : "") + '</button>' +
-      '<div class="row2"><button class="big ghost" data-random="1">Random run</button><button class="big ghost" data-howto="1">How to play</button></div>' +
+      '<button class="big' + (resume ? " ghost" : "") + '" data-random="1">Play</button>' +
+      '<button class="big ghost" data-howto="1">How to play</button>' +
       '<button class="colllink" data-collection="1">Collection · ' + un.length + ' / ' + G.CHARMS.length + ' charms ›</button>';
     const pick = deckPick(), mp = G.deckById[pick] && G.deckById[pick].mode === "surv" ? "surv" : "run";
     $("decks").innerHTML = G.DECKS.map((d) => { const ok = deckOpen(l, d), on = d.id === pick; return '<button class="deckc' + (on ? " on" : "") + (ok ? "" : " locked") + '" data-deck="' + d.id + '"' + (ok ? "" : " disabled") + '><b>' + d.glyph + ' ' + d.name + '</b><span>' + (ok ? d.desc : "🔒 " + d.lock.text) + '</span></button>'; }).join("");
@@ -592,7 +592,6 @@
     if (t.closest("[data-endless]")) { if (G.goEndless(S)) { FX.sfx.open(); save(); sheetShop(null, []); } return; }
     if (t.closest("[data-restart]")) { closeS(); begin(S.seed); return; }
     if (t.closest("[data-fresh]")) { closeS(); begin(""); return; }
-    if (t.closest("[data-today]")) { closeS(); begin(G.todaySeed()); return; }
     if (t.closest("[data-seed]")) { const v = $("sd").value.trim(); if (v) { closeS(); begin(v); } return; }
     if (t.closest("[data-sound]")) { FX.toggleMute(); FX.sfx.tick(); sheetMenu(); return; }
     if (t.closest("[data-howto]")) { sheetHowTo(); return; }
@@ -606,7 +605,6 @@
     if (e.target.closest("[data-continue]")) { hideStart(); FX.sfx.open(); render(); if (S.phase === "shop") sheetShop(null, []); else if (S.phase === "won") sheetWin(); else afterMove(); return; }
     const dk = e.target.closest("[data-deck]"); if (dk) { try { localStorage.setItem(DECK_KEY, dk.dataset.deck); } catch (x) {} FX.sfx.tick(); showStart(S && (S.phase === "round" || S.phase === "shop") ? S : null); return; }
     const rp = e.target.closest("[data-replay]"); if (rp) { FX.sfx.open(); begin(rp.dataset.replay); return; }
-    if (e.target.closest("[data-daily]")) { FX.sfx.open(); begin(G.todaySeed()); return; }
     if (e.target.closest("[data-random]")) { FX.sfx.open(); begin(""); return; }
     if (e.target.closest("[data-howto]")) { sheetHowTo(); return; }
     if (e.target.closest("[data-collection]")) { sheetCollection(); return; }
