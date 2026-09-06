@@ -648,7 +648,13 @@
     if (chal(S) === "highground" && !r) return "Nothing under a pair of " + CFG.highGroundRank + " climbs · smaller hands still score";
     const st = steepOf(S) + (chal(S) === "sticky" ? 2 : 0);
     const tail = st ? " · the rung climbs " + st + " rank" + (st === 1 ? "" : "s") + " on its own after every play" : "";
-    if (!r) return "Table is open · any hand starts the chain" + tail;
+    /* Το ανοιχτό τραπέζι ΚΡΑΤΑ την αλυσίδα: μια βόμβα (ή μια ανάσα) καθαρίζει τη σκάλα και
+       το επόμενο χέρι μπορεί να είναι ένας σκέτος άσος — και μετράει κανονικά ως ανέβασμα, με
+       ολόκληρο τον πολλαπλασιαστή. Η παλιά διατύπωση («any hand starts the chain») διαβαζόταν
+       ως «η αλυσίδα ξαναρχίζει», δηλαδή έλεγε το αντίθετο από αυτό που κάνει ο κώδικας. */
+    if (!r) return (chainPos(S) > CFG.chainFloor
+      ? "Table is open · anything climbs · chain ×" + chainPos(S) + " kept"
+      : "Table is open · any hand starts the chain") + tail;
     const n = KINDS[r.kind].name.toLowerCase();
     const how = r.kind === 8 ? "more pairs" : r.kind === 3 || r.kind === 4 ? "a longer or higher " + n : "a higher " + n;
     return "To climb: " + how + ", or a better kind of hand" + tail;
@@ -898,7 +904,7 @@
     /* Το «Ladder to Heaven» βγαίνει μία φορά, όταν η αλυσίδα φτάσει πρώτη φορά στην οροφή. */
     { const n = noteChain(S, up ? e.pos : 0); if (n.fresh && n.pos >= CFG.chainCap) tags.push("Ladder to Heaven"); }
     S.played = cs.slice();
-    S.log.push({ t: clabel(k), c: e.chips + " × " + e.mult + (bomb ? " · table opens" : broke ? " · chain ×" + broke + " broken" : steepOf(S) ? " · rung +" + steepOf(S) : ""), p: e.pts, cls: broke ? "pass" : "" });
+    S.log.push({ t: clabel(k), c: e.chips + " × " + e.mult + (bomb ? " · table opens, chain ×" + chainPos(S) + " kept" : broke ? " · chain ×" + broke + " broken" : steepOf(S) ? " · rung +" + steepOf(S) : ""), p: e.pts, cls: broke ? "pass" : "" });
     tags.sort((a, b) => TAG_ORDER.indexOf(a) - TAG_ORDER.indexOf(b));
     const ev = { type: "play", k, pts: e.pts, pos: e.pos, chips: e.chips, mult: e.mult, notes: e.notes, tags, bomb, up, broke, cleared: S.score >= target(S) };
     afterPlay(S, cs, ev);
