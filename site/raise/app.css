@@ -1257,3 +1257,30 @@ body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-sha
 .go.down.cost{background:var(--gloss),linear-gradient(180deg,rgba(120,170,190,.3),rgba(60,110,130,.16));border-color:rgba(143,208,226,.5)}
 .go.down.cost .go__s{color:#8fd0e2}
 .build{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(147,170,156,.6);text-align:center;margin-top:.7rem}
+
+/* ===================== v25: Survival — διαβάζεις το χέρι, δεν το ψάχνεις ===================== */
+/* Πρώτη δοκιμή έσβηνε τα φύλλα που δεν ανεβαίνουν στο .42 με saturate(.5): γινόταν
+   ΑΔΙΑΒΑΣΤΑ πάνω στο πράσινο — και παίζονται κανονικά, απλώς κοστίζουν ανάσα. Η σωστή
+   λογική είναι αντίστροφη: **τονίζουμε τον δρόμο προς τα πάνω**, δεν κρύβουμε τα υπόλοιπα. */
+.hand .card.nolift:not(.sel){opacity:.72}
+.hand .card:not(.nolift):not(.sel){box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 3px 7px rgba(0,0,0,.45),0 0 0 1.5px rgba(255,209,102,.75),0 0 .7rem rgba(245,207,106,.3)}
+.hand .card:not(.nolift):not(.sel)::before{border-color:rgba(212,169,79,.35)}
+
+/* Το κουμπί του σπασίματος έμοιαζε απενεργοποιημένο: ξεβαμμένο γκρι-μπλε, χωρίς όγκο.
+   Τώρα είναι ένα ΚΑΝΟΝΙΚΟ κουμπί σε χρώμα προειδοποίησης — πατιέται και φαίνεται ότι πατιέται. */
+.go.down.cost{
+  color:#2a1608;border-color:transparent;
+  background:var(--gloss),linear-gradient(180deg,#ffc99a 0%,#f0975a 46%,#dd7a3c 54%,#f5ab6d 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 3px 0 #8a4718,0 8px 18px rgba(0,0,0,.42),0 0 1.1rem rgba(240,150,90,.3);
+  animation:none;
+}
+.go.down.cost::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+  background:var(--irid);background-size:240% 100%;mix-blend-mode:soft-light;opacity:.4;
+  animation:iridrun 6s linear infinite;
+}
+.go.down.cost>*{position:relative;z-index:2}
+.go.down.cost .go__t{color:#2a1608}
+.go.down.cost .go__s{color:#6b3512;font-weight:600}
+.go.down.cost:active{transform:translateY(2px) scale(.985);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 0 #8a4718,0 4px 10px rgba(0,0,0,.4)}
+@media (prefers-reduced-motion:reduce){.go.down.cost::before{animation:none}}

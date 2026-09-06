@@ -110,7 +110,12 @@
   try { muted = localStorage.getItem("raise.mute") === "1"; } catch (e) {}
   /* Σβηστή από προεπιλογή. Ένα κομμάτι που παίζει σε λούπα όσο σκέφτεσαι ένα χέρι γίνεται
      ενοχλητικό πολύ πριν γίνει εθιστικό — ας το ανάψει όποιος το θέλει. */
-  try { musicOff = localStorage.getItem("raise.music") !== "1"; } catch (e) { musicOff = true; }
+  /* 0 = σβηστή (προεπιλογή) · 1 = κανονικά · 2 = δυνατά. Ο λόγος για τρίτη στάθμη είναι
+     πρακτικός: σε ηχείο κινητού μια μπάντα 4× κάτω από τους ήχους ακούγεται σαν τίποτα. */
+  let musicLvl = 0;
+  try { musicLvl = Math.max(0, Math.min(2, +(localStorage.getItem("raise.music") || 0) | 0)); } catch (e) { musicLvl = 0; }
+  musicOff = musicLvl === 0;
+  const BUS = [0, 0.75, 1.3];
   let master = null, send = null, duckG = null;
 
   function ctx() {
@@ -276,7 +281,7 @@
       musicBus(); mOn = true; mStep = 0; mNext = c.currentTime + 0.08;
       musicG.gain.cancelScheduledValues(c.currentTime);
       musicG.gain.setValueAtTime(0.0001, c.currentTime);
-      musicG.gain.linearRampToValueAtTime(0.7, c.currentTime + 2.6);
+      musicG.gain.linearRampToValueAtTime(BUS[musicLvl] || 0.75, c.currentTime + 2.6);
       mTimer = setInterval(pump, 25);
     },
     stop: function (fade) {
@@ -332,12 +337,32 @@
     if (muted) music.stop(0.2); else if (!musicOff) music.start();
     return muted;
   }
+  /* Κυκλικά: off → on → loud → off. Και κάθε φορά παίζει τρεις νότες του θέματος, ώστε το
+     πάτημα να ΑΠΑΝΤΑ — αλλιώς «Music · on» και σιωπή είναι αδιάκριτο από χαλασμένο. */
   function toggleMusic() {
-    musicOff = !musicOff;
-    try { localStorage.setItem("raise.music", musicOff ? "0" : "1"); } catch (e) {}
-    if (musicOff) music.stop(0.6); else if (!muted) music.start();
-    return !musicOff;
+    musicLvl = (musicLvl + 1) % 3;
+    musicOff = musicLvl === 0;
+    try { localStorage.setItem("raise.music", String(musicLvl)); } catch (e) {}
+    if (musicOff) music.stop(0.5);
+    else {
+      const c = ctx();
+      if (mOn && musicG && c) { musicG.gain.cancelScheduledValues(c.currentTime); musicG.gain.setValueAtTime(musicG.gain.value, c.currentTime); musicG.gain.linearRampToValueAtTime(BUS[musicLvl], c.currentTime + 0.5); }
+      else if (!muted) music.start();
+      /* τρεις νότες του θέματος: μι — λα — μι, στη στάθμη που μόλις διάλεξες */
+      const g = 0.05 * BUS[musicLvl];
+      bell(hz(7 + 48), 0.34, g, master, 0, 0.6);
+      bell(hz(12 + 48), 0.34, g, master, 0.16, 0.6);
+      bell(hz(7 + 60), 0.5, g * 0.7, master, 0.32, 0.8);
+    }
+    return musicLvl;
+  }
+  /* Τι κάνει ΠΡΑΓΜΑΤΙΚΑ ο ήχος, για το μενού: όταν ο παίκτης λέει «δεν ακούω», αυτό απαντά. */
+  function audioState() {
+    if (!AC) return "no web audio";
+    if (!ac) return "not started";
+    if (ac.state !== "running") return ac.state;
+    return muted ? "effects muted" : mOn ? "music playing" : musicOff ? "music off" : "music idle";
   }
 
-  root.FX = { spark, burstAt, boom, floatIn, countUp, pulse, fly, ghostTo, buzz, sfx, music, duck, toggleMute, toggleMusic, isMuted: () => muted, musicOn: () => !musicOff, embers, flash, RM };
+  root.FX = { spark, burstAt, boom, floatIn, countUp, pulse, fly, ghostTo, buzz, sfx, music, duck, toggleMute, toggleMusic, isMuted: () => muted, musicOn: () => !musicOff, musicLevel: () => musicLvl, audioState, embers, flash, RM };
 })(window);

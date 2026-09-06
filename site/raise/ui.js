@@ -173,6 +173,12 @@
       fitHand(n);
       hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n)).join("");
     }
+    /* Survival: όποιο φύλλο δεν μπαίνει σε κανένα ΑΝΕΒΑΣΜΑ, σβήνει. Με 70+ παιξίματα η
+       διαφορά ανάμεσα στο «διαβάζω το χέρι μου» και στο «ψάχνω» είναι όλο το mode. */
+    if (surv && S.rung) {
+      const cc = G.climbCards(S);
+      Array.prototype.forEach.call(hand.children, (el, i) => el.classList.toggle("nolift", !cc[i]));
+    } else Array.prototype.forEach.call(hand.children, (el) => el.classList.remove("nolift"));
     /* Τα σημάδια «μόλις τραβήχτηκε» σβήνουν πάντα — αλλιώς ένα επόμενο πλήρες render
        ξαναπαίζει το drawin σε φύλλα που είναι στο χέρι εδώ και ώρα. */
     S.hand.forEach((c) => { delete c.n; delete c.x; });
@@ -199,7 +205,7 @@
       /* Survival: το σπάσιμο επιτρέπεται και κοστίζει μία ανάσα — και στο μηδέν είναι το
          τελευταίο σου χέρι. Το κουμπί το λέει, ώστε η απόφαση να είναι δική σου. */
       const brk = surv
-        ? (G.discardsLeft(S) > 0 ? "Breaks the chain · costs a breath (" + G.discardsLeft(S) + " left)" : "Breaks the chain · your last hand")
+        ? (G.discardsLeft(S) > 0 ? "Breaks the chain · −1 breath (" + G.discardsLeft(S) + ")" : "Breaks the chain · your last hand")
         : "Breaks the chain · " + calc;
       if (surv && !e.up) go.classList.add("cost");
       go.innerHTML = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc : brk) + '</span>';
@@ -497,9 +503,10 @@
       '<div class="sec"><span class="lbl">Seed · ' + S.seed + '</span><div class="seedrow"><input id="sd" value="" placeholder="custom seed" spellcheck="false" aria-label="Seed"><button data-seed="1">Go</button></div>' +
       '<button class="big ghost" data-fresh="1" style="margin-top:.4rem">Random seed</button></div>' +
       '<div class="row2" style="margin-top:1.1rem"><button class="big ghost" data-howto="1">How to play</button><button class="big ghost" data-collection="1">Collection</button></div>' +
-      '<div class="row2"><button class="big ghost" data-sound="1">Sound · ' + (FX.isMuted() ? "off" : "on") + '</button><button class="big ghost" data-music="1">Music · ' + (FX.musicOn() && !FX.isMuted() ? "on" : "off") + '</button></div>' +
-      /* Η έκδοση, γραμμένη από το CI: ώστε να φαίνεται αν το τηλέφωνο κρατά παλιά cache. */
-      '<p class="build">' + buildTag() + '</p>' +
+      '<div class="row2"><button class="big ghost" data-sound="1">Sound · ' + (FX.isMuted() ? "off" : "on") + '</button><button class="big ghost" data-music="1">Music · ' + ["off", "on", "loud"][FX.musicLevel()] + '</button></div>' +
+      /* Η έκδοση και η ΠΡΑΓΜΑΤΙΚΗ κατάσταση του ήχου: όταν ο παίκτης λέει «δεν ακούω»,
+         αυτή η γραμμή απαντά αντί να μαντεύουμε. */
+      '<p class="build">' + buildTag() + ' · audio: ' + FX.audioState() + '</p>' +
       '<button class="big ghost" data-title="1" style="margin-top:.4rem">Title screen</button>' +
       (installEvt ? '<button class="big" data-install="1" style="margin-top:.4rem">Add to home screen</button>' : "") +
       '<button class="big ghost" data-close="1" style="margin-top:.5rem">Back</button>');
@@ -601,12 +608,36 @@
     const go = $("bPlay");
     if (dy < 0 && !go.disabled && (go.classList.contains("ok") || go.classList.contains("down"))) doPlay();
     else if (dy > 0 && S.sel.length) { if (G.canDiscard(S)) doDiscard(); else { S.sel = []; render(true); } }
+    /* Survival: σύρσιμο κάτω με ΑΔΕΙΑ επιλογή = ανάσα με τα άχρηστα φύλλα. Όταν τίποτα δεν
+       ανεβαίνει, η ανάσα είναι η κίνηση — δεν έχει νόημα να διαλέξεις πρώτα τι θα πετάξεις. */
+    else if (dy > 0 && !S.sel.length && G.isSurv(S) && G.canDiscardAny(S) && G.discardsLeft(S) > 0) {
+      const o = G.orphans(S);
+      S.sel = (o.length ? o : S.hand.map((_, i) => i).sort((a, b) => S.hand[a].r - S.hand[b].r)).slice(0, Math.max(1, Math.min(3, o.length || 2)));
+      if (G.canDiscard(S)) doDiscard(); else { S.sel = []; render(true); }
+    }
   });
+  /* Ένα χτύπημα διάλεγε ΕΝΑ φύλλο. Σε 70+ παιξίματα ενός Survival run αυτό είναι πάνω από
+     250 χτυπήματα για να χτίσεις σχήματα που το παιχνίδι ξέρει ήδη.
+     Τώρα: με ΑΔΕΙΑ επιλογή, ένα χτύπημα διαλέγει ολόκληρο το καλύτερο χέρι που περιέχει το
+     φύλλο, και τα επόμενα χτυπήματα στο ΙΔΙΟ φύλλο κυκλώνουν τα άλλα χέρια του, μέχρι το
+     σκέτο φύλλο. Με ΥΠΑΡΧΟΥΣΑ επιλογή, το χτύπημα σε άλλο φύλλο προσθέτει/αφαιρεί όπως πάντα:
+     το χειροκίνητο χτίσιμο δεν σβήνεται ποτέ από τη συντόμευση. */
+  let cyc = { i: -1, n: 0, sig: "" };
+  const selSig = () => S.sel.slice().sort((a, b) => a - b).join(",");
   hand.addEventListener("click", (e) => {
     if (swipe.did) { swipe.did = false; return; }
     const b = e.target.closest("[data-i]"); if (!b || S.phase !== "round") return;
     const i = +b.dataset.i; ui.note = null;
-    if (G.toggle(S, i)) { FX.sfx.tick(); FX.buzz(6); render(true); }
+    const tap = () => { if (G.toggle(S, i)) { FX.sfx.tick(); FX.buzz(6); cyc = { i: -1, n: 0, sig: "" }; render(true); } };
+    /* Συνεχίζεις τον κύκλο μόνο αν η επιλογή είναι ακριβώς αυτή που έβαλε ο κύκλος. */
+    const inCycle = cyc.i === i && cyc.sig === selSig();
+    if (!inCycle && S.sel.length) return tap();          /* χειροκίνητο χτίσιμο: ως είχε */
+    const opts = G.handsWith(S, i);
+    if (!opts.length) return tap();
+    const n = inCycle ? cyc.n + 1 : 0;
+    if (n >= opts.length) { S.sel = [i]; cyc = { i: -1, n: 0, sig: "" }; }
+    else { S.sel = opts[n].idx.slice(); cyc = { i: i, n: n, sig: selSig() }; }
+    FX.sfx.tick(); FX.buzz(6); render(true);
   });
   $("tools").addEventListener("click", (e) => {
     const a = e.target.closest("[data-act]"); if (!a) return;
