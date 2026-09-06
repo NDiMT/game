@@ -1,115 +1,101 @@
-/* classify() against an independent oracle.
-   Oracle: enumerate every rank a Joker could take (suits are irrelevant to classify —
-   a Joker matches any suit, and flushness is decided by the naturals), evaluate the
-   resulting concrete multiset with plain Tichu rules, keep the best by (kbase, rank). */
-const { G } = require("./bot.js");
-const KINDS = G.KINDS;
-const kbase = G.kbase;
+/* Ανεξάρτητος ελεγκτής του classify(): πόκερ ώς 5 φύλλα, με τζόκερ.
+   Ο «μάντης» δεν ξαναγράφει τη λογική του παιχνιδιού — απαριθμεί: για κάθε τζόκερ δοκιμάζει
+   ΚΑΘΕ φύλλο (13 βαθμίδες × 4 χρώματα) και κρατά το καλύτερο αποτέλεσμα ενός αυστηρού,
+   γραμμένου-από-την-αρχή αξιολογητή πόκερ. Αν οι δύο διαφωνήσουν, φταίει το ένα από τα δύο.
+   node tools/qa/classify.js [N] */
+const G = require("../../site/raise/game.js");
+const N = +process.argv[2] || 60000;
 
-/* concrete evaluation: ranks[] (all real), allSameSuit = naturals all one suit */
-function concreteKinds(ranks, allSameSuit) {
-  const n = ranks.length, out = [];
-  const cnt = {}; ranks.forEach((r) => { cnt[r] = (cnt[r] || 0) + 1; });
-  const rs = Object.keys(cnt).map(Number).sort((a, b) => a - b);
-  const d = rs.length, lo = rs[0], hi = rs[d - 1], span = hi - lo + 1;
-  const maxC = Math.max.apply(null, rs.map((r) => cnt[r]));
-  if (n === 1) { if (ranks[0] === 14) out.push({ kind: 9, rank: 14, size: 1 }); return out; }
-  if (n === 2 && d === 1) out.push({ kind: 1, rank: lo, size: 2 });
-  if (n === 3 && d === 1) out.push({ kind: 2, rank: lo, size: 3 });
-  if (n === 4 && d === 1) out.push({ kind: 6, rank: lo, size: 4 });
-  if (n === 5 && d === 2) { rs.forEach((r) => { if (cnt[r] === 3 && cnt[rs[0] === r ? rs[1] : rs[0]] === 2) out.push({ kind: 5, rank: r, size: 5 }); }); }
-  /* pairs: n/2 pairs at n/2 distinct ranks, any ranks */
-  if (n >= 4 && n % 2 === 0 && n <= 8 && d === n / 2 && maxC === 2) out.push({ kind: 8, rank: hi, size: n });
-  /* stairs: n/2 consecutive pairs */
-  if (n >= 4 && n % 2 === 0 && d === n / 2 && maxC === 2 && span === n / 2) out.push({ kind: 3, rank: hi, size: n });
-  /* straight / straight flush: n>=5 distinct consecutive */
-  if (n >= 5 && maxC === 1 && span === n && lo >= 2) {
-    out.push({ kind: 4, rank: hi, size: n });
-    if (allSameSuit) out.push({ kind: 7, rank: hi, size: n });
+/* --- αξιολογητής χωρίς μπαλαντέρ: γυρίζει {tier, rank} ή null --- */
+function evalPlain(cs) {
+  const n = cs.length;
+  if (!n || n > 5) return null;
+  const by = {}; cs.forEach((c) => { by[c.r] = (by[c.r] || 0) + 1; });
+  const ranks = Object.keys(by).map(Number).sort((a, b) => a - b);
+  const cnt = ranks.map((r) => by[r]).sort((a, b) => b - a);
+  const hi = ranks[ranks.length - 1];
+  const suited = cs.every((c) => c.si === cs[0].si);
+  const run5 = n === 5 && ranks.length === 5 && hi - ranks[0] === 4;
+  if (n === 1) return null;   /* κάτω από ζευγάρι δεν υπάρχει χέρι */
+  if (n === 2) return cnt[0] === 2 ? { tier: 1, rank: hi } : null;
+  if (n === 3) return cnt[0] === 3 ? { tier: 3, rank: hi } : null;
+  if (n === 4) {
+    if (cnt[0] === 4) return { tier: 7, rank: hi };
+    if (cnt[0] === 2 && cnt[1] === 2) return { tier: 2, rank: hi };
+    return null;
   }
-  return out;
+  if (run5 && suited) return { tier: 8, rank: hi };
+  if (cnt[0] === 3 && cnt[1] === 2) return { tier: 6, rank: ranks.find((r) => by[r] === 3) };
+  if (suited) return { tier: 5, rank: hi };
+  if (run5) return { tier: 4, rank: hi };
+  return null;
 }
+const better = (a, b) => !b || a.tier > b.tier || (a.tier === b.tier && a.rank > b.rank);
 
+/* --- μάντης με μπαλαντέρ: απαρίθμηση --- */
 function oracle(cs) {
-  const nat = cs.filter((c) => c.e !== "wild");
-  const w = cs.length - nat.length;
-  const natRanks = nat.map((c) => c.r);
-  const allSame = nat.length === 0 || nat.every((c) => c.si === nat[0].si);
+  const wilds = [], fixed = [];
+  cs.forEach((c) => (G.isWild(c) ? wilds : fixed).push(c));
+  if (!wilds.length) return evalPlain(cs);
   let best = null;
-  const consider = (k) => { if (!best || kbase(k) > kbase(best) || (kbase(k) === kbase(best) && k.rank > best.rank)) best = k; };
-  /* single joker alone is an Ace */
-  if (cs.length === 1) { if (natRanks[0] === 14 || w === 1) return { kind: 9, rank: 14, size: 1 }; return null; }
-  const assign = (i, acc) => {
-    if (i === w) { concreteKinds(natRanks.concat(acc), allSame).forEach(consider); return; }
-    for (let r = 2; r <= 14; r++) assign(i + 1, acc.concat([r]));
-  };
-  assign(0, []);
+  const assign = [];
+  (function go(i) {
+    if (i === wilds.length) {
+      const r = evalPlain(fixed.concat(assign));
+      if (r && better(r, best)) best = r;
+      return;
+    }
+    for (let r = 2; r <= 14; r++) for (let si = 0; si < 4; si++) { assign.push({ r, si }); go(i + 1); assign.pop(); }
+  })(0);
   return best;
 }
 
-const eq = (a, b) => (!a && !b) || (!!a && !!b && a.kind === b.kind && a.rank === b.rank && a.size === b.size);
-
-/* random hands */
-function deck(nj) {
-  const d = [];
-  let id = 1;
-  for (let r = 2; r <= 14; r++) for (let si = 0; si < 4; si++) d.push({ id: id++, r, si });
-  for (let j = 0; j < nj; j++) d.push({ id: id++, r: 0, si: j % 4, e: "wild" });
-  return d;
-}
-let rng = 12345;
-const rnd = () => { rng = (rng * 1103515245 + 12345) & 0x7fffffff; return rng / 0x7fffffff; };
-
-let mism = [], tested = 0;
-const MAXW = 3; /* oracle is 13^w */
-for (let trial = 0; trial < 250000; trial++) {
-  const nj = Math.floor(rnd() * 5);
-  const d = deck(nj);
-  const n = 1 + Math.floor(rnd() * 8);
-  const pick = [];
-  const used = new Set();
-  while (pick.length < n) { const i = Math.floor(rnd() * d.length); if (used.has(i)) continue; used.add(i); pick.push(d[i]); }
-  const w = pick.filter((c) => c.e === "wild").length;
-  if (w > MAXW) continue;
+const TIER = G.KINDS.slice(1).reduce((m, k) => { m[G.KINDS.indexOf(k)] = k.tier; return m; }, {});
+let bad = 0, tested = 0, wildTested = 0;
+function check(cs, tag) {
   tested++;
-  const got = G.classify(pick), want = oracle(pick);
-  if (!eq(got, want)) {
-    if (mism.length < 60) mism.push({ cards: pick.map((c) => (c.e === "wild" ? "W" : G.rname(c.r) + "shdc"[c.si])).join(" "), got, want });
+  const mine = G.classify(cs), want = oracle(cs);
+  const mt = mine ? { tier: TIER[mine.kind], rank: mine.rank } : null;
+  const same = (!mt && !want) || (mt && want && mt.tier === want.tier && mt.rank === want.rank);
+  if (!same && bad < 12) {
+    console.log("ΔΙΑΦΩΝΙΑ " + tag + ": " + cs.map((c) => (G.isWild(c) ? "★" : G.rname(c.r) + G.SUITS[c.si].s)).join(" ") +
+      " → δικό μας " + (mine ? G.clabel(mine) + " (tier " + mt.tier + ", rank " + mt.rank + ")" : "—") +
+      " · μάντης " + (want ? "tier " + want.tier + ", rank " + want.rank : "—"));
   }
+  if (!same) bad++;
 }
-/* also structured sweeps: every multiset of ranks up to size 6 from a small alphabet + jokers */
-function sweep() {
-  const alpha = [2, 3, 4, 5, 6, 13, 14];
-  const out = [];
-  const rec = (acc, start) => {
-    if (acc.length >= 1 && acc.length <= 6) out.push(acc.slice());
-    if (acc.length === 6) return;
-    for (let i = start; i < alpha.length; i++) for (let c = 1; c <= 4 && acc.filter((r) => r === alpha[i]).length + c <= 4; c++) rec(acc.concat(Array(c).fill(alpha[i])), i + 1);
-  };
-  rec([], 0);
-  return out;
-}
-let sm = 0, st = 0;
-for (const ranks of sweep()) {
-  for (let nw = 0; nw <= 2; nw++) {
-    if (ranks.length + nw > 8 || ranks.length + nw < 1) continue;
-    for (const flush of [true, false]) {
-      const cs = ranks.map((r, i) => ({ id: i + 1, r, si: flush ? 0 : i % 4 }));
-      for (let j = 0; j < nw; j++) cs.push({ id: 100 + j, r: 0, si: 0, e: "wild" });
-      st++;
-      const got = G.classify(cs), want = oracle(cs);
-      if (!eq(got, want)) { sm++; if (mism.length < 60) mism.push({ cards: ranks.map(G.rname).join(",") + (flush ? " flush" : "") + " +" + nw + "W", got, want }); }
-    }
+
+/* τυχαία χέρια 1–5 φύλλων, ώς 2 τζόκερ (η απαρίθμηση είναι 52^w) */
+let id = 0;
+for (let i = 0; i < N; i++) {
+  const n = 1 + Math.floor(Math.random() * 5);   /* περιλαμβάνει και μονά, που πρέπει να απορρίπτονται */
+  const w = Math.random() < 0.25 ? (Math.random() < 0.7 ? 1 : 2) : 0;
+  const cs = [];
+  for (let j = 0; j < n; j++) {
+    if (j < w) { cs.push({ id: ++id, r: 0, si: 0, e: "wild" }); continue; }
+    cs.push({ id: ++id, r: 2 + Math.floor(Math.random() * 13), si: Math.floor(Math.random() * 4) });
   }
+  if (w) wildTested++;
+  check(cs, "τυχαίο");
 }
-console.log("random hands tested:", tested, "sweep:", st);
-console.log("mismatches:", mism.length, "(sweep", sm + ")");
-const byKey = {};
-mism.forEach((m) => {
-  const k = (m.got ? m.got.kind + "/" + m.got.size : "null") + " -> want " + (m.want ? m.want.kind + "/" + m.want.size : "null");
-  (byKey[k] = byKey[k] || []).push(m);
-});
-Object.keys(byKey).forEach((k) => {
-  const e = byKey[k][0];
-  console.log("  [" + byKey[k].length + "] " + k + "  e.g. " + e.cards + "  got=" + JSON.stringify(e.got) + " want=" + JSON.stringify(e.want));
-});
+/* στοχευμένα: κάθε τύπος, καθαρός */
+const c = (r, si) => ({ id: ++id, r, si });
+const W = () => ({ id: ++id, r: 0, si: 0, e: "wild" });
+[
+  [[c(9, 0)], "μονό (άκυρο)"], [[c(14, 2)], "μονός άσος (άκυρο)"],
+  [[c(9, 0), c(9, 1)], "pair"], [[c(9, 0), c(9, 1), c(4, 2), c(4, 3)], "two pair"],
+  [[c(7, 0), c(7, 1), c(7, 2)], "trips"], [[c(7, 0), c(7, 1), c(7, 2), c(7, 3)], "quads"],
+  [[c(7, 0), c(7, 1), c(7, 2), c(4, 0), c(4, 1)], "full"],
+  [[c(5, 0), c(6, 1), c(7, 2), c(8, 3), c(9, 0)], "straight"],
+  [[c(2, 1), c(5, 1), c(9, 1), c(12, 1), c(14, 1)], "flush"],
+  [[c(5, 1), c(6, 1), c(7, 1), c(8, 1), c(9, 1)], "sflush"],
+  [[c(10, 3), c(11, 3), c(12, 3), c(13, 3), c(14, 3)], "royal"],
+  [[c(14, 0), c(2, 1), c(3, 2), c(4, 3), c(5, 0)], "wheel (δεν μετράει)"],
+  [[W(), c(9, 1)], "★+9"], [[W(), W(), c(9, 1)], "★★+9"],
+  [[W(), c(5, 1), c(6, 1), c(8, 1), c(9, 1)], "★ κέντα ίδιου χρώματος"],
+  [[c(3, 0), c(3, 1), c(3, 2), W(), c(8, 0)], "τριάδα+★+σκουπίδι"],
+  [[c(2, 0), c(7, 1), c(9, 2), c(11, 3), c(13, 0)], "τίποτα"],
+].forEach(([cs, tag]) => check(cs, tag));
+
+console.log("χέρια που ελέγχθηκαν: " + tested + " (με τζόκερ: " + wildTested + ")");
+console.log("διαφωνίες: " + bad);

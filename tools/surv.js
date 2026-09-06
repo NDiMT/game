@@ -20,7 +20,18 @@ function run(seed, pol) {
        sharp  = ίδιο, αλλά στη ΤΕΛΕΥΤΑΙΑ ανάσα σπάει με το μεγαλύτερο χέρι
        hint   = ό,τι λέει το κουμπί */
     let m = null, breathe = false;
-    if (pol === "greedy") m = all.reduce((b, o) => (!b || pts(S, o) > pts(S, b) ? o : b), null);
+    /* saw = πριόνι: χτίζει αλυσίδα με το φθηνότερο ανέβασμα και ΞΟΔΕΥΕΙ το μεγαλύτερο χέρι
+       μόλις η αλυσίδα φτάσει το κατώφλι — αφού πια το σπάσιμο δεν κοστίζει ανάσα. */
+    if (pol.indexOf("saw") === 0) {
+      const T = +pol.slice(3) || 8, pos = G.chainPos(S);
+      const big = all.reduce((b, o) => (!b || pts(S, o) > pts(S, b) ? o : b), null);
+      const cheapUp = up.length ? up.reduce((b, o) => (cost(o.k) < (b ? cost(b.k) : Infinity) ? o : b), null) : null;
+      if (pos >= T && big) m = big;
+      else if (cheapUp) m = cheapUp;
+      else if (G.discardsLeft(S) > 0 && G.canDiscardAny(S) && G.orphans(S).length >= 2) breathe = true;
+      else m = big;
+    }
+    else if (pol === "greedy") m = all.reduce((b, o) => (!b || pts(S, o) > pts(S, b) ? o : b), null);
     else if (pol === "hint") { m = G.suggest(S); if (!m) breathe = true; }
     else if (up.length) m = up.reduce((b, o) => (cost(o.k) < (b ? cost(b.k) : Infinity) ? o : b), null);
     else if (G.discardsLeft(S) > (pol === "sharp" ? 1 : 0) && G.canDiscardAny(S)) breathe = true;
@@ -40,7 +51,7 @@ const q = (a, f) => a.slice().sort((x, y) => x - y)[Math.min(a.length - 1, Math.
 const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
 
 function table(label) {
-  const rows = ["greedy", "cheap", "sharp", "hint"].map((pol) => {
+  const rows = (process.env.POLS || "greedy,cheap,sharp,hint").split(",").map((pol) => {
     const o = []; for (let i = 0; i < N; i++) o.push(run("sv-" + i, pol));
     const sc = o.map((x) => x.s);
     return { pol, p10: q(sc, .1), p50: q(sc, .5), p90: q(sc, .9), h: mean(o.map((x) => x.h)), c: q(o.map((x) => x.c), .5), b: mean(o.map((x) => x.b)), runaway: o.filter((x) => x.cap).length };
@@ -51,7 +62,7 @@ function table(label) {
   rows.forEach((r) => console.log("  " + r.pol.padEnd(9) + String(r.p10).padStart(7) + String(r.p50).padStart(9) + String(r.p90).padStart(9) +
     r.h.toFixed(0).padStart(7) + ("×" + r.c).padStart(9) + r.b.toFixed(1).padStart(8) +
     ("+" + (100 * (r.p50 / base - 1)).toFixed(0) + "%").padStart(10) + String(r.runaway).padStart(10)));
-  const best = rows[2];
+  const best = rows[rows.length - 1];
   console.log("  spread p90/p10 ×" + (best.p90 / best.p10).toFixed(2));
   return rows;
 }

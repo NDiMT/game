@@ -19,17 +19,23 @@
      προς δύο τριάρια μένει καρφωμένος στο ×1,44 — το φύλλο μετράει λίγο, το σχήμα αρκετά. */
   /* tier = σειρά ισχύος (ανώτερο χτυπάει κατώτερο). Το kind μένει σταθερό για τα saves. */
   /* Κάθε χέρι έχει Chips και Mult (όπως στο Balatro). cstep/mstep = ανά επιπλέον βήμα μήκους. */
+  /* ΠΟΚΕΡ, ΟΧΙ TICHU. Εννιά χέρια, καθένα με ΣΤΑΘΕΡΟ μέγεθος, και κανένα πάνω από πέντε φύλλα.
+     Έφυγαν οι σκάλες ζευγαριών (stairs), τα τριπλά/τετραπλά ζευγάρια και οι κέντες μεταβλητού
+     μήκους — δηλαδή ό,τι ήταν Tichu. Μπήκε το **Flush**, που έλειπε.
+     Οι δείκτες (kind) κρατήθηκαν όπου γινόταν για να μη σπάσουν perks/κανόνες που τους
+     αναφέρουν· το 3 ήταν stairs και τώρα είναι flush. */
   const KINDS = [null,
     { id: "pair", name: "Pair", short: "PAIR", chips: 25, mult: 3, size: 2, tier: 1 },
-    { id: "trips", name: "Trips", short: "TRIPS", chips: 34, mult: 5, size: 3, tier: 3 },
-    { id: "stairs", name: "Stairs", short: "STAIRS", chips: 36, mult: 5, cstep: 8, mstep: 1, min: 4, tier: 4 },
-    { id: "straight", name: "Straight", short: "STR8", chips: 38, mult: 5, cstep: 7, mstep: 1, min: 5, tier: 5 },
-    { id: "full", name: "Full House", short: "FULL", chips: 42, mult: 6, size: 5, tier: 6 },
-    { id: "quads", name: "Quads", short: "QUADS", chips: 50, mult: 7, size: 4, bomb: true, tier: 7 },
-    { id: "sflush", name: "Straight Flush", short: "SFLUSH", chips: 62, mult: 8, cstep: 8, mstep: 1, min: 5, bomb: true, tier: 8 },
-    { id: "pairs", name: "Two Pair", short: "PAIRS", chips: 30, mult: 4, cstep: 8, mstep: 1, min: 4, tier: 2 },
-    /* Ο μοναχικός άσος: το φθηνότερο χέρι και το πρώτο σκαλί κάθε αλυσίδας. */
-    { id: "single", name: "Ace", short: "ACE", chips: 15, mult: 2, size: 1, tier: 0 },
+    { id: "trips", name: "Trips", short: "TRIPS", chips: 36, mult: 5, size: 3, tier: 3 },
+    { id: "flush", name: "Flush", short: "FLUSH", chips: 45, mult: 6, size: 5, tier: 5 },
+    { id: "straight", name: "Straight", short: "STR8", chips: 40, mult: 5, size: 5, tier: 4 },
+    { id: "full", name: "Full House", short: "FULL", chips: 50, mult: 7, size: 5, tier: 6 },
+    { id: "quads", name: "Quads", short: "QUADS", chips: 58, mult: 8, size: 4, bomb: true, tier: 7 },
+    { id: "sflush", name: "Straight Flush", short: "SFLUSH", chips: 70, mult: 9, size: 5, bomb: true, tier: 8 },
+    { id: "pairs", name: "Two Pair", short: "PAIRS", chips: 32, mult: 4, size: 4, tier: 2 },
+    /* Το high card ΒΓΗΚΕ: κάτω από ζευγάρι δεν παίζεται τίποτα. Ένα μονό φύλλο ως χέρι έκανε
+       τη σκάλα να έχει δεκατρία δωρεάν σκαλιά στον πάτο και το χέρι να μη «στερεύει» ποτέ —
+       δηλαδή καμία ένταση. Η θέση 9 μένει κενή για να μη μετακινηθούν οι δείκτες των άλλων. */
   ];
   const BY_TIER = KINDS.slice(1).sort((a, b) => a.tier - b.tier);
   /* Ποια σχήματα πιάνει κάθε αναβάθμιση, και πόσο Mult δίνει. Μετρημένο: τα ζευγάρια είναι
@@ -38,9 +44,9 @@
   const MULT_KIND = { m1: [1, 8], m2: [2, 3, 4, 5, 6, 7] };
   const MULT_STEP = { m1: 1, m2: 2 };
   /* Πόσα βήματα μήκους πάνω από το ελάχιστο: ζεύγη/σκάλες μετρούν ζευγάρια, κέντες φύλλα. */
-  const kunits = (k) => (k.kind === 3 || k.kind === 8 ? k.size / 2 - 2 : k.kind === 4 || k.kind === 7 ? k.size - 5 : 0);
-  const kchips = (k) => { const K = KINDS[k.kind]; return K.chips + (K.cstep || 0) * kunits(k); };
-  const kmult = (k) => { const K = KINDS[k.kind]; return K.mult + (K.mstep || 0) * kunits(k); };
+  /* Σταθερά μεγέθη, άρα καμία προσαύξηση ανά επιπλέον φύλλο: το σχήμα είναι το σχήμα. */
+  const kchips = (k) => KINDS[k.kind].chips;
+  const kmult = (k) => KINDS[k.kind].mult;
   /* Ονομαστική αξία του σχήματος (χωρίς φύλλα): για ταξινόμηση και για τον πίνακα πληρωμών. */
   const kbase = (k) => kchips(k) * kmult(k);
   const isBomb = (k) => !!k && !!KINDS[k.kind].bomb;
@@ -51,7 +57,7 @@
      9,7% και τα «κενά» 3,6% (2,67×), δηλαδή δύο στους τρεις γύρους ήταν γέμισμα.
      Μετά: 6,1% / 5,1%. Το tune.js εξομαλύνει πλέον ΧΩΡΙΣΤΑ τις δύο σειρές και προσαρμόζει
      σε ΛΟΓΟ score/target, όχι σε σκέτο score — αλλιώς αγνοούσε το chalTargetMul. */
-  const TARGETS = [972, 1190, 1320, 1790, 2150, 2300, 2920, 3270, 3340, 3960, 4320, 4550, 5370, 6230, 6620, 7830, 8720, 9060, 10200, 11100, 11400, 13400, 14400, 15000, 17700, 19600, 20100, 23500, 25400, 26000, 29300, 31200, 33600, 38900, 41100, 42600, 49000, 52900, 54200, 61100, 65100, 66600, 75400, 79600, 81600, 94000, 96500, 101000, 123000, 126000];
+  const TARGETS = [1050, 1290, 1430, 1930, 2320, 2480, 3150, 3530, 3610, 4280, 4670, 4910, 5800, 6730, 7150, 8460, 9420, 9780, 11000, 12000, 12300, 14500, 15600, 16200, 19100, 21200, 21700, 25400, 27400, 28100, 31600, 33700, 36300, 42000, 44400, 46000, 52900, 57100, 58500, 66000, 70300, 71900, 81400, 86000, 88100, 102000, 104000, 109000, 133000, 136000];
   const CFG = {
     handSize: 8, plays: 5, discards: 2, jokers: 2,
     /* Η αλυσίδα ΠΟΛΛΑΠΛΑΣΙΑΖΕΙ το Mult του χεριού, δεν του προσθέτει.
@@ -95,7 +101,7 @@
        και ο Hint ταιριάζει ακριβώς με το βέλτιστο. Το κόστος είναι ΜΟΝΟ ο χρόνος: το run
        τραβά ~28% παραπάνω από τις 7 ανάσες (57 χέρια). Αν χρειαστεί να κοντύνει χωρίς να
        πειραχτούν οι αρχικές, το survGrow ×2,8 δίνει 66 χέρια και spread ×2,76. */
-    survDiscards: 10, survStep: 1200, survGrow: 2.2, survEarnCap: 99,
+    survDiscards: 6, survStep: 1200, survGrow: 2.2, survEarnCap: 99,
     /* Το Survival δεν είχε ΚΑΜΙΑ καμπύλη. Μετρημένο ανά δεκάδα χεριών (tools/decide.js 60):
        από το χέρι 1 ώς το 80 τα νούμερα της απόφασης είναι ταυτόσημα — υποψήφια χέρια 4,4→5,0,
        ανεβάσματα 3,4→3,1, είδη που ανεβαίνουν 1,96→1,82, «καμία επιλογή» 40%→45%, κόστος
@@ -160,9 +166,30 @@
        γίνεται μετρημένα ~2× πιο εύκολο (μέσο ante θανάτου 15,2 → 33,5, νίκες 6% → 19%). Ο
        μοχλός για να επιστρέψει η δυσκολία, αν ζητηθεί, είναι το `tgtScale`: ×1,2 δίνει ante
        25,5 και νίκες 4,7%. */
-    junkCap: 3,
+    /* ΠΕΝΤΕ ΦΥΛΛΑ, ΤΕΛΟΣ. Κανένα χέρι δεν είναι μεγαλύτερο, και κανένα παίξιμο δεν κουβαλά
+       περισσότερα: ό,τι δεν σκοράρει είναι «σκουπίδι» και μετράει μέσα στα πέντε — ζευγάρι
+       (2) + 3, high card (1) + 4, κέντα (5) + 0. */
+    playMax: 5,
+    /* `junkRedraw` = πόσα από τα σκουπίδια ξανατραβιούνται. ΜΗΔΕΝ: φεύγουν και το χέρι μένει
+       τόσο κοντύτερο για ένα παίξιμο. Μετρημένο ότι αυτό κρατά τη δυσκολία (14,4 έναντι 15,2
+       βάσης) ενώ το πλήρες ξαναμοίρασμα την έκανε ~2× πιο εύκολη (33,5). */
+    junkRedraw: 0,
     /* Survival: κάθε βόμβα δίνει και μία ανάσα. */
     survBombBreath: 1,
+    /* Το Survival τελειώνει ΜΟΝΟ του: κάτω από ζευγάρι δεν παίζεται τίποτα, οπότε ένα χέρι
+       χωρίς κανέναν συνδυασμό είναι αδιέξοδο — και το μόνο που το ξεμπλοκάρει είναι μια ανάσα
+       (discard). Με μηδέν ανάσες και νεκρό χέρι, τέλος. Το `survPlays` μένει μόνο ως φρουρός
+       κατά του άπειρου βρόχου, δεν είναι πόρος του παίκτη — αλλά ΥΠΑΡΧΕΙ και δεύτερος λόγος:
+       με δωρεάν σπάσιμο, το «παίζω πάντα το μεγαλύτερο χέρι» τραβάει πέντε φύλλα κάθε γύρο,
+       κρατά το χέρι φρέσκο και ζει 180 χέρια — δηλαδή ο όγκος νικούσε την αλυσίδα. Με όριο
+       εξήντα χεριών η ισορροπία γυρίζει εκεί που ανήκει. Μετρημένο (120 runs, p50 σκορ,
+       άπληστο vs σωστό παίξιμο): όριο 60 → +127% · 80 → +55% · 120 → −4%. */
+    survPlays: 60,
+    /* Στο Survival το σκαλί αξίζει περισσότερο: με σταθερά 60 χέρια για όλους, το βήμα είναι
+       ΟΛΗ η διαφορά ανάμεσα στο «ανεβαίνω φθηνά» και στο «ρίχνω ό,τι έχω». Μετρημένο (120 runs
+       ανά κελί, greedy vs σωστό παίξιμο): με 0,22 το headroom είναι +79%, με 0,30 **+120%**·
+       και τα δύο με ίδιο spread (×1,65). */
+    survChainStep: 0.3,
     /* Μοχλός σάρωσης· στο παιχνίδι μένει 1. */
     tgtScale: 1,
     /* Παράθυρα των charms που είναι δεμένα στο rung. Μετρημένος ρυθμός ενεργοποίησης
@@ -199,7 +226,7 @@
 
   const POOL = [
     { id: "m1", name: "Pairs +", desc: "Pairs and two pair: +1 Mult" },
-    { id: "m2", name: "Big Hands +", desc: "Trips, stairs, straights, full houses and bombs: +2 Mult" },
+    { id: "m2", name: "Big Hands +", desc: "Trips, straights, flushes, full houses and bombs: +2 Mult" },
     { id: "pl", name: "Extra Play", desc: "+1 play a round" },
     { id: "di", name: "Nimble Hands", desc: "+1 discard a round" },
     { id: "wi", name: "Wide Hand", desc: "Hold one more card" },
@@ -276,7 +303,7 @@
     { id: "wild", name: "Wild Deck", desc: "Four Jokers. Jokers pop up twice as often.", glyph: "★", lock: { key: "best", n: 10, text: "Clear ante 10" } },
     /* Στη θέση του Headless, που ήταν άλλη τράπουλα για το ίδιο παιχνίδι. Ίδια σειρά, τρίτη
        επιλογή — αλλά αυτή αλλάζει τον τρόπο, όχι τα φύλλα: καθόλου στόχοι, καθόλου perks. */
-    { id: "survival", name: "Survival", desc: "No targets, no perks. The cards never run out — climb until nothing does.", glyph: "∞", mode: "surv", lock: { key: "best", n: 6, text: "Clear ante 6" } },
+    { id: "survival", name: "Survival", desc: "No targets, no perks. Sixty hands or until your hand dies — score as high as the chain will carry you.", glyph: "∞", mode: "surv", lock: { key: "best", n: 6, text: "Clear ante 6" } },
   ];
   const deckById = {}; DECKS.forEach((d) => { deckById[d.id] = d; });
 
@@ -371,7 +398,7 @@
     const seed = String(seedStr || "").trim() || String(Math.floor(Math.random() * 1e9));
     const D = deckById[deckId] || DECKS[0];
     const S = {
-      v: 13, seed, rng: hash(seed) | 0, deckId: D.id, endless: false, mode: D.mode === "surv" ? "surv" : "run",
+      v: 14, seed, rng: hash(seed) | 0, deckId: D.id, endless: false, mode: D.mode === "surv" ? "surv" : "run",
       ante: 0, phase: "round", offers: [], picks: 0, nOffers: CFG.offers,
       handSize: CFG.handSize, playsMax: CFG.plays, discMore: 0, chainStart: 0,
       hand: [],
@@ -386,7 +413,7 @@
     for (let j = 0; j < jokers; j++) S.deck.push({ id: S.nextId++, r: 0, si: j % 4, e: "wild" });
     /* Survival: μία τράπουλα, κανένας στόχος, κανένα perk ή charm, κανένα challenge.
        Τελειώνει όταν τελειώσουν τα φύλλα — η τράπουλα ΕΙΝΑΙ το χρονόμετρο. */
-    if (S.mode === "surv") { S.playsMax = 999; S.charmSlots = 0; }
+    if (S.mode === "surv") { S.playsMax = CFG.survPlays; S.charmSlots = 0; }   /* survPlays = φρουρός, όχι πόρος */
     else {
       const pool = RANDOM_CHALLENGES.slice();
       for (let a = 0; a < TARGETS.length; a++) if (isReward(a)) S.chals[a] = pool.length ? pool.splice(Math.floor(next(S) * pool.length), 1)[0] : RANDOM_CHALLENGES[Math.floor(next(S) * RANDOM_CHALLENGES.length)];
@@ -482,40 +509,70 @@
   const K = (kind, rank, size) => ({ kind, rank, size });
   /* Ταξινόμηση κατά Tichu. Wild = οποιοδήποτε φύλλο (γεμίζει κενά, επεκτείνει προς τα πάνω). */
   function classify(cs) {
-    if (!cs || !cs.length) return null;
-    /* Ένα φύλλο είναι χέρι μόνο αν είναι άσος (ή τζόκερ): το πρώτο σκαλί της αλυσίδας. */
-    if (cs.length === 1) return isAce(cs[0]) ? K(9, 14, 1) : null;
+    if (!cs || cs.length < 2 || cs.length > CFG.playMax) return null;
     const n = cs.length, F = cs.filter((c) => !isWild(c)), w = n - F.length;
-    /* Όλα τζόκερ: το `n >= 5` έδινε Straight (base 190) αντί Straight Flush (496) — και
-       χανόταν το bomb, δηλαδή δεν άνοιγε το τραπέζι. Οι μπαλαντέρ παίρνουν όποιο χρώμα θέλουν,
-       άρα μια ατόφια σκάλα από τζόκερ είναι εξ ορισμού και χρωματιστή. */
-    if (!F.length) return n === 2 ? K(1, 14, 2) : n === 3 ? K(2, 14, 3) : n === 4 ? K(6, 14, 4) : n >= 5 ? K(7, 14, n) : null;
     const bR = {}; F.forEach((c) => { bR[c.r] = (bR[c.r] || 0) + 1; });
-    const ranks = Object.keys(bR).map(Number).sort((x, y) => x - y), d = ranks.length, lo = ranks[0], hi = ranks[d - 1], span = hi - lo + 1;
-    const maxC = Math.max.apply(null, ranks.map((r) => bR[r]));
+    const ranks = Object.keys(bR).map(Number).sort((x, y) => x - y), d = ranks.length;
+    const cnt = ranks.map((r) => bR[r]).sort((x, y) => y - x), maxC = cnt.length ? cnt[0] : 0;
+    /* Ο τζόκερ γεμίζει ό,τι λείπει: για κάθε τύπο ρωτάμε «πόσα μου λείπουν;» και το
+       συγκρίνουμε με το πλήθος των μπαλαντέρ. */
+    const topRank = d ? ranks[d - 1] : 14;
+    const ofKind = (need) => {   /* καλύτερη βαθμίδα που φτάνει σε `need` όμοια */
+      let best = null;
+      ranks.forEach((r) => { if (bR[r] + w >= need && (best == null || r > best)) best = r; });
+      if (best == null && w >= need) best = 14;
+      return best;
+    };
     let best = null;
-    const take = (k) => { if (!best || kbase(k) > kbase(best) || (kbase(k) === kbase(best) && k.rank > best.rank)) best = k; };
-    if (d === 1) {
-      if (n === 2) take(K(1, lo, 2)); else if (n === 3) take(K(2, lo, 3)); else if (n === 4) take(K(6, lo, 4));
-      else if (n === 5) { if (bR[lo] === 3) take(K(5, lo, 5)); else if (bR[lo] <= 2 && w >= 3) take(K(5, 14, 5)); }
+    const take = (k) => { if (k && (!best || kbase(k) > kbase(best) || (kbase(k) === kbase(best) && k.rank > best.rank))) best = k; };
+    if (n === 2) { const r = ofKind(2); if (r != null && d <= 1) take(K(1, r, 2)); }
+    if (n === 3) { const r = ofKind(3); if (r != null && d <= 1) take(K(2, r, 3)); }
+    if (n === 4) {
+      const q = ofKind(4); if (q != null && d <= 1) take(K(6, q, 4));
+      /* Δύο ζευγάρια: δύο βαθμίδες από δύο, με τους μπαλαντέρ να συμπληρώνουν. */
+      if (d <= 2) {
+        const missing = ranks.reduce((a, r) => a + Math.max(0, 2 - bR[r]), 0) + (d < 2 ? 2 * (2 - d) : 0);
+        /* Ζευγάρι ΑΣΩΝ από μπαλαντέρ γίνεται μόνο αν τα φυσικά φύλλα φτιάχνουν μόνα τους το
+           άλλο ζευγάρι — δηλαδή αν είναι το πολύ ΜΙΑ βαθμίδα. Με δύο διαφορετικά φυσικά
+           (π.χ. 6 και 8) οι μπαλαντέρ πρέπει να ζευγαρώσουν αυτά, και η κορυφή είναι το 8. */
+        if (missing <= w && maxC <= 2) take(K(8, d >= 2 ? topRank : 14, 4));
+      }
     }
-    if (n >= 4 && n % 2 === 0 && n <= 8 && d <= n / 2 && maxC <= 2) take(K(8, d < n / 2 ? 14 : hi, n));
-    if (n === 5 && d === 2) {
-      const a = hi, b = lo;
-      if (bR[a] <= 3 && bR[b] <= 2) take(K(5, a, 5)); else if (bR[b] <= 3 && bR[a] <= 2) take(K(5, b, 5));
-    }
-    if (n >= 5 && maxC === 1 && span <= n && span - d <= w) {
-      const top = Math.min(14, hi + (n - span));
-      if (top - n + 1 >= 2) take(K(F.every((c) => c.si === F[0].si) ? 7 : 4, top, n));
-    }
-    if (n >= 4 && n % 2 === 0 && maxC <= 2) {
-      const p = n / 2;
-      if (span <= p) { const top = Math.min(14, hi + (p - span)); if (top - p + 1 >= 2) take(K(3, top, n)); }
+    if (n === 5) {
+      /* Φουλ: μια βαθμίδα ×3 και μια ×2. Δοκίμασε ποια θα γίνει η τριάδα. */
+      if (d <= 2) {
+        /* Η τριάδα μπορεί να είναι και ΑΣΟΙ από μπαλαντέρ, ακόμη κι αν άσος δεν υπάρχει στο
+           χέρι — γι' αυτό το 14 μπαίνει πάντα στους υποψηφίους. */
+        const cand3 = (d ? ranks.slice() : []).concat(ranks.indexOf(14) < 0 ? [14] : []);
+        for (const r3 of cand3) {
+          const have3 = bR[r3] || 0, other = ranks.filter((r) => r !== r3);
+          if (other.length > 1) continue;
+          const r2 = other.length ? other[0] : null;
+          const have2 = r2 == null ? 0 : bR[r2];
+          const need = Math.max(0, 3 - have3) + Math.max(0, 2 - have2);
+          if (have3 <= 3 && have2 <= 2 && need <= w) take(K(5, r3, 5));
+        }
+      }
+      const suits = {}; F.forEach((c) => { suits[c.si] = (suits[c.si] || 0) + 1; });
+      const flushSuit = Object.keys(suits).length <= 1 && (F.length + w >= 5);
+      /* Κέντα: πέντε συνεχόμενες βαθμίδες, χωρίς επανάληψη. Ο άσος είναι μόνο ψηλά. */
+      let strTop = null;
+      if (maxC <= 1) {
+        for (let top = 14; top >= 6; top--) {
+          const lo = top - 4;
+          let need = 0, ok = true;
+          for (const r of ranks) if (r < lo || r > top) { ok = false; break; }
+          if (!ok) continue;
+          for (let r = lo; r <= top; r++) if (!bR[r]) need++;
+          if (need <= w) { strTop = top; break; }
+        }
+      }
+      if (strTop != null) take(K(flushSuit ? 7 : 4, strTop, 5));
+      /* Στο χρώμα ο μπαλαντέρ είναι άσος του ίδιου χρώματος: ανεβάζει τη βαθμίδα. */
+      if (flushSuit && strTop == null) take(K(3, w ? 14 : topRank, 5));
     }
     return best;
   }
-  /* Υβρίδιο: ανώτερος τύπος χτυπάει κατώτερο (Pair < Trips < Stairs < Straight < Full < Quads < Str.Flush).
-     Στον ίδιο τύπο, Tichu: ίδιο μήκος και ψηλότερη αξία — ή μακρύτερη κέντα / σκάλα. */
   function beats(k, r) {
     if (!k) return false;
     if (!r) return true;
@@ -526,7 +583,7 @@
   /* Όλα τα χέρια παίζονται. Το «climbs» λέει μόνο αν συνεχίζει η αλυσίδα. */
   /* High Ground: ο φραγμός δεν είναι αρχικό rung (θα ίσχυε μόνο για το πρώτο χέρι) — είναι
      όρος που κρατά όλο τον γύρο. Μοναχικός άσος και μικρά ζευγάρια γράφουν, αλλά δεν ανεβάζουν. */
-  const tooSmall = (S, k) => chal(S) === "highground" && (k.kind === 9 || (k.kind === 1 && k.rank < CFG.highGroundRank));
+  const tooSmall = (S, k) => chal(S) === "highground" && k.kind === 1 && k.rank < CFG.highGroundRank;
   const climbs = (S, k) => beats(k, S.rung) && !tooSmall(S, k);
   const sameShape = (a, b) => !!a && !!b && a.kind === b.kind && a.size === b.size;
   /* Πού θα βρεθεί το rung ΜΕΤΑ από αυτό το χέρι. Το UI χρειάζεται να το δείχνει: με το
@@ -610,7 +667,7 @@
        ακριβό: το σπασμένο χέρι πληρώνεται μισή αλυσίδα. */
     let steps = up ? capSteps(rawSteps) : 0;
     if (!up && has(S, "cheap")) steps = Math.floor(capSteps(rawSteps) * CFG.slipKeep);
-    const chainMul = 1 + CFG.chainStep * steps;
+    const chainMul = 1 + (isSurv(S) ? CFG.survChainStep : CFG.chainStep) * steps;
     if (steps) { mult = roundMult(mult * chainMul); notes.push(up ? "Chain ×" + pos + " · Mult ×" + roundMult(chainMul) : "Slipstream · half chain, Mult ×" + roundMult(chainMul)); }
     /* Gold και Silver πολλαπλασιάζουν, ένα φύλλο τη φορά — όπως ακριβώς το λένε οι περιγραφές. */
     const golds = cs.filter((c) => c.e === "gold").length, silvers = cs.filter((c) => c.e === "silver").length;
@@ -666,6 +723,9 @@
      σκουπίδια — ώστε δύο ίδιες επιλογές να δίνουν πάντα το ίδιο. */
   function coreOf(S, cs) {
     if (!cs.length) return null;
+    /* Πάνω από πέντε φύλλα δεν παίζεται ΤΙΠΟΤΑ — ούτε καν με σκουπίδια. Το όριο είναι το
+       παίξιμο, όχι το σχήμα. */
+    if (cs.length > CFG.playMax) return null;
     const live = cs.filter((c) => !frozen(S, c));
     if (!live.length) return null;
     const sub = { phase: "round", chal: S.chal, hand: live, sel: [] };
@@ -676,7 +736,6 @@
     let best = null;
     for (const o of opts) {
       const junk = live.length - o.idx.length;
-      if (junk > CFG.junkCap) continue;
       const core = o.idx.map((i) => live[i]);
       const cand = { k: o.k, core, junk, pts: scoreOf(S, o.k, core).pts, up: climbs(S, o.k) };
       if (!best || better(cand, best)) best = cand;
@@ -693,19 +752,17 @@
     return Object.assign({ k: co.k, legal: true, up: climbs(S, co.k), cs, core: co.core, rest: co.rest }, sc);
   }
   /* "Pair 8" · "Stairs 3 to 6" · "Straight 7 to J" · "Str. Flush 5 to 9" */
-  const PAIRS_NAME = { 4: "Two Pair", 6: "Three Pair", 8: "Four Pair" };
+  /* "High 9" · "Pair 9" · "Two Pair K" · "Straight to 9" · "Flush to Q" · "Str. Flush to 9" */
   function clabel(k) {
-    if (k.kind === 9) return "Ace";
-    if (k.kind === 8) return PAIRS_NAME[k.size] + " " + rname(k.rank);
-    if (k.kind === 3) return "Stairs " + k.size / 2 + " to " + rname(k.rank);
-    if (k.kind === 4) return "Straight " + k.size + " to " + rname(k.rank);
-    if (k.kind === 7) return "Str. Flush " + k.size + " to " + rname(k.rank);
+    if (k.kind === 9) return "High " + rname(k.rank);
+    if (k.kind === 4) return "Straight to " + rname(k.rank);
+    if (k.kind === 3) return "Flush to " + rname(k.rank);
+    if (k.kind === 7) return "Str. Flush to " + rname(k.rank);
     return KINDS[k.kind].name + " " + rname(k.rank);
   }
-  /* Οι βαθμίδες που καλύπτει: "4·5·6" για σκάλες, "7…J" για κέντες. */
+  /* Οι βαθμίδες που καλύπτει μια κέντα: "5…9". Το χρώμα δεν έχει εύρος. */
   function crange(k) {
-    if (k.kind === 3) { const p = k.size / 2, out = []; for (let r = k.rank - p + 1; r <= k.rank; r++) out.push(rname(r) + rname(r)); return out.join(" "); }
-    if (k.kind === 4 || k.kind === 7) return rname(k.rank - k.size + 1) + "…" + rname(k.rank);
+    if (k.kind === 4 || k.kind === 7) return rname(k.rank - 4) + "…" + rname(k.rank);
     return "";
   }
   /* Τι χρειάζεται για να χτυπηθεί το rung. */
@@ -722,8 +779,7 @@
       ? "Table is open · anything climbs · chain ×" + chainPos(S) + " kept"
       : "Table is open · any hand starts the chain") + tail;
     const n = KINDS[r.kind].name.toLowerCase();
-    const how = r.kind === 8 ? "more pairs" : r.kind === 3 || r.kind === 4 ? "a longer or higher " + n : "a higher " + n;
-    return "To climb: " + how + ", or a better kind of hand" + tail;
+    return "To climb: a higher " + n + ", or a better hand" + tail;
   }
 
   /* Γιατί ΑΥΤΟ το χέρι δεν ανεβαίνει. Χωρίς αυτό, ο παίκτης διαλέγει δύο ζευγάρια με Κ πάνω
@@ -735,53 +791,28 @@
     const r = S.rung;
     if (!r || beats(k, r)) return "";
     const K = KINDS[k.kind], R = KINDS[r.kind];
-    if (k.kind !== r.kind) return K.name + " ranks below " + R.name + " · a higher card does not carry across kinds";
-    const pairish = k.kind === 3 || k.kind === 8;
-    if (k.size !== r.size) return pairish
-      ? "needs more than " + (r.size / 2) + " pairs, not a higher one"
-      : "needs more than " + r.size + " cards, not a higher one";
-    return "same kind and length · needs to top " + rname(r.rank);
+    if (k.kind !== r.kind) return K.name + " ranks below " + R.name + " · a higher card does not carry across hands";
+    return "same hand · needs to top " + rname(r.rank);
   }
 
   /* ============================== κινήσεις ============================== */
+  /* Με σταθερά σχήματα ώς πέντε φύλλα, ο απλός δρόμος είναι και ο σωστός: παράγουμε ΟΛΑ τα
+     υποσύνολα μεγέθους 1–5 και ρωτάμε το `classify`. Για χέρι 8 φύλλων είναι 218 υποσύνολα
+     (10 φύλλα → 637), δηλαδή μια χούφτα μικροδευτερόλεπτα, και δεν υπάρχει περίπτωση να μας
+     ξεφύγει σχήμα — που ήταν ο μόνιμος κίνδυνος του παλιού χειρόγραφου απαριθμητή. */
   function candidatesRaw(S) {
-    const bR = {}, W = [], vis = [];
-    S.hand.forEach((c, i) => { if (c.h || frozen(S, c)) return; vis.push(i); if (isWild(c)) { W.push(i); return; } (bR[c.r] = bR[c.r] || []).push(i); });
-    const out = [], rs = Object.keys(bR).map(Number).sort((a, b) => a - b), nw = W.length, wl = (n) => W.slice(0, n);
-    /* Ο μοναχικός άσος παίζεται σαν κάθε άλλο χέρι — εκτός αν ο γύρος τον απαγορεύει. */
-    vis.forEach((i) => { if (isAce(S.hand[i])) out.push([i]); });
-    rs.forEach((r) => { const g = bR[r]; [2, 3, 4].forEach((tot) => { for (let use = 0; use <= Math.min(nw, tot - 1); use++) if (g.length >= tot - use) out.push(g.slice(0, tot - use).concat(wl(use))); }); });
-    for (let n = 2; n <= Math.min(4, nw); n++) out.push(wl(n));
-    /* 2–4 ζευγάρια σε οποιεσδήποτε βαθμίδες (wilds γεμίζουν) */
-    (function pairsets(start, acc, need) {
-      if (acc.length >= 2 && need <= nw) out.push(acc.reduce((a, r) => a.concat(bR[r].slice(0, 2)), []).concat(wl(need)));
-      if (acc.length === 4) return;
-      for (let i = start; i < rs.length; i++) pairsets(i + 1, acc.concat([rs[i]]), need + Math.max(0, 2 - bR[rs[i]].length));
-    })(0, [], 0);
-    rs.forEach((t) => rs.forEach((p) => {
-      if (t === p) return;
-      const nt = Math.max(0, 3 - bR[t].length), np = Math.max(0, 2 - bR[p].length);
-      if (nt + np <= nw) out.push(bR[t].slice(0, 3).concat(bR[p].slice(0, 2), wl(nt + np)));
-    }));
-    const maxL = Math.min(vis.length, 13);
-    for (let L = 5; L <= maxL; L++) for (let s = 2; s + L - 1 <= 14; s++) {
-      let need = 0; const pk = [];
-      for (let r = s; r < s + L; r++) { if (bR[r]) pk.push(bR[r][0]); else need++; }
-      if (need <= nw && pk.length) out.push(pk.concat(wl(need)));
-      for (let si = 0; si < 4; si++) {
-        let need2 = 0; const pk2 = [];
-        for (let r = s; r < s + L; r++) { const j = bR[r] ? bR[r].find((i) => S.hand[i].si === si) : undefined; if (j !== undefined) pk2.push(j); else need2++; }
-        if (need2 <= nw && pk2.length >= 3) out.push(pk2.concat(wl(need2)));
+    const vis = [];
+    S.hand.forEach((c, i) => { if (!c.h && !frozen(S, c)) vis.push(i); });
+    const out = [], cur = [];
+    (function pick(start) {
+      if (cur.length) {
+        const k = classify(cur.map((i) => S.hand[i]));
+        if (k) out.push({ idx: cur.slice(), k });
       }
-    }
-    for (let p = 2; 2 * p <= vis.length; p++) for (let s = 2; s + p - 1 <= 14; s++) {
-      let need = 0; const pk = [];
-      for (let r = s; r < s + p; r++) { const g = bR[r] || []; pk.push.apply(pk, g.slice(0, 2)); need += 2 - Math.min(2, g.length); }
-      if (need <= nw && pk.length) out.push(pk.concat(wl(need)));
-    }
-    const seen = new Set();
-    return out.filter((idx) => { const key = idx.slice().sort((a, b) => a - b).join(","); if (seen.has(key)) return false; seen.add(key); return true; })
-      .map((idx) => ({ idx, k: classify(idx.map((i) => S.hand[i])) })).filter((o) => o.k);
+      if (cur.length === CFG.playMax) return;
+      for (let j = start; j < vis.length; j++) { cur.push(vis[j]); pick(j + 1); cur.pop(); }
+    })(0);
+    return out;
   }
   /* Το `candidates()` είναι η ακριβότερη συνάρτηση της μηχανής — 0,22ms με οκτώ διαφορετικές
      βαθμίδες, 0,68ms με δώδεκα φύλλα και τέσσερα joker — και καλείται 5,9 φορές για το ΙΔΙΟ
@@ -823,17 +854,18 @@
     if (!all.length) return null;
     const up = all.filter((o) => climbs(S, o.k)), pool = up.length ? up : all;
     const val = (o) => scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts;
-    /* Survival: η αλυσίδα δεν έχει οροφή, άρα το ΜΗΚΟΣ της είναι όλο το παιχνίδι. Το φθηνότερο
-       ανέβασμα κρατά το rung χαμηλά και το σερί ζωντανό. Αν τίποτα δεν ανεβαίνει, το σπάσιμο
-       επιτρέπεται και κοστίζει ανάσα — τότε η σωστή πρόταση είναι το ΑΚΡΙΒΟΤΕΡΟ χέρι: αν
-       πληρώσεις ανάσα, πληρώσου κι εσύ. */
+    /* Survival: η αλυσίδα δεν έχει οροφή, άρα το ΜΗΚΟΣ της είναι όλο το παιχνίδι — το
+       φθηνότερο ανέβασμα κρατά το rung χαμηλά και το σερί ζωντανό. Όταν δεν ανεβαίνει τίποτα,
+       το σπάσιμο είναι δωρεάν: παίζεις το ΑΚΡΙΒΟΤΕΡΟ χέρι, γράφεις ό,τι μπορείς, και
+       ξαναρχίζεις την αλυσίδα από κάτω. Η ανάσα (discard) μένει για όταν το χέρι είναι σκουπίδι
+       και θέλεις καλύτερα φύλλα — δεν χαλιέται σε σπάσιμο. */
     if (isSurv(S)) {
       const rank = (o) => KINDS[o.k.kind].tier * 1e6 + o.k.size * 1e3 + o.k.rank;
       if (up.length) return up.reduce((b2, o) => (!b2 || rank(o) < rank(b2) ? o : b2), null);
-      /* Τίποτα δεν ανεβαίνει: αν υπάρχει ανάσα, ΑΥΤΗ είναι η σωστή κίνηση — `null` σημαίνει
-         «μη παίξεις χέρι». Μετρημένο, ένας Hint που πρότεινε το μεγαλύτερο χέρι εδώ έβγαζε
-         p50 5 904 έναντι 48 187 του σωστού παιξίματος: δίδασκε τη χειρότερη γραμμή.
-         Με μηδέν ανάσες το σπάσιμο είναι αναπόφευκτο, οπότε προτείνει το ακριβότερο. */
+      /* Τίποτα δεν ανεβαίνει. Το σπάσιμο είναι δωρεάν σε ανάσες αλλά ΣΚΟΤΩΝΕΙ την αλυσίδα, που
+         είναι όλο το σκορ: όσο υπάρχει ανάσα, η σωστή κίνηση είναι το discard (`null` σημαίνει
+         «μη παίξεις χέρι»). Μετρημένο, ο Hint που έσπαγε αντί να ανασαίνει έβγαζε p50 24 592
+         έναντι 77 162 του σωστού παιξίματος — δίδασκε ξανά τη χειρότερη γραμμή. */
       if (discardsLeft(S) > 0 && canDiscardAny(S)) return null;
       return all.reduce((b2, o) => (!b2 || val(o) > val(b2) ? o : b2), null);
     }
@@ -889,11 +921,15 @@
     }
     return got;
   }
-  function afterPlay(S, cs, ev) {
+  function afterPlay(S, cs, ev, junkN) {
     S.stats.gold += cs.filter((c) => c.e === "gold").length;
     S.stats.silver += cs.filter((c) => c.e === "silver").length;
     reveal(S);
-    const drawn = draw(S, handCap(S) - S.hand.length);
+    /* ΤΑ ΣΚΟΥΠΙΔΙΑ ΔΕΝ ΞΑΝΑΤΡΑΒΙΟΥΝΤΑΙ: φεύγουν, και το χέρι μένει τόσο κοντύτερο για ένα
+       παίξιμο (γεμίζει ξανά στο επόμενο). Έτσι το ξεφόρτωμα είναι απόφαση με τίμημα αντί για
+       δωρεάν discard σε κάθε παίξιμο — μετρημένο ότι κρατά τη δυσκολία στη θέση της. */
+    const short = Math.max(0, (junkN || 0) - CFG.junkRedraw);
+    const drawn = draw(S, Math.max(0, handCap(S) - S.hand.length - short));
     /* Blind Deal: δύο από τα φύλλα που μόλις τράβηξες μένουν μπρούμυτα μέχρι το επόμενο παίξιμο. */
     if (chal(S) === "blind") drawn.slice(0, CFG.blindKeep).forEach((c) => { c.h = true; });
     ev.drawn = drawn.length;
@@ -922,10 +958,6 @@
     const e = evalSel(S);
     if (S.playsLeft < 1) return null;
     if (!e.k) return null;
-    /* Survival με μηδέν ανάσες: όσο υπάρχει ΑΝΕΒΑΣΜΑ στο χέρι, το σπάσιμο δεν επιτρέπεται.
-       Το run δεν τελειώνει με ένα λάθος πάτημα ενώ υπάρχει δρόμος προς τα πάνω — τελειώνει
-       μόνο όταν πραγματικά δεν ανεβαίνει τίποτα. */
-    if (isSurv(S) && discardsLeft(S) <= 0 && !climbs(S, e.k) && hasClimb(S)) return null;
     const k = e.k, prev = S.rung, up = climbs(S, k);
     /* Τα σκουπίδια φεύγουν μαζί, αλλά δεν αγγίζουν ΤΙΠΟΤΑ: ούτε chips, ούτε lead suit, ούτε
        enhancement bonus. Ο πυρήνας είναι το χέρι που έπαιξες. */
@@ -947,14 +979,12 @@
       tags.push("+1 breath");
       S.log.push({ t: "Breath earned", c: "bomb", p: "+" + CFG.survBombBreath, cls: "bonus" });
     }
-    if (k.kind === 9) { tags.push("Ace"); S.stats.aces += 1; }
-    if (k.kind === 4 && k.size >= 7) tags.push("Long Run");
-    if (k.kind === 3 && k.size >= 6) tags.push("Staircase");
-    /* Survival: το σπάσιμο ΕΠΙΤΡΕΠΕΤΑΙ και ΚΟΣΤΙΖΕΙ μία ανάσα. Ένας πόρος, δύο χρήσεις:
-       πετάς φύλλα, ή σπάς την αλυσίδα. Με μηδέν ανάσες το χέρι παίζεται κανονικά, γράφει
-       τους πόντους του, και το run κλείνει εκεί — δηλαδή το τελευταίο σου χέρι μπορεί να
-       είναι το μεγαλύτερο, αντί για τοίχο που σου λέει «όχι». */
-    if (isSurv(S) && !up) { if (discardsLeft(S) > 0) { S.rdisc += 1; S.brokeCost = 1; } else S.done = 1; }
+    if (k.rank === 14 && (k.kind === 1 || k.kind === 2 || k.kind === 6)) { tags.push("Aces!"); S.stats.aces += 1; }
+    if (k.kind === 3) tags.push("Flush!");
+    if (k.kind === 4) tags.push("Straight!");
+    /* Survival: το σπάσιμο δεν κοστίζει ΤΙΠΟΤΑ πέρα από την ίδια την αλυσίδα — πέφτει στην
+       αρχή και ξαναχτίζεις. Οι ανάσες είναι μόνο για discards. Ο πόρος που τελειώνει είναι
+       τα ΧΕΡΙΑ (CFG.survPlays): ίδιος αριθμός για όλους, οπότε το high score συγκρίνεται. */
     S.score += e.pts; S.playsLeft -= 1;
     S.lastSuit = leadSuit(cs);
     if (S.lastSuit != null) { if (!S.rsuits) S.rsuits = []; if (S.rsuits.indexOf(S.lastSuit) < 0) S.rsuits.push(S.lastSuit); }
@@ -985,7 +1015,7 @@
     S.log.push({ t: clabel(k), c: e.chips + " × " + e.mult + (bomb ? " · table opens, chain ×" + chainPos(S) + " kept" : broke ? " · chain ×" + broke + " broken" : steepOf(S) ? " · rung +" + steepOf(S) : ""), p: e.pts, cls: broke ? "pass" : "" });
     tags.sort((a, b) => tagOrd(a) - tagOrd(b));
     const ev = { type: "play", k, pts: e.pts, pos: e.pos, chips: e.chips, mult: e.mult, notes: e.notes, tags, bomb, up, broke, cleared: S.score >= target(S) };
-    afterPlay(S, cs, ev);
+    afterPlay(S, cs, ev, junk.length);
     return ev;
   }
   /* Discard: σταθερός αριθμός ανά γύρο, ξεχωριστός από τα plays (όπως στο Balatro).
@@ -1040,10 +1070,8 @@
   const canDiscardAny = (S) => chal(S) !== "nodiscard" && (discardsLeft(S) > 0 || (!isSurv(S) && (deadHand(S) || freeScout(S)))) && survStock(S) && S.hand.length > 0;
   function stuckReason(S) {
     if (isSurv(S)) {
-      if (S.done) return "You broke the chain with no breath left — that is the run.";
-      /* Το ταβάνι των 999 χεριών: αόρατο στην πράξη (μέγιστο μετρημένο 104), αλλά όταν το
-         `stuck()` το βλέπει πρέπει να έχει και λόγο να δείξει. */
-      if (S.playsLeft < 1) return "Nine hundred and ninety-nine hands. That is the ceiling of the mode — and the run.";
+      if (S.done) return "That is the run.";
+      if (S.playsLeft < 1) return "All " + S.playsMax + " hands played — that is the run.";
       if (hasClimb(S)) return "";
       if (discardsLeft(S) > 0) return "Nothing climbs. Breathe to open the table, or play anyway — breaking costs a breath too.";
       if (hasLegal(S)) return "No breath left — and nothing climbs. The next hand you play is your last, so make it count.";
@@ -1152,7 +1180,7 @@
   function restore(json) {
     try {
       const S = JSON.parse(json);
-      if (!S || S.v !== 13) return null;
+      if (!S || S.v !== 14) return null;
       /* Έλεγχος σχήματος, όχι μόνο έκδοσης: ένα save με λείπον πίνακα περνούσε και έσκαγε αργότερα. */
       const arrays = ["hand", "pile", "deck", "charms", "mult", "sel", "removed", "unlocked", "discardPile", "played", "log"];
       if (!arrays.every((k) => Array.isArray(S[k]))) return null;

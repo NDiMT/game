@@ -18,7 +18,7 @@ const HANDS = {
 };
 const CHALS = [null].concat(G.CHALLENGES.map((c) => c.id));
 const RULES = [null].concat(G.RULES.map((r) => r.id));
-const RUNGS = [null, { kind: 6, rank: 14, size: 4 }, { kind: 7, rank: 14, size: 9 }, { kind: 1, rank: 14, size: 2 }];
+const RUNGS = [null, { kind: 6, rank: 14, size: 4 }, { kind: 7, rank: 14, size: 5 }, { kind: 1, rank: 14, size: 2 }];
 
 let cases = 0;
 function probe(mode, chalId, ruleId, handName, pileN, disc, playsLeft, rung, charms) {
