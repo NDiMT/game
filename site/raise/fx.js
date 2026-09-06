@@ -202,81 +202,390 @@
     duckG.gain.linearRampToValueAtTime(1, now + (ms || 400) / 1000);
   }
 
-  /* ---------------- μουσική ----------------
-     Ένα κομμάτι 16 μπάρων σε λα ελάσσονα, γραμμένο νότα-νότα. Τέσσερις φράσεις:
-       P1  Am F C G   — το θέμα
-       P2  Am F C G   — το ίδιο, με ψηλότερο τέλος
-       P3  Dm G C F   — η ανύψωση, η μελωδία κάθεται μια οκτάβα πιο πάνω
-       P4  Am F E  Am — η πτώση: το E φέρνει το σολ δίεση, το θέμα λύνεται στο λα
-     Κάθε νότα της μελωδίας είναι φθόγγος της συγχορδίας ή της κλίμακας — ελεγμένο από το
-     tools/music.js, μαζί με το ότι καμία δεν πέφτει ημιτόνιο από φωνή του pad. */
-  const BPM = 84, STEP = 60 / BPM / 4, SPB = 16, BARS = 16, CYCLE = SPB * BARS;
-  /* ρίζα ανά μπάρα (ημιτόνια από το λα) και αν είναι ελάσσων */
-  const CHORD = [
-    [0, 1], [8, 0], [3, 0], [10, 0],
-    [0, 1], [8, 0], [3, 0], [10, 0],
-    [5, 1], [10, 0], [3, 0], [8, 0],
-    [0, 1], [8, 0], [7, 0], [0, 1],
-  ];
-  /* [βήμα μέσα στη φράση (0-63), ημιτόνια από το λα, μήκος σε δέκατα-έκτα] */
-  const M1 = [[0, 7, 6], [8, 10, 4], [12, 12, 4], [16, 12, 8], [26, 10, 6], [32, 7, 10], [44, 5, 4], [48, 10, 8], [58, 2, 6]];
-  const M2 = [[0, 7, 6], [8, 10, 4], [12, 12, 4], [16, 12, 8], [26, 10, 6], [32, 7, 10], [44, 5, 4], [48, 10, 8], [58, 12, 6]];
-  const M3 = [[0, 12, 6], [8, 14, 4], [12, 15, 4], [16, 14, 8], [26, 12, 6], [32, 10, 10], [44, 7, 4], [48, 8, 8], [58, 5, 6]];
-  const M4 = [[0, 7, 6], [8, 10, 4], [12, 12, 4], [16, 12, 8], [26, 8, 6], [32, 7, 8], [42, 11, 6], [48, 12, 16]];
-  const PHRASE = [M1, M2, M3, M4];
-  const hz = (semi) => 55 * Math.pow(2, semi / 12);
-  const swing = (st) => (st % 2 === 1 ? STEP * 0.07 : 0);
-  let mOn = false, mTimer = null, mStep = 0, mNext = 0, inten = 0, want = 0, keyOff = 0, musicG = null;
+  /* ---------------- μουσική: synthwave ----------------
+     104 BPM, λα ελάσσων, 52 μπάρες = 2:00 ακριβώς. Τίποτα δεν είναι δειγματοληπτημένο:
+     όλα βγαίνουν από ταλαντωτές που ΤΡΕΧΟΥΝ ΣΥΝΕΧΩΣ και τα οποία «πυλώνουμε» (gate) —
+     έτσι το arp είναι ένα synth με envelope, όχι χίλιοι κόμβοι ανά μπάρα.
 
+     Η φόρμα:
+       intro  4 μπάρες   Am Am F G          — pad + arp σε 8α, το φίλτρο κλειστό
+       A     16 μπάρες   Am F C G / Am F C E ×2
+       B     16 μπάρες   Dm G C F / Dm G Am ×2   — η ανύψωση, μελωδία μια οκτάβα πάνω
+       A'    16 μπάρες   Am F C G / Am F E Am ×2 — η επιστροφή, λύνει στο λα·
+                              στο δεύτερο μισό το arp ανεβαίνει μια οκτάβα
+
+     Τα στρώματα (με τη σειρά που ανοίγουν καθώς ανεβαίνει η αλυσίδα):
+       arp   δεκαέκτατα, δύο σάγια 14 cents μακριά + ένα τετράγωνο, lowpass με resonance
+             — ΠΑΝΤΑ, σε κάθε στάθμη· αυτό είναι που κάνει το κομμάτι synthwave
+       pad   gated σε όγδοα, τέσσερις φωνές, sidechain κάτω από το kick — ΠΑΝΤΑ
+       sub   τρίγωνο στη ρίζα, στο 1 και στο 3 — ΠΑΝΤΑ
+       kick  1 και 3            q>0.28
+       hats  όγδοα              q>0.36   (δεκαέκτατα από q>0.72)
+       clap  2 και 4, με χώρο   q>0.42
+       lead  τρία σάγια detuned + tape delay σε παρεστιγμένο όγδοο   q>0.50
+       oct   η μελωδία διπλή μια οκτάβα πάνω   q>0.68
+       fill  open hat + ghost snare   q>0.80
+       riser pitch bend στην τελευταία μπάρα κάθε μέρους   q>0.86 */
+  const BPM = 104, STEP = 60 / BPM / 4, SPB = 16;
+  /* ρίζα ανά μπάρα (ημιτόνια από το λα) και αν είναι ελάσσων */
+  const INTRO = [[0, 1], [0, 1], [8, 0], [10, 0]];
+  const VA = [[0, 1], [8, 0], [3, 0], [10, 0], [0, 1], [8, 0], [3, 0], [7, 0]];
+  const VB = [[5, 1], [10, 0], [3, 0], [8, 0], [5, 1], [10, 0], [0, 1], [0, 1]];
+  const VC = [[0, 1], [8, 0], [3, 0], [10, 0], [0, 1], [8, 0], [7, 0], [0, 1]];
+  const CHORD = [].concat(INTRO, VA, VA, VB, VB, VC, VC);
+  const BARS = CHORD.length, CYCLE = BARS * SPB;
+  /* [πρώτη μπάρα, μήκος σε μπάρες] — τα ονόματα είναι intro, A, B, A' */
+  const SECT = [[0, 4], [4, 16], [20, 16], [36, 16]];
+
+  /* Το arp διαβάζει δείκτες μέσα σε μια «σκάλα» της συγχορδίας· -1 = παύση.
+     Η σκάλα: ρίζα, πέμπτη, οκτάβα, δεκάτη, δωδεκάτη, δύο οκτάβες. */
+  const ARPV = (minor) => [0, 7, 12, minor ? 15 : 16, 19, 24];
+  const ARP_I = [0, -1, 2, -1, 1, -1, 2, -1, 0, -1, 2, -1, 3, -1, 2, -1];
+  const ARP_A = [0, 1, 2, 1, 0, 1, 2, 3, 0, 1, 2, 1, 4, 3, 2, 1];
+  const ARP_B = [0, 2, 3, 2, 1, 2, 3, 4, 0, 2, 3, 2, 5, 4, 3, 2];
+  const ARP_C = [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 5, 4, 3, 2];
+  const ARP = [ARP_I, ARP_A, ARP_B, ARP_C];
+
+  /* Μελωδία: [βήμα μέσα στο μέρος, ημιτόνια από το λα, μήκος σε δεκαέκτατα].
+     Παίζεται μια οκτάβα πάνω από το pad (βάση +36 ⇒ το 0 είναι λα 440).
+     Κάθε νότα είναι φθόγγος της συγχορδίας ή της κλίμακας της μπάρας της, και καμία
+     δεν πέφτει ημιτόνιο από φωνή του pad — το tools/music.js το ελέγχει νότα-νότα. */
+  const M_I = [];
+  const M_A = [
+    [24, 0, 8], [32, 3, 12], [48, 5, 10], [64, 7, 16], [88, 3, 8], [96, 7, 12],
+    [112, 2, 14], [128, 12, 12], [144, 8, 8], [152, 12, 6], [160, 10, 12],
+    [176, 5, 8], [184, 2, 8], [192, 0, 20], [216, 3, 8], [224, 7, 14], [240, 11, 14],
+  ];
+  const M_B = [
+    [0, 17, 12], [16, 14, 10], [32, 15, 12], [48, 12, 16], [72, 8, 8], [80, 17, 8],
+    [88, 14, 8], [96, 12, 16], [120, 7, 8], [128, 8, 12], [144, 17, 12], [160, 19, 12],
+    [176, 15, 16], [200, 12, 8], [208, 14, 12], [224, 12, 20], [248, 7, 8],
+  ];
+  const M_C = [
+    [0, 12, 14], [24, 15, 8], [32, 19, 12], [48, 17, 12], [64, 19, 16], [88, 12, 8],
+    [96, 23, 12], [112, 19, 14], [128, 12, 12], [144, 15, 8], [152, 12, 6], [160, 22, 12],
+    [176, 14, 8], [184, 17, 8], [192, 19, 16], [216, 15, 8], [224, 23, 12], [240, 12, 24],
+  ];
+  const PHRASE = [M_I, M_A, M_B, M_C];
+
+  const hz = (semi) => 55 * Math.pow(2, semi / 12);
+  /* Φωνές του pad: ρίζα, πέμπτη, οκτάβα, δεκάτη — χωρίς ενάτη, ώστε η μελωδία να έχει αέρα. */
+  function padVoices(root, minor) { return [root, root + 7, root + 12, root + (minor ? 15 : 16)]; }
+
+  let mOn = false, mTimer = null, mStep = 0, mNext = 0, inten = 0, want = 0, keyOff = 0, musicG = null;
+  let MG = null, barQ = 0.3, leadEnd = -99;
+  /* Άγκιστρο μέτρησης: αν κάποιος ορίσει window.__MLOG = [], κάθε γεγονός γράφεται εκεί
+     (είδος, απόλυτος χρόνος, Hz). Ένα `if` ανά νότα — αυτό είναι όλο το κόστος. */
+  function mlog(k, at, f) { const L = root.__MLOG; if (L) L.push([k, +at.toFixed(5), f | 0]); }
+
+  /* ΕΝΑ νούμερο για τη στάθμη της μπάντας απέναντι στους ήχους. Οι ισορροπίες ΜΕΣΑ στο
+     κομμάτι μπαίνουν με τα gains των στρωμάτων (μετρημένα ένα-ένα με `tools/mix.js
+     layers`)· αυτό εδώ μετακινεί το σύνολο.
+
+     Το όριο μπαίνει στην ΚΟΡΥΦΗ, αλλά αυτό που ακούγεται είναι η μέση ισχύς — άρα κάθε dB
+     που τρώει ένα transient είναι dB που χάνει η μουσική. Δοκίμασα να βάλω έναν
+     DynamicsCompressor εδώ ως limiter: **ανέβασε** την κορυφή από 0,186 σε 0,393 (ίδιο
+     TRIM, μετρημένο). Ο compressor του Chromium έχει εσωτερικό makeup gain, οπότε σε
+     σήμα γύρω στα -20 dBFS δίνει ενίσχυση, όχι περιορισμό. Βγήκε.
+     Η καθαρή λύση ήταν στο μίξερ, όχι στο master: το kick κρατούσε το 76% της κορυφής
+     και μόνο το 27% της ισχύος. Στρώθηκε το transient του (πιο μαλακό attack, πιο
+     σιγανό κλικ) και ανέβηκε το TRIM — ίδια κορυφή, περισσότερη μουσική: ο crest factor
+     έπεσε από 9,9 σε 6,8, άρα το TRIM ανέβηκε για την ίδια κορυφή.
+     Δεσμευτικό είναι το «loud»: BUS 1,3 / 0,75 = ×1,73, και το όριο εκεί είναι 0,18 —
+     άρα το «on» πρέπει να κάθεται γύρω στο 0,10, όχι στο 0,12. */
+  const TRIM = 0.82;
   function musicBus() {
     const c = ctx(); if (!c) return null;
-    if (!musicG) { musicG = c.createGain(); musicG.gain.value = 0; musicG.connect(duckG); }
+    if (!musicG) {
+      musicG = c.createGain(); musicG.gain.value = 0;
+      const trim = c.createGain(); trim.gain.value = TRIM;
+      musicG.connect(trim).connect(duckG);
+    }
     return musicG;
   }
-  /* Καμπανάκι: θεμελιώδης, ξεκούρδιστη οκτάβα, μαλακή δωδεκάτη. Ένας σκέτος ημιτονοειδής
-     ακούγεται σαν τεστ ακοής· τρεις μαζί ακούγονται σαν όργανο. */
-  function bell(f, t, g, bus, d, space) {
-    voice({ f: f, t: t, g: g, type: "sine", bus: bus, delay: d, atk: 0.008, space: space });
-    voice({ f: f * 2.006, t: t * 0.6, g: g * 0.34, type: "sine", bus: bus, delay: d, atk: 0.005, space: space });
-    voice({ f: f * 3.01, t: t * 0.26, g: g * 0.12, type: "triangle", bus: bus, delay: d, atk: 0.004 });
-  }
-  /* Φωνές του pad για μια συγχορδία: ρίζα, τρίτη (μικρή ή μεγάλη), πέμπτη, ενάτη. */
-  function padVoices(root, minor) { return [root, root + (minor ? 3 : 4), root + 7, root + 14]; }
-
-  function schedule(t, i) {
-    const bar = Math.floor(i / SPB) % BARS, st = i % SPB, bus = musicG;
-    const ch = CHORD[bar], root = (ch[0] + keyOff) % 12, minor = !!ch[1];
-    const mel = PHRASE[Math.floor(bar / 4)], local = (i % CYCLE) - Math.floor(bar / 4) * 64;
-    const q = inten, tt = t + swing(st);
-    const breath = 0.5 + 0.5 * Math.sin((i / CYCLE) * Math.PI * 4);
-    const cut = 520 + q * 2400 + breath * 600;
-
-    /* ---- pad: κρατά τη μπάρα ---- */
-    if (st === 0) padVoices(root + 36, minor).forEach(function (semi, n) {
-      voice({ f: hz(semi), t: STEP * SPB * 1.15, g: 0.026 + q * 0.008, type: "sawtooth", cut: cut * 0.55,
-        bus: bus, delay: t, atk: 0.55, detune: (n - 1.5) * 4, space: 0.7 });
+  /* Το γράφημα φτιάχνεται ΜΙΑ φορά. Οι ταλαντωτές δεν σταματούν ποτέ· σιωπούν με κλειστές
+     πύλες. Ένα synthwave κομμάτι είναι ένα πάτημα που δεν σταματά — άρα ούτε το γράφημα. */
+  function buildGraph() {
+    const c = ctx(); if (!c) return null;
+    if (MG) return MG;
+    musicBus();
+    const g = {}, osc = (type, f, det, dest) => {
+      const o = c.createOscillator(); o.type = type; o.frequency.value = f; o.detune.value = det || 0;
+      o.connect(dest); o.start(); return o;
+    };
+    /* χώρος ΜΟΝΟ για τη μουσική, μέσα στο bus — ώστε η στάθμη και ο duck να τον πιάνουν */
+    g.rev = c.createGain(); g.rev.gain.value = 1;
+    const rout = c.createGain(); rout.gain.value = 0.42; rout.connect(musicG);
+    [[0.127, 0.35, -0.72], [0.191, 0.30, 0.72]].forEach(function (d) {
+      const dl = c.createDelay(1), fb = c.createGain(), lp = c.createBiquadFilter();
+      dl.delayTime.value = d[0]; fb.gain.value = d[1];
+      lp.type = "lowpass"; lp.frequency.value = 2400;
+      g.rev.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl);
+      if (c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = d[2]; lp.connect(p).connect(rout); }
+      else lp.connect(rout);
     });
-    /* ---- μπάσο: ρίζα, ρίζα, πέμπτη, οκτάβα — παλμός, όχι drone ---- */
-    if (st === 0) voice({ f: hz(root + 12), t: 0.62, g: 0.075 + q * 0.02, type: "sine", cut: 340, bus: bus, delay: t, atk: 0.04 });
-    if (q > 0.15 && st === 6) voice({ f: hz(root + 12), t: 0.24, g: 0.032, type: "sine", cut: 340, bus: bus, delay: tt, atk: 0.02 });
-    if (q > 0.15 && st === 10) voice({ f: hz(root + 19), t: 0.26, g: 0.03, type: "sine", cut: 380, bus: bus, delay: t, atk: 0.02 });
-    if (q > 0.45 && st === 14) voice({ f: hz(root + 24), t: 0.2, g: 0.024, type: "triangle", cut: 500, bus: bus, delay: tt, atk: 0.02 });
-    /* ---- η μελωδία ---- */
-    for (let m = 0; m < mel.length; m++) if (mel[m][0] === local) {
-      const len = mel[m][2] * STEP;
-      bell(hz(mel[m][1] + keyOff + 48), len * 0.92 + 0.14, 0.042 + q * 0.014, bus, tt, 0.72);
-      if (q > 0.75) bell(hz(mel[m][1] + keyOff + 60), len * 0.4, 0.007, bus, tt + STEP * 0.5, 0.9);
+    /* sidechain: pad, arp και sub «σκύβουν» κάτω από κάθε kick */
+    g.side = c.createGain(); g.side.gain.value = 1; g.side.connect(musicG);
+
+    /* arp — το χαρακτηριστικό του συνόλου: δεκαέκτατα που δεν σταματούν ποτέ */
+    g.arpAmp = c.createGain(); g.arpAmp.gain.value = 0.055; g.arpAmp.connect(g.side);
+    g.arpGate = c.createGain(); g.arpGate.gain.value = 0.0001; g.arpGate.connect(g.arpAmp);
+    g.arpCut = c.createBiquadFilter(); g.arpCut.type = "lowpass"; g.arpCut.frequency.value = 700; g.arpCut.Q.value = 2;
+    g.arpCut.connect(g.arpGate);
+    const sq = c.createGain(); sq.gain.value = 0.4; sq.connect(g.arpCut);
+    g.arp = [osc("sawtooth", 110, -7, g.arpCut), osc("sawtooth", 110, 7, g.arpCut), osc("square", 110, 2, sq)];
+
+    /* sub — ένα τρίγωνο στη ρίζα, στο 1 και στο 3 */
+    g.subAmp = c.createGain(); g.subAmp.gain.value = 0.039; g.subAmp.connect(g.side);
+    g.subGate = c.createGain(); g.subGate.gain.value = 0.0001; g.subGate.connect(g.subAmp);
+    g.sub = osc("triangle", 110, 0, g.subGate);
+
+    /* pad — τέσσερα σάγια, πύλη σε όγδοα (παλμός, όχι drone) */
+    g.padAmp = c.createGain(); g.padAmp.gain.value = 0.020; g.padAmp.connect(g.side);
+    const pspc = c.createGain(); pspc.gain.value = 0.55; g.padAmp.connect(pspc).connect(g.rev);
+    g.padGate = c.createGain(); g.padGate.gain.value = 0.0001; g.padGate.connect(g.padAmp);
+    g.padCut = c.createBiquadFilter(); g.padCut.type = "lowpass"; g.padCut.frequency.value = 1400; g.padCut.Q.value = 0.8;
+    g.padCut.connect(g.padGate);
+    g.pad = [0, 1, 2, 3].map((n) => osc("sawtooth", 440, (n - 1.5) * 8, g.padCut));
+
+    /* tape delay: παρεστιγμένο όγδοο (τρία δεκαέκτατα) με ανάδραση και λίγο wow */
+    g.tapeIn = c.createGain(); g.tapeIn.gain.value = 0.0;
+    g.tape = c.createDelay(1); g.tape.delayTime.value = STEP * 3;
+    const tlp = c.createBiquadFilter(); tlp.type = "lowpass"; tlp.frequency.value = 2000;
+    const thp = c.createBiquadFilter(); thp.type = "highpass"; thp.frequency.value = 320;
+    g.tapeFb = c.createGain(); g.tapeFb.gain.value = 0.44;
+    const tout = c.createGain(); tout.gain.value = 0.6;
+    g.tapeIn.connect(g.tape); g.tape.connect(tlp).connect(thp);
+    thp.connect(g.tapeFb).connect(g.tape); thp.connect(tout).connect(musicG);
+    const wowG = c.createGain(); wowG.gain.value = 0.0014;
+    osc("sine", 0.29, 0, wowG); wowG.connect(g.tape.delayTime);
+
+    /* lead — τρία σάγια λίγα cents μακριά, portamento, φαρδύ */
+    g.leadAmp = c.createGain(); g.leadAmp.gain.value = 0.0; g.leadAmp.connect(musicG);
+    g.leadAmp.connect(g.tapeIn);
+    const lspc = c.createGain(); lspc.gain.value = 0.5; g.leadAmp.connect(lspc).connect(g.rev);
+    g.leadGate = c.createGain(); g.leadGate.gain.value = 0.0001; g.leadGate.connect(g.leadAmp);
+    g.leadCut = c.createBiquadFilter(); g.leadCut.type = "lowpass"; g.leadCut.frequency.value = 2600; g.leadCut.Q.value = 1.4;
+    g.leadCut.connect(g.leadGate);
+    g.lead = [osc("sawtooth", 440, -9, g.leadCut), osc("sawtooth", 440, 0, g.leadCut), osc("sawtooth", 440, 11, g.leadCut)];
+    /* η οκτάβα πάνω, ξεχωριστή πύλη ώστε να μπαίνει με την αλυσίδα */
+    g.octAmp = c.createGain(); g.octAmp.gain.value = 0.0; g.octAmp.connect(musicG);
+    g.octAmp.connect(g.tapeIn);
+    g.octGate = c.createGain(); g.octGate.gain.value = 0.0001; g.octGate.connect(g.octAmp);
+    g.oct = [osc("sawtooth", 880, -6, g.octGate), osc("sawtooth", 880, 8, g.octGate)];
+
+    /* κρουστά — ΚΑΙ αυτά μόνιμα. Είχα ένα createBufferSource ανά χτύπημα (30 κόμβοι
+       ανά μπάρα) και ο μετρητής έπιανε μεμονωμένα δείγματα στο -0,28 μέσα σε απόλυτη
+       σιωπή: κλικ από το γκρέμισμα των κόμβων. Τώρα ένα looping buffer θορύβου και
+       τρεις πύλες πάνω του — μηδέν νέοι κόμβοι ανά μπάρα, και μηδέν κλικ. */
+    g.drum = c.createGain(); g.drum.gain.value = 1; g.drum.connect(musicG);
+    g.drumSpc = c.createGain(); g.drumSpc.gain.value = 0.35; g.drumSpc.connect(g.rev);
+    if (!nb) { nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate); const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    g.nz = c.createBufferSource(); g.nz.buffer = nb; g.nz.loop = true;
+    const chain = function (filt, amp, spc) {
+      const gt = c.createGain(), am = c.createGain();
+      gt.gain.value = 0.0001; am.gain.value = amp;
+      filt.connect(gt).connect(am).connect(g.drum);
+      if (spc) { const sg = c.createGain(); sg.gain.value = spc; am.connect(sg).connect(g.drumSpc); }
+      g.nz.connect(filt);
+      return { gate: gt.gain, filt: filt, amp: am };
+    };
+    const bq = function (type, f, q) { const b = c.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; };
+    g.hat = chain(bq("highpass", 9500, 0.7), 1, 0.18);
+    g.clap = chain(bq("bandpass", 1700, 0.8), 1, 1);
+    g.clapLo = chain(bq("bandpass", 220, 1.4), 0.45, 0);
+    g.clk = chain(bq("highpass", 1700, 0.7), 1, 0);
+    g.nz.start();
+    /* kick: ένα μόνιμο ημιτονοειδές με φάκελο τόνου σε κάθε χτύπημα */
+    g.kickAmp = c.createGain(); g.kickAmp.gain.value = 1; g.kickAmp.connect(g.drum);
+    g.kickGate = c.createGain(); g.kickGate.gain.value = 0.0001; g.kickGate.connect(g.kickAmp);
+    g.kickOsc = osc("sine", 60, 0, g.kickGate);
+    g.cut = {};                    /* οι τελευταίοι στόχοι των φίλτρων, για συνεχή ράμπα */
+    MG = g; return g;
+  }
+
+  /* Τα κρουστά: πύλες πάνω σε φωνές που ήδη τρέχουν. Κανένας νέος κόμβος. */
+  function kick(at, g) {
+    const p = MG.kickOsc.frequency, a = MG.kickGate.gain;
+    p.cancelScheduledValues(at); p.setValueAtTime(132, at);
+    p.exponentialRampToValueAtTime(44, at + 0.09);
+    a.cancelScheduledValues(at); a.setValueAtTime(0.0001, at);
+    a.exponentialRampToValueAtTime(g, at + 0.010);
+    a.exponentialRampToValueAtTime(0.0001, at + 0.26);
+    blip(MG.clk, at, g * 0.09, 0.003, 0.020);
+    mlog("kick", at, 132);
+  }
+  /* Ένα χτύπημα θορύβου: attack, μετά εκθετική πτώση. Δύο ράμπες, τίποτα άλλο. */
+  function blip(v, at, g, atk, t) {
+    const a = v.gate;
+    a.cancelScheduledValues(at); a.setValueAtTime(0.0001, at);
+    a.exponentialRampToValueAtTime(Math.max(0.0002, g), at + atk);
+    a.exponentialRampToValueAtTime(0.0001, at + t);
+  }
+  /* Το clap: τρία κοντά ριπάκια με 9 ms διαφορά, μια ουρά με χώρο, και ένα σώμα στα 220. */
+  function clap(at, g) {
+    const a = MG.clap.gate;
+    a.cancelScheduledValues(at);
+    for (let i = 0; i < 3; i++) {
+      a.setValueAtTime(0.0001, at + i * 0.009);
+      a.exponentialRampToValueAtTime(g * (i === 2 ? 1 : 0.55), at + i * 0.009 + 0.002);
+      if (i < 2) a.exponentialRampToValueAtTime(0.0001, at + i * 0.009 + 0.007);
     }
-    /* ---- κρουστά: μπαίνουν ψηλά, και μένουν αραιά ---- */
-    if (q > 0.55 && (st === 4 || st === 12)) noise({ f: 9000, g: 0.0085 + q * 0.005, t: 0.03, bus: bus, delay: tt, space: 0.4 });
-    if (q > 0.7 && (st === 0 || st === 10)) voice({ f: 104, t: 0.16, g: 0.05, type: "sine", slide: 0.44, bus: bus, delay: t });
-    if (q > 0.88 && st === 8) noise({ f: 2000, q: 0.8, type: "bandpass", g: 0.026, t: 0.085, bus: bus, delay: tt, space: 0.6 });
+    a.exponentialRampToValueAtTime(0.0001, at + 0.17);
+    blip(MG.clapLo, at, g, 0.003, 0.11);
+    mlog("clap", at, 1700);
+  }
+  function hat(at, g, open) {
+    MG.hat.filt.frequency.setValueAtTime(open ? 7000 : 9500, at);
+    blip(MG.hat, at, g, 0.002, open ? 0.20 : 0.038);
+    mlog(open ? "ohat" : "hat", at, open ? 7000 : 9500);
+  }
+  /* Riser: ένα σάι που ανεβαίνει μια οκτάβα σε μια μπάρα, μαζί με θόρυβο που ανοίγει. */
+  function riser(at, bars) {
+    const c = ac, T = bars * SPB * STEP, o = c.createOscillator(), a = c.createGain(), lp = c.createBiquadFilter();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(hz(keyOff + 24), at);
+    o.frequency.exponentialRampToValueAtTime(hz(keyOff + 36), at + T);
+    lp.type = "lowpass"; lp.frequency.setValueAtTime(600, at); lp.frequency.linearRampToValueAtTime(4200, at + T);
+    a.gain.setValueAtTime(0.0001, at);
+    a.gain.linearRampToValueAtTime(0.022, at + T * 0.85);
+    a.gain.exponentialRampToValueAtTime(0.0002, at + T);
+    o.connect(lp).connect(a).connect(MG.drum);
+    const sg = c.createGain(); sg.gain.value = 0.7; a.connect(sg).connect(MG.drumSpc);
+    o.start(at); o.stop(at + T + 0.05);
+    const n = c.createBufferSource(), na = c.createGain(), hp = c.createBiquadFilter();
+    n.buffer = nb; n.loop = true;
+    hp.type = "bandpass"; hp.Q.value = 1.2;
+    hp.frequency.setValueAtTime(700, at); hp.frequency.exponentialRampToValueAtTime(8000, at + T);
+    na.gain.setValueAtTime(0.0001, at); na.gain.linearRampToValueAtTime(0.02, at + T * 0.9);
+    na.gain.exponentialRampToValueAtTime(0.0002, at + T);
+    n.connect(hp).connect(na).connect(MG.drum); n.start(at); n.stop(at + T + 0.05);
+    mlog("riser", at, 0);
+  }
+
+  const sectOf = (bar) => { for (let s = SECT.length - 1; s >= 0; s--) if (bar >= SECT[s][0]) return s; return 0; };
+  /* Πύλη: attack → decay σε ένα sustain → release. Ένα gain, καμία νέα φωνή.
+     ΠΡΟΣΟΧΗ στο `rel`: πρέπει να ΤΕΛΕΙΩΝΕΙ πριν το επόμενο άνοιγμα της ίδιας πύλης.
+     Αλλιώς το cancelScheduledValues του επόμενου βήματος σβήνει το release που τρέχει,
+     η τιμή κολλάει στην κορυφή, και το arp γίνεται τετράγωνο κύμα με ένα κλικ σε κάθε
+     βήμα — μετρημένο: κορυφή 0,56 αντί για 0,10. */
+  function gate(p, at, peak, atk, hold, rel, sus) {
+    const pk = Math.max(0.0002, peak), sv = Math.max(0.0002, pk * (sus == null ? 1 : sus));
+    p.cancelScheduledValues(at);
+    p.setValueAtTime(0.0001, at);
+    p.exponentialRampToValueAtTime(pk, at + atk);
+    if (hold > atk) p.exponentialRampToValueAtTime(sv, at + hold);
+    p.exponentialRampToValueAtTime(0.0001, at + rel);
+  }
+
+  function mstep(at, i) {
+    const g = MG; if (!g) return;
+    const bar = Math.floor(i / SPB), st = i % SPB, sec = sectOf(bar);
+    const ch = CHORD[bar], rootN = (ch[0] + keyOff) % 12, minor = !!ch[1];
+    const local = bar - SECT[sec][0], lstep = local * SPB + st, last = local === SECT[sec][1] - 1;
+    if (st === 0) { barQ = inten; if (local === 0) leadEnd = -99; }
+    const q = barQ, vo = ARPV(minor), pat = ARP[sec], mel = PHRASE[sec];
+
+    /* ---- η καμπύλη του φίλτρου: ανοίγει μέσα σε κάθε μέρος ΚΑΙ με την αλυσίδα ---- */
+    if (st === 0) {
+      const thru = SECT[sec][1] > 1 ? local / (SECT[sec][1] - 1) : 0;
+      const base = [0.10, 0.42, 0.72, 0.58][sec];
+      const open = base + 0.28 * thru;
+      const bt = STEP * SPB;
+      /* Το σάρωμα: κάθε μπάρα ράμπα προς τον νέο στόχο. Αγκυρώνουμε στον ΠΡΟΗΓΟΥΜΕΝΟ
+         στόχο, όχι στο `.value` — το `.value` διαβάζεται 0,3 s πριν φτάσει η στιγμή και
+         θα πετούσε το φίλτρο πίσω σε κάθε μέτρο. */
+      const tgt = { arpCut: 340 + 2400 * open * (0.45 + 0.55 * q), padCut: 900 + 2600 * open, leadCut: 1500 + 3400 * open };
+      ["arpCut", "padCut", "leadCut"].forEach(function (k) {
+        const p = g[k].frequency;
+        p.cancelScheduledValues(at);
+        p.setValueAtTime(g.cut[k] == null ? p.value : g.cut[k], at);
+        p.linearRampToValueAtTime(tgt[k], at + bt);
+        g.cut[k] = tgt[k];
+      });
+      /* τα στρώματα του lead ανοίγουν με την αλυσίδα, ομαλά */
+      const lg = q > 0.50 ? 0.0140 * Math.min(1, (q - 0.50) / 0.18) : 0;
+      const og = q > 0.68 ? 0.0075 * Math.min(1, (q - 0.68) / 0.16) : 0;
+      g.leadAmp.gain.setTargetAtTime(lg, at, 0.35);
+      g.octAmp.gain.setTargetAtTime(og, at, 0.35);
+      g.tapeIn.gain.setTargetAtTime(q > 0.50 ? 0.55 : 0, at, 0.4);
+      g.arpAmp.gain.setTargetAtTime(0.030 + 0.014 * q, at, 0.3);
+      g.padAmp.gain.setTargetAtTime(0.0078 + 0.0032 * q, at, 0.3);
+      /* pad: οι φωνές αλλάζουν ΜΙΑ φορά ανά μπάρα */
+      padVoices(rootN + 24, minor).forEach((s, n) => g.pad[n].frequency.setValueAtTime(hz(s), at));
+      mlog("bar", at, sec);
+    }
+
+    /* ---- arp: δεκαέκτατα ---- */
+    const ai = pat[st];
+    if (ai >= 0) {
+      /* Στο δεύτερο μισό του A΄ το arp ανεβαίνει μια οκτάβα. Είναι η κλασική κίνηση
+         «σήκωσε το arp» — και είναι ο λόγος που το A΄ ΜΕΤΡΙΕΤΑΙ διαφορετικό από το A
+         (0,86 dB/bin πριν, με το κατώφλι της λούπας στα 0,3). */
+      const lift = sec === 3 && local >= 8 ? 12 : 0;
+      const f = hz(rootN + 12 + lift + vo[ai]);
+      for (let n = 0; n < g.arp.length; n++) g.arp[n].frequency.setValueAtTime(f, at);
+      const accent = st % 4 === 0 ? 1 : st % 2 === 0 ? 0.82 : 0.68;
+      const rest = pat[(st + 1) % SPB] < 0;
+      gate(g.arpGate.gain, at, accent, 0.004, STEP * 0.42, rest ? STEP * 0.80 : STEP * 0.94, 0.30);
+      mlog("arp", at, f);
+    }
+    /* ---- sub: ρίζα στο 1 και στο 3 ---- */
+    if (st === 0 || st === 8) {
+      g.sub.frequency.setValueAtTime(hz(rootN + 12), at);
+      gate(g.subGate.gain, at, 1, 0.018, STEP * 2.0, STEP * 7.4, 0.85);
+      mlog("sub", at, hz(rootN + 12));
+    }
+    /* ---- pad: πύλη σε όγδοα ---- */
+    if (st % 2 === 0) {
+      gate(g.padGate.gain, at, st % 8 === 0 ? 1 : 0.8, 0.014, 0.09, STEP * 1.70, 0.92);
+      mlog("pad", at, 0);
+    }
+
+    /* ---- kick + sidechain ---- */
+    if (q > 0.28 && (st === 0 || st === 8)) {
+      kick(at, 0.070 + 0.012 * q);
+      const s = g.side.gain;
+      s.cancelScheduledValues(at);
+      s.setValueAtTime(1, at);
+      s.linearRampToValueAtTime(0.60, at + 0.022);
+      s.linearRampToValueAtTime(1, at + 0.20);
+    }
+    /* ---- clap στο 2 και στο 4 ---- */
+    if (q > 0.42 && (st === 4 || st === 12)) clap(at, 0.038 + 0.010 * q);
+    if (q > 0.80 && st === 14 && bar % 4 === 3) clap(at, 0.018);
+    /* ---- hats ---- */
+    if (q > 0.36) {
+      if (st % 2 === 0) hat(at, 0.019 + 0.006 * q, false);
+      else if (q > 0.72) hat(at, 0.009, false);
+      if (q > 0.80 && st === 6 && bar % 2 === 1) hat(at, 0.017, true);
+    }
+    /* ---- riser: η τελευταία μπάρα κάθε μέρους ---- */
+    if (q > 0.86 && last && st === 0) riser(at, 1);
+
+    /* ---- η μελωδία: πύλη + portamento σε ένα synth που ήδη τρέχει ---- */
+    for (let m = 0; m < mel.length; m++) if (mel[m][0] === lstep) {
+      const f = hz(mel[m][1] + keyOff + 36), len = mel[m][2] * STEP;
+      const gap = lstep - leadEnd, glide = gap >= 0 && gap <= 2 ? 0.055 : 0;
+      for (let n = 0; n < g.lead.length; n++) {
+        const p = g.lead[n].frequency;
+        if (glide) p.setTargetAtTime(f, at, glide); else p.setValueAtTime(f, at);
+      }
+      for (let n = 0; n < g.oct.length; n++) {
+        const p = g.oct[n].frequency;
+        if (glide) p.setTargetAtTime(f * 2, at, glide); else p.setValueAtTime(f * 2, at);
+      }
+      gate(g.leadGate.gain, at, 1, glide ? 0.05 : 0.02, len * 0.30, len * 0.96, 0.88);
+      gate(g.octGate.gain, at, 1, glide ? 0.06 : 0.03, len * 0.24, len * 0.88, 0.80);
+      leadEnd = lstep + mel[m][2];
+      mlog("lead", at, f);
+    }
   }
   function pump() {
     const c = ac; if (!c || !mOn) return;
-    inten += (want - inten) * 0.035;
-    while (mNext < c.currentTime + 0.14) {
-      schedule(Math.max(0, mNext - c.currentTime), mStep);
+    inten += (want - inten) * 0.05;
+    while (mNext < c.currentTime + 0.3) {
+      if (mNext > c.currentTime) mstep(mNext, mStep);
       mStep = (mStep + 1) % CYCLE;
       mNext += STEP;
     }
@@ -285,11 +594,12 @@
     start: function () {
       if (mOn || muted || musicOff) return;
       const c = ctx(); if (!c) return;
-      musicBus(); mOn = true; mStep = 0; mNext = c.currentTime + 0.08;
+      buildGraph(); mOn = true; mStep = 0; leadEnd = -99; barQ = want;
+      mNext = c.currentTime + 0.12;
       musicG.gain.cancelScheduledValues(c.currentTime);
       musicG.gain.setValueAtTime(0.0001, c.currentTime);
-      musicG.gain.linearRampToValueAtTime(BUS[musicLvl] || 0.75, c.currentTime + 2.6);
-      mTimer = setInterval(pump, 25);
+      musicG.gain.linearRampToValueAtTime(BUS[musicLvl] || 0.75, c.currentTime + 2.2);
+      mTimer = setInterval(pump, 40);
     },
     stop: function (fade) {
       if (!mOn) return;
@@ -297,15 +607,24 @@
       if (musicG && c) { musicG.gain.cancelScheduledValues(c.currentTime); musicG.gain.setValueAtTime(musicG.gain.value, c.currentTime); musicG.gain.linearRampToValueAtTime(0.0001, c.currentTime + (fade == null ? 1.1 : fade)); }
       clearInterval(mTimer); mTimer = null;
     },
-    /* Δάπεδο 0,3: στο chain ×1 έβγαινε ένταση 0, δηλαδή σκέτο pad — σε ηχείο κινητού
-       ακουγόταν σαν τίποτα. Τώρα ακούγεται κομμάτι από την αρχή και χτίζεται από εκεί. */
+    /* Δάπεδο 0,3: στο chain ×1 το κομμάτι είναι arp + pad + sub + kick. Από εκεί και πάνω
+       ανοίγουν clap, hats, lead, οκτάβα, riser — η αλυσίδα ΕΙΝΑΙ το mixer. */
     chain: function (pos, cap) { const x = (pos - 1) / Math.max(3, (cap || 6) - 1); want = 0.3 + 0.7 * Math.max(0, Math.min(1, x)); },
     level: function (x) { want = Math.max(0.22, Math.min(1, x)); },
     key: function (n) { keyOff = ((n % 12) + 12) % 12; },
     playing: function () { return mOn; },
-    /* Άγκιστρο ελέγχου: το tools/music.js διαβάζει τους πίνακες και ελέγχει την αρμονία. */
-    tables: function () { return { CHORD: CHORD, PHRASE: PHRASE, BPM: BPM, BARS: BARS, SPB: SPB }; },
+    /* Άγκιστρα ελέγχου: το tools/music.js διαβάζει τους πίνακες, το tools/mix.js μετρά. */
+    tables: function () { return { CHORD: CHORD, PHRASE: PHRASE, ARP: ARP, SECT: SECT, BPM: BPM, BARS: BARS, SPB: SPB }; },
+    at: function (n) { const c = ac; if (!c || !mOn) return; mStep = ((n % CYCLE) + CYCLE) % CYCLE; mNext = c.currentTime + 0.12; },
+    nodes: function () { return MG; },
+    where: function () { return { step: mStep, bar: Math.floor(mStep / SPB), cycle: CYCLE, inten: inten }; },
   };
+  /* Το καμπανάκι έμεινε για ένα πράγμα: τις τρεις νότες που απαντούν στο πάτημα του μενού. */
+  function bell(f, t, g, bus, d, space) {
+    voice({ f: f, t: t, g: g, type: "sawtooth", bus: bus, delay: d, atk: 0.01, space: space, cut: f * 4 });
+    voice({ f: f * 1.006, t: t, g: g * 0.6, type: "sawtooth", bus: bus, delay: d, atk: 0.013, space: space, cut: f * 3 });
+    voice({ f: f * 0.5, t: t * 0.8, g: g * 0.35, type: "square", bus: bus, delay: d, atk: 0.006, cut: 700 });
+  }
 
   const sfx = {
     tick: () => tone({ f: 1700, t: 0.035, type: "square", g: 0.035 }),
@@ -357,9 +676,9 @@
       else if (!muted) music.start();
       /* τρεις νότες του θέματος: μι — λα — μι, στη στάθμη που μόλις διάλεξες */
       const g = 0.05 * BUS[musicLvl];
-      bell(hz(7 + 48), 0.34, g, master, 0, 0.6);
-      bell(hz(12 + 48), 0.34, g, master, 0.16, 0.6);
-      bell(hz(7 + 60), 0.5, g * 0.7, master, 0.32, 0.8);
+      bell(hz(7 + 36), 0.30, g, master, 0, 0.5);
+      bell(hz(12 + 36), 0.30, g, master, 0.14, 0.5);
+      bell(hz(7 + 48), 0.46, g * 0.7, master, 0.28, 0.7);
     }
     return musicLvl;
   }
