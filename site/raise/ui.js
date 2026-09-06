@@ -4,7 +4,7 @@
   const G = window.RAISE, FX = window.FX, IC = window.ICONS;
   const $ = (id) => document.getElementById(id);
   const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
-  const KEY = "raise.run.v15", LIFE = "raise.life.v1";
+  const KEY = "raise.run.v15", LIFE = "raise.life.v1", TAUGHT = "raise.taught.v1";
   let S = null, shown = 0, ui = { note: null, noteT: 0, ending: false }, installEvt = null;
 
   /* ---------- storage ---------- */
@@ -132,6 +132,101 @@
     if (!S.sel.length) return surv ? "Pick the cards to breathe away — or swipe down with nothing picked and the orphans go." : "Pick the cards to throw first.";
     return surv ? "Nothing left to draw." : "The pile is empty.";
   }
+  /* ---------- ο οδηγός του πρώτου run ---------- */
+  /* Ο πήχης είναι ΟΛΟ το παιχνίδι και εξηγούνταν μόνο σε ένα φύλλο κανόνων 15 παραγράφων,
+     που κανείς δεν διαβάζει. Τα τρία πρώτα χέρια του πρώτου run λένε τον βρόχο με μία
+     γραμμή τη φορά, καρφωμένη πάνω στο πράγμα για το οποίο μιλά — και φεύγουν όταν παίξεις.
+     Καμία καινούργια μηχανική, κανένα φύλλο δεν τονίζεται, καμία επιλογή δεν γίνεται για
+     τον παίκτη: το βήμα είναι απλώς `S.stats.plays`, οπότε επιβιώνει reload και resume. */
+  /* Η σημαία κρατιέται στη μνήμη: το `render()` τρέχει σε ΚΑΘΕ άγγιγμα φύλλου και ένα
+     localStorage.getItem εκεί μέσα είναι ακριβώς το λάθος που έχει ήδη μετρηθεί στα stats. */
+  let taughtC = null;
+  const taught = () => { if (taughtC === null) { try { taughtC = !!localStorage.getItem(TAUGHT); } catch (e) { taughtC = true; } } return taughtC; };
+  const setTaught = () => { taughtC = true; try { localStorage.setItem(TAUGHT, "1"); } catch (e) {} };
+  const COACH = [
+    { at: "rung", t: "The rung is the hand to beat. It says Open — whatever you play becomes the rung." },
+    { at: "rung", t: (r) => r
+      ? "Your hand is the rung now. Beat it next time and the chain climbs a step."
+      : "The table is open again — anything you play climbs, and becomes the rung." },
+    { at: "chain", t: "Every step of the chain is +22% Mult. Miss the rung and it goes back to ×1." },
+  ];
+  const coachOn = () => !!S && S.phase === "round" && !ui.ending && !G.isSurv(S) &&
+    !taught() && $("start").hidden && $("veil").hidden && S.stats.plays < COACH.length;
+  let coachMark = null;
+  function coachSync() {
+    const el = $("coach");
+    /* Το φύλλο κλείνει μόνο του: μόλις παιχτούν τα τρία χέρια, ο οδηγός δεν ξαναγυρίζει. */
+    if (S && !taught() && S.stats.plays >= COACH.length) setTaught();
+    if (coachMark) { coachMark.classList.remove("coachmark"); coachMark = null; }
+    if (!coachOn()) { el.hidden = true; return; }
+    const st = COACH[S.stats.plays], txt = typeof st.t === "function" ? st.t(S.rung) : st.t;
+    const sig = S.stats.plays + "\u00b7" + txt;
+    if (el.__sig !== sig) {
+      el.__sig = sig;
+      /* Μία γραμμή και μία έξοδος, σε μία σειρά: το κουτί μένει ~54px, δηλαδή χωράει στο
+         κενό πάνω από τα φύλλα του τραπεζιού ακόμη και στα 360×640. Με δεύτερη σειρά για
+         μετρητή έβγαινε 82px και σκέπαζε φύλλα (μετρημένο). */
+      el.innerHTML = '<div class="coach__in" role="status"><p>' + txt + '</p>' +
+        '<button class="coach__x" data-coachskip="1">Skip</button></div>';
+    }
+    const anchor = st.at === "chain" ? $("chain") : $("rungVal");
+    anchor.classList.add("coachmark"); coachMark = anchor;
+    el.hidden = false;
+    const w = Math.min(innerWidth - 16, 360);
+    el.style.width = w + "px";
+    const a = anchor.getBoundingClientRect(), h = el.offsetHeight;
+    /* Δύο ΑΔΕΙΕΣ θέσεις, και ένα σκληρό όριο: το κουτί δεν κατεβαίνει ΠΟΤΕ κάτω από τη
+       γραμμή του preview — από εκεί και κάτω είναι το tfoot, η αλυσίδα, το χέρι και το
+       dock. Θέση A: κάτω από το rung, πάνω από τα φύλλα του τραπεζιού. Θέση B: κάτω από τα
+       φύλλα, πάνω από το preview. Το βήμα της αλυσίδας προτιμά τη B (δείχνει προς τα κάτω),
+       τα βήματα του rung την A. Μετρημένο: χωρίς το όριο, ένα βήμα «chain» με γεμάτο
+       τραπέζι στα 360×640 κάθισε στα 413–461 και σκέπασε το χέρι. */
+    const rungBox = document.querySelector(".rung").getBoundingClientRect();
+    const maxBot = $("preview").getBoundingClientRect().top - 8;
+    const cards = $("tcards").querySelectorAll(".card");
+    const cTop = cards.length ? cards[0].getBoundingClientRect().top : null;
+    let cBot = null;
+    Array.prototype.forEach.call(cards, (c) => { const r = c.getBoundingClientRect(); if (cBot == null || r.bottom > cBot) cBot = r.bottom; });
+    const topA = rungBox.bottom + 8, roomA = (cTop == null ? maxBot : cTop - 6) - topA;
+    const topB = maxBot - h, roomB = cBot == null ? -1 : topB - (cBot + 6);
+    let top;
+    if (st.at === "chain") top = roomB >= 0 ? topB : (roomA >= h ? Math.max(topA, (cTop == null ? maxBot : cTop - 6) - h) : maxBot - h);
+    else top = roomA >= h ? topA : (roomB >= 0 ? topB : maxBot - h);
+    top = Math.max(6, Math.min(top, maxBot - h));
+    let left = Math.round(a.left + a.width / 2 - w / 2);
+    left = Math.max(8, Math.min(innerWidth - w - 8, left));
+    el.style.left = left + "px"; el.style.top = Math.round(top) + "px";
+    const below = top + h / 2 > a.top + a.height / 2;
+    el.classList.toggle("down", below); el.classList.toggle("up", !below);
+    el.style.setProperty("--cx", Math.max(14, Math.min(w - 14, Math.round(a.left + a.width / 2 - left))) + "px");
+  }
+  $("coach").addEventListener("click", (e) => {
+    if (!e.target.closest("[data-coachskip]")) return;
+    setTaught(); FX.sfx.tick(); coachSync();
+  });
+
+  /* ---------- η οροφή των ενισχυμένων φύλλων ---------- */
+  /* Μετρημένο: το 55,3% των παιξιμάτων παίζει Gold ή Silver, το 37,6% από αυτά κάθεται στο
+     πλαφόν και στο 23,6% το πλαφόν ΚΟΒΕΙ πραγματικά (raw > cap) — μέσος όρος ×2,04 πεταμένος,
+     και το 97,9% αυτών από το ante 9 και πάνω. Δηλαδή στο δεύτερο μισό κάθε run ένα καινούργιο
+     Gold δεν έκανε τίποτα, σιωπηλά. Καμία αλλαγή στο σκορ — μόνο το λέει.
+     Ο υπολογισμός επαληθεύτηκε ενάντια στο `notes` της μηχανής: 0 διαφωνίες σε 5 708 παιξίματα. */
+  function enhCut(e) {
+    if (!e || !e.k || !e.cs || !e.notes) return null;
+    const golds = e.cs.filter((c) => c.e === "gold").length, silvers = e.cs.filter((c) => c.e === "silver").length;
+    if (!golds && !silvers) return null;
+    const gs = G.has(S, "goldsmith");
+    let raw = Math.pow(gs ? 3 : 2, golds) * Math.pow(1.5, silvers);
+    raw = Math.round(raw * 100) / 100;
+    const cap = gs && golds ? G.CFG.goldsmithCap : G.CFG.enhCap;
+    if (raw <= cap) return null;
+    const name = golds && silvers ? "Gold + Silver" : golds ? "Gold" : "Silver";
+    /* Μόνο αν η ίδια η μηχανή γράφει το πλαφόν στο `notes`: αν αλλάξει ο κανόνας, η γραμμή
+       σωπαίνει αντί να πει ψέματα. */
+    if (e.notes.indexOf(name + " ×" + cap) < 0) return null;
+    return name + " ×" + raw + " → ×" + cap + " cap";
+  }
+
   let tcwC = { key: "", v: "" };
   function render(keepHand) {
     const T = G.target(S), e = G.evalSel(S), ch = G.current(S), pos = G.chainPos(S), cleared = S.score >= T;
@@ -292,8 +387,12 @@
       (!surv && S.playsLeft < 2 ? " · last play" : "") +
       (surv && S.rung ? " · or breathe (" + G.discardsLeft(S) + ")" : "");
     if (why) pv.classList.add("bad");
-    const pvh = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    const pvh0 = !pvt ? "" : pv.classList.contains("hint") ? cap(pvt).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       : cap(pvt).split(" · ").map((x) => "<span>" + x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + "</span>").join(' <i>·</i> ');
+    /* Η οροφή των ενισχυμένων φύλλων γίνεται ορατή τη στιγμή που δαγκώνει: με τα φύλλα ήδη
+       διαλεγμένα, πριν πατήσεις. Ο πολλαπλασιαστής που κόπηκε, με το νούμερό του. */
+    const cut = enhCut(e);
+    const pvh = pvh0 + (cut ? '<b class="capd">' + cut.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/ /g, "\u00a0") + '</b>' : "");
     setHTML(pv, pvh, pvh);
     /* Τα φύλλα του τραπεζιού χωράνε και σε ύψος: μετά το preview, μέτρα τον ελεύθερο χώρο και ψαλίδισε.
        Το `clientHeight` εδώ είναι ΑΝΑΓΚΑΣΤΙΚΟ layout — τρέχει μόνο όταν άλλαξε κάτι που το
@@ -314,6 +413,7 @@
     /* Στο Survival ένα πληρωμένο discard ανοίγει και το τραπέζι — άλλο πράγμα, άλλο όνομα. */
     setTXT($("bDisc").firstElementChild, surv && !freeDisc ? "Breathe" : "Discard");
     setOff($("bHint"), ui.ending || S.playsLeft < 1);
+    coachSync();
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
   const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : k.kind === 8 ? G.clabel(k).replace(/ \S+$/, "") : G.clabel(k);
@@ -380,6 +480,9 @@
     }
     FX.fly(from, Array.prototype.slice.call($("tcards").children));
     if (ev.drawn) setTimeout(() => FX.sfx.draw(), 180);
+    /* Τα φύλλα του τραπεζιού προσγειώνονται με stagger (ως ~640ms): η θέση του οδηγού
+       ξαναμετριέται αφού σταθούν, αλλιώς καρφώνεται πάνω σε rect που ακόμη κινείται. */
+    setTimeout(coachSync, 700);
     enhPop();
     if (ev.up) FX.pulse($("chain"), "bump"); else FX.pulse($("chain"), "drop");
     callout(ev.tags[0]);
@@ -445,11 +548,19 @@
   /* ---------- sheets ---------- */
   /* Το CI γράφει το SHA στο <meta name="build">. Στο bundled artifact μένει το placeholder. */
   const buildTag = () => { const m = document.querySelector('meta[name="build"]'); const v = m && m.content; return v && v !== "__BUILD__" ? "build " + v : "build · local"; };
-  const openS = (h, exit) => {
+  /* `info`: φύλλο που απλώς ΔΙΑΒΑΖΕΤΑΙ (How to play, Collection, μενού). Ένα άγγιγμα μέσα
+     του δεν πρέπει να προχωρά τον γύρο — δες τον φρουρό στο `#veil` πιο κάτω. */
+  const openS = (h, exit, info) => {
+    $("sheet").dataset.info = info ? "1" : "";
     $("sheet").innerHTML = '<div class="shead">' + (exit ? '<button class="sheet__x" data-title="1" aria-label="Back to the menu">Menu ›</button>' : "") + '<div class="grip"></div></div>' + h;
+    /* Το φύλλο ξαναχρησιμοποιείται· χωρίς αυτό κρατούσε το scrollTop του προηγούμενου.
+       Μετρημένο: «How to play» πατημένο από το κάτω μέρος του μενού άνοιγε ΣΤΗ ΜΕΣΗ του
+       κειμένου, δηλαδή ο τίτλος και η πρώτη παράγραφος ήταν πάνω από το ορατό. */
+    $("sheet").scrollTop = 0;
     $("veil").hidden = false; $("sheet").focus(); FX.sfx.open();
+    coachSync();
   };
-  const closeS = () => { $("veil").hidden = true; };
+  const closeS = () => { $("veil").hidden = true; coachSync(); };
   function chipsHTML() {
     const c = [];
     G.BY_TIER.forEach((t) => { const m = S.mult[G.KINDS.indexOf(t)]; if (m > 0) c.push(t.short + " <b>+" + m + " mult</b>"); });
@@ -623,37 +734,52 @@
          service worker, και ξαναφορτώνει καθαρά. */
       '<button class="big ghost" data-hardreload="1" style="margin-top:.4rem">Force update · clear cache</button>' +
       (installEvt ? '<button class="big" data-install="1" style="margin-top:.4rem">Add to home screen</button>' : "") +
-      '<button class="big ghost" data-close="1" style="margin-top:.5rem">Back</button>');
+      '<button class="big ghost" data-close="1" style="margin-top:.5rem">Back</button>', 0, 1);
   }
   function sheetHowTo() {
+    /* Ο ΒΡΟΧΟΣ ΠΡΩΤΟΣ. Το φύλλο άνοιγε με δεκαπέντε παραγράφους και ο πήχης — που είναι
+       ολόκληρο το παιχνίδι — εξηγούνταν στη δεύτερη, ανάμεσα σε πίνακα πληρωμών, charms
+       και table rules. Καμία λέξη δεν άλλαξε: οι παράγραφοι είναι οι ίδιες, αλλάζει η
+       σειρά και το τι είναι ανοιχτό. Πάνω μένουν τέσσερις — ο βρόχος και ο γύρος· η
+       εγκυκλοπαίδεια μαζεύεται σε τέσσερα πτυσσόμενα από κάτω. */
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
-      '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out — <b>the moment you reach it the round is over</b> and the next ante starts on its own.</p>' +
+      '<p class="loop"><b>The loop.</b> Beat the hand on the table and the chain climbs a step. What you just played is the new hand to beat. That is the game.</p>' +
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
-      '<p><b>The hands</b>, weakest to strongest: a lone <b>Ace</b> · pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
-      '<p><b>Score = Base × Mult.</b> Every hand has a <b>Base</b> and a <b>Mult</b>, and the score is the two multiplied. The shape sets both: a pair is 25 × 3, two pair 30 × 4, trips 34 × 5, a straight 38 × 5, a full house 42 × 6, a straight flush 62 × 8. Measured over real runs, a full house pays about <b>four times</b> a pair — enough that combinations are always worth building, not so much that one lucky hand ends the round. Then every card adds to the Base: 2 to 10 as printed, J Q K ten, an Ace eleven. <b>There is no currency in this game</b> — Base is half of the score, not money.</p>' +
       '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +22% Mult, the first climb included</b>, up to ×2.3 once the chain caps at ×6. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
+      '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out — <b>the moment you reach it the round is over</b> and the next ante starts on its own.</p>' +
+      '<details class="rulz__d"><summary>The hands, and what they pay</summary>' +
+      '<p><b>The hands</b>, weakest to strongest: a lone <b>Ace</b> · pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
+      '<p><b>Score = Base × Mult.</b> Every hand has a <b>Base</b> and a <b>Mult</b>, and the score is the two multiplied. The shape sets both: a pair is 25 × 3, two pair 30 × 4, trips 34 × 5, a straight 38 × 5, a full house 42 × 6, a straight flush 62 × 8. Measured over real runs, a full house pays about <b>four times</b> a pair — enough that combinations are always worth building, not so much that one lucky hand ends the round. Then every card adds to the Base: 2 to 10 as printed, J Q K ten, an Ace eleven. <b>There is no currency in this game</b> — Base is half of the score, not money.</p>' +
+      '</details>' +
+      '<details class="rulz__d"><summary>Aces, bombs and discards</summary>' +
       '<p>A lone <b>Ace</b> is a hand of its own — the cheapest one, and the first step of every chain. Anything else beats it, so it is the natural way to open. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. Once your discards are spent, a hand that makes no combination at all still gets one free.</p>' +
+      '</details>' +
+      '<details class="rulz__d"><summary>Antes, rewards, charms, table rules</summary>' +
       '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together (the Summit at 50 is a boss too, but there is nothing left to spend it on). It gives you <b>one thing</b>, three on offer: a <b>charm</b> at the first station, a <b>perk</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) — the Mult ones repeat forever, the rest run out; charms are passive and permanent, and you only ever hold <b>five</b> — so each one is a pillar of the run, not a trinket. Once all five slots are full, a charm station pays a perk instead.</p>' +
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Silver</b> (Mult ×1.5, the common one), <b>Gold</b> (Mult ×2, and two of them ×3 — the cap on enhanced cards) or a <b>Joker</b>.</p>' +
       '<p>Most of the antes in between carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. A boss ante has a rule that bites instead, and a target a tenth lower to pay for it.</p>' +
       '<p>Fifty antes. Gentle at first, steep at the end. The Summit at 50 — and Endless after that.</p>' +
+      '</details>' +
+      '<details class="rulz__d"><summary>Survival &middot; the third choice on the start screen</summary>' +
       '<p><b>Survival</b> is the third choice in the row on the start screen, next to the two decks — and a different game. <b>No targets, no antes, no perks or charms</b>, and the cards never run out — the deck comes round again, shuffled, for as long as you last. Three things change:</p>' +
       /* Τα νούμερα βγαίνουν από το CFG, δεν γράφονται με το χέρι: η προηγούμενη έκδοση αυτής
          της παραγράφου έλεγε «πέντε ανάσες» και «1 500, 3 300, 7 260» για ώρες αφού ο κώδικας
          είχε γίνει δέκα και 1 200 / 2 640 / 5 808 — και, το χειρότερο, έλεγε ότι το σπάσιμο
          της αλυσίδας ΑΠΑΓΟΡΕΥΕΤΑΙ, δηλαδή έκρυβε τη μόνη απόφαση του mode. */
       '<p>· <b>Climbing is not compulsory — it costs.</b> A hand that does not beat the rung plays and scores as normal, but it <b>breaks the chain and costs a breath</b>. With no breath left you cannot break it while something in your hand still climbs; when nothing does, that hand is your last.<br>· <b>The chain has no ceiling</b> — no cap at ×6, so step forty is worth forty steps of Mult.<br>· <b>A bomb clears the ladder and keeps the chain.</b> Quads or a straight flush beat anything, so the table opens behind them: your next hand can be a <b>lone Ace</b> and it still counts as a climb, at the full multiplier. A breath does the same for the price of one breath — that is the way back down when the rung has climbed out of reach.<br>· A discard also <b>opens the table</b>: a <b>breath</b>. You start with <b>' + G.CFG.survDiscards + '</b>, and <b>earn one more every time your score passes the next mark</b> — ' + [0, 1, 2].map((i) => G.survMilestone(i).toLocaleString("en-US")).join(", then ") + ', each mark ' + G.CFG.survGrow + '× the last. The bar under your score is how close the next one is.</p>' +
-      '<p>The run ends the moment nothing climbs and you have no breath left. So it is one long question: <b>the cheapest climb keeps the rung low and the chain alive</b> — spend the big hands and the rung gets too high to beat. Measured, playing the biggest hand every time scores about <b>10 000</b> over twenty-six hands; playing the smallest climb scores about <b>122 000</b> over seventy-three. That gap is the mode.</p></div>' +
-      '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
+      '<p>The run ends the moment nothing climbs and you have no breath left. So it is one long question: <b>the cheapest climb keeps the rung low and the chain alive</b> — spend the big hands and the rung gets too high to beat. Measured, playing the biggest hand every time scores about <b>10 000</b> over twenty-six hands; playing the smallest climb scores about <b>122 000</b> over seventy-three. That gap is the mode.</p>' +
+      '</details>' +
+      '</div>' +
+      '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>', 0, 1);
   }
   function sheetCollection() {
     const l = life(), un = unlockedFrom(l);
     openS('<h2>Collection</h2><p class="sub">' + un.length + ' of ' + G.CHARMS.length + ' charms</p>' +
       '<div class="coll">' + G.CHARMS.map((c) => { const ok = un.indexOf(c.id) >= 0; return '<div class="coll__i' + (ok ? "" : " locked") + '">' + (ok ? IC.bubble(c.id, "charm charm--s") : '<span class="charm charm--s charm--lock"><span>?</span></span>') + '<div><strong>' + c.name + '</strong><span>' + (ok ? c.desc : c.lock.text + " · " + Math.min(l[c.lock.key] || 0, c.lock.n) + "/" + c.lock.n) + '</span></div></div>'; }).join("") + '</div>' +
       '<span class="lbl" style="display:block;margin-top:1rem">Synergies · two charms, one more effect</span><div class="synlist">' + G.SYNERGIES.map((s) => '<div class="synrow"><b>⚡ ' + s.name + '</b><span>' + G.charmById[s.a].name + ' + ' + G.charmById[s.b].name + ' — ' + s.desc + '</span></div>').join("") + '</div>' +
-      '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>');
+      '<button class="big ghost" data-close="1" style="margin-top:1.1rem">Back</button>', 0, 1);
   }
   function sheetCharm(id) { const c = G.charmById[id], sy = G.synergyFor(S, id); note(c.name + " — " + c.desc + sy.map((s) => " ⚡ " + s.name + ": " + s.desc).join(""), 6000); }
 
@@ -691,8 +817,9 @@
        μένει — το «Best on this seed» στο τέλος του run το διαβάζει. */
     $("stats").innerHTML = l.runs ? '<div><b>' + l.runs + '</b><span>runs</span></div><div><b>' + l.best + '</b><span>best ante</span></div><div><b>' + l.wins + '</b><span>summits</span></div><div><b>' + (mp === "surv" ? (l.bestSurv || 0) + '</b><span>best survival' : l.bestScore + '</b><span>best round') + '</span></div>' : "";
     $("start").hidden = false; document.body.classList.add("on-start"); FX.embers(true);
+    coachSync();
   }
-  function hideStart() { $("start").hidden = true; document.body.classList.remove("on-start"); FX.embers(false); }
+  function hideStart() { $("start").hidden = true; document.body.classList.remove("on-start"); FX.embers(false); coachSync(); }
   /* Ο ήχος δεν επιτρέπεται πριν από χειρονομία — η μουσική μπαίνει στο πρώτο άγγιγμα,
      χαμηλά, και ανεβαίνει μόνη της μαζί με την αλυσίδα. */
   addEventListener("pointerdown", () => { FX.music.start(); if ($("start") && !$("start").hidden) FX.music.level(0.1); }, { once: true, passive: true });
@@ -809,7 +936,11 @@
     const cm = t.closest("[data-charm]");
     if (cm) { sheetCharm(cm.dataset.charm); return; }
     if (t.closest("[data-next]")) { goNextAnte(); return; }
-    if (S && S.phase === "shop" && !S.offers.length) { clearTimeout(sheetNext.t); goNextAnte(); return; }
+    /* Ο «tap to skip» του «Ante cleared» έπιανε ΚΑΘΕ άγγιγμα μέσα στο φύλλο. Με ένα run
+       αποθηκευμένο σε phase "shop", το How to play από την αρχική οθόνη προχωρούσε το ante
+       με το πρώτο άγγιγμα — και τώρα που τα κεφάλαια του How to play ανοιγοκλείνουν, κάθε
+       άνοιγμα κεφαλαίου θα το έκανε. Τα φύλλα ανάγνωσης εξαιρούνται ρητά. */
+    if (S && S.phase === "shop" && !S.offers.length && $("sheet").dataset.info !== "1") { clearTimeout(sheetNext.t); goNextAnte(); return; }
     if (t.closest("[data-endless]")) { if (G.goEndless(S)) { FX.sfx.open(); save(); sheetShop(null, []); } return; }
     if (t.closest("[data-restart]")) { closeS(); begin(S.seed); return; }
     if (t.closest("[data-fresh]")) { closeS(); begin(""); return; }
