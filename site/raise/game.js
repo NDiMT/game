@@ -667,22 +667,6 @@
     candidates(S).forEach((o) => { if (climbs(S, o.k)) o.idx.forEach((i) => { set[i] = 1; }); });
     return set;
   }
-  /* Τα χέρια που περιέχουν ΑΥΤΟ το φύλλο, ταξινομημένα: πρώτα όσα ανεβαίνουν (φθηνότερο
-     πρώτα, γιατί αυτό κρατά την αλυσίδα), μετά τα υπόλοιπα (ακριβότερο πρώτα). Το UI τα
-     κυκλώνει με διαδοχικά χτυπήματα στο ίδιο φύλλο. */
-  function handsWith(S, i) {
-    const mine = candidates(S).filter((o) => o.idx.indexOf(i) >= 0);
-    const rank = (o) => KINDS[o.k.kind].tier * 1e6 + o.k.size * 1e3 + o.k.rank;
-    const pts = (o) => scoreOf(S, o.k, o.idx.map((x) => S.hand[x])).pts;
-    const up = mine.filter((o) => climbs(S, o.k)).sort((a, b) => rank(a) - rank(b));
-    const no = mine.filter((o) => !climbs(S, o.k)).sort((a, b) => pts(b) - pts(a));
-    /* Χωρίς αυτό ο κύκλος έδειχνε δύο φορές «Two Pair K» (Κ+J και Κ+9): διαδοχικά χτυπήματα
-       που δεν αλλάζουν τίποτα ΟΡΑΤΟ μοιάζουν με κολλημένο κουμπί. */
-    const seen = {}, out = [];
-    up.concat(no).forEach((o) => { const key = o.k.kind + "/" + o.k.size + "/" + o.k.rank; if (!seen[key]) { seen[key] = 1; out.push(o); } });
-    return out;
-  }
-
   /* Ορφανά: φύλλα που δεν μπαίνουν σε κανέναν συνδυασμό (εκτός Άσων και Wild). */
   function orphans(S) {
     const inUse = new Set(); candidates(S).forEach((o) => o.idx.forEach((i) => inUse.add(i)));
@@ -962,7 +946,7 @@
   return {
     SUITS, KINDS, isSurv, BY_TIER, TARGETS, tgtAt, RULES, ruleById, CFG, POOL, DECKS, deckById, SYNERGIES, synById, syn, activeSynergies, synergyFor, goEndless, nearMiss, kbase, kchips, kmult, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, nextTarget, roundHandSize,
-    classify, climbs, hasClimb, whyNoClimb, climbCards, handsWith, chainPos, survMilestone, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
+    classify, climbs, hasClimb, whyNoClimb, climbCards, chainPos, survMilestone, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
     candidates, legalMoves, hasLegal, suggest, orphans,
     toggle, reveal, play, discard, canDiscard, canDiscardAny, discardsLeft, discMaxOf, deadHand, handCap, stuck, stuckReason, finish,
     makeOffers, canTake, take, picksLeft, laneLeft, isReward, rewardKind, nextAnte, applyFree: apply, upcoming, current, currentRule, upcomingRule, peek, has,

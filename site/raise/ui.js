@@ -619,28 +619,15 @@
       if (G.canDiscard(S)) doDiscard(); else { S.sel = []; render(true); }
     }
   });
-  /* Ένα χτύπημα διάλεγε ΕΝΑ φύλλο. Σε 70+ παιξίματα ενός Survival run αυτό είναι πάνω από
-     250 χτυπήματα για να χτίσεις σχήματα που το παιχνίδι ξέρει ήδη.
-     Τώρα: με ΑΔΕΙΑ επιλογή, ένα χτύπημα διαλέγει ολόκληρο το καλύτερο χέρι που περιέχει το
-     φύλλο, και τα επόμενα χτυπήματα στο ΙΔΙΟ φύλλο κυκλώνουν τα άλλα χέρια του, μέχρι το
-     σκέτο φύλλο. Με ΥΠΑΡΧΟΥΣΑ επιλογή, το χτύπημα σε άλλο φύλλο προσθέτει/αφαιρεί όπως πάντα:
-     το χειροκίνητο χτίσιμο δεν σβήνεται ποτέ από τη συντόμευση. */
-  let cyc = { i: -1, n: 0, sig: "" };
-  const selSig = () => S.sel.slice().sort((a, b) => a - b).join(",");
+  /* Ένα χτύπημα, ένα φύλλο. Δοκιμάστηκε συντόμευση όπου το χτύπημα διάλεγε ολόκληρο το
+     καλύτερο χέρι που περιέχει το φύλλο, με κύκλο στα εναλλακτικά — και αφαιρέθηκε: το
+     παιχνίδι ΕΙΝΑΙ η επιλογή των φύλλων, και μια συντόμευση που τη μαντεύει την παίρνει
+     από τα χέρια του παίκτη. Η ταχύτητα δεν αξίζει τον έλεγχο. */
   hand.addEventListener("click", (e) => {
     if (swipe.did) { swipe.did = false; return; }
     const b = e.target.closest("[data-i]"); if (!b || S.phase !== "round") return;
     const i = +b.dataset.i; ui.note = null;
-    const tap = () => { if (G.toggle(S, i)) { FX.sfx.tick(); FX.buzz(6); cyc = { i: -1, n: 0, sig: "" }; render(true); } };
-    /* Συνεχίζεις τον κύκλο μόνο αν η επιλογή είναι ακριβώς αυτή που έβαλε ο κύκλος. */
-    const inCycle = cyc.i === i && cyc.sig === selSig();
-    if (!inCycle && S.sel.length) return tap();          /* χειροκίνητο χτίσιμο: ως είχε */
-    const opts = G.handsWith(S, i);
-    if (!opts.length) return tap();
-    const n = inCycle ? cyc.n + 1 : 0;
-    if (n >= opts.length) { S.sel = [i]; cyc = { i: -1, n: 0, sig: "" }; }
-    else { S.sel = opts[n].idx.slice(); cyc = { i: i, n: n, sig: selSig() }; }
-    FX.sfx.tick(); FX.buzz(6); render(true);
+    if (G.toggle(S, i)) { FX.sfx.tick(); FX.buzz(6); render(true); }
   });
   $("tools").addEventListener("click", (e) => {
     const a = e.target.closest("[data-act]"); if (!a) return;
