@@ -137,7 +137,7 @@
        ΜΟΝΟ ΤΟΥ διαβάζεται ως bug πριν διαβαστεί ως καμπύλη, και κοστίζει 27% της κορυφής
        (121 995 → 88 983) και 323 μονάδες headroom. Άναψέ το με `survSteep: 12` — τα νούμερα
        της σάρωσης παραπάνω ισχύουν. */
-    survSteep: 0,
+    survSteep: 14,
     /* Οι βόμβες πληρώνουν έξω από το `hmCap`. Ήταν 1,25 (το καρέ έβγαινε λιγότερο από φουλ
        πριν από αυτό)· ο παίκτης ζήτησε «λίγο περισσότερα». Ο σωστός φρουρός δεν είναι το
        `maxPlay/T` (διάμεσος των μεγίστων — μετρά το ΤΕΛΕΥΤΑΙΟ χέρι μιας χτισμένης αλυσίδας)
@@ -184,7 +184,7 @@
        κρατά το χέρι φρέσκο και ζει 180 χέρια — δηλαδή ο όγκος νικούσε την αλυσίδα. Με όριο
        εξήντα χεριών η ισορροπία γυρίζει εκεί που ανήκει. Μετρημένο (120 runs, p50 σκορ,
        άπληστο vs σωστό παίξιμο): όριο 60 → +127% · 80 → +55% · 120 → −4%. */
-    survPlays: 60,
+    survPlays: 45,
     /* Στο Survival το σκαλί αξίζει περισσότερο: με σταθερά 60 χέρια για όλους, το βήμα είναι
        ΟΛΗ η διαφορά ανάμεσα στο «ανεβαίνω φθηνά» και στο «ρίχνω ό,τι έχω». Μετρημένο (120 runs
        ανά κελί, greedy vs σωστό παίξιμο): με 0,22 το headroom είναι +79%, με 0,30 **+120%**·
@@ -921,15 +921,13 @@
     }
     return got;
   }
-  function afterPlay(S, cs, ev, junkN) {
+  function afterPlay(S, cs, ev) {
     S.stats.gold += cs.filter((c) => c.e === "gold").length;
     S.stats.silver += cs.filter((c) => c.e === "silver").length;
     reveal(S);
-    /* ΤΑ ΣΚΟΥΠΙΔΙΑ ΔΕΝ ΞΑΝΑΤΡΑΒΙΟΥΝΤΑΙ: φεύγουν, και το χέρι μένει τόσο κοντύτερο για ένα
-       παίξιμο (γεμίζει ξανά στο επόμενο). Έτσι το ξεφόρτωμα είναι απόφαση με τίμημα αντί για
-       δωρεάν discard σε κάθε παίξιμο — μετρημένο ότι κρατά τη δυσκολία στη θέση της. */
-    const short = Math.max(0, (junkN || 0) - CFG.junkRedraw);
-    const drawn = draw(S, Math.max(0, handCap(S) - S.hand.length - short));
+    /* ΤΟ ΧΕΡΙ ΓΕΜΙΖΕΙ ΠΑΝΤΑ ώς την οροφή του — 8 φύλλα, 9 με Wide Hand, και ούτω καθεξής.
+       Ό,τι έπαιξες, σκουπίδια μαζί, ξανατραβιέται. */
+    const drawn = draw(S, handCap(S) - S.hand.length);
     /* Blind Deal: δύο από τα φύλλα που μόλις τράβηξες μένουν μπρούμυτα μέχρι το επόμενο παίξιμο. */
     if (chal(S) === "blind") drawn.slice(0, CFG.blindKeep).forEach((c) => { c.h = true; });
     ev.drawn = drawn.length;
@@ -1015,7 +1013,7 @@
     S.log.push({ t: clabel(k), c: e.chips + " × " + e.mult + (bomb ? " · table opens, chain ×" + chainPos(S) + " kept" : broke ? " · chain ×" + broke + " broken" : steepOf(S) ? " · rung +" + steepOf(S) : ""), p: e.pts, cls: broke ? "pass" : "" });
     tags.sort((a, b) => tagOrd(a) - tagOrd(b));
     const ev = { type: "play", k, pts: e.pts, pos: e.pos, chips: e.chips, mult: e.mult, notes: e.notes, tags, bomb, up, broke, cleared: S.score >= target(S) };
-    afterPlay(S, cs, ev, junk.length);
+    afterPlay(S, cs, ev);
     return ev;
   }
   /* Discard: σταθερός αριθμός ανά γύρο, ξεχωριστός από τα plays (όπως στο Balatro).

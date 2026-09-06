@@ -231,10 +231,12 @@
        riser pitch bend στην τελευταία μπάρα κάθε μέρους   q>0.86 */
   const BPM = 104, STEP = 60 / BPM / 4, SPB = 16;
   /* ρίζα ανά μπάρα (ημιτόνια από το λα) και αν είναι ελάσσων */
-  const INTRO = [[0, 1], [0, 1], [8, 0], [10, 0]];
-  const VA = [[0, 1], [8, 0], [3, 0], [10, 0], [0, 1], [8, 0], [3, 0], [7, 0]];
-  const VB = [[5, 1], [10, 0], [3, 0], [8, 0], [5, 1], [10, 0], [0, 1], [0, 1]];
-  const VC = [[0, 1], [8, 0], [3, 0], [10, 0], [0, 1], [8, 0], [7, 0], [0, 1]];
+  /* Δεύτερο κομμάτι, άλλη πρόοδος: Am–G–F–G αντί για Am–F–C–G. Πιο «outrun», και το B
+     ανοίγει σε Dm–F–C–G πριν γυρίσει. */
+  const INTRO = [[0, 1], [0, 1], [10, 0], [8, 0]];
+  const VA = [[0, 1], [10, 0], [8, 0], [10, 0], [0, 1], [10, 0], [3, 0], [7, 0]];
+  const VB = [[5, 1], [8, 0], [3, 0], [10, 0], [5, 1], [8, 0], [7, 0], [0, 1]];
+  const VC = [[0, 1], [10, 0], [8, 0], [3, 0], [0, 1], [5, 1], [10, 0], [0, 1]];
   const CHORD = [].concat(INTRO, VA, VA, VB, VB, VC, VC);
   const BARS = CHORD.length, CYCLE = BARS * SPB;
   /* [πρώτη μπάρα, μήκος σε μπάρες] — τα ονόματα είναι intro, A, B, A' */
@@ -255,20 +257,27 @@
      δεν πέφτει ημιτόνιο από φωνή του pad — το tools/music.js το ελέγχει νότα-νότα. */
   const M_I = [];
   const M_A = [
-    [24, 0, 8], [32, 3, 12], [48, 5, 10], [64, 7, 16], [88, 3, 8], [96, 7, 12],
-    [112, 2, 14], [128, 12, 12], [144, 8, 8], [152, 12, 6], [160, 10, 12],
-    [176, 5, 8], [184, 2, 8], [192, 0, 20], [216, 3, 8], [224, 7, 14], [240, 11, 14],
-  ];
+      [0, 7, 10], [12, 12, 6], [16, 22, 8], [24, 17, 6], [30, 14, 4], [34, 12, 8], [42, 15, 10], [48,
+      26, 14], [62, 22, 4], [64, 7, 10], [76, 12, 6], [80, 22, 8], [88, 17, 6], [94, 14, 4], [98, 7,
+      8], [106, 10, 10], [116, 23, 12], [128, 12, 8], [136, 7, 6], [142, 3, 4], [144, 17, 10], [156,
+      22, 6], [160, 24, 14], [174, 20, 4], [178, 14, 8], [186, 17, 10], [192, 7, 10], [204, 12, 6],
+      [208, 22, 8], [216, 17, 6], [222, 14, 4], [224, 10, 6], [230, 15, 6], [236, 19, 8], [244, 23,
+      12],
+    ];
   const M_B = [
-    [0, 17, 12], [16, 14, 10], [32, 15, 12], [48, 12, 16], [72, 8, 8], [80, 17, 8],
-    [88, 14, 8], [96, 12, 16], [120, 7, 8], [128, 8, 12], [144, 17, 12], [160, 19, 12],
-    [176, 15, 16], [200, 12, 8], [208, 14, 12], [224, 12, 20], [248, 7, 8],
-  ];
+      [0, 17, 12], [12, 20, 8], [16, 24, 10], [26, 20, 8], [32, 10, 6], [38, 15, 6], [44, 19, 8], [52,
+      26, 12], [64, 17, 12], [76, 20, 8], [80, 24, 10], [90, 20, 8], [96, 19, 8], [104, 23, 10], [112,
+      15, 16], [128, 20, 10], [138, 17, 8], [144, 15, 6], [150, 20, 6], [156, 24, 8], [160, 15, 12],
+      [172, 19, 8], [180, 26, 12], [192, 12, 6], [198, 17, 6], [204, 20, 8], [208, 24, 10], [218, 20,
+      8], [224, 19, 8], [232, 23, 10], [240, 15, 16],
+    ];
   const M_C = [
-    [0, 12, 14], [24, 15, 8], [32, 19, 12], [48, 17, 12], [64, 19, 16], [88, 12, 8],
-    [96, 23, 12], [112, 19, 14], [128, 12, 12], [144, 15, 8], [152, 12, 6], [160, 22, 12],
-    [176, 14, 8], [184, 17, 8], [192, 19, 16], [216, 15, 8], [224, 23, 12], [240, 12, 24],
-  ];
+      [0, 27, 16], [16, 34, 8], [24, 38, 10], [32, 27, 8], [40, 24, 4], [44, 27, 6], [48, 31, 8], [56,
+      27, 4], [60, 22, 10], [64, 27, 16], [80, 29, 8], [88, 32, 10], [96, 38, 14], [110, 34, 4], [112,
+      27, 16], [128, 24, 8], [136, 27, 10], [144, 29, 8], [152, 26, 4], [156, 29, 6], [160, 36, 16],
+      [176, 31, 8], [184, 27, 4], [188, 22, 10], [192, 19, 8], [200, 15, 4], [204, 19, 6], [208, 29,
+      8], [216, 32, 10], [226, 26, 8], [234, 29, 10], [240, 19, 8], [248, 24, 16],
+    ];
   const PHRASE = [M_I, M_A, M_B, M_C];
 
   const hz = (semi) => 55 * Math.pow(2, semi / 12);
@@ -276,6 +285,11 @@
   function padVoices(root, minor) { return [root, root + 7, root + 12, root + (minor ? 15 : 16)]; }
 
   let mOn = false, mTimer = null, mStep = 0, mNext = 0, inten = 0, want = 0, keyOff = 0, musicG = null;
+  /* ΔΕΚΑ ΣΤΡΩΣΕΙΣ, ΜΙΑ ΑΝΑ ΣΚΑΛΙ. Η ενορχήστρωση ΕΙΝΑΙ ο μετρητής της αλυσίδας: κάθε σκαλί
+     προσθέτει ακριβώς ένα όργανο, και στο δέκατο παίζουν και τα δέκα. Η στάθμη κλειδώνει στην
+     αρχή κάθε μπάρας (`barLvl`), αλλιώς τα όργανα θα άναβαν και θα έσβηναν μέσα στο μέτρο. */
+  const L = { bed: 1, arp: 2, kick: 3, hats: 4, clap: 5, lead: 6, oct: 7, six: 8, ghost: 9, riser: 10 };
+  let wantLvl = 1, barLvl = 1;
   let MG = null, barQ = 0.3, leadEnd = -99;
   /* Άγκιστρο μέτρησης: αν κάποιος ορίσει window.__MLOG = [], κάθε γεγονός γράφεται εκεί
      (είδος, απόλυτος χρόνος, Hz). Ένα `if` ανά νότα — αυτό είναι όλο το κόστος. */
@@ -376,6 +390,13 @@
     g.octAmp.connect(g.tapeIn);
     g.octGate = c.createGain(); g.octGate.gain.value = 0.0001; g.octGate.connect(g.octAmp);
     g.oct = [osc("sawtooth", 880, -6, g.octGate), osc("sawtooth", 880, 8, g.octGate)];
+
+    /* 10η στρώση: shimmer. Δύο ψηλά saw που ΔΕΝ έχουν πύλη — κρατούν συνέχεια και ανοίγουν
+       μόνο στη στάθμη 10, μέσα από χαμηλοπερατό ώστε να λάμπουν χωρίς να τσιρίζουν. */
+    g.shimAmp = c.createGain(); g.shimAmp.gain.value = 0; g.shimAmp.connect(g.side);
+    g.shimCut = c.createBiquadFilter(); g.shimCut.type = "lowpass"; g.shimCut.frequency.value = 3200; g.shimCut.Q.value = 0.7;
+    g.shimCut.connect(g.shimAmp);
+    g.shim = [osc("sawtooth", 880, -9, g.shimCut), osc("sawtooth", 1320, 11, g.shimCut)];
 
     /* κρουστά — ΚΑΙ αυτά μόνιμα. Είχα ένα createBufferSource ανά χτύπημα (30 κόμβοι
        ανά μπάρα) και ο μετρητής έπιανε μεμονωμένα δείγματα στο -0,28 μέσα σε απόλυτη
@@ -486,7 +507,7 @@
     const bar = Math.floor(i / SPB), st = i % SPB, sec = sectOf(bar);
     const ch = CHORD[bar], rootN = (ch[0] + keyOff) % 12, minor = !!ch[1];
     const local = bar - SECT[sec][0], lstep = local * SPB + st, last = local === SECT[sec][1] - 1;
-    if (st === 0) { barQ = inten; if (local === 0) leadEnd = -99; }
+    if (st === 0) { barQ = inten; barLvl = wantLvl; if (local === 0) leadEnd = -99; }
     const q = barQ, vo = ARPV(minor), pat = ARP[sec], mel = PHRASE[sec];
 
     /* ---- η καμπύλη του φίλτρου: ανοίγει μέσα σε κάθε μέρος ΚΑΙ με την αλυσίδα ---- */
@@ -507,12 +528,13 @@
         g.cut[k] = tgt[k];
       });
       /* τα στρώματα του lead ανοίγουν με την αλυσίδα, ομαλά */
-      const lg = q > 0.50 ? 0.0140 * Math.min(1, (q - 0.50) / 0.18) : 0;
-      const og = q > 0.68 ? 0.0075 * Math.min(1, (q - 0.68) / 0.16) : 0;
-      g.leadAmp.gain.setTargetAtTime(lg, at, 0.35);
-      g.octAmp.gain.setTargetAtTime(og, at, 0.35);
-      g.tapeIn.gain.setTargetAtTime(q > 0.50 ? 0.55 : 0, at, 0.4);
-      g.arpAmp.gain.setTargetAtTime(0.030 + 0.014 * q, at, 0.3);
+      g.leadAmp.gain.setTargetAtTime(barLvl >= L.lead ? 0.0140 : 0, at, 0.35);
+      g.octAmp.gain.setTargetAtTime(barLvl >= L.oct ? 0.0075 : 0, at, 0.35);
+      g.tapeIn.gain.setTargetAtTime(barLvl >= L.lead ? 0.55 : 0, at, 0.4);
+      g.arpAmp.gain.setTargetAtTime(barLvl >= L.arp ? 0.030 + 0.014 * q : 0, at, 0.3);
+      /* 10η στρώση: shimmer — δύο ψηλά saw που κρατούν, μόνο στο τέρμα της αλυσίδας. */
+      g.shimAmp.gain.setTargetAtTime(barLvl >= L.riser ? 0.0042 : 0, at, 0.6);
+      if (barLvl >= L.riser) { const sv = padVoices(rootN + 36, minor); g.shim[0].frequency.setValueAtTime(hz(sv[0]), at); g.shim[1].frequency.setValueAtTime(hz(sv[2]), at); }
       g.padAmp.gain.setTargetAtTime(0.0078 + 0.0032 * q, at, 0.3);
       /* pad: οι φωνές αλλάζουν ΜΙΑ φορά ανά μπάρα */
       padVoices(rootN + 24, minor).forEach((s, n) => g.pad[n].frequency.setValueAtTime(hz(s), at));
@@ -539,7 +561,7 @@
        μέρος. Μετρημένα: η διαφορά A vs A΄ ΧΕΙΡΟΤΕΡΕΨΕ (×1,12 → ×1,06 τον μάρτυρα της
        λούπας) — γέμισε πίσω το κάτω μισό που είχε αδειάσει η οκτάβα του arp — και
        κόστισε 0,5 dB headroom σε όλο το κομμάτι. Βγήκε. */
-    if (st === 0 || st === 8) {
+    if (barLvl >= L.bed && (st === 0 || st === 8)) {
       g.sub.frequency.setValueAtTime(hz(rootN + 12), at);
       gate(g.subGate.gain, at, 1, 0.018, STEP * 2.0, STEP * 7.4, 0.85);
       mlog("sub", at, hz(rootN + 12));
@@ -551,7 +573,7 @@
     }
 
     /* ---- kick + sidechain ---- */
-    if (q > 0.28 && (st === 0 || st === 8)) {
+    if (barLvl >= L.kick && (st === 0 || st === 8)) {
       kick(at, 0.070 + 0.012 * q);
       const s = g.side.gain;
       s.cancelScheduledValues(at);
@@ -560,19 +582,21 @@
       s.linearRampToValueAtTime(1, at + 0.20);
     }
     /* ---- clap στο 2 και στο 4 ---- */
-    if (q > 0.42 && (st === 4 || st === 12)) clap(at, 0.038 + 0.010 * q);
-    if (q > 0.80 && st === 14 && bar % 4 === 3) clap(at, 0.018);
+    if (barLvl >= L.clap && (st === 4 || st === 12)) clap(at, 0.038 + 0.010 * q);
+    if (barLvl >= L.ghost && st === 14 && bar % 4 === 3) clap(at, 0.018);
     /* ---- hats: η πυκνότητα ανήκει στο ΜΕΡΟΣ, όχι μόνο στην αλυσίδα ----
        intro/A όγδοα, B όγδοα με τόνο στο δεύτερο μισό, A΄ γεμάτα δεκαέκτατα.
        Είναι το δεύτερο μισό της απάντησης στο «το A΄ δεν είναι λούπα του A». */
-    if (q > 0.36) {
-      const six = sec === 3 ? q > 0.5 : sec === 2 ? q > 0.72 : q > 0.88;
+    if (barLvl >= L.hats) {
+      /* Τα δεκαέκτατα hats μπαίνουν στη στάθμη 8 — και νωρίτερα στο A΄, που είναι το μέρος
+         που «σηκώνεται» από μόνο του. */
+      const six = barLvl >= L.six || (sec === 3 && barLvl >= L.oct);
       if (st % 2 === 0) hat(at, 0.019 + 0.006 * q, false);
       else if (six) hat(at, sec === 3 ? 0.012 : 0.009, false);
-      if (q > 0.80 && st === 6 && bar % 2 === 1) hat(at, 0.017, true);
+      if (barLvl >= L.ghost && st === 6 && bar % 2 === 1) hat(at, 0.017, true);
     }
     /* ---- riser: η τελευταία μπάρα κάθε μέρους ---- */
-    if (q > 0.86 && last && st === 0) riser(at, 1);
+    if (barLvl >= L.riser && last && st === 0) riser(at, 1);
 
     /* ---- η μελωδία: πύλη + portamento σε ένα synth που ήδη τρέχει ---- */
     for (let m = 0; m < mel.length; m++) if (mel[m][0] === lstep) {
@@ -620,8 +644,16 @@
     },
     /* Δάπεδο 0,3: στο chain ×1 το κομμάτι είναι arp + pad + sub + kick. Από εκεί και πάνω
        ανοίγουν clap, hats, lead, οκτάβα, riser — η αλυσίδα ΕΙΝΑΙ το mixer. */
-    chain: function (pos, cap) { const x = (pos - 1) / Math.max(3, (cap || 6) - 1); want = 0.3 + 0.7 * Math.max(0, Math.min(1, x)); },
-    level: function (x) { want = Math.max(0.22, Math.min(1, x)); },
+    /* Στο Survival η αλυσίδα δεν έχει οροφή, οπότε στάθμη = το σκαλί (ώς 10). Στο κανονικό run
+       κόβεται στο ×6, οπότε τα έξι σκαλιά ΑΠΛΩΝΟΝΤΑΙ στις δέκα στρώσεις — αλλιώς ο παίκτης του
+       Classic δεν θα άκουγε ποτέ τα μισά όργανα. */
+    chain: function (pos, cap) {
+      const c = cap || 6;
+      const lv = c >= 10 ? pos : 1 + 9 * (pos - 1) / Math.max(1, c - 1);
+      wantLvl = Math.max(1, Math.min(10, Math.round(lv)));
+      want = 0.25 + 0.75 * (wantLvl - 1) / 9;
+    },
+    level: function (x) { want = Math.max(0.22, Math.min(1, x)); wantLvl = Math.max(1, Math.min(10, Math.round(1 + 9 * want))); },
     key: function (n) { keyOff = ((n % 12) + 12) % 12; },
     playing: function () { return mOn; },
     /* Άγκιστρα ελέγχου: το tools/music.js διαβάζει τους πίνακες, το tools/mix.js μετρά. */
