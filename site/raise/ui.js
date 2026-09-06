@@ -45,11 +45,17 @@
 
   /* ---------- run lifecycle ---------- */
   function begin(seed) { S = G.newRun(seed, unlockedFrom(life()), deckPick()); ui.note = null; shown = 0; FX.music.start(); FX.music.key(0); save(); hideStart(); render(); afterMove(); }
+  /* Ένα run ΑΞΙΖΕΙ «Continue» μόνο αν έχει γίνει κάτι μέσα του. Ένα φρέσκο, άθικτο run στο
+     ante 1 με μηδέν πόντους είναι ακριβώς ό,τι και το Play — και επειδή το `begin()` σώζει
+     αμέσως, κάθε επιστροφή στον τίτλο έδειχνε «Continue · ante 1» για πάντα. */
+  const worthResuming = (r) => !!r && r.phase !== "lost" &&
+    (r.ante > 0 || r.score > 0 || (r.stats && r.stats.plays > 0) || (r.log && r.log.length > 0) ||
+     r.charms.length > 0 || r.phase === "shop" || r.phase === "won");
   function resumeOrBegin() {
     const saved = load();
     if (saved) { S = saved; shown = S.score; render(); }
     /* Και η νικημένη Κορυφή είναι «συνέχισε»: αλλιώς ένα reload έτρωγε το Endless. */
-    showStart(saved && saved.phase !== "lost" ? saved : null);
+    showStart(worthResuming(saved) ? saved : null);
   }
 
   /* ---------- cards ---------- */
@@ -515,7 +521,7 @@
     $("startBtns").innerHTML =
       /* Ένα κύριο κουμπί, όχι δύο: Continue αν τρέχει run, αλλιώς Play. */
       (resume
-        ? '<button class="big" data-continue="1">' + (resume.phase === "won" ? "Keep climbing · Endless" : "Continue · ante " + (resume.ante + 1)) + '</button>'
+        ? '<button class="big" data-continue="1">' + (resume.phase === "won" ? "Keep climbing · Endless" : "Continue · ante " + (resume.ante + 1) + (resume.score ? " · " + resume.score.toLocaleString("en-US") + " pts" : "")) + '</button>'
         : '<button class="big" data-random="1">Play</button>') +
       '<button class="big ghost" data-howto="1">How to play</button>' +
       '<button class="colllink" data-collection="1">Collection · ' + un.length + ' / ' + G.CHARMS.length + ' charms ›</button>';
@@ -609,13 +615,13 @@
     if (t.closest("[data-howto]")) { sheetHowTo(); return; }
     if (t.closest("[data-collection]")) { sheetCollection(); return; }
     if (t.closest("[data-share]")) { const txt = shareText(); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { t.closest("[data-share]").textContent = "Copied"; }).catch(() => { prompt("Copy your result", txt); }); return; }
-    if (t.closest("[data-title]")) { closeS(); showStart(S && (S.phase === "round" || S.phase === "shop") ? S : null); return; }
+    if (t.closest("[data-title]")) { closeS(); showStart(worthResuming(S) ? S : null); return; }
     if (t.closest("[data-install]")) { if (installEvt) { installEvt.prompt(); installEvt = null; } closeS(); return; }
     if (t.closest("[data-close]") || t === $("veil")) { if ((S && S.phase === "round") || !$("start").hidden) closeS(); }
   });
   $("start").addEventListener("click", (e) => {
     if (e.target.closest("[data-continue]")) { hideStart(); FX.sfx.open(); render(); if (S.phase === "shop") sheetShop(null, []); else if (S.phase === "won") sheetWin(); else afterMove(); return; }
-    const dk = e.target.closest("[data-deck]"); if (dk) { try { localStorage.setItem(DECK_KEY, dk.dataset.deck); } catch (x) {} FX.sfx.tick(); showStart(S && (S.phase === "round" || S.phase === "shop") ? S : null); return; }
+    const dk = e.target.closest("[data-deck]"); if (dk) { try { localStorage.setItem(DECK_KEY, dk.dataset.deck); } catch (x) {} FX.sfx.tick(); showStart(worthResuming(S) ? S : null); return; }
     const rp = e.target.closest("[data-replay]"); if (rp) { FX.sfx.open(); begin(rp.dataset.replay); return; }
     if (e.target.closest("[data-random]")) { FX.sfx.open(); begin(""); return; }
     if (e.target.closest("[data-howto]")) { sheetHowTo(); return; }
