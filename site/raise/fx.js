@@ -189,21 +189,29 @@
   }
 
   /* ---------------- μουσική ----------------
-     Γραμμένη, όχι τυχαία. Οκτώ μπάρες σε δύο φράσεις — η δεύτερη ΑΠΑΝΤΑ στην πρώτη — με
-     μελωδία σε αραιά γεγονότα (νότες ΚΑΙ παύσεις), μπάσο που περπατά προς την επόμενη
-     συγχορδία, pad που ανασαίνει, και ελαφρύ swing. Τα στρώματα ανοίγουν με την αλυσίδα. */
-  const BPM = 74, STEP = 60 / BPM / 4, BARS = 8, SPB = 16, CYCLE = SPB * BARS;
-  /* i · VI · III · VII  ‖  i · VI · iv · V — η δεύτερη φράση κλείνει με δεσπόζουσα. */
-  const ROOTS = [0, 8, 3, 10, 0, 8, 5, 7];
-  /* Φωνές συγχορδίας: ρίζα, πέμπτη, και ένα χρώμα που αλλάζει ανά μπάρα. */
-  const VOICE = [[0, 7, 14], [0, 7, 16], [0, 7, 14], [0, 7, 10], [0, 7, 15], [0, 7, 16], [0, 7, 14], [0, 7, 11]];
-  const PENT = [0, 3, 5, 7, 10, 12, 15, 17, 19];
-  /* [βήμα μέσα στη φράση (0-63), βαθμίδα πεντατονικής, μήκος σε δέκατα-έκτα] */
-  const MEL_A = [[0, 2, 3], [6, 4, 2], [10, 3, 5], [18, 4, 3], [24, 5, 2], [28, 4, 6], [36, 3, 3], [42, 2, 2], [46, 3, 5], [54, 2, 2], [58, 1, 6]];
-  const MEL_B = [[0, 5, 3], [6, 4, 2], [10, 5, 5], [18, 6, 3], [24, 5, 2], [28, 3, 6], [36, 2, 3], [42, 3, 2], [46, 2, 5], [54, 1, 2], [58, 0, 10]];
-  const ARPP = [0, 2, 1, 3, 2, 4, 3, 5];
+     Ένα κομμάτι 16 μπάρων σε λα ελάσσονα, γραμμένο νότα-νότα. Τέσσερις φράσεις:
+       P1  Am F C G   — το θέμα
+       P2  Am F C G   — το ίδιο, με ψηλότερο τέλος
+       P3  Dm G C F   — η ανύψωση, η μελωδία κάθεται μια οκτάβα πιο πάνω
+       P4  Am F E  Am — η πτώση: το E φέρνει το σολ δίεση, το θέμα λύνεται στο λα
+     Κάθε νότα της μελωδίας είναι φθόγγος της συγχορδίας ή της κλίμακας — ελεγμένο από το
+     tools/music.js, μαζί με το ότι καμία δεν πέφτει ημιτόνιο από φωνή του pad. */
+  const BPM = 84, STEP = 60 / BPM / 4, SPB = 16, BARS = 16, CYCLE = SPB * BARS;
+  /* ρίζα ανά μπάρα (ημιτόνια από το λα) και αν είναι ελάσσων */
+  const CHORD = [
+    [0, 1], [8, 0], [3, 0], [10, 0],
+    [0, 1], [8, 0], [3, 0], [10, 0],
+    [5, 1], [10, 0], [3, 0], [8, 0],
+    [0, 1], [8, 0], [7, 0], [0, 1],
+  ];
+  /* [βήμα μέσα στη φράση (0-63), ημιτόνια από το λα, μήκος σε δέκατα-έκτα] */
+  const M1 = [[0, 7, 6], [8, 10, 4], [12, 12, 4], [16, 12, 8], [26, 10, 6], [32, 7, 10], [44, 5, 4], [48, 10, 8], [58, 2, 6]];
+  const M2 = [[0, 7, 6], [8, 10, 4], [12, 12, 4], [16, 12, 8], [26, 10, 6], [32, 7, 10], [44, 5, 4], [48, 10, 8], [58, 12, 6]];
+  const M3 = [[0, 12, 6], [8, 14, 4], [12, 15, 4], [16, 14, 8], [26, 12, 6], [32, 10, 10], [44, 7, 4], [48, 8, 8], [58, 5, 6]];
+  const M4 = [[0, 7, 6], [8, 10, 4], [12, 12, 4], [16, 12, 8], [26, 8, 6], [32, 7, 8], [42, 11, 6], [48, 12, 16]];
+  const PHRASE = [M1, M2, M3, M4];
   const hz = (semi) => 55 * Math.pow(2, semi / 12);
-  const swing = (s) => (s % 2 === 1 ? STEP * 0.09 : 0);   /* λίγο swing στα άτονα δέκατα-έκτα */
+  const swing = (st) => (st % 2 === 1 ? STEP * 0.07 : 0);
   let mOn = false, mTimer = null, mStep = 0, mNext = 0, inten = 0, want = 0, keyOff = 0, musicG = null;
 
   function musicBus() {
@@ -211,53 +219,48 @@
     if (!musicG) { musicG = c.createGain(); musicG.gain.value = 0; musicG.connect(master); }
     return musicG;
   }
-  /* Καμπανάκι από τρεις ημιτονοειδείς: θεμελιώδης, οκτάβα ξεκούρδιστη, και μια μαλακή δωδεκάτη.
-     Ένας σκέτος ημιτονοειδής ακούγεται σαν τεστ ακοής· αυτό ακούγεται σαν όργανο. */
+  /* Καμπανάκι: θεμελιώδης, ξεκούρδιστη οκτάβα, μαλακή δωδεκάτη. Ένας σκέτος ημιτονοειδής
+     ακούγεται σαν τεστ ακοής· τρεις μαζί ακούγονται σαν όργανο. */
   function bell(f, t, g, bus, d, space) {
-    voice({ f: f, t: t, g: g, type: "sine", bus: bus, delay: d, atk: 0.006, space: space });
-    voice({ f: f * 2.008, t: t * 0.62, g: g * 0.4, type: "sine", bus: bus, delay: d, atk: 0.004, space: space });
-    voice({ f: f * 3.01, t: t * 0.3, g: g * 0.16, type: "triangle", bus: bus, delay: d, atk: 0.003 });
+    voice({ f: f, t: t, g: g, type: "sine", bus: bus, delay: d, atk: 0.008, space: space });
+    voice({ f: f * 2.006, t: t * 0.6, g: g * 0.34, type: "sine", bus: bus, delay: d, atk: 0.005, space: space });
+    voice({ f: f * 3.01, t: t * 0.26, g: g * 0.12, type: "triangle", bus: bus, delay: d, atk: 0.004 });
   }
-  function schedule(t, i) {
-    const bar = Math.floor(i / SPB) % BARS, s = i % SPB, bus = musicG;
-    const root = (ROOTS[bar] + keyOff) % 12, nextRoot = (ROOTS[(bar + 1) % BARS] + keyOff) % 12;
-    const phrase = bar < 4 ? 0 : 1, local = (i % CYCLE) - phrase * 64;
-    const q = inten, tt = t + swing(s);
-    /* Το φίλτρο του pad ανασαίνει σε οκτώ μπάρες, όχι σε μία. */
-    const breath = 0.5 + 0.5 * Math.sin((i / CYCLE) * Math.PI * 2);
-    const cut = 480 + q * 2200 + breath * 700;
+  /* Φωνές του pad για μια συγχορδία: ρίζα, τρίτη (μικρή ή μεγάλη), πέμπτη, ενάτη. */
+  function padVoices(root, minor) { return [root, root + (minor ? 3 : 4), root + 7, root + 14]; }
 
-    /* ---- pad: κρατά τη μπάρα, μπαίνει και βγαίνει αργά ---- */
-    if (s === 0) VOICE[bar].forEach(function (iv, n) {
-      voice({ f: hz(root + 36 + iv), t: STEP * SPB * 1.2, g: 0.02 + q * 0.008, type: "sawtooth", cut: cut * 0.55,
-        bus: bus, delay: t, atk: 0.7, detune: (n - 1) * 5, space: 0.7 });
+  function schedule(t, i) {
+    const bar = Math.floor(i / SPB) % BARS, st = i % SPB, bus = musicG;
+    const ch = CHORD[bar], root = (ch[0] + keyOff) % 12, minor = !!ch[1];
+    const mel = PHRASE[Math.floor(bar / 4)], local = (i % CYCLE) - Math.floor(bar / 4) * 64;
+    const q = inten, tt = t + swing(st);
+    const breath = 0.5 + 0.5 * Math.sin((i / CYCLE) * Math.PI * 4);
+    const cut = 520 + q * 2400 + breath * 600;
+
+    /* ---- pad: κρατά τη μπάρα ---- */
+    if (st === 0) padVoices(root + 36, minor).forEach(function (semi, n) {
+      voice({ f: hz(semi), t: STEP * SPB * 1.15, g: 0.019 + q * 0.007, type: "sawtooth", cut: cut * 0.55,
+        bus: bus, delay: t, atk: 0.55, detune: (n - 1.5) * 4, space: 0.7 });
     });
-    /* ---- μπάσο: ρίζα στο ένα, και περπάτημα προς την επόμενη συγχορδία στο τέλος ---- */
-    if (s === 0) voice({ f: hz(root + 12), t: 1.0, g: 0.05 + q * 0.02, type: "sine", cut: 340, bus: bus, delay: t, atk: 0.05 });
-    /* Πάτημα προς την επόμενη συγχορδία. Ο ενδιάμεσος υπολογιζόταν με διαφορά ημιτονίων και
-       μπορούσε να βγει εκτός κλίμακας· η πέμπτη της τρέχουσας συγχορδίας είναι πάντα σωστή. */
-    if (q > 0.2 && s === 14) voice({ f: hz(root + 19), t: 0.28, g: 0.032, type: "sine", cut: 400, bus: bus, delay: tt, atk: 0.02 });
-    /* ---- μελωδία: γραμμένη, με παύσεις ---- */
-    const mel = phrase ? MEL_B : MEL_A;
+    /* ---- μπάσο: ρίζα, ρίζα, πέμπτη, οκτάβα — παλμός, όχι drone ---- */
+    if (st === 0) voice({ f: hz(root + 12), t: 0.62, g: 0.055 + q * 0.02, type: "sine", cut: 340, bus: bus, delay: t, atk: 0.04 });
+    if (q > 0.15 && st === 6) voice({ f: hz(root + 12), t: 0.24, g: 0.032, type: "sine", cut: 340, bus: bus, delay: tt, atk: 0.02 });
+    if (q > 0.15 && st === 10) voice({ f: hz(root + 19), t: 0.26, g: 0.03, type: "sine", cut: 380, bus: bus, delay: t, atk: 0.02 });
+    if (q > 0.45 && st === 14) voice({ f: hz(root + 24), t: 0.2, g: 0.024, type: "triangle", cut: 500, bus: bus, delay: tt, atk: 0.02 });
+    /* ---- η μελωδία ---- */
     for (let m = 0; m < mel.length; m++) if (mel[m][0] === local) {
-      const deg = PENT[mel[m][1]], len = mel[m][2] * STEP;
-      bell(hz(root + 48 + deg), len * 0.95 + 0.12, 0.026 + q * 0.014, bus, tt, 0.75);
-      /* Ψηλή οκτάβα-φάντασμα ψηλά στην αλυσίδα: το ίδιο μοτίβο, μια ανάσα πιο πίσω. */
-      if (q > 0.7) bell(hz(root + 60 + deg), len * 0.5, 0.008, bus, tt + STEP * 0.5, 0.9);
+      const len = mel[m][2] * STEP;
+      bell(hz(mel[m][1] + keyOff + 48), len * 0.92 + 0.14, 0.028 + q * 0.012, bus, tt, 0.72);
+      if (q > 0.75) bell(hz(mel[m][1] + keyOff + 60), len * 0.4, 0.007, bus, tt + STEP * 0.5, 0.9);
     }
-    /* ---- αρπέζ στα όγδοα, μόνο μεσαία-ψηλά: κίνηση κάτω από τη μελωδία ---- */
-    if (q > 0.5 && s % 2 === 0) {
-      const deg = PENT[ARPP[(s / 2 + bar) % ARPP.length]];
-      voice({ f: hz(root + 36 + deg), t: 0.16, g: 0.009 + q * 0.007, type: "triangle", cut: cut, bus: bus, delay: tt, atk: 0.01, space: 0.5 });
-    }
-    /* ---- κρουστά: αραιά και μαλακά ---- */
-    if (q > 0.62 && (s === 4 || s === 12)) noise({ f: 9200, g: 0.008 + q * 0.005, t: 0.028, bus: bus, delay: tt, space: 0.4 });
-    if (q > 0.78 && s === 0) voice({ f: 105, t: 0.17, g: 0.085, type: "sine", slide: 0.42, bus: bus, delay: t });
-    if (q > 0.88 && s === 8 && bar % 2 === 1) noise({ f: 2100, q: 0.8, type: "bandpass", g: 0.03, t: 0.09, bus: bus, delay: tt, space: 0.6 });
+    /* ---- κρουστά: μπαίνουν ψηλά, και μένουν αραιά ---- */
+    if (q > 0.55 && (st === 4 || st === 12)) noise({ f: 9000, g: 0.0085 + q * 0.005, t: 0.03, bus: bus, delay: tt, space: 0.4 });
+    if (q > 0.7 && (st === 0 || st === 10)) voice({ f: 104, t: 0.16, g: 0.05, type: "sine", slide: 0.44, bus: bus, delay: t });
+    if (q > 0.88 && st === 8) noise({ f: 2000, q: 0.8, type: "bandpass", g: 0.026, t: 0.085, bus: bus, delay: tt, space: 0.6 });
   }
   function pump() {
     const c = ac; if (!c || !mOn) return;
-    inten += (want - inten) * 0.035;     /* η ένταση κινείται ομαλά, δεν πηδά */
+    inten += (want - inten) * 0.035;
     while (mNext < c.currentTime + 0.14) {
       schedule(Math.max(0, mNext - c.currentTime), mStep);
       mStep = (mStep + 1) % CYCLE;
@@ -271,7 +274,7 @@
       musicBus(); mOn = true; mStep = 0; mNext = c.currentTime + 0.08;
       musicG.gain.cancelScheduledValues(c.currentTime);
       musicG.gain.setValueAtTime(0.0001, c.currentTime);
-      musicG.gain.linearRampToValueAtTime(0.5, c.currentTime + 3.5);
+      musicG.gain.linearRampToValueAtTime(0.45, c.currentTime + 3.5);
       mTimer = setInterval(pump, 25);
     },
     stop: function (fade) {
@@ -280,11 +283,12 @@
       if (musicG && c) { musicG.gain.cancelScheduledValues(c.currentTime); musicG.gain.setValueAtTime(musicG.gain.value, c.currentTime); musicG.gain.linearRampToValueAtTime(0.0001, c.currentTime + (fade == null ? 1.1 : fade)); }
       clearInterval(mTimer); mTimer = null;
     },
-    /* Η θέση της αλυσίδας γίνεται ένταση: το κομμάτι χτίζεται όσο χτίζεις. */
     chain: function (pos, cap) { want = Math.max(0, Math.min(1, (pos - 1) / Math.max(3, (cap || 6) - 1))); },
     level: function (x) { want = Math.max(0, Math.min(1, x)); },
     key: function (n) { keyOff = ((n % 12) + 12) % 12; },
     playing: function () { return mOn; },
+    /* Άγκιστρο ελέγχου: το tools/music.js διαβάζει τους πίνακες και ελέγχει την αρμονία. */
+    tables: function () { return { CHORD: CHORD, PHRASE: PHRASE, BPM: BPM, BARS: BARS, SPB: SPB }; },
   };
 
   const sfx = {

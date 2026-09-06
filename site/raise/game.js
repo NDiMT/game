@@ -88,14 +88,13 @@
        το Blind σκότωνε 11% και το Sticky 3%. Μετά: 5–7% όλα. */
     chalTargetMul: 0.8,
     chalMul: { nodiscard: 0.70, summit: 0.83, blind: 0.92, onedisc: 0.89, short: 0.95, fewplays: 0.95, richair: 1.05, highground: 1.23, thinair: 1.13, noace: 1.22, sticky: 1.22 },
-    /* Survival: ανάσες στην αρχή, και μία σε κάθε ορόσημο σκορ (1500 ×2,2 κάθε φορά).
-       Βαθμονομημένο με σάρωση 5×3×3 (`SWEEP=1 node tools/surv.js`): ζητούμενο ήταν 35-45 χέρια,
-       headroom σωστού παιξίματος >100%, και το ΜΙΚΡΟΤΕΡΟ δυνατό spread p90/p10 — σε mode που
-       κρίνεται σε high score, το spread ΕΙΝΑΙ το πρόβλημα (η πρώτη ρύθμιση έβγαζε ×28,6).
-       Το κελί 5/1500/2,2 δίνει 40 χέρια, +132% headroom, spread ×3,59 (↓×2,26 ↑×1,59).
-       Η γεωμετρική κλίμακα είναι αυτή που εγγυάται ότι το run τελειώνει: το σκορ μεγαλώνει
-       τετραγωνικά με τα χέρια, οι ανάσες λογαριθμικά — 0 ατέρμονα σε 27 κελιά × 150 runs. */
-    survDiscards: 5, survStep: 1500, survGrow: 2.2, survEarnCap: 99,
+    /* Survival: ανάσες στην αρχή, και μία σε κάθε ορόσημο σκορ (1200 ×2,2 κάθε φορά).
+       Η ανάσα κάνει ΔΥΟ δουλειές: πετάς φύλλα, ή σπάς την αλυσίδα — γι' αυτό ανέβηκαν σε 7.
+       Σάρωση 18 κελιών × 140 runs (`SWEEP=1 node tools/surv.js`): κριτήρια ήταν 35-60 χέρια
+       για σωστό παίξιμο, όχι ταπεινωτικά κοντό run για τον αρχάριο, και το ΜΙΚΡΟΤΕΡΟ spread.
+       Το 7/1200/×2,2 δίνει 57 χέρια σωστά, 20 άπληστα, spread ×2,84 — το χαμηλότερο της ζώνης.
+       Η γεωμετρική κλίμακα εγγυάται τερματισμό: 0 ατέρμονα σε 18 κελιά × 140 runs. */
+    survDiscards: 7, survStep: 1200, survGrow: 2.2, survEarnCap: 99,
     bombMul: 1.25,
     thinAirCap: 2, ruleChance: 0.75, highGroundRank: 8, shortHand: 7, richAirMul: 1.15, blindCount: 3, blindKeep: 1,
     maxBuy: { cs: 3, wi: 2, di: 2, pl: 1, gt: 1, m1: 20, m2: 20 },
@@ -359,7 +358,7 @@
     S.sel = [];
     S.rung = null;
     S.chain = 0; S.score = 0; S.plays = 0; S.lastSuit = null; S.breaks = 0;
-    S.rdisc = 0; S.rfree = 0; S.rbombs = 0; S.rsuits = []; S.hot = 0; S.rkinds = {}; S.rmax = 0; S.firstK = null; S.lastK = null;
+    S.rdisc = 0; S.rfree = 0; S.rbombs = 0; S.rsuits = []; S.hot = 0; S.done = 0; S.brokeCost = 0; S.rkinds = {}; S.rmax = 0; S.firstK = null; S.lastK = null;
     S.chainBonus = rule(S) === "r_head" ? 1 : 0;
     /* Discards: σταθερός πόρος του γύρου, ξεχωριστός από τα plays. */
     S.discMax = discMaxOf(S);
@@ -636,16 +635,21 @@
     const all = candidates(S);
     if (!all.length) return null;
     const up = all.filter((o) => climbs(S, o.k)), pool = up.length ? up : all;
-    /* Survival: παίζονται ΜΟΝΟ ανεβάσματα, και η αλυσίδα δεν έχει οροφή — άρα το μήκος της
-       είναι όλο το παιχνίδι. Το φθηνότερο ανέβασμα κρατά το rung χαμηλά και το σερί ζωντανό.
-       Μετρημένο: άπληστο p50 19 806, φθηνό p50 44 732 (+126%) — ο Hint δεν έχει δουλειά να
-       διδάσκει το μισό. Αν δεν ανεβαίνει τίποτα, δεν υπάρχει πρόταση: θέλει ανάσα. */
-    if (isSurv(S)) {
-      if (!up.length) return null;
-      const rank = (o) => KINDS[o.k.kind].tier * 1e6 + o.k.size * 1e3 + o.k.rank;
-      return up.reduce((b2, o) => (!b2 || rank(o) < rank(b2) ? o : b2), null);
-    }
     const val = (o) => scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts;
+    /* Survival: η αλυσίδα δεν έχει οροφή, άρα το ΜΗΚΟΣ της είναι όλο το παιχνίδι. Το φθηνότερο
+       ανέβασμα κρατά το rung χαμηλά και το σερί ζωντανό. Αν τίποτα δεν ανεβαίνει, το σπάσιμο
+       επιτρέπεται και κοστίζει ανάσα — τότε η σωστή πρόταση είναι το ΑΚΡΙΒΟΤΕΡΟ χέρι: αν
+       πληρώσεις ανάσα, πληρώσου κι εσύ. */
+    if (isSurv(S)) {
+      const rank = (o) => KINDS[o.k.kind].tier * 1e6 + o.k.size * 1e3 + o.k.rank;
+      if (up.length) return up.reduce((b2, o) => (!b2 || rank(o) < rank(b2) ? o : b2), null);
+      /* Τίποτα δεν ανεβαίνει: αν υπάρχει ανάσα, ΑΥΤΗ είναι η σωστή κίνηση — `null` σημαίνει
+         «μη παίξεις χέρι». Μετρημένο, ένας Hint που πρότεινε το μεγαλύτερο χέρι εδώ έβγαζε
+         p50 5 904 έναντι 48 187 του σωστού παιξίματος: δίδασκε τη χειρότερη γραμμή.
+         Με μηδέν ανάσες το σπάσιμο είναι αναπόφευκτο, οπότε προτείνει το ακριβότερο. */
+      if (discardsLeft(S) > 0 && canDiscardAny(S)) return null;
+      return all.reduce((b2, o) => (!b2 || val(o) > val(b2) ? o : b2), null);
+    }
     let best = null, bv = -1, bl = -1;
     pool.forEach((o) => {
       const v = val(o);
@@ -696,6 +700,8 @@
     /* Blind Deal: δύο από τα φύλλα που μόλις τράβηξες μένουν μπρούμυτα μέχρι το επόμενο παίξιμο. */
     if (chal(S) === "blind") drawn.slice(0, CFG.blindKeep).forEach((c) => { c.h = true; });
     ev.drawn = drawn.length;
+    if (S.brokeCost) { ev.brokeCost = 1; S.brokeCost = 0; }
+    if (isSurv(S) && S.done) ev.last = 1;
     const earned = survEarn(S);
     if (earned) { ev.breaths = earned; S.log.push({ t: earned > 1 ? earned + " breaths earned" : "Breath earned", c: "past " + survMilestone((S.survEarned || 0) - 1).toLocaleString("en-US"), p: "+" + earned, cls: "bonus" }); }
     S.plays += 1; S.stats.plays += 1;
@@ -716,10 +722,6 @@
     const e = evalSel(S);
     if (S.playsLeft < 1) return null;
     if (!e.k) return null;
-    /* Survival: μόνο ανέβασμα. Χωρίς αυτό η αλυσίδα παύει να είναι το παιχνίδι — μετρημένο,
-       το άπληστο παίξιμο κέρδιζε το χτίσιμο αλυσίδας (p50 116 347 έναντι 98 264) και τα run
-       τραβούσαν 183-232 χέρια. */
-    if (isSurv(S) && !climbs(S, e.k)) return null;
     const k = e.k, prev = S.rung, up = climbs(S, k), cs = removeSel(S, true);
     const tags = [];
     if (S.chain === 0 && k.kind === 1 && k.rank <= 3) tags.push("Humble");
@@ -730,6 +732,11 @@
     if (k.kind === 9) { tags.push("Ace"); S.stats.aces += 1; }
     if (k.kind === 4 && k.size >= 7) tags.push("Long Run");
     if (k.kind === 3 && k.size >= 6) tags.push("Staircase");
+    /* Survival: το σπάσιμο ΕΠΙΤΡΕΠΕΤΑΙ και ΚΟΣΤΙΖΕΙ μία ανάσα. Ένας πόρος, δύο χρήσεις:
+       πετάς φύλλα, ή σπάς την αλυσίδα. Με μηδέν ανάσες το χέρι παίζεται κανονικά, γράφει
+       τους πόντους του, και το run κλείνει εκεί — δηλαδή το τελευταίο σου χέρι μπορεί να
+       είναι το μεγαλύτερο, αντί για τοίχο που σου λέει «όχι». */
+    if (isSurv(S) && !up) { if (discardsLeft(S) > 0) { S.rdisc += 1; S.brokeCost = 1; } else S.done = 1; }
     S.score += e.pts; S.playsLeft -= 1;
     S.lastSuit = leadSuit(cs);
     if (S.lastSuit != null) { if (!S.rsuits) S.rsuits = []; if (S.rsuits.indexOf(S.lastSuit) < 0) S.rsuits.push(S.lastSuit); }
@@ -796,7 +803,7 @@
   /* Κόλλησες όταν καμία κίνηση δεν αλλάζει τίποτα. */
   function stuck(S) {
     if (S.phase !== "round") return false;
-    if (isSurv(S)) return !hasClimb(S) && !canDiscardAny(S);
+    if (isSurv(S)) return !!S.done || (!hasLegal(S) && !canDiscardAny(S));
     if (S.playsLeft < 1) return true;
     if (hasLegal(S)) return false;
     if (canDiscardAny(S)) return false;
@@ -808,9 +815,11 @@
   const canDiscardAny = (S) => chal(S) !== "nodiscard" && (discardsLeft(S) > 0 || (!isSurv(S) && (deadHand(S) || freeScout(S)))) && survStock(S) && S.hand.length > 0;
   function stuckReason(S) {
     if (isSurv(S)) {
+      if (S.done) return "You broke the chain with no breath left — that is the run.";
       if (hasClimb(S)) return "";
-      if (canDiscardAny(S)) return "Nothing here climbs. Take a breath — it opens the table and keeps the chain.";
-      return "Nothing climbs and there is no breath left — that is the run.";
+      if (discardsLeft(S) > 0) return "Nothing climbs. Breathe to open the table, or play anyway — breaking costs a breath too.";
+      if (hasLegal(S)) return "No breath left: the next hand that does not climb is your last. Make it count.";
+      return "Nothing here makes a hand at all — that is the run.";
     }
     if (S.playsLeft < 1) return "No plays left — the round is over.";
     if (hasLegal(S)) return "";

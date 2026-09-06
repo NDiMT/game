@@ -187,17 +187,22 @@
     const go = $("bPlay"); go.className = "go";
     const pv = $("preview"); pv.className = "preview"; let pvt = "";
     if (ui.ending || (!surv && S.playsLeft < 1) || cleared) { go.classList.add("done"); go.disabled = true; go.innerHTML = '<span class="go__t">' + (surv ? "No way up" : cleared ? "Target!" : "Round over") + '</span><span class="go__s">' + (surv ? S.score.toLocaleString("en-US") + " points" : cleared ? "Ante " + (S.ante + 1) + " cleared" : "Short by " + (T - S.score)) + '</span>'; }
-    else if (surv && !S.sel.length && !G.hasClimb(S)) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Nothing climbs</span><span class="go__s">' + (G.discardsLeft(S) > 0 ? "Breathe to open the table · " + G.discardsLeft(S) + " left" : "No breath left — this is the end of the run") + '</span>'; }
+    else if (surv && !S.sel.length && !G.hasClimb(S)) { go.classList.add("idle"); go.disabled = true; go.innerHTML = '<span class="go__t">Nothing climbs</span><span class="go__s">' + (G.discardsLeft(S) > 0 ? "Breathe (" + G.discardsLeft(S) + " left) · or break it, which costs one too" : "No breath left · the next hand you play is your last") + '</span>'; }
     else if (!S.sel.length) {
       go.classList.add("idle"); go.disabled = true;
       go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (!surv && S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
     else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? (surv ? "Breathe these away instead?" : "Discard these instead?") : "Pick a pair, a run or a set") + '</span>'; }
-    else if (surv && !e.up) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">' + G.clabel(e.k) + ' does not climb</span><span class="go__s">' + (G.whyNoClimb(S, e.k) || "beat " + G.clabel(S.rung) + " or breathe") + '</span>'; }
     else {
       go.classList.add(e.up ? "ok" : "down"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind));
       const calc = e.chips + " × " + e.mult;
-      go.innerHTML = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc : 'Breaks the chain · ' + calc) + '</span>';
+      /* Survival: το σπάσιμο επιτρέπεται και κοστίζει μία ανάσα — και στο μηδέν είναι το
+         τελευταίο σου χέρι. Το κουμπί το λέει, ώστε η απόφαση να είναι δική σου. */
+      const brk = surv
+        ? (G.discardsLeft(S) > 0 ? "Breaks the chain · costs a breath (" + G.discardsLeft(S) + " left)" : "Breaks the chain · your last hand")
+        : "Breaks the chain · " + calc;
+      if (surv && !e.up) go.classList.add("cost");
+      go.innerHTML = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc : brk) + '</span>';
     }
     /* Η γραμμή κάτω από το τραπέζι δεν αλλάζει με την επιλογή: λέει τι θέλει το rung, και μόνο.
        Ο αριθμός του χεριού ζει στο κουμπί, εκεί που πέφτει ο αντίχειρας. */
@@ -295,7 +300,19 @@
     const m = G.suggest(S);
     if (m) { S.sel = m.idx.slice(); ui.note = null; FX.sfx.tick(); render(true); return; }
     const o = G.orphans(S);
-    if (G.canDiscardAny(S) && o.length) { S.sel = o.slice(0, Math.min(4, o.length)); note("These fit no hand — swipe down or tap Discard to swap them."); return; }
+    if (G.canDiscardAny(S) && o.length) {
+      S.sel = o.slice(0, Math.min(4, o.length)); FX.sfx.tick(); FX.pulse($("bDisc"), "hit");
+      note(G.isSurv(S)
+        ? "Nothing climbs. A breath opens the table and keeps the chain — cheaper than breaking it."
+        : "These fit no hand — swipe down or tap Discard to swap them.");
+      return;
+    }
+    /* Survival χωρίς ορφανά αλλά με ανάσα: η ανάσα είναι ακόμη η σωστή κίνηση. */
+    if (G.isSurv(S) && G.discardsLeft(S) > 0 && G.canDiscardAny(S)) {
+      S.sel = S.hand.map((_, i) => i).sort((a, b) => S.hand[a].r - S.hand[b].r).slice(0, 2);
+      FX.sfx.tick(); FX.pulse($("bDisc"), "hit");
+      note("Nothing climbs. Breathe — it opens the table and keeps the chain."); return;
+    }
     note(G.stuckReason(S));
   }
   function end() {
@@ -309,7 +326,12 @@
   }
 
   /* ---------- sheets ---------- */
-  const openS = (h) => { $("sheet").innerHTML = '<div class="grip"></div>' + h; $("veil").hidden = false; $("sheet").focus(); FX.sfx.open(); };
+  /* Το CI γράφει το SHA στο <meta name="build">. Στο bundled artifact μένει το placeholder. */
+  const buildTag = () => { const m = document.querySelector('meta[name="build"]'); const v = m && m.content; return v && v !== "__BUILD__" ? "build " + v : "build · local"; };
+  const openS = (h, exit) => {
+    $("sheet").innerHTML = '<div class="shead">' + (exit ? '<button class="sheet__x" data-title="1" aria-label="Back to the menu">Menu ›</button>' : "") + '<div class="grip"></div></div>' + h;
+    $("veil").hidden = false; $("sheet").focus(); FX.sfx.open();
+  };
   const closeS = () => { $("veil").hidden = true; };
   function chipsHTML() {
     const c = [];
@@ -442,11 +464,9 @@
       '<div>Earned on the way<b>+' + (S.survEarned || 0) + '</b></div>' +
       '<div>Bombs<b>' + (S.stats.quads || 0) + '</b></div>' +
       '<div>Seed<b>' + S.seed + '</b></div></div>' +
-      '<p class="sub" style="margin:.9rem 0">Every hand has to climb, and every chain step is worth 22% more Mult than the last — with no ceiling. So the cheapest climb is usually the right one: it keeps the rung low and the chain alive. Measured, playing the biggest hand every time scores about 20 000 over sixteen hands; playing the smallest climb scores about 45 000 over forty.</p>' +
+      '<p class="sub" style="margin:.8rem 0">Every chain step is worth 22% more Mult than the last, with no ceiling — so the cheapest climb is usually the right one. Breaking the chain is allowed; it just costs a breath.</p>' +
       '<button class="big" data-restart="1">Same seed, again</button>' +
-      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>' +
-      /* Χωρίς αυτό, το φύλλο του τέλους ήταν αδιέξοδο: μόνο «ξανά» — καμία έξοδος στο μενού. */
-      '<button class="big ghost" data-title="1" style="margin-top:.4rem">Menu</button>');
+      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>', 1);
   }
   function sheetLose(newBest) {
     if (G.isSurv(S)) return sheetSurv(newBest);
@@ -458,17 +478,14 @@
       nextUnlock() +
       '<p class="sub" style="margin:.9rem 0">' + BUSTED_TIPS[(S.ante + S.stats.plays) % BUSTED_TIPS.length] + '</p>' +
       '<button class="big" data-restart="1">Same seed, again</button>' +
-      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>' +
-      /* Χωρίς αυτό, το φύλλο του τέλους ήταν αδιέξοδο: μόνο «ξανά» — καμία έξοδος στο μενού. */
-      '<button class="big ghost" data-title="1" style="margin-top:.4rem">Menu</button>');
+      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>', 1);
   }
   function sheetWin() {
     openS('<h2 class="good">The Summit</h2><p class="sub">All fifty · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
       '<div class="tally"><div>Charms<b>' + S.charms.length + '</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
       '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' +
       '<button class="big" data-endless="1" style="margin-top:1rem">Keep climbing · Endless</button>' +
-      '<div class="row2"><button class="big ghost" data-fresh="1">New run</button><button class="big ghost" data-share="1">Share</button></div>' +
-      '<button class="big ghost" data-title="1" style="margin-top:.4rem">Menu</button>');
+      '<div class="row2"><button class="big ghost" data-fresh="1">New run</button><button class="big ghost" data-share="1">Share</button></div>', 1);
   }
   function sheetMenu() {
     openS('<h2>This round</h2>' +
@@ -481,6 +498,8 @@
       '<button class="big ghost" data-fresh="1" style="margin-top:.4rem">Random seed</button></div>' +
       '<div class="row2" style="margin-top:1.1rem"><button class="big ghost" data-howto="1">How to play</button><button class="big ghost" data-collection="1">Collection</button></div>' +
       '<div class="row2"><button class="big ghost" data-sound="1">Sound · ' + (FX.isMuted() ? "off" : "on") + '</button><button class="big ghost" data-music="1">Music · ' + (FX.musicOn() && !FX.isMuted() ? "on" : "off") + '</button></div>' +
+      /* Η έκδοση, γραμμένη από το CI: ώστε να φαίνεται αν το τηλέφωνο κρατά παλιά cache. */
+      '<p class="build">' + buildTag() + '</p>' +
       '<button class="big ghost" data-title="1" style="margin-top:.4rem">Title screen</button>' +
       (installEvt ? '<button class="big" data-install="1" style="margin-top:.4rem">Add to home screen</button>' : "") +
       '<button class="big ghost" data-close="1" style="margin-top:.5rem">Back</button>');
