@@ -71,7 +71,11 @@
     /* chainStepCap = chainCap × 2, ώστε ο Climber («κάθε σκαλί διπλό») να πληρώνει μέχρι
        την κορυφή. Στο 8 έδενε: με Climber τα σκαλιά 5 και 6 έδιναν ακριβώς μηδέν, και το
        Tempo («τριπλό») ήταν ίδιο με το Climber από το σκαλί 3 και πάνω. */
-    chainStepCap: 12, patientCap: 9,
+    /* patientCap: η οροφή του Patient. Ήταν 9 με βήμα +3 ανά αδιάθετο discard, δηλαδή +6 στο
+       ΚΑΝΟΝΙΚΟ χέρι (δύο discards) πάνω σε Mult βάσης 3 ενός ζευγαριού — ×3 στο χέρι, κάθε χέρι.
+       Μετρημένο: μιλούσε στο 92,5% των παιξιμάτων και ήταν το 48,2% του σκορ του κατόχου.
+       Βήμα +2, οροφή 6: +4 στο κανονικό χέρι, +6 αν έχεις πληρώσει για κι άλλα discards. */
+    chainStepCap: 12, patientCap: 6,
     /* Οροφή στο γινόμενο των ενισχυμένων φύλλων και στο γινόμενο charms/κανόνων ενός χεριού. */
     /* Οροφή στα ενισχυμένα φύλλα και στα charms. Χαμηλά επίτηδες: στο Balatro οι xMult
        ισχύουν σε ΚΑΘΕ χέρι· εδώ οι μεγάλοι πολλαπλασιαστές ήταν δεμένοι σε ένα παίξιμο
@@ -79,7 +83,32 @@
     /* enhCap: το πλαφόν στο γινόμενο Gold/Silver. Ο Goldsmith («Gold: Mult ×3») ήταν ΝΕΚΡΟΣ:
        ένα Gold έφτανε ήδη το πλαφόν, και δύο Gold έδιναν ×3 με ή χωρίς αυτόν. Τώρα σηκώνει
        το δικό του πλαφόν — αλλιώς δεν αγοράζει τίποτα (μετρημένο: ×1,06 → ×1,30). */
-    enhCap: 3, goldsmithCap: 6, hmCap: 3,
+    /* Η οροφή ΕΜΕΙΝΕ ×3 — αλλά έγινε ΜΑΛΑΚΗ: πάνω από αυτήν η απόδοση φθίνει αντί να
+       μηδενίζεται (`enhSoft` = ο εκθέτης· factor = ecap × (factor/ecap)^enhSoft).
+       ΤΟ ΠΡΟΒΛΗΜΑ: το 41% των παιξιμάτων με Gold/Silver ήταν ήδη στην οροφή, δηλαδή ένα
+       καινούργιο Gold άξιζε κυριολεκτικά μηδέν. Και δεν είναι ομοιόμορφο — δένει σχεδόν ΜΟΝΟ
+       στην ουρά: το γινόμενο ΞΕΠΕΡΝΑΕΙ την οροφή στο 4% των ενισχυμένων παιξιμάτων στα antes
+       1–10, 13% στα 11–20, 29% στα 21–30, 51% στα 31–40, 63% στα 41–50. Γι' αυτό ΚΑΘΕ
+       ανακούφιση της οροφής είναι, εξ ορισμού, δώρο στην ουρά.
+       Σαρώθηκαν έξι σχήματα (tools/variant.js, 500 runs, ίδια seeds· Δ ante · νίκες/500 ·
+       % runs που έφτασαν ante 45 · και το μέτρο του ΑΙΣΘΗΜΑΤΟΣ, «πόσο συχνά ένα ΑΚΟΜΑ Gold
+       σε αυτό το χέρι αξίζει μηδέν»):
+         ως είχε                    0   · 20 ·  6,2% · 21,0%
+         σκληρή οροφή 4         +1,29 · 43 · 13,0% · 14,1%   (η παλιά, απορριφθείσα πρόταση)
+         υπέρβαση → +60 Base    +2,01 · 75 · 16,4% · 16,3%
+         χωριστές οροφές Gold/Silver +1,03 · 48 · 12,0% · —
+         οροφή +1 από το ante 25 +0,65 · 38 ·  9,8% · —
+         ΜΑΛΑΚΗ οροφή 3, εκθ. 0,15 +0,47 · 36 ·  9,8% ·  0,1%
+       Καμία δεν είναι τζάμπα. Αλλά η μαλακή είναι η μόνη που μηδενίζει το νούμερο του
+       αισθήματος, και είναι και η φθηνότερη — και κυρίως, ΠΛΗΡΩΝΕΤΑΙ: το κόψιμο του Patient
+       τραβά προς την άλλη μεριά, οπότε τα δύο μαζί κοστίζουν −0,43 ante έναντι της κατάστασης
+       πριν, με νίκες 25 → 23 στα 400 και ουρά ante 45 9,3% → 8,0%. Η ουρά ΔΕΝ αγοράστηκε.
+       Ο εκθέτης 0,15 κρατά το πρακτικό ταβάνι κοντά στο παλιό ×3: δύο Gold ×3,13, τρία ×3,48,
+       δύο Gold + ένα Silver ×3,33.
+       ΔΟΚΙΜΑΣΜΕΝΟ ΚΑΙ ΑΠΟΡΡΙΦΘΕΝ, από την ανάποδη: μικρότερο βήμα ανά φύλλο στην ίδια σκληρή
+       οροφή (Gold ×1,5, Silver ×1,25) σβήνει κι αυτό το νεκρό Gold — 21,0% → 0,9% — αλλά
+       κοστίζει −4,2 ante, γιατί το ×2 του ΕΝΟΣ Gold είναι η συνηθισμένη περίπτωση, όχι η ουρά. */
+    enhCap: 3, enhSoft: 0.15, goldsmithCap: 6, hmCap: 3,
     /* ενισχύσεις: δεν αγοράζονται· «σκάνε» τυχαία σε φύλλα που τραβάς μέσα στον γύρο */
     enhChance: 0.06, enhWeights: { silver: 55, gold: 25, wild: 20 }, jokerCap: 4,
     /* Ρυθμός: κάθε 3η πίστα είναι challenge ΚΑΙ η μόνη που πληρώνει — ένα perk και ένα charm.
@@ -221,7 +250,7 @@
   const poolById = Object.fromEntries(POOL.map((o) => [o.id, o]));
 
   const ENH = {
-    gold: { name: "Gold", desc: "Mult ×2 when played — they stack, up to ×3 (×6 with Goldsmith)" },
+    gold: { name: "Gold", desc: "Mult ×2 when played — they stack, with steeply falling returns past ×3" },
     wild: { name: "Joker", desc: "Any rank, any suit — and an Ace" },
     silver: { name: "Silver", desc: "Mult ×1.5 when played — the common cousin of Gold" },
   };
@@ -229,7 +258,7 @@
   /* Charms: παθητικά εφέ. `lock` = συνθήκη ξεκλειδώματος (UI, lifetime stats). */
   const CHARMS = [
     { id: "climber", name: "Climber", glyph: "↑", desc: "Every chain step counts double" },
-    { id: "patient", name: "Patient", glyph: "◷", desc: "+3 Mult for every discard you still hold, up to +9" },
+    { id: "patient", name: "Patient", glyph: "◷", desc: "+2 Mult for every discard you still hold, up to +6" },
     { id: "ladder", name: "Ladder", glyph: "≡", desc: "A hand one to three ranks above the rung: two extra chain steps for that hand" },
     { id: "leap", name: "Overkill", glyph: "⤒", desc: "Climb four ranks or more above the rung: Mult ×2" },
     { id: "lowroad", name: "Low Road", glyph: "2", desc: "Pairs of 2 to 6: Mult ×2, and +40 Base" },
@@ -243,7 +272,7 @@
     { id: "scout", name: "Scout", glyph: "◉", desc: "See the next three cards — and your first discard each round is free" },
     { id: "kingmaker", name: "Kingmaker", glyph: "A", desc: "Every Ace in the hand you play: +45 Base" },
     { id: "afterburner", name: "Afterburner", glyph: "»", desc: "A bomb and every hand after it, until the chain breaks: Mult ×2" },
-    { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards: Mult ×3, and their ceiling rises to ×6", lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
+    { id: "goldsmith", name: "Goldsmith", glyph: "★", desc: "Gold cards: Mult ×3, and their returns fall off at ×6 instead of ×3", lock: { key: "gold", n: 3, text: "Play 3 Gold cards" } },
     { id: "summiteer", name: "Summiteer", glyph: "▲", desc: "Bombs: Mult ×2", lock: { key: "quads", n: 3, text: "Play 3 bombs" } },
     { id: "ember", name: "Ember", glyph: "✦", desc: "Chain ×3 and above: Mult ×2", lock: { key: "chain7", n: 1, text: "Reach chain ×6" } },
   ];
@@ -605,8 +634,33 @@
     /* Patient μπαίνει ΠΡΙΝ την αλυσίδα, ώστε να πολλαπλασιάζεται μαζί με το υπόλοιπο Mult. */
     /* Το Patient μπαίνει πριν την αλυσίδα και πριν ΚΑΙ ΤΑ ΔΥΟ πλαφόν ×, οπότε ό,τι το ταΐζει
        (Sleight +3 discards) πολλαπλασιαζόταν ανεμπόδιστα: μετρημένα το ζευγάρι Patient+Sleight
-       άξιζε +0,92 πάνω από την πρόβλεψη — 3,5× την καλύτερη δηλωμένη συνέργεια. Δικό του πλαφόν. */
-    if (has(S, "patient")) { const d = Math.min(CFG.patientCap, discardsLeft(S) * 3); if (d) { mult += d; notes.push("Patient +" + d + " Mult"); } }
+       άξιζε +0,92 πάνω από την πρόβλεψη — 3,5× την καλύτερη δηλωμένη συνέργεια. Δικό του πλαφόν.
+       ΤΟ ΒΗΜΑ, ΟΧΙ Η ΘΕΣΗ. Η προηγούμενη υπόθεση ήταν ότι το Patient κυριαρχεί επειδή μπαίνει
+       ΠΡΙΝ την αλυσίδα, άρα καβαλάει ολόκληρο τον πολλαπλασιαστή. Μετρήθηκε (tools/variant.js):
+       η αλυσίδα τη στιγμή που μιλάει το Patient είναι κατά μέσο όρο ×1,48–1,57, όχι ×3,64 —
+       γιατί τα discards υπάρχουν στην ΑΡΧΗ του γύρου, όταν η αλυσίδα είναι ακόμα χαμηλή.
+       Η ΘΕΣΗ δουλεύει, αλλά ακριβά (300 ζευγαρωμένα· Patient Δ · λόγος προς το επόμενο ·
+       Δ ante του bot έναντι της κατάστασης πριν):
+         πριν την αλυσίδα (ήταν)  +18,85 · ×1,76 ·  0
+         ΜΕΤΑ την αλυσίδα         +14,64 · ×1,41 · −1,31
+         έξω από ΚΑΘΕ ×           +10,14 · ×1,18 · −2,59
+       Το ΒΗΜΑ πετυχαίνει τον ίδιο λόγο για τη μισή δυσκολία, γιατί ό,τι πραγματικά μετράει
+       είναι το μέγεθος μπροστά στο Mult βάσης: +6 σε ζευγάρι (βάση 3) είναι ×3.
+       Σάρωση (400 ζευγαρωμένα, ίδια seeds· Patient Δ · λόγος προς το επόμενο · Δ ante του bot):
+         +3 ώς +9 (ήταν)  +18,77 · ×1,63 ·  0
+         +3 ώς +6         +16,26 · ×1,57 · +0,16
+         +3 ώς +4         +13,42 · ×1,22 · −1,09
+         +3 ώς +3         +12,05 · ×1,34 · −1,72
+         +2 ώς +6         +13,58 · ×1,25 · −1,04   ← διαλεγμένο
+         +2 ώς +4         +13,16 · ×1,19 · −1,31
+         +1 ώς +5          +8,92 · ×1,01 · −2,6
+       Το +1 ανά discard το ρίχνει ΚΑΤΩ από το Court· το +2 ώς +6 το αφήνει πρώτο χωρίς να
+       είναι μονόδρομος, και κρατά το build «πλήρωσε για discards» ζωντανό (Sleight → +6).
+       ΔΟΚΙΜΑΣΜΕΝΟ ΚΑΙ ΑΠΟΡΡΙΦΘΕΝ: σταθερό +9 ό,τι κι αν κρατάς — δεν είναι ρύθμιση, είναι
+       άλλο charm, και ξεφεύγει (+4,30 ante στο bot, ουρά ante 45 7,3% → 19,3%). Και το
+       Patient σε Base αντί για Mult (+10 chips ανά μονάδα): +12,68 και ×1,35, αλλά σβήνει
+       την απόφαση για την οποία υπάρχει το charm, και κοστίζει διπλά (−1,34 ante). */
+    if (has(S, "patient")) { const d = Math.min(CFG.patientCap, discardsLeft(S) * 2); if (d) { mult += d; notes.push("Patient +" + d + " Mult"); } }
     /* Climber μετράει κάθε σκαλί διπλό, το Tempo τριπλό — μέχρι την οροφή του chainStepCap. */
     const stepMult = syn(S, "tempo") ? 3 : has(S, "climber") ? 2 : 1;
     const rawSteps = Math.max(0, pos - 1 + CFG.chainFloor) * stepMult;
@@ -628,7 +682,8 @@
     /* Η ψηλή οροφή είναι του Goldsmith ΚΑΙ του χρυσού: χωρίς gold στο χέρι, τρία silver
        πληρώνονταν ×3,38 αντί ×3 μόνο επειδή ο παίκτης κρατούσε το charm. */
     const ecap = has(S, "goldsmith") && golds ? CFG.goldsmithCap : CFG.enhCap;
-    if (factor > ecap) factor = ecap;
+    /* Μαλακή οροφή: πάνω από το ecap η απόδοση φθίνει αντί να μηδενίζεται (βλ. CFG.enhCap). */
+    if (factor > ecap) factor = ecap * Math.pow(factor / ecap, CFG.enhSoft);
     factor = Math.round(factor * 100) / 100;
     if (factor > 1) notes.push((golds && silvers ? "Gold + Silver" : golds ? "Gold" : "Silver") + " ×" + factor);
     let hm = bshm;

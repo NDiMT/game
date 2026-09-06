@@ -12,11 +12,14 @@ const pts = (S, o) => G.scoreOf(S, o.k, o.idx.map((i) => S.hand[i])).pts;
 const cost = (k) => G.KINDS[k.kind].tier * 1e6 + k.size * 1e3 + k.rank;
 
 /* Πρόθεμα note → charm id. Ό,τι δεν έχει note μετριέται δομικά (βλ. STRUCT). */
+/* ΠΡΟΣΟΧΗ: το πρόθεμα πρέπει να είναι ανεξάρτητο από την ΤΙΜΗ του πολλαπλασιαστή. Το
+   "Mirror ×2" έμεινε εδώ όταν το mirrorMul έγινε 1,5, και το Mirror μετριόταν 0,0% —
+   δηλαδή το εργαλείο έλεγε «νεκρό charm» για ένα charm που μιλάει σε κάθε γύρο. */
 const NOTE = {
   court: ["Court +60", "Crown Jewels +120"], kingmaker: ["Kingmaker +", "Royal Court +"],
   ladder: ["Ladder +2 steps", "Back Stairs +2 steps"], loyal: ["Loyalty +1 step"],
   patient: ["Patient +"], summiteer: ["Summiteer ×2"], leap: ["Overkill ×2"],
-  lowroad: ["Low Road ×2"], mirror: ["Mirror ×2"], ember: ["Ember ×2", "Chain Reaction ×3"],
+  lowroad: ["Low Road ×2"], mirror: ["Mirror ×"], ember: ["Ember ×2", "Chain Reaction ×3"],
   encore: ["Encore ×2", "Bookends ×3"], afterburner: ["Afterburner ×2"],
   goldsmith: ["Gold ×", "Gold + Silver ×"],
 };
