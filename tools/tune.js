@@ -249,7 +249,13 @@ for (let a = 0; a < MAXA; a++) {
 }
 console.log("mean p50/T " + f2(mean(acc50)) + " · mean p10/T " + f2(mean(acc10)) + " · mean p50/p10 " + f2(mean(accR)) +
   " · deaths " + st.lost.reduce((x, y) => x + y, 0) + "/" + RUNS + " · wins " + st.wins +
-  " · mean death ante " + f1(st.lost.reduce((x, n, i) => x + n * (i + 1), 0) / Math.max(1, RUNS - st.wins)));
+  /* ΠΡΟΣΟΧΗ: το «mean death ante» πετάει τους νικητές από το άθροισμα ΚΑΙ από τον παρονομαστή,
+     άρα ΔΕΝ είναι μονότονο — ανεβάζοντας τη δύναμη, οι μακριές διαδρομές γίνονται νίκες και
+     φεύγουν από τον μέσο όρο, οπότε ο αριθμός ΠΕΦΤΕΙ. Μετρημένο σε 400 runs: 16,9 → 15,5 ενώ
+     η ίδια αλλαγή, με τη νίκη να μετράει ως ante 51, διαβάζεται 20,6 → 19,9. Τυπώνονται και τα
+     δύο: το πρώτο για συνέχεια με το ιστορικό, το δεύτερο για να κρίνεις κατεύθυνση. */
+  " · mean death ante " + f1(st.lost.reduce((x, n, i) => x + n * (i + 1), 0) / Math.max(1, RUNS - st.wins)) +
+  " · mean reach (νίκη = " + (G.TARGETS.length + 1) + ") " + f1((st.lost.reduce((x, n, i) => x + n * (i + 1), 0) + st.wins * (G.TARGETS.length + 1)) / Math.max(1, RUNS)));
 console.log("deaths/ante: " + st.lost.slice(0, MAXA).join(" "));
 /* Πόση από τη διασπορά είναι «αυτό το run είναι δυνατό» και πόση «αυτός ο γύρος πήγε καλά»; */
 {

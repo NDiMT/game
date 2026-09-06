@@ -54,6 +54,10 @@ function playRound(S, tally) {
       who.forEach((id) => { tally.seen[id] = (tally.seen[id] || 0) + 1; });
       /* enhCap */
       const g = notes.find((x) => /^(Gold|Silver|Gold \+ Silver) ×/.test(x));
+      /* ΠΡΟΣΟΧΗ: από τότε που η οροφή έγινε ΜΑΛΑΚΗ (`enhSoft`), το «έφτασε την οροφή» δεν
+         σημαίνει πια «χάθηκε αξία» — ο παίκτης παίρνει ακόμα κάτι πάνω από το πλαφόν. Ο τίμιος
+         δείκτης είναι το dead-Gold του `tools/variant.js` (πόσο συχνά ένα ΕΠΙΠΛΕΟΝ gold αξίζει
+         ακριβώς μηδέν). Αυτό εδώ μετρά μόνο πόσο συχνά δουλεύει η καμπύλη. */
       if (g) { tally.enh++; const v = +g.split("×")[1]; if (v >= (G.has(S, "goldsmith") ? G.CFG.goldsmithCap : G.CFG.enhCap)) tally.enhCapped++; }
     }
     if (ev && ev.cleared) break;
