@@ -1301,3 +1301,130 @@ body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-sha
   .stats div{padding:.4rem .2rem}
   .stats b{font-size:1rem}
 }
+
+/* ===================== v27: synthwave — ο ορίζοντας, όχι το νέον παντού =====================
+   Το soundtrack πήγε synthwave. Το ΤΡΑΠΕΖΙ δεν αλλάζει: πράσινη τσόχα, λακαρισμένη κάσα,
+   χρυσό ως χρώμα ανταμοιβής, σεντέφι στα πολύτιμα. Το νέον μπαίνει σε τρία σημεία και μόνο:
+   (α) στην αρχική οθόνη, που είναι αφίσα και δεν έχει να διαβάσεις τίποτα κρίσιμο πάνω της,
+   (β) στη ΘΕΡΜΟΤΗΤΑ της αλυσίδας, που ήταν σέπια-καφέ και λάσπωνε τα φύλλα,
+   (γ) στο wordmark, ως αύρα γύρω από τα ίδια σεντεφένια γράμματα.
+   Ό,τι έχει αξία φύλλου ή αριθμό μέσα του δεν το ακουμπάμε. */
+:root{
+  --neon-mag:322;      /* hue: magenta — η ζέστη, έρχεται από κάτω, από τον αντίχειρα */
+  --neon-cyan:190;     /* hue: cyan — ο ουρανός, έρχεται από πάνω */
+  --neon-violet:#3b1150;
+}
+
+/* ---- (α) αρχική οθόνη: ουρανός από πάνω, τσόχα από κάτω, ορίζοντας στη μέση ----
+   Ο ουρανός πιάνει μόνο το πάνω 44%. Κάτω από τον ορίζοντα μένει η τσόχα — η ταυτότητα
+   του παιχνιδιού δεν γίνεται αφίσα, μόνο κάθεται μπροστά σε μία. */
+.start{
+  --hz:40%;   /* ο ορίζοντας: πόσο ψηλά κόβει η γη τον ουρανό */
+  background:
+    radial-gradient(ellipse 62% 20% at 50% 39.5%,hsl(24 100% 64% / .34),transparent 66%),
+    radial-gradient(ellipse 125% 24% at 50% 40%,hsl(var(--neon-mag) 100% 58% / .38),transparent 74%),
+    radial-gradient(ellipse 95% 40% at 10% -6%,hsl(var(--neon-cyan) 98% 52% / .28),transparent 62%),
+    radial-gradient(ellipse 95% 40% at 92% 0%,hsl(282 92% 58% / .34),transparent 62%),
+    linear-gradient(180deg,#120927 0%,#20104a 22%,#3a1550 36%,#123c2d 41%,var(--felt-1) 58%,var(--felt-0) 100%);
+}
+.start__in{position:relative;z-index:1}
+
+/* το πλέγμα: ένα ορθογώνιο πλέγμα ξαπλωμένο με perspective — οι κάθετες συγκλίνουν μόνες
+   τους στον ορίζοντα, χωρίς να ζωγραφίσουμε ούτε μία γραμμή φυγής με το χέρι.
+   ΠΡΟΣΟΧΗ: το mask σε τέτοιο στοιχείο μετριέται στις ΤΟΠΙΚΕΣ του συντεταγμένες, πριν το
+   rotateX. Πρώτη απόπειρα έσβηνε στο 62% του στοιχείου — που μετά το perspective έπεφτε
+   κάτω από την οθόνη, οπότε το πλέγμα περνούσε μέσα από τα πλακίδια και το ledger. Το
+   σβήσιμο γίνεται τώρα στην ΟΘΟΝΗ, με ένα πέπλο τσόχας στο ::after. */
+.start::before{
+  content:"";position:fixed;left:-60%;right:-60%;top:var(--hz);bottom:-20%;
+  pointer-events:none;z-index:0;
+  transform:perspective(15rem) rotateX(74deg);transform-origin:50% 0;
+  background:
+    repeating-linear-gradient(90deg,hsl(var(--neon-cyan) 100% 60% / .85) 0 1px,transparent 1px 4.4%),
+    repeating-linear-gradient(0deg,hsl(var(--neon-mag) 100% 64% / .8) 0 1px,transparent 1px 6.5%);
+  opacity:.34;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 6%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 6%);
+}
+/* ένα φύλλο σε συντεταγμένες ΟΘΟΝΗΣ: (1) η γραμμή του ορίζοντα, (2) το πέπλο τσόχας που
+   θάβει το πλέγμα πριν φτάσει στα πλακίδια, (3) scanlines μόνο στον ουρανό — το
+   `background-size` κόβει το repeating gradient στο πάνω 40%, χωρίς δεύτερο mask. */
+.start::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(180deg,transparent 39.5%,hsl(var(--neon-cyan) 100% 82% / .42) 39.85% 40.1%,transparent 40.4%),
+    radial-gradient(ellipse 120% 34% at 50% 68%,hsl(158 65% 24% / .5),transparent 72%),
+    linear-gradient(180deg,transparent 40%,hsl(158 60% 8% / .42) 45%,hsl(158 62% 6% / .92) 53%,hsl(158 62% 5% / .97) 68%),
+    repeating-linear-gradient(180deg,rgba(4,8,20,.2) 0 1px,transparent 1px 3px);
+  background-size:100% 100%,100% 100%,100% 100%,100% 40%;
+  background-repeat:no-repeat;
+}
+
+/* ---- (γ) wordmark: τα ίδια σεντεφένια γράμματα, καινούργια αύρα ----
+   Το παλιό stack ήταν λαδί-καφέ σκιά (#4a3a12): σωστό για χρυσάφι σε τσόχα, λάθος για
+   νέον. Ίδιο πάχος, βιολετί αντί λαδί, και δύο λάμψεις — magenta κοντά, cyan μακριά. */
+.wordmark{
+  filter:
+    drop-shadow(0 2px 0 var(--neon-violet))
+    drop-shadow(0 5px 0 rgba(8,3,20,.55))
+    drop-shadow(0 0 .85rem hsl(var(--neon-mag) 100% 64% / .6))
+    drop-shadow(0 0 2.2rem hsl(var(--neon-cyan) 100% 62% / .42));
+}
+.tag{text-shadow:0 1px 0 rgba(0,0,0,.5),0 0 1.1rem hsl(var(--neon-cyan) 100% 70% / .3)}
+/* το χρυσό PLAY μένει χρυσό — παίρνει μόνο μια μακρινή ροζ αύρα για να κάθεται στον κόσμο */
+.start__btns .big:not(.ghost){box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 3px 0 #8a6612,0 8px 18px rgba(0,0,0,.42),0 0 1.2rem rgba(245,197,80,.28),0 0 2.6rem hsl(var(--neon-mag) 100% 60% / .28)}
+/* Το δεύτερο κουμπί ήταν γυαλί στο 8%: το πλέγμα περνούσε ΜΕΣΑ από το «HOW TO PLAY» και το
+   έκανε αχνάδα. Τώρα είναι σκούρο γυαλί με κυανό περίγραμμα — δεύτερης σειράς, αλλά κουμπί. */
+.start__btns .big.ghost{
+  background:var(--gloss),linear-gradient(180deg,hsl(200 40% 12% / .82),hsl(200 45% 7% / .9));
+  border-color:hsl(var(--neon-cyan) 90% 70% / .38);
+  box-shadow:inset 0 1px 0 hsl(var(--neon-cyan) 100% 85% / .22),0 3px 0 rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.4),0 0 1.4rem hsl(var(--neon-cyan) 100% 60% / .18);
+}
+
+/* ---- (β) θερμότητα: magenta από κάτω, cyan από πάνω — και ΠΟΤΕ στο κέντρο ----
+   Το παλιό `inset 0 0 9rem` γέμιζε ΟΛΗ την οθόνη πορτοκαλί: στο heat 3 η τσόχα γινόταν
+   καφέ και το ασημί φύλλο γκρι-μπεζ. Τώρα η φωτιά είναι ΠΕΡΙΘΩΡΙΟ: λάμπουν οι άκρες,
+   το κέντρο — τσόχα, φύλλα, αξίες — μένει καθαρό. */
+#heat{background-repeat:no-repeat}
+body[data-heat="1"] #heat{box-shadow:inset 0 0 3.2rem hsl(45 95% 62% / .18)}
+body[data-heat="2"] #heat{
+  box-shadow:inset 0 0 2.6rem hsl(var(--neon-mag) 100% 58% / .3),inset 0 0 .5rem hsl(var(--neon-mag) 100% 74% / .2);
+  background-image:
+    radial-gradient(ellipse 130% 34% at 50% 106%,hsl(var(--neon-mag) 100% 56% / .3),transparent 66%),
+    radial-gradient(ellipse 130% 26% at 50% -6%,hsl(var(--neon-cyan) 100% 56% / .16),transparent 64%);
+}
+body[data-heat="3"] #heat{
+  box-shadow:inset 0 0 3.4rem hsl(var(--neon-mag) 100% 56% / .42),inset 0 0 .9rem hsl(var(--neon-cyan) 100% 66% / .26);
+  background-image:
+    radial-gradient(ellipse 140% 40% at 50% 108%,hsl(var(--neon-mag) 100% 55% / .44),transparent 70%),
+    radial-gradient(ellipse 140% 30% at 50% -8%,hsl(var(--neon-cyan) 100% 58% / .26),transparent 66%);
+}
+/* η κάσα του τραπεζιού: το χρυσό inlay γίνεται ροζ-κυανό νέον, το ξύλο μένει ξύλο */
+body[data-heat="2"] .table{box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px hsl(var(--neon-mag) 100% 72% / .5),inset 0 4px 28px rgba(0,0,0,.5),0 0 0 1px hsl(var(--neon-mag) 100% 62% / .38),0 0 1.4rem hsl(var(--neon-mag) 100% 55% / .22),0 12px 30px rgba(0,0,0,.5)}
+body[data-heat="3"] .table{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px hsl(var(--neon-cyan) 100% 78% / .6),inset 0 4px 28px rgba(0,0,0,.5),0 0 0 1px hsl(var(--neon-mag) 100% 66% / .55),0 0 2.2rem hsl(var(--neon-mag) 100% 55% / .35),0 12px 30px rgba(0,0,0,.5)}
+/* το σκορ στη φωτιά: ροζ-λευκό, όχι πορτοκαλί — μένει αριθμός που διαβάζεται */
+body[data-heat="3"] .hud__score b{color:#ffd0ef;text-shadow:0 0 1rem hsl(var(--neon-mag) 100% 66% / .8),0 2px 6px rgba(0,0,0,.55)}
+/* ο αριθμός της αλυσίδας: το σεντέφι μένει, η λάμψη γίνεται ροζ και μετά ροζ+κυανή */
+body[data-heat="2"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.55)) drop-shadow(0 0 .7rem hsl(var(--neon-mag) 100% 70% / .8))}
+body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-shadow(0 0 .8rem hsl(var(--neon-mag) 100% 68% / .95)) drop-shadow(0 0 1.6rem hsl(var(--neon-cyan) 100% 66% / .55))}
+/* τα dots του πήχη όταν καίει: ίδια λογική, ροζ αντί χρυσό */
+body[data-heat="3"] .rung__dots i.at{box-shadow:inset 0 1px 0 #fff,0 0 .6rem hsl(var(--neon-mag) 100% 66% / .8)}
+
+/* ---- ο πίνακας πληρωμών: το «× 6» έπεφτε ΠΑΝΩ στο «Full House» ----
+   Το `.rtab div` είναι flex χωρίς gap και το `<b>` χωρίς nowrap: στα στενά κελιά το όνομα
+   ακουμπούσε τον αριθμό («Full House42 × 6») και το «× 5» έσπαγε σε δική του γραμμή.
+   Μετρημένο στα 360 και στα 390. Ο πίνακας είναι το εγχειρίδιο του παιχνιδιού — διαβάζεται. */
+.rtab div{gap:.45rem;align-items:flex-start}
+.rtab div>span{min-width:0}
+.rtab b{white-space:nowrap;flex:0 0 auto}
+/* Τρεις στήλες σε 328px πλάτος περιεχομένου δίνουν κελιά 106px: το «One card · the first
+   step» έσπαγε σε τέσσερις γραμμές. Δύο στήλες στο τηλέφωνο, τρεις όταν υπάρχει χώρος. */
+.rtab{grid-template-columns:repeat(auto-fit,minmax(8.6rem,1fr))}
+
+/* ---- διόρθωση που βρήκα ενώ κοίταζα ----
+   Το `sweep` στο `.big:not(.ghost)::after` ζούσε ΚΑΙ στο reduced motion: το v12 έγραψε
+   `.big::after{animation:none}` (ειδικότητα 0,1,1) και το `.big:not(.ghost)::after` (0,2,1)
+   το κέρδιζε. Μετρημένο με document.getAnimations(): η μόνη κίνηση που έμενε ζωντανή. */
+@media (prefers-reduced-motion:reduce){
+  .big:not(.ghost)::after,.big:not(.ghost)::before,.go.ok::before{animation:none!important}
+}
