@@ -132,7 +132,39 @@
        (121 995 → 88 983) και 323 μονάδες headroom. Άναψέ το με `survSteep: 12` — τα νούμερα
        της σάρωσης παραπάνω ισχύουν. */
     survSteep: 0,
-    bombMul: 1.25,
+    /* Οι βόμβες πληρώνουν έξω από το `hmCap`. Ήταν 1,25 (το καρέ έβγαινε λιγότερο από φουλ
+       πριν από αυτό)· ο παίκτης ζήτησε «λίγο περισσότερα». Ο σωστός φρουρός δεν είναι το
+       `maxPlay/T` (διάμεσος των μεγίστων — μετρά το ΤΕΛΕΥΤΑΙΟ χέρι μιας χτισμένης αλυσίδας)
+       αλλά «πόσοι γύροι έκλεισαν στο 1ο παίξιμο». Σάρωση (150 runs, ~2900 γύροι το καθένα,
+       SE ≈ 0,5 μονάδα): 1,25 → 7,45% · 1,40 → 8,63% · **1,55 → 9,66%** · 1,70 → 9,73%
+       (πλατό). Μέσο ante θανάτου 16,3 → 17,4. Διαλέχτηκε το 1,55: ορατό μπόνους, και πριν το
+       πλατό όπου η βόμβα αρχίζει να καθαρίζει ante μόνη της. */
+    bombMul: 1.55,
+    /* ΠΥΡΗΝΑΣ ΚΑΙ ΣΚΟΥΠΙΔΙΑ (Balatro-style): πόσα άσχετα φύλλα μπορείς να ρίξεις μαζί με το
+       χέρι σου. Τρία, δηλαδή ζευγάρι + 3 = πέντε φύλλα, όσο ένα χέρι πόκερ.
+       `junkRedraw` = πόσα από αυτά ξανατραβιούνται. **Μηδέν**, και αυτό είναι όλη η ισορροπία:
+       με πλήρες ξαναμοίρασμα το ξεφόρτωμα είναι ΔΩΡΕΑΝ discard σε κάθε παίξιμο και το παιχνίδι
+       διαλύεται. Μετρημένο (tools/junk.js, 150 runs ανά κελί, ίδια seeds, πολιτική «ρίχνω τα
+       νεκρά», μέσο ante θανάτου· βάση χωρίς σκουπίδια 15,17):
+         ξανατραβά 0 → 14,37   (ουδέτερο — αυτό στέλνουμε)
+         ξανατραβά 1 → 19,59
+         ξανατραβά 2 → 22,49
+         ξανατραβά 3 → 28,44   (+18 ante, νίκες 9 → 25/150: το παιχνίδι αλλάζει σχήμα)
+       Και στο Survival, όπου το χέρι ΕΙΝΑΙ το νόμισμα: με ξαναμοίρασμα 3 το p50 πάει +208%
+       (122k → 382k), με 0 κάνει −24% αν το κάνεις σε κάθε χέρι και −5% αν το κάνεις μόνο στο
+       νήμα. Δηλαδή: εργαλείο με πραγματικό τίμημα, όχι δωρεάν δύναμη — και δεν χρειάστηκε να
+       ξαναγραφτούν οι 50 στόχοι.
+
+       ΑΠΟΦΑΣΗ ΤΟΥ ΠΑΙΚΤΗ: το «δεν ξανατραβάς τα σκουπίδια» βγήκε — «μπλέκεται πολύ». Τα
+       σκουπίδια ξανατραβιούνται κανονικά, δηλαδή το ξεφόρτωμα ΕΙΝΑΙ δωρεάν churn: το παιχνίδι
+       γίνεται μετρημένα ~2× πιο εύκολο (μέσο ante θανάτου 15,2 → 33,5, νίκες 6% → 19%). Ο
+       μοχλός για να επιστρέψει η δυσκολία, αν ζητηθεί, είναι το `tgtScale`: ×1,2 δίνει ante
+       25,5 και νίκες 4,7%. */
+    junkCap: 3,
+    /* Survival: κάθε βόμβα δίνει και μία ανάσα. */
+    survBombBreath: 1,
+    /* Μοχλός σάρωσης· στο παιχνίδι μένει 1. */
+    tgtScale: 1,
     /* Παράθυρα των charms που είναι δεμένα στο rung. Μετρημένος ρυθμός ενεργοποίησης
        (tools/trig.js 100, με το charm χαρισμένο): Ladder 3,5% και Overkill 6,0% των
        παιξιμάτων — δηλαδή ένα Ladder μιλούσε μία φορά κάθε τέσσερις γύρους. Και τα δύο
@@ -261,7 +293,11 @@
   ];
   const synById = {}; SYNERGIES.forEach((s) => { synById[s.id] = s; });
   /* Ποιο «όνομα» φωνάζει η οθόνη όταν ένα χέρι αξίζει περισσότερα από ένα. */
-  const TAG_ORDER = ["Bomb!", "Ladder to Heaven", "Ace", "Chain broken", "Overkill", "Long Run", "Staircase", "Mirror", "Tight Step", "Humble"];
+  /* Η σειρά κρίνει ΤΙ φωνάζει η οθόνη: το callout δείχνει το tags[0]. Άγνωστο tag έπαιρνε
+     `indexOf` −1, δηλαδή πήγαινε ΠΡΩΤΟ — έτσι το «Second Wind» και το «Deep Lungs» έκλεβαν
+     το callout από το «Bomb!». Τώρα το άγνωστο πάει τελευταίο. */
+  const TAG_ORDER = ["Bomb!", "Ladder to Heaven", "Ace", "Chain broken", "Second Wind", "Overkill", "Long Run", "Staircase", "Mirror", "+1 breath", "Deep Lungs", "Tight Step", "Humble"];
+  const tagOrd = (t) => { const i = TAG_ORDER.indexOf(t); return i < 0 ? 99 : i; };
 
   /* ============================== RNG ============================== */
   function hash(str) { let h = 1779033703 ^ str.length; for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); } return (h ^ (h >>> 16)) >>> 0; }
@@ -281,7 +317,9 @@
      εκεί είναι ένα perk ανά 3 antes (≈ +10% δύναμη): ο στόχος τριπλασιαζόταν στον χρόνο που
      η δύναμη ανέβαινε 10%, και το Endless κρατούσε 4 antes (p50 θάνατος 54). Τώρα από το CFG,
      και στο Endless πληρώνει ΚΑΘΕ ante — αλλιώς γεωμετρικός στόχος vs προσθετική ανταμοιβή. */
-  const tgtAt = (a) => (a < TARGETS.length ? TARGETS[a] : Math.round(TARGETS[TARGETS.length - 1] * Math.pow(CFG.endlessStep, a - TARGETS.length + 1)));
+  /* `tgtScale`: μοχλός ΜΟΝΟ για τη βαθμονόμηση — σαρώνουμε μαζί του και μετά ψήνουμε το
+     αποτέλεσμα μέσα στον πίνακα. Στο παιχνίδι μένει 1. */
+  const tgtAt = (a) => Math.round((a < TARGETS.length ? TARGETS[a] : TARGETS[TARGETS.length - 1] * Math.pow(CFG.endlessStep, a - TARGETS.length + 1)) * (CFG.tgtScale || 1));
   const rule = (S) => (S.chal ? null : (S.rules && S.rules[S.ante]) || null);
   /* Κάθε 3η πίστα: challenge και ανταμοιβή μαζί — αλλά ΕΝΑ πράγμα, εναλλάξ.
      Σταθμός 1 perk, σταθμός 2 charm, σταθμός 3 perk… Ένα charm κάθε έξι πίστες, τρεις θέσεις:
@@ -431,12 +469,12 @@
     S.sel = [];
     S.rung = null;
     S.chain = 0; S.score = 0; S.plays = 0; S.lastSuit = null; S.breaks = 0;
-    S.rdisc = 0; S.rfree = 0; S.rbombs = 0; S.rsuits = []; S.hot = 0; S.done = 0; S.brokeCost = 0; S.rkinds = {}; S.rmax = 0; S.firstK = null; S.lastK = null;
+    S.rdisc = 0; S.rfree = 0; S.rbombs = 0; S.survBomb = S.survBomb || 0; S.rsuits = []; S.hot = 0; S.done = 0; S.brokeCost = 0; S.rkinds = {}; S.rmax = 0; S.firstK = null; S.lastK = null;
     S.chainBonus = rule(S) === "r_head" ? 1 : 0;
     /* Discards: σταθερός πόρος του γύρου, ξεχωριστός από τα plays. */
     S.discMax = discMaxOf(S);
     S.playsLeft = S.playsMax - (chal(S) === "fewplays" ? 1 : 0);
-    S.played = []; S.log = [];
+    S.played = []; S.playedJunk = []; S.log = [];
     S.phase = "round"; S.offers = [];
   }
 
@@ -619,12 +657,40 @@
     return { chips, mult: total, kchips: kchips(k), kmult: kmult(k), cards: cardChips(cs), pos, notes, pts: Math.round(chips * total) };
   }
   const selCards = (S) => S.sel.map((i) => S.hand[i]);
+  /* ΠΥΡΗΝΑΣ ΚΑΙ ΣΚΟΥΠΙΔΙΑ. Πριν, η επιλογή έπρεπε να είναι ΑΚΡΙΒΩΣ ένα έγκυρο σχήμα· ένα
+     άσχετο φύλλο μέσα και το κουμπί έλεγε «Not a hand». Τώρα μπορείς να ρίξεις μαζί ώς
+     `junkCap` άσχετα φύλλα: σκοράρει ΜΟΝΟ το σχήμα, τα υπόλοιπα φεύγουν από το χέρι και
+     ξανατραβάς — δηλαδή το παίξιμο είναι ΚΑΙ τακτικό ξεφόρτωμα, χωρίς να ξοδέψεις discard.
+     Διαλέγουμε το υποσύνολο ντετερμινιστικά και το ΔΕΙΧΝΟΥΜΕ πριν πατήσεις: πρώτα ό,τι
+     ΑΝΕΒΑΙΝΕΙ (η αλυσίδα είναι το παιχνίδι), μετά οι πιο πολλοί πόντοι, μετά τα λιγότερα
+     σκουπίδια — ώστε δύο ίδιες επιλογές να δίνουν πάντα το ίδιο. */
+  function coreOf(S, cs) {
+    if (!cs.length) return null;
+    const live = cs.filter((c) => !frozen(S, c));
+    if (!live.length) return null;
+    const sub = { phase: "round", chal: S.chal, hand: live, sel: [] };
+    const opts = candidatesRaw(sub);
+    if (!opts.length) return null;
+    /* Σειρά προτίμησης, ρητά: ανέβασμα > πόντοι > λιγότερα σκουπίδια. */
+    const better = (a, b) => (a.up !== b.up ? a.up : a.pts !== b.pts ? a.pts > b.pts : a.junk < b.junk);
+    let best = null;
+    for (const o of opts) {
+      const junk = live.length - o.idx.length;
+      if (junk > CFG.junkCap) continue;
+      const core = o.idx.map((i) => live[i]);
+      const cand = { k: o.k, core, junk, pts: scoreOf(S, o.k, core).pts, up: climbs(S, o.k) };
+      if (!best || better(cand, best)) best = cand;
+    }
+    if (!best) return null;
+    const ids = new Set(best.core.map((c) => c.id));
+    return { k: best.k, core: best.core, rest: cs.filter((c) => !ids.has(c.id)) };
+  }
   function evalSel(S) {
     const cs = selCards(S);
-    const k = classify(cs);
-    if (!k || cs.some((c) => frozen(S, c))) return { k: null, legal: false, cs };
-    const sc = scoreOf(S, k, cs);
-    return Object.assign({ k, legal: true, up: climbs(S, k), cs }, sc);
+    const co = coreOf(S, cs);
+    if (!co) return { k: null, legal: false, cs, core: [], rest: cs };
+    const sc = scoreOf(S, co.k, co.core);
+    return Object.assign({ k: co.k, legal: true, up: climbs(S, co.k), cs, core: co.core, rest: co.rest }, sc);
   }
   /* "Pair 8" · "Stairs 3 to 6" · "Straight 7 to J" · "Str. Flush 5 to 9" */
   const PAIRS_NAME = { 4: "Two Pair", 6: "Three Pair", 8: "Four Pair" };
@@ -860,7 +926,11 @@
        Το run δεν τελειώνει με ένα λάθος πάτημα ενώ υπάρχει δρόμος προς τα πάνω — τελειώνει
        μόνο όταν πραγματικά δεν ανεβαίνει τίποτα. */
     if (isSurv(S) && discardsLeft(S) <= 0 && !climbs(S, e.k) && hasClimb(S)) return null;
-    const k = e.k, prev = S.rung, up = climbs(S, k), cs = removeSel(S, true);
+    const k = e.k, prev = S.rung, up = climbs(S, k);
+    /* Τα σκουπίδια φεύγουν μαζί, αλλά δεν αγγίζουν ΤΙΠΟΤΑ: ούτε chips, ούτε lead suit, ούτε
+       enhancement bonus. Ο πυρήνας είναι το χέρι που έπαιξες. */
+    const ids = new Set(e.core.map((c) => c.id));
+    const all = removeSel(S, true), cs = all.filter((c) => ids.has(c.id)), junk = all.filter((c) => !ids.has(c.id));
     const tags = [];
     if (S.chain === 0 && k.kind === 1 && k.rank <= 3) tags.push("Humble");
     if (sameShape(k, prev) && k.rank === prev.rank + 1) tags.push("Tight Step");
@@ -869,6 +939,14 @@
     if (up && !!prev && k.rank - prev.rank >= CFG.overkillGap) tags.push("Overkill");
     const bomb = isBomb(k);
     if (bomb) { tags.push("Bomb!"); S.stats.quads += 1; }
+    /* Survival: η βόμβα χαρίζει ΚΑΙ μία ανάσα. Καθαρίζει τη σκάλα, κρατά την αλυσίδα, και
+       τώρα γεμίζει και τα πνευμόνια — είναι το φύλλο που ψάχνεις όταν σε πνίγει το rung. */
+    if (bomb && isSurv(S) && CFG.survBombBreath) {
+      S.survBomb = (S.survBomb || 0) + CFG.survBombBreath;
+      S.discMax = discMaxOf(S);
+      tags.push("+1 breath");
+      S.log.push({ t: "Breath earned", c: "bomb", p: "+" + CFG.survBombBreath, cls: "bonus" });
+    }
     if (k.kind === 9) { tags.push("Ace"); S.stats.aces += 1; }
     if (k.kind === 4 && k.size >= 7) tags.push("Long Run");
     if (k.kind === 3 && k.size >= 6) tags.push("Staircase");
@@ -903,9 +981,9 @@
     S.rung = rungAfter(S, k);
     /* Το «Ladder to Heaven» βγαίνει μία φορά, όταν η αλυσίδα φτάσει πρώτη φορά στην οροφή. */
     { const n = noteChain(S, up ? e.pos : 0); if (n.fresh && n.pos >= CFG.chainCap) tags.push("Ladder to Heaven"); }
-    S.played = cs.slice();
+    S.played = cs.slice(); S.playedJunk = junk.slice();
     S.log.push({ t: clabel(k), c: e.chips + " × " + e.mult + (bomb ? " · table opens, chain ×" + chainPos(S) + " kept" : broke ? " · chain ×" + broke + " broken" : steepOf(S) ? " · rung +" + steepOf(S) : ""), p: e.pts, cls: broke ? "pass" : "" });
-    tags.sort((a, b) => TAG_ORDER.indexOf(a) - TAG_ORDER.indexOf(b));
+    tags.sort((a, b) => tagOrd(a) - tagOrd(b));
     const ev = { type: "play", k, pts: e.pts, pos: e.pos, chips: e.chips, mult: e.mult, notes: e.notes, tags, bomb, up, broke, cleared: S.score >= target(S) };
     afterPlay(S, cs, ev);
     return ev;
@@ -914,7 +992,10 @@
      Βάση 2 · +1 ανά Nimble Hands · +3 με Sleight · +1 με Spare Card ή Short Hand. */
   function discMaxOf(S) {
     /* Survival: το budget είναι για ΟΛΟ το run, όχι ανά γύρο. */
-    if (isSurv(S)) return CFG.survDiscards + (S.discMore || 0) + (S.survEarned || 0);
+    /* Οι ανάσες από βόμβες μετριούνται ΞΕΧΩΡΙΣΤΑ από αυτές των οροσήμων: αν τις πρόσθετα στο
+       `survEarned` θα μετακινούσαν τον δείκτη των οροσήμων, δηλαδή η βόμβα θα έτρωγε μια
+       μελλοντική ανάσα αντί να χαρίζει μία. */
+    if (isSurv(S)) return CFG.survDiscards + (S.discMore || 0) + (S.survEarned || 0) + (S.survBomb || 0);
     if (chal(S) === "nodiscard") return 0;
     if (chal(S) === "onedisc") return 1;
     return CFG.discards + (S.discMore || 0) + (has(S, "sleight") ? 3 : 0) + (rule(S) === "r_gift" ? 1 : 0) + (chal(S) === "short" ? 1 : 0);
@@ -1082,6 +1163,9 @@
          τον ίδιο έλεγχο που κάνει ήδη το χέρι. */
       if (S.rung != null && !(S.rung && S.rung.kind >= 0 && S.rung.kind < KINDS.length)) return null;
       if (!S.pile.every(Boolean) || !S.deck.every(Boolean) || !S.played.every(Boolean)) return null;
+      /* Νέο πεδίο μέσα στην ίδια έκδοση save: τα σκουπίδια του τελευταίου παιξίματος είναι
+         καθαρά οπτικά, οπότε ένα παλιό save δεν χάνει τίποτα — παίρνει άδειο πίνακα. */
+      if (!Array.isArray(S.playedJunk) || !S.playedJunk.every(Boolean)) S.playedJunk = [];
       return S;
     } catch (e) { return null; }
   }

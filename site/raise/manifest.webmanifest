@@ -1,7 +1,7 @@
 {
   "name": "ANABASIS",
   "short_name": "ANABASIS",
-  "description": "A solo card game. Climb the chain, or cash in.",
+  "description": "A solo card game. Every step of the chain is worth more than the last.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",

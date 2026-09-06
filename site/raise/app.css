@@ -1453,3 +1453,24 @@ body[data-heat="3"] .rung__dots i.at{box-shadow:inset 0 1px 0 #fff,0 0 .6rem hsl
 @media (prefers-reduced-motion:reduce){
   .big:not(.ghost)::after,.big:not(.ghost)::before,.go.ok::before{animation:none!important}
 }
+
+/* ===================== v28: πυρήνας και σκουπίδια ===================== */
+/* Ένα παίξιμο μπορεί να κουβαλά ώς 3 άσχετα φύλλα που ΔΕΝ σκοράρουν. Ο παίκτης πρέπει να
+   βλέπει ποια πληρώνουν — στο χέρι πριν πατήσει, και στο τραπέζι αφού πατήσει. */
+/* στο χέρι: διαλεγμένο αλλά άχρηστο — μπαίνει στο παίξιμο, δεν πληρώνει */
+.hand .card.sel.junk{
+  opacity:.62;animation:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 12px rgba(0,0,0,.45),0 0 0 2px rgba(180,196,188,.65);
+  transform:translateY(-.34rem) rotate(0deg) scale(1.01);
+}
+.hand .card.sel.junk::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:repeating-linear-gradient(-45deg,rgba(40,60,52,.16) 0 3px,transparent 3px 7px);
+}
+/* στο τραπέζι: τα φύλλα που πλήρωσαν ανάβουν, τα σκουπίδια κάθονται σβηστά και μικρότερα */
+.tcards .card.scoring{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 4px 10px rgba(0,0,0,.45),0 0 0 1.5px hsl(var(--neon-mag,322) 100% 74% / .5),0 0 .9rem hsl(45 95% 66% / .45);
+  animation:land .5s var(--pop) backwards,paid .7s var(--pop) .12s}
+@keyframes paid{0%{transform:none}38%{transform:translateY(-.3rem) scale(1.07)}100%{transform:none}}
+.tcards .card.junk{opacity:.4;transform:scale(.86) rotate(-3deg);filter:saturate(.5)}
+@media (prefers-reduced-motion:reduce){.tcards .card.scoring{animation:none}}

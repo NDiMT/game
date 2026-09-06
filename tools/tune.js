@@ -6,6 +6,9 @@
    Το `variant` είναι ένα κλειδί από το VARIANTS: αλλάζει CFG / KINDS / TARGETS πριν τρέξει,
    ώστε να συγκρίνονται ρυθμίσεις χωρίς να ξαναγράφεται το game.js. */
 const G = require("../site/raise/game.js");
+/* Μοχλοί για σάρωση χωρίς να πειραχτεί το game.js: BOMB=1.35 node tools/tune.js 200 50 */
+if (process.env.BOMB) G.CFG.bombMul = +process.env.BOMB;
+if (process.env.TGT) G.CFG.tgtScale = +process.env.TGT;
 const RUNS = +process.argv[2] || 60, MAXA = +process.argv[3] || 12, VAR = process.argv[4] || "current";
 const ALL = G.CHARMS.map((c) => c.id);
 /* Σειρά επιλογής. Η παλιά ήταν μετρημένα κακή: το m1 έχει maxBuy 20, οπότε ρουφούσε κάθε

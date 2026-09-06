@@ -17,7 +17,7 @@ for (let i = 0; i < N; i++) {
     if (G.stuck(S)) break;
     // invariants each step
     const dl = G.discardsLeft(S);
-    const budget = CFG.survDiscards + (S.discMore || 0) + (S.survEarned || 0);
+    const budget = CFG.survDiscards + (S.discMore || 0) + (S.survEarned || 0) + (S.survBomb || 0);   /* οι βόμβες δίνουν ανάσα */
     if (S.discMax !== budget) note(seed, "discMax " + S.discMax + " != budget " + budget);
     if (S.rdisc > budget) { stats.overspend++; note(seed, "rdisc " + S.rdisc + " > budget " + budget); break; }
     if (dl < 0) { stats.neg++; note(seed, "discardsLeft negative"); break; }
@@ -53,7 +53,7 @@ for (let i = 0; i < N; i++) {
   stats.hands.push(S.stats.plays);
   stats.scores.push(S.score);
   // final: rdisc <= budget
-  const budget = CFG.survDiscards + (S.discMore || 0) + (S.survEarned || 0);
+  const budget = CFG.survDiscards + (S.discMore || 0) + (S.survEarned || 0) + (S.survBomb || 0);   /* οι βόμβες δίνουν ανάσα */
   if (S.rdisc > budget) note(seed, "FINAL rdisc " + S.rdisc + " > budget " + budget);
 }
 const q = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length * p)]; };

@@ -67,13 +67,13 @@
   }
 
   /* ---------- cards ---------- */
-  function cardHTML(c, i, sel, tbl, idx, n) {
+  function cardHTML(c, i, sel, tbl, idx, n, extra) {
     let st = "";
     if (!tbl && n > 1) st = ' style="--rot:' + (((idx / (n - 1)) - 0.5) * 3).toFixed(2) + 'deg"';
     if (tbl) st = ' style="animation-delay:' + (idx * 60) + 'ms"';
     if (c.h && !tbl) return '<button class="card down" disabled aria-label="face down"' + st + '><span class="card__back"></span></button>';
     const wild = G.isWild(c), su = G.SUITS[c.si], e = c.e, face = c.r >= 11 && !e;
-    const cls = "card" + (e ? " e-" + e : "") + (!wild && su.red ? " red" : "") + (wild ? "" : " s" + c.si) + (sel ? " sel" : "") + (face ? " face" : "") + (c.n && !tbl ? " new" : "") + (c.x && !tbl ? " enh-new" : "");
+    const cls = "card" + (e ? " e-" + e : "") + (!wild && su.red ? " red" : "") + (wild ? "" : " s" + c.si) + (sel ? " sel" : "") + (face ? " face" : "") + (c.n && !tbl ? " new" : "") + (c.x && !tbl ? " enh-new" : "") + (extra || "");
     const tag = tbl ? "span" : "button";
     return '<' + tag + ' class="' + cls + '"' + st +
       (tbl ? ' aria-hidden="true"' : ' data-i="' + i + '" aria-pressed="' + (sel ? "true" : "false") + '" aria-label="' + (wild ? "Joker" : G.rname(c.r) + " " + su.s) + (e ? " " + e : "") + '"') +
@@ -207,29 +207,41 @@
     /* Ο πήχης ξαναχτιζόταν σε κάθε render — δηλαδή σε κάθε άγγιγμα φύλλου — και ξανάπαιζε
        το `land`: opacity 0→1, άλμα 33px, 500ms, με stagger, και το δεύτερο άγγιγμα διέκοπτε
        το πρώτο. Το πιο σημαντικό πράγμα στην οθόνη αναβόσβηνε κάθε φορά που διάλεγες. */
-    const tsig = S.log.length + "·" + S.played.map((c) => c.r + "/" + c.si + "/" + (c.e || "")).join(",");
-    if (tc.dataset.sig !== tsig) { tc.dataset.sig = tsig; tc.innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, S.played.length)).join(""); }
+    /* Στο τραπέζι πάνε ΚΑΙ τα σκουπίδια που έριξες μαζί — σβηστά, δίπλα στα φύλλα που
+       πλήρωσαν, τα οποία ανάβουν. Αυτό είναι όλο το μάθημα του κανόνα σε μια εικόνα. */
+    const junkT = S.playedJunk || [];
+    const tsig = S.log.length + "·" + S.played.concat(junkT).map((c) => c.r + "/" + c.si + "/" + (c.e || "")).join(",") + "·" + junkT.length;
+    if (tc.dataset.sig !== tsig) {
+      tc.dataset.sig = tsig;
+      const tn = S.played.length + junkT.length;
+      tc.innerHTML = S.played.map((c, i) => cardHTML(c, null, false, true, i, tn, junkT.length ? " scoring" : "")).join("") +
+        junkT.map((c, i) => cardHTML(c, null, false, true, S.played.length + i, tn, " junk")).join("");
+    }
     /* Το πλάτος των φύλλων του τραπεζιού είναι δύο περάσματα: γράψε --tcw, ΔΙΑΒΑΣΕ
        `clientHeight`, ξαναγράψε. Κάθε ανάγνωση μετά από γράψιμο είναι αναγκαστικό layout —
        και έτρεχαν και τα δύο σε κάθε άγγιγμα φύλλου, για ένα νούμερο που εξαρτάται μόνο
        από τα φύλλα στο τραπέζι και το μέγεθος της οθόνης. Τώρα κρατιέται σε cache. */
     const tKey = tsig + "|" + (fitHand.cw || 0) + "|" + innerWidth + "x" + innerHeight;
     if (tcwC.key !== tKey) {
-      const tn = S.played.length, tw = ($("table").clientWidth || 340) - 28, cw = fitHand.cw || parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 44;
+      const tn = S.played.length + junkT.length, tw = ($("table").clientWidth || 340) - 28, cw = fitHand.cw || parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 44;
       tcwC = { key: tKey, v: Math.max(26, Math.min(Math.round(cw * 0.9), tn ? Math.floor((tw - (tn - 1) * 4) / tn) : 99)) + "px", second: true };
       tc.style.setProperty("--tcw", tcwC.v);
     }
     tc.classList.toggle("fresh", S.ante === 0 && !S.rung && !S.log.length);
 
     const n = S.hand.length, hand = $("hand");
+    /* Ποια από τα ΔΙΚΑ ΣΟΥ επιλεγμένα φύλλα θα πληρώσουν. Δεν είναι πρόταση — είναι
+       καθρέφτης της επιλογής σου, πριν πατήσεις. */
+    const coreIds = new Set((e.core || []).map((c) => c.id));
+    const junkSel = (c, on) => (on && e.k && !coreIds.has(c.id) ? " junk" : "");
     if (keepHand && hand.children.length === n) {
       Array.prototype.forEach.call(hand.children, (el, i) => {
         const on = S.sel.indexOf(i) >= 0;
-        el.classList.toggle("sel", on); el.setAttribute("aria-pressed", on ? "true" : "false");
+        el.classList.toggle("sel", on); el.classList.toggle("junk", !!junkSel(S.hand[i], on)); el.setAttribute("aria-pressed", on ? "true" : "false");
       });
     } else {
       fitHand(n);
-      hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n)).join("");
+      hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n, junkSel(c, S.sel.includes(i)))).join("");
     }
     /* Τα φύλλα δείχνουν ΟΛΑ ίδια. Το Survival έσβηνε όσα δεν ανεβαίνουν και τόνιζε τα
        υπόλοιπα: ο παίκτης το είδε ως «το παιχνίδι διαλέγει για μένα» — το ίδιο πράγμα με το
@@ -257,7 +269,7 @@
       go.classList.add("idle"); go.disabled = true;
       gh = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (!surv && S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
-    else if (!e.k) { go.classList.add("no"); go.disabled = true; gh = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? (surv ? "Breathe these away instead?" : "Discard these instead?") : "Pick a pair, a run or a set") + '</span>'; }
+    else if (!e.k) { go.classList.add("no"); go.disabled = true; gh = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? (surv ? "Breathe these away instead?" : "Discard these instead?") : "A pair, a run or a set — plus up to " + G.CFG.junkCap + " spare cards") + '</span>'; }
     /* Μηδέν ανάσες και υπάρχει ανέβασμα στο χέρι: το σπάσιμο είναι κλειδωμένο, γιατί θα
        τερμάτιζε το run ενώ υπάρχει δρόμος πάνω. Το κουμπί λέει ότι υπάρχει. */
     else if (surv && !e.up && G.discardsLeft(S) <= 0 && G.hasClimb(S)) {
@@ -273,7 +285,8 @@
         ? (G.discardsLeft(S) > 0 ? "Breaks the chain · −1 breath (" + G.discardsLeft(S) + ")" : "Breaks the chain · your last hand")
         : "Breaks the chain · " + calc;
       if (surv && !e.up) go.classList.add("cost");
-      gh = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc : brk) + '</span>';
+      const thrown = e.rest && e.rest.length ? " · " + e.rest.length + " thrown" : "";
+      gh = '<span class="go__t go__t--pts">+' + e.pts + '</span><span class="go__s">' + (e.up ? goLabel(e.k) + ' · ' + calc + thrown : brk + thrown) + '</span>';
     }
     /* Το κουμπί ξαναγραφόταν κάθε render, ακόμη κι όταν έλεγε ακριβώς το ίδιο πράγμα —
        parse, καταστροφή δύο κόμβων, και μετά ένα δεύτερο πέρασμα με querySelectorAll για
@@ -288,7 +301,10 @@
     /* Όταν έχεις διαλέξει κάτι που δεν ανεβαίνει, η γραμμή εξηγεί ΓΙΑΤΙ — αυτή είναι η
        στιγμή που ο παίκτης μαθαίνει τη σκάλα, όχι το φύλλο των κανόνων. */
     const why = e.k && !e.up ? G.whyNoClimb(S, e.k) : "";
-    pvt = (why ? why : S.rung ? "Beat " + G.clabel(S.rung) + " to climb" : G.beatText(S)) +
+    const thrownWhy = e.rest && e.rest.length
+      ? e.rest.length + (e.rest.length === 1 ? " card goes with it and scores nothing" : " cards go with it and score nothing") + " · you draw back the lot"
+      : "";
+    pvt = (thrownWhy ? thrownWhy : why ? why : S.rung ? "Beat " + G.clabel(S.rung) + " to climb" : G.beatText(S)) +
       (!surv && S.playsLeft < 2 ? " · last play" : "") +
       (surv && S.rung ? " · or breathe (" + G.discardsLeft(S) + ")" : "");
     if (why) pv.classList.add("bad");
@@ -300,7 +316,7 @@
        μετακινεί (τα φύλλα του τραπεζιού, το μέγεθος της οθόνης, ή το κείμενο του preview). */
     if (tcwC.second && tcwC.pvh !== pvh) {
       tcwC.pvh = pvh;
-      const tn = S.played.length;
+      const tn = S.played.length + (S.playedJunk || []).length;
       tc.style.setProperty("--tcw", tcwC.v);   /* ξεκίνα από το πλάτος, όπως πριν, και μετά ψαλίδισε στο ύψος */
       if (tn) { const free = tc.clientHeight, cur = parseInt(tc.style.getPropertyValue("--tcw")) || 40;
         if (free > 0) tc.style.setProperty("--tcw", Math.max(24, Math.min(cur, Math.floor((free - 6) / 1.42))) + "px"); }
@@ -632,8 +648,9 @@
       '<p><b>The hands</b>, weakest to strongest: a lone <b>Ace</b> · pair · two, three or four pairs · trips · <b>stairs</b> (pairs in a row, 22 33 44) · <b>straight</b> of five or more · full house · then the two bombs, quads and straight flush. <b>Jokers</b> stand in for any card.</p>' +
       '<p><b>Score = Base × Mult.</b> Every hand has a <b>Base</b> and a <b>Mult</b>, and the score is the two multiplied. The shape sets both: a pair is 25 × 3, two pair 30 × 4, trips 34 × 5, a straight 38 × 5, a full house 42 × 6, a straight flush 62 × 8. Measured over real runs, a full house pays about <b>four times</b> a pair — enough that combinations are always worth building, not so much that one lucky hand ends the round. Then every card adds to the Base: 2 to 10 as printed, J Q K ten, an Ace eleven. <b>There is no currency in this game</b> — Base is half of the score, not money.</p>' +
       '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +22% Mult, the first climb included</b>, up to ×2.3 once the chain caps at ×6. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
-      '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
+      '<p>So the round is one question, five times over: <b>climb for the multiplier, or spend a big hand and start the chain again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
       '<p>A lone <b>Ace</b> is a hand of its own — the cheapest one, and the first step of every chain. Anything else beats it, so it is the natural way to open. <b>Bombs</b> beat anything, open the table, and keep the chain climbing.</p>' +
+      '<p><b>You can throw cards away with your hand.</b> Play a pair and add up to <b>' + G.CFG.junkCap + '</b> spare cards: only the pair scores, the spares are gone, and you draw a full hand back. The cards that paid <b>light up on the table</b>; the ones that came along for the ride sit dark beside them. It is the way to clear dead cards without spending a discard.</p>' +
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. Once your discards are spent, a hand that makes no combination at all still gets one free.</p>' +
       '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together (the Summit at 50 is a boss too, but there is nothing left to spend it on). It gives you <b>one thing</b>, three on offer: a <b>charm</b> at the first station, a <b>perk</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) — the Mult ones repeat forever, the rest run out; charms are passive and permanent, and you only ever hold <b>five</b> — so each one is a pillar of the run, not a trinket. Once all five slots are full, a charm station pays a perk instead.</p>' +
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Silver</b> (Mult ×1.5, the common one), <b>Gold</b> (Mult ×2, and two of them ×3 — the cap on enhanced cards) or a <b>Joker</b>.</p>' +
