@@ -552,9 +552,10 @@
     $("startBtns").innerHTML =
       /* Ένα κύριο κουμπί, όχι δύο: Continue αν τρέχει run, αλλιώς Play. */
       (resume
-        ? '<button class="big" data-continue="1">' + (resume.phase === "won" ? "Keep climbing · Endless" : "Continue · ante " + (resume.ante + 1) + (resume.score ? " · " + resume.score.toLocaleString("en-US") + " pts" : "")) + '</button>'
-        : '<button class="big" data-random="1">Play</button>') +
-      '<button class="big ghost" data-howto="1">How to play</button>' +
+        ? '<button class="big" data-continue="1">' + (resume.phase === "won" ? "Keep climbing · Endless" : "Continue · ante " + (resume.ante + 1) + (resume.score ? " · " + resume.score.toLocaleString("en-US") + " pts" : "")) + '</button>' +
+          /* Με run σε εξέλιξη χρειάζεσαι και έξοδο προς νέο run — αλλιώς το Continue είναι ο μόνος δρόμος. */
+          '<div class="row2"><button class="big ghost" data-howto="1">How to play</button><button class="big ghost" data-random="1">New game</button></div>'
+        : '<button class="big" data-random="1">Play</button><button class="big ghost" data-howto="1">How to play</button>') +
       '<button class="colllink" data-collection="1">Collection · ' + un.length + ' / ' + G.CHARMS.length + ' charms ›</button>';
     const pick = deckPick(), mp = G.deckById[pick] && G.deckById[pick].mode === "surv" ? "surv" : "run";
     $("decks").innerHTML = G.DECKS.map((d) => { const ok = deckOpen(l, d), on = d.id === pick; return '<button class="deckc' + (on ? " on" : "") + (ok ? "" : " locked") + '" data-deck="' + d.id + '"' + (ok ? "" : " disabled") + '><b>' + d.glyph + ' ' + d.name + '</b><span>' + (ok ? d.desc : "🔒 " + d.lock.text) + '</span></button>'; }).join("");

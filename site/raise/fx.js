@@ -136,8 +136,10 @@
       send.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl);
       if (pan) { pan.pan.value = d[2]; lp.connect(pan).connect(sp); } else lp.connect(sp);
     });
-    sp.connect(duckG);
-    master.connect(duckG); duckG.connect(comp); comp.connect(c.destination);
+    /* Ο duck είναι ΜΟΝΟ για τη μουσική: όταν καθόταν στον master, η βόμβα χαμήλωνε και τον
+       ίδιο τον ήχο της βόμβας. Τώρα η μουσική περνά από τον duckG, οι ήχοι πάνε κατευθείαν. */
+    sp.connect(master);
+    master.connect(comp); duckG.connect(master); comp.connect(c.destination);
   }
   addEventListener("pointerdown", () => { ctx(); }, { once: true, passive: true });
 
@@ -216,7 +218,7 @@
 
   function musicBus() {
     const c = ctx(); if (!c) return null;
-    if (!musicG) { musicG = c.createGain(); musicG.gain.value = 0; musicG.connect(master); }
+    if (!musicG) { musicG = c.createGain(); musicG.gain.value = 0; musicG.connect(duckG); }
     return musicG;
   }
   /* Καμπανάκι: θεμελιώδης, ξεκούρδιστη οκτάβα, μαλακή δωδεκάτη. Ένας σκέτος ημιτονοειδής
@@ -239,18 +241,18 @@
 
     /* ---- pad: κρατά τη μπάρα ---- */
     if (st === 0) padVoices(root + 36, minor).forEach(function (semi, n) {
-      voice({ f: hz(semi), t: STEP * SPB * 1.15, g: 0.019 + q * 0.007, type: "sawtooth", cut: cut * 0.55,
+      voice({ f: hz(semi), t: STEP * SPB * 1.15, g: 0.026 + q * 0.008, type: "sawtooth", cut: cut * 0.55,
         bus: bus, delay: t, atk: 0.55, detune: (n - 1.5) * 4, space: 0.7 });
     });
     /* ---- μπάσο: ρίζα, ρίζα, πέμπτη, οκτάβα — παλμός, όχι drone ---- */
-    if (st === 0) voice({ f: hz(root + 12), t: 0.62, g: 0.055 + q * 0.02, type: "sine", cut: 340, bus: bus, delay: t, atk: 0.04 });
+    if (st === 0) voice({ f: hz(root + 12), t: 0.62, g: 0.075 + q * 0.02, type: "sine", cut: 340, bus: bus, delay: t, atk: 0.04 });
     if (q > 0.15 && st === 6) voice({ f: hz(root + 12), t: 0.24, g: 0.032, type: "sine", cut: 340, bus: bus, delay: tt, atk: 0.02 });
     if (q > 0.15 && st === 10) voice({ f: hz(root + 19), t: 0.26, g: 0.03, type: "sine", cut: 380, bus: bus, delay: t, atk: 0.02 });
     if (q > 0.45 && st === 14) voice({ f: hz(root + 24), t: 0.2, g: 0.024, type: "triangle", cut: 500, bus: bus, delay: tt, atk: 0.02 });
     /* ---- η μελωδία ---- */
     for (let m = 0; m < mel.length; m++) if (mel[m][0] === local) {
       const len = mel[m][2] * STEP;
-      bell(hz(mel[m][1] + keyOff + 48), len * 0.92 + 0.14, 0.028 + q * 0.012, bus, tt, 0.72);
+      bell(hz(mel[m][1] + keyOff + 48), len * 0.92 + 0.14, 0.042 + q * 0.014, bus, tt, 0.72);
       if (q > 0.75) bell(hz(mel[m][1] + keyOff + 60), len * 0.4, 0.007, bus, tt + STEP * 0.5, 0.9);
     }
     /* ---- κρουστά: μπαίνουν ψηλά, και μένουν αραιά ---- */
@@ -269,12 +271,12 @@
   }
   const music = {
     start: function () {
-      if (mOn || muted || musicOff || RM) return;
+      if (mOn || muted || musicOff) return;
       const c = ctx(); if (!c) return;
       musicBus(); mOn = true; mStep = 0; mNext = c.currentTime + 0.08;
       musicG.gain.cancelScheduledValues(c.currentTime);
       musicG.gain.setValueAtTime(0.0001, c.currentTime);
-      musicG.gain.linearRampToValueAtTime(0.45, c.currentTime + 3.5);
+      musicG.gain.linearRampToValueAtTime(0.7, c.currentTime + 2.6);
       mTimer = setInterval(pump, 25);
     },
     stop: function (fade) {
@@ -283,8 +285,10 @@
       if (musicG && c) { musicG.gain.cancelScheduledValues(c.currentTime); musicG.gain.setValueAtTime(musicG.gain.value, c.currentTime); musicG.gain.linearRampToValueAtTime(0.0001, c.currentTime + (fade == null ? 1.1 : fade)); }
       clearInterval(mTimer); mTimer = null;
     },
-    chain: function (pos, cap) { want = Math.max(0, Math.min(1, (pos - 1) / Math.max(3, (cap || 6) - 1))); },
-    level: function (x) { want = Math.max(0, Math.min(1, x)); },
+    /* Δάπεδο 0,3: στο chain ×1 έβγαινε ένταση 0, δηλαδή σκέτο pad — σε ηχείο κινητού
+       ακουγόταν σαν τίποτα. Τώρα ακούγεται κομμάτι από την αρχή και χτίζεται από εκεί. */
+    chain: function (pos, cap) { const x = (pos - 1) / Math.max(3, (cap || 6) - 1); want = 0.3 + 0.7 * Math.max(0, Math.min(1, x)); },
+    level: function (x) { want = Math.max(0.22, Math.min(1, x)); },
     key: function (n) { keyOff = ((n % 12) + 12) % 12; },
     playing: function () { return mOn; },
     /* Άγκιστρο ελέγχου: το tools/music.js διαβάζει τους πίνακες και ελέγχει την αρμονία. */
