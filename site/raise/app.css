@@ -29,7 +29,14 @@ button:disabled{cursor:default}
 
 /* ---- atmosphere ---- */
 #grain,#vig{position:fixed;inset:0;pointer-events:none;z-index:1}
-#grain{opacity:.055;mix-blend-mode:overlay;
+/* ΧΩΡΙΣ `mix-blend-mode`. Ένα blend mode πρέπει να διαβάσει το backdrop, οπότε ολόκληρο το
+   viewport ξανασυνθέτονταν κάθε frame — και μάλιστα ΚΑΙ σε ηρεμία, ενώ ο παίκτης απλώς
+   διαβάζει το χέρι του. Μετρημένο (Pixel 7, CPU ×4): ηρεμία 51fps/22,0ms → 60fps/16,7ms και
+   μηδέν αργά frames· με αγγίγματα φύλλων 41,0 → 53,3fps· σε ένα resolve 12,7 → 7,5 αργά
+   frames. Το ΕΙΚΟΝΙΔΙΟ δεν κόστιζε τίποτα (16,8ms με ή χωρίς) — το blend ήταν όλο το κόστος.
+   Τίμημα: ο κόκκος κάθεται πια σαν λεπτό γκρι φιλμ αντί να αναμειγνύεται, οπότε τα μαύρα
+   ανοίγουν ελάχιστα· γι' αυτό και η αδιαφάνεια πέφτει. */
+#grain{opacity:.05;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
 #vig{box-shadow:inset 0 0 9rem rgba(0,0,0,.62),inset 0 0 2.4rem rgba(0,0,0,.35)}
 /* Ο καμβάς ΠΡΕΠΕΙ να έχει ρητό CSS μέγεθος. Με `inset:0` και `width:auto` το κουτί είναι
@@ -147,7 +154,11 @@ button:disabled{cursor:default}
   background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);
   font-family:var(--mono);font-size:.62rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;transition:transform .1s ease,background .14s ease}
 .rb:active:not(:disabled){transform:scale(.94)}
-.rb:disabled{opacity:.32}
+.rb:disabled,.rb.off{opacity:.32}
+/* `aria-disabled` αντί `disabled`: το `disabled` κάνει τον Chrome να μη στέλνει ΚΑΝΕΝΑ
+   pointer event, οπότε το πάτημα στο «Breathe» με μηδέν ανάσες ήταν απόλυτο κενό — ούτε ήχος,
+   ούτε λόγος. Τώρα το κουμπί δέχεται το άγγιγμα και απαντά. */
+.rb.off:active{transform:scale(.97)}
 .rb em{font-style:normal;font-size:.7rem;color:var(--brass)}
 .rb .ic{font-size:1.15rem;line-height:1}
 .go{flex:1;min-width:0;height:3.7rem;border-radius:14px;padding:0 .9rem;
@@ -772,7 +783,7 @@ body{
     radial-gradient(ellipse 120% 70% at 50% -10%,var(--felt-3) 0%,var(--felt-1) 52%,var(--felt-0) 100%) fixed,
     var(--felt-0);
 }
-#grain{display:block;opacity:.05;mix-blend-mode:overlay}
+#grain{display:block;opacity:.045}
 #vig{box-shadow:inset 0 0 9rem rgba(0,0,0,.6),inset 0 0 2.5rem rgba(0,0,0,.3)}
 #heat{background-image:none}
 
@@ -1084,6 +1095,12 @@ body[data-heat="3"] .table{animation:tremble .38s ease-in-out 5}
 .piles b.hit{display:inline-block;animation:pilehit .45s var(--pop)}
 @keyframes pilehit{0%{transform:scale(1)}40%{transform:scale(1.5);color:#8fd0e2}100%{transform:scale(1)}}
 
+/* 2β. Το `FX.pulse($("bDisc"), "hit")` έδειχνε στον παίκτη το κουμπί του discard όταν το χέρι
+   δεν κάνει τίποτα — αλλά το `.hit` υπήρχε ΜΟΝΟ ως `.piles b.hit`, άρα στο κουμπί ήταν
+   εντελώς αόρατο. */
+.rb.hit,.go.hit{animation:rbhit .42s var(--pop)}
+@keyframes rbhit{0%,100%{transform:none}35%{transform:scale(1.08)}}
+
 /* 3. Η ανταμοιβή που διάλεξες πρέπει να λάμπει, όχι να σβήνει: το `.bought` την έριχνε
    στο 50% opacity — το μόνο πράγμα που κερδίζεις σε τρία antes γινόταν το πιο αχνό
    πλακίδιο της οθόνης. Τώρα ανάβει, και τα άλλα δύο σβήνουν από το :disabled. */
@@ -1097,7 +1114,7 @@ body[data-heat="3"] .table{animation:tremble .38s ease-in-out 5}
 
 /* 5. Το χέρι ακολουθεί τον αντίχειρα όσο σέρνεις: η χειρονομία ήταν εντελώς αόρατη. */
 .hand.dragging{transition:none}
-@media (prefers-reduced-motion:reduce){.offer--pick.bought{animation:none}.piles b.hit{animation:none}.hand.dragging{transform:none!important}}
+@media (prefers-reduced-motion:reduce){.offer--pick.bought{animation:none}.piles b.hit{animation:none}.rb.hit,.go.hit{animation:none}.hand.dragging{transform:none!important}}
 
 /* ===================== v20: Survival — μία τράπουλα, χωρίς στόχους ===================== */
 body.surv .meter i.spend{background-image:repeating-linear-gradient(-55deg,rgba(255,255,255,.18) 0 .45rem,transparent .45rem .9rem),linear-gradient(180deg,#cfe9f2,#7fb5c4 45%,#3f7f93 55%,#7fb5c4);box-shadow:0 0 .6rem rgba(143,208,226,.55)}

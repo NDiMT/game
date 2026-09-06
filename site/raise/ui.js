@@ -117,6 +117,21 @@
      σε dataset: ένα attribute write θα ακύρωνε το στιλ μόνο του. */
   const setHTML = (el, sig, html) => { if (el.__sig !== sig) { el.__sig = sig; el.innerHTML = typeof html === "function" ? html() : html; } };
   const setTXT = (el, t) => { if (el.__t !== t) { el.__t = t; el.textContent = t; } };
+  /* `aria-disabled` και όχι `disabled`: με `disabled` ο Chrome δεν στέλνει ΚΑΝΕΝΑ pointer
+     event, οπότε το πάτημα στο «Breathe» με μηδέν ανάσες ήταν απόλυτο κενό — ούτε ήχος, ούτε
+     τρίξιμο, ούτε λόγος· ο αριθμός «0» πάνω στο κουμπί ήταν η μόνη ένδειξη. Τώρα το κουμπί
+     δέχεται το άγγιγμα και απαντά με τον λόγο του. */
+  const setOff = (el, off) => { el.classList.toggle("off", !!off); el.setAttribute("aria-disabled", off ? "true" : "false"); };
+  const isOff = (el) => el.getAttribute("aria-disabled") === "true";
+  /* Γιατί δεν πατιέται το discard — με τη σειρά που το κρίνει η μηχανή. */
+  function discWhy() {
+    const surv = G.isSurv(S);
+    if (ui.ending) return "";
+    if (S.chal === "nodiscard") return "This boss allows no discards at all.";
+    if (G.discardsLeft(S) <= 0) return surv ? "No breath left. Only a climb can be played now." : "No discards left this round.";
+    if (!S.sel.length) return surv ? "Pick the cards to breathe away — or swipe down with nothing picked and the orphans go." : "Pick the cards to throw first.";
+    return surv ? "Nothing left to draw." : "The pile is empty.";
+  }
   let tcwC = { key: "", v: "" };
   function render(keepHand) {
     const T = G.target(S), e = G.evalSel(S), ch = G.current(S), pos = G.chainPos(S), cleared = S.score >= T;
@@ -294,11 +309,11 @@
        άγγιγμα φύλλου, ακόμη κι όταν είχες ανάσες (τότε δεν υπάρχει δωρεάν discard) και
        ακόμη και στο Survival, όπου δωρεάν ανάσα δεν υπάρχει καθόλου. */
     const freeDisc = !surv && dleft <= 0 && G.deadHand(S);
-    $("bDisc").disabled = ui.ending || !G.canDiscard(S);
+    setOff($("bDisc"), ui.ending || !G.canDiscard(S));
     setTXT($("discN"), freeDisc ? "Free" : String(dleft));
     /* Στο Survival ένα πληρωμένο discard ανοίγει και το τραπέζι — άλλο πράγμα, άλλο όνομα. */
     setTXT($("bDisc").firstElementChild, surv && !freeDisc ? "Breathe" : "Discard");
-    $("bHint").disabled = ui.ending || S.playsLeft < 1;
+    setOff($("bHint"), ui.ending || S.playsLeft < 1);
   }
   /* Συμπαγής ετικέτα για το κουμπί: το εύρος φαίνεται στη δεύτερη γραμμή. */
   const goLabel = (k) => k.kind === 3 ? "Stairs " + k.size / 2 : k.kind === 4 ? "Straight " + k.size : k.kind === 7 ? "Str. Flush " + k.size : k.kind === 8 ? G.clabel(k).replace(/ \S+$/, "") : G.clabel(k);
@@ -379,7 +394,8 @@
     setTimeout(() => { callout(e[0] === "wild" ? "Joker!" : G.ENH[e[0]].name + " card!"); FX.sfx.unlock(); FX.burstAt($("hand"), 26, 3.5, e[0] === "gold" ? ["#f5cf6a", "#fff1bf"] : e[0] === "silver" ? ["#eef3f8", "#a9b7c6"] : ["#c9a6ff", "#8fd0e2"]); }, 520);
   }
   function doDiscard() {
-    if (ui.ending || !G.canDiscard(S)) return;
+    if (ui.ending) return;
+    if (!G.canDiscard(S)) { const w = discWhy(); if (w) { FX.sfx.pass(); FX.buzz(6); note(w); } return; }
     const rects = selRects();
     /* Το `$("dpile")` δεν υπήρξε ποτέ στο index.html: το ghostTo έβγαινε αμέσως και το
        discard ήταν η μόνη χειρονομία χωρίς κίνηση — τα φύλλα απλώς εξαφανίζονταν.
@@ -394,6 +410,7 @@
   }
   function doHint() {
     if (ui.ending) return;
+    if (S.playsLeft < 1) { FX.sfx.pass(); note("No plays left — the round is over."); return; }
     const m = G.suggest(S);
     if (m) { S.sel = m.idx.slice(); ui.note = null; FX.sfx.tick(); render(true); return; }
     const o = G.orphans(S);

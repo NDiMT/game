@@ -672,7 +672,7 @@
   }
 
   /* ============================== κινήσεις ============================== */
-  function candidates(S) {
+  function candidatesRaw(S) {
     const bR = {}, W = [], vis = [];
     S.hand.forEach((c, i) => { if (c.h || frozen(S, c)) return; vis.push(i); if (isWild(c)) { W.push(i); return; } (bR[c.r] = bR[c.r] || []).push(i); });
     const out = [], rs = Object.keys(bR).map(Number).sort((a, b) => a - b), nw = W.length, wl = (n) => W.slice(0, n);
@@ -711,6 +711,22 @@
     return out.filter((idx) => { const key = idx.slice().sort((a, b) => a - b).join(","); if (seen.has(key)) return false; seen.add(key); return true; })
       .map((idx) => ({ idx, k: classify(idx.map((i) => S.hand[i])) })).filter((o) => o.k);
   }
+  /* Το `candidates()` είναι η ακριβότερη συνάρτηση της μηχανής — 0,22ms με οκτώ διαφορετικές
+     βαθμίδες, 0,68ms με δώδεκα φύλλα και τέσσερα joker — και καλείται 5,9 φορές για το ΙΔΙΟ
+     χέρι: deadHand, hasClimb, hasLegal, climbCards, orphans, suggest. Το αποτέλεσμα εξαρτάται
+     μόνο από το χέρι και το `chal` (το rung μπαίνει μετά, στο `climbs`), οπότε ένα memo μιας
+     θέσης το κόβει σε μία κλήση. Κανένας καλών δεν πειράζει τον πίνακα που παίρνει πίσω:
+     ελεγμένο ένα προς ένα (deadHand/hasLegal/hasClimb μετρούν, climbCards/orphans διαβάζουν,
+     suggest και chainLen φτιάχνουν δικά τους). */
+  const candidates = (function () {
+    let key = null, val = null;
+    return function (S) {
+      const k = S.phase + "|" + (S.chal || "") + "|" +
+        S.hand.map((c) => c.r + "/" + c.si + "/" + (c.e || "") + (c.h ? "h" : "")).join(",");
+      if (k !== key) { key = k; val = candidatesRaw(S); }
+      return val;
+    };
+  })();
   const legalMoves = candidates;
   const hasLegal = (S) => candidates(S).length > 0;
   /* Πόσα σκαλιά ανεβαίνει άπληστα από εδώ με ξένα φύλλα, παίρνοντας κάθε φορά το φθηνότερο που χτυπάει. */
