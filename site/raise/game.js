@@ -730,6 +730,10 @@
     const e = evalSel(S);
     if (S.playsLeft < 1) return null;
     if (!e.k) return null;
+    /* Survival με μηδέν ανάσες: όσο υπάρχει ΑΝΕΒΑΣΜΑ στο χέρι, το σπάσιμο δεν επιτρέπεται.
+       Το run δεν τελειώνει με ένα λάθος πάτημα ενώ υπάρχει δρόμος προς τα πάνω — τελειώνει
+       μόνο όταν πραγματικά δεν ανεβαίνει τίποτα. */
+    if (isSurv(S) && discardsLeft(S) <= 0 && !climbs(S, e.k) && hasClimb(S)) return null;
     const k = e.k, prev = S.rung, up = climbs(S, k), cs = removeSel(S, true);
     const tags = [];
     if (S.chain === 0 && k.kind === 1 && k.rank <= 3) tags.push("Humble");
@@ -826,7 +830,7 @@
       if (S.done) return "You broke the chain with no breath left — that is the run.";
       if (hasClimb(S)) return "";
       if (discardsLeft(S) > 0) return "Nothing climbs. Breathe to open the table, or play anyway — breaking costs a breath too.";
-      if (hasLegal(S)) return "No breath left: the next hand that does not climb is your last. Make it count.";
+      if (hasLegal(S)) return "No breath left — and nothing climbs. The next hand you play is your last, so make it count.";
       return "Nothing here makes a hand at all — that is the run.";
     }
     if (S.playsLeft < 1) return "No plays left — the round is over.";

@@ -719,14 +719,6 @@ body[data-heat="3"] .hud__score b{color:#ffb15a;text-shadow:0 0 1rem rgba(255,14
 .deckc.on{border-color:var(--candy-1);box-shadow:inset 0 0 0 1px var(--candy-1),0 0 .8rem rgba(255,207,106,.35)}
 .deckc.on b{color:var(--candy-1)}
 .deckc.locked{opacity:.55}
-/* ledger */
-.ledger{display:grid;gap:.25rem;width:100%}
-.ledger:empty{display:none}
-.ledger .lbl{margin-top:.2rem}
-.ledg{display:grid;grid-template-columns:auto 1fr auto;gap:.6rem;align-items:center;padding:.45rem .7rem;border-radius:10px;background:var(--gloss),rgba(0,0,0,.26);border:1px solid var(--line);color:var(--cream);text-align:left}
-.ledg b{font-family:var(--mono);font-size:.78rem;color:var(--candy-1)}
-.ledg span{font-family:var(--mono);font-size:.66rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ledg em{font-family:var(--mono);font-style:normal;font-size:.78rem;font-variant-numeric:tabular-nums}
 /* near miss on the Busted sheet */
 .miss{display:grid;justify-items:center;gap:.35rem;text-align:center;margin:.8rem 0;padding:.8rem .9rem;border-radius:12px;background:var(--gloss),rgba(224,80,70,.14);border:1px solid rgba(255,150,140,.5)}
 .miss>b{font-family:var(--display);font-size:1.7rem;line-height:1;color:#ffb3a8}
@@ -1258,13 +1250,8 @@ body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-sha
 .go.down.cost .go__s{color:#8fd0e2}
 .build{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(147,170,156,.6);text-align:center;margin-top:.7rem}
 
-/* ===================== v25: Survival — διαβάζεις το χέρι, δεν το ψάχνεις ===================== */
-/* Πρώτη δοκιμή έσβηνε τα φύλλα που δεν ανεβαίνουν στο .42 με saturate(.5): γινόταν
-   ΑΔΙΑΒΑΣΤΑ πάνω στο πράσινο — και παίζονται κανονικά, απλώς κοστίζουν ανάσα. Η σωστή
-   λογική είναι αντίστροφη: **τονίζουμε τον δρόμο προς τα πάνω**, δεν κρύβουμε τα υπόλοιπα. */
-.hand .card.nolift:not(.sel){opacity:.72}
-.hand .card:not(.nolift):not(.sel){box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 3px 7px rgba(0,0,0,.45),0 0 0 1.5px rgba(255,209,102,.75),0 0 .7rem rgba(245,207,106,.3)}
-.hand .card:not(.nolift):not(.sel)::before{border-color:rgba(212,169,79,.35)}
+/* v25 (αφαιρέθηκε): το Survival έσβηνε τα φύλλα που δεν ανεβαίνουν και τόνιζε τα υπόλοιπα.
+   Απορρίφθηκε από τον παίκτη — τα φύλλα δείχνουν όλα ίδια, τη γραμμή τη διαβάζει εκείνος. */
 
 /* Το κουμπί του σπασίματος έμοιαζε απενεργοποιημένο: ξεβαμμένο γκρι-μπλε, χωρίς όγκο.
    Τώρα είναι ένα ΚΑΝΟΝΙΚΟ κουμπί σε χρώμα προειδοποίησης — πατιέται και φαίνεται ότι πατιέται. */
@@ -1288,7 +1275,7 @@ body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-sha
 /* ===================== v26: η αρχική οθόνη δεν κόβεται ===================== */
 /* Ήταν `display:grid; place-items:center` σε `position:fixed` χωρίς κύλιση: μόλις το
    περιεχόμενο ξεπέρασε το ύψος της οθόνης (βεντάλια + wordmark + τρία κουμπιά + πλακίδια +
-   στατιστικά + ledger), κόβονταν ΚΑΙ οι δύο άκρες και δεν υπήρχε τρόπος να τις δεις.
+   στατιστικά), κόβονταν ΚΑΙ οι δύο άκρες και δεν υπήρχε τρόπος να τις δεις.
    Flex με `margin:auto` στο παιδί: κεντράρει όταν χωράει, κυλά όταν δεν χωράει — και το
    `margin:auto` (σε αντίθεση με το `place-items:center`) δεν ψαλιδίζει την κορυφή. */
 .start{
@@ -1299,7 +1286,7 @@ body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-sha
 .start__in{margin:auto;flex:0 0 auto}
 
 /* Κοντές οθόνες (640-740px ύψος, δηλαδή τα πιο κοινά τηλέφωνα): η αρχική χωράει ολόκληρη
-   χωρίς κύλιση, αντί να θέλει σύρσιμο για την τελευταία γραμμή του ledger. */
+   χωρίς κύλιση, με περιθώριο. */
 @media (max-height:760px){
   .start{padding:calc(.7rem + var(--st)) 1rem calc(.7rem + var(--sb))}
   .start__in{gap:.5rem}
@@ -1313,5 +1300,4 @@ body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-sha
   .deckc span{font-size:.66rem;line-height:1.25}
   .stats div{padding:.4rem .2rem}
   .stats b{font-size:1rem}
-  .ledg{padding:.34rem .6rem}
 }

@@ -16,8 +16,6 @@
   const DECK_KEY = "raise.deck.v1";
   const deckOpen = (l, d) => !d.lock || (l[d.lock.key] || 0) >= d.lock.n;
   const deckPick = () => { try { const id = localStorage.getItem(DECK_KEY) || "classic"; const d = G.deckById[id]; return d && deckOpen(life(), d) ? id : "classic"; } catch (e) { return "classic"; } };
-  /* Το καλύτερο ανά seed (τοπικό ledger): ante, σκορ, τράπουλα. */
-  const ledger = (l) => Object.keys(l.seeds || {}).map((seed) => Object.assign({ seed }, l.seeds[seed])).sort((a, b) => b.ante - a.ante || b.score - a.score);
   /* Μεταφέρει τα stats του run στα stats ζωής και ξεκλειδώνει charms. */
   function commitStats() {
     /* Survival δεν ξεκλειδώνει τίποτα: η αλυσίδα ×6 πιάνεται εύκολα εκεί (p50 ×16), οπότε
@@ -173,12 +171,9 @@
       fitHand(n);
       hand.innerHTML = S.hand.map((c, i) => cardHTML(c, i, S.sel.includes(i), false, i, n)).join("");
     }
-    /* Survival: όποιο φύλλο δεν μπαίνει σε κανένα ΑΝΕΒΑΣΜΑ, σβήνει. Με 70+ παιξίματα η
-       διαφορά ανάμεσα στο «διαβάζω το χέρι μου» και στο «ψάχνω» είναι όλο το mode. */
-    if (surv && S.rung) {
-      const cc = G.climbCards(S);
-      Array.prototype.forEach.call(hand.children, (el, i) => el.classList.toggle("nolift", !cc[i]));
-    } else Array.prototype.forEach.call(hand.children, (el) => el.classList.remove("nolift"));
+    /* Τα φύλλα δείχνουν ΟΛΑ ίδια. Το Survival έσβηνε όσα δεν ανεβαίνουν και τόνιζε τα
+       υπόλοιπα: ο παίκτης το είδε ως «το παιχνίδι διαλέγει για μένα» — το ίδιο πράγμα με το
+       tap-to-complete που είχε απορριφθεί. Το χέρι το διαβάζει εκείνος. */
     /* Τα σημάδια «μόλις τραβήχτηκε» σβήνουν πάντα — αλλιώς ένα επόμενο πλήρες render
        ξαναπαίζει το drawin σε φύλλα που είναι στο χέρι εδώ και ώρα. */
     S.hand.forEach((c) => { delete c.n; delete c.x; });
@@ -199,6 +194,12 @@
       go.innerHTML = '<span class="go__t">Pick cards</span><span class="go__s">' + (S.rung ? "Climb over " + G.clabel(S.rung) : "Any hand opens") + (!surv && S.playsLeft < 2 ? " · last play" : "") + '</span>';
     }
     else if (!e.k) { go.classList.add("no"); go.disabled = true; go.innerHTML = '<span class="go__t">Not a hand</span><span class="go__s">' + (G.canDiscard(S) ? (surv ? "Breathe these away instead?" : "Discard these instead?") : "Pick a pair, a run or a set") + '</span>'; }
+    /* Μηδέν ανάσες και υπάρχει ανέβασμα στο χέρι: το σπάσιμο είναι κλειδωμένο, γιατί θα
+       τερμάτιζε το run ενώ υπάρχει δρόμος πάνω. Το κουμπί λέει ότι υπάρχει. */
+    else if (surv && !e.up && G.discardsLeft(S) <= 0 && G.hasClimb(S)) {
+      go.classList.add("no"); go.disabled = true;
+      go.innerHTML = '<span class="go__t">Will not climb</span><span class="go__s">No breath left · something in your hand does climb</span>';
+    }
     else {
       go.classList.add(e.up ? "ok" : "down"); go.disabled = false; go.style.setProperty("--kh", IC.kindHue(e.k.kind));
       const calc = e.chips + " × " + e.mult;
@@ -472,7 +473,7 @@
       '<div>Seed<b>' + S.seed + '</b></div></div>' +
       '<p class="sub" style="margin:.8rem 0">Every chain step is worth 22% more Mult than the last, with no ceiling — so the cheapest climb is usually the right one. Breaking the chain is allowed; it just costs a breath.</p>' +
       '<button class="big" data-restart="1">Same seed, again</button>' +
-      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>', 1);
+      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-title="1">Title screen</button></div>', 1);
   }
   function sheetLose(newBest) {
     if (G.isSurv(S)) return sheetSurv(newBest);
@@ -484,14 +485,14 @@
       nextUnlock() +
       '<p class="sub" style="margin:.9rem 0">' + BUSTED_TIPS[(S.ante + S.stats.plays) % BUSTED_TIPS.length] + '</p>' +
       '<button class="big" data-restart="1">Same seed, again</button>' +
-      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-share="1">Share</button></div>', 1);
+      '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-title="1">Title screen</button></div>', 1);
   }
   function sheetWin() {
     openS('<h2 class="good">The Summit</h2><p class="sub">All fifty · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
       '<div class="tally"><div>Charms<b>' + S.charms.length + '</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
       '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' +
       '<button class="big" data-endless="1" style="margin-top:1rem">Keep climbing · Endless</button>' +
-      '<div class="row2"><button class="big ghost" data-fresh="1">New run</button><button class="big ghost" data-share="1">Share</button></div>', 1);
+      '<div class="row2"><button class="big ghost" data-fresh="1">New run</button><button class="big ghost" data-title="1">Title screen</button></div>', 1);
   }
   function sheetMenu() {
     openS('<h2>This round</h2>' +
@@ -507,7 +508,7 @@
       /* Η έκδοση και η ΠΡΑΓΜΑΤΙΚΗ κατάσταση του ήχου: όταν ο παίκτης λέει «δεν ακούω»,
          αυτή η γραμμή απαντά αντί να μαντεύουμε. */
       '<p class="build">' + buildTag() + ' · audio: ' + FX.audioState() + '</p>' +
-      '<button class="big ghost" data-title="1" style="margin-top:.4rem">Title screen</button>' +
+      '<div class="row2"><button class="big ghost" data-title="1">Title screen</button><button class="big ghost" data-share="1">Share</button></div>' +
       /* Διέξοδος όταν το τηλέφωνο κρατά παλιά έκδοση: σβήνει ΚΑΘΕ cache, ξεγράφει τον
          service worker, και ξαναφορτώνει καθαρά. */
       '<button class="big ghost" data-hardreload="1" style="margin-top:.4rem">Force update · clear cache</button>' +
@@ -569,11 +570,10 @@
       '<button class="colllink" data-collection="1">Collection · ' + un.length + ' / ' + G.CHARMS.length + ' charms ›</button>';
     const pick = deckPick(), mp = G.deckById[pick] && G.deckById[pick].mode === "surv" ? "surv" : "run";
     $("decks").innerHTML = G.DECKS.map((d) => { const ok = deckOpen(l, d), on = d.id === pick; return '<button class="deckc' + (on ? " on" : "") + (ok ? "" : " locked") + '" data-deck="' + d.id + '"' + (ok ? "" : " disabled") + '><b>' + d.glyph + ' ' + d.name + '</b><span>' + (ok ? d.desc : "🔒 " + d.lock.text) + '</span></button>'; }).join("");
-    const lg = ledger(l).slice(0, 3);   /* τρεις, όχι πέντε: πέντε ξεχείλιζαν την οθόνη */
-    /* Καμία ετικέτα στο κάτω μέρος της αρχικής. Η προηγούμενη («Solo card game · one thumb…»)
-       βγήκε, αυτή του ledger έμεινε — κι αυτή ήταν το μόνο πράγμα που έφτανε στο ορατό.
-       Οι σειρές μιλούν μόνες τους: ante, seed, σκορ. */
-    $("ledger").innerHTML = lg.map((r) => '<button class="ledg" data-replay="' + r.seed + '" aria-label="Replay seed ' + r.seed + '"><b>Ante ' + r.ante + '</b><span>' + r.seed + (r.deck && r.deck !== "classic" ? " · " + G.deckById[r.deck].name : "") + '</span><em>' + r.score + '</em></button>').join("");
+    /* Το κάτω μέρος της αρχικής τελειώνει στα στατιστικά. Το ledger (μία σειρά ανά seed με
+       το καλύτερό σου, πατημένη ξανάπαιζε το seed) έφυγε: ο παίκτης δεν το ζήτησε ποτέ, δεν
+       κατάλαβε τι ήταν, και ήταν το μόνο πράγμα που γέμιζε το κάτω μέρος. Το `l.seeds`
+       μένει — το «Best on this seed» στο τέλος του run το διαβάζει. */
     $("stats").innerHTML = l.runs ? '<div><b>' + l.runs + '</b><span>runs</span></div><div><b>' + l.best + '</b><span>best ante</span></div><div><b>' + l.wins + '</b><span>summits</span></div><div><b>' + (mp === "surv" ? (l.bestSurv || 0) + '</b><span>best survival' : l.bestScore + '</b><span>best round') + '</span></div>' : "";
     $("start").hidden = false; document.body.classList.add("on-start"); FX.embers(true);
   }
@@ -687,7 +687,6 @@
   $("start").addEventListener("click", (e) => {
     if (e.target.closest("[data-continue]")) { hideStart(); FX.sfx.open(); render(); if (S.phase === "shop") sheetShop(null, []); else if (S.phase === "won") sheetWin(); else afterMove(); return; }
     const dk = e.target.closest("[data-deck]"); if (dk) { try { localStorage.setItem(DECK_KEY, dk.dataset.deck); } catch (x) {} FX.sfx.tick(); showStart(worthResuming(S) ? S : null); return; }
-    const rp = e.target.closest("[data-replay]"); if (rp) { FX.sfx.open(); begin(rp.dataset.replay); return; }
     if (e.target.closest("[data-random]")) { FX.sfx.open(); begin(""); return; }
     if (e.target.closest("[data-howto]")) { sheetHowTo(); return; }
     if (e.target.closest("[data-collection]")) { sheetCollection(); return; }
