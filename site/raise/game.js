@@ -68,8 +68,9 @@
        ΕΙΝΑΙ η αλυσίδα πάει **27% → 32%** (×1,38 → ×1,48 πάνω στο ίδιο χέρι). Στο 0,35 πάει
        μόλις 33% — από εκεί και πάνω σταματά να αγοράζει, γιατί ο γύρος τελειώνει στο τρίτο
        χέρι και η αλυσίδα δεν προλαβαίνει να μεγαλώσει (p50 μέγιστη αλυσίδα ×3 σε ΟΛΑ τα κελιά).
-       Το `chainCap` μετρήθηκε ΝΕΚΡΟ γράμμα: 6, 8 και 10 δίνουν ταυτόσημα νούμερα, γιατί κανείς
-       δεν το ακουμπά.
+       Το `chainCap` μετρήθηκε ΝΕΚΡΟ γράμμα ΤΟΤΕ: 6, 8 και 10 έδιναν ταυτόσημα νούμερα, γιατί
+       κανείς δεν το ακουμπούσε. Με το `chainCarry` αυτό ΑΛΛΑΞΕ και το γράμμα ζωντάνεψε — βλ.
+       `chainSoft` παρακάτω.
 
        ΔΕΥΤΕΡΟ ΑΝΕΒΑΣΜΑ, 0,30 → 0,40 (με στόχους ×1,10). Σαρώθηκαν ΔΕΚΑΤΡΙΑ κελιά σε τρία
        σχήματα, με φρουρό «γύροι που έκλεισαν στο 1ο παίξιμο ≤ 7,45%» (200 runs):
@@ -102,7 +103,12 @@
        ΚΑΝΟΝΙΚΟ χέρι (δύο discards) πάνω σε Mult βάσης 3 ενός ζευγαριού — ×3 στο χέρι, κάθε χέρι.
        Μετρημένο: μιλούσε στο 92,5% των παιξιμάτων και ήταν το 48,2% του σκορ του κατόχου.
        Βήμα +2, οροφή 6: +4 στο κανονικό χέρι, +6 αν έχεις πληρώσει για κι άλλα discards. */
-    chainStepCap: 12, patientCap: 6,
+    /* `chainSoft`: αν είναι 0, το `chainCap` είναι ΣΚΛΗΡΗ οροφή — η αλυσίδα σταματά να μετρά
+       στο ×6 και το σκαλί 7 αξίζει ακριβώς μηδέν. Αν είναι > 0, ο μετρητής ΔΕΝ σταματά
+       πουθενά (όπως στο Survival) και μαλακώνει μόνο η ΠΛΗΡΩΜΗ πάνω από το `chainStepCap`:
+       σκαλιά = K + (σκαλιά − K)^chainSoft. Οι οροφές των ΚΑΝΟΝΩΝ (Low Ceiling, Thin Air)
+       μένουν σκληρές — εκεί το «σε έκοψα» είναι το νόημα του κανόνα. */
+    chainStepCap: 12, chainSoft: 0.55, patientCap: 6,
     /* Οροφή στο γινόμενο των ενισχυμένων φύλλων και στο γινόμενο charms/κανόνων ενός χεριού. */
     /* Οροφή στα ενισχυμένα φύλλα και στα charms. Χαμηλά επίτηδες: στο Balatro οι xMult
        ισχύουν σε ΚΑΘΕ χέρι· εδώ οι μεγάλοι πολλαπλασιαστές ήταν δεμένοι σε ένα παίξιμο
@@ -140,6 +146,9 @@
     enhChance: 0.06, enhWeights: { silver: 55, gold: 25, wild: 20 }, jokerCap: 4,
     /* Ρυθμός: κάθε 3η πίστα είναι challenge ΚΑΙ η μόνη που πληρώνει — ένα perk και ένα charm.
        Οι άλλες δύο περνούν χωρίς στάση: φτάνεις τον στόχο, συνεχίζεις. */
+    /* `chainCap`: ΟΡΟΣΗΜΟ, όχι οροφή, όσο το `chainSoft` είναι > 0 — ξεκλειδώνει το Ember
+       και βγάζει το «Ladder to Heaven». Οι οροφές των κανόνων (`lowCeiling`, `thinAirCap`)
+       μένουν σκληρές. */
     rewardEvery: 3, offers: 3, chainCap: 6, lowCeiling: 4, endlessStep: 1.08, charmFirst: 1,
     /* Τέσσερις θέσεις, και τέλος. Με τόσο λίγες, το κάθε charm πρέπει να είναι στύλος του
        build — γι' αυτό όλα τα bonus ανέβηκαν μαζί με τα πλαφόν. */
@@ -613,8 +622,31 @@
   /* Στο Survival η αλυσίδα ΔΕΝ έχει οροφή: όλο το mode είναι «πόσο κρατάς μία αλυσίδα».
      Μετρημένο με οροφή ×6, το skill headroom ήταν +6% (greedy 4885 → σωστό παίξιμο 5164),
      δηλαδή το σκορ το έγραφε η τράπουλα, όχι ο παίκτης. */
-  function capPos(S, p) { if (isSurv(S)) return p; p = Math.min(CFG.chainCap, p); return chal(S) === "thinair" ? Math.min(CFG.thinAirCap, p) : rule(S) === "r_cap" ? Math.min(CFG.lowCeiling, p) : p; }
+  function capPos(S, p) { if (isSurv(S)) return p; if (!CFG.chainSoft) p = Math.min(CFG.chainCap, p); return chal(S) === "thinair" ? Math.min(CFG.thinAirCap, p) : rule(S) === "r_cap" ? Math.min(CFG.lowCeiling, p) : p; }
   function chainPos(S) { return capPos(S, S.chain + 1 + S.chainStart + (S.chainBonus || 0)); }
+  /* ΜΙΑ πηγή αλήθειας για το τι πληρώνει η αλυσίδα. Η ετικέτα του UI αντέγραφε τον τύπο και
+     έλεγε ψέματα κάθε φορά που άλλαζε — ακριβώς πάνω στον αριθμό που κοιτάς για να αποφασίσεις
+     αν θα σπάσεις. Τώρα και το `scoreOf` και το UI περνούν από εδώ. */
+  function chainSteps(S, pos) {
+    const stepMult = syn(S, "tempo") ? 3 : has(S, "climber") ? 2 : 1;
+    const raw = Math.max(0, pos - 1 + CFG.chainFloor) * stepMult;
+    if (isSurv(S)) return raw;
+    const K = CFG.chainStepCap;
+    if (raw <= K) return raw;
+    return CFG.chainSoft ? K + Math.pow(raw - K, CFG.chainSoft) : K;
+  }
+  /* «Κρύο πρώτο χέρι»: με τη μεταφορά της αλυσίδας, το πρώτο χέρι κάθε πίστας πληρώνει σαν
+     κρύα αλυσίδα. Το ξέρει και το UI, αλλιώς η ετικέτα διαφήμιζε ×5,8 σε χέρι που πληρώνει ×1,4. */
+  const chainCold = (S) => !!(CFG.chainCarry && CFG.chainCarryCold && !isSurv(S) && S.plays === 0);
+  function chainMulOf(S, steps) {
+    if (!(steps > 0)) return 1;
+    const cstep = isSurv(S) ? CFG.survChainStep : CFG.chainStep;
+    const knee = isSurv(S) ? CFG.survChainKnee : CFG.chainKnee, boost = isSurv(S) ? CFG.survChainBoost : CFG.chainBoost;
+    const over = Math.max(0, steps - knee);
+    return (isSurv(S) ? CFG.survChainCurve : CFG.chainCurve) === "geo"
+      ? Math.pow(1 + cstep, steps)
+      : 1 + cstep * steps + boost * over * over;
+  }
   /* Χρώμα που «οδηγεί» το χέρι: τα περισσότερα φύλλα, και στην ισοπαλία το ΨΗΛΟΤΕΡΟ φύλλο.
      Χωρίς το δεύτερο κριτήριο η ισοπαλία έσπαγε με τη σειρά των κλειδιών — δηλαδή πάντα ♠ —
      οπότε το 43,7% των χεριών «οδηγούνταν» από μπαστούνι, το Black Night χτυπούσε 55% έναντι
@@ -664,7 +696,7 @@
     if (up) {
       let steps = 0;
       if (ladder) { steps += 2; notes.push(lgap > CFG.ladderWindow ? "Back Stairs +2 steps" : "Ladder +2 steps"); }
-      /* Τα σκαλιά κόβονται στο chainCap, οπότε ένα charm που δίνει ΜΟΝΟ σκαλιά είναι δομικά
+      /* Με ΣΚΛΗΡΗ οροφή τα σκαλιά κόβονταν στο chainCap, οπότε ένα charm που δίνει ΜΟΝΟ σκαλιά ήταν δομικά
          νεκρό μόλις η αλυσίδα ακουμπήσει την οροφή. Το Back Stairs πληρώνει και σε Mult. */
       if (ladder && syn(S, "backstairs")) { bshm = 1.5; }
       if (loyal) { steps += 1; chips += 60; notes.push("Loyalty +1 step, +60"); }
@@ -701,31 +733,21 @@
        την απόφαση για την οποία υπάρχει το charm, και κοστίζει διπλά (−1,34 ante). */
     if (has(S, "patient")) { const d = Math.min(CFG.patientCap, discardsLeft(S) * 2); if (d) { mult += d; notes.push("Patient +" + d + " Mult"); } }
     /* Climber μετράει κάθε σκαλί διπλό, το Tempo τριπλό — μέχρι την οροφή του chainStepCap. */
-    const stepMult = syn(S, "tempo") ? 3 : has(S, "climber") ? 2 : 1;
-    const rawSteps = Math.max(0, pos - 1 + CFG.chainFloor) * stepMult;
-    const capSteps = (n) => (isSurv(S) ? n : Math.min(CFG.chainStepCap, n));
+    const rawSteps = chainSteps(S, pos);
     /* Το σπάσιμο τιμωρεί ΔΥΟ φορές: το χέρι χάνει ΟΛΟ τον πολλαπλασιαστή αλυσίδας, και η
        αλυσίδα μηδενίζει. Το Slipstream μάλωνε μόνο με το δεύτερο — μετρημένο άξιζε −1,49
        ante, το χειρότερο charm του παιχνιδιού, παρότι μιλούσε στο 73% των γύρων: ένα σκαλί
        πίσω σε γύρο 3,4 παιξιμάτων δεν είναι τίποτα. Τώρα πιάνει το ΠΡΩΤΟ, που είναι το
        ακριβό: το σπασμένο χέρι πληρώνεται μισή αλυσίδα. */
-    let steps = up ? capSteps(rawSteps) : 0;
-    if (!up && has(S, "cheap")) steps = Math.floor(capSteps(rawSteps) * CFG.slipKeep);
+    let steps = up ? rawSteps : 0;
+    if (!up && has(S, "cheap")) steps = Math.floor(rawSteps * CFG.slipKeep);
     /* Δύο σχήματα αλυσίδας. «lin»: κάθε σκαλί προσθέτει σταθερό ποσοστό (1 + βήμα·σκαλιά).
        «geo»: κάθε σκαλί ΠΟΛΛΑΠΛΑΣΙΑΖΕΙ ((1+βήμα)^σκαλιά) — τα μακριά σερί εκτοξεύονται. */
-    const cstep = isSurv(S) ? CFG.survChainStep : CFG.chainStep;
-    /* «knee»: γραμμικό μέχρι το γόνατο, και ΕΠΙΤΑΧΥΝΣΗ μετά — τα πρώτα σκαλιά μένουν ακριβώς
-       όπως ήταν (άρα ο φρουρός «κανένα χέρι δεν καθαρίζει ante μόνο του» δεν κουνιέται), και
-       ό,τι χτίζεις πέρα από το γόνατο πληρώνει τετραγωνικά. */
-    const knee = isSurv(S) ? CFG.survChainKnee : CFG.chainKnee, boost = isSurv(S) ? CFG.survChainBoost : CFG.chainBoost;
     /* Με `chainCarryCold`, το ΠΡΩΤΟ χέρι κάθε πίστας πληρώνει σαν κρύα αλυσίδα: η μεταφερμένη
        αλυσίδα δεν χαρίζει τεράστιο πολλαπλασιαστή στο πρώτο χέρι (εκεί σπάει ο κανόνας «κανένα
        χέρι δεν καθαρίζει ante μόνο του»), αλλά ξαναπιάνει κανονικά από το δεύτερο. */
-    if (CFG.chainCarry && CFG.chainCarryCold && !isSurv(S) && S.plays === 0) steps = Math.min(steps, CFG.chainFloor);
-    const over = Math.max(0, steps - knee);
-    const chainMul = steps <= 0 ? 1
-      : (isSurv(S) ? CFG.survChainCurve : CFG.chainCurve) === "geo" ? Math.pow(1 + cstep, steps)
-      : 1 + cstep * steps + boost * over * over;
+    if (chainCold(S)) steps = Math.min(steps, CFG.chainFloor);
+    const chainMul = chainMulOf(S, steps);
     if (steps) { mult = roundMult(mult * chainMul); notes.push(up ? "Chain ×" + pos + " · Mult ×" + roundMult(chainMul) : "Slipstream · half chain, Mult ×" + roundMult(chainMul)); }
     /* Gold και Silver πολλαπλασιάζουν, ένα φύλλο τη φορά — όπως ακριβώς το λένε οι περιγραφές. */
     const golds = cs.filter((c) => c.e === "gold").length, silvers = cs.filter((c) => c.e === "silver").length;
@@ -1015,6 +1037,8 @@
     const pos = at == null ? chainPos(S) : at, fresh = pos > S.rmax;
     if (fresh) S.rmax = pos;
     if (pos > S.stats.maxChain) S.stats.maxChain = pos;
+    /* Το `chainCap` δεν κόβει πια (βλ. `chainSoft`) — είναι το ΟΡΟΣΗΜΟ: εκεί ξεκλειδώνει το
+       Ember και εκεί βγαίνει το «Ladder to Heaven». */
     if (pos >= CFG.chainCap) S.stats.chain7 = 1;
     return { pos, fresh };
   }
@@ -1076,7 +1100,7 @@
     }
     if (has(S, "mirror") && S.plays === 0) { S.chain += 1; tags.push("Mirror"); }
     S.rung = rungAfter(S, k);
-    /* Το «Ladder to Heaven» βγαίνει μία φορά, όταν η αλυσίδα φτάσει πρώτη φορά στην οροφή. */
+    /* Το «Ladder to Heaven» βγαίνει μία φορά, όταν η αλυσίδα περάσει πρώτη φορά το ορόσημο. */
     { const n = noteChain(S, up ? e.pos : 0); if (n.fresh && n.pos >= CFG.chainCap) tags.push("Ladder to Heaven"); }
     S.played = cs.slice();
     S.log.push({ t: clabel(k), c: e.chips + " × " + e.mult + (bomb ? " · table opens, chain ×" + chainPos(S) + " kept" : broke ? " · chain ×" + broke + " broken" : steepOf(S) ? " · rung +" + steepOf(S) : ""), p: e.pts, cls: broke ? "pass" : "" });
@@ -1268,7 +1292,7 @@
   return {
     SUITS, KINDS, isSurv, BY_TIER, TARGETS, tgtAt, RULES, ruleById, CFG, POOL, DECKS, deckById, SYNERGIES, synById, syn, activeSynergies, synergyFor, goEndless, nearMiss, kbase, kchips, kmult, isBomb, sameShape, beats, poolById, ENH, CHARMS, charmById, CHALLENGES, chalById, rname,
     newRun, startRound, target, nextTarget, roundHandSize,
-    classify, climbs, hasClimb, steepOf, rungAfter, whyNoClimb, climbCards, chainPos, survMilestone, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
+    classify, climbs, hasClimb, steepOf, rungAfter, whyNoClimb, climbCards, chainPos, chainSteps, chainMulOf, chainCold, survMilestone, scoreOf, cardChip, cardChips, evalSel, clabel, crange, beatText, isAce, isWild, isFace, leadSuit,
     candidates, legalMoves, hasLegal, suggest, orphans,
     toggle, reveal, play, discard, canDiscard, canDiscardAny, discardsLeft, discMaxOf, deadHand, handCap, stuck, stuckReason, finish,
     makeOffers, canTake, take, picksLeft, laneLeft, isReward, rewardKind, nextAnte, applyFree: apply, upcoming, current, currentRule, upcomingRule, peek, has,

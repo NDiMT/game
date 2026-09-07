@@ -284,16 +284,19 @@
        το χέρι πλήρωνε ×7,8 ή ×17,5. Και το 100% των runs περνά τη θέση 12 (p50 μέγιστη
        αλυσίδα ×75), δηλαδή η ετικέτα έλεγε ψέματα σχεδόν σε όλο το mode, πάνω στον αριθμό
        που κοιτάς για να αποφασίσεις αν θα σπάσεις. */
-    { const step = G.syn(S, "tempo") ? 3 : S.charms.indexOf("climber") >= 0 ? 2 : 1,
-        raw = Math.max(0, pos - 1 + G.CFG.chainFloor) * step,
-        steps = surv ? raw : Math.min(G.CFG.chainStepCap, raw),
-        mul = Math.round((1 + (surv ? G.CFG.survChainStep : G.CFG.chainStep) * steps) * 10) / 10;
+    /* Ο τύπος ΔΕΝ ξαναγράφεται εδώ: `chainSteps` + `chainMulOf` είναι η μία πηγή αλήθειας
+       στη μηχανή, οπότε η ετικέτα δεν μπορεί πια να ξεμείνει πίσω από τη βαθμονόμηση. */
+    const cold = G.chainCold(S);
+    { const steps = cold ? Math.min(G.chainSteps(S, pos), G.CFG.chainFloor) : G.chainSteps(S, pos),
+        mul = Math.round(G.chainMulOf(S, steps) * 10) / 10;
       setTXT($("chainN"), "×" + pos);
       /* Ο μεγάλος αριθμός είναι το σκαλί· η ετικέτα λέει τι αξίζει, χωρίς να το ξαναπεί. */
       setTXT($("chain").firstElementChild, steps ? "Mult ×" + mul : "Chain"); }
-    $("chain").classList.toggle("cold", pos <= 1);
-    /* Το κομμάτι χτίζεται μαζί με την αλυσίδα. Στο Survival η αλυσίδα δεν έχει οροφή,
-       οπότε η αναφορά είναι πιο μακριά — αλλιώς το κομμάτι θα ήταν φουλ στο τέταρτο χέρι. */
+    $("chain").classList.toggle("cold", pos <= 1 || cold);
+    /* Το κομμάτι χτίζεται μαζί με την αλυσίδα. Ο μετρητής δεν έχει πια οροφή ΠΟΥΘΕΝΑ, αλλά η
+       μουσική κλίμακα μένει σκόπιμα στο ορόσημο `chainCap`: στο Classic η διάμεση αλυσίδα είναι
+       ×3, οπότε με αναφορά ×14 (όπως στο Survival, όπου η διάμεση μέγιστη είναι ×75) οι δέκα
+       στρώσεις δεν θα άνοιγαν ποτέ. Πάνω από το ορόσημο το κομμάτι είναι ήδη φουλ. */
     FX.music.chain(pos, surv ? 14 : G.CFG.chainCap);
     document.body.dataset.heat = pos >= 6 ? 3 : pos >= 4 ? 2 : pos >= 2 ? 1 : 0;
     $("chain").style.setProperty("--pos", Math.min(pos, 12));
@@ -745,7 +748,7 @@
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
       '<p class="loop"><b>The loop.</b> Beat the hand on the table and the chain climbs a step. What you just played is the new hand to beat. That is the game.</p>' +
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
-      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +' + Math.round(G.CFG.chainStep * 100) + '% Mult, the first climb included</b>, up to ×' + (Math.round((1 + G.CFG.chainStep * (G.CFG.chainCap + G.CFG.chainFloor - 1)) * 10) / 10) + ' once the chain caps at ×' + G.CFG.chainCap + '. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1. <b>The chain survives the ante</b> — a new ante starts on a clean table with the chain you finished on, and only the first hand of it pays as if the chain were cold.</p>' +
+      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +' + Math.round(G.CFG.chainStep * 100) + '% Mult, the first climb included</b>, and <b>the counter never stops</b> — ×' + G.CFG.chainCap + ' is worth ×' + (Math.round((1 + G.CFG.chainStep * (G.CFG.chainCap + G.CFG.chainFloor - 1)) * 10) / 10) + ' Mult, ×' + G.CFG.chainStepCap + ' is worth ×' + (Math.round((1 + G.CFG.chainStep * G.CFG.chainStepCap) * 10) / 10) + ', and past that every further step still pays, just less than the one before. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1. <b>The chain survives the ante</b> — a new ante starts on a clean table with the chain you finished on, and only the first hand of it pays as if the chain were cold.</p>' +
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
       '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out — <b>the moment you reach it the round is over</b> and the next ante starts on its own.</p>' +
       '<details class="rulz__d"><summary>The hands, and what they pay</summary>' +
@@ -768,7 +771,7 @@
          της παραγράφου έλεγε «πέντε ανάσες» και «1 500, 3 300, 7 260» για ώρες αφού ο κώδικας
          είχε γίνει δέκα και 1 200 / 2 640 / 5 808 — και, το χειρότερο, έλεγε ότι το σπάσιμο
          της αλυσίδας ΑΠΑΓΟΡΕΥΕΤΑΙ, δηλαδή έκρυβε τη μόνη απόφαση του mode. */
-      '<p>· <b>Climbing is not compulsory — it costs.</b> A hand that does not beat the rung plays and scores as normal, but it <b>breaks the chain and costs a breath</b>. With no breath left you cannot break it while something in your hand still climbs; when nothing does, that hand is your last.<br>· <b>The chain has no ceiling</b> — no cap at ×6, so step forty is worth forty steps of Mult.<br>· <b>A bomb clears the ladder and keeps the chain.</b> Quads or a straight flush beat anything, so the table opens behind them: your next hand can be a <b>lone Ace</b> and it still counts as a climb, at the full multiplier. A breath does the same for the price of one breath — that is the way back down when the rung has climbed out of reach.<br>· A discard also <b>opens the table</b>: a <b>breath</b>. You start with <b>' + G.CFG.survDiscards + '</b>, and <b>earn one more every time your score passes the next mark</b> — ' + [0, 1, 2].map((i) => G.survMilestone(i).toLocaleString("en-US")).join(", then ") + ', each mark ' + G.CFG.survGrow + '× the last. The bar under your score is how close the next one is.</p>' +
+      '<p>· <b>Climbing is not compulsory — it costs.</b> A hand that does not beat the rung plays and scores as normal, but it <b>breaks the chain and costs a breath</b>. With no breath left you cannot break it while something in your hand still climbs; when nothing does, that hand is your last.<br>· <b>The chain has no ceiling and no slowdown</b> — step forty is worth forty full steps of Mult, where a normal run would have started paying less per step by then.<br>· <b>A bomb clears the ladder and keeps the chain.</b> Quads or a straight flush beat anything, so the table opens behind them: your next hand can be a <b>lone Ace</b> and it still counts as a climb, at the full multiplier. A breath does the same for the price of one breath — that is the way back down when the rung has climbed out of reach.<br>· A discard also <b>opens the table</b>: a <b>breath</b>. You start with <b>' + G.CFG.survDiscards + '</b>, and <b>earn one more every time your score passes the next mark</b> — ' + [0, 1, 2].map((i) => G.survMilestone(i).toLocaleString("en-US")).join(", then ") + ', each mark ' + G.CFG.survGrow + '× the last. The bar under your score is how close the next one is.</p>' +
       '<p>The run ends the moment nothing climbs and you have no breath left. So it is one long question: <b>the cheapest climb keeps the rung low and the chain alive</b> — spend the big hands and the rung gets too high to beat. Measured, playing the biggest hand every time scores about <b>10 000</b> over twenty-six hands; playing the smallest climb scores about <b>122 000</b> over seventy-three. That gap is the mode.</p>' +
       '</details>' +
       '</div>' +
