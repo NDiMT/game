@@ -86,7 +86,7 @@
          μετά. Ίδια εικόνα, χειρότερη: knee3 b0,18 τ1,06 → θάνατος 11,6 · 1ο 8,36% · sd 0,60.
          Και τα δύο ανεβάζουν τη ΔΙΑΣΠΟΡΑ, όχι το βάθος: η αλυσίδα φτάνει p50 ×3 στο Classic,
          οπότε κάθε ενίσχυση της ουράς πληρώνει μόνο στους τυχερούς γύρους. */
-    chainStep: 0.4, chainCurve: "lin", chainKnee: 3, chainBoost: 0,
+    chainStep: 0.4, chainCurve: "lin", chainKnee: 3, chainBoost: 0, chainCarry: 1, chainCarryCap: 99, rungCarry: 0, chainCarryCold: 1,
     /* Το Survival ΜΕΝΕΙ στο 0,22: εκεί η αλυσίδα δεν έχει οροφή και φτάνει ×88, οπότε ένα
        μεγαλύτερο βήμα θα φούσκωνε τα σκορ κατά ~35% και θα έκανε ασύγκριτα τα παλιά ρεκόρ.
        Η αίτηση αφορούσε Classic και Wild. */
@@ -536,8 +536,15 @@
       }
     }
     S.sel = [];
-    S.rung = null;
-    S.chain = 0; S.score = 0; S.plays = 0; S.lastSuit = null; S.breaks = 0;
+    /* Με `rungCarry` το τραπέζι ΔΕΝ καθαρίζει στη νέα πίστα: κρατάς την αλυσίδα, αλλά πρέπει
+       να χτυπήσεις το τελευταίο σου χέρι για να τη συνεχίσεις — δηλαδή η συνέχεια είναι
+       κερδισμένη, όχι δώρο. */
+    if (!(CFG.chainCarry && CFG.rungCarry && S.chain > 0)) S.rung = null;
+    /* Η αλυσίδα ΜΠΟΡΕΙ να περνά από πίστα σε πίστα (`chainCarry`: το κλάσμα των σκαλιών που
+       κρατιέται). Το τραπέζι ανοίγει πάντα — νέα πίστα, καθαρό τραπέζι — οπότε το πρώτο χέρι
+       ανεβαίνει έτσι κι αλλιώς. */
+    S.chain = Math.min(CFG.chainCarryCap, Math.floor((S.chain || 0) * (CFG.chainCarry || 0)));
+    S.score = 0; S.plays = 0; S.lastSuit = null; S.breaks = 0;
     S.rdisc = 0; S.rfree = 0; S.rbombs = 0; S.survBomb = S.survBomb || 0; S.rsuits = []; S.hot = 0; S.done = 0; S.brokeCost = 0; S.rkinds = {}; S.rmax = 0; S.firstK = null; S.lastK = null;
     S.chainBonus = rule(S) === "r_head" ? 1 : 0;
     /* Discards: σταθερός πόρος του γύρου, ξεχωριστός από τα plays. */
@@ -711,6 +718,10 @@
        όπως ήταν (άρα ο φρουρός «κανένα χέρι δεν καθαρίζει ante μόνο του» δεν κουνιέται), και
        ό,τι χτίζεις πέρα από το γόνατο πληρώνει τετραγωνικά. */
     const knee = isSurv(S) ? CFG.survChainKnee : CFG.chainKnee, boost = isSurv(S) ? CFG.survChainBoost : CFG.chainBoost;
+    /* Με `chainCarryCold`, το ΠΡΩΤΟ χέρι κάθε πίστας πληρώνει σαν κρύα αλυσίδα: η μεταφερμένη
+       αλυσίδα δεν χαρίζει τεράστιο πολλαπλασιαστή στο πρώτο χέρι (εκεί σπάει ο κανόνας «κανένα
+       χέρι δεν καθαρίζει ante μόνο του»), αλλά ξαναπιάνει κανονικά από το δεύτερο. */
+    if (CFG.chainCarry && CFG.chainCarryCold && !isSurv(S) && S.plays === 0) steps = Math.min(steps, CFG.chainFloor);
     const over = Math.max(0, steps - knee);
     const chainMul = steps <= 0 ? 1
       : (isSurv(S) ? CFG.survChainCurve : CFG.chainCurve) === "geo" ? Math.pow(1 + cstep, steps)
