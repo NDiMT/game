@@ -148,7 +148,7 @@
     { at: "rung", t: (r) => r
       ? "Your hand is the rung now. Beat it next time and the chain climbs a step."
       : "The table is open again — anything you play climbs, and becomes the rung." },
-    { at: "chain", t: "Every step of the chain is +22% Mult. Miss the rung and it goes back to ×1." },
+    { at: "chain", t: "Every step of the chain is +" + Math.round(G.CFG.chainStep * 100) + "% Mult. Miss the rung and it goes back to ×1." },
   ];
   const coachOn = () => !!S && S.phase === "round" && !ui.ending && !G.isSurv(S) &&
     !taught() && $("start").hidden && $("veil").hidden && S.stats.plays < COACH.length;
@@ -287,7 +287,7 @@
     { const step = G.syn(S, "tempo") ? 3 : S.charms.indexOf("climber") >= 0 ? 2 : 1,
         raw = Math.max(0, pos - 1 + G.CFG.chainFloor) * step,
         steps = surv ? raw : Math.min(G.CFG.chainStepCap, raw),
-        mul = Math.round((1 + G.CFG.chainStep * steps) * 10) / 10;
+        mul = Math.round((1 + (surv ? G.CFG.survChainStep : G.CFG.chainStep) * steps) * 10) / 10;
       setTXT($("chainN"), "×" + pos);
       /* Ο μεγάλος αριθμός είναι το σκαλί· η ετικέτα λέει τι αξίζει, χωρίς να το ξαναπεί. */
       setTXT($("chain").firstElementChild, steps ? "Mult ×" + mul : "Chain"); }
@@ -663,7 +663,7 @@
   }
   /* Μία συμβουλή τη φορά στην οθόνη Busted — κάθε φορά διαφορετική. */
   const BUSTED_TIPS = [
-    "Every step of chain is +22% Mult. Four cheap hands that climb beat one fat hand that does not.",
+    "Every step of chain is +" + Math.round(G.CFG.chainStep * 100) + "% Mult. Four cheap hands that climb beat one fat hand that does not.",
     "A hand that does not climb still scores — it just scores flat. Sometimes that is the right call.",
     "Discards do not cost you a play. Two hands you cannot use are two hands you should throw.",
     "A lone Ace is the cheapest hand there is, and it is the first step of the chain. Open with it.",
@@ -692,7 +692,7 @@
       '<div>Earned on the way<b>+' + (S.survEarned || 0) + '</b></div>' +
       '<div>Bombs<b>' + (S.stats.quads || 0) + '</b></div>' +
       '<div>Seed<b>' + S.seed + '</b></div></div>' +
-      '<p class="sub" style="margin:.8rem 0">Every chain step is worth 22% more Mult than the last, with no ceiling — so the cheapest climb is usually the right one. Breaking the chain is allowed; it just costs a breath.</p>' +
+      '<p class="sub" style="margin:.8rem 0">Every chain step is worth ' + Math.round(G.CFG.survChainStep * 100) + '% more Mult than the last, with no ceiling — so the cheapest climb is usually the right one. Breaking the chain is allowed; it just costs a breath.</p>' +
       '<button class="big" data-restart="1">Same seed, again</button>' +
       '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-title="1">Title screen</button></div>', 1);
   }
@@ -745,7 +745,7 @@
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
       '<p class="loop"><b>The loop.</b> Beat the hand on the table and the chain climbs a step. What you just played is the new hand to beat. That is the game.</p>' +
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
-      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +22% Mult, the first climb included</b>, up to ×2.3 once the chain caps at ×6. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
+      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +' + Math.round(G.CFG.chainStep * 100) + '% Mult, the first climb included</b>, up to ×' + (Math.round((1 + G.CFG.chainStep * (G.CFG.chainCap + G.CFG.chainFloor - 1)) * 10) / 10) + ' once the chain caps at ×' + G.CFG.chainCap + '. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1.</p>' +
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
       '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out — <b>the moment you reach it the round is over</b> and the next ante starts on its own.</p>' +
       '<details class="rulz__d"><summary>The hands, and what they pay</summary>' +
