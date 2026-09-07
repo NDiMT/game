@@ -56,7 +56,7 @@
      σχεδιασμός ζητά ~15,7. Σαρωμένο (tools/rounds.js 800, ίδια seeds· μέσο ante θανάτου / νίκες /
      γύροι που έκλεισαν στο 1ο παίξιμο): ×1,00 → 17,0 · 41 · 7,78%  ·  ×1,02 → 15,6 · 67 · 7,36%
      ·  ×1,04 → 14,9 · 55 · 6,84%. Διαλέχτηκε το ×1,02. */
-  const TARGETS = [1070, 1310, 1460, 1980, 2370, 2540, 3220, 3610, 3680, 4360, 4760, 5010, 5920, 6860, 7290, 8630, 9600, 9980, 11200, 12200, 12500, 14800, 15900, 16500, 19500, 21600, 22100, 25900, 28000, 28600, 32300, 34300, 37000, 42900, 45300, 47000, 54000, 58300, 59700, 67300, 71700, 73300, 83100, 87700, 89900, 104000, 106000, 111000, 135000, 139000];
+  const TARGETS = [1180, 1440, 1610, 2180, 2610, 2790, 3540, 3970, 4050, 4800, 5240, 5510, 6510, 7550, 8020, 9490, 10600, 11000, 12300, 13400, 13800, 16300, 17500, 18200, 21400, 23800, 24300, 28500, 30800, 31500, 35500, 37700, 40700, 47200, 49800, 51700, 59400, 64100, 65700, 74000, 78900, 80600, 91400, 96500, 98900, 114000, 117000, 122000, 148000, 153000];
   const CFG = {
     handSize: 8, plays: 5, discards: 2, jokers: 2,
     /* Η αλυσίδα ΠΟΛΛΑΠΛΑΣΙΑΖΕΙ το Mult του χεριού, δεν του προσθέτει.
@@ -69,12 +69,28 @@
        μόλις 33% — από εκεί και πάνω σταματά να αγοράζει, γιατί ο γύρος τελειώνει στο τρίτο
        χέρι και η αλυσίδα δεν προλαβαίνει να μεγαλώσει (p50 μέγιστη αλυσίδα ×3 σε ΟΛΑ τα κελιά).
        Το `chainCap` μετρήθηκε ΝΕΚΡΟ γράμμα: 6, 8 και 10 δίνουν ταυτόσημα νούμερα, γιατί κανείς
-       δεν το ακουμπά. */
-    chainStep: 0.3,
+       δεν το ακουμπά.
+
+       ΔΕΥΤΕΡΟ ΑΝΕΒΑΣΜΑ, 0,30 → 0,40 (με στόχους ×1,10). Σαρώθηκαν ΔΕΚΑΤΡΙΑ κελιά σε τρία
+       σχήματα, με φρουρό «γύροι που έκλεισαν στο 1ο παίξιμο ≤ 7,45%» (200 runs):
+         γραμμικό  0,30 τ1,00 → θάνατος 14,4 · 1ο 6,93% · sd 0,45   (η βάση)
+         γραμμικό  0,35 τ1,05 → 12,8 · 6,95% · sd 0,46
+         γραμμικό  **0,40 τ1,10 → 13,6 · 7,13% · sd 0,46**          ← διαλεγμένο
+         γραμμικό  0,50 τ1,12 → 13,0 · 9,09% · sd 0,49              (σπάει τον φρουρό)
+       ΑΠΟΡΡΙΦΘΗΚΑΝ δύο σχήματα που υπάρχουν στον κώδικα και μένουν σβηστά:
+         `chainCurve: "geo"` — η αλυσίδα ΠΟΛΛΑΠΛΑΣΙΑΖΕΤΑΙ ((1+βήμα)^σκαλιά). Ανεβάζει τα μακριά
+         σερί αλλά ΧΑΜΗΛΩΝΕΙ τα κοντά (×1,22 αντί ×1,30 στο ένα σκαλί), οπότε για να κρατηθεί η
+         δυσκολία θέλει χαμηλότερους στόχους — και τότε σπάει ο φρουρός: geo 0,25 τ0,95 → 8,45%,
+         geo 0,30 τ1,00 → 10,83%. Και η διασπορά πάει 0,45 → 0,59.
+         `chainBoost` με «γόνατο» — γραμμικό μέχρι το σκαλί `chainKnee`, τετραγωνική επιτάχυνση
+         μετά. Ίδια εικόνα, χειρότερη: knee3 b0,18 τ1,06 → θάνατος 11,6 · 1ο 8,36% · sd 0,60.
+         Και τα δύο ανεβάζουν τη ΔΙΑΣΠΟΡΑ, όχι το βάθος: η αλυσίδα φτάνει p50 ×3 στο Classic,
+         οπότε κάθε ενίσχυση της ουράς πληρώνει μόνο στους τυχερούς γύρους. */
+    chainStep: 0.4, chainCurve: "lin", chainKnee: 3, chainBoost: 0,
     /* Το Survival ΜΕΝΕΙ στο 0,22: εκεί η αλυσίδα δεν έχει οροφή και φτάνει ×88, οπότε ένα
        μεγαλύτερο βήμα θα φούσκωνε τα σκορ κατά ~35% και θα έκανε ασύγκριτα τα παλιά ρεκόρ.
        Η αίτηση αφορούσε Classic και Wild. */
-    survChainStep: 0.22,
+    survChainStep: 0.3, survChainCurve: "lin", survChainKnee: 3, survChainBoost: 0,
     /* Το πρώτο ανέβασμα μετράει ήδη ένα σκαλί: κάθε χέρι που ανεβαίνει παίρνει τουλάχιστον +1 Mult.
        Είναι το πάτωμα της αλυσίδας — μαζεύει την ουρά p10 χωρίς να πειράζει την κορυφή. */
     chainFloor: 1,
@@ -119,7 +135,7 @@
        ΔΟΚΙΜΑΣΜΕΝΟ ΚΑΙ ΑΠΟΡΡΙΦΘΕΝ, από την ανάποδη: μικρότερο βήμα ανά φύλλο στην ίδια σκληρή
        οροφή (Gold ×1,5, Silver ×1,25) σβήνει κι αυτό το νεκρό Gold — 21,0% → 0,9% — αλλά
        κοστίζει −4,2 ante, γιατί το ×2 του ΕΝΟΣ Gold είναι η συνηθισμένη περίπτωση, όχι η ουρά. */
-    enhCap: 3, enhSoft: 0.15, goldsmithCap: 6, hmCap: 3,
+    enhCap: 3, enhSoft: 0.15, goldsmithCap: 6, hmCap: 3, reactionFrom: 2,
     /* ενισχύσεις: δεν αγοράζονται· «σκάνε» τυχαία σε φύλλα που τραβάς μέσα στον γύρο */
     enhChance: 0.06, enhWeights: { silver: 55, gold: 25, wild: 20 }, jokerCap: 4,
     /* Ρυθμός: κάθε 3η πίστα είναι challenge ΚΑΙ η μόνη που πληρώνει — ένα perk και ένα charm.
@@ -338,7 +354,7 @@
   /* Συνέργειες: δύο charms μαζί ξεκλειδώνουν ένα τρίτο εφέ. */
   const SYNERGIES = [
     { id: "royal", a: "kingmaker", b: "loyal", name: "Royal Court", desc: "Aces are worth +70 Base instead of +45." },
-    { id: "reaction", a: "afterburner", b: "ember", name: "Chain Reaction", desc: "Chain ×3 and above: Mult ×3 instead of ×2 — bomb or no bomb." },
+    { id: "reaction", a: "afterburner", b: "ember", name: "Chain Reaction", desc: "Ember lights from chain ×2 instead of ×3." },
     { id: "backstairs", a: "lowroad", b: "ladder", name: "Back Stairs", desc: "Ladder reaches five ranks above the rung — and every Ladder step pays Mult ×1.5." },
     { id: "lockstep", a: "ladder", b: "loyal", name: "Lockstep", desc: "Loyalty counts any suit you have already led this round, not just the last one." },
     { id: "bookends", a: "encore", b: "mirror", name: "Bookends", desc: "A last hand of the same kind as your first: Mult ×3 instead of ×2." },
@@ -688,7 +704,17 @@
        ακριβό: το σπασμένο χέρι πληρώνεται μισή αλυσίδα. */
     let steps = up ? capSteps(rawSteps) : 0;
     if (!up && has(S, "cheap")) steps = Math.floor(capSteps(rawSteps) * CFG.slipKeep);
-    const chainMul = 1 + (isSurv(S) ? CFG.survChainStep : CFG.chainStep) * steps;
+    /* Δύο σχήματα αλυσίδας. «lin»: κάθε σκαλί προσθέτει σταθερό ποσοστό (1 + βήμα·σκαλιά).
+       «geo»: κάθε σκαλί ΠΟΛΛΑΠΛΑΣΙΑΖΕΙ ((1+βήμα)^σκαλιά) — τα μακριά σερί εκτοξεύονται. */
+    const cstep = isSurv(S) ? CFG.survChainStep : CFG.chainStep;
+    /* «knee»: γραμμικό μέχρι το γόνατο, και ΕΠΙΤΑΧΥΝΣΗ μετά — τα πρώτα σκαλιά μένουν ακριβώς
+       όπως ήταν (άρα ο φρουρός «κανένα χέρι δεν καθαρίζει ante μόνο του» δεν κουνιέται), και
+       ό,τι χτίζεις πέρα από το γόνατο πληρώνει τετραγωνικά. */
+    const knee = isSurv(S) ? CFG.survChainKnee : CFG.chainKnee, boost = isSurv(S) ? CFG.survChainBoost : CFG.chainBoost;
+    const over = Math.max(0, steps - knee);
+    const chainMul = steps <= 0 ? 1
+      : (isSurv(S) ? CFG.survChainCurve : CFG.chainCurve) === "geo" ? Math.pow(1 + cstep, steps)
+      : 1 + cstep * steps + boost * over * over;
     if (steps) { mult = roundMult(mult * chainMul); notes.push(up ? "Chain ×" + pos + " · Mult ×" + roundMult(chainMul) : "Slipstream · half chain, Mult ×" + roundMult(chainMul)); }
     /* Gold και Silver πολλαπλασιάζουν, ένα φύλλο τη φορά — όπως ακριβώς το λένε οι περιγραφές. */
     const golds = cs.filter((c) => c.e === "gold").length, silvers = cs.filter((c) => c.e === "silver").length;
@@ -712,7 +738,12 @@
     if (has(S, "leap") && up && !!prev && k.rank - prev.rank >= CFG.overkillGap) { hm *= 2; notes.push("Overkill ×2"); }
     if (has(S, "lowroad") && k.kind === 1 && k.rank <= 6) { hm *= 2; chips += 40; notes.push("Low Road ×2, +40"); }
     if (has(S, "mirror") && S.plays === 0) { hm *= CFG.mirrorMul; notes.push("Mirror ×" + CFG.mirrorMul); }
-    if (has(S, "ember") && pos >= 3) { const cr = syn(S, "reaction"); hm *= cr ? 3 : 2; notes.push(cr ? "Chain Reaction ×3" : "Ember ×2"); }
+    /* Το «×3 αντί ×2» ήταν ΑΟΡΑΤΟ: το `hmCap` είναι 3, και το ζευγάρι κρατά ΚΑΙ το Afterburner
+       (×2 στη βόμβα) — άρα το γινόμενο κοβόταν στο 3 είτε με τη συνέργεια είτε χωρίς, ακριβώς
+       στα χέρια που η συνέργεια υποτίθεται ότι αφορά. Μετρημένη νεκρή: +0,03 ±0,49 ante σε 350
+       ζευγαρωμένα runs. Τώρα αλλάζει ΡΥΘΜΟ ΠΥΡΟΔΟΤΗΣΗΣ, που καμία οροφή δεν τρώει: το Ember
+       ανάβει από την αλυσίδα ×2 αντί ×3. */
+    if (has(S, "ember") && pos >= (syn(S, "reaction") ? CFG.reactionFrom : 3)) { hm *= 2; notes.push(syn(S, "reaction") ? "Chain Reaction ×2" : "Ember ×2"); }
     if (has(S, "encore") && S.playsLeft < 2) { const be = syn(S, "bookends") && S.firstK && S.firstK.kind === k.kind; hm *= be ? 3 : 2; notes.push(be ? "Bookends ×3" : "Encore ×2"); }
     /* S.hot: άναψε στη βόμβα, σβήνει στο σπάσιμο της αλυσίδας. */
     /* Η βόμβα ΜΕΤΡΑΕΙ και η ίδια. Πριν, το Afterburner πλήρωνε μόνο τα χέρια ΜΕΤΑ τη βόμβα —
