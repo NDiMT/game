@@ -651,7 +651,7 @@
        ante ως το μηδέν — ένα δευτερόλεπτο με τον ήχο του ταμείου να σου παίρνει πίσω ό,τι
        μόλις κέρδισες. Μετρημένο: 726 → 0 σε 1063ms, με ~19 τικ. */
     G.nextAnte(S); shown = S.score; ui.countT = 0; closeS(); render(); afterMove();
-    /* 47 από τις 50 πίστες δεν έχουν τελετή: μία λέξη τους δίνει ακμή. */
+    /* 27 από τις 30 πίστες δεν έχουν τελετή: μία λέξη τους δίνει ακμή. */
     setTimeout(() => { if (S && S.phase === "round") calloutNow("Ante " + (S.ante + 1)); }, 260);
     const bc = G.current(S); if (bc) bossIntro(bc);
   }
@@ -712,7 +712,7 @@
       '<div class="row2"><button class="big ghost" data-fresh="1">New seed</button><button class="big ghost" data-title="1">Title screen</button></div>', 1);
   }
   function sheetWin() {
-    openS('<h2 class="good">The Summit</h2><p class="sub">All fifty · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
+    openS('<h2 class="good">The Summit</h2><p class="sub">All thirty · last hand ' + S.score + ' of ' + G.target(S) + '</p>' +
       '<div class="tally"><div>Charms<b>' + S.charms.length + '</b></div><div>Best chain<b>×' + S.stats.maxChain + '</b></div><div>Seed<b>' + S.seed + '</b></div></div>' +
       '<span class="lbl">Your build</span><div class="chips">' + S.charms.map((id) => '<span class="chip">' + G.charmById[id].name + '</span>').join("") + chipsHTML() + '</div>' +
       '<button class="big" data-endless="1" style="margin-top:1rem">Keep climbing · Endless</button>' +
@@ -748,7 +748,7 @@
     openS('<h2>How to play</h2><div class="rulz" style="margin-top:.6rem;font-size:.9rem">' +
       '<p class="loop"><b>The loop.</b> Beat the hand on the table and the chain climbs a step. What you just played is the new hand to beat. That is the game.</p>' +
       '<p>The hand sitting on the table is the <b>rung</b>. Everything in the game is about whether your next hand goes over it.</p>' +
-      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +' + Math.round(G.CFG.chainStep * 100) + '% Mult, the first climb included</b>, and <b>the counter never stops</b> — ×' + G.CFG.chainCap + ' is worth ×' + (Math.round((1 + G.CFG.chainStep * (G.CFG.chainCap + G.CFG.chainFloor - 1)) * 10) / 10) + ' Mult, ×' + G.CFG.chainStepCap + ' is worth ×' + (Math.round((1 + G.CFG.chainStep * G.CFG.chainStepCap) * 10) / 10) + ', and past that every further step still pays, just less than the one before. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1. <b>The chain survives the ante</b> — a new ante starts on a clean table with the chain you finished on, and only the first hand of it pays as if the chain were cold.</p>' +
+      '<p><b>The chain multiplies.</b> Beat the hand on the table — a stronger kind, or the same kind Tichu-style (same length, higher rank, or a longer run) — and the chain climbs one step. <b>Every step is +' + Math.round(G.CFG.chainStep * 100) + '% Mult, the first climb included</b>, and <b>the counter never stops</b> — ×' + G.CFG.chainCap + ' is worth ×' + (Math.round((1 + G.CFG.chainStep * (G.CFG.chainCap + G.CFG.chainFloor - 1)) * 10) / 10) + ' Mult, ×' + G.CFG.chainStepCap + ' is worth ×' + (Math.round((1 + G.CFG.chainStep * G.CFG.chainStepCap) * 10) / 10) + ', and past that every further step still pays, just less than the one before. It is a percentage, so it rewards a big hand exactly as much as a small one — the shape is what decides the score. Play something lower and it still scores its plain Base × Mult, but you get no chain bonus and the chain drops back to ×1. <b>Every ante starts the chain at ×1.</b> A chain belongs to its round, not to the run — clearing the target is the reward, and the next ante is a fresh climb.</p>' +
       '<p>So the round is one question, five times over: <b>climb for the multiplier, or cash in a big hand and start again.</b> No single hand clears an ante on its own — you need three of them, and the target is built that way on purpose.</p>' +
       '<p><b>One round, five plays, two discards.</b> Pick cards from your hand, make a hand, play it. You draw back up to eight after every play. Reach the target before the plays run out — <b>the moment you reach it the round is over</b> and the next ante starts on its own.</p>' +
       '<details class="rulz__d"><summary>The hands, and what they pay</summary>' +
@@ -760,10 +760,10 @@
       '<p><b>Discards</b> are their own resource — two a round, they never cost you a play. Throw any number of cards and draw the same number back. Once your discards are spent, a hand that makes no combination at all still gets one free.</p>' +
       '</details>' +
       '<details class="rulz__d"><summary>Antes, rewards, charms, table rules</summary>' +
-      '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together (the Summit at 50 is a boss too, but there is nothing left to spend it on). It gives you <b>one thing</b>, three on offer: a <b>charm</b> at the first station, a <b>perk</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) — the Mult ones repeat forever, the rest run out; charms are passive and permanent, and you only ever hold <b>five</b> — so each one is a pillar of the run, not a trinket. Once all five slots are full, a charm station pays a perk instead.</p>' +
+      '<p><b>Every third ante is the one that pays</b>, and it is also the <b>boss</b> — the two go together (the Summit at 30 is a boss too, but there is nothing left to spend it on). It gives you <b>one thing</b>, three on offer: a <b>charm</b> at the first station, a <b>perk</b> at the next, turn and turn about. No money, no prices, no selling: one tap and you are back at the table, and the two antes in between pass straight through. Perks are upgrades (more Mult, another play, a wider hand) — the Mult ones repeat forever, the rest run out; charms are passive and permanent, and you only ever hold <b>five</b> — so each one is a pillar of the run, not a trinket. Once all five slots are full, a charm station pays a perk instead.</p>' +
       '<p><b>Your hand carries over</b> between antes and tidies itself — cards that fit no combination are swapped for fresh ones. Cards are never for sale, but about one card in sixteen that you draw turns out enhanced, for the rest of the run: <b>Silver</b> (Mult ×1.5, the common one), <b>Gold</b> (Mult ×2, and two of them ×3 — the cap on enhanced cards) or a <b>Joker</b>.</p>' +
       '<p>Most of the antes in between carry a <b>table rule</b> — Red Night, Cheap Pairs, Runway. Tap the ribbon to read it. A boss ante has a rule that bites instead, and a target a tenth lower to pay for it.</p>' +
-      '<p>Fifty antes. Gentle at first, steep at the end. The Summit at 50 — and Endless after that.</p>' +
+      '<p>Thirty antes. Gentle at first, steep at the end. The Summit at 30 — and Endless after that.</p>' +
       '</details>' +
       '<details class="rulz__d"><summary>Survival &middot; the third choice on the start screen</summary>' +
       '<p><b>Survival</b> is the third choice in the row on the start screen, next to the two decks — and a different game. <b>No targets, no antes, no perks or charms</b>, and the cards never run out — the deck comes round again, shuffled, for as long as you last. Three things change:</p>' +

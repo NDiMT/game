@@ -8,7 +8,7 @@
    node tools/chaincap.js [runs] [maxAnte]
 */
 const G = require("../site/raise/game.js");
-const RUNS = +process.argv[2] || 200, MAXA = +process.argv[3] || 50;
+const RUNS = +process.argv[2] || 200, MAXA = +process.argv[3] || G.TARGETS.length;
 const ALL = G.CHARMS.map((c) => c.id);
 const PRIO = (process.env.PRIO || "patient,court,kingmaker,mirror,climber,encore,loyal,lowroad,sleight,wind,ember,scout,leap,summiteer,cheap,goldsmith,ladder,afterburner,wi,pl,th,m2,cs,m1,gt,di").split(",");
 const q = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(p * (b.length - 1))] : NaN; };

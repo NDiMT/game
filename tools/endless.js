@@ -50,7 +50,7 @@ function run(seed, everyAnte) {
 }
 const q = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(p * (b.length - 1))] : NaN; };
 const CASES = [[1.15, false], [1.15, true], [1.08, false], [1.08, true], [1.05, true]];
-console.log("N " + N + " · endless depth past ante 50 (only runs that won)");
+console.log("N " + N + " · endless depth past ante " + G.TARGETS.length + " (only runs that won)");
 console.log("endlessStep".padEnd(13) + "reward".padEnd(12) + "n".padStart(5) + "p10".padStart(6) + "p50".padStart(6) + "p90".padStart(6) + "max".padStart(6));
 CASES.forEach(([step, every]) => {
   G.CFG.endlessStep = step;

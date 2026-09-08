@@ -11,6 +11,9 @@ if (process.env.BOMB) G.CFG.bombMul = +process.env.BOMB;
 /* CFG: γενικός μοχλός για ΟΠΟΙΟΔΗΠΟΤΕ κλειδί του CFG, χωρίς νέα μεταβλητή περιβάλλοντος
    κάθε φορά:  CFG='{"chainSoft":0.55}' node tools/tune.js 300 51 */
 if (process.env.CFG) { const o = JSON.parse(process.env.CFG); Object.keys(o).forEach((k) => { G.CFG[k] = o[k]; }); }
+/* TGTJSON: ολόκληρος πίνακας στόχων από τη γραμμή εντολών, για να συγκρίνονται καμπύλες
+   χωρίς να πειράζεται το game.js. Αλλάζει και το ΜΗΚΟΣ του run. */
+if (process.env.TGTJSON) { const t = JSON.parse(process.env.TGTJSON); G.TARGETS.splice(0, G.TARGETS.length, ...t); }
 /* TGT: κλίμακα σε ΟΛΟΥΣ τους στόχους, για σάρωση χωρίς να πειραχτεί ο πίνακας.
    (Ήταν `G.CFG.tgtScale`, που δεν το διαβάζει κανείς μετά την επαναφορά — δηλαδή no-op.) */
 if (process.env.TGT) { const s = +process.env.TGT; for (let a = 0; a < G.TARGETS.length; a++) G.TARGETS[a] = Math.round(G.TARGETS[a] * s); }
