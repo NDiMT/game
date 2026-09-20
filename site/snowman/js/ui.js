@@ -1,4 +1,4 @@
-import { TOTAL_LEVELS, LEVELS } from './levels.js';
+import { TOTAL_LEVELS, LEVELS, DIFFICULTIES } from './levels.js';
 
 /** DOM overlay controller (menus, HUD, dialogs). */
 export class UI {
@@ -21,6 +21,36 @@ export class UI {
   attach(game) {
     this.game = game;
     this._syncMute();
+    this._buildDifficulty();
+  }
+
+  _buildDifficulty() {
+    const wrap = this.$('#difficulty');
+    wrap.innerHTML = '';
+    for (const [key, d] of Object.entries(DIFFICULTIES)) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'seg';
+      b.dataset.key = key;
+      b.innerHTML = `<span class="seg-icon">${d.icon}</span>${d.label}`;
+      b.addEventListener('click', () => { this.game.setDifficulty(key); this._syncDifficulty(); });
+      wrap.appendChild(b);
+    }
+    this._syncDifficulty();
+  }
+
+  _syncDifficulty() {
+    const cur = this.game.difficulty;
+    for (const b of this.root.querySelectorAll('#difficulty .seg')) {
+      b.classList.toggle('active', b.dataset.key === cur);
+      b.setAttribute('aria-pressed', b.dataset.key === cur ? 'true' : 'false');
+    }
+    const hints = {
+      easy: 'Περισσότερες μπάλες, μεγαλύτεροι και πιο αργοί στόχοι, λιγότερος αέρας. Πόντοι x0.75.',
+      normal: 'Η κανονική πρόκληση. Πόντοι x1.',
+      hard: 'Λιγότερες μπάλες, μικρότεροι και πιο γρήγοροι στόχοι, δυνατός αέρας, ελάχιστη προεπισκόπηση. Πόντοι x1.5.',
+    };
+    this.$('#difficulty-hint').textContent = hints[cur] || DIFFICULTIES[cur].label;
   }
 
   _bind() {
@@ -96,9 +126,11 @@ export class UI {
     });
   }
 
-  showHud(level, total, name, balls, score, wind) {
+  showHud(level, total, name, balls, score, wind, diff) {
     this.show('hud');
     this.$('#hud-level').textContent = `Πίστα ${level}/${total}`;
+    this.$('#hud-diff').textContent = diff ? diff.icon : '';
+    this.$('#hud-diff').title = diff ? diff.label : '';
     this.$('#hud-name').textContent = name;
     this.$('#hud-score').textContent = score;
     this.$('#hud-wind').textContent = wind ? (wind > 0 ? '💨 →' : '← 💨') : '';

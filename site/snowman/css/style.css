@@ -29,6 +29,18 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0f1c33; fon
 .btn.primary:active { box-shadow: 0 2px 0 #1d5fae; transform: translateY(3px); }
 .icon { border: 0; background: rgba(255,255,255,0.85); width: 44px; height: 44px; border-radius: 50%; font-size: 1.3rem; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.2); align-self: center; }
 
+/* Difficulty segmented control */
+.difficulty-block { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #5a6a88; }
+.segmented { display: grid; grid-template-columns: repeat(3, 1fr); background: #e8eef7; border-radius: 14px; padding: 4px; gap: 4px; }
+.seg { border: 0; border-radius: 11px; padding: 9px 4px; font-weight: 700; font-size: 0.92rem; background: transparent; color: #4a5a78; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: background 0.12s, color 0.12s; }
+.seg-icon { font-size: 1.2rem; line-height: 1; }
+.seg.active { background: #fff; color: var(--text); box-shadow: 0 2px 6px rgba(29,42,68,0.18); }
+.seg[data-key="hard"].active { background: linear-gradient(180deg, #ff7b7b, #e63946); color: #fff; }
+.seg[data-key="easy"].active { background: linear-gradient(180deg, #8ad3a5, #3aa66b); color: #fff; }
+.seg[data-key="normal"].active { background: linear-gradient(180deg, #5db1ff, #2f86e6); color: #fff; }
+.small { font-size: 0.82rem; min-height: 2.4em; }
+
 /* Help list */
 .help { text-align: left; margin: 0; padding-left: 4px; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 0.98rem; }
 
@@ -45,7 +57,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0f1c33; fon
 #hud button { pointer-events: auto; }
 .hud-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .hud-center { flex: 1; text-align: center; background: rgba(255,255,255,0.8); border-radius: 16px; padding: 6px 10px; }
+.hud-title { display: flex; justify-content: center; align-items: center; gap: 6px; }
 .hud-level { font-weight: 800; }
+.hud-diff { font-size: 1rem; }
 .hud-name { font-size: 0.8rem; color: #4a5a78; }
 .dots { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: #c9d6e8; }

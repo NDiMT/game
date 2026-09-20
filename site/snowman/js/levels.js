@@ -70,3 +70,19 @@ export const LEVELS = [
 ];
 
 export const TOTAL_LEVELS = LEVELS.length; // 10
+
+/**
+ * Difficulty presets. Applied on top of every level at start.
+ *  balls:    added/removed snowballs (never below 3)
+ *  size:     target radius multiplier
+ *  speed:    moving-target speed multiplier
+ *  wind:     wind multiplier
+ *  preview:  how many trajectory dots are shown while aiming (0 = none)
+ *  score:    score multiplier
+ */
+export const DIFFICULTIES = {
+  easy:   { label: 'Εύκολο',   icon: '🙂', balls: +2, size: 1.2,  speed: 0.75, wind: 0.5, preview: 14, score: 0.75 },
+  normal: { label: 'Κανονικό', icon: '😀', balls:  0, size: 1.0,  speed: 1.0,  wind: 1.0, preview: 14, score: 1 },
+  hard:   { label: 'Δύσκολο',  icon: '😈', balls: -2, size: 0.85, speed: 1.35, wind: 1.4, preview: 4,  score: 1.5 },
+};
+export const DEFAULT_DIFFICULTY = 'normal';

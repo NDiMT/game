@@ -1,5 +1,5 @@
 import { AudioEngine } from './audio.js';
-import { LEVELS, TOTAL_LEVELS } from './levels.js';
+import { LEVELS, TOTAL_LEVELS, DIFFICULTIES, DEFAULT_DIFFICULTY } from './levels.js';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -12,6 +12,7 @@ const BALL_R = 14;
 const MAX_POWER = 1150;      // max launch speed px/s
 const SNOWMAN_W = 150, SNOWMAN_H = 195, SNOWMAN_X = 96;
 const SAVE_KEY = 'snowman.progress';
+const DIFF_KEY = 'snowman.difficulty';
 
 /**
  * Set to true (or run `node tools/snowman-gemini-art.mjs --apply` from the repo root) to use the
@@ -43,6 +44,9 @@ function loadProgress() {
     const p = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
     return { unlocked: p.unlocked || 1, scarf: !!p.scarf, best: p.best || {} };
   } catch { return { unlocked: 1, scarf: false, best: {} }; }
+}
+function loadDifficulty() {
+  try { const d = localStorage.getItem(DIFF_KEY); return DIFFICULTIES[d] ? d : DEFAULT_DIFFICULTY; } catch { return DEFAULT_DIFFICULTY; }
 }
 function saveProgress(p) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ } }
 
@@ -80,6 +84,8 @@ export class Game {
     this.ui = ui;
     this.audio = new AudioEngine();
     this.progress = loadProgress();
+    this.difficulty = loadDifficulty();
+    this.wind = 0;
     this.images = {};
     this.state = 'menu';       // menu | playing | levelwin | levelfail | victory
     this.levelIndex = 0;
@@ -192,19 +198,22 @@ export class Game {
   startLevel(i) {
     this.levelIndex = i;
     const L = LEVELS[i];
+    const D = this.diff;
+    this.wind = L.wind * D.wind;
     this.targets = L.targets.map((t) => {
       const groundOffset = DESIGN_GROUND - t.y;
       const y = this.groundY - groundOffset;
-      return { ...t, y, hp: t.hp || 1, hit: false, baseX: t.x, baseY: y, groundOffset, phase: Math.random() * Math.PI * 2, wobble: 0 };
+      const move = t.move ? { ...t.move, speed: t.move.speed * D.speed } : undefined;
+      return { ...t, move, r: Math.round(t.r * D.size), y, hp: t.hp || 1, hit: false, baseX: t.x, baseY: y, groundOffset, phase: Math.random() * Math.PI * 2, wobble: 0 };
     });
     this.balls = [];
     this.particles = [];
-    this.ballsLeft = L.balls;
+    this.ballsLeft = Math.max(3, L.balls + D.balls);
     this.levelScore = 0;
     this.state = 'playing';
     this.audio.unlock();
     this.audio.startMusic();
-    this.ui.showHud(i + 1, TOTAL_LEVELS, L.name, this.ballsLeft, this.score, L.wind);
+    this.ui.showHud(i + 1, TOTAL_LEVELS, L.name, this.ballsLeft, this.score, this.wind, D);
   }
 
   throwBall(v) {
@@ -218,7 +227,7 @@ export class Game {
   _levelComplete() {
     this.state = 'levelwin';
     const n = this.levelIndex + 1;
-    const bonus = this.ballsLeft * 50;
+    const bonus = Math.round(this.ballsLeft * 50 * this.diff.score);
     this.score += bonus;
     this.levelScore += bonus;
     this.progress.best[n] = Math.max(this.progress.best[n] || 0, this.levelScore);
@@ -248,6 +257,14 @@ export class Game {
   restartAll() {
     this.score = 0;
     this.startLevel(0);
+  }
+
+  get diff() { return DIFFICULTIES[this.difficulty] || DIFFICULTIES[DEFAULT_DIFFICULTY]; }
+
+  setDifficulty(key) {
+    if (!DIFFICULTIES[key]) return;
+    this.difficulty = key;
+    try { localStorage.setItem(DIFF_KEY, key); } catch { /* storage unavailable */ }
   }
 
   /* ---------------------------------------------------------- update */
@@ -283,7 +300,7 @@ export class Game {
     for (const b of this.balls) {
       if (!b.alive) continue;
       b.age += dt;
-      b.vx += L.wind * dt;
+      b.vx += this.wind * dt;
       b.vy += GRAVITY * dt;
       b.x += b.vx * dt; b.y += b.vy * dt;
       // collision with targets
@@ -296,7 +313,7 @@ export class Game {
           this._burst(b.x, b.y, 14, ['#fff', '#dbeaff']);
           if (t.hp <= 0) {
             t.hit = true;
-            const pts = POINTS[t.type] || 100;
+            const pts = Math.round((POINTS[t.type] || 100) * this.diff.score);
             this.score += pts; this.levelScore += pts;
             this._burst(t.x, t.y, 22, t.type === 'star' ? ['#ffd166', '#fff3c4'] : ['#ffd166', '#e63946', '#fff']);
             this.ui.updateScore(this.score);
@@ -351,7 +368,7 @@ export class Game {
 
     // wind indicator
     const L = LEVELS[this.levelIndex];
-    if (this.state === 'playing' && L && L.wind) this._drawWind(ctx, L.wind);
+    if (this.state === 'playing' && L && this.wind) this._drawWind(ctx, this.wind);
 
     // targets
     for (const t of this.targets) {
@@ -427,8 +444,8 @@ export class Game {
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.strokeStyle = 'rgba(29,42,68,0.35)'; ctx.lineWidth = 1.5;
     for (let i = 0; i < 70; i++) {
-      vx += L.wind * dt; vy += GRAVITY * dt; x += vx * dt; y += vy * dt;
-      if (i % 5 === 0) {
+      vx += this.wind * dt; vy += GRAVITY * dt; x += vx * dt; y += vy * dt;
+      if (i % 5 === 0 && i / 5 < this.diff.preview) {
         const r = 6 - i * 0.05;
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       }

@@ -24,6 +24,11 @@
         <h1>Χιονάνθρωπος<br><small>Σκοποβολή με Χιονόμπαλες</small></h1>
         <p id="menu-progress" class="muted"></p>
         <img id="menu-scarf" class="scarf-badge hidden" src="assets/sprites/scarf.svg" alt="Κόκκινο κασκόλ">
+        <div class="difficulty-block">
+          <div class="label">Δυσκολία</div>
+          <div id="difficulty" class="segmented" role="group" aria-label="Δυσκολία"></div>
+          <p id="difficulty-hint" class="muted small"></p>
+        </div>
         <button id="btn-play" class="btn primary">▶ Παίξε</button>
         <button id="btn-levels" class="btn">Πίστες</button>
         <button id="btn-help" class="btn">Πώς παίζεται</button>
@@ -49,6 +54,7 @@
           <li>🎯 Πέτυχε <b>όλους</b> τους στόχους πριν τελειώσουν οι μπάλες.</li>
           <li>🧊 Τα παγάκια θέλουν <b>2 χτυπήματα</b>. ⭐ Τα αστέρια δίνουν έξτρα πόντους.</li>
           <li>💨 Σε μερικές πίστες φυσάει αέρας και παρασύρει τη μπάλα.</li>
+          <li>🎚️ Διάλεξε <b>δυσκολία</b> στο μενού: το Δύσκολο δίνει x1.5 πόντους αλλά λιγότερες μπάλες και ελάχιστη προεπισκόπηση.</li>
           <li>🧣 Ολοκλήρωσε και τις <b>10 πίστες</b> για να κερδίσεις το <b>κόκκινο κασκόλ</b>!</li>
         </ul>
         <button id="btn-help-close" class="btn primary">Εντάξει</button>
@@ -60,7 +66,7 @@
       <div class="hud-row">
         <button id="btn-hud-menu" class="icon" aria-label="Μενού">☰</button>
         <div class="hud-center">
-          <div id="hud-level" class="hud-level"></div>
+          <div class="hud-title"><span id="hud-diff" class="hud-diff"></span><span id="hud-level" class="hud-level"></span></div>
           <div id="hud-name" class="hud-name"></div>
           <div id="hud-dots" class="dots"></div>
         </div>
