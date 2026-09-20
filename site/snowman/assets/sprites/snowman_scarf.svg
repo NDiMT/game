@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
+  <defs>
+    <radialGradient id="snow" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.7" stop-color="#eef6ff"/>
+      <stop offset="1" stop-color="#c9dcf0"/>
+    </radialGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff4d4d"/>
+      <stop offset="1" stop-color="#c81e1e"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="100" cy="250" rx="70" ry="10" fill="#0b2a4a" opacity="0.18"/>
+  <circle cx="100" cy="190" r="62" fill="url(#snow)" stroke="#a9c4e0" stroke-width="3"/>
+  <circle cx="100" cy="112" r="48" fill="url(#snow)" stroke="#a9c4e0" stroke-width="3"/>
+  <circle cx="100" cy="52" r="38" fill="url(#snow)" stroke="#a9c4e0" stroke-width="3"/>
+  <circle cx="100" cy="120" r="5" fill="#2b2b2b"/>
+  <circle cx="100" cy="140" r="5" fill="#2b2b2b"/>
+  <path d="M60 120 L28 96 M40 105 L30 88 M40 105 L26 106" stroke="#7a4a1e" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <path d="M140 118 L176 80 M164 92 L176 72 M164 92 L182 94" stroke="#7a4a1e" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <!-- scarf -->
+  <path d="M62 82 Q100 104 138 82 L142 96 Q100 120 58 96 Z" fill="url(#red)" stroke="#8f1414" stroke-width="2"/>
+  <path d="M70 92 L52 150 L72 156 L84 100 Z" fill="url(#red)" stroke="#8f1414" stroke-width="2"/>
+  <path d="M56 144 L52 150 M62 147 L60 154 M68 149 L67 156" stroke="#8f1414" stroke-width="3" stroke-linecap="round"/>
+  <g stroke="#ffd166" stroke-width="2" opacity="0.8"><path d="M66 90 Q100 110 134 90"/><path d="M74 110 L60 150"/></g>
+  <circle cx="86" cy="44" r="4.5" fill="#1e1e1e"/>
+  <circle cx="114" cy="44" r="4.5" fill="#1e1e1e"/>
+  <circle cx="87.5" cy="42.5" r="1.5" fill="#fff"/>
+  <circle cx="115.5" cy="42.5" r="1.5" fill="#fff"/>
+  <path d="M100 52 L138 60 L100 62 Z" fill="#ff8a1f" stroke="#d96a05" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M80 64 Q100 84 120 64" stroke="#1e1e1e" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <circle cx="74" cy="58" r="6" fill="#ff9aa2" opacity="0.6"/>
+  <circle cx="126" cy="58" r="6" fill="#ff9aa2" opacity="0.6"/>
+  <rect x="62" y="18" width="76" height="8" rx="4" fill="#1d2a44"/>
+  <rect x="74" y="-6" width="52" height="30" rx="4" fill="#243352"/>
+  <rect x="74" y="12" width="52" height="8" fill="#e63946"/>
+</svg>
