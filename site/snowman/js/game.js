@@ -44,7 +44,7 @@ function loadProgress() {
     return { unlocked: p.unlocked || 1, scarf: !!p.scarf, best: p.best || {} };
   } catch { return { unlocked: 1, scarf: false, best: {} }; }
 }
-function saveProgress(p) { localStorage.setItem(SAVE_KEY, JSON.stringify(p)); }
+function saveProgress(p) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ } }
 
 /* ------------------------------------------------------------------ */
 /*  Asset loading                                                      */

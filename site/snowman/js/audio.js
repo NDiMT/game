@@ -10,7 +10,7 @@ export class AudioEngine {
     this.master = null;
     this.musicGain = null;
     this.sfxGain = null;
-    this.muted = localStorage.getItem('snowman.muted') === '1';
+    try { this.muted = localStorage.getItem('snowman.muted') === '1'; } catch { this.muted = false; }
     this.playing = false;
     this._timer = null;
     this._step = 0;
@@ -40,7 +40,7 @@ export class AudioEngine {
 
   toggleMute() {
     this.muted = !this.muted;
-    localStorage.setItem('snowman.muted', this.muted ? '1' : '0');
+    try { localStorage.setItem('snowman.muted', this.muted ? '1' : '0'); } catch { /* storage unavailable */ }
     if (this.master) {
       this.master.gain.setTargetAtTime(this.muted ? 0 : 1, this.ctx.currentTime, 0.05);
     }

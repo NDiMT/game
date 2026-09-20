@@ -1,2 +1,5 @@
 # Προσωρινά git worktrees των agents — δημιουργούνται και σβήνονται αυτόματα
 .claude/worktrees/
+
+# Single-file bundles from tools/snowman-bundle.mjs
+dist/

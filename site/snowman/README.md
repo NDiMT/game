@@ -39,6 +39,15 @@ assets/icons/         Εικονίδια PWA
 sw.js, manifest.webmanifest    PWA / offline
 ```
 
+## Αυτόνομο αρχείο (ένα HTML)
+
+```bash
+node tools/snowman-bundle.mjs            # από τη ρίζα του repo → dist/snowman.html
+```
+
+Ενσωματώνει CSS, JS και όλα τα sprites σε ένα αρχείο, για να στείλεις το
+παιχνίδι ή να το ανοίξεις χωρίς server.
+
 ## Μουσική
 
 Η χαρούμενη μελωδία (Ντο μείζονα, 132 BPM) και τα εφέ παράγονται σε πραγματικό
