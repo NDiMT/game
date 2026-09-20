@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#5aa9ff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Χιονάνθρωπος: Σκοποβολή με Χιονόμπαλες</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icons/icon-192.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game" aria-label="Παιχνίδι χιονάνθρωπου"></canvas>
+
+  <div id="ui">
+    <!-- Main menu -->
+    <section id="screen-menu" class="screen">
+      <div class="card">
+        <img id="menu-logo" class="logo" src="assets/sprites/snowman.svg" alt="Χιονάνθρωπος">
+        <h1>Χιονάνθρωπος<br><small>Σκοποβολή με Χιονόμπαλες</small></h1>
+        <p id="menu-progress" class="muted"></p>
+        <img id="menu-scarf" class="scarf-badge hidden" src="assets/sprites/scarf.svg" alt="Κόκκινο κασκόλ">
+        <button id="btn-play" class="btn primary">▶ Παίξε</button>
+        <button id="btn-levels" class="btn">Πίστες</button>
+        <button id="btn-help" class="btn">Πώς παίζεται</button>
+        <button class="btn-mute icon" aria-label="Σίγαση">🔊</button>
+      </div>
+    </section>
+
+    <!-- Level select -->
+    <section id="screen-levels" class="screen hidden">
+      <div class="card wide">
+        <h2>Επιλογή πίστας</h2>
+        <div id="levels-grid" class="levels-grid"></div>
+        <button id="btn-levels-back" class="btn">← Πίσω</button>
+      </div>
+    </section>
+
+    <!-- Help -->
+    <section id="screen-help" class="screen hidden">
+      <div class="card">
+        <h2>Πώς παίζεται</h2>
+        <ul class="help">
+          <li>👆 Σύρε το δάχτυλό σου <b>προς τα πίσω</b> (σαν σφεντόνα) και άφησέ το για να πετάξεις τη χιονόμπαλα.</li>
+          <li>🎯 Πέτυχε <b>όλους</b> τους στόχους πριν τελειώσουν οι μπάλες.</li>
+          <li>🧊 Τα παγάκια θέλουν <b>2 χτυπήματα</b>. ⭐ Τα αστέρια δίνουν έξτρα πόντους.</li>
+          <li>💨 Σε μερικές πίστες φυσάει αέρας και παρασύρει τη μπάλα.</li>
+          <li>🧣 Ολοκλήρωσε και τις <b>10 πίστες</b> για να κερδίσεις το <b>κόκκινο κασκόλ</b>!</li>
+        </ul>
+        <button id="btn-help-close" class="btn primary">Εντάξει</button>
+      </div>
+    </section>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div class="hud-row">
+        <button id="btn-hud-menu" class="icon" aria-label="Μενού">☰</button>
+        <div class="hud-center">
+          <div id="hud-level" class="hud-level"></div>
+          <div id="hud-name" class="hud-name"></div>
+          <div id="hud-dots" class="dots"></div>
+        </div>
+        <button class="btn-mute icon" aria-label="Σίγαση">🔊</button>
+      </div>
+      <div class="hud-row bottom">
+        <div id="hud-balls" class="balls"></div>
+        <div id="hud-wind" class="wind"></div>
+        <div class="score">⭐ <span id="hud-score">0</span></div>
+      </div>
+    </div>
+
+    <!-- Level complete -->
+    <section id="screen-levelwin" class="screen hidden">
+      <div class="card">
+        <h2 id="win-title"></h2>
+        <p id="win-score"></p>
+        <p id="win-next" class="muted"></p>
+        <button id="btn-next" class="btn primary">Επόμενη πίστα →</button>
+      </div>
+    </section>
+
+    <!-- Level failed -->
+    <section id="screen-levelfail" class="screen hidden">
+      <div class="card">
+        <h2 id="fail-title"></h2>
+        <p id="fail-sub" class="muted"></p>
+        <button id="btn-retry" class="btn primary">↻ Ξαναπροσπάθησε</button>
+        <button id="btn-fail-menu" class="btn">Μενού</button>
+      </div>
+    </section>
+
+    <!-- Victory: red scarf reward -->
+    <section id="screen-victory" class="screen hidden">
+      <div class="card victory">
+        <h2>🎉 Συγχαρητήρια! 🎉</h2>
+        <p>Ολοκλήρωσες και τις 10 πίστες!<br>Ο χιονάνθρωπος κέρδισε το…</p>
+        <img id="victory-scarf" class="scarf-reward" src="assets/sprites/scarf.svg" alt="Κόκκινο κασκόλ">
+        <h3>Κόκκινο Κασκόλ 🧣</h3>
+        <img class="logo" src="assets/sprites/snowman_scarf.svg" alt="Χιονάνθρωπος με κόκκινο κασκόλ">
+        <p id="victory-score"></p>
+        <button id="btn-victory-again" class="btn primary">Παίξε ξανά</button>
+        <button id="btn-victory-menu" class="btn">Μενού</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

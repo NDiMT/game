@@ -9,6 +9,7 @@
 | --- | --- |
 | `site/index.html` | Αρχική σελίδα |
 | `site/raise/index.html` | **ANABASIS** — playable demo, ένα αυτόνομο αρχείο HTML χωρίς build |
+| `site/snowman/index.html` | **ΧΙΟΝΑΝΘΡΩΠΟΣ** — παιχνίδι σκοποβολής με χιονόμπαλες για κινητό, 10 πίστες, έπαθλο κόκκινο κασκόλ ([README](site/snowman/README.md)) |
 | `site/ideas/index.html` | Ο κατάλογος των εννέα παιχνιδιών |
 | `docs/games.md` | Οι εννέα σχεδιασμοί με κανόνες και παραδείγματα γύρου |
 | `docs/concepts-poker-tichu.md` | Ο πλήρης κατάλογος concepts, με ανάλυση ανά ιδέα |
