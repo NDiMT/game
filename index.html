@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Arrow Cube 3D</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/" } }
+  </script>
+</head>
+<body>
+  <header class="hud">
+    <div id="level" class="pill">Επίπεδο 1</div>
+    <div id="lives" class="lives"></div>
+    <div id="left" class="pill"></div>
+  </header>
+
+  <footer class="bar">
+    <button id="restart" class="btn" title="Επανεκκίνηση (R)" aria-label="Επανεκκίνηση">↻</button>
+    <button id="hint" class="btn wide" title="Βοήθεια (H)">💡 <span id="hint-count">3</span></button>
+    <button id="sound" class="btn" title="Ήχος" aria-label="Ήχος">🔊</button>
+  </footer>
+
+  <div id="toast" class="toast">Σύρε για να γυρίσεις τον κύβο · Πάτα έναν κύβο για να τον στείλεις στην κατεύθυνση του βέλους · Αν κάτι είναι στο δρόμο, χάνεις ζωή</div>
+
+  <div id="overlay" class="overlay">
+    <div class="card">
+      <div id="ov-stars" class="stars"></div>
+      <h2 id="ov-title"></h2>
+      <p id="ov-text"></p>
+      <button id="ov-btn" class="btn primary"></button>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
