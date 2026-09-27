@@ -174,7 +174,9 @@ function loadLevel(n) {
   }
 
   const span = Math.max(...max.map((v, i) => v - min[i])) + 1;
-  const dist = span * 1.9 + 3.5;
+  // Portrait screens have a narrow horizontal FOV, so back the camera off.
+  const aspect = window.innerWidth / window.innerHeight;
+  const dist = (span * 1.9 + 3.5) * Math.max(1, Math.sqrt(0.9 / aspect));
   camera.position.set(dist * 0.62, dist * 0.52, dist * 0.8);
   controls.target.set(0, 0, 0);
   controls.minDistance = span * 0.9 + 1;
