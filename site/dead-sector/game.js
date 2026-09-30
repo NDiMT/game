@@ -1,4 +1,5 @@
-import { TS, buildTextures, buildSprites, buildWeapons, buildFaces, mulberry32 } from './art.js';
+import { TS, buildTextures, buildSprites, mulberry32 } from './art.js';
+import { buildWeapons, buildFaces, WEAPON_W, WEAPON_H, FACE_W, FACE_H } from './viewmodels.js';
 
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -11,13 +12,17 @@ const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in win
 // ======================================================================
 // Settings
 // ======================================================================
+const SETTINGS_VERSION = 2;
+const saved = store.get('ds.settings', {});
+// v2 made aim assist gentler and turned auto-fire off; older saves start fresh on those.
+if (saved.v !== SETTINGS_VERSION) { delete saved.assist; delete saved.autofire; }
 const settings = Object.assign({
   sens: 1,
-  assist: isTouch,
-  autofire: isTouch,
+  assist: isTouch ? 1 : 0, // 0 off, 1 light, 2 strong
+  autofire: false,
   stickTurn: false,
   quality: 'auto',
-}, store.get('ds.settings', {}));
+}, saved, { v: SETTINGS_VERSION });
 const saveSettings = () => store.set('ds.settings', settings);
 
 // ======================================================================
@@ -35,7 +40,7 @@ function currentHeight() {
 
 function resize() {
   H = currentHeight();
-  HUD_H = Math.round(H * 0.16);
+  HUD_H = Math.round(H * 0.18);
   VH = H - HUD_H;
   K = H / 300;
   const aspect = window.innerWidth / window.innerHeight;
@@ -541,9 +546,13 @@ function aimTarget(maxAngle) {
 
 function updatePlayer(dt) {
   // ---- Turning ----
-  const target = settings.assist ? aimTarget(0.16) : null;
-  // Aim friction: slow the look down while the crosshair crosses a target.
-  const friction = target && Math.abs(target.diff) < target.half * 2.2 ? 0.55 : 1;
+  // Aim assist (touch only). Light: a little friction over targets and a weak
+  // pull that only acts while you are already turning. Strong: more of both.
+  const assist = isTouch ? settings.assist : 0;
+  const A = [null, { cone: 0.07, friction: 0.8, pull: 0.45 }, { cone: 0.14, friction: 0.6, pull: 1.4 }][assist];
+  const target = A ? aimTarget(A.cone) : null;
+  const turning = touch.look !== 0;
+  const friction = target && Math.abs(target.diff) < target.half * 1.6 ? A.friction : 1;
   P.a += mouseDX * 0.0026 * settings.sens;
   P.a += touch.look * lookRadiansPerPixel() * friction;
   mouseDX = 0; touch.look = 0;
@@ -555,9 +564,8 @@ function updatePlayer(dt) {
     P.a += (Math.PI * step) / 0.2;
     P.turnT -= step;
   }
-  // Aim magnetism on touch: gently pull toward a close target.
-  if (target && isTouch && P.turnT <= 0) {
-    const pull = Math.min(Math.abs(target.diff), 2.4 * dt * (1 - Math.min(1, Math.abs(target.diff) / 0.16) * 0.5));
+  if (target && turning && P.turnT <= 0) {
+    const pull = Math.min(Math.abs(target.diff), A.pull * dt);
     P.a += Math.sign(target.diff) * pull;
   }
 
@@ -594,6 +602,7 @@ function updatePlayer(dt) {
   P.recoil = Math.max(0, P.recoil - dt * 60);
   P.muzzle = Math.max(0, P.muzzle - dt);
   P.ouch = Math.max(0, P.ouch - dt);
+  P.grin = Math.max(0, (P.grin || 0) - dt);
   P.lookT -= dt;
   if (P.lookT <= 0) { P.look = [-1, 0, 0, 1][Math.random() * 4 | 0]; P.lookT = 0.8 + Math.random() * 1.5; }
 
@@ -619,7 +628,7 @@ function updatePlayer(dt) {
       }
       p.taken = got;
     }
-    if (p.taken) { pickupTint = 0.25; sfx.pickup(); }
+    if (p.taken) { pickupTint = 0.25; P.grin = 1.2; sfx.pickup(); }
   }
   pickups = pickups.filter((p) => !p.taken);
 }
@@ -918,6 +927,7 @@ function pickCard(i) {
   const c = currentCards?.[i];
   if (!c || mode !== 'cards') return;
   c.apply();
+  P.grin = 1.5;
   $('cards').hidden = true;
   currentCards = null;
   mode = 'play';
@@ -1072,7 +1082,7 @@ function openSettings(from) {
   $(from).hidden = true;
   $('set-sens').value = settings.sens;
   $('set-sens-val').textContent = settings.sens.toFixed(1);
-  $('set-assist').checked = settings.assist;
+  $('set-assist').value = String(settings.assist);
   $('set-auto').checked = settings.autofire;
   $('set-stickturn').checked = settings.stickTurn;
   $('set-quality').value = settings.quality;
@@ -1087,7 +1097,7 @@ $('set-sens').addEventListener('input', (e) => {
   $('set-sens-val').textContent = settings.sens.toFixed(1);
   saveSettings();
 });
-$('set-assist').addEventListener('change', (e) => { settings.assist = e.target.checked; saveSettings(); });
+$('set-assist').addEventListener('change', (e) => { settings.assist = +e.target.value; saveSettings(); });
 $('set-auto').addEventListener('change', (e) => { settings.autofire = e.target.checked; saveSettings(); });
 $('set-stickturn').addEventListener('change', (e) => { settings.stickTurn = e.target.checked; saveSettings(); });
 $('set-quality').addEventListener('change', (e) => { settings.quality = e.target.value; saveSettings(); resize(); });
@@ -1359,7 +1369,7 @@ function drawWeapon() {
   const w = P.weapons[P.cur];
   const art = WART[w.id][P.muzzle > 0 ? 1 : 0];
   const bx = Math.sin(P.bob) * 7 * K, by = Math.abs(Math.cos(P.bob)) * 6 * K;
-  const dw = Math.round(192 * K), dh = Math.round(144 * K);
+  const dw = Math.round(WEAPON_W * K), dh = Math.round(WEAPON_H * K);
   const x = Math.round(W / 2 - dw / 2 + bx), y = Math.round(VH - dh + 8 * K + by + P.recoil * K);
   ctx.drawImage(art, x, y, dw, dh);
   const L = Math.min(1, lightAt(P.x, P.y) + (P.muzzle > 0 ? 0.5 : 0));
@@ -1372,7 +1382,7 @@ function drawWeapon() {
 
 function drawCrosshair() {
   const cx = W >> 1, cy = VH >> 1;
-  const t = settings.assist ? aimTarget(0) : null;
+  const t = aimTarget(0);
   const on = t && Math.abs(t.diff) < t.half * 1.1;
   ctx.fillStyle = on ? 'rgba(255,80,60,0.95)' : 'rgba(255,255,255,0.75)';
   const g = Math.round(3 * K), l = Math.round(4 * K);
@@ -1481,7 +1491,7 @@ function drawHud() {
   for (const rx of [4, W - 7]) { ctx.fillStyle = '#222'; ctx.fillRect(rx, y + 4, 3, 3); ctx.fillStyle = '#9a9ea5'; ctx.fillRect(rx, y + 4, 1, 1); }
 
   const w = P.weapons[P.cur];
-  const faceW = Math.round(40 * K) + 4;
+  const faceW = Math.round(FACE_W * K) + 8;
   const sectionW = Math.floor((W - faceW - 20) / 4);
   const inner = HUD_H - 6;
   const numSize = H >= 270 ? 24 : 16;
@@ -1499,9 +1509,9 @@ function drawHud() {
   section(`${Math.ceil(P.hp)}%`, 'HEALTH', P.hp < 30 ? '#ff5050' : '#e01010');
   bevel(x, y + 3, faceW, inner);
   const lvl = P.hp > 75 ? 0 : P.hp > 50 ? 1 : P.hp > 25 ? 2 : 3;
-  const look = P.ouch > 0 ? 3 : P.look + 1;
-  const fh = Math.min(inner - 2, Math.round(42 * K)), fw = Math.round((fh * 36) / 42);
-  ctx.drawImage(FACES[lvl][look], Math.round(x + (faceW - fw) / 2), Math.round(y + 3 + (inner - fh) / 2), fw, fh);
+  const faceImg = P.ouch > 0 ? FACES[lvl][3] : P.grin > 0 ? FACES.grin[lvl] : FACES[lvl][P.look + 1];
+  const fh = Math.min(inner - 2, Math.round(FACE_H * K)), fw = Math.round((fh * FACE_W) / FACE_H);
+  ctx.drawImage(faceImg, Math.round(x + (faceW - fw) / 2), Math.round(y + 3 + (inner - fh) / 2), fw, fh);
   x += faceW + 1;
   section(`${Math.ceil(P.armor)}%`, 'ARMOR', '#e01010');
   const rw = W - x - 10;
