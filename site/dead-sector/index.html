@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Dead Sector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="screen" aria-label="Dead Sector"></canvas>
+
+  <div id="touch-area" class="touch-only"></div>
+  <div id="stick" class="stick" hidden><div id="knob" class="knob"></div></div>
+  <div class="touch-buttons touch-only">
+    <button id="t-pause" class="tbtn small" aria-label="Παύση">II</button>
+    <button id="t-swap" class="tbtn" aria-label="Αλλαγή όπλου">⇄</button>
+    <button id="t-dash" class="tbtn" aria-label="Ορμή">»</button>
+    <button id="t-fire" class="tbtn fire" aria-label="Βολή">●</button>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+  <div id="fade" class="fade"></div>
+
+  <section id="menu" class="overlay">
+    <div class="panel">
+      <h1 class="logo">DEAD<br />SECTOR</h1>
+      <p class="sub">Ο σταθμός έπεσε στις μηχανές. Καθάρισε δωμάτιο με δωμάτιο, μάζεψε αναβαθμίσεις και φτάσε όσο πιο βαθιά μπορείς.</p>
+      <button id="start" class="btn">Νέα αποστολή</button>
+      <p id="menu-controls" class="hint"></p>
+      <p id="menu-best" class="hint best"></p>
+    </div>
+  </section>
+
+  <section id="cards" class="overlay" hidden>
+    <div class="panel wide">
+      <h2>Διάλεξε αναβάθμιση</h2>
+      <div id="cards-list" class="cards"></div>
+      <p class="hint">Πλήκτρα 1–3 ή κλικ</p>
+    </div>
+  </section>
+
+  <section id="pause" class="overlay" hidden>
+    <div class="panel">
+      <h2>Παύση</h2>
+      <button id="resume" class="btn">Συνέχεια</button>
+      <p class="hint">Enter για συνέχεια</p>
+    </div>
+  </section>
+
+  <section id="dead" class="overlay" hidden>
+    <div class="panel">
+      <h2 class="red">Νεκρός</h2>
+      <div id="dead-stats" class="stats"></div>
+      <p id="dead-best" class="hint best"></p>
+      <button id="again" class="btn">Νέα αποστολή</button>
+    </div>
+  </section>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
