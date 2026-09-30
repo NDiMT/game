@@ -163,35 +163,64 @@ h2.red { color: var(--red); font-size: 28px; }
 body.touch .touch-only { display: block; }
 #touch-area { position: fixed; inset: 0; z-index: 2; }
 .stick {
-  position: fixed; width: 100px; height: 100px; border-radius: 50%;
+  position: fixed; width: 120px; height: 120px; border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.06);
   z-index: 3; pointer-events: none;
 }
 .stick[hidden] { display: none; }
 .knob {
-  position: absolute; left: 30px; top: 30px; width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
+  position: absolute; left: 36px; top: 36px; width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
 }
+/* Buttons sit above the status bar, in a thumb arc on the right. */
 body.touch .touch-buttons {
   position: fixed;
-  right: calc(16px + env(safe-area-inset-right, 0px));
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  display: grid;
-  grid-template-columns: repeat(2, 64px);
-  gap: 10px;
+  right: calc(18px + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--hud-h, 48px) + 14px);
+  width: 210px; height: 190px;
   z-index: 4;
+  pointer-events: none;
 }
 .tbtn {
-  width: 64px; height: 64px;
-  font: 18px var(--pix);
+  position: absolute;
+  pointer-events: auto;
+  width: 56px; height: 56px;
+  font: 16px var(--pix);
   color: #fff;
-  background: rgba(40, 40, 44, 0.6);
+  background: rgba(30, 30, 34, 0.55);
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-radius: 50%;
+  touch-action: none;
 }
-.tbtn.fire { background: rgba(200, 30, 20, 0.6); }
-.tbtn.small { width: 44px; height: 44px; font-size: 10px; justify-self: end; align-self: end; }
+.tbtn:active { background: rgba(255, 255, 255, 0.25); }
+.tbtn.fire { right: 0; bottom: 0; width: 96px; height: 96px; font-size: 22px; background: rgba(200, 30, 20, 0.55); }
+.tbtn.dash { right: 108px; bottom: 6px; }
+.tbtn.turn { right: 104px; bottom: 74px; }
+.tbtn.swap { right: 34px; bottom: 110px; }
+.tbtn.pause { right: 0; bottom: 176px; width: 40px; height: 40px; font-size: 10px; }
+body.touch .touch-buttons .pause { position: absolute; }
+
+.row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.btn.ghost { background: #2b2d30; box-shadow: inset -3px -3px 0 #141516, inset 3px 3px 0 #56595e, 0 0 0 2px #000; }
+
+.settings { width: 100%; display: flex; flex-direction: column; gap: 16px; text-align: left; }
+.set { display: flex; flex-direction: column; gap: 8px; font-size: 9px; line-height: 1.7; }
+.set b { color: #ffcc40; font-weight: 400; }
+.set small { display: block; margin-top: 4px; color: var(--muted); font-size: 7px; line-height: 1.7; }
+.set.check { flex-direction: row; align-items: flex-start; gap: 12px; }
+.set.check input { width: 22px; height: 22px; flex: none; accent-color: var(--red); }
+.set input[type="range"] { width: 100%; accent-color: var(--red); }
+.set select { font: 9px var(--pix); padding: 8px; background: #17181b; color: var(--ink); border: 2px solid var(--steel-hi); }
+.set[hidden] { display: none; }
+
+.rotate { z-index: 50; background: #000; }
+.phone {
+  width: 44px; height: 76px; border: 4px solid var(--ink); border-radius: 8px;
+  animation: turn 1.6s ease-in-out infinite;
+}
+@keyframes turn { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
 
 @media (prefers-reduced-motion: reduce) {
   .card, .toast, .fade { transition: none; }
+  .phone { animation: none; }
 }

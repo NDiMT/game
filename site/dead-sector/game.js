@@ -1,16 +1,45 @@
-import { THEMES, buildTextures, buildSprites, buildWeapons, buildFaces, mulberry32 } from './art.js';
+import { TS, buildTextures, buildSprites, buildWeapons, buildFaces, mulberry32 } from './art.js';
+
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
+};
+
+const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 
 // ======================================================================
-// Screen: a low-res framebuffer (Doom-like), upscaled with pixelated CSS
+// Settings
 // ======================================================================
-const H = 200, HUD_H = 32, VH = H - HUD_H;
-let W = 320;
-const canvas = document.getElementById('screen');
+const settings = Object.assign({
+  sens: 1,
+  assist: isTouch,
+  autofire: isTouch,
+  stickTurn: false,
+  quality: 'auto',
+}, store.get('ds.settings', {}));
+const saveSettings = () => store.set('ds.settings', settings);
+
+// ======================================================================
+// Screen: low-res framebuffer upscaled with pixelated CSS
+// ======================================================================
+const QUALITY = { high: 300, mid: 240, low: 200 };
+let H = 300, HUD_H = 48, VH = 252, W = 480, K = 1;
+let autoLevel = 'mid';
+const canvas = $('screen');
 let ctx, img, buf, zbuf;
 
+function currentHeight() {
+  return QUALITY[settings.quality === 'auto' ? autoLevel : settings.quality];
+}
+
 function resize() {
+  H = currentHeight();
+  HUD_H = Math.round(H * 0.16);
+  VH = H - HUD_H;
+  K = H / 300;
   const aspect = window.innerWidth / window.innerHeight;
-  W = Math.max(288, Math.min(480, Math.round((H * aspect) / 2) * 2));
+  W = Math.max(Math.round(H * 1.2), Math.min(Math.round(H * 2.4), Math.round((H * aspect) / 2) * 2));
   canvas.width = W; canvas.height = H;
   ctx = canvas.getContext('2d', { alpha: false });
   ctx.imageSmoothingEnabled = false;
@@ -20,15 +49,9 @@ function resize() {
   const scale = Math.min(window.innerWidth / W, window.innerHeight / H);
   canvas.style.width = `${Math.floor(W * scale)}px`;
   canvas.style.height = `${Math.floor(H * scale)}px`;
+  document.documentElement.style.setProperty('--hud-h', `${Math.floor(HUD_H * scale)}px`);
+  checkOrientation();
 }
-resize();
-window.addEventListener('resize', resize);
-
-const $ = (id) => document.getElementById(id);
-const store = {
-  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
-};
 
 // ======================================================================
 // Content
@@ -66,6 +89,7 @@ const AUGS = {
 };
 
 const ROOMS_PER_SECTOR = 6; // the last one is the boss
+const LM = 4; // lightmap cells per tile
 
 // ======================================================================
 // Assets
@@ -79,11 +103,12 @@ let TEX = buildTextures(0);
 // State
 // ======================================================================
 let mode = 'menu'; // menu | play | cards | transition | pause | dead
-let attract = true; // title-screen demo view until the first run starts
+let attract = true;
 let run, P, level;
 let enemies = [], projectiles = [], pickups = [], decor = [], effects = [], bolts = [];
-let pendingWaves = [], roomCleared = false, cardsShown = false;
-let flashLight = 0, hurtTint = 0, pickupTint = 0, shake = 0;
+let pendingWaves = [];
+let roomCleared = false;
+let flashLight = 0, hurtTint = 0, pickupTint = 0, shake = 0, hurtDir = null;
 let rng = Math.random;
 let best = store.get('ds.best', { depth: 0, kills: 0 });
 
@@ -92,7 +117,7 @@ function newRun() {
   P = {
     x: 0, y: 0, a: -Math.PI / 2, hp: 100, armor: 0,
     weapons: [{ id: 'pistol', lvl: 1, ammo: Infinity }], cur: 0,
-    fireCd: 0, dashT: 0, dashCd: 0, dashX: 0, dashY: 0, inv: 0,
+    fireCd: 0, dashT: 0, dashCd: 0, dashX: 0, dashY: 0, inv: 0, turnT: 0,
     bob: 0, recoil: 0, muzzle: 0, ouch: 0, look: 0, lookT: 0,
   };
   TEX = buildTextures(0);
@@ -119,71 +144,106 @@ function genRoom() {
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1;
-      map[at(x, y)] = edge ? ((((x >> 2) + (y >> 2)) & 1) ? 2 : 1) : 0;
+      if (!edge) continue;
+      const seg = ((x >> 2) + (y >> 2)) % 5;
+      map[at(x, y)] = seg === 0 ? 2 : seg === 3 ? 6 : 1;
     }
 
-  // Cut corners out for less boxy shapes, never near the center columns.
   if (!boss)
     for (let i = 0; i < 3; i++) {
       if (rng() < 0.45) continue;
-      const cw = 2 + (rng() * 4 | 0), ch = 2 + (rng() * 5 | 0);
+      const cw = 2 + (rng() * 3 | 0), ch = 2 + (rng() * 4 | 0);
       const left = rng() < 0.5;
       const x0 = left ? 1 : w - 1 - cw;
       if (left ? x0 + cw > cx - 3 : x0 < cx + 3) continue;
       const y0 = 2 + (rng() * (h - ch - 4) | 0);
-      for (let y = y0; y < y0 + ch; y++) for (let x = x0; x < x0 + cw; x++) map[at(x, y)] = 1;
+      for (let y = y0; y < y0 + ch; y++) for (let x = x0; x < x0 + cw; x++) map[at(x, y)] = 2;
     }
 
   const start = { x: cx + 0.5, y: h - 2 + 0.5 };
   const exit = { x: cx, y: 0 };
-  map[at(cx, h - 1)] = 5; // sealed entry door
+  map[at(cx, h - 1)] = 5;
   map[at(exit.x, exit.y)] = 4;
 
   const reachable = () => {
     const seen = new Uint8Array(w * h);
     const q = [at(start.x | 0, start.y | 0)];
     seen[q[0]] = 1;
-    let count = 1, found = false;
+    let found = false;
     while (q.length) {
       const i = q.pop();
       const x = i % w, y = (i / w) | 0;
       if (x === exit.x && y === exit.y + 1) found = true;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const j = at(x + dx, y + dy);
-        if (!seen[j] && map[j] === 0) { seen[j] = 1; q.push(j); count++; }
+        if (!seen[j] && map[j] === 0) { seen[j] = 1; q.push(j); }
       }
     }
-    return found ? count : 0;
+    return found;
   };
 
-  // Cover: crates and pillars, kept only if the room stays connected.
   const blocks = boss ? 5 : 5 + (rng() * 5 | 0);
   for (let i = 0; i < blocks; i++) {
     const bw = 1 + (rng() * 2 | 0), bh = 1 + (rng() * 2 | 0);
     const x0 = 2 + (rng() * (w - bw - 4) | 0), y0 = 3 + (rng() * (h - bh - 6) | 0);
     if (Math.abs(x0 - cx) < 2 && (y0 < 4 || y0 > h - 6)) continue;
-    const tile = rng() < 0.6 ? 3 : 1;
+    const tile = rng() < 0.6 ? 3 : (rng() < 0.5 ? 6 : 1);
     const saved = [];
     for (let y = y0; y < y0 + bh; y++) for (let x = x0; x < x0 + bw; x++) { saved.push([at(x, y), map[at(x, y)]]); map[at(x, y)] = tile; }
-    const before = saved.every(([, v]) => v === 0);
-    if (!before || !reachable()) for (const [j, v] of saved) map[j] = v;
+    if (!saved.every(([, v]) => v === 0) || !reachable()) for (const [j, v] of saved) map[j] = v;
   }
 
-  return { w, h, map, start, exit, open: false, flow: new Int16Array(w * h), flowFrom: -1 };
+  // Ceiling lamps on a loose grid, skipping tiles above cover.
+  const lamps = [];
+  const lampTile = new Uint8Array(w * h);
+  const ox = 1 + (rng() * 3 | 0), oy = 1 + (rng() * 3 | 0);
+  for (let y = oy; y < h - 1; y += 4)
+    for (let x = ox; x < w - 1; x += 4) {
+      if (map[at(x, y)] !== 0 || rng() < 0.2) continue;
+      lampTile[at(x, y)] = 1;
+      lamps.push({ x: x + 0.5, y: y + 0.5, i: 0.95 + rng() * 0.25, r: 5.5 });
+    }
+  lamps.push({ x: exit.x + 0.5, y: 1.2, i: 0.35, r: 3 });
+
+  const lvl = { w, h, map, start, exit, open: false, flow: new Int16Array(w * h), flowFrom: -1, lamps, lampTile };
+  bakeLight(lvl);
+  return lvl;
+}
+
+// Static lightmap with soft occlusion; dynamic lights are added per frame.
+function bakeLight(lvl) {
+  const lw = lvl.w * LM, lh = lvl.h * LM;
+  const light = new Float32Array(lw * lh);
+  const prev = level;
+  level = lvl; // rayWall reads the current level
+  for (let j = 0; j < lh; j++)
+    for (let i = 0; i < lw; i++) {
+      const x = (i + 0.5) / LM, y = (j + 0.5) / LM;
+      let L = 0.13;
+      for (const l of lvl.lamps) {
+        const dx = x - l.x, dy = y - l.y, d = Math.hypot(dx, dy);
+        if (d >= l.r) continue;
+        let a = Math.pow(1 - d / l.r, 1.5) * l.i;
+        if (d > 0.3 && rayWall(l.x, l.y, dx / d, dy / d, d) < d - 0.15) a *= 0.18;
+        L += a;
+      }
+      light[j * lw + i] = L;
+    }
+  level = prev;
+  lvl.lw = lw; lvl.lh = lh; lvl.light = light; lvl.dyn = new Float32Array(light.length);
 }
 
 function enterRoom() {
   rng = mulberry32((Date.now() ^ (run.depth * 7919)) >>> 0);
   level = genRoom();
   enemies = []; projectiles = []; pickups = []; decor = []; effects = []; bolts = [];
-  roomCleared = false; cardsShown = false;
+  roomCleared = false;
   P.x = level.start.x; P.y = level.start.y; P.a = -Math.PI / 2;
   P.dashT = 0; P.inv = 1.0;
 
-  // Waves
   const depth = run.depth + (run.sector - 1) * 2;
   if (isBossRoom()) {
-    pendingWaves = [{ list: ['boss'], at: 0 }];
+    pendingWaves = [{ list: ['boss'] }];
   } else {
     const types = ['drone', 'grunt'];
     if (depth >= 2) types.push('charger');
@@ -196,7 +256,7 @@ function enterRoom() {
       budget -= ENEMIES[t].cost;
     }
     const cut = Math.ceil(list.length * 0.55);
-    pendingWaves = [{ list: list.slice(0, cut), at: 0 }, { list: list.slice(cut), at: 1 }];
+    pendingWaves = [{ list: list.slice(0, cut) }, { list: list.slice(cut) }];
   }
   spawnWave();
   const label = isBossRoom() ? 'Φύλακας του τομέα' : `Δωμάτιο ${run.room}/${ROOMS_PER_SECTOR}`;
@@ -214,19 +274,23 @@ function freeTileFarFromPlayer(minDist) {
   return { x: level.w / 2, y: 2.5 };
 }
 
+function makeEnemy(type, pos, spawnT, hpMul = 1) {
+  const d = ENEMIES[type];
+  return {
+    type, d, x: pos.x, y: pos.y, hp: d.hp * hpMul, maxHp: d.hp * hpMul,
+    cd: 1 + rng() * 1.5, spawnT, anim: rng() * 10, shootT: 0, hurt: 0,
+    burnT: 0, burnDps: 0, slowT: 0, slow: 0, los: false, losT: 0, strafe: rng() < 0.5 ? 1 : -1,
+    phase: 0, spawnedAdds: false,
+  };
+}
+
 function spawnWave() {
   const wave = pendingWaves.shift();
   if (!wave) return;
   const hpMul = 1 + run.depth * 0.1 + (run.sector - 1) * 0.35;
   wave.list.forEach((type, i) => {
-    const d = ENEMIES[type];
     const pos = type === 'boss' ? { x: level.w / 2, y: 4.5 } : freeTileFarFromPlayer(5);
-    const e = {
-      type, d, x: pos.x, y: pos.y, hp: d.hp * hpMul, maxHp: d.hp * hpMul,
-      cd: 1 + rng() * 1.5, spawnT: 0.6 + i * 0.12, anim: rng() * 10, shootT: 0, hurt: 0,
-      burnT: 0, burnDps: 0, slowT: 0, slow: 0, los: false, losT: 0, strafe: rng() < 0.5 ? 1 : -1,
-      phase: 0, spawnedAdds: false,
-    };
+    const e = makeEnemy(type, pos, 0.6 + i * 0.12, hpMul);
     enemies.push(e);
     effects.push({ kind: 'beam', x: e.x, y: e.y, t: 0, dur: 0.7 });
   });
@@ -242,7 +306,6 @@ function tileAt(x, y) {
   return level.map[ty * level.w + tx];
 }
 
-// Returns the blocking tile value for a circle at (x, y), or 0.
 function blockedAt(x, y, r) {
   return tileAt(x - r, y - r) || tileAt(x + r, y - r) || tileAt(x - r, y + r) || tileAt(x + r, y + r);
 }
@@ -275,6 +338,12 @@ function hasLOS(x0, y0, x1, y1) {
   return rayWall(x0, y0, dx / d, dy / d, d + 1) >= d - 0.05;
 }
 
+function lightAt(x, y) {
+  const i = Math.floor(x * LM), j = Math.floor(y * LM);
+  if (i < 0 || j < 0 || i >= level.lw || j >= level.lh) return 0.13;
+  return level.dyn[j * level.lw + i];
+}
+
 function updateFlow(force = false) {
   const { w, h, map, flow } = level;
   const pi = Math.floor(P.y) * w + Math.floor(P.x);
@@ -301,21 +370,22 @@ function updateFlow(force = false) {
 // ======================================================================
 const keys = new Set();
 let mouseDX = 0, mouseDown = false, wantDash = false;
-const isTouch = matchMedia('(pointer: coarse)').matches;
-const touch = { mx: 0, my: 0, look: 0, fire: false, stickId: null, lookId: null, lookX: 0 };
+const touch = { mx: 0, my: 0, look: 0, fire: false, stickId: null, lookId: null, fireId: null, lastX: 0, sx: 0, sy: 0 };
 
 window.addEventListener('keydown', (e) => {
   keys.add(e.code);
+  const settingsOpen = !$('settings').hidden;
   if (mode === 'play') {
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'Space') { wantDash = true; e.preventDefault(); }
-    if (e.code.startsWith('Digit')) selectWeapon(+e.code.slice(5) - 1);
+    if (/^Digit[1-9]$/.test(e.code)) selectWeapon(+e.code.slice(5) - 1);
     if (e.code === 'KeyQ') cycleWeapon(1);
+    if (e.code === 'KeyE') quickTurn();
     if (e.code === 'Tab') e.preventDefault();
   } else if (mode === 'cards' && /^Digit[123]$/.test(e.code)) {
     pickCard(+e.code.slice(5) - 1);
-  } else if ((mode === 'menu' || mode === 'dead') && e.code === 'Enter') {
+  } else if ((mode === 'menu' || mode === 'dead') && e.code === 'Enter' && !settingsOpen) {
     startRun();
-  } else if (mode === 'pause' && e.code === 'Enter') {
+  } else if (mode === 'pause' && e.code === 'Enter' && !settingsOpen) {
     resume();
   }
 });
@@ -323,8 +393,8 @@ window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => { keys.clear(); mouseDown = false; });
 
 canvas.addEventListener('mousedown', (e) => {
-  if (mode !== 'play') return;
-  if (!isTouch && document.pointerLockElement !== canvas) { lockPointer(); return; }
+  if (mode !== 'play' || isTouch) return;
+  if (document.pointerLockElement !== canvas) { lockPointer(); return; }
   if (e.button === 0) mouseDown = true;
 });
 window.addEventListener('mouseup', (e) => { if (e.button === 0) mouseDown = false; });
@@ -337,7 +407,6 @@ function lockPointer() {
   if (isTouch) return;
   try { const r = canvas.requestPointerLock?.(); r?.catch?.(() => {}); } catch { /* ignore */ }
 }
-// Unlocks we cause ourselves (cards, death) must not pause the game once play resumes.
 let expectUnlock = false;
 function releasePointer() {
   if (document.pointerLockElement === canvas) { expectUnlock = true; document.exitPointerLock?.(); }
@@ -348,60 +417,97 @@ document.addEventListener('pointerlockchange', () => {
   if (!isTouch && mode === 'play') pause();
 });
 
-// Touch: left half = move stick, right half = look, plus buttons.
+// ---- Touch ----
+// Left 40%: floating move stick. Anywhere else: drag to turn.
+// The fire button also turns while you drag on it, so one thumb can aim and shoot.
+function lookRadiansPerPixel() {
+  return (Math.PI * 1.15 * settings.sens) / Math.max(320, window.innerWidth);
+}
+
 function setupTouch() {
   if (!isTouch) return;
   document.body.classList.add('touch');
   const stick = $('stick'), knob = $('knob');
   const area = $('touch-area');
+  const R = 46;
   area.addEventListener('touchstart', (e) => {
     for (const t of e.changedTouches) {
-      if (t.clientX < window.innerWidth * 0.45 && touch.stickId === null) {
+      if (t.clientX < window.innerWidth * 0.4 && touch.stickId === null) {
         touch.stickId = t.identifier;
         touch.sx = t.clientX; touch.sy = t.clientY;
-        stick.style.left = `${t.clientX - 50}px`; stick.style.top = `${t.clientY - 50}px`;
+        stick.style.left = `${t.clientX - 60}px`; stick.style.top = `${t.clientY - 60}px`;
         stick.hidden = false;
       } else if (touch.lookId === null) {
-        touch.lookId = t.identifier; touch.lookX = t.clientX;
+        touch.lookId = t.identifier; touch.lastX = t.clientX;
       }
     }
     e.preventDefault();
   }, { passive: false });
-  area.addEventListener('touchmove', (e) => {
+  const move = (e) => {
     for (const t of e.changedTouches) {
       if (t.identifier === touch.stickId) {
         let dx = t.clientX - touch.sx, dy = t.clientY - touch.sy;
-        const d = Math.hypot(dx, dy), m = 40;
-        if (d > m) { dx *= m / d; dy *= m / d; }
-        touch.mx = dx / m; touch.my = dy / m;
+        const d = Math.hypot(dx, dy);
+        // The stick follows the thumb when it drifts past the edge.
+        if (d > R) {
+          touch.sx += (dx / d) * (d - R); touch.sy += (dy / d) * (d - R);
+          dx = (dx / d) * R; dy = (dy / d) * R;
+          stick.style.left = `${touch.sx - 60}px`; stick.style.top = `${touch.sy - 60}px`;
+        }
+        // Small dead zone, then a gentle curve for fine control.
+        const mag = Math.min(1, Math.hypot(dx, dy) / R);
+        const curved = mag < 0.12 ? 0 : Math.pow((mag - 0.12) / 0.88, 1.3);
+        const ang = Math.atan2(dy, dx);
+        touch.mx = Math.cos(ang) * curved; touch.my = Math.sin(ang) * curved;
         knob.style.transform = `translate(${dx}px, ${dy}px)`;
-      } else if (t.identifier === touch.lookId) {
-        touch.look += (t.clientX - touch.lookX) * 2.2;
-        touch.lookX = t.clientX;
+      } else if (t.identifier === touch.lookId || t.identifier === touch.fireId) {
+        touch.look += t.clientX - touch.lastX;
+        touch.lastX = t.clientX;
       }
     }
     e.preventDefault();
-  }, { passive: false });
+  };
   const end = (e) => {
     for (const t of e.changedTouches) {
       if (t.identifier === touch.stickId) {
         touch.stickId = null; touch.mx = touch.my = 0;
         knob.style.transform = ''; stick.hidden = true;
       } else if (t.identifier === touch.lookId) touch.lookId = null;
+      if (t.identifier === touch.fireId) { touch.fireId = null; touch.fire = false; }
     }
   };
-  area.addEventListener('touchend', end);
-  area.addEventListener('touchcancel', end);
-  const hold = (el, on, off) => {
-    el.addEventListener('touchstart', (e) => { on(); e.preventDefault(); e.stopPropagation(); }, { passive: false });
-    el.addEventListener('touchend', (e) => { off?.(); e.preventDefault(); });
-  };
-  hold($('t-fire'), () => { touch.fire = true; }, () => { touch.fire = false; });
-  hold($('t-dash'), () => { wantDash = true; });
-  hold($('t-swap'), () => cycleWeapon(1));
-  hold($('t-pause'), () => pause());
+  for (const el of [area, $('t-fire')]) {
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+  }
+  $('t-fire').addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    touch.fireId = t.identifier; touch.fire = true; touch.lastX = t.clientX;
+    touch.lookId = null;
+    e.preventDefault(); e.stopPropagation();
+  }, { passive: false });
+  const tap = (el, fn) => el.addEventListener('touchstart', (e) => { fn(); e.preventDefault(); e.stopPropagation(); }, { passive: false });
+  tap($('t-dash'), () => { wantDash = true; });
+  tap($('t-swap'), () => cycleWeapon(1));
+  tap($('t-turn'), quickTurn);
+  tap($('t-pause'), pause);
 }
-setupTouch();
+
+// ---- Orientation (touch devices play in landscape) ----
+function checkOrientation() {
+  const portrait = isTouch && window.innerHeight > window.innerWidth;
+  $('rotate').hidden = !portrait;
+  if (portrait && mode === 'play') pause();
+}
+
+async function goFullscreenLandscape() {
+  if (!isTouch) return;
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
+  } catch { /* not allowed */ }
+  try { await screen.orientation?.lock?.('landscape'); } catch { /* iOS and some browsers */ }
+}
 
 // ======================================================================
 // Player
@@ -412,22 +518,58 @@ function selectWeapon(i) {
 function cycleWeapon(dir) {
   selectWeapon((P.cur + dir + P.weapons.length) % P.weapons.length);
 }
+function quickTurn() {
+  if (mode === 'play' && P.turnT <= 0) { P.turnT = 0.2; sfx.swap(); }
+}
+
+// Visible enemy closest to the crosshair: { e, diff, dist, half } or null.
+function aimTarget(maxAngle) {
+  let best = null;
+  for (const e of enemies) {
+    if (e.dead || e.spawnT > 0 || !e.los) continue;
+    const dx = e.x - P.x, dy = e.y - P.y, dist = Math.hypot(dx, dy);
+    if (dist > 18) continue;
+    let diff = Math.atan2(dy, dx) - P.a;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    const half = Math.atan2(e.d.r, dist);
+    const score = Math.abs(diff) - half;
+    if (score > maxAngle) continue;
+    if (!best || score < best.score) best = { e, diff, dist, half, score };
+  }
+  return best;
+}
 
 function updatePlayer(dt) {
-  // Turning
-  const sens = 0.0026;
-  P.a += mouseDX * sens + touch.look * 0.004;
+  // ---- Turning ----
+  const target = settings.assist ? aimTarget(0.16) : null;
+  // Aim friction: slow the look down while the crosshair crosses a target.
+  const friction = target && Math.abs(target.diff) < target.half * 2.2 ? 0.55 : 1;
+  P.a += mouseDX * 0.0026 * settings.sens;
+  P.a += touch.look * lookRadiansPerPixel() * friction;
   mouseDX = 0; touch.look = 0;
   if (keys.has('ArrowLeft')) P.a -= 2.8 * dt;
   if (keys.has('ArrowRight')) P.a += 2.8 * dt;
+  if (settings.stickTurn && isTouch) P.a += touch.mx * 3.0 * dt;
+  if (P.turnT > 0) {
+    const step = Math.min(P.turnT, dt);
+    P.a += (Math.PI * step) / 0.2;
+    P.turnT -= step;
+  }
+  // Aim magnetism on touch: gently pull toward a close target.
+  if (target && isTouch && P.turnT <= 0) {
+    const pull = Math.min(Math.abs(target.diff), 2.4 * dt * (1 - Math.min(1, Math.abs(target.diff) / 0.16) * 0.5));
+    P.a += Math.sign(target.diff) * pull;
+  }
 
+  // ---- Movement ----
   const dirX = Math.cos(P.a), dirY = Math.sin(P.a);
   let fwd = 0, side = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) fwd += 1;
   if (keys.has('KeyS') || keys.has('ArrowDown')) fwd -= 1;
   if (keys.has('KeyD')) side += 1;
   if (keys.has('KeyA')) side -= 1;
-  fwd -= touch.my; side += touch.mx;
+  fwd -= touch.my;
+  if (!(settings.stickTurn && isTouch)) side += touch.mx;
   let mx = dirX * fwd - dirY * side, my = dirY * fwd + dirX * side;
   const len = Math.hypot(mx, my);
   if (len > 1) { mx /= len; my /= len; }
@@ -444,8 +586,7 @@ function updatePlayer(dt) {
 
   let vx = mx * speed, vy = my * speed;
   if (P.dashT > 0) { P.dashT -= dt; vx = P.dashX * 17; vy = P.dashY * 17; }
-  const steps = 3;
-  for (let i = 0; i < steps; i++) if (moveCircle(P, (vx * dt) / steps, (vy * dt) / steps, 0.24, true)) return;
+  for (let i = 0; i < 3; i++) if (moveCircle(P, (vx * dt) / 3, (vy * dt) / 3, 0.24, true)) return;
 
   const moving = Math.hypot(vx, vy) > 0.5;
   P.bob += dt * (moving ? 10 : 2);
@@ -456,12 +597,16 @@ function updatePlayer(dt) {
   P.lookT -= dt;
   if (P.lookT <= 0) { P.look = [-1, 0, 0, 1][Math.random() * 4 | 0]; P.lookT = 0.8 + Math.random() * 1.5; }
 
-  // Shooting
+  // ---- Shooting ----
   P.fireCd -= dt;
-  const trigger = mouseDown || touch.fire || keys.has('ControlLeft') || keys.has('KeyF');
+  let trigger = mouseDown || touch.fire || keys.has('ControlLeft') || keys.has('KeyF');
+  if (!trigger && settings.autofire && isTouch) {
+    const t = aimTarget(0);
+    if (t && Math.abs(t.diff) < t.half * 1.1) trigger = true;
+  }
   if (trigger && P.fireCd <= 0) fire();
 
-  // Pickups
+  // ---- Pickups ----
   for (const p of pickups) {
     if (p.taken || Math.hypot(p.x - P.x, p.y - P.y) > 0.6) continue;
     if (p.kind === 'health' && P.hp < run.maxHp) { P.hp = Math.min(run.maxHp, P.hp + 15); p.taken = true; }
@@ -482,16 +627,12 @@ function updatePlayer(dt) {
 function fire() {
   const w = P.weapons[P.cur];
   const def = WEAPONS[w.id];
-  if (w.ammo <= 0) {
-    // Out of ammo: fall back to the pistol.
-    selectWeapon(0);
-    return;
-  }
+  if (w.ammo <= 0) { selectWeapon(0); return; }
   if (w.ammo !== Infinity) w.ammo--;
   P.fireCd = def.rate / rateMul();
   P.muzzle = 0.07;
   P.recoil = w.id === 'shotgun' || w.id === 'rocket' ? 10 : 5;
-  flashLight = 0.28;
+  flashLight = 0.9;
   sfx[def.sfx]();
   const dmg = def.dmg * (1 + 0.25 * (w.lvl - 1)) * dmgMul();
   for (let i = 0; i < def.pellets; i++) {
@@ -502,10 +643,10 @@ function fire() {
       projectiles.push({
         x: P.x + dx * 0.3, y: P.y + dy * 0.3, vx: dx * def.speed, vy: dy * def.speed,
         dmg, owner: 'player', sprite: def.sprite, splash: def.splash || 0, life: 3, z: 0.38, h: 0.2,
+        light: def.sprite === 'plasma' ? 0.5 : 0.6,
       });
     }
   }
-  // Noise wakes up nothing in particular, but it does make enemies re-check LOS sooner.
   for (const e of enemies) e.losT = Math.min(e.losT, 0.05);
 }
 
@@ -526,7 +667,7 @@ function hitscan(ang, dmg) {
   if (best) damageEnemy(best, dmg, true);
 }
 
-function damagePlayer(amount) {
+function damagePlayer(amount, fromX, fromY) {
   if (P.inv > 0 || mode !== 'play') return;
   if (P.armor > 0) {
     const absorbed = Math.min(P.armor, Math.round(amount / 3));
@@ -535,8 +676,9 @@ function damagePlayer(amount) {
   }
   P.hp -= amount;
   P.ouch = 0.5;
-  hurtTint = Math.min(0.6, hurtTint + amount / 40);
+  hurtTint = Math.min(0.55, hurtTint + amount / 40);
   shake = Math.min(6, shake + amount / 4);
+  if (fromX !== undefined) hurtDir = { a: Math.atan2(fromY - P.y, fromX - P.x), t: 0.9 };
   sfx.hurt();
   if (P.hp <= 0) { P.hp = 0; die(); }
 }
@@ -597,16 +739,16 @@ function explode(x, y, radius, dmg, fromPlayer, skip) {
   }
   if (!fromPlayer) {
     const d = Math.hypot(P.x - x, P.y - y);
-    if (d < radius) damagePlayer(dmg * (1 - d / radius));
+    if (d < radius) damagePlayer(dmg * (1 - d / radius), x, y);
   }
 }
 
-function enemyShoot(e, ang, speed = 7, sprite = 'bolt') {
+function enemyShoot(e, ang, speed = 7) {
   const dmgMulE = 1 + run.depth * 0.04 + (run.sector - 1) * 0.15;
   projectiles.push({
     x: e.x + Math.cos(ang) * (e.d.r + 0.1), y: e.y + Math.sin(ang) * (e.d.r + 0.1),
-    vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
-    dmg: e.d.dmg * dmgMulE, owner: 'enemy', sprite, splash: 0, life: 5, z: e.d.z + e.d.h * 0.45, h: 0.22,
+    vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, ox: e.x, oy: e.y,
+    dmg: e.d.dmg * dmgMulE, owner: 'enemy', sprite: 'bolt', splash: 0, life: 5, z: e.d.z + e.d.h * 0.45, h: 0.24, light: 0.35,
   });
 }
 
@@ -633,7 +775,6 @@ function updateEnemies(dt) {
     e.losT -= dt;
     if (e.losT <= 0) { e.los = hasLOS(e.x, e.y, P.x, P.y); e.losT = 0.2 + Math.random() * 0.1; }
 
-    // Movement
     let mx = 0, my = 0, spd = e.d.speed * slowMul;
     if (e.type === 'charger' && e.los && dist < 7) {
       mx = dx / dist; my = dy / dist; spd *= 2.3;
@@ -654,7 +795,6 @@ function updateEnemies(dt) {
       const ddx = bx - e.x, ddy = by - e.y, dl = Math.hypot(ddx, ddy);
       if (dl > 0.01) { mx = ddx / dl; my = ddy / dl; }
     }
-    // Separation
     for (const o of enemies) {
       if (o === e || o.dead) continue;
       const sx = e.x - o.x, sy = e.y - o.y, sd = Math.hypot(sx, sy), min = e.d.r + o.d.r;
@@ -662,13 +802,12 @@ function updateEnemies(dt) {
     }
     moveCircle(e, mx * spd * dt, my * spd * dt, e.d.r * 0.9, false);
 
-    // Attacks
     e.cd -= dt * slowMul;
     if (e.cd > 0) continue;
     const ang = Math.atan2(dy, dx);
     if (e.d.attack === 'melee') {
       if (dist < e.d.range) {
-        damagePlayer(e.d.dmg * (1 + run.depth * 0.04));
+        damagePlayer(e.d.dmg * (1 + run.depth * 0.04), e.x, e.y);
         e.cd = e.d.cd; e.shootT = 0.2;
         sfx.melee();
       }
@@ -705,7 +844,7 @@ function bossAttack(e, ang) {
   sfx.enemyShot();
   if (rage && !e.spawnedAdds) {
     e.spawnedAdds = true;
-    pendingWaves.push({ list: ['drone', 'drone', 'drone', 'grunt'], at: 0 });
+    pendingWaves.push({ list: ['drone', 'drone', 'drone', 'grunt'] });
     spawnWave();
     toast('Ο φύλακας καλεί ενισχύσεις!');
   }
@@ -714,9 +853,8 @@ function bossAttack(e, ang) {
 function updateProjectiles(dt) {
   for (const p of projectiles) {
     p.life -= dt;
-    const steps = 4;
-    for (let i = 0; i < steps && p.life > 0; i++) {
-      p.x += (p.vx * dt) / steps; p.y += (p.vy * dt) / steps;
+    for (let i = 0; i < 4 && p.life > 0; i++) {
+      p.x += (p.vx * dt) / 4; p.y += (p.vy * dt) / 4;
       if (tileAt(p.x, p.y)) {
         p.life = 0;
         if (p.splash) explode(p.x - p.vx * 0.01, p.y - p.vy * 0.01, p.splash, p.dmg, p.owner === 'player');
@@ -724,7 +862,7 @@ function updateProjectiles(dt) {
         break;
       }
       if (p.owner === 'enemy') {
-        if (Math.hypot(p.x - P.x, p.y - P.y) < 0.3) { damagePlayer(p.dmg); p.life = 0; }
+        if (Math.hypot(p.x - P.x, p.y - P.y) < 0.3) { damagePlayer(p.dmg, p.ox, p.oy); p.life = 0; }
       } else {
         for (const e of enemies) {
           if (e.dead || e.spawnT > 0) continue;
@@ -757,34 +895,33 @@ function checkRoom() {
   }
 }
 
+let currentCards = null;
 function showCards() {
   if (mode !== 'play') return;
-  const cards = makeCards();
+  currentCards = makeCards();
   mode = 'cards';
   releasePointer();
   mouseDown = false; touch.fire = false;
   const root = $('cards-list');
   root.innerHTML = '';
-  cards.forEach((c, i) => {
+  currentCards.forEach((c, i) => {
     const b = document.createElement('button');
     b.className = `card tag-${c.kind}`;
     b.innerHTML = `<span class="card-key">${i + 1}</span><span class="card-tag">${c.tag}</span><strong>${c.title}</strong><span class="card-desc">${c.desc}</span>`;
     b.addEventListener('click', () => pickCard(i));
     root.appendChild(b);
   });
-  showCards.current = cards;
   $('cards').hidden = false;
 }
 
 function pickCard(i) {
-  const c = showCards.current?.[i];
+  const c = currentCards?.[i];
   if (!c || mode !== 'cards') return;
   c.apply();
   $('cards').hidden = true;
-  showCards.current = null;
+  currentCards = null;
   mode = 'play';
   level.open = true;
-  level.map[level.exit.y * level.w + level.exit.x] = 4;
   sfx.door();
   toast('Η έξοδος άνοιξε — προχώρα στην πράσινη πόρτα');
   lockPointer();
@@ -809,9 +946,7 @@ function makeCards() {
   const missing = EXTRA_WEAPONS.filter((id) => !owned.includes(id));
   if (missing.length) {
     const id = missing[Math.random() * missing.length | 0];
-    const replace = P.weapons.length >= 3
-      ? P.weapons.slice(1).reduce((a, b) => (b.lvl < a.lvl ? b : a))
-      : null;
+    const replace = P.weapons.length >= 3 ? P.weapons.slice(1).reduce((a, b) => (b.lvl < a.lvl ? b : a)) : null;
     pool.push({
       w: P.weapons.length === 1 ? 6 : 3,
       card: {
@@ -888,25 +1023,29 @@ function nextRoom() {
 }
 
 // ======================================================================
-// Modes
+// Modes and menus
 // ======================================================================
 function startRun() {
   sfx.init();
+  goFullscreenLandscape();
   attract = false;
   newRun();
-  $('menu').hidden = true; $('dead').hidden = true; $('pause').hidden = true; $('cards').hidden = true;
+  for (const id of ['menu', 'dead', 'pause', 'cards', 'settings']) $(id).hidden = true;
   mode = 'play';
   lockPointer();
+  checkOrientation();
 }
 function pause() {
   if (mode !== 'play') return;
   mode = 'pause';
-  mouseDown = false; touch.fire = false;
+  mouseDown = false; touch.fire = false; touch.fireId = null;
   $('pause').hidden = false;
 }
 function resume() {
+  if (isTouch && window.innerHeight > window.innerWidth) return;
   $('pause').hidden = true;
   mode = 'play';
+  goFullscreenLandscape();
   lockPointer();
 }
 function die() {
@@ -926,13 +1065,44 @@ function die() {
   sfx.playerDeath();
 }
 
+// ---- Settings panel ----
+let settingsReturn = null;
+function openSettings(from) {
+  settingsReturn = from;
+  $(from).hidden = true;
+  $('set-sens').value = settings.sens;
+  $('set-sens-val').textContent = settings.sens.toFixed(1);
+  $('set-assist').checked = settings.assist;
+  $('set-auto').checked = settings.autofire;
+  $('set-stickturn').checked = settings.stickTurn;
+  $('set-quality').value = settings.quality;
+  $('settings').hidden = false;
+}
+function closeSettings() {
+  $('settings').hidden = true;
+  if (settingsReturn) $(settingsReturn).hidden = false;
+}
+$('set-sens').addEventListener('input', (e) => {
+  settings.sens = +e.target.value;
+  $('set-sens-val').textContent = settings.sens.toFixed(1);
+  saveSettings();
+});
+$('set-assist').addEventListener('change', (e) => { settings.assist = e.target.checked; saveSettings(); });
+$('set-auto').addEventListener('change', (e) => { settings.autofire = e.target.checked; saveSettings(); });
+$('set-stickturn').addEventListener('change', (e) => { settings.stickTurn = e.target.checked; saveSettings(); });
+$('set-quality').addEventListener('change', (e) => { settings.quality = e.target.value; saveSettings(); resize(); });
+$('settings-close').addEventListener('click', closeSettings);
+$('menu-settings').addEventListener('click', () => openSettings('menu'));
+$('pause-settings').addEventListener('click', () => openSettings('pause'));
+if (!isTouch) for (const el of document.querySelectorAll('.touch-setting')) el.hidden = true;
+
 $('start').addEventListener('click', startRun);
 $('again').addEventListener('click', startRun);
 $('resume').addEventListener('click', resume);
 if (best.depth) $('menu-best').textContent = `Ρεκόρ: ${best.depth} δωμάτια · ${best.kills} εξουδετερώσεις`;
 $('menu-controls').textContent = isTouch
-  ? 'Αριστερά: κίνηση · Δεξιά: σύρε για να γυρίσεις · Κουμπιά: βολή, ορμή, όπλο'
-  : 'WASD κίνηση · Ποντίκι σκόπευση · Κλικ βολή · Shift/Space ορμή · 1–3 / Q όπλα · Esc παύση';
+  ? 'Αριστερά: κίνηση · Σύρε οπουδήποτε δεξιά για να στρίψεις · Το κουμπί βολής στρίβει κι αυτό όταν το σέρνεις · ⟲ γύρισμα 180°'
+  : 'WASD κίνηση · Ποντίκι σκόπευση · Κλικ βολή · Shift/Space ορμή · E γύρισμα 180° · 1–3 / Q όπλα · Esc παύση';
 
 let toastTimer = 0;
 function toast(msg) {
@@ -946,41 +1116,67 @@ function toast(msg) {
 // ======================================================================
 // Rendering
 // ======================================================================
-const PLANE = () => 0.66 * (W / VH) / (320 / VH);
+const plane = () => 0.66 * (W / VH) / (320 / 168);
+
+function updateDynamicLight() {
+  const { light, dyn, lw, lh } = level;
+  dyn.set(light);
+  const add = (x, y, I, r) => {
+    const i0 = Math.max(0, Math.floor((x - r) * LM)), i1 = Math.min(lw - 1, Math.ceil((x + r) * LM));
+    const j0 = Math.max(0, Math.floor((y - r) * LM)), j1 = Math.min(lh - 1, Math.ceil((y + r) * LM));
+    for (let j = j0; j <= j1; j++)
+      for (let i = i0; i <= i1; i++) {
+        const d = Math.hypot((i + 0.5) / LM - x, (j + 0.5) / LM - y);
+        if (d < r) dyn[j * lw + i] += I * (1 - d / r) * (1 - d / r);
+      }
+  };
+  if (flashLight > 0.05) add(P.x + Math.cos(P.a) * 0.6, P.y + Math.sin(P.a) * 0.6, flashLight * 0.8, 4.5);
+  for (const p of projectiles) add(p.x, p.y, p.light, 2.2);
+  for (const fx of effects) {
+    if (fx.kind === 'explosion') add(fx.x, fx.y, 1.6 * (1 - fx.t / fx.dur), fx.size * 3 + 1);
+    else if (fx.kind === 'beam') add(fx.x, fx.y, 0.8 * (1 - fx.t / fx.dur), 2.5);
+  }
+  if (level.open) add(level.exit.x + 0.5, 1.1, 0.5 + Math.sin(run.time * 4) * 0.15, 3);
+}
 
 function render() {
+  updateDynamicLight();
   const t = TEX;
   const [fr, fg, fb] = t.theme.fog;
   const dirX = Math.cos(P.a), dirY = Math.sin(P.a);
-  const pl = PLANE();
+  const pl = plane();
   const planeX = -dirY * pl, planeY = dirX * pl;
-  const light = Math.min(0.35, flashLight);
   const half = VH / 2;
-  const shadeF = (d) => { const f = 1.05 - d * 0.075 + light; return f < 0.1 ? 0.1 : f > 1 ? 1 : f; };
+  const { dyn, lw, lampTile, map, w: mw, h: mh } = level;
+  const TM = TS - 1;
 
   // ---- Floor and ceiling ----
-  const floor = t.floor.data, ceil = t.ceil.data;
+  const floor = t.floor.data, ceil = t.ceil.data, ceilL = t.ceilLamp.data;
   const rx0 = dirX - planeX, ry0 = dirY - planeY, rx1 = dirX + planeX, ry1 = dirY + planeY;
-  for (let y = (half | 0) + 1; y < VH; y++) {
-    const p = y - half;
-    const rowDist = half / p;
-    const f = shadeF(rowDist), inv = 1 - f;
+  for (let y = Math.floor(half) + 1; y < VH; y++) {
+    const rowDist = half / (y - half);
+    const att = 1 - Math.min(0.7, rowDist * 0.04);
     const stepX = (rowDist * (rx1 - rx0)) / W, stepY = (rowDist * (ry1 - ry0)) / W;
     let fx = P.x + rowDist * rx0, fy = P.y + rowDist * ry0;
     const rowF = y * W, rowC = (VH - 1 - y) * W;
+    const attI = att * 256;
     for (let x = 0; x < W; x++) {
-      const tx = ((fx - Math.floor(fx)) * 64) & 63, ty = ((fy - Math.floor(fy)) * 64) & 63;
+      // Positions inside the room are positive, so |0 is a fast floor.
+      const cx = fx | 0, cy = fy | 0;
+      const ti = ((((fy - cy) * TS) & TM) << 7) | (((fx - cx) * TS) & TM);
+      let fi = ((dyn[((fy * LM) | 0) * lw + ((fx * LM) | 0)] || 0.1) * attI) | 0;
+      if (fi > 256) fi = 256;
+      const ii = 256 - fi, fR = fr * ii, fG = fg * ii, fB = fb * ii;
       fx += stepX; fy += stepY;
-      const ti = (ty << 6) | tx;
       let c = floor[ti];
-      buf[rowF + x] = 0xff000000 | ((((c >> 16) & 255) * f + fb * inv) << 16) | ((((c >> 8) & 255) * f + fg * inv) << 8) | ((c & 255) * f + fr * inv);
-      c = ceil[ti];
-      buf[rowC + x] = 0xff000000 | ((((c >> 16) & 255) * f + fb * inv) << 16) | ((((c >> 8) & 255) * f + fg * inv) << 8) | ((c & 255) * f + fr * inv);
+      buf[rowF + x] = 0xff000000 | (((((c >> 16) & 255) * fi + fB) >> 8) << 16) | (((((c >> 8) & 255) * fi + fG) >> 8) << 8) | (((c & 255) * fi + fR) >> 8);
+      c = (cx < mw && cy < mh && lampTile[cy * mw + cx]) ? ceilL[ti] : ceil[ti];
+      if ((c >>> 24) === 254) buf[rowC + x] = c | 0xff000000;
+      else buf[rowC + x] = 0xff000000 | (((((c >> 16) & 255) * fi + fB) >> 8) << 16) | (((((c >> 8) & 255) * fi + fG) >> 8) << 8) | (((c & 255) * fi + fR) >> 8);
     }
   }
 
   // ---- Walls ----
-  const { map, w: mw, h: mh } = level;
   for (let x = 0; x < W; x++) {
     const cam = (2 * x) / W - 1;
     const rdx = dirX + planeX * cam, rdy = dirY + planeY * cam;
@@ -1000,22 +1196,27 @@ function render() {
     zbuf[x] = perp;
     let wallX = side === 0 ? P.y + perp * rdy : P.x + perp * rdx;
     wallX -= Math.floor(wallX);
-    let texX = (wallX * 64) | 0;
-    if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) texX = 63 - texX;
+    let texX = (wallX * TS) | 0;
+    if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) texX = TM - texX;
     const tex = tile === 4 && level.open ? t.doorOpen : t.walls[tile] || t.walls[1];
     const data = tex.data;
+    // Light sampled just in front of the wall face.
+    const back = 0.04 / Math.hypot(rdx, rdy);
+    const lx = P.x + rdx * (perp - back), ly = P.y + rdy * (perp - back);
+    const li = Math.floor(ly * LM) * lw + Math.floor(lx * LM);
+    let fi = ((dyn[li] || 0.1) * (1 - Math.min(0.7, perp * 0.04)) * (side ? 0.82 : 1) * 256) | 0;
+    if (fi > 256) fi = 256;
+    const ii = 256 - fi, fR = fr * ii, fG = fg * ii, fB = fb * ii;
     const lineH = VH / perp;
     const top = half - lineH / 2;
     const y0 = Math.max(0, Math.ceil(top)), y1 = Math.min(VH, Math.ceil(top + lineH));
-    let f = shadeF(perp) * (side ? 0.78 : 1);
-    if (tile === 4 && level.open) f = Math.max(f, 0.85);
-    const inv = 1 - f;
-    const step = 64 / lineH;
+    const step = TS / lineH;
     let texPos = (y0 - top) * step;
-    for (let y = y0; y < y1; y++) {
-      const c = data[(((texPos | 0) & 63) << 6) | texX];
+    for (let y = y0, o = y0 * W + x; y < y1; y++, o += W) {
+      const c = data[(((texPos | 0) & TM) << 7) | texX];
       texPos += step;
-      buf[y * W + x] = 0xff000000 | ((((c >> 16) & 255) * f + fb * inv) << 16) | ((((c >> 8) & 255) * f + fg * inv) << 8) | ((c & 255) * f + fr * inv);
+      if ((c >>> 24) === 254) buf[o] = c | 0xff000000;
+      else buf[o] = 0xff000000 | (((((c >> 16) & 255) * fi + fB) >> 8) << 16) | (((((c >> 8) & 255) * fi + fG) >> 8) << 8) | (((c & 255) * fi + fR) >> 8);
     }
   }
 
@@ -1043,7 +1244,6 @@ function render() {
       sprites.push({ x: fx.x, y: fx.y, img: SPR.beam, h: 1.2 * (1 - fx.t / fx.dur), z: 0, bright: true });
     }
   }
-
   const invDet = 1 / (planeX * dirY - dirX * planeY);
   for (const s of sprites) {
     const dx = s.x - P.x, dy = s.y - P.y;
@@ -1051,14 +1251,14 @@ function render() {
     s.ty = invDet * (-planeY * dx + planeX * dy);
   }
   sprites.sort((a, b) => b.ty - a.ty);
-  for (const s of sprites) drawSprite(s, shadeF, fr, fg, fb);
+  for (const s of sprites) drawSprite(s, fr, fg, fb);
 
   ctx.putImageData(img, 0, 0);
 
   // ---- Lightning arcs ----
   if (bolts.length) {
     ctx.strokeStyle = '#bff4ff';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = Math.max(1, K * 1.5);
     for (const b of bolts) {
       const a = project(b.ax, b.ay, b.az, dirX, dirY, planeX, planeY, invDet);
       const c = project(b.bx, b.by, b.bz, dirX, dirY, planeX, planeY, invDet);
@@ -1067,7 +1267,7 @@ function render() {
       ctx.moveTo(a[0], a[1]);
       for (let i = 1; i < 6; i++) {
         const k = i / 6;
-        ctx.lineTo(a[0] + (c[0] - a[0]) * k + (Math.random() - 0.5) * 8, a[1] + (c[1] - a[1]) * k + (Math.random() - 0.5) * 8);
+        ctx.lineTo(a[0] + (c[0] - a[0]) * k + (Math.random() - 0.5) * 10 * K, a[1] + (c[1] - a[1]) * k + (Math.random() - 0.5) * 10 * K);
       }
       ctx.lineTo(c[0], c[1]);
       ctx.stroke();
@@ -1075,18 +1275,16 @@ function render() {
   }
 
   drawWeapon();
+  drawCrosshair();
 
-  // Crosshair
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  const cx = W >> 1, cy = VH >> 1;
-  ctx.fillRect(cx - 4, cy, 3, 1); ctx.fillRect(cx + 2, cy, 3, 1);
-  ctx.fillRect(cx, cy - 4, 1, 3); ctx.fillRect(cx, cy + 2, 1, 3);
-
-  // Screen tints
   if (hurtTint > 0) { ctx.fillStyle = `rgba(200,0,0,${hurtTint})`; ctx.fillRect(0, 0, W, VH); }
   if (pickupTint > 0) { ctx.fillStyle = `rgba(255,220,80,${pickupTint * 0.6})`; ctx.fillRect(0, 0, W, VH); }
   if (P.dashT > 0) { ctx.fillStyle = 'rgba(160,220,255,0.12)'; ctx.fillRect(0, 0, W, VH); }
+  const vg = ctx.createRadialGradient(W / 2, VH / 2, VH * 0.35, W / 2, VH / 2, W * 0.62);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, VH);
 
+  drawThreats(Math.atan(pl));
   drawMinimap();
   drawBossBar();
   drawHud();
@@ -1100,7 +1298,7 @@ function project(x, y, z, dirX, dirY, planeX, planeY, invDet) {
   return [(W / 2) * (1 + tx / ty), VH / 2 - (z - 0.5) * (VH / ty)];
 }
 
-function drawSprite(s, shadeF, fr, fg, fb) {
+function drawSprite(s, fr, fg, fb) {
   if (s.ty < 0.15) return;
   const im = s.img;
   const scale = VH / s.ty;
@@ -1111,7 +1309,7 @@ function drawSprite(s, shadeF, fr, fg, fb) {
   const x0 = Math.max(0, Math.ceil(left)), x1 = Math.min(W, Math.ceil(left + wPx));
   const y0 = Math.max(0, Math.ceil(top)), y1 = Math.min(VH, Math.ceil(top + hPx));
   if (x0 >= x1 || y0 >= y1) return;
-  const f = s.bright ? 1 : shadeF(s.ty);
+  const f = s.bright ? 1 : Math.min(1, lightAt(s.x, s.y) * 1.1 * (1 - Math.min(0.7, s.ty * 0.04)) + 0.06);
   const inv = 1 - f;
   const data = im.data, iw = im.w, ih = im.h;
   const tint = s.tint;
@@ -1122,37 +1320,108 @@ function drawSprite(s, shadeF, fr, fg, fb) {
       const texY = Math.min(ih - 1, (((y - top) / hPx) * ih) | 0);
       const c = data[texY * iw + texX];
       const a = c >>> 24;
-      if (a < 100) continue;
+      if (a < 60) continue;
       let r = c & 255, g = (c >> 8) & 255, b = (c >> 16) & 255;
       if (tint === 'hurt') { r = 255; g = 255; b = 255; }
       else if (tint === 'cold') { r = r * 0.6; g = g * 0.8 + 40; b = b * 0.6 + 110; }
       else if (tint === 'burn') { r = r * 0.7 + 90; g = g * 0.75 + 20; b *= 0.6; }
-      if (a < 250) {
-        // Soft glow: blend additively on top of the scene.
-        const o = buf[y * W + x], k = a / 255;
+      const i = y * W + x;
+      if (a === 254 || tint === 'hurt') {
+        buf[i] = 0xff000000 | (Math.min(255, b) << 16) | (Math.min(255, g) << 8) | Math.min(255, r);
+      } else if (a < 250) {
+        const o = buf[i], k = a / 255;
         r = Math.min(255, (o & 255) + r * k); g = Math.min(255, ((o >> 8) & 255) + g * k); b = Math.min(255, ((o >> 16) & 255) + b * k);
-        buf[y * W + x] = 0xff000000 | (b << 16) | (g << 8) | r;
+        buf[i] = 0xff000000 | (b << 16) | (g << 8) | r;
       } else {
-        buf[y * W + x] = 0xff000000 | ((Math.min(255, b) * f + fb * inv) << 16) | ((Math.min(255, g) * f + fg * inv) << 8) | (Math.min(255, r) * f + fr * inv);
+        buf[i] = 0xff000000 | ((Math.min(255, b) * f + fb * inv) << 16) | ((Math.min(255, g) * f + fg * inv) << 8) | (Math.min(255, r) * f + fr * inv);
       }
     }
   }
 }
 
+// Solid black silhouettes of the weapon art, used to shade the gun in dark rooms.
+const shadowCache = new Map();
+function shadowOf(art) {
+  if (!shadowCache.has(art)) {
+    const c = document.createElement('canvas');
+    c.width = art.width; c.height = art.height;
+    const g = c.getContext('2d');
+    g.drawImage(art, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, c.width, c.height);
+    shadowCache.set(art, c);
+  }
+  return shadowCache.get(art);
+}
+
 function drawWeapon() {
   const w = P.weapons[P.cur];
   const art = WART[w.id][P.muzzle > 0 ? 1 : 0];
-  const bx = Math.sin(P.bob) * 5, by = Math.abs(Math.cos(P.bob)) * 4;
-  ctx.drawImage(art, Math.round(W / 2 - 48 + bx), Math.round(VH - 66 + by + P.recoil * 0.6));
+  const bx = Math.sin(P.bob) * 7 * K, by = Math.abs(Math.cos(P.bob)) * 6 * K;
+  const dw = Math.round(192 * K), dh = Math.round(144 * K);
+  const x = Math.round(W / 2 - dw / 2 + bx), y = Math.round(VH - dh + 8 * K + by + P.recoil * K);
+  ctx.drawImage(art, x, y, dw, dh);
+  const L = Math.min(1, lightAt(P.x, P.y) + (P.muzzle > 0 ? 0.5 : 0));
+  if (L < 0.9) {
+    ctx.globalAlpha = (0.9 - L) * 0.8;
+    ctx.drawImage(shadowOf(art), x, y, dw, dh);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawCrosshair() {
+  const cx = W >> 1, cy = VH >> 1;
+  const t = settings.assist ? aimTarget(0) : null;
+  const on = t && Math.abs(t.diff) < t.half * 1.1;
+  ctx.fillStyle = on ? 'rgba(255,80,60,0.95)' : 'rgba(255,255,255,0.75)';
+  const g = Math.round(3 * K), l = Math.round(4 * K);
+  ctx.fillRect(cx - g - l, cy, l, 1); ctx.fillRect(cx + g + 1, cy, l, 1);
+  ctx.fillRect(cx, cy - g - l, 1, l); ctx.fillRect(cx, cy + g + 1, 1, l);
+}
+
+// Red chevrons at the screen edge for enemies outside the view, plus the hit direction.
+function drawThreats(halfFov) {
+  const arrow = (side, y, alpha, size) => {
+    const x = side < 0 ? 6 * K : W - 6 * K;
+    ctx.fillStyle = `rgba(255,50,40,${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - side * size, y - size);
+    ctx.lineTo(x - side * size, y + size);
+    ctx.closePath();
+    ctx.fill();
+  };
+  for (const e of enemies) {
+    if (e.spawnT > 0 || e.dead) continue;
+    const dx = e.x - P.x, dy = e.y - P.y, dist = Math.hypot(dx, dy);
+    let diff = Math.atan2(dy, dx) - P.a;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    if (Math.abs(diff) < halfFov) continue;
+    if (dist > 10 && !e.los) continue;
+    const y = VH / 2 + Math.max(-0.35, Math.min(0.35, (Math.abs(diff) - Math.PI / 2) / Math.PI)) * VH;
+    arrow(Math.sign(diff), y, Math.max(0.35, 1 - dist / 12), (6 + Math.max(0, 8 - dist)) * K);
+  }
+  if (hurtDir && hurtDir.t > 0) {
+    let diff = hurtDir.a - P.a;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    const cx = W / 2 + Math.sin(diff) * VH * 0.32, cy = VH / 2 - Math.cos(diff) * VH * 0.32;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(diff);
+    ctx.fillStyle = `rgba(255,30,20,${Math.min(0.8, hurtDir.t)})`;
+    ctx.fillRect(-18 * K, -3 * K, 36 * K, 6 * K);
+    ctx.restore();
+  }
 }
 
 function drawMinimap() {
-  const s = 2, pad = 4;
+  const s = Math.max(2, Math.round(3 * K)), pad = Math.round(6 * K);
   const mw = level.w * s, mh = level.h * s;
   const ox = W - mw - pad, oy = pad;
-  ctx.globalAlpha = 0.7;
+  ctx.globalAlpha = 0.72;
   ctx.fillStyle = '#000';
-  ctx.fillRect(ox - 1, oy - 1, mw + 2, mh + 2);
+  ctx.fillRect(ox - 2, oy - 2, mw + 4, mh + 4);
   for (let y = 0; y < level.h; y++)
     for (let x = 0; x < level.w; x++) {
       const v = level.map[y * level.w + x];
@@ -1161,22 +1430,26 @@ function drawMinimap() {
       ctx.fillRect(ox + x * s, oy + y * s, s, s);
     }
   ctx.fillStyle = '#ff4040';
-  for (const e of enemies) ctx.fillRect(ox + e.x * s - 1, oy + e.y * s - 1, 2, 2);
+  for (const e of enemies) ctx.fillRect(ox + e.x * s - 1, oy + e.y * s - 1, 3, 3);
   ctx.fillStyle = '#fff';
-  ctx.fillRect(ox + P.x * s - 1, oy + P.y * s - 1, 2, 2);
-  ctx.fillStyle = '#ffe060';
-  ctx.fillRect(ox + (P.x + Math.cos(P.a) * 1.5) * s, oy + (P.y + Math.sin(P.a) * 1.5) * s, 1, 1);
+  ctx.fillRect(ox + P.x * s - 1, oy + P.y * s - 1, 3, 3);
+  ctx.strokeStyle = '#ffe060';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ox + P.x * s, oy + P.y * s);
+  ctx.lineTo(ox + (P.x + Math.cos(P.a) * 2) * s, oy + (P.y + Math.sin(P.a) * 2) * s);
+  ctx.stroke();
   ctx.globalAlpha = 1;
 }
 
 function drawBossBar() {
   const boss = enemies.find((e) => e.type === 'boss');
   if (!boss) return;
-  const bw = Math.min(200, W - 80), x = (W - bw) / 2, y = 8;
-  ctx.fillStyle = '#000'; ctx.fillRect(x - 1, y - 1, bw + 2, 7);
-  ctx.fillStyle = '#5a0a1a'; ctx.fillRect(x, y, bw, 5);
-  ctx.fillStyle = '#ff2050'; ctx.fillRect(x, y, bw * Math.max(0, boss.hp / boss.maxHp), 5);
-  text('ΦΥΛΑΚΑΣ', W / 2, y + 16, 8, '#ffb0c0', 'center');
+  const bw = Math.min(300 * K, W - 120 * K), x = (W - bw) / 2, y = 12 * K;
+  ctx.fillStyle = '#000'; ctx.fillRect(x - 2, y - 2, bw + 4, 10 * K + 4);
+  ctx.fillStyle = '#5a0a1a'; ctx.fillRect(x, y, bw, 10 * K);
+  ctx.fillStyle = '#ff2050'; ctx.fillRect(x, y, bw * Math.max(0, boss.hp / boss.maxHp), 10 * K);
+  text('ΦΥΛΑΚΑΣ', W / 2, y + 10 * K + 14, 8, '#ffb0c0', 'center');
 }
 
 const FONT = '"Press Start 2P", monospace';
@@ -1191,64 +1464,62 @@ function text(s, x, y, size, color, align = 'left') {
 }
 
 function bevel(x, y, w, h) {
-  ctx.fillStyle = '#2b2d30'; ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = '#56595e'; ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y, 1, h);
-  ctx.fillStyle = '#141516'; ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x + w - 1, y, 1, h);
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, '#34373b'); g.addColorStop(1, '#1f2124');
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#62666c'; ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y, 1, h);
+  ctx.fillStyle = '#0e0f10'; ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x + w - 1, y, 1, h);
 }
 
 function drawHud() {
   const y = VH;
-  // Metal plate
-  ctx.fillStyle = '#44474c'; ctx.fillRect(0, y, W, HUD_H);
-  for (let i = 0; i < W; i += 7) { ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(i, y, 1, HUD_H); }
-  ctx.fillStyle = '#6a6e75'; ctx.fillRect(0, y, W, 1);
+  const plateG = ctx.createLinearGradient(0, y, 0, H);
+  plateG.addColorStop(0, '#565a60'); plateG.addColorStop(1, '#303236');
+  ctx.fillStyle = plateG; ctx.fillRect(0, y, W, HUD_H);
+  for (let i = 3; i < W; i += 9) { ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(i, y, 1, HUD_H); }
+  ctx.fillStyle = '#80848b'; ctx.fillRect(0, y, W, 1);
+  for (const rx of [4, W - 7]) { ctx.fillStyle = '#222'; ctx.fillRect(rx, y + 4, 3, 3); ctx.fillStyle = '#9a9ea5'; ctx.fillRect(rx, y + 4, 1, 1); }
 
   const w = P.weapons[P.cur];
-  const face = 32;
-  const sectionW = Math.floor((W - face - 8) / 4);
-  const big = (s) => (s.length * 16 <= sectionW - 4 ? 16 : s.length * 12 <= sectionW - 4 ? 12 : 8);
-  let x = 2;
-  // AMMO
-  bevel(x, y + 2, sectionW, HUD_H - 4);
-  const ammo = w.ammo === Infinity ? '--' : String(w.ammo);
-  text(ammo, x + sectionW / 2, y + 21, big(ammo), '#e01010', 'center');
-  text('AMMO', x + sectionW / 2, y + 29, 8, '#b0b0b0', 'center');
-  x += sectionW + 1;
-  // HEALTH
-  bevel(x, y + 2, sectionW, HUD_H - 4);
-  const hp = `${Math.ceil(P.hp)}%`;
-  text(hp, x + sectionW / 2, y + 21, big(hp), P.hp < 30 ? '#ff5050' : '#e01010', 'center');
-  text('HEALTH', x + sectionW / 2, y + 29, 8, '#b0b0b0', 'center');
-  x += sectionW + 1;
-  // Face
-  bevel(x, y + 2, face, HUD_H - 4);
+  const faceW = Math.round(40 * K) + 4;
+  const sectionW = Math.floor((W - faceW - 20) / 4);
+  const inner = HUD_H - 6;
+  const numSize = H >= 270 ? 24 : 16;
+  const big = (s) => (s.length * numSize <= sectionW - 6 ? numSize : s.length * 16 <= sectionW - 6 ? 16 : 8);
+  const numY = y + 3 + Math.round(inner * 0.62);
+  const labY = y + inner;
+  let x = 10;
+  const section = (value, label, color) => {
+    bevel(x, y + 3, sectionW, inner);
+    text(value, x + sectionW / 2, numY, big(value), color, 'center');
+    text(label, x + sectionW / 2, labY, 8, '#b8b8b8', 'center');
+    x += sectionW + 1;
+  };
+  section(w.ammo === Infinity ? '--' : String(w.ammo), 'AMMO', '#e01010');
+  section(`${Math.ceil(P.hp)}%`, 'HEALTH', P.hp < 30 ? '#ff5050' : '#e01010');
+  bevel(x, y + 3, faceW, inner);
   const lvl = P.hp > 75 ? 0 : P.hp > 50 ? 1 : P.hp > 25 ? 2 : 3;
   const look = P.ouch > 0 ? 3 : P.look + 1;
-  ctx.drawImage(FACES[Math.min(3, lvl)][look], x + 4, y + 2);
-  x += face + 1;
-  // ARMOR
-  bevel(x, y + 2, sectionW, HUD_H - 4);
-  const ar = `${Math.ceil(P.armor)}%`;
-  text(ar, x + sectionW / 2, y + 21, big(ar), '#e01010', 'center');
-  text('ARMOR', x + sectionW / 2, y + 29, 8, '#b0b0b0', 'center');
-  x += sectionW + 1;
-  // ARMS + dash + room
-  const rw = W - x - 2;
-  bevel(x, y + 2, rw, HUD_H - 4);
-  P.weapons.forEach((wp, i) => {
-    text(String(i + 1), x + 8 + i * 12, y + 13, 8, i === P.cur ? '#ffe060' : '#8a8a8a', 'left');
-  });
-  const dashReady = 1 - P.dashCd / (1.8 * Math.pow(0.75, aug('dash')));
-  ctx.fillStyle = '#111'; ctx.fillRect(x + 6, y + 17, rw - 12, 3);
-  ctx.fillStyle = dashReady >= 1 ? '#40c0ff' : '#2a5a7a';
-  ctx.fillRect(x + 6, y + 17, (rw - 12) * Math.min(1, dashReady), 3);
-  text(`S${run.sector}-${run.room}`, x + rw / 2, y + 29, 8, '#b0b0b0', 'center');
+  const fh = Math.min(inner - 2, Math.round(42 * K)), fw = Math.round((fh * 36) / 42);
+  ctx.drawImage(FACES[lvl][look], Math.round(x + (faceW - fw) / 2), Math.round(y + 3 + (inner - fh) / 2), fw, fh);
+  x += faceW + 1;
+  section(`${Math.ceil(P.armor)}%`, 'ARMOR', '#e01010');
+  const rw = W - x - 10;
+  bevel(x, y + 3, rw, inner);
+  P.weapons.forEach((wp, i) => text(String(i + 1), x + 10 + i * 14, y + 16, 8, i === P.cur ? '#ffe060' : '#8a8a8a'));
+  const dashMax = 1.8 * Math.pow(0.75, aug('dash'));
+  const ready = Math.min(1, 1 - P.dashCd / dashMax);
+  ctx.fillStyle = '#111'; ctx.fillRect(x + 8, y + 21, rw - 16, 4);
+  ctx.fillStyle = ready >= 1 ? '#40c0ff' : '#2a5a7a';
+  ctx.fillRect(x + 8, y + 21, (rw - 16) * ready, 4);
+  text(`S${run.sector}-${run.room}`, x + rw / 2, labY, 8, '#b8b8b8', 'center');
 }
 
 // ======================================================================
 // Loop
 // ======================================================================
 let last = performance.now();
+let frameAvg = 16, slowFrames = 0, autoLocked = false;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -1260,14 +1531,30 @@ function frame(now) {
       updateProjectiles(dt);
       checkRoom();
     }
+    // Automatic quality: step down when frames are consistently slow.
+    // Automatic quality: step down when frames are slow, up when there is headroom.
+    frameAvg = frameAvg * 0.95 + dt * 1000 * 0.05;
+    if (settings.quality === 'auto') {
+      const order = ['low', 'mid', 'high'];
+      const i = order.indexOf(autoLevel);
+      if (frameAvg > 24 && i > 0) slowFrames++;
+      else if (frameAvg < 13 && i < 2 && !autoLocked) slowFrames--;
+      else slowFrames = 0;
+      if (slowFrames > 90 || slowFrames < -240) {
+        if (slowFrames > 0) autoLocked = true; // never climb back after a drop
+        autoLevel = order[i + (slowFrames > 0 ? -1 : 1)];
+        slowFrames = 0; frameAvg = 16; resize();
+      }
+    }
   }
-  if (mode === 'play' || mode === 'transition' || mode === 'cards' || mode === 'dead') {
+  if (mode !== 'menu' && mode !== 'pause') {
     for (const fx of effects) fx.t += dt;
     effects = effects.filter((fx) => fx.t < fx.dur);
     for (const b of bolts) b.t -= dt;
     bolts = bolts.filter((b) => b.t > 0);
+    if (hurtDir) hurtDir.t -= dt;
   }
-  flashLight = Math.max(0, flashLight - dt * 3);
+  flashLight = Math.max(0, flashLight - dt * 8);
   hurtTint = Math.max(0, hurtTint - dt * 1.2);
   pickupTint = Math.max(0, pickupTint - dt);
   shake = Math.max(0, shake - dt * 20);
@@ -1283,22 +1570,22 @@ function drawAttract(now) {
     P = { x: 0, y: 0, a: 0, hp: 100, armor: 0, weapons: [{ id: 'shotgun', lvl: 1, ammo: 40 }], cur: 0, bob: 0, recoil: 0, muzzle: 0, ouch: 0, look: 0, dashT: 0, dashCd: 0, inv: 0 };
     rng = mulberry32(42);
     level = genRoom();
-    P.x = level.start.x; P.y = level.start.y - 3;
+    P.x = level.w / 2; P.y = level.h / 2;
     enemies = []; pendingWaves = [];
     rng = mulberry32(7);
-    for (const type of ['grunt', 'drone', 'heavy', 'charger']) {
-      const pos = freeTileFarFromPlayer(4);
-      enemies.push({ type, d: ENEMIES[type], x: pos.x, y: pos.y, spawnT: 0, anim: Math.random() * 5, hurt: 0, shootT: 0, slowT: 0, burnT: 0 });
-    }
+    for (const type of ['grunt', 'drone', 'heavy', 'charger']) enemies.push(makeEnemy(type, freeTileFarFromPlayer(3), 0));
     drawAttract.ready = true;
   }
-  P.a = now / 4000;
+  P.a = now / 5000;
   for (const e of enemies) e.anim += 0.016;
   run.time = now / 1000;
   render();
 }
 
-// Wait for the pixel font so the HUD renders crisp on the first frame.
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+resize();
+setupTouch();
 (document.fonts?.load(`8px ${FONT}`) ?? Promise.resolve()).catch(() => {}).finally(() => requestAnimationFrame(frame));
 
 // ======================================================================
@@ -1359,6 +1646,6 @@ const sfx = (() => {
 
 // Exposed for automated testing.
 window.__ds = {
-  get state() { return { mode, run, P, level, enemies, projectiles, pickups }; },
-  startRun, pickCard, nextRoom, damageEnemy, damagePlayer,
+  get state() { return { mode, run, P, level, enemies, projectiles, pickups, settings, W, H }; },
+  startRun, pickCard, nextRoom, damageEnemy, damagePlayer, resize,
 };
