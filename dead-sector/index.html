@@ -14,10 +14,11 @@
   <div id="touch-area" class="touch-only"></div>
   <div id="stick" class="stick" hidden><div id="knob" class="knob"></div></div>
   <div class="touch-buttons touch-only">
-    <button id="t-pause" class="tbtn small" aria-label="Παύση">II</button>
-    <button id="t-swap" class="tbtn" aria-label="Αλλαγή όπλου">⇄</button>
-    <button id="t-dash" class="tbtn" aria-label="Ορμή">»</button>
-    <button id="t-fire" class="tbtn fire" aria-label="Βολή">●</button>
+    <button id="t-pause" class="tbtn small pause" aria-label="Παύση">II</button>
+    <button id="t-swap" class="tbtn swap" aria-label="Αλλαγή όπλου">⇄</button>
+    <button id="t-turn" class="tbtn turn" aria-label="Γύρισμα 180 μοιρών">⟲</button>
+    <button id="t-dash" class="tbtn dash" aria-label="Ορμή">»</button>
+    <button id="t-fire" class="tbtn fire" aria-label="Βολή, σύρε για να στρίψεις">●</button>
   </div>
 
   <div id="toast" class="toast" role="status"></div>
@@ -27,7 +28,10 @@
     <div class="panel">
       <h1 class="logo">DEAD<br />SECTOR</h1>
       <p class="sub">Ο σταθμός έπεσε στις μηχανές. Καθάρισε δωμάτιο με δωμάτιο, μάζεψε αναβαθμίσεις και φτάσε όσο πιο βαθιά μπορείς.</p>
-      <button id="start" class="btn">Νέα αποστολή</button>
+      <div class="row">
+        <button id="start" class="btn">Νέα αποστολή</button>
+        <button id="menu-settings" class="btn ghost">Ρυθμίσεις</button>
+      </div>
       <p id="menu-controls" class="hint"></p>
       <p id="menu-best" class="hint best"></p>
     </div>
@@ -44,7 +48,10 @@
   <section id="pause" class="overlay" hidden>
     <div class="panel">
       <h2>Παύση</h2>
-      <button id="resume" class="btn">Συνέχεια</button>
+      <div class="row">
+        <button id="resume" class="btn">Συνέχεια</button>
+        <button id="pause-settings" class="btn ghost">Ρυθμίσεις</button>
+      </div>
       <p class="hint">Enter για συνέχεια</p>
     </div>
   </section>
@@ -55,6 +62,48 @@
       <div id="dead-stats" class="stats"></div>
       <p id="dead-best" class="hint best"></p>
       <button id="again" class="btn">Νέα αποστολή</button>
+    </div>
+  </section>
+
+  <section id="settings" class="overlay" hidden>
+    <div class="panel">
+      <h2>Ρυθμίσεις</h2>
+      <div class="settings">
+        <label class="set" for="set-sens">
+          <span>Ευαισθησία στριψίματος <b id="set-sens-val">1.0</b></span>
+          <input id="set-sens" type="range" min="0.3" max="2.5" step="0.1" />
+        </label>
+        <label class="set check touch-setting" for="set-assist">
+          <input id="set-assist" type="checkbox" />
+          <span>Βοήθεια σκόπευσης<small>Το σκόπευτρο «κολλάει» λίγο πάνω στους εχθρούς</small></span>
+        </label>
+        <label class="set check touch-setting" for="set-auto">
+          <input id="set-auto" type="checkbox" />
+          <span>Αυτόματη βολή<small>Πυροβολεί μόνο του όταν σημαδεύεις εχθρό</small></span>
+        </label>
+        <label class="set check touch-setting" for="set-stickturn">
+          <input id="set-stickturn" type="checkbox" />
+          <span>Στρίψιμο με το αριστερό stick<small>Δεξιά-αριστερά στο stick στρίβει αντί να κάνει πλάγια βήματα</small></span>
+        </label>
+        <label class="set" for="set-quality">
+          <span>Ποιότητα γραφικών</span>
+          <select id="set-quality">
+            <option value="auto">Αυτόματη</option>
+            <option value="high">Υψηλή (300p)</option>
+            <option value="mid">Μέση (240p)</option>
+            <option value="low">Χαμηλή (200p)</option>
+          </select>
+        </label>
+      </div>
+      <button id="settings-close" class="btn">Τέλος</button>
+    </div>
+  </section>
+
+  <section id="rotate" class="overlay rotate" hidden>
+    <div class="panel">
+      <div class="phone" aria-hidden="true"></div>
+      <h2>Γύρισε τη συσκευή</h2>
+      <p class="sub">Το Dead Sector παίζεται οριζόντια (landscape).</p>
     </div>
   </section>
 
