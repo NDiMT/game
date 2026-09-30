@@ -48,3 +48,16 @@ A second game in `color-gates/`. It keeps the arrow-cube mechanic and adds color
 - Every level can be solved. The gate order comes from a valid removal order, split into groups of 3 of the same color, so a solution exists that never uses the queue.
 
 Open `http://localhost:8000/color-gates/` after starting the server.
+
+---
+
+# Dead Sector
+
+A third game in `dead-sector/`: a roguelite FPS inspired by *Deadzone: Rogue*, drawn in the style of classic *Doom*.
+
+- **Look:** A software raycaster renders at 320×200 in the browser (textured walls, floor and ceiling, distance fog, billboard sprites) with a Doom-style status bar and face. All art and sound are procedural, so there are no asset files.
+- **Structure:** A run is a chain of rooms on a failing space station. Doors lock while enemies teleport in over two waves. When a room is clear, you pick 1 of 3 upgrades and the exit opens. Every 6th room is a sector boss, and each new sector has a new look (storage, foundry, bio-lab) and tougher enemies.
+- **Weapons:** Pistol (infinite ammo), shotgun, chaingun, plasma rifle and rocket launcher. You carry up to 3, and weapons level up with +25% damage per level.
+- **Upgrades:** Fire, shock and cryo elements, damage, fire rate, crits, life steal, max health, armor, exploding kills, faster dash and move speed.
+- **Enemies:** Drones, grunts, chargers, heavies and a boss with ring and aimed bullet patterns plus reinforcements.
+- **Controls:** WASD and mouse (pointer lock), click to fire, Shift/Space to dash, 1–3, Q or the wheel to switch weapons, Esc to pause. Touch devices get a virtual stick, drag-to-look and buttons.
