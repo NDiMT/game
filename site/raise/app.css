@@ -1,0 +1,1521 @@
+:root{
+  --felt-0:#0a2019;--felt-1:#123328;--felt-2:#17402f;--felt-3:#1d5240;--line:#2d6b52;
+  --stock:#f5f2e9;--stock-2:#e6e1d2;--edge:#b9b2a0;--ink:#191b1f;
+  --pip:#c22b25;--pip-lt:#e0736a;
+  --brass:#d4a94f;--brass-hi:#f2d68c;--brass-dim:#8a6f2c;
+  --cream:#eceadf;--muted:#93aa9c;--good:#5fc79a;
+  --display:"Cormorant Garamond",Georgia,serif;
+  --body:"Fira Sans",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",monospace;
+  --sym:"IBM Plex Mono","Segoe UI Symbol","Apple Symbols","Noto Sans Symbols 2",monospace;
+  --cw:44px;
+  --sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0;overflow:hidden;overscroll-behavior:none;user-select:none;-webkit-user-select:none;
+  background:radial-gradient(ellipse 110% 60% at 50% -6%,var(--felt-3) 0%,var(--felt-1) 50%,var(--felt-0) 100%) fixed,var(--felt-0);
+  color:var(--cream);font-family:var(--body);font-size:16px;line-height:1.4;
+  -webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;touch-action:manipulation;
+}
+h1,h2,h3{margin:0;font-family:var(--display);font-weight:700;line-height:1.08;text-wrap:balance}
+p{margin:0}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
+button:disabled{cursor:default}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.lbl{font-family:var(--mono);font-size:.6rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+
+/* ---- atmosphere ---- */
+#grain,#vig{position:fixed;inset:0;pointer-events:none;z-index:1}
+/* ΧΩΡΙΣ `mix-blend-mode`. Ένα blend mode πρέπει να διαβάσει το backdrop, οπότε ολόκληρο το
+   viewport ξανασυνθέτονταν κάθε frame — και μάλιστα ΚΑΙ σε ηρεμία, ενώ ο παίκτης απλώς
+   διαβάζει το χέρι του. Μετρημένο (Pixel 7, CPU ×4): ηρεμία 51fps/22,0ms → 60fps/16,7ms και
+   μηδέν αργά frames· με αγγίγματα φύλλων 41,0 → 53,3fps· σε ένα resolve 12,7 → 7,5 αργά
+   frames. Το ΕΙΚΟΝΙΔΙΟ δεν κόστιζε τίποτα (16,8ms με ή χωρίς) — το blend ήταν όλο το κόστος.
+   Τίμημα: ο κόκκος κάθεται πια σαν λεπτό γκρι φιλμ αντί να αναμειγνύεται, οπότε τα μαύρα
+   ανοίγουν ελάχιστα· γι' αυτό και η αδιαφάνεια πέφτει. */
+#grain{opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
+#vig{box-shadow:inset 0 0 9rem rgba(0,0,0,.62),inset 0 0 2.4rem rgba(0,0,0,.35)}
+/* Ο καμβάς ΠΡΕΠΕΙ να έχει ρητό CSS μέγεθος. Με `inset:0` και `width:auto` το κουτί είναι
+   υπερ-ορισμένο, οπότε αγνοείται το `right` και νικά το ΕΓΓΕΝΕΣ πλάτος — δηλαδή το
+   `cv.width = innerWidth * dpr`. Σε κάθε τηλέφωνο (dpr 2) ο καμβάς γινόταν διπλάσιος από την
+   οθόνη και ΚΑΘΕ σωματίδιο έπεφτε στο διπλό του σημείο: οι εκρήξεις των βομβών, τα κομφετί του
+   ανεβάσματος, η σπίθα της ανάσας και οι σπίθες της αρχικής ήταν εκτός οθόνης. Σε desktop
+   (dpr 1) φαινόταν σωστό — γι' αυτό έζησε τόσο.
+   Και το z-index: ήταν 9, κάτω από το veil (12), οπότε ό,τι έσκαγε με ανοιχτό sheet — η
+   ανταμοιβή κάθε τρίτου ante — ζωγραφιζόταν από πίσω. */
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:13}
+
+/* ---- shell: 100dvh, καθόλου page scroll ---- */
+.app{
+  position:relative;z-index:2;width:100%;max-width:30rem;margin:0 auto;height:100dvh;
+  display:grid;grid-template-rows:auto minmax(0,1fr) auto auto auto;
+  padding:calc(.55rem + var(--st)) .5rem calc(.5rem + var(--sb));gap:.45rem;
+}
+
+/* ---- hud ---- */
+.hud{display:grid;grid-template-columns:1fr auto;gap:.25rem .8rem;align-items:end}
+.hud__score{display:flex;align-items:baseline;gap:.45rem}
+.hud__score b{font-family:var(--mono);font-size:2.35rem;font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.hud__score b.on{color:var(--good);text-shadow:0 0 1rem rgba(95,199,154,.5)}
+.hud__score span{font-family:var(--mono);font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.hud__r{display:grid;justify-items:end;gap:.2rem}
+.ante{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;color:var(--muted)}
+.ante b{font-size:1rem;color:var(--cream)}
+.coin{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--brass)}
+.breaths{display:flex;gap:.25rem}
+.breaths i{width:.62rem;height:.62rem;border-radius:50%;display:block;
+  background:radial-gradient(circle at 35% 30%,var(--brass-hi),var(--brass) 60%,var(--brass-dim));box-shadow:0 0 .35rem rgba(212,169,79,.55)}
+.breaths i.spent{background:none;box-shadow:inset 0 0 0 1px rgba(138,111,44,.7)}
+.meter{grid-column:1/-1;height:.5rem;border-radius:99px;background:rgba(0,0,0,.42);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+.meter i{display:block;height:100%;width:0;border-radius:99px;transition:width .45s cubic-bezier(.2,.7,.3,1);
+  background:linear-gradient(90deg,var(--brass-dim),var(--brass) 60%,var(--brass-hi));box-shadow:0 0 .5rem rgba(212,169,79,.55)}
+.meter i.done{background:linear-gradient(90deg,#2f8562,var(--good));box-shadow:0 0 .7rem rgba(95,199,154,.6)}
+
+/* ---- table ---- */
+.table{
+  position:relative;min-height:0;border-radius:16px;padding:.7rem .6rem;
+  display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;gap:.4rem;
+  background:radial-gradient(ellipse 72% 56% at 50% 46%,rgba(255,255,255,.055),transparent 72%),rgba(0,0,0,.18);
+  box-shadow:inset 0 0 0 1px rgba(212,169,79,.15),inset 0 2px 22px rgba(0,0,0,.48);
+}
+.table::before{content:"";position:absolute;inset:.42rem;border-radius:12px;pointer-events:none;border:1px solid rgba(212,169,79,.07)}
+.rung{display:grid;justify-items:center;gap:.25rem;text-align:center}
+.rung__val{font-family:var(--display);font-size:1.45rem;font-weight:700;color:var(--brass-hi);line-height:1.1}
+.rung__val.free{color:var(--muted);font-weight:600}
+.rung__dots{display:flex;gap:.3rem}
+.rung__dots i{width:1.35rem;height:.28rem;border-radius:2px;background:rgba(147,170,156,.22);display:block;transition:background .2s ease,box-shadow .2s ease}
+.rung__dots i.under{background:rgba(147,170,156,.1)}
+.rung__dots i.at{background:var(--brass);box-shadow:0 0 .5rem rgba(212,169,79,.6)}
+.tcards{display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center;align-content:center;min-height:0}
+.tcards.fresh:empty::before{
+  content:"Start low. Every step of the chain is more Mult.";
+  font-family:var(--display);font-size:1.3rem;line-height:1.3;color:rgba(147,170,156,.75);text-align:center;max-width:16rem;text-wrap:balance;
+}
+.tcards .card{width:calc(var(--cw) * 1.22);animation:land .34s cubic-bezier(.2,.9,.3,1) backwards}
+@keyframes land{0%{opacity:0;transform:translateY(1.5rem) rotate(-7deg) scale(.86)}100%{opacity:1;transform:none}}
+.tfoot{display:flex;justify-content:space-between;align-items:end;gap:.5rem}
+.tnote{font-family:var(--mono);font-size:.64rem;letter-spacing:.03em;color:var(--muted);max-width:60%}
+.chain{display:grid;justify-items:end;line-height:1}
+.chain span{font-family:var(--mono);font-size:.55rem;letter-spacing:.16em;color:var(--muted)}
+.chain b{font-family:var(--mono);font-size:1.55rem;font-weight:700;color:var(--brass);letter-spacing:-.02em}
+.chain.bump b{animation:bump .4s ease}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.35);color:var(--brass-hi)}100%{transform:scale(1)}}
+.float{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+  font-family:var(--mono);font-weight:700;font-size:2.7rem;letter-spacing:-.02em;color:var(--brass-hi);
+  text-shadow:0 0 1.4rem rgba(212,169,79,.8),0 2px 4px rgba(0,0,0,.5);pointer-events:none;
+  animation:rise 1.05s cubic-bezier(.2,.8,.3,1) forwards;z-index:3}
+@keyframes rise{0%{opacity:0;transform:translate(-50%,-10%) scale(.6)}22%{opacity:1;transform:translate(-50%,-46%) scale(1.14)}
+  70%{opacity:1;transform:translate(-50%,-72%) scale(1)}100%{opacity:0;transform:translate(-50%,-118%) scale(.94)}}
+
+/* ---- cards ---- */
+.card{
+  position:relative;flex:0 0 auto;width:var(--cw);aspect-ratio:5/7;border-radius:clamp(3px,1vw,5px);
+  background:linear-gradient(157deg,var(--stock) 0%,var(--stock) 62%,var(--stock-2) 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.55) inset,0 2px 5px rgba(0,0,0,.42),0 0 0 1px var(--edge);
+  color:var(--ink);overflow:hidden;transition:transform .16s cubic-bezier(.2,.8,.3,1),box-shadow .16s ease,opacity .2s ease;
+}
+.card__ix{position:absolute;left:8%;top:5%;display:grid;justify-items:center;line-height:.95}
+.card__r{font-family:var(--mono);font-size:calc(var(--cw) * .34);font-weight:700;letter-spacing:-.03em}
+.card__rs{font-family:var(--sym);font-size:calc(var(--cw) * .22);line-height:1}
+.card__pip{position:absolute;right:-5%;bottom:-9%;font-family:var(--sym);font-size:calc(var(--cw) * .86);line-height:1;opacity:.19}
+.card.red{color:var(--pip)}
+.card.face .card__r{background:linear-gradient(165deg,#8a6f2c,#c9a24a 45%,#7a6026);-webkit-background-clip:text;background-clip:text;color:transparent}
+.card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(122deg,rgba(255,255,255,.5) 0%,transparent 34%)}
+
+/* ---- hand (2 σειρές, πλήρως ορατά φύλλα, μεγέθυνση από JS) ---- */
+.hand{display:flex;margin:0 auto;width:100%;flex-wrap:wrap;justify-content:center;align-content:end;gap:5px 4px;padding:.85rem 0 .15rem;touch-action:pan-y}
+.hand .card{transform:rotate(var(--rot,0deg))}
+.hand .card.sel{transform:translateY(-.8rem) rotate(0deg) scale(1.06);z-index:3;
+  box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 10px 18px rgba(0,0,0,.5),0 0 0 2px var(--brass),0 0 1.2rem rgba(212,169,79,.55)}
+.hand.chisel .card:not(.sel){opacity:.55}
+
+/* ---- tools row (μόνο όταν υπάρχουν εργαλεία) ---- */
+.tools{display:flex;gap:.35rem;align-items:center;min-height:0}
+.tools:empty{display:none}
+.tb{font-family:var(--mono);font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  padding:.5rem .7rem;border-radius:99px;background:rgba(212,169,79,.1);border:1px solid rgba(212,169,79,.35);color:var(--brass-hi);display:flex;gap:.35rem;align-items:center}
+.tb:disabled{opacity:.35}
+.tb em{font-style:normal;background:var(--brass);color:#1d1607;border-radius:99px;min-width:1.2rem;padding:0 .3rem;text-align:center;font-size:.66rem}
+.tb.on{background:var(--brass);color:#1d1607}
+/* 13 αξίες σε δύο σειρές, όλες ορατές — τίποτα δεν κυλάει για να το βρεις */
+.picker{display:flex;flex-wrap:wrap;gap:.28rem;padding:.1rem 0;flex:1}
+.picker button{flex:1 0 2.55rem;max-width:3.4rem;height:2.6rem;border-radius:8px;font-family:var(--mono);font-size:.95rem;font-weight:700;
+  background:rgba(212,169,79,.13);border:1px solid rgba(212,169,79,.4);color:var(--brass-hi)}
+.picker button:active{background:rgba(212,169,79,.35)}
+.toast{font-size:.8rem;line-height:1.35;padding:.5rem .7rem;border-radius:8px;background:rgba(224,115,106,.13);border-left:3px solid var(--pip-lt)}
+
+/* ---- dock: η ζώνη του αντίχειρα ---- */
+.dock{display:flex;gap:.45rem;align-items:stretch}
+.rb{flex:0 0 3.5rem;height:3.7rem;border-radius:14px;display:grid;place-items:center;align-content:center;gap:.1rem;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);
+  font-family:var(--mono);font-size:.62rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;transition:transform .1s ease,background .14s ease}
+.rb:active:not(:disabled){transform:scale(.94)}
+.rb:disabled,.rb.off{opacity:.32}
+/* `aria-disabled` αντί `disabled`: το `disabled` κάνει τον Chrome να μη στέλνει ΚΑΝΕΝΑ
+   pointer event, οπότε το πάτημα στο «Breathe» με μηδέν ανάσες ήταν απόλυτο κενό — ούτε ήχος,
+   ούτε λόγος. Τώρα το κουμπί δέχεται το άγγιγμα και απαντά. */
+.rb.off:active{transform:scale(.97)}
+.rb em{font-style:normal;font-size:.7rem;color:var(--brass)}
+.rb .ic{font-size:1.15rem;line-height:1}
+.go{flex:1;min-width:0;height:3.7rem;border-radius:14px;padding:0 .9rem;
+  display:grid;grid-template-columns:1fr auto;align-items:center;gap:.6rem;text-align:left;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);transition:transform .1s ease,background .16s ease,box-shadow .16s ease}
+.go:active:not(:disabled){transform:scale(.975)}
+.go__t{font-family:var(--mono);font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.go__s{font-family:var(--mono);font-size:.66rem;color:var(--muted);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;grid-column:1}
+.go__p{grid-column:2;grid-row:1/span 2;font-family:var(--mono);font-size:1.6rem;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.go.idle .go__t{color:var(--muted);font-weight:600}
+.go.no{border-color:rgba(224,115,106,.4);background:rgba(224,115,106,.09)}
+.go.no .go__t{color:var(--pip-lt)}
+.go.ok{color:#1d1607;border-color:transparent;
+  background:linear-gradient(178deg,var(--brass-hi),var(--brass) 52%,#b48c33);box-shadow:0 2px 0 #6f5620,0 6px 16px rgba(0,0,0,.42)}
+.go.ok .go__t{font-size:.95rem;letter-spacing:.04em}
+.go.ok .go__s{color:#5a4514}
+.go.ok .go__p{color:#1d1607}
+.go.done{border-color:rgba(95,199,154,.5);background:rgba(95,199,154,.12)}
+.go.done .go__t{color:var(--good)}
+
+/* ---- sheets ---- */
+.veil{position:fixed;inset:0;z-index:12;background:rgba(5,16,12,.82);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center}
+.veil[hidden]{display:none!important}
+.sheet{width:100%;max-width:30rem;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:linear-gradient(180deg,var(--felt-2),var(--felt-1));border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0;
+  padding:1rem 1rem calc(1.1rem + var(--sb));box-shadow:0 -12px 40px rgba(0,0,0,.6);animation:up .3s cubic-bezier(.2,.85,.3,1)}
+@keyframes up{from{transform:translateY(14%);opacity:.4}to{transform:none;opacity:1}}
+.grip{width:2.6rem;height:.26rem;border-radius:99px;background:var(--line);margin:-.2rem auto .9rem}
+.sheet h2{font-size:1.75rem;color:var(--brass)}
+.sheet h2.bad{color:var(--pip-lt)}
+.sheet h2.good{color:var(--good)}
+.sub{color:var(--muted);font-size:.9rem;margin-top:.3rem}
+.tally{display:grid;gap:1px;background:var(--line);border-radius:8px;overflow:hidden;margin:.9rem 0}
+.tally div{background:rgba(0,0,0,.22);padding:.5rem .75rem;display:flex;font-size:.9rem}
+.tally b{margin-left:auto;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--brass)}
+.offers{display:grid;gap:.45rem;margin:.6rem 0 1rem}
+.offer{display:grid;grid-template-columns:1fr auto;gap:.1rem .8rem;align-items:center;text-align:left;
+  padding:.75rem .85rem;border-radius:10px;background:rgba(0,0,0,.24);border:1px solid var(--line)}
+.offer:active:not(:disabled){transform:scale(.985)}
+.offer strong{font-family:var(--mono);font-size:.9rem}
+.offer span{grid-column:1;font-size:.8rem;color:var(--muted);line-height:1.35}
+.offer em{grid-row:span 2;font-family:var(--mono);font-style:normal;font-size:1.1rem;font-weight:700;color:var(--brass)}
+.offer:disabled{opacity:.45}
+.offer:disabled em{color:var(--pip-lt)}
+.offer.bought{opacity:.42}
+.offer.bought em::after{content:" ✓"}
+.big{width:100%;height:3.4rem;border-radius:12px;font-family:var(--mono);font-size:.82rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  background:linear-gradient(178deg,var(--brass-hi),var(--brass) 52%,#b48c33);color:#1d1607;box-shadow:0 2px 0 #6f5620,0 6px 16px rgba(0,0,0,.4)}
+.big.ghost{background:rgba(255,255,255,.07);color:var(--cream);box-shadow:none;border:1px solid rgba(255,255,255,.13);margin-top:.4rem}
+.big:active{transform:scale(.985)}
+.sec{margin-top:1.1rem}
+.log{display:grid;gap:.1rem;font-family:var(--mono);font-size:.74rem;max-height:13rem;overflow-y:auto}
+.log div{display:flex;gap:.5rem;padding:.28rem 0;border-bottom:1px solid rgba(45,107,82,.45)}
+.log em{font-style:normal;color:var(--muted);font-size:.92em}
+.log b{margin-left:auto;color:var(--brass)}
+.log .pass b{color:var(--pip-lt)}
+.log .bonus b{color:var(--good)}
+.chips{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.4rem}
+.chip{font-family:var(--mono);font-size:.68rem;padding:.2rem .45rem;border-radius:4px;background:rgba(0,0,0,.26);border:1px solid var(--line)}
+.chip b{color:var(--brass)}
+.rtab{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-radius:8px;overflow:hidden;margin-top:.4rem}
+.rtab div{background:rgba(0,0,0,.24);padding:.4rem .5rem;display:flex;justify-content:space-between;font-size:.76rem}
+.rtab b{font-family:var(--mono);color:var(--brass)}
+.rulz{font-size:.82rem;color:var(--muted);line-height:1.45;display:grid;gap:.45rem;margin-top:.4rem}
+.rulz b{color:var(--cream)}
+.seedrow{display:flex;gap:.35rem;margin-top:.45rem}
+.seedrow input{flex:1;min-width:0;min-height:44px;border-radius:8px;background:rgba(0,0,0,.35);border:1px solid var(--line);color:var(--cream);font-family:var(--mono);font-size:.85rem;padding:.55rem .6rem}
+.seedrow button{flex:0 0 auto;min-height:44px;min-width:44px;padding:0 .8rem;border-radius:8px;font-family:var(--mono);font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}
+.row2{display:flex;gap:.4rem;margin-top:.4rem}
+.row2 .big{height:2.9rem;font-size:.74rem}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===================== v3: enhancements, challenges, heat, polish ===================== */
+.deckn{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;color:var(--muted)}
+.deckn b{color:var(--cream);font-weight:600}
+
+/* ambient light drifting over the felt */
+body::after{content:"";position:fixed;inset:-25%;pointer-events:none;z-index:1;
+  background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.055),transparent 38%);
+  animation:drift 26s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translate(0,0)}to{transform:translate(12%,9%)}}
+
+/* card polish: inner frame, thin edge */
+.card::before{content:"";position:absolute;inset:3px;border-radius:inherit;border:1px solid rgba(0,0,0,.09);pointer-events:none}
+.hud__score b.on{text-shadow:0 0 1.1rem rgba(95,199,154,.55)}
+
+/* face-down cards (Blind Deal) */
+.card.down{background:repeating-linear-gradient(135deg,#1b3f66 0 3px,#173757 3px 6px);box-shadow:0 2px 5px rgba(0,0,0,.45),0 0 0 1px #0f2a45;color:transparent;cursor:default}
+.card.down::before{border-color:rgba(212,169,79,.35);inset:4px}
+.card__back{position:absolute;inset:22% 24%;border-radius:50%;border:1px solid rgba(212,169,79,.5);background:radial-gradient(circle,rgba(212,169,79,.28),transparent 70%)}
+
+/* enhancements */
+.card__e{position:absolute;left:0;right:0;bottom:0;font:600 calc(var(--cw) * .17)/1.6 var(--mono);letter-spacing:.14em;text-transform:uppercase;text-align:center;background:rgba(0,0,0,.42);color:#fff}
+.card.e-gold{background:linear-gradient(150deg,#f7e7b3 0%,#d9b25a 55%,#b98a30 100%);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 2px 6px rgba(0,0,0,.45),0 0 0 1px #8a6f2c,0 0 .9rem rgba(212,169,79,.35)}
+.card.e-gold .card__r,.card.e-gold .card__rs{color:#3a2a08;-webkit-text-fill-color:initial;background:none}
+.card.e-gold.red .card__r,.card.e-gold.red .card__rs,.card.e-gold.red .card__pip{color:#8f1e19}
+.card.e-gold .card__pip{opacity:.28}
+.card.e-silver{background:linear-gradient(150deg,#f4f7fa 0%,#c3ced9 55%,#96a3b1 100%);box-shadow:0 1px 0 rgba(255,255,255,.85) inset,0 2px 6px rgba(0,0,0,.45),0 0 0 1px #7d8b99,0 0 .9rem rgba(180,200,220,.3)}
+.card.e-silver .card__e{background:rgba(38,48,60,.65)}
+.card.e-wild{background:linear-gradient(150deg,#2b3f66,#1a2742 65%,#121b31);color:#f2d68c;box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 2px 6px rgba(0,0,0,.5),0 0 0 1px #4e6aa0,0 0 .9rem rgba(110,140,220,.35)}
+.card.e-wild .card__r,.card.e-wild .card__rs{color:#f2d68c}
+.card.e-wild .card__pip{opacity:.35;color:#9fb4ff}
+.card.e-wild .card__e{background:rgba(212,169,79,.9);color:#1d1607}
+
+/* table cards flying in via FLIP: no landing animation */
+.tcards .card.fly{animation:none}
+
+/* challenge ribbon */
+.chal{display:inline-flex;align-items:center;gap:.5rem;margin-top:.35rem;padding:.28rem .75rem;border-radius:99px;
+  background:rgba(194,43,37,.16);border:1px solid rgba(224,115,106,.5);box-shadow:0 0 .8rem rgba(194,43,37,.25)}
+.chal span{font-family:var(--mono);font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--pip-lt)}
+.chal b{font-family:var(--mono);font-size:.78rem;font-weight:700;color:var(--cream)}
+.chalnext{display:grid;gap:.15rem;margin:.9rem 0;padding:.7rem .85rem;border-radius:10px;background:rgba(194,43,37,.12);border:1px solid rgba(224,115,106,.45)}
+.chalnext .lbl{color:var(--pip-lt)}
+.chalnext b{font-family:var(--mono);font-size:1rem}
+.chalnext span:last-child{font-size:.82rem;color:var(--muted)}
+
+/* named hands */
+.callout{position:absolute;left:50%;top:60%;transform:translateX(-50%);pointer-events:none;z-index:3;
+  font-family:var(--display);font-style:italic;font-weight:600;font-size:1.55rem;letter-spacing:.01em;color:var(--brass-hi);
+  text-shadow:0 0 1.2rem rgba(212,169,79,.7),0 2px 4px rgba(0,0,0,.5);opacity:0;white-space:nowrap}
+.callout.show{animation:callout 1.5s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes callout{0%{opacity:0;transform:translate(-50%,.6rem) scale(.9)}18%{opacity:1;transform:translate(-50%,0) scale(1.04)}70%{opacity:1;transform:translate(-50%,-.2rem) scale(1)}100%{opacity:0;transform:translate(-50%,-.9rem) scale(.98)}}
+
+/* chain heat */
+#heat{position:fixed;inset:0;pointer-events:none;z-index:1;transition:box-shadow .7s ease}
+body[data-heat="1"] #heat{box-shadow:inset 0 0 5rem rgba(212,169,79,.16)}
+body[data-heat="2"] #heat{box-shadow:inset 0 0 7rem rgba(255,140,60,.28)}
+body[data-heat="3"] #heat{box-shadow:inset 0 0 9rem rgba(255,90,50,.42);animation:flick 1.1s ease-in-out infinite alternate}
+@keyframes flick{from{opacity:.75}to{opacity:1}}
+body[data-heat="1"] .chain b{color:var(--brass-hi)}
+body[data-heat="2"] .chain b{color:#ffb15a;text-shadow:0 0 .8rem rgba(255,150,60,.7)}
+body[data-heat="3"] .chain b{color:#ff8a4a;text-shadow:0 0 1rem rgba(255,110,50,.9)}
+body[data-heat="2"] .chain span::after{content:" · hot"}
+body[data-heat="3"] .chain span::after{content:" · on fire"}
+
+/* Ace in the Hole button state */
+
+/* shop card offers */
+.offer--card{grid-template-columns:auto 1fr auto}
+.offer--card .offer__card{grid-row:span 2;--cw:2.35rem;display:block}
+.offer--card .offer__card .card{animation:none;display:block}
+span.card{display:block}
+.offer--card span:last-child{grid-column:2}
+.offer--card em{grid-column:3}
+
+/* raise */
+.tally b.good{color:var(--good)}
+.tally b.bad{color:var(--pip-lt)}
+
+/* toast variants */
+.toast.gold{border-left-color:var(--brass);background:rgba(212,169,79,.1)}
+
+/* shake on ante clear */
+.app.shake{animation:shake .42s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{10%,90%{transform:translate3d(-1px,0,0)}20%,80%{transform:translate3d(2px,0,0)}30%,50%,70%{transform:translate3d(-3px,0,0)}40%,60%{transform:translate3d(3px,0,0)}}
+@media (prefers-reduced-motion:reduce){body::after{animation:none}}
+
+
+/* ===================== v4: start screen + super polish ===================== */
+/* gold flash on ante clear */
+#flash{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;background:radial-gradient(ellipse at 50% 45%,rgba(242,214,140,.55),rgba(242,214,140,.12) 45%,transparent 75%)}
+#flash.on{animation:flashk .55s ease-out}
+@keyframes flashk{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+
+/* the table gets a rail: dark wood with a gold inlay */
+.table{
+  border:5px solid #2b1c10;
+  box-shadow:inset 0 0 0 1px rgba(212,169,79,.28),inset 0 2px 22px rgba(0,0,0,.5),
+             0 0 0 1px rgba(212,169,79,.22),0 8px 22px rgba(0,0,0,.45);
+  background:radial-gradient(ellipse 72% 56% at 50% 46%,rgba(255,255,255,.06),transparent 72%),
+             linear-gradient(180deg,rgba(0,0,0,.14),rgba(0,0,0,.22));
+}
+.table::before{inset:.3rem;border-color:rgba(212,169,79,.1)}
+
+/* card paper + second index on the larger table cards */
+.card::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23p)' opacity='.5'/%3E%3C/svg%3E");
+  opacity:.07;mix-blend-mode:multiply;
+}
+.card.down::before{background-image:none;opacity:1}
+.tcards .card .card__pip{opacity:.24}
+/* gold foil shine on Gold cards and the wordmark */
+.card.e-gold,.card.e-silver{background-size:220% 100%;animation:foil 4.5s ease-in-out infinite}
+@keyframes foil{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+
+/* GO button shine when a legal hand is ready */
+.go.ok{position:relative;overflow:hidden}
+.go.ok::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.45) 50%,transparent 60%);transform:translateX(-120%);animation:shine 2.6s ease-in-out infinite}
+@keyframes shine{0%,55%{transform:translateX(-120%)}85%,100%{transform:translateX(120%)}}
+
+/* chips as a chip */
+.coin{display:inline-flex;align-items:center;gap:.25rem}
+.coin::before{content:"";width:.7rem;height:.7rem;border-radius:50%;background:radial-gradient(circle at 40% 35%,var(--brass-hi),var(--brass) 55%,var(--brass-dim));box-shadow:0 0 0 1.5px #1d1607 inset,0 0 0 2.5px var(--brass-dim) inset}
+
+/* selected card breathes */
+.hand .card.sel{animation:selglow 1.6s ease-in-out infinite}
+@keyframes selglow{0%,100%{box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 10px 18px rgba(0,0,0,.5),0 0 0 2px var(--brass),0 0 1.1rem rgba(212,169,79,.5)}50%{box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 10px 18px rgba(0,0,0,.5),0 0 0 2px var(--brass-hi),0 0 1.6rem rgba(212,169,79,.8)}}
+
+/* ---- start screen ---- */
+.start{position:fixed;inset:0;z-index:6;display:grid;place-items:center;padding:1.2rem;
+  background:radial-gradient(ellipse 110% 70% at 50% 0%,var(--felt-3) 0%,var(--felt-1) 48%,var(--felt-0) 100%)}
+.start__in{width:100%;max-width:24rem;display:grid;justify-items:center;gap:1rem;text-align:center}
+.wordmark{font-family:var(--mono);font-weight:700;font-size:clamp(2rem,13vw,3.1rem);letter-spacing:.1em;line-height:1;margin-top:.4rem;white-space:nowrap;
+  background:linear-gradient(110deg,var(--brass-dim) 0%,var(--brass) 30%,var(--brass-hi) 50%,var(--brass) 70%,var(--brass-dim) 100%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 4px 14px rgba(212,169,79,.35));animation:foil 5s ease-in-out infinite}
+.tag{font-family:var(--display);font-style:italic;font-size:1.35rem;color:var(--cream);margin-top:-.5rem}
+.fan{position:relative;height:6.6rem;width:100%;--cw:3.6rem}
+.fan__c{position:absolute;left:50%;top:.2rem;transform-origin:50% 160%;
+  transform:translateX(calc(-50% + (var(--i) - 2) * 2.35rem)) rotate(calc((var(--i) - 2) * 9deg)) translateY(calc(abs(var(--i) - 2) * .22rem));
+  animation:dealin .7s cubic-bezier(.2,.85,.25,1) both;animation-delay:calc(var(--i) * 90ms + 120ms)}
+.fan__c .card{display:block;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 10px 22px rgba(0,0,0,.5),0 0 0 1px var(--edge)}
+.fan__c .card__pip{opacity:.26}
+@keyframes dealin{from{opacity:0;transform:translateX(-50%) translateY(3rem) rotate(0deg) scale(.7)}}
+.start__btns{width:100%;display:grid;gap:.45rem;margin-top:.4rem}
+.start__btns .row2{margin:0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-radius:10px;overflow:hidden;width:100%}
+.stats:empty{display:none}
+.stats div{background:rgba(0,0,0,.28);padding:.55rem .2rem;display:grid;gap:.1rem}
+.stats b{font-family:var(--mono);font-size:1.15rem;color:var(--brass);font-variant-numeric:tabular-nums}
+.stats span{font-family:var(--mono);font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.start__foot{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+body.on-start .app{filter:blur(6px);pointer-events:none}
+@media (prefers-reduced-motion:reduce){.wordmark,.card.e-gold,.card.e-silver,.go.ok::after,.hand .card.sel{animation:none}.fan__c{animation:none}}
+
+
+/* ===================== v6: v2 layout, v3 mechanics ===================== */
+/* HUD right column: ante · chips, then plays, then breaths + discards */
+.hud__r{gap:.22rem}
+.hud__r .row{display:flex;align-items:center;gap:.55rem}
+.pips{display:flex;gap:.2rem;align-items:center}
+.pips i{display:block;width:.55rem;height:.55rem;border-radius:50%}
+.pips--play i{border-radius:2px;width:.78rem;height:.42rem;background:linear-gradient(180deg,#f4f1e8,#cfc8b6);box-shadow:0 0 .25rem rgba(244,241,232,.3)}
+.pips--breath i{background:radial-gradient(circle at 35% 30%,var(--brass-hi),var(--brass) 60%,var(--brass-dim));box-shadow:0 0 .3rem rgba(212,169,79,.5)}
+.pips--disc i{background:radial-gradient(circle at 35% 30%,#cfe9f2,#7fb5c4 60%,#3f6f7e);box-shadow:0 0 .3rem rgba(127,181,196,.5)}
+.pips i.spent{background:none!important;box-shadow:inset 0 0 0 1px rgba(147,170,156,.45)!important}
+/* charms live inside the table, above the rung */
+.charms{display:flex;justify-content:center;gap:.35rem;margin-bottom:.15rem}
+.charm{width:1.7rem;height:1.7rem;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:.78rem;line-height:1;
+  color:var(--brass-hi);background:radial-gradient(circle at 35% 30%,rgba(212,169,79,.35),rgba(212,169,79,.08) 60%,rgba(0,0,0,.3));
+  box-shadow:0 0 0 1px var(--brass-dim),inset 0 1px 0 rgba(255,255,255,.18),0 2px 6px rgba(0,0,0,.4)}
+.charm:active{transform:scale(.92)}
+.charm--empty{width:1.05rem;height:1.05rem;background:none;box-shadow:inset 0 0 0 1px rgba(147,170,156,.3)}
+.charm--s{width:2.4rem;height:2.4rem;font-size:1.05rem;flex:0 0 auto}
+/* hint as a small "?" in the table corner */
+.hintb{position:absolute;top:.55rem;right:.6rem;width:1.9rem;height:1.9rem;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--mono);font-weight:700;font-size:.9rem;color:var(--muted);background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(147,170,156,.35);z-index:2}
+.hintb:disabled{opacity:.3}
+/* piles as small text under the chain */
+.piles{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+.piles b{color:var(--cream);font-weight:600}
+.peek{display:flex;align-items:center;gap:.3rem;--cw:1.55rem}
+.peek .card{display:block;animation:none}
+/* table cards a touch smaller than the hand */
+.tcards .card{width:var(--tcw, calc(var(--cw) * .9))}
+.rung__val.long{font-size:1.1rem}
+.rung__dots i.bomb{background:#e0684f;box-shadow:0 0 .5rem rgba(224,104,79,.6)}
+.rtab em{display:block;font-style:normal;font-size:.62rem;color:var(--muted)}
+/* hand: v2 sizing, no second index */
+.card__ix2{display:none}
+.hand .card.new{animation:drawin .38s cubic-bezier(.2,.85,.25,1) backwards}
+@keyframes drawin{from{opacity:0;transform:translate(3rem,-2.2rem) rotate(8deg) scale(.7)}}
+.flycard{position:fixed;z-index:11;pointer-events:none;border-radius:5px;background:linear-gradient(157deg,var(--stock),var(--stock-2));box-shadow:0 0 0 1px var(--edge),0 4px 10px rgba(0,0,0,.4);transition:transform .55s cubic-bezier(.2,.8,.2,1),opacity .55s ease;opacity:.95}
+/* shop: charm offers, owned, sell, reroll */
+.shophead{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}
+.shophead .tb{padding:.4rem .65rem}
+.offer--charm{grid-template-columns:auto 1fr auto}
+.offer--charm .charm--s{grid-row:span 2}
+.offer--charm span:last-child{grid-column:2}
+.offer--charm em{grid-column:3}
+.offer .why{display:block;color:var(--pip-lt);font-size:.72rem;margin-top:.15rem}
+.offer__card .card__e{display:none}
+.owned{display:grid;gap:.35rem;margin-top:.4rem}
+.owned__row{display:grid;grid-template-columns:auto 1fr auto;gap:.65rem;align-items:center;padding:.5rem .6rem;border-radius:8px;background:rgba(0,0,0,.22);border:1px solid var(--line)}
+.owned__row strong{font-family:var(--mono);font-size:.84rem;display:block}
+.owned__row div span{font-size:.76rem;color:var(--muted);line-height:1.3}
+.sellb{font-family:var(--mono);font-size:.66rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:.45rem .6rem;border-radius:8px;background:rgba(224,115,106,.12);border:1px solid rgba(224,115,106,.45);color:var(--pip-lt)}
+.unlocked{margin:.8rem 0;padding:.6rem .8rem;border-radius:10px;background:rgba(212,169,79,.14);border:1px solid rgba(212,169,79,.5);font-family:var(--mono);font-size:.8rem;color:var(--brass-hi)}
+.coll{display:grid;gap:.35rem;margin-top:.6rem}
+.coll__i{display:grid;grid-template-columns:auto 1fr;gap:.65rem;align-items:center;padding:.5rem .6rem;border-radius:8px;background:rgba(0,0,0,.22);border:1px solid var(--line)}
+.coll__i strong{font-family:var(--mono);font-size:.84rem;display:block}
+.coll__i div span{font-size:.76rem;color:var(--muted);line-height:1.3}
+.coll__i.locked{opacity:.55}
+.coll__i.locked .charm{color:var(--muted);background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(147,170,156,.35)}
+/* start: collection as a quiet line */
+.colllink{font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);padding:.3rem .6rem;min-height:44px}
+.tally b.good{color:var(--good)}
+.tally b.bad{color:var(--pip-lt)}
+
+
+/* ===================== v7: glossy & playful (χρώματα, σκιές, κίνηση — καμία αλλαγή διαστάσεων) ===================== */
+:root{
+  --felt-0:#08251b;--felt-1:#0f3a2a;--felt-2:#164b37;--felt-3:#1f6448;--line:#2f7d5d;
+  --stock:#fdfbf5;--stock-2:#ece7d8;--edge:#c4bda9;
+  --pip:#e0342c;
+  --candy-0:#fff1bf;--candy-1:#f5cf6a;--candy-2:#dda233;--candy-3:#b9822a;--candy-sh:#6e4f13;
+  --pop:cubic-bezier(.34,1.56,.64,1);
+  --gloss:linear-gradient(180deg,rgba(255,255,255,.26) 0%,rgba(255,255,255,.08) 46%,rgba(255,255,255,0) 50%,rgba(0,0,0,0) 100%);
+}
+body{background:radial-gradient(ellipse 110% 62% at 50% -8%,var(--felt-3) 0%,var(--felt-1) 52%,var(--felt-0) 100%) fixed,var(--felt-0)}
+#vig{box-shadow:inset 0 0 8rem rgba(0,0,0,.55),inset 0 0 2rem rgba(0,0,0,.3)}
+
+/* score & meter: glossy tube with moving stripes */
+.hud__score b{color:#fff;text-shadow:0 1px 0 rgba(255,255,255,.35),0 3px 10px rgba(0,0,0,.5)}
+.hud__score b.on{color:#8ff0bf;text-shadow:0 0 1.2rem rgba(95,199,154,.75),0 2px 6px rgba(0,0,0,.5)}
+.meter{position:relative;background:rgba(0,0,0,.5);box-shadow:inset 0 2px 3px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.08)}
+.meter::after{content:"";position:absolute;inset:0 0 50% 0;border-radius:99px 99px 0 0;background:linear-gradient(180deg,rgba(255,255,255,.32),rgba(255,255,255,0));pointer-events:none}
+.meter i{background:linear-gradient(180deg,var(--candy-0),var(--candy-1) 45%,var(--candy-2) 55%,var(--candy-1)),var(--brass);
+  background-image:repeating-linear-gradient(-55deg,rgba(255,255,255,.22) 0 .45rem,transparent .45rem .9rem),linear-gradient(180deg,var(--candy-0),var(--candy-1) 45%,var(--candy-2) 55%,var(--candy-1));
+  background-size:1.3rem 100%,100% 100%;animation:stripes 1.1s linear infinite;box-shadow:0 0 .6rem rgba(245,207,106,.6)}
+.meter i.done{background-image:repeating-linear-gradient(-55deg,rgba(255,255,255,.22) 0 .45rem,transparent .45rem .9rem),linear-gradient(180deg,#b9f5d6,#5fc79a 45%,#3a9d70 55%,#5fc79a);box-shadow:0 0 .8rem rgba(95,199,154,.7)}
+@keyframes stripes{to{background-position:1.3rem 0,0 0}}
+
+/* pips as glossy beads */
+.pips--play i{background:linear-gradient(180deg,#fff,#d6cfbd);box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(0,0,0,.45),0 0 .3rem rgba(255,255,255,.3)}
+.pips--breath i{background:radial-gradient(circle at 35% 28%,#fff8dc,var(--candy-1) 45%,var(--candy-3));box-shadow:inset 0 -1px 1px rgba(0,0,0,.25),0 1px 2px rgba(0,0,0,.45),0 0 .35rem rgba(245,207,106,.55)}
+.pips--disc i{background:radial-gradient(circle at 35% 28%,#f0fbff,#8fd0e2 45%,#3f7f93);box-shadow:inset 0 -1px 1px rgba(0,0,0,.25),0 1px 2px rgba(0,0,0,.45),0 0 .35rem rgba(143,208,226,.55)}
+.coin{color:var(--candy-1);text-shadow:0 1px 0 rgba(0,0,0,.5)}
+.coin::before{background:radial-gradient(circle at 38% 30%,#fff6d6,var(--candy-1) 45%,var(--candy-3));box-shadow:0 0 0 1.5px #3d2a08 inset,0 0 0 2.5px var(--candy-3) inset,0 1px 2px rgba(0,0,0,.5)}
+
+/* table: brighter spotlight, glossy lacquered rail */
+.table{border-radius:22px;border-color:#33200f;
+  background:radial-gradient(ellipse 70% 52% at 50% 40%,rgba(140,235,190,.13),transparent 72%),linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.24));
+  box-shadow:inset 0 0 0 1px rgba(255,214,140,.38),inset 0 3px 26px rgba(0,0,0,.5),
+             0 0 0 1px rgba(255,205,120,.32),0 -1px 0 1px rgba(255,255,255,.12),0 10px 26px rgba(0,0,0,.5)}
+.table::before{border-radius:16px;border-color:rgba(255,214,140,.1)}
+.rung__val:not(.free){background:linear-gradient(180deg,#fff4cf 0%,var(--candy-1) 55%,var(--candy-2) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.45)) drop-shadow(0 0 .8rem rgba(245,207,106,.35))}
+.rung__dots i.at{background:linear-gradient(180deg,var(--candy-0),var(--candy-2));box-shadow:inset 0 1px 0 #fff,0 0 .5rem rgba(245,207,106,.65)}
+.rung__dots i.bomb{background:linear-gradient(180deg,#ffb39f,#e0684f);box-shadow:inset 0 1px 0 #fff,0 0 .5rem rgba(224,104,79,.7)}
+.chain b{text-shadow:0 1px 0 rgba(0,0,0,.5),0 0 .7rem rgba(245,207,106,.35)}
+.hintb{background:var(--gloss),rgba(0,0,0,.34);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 2px 5px rgba(0,0,0,.4);color:var(--cream)}
+
+/* charms: glossy candy bubbles */
+.charm{color:#3d2a08;background:radial-gradient(circle at 35% 26%,rgba(255,255,255,.7),rgba(255,255,255,0) 38%),radial-gradient(circle at 50% 60%,var(--candy-1),var(--candy-3));
+  box-shadow:0 0 0 1px var(--candy-3),inset 0 -2px 3px rgba(0,0,0,.25),0 3px 7px rgba(0,0,0,.45);transition:transform .25s var(--pop)}
+.charm:active{transform:scale(.88)}
+.charm--empty{background:none;box-shadow:inset 0 0 0 1px rgba(147,170,156,.35),inset 0 1px 0 rgba(255,255,255,.1)}
+
+/* cards: whiter stock, curved sheen, soft bevel, bouncy motion */
+.card{border-radius:clamp(4px,1.4vw,7px);
+  background:linear-gradient(160deg,#fff 0%,var(--stock) 55%,var(--stock-2) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(0,0,0,.08),0 3px 7px rgba(0,0,0,.45),0 0 0 1px var(--edge);
+  transition:transform .28s var(--pop),box-shadow .2s ease,opacity .2s ease}
+.card::after{background:radial-gradient(ellipse 130% 55% at 50% -12%,rgba(255,255,255,.7),rgba(255,255,255,0) 60%),linear-gradient(122deg,rgba(255,255,255,.35) 0%,transparent 34%)}
+.card__pip{opacity:.24}
+.card.red .card__pip{opacity:.2}
+.card.face .card__r{background:linear-gradient(165deg,#9a7a2e,var(--candy-1) 45%,#8a6a22);-webkit-background-clip:text;background-clip:text}
+.hand .card.sel{animation:pop .42s var(--pop),selglow 1.6s ease-in-out .42s infinite;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 12px 20px rgba(0,0,0,.5),0 0 0 2.5px var(--candy-1),0 0 1.3rem rgba(245,207,106,.6)}
+@keyframes pop{0%{transform:translateY(-.2rem) rotate(0deg) scale(.94)}60%{transform:translateY(-1rem) rotate(0deg) scale(1.1)}100%{transform:translateY(-.8rem) rotate(0deg) scale(1.06)}}
+@keyframes selglow{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 12px 20px rgba(0,0,0,.5),0 0 0 2.5px var(--candy-1),0 0 1.1rem rgba(245,207,106,.5)}50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 12px 20px rgba(0,0,0,.5),0 0 0 2.5px var(--candy-0),0 0 1.7rem rgba(245,207,106,.85)}}
+.hand .card:active:not(.sel){transform:rotate(var(--rot,0deg)) scale(.95)}
+.tcards .card{animation:land .5s var(--pop) backwards}
+@keyframes land{0%{opacity:0;transform:translateY(1.6rem) rotate(-8deg) scale(.8)}100%{opacity:1;transform:none}}
+.hand .card.new{animation:drawin .5s var(--pop) backwards}
+
+/* named hands & floating points: bouncy */
+.callout{color:#fff5d0;text-shadow:0 2px 0 rgba(120,80,10,.7),0 0 1.4rem rgba(245,207,106,.8),0 4px 10px rgba(0,0,0,.5)}
+.callout.show{animation:callout 1.5s var(--pop) forwards}
+@keyframes callout{0%{opacity:0;transform:translate(-50%,.8rem) rotate(-4deg) scale(.6)}20%{opacity:1;transform:translate(-50%,0) rotate(-2deg) scale(1.08)}70%{opacity:1;transform:translate(-50%,-.2rem) rotate(-2deg) scale(1)}100%{opacity:0;transform:translate(-50%,-1rem) rotate(-2deg) scale(.96)}}
+.float{color:#fff5d0;text-shadow:0 2px 0 rgba(120,80,10,.75),0 0 1.6rem rgba(245,207,106,.9),0 4px 10px rgba(0,0,0,.5)}
+@keyframes rise{0%{opacity:0;transform:translate(-50%,-10%) rotate(3deg) scale(.5)}22%{opacity:1;transform:translate(-50%,-48%) rotate(-2deg) scale(1.22)}
+  70%{opacity:1;transform:translate(-50%,-72%) rotate(0deg) scale(1)}100%{opacity:0;transform:translate(-50%,-118%) scale(.94)}}
+
+/* dock: glass buttons + candy GO */
+.rb,.go{border-radius:18px;background:var(--gloss),rgba(255,255,255,.07);border-color:rgba(255,255,255,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 3px 0 rgba(0,0,0,.3),0 6px 14px rgba(0,0,0,.35)}
+.rb:active:not(:disabled),.go:active:not(:disabled){transform:translateY(2px) scale(.985);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 1px 0 rgba(0,0,0,.3),0 3px 8px rgba(0,0,0,.3)}
+.rb em{color:var(--candy-1)}
+.go.ok{background:var(--gloss),linear-gradient(180deg,var(--candy-0) 0%,var(--candy-1) 48%,var(--candy-2) 52%,var(--candy-1) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 3px 0 var(--candy-sh),0 8px 18px rgba(0,0,0,.45),0 0 1.4rem rgba(245,207,106,.3);animation:ready 1.6s ease-in-out infinite}
+.go.ok:active:not(:disabled){box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 0 var(--candy-sh),0 4px 10px rgba(0,0,0,.4)}
+@keyframes ready{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+.go.ok .go__s{color:#6a4f12}
+.go.no{background:var(--gloss),linear-gradient(180deg,rgba(224,80,70,.22),rgba(224,80,70,.1));border-color:rgba(255,140,130,.35)}
+.go.done{background:var(--gloss),linear-gradient(180deg,rgba(95,199,154,.28),rgba(95,199,154,.1));border-color:rgba(143,240,191,.45)}
+.tb{background:var(--gloss),rgba(245,207,106,.1);border-color:rgba(245,207,106,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 4px rgba(0,0,0,.3)}
+.tb em{background:linear-gradient(180deg,var(--candy-0),var(--candy-2));color:#3d2a08;box-shadow:inset 0 1px 0 #fff}
+.picker button{background:var(--gloss),rgba(245,207,106,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+
+/* sheets & shop: glossy tiles, candy buttons */
+.sheet{background:linear-gradient(180deg,var(--felt-2),var(--felt-1) 30%,var(--felt-0));border-color:rgba(255,255,255,.16);border-radius:22px 22px 0 0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 -12px 40px rgba(0,0,0,.6)}
+.grip{background:rgba(255,255,255,.28)}
+.sheet h2{background:linear-gradient(180deg,#fff4cf,var(--candy-1) 60%,var(--candy-2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 rgba(0,0,0,.4))}
+.sheet h2.bad{background-image:linear-gradient(180deg,#ffd0c8,#e0736a 60%,#c0483f);-webkit-background-clip:text;background-clip:text}
+.sheet h2.good{background-image:linear-gradient(180deg,#c9ffe3,#5fc79a 60%,#3a9d70);-webkit-background-clip:text;background-clip:text}
+.offer,.owned__row,.tally div,.rtab div,.stats div,.chip{background:var(--gloss),rgba(0,0,0,.26)}
+.offer{border-radius:14px;border-color:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 3px 8px rgba(0,0,0,.3);transition:transform .25s var(--pop)}
+.offer:active:not(:disabled){transform:scale(.97)}
+.offer em{color:var(--candy-1)}
+.big{border-radius:16px;background:var(--gloss),linear-gradient(180deg,var(--candy-0) 0%,var(--candy-1) 48%,var(--candy-2) 52%,var(--candy-1) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 3px 0 var(--candy-sh),0 8px 18px rgba(0,0,0,.4);transition:transform .25s var(--pop),box-shadow .15s ease}
+.big:active{transform:translateY(2px) scale(.99);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 0 var(--candy-sh),0 4px 10px rgba(0,0,0,.35)}
+.big.ghost{background:var(--gloss),rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 3px 0 rgba(0,0,0,.3),0 6px 14px rgba(0,0,0,.3)}
+.big.ghost:active{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 1px 0 rgba(0,0,0,.3),0 3px 8px rgba(0,0,0,.3)}
+.stats b{color:var(--candy-1)}
+.tally b,.rtab b,.log b,.chip b,.offer em{color:var(--candy-1)}
+.colllink{color:var(--candy-1)}
+
+/* start screen: 3-D wordmark, playful fan */
+.wordmark{filter:drop-shadow(0 3px 0 #6b4d12) drop-shadow(0 6px 0 rgba(0,0,0,.35)) drop-shadow(0 12px 26px rgba(245,207,106,.4))}
+.fan__c{animation:dealin .8s var(--pop) both;animation-delay:calc(var(--i) * 90ms + 120ms)}
+.fan__c .card{box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 12px 24px rgba(0,0,0,.5),0 0 0 1px var(--edge)}
+.stats{border-radius:14px}
+.chal{background:var(--gloss),rgba(224,80,70,.22);border-color:rgba(255,150,140,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 .9rem rgba(224,80,70,.3)}
+@media (prefers-reduced-motion:reduce){.meter i,.go.ok,.hand .card.sel{animation:none}}
+
+/* bombs */
+.callout.bomb{font-family:var(--mono);font-style:normal;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:2.1rem;color:#fff1bf;
+  text-shadow:0 2px 0 #7a2a12,0 0 1.6rem rgba(255,110,50,.95),0 0 3rem rgba(255,60,30,.6)}
+body.boom #heat{box-shadow:inset 0 0 12rem rgba(255,90,40,.75)}
+body.boom .table{animation:boomring .8s ease-out}
+@keyframes boomring{0%{box-shadow:inset 0 0 0 1px rgba(255,214,140,.38),0 0 0 0 rgba(255,140,60,.9),0 10px 26px rgba(0,0,0,.5)}100%{box-shadow:inset 0 0 0 1px rgba(255,214,140,.38),0 0 0 2.2rem rgba(255,140,60,0),0 10px 26px rgba(0,0,0,.5)}}
+
+/* keep cards between rounds (shop) */
+.keeprow{display:flex;flex-wrap:wrap;gap:.35rem;--cw:2.3rem}
+.keepc{position:relative;border-radius:6px;transition:transform .25s var(--pop),opacity .2s ease}
+.keepc .card{display:block;animation:none}
+.keepc.off{opacity:.38;transform:translateY(.25rem) scale(.94)}
+.keepc.off::after{content:"✕";position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:1.3rem;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+
+
+/* ===================== v8: cheerful colour — charm bubbles per hue, kind colours, 4-colour deck ===================== */
+:root{--felt-3:#25714f;--felt-2:#1a533b}
+/* charm bubbles: hue per charm via --h, SVG icon */
+.charm{color:#2a1a05;
+  background:radial-gradient(circle at 35% 26%,rgba(255,255,255,.75),rgba(255,255,255,0) 40%),radial-gradient(circle at 50% 62%,hsl(var(--h,45) 88% 66%),hsl(var(--h,45) 72% 40%));
+  box-shadow:0 0 0 1px hsl(var(--h,45) 55% 30%),inset 0 -2px 3px rgba(0,0,0,.28),0 3px 7px rgba(0,0,0,.45)}
+.charm svg{width:64%;height:64%;fill:none;stroke:#2a1a05;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;color:#2a1a05;filter:drop-shadow(0 1px 0 rgba(255,255,255,.35))}
+.charm--s svg{width:60%;height:60%}
+.charm--empty{background:none;box-shadow:inset 0 0 0 1px rgba(147,170,156,.35),inset 0 1px 0 rgba(255,255,255,.1)}
+.charm--lock{color:var(--muted);background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(147,170,156,.35);font-family:var(--mono);font-weight:700}
+.coll__i.locked .charm{background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(147,170,156,.35)}
+/* kind colours: rung label, dots, play button, callout */
+.rung__val:not(.free){background:linear-gradient(180deg,hsl(var(--kh,45) 95% 90%) 0%,hsl(var(--kh,45) 85% 65%) 55%,hsl(var(--kh,45) 70% 48%) 100%);-webkit-background-clip:text;background-clip:text;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.45)) drop-shadow(0 0 .8rem hsl(var(--kh,45) 85% 60% / .45))}
+.rung__dots i.at{background:linear-gradient(180deg,hsl(var(--kh,45) 95% 88%),hsl(var(--kh,45) 75% 52%));box-shadow:inset 0 1px 0 #fff,0 0 .5rem hsl(var(--kh,45) 85% 60% / .7)}
+.go.ok{background:var(--gloss),linear-gradient(180deg,hsl(var(--kh,45) 95% 88%) 0%,hsl(var(--kh,45) 85% 66%) 48%,hsl(var(--kh,45) 78% 52%) 52%,hsl(var(--kh,45) 85% 66%) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 3px 0 hsl(var(--kh,45) 60% 22%),0 8px 18px rgba(0,0,0,.45),0 0 1.4rem hsl(var(--kh,45) 85% 60% / .35)}
+.go.ok:active:not(:disabled){box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 0 hsl(var(--kh,45) 60% 22%),0 4px 10px rgba(0,0,0,.4)}
+.go.ok .go__s{color:hsl(var(--kh,45) 60% 22%)}
+.callout{color:hsl(var(--kh,45) 95% 92%);text-shadow:0 2px 0 hsl(var(--kh,45) 60% 25%),0 0 1.4rem hsl(var(--kh,45) 85% 60% / .8),0 4px 10px rgba(0,0,0,.5)}
+/* 4-colour deck: ♠ ink, ♥ red, ♦ blue, ♣ green */
+.card.s0{color:#1c2438}
+.card.s1{color:#e0342c}
+.card.s2{color:#2a6fdb}
+.card.s3{color:#1f9a57}
+.card.face .card__r{background:none;-webkit-text-fill-color:currentColor;color:inherit}
+.card.e-gold .card__r,.card.e-gold .card__rs,.card.e-gold .card__pip{color:#3a2a08}
+.card.e-gold.s1 .card__r,.card.e-gold.s1 .card__rs,.card.e-gold.s1 .card__pip{color:#8f1e19}
+/* cheerful HUD accents */
+.ante b{color:#fff}
+.coin{color:#ffcb5c}
+.hud__score span{color:#a9c9b6}
+.chal{background:var(--gloss),linear-gradient(180deg,hsl(350 80% 55% / .35),hsl(350 80% 45% / .2));border-color:hsl(350 90% 75% / .6)}
+.pips--disc i{background:radial-gradient(circle at 35% 28%,#e6f7ff,#5cc4ff 45%,#1f6fb8)}
+.stats b{color:#ffcb5c}
+
+/* run-long discards: pips + overflow count; off during No Discards */
+.pips--disc b{font-family:var(--mono);font-size:.62rem;font-weight:700;color:#8fd0e2;margin-left:.1rem}
+.pips--disc.off{opacity:.35}
+.card.e-wild .card__r{font-size:calc(var(--cw) * .42)}
+.card.e-wild .card__e{display:none}
+
+/* full-width preview of the selected hand, inside the table */
+.preview{font-family:var(--mono);font-size:.7rem;line-height:1.35;color:var(--cream);text-align:center;padding:0 .2rem}
+.preview span{white-space:normal}
+.preview i{font-style:normal;opacity:.6}
+.preview:empty{display:none}
+.preview.ok{color:hsl(var(--kh,45) 90% 82%);text-shadow:0 0 .6rem hsl(var(--kh,45) 85% 60% / .45)}
+.preview.bad{color:#ffb3a8}
+
+/* play button: points as the title, hand + calc underneath */
+.go.ok .go__t--pts{font-size:1.35rem;letter-spacing:-.02em;text-transform:none;line-height:1}
+.go.ok .go__s{font-size:.68rem;font-weight:600}
+.go.ok .go__s{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.2;font-size:.64rem}
+
+/* ribbons: challenge (red), rule (blue) */
+.ribbons{display:flex;flex-wrap:wrap;justify-content:center;gap:.3rem}
+.chal.rule{background:var(--gloss),linear-gradient(180deg,hsl(205 80% 55% / .35),hsl(205 80% 45% / .2));border-color:hsl(205 90% 75% / .6);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 .9rem hsl(205 80% 55% / .3)}
+.chal.rule span{color:#9fd3ff}
+.chalnext.rulenext{background:rgba(60,140,220,.14);border-color:rgba(150,200,255,.45)}
+.chalnext.rulenext .lbl{color:#9fd3ff}
+/* drama: last play + target */
+body.lastplay #vig{box-shadow:inset 0 0 12rem rgba(0,0,0,.75),inset 0 0 3rem rgba(0,0,0,.4);transition:box-shadow .6s ease}
+body.lastplay .pips--play i:not(.spent){animation:heartbeat 1s ease-in-out infinite}
+@keyframes heartbeat{0%,100%{transform:scale(1)}30%{transform:scale(1.35)}45%{transform:scale(1)}60%{transform:scale(1.25)}}
+.callout.target{font-family:var(--mono);font-style:normal;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:1.9rem;color:#d8ffe9;text-shadow:0 2px 0 #1e6b48,0 0 1.6rem rgba(95,199,154,.95)}
+
+
+/* ===================== v9: typography & centring inside boxes and buttons ===================== */
+/* play button: centred column */
+.go{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:.15rem;padding:0 .7rem}
+.go__t,.go__s{max-width:100%}
+.go__s{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.2;text-align:center}
+.go__p{display:none}
+.go.ok .go__t--pts{font-size:1.4rem;line-height:1;letter-spacing:-.02em}
+/* side buttons: small label, big number */
+.rb{gap:.05rem}
+.rb span{font-size:.58rem;letter-spacing:.1em;color:rgba(236,234,223,.85)}
+.rb em{font-size:1.05rem;font-weight:700;line-height:1}
+.rb .ic{font-size:1.25rem}
+/* tools row centred, pills with even padding */
+.tools{justify-content:center}
+.tb{justify-content:center;padding:.55rem .9rem}
+.toast{text-align:center;padding:.5rem .8rem;border-left:0;border:1px solid rgba(255,150,140,.4);border-radius:12px}
+.toast.gold{border-color:rgba(245,207,106,.45)}
+/* table foot: tidy note */
+.tnote{max-width:52%;line-height:1.35;font-size:.66rem;letter-spacing:.02em}
+.chain{gap:.05rem}
+.piles{margin-top:.15rem}
+/* ribbons: centred text, even spacing */
+.chal{justify-content:center;padding:.3rem .8rem;gap:.45rem}
+.chal span{letter-spacing:.14em}
+/* sheet titles and tallies */
+.sheet h2{text-align:left}
+.tally div{align-items:center}
+.tally b{padding-left:.5rem}
+/* tile text alignment */
+/* empty table hint */
+.tcards.fresh:empty::before{padding:0 .5rem}
+.preview.hint{color:var(--muted);text-shadow:none}
+.tnote:empty{display:none}
+.preview{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.table{overflow:hidden}
+/* table foot: piles bottom-left, chain ×N pinned bottom-right */
+.tfoot{align-items:end}
+.tfoot .piles{align-self:end;margin-right:auto;padding-left:.5rem;padding-bottom:.15rem}
+.chain{margin-left:auto;align-self:end;padding-right:.5rem}
+.chain b{font-size:1.75rem;line-height:.95}
+
+/* shop: bought cards shown next to the carried hand */
+.keepc.new{outline:2px solid var(--good);outline-offset:1px;box-shadow:0 0 12px rgba(95,199,154,.45)}
+.keepc.new::after{content:"New";position:absolute;left:50%;bottom:-.55rem;transform:translateX(-50%);font-family:var(--mono);font-size:.5rem;letter-spacing:.06em;text-transform:uppercase;color:var(--good);background:var(--felt-0);padding:0 .25rem;border-radius:3px}
+.keeprow{row-gap:.7rem;margin-bottom:.7rem}
+
+/* ===================== v10: heat, boss antes, synergies, endless, decks, near miss ===================== */
+.chain b{transform:scale(calc(1 + (var(--pos,1) - 1) * .025));transform-origin:right bottom;transition:transform .25s var(--pop)}
+body[data-heat="3"] .table{animation:tremble .38s ease-in-out infinite}
+@keyframes tremble{0%,100%{transform:translate(0,0)}25%{transform:translate(.6px,-.5px)}50%{transform:translate(-.5px,.6px)}75%{transform:translate(.5px,.4px)}}
+body[data-heat="3"] .hud__score b{color:#ffb15a;text-shadow:0 0 1rem rgba(255,140,60,.7)}
+.chal b svg{width:.85rem;height:.85rem;vertical-align:-2px;margin-right:.3rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* boss ante card in the shop */
+.chalnext.bossnext{grid-template-columns:auto 1fr;align-items:center;gap:.2rem .8rem}
+.chalnext.bossnext>div{display:grid;gap:.15rem}
+.chalnext.bossnext em{font-style:italic;font-family:var(--display);font-size:.98rem;color:#ffd0c8}
+/* boss intro overlay */
+.boss{position:fixed;inset:0;z-index:7;display:grid;place-items:center;padding:1.5rem;background:radial-gradient(ellipse at 50% 45%,rgba(120,20,20,.55),rgba(0,0,0,.82));backdrop-filter:blur(3px)}
+.boss.show{animation:bossin 2.8s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes bossin{0%{opacity:0}8%{opacity:1}82%{opacity:1}100%{opacity:0}}
+.boss__in{display:grid;justify-items:center;gap:.35rem;text-align:center;max-width:22rem}
+.boss.show .boss__in{animation:bosspop .7s var(--pop) both}
+@keyframes bosspop{0%{transform:scale(.6) translateY(1rem);opacity:0}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+.boss__lbl{font-family:var(--mono);font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:#ffb3a8}
+.boss__ico{width:4.2rem;height:4.2rem;margin:.3rem 0;box-shadow:0 0 2.2rem hsl(350 90% 60% / .7),0 6px 18px rgba(0,0,0,.6)}
+.boss__ico svg{width:2.4rem;height:2.4rem}
+.boss__in b{font-family:var(--display);font-size:2.3rem;line-height:1;background:linear-gradient(180deg,#ffd0c8,#e0736a 60%,#c0483f);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 rgba(0,0,0,.5))}
+.boss__in em{font-family:var(--display);font-style:italic;font-size:1.15rem;color:var(--cream)}
+.boss__tip{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:.3rem}
+/* synergies */
+.syn{display:block;font-style:normal;font-family:var(--mono);font-size:.68rem;line-height:1.35;color:#ffe08a;margin-top:.3rem}
+.synlist{display:grid;gap:.3rem;margin-top:.35rem}
+.synrow{display:grid;gap:.1rem;padding:.5rem .7rem;border-radius:10px;background:var(--gloss),rgba(255,200,80,.1);border:1px solid rgba(255,220,120,.35)}
+.synrow b{font-family:var(--mono);font-size:.82rem;color:#ffe08a}
+.synrow span{font-size:.78rem;color:var(--muted);line-height:1.35}
+.charm[data-syn]{box-shadow:0 0 0 2px rgba(255,224,138,.9),0 0 .9rem rgba(255,200,80,.7),0 3px 8px rgba(0,0,0,.4)}
+.charm[data-syn]::after{content:"⚡";position:absolute;right:-.3rem;top:-.35rem;font-size:.6rem;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6))}
+.charm{position:relative}
+/* deck picker on the start screen */
+.decks{display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem;width:100%;margin-top:.3rem}
+.deckc{display:grid;gap:.15rem;padding:.5rem .45rem;border-radius:12px;text-align:center;background:var(--gloss),rgba(0,0,0,.28);border:1px solid var(--line);color:var(--cream);min-height:4.6rem;align-content:start}
+.deckc b{font-family:var(--mono);font-size:.74rem;letter-spacing:.04em}
+.deckc span{font-size:.64rem;line-height:1.3;color:var(--muted)}
+.deckc.on{border-color:var(--candy-1);box-shadow:inset 0 0 0 1px var(--candy-1),0 0 .8rem rgba(255,207,106,.35)}
+.deckc.on b{color:var(--candy-1)}
+.deckc.locked{opacity:.55}
+/* near miss on the Busted sheet */
+.miss{display:grid;justify-items:center;gap:.35rem;text-align:center;margin:.8rem 0;padding:.8rem .9rem;border-radius:12px;background:var(--gloss),rgba(224,80,70,.14);border:1px solid rgba(255,150,140,.5)}
+.miss>b{font-family:var(--display);font-size:1.7rem;line-height:1;color:#ffb3a8}
+.miss>span{font-size:.84rem;color:var(--cream);line-height:1.35}
+.miss>em{font-family:var(--mono);font-style:normal;font-size:.78rem;color:#ffe08a}
+.miss__cards{display:flex;gap:.3rem;--cw:2.1rem;margin:.2rem 0}
+.miss__cards .card{display:block;animation:none}
+
+/* floating tip card (tooltips) — out of the flow, above the dock */
+.tip{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:5;width:min(88vw,24rem);padding:0 .5rem;pointer-events:auto}
+.tip__in{padding:.65rem .9rem;border-radius:14px;text-align:center;font-size:.84rem;line-height:1.4;color:var(--cream);
+  background:var(--gloss),rgba(12,32,26,.94);border:1px solid rgba(255,207,106,.45);box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12);
+  animation:tipin .28s var(--pop) both}
+.tip__in{padding:.8rem 1rem;font-size:.9rem}
+.tip{filter:drop-shadow(0 0 0 transparent)}
+.tip__in{position:relative}
+@keyframes tipin{from{opacity:0;transform:translateY(.5rem) scale(.96)}to{opacity:1;transform:none}}
+
+/* free round discard: green pip in front of the run-long ones */
+.pips--disc i.free{background:radial-gradient(circle at 35% 28%,#e6ffef,#8ff0bf 45%,#2f8562);box-shadow:inset 0 -1px 1px rgba(0,0,0,.25),0 1px 2px rgba(0,0,0,.45),0 0 .35rem rgba(143,240,191,.6)}
+.pips--disc i.free+i:not(.free){margin-left:.25rem}
+
+
+/* ===================== v12: GLOSS — jewel colour, wet highlights, holo enhancements ===================== */
+:root{
+  /* πράσινο τσόχας με βάθος, μπλε-βιολετί λάμψη στις άκρες */
+  --felt-0:#04150f;--felt-1:#0b2c22;--felt-2:#124633;--felt-3:#1d6d4e;--line:#2f7d5d;
+  --glow-a:hsl(158 70% 45% / .22);--glow-b:hsl(266 80% 60% / .16);--glow-c:hsl(196 90% 55% / .14);
+  --stock:#fffdf7;--stock-2:#efe9da;--edge:#cdc6b2;
+  --candy-0:#fff6d4;--candy-1:#ffd166;--candy-2:#eda32b;--candy-3:#bd7c17;--candy-sh:#66400a;
+  --cream:#f2f0e6;--muted:#96b6a5;--good:#6fe3ac;
+  --s0:#2b3a6b;--s1:#f2373f;--s2:#1f7fe8;--s3:#12ac62;
+  --gloss:linear-gradient(180deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.10) 46%,rgba(255,255,255,.02) 50%,rgba(0,0,0,.06) 100%);
+  --sheen:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.55) 46%,rgba(255,255,255,.05) 58%,transparent 70%);
+}
+html{image-rendering:auto}
+body{
+  -webkit-font-smoothing:antialiased;font-smooth:always;letter-spacing:0;
+  background:
+    radial-gradient(ellipse 90% 45% at 12% 4%,var(--glow-c),transparent 62%),
+    radial-gradient(ellipse 85% 45% at 88% 8%,var(--glow-b),transparent 62%),
+    radial-gradient(ellipse 120% 70% at 50% 46%,var(--glow-a),transparent 70%),
+    radial-gradient(ellipse 120% 70% at 50% -10%,var(--felt-3) 0%,var(--felt-1) 52%,var(--felt-0) 100%) fixed,
+    var(--felt-0);
+}
+#grain{display:block;opacity:.045}
+#vig{box-shadow:inset 0 0 9rem rgba(0,0,0,.6),inset 0 0 2.5rem rgba(0,0,0,.3)}
+#heat{background-image:none}
+
+/* ---- table: lacquered rail with a coloured inner bloom ---- */
+.table{
+  border-radius:24px;
+  background:
+    radial-gradient(ellipse 74% 54% at 50% 38%,hsl(160 70% 62% / .16),transparent 74%),
+    radial-gradient(ellipse 60% 40% at 84% 96%,hsl(270 80% 65% / .12),transparent 72%),
+    linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.28));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,214,140,.30),inset 0 4px 28px rgba(0,0,0,.5),
+    0 0 0 1px rgba(255,205,120,.26),0 12px 30px rgba(0,0,0,.5);
+  animation:none;
+}
+.table::before{border-radius:18px;border-color:rgba(255,232,180,.09)}
+.table::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,0) 22%)}
+
+/* ---- score, meter, coin ---- */
+.hud__score b{color:#fff;text-shadow:0 1px 0 rgba(255,255,255,.4),0 0 1.2rem hsl(160 80% 70% / .25),0 4px 12px rgba(0,0,0,.55)}
+.hud__score b.on{color:#93ffcb;text-shadow:0 0 1.4rem rgba(110,230,180,.85),0 3px 8px rgba(0,0,0,.5)}
+.meter{height:.55rem;box-shadow:inset 0 2px 4px rgba(0,0,0,.75),0 1px 0 rgba(255,255,255,.1)}
+.meter i{box-shadow:0 0 .7rem rgba(255,209,102,.7),inset 0 1px 0 rgba(255,255,255,.7)}
+.coin{color:#ffd977;text-shadow:0 1px 0 rgba(0,0,0,.55),0 0 .6rem rgba(255,200,80,.35)}
+
+/* ---- pips: glossy beads, discards back on show ---- */
+.pips i{transition:transform .2s var(--pop),opacity .2s ease}
+.pips--play i{width:.8rem;height:.44rem;border-radius:3px;
+  background:linear-gradient(180deg,#fff,#efe7d2 55%,#cfc6ae);box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(0,0,0,.5),0 0 .35rem rgba(255,255,255,.35)}
+.pips--disc i{width:.58rem;height:.58rem;border-radius:50%;
+  background:radial-gradient(circle at 34% 26%,#f2fbff,#63c8ff 45%,#1d6fbc);box-shadow:inset 0 -1px 1px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.5),0 0 .4rem rgba(99,200,255,.6)}
+.pips i.spent{background:none!important;box-shadow:inset 0 0 0 1px rgba(150,182,165,.4)!important}
+.pips--disc b{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(150,182,165,.7)}
+.pips--disc.off{opacity:.4}
+
+/* ---- rung + chain ---- */
+.rung__val{font-size:1.5rem}
+.rung__dots i{height:.3rem;border-radius:3px}
+.chain b{font-size:1.8rem;color:#ffd977;text-shadow:0 1px 0 rgba(0,0,0,.55),0 0 .9rem rgba(255,209,102,.5)}
+.chain.cold b{color:rgba(150,182,165,.85);text-shadow:0 1px 0 rgba(0,0,0,.5)}
+body[data-heat="1"] .chain b{color:#ffe08a}
+body[data-heat="2"] .chain b{color:#ffab5c;text-shadow:0 1px 0 rgba(0,0,0,.55),0 0 1.1rem rgba(255,150,70,.7)}
+body[data-heat="3"] .chain b{color:#ff7a5c;text-shadow:0 1px 0 rgba(0,0,0,.55),0 0 1.4rem rgba(255,90,50,.85)}
+body[data-heat="2"] .table{box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,170,90,.5),inset 0 4px 28px rgba(0,0,0,.5),0 0 0 1px rgba(255,150,70,.35),0 12px 30px rgba(0,0,0,.5)}
+body[data-heat="3"] .table{box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,120,80,.65),inset 0 4px 28px rgba(0,0,0,.5),0 0 2rem rgba(255,90,50,.35),0 12px 30px rgba(0,0,0,.5)}
+
+/* ---- cards: wet gloss, vivid 4-colour suits ---- */
+.card{
+  border-radius:clamp(5px,1.7vw,8px);
+  background:linear-gradient(158deg,#fff 0%,var(--stock) 48%,var(--stock-2) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1),inset 0 -2px 0 rgba(0,0,0,.07),0 3px 8px rgba(0,0,0,.48),0 0 0 1px var(--edge);
+  transition:transform .28s var(--pop),box-shadow .2s ease,opacity .2s ease;
+}
+.card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(ellipse 120% 60% at 50% -18%,rgba(255,255,255,.95),rgba(255,255,255,0) 58%)}
+.card::after{background:linear-gradient(118deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,.06) 30%,transparent 44%)}
+.card__ix{left:8%;top:5.5%}
+.card__r{font-size:calc(var(--cw) * .36);font-weight:700;text-shadow:0 1px 0 rgba(255,255,255,.9)}
+.card__rs{font-size:calc(var(--cw) * .23)}
+.card__pip{right:-4%;bottom:-8%;font-size:calc(var(--cw) * .88);opacity:.17}
+.card.s0{color:var(--s0)} .card.s1{color:var(--s1)} .card.s2{color:var(--s2)} .card.s3{color:var(--s3)}
+.card.face{background:linear-gradient(158deg,#fffdf4 0%,#fbf3dc 52%,#f0e4c4 100%)}
+.card.face .card__r{background:none;-webkit-text-fill-color:currentColor;color:inherit}
+.card.face::after{background:linear-gradient(118deg,rgba(255,244,205,.6) 0%,rgba(255,255,255,.05) 32%,transparent 46%)}
+.card.down{background:linear-gradient(160deg,#25628f 0%,#153c5d 55%,#0e2942 100%)}
+.card__back{border-radius:3px;border:1px solid rgba(255,209,102,.5);
+  background:repeating-linear-gradient(45deg,rgba(255,209,102,.10) 0 3px,transparent 3px 6px)}
+
+/* selected: lift + suit-coloured halo */
+.hand .card.sel{box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 14px 22px rgba(0,0,0,.55),0 0 0 2.5px var(--candy-1),0 0 1.4rem rgba(255,209,102,.65)}
+.hand .card.sel::after{background:linear-gradient(118deg,rgba(255,255,255,.6) 0%,rgba(255,255,255,.1) 32%,transparent 46%)}
+
+/* enhancements: gold foil, silver foil, holo joker */
+.card.e-gold{background:linear-gradient(158deg,#fff3c0 0%,#ffd873 40%,#e8ab2e 72%,#ffe9a8 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 3px 9px rgba(0,0,0,.5),0 0 0 1px #b3801d,0 0 .8rem rgba(255,200,80,.5)}
+.card.e-gold .card__r,.card.e-gold .card__rs,.card.e-gold .card__pip{color:#5a3c05}
+.card.e-gold.s1 .card__r,.card.e-gold.s1 .card__rs{color:#a01a16}
+/* Silver: ίδια οικογένεια με το Gold — ίδιο foil, ψυχρή παλέτα, λιγότερη λάμψη. */
+.card.e-silver{background:linear-gradient(158deg,#ffffff 0%,#dbe3ec 40%,#a9b7c6 72%,#eef3f8 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 3px 9px rgba(0,0,0,.45),0 0 0 1px #8fa0b0,0 0 .7rem rgba(190,210,230,.45)}
+.card.e-silver .card__r,.card.e-silver .card__rs,.card.e-silver .card__pip{color:#2c3846}
+.card.e-silver.s1 .card__r,.card.e-silver.s1 .card__rs{color:#9c2420}
+.card.e-silver .card__e{background:rgba(40,54,70,.7)}
+.card.e-wild{background:linear-gradient(150deg,#2a1a5e 0%,#5b2b8f 28%,#1f6fb8 55%,#1aa07a 78%,#3b1f6e 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 10px rgba(0,0,0,.55),0 0 0 1px #7a5cc4,0 0 1rem rgba(140,90,220,.55)}
+.card.e-wild .card__r{color:#ffe9a8;text-shadow:0 0 .5rem rgba(255,220,120,.8)}
+.card.e-wild .card__pip{color:#ffe9a8;opacity:.28}
+.card.e-wild::after{background:linear-gradient(118deg,rgba(255,255,255,.4) 0%,rgba(255,255,255,.05) 34%,transparent 48%)}
+.card__e{position:absolute;left:0;right:0;bottom:0;font-family:var(--mono);font-size:calc(var(--cw) * .17);
+  letter-spacing:.06em;text-transform:uppercase;text-align:center;padding:.05rem 0;
+  background:rgba(0,0,0,.55);color:#fff}
+.card.e-gold .card__e{background:rgba(90,60,5,.72)}
+.card.e-wild .card__e{display:none}
+
+/* ---- dock ---- */
+.rb,.go{border-radius:18px}
+.rb em{color:#ffd977;text-shadow:0 1px 0 rgba(0,0,0,.5)}
+.go{position:relative;overflow:hidden}
+.go.ok::after{content:"";position:absolute;inset:0;background:var(--sheen);background-size:250% 100%;
+  animation:sweep 2.6s ease-in-out infinite;pointer-events:none;mix-blend-mode:screen;opacity:.7}
+@keyframes sweep{0%{background-position:180% 0}55%,100%{background-position:-80% 0}}
+/* παίζεται αλλά κατεβαίνει: πορτοκαλί προειδοποίηση, όχι απαγόρευση */
+.go.down{background:var(--gloss),linear-gradient(180deg,#ffd9a8 0%,#f5a944 48%,#dc8420 52%,#f5a944 100%);
+  border-color:rgba(255,190,120,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 3px 0 #8a4c07,0 8px 18px rgba(0,0,0,.45)}
+.go.down .go__t{color:#40230a}
+.go.down .go__t--pts{font-size:1.4rem;line-height:1;letter-spacing:-.02em}
+.go.down .go__s{color:#6a3c08;font-size:.64rem;font-weight:600}
+.go.no{background:var(--gloss),linear-gradient(180deg,rgba(240,90,80,.26),rgba(200,60,55,.12))}
+.go.done{background:var(--gloss),linear-gradient(180deg,rgba(110,230,180,.3),rgba(80,190,145,.12))}
+
+/* preview lines */
+.preview.warn{color:#ffcf94;text-shadow:0 0 .6rem rgba(240,160,60,.4)}
+.preview.ok{color:hsl(var(--kh,45) 92% 84%)}
+
+/* ---- sheets, offers, buttons ---- */
+.sheet{background:
+    radial-gradient(ellipse 90% 40% at 20% 0%,hsl(196 80% 50% / .16),transparent 60%),
+    radial-gradient(ellipse 80% 40% at 90% 6%,hsl(270 75% 60% / .14),transparent 60%),
+    linear-gradient(180deg,var(--felt-2),var(--felt-1) 34%,var(--felt-0));
+  border-radius:24px 24px 0 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 -14px 46px rgba(0,0,0,.65)}
+.big{position:relative;overflow:hidden}
+.big:not(.ghost)::after{content:"";position:absolute;inset:0;background:var(--sheen);background-size:250% 100%;
+  animation:sweep 3.4s ease-in-out infinite;pointer-events:none;mix-blend-mode:screen;opacity:.55}
+.offer{border-radius:16px}
+.offer em{color:#ffd977}
+.chip{border-radius:99px}
+.tip__in{border-radius:16px;background:var(--gloss),rgba(8,32,24,.96);border-color:rgba(255,209,102,.5)}
+
+/* ---- start screen ---- */
+.start{background:
+  radial-gradient(ellipse 90% 50% at 15% 0%,hsl(196 85% 50% / .18),transparent 62%),
+  radial-gradient(ellipse 90% 50% at 85% 8%,hsl(272 80% 58% / .18),transparent 62%),
+  radial-gradient(ellipse 120% 70% at 50% 40%,var(--felt-2),var(--felt-0) 78%)}
+.wordmark{background:linear-gradient(180deg,#fff8dc 0%,#ffd166 46%,#e79b22 62%,#ffe6a5 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 3px 0 #6b4d12) drop-shadow(0 7px 0 rgba(0,0,0,.35)) drop-shadow(0 14px 30px rgba(255,200,90,.45))}
+.deckc.on{border-color:#ffd166;box-shadow:inset 0 0 0 1px #ffd166,0 0 1rem rgba(255,209,102,.4)}
+
+/* ---- freshly enhanced card lands ---- */
+.hand .card.enh-new{animation:enhpop 1s var(--pop) both}
+@keyframes enhpop{0%{transform:translateY(-1.3rem) scale(1.18);filter:brightness(2)}60%{filter:brightness(1.25)}100%{transform:none;filter:none}}
+
+@media (prefers-reduced-motion:reduce){.go.ok::after,.big::after{animation:none}}
+
+/* ---- v12b: more colour ---- */
+:root{--felt-0:#04160f;--felt-1:#0c3324;--felt-2:#135137;--felt-3:#1f7d57;
+  --glow-a:hsl(158 85% 48% / .30);--glow-b:hsl(272 90% 62% / .26);--glow-c:hsl(192 95% 55% / .24);--glow-d:hsl(38 95% 60% / .16)}
+body{background:
+    radial-gradient(ellipse 80% 40% at 8% 2%,var(--glow-c),transparent 60%),
+    radial-gradient(ellipse 80% 42% at 94% 6%,var(--glow-b),transparent 60%),
+    radial-gradient(ellipse 70% 38% at 92% 96%,var(--glow-d),transparent 62%),
+    radial-gradient(ellipse 120% 68% at 50% 48%,var(--glow-a),transparent 68%),
+    radial-gradient(ellipse 130% 74% at 50% -12%,var(--felt-3) 0%,var(--felt-1) 50%,var(--felt-0) 100%) fixed,
+    var(--felt-0)}
+.start{background:
+    radial-gradient(ellipse 85% 45% at 10% -2%,hsl(192 95% 52% / .30),transparent 60%),
+    radial-gradient(ellipse 85% 45% at 92% 6%,hsl(276 90% 60% / .30),transparent 60%),
+    radial-gradient(ellipse 70% 40% at 88% 98%,hsl(38 95% 58% / .20),transparent 62%),
+    radial-gradient(ellipse 130% 74% at 50% 42%,var(--felt-2),var(--felt-0) 76%)}
+.table{background:
+    radial-gradient(ellipse 76% 52% at 50% 34%,hsl(158 85% 60% / .22),transparent 72%),
+    radial-gradient(ellipse 62% 42% at 88% 98%,hsl(272 90% 66% / .20),transparent 70%),
+    radial-gradient(ellipse 55% 38% at 6% 96%,hsl(192 95% 60% / .16),transparent 70%),
+    linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.30))}
+
+/* κάθε φύλλο παίρνει τη χρωματική ταυτότητα του χρώματός του */
+.card.s0{--sc:var(--s0)} .card.s1{--sc:var(--s1)} .card.s2{--sc:var(--s2)} .card.s3{--sc:var(--s3)}
+.card.e-wild{--sc:#a97bff}
+.card:not(.down){box-shadow:inset 0 1px 0 rgba(255,255,255,1),inset 0 -2px 0 color-mix(in srgb,var(--sc,#888) 22%,transparent),
+  0 3px 8px rgba(0,0,0,.48),0 0 0 1px color-mix(in srgb,var(--sc,#b9b2a0) 34%,var(--edge))}
+.card__pip{opacity:.24}
+.card__rs{opacity:.95}
+.hand .card.sel{box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 14px 22px rgba(0,0,0,.55),
+  0 0 0 2.5px #ffd166,0 0 1.6rem color-mix(in srgb,var(--sc,#ffd166) 60%,rgba(255,209,102,.6))}
+.tcards .card{box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 6px 14px rgba(0,0,0,.55),
+  0 0 0 1px color-mix(in srgb,var(--sc,#b9b2a0) 45%,var(--edge)),0 0 .9rem color-mix(in srgb,var(--sc,#000) 28%,transparent)}
+
+/* HUD: ante σε χρώμα, μπάρα με ίριδα όταν έχεις καθαρίσει */
+.ante b{color:#bff3d8}
+.meter i.done{box-shadow:0 0 .9rem rgba(110,230,180,.8),inset 0 1px 0 rgba(255,255,255,.75)}
+.hud__score span{color:#8fc2ab}
+/* ribbons: πιο ζωντανά */
+.chal{background:var(--gloss),linear-gradient(180deg,hsl(350 90% 58% / .45),hsl(350 85% 42% / .25))}
+.chal.rule{background:var(--gloss),linear-gradient(180deg,hsl(202 90% 58% / .45),hsl(202 85% 42% / .25))}
+/* κατάστημα: κάθε πλακίδιο με ελαφρύ χρώμα */
+.offer{background:var(--gloss),linear-gradient(180deg,rgba(255,255,255,.09),rgba(0,0,0,.30))}
+.offer--charm{border-color:rgba(255,214,140,.24)}
+.synrow{background:var(--gloss),linear-gradient(180deg,hsl(45 95% 60% / .18),hsl(45 90% 45% / .08))}
+
+/* ---- v13: shop is one choice ---- */
+.picks{font-family:var(--mono);font-size:.66rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);text-align:center;margin:.9rem 0 .5rem}
+.picks.on{color:#ffe08a;text-shadow:0 0 .8rem rgba(255,209,102,.45)}
+.offer--pick{grid-template-columns:auto 1fr auto}
+.offer--pick .charm--s{grid-row:span 2}
+.offer--pick span:last-child{grid-column:2}
+.offer--pick em{grid-column:3;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.offer--pick.open{border-color:rgba(255,209,102,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 0 1px rgba(255,209,102,.3),0 4px 12px rgba(0,0,0,.35)}
+.offer--pick.open em{color:#ffd977}
+.offer--pick.bought{opacity:.5}
+.offer--pick.bought em{color:var(--good);font-size:1rem}
+.ownedrow{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.4rem}
+.ownedrow .charm--empty{width:2.4rem;height:2.4rem}
+
+/* ===================== v14: η επιλογή είναι κατάσταση, όχι animation =====================
+   Το `selglow` ήταν `infinite`: κάθε διαλεγμένο φύλλο πάλλονταν για πάντα, και κάθε tap
+   πρόσθετε ένα `pop` bounce από πάνω. Το χέρι δεν ησύχαζε ποτέ. Τώρα η επιλογή είναι μια
+   καθαρή μετάβαση: το φύλλο ανεβαίνει μια φορά, μένει εκεί, τέλος. */
+.hand .card{transition:transform .16s cubic-bezier(.2,.8,.3,1),box-shadow .16s ease,filter .16s ease}
+.hand .card.sel,
+.hand .card.sel:active{animation:none!important}
+.hand .card.sel{transform:translateY(-.85rem) rotate(0deg) scale(1.05);z-index:3}
+/* το ήδη επιλεγμένο φύλλο δεν ξανακουνιέται όταν πατάς άλλο */
+.hand .card.new{animation:drawin .34s cubic-bezier(.2,.85,.25,1) backwards}
+.hand .card:active:not(.sel){transform:rotate(var(--rot,0deg)) translateY(2px) scale(.97)}
+/* τα μη επιλεγμένα ξεθωριάζουν λίγο μόλις υπάρχει επιλογή: η επιλογή διαβάζεται χωρίς κίνηση */
+.hand.picking .card:not(.sel){filter:brightness(.82) saturate(.85)}
+
+/* ---- v14b: το κατάστημα είναι μία υποχρεωτική επιλογή που προχωράει μόνη της ---- */
+.nextup{display:grid;gap:.35rem;margin:.9rem 0 .2rem}
+.nextup>.lbl{color:#ffd977}
+.nextup .chalnext{margin:0}
+.picks{margin:1rem 0 .55rem;font-size:.62rem}
+.sheet.leaving{animation:leave .6s cubic-bezier(.4,0,.7,.2) forwards}
+@keyframes leave{0%{transform:none;opacity:1}100%{transform:translateY(12%);opacity:0}}
+@media (prefers-reduced-motion:reduce){.sheet.leaving{animation:none;opacity:.4}}
+/* ένα ✓ αρκεί: το παλιό .offer.bought em::after πρόσθετε δεύτερο πάνω στο δικό μας */
+.offer--pick.bought em::after{content:none}
+
+/* ================= v15: το χέρι, ο πήχης και ο αντίχειρας ================= */
+/* 1. Οι δύο βασικές χειρονομίες ήταν νεκρές στο κινητό: το `touch-action:pan-y`
+   άφηνε τον compositor να αρπάξει κάθε κάθετο σύρσιμο στα ~23px και να στείλει
+   pointercancel — το pointerup δεν ερχόταν ποτέ. Η σελίδα δεν κάνει scroll·
+   ο άξονας είναι δικός μας. */
+.hand{touch-action:none}
+.hand .card{touch-action:none}
+
+/* 2. Η σειρά εργαλείων δεν επιτρέπεται να κουνήσει τον αντίχειρα.
+   Μετρημένο: όταν εμφανιζόταν, το #hand ανέβαινε 34.8px (50px στα 360×600) και
+   το dock κατέβαινε 7.2px, μέσα σε ένα καρέ, ακριβώς πάνω στο κλείσιμο του στόχου. */
+.tools{min-height:2.75rem;justify-content:center}
+.tools:empty{display:flex}
+.tb{min-height:2.75rem;flex:1 1 0;justify-content:center;text-align:center;padding:.4rem .5rem}
+
+/* 4. Η αλυσίδα δεν πανηγυρίζει όταν σπάει. */
+.chain.drop b{animation:chdrop .45s ease}
+@keyframes chdrop{0%{transform:scale(1)}35%{transform:scale(.8);color:var(--pip-lt)}100%{transform:scale(1)}}
+
+/* 5. Η προεπισκόπηση άλλαζε 1↔2↔3 γραμμές και έκλεβε ύψος από τα παιγμένα φύλλα:
+   τα φύλλα γλιστρούσαν 15–30px σε κάθε άγγιγμα. Δύο γραμμές, πάντα. */
+.preview{min-height:2.7em;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0 .3em}
+.preview:empty{display:flex}
+
+/* 8. Στο reduced motion το «+N» μένει ακίνητο αντί να εξαφανίζεται. */
+@media (prefers-reduced-motion:reduce){.float.still{opacity:1;transform:translate(-50%,-60%)}}
+
+/* 9. Στόχοι αφής ≥44px χωρίς να αλλάξει το σχέδιο (μετρημένοι: 30×30, 27×27, 30 ύψος). */
+/* Το .hintb είναι ήδη absolute στη γωνία του τραπεζιού — δεν το κάνουμε relative, γιατί
+   τότε το top/right γίνονταν μετατόπιση μέσα στη ροή και το «?» έπεφτε αριστερά. */
+.charms .charm,.chal{position:relative}
+.hintb::after,.charms .charm::after,.chal::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:max(100%,44px);height:max(100%,44px);border-radius:inherit}
+.charms{gap:.45rem}
+
+/* 10. Πολύ κοντές οθόνες: ο πήχης δίνει χώρο στο τραπέζι, αλλιώς το παιγμένο
+   φύλλο βγαίνει έξω από το κουτί του (μετρημένο: κουτί 2.3px, φύλλο 29px). */
+@media (max-height:660px){
+  .rung{gap:.1rem}
+  .rung__val{font-size:1.15rem}
+  .rung .lbl{display:none}
+  .rung__dots i{height:.2rem;width:1rem}
+  .table{padding:.45rem .5rem;gap:.25rem}
+  .hand{padding:.6rem 0 .1rem}
+  .preview{font-size:.66rem}
+}
+
+/* 12. Ο λόγος για άλλη μια παρτίδα: το επόμενο κλειδωμένο charm, στην οθόνη Busted. */
+.nextun{display:grid;gap:.15rem;margin:.9rem 0 .2rem;padding:.6rem .7rem;border-radius:.7rem;
+  background:linear-gradient(180deg,rgba(255,209,102,.10),rgba(255,209,102,.03));border:1px solid rgba(255,209,102,.22)}
+.nextun b{font-size:1rem;color:#ffd977}
+.nextun>span:last-child{font-size:.72rem;opacity:.75}
+
+/* 13. Τίποτα δεν ανασαίνει για πάντα. Το κουμπί «τραβάει» τρεις φορές μόλις το χέρι
+   γίνει νόμιμο και μετά ησυχάζει· το τραπέζι τρέμει δύο δευτερόλεπτα, όχι όσο κρατά η φωτιά. */
+.go.ok,.go.done{animation:ready 1.6s ease-in-out 3}
+body[data-heat="3"] .table{animation:tremble .38s ease-in-out 5}
+
+/* ===== v16: το κατάστημα έχει δύο διαδρόμους — ένα perk και ένα charm ===== */
+.lane{margin:.2rem 0 .9rem}
+.lane__h{display:flex;align-items:baseline;justify-content:space-between;margin:0 .15rem .35rem}
+.lane__n{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lane__n.on{color:#ffd977}
+.lane .offers{margin:0}
+
+/* ===== v17: τα κυκλάκια των charms ανάσαιναν πάνω στο πλαίσιο του τραπεζιού =====
+   Μετρημένο: 16px από την πάνω άκρη, δηλαδή ~6px μέσα από το ::before περίγραμμα. */
+.charms{margin:.55rem 0 .5rem}
+@media (max-height:660px){.charms{margin:.3rem 0 .25rem}}
+
+/* ===================== v18: ο χρόνος και ο αντίχειρας ===================== */
+/* 1. Η σειρά εργαλείων δεν υπάρχει πια στον κώδικα (το ui.js γράφει πάντα ""), αλλά το
+   v15 της κρατούσε 44px για να μη «χοροπηδά» όταν εμφανίζεται. Μετρημένο: μια νεκρή
+   ζώνη 44px ανάμεσα στο χέρι και το dock, σε κάθε οθόνη — 7% ενός τηλεφώνου 360×600
+   (το τραπέζι πάει 262 → 306px, τα παιγμένα φύλλα 109 → 153px). Αν κάποτε ξαναγεμίσει,
+   το min-height από πάνω κρατά ακόμη τη θέση της. */
+.tools:empty{display:none}
+
+/* 2. Το «Out» δέχεται τα φύλλα που πετάς: ο μετρητής χτυπά όταν προσγειώνονται. */
+.piles b.hit{display:inline-block;animation:pilehit .45s var(--pop)}
+@keyframes pilehit{0%{transform:scale(1)}40%{transform:scale(1.5);color:#8fd0e2}100%{transform:scale(1)}}
+
+/* 2β. Το `FX.pulse($("bDisc"), "hit")` έδειχνε στον παίκτη το κουμπί του discard όταν το χέρι
+   δεν κάνει τίποτα — αλλά το `.hit` υπήρχε ΜΟΝΟ ως `.piles b.hit`, άρα στο κουμπί ήταν
+   εντελώς αόρατο. */
+.rb.hit,.go.hit{animation:rbhit .42s var(--pop)}
+@keyframes rbhit{0%,100%{transform:none}35%{transform:scale(1.08)}}
+
+/* 3. Η ανταμοιβή που διάλεξες πρέπει να λάμπει, όχι να σβήνει: το `.bought` την έριχνε
+   στο 50% opacity — το μόνο πράγμα που κερδίζεις σε τρία antes γινόταν το πιο αχνό
+   πλακίδιο της οθόνης. Τώρα ανάβει, και τα άλλα δύο σβήνουν από το :disabled. */
+.offer--pick.bought{opacity:1;border-color:rgba(255,209,102,.85);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 0 1px rgba(255,209,102,.55),0 0 1.6rem rgba(255,209,102,.4);
+  animation:took .5s var(--pop)}
+@keyframes took{0%{transform:scale(1)}45%{transform:scale(1.045)}100%{transform:scale(1)}}
+
+/* 4. Τίποτα δεν ανασαίνει για πάντα — το v15 το είχε πει και είχε ξεχάσει τη λάμψη. */
+.go.ok::after{animation:shine 2.6s ease-in-out 3}
+
+/* 5. Το χέρι ακολουθεί τον αντίχειρα όσο σέρνεις: η χειρονομία ήταν εντελώς αόρατη. */
+.hand.dragging{transition:none}
+@media (prefers-reduced-motion:reduce){.offer--pick.bought{animation:none}.piles b.hit{animation:none}.rb.hit,.go.hit{animation:none}.hand.dragging{transform:none!important}}
+
+/* ===================== v20: Survival — μία τράπουλα, χωρίς στόχους ===================== */
+body.surv .meter i.spend{background-image:repeating-linear-gradient(-55deg,rgba(255,255,255,.18) 0 .45rem,transparent .45rem .9rem),linear-gradient(180deg,#cfe9f2,#7fb5c4 45%,#3f7f93 55%,#7fb5c4);box-shadow:0 0 .6rem rgba(143,208,226,.55)}
+body.surv .hud__score span{color:#8fd0e2}
+body.surv .ante{letter-spacing:.08em}
+body.surv .pips--play{display:none}
+body.surv .meter{height:.42rem}
+body.surv .hud__score span{font-size:.72rem;letter-spacing:.02em}
+.pips--disc b{white-space:nowrap}
+body.surv .charms{display:none}
+body.surv .hintb{top:.55rem}
+
+/* ===================== v21: ιριδίζον — σεντέφι, όχι ουράνιο τόξο =====================
+   Πρώτη απόπειρα ήταν overlay/color-dodge παντού: πάνω σε σκούρα επιφάνεια το overlay
+   ΣΚΟΤΕΙΝΙΑΖΕΙ (τα πλακίδια της σειράς μαύρισαν), το color-dodge έσκασε τον Joker σε
+   ουράνιο τόξο και έφαγε την αξία του φύλλου, και η μπάρα έγινε μωβ γιατί το overlay
+   έπεσε πάνω στο ΑΔΕΙΟ κομμάτι της. Ο κανόνας που έμεινε: σεντέφι μόνο σε πράγματα
+   που είναι ήδη ΑΝΟΙΧΤΟΧΡΩΜΑ και πολύτιμα, με soft-light και χαμηλή αδιαφάνεια. */
+:root{
+  --irid:linear-gradient(112deg,
+    hsl(190 92% 76%) 0%, hsl(250 88% 80%) 15%, hsl(318 90% 80%) 29%,
+    hsl(18 92% 80%) 43%, hsl(48 96% 82%) 57%, hsl(148 80% 78%) 71%,
+    hsl(196 92% 78%) 85%, hsl(190 92% 76%) 100%);
+  /* Για ΚΕΙΜΕΝΟ πάνω σε σκούρο φόντο: ίδιες αποχρώσεις, πολύ πιο φωτεινές — αλλιώς τα
+     μεσαία του σεντεφιού (πράσινο, καφέ) πέφτουν πάνω στα ψηφία και τα λασπώνουν. */
+  --irid-lite:linear-gradient(112deg,
+    hsl(190 100% 88%) 0%, hsl(250 100% 90%) 15%, hsl(318 100% 89%) 29%,
+    hsl(24 100% 86%) 43%, hsl(48 100% 88%) 57%, hsl(150 95% 88%) 71%,
+    hsl(196 100% 89%) 85%, hsl(190 100% 88%) 100%);
+}
+@keyframes iridrun{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+
+/* ---- ενισχυμένα φύλλα: εδώ ανήκει πρώτα ---- */
+.card.e-gold::after,.card.e-silver::after{
+  background:
+    radial-gradient(ellipse 130% 55% at 50% -12%,rgba(255,255,255,.55),rgba(255,255,255,0) 58%),
+    var(--irid);
+  background-size:auto,280% 100%;
+  mix-blend-mode:soft-light;opacity:.72;
+  animation:iridrun 7s linear infinite;
+}
+.card.e-gold{box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 2px 6px rgba(0,0,0,.45),0 0 0 1px #8a6f2c,0 0 1rem rgba(212,169,79,.42)}
+.card.e-silver{box-shadow:0 1px 0 rgba(255,255,255,.85) inset,0 2px 6px rgba(0,0,0,.45),0 0 0 1px #7d8b99,0 0 1rem rgba(180,215,235,.38)}
+/* Ο Joker είναι σκούρος: μόνο μια λάμψη από πάνω, αλλιώς χάνεται το φύλλο. */
+.card.e-wild::after{
+  background:radial-gradient(ellipse 130% 55% at 50% -12%,rgba(255,255,255,.3),rgba(255,255,255,0) 58%),var(--irid);
+  background-size:auto,300% 100%;mix-blend-mode:screen;opacity:.16;
+  animation:iridrun 5s linear infinite;
+}
+.card.e-wild .card__r,.card.e-wild .card__rs{position:relative;z-index:3}
+
+/* ---- το wordmark: σεντέφι μέσα στα γράμματα ---- */
+.wordmark{
+  background-image:var(--irid);
+  background-size:260% 100%;
+  animation:iridrun 8s linear infinite;
+  filter:drop-shadow(0 3px 0 #4a3a12) drop-shadow(0 6px 0 rgba(0,0,0,.4)) drop-shadow(0 14px 30px rgba(160,200,255,.3));
+}
+
+/* ---- η μπάρα: σεντέφι ΜΟΝΟ στο γεμάτο κομμάτι ---- */
+.meter i{position:relative;overflow:hidden}
+.meter i::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:var(--irid);background-size:260% 100%;
+  mix-blend-mode:soft-light;opacity:.7;
+  animation:iridrun 5s linear infinite;
+}
+
+/* ---- τα χρυσά κουμπιά: ανοιχτόχρωμα, σηκώνουν σεντέφι ---- */
+.go.ok::before,.big:not(.ghost)::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+  background:var(--irid);background-size:240% 100%;
+  mix-blend-mode:soft-light;opacity:.55;
+  animation:iridrun 6s linear infinite;
+}
+.go.ok>*,.big:not(.ghost)>*{position:relative;z-index:2}
+.big:not(.ghost){position:relative;overflow:hidden}
+
+/* ---- charms: μπίλιες με σεντέφι, το εικονίδιο μένει από πάνω ---- */
+.charm{position:relative;overflow:hidden}
+.charm::after{
+  content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:1;
+  background:var(--irid);background-size:250% 100%;
+  mix-blend-mode:soft-light;opacity:.45;
+  animation:iridrun 6.5s linear infinite;
+}
+.charm svg,.charm>span{position:relative;z-index:2}
+.charm--empty::after,.charm--lock::after{display:none}
+
+/* ---- ο αριθμός της αλυσίδας: σεντέφι μόνο όταν καίει ---- */
+body[data-heat="2"] .chain b,body[data-heat="3"] .chain b{
+  background-image:var(--irid-lite);background-size:260% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:iridrun 3.2s linear infinite;
+  filter:drop-shadow(0 0 .9rem rgba(255,180,130,.7));
+}
+body[data-heat="3"] .chain b{animation-duration:2s}
+
+/* ---- οι τίτλοι των φύλλων ---- */
+.sheet h2{background-image:var(--irid-lite);background-size:250% 100%;animation:iridrun 9s linear infinite}
+.sheet h2.bad{background-image:linear-gradient(180deg,#ffd0c8,#e0736a 60%,#c0483f);animation:none}
+.sheet h2.good{animation:iridrun 4.5s linear infinite}
+
+/* ---- η επιλεγμένη κάρτα στο χέρι: ένα σεντεφένιο περίγραμμα ---- */
+.hand .card.sel{box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 12px 20px rgba(0,0,0,.5),0 0 0 2.5px var(--candy-1),0 0 1.4rem rgba(190,225,255,.55)}
+
+@media (prefers-reduced-motion:reduce){
+  .card.e-gold::after,.card.e-silver::after,.card.e-wild::after,.wordmark,.meter i::after,
+  .go.ok::before,.big:not(.ghost)::before,.charm::after,.chain b,.sheet h2{animation:none}
+}
+
+/* ===================== v22: το όνομα, το ένα κουμπί, και πιο χρυσό Play =====================
+   Το κύριο κουμπί έβγαινε κρεμ στην κορυφή: το σεντέφι με soft-light στο .55 το ξέβαφε.
+   Πιο βαθύς χρυσός, και το σεντέφι στο μισό — γυαλάδα, όχι ξέβαμμα. */
+.big:not(.ghost){
+  background:var(--gloss),linear-gradient(180deg,#ffe9a6 0%,#f6ca50 44%,#e2a81f 56%,#f7d066 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 3px 0 #8a6612,0 8px 18px rgba(0,0,0,.42),0 0 1.2rem rgba(245,197,80,.28);
+}
+.big:not(.ghost)::before{opacity:.3}
+.go.ok::before{opacity:.34}
+.wordmark{letter-spacing:.08em}
+.start__in{gap:.9rem}
+
+/* ===================== v23: ο αριθμός της αλυσίδας, καθαρός =====================
+   Ο αριθμός μεγάλωνε με `transform:scale()` και origin `right bottom`, δηλαδή μεγάλωνε
+   ΠΡΟΣ ΤΑ ΠΑΝΩ — και το transform δεν πιάνει χώρο, οπότε στο heat 3 (scale 1,28) έμπαινε
+   7px μέσα στην ετικέτα από πάνω του. Τώρα μεγαλώνει με font-size, που ΠΙΑΝΕΙ χώρο και
+   το grid του κρατά θέση. */
+.chain b{
+  transform:none;
+  font-size:calc(1.55rem + (var(--pos,1) - 1) * .05rem);
+  line-height:1.05;
+  transition:font-size .25s var(--pop);
+}
+.chain{gap:.12rem}
+.chain span{white-space:nowrap}
+/* Σε σεντεφένιο κείμενο το text-shadow περνά ΜΕΣΑ από τα διάφανα γράμματα και τα λασπώνει:
+   η λάμψη γίνεται drop-shadow, που ακολουθεί το σχήμα των ψηφίων. */
+body[data-heat="2"] .chain b,body[data-heat="3"] .chain b{
+  text-shadow:none;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.55)) drop-shadow(0 0 .7rem rgba(255,190,140,.75));
+}
+body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-shadow(0 0 1rem rgba(255,150,90,.9))}
+
+/* ===================== v24: έξοδος πάντα ορατή στα φύλλα τέλους =====================
+   Το «Menu» ήταν το τελευταίο κουμπί ενός μακριού φύλλου, δηλαδή κάτω από το ορατό:
+   σε τηλέφωνο έπρεπε να κυλήσεις για να βρεις την έξοδο. Πάει στη γραμμή της λαβής. */
+.shead{position:sticky;top:0;z-index:3;display:grid;grid-template-columns:1fr auto;align-items:center;
+  margin:-1rem -1rem .55rem;padding:.55rem 1rem .2rem;
+  background:linear-gradient(180deg,var(--felt-2) 55%,rgba(22,75,55,0));}
+.shead .grip{grid-column:1;grid-row:1;margin:.35rem auto .3rem}
+.sheet__x{grid-column:2;grid-row:1;justify-self:end;min-height:44px;padding:0 .2rem 0 .9rem;
+  font-family:var(--mono);font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--candy-1)}
+.sheet__x:active{transform:scale(.94)}
+
+/* Survival: χέρι που σπάει την αλυσίδα — παίζεται, αλλά φαίνεται ότι κοστίζει. */
+.go.down.cost{background:var(--gloss),linear-gradient(180deg,rgba(120,170,190,.3),rgba(60,110,130,.16));border-color:rgba(143,208,226,.5)}
+.go.down.cost .go__s{color:#8fd0e2}
+.build{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(147,170,156,.6);text-align:center;margin-top:.7rem}
+
+/* v25 (αφαιρέθηκε): το Survival έσβηνε τα φύλλα που δεν ανεβαίνουν και τόνιζε τα υπόλοιπα.
+   Απορρίφθηκε από τον παίκτη — τα φύλλα δείχνουν όλα ίδια, τη γραμμή τη διαβάζει εκείνος. */
+
+/* Το κουμπί του σπασίματος έμοιαζε απενεργοποιημένο: ξεβαμμένο γκρι-μπλε, χωρίς όγκο.
+   Τώρα είναι ένα ΚΑΝΟΝΙΚΟ κουμπί σε χρώμα προειδοποίησης — πατιέται και φαίνεται ότι πατιέται. */
+.go.down.cost{
+  color:#2a1608;border-color:transparent;
+  background:var(--gloss),linear-gradient(180deg,#ffc99a 0%,#f0975a 46%,#dd7a3c 54%,#f5ab6d 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 3px 0 #8a4718,0 8px 18px rgba(0,0,0,.42),0 0 1.1rem rgba(240,150,90,.3);
+  animation:none;
+}
+.go.down.cost::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+  background:var(--irid);background-size:240% 100%;mix-blend-mode:soft-light;opacity:.4;
+  animation:iridrun 6s linear infinite;
+}
+.go.down.cost>*{position:relative;z-index:2}
+.go.down.cost .go__t{color:#2a1608}
+.go.down.cost .go__s{color:#6b3512;font-weight:600}
+.go.down.cost:active{transform:translateY(2px) scale(.985);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 0 #8a4718,0 4px 10px rgba(0,0,0,.4)}
+@media (prefers-reduced-motion:reduce){.go.down.cost::before{animation:none}}
+
+/* ===================== v26: η αρχική οθόνη δεν κόβεται ===================== */
+/* Ήταν `display:grid; place-items:center` σε `position:fixed` χωρίς κύλιση: μόλις το
+   περιεχόμενο ξεπέρασε το ύψος της οθόνης (βεντάλια + wordmark + τρία κουμπιά + πλακίδια +
+   στατιστικά), κόβονταν ΚΑΙ οι δύο άκρες και δεν υπήρχε τρόπος να τις δεις.
+   Flex με `margin:auto` στο παιδί: κεντράρει όταν χωράει, κυλά όταν δεν χωράει — και το
+   `margin:auto` (σε αντίθεση με το `place-items:center`) δεν ψαλιδίζει την κορυφή. */
+.start{
+  display:flex;align-items:center;justify-content:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  padding:calc(1.1rem + var(--st)) 1.1rem calc(1.1rem + var(--sb));
+}
+.start__in{margin:auto;flex:0 0 auto}
+
+/* Κοντές οθόνες (640-740px ύψος, δηλαδή τα πιο κοινά τηλέφωνα): η αρχική χωράει ολόκληρη
+   χωρίς κύλιση, με περιθώριο. */
+@media (max-height:760px){
+  .start{padding:calc(.7rem + var(--st)) 1rem calc(.7rem + var(--sb))}
+  .start__in{gap:.5rem}
+  .fan{height:4.6rem;--cw:2.9rem}
+  .tag{font-size:1.1rem;margin-top:-.35rem}
+  .start__btns{gap:.35rem;margin-top:.15rem}
+  .start__btns .big{height:3rem}
+  .colllink{padding:.15rem .6rem}
+  .deckc{padding:.5rem .55rem}
+  .deckc b{font-size:.8rem}
+  .deckc span{font-size:.66rem;line-height:1.25}
+  .stats div{padding:.4rem .2rem}
+  .stats b{font-size:1rem}
+}
+
+/* ===================== v27: synthwave — ο ορίζοντας, όχι το νέον παντού =====================
+   Το soundtrack πήγε synthwave. Το ΤΡΑΠΕΖΙ δεν αλλάζει: πράσινη τσόχα, λακαρισμένη κάσα,
+   χρυσό ως χρώμα ανταμοιβής, σεντέφι στα πολύτιμα. Το νέον μπαίνει σε τρία σημεία και μόνο:
+   (α) στην αρχική οθόνη, που είναι αφίσα και δεν έχει να διαβάσεις τίποτα κρίσιμο πάνω της,
+   (β) στη ΘΕΡΜΟΤΗΤΑ της αλυσίδας, που ήταν σέπια-καφέ και λάσπωνε τα φύλλα,
+   (γ) στο wordmark, ως αύρα γύρω από τα ίδια σεντεφένια γράμματα.
+   Ό,τι έχει αξία φύλλου ή αριθμό μέσα του δεν το ακουμπάμε. */
+:root{
+  --neon-mag:322;      /* hue: magenta — η ζέστη, έρχεται από κάτω, από τον αντίχειρα */
+  --neon-cyan:190;     /* hue: cyan — ο ουρανός, έρχεται από πάνω */
+  --neon-violet:#3b1150;
+}
+
+/* ---- (α) αρχική οθόνη: ουρανός από πάνω, τσόχα από κάτω, ορίζοντας στη μέση ----
+   Ο ουρανός πιάνει μόνο το πάνω 44%. Κάτω από τον ορίζοντα μένει η τσόχα — η ταυτότητα
+   του παιχνιδιού δεν γίνεται αφίσα, μόνο κάθεται μπροστά σε μία. */
+.start{
+  --hz:40%;   /* ο ορίζοντας: πόσο ψηλά κόβει η γη τον ουρανό */
+  background:
+    radial-gradient(ellipse 62% 20% at 50% 39.5%,hsl(24 100% 64% / .34),transparent 66%),
+    radial-gradient(ellipse 125% 24% at 50% 40%,hsl(var(--neon-mag) 100% 58% / .38),transparent 74%),
+    radial-gradient(ellipse 95% 40% at 10% -6%,hsl(var(--neon-cyan) 98% 52% / .28),transparent 62%),
+    radial-gradient(ellipse 95% 40% at 92% 0%,hsl(282 92% 58% / .34),transparent 62%),
+    linear-gradient(180deg,#120927 0%,#20104a 22%,#3a1550 36%,#123c2d 41%,var(--felt-1) 58%,var(--felt-0) 100%);
+}
+.start__in{position:relative;z-index:1}
+
+/* το πλέγμα: ένα ορθογώνιο πλέγμα ξαπλωμένο με perspective — οι κάθετες συγκλίνουν μόνες
+   τους στον ορίζοντα, χωρίς να ζωγραφίσουμε ούτε μία γραμμή φυγής με το χέρι.
+   ΠΡΟΣΟΧΗ: το mask σε τέτοιο στοιχείο μετριέται στις ΤΟΠΙΚΕΣ του συντεταγμένες, πριν το
+   rotateX. Πρώτη απόπειρα έσβηνε στο 62% του στοιχείου — που μετά το perspective έπεφτε
+   κάτω από την οθόνη, οπότε το πλέγμα περνούσε μέσα από τα πλακίδια και το ledger. Το
+   σβήσιμο γίνεται τώρα στην ΟΘΟΝΗ, με ένα πέπλο τσόχας στο ::after. */
+.start::before{
+  content:"";position:fixed;left:-60%;right:-60%;top:var(--hz);bottom:-20%;
+  pointer-events:none;z-index:0;
+  transform:perspective(15rem) rotateX(74deg);transform-origin:50% 0;
+  background:
+    repeating-linear-gradient(90deg,hsl(var(--neon-cyan) 100% 60% / .85) 0 1px,transparent 1px 4.4%),
+    repeating-linear-gradient(0deg,hsl(var(--neon-mag) 100% 64% / .8) 0 1px,transparent 1px 6.5%);
+  opacity:.34;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 6%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 6%);
+}
+/* ένα φύλλο σε συντεταγμένες ΟΘΟΝΗΣ: (1) η γραμμή του ορίζοντα, (2) το πέπλο τσόχας που
+   θάβει το πλέγμα πριν φτάσει στα πλακίδια, (3) scanlines μόνο στον ουρανό — το
+   `background-size` κόβει το repeating gradient στο πάνω 40%, χωρίς δεύτερο mask. */
+.start::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(180deg,transparent 39.5%,hsl(var(--neon-cyan) 100% 82% / .42) 39.85% 40.1%,transparent 40.4%),
+    radial-gradient(ellipse 120% 34% at 50% 68%,hsl(158 65% 24% / .5),transparent 72%),
+    linear-gradient(180deg,transparent 40%,hsl(158 60% 8% / .42) 45%,hsl(158 62% 6% / .92) 53%,hsl(158 62% 5% / .97) 68%),
+    repeating-linear-gradient(180deg,rgba(4,8,20,.2) 0 1px,transparent 1px 3px);
+  background-size:100% 100%,100% 100%,100% 100%,100% 40%;
+  background-repeat:no-repeat;
+}
+
+/* ---- (γ) wordmark: τα ίδια σεντεφένια γράμματα, καινούργια αύρα ----
+   Το παλιό stack ήταν λαδί-καφέ σκιά (#4a3a12): σωστό για χρυσάφι σε τσόχα, λάθος για
+   νέον. Ίδιο πάχος, βιολετί αντί λαδί, και δύο λάμψεις — magenta κοντά, cyan μακριά. */
+.wordmark{
+  filter:
+    drop-shadow(0 2px 0 var(--neon-violet))
+    drop-shadow(0 5px 0 rgba(8,3,20,.55))
+    drop-shadow(0 0 .85rem hsl(var(--neon-mag) 100% 64% / .6))
+    drop-shadow(0 0 2.2rem hsl(var(--neon-cyan) 100% 62% / .42));
+}
+.tag{text-shadow:0 1px 0 rgba(0,0,0,.5),0 0 1.1rem hsl(var(--neon-cyan) 100% 70% / .3)}
+/* το χρυσό PLAY μένει χρυσό — παίρνει μόνο μια μακρινή ροζ αύρα για να κάθεται στον κόσμο */
+.start__btns .big:not(.ghost){box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 3px 0 #8a6612,0 8px 18px rgba(0,0,0,.42),0 0 1.2rem rgba(245,197,80,.28),0 0 2.6rem hsl(var(--neon-mag) 100% 60% / .28)}
+/* Το δεύτερο κουμπί ήταν γυαλί στο 8%: το πλέγμα περνούσε ΜΕΣΑ από το «HOW TO PLAY» και το
+   έκανε αχνάδα. Τώρα είναι σκούρο γυαλί με κυανό περίγραμμα — δεύτερης σειράς, αλλά κουμπί. */
+.start__btns .big.ghost{
+  background:var(--gloss),linear-gradient(180deg,hsl(200 40% 12% / .82),hsl(200 45% 7% / .9));
+  border-color:hsl(var(--neon-cyan) 90% 70% / .38);
+  box-shadow:inset 0 1px 0 hsl(var(--neon-cyan) 100% 85% / .22),0 3px 0 rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.4),0 0 1.4rem hsl(var(--neon-cyan) 100% 60% / .18);
+}
+
+/* ---- (β) θερμότητα: magenta από κάτω, cyan από πάνω — και ΠΟΤΕ στο κέντρο ----
+   Το παλιό `inset 0 0 9rem` γέμιζε ΟΛΗ την οθόνη πορτοκαλί: στο heat 3 η τσόχα γινόταν
+   καφέ και το ασημί φύλλο γκρι-μπεζ. Τώρα η φωτιά είναι ΠΕΡΙΘΩΡΙΟ: λάμπουν οι άκρες,
+   το κέντρο — τσόχα, φύλλα, αξίες — μένει καθαρό. */
+#heat{background-repeat:no-repeat}
+body[data-heat="1"] #heat{box-shadow:inset 0 0 3.2rem hsl(45 95% 62% / .18)}
+body[data-heat="2"] #heat{
+  box-shadow:inset 0 0 2.6rem hsl(var(--neon-mag) 100% 58% / .3),inset 0 0 .5rem hsl(var(--neon-mag) 100% 74% / .2);
+  background-image:
+    radial-gradient(ellipse 130% 34% at 50% 106%,hsl(var(--neon-mag) 100% 56% / .3),transparent 66%),
+    radial-gradient(ellipse 130% 26% at 50% -6%,hsl(var(--neon-cyan) 100% 56% / .16),transparent 64%);
+}
+body[data-heat="3"] #heat{
+  box-shadow:inset 0 0 3.4rem hsl(var(--neon-mag) 100% 56% / .42),inset 0 0 .9rem hsl(var(--neon-cyan) 100% 66% / .26);
+  background-image:
+    radial-gradient(ellipse 140% 40% at 50% 108%,hsl(var(--neon-mag) 100% 55% / .44),transparent 70%),
+    radial-gradient(ellipse 140% 30% at 50% -8%,hsl(var(--neon-cyan) 100% 58% / .26),transparent 66%);
+}
+/* η κάσα του τραπεζιού: το χρυσό inlay γίνεται ροζ-κυανό νέον, το ξύλο μένει ξύλο */
+body[data-heat="2"] .table{box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px hsl(var(--neon-mag) 100% 72% / .5),inset 0 4px 28px rgba(0,0,0,.5),0 0 0 1px hsl(var(--neon-mag) 100% 62% / .38),0 0 1.4rem hsl(var(--neon-mag) 100% 55% / .22),0 12px 30px rgba(0,0,0,.5)}
+body[data-heat="3"] .table{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px hsl(var(--neon-cyan) 100% 78% / .6),inset 0 4px 28px rgba(0,0,0,.5),0 0 0 1px hsl(var(--neon-mag) 100% 66% / .55),0 0 2.2rem hsl(var(--neon-mag) 100% 55% / .35),0 12px 30px rgba(0,0,0,.5)}
+/* το σκορ στη φωτιά: ροζ-λευκό, όχι πορτοκαλί — μένει αριθμός που διαβάζεται */
+body[data-heat="3"] .hud__score b{color:#ffd0ef;text-shadow:0 0 1rem hsl(var(--neon-mag) 100% 66% / .8),0 2px 6px rgba(0,0,0,.55)}
+/* ο αριθμός της αλυσίδας: το σεντέφι μένει, η λάμψη γίνεται ροζ και μετά ροζ+κυανή */
+body[data-heat="2"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.55)) drop-shadow(0 0 .7rem hsl(var(--neon-mag) 100% 70% / .8))}
+body[data-heat="3"] .chain b{filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-shadow(0 0 .8rem hsl(var(--neon-mag) 100% 68% / .95)) drop-shadow(0 0 1.6rem hsl(var(--neon-cyan) 100% 66% / .55))}
+/* τα dots του πήχη όταν καίει: ίδια λογική, ροζ αντί χρυσό */
+body[data-heat="3"] .rung__dots i.at{box-shadow:inset 0 1px 0 #fff,0 0 .6rem hsl(var(--neon-mag) 100% 66% / .8)}
+
+/* ---- ο πίνακας πληρωμών: το «× 6» έπεφτε ΠΑΝΩ στο «Full House» ----
+   Το `.rtab div` είναι flex χωρίς gap και το `<b>` χωρίς nowrap: στα στενά κελιά το όνομα
+   ακουμπούσε τον αριθμό («Full House42 × 6») και το «× 5» έσπαγε σε δική του γραμμή.
+   Μετρημένο στα 360 και στα 390. Ο πίνακας είναι το εγχειρίδιο του παιχνιδιού — διαβάζεται. */
+.rtab div{gap:.45rem;align-items:flex-start}
+.rtab div>span{min-width:0}
+.rtab b{white-space:nowrap;flex:0 0 auto}
+/* Τρεις στήλες σε 328px πλάτος περιεχομένου δίνουν κελιά 106px: το «One card · the first
+   step» έσπαγε σε τέσσερις γραμμές. Δύο στήλες στο τηλέφωνο, τρεις όταν υπάρχει χώρος. */
+.rtab{grid-template-columns:repeat(auto-fit,minmax(8.6rem,1fr))}
+
+/* ---- διόρθωση που βρήκα ενώ κοίταζα ----
+   Το `sweep` στο `.big:not(.ghost)::after` ζούσε ΚΑΙ στο reduced motion: το v12 έγραψε
+   `.big::after{animation:none}` (ειδικότητα 0,1,1) και το `.big:not(.ghost)::after` (0,2,1)
+   το κέρδιζε. Μετρημένο με document.getAnimations(): η μόνη κίνηση που έμενε ζωντανή. */
+@media (prefers-reduced-motion:reduce){
+  .big:not(.ghost)::after,.big:not(.ghost)::before,.go.ok::before{animation:none!important}
+}
+
+/* ===================== v29: ο πρώτος γύρος διδάσκει τον πήχη =====================
+   Τρεις γραμμές, μία τη φορά, καρφωμένες πάνω στο rung και στην αλυσίδα. Τοποθετούνται
+   `fixed` από το JS ώστε να μη μετακινούν ΤΙΠΟΤΑ από το layout — το τραπέζι, το χέρι και
+   το dock μένουν στα ίδια pixel με ή χωρίς τον οδηγό. */
+/* κάτω από το `.tip` (5), ώστε μια σημείωση να διαβάζεται πάνω του· πάνω από το callout (3) */
+.coach{position:fixed;z-index:4;pointer-events:none}
+.coach__in{
+  pointer-events:auto;position:relative;display:flex;align-items:center;gap:.4rem;
+  padding:.45rem .2rem .45rem .6rem;border-radius:13px;
+  background:var(--gloss),rgba(8,32,24,.97);border:1px solid rgba(212,169,79,.55);
+  box-shadow:0 10px 26px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12);
+}
+.coach p{flex:1;min-width:0;font-size:.76rem;line-height:1.32;color:var(--cream)}
+/* Το «Skip» πιάνει όλο το ύψος του κουτιού: στόχος αφής ~52×54, μία κίνηση του αντίχειρα. */
+.coach__x{
+  flex:0 0 auto;align-self:stretch;display:flex;align-items:center;
+  font-family:var(--mono);font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--brass);border-radius:9px;padding:0 .7rem;margin:-.45rem -.2rem -.45rem 0;
+}
+.coach__x:active{background:rgba(212,169,79,.2)}
+/* το μυτερό: δείχνει το ίδιο το στοιχείο, στο x του, πάνω ή κάτω ανάλογα με τη θέση */
+.coach__in::after{
+  content:"";position:absolute;left:var(--cx,50%);width:.62rem;height:.62rem;
+  background:rgba(8,32,24,.97);border:1px solid rgba(212,169,79,.55);transform:translateX(-50%) rotate(45deg);
+}
+.coach.down .coach__in::after{top:-.34rem;border-right:0;border-bottom:0}
+.coach.up .coach__in::after{bottom:-.34rem;border-left:0;border-top:0}
+/* Το σημάδι μπαίνει ΜΟΝΟ στο rung και στην αλυσίδα — ποτέ σε φύλλο του χεριού: ο οδηγός
+   λέει πού να κοιτάξεις, δεν προτείνει ποτέ τι να παίξεις. */
+.coachmark{position:relative}
+.coachmark::after{
+  content:"";position:absolute;inset:-.35rem -.5rem;border-radius:10px;pointer-events:none;
+  border:1px solid rgba(212,169,79,.8);box-shadow:0 0 .9rem rgba(212,169,79,.4);
+  animation:coachpulse 2.4s ease-in-out infinite;
+}
+@keyframes coachpulse{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* ---- η οροφή των ενισχυμένων φύλλων, στη γραμμή του preview ----
+   Το `.preview` είναι flex με wrap: η σημείωση παίρνει δική της γραμμή όταν δεν χωρά,
+   και δεν σπάει ποτέ στη μέση (τα κενά της είναι nbsp από το JS). */
+.capd{
+  font-family:var(--mono);font-size:.64rem;font-weight:600;letter-spacing:.02em;
+  color:#ffcf94;background:rgba(240,160,60,.12);border:1px solid rgba(240,160,60,.32);
+  border-radius:5px;padding:.05rem .34rem;
+}
+
+/* ---- How to play: ο βρόχος πάνω, η εγκυκλοπαίδεια σε πτυσσόμενα ----
+   Το κείμενο των παραγράφων είναι ΑΥΤΟΥΣΙΟ· αλλάζει μόνο η σειρά και το τι είναι ανοιχτό. */
+.rulz .loop{
+  font-size:.95rem;line-height:1.4;color:var(--cream);
+  border-left:2px solid var(--brass);padding:.15rem 0 .15rem .7rem;margin-bottom:.15rem;
+}
+.rulz .loop b{color:var(--brass-hi)}
+.rulz__d{border-top:1px solid rgba(45,107,82,.55);padding-top:.3rem}
+.rulz__d>summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:.5rem;
+  min-height:44px;font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.06em;
+  color:var(--cream);
+}
+.rulz__d>summary::-webkit-details-marker{display:none}
+.rulz__d>summary::after{content:"+";font-size:1.05rem;font-weight:700;color:var(--brass);line-height:1}
+.rulz__d[open]>summary::after{content:"–"}
+.rulz__d[open]>summary{color:var(--brass)}
+.rulz__d>p{margin-bottom:.45rem}
+.rulz__d>p:last-child{margin-bottom:.3rem}

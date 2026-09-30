@@ -1,8 +1,10 @@
-name: Deploy to GitHub Pages
+name: Deploy site to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches:
+      - claude/solo-game-ideas-balatro-yj6hqw
+      - main
   workflow_dispatch:
 
 permissions:
@@ -19,19 +21,20 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Collect site files
-        run: |
-          mkdir _site
-          cp -r index.html style.css src vendor color-gates _site/
-          touch _site/.nojekyll
+      - uses: actions/checkout@v5
+      # Το `enablement: true` δοκιμάστηκε και ΔΕΝ δουλεύει εδώ: η δημιουργία
+      # του Pages site απαιτεί δικαιώματα admin στο repository, που το
+      # GITHUB_TOKEN ενός workflow δεν έχει — απαντά "Resource not accessible
+      # by integration". Το Pages πρέπει να ενεργοποιηθεί μία φορά από
+      # Settings -> Pages -> Source: GitHub Actions.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      # Σφραγίδα build στο service worker: κάθε deploy = νέα cache, νέος worker.
+      - name: Stamp service worker with commit SHA
+        run: sed -i "s/__BUILD__/${GITHUB_SHA::12}/" site/raise/sw.js site/raise/index.html && grep -n 'const V' site/raise/sw.js && grep -n 'data-build' site/raise/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
-      - id: deployment
+          path: site
+      - id: deploy
         uses: actions/deploy-pages@v4

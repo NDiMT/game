@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a2019">
+<meta name="description" content="ANABASIS — a solo card game. Every step of the chain is worth more than the last.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ANABASIS">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>ANABASIS</title>
+<meta name="build" content="__BUILD__" data-build>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Fira+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="grain"></div><div id="vig"></div><div id="heat"></div><div id="flash"></div>
+<div class="boss" id="boss" hidden></div>
+<div class="tip" id="tip" hidden></div>
+<canvas id="fx"></canvas>
+
+<section class="start" id="start" hidden>
+  <div class="start__in">
+    <div class="fan" id="fan" aria-hidden="true"></div>
+    <h1 class="wordmark">ANABASIS</h1>
+    <p class="tag">Every step is worth more than the last.</p>
+    <div class="start__btns" id="startBtns"></div>
+    <div class="decks" id="decks" aria-label="Deck and mode"></div>
+    <div class="stats" id="stats"></div>
+  </div>
+</section>
+
+<div class="app" id="app">
+  <header class="hud">
+    <div class="hud__score" role="status" aria-live="polite" aria-atomic="true"><b id="score">0</b><span id="tgt">/ 100</span></div>
+    <div class="hud__r">
+      <div class="row"><span class="ante">ANTE <b id="ante">1</b>/<span id="anteN">12</span></span></div>
+      <div class="row"><div class="pips pips--play" id="plays" aria-label="Plays"></div></div>
+      <div class="row"><div class="pips pips--disc" id="discards" aria-label="Discards"></div></div>
+    </div>
+    <div class="meter"><i id="fill"></i></div>
+  </header>
+
+  <main class="table" id="table">
+    <button class="hintb" id="bHint" aria-label="Hint">?</button>
+    <div class="rung">
+      <div class="charms" id="charms" aria-label="Charms"></div>
+      <span class="lbl">Rung</span>
+      <b class="rung__val free" id="rungVal">Open</b>
+      <div class="rung__dots" id="rungDots"></div>
+      <div class="ribbons">
+        <button class="chal" id="chal" hidden><span>Challenge</span><b id="chalName"></b></button>
+        <button class="chal rule" id="rule" hidden><span>Rule</span><b id="ruleName"></b></button>
+      </div>
+    </div>
+    <div class="tcards" id="tcards"></div>
+    <div class="callout" id="callout" aria-live="polite"></div>
+    <div class="preview" id="preview"></div>
+    <div class="tfoot">
+      <span class="piles" id="piles">Pile <b id="pileN">44</b> · Out <b id="dpileN">0</b></span>
+      <div class="peek" id="peek" hidden><span class="lbl">Next</span><span id="peekCard"></span></div>
+      <div class="chain" id="chain"><span>Chain</span><b id="chainN">×1</b></div>
+    </div>
+  </main>
+
+  <section class="hand" id="hand" aria-label="Your hand"></section>
+
+  <div class="tools" id="tools"></div>
+
+  <nav class="dock">
+    <button class="rb" id="bDisc"><span>Discard</span><em id="discN">3</em></button>
+    <button class="go idle" id="bPlay" disabled><span class="go__t">Pick cards</span></button>
+    <button class="rb" id="bMenu" aria-label="Menu"><span class="ic">⋯</span></button>
+  </nav>
+</div>
+
+<!-- Ο οδηγός του πρώτου run: μία γραμμή τη φορά, καρφωμένη πάνω σε αυτό που δείχνει
+     (rung, chain), και φεύγει όταν παίξεις. Ζει έξω από το .app γιατί τοποθετείται
+     `fixed` πάνω στο τραπέζι, χωρίς να μετακινεί τίποτα από το layout. -->
+<div class="coach" id="coach" hidden></div>
+
+<div class="veil" id="veil" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" tabindex="-1"></div></div>
+
+<script src="game.js"></script>
+<script src="fx.js"></script>
+<script src="icons.js"></script>
+<script src="ui.js"></script>
+<script>
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  /* Στο `load`, όχι στο `DOMContentLoaded`, το register περίμενε το stylesheet των Google
+     Fonts: με αργό ή μπλοκαρισμένο fetch έφτανε ~15s μέσα στη συνεδρία. */
+  addEventListener("DOMContentLoaded", () => navigator.serviceWorker.register("sw.js").then((reg) => reg.update()).catch(() => {}));
+  /* ΚΑΝΕΝΑ αυτόματο reload στο `controllerchange`. Με το `cache:"reload"` του sw.js, το ΠΡΩΤΟ
+     φόρτωμα μετά από deploy τρέχει ΗΔΗ τον νέο κώδικα — το reload ήταν περιττό και έπεφτε
+     ~15s αφού είχε ξεκινήσει ο γύρος, δηλαδή πάνω στο χέρι του παίκτη (μετρημένο: 300ms μετά
+     το πάτημα του Play). Ό,τι χρειάζεται καθάρισμα το κάνει το «Force update» στο μενού. */
+}
+</script>
+</body>
+</html>
