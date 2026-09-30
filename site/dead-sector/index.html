@@ -73,13 +73,17 @@
           <span>Ευαισθησία στριψίματος <b id="set-sens-val">1.0</b></span>
           <input id="set-sens" type="range" min="0.3" max="2.5" step="0.1" />
         </label>
-        <label class="set check touch-setting" for="set-assist">
-          <input id="set-assist" type="checkbox" />
-          <span>Βοήθεια σκόπευσης<small>Το σκόπευτρο «κολλάει» λίγο πάνω στους εχθρούς</small></span>
+        <label class="set touch-setting" for="set-assist">
+          <span>Βοήθεια σκόπευσης<small>Ελαφριά: το σκόπευτρο επιβραδύνει λίγο πάνω σε εχθρό όσο στρίβεις</small></span>
+          <select id="set-assist">
+            <option value="0">Καμία</option>
+            <option value="1">Ελαφριά</option>
+            <option value="2">Δυνατή</option>
+          </select>
         </label>
         <label class="set check touch-setting" for="set-auto">
           <input id="set-auto" type="checkbox" />
-          <span>Αυτόματη βολή<small>Πυροβολεί μόνο του όταν σημαδεύεις εχθρό</small></span>
+          <span>Αυτόματη βολή<small>Πυροβολεί μόνο του όταν σημαδεύεις εχθρό (κλειστό από προεπιλογή)</small></span>
         </label>
         <label class="set check touch-setting" for="set-stickturn">
           <input id="set-stickturn" type="checkbox" />
