@@ -21,7 +21,12 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-It also works on GitHub Pages as-is.
+Pushes to `main` are deployed to GitHub Pages by `.github/workflows/pages.yml`:
+
+- Arrow Cube 3D: `https://ndimt.github.io/game/`
+- Color Gates: `https://ndimt.github.io/game/color-gates/`
+
+If the first deploy fails, go to **Settings → Pages** in the repository, set **Source** to **GitHub Actions**, and re-run the workflow.
 
 ## How it works
 
