@@ -11,6 +11,7 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
 };
+const APP_VERSION = '1.2';
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 
 function mulberry32(seed) {
@@ -1288,3 +1289,17 @@ requestAnimationFrame(frame);
 
 // Exposed for automated testing.
 window.__van = { scene, camera, renderer, state, riders, stats, traffic, potholes, routeAt, K, SP, get mode() { return mode; }, set mode(m) { mode = m; }, eject, arrive, resetLeg, STOP_S, ROUTE_LEN, step };
+
+// ------------------------------------------------------------------ updates
+// Players with the page already open get a reload button when a new version is published.
+async function checkForUpdate() {
+  try {
+    const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+    const { version } = await r.json();
+    if (version && version !== APP_VERSION) $('update').hidden = false;
+  } catch { /* offline: try again later */ }
+}
+$('update').addEventListener('click', () => location.reload());
+checkForUpdate();
+setInterval(checkForUpdate, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
