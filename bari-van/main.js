@@ -131,7 +131,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-document.body.prepend(renderer.domElement);
+$('app').prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 1600);
@@ -144,15 +144,32 @@ Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, n
 scene.add(sun, sun.target);
 scene.fog = new THREE.Fog(0xbfe0ff, 160, 700);
 
+// Forced landscape: on a touch device in portrait, lay the app out as
+// landscape (width = screen height) and rotate it 90° with CSS.
+let rotation = store.get('van.rot', 90); // 90 = clockwise, -90 = counter-clockwise
+let APP_W = window.innerWidth, APP_H = window.innerHeight;
 function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h);
-  camera.aspect = w / h;
-  camera.fov = w < h ? 78 : 62;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const forced = isTouch && vh > vw;
+  APP_W = forced ? vh : vw; APP_H = forced ? vw : vh;
+  document.body.classList.toggle('forced', forced);
+  document.body.classList.toggle('rot-cw', rotation === 90);
+  document.body.classList.toggle('rot-ccw', rotation === -90);
+  document.documentElement.style.setProperty('--app-w', `${APP_W}px`);
+  document.documentElement.style.setProperty('--app-h', `${APP_H}px`);
+  renderer.setSize(APP_W, APP_H);
+  camera.aspect = APP_W / APP_H;
+  camera.fov = 62;
   camera.updateProjectionMatrix();
-  $('rotate').hidden = !(isTouch && h > w);
+  $('rotate').hidden = true;
+}
+function flipRotation() {
+  rotation = rotation === 90 ? -90 : 90;
+  store.set('van.rot', rotation);
+  resize();
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 150));
 
 // ------------------------------------------------------------------ textures
 function canvasTex(w, h, draw, repeat = [1, 1]) {
@@ -701,16 +718,27 @@ const WHEEL_MAX = 135;
 $('b-horn').addEventListener('pointerdown', (e) => { horn(); e.preventDefault(); });
 // Optional tilt steering
 let tilt = null;
+let tiltBase = null;
 $('b-tilt').addEventListener('click', async () => {
   if (tilt !== null) { tilt = null; $('b-tilt').classList.remove('on'); return; }
-  try { if (typeof DeviceOrientationEvent?.requestPermission === 'function') await DeviceOrientationEvent.requestPermission(); } catch { /* denied */ }
-  tilt = 0;
+  try { if (typeof DeviceMotionEvent?.requestPermission === 'function') await DeviceMotionEvent.requestPermission(); } catch { /* denied */ }
+  tilt = 0; tiltBase = null; // the next reading becomes "straight ahead"
   $('b-tilt').classList.add('on');
+  toast('Κράτα το κινητό σαν τιμόνι και γύρνα το 🚐');
 });
-window.addEventListener('deviceorientation', (e) => {
+// Steering by turning the phone like a wheel: the angle of gravity in the
+// screen plane, relative to how you held it when tilt was switched on. Works
+// in any orientation, and the sign is the same on iOS and Android.
+window.addEventListener('devicemotion', (e) => {
   if (tilt === null) return;
-  const landscapeSign = (screen.orientation?.angle ?? window.orientation ?? 90) === 270 || window.orientation === -90 ? -1 : 1;
-  tilt = Math.max(-1, Math.min(1, ((e.beta || 0) * landscapeSign) / 25));
+  const g = e.accelerationIncludingGravity;
+  if (!g || g.x === null) return;
+  if (Math.hypot(g.x, g.y) < 3) return; // phone lying flat: no usable wheel angle
+  const ang = Math.atan2(g.x, g.y);
+  if (tiltBase === null) tiltBase = ang;
+  let d = ang - tiltBase; d = Math.atan2(Math.sin(d), Math.cos(d));
+  const deg = (-d * 180) / Math.PI;
+  tilt = Math.max(-1, Math.min(1, (Math.abs(deg) < 3 ? 0 : deg) / 32));
 });
 
 // ------------------------------------------------------------------ sound
@@ -1201,7 +1229,7 @@ function frame(now) {
 
   // chase camera
   const f = tmp.set(Math.sin(state.h), 0, Math.cos(state.h));
-  const portrait = window.innerHeight > window.innerWidth;
+  const portrait = APP_H > APP_W;
   const back = mode === 'menu' ? 14 : portrait ? 11 : 9.5, up = mode === 'menu' ? 5 : portrait ? 5.2 : 3.9;
   const want = new THREE.Vector3(state.x - f.x * back, up, state.z - f.z * back);
   camPos.lerp(want, Math.min(1, dt * 4));
@@ -1220,7 +1248,7 @@ function frame(now) {
     const b = bubbles[i];
     b.t -= dt;
     tmp.copy(b.rider.mesh.position).setY(b.rider.mesh.position.y + 2.6).project(camera);
-    b.el.style.transform = `translate(${(tmp.x * 0.5 + 0.5) * window.innerWidth}px, ${(-tmp.y * 0.5 + 0.5) * window.innerHeight}px) translate(-50%, -100%)`;
+    b.el.style.transform = `translate(${(tmp.x * 0.5 + 0.5) * APP_W}px, ${(-tmp.y * 0.5 + 0.5) * APP_H}px) translate(-50%, -100%)`;
     b.el.style.opacity = tmp.z < 1 ? Math.min(1, b.t) : 0;
     if (b.t <= 0) { b.el.remove(); bubbles.splice(i, 1); }
   }
@@ -1241,6 +1269,8 @@ $('start').addEventListener('click', async () => {
   mode = 'drive';
   toast(`${LEGS[0].from} → ${LEGS[0].to} · ${LEGS[0].km} km · Πάτα γκάζι!`, 2600);
 });
+$('b-flip').addEventListener('click', flipRotation);
+$('m-flip').addEventListener('click', flipRotation);
 $('b-mute').addEventListener('click', () => {
   const m = !store.get('van.muted', false);
   store.set('van.muted', m); sfx.mute(m);
