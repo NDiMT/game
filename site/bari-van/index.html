@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+<div id="app">
   <!-- HUD -->
   <div class="hud">
     <div class="panel trip">
@@ -20,6 +21,7 @@
     <div class="map-wrap">
       <canvas id="minimap" width="130" height="130"></canvas>
       <button id="b-mute" class="mini-btn" aria-label="Ήχος">🔊</button>
+      <button id="b-flip" class="mini-btn flip" aria-label="Γύρισε την οθόνη ανάποδα">⟲</button>
     </div>
   </div>
 
@@ -81,6 +83,7 @@
       </ol>
       <p id="roster" class="muted small"></p>
       <button id="start" class="btn">Ξεκίνα τη διαδρομή</button>
+      <p class="muted small portrait-only">📱 Γύρνα το κινητό οριζόντια. Αν βλέπεις ανάποδα: <button id="m-flip" class="mini-btn">⟲ γύρισε</button></p>
       <p class="muted small">Κινητό: γύρνα το τιμόνι με τον αντίχειρα, δεξιά γκάζι (στενό) και φρένο (φαρδύ, κράτα για όπισθεν). Πληκτρολόγιο: βελάκια ή WASD, H κόρνα.</p>
       <p id="menu-best" class="muted small"></p>
     </div>
@@ -116,6 +119,7 @@
     <div class="card"><div class="phone"></div><h2>Γύρισε το κινητό</h2><p class="muted">Το βαν οδηγείται οριζόντια.</p></div>
   </section>
 
+</div>
   <script type="module" src="main.js"></script>
 </body>
 </html>
