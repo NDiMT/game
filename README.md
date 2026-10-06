@@ -61,3 +61,14 @@ A third game in `dead-sector/`: a roguelite FPS inspired by *Deadzone: Rogue*, d
 - **Upgrades:** Fire, shock and cryo elements, damage, fire rate, crits, life steal, max health, armor, exploding kills, faster dash and move speed.
 - **Enemies:** Drones, grunts, chargers, heavies and a boss with ring and aimed bullet patterns plus reinforcements.
 - **Controls:** WASD and mouse (pointer lock), click to fire, Shift/Space to dash, 1–3, Q or the wheel to switch weapons, Esc to pause. Touch devices get a virtual stick, drag-to-look and buttons.
+
+---
+
+# Bari Van Run
+
+A fourth game in `bari-van/`: a mobile-first 3D driving game (Three.js) on the group's Puglia day trip (Bari → Alberobello → Matera → Bari), with each leg's real schedule as the in-game clock.
+
+- **Comedy:** Take a bend too fast and the sliding doors open and a passenger flies out (with lines from the group chat). Potholes, speed bumps and hard braking pop the rear doors. Stop next to stranded passengers to pick them up, or they take a taxi to the next stop.
+- **Obstacles:** Potholes, speed bumps in towns, roadworks cones, a flock of sheep crossing, and two-way traffic (Fiats, tomato-loaded Ape trucks, buses).
+- **Scenery:** The Bari seafront with palms and the Swabian castle, olive groves and dry-stone walls, Alberobello trulli, the Matera sassi with the cathedral, and a night drive home with headlights.
+- **Controls:** A touch steering wheel (±135°, springs back to center), real-looking gas and brake pedals (hold brake to reverse), optional tilt steering and a horn. On desktop: arrow keys or WASD.
