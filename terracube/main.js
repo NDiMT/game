@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 
 // =====================================================================
-// SHAPERS: a modern take on Populous for phones (portrait).
+// TERRACUBE: a modern take on Populous for phones (portrait).
 // Voxel island, isometric camera. Sculpt the land, let your people
 // settle flat ground, grow their homes into castles, outlast a rival god.
 // =====================================================================
 
-const APP_VERSION = '2.0';
+const APP_VERSION = '2.1';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -994,6 +994,96 @@ for (const img of document.querySelectorAll('img[data-icon]')) {
   img.src = pixelIcon(img.dataset.icon, remap);
 }
 
+
+// ------------------------------------------------------------------ voxel logo
+// Each pixel of a 5×7 bitmap font becomes a grass-topped block drawn in oblique 3D.
+const GLYPHS = {
+  T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
+  E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
+  R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+  A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
+  U: ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+  B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+  L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
+  O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+  S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
+};
+function drawVoxelLogo(canvas, text, cssWidth) {
+  // Lay out each line as columns of a 7-row bitmap, centre the lines, stack them with a gap.
+  const lines = text.split('\n').map((line) => {
+    const cols = [];
+    for (const [k, ch] of [...line].entries()) {
+      if (k) cols.push('.......');
+      const g = GLYPHS[ch];
+      for (let x = 0; x < 5; x++) cols.push(g.map((r) => r[x]).join(''));
+    }
+    return cols;
+  });
+  const W = Math.max(...lines.map((l) => l.length)), GAP = 2, R = lines.length * 7 + (lines.length - 1) * GAP;
+  const grid = Array.from({ length: R }, () => new Array(W).fill(false));
+  lines.forEach((cols, li) => {
+    const off = Math.floor((W - cols.length) / 2);
+    cols.forEach((col, x) => { for (let y = 0; y < 7; y++) grid[li * (7 + GAP) + y][off + x] = col[y] === '#'; });
+  });
+  const filled = (x, y) => x >= 0 && y >= 0 && x < W && y < R && grid[y][x];
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const cell = Math.floor((cssWidth * dpr) / (W + 3));
+  const depth = Math.round(cell * 0.45);
+  const pad = Math.round(cell * 0.4);
+  canvas.width = W * cell + depth + pad * 2;
+  canvas.height = R * cell + depth + pad * 2 + Math.round(cell * 0.5);
+  canvas.style.width = `${canvas.width / dpr}px`;
+  canvas.style.height = `${canvas.height / dpr}px`;
+  const g = canvas.getContext('2d');
+  const rng = mulberry32(7);
+  const sub = Math.max(1, Math.round(cell / 6)); // texture pixel size
+  const noisy = (x0, y0, w, h, palette) => {
+    for (let y = 0; y < h; y += sub)
+      for (let x = 0; x < w; x += sub) { g.fillStyle = palette[(rng() * palette.length) | 0]; g.fillRect(x0 + x, y0 + y, Math.min(sub, w - x), Math.min(sub, h - y)); }
+  };
+  const GRASS = ['#7ad451', '#6cc24a', '#86e05c', '#62b743'], GRASS_D = ['#58a63a', '#4f9a33', '#5fae3f'];
+  const DIRT = ['#8a5a32', '#7a4e2a', '#996639', '#80532e'], DIRT_D = ['#5e3b1a', '#674221', '#55361a'];
+  const ox = pad, oy = pad + depth;
+  // drop shadow
+  g.fillStyle = 'rgba(0,0,0,0.35)';
+  for (let x = 0; x < W; x++) for (let y = 0; y < R; y++) if (filled(x, y)) g.fillRect(ox + x * cell + depth * 0.5, oy + y * cell + cell * 0.45, cell, cell);
+  // back-to-front: right columns first so left blocks overlap their side faces, bottom rows last
+  for (let y = 0; y < R; y++)
+    for (let x = W - 1; x >= 0; x--) {
+      if (!filled(x, y)) continue;
+      const px = ox + x * cell, py = oy + y * cell;
+      const topOpen = !filled(x, y - 1);
+      if (!filled(x + 1, y)) { // right face
+        g.save();
+        g.beginPath(); g.moveTo(px + cell, py); g.lineTo(px + cell + depth, py - depth); g.lineTo(px + cell + depth, py + cell - depth); g.lineTo(px + cell, py + cell); g.closePath(); g.clip();
+        noisy(px + cell, py - depth, depth, cell + depth, DIRT_D);
+        if (topOpen) { g.fillStyle = GRASS_D[0]; g.beginPath(); g.moveTo(px + cell, py); g.lineTo(px + cell + depth, py - depth); g.lineTo(px + cell + depth, py - depth + cell * 0.3); g.lineTo(px + cell, py + cell * 0.3); g.fill(); }
+        g.restore();
+      }
+      if (topOpen) { // top face
+        g.save();
+        g.beginPath(); g.moveTo(px, py); g.lineTo(px + depth, py - depth); g.lineTo(px + cell + depth, py - depth); g.lineTo(px + cell, py); g.closePath(); g.clip();
+        noisy(px, py - depth, cell + depth, depth, GRASS);
+        g.restore();
+      }
+      // front face: dirt, with a grass fringe when the block is exposed on top
+      noisy(px, py, cell, cell, DIRT);
+      if (topOpen) {
+        noisy(px, py, cell, Math.round(cell * 0.28), GRASS);
+        for (let k = 0; k < cell; k += sub) if (rng() < 0.45) { g.fillStyle = GRASS[1]; g.fillRect(px + k, py + Math.round(cell * 0.28), sub, sub); }
+      }
+      g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = Math.max(1, dpr * 0.75);
+      g.strokeRect(px + 0.5, py + 0.5, cell - 1, cell - 1);
+    }
+}
+function layoutLogo() {
+  const c = $('logo');
+  if (c) drawVoxelLogo(c, 'TERRA\nCUBE', Math.min(330, window.innerWidth - 40));
+}
+layoutLogo();
+window.addEventListener('resize', layoutLogo);
+
 // ------------------------------------------------------------------ UI
 function setTool(t) {
   tool = t;
@@ -1203,7 +1293,7 @@ setInterval(checkForUpdate, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
 
 // Exposed for automated testing.
-window.__shapers = {
+window.__terracube = window.__shapers = {
   get state() { return { mode, world, buildings, walkers, mana, stats, tool, elapsed }; },
-  simulate, applyTool, startWorld, setTool, teamPop, camera, rig, hgt, toX, toZ, N, useToolAt, endGame, rotate, pick,
+  simulate, applyTool, startWorld, drawVoxelLogo, drawVoxelLogo, setTool, teamPop, camera, rig, hgt, toX, toZ, N, useToolAt, endGame, rotate, pick,
 };

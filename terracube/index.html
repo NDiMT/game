@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1d6fae" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Terracube</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon-512.png" />
+  <link rel="apple-touch-icon" href="icon-512.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&display=swap" />
+  <link rel="stylesheet" href="style.css?v=2.1" />
+  <script type="importmap">
+    { "imports": { "three": "../vendor/three.module.js" } }
+  </script>
+</head>
+<body class="in-menu">
+<div id="app">
+  <header class="top">
+    <div class="vs panel">
+      <div class="god blue"><img data-icon="person" alt="" /><b id="pop0">0</b></div>
+      <div class="balance"><div id="balance"></div><span class="vs-tag">VS</span></div>
+      <div class="god red"><b id="pop1">0</b><img data-icon="person" data-team="1" alt="" /></div>
+    </div>
+    <div class="row2">
+      <div class="badge panel"><span id="world">World 1</span></div>
+      <div class="badge panel counts">
+        <img data-icon="house" alt="" /><b id="homes">0</b>
+        <img data-icon="castle" alt="" /><b id="castles">0</b>
+      </div>
+      <span class="spacer"></span>
+      <button id="b-mute" class="sq" aria-label="Sound"><span class="spk"></span></button>
+      <button id="b-pause" class="sq" aria-label="Pause"><span class="pz"></span></button>
+    </div>
+  </header>
+
+  <div class="side">
+    <button id="rot-l" class="sq round" aria-label="Turn left">⟲</button>
+    <button id="b-home" class="sq round" aria-label="Back to my people"><img data-icon="house" alt="" /></button>
+    <button id="rot-r" class="sq round" aria-label="Turn right">⟳</button>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+  <button id="update" class="update" hidden>New version! Tap to reload</button>
+
+  <footer class="dock panel">
+    <div class="dock-top">
+      <div class="orb" aria-label="Mana">
+        <div id="mana-fill"></div>
+        <img data-icon="mana" alt="" />
+      </div>
+      <div class="dock-info">
+        <div class="mana-line"><b id="mana">0</b><span>MANA</span></div>
+        <div id="hint" class="hint"></div>
+      </div>
+    </div>
+    <div class="tools">
+      <button class="tool" data-tool="raise"><img data-icon="raise" alt="" /><span>Raise</span><em class="cost"></em></button>
+      <button class="tool" data-tool="lower"><img data-icon="lower" alt="" /><span>Lower</span><em class="cost"></em></button>
+      <button class="tool" data-tool="rally"><img data-icon="rally" alt="" /><span>Rally</span><em class="cost"></em></button>
+      <button class="tool" data-tool="bolt"><img data-icon="bolt" alt="" /><span>Bolt</span><em class="cost"></em></button>
+      <button class="tool" data-tool="quake"><img data-icon="quake" alt="" /><span>Quake</span><em class="cost"></em></button>
+      <button class="tool" data-tool="volcano"><img data-icon="volcano" alt="" /><span>Volcano</span><em class="cost"></em></button>
+    </div>
+  </footer>
+
+  <section id="menu" class="overlay">
+    <div class="logo">
+      <h1><canvas id="logo" role="img" aria-label="Terracube"></canvas></h1>
+      <p class="tag">Shape the land · Raise a people · Defy a god</p>
+    </div>
+    <div class="card panel">
+      <ul class="how">
+        <li><img data-icon="raise" alt="" /><span><b>Tap blocks</b> to raise or dig. Level ground lets homes grow from tents into castles.</span></li>
+        <li><img data-icon="mana" alt="" /><span>Your people make <b>mana</b>. Spend it on rallies, lightning, quakes and volcanoes.</span></li>
+        <li><img data-icon="person" data-team="1" alt="" /><span>Win when the <b class="red-t">Crimson</b> god has no followers left.</span></li>
+      </ul>
+      <p class="ctrl">Drag to move · Pinch to zoom · Twist or ⟲ ⟳ to turn</p>
+      <button id="play" class="btn green big">PLAY</button>
+      <div class="worlds-label">Worlds</div>
+      <div id="worlds" class="worlds"></div>
+    </div>
+  </section>
+
+  <section id="pause" class="overlay" hidden>
+    <div class="card panel">
+      <div class="ribbon">Paused</div>
+      <button id="resume" class="btn green big">Resume</button>
+      <button id="quit" class="btn stone">Main menu</button>
+    </div>
+  </section>
+
+  <section id="end" class="overlay" hidden>
+    <div class="card panel">
+      <div id="end-title" class="ribbon"></div>
+      <p id="end-text"></p>
+      <div id="end-stats" class="stats"></div>
+      <button id="end-next" class="btn green big"></button>
+      <button id="end-retry" class="btn stone">Replay world</button>
+    </div>
+  </section>
+</div>
+<script type="module" src="main.js?v=2.1"></script>
+</body>
+</html>

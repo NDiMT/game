@@ -73,6 +73,6 @@ A fourth game in `bari-van/`: a mobile-first 3D driving game (Three.js) on the g
 - **Scenery:** The Bari seafront with palms and the Swabian castle, olive groves and dry-stone walls, Alberobello trulli, the Matera sassi with the cathedral, and a night drive home with headlights.
 - **Controls:** A touch steering wheel (±135°, springs back to center), real-looking gas and brake pedals (hold brake to reverse), optional tilt steering and a horn. On desktop: arrow keys or WASD.
 
-## Shapers (`shapers/`)
+## Terracube (`terracube/`)
 
 A modern take on Populous for phones in portrait. Sculpt a voxel island in isometric view, let your followers settle flat ground and grow tents into castles, spend their mana on rallies, lightning, quakes and volcanoes, and outlast the Crimson god. Three.js, procedural art, synthesized sound.
