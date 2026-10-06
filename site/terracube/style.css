@@ -99,8 +99,9 @@ body.in-menu .dock { transform: translateY(140%); }
   background: linear-gradient(180deg, rgba(8,20,40,.25), rgba(8,20,40,.7)); z-index: 20; }
 .overlay[hidden] { display: none; }
 .logo { text-align: center; }
-h1 { margin: 0; font-size: 58px; letter-spacing: 4px; line-height: 1; color: var(--gold-1);
-  text-shadow: 0 3px 0 var(--gold-3), 0 6px 0 var(--edge), 0 10px 18px rgba(0,0,0,.5); }
+h1 { margin: 0; line-height: 0; }
+#logo { display: inline-block; filter: drop-shadow(0 0 2px rgba(0,0,0,.9)) drop-shadow(0 6px 10px rgba(0,0,0,.5)); animation: bob 3.2s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-5px); } }
 .tag { margin: 10px 0 0; font-size: 14px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
 .card { width: min(370px, 100%); padding: 16px; text-align: center; }
 .how { list-style: none; padding: 0; margin: 0 0 10px; text-align: left; font-size: 14px; line-height: 1.3; }
