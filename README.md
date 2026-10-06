@@ -75,4 +75,4 @@ A fourth game in `bari-van/`: a mobile-first 3D driving game (Three.js) on the g
 
 ## Shapers (`shapers/`)
 
-A modern take on Populous for phones in portrait. Sculpt a low-poly 3D island, let your followers settle flat ground and grow tents into castles, spend their mana on rallies, lightning, quakes and volcanoes, and outlast the Crimson god. Three.js, procedural art, synthesized sound.
+A modern take on Populous for phones in portrait. Sculpt a voxel island in isometric view, let your followers settle flat ground and grow tents into castles, spend their mana on rallies, lightning, quakes and volcanoes, and outlast the Crimson god. Three.js, procedural art, synthesized sound.
