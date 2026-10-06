@@ -6,7 +6,7 @@
   <title>Bari Van Run</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@500;700;900&display=swap" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=1.2" />
 </head>
 <body>
 <div id="app">
@@ -27,6 +27,7 @@
 
   <div id="pickup" class="pickup" hidden></div>
   <div id="toast" class="toast" role="status"></div>
+  <button id="update" class="update" hidden>🔄 Νέα έκδοση: πάτα για ανανέωση</button>
   <div id="bubbles"></div>
 
   <div class="dash">
@@ -86,6 +87,7 @@
       <p class="muted small portrait-only">📱 Γύρνα το κινητό οριζόντια. Αν βλέπεις ανάποδα: <button id="m-flip" class="mini-btn">⟲ γύρισε</button></p>
       <p class="muted small">Κινητό: γύρνα το τιμόνι με τον αντίχειρα, δεξιά γκάζι (στενό) και φρένο (φαρδύ, κράτα για όπισθεν). Πληκτρολόγιο: βελάκια ή WASD, H κόρνα.</p>
       <p id="menu-best" class="muted small"></p>
+      <p class="muted small">Έκδοση 1.2</p>
     </div>
   </section>
 
@@ -120,6 +122,6 @@
   </section>
 
 </div>
-  <script type="module" src="main.js"></script>
+  <script type="module" src="main.js?v=1.2"></script>
 </body>
 </html>
