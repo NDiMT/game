@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Bari Van Run</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@500;700;900&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- HUD -->
+  <div class="hud">
+    <div class="panel trip">
+      <div id="leg" class="leg"></div>
+      <div class="row"><span id="clock" class="clock">08:30</span><span id="target" class="muted"></span></div>
+      <div class="muted">Στάση σε <b id="dist">55 km</b></div>
+    </div>
+    <div id="chips" class="chips"></div>
+    <div class="map-wrap">
+      <canvas id="minimap" width="130" height="130"></canvas>
+      <button id="b-mute" class="mini-btn" aria-label="Ήχος">🔊</button>
+    </div>
+  </div>
+
+  <div id="pickup" class="pickup" hidden></div>
+  <div id="toast" class="toast" role="status"></div>
+  <div id="bubbles"></div>
+
+  <div class="dash">
+    <div class="speed"><span id="speed">0</span><small>km/h</small></div>
+    <div id="gbar" class="gbar"><div id="gfill"></div><span id="gval">0.0 G</span></div>
+    <div class="glabel">Πόρτες</div>
+  </div>
+
+  <div class="controls">
+    <div class="steer">
+      <div id="wheel" class="wheel" role="slider" aria-label="Τιμόνι" aria-valuemin="-135" aria-valuemax="135" aria-valuenow="0">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <radialGradient id="rim" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#4a4d55"/><stop offset="0.6" stop-color="#22242a"/><stop offset="1" stop-color="#0c0d10"/></radialGradient>
+            <linearGradient id="spoke" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a5e66"/><stop offset="1" stop-color="#2a2c32"/></linearGradient>
+            <radialGradient id="hub" cx="45%" cy="40%" r="65%"><stop offset="0" stop-color="#3a3d44"/><stop offset="1" stop-color="#15161a"/></radialGradient>
+          </defs>
+          <circle cx="100" cy="100" r="88" fill="none" stroke="url(#rim)" stroke-width="20"/>
+          <circle cx="100" cy="100" r="98" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="2"/>
+          <g fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2">
+            <path d="M30 70 A75 75 0 0 1 70 28"/><path d="M130 28 A75 75 0 0 1 170 70"/>
+          </g>
+          <path d="M100 100 L18 92 L18 112 L100 118 Z" fill="url(#spoke)"/>
+          <path d="M100 100 L182 92 L182 112 L100 118 Z" fill="url(#spoke)"/>
+          <path d="M90 108 L84 186 L116 186 L110 108 Z" fill="url(#spoke)"/>
+          <circle cx="100" cy="106" r="30" fill="url(#hub)" stroke="#0a0a0c" stroke-width="2"/>
+          <circle cx="100" cy="106" r="11" fill="#c9cdd4"/><circle cx="100" cy="106" r="7" fill="#1f4fa0"/>
+          <rect x="94" y="4" width="12" height="18" rx="3" fill="#ffcc33"/>
+        </svg>
+      </div>
+      <button id="b-tilt" class="mini-btn tilt" aria-label="Οδήγηση με κλίση">📱 κλίση</button>
+    </div>
+    <div class="pedals">
+      <button id="b-horn" class="mini-btn horn" aria-label="Κόρνα">📯</button>
+      <button id="b-brake" class="pedal brake" aria-label="Φρένο, κράτα για όπισθεν"><span class="pad-face"></span></button>
+      <button id="b-gas" class="pedal gas" aria-label="Γκάζι"><span class="pad-face"></span></button>
+    </div>
+  </div>
+
+  <!-- Title -->
+  <section id="menu" class="overlay">
+    <div class="card menu-card">
+      <div class="kicker">Puglia · Σάββατο 17/10</div>
+      <h1>Bari Van Run <span>🇮🇹</span></h1>
+      <p class="lead">Οδηγείς το 9θέσιο. Στις απότομες στροφές ανοίγουν οι πόρτες και οι επιβάτες… πετάγονται. Πρόσεχε λακκούβες, Ape, πρόβατα και λεωφορεία, και μάζευε όποιον έμεινε στον δρόμο.</p>
+      <ol class="route">
+        <li><b>BARI</b><span>08:30 αναχώρηση</span></li>
+        <li class="hop">1h · 55 km</li>
+        <li><b>ALBEROBELLO</b><span>09:30 – 12:00</span></li>
+        <li class="hop">~1h 15m · quiet ride, recharge 😴</li>
+        <li><b>MATERA</b><span>14:30 – 20:30</span></li>
+        <li class="hop">~1h · 65 km</li>
+        <li><b>BARI</b><span>τέλος</span></li>
+      </ol>
+      <p id="roster" class="muted small"></p>
+      <button id="start" class="btn">Ξεκίνα τη διαδρομή</button>
+      <p class="muted small">Κινητό: γύρνα το τιμόνι με τον αντίχειρα, δεξιά γκάζι (στενό) και φρένο (φαρδύ, κράτα για όπισθεν). Πληκτρολόγιο: βελάκια ή WASD, H κόρνα.</p>
+      <p id="menu-best" class="muted small"></p>
+    </div>
+  </section>
+
+  <!-- Stop card -->
+  <section id="card" class="overlay" hidden>
+    <div class="card">
+      <div class="kicker">Φτάσατε</div>
+      <h2 id="card-title"></h2>
+      <div id="card-stars" class="stars"></div>
+      <p id="card-sub" class="muted"></p>
+      <div id="card-stats" class="stats"></div>
+      <p id="card-note"></p>
+      <button id="card-btn" class="btn"></button>
+      <p id="card-next" class="muted small"></p>
+    </div>
+  </section>
+
+  <!-- End -->
+  <section id="end" class="overlay" hidden>
+    <div class="card">
+      <div class="kicker">Η μέρα τελείωσε</div>
+      <h2>Πίσω στο Bari 🌙</h2>
+      <div id="end-stars" class="stars big"></div>
+      <div id="end-stats" class="stats"></div>
+      <p id="end-champ"></p>
+      <button id="end-btn" class="btn">Ξανά από την αρχή</button>
+    </div>
+  </section>
+
+  <section id="rotate" class="overlay rotate" hidden>
+    <div class="card"><div class="phone"></div><h2>Γύρισε το κινητό</h2><p class="muted">Το βαν οδηγείται οριζόντια.</p></div>
+  </section>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
