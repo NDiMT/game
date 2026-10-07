@@ -8,7 +8,7 @@ import * as THREE from 'three';
 // on the Crimson god until none of their followers remain.
 // =====================================================================
 
-const APP_VERSION = '3.1';
+const APP_VERSION = '3.2';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -1349,78 +1349,6 @@ const svg = (name) => `<svg viewBox="0 0 32 32" aria-hidden="true">${ICON[name]}
 function paintIcons(root = document) { for (const el of root.querySelectorAll('[data-icon]')) el.innerHTML = svg(el.dataset.icon); }
 paintIcons();
 
-// ------------------------------------------------------------------ voxel logo
-const GLYPHS = {
-  H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
-  O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
-  L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
-  Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
-  G: ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.###.'],
-  N: ['#...#', '##..#', '#.#.#', '#.#.#', '#..##', '#...#', '#...#'],
-  D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
-  T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
-  E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
-  R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
-  A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
-  C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
-  U: ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
-  B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
-};
-function drawVoxelLogo(canvas, text, cssWidth) {
-  const lines = text.split('\n').map((line) => {
-    const cols = [];
-    for (const [k, ch] of [...line].entries()) {
-      if (k) cols.push('.......');
-      for (let x = 0; x < 5; x++) cols.push(GLYPHS[ch].map((r) => r[x]).join(''));
-    }
-    return cols;
-  });
-  const W = Math.max(...lines.map((l) => l.length)), GAP = 2, R = lines.length * 7 + (lines.length - 1) * GAP;
-  const grid = Array.from({ length: R }, () => new Array(W).fill(false));
-  lines.forEach((cols, li) => {
-    const off = Math.floor((W - cols.length) / 2);
-    cols.forEach((col, x) => { for (let y = 0; y < 7; y++) grid[li * (7 + GAP) + y][off + x] = col[y] === '#'; });
-  });
-  const filled = (x, y) => x >= 0 && y >= 0 && x < W && y < R && grid[y][x];
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const cell = Math.floor((cssWidth * dpr) / (W + 3));
-  const depth = Math.round(cell * 0.45), pad = Math.round(cell * 0.5);
-  canvas.width = W * cell + depth + pad * 2;
-  canvas.height = R * cell + depth + pad * 2 + Math.round(cell * 0.5);
-  canvas.style.width = `${canvas.width / dpr}px`;
-  canvas.style.height = `${canvas.height / dpr}px`;
-  const g = canvas.getContext('2d');
-  const ox = pad, oy = pad + depth;
-  const line = Math.max(1, Math.round(dpr));
-  g.fillStyle = 'rgba(0,0,0,0.28)';
-  for (let x = 0; x < W; x++) for (let y = 0; y < R; y++) if (filled(x, y)) g.fillRect(ox + x * cell + depth * 0.6, oy + y * cell + cell * 0.5, cell, cell);
-  for (let y = 0; y < R; y++)
-    for (let x = W - 1; x >= 0; x--) {
-      if (!filled(x, y)) continue;
-      const px = ox + x * cell, py = oy + y * cell, top = !filled(x, y - 1);
-      if (!filled(x + 1, y)) {
-        g.fillStyle = '#9a6a35';
-        g.beginPath(); g.moveTo(px + cell, py); g.lineTo(px + cell + depth, py - depth); g.lineTo(px + cell + depth, py + cell - depth); g.lineTo(px + cell, py + cell); g.closePath(); g.fill();
-        if (top) { g.fillStyle = '#4f9a33'; g.beginPath(); g.moveTo(px + cell, py); g.lineTo(px + cell + depth, py - depth); g.lineTo(px + cell + depth, py - depth + cell * 0.25); g.lineTo(px + cell, py + cell * 0.25); g.fill(); }
-      }
-      if (top) {
-        const tg = g.createLinearGradient(0, py - depth, 0, py);
-        tg.addColorStop(0, '#a6ec74'); tg.addColorStop(1, '#79cf4c');
-        g.fillStyle = tg;
-        g.beginPath(); g.moveTo(px, py); g.lineTo(px + depth, py - depth); g.lineTo(px + cell + depth, py - depth); g.lineTo(px + cell, py); g.closePath(); g.fill();
-      }
-      const fg = g.createLinearGradient(0, py, 0, py + cell);
-      fg.addColorStop(0, '#f4d398'); fg.addColorStop(1, '#d9a764');
-      g.fillStyle = fg; g.fillRect(px, py, cell, cell);
-      if (top) { g.fillStyle = '#6cc04a'; g.fillRect(px, py, cell, Math.round(cell * 0.25)); }
-      g.strokeStyle = 'rgba(70,40,10,0.45)'; g.lineWidth = line;
-      g.strokeRect(px + line / 2, py + line / 2, cell - line, cell - line);
-    }
-}
-function layoutLogo() { const c = $('logo'); if (c) drawVoxelLogo(c, 'HOLY\nGROUND', Math.min(330, window.innerWidth - 44)); }
-layoutLogo();
-window.addEventListener('resize', layoutLogo);
-
 // ------------------------------------------------------------------ UI
 function buildPowerBar() {
   $('powers').innerHTML = POWERS.map((p) => {
@@ -1670,5 +1598,5 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 window.__holyground = window.__terracube = {
   get state() { return { mode, world, buildings, walkers, mana, stats, tool, elapsed, modes, banners, armageddon }; },
   simulate, applyPower, startWorld, setTool, setMode, teamPop, rig, hgt, swamp, toX, toZ, N, useToolAt, endGame, rotate, pick,
-  raiseVertex, lowerVertex, levelFor, drawVoxelLogo, tileInfo, influenced,
+  raiseVertex, lowerVertex, levelFor, tileInfo, influenced,
 };
