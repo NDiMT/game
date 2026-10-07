@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-512.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=2.0" />
+  <link rel="stylesheet" href="style.css?v=2.1" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -73,7 +73,7 @@
   <section id="menu" class="overlay">
     <div class="logo">
       <h1 class="title" aria-label="Polis"><span class="skyline" aria-hidden="true"></span><span class="t">POLIS</span></h1>
-      <p class="tag">Build it · Power it · Run it</p>
+      <p class="tag">Build it · Power it · Run it · 🎷</p>
     </div>
     <div class="card panel">
       <ul class="how">
@@ -124,6 +124,9 @@
     <div class="card panel">
       <button id="pause-close" class="x" aria-label="Close"><i class="ic" data-icon="close"></i></button>
       <div class="ribbon">Menu</div>
+      <h4>Sound</h4>
+      <label class="ord"><input id="opt-music" type="checkbox" checked /><span><b>Jazz music</b><small>A little combo, improvised live as you play.</small></span></label>
+      <label class="ord"><input id="opt-sfx" type="checkbox" checked /><span><b>Sound effects</b><small>Building, bulldozing and alarms.</small></span></label>
       <h4>Disasters</h4>
       <label class="ord"><input id="dis-toggle" type="checkbox" checked /><span><b>Random disasters</b><small>Fires, tornadoes and earthquakes may strike.</small></span></label>
       <div class="opts">
@@ -145,6 +148,6 @@
     </div>
   </section>
 </div>
-<script type="module" src="main.js?v=2.0"></script>
+<script type="module" src="main.js?v=2.1"></script>
 </body>
 </html>

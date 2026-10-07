@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32, zoneTemplate, structModel, VARIANTS, treeGeos, carGeo, poleGeo, lampGeos } from './models.js?v=2.0';
+import { createJazz } from './music.js?v=2.1';
 
 // =====================================================================
 // POLIS 2: a pocket city builder for phones (portrait), in the spirit of
@@ -8,7 +9,7 @@ import { mulberry32, zoneTemplate, structModel, VARIANTS, treeGeos, carGeo, pole
 // budgets per department, ordinances, loans, disasters, day and night.
 // =====================================================================
 
-const APP_VERSION = '2.0';
+const APP_VERSION = '2.1';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -1708,7 +1709,7 @@ function drawGraph(canvas, col, color, label) {
   g.fillText(`${label}: ${col === 1 ? money(data[data.length - 1]) : fmt(data[data.length - 1])}`, 8, 16);
 }
 $('b-stats').addEventListener('click', () => { openSheet('stats'); renderStats(); });
-$('b-menu').addEventListener('click', () => { $('dis-toggle').checked = city.disasters; $('dis-meltdown').hidden = !city.structs.some((s) => s.type === 'nuclear'); openSheet('pause'); });
+$('b-menu').addEventListener('click', () => { $('opt-music').checked = store.get('polis.music', true); $('opt-sfx').checked = store.get('polis.sfx', true); $('dis-toggle').checked = city.disasters; $('dis-meltdown').hidden = !city.structs.some((s) => s.type === 'nuclear'); openSheet('pause'); });
 $('dis-toggle').addEventListener('change', (e) => { city.disasters = e.target.checked; });
 $('dis-fire').addEventListener('click', () => { const dev = []; for (let k = 0; k < NN; k++) if (city.level[k]) dev.push(k); if (dev.length) ignite(dev[(rnd() * dev.length) | 0]); $('pause').hidden = true; });
 $('dis-tornado').addEventListener('click', () => { startTornado(); $('pause').hidden = true; });
@@ -1811,12 +1812,22 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && mod
 
 // ------------------------------------------------------------------ sound
 const sfx = (() => {
-  let ac = null, master = null, noiseBuf = null;
+  let ac = null, master = null, noiseBuf = null, musicOut = null, music = null;
+  const muted = () => store.get('polis.muted', false);
+  const levels = () => {
+    if (!ac) return;
+    master.gain.value = muted() || !store.get('polis.sfx', true) ? 0 : 0.5;
+    musicOut.gain.value = muted() ? 0 : 1;
+  };
   const init = () => {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
     try {
       ac = new (window.AudioContext || window.webkitAudioContext)();
-      master = ac.createGain(); master.gain.value = store.get('polis.muted', false) ? 0 : 0.5; master.connect(ac.destination);
+      master = ac.createGain(); master.connect(ac.destination);
+      musicOut = ac.createGain(); musicOut.connect(ac.destination);
+      levels();
+      music = createJazz(ac, musicOut);
+      if (store.get('polis.music', true)) music.start();
       noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
       const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     } catch { ac = null; }
@@ -1846,11 +1857,17 @@ const sfx = (() => {
     alarm: () => [0, 0.3, 0.6].forEach((d) => tone(880, 660, 0.25, 'square', 0.04, d)),
     quake: () => { noise(2, 160, 0.9); tone(45, 30, 1.8, 'sine', 0.5); },
     fanfare: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.35, 'triangle', 0.1, i * 0.12)),
-    mute(on) { if (master) master.gain.value = on ? 0 : 0.5; },
+    mute() { levels(); },
+    effects() { levels(); },
+    music(on) { if (!music) return; if (on) music.start(); else music.stop(); },
+    suspend(on) { if (!ac) return; if (on) ac.suspend(); else ac.resume(); },
   };
 })();
 function syncMute() { $('b-mute').innerHTML = `<i class="ic">${svg(store.get('polis.muted', false) ? 'muted' : 'sound')}</i>`; }
-$('b-mute').addEventListener('click', () => { const m = !store.get('polis.muted', false); store.set('polis.muted', m); sfx.mute(m); syncMute(); });
+$('b-mute').addEventListener('click', () => { const m = !store.get('polis.muted', false); store.set('polis.muted', m); sfx.init(); sfx.mute(); syncMute(); });
+$('opt-music').addEventListener('change', (e) => { store.set('polis.music', e.target.checked); sfx.init(); sfx.music(e.target.checked); });
+$('opt-sfx').addEventListener('change', (e) => { store.set('polis.sfx', e.target.checked); sfx.effects(); });
+document.addEventListener('visibilitychange', () => sfx.suspend(document.hidden));
 syncMute();
 
 // ------------------------------------------------------------------ loop
