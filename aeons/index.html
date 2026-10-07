@@ -10,8 +10,8 @@
   <link rel="icon" href="icon-512.png" />
   <link rel="apple-touch-icon" href="icon-512.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=1.0" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" />
+  <link rel="stylesheet" href="style.css?v=1.1" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -19,34 +19,47 @@
 <body class="in-menu">
 <div id="app">
   <header class="top">
-    <div class="bar panel">
-      <div class="era-badge"><span id="era-chip">🔥</span><div><b id="era-label">Stone Age</b><small id="year">10,000 BCE</small></div></div>
-      <div class="stat"><small>Pop</small><b id="pop">0</b></div>
-      <div class="stat"><small>Planet</small><b id="health" class="ok">100%</b></div>
+    <div class="hud-row">
+      <div id="medal" class="medal" style="--p:0">
+        <div class="medal-in"><span id="era-chip">🔥</span></div>
+      </div>
+      <div class="era-ribbon">
+        <b id="era-label">Stone Age</b>
+        <small id="year">10,000 BCE</small>
+      </div>
+      <div class="pills">
+        <div class="pill"><i>👥</i><b id="pop">0</b></div>
+        <div class="pill health"><i>🌍</i><div class="hbar"><div id="health-fill"></div><b id="health" class="ok">100%</b></div></div>
+      </div>
     </div>
-    <button id="goal" class="goal panel" aria-label="Next wonder">
-      <span class="goal-ic">🏛️</span>
-      <div class="goal-body"><small>Next wonder</small><b id="goal-name">Stonehenge</b><div class="track"><div id="goal-fill"></div></div></div>
-      <span id="goal-pct" class="goal-pct">0%</span>
+    <button id="goal" class="quest" aria-label="Next wonder">
+      <span id="goal-ic" class="quest-ic">🪨</span>
+      <div class="quest-body">
+        <small>NEXT WONDER</small>
+        <b id="goal-name">Stonehenge</b>
+        <div class="track"><div id="goal-fill"></div></div>
+      </div>
+      <span id="goal-pct" class="quest-pct">0%</span>
     </button>
     <div id="meteor" class="meteor" hidden>☄️ Impact in 20s</div>
   </header>
   <div class="side">
     <button id="b-home" class="round" aria-label="Find my people">🏠</button>
-    <button id="b-menu" class="round" aria-label="Menu">☰</button>
+    <button id="b-menu" class="round" aria-label="Menu">⚙️</button>
   </div>
   <button id="update" class="update" hidden>New version! Tap to update</button>
   <div id="toast" class="toast"></div>
   <footer class="dock">
     <div class="dock-top">
-      <div class="orb"><div id="mana-fill"></div><span>✦<b id="mana">60</b></span></div>
+      <div class="orb"><div id="mana-fill"><i></i></div><span><small>✦</small><b id="mana">60</b></span></div>
       <p id="hint" class="hint">Tap to raise the land.</p>
     </div>
-    <div id="powers" class="powers"></div>
+    <div class="tray"><div id="powers" class="powers"></div></div>
   </footer>
 
   <div id="goal-sheet" class="overlay" hidden>
     <div class="card">
+      <div id="gs-ic" class="big-ic">🪨</div>
       <h2 id="gs-title">Stonehenge</h2>
       <p id="gs-desc"></p>
       <ul id="gs-list" class="checks"></ul>
@@ -68,9 +81,10 @@
 
   <div id="pause" class="overlay" hidden>
     <div class="card">
-      <h2>Paused</h2>
+      <h2>Settings</h2>
       <label class="toggle"><span>Music</span><input type="checkbox" id="opt-music" checked /></label>
       <label class="toggle"><span>Sound effects</span><input type="checkbox" id="opt-sfx" checked /></label>
+      <label class="toggle"><span>High graphics (shadows, glow)</span><input type="checkbox" id="opt-hq" checked /></label>
       <div class="howto">
         <p><b>Drag</b> to turn the planet, <b>pinch</b> to zoom.</p>
         <p><b>Raise / Lower</b> the land: settlements grow bigger on wide flat ground. Orange marks show where the land is uneven.</p>
@@ -93,13 +107,13 @@
 
   <div id="menu" class="menu">
     <div class="logo"><span class="ring"></span><h1>AEONS</h1><p>Shape a world. Guide it from fire to the stars.</p></div>
-    <div class="ages">🔥 🏺 🏛️ 🏰 🏭 🏙️ 🚀</div>
+    <div class="ages"><span>🔥</span><span>🏺</span><span>🏛️</span><span>🏰</span><span>🏭</span><span>🏙️</span><span>🚀</span></div>
     <div class="menu-btns">
       <button id="continue" class="btn gold" hidden>Continue</button>
       <button id="newworld" class="btn gold">New world</button>
     </div>
   </div>
 </div>
-<script type="module" src="main.js?v=1.0"></script>
+<script type="module" src="main.js?v=1.1"></script>
 </body>
 </html>
