@@ -75,4 +75,8 @@ A fourth game in `bari-van/`: a mobile-first 3D driving game (Three.js) on the g
 
 ## Holy Ground (`holy-ground/`)
 
-A modern take on Populous for phones in portrait. Sculpt a voxel island in isometric view, let your followers settle flat ground and grow tents into castles, spend their mana on rallies, lightning, quakes and volcanoes, and outlast the Crimson god. Three.js, procedural art, synthesized sound.
+A modern take on Populous for phones in portrait. Raise and lower the corners of a diorama island so your followers find flat land, grow tents into castles on full 5×5 plots, lead them to settle, gather or fight, and outlast the Crimson god with swamps, knights, quakes, volcanoes, floods and Armageddon across 8 worlds in 4 biomes. Three.js, procedural art, synthesized sound.
+
+## Polis (`polis/`)
+
+A pocket city builder in the spirit of SimCity, for phones in portrait. Lay roads and bridges, zone homes, shops and industry, keep power and water flowing through the network, fund police, fire, schools, parks and a stadium, watch R/C/I demand, land value, pollution and crime, set the tax rate and grow a hamlet into a metropolis. The city saves itself. Three.js, procedural art, synthesized sound.
