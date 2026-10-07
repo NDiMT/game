@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, settlementModel, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.0';
-import { createScore } from './music.js?v=1.0';
+import { mulberry32, settlementModel, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.1';
+import { createScore } from './music.js?v=1.1';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=1.0';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -30,6 +30,7 @@ const ERAS = [
   { name: 'Modern Age', icon: '🏙️', years: [1950, 2060], need: 2100, cost: 480, lvl: 4, desc: 'Cities of glass and planes in the sky. Storms and meteors grow dangerous: you can now terraform and deflect.', color: '#5fa8ff' },
   { name: 'Space Age', icon: '🚀', years: [2060, 2200], need: 2400, cost: 650, lvl: 4, desc: 'The final age. Build the Starship and take your people to the stars.', color: '#5ff0ff' },
 ];
+const WONDER_ICON = ['🪨', '🔺', '🏛️', '⛪', '🗼', '📡', '🚀'];
 const WONDER_DESC = ['A ring of standing stones to read the sky.', 'A tomb for a god-king, built to last forever.', 'A temple of marble and reason.', 'Spires that reach for heaven.', 'An iron tower: the triumph of engineering.', 'A needle in the clouds, heart of a global network.', 'The ark that will carry your people to the stars.'];
 const POWERS = [
   { id: 'raise', name: 'Raise', cost: 1, era: 0, r: 0, hint: 'Tap to raise the land. Hold to keep going. Settlements grow on flat ground.' },
@@ -173,13 +174,24 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setClearColor(0x05070f, 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+let hq = store.get('aeons.hq', true);
 $('app').prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400);
 const sunDir = new THREE.Vector3(1, 0.3, 0.6).normalize();
 const sunU = { value: sunDir }, timeU = { value: 0 };
 const sun = new THREE.DirectionalLight(0xfff2dc, 2.6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -6.6, right: 6.6, top: 6.6, bottom: -6.6, near: 20, far: 42 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
 scene.add(sun);
+// a cool moonlight from the far side keeps the night readable
+const moonLight = new THREE.DirectionalLight(0x8aa4ff, 0.55);
+scene.add(moonLight);
 const hemi = new THREE.HemisphereLight(0x8aa8ff, 0x1a1a2a, 0.5);
 scene.add(hemi);
 scene.add(new THREE.AmbientLight(0x3a4a7a, 0.45));
@@ -215,6 +227,7 @@ function flyTo(v, dist) {
 function resize() {
   const w = window.innerWidth, hh = window.innerHeight;
   renderer.setSize(w, hh);
+  post.setSize(w, hh, renderer.getPixelRatio());
   camera.aspect = w / hh;
   camera.fov = w < hh ? 46 : 36;
   camera.updateProjectionMatrix();
@@ -241,6 +254,7 @@ const planetGeo = new THREE.BufferGeometry();
 planetGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NF * 9), 3));
 planetGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(NF * 9), 3));
 const planet = new THREE.Mesh(planetGeo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.92 }));
+planet.castShadow = planet.receiveShadow = true;
 scene.add(planet);
 const C = (x) => new THREE.Color(x);
 const PAL = { deep: C(0x2a3a5a), bed: C(0xb8a070), sand: C(0xe9d6a0), grass: C(0x7cc04a), lush: C(0x5aaa3a), dry: C(0xc8b462), hill: C(0x5f9a3a), rock: C(0x8f8a82), snow: C(0xf4f8fb), ice: C(0xe2eef6), burnt: C(0x3a2e28), brown: C(0x9a8a5a) };
@@ -262,7 +276,7 @@ function faceColor(f) {
   if (mn !== mx) col.multiplyScalar(0.92);
   if (G.health < 90) col.lerp(PAL.brown, (1 - G.health / 100) * 0.55);
   if (lat > 0.72) col.lerp(PAL.snow, (lat - 0.72) * 2.5);
-  return col;
+  return col.multiplyScalar(0.95 + (((f * 2654435761) >>> 0) % 1000) / 10000);
 }
 function rebuildPlanet() {
   const p = planetGeo.attributes.position.array, col = planetGeo.attributes.color.array;
@@ -332,6 +346,81 @@ const atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.16, 48, 32), new THRE
 }));
 scene.add(atmo);
 
+// the sun's glare, a moon, and a thin layer of scattering over the day side
+const glowTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), rg = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  rg.addColorStop(0, 'rgba(255,255,240,1)'); rg.addColorStop(0.12, 'rgba(255,240,200,0.9)'); rg.addColorStop(0.35, 'rgba(255,200,120,0.25)'); rg.addColorStop(1, 'rgba(255,180,100,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+})();
+const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+sunSprite.scale.setScalar(40);
+scene.add(sunSprite);
+const moon = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 2), new THREE.MeshStandardMaterial({ color: 0xc8c4bc, flatShading: true, roughness: 1 }));
+moon.castShadow = true;
+scene.add(moon);
+const haze = new THREE.Mesh(new THREE.SphereGeometry(R * 1.035, 64, 48), new THREE.ShaderMaterial({
+  transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  uniforms: { uSun: sunU, uColor: { value: atmoColor } },
+  vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = normalize(w.xyz); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - w.xyz); gl_Position = projectionMatrix * viewMatrix * w; }`,
+  fragmentShader: `uniform vec3 uSun; uniform vec3 uColor; varying vec3 vN; varying vec3 vV; varying vec3 vW;
+    void main() { float rim = pow(1.0 - max(dot(vN, vV), 0.0), 2.5); float lit = smoothstep(-0.25, 0.4, dot(vW, uSun));
+      float dusk = smoothstep(0.35, 0.0, abs(dot(vW, uSun))) * lit;
+      vec3 c = mix(uColor, vec3(1.0, 0.55, 0.3), dusk * 0.7);
+      gl_FragColor = vec4(c * (rim * 0.9 + 0.04) * lit, 1.0); }`,
+}));
+haze.renderOrder = 2;
+scene.add(haze);
+
+// ------------------------------------------------------------------ bloom: HDR scene -> bright pass -> blur -> composite
+const post = (() => {
+  const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
+  const quadScene = new THREE.Scene(); quadScene.add(quad);
+  const opts = { type: THREE.HalfFloatType, depthBuffer: false };
+  const rtScene = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+  const rtA = new THREE.WebGLRenderTarget(1, 1, opts), rtB = new THREE.WebGLRenderTarget(1, 1, opts);
+  const vs = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+  const bright = new THREE.ShaderMaterial({ uniforms: { tMap: { value: null } }, vertexShader: vs, depthTest: false,
+    fragmentShader: 'uniform sampler2D tMap; varying vec2 vUv; void main() { vec3 c = texture2D(tMap, vUv).rgb; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(c * smoothstep(0.85, 1.6, l), 1.0); }' });
+  const blur = new THREE.ShaderMaterial({ uniforms: { tMap: { value: null }, uDir: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false,
+    fragmentShader: `uniform sampler2D tMap; uniform vec2 uDir; varying vec2 vUv;
+      void main() { vec3 c = texture2D(tMap, vUv).rgb * 0.227;
+        c += texture2D(tMap, vUv + uDir * 1.385).rgb * 0.316; c += texture2D(tMap, vUv - uDir * 1.385).rgb * 0.316;
+        c += texture2D(tMap, vUv + uDir * 3.23).rgb * 0.07; c += texture2D(tMap, vUv - uDir * 3.23).rgb * 0.07;
+        gl_FragColor = vec4(c, 1.0); }` });
+  const comp = new THREE.ShaderMaterial({ uniforms: { tScene: { value: rtScene.texture }, tBloom: { value: rtA.texture }, uStrength: { value: 0.9 } }, vertexShader: vs, depthTest: false,
+    fragmentShader: `uniform sampler2D tScene; uniform sampler2D tBloom; uniform float uStrength; varying vec2 vUv;
+      void main() { vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * uStrength;
+        vec2 d = vUv - 0.5; c *= 1.0 - dot(d, d) * 0.55;
+        gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }` });
+  comp.toneMapped = true;
+  let bw = 1, bh = 1;
+  const pass = (mat, target) => { quad.material = mat; renderer.setRenderTarget(target); renderer.render(quadScene, quadCam); };
+  return {
+    setSize(w, h, pr) {
+      pr = Math.min(pr, 1.5);
+      rtScene.setSize(Math.floor(w * pr), Math.floor(h * pr));
+      bw = Math.max(1, Math.floor((w * pr) / 4)); bh = Math.max(1, Math.floor((h * pr) / 4));
+      rtA.setSize(bw, bh); rtB.setSize(bw, bh);
+    },
+    render() {
+      renderer.setRenderTarget(rtScene);
+      renderer.render(scene, camera);
+      bright.uniforms.tMap.value = rtScene.texture; pass(bright, rtA);
+      for (let i = 0; i < 2; i++) {
+        blur.uniforms.tMap.value = rtA.texture; blur.uniforms.uDir.value.set(1 / bw, 0); pass(blur, rtB);
+        blur.uniforms.tMap.value = rtB.texture; blur.uniforms.uDir.value.set(0, 1 / bh); pass(blur, rtA);
+      }
+      pass(comp, null);
+    },
+  };
+})();
+
 // ------------------------------------------------------------------ materials and instanced things
 const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.8 });
 // fires, windows and neon: muted by day, glowing on the night side
@@ -349,7 +438,7 @@ glowMat.onBeforeCompile = (s) => {
     .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += glowCol * (0.2 + night * 1.8);');
 };
 glowMat.customProgramCacheKey = () => 'glow';
-function inst(geo, mat, max) { const m = new THREE.InstancedMesh(geo, mat, max); m.count = 0; m.frustumCulled = false; scene.add(m); return m; }
+function inst(geo, mat, max, shadow = true) { const m = new THREE.InstancedMesh(geo, mat, max); m.count = 0; m.frustumCulled = false; m.castShadow = m.receiveShadow = shadow; scene.add(m); return m; }
 const dummy = new THREE.Object3D();
 const UP = new THREE.Vector3(0, 1, 0), qa = new THREE.Quaternion(), qy = new THREE.Quaternion();
 function placeOn(m, n, v, extra = 0, yaw = 0, scale = 1, dir = null) {
@@ -384,8 +473,8 @@ const people = inst(personGeo(), bodyMat, 240);
 people.setColorAt(0, new THREE.Color());
 const planes = inst(planeGeo(), bodyMat, 40);
 const sats = inst(satelliteGeo(), bodyMat, 16);
-const guides = inst(new THREE.OctahedronGeometry(0.035, 0), new THREE.MeshBasicMaterial({ color: 0xffa62b }), 600);
-const cloudMesh = inst(cloudGeo(), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x8090a8, flatShading: true, transparent: true, opacity: 0.82, roughness: 1 }), 24);
+const guides = inst(new THREE.OctahedronGeometry(0.026, 0), new THREE.MeshBasicMaterial({ color: 0xc8781a }), 600, false);
+const cloudMesh = inst(cloudGeo(), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x8090a8, flatShading: true, transparent: true, opacity: 0.82, roughness: 1 }), 24, false);
 const clouds = Array.from({ length: 22 }, (_, i) => ({ dir: new THREE.Vector3(rnd() * 2 - 1, (rnd() * 2 - 1) * 0.8, rnd() * 2 - 1).normalize(), yaw: rnd() * 6, s: 0.7 + rnd() * 0.8, i }));
 const cursor = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 6, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthTest: false }));
 cursor.visible = false; cursor.renderOrder = 5;
@@ -766,9 +855,9 @@ function layoutWonders() {
   for (const w of G.wonders) {
     const m = wonderModel(w.era);
     const g = new THREE.Group();
-    g.add(new THREE.Mesh(m.body, bodyMat));
+    const wb = new THREE.Mesh(m.body, bodyMat); wb.castShadow = wb.receiveShadow = true; g.add(wb);
     if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
-    if (w.era === 6) { const ship = starshipModel(); const sg = new THREE.Group(); sg.add(new THREE.Mesh(ship.body, bodyMat)); if (ship.glow) sg.add(new THREE.Mesh(ship.glow, glowMat)); g.add(sg); w.ship = sg; }
+    if (w.era === 6) { const ship = starshipModel(); const sg = new THREE.Group(); const sb = new THREE.Mesh(ship.body, bodyMat); sb.castShadow = true; sg.add(sb); if (ship.glow) sg.add(new THREE.Mesh(ship.glow, glowMat)); g.add(sg); w.ship = sg; }
     qa.setFromUnitVectors(UP, DIRS[w.v]);
     g.quaternion.copy(qa);
     g.position.copy(DIRS[w.v]).multiplyScalar(radiusOf(w.v));
@@ -1022,11 +1111,14 @@ function updateHud() {
   $('year').textContent = yearStr();
   $('pop').textContent = fmt(totalPop());
   $('health').textContent = `${Math.round(G.health)}%`;
-  $('health').className = G.health > 70 ? 'ok' : G.health > 40 ? 'mid' : 'no';
+  $('health-fill').style.width = `${G.health}%`;
+  $('health-fill').className = G.health > 70 ? '' : G.health > 40 ? 'mid' : 'no';
   $('mana').textContent = Math.floor(G.mana);
   $('mana-fill').style.height = `${Math.min(100, (G.mana / 700) * 100)}%`;
   const r = wonderReady(), f = clamp(G.know / e.need, 0, 1);
   $('goal-name').textContent = WONDERS[G.era];
+  $('goal-ic').textContent = WONDER_ICON[G.era];
+  $('medal').style.setProperty('--p', (f * 100).toFixed(1));
   $('goal-fill').style.width = `${f * 100}%`;
   $('goal-pct').textContent = r.know && r.mana && r.level ? 'BUILD' : `${Math.floor(f * 100)}%`;
   $('goal').classList.toggle('ready', r.know && r.mana && r.level);
@@ -1037,6 +1129,7 @@ function renderGoal() {
   const e = ERAS[G.era], r = wonderReady();
   const row = (ok, text) => `<li class="${ok ? 'ok' : ''}"><b>${ok ? '✓' : '·'}</b>${text}</li>`;
   $('gs-title').textContent = WONDERS[G.era];
+  $('gs-ic').textContent = WONDER_ICON[G.era];
   $('gs-desc').textContent = WONDER_DESC[G.era] + (G.era === 6 ? ' Building it wins the game.' : ` Building it begins the ${ERAS[G.era + 1].name}.`);
   $('gs-list').innerHTML = row(r.know, `Knowledge ${fmt(Math.min(G.know, e.need))} / ${fmt(e.need)}`) + row(r.mana, `Inspiration ✦${fmt(Math.min(G.mana, e.cost))} / ${e.cost}`) + row(r.level, `A settlement of size ${e.lvl} (best: ${r.best ? r.best.level : 0}). Level the land around a town!`);
   $('gs-build').disabled = !(r.know && r.mana && r.level);
@@ -1045,7 +1138,7 @@ $('goal').addEventListener('click', () => { renderGoal(); $('goal-sheet').hidden
 $('gs-close').addEventListener('click', () => { $('goal-sheet').hidden = true; });
 $('gs-build').addEventListener('click', buildWonder);
 $('b-home').addEventListener('click', () => { const s = bestSettlement(); if (s) flyTo(s.v, 11); sfx.click(); });
-$('b-menu').addEventListener('click', () => { $('opt-music').checked = store.get('aeons.music', true); $('opt-sfx').checked = store.get('aeons.sfx', true); $('pause').hidden = false; if (G.mode === 'play') G.mode = 'pause'; sfx.click(); });
+$('b-menu').addEventListener('click', () => { $('opt-music').checked = store.get('aeons.music', true); $('opt-sfx').checked = store.get('aeons.sfx', true); $('opt-hq').checked = hq; $('pause').hidden = false; if (G.mode === 'play') G.mode = 'pause'; sfx.click(); });
 $('pause-close').addEventListener('click', () => { $('pause').hidden = true; if (G.mode === 'pause') G.mode = 'play'; });
 $('to-title').addEventListener('click', () => { save(); $('pause').hidden = true; showMenu(); });
 
@@ -1199,6 +1292,12 @@ const sfx = (() => {
 })();
 $('opt-music').addEventListener('change', (e) => { sfx.init(); sfx.music(e.target.checked); });
 $('opt-sfx').addEventListener('change', (e) => { sfx.effects(e.target.checked); });
+function setHq(on) {
+  hq = on; store.set('aeons.hq', on);
+  renderer.shadowMap.enabled = on; sun.castShadow = on;
+  scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; });
+}
+$('opt-hq').addEventListener('change', (e) => setHq(e.target.checked));
 
 // ------------------------------------------------------------------ loop
 const clock = new THREE.Clock();
@@ -1214,6 +1313,9 @@ function frame() {
   sunAng += dt * (Math.PI * 2) / 150;
   sunDir.set(Math.cos(sunAng), 0.25, Math.sin(sunAng)).normalize();
   sun.position.copy(sunDir).multiplyScalar(30);
+  sunSprite.position.copy(sunDir).multiplyScalar(120);
+  moonLight.position.copy(sunDir).multiplyScalar(-30);
+  moon.position.set(Math.cos(t * 0.03) * 15, Math.sin(t * 0.03) * 4, Math.sin(t * 0.03) * 15);
   if (quakeT > 0) { quakeT -= dt; cam.shake = quakeT; } else if (G.mode !== 'launch') cam.shake = 0;
   updateCamera(dt);
   waterMat.uniforms.uCam.value.copy(camera.position);
@@ -1231,11 +1333,12 @@ function frame() {
   updateParticles(dt);
   hudT -= dt;
   if (hudT <= 0 && (G.mode === 'play' || G.mode === 'pause')) { hudT = 0.25; updateHud(); }
-  renderer.render(scene, camera);
+  if (hq) post.render(); else renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
 resize();
+if (!hq) setHq(false);
 if (!load()) newWorld(); else resetScene();
 showMenu();
 requestAnimationFrame(frame);
