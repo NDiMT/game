@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 
 // =====================================================================
-// TERRACUBE: a modern take on Populous for phones (portrait).
+// HOLY GROUND: a modern take on Populous for phones (portrait).
 // Raise and lower the corners of the land, as in the original, so your
 // people find flat ground. Homes grow from tents into castles on flat
 // plots. Rally your walkers, knight a champion, and bring disasters down
 // on the Crimson god until none of their followers remain.
 // =====================================================================
 
-const APP_VERSION = '3.0';
+const APP_VERSION = '3.1';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -839,7 +839,8 @@ function newGame(n) {
   for (const b of buildings) scene.remove(b.mesh);
   for (const w of walkers) scene.remove(w.mesh);
   buildings = []; walkers = [];
-  mana[0] = 40; mana[1] = 40 + n * 20;
+  mana[0] = 40; mana[1] = 30;
+  resetAI();
   modes[0] = modes[1] = 'settle';
   armageddon = false; elapsed = 0;
   Object.assign(stats, { built: 0, castles: 0, kills: 0, lost: 0 });
@@ -973,7 +974,7 @@ function simulate(dt) {
   for (let t = 0; t < 2; t++) {
     let pop = 0;
     for (const b of buildings) if (b.team === t) pop += b.pop;
-    mana[t] = Math.min(999, mana[t] + dt * (0.5 + pop * 0.04) * (t === 1 ? 0.8 + world * 0.1 : 1));
+    mana[t] = Math.min(999, mana[t] + dt * (0.5 + pop * 0.04) * (t === 1 ? 0.85 + world * 0.04 : 1));
   }
   let lavaLeft = false;
   for (let k = 0; k < lava.length; k++) if (lava[k] > 0) { lava[k] -= dt; lavaLeft = true; if (lava[k] <= 0) terrainDirty = true; }
@@ -1157,9 +1158,17 @@ function arrive(w) {
 }
 
 // ------------------------------------------------------------------ the rival god
-let aiT = 0, aiSpellT = 10, aiModeT = 0;
+// The rival god holds back at first (no powers during a grace period), keeps a
+// mana reserve, and waits a long cooldown between disasters.
+const AI_GRACE = (w) => Math.max(45, 110 - w * 8);
+let aiT = 0, aiSpellT = 0, aiModeT = 0, aiSabotageT = 0;
+function resetAI() {
+  aiT = 1; aiModeT = 30;
+  aiSpellT = AI_GRACE(world);
+  aiSabotageT = AI_GRACE(world) + 20;
+}
 function aiThink(dt) {
-  aiT -= dt; aiSpellT -= dt; aiModeT -= dt;
+  aiT -= dt; aiSpellT -= dt; aiModeT -= dt; aiSabotageT -= dt;
   if (aiT > 0) return;
   aiT = Math.max(0.3, 1.1 - world * 0.1);
   const mine = buildings.filter((b) => b.team === 1);
@@ -1177,9 +1186,10 @@ function aiThink(dt) {
   }
   const theirs = buildings.filter((b) => b.team === 0).sort((a, b) => b.level - a.level || b.pop - a.pop);
   // Break the ground under player homes inside its reach.
-  if (world >= 2 && Math.random() < 0.05 * world && mana[1] > 20) {
+  if (world >= 2 && aiSabotageT <= 0 && mana[1] > 40) {
+    aiSabotageT = Math.max(14, 34 - world * 2.5) + Math.random() * 10;
     const t = theirs.find((b) => influenced(1, bx(b), bz(b)));
-    if (t) applyPower(1, 'lower', toX(t.i + (Math.random() < 0.5 ? 0 : 1)), toZ(t.j + (Math.random() < 0.5 ? 0 : 1)), true);
+    if (t && applyPower(1, 'lower', toX(t.i + (Math.random() < 0.5 ? 0 : 1)), toZ(t.j + (Math.random() < 0.5 ? 0 : 1)), true)) toast('The Crimson god is breaking your land!');
   }
   const p0 = teamPop(0), p1 = teamPop(1);
   if (aiModeT <= 0) {
@@ -1188,9 +1198,9 @@ function aiThink(dt) {
     if (modes[1] === 'fight') toast('The Crimson army marches!');
   }
   if (aiSpellT > 0 || !theirs.length) return;
-  aiSpellT = Math.max(8, 26 - world * 2.5) + Math.random() * 8;
+  aiSpellT = Math.max(28, 55 - world * 3) + Math.random() * 15;
   const t = theirs[0], x = bx(t), z = bz(t);
-  const can = (id) => world >= PW[id].world && mana[1] > PW[id].cost + 30;
+  const can = (id) => world >= PW[id].world && mana[1] > PW[id].cost + 80;
   if (can('armageddon') && p1 > p0 * 1.4) applyPower(1, 'armageddon', 0, 0, true);
   else if (can('flood') && p1 > p0 && Math.random() < 0.3) applyPower(1, 'flood', 0, 0, true);
   else if (can('volcano') && Math.random() < 0.35) { applyPower(1, 'volcano', x + 1, z, true); toast('A volcano erupts in your lands!'); }
@@ -1341,6 +1351,13 @@ paintIcons();
 
 // ------------------------------------------------------------------ voxel logo
 const GLYPHS = {
+  H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+  L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
+  Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
+  G: ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.###.'],
+  N: ['#...#', '##..#', '#.#.#', '#.#.#', '#..##', '#...#', '#...#'],
+  D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
   T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
   E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
   R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
@@ -1400,7 +1417,7 @@ function drawVoxelLogo(canvas, text, cssWidth) {
       g.strokeRect(px + line / 2, py + line / 2, cell - line, cell - line);
     }
 }
-function layoutLogo() { const c = $('logo'); if (c) drawVoxelLogo(c, 'TERRA\nCUBE', Math.min(320, window.innerWidth - 48)); }
+function layoutLogo() { const c = $('logo'); if (c) drawVoxelLogo(c, 'HOLY\nGROUND', Math.min(330, window.innerWidth - 44)); }
 layoutLogo();
 window.addEventListener('resize', layoutLogo);
 
@@ -1650,7 +1667,7 @@ setInterval(checkForUpdate, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
 
 // Exposed for automated testing.
-window.__terracube = {
+window.__holyground = window.__terracube = {
   get state() { return { mode, world, buildings, walkers, mana, stats, tool, elapsed, modes, banners, armageddon }; },
   simulate, applyPower, startWorld, setTool, setMode, teamPop, rig, hgt, swamp, toX, toZ, N, useToolAt, endGame, rotate, pick,
   raiseVertex, lowerVertex, levelFor, drawVoxelLogo, tileInfo, influenced,
