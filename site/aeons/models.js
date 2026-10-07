@@ -82,14 +82,12 @@ function kit(seed) {
 const done = (k) => ({ body: mergeParts(k.B), glow: k.G.length ? mergeParts(k.G) : null, smoke: k.smoke });
 
 // Building slots around a settlement centre, inner ring first.
-const SLOTS = [[0.14, 0.02], [-0.1, 0.12], [-0.06, -0.15], [0.12, -0.13], [-0.18, -0.02], [0.05, 0.2], [0.21, 0.12], [-0.2, 0.17], [0.0, -0.25], [0.25, -0.05], [-0.25, -0.16], [0.18, 0.24]];
-const COUNT = [0, 2, 4, 7, 10];
 
 export const ERA_STYLE = [
   { name: 'stone' }, { name: 'bronze' }, { name: 'classical' }, { name: 'medieval' }, { name: 'industrial' }, { name: 'modern' }, { name: 'space' },
 ];
 function building(era, k, x, z, s, i) {
-  const ry = k.r() * Math.PI * 2;
+  const ry = era >= 3 ? 0 : Math.floor(k.r() * 4) * (Math.PI / 2);
   switch (era) {
     case 0: { // hide huts
       const c = k.pick([0x9a7a52, 0x8a6a48, 0xb08a5a]);
@@ -122,12 +120,12 @@ function building(era, k, x, z, s, i) {
     }
     case 4: { // brick terraces and small factories
       if (i % 3 === 2) {
-        k.box(0.1 * s, 0.06 * s, 0.07 * s, x, 0, z, 0x8a5a44, false, ry);
+        k.box(0.085 * s, 0.06 * s, 0.07 * s, x, 0, z, 0x8a5a44, false, ry);
         k.cyl(0.008 * s, 0.01 * s, 0.11 * s, x + 0.03 * s, 0.06 * s, z, 0x6a4a3a, 6);
         k.smoke.push([x + 0.03 * s, 0.18 * s, z]);
-        k.windows(0.1 * s, 0.07 * s, x, z, 0, 1, 0.06 * s, 3, 0.8);
+        k.windows(0.085 * s, 0.07 * s, x, z, 0, 1, 0.06 * s, 3, 0.8);
       } else {
-        const w = 0.09 * s, h = 0.07 * s;
+        const w = 0.08 * s, h = 0.07 * s;
         k.box(w, h, 0.05 * s, x, 0, z, k.pick([0xa85a44, 0x9a5040, 0xb5654a]), false, ry);
         k.roof(w, 0.025 * s, 0.055 * s, x, h, z, 0x5a5f68, ry);
         k.windows(w, 0.05 * s, x, z, 0, 2, h / 2, 3, 0.75);
@@ -135,7 +133,7 @@ function building(era, k, x, z, s, i) {
       break;
     }
     case 5: { // apartment blocks and glass towers
-      const tall = s > 1.1;
+      const tall = s > 1.27;
       const w = 0.07 * s, floors = tall ? 6 + ((k.r() * 6) | 0) : 2 + ((k.r() * 3) | 0), fh = 0.022;
       const c = tall ? k.pick([0x6fa3d0, 0x5a8ab8, 0x8ab8d8]) : k.pick([0xe3dfd6, 0xd8d4cc, 0xc9c2b2]);
       k.box(w, floors * fh, w, x, 0, z, c);
@@ -196,18 +194,48 @@ function landmark(era, level, k) {
 }
 export function settlementModel(era, level) {
   const k = kit(era * 100 + level * 7 + 1);
-  // ground: trodden earth, fields or paving depending on the era
-  const groundCol = [0x8a7450, 0xb89a62, 0xcfc8b4, 0x9a8a6a, 0x7a6a5a, 0x8a8f96, 0xdfe6ee][era];
-  const gr = 0.12 + level * 0.05;
-  k.cyl(gr, gr + 0.01, 0.006, 0, -0.003, 0, groundCol, 14);
-  if (era === 1 || era === 2) for (let i = 0; i < level; i++) { const a = i * 2.1 + 0.4; k.box(0.08, 0.004, 0.06, Math.cos(a) * (gr + 0.06), 0, Math.sin(a) * (gr + 0.06), i % 2 ? 0xe6c85a : 0x8ab84a, false, a); }
-  const s = 0.9 + level * 0.12;
-  for (let i = 0; i < COUNT[level]; i++) {
-    const [x, z] = SLOTS[i];
-    building(era, k, x * (0.75 + level * 0.12), z * (0.75 + level * 0.12), era === 5 && i < level ? s * 1.25 : s, i);
+  // a square plot: kerb, ground, a street grid and buildings aligned to the blocks
+  const groundCol = [0x8a7450, 0xb89a62, 0xd8d0bc, 0x9a8a6a, 0x7a6a5a, 0x8a8f96, 0xdfe6ee][era];
+  const kerbCol = [0x6a5a3a, 0x8a7048, 0xb8b0a0, 0x7a7266, 0x5a4a40, 0x5a5f68, 0xb8c4d0][era];
+  const streetCol = [0x7a6444, 0xa08458, 0xc8c0aa, 0x8a8072, 0x4a4a50, 0x3a3f48, 0xc8d2de][era];
+  const half = 0.1 + level * 0.05, n = level + 1, cell = (half * 2) / n;
+  k.box(half * 2 + 0.03, 0.012, half * 2 + 0.03, 0, -0.008, 0, kerbCol);
+  k.box(half * 2, 0.012, half * 2, 0, -0.006, 0, groundCol);
+  if (era >= 1) for (let i = 1; i < n; i++) {
+    const p = -half + i * cell;
+    k.box(half * 2, 0.002, 0.014, 0, 0.006, p, streetCol);
+    k.box(0.014, 0.002, half * 2, p, 0.006, 0, streetCol);
   }
+  // fields at the corners in the farming ages
+  if (era >= 1 && era <= 3 && level >= 2) {
+    const f = half * 0.7;
+    [[1, 1], [-1, 1], [1, -1], [-1, -1]].slice(0, level).forEach(([sx, sz], i) => {
+      const cx = sx * (half + f / 2 + 0.03), cz = sz * (half + f / 2 + 0.03);
+      k.box(f, 0.006, f, cx, -0.003, cz, i % 2 ? 0xe6c85a : 0x8ab84a);
+      for (let r = 0; r < 3; r++) k.box(f, 0.003, 0.006, cx, 0.003, cz - f / 2 + (f / 3) * (r + 0.5), i % 2 ? 0xc8a83a : 0x6a9a3a);
+    });
+  }
+  // walls and corner towers in the middle ages
+  if (era === 3 && level >= 2) {
+    const e = half + 0.01, wc = 0xb8b0a0;
+    for (const [w, d, x, z] of [[e * 2, 0.012, 0, e], [e * 2, 0.012, 0, -e], [0.012, e * 2, e, 0], [0.012, e * 2, -e, 0]]) k.box(w, 0.035, d, x, 0, z, wc);
+    for (const [x, z] of [[e, e], [-e, e], [e, -e], [-e, -e]]) { k.cyl(0.018, 0.02, 0.06, x, 0, z, wc, 8); k.cone(0.022, 0.03, x, 0.06, z, 0x6a4a3a, 8); }
+  }
+  // glowing edges in the space age
+  if (era === 6) for (const [w, d, x, z] of [[half * 2, 0.006, 0, half], [half * 2, 0.006, 0, -half], [0.006, half * 2, half, 0], [0.006, half * 2, -half, 0]]) k.box(w, 0.006, d, x, 0, z, 0x5ff0ff, true);
+  // fill the blocks, leaving a central plaza for the landmark in bigger towns
+  const s = 0.85 + level * 0.1;
+  const cells = [];
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const x = -half + cell * (i + 0.5), z = -half + cell * (j + 0.5);
+    if (level >= 3 && Math.hypot(x, z) < cell * 1.01) continue;
+    if (era === 0 && (i + j) % 2) continue;
+    cells.push([x, z]);
+  }
+  cells.sort((p, q) => Math.hypot(...p) - Math.hypot(...q));
+  cells.forEach(([x, z], i) => building(era, k, x, z, era === 5 && i < level * 2 ? s * 1.12 : s, i));
+  if (level >= 3) k.box(cell * 1.6, 0.003, cell * 1.6, 0, 0.006, 0, era >= 4 ? 0xb8b4ac : 0xcfc6a8);
   landmark(era, level, k);
-  if (era >= 4 && level >= 2) k.box(gr * 1.8, 0.002, 0.012, 0, 0.002, 0, 0x4a4f5a);
   return done(k);
 }
 
