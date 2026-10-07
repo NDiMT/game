@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-512.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=1.0" />
+  <link rel="stylesheet" href="style.css?v=2.0" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -20,9 +20,9 @@
 <div id="app">
   <header class="top">
     <div class="stats panel">
-      <div class="stat money"><i class="ic" data-icon="coin"></i><div><b id="funds">$20,000</b><small id="delta">+$0/mo</small></div></div>
+      <div class="stat money"><i class="ic" data-icon="coin"></i><div><b id="funds">$25,000</b><small id="delta">+$0/mo</small></div></div>
       <div class="stat"><i class="ic" data-icon="people"></i><div><b id="pop">0</b><small id="cityname">City</small></div></div>
-      <div class="stat date"><b id="date">Jan 2000</b>
+      <div class="stat date"><b><span id="clock">☀️</span> <span id="date">Jan 2000</span></b>
         <div class="speed">
           <button data-speed="0" aria-label="Pause"><i class="ic" data-icon="pause"></i></button>
           <button data-speed="1" aria-label="Play"><i class="ic" data-icon="play"></i></button>
@@ -35,6 +35,7 @@
         <div class="bar r"><i id="dr"></i></div><div class="bar c"><i id="dc"></i></div><div class="bar i"><i id="di"></i></div>
         <div class="rci-l"><span>R</span><span>C</span><span>I</span></div>
       </div>
+      <div class="chip panel appr"><i class="ic" data-icon="smile"></i><div><b id="approval" class="ok">60%</b><span>approval</span></div></div>
       <div class="chip panel"><b id="rank">Hamlet</b><span id="next"></span></div>
       <span class="spacer"></span>
       <button id="b-mute" class="btn-round sm" aria-label="Sound"></button>
@@ -47,9 +48,11 @@
     <button id="rot-l" class="btn-round" aria-label="Turn left"><i class="ic" data-icon="rotl"></i></button>
     <button id="b-layers" class="btn-round" aria-label="Map layers"><i class="ic" data-icon="layers"></i></button>
     <button id="b-budget" class="btn-round" aria-label="Budget"><i class="ic" data-icon="budget"></i></button>
+    <button id="b-stats" class="btn-round" aria-label="City stats"><i class="ic" data-icon="stats"></i></button>
     <button id="rot-r" class="btn-round" aria-label="Turn right"><i class="ic" data-icon="rotr"></i></button>
   </div>
 
+  <button id="underground" class="underground" hidden>Underground view · tap to leave</button>
   <div id="toast" class="toast" role="status"></div>
   <div id="costtip" class="costtip" hidden></div>
   <button id="update" class="update" hidden>New version · tap to reload</button>
@@ -61,21 +64,22 @@
     <div id="info-body"></div>
   </div>
 
-  <footer class="dock panel">
+  <footer id="dock" class="dock panel">
     <div id="hint" class="hint"></div>
+    <div id="cats" class="cats"></div>
     <div id="tools" class="tools"></div>
   </footer>
 
   <section id="menu" class="overlay">
     <div class="logo">
       <h1 class="title" aria-label="Polis"><span class="skyline" aria-hidden="true"></span><span class="t">POLIS</span></h1>
-      <p class="tag">Build it · Power it · Grow it</p>
+      <p class="tag">Build it · Power it · Run it</p>
     </div>
     <div class="card panel">
       <ul class="how">
-        <li><i class="ic" data-icon="road"></i><span><b>Lay roads</b>, then zone <b class="g">homes</b>, <b class="b">shops</b> and <b class="y">industry</b> beside them.</span></li>
-        <li><i class="ic" data-icon="coal"></i><span><b>Power and water</b> flow through roads and zones. No power, no growth.</span></li>
-        <li><i class="ic" data-icon="coin"></i><span>Watch the <b>R C I</b> demand, balance the budget and grow a hamlet into a metropolis.</span></li>
+        <li><i class="ic" data-icon="road"></i><span><b>Lay roads</b>, zone <b class="g">homes</b>, <b class="b">shops</b> and <b class="y">industry</b>. Homes need jobs they can drive to.</span></li>
+        <li><i class="ic" data-icon="line"></i><span>String <b>power lines</b> from your plants and lay <b>water pipes</b> underground.</span></li>
+        <li><i class="ic" data-icon="coin"></i><span>Fund services, set taxes and policies, beat traffic and keep your <b>approval</b> up.</span></li>
       </ul>
       <button id="continue" class="btn green big" hidden>Continue</button>
       <button id="newcity" class="btn green big">New city</button>
@@ -84,15 +88,11 @@
   </section>
 
   <section id="budget" class="overlay sheet" hidden>
-    <div class="card panel">
+    <div class="card panel scroll">
       <button id="budget-close" class="x" aria-label="Close"><i class="ic" data-icon="close"></i></button>
       <div class="ribbon">Budget</div>
-      <div class="taxbox">
-        <label for="tax">Tax rate <b id="tax-val">9%</b></label>
-        <input id="tax" type="range" min="0" max="20" step="1" />
-        <p id="tax-note" class="fine"></p>
-      </div>
-      <div id="budget-rows" class="rows"></div>
+      <div class="tabs"><button data-btab="money">Money</button><button data-btab="policies">Policies</button></div>
+      <div id="budget-body"></div>
     </div>
   </section>
 
@@ -101,6 +101,38 @@
       <button id="layers-close" class="x" aria-label="Close"><i class="ic" data-icon="close"></i></button>
       <div class="ribbon">Map layers</div>
       <div id="layers-list" class="opts"></div>
+    </div>
+  </section>
+
+  <section id="stats" class="overlay sheet" hidden>
+    <div class="card panel scroll">
+      <button id="stats-close" class="x" aria-label="Close"><i class="ic" data-icon="close"></i></button>
+      <div class="ribbon">City</div>
+      <div class="big-appr"><i class="ic" data-icon="smile"></i><b id="st-approval">60%</b><span>approval</span></div>
+      <div id="st-factors" class="rows"></div>
+      <h4>Utilities</h4>
+      <div id="st-util" class="rows"></div>
+      <h4>History</h4>
+      <canvas id="graph-pop" class="graph"></canvas>
+      <canvas id="graph-funds" class="graph"></canvas>
+      <h4>News</h4>
+      <ul id="st-news" class="news"></ul>
+    </div>
+  </section>
+
+  <section id="pause" class="overlay sheet" hidden>
+    <div class="card panel">
+      <button id="pause-close" class="x" aria-label="Close"><i class="ic" data-icon="close"></i></button>
+      <div class="ribbon">Menu</div>
+      <h4>Disasters</h4>
+      <label class="ord"><input id="dis-toggle" type="checkbox" checked /><span><b>Random disasters</b><small>Fires, tornadoes and earthquakes may strike.</small></span></label>
+      <div class="opts">
+        <button id="dis-fire" class="opt">🔥 Fire</button>
+        <button id="dis-tornado" class="opt">🌪️ Tornado</button>
+        <button id="dis-quake" class="opt">🌍 Earthquake</button>
+        <button id="dis-meltdown" class="opt" hidden>☢️ Meltdown</button>
+      </div>
+      <button id="to-title" class="btn stone">Save and exit to title</button>
     </div>
   </section>
 
@@ -113,6 +145,6 @@
     </div>
   </section>
 </div>
-<script type="module" src="main.js?v=1.0"></script>
+<script type="module" src="main.js?v=2.0"></script>
 </body>
 </html>
