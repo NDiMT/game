@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#05070f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Aeons</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon-512.png" />
+  <link rel="apple-touch-icon" href="icon-512.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Nunito:wght@600;800;900&display=swap" />
+  <link rel="stylesheet" href="style.css?v=1.0" />
+  <script type="importmap">
+    { "imports": { "three": "../vendor/three.module.js" } }
+  </script>
+</head>
+<body class="in-menu">
+<div id="app">
+  <header class="top">
+    <div class="bar panel">
+      <div class="era-badge"><span id="era-chip">🔥</span><div><b id="era-label">Stone Age</b><small id="year">10,000 BCE</small></div></div>
+      <div class="stat"><small>Pop</small><b id="pop">0</b></div>
+      <div class="stat"><small>Planet</small><b id="health" class="ok">100%</b></div>
+    </div>
+    <button id="goal" class="goal panel" aria-label="Next wonder">
+      <span class="goal-ic">🏛️</span>
+      <div class="goal-body"><small>Next wonder</small><b id="goal-name">Stonehenge</b><div class="track"><div id="goal-fill"></div></div></div>
+      <span id="goal-pct" class="goal-pct">0%</span>
+    </button>
+    <div id="meteor" class="meteor" hidden>☄️ Impact in 20s</div>
+  </header>
+  <div class="side">
+    <button id="b-home" class="round" aria-label="Find my people">🏠</button>
+    <button id="b-menu" class="round" aria-label="Menu">☰</button>
+  </div>
+  <button id="update" class="update" hidden>New version! Tap to update</button>
+  <div id="toast" class="toast"></div>
+  <footer class="dock">
+    <div class="dock-top">
+      <div class="orb"><div id="mana-fill"></div><span>✦<b id="mana">60</b></span></div>
+      <p id="hint" class="hint">Tap to raise the land.</p>
+    </div>
+    <div id="powers" class="powers"></div>
+  </footer>
+
+  <div id="goal-sheet" class="overlay" hidden>
+    <div class="card">
+      <h2 id="gs-title">Stonehenge</h2>
+      <p id="gs-desc"></p>
+      <ul id="gs-list" class="checks"></ul>
+      <div class="row"><button id="gs-close" class="btn ghost">Close</button><button id="gs-build" class="btn gold">Build</button></div>
+    </div>
+  </div>
+
+  <div id="era" class="overlay era" hidden>
+    <div class="card">
+      <div id="era-icon" class="big-ic">🔥</div>
+      <small class="kicker">A new age begins</small>
+      <h2 id="era-name">Stone Age</h2>
+      <p id="era-desc"></p>
+      <p id="era-unlock" class="unlock"></p>
+      <p id="era-wonder" class="unlock"></p>
+      <button id="era-ok" class="btn gold">Onward</button>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay" hidden>
+    <div class="card">
+      <h2>Paused</h2>
+      <label class="toggle"><span>Music</span><input type="checkbox" id="opt-music" checked /></label>
+      <label class="toggle"><span>Sound effects</span><input type="checkbox" id="opt-sfx" checked /></label>
+      <div class="howto">
+        <p><b>Drag</b> to turn the planet, <b>pinch</b> to zoom.</p>
+        <p><b>Raise / Lower</b> the land: settlements grow bigger on wide flat ground. Orange marks show where the land is uneven.</p>
+        <p>People make <b>knowledge</b>. Fill the bar and build a <b>wonder</b> to enter the next age.</p>
+        <p>From the Industrial Age, pollution hurts the planet. If its health falls, the <b>seas rise</b>.</p>
+      </div>
+      <div class="row"><button id="to-title" class="btn ghost">Title</button><button id="pause-close" class="btn gold">Resume</button></div>
+    </div>
+  </div>
+
+  <div id="end" class="overlay" hidden>
+    <div class="card">
+      <h2 id="end-title">To the stars!</h2>
+      <div id="end-stars" class="stars"></div>
+      <p id="end-text"></p>
+      <div id="end-stats" class="end-stats"></div>
+      <button id="end-again" class="btn gold">New world</button>
+    </div>
+  </div>
+
+  <div id="menu" class="menu">
+    <div class="logo"><span class="ring"></span><h1>AEONS</h1><p>Shape a world. Guide it from fire to the stars.</p></div>
+    <div class="ages">🔥 🏺 🏛️ 🏰 🏭 🏙️ 🚀</div>
+    <div class="menu-btns">
+      <button id="continue" class="btn gold" hidden>Continue</button>
+      <button id="newworld" class="btn gold">New world</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="main.js?v=1.0"></script>
+</body>
+</html>
