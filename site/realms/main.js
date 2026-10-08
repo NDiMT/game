@@ -1,8 +1,17 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel, heroModel, flagModel, townModel, objectModel, treeModel, rockModel, peakModel, obstacleModel } from './models.js?v=0.2';
-import { UNITS, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.2';
-import * as BT from './battle.js?v=0.2';
-import { createScore } from './music.js?v=0.2';
+import { mulberry32, unitModel } from './models.js?v=0.3';
+import { havenModel } from './units_haven.js?v=0.3';
+import { necroModel } from './units_necro.js?v=0.3';
+import { neutralModel } from './units_neutral.js?v=0.3';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=0.3';
+import { objectModel } from './models_objects.js?v=0.3';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.3';
+import { createBattlefield } from './battlefield.js?v=0.3';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.3';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.3';
+import * as BT from './battle.js?v=0.3';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, tick as tickMaterials } from './materials.js?v=0.3';
+import { createScore } from './music.js?v=0.3';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -11,7 +20,7 @@ import { createScore } from './music.js?v=0.2';
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '0.2';
+const APP_VERSION = '0.3';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -200,37 +209,17 @@ function resize() {
   bcam.aspect = w / hh; bcam.fov = w < hh ? 52 : 40; bcam.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
+const atmos = createAtmosphere(THREE, scene, { R });
 
-// a starry sky with a soft nebula
-{
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(200, 32, 16), new THREE.ShaderMaterial({
-    side: THREE.BackSide, depthWrite: false,
-    vertexShader: 'varying vec3 vD; void main() { vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `varying vec3 vD;
-      float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
-      float noise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-        return mix(mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x), mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
-                   mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
-      void main() { vec3 d = normalize(vD); float n = noise(d * 3.0) * 0.6 + noise(d * 7.0) * 0.4;
-        vec3 col = mix(vec3(0.03, 0.03, 0.09), vec3(0.18, 0.07, 0.28), n * n) + vec3(0.0, 0.06, 0.1) * pow(noise(d * 5.0 + 2.0), 3.0);
-        float s = step(0.997, hash(floor(d * 400.0))); col += s * 0.9;
-        gl_FragColor = vec4(col, 1.0); }`,
-  }));
-  scene.add(dome);
-}
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
-const MAXT = FACES.length * 3 * 3 + FACES.length * 3;
-const planetGeo = new THREE.BufferGeometry();
-planetGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXT * 9), 3));
-planetGeo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(MAXT * 9), 3));
-planetGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(MAXT * 9), 3));
-planetGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), R + 2);
-const triCell = new Int32Array(MAXT);
-const planet = new THREE.Mesh(planetGeo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.92 }));
+// the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
+import { createPlanet } from './terrain.js?v=0.3';
+const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
+const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
 scene.add(planet);
-const FOG = new THREE.Color(0x10131f), CLIFF = new THREE.Color(0x6a5a4a);
+const FOG = new THREE.Color(0x10131f);
 const tc = new THREE.Color();
 function cellColor(v) {
   if (!seen[v]) return tc.copy(FOG).multiplyScalar(0.9 + (hash(v) % 10) / 50);
@@ -239,58 +228,12 @@ function cellColor(v) {
   if (ter[v] === T.FOREST) tc.multiplyScalar(0.9);
   return tc.multiplyScalar(0.93 + (hash(v * 3) % 1000) / 9000);
 }
-const BEV = 0.86, DROP = 0.015;
-const pa = new THREE.Vector3(), pb = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), nrm = new THREE.Vector3();
-const inner = Array.from({ length: 6 }, () => new THREE.Vector3()), outer = Array.from({ length: 6 }, () => new THREE.Vector3());
-const ctr = new THREE.Vector3(), wallOut = new THREE.Vector3(), cBuf = new THREE.Color(), wBuf = new THREE.Color(), eBuf = new THREE.Color();
-function rebuildPlanet() {
-  const P = planetGeo.attributes.position.array, N = planetGeo.attributes.normal.array, CO = planetGeo.attributes.color.array;
-  let o = 0, t = 0;
-  const tri = (a, b, c, col, cell, out) => {
-    e1.subVectors(b, a); e2.subVectors(c, a); nrm.crossVectors(e1, e2);
-    if (out && nrm.dot(out) < 0) { const x = b; b = c; c = x; nrm.negate(); }
-    nrm.normalize();
-    for (const q of [a, b, c]) { P[o] = q.x; P[o + 1] = q.y; P[o + 2] = q.z; N[o] = nrm.x; N[o + 1] = nrm.y; N[o + 2] = nrm.z; CO[o] = col.r; CO[o + 1] = col.g; CO[o + 2] = col.b; o += 3; }
-    triCell[t++] = cell;
-  };
-  for (let v = 0; v < NV; v++) {
-    const cell = CELLS[v], k = cell.fs.length, r = radiusOf(v), d = DIRS[v];
-    cBuf.copy(cellColor(v));
-    eBuf.copy(cBuf).multiplyScalar(0.82);
-    wBuf.copy(cBuf).lerp(CLIFF, seen[v] ? 0.5 : 0).multiplyScalar(0.75);
-    ctr.copy(d).multiplyScalar(r);
-    for (let i = 0; i < k; i++) {
-      const cn = CORN[cell.fs[i]];
-      inner[i].copy(d).multiplyScalar(1 - BEV).addScaledVector(cn, BEV).normalize().multiplyScalar(r);
-      outer[i].copy(cn).multiplyScalar(r - DROP);
-    }
-    for (let i = 0; i < k; i++) {
-      const j = (i + 1) % k;
-      tri(ctr, inner[i], inner[j], cBuf, v, d);
-      tri(inner[i], outer[i], outer[j], eBuf, v, d);
-      tri(inner[i], outer[j], inner[j], eBuf, v, d);
-      const n = cell.nb[i];
-      if (h[n] < h[v]) {
-        const rn = radiusOf(n) - DROP;
-        pa.copy(CORN[cell.fs[i]]).multiplyScalar(rn); pb.copy(CORN[cell.fs[j]]).multiplyScalar(rn);
-        wallOut.copy(DIRS[n]).sub(d);
-        tri(outer[i], outer[j], pb, wBuf, v, wallOut);
-        tri(outer[i], pb, pa, wBuf, v, wallOut);
-      }
-    }
-  }
-  planetGeo.setDrawRange(0, o / 3);
-  planetGeo.attributes.position.needsUpdate = planetGeo.attributes.normal.needsUpdate = planetGeo.attributes.color.needsUpdate = true;
-}
-// water: a sphere just under the coast line, with glints and foam
-const water = new THREE.Mesh(new THREE.IcosahedronGeometry(R + (SEA - 0.35) * STEP, 5), new THREE.MeshStandardMaterial({ color: 0x2a7ac8, transparent: true, opacity: 0.82, roughness: 0.25, metalness: 0.1 }));
+function rebuildPlanet() { TERRAIN.rebuild(ter, h, road, seen); }
+// water: flat hex tiles at sea level with depth colour, shore foam, waves and glints
+const water = TERRAIN.water;
+water.receiveShadow = true;
 scene.add(water);
-const atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.12, 48, 32), new THREE.ShaderMaterial({
-  side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-  vertexShader: 'varying vec3 vN; void main() { vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: 'varying vec3 vN; void main() { float i = pow(clamp(0.8 - dot(vN, vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 3.0); gl_FragColor = vec4(vec3(0.35, 0.6, 1.0) * i * 1.6, 1.0); }',
-}));
-scene.add(atmo);
+
 
 // ------------------------------------------------------------------ bloom
 const post = (() => {
@@ -307,7 +250,8 @@ const post = (() => {
     fragmentShader: 'uniform sampler2D tMap; uniform vec2 uDir; varying vec2 vUv; void main() { vec3 c = texture2D(tMap, vUv).rgb * 0.227; c += (texture2D(tMap, vUv + uDir * 1.38).rgb + texture2D(tMap, vUv - uDir * 1.38).rgb) * 0.316; c += (texture2D(tMap, vUv + uDir * 3.23).rgb + texture2D(tMap, vUv - uDir * 3.23).rgb) * 0.07; gl_FragColor = vec4(c, 1.0); }' });
   const comp = new THREE.ShaderMaterial({ uniforms: { tScene: { value: null }, tBloom: { value: null } }, vertexShader: vs, depthTest: false,
     fragmentShader: `uniform sampler2D tScene; uniform sampler2D tBloom; varying vec2 vUv;
-      void main() { vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * 0.8; c = c / (1.0 + c * 0.12);
+      ${gradeGLSL}
+      void main() { vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * 0.8; c = grade(c); c = c / (1.0 + c * 0.12);
         float v = smoothstep(1.15, 0.35, length(vUv - 0.5)); c *= mix(0.72, 1.0, v);
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
@@ -333,10 +277,10 @@ const post = (() => {
 })();
 
 // ------------------------------------------------------------------ meshes for map things
-const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.75 });
-const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
-glowMat.color.setScalar(2.2);
+const bodyMat = makeBodyMaterial(THREE);
+const glowMat = makeGlowMaterial(THREE);
 const geoCache = new Map();
+const unitGeo = (id) => { const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
 function meshOf(m) {
   const g = new THREE.Group();
@@ -356,13 +300,13 @@ function placeOn(obj, v, scale, turn = 0, lift = 0) {
 const world = new THREE.Group(); scene.add(world);
 const flora = new THREE.Group(); scene.add(flora);
 // forests, mountains and rocks: instanced per model
-const TREES = [0, 1, 2, 3].map((k) => treeModel(k)), PEAKS = [peakModel(false), peakModel(true)], ROCKS = [0, 1, 2].map((k) => rockModel(k));
+const pickW = (list, r) => { const tot = list.reduce((x, e) => x + e.w, 0); let k = r * tot; for (const e of list) { k -= e.w; if (k <= 0) return e.key; } return list[0].key; };
 const dummy = new THREE.Object3D();
 function layoutFlora() {
   flora.clear();
   const lists = new Map();
-  const put = (key, model, v, s, x = 0, z = 0, turn = 0) => {
-    if (!lists.has(key)) lists.set(key, { model, m: [] });
+  const put = (key, v, s, x = 0, z = 0, turn = 0) => {
+    if (!lists.has(key)) lists.set(key, { model: natureModel(key), m: [] });
     const t1 = new THREE.Vector3().crossVectors(DIRS[v], Math.abs(DIRS[v].y) < 0.9 ? UP : new THREE.Vector3(1, 0, 0)).normalize(), t2 = DIRS[v].clone().cross(t1);
     const p = DIRS[v].clone().multiplyScalar(radiusOf(v)).addScaledVector(t1, x).addScaledVector(t2, z);
     dummy.position.copy(p); dummy.quaternion.setFromUnitVectors(UP, DIRS[v]); dummy.rotateY(turn); dummy.scale.setScalar(s); dummy.updateMatrix();
@@ -370,21 +314,26 @@ function layoutFlora() {
   };
   for (let v = 0; v < NV; v++) {
     if (!seen[v]) continue;
-    const hv = hash(v * 11);
-    if (ter[v] === T.FOREST) {
-      const kind = Math.abs(DIRS[v].y) > 0.7 ? 2 : hv % 3 === 0 ? 1 : ter[v] === T.SWAMP ? 3 : 0;
-      for (let i = 0; i < 4; i++) { const a = i * 1.7 + hv, rr = i ? 0.1 : 0; put('t' + kind, TREES[kind], v, 0.22 + ((hv >> i) % 5) * 0.02, Math.cos(a) * rr, Math.sin(a) * rr, a); }
-    } else if (ter[v] === T.MOUNT) put('p' + (h[v] > SEA + 4 || Math.abs(DIRS[v].y) > 0.6 ? 1 : 0), PEAKS[h[v] > SEA + 4 || Math.abs(DIRS[v].y) > 0.6 ? 1 : 0], v, 0.36 + (hv % 4) * 0.03, 0, 0, hv);
-    else if (ter[v] === T.ROUGH && hv % 3 === 0 && objAt[v] < 0) put('r' + (hv % 3), ROCKS[hv % 3], v, 0.13, 0.07, -0.05, hv);
-    else if (ter[v] === T.SWAMP && hv % 4 === 0 && objAt[v] < 0) put('t3', TREES[3], v, 0.18, 0.09, 0.05, hv);
-    else if (ter[v] === T.GRASS && hv % 9 === 0 && objAt[v] < 0) put('t1', TREES[1], v, 0.16, 0.09, -0.07, hv);
-    else if (ter[v] === T.SNOW && hv % 7 === 0 && objAt[v] < 0) put('t2', TREES[2], v, 0.18, -0.07, 0.07, hv);
+    const hv = hash(v * 11), rr = (k) => (hash(v * 31 + k * 7) % 1000) / 1000;
+    const F = FLORA_FOR_TERRAIN[ter[v]];
+    if (ter[v] === T.FOREST || ter[v] === T.MOUNT) {
+      const biome = biomeOf(NBR[v].map((n) => ter[n]), Math.abs(DIRS[v].y));
+      if (ter[v] === T.FOREST) {
+        const n = F.count[0] + (hv % (F.count[1] - F.count[0] + 1));
+        for (let i = 0; i < n; i++) { const a = i * 2.1 + hv, d = i ? 0.1 + rr(i) * 0.03 : 0; put(pickW(FOREST_BY_BIOME[biome] || FOREST_BY_BIOME.temperate, rr(i + 9)), v, F.fillScale * (0.85 + rr(i + 3) * 0.3), Math.cos(a) * d, Math.sin(a) * d, a); }
+      } else { const keys = PEAK_BY_BIOME[biome] || PEAK_BY_BIOME.temperate; put(keys[hv % keys.length], v, F.fillScale * (0.95 + rr(2) * 0.2), 0, 0, hv); }
+      continue;
+    }
+    if (objAt[v] >= 0 || road[v] || !F || !F.scatter) continue;
+    let placed = 0;
+    F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
   }
   for (const { model, m } of lists.values()) {
     const im = new THREE.InstancedMesh(model.body, bodyMat, m.length);
     m.forEach((x, i) => im.setMatrixAt(i, x));
     im.castShadow = true; im.receiveShadow = true;
     flora.add(im);
+    if (model.glow) { const ig = new THREE.InstancedMesh(model.glow, glowMat, m.length); m.forEach((x, i) => ig.setMatrixAt(i, x)); flora.add(ig); }
   }
 }
 
@@ -447,7 +396,7 @@ function newWorld(seed, diff = 1) {
   settle(a); settle(b);
   if (!connected(a, b)) carve(a, b);
   G.players = [newPlayer(0, 'haven', false), newPlayer(1, 'necro', true)];
-  const capital = (v, p) => { const t = newTown(v, p, G.players[p].fac, TOWN_NAMES[G.players[p].fac][0]); G.towns.push(t); addObject('town', v, { t: t.id }); return t; };
+  const capital = (v, p) => { const t = newTown(v, p, G.players[p].fac, TOWN_NAMES[G.players[p].fac][0]); t.garrison = [[FACTIONS[G.players[p].fac].units[0], 12], [FACTIONS[G.players[p].fac].units[1], 5]]; G.towns.push(t); addObject('town', v, { t: t.id }); return t; };
   capital(a, 0); capital(b, 1);
   // neutral towns half way round the world, each with a strong garrison
   const mids = [];
@@ -570,14 +519,11 @@ function stepsToday(hr, path) {
 }
 
 // ------------------------------------------------------------------ drawing the things on the map
-const flagMats = new Map();
-const flagMat = (col) => { if (!flagMats.has(col)) { const m = bodyMat.clone(); m.color = new THREE.Color(col); flagMats.set(col, m); } return flagMats.get(col); };
-const FLAG = flagModel();
-function flagMesh(col) { const m = new THREE.Mesh(FLAG.body, flagMat(col)); m.castShadow = true; return m; }
+function flagMesh(col) { return meshOf(cached('flag' + col, () => flagModel(col))); }
 const ownerCol = (p) => (p >= 0 ? G.players[p].color : 0x9a9aa2);
 function objModel(o) {
   if (o.type === 'town') return cached('town' + G.towns[o.t].fac, () => townModel(G.towns[o.t].fac));
-  if (o.type === 'monster') return cached('u' + o.unit, () => unitModel(o.unit, UNITS[o.unit].col));
+  if (o.type === 'monster') return cached('u' + o.unit, () => unitGeo(o.unit));
   return cached('o' + o.type, () => objectModel(o.type));
 }
 const SCALE = { town: 0.4, monster: 0.2, goldmine: 0.3, gemmine: 0.3, orepit: 0.3, sawmill: 0.28, dwelling: 0.3, arena: 0.28, tower: 0.24, library: 0.27, stone: 0.24, obelisk: 0.24, shrine: 0.27, well: 0.27, windmill: 0.27, stables: 0.27 };
@@ -604,7 +550,7 @@ function layoutHeroes(force = false) {
     let m = heroMeshes.get(hr.id);
     if (!hr.alive || (!seen[hr.v] && hr.p !== 0)) { if (m) { scene.remove(m); heroMeshes.delete(hr.id); } continue; }
     if (!m) {
-      m = meshOf(cached('hero' + hr.p, () => heroModel(G.players[hr.p].color)));
+      m = meshOf(cached('hero' + hr.p, () => heroModel(G.players[hr.p].fac, G.players[hr.p].color)));
       scene.add(m); heroMeshes.set(hr.id, m);
     }
     if (!hr.anim || force) placeOn(m, hr.v, 0.22, hr.face || 0);
@@ -716,13 +662,17 @@ function describe(o) {
 }
 function selectHero(id) {
   G.selHero = id; const hr = G.heroes[id];
-  flyTo(hr.v, Math.min(cam.tDist, 10)); showPath(hr, null); updateHud(); sfx.click();
+  flyTo(hr.v, Math.min(cam.tDist, 10));
+  // a route left over from yesterday is shown again: tap its goal to carry on
+  showPath(hr, hr.route && hr.route[0] === hr.v && findPath(hr.v, hr.route[hr.route.length - 1], hr) ? findPath(hr.v, hr.route[hr.route.length - 1], hr) : null);
+  updateHud(); sfx.click();
 }
 
 // ------------------------------------------------------------------ walking
 let walking = null;
 const busy = () => !!walking || G.mode !== 'map' || aiRunning;
 function startWalk(hr, path) {
+  hr.route = null;
   const n = stepsToday(hr, path);
   if (n < 1) { toast('Not enough movement left today. End the turn.'); sfx.deny(); return; }
   walking = { hr, path, i: 0, t: 0, n };
@@ -758,7 +708,7 @@ function updateWalk(dt) {
   if (lurker) { walking = null; layoutHeroes(true); interact(hr, lurker.v); return; }
   if (W.i >= W.n) {
     walking = null; layoutHeroes(true);
-    if (W.i < W.path.length - 1) showPath(hr, W.path.slice(W.i));
+    if (W.i < W.path.length - 1) { hr.route = W.path.slice(W.i); showPath(hr, hr.route); } else hr.route = null;
     updateHud();
   }
 }
@@ -787,6 +737,17 @@ function interact(hr, v) {
   if (!o) return;
   const O = OBJECTS[o.type], kind = O?.kind;
   if (o.type === 'monster') {
+    // much weaker monsters may offer to join you, or flee
+    const ratio = BT.armyPower(heroArmy(hr), hr) / Math.max(1, BT.armyPower([[o.unit, o.n]]));
+    if (you && ratio > 4 && !o.refused && hash(o.id * 13 + G.day) % 100 < 55) {
+      const u = UNITS[o.unit], price = Math.round(o.n * u.cost.gold * 0.6), free = ratio > 8;
+      ask(`${unitIcon(o.unit)} The ${plural(o.unit)} bow before you`, free ? `${o.n} ${plural(o.unit, o.n)} are so impressed by your army that they offer to join you for free.` : `${o.n} ${plural(o.unit, o.n)} offer to join you for ${fmt(price)} 🪙.`, [
+        [free ? '🤝 Accept' : `🤝 Hire for ${fmt(price)}`, free || G.players[0].res.gold >= price ? () => { if (addTroops(hr.army, o.unit, o.n)) { if (!free) G.players[0].res.gold -= price; removeObject(o); toast(`${unitIcon(o.unit)} ${o.n} ${plural(o.unit, o.n)} join ${hr.name}.`); sfx.fanfare(); updateHud(); } else toast('No free slot in your army.'); } : undefined],
+        ['⚔️ Fight them', () => startBattle(hr, { kind: 'monster', obj: o })],
+        ['Let them flee', () => { removeObject(o); giveXp(hr, 0); toast(`${plural(o.unit)} run for their lives.`); }],
+      ]);
+      return;
+    }
     if (you) ask(`${sizeWord(o.n)} ${plural(o.unit)}`, `${unitIcon(o.unit)} About ${o.n <= 4 ? o.n : `${Math.round(o.n * 0.8)}–${Math.round(o.n * 1.2)}`} of them. ${threatWord(o)}.`, [['⚔️ Fight', () => startBattle(hr, { kind: 'monster', obj: o })], ['Leave', null]]);
     else startBattle(hr, { kind: 'monster', obj: o });
     return;
@@ -904,30 +865,24 @@ bscene.fog = new THREE.Fog(0x87a8d8, 14, 34);
 const bcam = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
 const bview = { dist: 12.5, yaw: 0 };
 {
-  const bs = new THREE.DirectionalLight(0xfff0d8, 2.4); bs.position.set(4, 10, 3); bs.castShadow = true; bs.shadow.mapSize.set(2048, 2048);
-  Object.assign(bs.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 30 }); bs.shadow.bias = -0.0005;
-  bscene.add(bs, new THREE.HemisphereLight(0xcfe0ff, 0x4a3a2a, 0.9), new THREE.AmbientLight(0x404a70, 0.3));
 }
+const bSun = new THREE.DirectionalLight(0xfff0d8, 2.4); bSun.position.set(4, 10, 3); bSun.castShadow = true; bSun.shadow.mapSize.set(2048, 2048);
+Object.assign(bSun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 30 }); bSun.shadow.bias = -0.0005;
+const bHemi = new THREE.HemisphereLight(0xcfe0ff, 0x4a3a2a, 0.9), bAmb = new THREE.AmbientLight(0x404a70, 0.3);
+bscene.add(bSun, bHemi, bAmb);
+let bfield = null;
 const HS = 0.5, HW = Math.sqrt(3) * HS, VS = 1.5 * HS;
 const hexPos = (c, r) => new THREE.Vector3((c - (BT.COLS - 1) / 2 + (r & 1 ? 0.5 : 0) - 0.25) * HW, 0, (r - (BT.ROWS - 1) / 2) * VS);
-const bground = new THREE.Mesh(new THREE.CircleGeometry(30, 48).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x5aaa3a, roughness: 1 }));
-bground.receiveShadow = true; bground.position.y = -0.02; bscene.add(bground);
 const hexGeo = new THREE.CylinderGeometry(HS * 0.95, HS * 0.95, 0.02, 6);
 const hexes = new THREE.InstancedMesh(hexGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.38, depthWrite: false }), BT.COLS * BT.ROWS);
 hexes.frustumCulled = false; bscene.add(hexes);
 for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(1); dummy.updateMatrix(); hexes.setMatrixAt(BT.key(c, r), dummy.matrix); hexes.setColorAt(BT.key(c, r), new THREE.Color(0xffffff)); }
-{
-  const pts = [];
-  for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { const p = hexPos(c, r); for (let i = 0; i < 6; i++) { const a1 = (i / 6) * Math.PI * 2, a2 = ((i + 1) / 6) * Math.PI * 2; pts.push(p.x + Math.sin(a1) * HS, 0.012, p.z + Math.cos(a1) * HS, p.x + Math.sin(a2) * HS, 0.012, p.z + Math.cos(a2) * HS); } }
-  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  bscene.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x1a2a10, transparent: true, opacity: 0.35 })));
-}
 const bstuff = new THREE.Group(); bscene.add(bstuff);
+const wallMat = new THREE.MeshStandardMaterial({ color: 0xb8ae9a, roughness: 0.9, flatShading: true });
 const activeRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 30).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd84a, toneMapped: false }));
 bscene.add(activeRing);
 // scenery around the field
-const bdeco = new THREE.Group(); bscene.add(bdeco);
-let BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
+let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
 function heroBattle(hr) { return { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know'), mana: hr.mana, skills: hr.skills, spells: hr.spells, luck: hr.arts.includes('clover') ? 1 : 0, morale: hr.arts.includes('banner') ? 1 : 0, name: hr.name, p: hr.p }; }
 function splitMonster(o) {
   const k = clamp(Math.round(o.n / 6), 1, 5) + (o.n > 3 ? 1 : 0), parts = Math.min(k, 5, o.n), arr = [];
@@ -941,8 +896,7 @@ function startBattle(hr, foe) {
   const playerDefends = defOwner === 0 && hr.p !== 0;
   // the player always fights from the bottom of the screen
   const sides = playerDefends ? [{ hero: defHero, army: defArmy, owner: 0 }, { hero: hr, army: hr.army, owner: hr.p }] : [{ hero: hr, army: hr.army, owner: hr.p }, { hero: defHero, army: defArmy, owner: defOwner }];
-  const B = BT.createBattle({ armyA: sides[0].army, heroA: sides[0].hero ? heroBattle(sides[0].hero) : null, armyB: sides[1].army, heroB: sides[1].hero ? heroBattle(sides[1].hero) : null, town: foe.kind === 'town' ? { fort: foe.town.built.includes('fort') } : null });
-  if (playerDefends && foe.kind === 'town') B.town = { fort: foe.town.built.includes('fort'), side: 0 };
+  const B = BT.createBattle({ armyA: sides[0].army, heroA: sides[0].hero ? heroBattle(sides[0].hero) : null, armyB: sides[1].army, heroB: sides[1].hero ? heroBattle(sides[1].hero) : null, town: foe.kind === 'town' ? { fort: foe.town.built.includes('fort'), side: playerDefends ? 0 : 1, power: Math.max(2, foe.town.built.length / 2) } : null });
   const ctx = { hr, foe, sides, terrain: ter[foe.kind === 'monster' ? foe.obj.v : hr.v] };
   if (sides[0].owner !== 0 && sides[1].owner !== 0) { BT.autoResolve(B); finishBattle(B, ctx); return; }
   enterBattle(B, ctx);
@@ -950,18 +904,26 @@ function startBattle(hr, foe) {
 function enterBattle(B, ctx) {
   BB = B; bctx = ctx; banim = []; bwait = 0.6; bspell = null; bauto = false; B.events.length = 0;
   G.mode = 'battle'; showPath(selHero(), null);
-  bground.material.color.copy(TER_COL[ctx.terrain === T.WATER || ctx.terrain === T.MOUNT || ctx.terrain === T.FOREST ? T.GRASS : ctx.terrain]).multiplyScalar(0.85);
-  bscene.background.set(ctx.terrain === T.LAVA ? 0x6a3a3a : ctx.terrain === T.SNOW ? 0xb8c8e0 : ctx.terrain === T.SWAMP ? 0x6a7a6a : 0x87a8d8);
-  bscene.fog.color.copy(bscene.background);
-  bstuff.clear(); bmesh.clear(); bdeco.clear();
-  for (const k of B.obstacles) { const m = meshOf(cached('obs' + (k % 2), () => obstacleModel(k % 2))); m.position.copy(hexPos(k % BT.COLS, (k / BT.COLS) | 0)); m.scale.setScalar(0.9); m.rotation.y = k; bstuff.add(m); }
-  // trees and rocks around the field
-  const tk = ctx.terrain === T.SNOW ? 2 : ctx.terrain === T.SWAMP ? 3 : 0;
-  for (let i = 0; i < 26; i++) { const a = (i / 26) * Math.PI * 2, rr = 7.5 + (hash(i * 7) % 30) / 10; const m = meshOf(i % 4 ? TREES[tk] : ROCKS[i % 3]); m.position.set(Math.cos(a) * rr, 0, Math.sin(a) * rr * 0.9); m.scale.setScalar(i % 4 ? 2.4 + (hash(i) % 10) / 10 : 2); bdeco.add(m); }
+  if (bfield) bscene.remove(bfield.group);
+  bfield = createBattlefield(THREE, ctx.terrain, hexPos, BT.COLS, BT.ROWS);
+  bscene.add(bfield.group);
+  bscene.background.set(bfield.sky);
+  bscene.fog.color.set(bfield.fog.color); bscene.fog.near = bfield.fog.near; bscene.fog.far = bfield.fog.far;
+  const L = bfield.lights;
+  bSun.color.set(L.sun.color); bSun.intensity = L.sun.intensity;
+  bHemi.color.set(L.hemi.sky); bHemi.groundColor.set(L.hemi.ground); bHemi.intensity = L.hemi.intensity;
+  bAmb.color.set(L.ambient.color); bAmb.intensity = L.ambient.intensity;
+  bstuff.clear(); bmesh.clear();
+  for (const k of B.obstacles) {
+    const c = k % BT.COLS, r = (k / BT.COLS) | 0;
+    if (B.walls.has(k)) { const w = new THREE.Mesh(cached('wallgeo', () => { const g = new THREE.BoxGeometry(HW * 1.02, 0.7, 0.5); g.translate(0, 0.35, 0); return g; }), wallMat); w.castShadow = w.receiveShadow = true; w.position.copy(hexPos(c, r)); bstuff.add(w); for (const dx of [-0.3, 0, 0.3]) { const m = new THREE.Mesh(cached('merlon', () => new THREE.BoxGeometry(0.18, 0.18, 0.5).translate(0, 0.79, 0)), wallMat); m.position.copy(hexPos(c, r)).add(new THREE.Vector3(dx, 0, 0)); bstuff.add(m); } continue; }
+    const m = meshOf(cached('obs' + ctx.terrain + '_' + (k % 3), () => bfield.obstacleModel(k % 3))); m.position.copy(hexPos(c, r)); m.rotation.y = k; bstuff.add(m);
+  }
+  if (B.walls.size) { const tw = new THREE.Mesh(cached('towergeo', () => { const g = new THREE.CylinderGeometry(0.45, 0.55, 2, 10); g.translate(0, 1, 0); return g; }), wallMat); tw.castShadow = true; const tr = (B.town.side ?? 1) === 1 ? 0 : BT.ROWS - 1; tw.position.copy(hexPos(BT.COLS - 1, tr)).add(new THREE.Vector3(1.1, 0, 0)); bstuff.add(tw); const roof = new THREE.Mesh(cached('towerroof', () => new THREE.ConeGeometry(0.6, 0.8, 10).translate(0, 2.4, 0)), new THREE.MeshStandardMaterial({ color: G.towns.find((t) => t === bctx.foe.town)?.fac === 'necro' ? 0x6a2a3a : 0x3a6ad8, flatShading: true })); roof.position.copy(tw.position); bstuff.add(roof); bctx.tower = tw; }
   $('blabels').innerHTML = ''; for (const f of floaters) f.el.remove(); floaters.length = 0;
   for (const s of B.stacks) {
-    const m = meshOf(cached('u' + s.id, () => unitModel(s.id, s.u.col)));
-    m.scale.setScalar(0.72 * (s.u.tier >= 6 ? 1.1 : 1));
+    const m = meshOf(cached('u' + s.id, () => unitGeo(s.id)));
+    m.scale.setScalar(0.9 * (s.u.tier >= 6 ? 1.05 : 1) * (s.u.up ? 1.08 : 1));
     m.position.copy(hexPos(s.c, s.r)); m.rotation.y = s.side === 0 ? Math.PI : 0;
     bstuff.add(m); bmesh.set(s.uid, m);
     const lab = document.createElement('div'); lab.className = `blab s${s.side}`; lab.id = `bl${s.uid}`; $('blabels').appendChild(lab);
@@ -992,8 +954,9 @@ function refreshBattle() {
     if (mineTurn && st && st.side !== s.side && (BT.canShoot(B, s) || BT.attackFrom(B, s, st).length || BT.nbrs(st.c, st.r).some(([x, y]) => x === s.c && y === s.r))) col = red;
     if (bspell && st) col = SPELLS[bspell].target === 'ally' ? (st.side === 0 ? blu : white) : st.side === 1 ? red : white;
     hexes.setColorAt(k, col);
+    dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(col === white ? 0.0001 : 1); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix);
   }
-  hexes.instanceColor.needsUpdate = true;
+  hexes.instanceColor.needsUpdate = true; hexes.instanceMatrix.needsUpdate = true;
   if (s) { activeRing.position.copy(hexPos(s.c, s.r)).setY(0.03); activeRing.visible = true; activeRing.material.color.set(s.side === 0 ? 0xffd84a : 0xff5a4a); } else activeRing.visible = false;
   // the turn order strip
   $('b-queue').innerHTML = BT.queue(B, 9).map((x, i) => `<span class="q s${x.side}${i === 0 ? ' now' : ''}">${unitIcon(x.id)}<b>${x.count}</b></span>`).join('');
@@ -1024,7 +987,17 @@ function battleTap(cx, cy) {
     return;
   }
   if (t && t.side !== s.side) {
-    if (BT.canShoot(B, s)) { BT.actShoot(B, s, t); afterAction(); return; }
+    const shoot = BT.canShoot(B, s);
+    if (bpreview !== t.uid) {
+      const adj0 = BT.nbrs(t.c, t.r).some(([x, y]) => x === s.c && y === s.r);
+      if (!shoot && !adj0 && !BT.attackFrom(B, s, t).length) { toast('Too far to reach this turn.'); sfx.deny(); return; }
+      const est = BT.estimate(B, s, t, shoot);
+      bpreview = t.uid; sfx.click();
+      $('b-msg').innerHTML = `${shoot ? '🏹' : '⚔️'} ${est.lo === est.hi ? est.lo : `${est.lo}–${est.hi}`} damage · kills ${est.klo === est.khi ? est.klo : `${est.klo}–${est.khi}`} of ${t.count} ${plural(t.id, t.count)} · <b>tap again</b>`;
+      return;
+    }
+    bpreview = null;
+    if (shoot) { BT.actShoot(B, s, t); afterAction(); return; }
     const adj = BT.nbrs(t.c, t.r).some(([x, y]) => x === s.c && y === s.r);
     // attack from the reachable neighbour hex closest to where you tapped
     const from = adj ? [s.c, s.r] : BT.attackFrom(B, s, t).sort((a, b) => hexPos(a[0], a[1]).distanceTo(p) - hexPos(b[0], b[1]).distanceTo(p))[0];
@@ -1034,8 +1007,8 @@ function battleTap(cx, cy) {
   if (!t && BT.reachable(B, s).has(BT.key(c, r)) && !(c === s.c && r === s.r)) { BT.actMove(B, s, c, r); afterAction(); return; }
   sfx.deny();
 }
-function afterAction() { queueEvents(); refreshBattle(); }
-function queueEvents() { banim.push(...BB.events.map((e) => ({ e, t: 0 }))); BB.events.length = 0; }
+function afterAction() { bpreview = null; queueEvents(); refreshBattle(); }
+function queueEvents() { bpreview = null; banim.push(...BB.events.map((e) => ({ e, t: 0 }))); BB.events.length = 0; }
 $('b-wait').addEventListener('click', () => { const s = BB?.active; if (!s || banim.length) return; BT.actWait(BB, s); BT.nextStack(BB); afterAction(); sfx.click(); });
 $('b-def').addEventListener('click', () => { const s = BB?.active; if (!s || banim.length) return; BT.actDefend(BB, s); afterAction(); sfx.click(); });
 $('b-auto').addEventListener('click', () => { bauto = !bauto; bspell = null; refreshBattle(); sfx.click(); });
@@ -1119,6 +1092,14 @@ function playEvent(e, t) {
     if (t > 0.7) { bstuff.remove(e.fx); return true; }
     return false;
   }
+  if (e.t === 'tower') {
+    const m = M(e.s);
+    if (!e.started) { e.started = true; sfx.shoot(); e.ball = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd27a, toneMapped: false })); bstuff.add(e.ball); }
+    const from = bctx.tower ? bctx.tower.position.clone().setY(2) : new THREE.Vector3(0, 2, -4), k = Math.min(1, t / 0.5);
+    if (m) e.ball.position.copy(from).lerp(m.position.clone().setY(0.5), k).setY(from.y * (1 - k) + 0.5 * k + Math.sin(k * Math.PI) * 0.8);
+    if (k >= 1 && !e.shown) { e.shown = true; bstuff.remove(e.ball); if (m) { m.userData.flash = 0.3; bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
+    return t > 0.65;
+  }
   if (e.t === 'morale') { if (!e.started) { e.started = true; bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
   if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; } return true; }
   if (e.t === 'wait' || e.t === 'defend') { if (!e.started) { e.started = true; const m = M(e.s); if (m) bfloat(m.position.clone().setY(1.1), e.t === 'wait' ? '⏳ Wait' : '🛡️ Defend', 'blue'); } return t > 0.25; }
@@ -1179,7 +1160,7 @@ function finishBattle(B, ctx) {
 
 // ------------------------------------------------------------------ towns
 const townIncome = (t) => (t.built.includes('hall3') ? 2000 : t.built.includes('hall2') ? 1000 : 500);
-const tierUnit = (t, tier) => FACTIONS[t.fac].units[tier - 1];
+const tierUnit = (t, tier) => (t.built.includes(`u${tier}`) ? UPGRADES[t.fac][tier - 1] : FACTIONS[t.fac].units[tier - 1]);
 const costText = (c) => RES.filter((r) => c[r]).map((r) => `${RES_ICON[r]}${fmt(c[r])}`).join(' ');
 const canPay = (p, c, n = 1) => RES.every((r) => (G.players[p].res[r] || 0) >= (c[r] || 0) * n);
 const pay = (p, c, n = 1) => { for (const r of RES) G.players[p].res[r] -= (c[r] || 0) * n; };
@@ -1223,8 +1204,8 @@ function renderTown() {
   if (townTab === 'build') {
     html = BUILDINGS.map((b) => {
       const has = t.built.includes(b.id), reqOk = b.req.every((r) => t.built.includes(r)), can = !has && reqOk && !t.builtToday && canPay(t.p, b.cost);
-      const name = b.tier ? `${UNITS[tierUnit(t, b.tier)].name} dwelling` : b.name;
-      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(tierUnit(t, b.tier)) : b.icon}</i><div><b>${name}</b><small>${has ? '✓ Built' : reqOk ? costText(b.cost) : `Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}`}</small><small class="d">${b.desc}</small></div>${has ? '' : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
+      const name = b.tier ? `${b.up ? '⬆️ ' : ''}${UNITS[b.up ? UPGRADES[t.fac][b.tier - 1] : FACTIONS[t.fac].units[b.tier - 1]].name} dwelling` : b.name;
+      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : b.icon}</i><div><b>${name}</b><small>${has ? '✓ Built' : reqOk ? costText(b.cost) : `Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}`}</small><small class="d">${b.desc}</small></div>${has ? '' : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
     }).join('');
   } else if (townTab === 'recruit') {
     const tiers = BUILDINGS.filter((b) => b.tier && t.built.includes(b.id)).map((b) => b.tier);
@@ -1235,6 +1216,10 @@ function renderTown() {
   } else if (townTab === 'army') {
     const row = (title, army, who) => `<div class="armyrow"><b>${title}</b><div class="slots">${Array.from({ length: 7 }, (_, i) => army[i] && army[i][1] > 0 ? `<button data-move="${who}:${i}">${unitIcon(army[i][0])}<em>${army[i][1]}</em></button>` : '<button disabled></button>').join('')}</div></div>`;
     html = row('🏰 Garrison', t.garrison, 'g') + (vis ? row(`🐎 ${vis.name}`, vis.army, 'h') : '<p class="hint2">No hero beside the town.</p>') + '<p class="hint2">Tap a stack to move it across.</p>';
+    // upgrades for troops whose upgraded dwelling stands here
+    const ups = [];
+    for (const [who, army] of [['g', t.garrison], ['h', vis?.army]]) if (army) army.forEach((st, i) => { if (!st || st[1] <= 0) return; const tier = UNITS[st[0]].tier, upId = UPGRADES[t.fac]?.[tier - 1]; if (UNITS[st[0]].fac === t.fac && !UNITS[st[0]].up && t.built.includes(`u${tier}`) && upId) { const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))])); ups.push(`<div class="row-b"><i>${unitIcon(st[0])}</i><div><b>${st[1]} ${plural(st[0], st[1])} → ${UNITS[upId].name}</b><small>${costText(Object.fromEntries(RES.map((r) => [r, cost[r] * st[1]])))}</small></div><button data-up="${who}:${i}" ${canPay(t.p, cost, st[1]) ? '' : 'disabled'}>Upgrade</button></div>`); } });
+    if (ups.length) html += ups.join('');
   } else if (townTab === 'more') {
     const tav = t.built.includes('tavern'), mk = t.built.includes('market');
     const heroes = G.heroes.filter((x) => x.alive && x.p === t.p).length;
@@ -1256,6 +1241,10 @@ $('t-body').addEventListener('click', (e) => {
     if (!addTroops(army, id, n) && !(vis && addTroops(t.garrison, id, n))) { toast('No free slot.'); sfx.deny(); return; }
     pay(t.p, UNITS[id].cost, n); t.avail[tier] -= n; sfx.coin();
     toast(`${unitIcon(id)} ${n} ${plural(id, n)} join ${vis ? vis.name : 'the garrison'}.`);
+  } else if (b.dataset.up) {
+    const [who, i] = b.dataset.up.split(':'), army = who === 'g' ? t.garrison : vis.army, st = army[i], upId = UPGRADES[t.fac][UNITS[st[0]].tier - 1];
+    const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))]));
+    if (canPay(t.p, cost, st[1])) { pay(t.p, cost, st[1]); st[0] = upId; sfx.fanfare(); toast(`⬆️ ${st[1]} ${plural(upId, st[1])}!`); }
   } else if (b.dataset.move) {
     const [who, i] = b.dataset.move.split(':'), from = who === 'g' ? t.garrison : vis.army, to = who === 'g' ? vis?.army : t.garrison;
     if (!to) return;
@@ -1302,7 +1291,7 @@ function openHero() {
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
 const UICON = { pikeman: '🔱', archer: '🏹', griffin: '🦅', swordsman: '⚔️', monk: '🧙', cavalier: '🏇', angel: '👼', skeleton: '💀', zombie: '🧟', wight: '👻', vampire: '🧛', lich: '☠️', blackknight: '♞', bonedragon: '🐉', goblin: '👺', wolf: '🐺', orc: '👹', ogre: '🦣', troll: '🧌', cyclops: '👁️', hydra: '🐍' };
-const unitIcon = (id) => UICON[id] || '❔';
+const unitIcon = (id) => UICON[id] || UICON[UNITS[id]?.up] || '❔';
 const plural = (id, n = 2) => (n === 1 ? UNITS[id].name : UNITS[id].name.replace(/man$/, 'men').replace(/f$/, 'ves').replace(/([^s])$/, '$1s'));
 let toastT = 0;
 function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
@@ -1410,10 +1399,13 @@ function newDay() {
   for (const hr of G.heroes) if (hr.alive) { hr.mp = moveMax(hr); hr.mana = Math.min(maxMana(hr), hr.mana + 1 + Math.floor(statOf(hr, 'know') / 3)); }
   for (const t of G.towns) t.builtToday = false;
   if (newWeek) {
-    for (const t of G.towns) for (const b of BUILDINGS) if (b.tier && t.built.includes(b.id)) t.avail[b.tier] = (t.avail[b.tier] || 0) + Math.ceil(UNITS[tierUnit(t, b.tier)].grow * (t.built.includes('fort') ? 1.5 : 1));
+    // each week honours a creature: +5 growth in every town that breeds it
+    const all = [...FACTIONS.haven.units, ...FACTIONS.necro.units], star = all[(rnd() * all.length) | 0];
+    G.weekOf = star;
+    for (const t of G.towns) for (const b of BUILDINGS) if (b.tier && !b.up && t.built.includes(b.id)) { const base = FACTIONS[t.fac].units[b.tier - 1]; t.avail[b.tier] = (t.avail[b.tier] || 0) + Math.ceil(UNITS[base].grow * (t.built.includes('fort') ? 1.5 : 1)) + (base === star ? 5 : 0); }
     for (const o of G.objects) if (o.alive && o.type === 'monster') o.n = Math.ceil(o.n * 1.08);
     for (const o of G.objects) if (o.alive && o.type === 'dwelling') o.stock = Math.max(o.stock, 4 + ((rnd() * 4) | 0));
-    showMsg(`📅 Week ${week()}`, 'A new week begins: creatures in your dwellings have multiplied. Visit your town to recruit them.');
+    showMsg(`📅 Week ${week()}: Week of the ${UNITS[G.weekOf].name}`, `${unitIcon(G.weekOf)} ${plural(G.weekOf)} grow by +5 this week. Creatures in your dwellings have multiplied: visit your town to recruit them.`);
   }
   revealAll(); updateHud(); save();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
@@ -1440,10 +1432,18 @@ function aiVisitTown(hr, t) {
   // take the garrison along, keeping the strongest stacks together
   for (let i = 0; i < t.garrison.length; i++) { const s = t.garrison[i]; if (s && s[1] > 0 && addTroops(hr.army, s[0], s[1])) t.garrison[i] = null; }
   t.garrison = t.garrison.filter(Boolean);
+  // upgrade what the town allows
+  for (const st of hr.army) {
+    if (!st || UNITS[st[0]].up || UNITS[st[0]].fac !== t.fac) continue;
+    const tier = UNITS[st[0]].tier, upId = UPGRADES[t.fac][tier - 1];
+    if (!t.built.includes(`u${tier}`)) continue;
+    const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))]));
+    if (canPay(t.p, cost, st[1])) { pay(t.p, cost, st[1]); st[0] = upId; }
+  }
   learnSpells(t, hr);
 }
 function aiTown(t) {
-  const order = ['d2', 'd3', 'fort', 'd4', 'hall2', 'mage1', 'd5', 'tavern', 'd6', 'market', 'hall3', 'mage2', 'd7', 'mage3'];
+  const order = ['d2', 'd3', 'fort', 'd4', 'hall2', 'mage1', 'd5', 'u1', 'tavern', 'd6', 'u2', 'u3', 'market', 'hall3', 'u4', 'mage2', 'd7', 'u5', 'u6', 'mage3', 'u7'];
   for (const id of order) if (buildIn(t, id)) break;
   for (let tier = 7; tier >= 1; tier--) {
     if (!t.built.includes(`d${tier}`) || !(t.avail[tier] > 0)) continue;
@@ -1493,6 +1493,7 @@ function aiValue(hr, v, power) {
     const t = G.towns[o.t];
     if (t.p === hr.p) return heroArmy({ army: t.garrison }).length ? 12 + BT.armyPower(t.garrison) / 120 : 0;
     const gp = BT.armyPower(t.garrison) * (t.built.includes('fort') ? 1.3 : 1);
+    if (t.p === 0 && G.day < [12, 8, 5][G.diff]) return 0;
     return power > gp * 1.4 ? (t.p === 0 ? 120 : 70) : 0;
   }
   if (kind === 'pickup') return o.type === 'gold' ? o.amount / 80 : o.type === 'chest' ? 14 : o.type === 'artifact' ? 25 : o.type === 'campfire' ? 9 : 7;
@@ -1506,8 +1507,16 @@ function* aiHero(hr) {
   for (let iter = 0; iter < 16 && hr.alive && hr.mp >= 50 && !G.over; iter++) {
     const power = BT.armyPower(heroArmy(hr), hr);
     const { dist, prev } = dijkstra(hr, hr.mp + 4500);
+    // a stronger enemy hero close by: run home to the garrison
+    const threat = G.heroes.find((x) => x.alive && x.p !== hr.p && DIRS[x.v].distanceTo(DIRS[hr.v]) < 1.2 && BT.armyPower(heroArmy(x), x) > power * 1.25);
     let best = null, bs = 0;
-    for (const [v, d] of dist) { if (v === hr.v) continue; const val = aiValue(hr, v, power); if (val <= 0) continue; const sc = val / (1 + d / 900); if (sc > bs) { bs = sc; best = v; } }
+    for (const [v, d] of dist) {
+      if (v === hr.v) continue;
+      let val = aiValue(hr, v, power);
+      if (threat) { const o = objAt[v] >= 0 ? G.objects[objAt[v]] : null; if (o && o.type === 'town' && G.towns[o.t].p === hr.p) val += 150; else if (DIRS[v].distanceTo(DIRS[threat.v]) < 0.5) val *= 0.2; }
+      if (val <= 0) continue;
+      const sc = val / (1 + d / 900); if (sc > bs) { bs = sc; best = v; }
+    }
     if (best === null) return;
     const path = [best]; while (prev.has(path[0])) path.unshift(prev.get(path[0]));
     // walk as far as today allows, then bump into the target
@@ -1635,6 +1644,7 @@ let tt = 0;
 function frame() {
   const dt = Math.min(0.05, clock.getDelta());
   tt += dt;
+  tickMaterials(tt);
   if (G.mode === 'battle') {
     animateBattle(dt);
     const s = Math.sin(bview.yaw), c = Math.cos(bview.yaw);
@@ -1644,6 +1654,8 @@ function frame() {
     post.render(bscene, bcam);
   } else {
     updateCamera(dt);
+    atmos.update(dt, camera);
+    if (atmos.objects?.clouds) atmos.objects.clouds.visible = G.mode === 'menu' || cam.dist > 13;
     if (G.mode === 'menu') { cam.vTheta = 0.0015; cam.tDist = 16; }
     else {
       updateWalk(dt); tickAI(dt);
@@ -1659,7 +1671,7 @@ function frame() {
   updateFloaters(dt);
   requestAnimationFrame(frame);
 }
-const hitMat = bodyMat.clone(); hitMat.emissive = new THREE.Color(0xff3a2a); hitMat.emissiveIntensity = 0.8;
+const hitMat = makeHitMaterial(THREE);
 
 // first boot: a world spinning behind the title
 newWorld(12345, 1);
