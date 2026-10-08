@@ -9,6 +9,8 @@ import { townModel, heroModel, flagModel } from './models_towns.js?v=0.3';
 import { objectModel } from './models_objects.js?v=0.3';
 import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.3';
 import { createBattlefield, wallModel, towerModel, gateModel } from './battlefield.js?v=0.3';
+import { createTownView } from './town_view.js?v=0.3';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.3';
 import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.3';
 import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.3';
 import * as BT from './battle.js?v=0.3';
@@ -216,6 +218,7 @@ function resize() {
   post.setSize(w, hh, renderer.getPixelRatio());
   camera.aspect = w / hh; camera.fov = w < hh ? 50 : 40; camera.updateProjectionMatrix();
   bcam.aspect = w / hh; bcam.fov = w < hh ? 52 : 40; bcam.updateProjectionMatrix();
+  if (typeof townView !== 'undefined') townView.resize(w, hh);
 }
 window.addEventListener('resize', resize);
 const atmos = createAtmosphere(THREE, scene, { R });
@@ -288,6 +291,12 @@ const post = (() => {
 // ------------------------------------------------------------------ meshes for map things
 const bodyMat = makeBodyMaterial(THREE);
 const glowMat = makeGlowMaterial(THREE);
+const townView = createTownView(THREE, renderer, { bodyMat, glowMat });
+function townInsets() {
+  const r = $('town').getBoundingClientRect();
+  const side = innerWidth > innerHeight && r.width < innerWidth * 0.7;
+  townView.setInsets(side ? { bottom: 0, right: innerWidth - r.left } : { bottom: Math.max(0, innerHeight - r.top), right: 0 });
+}
 const geoCache = new Map();
 const unitGeo = (id) => { const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
 initPortraits(THREE, renderer, unitGeo);
@@ -598,6 +607,7 @@ cvs.addEventListener('pointermove', (e) => {
   p.x = e.clientX; p.y = e.clientY;
   if (pinch && ptrs.size === 2) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (G.mode === 'town') return;
     if (G.mode === 'battle') bview.dist = clamp(pinch.dist * pinch.d / d, 9, 18);
     else cam.tDist = clamp(pinch.dist * pinch.d / d, 6.4, 22);
     return;
@@ -608,6 +618,7 @@ cvs.addEventListener('pointermove', (e) => {
   press.lx = e.clientX; press.ly = e.clientY;
   if (!press.moved) return;
   if (G.mode === 'battle') { bview.yaw = clamp(bview.yaw - dx * 0.004, -0.6, 0.6); return; }
+  if (G.mode === 'town') return;
   const k = cam.dist / 900;
   cam.vTheta = -dx * k * 0.5; cam.vPhi = -dy * k * 0.5; cam.fly = false;
 });
@@ -615,12 +626,12 @@ const endPtr = (e) => {
   ptrs.delete(e.pointerId);
   if (ptrs.size < 2) pinch = null;
   if (!press || press.id !== e.pointerId) return;
-  if (!press.moved && performance.now() - press.t < 500) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); }
+  if (!press.moved && performance.now() - press.t < 500) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); else if (G.mode === 'town') townTap(e.clientX, e.clientY); }
   press = null;
 };
 cvs.addEventListener('pointerup', endPtr);
 cvs.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); press = null; pinch = null; });
-cvs.addEventListener('wheel', (e) => { e.preventDefault(); if (G.mode === 'battle') bview.dist = clamp(bview.dist * (e.deltaY > 0 ? 1.08 : 0.92), 8, 16); else cam.tDist = clamp(cam.tDist * (e.deltaY > 0 ? 1.1 : 0.9), 6.4, 22); }, { passive: false });
+cvs.addEventListener('wheel', (e) => { e.preventDefault(); if (G.mode === 'town') return; if (G.mode === 'battle') bview.dist = clamp(bview.dist * (e.deltaY > 0 ? 1.08 : 0.92), 8, 16); else cam.tDist = clamp(cam.tDist * (e.deltaY > 0 ? 1.1 : 0.9), 6.4, 22); }, { passive: false });
 
 const selHero = () => (G.selHero >= 0 && G.heroes[G.selHero]?.alive && G.heroes[G.selHero].p === 0 ? G.heroes[G.selHero] : null);
 function mapTap(cx, cy) {
@@ -880,7 +891,8 @@ for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { dummy.posi
 const bstuff = new THREE.Group(); bscene.add(bstuff);
 const wallMat = new THREE.MeshStandardMaterial({ color: 0xb8ae9a, roughness: 0.9, flatShading: true });
 const activeRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 30).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd84a, toneMapped: false }));
-bscene.add(activeRing);
+bscene.add(activeRing); activeRing.visible = false;
+const vfx = createVfx(THREE, bscene);
 // scenery around the field
 let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
 function heroBattle(hr) { return { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know'), mana: hr.mana, skills: hr.skills, spells: hr.spells, luck: hr.arts.includes('clover') ? 1 : 0, morale: hr.arts.includes('banner') ? 1 : 0, name: hr.name, p: hr.p }; }
@@ -915,7 +927,7 @@ function enterBattle(B, ctx) {
   bAmb.color.set(L.ambient.color); bAmb.intensity = L.ambient.intensity;
   bHemi.intensity *= 1.15; bHemi.groundColor.lerp(new THREE.Color(0xa08060), 0.4);
   bAmb.intensity += 0.12; bAmb.color.lerp(new THREE.Color(0x9090c8), 0.5);
-  bstuff.clear(); bmesh.clear();
+  vfx.clear(); bstuff.clear(); bmesh.clear();
   const sfac = bctx.foe.town?.fac;
   for (const k of B.obstacles) {
     const c = k % BT.COLS, r = (k / BT.COLS) | 0;
@@ -966,7 +978,7 @@ function refreshBattle() {
     dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(col === white ? 0.0001 : 1); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix);
   }
   hexes.instanceColor.needsUpdate = true; hexes.instanceMatrix.needsUpdate = true;
-  if (s) { activeRing.position.copy(hexPos(s.c, s.r)).setY(0.03); activeRing.visible = true; activeRing.material.color.set(s.side === 0 ? 0xffd84a : 0xff5a4a); } else activeRing.visible = false;
+  if (s && s.count > 0) vfx.select(bmesh.get(s.uid), s.side === 0 ? 0xffd84a : 0xff5a4a); else vfx.select(null);
   // the turn order strip
   $('b-queue').innerHTML = BT.queue(B, 9).map((x, i) => `<span class="q s${x.side}${i === 0 ? ' now' : ''}">${unitIcon(x.id)}<b>${x.count}</b></span>`).join('');
   const h0 = B.heroes[0];
@@ -1069,56 +1081,56 @@ function playEvent(e, t) {
   }
   if (e.t === 'hit' || e.t === 'shot') {
     const a = M(e.a), d = M(e.d), sa = S(e.a), sd = S(e.d);
-    const dur = e.t === 'shot' ? 0.6 : 0.45;
+    const dur = e.t === 'shot' ? 0.6 : 0.45; // shots end once landed
     if (!e.started) {
       e.started = true;
       const dir = d.position.clone().sub(a.position); a.rotation.y = Math.atan2(dir.x, dir.z);
-      if (e.t === 'shot') { const ball = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: sa.id === 'lich' ? 0x9a6aff : sa.id === 'monk' ? 0xffe27a : 0xffffff, toneMapped: false })); bstuff.add(ball); e.ball = ball; sfx.shoot(); }
-      else sfx.hit();
+      if (e.t === 'shot') { e.fly = vfx.projectile(shotKind(sa.id), a.position.clone().setY(sa.id === 'cyclops' ? 1.1 : 0.65), d.position.clone().setY(0.5), () => { e.landed = true; }); sfx.shoot(); }
+      else { e.fly = 0.18; sfx.hit(); }
     }
     if (e.t === 'hit') { const k = Math.sin(Math.min(1, t / 0.3) * Math.PI) * 0.25; const dir = d.position.clone().sub(a.position).setY(0).normalize(); a.userData.busy = true; a.position.copy(hexPos(sa.c, sa.r)).addScaledVector(dir, k); }
-    if (e.ball) { const k = Math.min(1, t / 0.45); e.ball.position.copy(a.position).lerp(d.position, k).setY(0.5 + Math.sin(k * Math.PI) * 1.0); if (k >= 1 && e.ball.parent) bstuff.remove(e.ball); }
-    if (t >= (e.t === 'shot' ? 0.45 : 0.18) && !e.shown) {
-      e.shown = true;
+    if ((e.t === 'shot' ? e.landed || t > 1.5 : t >= 0.18) && !e.shown) {
+      e.shown = true; e.shownAt = t;
+      if (e.t === 'hit') vfx.hit(d.position.clone().setY(0.5), meleeKind(sa.u), { dir: d.position.clone().sub(a.position) });
+      if (e.lucky) vfx.sparkle(d.position, 'luck');
       d.userData.flash = 0.3;
       bfloat(d.position.clone().setY(1), `-${fmt(e.dmg)}${e.killed ? ` (${e.killed}💀)` : ''}${e.lucky ? ' 🍀' : ''}`, sd.side === 0 ? 'red' : 'gold');
       if (e.retal) bfloat(d.position.clone().setY(1.4), 'Retaliation', 'blue');
       const lab = $(`bl${sd.uid}`); if (lab) lab.textContent = sd.count > 0 ? sd.count : '';
     }
-    if (t >= dur) { a.userData.busy = false; if (sa.count > 0) a.position.copy(hexPos(sa.c, sa.r)); a.rotation.y = sa.side === 0 ? Math.PI : 0; return true; }
+    if (e.shown && t >= Math.max(dur - (e.t === 'shot' ? 0.6 : 0), e.shownAt + 0.15)) { a.userData.busy = false; if (sa.count > 0) a.position.copy(hexPos(sa.c, sa.r)); a.rotation.y = sa.side === 0 ? Math.PI : 0; return true; }
     return false;
   }
-  if (e.t === 'die') { const m = M(e.s); if (!e.started) { e.started = true; sfx.die(); } m.position.y = -t * 0.8; m.rotation.z = t * 1.5; if (t > 0.5) { m.visible = false; return true; } return false; }
+  if (e.t === 'die') { const m = M(e.s); if (!e.started) { e.started = true; sfx.die(); if (m) vfx.death(m, { undead: !!S(e.s).u?.undead }); } if (t > 0.6) { if (m) m.visible = false; return true; } return false; }
   if (e.t === 'spell') {
+    const p = hexPos(e.c, e.r);
     if (!e.started) {
       e.started = true; sfx.magic();
-      const p = hexPos(e.c, e.r);
-      const col = { arrow: 0xffe27a, bolt: 0x9ad8ff, fireball: 0xff6a2a, cure: 0x6aff8a, bless: 0xffe27a, stoneskin: 0xb8b0a0, haste: 0x9affff, slow: 0x9a7aff }[e.id];
-      const fx = new THREE.Mesh(new THREE.SphereGeometry(e.id === 'fireball' ? 1.2 : 0.5, 16, 10), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.7, toneMapped: false }));
-      fx.position.copy(p).setY(0.5); bstuff.add(fx); e.fx = fx;
+      let tg = e.hits.map((hh) => M(hh.s)).filter(Boolean);
+      if (!tg.length) { const st = BT.stackAt(B, e.c, e.r); if (st && M(st.uid)) tg = [M(st.uid)]; }
+      e.land = vfx.spell(e.id, p, tg, { side: e.side }) || 0.3;
       bfloat(p.clone().setY(1.8), `${SPELLS[e.id].icon} ${SPELLS[e.id].name}`, 'blue');
-      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; }
     }
-    e.fx.scale.setScalar(1 + t * 1.5); e.fx.material.opacity = Math.max(0, 0.7 - t);
-    if (t > 0.7) { bstuff.remove(e.fx); return true; }
-    return false;
+    if (t >= e.land && !e.shown) {
+      e.shown = true;
+      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; const lab = $(`bl${hh.s}`); if (lab) lab.textContent = S(hh.s).count > 0 ? S(hh.s).count : ''; }
+    }
+    return t > e.land + 0.45;
   }
   if (e.t === 'tower') {
     const m = M(e.s);
-    if (!e.started) { e.started = true; sfx.shoot(); e.ball = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd27a, toneMapped: false })); bstuff.add(e.ball); }
-    const from = bctx.tower ? bctx.tower.position.clone().setY(2) : new THREE.Vector3(0, 2, -4), k = Math.min(1, t / 0.5);
-    if (m) e.ball.position.copy(from).lerp(m.position.clone().setY(0.5), k).setY(from.y * (1 - k) + 0.5 * k + Math.sin(k * Math.PI) * 0.8);
-    if (k >= 1 && !e.shown) { e.shown = true; bstuff.remove(e.ball); if (m) { m.userData.flash = 0.3; bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
-    return t > 0.65;
+    if (!e.started) { e.started = true; sfx.shoot(); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
+    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (m) { m.userData.flash = 0.3; bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
+    return e.shown && t > e.shownAt + 0.1;
   }
-  if (e.t === 'morale') { if (!e.started) { e.started = true; bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
+  if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
   if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; } return true; }
   if (e.t === 'wait' || e.t === 'defend') { if (!e.started) { e.started = true; const m = M(e.s); if (m) bfloat(m.position.clone().setY(1.1), e.t === 'wait' ? '⏳ Wait' : '🛡️ Defend', 'blue'); } return t > 0.25; }
   return true;
 }
 function endBattleScreen() {
   const B = BB, ctx = bctx;
-  BB = null;
+  BB = null; vfx.clear(); vfx.select(null);
   $('battle').hidden = true; $('hud').hidden = false; $('blabels').innerHTML = '';
   G.mode = 'map';
   score?.setEra(2);
@@ -1184,11 +1196,11 @@ function openTown(id, hr) {
   const vis = hr || visitorOf(t);
   if (vis) learnSpells(t, vis);
   $('town').hidden = false; $('hud').hidden = true;
-  flyTo(t.v, 8);
-  renderTown(); sfx.click();
+  townView.highlight(null); townView.setTown({ fac: t.fac, built: t.built, name: t.name });
+  renderTown(); sfx.click(); townInsets();
   score?.setEra(1);
 }
-function closeTown() { $('town').hidden = true; $('hud').hidden = false; townOpen = null; G.mode = 'map'; score?.setEra(2); updateHud(); }
+function closeTown() { townView.highlight(null); $('town').hidden = true; $('hud').hidden = false; townOpen = null; G.mode = 'map'; score?.setEra(2); updateHud(); }
 $('t-close').addEventListener('click', closeTown);
 for (const b of document.querySelectorAll('#town .tabs2 button')) b.addEventListener('click', () => { townTab = b.dataset.t; renderTown(); sfx.click(); });
 function learnSpells(t, hr) {
@@ -1206,8 +1218,15 @@ function learnSpells(t, hr) {
   hr.mana = maxMana(hr);
   if (learned.length && hr.p === 0) toast(`📘 ${hr.name} learns ${learned.map((id) => SPELLS[id].icon + ' ' + SPELLS[id].name).join(', ')}`);
 }
+function townTap(cx, cy) {
+  const id = townView.pick(cx, cy); if (!id) return;
+  townView.highlight(id);
+  townTab = /^[du]\d$/.test(id) ? 'recruit' : (id === 'tavern' || id === 'market') ? 'more' : id === 'fort' ? 'army' : 'build';
+  renderTown(); sfx.click();
+}
 function renderTown() {
   const t = G.towns[townOpen], Pl = G.players[t.p], vis = visitorOf(t);
+  townView.setTown({ fac: t.fac, built: t.built, name: t.name });
   for (const b of document.querySelectorAll('#town .tabs2 button')) b.classList.toggle('on', b.dataset.t === townTab);
   $('t-name').textContent = t.name;
   $('t-sub').innerHTML = `${FACTIONS[t.fac].name} · 🪙 +${fmt(townIncome(t))}/day · ${t.builtToday ? '🔨 built today' : '🔨 you can build today'}`;
@@ -1663,6 +1682,7 @@ function frame() {
     bcam.position.set(s * bview.dist * 0.82, bview.dist * 0.86, c * bview.dist * 0.82 + 0.4);
     bcam.lookAt(0, 0, -0.15);
     for (const m of bmesh.values()) if (m.userData.flash > 0) { m.userData.flash -= dt; m.children[0].material = m.userData.flash > 0 ? hitMat : bodyMat; }
+    vfx.update(dt, bcam);
     post.render(bscene, bcam);
   } else {
     updateCamera(dt);
@@ -1678,7 +1698,8 @@ function frame() {
       fx.update(dt, camera);
       for (const g of world.children) if (g.userData.bob !== undefined) for (const c of g.children) if (c.isMesh) c.position.y = (c.userData.fitY ?? 0) + Math.abs(Math.sin(tt * 2 + g.userData.bob)) * 0.15;
     }
-    post.render(scene, camera);
+    if (G.mode === 'town') { townInsets(); townView.update(dt); post.render(townView.scene, townView.camera); }
+    else post.render(scene, camera);
   }
   updateFloaters(dt);
   requestAnimationFrame(frame);

@@ -960,7 +960,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     const want = resolveSlots(built);
     for (const k of Object.keys(SLOT_POS)) {
       const id = want[k] || null, s = slots[k];
-      if ((s?.id || null) === id) continue;
+      if ((s?.id || null) === id && cur.fac === fac) continue;
       const animate = same && !!id;
       if (s) {
         if (animate || (same && !id)) { s.group.userData.anim = { t: 0, dur: 0.7, sink: true }; sinking.push(s.group); }
