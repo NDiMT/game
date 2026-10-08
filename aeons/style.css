@@ -374,3 +374,5 @@ body.golden #app::after { content: ''; position: absolute; inset: 0; pointer-eve
 .end-score em { font-style: normal; font-size: 13px; color: #c8b0ff; font-weight: 800; }
 @keyframes beat { 50% { transform: scale(1.08); } }
 #era .card { max-height: 90vh; overflow-y: auto; }
+
+.ship-chip { top: calc(env(safe-area-inset-top) + 186px); background: linear-gradient(180deg, #2a5ad8, #1a2a8a); border-color: #9fd0ff; animation: none; }
