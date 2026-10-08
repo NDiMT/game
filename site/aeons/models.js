@@ -213,6 +213,48 @@ export function tileModel(era, variant) {
     else k.box(0.02, 0.05, 0.02, 0, 0, 0, 0x9a948a);
     return done(k);
   }
+  if (variant === 5) {
+    // a dense downtown block: four buildings, the middle one taller
+    TRIO.forEach(([x, z], i) => building(era, k, x * 1.05, z * 1.05, 1.25 + k.r() * 0.2, i * 3 + 1));
+    building(era, k, 0, 0, era >= 4 ? 1.5 : 1.15, 9);
+    return done(k);
+  }
+  if (variant === 6) {
+    // suburb: two homes with gardens, hedges and a tree
+    const home = Math.min(era, 5) === 5 ? 3 : era;
+    for (const [x, z, i] of [[0.075, 0.03, 0], [-0.06, -0.05, 1]]) {
+      k.box(0.09, 0.004, 0.09, x, 0, z, 0x7ac05a);
+      building(home === 6 ? 6 : home, k, x, z, 0.95, i + 2);
+      if (era >= 1) k.box(0.09, 0.012, 0.006, x, 0, z + 0.045, 0x4a8a3a);
+    }
+    k.cyl(0.006, 0.008, 0.04, -0.07, 0, 0.08, 0x6a4a2a, 5); k.ball(0.03, -0.07, 0.06, 0.08, 0x5aa844, false, 1);
+    if (era >= 5) k.box(0.03, 0.012, 0.018, 0.02, 0, -0.1, k.pick([0xd04a3a, 0x3a7ad0, 0xe0c040]));
+    return done(k);
+  }
+  if (variant === 7) {
+    // a market: stalls with coloured awnings (or neon-lit shops in later ages)
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + 0.3, x = Math.cos(a) * 0.09, z = Math.sin(a) * 0.09, col = [0xd04a3a, 0x3a8ad0, 0xe0b030, 0x4ab06a, 0xb05ad0][i];
+      if (era <= 3) { k.box(0.045, 0.03, 0.035, x, 0, z, 0x9a7a52, false, -a); k.roof(0.055, 0.02, 0.045, x, 0.03, z, col, -a); }
+      else { k.box(0.05, 0.045, 0.04, x, 0, z, era >= 5 ? 0xe6eaf0 : 0xb89a7a, false, -a); k.box(0.052, 0.008, 0.004, x + Math.cos(a) * 0.022, 0.035, z + Math.sin(a) * 0.022, col, true, -a); }
+    }
+    k.cyl(0.03, 0.03, 0.005, 0, 0, 0, era >= 4 ? 0x9aa0a8 : 0xc8b890, 10);
+    if (era >= 2) { k.cyl(0.004, 0.004, 0.06, 0, 0, 0, 0x5a5a62, 5); k.ball(0.01, 0, 0.065, 0, 0xffd27a, true); }
+    return done(k);
+  }
+  if (variant === 8) {
+    // a plaza with a monument of the age and benches
+    k.cyl(0.13, 0.13, 0.006, 0, 0, 0, era >= 4 ? 0xc8ccd2 : 0xd8ccb0, 6);
+    const mon = [0x8a8478, 0xc8a050, 0xf2ede2, 0xb8b0a0, 0x6a4a3a, 0x9fb8d8, 0xeef4fa][era];
+    k.box(0.04, 0.025, 0.04, 0, 0, 0, 0xb8b0a0);
+    if (era === 6) { k.ball(0.03, 0, 0.07, 0, 0x9ff8ff, true, 1); k.ring(0.045, 0.004, 0, 0.07, 0, 0x5ff0ff); }
+    else if (era >= 4) k.cyl(0.008, 0.014, 0.12, 0, 0.025, 0, mon, 6);
+    else { k.box(0.016, 0.05, 0.016, 0, 0.025, 0, mon); k.ball(0.014, 0, 0.085, 0, mon, false, 0); }
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.78; k.box(0.035, 0.008, 0.01, Math.cos(a) * 0.08, 0.006, Math.sin(a) * 0.08, 0x6a4a2a, false, -a); }
+    for (let i = 0; i < 3; i++) { const a = i * 2.1; k.ball(0.022, Math.cos(a) * 0.11, 0.035, Math.sin(a) * 0.11, 0x5aa844, false, 1); }
+    if (era >= 3) for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; k.cyl(0.003, 0.003, 0.045, Math.cos(a) * 0.06, 0, Math.sin(a) * 0.06, 0x3a3a40, 4); k.ball(0.007, Math.cos(a) * 0.06, 0.048, Math.sin(a) * 0.06, 0xffe0a0, true); }
+    return done(k);
+  }
   const s = 1.3;
   if (era === 5 && variant === 0) {
     // a tall tower in the middle of the block
@@ -432,6 +474,55 @@ export function starshipModel() {
 }
 
 // ------------------------------------------------------------------ small things
+// ------------------------------------------------------------------ city life and scenery
+const white = (g) => ({ g, c: 0xffffff });
+export function roadGeo() { return mergeParts([white(new THREE.BoxGeometry(1, 0.006, 1).translate(0, 0.003, 0))]); }
+export function laneGeo() { return mergeParts([white(new THREE.BoxGeometry(1, 0.002, 1).translate(0, 0.007, 0))]); }
+export function lampGeos() {
+  return {
+    post: mergeParts([{ g: new THREE.CylinderGeometry(0.003, 0.004, 0.06, 4).translate(0, 0.03, 0), c: 0x2a2a30 }]),
+    light: mergeParts([{ g: new THREE.IcosahedronGeometry(0.012, 0).translate(0, 0.064, 0), c: 0xffffff }]),
+  };
+}
+export function carGeo() {
+  return mergeParts([
+    white(new THREE.BoxGeometry(0.026, 0.01, 0.014).translate(0, 0.009, 0)),
+    { g: new THREE.BoxGeometry(0.014, 0.008, 0.012).translate(-0.002, 0.018, 0), c: 0xbfd8f0 },
+    ...[[-0.008, 0.007], [0.008, 0.007], [-0.008, -0.007], [0.008, -0.007]].map(([x, z]) => ({ g: new THREE.CylinderGeometry(0.004, 0.004, 0.003, 6).rotateX(Math.PI / 2).translate(x, 0.004, z), c: 0x1a1a1e })),
+  ]);
+}
+export function podGeo() {
+  return mergeParts([{ g: new THREE.SphereGeometry(0.011, 10, 6).scale(1.6, 0.7, 1).translate(0, 0.03, 0), c: 0xffffff }]);
+}
+export function boatGeos() {
+  return {
+    sail: mergeParts([
+      { g: new THREE.BoxGeometry(0.07, 0.016, 0.025).translate(0, 0.008, 0), c: 0x8a5a34 },
+      { g: new THREE.CylinderGeometry(0.002, 0.002, 0.08, 4).translate(0, 0.05, 0), c: 0x5a3a24 },
+      { g: new THREE.ConeGeometry(0.026, 0.065, 3).rotateY(Math.PI / 2).scale(0.25, 1, 1).translate(0.006, 0.05, 0), c: 0xf4efe2 },
+    ]),
+    ship: mergeParts([
+      { g: new THREE.BoxGeometry(0.12, 0.022, 0.034).translate(0, 0.011, 0), c: 0x2a3a5a },
+      { g: new THREE.BoxGeometry(0.12, 0.004, 0.034).translate(0, 0.024, 0), c: 0xb83a2a },
+      { g: new THREE.BoxGeometry(0.03, 0.022, 0.026).translate(-0.035, 0.034, 0), c: 0xf2f2f2 },
+      ...[0, 1, 2].map((i) => ({ g: new THREE.BoxGeometry(0.02, 0.012, 0.024).translate(0.005 + i * 0.022, 0.032, 0), c: [0xd04a3a, 0x3a7ad0, 0xe0b030][i] })),
+    ]),
+  };
+}
+export function birdGeo() {
+  // a little chevron: two wings
+  return mergeParts([
+    { g: new THREE.BoxGeometry(0.03, 0.002, 0.008).rotateY(0.6).translate(-0.01, 0, 0.008), c: 0x2a2a30 },
+    { g: new THREE.BoxGeometry(0.03, 0.002, 0.008).rotateY(-0.6).translate(-0.01, 0, -0.008), c: 0x2a2a30 },
+  ]);
+}
+export function sceneryGeos() {
+  return {
+    tuft: mergeParts([0, 1, 2].map((i) => ({ g: new THREE.ConeGeometry(0.006, 0.025, 3).rotateZ((i - 1) * 0.35).translate((i - 1) * 0.006, 0.012, 0), c: 0x5a9a3a }))),
+    flower: mergeParts([{ g: new THREE.CylinderGeometry(0.001, 0.001, 0.02, 3).translate(0, 0.01, 0), c: 0x4a8a3a }, white(new THREE.IcosahedronGeometry(0.006, 0).translate(0, 0.022, 0))]),
+    rock: mergeParts([{ g: new THREE.DodecahedronGeometry(0.022, 0).scale(1, 0.6, 1).translate(0, 0.008, 0), c: 0x8a8478 }, { g: new THREE.DodecahedronGeometry(0.013, 0).translate(0.022, 0.006, 0.01), c: 0x9a948a }]),
+  };
+}
 export function personGeo() {
   return mergeParts([
     { g: new THREE.CylinderGeometry(0.009, 0.012, 0.028, 6).translate(0, 0.014, 0), c: 0xffffff },
