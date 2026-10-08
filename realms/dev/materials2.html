@@ -50,8 +50,8 @@ list.forEach(([id, fn], i) => {
   g.position.set((i % 4 - 1.5) * 1.9 + (i >= 4 ? 0.95 : 0), 0, i >= 4 ? 1.5 : -0.6); g.scale.setScalar(s); g.rotation.y = 0.45;
   scene.add(g);
 });
-const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
-function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / 2 / innerHeight; camera.updateProjectionMatrix(); camera.position.set(0, 3.6, 8.8); camera.lookAt(0, 0.7, 0.4); }
+const camera = new THREE.PerspectiveCamera(34 / (+q.get('zoom') || 1), 1, 0.1, 100);
+function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / 2 / innerHeight; camera.updateProjectionMatrix(); camera.position.set(0, 3.6, 8.8); camera.lookAt(+(q.get('x') || 0), 0.7, 0.4); }
 addEventListener('resize', resize); resize();
 function frame(t) {
   NEW.tick(t / 1000); OLD.tick(t / 1000);
