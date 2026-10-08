@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.1';
-import { createScore } from './music.js?v=2.1';
+import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.2';
+import { createScore } from './music.js?v=2.2';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=2.1';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -235,6 +235,7 @@ function assignTiles() {
   roadsDirty = true;
   for (let v = 0; v < NV; v++) if (before[v] !== tileKind[v]) { terrainDirty = true; break; }
   rebuildCrowd();
+  ffDirty = true;
   lock.fill(0);
   for (let v = 0; v < NV; v++) {
     const red = (owner[v] >= 0 && G.settlements[owner[v]].tribe === 1) || (tileKind[v] === 5 && bTribe[v] === 1) || G.wonders.some((w) => w.tribe === 1 && w.v === v);
@@ -242,7 +243,7 @@ function assignTiles() {
   }
   lockDirty = true;
 }
-let lockDirty = true;
+let lockDirty = true, ffDirty = true;
 // the next hex a town spreads to: flat, free land touching it, closest to the centre
 function frontier(s) {
   let best = null, bd = 1e9;
@@ -884,26 +885,34 @@ const fireflies = new THREE.Points(ffGeo, new THREE.ShaderMaterial({
   uniforms: { uTime: timeU, uSun: sunU, uPR: { value: Math.min(window.devicePixelRatio, 2) } },
   vertexShader: `attribute float aPhase; uniform float uTime; uniform vec3 uSun; uniform float uPR; varying float vA;
     void main() { vec3 p = position;
-      p += vec3(sin(uTime * 0.7 + aPhase), sin(uTime * 0.9 + aPhase * 1.3) * 0.6 + 0.5, cos(uTime * 0.6 + aPhase * 0.7)) * 0.05;
+      p += vec3(sin(uTime * 0.35 + aPhase), sin(uTime * 0.45 + aPhase * 1.3) * 0.6 + 0.5, cos(uTime * 0.3 + aPhase * 0.7)) * 0.03;
       float night = smoothstep(0.05, -0.25, dot(normalize(p), uSun));
-      vA = night * pow(0.5 + 0.5 * sin(uTime * 3.0 + aPhase * 5.0), 4.0);
+      vA = night * (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 1.2 + aPhase * 5.0), 2.0));
       vec4 mv = modelViewMatrix * vec4(p, 1.0);
-      gl_PointSize = uPR * 70.0 / -mv.z; gl_Position = projectionMatrix * mv; }`,
+      gl_PointSize = uPR * 34.0 / -mv.z; gl_Position = projectionMatrix * mv; }`,
   fragmentShader: `varying float vA; void main() { float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d); gl_FragColor = vec4(vec3(1.0, 0.9, 0.35) * a * vA * 2.2, 1.0); }`,
 }));
 fireflies.frustumCulled = false;
 fireflies.renderOrder = 4;
 scene.add(fireflies);
+// fireflies live where people do: over trees, parks and gardens near towns.
+// Each hex keeps the same fireflies, so they never jump when the land changes.
 function seedFireflies() {
-  const cells = [];
-  for (let v = 0; v < NV; v++) if (tree[v] && isLand(v)) cells.push(v);
+  const near = new Set();
+  for (const s of G.settlements) for (const c of [s.v, ...(s.tiles || [])]) for (const [x] of bfs(c, 2)) near.add(x);
   const a = ffGeo.attributes.position.array;
-  for (let i = 0; i < FF; i++) {
-    if (!cells.length) { a[i * 3] = a[i * 3 + 1] = a[i * 3 + 2] = 0; continue; }
-    const v = cells[(rnd() * cells.length) | 0], c = CELLS[v];
-    const p = DIRS[v].clone().multiplyScalar(radiusOf(v) + 0.05 + rnd() * 0.15).addScaledVector(c.t1, (rnd() - 0.5) * 0.25).addScaledVector(c.t2, (rnd() - 0.5) * 0.25);
-    a.set(p.toArray(), i * 3);
+  let i = 0;
+  for (const v of [...near].sort((p, q) => p - q)) {
+    if (i >= FF) break;
+    if (!isLand(v) || !(tree[v] || tileKind[v] === 6 || (!tileKind[v] && owner[v] < 0 && hash(v) % 3 === 0))) continue;
+    const c = CELLS[v], hv = hash(v), k = 1 + (hv % 3);
+    for (let j = 0; j < k && i < FF; j++, i++) {
+      const hj = hash(v * 7 + j * 131);
+      const p = DIRS[v].clone().multiplyScalar(radiusOf(v) + 0.06 + (hj % 10) * 0.01).addScaledVector(c.t1, ((hj % 21) - 10) * 0.011).addScaledVector(c.t2, (((hj >> 3) % 21) - 10) * 0.011);
+      a.set(p.toArray(), i * 3);
+    }
   }
+  for (; i < FF; i++) a[i * 3] = a[i * 3 + 1] = a[i * 3 + 2] = 0;
   ffGeo.attributes.position.needsUpdate = true;
 }
 
@@ -2688,6 +2697,7 @@ function frame() {
   if (cursorT > 0) { cursorT -= dt; cursor.material.opacity = Math.max(0, cursorT * 1.6); if (cursorT <= 0) cursor.visible = false; }
   updateShootingStars(dt);
   updateDebris(dt);
+  if (ffDirty) { ffDirty = false; seedFireflies(); }
   updateWisps(dt);
   updateParticles(dt);
   updateFloaters(dt);
