@@ -195,9 +195,10 @@ function leafPaint(rmp, cx, cy, cz, R, y0, y1, mott = 0.28, sun = 0.12) {
     const t = (p.y - y0) / (y1 - y0);
     const d = Math.hypot(p.x - cx, (p.y - cy) * 1.2, p.z - cz) / R;
     const m = fbm(p.x * 7, p.y * 7, p.z * 7);
-    let c = rmp(0.12 + t * 0.7 + n.y * 0.2 + (m - 0.5) * mott);
+    let c = rmp(0.1 + t * 0.55 + n.y * 0.15 + (m - 0.5) * mott);
     c = mix(mul(c, 0.8), c, smooth(0.3, 0.95, d)); // gently deeper inside the crown (cool, not black)
-    if (n.y > 0.25 && t > 0.35) c = mix(c, mul(SUNTINT, c[1] * 1.7), sun * smooth(0.25, 0.9, n.y));
+    // sun-kissed tops: warmer and more saturated, not whiter
+    if (n.y > 0.25 && t > 0.35) c = mix(c, [c[0] * 1.3 + 0.02, c[1] * 1.12, c[2] * 0.7], sun * 2 * smooth(0.25, 0.9, n.y));
     return c;
   };
 }
