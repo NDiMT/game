@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-512.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=2.8" />
+  <link rel="stylesheet" href="style.css?v=2.9" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -33,6 +33,7 @@
         <span class="g-chips"><span id="ch-know" class="chip">📜</span><span id="ch-mana" class="chip">✦</span><span id="ch-size" class="chip">🏘️</span></span>
       </button>
       <div id="omen" class="omen-chip" hidden>⏳</div>
+      <div id="ship" class="omen-chip ship-chip" hidden>🚀</div>
       <button id="mission" class="mission-chip" hidden aria-label="Mission">
         <span class="m-ic">🎯</span><span id="m-prog" class="m-prog"></span>
         <span class="m-pop"><b id="m-text">Goal</b><span class="m-track"><span id="m-fill"></span></span><span id="m-reward" class="m-reward">+40✦</span></span>
@@ -96,27 +97,6 @@
     </div>
   </div>
 
-  <div id="diplo" class="overlay" hidden>
-    <div class="card">
-      <div class="big-ic">🔴</div>
-      <h2>The Crimson</h2>
-      <p id="d-info"></p>
-      <div class="relbar"><div id="d-rel"></div><span id="d-rel-label">Neutral</span></div>
-      <p id="d-status" class="unlock"></p>
-      <div id="d-offer" class="offer" hidden>
-        <p id="d-offer-text"></p>
-        <div class="row"><button id="d-refuse" class="btn ghost">Refuse</button><button id="d-accept" class="btn gold">Accept</button></div>
-      </div>
-      <div class="dgrid">
-        <button id="d-gift" class="btn ghost">🎁 Gift ✦100</button>
-        <button id="d-ally" class="btn ghost">🤝 Propose alliance</button>
-        <button id="d-peace" class="btn ghost">🕊️ Make peace</button>
-        <button id="d-war" class="btn ghost danger">⚔️ Declare war</button>
-      </div>
-      <button id="d-close" class="btn gold wide">Close</button>
-    </div>
-  </div>
-
   <div id="pause" class="overlay" hidden>
     <div class="card">
       <h2>Settings</h2>
@@ -168,6 +148,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="main.js?v=2.8"></script>
+<script type="module" src="main.js?v=2.9"></script>
 </body>
 </html>
