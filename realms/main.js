@@ -346,7 +346,7 @@ function layoutFlora() {
     }
     if (objAt[v] >= 0 || road[v] || !F || !F.scatter) continue;
     let placed = 0;
-    F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
+    F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; if ((e.avoid && NBR[v].some((n) => e.avoid.includes(ter[n]))) || (e.maxLat && Math.abs(DIRS[v].y) > e.maxLat)) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
   }
   for (const { model, m } of lists.values()) {
     const im = new THREE.InstancedMesh(model.body, bodyMat, m.length);
