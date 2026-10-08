@@ -6,7 +6,9 @@
 </head><body><div id="l"></div>
 <script type="module">
 import * as THREE from 'three';
-import { createBattlefield } from '../battlefield.js';
+import { createBattlefield, wallModel, towerModel, gateModel } from '../battlefield.js';
+import { havenModel } from '../units_haven.js';
+import { necroModel } from '../units_necro.js';
 import { unitModel } from '../models.js';
 import { COLS, ROWS, key } from '../battle.js';
 import { UNITS } from '../data.js';
@@ -14,7 +16,7 @@ import { UNITS } from '../data.js';
 // ?t=1,4,7  terrains shown side by side; ?w=540&h=1100 per panel; ?yaw=0.4
 const Q = new URLSearchParams(location.search);
 const terrs = (Q.get('t') || '1,4,7').split(',').map(Number);
-const PW = +(Q.get('w') || 540), PH = +(Q.get('h') || 1100), yaw = +(Q.get('yaw') || 0);
+const PW = +(Q.get('w') || 540), PH = +(Q.get('h') || 1100), yaw = +(Q.get('yaw') || 0), siege = Q.get('siege'), dist = +(Q.get('dist') || 12.5);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(1); renderer.setSize(PW * terrs.length, PH);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -52,13 +54,20 @@ const views = terrs.map((tid, vi) => {
   }
   scene.add(hexes);
   // obstacles (3 kinds) and some units
-  [[2, 4], [5, 5], [3, 6], [1, 7], [4, 3]].forEach(([c, r], i) => { const m = meshOf(bf.obstacleModel(i)); m.position.copy(hexPos(c, r)); m.rotation.y = i * 1.7; scene.add(m); });
-  for (let i = 0; i < 5; i++) for (const side of [0, 1]) {
+  [[2, 4], [5, 5], [3, 6], [1, 7], [4, 3]].forEach(([c, r], i) => { if (siege && r === 2) return; const m = meshOf(bf.obstacleModel(i)); m.position.copy(hexPos(c, r)); m.rotation.y = i * 1.7; scene.add(m); });
+  if (siege) {
+    const gate = (COLS / 2) | 0;
+    for (let c = 0; c < COLS; c++) { const m = meshOf(c === gate ? gateModel(siege) : wallModel(siege)); m.position.copy(hexPos(c, 2)); scene.add(m); }
+    const tw = meshOf(towerModel(siege)); tw.position.copy(hexPos(COLS - 1, 0)).add(new THREE.Vector3(1.1, 0, 0)); scene.add(tw);
+  }
+  const um = (id) => havenModel(UNITS[id]?.up || id) || necroModel(UNITS[id]?.up || id) || unitModel(id, UNITS[id].col);
+  for (let i = 0; i < COLS; i++) for (const side of [0, 1]) {
     const id = unitIds[(i + side * 7 + vi * 3) % unitIds.length], u = UNITS[id];
-    const m = meshOf(unitModel(id, u.col)); m.scale.setScalar(0.72); m.position.copy(hexPos(i + 1, side ? 0 : ROWS - 1)); m.rotation.y = side === 0 ? Math.PI : 0; scene.add(m);
+    const m = meshOf(um(id)); m.scale.setScalar(0.9); m.position.copy(hexPos(i, side ? 0 : ROWS - 1)); m.rotation.y = side === 0 ? Math.PI : 0; scene.add(m);
+    if (side) { const m2 = meshOf(um(unitIds[(i + 3) % unitIds.length])); m2.scale.setScalar(0.9); m2.position.copy(hexPos(i, siege ? 1 : 3)); scene.add(m2); }
   }
   const cam = new THREE.PerspectiveCamera(52, PW / PH, 0.1, 100);
-  const dist = 12.5, s = Math.sin(yaw), c = Math.cos(yaw);
+  const s = Math.sin(yaw), c = Math.cos(yaw);
   cam.position.set(s * dist * 0.55, dist, c * dist * 0.55 + 0.4); cam.lookAt(0, 0, 0.2);
   renderer.toneMappingExposure = L.exposure;
   return { scene, cam, bf, ms, exp: L.exposure };

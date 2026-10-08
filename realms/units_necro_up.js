@@ -562,7 +562,7 @@ function powerlich() {
   const k = nkit(553);
   const ROBE = (p) => C(0x4a2a7a).lerp(C(0xa070d8), smooth(0.05, 0.85, p.y));
   // soul-fire pyre it hovers over
-  for (let i = 0; i < 7; i++) { const a = (i / 7) * TAU; flame(k, [Math.sin(a) * 0.17, 0.0, Math.cos(a) * 0.17], 0.06, 0xb0ff9a, 0x2ad06a, 3); }
+  for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU; k.spike([Math.sin(a) * 0.2, 0.0, Math.cos(a) * 0.2], [Math.sin(a) * 0.26, 0.12 + (i % 2) * 0.08, Math.cos(a) * 0.26], 0.05, i % 2 ? 0xb0ff9a : 0x2ad06a, 4, GLOW); }
   k.ball(0.16, [0, 0.06, 0], 0x3aff8a, [1.2, 0.35, 1.2], 1, [0, 0, 0], GLOW);
   // robe (hem lifted off the ground), gold trims
   k.lathe([[0.3, 0.1], [0.26, 0.24], [0.2, 0.48], [0.16, 0.66], [0.18, 0.8], [0.08, 0.88]], 14, [0, 0, 0], ROBE, { jag: 0.06, wob: 0.08, ds: true });
@@ -579,7 +579,8 @@ function powerlich() {
   for (const x of [-1, 1]) {
     k.ball(0.1, [x * 0.2, 0.84, -0.01], grad(VIO_D, VIO_L, 0.75, 0.92), [1.15, 0.7, 1], 1);
     k.torus(0.095, 0.012, TAU, [x * 0.2, 0.815, -0.01], [Math.PI / 2, 0, x * 0.2], GOLD, [1.15, 1, 1], 3, 12);
-    skull(k, [x * 0.22, 0.91, 0.02], 0.05, GREEN_G, { rot: [0, x * 0.4, 0] });
+    k.ball(0.05, [x * 0.22, 0.91, 0.02], BONE, [1, 0.9, 1.05], 0);
+    for (const e of [-1, 1]) k.ball(0.011, [x * 0.22 + e * 0.018, 0.91, 0.068], GREEN_G, [1, 1, 0.6], 0, [0, 0, 0], GLOW);
     k.spike([x * 0.25, 0.9, -0.04], [x * 0.42, 1.06, -0.08], 0.03, BONE, 5);
     k.spike([x * 0.2, 0.92, -0.07], [x * 0.27, 1.12, -0.12], 0.024, BONE, 5);
   }
@@ -602,7 +603,6 @@ function powerlich() {
   for (const y of [0.3, 0.62, 0.95]) k.lathe([[0.026, y], [0.026, y + 0.035]], 6, [sx, 0, sz], GOLD);
   // staff head: gold crescent cradling a green orb, skull below, rings
   k.ball(0.04, [sx, 1.2, sz], GOLD, [1, 0.7, 1], 0);
-  skull(k, [sx, 1.15, sz + 0.03], 0.045, GREEN_G, { jawOpen: 0.3 });
   k.torus(0.1, 0.014, Math.PI * 1.3, [sx, 1.33, sz], [0, 0, -Math.PI * 0.15 - Math.PI / 2 + Math.PI * 0.5 + Math.PI], GOLD, 1, 3, 12);
   k.spike([sx - 0.09, 1.38, sz], [sx - 0.12, 1.46, sz], 0.016, GOLD, 4);
   k.spike([sx + 0.09, 1.38, sz], [sx + 0.12, 1.46, sz], 0.016, GOLD, 4);
@@ -698,7 +698,8 @@ function dreadknight() {
   k.lathe([[0.16, 0.89], [0.14, 1.0]], 10, [0, 0, 0], grad(CRIM_D, CRIM, 0.89, 1.0));
   k.box(0.14, 0.26, 0.03, [0, 0.96, 0.13], grad(CRIM, CRIM_L, 0.85, 1.1), [-0.1, 0, 0]);
   k.box(0.15, 0.02, 0.035, [0, 0.84, 0.125], GOLD, [-0.1, 0, 0]);
-  skull(k, [0, 1.1, 0.13], 0.045, GREEN_G, { jawOpen: 0.2 });
+  k.ball(0.045, [0, 1.1, 0.135], BONE, [1, 1, 0.6], 0);
+  for (const e of [-1, 1]) k.ball(0.011, [e * 0.017, 1.105, 0.16], GREEN_G, [1, 1, 0.6], 0, [0, 0, 0], GLOW);
   for (const x of [-1, 1]) {
     k.ball(0.1, [x * 0.18, 1.18, 0], PLATE, [1.15, 0.78, 1.05], 1);
     k.ball(0.085, [x * 0.2, 1.13, 0], grad(0x6a6a88, 0xa8acc0, 1.05, 1.2), [1.2, 0.72, 1.1], 1);
@@ -750,7 +751,7 @@ function dreadknight() {
 // =====================================================================
 function ghostdragon() {
   const k = nkit(779);
-  const B1 = grad(0x9ac4dc, 0xeefaff, 0.15, 1.3), BJ = 0xc8e4f0, BW = 0xf4fcff;
+  const B1 = grad(0x7ab4d4, 0xd8f2fc, 0.15, 1.3), BJ = 0xa8d4ea, BW = 0xdcf2fc;
   const MEM = (p) => C(0x1a5a7a).lerp(C(0x4ab0d0), smooth(0.5, 1.35, p.y));   // glow membranes (translucent look)
   const spine = [[0, 0.24, -1.12], [0, 0.32, -0.9], [0, 0.44, -0.68], [0, 0.57, -0.46], [0, 0.67, -0.28], [0, 0.74, -0.08], [0, 0.77, 0.12], [0, 0.81, 0.28], [0, 0.98, 0.4], [0, 1.13, 0.45], [0, 1.25, 0.57]];
   const rad = [0.012, 0.025, 0.035, 0.045, 0.05, 0.052, 0.052, 0.05, 0.044, 0.04, 0.036];

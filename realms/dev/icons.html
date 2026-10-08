@@ -6,6 +6,7 @@
 <body><div class="grid" id="g"></div>
 <script type="module">
 import { icon, ICON_NAMES, hasIcon } from '../icons.js';
+const big = new URL(location).searchParams.get("big");
 const names = new URL(location).searchParams.get('alias') ? ICON_NAMES : ICON_NAMES.filter(n => !['defend'].includes(n)).slice(0, ICON_NAMES.indexOf('defend'));
-document.getElementById('g').innerHTML = names.map((n,i) => `<div class="c ${i%2?'dk':''}"><div>${icon(n,16)}${icon(n,24)}${icon(n,40)}</div>${n}</div>`).join('');
+document.getElementById('g').innerHTML = names.map((n,i) => `<div class="c ${i%2?'dk':''}"><div>${big ? icon(n,64) : icon(n,16)+icon(n,24)+icon(n,40)}</div>${n}</div>`).join('');
 </script></body></html>

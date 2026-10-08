@@ -286,9 +286,9 @@ function goblin() {
 function wolf() {
   const k = nkit(21);
   // blue-grey back, warm silver flanks, cream belly
-  const FURC = byN(0x7e8cae, 0xc4bcaa, 0xfcf6e8, 0.3, -0.25);
+  const FURC = byN(0x8a98b4, 0xc8c0ae, 0xfcf6e8, 0.3, -0.25);
   const LEG = byN(0xb0a898, 0xbcb4a2, 0xece6d6);
-  const BACK = 0x6a789c;
+  const BACK = 0x7a88a6;
   k.ell(0.16, 0.2, 0.24, [0, 0.47, 0.2], FURC, [-0.15, 0, 0]);
   k.ell(0.12, 0.13, 0.24, [0, 0.47, -0.1], FURC, [0.05, 0, 0]);
   k.ell(0.14, 0.16, 0.17, [0, 0.47, -0.32], FURC);
@@ -308,7 +308,7 @@ function wolf() {
   // head: lowered, snarling
   k.at([0, 0.53, 0.53], [0.25, 0, 0], 1.1, () => {
     k.ell(0.11, 0.095, 0.11, [0, 0.02, 0], FURC);
-    k.limb([0, 0.0, 0.07], [0, -0.01, 0.25], 0.06, 0.04, byN(0x7e8cae, 0xc4bcaa, 0xf0eadc), 6);
+    k.limb([0, 0.0, 0.07], [0, -0.01, 0.25], 0.06, 0.04, byN(0x8a98b4, 0xc8c0ae, 0xf0eadc), 6);
     k.ell(0.032, 0.026, 0.024, [0, 0.0, 0.26], DARK);
     for (let i = 0; i < 3; i++) k.box(0.075 - i * 0.012, 0.006, 0.01, [0, 0.038 - i * 0.004, 0.11 + i * 0.035], 0x6a7090);
     // open jaw
@@ -327,7 +327,7 @@ function wolf() {
     });
   });
   // bushy tail, white tip
-  const tc = (t, d) => (t > 0.8 ? 0xfcf8f0 : d.y > 0.2 ? 0x7e8cae : 0xc4bcaa);
+  const tc = (t, d) => (t > 0.8 ? 0xfcf8f0 : d.y > 0.2 ? 0x8a98b4 : 0xc8c0ae);
   k.tube([[0, 0.53, -0.42], [0, 0.48, -0.58], [0.04, 0.38, -0.72], [0.1, 0.28, -0.8]], (t) => 0.035 + Math.sin(Math.min(1, t * 1.05) * Math.PI * 0.85) * 0.075, tc, { seg: 6, n: 9 });
   return finish(k);
 }
@@ -460,8 +460,8 @@ function ogre() {
 function troll() {
   const k = nkit(51);
   // cool sea-green hide with mossy, sunlit shoulders
-  const SK = byN(0x9ad874, 0x66b090, 0x4a8a72, 0.45, -0.3);
-  const SKL = byN(0x8ed080, 0x60aa8a, 0x4a8a72);
+  const SK = byN(0x9ad874, 0x72bc98, 0x5e9e84, 0.45, -0.3);
+  const SKL = byN(0x8ed080, 0x6cb894, 0x5e9e84);
   const ROCK = byN(0xa8d850, 0xb4b2a8, 0x8a8a84, 0.4, -0.2);
   const CLAW = 0xf4ead0;
   k.both((s) => {
@@ -581,7 +581,7 @@ function hydra() {
   k.tube([[0, 0.36, -0.55], [0, 0.22, -0.8], [0.14, 0.1, -1.0], [0.36, 0.06, -1.04], [0.5, 0.05, -0.92]], (t) => 0.16 * (1 - t) + 0.015, tailc, { seg: 6, n: 11 });
   for (let i = 0; i < 3; i++) { const z = -0.66 - i * 0.12; k.cone([0.025 * i, 0.32 - i * 0.08, z], [0.025 * i, 0.4 - i * 0.08, z - 0.08], 0.04, SPIKE(0.36 - i * 0.08), 4, 0.4); }
   // five necks and heads
-  const neckc = (t, d) => (d.z > 0.55 && d.y < 0.7 ? BEL[Math.floor(t * 10) % 2] : SC[Math.floor(t * 9 + (d.x > 0 ? 1 : 0)) % 3]);
+  const neckc = (t, d) => (d.z > 0.8 && d.y < 0.6 ? BEL[Math.floor(t * 10) % 2] : SC[Math.floor(t * 9 + (d.x > 0 ? 1 : 0)) % 3]);
   const heads = [
     { b: [-0.24, 0.48, 0.22], m: [-0.5, 0.75, 0.25], t: [-0.56, 0.92, 0.48] },
     { b: [-0.12, 0.55, 0.25], m: [-0.22, 0.95, 0.2], t: [-0.28, 1.14, 0.48] },

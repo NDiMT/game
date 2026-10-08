@@ -387,6 +387,105 @@ export function obstacleModel(terrainId, kind = 0) {
   return obstCache.get(key);
 }
 
+// ------------------------------------------------------------------ siege: town wall segment, gate posts and arrow tower
+// Optional nicer replacements for main.js's grey boxes, under the model contract ({ body, glow }).
+//   wallModel(fac)  one wall hex: spans x -0.45..0.45 (adjacent hexes join seamlessly), z -0.27..0.27,
+//                   walkway at y 0.68, merlons up to ~0.9. The visible (+Z) face looks at the camera.
+//   gateModel(fac)  two short gate towers on the gate hex's left/right edges (x = +-0.45); nothing spans
+//                   the hex itself, so units in the gateway are never hidden.
+//   towerModel(fac) the arrow tower: radius ~0.6, crenellations at y ~2.0-2.3, roof tip ~3.2.
+// fac: 'haven' (white limestone, blue roofs, gold), 'necro' (violet-grey stone, bone, crimson, green glow);
+// anything else gets a neutral warm stone.
+const SIEGE = {
+  haven: { stone: 0xe4dac4, light: 0xfaf4e4, base: 0xc8bca2, roof: 0x3a7ae0, roofTop: 0x7ab4ff, trim: 0xe8c050, banner: 0x2a62d0, emblem: 0xf4d060, glow: 0xffd27a, moss: 0x8ab84a },
+  necro: { stone: 0xa49ab4, light: 0xc8c0d6, base: 0x8a8098, roof: 0x9a2a44, roofTop: 0xd04a62, trim: 0xece0c4, banner: 0xb0263c, emblem: 0xece0c4, glow: 0x7affa8, moss: 0x7a9a5a },
+  other: { stone: 0xd4c4a4, light: 0xeee2c6, base: 0xb8a684, roof: 0xc0603a, roofTop: 0xe8905a, trim: 0xf0d8a0, banner: 0xc04a3a, emblem: 0xf4e0a0, glow: 0xffc870, moss: 0x8ab84a },
+};
+const sfac = (fac) => SIEGE[fac] || SIEGE.other;
+// a coursed band of jittered stone blocks between x0..x1, y0..y1, on a slab of depth d
+function masonry(m, S, x0, x1, y0, y1, d, rows, perRow, z = 0) {
+  const rh = (y1 - y0) / rows;
+  for (let r = 0; r < rows; r++) {
+    const off = r % 2 ? 0.5 : 0, bw = (x1 - x0) / perRow;
+    for (let k = -1; k < perRow + 1; k++) {
+      let a = x0 + (k + off) * bw, b = a + bw;
+      a = Math.max(a, x0); b = Math.min(b, x1); if (b - a < 0.02) continue;
+      const col = m.pick([S.stone, S.stone, S.light, S.base]);
+      m.add(G.box((b - a) * 0.97, rh * 0.94, d + m.rnd(-0.01, 0.02)).translate((a + b) / 2, y0 + r * rh, z), col, { jit: 0.06, ao: r ? 0.2 : 1 });
+    }
+  }
+}
+const siegeCache = new Map();
+const siegeModel = (key, f) => { if (!siegeCache.has(key)) { const m = new Mk(key.length * 13 + key.charCodeAt(0)); f(m); siegeCache.set(key, modelOf(m)); } return siegeCache.get(key); };
+export function wallModel(fac) {
+  const S = sfac(fac);
+  return siegeModel('wall' + fac, (m) => {
+    m.add(G.box(0.92, 0.12, 0.6), S.base, { jit: 0.05 }); // plinth
+    masonry(m, S, -0.45, 0.45, 0.1, 0.62, 0.5, 4, 3);
+    m.add(G.box(0.92, 0.07, 0.56).translate(0, 0.61, 0), S.light, { jit: 0.04, ao: 0 }); // walkway coping
+    for (const x of [-0.29, 0, 0.29]) {
+      m.add(G.box(0.19, 0.2, 0.2).translate(x, 0.68, 0.16), m.pick([S.stone, S.light]), { jit: 0.05, ao: 0 });
+      m.add(G.box(0.19, 0.2, 0.12).translate(x, 0.68, -0.2), S.stone, { jit: 0.05, ao: 0 });
+      m.add(G.box(0.21, 0.035, 0.22).translate(x, 0.88, 0.16), S.light, { ao: 0 });
+    }
+    // a hanging banner with the faction emblem on the camera-facing side
+    m.add(G.box(0.2, 0.34, 0.012).translate(0, 0.24, 0.258), S.banner, { top: S.banner, ao: 0, jit: 0.03 });
+    m.add(G.box(0.24, 0.025, 0.03).translate(0, 0.585, 0.262), S.trim, { ao: 0 });
+    m.add(G.blob(0.045, 0, 0, 3).scale(1, 1, 0.35).translate(0, 0.43, 0.27), S.emblem, { ao: 0 });
+    // grass and moss at the foot
+    for (let i = 0; i < 5; i++) m.add(G.cone(0.03, m.rnd(0.08, 0.16), 3).translate(m.rnd(-0.42, 0.42), 0, m.rnd(0.27, 0.32)), S.moss, { ao: 0.3 });
+  });
+}
+export function gateModel(fac) {
+  const S = sfac(fac);
+  return siegeModel('gate' + fac, (m) => {
+    for (const sx of [-1, 1]) {
+      const x = sx * 0.47;
+      m.add(G.box(0.34, 0.12, 0.66).translate(x, 0, 0), S.base, { jit: 0.05 });
+      masonry(m, S, x - 0.15, x + 0.15, 0.1, 1.0, 0.58, 6, 1);
+      m.add(G.box(0.38, 0.06, 0.64).translate(x, 1.0, 0), S.light, { ao: 0 });
+      for (const dz of [-0.2, 0.2]) for (const dx of [-0.12, 0.12]) m.add(G.box(0.1, 0.14, 0.12).translate(x + dx, 1.06, dz), S.stone, { ao: 0, jit: 0.05 });
+      m.add(G.box(0.05, 0.16, 0.015).translate(x, 0.62, 0.297), S.glow, { glow: true, ao: 0 }); // arrow slit glow
+      m.add(G.cyl(0.012, 0.012, 0.42, 4).translate(x, 1.06, 0), 0x8a6a4a, { ao: 0 });
+      m.add(G.box(0.012, 0.13, 0.2).translate(x, 1.33, 0.1), S.banner, { ao: 0 });
+      m.add(G.box(0.06, 0.03, 0.66).translate(x - sx * 0.17, 0.98, 0), S.trim, { ao: 0 });
+    }
+  });
+}
+export function towerModel(fac) {
+  const S = sfac(fac);
+  return siegeModel('tower' + fac, (m) => {
+    m.add(G.cyl(0.62, 0.68, 0.18, 12), S.base, { jit: 0.05 });
+    // coursed round masonry: rings of slightly rotated segments
+    const rings = 8, h0 = 0.16, h1 = 1.92, rh = (h1 - h0) / rings;
+    for (let r = 0; r < rings; r++) {
+      const rad = 0.56 - r * 0.012;
+      m.add(G.cyl(rad, rad + 0.012, rh * 0.96, 12).rotateY((r % 2) * 0.26).translate(0, h0 + r * rh, 0), m.pick([S.stone, S.light, S.stone]), { jit: 0.07, ao: r ? 0.15 : 1 });
+    }
+    m.add(G.cyl(0.66, 0.6, 0.1, 12).translate(0, 1.9, 0), S.trim, { ao: 0 }); // corbel band
+    m.add(G.cyl(0.66, 0.66, 0.14, 12).translate(0, 2.0, 0), S.light, { ao: 0 });
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * 6.283; m.add(G.box(0.2, 0.18, 0.14).rotateY(-a + Math.PI / 2).translate(Math.cos(a) * 0.58, 2.14, Math.sin(a) * 0.58), S.stone, { jit: 0.05, ao: 0 }); }
+    // conical roof with a gold finial and pennant
+    m.add(G.cone(0.6, 0.95, 12).translate(0, 2.18, 0), S.roof, { top: S.roofTop, h0: 2.2, h1: 3.1, ao: 0, jit: 0.05 });
+    m.add(G.cyl(0.62, 0.6, 0.05, 12).translate(0, 2.16, 0), S.trim, { ao: 0 });
+    m.add(G.cyl(0.015, 0.015, 0.3, 4).translate(0, 3.08, 0), S.trim, { ao: 0 });
+    m.add(G.blob(0.04, 0, 0, 1).translate(0, 3.12, 0), S.trim, { ao: 0 });
+    m.add(G.box(0.012, 0.11, 0.26).translate(0, 3.24, 0.13), S.banner, { ao: 0 });
+    // glowing windows and arrow slits all round (one faces the camera)
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * 6.283 + Math.PI / 2, c = Math.cos(a), sn = Math.sin(a);
+      m.add(G.box(0.1, 0.2, 0.02).rotateY(-a + Math.PI / 2).translate(c * 0.565, 1.4, sn * 0.565), S.glow, { glow: true, ao: 0 });
+      m.add(G.box(0.05, 0.18, 0.02).rotateY(-a + Math.PI / 2).translate(c * 0.57, 0.72, sn * 0.57), S.glow, { glow: true, ao: 0 });
+      m.add(G.box(0.16, 0.04, 0.05).rotateY(-a + Math.PI / 2).translate(c * 0.58, 1.29, sn * 0.58), S.trim, { ao: 0 });
+    }
+    // a door at the foot and a banner on the face
+    m.add(G.box(0.24, 0.36, 0.04).translate(0, 0.16, 0.56), 0x8a5a34, { top: 0xb07a48, ao: 0.4 });
+    m.add(G.box(0.22, 0.42, 0.015).translate(0, 0.92, 0.585), S.banner, { ao: 0 });
+    m.add(G.blob(0.05, 0, 0, 3).scale(1, 1, 0.35).translate(0, 1.16, 0.6), S.emblem, { ao: 0 });
+    for (let i = 0; i < 7; i++) { const a = m.rnd(0, 6.28); m.add(G.cone(0.035, m.rnd(0.1, 0.2), 3).translate(Math.cos(a) * 0.68, 0, Math.sin(a) * 0.68), S.moss, { ao: 0.3 }); }
+  });
+}
+
 // ------------------------------------------------------------------ border decoration per terrain
 // [builder, weight, zone, [minScale, maxScale], footprint radius]
 // zone: 'tall' only far/side (never in front of the camera), 'low' anywhere, 'scatter' small filler.

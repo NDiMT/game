@@ -105,7 +105,7 @@ document.getElementById('info').textContent = `path ${path.length} today ${today
 if (q.get('shot')) {
   // fire all bursts staggered, then simulate to t
   const T = +(q.get('t') || 0.35);
-  kinds.forEach((_, i) => fire(i));
+  if (!q.get('nob')) kinds.forEach((_, i) => fire(i));
   for (let s = 0; s < T * 60; s++) step(1 / 60);
   renderer.render(scene, cam);
   window.DONE = true;

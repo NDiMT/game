@@ -8,11 +8,19 @@
 // right after adding bloom and before the soft clamp / tone mapping
 export const gradeGLSL = `
 vec3 grade(vec3 c) {
+  c = max(c, 0.0);
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-  c = max(mix(vec3(l), c, 1.14), 0.0);                                   // a touch more saturation
-  float sh = 1.0 - smoothstep(0.0, 0.3, l);
-  c += vec3(0.010, 0.004, 0.026) * sh;                                   // violet-blue lifted shadows
-  c *= mix(vec3(0.97, 0.99, 1.05), vec3(1.06, 1.0, 0.9), smoothstep(0.08, 0.9, l)); // cool shade, warm light
+  // lift the darks and mids (multiplicative, so true black stays black and nothing turns grey)
+  float lift = 1.0 + 0.42 * (1.0 - smoothstep(0.0, 0.55, l)) * smoothstep(0.0, 0.035, l);
+  c *= lift * 1.06;
+  l *= lift * 1.06;
+  // richer colour: stronger in the mids, gentler in the deep shadows and highlights (no neon clipping)
+  float sat = 1.12 + 0.16 * smoothstep(0.03, 0.25, l) * (1.0 - smoothstep(0.9, 2.2, l));
+  c = max(mix(vec3(l), c, sat), 0.0);
+  // coloured shadows: a violet-blue veil instead of black, warm golden light
+  float sh = 1.0 - smoothstep(0.0, 0.22, l);
+  c += vec3(0.014, 0.008, 0.034) * sh;
+  c *= mix(vec3(0.96, 0.99, 1.07), vec3(1.07, 1.01, 0.9), smoothstep(0.1, 0.95, l));
   return c;
 }`;
 
@@ -34,8 +42,36 @@ export function createAtmosphere(THREE, scene, opts = {}) {
   domeTex.colorSpace = THREE.SRGBColorSpace;
   domeTex.mapping = THREE.UVMapping;
   domeTex.wrapS = THREE.RepeatWrapping;
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(150, 48, 24),
-    new THREE.MeshBasicMaterial({ map: domeTex, side: THREE.BackSide, depthWrite: false, fog: false }));
+  // the dome shader adds a screen-anchored sun peeking over the planet's limb: a warm disc, a wide glow and slow god-rays
+  const uVis = { value: new V3(0, 1, 0) }, uVR = { value: new V3(1, 0, 0) }, uVU = { value: new V3(0, 0, 1) };
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(150, 48, 24), new THREE.ShaderMaterial({
+    uniforms: { tMap: { value: domeTex }, uVis, uVR, uVU, uTime },
+    side: THREE.BackSide, depthWrite: false,
+    vertexShader: `varying vec2 vUv; varying vec3 vD; void main() { vUv = uv; vD = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform sampler2D tMap; uniform vec3 uVis; uniform vec3 uVR; uniform vec3 uVU; uniform float uTime;
+      varying vec2 vUv; varying vec3 vD;
+      void main() {
+        vec3 d = normalize(vD);
+        vec3 c = texture2D(tMap, vUv).rgb;
+        float cs = dot(d, uVis);
+        float ang = acos(clamp(cs, -1.0, 1.0));
+        // sun: small hot disc, a gold corona and a broad rosy-amber wash that warms the whole quadrant
+        float disc = smoothstep(0.035, 0.022, ang) * 2.6;
+        float corona = exp(-ang * 16.0) * 0.9 + exp(-ang * 5.5) * 0.32;
+        float wash = exp(-ang * 1.6) * 0.16;
+        // god-rays: angular streaks around the sun that slowly turn and breathe
+        vec3 t = d - uVis * cs;
+        float a = atan(dot(t, uVU), dot(t, uVR));
+        float r1 = 0.5 + 0.5 * sin(a * 9.0 + uTime * 0.05) * sin(a * 14.0 - uTime * 0.035 + 1.7);
+        float r2 = 0.5 + 0.5 * sin(a * 23.0 + uTime * 0.02 + 0.6);
+        float rays = (r1 * r1 * r1 * 0.8 + r2 * r2 * r2 * r2 * 0.35) * (0.8 + 0.2 * sin(uTime * 0.3));
+        rays *= exp(-ang * 2.2) * smoothstep(0.02, 0.12, ang) * 0.42;
+        c += vec3(1.0, 0.93, 0.78) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.9, 0.5, 0.55) * wash
+           + vec3(1.0, 0.82, 0.55) * rays;
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  }));
   dome.renderOrder = -10;
   dome.frustumCulled = false;
   sky.add(dome);
@@ -128,23 +164,27 @@ export function createAtmosphere(THREE, scene, opts = {}) {
   // ------------------------------------------------------------ atmosphere: outer halo (analytic ray / sphere glow)
   const Rp = R + 0.25, Ra = R * 1.34;
   const halo = new THREE.Mesh(new THREE.SphereGeometry(Ra, 64, 32), new THREE.ShaderMaterial({
-    uniforms: { uSun, uRp: { value: Rp }, uRa: { value: Ra } },
+    uniforms: { uSun, uVis, uRp: { value: Rp }, uRa: { value: Ra } },
     side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
     vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
-    fragmentShader: `uniform vec3 uSun; uniform float uRp; uniform float uRa; varying vec3 vW;
+    fragmentShader: `uniform vec3 uSun; uniform vec3 uVis; uniform float uRp; uniform float uRa; varying vec3 vW;
       void main() {
         vec3 rd = normalize(vW - cameraPosition);
         float t = max(-dot(cameraPosition, rd), 0.0);
         vec3 cp = cameraPosition + rd * t;
         float b = length(cp);
         float x = clamp((b - uRp) / (uRa - uRp), 0.0, 1.0);
-        float g = (1.0 - x) * (0.25 * exp(-x * 2.5) + 0.75 * exp(-x * 9.0));
+        float g = (1.0 - x) * (0.3 * exp(-x * 2.2) + 0.7 * exp(-x * 8.0));
         float s = dot(cp / max(b, 0.001), uSun);
-        vec3 day = mix(vec3(0.18, 0.42, 1.2), vec3(0.5, 0.78, 1.3), exp(-x * 10.0));
-        vec3 dusk = vec3(0.16, 0.12, 0.45);
+        // azure-cyan rim on the day side, magenta-violet on the night side, white-hot right at the limb
+        vec3 day = mix(vec3(0.22, 0.5, 1.25), vec3(0.62, 0.9, 1.35), exp(-x * 9.0));
+        vec3 dusk = mix(vec3(0.32, 0.16, 0.7), vec3(0.55, 0.35, 0.95), exp(-x * 9.0));
         vec3 c = mix(dusk, day, smoothstep(-0.6, 0.4, s));
-        c += vec3(0.9, 0.45, 0.2) * exp(-abs(s + 0.05) * 6.0) * 0.35 * exp(-x * 5.0); // warm terminator band
-        gl_FragColor = vec4(c * g * 0.75, 1.0);
+        c += vec3(1.0, 0.5, 0.35) * exp(-abs(s + 0.05) * 6.0) * 0.3 * exp(-x * 5.0); // warm terminator band
+        // sunrise: the limb nearest the sun blazes gold-pink
+        float sa = acos(clamp(dot(rd, uVis), -1.0, 1.0));
+        c += vec3(1.25, 0.72, 0.4) * (exp(-sa * 4.0) * 1.3 + exp(-sa * 1.4) * 0.25) * exp(-x * 4.0);
+        gl_FragColor = vec4(c * g * 0.9, 1.0);
       }`,
   }));
   halo.renderOrder = 5;
@@ -163,8 +203,8 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         float b = length(cameraPosition - v * t);           // closest approach of the view ray
         f *= 1.0 - smoothstep(uRp - 0.15, uRp + 0.3, b);    // only over the ground, never a glassy edge
         float s = smoothstep(-0.4, 0.6, dot(vN, uSun));
-        vec3 c = mix(vec3(0.16, 0.1, 0.36), vec3(0.3, 0.55, 1.0), s);
-        gl_FragColor = vec4(c * pow(f, 4.0) * 0.32 * uK, 1.0);
+        vec3 c = mix(vec3(0.26, 0.16, 0.5), vec3(0.36, 0.64, 1.05), s);
+        gl_FragColor = vec4(c * pow(f, 4.0) * 0.34 * uK, 1.0);
       }`,
   }));
   haze.renderOrder = 6;
@@ -174,7 +214,7 @@ export function createAtmosphere(THREE, scene, opts = {}) {
   const NC = 18;
   const cloudGeo = cloudGeometry(THREE, rand);
   const cloudMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1, metalness: 0,
-    emissive: new THREE.Color(0x8a96c8), emissiveIntensity: 0.45 });
+    emissive: new THREE.Color(0xa6aee6), emissiveIntensity: 0.5 });
   const clouds = new THREE.InstancedMesh(cloudGeo, cloudMat, NC);
   clouds.frustumCulled = false;
   clouds.castShadow = false;
@@ -278,6 +318,14 @@ export function createAtmosphere(THREE, scene, opts = {}) {
     const camUp = sd.crossVectors(right, camDir).normalize();
     uSun.value.copy(camDir).multiplyScalar(0.55).addScaledVector(right, 0.55).addScaledVector(camUp, 0.6).normalize();
 
+    // the visible sun: anchored near the top-right of the screen, so it always peeks over the limb / horizon
+    camera.updateMatrixWorld();
+    const e = camera.matrixWorld.elements;
+    const cR = tmp.set(e[0], e[1], e[2]).normalize(), cU = tmp2.set(e[4], e[5], e[6]).normalize();
+    const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov || 45) / 2), tx = ty * (camera.aspect || 1);
+    uVis.value.set(-e[8], -e[9], -e[10]).normalize().addScaledVector(cR, tx * 0.32).addScaledVector(cU, ty * 0.8).normalize();
+    uVR.value.copy(cR); uVU.value.copy(cU);
+
     // haze eases in / out
     hazeK += ((fogOn ? 1 : 0) - hazeK) * Math.min(1, dt * 3);
     haze.material.uniforms.uK.value = hazeK;
@@ -299,8 +347,16 @@ export function createAtmosphere(THREE, scene, opts = {}) {
       const centre = Math.hypot(ndc.x * 0.8, ndc.y);
       const facing = up.dot(camDir);
       let want = 1;
-      want *= THREE.MathUtils.smoothstep(dCam, 2.2, 4.2);                       // too close to the lens
-      if (facing > 0) want *= 1 - (1 - THREE.MathUtils.smoothstep(centre, 0.25, 0.75)) * (0.55 + 0.45 * near); // over the play area
+      want *= THREE.MathUtils.smoothstep(dCam, 2.6, 4.6);                       // too close to the lens
+      // a cloud over the visible face of the planet would hide the map: only let it live on the rim ring
+      // (where it frames the limb) or right up at the horizon line at the top of a tilted close view
+      const limb = R / camDist;
+      if (facing > limb - 0.05 && ndc.z < 1) {
+        const ring = 1 - THREE.MathUtils.smoothstep(facing, limb + 0.04, limb + 0.16 - near * 0.08);
+        const horizon = THREE.MathUtils.smoothstep(ndc.y, 0.62, 0.8);
+        const offscreen = THREE.MathUtils.smoothstep(Math.abs(ndc.x), 0.95, 1.1);
+        want *= Math.max(ring, horizon, offscreen) * (1 - 0.5 * (1 - THREE.MathUtils.smoothstep(centre, 0.3, 0.7)));
+      }
       c.fade += (want - c.fade) * Math.min(1, dt * 2.5);
       const s = c.s * (0.15 + 0.85 * c.fade) * (c.fade < 0.03 ? 0 : 1);
       q.setFromUnitVectors(Y, up);
@@ -373,7 +429,8 @@ function makeNoise(rand) {
   return { noise, fbm };
 }
 
-// equirect nebula: deep blue-violet base, a tilted milky band with dust lanes, magenta / teal / gold clouds
+// equirect nebula: a luminous twilight-blue / violet sky, a tilted milky band with soft dust lanes,
+// and big glowing magenta / teal / gold / azure nebula clouds with bright cores
 function bakeNebula(W, H, rand) {
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
@@ -381,9 +438,12 @@ function bakeNebula(W, H, rand) {
   const { fbm } = makeNoise(rand);
   const glowDir = [-0.5, 0.35, -0.75];
   const blobs = [
-    { d: norm([0.7, 0.3, -0.6]), c: [0.6, 0.1, 0.5], w: 5 },
-    { d: norm([-0.8, -0.2, 0.5]), c: [0.04, 0.4, 0.55], w: 4 },
-    { d: norm([0.1, -0.7, 0.7]), c: [0.45, 0.25, 0.08], w: 6 },
+    { d: norm([0.7, 0.3, -0.6]), c: [0.95, 0.22, 0.75], w: 3.2 },   // rose-magenta
+    { d: norm([-0.8, -0.2, 0.5]), c: [0.12, 0.7, 0.85], w: 3.0 },   // teal
+    { d: norm([0.1, -0.7, 0.7]), c: [0.95, 0.55, 0.2], w: 4.0 },    // gold
+    { d: norm([-0.3, 0.75, 0.55]), c: [0.3, 0.42, 1.0], w: 3.4 },   // azure
+    { d: norm([0.2, 0.1, 0.95]), c: [0.62, 0.3, 1.0], w: 3.6 },     // violet
+    { d: norm([-0.6, -0.7, -0.4]), c: [0.85, 0.3, 0.55], w: 3.6 },  // pink
   ];
   for (let j = 0; j < H; j++) {
     const th = (j + 0.5) / H * Math.PI;           // 0 at top
@@ -394,28 +454,33 @@ function bakeNebula(W, H, rand) {
       const x = -Math.cos(ph) * sr, y = sy, z = Math.sin(ph) * sr;
       const n1 = fbm(x * 2.2 + 3.1, y * 2.2, z * 2.2, 4);
       const n2 = fbm(x * 5 + 11, y * 5 + 7, z * 5, 3);
+      const n3 = fbm(x * 1.1 + 5, y * 1.1 + 2, z * 1.1 + 9, 3);
       const bandD = x * BAND_N.x + y * BAND_N.y + z * BAND_N.z;
-      const band = Math.exp(-bandD * bandD * 9) * (0.35 + n1 * 1.1);
-      const dust = Math.max(0, n2 - 0.48) * 2.4 * Math.exp(-bandD * bandD * 30);
-      let r = 0.006 + 0.004 * (1 - y), g = 0.006, b = 0.02 + 0.008 * y;
-      // faint violet wash
+      const band = Math.exp(-bandD * bandD * 7) * (0.4 + n1 * 1.1);
+      const dust = Math.max(0, n2 - 0.5) * 2.0 * Math.exp(-bandD * bandD * 30);
+      // twilight base: royal blue above, indigo-violet below, never black
+      const up = y * 0.5 + 0.5;
+      let r = 0.022 + 0.026 * (1 - up), g = 0.03 + 0.012 * up, b = 0.12 + 0.03 * up;
+      // big soft colour wash (violet <-> deep teal)
+      const w1 = n3 * n3, w2 = (1 - n3) * (1 - n3);
+      r += w1 * 0.09 + w2 * 0.0; g += w1 * 0.02 + w2 * 0.05; b += w1 * 0.16 + w2 * 0.1;
       const w = n1 * n1 * n1;
-      r += w * 0.05; g += w * 0.012; b += w * 0.09;
-      // the milky band: pale blue core, pink fringes, dark dust lanes
+      r += w * 0.1; g += w * 0.03; b += w * 0.16;
+      // the milky band: luminous lavender-blue core, rosy fringes, soft dust lanes
       const bandC = band * band;
-      r += bandC * (0.05 + 0.06 * n2); g += bandC * (0.045 + 0.03 * n2); b += bandC * 0.11;
-      r *= 1 - dust * 0.5; g *= 1 - dust * 0.55; b *= 1 - dust * 0.45;
-      // coloured nebula clouds
+      r += bandC * (0.14 + 0.12 * n2); g += bandC * (0.13 + 0.06 * n2); b += bandC * 0.28;
+      r *= 1 - dust * 0.35; g *= 1 - dust * 0.4; b *= 1 - dust * 0.3;
+      // coloured nebula clouds with brighter cores
       for (const bl of blobs) {
         const dd = 1 - (x * bl.d[0] + y * bl.d[1] + z * bl.d[2]);
-        const m = Math.max(0, n1 * 1.7 - 0.45);
-        const k = Math.exp(-dd * bl.w) * m * m * (0.5 + n2) * 1.4;
+        const m = Math.max(0, n1 * 1.8 - 0.42);
+        const k = Math.exp(-dd * bl.w) * (m * m * (0.6 + n2) * 1.5 + Math.exp(-dd * bl.w * 4) * 0.12);
         r += bl.c[0] * k; g += bl.c[1] * k; b += bl.c[2] * k;
       }
       // a soft glow behind the big moon
       const gd = 1 - (x * glowDir[0] + y * glowDir[1] + z * glowDir[2]);
-      const gk = Math.exp(-gd * 7) * 0.05;
-      r += gk * 0.7; g += gk * 0.8; b += gk * 1.0;
+      const gk = Math.exp(-gd * 6) * 0.1;
+      r += gk * 0.7; g += gk * 0.85; b += gk * 1.1;
       const o = (j * W + i) * 4;
       D[o] = toS(r); D[o + 1] = toS(g); D[o + 2] = toS(b); D[o + 3] = 255;
     }
@@ -480,7 +545,7 @@ function cloudGeometry(THREE, rand) {
       if (y < 0.05) y = 0.05 + (y - 0.05) * 0.25;
       pos[o] = a[i]; pos[o + 1] = y; pos[o + 2] = a[i + 2];
       const k = Math.min(1, Math.max(0, (y - 0.02) / 0.5));
-      col[o] = 0.7 + 0.3 * k; col[o + 1] = 0.74 + 0.26 * k; col[o + 2] = 0.9 + 0.1 * k;
+      col[o] = 0.8 + 0.2 * k; col[o + 1] = 0.79 + 0.2 * k; col[o + 2] = 0.97 + 0.0 * k; // lilac bellies, warm white tops
       o += 3;
     }
   }

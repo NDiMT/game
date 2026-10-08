@@ -49,7 +49,7 @@ console.log('TRIS ' + tris.join(' '));
 const span = Math.max(cols * sp * Math.max(1, H / W), rows * sp * 1.6);
 const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 200);
 const ang = +(q.get('ang') || 0.55);
-const dist = span * 1.55 * +(q.get('zoom') || 1); cam.position.set(0, Math.sin(ang) * dist, Math.cos(ang) * dist + rows * 0.3); cam.lookAt(0, 0.4, 0);
+const dist = span * 1.2 * +(q.get('zoom') || 1); cam.position.set(0, Math.sin(ang) * dist, Math.cos(ang) * dist + rows * 0.3); cam.lookAt(0, 0.4, 0);
 const lab = document.getElementById('lab');
 const rot = +(q.get('rot') || 0);
 function frame(t) {

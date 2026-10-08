@@ -159,7 +159,7 @@ PAINT[LAYER.SEABED] = (ctx) => {
 PAINT[LAYER.GRASS] = (ctx) => {
   const n1 = fbm(21, 4, 4), n2 = fbm(22, 3, 3), r = mulberry(23);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([72, 140, 40], [132, 196, 60], n1[q]);
+    let c = mixc([62, 126, 38], [122, 182, 58], n1[q]);
     c = mixc(c, [150, 172, 58], sstep(0.62, 0.9, n2[q]) * 0.55);
     const k = 0.92 + lhash(x, y, 7) * 0.14;
     set(q, c[0] * k, c[1] * k, c[2] * k);
@@ -355,12 +355,12 @@ PAINT[LAYER.MOUNT] = (ctx) => {
 PAINT[LAYER.FOREST] = (ctx) => {
   const n1 = fbm(101, 4, 4), n2 = fbm(102, 6, 3), r = mulberry(103);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([88, 112, 44], [138, 150, 66], n1[q]);
-    c = mixc(c, [156, 118, 66], sstep(0.55, 0.85, n2[q]) * 0.55);
+    let c = mixc([70, 110, 46], [112, 146, 62], n1[q]);
+    c = mixc(c, [146, 108, 64], sstep(0.55, 0.85, n2[q]) * 0.45);
     const k = 0.9 + lhash(x, y, 23) * 0.16;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    const leaf = [[130, 168, 60], [176, 150, 62], [200, 128, 52], [104, 140, 50], [214, 180, 80]];
+    const leaf = [[104, 152, 58], [150, 128, 60], [182, 112, 52], [86, 132, 52], [120, 160, 66]];
     for (let i = 0; i < 1100; i++) {
       const x = r() * S, y = r() * S, a = r() * 6.28, c = leaf[(r() * leaf.length) | 0], s = 1.6 + r() * 1.6;
       wrap(x, y, 5, (X, Y) => { ctx.fillStyle = rgba(c, 0.9); ctx.beginPath(); ctx.ellipse(X, Y, s, s * 0.45, a, 0, 6.283); ctx.fill(); });
@@ -416,16 +416,16 @@ PAINT[LAYER.FOG] = (ctx) => {
   const n1 = fbm(131, 3, 4), n2 = fbm(132, 8, 2), n3 = fbm(133, 2, 3), r = mulberry(134);
   return paintLayer(ctx, (q, x, y, set) => {
     const t = n1[q] * 0.7 + n2[q] * 0.3;
-    let c = mixc([118, 138, 186], [184, 200, 236], sstep(0.15, 0.85, t));
-    c = mixc(c, [172, 160, 214], sstep(0.55, 0.9, n3[q]) * 0.35); // a hint of lilac
-    c = mixc(c, [232, 238, 252], sstep(0.72, 0.95, t) * 0.55); // bright cloud tops
+    let c = mixc([92, 112, 168], [146, 166, 214], sstep(0.15, 0.85, t));
+    c = mixc(c, [146, 132, 196], sstep(0.55, 0.9, n3[q]) * 0.35); // a hint of lilac
+    c = mixc(c, [206, 216, 244], sstep(0.72, 0.95, t) * 0.45); // bright cloud tops
     set(q, c[0], c[1], c[2]);
   }, (ctx, wrap) => {
     // soft wisps
     for (let i = 0; i < 26; i++) {
       const x = r() * S, y = r() * S, l = 30 + r() * 50, bend = (r() - 0.5) * 16;
       wrap(x, y, l + 20, (X, Y) => {
-        ctx.strokeStyle = 'rgba(236,242,255,0.16)'; ctx.lineWidth = 5 + r() * 6; ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgba(214,224,252,0.14)'; ctx.lineWidth = 5 + r() * 6; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(X, Y); ctx.quadraticCurveTo(X + l / 2, Y + bend, X + l, Y); ctx.stroke();
       });
     }
@@ -434,14 +434,14 @@ PAINT[LAYER.FOG] = (ctx) => {
 
 // colour grade per layer: [gamma, saturation, brightness]
 GRADE[LAYER.SEABED] = [0.9, 1.05, 1.0];
-GRADE[LAYER.GRASS] = [0.85, 1.12, 1.04];
+GRADE[LAYER.GRASS] = [0.9, 1.0, 1.0];
 GRADE[LAYER.DIRT] = [0.85, 1.12, 1.03];
 GRADE[LAYER.SAND] = [0.95, 1.08, 1.0];
 GRADE[LAYER.SWAMP] = [0.82, 1.12, 1.04];
 GRADE[LAYER.ROUGH] = [0.85, 1.1, 1.03];
 GRADE[LAYER.LAVA] = [0.85, 1.15, 1.0];
 GRADE[LAYER.MOUNT] = [0.88, 1.08, 1.02];
-GRADE[LAYER.FOREST] = [0.8, 1.15, 1.05];
+GRADE[LAYER.FOREST] = [0.86, 1.05, 1.0];
 GRADE[LAYER.ROAD] = [0.9, 1.08, 1.02];
 GRADE[LAYER.CLIFF] = [0.85, 1.1, 1.02];
 
@@ -541,7 +541,7 @@ export function createPlanetMaterial(waterLevel) {
           float tw = (lay > 2.5 && lay < 4.5) ? pow(0.5 + 0.5 * sin(uTime * 2.6 + tx.a * 47.0 + (vT.x - vT.y) * 9.0), 3.0) * 1.6 : 0.8 + 0.2 * sin(uTime * 1.6 + vT.x * 5.0 + vT.y * 3.0);
           totalEmissiveRadiance += tx.rgb * tx.rgb * tx.a * uGlow * tw * smoothstep(0.2, 0.5, vColor.g + vColor.r);
           // a warm-cool fill so shadows stay soft and coloured, never black; the mist glows softly
-          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.2, 0.22, 0.3), isFog);
+          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.12, 0.14, 0.22), isFog);
         }`);
   };
   mat.customProgramCacheKey = () => 'hexrealms-terrain-2';
@@ -580,7 +580,7 @@ export function createWaterMaterial() {
         float f = clamp(foam * (0.75 + 0.25 * fn) + foam2 * 0.6 + crest, 0.0, 1.0);
         float lit = smoothstep(0.15, 0.45, vColor.g);
         // unexplored sea: the same soft bluish mist as the land fog
-        vec3 mist = mix(vec3(0.26, 0.33, 0.58), vec3(0.5, 0.56, 0.8), smoothstep(0.3, 0.9, fn) * 0.6 + 0.2 * sin(dot(vWPos, vec3(7.0, 5.0, -6.0)) + uTime * 0.3));
+        vec3 mist = mix(vec3(0.15, 0.2, 0.42), vec3(0.3, 0.36, 0.62), smoothstep(0.3, 0.9, fn) * 0.6 + 0.2 * sin(dot(vWPos, vec3(7.0, 5.0, -6.0)) + uTime * 0.3));
         diffuseColor.rgb = mix(mist, mix(wc, vec3(0.93, 0.97, 1.0), f) * vColor, lit);
         diffuseColor.a = clamp(mix(0.62, 0.95, smoothstep(0.0, 0.9, depth)) + f, 0.0, 1.0);
         diffuseColor.a = mix(1.0, diffuseColor.a, lit);`)
@@ -589,9 +589,9 @@ export function createWaterMaterial() {
         {
           // sun glitter dancing on the waves, and a soft glow in the mist
           float gl = sin(dot(vWPos, vec3(173.0, -151.0, 197.0)) + uTime * 2.1) * sin(dot(vWPos, vec3(-211.0, 181.0, 163.0)) - uTime * 1.7) * sin(dot(vWPos, vec3(97.0, 223.0, -139.0)) + uTime * 1.3);
-          gl = pow(max(gl, 0.0), 10.0);
-          totalEmissiveRadiance += vec3(1.0, 0.97, 0.86) * gl * 2.2 * lit * (1.0 - f) * (0.4 + 0.6 * smoothstep(1.0, 2.6, wh + 1.5));
-          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.2, 0.22, 0.3), vec3(0.05, 0.08, 0.1), lit);
+          gl = pow(max(gl, 0.0), 22.0);
+          totalEmissiveRadiance += vec3(1.0, 0.97, 0.86) * gl * 3.0 * lit * (1.0 - f) * (0.4 + 0.6 * smoothstep(1.0, 2.6, wh + 1.5));
+          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.12, 0.14, 0.22), vec3(0.05, 0.08, 0.1), lit);
         }`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         {

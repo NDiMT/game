@@ -112,11 +112,11 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     const shape = (s) => {
       const sh = new THREE.Shape();
       // tail notch, shaft, head — HoMM3-ish fat arrow, ~0.2 long
-      const P = [[0, -0.1], [0.045, -0.085], [0.045, 0.0], [0.085, 0.0], [0, 0.1], [-0.085, 0.0], [-0.045, 0.0], [-0.045, -0.085]];
-      P.forEach(([x, y], i) => (i ? sh.lineTo(x * s, y * s) : sh.moveTo(x * s, y * s)));
+      const P = [[0, -0.105], [0.05, -0.085], [0.05, 0.0], [0.1, 0.0], [0, 0.12], [-0.1, 0.0], [-0.05, 0.0], [-0.05, -0.085]];
+      P.forEach(([x, y], i) => (i ? sh.lineTo(x * s * 1.25, y * s * 1.25) : sh.moveTo(x * s * 1.25, y * s * 1.25)));
       return sh;
     };
-    const parts = [[shape(1.32), 0.0, 0], [shape(1.0), 0.002, 1]];
+    const parts = [[shape(1.3), 0.0, 0], [shape(1.0), 0.002, 1]];
     const pos = [], tone = [], uv = [];
     for (const [sh, y, t] of parts) {
       const g = new THREE.ShapeGeometry(sh).toNonIndexed();
@@ -229,12 +229,12 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
   const markMat = waveBasic();
   const goalFlag = new THREE.Mesh(flagGeo, markMat); goalFlag.visible = false; goalFlag.renderOrder = 3; root.add(goalFlag);
   const goalCross = new THREE.Mesh(crossGeo, markMat); goalCross.visible = false; goalCross.renderOrder = 3; root.add(goalCross);
-  const goalRing = new THREE.Mesh(quadGeo, ringMat({ r0: 0.6, w: 0.09, dash: 8, spin: -2.0, fill: 0.2, pulse: 0.2, add: 0.55 }));
+  const goalRing = new THREE.Mesh(quadGeo, ringMat({ r0: 0.6, w: 0.07, dash: 8, spin: -2.0, fill: 0.1, pulse: 0.2, add: 0.45 }));
   goalRing.visible = false; goalRing.renderOrder = 2; root.add(goalRing);
-  const dayRing = new THREE.Mesh(quadGeo, ringMat({ color: 0xffd040, r0: 0.55, w: 0.1, dash: 6, spin: 1.6, fill: 0.28, pulse: 0.25, add: 0.5 }));
+  const dayRing = new THREE.Mesh(quadGeo, ringMat({ color: 0xffd040, r0: 0.55, w: 0.08, dash: 6, spin: 1.6, fill: 0.12, pulse: 0.25, add: 0.45 }));
   dayRing.visible = false; dayRing.renderOrder = 2; root.add(dayRing);
 
-  const GREEN = new THREE.Color(0x52f05a), RED = new THREE.Color(0xff4a3c), GOLD = new THREE.Color(0xffd040);
+  const GREEN = new THREE.Color(0x6aff4a), RED = new THREE.Color(0xff4a3c), GOLD = new THREE.Color(0xffd040);
   let goalBob = null;
   function showPath(path, todaySteps = 0) {
     if (!path || path.length < 2) { clearPath(); return; }
@@ -278,7 +278,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
   }
 
   // ------------------------------------------------------------ selection ring
-  const selMat = ringMat({ color: 0xffd65a, r0: 0.56, w: 0.075, dash: 10, spin: 1.4, fill: 0.22, pulse: 0.16, add: 0.6, core: 0.6 });
+  const selMat = ringMat({ color: 0xffd65a, r0: 0.58, w: 0.06, dash: 10, spin: 1.4, fill: 0.08, pulse: 0.16, add: 0.45, core: 0.45 });
   const selRing = new THREE.Mesh(quadGeo, selMat); selRing.visible = false; selRing.renderOrder = 2; root.add(selRing);
   const selGlint = new THREE.Mesh(quadGeo, ringMat({ color: 0xfff2b0, r0: 0.86, w: 0.035, dash: 3, spin: -2.6, fill: 0, pulse: 0.3, add: 0.8, alpha: 0.85 }));
   selRing.add(selGlint);
@@ -532,7 +532,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
   const MAXH = 96;
   const hGeo = quadGeo.clone();
   const hCol = new THREE.InstancedBufferAttribute(new Float32Array(MAXH * 4), 4); hGeo.setAttribute('aCol', hCol);
-  const halos = new THREE.InstancedMesh(hGeo, ringMat({ r0: 0.5, w: 0.12, dash: 0, fill: 0.55, pulse: 0.35, add: 0.75, core: 0.3, alpha: 0.85 }, true), MAXH);
+  const halos = new THREE.InstancedMesh(hGeo, ringMat({ r0: 0.55, w: 0.08, dash: 0, fill: 0.3, pulse: 0.35, add: 0.55, core: 0.2, alpha: 0.6 }, true), MAXH);
   halos.count = 0; halos.frustumCulled = false; halos.renderOrder = 1; root.add(halos);
   function setHalos(list = []) {
     let n = 0;
@@ -540,7 +540,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
       if (n >= MAXH) break;
       const p = h.position, nn = _v.copy(h.normal || p).normalize();
       _q.setFromUnitVectors(UPV, nn);
-      _m.compose(_w.copy(p).addScaledVector(nn, 0.01), _q, _x.setScalar(h.size ?? 0.42));
+      _m.compose(_w.copy(p).addScaledVector(nn, 0.01), _q, _x.setScalar(h.size ?? 0.34));
       halos.setMatrixAt(n, _m);
       C.set(h.color ?? 0xffd860);
       hCol.setXYZW(n, C.r, C.g, C.b, n * 1.7);
@@ -552,7 +552,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
   // ------------------------------------------------------------ fog-of-war edge mist
   const MAXM = 1600;
   const MB = bbMesh(MAXM, { MIST: '' }); MB.mesh.renderOrder = 1; root.add(MB.mesh);
-  const MIST_COL = new THREE.Color(0xd8d4f0);
+  const MIST_COL = new THREE.Color(0xe8e4ff);
   function setFogEdge(seen, NBR) {
     let n = 0;
     if (seen && NBR) {

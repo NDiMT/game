@@ -194,7 +194,7 @@ function makeKit(seed) {
           k.cone(0.025, 0.2, x, top + 0.04, z, C.gold, 4, { ao: false });
         }
       }
-      if (o.flag) k.flag(x, top + 0.05, z, 0.5, 0.55, 0.22, o.flag === true ? C.banner : o.flag, { dir: o.flagDir ?? 1, phase: x });
+      if (o.flag) k.flag(x, top + 0.05, z, o.flagH ?? 0.5, 0.55 * (o.flagH ?? 0.5) / 0.5, 0.22 * Math.min(1, (o.flagH ?? 0.5) / 0.4), o.flag === true ? C.banner : o.flag, { dir: o.flagDir ?? 1, phase: x });
       for (const [a, f, ww, wh] of (o.wins || [[0, 0.62, 0.11, 0.22]])) k.winCyl(x, z, rr * 0.99, a, y + h * f, ww, wh, { mull: false });
       return top;
     },
@@ -374,7 +374,7 @@ function townHall(grand) {
   } else {
     // side towers with blue spires
     for (const s of [-1, 1]) {
-      k.tower(s * (bw / 2 + 0.08), bz + bd / 2 - 0.1, { r: 0.3, h: 1.85, roofH: 1.05, flag: true, flagDir: s, wins: [[0, 0.75, 0.1, 0.2], [s * 1.2, 0.75, 0.1, 0.2], [0, 0.42, 0.1, 0.2]] });
+      k.tower(s * (bw / 2 - 0.2), bz + bd / 2 - 0.05, { r: 0.3, h: 1.85, roofH: 0.9, flagH: 0.4, flag: true, flagDir: s, wins: [[0, 0.75, 0.1, 0.2], [s * 1.2, 0.75, 0.1, 0.2], [0, 0.42, 0.1, 0.2]] });
       k.banner(s * 0.66, 1.0, fz + 0.01, 0.2, 0.55);
     }
     // central drum with golden dome and lantern
@@ -417,13 +417,13 @@ function fort() {
   }
   // towers: big corners, middle ones
   for (const s of [-1, 1]) {
-    k.tower(s * 4.2, 0.05, { r: 0.42, h: 1.55, roofH: 0.7, flag: true, flagDir: s, wins: [[0, 0.6, 0.1, 0.22], [s * 1.1, 0.6, 0.1, 0.2]] });
-    k.tower(s * 2.15, 0.05, { r: 0.36, h: 1.5, roofH: 0.72, wins: [[0, 0.58, 0.1, 0.2]] });
+    k.tower(s * 4.2, 0.05, { r: 0.42, h: 1.38, roofH: 0.62, flag: true, flagH: 0.3, flagDir: s, wins: [[0, 0.6, 0.1, 0.22], [s * 1.1, 0.6, 0.1, 0.2]] });
+    k.tower(s * 2.15, 0.05, { r: 0.36, h: 1.36, roofH: 0.62, wins: [[0, 0.58, 0.1, 0.2]] });
     k.banner(s * 3.2, 1.1, th / 2 + 0.01, 0.26, 0.6);
   }
   // gatehouse
-  k.block(1.5, 1.6, 0.85, 0, 0, 0.05, C.stone);
-  k.crenels(1.56, 0.91, 1.6, 0, 0.05, C.stone, { step: 0.26, m: 0.15 });
+  k.block(1.5, 1.5, 0.85, 0, 0, 0.05, C.stone);
+  k.crenels(1.56, 0.91, 1.5, 0, 0.05, C.stone, { step: 0.26, m: 0.15 });
   const gz = 0.05 + 0.425;
   k.box(0.7, 0.75, 0.04, 0, 0.0, gz, C.woodD, { ao: false });
   k.disc(0.35, 0.04, 0, 0.75, gz, C.woodD, 12, { ao: false });
@@ -435,8 +435,8 @@ function fort() {
   k.disc(0.16, 0.03, 0, 1.3, gz + 0.01, C.gold, 10, { ao: false });
   k.disc(0.11, 0.03, 0, 1.3, gz + 0.03, C.banner, 10, { ao: false });
   for (const s of [-1, 1]) {
-    k.tower(s * 0.8, 0.35, { r: 0.28, h: 1.65, roofH: 0.62, flag: true, flagDir: s, wins: [[0, 0.62, 0.09, 0.18], [s * 1.2, 0.4, 0.08, 0.16]] });
-    k.banner(s * 0.48, 1.45, gz, 0.2, 0.55);
+    k.tower(s * 0.8, 0.35, { r: 0.28, h: 1.5, roofH: 0.55, flag: true, flagH: 0.3, flagDir: s, wins: [[0, 0.62, 0.09, 0.18], [s * 1.2, 0.4, 0.08, 0.16]] });
+    k.banner(s * 0.48, 1.38, gz, 0.2, 0.5);
   }
   return finish(k);
 }
@@ -522,7 +522,7 @@ function mageGuild(lvl) {
   k.block(1.15, 0.22, 1.15, 0, 0.04, 0, C.stone2, { cornice: false });
   for (let i = 0; i < 3; i++) k.box(0.5 - i * 0.04, 0.07, 0.14, 0, 0.04 + i * 0.07, 0.66 - i * 0.1, C.stone2, { ao: false });
   let y = 0.26, rr = 0.46;
-  const hs = [1.15, 0.8, 0.85];
+  const hs = [1.15, 0.55, 0.6];
   for (let t = 0; t < lvl; t++) {
     const h = hs[t];
     k.lathe([[rr * 1.08, 0], [rr, 0.12], [rr * 0.94, h]], 0, y, 0, C.stone, 8, { top: 1.06, bot: 0.9, phi: Math.PI / 8 });
@@ -544,7 +544,7 @@ function mageGuild(lvl) {
     rr *= 0.8;
   }
   // roof
-  const rh = lvl === 1 ? 0.85 : lvl === 2 ? 0.95 : 1.1;
+  const rh = lvl === 1 ? 0.85 : lvl === 2 ? 0.8 : 0.85;
   const rad = rr / 0.8 * 1.25;
   k.lathe([[rad, 0], [rad * 0.72, rh * 0.25], [rad * 0.35, rh * 0.62], [0, rh]], 0, y - 0.04, 0, C.roof, 8, { top: 1.35, bot: 0.82, ao: false, phi: Math.PI / 8 });
   // gold star bands on the roof
@@ -570,16 +570,16 @@ function mageGuild(lvl) {
 function guardhouse(up) {
   const k = makeKit(110 + up);
   k.pad(1.8, 1.8);
-  const w = up ? 1.35 : 1.15, h = up ? 0.95 : 0.8, z0 = -0.2;
+  const w = up ? 1.2 : 1.15, h = up ? 0.95 : 0.8, z0 = -0.2;
   k.block(w, h, 0.95, 0, 0.04, z0, C.stone, { cren: { step: 0.24, m: 0.13 } });
   const fz = z0 + 0.475;
   k.door(0, 0.04, fz, 0.26, 0.36);
   for (const s of [-1, 1]) k.win(s * w * 0.3, 0.42, fz, 0.12, 0.2);
   k.banner(0, h - 0.04, fz, 0.18, 0.3, 0, C.banner, { emblem: false });
   // corner turret(s)
-  k.tower(-w / 2, z0 - 0.4, { r: 0.24, h: h + 0.55, roofH: 0.62, flag: up ? true : false, flagDir: -1, wins: [[0.4, 0.62, 0.08, 0.16]] });
+  k.tower(-w / 2, z0 - 0.4, { r: up ? 0.22 : 0.24, flagH: 0.4, h: h + 0.55, roofH: 0.62, flag: up ? true : false, flagDir: -1, wins: [[0.4, 0.62, 0.08, 0.16]] });
   if (up) {
-    k.tower(w / 2, z0 - 0.4, { r: 0.24, h: h + 0.55, roofH: 0.62, flag: true, wins: [[-0.4, 0.62, 0.08, 0.16]] });
+    k.tower(w / 2, z0 - 0.4, { r: 0.22, flagH: 0.4, h: h + 0.55, roofH: 0.62, flag: true, wins: [[-0.4, 0.62, 0.08, 0.16]] });
     k.hip(w * 0.6, 0.4, 0.5, 0, 0.04 + h + 0.0, z0 - 0.12, C.roof);
     for (const s of [-1, 1]) k.banner(s * w * 0.5 + s * 0.02, h - 0.1, fz, 0.16, 0.38, 0, C.banner);
   }
@@ -663,9 +663,9 @@ function griffinTower(up) {
   if (!up) {
     nest(k, 0, topY, tz, 1.25);
     // perch beam with side nest
-    k.limb([rr * 0.8, h * 0.62, tz], [rr + 0.55, h * 0.62, tz + 0.1], 0.04, 0.04, C.woodD, 5);
+    k.limb([rr * 0.8, h * 0.62, tz], [rr + 0.45, h * 0.62, tz + 0.1], 0.04, 0.04, C.woodD, 5);
     k.limb([rr * 0.8, h * 0.48, tz], [rr + 0.45, h * 0.62, tz + 0.08], 0.025, 0.025, C.woodD, 4);
-    nest(k, rr + 0.48, h * 0.62 + 0.03, tz + 0.1, 0.65);
+    nest(k, rr + 0.38, h * 0.62 + 0.03, tz + 0.1, 0.65);
     k.banner(0, h * 0.95, tz + rr, 0.2, 0.42);
     // golden wing ornaments
     for (const s of [-1, 1]) k.sheet(4, 1, (u, v) => [s * (rr * 1.0 + u * 0.4), h * 0.85 + u * 0.25 - v * (0.3 - u * 0.15), tz + rr * 0.5], C.gold, { ao: false });
@@ -679,8 +679,8 @@ function griffinTower(up) {
     k.flag(0, topY + 1.5, tz, 0.4, 0.5, 0.2, C.banner);
     // two cantilevered nest platforms
     for (const s of [-1, 1]) {
-      const px = s * (rr + 0.45), py = h * 0.55;
-      k.box(0.6, 0.1, 0.5, s * (rr + 0.3), py - 0.1, tz + 0.05, C.stone2);
+      const px = s * (rr + 0.34), py = h * 0.55;
+      k.box(0.5, 0.1, 0.5, s * (rr + 0.24), py - 0.1, tz + 0.05, C.stone2);
       k.limb([s * rr, py - 0.45, tz + 0.05], [s * (rr + 0.45), py - 0.1, tz + 0.05], 0.04, 0.04, C.stone2, 5);
       nest(k, px, py, tz + 0.05, 0.6);
     }
@@ -723,7 +723,7 @@ function swordBarracks(up) {
   if (up) {
     k.box(0.02, 0.6, 0.012, mx, 0.35, mz + 0.012, C.holy, { glow: true });
     for (const s of [-1, 1]) {
-      k.tower(s * (w / 2 + 0.05), z0 - 0.3, { r: 0.24, h: 1.4, roofH: 0.85, flag: C.red, flagDir: s, wins: [[0, 0.65, 0.08, 0.18]] });
+      k.tower(s * (w / 2 - 0.15), z0 - 0.32, { r: 0.24, h: 1.45, roofH: 0.85, flagH: 0.4, flag: C.red, flagDir: s, wins: [[0, 0.65, 0.08, 0.18]] });
       k.banner(s * 0.5, 1.4, fz + 0.36 - 0.25, 0.16, 0.5, 0, C.red);
     }
     k.flag(0, 0.04 + gh + 0.12, fz + 0.1, 0.5, 0.5, 0.22, C.banner);
@@ -797,10 +797,10 @@ function monastery(up) {
 function arena(up) {
   const k = makeKit(160 + up);
   k.pad(2.4, 2.4, C.pave);
-  k.box(2.1, 0.02, 1.25, 0, 0.04, 0.3, 0xe6c88a, { j: 0.06, ao: false }); // sanded list field
-  k.box(2.0, 0.015, 1.15, 0, 0.055, 0.3, 0x9ad25a, { j: 0.05, ao: false });
+  k.box(1.96, 0.02, 1.1, 0, 0.04, 0.24, 0xe6c88a, { j: 0.06, ao: false }); // sanded list field
+  k.box(1.86, 0.015, 1.0, 0, 0.055, 0.24, 0x9ad25a, { j: 0.05, ao: false });
   // fence posts and rails around the field
-  const fx = 1.05, fz0 = -0.3, fz1 = 0.92;
+  const fx = 0.98, fz0 = -0.3, fz1 = 0.78;
   const posts = [];
   for (let i = 0; i <= 8; i++) posts.push([-fx + i * (2 * fx / 8), fz1]);
   for (let i = 1; i < 4; i++) { posts.push([-fx, fz0 + i * (fz1 - fz0) / 4]); posts.push([fx, fz0 + i * (fz1 - fz0) / 4]); }
@@ -810,9 +810,9 @@ function arena(up) {
     for (const s of [-1, 1]) k.box(0.03, 0.04, fz1 - fz0, s * fx, y, (fz0 + fz1) / 2, y > 0.2 ? C.banner : C.white, { ao: false });
   }
   // tilt barrier down the middle
-  k.box(1.5, 0.22, 0.05, 0, 0.06, 0.32, C.banner, { ao: false });
-  k.box(1.52, 0.04, 0.07, 0, 0.27, 0.32, C.gold, { ao: false });
-  for (let i = 0; i < 6; i++) k.box(0.05, 0.22, 0.06, -0.75 + i * 0.3, 0.06, 0.32, C.white, { ao: false });
+  k.box(1.5, 0.22, 0.05, 0, 0.06, 0.26, C.banner, { ao: false });
+  k.box(1.52, 0.04, 0.07, 0, 0.27, 0.26, C.gold, { ao: false });
+  for (let i = 0; i < 6; i++) k.box(0.05, 0.22, 0.06, -0.75 + i * 0.3, 0.06, 0.26, C.white, { ao: false });
   // grandstand along the back
   const gz = -0.68;
   if (!up) {
@@ -824,10 +824,10 @@ function arena(up) {
     for (let i = 0; i < 8; i++) k.cone(0.12, 0.12, -0.82 + i * 0.235, 1.05, gz + 0.32, i % 2 ? C.white : C.banner, 3, { rx: Math.PI, ao: false });
   } else {
     // stone grandstand with arcade and a royal box
-    k.box(2.1, 0.5, 0.6, 0, 0.04, gz, C.stone, { top: 1.06, bot: 0.86 });
-    for (let i = 0; i < 6; i++) k.door(-0.85 + i * 0.34, 0.04, gz + 0.3, 0.18, 0.22, 0, { c: 0xc8b8f0 });
-    for (let i = 0; i < 2; i++) k.box(2.1, 0.14, 0.2, 0, 0.54 + i * 0.14, gz + 0.1 - i * 0.2, C.stone2, { ao: false });
-    k.crenels(2.1, 0.6, 0.82, 0, gz, C.stone, { sides: 'n', step: 0.28 });
+    k.box(1.9, 0.5, 0.6, 0, 0.04, gz, C.stone, { top: 1.06, bot: 0.86 });
+    for (let i = 0; i < 6; i++) k.door(-0.8 + i * 0.32, 0.04, gz + 0.3, 0.18, 0.22, 0, { c: 0xc8b8f0 });
+    for (let i = 0; i < 2; i++) k.box(1.9, 0.14, 0.2, 0, 0.54 + i * 0.14, gz + 0.1 - i * 0.2, C.stone2, { ao: false });
+    k.crenels(1.9, 0.6, 0.82, 0, gz, C.stone, { sides: 'n', step: 0.28 });
     // royal box
     k.box(0.6, 0.45, 0.42, 0, 0.82, gz, C.stone, {});
     for (const x of [-0.26, 0.26]) k.cyl(0.03, 0.03, 0.45, x, 1.27, gz + 0.18, C.gold, 6, { ao: false });
@@ -836,10 +836,10 @@ function arena(up) {
     k.banner(0, 1.22, gz + 0.21, 0.32, 0.36);
     k.sheet(4, 1, (u, v) => [-0.3 + u * 0.6, 1.72 - v * 0.12 - Math.sin(u * Math.PI) * 0.05, gz + 0.28], C.red, { ao: false });
     for (const s of [-1, 1]) {
-      k.tower(s * 1.0, gz - 0.05, { r: 0.22, h: 1.15, roofH: 0.6, flag: C.banner, flagDir: s, wins: [[0, 0.6, 0.08, 0.16]] });
+      k.tower(s * 0.92, gz - 0.12, { r: 0.2, h: 1.15, roofH: 0.6, flagH: 0.35, flag: C.banner, flagDir: s, wins: [[0, 0.6, 0.08, 0.16]] });
     }
     // flag poles along the front
-    for (const x of [-0.65, 0.65]) k.flag(x, 0.04, 1.1, 0.95, 0.4, 0.17, x < 0 ? C.banner : C.red, { dir: 1, phase: x * 4 });
+    for (const x of [-0.45, 0.45]) k.flag(x, 0.04, 1.02, 0.95, 0.4, 0.17, x < 0 ? C.banner : C.red, { dir: 1, phase: x * 4 });
   }
   // pavilion tents with pennants
   const tent = (x, z, c1, s) => {
@@ -848,11 +848,10 @@ function arena(up) {
     k.cone(0.3 * s, 0.36 * s, x, 0.36 * s + 0.04, z, c1, 8, { top: 1.3, bot: 0.9, ao: false });
     k.flag(x, 0.72 * s + 0.04, z, 0.3, 0.25, 0.1, c1 === C.red ? C.banner : C.red, { phase: x * 3 });
   };
-  tent(-1.0, 1.1, C.banner, 0.9); tent(1.0, 1.1, C.red, 0.9);
-  if (up) { tent(-1.05, -0.05, C.red, 0.7); tent(1.05, -0.05, C.banner, 0.7); }
+  tent(-0.88, 0.98, C.banner, 0.8); tent(0.88, 0.98, C.red, 0.8);
   // lance rack
-  k.limb([-0.5, 0.3, 1.05], [-0.1, 0.3, 1.05], 0.015, 0.015, C.woodD, 4);
-  for (let i = 0; i < 4; i++) { const x = -0.45 + i * 0.1; k.limb([x, 0.04, 1.08], [x - 0.05, 0.95, 1.0], 0.025, 0.012, i % 2 ? C.banner : C.white, 5, { ao: false }); }
+  k.limb([-0.35, 0.3, 0.95], [0.05, 0.3, 0.95], 0.015, 0.015, C.woodD, 4);
+  for (let i = 0; i < 4; i++) { const x = -0.3 + i * 0.1; k.limb([x, 0.04, 0.98], [x - 0.05, 0.95, 0.9], 0.025, 0.012, i % 2 ? C.banner : C.white, 5, { ao: false }); }
   return finish(k);
 }
 
@@ -877,7 +876,7 @@ function portal(up) {
     else k.cone(0.08, 0.22, x, Y - 0.15 + ch, z, C.gold, 6, { ao: false });
   }
   // the portal ring standing upright, facing +Z
-  const pr = up ? 0.92 : 0.8, cy = Y + pr + 0.15;
+  const pr = up ? 0.86 : 0.78, cy = Y + pr + 0.15;
   k.tor(pr, up ? 0.13 : 0.11, 0, cy, pz, C.stone, TAU, { ts: 6, rs: 20, top: 1.12, bot: 0.9, ao: false });
   k.tor(pr - 0.12, 0.035, 0, cy, pz + 0.06, C.gold, TAU, { ts: 4, rs: 20, ao: false });
   k.tor(pr + 0.12, 0.03, 0, cy, pz + 0.06, C.gold, TAU, { ts: 4, rs: 20, ao: false });
@@ -900,7 +899,7 @@ function portal(up) {
   k.ball(0.14, 0, cy + pr + 0.15, pz, C.holy, 1, { glow: true });
   // wings sweeping from the ring
   for (const s of [-1, 1]) {
-    const span = up ? 1.0 : 0.75;
+    const span = up ? 0.52 : 0.58;
     for (let f = 0; f < 3; f++) k.sheet(5, 1, (u, v) => {
       const x = s * (pr + 0.05 + u * span), y = cy + 0.15 + Math.sin(u * 2.2) * 0.35 * span - f * 0.14 - v * (0.32 - u * 0.2) * (1 - f * 0.15) - u * f * 0.12;
       return [x, y, pz - 0.05 - f * 0.03 - u * 0.15];
@@ -912,7 +911,7 @@ function portal(up) {
     // floating gold crown above
     k.tor(0.2, 0.03, 0, cy + pr + 0.62, pz, C.gold, TAU, { rx: Math.PI / 2 - 0.25, rs: 14, ao: false });
     for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; k.cone(0.035, 0.12, Math.sin(a) * 0.2, cy + pr + 0.62, pz + Math.cos(a) * 0.2, C.gold, 4, { ao: false }); }
-    k.flag(-1.2, 0.04, 0.9, 1.3, 0.5, 0.2, C.banner, { phase: 1 }); k.flag(1.2, 0.04, 0.9, 1.3, 0.5, 0.2, C.banner, { phase: 2 });
+    k.flag(-1.15, 0.04, 0.9, 1.3, 0.45, 0.2, C.banner, { phase: 1 }); k.flag(1.15, 0.04, 0.9, 1.3, 0.45, 0.2, C.banner, { phase: 2, dir: -1 });
   }
   // front steps
   for (let i = 0; i < 3; i++) k.box(0.9, 0.1 * (i + 1), 0.16, 0, 0.04, R - 0.05 + 0.16 * (2 - i) * 0.5 - 0.0, C.stone2, { ao: false });

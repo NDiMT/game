@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Unit Fit</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #87a8d8; color: #fff; font: 600 12px system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+  .blab { position: absolute; left: 0; top: 0; margin: -18px 0 0 -16px; min-width: 32px; padding: 1px 5px; border-radius: 6px; font-weight: 900; font-size: 11px; text-align: center; background: #1a3a8a; border: 1px solid #9ac0ff; color: #fff; white-space: nowrap; }
+  .blab.s1 { background: #8a1a1a; border-color: #ff9a8a; }
+  #info { position: fixed; left: 6px; top: 4px; text-shadow: 0 1px 2px #000; }
+</style>
+<script type="importmap">{ "imports": { "three": "../../vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="labels"></div>
+<div id="info"></div>
+<script type="module">
+// Preview for unit_fit.js
+//   ?mode=battle (default) all creatures packed on the real battle grid
+//   ?mode=map    all creatures as map guards on planet-sized hexes
+//   ?old=1       the pre-fit scaling, for comparison
+//   ?t=0..6      battlefield terrain; ?ids=a,b ; ?yaw=0.4 ; ?dist=12.5 ; ?names=1
+import * as THREE from 'three';
+import { UNITS } from '../data.js?v=0.3';
+import * as BT from '../battle.js?v=0.3';
+import { createBattlefield } from '../battlefield.js?v=0.3';
+import { makeBodyMaterial, makeGlowMaterial, tick } from '../materials.js?v=0.3';
+import { havenModel } from '../units_haven.js?v=0.3';
+import { necroModel } from '../units_necro.js?v=0.3';
+import { neutralModel } from '../units_neutral.js?v=0.3';
+const { unitFit, applyFit, FIT_CONSTANTS } = await import('../unit_fit.js?v=' + Date.now());
+const opt = async (p, n) => { try { return (await import(p))[n]; } catch { return () => null; } };
+const havenUpModel = await opt('../units_haven_up.js?v=0.3', 'havenUpModel');
+const necroUpModel = await opt('../units_necro_up.js?v=0.3', 'necroUpModel');
+
+const Q = new URLSearchParams(location.search);
+const mode = Q.get('mode') || 'battle', old = Q.has('old');
+const ids = Q.get('ids') ? Q.get('ids').split(',') : Object.keys(UNITS);
+const modelOf = (id) => (UNITS[id].up && !Q.has('base') ? havenUpModel(id) || necroUpModel(id) : null) || (() => { const b = Q.has('base') ? UNITS[id].up || id : id; return havenModel(b) || necroModel(b) || neutralModel(b); })();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87a8d8);
+const cam = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.05, 100);
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(4, 10, 3); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 30 }); sun.shadow.bias = -0.0005;
+const hemi = new THREE.HemisphereLight(0xcfe0ff, 0x4a3a2a, 0.9), amb = new THREE.AmbientLight(0x404a70, 0.3);
+scene.add(sun, hemi, amb);
+const bodyMat = makeBodyMaterial(THREE), glowMat = makeGlowMaterial(THREE);
+function meshOf(m) {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = b.receiveShadow = true; g.add(b);
+  if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
+  return g;
+}
+const labels = [];
+const lab = (obj, y, text, side) => { const el = document.createElement('div'); el.className = 'blab s' + side; el.textContent = text; document.getElementById('labels').appendChild(el); labels.push({ obj, y, el }); };
+
+if (mode === 'battle') {
+  const HS = 0.5, HW = Math.sqrt(3) * HS, VS = 1.5 * HS;
+  const hexPos = (c, r) => new THREE.Vector3((c - (BT.COLS - 1) / 2 + (r & 1 ? 0.5 : 0) - 0.25) * HW, 0, (r - (BT.ROWS - 1) / 2) * VS);
+  const bf = createBattlefield(THREE, +(Q.get('t') || 0), hexPos, BT.COLS, BT.ROWS);
+  scene.add(bf.group); scene.background.set(bf.sky);
+  scene.fog = new THREE.Fog(bf.fog.color, bf.fog.near, bf.fog.far);
+  const L = bf.lights;
+  sun.color.set(L.sun.color); sun.intensity = L.sun.intensity;
+  hemi.color.set(L.hemi.sky); hemi.groundColor.set(L.hemi.ground); hemi.intensity = L.hemi.intensity;
+  amb.color.set(L.ambient.color); amb.intensity = L.ambient.intensity;
+  // hex outlines, like the game's highlight hexes
+  const hexGeo = new THREE.CylinderGeometry(HS * 0.95, HS * 0.95, 0.02, 6);
+  const hexMat = new THREE.MeshBasicMaterial({ color: 0xc8ff9a, transparent: true, opacity: 0.3, depthWrite: false });
+  for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { const h = new THREE.Mesh(hexGeo, hexMat); h.position.copy(hexPos(c, r)); scene.add(h); }
+  // packed: enemies fill the top rows facing the camera, the player the bottom rows
+  const slots = [];
+  for (const r of [0, 1, 2, 3]) for (let c = 0; c < BT.COLS; c++) slots.push([c, r, 1]);
+  for (const r of [10, 9, 8, 7]) for (let c = 0; c < BT.COLS; c++) slots.push([c, r, 0]);
+  const half = Math.ceil(ids.length / 2);
+  ids.forEach((id, i) => {
+    const [c, r, side] = i < half ? slots[i] : slots[28 + (i - half)];
+    const m = modelOf(id), g = meshOf(m);
+    let labelY = 0.05;
+    if (old) { const u = UNITS[id]; g.scale.setScalar(0.9 * (u.tier >= 6 ? 1.05 : 1) * (u.up ? 1.08 : 1)); }
+    else { const f = unitFit(id, m, 'battle'); applyFit(g, f); labelY = f.labelY; }
+    g.position.copy(hexPos(c, r)); g.rotation.y = side === 0 ? Math.PI : 0;
+    scene.add(g);
+    lab(g, labelY, Q.has('names') ? id : String(UNITS[id].tier * 7 + 3), side);
+  });
+  const dist = +(Q.get('dist') || 12.5), yaw = +(Q.get('yaw') || 0);
+  cam.position.set(Math.sin(yaw) * dist * 0.55, dist, Math.cos(yaw) * dist * 0.55 + 0.4); cam.lookAt(0, 0, 0.2);
+  if (Q.has('close')) { cam.position.set(0, 3.2, 4.2); cam.lookAt(0, 0.3, 1.2); }
+} else {
+  // map: flat field of planet-sized hexes (flat width ~0.376), oblique camera like the adventure map zoomed in
+  const S = FIT_CONSTANTS.MAP_HEX, HS = S / Math.sqrt(3), VS = 1.5 * HS;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7ac04a, roughness: 1 }));
+  ground.receiveShadow = true; scene.add(ground);
+  const pos = (c, r) => new THREE.Vector3((c - 3 + (r & 1 ? 0.5 : 0)) * S, 0, (r - 3) * VS);
+  const ring = new THREE.RingGeometry(HS * 0.86, HS * 0.95, 6).rotateX(-Math.PI / 2).rotateY(Math.PI / 6);
+  const rmat = new THREE.MeshBasicMaterial({ color: 0xf0ffd0, transparent: true, opacity: 0.5 });
+  for (let r = 0; r < 12; r++) for (let c = 0; c < 8; c++) { const h = new THREE.Mesh(ring, rmat); h.position.copy(pos(c, r)).setY(0.002); scene.add(h); }
+  ids.forEach((id, i) => {
+    const c = (i % 6) + 0.5 * 0, r = ((i / 6) | 0) * 2 + (i % 2), m = modelOf(id), g = meshOf(m);
+    if (old) g.scale.setScalar(0.2); else applyFit(g, unitFit(id, m, 'map'));
+    g.position.copy(pos(c + 1, r)); g.rotation.y = (i * 1.3) % 6.28;
+    scene.add(g);
+  });
+  scene.fog = null;
+  Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4 });
+  cam.position.set(0, 2.6, 3.2); cam.lookAt(0, 0, 0.4);
+}
+document.getElementById('info').textContent = `${mode}${old ? ' (old scaling)' : ' (unitFit)'} · ${ids.length} units`;
+const v = new THREE.Vector3();
+let t = 0;
+renderer.setAnimationLoop(() => {
+  t += 0.016; tick(t);
+  renderer.render(scene, cam);
+  for (const l of labels) { v.copy(l.obj.position).setY(l.obj.position.y + l.y).project(cam); l.el.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px)`; }
+});
+window.__ready = true;
+</script>
+</body>
+</html>
