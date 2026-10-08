@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.6';
-import { createScore } from './music.js?v=1.6';
+import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.7';
+import { createScore } from './music.js?v=1.7';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=1.6';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '1.6';
+const APP_VERSION = '1.7';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -1633,13 +1633,17 @@ const MISSIONS = [
   { text: 'Reach 8,000 people', goal: 8000, val: () => totalPop(0), reward: 250 },
   { text: 'Reach the Space Age', goal: 6, val: () => G.era, reward: 300 },
 ];
+let lastMission = -1, missionTimer = 0;
+function openMission(ms) { $('mission').classList.add('open'); clearTimeout(missionTimer); missionTimer = setTimeout(() => $('mission').classList.remove('open'), ms); }
+$('mission').addEventListener('click', () => { if ($('mission').classList.contains('open')) $('mission').classList.remove('open'); else openMission(4000); sfx.click(); });
 function updateMission() {
   const m = MISSIONS[G.q];
   if (!m) { $('mission').hidden = true; return; }
   const v = Math.min(m.goal, m.val());
   $('mission').hidden = false;
   $('m-text').textContent = m.text;
-  $('m-prog').textContent = m.goal > 1 ? `${fmt(v)}/${fmt(m.goal)}` : '';
+  $('m-prog').textContent = m.goal > 1 ? (m.goal >= 1000 ? `${Math.floor((v / m.goal) * 100)}%` : `${v}/${m.goal}`) : '0/1';
+  if (G.q !== lastMission) { lastMission = G.q; openMission(5000); }
   $('m-fill').style.width = `${(v / m.goal) * 100}%`;
   $('m-reward').textContent = `+${m.reward}✦`;
   if (v >= m.goal) {
@@ -2030,7 +2034,7 @@ function buildPowers() {
     }).join('');
   } else {
     // newest buildings first, then a peek at the next age
-    const list = BUILDINGS.filter((b) => b.era <= G.era + 1).sort((a, b) => b.era - a.era);
+    const list = BUILDINGS.filter((b) => b.era <= G.era + 1).sort((a, b) => (a.era > G.era) - (b.era > G.era) || b.era - a.era);
     $('powers').innerHTML = list.map((b) => {
       const locked = G.era < b.era;
       return `<button class="power build${locked ? ' locked' : ''}${'b:' + b.id === tool ? ' active' : ''}" data-p="b:${b.id}" style="--c1:${ERAS[b.era].color}" aria-label="${b.name}"><i>${locked ? '🔒' : b.icon}</i><span>${b.short}</span><em>${locked ? ERAS[b.era].icon : `✦${bCost(b)}`}</em></button>`;
@@ -2049,7 +2053,7 @@ function setTool(id) {
   if (G.era < p.era) { toast(`${p.name} arrives in the ${ERAS[p.era].name}`); sfx.deny(); return; }
   tool = id;
   for (const b of document.querySelectorAll('.power')) b.classList.toggle('active', b.dataset.p === id);
-  $('hint').classList.remove('dim'); clearTimeout(hintTimer); hintTimer = setTimeout(() => $('hint').classList.add('dim'), 6000);
+  $('hint').classList.remove('dim'); clearTimeout(hintTimer); hintTimer = setTimeout(() => $('hint').classList.add('dim'), 3500);
   $('hint').textContent = isB ? `${p.icon} ${p.name}: ${p.desc} Tap a blue hex near a town. Reaches ${RANGE} hexes.` : p.hint;
   buildSpotsDirty = true;
   sfx.click();
@@ -2101,9 +2105,9 @@ function updateHud() {
   $('goal-fill').style.width = `${f * 100}%`;
   $('goal-pct').textContent = r.know && r.mana && r.level ? 'BUILD' : `${Math.floor(f * 100)}%`;
   const chip = (id, ok, txt) => { const el = $(id); el.textContent = txt; if (el.classList.contains('ok') !== ok) { el.classList.toggle('ok', ok); if (ok) bump(el); } };
-  chip('ch-know', r.know, `📜 ${Math.floor(f * 100)}%`);
-  chip('ch-mana', r.mana, `✦ ${fmt(Math.min(G.mana, e.cost))}/${e.cost}`);
-  chip('ch-size', r.level, `🏘️ ${r.best ? sizeOf(r.best) : 0}/${REQ[G.era]}`);
+  chip('ch-know', r.know, '📜');
+  chip('ch-mana', r.mana, '✦');
+  chip('ch-size', r.level, '🏘️');
   const popNow = totalPop(0);
   if (popNow > (hudPrev.pop || 0) * 1.04 + 2) bump($('pop').parentElement);
   if (Math.floor(G.mana / 100) > Math.floor((hudPrev.mana || 0) / 100)) bump($('mana').closest('.orb'));
@@ -2129,6 +2133,7 @@ function renderGoal() {
 $('goal').addEventListener('click', () => { renderGoal(); $('goal-sheet').hidden = false; sfx.click(); });
 $('gs-close').addEventListener('click', () => { $('goal-sheet').hidden = true; });
 $('gs-build').addEventListener('click', buildWonder);
+$('b-zen').addEventListener('click', () => { document.body.classList.toggle('zen'); sfx.click(); });
 $('b-home').addEventListener('click', () => { const s = bestSettlement(); if (s) flyTo(s.v, 11); sfx.click(); });
 $('b-menu').addEventListener('click', () => { $('opt-music').checked = store.get('aeons.music', true); $('opt-sfx').checked = store.get('aeons.sfx', true); $('opt-hq').checked = hq; $('pause').hidden = false; if (G.mode === 'play') G.mode = 'pause'; sfx.click(); });
 $('pause-close').addEventListener('click', () => { $('pause').hidden = true; if (G.mode === 'pause') G.mode = 'play'; });
