@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.6';
-import { createScore } from './music.js?v=2.6';
+import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.7';
+import { createScore } from './music.js?v=2.7';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=2.6';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '2.6';
+const APP_VERSION = '2.7';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -22,13 +22,13 @@ const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
 // ------------------------------------------------------------------ the ages
 const ERAS = [
-  { name: 'Stone Age', icon: '🔥', years: [-10000, -3000], need: 200, cost: 80, lvl: 2, desc: 'Your tribe gathers around the fire. Flatten the land so their camp can spread, and build hunting grounds and shrines from the Build tab.', color: '#d08a4a' },
-  { name: 'Bronze Age', icon: '🏺', years: [-3000, -800], need: 850, cost: 150, lvl: 3, desc: 'Farms and metal tools. Build farms and workshops so towns spread wider. You can now plant forests and inspire your people.', color: '#d8a85a' },
-  { name: 'Classical Age', icon: '🏛️', years: [-800, 500], need: 1700, cost: 220, lvl: 3, desc: 'Temples and philosophers, but also plague. Bless your people to heal them.', color: '#e9e2d2' },
-  { name: 'Medieval Age', icon: '🏰', years: [500, 1750], need: 3800, cost: 300, lvl: 3, desc: 'Castles and cathedrals rise. Fires and plagues still roam the land.', color: '#a88ad8' },
-  { name: 'Industrial Age', icon: '🏭', years: [1750, 1950], need: 6800, cost: 380, lvl: 4, desc: 'Factories boom. Pollution warms the planet: if its health falls, the seas will rise. Cleanse the skies, plant forests, raise the coasts.', color: '#c8704a' },
-  { name: 'Modern Age', icon: '🏙️', years: [1950, 2060], need: 10500, cost: 480, lvl: 4, desc: 'Cities of glass and planes in the sky. Storms and meteors grow dangerous: you can now terraform and deflect.', color: '#5fa8ff' },
-  { name: 'Space Age', icon: '🚀', years: [2060, 2200], need: 16000, cost: 650, lvl: 4, desc: 'The final age. Build the Starship and take your people to the stars.', color: '#5ff0ff' },
+  { name: 'Stone Age', icon: '🔥', years: [-10000, -3000], need: 170, cost: 80, lvl: 2, desc: 'Your tribe gathers around the fire. Flatten the land so their camp can spread, and build hunting grounds and shrines from the Build tab.', color: '#d08a4a' },
+  { name: 'Bronze Age', icon: '🏺', years: [-3000, -800], need: 750, cost: 150, lvl: 3, desc: 'Farms and metal tools. Build farms and workshops so towns spread wider. You can now plant forests and inspire your people.', color: '#d8a85a' },
+  { name: 'Classical Age', icon: '🏛️', years: [-800, 500], need: 1800, cost: 220, lvl: 3, desc: 'Temples and philosophers, but also plague. Bless your people to heal them.', color: '#e9e2d2' },
+  { name: 'Medieval Age', icon: '🏰', years: [500, 1750], need: 4300, cost: 300, lvl: 3, desc: 'Castles and cathedrals rise. Fires and plagues still roam the land.', color: '#a88ad8' },
+  { name: 'Industrial Age', icon: '🏭', years: [1750, 1950], need: 8500, cost: 380, lvl: 4, desc: 'Factories boom. Pollution warms the planet: if its health falls, the seas will rise. Cleanse the skies, plant forests, raise the coasts.', color: '#c8704a' },
+  { name: 'Modern Age', icon: '🏙️', years: [1950, 2060], need: 15000, cost: 480, lvl: 4, desc: 'Cities of glass and planes in the sky. Storms and meteors grow dangerous: you can now terraform and deflect.', color: '#5fa8ff' },
+  { name: 'Space Age', icon: '🚀', years: [2060, 2200], need: 24000, cost: 650, lvl: 4, desc: 'The final age. Build the Starship and take your people to the stars.', color: '#5ff0ff' },
 ];
 // every wonder you build leaves a lasting gift
 const PERKS = ['+15% knowledge forever', 'Every town can spread 2 hexes further', '+1 ✦ per second forever', '+25% food in every town', 'Buildings cost 25% less', '+25% knowledge forever', 'Victory'];
@@ -59,7 +59,7 @@ const RELICS = [
   { id: 'seed', icon: '🌱', name: 'Seed of Eden', fx: 'Every town can spread 2 hexes further' },
   { id: 'spear', icon: '🗡️', name: 'Spear of Heroes', fx: 'Your warriors fight 40% harder' },
   { id: 'chalice', icon: '🏆', name: 'Healing Chalice', fx: 'The planet slowly heals, and plague cannot spread between your towns' },
-  { id: 'compass', icon: '🧭', name: 'Star Compass', fx: 'Settlers and raiders are revealed; +25% food' },
+  { id: 'compass', icon: '🧭', name: 'Star Compass', fx: 'Your towns grow 25% faster' },
 ];
 const rel = (id) => G.relics?.includes(id);
 const SHAPERS = new Set(['level', 'raise', 'lower', 'terraform']);
@@ -69,7 +69,7 @@ const RES = [null,
   { id: 'gold', name: 'Gold', icon: '🪙', mana: 0.3, know: 0.1, land: true, n: 9, desc: '+0.3 ✦/s, +10% knowledge' },
   { id: 'fish', name: 'Fish', icon: '🐟', food: 0.35, land: false, n: 16, desc: '+35% food' },
   { id: 'spring', name: 'Sacred Spring', icon: '⛲', know: 0.3, land: true, n: 8, desc: '+30% knowledge' },
-  { id: 'ruins', name: 'Ancient Ruins', icon: '🏺', land: true, n: 7, desc: 'choose a relic' },
+  { id: 'ruins', name: 'Ancient Ruins', icon: '🏺', land: true, n: 5, desc: 'choose a relic' },
   { id: 'oil', name: 'Oil', icon: '🛢️', mana: 1, poll: 0.03, land: true, n: 10, era: 4, desc: '+1 ✦/s, but pollutes' },
 ];
 // choices that come up as you play: each card offers two paths
@@ -109,11 +109,11 @@ const BUILDINGS = [
   { id: 'library', name: 'Library', short: 'Library', icon: '📜', era: 2, cost: 120, fx: { know: 0.4 }, desc: '+40% knowledge for nearby towns.' },
   { id: 'aqueduct', name: 'Aqueduct', short: 'Aqueduct', icon: '💧', era: 2, cost: 120, fx: { size: 3, food: 0.2 }, desc: 'Fresh water: room for 3 more hexes and +20% food.' },
   { id: 'market', name: 'Market', short: 'Market', icon: '⚖️', era: 3, cost: 140, fx: { mana: 1, food: 0.1 }, desc: 'Trade brings +1 ✦ per second and a little extra food.' },
-  { id: 'castle', name: 'Castle', short: 'Castle', icon: '🏰', era: 3, cost: 180, fx: { defend: 1, size: 2 }, desc: 'Halves damage from fires and storms nearby. Room for 2 more hexes.' },
+  { id: 'castle', name: 'Castle', short: 'Castle', icon: '🏰', era: 3, cost: 130, fx: { defend: 1, size: 2, mana: 0.3 }, desc: 'Defends against raiders and war bands, halves fire and storm damage. +2 hexes, +✦.' },
   { id: 'university', name: 'University', short: 'University', icon: '🎓', era: 3, cost: 200, fx: { know: 0.6 }, desc: '+60% knowledge for nearby towns.' },
-  { id: 'factory', name: 'Factory', short: 'Factory', icon: '🏭', era: 4, cost: 200, fx: { size: 5, food: 0.2, poll: 0.06 }, desc: 'Room for 5 more hexes and +20% food, but it pollutes.' },
+  { id: 'factory', name: 'Factory', short: 'Factory', icon: '🏭', era: 4, cost: 240, fx: { size: 5, food: 0.2, poll: 0.06 }, desc: 'Room for 5 more hexes and +20% food, but it pollutes.' },
   { id: 'railway', name: 'Railway', short: 'Railway', icon: '🚂', era: 4, cost: 220, fx: { size: 2, global: 0.1 }, desc: 'Room for 2 more hexes nearby, and +10% knowledge everywhere (up to 5 stations).' },
-  { id: 'hospital', name: 'Hospital', short: 'Hospital', icon: '🏥', era: 5, cost: 240, fx: { health: 1, food: 0.3 }, desc: 'No plague nearby and +30% growth.' },
+  { id: 'hospital', name: 'Hospital', short: 'Hospital', icon: '🏥', era: 5, cost: 200, fx: { health: 1, food: 0.3, size: 2 }, desc: 'No plague nearby, +30% growth, room for 2 more hexes.' },
   { id: 'power', name: 'Power Plant', short: 'Power', icon: '⚡', era: 5, cost: 300, fx: { size: 6, poll: 0.03 }, desc: 'Room for 6 more hexes in nearby towns. A little pollution.' },
   { id: 'airport', name: 'Airport', short: 'Airport', icon: '✈️', era: 5, cost: 320, fx: { global: 0.15, mana: 1 }, desc: '+15% knowledge everywhere and +1 ✦ per second (up to 3 airports).' },
   { id: 'lab', name: 'Research Lab', short: 'Lab', icon: '🔬', era: 6, cost: 350, fx: { know: 1 }, desc: '+100% knowledge for nearby towns.' },
@@ -125,19 +125,22 @@ const RANGE = 3;
 // how far a town can spread (in hexes) in each age before buildings, people per hex, and the town size each wonder needs
 const BASE_SIZE = [5, 7, 9, 12, 16, 22, 28];
 const DENSITY = [5, 7, 9, 12, 16, 22, 30];
-const REQ = [4, 6, 8, 10, 13, 17, 21];
-const MAX_TOWNS = 16;
+const REQ = [4, 6, 9, 12, 15, 20, 25];
+const maxTowns = (era) => 8 + era * 3;
 // weapons of each age: a modern army beats a bronze one many times its size
-const TECH = [1, 1.5, 2.2, 3, 4.5, 6.5, 9];
+const TECH = [1, 1.4, 1.8, 2.3, 2.9, 3.6, 4.4];
 const DIFF = [
-  { name: 'Easy', rival: 0.65, disaster: 1.4, need: 0.85, war: -65 },
-  { name: 'Normal', rival: 0.85, disaster: 1, need: 1, war: -45 },
-  { name: 'Hard', rival: 1.05, disaster: 0.75, need: 1.15, war: -30 },
+  { name: 'Easy', rival: 0.75, disaster: 1.4, need: 0.85, war: -65 },
+  { name: 'Normal', rival: 1.05, disaster: 1, need: 1, war: -40 },
+  { name: 'Hard', rival: 1.25, disaster: 0.75, need: 1.15, war: -15 },
 ];
 const DF = () => DIFF[G.diff ?? 1];
 const needOf = (era) => Math.round(ERAS[era].need * DF().need);
 const PEOPLE_COL = [0x9a6a3a, 0xc8a060, 0xf2ede2, 0x6a4a8a, 0x3a3a4a, 0x3b82f6, 0xe6eef6];
-const POLLUTE = [0, 0, 0, 0, 0.015, 0.009, 0.004];
+const POLLUTE = [0, 0, 0, 0, 0.008, 0.005, 0.0025];
+// inspiration is capped by the age; what overflows turns into knowledge
+const manaCap = (era = G.era) => 400 + era * 200;
+function addMana(n) { G.mana += n; const c = manaCap(); if (G.mana > c) { G.know += (G.mana - c) * 0.5 * (1 + G.era); G.mana = c; } }
 
 // ------------------------------------------------------------------ the planet: an icosphere of columns
 const R = 5, STEP = 0.08, SEA0 = 3, MAXH = 11;
@@ -309,7 +312,7 @@ function computeFx() {
       const R = RES[r];
       s.fx.food += R.food || 0; s.fx.know += R.know || 0;
       W[s.tribe].mana += R.mana || 0; W[s.tribe].poll += R.poll || 0;
-      if (!s.tribe && RES[r].id === 'ruins' && !G.relicCells.includes(x)) { G.relicCells.push(x); setTimeout(() => offerRelic(x), 600); }
+      if (!s.tribe && RES[r].id === 'ruins' && !G.relicCells.includes(x)) { G.relicCells.push(x); { const sd = G.seed; setTimeout(() => G.seed === sd && offerRelic(x), 600); }; }
       if (!s.tribe && !s.seen?.has(x)) { (s.seen ||= new Set()).add(x); floatText(x, `${R.icon} ${R.name}!`, 'gold'); tip(`res${r}`, `${R.icon} Your town found ${R.name}: ${R.desc}.`, true); }
     }
     s.res = found;
@@ -371,7 +374,8 @@ function generate(seed) {
     const land = bfs(v, 4).filter(([x]) => h[x] > SEA0).length;
     if (land > bestScore) { bestScore = land; best = v; }
   }
-  for (const [x] of bfs(best, 2)) { setHeight(x, SEA0 + 2); tree[x] = 0; }
+  // a flat hearth with an uneven ring around it, so the first arrows show at once
+  for (const [x, d] of bfs(best, 2)) { setHeight(x, d < 2 ? SEA0 + 2 : SEA0 + 2 + (x % 3 === 0 ? 1 : x % 3 === 1 ? -1 : 0)); tree[x] = 0; }
   return best;
 }
 
@@ -1288,6 +1292,7 @@ function shapeWith(fn, v) {
   const area = bfs(v, 3), before = area.map(([x]) => h[x]), cols = area.map(([x]) => cellColor(x).clone());
   const ok = fn(v);
   if (!ok) return false;
+  if (area.some(([x], i) => h[x] !== before[i] && (tileKind[x] === 4 || tileKind[x] === 5))) { area.forEach(([x], i) => { h[x] = before[i]; }); terrainDirty = true; return false; }
   const changed = new Set();
   area.forEach(([x, d], i) => { if (h[x] !== before[i]) { changed.add(x); shatterCell(x, h[x] > before[i], x === v ? 1 : 0.45, cols[i]); } });
   if (changed.size) crushAt(changed);
@@ -1336,10 +1341,10 @@ function collectWisp(v) {
   if (!w) return false;
   wisps.splice(wisps.indexOf(w), 1);
   const gain = 25 + G.era * 15;
-  G.mana = Math.min(999, G.mana + gain);
+  addMana(gain); G.know += needOf(G.era) * 0.03;
   const p = posOf(w.v, 0.25);
   emit(p, 0xffe27a, 40, 0.8, 0.5, 1.1, -0.2); emit(p, 0xffffff, 15, 1.2, 0.3, 0.5, 0);
-  floatText(w.v, `✨ +${gain}✦`, 'gold');
+  floatText(w.v, `✨ +${gain}✦ +📜`, 'gold');
   sfx.grow(); bump($('mana').closest('.orb'));
   return true;
 }
@@ -1412,7 +1417,8 @@ const NAME_A = ['Ash', 'Bel', 'Cor', 'Dun', 'El', 'Fen', 'Gal', 'Har', 'Ir', 'Ke
 const NAME_B = ['ford', 'haven', 'dale', 'wick', 'mere', 'stead', 'holm', 'ton', 'brook', 'gate', 'moor', 'vale', 'crest', 'field', 'port', 'by'];
 const RED_A = ['Kar', 'Vor', 'Zul', 'Rhak', 'Mor', 'Gra', 'Tor', 'Xa', 'Dra', 'Sku'];
 const RED_B = ['goth', 'zar', 'mok', 'thul', 'rak', 'gar', 'vex', 'dun'];
-const genName = (tribe) => tribe ? RED_A[(rnd() * RED_A.length) | 0] + RED_B[(rnd() * RED_B.length) | 0] : NAME_A[(rnd() * NAME_A.length) | 0] + NAME_B[(rnd() * NAME_B.length) | 0];
+const genName1 = (tribe) => tribe ? RED_A[(rnd() * RED_A.length) | 0] + RED_B[(rnd() * RED_B.length) | 0] : NAME_A[(rnd() * NAME_A.length) | 0] + NAME_B[(rnd() * NAME_B.length) | 0];
+function genName(tribe) { for (let k = 0; k < 12; k++) { const n = genName1(tribe); if (!G.settlements?.some((x) => x.name === n)) return n; } return genName1(tribe); }
 const newTown = (v, pop, tiles = [], tribe = 0) => ({ name: genName(tribe), v, pop, tiles, tribe, res: [], seen: new Set(), level: 1, grow: 0, sick: 0, inspire: 0, cool: 6, fert: 1, growT: 2, stuck: 0, fx: { food: 0, know: 0, size: 0, health: 0, defend: 0 }, fxN: {} });
 function found(v, pop, tribe = 0) {
   const s = newTown(v, pop, [], tribe);
@@ -1470,7 +1476,7 @@ function updateWalkers(dt) {
       if (w.path.length) { w.to = w.path.shift(); continue; }
       G.walkers.splice(i, 1);
       const gain = Math.round(15 + G.era * 8);
-      G.mana = Math.min(999, G.mana + gain); G.rival.mana = Math.min(999, G.rival.mana + gain * 0.5); G.rival.rel = Math.min(100, G.rival.rel + 1.5);
+      addMana(gain); G.rival.mana = Math.min(999, G.rival.mana + gain * 0.5); G.rival.rel = Math.min(100, G.rival.rel + 1.5);
       floatText(w.from, `🐪 Trade +${gain}✦`, 'gold');
       tip('trade', '🐪 Trade caravans travel while you are at peace with the Crimson. Allies trade more often.', true);
       continue;
@@ -1586,7 +1592,7 @@ function applyPower(id, v) {
     if (!ok) toast('No settlement there to inspire');
   } else if (id === 'bless') {
     for (const [x] of area) burn[x] = 0;
-    for (const s of G.settlements) if (area.some(([x]) => x === s.v)) { s.unrest = 0; s.sick = 0; s.pop = Math.min(capOf(s), s.pop * 1.1 + 2); emit(posOf(s.v, 0.2), 0xffffff, 20, 0.6, 0.4, 1.2, -0.2); }
+    for (const s of G.settlements) if (area.some(([x]) => x === s.v)) { s.unrest = s.riot ? 0 : -90; s.sick = 0; s.pop = Math.min(capOf(s), s.pop * 1.1 + 2); emit(posOf(s.v, 0.2), 0xffffff, 20, 0.6, 0.4, 1.2, -0.2); }
     for (const st of storms) if (st.dir.distanceTo(DIRS[v]) < 0.4) st.life = 0;
     terrainDirty = true;
   } else if (id === 'cleanse') {
@@ -1653,7 +1659,7 @@ function nextDisaster() {
   const yours = G.settlements.filter((t) => !t.tribe);
   if (yours.length < 2) return;
   if (e <= 3 && treeCount() > 10) pool.push('fire');
-  if (e >= 1 && e <= 4) pool.push('plague');
+  if (e >= 1 && e <= 5) pool.push('plague');
   if (e >= 2) pool.push('quake');
   if (e >= 5) pool.push('storm', 'meteor');
   if (e >= 2) pool.push('volcano');
@@ -1795,7 +1801,12 @@ function simulate(dt) {
   for (const s of G.settlements) T[s.tribe].n++;
   for (const w of G.walkers) if (w.war === -1) T[w.tribe].n++;
   for (const s of G.settlements.slice()) {
-    if (!isLand(s.v)) { removeSettlement(s, s.tribe ? '' : '🌊 A settlement was swallowed by the sea!'); continue; }
+    if (!isLand(s.v)) {
+      const dry = bfs(s.v, 4).find(([x]) => isLand(x));
+      if (dry && s.pop > 4) spawnWalker(dry[0], s.pop * 0.5, s.tribe);
+      removeSettlement(s, s.tribe ? '' : `🌊 ${s.name} was swallowed by the sea! ${dry && s.pop > 4 ? 'Its survivors flee inland.' : ''}`);
+      continue;
+    }
     if (s.pop < 0.5) { removeSettlement(s, s.tribe ? '' : 'A settlement has died out.'); continue; }
     s.cool -= dt; s.inspire = Math.max(0, s.inspire - dt);
     const cap = capOf(s);
@@ -1818,7 +1829,7 @@ function simulate(dt) {
     }
     if (s.sick <= 0) s.pop = Math.min(cap, s.pop + (s.pop * 0.045 * s.fert * (1 + s.fx.food) + 0.25) * dt);
     // when it cannot spread any more, some people leave to found a colony
-    if (s.pop >= cap * 0.98 && s.cool <= 0 && (s.tiles.length >= maxTiles(s) || s.stuck >= 2) && G.walkers.length < 30 && T[s.tribe].n < MAX_TOWNS) {
+    if (s.pop >= cap * 0.98 && s.cool <= 0 && (s.tiles.length >= maxTiles(s) || s.stuck >= 2) && G.walkers.length < 30 && T[s.tribe].n < maxTowns(eraOfTribe(s.tribe))) {
       s.cool = 25;
       spawnWalker(s.v, s.pop * 0.3, s.tribe);
       s.pop *= 0.7;
@@ -1837,19 +1848,22 @@ function simulate(dt) {
   if (fxT <= 0) { fxT = 1; computeFx(); }
   // allies share what they learn and trade
   G.know += kn(T[0], G.era) * (1 + worldFx[0].global + (perk(0) ? 0.15 : 0) + (perk(5) ? 0.25 : 0) + (rel('scroll') ? 0.2 : 0) + (G.golden > 0 ? 0.5 : 0)) * (ally ? 1.15 : 1) * dt;
-  G.mana = Math.min(999, G.mana + (0.8 + Math.sqrt(pop) * 0.22 + worldFx[0].mana + (ally ? 0.5 : 0) + (perk(2) ? 1 : 0) + (rel('idol') ? 1 : 0)) * (G.golden > 0 ? 1.5 : 1) * dt);
+  addMana((0.8 + Math.pow(pop, 0.35) * 0.35 + worldFx[0].mana + (ally ? 0.5 : 0) + (perk(2) ? 1 : 0) + (rel('idol') ? 1 : 0)) * (G.golden > 0 ? 1.5 : 1) * dt);
   if (R.alive) {
-    R.know += kn(T[1], R.era) * (1 + worldFx[1].global) * (ally ? 1.15 : 1) * DF().rival * dt;
-    R.mana = Math.min(999, R.mana + (0.8 + Math.sqrt(T[1].pop) * 0.22 + worldFx[1].mana) * dt);
+    R.know += kn(T[1], R.era) * (1 + worldFx[1].global) * (ally ? 1.15 : 1) * DF().rival * (1 + 0.6 * Math.max(0, G.era - R.era)) * dt;
+    R.mana = Math.min(manaCap(G.rival.era), R.mana + (0.8 + Math.pow(T[1].pop, 0.35) * 0.35 + worldFx[1].mana) * dt);
   }
   // buildings on flooded hexes are lost
   for (const b of G.buildings.slice()) if (!isLand(b.v)) { G.buildings.splice(G.buildings.indexOf(b), 1); toast(`🌊 The ${BD[b.id].name} was lost to the sea!`, b.v); setDirty = true; layoutBuildings(); }
   G.stats.peak = Math.max(G.stats.peak, pop);
   // the planet's health: pollution against forests and time
-  poll = Math.pow(pop, 0.4) * POLLUTE[G.era] + Math.pow(T[1].pop, 0.4) * POLLUTE[R.era];
+  poll = Math.pow(pop, 0.4) * POLLUTE[G.era] + Math.pow(T[1].pop, 0.4) * POLLUTE[R.era] * 0.5;
   const before = G.health;
-  G.health = clamp(G.health + (0.05 + treeCount() * 0.0012 + worldFx[0].clean + worldFx[1].clean + (rel('chalice') ? 0.06 : 0) - poll - worldFx[0].poll - worldFx[1].poll) * dt, 0, 100);
-  const seaTarget = SEA0 + (G.health < 70) + (G.health < 45) + (G.health < 25);
+  G.health = clamp(G.health + (0.1 + treeCount() * 0.0012 + worldFx[0].clean + worldFx[1].clean + (rel('chalice') ? 0.06 : 0) - poll - Math.sqrt(worldFx[0].poll * 0.06) - Math.sqrt(worldFx[1].poll * 0.03)) * dt, 0, 100);
+  // the seas rise at 70/45/25% health but only retreat 6% above that, and they warn first
+  const lvDown = SEA0 + (G.health < 70) + (G.health < 45) + (G.health < 25), lvUp = SEA0 + (G.health < 76) + (G.health < 51) + (G.health < 31);
+  const seaTarget = lvDown > G.sea ? lvDown : lvUp < G.sea ? lvUp : G.sea;
+  if (SEA0 + (G.health < 75) + (G.health < 50) + (G.health < 30) > G.sea && G.health < before && G.elapsed - (G.seaWarn ?? -99) > 25) { G.seaWarn = G.elapsed; toast('🌊 The ice is cracking: the seas will rise soon! 🌿 Cleanse the skies and plant forests.'); }
   if (seaTarget !== G.sea) {
     const rising = seaTarget > G.sea;
     G.sea = seaTarget;
@@ -1923,7 +1937,7 @@ function updateRival(dt) {
   if (R.status === 'war') {
     R.warT += dt;
     R.attackT -= dt;
-    if (R.attackT <= 0) { R.attackT = 35 + rnd() * 25; rivalAttack(mine); }
+    if (R.attackT <= 0) { R.attackT = (strength(1) > strength(0) * 0.7 ? 22 : 35) + rnd() * 15; rivalAttack(mine); }
     R.godT = (R.godT ?? 40) - dt;
     if (R.godT <= 0) {
       R.godT = (45 + rnd() * 30) * DF().disaster;
@@ -1940,9 +1954,9 @@ function rivalWonder(s) {
   const R = G.rival;
   R.mana -= ERAS[R.era].cost;
   const spots = bfs(s.v, 3).filter(([x, d]) => d === 3 && isLand(x) && !tileKind[x]).map(([x]) => x);
-  const v = spots.length ? spots[0] : NBR[s.v][0];
+  const v = spots.length ? spots[0] : (bfs(s.v, 6).find(([x, d]) => d >= 2 && isLand(x) && !tileKind[x] && !G.wonders.some((o) => o.v === x)) || [NBR[s.v][0]])[0];
   const w = { era: R.era, v, tribe: 1 };
-  G.wonders.push(w);
+  G.wonders.push(w); assignTiles();
   rebuildCrowd(); layoutWonders(); setDirty = true;
   if (R.era === 6) { launch(w); return; }
   toast(`🔴 The Crimson built the ${WONDERS[R.era]} and entered the ${ERAS[R.era + 1].name}!${R.era === G.era ? ' Yours will now cost 30% more.' : ''}`, v);
@@ -1953,16 +1967,16 @@ function rivalWonder(s) {
 function diplomacyTick(mine) {
   const R = G.rival;
   let tension = 0;
-  for (const a of mine) for (const b of G.settlements) if (!b.tribe && DIRS[a.v].distanceTo(DIRS[b.v]) < 0.45) tension++;
-  if (R.status === 'ally') R.rel += 0.12 - Math.min(tension, 4) * 0.02;
-  else if (R.status === 'peace') R.rel += tension ? -0.025 * Math.min(tension, 5) : 0.04;
+  if (G.elapsed > 300) for (const a of mine) for (const b of G.settlements) if (!b.tribe && DIRS[a.v].distanceTo(DIRS[b.v]) < 0.45) tension++;
+  if (R.status === 'ally') R.rel += 0.03 - Math.min(tension, 4) * 0.03;
+  else if (R.status === 'peace') R.rel += tension ? -0.03 * Math.min(tension, 5) : R.era < G.era && G.diff === 2 ? -0.02 : 0.015;
   else R.rel += 0.08;
   R.rel = clamp(R.rel, -100, 100);
   const ps = strength(0), rs = strength(1);
   if (R.offer) return;
-  if (R.status === 'peace' && R.rel < DF().war && rs > ps * 0.8) declareWar(true);
+  if (R.status === 'peace' && R.rel < DF().war && rs > ps * 0.8 && G.elapsed > 240) declareWar(true);
   else if (R.status === 'war' && R.warT > 100 && (rs < ps * 0.6 || R.rel > -20)) makeOffer('peace', '🕊️ The Crimson ask for peace.');
-  else if (R.status === 'peace' && R.rel > 55 && G.elapsed - R.asked > 120) { R.asked = G.elapsed; makeOffer('ally', '🤝 The Crimson propose an alliance: shared knowledge and trade.'); }
+  else if (R.status === 'peace' && R.rel > 45 && G.elapsed - R.asked > 120) { R.asked = G.elapsed; makeOffer('ally', '🤝 The Crimson propose an alliance: shared knowledge and trade.'); }
   else if (R.status === 'ally' && R.rel < 0) { R.status = 'peace'; toast('💔 The Crimson broke the alliance.'); renderDiplo(); }
 }
 function makeOffer(kind, msg) { G.rival.offer = kind; toast(msg + ' Tap 🕊️ to answer.'); sfx.alarm(); renderDiplo(); }
@@ -1988,20 +2002,23 @@ function rivalAttack(mine) {
   const targets = G.settlements.filter((s) => !s.tribe);
   if (!mine.length || !targets.length) return;
   const from = mine.reduce((a, s) => (s.pop > a.pop ? s : a));
-  const target = targets.reduce((a, s) => (DIRS[s.v].distanceTo(DIRS[from.v]) < DIRS[a.v].distanceTo(DIRS[from.v]) ? s : a));
+  // they strike the weakest of your nearer towns
+  const near = targets.slice().sort((a, b) => DIRS[a.v].distanceTo(DIRS[from.v]) - DIRS[b.v].distanceTo(DIRS[from.v])).slice(0, 4);
+  const target = near.reduce((a, s) => (s.pop * (s.fx.defend ? 1.6 : 1) < a.pop * (a.fx.defend ? 1.6 : 1) ? s : a));
   if (sendBand(from, target, 1)) toast('⚔️ A Crimson war band is marching on your town!', target.v);
 }
 function battle(w) {
   const t = owner[w.war] >= 0 ? G.settlements[owner[w.war]] : null;
   const home = () => { const n = nearestSettlement(w.from, w.tribe); if (n) n.pop += w.pop; };
   if (!t || t.tribe === w.tribe) { home(); return; }
-  const att = w.pop * TECH[eraOfTribe(w.tribe)] * (!w.tribe && rel('spear') ? 1.4 : 1), def = t.pop * TECH[eraOf(t)] * 0.6 * (t.fx.defend ? 1.6 : 1);
+  const att = w.pop * TECH[eraOfTribe(w.tribe)] * (!w.tribe && rel('spear') ? 1.4 : 1), def = t.pop * TECH[eraOf(t)] * 0.6 * (t.fx.defend ? 1.6 : 1) * (Object.keys(t.fxN || {}).length ? 1.25 : 1) * (G.settlements.filter((x) => x.tribe === t.tribe).length <= 2 ? 2.5 : 1);
   emit(posOf(t.v, 0.15), 0xff6a3a, 40, 0.8, 0.5, 1, 0.4); emit(posOf(t.v, 0.15), 0xdddddd, 20, 0.5, 0.4, 1.2, 0);
   sfx.boom(); quakeT = Math.max(quakeT, 0.4);
   G.stats.battles = (G.stats.battles || 0) + 1;
   if (att > def) {
     if (!w.tribe) G.stats.captured = (G.stats.captured || 0) + 1;
-    t.tribe = w.tribe; t.pop = Math.max(3, (att - def) / TECH[eraOfTribe(w.tribe)]); t.sick = 0; t.inspire = 0;
+    t.tribe = w.tribe; t.pop = Math.max(3, w.pop * 0.5, (att - def) / TECH[eraOfTribe(w.tribe)]); t.sick = 0; t.inspire = 0; t.unrest = 0; t.riot = false;
+    if (!w.tribe) { const loot = 40 + G.era * 25; addMana(loot); G.know += needOf(G.era) * 0.05; floatText(t.v, `💰 +${loot}✦ +📜`, 'gold'); }
     assignTiles(); computeFx(); terrainDirty = true;
     toast(w.tribe ? '🔥 The Crimson captured one of your towns!' : '🏆 Victory! You captured a Crimson town.', t.v);
     floatText(t.v, w.tribe ? '🔥 Lost!' : '🏆 Captured!', w.tribe ? 'red' : 'gold');
@@ -2036,14 +2053,14 @@ $('d-close').addEventListener('click', () => { $('diplo').hidden = true; if (G.m
 $('d-gift').addEventListener('click', () => {
   const R = G.rival, cost = R.status === 'war' ? 150 : 100;
   if (G.mana < cost) { toast('Not enough inspiration ✦'); sfx.deny(); return; }
-  G.mana -= cost; R.mana = Math.min(999, R.mana + cost * 0.5); R.rel = Math.min(100, R.rel + (R.status === 'war' ? 25 : 15));
+  G.mana -= cost; R.mana = Math.min(manaCap(G.rival.era), R.mana + cost * 0.5); R.rel = Math.min(100, R.rel + (R.status === 'war' ? 25 : 15));
   toast('🎁 The Crimson accept your gift.'); sfx.power(); renderDiplo(); updateHud();
 });
 $('d-ally').addEventListener('click', () => {
   const R = G.rival;
   if (R.status === 'ally') { R.status = 'peace'; R.rel -= 30; toast('💔 You broke the alliance.'); }
-  else if (R.rel >= 40) { R.status = 'ally'; R.offer = null; toast('🤝 You are now allies with the Crimson!'); sfx.fanfare(); }
-  else { R.rel -= 2; toast(`The Crimson refuse: they need to trust you more (${relLabel(40)}).`); sfx.deny(); }
+  else if (R.rel >= 60) { R.status = 'ally'; R.offer = null; toast('🤝 You are now allies with the Crimson!'); sfx.fanfare(); }
+  else { R.rel -= 2; toast(`The Crimson refuse: they need to trust you more (${relLabel(60)}).`); sfx.deny(); }
   renderDiplo();
 });
 $('d-peace').addEventListener('click', () => {
@@ -2073,8 +2090,8 @@ const MISSIONS = [
   { text: 'Reach a 💎 treasure', goal: 1, val: () => ownTowns().reduce((a, t) => a + (t.res?.length || 0), 0), reward: 80 },
   { text: 'Have 6 towns', goal: 6, val: () => ownTowns().length, reward: 100 },
   { text: 'Place 5 buildings', goal: 5, val: () => G.buildings.filter((b) => !b.tribe).length, reward: 120 },
-  { text: 'Ally with the Crimson, or capture a town', goal: 1, val: () => (G.rival.status === 'ally' || (G.stats.captured || 0) > 0 ? 1 : 0), reward: 150 },
   { text: 'Reach 2,000 people', goal: 2000, val: () => totalPop(0), reward: 150 },
+  { text: 'Ally with the Crimson, or capture a town', goal: 1, val: () => (G.rival.status === 'ally' || G.rival.rel >= 50 || (G.stats.captured || 0) > 0 ? 1 : 0), reward: 150 },
   { text: 'Own 4 treasures', goal: 4, val: () => ownTowns().reduce((a, t) => a + (t.res?.length || 0), 0), reward: 200 },
   { text: 'Reach the Industrial Age', goal: 4, val: () => G.era, reward: 200 },
   { text: 'Reach 8,000 people', goal: 8000, val: () => totalPop(0), reward: 250 },
@@ -2090,12 +2107,15 @@ function updateMission() {
   $('mission').hidden = false;
   $('m-text').textContent = m.text;
   $('m-prog').textContent = m.goal > 1 ? (m.goal >= 1000 ? `${Math.floor((v / m.goal) * 100)}%` : `${v}/${m.goal}`) : '0/1';
-  if (G.q !== lastMission) { lastMission = G.q; openMission(5000); }
+  if (G.q !== lastMission) { lastMission = G.q; openMission(G.q < 2 ? 9000 : 6000); }
   $('m-fill').style.width = `${(v / m.goal) * 100}%`;
   $('m-reward').textContent = `+${m.reward}✦`;
+  if (G.mode !== 'play') return;
+  if (G.qT === undefined || G.q !== G.qLast || G.qT > G.elapsed) { G.qT = G.elapsed; G.qLast = G.q; }
+  if (v < m.goal && G.elapsed - G.qT > 180) { G.q++; toast(`🎯 New mission (skipped: ${m.text})`); return; }
   if (v >= m.goal) {
     G.q++;
-    G.mana = Math.min(999, G.mana + m.reward);
+    addMana(m.reward);
     floatText(null, `🎯 ${m.text}  +${m.reward}✦`, 'gold');
     bump($('mission')); sfx.grow();
     if (G.q % 3 === 0) celebrate(40);
@@ -2105,14 +2125,15 @@ function updateMission() {
 // ------------------------------------------------------------------ event cards
 const myTowns = () => G.settlements.filter((t) => !t.tribe).sort((a, b) => b.pop - a.pop);
 function gainKnow(f) { const n = Math.round(needOf(G.era) * f); G.know += n; floatText(null, `+${fmt(n)} 📜`, 'blue'); }
-function gainMana(n) { G.mana = Math.min(999, G.mana + n); floatText(null, `+${n} ✦`, 'gold'); }
+const evScale = () => 1 + G.era * 0.4;
+function gainMana(n) { n = Math.round(n * evScale()); addMana(n); floatText(null, `+${n} ✦`, 'gold'); }
 function growTowns(f) { for (const t of myTowns()) t.pop = Math.max(1, Math.min(capOf(t) * 1.2, t.pop * (1 + f))); floatText(null, `${f > 0 ? '+' : ''}${Math.round(f * 100)}% 👥`, f > 0 ? 'green' : 'red'); }
 let curEvent = null;
 function maybeEvent(dt) {
   G.eventT -= dt;
   if (G.eventT > 0 || G.mode !== 'play' || !G.started) return;
   if (!$('goal-sheet').hidden || !$('diplo').hidden) return;
-  G.eventT = 110 + rnd() * 70;
+  G.eventT = 75 + rnd() * 45;
   const pool = EVENTS.filter((e) => G.era >= e.era[0] && G.era <= e.era[1] && (!e.cond || e.cond()) && !G.seenEvents.slice(-4).includes(e.id));
   if (!pool.length) return;
   curEvent = pool[(rnd() * pool.length) | 0];
@@ -2120,15 +2141,16 @@ function maybeEvent(dt) {
   $('ev-icon').textContent = curEvent.icon;
   $('ev-title').textContent = curEvent.title;
   $('ev-text').textContent = curEvent.text;
-  $('ev-a').innerHTML = `${curEvent.a.label}<small>${curEvent.a.fx}</small>`;
-  $('ev-b').innerHTML = `${curEvent.b.label}<small>${curEvent.b.fx}</small>`;
+  const fxOf = (c) => c.fx.replace(/\+(\d+) ✦/, (m, n) => `+${Math.round(n * evScale())} ✦`);
+  const costOf = (c) => +((c.fx.match(/−(\d+) ✦/) || [])[1] || 0);
+  for (const k of ['a', 'b']) { const c = curEvent[k]; $('ev-' + k).innerHTML = `${c.label}<small>${fxOf(c)}</small>`; $('ev-' + k).disabled = G.mana < costOf(c); }
   $('event').hidden = false;
   G.mode = 'event';
   sfx.fanfare();
 }
 function offerRelic(x) {
-  if (G.mode !== 'play' || !$('goal-sheet').hidden || !$('event').hidden || !$('diplo').hidden) { setTimeout(() => offerRelic(x), 2500); return; }
-  const pool = RELICS.filter((r) => !G.relics.includes(r.id));
+  if (G.mode !== 'play' || !$('goal-sheet').hidden || !$('event').hidden || !$('diplo').hidden) { const sd = G.seed; setTimeout(() => G.seed === sd && offerRelic(x), 2500); return; }
+  const pool = RELICS.filter((r) => !G.relics.includes(r.id) && (r.id !== 'spear' || G.rival.status === 'war' || G.era >= 2));
   if (pool.length < 1) return;
   const a = pool.splice((rnd() * pool.length) | 0, 1)[0], b = pool.length ? pool[(rnd() * pool.length) | 0] : a;
   curEvent = {
@@ -2138,6 +2160,7 @@ function offerRelic(x) {
   $('ev-icon').textContent = '🏺';
   $('ev-title').textContent = 'Ancient Ruins';
   $('ev-text').textContent = 'Your people dig through the ruins of a forgotten people and find two relics. Only one can be carried home.';
+  $('ev-a').disabled = $('ev-b').disabled = false;
   $('ev-a').innerHTML = `${a.icon} ${a.name}<small>${a.fx}</small>`;
   $('ev-b').innerHTML = `${b.icon} ${b.name}<small>${b.fx}</small>`;
   $('event').hidden = false;
@@ -2173,7 +2196,7 @@ function spawnRaid() {
   const start = coast[(rnd() * coast.length) | 0];
   const path = pathTo(start, target.v);
   if (!path) return;
-  const size = 4 + G.era * 3 + Math.floor(G.elapsed / 120), pop = Math.round(target.pop * (0.35 + rnd() * 0.3) + size);
+  const size = 6 + G.era * 4 + Math.floor(G.elapsed / 90), pop = Math.round(target.pop * (0.35 + rnd() * 0.3) + size);
   raiders.push({ from: start, to: start, path, t: 0, pop, n: Math.min(9, 3 + Math.floor(pop / 15)), target: target.v });
   alarm(`⚔️ Raiders land on the coast and march on ${target.name}! Sink the land under them to drown them.`, start);
   tip('raid', '💡 Lower or Level the hexes in front of the raiders: if their path turns to sea, they drown.', true);
@@ -2185,15 +2208,16 @@ function updateRaiders(dt) {
   }
   for (let i = raiders.length - 1; i >= 0; i--) {
     const r = raiders[i];
-    if (!isLand(r.from) || (r.t > 0.3 && !isLand(r.to)) || r.pop < 1) {
+    if (!isLand(r.from) || r.pop < 1) {
       raiders.splice(i, 1);
       const p = posOf(r.from, 0.03);
       emit(p, 0xbfe6ff, 40, 0.8, 0.5, 0.9, 1); emit(p, 0xffffff, 15, 0.5, 0.3, 0.6, 0.6);
       const gain = 30 + G.era * 15;
-      G.mana = Math.min(999, G.mana + gain);
+      addMana(gain);
       floatText(r.from, `🌊 Raiders drowned! +${gain}✦`, 'gold'); sfx.boom();
       continue;
     }
+    if (r.from !== r.to && !isLand(r.to)) { const np = pathTo(r.from, r.target); if (np && np.length) { r.path = np; r.to = r.path.shift(); r.t = 0; } else { r.pop = 0; } continue; }
     if (r.t < 1 && r.from !== r.to) { r.t += dt * 0.45; continue; }
     r.from = r.to; r.t = 0;
     if (r.path.length) {
@@ -2240,15 +2264,16 @@ const OMENS = [
   { text: 'Found a new town', time: 100, base: () => G.settlements.filter((x) => !x.tribe).length, ok: (b) => G.settlements.filter((x) => !x.tribe).length > b },
   { text: 'Grow a town by 3 hexes', time: 90, base: () => Math.max(0, ...G.settlements.filter((x) => !x.tribe).map(sizeOf)), ok: (b) => Math.max(0, ...G.settlements.filter((x) => !x.tribe).map(sizeOf)) >= b + 3 },
   { text: 'Place 2 buildings', time: 90, base: () => G.buildings.filter((x) => !x.tribe).length, ok: (b) => G.buildings.filter((x) => !x.tribe).length >= b + 2 },
-  { text: 'Level 25 hexes', time: 60, base: () => G.qc.shape, ok: (b) => G.qc.shape >= b + 25 },
-  { text: 'Gather 300 ✦', time: 80, base: () => Math.floor(G.mana), ok: (b) => G.mana >= Math.min(999, b + 300) },
+  { text: 'Level 30 hexes', time: 60, base: () => G.qc.shape, ok: (b) => G.qc.shape >= b + 30 },
+  { text: 'Gather 300 ✦', time: 80, cond: () => G.mana < manaCap() - 320, base: () => Math.floor(G.mana), ok: (b) => G.mana >= Math.min(manaCap() - 5, b + 300) },
 ];
 function updateOmen(dt) {
   if (G.mode !== 'play') return;
   if (!G.omen) {
     G.omenT -= dt;
     if (G.omenT <= 0 && G.elapsed > 90) {
-      const i = (rnd() * OMENS.length) | 0;
+      const okO = OMENS.map((o, k) => k).filter((k) => !OMENS[k].cond || OMENS[k].cond());
+      const i = okO[(rnd() * okO.length) | 0];
       G.omen = { i, base: OMENS[i].base(), left: OMENS[i].time };
       toast(`⏳ An omen! ${OMENS[i].text} in ${OMENS[i].time}s for a great reward, or the gods will be displeased.`);
       sfx.alarm();
@@ -2261,16 +2286,19 @@ function updateOmen(dt) {
   $('omen').hidden = false;
   $('omen').textContent = `⏳ ${O.text} · ${Math.ceil(o.left)}s`;
   if (O.ok(o.base)) {
-    const gain = 120 + G.era * 50;
-    G.mana = Math.min(999, G.mana + gain); G.know += needOf(G.era) * 0.15;
-    floatText(null, `⏳ Omen fulfilled! +${gain}✦ +📜`, 'gold'); celebrate(50); sfx.fanfare();
-    G.omen = null; G.omenT = 130 + rnd() * 80;
+    G.omenStreak = (G.omenStreak || 0) + 1;
+    const k = 1 + 0.5 * (G.omenStreak - 1), gain = Math.round((120 + G.era * 50) * k);
+    addMana(gain); G.know += needOf(G.era) * 0.15 * k;
+    floatText(null, `⏳ Omen fulfilled! +${gain}✦ +📜${G.omenStreak > 1 ? `  🔥 streak ×${G.omenStreak}` : ''}`, 'gold'); celebrate(50); sfx.fanfare();
+    if (G.omenStreak % 3 === 0 && G.golden <= 0) { G.golden = 45; document.body.classList.add('golden'); toast('🌟 Three omens in a row: a GOLDEN AGE!'); celebrate(80); }
+    G.omen = null; G.omenT = 90 + rnd() * 60;
   } else if (o.left <= 0) {
     const mine = G.settlements.filter((x) => !x.tribe);
     const victim = mine[(rnd() * mine.length) | 0];
-    if (victim) { victim.pop *= 0.75; floatText(victim.v, '⚡ The gods are displeased', 'red'); emit(posOf(victim.v, 0.6), 0xbfd8ff, 30, 1.5, 0.3, 0.4, 2); }
+    G.omenStreak = 0;
+    if (victim) { victim.pop *= 0.65; floatText(victim.v, '⚡ The gods are displeased', 'red'); emit(posOf(victim.v, 0.6), 0xbfd8ff, 30, 1.5, 0.3, 0.4, 2); }
     toast('⚡ The omen failed. Lightning strikes your people.'); sfx.boom();
-    G.omen = null; G.omenT = 130 + rnd() * 80;
+    G.omen = null; G.omenT = 90 + rnd() * 60;
   }
 }
 
@@ -2291,8 +2319,8 @@ function updateMood(dt) {
   for (const x of mine) {
     const content = Object.keys(x.fxN || {}).length > 0 || x.inspire > 0 || G.golden > 0;
     if (sizeOf(x) >= 10 && !content) x.unrest = (x.unrest || 0) + dt; else x.unrest = Math.max(0, (x.unrest || 0) - dt * 3);
-    if (!x.riot && x.unrest > 75) { x.riot = true; toast(`😠 ${x.name} riots! It makes no knowledge until you Bless it or build near it.`, x.v); sfx.alarm(); }
-    if (x.riot && x.unrest <= 0) { x.riot = false; floatText(x.v, `😊 ${x.name} is calm again`, 'green'); }
+    if (!x.riot && x.unrest > 75 + ((x.v * 37) % 60)) { x.riot = true; toast(`😠 ${x.name} riots! It makes no knowledge until you Bless it or build near it.`, x.v); sfx.alarm(); }
+    if (x.riot && x.unrest <= 0.5) { x.riot = false; floatText(x.v, `😊 ${x.name} is calm again`, 'green'); }
     if (x.riot) { x.pop -= x.pop * dt * 0.004; if (rnd() < dt * 0.5) emit(posOf(x.v, 0.2), 0xff4a3a, 2, 0.3, 0.2, 0.8, -0.1); }
   }
 }
@@ -2307,13 +2335,13 @@ function buildWonder() {
   const r = wonderReady(), e = ERAS[G.era];
   if (!r.know || !r.mana || !r.level) { sfx.deny(); return; }
   G.mana -= wCost(G.era);
-  if (!G.wonders.some((w) => w.tribe === 1 && w.era === G.era)) { const bonus = 60 + G.era * 30; setTimeout(() => { G.mana = Math.min(999, G.mana + bonus); floatText(null, `🏁 First to build it! +${bonus}✦`, 'gold'); }, 1200); }
+  if (!G.wonders.some((w) => w.tribe === 1 && w.era === G.era)) { const bonus = 60 + G.era * 30; const sd = G.seed; setTimeout(() => { if (G.seed !== sd) return; addMana(bonus); floatText(null, `🏁 First to build it! +${bonus}✦`, 'gold'); }, 1200); }
   // the wonder stands on flat ground two steps from the town
   const s = r.best;
   const spots = bfs(s.v, 3).filter(([x, d]) => d === 3 && isLand(x) && !tileKind[x]).map(([x]) => x).sort((a, b) => Math.abs(h[a] - h[s.v]) - Math.abs(h[b] - h[s.v]));
-  const v = spots.length ? spots[0] : NBR[s.v][0];
+  const v = spots.length ? spots[0] : (bfs(s.v, 6).find(([x, d]) => d >= 2 && isLand(x) && !tileKind[x] && !G.wonders.some((o) => o.v === x)) || [NBR[s.v][0]])[0];
   const w = { era: G.era, v, tribe: 0 };
-  G.wonders.push(w);
+  G.wonders.push(w); assignTiles();
   for (const [x] of bfs(v, 1)) tree[x] = 0;
   rebuildCrowd(); layoutWonders();
   flyTo(v, 11);
@@ -2622,12 +2650,13 @@ let buildSpotsDirty = true;
 const floaters = [];
 function floatText(v, text, cls = '') {
   if (G.mode === 'menu') return;
+  if (floaters.some((f) => f.t < 0.6 && f.el.textContent === text)) return;
   const el = document.createElement('div');
   el.className = `floater ${cls}`;
   el.textContent = text;
   $('floaters').appendChild(el);
   floaters.push({ el, p: v === null ? null : typeof v === 'number' ? posOf(v, 0.3) : v.clone(), t: 0 });
-  if (floaters.length > 30) { const f = floaters.shift(); f.el.remove(); }
+  if (floaters.length > 12) { const f = floaters.shift(); f.el.remove(); }
 }
 function updateFloaters(dt) {
   const camDir = camera.position.clone().normalize();
@@ -2832,7 +2861,7 @@ function resetScene() {
 }
 function newWorld() {
   const seed = (Date.now() % 100000) + 1;
-  Object.assign(G, { seed, era: 0, know: 0, mana: 60, health: 100, sea: SEA0, seaVis: SEA0, elapsed: 0, started: true, diff: store.get('aeons.diff', 1), q: 0, qc: { shape: 0, beacon: 0 }, relics: [], relicCells: [], golden: 0, goldenCD: 120, surge: 0, omen: null, omenT: 150, raidT: 150, firstWonders: [], settlements: [], walkers: [], wonders: [], buildings: [], rival: newRival(), beacon: -1, eventT: 120, seenEvents: [], stats: { founded: 0, lost: 0, disasters: 0, peak: 0 } });
+  Object.assign(G, { seed, era: 0, know: 0, mana: 60, health: 100, sea: SEA0, seaVis: SEA0, elapsed: 0, started: true, diff: store.get('aeons.diff', 1), q: 0, qc: { shape: 0, beacon: 0 }, relics: [], relicCells: [], golden: 0, goldenCD: 120, surge: 0, omen: null, omenT: 100, raidT: 150, firstWonders: [], settlements: [], walkers: [], wonders: [], buildings: [], rival: newRival(), beacon: -1, eventT: 75, seenEvents: [], stats: { founded: 0, lost: 0, disasters: 0, peak: 0 } });
   for (const k of Object.keys(tips)) delete tips[k];
   disasterT = 70;
   const start = generate(seed);
@@ -2875,7 +2904,7 @@ function play() {
   G.mode = 'play';
   cam.tDist = 14;
   sunAng = Math.atan2(Math.cos(cam.theta), Math.sin(cam.theta)) - 0.5;
-  if (G.era === 0 && G.elapsed < 1) { cam.dist = 28; cam.tDist = 14; cam.slow = 3; showEra(); setTimeout(() => toast('Follow the arrows: green ↑ raise, red ↓ lower. Towns grow on flat hexes.'), 900); }
+  if (G.era === 0 && G.elapsed < 1) { cam.dist = 28; cam.tDist = 14; cam.slow = 3; showEra(); setTimeout(() => toast('Tap the glowing arrows with 🪄 Level: towns grow on flat hexes.'), 900); }
 }
 $('continue').addEventListener('click', () => { if (load()) resetScene(); play(); });
 $('newworld').addEventListener('click', () => {
