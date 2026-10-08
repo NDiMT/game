@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, settlementModel, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.1';
-import { createScore } from './music.js?v=1.1';
+import { mulberry32, mergeParts, tileModel, centerModel, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.2';
+import { createScore } from './music.js?v=1.2';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=1.1';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '1.1';
+const APP_VERSION = '1.2';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -33,8 +33,8 @@ const ERAS = [
 const WONDER_ICON = ['🪨', '🔺', '🏛️', '⛪', '🗼', '📡', '🚀'];
 const WONDER_DESC = ['A ring of standing stones to read the sky.', 'A tomb for a god-king, built to last forever.', 'A temple of marble and reason.', 'Spires that reach for heaven.', 'An iron tower: the triumph of engineering.', 'A needle in the clouds, heart of a global network.', 'The ark that will carry your people to the stars.'];
 const POWERS = [
-  { id: 'raise', name: 'Raise', cost: 1, era: 0, r: 0, hint: 'Tap to raise the land. Hold to keep going. Settlements grow on flat ground.' },
-  { id: 'lower', name: 'Lower', cost: 1, era: 0, r: 0, hint: 'Tap to lower the land. Below sea level it floods.' },
+  { id: 'raise', name: 'Raise', cost: 1, era: 0, r: 0, hint: 'Tap a hex to raise it. Green ↑ arrows show where to raise so a town gets flat ground.' },
+  { id: 'lower', name: 'Lower', cost: 1, era: 0, r: 0, hint: 'Tap a hex to lower it. Red ↓ arrows show where to lower. Below sea level it floods.' },
   { id: 'rain', name: 'Rain', cost: 30, era: 0, r: 3, hint: 'Rain makes the land fertile for a while and puts out fires.' },
   { id: 'forest', name: 'Forest', cost: 40, era: 1, r: 2, hint: 'Plant a forest: food, clean air and a healthier planet.' },
   { id: 'inspire', name: 'Inspire', cost: 90, era: 1, r: 5, hint: 'A spark of genius: settlements here make triple knowledge for a while.' },
@@ -49,7 +49,7 @@ const PEOPLE_COL = [0x9a6a3a, 0xc8a060, 0xf2ede2, 0x6a4a8a, 0x3a3a4a, 0x3b82f6, 
 const POLLUTE = [0, 0, 0, 0, 0.016, 0.011, 0.005];
 
 // ------------------------------------------------------------------ the planet: an icosphere of columns
-const R = 5, STEP = 0.07, SEA0 = 3, MAXH = 11;
+const R = 5, STEP = 0.08, SEA0 = 3, MAXH = 11;
 function icosphere(detail) {
   const t = (1 + Math.sqrt(5)) / 2;
   const verts = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map((v) => new THREE.Vector3(...v).normalize());
@@ -75,6 +75,23 @@ const NBR = (() => {
   const s = Array.from({ length: NV }, () => new Set());
   for (const [a, b, c] of FACES) { s[a].add(b).add(c); s[b].add(a).add(c); s[c].add(a).add(b); }
   return s.map((x) => [...x]);
+})();
+// Each vertex of the icosphere is the centre of a hex cell (12 of them are pentagons).
+// A cell's corners are the centres of the triangles around it, in counter-clockwise order.
+const CORN = FACES.map(([a, b, c]) => DIRS[a].clone().add(DIRS[b]).add(DIRS[c]).normalize());
+const CELLS = (() => {
+  const around = Array.from({ length: NV }, () => []);
+  FACES.forEach((f, i) => { for (const v of f) around[v].push(i); });
+  const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
+  return around.map((fs, v) => {
+    const d = DIRS[v];
+    const t1 = new THREE.Vector3().crossVectors(d, Math.abs(d.y) < 0.9 ? Y : X).normalize(), t2 = d.clone().cross(t1);
+    const ang = (f) => Math.atan2(CORN[f].dot(t2), CORN[f].dot(t1));
+    fs.sort((p, q) => ang(p) - ang(q));
+    // the neighbour across the edge between corner i and corner i + 1
+    const nb = fs.map((f, i) => { const g = fs[(i + 1) % fs.length]; return FACES[f].find((x) => x !== v && FACES[g].includes(x)); });
+    return { fs, nb, t1, t2 };
+  });
 })();
 function bfs(v, r, pass = null) {
   const out = [[v, 0]], seen = new Set([v]);
@@ -110,6 +127,25 @@ function levelFor(s) {
   return 1;
 }
 const canSettle = (v) => isLand(v) && !crowd[v] && burn[v] <= 0 && sameNeighbours(v) >= 4 && Math.abs(DIRS[v].y) < 0.93;
+// which cells each town covers: its centre, then the flat cells around it as it grows
+function assignTiles() {
+  const before = tileKind.slice();
+  owner.fill(-1); tileKind.fill(0);
+  for (const w of G.wonders) tileKind[w.v] = 4;
+  G.settlements.forEach((s, i) => { owner[s.v] = i; tileKind[s.v] = 1; });
+  G.settlements.forEach((s, i) => {
+    s.tiles = [];
+    if (s.level < 2) return;
+    for (const [x, d] of bfs(s.v, s.level >= 3 ? 2 : 1)) {
+      if (d === 0 || tileKind[x] || !isLand(x) || h[x] !== h[s.v]) continue;
+      owner[x] = i;
+      tileKind[x] = G.era >= 1 && G.era <= 3 && d === 2 && x % 3 === 0 ? 3 : 2;
+      tree[x] = 0;
+      s.tiles.push(x);
+    }
+  });
+  for (let v = 0; v < NV; v++) if (before[v] !== tileKind[v]) { terrainDirty = true; break; }
+}
 function rebuildCrowd() {
   crowd.fill(0);
   for (const s of [...G.settlements, ...G.wonders]) for (const [x] of bfs(s.v, 2)) crowd[x] = 1;
@@ -250,51 +286,97 @@ window.addEventListener('resize', resize);
 }
 
 // ------------------------------------------------------------------ planet mesh, water, atmosphere
+// The planet: a hex column per cell with a bevelled top, and cliff walls down to lower neighbours.
+const MAXT = NF * 3 * 3 + NF * 3;
 const planetGeo = new THREE.BufferGeometry();
-planetGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NF * 9), 3));
-planetGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(NF * 9), 3));
-const planet = new THREE.Mesh(planetGeo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.92 }));
+planetGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXT * 9), 3));
+planetGeo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(MAXT * 9), 3));
+planetGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(MAXT * 9), 3));
+planetGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), R + 2);
+const triCell = new Int32Array(MAXT);
+const planet = new THREE.Mesh(planetGeo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9 }));
 planet.castShadow = planet.receiveShadow = true;
 scene.add(planet);
 const C = (x) => new THREE.Color(x);
-const PAL = { deep: C(0x2a3a5a), bed: C(0xb8a070), sand: C(0xe9d6a0), grass: C(0x7cc04a), lush: C(0x5aaa3a), dry: C(0xc8b462), hill: C(0x5f9a3a), rock: C(0x8f8a82), snow: C(0xf4f8fb), ice: C(0xe2eef6), burnt: C(0x3a2e28), brown: C(0x9a8a5a) };
+const PAL = { deep: C(0x2a3a5a), bed: C(0xb8a070), dry: C(0xd2bc6a), lush: C(0x4aa63a), snow: C(0xf4f8fb), ice: C(0xe2eef6), burnt: C(0x3a2e28), brown: C(0x9a8a5a), cliff: C(0x7a6450), soil: C(0x9a7a4a) };
+// one colour per terrace, alternating light and dark so each level reads at a glance
+const BANDS = [0xe9d6a0, 0xa6d86a, 0x6fbd45, 0x93c858, 0x4f9a36, 0x8aa04e, 0x9a8a62, 0x8f8a82, 0xb4b0aa, 0xf0f4f8, 0xf4f8fb].map(C);
+const PAVE = [0xa88a5a, 0xc8a86a, 0xe2dccb, 0xa8a090, 0x8a7a6a, 0x6a7078, 0xe8eef4].map(C);
+const owner = new Int32Array(NV).fill(-1), tileKind = new Uint8Array(NV);
 const tc = new THREE.Color();
-function faceColor(f) {
-  const [a, b, c] = FACES[f];
-  const ha = h[a], hb = h[b], hc = h[c], mn = Math.min(ha, hb, hc), mx = Math.max(ha, hb, hc), avg = (ha + hb + hc) / 3;
-  const lat = Math.abs(DIRS[a].y + DIRS[b].y + DIRS[c].y) / 3;
-  if (burn[a] > 0 || burn[b] > 0 || burn[c] > 0) return tc.copy(PAL.burnt);
-  if (mx <= G.sea) return tc.copy(PAL.bed).lerp(PAL.deep, clamp((G.sea - avg) / 4, 0, 1));
+function cellColor(v) {
+  const lat = Math.abs(DIRS[v].y);
+  if (burn[v] > 0) return tc.copy(PAL.burnt);
+  if (h[v] <= G.sea) return tc.copy(PAL.bed).lerp(PAL.deep, clamp((G.sea - h[v]) / 4, 0, 1));
+  if (tileKind[v] === 1 || tileKind[v] === 2 || tileKind[v] === 4) return tc.copy(PAVE[G.era]);
+  if (tileKind[v] === 3) return tc.copy(PAL.soil);
   if (lat > 0.88) return tc.copy(PAL.ice);
-  if (mn <= G.sea) return tc.copy(PAL.sand);
-  const up = avg - G.sea;
-  if (up >= 6) return tc.copy(PAL.snow);
-  if (up >= 4.5) return tc.copy(PAL.rock).lerp(PAL.snow, lat > 0.6 ? 0.6 : 0);
-  let col;
-  if (up >= 3) col = tc.copy(PAL.hill).lerp(PAL.rock, (up - 3) / 2);
-  else col = tc.copy(lat < 0.25 && mx === mn ? PAL.dry : PAL.grass).lerp(PAL.lush, clamp((rain[a] + rain[b] + rain[c]) / 60, 0, 1));
-  if (mn !== mx) col.multiplyScalar(0.92);
-  if (G.health < 90) col.lerp(PAL.brown, (1 - G.health / 100) * 0.55);
-  if (lat > 0.72) col.lerp(PAL.snow, (lat - 0.72) * 2.5);
-  return col.multiplyScalar(0.95 + (((f * 2654435761) >>> 0) % 1000) / 10000);
-}
-function rebuildPlanet() {
-  const p = planetGeo.attributes.position.array, col = planetGeo.attributes.color.array;
-  for (let f = 0; f < NF; f++) {
-    const c = faceColor(f);
-    FACES[f].forEach((v, i) => {
-      const r = radiusOf(v), d = DIRS[v], o = f * 9 + i * 3;
-      p[o] = d.x * r; p[o + 1] = d.y * r; p[o + 2] = d.z * r;
-      col[o] = c.r; col[o + 1] = c.g; col[o + 2] = c.b;
-    });
+  const up = h[v] - G.sea;
+  const col = tc.copy(BANDS[Math.min(BANDS.length - 1, up - 1)]);
+  if (up >= 2 && up <= 5) {
+    if (lat < 0.22) col.lerp(PAL.dry, 0.45);
+    if (rain[v] > 0) col.lerp(PAL.lush, 0.5);
   }
-  planetGeo.attributes.position.needsUpdate = planetGeo.attributes.color.needsUpdate = true;
-  planetGeo.computeVertexNormals();
-  planetGeo.computeBoundingSphere();
+  if (G.health < 90 && up < 9) col.lerp(PAL.brown, (1 - G.health / 100) * 0.55);
+  if (lat > 0.7) col.lerp(PAL.snow, Math.min(1, (lat - 0.7) * 3.5));
+  return col.multiplyScalar(0.96 + (((v * 2654435761) >>> 0) % 1000) / 12500);
+}
+const BEV = 0.84, DROP = 0.02;
+const pa = new THREE.Vector3(), pb = new THREE.Vector3(), pc = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), nrm = new THREE.Vector3();
+const inner = Array.from({ length: 6 }, () => new THREE.Vector3()), outer = Array.from({ length: 6 }, () => new THREE.Vector3());
+const ctr = new THREE.Vector3(), wallOut = new THREE.Vector3(), cBuf = new THREE.Color(), wBuf = new THREE.Color(), eBuf = new THREE.Color();
+function rebuildPlanet() {
+  const P = planetGeo.attributes.position.array, N = planetGeo.attributes.normal.array, CO = planetGeo.attributes.color.array;
+  let o = 0, t = 0;
+  // writes one triangle; if `out` is given, the winding is flipped to face it
+  const tri = (a, b, c, col, cell, out) => {
+    e1.subVectors(b, a); e2.subVectors(c, a); nrm.crossVectors(e1, e2);
+    if (out && nrm.dot(out) < 0) { const x = b; b = c; c = x; nrm.negate(); }
+    nrm.normalize();
+    for (const q of [a, b, c]) { P[o] = q.x; P[o + 1] = q.y; P[o + 2] = q.z; N[o] = nrm.x; N[o + 1] = nrm.y; N[o + 2] = nrm.z; CO[o] = col.r; CO[o + 1] = col.g; CO[o + 2] = col.b; o += 3; }
+    triCell[t++] = cell;
+  };
+  for (let v = 0; v < NV; v++) {
+    const cell = CELLS[v], k = cell.fs.length, r = radiusOf(v), d = DIRS[v];
+    cBuf.copy(cellColor(v));
+    eBuf.copy(cBuf).multiplyScalar(0.84);
+    wBuf.copy(cBuf).lerp(PAL.cliff, h[v] <= G.sea ? 0.2 : 0.45).multiplyScalar(0.78);
+    ctr.copy(d).multiplyScalar(r);
+    for (let i = 0; i < k; i++) {
+      const cn = CORN[cell.fs[i]];
+      inner[i].copy(d).multiplyScalar(1 - BEV).addScaledVector(cn, BEV).normalize().multiplyScalar(r);
+      outer[i].copy(cn).multiplyScalar(r - DROP);
+    }
+    for (let i = 0; i < k; i++) {
+      const j = (i + 1) % k;
+      tri(ctr, inner[i], inner[j], cBuf, v, d);
+      tri(inner[i], outer[i], outer[j], eBuf, v, d);
+      tri(inner[i], outer[j], inner[j], eBuf, v, d);
+      const n = cell.nb[i];
+      if (h[n] < h[v]) {
+        const rn = radiusOf(n) - DROP;
+        pa.copy(CORN[cell.fs[i]]).multiplyScalar(rn); pb.copy(CORN[cell.fs[j]]).multiplyScalar(rn);
+        wallOut.copy(DIRS[n]).sub(d);
+        tri(outer[i], outer[j], pb, wBuf, v, wallOut);
+        tri(outer[i], pb, pa, wBuf, v, wallOut);
+      }
+    }
+  }
+  planetGeo.setDrawRange(0, o / 3);
+  planetGeo.attributes.position.needsUpdate = planetGeo.attributes.normal.needsUpdate = planetGeo.attributes.color.needsUpdate = true;
   updateWaterDepth();
   layoutTrees();
   setDirty = true;
 }
+// hex cells line up with buildings: the yaw that turns a model's x-axis towards a cell's first corner
+const YAW = (() => {
+  const Y = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion(), c = new THREE.Vector3();
+  return DIRS.map((d, v) => {
+    q.setFromUnitVectors(Y, d).invert();
+    c.copy(CORN[CELLS[v].fs[0]]).applyQuaternion(q);
+    return Math.atan2(-c.z, c.x);
+  });
+})();
 // water: a sphere with depth-tinted colour, shoreline foam and sun glints
 const waterGeo = new THREE.BufferGeometry();
 {
@@ -452,28 +534,54 @@ function placeOn(m, n, v, extra = 0, yaw = 0, scale = 1, dir = null) {
   dummy.updateMatrix();
   m.setMatrixAt(n, dummy.matrix);
 }
-const treeMeshes = treeGeos().map((g) => inst(g, bodyMat, NV));
+const treeMeshes = treeGeos().map((g) => inst(g, bodyMat, NV * 2));
+const TREE_SPOTS = [[0, 0], [0.09, 0.05], [-0.08, 0.07], [0.02, -0.1]];
+function placeIn(m, n, v, ox, oz, yaw, scale, lift = 0) {
+  const c = CELLS[v];
+  qa.setFromUnitVectors(UP, DIRS[v]);
+  qy.setFromAxisAngle(UP, yaw);
+  dummy.quaternion.copy(qa).multiply(qy);
+  dummy.position.copy(DIRS[v]).multiplyScalar(radiusOf(v) + lift).addScaledVector(c.t1, ox).addScaledVector(c.t2, oz);
+  dummy.scale.setScalar(scale);
+  dummy.updateMatrix();
+  m.setMatrixAt(n, dummy.matrix);
+}
 function layoutTrees() {
   const n = [0, 0];
   for (let v = 0; v < NV; v++) {
-    if (!tree[v] || !isLand(v)) continue;
-    const k = v % 2, m = treeMeshes[k];
-    placeOn(m, n[k]++, v, -0.01, v * 1.7, 0.85 + (v % 5) * 0.08);
-    if (k === 0 && v % 3 === 0) placeOn(m, n[k]++, v, -0.01, v, 0.7, null);
+    if (!tree[v] || !isLand(v) || tileKind[v]) continue;
+    const count = 2 + (v % 3);
+    for (let i = 0; i < count; i++) {
+      const k = (v + i) % 2, m = treeMeshes[k], [ox, oz] = TREE_SPOTS[i];
+      placeIn(m, n[k]++, v, ox, oz, v * 1.7 + i, 0.8 + ((v + i * 3) % 5) * 0.08, -0.01);
+    }
   }
   treeMeshes[0].count = n[0]; treeMeshes[1].count = n[1];
   for (const m of treeMeshes) m.instanceMatrix.needsUpdate = true;
 }
-const templates = {};
-for (let e = 0; e < 7; e++) for (let l = 1; l <= 4; l++) {
-  const t = settlementModel(e, l);
-  templates[`${e}-${l}`] = { body: inst(t.body, bodyMat, 90), glow: t.glow ? inst(t.glow, glowMat, 90) : null, smoke: t.smoke };
+const centerT = {}, tileT = {};
+const mkT = (t, max) => ({ body: inst(t.body, bodyMat, max), glow: t.glow ? inst(t.glow, glowMat, max) : null, smoke: t.smoke });
+for (let e = 0; e < 7; e++) {
+  for (let l = 1; l <= 4; l++) centerT[`${e}-${l}`] = mkT(centerModel(e, l), 80);
+  for (let k = 0; k < 4; k++) if (k < 3 || (e >= 1 && e <= 3)) tileT[`${e}-${k}`] = mkT(tileModel(e, k), 600);
 }
+const ALL_T = [...Object.values(centerT), ...Object.values(tileT)];
 const people = inst(personGeo(), bodyMat, 240);
 people.setColorAt(0, new THREE.Color());
 const planes = inst(planeGeo(), bodyMat, 40);
 const sats = inst(satelliteGeo(), bodyMat, 16);
-const guides = inst(new THREE.OctahedronGeometry(0.026, 0), new THREE.MeshBasicMaterial({ color: 0xc8781a }), 600, false);
+// an arrow over a glowing ring: green "raise here", red "lower here"
+function arrowGeo(down) {
+  const parts = [
+    { g: new THREE.TorusGeometry(0.13, 0.014, 4, 6).rotateX(Math.PI / 2).rotateY(Math.PI / 6), c: 0xffffff },
+    { g: new THREE.CylinderGeometry(0.022, 0.022, 0.09, 6).translate(0, 0.045, 0), c: 0xffffff },
+    { g: new THREE.ConeGeometry(0.06, 0.09, 6).translate(0, 0.135, 0), c: 0xffffff },
+  ];
+  if (down) for (const q of parts.slice(1)) q.g.rotateX(Math.PI).translate(0, 0.18, 0);
+  return mergeParts(parts);
+}
+const guideUp = inst(arrowGeo(false), new THREE.MeshBasicMaterial({ color: 0x5aff7a }), 600, false);
+const guideDown = inst(arrowGeo(true), new THREE.MeshBasicMaterial({ color: 0xff5a4a }), 600, false);
 const cloudMesh = inst(cloudGeo(), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x8090a8, flatShading: true, transparent: true, opacity: 0.82, roughness: 1 }), 24, false);
 const clouds = Array.from({ length: 22 }, (_, i) => ({ dir: new THREE.Vector3(rnd() * 2 - 1, (rnd() * 2 - 1) * 0.8, rnd() * 2 - 1).normalize(), yaw: rnd() * 6, s: 0.7 + rnd() * 0.8, i }));
 const cursor = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 6, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthTest: false }));
@@ -832,7 +940,7 @@ function buildWonder() {
   G.mana -= e.cost;
   // the wonder stands on flat ground two steps from the town
   const s = r.best;
-  const spots = bfs(s.v, 2).filter(([x, d]) => d === 2 && isLand(x) && h[x] === h[s.v]).map(([x]) => x);
+  const spots = bfs(s.v, 3).filter(([x, d]) => d === 3 && isLand(x) && !tileKind[x]).map(([x]) => x).sort((a, b) => Math.abs(h[a] - h[s.v]) - Math.abs(h[b] - h[s.v]));
   const v = spots.length ? spots[0] : NBR[s.v][0];
   const w = { era: G.era, v };
   G.wonders.push(w);
@@ -861,7 +969,8 @@ function layoutWonders() {
     qa.setFromUnitVectors(UP, DIRS[w.v]);
     g.quaternion.copy(qa);
     g.position.copy(DIRS[w.v]).multiplyScalar(radiusOf(w.v));
-    g.scale.setScalar(1.4);
+    g.scale.setScalar(1.1);
+    g.rotateY(YAW[w.v]);
     wonderGroup.add(g);
     w.group = g;
   }
@@ -910,10 +1019,7 @@ function pickVertex(cx, cy) {
   raycaster.setFromCamera(ndc, camera);
   const hit = raycaster.intersectObject(planet, false)[0];
   if (!hit) return null;
-  const f = FACES[hit.faceIndex];
-  let best = f[0], bd = 1e9;
-  for (const v of f) { const d = posOf(v).distanceToSquared(hit.point); if (d < bd) { bd = d; best = v; } }
-  return best;
+  return triCell[hit.faceIndex];
 }
 const ptrs = new Map();
 let press = null, gesture = null, repeatT = 0, tool = 'raise';
@@ -962,7 +1068,7 @@ function useAt(cx, cy) {
   qa.setFromUnitVectors(new THREE.Vector3(0, 0, 1), DIRS[v]);
   cursor.quaternion.copy(qa);
   cursor.position.copy(DIRS[v]).multiplyScalar(radiusOf(v) + 0.04);
-  cursor.scale.setScalar(p.r ? 0.2 + p.r * 0.33 : 0.13);
+  cursor.scale.setScalar(p.r ? 0.22 + p.r * 0.38 : 0.2);
   cursor.material.color.set(ok ? 0xffffff : 0xff6b6b);
   cursor.visible = true; cursorT = 0.7;
   updateHud();
@@ -977,21 +1083,25 @@ function pressRepeat(dt) {
 
 // ------------------------------------------------------------------ rendering per frame
 function layoutSettlements(dt) {
-  const counts = {};
-  for (const k of Object.keys(templates)) counts[k] = 0;
+  for (const tp of ALL_T) tp.n = 0;
   const smoke = [];
+  const put = (tp, v, scale) => {
+    const n = tp.n++;
+    placeIn(tp.body, n, v, 0, 0, YAW[v], scale, -0.002);
+    if (tp.glow) tp.glow.setMatrixAt(n, dummy.matrix);
+    if (G.era === 4 && tp.smoke.length && rnd() < dt * 0.5) for (const sp of tp.smoke) smoke.push(new THREE.Vector3(...sp).applyMatrix4(dummy.matrix));
+  };
   for (const s of G.settlements) {
     s.grow = Math.min(1, s.grow + dt * 1.5);
-    const key = `${G.era}-${s.level}`, tp = templates[key];
-    const n = counts[key]++;
-    const sc = 0.6 + 0.4 * (1 - Math.pow(1 - s.grow, 3));
-    placeOn(tp.body, n, s.v, -0.005, s.v * 0.7, sc);
-    if (tp.glow) tp.glow.setMatrixAt(n, dummy.matrix);
-    if (G.era === 4 && rnd() < dt * s.level) for (const sp of tp.smoke) smoke.push(new THREE.Vector3(...sp).applyMatrix4(dummy.matrix));
+    put(centerT[`${G.era}-${s.level}`], s.v, 0.6 + 0.4 * (1 - Math.pow(1 - s.grow, 3)));
+    for (const x of s.tiles || []) {
+      const k = tileKind[x] === 3 ? 3 : (x * 7) % 3;
+      const tp = tileT[`${G.era}-${k}`];
+      if (tp && tp.n < 600) put(tp, x, 1);
+    }
   }
-  for (const [k, tp] of Object.entries(templates)) {
-    tp.body.count = counts[k]; tp.body.instanceMatrix.needsUpdate = true;
-    if (tp.glow) { tp.glow.count = counts[k]; tp.glow.instanceMatrix.needsUpdate = true; }
+  for (const tp of ALL_T) {
+    for (const m of [tp.body, tp.glow]) if (m) { m.count = tp.n; m.visible = tp.n > 0; m.instanceMatrix.needsUpdate = true; }
   }
   for (const p of smoke) emit(p, 0x9a9a9a, 1, 0.25, 0.08, 2, -0.05);
 }
@@ -1057,18 +1167,21 @@ function layoutClouds() {
   cloudMesh.instanceMatrix.needsUpdate = true;
 }
 function layoutGuides() {
-  let n = 0;
+  let nu = 0, nd = 0;
   if (G.mode === 'play' && (tool === 'raise' || tool === 'lower' || tool === 'terraform')) {
     for (const s of G.settlements) {
       if (s.level >= 4) continue;
       for (const [x] of bfs(s.v, 2)) {
-        if (n >= 600 || x === s.v || !isLand(x) || h[x] === h[s.v]) continue;
-        placeOn(guides, n++, x, 0.06, 0, 1);
+        if (x === s.v || h[x] === h[s.v] || (owner[x] >= 0 && G.settlements[owner[x]] !== s) || tileKind[x] === 4) continue;
+        const bob = 0.02 + Math.abs(Math.sin(t * 4 + x)) * 0.04;
+        const lift = Math.max(0, (G.sea + 0.6 - h[x]) * STEP) + 0.01;
+        if (h[x] < h[s.v] && nu < 600) placeIn(guideUp, nu++, x, 0, 0, YAW[x], 1, lift + bob * 0.3);
+        else if (h[x] > h[s.v] && nd < 600) placeIn(guideDown, nd++, x, 0, 0, YAW[x], 1, 0.01 + bob * 0.3);
       }
     }
   }
-  guides.count = n;
-  guides.instanceMatrix.needsUpdate = true;
+  guideUp.count = nu; guideDown.count = nd;
+  guideUp.instanceMatrix.needsUpdate = guideDown.instanceMatrix.needsUpdate = true;
 }
 
 // ------------------------------------------------------------------ UI
@@ -1228,7 +1341,7 @@ function play() {
   G.mode = 'play';
   cam.tDist = 14;
   sunAng = Math.atan2(Math.cos(cam.theta), Math.sin(cam.theta)) - 0.5;
-  if (G.era === 0 && G.elapsed < 1) { showEra(); setTimeout(() => toast('Tap Raise or Lower to level the ground. Your tribe settles on flat land.'), 900); }
+  if (G.era === 0 && G.elapsed < 1) { showEra(); setTimeout(() => toast('Follow the arrows: green ↑ raise, red ↓ lower. Towns grow on flat hexes.'), 900); }
 }
 $('continue').addEventListener('click', () => { if (load()) resetScene(); play(); });
 $('newworld').addEventListener('click', () => {
@@ -1321,6 +1434,7 @@ function frame() {
   waterMat.uniforms.uCam.value.copy(camera.position);
   if (Math.abs(G.seaVis - G.sea) > 0.001) { G.seaVis += Math.sign(G.sea - G.seaVis) * Math.min(Math.abs(G.sea - G.seaVis), dt * 0.4); terrainDirty = true; }
   water.scale.setScalar(1 + ((G.seaVis + 0.5) * STEP) / R);
+  if (setDirty) { setDirty = false; assignTiles(); }
   if (terrainDirty) { terrainDirty = false; rebuildPlanet(); for (const w of G.wonders) if (w.group) w.group.position.copy(DIRS[w.v]).multiplyScalar(radiusOf(w.v)); }
   atmoColor.set(0x5fa8ff).lerp(new THREE.Color(0xc89a6a), clamp((80 - G.health) / 80, 0, 0.8));
   layoutSettlements(dt);
@@ -1328,7 +1442,7 @@ function frame() {
   layoutPlanes(dt);
   layoutClouds();
   guideT -= dt;
-  if (guideT <= 0) { guideT = 0.4; layoutGuides(); }
+  if (guideT <= 0) { guideT = 0.05; layoutGuides(); }
   if (cursorT > 0) { cursorT -= dt; cursor.material.opacity = Math.max(0, cursorT * 1.6); if (cursorT <= 0) cursor.visible = false; }
   updateParticles(dt);
   hudT -= dt;
@@ -1356,4 +1470,4 @@ checkForUpdate();
 setInterval(checkForUpdate, 60000);
 
 // Exposed for automated testing.
-window.__aeons = { G, h, tree, simulate, applyPower, buildWonder, wonderReady, raiseV, lowerV, bfs, NBR, DIRS, levelFor, flyTo, cam, newWorld, play, setTool, nextDisaster, get meteor() { return meteor; } };
+window.__aeons = { guides: () => [guideUp.count, guideDown.count, tool, G.mode], G, h, tree, simulate, applyPower, buildWonder, wonderReady, raiseV, lowerV, bfs, NBR, DIRS, levelFor, flyTo, cam, newWorld, play, setTool, nextDisaster, get meteor() { return meteor; } };
