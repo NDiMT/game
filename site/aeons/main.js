@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.8';
-import { createScore } from './music.js?v=1.8';
+import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.9';
+import { createScore } from './music.js?v=1.9';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=1.8';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -1063,6 +1063,7 @@ function seedTraffic() {
   }
 }
 const tA = new THREE.Vector3(), tB = new THREE.Vector3(), tP = new THREE.Vector3();
+const tmpV2 = new THREE.Vector3();
 function updateTraffic(dt) {
   let np = 0, nc = 0, nd = 0;
   for (const a of traffic) {
@@ -1155,6 +1156,124 @@ function layoutScenery() {
   }
   tufts.count = nt; flowers.count = nf; rocks.count = nr;
   for (const m of [tufts, flowers, rocks]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
+}
+
+// ------------------------------------------------------------------ shattering land: chunks of the hex fly apart when you reshape it
+const DMAX = 700;
+const debrisMesh = inst(new THREE.DodecahedronGeometry(0.026, 0), new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9 }), DMAX, false);
+debrisMesh.setColorAt(0, new THREE.Color());
+const debris = [];
+const shockRings = Array.from({ length: 8 }, () => {
+  const m = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.012, 4, 6).rotateX(Math.PI / 2).rotateY(Math.PI / 6), new THREE.MeshBasicMaterial({ color: 0xfff4d0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  m.visible = false; m.life = 0; scene.add(m); return m;
+});
+const dCol = new THREE.Color(), dCol2 = new THREE.Color();
+function shatterCell(v, raised, strength, col) {
+  const cell = CELLS[v], up = DIRS[v], r = radiusOf(v);
+  const n = Math.round(20 * strength);
+  for (let i = 0; i < n; i++) {
+    if (debris.length >= DMAX) debris.shift();
+    const a = rnd() * Math.PI * 2, rr = Math.sqrt(rnd()) * 0.14;
+    const off = cell.t1.clone().multiplyScalar(Math.cos(a) * rr).addScaledVector(cell.t2, Math.sin(a) * rr);
+    const p = up.clone().multiplyScalar(r + (raised ? -0.02 : 0.005)).add(off);
+    const out = off.clone().normalize();
+    const v0 = up.clone().multiplyScalar((raised ? 0.7 : 0.9) + rnd() * 0.8).addScaledVector(out, 0.35 + rnd() * 0.6);
+    // top colour chunks, darker soil chunks from inside the column
+    const c = rnd() < 0.55 ? col.clone() : col.clone().lerp(PAL.cliff, 0.6).multiplyScalar(0.8);
+    debris.push({ p, v: v0.multiplyScalar(strength > 0.6 ? 1 : 0.7), rot: new THREE.Euler(rnd() * 6, rnd() * 6, rnd() * 6), spin: new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).multiplyScalar(14), life: 0.9 + rnd() * 0.5, max: 1.4, s: (0.6 + rnd() * 0.9) * (0.6 + strength * 0.5), c });
+  }
+  emit(up.clone().multiplyScalar(r + 0.03), raised ? 0xd8c8a0 : 0xb8a888, Math.round(6 * strength), 0.25, 0.25, 0.9, 0.3);
+  if (strength > 0.6) {
+    const ring = shockRings.find((m) => m.life <= 0) || shockRings[0];
+    ring.quaternion.setFromUnitVectors(UP, up); ring.rotateY(YAW[v]);
+    ring.position.copy(up).multiplyScalar(r + 0.02);
+    ring.life = 0.45; ring.visible = true; ring.material.color.set(raised ? 0xfff0c0 : 0xc8e0ff);
+  }
+}
+function updateDebris(dt) {
+  let n = 0;
+  for (let i = debris.length - 1; i >= 0; i--) {
+    const d = debris[i];
+    d.life -= dt;
+    if (d.life <= 0) { debris.splice(i, 1); continue; }
+    const len = d.p.length();
+    d.v.addScaledVector(d.p, (-3.2 * dt) / len);
+    d.p.addScaledVector(d.v, dt);
+    // chunks bounce once off the ground and then crumble
+    const v = nearestCellFast(d.p), floor = radiusOf(v);
+    if (d.p.length() < floor && d.v.dot(d.p) < 0) { d.p.setLength(floor); const nrm = d.p.clone().normalize(); d.v.addScaledVector(nrm, -1.5 * d.v.dot(nrm)).multiplyScalar(0.45); }
+    d.rot.x += d.spin.x * dt; d.rot.y += d.spin.y * dt; d.rot.z += d.spin.z * dt;
+    dummy.position.copy(d.p); dummy.rotation.copy(d.rot); dummy.scale.setScalar(d.s * Math.min(1, d.life * 2.2)); dummy.updateMatrix();
+    debrisMesh.setMatrixAt(n, dummy.matrix); debrisMesh.setColorAt(n++, d.c);
+  }
+  debrisMesh.count = n; debrisMesh.instanceMatrix.needsUpdate = true; if (debrisMesh.instanceColor) debrisMesh.instanceColor.needsUpdate = true;
+  for (const m of shockRings) if (m.life > 0) { m.life -= dt; const k = 1 - m.life / 0.45; m.scale.setScalar(1 + k * 1.6); m.material.opacity = (1 - k) * 0.9; if (m.life <= 0) m.visible = false; }
+}
+// a cheap nearest-cell lookup: walk from the last answer toward the point
+let ncLast = 0;
+function nearestCellFast(p) {
+  const d = tmpV.copy(p).normalize();
+  let v = ncLast, best = DIRS[v].dot(d), moved = true;
+  for (let k = 0; k < 40 && moved; k++) { moved = false; for (const n of NBR[v]) { const q = DIRS[n].dot(d); if (q > best) { best = q; v = n; moved = true; } } }
+  ncLast = v; return v;
+}
+// shapes the land and shatters every hex that changed
+function shapeWith(fn, v) {
+  const area = bfs(v, 3), before = area.map(([x]) => h[x]), cols = area.map(([x]) => cellColor(x).clone());
+  const ok = fn(v);
+  if (!ok) return false;
+  area.forEach(([x, d], i) => { if (h[x] !== before[i]) shatterCell(x, h[x] > before[i], x === v ? 1 : 0.45, cols[i]); });
+  return true;
+}
+
+// ------------------------------------------------------------------ golden wisps: tap them for inspiration
+const wispMesh = inst(new THREE.IcosahedronGeometry(0.05, 1), new THREE.MeshBasicMaterial({ color: 0xffe27a }), 8, false);
+const wispHalo = inst(new THREE.PlaneGeometry(0.34, 0.34), new THREE.MeshBasicMaterial({ map: dotTexEarly(), color: 0xffd060, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }), 8, false);
+let wisps = [], wispT = 25;
+function dotTexEarly() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(0.3, 'rgba(255,255,255,0.5)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+function updateWisps(dt) {
+  if (G.mode === 'play') {
+    wispT -= dt;
+    const mine = G.settlements.filter((x) => !x.tribe);
+    if (wispT <= 0 && mine.length && wisps.length < 3) {
+      wispT = 30 + rnd() * 25;
+      const s = mine[(rnd() * mine.length) | 0];
+      const spots = bfs(s.v, 4).filter(([x, d]) => d >= 2 && isLand(x)).map(([x]) => x);
+      if (spots.length) { wisps.push({ v: spots[(rnd() * spots.length) | 0], t0: t, life: 28 }); tip('wisp', '✨ A golden wisp! Tap it for inspiration before it fades.', true); }
+    }
+    for (const w of wisps) w.life -= dt;
+    wisps = wisps.filter((w) => w.life > 0);
+  }
+  let n = 0;
+  const camQ = camera.quaternion;
+  for (const w of wisps) {
+    const p = posOf(w.v, 0.25 + Math.sin(t * 2 + w.v) * 0.05);
+    const k = Math.min(1, w.life / 3) * popIn(w.t0, 0.5);
+    dummy.position.copy(p); dummy.quaternion.copy(camQ); dummy.scale.setScalar(k * (1 + Math.sin(t * 5) * 0.12)); dummy.updateMatrix();
+    wispMesh.setMatrixAt(n, dummy.matrix); wispHalo.setMatrixAt(n++, dummy.matrix);
+    if (rnd() < dt * 4) emit(p, 0xffe27a, 1, 0.1, 0.08, 0.8, -0.1);
+  }
+  wispMesh.count = wispHalo.count = n;
+  wispMesh.instanceMatrix.needsUpdate = wispHalo.instanceMatrix.needsUpdate = true;
+}
+function collectWisp(v) {
+  const near = new Set(bfs(v, 1).map(([x]) => x));
+  const w = wisps.find((x) => near.has(x.v));
+  if (!w) return false;
+  wisps.splice(wisps.indexOf(w), 1);
+  const gain = 25 + G.era * 15;
+  G.mana = Math.min(999, G.mana + gain);
+  const p = posOf(w.v, 0.25);
+  emit(p, 0xffe27a, 40, 0.8, 0.5, 1.1, -0.2); emit(p, 0xffffff, 15, 1.2, 0.3, 0.5, 0);
+  floatText(w.v, `✨ +${gain}✦`, 'gold');
+  sfx.grow(); bump($('mana').closest('.orb'));
+  return true;
 }
 
 // ------------------------------------------------------------------ particles (radial gravity)
@@ -1316,6 +1435,7 @@ function levelTarget(v) {
   if (press && press.base !== undefined) return press.base;
   return h[v];
 }
+const combo = { n: 0, t: -9 };
 function applyPower(id, v) {
   const p = PW[id];
   if (G.era < p.era) { toast(`${p.name} arrives in the ${ERAS[p.era].name}`); sfx.deny(); return false; }
@@ -1344,14 +1464,14 @@ function applyPower(id, v) {
   }
   if (id === 'level') {
     const target = levelTarget(v);
-    ok = h[v] < target ? raiseV(v) : h[v] > target ? lowerV(v) : false;
+    ok = h[v] < target ? shapeWith(raiseV, v) : h[v] > target ? shapeWith(lowerV, v) : false;
     if (!ok) return false;
   } else if (id === 'beacon') {
     if (!isLand(v)) { toast('Place the beacon on dry land'); sfx.deny(); return false; }
     G.beacon = v; layoutBeacon();
     toast('🚩 Beacon planted. Your next settlers will head here.', v);
-  } else if (id === 'raise') ok = raiseV(v);
-  else if (id === 'lower') ok = lowerV(v);
+  } else if (id === 'raise') ok = shapeWith(raiseV, v);
+  else if (id === 'lower') ok = shapeWith(lowerV, v);
   else if (id === 'rain') {
     for (const [x] of area) { rain[x] = 45; burn[x] = 0; }
     for (let i = 0; i < 40; i++) { const [x] = area[(rnd() * area.length) | 0]; const q = posOf(x, 0.9); parts.push({ p: q, v: DIRS[x].clone().multiplyScalar(-2.2), c: new THREE.Color(0x9fd4ff), life: 0.45, max: 0.45, g: 0 }); }
@@ -1377,7 +1497,8 @@ function applyPower(id, v) {
     terrainDirty = true;
   } else if (id === 'terraform') {
     const target = Math.max(h[v], G.sea + 1);
-    for (const [x] of area) if (!lock[x] && tileKind[x] !== 4 && tileKind[x] !== 5) setHeight(x, target);
+    for (const [x] of area) if (!lock[x] && tileKind[x] !== 4 && tileKind[x] !== 5 && h[x] !== target) { const c = cellColor(x).clone(), up = h[x] < target; setHeight(x, target); shatterCell(x, up, 0.7, c); }
+    cam.shake = 0.3; quakeT = Math.max(quakeT, 0.25);
   } else if (id === 'deflect') {
     if (!meteor) { toast('No meteor in the sky'); return false; }
     emit(meteor.pos, 0xffc060, 80, 1.2, 1.2, 1.4, 0); emit(meteor.pos, 0xffffff, 30, 2, 1.5, 0.6, 0);
@@ -1388,8 +1509,13 @@ function applyPower(id, v) {
   G.mana -= p.cost;
   if (SHAPERS.has(id)) { G.qc.shape++; if (G.qc.shape === 4) tip('brush', '🖌️ Tip: hold your finger still for a moment, then drag to shape many hexes at once.', true); }
   if (id === 'beacon') G.qc.beacon++;
-  if (id === 'raise' || (id === 'level' && G.mana >= 0)) sfx.raise(); else if (id === 'lower') sfx.lower(); else sfx.power();
-  if (id === 'raise' || id === 'lower') emit(posOf(v, 0.02), 0xc8b48a, 6, 0.3, 0.3, 0.6);
+  if (id === 'raise' || id === 'level') sfx.raise(Math.min(combo.n, 12)); else if (id === 'lower') sfx.lower(Math.min(combo.n, 12)); else sfx.power();
+  if (SHAPERS.has(id)) {
+    // combo: quick strokes chain together and the sound climbs
+    combo.n = t - combo.t < 0.8 ? combo.n + 1 : 1; combo.t = t;
+    if (combo.n >= 4 && combo.n % 4 === 0) floatText(v, `🪄 x${combo.n}`, 'gold');
+    quakeT = Math.max(quakeT, 0.08);
+  }
   return true;
 }
 
@@ -1638,7 +1764,7 @@ function updateRival(dt) {
     if (s.tiles.length < maxTiles(s)) {
       const cands = [];
       for (const c of [s.v, ...s.tiles]) for (const x of NBR[c]) if (!tileKind[x] && owner[x] < 0 && h[x] !== h[s.v] && !NBR[x].some((n) => owner[n] >= 0 && G.settlements[owner[n]].tribe === 0)) cands.push(x);
-      if (cands.length) { const x = cands[(rnd() * cands.length) | 0]; if (h[x] > h[s.v]) lowerV(x); else raiseV(x); }
+      if (cands.length) { const x = cands[(rnd() * cands.length) | 0]; shapeWith(h[x] > h[s.v] ? lowerV : raiseV, x); }
     }
   }
   // they build too
@@ -2025,6 +2151,7 @@ cvs.addEventListener('wheel', (e) => { e.preventDefault(); cam.tDist = clamp(cam
 function useAt(cx, cy) {
   const v = pickVertex(cx, cy);
   if (v === null) return;
+  if (!press?.paint && collectWisp(v)) return;
   const isB = tool.startsWith('b:');
   const ok = isB ? placeBuilding(tool.slice(2), v) : applyPower(tool, v);
   const p = isB ? { r: RANGE } : PW[tool];
@@ -2486,8 +2613,8 @@ const sfx = (() => {
     init,
     click: () => tone(880, 880, 0.04, 'sine', 0.05),
     deny: () => { tone(200, 150, 0.14, 'triangle', 0.08); const a = document.querySelector('.power.active'); if (a) { a.classList.remove('shake'); void a.offsetWidth; a.classList.add('shake'); } },
-    raise: () => { tone(220, 330, 0.1, 'triangle', 0.1); hiss(0.08, 900, 0.1); },
-    lower: () => { tone(260, 160, 0.1, 'triangle', 0.1); hiss(0.1, 500, 0.12); },
+    raise: (k = 0) => { const f = 220 * 2 ** (k / 12); tone(f, f * 1.5, 0.1, 'triangle', 0.1); hiss(0.14, 700, 0.16); tone(70, 40, 0.18, 'sine', 0.18); },
+    lower: (k = 0) => { const f = 260 * 2 ** (k / 12); tone(f, f * 0.6, 0.1, 'triangle', 0.1); hiss(0.18, 450, 0.2); tone(60, 35, 0.2, 'sine', 0.2); },
     power: () => { hiss(0.6, 2400, 0.15, 'bandpass'); [523, 784, 1047].forEach((f, i) => tone(f, f, 0.3, 'sine', 0.06, i * 0.06)); },
     found: () => [392, 523].forEach((f, i) => tone(f, f, 0.2, 'sine', 0.07, i * 0.08)),
     grow: () => [523, 659, 784].forEach((f, i) => tone(f, f, 0.18, 'sine', 0.05, i * 0.06)),
@@ -2535,6 +2662,9 @@ function frame() {
   sunAng += dt * (Math.PI * 2) / 150;
   sunDir.set(Math.cos(sunAng), 0.25, Math.sin(sunAng)).normalize();
   sun.position.copy(sunDir).multiplyScalar(30);
+  // the light turns golden when the part of the world you look at is near dusk
+  { const k = camera.position.clone().normalize().dot(sunDir), dusk = 1 - clamp(k / 0.55, 0, 1);
+    sun.color.setRGB(1, 0.95 - dusk * 0.32, 0.86 - dusk * 0.5); sun.intensity = 2.6 + dusk * 0.4; }
   sunSprite.position.copy(sunDir).multiplyScalar(120);
   moonLight.position.copy(sunDir).multiplyScalar(-30);
   moon.position.set(Math.cos(t * 0.03) * 15, Math.sin(t * 0.03) * 4, Math.sin(t * 0.03) * 15);
@@ -2557,6 +2687,8 @@ function frame() {
   if (guideT <= 0) { guideT = 0.05; layoutGuides(); }
   if (cursorT > 0) { cursorT -= dt; cursor.material.opacity = Math.max(0, cursorT * 1.6); if (cursorT <= 0) cursor.visible = false; }
   updateShootingStars(dt);
+  updateDebris(dt);
+  updateWisps(dt);
   updateParticles(dt);
   updateFloaters(dt);
   layoutResources();
