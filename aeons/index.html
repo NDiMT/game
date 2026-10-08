@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#05070f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Aeons</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon-512.png" />
+  <link rel="apple-touch-icon" href="icon-512.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" />
+  <link rel="stylesheet" href="style.css?v=2.9" />
+  <script type="importmap">
+    { "imports": { "three": "../vendor/three.module.js" } }
+  </script>
+</head>
+<body class="in-menu">
+<div id="app">
+  <header class="top">
+    <div class="hud-bar">
+      <div id="medal" class="medal" style="--p:0"><div class="medal-in"><span id="era-chip">🔥</span></div></div>
+      <div class="era-txt"><b id="era-label">Stone Age</b><small id="year">10,000 BCE</small></div>
+      <div class="stat-mini"><i>👥</i><b id="pop">0</b></div>
+      <div class="stat-mini hp"><i>🌍</i><div class="hbar"><div id="health-fill"></div><b id="health" class="ok">100%</b></div></div>
+    </div>
+    <div class="hud-row2">
+      <button id="goal" class="goal-pill" aria-label="Next wonder">
+        <span id="goal-ic" class="g-ic">🪨</span>
+        <span class="g-body"><b id="goal-name">Stonehenge</b><span class="track"><span id="goal-fill"></span></span></span>
+        <span id="goal-pct" class="g-pct">0%</span>
+        <span class="g-chips"><span id="ch-know" class="chip">📜</span><span id="ch-mana" class="chip">✦</span><span id="ch-size" class="chip">🏘️</span></span>
+      </button>
+      <div id="omen" class="omen-chip" hidden>⏳</div>
+      <div id="ship" class="omen-chip ship-chip" hidden>🚀</div>
+      <button id="mission" class="mission-chip" hidden aria-label="Mission">
+        <span class="m-ic">🎯</span><span id="m-prog" class="m-prog"></span>
+        <span class="m-pop"><b id="m-text">Goal</b><span class="m-track"><span id="m-fill"></span></span><span id="m-reward" class="m-reward">+40✦</span></span>
+      </button>
+    </div>
+    <div id="meteor" class="meteor" hidden>☄️ Impact in 20s</div>
+  </header>
+  <div class="side">
+    <button id="b-home" class="round" aria-label="Find my people">🏠</button>
+    <button id="b-diplo" class="round" aria-label="Follower behaviour">🏘️</button>
+    <button id="b-menu" class="round" aria-label="Menu">⚙️</button>
+    <button id="b-zen" class="round" aria-label="Hide interface">👁️</button>
+  </div>
+  <button id="update" class="update" hidden>New version! Tap to update</button>
+  <div id="toast" class="toast"></div>
+  <div id="floaters"></div>
+  <div id="brush" class="brush" hidden>🖌️ Brush: drag to shape</div>
+  <div id="flash"></div>
+  <div id="confetti"></div>
+  <footer class="dock">
+    <p id="hint" class="hint">Tap a hex to raise it.</p>
+    <div id="lvl" class="lvl" hidden><button id="lvl-auto" class="on">🏘️ Auto</button><button id="lvl-down">−</button><b id="lvl-h">3</b><button id="lvl-up">+</button><button id="lvl-pick" aria-label="Pick a height">💧</button></div>
+    <div class="tray">
+      <div class="orb"><div id="mana-fill"><i></i></div><span><small>✦</small><b id="mana">60</b></span><div class="rate" id="rate">+1/s</div></div>
+      <div class="tabs"><button id="tab-powers" class="tab on" aria-label="Powers">✨</button><button id="tab-build" class="tab" aria-label="Build">🏗️</button></div>
+      <div id="powers" class="powers"></div>
+    </div>
+  </footer>
+
+  <div id="goal-sheet" class="overlay" hidden>
+    <div class="card">
+      <div id="gs-ic" class="big-ic">🪨</div>
+      <h2 id="gs-title">Stonehenge</h2>
+      <p id="gs-desc"></p>
+      <ul id="gs-list" class="checks"></ul>
+      <div class="row"><button id="gs-close" class="btn ghost">Close</button><button id="gs-build" class="btn gold">Build</button></div>
+    </div>
+  </div>
+
+  <div id="era" class="overlay era" hidden>
+    <div class="card">
+      <div id="era-icon" class="big-ic">🔥</div>
+      <small class="kicker">A new age begins</small>
+      <h2 id="era-name">Stone Age</h2>
+      <p id="era-desc"></p>
+      <p id="era-unlock" class="unlock"></p>
+      <p id="era-wonder" class="unlock"></p>
+      <small id="boon-kick" class="kicker" hidden>Choose a blessing</small>
+      <div id="era-boons" class="boons" hidden></div>
+      <button id="era-ok" class="btn gold">Onward</button>
+    </div>
+  </div>
+
+  <div id="event" class="overlay" hidden>
+    <div class="card event-card">
+      <span class="kicker">✦ A choice ✦</span>
+      <div id="ev-icon" class="big-ic">🔥</div>
+      <h2 id="ev-title">Event</h2>
+      <p id="ev-text"></p>
+      <div class="ev-choices"><button id="ev-a" class="btn gold"></button><button id="ev-b" class="btn ghost"></button></div>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay" hidden>
+    <div class="card">
+      <h2>Settings</h2>
+      <label class="toggle"><span>Music</span><input type="checkbox" id="opt-music" checked /></label>
+      <label class="toggle"><span>Sound effects</span><input type="checkbox" id="opt-sfx" checked /></label>
+      <label class="toggle"><span>High graphics (shadows, glow)</span><input type="checkbox" id="opt-hq" checked /></label>
+      <p id="my-boons" class="unlock"></p>
+      <div class="howto">
+        <p><b>Drag</b> to turn the planet, <b>pinch</b> to zoom.</p>
+        <p><b>🪄 Level</b> is the easy tool: tap a hex, or hold and drag to paint, and the land is levelled to your nearest town's height. Use <b>− +</b> to pick your own height, or <b>💧</b> to copy a hex's height. Green ↑ and red ↓ arrows show what still needs work.</p>
+        <p><b>The Crimson</b> are a rival god. After a short peace they make war. Tap the <b>🏘️ / 🧲 / ⚔️</b> button to tell your people to <b>settle</b>, <b>gather</b> at the beacon, or <b>fight</b>. Send a <b>🛡️ Knight</b>, and break their land with <b>💥 Quake</b>, <b>🐸 Swamp</b> and <b>🌋 Volcano</b>. Wipe them out, or reach the stars first.</p>
+        <p>Land near the Crimson (red rings) cannot be shaped. Plant a <b>🚩 Beacon</b> to send settlers where you want, and grow towns over <b>💎 treasures</b>.</p>
+        <p>People make <b>knowledge</b>. Fill the bar and build a <b>wonder</b> where you choose: towns near it learn faster. Each new age lets you pick a <b>blessing</b>.</p>
+        <p>From the Industrial Age, pollution hurts the planet. If its health falls, the <b>seas rise</b>.</p>
+      </div>
+      <div class="row"><button id="to-title" class="btn ghost">Title</button><button id="pause-close" class="btn gold">Resume</button></div>
+    </div>
+  </div>
+
+  <div id="legacy" class="overlay" hidden>
+    <div class="card">
+      <h2>🏛️ Legacy</h2>
+      <p id="lg-pts" class="unlock"></p>
+      <p>Every world you play earns legacy. Spend it on gifts that last for all your future worlds.</p>
+      <div id="lg-list" class="boons"></div>
+      <button id="lg-close" class="btn gold wide">Close</button>
+    </div>
+  </div>
+
+  <div id="end" class="overlay" hidden>
+    <div class="card">
+      <h2 id="end-title">To the stars!</h2>
+      <div id="end-stars" class="stars"></div>
+      <p id="end-text"></p>
+      <div id="end-score" class="end-score"></div>
+      <div id="end-stats" class="end-stats"></div>
+      <div class="row"><button id="end-legacy" class="btn ghost">🏛️ Legacy</button><button id="end-again" class="btn gold">One more world</button></div>
+    </div>
+  </div>
+
+  <div id="menu" class="menu">
+    <div class="logo"><span class="ring"></span><h1>AEONS</h1><p>Shape a world. Guide it from fire to the stars.</p></div>
+    <div class="ages"><span>🔥</span><span>🏺</span><span>🏛️</span><span>🏰</span><span>🏭</span><span>🏙️</span><span>🚀</span></div>
+    <div class="menu-btns">
+      <button id="continue" class="btn gold" hidden>Continue</button>
+      <div class="diffs"><button data-d="0">🌱 Easy</button><button data-d="1">⚔️ Normal</button><button data-d="2">🔥 Hard</button></div>
+      <button id="newworld" class="btn gold">New world</button>
+      <button id="legacy-btn" class="btn ghost">🏛️ Legacy</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="main.js?v=2.9"></script>
+</body>
+</html>

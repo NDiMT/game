@@ -1,0 +1,11 @@
+{
+  "name": "Polis",
+  "short_name": "Polis",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#9fd6ff",
+  "theme_color": "#2a6fb0",
+  "icons": [{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }]
+}

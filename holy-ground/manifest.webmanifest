@@ -1,0 +1,11 @@
+{
+  "name": "Holy Ground",
+  "short_name": "Holy Ground",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#1d6fae",
+  "theme_color": "#1d6fae",
+  "icons": [{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }]
+}
