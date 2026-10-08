@@ -820,5 +820,5 @@ export function createVfx(THREE, scene) {
     for (const c of columns) { c.max = 0; c.m.visible = false; }
   }
   const busy = () => shots.length > 0 || dying.length > 0;
-  return { projectile, hit, death, spell, sparkle, select, update, clear, busy, root, stats: () => ({ add: ADD.live, alpha: ALP.live, shots: shots.length }) };
+  return { _dbg: { ST, sPos, sCol }, projectile, hit, death, spell, sparkle, select, update, clear, busy, root, stats: () => ({ add: ADD.live, alpha: ALP.live, shots: shots.length }) };
 }

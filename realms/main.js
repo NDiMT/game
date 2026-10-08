@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { mulberry32, unitModel } from './models.js?v=0.3';
 import { havenModel } from './units_haven.js?v=0.3';
 import { necroModel } from './units_necro.js?v=0.3';
+import { necroUpModel } from './units_necro_up.js?v=0.3';
+import { havenUpModel } from './units_haven_up.js?v=0.3';
 import { neutralModel } from './units_neutral.js?v=0.3';
 import { townModel, heroModel, flagModel } from './models_towns.js?v=0.3';
 import { objectModel } from './models_objects.js?v=0.3';
@@ -281,7 +283,7 @@ const post = (() => {
 const bodyMat = makeBodyMaterial(THREE);
 const glowMat = makeGlowMaterial(THREE);
 const geoCache = new Map();
-const unitGeo = (id) => { const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
+const unitGeo = (id) => { const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
 function meshOf(m) {
   const g = new THREE.Group();
