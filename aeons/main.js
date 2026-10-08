@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.7';
-import { createScore } from './music.js?v=1.7';
+import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.8';
+import { createScore } from './music.js?v=1.8';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=1.7';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.8';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -228,7 +228,11 @@ function assignTiles() {
       tree[x] = 0;
     }
     s.level = levelOf(s);
+    s.ring = new Map([[s.v, 0]]);
+    const rq = [s.v], inTown = new Set(keep);
+    for (let qi = 0; qi < rq.length; qi++) for (const n of NBR[rq[qi]]) if (inTown.has(n) && !s.ring.has(n)) { s.ring.set(n, s.ring.get(rq[qi]) + 1); rq.push(n); }
   });
+  roadsDirty = true;
   for (let v = 0; v < NV; v++) if (before[v] !== tileKind[v]) { terrainDirty = true; break; }
   rebuildCrowd();
   lock.fill(0);
@@ -567,6 +571,8 @@ function rebuildPlanet() {
   planetGeo.attributes.position.needsUpdate = planetGeo.attributes.normal.needsUpdate = planetGeo.attributes.color.needsUpdate = true;
   updateWaterDepth();
   layoutTrees();
+  layoutScenery();
+  roadsDirty = true;
   seedFireflies();
   layoutBeacon();
   setDirty = true;
@@ -689,6 +695,13 @@ const post = (() => {
         vec2 d = vUv - 0.5; c *= 1.0 - dot(d, d) * 0.55;
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
+        // grading: a touch more colour, cool shadows and warm highlights
+        vec3 g = gl_FragColor.rgb;
+        float l = dot(g, vec3(0.299, 0.587, 0.114));
+        g = mix(vec3(l), g, 1.14);
+        g += vec3(-0.012, 0.0, 0.025) * (1.0 - smoothstep(0.0, 0.45, l)) + vec3(0.025, 0.012, -0.015) * smoothstep(0.55, 1.0, l);
+        g = mix(g, g * g * (3.0 - 2.0 * g), 0.18);
+        gl_FragColor.rgb = clamp(g, 0.0, 1.0);
         #include <colorspace_fragment>
       }` });
   comp.toneMapped = true;
@@ -728,7 +741,7 @@ glowMat.onBeforeCompile = (s) => {
     #endif`);
   s.fragmentShader = 'uniform vec3 uSun; varying vec3 vWorldP;\n' + s.fragmentShader
     .replace('#include <color_fragment>', '#include <color_fragment>\n  float night = smoothstep(0.15, -0.2, dot(normalize(vWorldP), uSun));\n  vec3 glowCol = diffuseColor.rgb;\n  diffuseColor.rgb = mix(glowCol * 0.55, glowCol * 0.15, night);')
-    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += glowCol * (0.2 + night * 2.6);');
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += glowCol * (0.2 + night * 3.4);');
 };
 glowMat.customProgramCacheKey = () => 'glow';
 function inst(geo, mat, max, shadow = true) { const m = new THREE.InstancedMesh(geo, mat, max); m.count = 0; m.frustumCulled = false; m.castShadow = m.receiveShadow = shadow; scene.add(m); return m; }
@@ -774,11 +787,12 @@ const centerT = {}, tileT = {};
 const mkT = (t, max) => ({ body: inst(t.body, bodyMat, max), glow: t.glow ? inst(t.glow, glowMat, max) : null, smoke: t.smoke });
 for (let e = 0; e < 7; e++) {
   for (let l = 1; l <= 4; l++) centerT[`${e}-${l}`] = mkT(centerModel(e, l), 80);
-  for (let k = 0; k < 5; k++) if (k !== 3 || (e >= 1 && e <= 3)) tileT[`${e}-${k}`] = mkT(tileModel(e, k), 1500);
+  for (let k = 0; k < 9; k++) if (k !== 3 || (e >= 1 && e <= 3)) tileT[`${e}-${k}`] = mkT(tileModel(e, k), 900);
 }
 const ALL_T = [...Object.values(centerT), ...Object.values(tileT)];
 // things that appear spring up with a little overshoot
 const born = new Map();
+const hash = (x) => ((x * 2654435761) >>> 0) % 997;
 function popIn(t0, dur = 0.6) {
   if (t0 === undefined) return 1;
   const k = (t - t0) / dur;
@@ -969,6 +983,178 @@ function updateShootingStars(dt) {
     for (let i = 0; i < 4; i++) { shooter.p.addScaledVector(shooter.v, dt / 4); parts.push({ p: shooter.p.clone(), v: new THREE.Vector3(), c: new THREE.Color(i % 2 ? 0xbfe8ff : 0xffffff), life: 0.5, max: 0.5, g: 0 }); }
     if (shooter.life <= 0) shooter = null;
   }
+}
+
+// ------------------------------------------------------------------ streets: along the hex edges inside and around each town
+let roadsDirty = true;
+const roadMesh = inst(roadGeo(), bodyMat, 3000, false);
+roadMesh.receiveShadow = true;
+const laneMesh = inst(laneGeo(), glowMat, 3000, false);
+const LG = lampGeos();
+const lampPost = inst(LG.post, bodyMat, 1200, false), lampLight = inst(LG.light, glowMat, 1200, false);
+const poolMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { uSun: sunU },
+  vertexShader: 'varying vec2 vUv; varying vec3 vW; void main() { vUv = uv; vec4 w = modelMatrix * instanceMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+  fragmentShader: 'uniform vec3 uSun; varying vec2 vUv; varying vec3 vW; void main() { float night = smoothstep(0.1, -0.2, dot(normalize(vW), uSun)); float d = length(vUv - 0.5) * 2.0; float a = pow(max(0.0, 1.0 - d), 2.0) * night; gl_FragColor = vec4(vec3(1.0, 0.72, 0.35) * a * 0.55, 1.0); }',
+});
+const lampPool = inst(new THREE.PlaneGeometry(0.13, 0.13).rotateX(-Math.PI / 2).translate(0, 0.008, 0), poolMat, 1200, false);
+lampPool.renderOrder = 2;
+roadMesh.setColorAt(0, new THREE.Color()); laneMesh.setColorAt(0, new THREE.Color()); lampLight.setColorAt(0, new THREE.Color());
+const ROAD_COL = [0x8a6a44, 0x9a7448, 0x8a8068, 0x6e685c, 0x44444c, 0x2e3038, 0x9ab8e0].map((c) => new THREE.Color(c));
+const LAMP_COL = [0xffb060, 0xffb060, 0xffc070, 0xffc070, 0xffd890, 0xfff2d8, 0x8ff4ff].map((c) => new THREE.Color(c));
+let segs = [], cornerSegs = new Map();
+const mtx = new THREE.Matrix4(), bx = new THREE.Vector3(), by = new THREE.Vector3(), bz = new THREE.Vector3(), sc3 = new THREE.Vector3();
+function placeSeg(m, n, a, b, up, width, lift) {
+  bx.subVectors(b, a); const len = bx.length(); bx.normalize();
+  by.copy(up); bz.crossVectors(bx, by).normalize(); by.crossVectors(bz, bx);
+  mtx.makeBasis(bx, by, bz);
+  mtx.scale(sc3.set(len, 1, width));
+  mtx.setPosition(a.clone().add(b).multiplyScalar(0.5).addScaledVector(up, lift));
+  m.setMatrixAt(n, mtx);
+}
+function layoutRoads() {
+  roadsDirty = false;
+  segs = []; cornerSegs = new Map();
+  let nr = 0, nl = 0, np = 0;
+  const done = new Set();
+  for (const s of G.settlements) {
+    const era = eraOf(s), cells = new Set([s.v, ...s.tiles]);
+    if (cells.size < 2) continue;
+    for (const c of cells) {
+      const cell = CELLS[c], k = cell.fs.length, rr = radiusOf(c);
+      for (let i = 0; i < k; i++) {
+        const nb = cell.nb[i], inside = cells.has(nb);
+        if (!inside && era < 2) continue;
+        if (inside && h[nb] !== h[c]) continue;
+        const f1 = cell.fs[i], f2 = cell.fs[(i + 1) % k], key = f1 < f2 ? `${f1}-${f2}` : `${f2}-${f1}`;
+        if (done.has(key) || nr >= 3000) continue;
+        done.add(key);
+        const a = CORN[f1].clone().multiplyScalar(rr - 0.011), b = CORN[f2].clone().multiplyScalar(rr - 0.011), up = DIRS[c];
+        placeSeg(roadMesh, nr, a, b, up, era <= 1 ? 0.022 : 0.03, 0.0);
+        roadMesh.setColorAt(nr++, ROAD_COL[era]);
+        if (era >= 4 && nl < 3000) { placeSeg(laneMesh, nl, a.clone().lerp(b, 0.12), b.clone().lerp(a, 0.12), up, 0.003, 0.0); laneMesh.setColorAt(nl++, era === 6 ? LAMP_COL[6] : new THREE.Color(0xf4f0d0)); }
+        if (era >= 1 && np < 1200 && (f1 + f2) % 2 === 0) {
+          const mid = a.clone().lerp(b, 0.5).addScaledVector(DIRS[c].clone().sub(a.clone().normalize()).normalize(), 0);
+          dummy.position.copy(mid); dummy.quaternion.setFromUnitVectors(UP, up); dummy.scale.setScalar(1); dummy.updateMatrix();
+          lampPost.setMatrixAt(np, dummy.matrix); lampLight.setMatrixAt(np, dummy.matrix); lampPool.setMatrixAt(np, dummy.matrix); lampLight.setColorAt(np++, LAMP_COL[era]);
+        }
+        const si = segs.length;
+        segs.push({ a, b, up, f1, f2, era, len: a.distanceTo(b) });
+        for (const f of [f1, f2]) { if (!cornerSegs.has(f)) cornerSegs.set(f, []); cornerSegs.get(f).push(si); }
+      }
+    }
+  }
+  roadMesh.count = nr; laneMesh.count = nl; lampPost.count = lampLight.count = lampPool.count = np;
+  for (const m of [roadMesh, laneMesh, lampPost, lampLight, lampPool]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
+  seedTraffic();
+}
+// people, carts, cars and hover pods moving from street to street
+const peds = inst(personGeo(), bodyMat, 400, false), cars = inst(carGeo(), bodyMat, 400, false), heads = inst(mergeParts([{ g: new THREE.BoxGeometry(0.003, 0.004, 0.012).translate(0.0135, 0.01, 0), c: 0xfff4c0 }]), glowMat, 400, false), pods = inst(podGeo(), glowMat, 400, false);
+for (const m of [peds, cars, pods]) m.setColorAt(0, new THREE.Color());
+const CAR_COL = [0xd04a3a, 0x3a7ad0, 0xe0c040, 0xf2f2f2, 0x2a2a30, 0x4ab06a, 0xe07a2a, 0x8a5ad0].map((c) => new THREE.Color(c));
+const PED_COL = [0xb05a3a, 0x3a6a8a, 0xd8b04a, 0x6a8a3a, 0x8a4a8a, 0xe0e0d8].map((c) => new THREE.Color(c));
+let traffic = [];
+function seedTraffic() {
+  traffic = [];
+  const n = Math.min(380, Math.floor(segs.length * 0.5));
+  for (let i = 0; i < n; i++) {
+    const si = (rnd() * segs.length) | 0, sg = segs[si];
+    traffic.push({ si, t: rnd(), fwd: rnd() < 0.5, speed: sg.era >= 4 ? 0.09 + rnd() * 0.06 : 0.02 + rnd() * 0.015, col: i });
+  }
+}
+const tA = new THREE.Vector3(), tB = new THREE.Vector3(), tP = new THREE.Vector3();
+function updateTraffic(dt) {
+  let np = 0, nc = 0, nd = 0;
+  for (const a of traffic) {
+    let sg = segs[a.si];
+    if (!sg) continue;
+    a.t += (a.speed * dt) / sg.len;
+    if (a.t >= 1) {
+      // turn onto another street at the corner we reached
+      const corner = a.fwd ? sg.f2 : sg.f1, opts = (cornerSegs.get(corner) || []).filter((x) => x !== a.si);
+      if (opts.length) { const ni = opts[(rnd() * opts.length) | 0]; a.si = ni; a.fwd = segs[ni].f1 === corner; }
+      else a.fwd = !a.fwd;
+      a.t = 0; sg = segs[a.si];
+    }
+    const from = a.fwd ? sg.a : sg.b, to = a.fwd ? sg.b : sg.a;
+    tP.copy(from).lerp(to, a.t);
+    tA.subVectors(to, from).normalize();
+    tB.crossVectors(tA, sg.up).normalize();
+    tP.addScaledVector(tB, sg.era >= 4 ? 0.007 : (a.col % 2 ? 0.008 : -0.008));
+    dummy.position.copy(tP);
+    dummy.up.copy(sg.up);
+    dummy.lookAt(tP.clone().add(tB));
+    dummy.scale.setScalar(sg.era <= 3 ? 1.05 : 1.5);
+    dummy.updateMatrix();
+    dummy.up.set(0, 1, 0);
+    if (sg.era <= 3) { peds.setMatrixAt(np, dummy.matrix); peds.setColorAt(np++, PED_COL[a.col % PED_COL.length]); }
+    else if (sg.era <= 5) { cars.setMatrixAt(nc, dummy.matrix); heads.setMatrixAt(nc, dummy.matrix); cars.setColorAt(nc++, CAR_COL[a.col % CAR_COL.length]); }
+    else { pods.setMatrixAt(nd, dummy.matrix); pods.setColorAt(nd++, a.col % 2 ? LAMP_COL[6] : new THREE.Color(0xff8af0)); }
+  }
+  peds.count = np; cars.count = heads.count = nc; pods.count = nd;
+  for (const m of [peds, cars, pods, heads]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
+}
+
+// boats on the seas and birds over the land
+const BG = boatGeos();
+const sails = inst(BG.sail, bodyMat, 30, true), ships = inst(BG.ship, bodyMat, 30, true);
+const boats = Array.from({ length: 16 }, (_, i) => ({ axis: new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(), ang: rnd() * 6.28, speed: (0.012 + rnd() * 0.012) * (i % 2 ? 1 : -1), start: new THREE.Vector3(), wet: false, check: 0 }));
+for (const b of boats) b.start.set(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).projectOnPlane(b.axis).normalize();
+const birdMesh = inst(birdGeo(), bodyMat, 60, false);
+const flocks = Array.from({ length: 5 }, () => ({ c: new THREE.Vector3(rnd() - 0.5, (rnd() - 0.5) * 1.2, rnd() - 0.5).normalize(), r: 0.25 + rnd() * 0.3, ph: rnd() * 6, sp: 0.25 + rnd() * 0.2 }));
+const nearestCell = (d) => { let best = 0, bd = -2; for (let v = 0; v < NV; v += 1) { const k = DIRS[v].dot(d); if (k > bd) { bd = k; best = v; } } return best; };
+function updateBoats(dt) {
+  let ns = 0, nh = 0;
+  for (const b of boats) {
+    b.ang += b.speed * dt;
+    const d = b.start.clone().applyAxisAngle(b.axis, b.ang);
+    b.check -= dt;
+    if (b.check <= 0) { b.check = 0.5; b.wet = !isLand(nearestCell(d)) && Math.abs(d.y) < 0.85; }
+    if (!b.wet) continue;
+    const fwd = b.axis.clone().cross(d).multiplyScalar(Math.sign(b.speed)).normalize();
+    dummy.position.copy(d).multiplyScalar(R + (G.seaVis + 0.5) * STEP + 0.004 + Math.sin(t * 2 + b.ang * 9) * 0.004);
+    dummy.up.copy(d); dummy.lookAt(dummy.position.clone().add(fwd.cross(d)));
+    dummy.scale.setScalar(1.3); dummy.updateMatrix(); dummy.up.set(0, 1, 0);
+    if (G.era >= 4) { ships.setMatrixAt(nh++, dummy.matrix); if (G.era === 4 && rnd() < dt * 1.5) emit(dummy.position.clone().addScaledVector(d, 0.06), 0x4a4a50, 1, 0.15, 0.03, 1.5, -0.05); }
+    else sails.setMatrixAt(ns++, dummy.matrix);
+  }
+  sails.count = ns; ships.count = nh;
+  sails.instanceMatrix.needsUpdate = ships.instanceMatrix.needsUpdate = true;
+  let nb = 0;
+  for (const f of flocks) {
+    const t1 = new THREE.Vector3(0, 1, 0).cross(f.c).normalize(), t2 = f.c.clone().cross(t1);
+    for (let i = 0; i < 9; i++) {
+      const a = t * f.sp + f.ph - i * 0.05, off = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.025;
+      const p = f.c.clone().addScaledVector(t1, Math.cos(a) * f.r).addScaledVector(t2, Math.sin(a) * f.r).normalize();
+      const n = p.clone(), tang = t1.clone().multiplyScalar(-Math.sin(a)).addScaledVector(t2, Math.cos(a)).normalize();
+      dummy.position.copy(p).multiplyScalar(R + 1.0 + Math.sin(t * 3 + i) * 0.02).addScaledVector(tang.clone().cross(n), off).addScaledVector(tang, -Math.abs(off) * 1.2);
+      dummy.up.copy(n); dummy.lookAt(dummy.position.clone().add(tang.clone().cross(n).multiplyScalar(-1)));
+      dummy.scale.set(1, 1, 1 + Math.sin(t * 12 + i) * 0.4); dummy.updateMatrix(); dummy.up.set(0, 1, 0);
+      birdMesh.setMatrixAt(nb++, dummy.matrix);
+    }
+  }
+  birdMesh.count = G.era <= 5 ? nb : 0;
+  birdMesh.instanceMatrix.needsUpdate = true;
+}
+
+// small details on open land: grass tufts, flowers and rocks
+const SG = sceneryGeos();
+const tufts = inst(SG.tuft, bodyMat, 2500, false), flowers = inst(SG.flower, bodyMat, 1500, false), rocks = inst(SG.rock, bodyMat, 1000, false);
+flowers.setColorAt(0, new THREE.Color());
+const FLOWER_COL = [0xff6a8a, 0xffe04a, 0xffffff, 0xb07aff, 0xff9a3a].map((c) => new THREE.Color(c));
+function layoutScenery() {
+  let nt = 0, nf = 0, nr = 0;
+  for (let v = 0; v < NV; v++) {
+    if (!isLand(v) || tileKind[v] || owner[v] >= 0 || Math.abs(DIRS[v].y) > 0.86) continue;
+    const up = h[v] - G.sea, hv = hash(v);
+    if (up >= 4) { if (hv % 2 === 0 && nr < 1000) placeIn(rocks, nr++, v, ((hv % 7) - 3) * 0.02, ((hv % 5) - 2) * 0.025, hv, 0.9 + (hv % 4) * 0.2, 0); continue; }
+    if (up <= 0 || tree[v]) continue;
+    for (let i = 0; i < 1 + (hv % 2) && nt < 2500; i++) placeIn(tufts, nt++, v, (((hv >> i) % 9) - 4) * 0.022, (((hv >> (i + 2)) % 9) - 4) * 0.022, hv + i, 1, 0);
+    if (hv % 3 === 0 && nf < 1500 && up <= 2) { placeIn(flowers, nf, v, ((hv % 11) - 5) * 0.015, ((hv % 7) - 3) * 0.02, 0, 1, 0); flowers.setColorAt(nf++, FLOWER_COL[hv % FLOWER_COL.length]); }
+    if (hv % 11 === 0 && nr < 1000) placeIn(rocks, nr++, v, -0.05, 0.04, hv, 0.6, 0);
+  }
+  tufts.count = nt; flowers.count = nf; rocks.count = nr;
+  for (const m of [tufts, flowers, rocks]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
 }
 
 // ------------------------------------------------------------------ particles (radial gravity)
@@ -1872,9 +2058,9 @@ function layoutSettlements(dt) {
   let nf = 0;
   const smoke = [];
   let era = G.era;
-  const put = (tp, v, scale) => {
+  const put = (tp, v, scale, turn = 0) => {
     const n = tp.n++;
-    placeIn(tp.body, n, v, 0, 0, YAW[v], scale, -0.002);
+    placeIn(tp.body, n, v, 0, 0, YAW[v] + turn, scale, -0.002);
     if (tp.glow) tp.glow.setMatrixAt(n, dummy.matrix);
     if (era === 4 && tp.smoke.length && rnd() < dt * 0.5) for (const sp of tp.smoke) smoke.push(new THREE.Vector3(...sp).applyMatrix4(dummy.matrix));
   };
@@ -1885,9 +2071,11 @@ function layoutSettlements(dt) {
     flags.setColorAt(nf++, s.tribe ? FLAG_RED : FLAG_BLUE);
     put(centerT[`${era}-${s.level}`], s.v, 0.6 + 0.4 * (1 - Math.pow(1 - s.grow, 3)));
     for (const x of s.tiles || []) {
-      const k = tileKind[x] === 3 ? 3 : tileKind[x] === 6 ? 4 : NBR[s.v].includes(x) ? 0 : (x * 7) % 3;
+      // downtown near the centre, mixed streets further out, suburbs at the edge
+      const ring = s.ring?.get(x) ?? 2, hx = hash(x) % 5;
+      const k = tileKind[x] === 3 ? 3 : tileKind[x] === 6 ? 4 : ring <= 1 ? [0, 5, 5, 7, 8][hx] : ring === 2 ? [0, 1, 2, 5, 7][hx] : [6, 6, 1, 2, 6][hx];
       const tp = tileT[`${era}-${k}`];
-      if (tp && tp.n < 1500) put(tp, x, popIn(born.get(x)));
+      if (tp && tp.n < 900) put(tp, x, popIn(born.get(x)), (hash(x) % 6) * (Math.PI / 3));
     }
   }
   for (const tp of ALL_T) {
@@ -2356,6 +2544,9 @@ function frame() {
   if (Math.abs(G.seaVis - G.sea) > 0.001) { G.seaVis += Math.sign(G.sea - G.seaVis) * Math.min(Math.abs(G.sea - G.seaVis), dt * 0.4); terrainDirty = true; }
   water.scale.setScalar(1 + ((G.seaVis + 0.5) * STEP) / R);
   if (setDirty) { setDirty = false; assignTiles(); }
+  if (roadsDirty) layoutRoads();
+  updateTraffic(dt);
+  updateBoats(dt);
   if (terrainDirty) { terrainDirty = false; rebuildPlanet(); layoutBuildings(); for (const w of G.wonders) if (w.group) w.group.position.copy(DIRS[w.v]).multiplyScalar(radiusOf(w.v)); }
   atmoColor.set(0x5fa8ff).lerp(new THREE.Color(0xc89a6a), clamp((80 - G.health) / 80, 0, 0.8));
   layoutSettlements(dt);
