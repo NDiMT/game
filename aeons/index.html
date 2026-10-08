@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-512.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=1.4" />
+  <link rel="stylesheet" href="style.css?v=1.5" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -38,6 +38,7 @@
         <small>NEXT WONDER</small>
         <b id="goal-name">Stonehenge</b>
         <div class="track"><div id="goal-fill"></div></div>
+        <div class="chips"><span id="ch-know" class="chip">📜 0%</span><span id="ch-mana" class="chip">✦ 0/80</span><span id="ch-size" class="chip">🏘️ 1/4</span></div>
       </div>
       <span id="goal-pct" class="quest-pct">0%</span>
     </button>
@@ -50,9 +51,14 @@
   </div>
   <button id="update" class="update" hidden>New version! Tap to update</button>
   <div id="toast" class="toast"></div>
+  <div id="floaters"></div>
+  <div id="brush" class="brush" hidden>🖌️ Brush: drag to shape</div>
+  <div id="flash"></div>
+  <div id="confetti"></div>
   <footer class="dock">
     <div class="dock-top">
       <div class="orb"><div id="mana-fill"><i></i></div><span><small>✦</small><b id="mana">60</b></span></div>
+      <div class="rate" id="rate">+1/s</div>
       <p id="hint" class="hint">Tap a hex to raise it.</p>
     </div>
     <div class="tabs"><button id="tab-powers" class="tab on">✨ Powers</button><button id="tab-build" class="tab">🏗️ Build</button></div>
@@ -78,6 +84,16 @@
       <p id="era-unlock" class="unlock"></p>
       <p id="era-wonder" class="unlock"></p>
       <button id="era-ok" class="btn gold">Onward</button>
+    </div>
+  </div>
+
+  <div id="event" class="overlay" hidden>
+    <div class="card event-card">
+      <span class="kicker">✦ A choice ✦</span>
+      <div id="ev-icon" class="big-ic">🔥</div>
+      <h2 id="ev-title">Event</h2>
+      <p id="ev-text"></p>
+      <div class="ev-choices"><button id="ev-a" class="btn gold"></button><button id="ev-b" class="btn ghost"></button></div>
     </div>
   </div>
 
@@ -110,7 +126,8 @@
       <label class="toggle"><span>High graphics (shadows, glow)</span><input type="checkbox" id="opt-hq" checked /></label>
       <div class="howto">
         <p><b>Drag</b> to turn the planet, <b>pinch</b> to zoom.</p>
-        <p><b>Raise / Lower</b> the land: settlements grow bigger on wide flat ground. Orange marks show where the land is uneven.</p>
+        <p><b>🪄 Level</b> is the easy tool: tap a hex, or hold and drag to paint, and the land steps toward your nearest town's height. Green ↑ and red ↓ arrows show what still needs work.</p>
+        <p>Land near the Crimson (red rings) cannot be shaped. Plant a <b>🚩 Beacon</b> to send settlers where you want, and grow towns over <b>💎 treasures</b>.</p>
         <p>People make <b>knowledge</b>. Fill the bar and build a <b>wonder</b> to enter the next age.</p>
         <p>From the Industrial Age, pollution hurts the planet. If its health falls, the <b>seas rise</b>.</p>
       </div>
@@ -137,6 +154,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="main.js?v=1.4"></script>
+<script type="module" src="main.js?v=1.5"></script>
 </body>
 </html>
