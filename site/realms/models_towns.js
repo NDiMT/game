@@ -126,7 +126,7 @@ function bake(parts, r, glow, uv) {
     let ymin = Infinity, ymax = -Infinity;
     for (let i = 1; i < P.length; i += 3) { ymin = Math.min(ymin, P[i]); ymax = Math.max(ymax, P[i]); }
     const span = Math.max(1e-4, ymax - ymin);
-    const top = p.o.top ?? 1.06, bot = p.o.bot ?? 0.9, jit = p.o.j ?? (glow ? 0.0 : 0.05);
+    const top = p.o.top ?? 1.06, bot = p.o.bot ?? 0.92, jit = p.o.j ?? (glow ? 0.0 : 0.04);
     const base = typeof p.c === 'number' ? new THREE.Color(p.c) : p.c;
     for (let t = 0; t < cnt; t += 3) {
       a.fromArray(P, t * 3); b.fromArray(P, t * 3 + 3); c.fromArray(P, t * 3 + 6);
@@ -137,7 +137,7 @@ function bake(parts, r, glow, uv) {
         pos.set([x, y, z], o * 3); nor.set([fn.x, fn.y, fn.z], o * 3);
         let m = jf * (bot + (top - bot) * ((y - ymin) / span));
         if (p.o.cols) m *= p.o.cols[vi];
-        if (!glow && p.o.ao !== false) m *= 0.55 + 0.45 * smooth(-0.01, 0.2, y);
+        if (!glow && p.o.ao !== false) m *= 0.84 + 0.16 * smooth(-0.01, 0.14, y);
         tmpC.copy(base).multiplyScalar(m);
         col.set([tmpC.r, tmpC.g, tmpC.b], o * 3);
         if (uvs) {
@@ -171,12 +171,13 @@ function pennant(k, x0, y0, z0, len, hgt, c, o = {}) {
     if (tail > 0) along -= Math.max(0, 1 - Math.abs(v - 0.5) * 4) * tail * len * smooth(0.5, 1, u);
     const w = Math.sin(u * waves * TAU + ph) * amp * u;
     const droop = -u * u * hgt * (o.droop ?? 0.25);
+    if (o.ang !== undefined) { const ux = Math.sin(o.ang), uz = Math.cos(o.ang); return [x0 + ux * along + uz * w, y0 + yy + droop, z0 + uz * along - ux * w]; }
     return axis === 'x' ? [x0 + dir * along, y0 + yy + droop, z0 + w] : [x0 + w, y0 + yy + droop, z0 + dir * along];
   }, c, { shade: (u, v) => 0.9 + 0.22 * Math.cos(u * waves * TAU + ph), top: 1.05, bot: 0.95, ao: false, j: 0.02 });
 }
 
 // ------------------------------------------------------------------ towns
-const HV = { stone: 0xe6dfcf, stoneD: 0xb8ae9a, roof: 0x2f5fd0, roofD: 0x23459c, gold: 0xf2c24a, win: 0xffc25a, banner: 0x2a58c8, wood: 0x6a4a32, red: 0xb5452e, plaster: 0xf0e6cc, grass: 0x6f9a42, path: 0xc8b48a };
+const HV = { stone: 0xf6f0e2, stoneD: 0xd6c9ac, roof: 0x3a78f2, roofD: 0x2e60d0, gold: 0xffcf4a, win: 0xffd070, banner: 0x2f6af0, wood: 0x9a6a42, red: 0xe0583a, plaster: 0xfbf2da, grass: 0x86c64e, path: 0xe6d3a0, door: 0x7a4a2a, iron: 0x9a948a };
 function havenTown() {
   const k = makeKit(11);
   // ground: a grassy mound with a paved courtyard
@@ -199,7 +200,8 @@ function havenTown() {
     const [x, z, a] = tw[i];
     const front = i === 1 || i === 2, h = front ? 0.5 : 0.42, rr = 0.088;
     k.lathe([[rr * 1.25, 0], [rr * 1.08, 0.08], [rr, 0.12], [rr, h - 0.04], [rr * 1.22, h], [rr * 1.22, h + 0.03], [rr * 0.95, h + 0.03]], x, Y, z, HV.stone, 10, { top: 1.1, bot: 0.75 });
-    k.cone(rr * 1.35, front ? 0.34 : 0.27, x, Y + h + 0.03, z, HV.roof, 10, { top: 1.35, bot: 0.7 });
+    k.cone(rr * 1.35, front ? 0.34 : 0.27, x, Y + h + 0.03, z, HV.roof, 10, { top: 1.4, bot: 0.75 });
+    k.tor(rr * 1.3, 0.009, x, Y + h + 0.035, z, HV.gold, TAU, { rx: Math.PI / 2, rs: 10, ts: 3 });
     const th = Y + h + 0.03 + (front ? 0.34 : 0.27);
     k.ball(0.018, x, th, z, HV.gold, 0); k.cone(0.008, 0.06, x, th + 0.01, z, HV.gold, 4);
     k.winCyl(x, z, rr * 1.01, a, Y + h * 0.62, 0.025, 0.055, HV.win);
@@ -212,10 +214,10 @@ function havenTown() {
   k.box(0.3, 0.36, 0.16, 0, Y, gz, HV.stone, { top: 1.1, bot: 0.75 });
   k.box(0.32, 0.03, 0.18, 0, Y + 0.34, gz, HV.stoneD);
   for (let i = 0; i < 5; i++) { const x = -0.13 + i * 0.065; k.box(0.035, 0.05, 0.03, x, Y + 0.37, gz + 0.075, HV.stone, { top: 1.2 }); k.box(0.035, 0.05, 0.03, x, Y + 0.37, gz - 0.075, HV.stone, { top: 1.2 }); }
-  k.box(0.1, 0.13, 0.02, 0, Y, gz + 0.072, 0x231a14, { ao: false });
+  k.box(0.1, 0.13, 0.02, 0, Y, gz + 0.072, HV.door, { ao: false });
   k.tor(0.05, 0.012, 0, Y + 0.13, gz + 0.082, HV.stoneD, Math.PI, { rs: 8 });
-  k.cyl(0.05, 0.05, 0.02, 0, Y + 0.12, gz + 0.072, 0x231a14, 8, { rx: Math.PI / 2, s: [1, 1, 1], ao: false });
-  for (let i = 0; i < 4; i++) k.box(0.008, 0.12, 0.008, -0.03 + i * 0.02, Y + 0.02, gz + 0.085, 0x4a4a52);
+  k.cyl(0.05, 0.05, 0.02, 0, Y + 0.12, gz + 0.072, HV.door, 8, { rx: Math.PI / 2, s: [1, 1, 1], ao: false });
+  for (let i = 0; i < 4; i++) k.box(0.008, 0.12, 0.008, -0.03 + i * 0.02, Y + 0.02, gz + 0.085, HV.iron);
   for (const sx of [-1, 1]) {
     const x = sx * 0.15;
     k.cyl(0.045, 0.05, 0.46, x, Y, gz + 0.06, HV.stone, 8, { top: 1.1, bot: 0.8 });
@@ -252,7 +254,7 @@ function havenTown() {
   for (const s of [-1, 1]) for (const z of [-0.06, 0.06]) k.box(0.012, 0.07, 0.035, kx + s * kw / 2, Y + 0.28, kz + z, HV.win, { glow: true });
   // rose window over the keep door, door, and hanging banners
   k.cyl(0.035, 0.035, 0.012, kx, Y + 0.41, kz + kw / 2 + 0.002, HV.win, 8, { rx: Math.PI / 2, glow: true });
-  k.box(0.08, 0.1, 0.02, kx, Y, kz + kw / 2, 0x3a2416);
+  k.box(0.08, 0.1, 0.02, kx, Y, kz + kw / 2, HV.door);
   k.tor(0.04, 0.01, kx, Y + 0.1, kz + kw / 2 + 0.008, HV.stoneD, Math.PI, { rs: 6 });
   for (const s of [-1, 1]) {
     const bx = kx + s * 0.135;
@@ -265,14 +267,15 @@ function havenTown() {
     k.ball(0.014, bx, Y + kh - 0.08, kz + kw / 2 + 0.02, HV.gold, 0, { ao: false });
   }
   // central spire tower rising from the keep
-  const sh = 0.36;
+  const sh = 0.44;
   k.lathe([[0.09, 0], [0.085, sh], [0.105, sh + 0.02], [0.105, sh + 0.045], [0.08, sh + 0.045]], kx, Y + kh, kz, HV.stone, 10, { top: 1.12, bot: 0.85 });
   for (let i = 0; i < 4; i++) k.winCyl(kx, kz, 0.087, i * Math.PI / 2 + Math.PI / 2, Y + kh + 0.18, 0.025, 0.07, HV.win);
-  k.cone(0.13, 0.42, kx, Y + kh + sh + 0.045, kz, HV.roof, 12, { top: 1.4, bot: 0.65 });
-  const tipY = Y + kh + sh + 0.045 + 0.42;
+  k.cone(0.14, 0.5, kx, Y + kh + sh + 0.045, kz, HV.roof, 12, { top: 1.45, bot: 0.75 });
+  k.tor(0.13, 0.011, kx, Y + kh + sh + 0.05, kz, HV.gold, TAU, { rx: Math.PI / 2, rs: 12, ts: 3 });
+  const tipY = Y + kh + sh + 0.045 + 0.5;
   k.ball(0.022, kx, tipY, kz, HV.gold, 1); k.cone(0.01, 0.08, kx, tipY + 0.01, kz, HV.gold, 4);
   k.limb([kx, tipY, kz], [kx, tipY + 0.2, kz], 0.006, 0.005, HV.gold, 4);
-  pennant(k, kx, tipY + 0.165, kz, 0.24, 0.07, HV.banner, { dir: 1, amp: 0.03, tail: 0.35 });
+  pennant(k, kx, tipY + 0.165, kz, 0.3, 0.1, HV.banner, { dir: 1, amp: 0.035, tail: 0.35 });
   // great hall in front-left: gabled blue roof
   k.box(0.16, 0.16, 0.26, -0.28, Y, 0.04, HV.plaster, { top: 1.08, bot: 0.75 });
   k.gable(0.26, 0.11, 0.16, -0.28, Y + 0.16, 0.04, HV.roof, HV.plaster, Math.PI / 2);
@@ -292,17 +295,17 @@ function havenTown() {
     k.box(0.015, 0.05, 0.015, x - Math.cos(ry) * w * 0.3, Y + h + 0.02, z + Math.sin(ry) * w * 0.3, HV.stoneD, { ry });
   }
   // a couple of round trees and a well in the courtyard
-  for (const [x, z] of [[0.08, 0.22], [-0.18, 0.4]]) { k.cyl(0.008, 0.012, 0.05, x, Y, z, HV.wood, 5); k.ball(0.04, x, Y + 0.08, z, 0x4f8a34, 1, { top: 1.3, bot: 0.7, s: [1, 1.1, 1] }); }
+  for (const [x, z] of [[0.08, 0.22], [-0.18, 0.4]]) { k.cyl(0.008, 0.012, 0.05, x, Y, z, HV.wood, 5); k.ball(0.04, x, Y + 0.08, z, 0x5aa83a, 1, { top: 1.3, bot: 0.8, s: [1, 1.1, 1] }); }
   k.cyl(0.03, 0.03, 0.03, 0.15, Y, 0.38, HV.stoneD, 8); k.cyl(0.024, 0.024, 0.005, 0.15, Y + 0.028, 0.38, 0x6ac8ff, 8, { glow: true });
   return finish(k);
 }
 
-const NC = { stone: 0x5c5468, stoneD: 0x2c2634, stoneL: 0x7a7088, spike: 0x342a42, bone: 0xe6dcc0, boneD: 0xa89a7a, green: 0x5aff8a, greenD: 0x1f8a4a, red: 0xa01c24, ash: 0x4a4440, purple: 0x4a2a5a };
+const NC = { stone: 0x9c8fb4, stoneD: 0x76689a, stoneL: 0xc2b6d6, spike: 0x72669c, bone: 0xf6eed4, boneD: 0xd2c4a0, green: 0x7affa8, greenD: 0x34e078, red: 0xd8283c, ash: 0x9a9a80, pave: 0x8a809a, wood: 0x7a6656, purple: 0x7a4aa0 };
 function necroTown() {
   const k = makeKit(13);
-  k.lathe([[0.69, 0], [0.68, 0.025], [0.62, 0.05], [0, 0.05]], 0, 0, 0, NC.ash, 14, { top: 1.0, bot: 0.6 });
-  k.cyl(0.5, 0.52, 0.01, 0, 0.05, -0.02, 0x2e2a2c, 12, { j: 0.1 });
-  k.box(0.12, 0.01, 0.28, 0, 0.05, 0.5, 0x3a3236, { j: 0.1 });
+  k.lathe([[0.69, 0], [0.68, 0.025], [0.62, 0.05], [0, 0.05]], 0, 0, 0, NC.ash, 14, { top: 1.05, bot: 0.8 });
+  k.cyl(0.5, 0.52, 0.01, 0, 0.05, -0.02, NC.pave, 12, { j: 0.08 });
+  k.box(0.12, 0.01, 0.28, 0, 0.05, 0.5, NC.pave, { j: 0.08 });
   const Y = 0.055;
   // ghostly pool in the courtyard
   k.cyl(0.13, 0.13, 0.004, 0.18, Y + 0.004, 0.16, NC.greenD, 10, { glow: true });
@@ -313,9 +316,9 @@ function necroTown() {
   for (let i = 0; i < 6; i++) {
     const [ax, az] = tw[i], [bx, bz] = tw[(i + 1) % 6];
     if (i === 1) {
-      k.wall(ax, az, 0.15, 0.485, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.spike, step: 0.05 });
-      k.wall(-0.15, 0.485, bx, bz, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.spike, step: 0.05 });
-    } else k.wall(ax, az, bx, bz, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.spike, step: 0.06 });
+      k.wall(ax, az, 0.15, 0.485, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.boneD, step: 0.05 });
+      k.wall(-0.15, 0.485, bx, bz, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.boneD, step: 0.05 });
+    } else k.wall(ax, az, bx, bz, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.boneD, step: 0.06 });
   }
   // towers: tapering hexagonal shafts with black needle spires and green slits
   for (let i = 0; i < 6; i++) {
@@ -336,7 +339,7 @@ function necroTown() {
   const gz = 0.49;
   k.box(0.3, 0.3, 0.14, 0, Y, gz - 0.01, NC.stone, { top: 1.1, bot: 0.7 });
   k.cone(0.17, 0.16, 0, Y + 0.3, gz - 0.01, NC.spike, 4, { ry: Math.PI / 4, s: [1, 1, 0.5], top: 1.3 });
-  k.box(0.11, 0.15, 0.02, 0, Y, gz + 0.06, 0x0a0a0c, { ao: false });
+  k.box(0.11, 0.15, 0.02, 0, Y, gz + 0.06, NC.purple, { ao: false });
   k.box(0.09, 0.13, 0.01, 0, Y, gz + 0.065, NC.greenD, { glow: true });
   for (let i = 0; i < 3; i++) {
     const rr = 0.085 + i * 0.022, zz = gz + 0.075 + i * 0.03;
@@ -356,7 +359,7 @@ function necroTown() {
   for (const x of [-0.11, 0.11]) { k.box(0.035, 0.12, 0.012, x, Y + 0.12, cz + 0.152, NC.green, { glow: true }); k.cone(0.025, 0.04, x, Y + 0.24, cz + 0.152, NC.green, 4, { glow: true, s: [0.7, 1, 0.25] }); }
   k.cyl(0.05, 0.05, 0.012, 0, Y + 0.25, cz + 0.152, NC.green, 8, { rx: Math.PI / 2, glow: true });
   k.tor(0.055, 0.008, 0, Y + 0.25, cz + 0.16, NC.bone, TAU, { rs: 10 });
-  k.box(0.08, 0.12, 0.02, 0, Y, cz + 0.155, 0x0a0a0c);
+  k.box(0.08, 0.12, 0.02, 0, Y, cz + 0.155, NC.purple);
   k.box(0.064, 0.1, 0.01, 0, Y, cz + 0.162, NC.greenD, { glow: true });
   // flanking needle spires
   for (const [sx, sz, hh] of [[-1, 1, 0.62], [1, 1, 0.62], [-1, -1, 0.5], [1, -1, 0.5]]) {
@@ -410,9 +413,9 @@ function necroTown() {
   k.limb([0.3, Y + 0.01, 0.0], [0.3, Y + 0.02, 0.17], 0.012, 0.01, NC.boneD, 5);
   // dead trees
   for (const [x, z] of [[-0.42, 0.22], [0.1, 0.35]]) {
-    k.limb([x, Y, z], [x + 0.01, Y + 0.13, z], 0.012, 0.006, 0x2a2420, 4);
-    k.limb([x + 0.005, Y + 0.08, z], [x - 0.04, Y + 0.14, z + 0.01], 0.006, 0.003, 0x2a2420, 4);
-    k.limb([x + 0.008, Y + 0.1, z], [x + 0.05, Y + 0.16, z - 0.01], 0.005, 0.003, 0x2a2420, 4);
+    k.limb([x, Y, z], [x + 0.01, Y + 0.13, z], 0.012, 0.006, NC.wood, 4);
+    k.limb([x + 0.005, Y + 0.08, z], [x - 0.04, Y + 0.14, z + 0.01], 0.006, 0.003, NC.wood, 4);
+    k.limb([x + 0.008, Y + 0.1, z], [x + 0.05, Y + 0.16, z - 0.01], 0.005, 0.003, NC.wood, 4);
   }
   // drifting ghost lights
   for (const [x, y, z] of [[-0.2, 0.42, 0.22], [0.2, 0.5, 0.05], [-0.05, 0.3, 0.35], [0.42, 0.62, -0.2]]) k.ball(0.014, x, y, z, NC.green, 0, { glow: true });
@@ -471,18 +474,27 @@ function cape(k, col, x0, y0, z0, w, len) {
     return [x0 + x, y + Math.sin(u * Math.PI) * 0.01, z];
   }, col, { shade: (u, v) => 1.08 - v * 0.25 + 0.14 * Math.sin(u * Math.PI * 3), top: 1, bot: 1, ao: false });
 }
+// the hero's standard: crossbar, a big bright swallow-tailed banner streaming back and a trim stripe
+function heroBanner(k, col, trim) {
+  const c = shadeOf(col, 1).lerp(new THREE.Color(1, 1, 1), 0.08);
+  // streams back and outward at 45 degrees so it shows broad from the front, side and back
+  const ang = -2.3, ux = Math.sin(ang), uz = Math.cos(ang);
+  k.limb([-0.16, 1.27, 0.15], [-0.16 + ux * 0.3, 1.27, 0.15 + uz * 0.3], 0.006, 0.006, trim, 4, { ao: false });
+  pennant(k, -0.16, 1.15, 0.15, 0.46, 0.25, c, { ang, amp: 0.045, tail: 0.32, taper: 0.22, droop: 0.12, nu: 9 });
+  pennant(k, -0.16, 1.035, 0.15, 0.4, 0.03, trim, { ang, amp: 0.045, tail: 0, taper: 0.1, droop: 0.2, nu: 9 });
+}
 function havenHero(k, col) {
-  const STEEL = 0xd4d8e2, STEELD = 0x8a909c, GOLD = 0xf2c24a, WOOD = 0x6a4a32;
-  horse(k, 0xf2eee6, 0xd8ccb0, 0x4a3a2a, null);
+  const STEEL = 0xe8ecf4, STEELD = 0xb4bccb, GOLD = 0xffcf4a, WOOD = 0x9a6a42;
+  horse(k, 0xfbf8f0, 0xf0cc78, 0x8a6a48, null);
   caparison(k, col, GOLD, -1); caparison(k, col, GOLD, 1);
-  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0x7a4a2a); // saddle
+  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0xa8683a); // saddle
   // bridle and reins
-  k.limb([0, 0.66, 0.45], [0, 0.82, 0.12], 0.004, 0.004, 0x3a2216, 3);
+  k.limb([0, 0.66, 0.45], [0, 0.82, 0.12], 0.004, 0.004, 0x7a4a2a, 3);
   // rider
   for (const s of [-1, 1]) {
     k.limb([s * 0.07, 0.65, -0.02], [s * 0.14, 0.53, 0.09], 0.035, 0.03, STEEL, 6);
     k.limb([s * 0.14, 0.53, 0.09], [s * 0.145, 0.37, 0.04], 0.026, 0.024, STEELD, 6);
-    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x3a2a1e);
+    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x8a5a36);
   }
   k.lathe([[0.075, 0], [0.095, 0.06], [0.1, 0.13], [0.085, 0.2], [0.04, 0.24]], 0, 0.62, -0.02, STEEL, 9, { top: 1.3, bot: 0.7 });
   k.cyl(0.098, 0.1, 0.035, 0, 0.66, -0.02, col, 9, { top: 1.1 }); // tabard band
@@ -501,31 +513,31 @@ function havenHero(k, col) {
   // head and gold great helm with plume
   k.ball(0.05, 0, 0.9, -0.02, 0xe8b890, 1);
   k.lathe([[0.058, 0], [0.062, 0.05], [0.058, 0.085], [0.035, 0.11], [0.0, 0.115]], 0, 0.86, -0.02, GOLD, 9, { top: 1.35, bot: 0.75 });
-  k.box(0.08, 0.008, 0.02, 0, 0.905, 0.035, 0x2a1e12, { ao: false }); // visor slit
+  k.box(0.08, 0.008, 0.02, 0, 0.905, 0.035, 0x5a3e22, { ao: false }); // visor slit
   k.box(0.012, 0.05, 0.02, 0, 0.88, 0.04, GOLD, { ao: false });
   for (let i = 0; i < 4; i++) k.ball(0.025 - i * 0.003, 0, 0.99 + i * 0.012 - i * i * 0.004, -0.03 - i * 0.03, 0xffffff, 1, { s: [0.6, 1, 1.2] });
   // cape
   cape(k, col, 0, 0.83, -0.08, 0.17, 0.42);
   // banner pole and pennant
-  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.2, 0.15], 0.009, 0.008, WOOD, 5);
-  k.cone(0.014, 0.05, -0.16, 1.2, 0.15, GOLD, 4);
-  k.limb([-0.16, 1.16, 0.15], [-0.16, 1.16, -0.13], 0.005, 0.005, GOLD, 4);
-  pennant(k, -0.16, 1.07, 0.148, 0.36, 0.17, col, { axis: 'z', dir: -1, amp: 0.045, tail: 0.3, taper: 0.3, droop: 0.15 });
+  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.32, 0.15], 0.011, 0.009, WOOD, 5);
+  k.ball(0.026, -0.16, 1.33, 0.15, GOLD, 1, { ao: false });
+  k.cone(0.016, 0.07, -0.16, 1.35, 0.15, GOLD, 4, { ao: false });
+  heroBanner(k, col, GOLD);
 }
 function necroHero(k, col) {
-  const ROBE = 0x3a2c48, ROBED = 0x221a2c, BONE = 0xe2d8bc, IRON = 0x4a4652, GREEN = 0x6aff8a;
-  horse(k, 0x2c2834, 0x2a5a3a, 0x111015, 0xff3a2a);
+  const ROBE = 0x6c40a0, ROBED = 0x52307e, BONE = 0xf6eed4, IRON = 0x9a92ae, GREEN = 0x7affa8;
+  horse(k, 0xc4bcd6, 0x3ab06a, 0x6a5a82, GREEN);
   // ghostly mane flames
   for (let i = 0; i < 5; i++) { const t = i / 4; k.cone(0.02, 0.07, 0, 0.6 + t * 0.18, 0.15 + t * 0.14, GREEN, 4, { glow: true, rx: -0.9 }); }
   caparison(k, col, BONE, -1); caparison(k, col, BONE, 1);
-  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0x2a1a1a);
+  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0x9a3048);
   // skull-like horse armour plate
   k.ball(1, 0, 0.715, 0.4, BONE, 1, { s: [0.03, 0.02, 0.055], rx: 0.6 });
   for (const s of [-1, 1]) k.cone(0.012, 0.07, s * 0.03, 0.76, 0.3, BONE, 4, { rx: -0.5, rz: -s * 0.4 });
   for (const s of [-1, 1]) {
     k.limb([s * 0.07, 0.65, -0.02], [s * 0.14, 0.53, 0.09], 0.035, 0.03, ROBE, 6);
     k.limb([s * 0.14, 0.53, 0.09], [s * 0.145, 0.37, 0.04], 0.026, 0.024, ROBED, 6);
-    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x111015);
+    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x5a4a70);
   }
   // robed torso with flared skirt over the saddle
   k.lathe([[0.13, 0], [0.1, 0.06], [0.09, 0.14], [0.085, 0.2], [0.04, 0.25]], 0, 0.6, -0.02, ROBE, 9, { top: 1.3, bot: 0.65 });
@@ -542,21 +554,23 @@ function necroHero(k, col) {
   // skull face in a deep hood
   k.ball(0.048, 0, 0.9, -0.01, BONE, 1, { s: [0.95, 1.05, 1], top: 1.2 });
   k.lathe([[0.075, 0], [0.07, 0.06], [0.055, 0.1], [0.02, 0.15], [0.0, 0.17]], 0, 0.855, -0.03, ROBED, 8, { top: 1.3, bot: 0.8, rx: -0.25 });
-  k.ball(0.044, 0, 0.9, 0.0, 0x0a080c, 1, { s: [1, 1.05, 0.6], ao: false });
+  k.ball(0.044, 0, 0.9, 0.0, 0x4a3468, 1, { s: [1, 1.05, 0.6], ao: false });
   for (const s of [-1, 1]) k.ball(0.011, s * 0.018, 0.905, 0.03, GREEN, 0, { glow: true });
   cape(k, col, 0, 0.83, -0.08, 0.18, 0.44);
   // a bone-topped staff that bears the banner
-  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.2, 0.15], 0.009, 0.008, 0x2a2228, 5);
-  k.ball(0.03, -0.16, 1.22, 0.15, BONE, 1, { s: [1, 1.05, 1.05] });
-  for (const s of [-1, 1]) k.ball(0.008, -0.16 + s * 0.012, 1.225, 0.177, GREEN, 0, { glow: true });
-  k.limb([-0.16, 1.16, 0.15], [-0.16, 1.16, -0.13], 0.005, 0.005, IRON, 4);
-  for (const s of [-1, 1]) k.cone(0.008, 0.05, -0.16 + s * 0.02, 1.235, 0.14, BONE, 4, { rz: -s * 0.5 });
-  pennant(k, -0.16, 1.07, 0.148, 0.36, 0.17, col, { axis: 'z', dir: -1, amp: 0.045, tail: 0.3, taper: 0.3, droop: 0.15 });
+  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.3, 0.15], 0.011, 0.009, 0x8a7a6a, 5);
+  k.ball(0.036, -0.16, 1.33, 0.15, BONE, 1, { s: [1, 1.05, 1.05], ao: false });
+  for (const s of [-1, 1]) k.ball(0.01, -0.16 + s * 0.014, 1.335, 0.182, GREEN, 0, { glow: true });
+  for (const s of [-1, 1]) k.cone(0.009, 0.06, -0.16 + s * 0.022, 1.345, 0.14, BONE, 4, { rz: -s * 0.5, ao: false });
+  heroBanner(k, col, BONE);
 }
 export function heroModel(fac, color) {
   const k = makeKit(fac === 'necro' ? 23 : 21);
   (fac === 'necro' ? necroHero : havenHero)(k, color ?? (fac === 'necro' ? 0xd83a3a : 0x3a7aff));
-  return finish(k);
+  const m = finish(k);
+  m.body.scale(1.12, 1.12, 1.12); m.body.computeBoundingSphere(); m.body.computeBoundingBox();
+  if (m.glow) { m.glow.scale(1.12, 1.12, 1.12); m.glow.computeBoundingSphere(); }
+  return m;
 }
 
 // ------------------------------------------------------------------ ownership flag

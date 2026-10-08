@@ -1,17 +1,25 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=0.3';
-import { havenModel } from './units_haven.js?v=0.3';
-import { necroModel } from './units_necro.js?v=0.3';
-import { neutralModel } from './units_neutral.js?v=0.3';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=0.3';
-import { objectModel } from './models_objects.js?v=0.3';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.3';
-import { createBattlefield } from './battlefield.js?v=0.3';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.3';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.3';
-import * as BT from './battle.js?v=0.3';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, tick as tickMaterials } from './materials.js?v=0.3';
-import { createScore } from './music.js?v=0.3';
+import { mulberry32, unitModel } from './models.js?v=0.4';
+import { havenModel } from './units_haven.js?v=0.4';
+import { necroModel } from './units_necro.js?v=0.4';
+import { necroUpModel } from './units_necro_up.js?v=0.4';
+import { havenUpModel } from './units_haven_up.js?v=0.4';
+import { neutralModel } from './units_neutral.js?v=0.4';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=0.4';
+import { objectModel } from './models_objects.js?v=0.4';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.4';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=0.4';
+import { createTownView } from './town_view.js?v=0.4';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.4';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.4';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.4';
+import * as BT from './battle.js?v=0.4';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, tick as tickMaterials } from './materials.js?v=0.4';
+import { createScore } from './music.js?v=0.4';
+import { unitFit, applyFit } from './unit_fit.js?v=0.4';
+import { createMapFx } from './mapfx.js?v=0.4';
+import { icon } from './icons.js';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0.4';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -20,7 +28,7 @@ import { createScore } from './music.js?v=0.3';
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '0.3';
+const APP_VERSION = '0.4';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -150,23 +158,24 @@ const xpFor = (lvl) => Math.round(1000 * (Math.pow(1.6, lvl - 1) - 1) / 0.6);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.1;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 $('app').prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0d1e);
 const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 400);
 const sunDir = new THREE.Vector3(0.6, 0.8, 0.4).normalize();
-const sun = new THREE.DirectionalLight(0xfff0d8, 2.4);
+const sun = new THREE.DirectionalLight(0xffe8c4, 2.5);
+sun.shadow.radius = 2.5; sun.shadow.intensity = 0.65;
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 0.5, far: 30 });
 sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
 scene.add(sun, sun.target);
-scene.add(new THREE.HemisphereLight(0xbcd4ff, 0x3a3020, 0.8));
-scene.add(new THREE.AmbientLight(0x404a70, 0.35));
+scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x7a6440, 1.05));
+scene.add(new THREE.AmbientLight(0x7880b8, 0.4));
 const cam = { theta: 0, phi: 1.2, dist: 10, tTheta: 0, tPhi: 1.2, tDist: 10, vTheta: 0, vPhi: 0, fly: false, shake: 0 };
 const lookAtP = new THREE.Vector3();
 function updateCamera(dt) {
@@ -185,10 +194,12 @@ function updateCamera(dt) {
   cam.dist += (cam.tDist - cam.dist) * Math.min(1, dt * 6);
   // close up, the camera tilts toward the horizon like a strategy map
   const f = clamp((16 - cam.dist) / 9, 0, 1);
-  camera.position.setFromSphericalCoords(cam.dist, cam.phi + f * 0.5, cam.theta);
+  const cphi = cam.phi + f * 0.4;
+  camera.position.setFromSphericalCoords(cam.dist, cphi, cam.theta);
   if (cam.shake > 0) { camera.position.x += (rnd() - 0.5) * cam.shake * 0.1; cam.shake = Math.max(0, cam.shake - dt * 2); }
   lookAtP.setFromSphericalCoords(R * f * 0.98, cam.phi, cam.theta);
-  camera.up.set(0, 1, 0);
+  // 'up' is the local north tangent: continuous even when the tilt carries the camera past a pole
+  camera.up.set(-Math.cos(cphi) * Math.sin(cam.theta), Math.sin(cphi), -Math.cos(cphi) * Math.cos(cam.theta));
   camera.lookAt(lookAtP);
   // the shadow-casting sun follows the view so shadows stay crisp near the camera
   const focus = lookAtP.lengthSq() > 0.01 ? lookAtP.clone().setLength(R) : camera.position.clone().setLength(R);
@@ -207,6 +218,7 @@ function resize() {
   post.setSize(w, hh, renderer.getPixelRatio());
   camera.aspect = w / hh; camera.fov = w < hh ? 50 : 40; camera.updateProjectionMatrix();
   bcam.aspect = w / hh; bcam.fov = w < hh ? 52 : 40; bcam.updateProjectionMatrix();
+  if (typeof townView !== 'undefined') townView.resize(w, hh);
 }
 window.addEventListener('resize', resize);
 const atmos = createAtmosphere(THREE, scene, { R });
@@ -214,7 +226,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=0.3';
+import { createPlanet } from './terrain.js?v=0.4';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -252,7 +264,7 @@ const post = (() => {
     fragmentShader: `uniform sampler2D tScene; uniform sampler2D tBloom; varying vec2 vUv;
       ${gradeGLSL}
       void main() { vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * 0.8; c = grade(c); c = c / (1.0 + c * 0.12);
-        float v = smoothstep(1.15, 0.35, length(vUv - 0.5)); c *= mix(0.72, 1.0, v);
+        float v = smoothstep(1.15, 0.35, length(vUv - 0.5)); c *= mix(0.84, 1.0, v);
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -279,8 +291,16 @@ const post = (() => {
 // ------------------------------------------------------------------ meshes for map things
 const bodyMat = makeBodyMaterial(THREE);
 const glowMat = makeGlowMaterial(THREE);
+const townView = createTownView(THREE, renderer, { bodyMat, glowMat });
+function townInsets() {
+  const r = $('town').getBoundingClientRect();
+  const side = innerWidth > innerHeight && r.width < innerWidth * 0.7;
+  townView.setInsets(side ? { bottom: 0, right: innerWidth - r.left } : { bottom: Math.max(0, innerHeight - r.top), right: 0 });
+}
 const geoCache = new Map();
-const unitGeo = (id) => { const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
+const unitGeo = (id) => { const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
+initPortraits(THREE, renderer, unitGeo);
+setTimeout(() => preloadPortraits(Object.keys(UNITS), 64), 1500);
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
 function meshOf(m) {
   const g = new THREE.Group();
@@ -326,7 +346,7 @@ function layoutFlora() {
     }
     if (objAt[v] >= 0 || road[v] || !F || !F.scatter) continue;
     let placed = 0;
-    F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
+    F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; if ((e.avoid && NBR[v].some((n) => e.avoid.includes(ter[n]))) || (e.maxLat && Math.abs(DIRS[v].y) > e.maxLat)) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
   }
   for (const { model, m } of lists.values()) {
     const im = new THREE.InstancedMesh(model.body, bodyMat, m.length);
@@ -526,7 +546,7 @@ function objModel(o) {
   if (o.type === 'monster') return cached('u' + o.unit, () => unitGeo(o.unit));
   return cached('o' + o.type, () => objectModel(o.type));
 }
-const SCALE = { town: 0.4, monster: 0.2, goldmine: 0.3, gemmine: 0.3, orepit: 0.3, sawmill: 0.28, dwelling: 0.3, arena: 0.28, tower: 0.24, library: 0.27, stone: 0.24, obelisk: 0.24, shrine: 0.27, well: 0.27, windmill: 0.27, stables: 0.27 };
+const SCALE = { gold: 0.3, wood: 0.3, ore: 0.3, gems: 0.3, chest: 0.28, artifact: 0.28, town: 0.4, monster: 0.2, goldmine: 0.3, gemmine: 0.3, orepit: 0.3, sawmill: 0.28, dwelling: 0.3, arena: 0.28, tower: 0.24, library: 0.27, stone: 0.24, obelisk: 0.24, shrine: 0.27, well: 0.27, windmill: 0.27, stables: 0.27 };
 function layoutWorld() {
   worldDirty = false;
   rebuildPlanet();
@@ -536,7 +556,7 @@ function layoutWorld() {
     if (!o.alive || !seen[o.v]) continue;
     const g = meshOf(objModel(o));
     placeOn(g, o.v, SCALE[o.type] || 0.24, o.type === 'monster' ? (hash(o.id) % 6) : 0);
-    if (o.type === 'monster') g.userData.bob = o.id;
+    if (o.type === 'monster') { g.userData.bob = o.id; applyFit(g, unitFit(o.unit, objModel(o), 'map')); }
     world.add(g);
     const owner = o.type === 'town' ? G.towns[o.t].p : OBJECTS[o.type]?.kind === 'mine' ? o.owner : -2;
     if (owner > -2) { const f = flagMesh(ownerCol(owner)); g.add(f); f.position.set(0.55, 0, 0.45); f.scale.setScalar(o.type === 'town' ? 0.6 : 0.8); }
@@ -553,32 +573,17 @@ function layoutHeroes(force = false) {
       m = meshOf(cached('hero' + hr.p, () => heroModel(G.players[hr.p].fac, G.players[hr.p].color)));
       scene.add(m); heroMeshes.set(hr.id, m);
     }
-    if (!hr.anim || force) placeOn(m, hr.v, 0.22, hr.face || 0);
+    if (!hr.anim || force) placeOn(m, hr.v, 0.27, hr.face || 0);
   }
   for (const [id, m] of heroMeshes) if (!G.heroes[id] || !G.heroes[id].alive) { scene.remove(m); heroMeshes.delete(id); }
 }
 // path preview: green dots for today, red for later days, a banner on the goal
-const dotGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.01, 10);
-const dots = new THREE.InstancedMesh(dotGeo, new THREE.MeshBasicMaterial({ toneMapped: false }), 200);
-dots.count = 0; dots.frustumCulled = false; scene.add(dots);
-const goalMark = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.02, 6, 20).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe27a, toneMapped: false }));
-goalMark.visible = false; scene.add(goalMark);
-const selRing = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.016, 6, 24).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x9ad8ff, toneMapped: false }));
-scene.add(selRing);
+const fx = createMapFx(THREE, scene, { DIRS, radiusOf, posOf });
 let plan = null;
 function showPath(hr, path) {
   plan = path ? { hr: hr.id, path } : null;
-  if (!path) { dots.count = 0; goalMark.visible = false; return; }
-  const today = stepsToday(hr, path);
-  let n = 0;
-  const green = new THREE.Color(0x6aff6a), red = new THREE.Color(0xff5a4a);
-  for (let i = 1; i < path.length && n < 200; i++) {
-    placeOn(dummy, path[i], 1, 0, 0.012); dummy.updateMatrix();
-    dots.setMatrixAt(n, dummy.matrix); dots.setColorAt(n++, i <= today ? green : red);
-  }
-  dots.count = n; dots.instanceMatrix.needsUpdate = true; if (dots.instanceColor) dots.instanceColor.needsUpdate = true;
-  placeOn(goalMark, path[path.length - 1], 1, 0, 0.02); goalMark.visible = true;
-  goalMark.material.color.set(today >= path.length - 1 ? 0x6aff6a : 0xff7a5a);
+  if (!path) { fx.clearPath(); return; }
+  fx.showPath(path, stepsToday(hr, path));
 }
 
 // ------------------------------------------------------------------ input: drag turns the planet, pinch zooms, tap selects and moves
@@ -602,6 +607,7 @@ cvs.addEventListener('pointermove', (e) => {
   p.x = e.clientX; p.y = e.clientY;
   if (pinch && ptrs.size === 2) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (G.mode === 'town') return;
     if (G.mode === 'battle') bview.dist = clamp(pinch.dist * pinch.d / d, 9, 18);
     else cam.tDist = clamp(pinch.dist * pinch.d / d, 6.4, 22);
     return;
@@ -612,6 +618,7 @@ cvs.addEventListener('pointermove', (e) => {
   press.lx = e.clientX; press.ly = e.clientY;
   if (!press.moved) return;
   if (G.mode === 'battle') { bview.yaw = clamp(bview.yaw - dx * 0.004, -0.6, 0.6); return; }
+  if (G.mode === 'town') return;
   const k = cam.dist / 900;
   cam.vTheta = -dx * k * 0.5; cam.vPhi = -dy * k * 0.5; cam.fly = false;
 });
@@ -619,12 +626,12 @@ const endPtr = (e) => {
   ptrs.delete(e.pointerId);
   if (ptrs.size < 2) pinch = null;
   if (!press || press.id !== e.pointerId) return;
-  if (!press.moved && performance.now() - press.t < 500) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); }
+  if (!press.moved && performance.now() - press.t < 500) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); else if (G.mode === 'town') townTap(e.clientX, e.clientY); }
   press = null;
 };
 cvs.addEventListener('pointerup', endPtr);
 cvs.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); press = null; pinch = null; });
-cvs.addEventListener('wheel', (e) => { e.preventDefault(); if (G.mode === 'battle') bview.dist = clamp(bview.dist * (e.deltaY > 0 ? 1.08 : 0.92), 8, 16); else cam.tDist = clamp(cam.tDist * (e.deltaY > 0 ? 1.1 : 0.9), 6.4, 22); }, { passive: false });
+cvs.addEventListener('wheel', (e) => { e.preventDefault(); if (G.mode === 'town') return; if (G.mode === 'battle') bview.dist = clamp(bview.dist * (e.deltaY > 0 ? 1.08 : 0.92), 8, 16); else cam.tDist = clamp(cam.tDist * (e.deltaY > 0 ? 1.1 : 0.9), 6.4, 22); }, { passive: false });
 
 const selHero = () => (G.selHero >= 0 && G.heroes[G.selHero]?.alive && G.heroes[G.selHero].p === 0 ? G.heroes[G.selHero] : null);
 function mapTap(cx, cy) {
@@ -703,10 +710,12 @@ function updateWalk(dt) {
   hr.mp -= stepCost(a, b); hr.v = b; W.i++;
   if (reveal(b, visionOf(hr))) worldDirty = true;
   sfx.step();
+  if (seen[b]) fx.burst('step', posOf(b));
   // a monster next to the path attacks
   const lurker = NBR[b].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((o) => o && o.alive && o.type === 'monster' && o.v !== W.path[W.path.length - 1]);
   if (lurker) { walking = null; layoutHeroes(true); interact(hr, lurker.v); return; }
   if (W.i >= W.n) {
+    fx.burst('dust', posOf(hr.v));
     walking = null; layoutHeroes(true);
     if (W.i < W.path.length - 1) { hr.route = W.path.slice(W.i); showPath(hr, hr.route); } else hr.route = null;
     updateHud();
@@ -763,6 +772,7 @@ function interact(hr, v) {
   }
   if (kind === 'pickup') {
     removeObject(o); hr.v = v; layoutHeroes(true);
+    if (seen[v]) fx.burst(o.type === 'gems' ? 'gem' : o.type === 'artifact' ? 'artifact' : 'coin', posOf(v));
     if (RES.includes(o.type)) { gain(hr.p, o.type, o.amount, v); if (you) sfx.coin(); }
     else if (o.type === 'campfire') { gain(hr.p, 'gold', 400 + ((rnd() * 3) | 0) * 100, v); const r = ['wood', 'ore', 'gems'][(rnd() * 3) | 0]; gain(hr.p, r, r === 'gems' ? 2 : 4, v); if (you) sfx.coin(); }
     else if (o.type === 'chest') {
@@ -777,7 +787,7 @@ function interact(hr, v) {
     updateHud(); return;
   }
   if (kind === 'mine') {
-    if (o.owner !== hr.p) { o.owner = hr.p; worldDirty = true; if (you) { toast(`${O.icon} ${O.name} is yours: +${O.amount} ${RES_ICON[O.res]} every day.`); sfx.flag(); } else if (seen[o.v]) toast(`🚩 ${P(hr).name} took a ${O.name}.`); }
+    if (o.owner !== hr.p) { o.owner = hr.p; worldDirty = true; if (seen[v]) fx.burst('flag', posOf(v), { color: ownerCol(hr.p) }); if (you) { toast(`${O.icon} ${O.name} is yours: +${O.amount} ${RES_ICON[O.res]} every day.`); sfx.flag(); } else if (seen[o.v]) toast(`🚩 ${P(hr).name} took a ${O.name}.`); }
     revealAll(); updateHud(); return;
   }
   if (kind === 'visit') {
@@ -818,6 +828,7 @@ function interact(hr, v) {
 const week = () => Math.floor((G.day - 1) / 7) + 1;
 const artDesc = (A) => ['att', 'def', 'pow', 'know'].filter((k) => A[k]).map((k) => `+${A[k]} ${{ att: 'Attack', def: 'Defence', pow: 'Power', know: 'Knowledge' }[k]}`).concat(A.move ? [`+${A.move} movement`] : [], A.luck ? ['+1 luck'] : [], A.morale ? ['+1 morale'] : [], A.hp ? ['+1 health'] : []).join(', ');
 function captureTown(hr, t) {
+  if (seen[t.v]) fx.burst('flag', posOf(t.v), { color: ownerCol(hr.p), scale: 1.6 });
   const was = t.p;
   t.p = hr.p; t.garrison = [];
   worldDirty = true;
@@ -854,7 +865,7 @@ function showLevel() {
   const L = pendingLevels[0];
   if (!L) return;
   const names = { att: '🗡️ Attack', def: '🛡️ Defence', pow: '🔮 Power', know: '📘 Knowledge' };
-  ask(`⭐ ${L.hr.name} reaches level ${L.hr.lvl}`, `${names[L.stat]} +1. Choose a skill:`, L.opts.map((k) => [`${SKILLS[k].icon} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc]), true);
+  ask(`⭐ ${L.hr.name} reaches level ${L.hr.lvl}`, `${names[L.stat]} +1. Choose a skill:`, L.opts.map((k) => [`${icon(k, 20)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc]), true);
   sfx.fanfare();
 }
 
@@ -866,7 +877,7 @@ const bcam = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
 const bview = { dist: 12.5, yaw: 0 };
 {
 }
-const bSun = new THREE.DirectionalLight(0xfff0d8, 2.4); bSun.position.set(4, 10, 3); bSun.castShadow = true; bSun.shadow.mapSize.set(2048, 2048);
+const bSun = new THREE.DirectionalLight(0xfff0d8, 2.4); bSun.position.set(4, 10, 3); bSun.castShadow = true; bSun.shadow.mapSize.set(2048, 2048); bSun.shadow.radius = 2.5; bSun.shadow.intensity = 0.6;
 Object.assign(bSun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 30 }); bSun.shadow.bias = -0.0005;
 const bHemi = new THREE.HemisphereLight(0xcfe0ff, 0x4a3a2a, 0.9), bAmb = new THREE.AmbientLight(0x404a70, 0.3);
 bscene.add(bSun, bHemi, bAmb);
@@ -880,7 +891,8 @@ for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { dummy.posi
 const bstuff = new THREE.Group(); bscene.add(bstuff);
 const wallMat = new THREE.MeshStandardMaterial({ color: 0xb8ae9a, roughness: 0.9, flatShading: true });
 const activeRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 30).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd84a, toneMapped: false }));
-bscene.add(activeRing);
+bscene.add(activeRing); activeRing.visible = false;
+const vfx = createVfx(THREE, bscene);
 // scenery around the field
 let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
 function heroBattle(hr) { return { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know'), mana: hr.mana, skills: hr.skills, spells: hr.spells, luck: hr.arts.includes('clover') ? 1 : 0, morale: hr.arts.includes('banner') ? 1 : 0, name: hr.name, p: hr.p }; }
@@ -913,17 +925,27 @@ function enterBattle(B, ctx) {
   bSun.color.set(L.sun.color); bSun.intensity = L.sun.intensity;
   bHemi.color.set(L.hemi.sky); bHemi.groundColor.set(L.hemi.ground); bHemi.intensity = L.hemi.intensity;
   bAmb.color.set(L.ambient.color); bAmb.intensity = L.ambient.intensity;
-  bstuff.clear(); bmesh.clear();
+  bHemi.intensity *= 1.15; bHemi.groundColor.lerp(new THREE.Color(0xa08060), 0.4);
+  bAmb.intensity += 0.12; bAmb.color.lerp(new THREE.Color(0x9090c8), 0.5);
+  vfx.clear(); bstuff.clear(); bmesh.clear();
+  const sfac = bctx.foe.town?.fac;
+  const lay = B.walls.size ? siegeLayout(hexPos, BT.COLS, BT.ROWS, B.town.side ?? 1) : null;
+  if (bfield.keepZone) bfield.keepZone.visible = !lay?.keep;
+  bctx.tower = null; bctx.gate = null;
   for (const k of B.obstacles) {
     const c = k % BT.COLS, r = (k / BT.COLS) | 0;
-    if (B.walls.has(k)) { const w = new THREE.Mesh(cached('wallgeo', () => { const g = new THREE.BoxGeometry(HW * 1.02, 0.7, 0.5); g.translate(0, 0.35, 0); return g; }), wallMat); w.castShadow = w.receiveShadow = true; w.position.copy(hexPos(c, r)); bstuff.add(w); for (const dx of [-0.3, 0, 0.3]) { const m = new THREE.Mesh(cached('merlon', () => new THREE.BoxGeometry(0.18, 0.18, 0.5).translate(0, 0.79, 0)), wallMat); m.position.copy(hexPos(c, r)).add(new THREE.Vector3(dx, 0, 0)); bstuff.add(m); } continue; }
+    if (B.walls.has(k)) { const w = meshOf(cached('wall_' + sfac, () => wallModel(sfac))); w.position.copy(hexPos(c, r)); w.rotation.y = lay.wallRotY; bstuff.add(w); continue; }
     const m = meshOf(cached('obs' + ctx.terrain + '_' + (k % 3), () => bfield.obstacleModel(k % 3))); m.position.copy(hexPos(c, r)); m.rotation.y = k; bstuff.add(m);
   }
-  if (B.walls.size) { const tw = new THREE.Mesh(cached('towergeo', () => { const g = new THREE.CylinderGeometry(0.45, 0.55, 2, 10); g.translate(0, 1, 0); return g; }), wallMat); tw.castShadow = true; const tr = (B.town.side ?? 1) === 1 ? 0 : BT.ROWS - 1; tw.position.copy(hexPos(BT.COLS - 1, tr)).add(new THREE.Vector3(1.1, 0, 0)); bstuff.add(tw); const roof = new THREE.Mesh(cached('towerroof', () => new THREE.ConeGeometry(0.6, 0.8, 10).translate(0, 2.4, 0)), new THREE.MeshStandardMaterial({ color: G.towns.find((t) => t === bctx.foe.town)?.fac === 'necro' ? 0x6a2a3a : 0x3a6ad8, flatShading: true })); roof.position.copy(tw.position); bstuff.add(roof); bctx.tower = tw; }
+  if (lay) {
+    if (B.gate != null) { const g = meshOf(cached('gate_' + sfac, () => gateModel(sfac))); g.position.copy(hexPos(B.gate % BT.COLS, (B.gate / BT.COLS) | 0)); g.rotation.y = lay.wallRotY; bstuff.add(g); bctx.gate = g; }
+    lay.towers.forEach((p, i) => { const tw = meshOf(cached('tower_' + sfac, () => towerModel(sfac))); tw.position.copy(p); tw.scale.setScalar(lay.towerScale); tw.rotation.y = lay.wallRotY; bstuff.add(tw); if (i === 0) bctx.tower = tw; });
+    if (lay.keep) { const kp = meshOf(cached('keep_' + sfac, () => keepModel(sfac))); kp.position.copy(lay.keep); kp.scale.setScalar(lay.keepScale); bstuff.add(kp); }
+  }
   $('blabels').innerHTML = ''; for (const f of floaters) f.el.remove(); floaters.length = 0;
   for (const s of B.stacks) {
     const m = meshOf(cached('u' + s.id, () => unitGeo(s.id)));
-    m.scale.setScalar(0.9 * (s.u.tier >= 6 ? 1.05 : 1) * (s.u.up ? 1.08 : 1));
+    applyFit(m, unitFit(s.id, cached('u' + s.id, () => unitGeo(s.id)), 'battle'));
     m.position.copy(hexPos(s.c, s.r)); m.rotation.y = s.side === 0 ? Math.PI : 0;
     bstuff.add(m); bmesh.set(s.uid, m);
     const lab = document.createElement('div'); lab.className = `blab s${s.side}`; lab.id = `bl${s.uid}`; $('blabels').appendChild(lab);
@@ -957,15 +979,15 @@ function refreshBattle() {
     dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(col === white ? 0.0001 : 1); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix);
   }
   hexes.instanceColor.needsUpdate = true; hexes.instanceMatrix.needsUpdate = true;
-  if (s) { activeRing.position.copy(hexPos(s.c, s.r)).setY(0.03); activeRing.visible = true; activeRing.material.color.set(s.side === 0 ? 0xffd84a : 0xff5a4a); } else activeRing.visible = false;
+  if (s && s.count > 0) vfx.select(bmesh.get(s.uid), s.side === 0 ? 0xffd84a : 0xff5a4a); else vfx.select(null);
   // the turn order strip
   $('b-queue').innerHTML = BT.queue(B, 9).map((x, i) => `<span class="q s${x.side}${i === 0 ? ' now' : ''}">${unitIcon(x.id)}<b>${x.count}</b></span>`).join('');
   const h0 = B.heroes[0];
   $('b-spell').disabled = !h0 || B.cast[0] || !h0.spells.some((id) => h0.mana >= SPELLS[id].mana) || !mineTurn;
-  $('b-spell').textContent = h0 ? `🔮 ${h0.mana}` : '🔮';
+  $('b-spell').innerHTML = `${icon('spellbook', 24)}<small>${h0 ? `Mana ${h0.mana}` : 'Spells'}</small>`;
   $('b-wait').disabled = $('b-def').disabled = !mineTurn;
   $('b-auto').classList.toggle('on', bauto);
-  $('b-msg').textContent = !s ? '' : mineTurn ? (bspell ? `${SPELLS[bspell].icon} Choose a target for ${SPELLS[bspell].name}` : `${UNITS[s.id].name} (${s.count}) · ${BT.canShoot(B, s) ? `🏹 ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move or a red enemy to attack'}`) : sideOwner(s.side) === 0 ? 'Auto battle…' : `Enemy ${UNITS[s.id].name} (${s.count})…`;
+  $('b-msg').innerHTML = !s ? '' : mineTurn ? (bspell ? `${SPELLS[bspell].icon} Choose a target for ${SPELLS[bspell].name}` : `${UNITS[s.id].name} (${s.count}) · ${BT.canShoot(B, s) ? `🏹 ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move or a red enemy to attack'}`) : sideOwner(s.side) === 0 ? (bauto ? 'Auto battle…' : '…') : `Enemy ${UNITS[s.id].name} (${s.count})…`;
 }
 const sideOwner = (side) => bctx.sides[side].owner;
 function battleTap(cx, cy) {
@@ -1015,16 +1037,18 @@ $('b-auto').addEventListener('click', () => { bauto = !bauto; bspell = null; ref
 $('b-quick').addEventListener('click', () => { if (!BB || BB.over) return; BT.autoResolve(BB); BB.events.length = 0; banim = []; endBattleScreen(); });
 $('b-spell').addEventListener('click', () => {
   const h0 = BB?.heroes[0]; if (!h0) return;
-  ask('🔮 Spellbook', `Mana ${h0.mana}. One spell per round.`, h0.spells.map((id) => [`${SPELLS[id].icon} ${SPELLS[id].name} · ${SPELLS[id].mana}`, h0.mana >= SPELLS[id].mana ? () => { bspell = id; refreshBattle(); } : null, SPELLS[id].desc]).concat([['Close', null]]));
+  ask(`${icon('spellbook', 20)} Spellbook`, `Mana ${h0.mana}. One spell per round.`, h0.spells.map((id) => [`${icon(id, 22)} ${SPELLS[id].name} · ${icon('mana', 14)}${SPELLS[id].mana}`, h0.mana >= SPELLS[id].mana ? () => { bspell = id; refreshBattle(); } : null, SPELLS[id].desc]).concat([['Close', null]]));
 });
 // battle animation: events play one after another
 const bfloat = (pos, text, cls) => floatText(pos, text, cls, bcam);
+const blabFwd = new THREE.Vector3(), bctrTarget = new THREE.Vector3();
 function animateBattle(dt) {
   const B = BB; if (!B) return;
   // gentle idle bob
   for (const s of B.stacks) { const m = bmesh.get(s.uid); if (m && s.count > 0 && !m.userData.busy) m.position.y = Math.abs(Math.sin(performance.now() / 400 + s.uid)) * 0.03; }
   // labels follow their stacks
-  for (const s of B.stacks) { const m = bmesh.get(s.uid), lab = $(`bl${s.uid}`); if (!m || !lab) continue; const v = m.position.clone().setY(0.05).project(bcam); lab.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px)`; }
+  blabFwd.subVectors(bcam.position, bctrTarget).setY(0).normalize();
+  for (const s of B.stacks) { const m = bmesh.get(s.uid), lab = $(`bl${s.uid}`); if (!m || !lab) continue; const v = m.position.clone().setY(0.02).addScaledVector(blabFwd, 0.34).project(bcam); lab.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px)`; }
   if (banim.length) {
     const a = banim[0], e = a.e; a.t += dt;
     const done = playEvent(e, a.t);
@@ -1058,56 +1082,57 @@ function playEvent(e, t) {
   }
   if (e.t === 'hit' || e.t === 'shot') {
     const a = M(e.a), d = M(e.d), sa = S(e.a), sd = S(e.d);
-    const dur = e.t === 'shot' ? 0.6 : 0.45;
+    const dur = e.t === 'shot' ? 0.6 : 0.45; // shots end once landed
     if (!e.started) {
       e.started = true;
       const dir = d.position.clone().sub(a.position); a.rotation.y = Math.atan2(dir.x, dir.z);
-      if (e.t === 'shot') { const ball = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: sa.id === 'lich' ? 0x9a6aff : sa.id === 'monk' ? 0xffe27a : 0xffffff, toneMapped: false })); bstuff.add(ball); e.ball = ball; sfx.shoot(); }
-      else sfx.hit();
+      if (e.t === 'shot') { e.fly = vfx.projectile(shotKind(sa.id), a.position.clone().setY(sa.id === 'cyclops' ? 1.1 : 0.65), d.position.clone().setY(0.5), () => { e.landed = true; }); sfx.shoot(); }
+      else { e.fly = 0.18; sfx.hit(); }
     }
     if (e.t === 'hit') { const k = Math.sin(Math.min(1, t / 0.3) * Math.PI) * 0.25; const dir = d.position.clone().sub(a.position).setY(0).normalize(); a.userData.busy = true; a.position.copy(hexPos(sa.c, sa.r)).addScaledVector(dir, k); }
-    if (e.ball) { const k = Math.min(1, t / 0.45); e.ball.position.copy(a.position).lerp(d.position, k).setY(0.5 + Math.sin(k * Math.PI) * 1.0); if (k >= 1 && e.ball.parent) bstuff.remove(e.ball); }
-    if (t >= (e.t === 'shot' ? 0.45 : 0.18) && !e.shown) {
-      e.shown = true;
+    if ((e.t === 'shot' ? e.landed || t > 1.5 : t >= 0.18) && !e.shown) {
+      e.shown = true; e.shownAt = t;
+      if (e.t === 'hit') vfx.hit(d.position.clone().setY(0.5), meleeKind(sa.u), { dir: d.position.clone().sub(a.position) });
+      if (e.lucky) vfx.sparkle(d.position, 'luck');
       d.userData.flash = 0.3;
       bfloat(d.position.clone().setY(1), `-${fmt(e.dmg)}${e.killed ? ` (${e.killed}💀)` : ''}${e.lucky ? ' 🍀' : ''}`, sd.side === 0 ? 'red' : 'gold');
       if (e.retal) bfloat(d.position.clone().setY(1.4), 'Retaliation', 'blue');
       const lab = $(`bl${sd.uid}`); if (lab) lab.textContent = sd.count > 0 ? sd.count : '';
     }
-    if (t >= dur) { a.userData.busy = false; if (sa.count > 0) a.position.copy(hexPos(sa.c, sa.r)); a.rotation.y = sa.side === 0 ? Math.PI : 0; return true; }
+    if (e.shown && t >= Math.max(dur - (e.t === 'shot' ? 0.6 : 0), e.shownAt + 0.15)) { a.userData.busy = false; if (sa.count > 0) a.position.copy(hexPos(sa.c, sa.r)); a.rotation.y = sa.side === 0 ? Math.PI : 0; return true; }
     return false;
   }
-  if (e.t === 'die') { const m = M(e.s); if (!e.started) { e.started = true; sfx.die(); } m.position.y = -t * 0.8; m.rotation.z = t * 1.5; if (t > 0.5) { m.visible = false; return true; } return false; }
+  if (e.t === 'die') { const m = M(e.s); if (!e.started) { e.started = true; sfx.die(); if (m) vfx.death(m, { undead: !!S(e.s).u?.undead }); } if (t > 0.6) { if (m) m.visible = false; return true; } return false; }
   if (e.t === 'spell') {
+    const p = hexPos(e.c, e.r);
     if (!e.started) {
       e.started = true; sfx.magic();
-      const p = hexPos(e.c, e.r);
-      const col = { arrow: 0xffe27a, bolt: 0x9ad8ff, fireball: 0xff6a2a, cure: 0x6aff8a, bless: 0xffe27a, stoneskin: 0xb8b0a0, haste: 0x9affff, slow: 0x9a7aff }[e.id];
-      const fx = new THREE.Mesh(new THREE.SphereGeometry(e.id === 'fireball' ? 1.2 : 0.5, 16, 10), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.7, toneMapped: false }));
-      fx.position.copy(p).setY(0.5); bstuff.add(fx); e.fx = fx;
+      let tg = e.hits.map((hh) => M(hh.s)).filter(Boolean);
+      if (!tg.length) { const st = BT.stackAt(B, e.c, e.r); if (st && M(st.uid)) tg = [M(st.uid)]; }
+      e.land = vfx.spell(e.id, p, tg, { side: e.side }) || 0.3;
       bfloat(p.clone().setY(1.8), `${SPELLS[e.id].icon} ${SPELLS[e.id].name}`, 'blue');
-      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; }
     }
-    e.fx.scale.setScalar(1 + t * 1.5); e.fx.material.opacity = Math.max(0, 0.7 - t);
-    if (t > 0.7) { bstuff.remove(e.fx); return true; }
-    return false;
+    if (t >= e.land && !e.shown) {
+      e.shown = true;
+      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; const lab = $(`bl${hh.s}`); if (lab) lab.textContent = S(hh.s).count > 0 ? S(hh.s).count : ''; }
+    }
+    return t > e.land + 0.45;
   }
   if (e.t === 'tower') {
     const m = M(e.s);
-    if (!e.started) { e.started = true; sfx.shoot(); e.ball = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd27a, toneMapped: false })); bstuff.add(e.ball); }
-    const from = bctx.tower ? bctx.tower.position.clone().setY(2) : new THREE.Vector3(0, 2, -4), k = Math.min(1, t / 0.5);
-    if (m) e.ball.position.copy(from).lerp(m.position.clone().setY(0.5), k).setY(from.y * (1 - k) + 0.5 * k + Math.sin(k * Math.PI) * 0.8);
-    if (k >= 1 && !e.shown) { e.shown = true; bstuff.remove(e.ball); if (m) { m.userData.flash = 0.3; bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
-    return t > 0.65;
+    if (!e.started) { e.started = true; sfx.shoot(); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1 * bctx.tower.scale.y) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
+    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (m) { m.userData.flash = 0.3; bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
+    return e.shown && t > e.shownAt + 0.1;
   }
-  if (e.t === 'morale') { if (!e.started) { e.started = true; bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
+  if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.hit(); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
+  if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
   if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; } return true; }
   if (e.t === 'wait' || e.t === 'defend') { if (!e.started) { e.started = true; const m = M(e.s); if (m) bfloat(m.position.clone().setY(1.1), e.t === 'wait' ? '⏳ Wait' : '🛡️ Defend', 'blue'); } return t > 0.25; }
   return true;
 }
 function endBattleScreen() {
   const B = BB, ctx = bctx;
-  BB = null;
+  BB = null; vfx.clear(); vfx.select(null);
   $('battle').hidden = true; $('hud').hidden = false; $('blabels').innerHTML = '';
   G.mode = 'map';
   score?.setEra(2);
@@ -1145,15 +1170,16 @@ function finishBattle(B, ctx) {
     if (win.hero) for (const a of lose.hero.arts) win.hero.arts.push(a);
     if (lose.owner === 0 && G.selHero === lose.hero.id) G.selHero = G.heroes.findIndex((x) => x.alive && x.p === 0);
   }
-  if (ctx.foe.kind === 'town' && win.hero === ctx.hr) captureTown(ctx.hr, ctx.foe.town);
   if (ctx.foe.kind === 'town' && win.hero !== ctx.hr) ctx.foe.town.garrison = (sides.find((sd) => sd.army === ctx.foe.town.garrison) || {}).army || ctx.foe.town.garrison;
   worldDirty = true; layoutHeroes(true);
   if (sides[0].owner === 0 || sides[1].owner === 0) {
     const me = sides[0].owner === 0 ? 0 : 1, won = winSide === me;
     const list = (arr) => (arr.length ? arr.map(([id, n]) => `${unitIcon(id)} ${n} ${plural(id, n)}`).join('<br>') : 'None');
-    showMsg(won ? '🏆 Victory!' : '💀 Defeat', `<div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p>⭐ +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
+    showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p>⭐ +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
     won ? sfx.fanfare() : sfx.deny();
   }
+  // after the battle summary, so the casualties card comes first
+  if (ctx.foe.kind === 'town' && win.hero === ctx.hr) captureTown(ctx.hr, ctx.foe.town);
   checkEnd();
   updateHud();
 }
@@ -1161,7 +1187,7 @@ function finishBattle(B, ctx) {
 // ------------------------------------------------------------------ towns
 const townIncome = (t) => (t.built.includes('hall3') ? 2000 : t.built.includes('hall2') ? 1000 : 500);
 const tierUnit = (t, tier) => (t.built.includes(`u${tier}`) ? UPGRADES[t.fac][tier - 1] : FACTIONS[t.fac].units[tier - 1]);
-const costText = (c) => RES.filter((r) => c[r]).map((r) => `${RES_ICON[r]}${fmt(c[r])}`).join(' ');
+const costText = (c) => RES.filter((r) => c[r]).map((r) => `<span class="nw">${icon(r, 14)}${fmt(c[r])}</span>`).join(' ');
 const canPay = (p, c, n = 1) => RES.every((r) => (G.players[p].res[r] || 0) >= (c[r] || 0) * n);
 const pay = (p, c, n = 1) => { for (const r of RES) G.players[p].res[r] -= (c[r] || 0) * n; };
 const visitorOf = (t) => G.heroes.find((x) => x.alive && x.p === t.p && (x.v === t.v || NBR[t.v].includes(x.v)));
@@ -1173,11 +1199,11 @@ function openTown(id, hr) {
   const vis = hr || visitorOf(t);
   if (vis) learnSpells(t, vis);
   $('town').hidden = false; $('hud').hidden = true;
-  flyTo(t.v, 8);
-  renderTown(); sfx.click();
+  townView.highlight(null); townView.setTown({ fac: t.fac, built: t.built, name: t.name });
+  renderTown(); sfx.click(); townInsets();
   score?.setEra(1);
 }
-function closeTown() { $('town').hidden = true; $('hud').hidden = false; townOpen = null; G.mode = 'map'; score?.setEra(2); updateHud(); }
+function closeTown() { townView.highlight(null); $('town').hidden = true; $('hud').hidden = false; townOpen = null; G.mode = 'map'; score?.setEra(2); updateHud(); }
 $('t-close').addEventListener('click', closeTown);
 for (const b of document.querySelectorAll('#town .tabs2 button')) b.addEventListener('click', () => { townTab = b.dataset.t; renderTown(); sfx.click(); });
 function learnSpells(t, hr) {
@@ -1195,38 +1221,46 @@ function learnSpells(t, hr) {
   hr.mana = maxMana(hr);
   if (learned.length && hr.p === 0) toast(`📘 ${hr.name} learns ${learned.map((id) => SPELLS[id].icon + ' ' + SPELLS[id].name).join(', ')}`);
 }
+function townTap(cx, cy) {
+  const id = townView.pick(cx, cy); if (!id) return;
+  townView.highlight(id);
+  townTab = /^[du]\d$/.test(id) ? 'recruit' : (id === 'tavern' || id === 'market') ? 'more' : id === 'fort' ? 'army' : 'build';
+  renderTown(); sfx.click();
+}
 function renderTown() {
   const t = G.towns[townOpen], Pl = G.players[t.p], vis = visitorOf(t);
+  townView.setTown({ fac: t.fac, built: t.built, name: t.name });
   for (const b of document.querySelectorAll('#town .tabs2 button')) b.classList.toggle('on', b.dataset.t === townTab);
   $('t-name').textContent = t.name;
-  $('t-sub').innerHTML = `${FACTIONS[t.fac].name} · 🪙 +${fmt(townIncome(t))}/day · ${t.builtToday ? '🔨 built today' : '🔨 you can build today'}`;
+  $('t-sub').innerHTML = `${FACTIONS[t.fac].name} · 🪙 +${fmt(townIncome(t))}/day · ${t.builtToday ? '🔨 built today' : '🔨 can build'}`;
   let html = '';
   if (townTab === 'build') {
     html = BUILDINGS.map((b) => {
       const has = t.built.includes(b.id), reqOk = b.req.every((r) => t.built.includes(r)), can = !has && reqOk && !t.builtToday && canPay(t.p, b.cost);
       const name = b.tier ? `${b.up ? '⬆️ ' : ''}${UNITS[b.up ? UPGRADES[t.fac][b.tier - 1] : FACTIONS[t.fac].units[b.tier - 1]].name} dwelling` : b.name;
-      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : b.icon}</i><div><b>${name}</b><small>${has ? '✓ Built' : reqOk ? costText(b.cost) : `Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}`}</small><small class="d">${b.desc}</small></div>${has ? '' : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
+      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : icon(b.id, 28)}</i><div><b>${name}</b><small>${has ? '✓ Built' : reqOk ? costText(b.cost) : `Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}`}</small><small class="d">${b.desc}</small></div>${has ? '' : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
     }).join('');
   } else if (townTab === 'recruit') {
-    const tiers = BUILDINGS.filter((b) => b.tier && t.built.includes(b.id)).map((b) => b.tier);
+    const tiers = [...new Set(BUILDINGS.filter((b) => b.tier && t.built.includes(b.id)).map((b) => b.tier))].sort((x, y) => x - y);
     html = tiers.length ? tiers.map((tier) => {
       const id = tierUnit(t, tier), u = UNITS[id], n = t.avail[tier] || 0, max = Math.min(n, ...RES.filter((r) => u.cost[r]).map((r) => Math.floor(Pl.res[r] / u.cost[r])));
-      return `<div class="row-b"><i>${unitIcon(id)}</i><div><b>${u.name} <em>×${n}</em></b><small>${costText(u.cost)} · ⚔️${u.att} 🛡️${u.def} ❤️${u.hp} 💥${u.dmg[0]}–${u.dmg[1]} 👟${u.spd}${u.ranged ? ' 🏹' : ''}${u.fly ? ' 🪽' : ''}</small></div><button data-rec="${tier}" data-n="${max}" ${max > 0 ? '' : 'disabled'}>Buy ${max}</button></div>`;
+      return `<div class="row-b"><i>${unitIcon(id)}</i><div><b>${u.name} <em>×${n}</em></b><small>${costText(u.cost)} · ${icon('attack', 13)}${u.att} ${icon('defense', 13)}${u.def} ${icon('hp', 13)}${u.hp} ${icon('damage', 13)}${u.dmg[0]}–${u.dmg[1]} ${icon('movement', 13)}${u.spd}${u.ranged ? ` ${icon('shots', 13)}` : ''}${u.fly ? ` ${icon('fly', 13)}` : ''}</small></div><button data-rec="${tier}" data-n="${max}" ${max > 0 ? '' : 'disabled'}>Buy ${max}</button></div>`;
     }).join('') + '<p class="hint2">Recruits join the hero beside the town, or the garrison.</p>' : '<p class="hint2">Build a dwelling to recruit creatures.</p>';
   } else if (townTab === 'army') {
     const row = (title, army, who) => `<div class="armyrow"><b>${title}</b><div class="slots">${Array.from({ length: 7 }, (_, i) => army[i] && army[i][1] > 0 ? `<button data-move="${who}:${i}">${unitIcon(army[i][0])}<em>${army[i][1]}</em></button>` : '<button disabled></button>').join('')}</div></div>`;
     html = row('🏰 Garrison', t.garrison, 'g') + (vis ? row(`🐎 ${vis.name}`, vis.army, 'h') : '<p class="hint2">No hero beside the town.</p>') + '<p class="hint2">Tap a stack to move it across.</p>';
     // upgrades for troops whose upgraded dwelling stands here
     const ups = [];
-    for (const [who, army] of [['g', t.garrison], ['h', vis?.army]]) if (army) army.forEach((st, i) => { if (!st || st[1] <= 0) return; const tier = UNITS[st[0]].tier, upId = UPGRADES[t.fac]?.[tier - 1]; if (UNITS[st[0]].fac === t.fac && !UNITS[st[0]].up && t.built.includes(`u${tier}`) && upId) { const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))])); ups.push(`<div class="row-b"><i>${unitIcon(st[0])}</i><div><b>${st[1]} ${plural(st[0], st[1])} → ${UNITS[upId].name}</b><small>${costText(Object.fromEntries(RES.map((r) => [r, cost[r] * st[1]])))}</small></div><button data-up="${who}:${i}" ${canPay(t.p, cost, st[1]) ? '' : 'disabled'}>Upgrade</button></div>`); } });
+    for (const [who, army] of [['g', t.garrison], ['h', vis?.army]]) if (army) army.forEach((st, i) => { if (!st || st[1] <= 0) return; const tier = UNITS[st[0]].tier, upId = UPGRADES[t.fac]?.[tier - 1]; if (UNITS[st[0]].fac === t.fac && !UNITS[st[0]].up && t.built.includes(`u${tier}`) && upId) { const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))])); ups.push(`<div class="row-b"><i>${unitIcon(st[0])}</i><div><b>${st[1]} ${plural(st[0], st[1])} → ${plural(upId, st[1])}</b><small>${costText(Object.fromEntries(RES.map((r) => [r, cost[r] * st[1]])))}</small></div><button data-up="${who}:${i}" ${canPay(t.p, cost, st[1]) ? '' : 'disabled'}>Upgrade</button></div>`); } });
     if (ups.length) html += ups.join('');
   } else if (townTab === 'more') {
     const tav = t.built.includes('tavern'), mk = t.built.includes('market');
     const heroes = G.heroes.filter((x) => x.alive && x.p === t.p).length;
     html = `<div class="row-b ${tav ? '' : 'lock'}"><i>🍺</i><div><b>Tavern</b><small>${tav ? 'Hire a new hero with a few troops (2500 gold).' : 'Build a Tavern first.'}</small></div><button data-hire="1" ${tav && heroes < 4 && canPay(t.p, { gold: 2500 }) && !heroAt(t.v) ? '' : 'disabled'}>Hire</button></div>`;
     html += `<div class="row-b ${mk ? '' : 'lock'}"><i>⚖️</i><div><b>Marketplace</b><small>${mk ? 'Buy and sell resources.' : 'Build a Marketplace first.'}</small></div></div>`;
-    if (mk) for (const r of ['wood', 'ore', 'gems']) { const buy = r === 'gems' ? 500 : 250, sell = r === 'gems' ? 200 : 100; html += `<div class="row-b"><i>${RES_ICON[r]}</i><div><b>${r[0].toUpperCase() + r.slice(1)}</b><small>Buy 1 for ${buy} 🪙 · sell 1 for ${sell} 🪙</small></div><button data-buy="${r}" ${Pl.res.gold >= buy ? '' : 'disabled'}>Buy</button><button data-sell="${r}" ${Pl.res[r] > 0 ? '' : 'disabled'}>Sell</button></div>`; }
+    if (mk) for (const r of ['wood', 'ore', 'gems']) { const buy = r === 'gems' ? 500 : 250, sell = r === 'gems' ? 200 : 100; html += `<div class="row-b"><i>${RES_ICON[r]}</i><div><b>${r[0].toUpperCase() + r.slice(1)}</b><small><span class="nw">Buy 1: ${icon('gold', 13)}${buy}</span> · <span class="nw">Sell 1: ${icon('gold', 13)}${sell}</span></small></div><button data-buy="${r}" ${Pl.res.gold >= buy ? '' : 'disabled'}>Buy</button><button data-sell="${r}" ${Pl.res[r] > 0 ? '' : 'disabled'}>Sell</button></div>`; }
   }
+  if (t.p !== 0) html = `<p class="hint2">${G.players[t.p]?.name || 'An enemy'} rules this town. Capture it to build and recruit here.</p>`;
   $('t-body').innerHTML = html;
   updateRes();
 }
@@ -1281,20 +1315,20 @@ function openHero() {
   const st = (k, ic, n) => `<div class="st"><i>${ic}</i><b>${statOf(hr, k)}</b><small>${n}</small></div>`;
   const next = xpFor(hr.lvl + 1), prev = xpFor(hr.lvl);
   showMsg(`🐎 ${hr.name}`, `<p class="sub">Level ${hr.lvl} · ⭐ ${fmt(hr.xp)} / ${fmt(next)}</p><div class="xpbar"><i style="width:${((hr.xp - prev) / (next - prev)) * 100}%"></i></div>
-    <div class="stats">${st('att', '🗡️', 'Attack')}${st('def', '🛡️', 'Defence')}${st('pow', '🔮', 'Power')}${st('know', '📘', 'Knowledge')}</div>
+    <div class="stats">${st('att', icon('attack', 24), 'Attack')}${st('def', icon('defense', 24), 'Defence')}${st('pow', icon('power', 24), 'Power')}${st('know', icon('knowledge', 24), 'Knowledge')}</div>
     <p class="sub">🔮 Mana ${hr.mana}/${maxMana(hr)} · 🐎 ${hr.mp}/${moveMax(hr)}</p>
     <div class="slots big">${Array.from({ length: 7 }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
-    <p class="sub">${Object.keys(hr.skills).map((k) => `${SKILLS[k].icon} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][hr.skills[k]]}`).join(' · ') || 'No skills yet'}</p>
-    <p class="sub">${hr.spells.map((id) => `${SPELLS[id].icon} ${SPELLS[id].name}`).join(' · ') || 'No spells'}</p>
+    <p class="sub">${Object.keys(hr.skills).map((k) => `${icon(k, 16)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][hr.skills[k]]}`).join(' · ') || 'No skills yet'}</p>
+    <p class="sub">${hr.spells.map((id) => `${icon(id, 16)} ${SPELLS[id].name}`).join(' · ') || 'No spells'}</p>
     <p class="sub">${hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `${A.icon} ${A.name}`; }).join(' · ') || 'No artifacts'}</p>`, true);
 }
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
 const UICON = { pikeman: '🔱', archer: '🏹', griffin: '🦅', swordsman: '⚔️', monk: '🧙', cavalier: '🏇', angel: '👼', skeleton: '💀', zombie: '🧟', wight: '👻', vampire: '🧛', lich: '☠️', blackknight: '♞', bonedragon: '🐉', goblin: '👺', wolf: '🐺', orc: '👹', ogre: '🦣', troll: '🧌', cyclops: '👁️', hydra: '🐍' };
-const unitIcon = (id) => UICON[id] || UICON[UNITS[id]?.up] || '❔';
-const plural = (id, n = 2) => (n === 1 ? UNITS[id].name : UNITS[id].name.replace(/man$/, 'men').replace(/f$/, 'ves').replace(/([^s])$/, '$1s'));
+const unitIcon = (id, s = 64) => portraitImg(id, s) || UICON[id] || UICON[UNITS[id]?.up] || '❔';
+const plural = (id, n = 2) => { const w = UNITS[id].name; if (n === 1) return w; if (/m[ae]n$/.test(w)) return w.replace(/man$/, 'men'); if (/[^aeiou]y$/.test(w)) return w.slice(0, -1) + 'ies'; if (/(s|x|ch|sh)$/.test(w)) return w + 'es'; return w.replace(/f$/, 'ves').replace(/([^s])$/, '$1s'); };
 let toastT = 0;
-function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
+function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
 function showMsg(title, html, wide = false) { ask(title, html, [['OK', null]], wide); }
 const dialogs = [];
 function ask(title, html, buttons, wide = false) {
@@ -1335,6 +1369,7 @@ function updateFloaters(dt) {
     if (f.t > 1.6) { f.el.remove(); floaters.splice(i, 1); continue; }
     let x = innerWidth / 2, y = innerHeight * 0.4 + f.slot * 34;
     if (f.p) { const v = f.p.clone().project(f.cm || camera); x = (v.x * 0.5 + 0.5) * innerWidth; y = (-v.y * 0.5 + 0.5) * innerHeight; }
+    const hw = (f.w ??= f.el.offsetWidth) / 2 + 6; x = clamp(x, hw, innerWidth - hw);
     f.el.style.opacity = String(Math.min(1, (1.6 - f.t) * 2));
     f.el.style.transform = `translate(${x}px, ${y - f.t * 40}px) translate(-50%, -50%) scale(${Math.min(1, 0.6 + f.t * 4)})`;
   }
@@ -1343,16 +1378,16 @@ function updateRes() {
   const r = G.players[0]?.res; if (!r) return;
   for (const k of RES) { const el = $(`r-${k}`); if (el) el.textContent = fmt(r[k]); }
   $('r-day').textContent = `Day ${((G.day - 1) % 7) + 1} · Week ${week()}`;
-  $('r2-gold').textContent = RES.map((k) => `${RES_ICON[k]} ${fmt(r[k])}`).join('   ');
+  $('r2-gold').innerHTML = RES.map((k) => `<span>${icon(k, 16)}${fmt(r[k])}</span>`).join('');
 }
 function updateHud() {
   if (!G.players.length) return;
   updateRes();
   const mine = G.heroes.filter((x) => x.alive && x.p === 0);
-  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}" data-h="${hr.id}"><i>🐎</i><b>${hr.name.split(' ').pop()}</b><span class="mp"><i style="width:${(hr.mp / moveMax(hr)) * 100}%"></i></span></button>`).join('') +
-    G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}"><i>🏰</i><b>${t.name}</b>${!t.builtToday ? '<em>🔨</em>' : ''}</button>`).join('');
+  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}" data-h="${hr.id}"><i>${icon('hero', 26)}</i><b>${hr.name.split(' ').pop()}</b><span class="mp"><i style="width:${(hr.mp / moveMax(hr)) * 100}%"></i></span></button>`).join('') +
+    G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}"><i>${icon('town', 26)}</i><b>${t.name}</b>${!t.builtToday ? `<em>${icon('build', 13)}</em>` : ''}</button>`).join('');
   const hr = selHero();
-  $('sel').innerHTML = hr ? `<b>${hr.name}</b> · Lv ${hr.lvl} · 🐎 ${fmt(hr.mp)} · 🔮 ${hr.mana} · ${heroArmy(hr).map(([id, n]) => `${unitIcon(id)}${n}`).join(' ')}` : '';
+  $('sel').innerHTML = hr ? `<b>${hr.name}</b> · Lv ${hr.lvl} · ${icon('movement', 14)}${fmt(hr.mp)} · ${icon('mana', 14)}${hr.mana} · ${heroArmy(hr).map(([id, n]) => `${unitIcon(id)}${n}`).join(' ')}` : '';
 }
 $('heroes').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || busy()) return;
@@ -1423,7 +1458,13 @@ function checkEnd() {
 }
 function endGame(won) {
   G.over = true; store.del('realms.save');
-  ask(won ? '👑 Victory!' : '💀 Defeat', won ? `You rule the whole world after ${G.day} days. All rival lords are defeated.` : 'Your last town and hero are lost.', [['New game', () => showMenu()]]);
+  const me = G.players[0], towns = G.towns.filter((t) => t.p === 0).length, heroes = G.heroes.filter((h) => h.alive && h.p === 0);
+  const army = heroes.reduce((a, h) => a + heroArmy(h).reduce((x, st) => x + st[1], 0), 0), top = heroes.reduce((a, h) => Math.max(a, h.lvl), 0);
+  const body = `<div class="endcard ${won ? 'win' : 'lose'}"><div class="crest2">${icon(won ? 'victory' : 'defeat', 84)}</div>
+    <p>${won ? `You rule the whole world after <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'}. All rival lords bow before ${FACTIONS[me.fac].name}.` : 'Your last town and hero are lost. The realm falls into shadow.'}</p>
+    <div class="endstats"><div><b>${G.day}</b><small>Days</small></div><div><b>${towns}</b><small>Towns</small></div><div><b>${fmt(army)}</b><small>Creatures</small></div><div><b>${top || '–'}</b><small>Best hero lvl</small></div></div></div>`;
+  ask(won ? 'Victory!' : 'Defeat', body, [['New game', () => showMenu()]], true);
+  if (won) for (let i = 0; i < 40; i++) setTimeout(() => { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = `${Math.random() * 100}vw`; c.style.background = `hsl(${Math.random() * 360} 90% 60%)`; c.style.animationDuration = `${1.8 + Math.random() * 1.6}s`; document.body.appendChild(c); setTimeout(() => c.remove(), 4000); }, i * 40);
   won ? sfx.fanfare() : sfx.deny();
 }
 
@@ -1648,9 +1689,13 @@ function frame() {
   if (G.mode === 'battle') {
     animateBattle(dt);
     const s = Math.sin(bview.yaw), c = Math.cos(bview.yaw);
-    bcam.position.set(s * bview.dist * 0.55, bview.dist, c * bview.dist * 0.55 + 0.4);
-    bcam.lookAt(0, 0, 0.2);
+    // a HoMM-like three-quarter view: low enough that creatures show their figures, not just helmets
+    // never closer than what fits the full grid width on screen (portrait phones)
+    const hf = Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2)) * bcam.aspect, d = Math.max(bview.dist, Math.min(18, (BT.COLS * 0.866 * 0.5 + 0.45) / hf / 1.1));
+    bcam.position.set(s * d * 0.82, d * 0.86, c * d * 0.82 + 0.4);
+    bcam.lookAt(0, 0, -0.15);
     for (const m of bmesh.values()) if (m.userData.flash > 0) { m.userData.flash -= dt; m.children[0].material = m.userData.flash > 0 ? hitMat : bodyMat; }
+    vfx.update(dt, bcam);
     post.render(bscene, bcam);
   } else {
     updateCamera(dt);
@@ -1662,11 +1707,12 @@ function frame() {
       if (worldDirty) { revealAll(); layoutWorld(); }
       const hr = selHero();
       const m = hr && heroMeshes.get(hr.id);
-      selRing.visible = !!m;
-      if (m) { selRing.position.copy(m.position).addScaledVector(m.position.clone().normalize(), 0.01); selRing.quaternion.setFromUnitVectors(UP, m.position.clone().normalize()); }
-      for (const g of world.children) if (g.userData.bob !== undefined) g.children[0].position.y = Math.abs(Math.sin(tt * 2 + g.userData.bob)) * 0.15;
+      fx.select(m ? m.position : null);
+      fx.update(dt, camera);
+      for (const g of world.children) if (g.userData.bob !== undefined) for (const c of g.children) if (c.isMesh) c.position.y = (c.userData.fitY ?? 0) + Math.abs(Math.sin(tt * 2 + g.userData.bob)) * 0.15;
     }
-    post.render(scene, camera);
+    if (G.mode === 'town') { townInsets(); townView.update(dt); post.render(townView.scene, townView.camera); }
+    else post.render(scene, camera);
   }
   updateFloaters(dt);
   requestAnimationFrame(frame);
@@ -1680,4 +1726,4 @@ layoutWorld();
 resize();
 showMenu();
 frame();
-window.__realms = { G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld };
+window.__realms = { G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam };
