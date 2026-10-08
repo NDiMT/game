@@ -31,11 +31,17 @@ export function createBattle({ armyA, heroA, armyB, heroB, town = false }) {
     });
   };
   place(armyA, 0); place(armyB, 1);
+  B.walls = new Set();
+  if (town && town.fort) {
+    const def = town.side ?? 1, row = def === 1 ? 2 : ROWS - 3, gate = (COLS - 1) >> 1;
+    for (let c = 0; c < COLS; c++) if (c !== gate) { B.walls.add(key(c, row)); B.obstacles.add(key(c, row)); }
+    B.gate = key(gate, row);
+  }
   // a few rocks and dead trees in the middle rows
   const nObs = 3 + ((rnd() * 4) | 0);
   for (let i = 0; i < nObs * 3 && B.obstacles.size < nObs; i++) {
     const c = (rnd() * COLS) | 0, r = 3 + ((rnd() * (ROWS - 6)) | 0);
-    if (!B.stacks.some((s) => s.c === c && s.r === r)) B.obstacles.add(key(c, r));
+    if (!B.stacks.some((s) => s.c === c && s.r === r) && !B.walls?.has(key(c, r)) && Math.abs(r - (B.town?.side === 0 ? ROWS - 3 : 2)) > 0) B.obstacles.add(key(c, r));
   }
   newRound(B);
   return B;
@@ -53,6 +59,11 @@ function newRound(B) {
     if (s.count > 0 && s.u.regen) s.hp = s.u.hp;
   }
   B.cast = [false, false];
+  // the town's arrow tower shoots at an attacker every round
+  if (B.town && B.town.fort && B.round > 1) {
+    const def = B.town.side ?? 1, foes = B.stacks.filter((s) => s.count > 0 && s.side !== def);
+    if (foes.length) { const t = foes[(rnd() * foes.length) | 0], dmg = 10 + (B.town.power || 3) * 6; const killed = hurt(B, t, dmg); B.events.push({ t: 'tower', s: t.uid, dmg, killed, side: def }); if (t.count <= 0) B.events.push({ t: 'die', s: t.uid }); checkOver(B); }
+  }
 }
 // the next stack to act: fastest first, those who waited go last (slowest first)
 export function nextStack(B) {
@@ -92,6 +103,7 @@ export const canShoot = (B, s) => s.shots > 0 && !adjacentEnemy(B, s);
 
 // damage: HoMM style, attack vs defence decides the multiplier
 function rollDamage(B, a, d, { ranged = false, melee = false, retal = false } = {}) {
+  let lucky = false;
   const ha = hero(B, a.side), hd = hero(B, d.side);
   const A = a.u.att + (ha ? ha.att : 0), D = d.u.def + (hd ? hd.def : 0) + (d.fx.stoneskin ? 4 : 0) + (d.defending ? Math.ceil(d.u.def * 0.3) : 0) + (B.town && d.side === (B.town.side ?? 1) && B.town.fort ? Math.ceil(d.u.def * 0.3) : 0);
   let per = a.fx.bless ? a.u.dmg[1] : a.u.dmg[0] + rnd() * (a.u.dmg[1] - a.u.dmg[0] + 1) | 0;
@@ -103,11 +115,13 @@ function rollDamage(B, a, d, { ranged = false, melee = false, retal = false } = 
     else dmg *= 1 + 0.1 * (ha.skills.offense || 0);
   }
   if (hd) dmg *= 1 - 0.08 * (hd.skills.armorer || 0);
-  if (melee && a.u.ranged) dmg *= 0.5;
+  if (melee && a.u.ranged && !a.u.noMeleePenalty) dmg *= 0.5;
+  if (a.fx.curse) dmg *= 0.8;
+  // dread knights sometimes strike a death blow
+  if (a.u.deathblow && rnd() < 0.2) { dmg *= 2; lucky = true; }
   if (a.u.jousting && a.moved) dmg *= 1 + 0.05 * a.moved;
   // luck: a chance of double damage
   const luck = ha ? (ha.skills.luck || 0) + (ha.luck || 0) : 0;
-  let lucky = false;
   if (luck > 0 && rnd() < luck * 0.0417) { dmg *= 2; lucky = true; }
   return { dmg: Math.max(1, Math.round(dmg)), lucky };
 }
@@ -123,6 +137,7 @@ function strike(B, a, d, opts) {
   const killed = hurt(B, d, dmg);
   B.events.push({ t: opts.ranged ? 'shot' : 'hit', a: a.uid, d: d.uid, dmg, killed, lucky, retal: !!opts.retal });
   // vampires drain life and raise their dead
+  if (a.u.curse && d.count > 0 && rnd() < 0.3) d.fx.curse = 3;
   if (a.u.drain && dmg > 0 && a.count > 0) {
     let heal = Math.round(dmg * 0.5);
     while (heal > 0 && a.count < a.start) { const need = a.u.hp - a.hp; if (heal >= need) { heal -= need; a.count++; a.hp = a.u.hp; } else { a.hp += heal; heal = 0; } }
@@ -157,12 +172,26 @@ export function melee(B, a, d) {
 }
 export function shoot(B, a, d) {
   a.shots--;
-  const far = dist(a, d) > 6;
   strike(B, a, d, { ranged: true });
-  if (far) B.events[B.events.length - 1].far = true;
+  // marksmen loose two arrows
+  if (a.u.twoShots && d.count > 0 && a.count > 0 && a.shots > 0) { a.shots--; strike(B, a, d, { ranged: true }); }
 }
 
 // ---- actions taken by the active stack
+// what an attack would do, without dice: for the preview before you commit
+export function estimate(B, a, d, ranged) {
+  const ha = B.heroes[a.side], hd = B.heroes[d.side];
+  const A = a.u.att + (ha ? ha.att : 0), D = d.u.def + (hd ? hd.def : 0) + (d.fx.stoneskin ? 4 : 0) + (d.defending ? Math.ceil(d.u.def * 0.3) : 0);
+  let m = A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
+  if (ha) m *= ranged ? 1 + 0.15 * (ha.skills.archery || 0) : 1 + 0.1 * (ha.skills.offense || 0);
+  if (hd) m *= 1 - 0.08 * (hd.skills.armorer || 0);
+  if (!ranged && a.u.ranged && !a.u.noMeleePenalty) m *= 0.5;
+  if (a.fx.curse) m *= 0.8;
+  const hits = (ranged && a.u.twoShots) || (!ranged && a.u.double) ? 2 : 1;
+  const lo = Math.max(1, Math.round((a.fx.bless ? a.u.dmg[1] : a.u.dmg[0]) * a.count * m)) * hits, hi = Math.max(1, Math.round(a.u.dmg[1] * a.count * m)) * hits;
+  const pool = (d.count - 1) * d.u.hp + d.hp, kills = (x) => Math.min(d.count, x >= pool ? d.count : d.count - Math.ceil((pool - x) / d.u.hp));
+  return { lo, hi, klo: kills(lo), khi: kills(hi) };
+}
 export function actMove(B, s, c, r) { moveTo(B, s, c, r); endTurn(B, s); }
 export function actAttack(B, s, target, from) {
   if (from && (from[0] !== s.c || from[1] !== s.r)) moveTo(B, s, from[0], from[1]); else s.moved = 0;

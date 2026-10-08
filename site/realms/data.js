@@ -34,6 +34,24 @@ export const UNITS = {
   cyclops: { name: 'Cyclops', fac: 'neutral', tier: 6, att: 17, def: 13, dmg: [16, 20], hp: 100, spd: 6, cost: { gold: 900 }, grow: 2, ranged: 8, col: 0xa86a4a },
   hydra: { name: 'Hydra', fac: 'neutral', tier: 7, att: 18, def: 18, dmg: [25, 45], hp: 175, spd: 5, cost: { gold: 2200 }, grow: 1, noRetalTaken: true, col: 0x3a8a6a },
 };
+// upgraded creatures: recruited from an upgraded dwelling; `up` names the base creature (and its model)
+Object.assign(UNITS, {
+  halberdier: { name: 'Halberdier', fac: 'haven', tier: 1, up: 'pikeman', att: 6, def: 5, dmg: [2, 3], hp: 10, spd: 5, cost: { gold: 75 }, grow: 14, col: 0x3a6ad8 },
+  marksman: { name: 'Marksman', fac: 'haven', tier: 2, up: 'archer', att: 6, def: 3, dmg: [2, 3], hp: 10, spd: 6, cost: { gold: 150 }, grow: 9, ranged: 24, twoShots: true, col: 0x3a8a5a },
+  royalgriffin: { name: 'Royal Griffin', fac: 'haven', tier: 3, up: 'griffin', att: 9, def: 9, dmg: [3, 6], hp: 25, spd: 9, cost: { gold: 240 }, grow: 7, fly: true, twoRetal: true, col: 0xe8c050 },
+  crusader: { name: 'Crusader', fac: 'haven', tier: 4, up: 'swordsman', att: 12, def: 12, dmg: [7, 10], hp: 35, spd: 6, cost: { gold: 400 }, grow: 4, double: true, col: 0xd8dce8 },
+  zealot: { name: 'Zealot', fac: 'haven', tier: 5, up: 'monk', att: 12, def: 10, dmg: [10, 12], hp: 30, spd: 7, cost: { gold: 450 }, grow: 3, ranged: 24, noMeleePenalty: true, col: 0xd8aa5a },
+  champion: { name: 'Champion', fac: 'haven', tier: 6, up: 'cavalier', att: 16, def: 16, dmg: [20, 25], hp: 100, spd: 9, cost: { gold: 1200 }, grow: 2, jousting: true, col: 0x2a4ab8 },
+  archangel: { name: 'Archangel', fac: 'haven', tier: 7, up: 'angel', att: 30, def: 30, dmg: [50, 50], hp: 250, spd: 18, cost: { gold: 5000, gems: 3 }, grow: 1, fly: true, col: 0xfff4d0 },
+  skelwarrior: { name: 'Skeleton Warrior', fac: 'necro', tier: 1, up: 'skeleton', att: 6, def: 6, dmg: [1, 3], hp: 6, spd: 5, cost: { gold: 70 }, grow: 12, undead: true, col: 0xf0ead8 },
+  plaguezombie: { name: 'Plague Zombie', fac: 'necro', tier: 2, up: 'zombie', att: 5, def: 5, dmg: [2, 3], hp: 20, spd: 4, cost: { gold: 125 }, grow: 8, undead: true, curse: true, col: 0x6a8a5a },
+  wraith: { name: 'Wraith', fac: 'necro', tier: 3, up: 'wight', att: 7, def: 7, dmg: [3, 5], hp: 18, spd: 7, cost: { gold: 230 }, grow: 7, fly: true, undead: true, regen: true, col: 0x8aa0c8 },
+  vampirelord: { name: 'Vampire Lord', fac: 'necro', tier: 4, up: 'vampire', att: 10, def: 10, dmg: [5, 8], hp: 40, spd: 9, cost: { gold: 500 }, grow: 4, fly: true, noRetal: true, drain: true, undead: true, col: 0xa82a3a },
+  powerlich: { name: 'Power Lich', fac: 'necro', tier: 5, up: 'lich', att: 13, def: 10, dmg: [11, 15], hp: 40, spd: 7, cost: { gold: 600 }, grow: 3, ranged: 24, undead: true, col: 0x8a4ab8 },
+  dreadknight: { name: 'Dread Knight', fac: 'necro', tier: 6, up: 'blackknight', att: 18, def: 18, dmg: [15, 30], hp: 120, spd: 9, cost: { gold: 1500 }, grow: 2, undead: true, deathblow: true, col: 0x1a1a24 },
+  ghostdragon: { name: 'Ghost Dragon', fac: 'necro', tier: 7, up: 'bonedragon', att: 19, def: 17, dmg: [25, 50], hp: 200, spd: 14, cost: { gold: 3000, gems: 1 }, grow: 1, fly: true, undead: true, col: 0xc8d8e8 },
+});
+export const UPGRADES = { haven: ['halberdier', 'marksman', 'royalgriffin', 'crusader', 'zealot', 'champion', 'archangel'], necro: ['skelwarrior', 'plaguezombie', 'wraith', 'vampirelord', 'powerlich', 'dreadknight', 'ghostdragon'] };
 export const FACTIONS = {
   haven: { name: 'Haven', color: 0x3a7aff, css: '#3a7aff', units: ['pikeman', 'archer', 'griffin', 'swordsman', 'monk', 'cavalier', 'angel'], heroes: ['Sir Aldric', 'Lady Brenna', 'Sir Corvin', 'Dame Elys'] },
   necro: { name: 'Necropolis', color: 0xd83a3a, css: '#d83a3a', units: ['skeleton', 'zombie', 'wight', 'vampire', 'lich', 'blackknight', 'bonedragon'], heroes: ['Vex the Pale', 'Morra', 'Lord Sable', 'Kazrith'] },
@@ -60,6 +78,8 @@ export const BUILDINGS = [
 ];
 
 // spells: circle (mage guild level), mana cost, target (enemy, ally, all-enemies, area)
+// upgraded dwellings
+for (let t = 1; t <= 7; t++) BUILDINGS.push({ id: `u${t}`, tier: t, up: true, name: `Upgraded Dwelling ${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][t - 1]}`, icon: '⬆️', cost: { gold: [1000, 1000, 1500, 2000, 3000, 6000, 20000][t - 1], wood: t > 1 ? 5 : 0, ore: 5, gems: t >= 5 ? t - 2 : 0 }, req: [`d${t}`, ...(t >= 4 ? ['mage1'] : []), ...(t >= 6 ? ['hall2'] : [])], desc: 'Recruit the upgraded creature and upgrade your troops here.' });
 export const SPELLS = {
   arrow: { name: 'Magic Arrow', icon: '🏹', circle: 1, mana: 5, target: 'enemy', desc: 'Deals 10 + 10×Power damage.' },
   bless: { name: 'Bless', icon: '✨', circle: 1, mana: 5, target: 'ally', desc: 'The stack always deals maximum damage for 3 rounds.' },
