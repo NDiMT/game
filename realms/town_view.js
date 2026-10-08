@@ -29,16 +29,16 @@ const S = (x, z, ry = 0, s = 1) => ({ x, z, ry, s });
 const SLOT_POS = {
   fort: S(0, -5.1),
   hall: S(0, -2.6),
-  d7: S(-3.2, -2.75, 0.18),
-  mage: S(3.3, -2.55, -0.18),
-  d6: S(-3.75, -0.05, 0.22),
-  d5: S(-1.25, 0.0, 0.06),
-  d4: S(1.35, 0.0, -0.06),
-  tavern: S(3.85, -0.05, -0.22),
-  market: S(-3.75, 2.55, 0.26),
-  d1: S(-1.4, 2.6, 0.1),
-  d2: S(1.45, 2.6, -0.1),
-  d3: S(3.8, 2.55, -0.26),
+  d7: S(-3.4, -2.8, 0.18),
+  mage: S(3.4, -2.6, -0.18),
+  d6: S(-4.5, 0.05, 0.25),
+  d5: S(-2.2, 0.15, 0.08),
+  d4: S(2.2, 0.15, -0.08),
+  tavern: S(4.5, 0.05, -0.25),
+  market: S(-3.35, 2.75, 0.2),
+  d1: S(-1.12, 2.8, 0.06),
+  d2: S(1.12, 2.8, -0.06),
+  d3: S(3.35, 2.75, -0.2),
 };
 export const BUILDING_IDS = ['village', 'hall2', 'hall3', 'fort', 'market', 'tavern', 'mage1', 'mage2', 'mage3',
   'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'];
@@ -454,10 +454,10 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         const lay = document.createElement('canvas'); lay.width = lay.height = 512;
         const L = lay.getContext('2d');
         const roads = [
-          [[0, 12], [0.1, 6], [-0.05, 3.6], [0, 1.4], [0, -1.0]], // main road to the hall
-          [[-5.4, 1.35], [-2.6, 1.3], [0, 1.3], [2.6, 1.3], [5.4, 1.35]], // cross street
-          [[-5.0, -1.45], [-2.4, -1.35], [0, -1.2], [2.4, -1.35], [5.0, -1.45]],
-          [[-2.5, 1.3], [-2.55, -1.35]], [[2.6, 1.3], [2.55, -1.35]],
+          [[0, 12], [0.1, 6], [-0.03, 3.6], [0, 1.4], [0, -1.0]], // main road to the hall
+          [[-6.2, 1.6], [-3.4, 1.5], [0, 1.45], [3.4, 1.5], [6.2, 1.6]], // cross streets
+          [[-5.6, -1.25], [-2.6, -1.15], [0, -1.1], [2.6, -1.15], [5.6, -1.25]],
+          [[-3.35, 1.5], [-3.3, -1.15]], [[3.35, 1.5], [3.3, -1.15]],
           [[0, -3.8], [0, -6.5]],
         ];
         const stroke = (ctx, w, style, blur = 0) => {
@@ -466,10 +466,10 @@ void main() { vec3 d = normalize(vD); float y = d.y;
           for (const rd of roads) { ctx.beginPath(); rd.forEach(([x, z], i) => (i ? ctx.lineTo(tx(x), tz(z)) : ctx.moveTo(tx(x), tz(z)))); ctx.stroke(); }
           ctx.shadowBlur = 0;
         };
-        stroke(L, 1.7, P.pathEdge, 10);
-        L.fillStyle = P.pathEdge; L.beginPath(); L.ellipse(tx(0), tz(-0.95), 2.5 * PX, 1.25 * PX, 0, 0, 7); L.fill();
-        stroke(L, 1.15, P.path);
-        L.fillStyle = P.path; L.beginPath(); L.ellipse(tx(0), tz(-0.95), 2.15 * PX, 1.0 * PX, 0, 0, 7); L.fill();
+        stroke(L, 1.35, P.pathEdge, 10);
+        L.fillStyle = P.pathEdge; L.beginPath(); L.ellipse(tx(0), tz(-0.95), 1.75 * PX, 1.15 * PX, 0, 0, 7); L.fill();
+        stroke(L, 0.9, P.path);
+        L.fillStyle = P.path; L.beginPath(); L.ellipse(tx(0), tz(-0.95), 1.4 * PX, 0.9 * PX, 0, 0, 7); L.fill();
         L.globalCompositeOperation = 'source-atop';
         for (let i = 0; i < 4200; i++) {
           const x = r() * 512, y = r() * 512, s = 2 + r() * 3.2;
@@ -744,7 +744,7 @@ void main() {
         ng.setAttribute('aWave', new T.BufferAttribute(wv, 1)); ng.setAttribute('aPhase', new T.BufferAttribute(ph, 1));
         wave.push(ng);
       };
-      banner(-5.9, 1.3, 2.4, -1); banner(5.9, 1.3, 2.4, 1);
+      banner(-6.3, 1.7, 2.4, -1); banner(6.3, 1.7, 2.4, 1);
       banner(-5.7, 4.0, 2.2, -1); banner(5.7, 4.0, 2.2, 1);
       // merge flags with wave attributes
       {
@@ -986,11 +986,15 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   const ghostMat = keep(new T.MeshBasicMaterial({ color: col(0xffe7a0), transparent: true, opacity: 0.18, depthWrite: false }));
   const ghost = new T.Mesh(keep(new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), ghostMat);
   ghost.visible = false;
-  scene.add(ring, ghost);
+  const markMat = keep(new T.MeshBasicMaterial({ color: col(0xffd040), toneMapped: false }));
+  markMat.color.multiplyScalar(1.5);
+  const marker = new T.Mesh(keep(new T.ConeGeometry(0.32, 0.62, 4).rotateX(Math.PI).translate(0, 0.31, 0)), markMat);
+  marker.visible = false;
+  scene.add(ring, ghost, marker);
   const hl = { id: null, slot: null, t: 0 };
   function highlight(id) {
     const k = id ? slotOf(id) : null;
-    if (!k || !SLOT_POS[k]) { hl.id = hl.slot = null; ring.visible = ghost.visible = false; return; }
+    if (!k || !SLOT_POS[k]) { hl.id = hl.slot = null; ring.visible = ghost.visible = marker.visible = false; return; }
     hl.id = id; hl.slot = k;
     const sp = SLOT_POS[k], d = SLOT_DIM(k);
     ring.position.set(sp.x, 0.06, sp.z); ring.rotation.y = sp.ry;
@@ -998,6 +1002,10 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     ring.visible = true;
     ghost.visible = !slots[k];
     if (ghost.visible) { ghost.position.set(sp.x, 0, sp.z); ghost.rotation.y = sp.ry; ghost.scale.set(d[0] * 0.8, SLOT_MAXH[k] * 0.8, d[1] * 0.8); }
+    let top = SLOT_MAXH[k] * 0.8;
+    if (slots[k]) { const g = slots[k].group, y = g.position.y; g.position.y = 0; box.setFromObject(g); g.position.y = y; if (isFinite(box.max.y)) top = box.max.y; }
+    hl.top = top + 0.35;
+    marker.position.set(sp.x, hl.top, k === 'fort' ? sp.z + 0.5 : sp.z); marker.visible = true;
   }
 
   // ---------------------------------------------------------------- camera framing
@@ -1123,7 +1131,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
       if (t >= 1) { removeBuilding(g); sinking.splice(i, 1); }
     }
     // highlight pulse
-    if (ring.visible) { hl.t += dt; ringMat.opacity = 0.55 + 0.35 * Math.sin(hl.t * 4.5); ring.scale.y = 1; const s = 1 + Math.sin(hl.t * 4.5) * 0.03; ring.scale.x = SLOT_DIM(hl.slot)[0] * 0.66 * s; ring.scale.z = SLOT_DIM(hl.slot)[1] * (hl.slot === 'fort' ? 1.4 : 0.66) * s; ghostMat.opacity = 0.12 + 0.08 * Math.sin(hl.t * 4.5); }
+    if (ring.visible) { hl.t += dt; ringMat.opacity = 0.55 + 0.35 * Math.sin(hl.t * 4.5); ring.scale.y = 1; const s = 1 + Math.sin(hl.t * 4.5) * 0.03; ring.scale.x = SLOT_DIM(hl.slot)[0] * 0.66 * s; ring.scale.z = SLOT_DIM(hl.slot)[1] * (hl.slot === 'fort' ? 1.4 : 0.66) * s; ghostMat.opacity = 0.12 + 0.08 * Math.sin(hl.t * 4.5); marker.position.y = hl.top + Math.abs(Math.sin(hl.t * 3.2)) * 0.35; marker.rotation.y = hl.t * 1.5; }
     soft.update(dt); glowP.update(dt);
   }
 

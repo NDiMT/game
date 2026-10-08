@@ -705,9 +705,9 @@ export function createVfx(THREE, scene) {
         const c = vec(center.x, 0.35, center.z);
         flash(c, [1.8, 0.6, 0.12], 1.4, 4.0, 0.35, 0.7);
         for (let i = 0; i < 14; i++) { const a = rand() * TAU, sp = rr(0.5, 3.5); emit(ADD, c, { v: vec(Math.cos(a) * sp, rr(0.3, 2.0), Math.sin(a) * sp), c: [1.6, 0.75, 0.18], s0: rr(0.5, 0.8), s1: 1.2, life: rr(0.2, 0.35), tile: 2, drag: 4, g: -1, rv: rr(-2, 2) }); }
-        for (let i = 0; i < 30; i++) { const a = rand() * TAU, sp = rr(1, 4.5); emit(ADD, c, { v: vec(Math.cos(a) * sp, rr(0.2, 1.8), Math.sin(a) * sp), c: [1.3, 0.38, 0.07], s0: rr(0.45, 0.7), s1: 1.4, life: rr(0.4, 0.65), tile: 2, drag: 4, g: -1.5, rv: rr(-2, 2), ap: 1.3 }); }
-        for (let i = 0; i < 22; i++) { const a = rand() * TAU, sp = rr(1, 4); emit(ADD, c, { v: vec(Math.cos(a) * sp, rr(0.5, 2.0), Math.sin(a) * sp), c: [0.9, 0.2, 0.05], s0: rr(0.5, 0.8), s1: 1.6, life: rr(0.6, 0.9), tile: 2, drag: 4, g: -1.8, rv: rr(-2, 2), fin: 0.15 }); }
-        for (let i = 0; i < 18; i++) { const a = rand() * TAU, sp = rr(0.5, 2.5); emit(ALP, vec(c.x + Math.cos(a) * 0.4, rr(0.3, 0.8), c.z + Math.sin(a) * 0.4), { v: vec(Math.cos(a) * sp, rr(0.6, 1.6), Math.sin(a) * sp), c: COLORS.smoke.map((x) => x * rr(0.9, 1.1)), s0: 0.5, s1: 1.6, life: rr(0.9, 1.4), a: 0.4, tile: 2, drag: 2.5, fin: 0.35, rv: rr(-1, 1) }); }
+        for (let i = 0; i < 26; i++) { const a = rand() * TAU, sp = rr(1, 4.5); emit(ALP, c, { v: vec(Math.cos(a) * sp, rr(0.2, 1.8), Math.sin(a) * sp), c: [1.7, 0.62, 0.12], s0: rr(0.45, 0.7), s1: 1.2, life: rr(0.4, 0.65), tile: 2, drag: 4, g: -1.5, rv: rr(-2, 2), ap: 1.3, a: 0.9 }); }
+        for (let i = 0; i < 18; i++) { const a = rand() * TAU, sp = rr(1, 4); emit(ALP, c, { v: vec(Math.cos(a) * sp, rr(0.5, 2.0), Math.sin(a) * sp), c: [1.2, 0.3, 0.08], s0: rr(0.5, 0.8), s1: 1.4, life: rr(0.6, 0.9), tile: 2, drag: 4, g: -1.8, rv: rr(-2, 2), fin: 0.15 }); }
+        for (let i = 0; i < 11; i++) { const a = rand() * TAU, sp = rr(0.5, 2.5); emit(ALP, vec(c.x + Math.cos(a) * 0.4, rr(0.3, 0.8), c.z + Math.sin(a) * 0.4), { v: vec(Math.cos(a) * sp, rr(0.6, 1.6), Math.sin(a) * sp), c: [0.58, 0.44, 0.38].map((x) => x * rr(0.9, 1.1)), s0: 0.5, s1: 1.4, life: rr(0.8, 1.2), a: 0.3, tile: 2, drag: 2.5, fin: 0.35, rv: rr(-1, 1) }); }
         sparks(c, 30, COLORS.ember, { min: 3, max: 7, up: 0.6, g: 6, life: 0.6, w: 0.05, len: 0.05 });
         decal(center, { tex: 'ring', c: [2.4, 1.0, 0.3], s0: 0.6, s1: 3.6, life: 0.5, a: 1, fin: 0.04 });
         decal(center, { tex: 'glow', c: [1.4, 0.45, 0.1], s0: 3.2, s1: 3.6, life: 0.7, a: 0.8, fin: 0.05 });
@@ -820,5 +820,5 @@ export function createVfx(THREE, scene) {
     for (const c of columns) { c.max = 0; c.m.visible = false; }
   }
   const busy = () => shots.length > 0 || dying.length > 0;
-  return { _dbg: { ST, sPos, sCol }, projectile, hit, death, spell, sparkle, select, update, clear, busy, root, stats: () => ({ add: ADD.live, alpha: ALP.live, shots: shots.length }) };
+  return { projectile, hit, death, spell, sparkle, select, update, clear, busy, root, stats: () => ({ add: ADD.live, alpha: ALP.live, shots: shots.length }) };
 }

@@ -156,23 +156,24 @@ const xpFor = (lvl) => Math.round(1000 * (Math.pow(1.6, lvl - 1) - 1) / 0.6);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.1;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 $('app').prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0d1e);
 const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 400);
 const sunDir = new THREE.Vector3(0.6, 0.8, 0.4).normalize();
-const sun = new THREE.DirectionalLight(0xfff0d8, 2.4);
+const sun = new THREE.DirectionalLight(0xffe8c4, 2.5);
+sun.shadow.radius = 2.5; sun.shadow.intensity = 0.65;
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 0.5, far: 30 });
 sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
 scene.add(sun, sun.target);
-scene.add(new THREE.HemisphereLight(0xbcd4ff, 0x3a3020, 0.8));
-scene.add(new THREE.AmbientLight(0x404a70, 0.35));
+scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x7a6440, 1.05));
+scene.add(new THREE.AmbientLight(0x7880b8, 0.4));
 const cam = { theta: 0, phi: 1.2, dist: 10, tTheta: 0, tPhi: 1.2, tDist: 10, vTheta: 0, vPhi: 0, fly: false, shake: 0 };
 const lookAtP = new THREE.Vector3();
 function updateCamera(dt) {
@@ -865,7 +866,7 @@ const bcam = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
 const bview = { dist: 12.5, yaw: 0 };
 {
 }
-const bSun = new THREE.DirectionalLight(0xfff0d8, 2.4); bSun.position.set(4, 10, 3); bSun.castShadow = true; bSun.shadow.mapSize.set(2048, 2048);
+const bSun = new THREE.DirectionalLight(0xfff0d8, 2.4); bSun.position.set(4, 10, 3); bSun.castShadow = true; bSun.shadow.mapSize.set(2048, 2048); bSun.shadow.radius = 2.5; bSun.shadow.intensity = 0.6;
 Object.assign(bSun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 30 }); bSun.shadow.bias = -0.0005;
 const bHemi = new THREE.HemisphereLight(0xcfe0ff, 0x4a3a2a, 0.9), bAmb = new THREE.AmbientLight(0x404a70, 0.3);
 bscene.add(bSun, bHemi, bAmb);
@@ -912,6 +913,8 @@ function enterBattle(B, ctx) {
   bSun.color.set(L.sun.color); bSun.intensity = L.sun.intensity;
   bHemi.color.set(L.hemi.sky); bHemi.groundColor.set(L.hemi.ground); bHemi.intensity = L.hemi.intensity;
   bAmb.color.set(L.ambient.color); bAmb.intensity = L.ambient.intensity;
+  bHemi.intensity *= 1.15; bHemi.groundColor.lerp(new THREE.Color(0xa08060), 0.4);
+  bAmb.intensity += 0.12; bAmb.color.lerp(new THREE.Color(0x9090c8), 0.5);
   bstuff.clear(); bmesh.clear();
   const sfac = bctx.foe.town?.fac;
   for (const k of B.obstacles) {
@@ -1025,12 +1028,14 @@ $('b-spell').addEventListener('click', () => {
 });
 // battle animation: events play one after another
 const bfloat = (pos, text, cls) => floatText(pos, text, cls, bcam);
+const blabFwd = new THREE.Vector3(), bctrTarget = new THREE.Vector3();
 function animateBattle(dt) {
   const B = BB; if (!B) return;
   // gentle idle bob
   for (const s of B.stacks) { const m = bmesh.get(s.uid); if (m && s.count > 0 && !m.userData.busy) m.position.y = Math.abs(Math.sin(performance.now() / 400 + s.uid)) * 0.03; }
   // labels follow their stacks
-  for (const s of B.stacks) { const m = bmesh.get(s.uid), lab = $(`bl${s.uid}`); if (!m || !lab) continue; const v = m.position.clone().setY(m.position.y + (m.userData.fit?.labelY ?? 0.05)).project(bcam); lab.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px)`; }
+  blabFwd.subVectors(bcam.position, bctrTarget).setY(0).normalize();
+  for (const s of B.stacks) { const m = bmesh.get(s.uid), lab = $(`bl${s.uid}`); if (!m || !lab) continue; const v = m.position.clone().setY(0.02).addScaledVector(blabFwd, 0.34).project(bcam); lab.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px)`; }
   if (banim.length) {
     const a = banim[0], e = a.e; a.t += dt;
     const done = playEvent(e, a.t);
@@ -1654,8 +1659,9 @@ function frame() {
   if (G.mode === 'battle') {
     animateBattle(dt);
     const s = Math.sin(bview.yaw), c = Math.cos(bview.yaw);
-    bcam.position.set(s * bview.dist * 0.55, bview.dist, c * bview.dist * 0.55 + 0.4);
-    bcam.lookAt(0, 0, 0.2);
+    // a HoMM-like three-quarter view: low enough that creatures show their figures, not just helmets
+    bcam.position.set(s * bview.dist * 0.82, bview.dist * 0.86, c * bview.dist * 0.82 + 0.4);
+    bcam.lookAt(0, 0, -0.15);
     for (const m of bmesh.values()) if (m.userData.flash > 0) { m.userData.flash -= dt; m.children[0].material = m.userData.flash > 0 ? hitMat : bodyMat; }
     post.render(bscene, bcam);
   } else {
