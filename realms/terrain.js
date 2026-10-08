@@ -604,7 +604,13 @@ export function createWaterMaterial() {
         float f = clamp(foam * (0.75 + 0.25 * fn) + foam2 * 0.6 + crest, 0.0, 1.0);
         float lit = smoothstep(0.15, 0.45, vColor.g);
         // unexplored sea: the same soft bluish mist as the land fog
-        vec3 mist = mix(vec3(0.15, 0.2, 0.42), vec3(0.3, 0.36, 0.62), smoothstep(0.3, 0.9, fn) * 0.6 + 0.2 * sin(dot(vWPos, vec3(7.0, 5.0, -6.0)) + uTime * 0.3));
+        // (matches the land fog: indigo-violet with orchid pools and drifting lavender wisps)
+        vec3 mp = vWPos * 3.0;
+        float sw = sin(dot(mp, vec3(1.7, -1.1, 0.8)) + sin(dot(mp, vec3(-0.9, 1.3, 1.6)) + uTime * 0.25) * 1.6 + uTime * 0.12);
+        float sw2 = sin(dot(mp, vec3(-2.3, 0.7, 1.9)) * 1.3 + sw * 1.2 - uTime * 0.18);
+        vec3 mist = mix(vec3(0.05, 0.03, 0.2), vec3(0.15, 0.085, 0.4), 0.5 + 0.35 * sw);
+        mist = mix(mist, vec3(0.3, 0.07, 0.4), smoothstep(0.5, 1.0, sw2) * 0.35);
+        mist = mix(mist, vec3(0.34, 0.25, 0.66), smoothstep(0.75, 1.0, sw * sw2) * 0.5 + smoothstep(0.75, 1.0, fn) * 0.12);
         diffuseColor.rgb = mix(mist, mix(wc, vec3(0.93, 0.97, 1.0), f) * vColor, lit);
         diffuseColor.a = clamp(mix(0.62, 0.95, smoothstep(0.0, 0.9, depth)) + f, 0.0, 1.0);
         diffuseColor.a = mix(1.0, diffuseColor.a, lit);`)
@@ -615,7 +621,7 @@ export function createWaterMaterial() {
           float gl = sin(dot(vWPos, vec3(173.0, -151.0, 197.0)) + uTime * 2.1) * sin(dot(vWPos, vec3(-211.0, 181.0, 163.0)) - uTime * 1.7) * sin(dot(vWPos, vec3(97.0, 223.0, -139.0)) + uTime * 1.3);
           gl = pow(max(gl, 0.0), 22.0);
           totalEmissiveRadiance += vec3(1.0, 0.97, 0.86) * gl * 3.0 * lit * (1.0 - f) * (0.4 + 0.6 * smoothstep(1.0, 2.6, wh + 1.5));
-          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.12, 0.14, 0.22), vec3(0.05, 0.08, 0.1), lit);
+          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.2, 0.13, 0.32), vec3(0.05, 0.08, 0.1), lit);
         }`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         {
@@ -625,7 +631,7 @@ export function createWaterMaterial() {
           normal = normalize(normal - gv * 0.0016 * lit);
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-water-2';
+  mat.customProgramCacheKey = () => 'hexrealms-water-3';
   return mat;
 }
 
