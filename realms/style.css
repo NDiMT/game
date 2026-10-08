@@ -152,7 +152,7 @@ i[data-ic], .fb > i, .hb > i, .row-b > i, .st > i { font-style: normal; display:
 #b-msg:empty { visibility: hidden; }
 #b-msg b { color: #b0261a; }
 #b-msg .ic { filter: none; }
-#b-spell { background: linear-gradient(180deg, #b58aff 0%, #8452e0 50%, #5e34b0 100%); }
+#b-spell { font-size: 15px; background: linear-gradient(180deg, #b58aff 0%, #8452e0 50%, #5e34b0 100%); }
 #blabels { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .blab { position: absolute; left: 0; top: 0; margin: 6px 0 0 -16px; min-width: 32px; padding: 0 5px; border-radius: 6px; font-weight: 900; font-size: 11.5px; line-height: 16px; text-align: center; color: #fff;
   background: linear-gradient(180deg, #5a86e6, #2a4aa2); border: 1px solid #d8ecff; box-shadow: 0 0 0 1px #1a3a8a, 0 2px 4px rgba(20, 20, 60, 0.4); text-shadow: 0 1px 0 rgba(0, 0, 40, 0.5); }
@@ -227,3 +227,8 @@ i[data-ic], .fb > i, .hb > i, .row-b > i, .st > i { font-style: normal; display:
   .logo h1 { font-size: 40px; } .crest .ic { width: 48px; height: 48px; }
   .panel { max-height: 50vh; }
 }
+/* creature portraits rendered from the 3D models */
+img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.row-b > i img.pt { width: 34px; height: 34px; border-radius: 6px; }
+.bq .q { overflow: hidden; }
+#toast img.pt, .card h2 img.pt, #dlg-body img.pt, .cas img.pt, .sel img.pt { width: 1.4em; height: 1.4em; display: inline-block; vertical-align: middle; border-radius: 4px; }

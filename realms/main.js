@@ -16,6 +16,8 @@ import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, tick as tickMateri
 import { createScore } from './music.js?v=0.3';
 import { unitFit, applyFit } from './unit_fit.js?v=0.3';
 import { createMapFx } from './mapfx.js?v=0.3';
+import { icon } from './icons.js';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0.3';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -285,6 +287,8 @@ const bodyMat = makeBodyMaterial(THREE);
 const glowMat = makeGlowMaterial(THREE);
 const geoCache = new Map();
 const unitGeo = (id) => { const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
+initPortraits(THREE, renderer, unitGeo);
+setTimeout(() => preloadPortraits(Object.keys(UNITS), 64), 1500);
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
 function meshOf(m) {
   const g = new THREE.Group();
@@ -847,7 +851,7 @@ function showLevel() {
   const L = pendingLevels[0];
   if (!L) return;
   const names = { att: '🗡️ Attack', def: '🛡️ Defence', pow: '🔮 Power', know: '📘 Knowledge' };
-  ask(`⭐ ${L.hr.name} reaches level ${L.hr.lvl}`, `${names[L.stat]} +1. Choose a skill:`, L.opts.map((k) => [`${SKILLS[k].icon} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc]), true);
+  ask(`⭐ ${L.hr.name} reaches level ${L.hr.lvl}`, `${names[L.stat]} +1. Choose a skill:`, L.opts.map((k) => [`${icon(k, 20)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc]), true);
   sfx.fanfare();
 }
 
@@ -955,10 +959,10 @@ function refreshBattle() {
   $('b-queue').innerHTML = BT.queue(B, 9).map((x, i) => `<span class="q s${x.side}${i === 0 ? ' now' : ''}">${unitIcon(x.id)}<b>${x.count}</b></span>`).join('');
   const h0 = B.heroes[0];
   $('b-spell').disabled = !h0 || B.cast[0] || !h0.spells.some((id) => h0.mana >= SPELLS[id].mana) || !mineTurn;
-  $('b-spell').textContent = h0 ? `🔮 ${h0.mana}` : '🔮';
+  $('b-spell').innerHTML = `${icon('spellbook', 24)}<small>${h0 ? h0.mana : ''}</small>`;
   $('b-wait').disabled = $('b-def').disabled = !mineTurn;
   $('b-auto').classList.toggle('on', bauto);
-  $('b-msg').textContent = !s ? '' : mineTurn ? (bspell ? `${SPELLS[bspell].icon} Choose a target for ${SPELLS[bspell].name}` : `${UNITS[s.id].name} (${s.count}) · ${BT.canShoot(B, s) ? `🏹 ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move or a red enemy to attack'}`) : sideOwner(s.side) === 0 ? 'Auto battle…' : `Enemy ${UNITS[s.id].name} (${s.count})…`;
+  $('b-msg').innerHTML = !s ? '' : mineTurn ? (bspell ? `${SPELLS[bspell].icon} Choose a target for ${SPELLS[bspell].name}` : `${UNITS[s.id].name} (${s.count}) · ${BT.canShoot(B, s) ? `🏹 ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move or a red enemy to attack'}`) : sideOwner(s.side) === 0 ? 'Auto battle…' : `Enemy ${UNITS[s.id].name} (${s.count})…`;
 }
 const sideOwner = (side) => bctx.sides[side].owner;
 function battleTap(cx, cy) {
@@ -1008,7 +1012,7 @@ $('b-auto').addEventListener('click', () => { bauto = !bauto; bspell = null; ref
 $('b-quick').addEventListener('click', () => { if (!BB || BB.over) return; BT.autoResolve(BB); BB.events.length = 0; banim = []; endBattleScreen(); });
 $('b-spell').addEventListener('click', () => {
   const h0 = BB?.heroes[0]; if (!h0) return;
-  ask('🔮 Spellbook', `Mana ${h0.mana}. One spell per round.`, h0.spells.map((id) => [`${SPELLS[id].icon} ${SPELLS[id].name} · ${SPELLS[id].mana}`, h0.mana >= SPELLS[id].mana ? () => { bspell = id; refreshBattle(); } : null, SPELLS[id].desc]).concat([['Close', null]]));
+  ask(`${icon('spellbook', 20)} Spellbook`, `Mana ${h0.mana}. One spell per round.`, h0.spells.map((id) => [`${icon(id, 22)} ${SPELLS[id].name} · ${icon('mana', 14)}${SPELLS[id].mana}`, h0.mana >= SPELLS[id].mana ? () => { bspell = id; refreshBattle(); } : null, SPELLS[id].desc]).concat([['Close', null]]));
 });
 // battle animation: events play one after another
 const bfloat = (pos, text, cls) => floatText(pos, text, cls, bcam);
@@ -1144,7 +1148,7 @@ function finishBattle(B, ctx) {
   if (sides[0].owner === 0 || sides[1].owner === 0) {
     const me = sides[0].owner === 0 ? 0 : 1, won = winSide === me;
     const list = (arr) => (arr.length ? arr.map(([id, n]) => `${unitIcon(id)} ${n} ${plural(id, n)}`).join('<br>') : 'None');
-    showMsg(won ? '🏆 Victory!' : '💀 Defeat', `<div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p>⭐ +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
+    showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p>⭐ +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
     won ? sfx.fanfare() : sfx.deny();
   }
   checkEnd();
@@ -1154,7 +1158,7 @@ function finishBattle(B, ctx) {
 // ------------------------------------------------------------------ towns
 const townIncome = (t) => (t.built.includes('hall3') ? 2000 : t.built.includes('hall2') ? 1000 : 500);
 const tierUnit = (t, tier) => (t.built.includes(`u${tier}`) ? UPGRADES[t.fac][tier - 1] : FACTIONS[t.fac].units[tier - 1]);
-const costText = (c) => RES.filter((r) => c[r]).map((r) => `${RES_ICON[r]}${fmt(c[r])}`).join(' ');
+const costText = (c) => RES.filter((r) => c[r]).map((r) => `${icon(r, 14)}${fmt(c[r])}`).join(' ');
 const canPay = (p, c, n = 1) => RES.every((r) => (G.players[p].res[r] || 0) >= (c[r] || 0) * n);
 const pay = (p, c, n = 1) => { for (const r of RES) G.players[p].res[r] -= (c[r] || 0) * n; };
 const visitorOf = (t) => G.heroes.find((x) => x.alive && x.p === t.p && (x.v === t.v || NBR[t.v].includes(x.v)));
@@ -1198,13 +1202,13 @@ function renderTown() {
     html = BUILDINGS.map((b) => {
       const has = t.built.includes(b.id), reqOk = b.req.every((r) => t.built.includes(r)), can = !has && reqOk && !t.builtToday && canPay(t.p, b.cost);
       const name = b.tier ? `${b.up ? '⬆️ ' : ''}${UNITS[b.up ? UPGRADES[t.fac][b.tier - 1] : FACTIONS[t.fac].units[b.tier - 1]].name} dwelling` : b.name;
-      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : b.icon}</i><div><b>${name}</b><small>${has ? '✓ Built' : reqOk ? costText(b.cost) : `Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}`}</small><small class="d">${b.desc}</small></div>${has ? '' : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
+      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : icon(b.id, 28)}</i><div><b>${name}</b><small>${has ? '✓ Built' : reqOk ? costText(b.cost) : `Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}`}</small><small class="d">${b.desc}</small></div>${has ? '' : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
     }).join('');
   } else if (townTab === 'recruit') {
     const tiers = BUILDINGS.filter((b) => b.tier && t.built.includes(b.id)).map((b) => b.tier);
     html = tiers.length ? tiers.map((tier) => {
       const id = tierUnit(t, tier), u = UNITS[id], n = t.avail[tier] || 0, max = Math.min(n, ...RES.filter((r) => u.cost[r]).map((r) => Math.floor(Pl.res[r] / u.cost[r])));
-      return `<div class="row-b"><i>${unitIcon(id)}</i><div><b>${u.name} <em>×${n}</em></b><small>${costText(u.cost)} · ⚔️${u.att} 🛡️${u.def} ❤️${u.hp} 💥${u.dmg[0]}–${u.dmg[1]} 👟${u.spd}${u.ranged ? ' 🏹' : ''}${u.fly ? ' 🪽' : ''}</small></div><button data-rec="${tier}" data-n="${max}" ${max > 0 ? '' : 'disabled'}>Buy ${max}</button></div>`;
+      return `<div class="row-b"><i>${unitIcon(id)}</i><div><b>${u.name} <em>×${n}</em></b><small>${costText(u.cost)} · ${icon('attack', 13)}${u.att} ${icon('defense', 13)}${u.def} ${icon('hp', 13)}${u.hp} ${icon('damage', 13)}${u.dmg[0]}–${u.dmg[1]} ${icon('movement', 13)}${u.spd}${u.ranged ? ` ${icon('shots', 13)}` : ''}${u.fly ? ` ${icon('fly', 13)}` : ''}</small></div><button data-rec="${tier}" data-n="${max}" ${max > 0 ? '' : 'disabled'}>Buy ${max}</button></div>`;
     }).join('') + '<p class="hint2">Recruits join the hero beside the town, or the garrison.</p>' : '<p class="hint2">Build a dwelling to recruit creatures.</p>';
   } else if (townTab === 'army') {
     const row = (title, army, who) => `<div class="armyrow"><b>${title}</b><div class="slots">${Array.from({ length: 7 }, (_, i) => army[i] && army[i][1] > 0 ? `<button data-move="${who}:${i}">${unitIcon(army[i][0])}<em>${army[i][1]}</em></button>` : '<button disabled></button>').join('')}</div></div>`;
@@ -1274,20 +1278,20 @@ function openHero() {
   const st = (k, ic, n) => `<div class="st"><i>${ic}</i><b>${statOf(hr, k)}</b><small>${n}</small></div>`;
   const next = xpFor(hr.lvl + 1), prev = xpFor(hr.lvl);
   showMsg(`🐎 ${hr.name}`, `<p class="sub">Level ${hr.lvl} · ⭐ ${fmt(hr.xp)} / ${fmt(next)}</p><div class="xpbar"><i style="width:${((hr.xp - prev) / (next - prev)) * 100}%"></i></div>
-    <div class="stats">${st('att', '🗡️', 'Attack')}${st('def', '🛡️', 'Defence')}${st('pow', '🔮', 'Power')}${st('know', '📘', 'Knowledge')}</div>
+    <div class="stats">${st('att', icon('attack', 24), 'Attack')}${st('def', icon('defense', 24), 'Defence')}${st('pow', icon('power', 24), 'Power')}${st('know', icon('knowledge', 24), 'Knowledge')}</div>
     <p class="sub">🔮 Mana ${hr.mana}/${maxMana(hr)} · 🐎 ${hr.mp}/${moveMax(hr)}</p>
     <div class="slots big">${Array.from({ length: 7 }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
-    <p class="sub">${Object.keys(hr.skills).map((k) => `${SKILLS[k].icon} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][hr.skills[k]]}`).join(' · ') || 'No skills yet'}</p>
-    <p class="sub">${hr.spells.map((id) => `${SPELLS[id].icon} ${SPELLS[id].name}`).join(' · ') || 'No spells'}</p>
+    <p class="sub">${Object.keys(hr.skills).map((k) => `${icon(k, 16)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][hr.skills[k]]}`).join(' · ') || 'No skills yet'}</p>
+    <p class="sub">${hr.spells.map((id) => `${icon(id, 16)} ${SPELLS[id].name}`).join(' · ') || 'No spells'}</p>
     <p class="sub">${hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `${A.icon} ${A.name}`; }).join(' · ') || 'No artifacts'}</p>`, true);
 }
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
 const UICON = { pikeman: '🔱', archer: '🏹', griffin: '🦅', swordsman: '⚔️', monk: '🧙', cavalier: '🏇', angel: '👼', skeleton: '💀', zombie: '🧟', wight: '👻', vampire: '🧛', lich: '☠️', blackknight: '♞', bonedragon: '🐉', goblin: '👺', wolf: '🐺', orc: '👹', ogre: '🦣', troll: '🧌', cyclops: '👁️', hydra: '🐍' };
-const unitIcon = (id) => UICON[id] || UICON[UNITS[id]?.up] || '❔';
+const unitIcon = (id, s = 64) => portraitImg(id, s) || UICON[id] || UICON[UNITS[id]?.up] || '❔';
 const plural = (id, n = 2) => (n === 1 ? UNITS[id].name : UNITS[id].name.replace(/man$/, 'men').replace(/f$/, 'ves').replace(/([^s])$/, '$1s'));
 let toastT = 0;
-function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
+function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
 function showMsg(title, html, wide = false) { ask(title, html, [['OK', null]], wide); }
 const dialogs = [];
 function ask(title, html, buttons, wide = false) {
@@ -1336,16 +1340,16 @@ function updateRes() {
   const r = G.players[0]?.res; if (!r) return;
   for (const k of RES) { const el = $(`r-${k}`); if (el) el.textContent = fmt(r[k]); }
   $('r-day').textContent = `Day ${((G.day - 1) % 7) + 1} · Week ${week()}`;
-  $('r2-gold').textContent = RES.map((k) => `${RES_ICON[k]} ${fmt(r[k])}`).join('   ');
+  $('r2-gold').innerHTML = RES.map((k) => `<span>${icon(k, 16)}${fmt(r[k])}</span>`).join('');
 }
 function updateHud() {
   if (!G.players.length) return;
   updateRes();
   const mine = G.heroes.filter((x) => x.alive && x.p === 0);
-  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}" data-h="${hr.id}"><i>🐎</i><b>${hr.name.split(' ').pop()}</b><span class="mp"><i style="width:${(hr.mp / moveMax(hr)) * 100}%"></i></span></button>`).join('') +
-    G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}"><i>🏰</i><b>${t.name}</b>${!t.builtToday ? '<em>🔨</em>' : ''}</button>`).join('');
+  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}" data-h="${hr.id}"><i>${icon('hero', 26)}</i><b>${hr.name.split(' ').pop()}</b><span class="mp"><i style="width:${(hr.mp / moveMax(hr)) * 100}%"></i></span></button>`).join('') +
+    G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}"><i>${icon('town', 26)}</i><b>${t.name}</b>${!t.builtToday ? `<em>${icon('build', 13)}</em>` : ''}</button>`).join('');
   const hr = selHero();
-  $('sel').innerHTML = hr ? `<b>${hr.name}</b> · Lv ${hr.lvl} · 🐎 ${fmt(hr.mp)} · 🔮 ${hr.mana} · ${heroArmy(hr).map(([id, n]) => `${unitIcon(id)}${n}`).join(' ')}` : '';
+  $('sel').innerHTML = hr ? `<b>${hr.name}</b> · Lv ${hr.lvl} · ${icon('movement', 14)}${fmt(hr.mp)} · ${icon('mana', 14)}${hr.mana} · ${heroArmy(hr).map(([id, n]) => `${unitIcon(id)}${n}`).join(' ')}` : '';
 }
 $('heroes').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || busy()) return;

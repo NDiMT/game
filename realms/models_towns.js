@@ -300,7 +300,7 @@ function havenTown() {
   return finish(k);
 }
 
-const NC = { stone: 0x9c8fb4, stoneD: 0x76689a, stoneL: 0xc2b6d6, spike: 0x6e5a98, bone: 0xf6eed4, boneD: 0xd2c4a0, green: 0x7affa8, greenD: 0x34e078, red: 0xd8283c, ash: 0x9a9a80, pave: 0x8a809a, wood: 0x7a6656, purple: 0x7a4aa0 };
+const NC = { stone: 0x9c8fb4, stoneD: 0x76689a, stoneL: 0xc2b6d6, spike: 0x72669c, bone: 0xf6eed4, boneD: 0xd2c4a0, green: 0x7affa8, greenD: 0x34e078, red: 0xd8283c, ash: 0x9a9a80, pave: 0x8a809a, wood: 0x7a6656, purple: 0x7a4aa0 };
 function necroTown() {
   const k = makeKit(13);
   k.lathe([[0.69, 0], [0.68, 0.025], [0.62, 0.05], [0, 0.05]], 0, 0, 0, NC.ash, 14, { top: 1.05, bot: 0.8 });
@@ -316,9 +316,9 @@ function necroTown() {
   for (let i = 0; i < 6; i++) {
     const [ax, az] = tw[i], [bx, bz] = tw[(i + 1) % 6];
     if (i === 1) {
-      k.wall(ax, az, 0.15, 0.485, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.spike, step: 0.05 });
-      k.wall(-0.15, 0.485, bx, bz, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.spike, step: 0.05 });
-    } else k.wall(ax, az, bx, bz, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.spike, step: 0.06 });
+      k.wall(ax, az, 0.15, 0.485, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.boneD, step: 0.05 });
+      k.wall(-0.15, 0.485, bx, bz, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.boneD, step: 0.05 });
+    } else k.wall(ax, az, bx, bz, 0.26, 0.07, NC.stone, { trim: NC.stoneL, spikes: NC.boneD, step: 0.06 });
   }
   // towers: tapering hexagonal shafts with black needle spires and green slits
   for (let i = 0; i < 6; i++) {

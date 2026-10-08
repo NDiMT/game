@@ -252,7 +252,7 @@ PAINT[LAYER.SWAMP] = (ctx) => {
   return paintLayer(ctx, (q, x, y, set) => {
     let c = mixc([84, 120, 66], [140, 160, 82], n1[q]);
     const p = pud[q];
-    if (p > 0.69) { const dd = sstep(0.69, 0.82, p); c = mixc([104, 150, 120], [66, 136, 138], dd); const sp = lhash(x, y, 3) > 0.98 ? 60 : 0; c = [c[0] + sp, c[1] + sp, c[2] + sp]; }
+    if (p > 0.69) { const dd = sstep(0.69, 0.82, p); c = mixc([108, 148, 108], [74, 128, 116], dd); const sp = lhash(x, y, 3) > 0.98 ? 60 : 0; c = [c[0] + sp, c[1] + sp, c[2] + sp]; }
     else if (p > 0.64) c = mixc(c, [166, 168, 92], sstep(0.64, 0.69, p) * 0.6);
     const k = 0.92 + lhash(x, y, 15) * 0.14;
     set(q, c[0] * k, c[1] * k, c[2] * k);
@@ -423,9 +423,9 @@ PAINT[LAYER.FOG] = (ctx) => {
   }, (ctx, wrap) => {
     // soft wisps
     for (let i = 0; i < 26; i++) {
-      const x = r() * S, y = r() * S, l = 30 + r() * 50, bend = (r() - 0.5) * 16;
+      const x = r() * S, y = r() * S, l = 30 + r() * 50, bend = (r() - 0.5) * 30, lw = 6 + r() * 8;
       wrap(x, y, l + 20, (X, Y) => {
-        ctx.strokeStyle = 'rgba(214,224,252,0.14)'; ctx.lineWidth = 5 + r() * 6; ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgba(214,224,252,0.1)'; ctx.lineWidth = lw; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(X, Y); ctx.quadraticCurveTo(X + l / 2, Y + bend, X + l, Y); ctx.stroke();
       });
     }
