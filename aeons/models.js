@@ -192,50 +192,48 @@ function landmark(era, level, k) {
       if (level >= 3) { k.dome(level === 4 ? 0.12 : 0.08, 0, 0, 0, 0xeef4fa); k.ring(level === 4 ? 0.122 : 0.082, 0.006, 0, 0.01, 0, 0x5ff0ff); k.cyl(0.004, 0.012, 0.32, 0, 0.05, 0, 0xe6eef6, 8); k.ball(0.014, 0, 0.37, 0, 0x9ff8ff, true); }
   }
 }
-export function settlementModel(era, level) {
-  const k = kit(era * 100 + level * 7 + 1);
-  // a square plot: kerb, ground, a street grid and buildings aligned to the blocks
-  const groundCol = [0x8a7450, 0xb89a62, 0xd8d0bc, 0x9a8a6a, 0x7a6a5a, 0x8a8f96, 0xdfe6ee][era];
-  const kerbCol = [0x6a5a3a, 0x8a7048, 0xb8b0a0, 0x7a7266, 0x5a4a40, 0x5a5f68, 0xb8c4d0][era];
-  const streetCol = [0x7a6444, 0xa08458, 0xc8c0aa, 0x8a8072, 0x4a4a50, 0x3a3f48, 0xc8d2de][era];
-  const half = 0.1 + level * 0.05, n = level + 1, cell = (half * 2) / n;
-  k.box(half * 2 + 0.03, 0.012, half * 2 + 0.03, 0, -0.008, 0, kerbCol);
-  k.box(half * 2, 0.012, half * 2, 0, -0.006, 0, groundCol);
-  if (era >= 1) for (let i = 1; i < n; i++) {
-    const p = -half + i * cell;
-    k.box(half * 2, 0.002, 0.014, 0, 0.006, p, streetCol);
-    k.box(0.014, 0.002, half * 2, p, 0.006, 0, streetCol);
+// Towns are built from hex tiles: a centre tile with the town's landmark, and
+// neighbourhood tiles around it (three variants per age, plus fields in the
+// farming ages). A tile is about 0.4 units across.
+const TRIO = [[0.075, 0], [-0.0375, 0.065], [-0.0375, -0.065]];
+export function tileModel(era, variant) {
+  const k = kit(era * 37 + variant * 11 + 5);
+  if (variant === 3) {
+    // crop rows
+    const c = k.pick([0xe6c85a, 0x9ac84a, 0xd8b04a]), c2 = 0x6a8a3a;
+    for (let r = 0; r < 4; r++) k.box(0.22, 0.012, 0.03, 0, 0, -0.07 + r * 0.047, r % 2 ? c : c2);
+    if (era >= 2) k.box(0.03, 0.04, 0.03, 0.09, 0, 0.08, 0x8a6a48);
+    return done(k);
   }
-  // fields at the corners in the farming ages
-  if (era >= 1 && era <= 3 && level >= 2) {
-    const f = half * 0.7;
-    [[1, 1], [-1, 1], [1, -1], [-1, -1]].slice(0, level).forEach(([sx, sz], i) => {
-      const cx = sx * (half + f / 2 + 0.03), cz = sz * (half + f / 2 + 0.03);
-      k.box(f, 0.006, f, cx, -0.003, cz, i % 2 ? 0xe6c85a : 0x8ab84a);
-      for (let r = 0; r < 3; r++) k.box(f, 0.003, 0.006, cx, 0.003, cz - f / 2 + (f / 3) * (r + 0.5), i % 2 ? 0xc8a83a : 0x6a9a3a);
+  const s = 1.05;
+  if (era === 5 && variant === 0) {
+    // a tall tower in the middle of the block
+    building(5, k, 0, 0, 1.4, 0);
+    building(5, k, 0.1, 0.06, 0.9, 1);
+  } else if (era === 6 && variant === 0) {
+    building(6, k, 0, 0, 1.5, 0);
+    building(6, k, 0.09, -0.05, 1.0, 1);
+    building(6, k, -0.09, -0.05, 1.0, 3);
+  } else {
+    const rot = variant * 0.7;
+    TRIO.forEach(([x, z], i) => {
+      const c = Math.cos(rot), sn = Math.sin(rot);
+      building(era, k, x * c - z * sn, x * sn + z * c, s * (0.9 + k.r() * 0.25), i + variant);
     });
+    if (era <= 2 && variant === 1) k.ball(0.03, 0, 0.02, 0, 0x5a9a3a, false, 0);
+    if (era >= 4 && variant === 2) k.box(0.05, 0.004, 0.05, 0, 0, 0, 0x6aaa4a);
   }
-  // walls and corner towers in the middle ages
-  if (era === 3 && level >= 2) {
-    const e = half + 0.01, wc = 0xb8b0a0;
-    for (const [w, d, x, z] of [[e * 2, 0.012, 0, e], [e * 2, 0.012, 0, -e], [0.012, e * 2, e, 0], [0.012, e * 2, -e, 0]]) k.box(w, 0.035, d, x, 0, z, wc);
-    for (const [x, z] of [[e, e], [-e, e], [e, -e], [-e, -e]]) { k.cyl(0.018, 0.02, 0.06, x, 0, z, wc, 8); k.cone(0.022, 0.03, x, 0.06, z, 0x6a4a3a, 8); }
-  }
-  // glowing edges in the space age
-  if (era === 6) for (const [w, d, x, z] of [[half * 2, 0.006, 0, half], [half * 2, 0.006, 0, -half], [0.006, half * 2, half, 0], [0.006, half * 2, -half, 0]]) k.box(w, 0.006, d, x, 0, z, 0x5ff0ff, true);
-  // fill the blocks, leaving a central plaza for the landmark in bigger towns
-  const s = 0.85 + level * 0.1;
-  const cells = [];
-  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-    const x = -half + cell * (i + 0.5), z = -half + cell * (j + 0.5);
-    if (level >= 3 && Math.hypot(x, z) < cell * 1.01) continue;
-    if (era === 0 && (i + j) % 2) continue;
-    cells.push([x, z]);
-  }
-  cells.sort((p, q) => Math.hypot(...p) - Math.hypot(...q));
-  cells.forEach(([x, z], i) => building(era, k, x, z, era === 5 && i < level * 2 ? s * 1.12 : s, i));
-  if (level >= 3) k.box(cell * 1.6, 0.003, cell * 1.6, 0, 0.006, 0, era >= 4 ? 0xb8b4ac : 0xcfc6a8);
+  return done(k);
+}
+export function centerModel(era, level) {
+  const k = kit(era * 53 + level * 7 + 3);
   landmark(era, level, k);
+  // a few homes around a small square in young towns
+  if (level <= 2) {
+    const s = 0.95;
+    const spots = level === 1 ? [[0.1, 0.05], [-0.09, 0.07]] : [[0.11, 0.04], [-0.1, 0.07], [0.0, -0.12]];
+    spots.forEach(([x, z], i) => building(era, k, x, z, s, i));
+  }
   return done(k);
 }
 
