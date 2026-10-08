@@ -1,0 +1,70 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Battlefield preview</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>html,body{margin:0;background:#111;color:#ddd;font:12px sans-serif}canvas{display:block}#l{position:fixed;top:4px;left:6px}</style>
+<script type="importmap">{ "imports": { "three": "../../vendor/three.module.js" } }</script>
+</head><body><div id="l"></div>
+<script type="module">
+import * as THREE from 'three';
+import { createBattlefield } from '../battlefield.js';
+import { unitModel } from '../models.js';
+import { COLS, ROWS, key } from '../battle.js';
+import { UNITS } from '../data.js';
+
+// ?t=1,4,7  terrains shown side by side; ?w=540&h=1100 per panel; ?yaw=0.4
+const Q = new URLSearchParams(location.search);
+const terrs = (Q.get('t') || '1,4,7').split(',').map(Number);
+const PW = +(Q.get('w') || 540), PH = +(Q.get('h') || 1100), yaw = +(Q.get('yaw') || 0);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(1); renderer.setSize(PW * terrs.length, PH);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setScissorTest(true);
+document.body.appendChild(renderer.domElement);
+
+const HS = 0.5, HW = Math.sqrt(3) * HS, VS = 1.5 * HS;
+const hexPos = (c, r) => new THREE.Vector3((c - (COLS - 1) / 2 + (r & 1 ? 0.5 : 0) - 0.25) * HW, 0, (r - (ROWS - 1) / 2) * VS);
+const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.75 });
+const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); glowMat.color.setScalar(2.2);
+const meshOf = (m) => { const g = new THREE.Group(); const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = b.receiveShadow = true; g.add(b); if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat)); return g; };
+const dummy = new THREE.Object3D();
+const unitIds = Object.keys(UNITS);
+
+const views = terrs.map((tid, vi) => {
+  const scene = new THREE.Scene();
+  const t0 = performance.now();
+  const bf = createBattlefield(THREE, tid, hexPos, COLS, ROWS);
+  const ms = performance.now() - t0;
+  scene.add(bf.group);
+  scene.background = new THREE.Color(bf.sky);
+  scene.fog = new THREE.Fog(bf.fog.color, bf.fog.near, bf.fog.far);
+  const L = bf.lights;
+  const sun = new THREE.DirectionalLight(L.sun.color, L.sun.intensity); sun.position.set(4, 10, 3); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 30 }); sun.shadow.bias = -0.0005;
+  scene.add(sun, new THREE.HemisphereLight(L.hemi.sky, L.hemi.ground, L.hemi.intensity), new THREE.AmbientLight(L.ambient.color, L.ambient.intensity));
+  // the game's highlight hexes, on top
+  const hexes = new THREE.InstancedMesh(new THREE.CylinderGeometry(HS * 0.95, HS * 0.95, 0.02, 6), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.38, depthWrite: false }), COLS * ROWS);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    dummy.position.copy(hexPos(c, r)); dummy.updateMatrix(); hexes.setMatrixAt(key(c, r), dummy.matrix);
+    const reach = Math.abs(c - 3) + Math.abs(r - 8) < 3;
+    hexes.setColorAt(key(c, r), new THREE.Color(reach ? 0x9aff6a : 0x000000));
+    if (!reach) { dummy.scale.setScalar(0); dummy.updateMatrix(); hexes.setMatrixAt(key(c, r), dummy.matrix); dummy.scale.setScalar(1); }
+  }
+  scene.add(hexes);
+  // obstacles (3 kinds) and some units
+  [[2, 4], [5, 5], [3, 6], [1, 7], [4, 3]].forEach(([c, r], i) => { const m = meshOf(bf.obstacleModel(i)); m.position.copy(hexPos(c, r)); m.rotation.y = i * 1.7; scene.add(m); });
+  for (let i = 0; i < 5; i++) for (const side of [0, 1]) {
+    const id = unitIds[(i + side * 7 + vi * 3) % unitIds.length], u = UNITS[id];
+    const m = meshOf(unitModel(id, u.col)); m.scale.setScalar(0.72); m.position.copy(hexPos(i + 1, side ? 0 : ROWS - 1)); m.rotation.y = side === 0 ? Math.PI : 0; scene.add(m);
+  }
+  const cam = new THREE.PerspectiveCamera(52, PW / PH, 0.1, 100);
+  const dist = 12.5, s = Math.sin(yaw), c = Math.cos(yaw);
+  cam.position.set(s * dist * 0.55, dist, c * dist * 0.55 + 0.4); cam.lookAt(0, 0, 0.2);
+  renderer.toneMappingExposure = L.exposure;
+  return { scene, cam, bf, ms, exp: L.exposure };
+});
+views.forEach((v, i) => { renderer.setViewport(i * PW, 0, PW, PH); renderer.setScissor(i * PW, 0, PW, PH); renderer.toneMappingExposure = v.exp; renderer.render(v.scene, v.cam); });
+const info = views.map((v) => { let tris = 0; v.scene.traverse((o) => { if (o.isMesh && o.geometry) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; }); return `${v.bf.name}: build ${v.ms.toFixed(0)}ms, ${tris | 0} tris, calls ${renderer.info.render.calls}`; });
+document.getElementById('l').textContent = info.join(' | ');
+window.__done = info;
+</script></body></html>
