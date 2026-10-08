@@ -153,6 +153,7 @@ if (!SHEET) {
     g.drawImage(renderer.domElement, x, y, TW, TH); g.fillText(name, x + 8, y + 22);
   });
   // one full game view frame with several effects at once
+  window.__dbgApi = { vfx, scene, cam, post, renderer };
   window.__done = true;
 }
 </script></body></html>

@@ -55,7 +55,7 @@ if (mode === 'grid') {
   for (const [id, [x, z]] of Object.entries(L)) { const g = mk(id); g.position.set(x, 0, z); g.rotation.y = -x * 0.04; scene.add(g); tot += g.userData.tris; }
   txt = 'total tris ' + tot;
   cam.fov = 40; cam.updateProjectionMatrix();
-  cam.position.set(0, 7.5, 13.5); cam.lookAt(0, 0.6, -0.5);
+  const asp = cam.aspect, f = asp < 1.2 ? 1.25 / asp : 1; cam.position.set(0, 7.5 * f, 13.5 * f); cam.lookAt(0, 0.6, -0.8);
 }
 document.getElementById('info').textContent = txt; window.__info = txt;
 renderer.render(scene, cam);

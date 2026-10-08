@@ -7,7 +7,8 @@
 <script type="module">
 import * as THREE from 'three';
 import { unitModel, townModel, objectModel, treeModel, rockModel, heroModel } from '../models.js';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, setHit, tick } from '../materials.js';
+const q0 = new URLSearchParams(location.search);
+const { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, setHit, tick } = await import(q0.has('orig') ? './shots/mat2-orig-materials.js' : '../materials.js');
 
 const q = new URLSearchParams(location.search);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -20,7 +21,9 @@ const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1a2238);
 const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(4, 8, 5); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 0.5, far: 30 });
 sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
-scene.add(sun, new THREE.HemisphereLight(0xbcd4ff, 0x3a3020, 0.8), new THREE.AmbientLight(0x404a70, 0.35));
+const prop = q.get('light') === 'prop';
+scene.add(sun, new THREE.HemisphereLight(prop ? 0xcfe2ff : 0xbcd4ff, prop ? 0x8a7048 : 0x3a3020, prop ? 1.25 : 0.8), new THREE.AmbientLight(prop ? 0x8088c0 : 0x404a70, prop ? 0.45 : 0.35));
+if (prop) { renderer.toneMappingExposure = 1.15; sun.color.set(0xffe8c4); sun.intensity = 2.6; sun.shadow.intensity = 0.62; renderer.shadowMap.type = THREE.PCFShadowMap; sun.shadow.radius = 3; }
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 1 }));
 ground.receiveShadow = true; scene.add(ground);
 
