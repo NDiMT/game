@@ -204,8 +204,8 @@ const I = {
   slow: `<path d="M4 26.5h21c2.5 0 3.5-2 3.5-3.5l-1-9.5" fill="${g('green')}" ${O}/><path d="M27.8 13.5l-1.8-6M28.5 13.5l2-6" stroke="${INK}" stroke-width="1.2" stroke-linecap="round"/><circle cx="26" cy="7" r="1.2" fill="${INK}"/><circle cx="30.5" cy="7.3" r="1.2" fill="${INK}"/>` +
     `<circle cx="14.5" cy="17" r="9" fill="${g('orange')}" ${O}/><path d="M14.5 17m-1.5 0a1.5 1.5 0 1 1 3 0 3 3 0 1 1-6 0 4.6 4.6 0 1 1 9.2 0 6.2 6.2 0 1 1-12.4 0" fill="none" stroke="#a8541a" stroke-width="1.2" stroke-linecap="round"/>`,
   bolt: `<circle cx="16" cy="16" r="15" fill="${g('glowB')}"/><path d="M19.5 2 L7.5 18 H14.5 L11.5 30 L25 12.5 H17.5 L21.5 2Z" fill="${g('sky')}" ${O}/><path d="M18.4 5 L11 15.5" ${HL}/>`,
-  fireball: `<path d="M27 5c-3 1-7 2-10.5 4.5C21 6 22 5 27 5ZM29 11c-3 0-6 .5-8.5 1.5C24 10 25.5 10 29 11ZM22.5 2.5c-3 1-5.5 3-7.2 5C17.5 4.5 19.5 3.2 22.5 2.5Z" fill="${g('orange')}" ${O2}/>` +
-    `<circle cx="13" cy="19" r="10" fill="${g('fire')}" ${O}/><circle cx="11.5" cy="17.5" r="4.5" fill="#fff8c0" opacity=".9"/><path d="M6.5 15.5a7 7 0 0 1 3.4-4.4" ${HL}/>`,
+  fireball: `<path d="M3.5 20.5a9.5 9.5 0 0 0 19 0c0-2.4-.8-4.6-2.2-6.4L30 2.5 17.6 9.6 22 3.5 12.6 11.2C7.5 11.8 3.5 15.8 3.5 20.5Z" fill="${g('orange')}" ${O}/>` +
+    `<circle cx="13" cy="20.5" r="7" fill="${g('fire')}"/><circle cx="11.5" cy="19" r="3.4" fill="#fffbe0"/><path d="M6.4 17.5a7 7 0 0 1 3.4-4.2" ${HL}/>`,
 
   // ---------- town: tabs and building categories
   build: `<g transform="rotate(-40 16 16)"><rect x="14.5" y="10" width="3.4" height="19" rx="1.4" fill="${g('wood')}" ${O}/><path d="M7 4.5h15c1.5 0 2.5 1.2 2.5 2.5v3.5c0 1.3-1 2.5-2.5 2.5H11c-2 0-4-2-4-4Z" fill="${g('steel')}" ${O}/>` +

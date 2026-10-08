@@ -313,7 +313,9 @@ void main() { float r = length(gl_PointCoord - 0.5) * 2.0; float a = (1.0 - smoo
   function riverDist(x, z) {
     let best = Infinity;
     const pts = RIV.pts;
-    for (let i = 0; i < pts.length; i += 3) { const p = pts[i], d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < best) best = d; }
+    let bi = 0;
+    for (let i = 0; i < pts.length; i += 12) { const p = pts[i], d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < best) { best = d; bi = i; } }
+    for (let i = Math.max(0, bi - 12); i < Math.min(pts.length, bi + 13); i++) { const p = pts[i], d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < best) best = d; }
     return Math.sqrt(best);
   }
   // flat ground under the town, rolling hills around, river valley behind

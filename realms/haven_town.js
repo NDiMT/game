@@ -583,16 +583,18 @@ function guardhouse(up) {
     for (const s of [-1, 1]) k.banner(s * w * 0.5 + s * 0.02, h - 0.1, fz, 0.16, 0.38, 0, C.banner);
   }
   // pike rack: pikes leaning against a rail
-  const rx = up ? 0.55 : 0.5, rz = 0.55;
-  k.limb([rx - 0.35, 0.4, rz], [rx + 0.3, 0.4, rz], 0.02, 0.02, C.woodD, 4);
-  for (const x of [rx - 0.35, rx + 0.3]) k.box(0.05, 0.42, 0.05, x, 0.04, rz, C.woodD);
-  const np = up ? 6 : 5;
-  for (let i = 0; i < np; i++) {
-    const x = rx - 0.3 + i * 0.55 / (np - 1), lean = -0.08 + (i % 2) * 0.04;
-    k.limb([x, 0.04, rz + 0.12], [x + lean, 1.25, rz - 0.06], 0.015, 0.012, C.wood, 4);
-    if (up && i % 2 === 0) k.box(0.13, 0.1, 0.012, x + lean + 0.04, 1.1, rz - 0.05, C.steel, { ao: false });
-    k.cone(0.03, 0.14, x + lean, 1.24, rz - 0.06, C.steel, 4, { ao: false });
-  }
+  // pike rack beside the door, seen side-on
+  k.at(0.62, 0, 0.42, -0.5, 1, () => {
+    k.limb([-0.22, 0.36, 0], [0.22, 0.36, 0], 0.02, 0.02, C.woodD, 4);
+    for (const x of [-0.22, 0.22]) k.box(0.05, 0.38, 0.05, x, 0.04, 0, C.woodD);
+    const np = up ? 5 : 4;
+    for (let i = 0; i < np; i++) {
+      const x = -0.18 + i * 0.36 / (np - 1);
+      k.limb([x, 0.04, 0.1], [x, 1.0, -0.06], 0.015, 0.012, C.wood, 4);
+      if (up && i % 2 === 0) k.box(0.12, 0.09, 0.012, x + 0.05, 0.86, -0.05, C.steel, { ao: false, ry: Math.PI / 2 });
+      k.cone(0.03, 0.13, x, 0.99, -0.06, C.steel, 4, { ao: false });
+    }
+  });
   // training dummy / shields
   k.at(-0.6, 0, 0.55, 0.3, 1, () => {
     k.limb([0, 0.04, 0], [0, 0.65, 0], 0.025, 0.025, C.woodD, 4);

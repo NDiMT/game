@@ -561,14 +561,14 @@ function vampirelord() {
 // =====================================================================
 function powerlich() {
   const k = nkit(553);
-  const ROBE = (p) => C(0x4a2a7a).lerp(C(0xa070d8), smooth(0.05, 0.85, p.y));
+  const ROBE = (p) => C(0x9a88c0).lerp(C(0xf6f0fc), smooth(0.05, 0.85, p.y));
   // soul-fire pyre it hovers over
   for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU; k.spike([Math.sin(a) * 0.2, 0.0, Math.cos(a) * 0.2], [Math.sin(a) * 0.26, 0.12 + (i % 2) * 0.08, Math.cos(a) * 0.26], 0.05, i % 2 ? 0xb0ff9a : 0x2ad06a, 4, GLOW); }
   k.ball(0.16, [0, 0.06, 0], 0x3aff8a, [1.2, 0.35, 1.2], 1, [0, 0, 0], GLOW);
   // robe (hem lifted off the ground), gold trims
   k.lathe([[0.3, 0.1], [0.26, 0.24], [0.2, 0.48], [0.16, 0.66], [0.18, 0.8], [0.08, 0.88]], 14, [0, 0, 0], ROBE, { jag: 0.06, wob: 0.08, ds: true });
   k.lathe([[0.302, 0.12], [0.28, 0.2]], 14, [0, 0, 0], grad(GOLD_D, GOLD, 0.12, 0.2), { ds: true });
-  k.box(0.1, 0.62, 0.04, [0, 0.42, 0.2], grad(CRIM_D, CRIM_L, 0.1, 0.7), [-0.13, 0, 0]);
+  k.box(0.1, 0.62, 0.04, [0, 0.42, 0.2], grad(VIO_D, VIO_L, 0.1, 0.7), [-0.13, 0, 0]);
   for (const x of [-1, 1]) k.box(0.014, 0.62, 0.045, [x * 0.05, 0.42, 0.2], GOLD, [-0.13, 0, 0]);
   for (let i = 0; i < 3; i++) k.ball(0.022, [0, 0.26 + i * 0.15, 0.24 - i * 0.022], i === 1 ? GREEN_G : GOLD, [1, 1, 0.6], 0, [0, 0, 0], i === 1 ? GLOW : undefined);
   // open chest with ribs and a glowing phylactery heart
@@ -633,8 +633,8 @@ function powerlich() {
 // =====================================================================
 function dreadknight() {
   const k = nkit(667);
-  const HORSE = grad(0x4a3e5e, 0x7a6e92, 0.2, 1.0), PLATE = grad(0x5a5a78, 0xc0c4d8, 0.4, 1.45);
-  const BARD = (p) => C(CRIM_D).lerp(C(CRIM_L), smooth(0.35, 0.78, p.y));
+  const HORSE = grad(0x5a4a7a, 0x9a88b8, 0.2, 1.0), PLATE = grad(0x8a8aa8, 0xeef0f8, 0.4, 1.45);
+  const BARD = (p) => C(VIO_D).lerp(C(VIO_L), smooth(0.35, 0.78, p.y));
   const legs = [
     [[-0.12, 0.6, 0.33], [-0.13, 0.42, 0.5], [-0.12, 0.24, 0.5]],
     [[0.12, 0.6, 0.33], [0.13, 0.3, 0.35], [0.12, 0.05, 0.36]],
@@ -661,7 +661,7 @@ function dreadknight() {
   // neck with crinet plates + head with skull chanfron
   k.limb([0, 0.73, 0.36], [0, 1.06, 0.6], 0.135, 0.088, HORSE, 7);
   k.lathe([[0.135, 0.0], [0.1, 0.32]], 8, [0, 0.75, 0.38], PLATE, { rot: [0.64, 0, 0], ds: true, phi0: -1.9, phiLen: 3.8 });
-  for (let i = 0; i < 4; i++) k.lathe([[0.138 - i * 0.01, i * 0.08], [0.13 - i * 0.01, i * 0.08 + 0.015]], 8, [0, 0.75, 0.38], GOLD, { rot: [0.64, 0, 0], ds: true, phi0: -1.9, phiLen: 3.8 });
+  for (let i = 0; i < 4; i += 2) k.lathe([[0.138 - i * 0.01, i * 0.08], [0.13 - i * 0.01, i * 0.08 + 0.015]], 8, [0, 0.75, 0.38], GOLD, { rot: [0.64, 0, 0], ds: true, phi0: -1.9, phiLen: 3.8 });
   k.T([0, 1.08, 0.64], [-1.0, 0, 0], 1, () => {
     k.ball(0.088, [0, 0, 0], HORSE, [0.85, 1, 1], 1);
     k.box(0.12, 0.28, 0.11, [0, -0.15, 0.0], HORSE);
@@ -696,8 +696,8 @@ function dreadknight() {
   }
   // torso: breastplate with bone skull, gold trims, huge spiked pauldrons
   k.ball(0.17, [0, 1.08, 0], PLATE, [1, 1.15, 0.78], 1);
-  k.lathe([[0.16, 0.89], [0.14, 1.0]], 10, [0, 0, 0], grad(CRIM_D, CRIM, 0.89, 1.0));
-  k.box(0.14, 0.26, 0.03, [0, 0.96, 0.13], grad(CRIM, CRIM_L, 0.85, 1.1), [-0.1, 0, 0]);
+  k.lathe([[0.16, 0.89], [0.14, 1.0]], 10, [0, 0, 0], grad(VIO_D, VIO, 0.89, 1.0));
+  k.box(0.14, 0.26, 0.03, [0, 0.96, 0.13], grad(VIO, VIO_L, 0.85, 1.1), [-0.1, 0, 0]);
   k.box(0.15, 0.02, 0.035, [0, 0.84, 0.125], GOLD, [-0.1, 0, 0]);
   k.ball(0.045, [0, 1.1, 0.135], BONE, [1, 1, 0.6], 0);
   for (const e of [-1, 1]) k.ball(0.011, [e * 0.017, 1.105, 0.16], GREEN_G, [1, 1, 0.6], 0, [0, 0, 0], GLOW);

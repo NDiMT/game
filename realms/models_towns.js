@@ -473,18 +473,25 @@ function cape(k, col, x0, y0, z0, w, len) {
     return [x0 + x, y + Math.sin(u * Math.PI) * 0.01, z];
   }, col, { shade: (u, v) => 1.08 - v * 0.25 + 0.14 * Math.sin(u * Math.PI * 3), top: 1, bot: 1, ao: false });
 }
+// the hero's standard: crossbar, a big bright swallow-tailed banner streaming back and a trim stripe
+function heroBanner(k, col, trim) {
+  const c = shadeOf(col, 1).lerp(new THREE.Color(1, 1, 1), 0.08);
+  k.limb([-0.16, 1.27, 0.155], [-0.16, 1.27, -0.2], 0.006, 0.006, trim, 4, { ao: false });
+  pennant(k, -0.16, 1.15, 0.15, 0.46, 0.25, c, { axis: 'z', dir: -1, amp: 0.05, tail: 0.32, taper: 0.22, droop: 0.12, nu: 9 });
+  pennant(k, -0.16, 1.035, 0.15, 0.4, 0.03, trim, { axis: 'z', dir: -1, amp: 0.05, tail: 0, taper: 0.1, droop: 0.2, nu: 9 });
+}
 function havenHero(k, col) {
-  const STEEL = 0xd4d8e2, STEELD = 0x8a909c, GOLD = 0xf2c24a, WOOD = 0x6a4a32;
-  horse(k, 0xf2eee6, 0xd8ccb0, 0x4a3a2a, null);
+  const STEEL = 0xe8ecf4, STEELD = 0xb4bccb, GOLD = 0xffcf4a, WOOD = 0x9a6a42;
+  horse(k, 0xfbf8f0, 0xf0cc78, 0x8a6a48, null);
   caparison(k, col, GOLD, -1); caparison(k, col, GOLD, 1);
-  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0x7a4a2a); // saddle
+  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0xa8683a); // saddle
   // bridle and reins
-  k.limb([0, 0.66, 0.45], [0, 0.82, 0.12], 0.004, 0.004, 0x3a2216, 3);
+  k.limb([0, 0.66, 0.45], [0, 0.82, 0.12], 0.004, 0.004, 0x7a4a2a, 3);
   // rider
   for (const s of [-1, 1]) {
     k.limb([s * 0.07, 0.65, -0.02], [s * 0.14, 0.53, 0.09], 0.035, 0.03, STEEL, 6);
     k.limb([s * 0.14, 0.53, 0.09], [s * 0.145, 0.37, 0.04], 0.026, 0.024, STEELD, 6);
-    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x3a2a1e);
+    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x8a5a36);
   }
   k.lathe([[0.075, 0], [0.095, 0.06], [0.1, 0.13], [0.085, 0.2], [0.04, 0.24]], 0, 0.62, -0.02, STEEL, 9, { top: 1.3, bot: 0.7 });
   k.cyl(0.098, 0.1, 0.035, 0, 0.66, -0.02, col, 9, { top: 1.1 }); // tabard band
@@ -503,31 +510,31 @@ function havenHero(k, col) {
   // head and gold great helm with plume
   k.ball(0.05, 0, 0.9, -0.02, 0xe8b890, 1);
   k.lathe([[0.058, 0], [0.062, 0.05], [0.058, 0.085], [0.035, 0.11], [0.0, 0.115]], 0, 0.86, -0.02, GOLD, 9, { top: 1.35, bot: 0.75 });
-  k.box(0.08, 0.008, 0.02, 0, 0.905, 0.035, 0x2a1e12, { ao: false }); // visor slit
+  k.box(0.08, 0.008, 0.02, 0, 0.905, 0.035, 0x5a3e22, { ao: false }); // visor slit
   k.box(0.012, 0.05, 0.02, 0, 0.88, 0.04, GOLD, { ao: false });
   for (let i = 0; i < 4; i++) k.ball(0.025 - i * 0.003, 0, 0.99 + i * 0.012 - i * i * 0.004, -0.03 - i * 0.03, 0xffffff, 1, { s: [0.6, 1, 1.2] });
   // cape
   cape(k, col, 0, 0.83, -0.08, 0.17, 0.42);
   // banner pole and pennant
-  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.2, 0.15], 0.009, 0.008, WOOD, 5);
-  k.cone(0.014, 0.05, -0.16, 1.2, 0.15, GOLD, 4);
-  k.limb([-0.16, 1.16, 0.15], [-0.16, 1.16, -0.13], 0.005, 0.005, GOLD, 4);
-  pennant(k, -0.16, 1.07, 0.148, 0.36, 0.17, col, { axis: 'z', dir: -1, amp: 0.045, tail: 0.3, taper: 0.3, droop: 0.15 });
+  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.32, 0.15], 0.011, 0.009, WOOD, 5);
+  k.ball(0.026, -0.16, 1.33, 0.15, GOLD, 1, { ao: false });
+  k.cone(0.016, 0.07, -0.16, 1.35, 0.15, GOLD, 4, { ao: false });
+  heroBanner(k, col, GOLD);
 }
 function necroHero(k, col) {
-  const ROBE = 0x3a2c48, ROBED = 0x221a2c, BONE = 0xe2d8bc, IRON = 0x4a4652, GREEN = 0x6aff8a;
-  horse(k, 0x2c2834, 0x2a5a3a, 0x111015, 0xff3a2a);
+  const ROBE = 0x7a54a6, ROBED = 0x5c3e86, BONE = 0xf6eed4, IRON = 0x9a92ae, GREEN = 0x7affa8;
+  horse(k, 0x9a8cb8, 0x3ab06a, 0x5a4a70, GREEN);
   // ghostly mane flames
   for (let i = 0; i < 5; i++) { const t = i / 4; k.cone(0.02, 0.07, 0, 0.6 + t * 0.18, 0.15 + t * 0.14, GREEN, 4, { glow: true, rx: -0.9 }); }
   caparison(k, col, BONE, -1); caparison(k, col, BONE, 1);
-  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0x2a1a1a);
+  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0x9a3048);
   // skull-like horse armour plate
   k.ball(1, 0, 0.715, 0.4, BONE, 1, { s: [0.03, 0.02, 0.055], rx: 0.6 });
   for (const s of [-1, 1]) k.cone(0.012, 0.07, s * 0.03, 0.76, 0.3, BONE, 4, { rx: -0.5, rz: -s * 0.4 });
   for (const s of [-1, 1]) {
     k.limb([s * 0.07, 0.65, -0.02], [s * 0.14, 0.53, 0.09], 0.035, 0.03, ROBE, 6);
     k.limb([s * 0.14, 0.53, 0.09], [s * 0.145, 0.37, 0.04], 0.026, 0.024, ROBED, 6);
-    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x111015);
+    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x5a4a70);
   }
   // robed torso with flared skirt over the saddle
   k.lathe([[0.13, 0], [0.1, 0.06], [0.09, 0.14], [0.085, 0.2], [0.04, 0.25]], 0, 0.6, -0.02, ROBE, 9, { top: 1.3, bot: 0.65 });
@@ -544,21 +551,23 @@ function necroHero(k, col) {
   // skull face in a deep hood
   k.ball(0.048, 0, 0.9, -0.01, BONE, 1, { s: [0.95, 1.05, 1], top: 1.2 });
   k.lathe([[0.075, 0], [0.07, 0.06], [0.055, 0.1], [0.02, 0.15], [0.0, 0.17]], 0, 0.855, -0.03, ROBED, 8, { top: 1.3, bot: 0.8, rx: -0.25 });
-  k.ball(0.044, 0, 0.9, 0.0, 0x0a080c, 1, { s: [1, 1.05, 0.6], ao: false });
+  k.ball(0.044, 0, 0.9, 0.0, 0x4a3468, 1, { s: [1, 1.05, 0.6], ao: false });
   for (const s of [-1, 1]) k.ball(0.011, s * 0.018, 0.905, 0.03, GREEN, 0, { glow: true });
   cape(k, col, 0, 0.83, -0.08, 0.18, 0.44);
   // a bone-topped staff that bears the banner
-  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.2, 0.15], 0.009, 0.008, 0x2a2228, 5);
-  k.ball(0.03, -0.16, 1.22, 0.15, BONE, 1, { s: [1, 1.05, 1.05] });
-  for (const s of [-1, 1]) k.ball(0.008, -0.16 + s * 0.012, 1.225, 0.177, GREEN, 0, { glow: true });
-  k.limb([-0.16, 1.16, 0.15], [-0.16, 1.16, -0.13], 0.005, 0.005, IRON, 4);
-  for (const s of [-1, 1]) k.cone(0.008, 0.05, -0.16 + s * 0.02, 1.235, 0.14, BONE, 4, { rz: -s * 0.5 });
-  pennant(k, -0.16, 1.07, 0.148, 0.36, 0.17, col, { axis: 'z', dir: -1, amp: 0.045, tail: 0.3, taper: 0.3, droop: 0.15 });
+  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.3, 0.15], 0.011, 0.009, 0x8a7a6a, 5);
+  k.ball(0.036, -0.16, 1.33, 0.15, BONE, 1, { s: [1, 1.05, 1.05], ao: false });
+  for (const s of [-1, 1]) k.ball(0.01, -0.16 + s * 0.014, 1.335, 0.182, GREEN, 0, { glow: true });
+  for (const s of [-1, 1]) k.cone(0.009, 0.06, -0.16 + s * 0.022, 1.345, 0.14, BONE, 4, { rz: -s * 0.5, ao: false });
+  heroBanner(k, col, BONE);
 }
 export function heroModel(fac, color) {
   const k = makeKit(fac === 'necro' ? 23 : 21);
   (fac === 'necro' ? necroHero : havenHero)(k, color ?? (fac === 'necro' ? 0xd83a3a : 0x3a7aff));
-  return finish(k);
+  const m = finish(k);
+  m.body.scale(1.12, 1.12, 1.12); m.body.computeBoundingSphere(); m.body.computeBoundingBox();
+  if (m.glow) { m.glow.scale(1.12, 1.12, 1.12); m.glow.computeBoundingSphere(); }
+  return m;
 }
 
 // ------------------------------------------------------------------ ownership flag
