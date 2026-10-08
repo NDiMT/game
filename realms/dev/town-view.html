@@ -51,7 +51,7 @@ if (q.get('hl')) tv.highlight(q.get('hl'));
 let tt = 0;
 const step = (dt) => { tt += dt; tick(tt); tv.update(dt); };
 renderer.domElement.addEventListener('pointerup', (e) => { const id = tv.pick(e.clientX, e.clientY); document.getElementById('info').textContent = 'pick: ' + id; tv.highlight(id); });
-window.TV = { tv, step, render: () => post.render(tv.scene, tv.camera), build(id) { built = [...built, id]; tv.setTown({ fac, built, name: 'Preview' }); }, renderer, TOWN_SLOTS, V3: THREE.Vector3 };
+window.TV = { tv, step, render: () => post.render(tv.scene, tv.camera), build(id) { built = [...built, id]; tv.setTown({ fac, built, name: 'Preview' }); }, renderer, TOWN_SLOTS, V3: THREE.Vector3, H: { fort: 2, hall3: 3, u7: 4, mage3: 3.8, d6: 2.6, u5: 2.6, d4: 2.2, tavern: 1.7, market: 1.4, u1: 1.7, d2: 1.9, u3: 2.3 } };
 if (q.has('live')) { const clk = new THREE.Clock(); (function loop() { step(Math.min(0.05, clk.getDelta())); post.render(tv.scene, tv.camera); renderer.info.reset; document.getElementById('info').textContent ||= ''; requestAnimationFrame(loop); })(); }
 else { for (let i = 0; i < 40; i++) step(1 / 30); post.render(tv.scene, tv.camera); }
 document.title = 'calls ' + renderer.info.render.calls + ' tris ' + renderer.info.render.triangles;
