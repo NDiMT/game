@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0d1e" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Hex Realms</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Nunito:wght@600;800;900&display=swap" />
+  <link rel="stylesheet" href="style.css?v=0.1" />
+  <script type="importmap">
+    { "imports": { "three": "../vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+<div id="app">
+  <div id="hud" hidden>
+    <header class="resbar">
+      <span><i>🪙</i><b id="r-gold">0</b></span><span><i>🪵</i><b id="r-wood">0</b></span><span><i>🪨</i><b id="r-ore">0</b></span><span><i>💎</i><b id="r-gems">0</b></span>
+      <em id="r-day">Day 1</em>
+    </header>
+    <nav id="heroes" class="side"></nav>
+    <footer class="bottom">
+      <div id="sel" class="sel"></div>
+      <div class="btns">
+        <button id="b-hero" class="fb">🐎<small>Hero</small></button>
+        <button id="b-menu" class="fb">☰<small>Menu</small></button>
+        <button id="b-end" class="fb end">⏭<small>End day</small></button>
+      </div>
+    </footer>
+  </div>
+
+  <div id="town" class="panel" hidden>
+    <div class="phead"><div><h2 id="t-name">Town</h2><p id="t-sub"></p></div><button id="t-close" class="x">✕</button></div>
+    <div class="tabs2"><button data-t="build" class="on">🔨 Build</button><button data-t="recruit">⚔️ Recruit</button><button data-t="army">🛡️ Army</button><button data-t="more">🍺 More</button></div>
+    <div id="t-body" class="pbody"></div>
+    <div class="resbar mini"><span><b id="r2-gold"></b></span></div>
+  </div>
+
+  <div id="battle" hidden>
+    <div class="btop"><b id="b-title"></b><em id="b-round">Round 1</em><div id="b-queue" class="bq"></div></div>
+    <div class="bbot">
+      <p id="b-msg"></p>
+      <div class="btns">
+        <button id="b-wait" class="fb">⏳<small>Wait</small></button>
+        <button id="b-def" class="fb">🛡️<small>Defend</small></button>
+        <button id="b-spell" class="fb">🔮</button>
+        <button id="b-auto" class="fb">🤖<small>Auto</small></button>
+        <button id="b-quick" class="fb">⏩<small>Quick</small></button>
+      </div>
+    </div>
+  </div>
+  <div id="blabels"></div>
+
+  <div id="dialog" class="overlay" hidden>
+    <div id="dlg-card" class="card">
+      <h2 id="dlg-title"></h2>
+      <div id="dlg-body"></div>
+      <div id="dlg-btns" class="dbtns"></div>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+  <div id="floaters"></div>
+
+  <div id="menu" class="menu">
+    <div class="logo"><h1>HEX<span>REALMS</span></h1><p>Might and magic on a tiny world</p></div>
+    <div class="mbtns">
+      <button id="m-continue" class="btn gold" hidden>Continue</button>
+      <div class="diffs"><button data-d="0">🌱 Easy</button><button data-d="1">⚔️ Normal</button><button data-d="2">🔥 Hard</button></div>
+      <button id="m-new" class="btn gold">New game</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="main.js?v=0.1"></script>
+</body>
+</html>

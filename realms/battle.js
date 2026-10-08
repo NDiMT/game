@@ -1,0 +1,273 @@
+// =====================================================================
+// HEX REALMS: tactical combat rules. A battlefield of COLS x ROWS hexes
+// (rows offset like bricks), the attacker at the bottom, the defender at
+// the top. Pure logic: the renderer reads the state and animates events.
+// =====================================================================
+import { UNITS, SPELLS } from './data.js';
+
+export const COLS = 7, ROWS = 11;
+const rnd = Math.random;
+export const key = (c, r) => r * COLS + c;
+export const inside = (c, r) => c >= 0 && r >= 0 && c < COLS && r < ROWS;
+// odd rows are shifted right by half a hex
+export function nbrs(c, r) {
+  const odd = r & 1;
+  const d = odd ? [[1, 0], [-1, 0], [0, -1], [1, -1], [0, 1], [1, 1]] : [[1, 0], [-1, 0], [-1, -1], [0, -1], [-1, 1], [0, 1]];
+  return d.map(([dc, dr]) => [c + dc, r + dr]).filter(([x, y]) => inside(x, y));
+}
+function cube(c, r) { const x = c - (r - (r & 1)) / 2, z = r; return [x, -x - z, z]; }
+export function dist(a, b) { const p = cube(a.c ?? a[0], a.r ?? a[1]), q = cube(b.c ?? b[0], b.r ?? b[1]); return Math.max(Math.abs(p[0] - q[0]), Math.abs(p[1] - q[1]), Math.abs(p[2] - q[2])); }
+
+export function createBattle({ armyA, heroA, armyB, heroB, town = false }) {
+  const B = { stacks: [], obstacles: new Set(), round: 1, log: [], events: [], heroes: [heroA || null, heroB || null], cast: [false, false], over: null, town, active: null, queue: [] };
+  const place = (army, side) => {
+    const n = army.length, row = side === 0 ? ROWS - 1 : 0;
+    army.forEach(([id, count], i) => {
+      if (!id || count <= 0) return;
+      const u = UNITS[id];
+      const c = Math.min(COLS - 1, Math.round(((i + 0.5) / n) * COLS - 0.5));
+      const r = row + (u.ranged ? 0 : side === 0 ? -1 : 1) * (i % 2);
+      B.stacks.push({ uid: B.stacks.length, id, u, side, count, start: count, hp: u.hp, c, r, shots: u.ranged || 0, retal: 0, fx: {}, waited: false, acted: false, defending: false, slot: i });
+    });
+  };
+  place(armyA, 0); place(armyB, 1);
+  // a few rocks and dead trees in the middle rows
+  const nObs = 3 + ((rnd() * 4) | 0);
+  for (let i = 0; i < nObs * 3 && B.obstacles.size < nObs; i++) {
+    const c = (rnd() * COLS) | 0, r = 3 + ((rnd() * (ROWS - 6)) | 0);
+    if (!B.stacks.some((s) => s.c === c && s.r === r)) B.obstacles.add(key(c, r));
+  }
+  newRound(B);
+  return B;
+}
+export const alive = (B, side) => B.stacks.filter((s) => s.count > 0 && (side === undefined || s.side === side));
+export const stackAt = (B, c, r) => B.stacks.find((s) => s.count > 0 && s.c === c && s.r === r);
+const hero = (B, side) => B.heroes[side];
+export const speedOf = (s) => Math.max(1, Math.round((s.u.spd + (s.fx.haste ? 3 : 0)) * (s.fx.slow ? 0.5 : 1)));
+
+function newRound(B) {
+  for (const s of B.stacks) {
+    s.acted = false; s.waited = false; s.defending = false; s.retal = 0; s.morale = false;
+    for (const k of Object.keys(s.fx)) if (--s.fx[k] <= 0) delete s.fx[k];
+    // trolls and wights heal at the start of each round
+    if (s.count > 0 && s.u.regen) s.hp = s.u.hp;
+  }
+  B.cast = [false, false];
+}
+// the next stack to act: fastest first, those who waited go last (slowest first)
+export function nextStack(B) {
+  let live = alive(B).filter((s) => !s.acted);
+  if (!live.length) { B.round++; newRound(B); B.events.push({ t: 'round', round: B.round }); live = alive(B); }
+  const fresh = live.filter((s) => !s.waited).sort((a, b) => speedOf(b) - speedOf(a) || a.side - b.side);
+  const waiting = live.filter((s) => s.waited).sort((a, b) => speedOf(a) - speedOf(b));
+  B.active = fresh[0] || waiting[0] || null;
+  return B.active;
+}
+export function queue(B, n = 8) {
+  const live = alive(B).filter((s) => !s.acted);
+  const fresh = live.filter((s) => !s.waited).sort((a, b) => speedOf(b) - speedOf(a) || a.side - b.side);
+  const waiting = live.filter((s) => s.waited).sort((a, b) => speedOf(a) - speedOf(b));
+  const nextR = alive(B).slice().sort((a, b) => speedOf(b) - speedOf(a) || a.side - b.side);
+  return [...fresh, ...waiting, ...nextR].slice(0, n);
+}
+
+// hexes a stack can reach this turn: walkers go round obstacles and stacks, flyers go anywhere in range
+export function reachable(B, s) {
+  const out = new Map([[key(s.c, s.r), 0]]), sp = speedOf(s);
+  const blocked = (c, r) => B.obstacles.has(key(c, r)) || !!stackAt(B, c, r);
+  if (s.u.fly) {
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const d = dist(s, [c, r]); if (d <= sp && !blocked(c, r)) out.set(key(c, r), d); }
+    return out;
+  }
+  const q = [[s.c, s.r, 0]];
+  for (let i = 0; i < q.length; i++) {
+    const [c, r, d] = q[i];
+    if (d >= sp) continue;
+    for (const [x, y] of nbrs(c, r)) { const k = key(x, y); if (out.has(k) || blocked(x, y)) continue; out.set(k, d + 1); q.push([x, y, d + 1]); }
+  }
+  return out;
+}
+export const adjacentEnemy = (B, s) => nbrs(s.c, s.r).some(([x, y]) => { const o = stackAt(B, x, y); return o && o.side !== s.side; });
+export const canShoot = (B, s) => s.shots > 0 && !adjacentEnemy(B, s);
+
+// damage: HoMM style, attack vs defence decides the multiplier
+function rollDamage(B, a, d, { ranged = false, melee = false, retal = false } = {}) {
+  const ha = hero(B, a.side), hd = hero(B, d.side);
+  const A = a.u.att + (ha ? ha.att : 0), D = d.u.def + (hd ? hd.def : 0) + (d.fx.stoneskin ? 4 : 0) + (d.defending ? Math.ceil(d.u.def * 0.3) : 0) + (B.town && d.side === (B.town.side ?? 1) && B.town.fort ? Math.ceil(d.u.def * 0.3) : 0);
+  let per = a.fx.bless ? a.u.dmg[1] : a.u.dmg[0] + rnd() * (a.u.dmg[1] - a.u.dmg[0] + 1) | 0;
+  if (a.fx.bless) per = a.u.dmg[1];
+  let dmg = per * a.count;
+  dmg *= A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
+  if (ha) {
+    if (ranged) dmg *= 1 + 0.15 * (ha.skills.archery || 0);
+    else dmg *= 1 + 0.1 * (ha.skills.offense || 0);
+  }
+  if (hd) dmg *= 1 - 0.08 * (hd.skills.armorer || 0);
+  if (melee && a.u.ranged) dmg *= 0.5;
+  if (a.u.jousting && a.moved) dmg *= 1 + 0.05 * a.moved;
+  // luck: a chance of double damage
+  const luck = ha ? (ha.skills.luck || 0) + (ha.luck || 0) : 0;
+  let lucky = false;
+  if (luck > 0 && rnd() < luck * 0.0417) { dmg *= 2; lucky = true; }
+  return { dmg: Math.max(1, Math.round(dmg)), lucky };
+}
+function hurt(B, d, dmg) {
+  const before = d.count;
+  let total = (d.count - 1) * d.u.hp + d.hp - dmg;
+  if (total <= 0) { d.count = 0; d.hp = 0; }
+  else { d.count = Math.ceil(total / d.u.hp); d.hp = total - (d.count - 1) * d.u.hp; }
+  return before - d.count;
+}
+function strike(B, a, d, opts) {
+  const { dmg, lucky } = rollDamage(B, a, d, opts);
+  const killed = hurt(B, d, dmg);
+  B.events.push({ t: opts.ranged ? 'shot' : 'hit', a: a.uid, d: d.uid, dmg, killed, lucky, retal: !!opts.retal });
+  // vampires drain life and raise their dead
+  if (a.u.drain && dmg > 0 && a.count > 0) {
+    let heal = Math.round(dmg * 0.5);
+    while (heal > 0 && a.count < a.start) { const need = a.u.hp - a.hp; if (heal >= need) { heal -= need; a.count++; a.hp = a.u.hp; } else { a.hp += heal; heal = 0; } }
+    if (heal > 0) a.hp = Math.min(a.u.hp, a.hp + heal);
+  }
+  if (d.count <= 0) B.events.push({ t: 'die', s: d.uid });
+}
+export function moveTo(B, s, c, r) {
+  const d = dist(s, [c, r]);
+  B.events.push({ t: 'move', s: s.uid, from: [s.c, s.r], to: [c, r], fly: !!s.u.fly, path: s.u.fly ? null : pathTo(B, s, c, r) });
+  s.c = c; s.r = r; s.moved = d;
+}
+function pathTo(B, s, c, r) {
+  const prev = new Map([[key(s.c, s.r), null]]), q = [[s.c, s.r]];
+  const blocked = (x, y) => B.obstacles.has(key(x, y)) || (stackAt(B, x, y) && stackAt(B, x, y) !== s);
+  for (let i = 0; i < q.length; i++) {
+    const [x0, y0] = q[i];
+    if (x0 === c && y0 === r) break;
+    for (const [x, y] of nbrs(x0, y0)) { const k = key(x, y); if (prev.has(k) || blocked(x, y)) continue; prev.set(k, [x0, y0]); q.push([x, y]); }
+  }
+  const path = []; let cur = [c, r];
+  while (cur) { path.unshift(cur); cur = prev.get(key(cur[0], cur[1])); }
+  return path;
+}
+export function melee(B, a, d) {
+  strike(B, a, d, { melee: true });
+  // the defender strikes back once per round (griffins twice), unless the attacker allows no retaliation
+  const canRetal = (x, y) => y.count > 0 && !x.u.noRetal && (y.retal < (y.u.twoRetal ? 2 : 1));
+  if (canRetal(a, d)) { d.retal++; strike(B, d, a, { melee: true, retal: true }); }
+  // wolves bite twice
+  if (a.u.double && a.count > 0 && d.count > 0) { strike(B, a, d, { melee: true }); if (canRetal(a, d)) { d.retal++; strike(B, d, a, { melee: true, retal: true }); } }
+}
+export function shoot(B, a, d) {
+  a.shots--;
+  const far = dist(a, d) > 6;
+  strike(B, a, d, { ranged: true });
+  if (far) B.events[B.events.length - 1].far = true;
+}
+
+// ---- actions taken by the active stack
+export function actMove(B, s, c, r) { moveTo(B, s, c, r); endTurn(B, s); }
+export function actAttack(B, s, target, from) {
+  if (from && (from[0] !== s.c || from[1] !== s.r)) moveTo(B, s, from[0], from[1]); else s.moved = 0;
+  melee(B, s, target); endTurn(B, s);
+}
+export function actShoot(B, s, target) { shoot(B, s, target); endTurn(B, s); }
+export function actWait(B, s) { s.waited = true; B.events.push({ t: 'wait', s: s.uid }); }
+export function actDefend(B, s) { s.defending = true; B.events.push({ t: 'defend', s: s.uid }); endTurn(B, s); }
+function endTurn(B, s) {
+  s.acted = true; s.moved = 0;
+  // good morale: a chance to act again at once
+  const h = hero(B, s.side), m = h ? (h.skills.leadership || 0) + (h.morale || 0) : 0;
+  if (m > 0 && s.count > 0 && !s.morale && rnd() < m * 0.0417) { s.acted = false; s.morale = true; B.events.push({ t: 'morale', s: s.uid }); }
+  checkOver(B);
+}
+function checkOver(B) {
+  if (B.over) return;
+  if (!alive(B, 0).length) B.over = { winner: 1 };
+  else if (!alive(B, 1).length) B.over = { winner: 0 };
+}
+export function retreat(B, side) { B.over = { winner: 1 - side, fled: side }; }
+
+// the hexes from which a stack can hit a target, nearest first
+export function attackFrom(B, s, t) {
+  const reach = reachable(B, s);
+  return nbrs(t.c, t.r).filter(([x, y]) => reach.has(key(x, y))).sort((p, q) => reach.get(key(p[0], p[1])) - reach.get(key(q[0], q[1])));
+}
+
+// ---- spells cast by a hero, once per round
+export function spellPower(B, side) { const h = hero(B, side); return h ? h.pow : 0; }
+export function castSpell(B, side, id, target, c, r) {
+  const h = hero(B, side), S = SPELLS[id];
+  if (!h || B.cast[side] || h.mana < S.mana) return false;
+  h.mana -= S.mana; B.cast[side] = true;
+  const p = h.pow, boost = 1 + 0.15 * (h.skills.sorcery || 0);
+  const ev = { t: 'spell', id, side, c: target ? target.c : c, r: target ? target.r : r, hits: [] };
+  B.events.push(ev);
+  const zap = (s, base) => { const dmg = Math.round(base * boost); const killed = hurt(B, s, dmg); ev.hits.push({ s: s.uid, dmg, killed }); if (s.count <= 0) B.events.push({ t: 'die', s: s.uid }); };
+  if (id === 'arrow') zap(target, 10 + 10 * p);
+  else if (id === 'bolt') zap(target, 10 + 25 * p);
+  else if (id === 'fireball') { for (const s of alive(B)) if (dist(s, [c, r]) <= 1) zap(s, 15 + 10 * p); }
+  else if (id === 'cure') { let heal = 10 + 5 * p; target.hp = Math.min(target.u.hp, target.hp + heal); delete target.fx.slow; ev.hits.push({ s: target.uid, heal }); }
+  else if (id === 'bless') target.fx.bless = 3;
+  else if (id === 'stoneskin') target.fx.stoneskin = 3;
+  else if (id === 'haste') target.fx.haste = 3;
+  else if (id === 'slow') target.fx.slow = 3;
+  checkOver(B);
+  return true;
+}
+
+// ---- the AI: shooters shoot the most dangerous target, others charge the best target they can reach
+const threat = (s) => s.count * ((s.u.dmg[0] + s.u.dmg[1]) / 2) * (s.u.ranged ? 1.4 : 1);
+export function aiCast(B, side) {
+  const h = hero(B, side);
+  if (!h || B.cast[side]) return false;
+  const known = h.spells.filter((id) => h.mana >= SPELLS[id].mana);
+  if (!known.length) return false;
+  const foes = alive(B, 1 - side).sort((a, b) => threat(b) - threat(a)), mine = alive(B, side).sort((a, b) => threat(b) - threat(a));
+  for (const id of ['bolt', 'fireball', 'arrow', 'bless', 'haste', 'slow', 'stoneskin']) {
+    if (!known.includes(id)) continue;
+    const S = SPELLS[id];
+    if (S.target === 'enemy') { const t = id === 'slow' ? foes.find((f) => !f.fx.slow && !f.u.ranged) : foes[0]; if (t) return castSpell(B, side, id, t); }
+    if (S.target === 'area') { const t = foes[0]; if (t && !mine.some((m) => dist(m, t) <= 1)) return castSpell(B, side, id, null, t.c, t.r); }
+    if (S.target === 'ally') { const t = mine.find((m) => !m.fx[id]); if (t && rnd() < 0.6) return castSpell(B, side, id, t); }
+  }
+  return false;
+}
+export function aiAct(B, s) {
+  const foes = alive(B, 1 - s.side);
+  if (!foes.length) return;
+  if (canShoot(B, s)) { const t = foes.slice().sort((a, b) => threat(b) - threat(a))[0]; actShoot(B, s, t); return; }
+  // melee: the best target in reach (most damage dealt, killers first), else walk toward the nearest
+  let best = null, bestScore = -1e9;
+  for (const t of foes) {
+    const from = attackFrom(B, s, t);
+    if (!from.length && !nbrs(t.c, t.r).some(([x, y]) => x === s.c && y === s.r)) continue;
+    const here = nbrs(t.c, t.r).some(([x, y]) => x === s.c && y === s.r);
+    const sc = threat(t) / (t.count * t.u.hp) * 10 + (t.u.ranged ? 6 : 0) + (here ? 2 : 0) - t.u.def * 0.1;
+    if (sc > bestScore) { bestScore = sc; best = { t, from: here ? [s.c, s.r] : from[0] }; }
+  }
+  if (best) { actAttack(B, s, best.t, best.from); return; }
+  // shooters with no arrows left, or nothing in reach: close in (ranged stacks hang back)
+  if (s.u.ranged && s.shots > 0) { actDefend(B, s); return; }
+  const reach = reachable(B, s);
+  const goal = foes.slice().sort((a, b) => dist(s, a) - dist(s, b))[0];
+  let bk = null, bd = 1e9;
+  for (const k of reach.keys()) { const c = k % COLS, r = (k / COLS) | 0, d = dist([c, r], goal); if (d < bd) { bd = d; bk = [c, r]; } }
+  if (bk && (bk[0] !== s.c || bk[1] !== s.r)) actMove(B, s, bk[0], bk[1]); else actDefend(B, s);
+}
+// quick combat: play the whole fight with the AI on both sides
+export function autoResolve(B, maxSteps = 600) {
+  for (let i = 0; i < maxSteps && !B.over; i++) {
+    const s = nextStack(B);
+    if (!s) break;
+    if (!B.cast[s.side] && rnd() < 0.5) aiCast(B, s.side);
+    if (B.over) break;
+    aiAct(B, s);
+  }
+  if (!B.over) B.over = { winner: alive(B, 0).reduce((a, s) => a + s.count * s.u.hp, 0) >= alive(B, 1).reduce((a, s) => a + s.count * s.u.hp, 0) ? 0 : 1 };
+  return B.over;
+}
+// rough strength of an army, for the AI and for the "how dangerous is this" hint
+export function armyPower(army, h) {
+  let p = 0;
+  for (const [id, n] of army) if (id && n > 0) { const u = UNITS[id]; p += n * u.hp * ((u.dmg[0] + u.dmg[1]) / 2) * (1 + (u.att + u.def) * 0.03) * (u.ranged ? 1.25 : 1) * (u.fly ? 1.1 : 1); }
+  if (h) p *= 1 + (h.att + h.def) * 0.05 + h.pow * 0.03;
+  return p;
+}
