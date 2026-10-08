@@ -342,3 +342,35 @@ body.golden #app::after { content: ''; position: absolute; inset: 0; pointer-eve
 
 .power:disabled, #event button:disabled { filter: grayscale(0.8) brightness(0.7); }
 .m-pop { pointer-events: none; }
+
+/* level height picker: sits on the right just above the tray */
+.lvl { position: absolute; right: 10px; bottom: calc(100% + 40px); display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 16px; z-index: 4;
+  background: linear-gradient(180deg, #3a2a6a, #22184a); border: 2px solid #8a6ad8; box-shadow: 0 3px 0 #120a2a; font-family: 'Lilita One', sans-serif; }
+.lvl button { font: inherit; font-size: 13px; color: #fff; background: #4a3a8a; border: 0; border-radius: 11px; min-width: 30px; height: 30px; padding: 0 8px; }
+.lvl button.on { background: linear-gradient(180deg, #ffd860, #e0a020); color: #3a2400; }
+.lvl b { min-width: 34px; text-align: center; font-size: 15px; color: #ffe27a; font-weight: normal; }
+.lvl.auto b { opacity: 0.45; }
+
+/* blessings and legacy lists */
+.boons { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; }
+.boons button { display: grid; grid-template-columns: 40px 1fr auto; grid-template-rows: auto auto; align-items: center; text-align: left; column-gap: 8px; padding: 9px 12px; border-radius: 14px;
+  font: inherit; color: #fff; background: linear-gradient(180deg, #4a3a8a, #2e2260); border: 2px solid #8a6ad8; box-shadow: 0 3px 0 #160c34; }
+.boons button i { grid-row: 1 / 3; font-style: normal; font-size: 28px; text-align: center; }
+.boons button b { font-family: 'Lilita One', sans-serif; font-weight: normal; font-size: 16px; }
+.boons button b em { color: #ffe27a; font-style: normal; }
+.boons button small { grid-column: 2; font-size: 12px; opacity: 0.85; }
+.boons button > em { grid-column: 3; grid-row: 1 / 3; font-style: normal; font-family: 'Lilita One', sans-serif; color: #ffe27a; }
+.boons button:active { transform: scale(0.97); }
+.boons button.can { border-color: #ffd860; }
+.boons button.own { opacity: 0.6; border-color: #5fd08a; }
+#lg-list button:not(.can):not(.own) { opacity: 0.55; }
+#era-boons button { animation: popin 0.35s backwards; }
+#era-boons button:nth-child(2) { animation-delay: 0.1s; } #era-boons button:nth-child(3) { animation-delay: 0.2s; } #era-boons button:nth-child(4) { animation-delay: 0.3s; }
+#legacy .card { max-height: 86vh; overflow-y: auto; }
+.end-score { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 6px 0; }
+.end-score b { font-family: 'Lilita One', sans-serif; font-weight: normal; font-size: 40px; color: #ffe27a; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.4); }
+.end-score span { font-weight: 800; font-size: 13px; opacity: 0.85; }
+.end-score.best span { color: #ffe27a; opacity: 1; animation: beat 1s infinite; }
+.end-score em { font-style: normal; font-size: 13px; color: #c8b0ff; font-weight: 800; }
+@keyframes beat { 50% { transform: scale(1.08); } }
+#era .card { max-height: 90vh; overflow-y: auto; }
