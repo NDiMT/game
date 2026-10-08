@@ -674,7 +674,7 @@ export function createBattlefield(_THREE, terrainId, hexPos, COLS, ROWS) {
   group.add(ground);
 
   // grid overlay
-  const b = { x0: cx - hx, z0: cz - hz, W: hx * 2, D: hz * 2 };
+  const MG = 0.8, b = { x0: cx - hx - MG, z0: cz - hz - MG, W: hx * 2 + MG * 2, D: hz * 2 + MG * 2 };
   const gridTex = paintGrid(t, hexPos, COLS, ROWS, HS, b);
   const overlay = new THREE.Mesh(new THREE.PlaneGeometry(b.W, b.D).rotateX(-Math.PI / 2).translate(cx, 0.004, cz),
     new THREE.MeshStandardMaterial({ map: gridTex, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
@@ -688,6 +688,35 @@ export function createBattlefield(_THREE, terrainId, hexPos, COLS, ROWS) {
   const placed = [];
   const free = (x, z, r) => placed.every((p) => Math.hypot(p[0] - x, p[1] - z) > (p[2] + r) * 0.8);
   const inView = (x, z) => z < 7.5 && Math.abs(x) < 7 + Math.max(0, -z) * 0.75 && z > -22;
+  // keep the siege tower spots (beside the last column, top and bottom rows) clear
+  for (const r of [0, ROWS - 1]) { const p = hexPos(COLS - 1, r); placed.push([p.x + 1.1, p.z, 1.0]); }
+  // occlusion guard: a prop may never hide any part of a unit standing on any hex, from any battle camera
+  // (yaw -0.6..0.6, distance 8..18, as main.js orbits it), so the border can never cover units.
+  const cams = [];
+  for (const yw of [-0.6, -0.3, 0, 0.3, 0.6]) for (const d of [8, 12.5, 18]) cams.push([Math.sin(yw) * d * 0.55, d, Math.cos(yw) * d * 0.55 + 0.4]);
+  const targets = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const p = hexPos(c, r); for (const y of [0.1, 0.6, 1.1, 1.6]) targets.push([p.x, y, p.z]); }
+  const hides = (x, z, rad, top) => {
+    for (const C of cams) for (const Q of targets) {
+      const dx = Q[0] - C[0], dz = Q[2] - C[2], fx = C[0] - x, fz = C[2] - z;
+      const A = dx * dx + dz * dz, B = 2 * (fx * dx + fz * dz), Cc = fx * fx + fz * fz - rad * rad, disc = B * B - 4 * A * Cc;
+      if (disc <= 0) continue;
+      const sq = Math.sqrt(disc), t0 = Math.max(0, (-B - sq) / (2 * A)), t1 = Math.min(1, (-B + sq) / (2 * A));
+      if (t1 <= t0) continue;
+      if (C[1] + (Q[1] - C[1]) * t1 < top) return true; // lowest point of the ray inside the prop is below its top
+    }
+    return false;
+  };
+  let seedN = 0;
+  const tryPlace = (s, x, z, sc, rot) => {
+    const m = new Mk(t * 1000 + (seedN++) * 17 + 1); s[0](m); const d = m.bake();
+    let top = 0, rad = 0;
+    for (let i = 0; i < d.B.pos.length; i += 3) { top = Math.max(top, d.B.pos[i + 1]); rad = Math.max(rad, Math.hypot(d.B.pos[i], d.B.pos[i + 2])); }
+    for (let i = 0; i < d.G.pos.length; i += 3) { top = Math.max(top, d.G.pos[i + 1]); rad = Math.max(rad, Math.hypot(d.G.pos[i], d.G.pos[i + 2])); }
+    if (hides(x, z, rad * sc * 0.9 + 0.22, top * sc - 0.02)) return false;
+    placed.push([x, z, s[4] * sc]); items.push([d, x, z, sc, rot]);
+    return true;
+  };
   for (let i = 0, n = 0; i < 2500 && n < 95; i++) {
     const x = (R() * 2 - 1) * 20, z = -22 + R() * 30, e = outside(x, z);
     if (e < 0.25 || !inView(x, z)) continue;
@@ -699,29 +728,29 @@ export function createBattlefield(_THREE, terrainId, hexPos, COLS, ROWS) {
     if (s[2] === 'low' && R() > 0.55 + e * 0.1) continue;
     const sc = (s[3][0] + R() * (s[3][1] - s[3][0])) * (front ? 0.65 : 1), rad = s[4] * sc;
     if (e < rad * 0.6 || !free(x, z, rad)) continue;
-    placed.push([x, z, rad]); items.push([s, x, z, sc]); n++;
+    if (tryPlace(s, x, z, sc)) n++;
   }
-  for (let i = 0, n = 0; i < 1500 && n < 70; i++) {
+  for (let i = 0, n = 0; i < 1500 && n < 80; i++) {
     const x = (R() * 2 - 1) * 14, z = -18 + R() * 25, e = outside(x, z);
     if (e < 0.1 || !inView(x, z)) continue;
     const s = choose('scatter'), sc = s[3][0] + R() * (s[3][1] - s[3][0]);
     if (!free(x, z, s[4] * sc)) continue;
-    placed.push([x, z, s[4] * sc]); items.push([s, x, z, sc]); n++;
+    if (tryPlace(s, x, z, sc)) n++;
   }
   // fences framing the near corners (grass / dirt)
   if (t === 1 || t === 2) for (const sx of [-1, 1]) for (let k = 0; k < 2; k++) {
     const x = cx + sx * (hx + 0.5 + k * 1.25), z = cz + hz + 0.35 - k * 0.5;
-    placed.push([x, z, 0.7]); items.push([[(m) => P.fence(m), 0, 'low', [1, 1], 0.6], x, z, 1, sx * (0.25 + k * 0.35)]);
+    tryPlace([(m) => P.fence(m), 0, 'low', [1, 1], 0.6], x, z, 1, sx * (0.25 + k * 0.35));
   }
   // low filler in front of the camera (this strip is a big part of a portrait screen)
-  for (let i = 0, n = 0; i < 600 && n < 26; i++) {
+  for (let i = 0, n = 0; i < 600 && n < 30; i++) {
     const x = cx + (R() * 2 - 1) * (hx + 2), z = cz + hz + 0.2 + R() * 4, e = outside(x, z);
     if (e < 0.15) continue;
     const s = R() < 0.75 ? choose('scatter') : choose('low');
     if (s[4] > 0.56) continue;
     const sc = (s[3][0] + R() * (s[3][1] - s[3][0])) * (s[2] === 'low' ? 0.6 : 1);
     if (!free(x, z, s[4] * sc)) continue;
-    placed.push([x, z, s[4] * sc]); items.push([s, x, z, sc]); n++;
+    if (tryPlace(s, x, z, sc)) n++;
   }
   // water: ponds / puddles / ice sheets (not on lava)
   const waterParts = [];
@@ -732,14 +761,15 @@ export function createBattlefield(_THREE, terrainId, hexPos, COLS, ROWS) {
       if (e < r + 0.4 || !inView(x, z) || !free(x, z, r)) continue;
       placed.push([x, z, r]);
       waterParts.push(G.disc(r, 16, 0.3, i + t).scale(1, 1, 0.7 + R() * 0.3).rotateY(R() * 3).translate(x, groundH(x, z) + 0.06, z));
+      if (t === 5 || t === 1) tryPlace([(m) => P.lilyPads(m, 6, r * 0.7), 0, 'low', [1, 1], 0], x, z, 1, 0);
+      if (t !== 4) for (let k = 0; k < 4; k++) { const a = R() * 6.28; tryPlace([(m) => P.reeds(m), 0, 'low', [1, 1], 0.3], x + Math.cos(a) * r * 0.95, z + Math.sin(a) * r * 0.75, 0.8 + R() * 0.3); }
       n++;
     }
   }
 
   const all = { pos: [], col: [] }, glow = { pos: [], col: [] }, mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new V3();
   const append = (dst, src) => { for (let i = 0; i < src.pos.length; i += 3) { v.set(src.pos[i], src.pos[i + 1], src.pos[i + 2]).applyMatrix4(mtx); dst.pos.push(v.x, v.y, v.z); } for (const c of src.col) dst.col.push(c); };
-  items.forEach(([s, x, z, sc, rot], i) => {
-    const m = new Mk(t * 1000 + i * 17 + 1); s[0](m); const d = m.bake();
+  items.forEach(([d, x, z, sc, rot]) => {
     // sink into slopes a little
     const y = Math.min(groundH(x, z), groundH(x + 0.4, z), groundH(x - 0.4, z), groundH(x, z + 0.4), groundH(x, z - 0.4)) - 0.02;
     q.setFromAxisAngle(new V3(0, 1, 0), rot ?? R() * 6.28);

@@ -245,7 +245,7 @@ function spire(k, x, y, z, rad, h, roofH, o = {}) {
     const wy = y + h * f, rr = rad * (1 - 0.1 * f) * 0.98;
     k.at(x + Math.sin(a) * rr, wy, z + Math.cos(a) * rr, a, 1, () => { k.poly(lancetPts(rad * 0.38, rad * 0.75, 0.8), 0, 0, 0.01, C.green, { glow: true }); });
   }
-  if (o.pennant) { const py = top + roofH; k.limb([x, py, z], [x, py + 0.45, z], 0.012, 0.01, C.bone, 4); pennant(k, x, py + 0.36, z, 0.45, 0.16, C.red, o.pennant); }
+  if (o.pennant) { const py = top + roofH, pl = Math.min(0.45, rad * 1.8); k.limb([x, py, z], [x, py + pl, z], 0.012, 0.01, C.bone, 4); pennant(k, x, py + pl * 0.8, z, pl, pl * 0.36, C.red, o.pennant); }
   return top + roofH;
 }
 // a green-flame brazier on a bone stand
@@ -421,17 +421,17 @@ function hall3() {
   });
   // front spires
   for (const s of [-1, 1]) {
-    spire(k, s * 0.66, Y, 0.55, 0.28, 2.0, 1.15, { pennant: s });
+    spire(k, s * 0.66, Y, 0.55, 0.28, 1.75, 1.0, { pennant: s });
     banner(k, s * 0.66, 1.65, 0.86, 0.26, 0.8);
   }
   // the great central spire over the crossing
   const cz = -0.45;
-  k.lathe([[0.36, 0], [0.32, 1.3], [0.4, 1.36], [0.4, 1.46], [0.24, 1.46]], 0, Y + 1.25, cz, C.stone, 8, { top: 1.15, bot: 0.85 });
-  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; k.at(Math.sin(a) * 0.34, Y + 1.85, cz + Math.cos(a) * 0.34, a, 1, () => k.poly(lancetPts(0.12, 0.32), 0, 0, 0.01, C.green, { glow: true })); }
-  for (let s = 0; s < 8; s++) { const b = s / 8 * TAU; k.cone(0.04, 0.22, Math.sin(b) * 0.4, Y + 2.7, cz + Math.cos(b) * 0.4, C.bone, 4, { rz: -Math.sin(b) * 0.3, rx: Math.cos(b) * 0.3 }); }
-  k.cone(0.34, 0.6, 0, Y + 2.71, cz, C.roof, 8, { top: 1.6, bot: 0.9 });
-  k.ball(0.09, 0, Y + 3.38, cz, C.green, 1, { glow: true });
-  k.tor(0.15, 0.015, 0, Y + 3.38, cz, C.greenD, TAU, { glow: true, rx: 0.4, rs: 14 });
+  k.lathe([[0.36, 0], [0.32, 1.0], [0.4, 1.06], [0.4, 1.16], [0.24, 1.16]], 0, Y + 1.25, cz, C.stone, 8, { top: 1.15, bot: 0.85 });
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; k.at(Math.sin(a) * 0.34, Y + 1.7, cz + Math.cos(a) * 0.34, a, 1, () => k.poly(lancetPts(0.12, 0.32), 0, 0, 0.01, C.green, { glow: true })); }
+  for (let s = 0; s < 8; s++) { const b = s / 8 * TAU; k.cone(0.04, 0.22, Math.sin(b) * 0.4, Y + 2.4, cz + Math.cos(b) * 0.4, C.bone, 4, { rz: -Math.sin(b) * 0.3, rx: Math.cos(b) * 0.3 }); }
+  k.cone(0.34, 0.6, 0, Y + 2.41, cz, C.roof, 8, { top: 1.6, bot: 0.9 });
+  k.ball(0.09, 0, Y + 3.1, cz, C.green, 1, { glow: true });
+  k.tor(0.15, 0.015, 0, Y + 3.1, cz, C.greenD, TAU, { glow: true, rx: 0.4, rs: 14 });
   // flying bone buttresses from the spires to the tower
   for (const s of [-1, 1]) {
     const P = []; for (let i = 0; i <= 4; i++) { const t = i / 4; P.push([s * (0.6 - t * 0.28), Y + 1.65 + Math.sin(t * Math.PI) * 0.15 + t * 0.35, 0.45 - t * 0.75]); }
@@ -444,7 +444,7 @@ function hall3() {
     brazier(k, s * 0.5, Y, 1.05, 1.2);
     k.at(s * 0.95, Y, 0.95, 0, 1, () => { k.box(0.16, 0.5, 0.16, 0, 0, 0, C.stoneL, { top: 1.15 }); k.cone(0.12, 0.25, 0, 0.5, 0, C.roof, 4, { ry: Math.PI / 4 }); skull(k, 0, 0.62, 0.0, 0.07); });
   }
-  wisps(k, [[-0.95, 2.4, 0.3, 1], [0.95, 2.7, -0.1, 0.8], [0.35, 3.0, 0.4, 0.7]]);
+  wisps(k, [[-0.95, 2.3, 0.3, 1], [0.95, 2.6, -0.1, 0.8], [0.35, 2.8, 0.4, 0.7]]);
   return finish(k);
 }
 
@@ -584,17 +584,17 @@ function mage(level) {
   plinth(k, 1.5, 1.5, 0.06, C.stoneL);
   const Y = 0.06;
   // ground tier: an octagonal crypt base
-  k.lathe([[0.62, 0], [0.6, 0.12], [0.55, 0.15], [0.52, 0.95], [0.6, 1.0], [0.6, 1.08], [0.4, 1.08]], 0, Y, 0, C.stone, 8, { top: 1.12, bot: 0.86 });
-  k.cyl(0.535, 0.535, 0.05, 0, Y + 0.5, 0, C.boneD, 8);
+  k.lathe([[0.62, 0], [0.6, 0.12], [0.55, 0.15], [0.52, 0.72], [0.6, 0.78], [0.6, 0.86], [0.4, 0.86]], 0, Y, 0, C.stone, 8, { top: 1.12, bot: 0.86 });
+  k.cyl(0.535, 0.535, 0.05, 0, Y + 0.4, 0, C.boneD, 8);
   door(k, 0, Y + 0.12, 0.5, 0.22, 0.32, { glowIn: true });
-  for (const a of [0.8, -0.8, 2.3, -2.3]) k.at(Math.sin(a) * 0.51, Y + 0.6, Math.cos(a) * 0.51, a, 1, () => k.poly(lancetPts(0.09, 0.2), 0, 0, 0.01, C.green, { glow: true }));
+  for (const a of [0.8, -0.8, 2.3, -2.3]) k.at(Math.sin(a) * 0.51, Y + 0.48, Math.cos(a) * 0.51, a, 1, () => k.poly(lancetPts(0.09, 0.2), 0, 0, 0.01, C.green, { glow: true }));
   // bone ribs climbing the base
   for (const a of [Math.PI / 8 + Math.PI / 4, -Math.PI / 8 - Math.PI / 4, Math.PI - Math.PI / 8, Math.PI + Math.PI / 8]) {
     const x = Math.sin(a), z = Math.cos(a);
-    k.limb([x * 0.68, Y, z * 0.68], [x * 0.56, Y + 0.95, z * 0.56], 0.04, 0.03, C.bone, 5);
+    k.limb([x * 0.68, Y, z * 0.68], [x * 0.56, Y + 0.75, z * 0.56], 0.04, 0.03, C.bone, 5);
   }
-  let y = Y + 1.08, r = 0.4, top;
-  const tiers = [[1.0, 0.4], [0.75, 0.3], [0.85, 0.25]];
+  let y = Y + 0.86, r = 0.4, top;
+  const tiers = [[0.85, 0.4], [0.68, 0.3], [0.72, 0.25]];
   for (let i = 0; i < level; i++) {
     const [h, rr] = tiers[i];
     k.lathe([[rr * 1.05, 0], [rr * 0.93, h], [rr * 1.25, h + 0.05], [rr * 1.25, h + 0.12], [rr * 0.7, h + 0.12]], 0, y, 0, i % 2 ? C.stoneL : C.stone, 8, { top: 1.12, bot: 0.88 });
@@ -604,7 +604,7 @@ function mage(level) {
     for (let s = 0; s < 8; s++) { const b = s / 8 * TAU; k.cone(0.03, 0.12, Math.sin(b) * rr * 1.2, y + h + 0.11, Math.cos(b) * rr * 1.2, C.bone, 4); }
     y += h + 0.12; r = rr;
   }
-  const roofH = [0, 0.9, 0.9, 0.0][level];
+  const roofH = [0, 0.7, 0.62, 0.0][level];
   if (level < 3) {
     k.cone(r * 1.15, roofH, 0, y, 0, C.roof, 8, { top: 1.5, bot: 0.9 });
     top = y + roofH;
@@ -623,12 +623,12 @@ function mage(level) {
   }
   // side annex: book/coffin shelf with a small turret (level 2+), floating tomes (level 3)
   if (level >= 2) {
-    spire(k, -0.58, Y, -0.35, 0.16, 0.9 + level * 0.15, 0.5, { wins: [[0, 0.55]] });
+    spire(k, -0.58, Y, -0.35, 0.16, 0.7 + level * 0.15, 0.45, { wins: [[0, 0.55]] });
     banner(k, 0, Y + 1.0, 0.56, 0.24, 0.55);
   }
   if (level >= 3) {
-    spire(k, 0.58, Y, -0.38, 0.14, 1.3, 0.45, { wins: [[0, 0.55]] });
-    for (const [x, yy, z, c] of [[0.5, 2.6, 0.2, C.red], [-0.45, 3.0, 0.3, C.violet], [0.35, 3.4, -0.3, C.red]]) { k.box(0.16, 0.04, 0.12, x, yy, z, c, { ry: x, rz: 0.3 }); k.box(0.14, 0.02, 0.1, x, yy + 0.04, z, C.bone, { ry: x, rz: 0.3 }); }
+    spire(k, 0.58, Y, -0.38, 0.14, 1.15, 0.42, { wins: [[0, 0.55]] });
+    for (const [x, yy, z, c] of [[0.52, 2.4, 0.25, C.red], [-0.48, 2.8, 0.3, C.violet], [0.42, 3.15, -0.25, C.red]]) { k.box(0.16, 0.04, 0.12, x, yy, z, c, { ry: x, rz: 0.3 }); k.box(0.14, 0.02, 0.1, x, yy + 0.04, z, C.bone, { ry: x, rz: 0.3 }); }
   }
   brazier(k, 0.5, Y, 0.55, 0.8);
   if (level === 1) tomb(k, -0.5, 0.55, 0.2, 0.9);
@@ -901,8 +901,8 @@ function d6(up) {
     k.at(0, H - 0.18, D / 2 + 0.05, 0, 1, () => { k.box(0.1, 0.1, 0.22, 0, 0, 0, C.bone, { rx: -1.1 }); for (const s of [-1, 1]) k.ball(0.018, s * 0.035, 0.08, 0.06, C.green, 0, { glow: true }); });
   });
   // tower at the left end
-  const tx = up ? -0.85 : -0.82;
-  spire(k, tx, Y, -0.45, up ? 0.3 : 0.25, up ? 1.85 : 1.35, up ? 1.0 : 0.75, { pennant: -1 });
+  const tx = up ? -0.78 : -0.76;
+  spire(k, tx, Y, -0.55, up ? 0.28 : 0.24, up ? 1.85 : 1.35, up ? 1.0 : 0.75, { pennant: -1 });
   // paddock: fence, water trough, armour stand
   fence(k, -1.1, 1.1, 1.1, 1.1, 0.35, 0.2);
   fence(k, -1.1, 1.1, -1.1, 0.15, 0.35, 0.2);
@@ -999,7 +999,7 @@ function d7(up) {
       }, 0xb8a8d8, { top: 1.1, bot: 0.9, ao: false });
     }
     // flanking spires
-    for (const s of [-1, 1]) spire(k, s * 1.12, Y, -0.35, 0.22, 1.55, 0.85, { pennant: s, wins: [[0, 0.6], [s * 1.0, 0.35]] });
+    for (const s of [-1, 1]) spire(k, s * 1.08, Y, -0.35, 0.2, 1.55, 0.85, { pennant: s, wins: [[0, 0.6], [s * 1.0, 0.35]] });
     // ghostly flames in the eye sockets rise as wisps
     wisps(k, [[-0.4, 2.1, 0.7, 0.9], [0.45, 2.3, 0.6, 0.8], [0.0, 2.9, -0.4, 1.0]]);
     for (const s of [-1, 1]) banner(k, s * 0.62, Y + 1.0, 0.15, 0.24, 0.6);
