@@ -520,6 +520,8 @@ function market() {
     for (const x of [-0.54, 0, 0.54]) k.poly([[-0.24, 0], [0.24, 0], [0.24, 0.14], [0, 0.28], [-0.24, 0.14]], x, 0.82, 0.48, C.stoneD);
     k.box(1.66, 0.06, 1.06, 0, 1.06, 0, C.trim);
     k.gable(1.7, 0.6, 1.0, 0, 1.08, 0, C.roof, C.stone, 0, 0.08);
+    for (let i = 0; i <= 4; i++) k.cone(0.03, 0.13, -0.8 + i * 0.4, 1.66, 0, C.bone, 4);
+    for (const x of [-0.5, 0.5]) banner(k, x, 0.8, 0.5, 0.2, 0.42, { emblem: false });
     k.at(0, 1.18, 0.5, 0, 1, () => skull(k, 0, 0.12, 0.02, 0.09));
     // goods inside: crates, urns of bones, a glowing potion shelf
     k.box(1.2, 0.04, 0.2, 0, 0.55, -0.22, C.wood);
@@ -543,6 +545,7 @@ function market() {
   k.box(0.3, 0.2, 0.03, -0.12, Y + 0.72, 0.85, C.red, { ao: false });
   k.ball(0.05, -0.12, Y + 0.82, 0.87, C.bone, 0, { ao: false });
   lantern(k, 0.85, Y, 0.1, 1.0);
+  spire(k, -0.72, Y, -0.72, 0.17, 1.35, 0.55, { wins: [[0, 0.6]], pennant: -1 });
   return finish(k);
 }
 

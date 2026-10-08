@@ -44,8 +44,8 @@ if (mode === 'grid') {
     txt += `${id}: ${g.userData.tris} tris  ${sz.x.toFixed(2)}x${sz.z.toFixed(2)} h${sz.y.toFixed(2)}\n`;
   });
   const rows = Math.ceil(ids.length / cols), W = cols * sp, D = rows * sp * 1.1;
-  const d = Math.max(W / cam.aspect, D) * 1.35 + 4;
-  cam.position.set(0, d * 0.62, D / 2 + d * 0.8); cam.lookAt(0, 0.8, D / 2 - sp * 0.25);
+  const t = Math.tan(15 * Math.PI / 180), d = Math.max(W * 0.5 / (t * cam.aspect), D * 0.5 / t * 0.8) + 3;
+  cam.position.set(0, d * 0.45, D / 2 - sp * 0.4 + d * 0.89); cam.lookAt(0, 1.0, D / 2 - sp * 0.4);
 } else {
   // mock HoMM3 town panorama: fort behind, halls central, dwellings around
   const L = Q.get('built') === 'base'
