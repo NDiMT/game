@@ -15,7 +15,8 @@
 <div id="info"></div>
 <script type="module">
 import * as THREE from 'three';
-import { neutralModel, NEUTRAL_IDS } from '../units_neutral.js';
+import { neutralModel, NEUTRAL_IDS } from '../units_neutral.js?v='+Date.now();
+import { makeBodyMaterial, makeGlowMaterial, tick } from '../materials.js';
 
 // ?id=wolf shows one big; ?a=0.6 fixes the yaw; ?small=1 adds tiny map-guard sized copies
 const Q = new URLSearchParams(location.search);
@@ -34,8 +35,8 @@ Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 });
 scene.add(sun, new THREE.HemisphereLight(0xcfe0ff, 0x4a3a2a, 0.9), new THREE.AmbientLight(0x404a70, 0.3));
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x5aaa3a, roughness: 1 }));
 ground.receiveShadow = true; scene.add(ground);
-const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.75 });
-const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); glowMat.color.setScalar(2.2);
+const bodyMat = makeBodyMaterial(THREE);
+const glowMat = makeGlowMaterial(THREE);
 // one viewport per creature, each with its own camera framed on the model
 const cols = ids.length === 1 ? 1 : ids.length <= 2 ? 2 : ids.length <= 4 ? 2 : 3;
 const rows = Math.ceil(ids.length / cols);
@@ -65,7 +66,7 @@ document.getElementById('info').textContent = info;
 renderer.setScissorTest(true);
 let t = 0;
 renderer.setAnimationLoop(() => {
-  t += 0.01;
+  t += 0.01; tick(t * 3);
   for (const it of items) it.g.rotation.y = fixed ?? t;
   const W = innerWidth / cols, H = innerHeight / rows;
   items.filter((it) => it.cam).forEach((it, i) => {
