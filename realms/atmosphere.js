@@ -59,14 +59,14 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         // sun: small hot disc, a gold corona and a broad rosy-amber wash that warms the whole quadrant
         float disc = smoothstep(0.026, 0.016, ang) * 1.5;
         float corona = exp(-ang * 22.0) * 0.55 + exp(-ang * 7.0) * 0.16;
-        float wash = exp(-ang * 2.0) * 0.05;
+        float wash = exp(-ang * 2.5) * 0.035;
         // god-rays: angular streaks around the sun that slowly turn and breathe
         vec3 t = d - uVis * cs;
         float a = atan(dot(t, uVU), dot(t, uVR));
         float r1 = 0.5 + 0.5 * sin(a * 9.0 + uTime * 0.05) * sin(a * 14.0 - uTime * 0.035 + 1.7);
         float r2 = 0.5 + 0.5 * sin(a * 23.0 + uTime * 0.02 + 0.6);
         float rays = (r1 * r1 * r1 * 0.8 + r2 * r2 * r2 * r2 * 0.35) * (0.8 + 0.2 * sin(uTime * 0.3));
-        rays *= exp(-ang * 3.0) * smoothstep(0.02, 0.1, ang) * 0.22;
+        rays *= exp(-ang * 4.5) * smoothstep(0.02, 0.1, ang) * 0.16;
         c += vec3(1.0, 0.93, 0.78) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.9, 0.5, 0.55) * wash
            + vec3(1.0, 0.82, 0.55) * rays;
         gl_FragColor = vec4(c, 1.0);
@@ -460,26 +460,26 @@ function bakeNebula(W, H, rand) {
       const dust = Math.max(0, n2 - 0.5) * 2.0 * Math.exp(-bandD * bandD * 30);
       // twilight base: royal blue above, indigo-violet below, never black
       const up = y * 0.5 + 0.5;
-      let r = 0.022 + 0.026 * (1 - up), g = 0.03 + 0.012 * up, b = 0.12 + 0.03 * up;
+      let r = 0.012 + 0.016 * (1 - up), g = 0.016 + 0.01 * up, b = 0.07 + 0.025 * up;
       // big soft colour wash (violet <-> deep teal)
       const w1 = n3 * n3, w2 = (1 - n3) * (1 - n3);
-      r += w1 * 0.09 + w2 * 0.0; g += w1 * 0.02 + w2 * 0.05; b += w1 * 0.16 + w2 * 0.1;
+      r += w1 * 0.045; g += w1 * 0.008 + w2 * 0.03; b += w1 * 0.07 + w2 * 0.05;
       const w = n1 * n1 * n1;
-      r += w * 0.1; g += w * 0.03; b += w * 0.16;
+      r += w * 0.05; g += w * 0.015; b += w * 0.09;
       // the milky band: luminous lavender-blue core, rosy fringes, soft dust lanes
       const bandC = band * band;
-      r += bandC * (0.14 + 0.12 * n2); g += bandC * (0.13 + 0.06 * n2); b += bandC * 0.28;
+      r += bandC * (0.07 + 0.07 * n2); g += bandC * (0.07 + 0.03 * n2); b += bandC * 0.16;
       r *= 1 - dust * 0.35; g *= 1 - dust * 0.4; b *= 1 - dust * 0.3;
       // coloured nebula clouds with brighter cores
       for (const bl of blobs) {
         const dd = 1 - (x * bl.d[0] + y * bl.d[1] + z * bl.d[2]);
         const m = Math.max(0, n1 * 1.8 - 0.42);
-        const k = Math.exp(-dd * bl.w) * (m * m * (0.6 + n2) * 1.5 + Math.exp(-dd * bl.w * 4) * 0.12);
+        const k = Math.exp(-dd * bl.w * 1.7) * (m * m * (0.6 + n2) * 0.9 + Math.exp(-dd * bl.w * 4) * 0.06);
         r += bl.c[0] * k; g += bl.c[1] * k; b += bl.c[2] * k;
       }
       // a soft glow behind the big moon
       const gd = 1 - (x * glowDir[0] + y * glowDir[1] + z * glowDir[2]);
-      const gk = Math.exp(-gd * 6) * 0.1;
+      const gk = Math.exp(-gd * 6) * 0.06;
       r += gk * 0.7; g += gk * 0.85; b += gk * 1.1;
       const o = (j * W + i) * 4;
       D[o] = toS(r); D[o + 1] = toS(g); D[o + 2] = toS(b); D[o + 3] = 255;

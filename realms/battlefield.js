@@ -41,8 +41,8 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // ------------------------------------------------------------------ terrain palettes
 const LIN = (h) => new THREE.Color(h);
 const TERRAINS = {
-  1: { name: 'grass', sky: 0x9fd2f6, fog: [0xc6e4f6, 17, 42], sun: [0xfff3d6, 2.75], hemi: [0xdcefff, 0x9ab868, 1.25], amb: [0x8a9ab8, 0.45], exposure: 1.08,
-    tint: [0x80c44c, 0x62ae3e, 0xb0d060], grid: [36, 78, 22], gridHi: [236, 255, 190], field: [255, 246, 190], water: 0x4a9ac8, hill: 0.9, edge: [150, 120, 64] },
+  1: { name: 'grass', sky: 0x9fd2f6, fog: [0xc6e4f6, 17, 42], sun: [0xfff3d6, 2.6], hemi: [0xdcefff, 0x8ab060, 1.15], amb: [0x8a9ab8, 0.42], exposure: 1.05,
+    tint: [0x74bc44, 0x58a63a, 0xa4cc58], grid: [36, 78, 22], gridHi: [236, 255, 190], field: [240, 250, 170], fieldA: 0.08, water: 0x4a9ac8, hill: 0.9, edge: [150, 120, 64] },
   2: { name: 'dirt', sky: 0xb8daf4, fog: [0xecdcc0, 16, 40], sun: [0xffeac4, 2.75], hemi: [0xe8eefa, 0xb08a5c, 1.2], amb: [0x988a90, 0.45], exposure: 1.08,
     tint: [0xc49a68, 0xa87e52, 0xd2b07a], grid: [88, 58, 30], gridHi: [255, 236, 200], field: [255, 236, 196], water: 0x5a9ab0, hill: 0.8, edge: [120, 90, 54] },
   3: { name: 'sand', sky: 0xa8d4f2, fog: [0xf4dcb0, 16, 40], sun: [0xfff0d4, 2.55], hemi: [0xf4f0e8, 0xb88a50, 1.0], amb: [0x988870, 0.38], exposure: 1.0,
@@ -370,14 +370,16 @@ const P = {
 };
 
 // ------------------------------------------------------------------ battlefield obstacles (fit one hex: ~0.85 wide)
+// build fn's parts scaled by k about the origin (keeps obstacles short enough never to hide the unit behind)
+const shrink = (m, k, fn) => { const n = m.B.length, ng = m.G.length; fn(m); for (const p of m.B.slice(n)) p.g.scale(k, k, k); for (const p of m.G.slice(ng)) p.g.scale(k, k, k); };
 const OBST = {
   1: [(m) => P.mossyBoulder(m), (m) => { P.log(m, 0x9a6a3c, 0xeac48a, 0x6ab83a, 0.85, 0.15); P.mushrooms(m, 0xe84a32, null, 2, 0.6); P.fern(m, 0x4aa034, 0x9ad060, 3); }, (m) => P.flowerBush(m, 0x4caa38, 0x9ad85a, m.pick([0xff8ac0, 0xffe060, 0xb0a0ff]))],
-  2: [(m) => { P.rockPile(m, 0xb8a080, 0xd8c4a0); P.tuft(m, 0xa09040, 0xd8c870, 4, 0.26); }, (m) => { P.roundTree(m, 0xd8782a, 0xffc850, 0x8a6040); }, (m) => { P.column(m, 0xd4c4a4, 0xf0e4c8, 0.55); m.add(G.rock(5, 0.14, 0.1, 0.12, 0).translate(0.32, 0, 0.2), 0xd4c4a4); m.add(G.rock(6, 0.1, 0.08, 0.1, 0).translate(-0.28, 0, 0.26), 0xe4d6b8); }],
-  3: [(m) => m.add(G.rock(m.seed, 0.4, 0.42, 0.34, 1, 0.2), 0xe0ae6a, { fn: (v, c) => c.multiplyScalar(0.92 + 0.14 * Math.sin(v.y * 22)), jit: 0.06, cap: 0xf8dca0, capT: 0.7 }), (m) => { P.cactus(m); m.add(G.rock(m.seed, 0.12, 0.09, 0.1, 0).translate(0.3, 0, 0.15), 0xd8a868); }, (m) => { P.bones(m); P.skull(m, -0.3, 0.3, 1.1); }],
-  4: [(m) => P.rockPile(m, 0xa8b4c8, 0xfafcff), (m) => P.iceShards(m, 1), (m) => { P.pine(m, 0x2e7a5a, 0x5aa880, true, 0.5); P.mound(m, 0xf4f8fe, 0xffffff, 0.6); }],
-  5: [(m) => { P.log(m, 0x7a6038, 0xc8b080, 0x7ac040, 0.9, 0.15); P.mushrooms(m, 0xb04ac0, 0x9affc0, 2, 0.8); }, (m) => { P.deadTree(m, 0x7a6a48, 0xa8a070, 0.95); P.fern(m, 0x5a9a3a, 0xa0c860, 4); }, (m) => P.mushrooms(m, 0xa04ad0, 0x9affc0, 4, 1.6)],
+  2: [(m) => { P.rockPile(m, 0xb8a080, 0xd8c4a0); P.tuft(m, 0xa09040, 0xd8c870, 4, 0.26); }, (m) => { shrink(m, 0.5, (m) => P.roundTree(m, 0xe0802a, 0xffcc50, 0x8a6040)); P.tuft(m, 0xa09040, 0xd8c870, 3, 0.22); }, (m) => { P.column(m, 0xd4c4a4, 0xf0e4c8, 0.55); m.add(G.rock(5, 0.14, 0.1, 0.12, 0).translate(0.32, 0, 0.2), 0xd4c4a4); m.add(G.rock(6, 0.1, 0.08, 0.1, 0).translate(-0.28, 0, 0.26), 0xe4d6b8); }],
+  3: [(m) => m.add(G.rock(m.seed, 0.4, 0.42, 0.34, 1, 0.2), 0xe0ae6a, { fn: (v, c) => c.multiplyScalar(0.92 + 0.14 * Math.sin(v.y * 22)), jit: 0.06, cap: 0xf8dca0, capT: 0.7 }), (m) => { shrink(m, 0.82, (m) => P.cactus(m)); m.add(G.rock(m.seed, 0.12, 0.09, 0.1, 0).translate(0.3, 0, 0.15), 0xd8a868); }, (m) => { P.bones(m); P.skull(m, -0.3, 0.3, 1.1); }],
+  4: [(m) => P.rockPile(m, 0xa8b4c8, 0xfafcff), (m) => P.iceShards(m, 1), (m) => { P.pine(m, 0x2e7a5a, 0x5aa880, true, 0.42); P.mound(m, 0xf4f8fe, 0xffffff, 0.6); }],
+  5: [(m) => { P.log(m, 0x7a6038, 0xc8b080, 0x7ac040, 0.9, 0.15); P.mushrooms(m, 0xb04ac0, 0x9affc0, 2, 0.8); }, (m) => { P.deadTree(m, 0x7a6a48, 0xa8a070, 0.75); P.fern(m, 0x5a9a3a, 0xa0c860, 4); }, (m) => P.mushrooms(m, 0xa04ad0, 0x9affc0, 4, 1.6)],
   6: [(m) => P.spire(m, 0xb4a888, 0xd8cdb0, 0.9), (m) => P.crystals(m, 0x6a9aff, 0xa8d0ff, 6, 1, 0xa49c8c), (m) => P.rockPile(m, 0xa89c84, 0xccc0a4, 1.1)],
-  7: [(m) => P.magmaRock(m), (m) => { P.spire(m, 0x6a5450, 0x9a7e74, 0.95); m.add(G.disc(0.3, 9, 0.2, 2).translate(0.25, 0.02, 0.2), 0xff8a30, { glow: true, ao: 0 }); }, (m) => P.emberTree(m, 0.95)],
+  7: [(m) => P.magmaRock(m), (m) => { P.spire(m, 0x6a5450, 0x9a7e74, 0.95); m.add(G.disc(0.3, 9, 0.2, 2).translate(0.25, 0.02, 0.2), 0xff8a30, { glow: true, ao: 0 }); }, (m) => P.emberTree(m, 0.75)],
 };
 const terId = (t) => (TERRAINS[t] ? t : 1);
 const obstCache = new Map();
@@ -611,8 +613,8 @@ function paintGround(t) {
   // soft sunny dapples: big warm light pools and cool coloured shade pools, never black
   const dapple = (light, shade, n = 26, a = 0.16) => { blobs(x, S, R, n, [light], a, 40, 110, 0.7); blobs(x, S, R, (n * 0.6) | 0, [shade], a * 0.8, 40, 100, 0.7); };
   if (t === 1) {
-    fill([114, 180, 66]);
-    blobs(x, S, R, 240, [[96, 162, 54], [138, 198, 80], [104, 172, 60], [156, 208, 88]], 0.35, 20, 80);
+    fill([100, 172, 54]);
+    blobs(x, S, R, 240, [[84, 152, 46], [130, 192, 70], [92, 164, 52], [150, 204, 80]], 0.35, 20, 80);
     dapple([214, 236, 120], [70, 140, 80]);
     strokes(x, S, R, 2200, [[74, 138, 44], [84, 150, 48]], 0.5, 4, 9, 1.6);
     strokes(x, S, R, 1800, [[180, 222, 112], [158, 210, 94]], 0.55, 3, 8, 1.3);
@@ -710,7 +712,7 @@ function paintGrid(t, hexPos, COLS, ROWS, HS, bounds) {
   x.filter = 'blur(14px)';
   for (const p of cells) { hexPath(p, 1.25); x.fillStyle = rgba(pal.edge, 0.2); x.fill(); }
   x.filter = 'blur(6px)';
-  for (const p of cells) { hexPath(p, 1.02); x.fillStyle = rgba(pal.field, 0.16); x.fill(); }
+  for (const p of cells) { hexPath(p, 1.02); x.fillStyle = rgba(pal.field, pal.fieldA ?? 0.14); x.fill(); }
   x.filter = 'none';
   // a faint varied tint per hex
   for (const p of cells) { hexPath(p, 1); x.fillStyle = rgba(pal.field, 0.03 + R() * 0.06); x.fill(); }

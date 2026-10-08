@@ -349,7 +349,7 @@ function marksman() {
   k.lathe([[0.125, 0.53], [0.14, 0.6], [0.165, 0.68], [0.168, 0.74], [0.13, 0.79]], [0, 0, 0.006], STEEL_L, { s: [1, 1, 0.8], grad: [0.8, 1.15], seg: 8, phi: -1.2, len: 2.4 });
   k.box(0.022, 0.24, 0.02, [0, 0.66, 0.132], GOLD, { r: [-0.2, 0, 0] });
   // long blue cape with gold hem
-  cape(k, { y0: 0.18, y1: 0.8, r0: 0.27, r1: 0.16, col: BLUE, lin: GOLD_D, hem: GOLD, arc: 2.1 });
+  cape(k, { y0: 0.18, y1: 0.8, r0: 0.27, r1: 0.16, col: BLUE, lin: GOLD, hem: GOLD_L, arc: 2.1 });
   // wide-brimmed feathered hat
   k.lathe([[0.2, 0.985], [0.19, 0.975], [0.12, 0.985], [0.11, 1.0]], [0, 0, 0], BLUE_D, { seg: 10, grad: [0.85, 1.1] });
   k.lathe([[0.2, 0.985], [0.2, 0.975]], [0, 0, 0], BLUE, { seg: 10 });
@@ -367,14 +367,14 @@ function marksman() {
   });
   // gilded crossbow levelled forward
   const s0 = [rhP[0] - 0.01, rhP[1] - 0.02, rhP[2] - 0.08], s1 = [lhP[0] + 0.03, lhP[1] + 0.02, lhP[2] + 0.12];
-  k.limb(s0, s1, 0.028, 0.022, WOOD, { seg: 5, grad: [0.8, 1.15], sz: 1.4 });
+  k.limb(s0, s1, 0.03, 0.024, 0xb87c40, { seg: 5, grad: [0.9, 1.2], sz: 1.4 });
   k.limb([s0[0], s0[1] - 0.01, s0[2]], [rhP[0] - 0.005, rhP[1] - 0.07, rhP[2] - 0.02], 0.02, 0.02, WOOD_D, { seg: 4 });
   const nose = V3(s1);
   k.cyl(0.03, 0.03, 0.04, [nose.x, nose.y - 0.02, nose.z - 0.01], GOLD, { seg: 6, r: [Math.PI / 2, 0, 0] });
   // prod: a recurved steel bow across the front
   const P = [];
-  for (let i = 0; i <= 8; i++) { const t = i / 4 - 1; P.push([nose.x + t * 0.24, nose.y + 0.005, nose.z - 0.02 - t * t * 0.09 + Math.pow(Math.abs(t), 6) * 0.05]); }
-  for (let i = 0; i < 8; i++) k.limb(P[i], P[i + 1], 0.016, 0.016, i === 0 || i === 7 ? GOLD : STEEL_L, { seg: 4 });
+  for (let i = 0; i <= 8; i++) { const t = i / 4 - 1; P.push([nose.x + t * 0.3, nose.y + 0.005, nose.z - 0.02 - t * t * 0.09 + Math.pow(Math.abs(t), 6) * 0.05]); }
+  for (let i = 0; i < 8; i++) k.limb(P[i], P[i + 1], 0.022, 0.022, i === 0 || i === 7 ? GOLD_L : i === 3 || i === 4 ? GOLD : STEEL_L, { seg: 4 });
   const nut = [s0[0] + (s1[0] - s0[0]) * 0.35, s0[1] + (s1[1] - s0[1]) * 0.35 + 0.02, s0[2] + (s1[2] - s0[2]) * 0.35];
   k.limb(P[0], nut, 0.005, 0.005, CREAM, { seg: 3 });
   k.limb(P[8], nut, 0.005, 0.005, CREAM, { seg: 3 });
@@ -406,7 +406,7 @@ function royalgriffin() {
   k.ell(0.05, 0.085, 0.05, [0, 0.68, -0.78], 0xd89a30, { r: [-0.6, 0, 0] });
   k.cone(0.035, 0.11, [0, 0.72, -0.8], GOLD_L, { r: [-0.6, 0, 0], seg: 4 });
   // feathered chest + neck, gold collar with a gem
-  k.ell(0.165, 0.185, 0.175, [0, 0.51, 0.17], FEATH, { r: [-0.35, 0, 0], grad: [0.8, 1.08] });
+  k.ell(0.165, 0.185, 0.175, [0, 0.51, 0.17], FEATH, { r: [-0.35, 0, 0], grad: [1.0, 1.15] });
   k.limb([0, 0.55, 0.24], [0, 0.73, 0.37], 0.112, 0.087, FEATH, { seg: 7 });
   k.torus(0.1, 0.022, [0, 0.62, 0.3], GOLD, { r: [Math.PI / 2 - 0.85, 0, 0], seg: 14, ts: 4, grad: [0.9, 1.1] });
   k.ball(0.028, [0, 0.6, 0.41], GEM_B, { glow: true, d: 0 });
@@ -420,7 +420,7 @@ function royalgriffin() {
   });
   // eagle head, glowing eyes, golden crown of crest feathers
   const hy = 0.8, hz = 0.43;
-  k.ell(0.098, 0.103, 0.118, [0, hy, hz], FEATH, { grad: [0.88, 1.1] });
+  k.ell(0.098, 0.103, 0.118, [0, hy, hz], FEATH, { grad: [1.0, 1.15] });
   k.cone(0.05, 0.145, [0, hy - 0.01, hz + 0.08], BEAK, { r: [Math.PI / 2 - 0.15, 0, 0], seg: 5, grad: [0.9, 1.1] });
   k.cone(0.025, 0.062, [0, hy - 0.02, hz + 0.215], BEAK, { r: [Math.PI - 0.3, 0, 0], seg: 4 });
   k.sym(() => {
@@ -472,8 +472,8 @@ function crusader() {
     k.sym(() => k.ball(0.02, [0.1, 0.03, 0], GOLD_L, { d: 0 }));
     k.limb([0, -0.07, 0], [0, 0.02, 0], 0.017, 0.017, CRIMSON_D, { seg: 5 });
     k.ball(0.024, [0, -0.08, 0], GEM_R, { d: 0, glow: true });
-    k.plate([[-0.03, 0], [0.03, 0], [0.026, 0.5], [0, 0.58], [-0.026, 0.5]], 0.013, [0, 0.045, 0], STEEL_L, { r: [0, Math.PI / 2, 0], grad: [0.85, 1.25] });
-    k.box(0.016, 0.42, 0.008, [0, 0.27, 0], 0xd8f0ff, { r: [0, Math.PI / 2, 0], glow: true, s: [1, 1, 1] });
+    k.plate([[-0.03, 0], [0.03, 0], [0.026, 0.5], [0, 0.58], [-0.026, 0.5]], 0.013, [0, 0.045, 0], 0xf4f6ff, { r: [0, Math.PI / 2, 0], grad: [0.95, 1.25] });
+    k.box(0.012, 0.42, 0.022, [0, 0.27, 0], 0xc8ecff, { r: [0, Math.PI / 2, 0], glow: true });
   });
   // white kite shield with crimson cross and gold rim
   shield(k, [L[0] - 0.03, L[1] + 0.02, L[2] + 0.05], [0.05, -0.35, 0.05], 1.12, WHITE, GOLD, 'cross');
