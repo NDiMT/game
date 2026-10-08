@@ -1,6 +1,7 @@
 // Sky, atmosphere and ambience around the hex planet.
 // createAtmosphere(THREE, scene, { R }) -> { update(dt, camera), setFog(on), gradeGLSL }
 //
+// The sky dome also draws a screen-anchored sun with a corona and slow god-rays (top-right, peeking over the limb).
 // Draw-call budget: sky dome 1, stars 1, moons 2 + halos 2, atmosphere halo 1, limb haze 1,
 // clouds 1 (instanced), birds 1 (instanced), motes 1 = 11 cheap draws, ~14k tris total.
 
@@ -67,7 +68,7 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         float r2 = 0.5 + 0.5 * sin(a * 23.0 + uTime * 0.02 + 0.6);
         float rays = (r1 * r1 * r1 * 0.8 + r2 * r2 * r2 * r2 * 0.35) * (0.8 + 0.2 * sin(uTime * 0.3));
         rays *= exp(-ang * 10.0) * smoothstep(0.02, 0.07, ang) * 0.2;
-        c += vec3(1.0, 0.93, 0.78) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.9, 0.5, 0.55) * wash
+        c += vec3(1.0, 0.88, 0.66) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.9, 0.5, 0.55) * wash
            + vec3(1.0, 0.82, 0.55) * rays;
         gl_FragColor = vec4(c, 1.0);
       }`,

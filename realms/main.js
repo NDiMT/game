@@ -191,10 +191,12 @@ function updateCamera(dt) {
   cam.dist += (cam.tDist - cam.dist) * Math.min(1, dt * 6);
   // close up, the camera tilts toward the horizon like a strategy map
   const f = clamp((16 - cam.dist) / 9, 0, 1);
-  camera.position.setFromSphericalCoords(cam.dist, cam.phi + f * 0.5, cam.theta);
+  const cphi = cam.phi + f * 0.5;
+  camera.position.setFromSphericalCoords(cam.dist, cphi, cam.theta);
   if (cam.shake > 0) { camera.position.x += (rnd() - 0.5) * cam.shake * 0.1; cam.shake = Math.max(0, cam.shake - dt * 2); }
   lookAtP.setFromSphericalCoords(R * f * 0.98, cam.phi, cam.theta);
-  camera.up.set(0, 1, 0);
+  // 'up' is the local north tangent: continuous even when the tilt carries the camera past a pole
+  camera.up.set(-Math.cos(cphi) * Math.sin(cam.theta), Math.sin(cphi), -Math.cos(cphi) * Math.cos(cam.theta));
   camera.lookAt(lookAtP);
   // the shadow-casting sun follows the view so shadows stay crisp near the camera
   const focus = lookAtP.lengthSq() > 0.01 ? lookAtP.clone().setLength(R) : camera.position.clone().setLength(R);
@@ -258,7 +260,7 @@ const post = (() => {
     fragmentShader: `uniform sampler2D tScene; uniform sampler2D tBloom; varying vec2 vUv;
       ${gradeGLSL}
       void main() { vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * 0.8; c = grade(c); c = c / (1.0 + c * 0.12);
-        float v = smoothstep(1.15, 0.35, length(vUv - 0.5)); c *= mix(0.72, 1.0, v);
+        float v = smoothstep(1.15, 0.35, length(vUv - 0.5)); c *= mix(0.84, 1.0, v);
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -1684,4 +1686,4 @@ layoutWorld();
 resize();
 showMenu();
 frame();
-window.__realms = { G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld };
+window.__realms = { G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam };

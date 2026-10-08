@@ -565,7 +565,7 @@ function peakPaint(kind, H) {
   const rock = kind === 'snow' ? COLD_PEAK : kind === 'volcano' ? BASALT : ROCK_PEAK;
   const grass = kind === 'volcano' ? ramp(0x7a4a34, 0x9a6040) : kind === 'snow' ? ramp(0xc8d8f0, 0xf0f6ff) : ramp(0x4a9a2e, 0x86c446);
   const SN = ramp(0xa8bce8, 0xd4e0f8, 0xf6f9ff, 0xffffff);
-  const snowLine = kind === 'snow' ? 0.4 : 0.54;
+  const snowLine = kind === 'snow' ? 0.48 : 0.54;
   return (p, n) => {
     const m = fbm(p.x * 4 + 7, p.y * 4, p.z * 4), fine = noise(p.x * 14, p.y * 14, p.z * 14), t = p.y / H;
     const facing = n.x * 0.55 + n.z * 0.45; // painted key light so ridges read even in shade
