@@ -31,17 +31,20 @@ export function createBattle({ armyA, heroA, armyB, heroB, town = false }) {
     });
   };
   place(armyA, 0); place(armyB, 1);
-  B.walls = new Set();
+  // siege: a wall row one row in front of the defenders' two deployment rows, with a 1-hex gate in
+  // the middle. The gate is open to the defenders only, until the attackers batter it down.
+  B.walls = new Set(); B.gate = null; B.wallRow = null; B.gateHp = 0; B.gateOpen = false;
   if (town && town.fort) {
     const def = town.side ?? 1, row = def === 1 ? 2 : ROWS - 3, gate = (COLS - 1) >> 1;
     for (let c = 0; c < COLS; c++) if (c !== gate) { B.walls.add(key(c, row)); B.obstacles.add(key(c, row)); }
-    B.gate = key(gate, row);
+    B.gate = key(gate, row); B.wallRow = row; B.gateHp = 2 + Math.round(town.power || 2);
   }
-  // a few rocks and dead trees in the middle rows
+  // a few rocks and dead trees in the middle rows (never right in front of the gate)
+  const nearGate = (c, r) => B.gate != null && nbrs(B.gate % COLS, (B.gate / COLS) | 0).some(([x, y]) => x === c && y === r);
   const nObs = 3 + ((rnd() * 4) | 0);
-  for (let i = 0; i < nObs * 3 && B.obstacles.size < nObs; i++) {
+  for (let i = 0; i < nObs * 3 && B.obstacles.size - B.walls.size < nObs; i++) {
     const c = (rnd() * COLS) | 0, r = 3 + ((rnd() * (ROWS - 6)) | 0);
-    if (!B.stacks.some((s) => s.c === c && s.r === r) && !B.walls?.has(key(c, r)) && Math.abs(r - (B.town?.side === 0 ? ROWS - 3 : 2)) > 0) B.obstacles.add(key(c, r));
+    if (!B.stacks.some((s) => s.c === c && s.r === r) && !B.walls.has(key(c, r)) && r !== B.wallRow && !nearGate(c, r)) B.obstacles.add(key(c, r));
   }
   newRound(B);
   return B;
@@ -49,6 +52,10 @@ export function createBattle({ armyA, heroA, armyB, heroB, town = false }) {
 export const alive = (B, side) => B.stacks.filter((s) => s.count > 0 && (side === undefined || s.side === side));
 export const stackAt = (B, c, r) => B.stacks.find((s) => s.count > 0 && s.c === c && s.r === r);
 const hero = (B, side) => B.heroes[side];
+// the closed gate stops the attackers (defenders walk through their own gate)
+const gateShut = (B, s) => B.gate != null && !B.gateOpen && s.side !== (B.town?.side ?? 1);
+const blockedFor = (B, s, c, r) => { const k = key(c, r); if (B.obstacles.has(k) || (k === B.gate && gateShut(B, s))) return true; const o = stackAt(B, c, r); return !!o && o !== s; };
+export const isGate = (B, c, r) => B.gate === key(c, r);
 export const speedOf = (s) => Math.max(1, Math.round((s.u.spd + (s.fx.haste ? 3 : 0)) * (s.fx.slow ? 0.5 : 1)));
 
 function newRound(B) {
@@ -62,6 +69,12 @@ function newRound(B) {
   // the town's arrow tower shoots at an attacker every round
   if (B.town && B.town.fort && B.round > 1) {
     const def = B.town.side ?? 1, foes = B.stacks.filter((s) => s.count > 0 && s.side !== def);
+    // attackers on foot next to the closed gate batter it; it gives way after a few blows
+    if (B.gate != null && !B.gateOpen) {
+      const gc = B.gate % COLS, gr = (B.gate / COLS) | 0;
+      const rams = foes.filter((s) => !s.u.fly && nbrs(gc, gr).some(([x, y]) => x === s.c && y === s.r)).length;
+      if (rams) { B.gateHp = Math.max(0, B.gateHp - rams); B.events.push({ t: 'gate', hp: B.gateHp, broken: B.gateHp <= 0, c: gc, r: gr }); if (B.gateHp <= 0) B.gateOpen = true; }
+    }
     if (foes.length) { const t = foes[(rnd() * foes.length) | 0], dmg = 10 + (B.town.power || 3) * 6; const killed = hurt(B, t, dmg); B.events.push({ t: 'tower', s: t.uid, dmg, killed, side: def }); if (t.count <= 0) B.events.push({ t: 'die', s: t.uid }); checkOver(B); }
   }
 }
@@ -85,7 +98,7 @@ export function queue(B, n = 8) {
 // hexes a stack can reach this turn: walkers go round obstacles and stacks, flyers go anywhere in range
 export function reachable(B, s) {
   const out = new Map([[key(s.c, s.r), 0]]), sp = speedOf(s);
-  const blocked = (c, r) => B.obstacles.has(key(c, r)) || !!stackAt(B, c, r);
+  const blocked = (c, r) => blockedFor(B, s, c, r);
   if (s.u.fly) {
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const d = dist(s, [c, r]); if (d <= sp && !blocked(c, r)) out.set(key(c, r), d); }
     return out;
@@ -152,7 +165,7 @@ export function moveTo(B, s, c, r) {
 }
 function pathTo(B, s, c, r) {
   const prev = new Map([[key(s.c, s.r), null]]), q = [[s.c, s.r]];
-  const blocked = (x, y) => B.obstacles.has(key(x, y)) || (stackAt(B, x, y) && stackAt(B, x, y) !== s);
+  const blocked = (x, y) => blockedFor(B, s, x, y);
   for (let i = 0; i < q.length; i++) {
     const [x0, y0] = q[i];
     if (x0 === c && y0 === r) break;
@@ -276,7 +289,12 @@ export function aiAct(B, s) {
   // shooters with no arrows left, or nothing in reach: close in (ranged stacks hang back)
   if (s.u.ranged && s.shots > 0) { actDefend(B, s); return; }
   const reach = reachable(B, s);
-  const goal = foes.slice().sort((a, b) => dist(s, a) - dist(s, b))[0];
+  let goal = foes.slice().sort((a, b) => dist(s, a) - dist(s, b))[0];
+  // besiegers on foot head for the gate while it is shut and the defenders are behind the wall
+  if (gateShut(B, s) && !s.u.fly) {
+    const behind = (t) => (B.town.side ?? 1) === 1 ? t.r < B.wallRow : t.r > B.wallRow;
+    if (behind(goal)) goal = [B.gate % COLS, (B.gate / COLS) | 0];
+  }
   let bk = null, bd = 1e9;
   for (const k of reach.keys()) { const c = k % COLS, r = (k / COLS) | 0, d = dist([c, r], goal); if (d < bd) { bd = d; bk = [c, r]; } }
   if (bk && (bk[0] !== s.c || bk[1] !== s.r)) actMove(B, s, bk[0], bk[1]); else actDefend(B, s);

@@ -419,39 +419,53 @@ function masonry(m, S, x0, x1, y0, y1, d, rows, perRow, z = 0) {
 }
 const siegeCache = new Map();
 const siegeModel = (key, f) => { if (!siegeCache.has(key)) { const m = new Mk(key.length * 13 + key.charCodeAt(0)); f(m); siegeCache.set(key, modelOf(m)); } return siegeCache.get(key); };
+// The wall is deliberately low (merlons ~0.62) and sits WALL_Z toward the attackers (+Z), so defenders on
+// the two rows behind it stay visible from the three-quarter battle camera instead of seeming to stand on it.
+export const WALL_Z = 0.16;
 export function wallModel(fac) {
   const S = sfac(fac);
   return siegeModel('wall' + fac, (m) => {
-    m.add(G.box(0.92, 0.12, 0.6), S.base, { jit: 0.05 }); // plinth
-    masonry(m, S, -0.45, 0.45, 0.1, 0.62, 0.5, 4, 3);
-    m.add(G.box(0.92, 0.07, 0.56).translate(0, 0.61, 0), S.light, { jit: 0.04, ao: 0 }); // walkway coping
+    const z = WALL_Z;
+    m.add(G.box(0.92, 0.1, 0.5).translate(0, 0, z), S.base, { jit: 0.05 }); // plinth
+    masonry(m, S, -0.45, 0.45, 0.08, 0.42, 0.4, 3, 3, z);
+    m.add(G.box(0.92, 0.06, 0.46).translate(0, 0.41, z), S.light, { jit: 0.04, ao: 0 }); // walkway coping
     for (const x of [-0.29, 0, 0.29]) {
-      m.add(G.box(0.19, 0.2, 0.2).translate(x, 0.68, 0.16), m.pick([S.stone, S.light]), { jit: 0.05, ao: 0 });
-      m.add(G.box(0.19, 0.2, 0.12).translate(x, 0.68, -0.2), S.stone, { jit: 0.05, ao: 0 });
-      m.add(G.box(0.21, 0.035, 0.22).translate(x, 0.88, 0.16), S.light, { ao: 0 });
+      m.add(G.box(0.19, 0.16, 0.16).translate(x, 0.46, z + 0.13), m.pick([S.stone, S.light]), { jit: 0.05, ao: 0 });
+      m.add(G.box(0.21, 0.03, 0.18).translate(x, 0.61, z + 0.13), S.light, { ao: 0 });
     }
-    // a hanging banner with the faction emblem on the camera-facing side
-    m.add(G.box(0.2, 0.34, 0.012).translate(0, 0.24, 0.258), S.banner, { top: S.banner, ao: 0, jit: 0.03 });
-    m.add(G.box(0.24, 0.025, 0.03).translate(0, 0.585, 0.262), S.trim, { ao: 0 });
-    m.add(G.blob(0.045, 0, 0, 3).scale(1, 1, 0.35).translate(0, 0.43, 0.27), S.emblem, { ao: 0 });
-    // grass and moss at the foot
-    for (let i = 0; i < 5; i++) m.add(G.cone(0.03, m.rnd(0.08, 0.16), 3).translate(m.rnd(-0.42, 0.42), 0, m.rnd(0.27, 0.32)), S.moss, { ao: 0.3 });
+    // a hanging banner with the faction emblem on the attackers' (+Z) face
+    m.add(G.box(0.2, 0.26, 0.012).translate(0, 0.12, z + 0.208), S.banner, { top: S.banner, ao: 0, jit: 0.03 });
+    m.add(G.box(0.24, 0.025, 0.03).translate(0, 0.38, z + 0.212), S.trim, { ao: 0 });
+    m.add(G.blob(0.04, 0, 0, 3).scale(1, 1, 0.35).translate(0, 0.26, z + 0.22), S.emblem, { ao: 0 });
+    for (let i = 0; i < 5; i++) m.add(G.cone(0.03, m.rnd(0.08, 0.16), 3).translate(m.rnd(-0.42, 0.42), 0, z + m.rnd(0.22, 0.27)), S.moss, { ao: 0.3 });
   });
 }
+// The gatehouse: two slim towers with pointed faction roofs on the gate hex's left/right edges, an open pair of
+// timber doors folded back toward the defenders and a raised portcullis bar. Nothing spans the hex at unit
+// height, so a stack standing in the gateway is never hidden.
 export function gateModel(fac) {
   const S = sfac(fac);
   return siegeModel('gate' + fac, (m) => {
+    const z = WALL_Z;
     for (const sx of [-1, 1]) {
       const x = sx * 0.47;
-      m.add(G.box(0.34, 0.12, 0.66).translate(x, 0, 0), S.base, { jit: 0.05 });
-      masonry(m, S, x - 0.15, x + 0.15, 0.1, 1.0, 0.58, 6, 1);
-      m.add(G.box(0.38, 0.06, 0.64).translate(x, 1.0, 0), S.light, { ao: 0 });
-      for (const dz of [-0.2, 0.2]) for (const dx of [-0.12, 0.12]) m.add(G.box(0.1, 0.14, 0.12).translate(x + dx, 1.06, dz), S.stone, { ao: 0, jit: 0.05 });
-      m.add(G.box(0.05, 0.16, 0.015).translate(x, 0.62, 0.297), S.glow, { glow: true, ao: 0 }); // arrow slit glow
-      m.add(G.cyl(0.012, 0.012, 0.42, 4).translate(x, 1.06, 0), 0x8a6a4a, { ao: 0 });
-      m.add(G.box(0.012, 0.13, 0.2).translate(x, 1.33, 0.1), S.banner, { ao: 0 });
-      m.add(G.box(0.06, 0.03, 0.66).translate(x - sx * 0.17, 0.98, 0), S.trim, { ao: 0 });
+      m.add(G.box(0.3, 0.1, 0.56).translate(x, 0, z), S.base, { jit: 0.05 });
+      masonry(m, S, x - 0.13, x + 0.13, 0.08, 0.78, 0.5, 5, 1, z);
+      m.add(G.box(0.34, 0.05, 0.54).translate(x, 0.78, z), S.trim, { ao: 0 });
+      for (const dz of [-0.17, 0.17]) for (const dx of [-0.1, 0.1]) m.add(G.box(0.09, 0.1, 0.1).translate(x + dx, 0.82, z + dz), S.light, { ao: 0, jit: 0.05 });
+      m.add(G.cone(0.2, 0.36, 4).rotateY(Math.PI / 4).translate(x, 0.84, z), S.roof, { top: S.roofTop, h0: 0.85, h1: 1.2, ao: 0, jit: 0.04 });
+      m.add(G.cyl(0.01, 0.01, 0.16, 4).translate(x, 1.18, z), S.trim, { ao: 0 });
+      m.add(G.box(0.012, 0.08, 0.14).translate(x, 1.27, z + 0.07), S.banner, { ao: 0 });
+      m.add(G.box(0.05, 0.13, 0.015).translate(x, 0.5, z + 0.257), S.glow, { glow: true, ao: 0 }); // arrow slit glow
+      m.add(G.box(0.04, 0.14, 0.02).translate(x - sx * 0.14, 0.62, z + 0.25), S.trim, { ao: 0 }); // gold hinge plate
+      // an open door leaf swung back (toward -Z, the defenders' side)
+      const door = G.box(0.32, 0.5, 0.035).translate(-sx * 0.16, 0, 0).rotateY(sx * 1.25).translate(x - sx * 0.14, 0.02, z - 0.2);
+      m.add(door, 0x9a6a3c, { top: 0xc89660, h0: 0, h1: 0.5, ao: 0.3, jit: 0.05 });
     }
+    // a gold arch-moulding on the ground line and a raised portcullis bar high above the gateway
+    m.add(G.box(0.66, 0.025, 0.08).translate(0, 0.005, z + 0.24), S.trim, { ao: 0 });
+    m.add(G.box(0.7, 0.07, 0.07).translate(0, 0.74, z + 0.22), S.trim, { ao: 0 });
+    for (const dx of [-0.24, -0.08, 0.08, 0.24]) m.add(G.cone(0.02, 0.08, 4).rotateX(Math.PI).translate(dx, 0.74, z + 0.22), 0x8a8494, { ao: 0 });
   });
 }
 export function towerModel(fac) {

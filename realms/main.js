@@ -194,7 +194,7 @@ function updateCamera(dt) {
   cam.dist += (cam.tDist - cam.dist) * Math.min(1, dt * 6);
   // close up, the camera tilts toward the horizon like a strategy map
   const f = clamp((16 - cam.dist) / 9, 0, 1);
-  const cphi = cam.phi + f * 0.5;
+  const cphi = cam.phi + f * 0.4;
   camera.position.setFromSphericalCoords(cam.dist, cphi, cam.theta);
   if (cam.shake > 0) { camera.position.x += (rnd() - 0.5) * cam.shake * 0.1; cam.shake = Math.max(0, cam.shake - dt * 2); }
   lookAtP.setFromSphericalCoords(R * f * 0.98, cam.phi, cam.theta);
@@ -546,7 +546,7 @@ function objModel(o) {
   if (o.type === 'monster') return cached('u' + o.unit, () => unitGeo(o.unit));
   return cached('o' + o.type, () => objectModel(o.type));
 }
-const SCALE = { town: 0.4, monster: 0.2, goldmine: 0.3, gemmine: 0.3, orepit: 0.3, sawmill: 0.28, dwelling: 0.3, arena: 0.28, tower: 0.24, library: 0.27, stone: 0.24, obelisk: 0.24, shrine: 0.27, well: 0.27, windmill: 0.27, stables: 0.27 };
+const SCALE = { gold: 0.3, wood: 0.3, ore: 0.3, gems: 0.3, chest: 0.28, artifact: 0.28, town: 0.4, monster: 0.2, goldmine: 0.3, gemmine: 0.3, orepit: 0.3, sawmill: 0.28, dwelling: 0.3, arena: 0.28, tower: 0.24, library: 0.27, stone: 0.24, obelisk: 0.24, shrine: 0.27, well: 0.27, windmill: 0.27, stables: 0.27 };
 function layoutWorld() {
   worldDirty = false;
   rebuildPlanet();
@@ -573,7 +573,7 @@ function layoutHeroes(force = false) {
       m = meshOf(cached('hero' + hr.p, () => heroModel(G.players[hr.p].fac, G.players[hr.p].color)));
       scene.add(m); heroMeshes.set(hr.id, m);
     }
-    if (!hr.anim || force) placeOn(m, hr.v, 0.22, hr.face || 0);
+    if (!hr.anim || force) placeOn(m, hr.v, 0.27, hr.face || 0);
   }
   for (const [id, m] of heroMeshes) if (!G.heroes[id] || !G.heroes[id].alive) { scene.remove(m); heroMeshes.delete(id); }
 }
@@ -983,10 +983,10 @@ function refreshBattle() {
   $('b-queue').innerHTML = BT.queue(B, 9).map((x, i) => `<span class="q s${x.side}${i === 0 ? ' now' : ''}">${unitIcon(x.id)}<b>${x.count}</b></span>`).join('');
   const h0 = B.heroes[0];
   $('b-spell').disabled = !h0 || B.cast[0] || !h0.spells.some((id) => h0.mana >= SPELLS[id].mana) || !mineTurn;
-  $('b-spell').innerHTML = `${icon('spellbook', 24)}<small>${h0 ? h0.mana : ''}</small>`;
+  $('b-spell').innerHTML = `${icon('spellbook', 24)}<small>${h0 ? `Mana ${h0.mana}` : 'Spells'}</small>`;
   $('b-wait').disabled = $('b-def').disabled = !mineTurn;
   $('b-auto').classList.toggle('on', bauto);
-  $('b-msg').innerHTML = !s ? '' : mineTurn ? (bspell ? `${SPELLS[bspell].icon} Choose a target for ${SPELLS[bspell].name}` : `${UNITS[s.id].name} (${s.count}) · ${BT.canShoot(B, s) ? `🏹 ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move or a red enemy to attack'}`) : sideOwner(s.side) === 0 ? 'Auto battle…' : `Enemy ${UNITS[s.id].name} (${s.count})…`;
+  $('b-msg').innerHTML = !s ? '' : mineTurn ? (bspell ? `${SPELLS[bspell].icon} Choose a target for ${SPELLS[bspell].name}` : `${UNITS[s.id].name} (${s.count}) · ${BT.canShoot(B, s) ? `🏹 ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move or a red enemy to attack'}`) : sideOwner(s.side) === 0 ? (bauto ? 'Auto battle…' : '…') : `Enemy ${UNITS[s.id].name} (${s.count})…`;
 }
 const sideOwner = (side) => bctx.sides[side].owner;
 function battleTap(cx, cy) {
@@ -1168,7 +1168,6 @@ function finishBattle(B, ctx) {
     if (win.hero) for (const a of lose.hero.arts) win.hero.arts.push(a);
     if (lose.owner === 0 && G.selHero === lose.hero.id) G.selHero = G.heroes.findIndex((x) => x.alive && x.p === 0);
   }
-  if (ctx.foe.kind === 'town' && win.hero === ctx.hr) captureTown(ctx.hr, ctx.foe.town);
   if (ctx.foe.kind === 'town' && win.hero !== ctx.hr) ctx.foe.town.garrison = (sides.find((sd) => sd.army === ctx.foe.town.garrison) || {}).army || ctx.foe.town.garrison;
   worldDirty = true; layoutHeroes(true);
   if (sides[0].owner === 0 || sides[1].owner === 0) {
@@ -1177,6 +1176,8 @@ function finishBattle(B, ctx) {
     showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p>⭐ +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
     won ? sfx.fanfare() : sfx.deny();
   }
+  // after the battle summary, so the casualties card comes first
+  if (ctx.foe.kind === 'town' && win.hero === ctx.hr) captureTown(ctx.hr, ctx.foe.town);
   checkEnd();
   updateHud();
 }
@@ -1184,7 +1185,7 @@ function finishBattle(B, ctx) {
 // ------------------------------------------------------------------ towns
 const townIncome = (t) => (t.built.includes('hall3') ? 2000 : t.built.includes('hall2') ? 1000 : 500);
 const tierUnit = (t, tier) => (t.built.includes(`u${tier}`) ? UPGRADES[t.fac][tier - 1] : FACTIONS[t.fac].units[tier - 1]);
-const costText = (c) => RES.filter((r) => c[r]).map((r) => `${icon(r, 14)}${fmt(c[r])}`).join(' ');
+const costText = (c) => RES.filter((r) => c[r]).map((r) => `<span class="nw">${icon(r, 14)}${fmt(c[r])}</span>`).join(' ');
 const canPay = (p, c, n = 1) => RES.every((r) => (G.players[p].res[r] || 0) >= (c[r] || 0) * n);
 const pay = (p, c, n = 1) => { for (const r of RES) G.players[p].res[r] -= (c[r] || 0) * n; };
 const visitorOf = (t) => G.heroes.find((x) => x.alive && x.p === t.p && (x.v === t.v || NBR[t.v].includes(x.v)));
@@ -1238,7 +1239,7 @@ function renderTown() {
       return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : icon(b.id, 28)}</i><div><b>${name}</b><small>${has ? '✓ Built' : reqOk ? costText(b.cost) : `Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}`}</small><small class="d">${b.desc}</small></div>${has ? '' : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
     }).join('');
   } else if (townTab === 'recruit') {
-    const tiers = BUILDINGS.filter((b) => b.tier && t.built.includes(b.id)).map((b) => b.tier);
+    const tiers = [...new Set(BUILDINGS.filter((b) => b.tier && t.built.includes(b.id)).map((b) => b.tier))].sort((x, y) => x - y);
     html = tiers.length ? tiers.map((tier) => {
       const id = tierUnit(t, tier), u = UNITS[id], n = t.avail[tier] || 0, max = Math.min(n, ...RES.filter((r) => u.cost[r]).map((r) => Math.floor(Pl.res[r] / u.cost[r])));
       return `<div class="row-b"><i>${unitIcon(id)}</i><div><b>${u.name} <em>×${n}</em></b><small>${costText(u.cost)} · ${icon('attack', 13)}${u.att} ${icon('defense', 13)}${u.def} ${icon('hp', 13)}${u.hp} ${icon('damage', 13)}${u.dmg[0]}–${u.dmg[1]} ${icon('movement', 13)}${u.spd}${u.ranged ? ` ${icon('shots', 13)}` : ''}${u.fly ? ` ${icon('fly', 13)}` : ''}</small></div><button data-rec="${tier}" data-n="${max}" ${max > 0 ? '' : 'disabled'}>Buy ${max}</button></div>`;
@@ -1248,14 +1249,14 @@ function renderTown() {
     html = row('🏰 Garrison', t.garrison, 'g') + (vis ? row(`🐎 ${vis.name}`, vis.army, 'h') : '<p class="hint2">No hero beside the town.</p>') + '<p class="hint2">Tap a stack to move it across.</p>';
     // upgrades for troops whose upgraded dwelling stands here
     const ups = [];
-    for (const [who, army] of [['g', t.garrison], ['h', vis?.army]]) if (army) army.forEach((st, i) => { if (!st || st[1] <= 0) return; const tier = UNITS[st[0]].tier, upId = UPGRADES[t.fac]?.[tier - 1]; if (UNITS[st[0]].fac === t.fac && !UNITS[st[0]].up && t.built.includes(`u${tier}`) && upId) { const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))])); ups.push(`<div class="row-b"><i>${unitIcon(st[0])}</i><div><b>${st[1]} ${plural(st[0], st[1])} → ${UNITS[upId].name}</b><small>${costText(Object.fromEntries(RES.map((r) => [r, cost[r] * st[1]])))}</small></div><button data-up="${who}:${i}" ${canPay(t.p, cost, st[1]) ? '' : 'disabled'}>Upgrade</button></div>`); } });
+    for (const [who, army] of [['g', t.garrison], ['h', vis?.army]]) if (army) army.forEach((st, i) => { if (!st || st[1] <= 0) return; const tier = UNITS[st[0]].tier, upId = UPGRADES[t.fac]?.[tier - 1]; if (UNITS[st[0]].fac === t.fac && !UNITS[st[0]].up && t.built.includes(`u${tier}`) && upId) { const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))])); ups.push(`<div class="row-b"><i>${unitIcon(st[0])}</i><div><b>${st[1]} ${plural(st[0], st[1])} → ${plural(upId, st[1])}</b><small>${costText(Object.fromEntries(RES.map((r) => [r, cost[r] * st[1]])))}</small></div><button data-up="${who}:${i}" ${canPay(t.p, cost, st[1]) ? '' : 'disabled'}>Upgrade</button></div>`); } });
     if (ups.length) html += ups.join('');
   } else if (townTab === 'more') {
     const tav = t.built.includes('tavern'), mk = t.built.includes('market');
     const heroes = G.heroes.filter((x) => x.alive && x.p === t.p).length;
     html = `<div class="row-b ${tav ? '' : 'lock'}"><i>🍺</i><div><b>Tavern</b><small>${tav ? 'Hire a new hero with a few troops (2500 gold).' : 'Build a Tavern first.'}</small></div><button data-hire="1" ${tav && heroes < 4 && canPay(t.p, { gold: 2500 }) && !heroAt(t.v) ? '' : 'disabled'}>Hire</button></div>`;
     html += `<div class="row-b ${mk ? '' : 'lock'}"><i>⚖️</i><div><b>Marketplace</b><small>${mk ? 'Buy and sell resources.' : 'Build a Marketplace first.'}</small></div></div>`;
-    if (mk) for (const r of ['wood', 'ore', 'gems']) { const buy = r === 'gems' ? 500 : 250, sell = r === 'gems' ? 200 : 100; html += `<div class="row-b"><i>${RES_ICON[r]}</i><div><b>${r[0].toUpperCase() + r.slice(1)}</b><small>Buy 1 for ${buy} 🪙 · sell 1 for ${sell} 🪙</small></div><button data-buy="${r}" ${Pl.res.gold >= buy ? '' : 'disabled'}>Buy</button><button data-sell="${r}" ${Pl.res[r] > 0 ? '' : 'disabled'}>Sell</button></div>`; }
+    if (mk) for (const r of ['wood', 'ore', 'gems']) { const buy = r === 'gems' ? 500 : 250, sell = r === 'gems' ? 200 : 100; html += `<div class="row-b"><i>${RES_ICON[r]}</i><div><b>${r[0].toUpperCase() + r.slice(1)}</b><small><span class="nw">Buy 1: ${icon('gold', 13)}${buy}</span> · <span class="nw">Sell 1: ${icon('gold', 13)}${sell}</span></small></div><button data-buy="${r}" ${Pl.res.gold >= buy ? '' : 'disabled'}>Buy</button><button data-sell="${r}" ${Pl.res[r] > 0 ? '' : 'disabled'}>Sell</button></div>`; }
   }
   $('t-body').innerHTML = html;
   updateRes();
@@ -1322,7 +1323,7 @@ function openHero() {
 // ------------------------------------------------------------------ HUD, messages and dialogs
 const UICON = { pikeman: '🔱', archer: '🏹', griffin: '🦅', swordsman: '⚔️', monk: '🧙', cavalier: '🏇', angel: '👼', skeleton: '💀', zombie: '🧟', wight: '👻', vampire: '🧛', lich: '☠️', blackknight: '♞', bonedragon: '🐉', goblin: '👺', wolf: '🐺', orc: '👹', ogre: '🦣', troll: '🧌', cyclops: '👁️', hydra: '🐍' };
 const unitIcon = (id, s = 64) => portraitImg(id, s) || UICON[id] || UICON[UNITS[id]?.up] || '❔';
-const plural = (id, n = 2) => (n === 1 ? UNITS[id].name : UNITS[id].name.replace(/man$/, 'men').replace(/f$/, 'ves').replace(/([^s])$/, '$1s'));
+const plural = (id, n = 2) => { const w = UNITS[id].name; if (n === 1) return w; if (/m[ae]n$/.test(w)) return w.replace(/man$/, 'men'); if (/[^aeiou]y$/.test(w)) return w.slice(0, -1) + 'ies'; if (/(s|x|ch|sh)$/.test(w)) return w + 'es'; return w.replace(/f$/, 'ves').replace(/([^s])$/, '$1s'); };
 let toastT = 0;
 function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
 function showMsg(title, html, wide = false) { ask(title, html, [['OK', null]], wide); }
@@ -1453,7 +1454,7 @@ function checkEnd() {
 }
 function endGame(won) {
   G.over = true; store.del('realms.save');
-  ask(won ? '👑 Victory!' : '💀 Defeat', won ? `You rule the whole world after ${G.day} days. All rival lords are defeated.` : 'Your last town and hero are lost.', [['New game', () => showMenu()]]);
+  ask(won ? '👑 Victory!' : '💀 Defeat', won ? `You rule the whole world after ${G.day} ${G.day === 1 ? 'day' : 'days'}. All rival lords are defeated.` : 'Your last town and hero are lost.', [['New game', () => showMenu()]]);
   won ? sfx.fanfare() : sfx.deny();
 }
 

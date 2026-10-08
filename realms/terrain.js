@@ -411,23 +411,34 @@ PAINT[LAYER.CLIFF] = (ctx) => {
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => { pebbles(ctx, wrap, r, 30, 1, 2.4, [[200, 168, 130], [176, 146, 112]], 0.22); });
 };
-// 12 fog: the unexplored, a soft bluish cloud mist
+// 12 fog: the unexplored, a swirling violet-indigo sea of magic mist (clearly NOT snow: saturated, mid-value)
 PAINT[LAYER.FOG] = (ctx) => {
-  const n1 = fbm(131, 3, 4), n2 = fbm(132, 8, 2), n3 = fbm(133, 2, 3), r = mulberry(134);
+  const n1 = fbm(131, 3, 4), n2 = fbm(132, 8, 2), n3 = fbm(133, 2, 3), n4 = fbm(135, 5, 3), r = mulberry(134);
   return paintLayer(ctx, (q, x, y, set) => {
-    const t = n1[q] * 0.7 + n2[q] * 0.3;
-    let c = mixc([92, 112, 168], [146, 166, 214], sstep(0.15, 0.85, t));
-    c = mixc(c, [146, 132, 196], sstep(0.55, 0.9, n3[q]) * 0.35); // a hint of lilac
-    c = mixc(c, [206, 216, 244], sstep(0.72, 0.95, t) * 0.45); // bright cloud tops
+    // domain-warped swirl bands
+    const t = n1[q] * 0.6 + n2[q] * 0.25 + Math.sin((x / S + n4[q] * 0.9) * 12.566 + (y / S) * 6.283) * 0.08;
+    let c = mixc([62, 44, 120], [104, 78, 168], sstep(0.12, 0.7, t)); // deep indigo to violet
+    c = mixc(c, [150, 72, 168], sstep(0.55, 0.92, n3[q]) * 0.38); // magenta-orchid pools
+    c = mixc(c, [64, 78, 150], sstep(0.6, 0.95, 1 - n3[q]) * 0.3); // cooler indigo eddies
+    c = mixc(c, [156, 136, 214], sstep(0.68, 0.95, t) * 0.5); // lavender cloud tops
     set(q, c[0], c[1], c[2]);
-  }, (ctx, wrap) => {
-    // soft wisps
-    for (let i = 0; i < 26; i++) {
-      const x = r() * S, y = r() * S, l = 30 + r() * 50, bend = (r() - 0.5) * 30, lw = 6 + r() * 8;
-      wrap(x, y, l + 20, (X, Y) => {
-        ctx.strokeStyle = 'rgba(214,224,252,0.1)'; ctx.lineWidth = lw; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(X, Y); ctx.quadraticCurveTo(X + l / 2, Y + bend, X + l, Y); ctx.stroke();
+  }, (ctx, wrap, glow) => {
+    // soft curling wisps
+    for (let i = 0; i < 34; i++) {
+      const x = r() * S, y = r() * S, l = 34 + r() * 60, bend = (r() - 0.5) * 50, lw = 3 + r() * 7, a = 0.08 + r() * 0.1;
+      const col = r() < 0.7 ? '196,176,246' : '226,170,236';
+      wrap(x, y, l + 30, (X, Y) => {
+        ctx.strokeStyle = `rgba(${col},${a})`; ctx.lineWidth = lw; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(X, Y); ctx.bezierCurveTo(X + l * 0.3, Y + bend, X + l * 0.7, Y - bend, X + l, Y + bend * 0.3); ctx.stroke();
+        ctx.lineWidth = Math.max(1, lw * 0.3); ctx.strokeStyle = `rgba(${col},${a * 1.2})`; ctx.stroke();
       });
+    }
+    // faint magic motes that glimmer in the mist
+    for (let i = 0; i < 70; i++) {
+      const x = (r() * S) | 0, y = (r() * S) | 0, big = r() < 0.2;
+      ctx.fillStyle = big ? 'rgba(236,214,255,0.85)' : 'rgba(214,196,255,0.6)';
+      ctx.beginPath(); ctx.arc(x, y, big ? 1.6 : 0.9, 0, 6.283); ctx.fill();
+      glow[y * S + x] = big ? 0.9 : 0.5;
     }
   });
 };
@@ -503,17 +514,24 @@ export function createPlanetMaterial(waterLevel) {
         float lay = floor(vT.z + 0.5);
         float isFog = step(11.5, lay);
         // the mist drifts slowly: two layers sliding against each other
-        vec2 tuv = vT.xy + isFog * vec2(uTime * 0.013, uTime * 0.008);
+        vec2 swirl = vec2(sin(vT.y * 8.2 + uTime * 0.21), cos(vT.x * 7.4 - uTime * 0.17)) * 0.045;
+        vec2 tuv = vT.xy + isFog * (vec2(uTime * 0.013, uTime * 0.008) + swirl);
         vec4 tx = texture(uTer, vec3(tuv, lay));
-        if (isFog > 0.5) tx.rgb = mix(tx.rgb, texture(uTer, vec3(vT.xy * 0.61 - vec2(uTime * 0.01, -uTime * 0.012), 12.0)).rgb, 0.5);
+        if (isFog > 0.5) {
+          vec4 t2 = texture(uTer, vec3(vT.xy * 0.61 - vec2(uTime * 0.01, -uTime * 0.012) - swirl * 1.3, 12.0));
+          tx.rgb = mix(tx.rgb, t2.rgb, 0.5); tx.a = max(tx.a, t2.a);
+        }
+        // 13 in the neighbour slot marks a fog rim that faces explored land: the frontier glows softly
+        float frontier = isFog * step(12.5, vNb) * smoothstep(0.08, 0.5, vNw);
+        float nbLay = min(vNb, 12.0);
         vec2 q = vT.xy * 6.283;
         // soft organic bleed of the neighbouring terrain into the bevel ring
         if (vNw > 0.003) {
           float nz2 = sin(q.x * 1.9 + sin(q.y * 2.3)) * 0.5 + sin(q.y * 2.7 - q.x * 1.1) * 0.5;
-          vec4 tn = texture(uTer, vec3(tuv, vNb));
+          vec4 tn = texture(uTer, vec3(tuv, nbLay));
           float hb = (dot(tn.rgb, vec3(0.33)) - dot(tx.rgb, vec3(0.33))) * 0.6;
           float m = smoothstep(0.25, 0.95, vNw * 2.0 + nz2 * 0.22 + hb) * 0.62;
-          tx = mix(tx, tn, m);
+          tx = mix(tx, tn, m * (1.0 - isFog));
         }
         if (vT.w > 0.003) {
           float nz = sin(q.x * 2.3 + sin(q.y * 1.7)) * 0.5 + sin(q.y * 3.1 - q.x * 1.3) * 0.5;
@@ -526,7 +544,9 @@ export function createPlanetMaterial(waterLevel) {
           tx.rgb *= 1.0 - 0.1 * smoothstep(0.42, 0.47, m) * (1.0 - smoothstep(0.48, 0.52, m));
           tx = mix(tx, vec4(rd.rgb, 0.0), smoothstep(0.47, 0.53, m));
         }
-        diffuseColor.rgb *= tx.rgb;`)
+        diffuseColor.rgb *= tx.rgb;
+        // the mist brightens into a pale lilac haze right at the explored frontier
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.5, 0.86), frontier * 0.45);`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         {
           float fz = vRad - uWater;
@@ -541,10 +561,14 @@ export function createPlanetMaterial(waterLevel) {
           float tw = (lay > 2.5 && lay < 4.5) ? pow(0.5 + 0.5 * sin(uTime * 2.6 + tx.a * 47.0 + (vT.x - vT.y) * 9.0), 3.0) * 1.6 : 0.8 + 0.2 * sin(uTime * 1.6 + vT.x * 5.0 + vT.y * 3.0);
           totalEmissiveRadiance += tx.rgb * tx.rgb * tx.a * uGlow * tw * smoothstep(0.2, 0.5, vColor.g + vColor.r);
           // a warm-cool fill so shadows stay soft and coloured, never black; the mist glows softly
-          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.12, 0.14, 0.22), isFog);
+          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.2, 0.13, 0.32), isFog);
+          // a soft magic glow along the frontier: on the mist side, and where the mist bleeds onto explored rims
+          float fogRim = (1.0 - isFog) * step(11.5, vNb) * step(vNb, 12.5) * smoothstep(0.3, 0.5, vNw);
+          float pulse = 0.85 + 0.15 * sin(uTime * 1.2 + (vT.x + vT.y) * 4.0);
+          totalEmissiveRadiance += vec3(0.42, 0.28, 0.62) * (frontier * 0.55 + fogRim * 0.25) * pulse;
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-terrain-2';
+  mat.customProgramCacheKey = () => 'hexrealms-terrain-3';
   return mat;
 }
 
@@ -709,7 +733,8 @@ export function createPlanet(ctx) {
       for (let i = 0; i < k; i++) {
         const n = CELLS[v].nb[i], nvis = !!seen[n];
         let L = lay;
-        if (vis && !w) {
+        if (!vis) { if (nvis) L = LAYER.FOG + 1; }
+        else if (!w) {
           if (!nvis) L = LAYER.FOG;
           else if (isW(n)) L = BEACH.has(ter[v]) ? LAYER.SAND : lay;
           else if (h[n] === h[v]) L = ter[n];
