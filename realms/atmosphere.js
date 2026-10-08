@@ -463,9 +463,9 @@ function bakeNebula(W, H, rand) {
       let r = 0.012 + 0.016 * (1 - up), g = 0.016 + 0.01 * up, b = 0.07 + 0.025 * up;
       // big soft colour wash (violet <-> deep teal)
       const w1 = n3 * n3, w2 = (1 - n3) * (1 - n3);
-      r += w1 * 0.045; g += w1 * 0.008 + w2 * 0.03; b += w1 * 0.07 + w2 * 0.05;
+      r += w1 * 0.025; g += w1 * 0.004 + w2 * 0.016; b += w1 * 0.035 + w2 * 0.03;
       const w = n1 * n1 * n1;
-      r += w * 0.05; g += w * 0.015; b += w * 0.09;
+      r += w * 0.03; g += w * 0.008; b += w * 0.05;
       // the milky band: luminous lavender-blue core, rosy fringes, soft dust lanes
       const bandC = band * band;
       r += bandC * (0.07 + 0.07 * n2); g += bandC * (0.07 + 0.03 * n2); b += bandC * 0.16;
@@ -474,7 +474,7 @@ function bakeNebula(W, H, rand) {
       for (const bl of blobs) {
         const dd = 1 - (x * bl.d[0] + y * bl.d[1] + z * bl.d[2]);
         const m = Math.max(0, n1 * 1.8 - 0.42);
-        const k = Math.exp(-dd * bl.w * 1.7) * (m * m * (0.6 + n2) * 0.9 + Math.exp(-dd * bl.w * 4) * 0.06);
+        const k = Math.exp(-dd * bl.w * 1.7) * (m * m * (0.6 + n2) * 0.55 + Math.exp(-dd * bl.w * 4) * 0.04);
         r += bl.c[0] * k; g += bl.c[1] * k; b += bl.c[2] * k;
       }
       // a soft glow behind the big moon
