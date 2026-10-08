@@ -803,7 +803,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
         // low mist banks
         const mists = [];
         for (let i = 0; i < 16; i++) {
-          const m = keep(new T.SpriteMaterial({ map: mistTex, color: col(0xe8dcf4), transparent: true, depthWrite: false, opacity: 0.55 }));
+          const m = keep(new T.SpriteMaterial({ map: mistTex, color: col(0xe8dcf4), transparent: true, depthWrite: false, opacity: 0.4 }));
           const s = new T.Sprite(m);
           let x, z;
           do { x = (R() - 0.5) * 70; z = -R() * 45 + 12; } while ((Math.abs(x) < 7 && z > -6.5 && z < 4.5));
@@ -812,7 +812,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
           mists.push({ s, sp: 0.15 + R() * 0.25, x0: x });
           G.add(s);
         }
-        env.updaters.push((dt, t) => { for (const m of mists) { m.s.position.x = m.x0 + Math.sin(t * m.sp * 0.3 + m.x0) * 2.5; m.s.material.opacity = 0.45 + 0.15 * Math.sin(t * 0.4 + m.x0); } });
+        env.updaters.push((dt, t) => { for (const m of mists) { m.s.position.x = m.x0 + Math.sin(t * m.sp * 0.3 + m.x0) * 2.5; m.s.material.opacity = 0.32 + 0.12 * Math.sin(t * 0.4 + m.x0); } });
       } else {
         // butterflies / pollen sparkles over the meadow
         const pc = col(0xfff4c0);

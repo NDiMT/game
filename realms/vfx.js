@@ -128,7 +128,7 @@ void main() {
   vec3 col = vCol.rgb * t.rgb;
 #ifdef ADD
   float m = max(col.r, max(col.g, col.b));
-  col = mix(col, vec3(m * 1.05), pow(t.a, 6.0) * 0.3);
+  col = mix(col, vec3(m * 1.05), pow(max(t.a, 0.0), 6.0) * 0.3);
 #endif
   gl_FragColor = vec4(col, vCol.a * t.a);
 }`;
@@ -138,7 +138,7 @@ void main() { vCol = aCol; vV = aV; gl_Position = projectionMatrix * modelViewMa
 const ST_FS = `
 varying vec4 vCol; varying float vV;
 void main() {
-  float e = 1.0 - vV * vV; float a = vCol.a * e * e;
+  float e = clamp(1.0 - vV * vV, 0.0, 1.0); float a = vCol.a * e * e;
   float m = max(vCol.r, max(vCol.g, vCol.b));
   vec3 col = mix(vCol.rgb, vec3(m * 1.05), pow(e, 8.0) * 0.3);
   gl_FragColor = vec4(col, a);
@@ -147,7 +147,7 @@ const COL_VS = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projecti
 const COL_FS = `
 uniform vec3 uCol; uniform float uA; uniform float uT; varying vec2 vUv;
 void main() {
-  float v = vUv.y;
+  float v = clamp(vUv.y, 0.0, 1.0);
   float a = pow(1.0 - v, 1.6) * smoothstep(0.0, 0.08, v) + 0.25 * pow(1.0 - v, 6.0);
   float rays = 0.55 + 0.45 * sin(vUv.x * 6.2832 * 7.0 + uT * 3.0) * sin(vUv.x * 6.2832 * 3.0 - uT * 2.0 + v * 4.0);
   gl_FragColor = vec4(uCol * (0.8 + 0.6 * rays), uA * a * (0.55 + 0.45 * rays));
@@ -512,8 +512,8 @@ export function createVfx(THREE, scene) {
   // ---------------- projectiles
   const shots = [];
   const PROJ = {
-    arrow: { dur: (d) => clamp(d / 16, 0.22, 0.5), arc: 0.12, mesh: 'arrow', hit: 'arrow' },
-    tower: { dur: (d) => clamp(d / 14, 0.3, 0.6), arc: 0.15, mesh: 'arrow', hit: 'fire', scale: 1.5 },
+    arrow: { dur: (d) => clamp(d / 16, 0.22, 0.5), arc: 0.12, mesh: 'arrow', hit: 'arrow', scale: 1.3 },
+    tower: { dur: (d) => clamp(d / 14, 0.3, 0.6), arc: 0.15, mesh: 'arrow', hit: 'fire', scale: 1.8 },
     holy: { dur: (d) => clamp(d / 11, 0.3, 0.6), arc: 0.05, hit: 'holy' },
     death: { dur: (d) => clamp(d / 11, 0.3, 0.6), arc: 0.06, hit: 'death' },
     boulder: { dur: (d) => clamp(d / 9, 0.45, 0.75), arc: 0.35, mesh: 'boulder', hit: 'rock' },

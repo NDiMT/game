@@ -523,18 +523,20 @@ function pennant(k, x, y, z, h, c, pole = C.woodD) {
 function goldmine(k) {
   // GOLD MINE: warm ochre crag, timbered adit glowing gold, a heaped gold cart, gold veins on every face
   patch(k, 0.62, 0xc8a66a, 0, 0.012, 12, 0, 0.0);
-  const cols = (c, x, y, z, nx, ny) => { c.set(0xb07a44).lerp(_c2.set(0xf0cc8a), Math.min(1, y / 0.55)); if (ny > 0.75 && y > 0.4) c.lerp(_c2.set(0xfff0d0), 0.55); };
+  const cols = (c, x, y, z, nx, ny) => { c.set(0xc8702c).lerp(_c2.set(0xf8b860), Math.min(1, y / 0.55)); if (ny > 0.7 && y > 0.3) c.lerp(_c2.set(0xffd860), 0.6); };
   mountain(k, cols);
   // fat gold veins and nuggets bursting from the rock faces
   const veins = [[0, -0.5, 0.45], [0, 0.55, 0.3], [0, 0.0, 0.8], [1, -0.4, 0.5], [2, 0.5, 0.55], [2, -0.2, 0.2], [5, 0.3, 0.7], [1, 0.9, 0.2], [0, -0.15, 0.25]];
   for (const [pi, az, el] of veins) {
     const { p, n } = onPeak(pi, az, el, 0.93);
     const t = [n[2], 0.55, -n[0]];
-    k.plank([p[0] - t[0] * 0.08, p[1] - 0.04, p[2] - t[2] * 0.08], [p[0] + t[0] * 0.08, p[1] + 0.04, p[2] + t[2] * 0.08], 0.034, 0.06, GL.gold, { glow: true });
+    k.plank([p[0] - t[0] * 0.1, p[1] - 0.05, p[2] - t[2] * 0.1], [p[0] + t[0] * 0.1, p[1] + 0.05, p[2] + t[2] * 0.1], 0.045, 0.07, GL.gold, { glow: true });
     k.add(new THREE.IcosahedronGeometry(0.045, 0), p[0] + n[0] * 0.03, p[1] + n[1] * 0.03 + 0.03, p[2] + n[2] * 0.03, [0xe8a010, 0xfff070], { jit: 0.1 });
   }
   // a golden crown nugget on the summit
-  nuggets(k, 0.0, 0.62, -0.24, 1.3);
+  nuggets(k, 0.0, 0.62, -0.24, 1.8);
+  k.lathe([[0.001, 0], [0.12, 0], [0.08, 0.05], [0.001, 0.08]], 8, -0.33, 0.36, -0.14, [0xe8a010, 0xfff070], { jit: 0.15 });
+  k.lathe([[0.001, 0], [0.11, 0], [0.07, 0.05], [0.001, 0.07]], 8, 0.34, 0.44, -0.17, [0xe8a010, 0xfff070], { jit: 0.15 });
   mineEntrance(k, 0, 0.12, 0.32, 0.34, GL.gold);
   rails(k, 0, 0.02, 0.06, 0.58);
   // the iconic cart, oversized and heaped high with gold

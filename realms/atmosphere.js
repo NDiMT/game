@@ -57,8 +57,8 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         float cs = dot(d, uVis);
         float ang = acos(clamp(cs, -1.0, 1.0));
         // sun: small hot disc, a gold corona and a broad rosy-amber wash that warms the whole quadrant
-        float disc = smoothstep(0.026, 0.016, ang) * 1.5;
-        float corona = exp(-ang * 22.0) * 0.55 + exp(-ang * 7.0) * 0.16;
+        float disc = smoothstep(0.022, 0.012, ang) * 1.2;
+        float corona = exp(-ang * 26.0) * 0.6 + exp(-ang * 8.0) * 0.18;
         float wash = exp(-ang * 2.5) * 0.035;
         // god-rays: angular streaks around the sun that slowly turn and breathe
         vec3 t = d - uVis * cs;
@@ -66,7 +66,7 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         float r1 = 0.5 + 0.5 * sin(a * 9.0 + uTime * 0.05) * sin(a * 14.0 - uTime * 0.035 + 1.7);
         float r2 = 0.5 + 0.5 * sin(a * 23.0 + uTime * 0.02 + 0.6);
         float rays = (r1 * r1 * r1 * 0.8 + r2 * r2 * r2 * r2 * 0.35) * (0.8 + 0.2 * sin(uTime * 0.3));
-        rays *= exp(-ang * 4.5) * smoothstep(0.02, 0.1, ang) * 0.16;
+        rays *= exp(-ang * 10.0) * smoothstep(0.02, 0.07, ang) * 0.2;
         c += vec3(1.0, 0.93, 0.78) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.9, 0.5, 0.55) * wash
            + vec3(1.0, 0.82, 0.55) * rays;
         gl_FragColor = vec4(c, 1.0);
@@ -460,7 +460,7 @@ function bakeNebula(W, H, rand) {
       const dust = Math.max(0, n2 - 0.5) * 2.0 * Math.exp(-bandD * bandD * 30);
       // twilight base: royal blue above, indigo-violet below, never black
       const up = y * 0.5 + 0.5;
-      let r = 0.012 + 0.016 * (1 - up), g = 0.016 + 0.01 * up, b = 0.07 + 0.025 * up;
+      let r = 0.008 + 0.014 * (1 - up), g = 0.016 + 0.012 * up, b = 0.075 + 0.03 * up;
       // big soft colour wash (violet <-> deep teal)
       const w1 = n3 * n3, w2 = (1 - n3) * (1 - n3);
       r += w1 * 0.025; g += w1 * 0.004 + w2 * 0.016; b += w1 * 0.035 + w2 * 0.03;
@@ -474,7 +474,7 @@ function bakeNebula(W, H, rand) {
       for (const bl of blobs) {
         const dd = 1 - (x * bl.d[0] + y * bl.d[1] + z * bl.d[2]);
         const m = Math.max(0, n1 * 1.8 - 0.42);
-        const k = Math.exp(-dd * bl.w * 1.7) * (m * m * (0.6 + n2) * 0.55 + Math.exp(-dd * bl.w * 4) * 0.04);
+        const k = Math.exp(-dd * bl.w * 1.7) * (m * m * m * (0.5 + n2) * 1.7 + Math.exp(-dd * bl.w * 4) * 0.05);
         r += bl.c[0] * k; g += bl.c[1] * k; b += bl.c[2] * k;
       }
       // a soft glow behind the big moon

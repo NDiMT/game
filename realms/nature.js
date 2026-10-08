@@ -232,9 +232,9 @@ function oak(b) {
   roots(b, 0.06, tr);
   b.part(tubeGeo(branchPts(V(0.02, 0.36, 0), V(0.22, 0.58, 0.06), V(0, 0.04, 0), 2), [0.035, 0.026, 0.016], 5), tr);
   b.part(tubeGeo(branchPts(V(0.02, 0.4, 0), V(-0.18, 0.62, -0.1), V(0, 0.04, 0), 2), [0.032, 0.024, 0.015], 5), tr);
-  const leaves = ramp(0x2e7a2a, 0x46a032, 0x72c43a, 0xb4e04e, 0xf0f080);
+  const leaves = ramp(0x1e6a2a, 0x2e8a30, 0x4caa34, 0x84c83c, 0xc4e45a);
   const bl = [[0, 0.66, 0, 0.3], [0.24, 0.58, 0.08, 0.2], [-0.22, 0.6, -0.1, 0.21], [0.05, 0.56, 0.24, 0.19], [-0.06, 0.58, -0.24, 0.2], [0.04, 0.86, -0.02, 0.2], [0.17, 0.78, -0.14, 0.15], [-0.15, 0.8, 0.12, 0.15]];
-  canopy(b, bl, leaves, { sun: 0.22 });
+  canopy(b, bl, leaves, { sun: 0.14 });
 }
 function pineTree(b, snow) {
   const tr = barkPaint(ramp(0x5a3a24, 0x7a5434, 0x9a7048), 0.4);
@@ -264,14 +264,14 @@ function birch(b) {
   b.part(tubeGeo(branchPts(V(0, 0, 0), V(-0.03, 0.82, 0.02), V(0.035, 0, 0), 4), [0.05, 0.042, 0.034, 0.026, 0.012], 6), tr);
   b.part(tubeGeo(branchPts(V(-0.01, 0.42, 0), V(0.14, 0.62, 0.05), V(0, 0.02, 0), 2), [0.018, 0.013, 0.008], 4), tr);
   b.part(tubeGeo(branchPts(V(-0.02, 0.5, 0), V(-0.15, 0.68, -0.06), V(0, 0.02, 0), 2), [0.016, 0.012, 0.007], 4), tr);
-  const leaves = ramp(0x5a9a2a, 0x86c034, 0xb8dc44, 0xe8ec64, 0xfff4a0);
-  canopy(b, [[-0.02, 0.7, 0, 0.21, 1.25], [0.15, 0.58, 0.05, 0.14, 1.2], [-0.16, 0.62, -0.06, 0.14, 1.2], [0.02, 0.6, 0.16, 0.14, 1.1], [0, 0.58, -0.16, 0.13, 1.1], [-0.02, 0.9, 0.01, 0.13, 1.2], [0.1, 0.8, -0.08, 0.1, 1.2]], leaves, { sun: 0.2 });
+  const leaves = ramp(0x3a8a2a, 0x5aa834, 0x8cc63e, 0xc0dc52, 0xe8ec7a);
+  canopy(b, [[-0.02, 0.7, 0, 0.21, 1.25], [0.15, 0.58, 0.05, 0.14, 1.2], [-0.16, 0.62, -0.06, 0.14, 1.2], [0.02, 0.6, 0.16, 0.14, 1.1], [0, 0.58, -0.16, 0.13, 1.1], [-0.02, 0.9, 0.01, 0.13, 1.2], [0.1, 0.8, -0.08, 0.1, 1.2]], leaves, { sun: 0.12 });
 }
 function willow(b) {
   const tr = barkPaint(ramp(0x5a4836, 0x7a6448, 0x9a8462), 0.5, 0.3);
   b.part(tubeGeo(branchPts(V(0, 0, 0), V(0.06, 0.5, 0), V(-0.06, 0, 0.03), 4), [0.1, 0.075, 0.06, 0.055, 0.05], 7), tr, { jitter: 0.012, jf: 14 });
   roots(b, 0.075, tr, 5);
-  const leaves = ramp(0x3a6a34, 0x5a8e3a, 0x86b048, 0xc4d870);
+  const leaves = ramp(0x2e6a34, 0x4a8a3a, 0x72a846, 0xaccc62);
   const bl = [[0.05, 0.64, 0, 0.27, 0.62], [0.24, 0.58, 0.1, 0.17, 0.6], [-0.15, 0.6, -0.12, 0.18, 0.6], [-0.08, 0.6, 0.2, 0.16, 0.6], [0.16, 0.6, -0.2, 0.16, 0.6], [0.04, 0.78, 0.02, 0.17, 0.6]];
   canopy(b, bl, leaves, { mott: 0.35, sun: 0.14 });
   // hanging curtains of fronds
@@ -404,9 +404,9 @@ export function bushModel(i = 0) {
   i = ((i % 6) + 6) % 6;
   const b = new Build(200 + i);
   const pal = [
-    ramp(0x2e7a26, 0x48a030, 0x78c63a, 0xc8ec5a),
-    ramp(0x2a6a2e, 0x3e8a36, 0x62aa40, 0xa8d058),
-    ramp(0x347e30, 0x4e9a38, 0x7ec048, 0xc4e470),
+    ramp(0x1e6a26, 0x2e8a2e, 0x52ac36, 0x9cd04a),
+    ramp(0x1e5e2e, 0x2e7a34, 0x4a9a3c, 0x86c04c),
+    ramp(0x24702e, 0x369034, 0x5cb040, 0xa0d45a),
     ramp(0x7a6a3a, 0x9a8a48, 0xc0ae5e, 0xe8d890),
     ramp(0x2a6a5a, 0x3e8a6e, 0x60a888, 0x9accb0),
     ramp(0x2e6a2a, 0x46883a, 0x6ea648, 0xaccc60),
@@ -496,7 +496,7 @@ const ROCK_PAL = [
   ramp(0x6e7890, 0x8a96ae, 0xacb6cc, 0xd2daea), // cold slate
   ramp(0x847a70, 0xa29a8c, 0xc4bcaa, 0xeae2ce),
   ramp(0x6e7890, 0x8a96ae, 0xacb6cc, 0xd2daea),
-  ramp(0x5a4650, 0x6e5660, 0x8a6c70, 0xac8a84), // basalt (violet-brown, never black)
+  ramp(0x4e3a44, 0x624a54, 0x7e6066, 0xa0807c), // basalt (violet-brown, never black)
 ];
 function rockPaint(rmp, y1, moss = 0, snow = 0) {
   const M = ramp(0x4a8a2a, 0x6aaa34, 0xaad452), S = ramp(0xc0d0f0, 0xecf2ff, 0xffffff), SH = L(0x6a6488);
@@ -559,7 +559,7 @@ function mound({ r0, h, segs = 12, rings = 8, seed = 1, rough = 0.28, sharp = 1.
 const ROCK_PEAK = ramp(0x7a6252, 0x9e8068, 0xc4a482, 0xe2c8a2, 0xfaeccc); // warm sunlit sandstone-grey
 const COLD_PEAK = ramp(0x56688e, 0x6e82a8, 0x8a9ec0, 0xaabcd6, 0xcad8ea); // pale blue granite
 const BASALT = ramp(0x5e3a3a, 0x7c4a44, 0x9c604c, 0xbc7c5a, 0xd89c74); // warm red-brown volcanic rock
-const PEAK_SHADE = L(0x5c5490); // painted shade colour: violet, never black
+const PEAK_SHADE = L(0x6a6a96); // painted shade colour: violet, never black
 function peakPaint(kind, H) {
   const rock = kind === 'snow' ? COLD_PEAK : kind === 'volcano' ? BASALT : ROCK_PEAK;
   const grass = kind === 'volcano' ? ramp(0x7a4a34, 0x9a6040) : kind === 'snow' ? ramp(0xc8d8f0, 0xf0f6ff) : ramp(0x4a9a2e, 0x86c446);
@@ -573,7 +573,7 @@ function peakPaint(kind, H) {
     const strata = Math.sin(p.y * 26 + m * 5);
     c = mul(c, 0.94 + 0.08 * strata);
     // shaded faces lean violet instead of going dark
-    const shade = smooth(0.15, -0.65, facing) * 0.5 + (fine > 0.72 ? 0.25 : 0);
+    const shade = smooth(0.15, -0.65, facing) * 0.38 + (fine > 0.72 ? 0.2 : 0);
     c = mix(c, mul(PEAK_SHADE, 0.6 + c[1] * 0.8), shade);
     // warm sun kiss on lit ridges
     c = mix(c, L(0xfff2d0), smooth(0.35, 0.9, facing) * 0.18);

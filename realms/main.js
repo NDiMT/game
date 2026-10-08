@@ -8,7 +8,7 @@ import { neutralModel } from './units_neutral.js?v=0.3';
 import { townModel, heroModel, flagModel } from './models_towns.js?v=0.3';
 import { objectModel } from './models_objects.js?v=0.3';
 import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.3';
-import { createBattlefield } from './battlefield.js?v=0.3';
+import { createBattlefield, wallModel, towerModel, gateModel } from './battlefield.js?v=0.3';
 import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.3';
 import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.3';
 import * as BT from './battle.js?v=0.3';
@@ -911,12 +911,19 @@ function enterBattle(B, ctx) {
   bHemi.color.set(L.hemi.sky); bHemi.groundColor.set(L.hemi.ground); bHemi.intensity = L.hemi.intensity;
   bAmb.color.set(L.ambient.color); bAmb.intensity = L.ambient.intensity;
   bstuff.clear(); bmesh.clear();
+  const sfac = bctx.foe.town?.fac;
   for (const k of B.obstacles) {
     const c = k % BT.COLS, r = (k / BT.COLS) | 0;
-    if (B.walls.has(k)) { const w = new THREE.Mesh(cached('wallgeo', () => { const g = new THREE.BoxGeometry(HW * 1.02, 0.7, 0.5); g.translate(0, 0.35, 0); return g; }), wallMat); w.castShadow = w.receiveShadow = true; w.position.copy(hexPos(c, r)); bstuff.add(w); for (const dx of [-0.3, 0, 0.3]) { const m = new THREE.Mesh(cached('merlon', () => new THREE.BoxGeometry(0.18, 0.18, 0.5).translate(0, 0.79, 0)), wallMat); m.position.copy(hexPos(c, r)).add(new THREE.Vector3(dx, 0, 0)); bstuff.add(m); } continue; }
+    if (B.walls.has(k)) { const w = meshOf(cached('wall_' + sfac, () => wallModel(sfac))); w.position.copy(hexPos(c, r)); bstuff.add(w); continue; }
     const m = meshOf(cached('obs' + ctx.terrain + '_' + (k % 3), () => bfield.obstacleModel(k % 3))); m.position.copy(hexPos(c, r)); m.rotation.y = k; bstuff.add(m);
   }
-  if (B.walls.size) { const tw = new THREE.Mesh(cached('towergeo', () => { const g = new THREE.CylinderGeometry(0.45, 0.55, 2, 10); g.translate(0, 1, 0); return g; }), wallMat); tw.castShadow = true; const tr = (B.town.side ?? 1) === 1 ? 0 : BT.ROWS - 1; tw.position.copy(hexPos(BT.COLS - 1, tr)).add(new THREE.Vector3(1.1, 0, 0)); bstuff.add(tw); const roof = new THREE.Mesh(cached('towerroof', () => new THREE.ConeGeometry(0.6, 0.8, 10).translate(0, 2.4, 0)), new THREE.MeshStandardMaterial({ color: G.towns.find((t) => t === bctx.foe.town)?.fac === 'necro' ? 0x6a2a3a : 0x3a6ad8, flatShading: true })); roof.position.copy(tw.position); bstuff.add(roof); bctx.tower = tw; }
+  if (B.walls.size) {
+    const tw = meshOf(cached('tower_' + sfac, () => towerModel(sfac)));
+    const tr = (B.town.side ?? 1) === 1 ? 0 : BT.ROWS - 1;
+    tw.position.copy(hexPos(BT.COLS - 1, tr)).add(new THREE.Vector3(1.1, 0, 0)); bstuff.add(tw); bctx.tower = tw;
+    const row = ([...B.walls][0] / BT.COLS) | 0;
+    for (let c = 0; c < BT.COLS; c++) if (!B.walls.has(BT.key(c, row))) { const g = meshOf(cached('gate_' + sfac, () => gateModel(sfac))); g.position.copy(hexPos(c, row)); bstuff.add(g); }
+  }
   $('blabels').innerHTML = ''; for (const f of floaters) f.el.remove(); floaters.length = 0;
   for (const s of B.stacks) {
     const m = meshOf(cached('u' + s.id, () => unitGeo(s.id)));
