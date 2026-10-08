@@ -237,6 +237,126 @@ export function centerModel(era, level) {
   return done(k);
 }
 
+// ------------------------------------------------------------------ buildings the player places
+// Each fits on one hex (about 0.3 units across) and faces the hex's first corner.
+export function buildingModel(id) {
+  const k = kit(id.length * 977 + id.charCodeAt(0) * 31);
+  switch (id) {
+    case 'hunt':
+      k.cone(0.06, 0.1, -0.06, 0, -0.03, 0x9a7a52, 7); k.cone(0.05, 0.085, 0.05, 0, -0.07, 0x8a6a48, 7);
+      for (const x of [-0.02, 0.06]) k.box(0.008, 0.07, 0.008, x, 0, 0.07, 0x5a3a24);
+      k.box(0.1, 0.006, 0.006, 0.02, 0.065, 0.07, 0x5a3a24);
+      for (let i = 0; i < 3; i++) k.box(0.012, 0.03, 0.004, -0.005 + i * 0.025, 0.035, 0.07, 0x8a3a2a);
+      k.ball(0.016, 0.06, 0.016, 0.03, 0xff8a2a, true);
+      break;
+    case 'shrine':
+      for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; k.box(0.025, 0.07 + (i % 2) * 0.02, 0.018, Math.cos(a) * 0.11, 0, Math.sin(a) * 0.11, 0x9a948a, false, -a); }
+      k.cyl(0.018, 0.022, 0.15, 0, 0, 0, 0x8a5a3a, 6);
+      for (let i = 0; i < 3; i++) k.cyl(0.024, 0.024, 0.025, 0, 0.03 + i * 0.04, 0, [0xb05a3a, 0x3a6a8a, 0xd8b04a][i], 6);
+      k.ball(0.012, 0, 0.17, 0, 0xffd27a, true);
+      break;
+    case 'farm':
+      for (let r = 0; r < 5; r++) k.box(0.26, 0.012, 0.028, 0, 0, -0.12 + r * 0.045, r % 2 ? 0xe6c85a : 0x8ab84a);
+      k.box(0.08, 0.06, 0.06, 0.08, 0, 0.1, 0xb0442f); k.roof(0.09, 0.04, 0.065, 0.08, 0.06, 0.1, 0x6a4a3a);
+      k.cyl(0.022, 0.022, 0.11, -0.03, 0, 0.11, 0xd8d0c0, 10); k.dome(0.022, -0.03, 0.11, 0.11, 0xa8a090);
+      break;
+    case 'workshop':
+      k.box(0.16, 0.06, 0.11, 0, 0, 0, 0xa87a54); k.roof(0.17, 0.05, 0.12, 0, 0.06, 0, 0x6a4a3a);
+      k.cyl(0.013, 0.015, 0.13, 0.05, 0, -0.03, 0x6a6a6a, 6); k.smoke.push([0.05, 0.15, -0.03]);
+      k.box(0.03, 0.03, 0.02, -0.03, 0.015, 0.056, 0xff9a40, true);
+      k.box(0.05, 0.02, 0.03, -0.09, 0, 0.09, 0x4a4a52);
+      break;
+    case 'temple':
+      k.box(0.2, 0.02, 0.14, 0, 0, 0, 0xe9e2d2); k.box(0.17, 0.015, 0.11, 0, 0.02, 0, 0xf2ede2);
+      for (let i = 0; i < 6; i++) for (const z of [-0.045, 0.045]) k.cyl(0.008, 0.009, 0.08, -0.07 + i * 0.028, 0.035, z, 0xffffff, 8);
+      k.box(0.18, 0.012, 0.12, 0, 0.115, 0, 0xe9e2d2); k.roof(0.18, 0.04, 0.12, 0, 0.127, 0, 0xd8cfbb, Math.PI / 2);
+      k.box(0.02, 0.03, 0.02, 0, 0.035, 0, 0xffc860, true);
+      break;
+    case 'library':
+      k.box(0.17, 0.08, 0.12, 0, 0, 0, 0xd8cfbb);
+      for (let i = 0; i < 4; i++) k.cyl(0.008, 0.008, 0.07, -0.06 + i * 0.04, 0.005, 0.068, 0xf2ede2, 8);
+      k.box(0.18, 0.012, 0.14, 0, 0.08, 0, 0xc8bfab); k.dome(0.05, 0, 0.092, 0, 0x7aa0a8);
+      k.windows(0.17, 0.12, 0, 0, 0, 1, 0.07, 3, 0.9);
+      break;
+    case 'aqueduct':
+      for (let i = 0; i < 5; i++) k.box(0.025, 0.11, 0.03, -0.12 + i * 0.06, 0, 0, 0xcfc4ac);
+      k.box(0.28, 0.025, 0.04, 0, 0.11, 0, 0xcfc4ac); k.box(0.28, 0.006, 0.022, 0, 0.135, 0, 0x5fb8ff, true);
+      k.cyl(0.05, 0.05, 0.025, 0.02, 0, 0.09, 0xcfc4ac, 12); k.cyl(0.042, 0.042, 0.004, 0.02, 0.022, 0.09, 0x5fb8ff, 12, true);
+      break;
+    case 'market':
+      for (let i = 0; i < 4; i++) {
+        const x = (i % 2) * 0.12 - 0.06, z = Math.floor(i / 2) * 0.12 - 0.06;
+        k.box(0.07, 0.035, 0.05, x, 0, z, 0x9a7a52);
+        k.roof(0.085, 0.025, 0.065, x, 0.035, z, [0xd04a3a, 0x3a8ad0, 0xe0b030, 0x4ab06a][i]);
+      }
+      k.cyl(0.02, 0.02, 0.012, 0, 0, 0, 0x8a8a8a, 10); k.ball(0.008, 0, 0.03, 0, 0xffd27a, true);
+      break;
+    case 'castle': {
+      const c = 0xb8b0a0;
+      k.box(0.09, 0.15, 0.09, 0, 0, 0, c); k.cone(0.07, 0.06, 0, 0.15, 0, 0x6a4a3a, 4);
+      for (const [x, z] of [[0.1, 0.1], [-0.1, 0.1], [0.1, -0.1], [-0.1, -0.1]]) { k.cyl(0.025, 0.028, 0.11, x, 0, z, c, 8); k.cone(0.03, 0.05, x, 0.11, z, 0x5a5a62, 8); }
+      for (const [w, d, x, z] of [[0.2, 0.014, 0, 0.1], [0.2, 0.014, 0, -0.1], [0.014, 0.2, 0.1, 0], [0.014, 0.2, -0.1, 0]]) k.box(w, 0.06, d, x, 0, z, c);
+      k.win(0.02, 0.03, 0, 0.1, 0.046, 0, 0xffd98a);
+      k.box(0.004, 0.05, 0.004, 0, 0.21, 0, 0x5a3a24); k.box(0.03, 0.018, 0.002, 0.016, 0.24, 0, 0xd03a3a);
+      break;
+    }
+    case 'university':
+      k.box(0.2, 0.08, 0.1, 0, 0, 0, 0xb89a7a); k.roof(0.21, 0.05, 0.11, 0, 0.08, 0, 0x5a5a62);
+      k.box(0.045, 0.2, 0.045, 0.06, 0, 0.03, 0xb89a7a); k.cone(0.04, 0.08, 0.06, 0.2, 0.03, 0x5a5a62, 4);
+      k.windows(0.2, 0.1, 0, 0, 0, 2, 0.04, 5, 0.8);
+      k.ball(0.012, 0.06, 0.16, 0.055, 0xfff0c0, true);
+      break;
+    case 'factory':
+      k.box(0.22, 0.07, 0.13, 0, 0, 0, 0x8a5a44);
+      for (let i = 0; i < 4; i++) k.roof(0.055, 0.04, 0.13, -0.083 + i * 0.055, 0.07, 0, 0x5a5f68, Math.PI / 2);
+      for (const x of [-0.06, 0.03]) { k.cyl(0.013, 0.017, 0.2, x, 0, -0.08, 0x6a4a3a, 6); k.smoke.push([x, 0.22, -0.08]); }
+      k.windows(0.22, 0.13, 0, 0, 0, 1, 0.06, 6, 0.9);
+      break;
+    case 'railway':
+      k.box(0.3, 0.004, 0.012, 0, 0, 0.07, 0x3a3030); k.box(0.3, 0.004, 0.012, 0, 0, 0.1, 0x3a3030);
+      k.box(0.14, 0.06, 0.07, -0.02, 0, -0.06, 0xa85a44); k.roof(0.15, 0.035, 0.08, -0.02, 0.06, -0.06, 0x4a4f5a);
+      k.windows(0.14, 0.07, -0.02, -0.06, 0, 1, 0.05, 4, 0.9);
+      k.box(0.07, 0.045, 0.035, 0.08, 0.004, 0.085, 0x2a2a30); k.cyl(0.012, 0.012, 0.03, 0.1, 0.05, 0.085, 0x2a2a30, 6);
+      k.box(0.06, 0.04, 0.035, 0.0, 0.004, 0.085, 0x3a6a4a); k.box(0.06, 0.04, 0.035, -0.07, 0.004, 0.085, 0x3a6a4a);
+      k.smoke.push([0.1, 0.09, 0.085]);
+      break;
+    case 'hospital':
+      k.box(0.18, 0.12, 0.12, 0, 0, 0, 0xf2f4f6); k.windows(0.18, 0.12, 0, 0, 0, 4, 0.03, 5, 0.8);
+      k.box(0.06, 0.018, 0.018, 0, 0.122, 0, 0xe03a3a); k.box(0.018, 0.018, 0.06, 0, 0.122, 0, 0xe03a3a);
+      k.cyl(0.03, 0.03, 0.004, 0.05, 0.12, 0.03, 0x4a4f5a, 12);
+      break;
+    case 'power':
+      for (const x of [-0.07, 0.06]) { k.cyl(0.045, 0.06, 0.16, x, 0, -0.02, 0xd8d4cc, 14); k.smoke.push([x, 0.18, -0.02]); }
+      k.box(0.12, 0.06, 0.06, 0, 0, 0.09, 0x8a8f96); k.windows(0.12, 0.06, 0, 0.09, 0, 1, 0.05, 4, 0.9);
+      k.box(0.02, 0.02, 0.02, 0.07, 0.06, 0.09, 0x5fd0ff, true);
+      break;
+    case 'airport':
+      k.box(0.3, 0.004, 0.06, 0, 0, 0.04, 0x3a3f48);
+      for (let i = 0; i < 6; i++) k.box(0.025, 0.002, 0.006, -0.12 + i * 0.05, 0.004, 0.04, 0xffffff, true);
+      k.cyl(0.012, 0.016, 0.12, -0.08, 0, -0.08, 0xd8d4cc, 8); k.cyl(0.026, 0.02, 0.025, -0.08, 0.12, -0.08, 0x5fb8ff, 8, true);
+      k.box(0.13, 0.035, 0.05, 0.05, 0, -0.08, 0xe0e4ea); k.windows(0.13, 0.05, 0.05, -0.08, 0, 1, 0.03, 5, 0.9);
+      k.box(0.06, 0.01, 0.012, 0.06, 0.01, 0.04, 0xf2f4f8); k.box(0.012, 0.004, 0.06, 0.065, 0.012, 0.04, 0xf2f4f8);
+      break;
+    case 'lab':
+      k.cyl(0.12, 0.13, 0.025, 0, 0, 0, 0xdfe6ee, 16); k.dome(0.09, 0, 0.025, 0, 0xeef4fa);
+      k.ring(0.095, 0.006, 0, 0.03, 0, 0x5ff0ff);
+      k.cyl(0.004, 0.004, 0.1, 0.04, 0.09, 0, 0xcccccc, 4); k.dome(0.03, 0.04, 0.19, 0, 0xf2f6fa);
+      k.ball(0.01, 0.04, 0.2, 0, 0xff5fd0, true);
+      break;
+    case 'fusion':
+      k.cyl(0.13, 0.14, 0.03, 0, 0, 0, 0x8a96a8, 16);
+      k.ring(0.09, 0.025, 0, 0.09, 0, 0x5ff0ff);
+      k.ball(0.045, 0, 0.09, 0, 0xfff2a0, true, 1);
+      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; k.cyl(0.01, 0.012, 0.09, Math.cos(a) * 0.09, 0.03, Math.sin(a) * 0.09, 0xdfe6ee, 6); }
+      break;
+    case 'arcology':
+      for (let i = 0; i < 4; i++) { const w = 0.24 - i * 0.05, hh = 0.07; k.box(w, hh, w, 0, i * hh, 0, i % 2 ? 0xe6eef6 : 0xcfd8e2); k.windows(w, w, 0, 0, i * hh, 1, hh, 4, 0.8); k.box(w + 0.01, 0.008, w + 0.01, 0, (i + 1) * hh, 0, 0x6aba5a); }
+      k.cyl(0.004, 0.008, 0.1, 0, 0.28, 0, 0xe6eef6, 6); k.ball(0.01, 0, 0.38, 0, 0x5ff0ff, true);
+      break;
+  }
+  return done(k);
+}
+
 // ------------------------------------------------------------------ wonders
 export const WONDERS = ['Stonehenge', 'Great Pyramid', 'Parthenon', 'Cathedral', 'Iron Tower', 'Sky Needle', 'Starship'];
 export function wonderModel(era) {
