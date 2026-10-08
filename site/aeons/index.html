@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-512.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=1.5" />
+  <link rel="stylesheet" href="style.css?v=1.6" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -42,6 +42,7 @@
       </div>
       <span id="goal-pct" class="quest-pct">0%</span>
     </button>
+    <div id="mission" class="mission" hidden><span class="m-ic">🎯</span><div class="m-body"><b id="m-text">Goal</b><div class="m-track"><div id="m-fill"></div></div></div><span id="m-prog" class="m-prog"></span><span id="m-reward" class="m-reward">+40✦</span></div>
     <div id="meteor" class="meteor" hidden>☄️ Impact in 20s</div>
   </header>
   <div class="side">
@@ -150,10 +151,11 @@
     <div class="ages"><span>🔥</span><span>🏺</span><span>🏛️</span><span>🏰</span><span>🏭</span><span>🏙️</span><span>🚀</span></div>
     <div class="menu-btns">
       <button id="continue" class="btn gold" hidden>Continue</button>
+      <div class="diffs"><button data-d="0">🌱 Easy</button><button data-d="1">⚔️ Normal</button><button data-d="2">🔥 Hard</button></div>
       <button id="newworld" class="btn gold">New world</button>
     </div>
   </div>
 </div>
-<script type="module" src="main.js?v=1.5"></script>
+<script type="module" src="main.js?v=1.6"></script>
 </body>
 </html>
