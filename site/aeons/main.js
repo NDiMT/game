@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.4';
-import { createScore } from './music.js?v=1.4';
+import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=1.5';
+import { createScore } from './music.js?v=1.5';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=1.4';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -33,8 +33,10 @@ const ERAS = [
 const WONDER_ICON = ['🪨', '🔺', '🏛️', '⛪', '🗼', '📡', '🚀'];
 const WONDER_DESC = ['A ring of standing stones to read the sky.', 'A tomb for a god-king, built to last forever.', 'A temple of marble and reason.', 'Spires that reach for heaven.', 'An iron tower: the triumph of engineering.', 'A needle in the clouds, heart of a global network.', 'The ark that will carry your people to the stars.'];
 const POWERS = [
+  { id: 'level', name: 'Level', cost: 1, era: 0, r: 0, hint: 'Tap a hex, or hold and drag: each hex steps toward the height of your nearest town. The easy way to make room.' },
   { id: 'raise', name: 'Raise', cost: 1, era: 0, r: 0, hint: 'Tap a hex to raise it. Green ↑ arrows show where to raise so a town gets flat ground.' },
   { id: 'lower', name: 'Lower', cost: 1, era: 0, r: 0, hint: 'Tap a hex to lower it. Red ↓ arrows show where to lower. Below sea level it floods.' },
+  { id: 'beacon', name: 'Beacon', cost: 20, era: 0, r: 0, hint: 'Plant a beacon: your next settlers head there to found a town. Tap again to move it.' },
   { id: 'rain', name: 'Rain', cost: 30, era: 0, r: 3, hint: 'Rain makes the land fertile for a while and puts out fires.' },
   { id: 'forest', name: 'Forest', cost: 40, era: 1, r: 2, hint: 'Plant a forest: food, clean air and a healthier planet.' },
   { id: 'inspire', name: 'Inspire', cost: 90, era: 1, r: 5, hint: 'A spark of genius: settlements here make triple knowledge for a while.' },
@@ -45,6 +47,42 @@ const POWERS = [
   { id: 'war', name: 'War Band', cost: 60, era: 0, r: 0, hint: 'At war: tap a Crimson town to send warriors from your strongest nearby town. Better weapons win.' },
 ];
 const PW = Object.fromEntries(POWERS.map((p) => [p.id, p]));
+const SHAPERS = new Set(['level', 'raise', 'lower', 'terraform']);
+// treasures of the land: a town that covers or touches one gets its bonus
+const RES = [null,
+  { id: 'crystal', name: 'Crystals', icon: '💎', mana: 0.6, land: true, n: 10, desc: '+0.6 ✦/s' },
+  { id: 'gold', name: 'Gold', icon: '🪙', mana: 0.3, know: 0.1, land: true, n: 9, desc: '+0.3 ✦/s, +10% knowledge' },
+  { id: 'fish', name: 'Fish', icon: '🐟', food: 0.35, land: false, n: 16, desc: '+35% food' },
+  { id: 'spring', name: 'Sacred Spring', icon: '⛲', know: 0.3, land: true, n: 8, desc: '+30% knowledge' },
+  { id: 'oil', name: 'Oil', icon: '🛢️', mana: 1, poll: 0.03, land: true, n: 10, era: 4, desc: '+1 ✦/s, but pollutes' },
+];
+// choices that come up as you play: each card offers two paths
+const EVENTS = [
+  { id: 'story', era: [0, 6], icon: '🔥', title: 'The Storyteller', text: 'A wanderer sits by your fire and tells of distant lands and older gods.',
+    a: { label: 'Listen closely', fx: '+25% of the knowledge you need', run: () => gainKnow(0.25) }, b: { label: 'Ask for a blessing', fx: '+120 ✦', run: () => gainMana(120) } },
+  { id: 'harvest', era: [0, 4], icon: '🌾', title: 'A Bountiful Harvest', text: 'The granaries overflow. What will your people do with the plenty?',
+    a: { label: 'Hold a feast', fx: 'All your towns grow 25%', run: () => growTowns(0.25) }, b: { label: 'Trade it away', fx: '+100 ✦', run: () => gainMana(100) } },
+  { id: 'lights', era: [0, 6], icon: '🌠', title: 'Lights in the Sky', text: 'Streaks of fire cross the night. Some call it an omen, some a puzzle.',
+    a: { label: 'Study the stars', fx: '+30% of the knowledge you need', run: () => gainKnow(0.3) }, b: { label: 'Worship them', fx: '+150 ✦', run: () => gainMana(150) } },
+  { id: 'envoy', era: [0, 6], cond: () => G.rival.alive && G.rival.status !== 'war', icon: '🔴', title: 'Crimson Envoys', text: 'Messengers of the Crimson arrive with painted faces, asking for food for a hard winter.',
+    a: { label: 'Share with them', fx: '−60 ✦, they like you much more', run: () => { G.mana = Math.max(0, G.mana - 60); G.rival.rel = Math.min(100, G.rival.rel + 25); } }, b: { label: 'Send them away', fx: '+15% knowledge, they resent it', run: () => { gainKnow(0.15); G.rival.rel -= 15; } } },
+  { id: 'drought', era: [0, 3], icon: '☀️', title: 'Drought', text: 'The rains have failed. The rivers are thin and the fields are cracking.',
+    a: { label: 'Call the rain', fx: '−70 ✦, rain on every town', run: () => { G.mana = Math.max(0, G.mana - 70); for (const t of myTowns()) for (const [x] of bfs(t.v, 3)) rain[x] = 60; terrainDirty = true; } }, b: { label: 'Endure it', fx: 'All your towns shrink 20%', run: () => growTowns(-0.2) } },
+  { id: 'ship', era: [2, 4], icon: '⛵', title: 'A Plague Ship', text: 'A ship with black sails drifts into your harbour. Its crew is coughing.',
+    a: { label: 'Quarantine', fx: '−50 ✦', run: () => { G.mana = Math.max(0, G.mana - 50); } }, b: { label: 'Let them in', fx: '+12% knowledge, but plague may spread', run: () => { gainKnow(0.12); const t = myTowns()[0]; if (t && t.fx.health < 1) { t.sick = 30; toast('☠️ The plague came ashore!', t.v); } } } },
+  { id: 'refugees', era: [1, 6], icon: '🧳', title: 'Refugees', text: 'Families fleeing a flood elsewhere ask to join your largest town.',
+    a: { label: 'Welcome them', fx: 'Your biggest town fills up', run: () => { const t = bestSettlement(0); if (t) t.pop = capOf(t); } }, b: { label: 'Turn them away', fx: '+60 ✦', run: () => gainMana(60) } },
+  { id: 'gold', era: [1, 6], cond: () => myTowns().some((t) => t.res?.includes(2)), icon: '🪙', title: 'Gold Rush', text: 'Your miners found a rich vein. Digging deeper would scar the land.',
+    a: { label: 'Dig it out', fx: '+220 ✦, planet −6 health', run: () => { gainMana(220); G.health = Math.max(0, G.health - 6); } }, b: { label: 'Leave it', fx: 'Planet +6 health', run: () => { G.health = Math.min(100, G.health + 6); } } },
+  { id: 'genius', era: [3, 6], icon: '🧠', title: 'A Young Genius', text: 'A child in one of your towns draws machines nobody has ever seen.',
+    a: { label: 'Fund her workshop', fx: '−120 ✦, +40% of the knowledge you need', run: () => { G.mana = Math.max(0, G.mana - 120); gainKnow(0.4); } }, b: { label: 'Let her be', fx: '+10% knowledge', run: () => gainKnow(0.1) } },
+  { id: 'smog', era: [4, 6], icon: '🏭', title: 'Black Skies', text: 'Factory smoke hangs over your cities. People demand cleaner air.',
+    a: { label: 'Clean up', fx: '−100 ✦, planet +12 health', run: () => { G.mana = Math.max(0, G.mana - 100); G.health = Math.min(100, G.health + 12); } }, b: { label: 'Keep producing', fx: '+150 ✦, planet −8 health', run: () => { gainMana(150); G.health = Math.max(0, G.health - 8); } } },
+  { id: 'ai', era: [5, 6], icon: '🤖', title: 'The Thinking Machine', text: 'Your engineers built a mind that can learn. It asks to be connected to everything.',
+    a: { label: 'Connect it', fx: '+50% of the knowledge you need', run: () => gainKnow(0.5) }, b: { label: 'Keep it boxed', fx: '+100 ✦', run: () => gainMana(100) } },
+  { id: 'comet', era: [2, 6], icon: '☄️', title: 'A Comet Returns', text: 'The great comet is back after a century. The whole world looks up.',
+    a: { label: 'Festival of lights', fx: 'All your towns grow 15%, +60 ✦', run: () => { growTowns(0.15); gainMana(60); } }, b: { label: 'Share star charts with the Crimson', fx: 'They like you more, +15% knowledge', run: () => { G.rival.rel = Math.min(100, G.rival.rel + 15); gainKnow(0.15); } } },
+];
 // Buildings you place next to towns, SimCity style. Each one helps every town within RANGE hexes.
 const BUILDINGS = [
   { id: 'hunt', name: 'Hunting Grounds', short: 'Hunting', icon: '🏹', era: 0, cost: 40, fx: { food: 0.3 }, desc: '+30% food: nearby towns grow faster and hold more people.' },
@@ -135,10 +173,11 @@ function bfs(v, r, pass = null) {
 }
 
 // ------------------------------------------------------------------ world state
+const res = new Uint8Array(NV), lock = new Uint8Array(NV);
 const h = new Int8Array(NV), tree = new Uint8Array(NV), rain = new Float32Array(NV), burn = new Float32Array(NV), crowd = new Uint8Array(NV);
 const G = {
   seed: 1, era: 0, know: 0, mana: 60, health: 100, sea: SEA0, seaVis: SEA0, elapsed: 0, mode: 'menu', started: false,
-  settlements: [], walkers: [], wonders: [], buildings: [], rival: null, stats: { founded: 0, lost: 0, disasters: 0, peak: 0 },
+  settlements: [], walkers: [], wonders: [], buildings: [], rival: null, beacon: -1, eventT: 120, seenEvents: [], stats: { founded: 0, lost: 0, disasters: 0, peak: 0 },
 };
 let terrainDirty = true, setDirty = true;
 const isLand = (v) => h[v] > G.sea;
@@ -182,7 +221,14 @@ function assignTiles() {
   });
   for (let v = 0; v < NV; v++) if (before[v] !== tileKind[v]) { terrainDirty = true; break; }
   rebuildCrowd();
+  lock.fill(0);
+  for (let v = 0; v < NV; v++) {
+    const red = (owner[v] >= 0 && G.settlements[owner[v]].tribe === 1) || (tileKind[v] === 5 && bTribe[v] === 1) || G.wonders.some((w) => w.tribe === 1 && w.v === v);
+    if (red) for (const [x] of bfs(v, 2)) lock[x] = 1;
+  }
+  lockDirty = true;
 }
+let lockDirty = true;
 // the next hex a town spreads to: flat, free land touching it, closest to the centre
 function frontier(s) {
   let best = null, bd = 1e9;
@@ -210,6 +256,21 @@ function computeFx() {
       if (!s || s.tribe !== tb || (s.fxN[b.id] = (s.fxN[b.id] || 0) + 1) > 2) continue;
       for (const key of ['food', 'know', 'size', 'health', 'defend']) s.fx[key] += fx[key] || 0;
     }
+  }
+  // treasures: the first town that covers or touches one gets it
+  const claimed = new Set();
+  for (const s of G.settlements) {
+    const found = [];
+    for (const c of [s.v, ...s.tiles]) for (const x of [c, ...NBR[c]]) {
+      const r = res[x];
+      if (!r || claimed.has(x) || RES[r].land !== isLand(x) || (RES[r].era && eraOf(s) < RES[r].era)) continue;
+      claimed.add(x); found.push(r);
+      const R = RES[r];
+      s.fx.food += R.food || 0; s.fx.know += R.know || 0;
+      W[s.tribe].mana += R.mana || 0; W[s.tribe].poll += R.poll || 0;
+      if (!s.tribe && !s.seen?.has(x)) { (s.seen ||= new Set()).add(x); floatText(x, `${R.icon} ${R.name}!`, 'gold'); tip(`res${r}`, `${R.icon} Your town found ${R.name}: ${R.desc}.`, true); }
+    }
+    s.res = found;
   }
   worldFx = W;
 }
@@ -272,6 +333,20 @@ function generate(seed) {
   return best;
 }
 
+function placeResources(seed) {
+  const r = mulberry32(seed * 131 + 17);
+  res.fill(0);
+  for (let k = 1; k < RES.length; k++) {
+    let placed = 0;
+    for (let tries = 0; tries < 4000 && placed < RES[k].n; tries++) {
+      const v = (r() * NV) | 0;
+      if (Math.abs(DIRS[v].y) > 0.8 || bfs(v, 2).some(([x]) => res[x])) continue;
+      if (RES[k].land ? h[v] <= SEA0 || h[v] > SEA0 + 5 : h[v] > SEA0 || h[v] < SEA0 - 1 || !NBR[v].some((x) => h[x] > SEA0)) continue;
+      res[v] = k; placed++;
+    }
+  }
+}
+
 // ------------------------------------------------------------------ renderer, camera, lights
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -295,7 +370,7 @@ sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.02;
 scene.add(sun);
 // a cool moonlight from the far side keeps the night readable
-const moonLight = new THREE.DirectionalLight(0x8aa4ff, 0.55);
+const moonLight = new THREE.DirectionalLight(0x8a7aff, 1.0);
 scene.add(moonLight);
 const hemi = new THREE.HemisphereLight(0x8aa8ff, 0x1a1a2a, 0.5);
 scene.add(hemi);
@@ -339,19 +414,60 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
-// stars
+// the night sky: a faint nebula band and stars that twinkle
+const nightU = { value: 0 };
 {
-  const n = 1600, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), r = mulberry32(3);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(220, 48, 24), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false,
+    uniforms: { uTime: timeU },
+    vertexShader: 'varying vec3 vD; void main() { vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform float uTime; varying vec3 vD;
+      float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+      float noise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x), mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
+                   mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+      float fbm(vec3 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
+      void main() {
+        vec3 d = normalize(vD);
+        float band = exp(-pow(dot(d, normalize(vec3(0.35, 1.0, -0.25))) * 3.2, 2.0));
+        float n = fbm(d * 3.0 + vec3(0.0, uTime * 0.004, 0.0));
+        float n2 = fbm(d * 7.0 - 3.0);
+        vec3 col = mix(vec3(0.05, 0.02, 0.12), vec3(0.35, 0.08, 0.45), n) * band * (0.6 + n2);
+        col += vec3(0.02, 0.18, 0.25) * pow(n2, 3.0) * band * 2.0;
+        col += vec3(0.01, 0.012, 0.03);
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  }));
+  dome.renderOrder = -2;
+  scene.add(dome);
+  const n = 2200, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), ph = new Float32Array(n), sz = new Float32Array(n), r = mulberry32(3);
   for (let i = 0; i < n; i++) {
-    const d = new THREE.Vector3(r() * 2 - 1, r() * 2 - 1, r() * 2 - 1).normalize().multiplyScalar(150 + r() * 50);
-    pos.set([d.x, d.y, d.z], i * 3);
-    const c = new THREE.Color().setHSL(0.55 + r() * 0.2, 0.4, 0.6 + r() * 0.4);
+    let d = new THREE.Vector3(r() * 2 - 1, r() * 2 - 1, r() * 2 - 1).normalize();
+    // more stars along the nebula band
+    if (i % 3 === 0) d = d.addScaledVector(new THREE.Vector3(0.35, 1, -0.25).normalize(), -d.dot(new THREE.Vector3(0.35, 1, -0.25).normalize()) * 0.85).normalize();
+    pos.set(d.multiplyScalar(170 + r() * 30).toArray(), i * 3);
+    const c = new THREE.Color().setHSL(0.55 + r() * 0.25 - (r() < 0.15 ? 0.5 : 0), 0.5, 0.65 + r() * 0.35);
     col.set([c.r, c.g, c.b], i * 3);
+    ph[i] = r() * 6.28; sz[i] = 1 + Math.pow(r(), 6) * 4;
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true })));
+  g.setAttribute('aPhase', new THREE.BufferAttribute(ph, 1));
+  g.setAttribute('aSize', new THREE.BufferAttribute(sz, 1));
+  const stars = new THREE.Points(g, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+    uniforms: { uTime: timeU, uPR: { value: Math.min(window.devicePixelRatio, 2) } },
+    vertexShader: `attribute float aPhase; attribute float aSize; uniform float uTime; uniform float uPR; varying vec3 vC; varying float vA;
+      void main() { vC = color; vA = 0.55 + 0.45 * sin(uTime * (1.0 + fract(aPhase) * 2.5) + aPhase * 7.0);
+        gl_PointSize = aSize * uPR * (0.8 + vA * 0.6); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `varying vec3 vC; varying float vA;
+      void main() { vec2 q = gl_PointCoord - 0.5; float d = length(q); float a = smoothstep(0.5, 0.0, d);
+        a += smoothstep(0.06, 0.0, abs(q.x)) * smoothstep(0.5, 0.1, abs(q.y)) * 0.4 + smoothstep(0.06, 0.0, abs(q.y)) * smoothstep(0.5, 0.1, abs(q.x)) * 0.4;
+        gl_FragColor = vec4(vC * a * vA * 1.6, 1.0); }`,
+  }));
+  stars.renderOrder = -1;
+  scene.add(stars);
 }
 
 // ------------------------------------------------------------------ planet mesh, water, atmosphere
@@ -438,6 +554,8 @@ function rebuildPlanet() {
   planetGeo.attributes.position.needsUpdate = planetGeo.attributes.normal.needsUpdate = planetGeo.attributes.color.needsUpdate = true;
   updateWaterDepth();
   layoutTrees();
+  seedFireflies();
+  layoutBeacon();
   setDirty = true;
 }
 // hex cells line up with buildings: the yaw that turns a model's x-axis towards a cell's first corner
@@ -476,6 +594,13 @@ const waterMat = new THREE.ShaderMaterial({
       float spec = pow(max(dot(vN, H), 0.0), 80.0) * step(0.0, dot(vN, uSun));
       float fres = pow(1.0 - max(dot(V, vN), 0.0), 3.0);
       col = col * (0.12 + 0.95 * lambert) + spec * 0.8 + fres * vec3(0.25, 0.45, 0.7) * (0.2 + lambert);
+      // at night the surf glows with plankton, and sparks drift in the shallows
+      float night = smoothstep(0.1, -0.25, dot(vN, uSun));
+      float glowFoam = clamp(smoothstep(0.16, 0.0, vDepth) * (0.6 + 0.4 * sin(uTime * 2.0 + vW.x * 9.0 + vW.z * 7.0)), 0.0, 1.0);
+      vec3 cell = floor(vW * 14.0 + vec3(0.0, uTime * 0.3, 0.0));
+      float spark = step(0.985, fract(sin(dot(cell, vec3(12.99, 78.23, 37.72))) * 43758.5)) * (0.5 + 0.5 * sin(uTime * 4.0 + cell.x)) * smoothstep(0.6, 0.0, vDepth);
+      col += vec3(0.1, 0.85, 1.0) * (glowFoam * 1.8 + spark * 2.5) * night;
+      col += vec3(0.02, 0.05, 0.12) * night;
       gl_FragColor = vec4(col, mix(0.78, 0.94, d));
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -589,7 +714,7 @@ glowMat.onBeforeCompile = (s) => {
     #endif`);
   s.fragmentShader = 'uniform vec3 uSun; varying vec3 vWorldP;\n' + s.fragmentShader
     .replace('#include <color_fragment>', '#include <color_fragment>\n  float night = smoothstep(0.15, -0.2, dot(normalize(vWorldP), uSun));\n  vec3 glowCol = diffuseColor.rgb;\n  diffuseColor.rgb = mix(glowCol * 0.55, glowCol * 0.15, night);')
-    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += glowCol * (0.2 + night * 1.8);');
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += glowCol * (0.2 + night * 2.6);');
 };
 glowMat.customProgramCacheKey = () => 'glow';
 function inst(geo, mat, max, shadow = true) { const m = new THREE.InstancedMesh(geo, mat, max); m.count = 0; m.frustumCulled = false; m.castShadow = m.receiveShadow = shadow; scene.add(m); return m; }
@@ -671,6 +796,7 @@ function arrowGeo(down) {
 const guideUp = inst(arrowGeo(false), new THREE.MeshBasicMaterial({ color: 0x5aff7a }), 600, false);
 const guideDown = inst(arrowGeo(true), new THREE.MeshBasicMaterial({ color: 0xff5a4a }), 600, false);
 const spotGeo = new THREE.TorusGeometry(0.13, 0.01, 4, 6).rotateX(Math.PI / 2).rotateY(Math.PI / 6);
+const lockRings = inst(new THREE.TorusGeometry(0.12, 0.012, 4, 6).rotateX(Math.PI / 2).rotateY(Math.PI / 6), new THREE.MeshBasicMaterial({ color: 0xff3a3a, transparent: true, opacity: 0.85 }), 1500, false);
 const buildSpots = inst(spotGeo, new THREE.MeshBasicMaterial({ color: 0x7ad0ff, transparent: true, opacity: 0.8 }), 1200, false);
 const cloudMesh = inst(cloudGeo(), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x8090a8, flatShading: true, transparent: true, opacity: 0.82, roughness: 1 }), 24, false);
 const clouds = Array.from({ length: 22 }, (_, i) => ({ dir: new THREE.Vector3(rnd() * 2 - 1, (rnd() * 2 - 1) * 0.8, rnd() * 2 - 1).normalize(), yaw: rnd() * 6, s: 0.7 + rnd() * 0.8, i }));
@@ -680,6 +806,146 @@ scene.add(cursor);
 let cursorT = 0;
 const wonderGroup = new THREE.Group();
 scene.add(wonderGroup);
+
+// auroras dance over both poles on the night side
+const auroras = [1, -1].map((sgn) => {
+  const geo = new THREE.CylinderGeometry(R * 0.62, R * 0.5, 1.3, 160, 1, true);
+  const m = new THREE.Mesh(geo, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: timeU, uSun: sunU, uSeed: { value: sgn > 0 ? 0 : 5 } },
+    vertexShader: `uniform float uTime; uniform float uSeed; varying vec2 vUv; varying vec3 vW;
+      void main() { vUv = uv; vec3 p = position; float a = uv.x * 6.2831;
+        float wob = sin(a * 5.0 + uTime * 0.4 + uSeed) * 0.18 + sin(a * 11.0 - uTime * 0.7) * 0.07;
+        p.xz *= 1.0 + wob; vec4 w = modelMatrix * vec4(p, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `uniform float uTime; uniform vec3 uSun; uniform float uSeed; varying vec2 vUv; varying vec3 vW;
+      void main() {
+        float night = smoothstep(0.35, -0.3, dot(normalize(vec3(vW.x, 0.0, vW.z)), normalize(vec3(uSun.x, 0.0, uSun.z))));
+        float x = vUv.x * 60.0 + uSeed;
+        float curtain = pow(0.5 + 0.5 * sin(x + sin(x * 0.37 + uTime * 0.6) * 3.0 + uTime * 0.25), 3.0);
+        curtain *= 0.6 + 0.4 * sin(vUv.x * 17.0 - uTime * 0.9 + uSeed);
+        float y = vUv.y;
+        float fade = smoothstep(0.0, 0.18, y) * smoothstep(1.0, 0.35, y);
+        vec3 col = mix(vec3(0.1, 1.0, 0.55), vec3(0.65, 0.25, 1.0), smoothstep(0.25, 0.95, y));
+        gl_FragColor = vec4(col * curtain * fade * night * 2.0, 1.0);
+      }`,
+  }));
+  m.position.y = sgn * (R + 0.55);
+  if (sgn < 0) m.rotation.x = Math.PI;
+  m.renderOrder = 3;
+  scene.add(m);
+  return m;
+});
+
+// fireflies drift over forests after dark
+const FF = 420;
+const ffGeo = new THREE.BufferGeometry();
+ffGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FF * 3), 3));
+ffGeo.setAttribute('aPhase', new THREE.BufferAttribute(Float32Array.from({ length: FF }, () => rnd() * 100), 1));
+const fireflies = new THREE.Points(ffGeo, new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: timeU, uSun: sunU, uPR: { value: Math.min(window.devicePixelRatio, 2) } },
+  vertexShader: `attribute float aPhase; uniform float uTime; uniform vec3 uSun; uniform float uPR; varying float vA;
+    void main() { vec3 p = position;
+      p += vec3(sin(uTime * 0.7 + aPhase), sin(uTime * 0.9 + aPhase * 1.3) * 0.6 + 0.5, cos(uTime * 0.6 + aPhase * 0.7)) * 0.05;
+      float night = smoothstep(0.05, -0.25, dot(normalize(p), uSun));
+      vA = night * pow(0.5 + 0.5 * sin(uTime * 3.0 + aPhase * 5.0), 4.0);
+      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      gl_PointSize = uPR * 70.0 / -mv.z; gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `varying float vA; void main() { float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d); gl_FragColor = vec4(vec3(1.0, 0.9, 0.35) * a * vA * 2.2, 1.0); }`,
+}));
+fireflies.frustumCulled = false;
+fireflies.renderOrder = 4;
+scene.add(fireflies);
+function seedFireflies() {
+  const cells = [];
+  for (let v = 0; v < NV; v++) if (tree[v] && isLand(v)) cells.push(v);
+  const a = ffGeo.attributes.position.array;
+  for (let i = 0; i < FF; i++) {
+    if (!cells.length) { a[i * 3] = a[i * 3 + 1] = a[i * 3 + 2] = 0; continue; }
+    const v = cells[(rnd() * cells.length) | 0], c = CELLS[v];
+    const p = DIRS[v].clone().multiplyScalar(radiusOf(v) + 0.05 + rnd() * 0.15).addScaledVector(c.t1, (rnd() - 0.5) * 0.25).addScaledVector(c.t2, (rnd() - 0.5) * 0.25);
+    a.set(p.toArray(), i * 3);
+  }
+  ffGeo.attributes.position.needsUpdate = true;
+}
+
+// treasures on the map
+const resMeshes = (() => {
+  const P = (g, c) => ({ g, c });
+  const crystal = mergeParts([0, 1, 2, 3].map((i) => { const a = i * 1.7; return P(new THREE.OctahedronGeometry(0.035 + (i % 2) * 0.015, 0).scale(1, 2.6, 1).rotateZ(0.25 * Math.sin(a)).translate(Math.cos(a) * 0.05 * (i ? 1 : 0), 0.07 + (i % 2) * 0.02, Math.sin(a) * 0.05 * (i ? 1 : 0)), i % 2 ? 0xc87aff : 0x5ff0ff); }));
+  const gold = mergeParts([0, 1, 2, 3, 4].map((i) => P(new THREE.IcosahedronGeometry(0.022 + (i % 3) * 0.008, 0).translate(Math.cos(i * 1.3) * 0.06, 0.02, Math.sin(i * 1.3) * 0.06), 0xffc830)));
+  const rocks = mergeParts([0, 1, 2].map((i) => P(new THREE.DodecahedronGeometry(0.03, 0).translate(Math.cos(i * 2.1) * 0.08, 0.015, Math.sin(i * 2.1) * 0.08), 0x8a8478)));
+  const fish = mergeParts([
+    P(new THREE.SphereGeometry(0.03, 8, 6).scale(1.6, 0.8, 0.7), 0xff8a3a), P(new THREE.ConeGeometry(0.025, 0.04, 4).rotateZ(Math.PI / 2).translate(-0.06, 0, 0), 0xff6a2a),
+    P(new THREE.SphereGeometry(0.025, 8, 6).scale(1.6, 0.8, 0.7).translate(0.04, 0, 0.08), 0xffb84a), P(new THREE.ConeGeometry(0.02, 0.035, 4).rotateZ(Math.PI / 2).translate(-0.01, 0, 0.08), 0xff9a3a)]);
+  const ring = mergeParts([P(new THREE.TorusGeometry(0.1, 0.022, 5, 10).rotateX(Math.PI / 2), 0x9a948a)]);
+  const pool = mergeParts([P(new THREE.CircleGeometry(0.09, 16).rotateX(-Math.PI / 2).translate(0, 0.012, 0), 0x5fd8ff), P(new THREE.CylinderGeometry(0.012, 0.004, 0.12, 6).translate(0, 0.06, 0), 0xbff4ff)]);
+  const derrick = mergeParts([
+    ...[0, 1, 2, 3].map((i) => P(new THREE.CylinderGeometry(0.004, 0.006, 0.26, 4).translate(0, 0.13, 0).rotateZ(0.12 * (i % 2 ? 1 : -1)).rotateY(i * Math.PI / 2), 0x2a2a30)),
+    P(new THREE.CylinderGeometry(0.07, 0.07, 0.01, 10).translate(0.08, 0.005, 0.05), 0x101014), P(new THREE.BoxGeometry(0.06, 0.03, 0.04).translate(-0.06, 0.015, 0.06), 0x8a3a2a)]);
+  return {
+    1: [inst(crystal, glowMat, 40), inst(rocks, bodyMat, 40)],
+    2: [inst(gold, glowMat, 40), inst(rocks, bodyMat, 40)],
+    3: [inst(fish, bodyMat, 40)],
+    4: [inst(ring, bodyMat, 40), inst(pool, glowMat, 40)],
+    5: [inst(derrick, bodyMat, 40)],
+  };
+})();
+function layoutResources() {
+  const n = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (let v = 0; v < NV; v++) {
+    const r = res[v];
+    if (!r || RES[r].land !== isLand(v) || (RES[r].era && G.era < RES[r].era) || tileKind[v] === 4 || tileKind[v] === 5) continue;
+    const k = n[r]++;
+    if (r === 3) {
+      const lift = (G.seaVis + 0.5 - h[v]) * STEP + Math.max(0, Math.sin(t * 2.2 + v)) * 0.06 - 0.01;
+      placeIn(resMeshes[3][0], k, v, 0, 0, t * 0.8 + v, 1, lift);
+      continue;
+    }
+    const sc = r === 1 ? 1 + Math.sin(t * 1.5 + v) * 0.04 : 1;
+    for (const m of resMeshes[r]) placeIn(m, k, v, 0.05, -0.04, YAW[v] + (r === 1 ? t * 0.2 : 0), sc, 0);
+  }
+  for (const r of [1, 2, 3, 4, 5]) for (const m of resMeshes[r]) { m.count = n[r]; m.instanceMatrix.needsUpdate = true; }
+}
+
+// the beacon: a pillar of light where settlers should go
+const beaconBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, 2.4, 16, 1, true).translate(0, 1.2, 0), new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { uTime: timeU },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: 'uniform float uTime; varying vec2 vUv; void main() { float a = (1.0 - vUv.y) * (0.6 + 0.4 * sin(uTime * 3.0 - vUv.y * 12.0)); gl_FragColor = vec4(vec3(1.0, 0.82, 0.35) * a * 1.4, 1.0); }',
+}));
+const beaconRing = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.012, 6, 6).rotateX(Math.PI / 2).rotateY(Math.PI / 6), new THREE.MeshBasicMaterial({ color: 0xffd27a }));
+const beacon = new THREE.Group();
+beacon.add(beaconBeam, beaconRing);
+beacon.visible = false;
+scene.add(beacon);
+function layoutBeacon() {
+  beacon.visible = G.beacon >= 0;
+  if (!beacon.visible) return;
+  const v = G.beacon;
+  beacon.quaternion.setFromUnitVectors(UP, DIRS[v]);
+  beacon.position.copy(DIRS[v]).multiplyScalar(radiusOf(v) + 0.01);
+}
+
+// shooting stars streak across the night sky
+let shootT = 4, shooter = null;
+function updateShootingStars(dt) {
+  shootT -= dt;
+  if (!shooter && shootT <= 0) {
+    shootT = 4 + rnd() * 8;
+    // start somewhere on the far side of the camera's view, away from the sun
+    const back = camera.position.clone().normalize().multiplyScalar(-1);
+    const p = back.clone().add(new THREE.Vector3(rnd() - 0.5, rnd() * 0.5 + 0.2, rnd() - 0.5)).normalize().multiplyScalar(30);
+    if (p.clone().normalize().dot(sunDir) > 0.2) return;
+    const v = new THREE.Vector3(rnd() - 0.5, -0.4 - rnd() * 0.3, rnd() - 0.5).normalize().multiplyScalar(32);
+    shooter = { p, v, life: 0.7 };
+  }
+  if (shooter) {
+    shooter.life -= dt;
+    for (let i = 0; i < 4; i++) { shooter.p.addScaledVector(shooter.v, dt / 4); parts.push({ p: shooter.p.clone(), v: new THREE.Vector3(), c: new THREE.Color(i % 2 ? 0xbfe8ff : 0xffffff), life: 0.5, max: 0.5, g: 0 }); }
+    if (shooter.life <= 0) shooter = null;
+  }
+}
 
 // ------------------------------------------------------------------ particles (radial gravity)
 const PMAX = 1200;
@@ -694,7 +960,7 @@ const dotTex = (() => {
   g.fillStyle = rg; g.fillRect(0, 0, 32, 32);
   return new THREE.CanvasTexture(c);
 })();
-const points = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.07, map: dotTex, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+const points = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.09, map: dotTex, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
 points.frustumCulled = false;
 scene.add(points);
 const parts = [];
@@ -734,7 +1000,7 @@ function fertility(v) {
   f -= Math.abs(DIRS[v].y) * 0.4;
   return Math.max(0.2, f) * (0.6 + G.health / 250);
 }
-const newTown = (v, pop, tiles = [], tribe = 0) => ({ v, pop, tiles, tribe, level: 1, grow: 0, sick: 0, inspire: 0, cool: 6, fert: 1, growT: 2, stuck: 0, fx: { food: 0, know: 0, size: 0, health: 0, defend: 0 }, fxN: {} });
+const newTown = (v, pop, tiles = [], tribe = 0) => ({ v, pop, tiles, tribe, res: [], seen: new Set(), level: 1, grow: 0, sick: 0, inspire: 0, cool: 6, fert: 1, growT: 2, stuck: 0, fx: { food: 0, know: 0, size: 0, health: 0, defend: 0 }, fxN: {} });
 function found(v, pop, tribe = 0) {
   const s = newTown(v, pop, [], tribe);
   s.fert = fertility(v);
@@ -758,11 +1024,12 @@ function spawnWalker(v, pop, tribe = 0, war = -1) {
   G.walkers.push(w);
   return w;
 }
-function findSpot(v) {
+function findSpot(v, tribe = 0, useBeacon = true) {
+  const B = useBeacon && !tribe && G.beacon >= 0 ? G.beacon : -1;
   let best = null, bestScore = -1e9;
-  for (const [x, d] of bfs(v, 11, isLand)) {
-    if (d < 3 || !canSettle(x)) continue;
-    const sc = sameNeighbours(x) * 2 + flatScore(x) * 0.6 - d * 0.5 + fertility(x) * 4 + rnd();
+  for (const [x, d] of B >= 0 ? bfs(B, 4) : bfs(v, 11, isLand)) {
+    if ((B < 0 && d < 3) || !canSettle(x) || (!tribe && lock[x])) continue;
+    const sc = sameNeighbours(x) * 2 + flatScore(x) * 0.6 - d * (B >= 0 ? 3 : 0.5) + fertility(x) * 4 + rnd();
     if (sc > bestScore) { bestScore = sc; best = x; }
   }
   return best;
@@ -796,12 +1063,13 @@ function updateWalkers(dt) {
     w.from = w.to; w.t = 0;
     if (w.path.length) { w.to = w.path.shift(); continue; }
     // arrived (or idle): settle, or look for a new spot
-    if (w.target === w.from && canSettle(w.from)) { found(w.from, w.pop, w.tribe); G.walkers.splice(i, 1); if (!w.tribe) { sfx.found(); tip('found', 'A new settlement! Level the land around it so it can grow.'); } continue; }
+    if (w.target === w.from && canSettle(w.from)) { if (!w.tribe && G.beacon >= 0 && bfs(G.beacon, 4).some(([x]) => x === w.from)) { G.beacon = -1; layoutBeacon(); toast('🚩 Your settlers reached the beacon!', w.from); } found(w.from, w.pop, w.tribe); if (!w.tribe) floatText(w.from, '🏘️ New town!', 'gold'); G.walkers.splice(i, 1); if (!w.tribe) { sfx.found(); tip('found', 'A new settlement! Level the land around it so it can grow.'); } continue; }
     w.think -= dt;
     if (w.think > 0) continue;
     w.think = 1.5;
-    const spot = findSpot(w.from);
-    const path = spot !== null ? pathTo(w.from, spot) : null;
+    let spot = findSpot(w.from, w.tribe);
+    let path = spot !== null ? pathTo(w.from, spot) : null;
+    if (!path && !w.tribe && G.beacon >= 0) { spot = findSpot(w.from, 0, false); path = spot !== null ? pathTo(w.from, spot) : null; }
     if (path) { w.target = spot; w.path = path; w.to = w.path.shift(); }
     else if (++w.tries > 3 || w.age > 60) {
       // nowhere to go: rejoin the nearest settlement
@@ -820,11 +1088,18 @@ function nearestSettlement(v, tribe = 0) {
 const totalPop = (tribe = 0) => G.settlements.reduce((a, s) => a + (s.tribe === tribe ? s.pop : 0), 0) + G.walkers.reduce((a, w) => a + (w.tribe === tribe ? w.pop : 0), 0);
 
 // ------------------------------------------------------------------ powers
+// Level: step toward the height of the nearest of your towns (or the first hex of this stroke)
+function levelTarget(v) {
+  for (const [x] of bfs(v, 4)) if (owner[x] >= 0 && G.settlements[owner[x]].tribe === 0) return h[G.settlements[owner[x]].v];
+  if (press && press.base !== undefined) return press.base;
+  return h[v];
+}
 function applyPower(id, v) {
   const p = PW[id];
   if (G.era < p.era) { toast(`${p.name} arrives in the ${ERAS[p.era].name}`); sfx.deny(); return false; }
   if (G.mana < p.cost) { toast('Not enough inspiration ✦'); sfx.deny(); return false; }
-  if ((id === 'raise' || id === 'lower' || id === 'terraform') && (tileKind[v] === 4 || tileKind[v] === 5)) { toast('A building stands here'); sfx.deny(); return false; }
+  if (SHAPERS.has(id) && (tileKind[v] === 4 || tileKind[v] === 5)) { toast('A building stands here'); sfx.deny(); return false; }
+  if (SHAPERS.has(id) && lock[v] && id !== 'terraform') { toast('🔴 Crimson land: their god will not let you shape it.'); floatText(v, '🔒', 'red'); sfx.deny(); return false; }
   let ok = true;
   const area = p.r ? bfs(v, p.r) : [[v, 0]];
   const R = G.rival, theirs = (x) => owner[x] >= 0 && G.settlements[owner[x]].tribe === 1;
@@ -836,15 +1111,19 @@ function applyPower(id, v) {
     if (!froms.length || !sendBand(froms[0], t, 0)) { toast('None of your towns is big enough to send warriors'); sfx.deny(); return false; }
     toast('⚔️ Your war band marches out!', froms[0].v);
   }
-  if ((id === 'raise' || id === 'lower' || id === 'terraform') && R.status !== 'war' && bfs(v, 1).some(([x]) => theirs(x))) {
-    R.rel -= 2;
-    tip('dig', '🔴 The Crimson are angered when you reshape their land.', true);
-  }
   if ((id === 'bless' || id === 'inspire' || id === 'rain') && area.some(([x]) => theirs(x) && tileKind[x] === 1)) {
     R.rel = Math.min(100, R.rel + (id === 'rain' ? 2 : 8));
     tip('kind', '💛 The Crimson are grateful for your help.', true);
   }
-  if (id === 'raise') ok = raiseV(v);
+  if (id === 'level') {
+    const target = levelTarget(v);
+    ok = h[v] < target ? raiseV(v) : h[v] > target ? lowerV(v) : false;
+    if (!ok) return false;
+  } else if (id === 'beacon') {
+    if (!isLand(v)) { toast('Place the beacon on dry land'); sfx.deny(); return false; }
+    G.beacon = v; layoutBeacon();
+    toast('🚩 Beacon planted. Your next settlers will head here.', v);
+  } else if (id === 'raise') ok = raiseV(v);
   else if (id === 'lower') ok = lowerV(v);
   else if (id === 'rain') {
     for (const [x] of area) { rain[x] = 45; burn[x] = 0; }
@@ -871,7 +1150,7 @@ function applyPower(id, v) {
     terrainDirty = true;
   } else if (id === 'terraform') {
     const target = Math.max(h[v], G.sea + 1);
-    for (const [x] of area) setHeight(x, target);
+    for (const [x] of area) if (!lock[x] && tileKind[x] !== 4 && tileKind[x] !== 5) setHeight(x, target);
   } else if (id === 'deflect') {
     if (!meteor) { toast('No meteor in the sky'); return false; }
     emit(meteor.pos, 0xffc060, 80, 1.2, 1.2, 1.4, 0); emit(meteor.pos, 0xffffff, 30, 2, 1.5, 0.6, 0);
@@ -907,6 +1186,7 @@ function placeBuilding(id, v) {
   emit(posOf(v, 0.15), 0xffe27a, 30, 0.6, 0.4, 1.2, -0.2);
   sfx.found();
   toast(`${b.icon} ${b.name} built. ${b.desc}`);
+  floatText(v, `${b.icon} -${b.cost}✦`, 'gold');
   return true;
 }
 
@@ -1054,7 +1334,8 @@ function simulate(dt) {
           s.tiles.push(x); s.stuck = 0;
           const lv = s.level;
           assignTiles();
-          if (s.level > lv) { s.grow = 0; if (!s.tribe) sfx.grow(); emit(posOf(s.v, 0.2), 0xfff3c4, 20, 0.5, 0.4, 1, -0.1); }
+          if (!s.tribe) floatText(x, '+1 🏘️', 'green');
+          if (s.level > lv) { s.grow = 0; if (!s.tribe) { sfx.grow(); floatText(s.v, `⭐ Town level ${s.level}!`, 'gold'); } emit(posOf(s.v, 0.2), 0xfff3c4, 20, 0.5, 0.4, 1, -0.1); }
           emit(posOf(x, 0.05), 0xfff3c4, 6, 0.3, 0.2, 0.8, -0.1);
         } else s.stuck++;
       }
@@ -1105,6 +1386,7 @@ function simulate(dt) {
   updateWalkers(dt);
   updateDisasters(dt);
   updateRival(dt);
+  maybeEvent(dt);
   if (G.elapsed > 25) tip('rival', '🔴 Another tribe lives across the sea: the Crimson. Tap 🕊️ to deal with them.', true);
   if (G.elapsed > 35 && G.era === 0) tip('build', '🏗️ Open the Build tab: hunting grounds and shrines help nearby towns.', true);
   if (G.know >= ERAS[G.era].need && !tips[`ready${G.era}`]) tip(`ready${G.era}`, `💡 Your people are ready to build the ${WONDERS[G.era]}! Tap the goal above.`, true);
@@ -1220,9 +1502,11 @@ function battle(w) {
     t.tribe = w.tribe; t.pop = Math.max(3, (att - def) / TECH[eraOfTribe(w.tribe)]); t.sick = 0; t.inspire = 0;
     assignTiles(); computeFx(); terrainDirty = true;
     toast(w.tribe ? '🔥 The Crimson captured one of your towns!' : '🏆 Victory! You captured a Crimson town.', t.v);
+    floatText(t.v, w.tribe ? '🔥 Lost!' : '🏆 Captured!', w.tribe ? 'red' : 'gold');
   } else {
     t.pop = Math.max(1, t.pop - att / (TECH[eraOf(t)] * 0.6));
     toast(w.tribe ? '🛡️ Your town drove off the Crimson attack!' : '💀 Your war band was defeated.', t.v);
+    floatText(t.v, w.tribe ? '🛡️ Held!' : '💀 Defeated', w.tribe ? 'green' : 'red');
   }
 }
 function relLabel(r) { return r < -60 ? 'Hostile' : r < -20 ? 'Wary' : r < 20 ? 'Neutral' : r < 60 ? 'Friendly' : 'Devoted'; }
@@ -1236,7 +1520,7 @@ function renderDiplo() {
   $('d-rel').style.width = `${(R.rel + 100) / 2}%`;
   $('d-rel').className = R.rel < -20 ? 'no' : R.rel < 20 ? 'mid' : '';
   $('d-rel-label').textContent = `${relLabel(R.rel)} (${Math.round(R.rel)})`;
-  $('d-status').innerHTML = st === 'war' ? '⚔️ <b>At war.</b> Send ⚔️ War Bands (Powers tab) to capture their towns, or sink their land.' : st === 'ally' ? '🤝 <b>Allies.</b> +15% knowledge for both, +0.5 ✦/s in trade. If they launch first, you share the victory.' : '🕊️ <b>At peace.</b> Towns too close to theirs, or digging up their land, make them angry.';
+  $('d-status').innerHTML = st === 'war' ? '⚔️ <b>At war.</b> Send ⚔️ War Bands (Powers tab) to capture their towns. Their land stays protected by their god.' : st === 'ally' ? '🤝 <b>Allies.</b> +15% knowledge for both, +0.5 ✦/s in trade. If they launch first, you share the victory.' : '🕊️ <b>At peace.</b> Towns too close to theirs make them angry; gifts, rain and blessings on their towns please them. You cannot shape land near them.';
   $('d-offer').hidden = !R.offer;
   if (R.offer) $('d-offer-text').textContent = R.offer === 'peace' ? '🕊️ The Crimson ask for peace.' : '🤝 The Crimson propose an alliance.';
   $('d-gift').textContent = st === 'war' ? '🎁 Tribute ✦150' : '🎁 Gift ✦100';
@@ -1274,6 +1558,40 @@ $('d-accept').addEventListener('click', () => {
   R.offer = null; renderDiplo();
 });
 $('d-refuse').addEventListener('click', () => { const R = G.rival; R.rel -= 10; R.offer = null; renderDiplo(); });
+
+// ------------------------------------------------------------------ event cards
+const myTowns = () => G.settlements.filter((t) => !t.tribe).sort((a, b) => b.pop - a.pop);
+function gainKnow(f) { const n = Math.round(ERAS[G.era].need * f); G.know += n; floatText(null, `+${fmt(n)} 📜`, 'blue'); }
+function gainMana(n) { G.mana = Math.min(999, G.mana + n); floatText(null, `+${n} ✦`, 'gold'); }
+function growTowns(f) { for (const t of myTowns()) t.pop = Math.max(1, Math.min(capOf(t) * 1.2, t.pop * (1 + f))); floatText(null, `${f > 0 ? '+' : ''}${Math.round(f * 100)}% 👥`, f > 0 ? 'green' : 'red'); }
+let curEvent = null;
+function maybeEvent(dt) {
+  G.eventT -= dt;
+  if (G.eventT > 0 || G.mode !== 'play' || !G.started) return;
+  G.eventT = 110 + rnd() * 70;
+  const pool = EVENTS.filter((e) => G.era >= e.era[0] && G.era <= e.era[1] && (!e.cond || e.cond()) && !G.seenEvents.slice(-4).includes(e.id));
+  if (!pool.length) return;
+  curEvent = pool[(rnd() * pool.length) | 0];
+  G.seenEvents.push(curEvent.id);
+  $('ev-icon').textContent = curEvent.icon;
+  $('ev-title').textContent = curEvent.title;
+  $('ev-text').textContent = curEvent.text;
+  $('ev-a').innerHTML = `${curEvent.a.label}<small>${curEvent.a.fx}</small>`;
+  $('ev-b').innerHTML = `${curEvent.b.label}<small>${curEvent.b.fx}</small>`;
+  $('event').hidden = false;
+  G.mode = 'event';
+  sfx.fanfare();
+}
+function chooseEvent(k) {
+  if (!curEvent) return;
+  curEvent[k].run();
+  curEvent = null;
+  $('event').hidden = true;
+  G.mode = 'play';
+  sfx.power(); updateHud();
+}
+$('ev-a').addEventListener('click', () => chooseEvent('a'));
+$('ev-b').addEventListener('click', () => chooseEvent('b'));
 
 // ------------------------------------------------------------------ wonders and the ages
 function bestSettlement(tribe = 0) { return G.settlements.reduce((a, s) => (s.tribe !== tribe ? a : !a || sizeOf(s) > sizeOf(a) || (sizeOf(s) === sizeOf(a) && s.pop > a.pop) ? s : a), null); }
@@ -1359,6 +1677,7 @@ function showEra() {
   $('era-wonder').innerHTML = `Next wonder: <b>${WONDERS[G.era]}</b>`;
   document.body.style.setProperty('--era', e.color);
   $('era').hidden = false;
+  if (G.era > 0) celebrate();
   buildPowers();
   updateHud();
 }
@@ -1391,6 +1710,12 @@ cvs.addEventListener('pointermove', (e) => {
   const dx = e.clientX - p.x, dy = e.clientY - p.y;
   p.x = e.clientX; p.y = e.clientY;
   if (ptrs.size === 1) {
+    if (press && press.paint) {
+      press.x = p.x; press.y = p.y;
+      const v = pickVertex(p.x, p.y);
+      if (v !== null && v !== press.lastV) { press.lastV = v; useAt(p.x, p.y); }
+      return;
+    }
     if (press && !press.moved && Math.hypot(p.x - press.x, p.y - press.y) < 10) return;
     if (press) press.moved = true;
     const k = (cam.dist / 16) * 0.0055;
@@ -1410,9 +1735,10 @@ function endPtr(e) {
   if (!press || e.pointerId !== press.id) return;
   if (!press.moved && !press.repeating && !press.multi && performance.now() - press.t < 450 && G.mode === 'play') useAt(press.x, press.y);
   press = null;
+  $('brush').hidden = true;
 }
 cvs.addEventListener('pointerup', endPtr);
-cvs.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); press = null; gesture = null; });
+cvs.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); press = null; gesture = null; $('brush').hidden = true; });
 cvs.addEventListener('wheel', (e) => { e.preventDefault(); cam.tDist = clamp(cam.tDist * (e.deltaY > 0 ? 1.1 : 0.9), 7.6, 26); }, { passive: false });
 function useAt(cx, cy) {
   const v = pickVertex(cx, cy);
@@ -1429,8 +1755,16 @@ function useAt(cx, cy) {
   updateHud();
 }
 function pressRepeat(dt) {
-  if (!press || press.moved || press.multi || !(tool === 'raise' || tool === 'lower')) return;
-  if (performance.now() - press.t < 380) return;
+  if (!press || press.moved || press.multi || !(tool === 'raise' || tool === 'lower' || tool === 'level')) return;
+  if (performance.now() - press.t < 300) return;
+  if (!press.paint) {
+    // holding still turns the finger into a brush: drag to shape many hexes
+    press.paint = true;
+    const v = pickVertex(press.x, press.y);
+    press.lastV = v; press.base = v !== null ? h[v] : 0;
+    try { navigator.vibrate?.(12); } catch { /* not supported */ }
+    $('brush').hidden = false;
+  }
   press.repeating = true;
   repeatT -= dt;
   if (repeatT <= 0) { repeatT = 0.15; useAt(press.x, press.y); }
@@ -1530,13 +1864,13 @@ function layoutClouds() {
 }
 function layoutGuides() {
   let nu = 0, nd = 0, nb = 0;
-  if (G.mode === 'play' && (tool === 'raise' || tool === 'lower' || tool === 'terraform')) {
+  if (G.mode === 'play' && SHAPERS.has(tool)) {
     // the ring of hexes around each town that still has room to spread: level them to its height
     const seen = new Set();
     for (const s of G.settlements) {
       if (s.tribe || s.tiles.length >= maxTiles(s)) continue;
       for (const c of [s.v, ...s.tiles]) for (const x of NBR[c]) {
-        if (seen.has(x) || tileKind[x] || owner[x] >= 0 || h[x] === h[s.v]) continue;
+        if (seen.has(x) || tileKind[x] || owner[x] >= 0 || h[x] === h[s.v] || lock[x]) continue;
         seen.add(x);
         const bob = 0.02 + Math.abs(Math.sin(t * 4 + x)) * 0.04;
         const lift = Math.max(0, (G.sea + 0.6 - h[x]) * STEP) + 0.01;
@@ -1552,11 +1886,47 @@ function layoutGuides() {
   } else if (!tool.startsWith('b:')) { buildSpots.count = 0; buildSpotsDirty = true; }
   guideUp.count = nu; guideDown.count = nd;
   guideUp.instanceMatrix.needsUpdate = guideDown.instanceMatrix.needsUpdate = true;
+  const shaping = G.mode === 'play' && SHAPERS.has(tool);
+  if (shaping && lockDirty) {
+    let nl = 0;
+    // only the outer edge of the protected zone: a clean red border
+    for (let v = 0; v < NV && nl < 1500; v++) if (lock[v] && isLand(v) && NBR[v].some((x) => !lock[x])) placeIn(lockRings, nl++, v, 0, 0, YAW[v], 1, 0.012);
+    lockRings.count = nl; lockRings.instanceMatrix.needsUpdate = true;
+    lockDirty = false;
+  } else if (!shaping) { lockRings.count = 0; lockDirty = true; }
 }
 let buildSpotsDirty = true;
 
+// ------------------------------------------------------------------ floating texts over the world
+const floaters = [];
+function floatText(v, text, cls = '') {
+  const el = document.createElement('div');
+  el.className = `floater ${cls}`;
+  el.textContent = text;
+  $('floaters').appendChild(el);
+  floaters.push({ el, p: v === null ? null : typeof v === 'number' ? posOf(v, 0.3) : v.clone(), t: 0 });
+  if (floaters.length > 30) { const f = floaters.shift(); f.el.remove(); }
+}
+function updateFloaters(dt) {
+  const camDir = camera.position.clone().normalize();
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    const f = floaters[i];
+    f.t += dt;
+    if (f.t > 1.8) { f.el.remove(); floaters.splice(i, 1); continue; }
+    let x = innerWidth / 2, y = innerHeight * 0.42, vis = true;
+    if (f.p) {
+      tmpV.copy(f.p).project(camera);
+      x = (tmpV.x * 0.5 + 0.5) * innerWidth; y = (-tmpV.y * 0.5 + 0.5) * innerHeight;
+      vis = f.p.clone().normalize().dot(camDir) > 0.1 && tmpV.z < 1;
+    }
+    const k = f.t / 1.8, pop = Math.min(1, f.t * 6);
+    f.el.style.opacity = vis ? String(Math.min(1, (1 - k) * 2.5)) : '0';
+    f.el.style.transform = `translate(${x}px, ${y - k * 60}px) translate(-50%, -50%) scale(${0.6 + pop * 0.5 - (pop >= 1 ? 0.1 : 0)})`;
+  }
+}
+
 // ------------------------------------------------------------------ UI
-const ICON = { war: '⚔️', raise: '⛰️', lower: '🕳️', rain: '🌧️', forest: '🌲', inspire: '💡', bless: '✨', cleanse: '🍃', terraform: '🏗️', deflect: '🛡️' };
+const ICON = { level: '🪄', beacon: '🚩', war: '⚔️', raise: '⛰️', lower: '🕳️', rain: '🌧️', forest: '🌲', inspire: '💡', bless: '✨', cleanse: '🍃', terraform: '🏗️', deflect: '🛡️' };
 let tab = 'powers';
 function buildPowers() {
   if (tab === 'powers') {
@@ -1576,7 +1946,7 @@ function buildPowers() {
   $('tab-powers').classList.toggle('on', tab === 'powers');
   $('tab-build').classList.toggle('on', tab === 'build');
 }
-$('tab-powers').addEventListener('click', () => { tab = 'powers'; buildPowers(); setTool('raise'); });
+$('tab-powers').addEventListener('click', () => { tab = 'powers'; buildPowers(); setTool('level'); });
 $('tab-build').addEventListener('click', () => { tab = 'build'; buildPowers(); const first = BUILDINGS.filter((b) => b.era <= G.era).sort((a, b) => b.era - a.era)[0]; setTool('b:' + first.id); });
 function setTool(id) {
   const isB = id.startsWith('b:');
@@ -1604,6 +1974,19 @@ function yearStr() {
   const e = ERAS[G.era], f = clamp(G.know / e.need, 0, 1), y = Math.round(e.years[0] + (e.years[1] - e.years[0]) * f);
   return y < 0 ? `${fmt(-y)} BCE` : `${y} CE`;
 }
+const hudPrev = {};
+function bump(el) { if (!el) return; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+function celebrate(n = 70) {
+  $('flash').classList.remove('go'); void $('flash').offsetWidth; $('flash').classList.add('go');
+  const box = $('confetti'), cols = ['#ffd27a', '#ff7a9a', '#7ad0ff', '#8affb0', '#c08aff', '#fff'];
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement('i');
+    c.style.left = `${rnd() * 100}%`; c.style.background = cols[i % cols.length];
+    c.style.setProperty('--dx', `${(rnd() - 0.5) * 200}px`); c.style.setProperty('--rot', `${(rnd() - 0.5) * 1440}deg`);
+    c.style.animationDuration = `${1.8 + rnd() * 1.6}s`; c.style.animationDelay = `${rnd() * 0.4}s`;
+    box.appendChild(c); setTimeout(() => c.remove(), 4000);
+  }
+}
 function updateHud() {
   const e = ERAS[G.era];
   $('era-chip').textContent = e.icon;
@@ -1621,6 +2004,17 @@ function updateHud() {
   $('medal').style.setProperty('--p', (f * 100).toFixed(1));
   $('goal-fill').style.width = `${f * 100}%`;
   $('goal-pct').textContent = r.know && r.mana && r.level ? 'BUILD' : `${Math.floor(f * 100)}%`;
+  const chip = (id, ok, txt) => { const el = $(id); el.textContent = txt; if (el.classList.contains('ok') !== ok) { el.classList.toggle('ok', ok); if (ok) bump(el); } };
+  chip('ch-know', r.know, `📜 ${Math.floor(f * 100)}%`);
+  chip('ch-mana', r.mana, `✦ ${fmt(Math.min(G.mana, e.cost))}/${e.cost}`);
+  chip('ch-size', r.level, `🏘️ ${r.best ? sizeOf(r.best) : 0}/${REQ[G.era]}`);
+  const popNow = totalPop(0);
+  if (popNow > (hudPrev.pop || 0) * 1.04 + 2) bump($('pop').parentElement);
+  if (Math.floor(G.mana / 100) > Math.floor((hudPrev.mana || 0) / 100)) bump($('mana').closest('.orb'));
+  hudPrev.pop = popNow; hudPrev.mana = G.mana;
+  const rate = 0.8 + Math.sqrt(popNow) * 0.22 + worldFx[0].mana + (G.rival.status === 'ally' ? 0.5 : 0);
+  $('rate').textContent = `+${rate.toFixed(1)}/s`;
+  $('mana').closest('.orb').classList.toggle('poor', G.mana < 5);
   $('goal').classList.toggle('ready', r.know && r.mana && r.level);
   for (const b of document.querySelectorAll('.power')) { const id = b.dataset.p; b.classList.toggle('poor', G.mana < (id.startsWith('b:') ? BD[id.slice(2)].cost : PW[id].cost)); }
   if (!$('goal-sheet').hidden) renderGoal();
@@ -1655,7 +2049,7 @@ function endGame(won, why = '') {
   $('end-stats').innerHTML = [['Time', `${Math.floor(mins)}:${String(Math.floor(G.elapsed % 60)).padStart(2, '0')}`], ['Ages', `${G.era + (won ? 1 : 0)} / 7`], ['Peak population', fmt(G.stats.peak)], ['Settlements founded', G.stats.founded]]
     .map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
   $('end').hidden = false;
-  if (won) sfx.fanfare(); else sfx.deny();
+  if (won) { sfx.fanfare(); celebrate(120); } else sfx.deny();
 }
 $('end-again').addEventListener('click', () => { $('end').hidden = true; newWorld(); play(); });
 
@@ -1666,7 +2060,7 @@ function save() {
   if (G.mode === 'end' || !G.started) return;
   store.set('aeons.save', {
     v: 1, seed: G.seed, era: G.era, know: G.know, mana: G.mana, health: G.health, sea: G.sea, elapsed: G.elapsed, stats: G.stats, tips,
-    h: pack(h), tree: pack(tree),
+    h: pack(h), tree: pack(tree), res: pack(res), beacon: G.beacon, eventT: G.eventT, seenEvents: G.seenEvents,
     settlements: G.settlements.map((s) => [s.v, Math.round(s.pop), s.tiles, s.tribe]), buildings: G.buildings.map((b) => [b.id, b.v, b.tribe]), rival: G.rival, walkers: G.walkers.filter((w) => w.war < 0).map((w) => [w.from, Math.round(w.pop), w.tribe]), wonders: G.wonders.map((w) => [w.era, w.v, w.tribe || 0]),
   });
 }
@@ -1676,6 +2070,8 @@ function load() {
   Object.assign(G, { seed: s.seed, era: s.era, know: s.know, mana: s.mana, health: s.health, sea: s.sea, seaVis: s.sea, elapsed: s.elapsed, stats: s.stats, started: true });
   Object.assign(tips, s.tips || {});
   unpack(s.h, h); unpack(s.tree, tree);
+  if (s.res) unpack(s.res, res); else placeResources(s.seed);
+  G.beacon = s.beacon ?? -1; G.eventT = s.eventT ?? 120; G.seenEvents = s.seenEvents || [];
   rain.fill(0); burn.fill(0);
   G.settlements = []; G.walkers = []; G.wonders = s.wonders.map(([era, v, tribe]) => ({ era, v, tribe: tribe || 0 }));
   G.rival = Object.assign(newRival(), s.rival || {});
@@ -1698,7 +2094,7 @@ function resetScene() {
   layoutWonders();
   tab = 'powers';
   buildPowers();
-  setTool('raise');
+  setTool('level');
   assignTiles(); computeFx(); layoutBuildings();
   document.body.style.setProperty('--era', ERAS[G.era].color);
   score?.setEra(G.era);
@@ -1709,10 +2105,11 @@ function resetScene() {
 }
 function newWorld() {
   const seed = (Date.now() % 100000) + 1;
-  Object.assign(G, { seed, era: 0, know: 0, mana: 60, health: 100, sea: SEA0, seaVis: SEA0, elapsed: 0, started: true, settlements: [], walkers: [], wonders: [], buildings: [], rival: newRival(), stats: { founded: 0, lost: 0, disasters: 0, peak: 0 } });
+  Object.assign(G, { seed, era: 0, know: 0, mana: 60, health: 100, sea: SEA0, seaVis: SEA0, elapsed: 0, started: true, settlements: [], walkers: [], wonders: [], buildings: [], rival: newRival(), beacon: -1, eventT: 120, seenEvents: [], stats: { founded: 0, lost: 0, disasters: 0, peak: 0 } });
   for (const k of Object.keys(tips)) delete tips[k];
   disasterT = 70;
   const start = generate(seed);
+  placeResources(seed);
   rebuildCrowd();
   found(start, 6);
   G.stats.founded = 0;
@@ -1795,7 +2192,7 @@ const sfx = (() => {
   return {
     init,
     click: () => tone(880, 880, 0.04, 'sine', 0.05),
-    deny: () => tone(200, 150, 0.14, 'triangle', 0.08),
+    deny: () => { tone(200, 150, 0.14, 'triangle', 0.08); const a = document.querySelector('.power.active'); if (a) { a.classList.remove('shake'); void a.offsetWidth; a.classList.add('shake'); } },
     raise: () => { tone(220, 330, 0.1, 'triangle', 0.1); hiss(0.08, 900, 0.1); },
     lower: () => { tone(260, 160, 0.1, 'triangle', 0.1); hiss(0.1, 500, 0.12); },
     power: () => { hiss(0.6, 2400, 0.15, 'bandpass'); [523, 784, 1047].forEach((f, i) => tone(f, f, 0.3, 'sine', 0.06, i * 0.06)); },
@@ -1851,9 +2248,13 @@ function frame() {
   guideT -= dt;
   if (guideT <= 0) { guideT = 0.05; layoutGuides(); }
   if (cursorT > 0) { cursorT -= dt; cursor.material.opacity = Math.max(0, cursorT * 1.6); if (cursorT <= 0) cursor.visible = false; }
+  updateShootingStars(dt);
   updateParticles(dt);
+  updateFloaters(dt);
+  layoutResources();
+  for (const a of auroras) a.rotation.y += dt * 0.02;
   hudT -= dt;
-  if (hudT <= 0 && (G.mode === 'play' || G.mode === 'pause')) { hudT = 0.25; updateHud(); }
+  if (hudT <= 0 && (G.mode === 'play' || G.mode === 'pause' || G.mode === 'event')) { hudT = 0.25; updateHud(); }
   if (hq) post.render(); else renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
@@ -1877,4 +2278,4 @@ checkForUpdate();
 setInterval(checkForUpdate, 60000);
 
 // Exposed for automated testing.
-window.__aeons = { guides: () => [guideUp.count, guideDown.count, tool, G.mode], G, h, tree, simulate, applyPower, buildWonder, wonderReady, raiseV, lowerV, bfs, NBR, declareWar, strength, sendBand, battle, updateRival, DIRS, placeBuilding, assignTiles, BUILDINGS, sizeOf, maxTiles, owner, tileKind, canBuildAt, flyTo, cam, newWorld, play, setTool, nextDisaster, get meteor() { return meteor; } };
+window.__aeons = { night: (k = 1) => { sunAng = Math.atan2(Math.cos(cam.theta), Math.sin(cam.theta)) + Math.PI * k; }, floatText, res, lock, celebrate, guides: () => [guideUp.count, guideDown.count, tool, G.mode], G, h, tree, simulate, applyPower, buildWonder, wonderReady, raiseV, lowerV, bfs, NBR, declareWar, strength, sendBand, battle, updateRival, DIRS, placeBuilding, assignTiles, BUILDINGS, sizeOf, maxTiles, owner, tileKind, canBuildAt, flyTo, cam, newWorld, play, setTool, nextDisaster, get meteor() { return meteor; } };
