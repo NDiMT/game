@@ -255,6 +255,22 @@ export function tileModel(era, variant) {
     if (era >= 3) for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; k.cyl(0.003, 0.003, 0.045, Math.cos(a) * 0.06, 0, Math.sin(a) * 0.06, 0x3a3a40, 4); k.ball(0.007, Math.cos(a) * 0.06, 0.048, Math.sin(a) * 0.06, 0xffe0a0, true); }
     return done(k);
   }
+  if (variant === 9) {
+    // a working yard: a long workshop, crates, barrels and a cart
+    k.box(0.16, 0.05, 0.07, -0.02, 0, -0.05, [0x9a7a52, 0xb08a5a, 0xd8d0c0, 0x8a7a6a, 0x8a5a44, 0xb8bcc4, 0xdfe6ee][era]);
+    k.roof(0.17, 0.035, 0.08, -0.02, 0.05, -0.05, [0x7a5a3a, 0x8a6a48, 0xb0482f, 0x5a5a62, 0x5a5f68, 0x6a7078, 0x9fb8d8][era]);
+    for (let i = 0; i < 4; i++) k.box(0.025, 0.025, 0.025, 0.06 + (i % 2) * 0.03, 0, 0.03 + Math.floor(i / 2) * 0.03, 0xa8824a);
+    for (let i = 0; i < 3; i++) k.cyl(0.012, 0.012, 0.03, -0.08 + i * 0.03, 0, 0.07, 0x7a5a3a, 8);
+    if (era >= 4) { k.cyl(0.008, 0.01, 0.1, -0.07, 0.05, -0.07, 0x6a4a3a, 6); k.smoke.push([-0.07, 0.16, -0.07]); }
+    else { k.box(0.05, 0.015, 0.03, 0.02, 0.008, 0.1, 0x8a5a34); k.cyl(0.012, 0.012, 0.004, 0.0, 0.008, 0.1, 0x3a2a1a, 8); }
+    return done(k);
+  }
+  if (variant === 10) {
+    // a place of worship or learning for the age, with a little garden
+    landmark(era, 3, k);
+    for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.5; k.ball(0.022, Math.cos(a) * 0.12, 0.035, Math.sin(a) * 0.12, 0x5aa844, false, 1); }
+    return done(k);
+  }
   const s = 1.3;
   if (era === 5 && variant === 0) {
     // a tall tower in the middle of the block
