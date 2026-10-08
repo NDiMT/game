@@ -128,7 +128,7 @@ void main() {
   vec3 col = vCol.rgb * t.rgb;
 #ifdef ADD
   float m = max(col.r, max(col.g, col.b));
-  col = mix(col, vec3(m * 1.05), pow(t.a, 5.0) * 0.55);
+  col = mix(col, vec3(m * 1.05), pow(t.a, 6.0) * 0.3);
 #endif
   gl_FragColor = vec4(col, vCol.a * t.a);
 }`;
@@ -140,7 +140,7 @@ varying vec4 vCol; varying float vV;
 void main() {
   float e = 1.0 - vV * vV; float a = vCol.a * e * e;
   float m = max(vCol.r, max(vCol.g, vCol.b));
-  vec3 col = mix(vCol.rgb, vec3(m * 1.1), pow(e, 6.0) * 0.6);
+  vec3 col = mix(vCol.rgb, vec3(m * 1.05), pow(e, 8.0) * 0.3);
   gl_FragColor = vec4(col, a);
 }`;
 const COL_VS = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
@@ -383,7 +383,7 @@ export function createVfx(THREE, scene) {
     return G;
   })();
   const arrowMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
-  const magicArrowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 2.4, 3.2), toneMapped: false, side: THREE.DoubleSide });
+  const magicArrowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 1.6, 2.8), toneMapped: false, side: THREE.DoubleSide });
   const boulderGeo = (() => {
     const g = new THREE.IcosahedronGeometry(0.17, 1), p = g.attributes.position, c = new Float32Array(p.count * 3);
     const h = (x, y, z) => { const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return s - Math.floor(s); };
@@ -425,8 +425,8 @@ export function createVfx(THREE, scene) {
   const posOf = (t) => (t && t.isObject3D ? t.position : t);
   const randDir = (out, up = 0) => { const a = rand() * TAU, z = rr(-1, 1) * (1 - up) + up * rand(); const r = Math.sqrt(1 - z * z); return out.set(Math.cos(a) * r, Math.abs(z) * (up ? 1 : Math.sign(z) || 1), Math.sin(a) * r); };
   const COLORS = {
-    gold: [2.4, 1.8, 0.7], white: [2.2, 2.1, 1.9], spark: [2.6, 1.6, 0.6], holy: [2.6, 2.1, 1.1], death: [0.9, 2.2, 1.1], deathHalo: [1.3, 0.45, 2.0],
-    magic: [1.0, 1.9, 3.0], fire: [2.8, 1.1, 0.3], ember: [3.0, 1.4, 0.4], green: [0.7, 2.4, 1.0], cyan: [0.6, 2.2, 2.6], purple: [1.4, 0.55, 2.4],
+    gold: [2.4, 1.8, 0.7], white: [2.2, 2.1, 1.9], spark: [2.6, 1.6, 0.6], holy: [2.2, 1.6, 0.6], death: [0.5, 1.8, 0.7], deathHalo: [1.3, 0.45, 2.0],
+    magic: [0.6, 1.4, 2.8], fire: [2.2, 0.8, 0.2], ember: [3.0, 1.4, 0.4], green: [0.7, 2.4, 1.0], cyan: [0.6, 2.2, 2.6], purple: [1.4, 0.55, 2.4],
     dust: [0.86, 0.76, 0.6], rock: [0.78, 0.7, 0.6], smoke: [0.7, 0.64, 0.66],
   };
   const glowPt = (p, c, s0, s1, life, a = 1, v) => emit(ADD, p, { c, s0, s1, life, a, v, tile: 0 });
@@ -462,7 +462,7 @@ export function createVfx(THREE, scene) {
       emit(ADD, p, { c: [2.4, 2.0, 1.4], s0: 1.0 * big, s1: 0.6 * big, life: 0.16, tile: 1, rot: rand() * TAU });
       sparks(p, Math.round(12 * big), COLORS.spark, { dir, push: 2.5, min: 2.5, max: 5.5 * big });
       dust(ground, Math.round(4 * big), COLORS.dust, { sp: 1.2 * big });
-      if (kind !== 'melee') { decal(ground, { tex: 'ring', c: [1.4, 1.0, 0.6], s0: 0.4, s1: 2.0, life: 0.4, a: 0.9, fin: 0.05 }); flash(p, [1.6, 1.2, 0.8], 1.0, 2.4, 0.22, 0.7); }
+      if (kind !== 'melee') { decal(ground, { tex: 'ring', c: [1.4, 1.0, 0.6], s0: 0.4, s1: 2.0, life: 0.4, a: 0.9, fin: 0.05 }); flash(p, [1.6, 1.1, 0.6], 1.0, 2.2, 0.22, 0.5); }
       if (kind === 'lucky') sparkle(ground, 'luck');
       return;
     }
@@ -554,12 +554,12 @@ export function createVfx(THREE, scene) {
       } else if (kind === 'holy') {
         glowPt(p, COLORS.holy, 0.55, 0.35, 0.1);
         glowPt(p, [1.4, 1.0, 0.45], 1.1, 0.7, 0.08, 0.45);
-        if (moved) seg(s.prev, p, { c: [2.2, 1.7, 0.7], w: 0.2, w1: 0.02, life: 0.35, a: 0.6 });
+        if (moved) seg(s.prev, p, { c: [1.6, 1.1, 0.3], w: 0.2, w1: 0.02, life: 0.35, a: 0.6 });
         for (let j = rate(s, 50, dt); j > 0; j--) emit(ADD, p, { v: randDir(_a, 0).multiplyScalar(rr(0.2, 0.7)), c: COLORS.gold, s0: rr(0.12, 0.22), s1: 0.02, life: rr(0.4, 0.6), tile: 1, rv: rr(-3, 3), drag: 1.5 });
       } else if (kind === 'death') {
         glowPt(p, COLORS.death, 0.5, 0.3, 0.1);
         glowPt(p, COLORS.deathHalo, 1.0, 0.6, 0.1, 0.6);
-        if (moved) seg(s.prev, p, { c: [1.1, 0.5, 2.0], w: 0.16, w1: 0.02, life: 0.3, a: 0.7 });
+        if (moved) seg(s.prev, p, { c: [0.8, 0.3, 1.6], w: 0.16, w1: 0.02, life: 0.3, a: 0.7 });
         const ang = s.t * 26;
         _c.subVectors(s.b, s.a).normalize(); _d.set(-_c.z, 0, _c.x);
         for (const sg of [1, -1]) emit(ADD, _a.copy(p).addScaledVector(_d, Math.cos(ang) * 0.18 * sg).setY(p.y + Math.sin(ang) * 0.18 * sg), { c: sg > 0 ? COLORS.death : COLORS.deathHalo, s0: 0.16, s1: 0.03, life: 0.3 });
@@ -568,10 +568,10 @@ export function createVfx(THREE, scene) {
         for (let j = rate(s, 22, dt); j > 0; j--) emit(ALP, p, { v: vec(rr(-0.2, 0.2), rr(0, 0.3), rr(-0.2, 0.2)), c: COLORS.dust, s0: 0.18, s1: 0.45, life: 0.45, a: 0.35, tile: 2, rv: rr(-1, 1) });
       } else if (kind === 'magic') {
         glowPt(p, COLORS.magic, 0.6, 0.3, 0.1);
-        if (moved) seg(s.prev, p, { c: [0.7, 1.4, 3.0], w: 0.18, w1: 0.02, life: 0.3, a: 0.8 });
+        if (moved) seg(s.prev, p, { c: [0.35, 0.9, 2.4], w: 0.18, w1: 0.02, life: 0.3, a: 0.8 });
         for (let j = rate(s, 40, dt); j > 0; j--) emit(ADD, p, { v: randDir(_a, 0).multiplyScalar(rr(0.2, 0.8)), c: [1.2, 1.9, 3.0], s0: rr(0.1, 0.18), s1: 0.02, life: 0.45, tile: 1, rv: rr(-3, 3), drag: 1.5 });
       } else if (kind === 'fireball') {
-        glowPt(p, [3.0, 2.0, 0.8], 0.75, 0.5, 0.08);
+        glowPt(p, [2.4, 1.4, 0.5], 0.75, 0.5, 0.08);
         glowPt(p, COLORS.fire, 1.3, 0.8, 0.1, 0.7);
         if (moved) seg(s.prev, p, { c: COLORS.fire, w: 0.4, w1: 0.05, life: 0.3, a: 0.7 });
         for (let j = rate(s, 70, dt); j > 0; j--) emit(ADD, _a.copy(p).add(randDir(_b).multiplyScalar(0.12)), { v: vec(rr(-0.3, 0.3), rr(0.2, 0.8), rr(-0.3, 0.3)), c: rand() < 0.5 ? COLORS.fire : [2.0, 0.55, 0.15], s0: rr(0.3, 0.5), s1: 0.1, life: rr(0.25, 0.45), tile: 2, rv: rr(-2, 2) });
@@ -657,7 +657,7 @@ export function createVfx(THREE, scene) {
       pts.push(vec(a.x + _c.x * t + rr(-1, 1) * env, a.y + _c.y * t, a.z + _c.z * t + rr(-1, 1) * env));
     }
     for (let i = 0; i < n; i++) {
-      seg(pts[i], pts[i + 1], { c: [2.6, 2.9, 3.4], w, life, a: 1 });
+      seg(pts[i], pts[i + 1], { c: [1.6, 2.0, 3.0], w, life, a: 1 });
       seg(pts[i], pts[i + 1], { c: [0.7, 1.0, 2.6], w: w * 4, life: life * 1.3, a: 0.35 });
     }
     if (branches) for (let i = 2; i < n - 1; i++) if (rand() < 0.35) {
@@ -682,7 +682,7 @@ export function createVfx(THREE, scene) {
       const strike = (w) => lightning(top, vec(tp.x, 0.35, tp.z), w, 0.13);
       after(0.12, () => {
         strike(0.13);
-        flash(vec(tp.x, 0.5, tp.z), [1.6, 2.0, 3.0], 1.5, 4.5, 0.35, 1);
+        flash(vec(tp.x, 0.5, tp.z), [0.9, 1.3, 2.6], 1.4, 3.5, 0.35, 0.9);
         flash(vec(top.x, 6, top.z), [1.0, 1.3, 2.2], 4, 9, 0.3, 0.45);
         sparks(vec(tp.x, 0.35, tp.z), 26, [1.8, 2.3, 3.2], { min: 2.5, max: 6.5, up: 0.5, g: 6 });
         decal(tp, { tex: 'ring', c: [1.0, 1.4, 2.8], s0: 0.4, s1: 2.8, life: 0.45, a: 1, fin: 0.04 });
@@ -703,9 +703,9 @@ export function createVfx(THREE, scene) {
       const from = vec(center.x * 0.5 + rr(-0.5, 0.5), 5.5, center.z + 5 * sdir);
       const d = projectile('fireball', from, vec(center.x, 0.3, center.z), () => {
         const c = vec(center.x, 0.35, center.z);
-        flash(c, [3.0, 1.6, 0.6], 1.5, 5.0, 0.4, 1);
-        for (let i = 0; i < 26; i++) { const a = rand() * TAU, sp = rr(0.5, 3.5); emit(ADD, c, { v: vec(Math.cos(a) * sp, rr(0.3, 2.0), Math.sin(a) * sp), c: [2.8, 2.1, 0.9], s0: rr(0.5, 0.8), s1: 1.2, life: rr(0.2, 0.35), tile: 2, drag: 4, g: -1, rv: rr(-2, 2) }); }
-        for (let i = 0; i < 40; i++) { const a = rand() * TAU, sp = rr(1, 4.5); emit(ADD, c, { v: vec(Math.cos(a) * sp, rr(0.2, 1.8), Math.sin(a) * sp), c: [2.6, 0.95, 0.25], s0: rr(0.45, 0.7), s1: 1.4, life: rr(0.4, 0.65), tile: 2, drag: 4, g: -1.5, rv: rr(-2, 2), ap: 1.3 }); }
+        flash(c, [2.2, 0.9, 0.3], 1.5, 4.5, 0.4, 0.8);
+        for (let i = 0; i < 26; i++) { const a = rand() * TAU, sp = rr(0.5, 3.5); emit(ADD, c, { v: vec(Math.cos(a) * sp, rr(0.3, 2.0), Math.sin(a) * sp), c: [2.2, 1.3, 0.45], s0: rr(0.5, 0.8), s1: 1.2, life: rr(0.2, 0.35), tile: 2, drag: 4, g: -1, rv: rr(-2, 2) }); }
+        for (let i = 0; i < 40; i++) { const a = rand() * TAU, sp = rr(1, 4.5); emit(ADD, c, { v: vec(Math.cos(a) * sp, rr(0.2, 1.8), Math.sin(a) * sp), c: [2.0, 0.65, 0.15], s0: rr(0.45, 0.7), s1: 1.4, life: rr(0.4, 0.65), tile: 2, drag: 4, g: -1.5, rv: rr(-2, 2), ap: 1.3 }); }
         for (let i = 0; i < 22; i++) { const a = rand() * TAU, sp = rr(1, 4); emit(ADD, c, { v: vec(Math.cos(a) * sp, rr(0.5, 2.0), Math.sin(a) * sp), c: [1.6, 0.4, 0.12], s0: rr(0.5, 0.8), s1: 1.6, life: rr(0.6, 0.9), tile: 2, drag: 4, g: -1.8, rv: rr(-2, 2), fin: 0.15 }); }
         for (let i = 0; i < 18; i++) { const a = rand() * TAU, sp = rr(0.5, 2.5); emit(ALP, vec(c.x + Math.cos(a) * 0.4, rr(0.3, 0.8), c.z + Math.sin(a) * 0.4), { v: vec(Math.cos(a) * sp, rr(0.6, 1.6), Math.sin(a) * sp), c: COLORS.smoke.map((x) => x * rr(0.9, 1.1)), s0: 0.5, s1: 1.6, life: rr(0.9, 1.4), a: 0.4, tile: 2, drag: 2.5, fin: 0.35, rv: rr(-1, 1) }); }
         sparks(c, 30, COLORS.ember, { min: 3, max: 7, up: 0.6, g: 6, life: 0.6, w: 0.05, len: 0.05 });
@@ -718,7 +718,7 @@ export function createVfx(THREE, scene) {
       return d;
     }
     if (id === 'bless') {
-      column(tp, [2.2, 1.7, 0.7], 1.1, follow);
+      column(tp, [1.8, 1.2, 0.35], 1.1, follow);
       decal(tp, { tex: 'rune', c: [2.0, 1.5, 0.5], s0: 1.2, s1: 1.35, life: 1.1, a: 0.9, rv: 1.2, fin: 0.2, follow });
       during(0.9, (k, dt) => {
         for (let j = 0; j < 2; j++) { const a = rand() * TAU, r = rr(0.1, 0.45); emit(ADD, vec(tp.x + Math.cos(a) * r, rr(0, 0.6), tp.z + Math.sin(a) * r), { v: vec(0, rr(0.8, 1.8), 0), c: rand() < 0.5 ? COLORS.gold : [2.6, 2.4, 1.8], s0: rr(0.12, 0.24), s1: 0.02, life: rr(0.5, 0.8), tile: 1, rv: rr(-3, 3), drag: 0.5 }); }
