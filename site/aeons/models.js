@@ -195,7 +195,7 @@ function landmark(era, level, k) {
 // Towns are built from hex tiles: a centre tile with the town's landmark, and
 // neighbourhood tiles around it (three variants per age, plus fields in the
 // farming ages). A tile is about 0.4 units across.
-const TRIO = [[0.075, 0], [-0.0375, 0.065], [-0.0375, -0.065]];
+const TRIO = [[0.085, 0], [-0.0425, 0.074], [-0.0425, -0.074]];
 export function tileModel(era, variant) {
   const k = kit(era * 37 + variant * 11 + 5);
   if (variant === 3) {
@@ -205,7 +205,15 @@ export function tileModel(era, variant) {
     if (era >= 2) k.box(0.03, 0.04, 0.03, 0.09, 0, 0.08, 0x8a6a48);
     return done(k);
   }
-  const s = 1.05;
+  if (variant === 4) {
+    // a little park: lawn, trees and a fountain or statue
+    k.cyl(0.15, 0.15, 0.006, 0, 0, 0, 0x6ab84a, 6);
+    for (let i = 0; i < 5; i++) { const a = i * 1.26 + 0.3, x = Math.cos(a) * 0.1, z = Math.sin(a) * 0.1; k.cyl(0.006, 0.008, 0.04, x, 0, z, 0x6a4a2a, 5); k.ball(0.03 + (i % 2) * 0.008, x, 0.06, z, i % 2 ? 0x4a9a3a : 0x5aae44, false, 1); }
+    if (era >= 2) { k.cyl(0.035, 0.04, 0.015, 0, 0, 0, 0xd8d0c0, 10); k.cyl(0.03, 0.03, 0.004, 0, 0.013, 0, 0x5fc8ff, 10, true); k.cyl(0.006, 0.006, 0.04, 0, 0.01, 0, 0xd8d0c0, 6); }
+    else k.box(0.02, 0.05, 0.02, 0, 0, 0, 0x9a948a);
+    return done(k);
+  }
+  const s = 1.3;
   if (era === 5 && variant === 0) {
     // a tall tower in the middle of the block
     building(5, k, 0, 0, 1.4, 0);
@@ -221,6 +229,9 @@ export function tileModel(era, variant) {
       building(era, k, x * c - z * sn, x * sn + z * c, s * (0.9 + k.r() * 0.25), i + variant);
     });
     if (era <= 2 && variant === 1) k.ball(0.03, 0, 0.02, 0, 0x5a9a3a, false, 0);
+    // later ages pack a fourth building into the middle of the block
+    if (era >= 3 && variant !== 1) building(era, k, 0, 0, s * 0.85, 7 + variant);
+    if (variant === 1) for (let i = 0; i < 3; i++) { const a = i * 2.1 + 1; k.ball(0.022, Math.cos(a) * 0.12, 0.04, Math.sin(a) * 0.12, 0x5aa844, false, 1); k.cyl(0.004, 0.005, 0.03, Math.cos(a) * 0.12, 0, Math.sin(a) * 0.12, 0x6a4a2a, 5); }
     if (era >= 4 && variant === 2) k.box(0.05, 0.004, 0.05, 0, 0, 0, 0x6aaa4a);
   }
   return done(k);
@@ -450,6 +461,11 @@ export function treeGeos() {
 }
 export function cloudGeo() {
   const r = mulberry32(5), parts = [];
-  for (let i = 0; i < 5; i++) parts.push({ g: new THREE.IcosahedronGeometry(0.12 + r() * 0.1, 0).translate((i - 2) * 0.13, r() * 0.05, (r() - 0.5) * 0.12), c: 0xffffff });
+  // a soft cumulus: a row of puffs, biggest in the middle, flattened underneath
+  for (let i = 0; i < 9; i++) {
+    const x = (i - 4) * 0.075 + (r() - 0.5) * 0.03, size = 0.09 + (1 - Math.abs(i - 4) / 4) * 0.08 + r() * 0.03;
+    parts.push({ g: new THREE.SphereGeometry(size, 12, 8).scale(1, 0.8, 1).translate(x, size * 0.35 + r() * 0.03, (r() - 0.5) * 0.12), c: 0xffffff });
+  }
+  for (let i = 0; i < 4; i++) parts.push({ g: new THREE.SphereGeometry(0.07 + r() * 0.03, 10, 6).scale(1, 0.75, 1).translate((r() - 0.5) * 0.35, 0.02, (r() - 0.5) * 0.25), c: 0xeef2f8 });
   return mergeParts(parts);
 }
