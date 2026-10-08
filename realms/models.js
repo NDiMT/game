@@ -41,7 +41,7 @@ function roofGeo() {
   g.setAttribute('position', new THREE.Float32BufferAttribute(P.flat(), 3));
   return g;
 }
-function kit(seed = 1) {
+export function kit(seed = 1) {
   const r = mulberry32(seed);
   const B = [], G = [];
   const add = (g, c, glow) => (glow ? G : B).push({ g, c });
@@ -77,7 +77,7 @@ function kit(seed = 1) {
   };
   return k;
 }
-const done = (k) => ({ body: mergeParts(k.B), glow: k.G.length ? mergeParts(k.G) : null });
+export const done = (k) => ({ body: mergeParts(k.B), glow: k.G.length ? mergeParts(k.G) : null });
 
 // ---------------------------------------------------------------- creatures
 const SKIN = 0xe8b890, DARK = 0x2a2a30, STEEL = 0xc8ccd4, WOOD = 0x7a5a3a, GOLD = 0xe8c050, BONE = 0xe8e0c8;
