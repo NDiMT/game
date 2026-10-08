@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-512.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=1.6" />
+  <link rel="stylesheet" href="style.css?v=1.7" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -19,36 +19,31 @@
 <body class="in-menu">
 <div id="app">
   <header class="top">
-    <div class="hud-row">
-      <div id="medal" class="medal" style="--p:0">
-        <div class="medal-in"><span id="era-chip">🔥</span></div>
-      </div>
-      <div class="era-ribbon">
-        <b id="era-label">Stone Age</b>
-        <small id="year">10,000 BCE</small>
-      </div>
-      <div class="pills">
-        <div class="pill"><i>👥</i><b id="pop">0</b></div>
-        <div class="pill health"><i>🌍</i><div class="hbar"><div id="health-fill"></div><b id="health" class="ok">100%</b></div></div>
-      </div>
+    <div class="hud-bar">
+      <div id="medal" class="medal" style="--p:0"><div class="medal-in"><span id="era-chip">🔥</span></div></div>
+      <div class="era-txt"><b id="era-label">Stone Age</b><small id="year">10,000 BCE</small></div>
+      <div class="stat-mini"><i>👥</i><b id="pop">0</b></div>
+      <div class="stat-mini hp"><i>🌍</i><div class="hbar"><div id="health-fill"></div><b id="health" class="ok">100%</b></div></div>
     </div>
-    <button id="goal" class="quest" aria-label="Next wonder">
-      <span id="goal-ic" class="quest-ic">🪨</span>
-      <div class="quest-body">
-        <small>NEXT WONDER</small>
-        <b id="goal-name">Stonehenge</b>
-        <div class="track"><div id="goal-fill"></div></div>
-        <div class="chips"><span id="ch-know" class="chip">📜 0%</span><span id="ch-mana" class="chip">✦ 0/80</span><span id="ch-size" class="chip">🏘️ 1/4</span></div>
-      </div>
-      <span id="goal-pct" class="quest-pct">0%</span>
-    </button>
-    <div id="mission" class="mission" hidden><span class="m-ic">🎯</span><div class="m-body"><b id="m-text">Goal</b><div class="m-track"><div id="m-fill"></div></div></div><span id="m-prog" class="m-prog"></span><span id="m-reward" class="m-reward">+40✦</span></div>
+    <div class="hud-row2">
+      <button id="goal" class="goal-pill" aria-label="Next wonder">
+        <span id="goal-ic" class="g-ic">🪨</span>
+        <span class="g-body"><b id="goal-name">Stonehenge</b><span class="track"><span id="goal-fill"></span></span></span>
+        <span id="goal-pct" class="g-pct">0%</span>
+        <span class="g-chips"><span id="ch-know" class="chip">📜</span><span id="ch-mana" class="chip">✦</span><span id="ch-size" class="chip">🏘️</span></span>
+      </button>
+      <button id="mission" class="mission-chip" hidden aria-label="Mission">
+        <span class="m-ic">🎯</span><span id="m-prog" class="m-prog"></span>
+        <span class="m-pop"><b id="m-text">Goal</b><span class="m-track"><span id="m-fill"></span></span><span id="m-reward" class="m-reward">+40✦</span></span>
+      </button>
+    </div>
     <div id="meteor" class="meteor" hidden>☄️ Impact in 20s</div>
   </header>
   <div class="side">
     <button id="b-home" class="round" aria-label="Find my people">🏠</button>
     <button id="b-diplo" class="round" aria-label="Diplomacy">🕊️</button>
     <button id="b-menu" class="round" aria-label="Menu">⚙️</button>
+    <button id="b-zen" class="round" aria-label="Hide interface">👁️</button>
   </div>
   <button id="update" class="update" hidden>New version! Tap to update</button>
   <div id="toast" class="toast"></div>
@@ -57,13 +52,12 @@
   <div id="flash"></div>
   <div id="confetti"></div>
   <footer class="dock">
-    <div class="dock-top">
-      <div class="orb"><div id="mana-fill"><i></i></div><span><small>✦</small><b id="mana">60</b></span></div>
-      <div class="rate" id="rate">+1/s</div>
-      <p id="hint" class="hint">Tap a hex to raise it.</p>
+    <p id="hint" class="hint">Tap a hex to raise it.</p>
+    <div class="tray">
+      <div class="orb"><div id="mana-fill"><i></i></div><span><small>✦</small><b id="mana">60</b></span><div class="rate" id="rate">+1/s</div></div>
+      <div class="tabs"><button id="tab-powers" class="tab on" aria-label="Powers">✨</button><button id="tab-build" class="tab" aria-label="Build">🏗️</button></div>
+      <div id="powers" class="powers"></div>
     </div>
-    <div class="tabs"><button id="tab-powers" class="tab on">✨ Powers</button><button id="tab-build" class="tab">🏗️ Build</button></div>
-    <div class="tray"><div id="powers" class="powers"></div></div>
   </footer>
 
   <div id="goal-sheet" class="overlay" hidden>
@@ -156,6 +150,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="main.js?v=1.6"></script>
+<script type="module" src="main.js?v=1.7"></script>
 </body>
 </html>
