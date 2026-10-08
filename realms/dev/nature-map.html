@@ -6,6 +6,7 @@
 </head><body>
 <script type="module">
 import * as THREE from 'three';
+import { makeBodyMaterial, makeGlowMaterial } from '../materials.js';
 import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from '../nature.js';
 const q = new URLSearchParams(location.search);
 const W = innerWidth, H = innerHeight;
@@ -18,8 +19,8 @@ const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a1020);
 const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(3, 6, 4); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, far: 20 });
 scene.add(sun, new THREE.HemisphereLight(0xbcd4ff, 0x3a3020, 0.8), new THREE.AmbientLight(0x404a70, 0.35));
-const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.75 });
-const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); glowMat.color.setScalar(2.2);
+const bodyMat = makeBodyMaterial(THREE);
+const glowMat = makeGlowMaterial(THREE);
 const TER_COL = [0x2a5a9a, 0x5aaa3a, 0x9a7a4a, 0xe2cc8a, 0xeef4f8, 0x4a6a3a, 0x9a8a6a, 0x5a3430, 0x7a6e64, 0x3e7e34];
 // hex grid, spacing like the game (about 0.35)
 const S = 0.35, N = 9, cells = [];

@@ -15,7 +15,7 @@
 <div id="info"></div>
 <script type="module">
 import * as THREE from 'three';
-import { neutralModel, NEUTRAL_IDS } from '../units_neutral.js?v='+Date.now();
+const { neutralModel, NEUTRAL_IDS } = await import('../units_neutral.js?v=' + Date.now());
 import { makeBodyMaterial, makeGlowMaterial, tick } from '../materials.js';
 
 // ?id=wolf shows one big; ?a=0.6 fixes the yaw; ?small=1 adds tiny map-guard sized copies

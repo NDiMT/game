@@ -6,6 +6,7 @@
 </head><body><div id="lab"></div>
 <script type="module">
 import * as THREE from 'three';
+import { makeBodyMaterial, makeGlowMaterial } from '../materials.js';
 import * as N from '../nature.js';
 const q = new URLSearchParams(location.search);
 const set = q.get('set') || 'all';
@@ -26,8 +27,8 @@ const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87a8d8);
 const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(6, 10, 5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
 const sc = 12; Object.assign(sun.shadow.camera, { left: -sc, right: sc, top: sc, bottom: -sc, far: 40 });
 scene.add(sun, new THREE.HemisphereLight(0xbcd4ff, 0x3a3020, 0.8), new THREE.AmbientLight(0x404a70, 0.35));
-const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.75 });
-const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); glowMat.color.setScalar(2.2);
+const bodyMat = makeBodyMaterial(THREE);
+const glowMat = makeGlowMaterial(THREE);
 const cols = Math.ceil(Math.sqrt(list.length * W / H)), rows = Math.ceil(list.length / cols), sp = 2.0;
 const items = []; let tris = [];
 const groundCol = (k) => k.includes('snow') ? 0xeef4f8 : k.includes('volcano') || k === 'burnt' || k.endsWith(':6') || k === 'tuft:4' || k === 'crystal:3' ? 0x5a3430 : k === 'palm' || k === 'cactus' || k === 'tuft:3' || k === 'bush:3' || k === 'rock:3' ? 0xe2cc8a : k === 'willow' || k === 'tuft:2' || k === 'bush:5' || k === 'mushroom:2' ? 0x4a6a3a : 0x5aaa3a;

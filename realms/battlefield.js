@@ -41,20 +41,20 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // ------------------------------------------------------------------ terrain palettes
 const LIN = (h) => new THREE.Color(h);
 const TERRAINS = {
-  1: { name: 'grass', sky: 0x8fc4ee, fog: [0xa9cde8, 15, 38], sun: [0xfff0d0, 2.5], hemi: [0xcfe6ff, 0x4a5a2a, 0.9], amb: [0x405070, 0.3], exposure: 1.05,
-    tint: [0x6aa040, 0x4c8a34, 0x86a848], grid: [24, 52, 16], gridHi: [220, 255, 170], field: [255, 250, 200], water: 0x3a6a88, hill: 0.9 },
-  2: { name: 'dirt', sky: 0xb8c8d8, fog: [0xc8b89e, 14, 36], sun: [0xffe2b0, 2.5], hemi: [0xe0e4f0, 0x5a4028, 0.85], amb: [0x504a60, 0.3], exposure: 1.05,
-    tint: [0x9a7450, 0x7e5c3c, 0xa88660], grid: [52, 34, 18], gridHi: [255, 230, 190], field: [255, 230, 190], water: 0x4a5a5a, hill: 0.8 },
-  3: { name: 'sand', sky: 0xf2dcae, fog: [0xf0d8a6, 14, 36], sun: [0xfff2d8, 2.7], hemi: [0xfff0d8, 0x8a6a3a, 0.85], amb: [0x605048, 0.3], exposure: 1.0,
-    tint: [0xe0c080, 0xc8a464, 0xead098], grid: [110, 74, 32], gridHi: [255, 245, 215], field: [255, 245, 220], water: 0x3a8aa0, hill: 1.2 },
-  4: { name: 'snow', sky: 0xc4d6ec, fog: [0xd2e0f0, 12, 34], sun: [0xe8f0ff, 2.2], hemi: [0xd8e8ff, 0x7a8aa8, 1.0], amb: [0x506080, 0.35], exposure: 0.95,
-    tint: [0xf0f4fa, 0xd0dcee, 0xffffff], grid: [60, 80, 120], gridHi: [255, 255, 255], field: [190, 210, 240], water: 0x9ac0dc, hill: 1.0 },
-  5: { name: 'swamp', sky: 0x7a8c78, fog: [0x71846e, 11, 32], sun: [0xf0f4c8, 2.3], hemi: [0xc8dcc0, 0x3a4a28, 1.0], amb: [0x405848, 0.4], exposure: 1.15,
-    tint: [0x6a7a40, 0x58683a, 0x7a8a48], grid: [20, 30, 12], gridHi: [200, 230, 150], field: [190, 200, 120], water: 0x2a4a40, hill: 0.5 },
-  6: { name: 'rough', sky: 0xa8b4c4, fog: [0xb4aea4, 14, 36], sun: [0xfff0dc, 2.5], hemi: [0xdce4f0, 0x4a4030, 0.85], amb: [0x484a58, 0.3], exposure: 1.05,
-    tint: [0x9a8e76, 0x7a705e, 0xa89c84], grid: [40, 34, 26], gridHi: [255, 245, 225], field: [255, 245, 225], water: 0x4a6a7a, hill: 1.4 },
-  7: { name: 'lava', sky: 0x4a2420, fog: [0x5a2a22, 11, 30], sun: [0xffb080, 2.0], hemi: [0xff9a70, 0x2a1010, 0.75], amb: [0x502020, 0.35], exposure: 1.1,
-    tint: [0x3a2c28, 0x2a2020, 0x4a3430], grid: [8, 2, 0], gridHi: [255, 130, 60], hiA: 0.32, field: [255, 120, 60], water: 0x000000, hill: 1.3 },
+  1: { name: 'grass', sky: 0x9fd2f6, fog: [0xc6e4f6, 17, 42], sun: [0xfff3d6, 2.75], hemi: [0xdcefff, 0x9ab868, 1.25], amb: [0x8a9ab8, 0.45], exposure: 1.08,
+    tint: [0x80c44c, 0x62ae3e, 0xb0d060], grid: [36, 78, 22], gridHi: [236, 255, 190], field: [255, 246, 190], water: 0x4a9ac8, hill: 0.9, edge: [150, 120, 64] },
+  2: { name: 'dirt', sky: 0xb8daf4, fog: [0xecdcc0, 16, 40], sun: [0xffeac4, 2.75], hemi: [0xe8eefa, 0xb08a5c, 1.2], amb: [0x988a90, 0.45], exposure: 1.08,
+    tint: [0xc49a68, 0xa87e52, 0xd2b07a], grid: [88, 58, 30], gridHi: [255, 236, 200], field: [255, 236, 196], water: 0x5a9ab0, hill: 0.8, edge: [120, 90, 54] },
+  3: { name: 'sand', sky: 0xa8d4f2, fog: [0xfae8c4, 16, 40], sun: [0xfff4dc, 2.8], hemi: [0xfff4e0, 0xd0a868, 1.15], amb: [0xa09078, 0.42], exposure: 1.02,
+    tint: [0xf0d090, 0xe0b878, 0xf8e0a8], grid: [150, 104, 50], gridHi: [255, 250, 225], field: [255, 248, 226], water: 0x3aa8c0, hill: 1.2, edge: [196, 150, 90] },
+  4: { name: 'snow', sky: 0xb4d8f6, fog: [0xe0ecf8, 15, 38], sun: [0xfff4e4, 2.5], hemi: [0xe4f0ff, 0xa8c0e0, 1.3], amb: [0x8098c0, 0.45], exposure: 0.98,
+    tint: [0xf4f8fc, 0xdce8f6, 0xffffff], grid: [90, 120, 170], gridHi: [255, 255, 255], field: [200, 222, 250], water: 0xa8d4f0, hill: 1.0, edge: [150, 176, 214] },
+  5: { name: 'swamp', sky: 0xa8cab0, fog: [0xb8d0b0, 15, 38], sun: [0xfff8d4, 2.6], hemi: [0xe4f4d4, 0x7a9450, 1.25], amb: [0x7a9a88, 0.48], exposure: 1.1,
+    tint: [0x8aa850, 0x749440, 0xa0b858], grid: [40, 64, 24], gridHi: [220, 244, 170], field: [220, 230, 150], water: 0x3a8a78, hill: 0.5, edge: [96, 110, 50] },
+  6: { name: 'rough', sky: 0xb0d0ec, fog: [0xd8d2c4, 16, 40], sun: [0xfff0d8, 2.75], hemi: [0xe4ecf8, 0x9a8a68, 1.2], amb: [0x8a8a98, 0.45], exposure: 1.08,
+    tint: [0xbcac88, 0xa49474, 0xcabc98], grid: [76, 64, 46], gridHi: [255, 248, 228], field: [255, 246, 226], water: 0x4a8aa8, hill: 1.4, edge: [130, 112, 84] },
+  7: { name: 'lava', sky: 0xd08a5a, fog: [0xb8704c, 14, 36], sun: [0xffd0a0, 2.6], hemi: [0xffc8a0, 0x8a4a30, 1.05], amb: [0x9a5a48, 0.5], exposure: 1.08,
+    tint: [0x9a6a58, 0x84584a, 0xaa7a62], grid: [60, 24, 12], gridHi: [255, 170, 90], hiA: 0.26, field: [255, 150, 80], water: 0x000000, hill: 1.3, edge: [70, 36, 26] },
 };
 
 // ------------------------------------------------------------------ geometry kit
@@ -131,8 +131,10 @@ function bake(parts, rng) {
         if (p.top) base.lerp(p.top, smooth(p.h0, p.h1, v.y));
         if (p.cap && n.y > p.capT) base.lerp(p.cap, smooth(p.capT, p.capT + 0.15, n.y));
         if (p.fn) p.fn(v, base, n);
-        const ao = 1 - p.ao * 0.45 * (1 - smooth(0, 0.35, v.y));
-        pos.push(v.x, v.y, v.z); col.push(base.r * j * ao, base.g * j * ao, base.b * j * ao);
+        // soft, coloured ground occlusion (a cool violet tint, never black) + a sunny lift on upward faces
+        const k = p.ao * 0.26 * (1 - smooth(0, 0.3, v.y)), lift = 1 + Math.max(0, n.y) * 0.08;
+        pos.push(v.x, v.y, v.z);
+        col.push(base.r * j * lift * (1 - k), base.g * j * lift * (1 - k * 1.05), base.b * j * lift * (1 - k * 0.6));
       }
     }
   }
@@ -150,9 +152,9 @@ const modelOf = (m) => { const d = m.bake(); return { body: toGeo(d.B), glow: to
 
 // ------------------------------------------------------------------ props (model space, base at y=0)
 const P = {
-  roundTree(m, leaf, leafTop, trunk = 0x5a3e26) {
+  roundTree(m, leaf, leafTop, trunk = 0x7e5636) {
     const h = m.rnd(0.85, 1.15), tx = m.rnd(-0.1, 0.1), tz = m.rnd(-0.1, 0.1);
-    m.add(G.limb([0, 0, 0], [tx, h + 0.2, tz], 0.14, 0.08), trunk, { top: 0x7a5a3a, h0: 0, h1: h });
+    m.add(G.limb([0, 0, 0], [tx, h + 0.2, tz], 0.14, 0.08), trunk, { top: 0xa07a50, h0: 0, h1: h });
     for (let i = 0; i < 2; i++) { const a = m.rnd(0, 6.28); m.add(G.limb([tx * 0.6, h * 0.6, tz * 0.6], [Math.cos(a) * 0.4, h + 0.25, Math.sin(a) * 0.4], 0.06, 0.04, 5), trunk); }
     const n = 4 + ((m.r() * 2) | 0);
     for (let i = 0; i < n; i++) {
@@ -161,7 +163,7 @@ const P = {
     }
   },
   pine(m, col, top, snowy, k = 1) {
-    m.add(G.cyl(0.09 * k, 0.13 * k, 0.6 * k, 6), 0x4a3424);
+    m.add(G.cyl(0.09 * k, 0.13 * k, 0.6 * k, 6), 0x7a5434, { top: 0x946a40, h1: 0.6 * k });
     const n = 4;
     for (let i = 0; i < n; i++) {
       const r = (0.8 - i * 0.16) * k, h = (0.9 - i * 0.08) * k, y = (0.35 + i * 0.42) * k, rot = m.rnd(0, 1);
@@ -169,7 +171,7 @@ const P = {
       if (snowy) m.add(G.cone(r * 0.82, h * 0.55, 7).rotateY(rot).translate(0, y + h * 0.45 + 0.01, 0), 0xf4f8ff, { top: 0xffffff, h0: 0.5, h1: 2, ao: 0, jit: 0.04 });
     }
   },
-  deadTree(m, col = 0x4a3a2c, top = 0x7a6a58, h = 1.4) {
+  deadTree(m, col = 0x7a644c, top = 0xa89478, h = 1.4) {
     const tx = m.rnd(-0.15, 0.15), tz = m.rnd(-0.15, 0.15);
     m.add(G.limb([0, -0.05, 0], [tx, h, tz], 0.12, 0.05, 6), col, { top, h0: 0, h1: h });
     const nb = 4 + ((m.r() * 2) | 0);
@@ -183,28 +185,28 @@ const P = {
     for (let i = 0; i < 3; i++) { const a = (i / 3) * 6.28 + m.rnd(0, 1); m.add(G.limb([0, 0.15, 0], [Math.cos(a) * 0.3, -0.02, Math.sin(a) * 0.3], 0.06, 0.03, 4), col); }
   },
   willow(m) {
-    m.add(G.limb([0, 0, 0], [0.1, 1.0, 0], 0.18, 0.11, 6), 0x3a3022, { top: 0x5a4a32 });
-    m.add(G.blob(1, 1, 0.18, m.seed * 3).scale(0.95, 0.5, 0.95).translate(0.1, 1.45, 0), 0x4a5a24, { top: 0x7a8a3a, h0: 1.2, h1: 1.9, ao: 0 });
+    m.add(G.limb([0, 0, 0], [0.1, 1.0, 0], 0.18, 0.11, 6), 0x6a5638, { top: 0x8a7448 });
+    m.add(G.blob(1, 1, 0.18, m.seed * 3).scale(0.95, 0.5, 0.95).translate(0.1, 1.45, 0), 0x5a8a30, { top: 0xa0c050, h0: 1.2, h1: 1.9, ao: 0 });
     const n = 11;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * 6.28 + m.rnd(0, 0.4), rr = m.rnd(0.7, 0.85), l = m.rnd(0.6, 0.95);
-      m.add(G.cone(0.13, l, 5).rotateX(Math.PI).translate(0.1 + Math.cos(a) * rr, 1.42, Math.sin(a) * rr), 0x56662a, { top: 0x6a7a34, h0: 0.6, h1: 1.4, ao: 0 });
+      m.add(G.cone(0.13, l, 5).rotateX(Math.PI).translate(0.1 + Math.cos(a) * rr, 1.42, Math.sin(a) * rr), 0x6a9a34, { top: 0x8ab444, h0: 0.6, h1: 1.4, ao: 0 });
     }
   },
   palm(m) {
     const bend = m.rnd(0.025, 0.05) * (m.r() < 0.5 ? -1 : 1), pts = [];
     for (let i = 0; i <= 5; i++) pts.push([bend * i * i, i * 0.38, 0]);
-    for (let i = 0; i < 5; i++) m.add(G.limb(pts[i], pts[i + 1], 0.1 - i * 0.008, 0.085 - i * 0.008, 6), i % 2 ? 0x8a6a42 : 0x9e7c50);
+    for (let i = 0; i < 5; i++) m.add(G.limb(pts[i], pts[i + 1], 0.1 - i * 0.008, 0.085 - i * 0.008, 6), i % 2 ? 0xa88458 : 0xc09a68);
     const t = pts[5];
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * 6.28 + m.rnd(0, 0.4), c = Math.cos(a), s = Math.sin(a), l1 = m.rnd(0.45, 0.6);
       const p1 = [t[0] + c * l1, t[1] + 0.18, t[2] + s * l1], p2 = [t[0] + c * (l1 + 0.5), t[1] - 0.25, t[2] + s * (l1 + 0.5)];
-      m.add(G.leaf(t, p1, 0.32), 0x4a8a2e, { ao: 0 }); m.add(G.leaf(p1, p2, 0.28), 0x6aa03a, { ao: 0 });
+      m.add(G.leaf(t, p1, 0.32), 0x5aa83a, { ao: 0 }); m.add(G.leaf(p1, p2, 0.28), 0x8ac84a, { ao: 0 });
     }
-    for (let i = 0; i < 3; i++) m.add(G.blob(0.07, 0, 0.1, i).translate(t[0] + Math.cos(i * 2) * 0.1, t[1] - 0.08, t[2] + Math.sin(i * 2) * 0.1), 0x5a4020, { ao: 0 });
+    for (let i = 0; i < 3; i++) m.add(G.blob(0.07, 0, 0.1, i).translate(t[0] + Math.cos(i * 2) * 0.1, t[1] - 0.08, t[2] + Math.sin(i * 2) * 0.1), 0x8a6030, { ao: 0 });
   },
   cactus(m) {
-    const h = m.rnd(0.9, 1.2), c = 0x4a8a4a, o = { top: 0x7ab06a, h0: 0, h1: 1.3, jit: 0.05 };
+    const h = m.rnd(0.9, 1.2), c = 0x5aa858, o = { top: 0x9ad07a, h0: 0, h1: 1.3, jit: 0.05 };
     m.add(G.cyl(0.13, 0.15, h, 8), c, o); m.add(G.blob(0.13, 1, 0, 1).scale(1, 0.8, 1).translate(0, h, 0), c, o);
     for (const sd of [-1, 1]) {
       if (m.r() < 0.25) continue;
@@ -255,23 +257,23 @@ const P = {
     }
     for (let i = 0; i < 3; i++) m.add(G.box(0.3, 0.18, 0.26).rotateY(m.rnd(0, 3)).rotateZ(m.rnd(-0.3, 0.3)).translate(m.rnd(-0.8, 0.8), 0, m.rnd(0.3, 0.6)), stone, { cap: moss, capT: 0.8, jit: 0.1 });
   },
-  fence(m, wood = 0x7a5a36) {
-    for (let i = 0; i < 3; i++) m.add(G.box(0.08, m.rnd(0.5, 0.6), 0.08).rotateZ(m.rnd(-0.08, 0.08)).translate((i - 1) * 0.6, 0, 0), wood, { top: 0x9a7a52, h0: 0, h1: 0.6 });
-    for (const y of [0.2, 0.42]) m.add(G.box(1.3, 0.06, 0.04).rotateZ(m.rnd(-0.05, 0.05)).translate(0, y, 0.05), 0x8a6a42, { jit: 0.1 });
+  fence(m, wood = 0x9a7448) {
+    for (let i = 0; i < 3; i++) m.add(G.box(0.08, m.rnd(0.5, 0.6), 0.08).rotateZ(m.rnd(-0.08, 0.08)).translate((i - 1) * 0.6, 0, 0), wood, { top: 0xc09a68, h0: 0, h1: 0.6 });
+    for (const y of [0.2, 0.42]) m.add(G.box(1.3, 0.06, 0.04).rotateZ(m.rnd(-0.05, 0.05)).translate(0, y, 0.05), 0xb08a5a, { jit: 0.1 });
   },
   tuft(m, col, top, n = 6, h = 0.32) {
     for (let i = 0; i < n; i++) { const a = m.rnd(0, 6.28); m.add(G.cone(0.035, m.rnd(0.6, 1) * h, 3).rotateX(m.rnd(-0.4, 0.4)).rotateZ(m.rnd(-0.4, 0.4)).translate(Math.cos(a) * 0.08, 0, Math.sin(a) * 0.08), col, { top, h0: 0, h1: h, ao: 0.6 }); }
   },
   flowers(m, col) {
-    P.tuft(m, 0x3a7a2a, 0x6aa84a, 5, 0.22);
+    P.tuft(m, 0x4a9a34, 0x8ccc5a, 5, 0.22);
     for (let i = 0; i < 4; i++) { const a = m.rnd(0, 6.28), rr = m.rnd(0.05, 0.18); m.add(G.blob(0.045, 0, 0, i).translate(Math.cos(a) * rr, m.rnd(0.14, 0.24), Math.sin(a) * rr), col, { ao: 0 }); }
   },
   reeds(m) {
     const n = 7;
     for (let i = 0; i < n; i++) {
       const a = m.rnd(0, 6.28), rr = m.rnd(0, 0.18), h = m.rnd(0.6, 1.05), lx = m.rnd(-0.1, 0.1), lz = m.rnd(-0.1, 0.1), x = Math.cos(a) * rr, z = Math.sin(a) * rr;
-      m.add(G.limb([x, 0, z], [x + lx, h, z + lz], 0.018, 0.012, 3), 0x5a7a30, { top: 0x9aa050, h0: 0, h1: 1 });
-      if (i % 2 === 0) m.add(G.cyl(0.035, 0.035, 0.16, 5).translate(x + lx * 0.9, h * 0.82, z + lz * 0.9), 0x5a3a20, { ao: 0 });
+      m.add(G.limb([x, 0, z], [x + lx, h, z + lz], 0.018, 0.012, 3), 0x6a9a3a, { top: 0xc0c860, h0: 0, h1: 1 });
+      if (i % 2 === 0) m.add(G.cyl(0.035, 0.035, 0.16, 5).translate(x + lx * 0.9, h * 0.82, z + lz * 0.9), 0x8a5a30, { ao: 0 });
     }
   },
   mushrooms(m, cap = 0x8a3a8a, glow = 0x7aff9a, n = 3, k = 1) {
@@ -282,7 +284,7 @@ const P = {
       if (glow) for (let k = 0; k < 3; k++) { const b = (k / 3) * 6.28 + i; m.add(G.blob(r * 0.16, 0, 0, k).translate(x + Math.cos(b) * r * 0.55, h + r * 0.5, z + Math.sin(b) * r * 0.55), glow, { glow: true, ao: 0 }); }
     }
   },
-  crystals(m, col, glow, n = 5, s = 1, base = 0x5a5560) {
+  crystals(m, col, glow, n = 5, s = 1, base = 0x8a8494) {
     m.add(G.rock(m.seed, 0.32 * s, 0.14 * s, 0.28 * s, 0), base, { jit: 0.1 });
     for (let i = 0; i < n; i++) {
       const a = m.rnd(0, 6.28), rr = i ? m.rnd(0.08, 0.2) * s : 0, h = (i ? m.rnd(0.25, 0.45) : 0.65) * s, r = (i ? m.rnd(0.05, 0.08) : 0.1) * s;
@@ -302,41 +304,80 @@ const P = {
     m.add(G.cone(0.04, 0.3, 5).rotateZ(-1.0).rotateY(0.6).translate(0.55, 0.18, 0.08), 0xd8c8a0, { ao: 0 });
     m.add(G.cone(0.04, 0.3, 5).rotateZ(-1.0).rotateY(-0.6).translate(0.55, 0.18, -0.06), 0xd8c8a0, { ao: 0 });
   },
-  log(m, wood = 0x5a4026, end = 0xb08a5a, moss = 0x4a7a2a, L = 1.0, r = 0.14) {
+  log(m, wood = 0x8a6038, end = 0xe0b880, moss = 0x6aa83a, L = 1.0, r = 0.14) {
     const o = new THREE.Matrix4().makeRotationY(m.rnd(0, 6.28));
     m.add(G.cyl(r, r * 1.05, L, 8).rotateZ(Math.PI / 2).translate(L / 2, r * 0.9, 0).translate(-L / 2, 0, 0).applyMatrix4(o), wood, { cap: moss, capT: 0.9, jit: 0.1 });
     for (const sd of [-1, 1]) m.add(ni(new THREE.CircleGeometry(r * 0.96, 8)).rotateY(sd * Math.PI / 2).translate(sd * (L / 2 + 0.003), r * 0.9, 0).applyMatrix4(o), end, { fn: (v, c) => { const d = Math.hypot(v.y - r * 0.9, 0); if (d > r * 0.6) c.multiplyScalar(0.8); }, ao: 0 });
     m.add(G.limb([0.1, r * 1.4, 0], [0.25, r * 2.8, 0.1], 0.04, 0.025, 4).applyMatrix4(o), wood);
   },
-  stump(m, wood = 0x5a4026, end = 0xc09a68) {
+  stump(m, wood = 0x8a6038, end = 0xe8c48a) {
     m.add(G.cyl(0.2, 0.26, 0.3, 8), wood, { jit: 0.1 });
     m.add(ni(new THREE.CircleGeometry(0.2, 8)).rotateX(-Math.PI / 2).translate(0, 0.302, 0), end, { ao: 0 });
     for (let i = 0; i < 4; i++) { const a = (i / 4) * 6.28 + m.rnd(0, 1); m.add(G.limb([0, 0.12, 0], [Math.cos(a) * 0.4, -0.02, Math.sin(a) * 0.4], 0.07, 0.03, 4), wood); }
   },
   mound(m, col, top, k = 1) { m.add(G.blob(1, 1, 0.12, m.seed).scale(m.rnd(0.5, 0.8) * k, m.rnd(0.18, 0.28) * k, m.rnd(0.4, 0.6) * k).translate(0, -0.02, 0), col, { top, h0: 0, h1: 0.2, ao: 0.4, jit: 0.04 }); },
   lavaPool(m, s = 1) {
-    m.add(G.disc(0.85 * s, 14, 0.25, m.seed).translate(0, 0.03, 0), 0xffd040, { glow: true, ao: 0, jit: 0.05, fn: (v, c) => c.lerp(LIN(0xff3a08), smooth(0.15 * s, 0.8 * s, Math.hypot(v.x, v.z))) });
-    m.add(G.disc(1.05 * s, 14, 0.2, m.seed).translate(0, 0.012, 0), 0x2a1a16, { ao: 0 });
-    for (let i = 0; i < 7; i++) { const a = (i / 7) * 6.28 + m.rnd(0, 0.5), rr = m.rnd(0.85, 1.05) * s; m.add(G.rock(m.seed * 3 + i, 0.16 * s, 0.12 * s, 0.14 * s, 0).translate(Math.cos(a) * rr, 0, Math.sin(a) * rr), 0x3a2a26, { jit: 0.1 }); }
+    m.add(G.disc(0.85 * s, 14, 0.25, m.seed).translate(0, 0.03, 0), 0xffe070, { glow: true, ao: 0, jit: 0.05, fn: (v, c) => c.lerp(LIN(0xff5a10), smooth(0.15 * s, 0.8 * s, Math.hypot(v.x, v.z))) });
+    m.add(G.disc(1.05 * s, 14, 0.2, m.seed).translate(0, 0.012, 0), 0x8a4a34, { ao: 0, fn: (v, c) => c.lerp(LIN(0xd86a30), 1 - smooth(0.8 * s, 1.05 * s, Math.hypot(v.x, v.z))) });
+    for (let i = 0; i < 7; i++) { const a = (i / 7) * 6.28 + m.rnd(0, 0.5), rr = m.rnd(0.85, 1.05) * s; m.add(G.rock(m.seed * 3 + i, 0.16 * s, 0.12 * s, 0.14 * s, 0).translate(Math.cos(a) * rr, 0, Math.sin(a) * rr), 0x7a5a4c, { cap: 0xa88470, capT: 0.6, jit: 0.1, fn: (v, c) => { if (v.y < 0.05 * s) c.lerp(LIN(0xe0602a), 0.5); } }); }
   },
   magmaRock(m, s = 1) {
-    m.add(G.blob(0.24 * s, 1, 0.15, m.seed).translate(0, 0.22 * s, 0), 0xffb030, { glow: true, ao: 0, top: 0xff4a10, h0: 0.0, h1: 0.5 * s });
+    m.add(G.blob(0.24 * s, 1, 0.15, m.seed).translate(0, 0.22 * s, 0), 0xffc040, { glow: true, ao: 0, top: 0xff5a18, h0: 0.0, h1: 0.5 * s });
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * 6.28 + m.rnd(0, 0.5), rr = 0.17 * s;
-      m.add(G.rock(m.seed * 7 + i, 0.22 * s, 0.32 * s, 0.2 * s, 1).rotateY(-a).translate(Math.cos(a) * rr, 0, Math.sin(a) * rr), 0x2e2422, { cap: 0x4a3a34, capT: 0.6, jit: 0.12, fn: (v, c) => { if (v.y < 0.1 * s) c.lerp(LIN(0x8a2a10), 0.5); } });
+      m.add(G.rock(m.seed * 7 + i, 0.22 * s, 0.32 * s, 0.2 * s, 1).rotateY(-a).translate(Math.cos(a) * rr, 0, Math.sin(a) * rr), 0x6a4c42, { cap: 0x9a786a, capT: 0.6, jit: 0.12, fn: (v, c) => { if (v.y < 0.12 * s) c.lerp(LIN(0xe8602a), 0.55); } });
     }
+  },
+  // a charred tree with glowing ember tips (lava)
+  emberTree(m, h = 1.0) {
+    P.deadTree(m, 0x5a4440, 0x8a6a60, h);
+    for (let i = 0; i < 5; i++) { const a = m.rnd(0, 6.28), r = m.rnd(0.15, 0.45); m.add(G.blob(0.035, 0, 0, i).translate(Math.cos(a) * r, h * m.rnd(0.7, 1.15), Math.sin(a) * r), 0xffa040, { glow: true, ao: 0 }); }
+    for (let i = 0; i < 3; i++) { const a = (i / 3) * 6.28 + m.rnd(0, 1); m.add(G.disc(0.08, 6, 0.3, i).translate(Math.cos(a) * 0.32, 0.015, Math.sin(a) * 0.32), 0xff7a2a, { glow: true, ao: 0 }); }
+  },
+  // a mossy boulder with a skirt of grass and a few flowers
+  mossyBoulder(m, stone = 0xa8a294, moss = 0x7ab84a, flower = 0xffe060) {
+    m.add(G.rock(m.seed, m.rnd(0.34, 0.4), m.rnd(0.32, 0.4), m.rnd(0.3, 0.36), 1, 0.2).rotateY(m.rnd(0, 6)), stone, { cap: moss, capT: 0.55, jit: 0.08, top: 0xd0ccc0, h0: 0, h1: 0.5 });
+    m.add(G.rock(m.seed + 3, 0.18, 0.16, 0.16, 1).translate(0.34, 0, 0.18), stone, { cap: moss, capT: 0.6, jit: 0.08 });
+    for (let i = 0; i < 4; i++) { const a = (i / 4) * 6.28 + m.rnd(0, 1); m.add(G.cone(0.03, m.rnd(0.14, 0.24), 3).translate(Math.cos(a) * 0.38, 0, Math.sin(a) * 0.38), 0x5aa83a, { top: 0xa8dc68, h1: 0.24, ao: 0.4 }); }
+    for (let i = 0; i < 4; i++) { const a = m.rnd(0, 6.28), r = m.rnd(0.36, 0.46); m.add(G.blob(0.04, 0, 0, i).translate(Math.cos(a) * r, 0.12, Math.sin(a) * r), i % 2 ? flower : 0xffffff, { ao: 0 }); }
+  },
+  // a round flowering bush
+  flowerBush(m, leaf = 0x4caa38, top = 0x9ad85a, flower = 0xff8ac0, k = 1) {
+    P.bush(m, leaf, top);
+    for (let i = 0; i < 9; i++) { const a = m.rnd(0, 6.28), e = m.rnd(0.3, 1.2), r = 0.32 * k; m.add(G.blob(0.045, 0, 0, i).translate(Math.cos(a) * r * Math.cos(e * 0.6), 0.22 + Math.sin(e) * 0.28, Math.sin(a) * r * Math.cos(e * 0.6)), i % 3 ? flower : 0xfff4c0, { ao: 0 }); }
+  },
+  fern(m, col = 0x4a9a34, top = 0x9ad060, n = 6) {
+    for (let i = 0; i < n; i++) { const a = (i / n) * 6.28 + m.rnd(0, 0.5), l = m.rnd(0.3, 0.42); m.add(G.leaf([0, 0.02, 0], [Math.cos(a) * l, m.rnd(0.18, 0.3), Math.sin(a) * l], 0.14), col, { top, h0: 0, h1: 0.3, ao: 0.3 }); }
+  },
+  // pale blue ice shards (snow)
+  iceShards(m, s = 1) {
+    m.add(G.blob(1, 1, 0.12, m.seed).scale(0.42 * s, 0.1 * s, 0.38 * s), 0xf4f8ff, { ao: 0.2 });
+    P.crystals(m, 0xbfe6ff, null, 6, s, 0xdde8f6);
+  },
+  // a sandstone cairn / standing stone
+  standingStone(m, stone = 0xc8b494, top = 0xe8d8b8, h = 0.9) {
+    m.add(G.box(0.3, h, 0.2).rotateY(m.rnd(-0.3, 0.3)).rotateZ(m.rnd(-0.08, 0.08)), stone, { top, h0: 0, h1: h, jit: 0.06 });
+    m.add(G.rock(m.seed, 0.16, 0.12, 0.14, 0).translate(0.3, 0, 0.12), stone, { jit: 0.1 });
+    m.add(G.rock(m.seed + 1, 0.12, 0.09, 0.11, 0).translate(-0.26, 0, 0.18), top, { jit: 0.1 });
+  },
+  skull(m, x, z, s = 1, bc = 0xf4ead0) {
+    m.add(G.blob(0.11 * s, 1, 0.04, 9).scale(1, 0.9, 1.15).translate(x, 0.09 * s, z), bc, { ao: 0.4 });
+    for (const sx of [-1, 1]) m.add(G.blob(0.03 * s, 0, 0, 2).translate(x + sx * 0.045 * s, 0.1 * s, z + 0.11 * s), 0x8a6a5a, { ao: 0 });
+  },
+  lilyPads(m, n = 5, r = 0.5) {
+    for (let i = 0; i < n; i++) { const a = m.rnd(0, 6.28), rr = m.rnd(0.1, r); m.add(G.disc(m.rnd(0.06, 0.1), 7, 0.1, i).translate(Math.cos(a) * rr, 0.075, Math.sin(a) * rr), 0x6ab848, { ao: 0, jit: 0.12 }); if (i % 2) m.add(G.blob(0.03, 0, 0, i).translate(Math.cos(a) * rr, 0.1, Math.sin(a) * rr), 0xffb0d8, { ao: 0 }); }
   },
 };
 
 // ------------------------------------------------------------------ battlefield obstacles (fit one hex: ~0.85 wide)
 const OBST = {
-  1: [(m) => P.rockPile(m, 0x8a8478, 0x5a8a3a), (m) => { P.log(m, 0x6a4a2c, 0xc09a68, 0x5a7a2a, 0.85, 0.15); P.mushrooms(m, 0xc83a2a, null, 2, 0.6); }, (m) => { P.stump(m); P.tuft(m, 0x4a8a2a, 0x8ac04a, 5, 0.3); }],
-  2: [(m) => P.rockPile(m, 0x8a7a66, 0xa89a80), (m) => P.deadTree(m, 0x4a3a2c, 0x7a6a58, 0.95), (m) => { P.column(m, 0xb0a48c, 0xd0c4a8, 0.55); m.add(G.rock(5, 0.14, 0.1, 0.12, 0).translate(0.32, 0, 0.2), 0xb0a48c); }],
-  3: [(m) => m.add(G.rock(m.seed, 0.4, 0.42, 0.34, 1, 0.2), 0xc89a5a, { fn: (v, c) => c.multiplyScalar(0.88 + 0.18 * Math.sin(v.y * 22)), jit: 0.06, cap: 0xe8c890, capT: 0.7 }), (m) => P.cactus(m), (m) => P.bones(m)],
-  4: [(m) => P.rockPile(m, 0x7a8494, 0xf4f8ff), (m) => P.crystals(m, 0xa8d8ff, null, 6, 1, 0x8a94a8), (m) => { P.pine(m, 0x24483a, 0x3a6a4a, true, 0.5); P.mound(m, 0xeef4fc, 0xffffff, 0.6); }],
-  5: [(m) => { P.log(m, 0x3e3220, 0x8a7a50, 0x5a7a2a, 0.9, 0.15); P.mushrooms(m, 0x8a3a8a, 0x8affaa, 2, 0.8); }, (m) => P.deadTree(m, 0x2e2a20, 0x5a5a3a, 1.0), (m) => P.mushrooms(m, 0x7a3a9a, 0x8affaa, 4, 1.6)],
-  6: [(m) => P.spire(m, 0x8a8070, 0xb0a890, 0.9), (m) => P.crystals(m, 0x5a7aff, 0x9ac0ff, 6, 1), (m) => P.rockPile(m, 0x7a7266, 0xa49a88, 1.1)],
-  7: [(m) => P.magmaRock(m), (m) => { P.spire(m, 0x221c20, 0x3a3440, 0.95); m.add(G.disc(0.3, 9, 0.2, 2).translate(0.25, 0.02, 0.2), 0xff6a20, { glow: true, ao: 0 }); }, (m) => P.deadTree(m, 0x1e1614, 0x3a2a24, 0.95)],
+  1: [(m) => P.mossyBoulder(m), (m) => { P.log(m, 0x9a6a3c, 0xeac48a, 0x6ab83a, 0.85, 0.15); P.mushrooms(m, 0xe84a32, null, 2, 0.6); P.fern(m, 0x4aa034, 0x9ad060, 3); }, (m) => P.flowerBush(m, 0x4caa38, 0x9ad85a, m.pick([0xff8ac0, 0xffe060, 0xb0a0ff]))],
+  2: [(m) => { P.rockPile(m, 0xb8a080, 0xd8c4a0); P.tuft(m, 0xa09040, 0xd8c870, 4, 0.26); }, (m) => { P.roundTree(m, 0xd8782a, 0xffc850, 0x8a6040); }, (m) => { P.column(m, 0xd4c4a4, 0xf0e4c8, 0.55); m.add(G.rock(5, 0.14, 0.1, 0.12, 0).translate(0.32, 0, 0.2), 0xd4c4a4); m.add(G.rock(6, 0.1, 0.08, 0.1, 0).translate(-0.28, 0, 0.26), 0xe4d6b8); }],
+  3: [(m) => m.add(G.rock(m.seed, 0.4, 0.42, 0.34, 1, 0.2), 0xe0ae6a, { fn: (v, c) => c.multiplyScalar(0.92 + 0.14 * Math.sin(v.y * 22)), jit: 0.06, cap: 0xf8dca0, capT: 0.7 }), (m) => { P.cactus(m); m.add(G.rock(m.seed, 0.12, 0.09, 0.1, 0).translate(0.3, 0, 0.15), 0xd8a868); }, (m) => { P.bones(m); P.skull(m, -0.3, 0.3, 1.1); }],
+  4: [(m) => P.rockPile(m, 0xa8b4c8, 0xfafcff), (m) => P.iceShards(m, 1), (m) => { P.pine(m, 0x2e7a5a, 0x5aa880, true, 0.5); P.mound(m, 0xf4f8fe, 0xffffff, 0.6); }],
+  5: [(m) => { P.log(m, 0x7a6038, 0xc8b080, 0x7ac040, 0.9, 0.15); P.mushrooms(m, 0xb04ac0, 0x9affc0, 2, 0.8); }, (m) => { P.deadTree(m, 0x7a6a48, 0xa8a070, 0.95); P.fern(m, 0x5a9a3a, 0xa0c860, 4); }, (m) => P.mushrooms(m, 0xa04ad0, 0x9affc0, 4, 1.6)],
+  6: [(m) => P.spire(m, 0xb4a888, 0xd8cdb0, 0.9), (m) => P.crystals(m, 0x6a9aff, 0xa8d0ff, 6, 1, 0xa49c8c), (m) => P.rockPile(m, 0xa89c84, 0xccc0a4, 1.1)],
+  7: [(m) => P.magmaRock(m), (m) => { P.spire(m, 0x6a5450, 0x9a7e74, 0.95); m.add(G.disc(0.3, 9, 0.2, 2).translate(0.25, 0.02, 0.2), 0xff8a30, { glow: true, ao: 0 }); }, (m) => P.emberTree(m, 0.95)],
 };
 const terId = (t) => (TERRAINS[t] ? t : 1);
 const obstCache = new Map();
@@ -351,67 +392,73 @@ export function obstacleModel(terrainId, kind = 0) {
 // zone: 'tall' only far/side (never in front of the camera), 'low' anywhere, 'scatter' small filler.
 const DECO = {
   1: [
-    [(m) => P.roundTree(m, 0x3e8a2a, 0x8ac840), 6, 'tall', [1.2, 1.6], 1.0],
-    [(m) => P.pine(m, 0x2a5a2a, 0x4a8a3a), 1.5, 'tall', [1.1, 1.4], 0.8],
-    [(m) => P.bush(m, 0x3a7a28, 0x7ab840), 3, 'low', [1, 1.5], 0.5],
-    [(m) => P.rock(m, 0x8a8478, 0x5a8a3a, 0.5, 0.4), 2, 'low', [0.8, 1.6], 0.5],
-    [(m) => P.stump(m), 0.6, 'low', [1, 1.2], 0.4],
-    [(m) => P.flowers(m, m.pick([0xffe060, 0xffffff, 0xff8ac0, 0xa0a0ff])), 4, 'scatter', [1, 1.4], 0.25],
-    [(m) => P.tuft(m, 0x3a7a2a, 0x8ac04a), 4, 'scatter', [1, 1.5], 0.2],
+    [(m) => P.roundTree(m, m.pick([0x4aa232, 0x56ae38, 0x3e9a34]), m.pick([0xa8dc58, 0xb8e060])), 6, 'tall', [1.2, 1.6], 1.0],
+    [(m) => P.pine(m, 0x2e7a3a, 0x5ab050), 1.2, 'tall', [1.1, 1.4], 0.8],
+    [(m) => P.flowerBush(m, 0x4caa38, 0x9ad85a, m.pick([0xff8ac0, 0xffe060, 0xffffff, 0xb0a0ff])), 2.5, 'low', [1, 1.4], 0.5],
+    [(m) => P.bush(m, 0x48a434, 0x9ad04a), 2.5, 'low', [1, 1.5], 0.5],
+    [(m) => P.mossyBoulder(m), 1.6, 'low', [0.9, 1.4], 0.5],
+    [(m) => P.stump(m), 0.5, 'low', [1, 1.2], 0.4],
+    [(m) => P.flowers(m, m.pick([0xffe060, 0xffffff, 0xff8ac0, 0xa0a0ff, 0xff7a5a])), 5, 'scatter', [1, 1.4], 0.25],
+    [(m) => P.tuft(m, 0x4a9a34, 0x9ad060), 3, 'scatter', [1, 1.5], 0.2],
+    [(m) => P.fern(m), 1.5, 'scatter', [1, 1.3], 0.3],
   ],
   2: [
-    [(m) => P.roundTree(m, m.pick([0xc0601a, 0xb04a1a, 0xc8901a]), 0xffc040, 0x4a3424), 4, 'tall', [1.1, 1.5], 1.0],
-    [(m) => P.deadTree(m, 0x4a3a2c, 0x7a6a58, 1.5), 2, 'tall', [1.1, 1.5], 0.6],
-    [(m) => P.ruinWall(m, 0xa89a80, 0xc4b69a, 0x6a7a3a), 1.2, 'tall', [1, 1.3], 0.9],
-    [(m) => P.column(m, 0xb0a48c, 0xd0c4a8, m.rnd(0.6, 1.8)), 1.2, 'tall', [1, 1.3], 0.4],
-    [(m) => P.fallenColumn(m, 0xb0a48c, 0xd0c4a8), 0.8, 'low', [1, 1.2], 0.7],
-    [(m) => P.rock(m, 0x8a7a66, 0xa89a80, 0.5, 0.4), 2.5, 'low', [0.8, 1.6], 0.5],
-    [(m) => P.bush(m, 0x7a6a2a, 0xb0902a), 2, 'low', [0.8, 1.2], 0.45],
-    [(m) => P.tuft(m, 0x8a7a3a, 0xc0b060), 4, 'scatter', [1, 1.4], 0.2],
+    [(m) => P.roundTree(m, m.pick([0xe0782a, 0xd0602a, 0xe0a830]), 0xffd060, 0x8a6040), 4, 'tall', [1.1, 1.5], 1.0],
+    [(m) => P.deadTree(m, 0x8a7258, 0xb8a488, 1.5), 1.2, 'tall', [1.1, 1.5], 0.6],
+    [(m) => P.ruinWall(m, 0xd0c0a0, 0xe8dcc0, 0x8aa84a), 1.2, 'tall', [1, 1.3], 0.9],
+    [(m) => P.column(m, 0xd4c4a4, 0xf0e4c8, m.rnd(0.6, 1.8)), 1.2, 'tall', [1, 1.3], 0.4],
+    [(m) => P.fallenColumn(m, 0xd4c4a4, 0xf0e4c8), 0.8, 'low', [1, 1.2], 0.7],
+    [(m) => P.rock(m, 0xb8a080, 0xd8c4a0, 0.5, 0.4), 2.5, 'low', [0.8, 1.6], 0.5],
+    [(m) => P.bush(m, 0xa8982e, 0xe0c040), 2, 'low', [0.8, 1.2], 0.45],
+    [(m) => P.tuft(m, 0xa89a48, 0xe0d070), 4, 'scatter', [1, 1.4], 0.2],
+    [(m) => P.flowers(m, m.pick([0xffe060, 0xff9a40, 0xffffff])), 1.5, 'scatter', [1, 1.3], 0.25],
   ],
   3: [
     [(m) => P.palm(m), 3, 'tall', [1.2, 1.6], 0.8],
     [(m) => P.cactus(m), 2.5, 'tall', [1.2, 1.7], 0.4],
-    [(m) => P.spire(m, 0xc08a50, 0xe0b878, 2.0), 1.5, 'tall', [1, 1.5], 0.8],
-    [(m) => P.column(m, 0xd8c098, 0xf0dcb0, m.rnd(0.5, 1.8)), 1.2, 'tall', [1, 1.3], 0.4],
-    [(m) => P.rock(m, 0xc89a5a, 0xe8c890, 0.55, 0.45), 2.5, 'low', [0.8, 1.6], 0.5],
-    [(m) => P.bones(m), 0.6, 'low', [1, 1.3], 0.6],
-    [(m) => P.tuft(m, 0x9a9a4a, 0xd0c070, 5, 0.26), 2.5, 'scatter', [1, 1.4], 0.2],
+    [(m) => P.spire(m, 0xe0a868, 0xf8d498, 2.0), 1.5, 'tall', [1, 1.5], 0.8],
+    [(m) => P.column(m, 0xf0dcb0, 0xfff0d0, m.rnd(0.5, 1.8)), 1.2, 'tall', [1, 1.3], 0.4],
+    [(m) => P.standingStone(m, 0xe8c48a, 0xfce4b0, m.rnd(0.6, 1.0)), 1, 'low', [1, 1.3], 0.4],
+    [(m) => P.rock(m, 0xe0ae6a, 0xf8dca0, 0.55, 0.45), 2.5, 'low', [0.8, 1.6], 0.5],
+    [(m) => { P.bones(m); P.skull(m, -0.3, 0.3); }, 0.6, 'low', [1, 1.3], 0.6],
+    [(m) => P.tuft(m, 0xb0b050, 0xe8d880, 5, 0.26), 2.5, 'scatter', [1, 1.4], 0.2],
   ],
   4: [
-    [(m) => P.pine(m, 0x24483a, 0x3a6a4a, true), 7, 'tall', [1.1, 1.7], 0.85],
-    [(m) => P.deadTree(m, 0x5a5048, 0xe8f0ff, 1.4), 1, 'tall', [1.1, 1.4], 0.6],
-    [(m) => P.crystals(m, 0xa8d8ff, null, 6, 1.6, 0x8a94a8), 1, 'low', [1, 1.3], 0.5],
-    [(m) => P.rock(m, 0x7a8494, 0xf4f8ff, 0.55, 0.45), 3, 'low', [0.8, 1.6], 0.5],
-    [(m) => P.mound(m, 0xe8f0fa, 0xffffff), 2.5, 'low', [1, 2], 0.6],
-    [(m) => P.rock(m, 0x5a6474, 0xdde8f8, 0.18, 0.12, 0), 3, 'scatter', [1, 1.5], 0.2],
+    [(m) => P.pine(m, 0x2e7a5a, 0x5aa880, true), 7, 'tall', [1.1, 1.7], 0.85],
+    [(m) => P.deadTree(m, 0x8a7a6c, 0xf4f8ff, 1.4), 0.8, 'tall', [1.1, 1.4], 0.6],
+    [(m) => P.iceShards(m, 1.5), 1, 'low', [1, 1.3], 0.5],
+    [(m) => P.rock(m, 0xa8b4c8, 0xfafcff, 0.55, 0.45), 3, 'low', [0.8, 1.6], 0.5],
+    [(m) => P.mound(m, 0xf0f6fe, 0xffffff), 2.5, 'low', [1, 2], 0.6],
+    [(m) => P.rock(m, 0x9aa8bc, 0xf0f6ff, 0.18, 0.12, 0), 3, 'scatter', [1, 1.5], 0.2],
   ],
   5: [
     [(m) => P.willow(m), 5, 'tall', [1.2, 1.6], 1.0],
-    [(m) => P.deadTree(m, 0x2e2a20, 0x5a5a3a, 1.6), 2, 'tall', [1.1, 1.5], 0.6],
+    [(m) => P.deadTree(m, 0x7a6a48, 0xa8a070, 1.6), 1.5, 'tall', [1.1, 1.5], 0.6],
     [(m) => P.reeds(m), 4, 'low', [0.9, 1.3], 0.3],
-    [(m) => P.mushrooms(m, 0x7a3a9a, 0x8affaa, 3), 1.6, 'low', [1.2, 1.8], 0.3],
-    [(m) => P.log(m, 0x3e3220, 0x8a7a50, 0x5a7a2a, 1.2, 0.16), 1, 'low', [1, 1.2], 0.7],
-    [(m) => P.bush(m, 0x3a4a22, 0x6a7a30), 2, 'low', [0.9, 1.3], 0.45],
-    [(m) => P.tuft(m, 0x4a5a2a, 0x8a9a4a, 6, 0.35), 4, 'scatter', [1, 1.4], 0.2],
+    [(m) => P.mushrooms(m, 0xa04ad0, 0x9affc0, 3), 1.6, 'low', [1.2, 1.8], 0.3],
+    [(m) => P.log(m, 0x7a6038, 0xc8b080, 0x7ac040, 1.2, 0.16), 1, 'low', [1, 1.2], 0.7],
+    [(m) => P.bush(m, 0x5a9a3a, 0x9ac050), 2, 'low', [0.9, 1.3], 0.45],
+    [(m) => P.tuft(m, 0x6a9a3a, 0xa8c860, 6, 0.35), 4, 'scatter', [1, 1.4], 0.2],
+    [(m) => P.fern(m, 0x5a9a3a, 0xa0c860), 2, 'scatter', [1, 1.3], 0.3],
   ],
   6: [
-    [(m) => P.spire(m, 0x7a7266, 0xa49a88, 2.4), 3.5, 'tall', [1, 1.5], 0.8],
-    [(m) => P.deadTree(m, 0x4a3a2c, 0x7a6a58, 1.4), 1, 'tall', [1.1, 1.4], 0.6],
-    [(m) => P.pine(m, 0x2e4a2e, 0x5a7a4a), 1, 'tall', [1, 1.3], 0.8],
-    [(m) => P.ruinWall(m, 0x8a8478, 0xa49e90, 0x7a8a4a), 0.8, 'tall', [1, 1.2], 0.9],
-    [(m) => P.rock(m, 0x7a7266, 0xa49a88, 0.6, 0.5), 5, 'low', [0.8, 1.8], 0.55],
-    [(m) => P.crystals(m, 0x5a7aff, 0x9ac0ff, 5, 1.3), 0.8, 'low', [1, 1.3], 0.4],
-    [(m) => P.rock(m, 0x8a8070, 0xb0a890, 0.2, 0.15, 0), 4, 'scatter', [1, 1.5], 0.2],
+    [(m) => P.spire(m, 0xa89c84, 0xccc0a4, 2.4), 3.5, 'tall', [1, 1.5], 0.8],
+    [(m) => P.deadTree(m, 0x8a7258, 0xb8a488, 1.4), 1, 'tall', [1.1, 1.4], 0.6],
+    [(m) => P.pine(m, 0x3a7a4a, 0x6aa860), 1, 'tall', [1, 1.3], 0.8],
+    [(m) => P.ruinWall(m, 0xb8b0a0, 0xd4ccbc, 0x8aa84a), 0.8, 'tall', [1, 1.2], 0.9],
+    [(m) => P.rock(m, 0xa89c84, 0xccc0a4, 0.6, 0.5), 5, 'low', [0.8, 1.8], 0.55],
+    [(m) => P.crystals(m, 0x6a9aff, 0xa8d0ff, 5, 1.3, 0xa49c8c), 0.8, 'low', [1, 1.3], 0.4],
+    [(m) => P.rock(m, 0xb4a890, 0xd8cdb0, 0.2, 0.15, 0), 4, 'scatter', [1, 1.5], 0.2],
+    [(m) => P.tuft(m, 0x8a9a4a, 0xc8c870, 4, 0.24), 1.5, 'scatter', [1, 1.3], 0.2],
   ],
   7: [
-    [(m) => P.spire(m, 0x221c20, 0x3a3440, 2.6), 4, 'tall', [1, 1.5], 0.8],
-    [(m) => P.deadTree(m, 0x1e1614, 0x3a2a24, 1.5), 2, 'tall', [1.1, 1.4], 0.6],
+    [(m) => P.spire(m, 0x6a5450, 0x9a7e74, 2.6), 4, 'tall', [1, 1.5], 0.8],
+    [(m) => P.emberTree(m, 1.5), 2, 'tall', [1.1, 1.4], 0.6],
     [(m) => P.lavaPool(m), 2, 'low', [0.8, 1.4], 1.1],
     [(m) => P.magmaRock(m, 1.4), 1, 'low', [1, 1.3], 0.5],
-    [(m) => P.rock(m, 0x2e2422, 0x4a3a34, 0.5, 0.45), 3, 'low', [0.8, 1.6], 0.5],
-    [(m) => P.crystals(m, 0xff5a2a, 0xff7a3a, 5, 1.2, 0x2a2024), 0.7, 'low', [1, 1.3], 0.4],
-    [(m) => P.rock(m, 0x3a2a26, 0x5a4038, 0.2, 0.15, 0), 3, 'scatter', [1, 1.5], 0.2],
+    [(m) => P.rock(m, 0x7a5a4c, 0xa88470, 0.5, 0.45), 3, 'low', [0.8, 1.6], 0.5],
+    [(m) => P.crystals(m, 0xff7a3a, 0xff9a4a, 5, 1.2, 0x7a5a4c), 0.7, 'low', [1, 1.3], 0.4],
+    [(m) => P.rock(m, 0x8a6454, 0xb08a74, 0.2, 0.15, 0), 3, 'scatter', [1, 1.5], 0.2],
   ],
 };
 
@@ -435,11 +482,11 @@ function strokes(ctx, S, R, n, cols, a, l0, l1, w) {
     wrap(S, x, y, l, (X, Y) => { ctx.strokeStyle = rgba(c, a); ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(X, Y); ctx.quadraticCurveTo(X + Math.cos(ang + 0.5) * l * 0.5, Y + Math.sin(ang + 0.5) * l * 0.5, X + Math.cos(ang) * l, Y + Math.sin(ang) * l); ctx.stroke(); });
   }
 }
-function pebbles(ctx, S, R, n, cols, r0, r1, sh = 0.35) {
+function pebbles(ctx, S, R, n, cols, r0, r1, sh = 0.3, shc = [90, 70, 90]) {
   for (let i = 0; i < n; i++) {
     const x = R() * S, y = R() * S, r = r0 + R() * (r1 - r0), c = cols[(R() * cols.length) | 0], ry = r * (0.6 + R() * 0.3), rot = R() * 3;
     wrap(S, x, y, r + 3, (X, Y) => {
-      ctx.fillStyle = `rgba(0,0,0,${sh})`; ctx.beginPath(); ctx.ellipse(X + r * 0.25, Y + r * 0.3, r, ry, rot, 0, 6.29); ctx.fill();
+      ctx.fillStyle = rgba(shc, sh); ctx.beginPath(); ctx.ellipse(X + r * 0.25, Y + r * 0.3, r, ry, rot, 0, 6.29); ctx.fill();
       ctx.fillStyle = rgba(c, 1); ctx.beginPath(); ctx.ellipse(X, Y, r, ry, rot, 0, 6.29); ctx.fill();
       ctx.fillStyle = rgba(mixc(c, [255, 255, 255], 0.35), 0.8); ctx.beginPath(); ctx.ellipse(X - r * 0.25, Y - ry * 0.3, r * 0.45, ry * 0.4, rot, 0, 6.29); ctx.fill();
     });
@@ -462,76 +509,89 @@ function paintGround(t) {
   const S = 512, c = mkCanvas(S, S), x = c.getContext('2d'), R = mulberry32(t * 911 + 5);
   let em = null;
   const fill = (col) => { x.fillStyle = rgba(col, 1); x.fillRect(0, 0, S, S); };
+  // soft sunny dapples: big warm light pools and cool coloured shade pools, never black
+  const dapple = (light, shade, n = 26, a = 0.16) => { blobs(x, S, R, n, [light], a, 40, 110, 0.7); blobs(x, S, R, (n * 0.6) | 0, [shade], a * 0.8, 40, 100, 0.7); };
   if (t === 1) {
-    fill([82, 142, 50]);
-    blobs(x, S, R, 260, [[62, 118, 38], [104, 160, 60], [72, 132, 44], [120, 168, 64]], 0.35, 20, 80);
-    strokes(x, S, R, 2600, [[44, 96, 30], [52, 108, 32]], 0.55, 4, 9, 1.6);
-    strokes(x, S, R, 1800, [[150, 200, 90], [128, 186, 72]], 0.5, 3, 8, 1.3);
-    blobs(x, S, R, 30, [[150, 120, 70]], 0.18, 10, 24);
-    for (let i = 0; i < 70; i++) { const px = R() * S, py = R() * S, fc = [[255, 236, 110], [255, 255, 255], [250, 160, 210], [180, 170, 255]][(R() * 4) | 0]; wrap(S, px, py, 4, (X, Y) => { x.fillStyle = 'rgba(0,40,0,0.35)'; x.beginPath(); x.arc(X + 1, Y + 1, 2.4, 0, 6.29); x.fill(); x.fillStyle = rgba(fc, 1); x.beginPath(); x.arc(X, Y, 2.2, 0, 6.29); x.fill(); }); }
+    fill([114, 180, 66]);
+    blobs(x, S, R, 240, [[96, 162, 54], [138, 198, 80], [104, 172, 60], [156, 208, 88]], 0.35, 20, 80);
+    dapple([214, 236, 120], [70, 140, 80]);
+    strokes(x, S, R, 2200, [[74, 138, 44], [84, 150, 48]], 0.5, 4, 9, 1.6);
+    strokes(x, S, R, 1800, [[180, 222, 112], [158, 210, 94]], 0.55, 3, 8, 1.3);
+    blobs(x, S, R, 26, [[196, 166, 104]], 0.16, 10, 24);
+    // clover patches and little flowers
+    for (let i = 0; i < 40; i++) { const px = R() * S, py = R() * S; wrap(S, px, py, 8, (X, Y) => { for (let k = 0; k < 3; k++) { x.fillStyle = 'rgba(90,160,60,0.7)'; x.beginPath(); x.arc(X + Math.cos(k * 2.1) * 2.5, Y + Math.sin(k * 2.1) * 2.5, 2.4, 0, 6.29); x.fill(); } }); }
+    for (let i = 0; i < 90; i++) { const px = R() * S, py = R() * S, fc = [[255, 236, 110], [255, 255, 255], [255, 170, 214], [196, 186, 255], [255, 150, 110]][(R() * 5) | 0]; wrap(S, px, py, 4, (X, Y) => { x.fillStyle = 'rgba(60,110,40,0.35)'; x.beginPath(); x.arc(X + 1, Y + 1, 2.4, 0, 6.29); x.fill(); x.fillStyle = rgba(fc, 1); x.beginPath(); x.arc(X, Y, 2.2, 0, 6.29); x.fill(); x.fillStyle = 'rgba(255,230,120,1)'; x.fillRect(X - 0.6, Y - 0.6, 1.2, 1.2); }); }
   } else if (t === 2) {
-    fill([132, 96, 62]);
-    blobs(x, S, R, 260, [[112, 80, 50], [156, 118, 78], [98, 72, 46], [146, 110, 70]], 0.4, 20, 90);
-    x.lineCap = 'round'; cracks(x, S, R, 18, 10, 9, () => { x.strokeStyle = 'rgba(60,38,20,0.45)'; x.lineWidth = 1.8; x.stroke(); });
-    strokes(x, S, R, 900, [[96, 70, 44]], 0.4, 3, 7, 1.4);
-    pebbles(x, S, R, 260, [[150, 132, 112], [120, 100, 80], [172, 150, 120]], 1.5, 5.5);
-    strokes(x, S, R, 260, [[110, 120, 50], [140, 140, 60]], 0.6, 4, 8, 1.5);
+    fill([186, 144, 98]);
+    blobs(x, S, R, 240, [[168, 126, 84], [206, 166, 116], [158, 120, 80], [196, 156, 106]], 0.4, 20, 90);
+    dapple([236, 206, 150], [140, 110, 110]);
+    x.lineCap = 'round'; cracks(x, S, R, 16, 10, 9, () => { x.strokeStyle = 'rgba(120,84,56,0.4)'; x.lineWidth = 1.8; x.stroke(); x.strokeStyle = 'rgba(236,206,160,0.35)'; x.lineWidth = 0.8; x.stroke(); });
+    strokes(x, S, R, 700, [[150, 110, 72]], 0.35, 3, 7, 1.4);
+    pebbles(x, S, R, 240, [[214, 196, 168], [186, 164, 136], [232, 214, 184]], 1.5, 5.5, 0.3, [120, 86, 70]);
+    strokes(x, S, R, 420, [[140, 162, 70], [176, 184, 80], [120, 150, 60]], 0.6, 4, 8, 1.5);
   } else if (t === 3) {
-    fill([224, 192, 130]);
-    blobs(x, S, R, 220, [[208, 174, 112], [238, 210, 150], [214, 182, 118]], 0.4, 30, 110);
+    fill([242, 214, 152]);
+    blobs(x, S, R, 200, [[230, 198, 136], [250, 228, 172], [236, 204, 140]], 0.4, 30, 110);
+    dapple([255, 242, 200], [210, 170, 140], 18, 0.14);
     x.lineCap = 'round';
     for (let k = 0; k < 24; k++) {
       const y0 = (k * S) / 24, ph = R() * 6.28, amp = 4 + R() * 4, n = 1 + ((R() * 3) | 0);
-      for (const [off, col, a, w] of [[3, [176, 138, 82], 0.35, 3], [0, [250, 228, 178], 0.45, 2.2]]) {
+      for (const [off, col, a, w] of [[3, [204, 160, 104], 0.32, 3], [0, [255, 240, 200], 0.5, 2.2]]) {
         wrap9(x, S, () => { x.beginPath(); for (let px = 0; px <= S; px += 8) { const py = y0 + off + Math.sin((px / S) * 6.283 * n + ph) * amp; px ? x.lineTo(px, py) : x.moveTo(px, py); } x.strokeStyle = rgba(col, a); x.lineWidth = w; x.stroke(); });
       }
     }
-    pebbles(x, S, R, 40, [[190, 160, 120], [160, 130, 96]], 1.5, 4, 0.25);
+    pebbles(x, S, R, 40, [[214, 180, 136], [196, 160, 120]], 1.5, 4, 0.22, [190, 140, 100]);
   } else if (t === 4) {
-    fill([234, 240, 248]);
-    blobs(x, S, R, 260, [[206, 220, 240], [250, 252, 255], [196, 212, 236], [222, 232, 248]], 0.45, 30, 100, 0.6);
-    strokes(x, S, R, 90, [[196, 210, 236]], 0.22, 30, 70, 4);
-    strokes(x, S, R, 70, [[255, 255, 255]], 0.4, 25, 60, 3);
-    pebbles(x, S, R, 30, [[100, 110, 126], [130, 136, 150]], 1.5, 4, 0.15);
+    fill([242, 246, 252]);
+    blobs(x, S, R, 240, [[220, 232, 248], [252, 253, 255], [210, 224, 246], [232, 240, 252]], 0.45, 30, 100, 0.6);
+    dapple([255, 250, 236], [190, 210, 246], 18, 0.2);
+    strokes(x, S, R, 90, [[206, 220, 244]], 0.24, 30, 70, 4);
+    strokes(x, S, R, 70, [[255, 255, 255]], 0.45, 25, 60, 3);
+    pebbles(x, S, R, 24, [[150, 160, 180], [176, 184, 200]], 1.5, 4, 0.15, [150, 170, 220]);
     for (let i = 0; i < 500; i++) { const px = R() * S, py = R() * S; x.fillStyle = `rgba(255,255,255,${0.5 + R() * 0.5})`; x.fillRect(px, py, 1.4, 1.4); }
   } else if (t === 5) {
-    fill([76, 90, 48]);
-    blobs(x, S, R, 280, [[58, 58, 34], [92, 110, 54], [52, 72, 40], [70, 64, 38]], 0.45, 20, 90);
+    fill([126, 152, 76]);
+    blobs(x, S, R, 260, [[108, 136, 64], [150, 172, 88], [104, 132, 76], [140, 146, 84]], 0.42, 20, 90);
+    dapple([200, 220, 120], [80, 120, 110]);
     for (let i = 0; i < 5; i++) {
-      const px = R() * S, py = R() * S, rx = 24 + R() * 44, ry = rx * (0.5 + R() * 0.4), rot = R() * 3;
-      wrap(S, px, py, rx + 6, (X, Y) => {
-        x.fillStyle = 'rgba(40,40,22,0.6)'; x.beginPath(); x.ellipse(X, Y, rx + 5, ry + 5, rot, 0, 6.29); x.fill();
-        const g = x.createRadialGradient(X, Y, 0, X, Y, rx); g.addColorStop(0, 'rgba(40,74,70,1)'); g.addColorStop(1, 'rgba(56,84,64,1)');
+      const px = R() * S, py = R() * S, rx = 24 + R() * 40, ry = rx * (0.5 + R() * 0.4), rot = R() * 3;
+      wrap(S, px, py, rx + 8, (X, Y) => {
+        x.fillStyle = 'rgba(96,120,60,0.55)'; x.beginPath(); x.ellipse(X, Y, rx + 6, ry + 6, rot, 0, 6.29); x.fill();
+        const g = x.createRadialGradient(X, Y, 0, X, Y, rx); g.addColorStop(0, 'rgba(70,146,140,1)'); g.addColorStop(1, 'rgba(96,150,120,1)');
         x.fillStyle = g; x.beginPath(); x.ellipse(X, Y, rx, ry, rot, 0, 6.29); x.fill();
-        x.strokeStyle = 'rgba(170,200,170,0.35)'; x.lineWidth = 1.5; x.beginPath(); x.ellipse(X - rx * 0.2, Y - ry * 0.3, rx * 0.5, ry * 0.3, rot, 3.6, 5.2); x.stroke();
+        x.strokeStyle = 'rgba(220,250,230,0.5)'; x.lineWidth = 2; x.beginPath(); x.ellipse(X - rx * 0.2, Y - ry * 0.3, rx * 0.5, ry * 0.3, rot, 3.6, 5.2); x.stroke();
+        for (let k = 0; k < 3; k++) { const a = R() * 6.28, d = R() * 0.6; x.fillStyle = 'rgba(120,190,80,0.95)'; x.beginPath(); x.ellipse(X + Math.cos(a) * rx * d, Y + Math.sin(a) * ry * d, 5, 3.5, a, 0.4, 6.0); x.lineTo(X + Math.cos(a) * rx * d, Y + Math.sin(a) * ry * d); x.fill(); }
       });
     }
-    strokes(x, S, R, 1600, [[60, 80, 34], [110, 130, 60]], 0.5, 4, 10, 1.5);
-    blobs(x, S, R, 120, [[120, 150, 60]], 0.3, 3, 10);
+    strokes(x, S, R, 1600, [[96, 128, 56], [168, 190, 96]], 0.5, 4, 10, 1.5);
+    blobs(x, S, R, 120, [[170, 200, 90]], 0.3, 3, 10);
   } else if (t === 6) {
-    fill([128, 118, 98]);
-    blobs(x, S, R, 220, [[110, 100, 84], [150, 140, 120], [100, 92, 78]], 0.4, 20, 90);
-    for (let i = 0; i < 1600; i++) { const px = R() * S, py = R() * S, g = 90 + R() * 80; x.fillStyle = `rgba(${g},${g * 0.95},${g * 0.85},0.6)`; x.fillRect(px, py, 2, 2); }
+    fill([188, 172, 140]);
+    blobs(x, S, R, 220, [[170, 154, 124], [208, 194, 162], [176, 162, 132]], 0.4, 20, 90);
+    dapple([244, 230, 196], [150, 140, 150]);
+    for (let i = 0; i < 1400; i++) { const px = R() * S, py = R() * S, g = 150 + R() * 80; x.fillStyle = `rgba(${g},${g * 0.94},${g * 0.82},0.5)`; x.fillRect(px, py, 2, 2); }
     for (let i = 0; i < 34; i++) {
-      const l = 0.9 + R() * 0.25, px = R() * S, py = R() * S, r = 16 + R() * 26, n = 6 + ((R() * 3) | 0), base = [138 * l, 128 * l, 108 * l], pts = [];
+      const l = 0.92 + R() * 0.2, px = R() * S, py = R() * S, r = 16 + R() * 26, n = 6 + ((R() * 3) | 0), base = [200 * l, 188 * l, 160 * l], pts = [];
       for (let k = 0; k < n; k++) { const a = (k / n) * 6.28 + R() * 0.4; pts.push([Math.cos(a) * r * (0.7 + R() * 0.3), Math.sin(a) * r * (0.6 + R() * 0.3)]); }
       wrap(S, px, py, r + 4, (X, Y) => {
         const path = () => { x.beginPath(); pts.forEach((p, k) => (k ? x.lineTo(X + p[0], Y + p[1]) : x.moveTo(X + p[0], Y + p[1]))); x.closePath(); };
-        x.save(); x.translate(2, 3); path(); x.fillStyle = 'rgba(40,34,26,0.4)'; x.fill(); x.restore();
+        x.save(); x.translate(2, 3); path(); x.fillStyle = 'rgba(120,100,96,0.35)'; x.fill(); x.restore();
         path(); x.fillStyle = rgba(base, 1); x.fill();
-        x.save(); x.clip(); x.translate(-3, -3); path(); x.strokeStyle = rgba(mixc(base, [255, 250, 235], 0.4), 0.7); x.lineWidth = 3; x.stroke(); x.restore();
+        x.save(); x.clip(); x.translate(-3, -3); path(); x.strokeStyle = rgba(mixc(base, [255, 250, 235], 0.5), 0.75); x.lineWidth = 3; x.stroke(); x.restore();
       });
     }
-    x.lineCap = 'round'; cracks(x, S, R, 10, 8, 10, () => { x.strokeStyle = 'rgba(50,44,36,0.4)'; x.lineWidth = 1.5; x.stroke(); });
+    x.lineCap = 'round'; cracks(x, S, R, 10, 8, 10, () => { x.strokeStyle = 'rgba(120,104,84,0.38)'; x.lineWidth = 1.5; x.stroke(); });
+    strokes(x, S, R, 260, [[140, 156, 80], [170, 176, 96]], 0.5, 3, 7, 1.3);
   } else if (t === 7) {
-    fill([44, 34, 32]);
-    blobs(x, S, R, 260, [[62, 48, 44], [30, 24, 24], [76, 58, 50], [40, 30, 34]], 0.5, 20, 80);
-    pebbles(x, S, R, 160, [[70, 58, 56], [50, 42, 44]], 2, 7, 0.4);
+    fill([156, 104, 82]);
+    blobs(x, S, R, 240, [[140, 92, 72], [180, 122, 92], [130, 86, 74], [196, 136, 100]], 0.45, 20, 80);
+    dapple([236, 170, 110], [120, 80, 96]);
+    pebbles(x, S, R, 160, [[130, 96, 86], [160, 118, 100], [110, 84, 80]], 2, 7, 0.3, [90, 50, 50]);
     em = mkCanvas(S, S); const e = em.getContext('2d'); e.fillStyle = '#000'; e.fillRect(0, 0, S, S);
     const R2 = mulberry32(77), R3 = mulberry32(77);
     x.lineCap = e.lineCap = 'round'; x.lineJoin = e.lineJoin = 'round';
-    cracks(x, S, R2, 5, 12, 11, () => { x.strokeStyle = 'rgba(20,10,8,0.9)'; x.lineWidth = 7; x.stroke(); x.strokeStyle = 'rgba(150,40,12,1)'; x.lineWidth = 3; x.stroke(); });
-    cracks(e, S, R3, 5, 12, 11, () => { e.strokeStyle = 'rgba(255,60,10,0.25)'; e.lineWidth = 8; e.stroke(); e.strokeStyle = 'rgba(255,100,20,0.9)'; e.lineWidth = 2.2; e.stroke(); e.strokeStyle = 'rgba(255,220,120,1)'; e.lineWidth = 1; e.stroke(); });
+    cracks(x, S, R2, 5, 12, 11, () => { x.strokeStyle = 'rgba(96,52,40,0.85)'; x.lineWidth = 7; x.stroke(); x.strokeStyle = 'rgba(230,90,30,1)'; x.lineWidth = 3; x.stroke(); });
+    cracks(e, S, R3, 5, 12, 11, () => { e.strokeStyle = 'rgba(255,70,10,0.28)'; e.lineWidth = 9; e.stroke(); e.strokeStyle = 'rgba(255,110,24,0.9)'; e.lineWidth = 2.4; e.stroke(); e.strokeStyle = 'rgba(255,224,130,1)'; e.lineWidth = 1; e.stroke(); });
   }
   const tex = (cv) => { const tx = new THREE.CanvasTexture(cv); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; return tx; };
   return { map: tex(c), emissive: em ? tex(em) : null };
@@ -547,13 +607,19 @@ function paintGrid(t, hexPos, COLS, ROWS, HS, bounds) {
   const hexPath = (p, s) => { x.beginPath(); for (let i = 0; i < 6; i++) { const q = corner(p, i, s); i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1]); } x.closePath(); };
   const cells = [];
   for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) cells.push(hexPos(cc, r));
-  // a faint trodden tint over the whole field, varying per hex
-  for (const p of cells) { hexPath(p, 1); x.fillStyle = rgba(pal.field, 0.04 + R() * 0.06); x.fill(); }
+  // a soft painted frame: the field reads as a sunlit, slightly trodden clearing whose rim melts into the land
+  x.filter = 'blur(14px)';
+  for (const p of cells) { hexPath(p, 1.25); x.fillStyle = rgba(pal.edge, 0.2); x.fill(); }
+  x.filter = 'blur(6px)';
+  for (const p of cells) { hexPath(p, 1.02); x.fillStyle = rgba(pal.field, 0.16); x.fill(); }
+  x.filter = 'none';
+  // a faint varied tint per hex
+  for (const p of cells) { hexPath(p, 1); x.fillStyle = rgba(pal.field, 0.03 + R() * 0.06); x.fill(); }
   // unique edges
   const edges = new Map();
   for (const p of cells) for (let i = 0; i < 6; i++) {
     const a = corner(p, i), b = corner(p, i + 1), k = `${Math.round((a[0] + b[0]) * 2)},${Math.round((a[1] + b[1]) * 2)}`;
-    if (!edges.has(k)) edges.set(k, [a, b, 0.65 + R() * 0.35]);
+    if (!edges.has(k)) edges.set(k, [a, b, 0.7 + R() * 0.3]);
   }
   x.lineCap = 'round';
   const pass = (col, a, w, blur) => {
@@ -561,10 +627,10 @@ function paintGrid(t, hexPos, COLS, ROWS, HS, bounds) {
     for (const [p, q, f] of edges.values()) { x.strokeStyle = rgba(col, a * f); x.lineWidth = w; x.beginPath(); x.moveTo(p[0], p[1]); x.lineTo(q[0], q[1]); x.stroke(); }
     x.filter = 'none';
   };
-  pass(pal.grid, 0.38, 7, 3);
-  pass(pal.grid, 0.42, 1.8, 0);
+  pass(pal.grid, 0.22, 7, 3);
+  pass(pal.grid, 0.4, 1.8, 0);
   // inner bevel highlight, like a gently painted tile edge
-  for (const p of cells) { hexPath(p, 0.9); x.strokeStyle = rgba(pal.gridHi, (pal.hiA ?? 0.13) + R() * 0.05); x.lineWidth = 1.6; x.stroke(); }
+  for (const p of cells) { hexPath(p, 0.9); x.strokeStyle = rgba(pal.gridHi, (pal.hiA ?? 0.16) + R() * 0.06); x.lineWidth = 1.8; x.stroke(); }
   const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;
   return tx;
 }
