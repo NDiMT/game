@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.2';
-import { createScore } from './music.js?v=2.2';
+import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.3';
+import { createScore } from './music.js?v=2.3';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=2.2';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.3';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -788,9 +788,11 @@ const centerT = {}, tileT = {};
 const mkT = (t, max) => ({ body: inst(t.body, bodyMat, max), glow: t.glow ? inst(t.glow, glowMat, max) : null, smoke: t.smoke });
 for (let e = 0; e < 7; e++) {
   for (let l = 1; l <= 4; l++) centerT[`${e}-${l}`] = mkT(centerModel(e, l), 80);
-  for (let k = 0; k < 9; k++) if (k !== 3 || (e >= 1 && e <= 3)) tileT[`${e}-${k}`] = mkT(tileModel(e, k), 900);
+  for (let k = 0; k < 11; k++) if (k !== 3 || (e >= 1 && e <= 3)) tileT[`${e}-${k}`] = mkT(tileModel(e, k), 700);
 }
 const ALL_T = [...Object.values(centerT), ...Object.values(tileT)];
+// small colour shifts so neighbouring blocks never look identical
+const TINTS = [[1, 1, 1], [1, 0.94, 0.88], [0.92, 0.95, 1], [1, 1, 0.9], [0.9, 0.9, 0.92], [1, 0.92, 0.94], [0.94, 1, 0.94]].map(([r, g, b]) => new THREE.Color(r, g, b));
 // things that appear spring up with a little overshoot
 const born = new Map();
 const hash = (x) => ((x * 2654435761) >>> 0) % 997;
@@ -876,44 +878,49 @@ const auroras = [1, -1].map((sgn) => {
 });
 
 // fireflies drift over forests after dark
-const FF = 420;
+const FF = 1600;
 const ffGeo = new THREE.BufferGeometry();
 ffGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FF * 3), 3));
 ffGeo.setAttribute('aPhase', new THREE.BufferAttribute(Float32Array.from({ length: FF }, () => rnd() * 100), 1));
+ffGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(FF * 3), 3));
 const fireflies = new THREE.Points(ffGeo, new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   uniforms: { uTime: timeU, uSun: sunU, uPR: { value: Math.min(window.devicePixelRatio, 2) } },
-  vertexShader: `attribute float aPhase; uniform float uTime; uniform vec3 uSun; uniform float uPR; varying float vA;
+  vertexShader: `attribute float aPhase; attribute vec3 color; uniform float uTime; uniform vec3 uSun; uniform float uPR; varying float vA; varying vec3 vC;
     void main() { vec3 p = position;
-      p += vec3(sin(uTime * 0.35 + aPhase), sin(uTime * 0.45 + aPhase * 1.3) * 0.6 + 0.5, cos(uTime * 0.3 + aPhase * 0.7)) * 0.03;
-      float night = smoothstep(0.05, -0.25, dot(normalize(p), uSun));
-      vA = night * (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 1.2 + aPhase * 5.0), 2.0));
+      // city lights: steady warm windows that switch on at dusk, a few at a time
+      float night = smoothstep(0.12 - fract(aPhase) * 0.25, -0.2 - fract(aPhase) * 0.1, dot(normalize(p), uSun));
+      vA = night * (0.85 + 0.15 * step(0.97, fract(sin(floor(uTime * 0.5) + aPhase) * 43.7)));
+      vC = color;
       vec4 mv = modelViewMatrix * vec4(p, 1.0);
-      gl_PointSize = uPR * 34.0 / -mv.z; gl_Position = projectionMatrix * mv; }`,
-  fragmentShader: `varying float vA; void main() { float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d); gl_FragColor = vec4(vec3(1.0, 0.9, 0.35) * a * vA * 2.2, 1.0); }`,
+      gl_PointSize = uPR * 22.0 / -mv.z; gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `varying float vA; varying vec3 vC; void main() { float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.05, d); gl_FragColor = vec4(vC * a * vA * 1.8, 1.0); }`,
 }));
 fireflies.frustumCulled = false;
 fireflies.renderOrder = 4;
 scene.add(fireflies);
-// fireflies live where people do: over trees, parks and gardens near towns.
-// Each hex keeps the same fireflies, so they never jump when the land changes.
+// city lights: every town hex glows with windows at night, more of them in later ages
+const LIGHT_COLS = [[0xffa040, 0xff8a30], [0xffb050, 0xffa040], [0xffc070, 0xffb060], [0xffc878, 0xffd890], [0xffe0a0, 0xffd080], [0xfff0d0, 0xffe8b0, 0xbfe0ff], [0x9ff4ff, 0xffffff, 0xff9af0]].map((a) => a.map((c) => new THREE.Color(c)));
 function seedFireflies() {
-  const near = new Set();
-  for (const s of G.settlements) for (const c of [s.v, ...(s.tiles || [])]) for (const [x] of bfs(c, 2)) near.add(x);
-  const a = ffGeo.attributes.position.array;
+  const a = ffGeo.attributes.position.array, col = ffGeo.attributes.color.array;
   let i = 0;
-  for (const v of [...near].sort((p, q) => p - q)) {
-    if (i >= FF) break;
-    if (!isLand(v) || !(tree[v] || tileKind[v] === 6 || (!tileKind[v] && owner[v] < 0 && hash(v) % 3 === 0))) continue;
-    const c = CELLS[v], hv = hash(v), k = 1 + (hv % 3);
-    for (let j = 0; j < k && i < FF; j++, i++) {
-      const hj = hash(v * 7 + j * 131);
-      const p = DIRS[v].clone().multiplyScalar(radiusOf(v) + 0.06 + (hj % 10) * 0.01).addScaledVector(c.t1, ((hj % 21) - 10) * 0.011).addScaledVector(c.t2, (((hj >> 3) % 21) - 10) * 0.011);
-      a.set(p.toArray(), i * 3);
+  for (const s of G.settlements) {
+    const era = eraOf(s), per = 2 + Math.min(5, era);
+    for (const v of [s.v, ...(s.tiles || [])]) {
+      if (tileKind[v] === 3 || tileKind[v] === 6) continue;
+      const c = CELLS[v];
+      for (let j = 0; j < per && i < FF; j++, i++) {
+        const hj = hash(v * 7 + j * 131), hk = hash(v * 13 + j * 71);
+        const lift = 0.015 + (hk % 10) * (era >= 5 ? 0.02 : 0.008);
+        const p = DIRS[v].clone().multiplyScalar(radiusOf(v) + lift).addScaledVector(c.t1, ((hj % 21) - 10) * 0.012).addScaledVector(c.t2, (((hj >> 3) % 21) - 10) * 0.012);
+        a.set(p.toArray(), i * 3);
+        const lc = LIGHT_COLS[era][hk % LIGHT_COLS[era].length];
+        col[i * 3] = lc.r; col[i * 3 + 1] = lc.g; col[i * 3 + 2] = lc.b;
+      }
     }
   }
   for (; i < FF; i++) a[i * 3] = a[i * 3 + 1] = a[i * 3 + 2] = 0;
-  ffGeo.attributes.position.needsUpdate = true;
+  ffGeo.attributes.position.needsUpdate = ffGeo.attributes.color.needsUpdate = true;
 }
 
 // treasures on the map
@@ -1058,17 +1065,19 @@ function layoutRoads() {
   seedTraffic();
 }
 // people, carts, cars and hover pods moving from street to street
-const peds = inst(personGeo(), bodyMat, 400, false), cars = inst(carGeo(), bodyMat, 400, false), heads = inst(mergeParts([{ g: new THREE.BoxGeometry(0.003, 0.004, 0.012).translate(0.0135, 0.01, 0), c: 0xfff4c0 }]), glowMat, 400, false), pods = inst(podGeo(), glowMat, 400, false);
-for (const m of [peds, cars, pods]) m.setColorAt(0, new THREE.Color());
+const peds = inst(personGeo(), bodyMat, 700, false), crowd3 = inst(personGeo(), bodyMat, 700, false), cars = inst(carGeo(), bodyMat, 400, false), heads = inst(mergeParts([{ g: new THREE.BoxGeometry(0.003, 0.004, 0.012).translate(0.0135, 0.01, 0), c: 0xfff4c0 }]), glowMat, 400, false), pods = inst(podGeo(), glowMat, 400, false);
+for (const m of [peds, cars, pods, crowd3]) m.setColorAt(0, new THREE.Color());
 const CAR_COL = [0xd04a3a, 0x3a7ad0, 0xe0c040, 0xf2f2f2, 0x2a2a30, 0x4ab06a, 0xe07a2a, 0x8a5ad0].map((c) => new THREE.Color(c));
 const PED_COL = [0xb05a3a, 0x3a6a8a, 0xd8b04a, 0x6a8a3a, 0x8a4a8a, 0xe0e0d8].map((c) => new THREE.Color(c));
-let traffic = [];
+let traffic = [], crowdSpots = [];
 function seedTraffic() {
   traffic = [];
-  const n = Math.min(380, Math.floor(segs.length * 0.5));
+  const n = Math.min(900, Math.floor(segs.length * 0.9));
   for (let i = 0; i < n; i++) {
     const si = (rnd() * segs.length) | 0, sg = segs[si];
-    traffic.push({ si, t: rnd(), fwd: rnd() < 0.5, speed: sg.era >= 4 ? 0.09 + rnd() * 0.06 : 0.02 + rnd() * 0.015, col: i });
+    // people walk in every age; vehicles join them later
+    const ped = sg.era <= 3 || rnd() < 0.45;
+    traffic.push({ si, t: rnd(), fwd: rnd() < 0.5, ped, speed: ped ? 0.018 + rnd() * 0.015 : 0.09 + rnd() * 0.06, col: i });
   }
 }
 const tA = new THREE.Vector3(), tB = new THREE.Vector3(), tP = new THREE.Vector3();
@@ -1090,18 +1099,33 @@ function updateTraffic(dt) {
     tP.copy(from).lerp(to, a.t);
     tA.subVectors(to, from).normalize();
     tB.crossVectors(tA, sg.up).normalize();
-    tP.addScaledVector(tB, sg.era >= 4 ? 0.007 : (a.col % 2 ? 0.008 : -0.008));
+    tP.addScaledVector(tB, a.ped ? (a.col % 2 ? 0.013 : -0.013) : 0.006);
     dummy.position.copy(tP);
     dummy.up.copy(sg.up);
     dummy.lookAt(tP.clone().add(tB));
-    dummy.scale.setScalar(sg.era <= 3 ? 1.05 : 1.5);
+    dummy.scale.setScalar(a.ped ? 1.05 : 1.5);
+    if (a.ped) dummy.position.addScaledVector(sg.up, Math.abs(Math.sin(t * 9 + a.col)) * 0.003);
     dummy.updateMatrix();
     dummy.up.set(0, 1, 0);
-    if (sg.era <= 3) { peds.setMatrixAt(np, dummy.matrix); peds.setColorAt(np++, PED_COL[a.col % PED_COL.length]); }
+    if (a.ped) { if (np >= 700) continue; peds.setMatrixAt(np, dummy.matrix); peds.setColorAt(np++, PED_COL[a.col % PED_COL.length]); }
     else if (sg.era <= 5) { cars.setMatrixAt(nc, dummy.matrix); heads.setMatrixAt(nc, dummy.matrix); cars.setColorAt(nc++, CAR_COL[a.col % CAR_COL.length]); }
     else { pods.setMatrixAt(nd, dummy.matrix); pods.setColorAt(nd++, a.col % 2 ? LAMP_COL[6] : new THREE.Color(0xff8af0)); }
   }
   peds.count = np; cars.count = heads.count = nc; pods.count = nd;
+  // crowds mill around markets, plazas and town squares
+  let nq = 0;
+  for (const c of crowdSpots) {
+    for (let k = 0; k < c.n && nq < 700; k++) {
+      const a = t * (0.15 + (k % 3) * 0.08) * (k % 2 ? 1 : -1) + k * 1.7 + c.v, rr = 0.04 + ((k * 37 + c.v) % 7) * 0.012;
+      const cell = CELLS[c.v];
+      tP.copy(DIRS[c.v]).multiplyScalar(radiusOf(c.v) + 0.004).addScaledVector(cell.t1, Math.cos(a) * rr).addScaledVector(cell.t2, Math.sin(a) * rr);
+      dummy.position.copy(tP); dummy.up.copy(DIRS[c.v]);
+      dummy.lookAt(tP.clone().addScaledVector(cell.t1, -Math.sin(a)).addScaledVector(cell.t2, Math.cos(a)));
+      dummy.scale.setScalar(1.05); dummy.updateMatrix(); dummy.up.set(0, 1, 0);
+      crowd3.setMatrixAt(nq, dummy.matrix); crowd3.setColorAt(nq++, PED_COL[(k + c.v) % PED_COL.length]);
+    }
+  }
+  crowd3.count = nq; crowd3.instanceMatrix.needsUpdate = true; if (crowd3.instanceColor) crowd3.instanceColor.needsUpdate = true;
   for (const m of [peds, cars, pods, heads]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
 }
 
@@ -1285,6 +1309,17 @@ function collectWisp(v) {
   return true;
 }
 
+// ------------------------------------------------------------------ fireworks when a town celebrates
+const FW_COLS = [0xff5a6a, 0xffd25a, 0x5ad8ff, 0x8aff8a, 0xd08aff, 0xffffff];
+function fireworks(v, n = 3) {
+  for (let i = 0; i < n + 1; i++) setTimeout(() => {
+    const p = posOf(v, 0.55 + rnd() * 0.35).addScaledVector(CELLS[v].t1, (rnd() - 0.5) * 0.3).addScaledVector(CELLS[v].t2, (rnd() - 0.5) * 0.3);
+    const c = FW_COLS[(rnd() * FW_COLS.length) | 0];
+    emit(p, c, 46, 0.05, 1.1, 1.3, 0.25); emit(p, 0xffffff, 8, 0.05, 0.4, 0.4, 0);
+    sfx.pop?.();
+  }, i * 260 + rnd() * 120);
+}
+
 // ------------------------------------------------------------------ particles (radial gravity)
 const PMAX = 1200;
 const pGeo = new THREE.BufferGeometry();
@@ -1338,7 +1373,12 @@ function fertility(v) {
   f -= Math.abs(DIRS[v].y) * 0.4;
   return Math.max(0.2, f) * (0.6 + G.health / 250);
 }
-const newTown = (v, pop, tiles = [], tribe = 0) => ({ v, pop, tiles, tribe, res: [], seen: new Set(), level: 1, grow: 0, sick: 0, inspire: 0, cool: 6, fert: 1, growT: 2, stuck: 0, fx: { food: 0, know: 0, size: 0, health: 0, defend: 0 }, fxN: {} });
+const NAME_A = ['Ash', 'Bel', 'Cor', 'Dun', 'El', 'Fen', 'Gal', 'Har', 'Ir', 'Kel', 'Lun', 'Mar', 'Nor', 'Os', 'Pel', 'Riv', 'Sol', 'Tal', 'Ul', 'Ver', 'Wyn', 'Zan'];
+const NAME_B = ['ford', 'haven', 'dale', 'wick', 'mere', 'stead', 'holm', 'ton', 'brook', 'gate', 'moor', 'vale', 'crest', 'field', 'port', 'by'];
+const RED_A = ['Kar', 'Vor', 'Zul', 'Rhak', 'Mor', 'Gra', 'Tor', 'Xa', 'Dra', 'Sku'];
+const RED_B = ['goth', 'zar', 'mok', 'thul', 'rak', 'gar', 'vex', 'dun'];
+const genName = (tribe) => tribe ? RED_A[(rnd() * RED_A.length) | 0] + RED_B[(rnd() * RED_B.length) | 0] : NAME_A[(rnd() * NAME_A.length) | 0] + NAME_B[(rnd() * NAME_B.length) | 0];
+const newTown = (v, pop, tiles = [], tribe = 0) => ({ name: genName(tribe), v, pop, tiles, tribe, res: [], seen: new Set(), level: 1, grow: 0, sick: 0, inspire: 0, cool: 6, fert: 1, growT: 2, stuck: 0, fx: { food: 0, know: 0, size: 0, health: 0, defend: 0 }, fxN: {} });
 function found(v, pop, tribe = 0) {
   const s = newTown(v, pop, [], tribe);
   s.fert = fertility(v);
@@ -1413,7 +1453,7 @@ function updateWalkers(dt) {
     w.from = w.to; w.t = 0;
     if (w.path.length) { w.to = w.path.shift(); continue; }
     // arrived (or idle): settle, or look for a new spot
-    if (w.target === w.from && canSettle(w.from)) { if (!w.tribe && G.beacon >= 0 && bfs(G.beacon, 4).some(([x]) => x === w.from)) { G.beacon = -1; layoutBeacon(); toast('🚩 Your settlers reached the beacon!', w.from); } found(w.from, w.pop, w.tribe); if (!w.tribe) floatText(w.from, '🏘️ New town!', 'gold'); G.walkers.splice(i, 1); if (!w.tribe) { sfx.found(); tip('found', 'A new settlement! Level the land around it so it can grow.'); } continue; }
+    if (w.target === w.from && canSettle(w.from)) { if (!w.tribe && G.beacon >= 0 && bfs(G.beacon, 4).some(([x]) => x === w.from)) { G.beacon = -1; layoutBeacon(); toast('🚩 Your settlers reached the beacon!', w.from); } found(w.from, w.pop, w.tribe); if (!w.tribe) floatText(w.from, `🏘️ ${G.settlements[G.settlements.length - 1].name} founded!`, 'gold'); G.walkers.splice(i, 1); if (!w.tribe) { sfx.found(); tip('found', 'A new settlement! Level the land around it so it can grow.'); } continue; }
     w.think -= dt;
     if (w.think > 0) continue;
     w.think = 1.5;
@@ -1534,12 +1574,12 @@ function townInfo(s) {
   if (fx.know) bits.push(`📜+${Math.round(fx.know * 100)}%`);
   if (fx.health) bits.push('🛡️ plague');
   if (fx.defend) bits.push('🏰');
-  toast(`Town: ${sizeOf(s)}/${maxTiles(s) + 1} hexes · ${fmt(s.pop)}/${fmt(capOf(s))} people${bits.length ? ' · ' + bits.join(' ') : ''}`, s.v);
+  toast(`🏘️ ${s.name}: ${sizeOf(s)}/${maxTiles(s) + 1} hexes · ${fmt(s.pop)}/${fmt(capOf(s))} people${bits.length ? ' · ' + bits.join(' ') : ''}`, s.v);
 }
 const canBuildAt = (v, tribe = 0) => isLand(v) && (tileKind[v] === 0 || tileKind[v] === 2 || tileKind[v] === 3 || tileKind[v] === 6) && bfs(v, 2).some(([x]) => owner[x] >= 0 && G.settlements[owner[x]].tribe === tribe);
 function placeBuilding(id, v) {
   const b = BD[id];
-  if (tileKind[v] === 1) { const t = G.settlements[owner[v]]; if (t.tribe) { toast(`🔴 A Crimson town: ${sizeOf(t)} hexes, ${fmt(t.pop)} people.`, t.v); return false; } townInfo(t); return false; }
+  if (tileKind[v] === 1) { const t = G.settlements[owner[v]]; if (t.tribe) { toast(`🔴 ${t.name} (Crimson): ${sizeOf(t)} hexes, ${fmt(t.pop)} people.`, t.v); return false; } townInfo(t); return false; }
   if (G.era < b.era) { toast(`${b.name} arrives in the ${ERAS[b.era].name}`); sfx.deny(); return false; }
   if (!canBuildAt(v)) { toast('Build on dry land within 2 hexes of a town'); sfx.deny(); return false; }
   if (G.mana < bCost(b)) { toast('Not enough inspiration ✦'); sfx.deny(); return false; }
@@ -1699,7 +1739,7 @@ function simulate(dt) {
           const lv = s.level;
           assignTiles();
           if (!s.tribe) floatText(x, '+1 🏘️', 'green');
-          if (s.level > lv) { s.grow = 0; if (!s.tribe) { sfx.grow(); floatText(s.v, `⭐ Town level ${s.level}!`, 'gold'); } emit(posOf(s.v, 0.2), 0xfff3c4, 20, 0.5, 0.4, 1, -0.1); }
+          if (s.level > lv) { s.grow = 0; if (!s.tribe) { sfx.grow(); floatText(s.v, `⭐ ${s.name} level ${s.level}!`, 'gold'); fireworks(s.v, s.level); } emit(posOf(s.v, 0.2), 0xfff3c4, 20, 0.5, 0.4, 1, -0.1); }
           emit(posOf(x, 0.05), 0xfff3c4, 6, 0.3, 0.2, 0.8, -0.1);
         } else s.stuck++;
       }
@@ -2029,6 +2069,7 @@ function buildWonder() {
   for (const [x] of bfs(v, 1)) tree[x] = 0;
   rebuildCrowd(); layoutWonders();
   flyTo(v, 11);
+  fireworks(v, 7);
   emit(posOf(v, 0.3), 0xffe27a, 80, 1, 0.8, 1.8, -0.2);
   sfx.fanfare();
   $('goal-sheet').hidden = true;
@@ -2191,12 +2232,14 @@ function pressRepeat(dt) {
 // ------------------------------------------------------------------ rendering per frame
 function layoutSettlements(dt) {
   for (const tp of ALL_T) tp.n = 0;
+  crowdSpots = [];
   let nf = 0;
   const smoke = [];
   let era = G.era;
   const put = (tp, v, scale, turn = 0) => {
     const n = tp.n++;
     placeIn(tp.body, n, v, 0, 0, YAW[v] + turn, scale, -0.002);
+    tp.body.setColorAt(n, TINTS[hash(v * 5 + 3) % TINTS.length]);
     if (tp.glow) tp.glow.setMatrixAt(n, dummy.matrix);
     if (era === 4 && tp.smoke.length && rnd() < dt * 0.5) for (const sp of tp.smoke) smoke.push(new THREE.Vector3(...sp).applyMatrix4(dummy.matrix));
   };
@@ -2205,17 +2248,20 @@ function layoutSettlements(dt) {
     era = eraOf(s);
     placeIn(flags, nf, s.v, 0.12, 0.12, 0, 1.8, 0);
     flags.setColorAt(nf++, s.tribe ? FLAG_RED : FLAG_BLUE);
+    if (crowdSpots.length < 80) crowdSpots.push({ v: s.v, n: 3 + s.level * 2 });
     put(centerT[`${era}-${s.level}`], s.v, 0.6 + 0.4 * (1 - Math.pow(1 - s.grow, 3)));
     for (const x of s.tiles || []) {
       // downtown near the centre, mixed streets further out, suburbs at the edge
       const ring = s.ring?.get(x) ?? 2, hx = hash(x) % 5;
-      const k = tileKind[x] === 3 ? 3 : tileKind[x] === 6 ? 4 : ring <= 1 ? [0, 5, 5, 7, 8][hx] : ring === 2 ? [0, 1, 2, 5, 7][hx] : [6, 6, 1, 2, 6][hx];
+      const h7 = hash(x * 3 + 1) % 7;
+      const k = tileKind[x] === 3 ? 3 : tileKind[x] === 6 ? 4 : ring <= 1 ? [0, 5, 5, 7, 8, 10, 0][h7] : ring === 2 ? [0, 1, 2, 5, 7, 9, 10][h7] : [6, 6, 1, 2, 6, 9, 6][h7];
+      if ((k === 7 || k === 8) && crowdSpots.length < 80) crowdSpots.push({ v: x, n: 5 + (hx % 4) });
       const tp = tileT[`${era}-${k}`];
-      if (tp && tp.n < 900) put(tp, x, popIn(born.get(x)), (hash(x) % 6) * (Math.PI / 3));
+      if (tp && tp.n < 700) put(tp, x, popIn(born.get(x)), (hash(x) % 6) * (Math.PI / 3));
     }
   }
   for (const tp of ALL_T) {
-    for (const m of [tp.body, tp.glow]) if (m) { m.count = tp.n; m.visible = tp.n > 0; m.instanceMatrix.needsUpdate = true; }
+    for (const m of [tp.body, tp.glow]) if (m) { m.count = tp.n; m.visible = tp.n > 0; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
   }
   flags.count = nf; flags.instanceMatrix.needsUpdate = true; if (flags.instanceColor) flags.instanceColor.needsUpdate = true;
   for (const p of smokers) if (rnd() < dt * 1.2) smoke.push(p);
@@ -2487,7 +2533,7 @@ function save() {
   store.set('aeons.save', {
     v: 1, seed: G.seed, era: G.era, know: G.know, mana: G.mana, health: G.health, sea: G.sea, elapsed: G.elapsed, stats: G.stats, tips,
     h: pack(h), tree: pack(tree), res: pack(res), beacon: G.beacon, diff: G.diff, q: G.q, qc: G.qc, eventT: G.eventT, seenEvents: G.seenEvents,
-    settlements: G.settlements.map((s) => [s.v, Math.round(s.pop), s.tiles, s.tribe]), buildings: G.buildings.map((b) => [b.id, b.v, b.tribe]), rival: G.rival, walkers: G.walkers.filter((w) => w.war === -1).map((w) => [w.from, Math.round(w.pop), w.tribe]), wonders: G.wonders.map((w) => [w.era, w.v, w.tribe || 0]),
+    settlements: G.settlements.map((s) => [s.v, Math.round(s.pop), s.tiles, s.tribe, s.name]), buildings: G.buildings.map((b) => [b.id, b.v, b.tribe]), rival: G.rival, walkers: G.walkers.filter((w) => w.war === -1).map((w) => [w.from, Math.round(w.pop), w.tribe]), wonders: G.wonders.map((w) => [w.era, w.v, w.tribe || 0]),
   });
 }
 function load() {
@@ -2504,7 +2550,7 @@ function load() {
   const needRival = !s.rival;
   rebuildCrowd();
   G.buildings = (s.buildings || []).map(([id, v, tribe]) => ({ id, v, tribe: tribe || 0 }));
-  for (const [v, pop, tiles, tribe] of s.settlements) { const st = newTown(v, pop, tiles || [], tribe || 0); st.grow = 1; G.settlements.push(st); }
+  for (const [v, pop, tiles, tribe, name] of s.settlements) { const st = newTown(v, pop, tiles || [], tribe || 0); if (name) st.name = name; st.grow = 1; G.settlements.push(st); }
   assignTiles(); computeFx();
   for (const [v, pop, tribe] of s.walkers) spawnWalker(v, pop, tribe || 0);
   if (needRival && G.settlements.length) spawnRival(bestSettlement(0).v);
@@ -2627,6 +2673,7 @@ const sfx = (() => {
     power: () => { hiss(0.6, 2400, 0.15, 'bandpass'); [523, 784, 1047].forEach((f, i) => tone(f, f, 0.3, 'sine', 0.06, i * 0.06)); },
     found: () => [392, 523].forEach((f, i) => tone(f, f, 0.2, 'sine', 0.07, i * 0.08)),
     grow: () => [523, 659, 784].forEach((f, i) => tone(f, f, 0.18, 'sine', 0.05, i * 0.06)),
+    pop: () => { tone(900 + Math.random() * 500, 300, 0.25, 'sine', 0.03); hiss(0.25, 3000, 0.05, 'highpass'); },
     alarm: () => [0, 0.25, 0.5].forEach((d) => tone(740, 560, 0.2, 'triangle', 0.06, d)),
     rumble: () => { hiss(1.6, 160, 0.7); tone(48, 30, 1.4, 'sine', 0.4); },
     boom: () => { hiss(1.4, 300, 0.9); tone(70, 30, 1.2, 'sawtooth', 0.25); },
