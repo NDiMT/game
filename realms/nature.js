@@ -556,24 +556,24 @@ function mound({ r0, h, segs = 12, rings = 8, seed = 1, rough = 0.28, sharp = 1.
     : ringsGeo(rs, { apexTop: V(ox + lean[0], h, oz + lean[1]), flip: true });
   return { g, surf };
 }
-const ROCK_PEAK = ramp(0x8c7a6c, 0xa89482, 0xc6b298, 0xe2d2b6, 0xfff0d6); // warm sunlit sandstone-grey
-const COLD_PEAK = ramp(0x6c7a9a, 0x8694b4, 0xa4b2cc, 0xc4d0e4, 0xe2eaf6); // pale blue granite
-const BASALT = ramp(0x6a4440, 0x8a5848, 0xa87052, 0xc48c64, 0xdcac80); // warm red-brown volcanic rock
-const PEAK_SHADE = L(0x6e6496); // painted shade colour: violet, never black
+const ROCK_PEAK = ramp(0x7a6456, 0x9a8270, 0xbca48a, 0xdcc6a8, 0xf8eacc); // warm sunlit sandstone-grey
+const COLD_PEAK = ramp(0x56688e, 0x6e82a8, 0x8a9ec0, 0xaabcd6, 0xcad8ea); // pale blue granite
+const BASALT = ramp(0x5e3a3a, 0x7c4a44, 0x9c604c, 0xbc7c5a, 0xd89c74); // warm red-brown volcanic rock
+const PEAK_SHADE = L(0x5c5490); // painted shade colour: violet, never black
 function peakPaint(kind, H) {
   const rock = kind === 'snow' ? COLD_PEAK : kind === 'volcano' ? BASALT : ROCK_PEAK;
   const grass = kind === 'volcano' ? ramp(0x7a4a34, 0x9a6040) : kind === 'snow' ? ramp(0xc8d8f0, 0xf0f6ff) : ramp(0x4a9a2e, 0x86c446);
   const SN = ramp(0xa8bce8, 0xd4e0f8, 0xf6f9ff, 0xffffff);
-  const snowLine = kind === 'snow' ? 0.4 : 0.66;
+  const snowLine = kind === 'snow' ? 0.36 : 0.6;
   return (p, n) => {
     const m = fbm(p.x * 4 + 7, p.y * 4, p.z * 4), fine = noise(p.x * 14, p.y * 14, p.z * 14), t = p.y / H;
     const facing = n.x * 0.55 + n.z * 0.45; // painted key light so ridges read even in shade
-    let c = rock(0.3 + t * 0.25 + (n.y - 0.3) * 0.25 + facing * 0.3 + (m - 0.5) * 0.5);
+    let c = rock(0.32 + t * 0.2 + (n.y - 0.3) * 0.2 + facing * 0.45 + (m - 0.5) * 0.45);
     // horizontal strata, painterly
     const strata = Math.sin(p.y * 26 + m * 5);
     c = mul(c, 0.94 + 0.08 * strata);
     // shaded faces lean violet instead of going dark
-    const shade = smooth(0.1, -0.6, facing) * 0.35 + (fine > 0.7 ? 0.3 : 0);
+    const shade = smooth(0.15, -0.65, facing) * 0.5 + (fine > 0.72 ? 0.25 : 0);
     c = mix(c, mul(PEAK_SHADE, 0.6 + c[1] * 0.8), shade);
     // warm sun kiss on lit ridges
     c = mix(c, L(0xfff2d0), smooth(0.35, 0.9, facing) * 0.18);
@@ -585,7 +585,7 @@ function peakPaint(kind, H) {
       // pale ash streaks near the top
       if (t > 0.5 && n.y > 0.3 && m > 0.62) c = mix(c, L(0xc8b4ac), 0.5);
     } else {
-      const s = t + (m - 0.5) * 0.3 + (n.y - 0.4) * 0.7 - snowLine;
+      const s = t + (m - 0.5) * 0.3 + (n.y - 0.5) * 1.1 - snowLine;
       if (s > 0) c = mix(c, SN(0.3 + n.y * 0.5 + facing * 0.3 + (fine - 0.5) * 0.2 + Math.min(0.3, s)), smooth(0, 0.06, s));
     }
     return c;
@@ -659,7 +659,7 @@ export function peakModel(kind = 'rock', variant = 0) {
   const tr = [];
   // rough analytic ground height of the mounds, so the trees sit on the slope
   const hAt = (x, z) => layouts.reduce((mx, [ox, oz, r0, h, sharp]) => { const d = Math.hypot(x - ox, z - oz) / (r0 * 0.9); return d >= 1 ? mx : Math.max(mx, h * (1 - Math.pow(d, 1 / sharp))); }, 0);
-  for (let k = 0; k < 3; k++) { const a = a0 + 1.2 + k * 1.9 + R() * 0.4, d = 0.48 + R() * 0.08, x = Math.cos(a) * d, z = Math.sin(a) * d; tr.push([x, z, 0.2 + R() * 0.08, Math.max(0, hAt(x, z) - 0.03)]); }
+  for (let k = 0; k < 3; k++) { const a = a0 + 1.2 + k * 1.9 + R() * 0.4, d = 0.48 + R() * 0.08, x = Math.cos(a) * d, z = Math.sin(a) * d; tr.push([x, z, 0.26 + R() * 0.08, Math.max(0, hAt(x, z) - 0.03)]); }
   addMiniTrees(b, kind, tr);
   return b.done({ ao: 0.75, aoH: 0.1 });
 }

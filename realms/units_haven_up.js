@@ -320,7 +320,7 @@ function halberdier() {
   k.plate([[-0.12, 0], [0.12, 0], [0.09, 0.07], [0.03, 0.1], [-0.05, 0.1], [-0.1, 0.06]], 0.016, [0, 1.02, 0.0], GOLD, { r: [0, Math.PI / 2, 0], grad: [0.85, 1.15] });
   plume(k, [0, 1.07, -0.08], 3, WHITE, CRIMSON, 0.9);
   // grand halberd: gilded shaft bands, crescent axe with gold edge, hook, long spike, tassel
-  k.limb([shaftX, 0.02, shaftZ], [shaftX, 1.5, shaftZ], 0.018, 0.016, WOOD, { seg: 5, grad: [0.75, 1.15] });
+  k.limb([shaftX, 0.02, shaftZ], [shaftX, 1.44, shaftZ], 0.018, 0.016, WOOD, { seg: 5, grad: [0.75, 1.15] });
   for (const y of [0.3, 0.7, 1.0]) k.cyl(0.024, 0.024, 0.03, [shaftX, y, shaftZ], GOLD, { seg: 6, grad: [1, 1] });
   k.limb([shaftX, 1.14, shaftZ], [shaftX, 1.26, shaftZ], 0.027, 0.027, GOLD, { seg: 6 });
   k.at([shaftX + 0.01, 1.12, shaftZ], [0, -0.25, 0], 1, () => {
@@ -329,7 +329,7 @@ function halberdier() {
     k.ball(0.02, [0.06, 0.08, 0.012], GEM_B, { glow: true, d: 0 });
   });
   k.cone(0.028, 0.15, [shaftX - 0.01, 1.22, shaftZ], STEEL, { r: [0, -0.25, Math.PI / 2 + 0.35], seg: 4 });
-  k.cone(0.034, 0.26, [shaftX, 1.48, shaftZ], STEEL_L, { seg: 4, grad: [0.85, 1.2] });
+  k.cone(0.034, 0.24, [shaftX, 1.42, shaftZ], STEEL_L, { seg: 4, grad: [0.85, 1.2] });
   k.box(0.045, 0.075, 0.045, [shaftX, 1.1, shaftZ], BLUE, { r: [0, 0.6, 0] });
   k.cone(0.034, 0.1, [shaftX, 1.0, shaftZ], GOLD, { r: [Math.PI, 0, 0], seg: 5 });
   return k.done();
@@ -509,7 +509,7 @@ function zealot() {
   // raised pointed hood, face and white beard in front
   k.ell(0.118, 0.125, 0.118, [0, 0.93, -0.015], CRIMSON, { grad: [0.85, 1.15] });
   k.cone(0.07, 0.18, [0, 0.99, -0.06], CRIMSON, { r: [-0.55, 0, 0], seg: 5 });
-  k.lathe([[0.1, 0.84], [0.112, 0.92], [0.098, 1.0], [0.06, 1.04]], [0, 0, 0.035], GOLD, { seg: 8, phi: -1.4, len: 2.8, grad: [1, 1], s: [1, 1, 0.9] });
+  k.torus(0.088, 0.016, [0, 0.92, 0.07], GOLD, { seg: 12, ts: 4, s: [1, 1.12, 1], grad: [0.95, 1.1] });
   k.ell(0.078, 0.085, 0.06, [0, 0.912, 0.055], SKIN, { grad: [0.88, 1.05] });
   k.sym(() => k.box(0.018, 0.02, 0.01, [0.032, 0.925, 0.111], DARK, { grad: [1, 1] }));
   k.box(0.022, 0.035, 0.03, [0, 0.9, 0.117], SKIN, { r: [0.3, 0, 0] });
@@ -564,7 +564,7 @@ function champion() {
   k.lathe([[0.235, 0.34], [0.222, 0.44], [0.2, 0.66], [0.155, 0.8], [0.06, 0.86]], [0, 0, -0.04], ROYAL, { s: [1, 1, 2.05], seg: 12, grad: [0.72, 1.12] });
   k.lathe([[0.242, 0.32], [0.237, 0.37]], [0, 0, -0.04], GOLD, { s: [1, 1, 2.05], seg: 12, grad: [1, 1] });
   k.sym(() => {
-    for (const z of [-0.3, 0.06]) sunBadge(k, [0.22, 0.56, z], [0, Math.PI / 2, 0], GEM_B, 1.1);
+    sunBadge(k, [0.225, 0.56, -0.12], [0, Math.PI / 2, 0], GEM_B, 1.3);
   });
   k.lathe([[0.17, 0.5], [0.18, 0.6], [0.165, 0.72], [0.12, 0.8]], [0, 0, 0.29], STEEL_L, { seg: 8, phi: -1.2, len: 2.4, grad: [0.8, 1.15] });
   k.lathe([[0.172, 0.49], [0.174, 0.52]], [0, 0, 0.29], GOLD, { seg: 8, phi: -1.2, len: 2.4, grad: [1, 1] });

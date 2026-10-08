@@ -11,15 +11,15 @@ vec3 grade(vec3 c) {
   c = max(c, 0.0);
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
   // lift the darks and mids (multiplicative, so true black stays black and nothing turns grey)
-  float lift = 1.0 + 0.42 * (1.0 - smoothstep(0.0, 0.55, l)) * smoothstep(0.0, 0.035, l);
-  c *= lift * 1.06;
-  l *= lift * 1.06;
+  float lift = 1.0 + 0.2 * (1.0 - smoothstep(0.02, 0.4, l)) * smoothstep(0.0, 0.03, l);
+  c *= lift;
+  l *= lift;
   // richer colour: stronger in the mids, gentler in the deep shadows and highlights (no neon clipping)
-  float sat = 1.12 + 0.16 * smoothstep(0.03, 0.25, l) * (1.0 - smoothstep(0.9, 2.2, l));
+  float sat = 1.1 + 0.14 * smoothstep(0.03, 0.25, l) * (1.0 - smoothstep(0.9, 2.2, l));
   c = max(mix(vec3(l), c, sat), 0.0);
   // coloured shadows: a violet-blue veil instead of black, warm golden light
   float sh = 1.0 - smoothstep(0.0, 0.22, l);
-  c += vec3(0.014, 0.008, 0.034) * sh;
+  c += vec3(0.008, 0.004, 0.022) * sh;
   c *= mix(vec3(0.96, 0.99, 1.07), vec3(1.07, 1.01, 0.9), smoothstep(0.1, 0.95, l));
   return c;
 }`;
@@ -57,16 +57,16 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         float cs = dot(d, uVis);
         float ang = acos(clamp(cs, -1.0, 1.0));
         // sun: small hot disc, a gold corona and a broad rosy-amber wash that warms the whole quadrant
-        float disc = smoothstep(0.035, 0.022, ang) * 2.6;
-        float corona = exp(-ang * 16.0) * 0.9 + exp(-ang * 5.5) * 0.32;
-        float wash = exp(-ang * 1.6) * 0.16;
+        float disc = smoothstep(0.026, 0.016, ang) * 1.5;
+        float corona = exp(-ang * 22.0) * 0.55 + exp(-ang * 7.0) * 0.16;
+        float wash = exp(-ang * 2.0) * 0.05;
         // god-rays: angular streaks around the sun that slowly turn and breathe
         vec3 t = d - uVis * cs;
         float a = atan(dot(t, uVU), dot(t, uVR));
         float r1 = 0.5 + 0.5 * sin(a * 9.0 + uTime * 0.05) * sin(a * 14.0 - uTime * 0.035 + 1.7);
         float r2 = 0.5 + 0.5 * sin(a * 23.0 + uTime * 0.02 + 0.6);
         float rays = (r1 * r1 * r1 * 0.8 + r2 * r2 * r2 * r2 * 0.35) * (0.8 + 0.2 * sin(uTime * 0.3));
-        rays *= exp(-ang * 2.2) * smoothstep(0.02, 0.12, ang) * 0.42;
+        rays *= exp(-ang * 3.0) * smoothstep(0.02, 0.1, ang) * 0.22;
         c += vec3(1.0, 0.93, 0.78) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.9, 0.5, 0.55) * wash
            + vec3(1.0, 0.82, 0.55) * rays;
         gl_FragColor = vec4(c, 1.0);
@@ -183,8 +183,8 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         c += vec3(1.0, 0.5, 0.35) * exp(-abs(s + 0.05) * 6.0) * 0.3 * exp(-x * 5.0); // warm terminator band
         // sunrise: the limb nearest the sun blazes gold-pink
         float sa = acos(clamp(dot(rd, uVis), -1.0, 1.0));
-        c += vec3(1.25, 0.72, 0.4) * (exp(-sa * 4.0) * 1.3 + exp(-sa * 1.4) * 0.25) * exp(-x * 4.0);
-        gl_FragColor = vec4(c * g * 0.9, 1.0);
+        c += vec3(1.25, 0.66, 0.36) * (exp(-sa * 5.0) * 0.9 + exp(-sa * 1.6) * 0.15) * exp(-x * 5.0);
+        gl_FragColor = vec4(c * g * 0.7, 1.0);
       }`,
   }));
   halo.renderOrder = 5;
@@ -204,7 +204,7 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         f *= 1.0 - smoothstep(uRp - 0.15, uRp + 0.3, b);    // only over the ground, never a glassy edge
         float s = smoothstep(-0.4, 0.6, dot(vN, uSun));
         vec3 c = mix(vec3(0.26, 0.16, 0.5), vec3(0.36, 0.64, 1.05), s);
-        gl_FragColor = vec4(c * pow(f, 4.0) * 0.34 * uK, 1.0);
+        gl_FragColor = vec4(c * pow(f, 5.0) * 0.26 * uK, 1.0);
       }`,
   }));
   haze.renderOrder = 6;

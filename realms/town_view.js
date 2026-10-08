@@ -102,7 +102,7 @@ const PAL = {
     tree: 'round', stars: 0,
   },
   necro: {
-    zenith: 0x3a3276, mid: 0x7a5cae, horizon: 0xeaa4b6, below: 0x9a86a8, sunCol: 0xd0ffe0, fog: 0x9f84b4, fogNear: 45, fogFar: 950,
+    zenith: 0x3a3276, mid: 0x7a5cae, horizon: 0xeaa4b6, below: 0x9a86a8, sunCol: 0xd0ffe0, fog: 0xa88cbc, fogNear: 80, fogFar: 1000,
     sunDir: [0.5, 0.5, 0.5], sun: 0xe4d8ff, sunI: 2.3, hemiSky: 0xbca4ec, hemiGround: 0x5c5274, hemiI: 1.2, amb: 0x9a8cc0, ambI: 0.4,
     grass: [0x7a8a62, 0x8f9a6a, 0x8c6c90, 0x667458], bank: 0x8a7a68, field: [0x8a7a90, 0x7c8a66, 0x9a8a6a, 0x7a6a86],
     mtn: [0x5e5878, 0x7a6c98, 0xb4a6c8], hill: 0x6a7460,
@@ -237,11 +237,16 @@ export function createTownView(THREE, renderer, opts = {}) {
   const mistTex = canvasTex(256, 128, (g, w, h) => {
     const r = rng32(99);
     for (let i = 0; i < 40; i++) {
-      const x = w * (0.1 + r() * 0.8), y = h * (0.45 + (r() - 0.5) * 0.3), rad = 20 + r() * 40;
+      const x = w * (0.25 + r() * 0.5), y = h * (0.5 + (r() - 0.5) * 0.2), rad = 10 + r() * 16;
       const gr = g.createRadialGradient(x, y, 0, x, y, rad);
-      gr.addColorStop(0, 'rgba(255,255,255,0.25)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = gr; g.save(); g.translate(x, y); g.scale(2.4, 0.6); g.translate(-x, -y); g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill(); g.restore();
+      gr.addColorStop(0, 'rgba(255,255,255,0.3)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.save(); g.translate(x, y); g.scale(2.4, 0.7); g.translate(-x, -y); g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill(); g.restore();
     }
+    // fade every edge to zero so the sprite never shows a rectangle
+    g.globalCompositeOperation = 'destination-in';
+    const m = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    m.addColorStop(0, 'rgba(0,0,0,1)'); m.addColorStop(0.6, 'rgba(0,0,0,0.8)'); m.addColorStop(1, 'rgba(0,0,0,0)');
+    g.setTransform(1, 0, 0, h / w, 0, 0); g.fillStyle = m; g.fillRect(0, 0, w, w);
   });
 
   // ---------------------------------------------------------------- particles (dust, smoke, sparkles)
@@ -316,8 +321,8 @@ void main() { float r = length(gl_PointCoord - 0.5) * 2.0; float a = (1.0 - smoo
   function groundH(x, z, fac) {
     const d = flatD(x, z), out = smooth(1.0, 1.7, d), r = Math.hypot(x, z + 4);
     let h = out * (Math.max(fbm(x * 0.05, z * 0.05, 3, 3) - 0.38, -0.1) * 7);
-    h += out * smooth(-16, -55, z) * (3 + fbm(x * 0.028 + 7, z * 0.028, 3, 9) * 16);
-    h += smooth(70, 300, r) * (6 + fbm(x * 0.011, z * 0.011, 3, 21) * 34);
+    h += out * smooth(-24, -80, z) * (1.5 + fbm(x * 0.028 + 7, z * 0.028, 3, 9) * 9);
+    h += smooth(90, 330, r) * (4 + fbm(x * 0.011, z * 0.011, 3, 21) * 26);
     h *= 1 - smooth(6, 20, z) * smooth(16, 4, Math.abs(x)) * 0.85; // keep the foreground low
     if (fac === 'necro') h += out * (fbm(x * 0.2, z * 0.2, 2, 5) - 0.5) * 0.6;
     const rd = riverDist(x, z), rw = riverWidth(x, z) / 2;
@@ -996,7 +1001,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   // ---------------------------------------------------------------- camera framing
   const insets = { top: 0, bottom: 0.45, left: 0, right: 0 };
   const view = { w: 1, h: 1 };
-  const CAM = { target: new V3(0, 0.6, -1.2), elev: 0.47, dist: 27, pitch: 0.09 };
+  const CAM = { target: new V3(0, 0.8, -1.0), elev: 0.34, dist: 26, pitch: 0.06 };
   function setInsets(o = {}) { Object.assign(insets, o); resize(view.w, view.h); }
   const px = (v, total) => (v <= 1 ? v * total : v);
   function frame() {

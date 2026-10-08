@@ -300,7 +300,7 @@ function skeleton() {
 // =====================================================================
 function zombie() {
   const k = nkit(23);
-  const SK = grad(0x86a462, 0xc4d896, 0.3, 1.0), SK_D = 0x6a8a4a, CLOTH = ((g) => (p) => g(p).multiplyScalar(Math.sin(p.x * 31 + p.y * 17) * Math.sin(p.z * 23 - p.y * 29) > 0.35 ? 0.72 : 1))(grad(0x6a5a86, 0x9c8cb8, 0.3, 0.9)), PANTS = grad(0x6a5438, 0x9a7e56, 0, 0.5);
+  const SK = grad(0x86a462, 0xc4d896, 0.3, 1.0), SK_D = 0x6a8a4a, CLOTH = ((g) => (p) => g(p).multiplyScalar(Math.sin(p.x * 31 + p.y * 17) * Math.sin(p.z * 23 - p.y * 29) > 0.35 ? 0.72 : 1))(grad(0xa07e4a, 0xd0b07a, 0.3, 0.9)), PANTS = grad(0x5a5070, 0x84789a, 0, 0.5);
   // legs: knock-kneed, one dragging
   const L = [[-0.11, 0.05, 0.1], [-0.08, 0.27, 0.07], [-0.1, 0.48, 0]];
   const R = [[0.13, 0.05, -0.12], [0.1, 0.25, -0.05], [0.1, 0.48, 0]];

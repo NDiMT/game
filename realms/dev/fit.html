@@ -95,7 +95,7 @@ if (mode === 'battle') {
   });
   const dist = +(Q.get('dist') || 12.5), yaw = +(Q.get('yaw') || 0);
   cam.position.set(Math.sin(yaw) * dist * 0.55, dist, Math.cos(yaw) * dist * 0.55 + 0.4); cam.lookAt(0, 0, 0.2);
-  if (Q.has('close')) { cam.position.set(0, 3.2, 4.2); cam.lookAt(0, 0.3, 1.2); }
+  if (Q.has('close')) { cam.position.set(0, 2.0, 1.4); cam.lookAt(0, 0.35, -2.3); }
 } else {
   // map: flat field of planet-sized hexes (flat width ~0.376), oblique camera like the adventure map zoomed in
   const S = FIT_CONSTANTS.MAP_HEX, HS = S / Math.sqrt(3), VS = 1.5 * HS;

@@ -29,8 +29,8 @@ import { UNITS } from './data.js?v=0.3';
 const BATTLE_H = [0.75, 0.8, 0.86, 0.92, 0.98, 1.06, 1.18];
 // the "core" (90% of the surface) must stay near the hex; thin or flat
 // extremities (wings, lances, tails) may overhang a bit more
-const BATTLE_CORE = { x: [0.40, 0.40, 0.46, 0.44, 0.44, 0.48, 0.56], z: [0.42, 0.44, 0.44, 0.44, 0.46, 0.52, 0.62] };
-const BATTLE_FULL = { x: [0.62, 0.62, 0.8, 0.72, 0.72, 0.8, 0.95], z: [0.62, 0.66, 0.7, 0.7, 0.7, 0.85, 0.95] };
+const BATTLE_CORE = { x: [0.40, 0.40, 0.46, 0.44, 0.44, 0.48, 0.52], z: [0.42, 0.44, 0.44, 0.44, 0.46, 0.52, 0.62] };
+const BATTLE_FULL = { x: [0.62, 0.62, 0.8, 0.72, 0.72, 0.8, 0.86], z: [0.62, 0.66, 0.7, 0.7, 0.7, 0.85, 0.95] };
 const UP_K = 1.05; // upgraded creatures read a touch grander
 // map guard: a planet hex is ~0.376 world units across (icosphere(4), R = 5)
 const MAP_HEX = 0.376;
