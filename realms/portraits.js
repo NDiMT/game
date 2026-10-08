@@ -35,17 +35,17 @@ const PAL_UP = {
 // framing per id. crop: fraction of model height (from the top) to fit, front: keep
 // only the front part (fraction of depth from the back) for long beasts, az: camera
 // azimuth (rad, + = viewer sees the creature's right side), el: elevation, pad: margin.
-const FRAME_DEFAULT = { crop: 0.62, front: 0, az: 0.62, el: 0.2, pad: 0.06, dy: 0, q: 0.04 };
+const FRAME_DEFAULT = { crop: 0.68, front: 0, az: 0.62, el: 0.2, pad: 0.1, dy: 0, q: 0.04 };
 const FRAME = {
   // haven
-  griffin: { crop: 0.8, front: 0.3 }, cavalier: { crop: 0.5, front: 0.35 }, angel: { crop: 0.6, q: 0.08 },
+  pikeman: { crop: 0.72, q: 0.03 }, griffin: { crop: 0.8, front: 0.3 }, cavalier: { crop: 0.66, front: 0.2, q: 0.03 }, angel: { crop: 0.78, az: 0.35, q: 0.05 },
   // necro
-  zombie: { crop: 0.7 }, wight: { crop: 0.7 }, blackknight: { crop: 0.5, front: 0.35 }, bonedragon: { crop: 0.7, front: 0.35, q: 0.08 },
+  zombie: { crop: 0.7 }, wight: { crop: 0.7 }, blackknight: { crop: 0.62, front: 0.25 }, bonedragon: { crop: 0.85, front: 0.3, q: 0.04 },
   // neutral
   goblin: { crop: 0.7 }, wolf: { crop: 0.9, front: 0.4, az: 0.85 }, ogre: { crop: 0.6 }, troll: { crop: 0.6 },
   cyclops: { crop: 0.55 }, hydra: { crop: 0.7, front: 0.1 },
   // heroes (mounted, with a banner): the rider
-  hero: { crop: 0.5, front: 0.25, q: 0.08 },
+  hero: { crop: 0.55, front: 0.25, q: 0.06, pad: 0.14 },
 };
 
 let T = null, R = null, modelOf = null, OPTS = {};
@@ -147,7 +147,7 @@ function frameCamera(geo, f) {
       xs.push(d.dot(right) / depth); ys.push(d.dot(up) / depth);
     }
     xs.sort((a, b) => a - b); ys.sort((a, b) => a - b);
-    const xa = qa(xs, f.q), xb = qa(xs, 1 - f.q), ya = qa(ys, f.q * 2), yb = qa(ys, 1 - f.q * 0.5);
+    const xa = qa(xs, f.q), xb = qa(xs, 1 - f.q), ya = qa(ys, f.q * 2), yb = qa(ys, 1 - f.q * 0.25);
     // shift the target so the projected box is centred, then rescale distance
     const sx = (xa + xb) / 2, sy = (ya + yb) / 2 + f.dy * (yb - ya);
     c.addScaledVector(right, sx * D).addScaledVector(up, sy * D);

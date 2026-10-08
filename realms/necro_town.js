@@ -35,7 +35,7 @@ const C = {
   red: 0xd8283e, redD: 0xa41e32,
   green: 0x8dffa4, greenL: 0xd4ffb4, greenD: 0x46e07e, wisp: 0xb4fff0, violet: 0xc68cff,
   iron: 0x6c6484, wood: 0x8a6a52, woodD: 0x6c523f,
-  ground: 0x9a9080, dirt: 0x8a7258, moss: 0x86a862,
+  ground: 0x8e8576, pave: 0x968ca0, dirt: 0x8a7258, moss: 0x86a862,
   door: 0x4a3c5e, horse: 0x55506e,
 };
 
@@ -45,10 +45,12 @@ function makeKit(seed) {
   const B = [], G = [];
   const M = new THREE.Matrix4(), stack = [];
   const tf = (g, o = {}) => {
-    if (o.s !== undefined) { const s = o.s; Array.isArray(s) ? g.scale(s[0], s[1], s[2]) : g.scale(s, s, s); }
+    const sc = () => { if (o.s !== undefined) { const s = o.s; Array.isArray(s) ? g.scale(s[0], s[1], s[2]) : g.scale(s, s, s); } };
+    if (!o.post) sc();
     if (o.rx) g.rotateX(o.rx);
     if (o.rz) g.rotateZ(o.rz);
     if (o.ry) g.rotateY(o.ry);
+    if (o.post) sc();
     return g;
   };
   const add = (g, c, o = {}) => {
@@ -302,15 +304,15 @@ function fence(k, ax, az, bx, bz, h = 0.4, step = 0.16) {
   for (const yy of [h * 0.25, h * 0.8]) k.limb([ax, yy, az], [bx, yy, bz], 0.012, 0.012, C.iron, 4);
 }
 // flagstone base slab
-function plinth(k, w, d, h = 0.08, c = C.stoneL) {
-  k.box(w, h, d, 0, 0, 0, c, { top: 1.1, bot: 0.9, ao: false, j: 0.03 });
-  k.box(w - 0.08, 0.02, d - 0.08, 0, h, 0, C.trim, { j: 0.06, ao: false });
+function plinth(k, w, d, h = 0.08, c = C.pave) {
+  k.box(w, h, d, 0, 0, 0, c, { top: 1.0, bot: 0.85, ao: false, j: 0.03 });
+  k.box(w - 0.1, 0.02, d - 0.1, 0, h, 0, c, { j: 0.1, top: 1.05, ao: false });
 }
 // buttresses along a wall face (local), points [x...], at z, height h
 function buttresses(k, xs, z, h, dz = 0.12) {
   for (const x of xs) {
     k.box(0.12, h, dz, x, 0, z + dz / 2, C.stoneD, { top: 1.12 });
-    k.cone(0.085, 0.18, x, h, z + dz / 2, C.stone, 4, { ry: Math.PI / 4, s: [1, 1, dz / 0.12] });
+    k.cone(0.085, 0.18, x, h, z + dz / 2, C.stone, 4, { ry: Math.PI / 4, s: [1, 1, dz / 0.12], post: true });
   }
 }
 // spikes along a wall top from x0 to x1 at local z, top y
@@ -414,7 +416,7 @@ function hall3() {
   k.at(0, Y, 0.55, 0, 1, () => {
     k.box(0.9, 1.6, 0.3, 0, 0, 0, C.stone, { top: 1.12, bot: 0.88 });
     k.box(0.96, 0.06, 0.34, 0, 1.58, 0, C.trim);
-    k.cone(0.55, 0.6, 0, 1.62, 0, C.roof, 4, { ry: Math.PI / 4, s: [1, 1, 0.4], top: 1.4 });
+    k.gable(0.34, 0.5, 0.96, 0, 1.64, 0, C.roof, C.stone, Math.PI / 2, 0.04);
     door(k, 0, 0, 0.16, 0.36, 0.52, { glowIn: true });
     rose(k, 0, 1.12, 0.15, 0.22);
     skull(k, 0, 1.9, 0.1, 0.08, { horns: true });
@@ -481,7 +483,7 @@ function fort() {
   k.box(gw, gh, gd, 0, 0, 0.05, C.stone, { top: 1.12, bot: 0.86 });
   k.box(gw + 0.1, 0.08, gd + 0.1, 0, gh - 0.04, 0.05, C.trim);
   spikeRow(k, -gw / 2 + 0.1, gw / 2 - 0.1, gh + 0.04, 0.42, 0.2, C.bone, 0.22);
-  k.cone(0.75, 0.55, 0, gh + 0.04, 0.0, C.roof, 4, { ry: Math.PI / 4, s: [1, 1, 0.45], top: 1.4 });
+  k.gable(gd + 0.1, 0.5, gw + 0.1, 0, gh + 0.04, 0.05, C.roof, C.stone, Math.PI / 2, 0.04);
   for (const s of [-1, 1]) {
     k.lathe([[0.24, 0], [0.22, 2.0], [0.28, 2.05], [0.28, 2.15], [0.18, 2.15]], s * 0.85, 0, 0.42, C.stoneL, 6, { top: 1.12, bot: 0.86 });
     k.cone(0.22, 0.3, s * 0.85, 2.15, 0.42, C.roof, 6, { top: 1.5 });
@@ -581,7 +583,7 @@ function tavern() {
 // ------------------------------------------------------------------ mage guilds (1.6 footprint)
 function mage(level) {
   const k = makeKit(110 + level);
-  plinth(k, 1.5, 1.5, 0.06, C.stoneL);
+  plinth(k, 1.5, 1.5, 0.06);
   const Y = 0.06;
   // ground tier: an octagonal crypt base
   k.lathe([[0.62, 0], [0.6, 0.12], [0.55, 0.15], [0.52, 0.72], [0.6, 0.78], [0.6, 0.86], [0.4, 0.86]], 0, Y, 0, C.stone, 8, { top: 1.12, bot: 0.86 });
@@ -700,7 +702,7 @@ function d2(up) {
     const w = up ? 1.15 : 0.95, h = up ? 0.85 : 0.65;
     k.box(w, h, 0.35, 0, 0, 0, C.stone, { top: 1.12 });
     k.box(w + 0.08, 0.06, 0.4, 0, h, 0, C.trim);
-    k.cone(w * 0.62, 0.3, 0, h + 0.06, 0, C.roof, 4, { ry: Math.PI / 4, s: [1, 1, 0.35], top: 1.4 });
+    k.gable(0.4, 0.3, w + 0.08, 0, h + 0.06, 0, C.roof, C.stone, Math.PI / 2, 0.04);
     for (const s of [-1, 1]) { k.box(0.15, h + 0.12, 0.42, s * (w / 2 + 0.02), 0, 0, C.stoneD, { top: 1.12 }); k.cone(0.06, 0.2, s * (w / 2 + 0.02), h + 0.12, 0, C.bone, 4); }
     // heavy door with boards and glowing gaps
     k.poly(lancetPts(0.42, 0.35, 0.6), 0, 0, 0.18, C.greenD, { glow: true });
@@ -841,7 +843,7 @@ function d5(up) {
   for (const x of [-0.36, -0.12, 0.12, 0.36].map((v) => v * w / 0.95)) k.cyl(0.045, 0.055, h, x, B, 0.3, C.bone, 6);
   k.box(w + 0.08, 0.08, 0.3, 0, B + h, 0.25, C.trim);
   k.box(w + 0.1, 0.06, w * 0.85 + 0.1, 0, B + h, -0.2, C.trim);
-  k.cone(w * 0.6, 0.25, 0, B + h + 0.08, 0.25, C.roof, 4, { ry: Math.PI / 4, s: [1, 1, 0.35], top: 1.4 });
+  k.gable(0.3, 0.25, w + 0.08, 0, B + h + 0.08, 0.25, C.trim, C.stone, Math.PI / 2, 0.03);
   door(k, 0, B, w * 0.85 * 0.5 - 0.2 + 0.01, 0.26, 0.38, { glowIn: true });
   skull(k, 0, B + h + 0.18, 0.34, 0.06);
   // stepped pyramid roof

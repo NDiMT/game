@@ -560,8 +560,7 @@ function mageGuild(lvl) {
     for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.4; k.ball(0.06, Math.sin(a) * 0.62, 2.6 + (i % 2) * 0.4, Math.cos(a) * 0.62, i % 2 ? C.magic : 0xd8b0ff, 0, { glow: true, s: [0.7, 1.4, 0.7] }); }
   }
   // book lecterns / banners
-  k.banner(-0.45, 0.24 + 1.0, 0.27, 0.16, 0.42, -0.95, C.banner);
-  k.banner(0.45, 0.24 + 1.0, 0.27, 0.16, 0.42, 0.95, C.banner);
+  for (const s of [-1, 1]) { const a = s * 0.48; k.banner(Math.sin(a) * 0.43, 1.3, Math.cos(a) * 0.43, 0.13, 0.4, a, C.banner, { emblem: true }); }
   return finish(k);
 }
 
