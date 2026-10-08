@@ -465,7 +465,7 @@ function fort() {
     // arrow slits
     for (let x = x0 + 0.35; x < x1 - 0.2; x += 0.55) k.poly(lancetPts(0.06, 0.2), x, H * 0.62, T / 2 + 0.006, C.green, { glow: true });
   };
-  seg(-4.3, -2.9); seg(-2.5, -0.85); seg(0.85, 2.5); seg(2.9, 4.3);
+  seg(-4.0, -2.9); seg(-2.5, -0.85); seg(0.85, 2.5); seg(2.9, 4.0);
   // round towers
   const tower = (x, h) => {
     k.lathe([[0.42, 0], [0.38, 0.25], [0.34, h], [0.44, h + 0.06], [0.44, h + 0.2], [0.3, h + 0.2]], x, 0, 0, C.stone, 8, { top: 1.12, bot: 0.86 });
@@ -476,7 +476,7 @@ function fort() {
     k.at(x, h * 0.66, 0.35, 0, 1, () => k.poly(lancetPts(0.1, 0.22), 0, 0, 0.01, C.green, { glow: true }));
     return h + 0.65;
   };
-  for (const x of [-4.4, 4.4]) tower(x, 1.75);
+  for (const x of [-4.05, 4.05]) tower(x, 1.75);
   for (const s of [-1, 1]) { const top = tower(s * 2.7, 1.85); banner(k, s * 2.7, 1.55, 0.43, 0.3, 0.85); k.limb([s * 2.7, top, 0], [s * 2.7, top + 0.0, 0], 0.01, 0.01, C.bone, 3); }
   // gatehouse
   const gw = 1.7, gh = 1.85, gd = 0.9;
@@ -502,7 +502,7 @@ function fort() {
   }
   skull(k, 0, 1.45, gz + 0.12, 0.17, { horns: true });
   // dead trees and graves along the wall foot
-  for (const [x, z] of [[-3.6, 0.5], [3.4, 0.5], [-1.6, 0.45], [1.8, 0.48]]) tomb(k, x, z, (k.r() - 0.5) * 0.5, 1.1);
+  for (const [x, z] of [[-3.4, 0.5], [3.4, 0.5], [-1.6, 0.45], [1.8, 0.48]]) tomb(k, x, z, (k.r() - 0.5) * 0.5, 1.1);
   return finish(k);
 }
 

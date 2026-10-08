@@ -36,12 +36,12 @@ if (mode === 'grid') {
   const el = +(q.get('el') || 0.62); camera.position.set(0, d * el, cz + d * 0.85); camera.lookAt(0, 0.8, cz);
 } else {
   // mock HoMM3-style panorama
-  const L = { fort: [0, -5.2, 0], hall3: [-0.3, -2.4, 0], mage3: [-4.2, -2.6, 0.3], tavern: [2.6, 0.3, -0.2], market: [-2.6, 0.2, 0.2],
-    u1: [4.6, -1.0, -0.3], u2: [6.2, -3.0, -0.3], u3: [-6.4, -3.2, 0.3], u4: [-5.6, 0.6, 0.4], u5: [3.3, -3.4, -0.2], u6: [5.4, 2.4, -0.35], u7: [-0.2, 2.7, 0] };
+  const L = { fort: [0, -5.6, 0], hall3: [0, -2.6, 0], u7: [-3.6, -3.4, 0.25], u5: [3.6, -3.3, -0.25], mage3: [-6.4, -2.4, 0.4], u2: [6.4, -2.2, -0.4],
+    market: [-2.4, 0.4, 0.2], tavern: [2.3, 0.4, -0.2], u3: [-5.2, 0.9, 0.4], u1: [5.0, 0.9, -0.4], u4: [-3.0, 3.2, 0.3], u6: [3.0, 3.2, -0.3] };
   for (const [id, [x, z, ry]] of Object.entries(L)) place(id, x, z, ry);
   for (let i = 0; i < 14; i++) { const t = new THREE.Mesh(new THREE.IcosahedronGeometry(0.6, 1), new THREE.MeshStandardMaterial({ color: 0x5fae3c, flatShading: true })); t.position.set(-9 + i * 1.4, 0.6, -7 + Math.sin(i) * 0.6); t.castShadow = true; scene.add(t); }
   camera.fov = +(q.get('fov') || 46); camera.updateProjectionMatrix();
-  camera.position.set(0, 7.5, 13.5); camera.lookAt(0, 0.6, -1.0);
+  camera.position.set(0, 8, 15); camera.lookAt(0, 0.6, -0.8);
 }
 renderer.render(scene, camera);
 if (q.get('labels') !== '0') for (const [id, g] of placed) { const v = g.position.clone().setY(-0.1).project(camera); const d = document.createElement('div'); d.className = 'lb'; d.textContent = id + ' ' + tris[id]; d.style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - v.y) / 2 * innerHeight) + 'px'; document.body.appendChild(d); }
