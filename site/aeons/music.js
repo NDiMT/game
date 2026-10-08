@@ -10,20 +10,21 @@ const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 const MAJ = [0, 2, 4, 5, 7, 9, 11], MIN = [0, 2, 3, 5, 7, 8, 10], DOR = [0, 2, 3, 5, 7, 9, 10], PENT = [0, 2, 4, 7, 9], MPENT = [0, 3, 5, 7, 10];
 // chord progressions as scale degrees (0 = I). A and B sections.
 const STYLES = [
-  { name: 'stone', bpm: 84, key: 50, scale: MPENT, A: [0, 0, 3, 0], B: [3, 3, 0, 4], lead: 'flute', comp: 'kalimba', bass: 'drone', drums: 'tribal', pad: 'drone', swing: 0 },
-  { name: 'bronze', bpm: 92, key: 52, scale: DOR, A: [0, 6, 0, 4], B: [3, 3, 0, 4], lead: 'flute', comp: 'lyre', bass: 'pluck', drums: 'hand', pad: 'drone', swing: 0.1 },
-  { name: 'classical', bpm: 88, key: 53, scale: MAJ, A: [0, 5, 3, 4], B: [5, 3, 0, 4], lead: 'flute', comp: 'harp', bass: 'pluck', drums: null, pad: 'strings', swing: 0 },
-  { name: 'medieval', bpm: 100, key: 50, scale: DOR, A: [0, 6, 0, 4], B: [2, 6, 3, 4], lead: 'recorder', comp: 'lute', bass: 'drone', drums: 'tabor', pad: 'drone', swing: 0.15 },
-  { name: 'industrial', bpm: 96, key: 48, scale: MAJ, A: [0, 5, 3, 4], B: [3, 4, 2, 5], lead: 'piano', comp: 'piano', bass: 'piano', drums: 'brush', pad: 'strings', swing: 0.12 },
-  { name: 'modern', bpm: 104, key: 53, scale: MAJ, A: [0, 4, 5, 3], B: [5, 3, 0, 4], lead: 'bell', comp: 'epiano', bass: 'synth', drums: 'groove', pad: 'warm', swing: 0.08 },
-  { name: 'space', bpm: 96, key: 50, scale: MIN, A: [0, 5, 2, 6], B: [3, 5, 0, 4], lead: 'glass', comp: 'arp', bass: 'synth', drums: 'soft', pad: 'space', swing: 0 },
+  { name: 'stone', bpm: 62, key: 50, scale: MPENT, A: [0, 0, 3, 0], B: [3, 3, 0, 4], lead: 'flute', comp: 'kalimba', bass: 'drone', drums: 'tribal', pad: 'drone', swing: 0 },
+  { name: 'bronze', bpm: 66, key: 52, scale: DOR, A: [0, 6, 0, 4], B: [3, 3, 0, 4], lead: 'flute', comp: 'lyre', bass: 'pluck', drums: 'hand', pad: 'drone', swing: 0.1 },
+  { name: 'classical', bpm: 64, key: 53, scale: MAJ, A: [0, 5, 3, 4], B: [5, 3, 0, 4], lead: 'flute', comp: 'harp', bass: 'pluck', drums: null, pad: 'strings', swing: 0 },
+  { name: 'medieval', bpm: 70, key: 50, scale: DOR, A: [0, 6, 0, 4], B: [2, 6, 3, 4], lead: 'recorder', comp: 'lute', bass: 'drone', drums: 'tabor', pad: 'drone', swing: 0.15 },
+  { name: 'industrial', bpm: 68, key: 48, scale: MAJ, A: [0, 5, 3, 4], B: [3, 4, 2, 5], lead: 'piano', comp: 'piano', bass: 'piano', drums: null, pad: 'strings', swing: 0.12 },
+  { name: 'modern', bpm: 74, key: 53, scale: MAJ, A: [0, 4, 5, 3], B: [5, 3, 0, 4], lead: 'bell', comp: 'epiano', bass: 'synth', drums: 'soft', pad: 'warm', swing: 0.08 },
+  { name: 'space', bpm: 58, key: 50, scale: MIN, A: [0, 5, 2, 6], B: [3, 5, 0, 4], lead: 'glass', comp: 'arp', bass: 'synth', drums: null, pad: 'space', swing: 0 },
 ];
 // rhythm templates for a two-bar melodic phrase, in 8th notes (1 = note, 2 = held)
+// sparse and singing: long notes with room to breathe
 const RHYTHMS = [
-  [1, 0, 1, 1, 1, 0, 1, 0, 1, 2, 2, 0, 1, 1, 1, 2],
-  [1, 1, 1, 0, 1, 2, 1, 0, 1, 1, 1, 1, 1, 2, 2, 2],
-  [1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 0, 1, 2, 2, 2],
-  [1, 0, 1, 0, 1, 1, 1, 0, 1, 2, 1, 1, 1, 2, 2, 0],
+  [1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 2, 2, 2, 2, 0, 0],
+  [1, 2, 1, 2, 1, 2, 2, 2, 1, 2, 2, 2, 0, 0, 0, 0],
+  [0, 0, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 0],
+  [1, 2, 2, 1, 1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 2, 2],
 ];
 
 function impulse(ac, seconds, decay) {
@@ -37,10 +38,11 @@ export function createScore(ac, out) {
   const bus = ac.createGain(); bus.gain.value = 0.0001;
   const comp = ac.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.25;
   bus.connect(comp).connect(out);
-  const rev = ac.createConvolver(); rev.buffer = impulse(ac, 2.6, 2.8);
-  const revGain = ac.createGain(); revGain.gain.value = 0.32; rev.connect(revGain).connect(bus);
-  const delay = ac.createDelay(1); const fb = ac.createGain(); fb.gain.value = 0.32; const dGain = ac.createGain(); dGain.gain.value = 0.22;
-  delay.connect(fb).connect(delay); delay.connect(dGain).connect(bus);
+  const rev = ac.createConvolver(); rev.buffer = impulse(ac, 5.5, 2.2);
+  const revGain = ac.createGain(); revGain.gain.value = 0.5; rev.connect(revGain).connect(bus);
+  const delay = ac.createDelay(1.5); delay.delayTime.value = 0.48; const fb = ac.createGain(); fb.gain.value = 0.42; const dGain = ac.createGain(); dGain.gain.value = 0.28;
+  const dlp = ac.createBiquadFilter(); dlp.type = 'lowpass'; dlp.frequency.value = 2400; fb.connect(dlp);
+  delay.connect(fb); dlp.connect(delay); delay.connect(dGain).connect(bus); const dRev = ac.createGain(); dRev.gain.value = 0.5; dGain.connect(dRev).connect(rev);
   // every voice goes to the dry bus and sends to the reverb (and optionally the delay)
   function out3(node, wet = 0.4, echo = 0) {
     node.connect(bus);
@@ -83,9 +85,9 @@ export function createScore(ac, out) {
 
   // ---- instruments
   const I = {
-    harp: (m, t, v) => pluck(m, t, v * 0.5, { bright: 0.55, sustain: 0.997, tone: 5000, wet: 0.5, dur: 2.2 }),
-    lyre: (m, t, v) => pluck(m, t, v * 0.5, { bright: 0.4, sustain: 0.995, tone: 3500, wet: 0.45, dur: 1.6 }),
-    lute: (m, t, v) => pluck(m, t, v * 0.5, { bright: 0.35, sustain: 0.993, tone: 2800, wet: 0.35, dur: 1.2 }),
+    harp: (m, t, v) => pluck(m, t, v * 0.42, { bright: 0.45, sustain: 0.998, tone: 3800, wet: 0.75, echo: 0.3, dur: 2.8 }),
+    lyre: (m, t, v) => pluck(m, t, v * 0.42, { bright: 0.35, sustain: 0.997, tone: 3000, wet: 0.7, echo: 0.3, dur: 2.4 }),
+    lute: (m, t, v) => pluck(m, t, v * 0.42, { bright: 0.3, sustain: 0.996, tone: 2500, wet: 0.65, echo: 0.25, dur: 2 }),
     guitar: (m, t, v) => pluck(m, t, v * 0.5, { bright: 0.45, sustain: 0.996, tone: 3800, wet: 0.3, dur: 1.6 }),
     piano(m, t, v, dur = 1.4) {
       pluck(m, t, v * 0.3, { bright: 0.75, sustain: 0.998, tone: 6000, wet: 0.35, dur });
@@ -93,22 +95,22 @@ export function createScore(ac, out) {
       osc('sine', mtof(m), t, t + dur + 0.5, g);
     },
     kalimba(m, t, v) {
-      const g = ac.createGain(); env(g, t, v * 0.12, 0.003, 0.02, 0.7); out3(g, 0.5);
+      const g = ac.createGain(); env(g, t, v * 0.1, 0.003, 0.02, 1.4); out3(g, 0.8, 0.35);
       osc('sine', mtof(m), t, t + 1, g); const g2 = ac.createGain(); env(g2, t, v * 0.04, 0.002, 0, 0.12); g2.connect(g); osc('sine', mtof(m) * 5.4, t, t + 0.2, g2);
     },
     epiano(m, t, v, dur = 0.9) {
-      const g = ac.createGain(); env(g, t, v * 0.08, 0.008, dur * 0.4, dur * 0.8); out3(g, 0.3);
+      const g = ac.createGain(); env(g, t, v * 0.065, 0.02, dur * 0.4, dur * 1.4); out3(g, 0.7, 0.3);
       const mod = ac.createOscillator(), mg = ac.createGain(); mod.frequency.value = mtof(m) * 2; mg.gain.setValueAtTime(mtof(m) * 1.2, t); mg.gain.exponentialRampToValueAtTime(mtof(m) * 0.1, t + 0.4);
       const car = ac.createOscillator(); car.frequency.value = mtof(m); mod.connect(mg).connect(car.frequency); car.connect(g);
       mod.start(t); car.start(t); mod.stop(t + dur * 1.5); car.stop(t + dur * 1.5);
     },
     arp(m, t, v) {
-      const g = ac.createGain(); env(g, t, v * 0.05, 0.004, 0.03, 0.3); out3(g, 0.4, 0.5);
+      const g = ac.createGain(); env(g, t, v * 0.035, 0.01, 0.03, 0.6); out3(g, 0.7, 0.6);
       const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(3500, t); lp.frequency.exponentialRampToValueAtTime(700, t + 0.3); lp.connect(g);
       osc('sawtooth', mtof(m), t, t + 0.45, lp, -6); osc('square', mtof(m), t, t + 0.45, lp, 6);
     },
     flute(m, t, v, dur) {
-      const g = ac.createGain(); env(g, t, v * 0.09, 0.06, Math.max(0, dur - 0.1), 0.18); out3(g, 0.5, 0.15);
+      const g = ac.createGain(); env(g, t, v * 0.075, 0.18, Math.max(0, dur - 0.2), 0.6); out3(g, 0.85, 0.35);
       const o = osc('sine', mtof(m), t, t + dur + 0.3, g), vib = ac.createOscillator(), vd = ac.createGain();
       vib.frequency.value = 5.2; vd.gain.setValueAtTime(0, t); vd.gain.linearRampToValueAtTime(mtof(m) * 0.008, t + 0.3); vib.connect(vd).connect(o.frequency); vib.start(t); vib.stop(t + dur + 0.3);
       osc('triangle', mtof(m) * 2, t, t + dur + 0.3, (() => { const h = ac.createGain(); h.gain.value = 0.12; h.connect(g); return h; })());
@@ -117,21 +119,22 @@ export function createScore(ac, out) {
     },
     recorder(m, t, v, dur) { I.flute(m + 12, t, v * 0.8, dur); },
     bell(m, t, v, dur) {
-      const g = ac.createGain(); env(g, t, v * 0.07, 0.003, 0.05, 1.2 + dur * 0.4); out3(g, 0.45, 0.35);
+      const g = ac.createGain(); env(g, t, v * 0.06, 0.003, 0.05, 2 + dur * 0.5); out3(g, 0.8, 0.45);
       osc('sine', mtof(m), t, t + 2, g); const h = ac.createGain(); h.gain.value = 0.35; h.connect(g); osc('sine', mtof(m) * 2.76, t, t + 0.8, h);
       const h2 = ac.createGain(); h2.gain.value = 0.15; h2.connect(g); osc('sine', mtof(m) * 5.4, t, t + 0.4, h2);
     },
     glass(m, t, v, dur) {
-      const g = ac.createGain(); env(g, t, v * 0.06, 0.02, dur * 0.6, 0.9); out3(g, 0.6, 0.45);
+      const g = ac.createGain(); env(g, t, v * 0.055, 0.25, dur * 0.6, 2); out3(g, 0.9, 0.5);
       osc('triangle', mtof(m), t, t + dur + 1.2, g, -4); osc('sine', mtof(m) * 2, t, t + dur + 1.2, g, 5);
     },
   };
   function pad(kind, notes, t, dur, v = 1) {
     for (const m of notes) {
-      const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.022 * v, t + dur * 0.35); g.gain.linearRampToValueAtTime(0.0001, t + dur * 1.08);
-      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = kind === 'space' ? 1600 : kind === 'warm' ? 1300 : kind === 'strings' ? 2200 : 900;
-      lp.connect(g); out3(g, 0.6, kind === 'space' ? 0.25 : 0);
-      const f = mtof(m), end = t + dur * 1.12;
+      const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.03 * v, t + dur * 0.5); g.gain.linearRampToValueAtTime(0.0001, t + dur * 1.3);
+      const top = kind === 'space' ? 1800 : kind === 'warm' ? 1400 : kind === 'strings' ? 1900 : 1000;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 2; lp.frequency.setValueAtTime(top * 0.35, t); lp.frequency.linearRampToValueAtTime(top, t + dur * 0.6); lp.frequency.linearRampToValueAtTime(top * 0.4, t + dur * 1.3);
+      lp.connect(g); out3(g, 0.9, 0.2);
+      const f = mtof(m), end = t + dur * 1.35;
       if (kind === 'drone') { osc('sawtooth', f, t, end, lp, -4); osc('sine', f / 2, t, end, g); }
       else if (kind === 'strings') { osc('sawtooth', f, t, end, lp, -8); osc('sawtooth', f, t, end, lp, 9); }
       else if (kind === 'space') { osc('sawtooth', f, t, end, lp, -12); osc('sawtooth', f, t, end, lp, 12); osc('sine', f * 2, t, end, g, 3); }
@@ -146,12 +149,12 @@ export function createScore(ac, out) {
     osc(kind === 'synth' ? 'sawtooth' : 'triangle', mtof(m), t, t + dur + 0.3, lp); osc('sine', mtof(m), t, t + dur + 0.3, g);
   }
   // ---- drums
-  function kick(t, v = 1) { const g = ac.createGain(); env(g, t, 0.5 * v, 0.002, 0.02, 0.3); g.connect(bus); const o = ac.createOscillator(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.15); o.connect(g); o.start(t); o.stop(t + 0.4); }
+  function kick(t, v = 1) { const g = ac.createGain(); env(g, t, 0.3 * v, 0.002, 0.02, 0.3); g.connect(bus); const o = ac.createOscillator(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.15); o.connect(g); o.start(t); o.stop(t + 0.4); }
   function noiseHit(t, f, type, q, v, dec, wet = 0.15) { const s = ac.createBufferSource(); s.buffer = noise; const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = ac.createGain(); env(g, t, v, 0.001, 0, dec); s.connect(fl).connect(g); out3(g, wet); s.start(t, rnd() * 0.5); s.stop(t + dec + 0.1); }
   const snare = (t, v = 1) => { noiseHit(t, 1800, 'bandpass', 0.8, 0.22 * v, 0.16, 0.25); const g = ac.createGain(); env(g, t, 0.12 * v, 0.001, 0, 0.08); g.connect(bus); osc('triangle', 190, t, t + 0.1, g); };
   const hat = (t, v = 1) => noiseHit(t, 8000, 'highpass', 0.7, 0.06 * v, 0.04, 0.05);
   const shaker = (t, v = 1) => noiseHit(t, 6000, 'bandpass', 1.2, 0.05 * v, 0.07, 0.1);
-  const frame = (t, v = 1, f = 120) => { const g = ac.createGain(); env(g, t, 0.35 * v, 0.002, 0, 0.35); out3(g, 0.3); const o = ac.createOscillator(); o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08); o.connect(g); o.start(t); o.stop(t + 0.45); noiseHit(t, 700, 'bandpass', 1, 0.08 * v, 0.06); };
+  const frame = (t, v = 1, f = 120) => { const g = ac.createGain(); env(g, t, 0.2 * v, 0.002, 0, 0.35); out3(g, 0.3); const o = ac.createOscillator(); o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08); o.connect(g); o.start(t); o.stop(t + 0.45); noiseHit(t, 700, 'bandpass', 1, 0.08 * v, 0.06); };
   const brush = (t, v = 1) => noiseHit(t, 3000, 'bandpass', 0.5, 0.08 * v, 0.2, 0.2);
   function drumBar(kind, t, beat, sec) {
     const e = beat / 2;
@@ -164,6 +167,19 @@ export function createScore(ac, out) {
       else if (kind === 'groove') { if (b === 0 || (b === 2 && sec !== 'B')) kick(at, 1); if (b === 2 && sec === 'B') kick(at + e, 0.7); if (b % 2 === 1) snare(at, 1); hat(at, 0.7); hat(at + e, 0.45); }
       else if (kind === 'soft') { if (b === 0) kick(at, 0.6); if (b === 2) snare(at, 0.4); hat(at + e, 0.5); }
     }
+  }
+
+  // ---- air: filtered wind that breathes under the music
+  function air(t, len) {
+    const s = ac.createBufferSource(); s.buffer = noise; s.loop = true;
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = era === 6 ? 6 : 1.2;
+    const f0 = [500, 600, 800, 650, 420, 900, 1500][era];
+    bp.frequency.setValueAtTime(f0 * (0.7 + rnd() * 0.3), t); bp.frequency.linearRampToValueAtTime(f0 * (1.2 + rnd() * 0.6), t + len * 0.6); bp.frequency.linearRampToValueAtTime(f0 * 0.8, t + len * 1.4);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(era === 4 ? 0.035 : 0.022, t + len * 0.5); g.gain.linearRampToValueAtTime(0.0001, t + len * 1.5);
+    s.connect(bp).connect(g); out3(g, 0.9);
+    s.start(t, rnd()); s.stop(t + len * 1.6);
+    // a far-away shimmer now and then
+    if (rnd() < 0.35) { const m = deg(STYLES[era], 14 + ((rnd() * 5) | 0)); const sg = ac.createGain(); env(sg, t + len * 0.3, 0.012, 1.2, 0.5, 3); out3(sg, 1, 0.6); osc('sine', mtof(m), t + len * 0.3, t + len * 0.3 + 5, sg); }
   }
 
   // ---- the composer
@@ -186,7 +202,7 @@ export function createScore(ac, out) {
       }
       return notes;
     };
-    song = { st, A: mel(st.A), A2: null, B: mel(st.B), form: ['I', 'A', 'A', 'B', 'A'], bars: 0 };
+    song = { st, A: mel(st.A), A2: null, B: mel(st.B), form: ['I', 'A', 'I', 'B', 'A', 'I'], bars: 0 };
     // the answer phrase: same rhythm and start, different ending
     song.A2 = song.A.map((x, i) => (i >= 12 && typeof x === 'number' ? x - [0, 1, 2, 0][i % 4] : x));
   }
@@ -197,8 +213,9 @@ export function createScore(ac, out) {
     const prog = sec === 'B' ? st.B : st.A, root = prog[inSec];
     const chord = triad(st, root);
     const sw = (i) => (i % 2 ? st.swing * beat : 0);
-    // pads and bass
-    if (st.pad) pad(st.pad, chord.map((m) => m - 12), t, len, sec === 'I' ? 0.7 : 1);
+    // pads breathe over two bars, the wind under everything
+    if (st.pad && inSec % 2 === 0) pad(st.pad, chord.map((m) => m - 12), t, len * 2, sec === 'I' ? 0.8 : 1);
+    if (inSec % 2 === 0) air(t, len * 2);
     if (sec !== 'I' || inSec >= 2) {
       const b = deg(st, root, -2);
       if (st.bass === 'drone') bassNote('drone', b, t, len * 0.95, 0.7);
@@ -206,12 +223,12 @@ export function createScore(ac, out) {
     }
     // accompaniment: broken chords or comping
     const comp = I[st.comp];
-    const pattern = st.comp === 'epiano' ? [[0, 0], [1.5, 1], [2.5, 0], [3.5, 1]] : st.comp === 'arp' ? [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5].map((x, i) => [x, i]) : [[0, 0], [0.5, 1], [1, 2], [1.5, 1], [2, 0], [2.5, 1], [3, 2], [3.5, 3]];
+    const pattern = st.comp === 'epiano' ? [[0, 0], [2.5, 1]] : st.comp === 'arp' ? [0, 0.75, 1.5, 2.25, 3].map((x, i) => [x, i]) : [[0, 0], [1, 1], [2, 2], [3, 3]];
     for (const [p, i] of pattern) {
       const at = t + p * beat + (Math.round(p * 2) % 2 ? st.swing * beat : 0);
-      if (st.comp === 'epiano' || st.comp === 'piano' && i === 0) { for (const m of chord) comp(m + (i ? 0 : 0), at, 0.7, beat * 0.9); continue; }
+      if (st.comp === 'epiano' || st.comp === 'piano' && i === 0) { for (const m of chord) comp(m, at, 0.5, beat * 1.8); continue; }
       const notes = [chord[0], chord[1], chord[2], chord[0] + 12];
-      comp(notes[i % 4] + (st.comp === 'arp' ? 12 : 0), at, 0.6 + (i === 0 ? 0.25 : 0));
+      comp(notes[i % 4] + (st.comp === 'arp' ? 12 : 0), at, 0.42 + (i === 0 ? 0.15 : 0));
     }
     // the melody, in the A and B sections
     if (sec !== 'I') {
@@ -223,11 +240,10 @@ export function createScore(ac, out) {
         let held = 1; while (half * 8 + i + held < 16 && phrase[half * 8 + i + held] === 'hold' && held < 6) held++;
         const at = t + i * (beat / 2) + sw(i);
         const m = deg(st, n, st.lead === 'piano' ? 0 : st.lead === 'bell' || st.lead === 'glass' ? 0 : 0);
-        I[st.lead](m, at, sec === 'B' ? 0.95 : 0.85, held * beat / 2);
+        I[st.lead](m, at, sec === 'B' ? 0.85 : 0.75, held * beat / 2);
       }
     }
-    if (st.drums && sec !== 'I') drumBar(st.drums, t, beat, sec);
-    if (st.drums && sec === 'I' && inSec === 3) drumBar(st.drums, t, beat, sec);
+    if (st.drums && sec === 'B') drumBar(st.drums, t, beat, sec);
     bar++;
     // after a full song, write a new one in the same style
     if (bar >= song.form.length * 4) { bar = 0; makeSong(); }
