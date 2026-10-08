@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.7';
-import { createScore } from './music.js?v=2.7';
+import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.8';
+import { createScore } from './music.js?v=2.8';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=2.7';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '2.7';
+const APP_VERSION = '2.8';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -26,9 +26,9 @@ const ERAS = [
   { name: 'Bronze Age', icon: '🏺', years: [-3000, -800], need: 750, cost: 150, lvl: 3, desc: 'Farms and metal tools. Build farms and workshops so towns spread wider. You can now plant forests and inspire your people.', color: '#d8a85a' },
   { name: 'Classical Age', icon: '🏛️', years: [-800, 500], need: 1800, cost: 220, lvl: 3, desc: 'Temples and philosophers, but also plague. Bless your people to heal them.', color: '#e9e2d2' },
   { name: 'Medieval Age', icon: '🏰', years: [500, 1750], need: 4300, cost: 300, lvl: 3, desc: 'Castles and cathedrals rise. Fires and plagues still roam the land.', color: '#a88ad8' },
-  { name: 'Industrial Age', icon: '🏭', years: [1750, 1950], need: 8500, cost: 380, lvl: 4, desc: 'Factories boom. Pollution warms the planet: if its health falls, the seas will rise. Cleanse the skies, plant forests, raise the coasts.', color: '#c8704a' },
-  { name: 'Modern Age', icon: '🏙️', years: [1950, 2060], need: 15000, cost: 480, lvl: 4, desc: 'Cities of glass and planes in the sky. Storms and meteors grow dangerous: you can now terraform and deflect.', color: '#5fa8ff' },
-  { name: 'Space Age', icon: '🚀', years: [2060, 2200], need: 24000, cost: 650, lvl: 4, desc: 'The final age. Build the Starship and take your people to the stars.', color: '#5ff0ff' },
+  { name: 'Industrial Age', icon: '🏭', years: [1750, 1950], need: 11000, cost: 380, lvl: 4, desc: 'Factories boom. Pollution warms the planet: if its health falls, the seas will rise. Cleanse the skies, plant forests, raise the coasts.', color: '#c8704a' },
+  { name: 'Modern Age', icon: '🏙️', years: [1950, 2060], need: 20000, cost: 480, lvl: 4, desc: 'Cities of glass and planes in the sky. Storms and meteors grow dangerous: you can now terraform and deflect.', color: '#5fa8ff' },
+  { name: 'Space Age', icon: '🚀', years: [2060, 2200], need: 32000, cost: 650, lvl: 4, desc: 'The final age. Build the Starship and take your people to the stars.', color: '#5ff0ff' },
 ];
 // every wonder you build leaves a lasting gift
 const PERKS = ['+15% knowledge forever', 'Every town can spread 2 hexes further', '+1 ✦ per second forever', '+25% food in every town', 'Buildings cost 25% less', '+25% knowledge forever', 'Victory'];
@@ -42,6 +42,10 @@ const POWERS = [
   { id: 'raise', name: 'Raise', cost: 1, era: 0, r: 0, hint: 'Tap a hex to raise it. Green ↑ arrows show where to raise so a town gets flat ground.' },
   { id: 'lower', name: 'Lower', cost: 1, era: 0, r: 0, hint: 'Tap a hex to lower it. Red ↓ arrows show where to lower. Below sea level it floods.' },
   { id: 'beacon', name: 'Beacon', cost: 20, era: 0, r: 0, hint: 'Plant a beacon: your next settlers head there to found a town. Tap again to move it.' },
+  { id: 'war', name: 'Knight', cost: 80, era: 1, r: 0, hint: 'Tap a Crimson town: a knight leads half of your strongest town against it, and keeps conquering town after town.' },
+  { id: 'quake', name: 'Quake', cost: 110, era: 1, r: 2, hint: 'Shake the earth: the ground cracks into uneven steps and towns there lose their land. Works on Crimson land too.' },
+  { id: 'swamp', name: 'Swamp', cost: 90, era: 2, r: 1, hint: 'Turn hexes into a deadly swamp for 90 seconds: any walker, settler, raider or war band that enters it sinks.' },
+  { id: 'volcano', name: 'Volcano', cost: 260, era: 3, r: 2, hint: 'Raise a burning volcano: it buries everything around it, Crimson towns included.' },
   { id: 'rain', name: 'Rain', cost: 30, era: 0, r: 3, hint: 'Rain makes the land fertile for a while and puts out fires.' },
   { id: 'forest', name: 'Forest', cost: 40, era: 1, r: 2, hint: 'Plant a forest: food, clean air and a healthier planet.' },
   { id: 'inspire', name: 'Inspire', cost: 90, era: 1, r: 5, hint: 'A spark of genius: settlements here make triple knowledge for a while.' },
@@ -49,9 +53,22 @@ const POWERS = [
   { id: 'cleanse', name: 'Cleanse', cost: 180, era: 4, r: 0, hint: 'Scrub the skies: the planet heals. Tap anywhere.' },
   { id: 'terraform', name: 'Terraform', cost: 150, era: 5, r: 2, hint: 'Flatten a whole area to the height of the spot you tap.' },
   { id: 'deflect', name: 'Deflect', cost: 300, era: 5, r: 0, hint: 'Shoot down an incoming meteor. Tap anywhere.' },
-  { id: 'war', name: 'War Band', cost: 60, era: 0, r: 0, hint: 'At war: tap a Crimson town to send warriors from your strongest nearby town. Better weapons win.' },
 ];
 const PW = Object.fromEntries(POWERS.map((p) => [p.id, p]));
+// blessings: at every new age you choose one of three, and they stack for the rest of the run
+const BOONS = [
+  { id: 'harvest', icon: '🌾', name: 'Harvest Gods', fx: 'Towns grow 20% faster' },
+  { id: 'scholars', icon: '📜', name: 'Scholars', fx: '+15% knowledge' },
+  { id: 'devotion', icon: '✦', name: 'Devotion', fx: '+1 ✦ per second' },
+  { id: 'walls', icon: '🛡️', name: 'Stone Walls', fx: 'Towns defend 40% better' },
+  { id: 'gaia', icon: '🌳', name: 'Gaia', fx: 'The planet heals faster' },
+  { id: 'sprawl', icon: '🏘️', name: 'Sprawl', fx: 'Towns spread over 1 more hex' },
+  { id: 'warlords', icon: '⚔️', name: 'Warlords', fx: 'War bands fight 30% harder' },
+  { id: 'oracles', icon: '⏳', name: 'Oracles', fx: 'Omens pay 50% more and last 15s longer' },
+  { id: 'shapers', icon: '🪄', name: 'Earthshapers', fx: 'Every 10th stroke refunds 10 ✦' },
+  { id: 'tide', icon: '🌊', name: 'Tide Callers', fx: 'Raiders drown for double ✦' },
+];
+const boon = (id) => (G.boons || []).filter((b) => b === id).length;
 const RELICS = [
   { id: 'scroll', icon: '📜', name: 'Scroll of the Ancients', fx: '+20% knowledge forever' },
   { id: 'idol', icon: '🗿', name: 'Golden Idol', fx: '+1 ✦ per second forever' },
@@ -81,7 +98,7 @@ const EVENTS = [
   { id: 'lights', era: [0, 6], icon: '🌠', title: 'Lights in the Sky', text: 'Streaks of fire cross the night. Some call it an omen, some a puzzle.',
     a: { label: 'Study the stars', fx: '+30% of the knowledge you need', run: () => gainKnow(0.3) }, b: { label: 'Worship them', fx: '+150 ✦', run: () => gainMana(150) } },
   { id: 'envoy', era: [0, 6], cond: () => G.rival.alive && G.rival.status !== 'war', icon: '🔴', title: 'Crimson Envoys', text: 'Messengers of the Crimson arrive with painted faces, asking for food for a hard winter.',
-    a: { label: 'Share with them', fx: '−60 ✦, they like you much more', run: () => { G.mana = Math.max(0, G.mana - 60); G.rival.rel = Math.min(100, G.rival.rel + 25); } }, b: { label: 'Send them away', fx: '+15% knowledge, they resent it', run: () => { gainKnow(0.15); G.rival.rel -= 15; } } },
+    a: { label: 'Buy time', fx: '−60 ✦, war comes 90s later', run: () => { G.mana = Math.max(0, G.mana - 60); G.graceAdd = (G.graceAdd || 0) + 90; } }, b: { label: 'Turn them into spies', fx: '+15% knowledge', run: () => { gainKnow(0.15); } } },
   { id: 'drought', era: [0, 3], icon: '☀️', title: 'Drought', text: 'The rains have failed. The rivers are thin and the fields are cracking.',
     a: { label: 'Call the rain', fx: '−70 ✦, rain on every town', run: () => { G.mana = Math.max(0, G.mana - 70); for (const t of myTowns()) for (const [x] of bfs(t.v, 3)) rain[x] = 60; terrainDirty = true; } }, b: { label: 'Endure it', fx: 'All your towns shrink 20%', run: () => growTowns(-0.2) } },
   { id: 'ship', era: [2, 4], icon: '⛵', title: 'A Plague Ship', text: 'A ship with black sails drifts into your harbour. Its crew is coughing.',
@@ -97,7 +114,7 @@ const EVENTS = [
   { id: 'ai', era: [5, 6], icon: '🤖', title: 'The Thinking Machine', text: 'Your engineers built a mind that can learn. It asks to be connected to everything.',
     a: { label: 'Connect it', fx: '+50% of the knowledge you need', run: () => gainKnow(0.5) }, b: { label: 'Keep it boxed', fx: '+100 ✦', run: () => gainMana(100) } },
   { id: 'comet', era: [2, 6], icon: '☄️', title: 'A Comet Returns', text: 'The great comet is back after a century. The whole world looks up.',
-    a: { label: 'Festival of lights', fx: 'All your towns grow 15%, +60 ✦', run: () => { growTowns(0.15); gainMana(60); } }, b: { label: 'Share star charts with the Crimson', fx: 'They like you more, +15% knowledge', run: () => { G.rival.rel = Math.min(100, G.rival.rel + 15); gainKnow(0.15); } } },
+    a: { label: 'Festival of lights', fx: 'All your towns grow 15%, +60 ✦', run: () => { growTowns(0.15); gainMana(60); } }, b: { label: 'Read the omens in it', fx: '+20% knowledge', run: () => gainKnow(0.2) } },
 ];
 // Buildings you place next to towns, SimCity style. Each one helps every town within RANGE hexes.
 const BUILDINGS = [
@@ -165,6 +182,13 @@ function icosphere(detail) {
 }
 const { verts: DIRS, faces: FACES } = icosphere(4);
 const NV = DIRS.length, NF = FACES.length;
+// city sections: the planet is cut into fixed blocks of about 12 hexes; streets run only along their borders
+const SECTION = new Int16Array(NV);
+{
+  const N = Math.round(NV / 12), ga = Math.PI * (3 - Math.sqrt(5)), seeds = [];
+  for (let i = 0; i < N; i++) { const y = 1 - (2 * (i + 0.5)) / N, r = Math.sqrt(1 - y * y), a = i * ga; seeds.push(new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r)); }
+  for (let v = 0; v < NV; v++) { let best = 0, bd = -2; for (let i = 0; i < N; i++) { const d = seeds[i].dot(DIRS[v]); if (d > bd) { bd = d; best = i; } } SECTION[v] = best; }
+}
 const NBR = (() => {
   const s = Array.from({ length: NV }, () => new Set());
   for (const [a, b, c] of FACES) { s[a].add(b).add(c); s[b].add(a).add(c); s[c].add(a).add(b); }
@@ -199,7 +223,20 @@ function bfs(v, r, pass = null) {
 
 // ------------------------------------------------------------------ world state
 const res = new Uint8Array(NV), lock = new Uint8Array(NV);
+const swamp = new Float32Array(NV);
 const h = new Int8Array(NV), tree = new Uint8Array(NV), rain = new Float32Array(NV), burn = new Float32Array(NV), crowd = new Uint8Array(NV);
+// legacy: points earned by every world, spent on lasting gifts for the next ones
+const LEGACY = [
+  { id: 'hoard', icon: '💰', name: 'Hoard', cost: 20, fx: 'Start every world with +150 ✦' },
+  { id: 'roots', icon: '🏘️', name: 'Deep Roots', cost: 40, fx: 'Your towns spread over 1 more hex' },
+  { id: 'wisdom', icon: '📜', name: 'Ancestral Wisdom', cost: 60, fx: '+10% knowledge' },
+  { id: 'council', icon: '🎴', name: 'Council of Elders', cost: 80, fx: 'Choose from 4 blessings each age, not 3' },
+  { id: 'heirloom', icon: '🏺', name: 'Heirloom', cost: 100, fx: 'Begin every world with a random relic' },
+  { id: 'firstborn', icon: '👶', name: 'Firstborn', cost: 130, fx: 'Start with a second town' },
+];
+const legacyData = Object.assign({ pts: 0, owned: [], best: 0, worlds: 0 }, store.get('aeons.legacy', {}));
+const legacy = { has: (id) => legacyData.owned.includes(id) };
+const saveLegacy = () => store.set('aeons.legacy', legacyData);
 const G = {
   seed: 1, era: 0, know: 0, mana: 60, health: 100, sea: SEA0, seaVis: SEA0, elapsed: 0, mode: 'menu', started: false,
   diff: 1, q: 0, qc: { shape: 0, beacon: 0 }, relics: [], relicCells: [], golden: 0, goldenCD: 120, surge: 0, omen: null, omenT: 150, raidT: 150, firstWonders: [], settlements: [], walkers: [], wonders: [], buildings: [], rival: null, beacon: -1, eventT: 120, seenEvents: [], stats: { founded: 0, lost: 0, disasters: 0, peak: 0 },
@@ -214,7 +251,7 @@ function flatScore(v, self) {
   for (const [x] of bfs(v, 2)) if (isLand(x) && h[x] === h[v] && (x === v || !G.settlements.some((s) => s !== self && s.v === x))) n++;
   return n;
 }
-const canSettle = (v) => isLand(v) && !crowd[v] && burn[v] <= 0 && sameNeighbours(v) >= 4 && Math.abs(DIRS[v].y) < 0.93;
+const canSettle = (v) => isLand(v) && !crowd[v] && burn[v] <= 0 && !(swamp[v] > 0) && sameNeighbours(v) >= 4 && Math.abs(DIRS[v].y) < 0.93;
 // Which cells each town covers: its centre, plus the hexes it has spread over. A hex stays
 // part of the town while it is dry land at the centre's height and still connected to it.
 const newRival = () => ({ era: 0, know: 0, mana: 60, rel: 0, status: 'peace', alive: true, offer: null, warT: 0, buildT: 30, shapeT: 0, attackT: 40, dipT: 1, asked: 0 });
@@ -222,7 +259,7 @@ const eraOfTribe = (t) => (t ? G.rival.era : G.era);
 const eraOf = (s) => eraOfTribe(s.tribe);
 const sizeOf = (s) => 1 + s.tiles.length;
 const levelOf = (s) => { const n = sizeOf(s); return n >= 19 ? 4 : n >= 10 ? 3 : n >= 4 ? 2 : 1; };
-const maxTiles = (s) => BASE_SIZE[eraOf(s)] + (s.fx ? s.fx.size : 0) - 1 + (perk(1, s.tribe) ? 2 : 0) + (!s.tribe && rel('seed') ? 2 : 0);
+const maxTiles = (s) => BASE_SIZE[eraOf(s)] + (s.fx ? s.fx.size : 0) - 1 + (perk(1, s.tribe) ? 2 : 0) + (!s.tribe && rel('seed') ? 2 : 0) + (!s.tribe ? boon('sprawl') + (legacy.has('roots') ? 1 : 0) : 0);
 function assignTiles() {
   buildSpotsDirty = true;
   const before = tileKind.slice();
@@ -249,12 +286,8 @@ function assignTiles() {
     // districts: a downtown core, then sectors around it separated by avenues
     const ct = CELLS[s.v];
     s.dist = new Map(); const best = new Map();
-    for (const [x, r] of s.ring) {
-      let id = 0;
-      if (r > 1) {
-        const d = DIRS[x], ang = Math.atan2(d.dot(ct.t2), d.dot(ct.t1)), nSec = r <= 2 ? 3 : 5;
-        id = (r <= 2 ? 10 : r <= 3 ? 20 : 30) + Math.floor(((ang + Math.PI) / (Math.PI * 2)) * nSec) % nSec;
-      }
+    for (const [x] of s.ring) {
+      const id = SECTION[x] === SECTION[s.v] ? 0 : SECTION[x] + 1;
       s.dist.set(x, id);
       if (x !== s.v && (!best.has(id) || hash(x) < hash(best.get(id)))) best.set(id, x);
     }
@@ -283,6 +316,7 @@ function frontier(s) {
   return best;
 }
 // building effects: each building helps the towns it reaches (two of a kind at most), some help the whole world
+const WONDER_R = 4;
 let worldFx = [{ mana: 0, clean: 0, poll: 0, global: 0 }, { mana: 0, clean: 0, poll: 0, global: 0 }];
 function computeFx() {
   for (const s of G.settlements) { s.fx = { food: 0, know: 0, size: 0, health: 0, defend: 0 }; s.fxN = {}; }
@@ -300,7 +334,8 @@ function computeFx() {
       for (const key of ['food', 'know', 'size', 'health', 'defend']) s.fx[key] += fx[key] || 0;
     }
   }
-  for (const s of G.settlements) { if (perk(3, s.tribe)) s.fx.food += 0.25; if (!s.tribe && rel('compass')) s.fx.food += 0.25; }
+  for (const w of G.wonders) for (const [x] of bfs(w.v, WONDER_R)) if (tileKind[x] === 1 && owner[x] >= 0) { const s = G.settlements[owner[x]]; if (s.tribe === w.tribe && !s.fxN.wonder) { s.fxN.wonder = 1; s.fx.know += 0.2; } }
+  for (const s of G.settlements) { if (perk(3, s.tribe)) s.fx.food += 0.25; if (!s.tribe && rel('compass')) s.fx.food += 0.25; if (!s.tribe) s.fx.food += boon('harvest') * 0.2; }
   // treasures: the first town that covers or touches one gets it
   const claimed = new Set();
   for (const s of G.settlements) {
@@ -534,6 +569,8 @@ const C = (x) => new THREE.Color(x);
 const PAL = { deep: C(0x2a3a5a), bed: C(0xb8a070), dry: C(0xd2bc6a), lush: C(0x4aa63a), snow: C(0xf4f8fb), ice: C(0xe2eef6), burnt: C(0x3a2e28), brown: C(0x9a8a5a), cliff: C(0x7a6450), soil: C(0x9a7a4a) };
 // one colour per terrace, alternating light and dark so each level reads at a glance
 const BANDS = [0xe9d6a0, 0xa6d86a, 0x6fbd45, 0x93c858, 0x4f9a36, 0x8aa04e, 0x9a8a62, 0x8f8a82, 0xb4b0aa, 0xf0f4f8, 0xf4f8fb].map(C);
+const DIST_COL = [0xd88a5a, 0x8ab0d8, 0xd8c070, 0x9ac88a, 0xc08ac8, 0xe0a0a0].map(C);
+const SWAMP_COL = new THREE.Color(0x3a4a22);
 const PAVE = [0xb09060, 0xd0b070, 0xece4d0, 0xb8ae9a, 0xa89480, 0xa8aeb6, 0xe8eef4].map(C);
 const owner = new Int32Array(NV).fill(-1), tileKind = new Uint8Array(NV), bTribe = new Uint8Array(NV);
 const RED = C(0xc84a3a);
@@ -542,7 +579,7 @@ function cellColor(v) {
   const lat = Math.abs(DIRS[v].y);
   if (burn[v] > 0) return tc.copy(PAL.burnt);
   if (h[v] <= G.sea) return tc.copy(PAL.bed).lerp(PAL.deep, clamp((G.sea - h[v]) / 4, 0, 1));
-  if (tileKind[v] === 1 || tileKind[v] === 2) { const t = G.settlements[owner[v]]; tc.copy(PAVE[eraOf(t)]); if (eraOf(t) >= 2 && t.dist) tc.multiplyScalar(0.9 + (hash((t.dist.get(v) ?? 0) * 13 + t.v) % 5) * 0.045); return t.tribe ? tc.lerp(RED, 0.3) : tc; }
+  if (tileKind[v] === 1 || tileKind[v] === 2) { const t = G.settlements[owner[v]]; tc.copy(PAVE[eraOf(t)]); if (eraOf(t) >= 1 && t.dist) { const d = t.dist.get(v) ?? 0; if (d) tc.lerp(DIST_COL[hash(d * 13 + t.v) % DIST_COL.length], 0.42); else tc.multiplyScalar(1.08); } return t.tribe ? tc.lerp(RED, 0.3) : tc; }
   if (tileKind[v] === 6) { const t = G.settlements[owner[v]]; return tc.copy(PAL.lush).lerp(PAVE[eraOf(t)], 0.25); }
   if (tileKind[v] === 4) return tc.copy(PAVE[G.era]);
   if (tileKind[v] === 5) { tc.copy(PAVE[eraOfTribe(bTribe[v])]).multiplyScalar(1.12); return bTribe[v] ? tc.lerp(RED, 0.3) : tc; }
@@ -554,6 +591,7 @@ function cellColor(v) {
     if (lat < 0.22) col.lerp(PAL.dry, 0.45);
     if (rain[v] > 0) col.lerp(PAL.lush, 0.5);
   }
+  if (swamp[v] > 0) col.lerp(SWAMP_COL, 0.75);
   if (G.health < 90 && up < 9) col.lerp(PAL.brown, (1 - G.health / 100) * 0.55);
   if (lat > 0.7) col.lerp(PAL.snow, Math.min(1, (lat - 0.7) * 3.5));
   return col.multiplyScalar(0.96 + (((v * 2654435761) >>> 0) % 1000) / 12500);
@@ -819,7 +857,7 @@ const centerT = {}, tileT = {};
 const mkT = (t, max) => ({ body: inst(t.body, bodyMat, max), glow: t.glow ? inst(t.glow, glowMat, max) : null, smoke: t.smoke });
 for (let e = 0; e < 7; e++) {
   for (let l = 1; l <= 4; l++) centerT[`${e}-${l}`] = mkT(centerModel(e, l), 80);
-  for (let k = 0; k < 11; k++) if (k !== 3 || (e >= 1 && e <= 3)) tileT[`${e}-${k}`] = mkT(tileModel(e, k), 700);
+  for (let k = 0; k < 12; k++) if (k !== 3 || (e >= 1 && e <= 3)) tileT[`${e}-${k}`] = mkT(tileModel(e, k), 700);
 }
 const ALL_T = [...Object.values(centerT), ...Object.values(tileT)];
 // small colour shifts so neighbouring blocks never look identical
@@ -1037,7 +1075,7 @@ function updateShootingStars(dt) {
 // ------------------------------------------------------------------ streets: along the hex edges inside and around each town
 let roadsDirty = true;
 const avTrees = inst(treeGeos()[1], bodyMat, 1500, true);
-const roadMesh = inst(roadGeo(), bodyMat, 3000, false);
+const roadMesh = inst(roadGeo(), bodyMat, 6000, false);
 roadMesh.receiveShadow = true;
 const laneMesh = inst(laneGeo(), glowMat, 3000, false);
 const LG = lampGeos();
@@ -1050,7 +1088,8 @@ const poolMat = new THREE.ShaderMaterial({
 const lampPool = inst(new THREE.PlaneGeometry(0.13, 0.13).rotateX(-Math.PI / 2).translate(0, 0.008, 0), poolMat, 1200, false);
 lampPool.renderOrder = 2;
 roadMesh.setColorAt(0, new THREE.Color()); laneMesh.setColorAt(0, new THREE.Color()); lampLight.setColorAt(0, new THREE.Color());
-const ROAD_COL = [0x8a6a44, 0x9a7448, 0x8a8068, 0x6e685c, 0x44444c, 0x2e3038, 0x9ab8e0].map((c) => new THREE.Color(c));
+const tmpRoad = new THREE.Color();
+const ROAD_COL = [0x8a6a44, 0x7a5a38, 0x6a6458, 0x55504a, 0x44444c, 0x2e3038, 0x9ab8e0].map((c) => new THREE.Color(c));
 const LAMP_COL = [0xffb060, 0xffb060, 0xffc070, 0xffc070, 0xffd890, 0xfff2d8, 0x8ff4ff].map((c) => new THREE.Color(c));
 let segs = [], cornerSegs = new Map();
 const mtx = new THREE.Matrix4(), bx = new THREE.Vector3(), by = new THREE.Vector3(), bz = new THREE.Vector3(), sc3 = new THREE.Vector3();
@@ -1074,18 +1113,18 @@ function layoutRoads() {
       const cell = CELLS[c], k = cell.fs.length, rr = radiusOf(c);
       for (let i = 0; i < k; i++) {
         const nb = cell.nb[i], inside = cells.has(nb);
-        if (!inside && era < 2) continue;
+        if (era < 1 && !inside) continue;
         if (inside && h[nb] !== h[c]) continue;
-        const avenue = inside && era >= 2 && s.dist && s.dist.get(nb) !== s.dist.get(c);
-        if (inside && era >= 2 && !avenue) continue;
+        const avenue = inside && SECTION[nb] !== SECTION[c];
+        if (inside && !avenue && (era >= 1 || (c + nb) % 3)) continue;
         const f1 = cell.fs[i], f2 = cell.fs[(i + 1) % k], key = f1 < f2 ? `${f1}-${f2}` : `${f2}-${f1}`;
-        if (done.has(key) || nr >= 3000) continue;
+        if (done.has(key) || nr >= 6000) continue;
         done.add(key);
         const a = CORN[f1].clone().multiplyScalar(rr - 0.011), b = CORN[f2].clone().multiplyScalar(rr - 0.011), up = DIRS[c];
-        placeSeg(roadMesh, nr, a, b, up, era <= 1 ? 0.022 : avenue && era >= 4 ? 0.042 : 0.032, 0.0);
+        placeSeg(roadMesh, nr, a, b, up, era < 1 ? 0.018 : era >= 4 ? 0.05 : 0.04, 0.0);
         if (avenue && nt < 1500) for (const k of [0.3, 0.7]) { const p = a.clone().lerp(b, k), side = new THREE.Vector3().crossVectors(b.clone().sub(a), up).normalize().multiplyScalar(k < 0.5 ? 0.026 : -0.026); dummy.position.copy(p).add(side); dummy.quaternion.setFromUnitVectors(UP, up); dummy.scale.setScalar(0.5 + (hash(f1 + f2) % 3) * 0.06); dummy.updateMatrix(); avTrees.setMatrixAt(nt++, dummy.matrix); }
         roadMesh.setColorAt(nr++, ROAD_COL[era]);
-        if (era >= 4 && nl < 3000) { placeSeg(laneMesh, nl, a.clone().lerp(b, 0.12), b.clone().lerp(a, 0.12), up, 0.003, 0.0); laneMesh.setColorAt(nl++, era === 6 ? LAMP_COL[6] : new THREE.Color(0xf4f0d0)); }
+        if (era >= 4 && (avenue || !inside) && nl < 3000) { placeSeg(laneMesh, nl, a.clone().lerp(b, 0.12), b.clone().lerp(a, 0.12), up, 0.003, 0.0); laneMesh.setColorAt(nl++, era === 6 ? LAMP_COL[6] : new THREE.Color(0xf4f0d0)); }
         if (era >= 1 && np < 1200 && (f1 + f2) % 2 === 0) {
           const mid = a.clone().lerp(b, 0.5).addScaledVector(DIRS[c].clone().sub(a.clone().normalize()).normalize(), 0);
           dummy.position.copy(mid); dummy.quaternion.setFromUnitVectors(UP, up); dummy.scale.setScalar(1); dummy.updateMatrix();
@@ -1109,7 +1148,7 @@ const PED_COL = [0xb05a3a, 0x3a6a8a, 0xd8b04a, 0x6a8a3a, 0x8a4a8a, 0xe0e0d8].map
 let traffic = [], crowdSpots = [];
 function seedTraffic() {
   traffic = [];
-  const n = Math.min(900, Math.floor(segs.length * 0.9));
+  const n = Math.min(900, Math.floor(segs.length * 0.6));
   for (let i = 0; i < n; i++) {
     const si = (rnd() * segs.length) | 0, sg = segs[si];
     // people walk in every age; vehicles join them later
@@ -1498,6 +1537,24 @@ function updateWalkers(dt) {
     w.think -= dt;
     if (w.think > 0) continue;
     w.think = 1.5;
+    if (!w.tribe && G.behave === 'fight' && G.rival.status === 'war') {
+      // march on the nearest Crimson town
+      const tg = G.settlements.filter((x) => x.tribe === 1).sort((a, b) => DIRS[a.v].distanceTo(DIRS[w.from]) - DIRS[b.v].distanceTo(DIRS[w.from]))[0];
+      const pth = tg && pathTo(w.from, tg.v, true);
+      if (pth) { w.war = tg.v; w.path = pth; w.to = w.path.shift(); continue; }
+    }
+    if (!w.tribe && G.behave === 'gather' && G.beacon >= 0) {
+      // gather at the beacon and merge into one band
+      w.age = 0;
+      const near = bfs(G.beacon, 1).some(([x]) => x === w.from);
+      if (!near) { const pth = pathTo(w.from, G.beacon); if (pth) { w.path = pth; w.to = w.path.shift(); continue; } }
+      else {
+        for (const o of G.walkers) if (o !== w && !o.tribe && o.war === -1 && bfs(G.beacon, 1).some(([x]) => x === o.from)) { w.pop += o.pop; o.pop = 0; }
+        G.walkers = G.walkers.filter((o) => o.pop > 0);
+        if (rnd() < 0.3) floatText(w.from, `🧲 ${fmt(w.pop)} gathered`, 'gold');
+        w.think = 3; continue;
+      }
+    }
     let spot = findSpot(w.from, w.tribe);
     let path = spot !== null ? pathTo(w.from, spot) : null;
     if (!path && !w.tribe && G.beacon >= 0) { spot = findSpot(w.from, 0, false); path = spot !== null ? pathTo(w.from, spot) : null; }
@@ -1520,34 +1577,58 @@ const totalPop = (tribe = 0) => G.settlements.reduce((a, s) => a + (s.tribe === 
 
 // ------------------------------------------------------------------ powers
 // Level: step toward the height of the nearest of your towns (or the first hex of this stroke)
+// the Level tool aims at a chosen height, or at the nearest town's height in Auto
+let lvlPin = null, lvlPicking = false;
+function renderLvl() {
+  $('lvl').hidden = tool !== 'level' || G.mode !== 'play';
+  $('lvl').classList.toggle('auto', lvlPin === null);
+  $('lvl-auto').classList.toggle('on', lvlPin === null);
+  $('lvl-pick').classList.toggle('on', lvlPicking);
+  $('lvl-h').textContent = lvlPin === null ? '–' : `${lvlPin - G.sea > 0 ? '+' : ''}${lvlPin - G.sea}`;
+}
+$('lvl-auto').addEventListener('click', () => { lvlPin = null; lvlPicking = false; renderLvl(); sfx.click(); toast('🏘️ Auto: Level flattens toward your nearest town.'); });
+$('lvl-up').addEventListener('click', () => { lvlPin = Math.min(G.sea + 9, (lvlPin ?? G.sea + 1) + 1); lvlPicking = false; renderLvl(); sfx.click(); });
+$('lvl-down').addEventListener('click', () => { lvlPin = Math.max(G.sea + 1, (lvlPin ?? G.sea + 2) - 1); lvlPicking = false; renderLvl(); sfx.click(); });
+$('lvl-pick').addEventListener('click', () => { lvlPicking = !lvlPicking; renderLvl(); sfx.click(); if (lvlPicking) toast('💧 Tap a hex to copy its height.'); });
 function levelTarget(v) {
+  if (lvlPin !== null) return Math.max(lvlPin, G.sea + 1);
   for (const [x] of bfs(v, 4)) if (owner[x] >= 0 && G.settlements[owner[x]].tribe === 0) return h[G.settlements[owner[x]].v];
   if (press && press.base !== undefined) return press.base;
   return h[v];
 }
 const combo = { n: 0, t: -9 };
 let surging = false;
+// god powers that break land: towns lose the hexes that no longer match, buildings in the way fall
+function wreck(area) {
+  const cells = new Set(area.map(([x]) => x));
+  for (const b of G.buildings.slice()) if (cells.has(b.v)) { G.buildings.splice(G.buildings.indexOf(b), 1); emit(posOf(b.v, 0.1), 0x9a8a7a, 20, 0.6, 0.5, 1); }
+  for (const s of G.settlements) if (cells.has(s.v)) { s.pop *= 0.5; floatText(s.v, s.tribe ? `💀 ${s.name} in ruins` : `💀 ${s.name} hit`, s.tribe ? 'gold' : 'red'); }
+  assignTiles(); computeFx(); layoutBuildings(); crushAt(cells);
+  terrainDirty = true; setDirty = true;
+  if ([...cells].some((x) => owner[x] >= 0 && G.settlements[owner[x]].tribe === 1)) G.rival.rel -= 10;
+}
 function applyPower(id, v) {
   const p = PW[id];
   if (G.era < p.era) { toast(`${p.name} arrives in the ${ERAS[p.era].name}`); sfx.deny(); return false; }
   if (G.mana < p.cost) { toast('Not enough inspiration ✦'); sfx.deny(); return false; }
   if (SHAPERS.has(id) && (tileKind[v] === 4 || tileKind[v] === 5)) { toast('A building stands here'); sfx.deny(); return false; }
-  if (SHAPERS.has(id) && lock[v] && id !== 'terraform') { toast('🔴 Crimson land: their god will not let you shape it.'); floatText(v, '🔒', 'red'); sfx.deny(); return false; }
+  if (SHAPERS.has(id) && lock[v] && id !== 'terraform' && id !== 'quake' && id !== 'volcano') { toast('🔴 Crimson land: their god will not let you shape it.'); floatText(v, '🔒', 'red'); sfx.deny(); return false; }
   let ok = true;
   const area = p.r ? bfs(v, p.r) : [[v, 0]];
   const R = G.rival, theirs = (x) => owner[x] >= 0 && G.settlements[owner[x]].tribe === 1;
   if (id === 'war') {
     const t = theirs(v) ? G.settlements[owner[v]] : null;
-    if (R.status !== 'war') { toast('You are not at war with the Crimson. Tap 🕊️ to declare war.'); sfx.deny(); return false; }
-    if (!t) { toast('Tap a Crimson town to attack it'); sfx.deny(); return false; }
+    if (!t) { toast('Tap a Crimson town to send your knight against it'); sfx.deny(); return false; }
+    if (R.status !== 'war') declareWar(false);
     // the best town to send from: big, and not too far away
     const score = (x) => x.pop / (1 + DIRS[x.v].distanceTo(DIRS[t.v]) * 3);
     const froms = G.settlements.filter((x) => !x.tribe && x.pop >= 8).sort((a, b) => score(b) - score(a));
-    const band = froms.length ? Math.max(4, froms[0].pop * 0.4) : 0;
-    const att = band * TECH[G.era], def = t.pop * TECH[eraOf(t)] * 0.6 * (t.fx.defend ? 1.6 : 1);
-    if (!froms.length || !sendBand(froms[0], t, 0)) { toast('None of your towns is big enough to send warriors'); sfx.deny(); return false; }
+    const band = froms.length ? Math.max(4, froms[0].pop * 0.5) : 0;
+    const att = band * TECH[G.era] * 1.5, def = t.pop * TECH[eraOf(t)] * 0.6 * (t.fx.defend ? 1.6 : 1);
+    if (!froms.length || !sendBand(froms[0], t, 0, 0.5)) { toast('None of your towns is big enough to send a knight'); sfx.deny(); return false; }
+    G.walkers[G.walkers.length - 1].knight = true;
     const odds = att / (att + def);
-    toast(`⚔️ ${fmt(band)} warriors march out. ${odds > 0.6 ? '💪 They should win.' : odds > 0.45 ? '⚖️ It will be close.' : '⚠️ They are outmatched: send more, or wait for better weapons.'}`, froms[0].v);
+    toast(`🛡️ A knight leads ${fmt(band)} warriors out. ${odds > 0.6 ? '💪 They should win.' : odds > 0.45 ? '⚖️ It will be close.' : '⚠️ They are outmatched: send more, or wait for better weapons.'}`, froms[0].v);
   }
   if ((id === 'bless' || id === 'inspire' || id === 'rain') && area.some(([x]) => theirs(x) && tileKind[x] === 1)) {
     R.rel = Math.min(100, R.rel + (id === 'rain' ? 2 : 8));
@@ -1556,7 +1637,8 @@ function applyPower(id, v) {
   if (id === 'level') {
     const own = owner[v] >= 0 && G.settlements[owner[v]].tribe === 0 ? G.settlements[owner[v]] : null;
     let n = 0;
-    const stepTo = (x, target) => { if (lock[x] || tileKind[x] === 4 || tileKind[x] === 5 || h[x] === target || G.mana < p.cost * (n + 1)) return; if (shapeWith(h[x] < target ? raiseV : lowerV, x)) n++; };
+    const stepTo = (x, target) => { for (let k = 0; k < 10; k++) { if (lock[x] || tileKind[x] === 4 || tileKind[x] === 5 || h[x] === target || G.mana < p.cost * (n + 1)) return; if (shapeWith(h[x] < target ? raiseV : lowerV, x)) n++; else return; } };
+    if (lvlPicking) { lvlPin = Math.max(G.sea + 1, h[v]); lvlPicking = false; renderLvl(); floatText(v, `💧 Height ${lvlPin - G.sea > 0 ? '+' : ''}${lvlPin - G.sea}`, 'blue'); sfx.click(); return false; }
     if (own && v === own.v) {
       // tapping your town's centre levels every marked hex around it by one step
       const ring = new Set();
@@ -1570,6 +1652,27 @@ function applyPower(id, v) {
     }
     if (!n) return false;
     G.mana -= p.cost * (n - 1);
+  } else if (id === 'quake') {
+    // the ground cracks into random steps; buildings in it crumble
+    for (const [x, d] of area) {
+      if (!isLand(x) || tileKind[x] === 4) continue;
+      const c = cellColor(x).clone(), dh = (hash(x * 7 + (G.elapsed | 0)) % 3) - 1 || (d % 2 ? 1 : -1);
+      setHeight(x, Math.max(G.sea + (h[x] > G.sea ? 1 : 0), h[x] + dh)); shatterCell(x, dh > 0, 0.8, c);
+    }
+    wreck(area);
+    cam.shake = 0.6; quakeT = Math.max(quakeT, 1.2); sfx.rumble();
+    floatText(v, '💥 QUAKE!', 'gold');
+  } else if (id === 'swamp') {
+    let n = 0;
+    for (const [x] of area) if (isLand(x) && tileKind[x] !== 4 && tileKind[x] !== 5 && tileKind[x] !== 1) { swamp[x] = 90; tree[x] = 0; n++; }
+    ok = n > 0;
+    if (ok) { terrainDirty = true; layoutTrees(); for (const [x] of area) emit(posOf(x, 0.05), 0x5a7a2a, 8, 0.3, 0.2, 1, 0.1); }
+  } else if (id === 'volcano') {
+    for (const [x, d] of area) { const c = cellColor(x).clone(); setHeight(x, Math.max(h[x], G.sea + 1) + (3 - d) + (d === 0 ? 1 : 0)); tree[x] = 0; burn[x] = 8 - d * 2; shatterCell(x, true, 1, c); }
+    wreck(area);
+    for (let i = 0; i < 70; i++) emit(posOf(v, 0.4), i % 3 ? 0xff6a2a : 0x4a4040, 1, 0.9, 0.9, 1.6, -0.4);
+    cam.shake = 0.8; quakeT = Math.max(quakeT, 1.5); sfx.boom(); layoutTrees();
+    floatText(v, '🌋 ERUPTION!', 'gold');
   } else if (id === 'beacon') {
     if (!isLand(v)) { toast('Place the beacon on dry land'); sfx.deny(); return false; }
     G.beacon = v; layoutBeacon();
@@ -1617,6 +1720,7 @@ function applyPower(id, v) {
   if (SHAPERS.has(id)) {
     // combo: quick strokes chain together and the sound climbs
     combo.n = t - combo.t < 0.8 ? combo.n + 1 : 1; combo.t = t;
+    if (boon('shapers') && G.qc.shape % 10 === 0) { addMana(10 * boon('shapers')); floatText(v, `🪄 +${10 * boon('shapers')}✦`, 'gold'); }
     if (combo.n >= 4 && combo.n % 4 === 0) floatText(v, `🪄 x${combo.n}`, 'gold');
     if (combo.n === 8 && G.surge <= 0) { G.surge = 6; floatText(v, '⚡ EARTH SURGE!', 'gold'); toast('⚡ Earth Surge: for 6 seconds every stroke shapes a whole area.'); sfx.fanfare(); }
     if (G.surge > 0 && !surging && (id === 'level' || id === 'raise' || id === 'lower')) { surging = true; for (const n of NBR[v]) if (!lock[n] && tileKind[n] !== 4 && tileKind[n] !== 5) { if (id === 'level') { const tg = levelTarget(n); if (h[n] !== tg) shapeWith(h[n] < tg ? raiseV : lowerV, n); } else shapeWith(id === 'raise' ? raiseV : lowerV, n); } surging = false; }
@@ -1822,14 +1926,14 @@ function simulate(dt) {
           const lv = s.level;
           assignTiles();
           if (!s.tribe) floatText(x, '+1 🏘️', 'green');
-          if (s.level > lv) { s.grow = 0; if (!s.tribe) { sfx.grow(); floatText(s.v, `⭐ ${s.name} level ${s.level}!`, 'gold'); fireworks(s.v, s.level); } emit(posOf(s.v, 0.2), 0xfff3c4, 20, 0.5, 0.4, 1, -0.1); }
+          if (s.level > lv) { s.grow = 0; if (!s.tribe) { sfx.grow(); const pay = Math.round(s.level * 6 * (1 + G.era * 0.3)); addMana(pay); floatText(s.v, `⭐ ${s.name} level ${s.level}! +${pay}✦`, 'gold'); fireworks(s.v, s.level); if (s.level >= 5 && !(s.mega)) { s.mega = true; toast(`🌆 ${s.name} became a METROPOLIS!`, s.v); celebrate(40); } } emit(posOf(s.v, 0.2), 0xfff3c4, 20, 0.5, 0.4, 1, -0.1); }
           emit(posOf(x, 0.05), 0xfff3c4, 6, 0.3, 0.2, 0.8, -0.1);
         } else s.stuck++;
       }
     }
     if (s.sick <= 0) s.pop = Math.min(cap, s.pop + (s.pop * 0.045 * s.fert * (1 + s.fx.food) + 0.25) * dt);
     // when it cannot spread any more, some people leave to found a colony
-    if (s.pop >= cap * 0.98 && s.cool <= 0 && (s.tiles.length >= maxTiles(s) || s.stuck >= 2) && G.walkers.length < 30 && T[s.tribe].n < maxTowns(eraOfTribe(s.tribe))) {
+    if (s.pop >= cap * 0.98 && s.cool <= 0 && (s.tiles.length >= maxTiles(s) || s.stuck >= 2) && G.walkers.length < 30 && (T[s.tribe].n < maxTowns(eraOfTribe(s.tribe)) || (!s.tribe && G.behave && G.behave !== 'settle'))) {
       s.cool = 25;
       spawnWalker(s.v, s.pop * 0.3, s.tribe);
       s.pop *= 0.7;
@@ -1847,8 +1951,8 @@ function simulate(dt) {
   fxT -= dt;
   if (fxT <= 0) { fxT = 1; computeFx(); }
   // allies share what they learn and trade
-  G.know += kn(T[0], G.era) * (1 + worldFx[0].global + (perk(0) ? 0.15 : 0) + (perk(5) ? 0.25 : 0) + (rel('scroll') ? 0.2 : 0) + (G.golden > 0 ? 0.5 : 0)) * (ally ? 1.15 : 1) * dt;
-  addMana((0.8 + Math.pow(pop, 0.35) * 0.35 + worldFx[0].mana + (ally ? 0.5 : 0) + (perk(2) ? 1 : 0) + (rel('idol') ? 1 : 0)) * (G.golden > 0 ? 1.5 : 1) * dt);
+  G.know += kn(T[0], G.era) * (1 + worldFx[0].global + (perk(0) ? 0.15 : 0) + (perk(5) ? 0.25 : 0) + (rel('scroll') ? 0.2 : 0) + boon('scholars') * 0.15 + (legacy.has('wisdom') ? 0.1 : 0) + (G.golden > 0 ? 0.5 : 0)) * (ally ? 1.15 : 1) * dt;
+  addMana((0.8 + Math.pow(pop, 0.35) * 0.35 + worldFx[0].mana + (ally ? 0.5 : 0) + (perk(2) ? 1 : 0) + (rel('idol') ? 1 : 0) + boon('devotion')) * (G.golden > 0 ? 1.5 : 1) * dt);
   if (R.alive) {
     R.know += kn(T[1], R.era) * (1 + worldFx[1].global) * (ally ? 1.15 : 1) * DF().rival * (1 + 0.6 * Math.max(0, G.era - R.era)) * dt;
     R.mana = Math.min(manaCap(G.rival.era), R.mana + (0.8 + Math.pow(T[1].pop, 0.35) * 0.35 + worldFx[1].mana) * dt);
@@ -1859,7 +1963,7 @@ function simulate(dt) {
   // the planet's health: pollution against forests and time
   poll = Math.pow(pop, 0.4) * POLLUTE[G.era] + Math.pow(T[1].pop, 0.4) * POLLUTE[R.era] * 0.5;
   const before = G.health;
-  G.health = clamp(G.health + (0.1 + treeCount() * 0.0012 + worldFx[0].clean + worldFx[1].clean + (rel('chalice') ? 0.06 : 0) - poll - Math.sqrt(worldFx[0].poll * 0.06) - Math.sqrt(worldFx[1].poll * 0.03)) * dt, 0, 100);
+  G.health = clamp(G.health + (0.1 + treeCount() * 0.0012 + worldFx[0].clean + worldFx[1].clean + (rel('chalice') ? 0.06 : 0) + boon('gaia') * 0.08 - poll - Math.sqrt(worldFx[0].poll * 0.06) - Math.sqrt(worldFx[1].poll * 0.03)) * dt, 0, 100);
   // the seas rise at 70/45/25% health but only retreat 6% above that, and they warn first
   const lvDown = SEA0 + (G.health < 70) + (G.health < 45) + (G.health < 25), lvUp = SEA0 + (G.health < 76) + (G.health < 51) + (G.health < 31);
   const seaTarget = lvDown > G.sea ? lvDown : lvUp < G.sea ? lvUp : G.sea;
@@ -1872,7 +1976,10 @@ function simulate(dt) {
     if (rising) sfx.rumble();
   }
   if (Math.floor(before / 10) !== Math.floor(G.health / 10) && G.health < before && G.health < 80) tip(`h${Math.floor(G.health / 10)}`, `🌍 Planet health ${Math.round(G.health)}%: plant forests and cleanse the skies.`, true);
-  for (let v = 0; v < NV; v++) if (rain[v] > 0) { rain[v] -= dt; if (rain[v] <= 0) terrainDirty = true; }
+  for (let v = 0; v < NV; v++) { if (rain[v] > 0) { rain[v] -= dt; if (rain[v] <= 0) terrainDirty = true; } if (swamp[v] > 0) { swamp[v] -= dt; if (swamp[v] <= 0) terrainDirty = true; else if (rnd() < dt * 0.3) emit(posOf(v, 0.03), 0x6a8a3a, 1, 0.1, 0.05, 1.2, -0.05); } }
+  // the swamp swallows anyone who walks into it
+  for (let i = G.walkers.length - 1; i >= 0; i--) { const w = G.walkers[i]; if (swamp[w.from] > 0 || (w.t > 0.5 && swamp[w.to] > 0)) { G.walkers.splice(i, 1); emit(posOf(w.from, 0.05), 0x5a7a2a, 16, 0.4, 0.3, 0.9, 0.3); floatText(w.from, w.tribe ? `🐸 ${fmt(w.pop)} Crimson sank!` : `🐸 ${fmt(w.pop)} of yours sank`, w.tribe ? 'gold' : 'red'); if (!w.tribe) G.stats.lost++; } }
+  for (const r of raiders) if (swamp[r.from] > 0) r.pop = 0;
   updateWalkers(dt);
   updateDisasters(dt);
   updateRival(dt);
@@ -1894,7 +2001,7 @@ function updateRival(dt) {
   const R = G.rival;
   if (!R.alive) return;
   const mine = G.settlements.filter((s) => s.tribe === 1);
-  if (!mine.length && !G.walkers.some((w) => w.tribe === 1)) { R.alive = false; R.status = 'peace'; toast('🏳️ The Crimson tribe is no more.'); return; }
+  if (!mine.length && !G.walkers.some((w) => w.tribe === 1)) { R.alive = false; toast('🏳️ The Crimson tribe is no more.'); if (G.mode !== 'end') endGame(true, '⚔️ The Crimson god has fallen. Your people inherit the whole world.'); return; }
   // their god levels the edges of their towns
   R.shapeT -= dt;
   if (R.shapeT <= 0 && mine.length) {
@@ -1924,7 +2031,7 @@ function updateRival(dt) {
   if (R.dipT <= 0) { R.dipT = 1; diplomacyTick(mine); }
   // caravans: peaceful neighbours trade goods, allies trade more
   R.tradeT = (R.tradeT ?? 25) - dt;
-  if (R.tradeT <= 0 && mine.length && (R.status === 'ally' || (R.status === 'peace' && R.rel > 15))) {
+  if (R.tradeT <= 0 && mine.length && R.status === 'ally') {
     R.tradeT = R.status === 'ally' ? 18 : 30;
     const ours = G.settlements.filter((t) => !t.tribe && t.pop > 10);
     if (ours.length) {
@@ -1946,6 +2053,12 @@ function updateRival(dt) {
       if (tg && rnd() < 0.6 && tg.tiles.length) {
         for (const x of tg.tiles.slice(-3)) shapeWith(lowerV, x);
         toast(`🔴 The Crimson god sank the land of ${tg.name}! Level it again.`, tg.v); sfx.rumble(); quakeT = 1;
+      } else if (tg && rnd() < 0.5 && G.era >= 1) {
+        // their god shakes your town
+        const area = bfs(tg.v, 1).filter(([x]) => x !== tg.v);
+        for (const [x] of area) if (isLand(x) && tileKind[x] !== 4) { const c = cellColor(x).clone(); setHeight(x, Math.max(G.sea + 1, h[x] + (rnd() < 0.5 ? 1 : -1))); shatterCell(x, true, 0.6, c); }
+        wreck(area.filter(([x]) => tileKind[x] === 5)); quakeT = 1; sfx.rumble();
+        toast(`🔴 The Crimson god shook ${tg.name}! Level its land again.`, tg.v);
       } else if (tg && tg.fx.health < 1) { tg.sick = 30; toast(`🔴 The Crimson god cursed ${tg.name} with plague!`, tg.v); sfx.alarm(); }
     }
   }
@@ -1964,32 +2077,24 @@ function rivalWonder(s) {
   if (R.era > G.era) tip(`ahead${R.era}`, '⚠️ The Crimson are ahead of you! If they launch a Starship first, you lose, unless you are allies.', true);
   setDirty = true; terrainDirty = true;
 }
+const GRACE = () => [420, 300, 200][G.diff ?? 1] + (G.graceAdd || 0);
 function diplomacyTick(mine) {
+  // a Populous rival: after a short peace their god comes for you, and there is no going back
   const R = G.rival;
-  let tension = 0;
-  if (G.elapsed > 300) for (const a of mine) for (const b of G.settlements) if (!b.tribe && DIRS[a.v].distanceTo(DIRS[b.v]) < 0.45) tension++;
-  if (R.status === 'ally') R.rel += 0.03 - Math.min(tension, 4) * 0.03;
-  else if (R.status === 'peace') R.rel += tension ? -0.03 * Math.min(tension, 5) : R.era < G.era && G.diff === 2 ? -0.02 : 0.015;
-  else R.rel += 0.08;
-  R.rel = clamp(R.rel, -100, 100);
-  const ps = strength(0), rs = strength(1);
-  if (R.offer) return;
-  if (R.status === 'peace' && R.rel < DF().war && rs > ps * 0.8 && G.elapsed > 240) declareWar(true);
-  else if (R.status === 'war' && R.warT > 100 && (rs < ps * 0.6 || R.rel > -20)) makeOffer('peace', '🕊️ The Crimson ask for peace.');
-  else if (R.status === 'peace' && R.rel > 45 && G.elapsed - R.asked > 120) { R.asked = G.elapsed; makeOffer('ally', '🤝 The Crimson propose an alliance: shared knowledge and trade.'); }
-  else if (R.status === 'ally' && R.rel < 0) { R.status = 'peace'; toast('💔 The Crimson broke the alliance.'); renderDiplo(); }
+  if (R.status !== 'war' && G.elapsed > GRACE()) declareWar(true);
+  else if (R.status !== 'war' && G.elapsed > GRACE() - 60 && !R.warned) { R.warned = true; toast('🔴 The Crimson god has noticed you. War comes within a minute: grow strong.'); sfx.alarm(); }
 }
 function makeOffer(kind, msg) { G.rival.offer = kind; toast(msg + ' Tap 🕊️ to answer.'); sfx.alarm(); renderDiplo(); }
 function declareWar(byThem) {
   const R = G.rival;
   R.status = 'war'; R.warT = 0; R.offer = null; R.attackT = byThem ? 20 : 45;
   R.rel = Math.min(R.rel, -60);
-  toast(byThem ? '⚔️ The Crimson have declared war on you!' : '⚔️ You declared war on the Crimson. Use ⚔️ War Band to attack their towns.');
-  sfx.alarm(); renderDiplo();
+  toast(byThem ? '⚔️ The Crimson god declares war! Their warriors will march on your towns. Use 🛡️ Knight, 💥 Quake and ⚔️ Fight mode.' : '⚔️ War with the Crimson!');
+  sfx.alarm(); renderDiplo(); if (byThem) $('b-diplo').classList.add('pulse');
 }
 // a war band leaves the strongest town for the nearest enemy town; it can sail across the sea
-function sendBand(from, target, tribe) {
-  const band = Math.max(4, from.pop * 0.4);
+function sendBand(from, target, tribe, share = 0.4) {
+  const band = Math.max(4, from.pop * share);
   if (from.pop < 8) return false;
   const path = pathTo(from.v, target.v, true);
   if (!path) return false;
@@ -2011,7 +2116,7 @@ function battle(w) {
   const t = owner[w.war] >= 0 ? G.settlements[owner[w.war]] : null;
   const home = () => { const n = nearestSettlement(w.from, w.tribe); if (n) n.pop += w.pop; };
   if (!t || t.tribe === w.tribe) { home(); return; }
-  const att = w.pop * TECH[eraOfTribe(w.tribe)] * (!w.tribe && rel('spear') ? 1.4 : 1), def = t.pop * TECH[eraOf(t)] * 0.6 * (t.fx.defend ? 1.6 : 1) * (Object.keys(t.fxN || {}).length ? 1.25 : 1) * (G.settlements.filter((x) => x.tribe === t.tribe).length <= 2 ? 2.5 : 1);
+  const att = w.pop * TECH[eraOfTribe(w.tribe)] * (w.knight ? 1.5 : 1) * (!w.tribe && rel('spear') ? 1.4 : 1) * (!w.tribe ? 1 + boon('warlords') * 0.3 : 1), def = t.pop * TECH[eraOf(t)] * 0.6 * (t.fx.defend ? 1.6 : 1) * (!t.tribe ? 1 + boon('walls') * 0.4 : 1) * (Object.keys(t.fxN || {}).length ? 1.25 : 1) * (G.settlements.filter((x) => x.tribe === t.tribe).length <= 2 ? 2.5 : 1);
   emit(posOf(t.v, 0.15), 0xff6a3a, 40, 0.8, 0.5, 1, 0.4); emit(posOf(t.v, 0.15), 0xdddddd, 20, 0.5, 0.4, 1.2, 0);
   sfx.boom(); quakeT = Math.max(quakeT, 0.4);
   G.stats.battles = (G.stats.battles || 0) + 1;
@@ -2021,6 +2126,11 @@ function battle(w) {
     if (!w.tribe) { const loot = 40 + G.era * 25; addMana(loot); G.know += needOf(G.era) * 0.05; floatText(t.v, `💰 +${loot}✦ +📜`, 'gold'); }
     assignTiles(); computeFx(); terrainDirty = true;
     toast(w.tribe ? '🔥 The Crimson captured one of your towns!' : '🏆 Victory! You captured a Crimson town.', t.v);
+    // a knight rides on to the next Crimson town with the survivors
+    if (w.knight && t.pop > 10) {
+      const next = G.settlements.filter((x) => x.tribe !== w.tribe && x !== t).sort((a, b) => DIRS[a.v].distanceTo(DIRS[t.v]) - DIRS[b.v].distanceTo(DIRS[t.v]))[0];
+      if (next && DIRS[next.v].distanceTo(DIRS[t.v]) < 0.8 && sendBand(t, next, w.tribe, 0.6)) { G.walkers[G.walkers.length - 1].knight = true; floatText(t.v, '🛡️ The knight rides on!', 'gold'); }
+    }
     floatText(t.v, w.tribe ? '🔥 Lost!' : '🏆 Captured!', w.tribe ? 'red' : 'gold');
   } else {
     t.pop = Math.max(1, t.pop - att / (TECH[eraOf(t)] * 0.6));
@@ -2029,10 +2139,18 @@ function battle(w) {
   }
 }
 function relLabel(r) { return r < -60 ? 'Hostile' : r < -20 ? 'Wary' : r < 20 ? 'Neutral' : r < 60 ? 'Friendly' : 'Devoted'; }
+// what your followers do when a town is full: settle new land, gather at the beacon, or march to war
+const BEHAVE = { settle: ['🏘️', 'Settle: your people found new towns'], gather: ['🧲', 'Gather: your people march to the 🚩 Beacon and join into one big band'], fight: ['⚔️', 'Fight: your people march on the nearest Crimson town'] };
+function renderBehave() { $('b-diplo').textContent = BEHAVE[G.behave || 'settle'][0]; }
+$('b-diplo').addEventListener('click', () => {
+  const order = ['settle', 'gather', 'fight'];
+  G.behave = order[(order.indexOf(G.behave || 'settle') + 1) % 3];
+  $('b-diplo').classList.remove('pulse'); renderBehave(); toast(BEHAVE[G.behave][1] + (G.behave === 'gather' && G.beacon < 0 ? ' (plant a 🚩 Beacon first).' : '.')); sfx.click();
+  if (G.behave === 'fight') for (const w of G.walkers) if (!w.tribe && w.war === -1) w.think = 0;
+});
 function renderDiplo() {
-  const R = G.rival, st = R.status;
-  $('b-diplo').textContent = !R.alive ? '🏳️' : st === 'war' ? '⚔️' : st === 'ally' ? '🤝' : '🕊️';
-  $('b-diplo').classList.toggle('pulse', !!R.offer);
+  const R = G.rival;
+  renderBehave();
   if ($('diplo').hidden) return;
   const mine = G.settlements.filter((s) => s.tribe === 1);
   $('d-info').innerHTML = R.alive ? `${ERAS[R.era].icon} <b>${ERAS[R.era].name}</b> · ${mine.length} towns · ${fmt(totalPop(1))} people<br>You: ${ERAS[G.era].icon} ${ERAS[G.era].name} · strength ${fmt(strength(0))} vs ${fmt(strength(1))}` : 'The Crimson tribe is gone.';
@@ -2048,7 +2166,7 @@ function renderDiplo() {
   $('d-war').hidden = st === 'war';
   for (const id of ['d-gift', 'd-ally', 'd-peace', 'd-war']) $(id).disabled = !R.alive;
 }
-$('b-diplo').addEventListener('click', () => { $('diplo').hidden = false; if (G.mode === 'play') G.mode = 'pause'; renderDiplo(); sfx.click(); });
+
 $('d-close').addEventListener('click', () => { $('diplo').hidden = true; if (G.mode === 'pause') G.mode = 'play'; });
 $('d-gift').addEventListener('click', () => {
   const R = G.rival, cost = R.status === 'war' ? 150 : 100;
@@ -2091,7 +2209,7 @@ const MISSIONS = [
   { text: 'Have 6 towns', goal: 6, val: () => ownTowns().length, reward: 100 },
   { text: 'Place 5 buildings', goal: 5, val: () => G.buildings.filter((b) => !b.tribe).length, reward: 120 },
   { text: 'Reach 2,000 people', goal: 2000, val: () => totalPop(0), reward: 150 },
-  { text: 'Ally with the Crimson, or capture a town', goal: 1, val: () => (G.rival.status === 'ally' || G.rival.rel >= 50 || (G.stats.captured || 0) > 0 ? 1 : 0), reward: 150 },
+  { text: 'Capture a Crimson town', goal: 1, val: () => G.stats.captured || 0, reward: 150 },
   { text: 'Own 4 treasures', goal: 4, val: () => ownTowns().reduce((a, t) => a + (t.res?.length || 0), 0), reward: 200 },
   { text: 'Reach the Industrial Age', goal: 4, val: () => G.era, reward: 200 },
   { text: 'Reach 8,000 people', goal: 8000, val: () => totalPop(0), reward: 250 },
@@ -2113,11 +2231,12 @@ function updateMission() {
   if (G.mode !== 'play') return;
   if (G.qT === undefined || G.q !== G.qLast || G.qT > G.elapsed) { G.qT = G.elapsed; G.qLast = G.q; }
   if (v < m.goal && G.elapsed - G.qT > 180) { G.q++; toast(`🎯 New mission (skipped: ${m.text})`); return; }
-  if (v >= m.goal) {
+  if (v >= m.goal && G.elapsed - (G.qPaid ?? -9) > 1.6) {
+    G.qPaid = G.elapsed;
     G.q++;
     addMana(m.reward);
     floatText(null, `🎯 ${m.text}  +${m.reward}✦`, 'gold');
-    bump($('mission')); sfx.grow();
+    bump($('mission').querySelector('.m-ic') || $('mission')); sfx.grow();
     if (G.q % 3 === 0) celebrate(40);
   }
 }
@@ -2212,7 +2331,7 @@ function updateRaiders(dt) {
       raiders.splice(i, 1);
       const p = posOf(r.from, 0.03);
       emit(p, 0xbfe6ff, 40, 0.8, 0.5, 0.9, 1); emit(p, 0xffffff, 15, 0.5, 0.3, 0.6, 0.6);
-      const gain = 30 + G.era * 15;
+      const gain = (30 + G.era * 15) * (1 + boon('tide'));
       addMana(gain);
       floatText(r.from, `🌊 Raiders drowned! +${gain}✦`, 'gold'); sfx.boom();
       continue;
@@ -2229,7 +2348,7 @@ function updateRaiders(dt) {
     raiders.splice(i, 1);
     const town = owner[r.from] >= 0 ? G.settlements[owner[r.from]] : G.settlements.find((x) => x.v === r.target);
     if (!town || town.tribe) continue;
-    const def = town.pop * 0.6 * (town.fx.defend ? 1.8 : 1) * (rel('spear') ? 1.3 : 1);
+    const def = town.pop * 0.6 * (town.fx.defend ? 1.8 : 1) * (rel('spear') ? 1.3 : 1) * (1 + boon('walls') * 0.4);
     emit(posOf(town.v, 0.15), 0xff6a3a, 40, 0.8, 0.5, 1, 0.4); sfx.boom(); quakeT = Math.max(quakeT, 0.4);
     if (r.pop > def) {
       town.pop = Math.max(2, town.pop * 0.45);
@@ -2274,7 +2393,7 @@ function updateOmen(dt) {
     if (G.omenT <= 0 && G.elapsed > 90) {
       const okO = OMENS.map((o, k) => k).filter((k) => !OMENS[k].cond || OMENS[k].cond());
       const i = okO[(rnd() * okO.length) | 0];
-      G.omen = { i, base: OMENS[i].base(), left: OMENS[i].time };
+      G.omen = { i, base: OMENS[i].base(), left: OMENS[i].time + boon('oracles') * 15 };
       toast(`⏳ An omen! ${OMENS[i].text} in ${OMENS[i].time}s for a great reward, or the gods will be displeased.`);
       sfx.alarm();
     }
@@ -2287,7 +2406,7 @@ function updateOmen(dt) {
   $('omen').textContent = `⏳ ${O.text} · ${Math.ceil(o.left)}s`;
   if (O.ok(o.base)) {
     G.omenStreak = (G.omenStreak || 0) + 1;
-    const k = 1 + 0.5 * (G.omenStreak - 1), gain = Math.round((120 + G.era * 50) * k);
+    const k = (1 + 0.5 * (G.omenStreak - 1)) * (1 + boon('oracles') * 0.5), gain = Math.round((120 + G.era * 50) * k);
     addMana(gain); G.know += needOf(G.era) * 0.15 * k;
     floatText(null, `⏳ Omen fulfilled! +${gain}✦ +📜${G.omenStreak > 1 ? `  🔥 streak ×${G.omenStreak}` : ''}`, 'gold'); celebrate(50); sfx.fanfare();
     if (G.omenStreak % 3 === 0 && G.golden <= 0) { G.golden = 45; document.body.classList.add('golden'); toast('🌟 Three omens in a row: a GOLDEN AGE!'); celebrate(80); }
@@ -2331,18 +2450,33 @@ function wonderReady() {
   const e = ERAS[G.era], best = bestSettlement();
   return { know: G.know >= needOf(G.era), mana: G.mana >= wCost(G.era), level: !!best && sizeOf(best) >= REQ[G.era], best };
 }
-function buildWonder() {
+// you choose where a wonder rises: towns close to it learn faster forever
+const canWonderAt = (v) => isLand(v) && (tileKind[v] === 0 || tileKind[v] === 3 || tileKind[v] === 6) && !lock[v] && !G.wonders.some((w) => w.v === v) && bfs(v, 2).some(([x]) => owner[x] >= 0 && !G.settlements[owner[x]].tribe);
+function autoWonderSpot() {
+  const s = bestSettlement();
+  const spots = bfs(s.v, 4).filter(([x, d]) => d >= 2 && canWonderAt(x)).map(([x]) => x).sort((a, b) => Math.abs(h[a] - h[s.v]) - Math.abs(h[b] - h[s.v]));
+  return spots.length ? spots[0] : (bfs(s.v, 6).find(([x, d]) => d >= 2 && isLand(x) && !tileKind[x] && !G.wonders.some((o) => o.v === x)) || [NBR[s.v][0]])[0];
+}
+function buildWonder(at, force = false) {
   const r = wonderReady(), e = ERAS[G.era];
   if (!r.know || !r.mana || !r.level) { sfx.deny(); return; }
+  if (at === undefined) {
+    // pick the spot on the planet
+    $('goal-sheet').hidden = true;
+    setTool('wonder');
+    flyTo(r.best.v, 12);
+    return;
+  }
+  if (!force && !canWonderAt(at)) { toast(`Choose a golden hex next to one of your towns`); sfx.deny(); return false; }
+  setTool('level');
   G.mana -= wCost(G.era);
   if (!G.wonders.some((w) => w.tribe === 1 && w.era === G.era)) { const bonus = 60 + G.era * 30; const sd = G.seed; setTimeout(() => { if (G.seed !== sd) return; addMana(bonus); floatText(null, `🏁 First to build it! +${bonus}✦`, 'gold'); }, 1200); }
   // the wonder stands on flat ground two steps from the town
-  const s = r.best;
-  const spots = bfs(s.v, 3).filter(([x, d]) => d === 3 && isLand(x) && !tileKind[x]).map(([x]) => x).sort((a, b) => Math.abs(h[a] - h[s.v]) - Math.abs(h[b] - h[s.v]));
-  const v = spots.length ? spots[0] : (bfs(s.v, 6).find(([x, d]) => d >= 2 && isLand(x) && !tileKind[x] && !G.wonders.some((o) => o.v === x)) || [NBR[s.v][0]])[0];
+  const v = at;
   const w = { era: G.era, v, tribe: 0 };
-  G.wonders.push(w); assignTiles();
+  G.wonders.push(w); assignTiles(); computeFx();
   for (const [x] of bfs(v, 1)) tree[x] = 0;
+  { const near = G.settlements.filter((x) => !x.tribe && bfs(v, WONDER_R).some(([c]) => c === x.v)).length; if (near) setTimeout(() => floatText(v, `🏛️ ${near} town${near > 1 ? 's' : ''} learn +20%`, 'gold'), 1500); }
   rebuildCrowd(); layoutWonders();
   flyTo(v, 11);
   fireworks(v, 7);
@@ -2410,12 +2544,25 @@ function showEra() {
   $('era-unlock').innerHTML = (unlocked.length ? `New powers: <b>${unlocked.join(', ')}</b><br>` : '') + `New buildings: <b>${blds.join(', ')}</b><br>Towns can now spread over <b>${BASE_SIZE[G.era]}</b> hexes.`;
   $('era-wonder').innerHTML = (G.era > 0 ? `${WONDER_ICON[G.era - 1]} ${WONDERS[G.era - 1]} gift: <b>${PERKS[G.era - 1]}</b><br>` : '') + `Next wonder: <b>${WONDERS[G.era]}</b> (gift: ${PERKS[G.era]})`;
   document.body.style.setProperty('--era', e.color);
+  // draft a blessing
+  const pool = BOONS.slice(), pick = [];
+  const nOpt = legacy.has('council') ? 4 : 3;
+  while (G.era > 0 && pick.length < nOpt && pool.length) pick.push(pool.splice((rnd() * pool.length) | 0, 1)[0]);
+  $('era-boons').innerHTML = pick.map((b) => `<button data-b="${b.id}"><i>${b.icon}</i><b>${b.name}${boon(b.id) ? ` <em>×${boon(b.id) + 1}</em>` : ''}</b><small>${b.fx}</small></button>`).join('');
+  $('era-boons').hidden = $('boon-kick').hidden = !pick.length; $('era-ok').hidden = !!pick.length;
   $('era').hidden = false;
   if (G.era > 0) celebrate();
   buildPowers();
   updateHud();
 }
 $('era-ok').addEventListener('click', () => { $('era').hidden = true; G.mode = 'play'; });
+$('era-boons').addEventListener('click', (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  const b = BOONS.find((x) => x.id === btn.dataset.b);
+  (G.boons ||= []).push(b.id); computeFx();
+  $('era').hidden = true; G.mode = 'play';
+  floatText(null, `${b.icon} ${b.name}: ${b.fx}`, 'gold'); sfx.fanfare(); save();
+});
 
 // ------------------------------------------------------------------ input: drag turns the planet, pinch zooms, tap uses a power
 const raycaster = new THREE.Raycaster();
@@ -2479,8 +2626,8 @@ function useAt(cx, cy) {
   if (v === null) return;
   if (!press?.paint && collectWisp(v)) return;
   const isB = tool.startsWith('b:');
-  const ok = isB ? placeBuilding(tool.slice(2), v) : applyPower(tool, v);
-  const p = isB ? { r: RANGE } : PW[tool];
+  const ok = tool === 'wonder' ? buildWonder(v) !== false : isB ? placeBuilding(tool.slice(2), v) : applyPower(tool, v);
+  const p = isB ? { r: RANGE } : PW[tool] || { r: 0 };
   qa.setFromUnitVectors(new THREE.Vector3(0, 0, 1), DIRS[v]);
   cursor.quaternion.copy(qa);
   cursor.position.copy(DIRS[v]).multiplyScalar(radiusOf(v) + 0.04);
@@ -2516,7 +2663,7 @@ function layoutSettlements(dt) {
   const put = (tp, v, scale, turn = 0) => {
     const n = tp.n++;
     placeIn(tp.body, n, v, 0, 0, YAW[v] + turn, scale, -0.002);
-    tp.body.setColorAt(n, TINTS[(curTown && curTown.dist && era >= 2 ? hash((curTown.dist.get(v) ?? 0) * 7 + curTown.v) : hash(v * 5 + 3)) % TINTS.length]);
+    tp.body.setColorAt(n, TINTS[(curTown && curTown.dist && era >= 1 ? hash((curTown.dist.get(v) ?? 0) * 7 + curTown.v) : hash(v * 5 + 3)) % TINTS.length]);
     if (tp.glow) tp.glow.setMatrixAt(n, dummy.matrix);
     if (era === 4 && tp.smoke.length && rnd() < dt * 0.5) for (const sp of tp.smoke) smoke.push(new THREE.Vector3(...sp).applyMatrix4(dummy.matrix));
   };
@@ -2533,10 +2680,10 @@ function layoutSettlements(dt) {
       const ring = s.ring?.get(x) ?? 2, hx = hash(x) % 5;
       const h7 = hash(x * 3 + 1) % 7;
       const did = s.dist?.get(x) ?? 0, theme = hash(did * 31 + s.v) % 4;
-      const THEMES = [[6, 6, 1, 2, 6, 4, 6], [5, 7, 0, 5, 1, 0, 7], [8, 10, 4, 1, 0, 6, 10], [9, 9, 2, 5, 0, 9, 1]];
-      let k = tileKind[x] === 3 ? 3 : tileKind[x] === 6 ? 4 : era < 2 ? (ring <= 1 ? [0, 5, 5, 7, 8, 10, 0][h7] : ring === 2 ? [0, 1, 2, 5, 7, 9, 10][h7] : [6, 6, 1, 2, 6, 9, 6][h7])
-        : did === 0 ? [0, 5, 5, 7, 8, 10, 5][h7] : THEMES[theme][h7];
-      if (era >= 2 && s.plazas?.has(x) && tileKind[x] === 2) k = theme === 3 ? 7 : 8;
+      const THEMES = [[11, 6, 11, 2, 11, 4, 6], [5, 7, 11, 5, 11, 0, 7], [8, 10, 4, 11, 11, 6, 10], [9, 9, 11, 5, 0, 9, 11]];
+      let k = tileKind[x] === 3 ? 3 : tileKind[x] === 6 ? 4 : era < 1 ? (ring <= 1 ? [0, 5, 5, 7, 8, 10, 0][h7] : ring === 2 ? [0, 1, 2, 5, 7, 9, 10][h7] : [6, 6, 1, 2, 6, 9, 6][h7])
+        : did === 0 ? [11, 5, 5, 7, 11, 10, 5][h7] : THEMES[theme][h7];
+      if (era >= 1 && s.plazas?.has(x) && tileKind[x] === 2) k = theme === 3 ? 7 : 8;
       if ((k === 7 || k === 8) && crowdSpots.length < 80) crowdSpots.push({ v: x, n: 5 + (hx % 4) });
       const tp = tileT[`${era}-${k}`];
       if (tp && tp.n < 700) put(tp, x, popIn(born.get(x)), (hash(x) % 6) * (Math.PI / 3));
@@ -2628,11 +2775,13 @@ function layoutGuides() {
       }
     }
   }
-  if (G.mode === 'play' && tool.startsWith('b:') && buildSpotsDirty) {
-    for (let v = 0; v < NV && nb < 1200; v++) if (canBuildAt(v)) placeIn(buildSpots, nb++, v, 0, 0, YAW[v], 1, 0.01);
+  if (G.mode === 'play' && (tool.startsWith('b:') || tool === 'wonder') && buildSpotsDirty) {
+    const okAt = tool === 'wonder' ? canWonderAt : canBuildAt;
+    buildSpots.material.color.set(tool === "wonder" ? 0xffd040 : 0x7ad0ff);
+    for (let v = 0; v < NV && nb < 1200; v++) if (okAt(v)) placeIn(buildSpots, nb++, v, 0, 0, YAW[v], 1, 0.01);
     buildSpots.count = nb; buildSpots.instanceMatrix.needsUpdate = true;
     buildSpotsDirty = false;
-  } else if (!tool.startsWith('b:')) { buildSpots.count = 0; buildSpotsDirty = true; }
+  } else if (!tool.startsWith('b:') && tool !== 'wonder') { buildSpots.count = 0; buildSpotsDirty = true; }
   guideUp.count = nu; guideDown.count = nd;
   guideUp.instanceMatrix.needsUpdate = guideDown.instanceMatrix.needsUpdate = true;
   const shaping = G.mode === 'play' && SHAPERS.has(tool);
@@ -2655,7 +2804,7 @@ function floatText(v, text, cls = '') {
   el.className = `floater ${cls}`;
   el.textContent = text;
   $('floaters').appendChild(el);
-  floaters.push({ el, p: v === null ? null : typeof v === 'number' ? posOf(v, 0.3) : v.clone(), t: 0 });
+  floaters.push({ el, p: v === null ? null : typeof v === 'number' ? posOf(v, 0.3) : v.clone(), t: 0, slot: v === null ? floaters.filter((f) => !f.p && f.t < 1.4).length : 0 });
   if (floaters.length > 12) { const f = floaters.shift(); f.el.remove(); }
 }
 function updateFloaters(dt) {
@@ -2664,7 +2813,7 @@ function updateFloaters(dt) {
     const f = floaters[i];
     f.t += dt;
     if (f.t > 1.8) { f.el.remove(); floaters.splice(i, 1); continue; }
-    let x = innerWidth / 2, y = innerHeight * 0.42, vis = true;
+    let x = innerWidth / 2, y = innerHeight * 0.42 + (f.slot % 4) * 38, vis = true;
     if (f.p) {
       tmpV.copy(f.p).project(camera);
       x = (tmpV.x * 0.5 + 0.5) * innerWidth; y = (-tmpV.y * 0.5 + 0.5) * innerHeight;
@@ -2677,7 +2826,7 @@ function updateFloaters(dt) {
 }
 
 // ------------------------------------------------------------------ UI
-const ICON = { level: '🪄', beacon: '🚩', war: '⚔️', raise: '⛰️', lower: '🕳️', rain: '🌧️', forest: '🌲', inspire: '💡', bless: '✨', cleanse: '🍃', terraform: '🏗️', deflect: '🛡️' };
+const ICON = { quake: '💥', swamp: '🐸', volcano: '🌋', level: '🪄', beacon: '🚩', war: '⚔️', raise: '⛰️', lower: '🕳️', rain: '🌧️', forest: '🌲', inspire: '💡', bless: '✨', cleanse: '🍃', terraform: '🏗️', deflect: '🛡️' };
 let tab = 'powers';
 function buildPowers() {
   if (tab === 'powers') {
@@ -2700,17 +2849,18 @@ function buildPowers() {
 $('tab-powers').addEventListener('click', () => { tab = 'powers'; buildPowers(); setTool('level'); });
 $('tab-build').addEventListener('click', () => { tab = 'build'; buildPowers(); const first = BUILDINGS.filter((b) => b.era <= G.era).sort((a, b) => b.era - a.era)[0]; setTool('b:' + first.id); });
 let hintTimer = 0;
+const WONDER_TOOL = { era: 0, hint: '🏛️ Tap a golden hex to raise your wonder there. Towns within 4 hexes of it learn 20% faster, forever.' };
 function setTool(id) {
   const isB = id.startsWith('b:');
-  const p = isB ? BD[id.slice(2)] : PW[id];
+  const p = id === 'wonder' ? WONDER_TOOL : isB ? BD[id.slice(2)] : PW[id];
   if (G.era < p.era) { toast(`${p.name} arrives in the ${ERAS[p.era].name}`); sfx.deny(); return; }
   tool = id;
   for (const b of document.querySelectorAll('.power')) b.classList.toggle('active', b.dataset.p === id);
-  $('hint').classList.remove('dim'); clearTimeout(hintTimer); hintTimer = setTimeout(() => $('hint').classList.add('dim'), 3500);
+  $('hint').classList.remove('dim'); clearTimeout(hintTimer); hintTimer = setTimeout(() => $('hint').classList.add('dim'), id === 'wonder' ? 9000 : 3500);
   $('hint').textContent = isB ? `${p.icon} ${p.name}: ${p.desc} Tap a blue hex near a town. Reaches ${RANGE} hexes.` : p.hint;
   buildSpotsDirty = true;
   sfx.click();
-  layoutGuides();
+  layoutGuides(); renderLvl();
 }
 let toastTimer = 0, toastV = -1;
 function toast(msg, v = -1) {
@@ -2742,6 +2892,7 @@ function celebrate(n = 70) {
 }
 function updateHud() {
   const e = ERAS[G.era];
+  if ($("lvl").hidden !== (tool !== "level" || G.mode !== "play")) renderLvl();
   $('era-chip').textContent = e.icon;
   $('era-label').textContent = e.name;
   $('year').textContent = yearStr();
@@ -2785,10 +2936,10 @@ function renderGoal() {
 }
 $('goal').addEventListener('click', () => { renderGoal(); $('goal-sheet').hidden = false; sfx.click(); });
 $('gs-close').addEventListener('click', () => { $('goal-sheet').hidden = true; });
-$('gs-build').addEventListener('click', buildWonder);
+$('gs-build').addEventListener('click', () => buildWonder());
 $('b-zen').addEventListener('click', () => { document.body.classList.toggle('zen'); sfx.click(); });
 $('b-home').addEventListener('click', () => { const s = bestSettlement(); if (s) flyTo(s.v, 11); sfx.click(); });
-$('b-menu').addEventListener('click', () => { $('opt-music').checked = store.get('aeons.music', true); $('opt-sfx').checked = store.get('aeons.sfx', true); $('opt-hq').checked = hq; $('pause').hidden = false; if (G.mode === 'play') G.mode = 'pause'; sfx.click(); });
+$('b-menu').addEventListener('click', () => { $('opt-music').checked = store.get('aeons.music', true); $('opt-sfx').checked = store.get('aeons.sfx', true); $('opt-hq').checked = hq; $('my-boons').innerHTML = (G.boons || []).length || G.relics.length ? `Blessings: ${(G.boons || []).map((id) => BOONS.find((b) => b.id === id).icon).join(' ') || '–'}<br>Relics: ${G.relics.map((id) => RELICS.find((r) => r.id === id)?.icon || '').join(' ') || '–'}` : ''; $('pause').hidden = false; if (G.mode === 'play') G.mode = 'pause'; sfx.click(); });
 $('pause-close').addEventListener('click', () => { $('pause').hidden = true; if (G.mode === 'pause') G.mode = 'play'; });
 $('to-title').addEventListener('click', () => { save(); $('pause').hidden = true; showMenu(); });
 
@@ -2801,12 +2952,19 @@ function endGame(won, why = '') {
   $('end').classList.toggle('lose', !won);
   $('end-stars').innerHTML = [1, 2, 3].map((k) => `<span class="${k <= stars ? 'on' : ''}">★</span>`).join('');
   $('end-text').textContent = won ? why || 'Your people leave their cradle world behind, carrying ten thousand years of history.' : why;
+  const score = Math.round(G.era * 1000 + (won ? 3000 : 0) + stars * 1000 + G.stats.peak / 5 + G.stats.founded * 20 + (G.stats.captured || 0) * 150 + G.health * 10);
+  const earned = Math.round(G.era * 6 + stars * 8 + (won ? 20 : 0) + G.wonders.filter((w) => !w.tribe).length * 2);
+  const best = score > legacyData.best;
+  legacyData.pts += earned; legacyData.worlds++; legacyData.best = Math.max(legacyData.best, score); saveLegacy();
+  $('end-score').innerHTML = `<b>${fmt(score)}</b><span>${best ? '🏆 NEW BEST!' : `Best ${fmt(legacyData.best)}`}</span><em>+${earned} 🏛️ Legacy (${legacyData.pts} to spend)</em>`;
+  $('end-score').classList.toggle('best', best);
   $('end-stats').innerHTML = [['Time', `${Math.floor(mins)}:${String(Math.floor(G.elapsed % 60)).padStart(2, '0')}`], ['Ages', `${G.era + (won ? 1 : 0)} / 7`], ['Peak population', fmt(G.stats.peak)], ['Settlements founded', G.stats.founded]]
     .map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
   $('end').hidden = false;
   if (won) { sfx.fanfare(); celebrate(120); } else sfx.deny();
 }
 $('end-again').addEventListener('click', () => { $('end').hidden = true; newWorld(); play(); });
+$('end-legacy').addEventListener('click', () => { $('end').hidden = true; showMenu(); renderLegacy(); $('legacy').hidden = false; });
 
 // ------------------------------------------------------------------ save / load
 const pack = (a, off = 0) => { let s = ''; for (let i = 0; i < a.length; i++) s += String.fromCharCode(a[i] + 48 + off); return s; };
@@ -2815,7 +2973,7 @@ function save() {
   if (G.mode === 'end' || !G.started) return;
   store.set('aeons.save', {
     v: 1, seed: G.seed, era: G.era, know: G.know, mana: G.mana, health: G.health, sea: G.sea, elapsed: G.elapsed, stats: G.stats, tips,
-    h: pack(h), tree: pack(tree), res: pack(res), beacon: G.beacon, diff: G.diff, q: G.q, qc: G.qc, relics: G.relics, relicCells: G.relicCells, firstWonders: G.firstWonders, eventT: G.eventT, seenEvents: G.seenEvents,
+    h: pack(h), tree: pack(tree), res: pack(res), beacon: G.beacon, diff: G.diff, q: G.q, qc: G.qc, relics: G.relics, boons: G.boons, behave: G.behave, graceAdd: G.graceAdd, best: G.best, relicCells: G.relicCells, firstWonders: G.firstWonders, eventT: G.eventT, seenEvents: G.seenEvents,
     settlements: G.settlements.map((s) => [s.v, Math.round(s.pop), s.tiles, s.tribe, s.name]), buildings: G.buildings.map((b) => [b.id, b.v, b.tribe]), rival: G.rival, walkers: G.walkers.filter((w) => w.war === -1).map((w) => [w.from, Math.round(w.pop), w.tribe]), wonders: G.wonders.map((w) => [w.era, w.v, w.tribe || 0]),
   });
 }
@@ -2826,7 +2984,7 @@ function load() {
   Object.assign(tips, s.tips || {});
   unpack(s.h, h); unpack(s.tree, tree);
   if (s.res) unpack(s.res, res); else placeResources(s.seed);
-  G.beacon = s.beacon ?? -1; G.diff = s.diff ?? 1; G.q = s.q ?? 0; G.qc = s.qc || { shape: 0, beacon: 0 }; G.relics = s.relics || []; G.relicCells = s.relicCells || []; G.firstWonders = s.firstWonders || []; Object.assign(G, { golden: 0, goldenCD: 120, surge: 0, omen: null, omenT: 150, raidT: 150 }); raiders.length = 0; G.eventT = s.eventT ?? 120; G.seenEvents = s.seenEvents || [];
+  G.beacon = s.beacon ?? -1; G.diff = s.diff ?? 1; G.q = s.q ?? 0; G.qc = s.qc || { shape: 0, beacon: 0 }; G.relics = s.relics || []; G.boons = s.boons || []; G.behave = s.behave || 'settle'; G.graceAdd = s.graceAdd || 0; G.relicCells = s.relicCells || []; G.firstWonders = s.firstWonders || []; Object.assign(G, { golden: 0, goldenCD: 120, surge: 0, omen: null, omenT: 150, raidT: 150 }); raiders.length = 0; G.eventT = s.eventT ?? 120; G.seenEvents = s.seenEvents || [];
   rain.fill(0); burn.fill(0);
   G.settlements = []; G.walkers = []; G.wonders = s.wonders.map(([era, v, tribe]) => ({ era, v, tribe: tribe || 0 }));
   G.rival = Object.assign(newRival(), s.rival || {});
@@ -2861,7 +3019,7 @@ function resetScene() {
 }
 function newWorld() {
   const seed = (Date.now() % 100000) + 1;
-  Object.assign(G, { seed, era: 0, know: 0, mana: 60, health: 100, sea: SEA0, seaVis: SEA0, elapsed: 0, started: true, diff: store.get('aeons.diff', 1), q: 0, qc: { shape: 0, beacon: 0 }, relics: [], relicCells: [], golden: 0, goldenCD: 120, surge: 0, omen: null, omenT: 100, raidT: 150, firstWonders: [], settlements: [], walkers: [], wonders: [], buildings: [], rival: newRival(), beacon: -1, eventT: 75, seenEvents: [], stats: { founded: 0, lost: 0, disasters: 0, peak: 0 } });
+  Object.assign(G, { seed, era: 0, know: 0, mana: 60, health: 100, sea: SEA0, seaVis: SEA0, elapsed: 0, started: true, diff: store.get('aeons.diff', 1), q: 0, qc: { shape: 0, beacon: 0 }, relics: [], boons: [], behave: 'settle', graceAdd: 0, relicCells: [], golden: 0, goldenCD: 120, surge: 0, omen: null, omenT: 100, raidT: 150, firstWonders: [], settlements: [], walkers: [], wonders: [], buildings: [], rival: newRival(), beacon: -1, eventT: 75, seenEvents: [], stats: { founded: 0, lost: 0, disasters: 0, peak: 0 } });
   for (const k of Object.keys(tips)) delete tips[k];
   disasterT = 70;
   const start = generate(seed);
@@ -2871,6 +3029,10 @@ function newWorld() {
   G.stats.founded = 0;
   spawnWalker(NBR[start][0], 3);
   spawnRival(start);
+  // legacy gifts
+  if (legacy.has('hoard')) G.mana += 150;
+  if (legacy.has('heirloom')) G.relics.push(RELICS.filter((r) => r.id !== 'spear')[(rnd() * (RELICS.length - 1)) | 0].id);
+  if (legacy.has('firstborn')) { const v2 = findSpot(start, 0, false); if (v2 !== null) { for (const [x] of bfs(v2, 1)) { setHeight(x, h[v2]); tree[x] = 0; } found(v2, 5); } }
   resetScene();
 }
 // the Crimson start far away, on the biggest land on the other side of the world
@@ -2885,6 +3047,20 @@ function spawnRival(start) {
   for (const [x] of bfs(rv, 2)) { setHeight(x, SEA0 + 2); tree[x] = 0; }
   found(rv, 6, 1);
 }
+function renderLegacy() {
+  $('legacy-btn').textContent = `🏛️ Legacy · ${legacyData.pts}`;
+  $('lg-pts').textContent = `${legacyData.pts} 🏛️ to spend · ${legacyData.worlds} worlds · best ${fmt(legacyData.best)}`;
+  $('lg-list').innerHTML = LEGACY.map((l) => { const own = legacy.has(l.id); return `<button data-l="${l.id}" class="${own ? 'own' : legacyData.pts >= l.cost ? 'can' : ''}" ${own ? 'disabled' : ''}><i>${l.icon}</i><b>${l.name}</b><small>${l.fx}</small><em>${own ? '✓' : `${l.cost} 🏛️`}</em></button>`; }).join('');
+}
+$('legacy-btn').addEventListener('click', () => { renderLegacy(); $('legacy').hidden = false; sfx.click(); });
+$('lg-close').addEventListener('click', () => { $('legacy').hidden = true; sfx.click(); });
+$('lg-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  const l = LEGACY.find((x) => x.id === btn.dataset.l);
+  if (legacy.has(l.id) || legacyData.pts < l.cost) { sfx.deny(); return; }
+  legacyData.pts -= l.cost; legacyData.owned.push(l.id); saveLegacy(); renderLegacy(); sfx.fanfare(); celebrate(30);
+});
+renderLegacy();
 function renderDiff() { for (const b of document.querySelectorAll('.diffs button')) b.classList.toggle('on', +b.dataset.d === store.get('aeons.diff', 1)); }
 for (const b of document.querySelectorAll('.diffs button')) b.addEventListener('click', () => { store.set('aeons.diff', +b.dataset.d); renderDiff(); sfx.click(); });
 renderDiff();
@@ -3060,4 +3236,4 @@ checkForUpdate();
 setInterval(checkForUpdate, 60000);
 
 // Exposed for automated testing.
-window.__aeons = { spawnRaid, raiders, offerRelic, updateOmen, night: (k = 1) => { sunAng = Math.atan2(Math.cos(cam.theta), Math.sin(cam.theta)) + Math.PI * k; }, floatText, res, lock, celebrate, guides: () => [guideUp.count, guideDown.count, tool, G.mode], G, h, tree, simulate, applyPower, buildWonder, wonderReady, raiseV, lowerV, bfs, NBR, declareWar, strength, sendBand, battle, updateRival, DIRS, placeBuilding, assignTiles, BUILDINGS, sizeOf, maxTiles, owner, tileKind, canBuildAt, flyTo, cam, newWorld, play, setTool, nextDisaster, get meteor() { return meteor; } };
+window.__aeons = { spawnRaid, raiders, offerRelic, updateOmen, night: (k = 1) => { sunAng = Math.atan2(Math.cos(cam.theta), Math.sin(cam.theta)) + Math.PI * k; }, floatText, res, lock, celebrate, guides: () => [guideUp.count, guideDown.count, tool, G.mode], G, h, tree, simulate, applyPower, buildWonder: (v) => buildWonder(v ?? autoWonderSpot(), true), endGame, wonderReady, canWonderAt, raiseV, lowerV, bfs, NBR, declareWar, strength, sendBand, battle, updateRival, DIRS, placeBuilding, assignTiles, BUILDINGS, sizeOf, maxTiles, owner, tileKind, canBuildAt, flyTo, cam, newWorld, play, setTool, nextDisaster, get meteor() { return meteor; } };

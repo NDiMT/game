@@ -213,6 +213,13 @@ export function tileModel(era, variant) {
     else k.box(0.02, 0.05, 0.02, 0, 0, 0, 0x9a948a);
     return done(k);
   }
+  if (variant === 11) {
+    // a city block: houses shoulder to shoulder around the edge, a courtyard in the middle
+    for (let i = 0; i < 6; i++) { const an = (i / 6) * Math.PI * 2 + Math.PI / 6; building(era, k, Math.cos(an) * 0.098, Math.sin(an) * 0.098, (era >= 4 ? 1.05 : 0.95) + (i % 2) * 0.12, i + 4); }
+    k.cyl(0.045, 0.045, 0.004, 0, 0, 0, era >= 4 ? 0x9aa0a8 : 0x8ab85a, 6);
+    k.cyl(0.005, 0.007, 0.035, 0, 0, 0, 0x6a4a2a, 5); k.ball(0.024, 0, 0.05, 0, 0x5aa844, false, 1);
+    return done(k);
+  }
   if (variant === 5) {
     // a dense downtown block: four buildings, the middle one taller
     TRIO.forEach(([x, z], i) => building(era, k, x * 1.05, z * 1.05, 1.25 + k.r() * 0.2, i * 3 + 1));
