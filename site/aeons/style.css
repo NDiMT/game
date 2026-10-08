@@ -309,7 +309,7 @@ body.in-menu .top, body.in-menu .dock, body.in-menu .side { display: none; }
 /* the hint floats above the tray only for a few seconds after you pick a tool */
 .hint { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 4px); margin: 0; pointer-events: none; text-align: center; justify-content: center; font-size: 11.5px; padding: 5px 10px; border-radius: 12px; opacity: 1; }
 .hint.dim { opacity: 0; transform: translateY(6px); transition: opacity 0.5s, transform 0.5s; }
-.toast { bottom: auto; top: calc(env(safe-area-inset-top) + 92px); max-width: calc(100% - 70px); font-size: 13px; padding: 7px 14px; }
+.toast { bottom: auto; top: calc(env(safe-area-inset-top) + 190px); max-width: calc(100% - 70px); font-size: 13px; padding: 7px 14px; }
 
 .tray .orb span { justify-content: flex-start; padding-top: 9px; }
 .power.active::before { inset: 2px; border-radius: 11px; mask: none; -webkit-mask: none; opacity: 0.6; }
@@ -339,3 +339,6 @@ body.golden #app::after { content: ''; position: absolute; inset: 0; pointer-eve
 @keyframes goldglow { 50% { box-shadow: inset 0 0 120px rgba(255, 210, 100, 0.6); } }
 .m-pop { position: fixed; left: 8px; right: 60px; width: auto; top: calc(env(safe-area-inset-top) + 92px); }
 .omen-chip { top: calc(env(safe-area-inset-top) + 150px); }
+
+.power:disabled, #event button:disabled { filter: grayscale(0.8) brightness(0.7); }
+.m-pop { pointer-events: none; }
