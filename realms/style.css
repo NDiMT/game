@@ -233,3 +233,16 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 .row-b > i img.pt { width: 34px; height: 34px; border-radius: 6px; }
 .bq .q { overflow: hidden; }
 #toast img.pt, .card h2 img.pt, #dlg-body img.pt, .cas img.pt, .sel img.pt { width: 1.4em; height: 1.4em; display: inline-block; vertical-align: middle; border-radius: 4px; }
+
+/* end of game */
+.endcard { text-align: center; }
+.endcard .crest2 { display: grid; place-items: center; margin: 4px auto 6px; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, #fff6c8 0%, #ffd24a 45%, rgba(255, 210, 74, 0) 70%); animation: crestpop 0.6s cubic-bezier(.2, 1.6, .4, 1); }
+.endcard.lose .crest2 { background: radial-gradient(circle, #e8dcff 0%, #9a7ad8 45%, rgba(154, 122, 216, 0) 70%); }
+.endcard p { font-size: 15px; margin: 4px 0 10px; }
+.endstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.endstats div { background: var(--parch1, #fff4dc); border-radius: 10px; padding: 6px 2px; box-shadow: 0 0 0 1.5px var(--goldDark, #b08030); }
+.endstats b { display: block; font-size: 19px; color: #8a2418; }
+.endstats small { font-size: 10px; font-weight: 800; opacity: 0.75; }
+@keyframes crestpop { from { transform: scale(0.2) rotate(-20deg); opacity: 0; } }
+.confetti { position: fixed; top: -12px; width: 8px; height: 13px; z-index: 50; pointer-events: none; border-radius: 2px; animation: confall 2.4s linear forwards; }
+@keyframes confall { to { transform: translateY(105vh) rotate(720deg); } }

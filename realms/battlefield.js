@@ -3,7 +3,9 @@ import * as THREE from 'three';
 // =====================================================================
 // HEX REALMS: tactical battlefield environment, one look per terrain.
 //   createBattlefield(THREE, terrainId, hexPos, COLS, ROWS)
-//     -> { group, ground, overlay, sky, fog, lights, obstacleModel(kind) }
+//     -> { group, ground, overlay, keepZone, sky, fog, lights, obstacleModel(kind) }
+//   keepZone: border props on the siege keep's plot; set keepZone.visible = false during a siege.
+//   wallModel / gateModel / towerModel / keepModel(fac), siegeLayout(hexPos, COLS, ROWS, defSide): siege set.
 //   obstacleModel(terrainId, kind) -> { body, glow }  (model contract)
 // Terrain ids: 1 grass, 2 dirt, 3 sand, 4 snow, 5 swamp, 6 rough, 7 lava;
 // anything else is grass. Everything is procedural (canvas + geometry).
@@ -400,7 +402,7 @@ export function obstacleModel(terrainId, kind = 0) {
 // anything else gets a neutral warm stone.
 const SIEGE = {
   haven: { stone: 0xe4dac4, light: 0xfaf4e4, base: 0xc8bca2, roof: 0x3a7ae0, roofTop: 0x7ab4ff, trim: 0xe8c050, banner: 0x2a62d0, emblem: 0xf4d060, glow: 0xffd27a, moss: 0x8ab84a },
-  necro: { stone: 0xa49ab4, light: 0xc8c0d6, base: 0x8a8098, roof: 0x9a2a44, roofTop: 0xd04a62, trim: 0xece0c4, banner: 0xb0263c, emblem: 0xece0c4, glow: 0x7affa8, moss: 0x7a9a5a },
+  necro: { stone: 0xa49ab4, light: 0xc8c0d6, base: 0x8a8098, roof: 0x8a2e6e, roofTop: 0xc85a9e, trim: 0xece0c4, banner: 0xb0263c, emblem: 0xece0c4, glow: 0x7affa8, moss: 0x7a9a5a },
   other: { stone: 0xd4c4a4, light: 0xeee2c6, base: 0xb8a684, roof: 0xc0603a, roofTop: 0xe8905a, trim: 0xf0d8a0, banner: 0xc04a3a, emblem: 0xf4e0a0, glow: 0xffc870, moss: 0x8ab84a },
 };
 const sfac = (fac) => SIEGE[fac] || SIEGE.other;
@@ -500,6 +502,87 @@ export function towerModel(fac) {
     m.add(G.blob(0.05, 0, 0, 3).scale(1, 1, 0.35).translate(0, 1.16, 0.6), S.emblem, { ao: 0 });
     for (let i = 0; i < 7; i++) { const a = m.rnd(0, 6.28); m.add(G.cone(0.035, m.rnd(0.1, 0.2), 3).translate(Math.cos(a) * 0.68, 0, Math.sin(a) * 0.68), S.moss, { ao: 0.3 }); }
   });
+}
+
+// The keep: a faction castle silhouette standing behind the defenders, beyond the last row, as in HoMM3.
+// About 5.8 wide x 2.6 deep, roof tips up to ~5.3; front (+Z) faces the field. Off the grid, never over units.
+export function keepModel(fac) {
+  const S = sfac(fac), necro = fac === 'necro';
+  return siegeModel('keep' + fac, (m) => {
+    const bone = 0xf0e6cc;
+    // a banded stone block: courses of slightly varied colour, lighter towards the top
+    const block = (w, h, d, x, z, y0 = 0) => {
+      const n = Math.max(2, Math.round(h / 0.32));
+      for (let i = 0; i < n; i++) m.add(G.box(w - (i % 2) * 0.02, (h / n) * 0.97, d - (i % 2) * 0.02).translate(x, y0 + (i * h) / n, z), m.pick([S.stone, S.stone, S.light, S.base]), { top: S.light, h0: y0, h1: y0 + h * 1.4, jit: 0.05, ao: i ? 0.15 : 1 });
+    };
+    const merlons = (x0, x1, y, z, d = 0.16) => {
+      const n = Math.max(2, Math.round((x1 - x0) / 0.32));
+      for (let i = 0; i <= n; i++) {
+        const x = x0 + ((x1 - x0) * i) / n;
+        m.add(G.box(0.17, 0.2, d).translate(x, y, z), m.pick([S.stone, S.light]), { ao: 0, jit: 0.05 });
+        if (necro && i % 2 === 0) m.add(G.cone(0.05, 0.3, 4).rotateX(-0.25).translate(x, y + 0.18, z + 0.03), bone, { ao: 0 });
+      }
+    };
+    const roofed = (x, z, r, h, rh, seg = 8) => {
+      for (let i = 0, n = Math.max(3, Math.round(h / 0.35)); i < n; i++) m.add(G.cyl(r - i * 0.006, r - i * 0.006 + 0.01, (h / n) * 0.97, seg).rotateY((i % 2) * 0.3).translate(x, (i * h) / n, z), m.pick([S.stone, S.light, S.stone]), { top: S.light, h0: 0, h1: h * 1.3, jit: 0.06, ao: i ? 0.15 : 1 });
+      m.add(G.cyl(r + 0.07, r, 0.1, seg).translate(x, h - 0.02, z), S.trim, { ao: 0 });
+      for (let i = 0; i < seg; i++) { const a = (i / seg) * 6.283; m.add(G.box(0.12, 0.14, 0.1).rotateY(-a + Math.PI / 2).translate(x + Math.cos(a) * (r + 0.02), h + 0.08, z + Math.sin(a) * (r + 0.02)), S.light, { ao: 0, jit: 0.05 }); }
+      if (necro) m.add(G.cone(r + 0.08, rh, seg).translate(x, h + 0.05, z), S.roof, { top: S.roofTop, h0: h, h1: h + rh, ao: 0, jit: 0.05, fn: (v, c) => { if (v.y < h + rh * 0.35) c.lerp(LIN(0x7a5a8a), 0.35); } });
+      else m.add(G.cone(r + 0.1, rh, seg).translate(x, h + 0.05, z), S.roof, { top: S.roofTop, h0: h, h1: h + rh, ao: 0, jit: 0.05 });
+      m.add(G.cyl(0.015, 0.015, 0.28, 4).translate(x, h + rh, z), S.trim, { ao: 0 });
+      m.add(G.blob(0.045, 0, 0, 2).translate(x, h + rh + 0.05, z), necro ? bone : S.trim, { ao: 0 });
+      m.add(G.box(0.012, 0.12, 0.3).translate(x, h + rh + 0.16, z + 0.15), S.banner, { ao: 0 });
+      // two lit windows on the front
+      for (const fy of [h * 0.45, h * 0.75]) m.add(G.box(0.1, 0.18, 0.02).translate(x, fy, z + r - 0.01), S.glow, { glow: true, ao: 0 });
+    };
+    // curtain wall with a grand central gate
+    for (const sx of [-1, 1]) block(1.6, 1.25, 0.55, sx * 1.7, 0.5);
+    block(1.8, 0.5, 0.55, 0, 0.5, 0.95);
+    merlons(-2.4, 2.4, 1.3, 0.7);
+    m.add(G.box(5.0, 0.06, 0.6).translate(0, 1.25, 0.5), S.trim, { ao: 0 });
+    // the gateway: timber doors under a gold lintel, a lantern glow at the threshold
+    m.add(G.box(0.96, 0.92, 0.04).translate(0, 0, 0.77), 0x8a5a34, { top: 0xc08a54, h0: 0, h1: 0.9, ao: 0.3, jit: 0.04 });
+    for (const dx of [-0.24, 0, 0.24]) m.add(G.box(0.03, 0.9, 0.02).translate(dx, 0, 0.795), 0x6a4a3a, { ao: 0 });
+    m.add(G.box(0.7, 0.05, 0.02).translate(0, 0.02, 0.8), necro ? S.glow : 0xffd27a, { glow: true, ao: 0 });
+    m.add(G.box(1.18, 0.12, 0.08).translate(0, 0.95, 0.8), S.trim, { ao: 0 });
+    for (const sx of [-1, 1]) {
+      m.add(G.box(0.36, 0.5, 0.015).translate(sx * 1.6, 0.42, 0.785), S.banner, { top: S.banner, ao: 0 });
+      m.add(G.blob(0.07, 0, 0, 3).scale(1, 1, 0.35).translate(sx * 1.6, 0.7, 0.8), S.emblem, { ao: 0 });
+      roofed(sx * 2.55, 0.45, 0.42, 1.75, 0.85); // curtain corner turrets
+      roofed(sx * 1.25, -0.55, 0.36, 3.0, 0.95); // keep turrets
+    }
+    // the great keep and its donjon
+    block(2.1, 2.5, 1.5, 0, -0.75);
+    merlons(-1.0, 1.0, 2.5, -0.06, 0.14);
+    m.add(G.box(2.2, 0.08, 1.6).translate(0, 2.46, -0.75), S.trim, { ao: 0 });
+    m.add(G.box(1.5, 0.8, 0.02).translate(0, 1.35, 0.005), S.banner, { top: S.banner, ao: 0 });
+    m.add(G.blob(0.16, 1, 0, 4).scale(1, 1, 0.35).translate(0, 1.72, 0.03), S.emblem, { ao: 0 });
+    if (necro) for (const sx of [-1, 1]) m.add(G.limb([sx * 0.25, 1.2, 0.03], [sx * 0.6, 2.0, 0.03], 0.04, 0.03, 4), bone, { ao: 0 }); // crossed bones
+    for (const sx of [-0.55, 0.55]) m.add(G.box(0.14, 0.26, 0.02).translate(sx, 2.0, 0.01), S.glow, { glow: true, ao: 0 });
+    roofed(0, -1.0, 0.6, 3.7, 1.55, 10);
+    if (necro) for (const sx of [-1, 1]) m.add(G.blob(0.06, 0, 0, 5).translate(sx * 0.3, 3.0, -0.4), S.glow, { glow: true, ao: 0 }); // green spirit lights
+    // a grassy mound at the foot so it sits on the land
+    for (let i = 0; i < 14; i++) m.add(G.cone(0.05, m.rnd(0.12, 0.26), 3).translate(m.rnd(-3.5, 3.5), 0, m.rnd(0.78, 0.95)), S.moss, { ao: 0.3 });
+  });
+}
+// Where the siege pieces go, in battle-scene units (hexPos is main.js's), for the defending side defSide.
+//   walls: rotate wall/gate meshes by wallRotY (they face +Z: toward attackers when the defenders hold the top).
+//   towers: two symmetric arrow towers, scaled towerScale, just outside the defenders' back corners, so they
+//     frame the keep, stay inside a portrait phone's frame and never hide a unit. towers[0] is the shooter.
+//   keep: behind the defenders' last row (null when the defenders hold the bottom, which faces the camera).
+export function siegeLayout(hexPos, COLS, ROWS, defSide = 1) {
+  const top = defSide === 1, back = top ? 0 : ROWS - 1, dir = top ? -1 : 1;
+  let minX = Infinity, maxX = -Infinity;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const p = hexPos(c, r); minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); }
+  const cx = (minX + maxX) / 2, hx = (maxX - minX) / 2, zBack = hexPos(0, back).z;
+  if (top) {
+    const tz = zBack - 0.95, tx = hx + 0.25;
+    return { wallRotY: 0, towerScale: 0.82, towers: [new V3(cx + tx, 0, tz), new V3(cx - tx, 0, tz)], keep: new V3(cx, 0, zBack - 2.7), keepScale: 0.85 };
+  }
+  // defenders at the bottom (facing the camera): there is no room beside the grid, so smaller towers stand
+  // on the wall row's end hexes (walls anyway, never occupied) and the keep is skipped (it would fill the foreground)
+  const zw = hexPos(0, ROWS - 3).z - 0.1;
+  return { wallRotY: Math.PI, towerScale: 0.6, towers: [new V3(cx + hx - 0.45, 0, zw), new V3(cx - hx + 0.45, 0, zw)], keep: null, keepScale: 1 };
 }
 
 // ------------------------------------------------------------------ border decoration per terrain
@@ -805,6 +888,9 @@ export function createBattlefield(_THREE, terrainId, hexPos, COLS, ROWS) {
   const inView = (x, z) => z < 7.5 && Math.abs(x) < 7 + Math.max(0, -z) * 0.75 && z > -22;
   // keep the siege tower spots (beside the last column, top and bottom rows) clear
   for (const r of [0, ROWS - 1]) { const p = hexPos(COLS - 1, r); placed.push([p.x + 1.1, p.z, 1.0]); }
+  for (const ds of [0, 1]) for (const p of siegeLayout(hexPos, COLS, ROWS, ds).towers) placed.push([p.x, p.z, 0.75]);
+  // props on the keep's plot go in a separate mesh (res.keepZone) that main.js hides during a siege
+  const kp = siegeLayout(hexPos, COLS, ROWS, 1).keep, inKeep = (x, z) => Math.abs(x - kp.x) < 4.4 && z < kp.z + 1.4 && z > kp.z - 2.4;
   // occlusion guard: a prop may never hide any part of a unit standing on any hex, from any battle camera
   // (yaw -0.6..0.6, distance 8..18, as main.js orbits it), so the border can never cover units.
   const cams = [];
@@ -884,18 +970,25 @@ export function createBattlefield(_THREE, terrainId, hexPos, COLS, ROWS) {
 
   const all = { pos: [], col: [] }, glow = { pos: [], col: [] }, mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new V3();
   const append = (dst, src) => { for (let i = 0; i < src.pos.length; i += 3) { v.set(src.pos[i], src.pos[i + 1], src.pos[i + 2]).applyMatrix4(mtx); dst.pos.push(v.x, v.y, v.z); } for (const c of src.col) dst.col.push(c); };
+  const kAll = { pos: [], col: [] }, kGlow = { pos: [], col: [] };
   items.forEach(([d, x, z, sc, rot]) => {
     // sink into slopes a little
     const y = Math.min(groundH(x, z), groundH(x + 0.4, z), groundH(x - 0.4, z), groundH(x, z + 0.4), groundH(x, z - 0.4)) - 0.02;
     q.setFromAxisAngle(new V3(0, 1, 0), rot ?? R() * 6.28);
     mtx.compose(new V3(x, y, z), q, new V3(sc, sc, sc));
-    append(all, d.B); append(glow, d.G);
+    const k = inKeep(x, z);
+    append(k ? kAll : all, d.B); append(k ? kGlow : glow, d.G);
   });
   const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 });
-  const dg = toGeo(all);
-  if (dg) { const dm = new THREE.Mesh(dg, bodyMat); dm.castShadow = dm.receiveShadow = true; dm.name = 'deco'; group.add(dm); }
-  const gl = toGeo(glow);
-  if (gl) { const gm = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); gm.color.setScalar(1.8); const m = new THREE.Mesh(gl, gm); m.name = 'decoGlow'; group.add(m); }
+  const gm = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); gm.color.setScalar(1.8);
+  const keepZone = new THREE.Group(); keepZone.name = 'decoKeepZone'; group.add(keepZone);
+  for (const [src, dst, glowy] of [[all, group, false], [glow, group, true], [kAll, keepZone, false], [kGlow, keepZone, true]]) {
+    const g = toGeo(src); if (!g) continue;
+    const mesh = new THREE.Mesh(g, glowy ? gm : bodyMat);
+    if (!glowy) mesh.castShadow = mesh.receiveShadow = true;
+    mesh.name = (dst === keepZone ? 'decoKeep' : 'deco') + (glowy ? 'Glow' : '');
+    dst.add(mesh);
+  }
   if (waterParts.length) {
     const wg = new THREE.BufferGeometry(), wp = [];
     for (const g of waterParts) wp.push(...g.attributes.position.array);
@@ -905,7 +998,7 @@ export function createBattlefield(_THREE, terrainId, hexPos, COLS, ROWS) {
   }
 
   const res = {
-    group, ground, overlay, name: pal.name,
+    group, ground, overlay, keepZone, name: pal.name,
     sky: pal.sky,
     fog: { color: pal.fog[0], near: pal.fog[1], far: pal.fog[2] },
     lights: { sun: { color: pal.sun[0], intensity: pal.sun[1] }, hemi: { sky: pal.hemi[0], ground: pal.hemi[1], intensity: pal.hemi[2] }, ambient: { color: pal.amb[0], intensity: pal.amb[1] }, exposure: pal.exposure },

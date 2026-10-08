@@ -1230,7 +1230,7 @@ function renderTown() {
   townView.setTown({ fac: t.fac, built: t.built, name: t.name });
   for (const b of document.querySelectorAll('#town .tabs2 button')) b.classList.toggle('on', b.dataset.t === townTab);
   $('t-name').textContent = t.name;
-  $('t-sub').innerHTML = `${FACTIONS[t.fac].name} · 🪙 +${fmt(townIncome(t))}/day · ${t.builtToday ? '🔨 built today' : '🔨 you can build today'}`;
+  $('t-sub').innerHTML = `${FACTIONS[t.fac].name} · 🪙 +${fmt(townIncome(t))}/day · ${t.builtToday ? '🔨 built today' : '🔨 can build'}`;
   let html = '';
   if (townTab === 'build') {
     html = BUILDINGS.map((b) => {
@@ -1258,6 +1258,7 @@ function renderTown() {
     html += `<div class="row-b ${mk ? '' : 'lock'}"><i>⚖️</i><div><b>Marketplace</b><small>${mk ? 'Buy and sell resources.' : 'Build a Marketplace first.'}</small></div></div>`;
     if (mk) for (const r of ['wood', 'ore', 'gems']) { const buy = r === 'gems' ? 500 : 250, sell = r === 'gems' ? 200 : 100; html += `<div class="row-b"><i>${RES_ICON[r]}</i><div><b>${r[0].toUpperCase() + r.slice(1)}</b><small><span class="nw">Buy 1: ${icon('gold', 13)}${buy}</span> · <span class="nw">Sell 1: ${icon('gold', 13)}${sell}</span></small></div><button data-buy="${r}" ${Pl.res.gold >= buy ? '' : 'disabled'}>Buy</button><button data-sell="${r}" ${Pl.res[r] > 0 ? '' : 'disabled'}>Sell</button></div>`; }
   }
+  if (t.p !== 0) html = `<p class="hint2">${G.players[t.p]?.name || 'An enemy'} rules this town. Capture it to build and recruit here.</p>`;
   $('t-body').innerHTML = html;
   updateRes();
 }
@@ -1366,6 +1367,7 @@ function updateFloaters(dt) {
     if (f.t > 1.6) { f.el.remove(); floaters.splice(i, 1); continue; }
     let x = innerWidth / 2, y = innerHeight * 0.4 + f.slot * 34;
     if (f.p) { const v = f.p.clone().project(f.cm || camera); x = (v.x * 0.5 + 0.5) * innerWidth; y = (-v.y * 0.5 + 0.5) * innerHeight; }
+    const hw = (f.w ??= f.el.offsetWidth) / 2 + 6; x = clamp(x, hw, innerWidth - hw);
     f.el.style.opacity = String(Math.min(1, (1.6 - f.t) * 2));
     f.el.style.transform = `translate(${x}px, ${y - f.t * 40}px) translate(-50%, -50%) scale(${Math.min(1, 0.6 + f.t * 4)})`;
   }
@@ -1454,7 +1456,13 @@ function checkEnd() {
 }
 function endGame(won) {
   G.over = true; store.del('realms.save');
-  ask(won ? '👑 Victory!' : '💀 Defeat', won ? `You rule the whole world after ${G.day} ${G.day === 1 ? 'day' : 'days'}. All rival lords are defeated.` : 'Your last town and hero are lost.', [['New game', () => showMenu()]]);
+  const me = G.players[0], towns = G.towns.filter((t) => t.p === 0).length, heroes = G.heroes.filter((h) => h.alive && h.p === 0);
+  const army = heroes.reduce((a, h) => a + heroArmy(h).reduce((x, st) => x + st[1], 0), 0), top = heroes.reduce((a, h) => Math.max(a, h.lvl), 0);
+  const body = `<div class="endcard ${won ? 'win' : 'lose'}"><div class="crest2">${icon(won ? 'victory' : 'defeat', 84)}</div>
+    <p>${won ? `You rule the whole world after <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'}. All rival lords bow before ${FACTIONS[me.fac].name}.` : 'Your last town and hero are lost. The realm falls into shadow.'}</p>
+    <div class="endstats"><div><b>${G.day}</b><small>Days</small></div><div><b>${towns}</b><small>Towns</small></div><div><b>${fmt(army)}</b><small>Creatures</small></div><div><b>${top || '–'}</b><small>Best hero lvl</small></div></div></div>`;
+  ask(won ? 'Victory!' : 'Defeat', body, [['New game', () => showMenu()]], true);
+  if (won) for (let i = 0; i < 40; i++) setTimeout(() => { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = `${Math.random() * 100}vw`; c.style.background = `hsl(${Math.random() * 360} 90% 60%)`; c.style.animationDuration = `${1.8 + Math.random() * 1.6}s`; document.body.appendChild(c); setTimeout(() => c.remove(), 4000); }, i * 40);
   won ? sfx.fanfare() : sfx.deny();
 }
 
@@ -1680,7 +1688,9 @@ function frame() {
     animateBattle(dt);
     const s = Math.sin(bview.yaw), c = Math.cos(bview.yaw);
     // a HoMM-like three-quarter view: low enough that creatures show their figures, not just helmets
-    bcam.position.set(s * bview.dist * 0.82, bview.dist * 0.86, c * bview.dist * 0.82 + 0.4);
+    // never closer than what fits the full grid width on screen (portrait phones)
+    const hf = Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2)) * bcam.aspect, d = Math.max(bview.dist, Math.min(18, (BT.COLS * 0.866 * 0.5 + 0.45) / hf / 1.1));
+    bcam.position.set(s * d * 0.82, d * 0.86, c * d * 0.82 + 0.4);
     bcam.lookAt(0, 0, -0.15);
     for (const m of bmesh.values()) if (m.userData.flash > 0) { m.userData.flash -= dt; m.children[0].material = m.userData.flash > 0 ? hitMat : bodyMat; }
     vfx.update(dt, bcam);

@@ -44,13 +44,14 @@ export function createAtmosphere(THREE, scene, opts = {}) {
   domeTex.mapping = THREE.UVMapping;
   domeTex.wrapS = THREE.RepeatWrapping;
   // the dome shader adds a screen-anchored sun peeking over the planet's limb: a warm disc, a wide glow and slow god-rays
+  const uSunK = { value: 1 }; // sun strength: 1 zoomed out, ~0.6 tilted close in
   const uVis = { value: new V3(0, 1, 0) }, uVR = { value: new V3(1, 0, 0) }, uVU = { value: new V3(0, 0, 1) };
   const dome = new THREE.Mesh(new THREE.SphereGeometry(150, 48, 24), new THREE.ShaderMaterial({
-    uniforms: { tMap: { value: domeTex }, uVis, uVR, uVU, uTime },
+    uniforms: { tMap: { value: domeTex }, uVis, uVR, uVU, uTime, uSunK },
     side: THREE.BackSide, depthWrite: false,
     vertexShader: `varying vec2 vUv; varying vec3 vD; void main() { vUv = uv; vD = position;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `uniform sampler2D tMap; uniform vec3 uVis; uniform vec3 uVR; uniform vec3 uVU; uniform float uTime;
+    fragmentShader: `uniform sampler2D tMap; uniform vec3 uVis; uniform vec3 uVR; uniform vec3 uVU; uniform float uTime; uniform float uSunK;
       varying vec2 vUv; varying vec3 vD;
       void main() {
         vec3 d = normalize(vD);
@@ -58,8 +59,10 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         float cs = dot(d, uVis);
         float ang = acos(clamp(cs, -1.0, 1.0));
         // sun: small hot disc, a gold corona and a broad rosy-amber wash that warms the whole quadrant
-        float disc = smoothstep(0.022, 0.012, ang) * 1.2;
-        float corona = exp(-ang * 26.0) * 0.6 + exp(-ang * 8.0) * 0.18;
+        // close in (uSunK < 1) the disc shrinks and the glare softens so castle silhouettes stay crisp
+        float dr = mix(0.6, 1.0, uSunK);
+        float disc = smoothstep(0.022 * dr, 0.012 * dr, ang) * mix(0.55, 1.2, uSunK);
+        float corona = (exp(-ang * 26.0 / dr) * 0.6 + exp(-ang * 8.0 / dr) * 0.18) * mix(0.45, 1.0, uSunK);
         float wash = exp(-ang * 2.5) * 0.035;
         // god-rays: angular streaks around the sun that slowly turn and breathe
         vec3 t = d - uVis * cs;
@@ -67,7 +70,7 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         float r1 = 0.5 + 0.5 * sin(a * 9.0 + uTime * 0.05) * sin(a * 14.0 - uTime * 0.035 + 1.7);
         float r2 = 0.5 + 0.5 * sin(a * 23.0 + uTime * 0.02 + 0.6);
         float rays = (r1 * r1 * r1 * 0.8 + r2 * r2 * r2 * r2 * 0.35) * (0.8 + 0.2 * sin(uTime * 0.3));
-        rays *= exp(-ang * 10.0) * smoothstep(0.02, 0.07, ang) * 0.2;
+        rays *= exp(-ang * 10.0) * smoothstep(0.02, 0.07, ang) * 0.2 * mix(0.5, 1.0, uSunK);
         c += vec3(1.0, 0.88, 0.66) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.9, 0.5, 0.55) * wash
            + vec3(1.0, 0.82, 0.55) * rays;
         gl_FragColor = vec4(c, 1.0);
@@ -324,7 +327,11 @@ export function createAtmosphere(THREE, scene, opts = {}) {
     const e = camera.matrixWorld.elements;
     const cR = tmp.set(e[0], e[1], e[2]).normalize(), cU = tmp2.set(e[4], e[5], e[6]).normalize();
     const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov || 45) / 2), tx = ty * (camera.aspect || 1);
-    uVis.value.set(-e[8], -e[9], -e[10]).normalize().addScaledVector(cR, tx * 0.32).addScaledVector(cU, ty * 0.8).normalize();
+    // tone the sun down as the camera closes in and tilts toward the horizon (full strength from ~16 out),
+    // and slide it further toward the top-right corner, off the castles and the hero's skyline
+    const sk = THREE.MathUtils.smoothstep(camera.position.length(), 9.5, 16);
+    uSunK.value = sk;
+    uVis.value.set(-e[8], -e[9], -e[10]).normalize().addScaledVector(cR, tx * (0.56 - 0.24 * sk)).addScaledVector(cU, ty * (0.88 - 0.08 * sk)).normalize();
     uVR.value.copy(cR); uVU.value.copy(cU);
 
     // haze eases in / out

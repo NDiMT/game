@@ -768,6 +768,7 @@ export const FLORA_FOR_TERRAIN = {
 export const FOREST_BY_BIOME = {
   temperate: [{ key: 'oak', w: 0.5 }, { key: 'pine', w: 0.3 }, { key: 'birch', w: 0.2 }],
   cold: [{ key: 'snowpine', w: 0.75 }, { key: 'pine', w: 0.25 }],
+  boreal: [{ key: 'pine', w: 0.6 }, { key: 'snowpine', w: 0.25 }, { key: 'birch', w: 0.15 }],
   swamp: [{ key: 'willow', w: 0.6 }, { key: 'dead', w: 0.4 }],
   dry: [{ key: 'pine', w: 0.4 }, { key: 'dead', w: 0.3 }, { key: 'oak', w: 0.3 }],
   sand: [{ key: 'palm', w: 0.7 }, { key: 'cactus', w: 0.3 }],
@@ -775,6 +776,7 @@ export const FOREST_BY_BIOME = {
 };
 export const PEAK_BY_BIOME = {
   temperate: ['peak:rock:0', 'peak:rock:1', 'peak:rock:2', 'peak:rock:3'],
+  boreal: ['peak:snow:0', 'peak:rock:1', 'peak:snow:2', 'peak:rock:3'],
   cold: ['peak:snow:0', 'peak:snow:1', 'peak:snow:2', 'peak:snow:3'],
   lava: ['peak:volcano:0', 'peak:volcano:1', 'peak:volcano:2'],
 };
@@ -784,7 +786,8 @@ export function biomeOf(neighbourTerrains, lat = 0) {
   for (const t of neighbourTerrains) c[t]++;
   if (c[7] > 0) return 'lava';
   // snowy pines and snow peaks: touching snow, or within about one ring of the snow line (|lat| > 0.8)
-  if (c[4] > 0 || lat > 0.76) return 'cold';
+  if (c[4] >= 2 || lat > 0.76) return 'cold';
+  if (c[4] > 0) return 'boreal'; // single snow neighbour: mostly green pines with a few frosted ones
   if (c[5] >= 2) return 'swamp';
   // palms and cacti only in real desert: mostly sand around, hardly any lush grass/forest, not polar
   if (c[3] >= 3 && c[1] + c[9] <= 1 && lat < 0.68) return 'sand';

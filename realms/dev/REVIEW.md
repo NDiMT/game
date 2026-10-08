@@ -67,3 +67,57 @@ Note: the game changed a lot during pass 1, with a new blue/parchment UI, unit p
 - The sand, dirt and rough battlefields are bright and readable. The props on rough and sand battlefields are nicely scaled.
 - The new parchment and blue UI (dialogs, spellbook, hero sheet) is much more readable than the old purple. The spellbook descriptions are clear.
 - Arena, sawmill, crystal cavern, campfire and Magic Well are all readable at mid zoom.
+
+---
+
+## Pass 2 (23:27–23:33): re-check after other agents' changes
+
+Shots: `dev/shots/qa-p2-*.png`.
+
+| # | Issue | Status in pass 2 | Evidence |
+|---|---|---|---|
+| 1 | Upside-down map at close zoom | **Fixed** on the capital. No flip seen at max zoom. | `qa-p2-04-map-maxzoom-capital.png` |
+| 2 | Foreground mountains hide the focus | **Improved** (peaks smaller and lower at default zoom), **still bad at max zoom** next to mountain clusters: v506 is 100 % snowy peak with the hero barely visible behind it. | `qa-p2-03`, `qa-p2-05-maxzoom-v506.png` |
+| 3 | Battlefield cut off left and right | **Not fixed.** The leftmost stack is off-screen with badge "30" cut, and the angel and its ring are clipped on the right. | `qa-p2-20-battle-1.png` |
+| 4 | Siege layout | **Much better.** There is now a wall with a gate in front of the defenders. Remaining: the tower is still cropped at the right edge, the enemy top-left stack is half off-screen, and the red badges overlap the wall crenellations. | `qa-p2-30-siege.png` |
+| 5 | Green translucent mountain skirt | **Reduced,** but still a lime rim around every peak base. | `qa-p2-03` |
+| 6 | Fog looks like snow | **Improved:** fog is now blue-violet frosted hexes. It still reads as "ice" or "water" next to the real ocean (`qa-p2-03` bottom). Suggest adding drifting cloud puffs on top and desaturating more. | `qa-p2-03`, `qa-p2-07` |
+| 7 | Battle units small, badges on units | Not changed. | `qa-p2-20-*` |
+| 8 | Grid colour per terrain | **Lava fixed** (warm, readable). **Snow still nearly invisible:** the pale mint grid on white snow. Grass is fine. | `qa-p2-20-battle-4.png`, `-7` |
+| 10 | Duplicate recruit row | **Fixed.** | `qa-p2-51-town-recruit.png` |
+| 14 | Menu title unreadable | **Fixed:** new logo, a pill behind the tagline and a parchment card. | `qa-p2-01-menu.png` |
+| 26 | No town interior | **Fixed:** the town_view panorama is in. The Haven town is lovely and bright. | `qa-p2-50-town-build.png` |
+
+### New issues found in pass 2
+- **N1 (P1): the Necropolis town view is murky and empty** (`qa-p2-52-enemy-town.png`).
+  - It is a grey-green plain under lilac haze with two tiny buildings far away.
+  - A huge purple cobblestone "+" road dominates the middle of the frame.
+  - Fence posts float in the foreground.
+  - This is exactly the "blackness/murk" the player complained about.
+  - Fixes:
+    - Brighten the ground: warm violet-grey with bone-white paths.
+    - Bring the camera closer when few buildings exist, or scale the slots so the village hall fills about 30 % of the width.
+    - Shrink the road cross to paths that lead only to built slots.
+    - Add green-glow accents and crimson banners per the brief.
+- **N2 (P2): the town view's lower half is hidden by the sheet.** The sheet covers about 47 % of the screen in Haven and about 27 % in Necro, and the build list can't show the town and the list together. In Haven, the market and the left buildings sit right on the sheet edge. Suggest the town camera frames the slots in the top 55 % (offset the projection centre up), or default the sheet to collapsed with the panorama tappable.
+- **N3 (P2): the Necro town header subtitle is truncated** ("you can build to…"). Shorten it to "🔨 can build" or let it wrap.
+- **N4 (P1, logic): the town sheet offers "Buy 12" Skeletons in an enemy-owned town** when it is opened through `openTown(1)`. In normal play this may be unreachable, but guard `renderTown` so recruit, build and market only appear when `t.p === 0`.
+- **N5 (P2): the lava field touches the Haven capital.** A big lava patch borders the home castle (`qa-p2-03`). The `settle()` radius-2 grass ring makes this look odd. Consider forbidding lava and swamp within 4 hexes of a capital.
+- **N6 (P2): the zoomed-out planet is gorgeous** (`qa-p2-07`), but the pale "fog" hemisphere plus snow make the bottom third washed out. Same fix as #6.
+
+## Top 15 (merged, in priority order)
+1. Battle camera crops the outer columns. Fit to the horizontal FOV (#3).
+2. Max-zoom foreground mountains swallow the hero. Fade near-camera peaks and reduce the tilt (#2).
+3. Siege: tower and top-left stack cropped, and badges on the battlements (#4).
+4. Necropolis town view is murky, empty and dominated by a road cross (N1).
+5. Fog of war still reads as ice or snow (#6).
+6. Battle units too small, and count badges cover them (#7).
+7. Snow battlefield grid invisible (#8).
+8. "Auto battle…" message and greyed buttons during the player's own animations (#9).
+9. Plural and grammar bugs: "Pikemens", "Swordsmens", "1 days", "→ Halberdier" (#11).
+10. Victory and Defeat are plain small cards, and the battle summary is skipped before the town-capture dialog (#21, #22).
+11. Town sheet hides half the town view, and the header is truncated (N2, N3).
+12. Translucent lime skirt on mountains (#5).
+13. Hero too small next to the castle, and hidden by the selection ring (#15). Resource pickups too small (#16).
+14. Biome mixing: palms and cacti on grass next to snowy pines. Lava next to the capital (#17, N5).
+15. Fonts load from Google, so offline players get fallbacks. Town-button names truncated. Market price wraps (#25, #23, #24).

@@ -417,10 +417,10 @@ PAINT[LAYER.FOG] = (ctx) => {
   return paintLayer(ctx, (q, x, y, set) => {
     // domain-warped swirl bands
     const t = n1[q] * 0.6 + n2[q] * 0.25 + Math.sin((x / S + n4[q] * 0.9) * 12.566 + (y / S) * 6.283) * 0.08;
-    let c = mixc([62, 44, 120], [104, 78, 168], sstep(0.12, 0.7, t)); // deep indigo to violet
-    c = mixc(c, [150, 72, 168], sstep(0.55, 0.92, n3[q]) * 0.38); // magenta-orchid pools
-    c = mixc(c, [64, 78, 150], sstep(0.6, 0.95, 1 - n3[q]) * 0.3); // cooler indigo eddies
-    c = mixc(c, [156, 136, 214], sstep(0.68, 0.95, t) * 0.5); // lavender cloud tops
+    let c = mixc([66, 58, 118], [110, 98, 164], sstep(0.12, 0.7, t)); // deep indigo to violet
+    c = mixc(c, [138, 92, 160], sstep(0.55, 0.92, n3[q]) * 0.32); // orchid pools
+    c = mixc(c, [70, 82, 140], sstep(0.6, 0.95, 1 - n3[q]) * 0.3); // cooler indigo eddies
+    c = mixc(c, [164, 152, 210], sstep(0.68, 0.95, t) * 0.5); // lavender cloud tops
     set(q, c[0], c[1], c[2]);
   }, (ctx, wrap, glow) => {
     // soft curling wisps
@@ -561,7 +561,7 @@ export function createPlanetMaterial(waterLevel) {
           float tw = (lay > 2.5 && lay < 4.5) ? pow(0.5 + 0.5 * sin(uTime * 2.6 + tx.a * 47.0 + (vT.x - vT.y) * 9.0), 3.0) * 1.6 : 0.8 + 0.2 * sin(uTime * 1.6 + vT.x * 5.0 + vT.y * 3.0);
           totalEmissiveRadiance += tx.rgb * tx.rgb * tx.a * uGlow * tw * smoothstep(0.2, 0.5, vColor.g + vColor.r);
           // a warm-cool fill so shadows stay soft and coloured, never black; the mist glows softly
-          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.2, 0.13, 0.32), isFog);
+          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.15, 0.12, 0.22), isFog);
           // a soft magic glow along the frontier: on the mist side, and where the mist bleeds onto explored rims
           float fogRim = (1.0 - isFog) * step(11.5, vNb) * step(vNb, 12.5) * smoothstep(0.3, 0.5, vNw);
           float pulse = 0.85 + 0.15 * sin(uTime * 1.2 + (vT.x + vT.y) * 4.0);
@@ -608,9 +608,9 @@ export function createWaterMaterial() {
         vec3 mp = vWPos * 3.0;
         float sw = sin(dot(mp, vec3(1.7, -1.1, 0.8)) + sin(dot(mp, vec3(-0.9, 1.3, 1.6)) + uTime * 0.25) * 1.6 + uTime * 0.12);
         float sw2 = sin(dot(mp, vec3(-2.3, 0.7, 1.9)) * 1.3 + sw * 1.2 - uTime * 0.18);
-        vec3 mist = mix(vec3(0.05, 0.03, 0.2), vec3(0.15, 0.085, 0.4), 0.5 + 0.35 * sw);
-        mist = mix(mist, vec3(0.3, 0.07, 0.4), smoothstep(0.5, 1.0, sw2) * 0.35);
-        mist = mix(mist, vec3(0.34, 0.25, 0.66), smoothstep(0.75, 1.0, sw * sw2) * 0.5 + smoothstep(0.75, 1.0, fn) * 0.12);
+        vec3 mist = mix(vec3(0.055, 0.042, 0.16), vec3(0.15, 0.12, 0.36), 0.5 + 0.35 * sw);
+        mist = mix(mist, vec3(0.25, 0.1, 0.34), smoothstep(0.5, 1.0, sw2) * 0.3);
+        mist = mix(mist, vec3(0.36, 0.31, 0.62), smoothstep(0.75, 1.0, sw * sw2) * 0.5 + smoothstep(0.75, 1.0, fn) * 0.12);
         diffuseColor.rgb = mix(mist, mix(wc, vec3(0.93, 0.97, 1.0), f) * vColor, lit);
         diffuseColor.a = clamp(mix(0.62, 0.95, smoothstep(0.0, 0.9, depth)) + f, 0.0, 1.0);
         diffuseColor.a = mix(1.0, diffuseColor.a, lit);`)
@@ -621,7 +621,7 @@ export function createWaterMaterial() {
           float gl = sin(dot(vWPos, vec3(173.0, -151.0, 197.0)) + uTime * 2.1) * sin(dot(vWPos, vec3(-211.0, 181.0, 163.0)) - uTime * 1.7) * sin(dot(vWPos, vec3(97.0, 223.0, -139.0)) + uTime * 1.3);
           gl = pow(max(gl, 0.0), 22.0);
           totalEmissiveRadiance += vec3(1.0, 0.97, 0.86) * gl * 3.0 * lit * (1.0 - f) * (0.4 + 0.6 * smoothstep(1.0, 2.6, wh + 1.5));
-          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.2, 0.13, 0.32), vec3(0.05, 0.08, 0.1), lit);
+          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.15, 0.12, 0.22), vec3(0.05, 0.08, 0.1), lit);
         }`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         {
