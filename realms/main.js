@@ -8,7 +8,7 @@ import { neutralModel } from './units_neutral.js?v=0.3';
 import { townModel, heroModel, flagModel } from './models_towns.js?v=0.3';
 import { objectModel } from './models_objects.js?v=0.3';
 import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.3';
-import { createBattlefield, wallModel, towerModel, gateModel } from './battlefield.js?v=0.3';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=0.3';
 import { createTownView } from './town_view.js?v=0.3';
 import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.3';
 import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.3';
@@ -929,17 +929,18 @@ function enterBattle(B, ctx) {
   bAmb.intensity += 0.12; bAmb.color.lerp(new THREE.Color(0x9090c8), 0.5);
   vfx.clear(); bstuff.clear(); bmesh.clear();
   const sfac = bctx.foe.town?.fac;
+  const lay = B.walls.size ? siegeLayout(hexPos, BT.COLS, BT.ROWS, B.town.side ?? 1) : null;
+  if (bfield.keepZone) bfield.keepZone.visible = !lay?.keep;
+  bctx.tower = null; bctx.gate = null;
   for (const k of B.obstacles) {
     const c = k % BT.COLS, r = (k / BT.COLS) | 0;
-    if (B.walls.has(k)) { const w = meshOf(cached('wall_' + sfac, () => wallModel(sfac))); w.position.copy(hexPos(c, r)); bstuff.add(w); continue; }
+    if (B.walls.has(k)) { const w = meshOf(cached('wall_' + sfac, () => wallModel(sfac))); w.position.copy(hexPos(c, r)); w.rotation.y = lay.wallRotY; bstuff.add(w); continue; }
     const m = meshOf(cached('obs' + ctx.terrain + '_' + (k % 3), () => bfield.obstacleModel(k % 3))); m.position.copy(hexPos(c, r)); m.rotation.y = k; bstuff.add(m);
   }
-  if (B.walls.size) {
-    const tw = meshOf(cached('tower_' + sfac, () => towerModel(sfac)));
-    const tr = (B.town.side ?? 1) === 1 ? 0 : BT.ROWS - 1;
-    tw.position.copy(hexPos(BT.COLS - 1, tr)).add(new THREE.Vector3(1.1, 0, 0)); bstuff.add(tw); bctx.tower = tw;
-    const row = ([...B.walls][0] / BT.COLS) | 0;
-    for (let c = 0; c < BT.COLS; c++) if (!B.walls.has(BT.key(c, row))) { const g = meshOf(cached('gate_' + sfac, () => gateModel(sfac))); g.position.copy(hexPos(c, row)); bstuff.add(g); }
+  if (lay) {
+    if (B.gate != null) { const g = meshOf(cached('gate_' + sfac, () => gateModel(sfac))); g.position.copy(hexPos(B.gate % BT.COLS, (B.gate / BT.COLS) | 0)); g.rotation.y = lay.wallRotY; bstuff.add(g); bctx.gate = g; }
+    lay.towers.forEach((p, i) => { const tw = meshOf(cached('tower_' + sfac, () => towerModel(sfac))); tw.position.copy(p); tw.scale.setScalar(lay.towerScale); tw.rotation.y = lay.wallRotY; bstuff.add(tw); if (i === 0) bctx.tower = tw; });
+    if (lay.keep) { const kp = meshOf(cached('keep_' + sfac, () => keepModel(sfac))); kp.position.copy(lay.keep); kp.scale.setScalar(lay.keepScale); bstuff.add(kp); }
   }
   $('blabels').innerHTML = ''; for (const f of floaters) f.el.remove(); floaters.length = 0;
   for (const s of B.stacks) {
@@ -1119,10 +1120,11 @@ function playEvent(e, t) {
   }
   if (e.t === 'tower') {
     const m = M(e.s);
-    if (!e.started) { e.started = true; sfx.shoot(); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
+    if (!e.started) { e.started = true; sfx.shoot(); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1 * bctx.tower.scale.y) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
     if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (m) { m.userData.flash = 0.3; bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
+  if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.hit(); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
   if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
   if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; } return true; }
   if (e.t === 'wait' || e.t === 'defend') { if (!e.started) { e.started = true; const m = M(e.s); if (m) bfloat(m.position.clone().setY(1.1), e.t === 'wait' ? '⏳ Wait' : '🛡️ Defend', 'blue'); } return t > 0.25; }
