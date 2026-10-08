@@ -587,14 +587,14 @@ void main() {
       };
       env.keepOut = fac === 'haven' ? [[-14.5, -9, 4], [12, -8, 3], [15, -4.5, 2.5], [-12.5, 3.5, 2.5]] : [[-14.5, -9, 4], [12.5, -8, 3], [-12, 3, 3], [13, 2, 3]];
       const clusters = [];
-      for (let i = 0; i < 26; i++) { const a = (R() - 0.5) * Math.PI * 1.7, d = 14 + R() * 110; clusters.push([Math.sin(a) * d * 1.2, -Math.cos(a) * d * 0.9 - 2, 3 + R() * 9]); }
-      clusters.push([-13, -2, 4], [13, -2, 5], [-10, -14, 4], [11, -16, 5], [-18, 6, 4], [18, 8, 5]);
+      for (let i = 0; i < 26; i++) { const a = (R() - 0.5) * Math.PI * 1.7, d = 30 + R() * 110; clusters.push([Math.sin(a) * d * 1.2, -Math.cos(a) * d * 0.9 - 2, 3 + R() * 9]); }
+      clusters.push([-13, -2, 4], [13, -2, 5], [-18, -20, 4], [20, -22, 5], [-18, 6, 4], [18, 8, 5]);
       for (const [cx, cz, cr] of clusters) {
         const n = Math.round(cr * (fac === 'haven' ? 2.6 : 1.4));
         for (let k = 0; k < n; k++) {
           const a = R() * 7, d = Math.sqrt(R()) * cr, x = cx + Math.sin(a) * d, z = cz + Math.cos(a) * d;
           if (blocked(x, z)) continue;
-          const y = groundH(x, z, fac), s = (1.2 + R() * 1.1) * (1 + smooth(20, 120, Math.hypot(x, z)) * 1.5);
+          const y = groundH(x, z, fac), s = (1.1 + R() * 0.9) * (1 + smooth(40, 140, Math.hypot(x, z)) * 1.2);
           const kind = fac === 'haven' ? (R() < 0.35 || y > 8 ? 'pine' : 'round') : (R() < 0.62 ? 'dead' : 'pine');
           trees[kind].push([x, y - 0.05, z, s, R() * 7, R()]);
         }
@@ -602,6 +602,7 @@ void main() {
       // scattered singles near the town
       for (let i = 0; i < 40; i++) {
         const x = (R() - 0.5) * 50, z = -R() * 30 + 8;
+        if (z < -8 && Math.abs(x) < 14) continue;
         if (blocked(x, z)) continue;
         const kind = fac === 'haven' ? (R() < 0.3 ? 'pine' : 'round') : (R() < 0.75 ? 'dead' : 'pine');
         trees[kind].push([x, groundH(x, z, fac) - 0.05, z, 1 + R() * 0.8, R() * 7, R()]);
@@ -743,9 +744,8 @@ void main() {
         ng.setAttribute('aWave', new T.BufferAttribute(wv, 1)); ng.setAttribute('aPhase', new T.BufferAttribute(ph, 1));
         wave.push(ng);
       };
-      banner(-0.85, 5.4, 2.6, -1); banner(0.85, 5.4, 2.6, 1);
-      banner(-5.6, 1.2, 2.3, -1); banner(5.6, 1.2, 2.3, 1);
-      banner(-1.75, -1.25, 2.2, -1); banner(1.75, -1.25, 2.2, 1);
+      banner(-5.9, 1.3, 2.4, -1); banner(5.9, 1.3, 2.4, 1);
+      banner(-5.7, 4.0, 2.2, -1); banner(5.7, 4.0, 2.2, 1);
       // merge flags with wave attributes
       {
         let n = 0; for (const g of wave) n += g.attributes.position.count;
@@ -1003,7 +1003,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   // ---------------------------------------------------------------- camera framing
   const insets = { top: 0, bottom: 0.45, left: 0, right: 0 };
   const view = { w: 1, h: 1 };
-  const CAM = { target: new V3(0, 0.8, -1.0), elev: 0.34, dist: 26, pitch: 0.06 };
+  const CAM = { target: new V3(0, 0.8, -1.0), elev: 0.31, dist: 19, pitch: 0.06 };
   function setInsets(o = {}) { Object.assign(insets, o); resize(view.w, view.h); }
   const px = (v, total) => (v <= 1 ? v * total : v);
   function frame() {
@@ -1025,7 +1025,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     const horizon = Math.tan(CAM.pitch);
     const padX = (x1 - x0) * 0.03, padY = (y1 - y0) * 0.04;
     let X = Math.max(Math.abs(x0), Math.abs(x1)) + padX;
-    let yb = y0 - padY, yt = Math.max(y1 + padY, horizon + 0.07);
+    let yb = y0 - padY, yt = Math.max(y1 + padY, horizon + 0.11);
     const vw = Math.max(1, w - px(insets.left, w) - px(insets.right, w)), vh = Math.max(1, h - px(insets.top, h) - px(insets.bottom, h));
     const A = vw / vh;
     // fill the visible rectangle: extra height goes to the sky first, then the foreground
