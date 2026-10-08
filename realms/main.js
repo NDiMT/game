@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel, heroModel, flagModel, townModel, objectModel, treeModel, rockModel, peakModel, obstacleModel } from './models.js?v=0.1';
-import { UNITS, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.1';
-import * as BT from './battle.js?v=0.1';
-import { createScore } from './music.js?v=0.1';
+import { mulberry32, unitModel, heroModel, flagModel, townModel, objectModel, treeModel, rockModel, peakModel, obstacleModel } from './models.js?v=0.2';
+import { UNITS, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.2';
+import * as BT from './battle.js?v=0.2';
+import { createScore } from './music.js?v=0.2';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -11,7 +11,7 @@ import { createScore } from './music.js?v=0.1';
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '0.1';
+const APP_VERSION = '0.2';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -710,7 +710,7 @@ function threatWord(o) {
   return r < 0.3 ? '😴 Effortless' : r < 0.6 ? '🙂 Easy' : r < 1 ? '😐 Fair fight' : r < 1.6 ? '😬 Hard' : '💀 Deadly';
 }
 function describe(o) {
-  if (o.type === 'monster') toast(`${sizeWord(o.n)} ${UNITS[o.unit].name}s · ${threatWord(o)}`);
+  if (o.type === 'monster') toast(`${sizeWord(o.n)} ${plural(o.unit)} · ${threatWord(o)}`);
   else if (o.type === 'town') { const t = G.towns[o.t]; toast(`${t.name} (${FACTIONS[t.fac].name}) · ${t.p === 0 ? 'yours' : t.p > 0 ? G.players[t.p].name : 'neutral'}${t.p !== 0 && heroArmy({ army: t.garrison }).length ? ' · guarded' : ''}`); }
   else { const O = OBJECTS[o.type]; toast(`${O.icon} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? 'enemy' : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
 }
@@ -787,7 +787,7 @@ function interact(hr, v) {
   if (!o) return;
   const O = OBJECTS[o.type], kind = O?.kind;
   if (o.type === 'monster') {
-    if (you) ask(`${sizeWord(o.n)} ${UNITS[o.unit].name}s`, `${unitIcon(o.unit)} About ${o.n <= 4 ? o.n : `${Math.round(o.n * 0.8)}–${Math.round(o.n * 1.2)}`} of them. ${threatWord(o)}.`, [['⚔️ Fight', () => startBattle(hr, { kind: 'monster', obj: o })], ['Leave', null]]);
+    if (you) ask(`${sizeWord(o.n)} ${plural(o.unit)}`, `${unitIcon(o.unit)} About ${o.n <= 4 ? o.n : `${Math.round(o.n * 0.8)}–${Math.round(o.n * 1.2)}`} of them. ${threatWord(o)}.`, [['⚔️ Fight', () => startBattle(hr, { kind: 'monster', obj: o })], ['Leave', null]]);
     else startBattle(hr, { kind: 'monster', obj: o });
     return;
   }
@@ -1169,7 +1169,7 @@ function finishBattle(B, ctx) {
   worldDirty = true; layoutHeroes(true);
   if (sides[0].owner === 0 || sides[1].owner === 0) {
     const me = sides[0].owner === 0 ? 0 : 1, won = winSide === me;
-    const list = (arr) => (arr.length ? arr.map(([id, n]) => `${unitIcon(id)} ${n} ${UNITS[id].name}${n > 1 ? 's' : ''}`).join('<br>') : 'None');
+    const list = (arr) => (arr.length ? arr.map(([id, n]) => `${unitIcon(id)} ${n} ${plural(id, n)}`).join('<br>') : 'None');
     showMsg(won ? '🏆 Victory!' : '💀 Defeat', `<div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p>⭐ +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
     won ? sfx.fanfare() : sfx.deny();
   }
@@ -1186,6 +1186,7 @@ const pay = (p, c, n = 1) => { for (const r of RES) G.players[p].res[r] -= (c[r]
 const visitorOf = (t) => G.heroes.find((x) => x.alive && x.p === t.p && (x.v === t.v || NBR[t.v].includes(x.v)));
 let townOpen = null, townTab = 'build';
 function openTown(id, hr) {
+  if (G.mode !== 'map' && G.mode !== 'town') return;
   townOpen = id; G.mode = 'town';
   const t = G.towns[id];
   const vis = hr || visitorOf(t);
@@ -1254,7 +1255,7 @@ $('t-body').addEventListener('click', (e) => {
     const army = vis ? vis.army : t.garrison;
     if (!addTroops(army, id, n) && !(vis && addTroops(t.garrison, id, n))) { toast('No free slot.'); sfx.deny(); return; }
     pay(t.p, UNITS[id].cost, n); t.avail[tier] -= n; sfx.coin();
-    toast(`${unitIcon(id)} ${n} ${UNITS[id].name}s join ${vis ? vis.name : 'the garrison'}.`);
+    toast(`${unitIcon(id)} ${n} ${plural(id, n)} join ${vis ? vis.name : 'the garrison'}.`);
   } else if (b.dataset.move) {
     const [who, i] = b.dataset.move.split(':'), from = who === 'g' ? t.garrison : vis.army, to = who === 'g' ? vis?.army : t.garrison;
     if (!to) return;
@@ -1302,6 +1303,7 @@ function openHero() {
 // ------------------------------------------------------------------ HUD, messages and dialogs
 const UICON = { pikeman: '🔱', archer: '🏹', griffin: '🦅', swordsman: '⚔️', monk: '🧙', cavalier: '🏇', angel: '👼', skeleton: '💀', zombie: '🧟', wight: '👻', vampire: '🧛', lich: '☠️', blackknight: '♞', bonedragon: '🐉', goblin: '👺', wolf: '🐺', orc: '👹', ogre: '🦣', troll: '🧌', cyclops: '👁️', hydra: '🐍' };
 const unitIcon = (id) => UICON[id] || '❔';
+const plural = (id, n = 2) => (n === 1 ? UNITS[id].name : UNITS[id].name.replace(/man$/, 'men').replace(/f$/, 'ves').replace(/([^s])$/, '$1s'));
 let toastT = 0;
 function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
 function showMsg(title, html, wide = false) { ask(title, html, [['OK', null]], wide); }
@@ -1329,7 +1331,7 @@ const dialogOpen = () => dialogs.length > 0;
 function recruitDialog(title, id, stock, onBuy) {
   const u = UNITS[id], Pl = G.players[0];
   const max = Math.min(stock, ...RES.filter((r) => u.cost[r]).map((r) => Math.floor(Pl.res[r] / u.cost[r])));
-  ask(title, `${unitIcon(id)} <b>${u.name}</b> · ${stock} available · ${costText(u.cost)} each`, [[`Hire ${max}`, max > 0 ? () => { const hr = onBuy(max); if (addTroops(hr.army, id, max)) { pay(0, u.cost, max); sfx.coin(); toast(`${unitIcon(id)} ${max} ${u.name}s join ${hr.name}.`); } else toast('No free slot in your army.'); updateHud(); } : undefined], ['Leave', null]]);
+  ask(title, `${unitIcon(id)} <b>${u.name}</b> · ${stock} available · ${costText(u.cost)} each`, [[`Hire ${max}`, max > 0 ? () => { const hr = onBuy(max); if (addTroops(hr.army, id, max)) { pay(0, u.cost, max); sfx.coin(); toast(`${unitIcon(id)} ${max} ${plural(id, max)} join ${hr.name}.`); } else toast('No free slot in your army.'); updateHud(); } : undefined], ['Leave', null]]);
 }
 // floating numbers over the world (or the battlefield)
 const floaters = [];
@@ -1380,6 +1382,7 @@ $('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') re
 
 // ------------------------------------------------------------------ days and weeks
 function endTurn() {
+  if (G.mode !== 'map' || aiRunning || walking) return;
   showPath(selHero(), null);
   aiRunning = true; aiGen = runAI(); $('b-end').disabled = true;
   toast('⏳ The enemy is moving…');
@@ -1665,4 +1668,4 @@ layoutWorld();
 resize();
 showMenu();
 frame();
-window.__realms = { G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, aiRunning: () => aiRunning, layoutWorld };
+window.__realms = { G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld };
