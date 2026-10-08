@@ -45,7 +45,7 @@ const FRAME = {
   goblin: { crop: 0.7 }, wolf: { crop: 0.9, front: 0.4, az: 0.85 }, ogre: { crop: 0.6 }, troll: { crop: 0.6 },
   cyclops: { crop: 0.55 }, hydra: { crop: 0.7, front: 0.1 },
   // heroes (mounted, with a banner): the rider
-  hero: { crop: 0.55, front: 0.25, q: 0.06, pad: 0.14 },
+  hero: { crop: 0.5, front: 0.25, q: 0.08, pad: 0.1 },
 };
 
 let T = null, R = null, modelOf = null, OPTS = {};
