@@ -556,7 +556,7 @@ function mound({ r0, h, segs = 12, rings = 8, seed = 1, rough = 0.28, sharp = 1.
     : ringsGeo(rs, { apexTop: V(ox + lean[0], h, oz + lean[1]), flip: true });
   return { g, surf };
 }
-const ROCK_PEAK = ramp(0x7a6456, 0x9a8270, 0xbca48a, 0xdcc6a8, 0xf8eacc); // warm sunlit sandstone-grey
+const ROCK_PEAK = ramp(0x7a6252, 0x9e8068, 0xc4a482, 0xe2c8a2, 0xfaeccc); // warm sunlit sandstone-grey
 const COLD_PEAK = ramp(0x56688e, 0x6e82a8, 0x8a9ec0, 0xaabcd6, 0xcad8ea); // pale blue granite
 const BASALT = ramp(0x5e3a3a, 0x7c4a44, 0x9c604c, 0xbc7c5a, 0xd89c74); // warm red-brown volcanic rock
 const PEAK_SHADE = L(0x5c5490); // painted shade colour: violet, never black
@@ -564,7 +564,7 @@ function peakPaint(kind, H) {
   const rock = kind === 'snow' ? COLD_PEAK : kind === 'volcano' ? BASALT : ROCK_PEAK;
   const grass = kind === 'volcano' ? ramp(0x7a4a34, 0x9a6040) : kind === 'snow' ? ramp(0xc8d8f0, 0xf0f6ff) : ramp(0x4a9a2e, 0x86c446);
   const SN = ramp(0xa8bce8, 0xd4e0f8, 0xf6f9ff, 0xffffff);
-  const snowLine = kind === 'snow' ? 0.36 : 0.6;
+  const snowLine = kind === 'snow' ? 0.4 : 0.54;
   return (p, n) => {
     const m = fbm(p.x * 4 + 7, p.y * 4, p.z * 4), fine = noise(p.x * 14, p.y * 14, p.z * 14), t = p.y / H;
     const facing = n.x * 0.55 + n.z * 0.45; // painted key light so ridges read even in shade

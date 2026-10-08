@@ -12,6 +12,7 @@ import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKIL
 import * as BT from './battle.js?v=0.3';
 import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, tick as tickMaterials } from './materials.js?v=0.3';
 import { createScore } from './music.js?v=0.3';
+import { unitFit, applyFit } from './unit_fit.js?v=0.3';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -536,7 +537,7 @@ function layoutWorld() {
     if (!o.alive || !seen[o.v]) continue;
     const g = meshOf(objModel(o));
     placeOn(g, o.v, SCALE[o.type] || 0.24, o.type === 'monster' ? (hash(o.id) % 6) : 0);
-    if (o.type === 'monster') g.userData.bob = o.id;
+    if (o.type === 'monster') { g.userData.bob = o.id; applyFit(g, unitFit(o.unit, objModel(o), 'map')); }
     world.add(g);
     const owner = o.type === 'town' ? G.towns[o.t].p : OBJECTS[o.type]?.kind === 'mine' ? o.owner : -2;
     if (owner > -2) { const f = flagMesh(ownerCol(owner)); g.add(f); f.position.set(0.55, 0, 0.45); f.scale.setScalar(o.type === 'town' ? 0.6 : 0.8); }
@@ -923,7 +924,7 @@ function enterBattle(B, ctx) {
   $('blabels').innerHTML = ''; for (const f of floaters) f.el.remove(); floaters.length = 0;
   for (const s of B.stacks) {
     const m = meshOf(cached('u' + s.id, () => unitGeo(s.id)));
-    m.scale.setScalar(0.9 * (s.u.tier >= 6 ? 1.05 : 1) * (s.u.up ? 1.08 : 1));
+    applyFit(m, unitFit(s.id, cached('u' + s.id, () => unitGeo(s.id)), 'battle'));
     m.position.copy(hexPos(s.c, s.r)); m.rotation.y = s.side === 0 ? Math.PI : 0;
     bstuff.add(m); bmesh.set(s.uid, m);
     const lab = document.createElement('div'); lab.className = `blab s${s.side}`; lab.id = `bl${s.uid}`; $('blabels').appendChild(lab);
@@ -1024,7 +1025,7 @@ function animateBattle(dt) {
   // gentle idle bob
   for (const s of B.stacks) { const m = bmesh.get(s.uid); if (m && s.count > 0 && !m.userData.busy) m.position.y = Math.abs(Math.sin(performance.now() / 400 + s.uid)) * 0.03; }
   // labels follow their stacks
-  for (const s of B.stacks) { const m = bmesh.get(s.uid), lab = $(`bl${s.uid}`); if (!m || !lab) continue; const v = m.position.clone().setY(0.05).project(bcam); lab.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px)`; }
+  for (const s of B.stacks) { const m = bmesh.get(s.uid), lab = $(`bl${s.uid}`); if (!m || !lab) continue; const v = m.position.clone().setY(m.position.y + (m.userData.fit?.labelY ?? 0.05)).project(bcam); lab.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px)`; }
   if (banim.length) {
     const a = banim[0], e = a.e; a.t += dt;
     const done = playEvent(e, a.t);
@@ -1664,7 +1665,7 @@ function frame() {
       const m = hr && heroMeshes.get(hr.id);
       selRing.visible = !!m;
       if (m) { selRing.position.copy(m.position).addScaledVector(m.position.clone().normalize(), 0.01); selRing.quaternion.setFromUnitVectors(UP, m.position.clone().normalize()); }
-      for (const g of world.children) if (g.userData.bob !== undefined) g.children[0].position.y = Math.abs(Math.sin(tt * 2 + g.userData.bob)) * 0.15;
+      for (const g of world.children) if (g.userData.bob !== undefined) for (const c of g.children) if (c.isMesh) c.position.y = (c.userData.fitY ?? 0) + Math.abs(Math.sin(tt * 2 + g.userData.bob)) * 0.15;
     }
     post.render(scene, camera);
   }

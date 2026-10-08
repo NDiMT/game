@@ -222,7 +222,7 @@ function shield(k, p, r, sc, field, trim, emblem) {
 // W and T are wrist and tip offsets from the shoulder; D is the way the feathers hang.
 const smoothU = (x) => { const t = Math.min(1, Math.max(0, x)); return t * t * (3 - 2 * t); };
 function wing(k, sh, o) {
-  const { W, T, len = 0.42, n = 10, col = WHITE, tip = GOLD_L, cov = WHITE, drop = [0, -1, -0.35], dropIn = drop, th = 0.012, prim = 4, bone = cov } = o;
+  const { W, T, len = 0.42, n = 10, col = WHITE, tip = GOLD_L, cov = WHITE, drop = [0, -1, -0.35], dropIn = drop, th = 0.012, prim = 4, bone = cov, lift = 1 } = o;
   const S = V3(sh), wrist = S.clone().add(V3(W)), tipP = S.clone().add(V3(T));
   k.limb(S.toArray(), wrist.toArray(), 0.04, 0.03, bone, { seg: 5 });
   k.limb(wrist.toArray(), tipP.toArray(), 0.03, 0.016, bone, { seg: 5 });
@@ -236,7 +236,7 @@ function wing(k, sh, o) {
     const L = len * (t < 0.4 ? 0.55 + 0.45 * (t / 0.4) : 1 - 0.55 * u) * (i % 2 ? 0.84 : 1);
     roots.push(root); dirs.push(dir); ends.push(root.clone().add(dir.clone().multiplyScalar(L)));
   }
-  const bands = [[0, 0.4, cov, [1.08, 1.0]], [0.4, 0.78, col, [1.04, 0.94]], [0.78, 1, tip, [1, 1]]];
+  const bands = [[0, 0.4, cov, [1.08 * lift, 1.0 * lift]], [0.4, 0.78, col, [1.04 * lift, 0.94 * lift]], [0.78, 1, tip, [lift, lift]]];
   for (const [f0, f1, c, gr] of bands) {
     const P = [];
     const tri = (x, y, z) => P.push(...x.toArray(), ...y.toArray(), ...z.toArray());
@@ -255,7 +255,7 @@ function wing(k, sh, o) {
   for (let j = 0; j < prim; j++) {
     const i = n - j * 2, r0 = roots[Math.max(0, i)].clone();
     const dir = dirs[Math.max(0, i)].clone().lerp(E, 0.25 - j * 0.05).normalize();
-    k.feather(r0.toArray(), r0.clone().add(dir.multiplyScalar(len * (0.7 + j * 0.1))).toArray(), 0.075, tip, { grad: [0.95, 1.1], t: 0.016 });
+    k.feather(r0.toArray(), r0.clone().add(dir.multiplyScalar(len * (0.7 + j * 0.1))).toArray(), 0.075, tip, { grad: [0.95 * lift, 1.1 * lift], t: 0.016 });
   }
 }
 
@@ -431,7 +431,7 @@ function royalgriffin() {
   for (let i = 0; i < 5; i++) k.cone(0.016, 0.07, [Math.sin((i - 2) * 0.55) * 0.066, hy + 0.085, hz - 0.01 + Math.cos((i - 2) * 0.55) * 0.066], GOLD_L, { seg: 4 });
   for (let i = 0; i < 5; i++) k.cone(0.03, 0.2 + (i % 2) * 0.04, [(i - 2) * 0.03, hy + 0.04, hz - 0.09], i % 2 ? ROYAL_L : FEATH, { r: [-1.85 - Math.abs(i - 2) * 0.12, (i - 2) * 0.25, 0], seg: 4 });
   // great golden wings, bigger than the base griffin's, with royal blue tips
-  k.sym(() => wing(k, [0.11, 0.6, 0.06], { W: [0.34, 0.26, -0.06], T: [0.8, 0.46, -0.26], len: 0.52, drop: [0.1, -0.3, -1], dropIn: [0.1, -0.9, -0.6], n: 11, col: 0xf0b030, tip: ROYAL, cov: 0xfff0c8, bone: GOLD_L, prim: 5 }));
+  k.sym(() => wing(k, [0.11, 0.6, 0.06], { W: [0.34, 0.26, -0.06], T: [0.8, 0.46, -0.26], len: 0.52, drop: [0.1, -0.3, -1], dropIn: [0.1, -0.9, -0.6], n: 11, col: 0xf0b030, tip: ROYAL, cov: 0xfff0c8, bone: GOLD_L, prim: 5, lift: 1.3 }));
   return k.done();
 }
 
@@ -663,7 +663,7 @@ function archangel() {
   const lh = toW(H.L);
   k.ball(0.04, [lh[0], lh[1] + 0.06, lh[2] + 0.03], 0xfff4c0, { glow: true, d: 1 });
   // huge wings: more and longer feathers than the angel, gold banding, gold-rimmed tips
-  k.sym(() => wing(k, [0.08, 1.04, -0.13], { W: [0.36, 0.3, -0.15], T: [0.82, 0.62, -0.36], len: 0.76, n: 14, col: 0xfff6e2, tip: 0xffd45a, cov: 0xffffff, bone: GOLD_L, drop: [0.05, -0.35, -1], dropIn: [0.05, -1, -0.45], prim: 5 }));
+  k.sym(() => wing(k, [0.08, 1.04, -0.13], { W: [0.36, 0.3, -0.15], T: [0.82, 0.62, -0.36], len: 0.76, n: 14, col: 0xfff6e2, tip: 0xffd45a, cov: 0xffffff, bone: GOLD_L, drop: [0.05, -0.35, -1], dropIn: [0.05, -1, -0.45], prim: 5, lift: 1.35 }));
   return k.done();
 }
 
