@@ -171,3 +171,18 @@ body.in-menu .top, body.in-menu .dock, body.in-menu .side { display: none; }
 .tab.on { color: var(--gold); background: linear-gradient(180deg, #3a2e78, #2a2050); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.15); }
 .power.build { --c2: #1a2050; }
 .power.build span { font-size: 11px; }
+
+/* diplomacy */
+.relbar { position: relative; height: 22px; border-radius: 11px; background: rgba(0, 0, 0, 0.45); overflow: hidden; margin: 10px 0 4px; }
+#d-rel { position: absolute; inset: 0 auto 0 0; width: 50%; background: linear-gradient(180deg, #8affb0, #22b860); transition: width 0.4s; }
+#d-rel.mid { background: linear-gradient(180deg, #ffe07a, #e0a020); }
+#d-rel.no { background: linear-gradient(180deg, #ff8a8a, #d02a2a); }
+.relbar span { position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Lilita One', sans-serif; font-size: 13px; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
+.offer { margin: 10px 0; padding: 10px; border-radius: 14px; background: rgba(255, 207, 90, 0.12); border: 2px solid var(--gold2); }
+.offer .row { margin-top: 8px; }
+.dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.dgrid .btn { font-size: 14px; padding: 11px 6px; }
+.dgrid .btn:disabled { opacity: 0.4; }
+.btn.danger { background: linear-gradient(180deg, #e0504a, #9a2020); border-color: #ff9a8a; box-shadow: 0 5px 0 #4a0a0a; }
+.btn.wide { width: 100%; }
+.round.pulse { animation: glow 0.9s ease-in-out infinite; border-color: var(--gold); }
