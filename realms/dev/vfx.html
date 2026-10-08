@@ -135,7 +135,10 @@ if (!SHEET) {
   const sheet = document.getElementById('sheet'); sheet.style.display = 'block'; renderer.domElement.style.display = 'none'; label.style.display = 'none';
   sheet.width = TW * NC; sheet.height = TH * NR; const g = sheet.getContext('2d');
   g.font = 'bold 16px sans-serif'; g.fillStyle = '#fff'; g.shadowColor = '#000'; g.shadowBlur = 3;
+  const onlyS = Q.get('only');
+  window.__dbg = [];
   FX.forEach(([name, fn], idx) => {
+    if (onlyS && !name.includes(onlyS)) return;
     vfx.clear(); reset();
     const [t, a, b] = SNAP[name];
     const look = b ? at(a, 0).lerp(at(b, 0), 0.5) : at(a, 0), dist = b ? 8.5 : 4.6;
@@ -145,6 +148,7 @@ if (!SHEET) {
     vfx.update(0.016, cam); fn();
     for (let s = 0; s < t; s += 1 / 60) vfx.update(1 / 60, cam);
     post.render(scene, cam);
+    window.__dbg.push([name, vfx.stats(), vfx.root.children.filter((o) => o.visible).map((o) => o.type + (o.geometry?.type || ''))]);
     const x = (idx % NC) * TW, y = Math.floor(idx / NC) * TH;
     g.drawImage(renderer.domElement, x, y, TW, TH); g.fillText(name, x + 8, y + 22);
   });

@@ -157,8 +157,9 @@ const I = {
     `<path d="M16 22l-3.5 6v-3.5L16 19l3.5 5.5V28Z" fill="${g('red')}" ${O2}/></g>`,
   fly: `<path d="M4 25C6 14 14 5.5 28 4c-3 3-4 6-3.5 7.5-3 1-4.5 3-4.5 4.5-2.5.5-4 2.5-4.5 4-3 1-6 3-11.5 5Z" fill="${g('silver')}" ${O}/>` +
     `<path d="M9 21c4.5-6 9.5-10.5 15-13M15.2 18.6l5-1.5M19.6 14.2l4.6-1.7" fill="none" stroke="#8592ac" stroke-width="1" stroke-linecap="round"/>`,
-  morale: `<path d="M3.5 20.5c7-1 14-5 19-14.5l3.5 2c-2 10-8 16.5-20 17Z" fill="${g('gold')}" ${O}/><ellipse cx="24.4" cy="7" rx="3.6" ry="2" transform="rotate(30 24.4 7)" fill="${g('goldD')}" ${O2}/><path d="M6 21.5c6-1.6 11-5 14.5-10" ${HL}/>` +
-    `<path d="M5.5 25c2 1 5 1.3 7.5.6" stroke="${g('red')}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`,
+  morale: `<path d="M3.5 22.5C10 22 17 17 20.5 5.5L28.5 12C22 22 13 26.5 4.5 25.5Z" fill="${g('gold')}" ${O}/><ellipse cx="24.5" cy="8.75" rx="5.2" ry="2.3" transform="rotate(39 24.5 8.75)" fill="${g('goldD')}" ${O2}/>` +
+    `<path d="M10.5 21.2l2.3 3.6M16 17.8l3.2 3.2" stroke="${g('wood')}" stroke-width="2.4"/><path d="M5.5 23c5.5-.6 10.5-4 14-11" ${HL}/><path d="M3.5 22.5c-1.2.6-1.3 2.4 1 3" stroke="${INK}" stroke-width="1.4" fill="none"/>` +
+    `<path d="M11 25.3c1 2.6 4.5 3.6 8 2.4" stroke="${g('red')}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`,
   luck: `<g transform="translate(16 13.5)">${[0, 90, 180, 270].map((a) => `<path transform="rotate(${a + 45})" d="M0 0C-1.5-2-5.5-3.5-6.5-7.5-6.8-9.8-4.4-10.8-2.5-9.6-1-8.7 0-7 0-5.5 0-7 1-8.7 2.5-9.6 4.4-10.8 6.8-9.8 6.5-7.5 5.5-3.5 1.5-2 0 0Z" fill="${g('green')}" ${O2}/>`).join('')}</g>` +
     `<path d="M16 14c0 6 1.5 10 4.5 14.5" stroke="${INK}" stroke-width="3.2" fill="none" stroke-linecap="round"/><path d="M16 14c0 6 1.5 10 4.5 14.5" stroke="#4cbb3c" stroke-width="1.6" fill="none" stroke-linecap="round"/>`,
 
@@ -166,7 +167,7 @@ const I = {
   logistics: `<path d="M8 27V14a8 8 0 0 1 16 0v13h-5.2V14.5a2.8 2.8 0 0 0-5.6 0V27Z" fill="${g('steel')}" ${O}/>` +
     `<g fill="${INK}">${[[10.6, 24], [10.4, 19], [11.6, 13.5], [21.4, 24], [21.6, 19], [20.4, 13.5]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r=".9"/>`).join('')}</g><path d="M10.6 11.5a6 6 0 0 1 4.4-3.8" ${HL}/>` +
     `<path d="M3 9.5h4M2 14h3.5M3 18.5h3" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".9"/><path d="M3 9.5h4M2 14h3.5M3 18.5h3" stroke="${INK}" stroke-width="2.8" stroke-linecap="round" opacity=".25"/>`,
-  offense: `<circle cx="16" cy="16" r="13" fill="${g('glowY')}"/>${sword(-45, 'steel', 'red')}${sword(45, 'steel', 'gold')}`,
+  offense: `<g transform="translate(1.6 1.6) scale(.9)">${sword(-45, 'steel', 'red')}${sword(45, 'steel', 'gold')}</g>`,
   archery: `<path d="M8 3.5C20 6 24 14 24 16s-4 10-16 12.5" fill="none" stroke="${INK}" stroke-width="4.4" stroke-linecap="round"/><path d="M8 3.5C20 6 24 14 24 16s-4 10-16 12.5" fill="none" stroke="${g('wood')}" stroke-width="2.6" stroke-linecap="round"/>` +
     `<path d="M8.5 4v24" stroke="#fff8e0" stroke-width="1"/><path d="M5 16h22" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/><path d="M5 16h22" stroke="${g('woodL')}" stroke-width="1.4"/>` +
     `<path d="M30 16l-5-3v6Z" fill="${g('steel')}" ${O2}/><path d="M3 13l4 3-4 3M6 13l4 3-4 3" fill="none" stroke="${g('red')}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,

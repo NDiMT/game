@@ -3,7 +3,7 @@
 <script type="importmap">{ "imports": { "three": "../../vendor/three.module.js" } }</script></head><body>
 <script type="module">
 import * as THREE from 'three';
-import { townModel, heroModel, flagModel } from '../models_towns.js?v=' + Date.now();
+const { townModel, heroModel, flagModel } = await import('../models_towns.js?v=' + Date.now());
 import { makeBodyMaterial, makeGlowMaterial } from '../materials.js';
 const q = new URLSearchParams(location.search);
 const renderer = new THREE.WebGLRenderer({ antialias: true });

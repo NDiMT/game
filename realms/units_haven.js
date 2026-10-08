@@ -571,8 +571,6 @@ function angel() {
     k.lathe([[0.196, 0.0], [0.192, 0.045]], [0, 0, 0], BLUE, { s: [1, 1, 0.86], seg: 10, grad: [1, 1] });
     k.lathe([[0.194, 0.045], [0.19, 0.06]], [0, 0, 0], GOLD, { s: [1, 1, 0.86], seg: 10, grad: [1, 1] });
     k.sym(() => k.ell(0.05, 0.035, 0.07, [0.07, 0.03, 0.14], GOLD, { d: 1 }));
-    // soft blue shadow-pool of cloud under the hem: plants her on the ground
-    k.cyl(0.24, 0.2, 0.025, [0, 0, 0], 0xdfe8ff, { s: [1, 1, 0.9], seg: 10, ao: false });
     k.lathe([[0.15, 0.25], [0.142, 0.4], [0.13, 0.5]], [0, 0, 0], ARM, { s: [1, 1, 0.9], seg: 10, phi: -0.9, len: 1.8, grad: [0.8, 1.15] }); // front plates
     // golden hair and a circlet
     k.ell(0.1, 0.11, 0.1, [0, 0.94, -0.02], HAIR, { grad: [0.75, 1.15] });

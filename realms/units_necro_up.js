@@ -459,7 +459,7 @@ function wraith() {
 // =====================================================================
 function vampirelord() {
   const k = nkit(441);
-  const PALE = 0xece6f4, HAIR = 0xf4f0f8, COAT = grad(0x4a2a5a, 0x8a4a8a, 0.2, 0.95), BOOT = grad(0x3a2238, 0x6a3a5a, 0.05, 0.28);
+  const PALE = 0xece6f4, HAIR = 0xf4f0f8, COAT = grad(0x8a1a34, 0xd84a5a, 0.2, 0.95), BOOT = grad(0x4a2a3a, 0x7a4a5a, 0.05, 0.28);
   for (const x of [-1, 1]) {
     const ank = [x * 0.08, 0.06, x < 0 ? 0.06 : -0.03];
     k.box(0.075, 0.055, 0.17, [ank[0], 0.027, ank[2] + 0.04], 0x3a2238);
@@ -472,7 +472,7 @@ function vampirelord() {
   k.lathe([[0.188, 0.27], [0.183, 0.3]], 12, [0, 0, -0.01], GOLD, { phi0: 0.5, phiLen: TAU - 1.0, ds: true });
   // torso: plum doublet, crimson waistcoat with gold embroidery
   k.ball(0.155, [0, 0.71, 0], COAT, [1, 1.35, 0.78], 1);
-  k.box(0.14, 0.27, 0.05, [0, 0.67, 0.09], grad(CRIM_D, CRIM_L, 0.55, 0.82), [-0.08, 0, 0]);
+  k.box(0.14, 0.27, 0.05, [0, 0.67, 0.09], grad(0xd8ccb8, 0xfff8ec, 0.55, 0.82), [-0.08, 0, 0]);
   for (let i = 0; i < 4; i++) k.ball(0.012, [0, 0.58 + i * 0.055, 0.12], GOLD, [1, 1, 1], 0);
   for (const x of [-1, 1]) k.box(0.012, 0.25, 0.012, [x * 0.065, 0.67, 0.116], GOLD, [-0.08, 0, 0]);
   k.box(0.28, 0.04, 0.19, [0, 0.55, 0.0], GOLD_D);
@@ -531,7 +531,7 @@ function vampirelord() {
     const a = (u - 0.5) * 3.4, rad = (0.11 + v * 0.09 + (inner ? -0.006 : 0)) * (1 + Math.abs(u - 0.5) * 0.3);
     return [Math.sin(a) * rad, 0.87 + v * 0.3 + Math.abs(u - 0.5) * 0.1 * v, -Math.cos(a) * rad * 0.9 - 0.02];
   };
-  k.surf(collar(false), 8, 2, 0x5a2a5a, { ds: true });
+  k.surf(collar(false), 8, 2, 0x4a2a7a, { ds: true });
   k.surf(collar(true), 8, 2, CRIM_L, { ds: true });
   { const top = []; for (let i = 0; i <= 8; i++) top.push(collar(false)(i / 8, 1)); k.chain(top, top.map(() => 0.008), GOLD, 3); }
   // vast bat-wing cape
@@ -544,13 +544,14 @@ function vampirelord() {
     const y = 0.88 - vv * 0.76 + as * as * 1.3 * (0.4 + vv * 0.5);
     return [Math.sin(a) * rad * 1.2, y, -Math.cos(a) * rad * 0.75 - 0.03];
   };
-  k.surf(cape(0), 18, 5, gradZ(0x4a1e4a, 0x7a3a6a, -0.45, 0.1), { ds: true });
-  k.surf(cape(0.012), 18, 5, grad(CRIM, CRIM_L, 0.2, 0.9), { ds: true });
+  k.surf(cape(0), 18, 5, gradZ(0x3a2068, 0x6a44a8, -0.45, 0.1), { ds: true });
+  k.surf(cape(0.012), 18, 5, grad(0x5a2a8a, 0x9a5ac8, 0.2, 0.9), { ds: true });
   for (let i = 0; i <= NR; i++) {
     if (i === NR / 2) continue;
     const u = i / NR, pts = [], f = cape(-0.004);
     for (let v = 0; v <= 1.0001; v += 0.34) pts.push(f(u, v));
     k.chain(pts, [0.013, 0.011, 0.008, 0.004], GOLD_D, 4);
+    if (u !== 0.5) { const e = pts[pts.length - 1], d = [e[0] * 1.12, e[1] - 0.06, e[2] * 1.05]; k.spike(e, d, 0.014, GOLD, 4); }
   }
   return finish(k, 1.0);
 }
