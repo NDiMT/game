@@ -29,20 +29,27 @@ function vnoise(x, y, p, seed) {
   const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
   return lerp(lerp(lhash(x0, y0, seed), lhash(x1, y0, seed), sx), lerp(lhash(x0, y1, seed), lhash(x1, y1, seed), sx), sy);
 }
-// a tileable fbm field over the tile, roughly 0..1
+// a tileable fbm field over the tile, roughly 0..1 (computed at half resolution, then bilinearly upsampled)
 function fbm(seed, base = 4, oct = 4, gain = 0.5) {
-  const f = new Float32Array(S * S);
+  const H = S >> 1, g = new Float32Array(H * H);
   let norm = 0;
   for (let o = 0, a = 1; o < oct; o++, a *= gain) norm += a;
-  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+  for (let y = 0; y < H; y++) for (let x = 0; x < H; x++) {
     let s = 0, a = 1, p = base;
-    for (let o = 0; o < oct; o++) { s += a * vnoise((x / S) * p, (y / S) * p, p, seed + o * 31); a *= gain; p *= 2; }
-    f[y * S + x] = s / norm;
+    for (let o = 0; o < oct; o++) { s += a * vnoise((x / H) * p, (y / H) * p, p, seed + o * 31); a *= gain; p *= 2; }
+    g[y * H + x] = s / norm;
   }
-  // stretch the contrast to roughly 0..1
   let lo = 1, hi = 0;
-  for (let i = 0; i < f.length; i++) { if (f[i] < lo) lo = f[i]; if (f[i] > hi) hi = f[i]; }
-  for (let i = 0; i < f.length; i++) f[i] = (f[i] - lo) / (hi - lo);
+  for (let i = 0; i < g.length; i++) { if (g[i] < lo) lo = g[i]; if (g[i] > hi) hi = g[i]; }
+  const f = new Float32Array(S * S), k = 1 / (hi - lo);
+  for (let y = 0; y < S; y++) {
+    const gy = y * 0.5, y0 = gy | 0, fy = gy - y0, y1 = (y0 + 1) % H;
+    for (let x = 0; x < S; x++) {
+      const gx = x * 0.5, x0 = gx | 0, fx = gx - x0, x1 = (x0 + 1) % H;
+      const v = lerp(lerp(g[y0 * H + x0], g[y0 * H + x1], fx), lerp(g[y1 * H + x0], g[y1 * H + x1], fx), fy);
+      f[y * S + x] = (v - lo) * k;
+    }
+  }
   return f;
 }
 // tileable voronoi: F1, F2 (in cell units), cell id and offset to the feature point
@@ -209,8 +216,8 @@ PAINT[LAYER.SNOW] = (ctx) => {
   const n1 = fbm(51, 3, 4), w = fbm(52, 2, 3), r = mulberry(53);
   return paintLayer(ctx, (q, x, y, set) => {
     const ph = y / S * 4 + x / S + w[q] * 1.6, s = 0.5 + 0.5 * Math.sin(6.283 * ph);
-    const sh = sstep(0.25, 0.9, s) * 0.55 + (1 - n1[q]) * 0.45;
-    const c = mixc([246, 250, 255], [168, 190, 228], sh * 0.75);
+    const sh = sstep(0.4, 0.95, s) * 0.5 + (1 - n1[q]) * 0.5;
+    const c = mixc([250, 252, 255], [190, 208, 238], sh * 0.6);
     const k = 0.98 + (lhash(x, y, 13) - 0.5) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap, glow) => {
@@ -227,24 +234,24 @@ PAINT[LAYER.SNOW] = (ctx) => {
 };
 // 5 swamp: murky moss, puddles, lily pads and reeds
 PAINT[LAYER.SWAMP] = (ctx) => {
-  const n1 = fbm(61, 4, 4), pud = fbm(62, 4, 4), r = mulberry(63);
+  const n1 = fbm(61, 4, 4), pud = fbm(62, 5, 4), r = mulberry(63);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([54, 66, 34], [100, 110, 52], n1[q]);
+    let c = mixc([50, 70, 50], [96, 112, 64], n1[q]);
     const p = pud[q];
-    if (p > 0.6) { const dd = sstep(0.6, 0.72, p); c = mixc([70, 92, 70], [30, 52, 52], dd); const sp = lhash(x, y, 3) > 0.985 ? 30 : 0; c = [c[0] + sp, c[1] + sp, c[2] + sp]; }
-    else if (p > 0.55) c = mixc(c, [128, 132, 72], sstep(0.55, 0.6, p) * 0.6);
+    if (p > 0.69) { const dd = sstep(0.69, 0.82, p); c = mixc([74, 96, 72], [38, 64, 60], dd); const sp = lhash(x, y, 3) > 0.985 ? 30 : 0; c = [c[0] + sp, c[1] + sp, c[2] + sp]; }
+    else if (p > 0.64) c = mixc(c, [128, 132, 72], sstep(0.64, 0.69, p) * 0.6);
     const k = 0.92 + lhash(x, y, 15) * 0.14;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
     for (let i = 0; i < 700; i++) {
       const x = r() * S, y = r() * S, q = ((y | 0) % S) * S + ((x | 0) % S);
-      if (pud[q] > 0.58) continue;
+      if (pud[q] > 0.67) continue;
       ctx.fillStyle = r() < 0.6 ? 'rgba(112,146,48,0.75)' : 'rgba(40,52,26,0.6)'; ctx.beginPath(); ctx.arc(x, y, 0.8 + r() * 1.4, 0, 6.283); ctx.fill();
     }
     let pads = 0;
     for (let i = 0; i < 400 && pads < 16; i++) {
       const x = r() * S, y = r() * S, q = ((y | 0) % S) * S + ((x | 0) % S);
-      if (pud[q] < 0.68) continue;
+      if (pud[q] < 0.74) continue;
       pads++;
       const s = 2.4 + r() * 1.6, a = r() * 6.28;
       wrap(x, y, 7, (X, Y) => {
@@ -255,27 +262,38 @@ PAINT[LAYER.SWAMP] = (ctx) => {
     }
     for (let i = 0; i < 70; i++) {
       const x = r() * S, y = r() * S, q = ((y | 0) % S) * S + ((x | 0) % S);
-      if (pud[q] > 0.6) continue;
+      if (pud[q] > 0.69) continue;
       const l = 5 + r() * 6, a = -1.57 + (r() - 0.5) * 0.6;
       wrap(x, y, 12, (X, Y) => { ctx.strokeStyle = 'rgb(70,86,36)'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * l, Y + Math.sin(a) * l); ctx.stroke(); ctx.fillStyle = 'rgb(110,74,40)'; ctx.fillRect(X + Math.cos(a) * l - 0.8, Y + Math.sin(a) * l - 1.5, 1.6, 2.6); });
     }
   });
 };
-// 6 rough: cracked stone plates and gravel
+// 6 rough: stony broken ground, rocks bedded in gravelly earth
 PAINT[LAYER.ROUGH] = (ctx) => {
-  const vo = voronoi(7, 71), n1 = fbm(72, 6, 3), r = mulberry(73);
+  const vo = voronoi(6, 71, 0.95), n1 = fbm(72, 4, 4), n2 = fbm(75, 9, 3), r = mulberry(73);
   return paintLayer(ctx, (q, x, y, set) => {
-    const id = vo.ID[q], e = vo.F2[q] - vo.F1[q];
-    const tone = lhash(id, 1, 74);
-    let c = mixc([126, 114, 92], [176, 162, 132], tone * 0.7 + n1[q] * 0.3);
-    const sh = 1 + (vo.DX[q] + vo.DY[q]) * 0.25;
-    const crack = 1 - sstep(0.02, 0.07, e);
-    c = mixc(c.map((v) => v * sh), [64, 54, 44], crack * 0.85);
+    let c = mixc([116, 98, 72], [160, 140, 104], n1[q]);
+    c = mixc(c, [96, 90, 80], sstep(0.5, 0.8, n2[q]) * 0.5);
+    // a rock where we are near a feature point, its size varying per cell
+    const id = vo.ID[q], e = vo.F2[q] - vo.F1[q] + (n2[q] - 0.5) * 0.12;
+    const gap = 0.12 + lhash(id, 4, 76) * 0.5;
+    if (gap < 0.55 && e > gap) {
+      const tone = lhash(id, 1, 74);
+      const rock = mixc([118, 110, 98], [176, 166, 148], tone);
+      const sh = 1.0 - (vo.DX[q] + vo.DY[q]) * 0.55 + sstep(gap, gap + 0.25, e) * 0.12;
+      c = rock.map((v) => v * sh);
+    } else if (gap < 0.55 && e > gap - 0.06) {
+      c = c.map((v) => v * 0.6); // contact shadow
+    }
     const k = 0.9 + lhash(x, y, 17) * 0.18;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    pebbles(ctx, wrap, r, 160, 0.8, 2.2, [[150, 140, 120], [110, 100, 88], [184, 172, 150]], 0.4);
-    cracks(ctx, wrap, r, 8, 8, 'rgba(60,50,40,0.7)', null, 0.9);
+    pebbles(ctx, wrap, r, 220, 0.8, 2.0, [[150, 140, 120], [110, 100, 88], [184, 172, 150], [130, 110, 84]], 0.45);
+    cracks(ctx, wrap, r, 7, 9, 'rgba(62,48,34,0.75)', 'rgba(210,190,150,0.25)', 1);
+    for (let i = 0; i < 40; i++) {
+      const x = r() * S, y = r() * S;
+      wrap(x, y, 8, (X, Y) => { ctx.strokeStyle = 'rgba(170,160,80,0.85)'; ctx.lineWidth = 0.8; for (let k = 0; k < 4; k++) { const a = -1.57 + (k - 1.5) * 0.35; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * 4, Y + Math.sin(a) * 4); ctx.stroke(); } });
+    }
   });
 };
 // 7 lava: black crust with glowing veins (alpha = glow)
@@ -323,8 +341,8 @@ PAINT[LAYER.MOUNT] = (ctx) => {
 PAINT[LAYER.FOREST] = (ctx) => {
   const n1 = fbm(101, 4, 4), n2 = fbm(102, 6, 3), r = mulberry(103);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([40, 62, 28], [80, 100, 42], n1[q]);
-    c = mixc(c, [92, 70, 40], sstep(0.55, 0.85, n2[q]) * 0.6);
+    let c = mixc([52, 60, 28], [92, 96, 44], n1[q]);
+    c = mixc(c, [104, 76, 42], sstep(0.55, 0.85, n2[q]) * 0.6);
     const k = 0.9 + lhash(x, y, 23) * 0.16;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
@@ -456,7 +474,7 @@ export function createPlanetMaterial(waterLevel) {
       .replace('#include <color_fragment>', `#include <color_fragment>
         {
           float fz = vRad - uWater;
-          float lap = 0.012 + 0.008 * sin(uTime * 1.9 + (vT.x + vT.y) * 9.0);
+          float lap = 0.016 + 0.009 * sin(uTime * 1.9 + (vT.x + vT.y) * 9.0);
           float foam = (1.0 - smoothstep(lap * 0.6, lap + 0.012, fz)) * smoothstep(-0.03, -0.005, fz);
           foam *= 0.75 + 0.25 * sin(vT.x * 70.0 + uTime * 3.0);
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.96, 1.0), foam * step(lay, 11.5) * 0.85);
@@ -492,7 +510,7 @@ export function createWaterMaterial() {
         wc = mix(wc, deep, smoothstep(0.5, 1.0, depth));
         wc *= 0.92 + 0.08 * wh / 2.9;
         float fn = 0.5 + 0.5 * sin(dot(vWPos, vec3(61.0, -43.0, 37.0)) + uTime * 1.3) * sin(dot(vWPos, vec3(-29.0, 53.0, 47.0)) - uTime * 0.9);
-        float edge = 0.2 + 0.05 * sin(uTime * 1.4 + wh * 0.6);
+        float edge = 0.27 + 0.06 * sin(uTime * 1.4 + wh * 0.6);
         float foam = 1.0 - smoothstep(edge * 0.45, edge, shore + (fn - 0.5) * 0.12);
         float ring = 0.32 + 0.1 * fract(uTime * 0.18 + wh * 0.02);
         float foam2 = (1.0 - smoothstep(0.0, 0.035, abs(shore - ring))) * (1.0 - smoothstep(0.2, 0.5, shore)) * smoothstep(0.35, 0.8, fn);
@@ -532,7 +550,7 @@ export function createPlanet(ctx) {
   let maxV = 0, maxT = 0;
   const tmpl = [];
   const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
-  const a = new THREE.Vector3(), b = new THREE.Vector3(), tg = new THREE.Vector3();
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), tg = new THREE.Vector3(), uvt = new THREE.Vector3();
   for (let v = 0; v < NV; v++) {
     const cell = CELLS[v], k = cell.fs.length, d = DIRS[v];
     const r = mulberry(v * 7919 + 17);
@@ -545,8 +563,8 @@ export function createPlanet(ctx) {
     const put = (i, p, n) => {
       dir[i * 3] = p.x; dir[i * 3 + 1] = p.y; dir[i * 3 + 2] = p.z;
       nor[i * 3] = n.x; nor[i * 3 + 1] = n.y; nor[i * 3 + 2] = n.z;
-      a.copy(p).sub(d).multiplyScalar(R);
-      uv[i * 2] = a.dot(u1) / TILE + ou; uv[i * 2 + 1] = a.dot(u2) / TILE + ov;
+      uvt.copy(p).sub(d).multiplyScalar(R);
+      uv[i * 2] = uvt.dot(u1) / TILE + ou; uv[i * 2 + 1] = uvt.dot(u2) / TILE + ov;
     };
     put(0, d, d);
     for (let i = 0; i < k; i++) {

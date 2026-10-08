@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=0.2';
-import { havenModel } from './units_haven.js?v=0.2';
-import { necroModel } from './units_necro.js?v=0.2';
-import { neutralModel } from './units_neutral.js?v=0.2';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=0.2';
-import { objectModel } from './models_objects.js?v=0.2';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.2';
-import { createBattlefield } from './battlefield.js?v=0.2';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.2';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.2';
-import * as BT from './battle.js?v=0.2';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, tick as tickMaterials } from './materials.js?v=0.2';
-import { createScore } from './music.js?v=0.2';
+import { mulberry32, unitModel } from './models.js?v=0.3';
+import { havenModel } from './units_haven.js?v=0.3';
+import { necroModel } from './units_necro.js?v=0.3';
+import { neutralModel } from './units_neutral.js?v=0.3';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=0.3';
+import { objectModel } from './models_objects.js?v=0.3';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.3';
+import { createBattlefield } from './battlefield.js?v=0.3';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.3';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.3';
+import * as BT from './battle.js?v=0.3';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, tick as tickMaterials } from './materials.js?v=0.3';
+import { createScore } from './music.js?v=0.3';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -20,7 +20,7 @@ import { createScore } from './music.js?v=0.2';
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '0.2';
+const APP_VERSION = '0.3';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -214,7 +214,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=0.2';
+import { createPlanet } from './terrain.js?v=0.3';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -233,12 +233,7 @@ function rebuildPlanet() { TERRAIN.rebuild(ter, h, road, seen); }
 const water = TERRAIN.water;
 water.receiveShadow = true;
 scene.add(water);
-const atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.12, 48, 32), new THREE.ShaderMaterial({
-  side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-  vertexShader: 'varying vec3 vN; void main() { vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: 'varying vec3 vN; void main() { float i = pow(clamp(0.8 - dot(vN, vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 3.0); gl_FragColor = vec4(vec3(0.35, 0.6, 1.0) * i * 1.6, 1.0); }',
-}));
-scene.add(atmo);
+
 
 // ------------------------------------------------------------------ bloom
 const post = (() => {
@@ -928,7 +923,7 @@ function enterBattle(B, ctx) {
   $('blabels').innerHTML = ''; for (const f of floaters) f.el.remove(); floaters.length = 0;
   for (const s of B.stacks) {
     const m = meshOf(cached('u' + s.id, () => unitGeo(s.id)));
-    m.scale.setScalar(0.72 * (s.u.tier >= 6 ? 1.1 : 1) * (s.u.up ? 1.08 : 1));
+    m.scale.setScalar(0.9 * (s.u.tier >= 6 ? 1.05 : 1) * (s.u.up ? 1.08 : 1));
     m.position.copy(hexPos(s.c, s.r)); m.rotation.y = s.side === 0 ? Math.PI : 0;
     bstuff.add(m); bmesh.set(s.uid, m);
     const lab = document.createElement('div'); lab.className = `blab s${s.side}`; lab.id = `bl${s.uid}`; $('blabels').appendChild(lab);
@@ -1660,6 +1655,7 @@ function frame() {
   } else {
     updateCamera(dt);
     atmos.update(dt, camera);
+    if (atmos.objects?.clouds) atmos.objects.clouds.visible = G.mode === 'menu' || cam.dist > 13;
     if (G.mode === 'menu') { cam.vTheta = 0.0015; cam.tDist = 16; }
     else {
       updateWalk(dt); tickAI(dt);
