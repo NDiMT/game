@@ -669,7 +669,7 @@ export function peakModel(kind = 'rock', variant = 0) {
 export function crystalModel(i = 0) {
   i = ((i % 4) + 4) % 4;
   const b = new Build(600 + i);
-  const pal = [ramp(0x1a3a7a, 0x3a8ad8, 0x9ad8ff, 0xf0ffff), ramp(0x3a1a6a, 0x7a3ac8, 0xc08aff, 0xf4e0ff), ramp(0x0a4a30, 0x1a9a5a, 0x6ae0a0, 0xe0fff0), ramp(0x5a0a10, 0xc0201a, 0xff7a40, 0xffe0a0)][i];
+  const pal = [ramp(0x2a5ab0, 0x4aa0f0, 0xa8e4ff, 0xf4ffff), ramp(0x5a2aa0, 0x9a50e8, 0xd0a0ff, 0xf8eaff), ramp(0x14805a, 0x2abc74, 0x7af0b0, 0xe8fff4), ramp(0x9a1a20, 0xe0302a, 0xff8a50, 0xffe8b0)][i];
   const glowC = [[0.3, 0.7, 1], [0.7, 0.35, 1], [0.3, 1, 0.6], [1, 0.4, 0.1]][i];
   const rock = rockPaint(ROCK_PAL[i === 3 ? 6 : 3], 0.2);
   boulder(b, 0.17, 0, 0, 0.45, rock, 0.3);
@@ -692,13 +692,13 @@ export function crystalModel(i = 0) {
 export function mushroomModel(i = 0) {
   i = ((i % 3) + 3) % 3;
   const b = new Build(700 + i);
-  const cap = [ramp(0x7a0a0a, 0xc81a14, 0xf04a2a), ramp(0x4a2a14, 0x8a5a2a, 0xc8945a), ramp(0x1a3a5a, 0x2a7aa0, 0x6ad0e0)][i];
-  const stem = ramp(0xb8ac94, 0xf0e8d8);
+  const cap = [ramp(0xb81a1a, 0xe82a20, 0xff6a40), ramp(0x8a5a2e, 0xb47c40, 0xe0b070), ramp(0x2a6a94, 0x3a9ac4, 0x7ae0f0)][i];
+  const stem = ramp(0xd8ccb4, 0xfff8ec);
   const set = [[0, 0, 0.11, 0.26], [0.13, 0.07, 0.075, 0.17], [-0.1, 0.09, 0.06, 0.12], [0.03, -0.13, 0.05, 0.1]];
   for (const [x, z, r, h] of set) {
     b.part(tubeGeo([V(x, 0, z), V(x + 0.01, h * 0.5, z), V(x, h, z)], [r * 0.38, r * 0.3, r * 0.28], 6), (p) => stem(p.y / h));
     b.part(new THREE.SphereGeometry(r, 9, 4, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1, 0.75, 1).translate(x, h - 0.01, z), (p, n) => cap(0.3 + n.y * 0.6 + noise(p.x * 30, p.y * 30, p.z * 30) * 0.2));
-    b.part(new THREE.CircleGeometry(r, 9).rotateX(Math.PI / 2).translate(x, h - 0.01, z), mix(L(0xd8c8a8), L(0x806850), 0.3));
+    b.part(new THREE.CircleGeometry(r, 9).rotateX(Math.PI / 2).translate(x, h - 0.01, z), L(0xe0ceb0));
     if (i === 0) for (let k = 0; k < 5; k++) { const a = k * 1.3 + x * 10, el = 0.5 + (k % 3) * 0.3; b.part(ico(r * 0.13, 0).scale(1, 0.5, 1).translate(x + Math.cos(a) * Math.cos(el) * r, h - 0.01 + Math.sin(el) * r * 0.75, z + Math.sin(a) * Math.cos(el) * r), 0xffffff); }
     if (i === 2) { for (let k = 0; k < 4; k++) { const a = k * 1.6 + x * 10, el = 0.6 + (k % 2) * 0.35; b.part(ico(r * 0.15, 0).translate(x + Math.cos(a) * Math.cos(el) * r, h - 0.01 + Math.sin(el) * r * 0.75, z + Math.sin(a) * Math.cos(el) * r), [0.4, 1, 0.9], { glow: true }); } b.part(new THREE.CircleGeometry(r * 0.9, 9).rotateX(Math.PI / 2).translate(x, h - 0.012, z), [0.2, 0.75, 0.8], { glow: true }); }
   }

@@ -573,8 +573,8 @@ function lich() {
   // claw holding the skull
   for (let i = 0; i < 4; i++) { const a = (i / 4) * TAU; k.chain([[sx, 1.06, sz], [sx + Math.sin(a) * 0.06, 1.1, sz + Math.cos(a) * 0.07], [sx + Math.sin(a) * 0.05, 1.19, sz + Math.cos(a) * 0.06]], [0.012, 0.01, 0.003], 0x7a5a40, 4); }
   skull(k, [sx, 1.17, sz + 0.01], 0.07, GREEN_G, { jawOpen: 0.4, eyeSize: 0.3 });
-  k.torus(0.12, 0.008, TAU, [sx, 1.17, sz], [Math.PI / 2 - 0.3, 0, 0.3], PURP_G, 1, 3, 16, GLOW);
-  k.torus(0.15, 0.006, TAU, [sx, 1.17, sz], [Math.PI / 2 + 0.4, 0, -0.4], 0x7a3ad0, 1, 3, 16, GLOW);
+  k.torus(0.12, 0.008, TAU, [sx, 1.17, sz], [Math.PI / 2 - 0.3, 0, 0.3], PURP_G, 1, 3, 12, GLOW);
+  k.torus(0.15, 0.006, TAU, [sx, 1.17, sz], [Math.PI / 2 + 0.4, 0, -0.4], 0xa05af0, 1, 3, 12, GLOW);
   for (let i = 0; i < 3; i++) k.spike([sx - 0.04 + i * 0.04, 1.2, sz - 0.04], [sx - 0.06 + i * 0.06, 1.3 + (i === 1 ? 0.06 : 0), sz - 0.08], 0.02, 0x6a3ac8, 4, GLOW); // purple flames
   // neck + skull with crown
   k.limb([0, 0.85, 0], [0, 0.92, 0.01], 0.03, 0.03, BONE_M);
@@ -613,8 +613,8 @@ function blackknight() {
   // horse body
   k.ball(0.22, [0, 0.66, 0], HORSE, [0.9, 0.85, 2.2], 1);
   // caparison (crimson barding cloth) with jagged hem and gold trim
-  k.lathe([[0.25, 0.38], [0.245, 0.56], [0.21, 0.76]], 18, [0, 0, -0.01], BARD, { s: [1, 1, 2.15], jag: 0.05, ds: true });
-  k.lathe([[0.252, 0.62], [0.248, 0.66]], 18, [0, 0, -0.01], GOLD_D, { s: [1, 1, 2.15] });
+  k.lathe([[0.25, 0.38], [0.245, 0.56], [0.21, 0.76]], 16, [0, 0, -0.01], BARD, { s: [1, 1, 2.15], jag: 0.05, ds: true });
+  k.lathe([[0.252, 0.62], [0.248, 0.66]], 16, [0, 0, -0.01], GOLD_D, { s: [1, 1, 2.15] });
   for (const x of [-1, 1]) {
     k.ball(0.065, [x * 0.25, 0.52, 0.0], BONE, [0.3, 1, 0.85], 1);  // skull emblem
     for (const y of [-1, 1]) k.ball(0.014, [x * 0.265, 0.53, y * 0.025], VOID, [1, 1, 1], 0);
@@ -728,8 +728,8 @@ function bonedragon() {
     k.add(g, BONE);
   }
   k.chain([[0, 0.38, -0.22], [0, 0.35, 0.05], [0, 0.42, 0.25]], [0.018, 0.022, 0.016], BONE_M, 5);  // sternum
-  flame(k, [0, 0.4, -0.08], 0.14, 0x9aff8a, 0x1ab84a, 6);
-  flame(k, [0, 0.42, 0.12], 0.13, 0x9aff8a, 0x1ab84a, 5);
+  flame(k, [0, 0.4, -0.08], 0.14, 0x9aff8a, 0x2ad85a, 5);
+  flame(k, [0, 0.42, 0.12], 0.13, 0x9aff8a, 0x2ad85a, 4);
   // pelvis
   k.ball(0.09, [0, 0.64, -0.3], BONE_M, [1.6, 0.8, 1], 1);
   // legs: hind
