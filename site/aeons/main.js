@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.0';
-import { createScore } from './music.js?v=2.0';
+import { mulberry32, mergeParts, tileModel, centerModel, buildingModel, roadGeo, laneGeo, lampGeos, carGeo, podGeo, boatGeos, birdGeo, sceneryGeos, wonderModel, starshipModel, WONDERS, personGeo, planeGeo, satelliteGeo, treeGeos, cloudGeo } from './models.js?v=2.1';
+import { createScore } from './music.js?v=2.1';
 
 // =====================================================================
 // AEONS: shape a small planet and guide its people from the first fire
@@ -9,7 +9,7 @@ import { createScore } from './music.js?v=2.0';
 // rising seas and meteors, and finally launch the Starship.
 // =====================================================================
 
-const APP_VERSION = '2.0';
+const APP_VERSION = '2.1';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -368,7 +368,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.setClearColor(0x1c1838, 1);
+renderer.setClearColor(0x05070f, 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 let hq = store.get('aeons.hq', true);
@@ -377,7 +377,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400);
 const sunDir = new THREE.Vector3(1, 0.3, 0.6).normalize();
 const sunU = { value: sunDir }, timeU = { value: 0 };
-const sun = new THREE.DirectionalLight(0xfff0dc, 2.2);
+const sun = new THREE.DirectionalLight(0xfff2dc, 2.6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -6.6, right: 6.6, top: 6.6, bottom: -6.6, near: 20, far: 42 });
@@ -387,9 +387,9 @@ scene.add(sun);
 // a cool moonlight from the far side keeps the night readable
 const moonLight = new THREE.DirectionalLight(0x8a7aff, 1.0);
 scene.add(moonLight);
-const hemi = new THREE.HemisphereLight(0xc8d4ff, 0x8a6aa8, 0.95);
+const hemi = new THREE.HemisphereLight(0x8aa8ff, 0x1a1a2a, 0.5);
 scene.add(hemi);
-scene.add(new THREE.AmbientLight(0x8a7ab8, 0.55));
+scene.add(new THREE.AmbientLight(0x3a4a7a, 0.45));
 const cam = { theta: 0, phi: 1.2, dist: 23, tTheta: 0, tPhi: 1.2, tDist: 23, vTheta: 0, vPhi: 0, shake: 0, fly: false };
 const lookAtP = new THREE.Vector3();
 function updateCamera(dt) {
@@ -448,11 +448,9 @@ const nightU = { value: 0 };
         float band = exp(-pow(dot(d, normalize(vec3(0.35, 1.0, -0.25))) * 3.2, 2.0));
         float n = fbm(d * 3.0 + vec3(0.0, uTime * 0.004, 0.0));
         float n2 = fbm(d * 7.0 - 3.0);
-        // a soft dusk gradient: deep indigo above, warm violet and rose toward the horizon band
-        float hgt = d.y * 0.5 + 0.5;
-        vec3 col = mix(vec3(0.33, 0.24, 0.42), vec3(0.11, 0.1, 0.24), smoothstep(0.15, 0.85, hgt));
-        col = mix(col, vec3(0.62, 0.42, 0.5), band * 0.35);
-        col += mix(vec3(0.18, 0.12, 0.26), vec3(0.32, 0.2, 0.3), n) * band * (0.25 + n2 * 0.35);
+        vec3 col = mix(vec3(0.05, 0.02, 0.12), vec3(0.35, 0.08, 0.45), n) * band * (0.6 + n2);
+        col += vec3(0.02, 0.18, 0.25) * pow(n2, 3.0) * band * 2.0;
+        col += vec3(0.01, 0.012, 0.03);
         gl_FragColor = vec4(col, 1.0);
       }`,
   }));
@@ -501,10 +499,10 @@ const planet = new THREE.Mesh(planetGeo, new THREE.MeshStandardMaterial({ vertex
 planet.castShadow = planet.receiveShadow = true;
 scene.add(planet);
 const C = (x) => new THREE.Color(x);
-const PAL = { deep: C(0x4a6a8a), bed: C(0xd8c8a0), dry: C(0xe6d29a), lush: C(0x7cc48a), snow: C(0xfbf8fa), ice: C(0xeef2f8), burnt: C(0x5a4a48), brown: C(0xb8a888), cliff: C(0xc89a8a), soil: C(0xc0a080) };
+const PAL = { deep: C(0x2a3a5a), bed: C(0xb8a070), dry: C(0xd2bc6a), lush: C(0x4aa63a), snow: C(0xf4f8fb), ice: C(0xe2eef6), burnt: C(0x3a2e28), brown: C(0x9a8a5a), cliff: C(0x7a6450), soil: C(0x9a7a4a) };
 // one colour per terrace, alternating light and dark so each level reads at a glance
-const BANDS = [0xf2dfb4, 0xbfdc8e, 0x9ccc7c, 0xb2d68a, 0x86bc78, 0xa7b884, 0xb8a890, 0xa89fa8, 0xc4bccc, 0xf4f0f4, 0xfbf8fa].map(C);
-const PAVE = [0xd8b890, 0xe6cfa2, 0xf4ead8, 0xddd0bc, 0xcab8a8, 0xc8ccd4, 0xf2f2f8].map(C);
+const BANDS = [0xe9d6a0, 0xa6d86a, 0x6fbd45, 0x93c858, 0x4f9a36, 0x8aa04e, 0x9a8a62, 0x8f8a82, 0xb4b0aa, 0xf0f4f8, 0xf4f8fb].map(C);
+const PAVE = [0xb09060, 0xd0b070, 0xece4d0, 0xb8ae9a, 0xa89480, 0xa8aeb6, 0xe8eef4].map(C);
 const owner = new Int32Array(NV).fill(-1), tileKind = new Uint8Array(NV), bTribe = new Uint8Array(NV);
 const RED = C(0xc84a3a);
 const tc = new THREE.Color();
@@ -600,7 +598,7 @@ const waterGeo = new THREE.BufferGeometry();
 }
 const waterMat = new THREE.ShaderMaterial({
   transparent: true,
-  uniforms: { uSun: sunU, uTime: timeU, uCam: { value: camera.position }, uShallow: { value: C(0x8ce6dc) }, uDeep: { value: C(0x3a7ab8) }, uR: { value: R } },
+  uniforms: { uSun: sunU, uTime: timeU, uCam: { value: camera.position }, uShallow: { value: C(0x4fd0e0) }, uDeep: { value: C(0x154f9a) }, uR: { value: R } },
   vertexShader: `attribute float aDepth; uniform float uR; varying float vDepth; varying vec3 vN; varying vec3 vW;
     uniform float uTime;
     void main() { vDepth = aDepth; vN = normalize(position); float wave = sin(uTime * 1.3 + position.x * 23.0 + position.z * 17.0) * sin(uTime * 0.9 + position.y * 19.0); vec4 w = modelMatrix * vec4(position * uR * (1.0 + wave * 0.0025), 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
@@ -643,7 +641,7 @@ const atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.16, 48, 32), new THRE
   vertexShader: `varying vec3 vN; varying vec3 vW; void main() { vN = normalize(normalMatrix * normal); vW = normalize((modelMatrix * vec4(position, 1.0)).xyz); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `uniform vec3 uSun; uniform vec3 uColor; varying vec3 vN; varying vec3 vW;
     void main() { float i = pow(clamp(0.78 - dot(vN, vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 3.0); float lit = 0.2 + 0.8 * clamp(dot(vW, uSun) + 0.35, 0.0, 1.0);
-      gl_FragColor = vec4(uColor * i * lit * 1.3, 1.0); }`,
+      gl_FragColor = vec4(uColor * i * lit * 1.8, 1.0); }`,
 }));
 scene.add(atmo);
 
@@ -700,9 +698,9 @@ const post = (() => {
         // grading: a touch more colour, cool shadows and warm highlights
         vec3 g = gl_FragColor.rgb;
         float l = dot(g, vec3(0.299, 0.587, 0.114));
-        g = mix(vec3(l), g, 0.92);
-        g = g * 0.9 + vec3(0.075, 0.06, 0.1);
-        g += vec3(0.02, 0.0, 0.03) * (1.0 - smoothstep(0.0, 0.5, l)) + vec3(0.03, 0.015, -0.01) * smoothstep(0.55, 1.0, l);
+        g = mix(vec3(l), g, 1.14);
+        g += vec3(-0.012, 0.0, 0.025) * (1.0 - smoothstep(0.0, 0.45, l)) + vec3(0.025, 0.012, -0.015) * smoothstep(0.55, 1.0, l);
+        g = mix(g, g * g * (3.0 - 2.0 * g), 0.18);
         gl_FragColor.rgb = clamp(g, 0.0, 1.0);
         #include <colorspace_fragment>
       }` });
@@ -1002,7 +1000,7 @@ const poolMat = new THREE.ShaderMaterial({
 const lampPool = inst(new THREE.PlaneGeometry(0.13, 0.13).rotateX(-Math.PI / 2).translate(0, 0.008, 0), poolMat, 1200, false);
 lampPool.renderOrder = 2;
 roadMesh.setColorAt(0, new THREE.Color()); laneMesh.setColorAt(0, new THREE.Color()); lampLight.setColorAt(0, new THREE.Color());
-const ROAD_COL = [0xb08a68, 0xb89270, 0xa89a88, 0x8e8478, 0x6a6474, 0x5a5468, 0xb8c8e8].map((c) => new THREE.Color(c));
+const ROAD_COL = [0x8a6a44, 0x9a7448, 0x8a8068, 0x6e685c, 0x44444c, 0x2e3038, 0x9ab8e0].map((c) => new THREE.Color(c));
 const LAMP_COL = [0xffb060, 0xffb060, 0xffc070, 0xffc070, 0xffd890, 0xfff2d8, 0x8ff4ff].map((c) => new THREE.Color(c));
 let segs = [], cornerSegs = new Map();
 const mtx = new THREE.Matrix4(), bx = new THREE.Vector3(), by = new THREE.Vector3(), bz = new THREE.Vector3(), sc3 = new THREE.Vector3();
@@ -2666,7 +2664,7 @@ function frame() {
   sun.position.copy(sunDir).multiplyScalar(30);
   // the light turns golden when the part of the world you look at is near dusk
   { const k = camera.position.clone().normalize().dot(sunDir), dusk = 1 - clamp(k / 0.55, 0, 1);
-    sun.color.setRGB(1, 0.94 - dusk * 0.28, 0.86 - dusk * 0.36); sun.intensity = 2.2 + dusk * 0.3; }
+    sun.color.setRGB(1, 0.95 - dusk * 0.32, 0.86 - dusk * 0.5); sun.intensity = 2.6 + dusk * 0.4; }
   sunSprite.position.copy(sunDir).multiplyScalar(120);
   moonLight.position.copy(sunDir).multiplyScalar(-30);
   moon.position.set(Math.cos(t * 0.03) * 15, Math.sin(t * 0.03) * 4, Math.sin(t * 0.03) * 15);
@@ -2680,7 +2678,7 @@ function frame() {
   updateTraffic(dt);
   updateBoats(dt);
   if (terrainDirty) { terrainDirty = false; rebuildPlanet(); layoutBuildings(); for (const w of G.wonders) if (w.group) w.group.position.copy(DIRS[w.v]).multiplyScalar(radiusOf(w.v)); }
-  atmoColor.set(0x8ab0f0).lerp(new THREE.Color(0xc89a6a), clamp((80 - G.health) / 80, 0, 0.8));
+  atmoColor.set(0x5fa8ff).lerp(new THREE.Color(0xc89a6a), clamp((80 - G.health) / 80, 0, 0.8));
   layoutSettlements(dt);
   layoutPeople();
   layoutPlanes(dt);
