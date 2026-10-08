@@ -15,6 +15,7 @@ import * as BT from './battle.js?v=0.3';
 import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, tick as tickMaterials } from './materials.js?v=0.3';
 import { createScore } from './music.js?v=0.3';
 import { unitFit, applyFit } from './unit_fit.js?v=0.3';
+import { createMapFx } from './mapfx.js?v=0.3';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -561,27 +562,12 @@ function layoutHeroes(force = false) {
   for (const [id, m] of heroMeshes) if (!G.heroes[id] || !G.heroes[id].alive) { scene.remove(m); heroMeshes.delete(id); }
 }
 // path preview: green dots for today, red for later days, a banner on the goal
-const dotGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.01, 10);
-const dots = new THREE.InstancedMesh(dotGeo, new THREE.MeshBasicMaterial({ toneMapped: false }), 200);
-dots.count = 0; dots.frustumCulled = false; scene.add(dots);
-const goalMark = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.02, 6, 20).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe27a, toneMapped: false }));
-goalMark.visible = false; scene.add(goalMark);
-const selRing = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.016, 6, 24).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x9ad8ff, toneMapped: false }));
-scene.add(selRing);
+const fx = createMapFx(THREE, scene, { DIRS, radiusOf, posOf });
 let plan = null;
 function showPath(hr, path) {
   plan = path ? { hr: hr.id, path } : null;
-  if (!path) { dots.count = 0; goalMark.visible = false; return; }
-  const today = stepsToday(hr, path);
-  let n = 0;
-  const green = new THREE.Color(0x6aff6a), red = new THREE.Color(0xff5a4a);
-  for (let i = 1; i < path.length && n < 200; i++) {
-    placeOn(dummy, path[i], 1, 0, 0.012); dummy.updateMatrix();
-    dots.setMatrixAt(n, dummy.matrix); dots.setColorAt(n++, i <= today ? green : red);
-  }
-  dots.count = n; dots.instanceMatrix.needsUpdate = true; if (dots.instanceColor) dots.instanceColor.needsUpdate = true;
-  placeOn(goalMark, path[path.length - 1], 1, 0, 0.02); goalMark.visible = true;
-  goalMark.material.color.set(today >= path.length - 1 ? 0x6aff6a : 0xff7a5a);
+  if (!path) { fx.clearPath(); return; }
+  fx.showPath(path, stepsToday(hr, path));
 }
 
 // ------------------------------------------------------------------ input: drag turns the planet, pinch zooms, tap selects and moves
@@ -706,10 +692,12 @@ function updateWalk(dt) {
   hr.mp -= stepCost(a, b); hr.v = b; W.i++;
   if (reveal(b, visionOf(hr))) worldDirty = true;
   sfx.step();
+  if (seen[b]) fx.burst('step', posOf(b));
   // a monster next to the path attacks
   const lurker = NBR[b].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((o) => o && o.alive && o.type === 'monster' && o.v !== W.path[W.path.length - 1]);
   if (lurker) { walking = null; layoutHeroes(true); interact(hr, lurker.v); return; }
   if (W.i >= W.n) {
+    fx.burst('dust', posOf(hr.v));
     walking = null; layoutHeroes(true);
     if (W.i < W.path.length - 1) { hr.route = W.path.slice(W.i); showPath(hr, hr.route); } else hr.route = null;
     updateHud();
@@ -766,6 +754,7 @@ function interact(hr, v) {
   }
   if (kind === 'pickup') {
     removeObject(o); hr.v = v; layoutHeroes(true);
+    if (seen[v]) fx.burst(o.type === 'gems' ? 'gem' : o.type === 'artifact' ? 'artifact' : 'coin', posOf(v));
     if (RES.includes(o.type)) { gain(hr.p, o.type, o.amount, v); if (you) sfx.coin(); }
     else if (o.type === 'campfire') { gain(hr.p, 'gold', 400 + ((rnd() * 3) | 0) * 100, v); const r = ['wood', 'ore', 'gems'][(rnd() * 3) | 0]; gain(hr.p, r, r === 'gems' ? 2 : 4, v); if (you) sfx.coin(); }
     else if (o.type === 'chest') {
@@ -780,7 +769,7 @@ function interact(hr, v) {
     updateHud(); return;
   }
   if (kind === 'mine') {
-    if (o.owner !== hr.p) { o.owner = hr.p; worldDirty = true; if (you) { toast(`${O.icon} ${O.name} is yours: +${O.amount} ${RES_ICON[O.res]} every day.`); sfx.flag(); } else if (seen[o.v]) toast(`🚩 ${P(hr).name} took a ${O.name}.`); }
+    if (o.owner !== hr.p) { o.owner = hr.p; worldDirty = true; if (seen[v]) fx.burst('flag', posOf(v), { color: ownerCol(hr.p) }); if (you) { toast(`${O.icon} ${O.name} is yours: +${O.amount} ${RES_ICON[O.res]} every day.`); sfx.flag(); } else if (seen[o.v]) toast(`🚩 ${P(hr).name} took a ${O.name}.`); }
     revealAll(); updateHud(); return;
   }
   if (kind === 'visit') {
@@ -821,6 +810,7 @@ function interact(hr, v) {
 const week = () => Math.floor((G.day - 1) / 7) + 1;
 const artDesc = (A) => ['att', 'def', 'pow', 'know'].filter((k) => A[k]).map((k) => `+${A[k]} ${{ att: 'Attack', def: 'Defence', pow: 'Power', know: 'Knowledge' }[k]}`).concat(A.move ? [`+${A.move} movement`] : [], A.luck ? ['+1 luck'] : [], A.morale ? ['+1 morale'] : [], A.hp ? ['+1 health'] : []).join(', ');
 function captureTown(hr, t) {
+  if (seen[t.v]) fx.burst('flag', posOf(t.v), { color: ownerCol(hr.p), scale: 1.6 });
   const was = t.p;
   t.p = hr.p; t.garrison = [];
   worldDirty = true;
@@ -1665,8 +1655,8 @@ function frame() {
       if (worldDirty) { revealAll(); layoutWorld(); }
       const hr = selHero();
       const m = hr && heroMeshes.get(hr.id);
-      selRing.visible = !!m;
-      if (m) { selRing.position.copy(m.position).addScaledVector(m.position.clone().normalize(), 0.01); selRing.quaternion.setFromUnitVectors(UP, m.position.clone().normalize()); }
+      fx.select(m ? m.position : null);
+      fx.update(dt, camera);
       for (const g of world.children) if (g.userData.bob !== undefined) for (const c of g.children) if (c.isMesh) c.position.y = (c.userData.fitY ?? 0) + Math.abs(Math.sin(tt * 2 + g.userData.bob)) * 0.15;
     }
     post.render(scene, camera);
