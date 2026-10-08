@@ -33,7 +33,7 @@ if (mode === 'grid') {
   if (!q.get('ids')) place('fort', 0, -3.6);
   const rows = Math.ceil(only.length / cols);
   const cz = (rows - 1) * sp * 0.5; const d = +(q.get('dist') || 24);
-  camera.position.set(0, d * 0.62, cz + d * 0.85); camera.lookAt(0, 0.8, cz - 0.6);
+  const el = +(q.get('el') || 0.62); camera.position.set(0, d * el, cz + d * 0.85); camera.lookAt(0, 0.8, cz - 0.6);
 } else {
   // mock HoMM3-style panorama
   const L = { fort: [0, -5.2, 0], hall3: [-0.3, -2.4, 0], mage3: [-4.2, -2.6, 0.3], tavern: [2.6, 0.3, -0.2], market: [-2.6, 0.2, 0.2],

@@ -35,19 +35,17 @@ const PAL_UP = {
 // framing per id. crop: fraction of model height (from the top) to fit, front: keep
 // only the front part (fraction of depth from the back) for long beasts, az: camera
 // azimuth (rad, + = viewer sees the creature's right side), el: elevation, pad: margin.
-const FRAME_DEFAULT = { crop: 1, front: 0, az: 0.62, el: 0.2, pad: 0.1, dy: 0 };
+const FRAME_DEFAULT = { crop: 0.62, front: 0, az: 0.62, el: 0.2, pad: 0.06, dy: 0, q: 0.04 };
 const FRAME = {
   // haven
-  pikeman: { crop: 0.82 }, archer: { crop: 0.8 }, griffin: { crop: 0.85, front: 0.25 },
-  swordsman: { crop: 0.8 }, monk: { crop: 0.78 }, cavalier: { crop: 0.72, front: 0.3 }, angel: { crop: 0.75 },
+  griffin: { crop: 0.8, front: 0.3 }, cavalier: { crop: 0.5, front: 0.35 }, angel: { crop: 0.6, q: 0.08 },
   // necro
-  skeleton: { crop: 0.82 }, zombie: { crop: 0.8 }, wight: { crop: 0.85 }, vampire: { crop: 0.75 },
-  lich: { crop: 0.75 }, blackknight: { crop: 0.7, front: 0.3 }, bonedragon: { crop: 0.75, front: 0.3 },
+  zombie: { crop: 0.7 }, wight: { crop: 0.7 }, blackknight: { crop: 0.5, front: 0.35 }, bonedragon: { crop: 0.7, front: 0.35, q: 0.08 },
   // neutral
-  goblin: { crop: 0.85 }, wolf: { crop: 0.95, front: 0.35 }, orc: { crop: 0.8 }, ogre: { crop: 0.72 },
-  troll: { crop: 0.72 }, cyclops: { crop: 0.68 }, hydra: { crop: 0.8, front: 0.15 },
-  // heroes (mounted)
-  hero: { crop: 0.66, front: 0.3 },
+  goblin: { crop: 0.7 }, wolf: { crop: 0.9, front: 0.4, az: 0.85 }, ogre: { crop: 0.6 }, troll: { crop: 0.6 },
+  cyclops: { crop: 0.55 }, hydra: { crop: 0.7, front: 0.1 },
+  // heroes (mounted, with a banner): the rider
+  hero: { crop: 0.5, front: 0.25, q: 0.08 },
 };
 
 let T = null, R = null, modelOf = null, OPTS = {};
@@ -137,17 +135,21 @@ function frameCamera(geo, f) {
   // centre on the extents in screen axes, then solve the distance (two passes for perspective)
   const tanH = Math.tan(T.MathUtils.degToRad(cam.fov / 2)) * (1 - f.pad);
   const c = new T.Vector3(); for (const p of pts) c.add(p); c.divideScalar(pts.length);
+  // fit on vertex quantiles, not extremes: thin props (pikes, staffs, banners,
+  // wing tips) may run off the frame so the face stays big
+  const qa = (a, t) => a[Math.min(a.length - 1, Math.max(0, Math.round(t * (a.length - 1))))];
   let D = 3;
   for (let pass = 0; pass < 3; pass++) {
-    let xa = Infinity, xb = -Infinity, ya = Infinity, yb = -Infinity;
+    const xs = [], ys = [];
     const eye = c.clone().addScaledVector(dir, D);
     for (const p of pts) {
       const d = p.clone().sub(eye), depth = -d.dot(dir);
-      const x = d.dot(right) / depth, y = d.dot(up) / depth;
-      if (x < xa) xa = x; if (x > xb) xb = x; if (y < ya) ya = y; if (y > yb) yb = y;
+      xs.push(d.dot(right) / depth); ys.push(d.dot(up) / depth);
     }
+    xs.sort((a, b) => a - b); ys.sort((a, b) => a - b);
+    const xa = qa(xs, f.q), xb = qa(xs, 1 - f.q), ya = qa(ys, f.q * 2), yb = qa(ys, 1 - f.q * 0.5);
     // shift the target so the projected box is centred, then rescale distance
-    const sx = (xa + xb) / 2, sy = (ya + yb) / 2 + f.dy;
+    const sx = (xa + xb) / 2, sy = (ya + yb) / 2 + f.dy * (yb - ya);
     c.addScaledVector(right, sx * D).addScaledVector(up, sy * D);
     const ext = Math.max(xb - xa, yb - ya) / 2;
     D *= ext / tanH;

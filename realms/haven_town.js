@@ -863,7 +863,8 @@ function portal(up) {
   // stepped round dais
   for (let i = 0; i < 3; i++) k.cyl(R - i * 0.18, R - i * 0.18 + 0.03, 0.1, 0, 0.04 + i * 0.1, -0.05, i === 2 ? C.stone : C.stone2, 14, { top: 1.1, bot: 0.9 });
   const Y = 0.34, pz = -0.15;
-  k.cyl(R - 0.42, R - 0.42, 0.012, 0, Y, -0.05, 0xfff4cf, 14, { glow: true });
+  k.cyl(R - 0.42, R - 0.42, 0.012, 0, Y, -0.05, 0xf2d890, 14, { glow: false, ao: false });
+  k.tor(R - 0.55, 0.03, 0, Y + 0.012, -0.05, 0xffe08a, TAU, { glow: true, rx: Math.PI / 2, rs: 16 });
   // ring of columns
   const nc = up ? 8 : 6, ch = up ? 1.7 : 1.35, cr = R - 0.2;
   for (let i = 0; i < nc; i++) {
@@ -881,9 +882,10 @@ function portal(up) {
   k.tor(pr - 0.12, 0.035, 0, cy, pz + 0.06, C.gold, TAU, { ts: 4, rs: 20, ao: false });
   k.tor(pr + 0.12, 0.03, 0, cy, pz + 0.06, C.gold, TAU, { ts: 4, rs: 20, ao: false });
   // glowing heart: layered discs
-  k.disc(pr - 0.08, 0.02, 0, cy, pz, 0xfff0c0, 20, { glow: true });
-  k.disc(pr * 0.6, 0.02, 0, cy, pz + 0.025, 0xfffbe8, 18, { glow: true });
-  k.disc(pr * 0.28, 0.02, 0, cy, pz + 0.045, C.white, 14, { glow: true });
+  k.disc(pr - 0.08, 0.02, 0, cy, pz, 0xffc85a, 20, { glow: true });
+  k.disc(pr * 0.66, 0.02, 0, cy, pz + 0.025, 0xffe08a, 18, { glow: true });
+  k.disc(pr * 0.4, 0.02, 0, cy, pz + 0.045, 0xfff2c0, 14, { glow: true });
+  k.disc(pr * 0.16, 0.02, 0, cy, pz + 0.065, C.white, 10, { glow: true });
   // the ring's plinths
   for (const s of [-1, 1]) {
     k.box(0.36, 0.4, 0.4, s * 0.5, Y, pz, C.stone2, { top: 1.05 });

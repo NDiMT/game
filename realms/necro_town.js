@@ -29,7 +29,7 @@ function rand(seed) {
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 const C = {
-  stone: 0x9c8fb2, stoneL: 0xbcafcc, stoneD: 0x7d7096, trim: 0xd2c6de,
+  stone: 0x948aaa, stoneL: 0xb2a6c2, stoneD: 0x7a6e92, trim: 0xccc0d8,
   roof: 0x62528a, roofL: 0x7a68a4,
   bone: 0xf4ead2, boneD: 0xcdbd9c,
   red: 0xd8283e, redD: 0xa41e32,
