@@ -3,8 +3,9 @@
 // Gives UV-less, vertex-coloured, flat-shaded models a painted look:
 //  - object-space planar-projected procedural detail (grain, brush streaks,
 //    colour blotches) from ONE shared 256² tileable noise texture, 2 lookups
-//  - soft fake ambient occlusion by local height (darker near y = 0)
-//  - gentle rim light and hemispheric sky/ground tint along the model's up
+//  - light, lilac-tinted fake ambient occlusion near y = 0 (never a black band)
+//  - lifted darks: dark albedos keep their hue, unlit sides get a coloured fill
+//  - warm sunny rim light and colourful sky/ground bounce along the model's up
 //  - an emissive hit flash (makeHitMaterial) sharing the same shader program
 // Works with Mesh and InstancedMesh, casts/receives shadows normally.
 // Call tick(seconds) once per frame to drive the glow pulse.
@@ -67,8 +68,8 @@ vUpV = normalize((modelViewMatrix * hxUp).xyz);`;
 
 const FRAG_DECL = /* glsl */`
 uniform sampler2D uNoise;
-uniform float uDetail, uScale, uAO, uAOHeight, uRim, uHemi, uHit;
-uniform vec3 uRimColor, uSky, uGround, uHitColor;
+uniform float uDetail, uScale, uAO, uAOHeight, uRim, uHemi, uHit, uToe, uLift;
+uniform vec3 uRimColor, uSky, uGround, uHitColor, uShade;
 varying vec3 vObjPos;
 varying vec3 vUpV;
 void main() {`;
@@ -81,29 +82,41 @@ const FRAG_COLOR = /* glsl */`#include <color_fragment>
   vec3 n1 = texture2D(uNoise, puv * uScale).rgb - 0.5;
   vec3 n2 = texture2D(uNoise, puv * (uScale * 0.21) + vec2(0.37, 0.61)).rgb - 0.5;
   float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-  // micro grain + brush streaks, then large painterly blotches
-  float d = n1.r * 0.30 + n1.g * 0.28 + n2.b * 0.42 + n2.r * 0.15;
-  diffuseColor.rgb *= 1.0 + d * uDetail;
+  // lift dark albedos: keep their hue, never let them sink to black
+  float toe = 1.0 - smoothstep(0.0, 0.32, lum);
+  diffuseColor.rgb += uToe * toe * (diffuseColor.rgb * 1.4 + vec3(0.035, 0.03, 0.045));
+  lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+  // subtle micro grain + brush streaks, then large painterly blotches
+  float d = n1.r * 0.26 + n1.g * 0.24 + n2.b * 0.42 + n2.r * 0.12;
+  diffuseColor.rgb *= 1.0 + d * uDetail * (0.55 + 0.45 * smoothstep(0.05, 0.4, lum));
   // warm/cool hue drift and slight saturation wobble, like hand-mixed paint
-  diffuseColor.rgb += vec3(0.05, 0.015, -0.04) * n2.g * uDetail * (0.4 + lum);
-  diffuseColor.rgb = mix(vec3(lum), diffuseColor.rgb, 1.0 + n2.b * 0.35 * uDetail);
-  // fake AO: darker and slightly cooler near the local ground
+  diffuseColor.rgb += vec3(0.05, 0.02, -0.035) * n2.g * uDetail * (0.4 + lum);
+  diffuseColor.rgb = mix(vec3(lum), diffuseColor.rgb, 1.0 + n2.b * 0.3 * uDetail);
+  // light fake AO: a soft, coloured (lilac) dip right at the local ground, not a black band
   float ao = smoothstep(0.0, uAOHeight, vObjPos.y);
-  ao = mix(1.0 - uAO, 1.0, ao * (0.85 + 0.15 * ao));
-  diffuseColor.rgb *= ao * mix(vec3(0.82, 0.88, 1.08), vec3(1.0), ao);
+  ao = mix(1.0 - uAO, 1.0, ao * ao * (3.0 - 2.0 * ao));
+  diffuseColor.rgb *= ao * mix(uShade / max(max(uShade.r, uShade.g), uShade.b), vec3(1.0), ao);
   diffuseColor.rgb = max(diffuseColor.rgb, 0.0);
 }`;
 
 const FRAG_EMISSIVE = /* glsl */`#include <emissivemap_fragment>
 totalEmissiveRadiance += uHitColor * uHit;`;
 
-// before <opaque_fragment>: rim + hemispheric tint on top of the lit colour
+// before <opaque_fragment>: coloured fill, bounce and rim on top of the lit colour
 const FRAG_OUT = /* glsl */`{
   vec3 hxV = normalize(vViewPosition);
   float up = dot(normal, normalize(vUpV));
-  float fres = pow(1.0 - clamp(dot(normal, hxV), 0.0, 1.0), 3.0);
-  outgoingLight += diffuseColor.rgb * mix(uGround, uSky, up * 0.5 + 0.5) * uHemi;
-  outgoingLight += uRimColor * fres * uRim * (0.45 + 0.55 * clamp(up + 0.3, 0.0, 1.0));
+  float ndv = clamp(dot(normal, hxV), 0.0, 1.0);
+  float fres = pow(1.0 - ndv, 2.5);
+  // sky from above, warm coloured bounce from below (stronger on faces turned down)
+  vec3 hemi = mix(uGround * (1.25 - 0.25 * up), uSky, smoothstep(-0.6, 0.9, up));
+  outgoingLight += diffuseColor.rgb * hemi * uHemi;
+  // shadow lift: whatever the lights left dark gets a soft coloured fill of its own albedo
+  float lo = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));
+  float dark = 1.0 - smoothstep(0.0, 0.45, lo / max(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.04));
+  outgoingLight += diffuseColor.rgb * uShade * uLift * (0.35 + 0.65 * dark);
+  // warm sunny rim, brightest on upward-facing edges, faint underneath
+  outgoingLight += uRimColor * fres * uRim * (0.35 + 0.65 * clamp(up + 0.4, 0.0, 1.0)) * (0.6 + 0.4 * dot(diffuseColor.rgb, vec3(0.33)));
   outgoingLight += uHitColor * fres * uHit * 1.5;
 }
 #include <opaque_fragment>`;
@@ -112,15 +125,18 @@ function bodyUniforms(THREE, o) {
   return {
     uNoise: shared.uNoise,
     uTime: shared.uTime,
-    uDetail: { value: o.detail ?? 1 },
+    uDetail: { value: o.detail ?? 0.6 },
     uScale: { value: o.scale ?? 2.2 },
-    uAO: { value: o.ao ?? 0.45 },
-    uAOHeight: { value: o.aoHeight ?? 0.35 },
-    uRim: { value: o.rim ?? 0.35 },
-    uRimColor: { value: new THREE.Color(o.rimColor ?? 0xffe6c0) },
-    uHemi: { value: o.hemi ?? 0.12 },
-    uSky: { value: new THREE.Color(o.sky ?? 0xa8c8ff) },
-    uGround: { value: new THREE.Color(o.ground ?? 0x6a4a2a) },
+    uAO: { value: o.ao ?? 0.16 },
+    uAOHeight: { value: o.aoHeight ?? 0.22 },
+    uRim: { value: o.rim ?? 0.6 },
+    uRimColor: { value: new THREE.Color(o.rimColor ?? 0xffcf8a) },
+    uHemi: { value: o.hemi ?? 0.2 },
+    uSky: { value: new THREE.Color(o.sky ?? 0x9cc6ff) },
+    uGround: { value: new THREE.Color(o.ground ?? 0xe0a860) },
+    uShade: { value: new THREE.Color(o.shade ?? 0xb4a8f0) },
+    uLift: { value: o.lift ?? 0.24 },
+    uToe: { value: o.toe ?? 0.45 },
     uHit: { value: o.hit ?? 0 },
     uHitColor: { value: new THREE.Color(o.hitColor ?? 0xff3a2a) },
   };
@@ -128,9 +144,10 @@ function bodyUniforms(THREE, o) {
 
 /**
  * Painted body material. opts (all optional):
- *  detail 1 (0 = off), scale 2.2 (noise repeats per local unit), ao 0.45, aoHeight 0.35,
- *  rim 0.35, rimColor, hemi 0.12, sky, ground, roughness 0.8, metalness 0,
- *  hit 0, hitColor. Live-tweak via material.userData.uniforms.uDetail.value etc.
+ *  detail 0.6 (0 = off), scale 2.2 (noise repeats per local unit), ao 0.16, aoHeight 0.22,
+ *  rim 0.5, rimColor (warm), hemi 0.2 (sky/bounce), sky, ground (warm bounce colour),
+ *  shade (coloured shadow tint), lift 0.16 (shadow fill), toe 0.35 (lifts dark albedos),
+ *  roughness 0.8, metalness 0, hit 0, hitColor. Live-tweak via material.userData.uniforms.uDetail.value etc.
  */
 export function makeBodyMaterial(THREE, opts = {}) {
   noiseTexture(THREE);
@@ -149,7 +166,7 @@ export function makeBodyMaterial(THREE, opts = {}) {
       .replace('#include <emissivemap_fragment>', FRAG_EMISSIVE)
       .replace('#include <opaque_fragment>', FRAG_OUT);
   };
-  mat.customProgramCacheKey = () => 'hexBody1';
+  mat.customProgramCacheKey = () => 'hexBody2';
   return mat;
 }
 

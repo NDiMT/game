@@ -83,6 +83,8 @@ class Build {
     return this;
   }
   done({ ao = 0.55, aoH = 0.22 } = {}) {
+    // the shared game material already adds its own height AO, so keep the baked one gentle
+    ao = 0.55 + ao * 0.4;
     return { body: merge(this.B, ao, aoH), glow: this.G.length ? merge(this.G, 1, 1) : null };
   }
 }
@@ -93,8 +95,9 @@ function merge(parts, ao, aoH) {
   let o = 0;
   for (const q of parts) { pos.set(q.p, o); nor.set(q.n, o); col.set(q.c, o); o += q.p.length; }
   for (let i = 0, j = 0; i < len; i += 3, j += 2) {
+    // soft coloured occlusion: shade goes cool violet-blue near the ground, never black
     const y = pos[i + 1], f = ao + (1 - ao) * smooth(0, aoH, y);
-    col[i] *= f; col[i + 1] *= f; col[i + 2] *= f;
+    col[i] *= f; col[i + 1] *= f + (1 - f) * 0.15; col[i + 2] *= f + (1 - f) * 0.45;
     const ax = Math.abs(nor[i]), ay = Math.abs(nor[i + 1]), az = Math.abs(nor[i + 2]);
     if (ay >= ax && ay >= az) { uv[j] = pos[i]; uv[j + 1] = pos[i + 2]; }
     else if (ax >= az) { uv[j] = pos[i + 2]; uv[j + 1] = y; }
@@ -192,9 +195,10 @@ function leafPaint(rmp, cx, cy, cz, R, y0, y1, mott = 0.28, sun = 0.12) {
     const t = (p.y - y0) / (y1 - y0);
     const d = Math.hypot(p.x - cx, (p.y - cy) * 1.2, p.z - cz) / R;
     const m = fbm(p.x * 7, p.y * 7, p.z * 7);
-    let c = rmp(t * 0.75 + n.y * 0.2 + (m - 0.5) * mott);
-    c = mul(c, 0.62 + 0.38 * smooth(0.25, 1.0, d));
-    if (n.y > 0.35 && t > 0.45) c = mix(c, mul(SUNTINT, c[1] * 1.6), sun * smooth(0.35, 0.9, n.y));
+    let c = rmp(0.1 + t * 0.55 + n.y * 0.15 + (m - 0.5) * mott);
+    c = mix(mul(c, 0.8), c, smooth(0.3, 0.95, d)); // gently deeper inside the crown (cool, not black)
+    // sun-kissed tops: warmer and more saturated, not whiter
+    if (n.y > 0.25 && t > 0.35) c = mix(c, [c[0] * 1.3 + 0.02, c[1] * 1.12, c[2] * 0.7], sun * 2 * smooth(0.25, 0.9, n.y));
     return c;
   };
 }
@@ -205,7 +209,7 @@ function barkPaint(rmp, top = 1, stripe = 0.25) {
     return mul(rmp(p.y / top * 0.6 + s * 0.4), 1 - stripe + stripe * 2 * noise(p.x * 30, p.y * 6, p.z * 30));
   };
 }
-const BARK = ramp(0x3a2616, 0x5e4026, 0x8a6a48);
+const BARK = ramp(0x6a4a30, 0x8e6a44, 0xb89470);
 
 // ------------------------------------------------------------ trees
 function roots(b, rad, col, n = 4) {
@@ -229,22 +233,22 @@ function oak(b) {
   roots(b, 0.06, tr);
   b.part(tubeGeo(branchPts(V(0.02, 0.36, 0), V(0.22, 0.58, 0.06), V(0, 0.04, 0), 2), [0.035, 0.026, 0.016], 5), tr);
   b.part(tubeGeo(branchPts(V(0.02, 0.4, 0), V(-0.18, 0.62, -0.1), V(0, 0.04, 0), 2), [0.032, 0.024, 0.015], 5), tr);
-  const leaves = ramp(0x173a18, 0x2c6a22, 0x4f9a2c, 0x9ccc42, 0xd8e070);
+  const leaves = ramp(0x1e6a2a, 0x2e8a30, 0x4caa34, 0x84c83c, 0xc4e45a);
   const bl = [[0, 0.66, 0, 0.3], [0.24, 0.58, 0.08, 0.2], [-0.22, 0.6, -0.1, 0.21], [0.05, 0.56, 0.24, 0.19], [-0.06, 0.58, -0.24, 0.2], [0.04, 0.86, -0.02, 0.2], [0.17, 0.78, -0.14, 0.15], [-0.15, 0.8, 0.12, 0.15]];
-  canopy(b, bl, leaves);
+  canopy(b, bl, leaves, { sun: 0.14 });
 }
 function pineTree(b, snow) {
-  const tr = barkPaint(ramp(0x2e1e14, 0x4a3020, 0x6a4a30), 0.4);
+  const tr = barkPaint(ramp(0x5a3a24, 0x7a5434, 0x9a7048), 0.4);
   b.part(tubeGeo([V(0, 0, 0), V(0, 0.3, 0), V(0, 0.95, 0)], [0.06, 0.045, 0], 6), tr);
   roots(b, 0.045, tr, 3);
   const tiers = [[0.15, 0.36, 0.36], [0.34, 0.3, 0.34], [0.52, 0.23, 0.31], [0.69, 0.16, 0.36]];
-  const green = snow ? ramp(0x0e2a22, 0x1a4a34, 0x2f6e4a, 0x6a9a6a) : ramp(0x0f2e1c, 0x1b4a26, 0x2f7034, 0x6aa448);
-  const SN = ramp(0xb8cae8, 0xe8f0fc, 0xffffff);
+  const green = snow ? ramp(0x1e5a4a, 0x2e7a5e, 0x4a9a76, 0x8ac0a0) : ramp(0x1e6a3a, 0x2e8a40, 0x4aac46, 0x9ad25a);
+  const SN = ramp(0xc4d4f4, 0xeef4ff, 0xffffff);
   tiers.forEach(([y, r, h], i) => {
     const paint = (p, n) => {
       const t = (p.y - y) / h, d = Math.hypot(p.x, p.z) / r, m = noise(p.x * 14, p.y * 14, p.z * 14);
       let c = green(d * 0.55 + t * 0.25 + (m - 0.5) * 0.3 + i * 0.06);
-      if (n.y < 0) c = mul(green(0.05), 0.8);
+      if (n.y < 0) c = green(0.12);
       if (snow && n.y > 0.15 && d < 0.42 + m * 0.45) c = SN(0.3 + n.y * 0.5 + (1 - d) * 0.3 + (m - 0.5) * 0.3);
       return c;
     };
@@ -253,7 +257,7 @@ function pineTree(b, snow) {
   if (snow) b.part(ico(0.035, 0).translate(0, 1.03, 0), 0xffffff);
 }
 function birch(b) {
-  const white = L(0xeee8dc), black = L(0x2a2420), warm = L(0xc8b8a0);
+  const white = L(0xfaf6ee), black = L(0x5a4a44), warm = L(0xe0d0b8);
   const tr = (p) => {
     const a = Math.atan2(p.z, p.x), s = noise(Math.cos(a) * 2.5, p.y * 16, Math.sin(a) * 2.5);
     return s > 0.68 ? black : mix(white, warm, noise(p.y * 4, 0, a) * 0.5 + (p.y < 0.08 ? 0.5 : 0));
@@ -261,18 +265,18 @@ function birch(b) {
   b.part(tubeGeo(branchPts(V(0, 0, 0), V(-0.03, 0.82, 0.02), V(0.035, 0, 0), 4), [0.05, 0.042, 0.034, 0.026, 0.012], 6), tr);
   b.part(tubeGeo(branchPts(V(-0.01, 0.42, 0), V(0.14, 0.62, 0.05), V(0, 0.02, 0), 2), [0.018, 0.013, 0.008], 4), tr);
   b.part(tubeGeo(branchPts(V(-0.02, 0.5, 0), V(-0.15, 0.68, -0.06), V(0, 0.02, 0), 2), [0.016, 0.012, 0.007], 4), tr);
-  const leaves = ramp(0x2c5a1c, 0x5a8e26, 0x9cc23a, 0xd4e05a, 0xf4ec8a);
-  canopy(b, [[-0.02, 0.7, 0, 0.21, 1.25], [0.15, 0.58, 0.05, 0.14, 1.2], [-0.16, 0.62, -0.06, 0.14, 1.2], [0.02, 0.6, 0.16, 0.14, 1.1], [0, 0.58, -0.16, 0.13, 1.1], [-0.02, 0.9, 0.01, 0.13, 1.2], [0.1, 0.8, -0.08, 0.1, 1.2]], leaves, { sun: 0.2 });
+  const leaves = ramp(0x3a8a2a, 0x5aa834, 0x8cc63e, 0xc0dc52, 0xe8ec7a);
+  canopy(b, [[-0.02, 0.7, 0, 0.21, 1.25], [0.15, 0.58, 0.05, 0.14, 1.2], [-0.16, 0.62, -0.06, 0.14, 1.2], [0.02, 0.6, 0.16, 0.14, 1.1], [0, 0.58, -0.16, 0.13, 1.1], [-0.02, 0.9, 0.01, 0.13, 1.2], [0.1, 0.8, -0.08, 0.1, 1.2]], leaves, { sun: 0.12 });
 }
 function willow(b) {
-  const tr = barkPaint(ramp(0x2a2018, 0x463626, 0x6a5a40), 0.5, 0.35);
+  const tr = barkPaint(ramp(0x5a4836, 0x7a6448, 0x9a8462), 0.5, 0.3);
   b.part(tubeGeo(branchPts(V(0, 0, 0), V(0.06, 0.5, 0), V(-0.06, 0, 0.03), 4), [0.1, 0.075, 0.06, 0.055, 0.05], 7), tr, { jitter: 0.012, jf: 14 });
   roots(b, 0.075, tr, 5);
-  const leaves = ramp(0x1a2c16, 0x3a5a2a, 0x6a8a3a, 0xb0c060);
+  const leaves = ramp(0x2e6a34, 0x4a8a3a, 0x72a846, 0xaccc62);
   const bl = [[0.05, 0.64, 0, 0.27, 0.62], [0.24, 0.58, 0.1, 0.17, 0.6], [-0.15, 0.6, -0.12, 0.18, 0.6], [-0.08, 0.6, 0.2, 0.16, 0.6], [0.16, 0.6, -0.2, 0.16, 0.6], [0.04, 0.78, 0.02, 0.17, 0.6]];
-  canopy(b, bl, leaves, { mott: 0.35, sun: 0.06 });
+  canopy(b, bl, leaves, { mott: 0.35, sun: 0.14 });
   // hanging curtains of fronds
-  const strand = ramp(0x203018, 0x3e5a2a, 0x6a8a3e);
+  const strand = ramp(0x3e6a34, 0x6a9442, 0xa0c058);
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2 + b.rand(-0.15, 0.15), rr = b.rand(0.26, 0.36), y = b.rand(0.52, 0.6), l = b.rand(0.28, 0.42);
     const x = 0.04 + Math.cos(a) * rr, z = Math.sin(a) * rr, w = 0.05;
@@ -283,7 +287,7 @@ function willow(b) {
   }
 }
 function deadTree(b, burnt) {
-  const tr = burnt ? barkPaint(ramp(0x0c0a0a, 0x1e1816, 0x3a302a), 0.7, 0.4) : barkPaint(ramp(0x3a3028, 0x6a5c4c, 0xa89a84), 0.7, 0.3);
+  const tr = burnt ? barkPaint(ramp(0x4a3a3e, 0x6a5458, 0x96787a), 0.7, 0.3) : barkPaint(ramp(0x7a6a58, 0xa8957c, 0xd8c8aa), 0.7, 0.22);
   const top = burnt ? V(0.05, 0.72, 0.02) : V(0.04, 0.88, -0.02);
   b.part(tubeGeo(branchPts(V(0, 0, 0), top, V(0.07, 0, 0.04), 4), burnt ? [0.09, 0.07, 0.06, 0.05, 0.04] : [0.08, 0.06, 0.045, 0.03, 0], 6), tr, { jitter: 0.012, jf: 12 });
   if (burnt) b.part(new THREE.ConeGeometry(0.042, 0.1, 6).translate(top.x, top.y + 0.04, top.z), tr, { jitter: 0.02, jf: 20 });
@@ -307,7 +311,7 @@ function deadTree(b, burnt) {
       const y = b.rand(0.06, 0.6), a = b.rand(0, Math.PI * 2), r = 0.09 - y * 0.06 + 0.004;
       b.part(new THREE.BoxGeometry(0.012, b.rand(0.05, 0.12), 0.012).rotateZ(b.rand(-0.4, 0.4)).translate(Math.cos(a) * r + y * 0.05, y, Math.sin(a) * r), ember(b.r()), { glow: true });
     }
-    const ash = ramp(0x1a1614, 0x3a3430, 0x6a6460);
+    const ash = ramp(0x6a5c5e, 0x8e8084, 0xb8acae);
     for (let i = 0; i < 6; i++) {
       const a = b.rand(0, Math.PI * 2), r = b.rand(0.14, 0.26);
       b.part(ico(b.rand(0.03, 0.05), 0).scale(1, 0.5, 1).translate(Math.cos(a) * r, 0.005, Math.sin(a) * r), (p, n) => ash(n.y * 0.6 + noise(p.x * 30, p.y * 30, p.z * 30) * 0.4), { floor: 0 });
@@ -319,11 +323,11 @@ function palm(b) {
   // ringed, curved trunk
   const pts = [], rad = [], n = 7;
   for (let i = 0; i <= n; i++) { const t = i / n; pts.push(V(0.18 * t * t, 0.78 * t, 0.04 * t)); rad.push(0.065 - 0.025 * t); }
-  const bands = ramp(0x5a4028, 0x8a6a40, 0xb8945c);
+  const bands = ramp(0x8a6a44, 0xb08c5a, 0xdcbc84);
   b.part(tubeGeo(pts, rad, 7), (p) => bands(((p.y * 18) % 1) * 0.7 + noise(p.x * 20, p.y * 20, p.z * 20) * 0.3), { jitter: 0.005, jf: 30 });
   const top = pts[n];
   // fronds: V-folded, arched, tapering leaves
-  const leaf = ramp(0x1c4a18, 0x2e7a24, 0x6ab03a, 0xb8d860);
+  const leaf = ramp(0x2e7a26, 0x48a030, 0x86c840, 0xd0ec6a);
   const nf = 8;
   for (let f = 0; f < nf; f++) {
     const a = (f / nf) * Math.PI * 2 + b.rand(-0.2, 0.2), len = b.rand(0.42, 0.52), lift = b.rand(0.12, 0.2);
@@ -342,14 +346,14 @@ function palm(b) {
     }
     b.part(twoSided(tri), (p, nn) => {
       const t = Math.hypot(p.x - top.x, p.z - top.z) / len;
-      return mul(leaf(t * 0.8 + 0.15 + noise(p.x * 25, p.y * 25, p.z * 25) * 0.15), 0.75 + 0.35 * Math.abs(nn.y));
+      return mul(leaf(t * 0.8 + 0.15 + noise(p.x * 25, p.y * 25, p.z * 25) * 0.15), 0.88 + 0.2 * Math.abs(nn.y));
     });
   }
-  const nut = L(0x4a3018);
+  const nut = L(0x8a5a2a);
   for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.3; b.part(ico(0.035, 1).translate(top.x + Math.cos(a) * 0.045, top.y - 0.04, top.z + Math.sin(a) * 0.045), nut); }
 }
 function cactus(b) {
-  const g1 = L(0x1e5a2a), g2 = L(0x4a9a3a), g3 = L(0x8ac860);
+  const g1 = L(0x2e7a3a), g2 = L(0x5ab048), g3 = L(0xa8dc70);
   const ribs = (cx, cz) => (p, n) => {
     const a = Math.atan2(p.z - cz, p.x - cx), s = Math.cos(a * 5) * 0.5 + 0.5;
     return mix(mix(g1, g2, s), g3, smooth(0.4, 1, n.y) * 0.55 + s * 0.15 + noise(p.x * 30, p.y * 30, p.z * 30) * 0.12);
@@ -401,12 +405,12 @@ export function bushModel(i = 0) {
   i = ((i % 6) + 6) % 6;
   const b = new Build(200 + i);
   const pal = [
-    ramp(0x163a16, 0x2e6a22, 0x5aa032, 0xb0d850),
-    ramp(0x143418, 0x285e26, 0x4a8a34, 0x8ab848),
-    ramp(0x1a4220, 0x30702a, 0x5a9e3a, 0xa8d060),
-    ramp(0x3a3018, 0x6a5a2a, 0x9a8a44, 0xc8b870),
-    ramp(0x0e2a24, 0x1e4a34, 0x3a6a48, 0x6a9070),
-    ramp(0x142a14, 0x2a4a22, 0x4a7032, 0x8aa048),
+    ramp(0x1e6a26, 0x2e8a2e, 0x52ac36, 0x9cd04a),
+    ramp(0x1e5e2e, 0x2e7a34, 0x4a9a3c, 0x86c04c),
+    ramp(0x24702e, 0x369034, 0x5cb040, 0xa0d45a),
+    ramp(0x7a6a3a, 0x9a8a48, 0xc0ae5e, 0xe8d890),
+    ramp(0x2a6a5a, 0x3e8a6e, 0x60a888, 0x9accb0),
+    ramp(0x2e6a2a, 0x46883a, 0x6ea648, 0xaccc60),
   ][i];
   if (i === 5) {
     // fern: arching fronds
@@ -429,8 +433,8 @@ export function bushModel(i = 0) {
     bl.push(k === 0 ? [0, 0.15, 0, r, 0.85] : [Math.cos(a) * d, r * 0.75, Math.sin(a) * d, r, 0.85]);
   }
   canopy(b, bl, pal, { mott: i === 3 ? 0.45 : 0.3 });
-  if (i === 3) for (let k = 0; k < 5; k++) { const a = b.rand(0, 6.28); b.part(tubeGeo([V(0, 0.05, 0), V(Math.cos(a) * 0.12, 0.2, Math.sin(a) * 0.12), V(Math.cos(a) * 0.2, 0.28, Math.sin(a) * 0.2)], [0.01, 0.006, 0], 3), 0x6a5038); }
-  const dots = i === 1 ? [L(0xd01828), L(0x8a1020)] : i === 2 ? [L(0xf4a0c8), L(0xffffff), L(0xe86aa0)] : i === 4 ? [L(0xffffff)] : null;
+  if (i === 3) for (let k = 0; k < 5; k++) { const a = b.rand(0, 6.28); b.part(tubeGeo([V(0, 0.05, 0), V(Math.cos(a) * 0.12, 0.2, Math.sin(a) * 0.12), V(Math.cos(a) * 0.2, 0.28, Math.sin(a) * 0.2)], [0.01, 0.006, 0], 3), 0x9a7450); }
+  const dots = i === 1 ? [L(0xff2a3a), L(0xd01a40)] : i === 2 ? [L(0xf4a0c8), L(0xffffff), L(0xe86aa0)] : i === 4 ? [L(0xffffff)] : null;
   if (dots) {
     const cnt = i === 4 ? 0 : 16;
     for (let k = 0; k < cnt; k++) {
@@ -458,28 +462,28 @@ export function tuftModel(i = 0) {
     }
     b.part(twoSided(tri), (p) => rmp(p.y / h + noise(p.x * 20, 0, p.z * 20) * 0.25 - 0.1));
   };
-  if (i === 0) blades(22, 0.28, 0.026, ramp(0x1a4a14, 0x3a8a24, 0x8ac840, 0xd8f080), 0.15, 0.1);
+  if (i === 0) blades(22, 0.28, 0.026, ramp(0x3a8a26, 0x56aa30, 0x9cd848, 0xe8f890), 0.15, 0.1);
   if (i === 1) {
-    blades(14, 0.18, 0.022, ramp(0x1a4a14, 0x3a8a24, 0x8ac840), 0.15);
+    blades(14, 0.18, 0.022, ramp(0x3a8a26, 0x56aa30, 0x9cd848), 0.15);
     const cols = [0xffe040, 0xffffff, 0xb070e0, 0xff7090, 0xffe040];
     for (let k = 0; k < 7; k++) {
       const a = b.rand(0, 6.28), d = b.rand(0.02, 0.13), x = Math.cos(a) * d, z = Math.sin(a) * d, h = b.rand(0.14, 0.24);
-      b.part(tubeGeo([V(x, 0, z), V(x + 0.01, h, z)], [0.006, 0.005], 3), 0x3a7a28);
+      b.part(tubeGeo([V(x, 0, z), V(x + 0.01, h, z)], [0.006, 0.005], 3), 0x4a9a30);
       b.part(new THREE.ConeGeometry(0.045, 0.03, 6).rotateX(Math.PI).translate(x + 0.01, h + 0.015, z), cols[k % cols.length]);
       b.part(ico(0.015, 0).translate(x + 0.01, h + 0.018, z), 0xffb020);
     }
   }
   if (i === 2) {
-    blades(14, 0.42, 0.02, ramp(0x2a3a18, 0x5a7a2a, 0xa0b050), 0.12, 0.08);
+    blades(14, 0.42, 0.02, ramp(0x4a7a2e, 0x78a03a, 0xbcd060), 0.12, 0.08);
     for (let k = 0; k < 4; k++) {
       const a = b.rand(0, 6.28), d = b.rand(0.02, 0.09), x = Math.cos(a) * d, z = Math.sin(a) * d, h = b.rand(0.36, 0.48);
-      b.part(tubeGeo([V(x, 0, z), V(x + 0.02, h, z)], [0.006, 0.005], 3), 0x6a7a3a);
-      b.part(new THREE.CylinderGeometry(0.018, 0.018, 0.08, 6).translate(x + 0.02, h - 0.02, z), (p) => mix(L(0x3a2010), L(0x6a4020), (p.y - h + 0.06) / 0.08));
+      b.part(tubeGeo([V(x, 0, z), V(x + 0.02, h, z)], [0.006, 0.005], 3), 0x8a9a4a);
+      b.part(new THREE.CylinderGeometry(0.018, 0.018, 0.08, 6).translate(x + 0.02, h - 0.02, z), (p) => mix(L(0x7a4420), L(0xa8683a), (p.y - h + 0.06) / 0.08));
     }
   }
-  if (i === 3) blades(16, 0.26, 0.02, ramp(0x6a5420, 0x9a8a40, 0xd8c878, 0xf0e4a8), 0.13, 0.12);
+  if (i === 3) blades(16, 0.26, 0.02, ramp(0x9a8034, 0xc0aa50, 0xe8d888, 0xfff0c0), 0.13, 0.12);
   if (i === 4) {
-    blades(8, 0.18, 0.016, ramp(0x1a1010, 0x3a2418, 0x6a3a20), 0.1, 0.1);
+    blades(8, 0.18, 0.016, ramp(0x6a3a2a, 0x9a4a2a, 0xd86a2a), 0.1, 0.1);
     for (let k = 0; k < 3; k++) { const a = b.rand(0, 6.28), d = b.rand(0.02, 0.1); b.part(ico(0.02, 0).translate(Math.cos(a) * d, b.rand(0.08, 0.17), Math.sin(a) * d), [1, 0.35, 0.03], { glow: true }); }
   }
   return b.done({ ao: 0.6, aoH: 0.1 });
@@ -487,20 +491,21 @@ export function tuftModel(i = 0) {
 
 // ------------------------------------------------------------ rocks
 const ROCK_PAL = [
-  ramp(0x3e3a36, 0x6e665c, 0x9a9282, 0xc8c0ae), // warm grey
-  ramp(0x3a3634, 0x5e5852, 0x8a8278, 0xb4ac9e),
-  ramp(0x3a2e28, 0x6a5444, 0x9a7a5c, 0xc8a882), // sandstone
-  ramp(0x2e3036, 0x50545e, 0x7a8090, 0xa8b0c0), // cold slate
-  ramp(0x3e3a36, 0x6e665c, 0x9a9282, 0xc8c0ae),
-  ramp(0x2e3036, 0x50545e, 0x7a8090, 0xa8b0c0),
-  ramp(0x0e0a0c, 0x1e1818, 0x3a2e2c, 0x5a4a44), // basalt
+  ramp(0x847a70, 0xa29a8c, 0xc4bcaa, 0xeae2ce), // warm grey
+  ramp(0x7c766e, 0x9c948a, 0xbcb4a4, 0xe2dac8),
+  ramp(0xa47456, 0xc4946a, 0xe0b684, 0xfadcae), // sandstone
+  ramp(0x6e7890, 0x8a96ae, 0xacb6cc, 0xd2daea), // cold slate
+  ramp(0x847a70, 0xa29a8c, 0xc4bcaa, 0xeae2ce),
+  ramp(0x6e7890, 0x8a96ae, 0xacb6cc, 0xd2daea),
+  ramp(0x4e3a44, 0x624a54, 0x7e6066, 0xa0807c), // basalt (violet-brown, never black)
 ];
 function rockPaint(rmp, y1, moss = 0, snow = 0) {
-  const M = ramp(0x2a4a1a, 0x4a7a2a, 0x8ab040), S = ramp(0xa8bcd8, 0xe8f0fa, 0xffffff);
+  const M = ramp(0x4a8a2a, 0x6aaa34, 0xaad452), S = ramp(0xc0d0f0, 0xecf2ff, 0xffffff), SH = L(0x6a6488);
   return (p, n) => {
     const m = fbm(p.x * 11 + 3, p.y * 11, p.z * 11), crack = noise(p.x * 22, p.y * 22, p.z * 22);
     let c = rmp(0.25 + n.y * 0.3 + (p.y / y1) * 0.25 + (m - 0.5) * 0.5);
-    if (crack > 0.78) c = mul(c, 0.65);
+    if (crack > 0.78) c = mix(c, mul(SH, c[1] * 1.6 + 0.2), 0.35); // cracks: soft violet shade
+    c = mix(c, mul(L(0xfff0d0), 1.05), smooth(0.55, 1, n.y) * 0.18); // sunlit tops
     if (moss && n.y + (m - 0.5) * 0.9 > 0.68) c = M(n.y * 0.8 + (m - 0.4));
     if (snow && n.y + (m - 0.5) * 0.7 > 0.62) c = S(n.y * 0.8 + (m - 0.5) * 0.5);
     return c;
@@ -537,67 +542,106 @@ export function rockModel(i = 0) {
 
 // ------------------------------------------------------------ mountain peaks
 // a radial mound: rings of points with ridged angular noise; returns geometry and a surface sampler
-function mound({ r0, h, segs = 12, rings = 8, seed = 1, rough = 0.28, sharp = 1.25, crater = 0, ox = 0, oz = 0, lean = [0, 0] }) {
+function mound({ r0, h, segs = 12, rings = 8, seed = 1, rough = 0.28, sharp = 1.25, crater = 0, ox = 0, oz = 0, lean = [0, 0], maxR = 0, foot = null }) {
+  // maxR: soft radial clamp (from the model origin) so the whole mountain stays inside its own hex
+  const fit = (x, z) => {
+    if (!maxR) return [x, z];
+    const d = Math.hypot(x, z), k0 = maxR * 0.78;
+    if (d <= k0) return [x, z];
+    const d2 = k0 + (maxR - k0) * Math.tanh((d - k0) / (maxR - k0));
+    return [x * d2 / d, z * d2 / d];
+  };
   const surf = (a, t) => {
     const ca = Math.cos(a), sa = Math.sin(a);
     const tt = crater ? t * (1 - crater) : t;
     const rad = r0 * Math.pow(1 - tt, sharp), y = h * t;
     const ridge = 1 - Math.abs(noise(ca * 1.6 + seed, sa * 1.6, t * 2.2) * 2 - 1);
     const k = 1 + rough * (ridge - 0.5) * 1.6 + rough * (noise(ca * 4 + seed, sa * 4, t * 5) - 0.5) * 0.8;
-    return V(ox + ca * rad * k + lean[0] * t * t, y, oz + sa * rad * k + lean[1] * t * t);
+    const [x, z] = fit(ox + ca * rad * k + lean[0] * t * t, oz + sa * rad * k + lean[1] * t * t);
+    return V(x, y, z);
   };
+  // ring heights: optional tight rings at absolute heights near the foot (a crisp grass band), then even steps
+  const ts = [0];
+  if (foot) for (const y of foot) if (y / h < 1 / rings) ts.push(y / h);
+  for (let i = 1; i < rings; i++) ts.push(i / rings);
   const rs = [];
-  for (let i = 0; i < rings; i++) { const t = i / rings, ring = []; for (let s = 0; s < segs; s++) ring.push(surf((s / segs) * Math.PI * 2, t)); rs.push(ring); }
+  for (const t of ts) { const ring = []; for (let s = 0; s < segs; s++) ring.push(surf((s / segs) * Math.PI * 2, t)); rs.push(ring); }
   const g = crater ? (() => { const ring = []; for (let s = 0; s < segs; s++) ring.push(surf((s / segs) * Math.PI * 2, 1)); rs.push(ring); return ringsGeo(rs, { flip: true }); })()
-    : ringsGeo(rs, { apexTop: V(ox + lean[0], h, oz + lean[1]), flip: true });
+    : ringsGeo(rs, { apexTop: V(...(() => { const [x, z] = fit(ox + lean[0], oz + lean[1]); return [x, h, z]; })()), flip: true });
   return { g, surf };
 }
-const ROCK_PEAK = ramp(0x3a302c, 0x5e5248, 0x8a7a66, 0xb8a68a, 0xe0d0b4);
-const COLD_PEAK = ramp(0x1e2230, 0x343a4c, 0x505a70, 0x76809a, 0x9aa4bc);
-const BASALT = ramp(0x1a1212, 0x2e2220, 0x4a3630, 0x6e5446, 0x8e705a);
+// the grass foot band: an opaque ring at the very base of every mountain, crisp edge just above FOOT_Y
+const PEAK_R = 0.46, FOOT_Y = 0.05, FOOT_RINGS = [0.042, 0.062];
+const ROCK_PEAK = ramp(0x7a6252, 0x9e8068, 0xc4a482, 0xe2c8a2, 0xfaeccc); // warm sunlit sandstone-grey
+const COLD_PEAK = ramp(0x56688e, 0x6e82a8, 0x8a9ec0, 0xaabcd6, 0xcad8ea); // pale blue granite
+const BASALT = ramp(0x5e3a3a, 0x7c4a44, 0x9c604c, 0xbc7c5a, 0xd89c74); // warm red-brown volcanic rock
+const PEAK_SHADE = L(0x6a6a96); // painted shade colour: violet, never black
 function peakPaint(kind, H) {
   const rock = kind === 'snow' ? COLD_PEAK : kind === 'volcano' ? BASALT : ROCK_PEAK;
-  const grass = kind === 'volcano' ? ramp(0x2a1a14, 0x4a2a1c) : kind === 'snow' ? ramp(0x8a9ab8, 0xd8e4f4) : ramp(0x34521e, 0x5a7a2a);
-  const SN = ramp(0x8ea4cc, 0xc8d8ee, 0xf4f8ff, 0xffffff);
-  const snowLine = kind === 'snow' ? 0.5 : 0.74;
+  const grass = kind === 'volcano' ? ramp(0x7a4a34, 0x9a6040) : kind === 'snow' ? ramp(0xc8d8f0, 0xf0f6ff) : ramp(0x4c9c2c, 0x7cc244);
+  const SN = ramp(0xa8bce8, 0xd4e0f8, 0xf6f9ff, 0xffffff);
+  const snowLine = kind === 'snow' ? 0.48 : 0.54;
   return (p, n) => {
-    const m = fbm(p.x * 4 + 7, p.y * 4, p.z * 4), fine = noise(p.x * 16, p.y * 16, p.z * 16), t = p.y / H;
-    const facing = n.x * 0.55 + n.z * 0.45; // a painted key light so ridges read even in shade
-    let c = rock(0.28 + t * 0.3 + (n.y - 0.3) * 0.3 + facing * 0.22 + (m - 0.5) * 0.65);
-    if (fine > 0.68) c = mul(c, 0.68); // crevices
-    const g = smooth(0.2, 0.04, p.y + (m - 0.5) * 0.18) * smooth(-0.2, 0.4, n.y);
-    if (g > 0) c = mix(c, grass(m), g * 0.85);
+    const m = fbm(p.x * 4 + 7, p.y * 4, p.z * 4), fine = noise(p.x * 14, p.y * 14, p.z * 14), t = p.y / H;
+    const facing = n.x * 0.55 + n.z * 0.45; // painted key light so ridges read even in shade
+    let c = rock(0.32 + t * 0.2 + (n.y - 0.3) * 0.2 + facing * 0.45 + (m - 0.5) * 0.45);
+    // horizontal strata, painterly
+    const strata = Math.sin(p.y * 38 + m * 5);
+    c = mul(c, 0.94 + 0.08 * strata);
+    // shaded faces lean violet instead of going dark
+    const shade = smooth(0.15, -0.65, facing) * 0.38 + (fine > 0.72 ? 0.2 : 0);
+    c = mix(c, mul(PEAK_SHADE, 0.6 + c[1] * 0.8), shade);
+    // warm sun kiss on lit ridges
+    c = mix(c, L(0xfff2d0), smooth(0.35, 0.9, facing) * 0.18);
+    // opaque grass / snow / ash band at the very foot only: crisp edge, never a wash over the rock
+    if (p.y < FOOT_Y) c = grass(m + Math.max(0, n.y) * 0.3);
     if (kind === 'volcano') {
-      const heat = smooth(0.55, 0.95, t);
-      c = mix(c, mix(L(0x5a1a0e), L(0xc04010), smooth(0.85, 1, t)), heat * 0.55 * (0.5 + m));
-    } else if (kind !== 'rock' || t > 0.78) {
-      const s = t + (m - 0.5) * 0.3 + (n.y - 0.45) * 0.8 - snowLine;
-      if (s > 0) c = SN(0.25 + n.y * 0.6 + (fine - 0.5) * 0.3 + Math.min(0.3, s));
+      const heat = smooth(0.6, 0.97, t);
+      c = mix(c, mix(L(0xa04a2a), L(0xff8a3a), smooth(0.85, 1, t)), heat * 0.6 * (0.5 + m));
+      // pale ash streaks near the top
+      if (t > 0.5 && n.y > 0.3 && m > 0.62) c = mix(c, L(0xc8b4ac), 0.5);
+    } else {
+      const s = t + (m - 0.5) * 0.3 + (n.y - 0.5) * 1.1 - snowLine;
+      if (s > 0) c = mix(c, SN(0.3 + n.y * 0.5 + facing * 0.3 + (fine - 0.5) * 0.2 + Math.min(0.3, s)), smooth(0, 0.06, s));
     }
     return c;
   };
 }
-/** peakModel(kind, variant): kind 'rock' | 'snow' | 'volcano', variant 0..3 changes the silhouette (about 1.2 wide, 1.3 tall). */
+// small pine trees growing on mountain feet (built as a separate Build and appended, scaled)
+function addMiniTrees(b, kind, spots) {
+  for (const [x, z, sc, y = 0] of spots) {
+    const t = new Build(Math.floor(b.r() * 1e6));
+    pineTree(t, kind === 'snow');
+    for (const part of t.B) {
+      const pp = part.p;
+      for (let i = 0; i < pp.length; i += 3) { pp[i] = pp[i] * sc + x; pp[i + 1] = pp[i + 1] * sc + y; pp[i + 2] = pp[i + 2] * sc + z; }
+      b.B.push(part);
+    }
+  }
+}
+/** peakModel(kind, variant): kind 'rock' | 'snow' | 'volcano', variant 0..3 changes the silhouette.
+ *  Compact: footprint radius <= PEAK_R (about 0.92 wide) so at the game's fillScale (~0.36-0.41) it stays
+ *  inside its own hex (circumradius ~0.2 world units); about 0.85 tall. */
 export function peakModel(kind = 'rock', variant = 0) {
   if (kind === true) kind = 'snow'; else if (kind === false) kind = 'rock';
   const seed = 500 + variant * 13 + (kind === 'snow' ? 3 : kind === 'volcano' ? 7 : 0);
-  const b = new Build(seed), H = 1.3, paint = peakPaint(kind, H);
+  const b = new Build(seed), H = 0.85, paint = peakPaint(kind, H);
   const R = b.r, v = variant % 4;
   if (kind === 'volcano') {
-    const crater = 0.35, main = mound({ r0: 0.6, h: 1.05, segs: 14, rings: 9, seed: seed * 0.1, rough: 0.16, sharp: 1.15, crater });
+    const crater = 0.35, main = mound({ r0: 0.44, h: 0.7, segs: 14, rings: 9, seed: seed * 0.1, rough: 0.16, sharp: 1.15, crater, maxR: PEAK_R, foot: FOOT_RINGS });
     b.part(main.g, paint);
     // crater inner wall going down to a lava pool
-    const rimR = 0.6 * Math.pow(crater, 1.15), segs = 14, inner = [], floorR = rimR * 0.55, floorY = 0.92;
+    const rimR = 0.44 * Math.pow(crater, 1.15), segs = 14, inner = [], floorR = rimR * 0.55, floorY = 0.61;
     const rimRing = [], innerRing = [];
     for (let s = 0; s < segs; s++) { const a = (s / segs) * Math.PI * 2; rimRing.push(main.surf(a, 1)); innerRing.push(V(Math.cos(a) * floorR, floorY, Math.sin(a) * floorR)); }
     const wall = ringsGeo([rimRing, innerRing], { flip: true });
-    b.part(wall, (p) => mix(L(0x3a1810), L(0xd04a10), smooth(1.02, 0.93, p.y)));
+    b.part(wall, (p) => mix(L(0x8a4028), L(0xff6a1a), smooth(0.68, 0.62, p.y)));
     const lava = ramp(0xd02000, 0xff7000, 0xffd040, 0xfff0a0);
     b.part(new THREE.CircleGeometry(floorR * 1.02, segs).rotateX(-Math.PI / 2).translate(0, floorY + 0.005, 0), (p) => lava(1 - Math.hypot(p.x, p.z) / floorR * 0.8 + noise(p.x * 30, 0, p.z * 30) * 0.3), { glow: true });
     // lava streams down the flanks
     const flows = [0.4 + v, 2.3 + v * 0.7, 4.4 - v * 0.3];
     for (const a0 of flows) {
-      const tri = [], N = 7, w0 = 0.045;
+      const tri = [], N = 7, w0 = 0.036;
       let prev = null;
       for (let i = 0; i <= N; i++) {
         const t = 1 - (i / N) * 0.82, a = a0 + Math.sin(i * 1.3) * 0.08;
@@ -608,27 +652,33 @@ export function peakModel(kind = 'rock', variant = 0) {
         if (prev) tri.push(prev[0].x, prev[0].y, prev[0].z, cur[0].x, cur[0].y, cur[0].z, cur[1].x, cur[1].y, cur[1].z, prev[0].x, prev[0].y, prev[0].z, cur[1].x, cur[1].y, cur[1].z, prev[1].x, prev[1].y, prev[1].z);
         prev = cur;
       }
-      b.part(twoSided(tri), (p) => lava(smooth(0.1, 1.0, p.y) * 0.85 + 0.05), { glow: true });
+      b.part(twoSided(tri), (p) => lava(smooth(0.07, 0.68, p.y) * 0.85 + 0.05), { glow: true });
     }
     // side vents and a smoke plume
-    const side1 = mound({ r0: 0.32, h: 0.42, segs: 9, rings: 5, seed: seed * 0.2, rough: 0.3, ox: 0.38 * Math.cos(v + 1), oz: 0.38 * Math.sin(v + 1) });
+    const side1 = mound({ r0: 0.22, h: 0.28, segs: 9, rings: 5, seed: seed * 0.2, rough: 0.3, ox: 0.24 * Math.cos(v + 1), oz: 0.24 * Math.sin(v + 1), maxR: PEAK_R, foot: FOOT_RINGS });
     b.part(side1.g, paint);
     return b.done({ ao: 0.75, aoH: 0.1 });
   }
   // rock / snow: one tall main spire plus 2-3 lower shoulders
   const layouts = [
-    [[0, 0, 0.58, 1.3, 1.25], [0.32, 0.1, 0.36, 0.78, 1.2], [-0.3, -0.12, 0.36, 0.66, 1.2], [0.05, 0.34, 0.28, 0.48, 1.1]],
-    [[-0.08, 0, 0.55, 1.25, 1.4], [0.3, -0.12, 0.4, 1.0, 1.3], [-0.24, 0.26, 0.28, 0.5, 1.1]],
-    [[0.04, -0.04, 0.6, 1.3, 1.1], [-0.33, 0.12, 0.34, 0.72, 1.25], [0.3, 0.24, 0.26, 0.5, 1.1], [0.2, -0.3, 0.26, 0.56, 1.2]],
-    [[0, 0, 0.52, 1.3, 1.6], [0.34, 0.08, 0.32, 0.86, 1.4], [-0.26, 0.14, 0.32, 0.8, 1.4], [-0.08, -0.32, 0.3, 0.62, 1.3]],
+    [[0, 0, 0.42, 0.85, 1.3], [0.22, 0.07, 0.26, 0.5, 1.2], [-0.21, -0.08, 0.26, 0.43, 1.2], [0.03, 0.23, 0.21, 0.31, 1.1]],
+    [[-0.05, 0, 0.4, 0.82, 1.45], [0.21, -0.08, 0.28, 0.65, 1.3], [-0.17, 0.18, 0.21, 0.33, 1.1]],
+    [[0.03, -0.03, 0.43, 0.85, 1.15], [-0.23, 0.08, 0.25, 0.47, 1.25], [0.21, 0.17, 0.2, 0.33, 1.1], [0.14, -0.21, 0.2, 0.37, 1.2]],
+    [[0, 0, 0.38, 0.85, 1.65], [0.23, 0.06, 0.24, 0.56, 1.4], [-0.18, 0.1, 0.24, 0.52, 1.4], [-0.06, -0.22, 0.22, 0.4, 1.3]],
   ][v];
   layouts.forEach(([x, z, r0, h, sharp], i) => {
-    const m = mound({ r0, h, segs: i ? 9 : 12, rings: i ? 6 : 9, seed: seed * 0.1 + i * 3.7, rough: 0.36, sharp, ox: x, oz: z, lean: [(R() - 0.5) * 0.12, (R() - 0.5) * 0.12] });
-    b.part(m.g, paint, { jitter: 0.025, jf: 6 });
+    const m = mound({ r0, h, segs: i ? 9 : 12, rings: i ? 6 : 9, seed: seed * 0.1 + i * 3.7, rough: 0.32, sharp, ox: x, oz: z, lean: [(R() - 0.5) * 0.08, (R() - 0.5) * 0.08], maxR: PEAK_R, foot: FOOT_RINGS });
+    b.part(m.g, paint, { jitter: 0.025, jf: 6, jy: 0.3, floor: 0 });
   });
-  // scree boulders at the foot
+  // scree boulders and a few small pines at the foot
   const sp = rockPaint(kind === 'snow' ? ROCK_PAL[3] : ROCK_PAL[0], 0.3, 0, kind === 'snow' ? 1 : 0);
-  for (let k = 0; k < 3; k++) { const a = R() * 6.28; boulder(b, 0.06 + R() * 0.04, Math.cos(a) * 0.55, Math.sin(a) * 0.55, 0.75, sp); }
+  const a0 = R() * 6.28;
+  for (let k = 0; k < 2; k++) { const a = a0 + k * 2.4; boulder(b, 0.045 + R() * 0.03, Math.cos(a) * 0.38, Math.sin(a) * 0.38, 0.75, sp); }
+  const tr = [];
+  // rough analytic ground height of the mounds, so the trees sit on the slope
+  const hAt = (x, z) => layouts.reduce((mx, [ox, oz, r0, h, sharp]) => { const d = Math.hypot(x - ox, z - oz) / (r0 * 0.9); return d >= 1 ? mx : Math.max(mx, h * (1 - Math.pow(d, 1 / sharp))); }, 0);
+  for (let k = 0; k < 3; k++) { const a = a0 + 1.2 + k * 1.9 + R() * 0.4, d = 0.31 + R() * 0.05, x = Math.cos(a) * d, z = Math.sin(a) * d; tr.push([x, z, 0.19 + R() * 0.06, Math.max(0, hAt(x, z) - 0.03)]); }
+  addMiniTrees(b, kind, tr);
   return b.done({ ao: 0.75, aoH: 0.1 });
 }
 
@@ -637,7 +687,7 @@ export function peakModel(kind = 'rock', variant = 0) {
 export function crystalModel(i = 0) {
   i = ((i % 4) + 4) % 4;
   const b = new Build(600 + i);
-  const pal = [ramp(0x1a3a7a, 0x3a8ad8, 0x9ad8ff, 0xf0ffff), ramp(0x3a1a6a, 0x7a3ac8, 0xc08aff, 0xf4e0ff), ramp(0x0a4a30, 0x1a9a5a, 0x6ae0a0, 0xe0fff0), ramp(0x5a0a10, 0xc0201a, 0xff7a40, 0xffe0a0)][i];
+  const pal = [ramp(0x2a5ab0, 0x4aa0f0, 0xa8e4ff, 0xf4ffff), ramp(0x5a2aa0, 0x9a50e8, 0xd0a0ff, 0xf8eaff), ramp(0x14805a, 0x2abc74, 0x7af0b0, 0xe8fff4), ramp(0x9a1a20, 0xe0302a, 0xff8a50, 0xffe8b0)][i];
   const glowC = [[0.3, 0.7, 1], [0.7, 0.35, 1], [0.3, 1, 0.6], [1, 0.4, 0.1]][i];
   const rock = rockPaint(ROCK_PAL[i === 3 ? 6 : 3], 0.2);
   boulder(b, 0.17, 0, 0, 0.45, rock, 0.3);
@@ -660,13 +710,13 @@ export function crystalModel(i = 0) {
 export function mushroomModel(i = 0) {
   i = ((i % 3) + 3) % 3;
   const b = new Build(700 + i);
-  const cap = [ramp(0x7a0a0a, 0xc81a14, 0xf04a2a), ramp(0x4a2a14, 0x8a5a2a, 0xc8945a), ramp(0x1a3a5a, 0x2a7aa0, 0x6ad0e0)][i];
-  const stem = ramp(0xb8ac94, 0xf0e8d8);
+  const cap = [ramp(0xb81a1a, 0xe82a20, 0xff6a40), ramp(0x8a5a2e, 0xb47c40, 0xe0b070), ramp(0x2a6a94, 0x3a9ac4, 0x7ae0f0)][i];
+  const stem = ramp(0xd8ccb4, 0xfff8ec);
   const set = [[0, 0, 0.11, 0.26], [0.13, 0.07, 0.075, 0.17], [-0.1, 0.09, 0.06, 0.12], [0.03, -0.13, 0.05, 0.1]];
   for (const [x, z, r, h] of set) {
     b.part(tubeGeo([V(x, 0, z), V(x + 0.01, h * 0.5, z), V(x, h, z)], [r * 0.38, r * 0.3, r * 0.28], 6), (p) => stem(p.y / h));
     b.part(new THREE.SphereGeometry(r, 9, 4, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1, 0.75, 1).translate(x, h - 0.01, z), (p, n) => cap(0.3 + n.y * 0.6 + noise(p.x * 30, p.y * 30, p.z * 30) * 0.2));
-    b.part(new THREE.CircleGeometry(r, 9).rotateX(Math.PI / 2).translate(x, h - 0.01, z), mix(L(0xd8c8a8), L(0x806850), 0.3));
+    b.part(new THREE.CircleGeometry(r, 9).rotateX(Math.PI / 2).translate(x, h - 0.01, z), L(0xe0ceb0));
     if (i === 0) for (let k = 0; k < 5; k++) { const a = k * 1.3 + x * 10, el = 0.5 + (k % 3) * 0.3; b.part(ico(r * 0.13, 0).scale(1, 0.5, 1).translate(x + Math.cos(a) * Math.cos(el) * r, h - 0.01 + Math.sin(el) * r * 0.75, z + Math.sin(a) * Math.cos(el) * r), 0xffffff); }
     if (i === 2) { for (let k = 0; k < 4; k++) { const a = k * 1.6 + x * 10, el = 0.6 + (k % 2) * 0.35; b.part(ico(r * 0.15, 0).translate(x + Math.cos(a) * Math.cos(el) * r, h - 0.01 + Math.sin(el) * r * 0.75, z + Math.sin(a) * Math.cos(el) * r), [0.4, 1, 0.9], { glow: true }); } b.part(new THREE.CircleGeometry(r * 0.9, 9).rotateX(Math.PI / 2).translate(x, h - 0.012, z), [0.2, 0.75, 0.8], { glow: true }); }
   }
@@ -694,15 +744,20 @@ export function natureModel(key) {
  *   fillScale:             suggested instance scale for fill models (main.js units, tree 1u -> ~0.2),
  *   scatter: [{ key, p, s }]  decoration: each entry independently appears on a tile with probability p,
  *                             at suggested scale s. Skip tiles holding objects/roads.
+ *                             Optional per entry: avoid: [terrainIds] -> skip the entry when any neighbour has one of
+ *                             these terrains; maxLat -> skip when |latitude| (|DIRS[v].y|) is above it.
+ *                             (keeps palms/cacti off snow edges and swamp/forest borders, snowy pines off sand)
  * }
  * Forest (9) and mountain (8) also have biome variants in FOREST_BY_BIOME / PEAK_BY_BIOME.
  */
+// desert plants never grow next to snow, swamp or forest
+const DESERT_AVOID = [4, 5, 9];
 export const FLORA_FOR_TERRAIN = {
   0: { scatter: [] },
   1: { scatter: [{ key: 'tuft:0', p: 0.45, s: 0.20 }, { key: 'tuft:1', p: 0.3, s: 0.20 }, { key: 'oak', p: 0.1, s: 0.21 }, { key: 'birch', p: 0.05, s: 0.21 }, { key: 'bush:0', p: 0.15, s: 0.20 }, { key: 'bush:2', p: 0.07, s: 0.20 }, { key: 'bush:1', p: 0.05, s: 0.20 }, { key: 'rock:4', p: 0.05, s: 0.17 }, { key: 'mushroom:0', p: 0.03, s: 0.17 }] },
   2: { scatter: [{ key: 'tuft:3', p: 0.35, s: 0.20 }, { key: 'bush:3', p: 0.15, s: 0.20 }, { key: 'rock:0', p: 0.12, s: 0.17 }, { key: 'rock:1', p: 0.1, s: 0.17 }, { key: 'dead', p: 0.06, s: 0.21 }, { key: 'mushroom:1', p: 0.04, s: 0.17 }] },
-  3: { scatter: [{ key: 'cactus', p: 0.1, s: 0.21 }, { key: 'palm', p: 0.07, s: 0.21 }, { key: 'tuft:3', p: 0.2, s: 0.19 }, { key: 'rock:3', p: 0.08, s: 0.17 }, { key: 'bush:3', p: 0.06, s: 0.17 }] },
-  4: { scatter: [{ key: 'snowpine', p: 0.14, s: 0.21 }, { key: 'rock:5', p: 0.12, s: 0.17 }, { key: 'bush:4', p: 0.08, s: 0.19 }, { key: 'crystal:0', p: 0.02, s: 0.19 }] },
+  3: { scatter: [{ key: 'cactus', p: 0.1, s: 0.21, avoid: DESERT_AVOID, maxLat: 0.68 }, { key: 'palm', p: 0.07, s: 0.21, avoid: DESERT_AVOID, maxLat: 0.68 }, { key: 'tuft:3', p: 0.2, s: 0.19 }, { key: 'rock:3', p: 0.08, s: 0.17 }, { key: 'bush:3', p: 0.06, s: 0.17 }] },
+  4: { scatter: [{ key: 'snowpine', p: 0.14, s: 0.21, avoid: [3, 7] }, { key: 'rock:5', p: 0.12, s: 0.17 }, { key: 'bush:4', p: 0.08, s: 0.19 }, { key: 'crystal:0', p: 0.02, s: 0.19 }] },
   5: { scatter: [{ key: 'tuft:2', p: 0.45, s: 0.22 }, { key: 'willow', p: 0.14, s: 0.21 }, { key: 'dead', p: 0.08, s: 0.21 }, { key: 'bush:5', p: 0.15, s: 0.20 }, { key: 'mushroom:2', p: 0.08, s: 0.17 }] },
   6: { scatter: [{ key: 'rock:0', p: 0.2, s: 0.19 }, { key: 'rock:1', p: 0.2, s: 0.19 }, { key: 'rock:2', p: 0.12, s: 0.19 }, { key: 'rock:3', p: 0.06, s: 0.17 }, { key: 'tuft:3', p: 0.2, s: 0.19 }, { key: 'bush:3', p: 0.08, s: 0.19 }, { key: 'pine', p: 0.05, s: 0.21 }, { key: 'crystal:1', p: 0.02, s: 0.19 }] },
   7: { scatter: [{ key: 'rock:6', p: 0.22, s: 0.19 }, { key: 'burnt', p: 0.14, s: 0.21 }, { key: 'tuft:4', p: 0.25, s: 0.19 }, { key: 'crystal:3', p: 0.04, s: 0.19 }] },
@@ -713,6 +768,7 @@ export const FLORA_FOR_TERRAIN = {
 export const FOREST_BY_BIOME = {
   temperate: [{ key: 'oak', w: 0.5 }, { key: 'pine', w: 0.3 }, { key: 'birch', w: 0.2 }],
   cold: [{ key: 'snowpine', w: 0.75 }, { key: 'pine', w: 0.25 }],
+  boreal: [{ key: 'pine', w: 0.6 }, { key: 'snowpine', w: 0.25 }, { key: 'birch', w: 0.15 }],
   swamp: [{ key: 'willow', w: 0.6 }, { key: 'dead', w: 0.4 }],
   dry: [{ key: 'pine', w: 0.4 }, { key: 'dead', w: 0.3 }, { key: 'oak', w: 0.3 }],
   sand: [{ key: 'palm', w: 0.7 }, { key: 'cactus', w: 0.3 }],
@@ -720,6 +776,7 @@ export const FOREST_BY_BIOME = {
 };
 export const PEAK_BY_BIOME = {
   temperate: ['peak:rock:0', 'peak:rock:1', 'peak:rock:2', 'peak:rock:3'],
+  boreal: ['peak:snow:0', 'peak:rock:1', 'peak:snow:2', 'peak:rock:3'],
   cold: ['peak:snow:0', 'peak:snow:1', 'peak:snow:2', 'peak:snow:3'],
   lava: ['peak:volcano:0', 'peak:volcano:1', 'peak:volcano:2'],
 };
@@ -728,9 +785,12 @@ export function biomeOf(neighbourTerrains, lat = 0) {
   const c = new Array(10).fill(0);
   for (const t of neighbourTerrains) c[t]++;
   if (c[7] > 0) return 'lava';
-  if (c[4] > 0 || lat > 0.6) return 'cold';
+  // snowy pines and snow peaks: touching snow, or within about one ring of the snow line (|lat| > 0.8)
+  if (c[4] >= 2 || lat > 0.76) return 'cold';
+  if (c[4] > 0) return 'boreal'; // single snow neighbour: mostly green pines with a few frosted ones
   if (c[5] >= 2) return 'swamp';
-  if (c[3] >= 2) return 'sand';
-  if (c[2] + c[6] >= 2) return 'dry';
+  // palms and cacti only in real desert: mostly sand around, hardly any lush grass/forest, not polar
+  if (c[3] >= 3 && c[1] + c[9] <= 1 && lat < 0.68) return 'sand';
+  if (c[3] + c[2] + c[6] >= 2) return 'dry';
   return 'temperate';
 }

@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0d1e" />
+  <meta name="theme-color" content="#2c4ba6" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Hex Realms</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=0.3" />
+  <link rel="stylesheet" href="style.css?v=0.4" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -17,23 +17,25 @@
 <div id="app">
   <div id="hud" hidden>
     <header class="resbar">
-      <span><i>🪙</i><b id="r-gold">0</b></span><span><i>🪵</i><b id="r-wood">0</b></span><span><i>🪨</i><b id="r-ore">0</b></span><span><i>💎</i><b id="r-gems">0</b></span>
+      <span><i data-ic="gold" data-size="20"></i><b id="r-gold">0</b></span><span><i data-ic="wood" data-size="20"></i><b id="r-wood">0</b></span><span><i data-ic="ore" data-size="20"></i><b id="r-ore">0</b></span><span><i data-ic="gems" data-size="20"></i><b id="r-gems">0</b></span>
       <em id="r-day">Day 1</em>
     </header>
     <nav id="heroes" class="side"></nav>
     <footer class="bottom">
       <div id="sel" class="sel"></div>
       <div class="btns">
-        <button id="b-hero" class="fb">🐎<small>Hero</small></button>
-        <button id="b-menu" class="fb">☰<small>Menu</small></button>
-        <button id="b-end" class="fb end">⏭<small>End day</small></button>
+        <button id="b-hero" class="fb"><i data-ic="hero" data-size="26"></i><small>Hero</small></button>
+        <button id="b-menu" class="fb"><i data-ic="menu" data-size="24"></i><small>Menu</small></button>
+        <button id="b-end" class="fb end"><i data-ic="end" data-size="26"></i><small>End day</small></button>
       </div>
     </footer>
   </div>
 
   <div id="town" class="panel" hidden>
-    <div class="phead"><div><h2 id="t-name">Town</h2><p id="t-sub"></p></div><button id="t-close" class="x">✕</button></div>
-    <div class="tabs2"><button data-t="build" class="on">🔨 Build</button><button data-t="recruit">⚔️ Recruit</button><button data-t="army">🛡️ Army</button><button data-t="more">🍺 More</button></div>
+    <input type="checkbox" id="t-fold" class="fold" />
+    <label for="t-fold" class="grab" aria-label="Fold the town panel"></label>
+    <div class="phead"><div><h2 id="t-name">Town</h2><p id="t-sub"></p></div><label for="t-fold" class="chev" aria-label="Fold"></label><button id="t-close" class="x" aria-label="Close"><i data-ic="close" data-size="16"></i></button></div>
+    <div class="tabs2"><button data-t="build" class="on"><i data-ic="build" data-size="18"></i>Build</button><button data-t="recruit"><i data-ic="recruit" data-size="18"></i>Recruit</button><button data-t="army"><i data-ic="army" data-size="18"></i>Army</button><button data-t="more"><i data-ic="tavern" data-size="18"></i>More</button></div>
     <div id="t-body" class="pbody"></div>
     <div class="resbar mini"><span><b id="r2-gold"></b></span></div>
   </div>
@@ -43,11 +45,11 @@
     <div class="bbot">
       <p id="b-msg"></p>
       <div class="btns">
-        <button id="b-wait" class="fb">⏳<small>Wait</small></button>
-        <button id="b-def" class="fb">🛡️<small>Defend</small></button>
-        <button id="b-spell" class="fb">🔮</button>
-        <button id="b-auto" class="fb">🤖<small>Auto</small></button>
-        <button id="b-quick" class="fb">⏩<small>Quick</small></button>
+        <button id="b-wait" class="fb"><i data-ic="wait" data-size="24"></i><small>Wait</small></button>
+        <button id="b-def" class="fb"><i data-ic="defend" data-size="24"></i><small>Defend</small></button>
+        <button id="b-spell" class="fb"><i data-ic="spellbook" data-size="24"></i><small>Spells</small></button>
+        <button id="b-auto" class="fb"><i data-ic="auto" data-size="24"></i><small>Auto</small></button>
+        <button id="b-quick" class="fb"><i data-ic="quick" data-size="24"></i><small>Quick</small></button>
       </div>
     </div>
   </div>
@@ -64,14 +66,15 @@
   <div id="floaters"></div>
 
   <div id="menu" class="menu">
-    <div class="logo"><h1>HEX<span>REALMS</span></h1><p>Might and magic on a tiny world</p></div>
+    <div class="logo"><i class="crest" data-ic="town" data-size="64"></i><h1>HEX<span>REALMS</span></h1><p>Might and magic on a tiny world</p></div>
     <div class="mbtns">
       <button id="m-continue" class="btn gold" hidden>Continue</button>
-      <div class="diffs"><button data-d="0">🌱 Easy</button><button data-d="1">⚔️ Normal</button><button data-d="2">🔥 Hard</button></div>
+      <div class="diffs"><button data-d="0"><i data-ic="luck" data-size="22"></i>Easy</button><button data-d="1"><i data-ic="attack" data-size="22"></i>Normal</button><button data-d="2"><i data-ic="fireball" data-size="22"></i>Hard</button></div>
       <button id="m-new" class="btn gold">New game</button>
     </div>
   </div>
 </div>
-<script type="module" src="main.js?v=0.3"></script>
+<script type="module" src="icons.js"></script>
+<script type="module" src="main.js?v=0.4"></script>
 </body>
 </html>
