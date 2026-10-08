@@ -945,30 +945,35 @@ function d7(up) {
     k.ball(0.12, 0, 2.2, 0, C.green, 1, { glow: true });
     k.limb([0, 2.0, 0], [0, 2.4, 0], 0.03, 0.015, C.bone, 4);
   });
-  // the giant dragon skull gate: the mouth is the vault entrance
-  k.at(0, Y, 0.45, 0, 1, () => {
-    // cranium
-    k.ball(0.62, 0, 1.05, -0.15, C.bone, 1, { s: [1, 0.78, 0.95], top: 1.12, bot: 0.86 });
-    // snout / upper jaw
-    k.box(0.75, 0.32, 0.75, 0, 0.82, 0.45, C.bone, { top: 1.12, rx: -0.12 });
-    k.box(0.55, 0.12, 0.3, 0, 0.98, 0.78, C.boneD, { rx: -0.25 });
-    // nostrils
-    for (const s of [-1, 1]) k.ball(0.06, s * 0.14, 1.0, 0.92, C.greenD, 0, { glow: true, s: [1, 0.6, 0.6] });
+  // the giant dragon skull gate: the open mouth is the vault entrance
+  const taper = (rt, rb, len, sy) => new THREE.CylinderGeometry(rt, rb, len, 4, 1).rotateY(Math.PI / 4).rotateX(Math.PI / 2).scale(1, sy, 1);
+  k.at(0, Y, 0.35, 0, 1, () => {
+    // cranium and brow
+    k.ball(0.58, 0, 1.3, -0.25, C.bone, 1, { s: [1.05, 0.78, 1.0], top: 1.12, bot: 0.86 });
+    for (const s of [-1, 1]) k.box(0.42, 0.1, 0.32, s * 0.27, 1.42, 0.12, C.boneD, { rz: s * 0.28, ry: -s * 0.2 });
     // eye sockets glowing
-    for (const s of [-1, 1]) { k.ball(0.14, s * 0.32, 1.18, 0.28, C.green, 1, { glow: true, s: [1, 0.7, 0.6] }); k.box(0.36, 0.08, 0.3, s * 0.32, 1.28, 0.28, C.boneD, { rz: s * 0.3 }); }
+    for (const s of [-1, 1]) k.ball(0.13, s * 0.29, 1.27, 0.17, C.green, 1, { glow: true, s: [1, 0.72, 0.6] });
+    // upper jaw: a long tapered snout, nostrils at the tip, fangs hanging
+    k.add(taper(0.2, 0.42, 0.95, 0.5).translate(0, 1.07, 0.42), C.bone, { top: 1.1, bot: 0.86 });
+    for (const s of [-1, 1]) k.ball(0.05, s * 0.1, 1.12, 0.86, C.greenD, 0, { glow: true, s: [1, 0.6, 0.6] });
+    for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {
+      const z = 0.75 - i * 0.18, x = s * (0.14 + i * 0.05);
+      k.cone(0.045 - i * 0.004, 0.24 - i * 0.02, x, 0.98, z, C.bone, 4, { rx: Math.PI });
+    }
+    // lower jaw resting on the ground, teeth up
+    k.add(taper(0.17, 0.36, 0.9, 0.42).translate(0, 0.12, 0.48), C.boneD, { top: 1.15, bot: 0.9 });
+    for (let i = 0; i < 4; i++) for (const s of [-1, 1]) k.cone(0.04, 0.18 - i * 0.02, s * (0.12 + i * 0.05), 0.2, 0.78 - i * 0.18, C.bone, 4);
+    // cheekbones framing the mouth
+    for (const s of [-1, 1]) { k.limb([s * 0.4, 1.12, 0.0], [s * 0.38, 0.12, 0.08], 0.1, 0.08, C.bone, 5); k.ball(0.12, s * 0.4, 0.14, 0.08, C.boneD, 0); }
+    // the dark throat with green glow
+    k.box(0.68, 0.9, 0.1, 0, 0.1, -0.05, C.door, { ao: false });
+    k.poly(lancetPts(0.5, 0.55, 0.6), 0, 0.12, 0.01, C.greenD, { glow: true });
     // horns sweeping back
     for (const s of [-1, 1]) {
-      const P = [[s * 0.42, 1.38, -0.1], [s * 0.6, 1.62, -0.35], [s * 0.66, 1.9, -0.7], [s * 0.58, 2.15, -0.95]];
+      const P = [[s * 0.42, 1.48, -0.2], [s * 0.62, 1.72, -0.45], [s * 0.68, 2.0, -0.8], [s * 0.6, 2.25, -1.05]];
       for (let j = 0; j < 3; j++) k.limb(P[j], P[j + 1], 0.12 - j * 0.035, 0.09 - j * 0.035, C.boneD, 5);
       k.cone(0.04, 0.2, P[3][0], P[3][1], P[3][2], C.bone, 5, { rx: -0.5 });
     }
-    // gaping mouth: dark-violet throat with green glow, fangs, lower jaw on the ground
-    k.box(0.62, 0.62, 0.2, 0, 0.12, 0.62, C.door, { ao: false });
-    k.box(0.52, 0.5, 0.05, 0, 0.14, 0.73, C.greenD, { glow: true });
-    for (let i = 0; i < 6; i++) { const x = -0.3 + i * 0.12; k.cone(0.04, 0.22, x, 0.95, 0.72 + Math.abs(x) * -0.2, C.bone, 4, { rx: Math.PI }); }
-    k.box(0.8, 0.14, 0.7, 0, 0, 0.55, C.boneD, { top: 1.15 });
-    for (let i = 0; i < 6; i++) { const x = -0.3 + i * 0.12; k.cone(0.035, 0.16, x, 0.14, 0.82, C.bone, 4); }
-    for (const s of [-1, 1]) k.box(0.12, 0.85, 0.5, s * 0.42, 0, 0.45, C.bone, { top: 1.1, rz: s * 0.05 });
   });
   // spine and ribs running back from the skull
   for (let i = 0; i < (up ? 4 : 3); i++) {
@@ -987,15 +992,15 @@ function d7(up) {
   if (up) {
     // great bone wings spread behind the vault
     for (const s of [-1, 1]) {
-      const sh = [s * 0.75, 2.0, -0.95];
-      const tips = [[s * 1.35, 3.6, -1.15], [s * 1.38, 3.0, -1.05], [s * 1.38, 2.4, -1.0], [s * 1.3, 1.65, -0.95]];
+      const sh = [s * 0.65, 1.9, -1.0];
+      const tips = [[s * 1.15, 3.25, -1.2], [s * 1.38, 2.75, -1.15], [s * 1.4, 2.2, -1.1], [s * 1.32, 1.6, -1.05]];
       k.limb([s * 0.35, 1.6, -0.9], sh, 0.07, 0.06, C.bone, 5);
-      k.limb(sh, [s * 1.0, 3.3, -1.1], 0.06, 0.05, C.bone, 5);
-      for (const t of tips) k.limb([s * 1.0, 3.3, -1.1], t, 0.035, 0.02, C.boneD, 4);
+      k.limb(sh, [s * 0.95, 3.0, -1.15], 0.06, 0.05, C.bone, 5);
+      for (const t of tips) k.limb([s * 0.95, 3.0, -1.15], t, 0.035, 0.02, C.boneD, 4);
       // membrane: ghostly translucent-looking pale violet
       k.sheet(4, 1, (u, v) => {
         const i = Math.min(3, Math.floor(u * 4)), f = u * 4 - i;
-        const a = i === 0 ? [s * 1.0, 3.3, -1.1] : tips[i - 1], b = tips[Math.min(3, i)];
+        const a = i === 0 ? [s * 0.95, 3.0, -1.15] : tips[i - 1], b = tips[Math.min(3, i)];
         const p = v === 0 ? sh : [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f - Math.sin(f * Math.PI) * 0.12, a[2] + (b[2] - a[2]) * f];
         return v === 0 ? [sh[0], sh[1] - 0.1 + u * 0.2, sh[2] - 0.05] : p;
       }, 0xb8a8d8, { top: 1.1, bot: 0.9, ao: false });
