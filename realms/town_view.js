@@ -440,8 +440,8 @@ void main() { vec3 d = normalize(vD); float y = d.y;
           const n3 = fbm(x * 0.16 + 31, z * 0.16, 3, 7);
           c.copy(g0).lerp(g1, smooth(0.45, 0.75, n1) * 0.75).lerp(g3, smooth(0.5, 0.7, n3) * 0.5).lerp(g2, smooth(0.64, 0.86, n2) * 0.4);
           // pass 4: large, soft darker ash / olive patches so the plain has tonal structure (kept well above murk)
-          const n4 = fbm(x * 0.12 + 57, z * 0.12 - 13, 3, 11);
-          c.lerp(ash, smooth(0.5, 0.7, n4) * 0.5);
+          const n4 = fbm(x * 0.12 + 57, z * 0.12 - 13, 3, 11), n5 = fbm(x * 0.33 - 9, z * 0.33 + 21, 2, 13);
+          c.lerp(ash, Math.min(0.6, smooth(0.5, 0.7, n4) * 0.45 + smooth(0.56, 0.74, n5) * 0.3));
         } else c.copy(g0).lerp(g1, smooth(0.35, 0.7, n1)).lerp(g3, smooth(0.55, 0.2, n1) * 0.6).lerp(g2, smooth(0.6, 0.85, n2) * 0.35);
         if (y > 4) c.lerp(hill, smooth(4, 20, y) * 0.5);
         // patchwork fields on the left hills (haven) / heather moor (necro)
@@ -809,25 +809,27 @@ void main() {
         // empty plain): sunken graves, flat ash rocks and dead-grass tufts in muted tones, never in the middle
         {
           const rf = rng32(77), busy = [[-0.75, 5], [0.75, 5], [-4.9, 4.6], [4.9, 4.6], [-5.7, 4], [5.7, 4]];
-          for (let i = 0; i < 70; i++) {
-            const side = rf() < 0.5 ? -1 : 1, z = 4.4 + rf() * 8.5;
-            const x = side * (1.7 + Math.pow(rf(), 0.8) * (2.6 + (z - 4.4) * 0.4));
+          // the camera sits at z ~11..20 (by town size), so the near view is narrow in world units: keep most of
+          // the detail within ~1.3..3.5 of the road, a wider spread further back
+          for (let i = 0; i < 110; i++) {
+            const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13;
+            const x = side * (1.35 + Math.pow(rf(), 1.4) * (z < 7 ? 4.2 : 2.6));
             if (Math.abs(z - 7.6) < 0.4 || busy.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6)) continue;
             const y = at(x, z), ry = rf() * 6.3, kind = rf();
             if (kind < 0.18) {
               // a low, sunken, leaning headstone
               const lean = (rf() - 0.5) * 0.5, h = 0.18 + rf() * 0.12;
-              k.add(new T.BoxGeometry(0.26, h, 0.07).translate(0, h / 2, 0).rotateX(lean).rotateY(ry).translate(x, y - 0.06, z), [0x8a8494, 0xaaa4b2]);
+              k.add(new T.BoxGeometry(0.26, h, 0.07).translate(0, h / 2, 0).rotateX(lean).rotateY(ry).translate(x, y - 0.06, z), [0x8c8690, 0xa8a2aa]);
             } else if (kind < 0.42) {
               // flat ash rock
               const r = 0.1 + rf() * 0.16;
               k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x86806e, 0xa29c8a]);
             } else {
               // dead-grass tuft: a few thin dry blades
-              const n = 3 + ((rf() * 3) | 0), tc = rf() < 0.5 ? [0x7e7a58, 0xa49e78] : [0x8a7e66, 0xaa9e82];
+              const n = 4 + ((rf() * 3) | 0), tc = rf() < 0.5 ? [0x8a8462, 0xb0a880] : [0x928670, 0xb4a88a];
               for (let b = 0; b < n; b++) {
-                const a = ry + b * 2.1, hb = 0.16 + rf() * 0.14;
-                k.add(new T.ConeGeometry(0.025, hb, 3).translate(0, hb / 2, 0).rotateX(0.25 + rf() * 0.35).rotateY(a).translate(x + Math.sin(a) * 0.04, y - 0.02, z + Math.cos(a) * 0.04), tc);
+                const a = ry + b * 1.3, hb = 0.12 + rf() * 0.12;
+                k.add(new T.ConeGeometry(0.03, hb, 3).translate(0, hb / 2, 0).rotateX(0.35 + rf() * 0.45).rotateY(a).translate(x + Math.sin(a) * 0.05, y - 0.02, z + Math.cos(a) * 0.05), tc);
               }
             }
           }
