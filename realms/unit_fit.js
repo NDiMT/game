@@ -41,17 +41,25 @@ const LABEL_PAD = { battle: 0.07, map: 0.03 };
 const statCache = new WeakMap();
 const fitCache = new Map();
 
-function addTris(pos, w, T) {
-  const a = pos.array;
-  for (let i = 0; i + 8 < a.length; i += 9) {
-    const ax = a[i], ay = a[i + 1], az = a[i + 2], bx = a[i + 3], by = a[i + 4], bz = a[i + 5], cx = a[i + 6], cy = a[i + 7], cz = a[i + 8];
-    const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az;
-    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    const ar = 0.5 * Math.sqrt(nx * nx + ny * ny + nz * nz) * w;
-    if (!(ar > 1e-9)) continue;
-    T.push({ ar, x: (ax + bx + cx) / 3, y: (ay + by + cy) / 3, z: (az + bz + cz) / 3, y0: Math.min(ay, by, cy), y1: Math.max(ay, by, cy),
-      xs: [ax, bx, cx], zs: [az, bz, cz] });
+// triangles as struct-of-arrays: area weight, centroid, y range (vertex x/z read from the source arrays)
+function triTable(parts) {
+  let n = 0;
+  for (const [pos] of parts) n += Math.floor(pos.array.length / 9);
+  const T = { n: 0, ar: new Float64Array(n), x: new Float64Array(n), y: new Float64Array(n), z: new Float64Array(n), y0: new Float64Array(n), y1: new Float64Array(n), src: new Array(n), off: new Int32Array(n) };
+  for (const [pos, w] of parts) {
+    const a = pos.array;
+    for (let i = 0; i + 8 < a.length; i += 9) {
+      const ax = a[i], ay = a[i + 1], az = a[i + 2], bx = a[i + 3], by = a[i + 4], bz = a[i + 5], cx = a[i + 6], cy = a[i + 7], cz = a[i + 8];
+      const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az;
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      const ar = 0.5 * Math.sqrt(nx * nx + ny * ny + nz * nz) * w;
+      if (!(ar > 1e-9)) continue;
+      const j = T.n++;
+      T.ar[j] = ar; T.x[j] = (ax + bx + cx) / 3; T.y[j] = (ay + by + cy) / 3; T.z[j] = (az + bz + cz) / 3;
+      T.y0[j] = Math.min(ay, by, cy); T.y1[j] = Math.max(ay, by, cy); T.src[j] = a; T.off[j] = i;
+    }
   }
+  return T;
 }
 const nonIndexed = (g) => {
   if (!g || !g.attributes?.position) return null;
@@ -60,33 +68,36 @@ const nonIndexed = (g) => {
   for (let i = 0; i < idx.length; i++) { out[i * 3] = p[idx[i] * 3]; out[i * 3 + 1] = p[idx[i] * 3 + 1]; out[i * 3 + 2] = p[idx[i] * 3 + 2]; }
   return { array: out };
 };
-// area-weighted percentile of a value over triangles
-function wpct(T, f, q) {
-  const v = T.map((t) => [f(t), t.ar]).sort((a, b) => a[0] - b[0]);
-  const tot = v.reduce((s, e) => s + e[1], 0);
-  let acc = 0;
-  for (const [x, w] of v) { acc += w; if (acc >= q * tot) return x; }
-  return v.length ? v[v.length - 1][0] : 0;
+// area-weighted percentiles of v[] (one value per triangle) for each q in qs, from one sort;
+// same order and sums as a stable sort of [value, weight] pairs
+function wpcts(T, v, qs) {
+  const n = T.n, ix = new Uint32Array(n);
+  for (let i = 0; i < n; i++) ix[i] = i;
+  ix.sort((a, b) => v[a] - v[b] || a - b);
+  let tot = 0;
+  for (let i = 0; i < n; i++) tot += T.ar[ix[i]];
+  return qs.map((q) => {
+    let acc = 0;
+    for (let i = 0; i < n; i++) { acc += T.ar[ix[i]]; if (acc >= q * tot) return v[ix[i]]; }
+    return n ? v[ix[n - 1]] : 0;
+  });
 }
 
 // raw measurements in model units
 export function measureModel(model) {
   const key = model.body || model;
   if (statCache.has(key)) return statCache.get(key);
-  const T = [];
   const bp = nonIndexed(model.body), gp = nonIndexed(model.glow);
-  if (bp) addTris(bp, 1, T);
-  if (gp) addTris(gp, 0.6, T);
+  const parts = []; if (bp) parts.push([bp, 1]); if (gp) parts.push([gp, 0.6]);
+  const T = triTable(parts), n = T.n;
   let minY = Infinity, maxY = -Infinity;
-  for (const t of T) { minY = Math.min(minY, t.y0); maxY = Math.max(maxY, t.y1); }
-  if (!T.length) { const s = { minY: 0, maxY: 1, top: 1, cx: 0, cz: 0, core: { x: 0.3, z: 0.3 }, full: { x: 0.4, z: 0.4 } }; statCache.set(key, s); return s; }
-  // surface density per height slice; spear shafts are thin, so slices that
-  // hold only a shaft carry little surface and do not count as "body"
+  for (let i = 0; i < n; i++) { minY = Math.min(minY, T.y0[i]); maxY = Math.max(maxY, T.y1[i]); }
+  if (!n) { const s = { minY: 0, maxY: 1, top: 1, cx: 0, cz: 0, core: { x: 0.3, z: 0.3 }, full: { x: 0.4, z: 0.4 } }; statCache.set(key, s); return s; }
   const N = 48, H = Math.max(1e-4, maxY - minY), D = new Float64Array(N);
-  for (const t of T) {
-    const i0 = Math.max(0, Math.min(N - 1, Math.floor(((t.y0 - minY) / H) * N)));
-    const i1 = Math.max(0, Math.min(N - 1, Math.floor(((t.y1 - minY) / H) * N)));
-    const share = t.ar / (i1 - i0 + 1);
+  for (let t = 0; t < n; t++) {
+    const i0 = Math.max(0, Math.min(N - 1, Math.floor(((T.y0[t] - minY) / H) * N)));
+    const i1 = Math.max(0, Math.min(N - 1, Math.floor(((T.y1[t] - minY) / H) * N)));
+    const share = T.ar[t] / (i1 - i0 + 1);
     for (let i = i0; i <= i1; i++) D[i] += share;
   }
   const sorted = [...D].filter((d) => d > 0).sort((a, b) => a - b);
@@ -94,18 +105,19 @@ export function measureModel(model) {
   let topI = N - 1;
   while (topI > 0 && D[topI] < med * 0.22) topI--;
   const top = minY + ((topI + 1) / N) * H;
-  // the base: surface in the lowest 14% of the body (feet, hooves, robe hem)
   const footY = minY + (top - minY) * 0.14;
   let sx = 0, sz = 0, sw = 0;
-  for (const t of T) if (t.y < footY) { sx += t.x * t.ar; sz += t.z * t.ar; sw += t.ar; }
-  if (sw < 1e-6) for (const t of T) { sx += t.x * t.ar; sz += t.z * t.ar; sw += t.ar; }
+  for (let t = 0; t < n; t++) if (T.y[t] < footY) { sx += T.x[t] * T.ar[t]; sz += T.z[t] * T.ar[t]; sw += T.ar[t]; }
+  if (sw < 1e-6) for (let t = 0; t < n; t++) { sx += T.x[t] * T.ar[t]; sz += T.z[t] * T.ar[t]; sw += T.ar[t]; }
   const lim = 0.3 * (top - minY);
   const cx = Math.max(-lim, Math.min(lim, sx / sw)), cz = Math.max(-lim, Math.min(lim, sz / sw));
-  // horizontal reach around the base centre
-  const core = { x: wpct(T, (t) => Math.abs(t.x - cx), 0.9), z: wpct(T, (t) => Math.abs(t.z - cz), 0.9) };
+  const dx = new Float64Array(n), dz = new Float64Array(n);
+  for (let t = 0; t < n; t++) { dx[t] = Math.abs(T.x[t] - cx); dz[t] = Math.abs(T.z[t] - cz); }
+  const [px9, px995] = wpcts(T, dx, [0.9, 0.995]), [pz9, pz995] = wpcts(T, dz, [0.9, 0.995]);
+  const core = { x: px9, z: pz9 };
   let fx = 0, fz = 0;
-  for (const t of T) for (let k = 0; k < 3; k++) { fx = Math.max(fx, Math.abs(t.xs[k] - cx)); fz = Math.max(fz, Math.abs(t.zs[k] - cz)); }
-  const full = { x: Math.max(core.x, wpct(T, (t) => Math.abs(t.x - cx), 0.995), fx * 0.8), z: Math.max(core.z, wpct(T, (t) => Math.abs(t.z - cz), 0.995), fz * 0.8) };
+  for (let t = 0; t < n; t++) { const a = T.src[t], o = T.off[t]; for (let k = 0; k < 9; k += 3) { fx = Math.max(fx, Math.abs(a[o + k] - cx)); fz = Math.max(fz, Math.abs(a[o + k + 2] - cz)); } }
+  const full = { x: Math.max(core.x, px995, fx * 0.8), z: Math.max(core.z, pz995, fz * 0.8) };
   const s = { minY, maxY, top, cx, cz, core, full };
   statCache.set(key, s);
   return s;

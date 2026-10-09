@@ -1330,9 +1330,11 @@ function refreshBattle() {
     dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(col === white ? 0.0001 : 0.92); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix);
   }
   hexes.instanceColor.needsUpdate = true; hexes.instanceMatrix.needsUpdate = true;
-  if (s && s.count > 0) vfx.select(bmesh.get(s.uid), s.side === 0 ? 0xffd84a : 0xff5a4a); else vfx.select(null);
+  // the ring stays on the stack whose action is playing and moves on only once the queue has drained
+  const rs = banim.length && bactor >= 0 ? B.stacks[bactor] : s;
+  if (rs && rs.count > 0) vfx.select(bmesh.get(rs.uid), rs.side === 0 ? 0xffd84a : 0xff5a4a); else vfx.select(null);
   // the turn order strip
-  $('b-queue').innerHTML = BT.queue(B, 9).map((x, i) => `<span class="q s${x.side}${i === 0 ? ' now' : ''}">${unitIcon(x.id)}<b>${x.count}</b></span>`).join('');
+  $('b-queue').innerHTML = BT.queue(B, 9).map((x, i) => `<span class="q s${x.side}${i === 0 ? ' now' : ''}">${unitIcon(x.id)}<b>${x.shown ?? x.count}</b></span>`).join('');
   const h0 = B.heroes[0];
   $('b-spell').disabled = !h0 || B.cast[0] || !h0.spells.some((id) => h0.mana >= SPELLS[id].mana) || !mineTurn;
   $('b-spell').innerHTML = `${icon('spellbook', 24)}<small>${h0 ? `Mana ${h0.mana}` : 'Spells'}</small>`;
@@ -1341,9 +1343,12 @@ function refreshBattle() {
   $('b-msg').innerHTML = !s ? '' : mineTurn ? (bspell ? `${icon(bspell, 18)} Choose a target for <b>${SPELLS[bspell].name}</b>` : `<b>${UNITS[s.id].name} ×${s.count}</b> · ${BT.canShoot(B, s) ? `${icon('shots', 16)} ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move, a red enemy to attack'}`) : sideOwner(s.side) === 0 ? (bauto ? `${icon('auto', 16)} Auto battle…` : '…') : `Enemy ${UNITS[s.id].name} ×${s.count} is acting…`;
 }
 const sideOwner = (side) => bctx.sides[side].owner;
+// the player may act: their stack's turn, nothing animating, auto off (guards taps and the wait/defend buttons)
+function myTurn() { const B = BB, s = B?.active; return !!s && !B.over && !banim.length && !bauto && !s.acted && s.count > 0 && sideOwner(s.side) === 0; }
+let bpreviewAt = 0;
 function battleTap(cx, cy) {
-  const B = BB; if (!B || banim.length || B.over) return;
-  const s = B.active; if (!s || sideOwner(s.side) !== 0 || bauto) return;
+  const B = BB; if (!myTurn()) return;
+  const s = B.active;
   ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, bcam);
   let best = null, bd = 1e9;
@@ -1351,8 +1356,9 @@ function battleTap(cx, cy) {
   const groups = B.stacks.filter((st) => st.count > 0 && bmesh.get(st.uid)).map((st) => [st, bmesh.get(st.uid)]);
   const hit = ray.intersectObjects(groups.map(([, g]) => g), true).find((h) => !h.object.userData.blob);
   if (hit) { const g = groups.find(([, gg]) => { let o = hit.object; while (o) { if (o === gg) return true; o = o.parent; } return false; }); if (g) { best = [g[0].c, g[0].r]; bd = 0; } }
+  // ground point under the finger: picks the hex, and the attack-from hex when a unit's body was tapped
+  const p = new THREE.Vector3(); if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p)) p.copy(hexPos(s.c, s.r));
   if (!best) {
-    const p = new THREE.Vector3(); ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p);
     for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { const d = hexPos(c, r).distanceTo(p); if (d < bd) { bd = d; best = [c, r]; } }
   }
   if (!best || bd > HS * 1.2) return;
@@ -1371,10 +1377,12 @@ function battleTap(cx, cy) {
       const adj0 = BT.nbrs(t.c, t.r).some(([x, y]) => x === s.c && y === s.r);
       if (!shoot && !adj0 && !BT.attackFrom(B, s, t).length) { toast('Too far to reach this turn.'); sfx.deny(); return; }
       const est = BT.estimate(B, s, t, shoot);
-      bpreview = t.uid; sfx.click();
+      bpreview = t.uid; bpreviewAt = performance.now(); sfx.click();
       $('b-msg').innerHTML = `${icon(shoot ? 'shots' : 'attack', 16)} ${est.lo === est.hi ? est.lo : `${est.lo}–${est.hi}`} damage · kills ${est.klo === est.khi ? est.klo : `${est.klo}–${est.khi}`} of ${t.count} ${plural(t.id, t.count)} · <b>tap again to strike</b>`;
       return;
     }
+    // an accidental double tap must not turn the damage preview straight into a strike
+    if (performance.now() - bpreviewAt < 250) return;
     bpreview = null;
     if (shoot) { BT.actShoot(B, s, t); afterAction(); return; }
     const adj = BT.nbrs(t.c, t.r).some(([x, y]) => x === s.c && y === s.r);
@@ -1386,10 +1394,10 @@ function battleTap(cx, cy) {
   if (!t && BT.reachable(B, s).has(BT.key(c, r)) && !(c === s.c && r === s.r)) { BT.actMove(B, s, c, r); afterAction(); return; }
   sfx.deny();
 }
-function afterAction() { bpreview = null; queueEvents(); refreshBattle(); }
+function afterAction(actor = BB.active) { bpreview = null; bactor = actor ? actor.uid : -1; queueEvents(); refreshBattle(); }
 function queueEvents() { bpreview = null; banim.push(...BB.events.map((e) => ({ e, t: 0 }))); BB.events.length = 0; }
-$('b-wait').addEventListener('click', () => { const s = BB?.active; if (!s || banim.length) return; BT.actWait(BB, s); BT.nextStack(BB); afterAction(); sfx.click(); });
-$('b-def').addEventListener('click', () => { const s = BB?.active; if (!s || banim.length) return; BT.actDefend(BB, s); afterAction(); sfx.defend(); });
+$('b-wait').addEventListener('click', () => { if (!myTurn()) return; const s = BB.active; bspell = null; BT.actWait(BB, s); BT.nextStack(BB); afterAction(s); sfx.click(); });
+$('b-def').addEventListener('click', () => { if (!myTurn()) return; const s = BB.active; bspell = null; BT.actDefend(BB, s); afterAction(s); sfx.defend(); });
 $('b-auto').addEventListener('click', () => { bauto = !bauto; bspell = null; refreshBattle(); sfx.click(); });
 $('b-quick').addEventListener('click', () => { if (!BB || BB.over) return; BT.autoResolve(BB); BB.events.length = 0; banim = []; endBattleScreen(); });
 $('b-spell').addEventListener('click', () => {
@@ -1402,6 +1410,7 @@ const bfloat = (pos, text, cls) => floatText(pos, text, cls, bcam);
 const AS = 0.72;
 // bactor: the stack whose action is playing (the selection ring stays on it); bclock: battle time for death timing
 let bactor = -1, bclock = 0;
+const bfTmp = new THREE.Vector3(), bfTmp2 = new THREE.Vector3();
 const bpan = (m) => (m ? clamp(m.position.clone().project(bcam).x * 0.6, -1, 1) : 0);
 function animateBattle(dt) {
   const B = BB; if (!B) return;
@@ -1494,7 +1503,7 @@ function playEvent(e, t) {
     } else {
       const sd = walkDist(t, n), i = Math.min(n - 1, Math.floor(sd));
       m.position.lerpVectors(P[i], P[i + 1], sd - i);
-      faceTo(m, P[i + 1].x + m.position.x - P[i].x, P[i + 1].z + m.position.z - P[i].z);
+      faceYaw(m, Math.atan2(P[i + 1].x - P[i].x, P[i + 1].z - P[i].z));
     }
     if (t < e.T) return false;
     m.position.copy(P[n]); m.userData.busy = false;
@@ -1505,18 +1514,29 @@ function playEvent(e, t) {
   }
   if (e.t === 'hit' || e.t === 'shot') {
     const a = M(e.a), d = M(e.d), sa = S(e.a), sd = S(e.d);
-    const dur = e.t === 'shot' ? 0.6 : 0.75; // shots end once landed
+    if (!a || !d) return true;
+    const st = e.t === 'shot' && ['lich', 'powerlich', 'monk', 'zealot'].includes(sa.id) ? ANIM.CAST : ANIM.ATTACK, imp = ANIM_IMPACT[st] / AS;
     if (!e.started) {
       e.started = true;
-      const dir = d.position.clone().sub(a.position); a.rotation.y = Math.atan2(dir.x, dir.z);
-      setAnim(a, e.t === 'shot' && ['lich', 'powerlich', 'monk', 'zealot'].includes(sa.id) ? ANIM.CAST : ANIM.ATTACK, { speed: AS });
-      if (e.t === 'shot') { e.fly = vfx.projectile(shotKind(sa.id), a.position.clone().setY(sa.id === 'cyclops' ? 1.1 : 0.65), d.position.clone().setY(0.5), () => { e.landed = true; }); sfx.shoot({ kind: shotKind(sa.id), pan: bpan(a) }); }
-      else { e.fly = 0.18; }
+      // turn toward the target (smoothly, see stepFacing); a melee defender squares up to its attacker
+      e.home = a.position.clone(); e.dir = new THREE.Vector3().subVectors(d.position, a.position).setY(0).normalize();
+      faceTo(a, d.position.x, d.position.z);
+      if (e.t === 'hit' && (e.left ?? sd.count) > 0) faceTo(d, a.position.x, a.position.z);
+      setAnim(a, st, { speed: AS });
+      a.userData.busy = true;
     }
-    if (e.t === 'hit') { const k = Math.sin(Math.min(1, t / 0.5) * Math.PI) * 0.12; const dir = d.position.clone().sub(a.position).setY(0).normalize(); a.userData.busy = true; a.position.copy(hexPos(sa.c, sa.r)).addScaledVector(dir, k); }
-    if ((e.t === 'shot' ? e.landed || t > 1.5 : t >= ANIM_IMPACT[ANIM.ATTACK] / AS) && !e.shown) {
+    // the projectile leaves on the release frame of the shot/cast, not when the wind-up starts
+    if (e.t === 'shot' && !e.launched && t >= imp) {
+      e.launched = true;
+      vfx.projectile(shotKind(sa.id), bfTmp.copy(a.position).setY(sa.id === 'cyclops' ? 1.1 : 0.65), bfTmp2.copy(d.position).setY(0.5), () => { e.landed = true; });
+      sfx.shoot({ kind: shotKind(sa.id), pan: bpan(a) });
+    }
+    // melee lunge: peaks exactly on the impact frame and is back home by 2x impact
+    if (e.t === 'hit') a.position.copy(e.home).addScaledVector(e.dir, Math.sin(Math.min(1, t / (2 * imp)) * Math.PI) * 0.14);
+    if ((e.t === 'shot' ? e.landed || t > imp + 1.5 : t >= imp) && !e.shown) {
       e.shown = true; e.shownAt = t;
-      if (sd.count > 0) setAnim(d, ANIM.HIT, { speed: AS });
+      // a killing blow starts the death right on impact (the 'die' event that follows only finishes it)
+      if ((e.left ?? sd.count) > 0) setAnim(d, ANIM.HIT, { speed: AS }); else { setAnim(d, ANIM.DEATH, { speed: AS }); d.userData.dying = true; d.userData.dieAt = bclock; }
       if (e.t === 'hit') { vfx.hit(d.position.clone().setY(0.5), meleeKind(sa.u), { dir: d.position.clone().sub(a.position) }); sfx.hit({ kind: meleeKind(sa.u), pan: bpan(d) }); }
       else sfx.hit({ kind: 'arrow', pan: bpan(d) });
       if (e.lucky) { vfx.sparkle(d.position, 'luck'); sfx.luck(); }
@@ -1526,10 +1546,22 @@ function playEvent(e, t) {
       sd.shown = e.left ?? sd.count; if (e.aLeft !== undefined) { sa.shown = e.aLeft; setPlate(sa); }
       setPlate(sd);
     }
-    if (e.shown && t >= Math.max(dur - (e.t === 'shot' ? 0.6 : 0), e.shownAt + 0.2)) { a.userData.busy = false; if (sa.count > 0) a.position.copy(hexPos(sa.c, sa.r)); a.rotation.y = sa.side === 0 ? Math.PI : 0; return true; }
+    if (!e.shown) return false;
+    // hold until the defender's flinch has mostly played when it strikes back next; otherwise until the lunge is home
+    const nx = banim[1]?.e, retalNext = nx && nx.t === 'hit' && nx.retal && nx.a === e.d;
+    const end = e.t === 'shot' ? e.shownAt + 0.22 : retalNext ? imp + 0.4 : Math.max(2 * imp, imp + 0.26);
+    if (t >= end) { a.userData.busy = false; if (e.t === 'hit') a.position.copy(e.home); return true; }
     return false;
   }
-  if (e.t === 'die') { const m = M(e.s); if (!e.started) { e.started = true; sfx.die({ kind: S(e.s).u?.undead ? 'undead' : '', pan: bpan(m) }); if (m) { setAnim(m, ANIM.DEATH, { speed: AS }); m.userData.dying = true; } } if (t > 0.85 && !e.diss) { e.diss = true; if (m) vfx.death(m, { undead: !!S(e.s).u?.undead }); } if (t > 1.45) { if (m) m.visible = false; return true; } return false; }
+  if (e.t === 'die') {
+    const m = M(e.s); if (!m) return true;
+    // the death pose may already be running since the killing blow landed (dieAt): time the dissolve from there
+    if (!e.started) { e.started = true; sfx.die({ kind: S(e.s).u?.undead ? 'undead' : '', pan: bpan(m) }); if (m.userData.dieAt === undefined) { setAnim(m, ANIM.DEATH, { speed: AS }); m.userData.dieAt = bclock; } m.userData.dying = true; }
+    const age = bclock - m.userData.dieAt;
+    if (age > 0.8 && !e.diss) { e.diss = true; vfx.death(m, { undead: !!S(e.s).u?.undead }); }
+    if (age > 1.35 && e.diss) { m.visible = false; return true; }
+    return false;
+  }
   if (e.t === 'spell') {
     const p = hexPos(e.c, e.r);
     if (!e.started) {
@@ -1541,14 +1573,14 @@ function playEvent(e, t) {
     }
     if (t >= e.land && !e.shown) {
       e.shown = true; sfx.spell({ kind: e.id });
-      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; S(hh.s).shown = hh.left ?? S(hh.s).count; setPlate(S(hh.s)); }
+      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; if (!hh.heal && (hh.left ?? 1) <= 0) { setAnim(m, ANIM.DEATH, { speed: AS }); m.userData.dying = true; m.userData.dieAt = bclock; } else setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; S(hh.s).shown = hh.left ?? S(hh.s).count; setPlate(S(hh.s)); }
     }
     return t > e.land + 0.45;
   }
   if (e.t === 'tower') {
     const m = M(e.s);
     if (!e.started) { e.started = true; sfx.shoot({ kind: 'tower' }); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1 * bctx.tower.scale.y) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
-    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (S(e.s)) S(e.s).shown = e.left ?? S(e.s).count; if (m) { m.userData.flash = 0.3; setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
+    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (S(e.s)) S(e.s).shown = e.left ?? S(e.s).count; if (m) { m.userData.flash = 0.3; if ((e.left ?? 1) <= 0) { setAnim(m, ANIM.DEATH, { speed: AS }); m.userData.dying = true; m.userData.dieAt = bclock; } else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
   if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.gate({ kind: e.broken ? 'broken' : '' }); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
