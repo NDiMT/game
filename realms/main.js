@@ -313,7 +313,7 @@ function meshOf(m, ink = true) {
 }
 // soft contact shadow so a figure sits on the ground (radius in model units)
 function addBlob(g, r) { const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(r); bl.userData.blob = true; bl.renderOrder = -1; g.add(bl); return g; }
-const BLOB_R = { gold: 0.5, wood: 0.5, ore: 0.5, gems: 0.5, chest: 0.5, artifact: 0.45, campfire: 0.5, stone: 0.45, monster: 0.55 };
+const BLOB_R = { gold: 0.5, wood: 0.5, ore: 0.5, gems: 0.5, chest: 0.5, artifact: 0.45, campfire: 0.5, stone: 0.45, monster: 0.7 };
 const UP = new THREE.Vector3(0, 1, 0), qa = new THREE.Quaternion();
 // stands a group on a cell, local +y along the planet normal
 function placeOn(obj, v, scale, turn = 0, lift = 0) {
@@ -953,6 +953,7 @@ function enterBattle(B, ctx) {
   for (const s of B.stacks) {
     const m = meshOf(cached('u' + s.id, () => unitGeo(s.id)));
     applyFit(m, unitFit(s.id, cached('u' + s.id, () => unitGeo(s.id)), 'battle'));
+    addBlob(m, 0.42 / m.scale.x);
     m.position.copy(hexPos(s.c, s.r)); m.rotation.y = s.side === 0 ? Math.PI : 0;
     bstuff.add(m); bmesh.set(s.uid, m);
     const lab = document.createElement('div'); lab.className = `blab s${s.side}`; lab.id = `bl${s.uid}`; $('blabels').appendChild(lab);

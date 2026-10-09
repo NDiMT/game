@@ -34,7 +34,7 @@ const BATTLE_FULL = { x: [0.62, 0.62, 0.8, 0.72, 0.72, 0.8, 0.86], z: [0.62, 0.6
 const UP_K = 1.05; // upgraded creatures read a touch grander
 // map guard: a planet hex is ~0.376 world units across (icosphere(4), R = 5)
 const MAP_HEX = 0.376;
-const MAP_H = [0.2, 0.21, 0.22, 0.23, 0.245, 0.26, 0.28];
+const MAP_H = [0.24, 0.25, 0.26, 0.27, 0.29, 0.305, 0.325]; // a touch bigger so map guards read as figures
 const MAP_CORE = 0.15, MAP_FULL = 0.26;
 const LABEL_PAD = { battle: 0.07, map: 0.03 };
 
