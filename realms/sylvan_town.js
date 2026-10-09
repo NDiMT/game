@@ -49,7 +49,7 @@ const C = {
   stone: 0xe8e0c8, stone2: 0xd2c9aa, moss: 0x8fcc52, mossD: 0x6cb240,
   roof: 0x45b845, roofL: 0x86dc5a, roofD: 0x34a040,
   gold: 0xffc63a, goldD: 0xe0a428, goldL: 0xffe27a, goldLeaf: 0xf6c838, goldLeafL: 0xffe070,
-  leaf: 0x58bf3e, leafL: 0x8ee25c, leafY: 0xc6e04a, silverLeaf: 0xd8f0b0,
+  leaf: 0x58bf3e, leafL: 0x8ee25c, leafY: 0xc6e04a, silverLeaf: 0xa8e47a,
   win: 0xffe08a, lamp: 0xfff0a0, fairy: 0xdcff9a, magic: 0x8ff4ff, water: 0x7fe0ff, waterG: 0xc8fbff,
   banner: 0x2fb84a, bannerL: 0x46d060, white: 0xffffff, marble: 0xf6f3ea, silver: 0xe6eef6, pearl: 0xf6e8ff,
   rock: 0xd8bc8e, rockL: 0xeed8ae, rockD: 0xb8966c, grass: 0x8fd055, path: 0xeadcb0, pave: 0xd9d0b0,
@@ -285,7 +285,7 @@ function makeKit(seed) {
         k.limb([x + Math.sin(a) * rad * 1.03, y + 0.14, z + Math.cos(a) * rad * 1.03], [x + Math.sin(a) * rad * 1.0, y + 0.14 + h, z + Math.cos(a) * rad * 1.0], 0.045, 0.035, C.bark, 5);
       }
       k.tor(rad * 1.02, 0.035, x, y + 0.14 + h, z, C.barkD, TAU, { rx: Math.PI / 2, rs: seg });
-      const top = k.leafDome(rad * (o.ro || 1.38), o.roofH || rad * 1.3, x, y + 0.12 + h, z, { n: o.n || 8, c: o.roofC, c2: o.roofC2, cb: o.roofCb, fs: o.fs, finial: o.finial });
+      const top = k.leafDome(rad * (o.ro || 1.24), o.roofH || rad * 1.3, x, y + 0.12 + h, z, { n: o.n || 8, c: o.roofC, c2: o.roofC2, cb: o.roofCb, fs: o.fs, finial: o.finial });
       for (const [a, f, ww, wh] of (o.wins || [[0.75, 0.55, 0.11, 0.2], [-0.75, 0.55, 0.11, 0.2]])) k.winCyl(x, z, rad * 1.01, a, y + 0.14 + h * f, ww, wh, { mull: ww > 0.12 });
       if (o.door !== false) { const dw = o.dw || Math.min(0.24, rad * 0.5); k.door(x, y + 0.04, z + rad * 1.03, dw, Math.min(h * 0.92, dw * 1.9)); }
       return top;
@@ -619,7 +619,7 @@ function mageGuild(lvl) {
     for (let w = 0; w < nw; w++) k.winCyl(0, 0, rr * 0.96, (w - (nw - 1) / 2) * 0.9, y + hh * 0.3, i === 0 ? 0.13 : 0.1, i === 0 ? 0.26 : 0.2, { c: i === 0 ? C.win : C.magic });
     if (i === 0) k.door(0, y, rr * 0.98, 0.18, 0.3);
     y += hh;
-    if (i < tiers.length - 1) k.leafDome(rr * 1.42, 0.3, 0, y - 0.04, 0, { n: 8, finial: false, ext: 1.2, c: i % 2 ? C.goldLeaf : C.roof, c2: i % 2 ? C.goldLeafL : C.roofL, cb: i % 2 ? C.goldD : C.roofD });
+    if (i < tiers.length - 1) k.leafDome(rr * 1.26, 0.24, 0, y - 0.04, 0, { n: 8, finial: false, ext: 1.12, c: i % 2 ? C.goldLeaf : C.roof, c2: i % 2 ? C.goldLeafL : C.roofL, cb: i % 2 ? C.goldD : C.roofD });
   });
   // vine spiralling up the tower
   const vp = []; for (let i = 0; i <= 10; i++) { const t = i / 10, a = t * TAU * 1.5 + 0.8, rr = tiers[Math.min(tiers.length - 1, Math.floor(t * tiers.length))][0] + 0.03; vp.push([Math.sin(a) * rr, 0.25 + t * (y - 0.35), Math.cos(a) * rr]); }
@@ -937,14 +937,18 @@ function dragonCliffs(up) {
   });
   ledge(-0.82, 1.25 * S, -0.05, 0.4, up); ledge(0.88, 1.5 * S, -0.1, -0.4, up); ledge(0.05, 2.1 * S, -0.22, 0, up);
   // cave mouth at the foot of the main spire, warm lit
-  k.disc(0.5, 0.05, 0.05, 0.42, -0.07, 0x9a6440, 7, { s: [0.62, 0.8, 1] });
-  k.disc(0.5, 0.03, 0.05, 0.4, -0.03, C.emberG, 7, { s: [0.44, 0.6, 1], glow: true });
+  k.box(0.6, 0.42, 0.1, 0.05, 0.0, -0.12, 0x9a6440, { ao: false });
+  k.disc(0.3, 0.1, 0.05, 0.42, -0.12, 0x9a6440, 12, { ao: false });
+  k.box(0.44, 0.4, 0.04, 0.05, 0.0, -0.06, C.emberG, { glow: true });
+  k.disc(0.22, 0.04, 0.05, 0.4, -0.06, C.emberG, 12, { glow: true });
+  for (const s of [-1, 1]) k.rock(0.05 + s * 0.34, 0.2, -0.05, 0.12, 0.26, 0.12, C.rockL, { seed: 40 + s });
+  k.rock(0.05, 0.7, -0.08, 0.36, 0.1, 0.14, C.rockL, { seed: 44 });
   k.rock(-0.25, 0.08, 0.05, 0.16, 0.15, 0.14, C.rockL, { seed: 30 }); k.rock(0.35, 0.08, 0.05, 0.14, 0.12, 0.14, C.rock, { seed: 31 });
   // glowing crystal clusters
   const cc = up ? C.goldL : 0x8affa0;
   for (const [x, z, s, rz] of [[-0.95, 0.3, 0.13, 0.3], [-0.85, 0.42, 0.09, -0.3], [0.95, 0.22, 0.12, -0.3], [0.3, 0.95, 0.08, 0.2], [-0.15, 0.9, 0.1, -0.2]]) k.crystal(x, 0.02, z, s, cc, { rz });
   // gold-or-green dragon perched on the main spire, wings spread toward the camera
-  const dc = up ? C.gold : 0x4cc85a, dcL = up ? C.goldL : 0x9ae65a, top = tops[0];
+  const dc = up ? 0xf2b428 : 0x3cb850, dcL = up ? 0xffd04a : 0x6ad458, top = tops[0];
   k.at(0.05, top - 0.12, -0.55, 0, S, () => {
     k.ball(0.17, 0, 0.18, 0, dc, 1, { s: [0.9, 1.0, 1.25], top: 1.2, bot: 0.85 });
     k.tube([[0, 0.25, 0.12], [0.0, 0.48, 0.2], [0.0, 0.58, 0.32]], 0.09, 0.06, dc, { n: 4, rs: 6 });
@@ -959,7 +963,8 @@ function dragonCliffs(up) {
         const x = s * (0.1 + u * 0.75), y = 0.3 + Math.sin(u * 2.4) * 0.35 - v * (0.4 - u * 0.15) - (v === 1 ? Math.abs(Math.sin(u * Math.PI * 2.5)) * 0.08 : 0);
         return [x, y, -0.02 + u * 0.15];
       }, dcL, { ao: false, top: 1.1, bot: 0.9 });
-      k.limb([s * 0.1, 0.3, -0.02], [s * 0.85, 0.3 + Math.sin(2.4) * 0.35, 0.13], 0.03, 0.015, dc, 4);
+      k.tube([[s * 0.1, 0.3, -0.02], [s * 0.45, 0.3 + Math.sin(0.54 * 2.4) * 0.35, 0.05], [s * 0.85, 0.3 + Math.sin(2.4) * 0.35 + 0.02, 0.13]], 0.035, 0.015, dc, { n: 5, rs: 4 });
+      for (const f of [0.35, 0.6, 0.85]) k.limb([s * (0.1 + f * 0.75 * 0.55), 0.3 + Math.sin(f * 0.55 * 2.4) * 0.35, -0.02 + f * 0.08], [s * (0.1 + f * 0.75), 0.3 + Math.sin(f * 2.4) * 0.35 - (0.4 - f * 0.15), -0.02 + f * 0.15], 0.014, 0.01, dc, 3);
     }
   });
   k.tree(-0.95, 0.85, 0.85); k.spireTree(1.05, 0.75, 0.8); k.bush(0.15, 1.12, 0.7);
