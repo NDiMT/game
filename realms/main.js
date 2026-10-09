@@ -200,7 +200,7 @@ function smoothDamp(x, to, v, st, dt) {
   const w = 2 / st, k = w * dt, e = 1 / (1 + k + 0.48 * k * k + 0.235 * k * k * k), c = x - to, tmp = (v + w * c) * dt;
   return [to + (c + tmp) * e, (v - w * tmp) * e];
 }
-const FLING_DECAY = 5.5, FLING_MAX = 3.2;
+const FLING_DECAY = 7, FLING_MAX = 2.8; // 1/s, rad/s: the longest glide is FLING_MAX / FLING_DECAY = 0.4 rad
 function camGrab() {
   // a finger lands: stop flights, flings and follow right where the camera is (plus a hair of its momentum,
   // so a fast flight settles in ~0.1 s instead of stopping dead); no positional jump either way
