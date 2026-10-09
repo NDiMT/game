@@ -191,7 +191,7 @@ scene.add(new THREE.AmbientLight(0x7880b8, 0.4));
 //  - flyTo: target jumps, the spring eases out of rest and into the goal; any touch takes over where the camera is
 //  - follow: while a hero walks in view, the target tracks its (smoothly lerped) mesh, never the per-step hex
 const cam = { theta: 0, phi: 1.2, dist: 10, tTheta: 0, tPhi: 1.2, tDist: 10, vTheta: 0, vPhi: 0, fly: false, shake: 0,
-  sTheta: 0, sPhi: 0, sDist: 0, dragTheta: 0, dragPhi: 0, dragging: false, spin: 0, holdFollow: null, aiFollow: null };
+  sTheta: 0, sPhi: 0, sDist: 0, dragTheta: 0, dragPhi: 0, dragging: false, spin: 0, holdFollow: null, aiFollow: null, st: 0.3 };
 const lookAtP = new THREE.Vector3(), camFocus = new THREE.Vector3(), camRight = new THREE.Vector3(), camTmp = new THREE.Vector3();
 const PHI_MIN = 0.12, PHI_MAX = Math.PI - 0.12;
 const wrapPi = (a) => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
@@ -227,8 +227,12 @@ function followTarget() {
   return heroMeshes.get(h.id) || null;
 }
 function updateCamera(dt) {
-  let st = 0.05; // spring time while dragging/flinging: tight enough to feel 1:1, loose enough to hide event jitter
+  // spring time: 0.05 s under the finger (feels 1:1 but hides uneven touch events), ~0.3 s for flights and follow.
+  // It is kept between frames: when a follow or flight ends, the camera finishes its approach at the same pace
+  // instead of suddenly closing the remaining lag at drag speed.
+  let st = cam.st || 0.3;
   if (cam.dragging) {
+    st = 0.05;
     cam.tTheta += cam.dragTheta; cam.tPhi += cam.dragPhi; cam.dragTheta = cam.dragPhi = 0; cam.fly = false;
   } else {
     const fm = followTarget();
@@ -241,6 +245,7 @@ function updateCamera(dt) {
       if (Math.abs(wrapPi(cam.tTheta - cam.theta)) < 0.0008 && Math.abs(cam.tPhi - cam.phi) < 0.0008 && Math.abs(cam.sTheta) + Math.abs(cam.sPhi) < 0.01) cam.fly = false;
     } else {
       // fling inertia (rad/s), decaying exponentially with time, plus the title-screen spin
+      if (cam.vTheta || cam.vPhi) st = 0.05;
       cam.tTheta += (cam.vTheta + cam.spin) * dt; cam.tPhi += cam.vPhi * dt;
       const k = Math.exp(-FLING_DECAY * dt); cam.vTheta *= k; cam.vPhi *= k;
       if (Math.abs(cam.vTheta) + Math.abs(cam.vPhi) < 1e-3) cam.vTheta = cam.vPhi = 0;
@@ -252,6 +257,7 @@ function updateCamera(dt) {
   const dth = wrapPi(cam.tTheta - cam.theta);
   if (Math.abs(cam.theta) > 1000) { const w = cam.theta - wrapPi(cam.theta); cam.theta -= w; }
   cam.tTheta = cam.theta + dth;
+  cam.st = st;
   [cam.theta, cam.sTheta] = smoothDamp(cam.theta, cam.tTheta, cam.sTheta, st, dt);
   [cam.phi, cam.sPhi] = smoothDamp(cam.phi, cam.tPhi, cam.sPhi, st, dt);
   cam.phi = clamp(cam.phi, PHI_MIN, PHI_MAX);
@@ -315,7 +321,9 @@ const QG = (() => {
   function sample(now) {
     const dt = lastT ? now - lastT : 0; lastT = now;
     if (!S.auto || !dt) return;
-    if (dt > 250 || document.hidden) { reset(); return; } // a load / shader compile / tab switch says nothing about the GPU
+    // a lone long frame (load, shader compile, tab switch) says nothing about the GPU; a run of them does
+    const long = dt > 250, prevLong = S.prevLong; S.prevLong = long;
+    if (document.hidden || (long && !prevLong)) return;
     win[k] = dt; k = (k + 1) % win.length; if (n < win.length) n++;
     acc += dt;
     if (n < 6 || acc < 1000) return; // judge about once a second, on the last <= 60 frames
@@ -334,7 +342,7 @@ const QG = (() => {
   }
   function state() { return { auto: S.auto, level: S.level, pr: S.pr, maxPR, minPR, steps: steps.slice(), medianMs: Math.round(S.ms * 10) / 10, changes: S.changes, waitUpS: S.waitUp }; }
   // tests: quality.set({ auto: false, level: 0 }) pins full quality, set({ auto: true }) resumes
-  state.set = (o = {}) => { if (o.auto !== undefined) S.auto = !!o.auto; if (o.level !== undefined && o.level !== S.level) apply(clamp(o.level | 0, 0, steps.length - 1)); reset(); return state(); };
+  state.set = (o = {}) => { if (o.auto !== undefined) S.auto = !!o.auto; if (o.cull !== undefined) hzOn = !!o.cull; if (o.shadowsAlways !== undefined) shAlways = !!o.shadowsAlways; if (o.level !== undefined && o.level !== S.level) apply(clamp(o.level | 0, 0, steps.length - 1)); reset(); return state(); };
   return { sample, state, init() { if (S.level) apply(S.level); else camera.userData.pixelRatio = bcam.userData.pixelRatio = S.pr; } };
 })();
 const atmos = createAtmosphere(THREE, scene, { R });
@@ -2504,7 +2512,9 @@ function hzOne(g, lim) {
   if (back) { if (g.visible) { g.visible = false; g.userData.hzCull = true; } }
   else if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; }
 }
+let hzOn = true, shAlways = false; // A/B switches for perf tests: __realms.quality.set({ cull, shadowsAlways })
 function horizonCull() {
+  if (!hzOn) { for (const g of world.children) if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; } for (const g of heroMeshes.values()) if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; } return; }
   const d = camera.position.length();
   hzDir.copy(camera.position).divideScalar(d);
   const lim = Math.cos(Math.min(Math.PI, Math.acos(Math.min(1, R / d)) + 0.7));
@@ -2569,7 +2579,7 @@ function frame(now) {
       // map guards get their life from the shader idle (a moving mesh would reseed its animation every frame)
     }
     if (G.mode === 'town') { townInsets(); townView.update(dt); renderer.shadowMap.needsUpdate = true; shMode = 'town'; post.render(townView.scene, townView.camera); }
-    else { horizonCull(); if (mapShadowsDue(dt)) renderer.shadowMap.needsUpdate = true; post.render(scene, camera); }
+    else { horizonCull(); if (mapShadowsDue(dt) || shAlways) renderer.shadowMap.needsUpdate = true; post.render(scene, camera); }
   }
   updateFloaters(dt);
 }
