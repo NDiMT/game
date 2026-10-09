@@ -937,12 +937,12 @@ function dragonCliffs(up) {
   });
   ledge(-0.82, 1.25 * S, -0.05, 0.4, up); ledge(0.88, 1.5 * S, -0.1, -0.4, up); ledge(0.05, 2.1 * S, -0.22, 0, up);
   // cave mouth at the foot of the main spire, warm lit
-  k.box(0.6, 0.42, 0.1, 0.05, 0.0, -0.12, 0x9a6440, { ao: false });
-  k.disc(0.3, 0.1, 0.05, 0.42, -0.12, 0x9a6440, 12, { ao: false });
-  k.box(0.44, 0.4, 0.04, 0.05, 0.0, -0.06, C.emberG, { glow: true });
-  k.disc(0.22, 0.04, 0.05, 0.4, -0.06, C.emberG, 12, { glow: true });
-  for (const s of [-1, 1]) k.rock(0.05 + s * 0.34, 0.2, -0.05, 0.12, 0.26, 0.12, C.rockL, { seed: 40 + s });
-  k.rock(0.05, 0.7, -0.08, 0.36, 0.1, 0.14, C.rockL, { seed: 44 });
+  k.box(0.6, 0.42, 0.1, 0.05, 0.0, 0.0, 0x9a6440, { ao: false });
+  k.disc(0.3, 0.1, 0.05, 0.42, 0.0, 0x9a6440, 12, { ao: false });
+  k.box(0.44, 0.4, 0.04, 0.05, 0.0, 0.05, C.emberG, { glow: true });
+  k.disc(0.22, 0.04, 0.05, 0.4, 0.05, C.emberG, 12, { glow: true });
+  for (const s of [-1, 1]) k.rock(0.05 + s * 0.34, 0.2, 0.05, 0.12, 0.26, 0.12, C.rockL, { seed: 40 + s });
+  k.rock(0.05, 0.7, 0.03, 0.36, 0.1, 0.14, C.rockL, { seed: 44 });
   k.rock(-0.25, 0.08, 0.05, 0.16, 0.15, 0.14, C.rockL, { seed: 30 }); k.rock(0.35, 0.08, 0.05, 0.14, 0.12, 0.14, C.rock, { seed: 31 });
   // glowing crystal clusters
   const cc = up ? C.goldL : 0x8affa0;
