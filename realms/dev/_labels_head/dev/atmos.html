@@ -1,0 +1,134 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atmosphere preview</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#i{position:fixed;left:8px;top:8px;color:#fff;font:12px sans-serif}</style>
+<script type="importmap">{ "imports": { "three": "../../vendor/three.module.js" } }</script>
+</head><body><div id="i"></div>
+<script type="module">
+import * as THREE from 'three';
+import { createAtmosphere, gradeGLSL } from '../atmosphere.js';
+const qs = new URLSearchParams(location.search);
+const R = 5;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0d1e);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 400);
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); scene.add(sun, sun.target);
+scene.add(new THREE.HemisphereLight(0xbcd4ff, 0x3a3020, 0.8), new THREE.AmbientLight(0x404a70, 0.35));
+
+// planet stand-in: a sphere with hex-ish terraced bumps
+{
+  const g = new THREE.IcosahedronGeometry(R, 22);
+  const p = g.attributes.position, col = new Float32Array(p.count * 3);
+  const cols = [[0.35, 0.62, 0.25], [0.2, 0.45, 0.18], [0.8, 0.72, 0.45], [0.55, 0.5, 0.45], [0.9, 0.92, 0.98]];
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i += 3) {
+    v.set(0, 0, 0); for (let k = 0; k < 3; k++) v.add(new THREE.Vector3().fromBufferAttribute(p, i + k));
+    v.normalize();
+    const n = Math.sin(v.x * 7.1) + Math.sin(v.y * 6.3 + 1) + Math.sin(v.z * 8.2 + 2) + Math.sin((v.x + v.y) * 13) * 0.5;
+    const hh = Math.max(0, Math.round(n * 2 + 2)); // terraces
+    const r = R + 0.19 + hh * 0.07;
+    const c = hh === 0 ? null : cols[Math.min(4, Math.floor(hh / 2))];
+    for (let k = 0; k < 3; k++) {
+      const q = new THREE.Vector3().fromBufferAttribute(p, i + k).setLength(hh === 0 ? R : r);
+      p.setXYZ(i + k, q.x, q.y, q.z);
+      const cc = c || [0.1, 0.25, 0.5];
+      col.set(cc, (i + k) * 3);
+    }
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9 })));
+  scene.add(new THREE.Mesh(new THREE.IcosahedronGeometry(R + 0.19, 12), new THREE.MeshStandardMaterial({ color: 0x2a7ac8, transparent: true, opacity: 0.82, roughness: 0.25 })));
+}
+
+const atm = createAtmosphere(THREE, scene, { R }); window.__atm = atm;
+for (const k of (qs.get('hide') || '').split(',').filter(Boolean)) atm.objects[k].visible = false;
+if (qs.get('raw')) post.render = (s, c) => renderer.render(s, c);
+if (qs.get('fog') === '0') atm.setFog(false);
+
+// a copy of main.js `post`, with the optional grade
+const GRADE = qs.get('grade') !== '0';
+const post = (() => {
+  const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
+  const quadScene = new THREE.Scene(); quadScene.add(quad);
+  const opts = { type: THREE.HalfFloatType, depthBuffer: false };
+  const rtScene = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+  const rtA = new THREE.WebGLRenderTarget(1, 1, opts), rtB = new THREE.WebGLRenderTarget(1, 1, opts);
+  const vs = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+  const bright = new THREE.ShaderMaterial({ uniforms: { tMap: { value: null } }, vertexShader: vs, depthTest: false,
+    fragmentShader: 'uniform sampler2D tMap; varying vec2 vUv; void main() { vec3 c = texture2D(tMap, vUv).rgb; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(c * smoothstep(0.9, 1.7, l), 1.0); }' });
+  const blur = new THREE.ShaderMaterial({ uniforms: { tMap: { value: null }, uDir: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false,
+    fragmentShader: 'uniform sampler2D tMap; uniform vec2 uDir; varying vec2 vUv; void main() { vec3 c = texture2D(tMap, vUv).rgb * 0.227; c += (texture2D(tMap, vUv + uDir * 1.38).rgb + texture2D(tMap, vUv - uDir * 1.38).rgb) * 0.316; c += (texture2D(tMap, vUv + uDir * 3.23).rgb + texture2D(tMap, vUv - uDir * 3.23).rgb) * 0.07; gl_FragColor = vec4(c, 1.0); }' });
+  const comp = new THREE.ShaderMaterial({ uniforms: { tScene: { value: null }, tBloom: { value: null } }, vertexShader: vs, depthTest: false,
+    fragmentShader: `uniform sampler2D tScene; uniform sampler2D tBloom; varying vec2 vUv;
+      ${gradeGLSL}
+      void main() { vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * 0.8; ${GRADE ? 'c = grade(c);' : ''} c = c / (1.0 + c * 0.12);
+        float v = smoothstep(1.15, 0.35, length(vUv - 0.5)); c *= mix(0.72, 1.0, v);
+        gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }` });
+  let w = 1, hh = 1;
+  return {
+    setSize(W, H, pr) { w = W * pr; hh = H * pr; rtScene.setSize(w, hh); rtA.setSize(w / 2, hh / 2); rtB.setSize(w / 2, hh / 2); },
+    render(sc, cm) {
+      renderer.setRenderTarget(rtScene); renderer.render(sc, cm);
+      const tm = renderer.toneMapping; renderer.toneMapping = THREE.NoToneMapping;
+      quad.material = bright; bright.uniforms.tMap.value = rtScene.texture; renderer.setRenderTarget(rtA); renderer.render(quadScene, quadCam);
+      quad.material = blur;
+      for (let i = 0; i < 2; i++) {
+        blur.uniforms.tMap.value = rtA.texture; blur.uniforms.uDir.value.set(2 / w, 0); renderer.setRenderTarget(rtB); renderer.render(quadScene, quadCam);
+        blur.uniforms.tMap.value = rtB.texture; blur.uniforms.uDir.value.set(0, 2 / hh); renderer.setRenderTarget(rtA); renderer.render(quadScene, quadCam);
+      }
+      renderer.toneMapping = tm;
+      quad.material = comp; comp.uniforms.tScene.value = rtScene.texture; comp.uniforms.tBloom.value = rtA.texture;
+      renderer.setRenderTarget(null); renderer.render(quadScene, quadCam);
+    },
+  };
+})();
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h); post.setSize(w, h, renderer.getPixelRatio());
+  camera.aspect = w / h; camera.fov = w < h ? 50 : 40; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+// camera like the game's updateCamera
+const cam = { theta: +(qs.get('theta') ?? 0.6), phi: +(qs.get('phi') ?? 1.2), dist: +(qs.get('d') ?? 18) };
+const lookAtP = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+function updateCamera() {
+  const f = clamp((16 - cam.dist) / 9, 0, 1);
+  camera.position.setFromSphericalCoords(cam.dist, cam.phi + f * 0.5, cam.theta);
+  lookAtP.setFromSphericalCoords(R * f * 0.98, cam.phi, cam.theta);
+  camera.lookAt(lookAtP);
+  if (qs.get('lookmoon')) { const m = atm.objects.sky.children[2].children[+qs.get('lookmoon') * 2 - 2]; atm.objects.sky.position.copy(camera.position); atm.objects.sky.updateMatrixWorld(true); camera.lookAt(m.getWorldPosition(new THREE.Vector3())); }
+  const focus = lookAtP.lengthSq() > 0.01 ? lookAtP.clone().setLength(R) : camera.position.clone().setLength(R);
+  const right = new THREE.Vector3().crossVectors(camera.position, UP).normalize();
+  sun.position.copy(focus).addScaledVector(camera.position.clone().sub(focus).normalize(), 9).addScaledVector(right, 5).addScaledVector(focus.clone().normalize(), 6);
+  sun.target.position.copy(focus);
+}
+const spin = +(qs.get('spin') ?? 0.05);
+const clock = new THREE.Clock();
+let frames = 0, acc = 0;
+// optional warm-up so the clouds settle into their faded state for screenshots
+const warm = +(qs.get('warm') ?? 3);
+for (let i = 0; i < warm * 30; i++) { updateCamera(); atm.update(1 / 30, camera); }
+function frame() {
+  const dt = Math.min(0.05, clock.getDelta());
+  cam.theta += spin * dt;
+  updateCamera();
+  atm.update(dt, camera);
+  post.render(scene, camera);
+  frames++; acc += dt; if (acc > 1) { document.getElementById('i').textContent = `${(frames / acc).toFixed(0)} fps · calls ${renderer.info.render.calls}`; frames = 0; acc = 0; }
+  window.__ready = true;
+  requestAnimationFrame(frame);
+}
+frame();
+</script></body></html>

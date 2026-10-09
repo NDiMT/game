@@ -435,24 +435,8 @@ export function portrait(id, size = 64, shape = 'square') {
   if (u === undefined) {
     try { u = renderPortrait(id, size, shape); } catch (e) { console.warn('portrait', id, e); u = ''; }
     cache.set(key, u);
-    if (u) toBlobUrl(key, u);
   }
   return u;
-}
-// perf (mobile): a PNG data URL is ~20-40 KB of base64 that every innerHTML rebuild (HUD, town rows, dialogs) re-parses
-// and re-decodes. Swap the cached entry for a short blob: URL once it is decoded off the main thread; a held, decoded
-// Image keeps the bitmap warm so new <img> tags with that URL paint without another decode.
-const warm = new Map();
-function toBlobUrl(key, dataUrl) {
-  if (typeof fetch !== 'function' || typeof URL?.createObjectURL !== 'function') return;
-  fetch(dataUrl).then((r) => r.blob()).then((b) => {
-    const url = URL.createObjectURL(b), img = new Image();
-    img.src = url;
-    return (img.decode ? img.decode() : Promise.resolve()).then(() => {
-      if (cache.get(key) !== dataUrl) { URL.revokeObjectURL(url); return; } // cleared or replaced meanwhile
-      cache.set(key, url); warm.set(key, img);
-    });
-  }).catch(() => { /* keep the data URL */ });
 }
 
 /** '<img>' HTML for templates; '' when portraits are unavailable (fall back to the emoji). */
@@ -487,8 +471,7 @@ export function preloadPortraits(ids, size = 64) {
 
 /** Drop cached images (e.g. after a device-pixel-ratio change). */
 export function clearPortraits() {
-  for (const u of cache.values()) if (typeof u === 'string' && u.startsWith('blob:')) URL.revokeObjectURL(u);
-  cache.clear(); warm.clear();
+  cache.clear();
   if (OPTS.dispose) for (const m of geoLRU.values()) { m.body.dispose(); m.glow?.dispose(); }
   geoLRU.clear();
 }

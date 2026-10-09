@@ -1,0 +1,63 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nature Preview</title>
+<style>html,body{margin:0;background:#20242c;overflow:hidden}canvas{display:block}#lab{position:fixed;inset:0;pointer-events:none;font:11px sans-serif;color:#fff}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.js"}}</script>
+</head><body><div id="lab"></div>
+<script type="module">
+import * as THREE from 'three';
+import { makeBodyMaterial, makeGlowMaterial } from '../materials.js';
+import * as N from '../nature.js';
+const q = new URLSearchParams(location.search);
+const set = q.get('set') || 'all';
+const groups = {
+  trees: N.TREE_KINDS.map((k) => [k, 'tan']),
+  small: [0,1,2,3,4,5].map((i) => ['bush:' + i]).concat([0,1,2,3,4].map((i) => ['tuft:' + i])).concat([0,1,2].map((i) => ['mushroom:' + i])).concat([0,1,2,3].map((i) => ['crystal:' + i])),
+  rocks: [0,1,2,3,4,5,6].map((i) => ['rock:' + i]),
+  peaks: ['peak:rock:0','peak:rock:1','peak:rock:2','peak:rock:3','peak:snow:0','peak:snow:1','peak:snow:2','peak:snow:3','peak:volcano:0','peak:volcano:1','peak:volcano:2'].map((k) => [k]),
+};
+const list = set === 'all' ? [...groups.trees, ...groups.small, ...groups.rocks, ...groups.peaks] : groups[set];
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H); renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87a8d8);
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(6, 10, 5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+const sc = 12; Object.assign(sun.shadow.camera, { left: -sc, right: sc, top: sc, bottom: -sc, far: 40 });
+scene.add(sun, new THREE.HemisphereLight(0xbcd4ff, 0x3a3020, 0.8), new THREE.AmbientLight(0x404a70, 0.35));
+const bodyMat = makeBodyMaterial(THREE);
+const glowMat = makeGlowMaterial(THREE);
+const cols = Math.ceil(Math.sqrt(list.length * W / H)), rows = Math.ceil(list.length / cols), sp = 2.0;
+const items = []; let tris = [];
+const groundCol = (k) => k.includes('snow') ? 0xeef4f8 : k.includes('volcano') || k === 'burnt' || k.endsWith(':6') || k === 'tuft:4' || k === 'crystal:3' ? 0x5a3430 : k === 'palm' || k === 'cactus' || k === 'tuft:3' || k === 'bush:3' || k === 'rock:3' ? 0xe2cc8a : k === 'willow' || k === 'tuft:2' || k === 'bush:5' || k === 'mushroom:2' ? 0x4a6a3a : 0x5aaa3a;
+list.forEach(([k], i) => {
+  const m = N.natureModel(k), g = new THREE.Group();
+  const big = k.startsWith('peak') ? 1 : k.match(/^(bush|tuft|rock|mush|crys)/) ? 1.9 : 1.15;
+  const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = b.receiveShadow = true; g.add(b);
+  if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
+  g.scale.setScalar(big);
+  const x = (i % cols - (cols - 1) / 2) * sp, z = (Math.floor(i / cols) - (rows - 1) / 2) * sp * 1.25;
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.04, 6), new THREE.MeshStandardMaterial({ color: groundCol(k), flatShading: true }));
+  disc.position.set(x, -0.02, z); disc.receiveShadow = true; scene.add(disc);
+  g.position.set(x, 0, z); scene.add(g); items.push({ g, k, x, z });
+  const t = m.body.attributes.position.count / 3 + (m.glow ? m.glow.attributes.position.count / 3 : 0);
+  tris.push(k + ':' + t);
+});
+console.log('TRIS ' + tris.join(' '));
+const span = Math.max(cols * sp * Math.max(1, H / W), rows * sp * 1.6);
+const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 200);
+const ang = +(q.get('ang') || 0.55);
+const dist = span * 1.2 * +(q.get('zoom') || 1); cam.position.set(0, Math.sin(ang) * dist, Math.cos(ang) * dist + rows * 0.3); cam.lookAt(0, 0.4, 0);
+const lab = document.getElementById('lab');
+const rot = +(q.get('rot') || 0);
+function frame(t) {
+  for (const it of items) it.g.rotation.y = rot + (q.has('spin') ? t * 0.0005 : 0);
+  renderer.render(scene, cam);
+  if (!lab.childElementCount) for (const it of items) { const p = new THREE.Vector3(it.x, 0, it.z + 0.7).project(cam); const d = document.createElement('div'); d.textContent = it.k; d.style.cssText = `position:absolute;left:${(p.x + 1) / 2 * W - 30}px;top:${(1 - p.y) / 2 * H}px`; lab.appendChild(d); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.READY = true;
+</script></body></html>

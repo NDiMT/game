@@ -1,0 +1,95 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Necropolis Readability</title>
+<style>html,body{margin:0;background:#6f7f4a;color:#fff;font:11px sans-serif;overflow:hidden}#info{position:fixed;left:4px;top:2px;white-space:pre;pointer-events:none;z-index:2;text-shadow:0 1px 2px #000}canvas{display:block}
+.lab{position:fixed;font:bold 11px sans-serif;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.js"}}</script>
+</head><body><div id="info"></div>
+<script type="module">
+// Round 4 readability preview: every Necropolis creature + upgrade from the battle camera
+// angle (46 deg elevation), rendered big, at ~90 px and at ~40 px tall, fronts (enemy side)
+// and backs (player side), with the game's body / glow / ink-hull materials.
+// ?src=orig loads the pre-round-4 backups in dev/r4nec-orig/.  ?set=base|up|all
+import * as THREE from 'three';
+import { makeBodyMaterial, makeGlowMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, tick } from '../materials.js';
+import { unitFit } from '../unit_fit.js';
+const Q = new URLSearchParams(location.search);
+const orig = Q.get('src') === 'orig', v = '?v=' + Date.now();
+const N = await import((orig ? './r4nec-orig/units_necro.js' : '../units_necro.js') + v);
+const U = await import((orig ? './r4nec-orig/units_necro_up.js' : '../units_necro_up.js') + v);
+const BASE = ['skeleton', 'zombie', 'wight', 'vampire', 'lich', 'blackknight', 'bonedragon'];
+const UPS = ['skelwarrior', 'plaguezombie', 'wraith', 'vampirelord', 'powerlich', 'dreadknight', 'ghostdragon'];
+const set = Q.get('set') || 'all';
+const groups = set === 'base' ? [BASE] : set === 'up' ? [UPS] : [BASE, UPS];
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1; renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setScissorTest(true); renderer.autoClear = false;
+document.body.appendChild(renderer.domElement);
+const bodyMat = makeBodyMaterial(THREE), glowMat = makeGlowMaterial(THREE), inkMat = makeInkHullMaterial(THREE);
+const blobMat = makeBlobShadowMaterial(THREE), blobGeo = blobShadowGeometry(THREE);
+const scene = new THREE.Scene();
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(4, 10, 3); scene.add(sun);
+const hemi = new THREE.HemisphereLight(0xcfe0ff, 0x4a3a2a, 0.9 * 1.15); hemi.groundColor.lerp(new THREE.Color(0xa08060), 0.4); scene.add(hemi);
+const amb = new THREE.AmbientLight(0x404a70, 0.42); amb.color.lerp(new THREE.Color(0x9090c8), 0.5); scene.add(amb);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(3, 24).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7c8c4c, roughness: 1 }));
+scene.add(ground);
+const models = new Map(); let info = '';
+for (const id of groups.flat()) {
+  const m = (BASE.includes(id) ? N.necroModel(id) : U.necroUpModel(id));
+  const fit = unitFit(id, m, 'battle', { nocache: true });
+  const g = new THREE.Group(), inner = new THREE.Group();
+  inner.add(new THREE.Mesh(m.body, bodyMat)); if (m.glow) inner.add(new THREE.Mesh(m.glow, glowMat)); inner.add(new THREE.Mesh(m.body, inkMat));
+  inner.scale.setScalar(fit.scale); inner.position.set(fit.x, fit.y, fit.z);
+  const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(0.42); g.add(bl);
+  g.add(inner); g.visible = false; scene.add(g);
+  const tris = (m.body.attributes.position.count + (m.glow ? m.glow.attributes.position.count : 0)) / 3;
+  info += `${id}: ${tris} tris  fitH=${fit.height.toFixed(2)} scale=${fit.scale.toFixed(2)}\n`;
+  models.set(id, { g, fit });
+}
+window.__info = info;
+if (Q.has('info')) document.getElementById('info').textContent = info;
+const EL = THREE.MathUtils.degToRad(46);
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 50);
+// rows per group: [kind, cellH, targetPx, facing]
+const ROWS = Q.has('big') ? [['big', 360, 290, 'front'], ['big', 360, 290, 'back']] : [['big', 230, 180, 'front'], ['p90', 108, 90, 'front'], ['p90', 108, 90, 'back'], ['p40', 58, 40, 'both']];
+const cols = 7, W = innerWidth, cw = W / cols;
+function cell(x, y, w, h, id, px, back, ry = 0) {
+  const o = models.get(id); if (!o) return;
+  const H = innerHeight;
+  renderer.setViewport(x, H - y - h, w, h); renderer.setScissor(x, H - y - h, w, h);
+  for (const q of models.values()) q.g.visible = false; o.g.visible = true;
+  o.g.rotation.y = (back ? Math.PI : 0) + ry;
+  // camera: battle elevation, looking at mid-body
+  const cy = o.fit.height * 0.5, d = 8;
+  cam.position.set(0, cy + Math.sin(EL) * d, Math.cos(EL) * d); cam.lookAt(0, cy, 0);
+  // projected height of the fitted body -> px
+  const projH = o.fit.height * Math.cos(EL) + 0.35 * Math.sin(EL);
+  const half = (projH / px) * h / 2;
+  cam.top = half; cam.bottom = -half; cam.left = -half * w / h; cam.right = half * w / h; cam.near = 0.1; cam.far = 50;
+  cam.updateProjectionMatrix();
+  // constant ~2.6 px ink line like the game (0.003 / tan(26deg) * 430 px)
+  inkMat.userData.uniforms.uHullW.value = 2.6 * (half * 2 / h) / d;
+  renderer.render(scene, cam);
+}
+const labels = [];
+function frame(t) {
+  renderer.setScissor(0, 0, W, innerHeight); renderer.setViewport(0, 0, W, innerHeight);
+  renderer.setClearColor(0x6f7f4a); renderer.clear();
+  let y = 0;
+  for (const grp of groups) {
+    for (const [kind, ch, px, face] of ROWS) {
+      grp.forEach((id, i) => {
+        if (face === 'both') { cell(i * cw, y, cw / 2, ch, id, px, false, 0.35); cell(i * cw + cw / 2, y, cw / 2, ch, id, px, true, 0.35); }
+        else cell(i * cw, y, cw, ch, id, px, face === 'back', face === 'front' ? 0.45 : 0.35);
+      });
+      y += ch;
+    }
+    y += 6;
+  }
+  tick(t / 1000);
+  if (!Q.has('still')) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.__ready = true;
+</script></body></html>

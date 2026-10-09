@@ -1,0 +1,120 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Map FX</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script type="importmap">{ "imports": { "three": "../../vendor/three.module.js" } }</script>
+<style>body{margin:0;background:#8ab4e8;color:#fff;font:12px sans-serif;overflow:hidden}#info{position:fixed;left:6px;top:6px;white-space:pre;text-shadow:0 1px 2px #000}</style>
+</head><body><div id="info"></div>
+<script type="module">
+import * as THREE from 'three';
+import { createMapFx } from '../mapfx.js';
+import { flagModel } from '../models_towns.js';
+import { makeBodyMaterial, tick } from '../materials.js';
+
+// ?dist=7 &shot=1 (deterministic: simulate frames, render once) &t=seconds
+const q = new URLSearchParams(location.search);
+const R = 5, STEP = 0.07;
+function icosphere(detail) {
+  const t = (1 + Math.sqrt(5)) / 2;
+  const verts = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map((v) => new THREE.Vector3(...v).normalize());
+  let faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+  for (let d = 0; d < detail; d++) {
+    const cache = new Map();
+    const mid = (a, b) => { const key = a < b ? a * 100000 + b : b * 100000 + a; if (cache.has(key)) return cache.get(key); verts.push(verts[a].clone().add(verts[b]).normalize()); cache.set(key, verts.length - 1); return verts.length - 1; };
+    const nf = [];
+    for (const [a, b, c] of faces) { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); nf.push([a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]); }
+    faces = nf;
+  }
+  return { verts, faces };
+}
+const { verts: DIRS, faces: FACES } = icosphere(4);
+const NV = DIRS.length;
+const NBR = Array.from({ length: NV }, () => new Set());
+for (const [a, b, c] of FACES) { NBR[a].add(b).add(c); NBR[b].add(a).add(c); NBR[c].add(a).add(b); }
+const NB = NBR.map((s) => [...s]);
+const h = new Int8Array(NV).map((_, v) => Math.round(Math.sin(DIRS[v].x * 7) * 1.5 + Math.cos(DIRS[v].z * 5) * 1.5));
+const radiusOf = (v) => R + h[v] * STEP;
+const posOf = (v, lift = 0) => DIRS[v].clone().multiplyScalar(radiusOf(v) + lift);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8ab4e8);
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.6); sun.position.set(4, 10, 8);
+scene.add(sun, new THREE.HemisphereLight(0xcfe0ff, 0x8a7050, 1.1));
+
+// hero cell and fog
+const hero = DIRS.reduce((b, d, i) => (d.distanceTo(new THREE.Vector3(0.15, 0.75, 0.62).normalize()) < DIRS[b].distanceTo(new THREE.Vector3(0.15, 0.75, 0.62).normalize()) ? i : b), 0);
+const seen = new Uint8Array(NV);
+for (let v = 0; v < NV; v++) if (DIRS[v].dot(DIRS[hero]) > 0.86 || DIRS[v].dot(new THREE.Vector3(0.6, 0.6, 0.5).normalize()) > 0.9) seen[v] = 1;
+
+// hex columns, one draw
+const hexGeo = new THREE.CylinderGeometry(0.2, 0.2, 1, 6).translate(0, -0.5, 0);
+const cols = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9 }), NV);
+const dm = new THREE.Object3D(), C = new THREE.Color();
+for (let v = 0; v < NV; v++) {
+  dm.position.copy(posOf(v)); dm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), DIRS[v]); dm.scale.set(1, 1.2, 1); dm.updateMatrix();
+  cols.setMatrixAt(v, dm.matrix);
+  if (!seen[v]) C.set(0x1a1d30); else C.set([0x5aaa3a, 0x6ab84a, 0x9a7a4a, 0xe2cc8a][(v * 7 + h[v] + 3) % 4 === 3 ? 2 : (v % 3)]);
+  cols.setColorAt(v, C);
+}
+scene.add(cols);
+
+const fx = createMapFx(THREE, scene, { DIRS, radiusOf, posOf });
+// hero placeholder
+const heroM = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 8).translate(0, 0.1, 0), new THREE.MeshStandardMaterial({ color: 0x3a7aff }));
+heroM.position.copy(posOf(hero)); heroM.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), DIRS[hero]); scene.add(heroM);
+
+// a path: greedy walk toward a target cell
+const target = DIRS.reduce((b, d, i) => (seen[i] && d.dot(DIRS[hero]) < DIRS[b].dot(DIRS[hero]) && d.dot(new THREE.Vector3(1, 0.3, 0.3).normalize()) > 0.6 ? i : b), hero);
+const path = [hero];
+while (path[path.length - 1] !== target && path.length < 40) { const x = path[path.length - 1]; path.push(NB[x].reduce((p, n) => (DIRS[n].distanceTo(DIRS[target]) < DIRS[p].distanceTo(DIRS[target]) ? n : p))); }
+const today = +(q.get('today') ?? Math.floor(path.length * 0.55));
+fx.showPath(path, today);
+fx.select(heroM.position, DIRS[hero]);
+
+// flags using the game's body material + wave
+const bodyMat = makeBodyMaterial(THREE);
+const flagMat = fx.flagMaterial(bodyMat);
+const fm = flagModel(0xd83a3a);
+const flagCells = [NB[NB[hero][0]][2], NB[path[3]][1], NB[path[5]][4]];
+const halos = [];
+flagCells.forEach((v, i) => {
+  const m = new THREE.Mesh(fm.body, flagMat); m.position.copy(posOf(v)); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), DIRS[v]); m.scale.setScalar(0.24); scene.add(m);
+});
+for (const [v, c] of [[NB[path[2]][0], 0xffd860], [NB[path[6]][5], 0x8ac8ff], [NB[NB[hero][3]][3], 0xc080ff]]) {
+  halos.push({ position: posOf(v), color: c });
+  const g = new THREE.Mesh(new THREE.OctahedronGeometry(0.05), new THREE.MeshBasicMaterial({ color: c }));
+  g.position.copy(posOf(v, 0.08)); scene.add(g);
+}
+fx.setHalos(halos);
+fx.setFogEdge(seen, NB);
+
+const cam = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+const dist = +(q.get('dist') || 8.5);
+const look = posOf(path[Math.floor(path.length / 3)]);
+cam.position.copy(look.clone().normalize().multiplyScalar(R + dist)).add(new THREE.Vector3(0, -1.6, 2.2).multiplyScalar(dist / 8));
+cam.up.copy(DIRS[hero]); cam.lookAt(look);
+
+const kinds = ['coin', 'flag', 'dust', 'magic', 'gem', 'artifact', 'level', 'step'];
+const burstCells = kinds.map((_, i) => path[Math.min(path.length - 1, 1 + i * 2)]);
+let t = 0;
+function fire(i) { const k = kinds[i % kinds.length]; fx.burst(k, posOf(burstCells[i % kinds.length]), { color: 0xd83a3a }); }
+function step(dt) { t += dt; tick(t); fx.update(dt, cam); }
+document.getElementById('info').textContent = `path ${path.length} today ${today}`;
+if (q.get('shot')) {
+  // fire all bursts staggered, then simulate to t
+  const T = +(q.get('t') || 0.35);
+  if (!q.get('nob')) kinds.forEach((_, i) => fire(i));
+  for (let s = 0; s < T * 60; s++) step(1 / 60);
+  renderer.render(scene, cam);
+  window.DONE = true;
+} else {
+  let i = 0, acc = 0, last = performance.now();
+  (function loop() {
+    const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
+    acc += dt; if (acc > 0.6) { acc = 0; fire(i++); }
+    step(dt); renderer.render(scene, cam); requestAnimationFrame(loop);
+  })();
+}
+</script></body></html>

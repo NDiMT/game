@@ -1,0 +1,62 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Necropolis Units</title>
+<style>html,body{margin:0;background:#1a1d2e;color:#ddd;font:12px sans-serif;overflow:hidden}#info{position:fixed;left:6px;top:4px;white-space:pre;pointer-events:none;z-index:2}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.js"}}</script>
+</head><body><div id="info"></div>
+<script type="module">
+import * as THREE from 'three';
+import { necroModel, NECRO_IDS } from '../units_necro.js';
+import { makeBodyMaterial, makeGlowMaterial, tick } from '../materials.js';
+const Q = new URLSearchParams(location.search);
+const ids = Q.get('id') ? Q.get('id').split(',') : NECRO_IDS;
+const fixedAngle = Q.has('a') ? +Q.get('a') : null;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setScissorTest(true);
+document.body.appendChild(renderer.domElement);
+const bodyMat = makeBodyMaterial(THREE);
+const glowMat = makeGlowMaterial(THREE);
+const view = Q.get('view') || 'front';
+const scene = new THREE.Scene();
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(3, 5, 4); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x4a5a2a, 0.9)); scene.add(new THREE.AmbientLight(0x405070, 0.3));
+const gLight = new THREE.MeshStandardMaterial({ color: 0xc8b88a, roughness: 1 }), gDark = new THREE.MeshStandardMaterial({ color: 0x3a4a2a, roughness: 1 });
+const ground = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.02, 32), gDark); ground.position.y = -0.01; scene.add(ground);
+const models = []; let txt = '';
+for (const id of ids) {
+  const m = necroModel(id), g = new THREE.Group();
+  g.add(new THREE.Mesh(m.body, bodyMat)); if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
+  const bb = new THREE.Box3().setFromObject(g), sz = bb.getSize(new THREE.Vector3());
+  const tris = (m.body.attributes.position.count + (m.glow ? m.glow.attributes.position.count : 0)) / 3;
+  txt += `${id}: ${tris} tris  h=${sz.y.toFixed(2)} w=${sz.x.toFixed(2)} d=${sz.z.toFixed(2)}\n`;
+  g.visible = false; scene.add(g); models.push({ g, sz });
+}
+document.getElementById('info').textContent = txt; window.__info = txt;
+const cam = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
+const cells = view === 'front' ? models.map((m, i) => [m, i]) : [...models.map((m, i) => [m, i]), ...models.map((m, i) => [m, i + models.length])];
+const n = view === 'front' ? models.length : models.length * 2, cols = n === 1 ? 1 : (Q.get('cols') ? +Q.get('cols') : Math.ceil(Math.sqrt(n * innerWidth / innerHeight)) ), rows = Math.ceil(n / cols);
+const colsB = view === 'front' ? cols : models.length;
+function frame(t) {
+  const W = innerWidth, H = innerHeight, cw = W / cols, ch = H / rows;
+  const C2 = view === 'front' ? cols : colsB, R2 = view === 'front' ? rows : 2, cw2 = W / C2, ch2 = H / R2;
+  cells.forEach(([o, i]) => {
+    const c = i % C2, r = Math.floor(i / C2); const cw = cw2, ch = ch2;
+    renderer.setViewport(c * cw, H - (r + 1) * ch, cw, ch); renderer.setScissor(c * cw, H - (r + 1) * ch, cw, ch);
+    const lightG = Q.has('light') ? true : ((c + r) % 2 === 1);
+    renderer.setClearColor(lightG ? 0x9ab0c0 : 0x2a3040); ground.material = lightG ? gLight : gDark;
+    models.forEach((q) => q.g.visible = false); o.g.visible = true;
+    const s = Math.max(o.sz.y, o.sz.z * 0.7, o.sz.x * 0.7);
+    cam.aspect = cw / ch; cam.updateProjectionMatrix();
+    if (view === 'front') { cam.fov = 30; cam.updateProjectionMatrix(); o.g.rotation.y = fixedAngle !== null ? fixedAngle : t * 0.0006 + 0.5; cam.position.set(0, s * 0.9, s * 3.2); cam.lookAt(0, s * 0.45, 0); }
+    else { // battle camera: elevation ~61deg; even rows see backs (player side), odd see fronts
+      o.g.rotation.y = (r % 2 === 0) ? Math.PI : 0.0; const d = view === 'tiny' ? 14 : 4.2;
+      cam.fov = view === 'tiny' ? 8 : 30; cam.position.set(0, d * 0.87, d * 0.48); cam.lookAt(0, s * 0.35, 0); cam.updateProjectionMatrix(); }
+    ground.scale.setScalar(Math.max(1, s));
+    renderer.render(scene, cam);
+  });
+  tick(t / 1000); requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>
