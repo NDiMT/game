@@ -469,7 +469,7 @@ function bakeNebula(W, H, rand) {
       const dust = Math.max(0, n2 - 0.5) * 2.0 * Math.exp(-bandD * bandD * 30);
       // deep blue-indigo base: a little lighter above, deeper below, never black
       const up = y * 0.5 + 0.5;
-      let r = 0.006 + 0.007 * (1 - up), g = 0.013 + 0.011 * up, b = 0.056 + 0.024 * up;
+      let r = 0.005 + 0.006 * (1 - up), g = 0.012 + 0.011 * up, b = 0.05 + 0.024 * up;
       // big soft colour wash (indigo <-> deep teal-blue), low saturation
       const w1 = n3 * n3, w2 = (1 - n3) * (1 - n3);
       r += w1 * 0.011; g += w1 * 0.006 + w2 * 0.011; b += w1 * 0.028 + w2 * 0.024;
