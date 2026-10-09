@@ -318,7 +318,7 @@ function bodyUniforms(THREE, o) {
     uBandHi: { value: o.bandHi ?? 0.64 },
     uBandMid: { value: o.bandMid ?? 0.5 },
     uBandSoft: { value: o.bandSoft ?? 0.07 },
-    uTop: { value: o.top ?? 0.28 },
+    uTop: { value: o.top ?? 0.14 },
     uTopColor: { value: new THREE.Color(o.topColor ?? 0xfff0d4) },
     uGrad: { value: o.grad ?? 0.08 },
     uGradH: { value: o.gradH ?? 1.0 },
@@ -482,7 +482,7 @@ export function makeInkHullMaterial(THREE, opts = {}) {
     uHullPush: { value: opts.push ?? 0.0008 },
     uHullK: { value: opts.sizeK ?? 0.018 },
     uHullMin: { value: opts.minPx ?? 1.5 },
-    uHullMax: { value: opts.maxPx ?? 3 },
+    uHullMax: { value: opts.maxPx ?? 2.5 },
     uHullFixed: { value: opts.fixed ? 1 : 0 },
     uHullVH: { value: 1000 },
   };

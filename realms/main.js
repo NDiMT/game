@@ -1,25 +1,25 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=0.5';
-import { havenModel } from './units_haven.js?v=0.5';
-import { necroModel } from './units_necro.js?v=0.5';
-import { necroUpModel } from './units_necro_up.js?v=0.5';
-import { havenUpModel } from './units_haven_up.js?v=0.5';
-import { neutralModel } from './units_neutral.js?v=0.5';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=0.5';
-import { objectModel } from './models_objects.js?v=0.5';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.5';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=0.5';
-import { createTownView } from './town_view.js?v=0.5';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.5';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.5';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.5';
-import * as BT from './battle.js?v=0.5';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, tick as tickMaterials } from './materials.js?v=0.5';
-import { createScore } from './music.js?v=0.5';
-import { unitFit, applyFit } from './unit_fit.js?v=0.5';
-import { createMapFx } from './mapfx.js?v=0.5';
+import { mulberry32, unitModel } from './models.js?v=0.6';
+import { havenModel } from './units_haven.js?v=0.6';
+import { necroModel } from './units_necro.js?v=0.6';
+import { necroUpModel } from './units_necro_up.js?v=0.6';
+import { havenUpModel } from './units_haven_up.js?v=0.6';
+import { neutralModel } from './units_neutral.js?v=0.6';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=0.6';
+import { objectModel } from './models_objects.js?v=0.6';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.6';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=0.6';
+import { createTownView } from './town_view.js?v=0.6';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.6';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.6';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.6';
+import * as BT from './battle.js?v=0.6';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, tick as tickMaterials } from './materials.js?v=0.6';
+import { createScore } from './music.js?v=0.6';
+import { unitFit, applyFit } from './unit_fit.js?v=0.6';
+import { createMapFx } from './mapfx.js?v=0.6';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0.5';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0.6';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -28,7 +28,7 @@ import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '0.5';
+const APP_VERSION = '0.6';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -226,7 +226,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=0.5';
+import { createPlanet } from './terrain.js?v=0.6';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
