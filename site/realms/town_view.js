@@ -95,25 +95,34 @@ function fbm(x, z, oct = 3, s = 0) { let v = 0, a = 0.5, t = 0; for (let k = 0; 
 const PAL = {
   haven: {
     zenith: 0x3d7de0, mid: 0x7fb6f2, horizon: 0xdcEEF8, below: 0xb8d8c8, sunCol: 0xfff0c0, fog: 0xcfe2ee, fogNear: 70, fogFar: 1150,
-    sunDir: [-0.55, 0.62, 0.55], sun: 0xfff0d2, sunI: 2.7, hemiSky: 0xd0e4ff, hemiGround: 0x7a9a48, hemiI: 1.05, amb: 0xfff8f0, ambI: 0.28,
-    grass: [0x5fb83a, 0x8ad24a, 0xb8d860, 0x4c9e36], bank: 0xd8c890, field: [0xe2c858, 0x9ad255, 0xc89c5c, 0xd8d070],
-    mtn: [0x6e9a78, 0x8a9cc0, 0xf4f6ff], hill: 0x5aa448,
+    sunDir: [-0.55, 0.62, 0.55], sun: 0xfff0d2, sunI: 2.7, hemiSky: 0xd0e4ff, hemiGround: 0x768b57, hemiI: 1.05, amb: 0xfff8f0, ambI: 0.28,
+    // round 3: calm backdrop (~30% less saturated, ~10% darker) so the buildings are the figures
+    grass: [0x74a05e, 0x94b870, 0xaab87e, 0x5f8a52], bank: 0xd2c69c, field: [0xd0c080, 0xa2c774, 0xbea176, 0xc8c48c],
+    mtn: [0x6e9a78, 0x8a9cc0, 0xf4f6ff], hill: 0x65945a,
     water: [0x2a78c8, 0x5fc0e8, 0xbfe8ff], waterSky: 0xd6ecff, waterGlow: 0,
-    path: '#dccaa0', pathEdge: '#b8996a', stone: ['#c8b48a', '#efe2c0', '#b7a27a'], pad: 'rgba(120,150,60,0.35)',
+    path: '#d8c8a2', pathEdge: '#b49a72', stone: ['#ccbc98', '#e4d8bc', '#bcaa86'], pad: 'rgba(84,96,58,0.24)',
+    dots: ['rgba(240,226,150,0.55)', 'rgba(244,240,226,0.5)', 'rgba(220,170,180,0.45)', 'rgba(96,130,70,0.4)'],
     cloud: 0xffffff, cloudShade: [196, 210, 232], dust: 0xe0d0a8, smoke: 0xeeeef4, birds: 0x4a5470, banner: [0x2a5ad8, 0xf0c040],
     tree: 'round', stars: 0,
+    groundTune: { shade: 0xb4a8f0, lift: 0.24, toe: 0.45, sat: 0.94 },
   },
   necro: {
     // a luminous lavender / rose dusk: eerie but bright, never murky
-    zenith: 0x5a4cb4, mid: 0xa486d8, horizon: 0xffc2c8, below: 0xc4aacc, sunCol: 0xffd8ec, fog: 0xdcbcdc, fogNear: 90, fogFar: 950,
-    sunDir: [0.55, 0.5, 0.5], sun: 0xffdcc0, sunI: 3.1, hemiSky: 0xb4a4f0, hemiGround: 0x84789a, hemiI: 0.95, amb: 0xb0a0e0, ambI: 0.26,
-    grass: [0x9c90b8, 0x86a080, 0xd2c8d6, 0xa874b2], bank: 0xb4a490, field: [0xa678b8, 0x8c9c78, 0xbc8aa8, 0x8a78b0],
-    mtn: [0x7a6aa8, 0x9a88c4, 0xe4d6f4], hill: 0x8a84a4,
+    // round 3 pass 4: zenith / mid ~20% deeper so the dusk has some value range (was pastel and flat)
+    zenith: 0x4a4290, mid: 0x8a76b2, horizon: 0xfac8c4, below: 0xc0b6b8, sunCol: 0xffd8ec, fog: 0xd8c8cc, fogNear: 90, fogFar: 950,
+    // sunDir places the low dusk sun in the sky; lightDir is the key light, set higher so cast shadows are short.
+    // shadowI / shadowR: softer, lighter cast shadows (the shade tint below makes them warm, not blue)
+    sunDir: [0.55, 0.5, 0.5], lightDir: [0.42, 0.82, 0.4], shadowI: 0.7, shadowR: 3, sun: 0xffdcc0, sunI: 3.0, hemiSky: 0xc2bae6, hemiGround: 0x8e8270, hemiI: 0.95, amb: 0xccbcc8, ambI: 0.26,
+    // round 3: ash-grey / olive / bone ground, so the violet buildings stand out against it
+    // pass 4: ~10% darker, plus large soft darker ash-olive patches (ash) for tonal structure
+    grass: [0x98947f, 0x83886a, 0xbcb39c, 0x8a8088], ash: 0x6c6c58, bank: 0xa89c84, field: [0x8a8288, 0x7e8666, 0x988c7a, 0x827c8c],
+    mtn: [0x837a98, 0x9a92ae, 0xe4dcec], hill: 0x8e8c82,
     water: [0x2a7c88, 0x56c0a8, 0xbaf8dc], waterSky: 0xb49ad4, waterGlow: 0.35,
-    path: '#d4c8d8', pathEdge: '#ab9cb8', stone: ['#bcaec6', '#e8e0e8', '#a898b2'], pad: 'rgba(120,96,140,0.22)',
+    path: '#d8d0c0', pathEdge: '#a69c8a', stone: ['#bcb4a2', '#e6e0d2', '#aaa292'], pad: 'rgba(70,66,54,0.2)',
+    dots: ['rgba(170,140,184,0.45)', 'rgba(140,152,118,0.45)', 'rgba(170,240,200,0.4)', 'rgba(236,228,214,0.5)'],
     cloud: 0xfff0f8, cloudShade: [210, 170, 210], dust: 0xd0c0d4, smoke: 0xd8cce8, birds: 0x5a4870, banner: [0xc8183c, 0xf2e6c8],
     tree: 'dead', stars: 1,
-    groundTune: { shade: 0x8ea8a0, lift: 0.1, toe: 0.2, detail: 0.75 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
+    groundTune: { shade: 0xc0a090, lift: 0.18, toe: 0.2, detail: 0.8 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
   },
 };
 // river centre line (shared, the valley shape is the same)
@@ -134,10 +143,10 @@ export function createTownView(THREE, renderer, opts = {}) {
   // materials
   const bodyMat = opts.bodyMat || keep(MAT ? MAT.makeBodyMaterial(T) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.8 }));
   const glowMat = opts.glowMat || keep(MAT ? MAT.makeGlowMaterial(T) : new T.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
-  const groundMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0, detail: 0.9, scale: 0.32, rim: 0, hemi: 0.06 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
-  const sceneryMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0.3, aoHeight: 0.4, rim: 0.3 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
+  const groundMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0, detail: 0.9, scale: 0.32, rim: 0, hemi: 0.06, sat: 0.86, contrast: 0.12, ink: 0 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
+  const sceneryMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0.3, aoHeight: 0.4, rim: 0.3, sat: 0.95 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
   if (!MAT && !opts.glowMat) glowMat.color.setScalar(2.2);
-  for (const m of [groundMat, sceneryMat]) m.userData.baseDetail = m.userData.uniforms?.uDetail.value;
+  for (const m of [groundMat, sceneryMat]) { m.userData.baseDetail = m.userData.uniforms?.uDetail.value; m.userData.baseSat = m.userData.uniforms?.uSat.value; }
 
   // lights
   const sun = new T.DirectionalLight(0xffffff, 2.5);
@@ -418,7 +427,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
       const N = 168, cx = 0, cz = -2;
       const pos = [], cols = [], idx = [];
       const c = new T.Color(), g0 = col(P.grass[0]), g1 = col(P.grass[1]), g2 = col(P.grass[2]), g3 = col(P.grass[3]), bank = col(P.bank), hill = col(P.hill);
-      const fields = P.field.map(col);
+      const fields = P.field.map(col), ash = col(P.ash ?? P.grass[1]);
       for (let k = 0; k < radii.length; k++) for (let i = 0; i < N; i++) {
         const a = (i / N) * Math.PI * 2 + (k % 2) * (Math.PI / N), rr = radii[k];
         const x = cx + Math.sin(a) * rr, z = cz + Math.cos(a) * rr;
@@ -429,8 +438,11 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         if (fac === 'necro') {
           // sage-grey moor, violet heather patches, pale ash drifts
           const n3 = fbm(x * 0.16 + 31, z * 0.16, 3, 7);
-          c.copy(g0).lerp(g1, smooth(0.45, 0.75, n1) * 0.75).lerp(g3, smooth(0.5, 0.7, n3) * 0.8).lerp(g2, smooth(0.64, 0.86, n2) * 0.45);
-        } else c.copy(g0).lerp(g1, smooth(0.35, 0.7, n1)).lerp(g3, smooth(0.55, 0.2, n1) * 0.6).lerp(g2, smooth(0.6, 0.85, n2) * 0.5);
+          c.copy(g0).lerp(g1, smooth(0.45, 0.75, n1) * 0.75).lerp(g3, smooth(0.5, 0.7, n3) * 0.5).lerp(g2, smooth(0.64, 0.86, n2) * 0.4);
+          // pass 4: large, soft darker ash / olive patches so the plain has tonal structure (kept well above murk)
+          const n4 = fbm(x * 0.12 + 57, z * 0.12 - 13, 3, 11), n5 = fbm(x * 0.33 - 9, z * 0.33 + 21, 2, 13);
+          c.lerp(ash, Math.min(0.65, smooth(0.38, 0.6, n4) * 0.45 + smooth(0.45, 0.7, n5) * 0.4));
+        } else c.copy(g0).lerp(g1, smooth(0.35, 0.7, n1)).lerp(g3, smooth(0.55, 0.2, n1) * 0.6).lerp(g2, smooth(0.6, 0.85, n2) * 0.35);
         if (y > 4) c.lerp(hill, smooth(4, 20, y) * 0.5);
         // patchwork fields on the left hills (haven) / heather moor (necro)
         if (x < -14 && z < -18 && z > -110 && x > -140) {
@@ -440,7 +452,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         }
         const rd = riverDist(x, z), rw = riverWidth(x, z) / 2;
         c.lerp(bank, smooth(rw + 2.8, rw + 0.6, rd) * 0.85);
-        c.multiplyScalar(fac === 'necro' ? 0.88 + n2 * 0.22 : 0.94 + n2 * 0.12);
+        c.multiplyScalar(fac === 'necro' ? 0.9 + n2 * 0.18 : 0.95 + n2 * 0.1);
         cols.push(c.r, c.g, c.b);
       }
       for (let k = 0; k < radii.length - 1; k++) for (let i = 0; i < N; i++) {
@@ -509,15 +521,15 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         L.globalCompositeOperation = 'source-atop';
         for (let i = 0; i < 4200; i++) {
           const x = r() * 512, y = r() * 512, s = 2 + r() * 3.2;
-          L.fillStyle = P.stone[(r() * 3) | 0]; L.globalAlpha = 0.55 + r() * 0.35;
+          L.fillStyle = P.stone[(r() * 3) | 0]; L.globalAlpha = 0.3 + r() * 0.3;
           L.beginPath(); L.ellipse(x, y, s, s * (0.6 + r() * 0.3), r() * 3, 0, 7); L.fill();
         }
         L.globalAlpha = 1;
         g.drawImage(lay, 0, 0);
         // flowers / tufts (haven) - heather, pale sage tufts and green glimmers (necro)
-        const dots = fac === 'haven' ? ['rgba(255,240,120,0.8)', 'rgba(255,255,255,0.8)', 'rgba(255,150,190,0.7)', 'rgba(120,180,60,0.5)']
-          : ['rgba(196,140,214,0.75)', 'rgba(150,170,128,0.6)', 'rgba(170,255,200,0.55)', 'rgba(240,226,236,0.7)', 'rgba(214,120,160,0.55)'];
-        for (let i = 0; i < 650; i++) {
+        // round 3: a sparse, muted sprinkle (was 650 bright dots: read as confetti)
+        const dots = P.dots;
+        for (let i = 0; i < 190; i++) {
           const x = r() * 512, y = r() * 512;
           g.fillStyle = dots[(r() * dots.length) | 0];
           g.beginPath(); g.arc(x, y, 1 + r() * 1.4, 0, 7); g.fill();
@@ -649,15 +661,17 @@ void main() {
         round: (() => {
           const k = kit(3);
           k.cyl(0.07, 0.12, 0.7, 0, 0, 0, [0x7a5232, 0x9a6a3e], 6);
-          const crown = fac === 'haven' ? [0x3f9a34, 0x9ad850] : [0x8a9a76, 0xb4c0a0];
+          // round 3 pass 4: calm sage / blue-green backdrop crowns (were lime-yellow and competed with the buildings);
+          // the gradient stops at ~60% so the sunlit tops never turn yellow under the strong sun
+          const crown = fac === 'haven' ? [0x3e6c48, 0x6e9468] : [0x8a9478, 0xb0b8a0];
           for (const [x, y, z, r] of [[0, 1.0, 0, 0.55], [0.28, 1.25, 0.08, 0.38], [-0.24, 1.2, -0.1, 0.4], [0.02, 1.45, -0.02, 0.33]])
-            k.add(new T.IcosahedronGeometry(r, 0).translate(x, y, z), (px, py, pz, c) => c.set(crown[0]).lerp(col(crown[1]), clamp((py - 0.55) / 1.25 + px * 0.15 + pz * 0.25, 0, 1)));
+            k.add(new T.IcosahedronGeometry(r, 0).translate(x, y, z), (px, py, pz, c) => c.set(crown[0]).lerp(col(crown[1]), clamp((py - 0.55) / 1.25 + px * 0.15 + pz * 0.25, 0, 1) * 0.6));
           return k.body();
         })(),
         pine: (() => {
           const k = kit(4);
           k.cyl(0.06, 0.1, 0.5, 0, 0, 0, [0x6a4a2e, 0x8a5e38], 5);
-          const pc = fac === 'haven' ? [0x2f7a48, 0x76c068] : [0x6a6294, 0xa49cc8];
+          const pc = fac === 'haven' ? [0x3a6650, 0x689a74] : [0x6a6878, 0x9c98a8];
           for (const [y, r, h] of [[0.35, 0.55, 0.8], [0.75, 0.42, 0.7], [1.1, 0.3, 0.65]]) k.cone(r, h, 0, y, 0, pc, 7);
           return k.body();
         })(),
@@ -791,6 +805,35 @@ void main() {
           env.lanterns.push([x + sx * 0.28, y + h - 0.4, z]);
         }
         for (let i = 0; i < 14; i++) { const x = (R() - 0.5) * 40, z = -R() * 20 + 6; if (flatD(x, z) < 1.1 || (z > 2 && Math.abs(x) < 9)) continue; k.add(new T.IcosahedronGeometry(0.3 + R() * 0.5, 0).scale(1, 0.6, 1).translate(x, at(x, z), z), [0x9c96ac, 0xc8c2d6]); }
+        // round 3 pass 4: calm, low foreground detail at the edges of the view (the small town's foreground was an
+        // empty plain): sunken graves, flat ash rocks and dead-grass tufts in muted tones, never in the middle
+        {
+          const rf = rng32(77), busy = [[-0.75, 5], [0.75, 5], [-4.9, 4.6], [4.9, 4.6], [-5.7, 4], [5.7, 4]];
+          // the camera sits at z ~11..20 (by town size), so the near view is narrow in world units: keep most of
+          // the detail within ~1.3..3.5 of the road, a wider spread further back
+          for (let i = 0; i < 150; i++) {
+            const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13;
+            const x = side * (1.35 + Math.pow(rf(), 1.4) * (z < 7 ? 4.2 : 2.6));
+            if (Math.abs(z - 7.6) < 0.4 || busy.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6)) continue;
+            const y = at(x, z), ry = rf() * 6.3, kind = rf();
+            if (kind < 0.15) {
+              // a low, sunken, leaning headstone
+              const lean = (rf() - 0.5) * 0.5, h = 0.18 + rf() * 0.12;
+              k.add(new T.BoxGeometry(0.26, h, 0.07).translate(0, h / 2, 0).rotateX(lean).rotateY(ry).translate(x, y - 0.06, z), [0x8c8690, 0xa8a2aa]);
+            } else if (kind < 0.55) {
+              // flat ash rock
+              const r = 0.1 + rf() * 0.16;
+              k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x86806e, 0xa29c8a]);
+            } else {
+              // dead-grass tuft: a few thin dry blades
+              const n = 4 + ((rf() * 3) | 0), tc = rf() < 0.5 ? [0x908a68, 0xb4ac86] : [0x988c74, 0xb8ac8e];
+              for (let b = 0; b < n; b++) {
+                const a = ry + b * 1.3, hb = 0.12 + rf() * 0.12;
+                k.add(new T.ConeGeometry(0.03, hb, 3).translate(0, hb / 2, 0).rotateX(0.35 + rf() * 0.45).rotateY(a).translate(x + Math.sin(a) * 0.05, y - 0.02, z + Math.cos(a) * 0.05), tc);
+              }
+            }
+          }
+        }
       }
       // banner poles along the main road and by the lots
       const flags = kit(9), wave = [];
@@ -985,6 +1028,9 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   let cur = { fac: null, name: null };
   let activeEnv = null;
 
+  const inkMat = MAT?.makeInkHullMaterial ? keep(MAT.makeInkHullMaterial(T, { width: 0.0016, dark: 0.26, center: 1.0, push: 0.0006 })) : null;
+  const blobMat = MAT?.makeBlobShadowMaterial ? keep(MAT.makeBlobShadowMaterial(T, { opacity: 0.32 })) : null;
+  const blobGeo = blobMat ? keep(MAT.blobShadowGeometry(T)) : null;
   function makeBuilding(fac, id, k) {
     const { m, s } = buildingModel(fac, id);
     const g = meshOf(m, true, GLOW_SCALE[fac + ':' + id] ?? GLOW_SCALE[id] ?? 1);
@@ -995,6 +1041,13 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     g.position.set(sp.x, 0, sp.z); g.rotation.y = sp.ry;
     g.userData = { id, slot: k, h: (DIMS[id] || [0, 0, 3])[2] * s * sp.s };
     for (const c of inner.children) { c.userData.bid = id; if (c.material === bodyMat) pickables.push(c); }
+    // round 3 figure/ground: a crisp painted ink outline + a soft contact shadow so each building sits ON the ground
+    if (inkMat) for (const c of [...inner.children]) if (c.material === bodyMat) { const h = new T.Mesh(c.geometry, inkMat); h.castShadow = h.receiveShadow = false; h.userData.ink = true; inner.add(h); }
+    if (blobMat) {
+      const d = SLOT_DIM(k) || [2, 2, 2], bl = new T.Mesh(blobGeo, blobMat);
+      bl.scale.set(d[0] * (k === 'fort' ? 0.58 : 0.7), 1, d[1] * (k === 'fort' ? 0.9 : 0.7)); bl.position.y = 0.03; bl.renderOrder = 2; bl.userData.blob = true;
+      g.add(bl);
+    }
     return g;
   }
   function removeBuilding(g) {
@@ -1022,7 +1075,8 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     if (!envs[fac].group.parent) scene.add(envs[fac].group);
     activeEnv = envs[fac];
     sun.color.set(P.sun); sun.intensity = P.sunI;
-    sun.position.copy(new V3(...P.sunDir).normalize().multiplyScalar(45)).add(sun.target.position);
+    sun.position.copy(new V3(...(P.lightDir || P.sunDir)).normalize().multiplyScalar(45)).add(sun.target.position);
+    sun.shadow.intensity = P.shadowI ?? 1; sun.shadow.radius = P.shadowR ?? 1;
     hemi.color.set(P.hemiSky); hemi.groundColor.set(P.hemiGround); hemi.intensity = P.hemiI;
     amb.color.set(P.amb); amb.intensity = P.ambI;
     scene.fog.color.set(P.fog); scene.fog.near = P.fogNear; scene.fog.far = P.fogFar;
@@ -1030,7 +1084,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     // per-faction tuning of the town's own painted materials (the shared building material is left alone)
     for (const [m, o] of [[groundMat, P.groundTune], [sceneryMat, P.sceneryTune]]) {
       const u = m.userData?.uniforms; if (!u) continue;
-      u.uShade.value.set(o?.shade ?? 0xb4a8f0); u.uLift.value = o?.lift ?? 0.24; u.uToe.value = o?.toe ?? 0.45; u.uDetail.value = o?.detail ?? m.userData.baseDetail;
+      u.uShade.value.set(o?.shade ?? 0xb4a8f0); u.uLift.value = o?.lift ?? 0.24; u.uToe.value = o?.toe ?? 0.45; u.uDetail.value = o?.detail ?? m.userData.baseDetail; u.uSat.value = o?.sat ?? m.userData.baseSat;
     }
   }
 
