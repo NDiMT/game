@@ -1493,7 +1493,7 @@ $('b-end').addEventListener('click', () => {
   $('b-end').classList.remove('confirm');
   endTurn();
 });
-$('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') return; ask('☰ Menu', `Hex Realms ${APP_VERSION}`, [['Resume', null], ['💾 Save & quit', () => { save(); showMenu(); }], [`🎵 Music: ${store.get('realms.music', true) ? 'on' : 'off'}`, () => { store.set('realms.music', !store.get('realms.music', true)); if (store.get('realms.music', true)) score?.start(); else score?.stop(); }]]); });
+$('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') return; ask('☰ Menu', `Orbis ${APP_VERSION}`, [['Resume', null], ['💾 Save & quit', () => { save(); showMenu(); }], [`🎵 Music: ${store.get('realms.music', true) ? 'on' : 'off'}`, () => { store.set('realms.music', !store.get('realms.music', true)); if (store.get('realms.music', true)) score?.start(); else score?.stop(); }]]); });
 
 // ------------------------------------------------------------------ days and weeks
 function endTurn() {
