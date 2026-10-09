@@ -35,7 +35,7 @@ const HORN = 0xf6e6c4, HORN_D = 0xd8bc94;
 const PLUM = 0x7a4068, PLUM_D = 0x5e3656, PLUM_L = 0x9a5a86;
 const IRON = 0x9a8aa4, IRON_L = 0xd4c8dc;
 const HOOF = 0x6e4660;
-const LEATHER = 0x9a5a34, WOOD = 0xa8683a, SKIN = 0xf7c49c, INK = 0x4a2440, BLUE = 0x2f6cf2;
+const LEATHER = 0x9a5a34, WOOD = 0xa8683a, SKIN = 0xf7c49c, INK = 0x4a2440;
 // glow (unlit): lava / fire
 const FIRE_R = 0xff5a1e, FIRE_O = 0xff9a26, FIRE_Y = 0xffe064, EYE = 0xfff27a, LAVA = 0xffb43a;
 
