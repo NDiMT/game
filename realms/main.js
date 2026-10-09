@@ -1024,7 +1024,9 @@ function refreshBattle() {
   const B = BB; if (!B) return;
   for (const s of B.stacks) {
     const lab = $(`bl${s.uid}`); if (!lab) continue;
-    lab.textContent = s.count > 0 ? s.count : '';
+    // labels show what the player has SEEN: pending attack animations update them on impact
+    if (!banim.length || s.shown === undefined) s.shown = s.count;
+    lab.textContent = s.shown > 0 ? s.shown : '';
     lab.hidden = s.count <= 0;
   }
   // highlight what the active stack can do
@@ -1174,7 +1176,8 @@ function playEvent(e, t) {
       d.userData.flash = 0.3;
       bfloat(d.position.clone().setY(1), `-${fmt(e.dmg)}${e.killed ? ` (${e.killed}💀)` : ''}${e.lucky ? ' 🍀' : ''}`, sd.side === 0 ? 'red' : 'gold');
       if (e.retal) bfloat(d.position.clone().setY(1.4), 'Retaliation', 'blue');
-      const lab = $(`bl${sd.uid}`); if (lab) lab.textContent = sd.count > 0 ? sd.count : '';
+      sd.shown = e.left ?? sd.count; if (e.aLeft !== undefined) { sa.shown = e.aLeft; const la = $(`bl${sa.uid}`); if (la) la.textContent = sa.shown > 0 ? sa.shown : ''; }
+      const lab = $(`bl${sd.uid}`); if (lab) lab.textContent = sd.shown > 0 ? sd.shown : '';
     }
     if (e.shown && t >= Math.max(dur - (e.t === 'shot' ? 0.6 : 0), e.shownAt + 0.2)) { a.userData.busy = false; if (sa.count > 0) a.position.copy(hexPos(sa.c, sa.r)); a.rotation.y = sa.side === 0 ? Math.PI : 0; return true; }
     return false;
@@ -1191,14 +1194,14 @@ function playEvent(e, t) {
     }
     if (t >= e.land && !e.shown) {
       e.shown = true; sfx.spell({ kind: e.id });
-      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; const lab = $(`bl${hh.s}`); if (lab) lab.textContent = S(hh.s).count > 0 ? S(hh.s).count : ''; }
+      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; S(hh.s).shown = hh.left ?? S(hh.s).count; const lab = $(`bl${hh.s}`); if (lab) lab.textContent = S(hh.s).shown > 0 ? S(hh.s).shown : ''; }
     }
     return t > e.land + 0.45;
   }
   if (e.t === 'tower') {
     const m = M(e.s);
     if (!e.started) { e.started = true; sfx.shoot({ kind: 'tower' }); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1 * bctx.tower.scale.y) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
-    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (m) { m.userData.flash = 0.3; setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
+    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (S(e.s)) S(e.s).shown = e.left ?? S(e.s).count; if (m) { m.userData.flash = 0.3; setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
   if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.gate({ kind: e.broken ? 'broken' : '' }); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
@@ -1568,7 +1571,7 @@ function newDay() {
   for (const t of G.towns) t.builtToday = false;
   if (newWeek) {
     // each week honours a creature: +5 growth in every town that breeds it
-    const all = [...FACTIONS.haven.units, ...FACTIONS.necro.units], star = all[(rnd() * all.length) | 0];
+    const all = Object.values(FACTIONS).flatMap((f) => f.units), star = all[(rnd() * all.length) | 0];
     G.weekOf = star;
     for (const t of G.towns) for (const b of BUILDINGS) if (b.tier && !b.up && t.built.includes(b.id)) { const base = FACTIONS[t.fac].units[b.tier - 1]; t.avail[b.tier] = (t.avail[b.tier] || 0) + Math.ceil(UNITS[base].grow * (t.built.includes('fort') ? 1.5 : 1)) + (base === star ? 5 : 0); }
     for (const o of G.objects) if (o.alive && o.type === 'monster') o.n = Math.ceil(o.n * 1.08);
@@ -1701,16 +1704,29 @@ function* aiHero(hr) {
       if (last) { interact(hr, path[i]); hr.mp = Math.max(0, hr.mp - 50); moved = true; break; }
       const c = stepCost(path[i - 1], path[i]);
       if (hr.mp < c) { hr.mp = 0; break; }
+      const from = hr.v;
       hr.mp -= c; hr.v = path[i]; moved = true;
-      if (seen[hr.v]) { layoutHeroes(true); }
+      // in sight: walk it step by step so the player watches the enemy move
+      if (seen[from] || seen[hr.v]) {
+        if (!aiWatch) { aiWatch = true; flyTo(hr.v, Math.max(cam.tDist, 9)); toast(`👁️ ${hr.name} (${G.players[hr.p].name}) is on the move`); yield 0.6; }
+        hr.anim = { from, to: hr.v, t: 0 }; layoutHeroes(true);
+        const m = heroMeshes.get(hr.id); if (m) setAnim(m, ANIM.WALK, { seed: hr.id * 2.3 });
+        yield 0.42;
+        hr.anim = null; layoutHeroes(true);
+        if (cam.fly === false && DIRS[hr.v].distanceTo(lookDir()) > 0.25) flyTo(hr.v, cam.tDist);
+      }
     }
     layoutHeroes(true);
     if (!moved) return;
-    yield seen[hr.v] ? 0.3 : 0.02;
+    { const m = heroMeshes.get(hr.id); if (m) setAnim(m, ANIM.IDLE); }
+    yield seen[hr.v] ? 0.35 : 0.02;
     if (G.mode === 'battle') yield 0.1;
   }
 }
+let aiWatch = false;
+const lookDir = () => new THREE.Vector3().setFromSphericalCoords(1, cam.phi, cam.theta);
 function* runAI() {
+  aiWatch = false;
   for (const Pl of G.players) {
     if (!Pl.ai || !Pl.alive) continue;
     for (const t of G.towns) if (t.p === Pl.i) aiTown(t);
@@ -1865,6 +1881,15 @@ function frame() {
       const m = hr && heroMeshes.get(hr.id);
       for (const h of G.heroes) {
         const hm = heroMeshes.get(h.id); if (!hm || !h.alive) continue;
+        if (h.anim && h.p !== 0) {
+          // enemy hero walking in sight: glide between the two hex centres, facing the way it goes
+          const A = h.anim; A.t = Math.min(1, A.t + dt / 0.42);
+          tmpA.copy(posOf(A.from)); tmpB.copy(posOf(A.to));
+          hm.position.copy(tmpA).lerp(tmpB, A.t);
+          const up = hm.position.clone().normalize(), fwd = tmpB.clone().sub(tmpA).projectOnPlane(up).normalize().negate();
+          hm.quaternion.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), fwd, up));
+          continue;
+        }
         const st = (walking && walking.hr === h) || h.anim ? ANIM.WALK : ANIM.IDLE;
         if (hm.userData.animState !== st) { hm.userData.animState = st; setAnim(hm, st, { seed: h.id * 2.3 }); }
       }

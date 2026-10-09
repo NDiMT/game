@@ -119,3 +119,15 @@ New factions in data.js FACTIONS/UNITS/UPGRADES (read them for ids, names, colou
 All rules from rounds 2–5 apply: bright palette (no murk), mobile readability (Round 4: chunky silhouettes, colour blocking, big identity features, check at 40 px & 90 px), and Round 5 shader rig tags (aBone/aPivot via rig.js on body AND glow; read rig.js header conventions, +Z front, +X = *_R weapon side).
 Model contract: `{ body, glow }` with position/normal/color/uv (+ aBone/aPivot), base y=0, facing +Z, ~1 unit tall (tier 6–7 up to ~1.5, dragons wider). Upgrades keep the base silhouette but grander (gold trims, crowns, bigger wings/weapons) — build them with one builder per creature + an `up` flag, like units_haven.js / units_necro.js (read those as reference implementations!).
 Import other modules with the '?v=1.3' query that main.js uses (the lead bumps all ?v= together).
+
+---
+# Round 7: more detail (2026-10-09)
+Player: "design even more detailed units, and their icons, for everything, and heroes".
+Keep EVERYTHING from Rounds 4–6 (silhouette first, colour blocking, value bands, rig tags on body+glow, API/export names identical, base y=0, +Z front, upgrades = same builder with up flag). Now ADD a layer of secondary/tertiary detail that rewards close-up viewing (battle close-ups, portraits) without muddying the silhouette:
+- Faces: eyes with whites/irises or glowing pupils, brows, noses/snouts, mouths/teeth where fitting; hair/beards with locks; helmets with visors, rivets, crests.
+- Armour/clothing: layered plates, trims, belts with buckles, straps, pouches, embroidery bands, cloth folds (subtle extra segments), fur collars, scale/feather patterns via vertex-colour striping on extra segments.
+- Weapons/shields: fullers, guards, grips with wraps, emblems on shields (faction sigil), arrows in quivers.
+- Creatures: claws, scales (banded colour), feathers layered, manes/tails with tufts, wing membranes with veins/bones, horns with ridges.
+- Smoother curved forms: more radial segments on heads/limbs/bodies (8–12 instead of 5–6) so they look sculpted, not boxy.
+- Budget: up to ~4.5k tris per creature (tier 7 / mounted up to ~6k). Still CPU-friendly (merged geometry).
+- Check at 40 px (silhouette must still read) and at large size (detail must look rich). Preview + anim bench check (dev/anim.html supports family:id). Rig tags must still be complete (no ROOT figure parts).

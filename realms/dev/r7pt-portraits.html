@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>R7 Portraits</title>
+<style>html,body{margin:0;background:#1e1a26;color:#f0e0c0;font:11px sans-serif}
+.grid{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px}
+.c{text-align:center;width:var(--w)}.c img{display:block;margin:0 auto 2px}
+h3{margin:8px 8px 0;font-size:12px;color:#ffd890}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.js"}}</script></head>
+<body><div id="out"></div><script type="module">
+import * as THREE from 'three';
+import { UNITS, FACTIONS, UPGRADES, NEUTRALS } from '../data.js?v=1.6';
+import { unitModel } from '../models.js?v=1.6';
+import { havenModel } from '../units_haven.js?v=1.6';
+import { necroModel } from '../units_necro.js?v=1.6';
+import { necroUpModel } from '../units_necro_up.js?v=1.6';
+import { havenUpModel } from '../units_haven_up.js?v=1.6';
+import { neutralModel } from '../units_neutral.js?v=1.6';
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('../units_sylvan.js?v=1.6'), import('../units_inferno.js?v=1.6'), import('../units_dungeon.js?v=1.6')]);
+const FAC_MODEL = { sylvan: SYLm.value?.sylvanModel, inferno: INFm.value?.infernoModel, dungeon: DUNm.value?.dungeonModel };
+const P = await import('../portraits.js?v=1.6');
+const q = new URLSearchParams(location.search);
+const sizes = (q.get('s') || '64,128').split(',').map(Number);
+const only = q.get('f'); // faction filter
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(16, 16);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; r.shadowMap.enabled = true;
+const unitGeo = (id) => { const ff = FAC_MODEL[UNITS[id]?.fac]; if (ff) { const g = ff(id); if (g) return g; } const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
+P.initPortraits(THREE, r, unitGeo);
+const times = [];
+const tm = (f) => { const t = performance.now(); const h = f(); times.push(performance.now() - t); return h; };
+const facs = Object.keys(FACTIONS).filter((f) => !only || f === only);
+let h = '';
+const heroCols = [null, 0xd83a3a, 0x3ac84a, 0xffd83a, 0x3a7aff];
+for (const s of sizes) {
+  const sec = (title, ids) => `<h3>${title} · ${s}px</h3><div class="grid" style="--w:${s + 4}px">${ids.map((id) => `<div class="c">${tm(() => P.portraitImg(id, s))}${s >= 64 ? (UNITS[id]?.name || id) : ''}</div>`).join('')}</div>`;
+  for (const f of facs) h += sec(FACTIONS[f].name, [...FACTIONS[f].units, ...UPGRADES[f]]);
+  if (!only || only === 'neutral') h += sec('Neutral', NEUTRALS);
+  if (P.heroPortraitImg) h += `<h3>Heroes · ${s}px</h3><div class="grid" style="--w:${s + 4}px">${Object.keys(FACTIONS).map((f, i) => `<div class="c">${tm(() => P.heroPortraitImg(f, heroCols[i] ?? FACTIONS[f].color, s))}${f}</div>`).join('')}</div>`;
+}
+times.sort((a, b) => a - b);
+document.getElementById('out').innerHTML = `<h3>${times.length} portraits · median ${times[times.length >> 1]?.toFixed(1)} ms · max ${times[times.length - 1]?.toFixed(1)} ms (swiftshader)</h3>` + h;
+window.ready = true;
+</script></body></html>
