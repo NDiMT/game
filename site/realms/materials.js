@@ -145,7 +145,7 @@ void hxPose(int st, float t, int b, float dn, inout vec3 R, inout vec3 O, inout 
   bool arm = b == 3 || b == 4, legF = b == 5 || b == 6, legB = b == 7 || b == 8, wing = b == 9 || b == 10;
   if (st == 1) { // WALK: 1.9 steps/s pairs, diagonal gait for quadrupeds
     wI = 0.35;
-    float w = 6.2832 * 1.9 * t, sw = sin(w), b2 = 0.5 - 0.5 * cos(2.0 * w);
+    float w = 6.2832 * 1.15 * t, sw = sin(w), b2 = 0.5 - 0.5 * cos(2.0 * w);
     if (b == 1) { O.y = 0.04 * b2; R.x = 0.1; R.y = 0.07 * sw; R.z = 0.035 * sw; }
     else if (b == 2) { R.x = -0.06 + 0.07 * sin(2.0 * w + 0.6 + hxPPh); R.y = -0.06 * sw; }
     else if (arm) R.x = -0.5 * sw * sd * (b == 4 ? 0.6 : 1.0);
@@ -157,7 +157,7 @@ void hxPose(int st, float t, int b, float dn, inout vec3 R, inout vec3 O, inout 
     else if (b == 13) { O.y = 0.015 * (0.5 - 0.5 * cos(2.0 * w + 1.2)); R.x = 0.03 + 0.03 * sin(2.0 * w + 0.6); }
   } else if (st == 6) { // FLY: big wing beats
     wI = 0.3;
-    float w = 6.2832 * 2.4 * t, sw = sin(w);
+    float w = 6.2832 * 1.3 * t, sw = sin(w);
     if (b == 1) { O.y = 0.06 - 0.05 * cos(w); R.x = 0.18; }
     else if (b == 2) R.x = -0.12 + 0.06 * cos(w);
     else if (arm) R.x = 0.25 + 0.08 * sw;
@@ -290,16 +290,16 @@ void hxRig() {
     vec3 fv = position - aPivot;
     float ph = hxSeed * 6.2832 + hxPPh, fd = clamp(length(fv) / 0.3, 0.0, 2.5);
     float hz = clamp(length(fv.xz) / max(length(fv), 1e-4) * 1.4, 0.0, 1.0); // 0 hanging, 1 sideways
-    float wv = sin(6.2832 * 1.1 * uTime - 2.4 * fd + ph);
-    mat3 M = hxRy(fd * mix(0.03, 0.34, hz) * wv) * hxRz(fd * mix(0.07, 0.05, hz) * sin(6.2832 * 0.9 * uTime - 1.8 * fd + ph + 1.3))
-           * hxRx(fd * mix(0.015, 0.06, hz) * sin(6.2832 * 1.7 * uTime + ph));
+    float wv = sin(6.2832 * 0.6 * uTime - 2.4 * fd + ph);
+    mat3 M = hxRy(fd * mix(0.03, 0.34, hz) * wv) * hxRz(fd * mix(0.07, 0.05, hz) * sin(6.2832 * 0.5 * uTime - 1.8 * fd + ph + 1.3))
+           * hxRx(fd * mix(0.015, 0.06, hz) * sin(6.2832 * 0.8 * uTime + ph));
     hxRP = M * (position - aPivot) + aPivot; hxRR = M;
     if (uRigBody.w >= 2.0) hxApply(1, uRigBody.xyz, 0.0); // a flag carried by a figure (hero banner) follows its BODY
     return;
   }
   if (b == 12 && position.y > aPivot.y + 0.005 && uRigBody.w < 2.0) { // CLOTH rising from its pivot on a prop = flame: flicker
-    float ph = hxSeed * 6.2832 + hxPPh, fl = 0.6 * sin(6.2832 * 3.1 * uTime + ph) + 0.4 * sin(6.2832 * 5.3 * uTime + ph * 2.7);
-    mat3 M = hxRz(0.1 * sin(6.2832 * 1.7 * uTime + ph)) * hxRx(0.08 * sin(6.2832 * 2.3 * uTime + ph + 1.0));
+    float ph = hxSeed * 6.2832 + hxPPh, fl = 0.6 * sin(6.2832 * 1.3 * uTime + ph) + 0.4 * sin(6.2832 * 2.1 * uTime + ph * 2.7);
+    mat3 M = hxRz(0.1 * sin(6.2832 * 0.8 * uTime + ph)) * hxRx(0.08 * sin(6.2832 * 1.1 * uTime + ph + 1.0));
     hxRP = M * ((position - aPivot) * vec3(1.0 - 0.05 * fl, 1.0 + 0.14 * fl, 1.0 - 0.05 * fl)) + aPivot; hxRR = M; return;
   }
   if (b != 1) hxApply(b, aPivot, dn);

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE } from './rig.js?v=0.7';
+import { BONE } from './rig.js?v=0.8';
 
 // =====================================================================
 // HEX REALMS: Haven (castle) creatures, round 4 "phone readability" pass.
