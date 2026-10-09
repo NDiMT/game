@@ -15,7 +15,8 @@ const q = new URLSearchParams(location.search);
 const src = q.get('src') || '..';
 const { havenModel, HAVEN_IDS } = await import(src + '/units_haven.js' + v);
 const { havenUpModel, HAVEN_UP_IDS } = await import(src + '/units_haven_up.js' + v);
-const { makeBodyMaterial, makeGlowMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, tick } = await import('../materials.js' + v);
+const { makeBodyMaterial, makeGlowMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, tick, setAnim } = await import('../materials.js' + v);
+const { ANIM } = await import('../rig.js' + v);
 const { unitFit, applyFit } = await import('../unit_fit.js' + v);
 
 const FOV = 30, TAN = Math.tan(THREE.MathUtils.degToRad(FOV / 2)), ELEV = THREE.MathUtils.degToRad(46);
@@ -67,7 +68,11 @@ for (const id of all) {
   info.push({ id, tris, h: +fit.height.toFixed(3), top: +fit.top.toFixed(3), scale: +fit.scale.toFixed(3) });
 }
 window.info = info;
-tick(1.0);
+// ?anim=ATTACK&t=0.35 poses every unit in that rig state (upgrades included)
+const an = q.get('anim');
+tick(0);
+if (an) for (const id of all) setAnim(groups[id], ANIM[an]);
+tick(an ? +(q.get('t') ?? 0.35) : 1.0);
 const cam = new THREE.PerspectiveCamera(FOV, 1, 0.05, 100);
 r.setScissorTest(true);
 r.setViewport(0, 0, W, H); r.setScissor(0, 0, W, H); r.setClearColor(0x2c3440); r.clear();

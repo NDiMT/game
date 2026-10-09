@@ -77,7 +77,7 @@ function makeKit(seed, bodyPivot = [0, 0.42, 0]) {
       ng.applyMatrix4(k.M);
       if (k.M.determinant() < 0) flip(ng);
       const pr = { bone: rig.b, pivot: rig.p, col: new THREE.Color(col), grad: o.grad ?? [0.9, 1.06], glow: !!o.glow, ao: o.ao ?? true, noise: o.noise ?? 0.025, top: o.top,
-        band: o.band, bandCol: o.bandCol != null ? new THREE.Color(o.bandCol) : null, mottle: o.mottle ?? 0 };
+        under: o.under ?? 0, band: o.band, bandCol: o.bandCol != null ? new THREE.Color(o.bandCol) : null, mottle: o.mottle ?? 0 };
       parts.push({ g: ng, ...pr });
       // two-sided sheet (capes, pennants): add a back face, nudged inward a hair
       if (o.both) { const bg = ng.clone(); flip(bg); parts.push({ g: bg, ...pr }); }
@@ -167,7 +167,9 @@ function finish(parts, seed) {
       // (helps the steep battle camera), down-facing ones get a soft cool shade
       const t0 = i - (i % 9);
       _a.fromArray(P, t0); _b.fromArray(P, t0 + 3).sub(_a); _c.fromArray(P, t0 + 6).sub(_a);
-      const ny = _b.cross(_c).normalize().y || 0;
+      const fn = _b.cross(_c).normalize(), ny = fn.y || 0;
+      // thin sheets (membranes): faces turned away from the sun get lifted so the shaded side never goes murky
+      if (pt.under) { const sd = fn.x * 0.35 + fn.y * 0.87 + fn.z * 0.26; if (sd < 0.55) m *= 1 + pt.under * Math.min(1, (0.55 - sd) * 1.2); }
       let ao = 1, cool = 0;
       if (!pt.glow) {
         m *= 1 + 0.12 * Math.max(0, ny) - 0.07 * Math.max(0, -ny);
@@ -1125,11 +1127,12 @@ function dragonWing(k, o) {
     k.stick(new THREE.ConeGeometry(0.018, 0.06, 4).translate(0, 0.03, 0), t, V3(t).add(d).toArray(), o.claw ?? IVORY, {});
   }
   const W = V3(wrist), anchors = [...tips, back];
-  const P1 = [], P2 = [], PE = [];
+  const P1 = [], P2 = [], PE = [], B1 = [], B2 = [], BE = [];
+  const bk = new Map([[P1, B1], [P2, B2], [PE, BE]]);
   const tri = (P, a, b, c) => {
     const n = b.clone().sub(a).cross(c.clone().sub(a)).normalize().multiplyScalar(th);
     P.push(...a.toArray(), ...b.toArray(), ...c.toArray());
-    P.push(...a.clone().add(n).toArray(), ...c.clone().add(n).toArray(), ...b.clone().add(n).toArray());
+    bk.get(P).push(...a.clone().add(n).toArray(), ...c.clone().add(n).toArray(), ...b.clone().add(n).toArray());
   };
   // each panel: inner part (lighter) and an outer rim strip (edge colour) toward the scallop
   const panel = (P, A, B, C, f = 0.8) => {
@@ -1143,9 +1146,9 @@ function dragonWing(k, o) {
     panel(P, W, a, m); panel(P, W, m, b);
   }
   tri(P1, W, V3(back), V3(elbow)); tri(P1, V3(elbow), V3(back), V3(root));
-  for (const [P, c] of [[P1, mem], [P2, mem2 ?? mem], [PE, o.edge ?? mem2 ?? mem]]) {
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-    k.add(g, c, { grad: [0.9, 1.08], noise: 0.02 });
+  for (const [P, c] of [[P1, mem], [P2, mem2 ?? mem], [PE, o.edge ?? mem2 ?? mem]]) for (const Q of [P, bk.get(P)]) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Q, 3));
+    k.add(g, c, { grad: [0.9, 1.08], noise: 0.02, under: 0.9 });
   }
   // veins: thin ribs from the fingers' bases fanning into the membrane
   for (let i = 0; i < anchors.length - 1; i++) {

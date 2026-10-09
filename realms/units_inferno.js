@@ -386,7 +386,7 @@ function batWing(k, sh, o) {
   Fp.forEach((f, i) => {
     const rr = r * (i ? 0.55 : 0.7), mid = Wp.clone().lerp(f, 0.48);
     k.limb(Wp.toArray(), mid.toArray(), rr, rr * 0.7, edge, { seg: 5 });
-    k.ball(rr * 0.85, mid.toArray(), edge, { d: 0 }); // knuckle
+    if (i < 2) k.ball(rr * 0.85, mid.toArray(), edge, { d: 0 }); // knuckle
     k.limb(mid.toArray(), f.toArray(), rr * 0.7, 0.008, edge, { seg: 4 });
   });
   // claw on the wrist (thumb)

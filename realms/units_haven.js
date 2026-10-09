@@ -783,7 +783,7 @@ function swordsman(U) {
     plume(k, [0, HY + 0.15, -0.03], [WHITE, CRIMSON, WHITE], 1.25);
   } else {
     k.plate([[-0.1, 0], [0.1, 0], [0.06, 0.05], [-0.06, 0.05]], 0.02, [0, HY + 0.13, -0.01], STEEL_L, { r: [0, Math.PI / 2, 0] }); // crest ridge
-    plume(k, [0, HY + 0.14, -0.02], [BLUE_L, WHITE], 0.95);
+    plume(k, [0, HY + 0.14, -0.02], [BLUE_L, WHITE, BLUE_L], 1.05);
   }
   });
   // broad sword raised in the right hand, flat facing the camera: fullered blade,
