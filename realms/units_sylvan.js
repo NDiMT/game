@@ -169,7 +169,7 @@ function finish(parts, seed) {
       _a.fromArray(P, t0); _b.fromArray(P, t0 + 3).sub(_a); _c.fromArray(P, t0 + 6).sub(_a);
       const fn = _b.cross(_c).normalize(), ny = fn.y || 0;
       // thin sheets (membranes): faces turned away from the sun get lifted so the shaded side never goes murky
-      if (pt.under) { const sd = fn.x * 0.35 + fn.y * 0.87 + fn.z * 0.26; if (sd < 0.55) m *= 1 + pt.under * Math.min(1, (0.55 - sd) * 1.2); }
+      if (pt.under) { const sd = fn.x * 0.35 + fn.y * 0.87 + fn.z * 0.26; if (sd < 0.55) m *= 1 + pt.under * Math.min(1, (0.55 - sd) * 1.2); if (globalThis.__dbgUnder) m *= 3; }
       let ao = 1, cool = 0;
       if (!pt.glow) {
         m *= 1 + 0.12 * Math.max(0, ny) - 0.07 * Math.max(0, -ny);
