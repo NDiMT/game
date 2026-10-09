@@ -299,8 +299,8 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 .bq .q { position: relative; width: 36px; height: 36px; flex: none; border-radius: 10px; display: grid; place-items: center; line-height: 1;
   background: radial-gradient(circle at 50% 35%, #5a86ec, #1d2d70 85%); box-shadow: 0 0 0 2px #8ab8ff, 0 0 0 3.5px var(--ink); }
 .bq .q.s1 { background: radial-gradient(circle at 50% 35%, #ef6a58, #6a1a1a 85%); box-shadow: 0 0 0 2px #ff9a86, 0 0 0 3.5px var(--ink); }
-.bq .q.now { width: 46px; height: 46px; margin: 0 3px 0 2px; box-shadow: 0 0 0 2.5px #ffe27a, 0 0 0 4.5px var(--ink), 0 0 14px 3px rgba(255, 211, 92, 0.75); animation: nowpulse 1.2s ease-in-out infinite; }
-@keyframes nowpulse { 50% { box-shadow: 0 0 0 2.5px #fff3b0, 0 0 0 4.5px var(--ink), 0 0 20px 6px rgba(255, 211, 92, 0.9); } }
+.bq .q.now { width: 46px; height: 46px; margin: 0 3px 0 2px; box-shadow: 0 0 0 2.5px #ffe27a, 0 0 0 4.5px var(--ink), 0 0 12px 2px rgba(255, 211, 92, 0.7); }
+.bq .q.now::after { content: ''; position: absolute; inset: -5px; border-radius: 13px; pointer-events: none; box-shadow: 0 0 14px 5px rgba(255, 220, 110, 0.9); animation: glow 1.2s ease-in-out infinite; }
 .bq .q img.pt { border-radius: 10px; }
 .bq .q b { --ol: #000; position: absolute; right: 1px; bottom: -1px; font-size: 11px; font-weight: 900; color: #fff; }
 .bq .q:nth-child(n + 6) { opacity: 0.85; }
@@ -325,9 +325,8 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 #b-def { --face: radial-gradient(circle at 50% 30%, #9ad0ff, #2f7ab8 55%, #164070) !important; }
 #b-spell:not(:disabled) { --face: radial-gradient(circle at 50% 30%, #d7a8ff, #8a4ae0 55%, #4a1e98) !important; }
 #b-auto { --face: radial-gradient(circle at 50% 30%, #f2c890, #b0702e 55%, #5e3410) !important; }
-#b-auto.on { --face: radial-gradient(circle at 50% 30%, #fff5b0, #ffc93c 55%, #c47a14) !important; box-shadow: 0 0 0 2px var(--ink), 0 0 18px 4px rgba(255, 211, 92, 0.8), 0 5px 0 1px var(--ink) !important; animation: spinglow 1.6s linear infinite; }
+#b-auto.on { --face: radial-gradient(circle at 50% 30%, #fff5b0, #ffc93c 55%, #c47a14) !important; box-shadow: 0 0 0 2px var(--ink), 0 0 18px 4px rgba(255, 211, 92, 0.8), 0 5px 0 1px var(--ink) !important; }
 #b-auto.on .ic { animation: spin 2.4s linear infinite; }
-@keyframes spinglow { 50% { filter: brightness(1.15); } }
 #b-quick { --face: radial-gradient(circle at 50% 30%, #ffb08a, #e8562c 55%, #8a2010) !important; }
 #battle .fb:disabled { filter: grayscale(0.85) brightness(0.7); }
 #blabels { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
