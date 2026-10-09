@@ -1,37 +1,37 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=1.4';
-import { havenModel } from './units_haven.js?v=1.4';
-import { necroModel } from './units_necro.js?v=1.4';
-import { necroUpModel } from './units_necro_up.js?v=1.4';
-import { havenUpModel } from './units_haven_up.js?v=1.4';
-import { neutralModel } from './units_neutral.js?v=1.4';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=1.4';
-import { objectModel } from './models_objects.js?v=1.4';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.4';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.4';
-import { createTownView } from './town_view.js?v=1.4';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.4';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.4';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.4';
+import { mulberry32, unitModel } from './models.js?v=1.5';
+import { havenModel } from './units_haven.js?v=1.5';
+import { necroModel } from './units_necro.js?v=1.5';
+import { necroUpModel } from './units_necro_up.js?v=1.5';
+import { havenUpModel } from './units_haven_up.js?v=1.5';
+import { neutralModel } from './units_neutral.js?v=1.5';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=1.5';
+import { objectModel } from './models_objects.js?v=1.5';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.5';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.5';
+import { createTownView } from './town_view.js?v=1.5';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.5';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.5';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.5';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
-const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.4'), import('./units_inferno.js?v=1.4'), import('./units_dungeon.js?v=1.4')]);
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.5'), import('./units_inferno.js?v=1.5'), import('./units_dungeon.js?v=1.5')]);
 const FAC_MODEL = { sylvan: SYLm.value?.sylvanModel, inferno: INFm.value?.infernoModel, dungeon: DUNm.value?.dungeonModel };
-import * as BT from './battle.js?v=1.4';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.4';
-import { createScore } from './music.js?v=1.4';
-import { unitFit, applyFit } from './unit_fit.js?v=1.4';
-import { createMapFx } from './mapfx.js?v=1.4';
+import * as BT from './battle.js?v=1.5';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.5';
+import { createScore } from './music.js?v=1.5';
+import { unitFit, applyFit } from './unit_fit.js?v=1.5';
+import { createMapFx } from './mapfx.js?v=1.5';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.4';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.5';
 
 // =====================================================================
-// HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
-// Lead your heroes across the world, flag mines, gather treasure, build
-// your town and recruit its creatures, and defeat the rival lords in
-// turn-based battles on a hex battlefield.
+// ORBIS · Five Crowns: a pocket strategy game on a tiny hex planet.
+// Five crowns, one tiny world. Lead your heroes across the world, flag
+// mines, gather treasure, build your town and recruit its creatures, and
+// defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -229,7 +229,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=1.4';
+import { createPlanet } from './terrain.js?v=1.5';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -769,7 +769,7 @@ function interact(hr, v) {
   }
   if (!o) return;
   const O = OBJECTS[o.type], kind = O?.kind;
-  // guarded: a monster standing next to a mine, chest, site or town must be beaten first (as in HoMM)
+  // guarded: a monster standing next to a mine, chest, site or town must be beaten first
   if (o.type !== 'monster') {
     const guard = NBR[v].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((g) => g && g.alive && g.type === 'monster');
     if (guard) {
@@ -898,8 +898,8 @@ function levelUp(hr) {
 function showLevel() {
   const L = pendingLevels[0];
   if (!L) return;
-  const names = { att: '🗡️ Attack', def: '🛡️ Defence', pow: '🔮 Power', know: '📘 Knowledge' };
-  ask(`⭐ ${L.hr.name} reaches level ${L.hr.lvl}`, `${names[L.stat]} +1. Choose a skill:`, L.opts.map((k) => [`${icon(k, 20)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc]), true);
+  const names = { att: 'Attack', def: 'Defence', pow: 'Power', know: 'Knowledge' };
+  ask(`${icon('experience', 22)} Level ${L.hr.lvl}!`, `<p><b>${L.hr.name}</b> grows stronger.</p><p class="chips" style="justify-content:center"><span class="chip">${icon(L.stat, 18)}${names[L.stat]} <em>+1</em></span></p><p class="sec">Choose a skill</p>`, L.opts.map((k) => [`${icon(k, 20)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc, 'choice']), true);
   sfx.fanfare();
 }
 
@@ -1048,7 +1048,7 @@ function refreshBattle() {
   $('b-spell').innerHTML = `${icon('spellbook', 24)}<small>${h0 ? `Mana ${h0.mana}` : 'Spells'}</small>`;
   $('b-wait').disabled = $('b-def').disabled = !mineTurn;
   $('b-auto').classList.toggle('on', bauto);
-  $('b-msg').innerHTML = !s ? '' : mineTurn ? (bspell ? `${SPELLS[bspell].icon} Choose a target for ${SPELLS[bspell].name}` : `${UNITS[s.id].name} (${s.count}) · ${BT.canShoot(B, s) ? `🏹 ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move or a red enemy to attack'}`) : sideOwner(s.side) === 0 ? (bauto ? 'Auto battle…' : '…') : `Enemy ${UNITS[s.id].name} (${s.count})…`;
+  $('b-msg').innerHTML = !s ? '' : mineTurn ? (bspell ? `${icon(bspell, 18)} Choose a target for <b>${SPELLS[bspell].name}</b>` : `<b>${UNITS[s.id].name} ×${s.count}</b> · ${BT.canShoot(B, s) ? `${icon('shots', 16)} ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move, a red enemy to attack'}`) : sideOwner(s.side) === 0 ? (bauto ? `${icon('auto', 16)} Auto battle…` : '…') : `Enemy ${UNITS[s.id].name} ×${s.count} is acting…`;
 }
 const sideOwner = (side) => bctx.sides[side].owner;
 function battleTap(cx, cy) {
@@ -1082,7 +1082,7 @@ function battleTap(cx, cy) {
       if (!shoot && !adj0 && !BT.attackFrom(B, s, t).length) { toast('Too far to reach this turn.'); sfx.deny(); return; }
       const est = BT.estimate(B, s, t, shoot);
       bpreview = t.uid; sfx.click();
-      $('b-msg').innerHTML = `${shoot ? '🏹' : '⚔️'} ${est.lo === est.hi ? est.lo : `${est.lo}–${est.hi}`} damage · kills ${est.klo === est.khi ? est.klo : `${est.klo}–${est.khi}`} of ${t.count} ${plural(t.id, t.count)} · <b>tap again</b>`;
+      $('b-msg').innerHTML = `${icon(shoot ? 'shots' : 'attack', 16)} ${est.lo === est.hi ? est.lo : `${est.lo}–${est.hi}`} damage · kills ${est.klo === est.khi ? est.klo : `${est.klo}–${est.khi}`} of ${t.count} ${plural(t.id, t.count)} · <b>tap again to strike</b>`;
       return;
     }
     bpreview = null;
@@ -1104,7 +1104,7 @@ $('b-auto').addEventListener('click', () => { bauto = !bauto; bspell = null; ref
 $('b-quick').addEventListener('click', () => { if (!BB || BB.over) return; BT.autoResolve(BB); BB.events.length = 0; banim = []; endBattleScreen(); });
 $('b-spell').addEventListener('click', () => {
   const h0 = BB?.heroes[0]; if (!h0) return;
-  ask(`${icon('spellbook', 20)} Spellbook`, `Mana ${h0.mana}. One spell per round.`, h0.spells.map((id) => [`${icon(id, 22)} ${SPELLS[id].name} · ${icon('mana', 14)}${SPELLS[id].mana}`, h0.mana >= SPELLS[id].mana ? () => { bspell = id; refreshBattle(); } : null, SPELLS[id].desc]).concat([['Close', null]]));
+  ask(`${icon('spellbook', 22)} Spellbook`, `<p class="chips" style="justify-content:center"><span class="chip">${icon('mana', 18)}<em>${h0.mana}</em> mana</span><span class="chip">One spell per round</span></p>`, h0.spells.map((id) => [`${icon(id, 22)} ${SPELLS[id].name} · ${icon('mana', 14)}${SPELLS[id].mana}`, h0.mana >= SPELLS[id].mana ? () => { bspell = id; refreshBattle(); } : undefined, SPELLS[id].desc, 'choice']).concat([['Close', null, '', 'ghost']]));
 });
 // battle animation: events play one after another
 const bfloat = (pos, text, cls) => floatText(pos, text, cls, bcam);
@@ -1249,7 +1249,7 @@ function finishBattle(B, ctx) {
   if (sides[0].owner === 0 || sides[1].owner === 0) {
     const me = sides[0].owner === 0 ? 0 : 1, won = winSide === me;
     const list = (arr) => (arr.length ? arr.map(([id, n]) => `${unitIcon(id)} ${n} ${plural(id, n)}`).join('<br>') : 'None');
-    showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p>⭐ +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
+    showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p class="xp-line">${icon('experience', 18)} +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
     won ? sfx.fanfare() : sfx.deny();
   }
   // after the battle summary, so the casualties card comes first
@@ -1306,33 +1306,33 @@ function renderTown() {
   townView.setTown({ fac: t.fac, built: t.built, name: t.name });
   for (const b of document.querySelectorAll('#town .tabs2 button')) b.classList.toggle('on', b.dataset.t === townTab);
   $('t-name').textContent = t.name;
-  $('t-sub').innerHTML = `${FACTIONS[t.fac].name} · 🪙 +${fmt(townIncome(t))}/day · ${t.builtToday ? '🔨 built today' : '🔨 can build'}`;
+  $('t-sub').innerHTML = `<span>${FACTIONS[t.fac].name}</span><span class="nw">${icon('gold', 14)} +${fmt(townIncome(t))}/day</span>${t.p === 0 ? `<span class="pill${t.builtToday ? ' off' : ''}">${t.builtToday ? 'Built today' : 'Can build'}</span>` : ''}`;
   let html = '';
   if (townTab === 'build') {
     html = BUILDINGS.map((b) => {
       const has = t.built.includes(b.id), reqOk = b.req.every((r) => t.built.includes(r)), can = !has && reqOk && !t.builtToday && canPay(t.p, b.cost);
       const name = b.tier ? `${b.up ? '⬆️ ' : ''}${UNITS[b.up ? UPGRADES[t.fac][b.tier - 1] : FACTIONS[t.fac].units[b.tier - 1]].name} dwelling` : b.name;
-      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : icon(b.id, 28)}</i><div><b>${name}</b><small>${has ? '✓ Built' : reqOk ? costText(b.cost) : `Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}`}</small><small class="d">${b.desc}</small></div>${has ? '' : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
+      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : icon(b.id, 30)}</i><div><b>${name}</b>${has ? '<small class="ok">Built</small>' : reqOk ? `<small>${costText(b.cost)}</small>` : `<small class="req">${icon('lock', 13)} Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}</small>`}<small class="d">${b.desc}</small></div>${has ? `<span class="done">${icon('check', 18)}</span>` : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
     }).join('');
   } else if (townTab === 'recruit') {
     const tiers = [...new Set(BUILDINGS.filter((b) => b.tier && t.built.includes(b.id)).map((b) => b.tier))].sort((x, y) => x - y);
     html = tiers.length ? tiers.map((tier) => {
       const id = tierUnit(t, tier), u = UNITS[id], n = t.avail[tier] || 0, max = Math.min(n, ...RES.filter((r) => u.cost[r]).map((r) => Math.floor(Pl.res[r] / u.cost[r])));
-      return `<div class="row-b"><i>${unitIcon(id)}</i><div><b>${u.name} <em>×${n}</em></b><small>${costText(u.cost)} · ${icon('attack', 13)}${u.att} ${icon('defense', 13)}${u.def} ${icon('hp', 13)}${u.hp} ${icon('damage', 13)}${u.dmg[0]}–${u.dmg[1]} ${icon('movement', 13)}${u.spd}${u.ranged ? ` ${icon('shots', 13)}` : ''}${u.fly ? ` ${icon('fly', 13)}` : ''}</small></div><button data-rec="${tier}" data-n="${max}" ${max > 0 ? '' : 'disabled'}>Buy ${max}</button></div>`;
+      return `<div class="row-b"><i>${unitIcon(id)}</i><div><b>${u.name} <em>${n} available</em></b><small>${costText(u.cost)} <span>each</span></small><small class="stats2"><span>${icon('attack', 13)}${u.att}</span><span>${icon('defense', 13)}${u.def}</span><span>${icon('hp', 13)}${u.hp}</span><span>${icon('damage', 13)}${u.dmg[0]}–${u.dmg[1]}</span><span>${icon('movement', 13)}${u.spd}</span>${u.ranged ? `<span>${icon('shots', 13)}</span>` : ''}${u.fly ? `<span>${icon('fly', 13)}</span>` : ''}</small></div><button data-rec="${tier}" data-n="${max}" ${max > 0 ? '' : 'disabled'}>Recruit<small>×${max}</small></button></div>`;
     }).join('') + '<p class="hint2">Recruits join the hero beside the town, or the garrison.</p>' : '<p class="hint2">Build a dwelling to recruit creatures.</p>';
   } else if (townTab === 'army') {
     const row = (title, army, who) => `<div class="armyrow"><b>${title}</b><div class="slots">${Array.from({ length: 7 }, (_, i) => army[i] && army[i][1] > 0 ? `<button data-move="${who}:${i}">${unitIcon(army[i][0])}<em>${army[i][1]}</em></button>` : '<button disabled></button>').join('')}</div></div>`;
-    html = row('🏰 Garrison', t.garrison, 'g') + (vis ? row(`🐎 ${vis.name}`, vis.army, 'h') : '<p class="hint2">No hero beside the town.</p>') + '<p class="hint2">Tap a stack to move it across.</p>';
+    html = row(`${icon('town', 18)} Garrison`, t.garrison, 'g') + (vis ? row(`${icon('hero', 18)} ${vis.name}`, vis.army, 'h') : '<p class="hint2">No hero beside the town.</p>') + '<p class="hint2">Tap a stack to move it across.</p>';
     // upgrades for troops whose upgraded dwelling stands here
     const ups = [];
-    for (const [who, army] of [['g', t.garrison], ['h', vis?.army]]) if (army) army.forEach((st, i) => { if (!st || st[1] <= 0) return; const tier = UNITS[st[0]].tier, upId = UPGRADES[t.fac]?.[tier - 1]; if (UNITS[st[0]].fac === t.fac && !UNITS[st[0]].up && t.built.includes(`u${tier}`) && upId) { const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))])); ups.push(`<div class="row-b"><i>${unitIcon(st[0])}</i><div><b>${st[1]} ${plural(st[0], st[1])} → ${plural(upId, st[1])}</b><small>${costText(Object.fromEntries(RES.map((r) => [r, cost[r] * st[1]])))}</small></div><button data-up="${who}:${i}" ${canPay(t.p, cost, st[1]) ? '' : 'disabled'}>Upgrade</button></div>`); } });
+    for (const [who, army] of [['g', t.garrison], ['h', vis?.army]]) if (army) army.forEach((st, i) => { if (!st || st[1] <= 0) return; const tier = UNITS[st[0]].tier, upId = UPGRADES[t.fac]?.[tier - 1]; if (UNITS[st[0]].fac === t.fac && !UNITS[st[0]].up && t.built.includes(`u${tier}`) && upId) { const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))])); ups.push(`<div class="row-b"><i>${unitIcon(st[0])}</i><div><b>${icon('upgrade', 14)} ${st[1]} ${plural(st[0], st[1])} → ${plural(upId, st[1])}</b><small>${costText(Object.fromEntries(RES.map((r) => [r, cost[r] * st[1]])))}</small></div><button data-up="${who}:${i}" ${canPay(t.p, cost, st[1]) ? '' : 'disabled'}>Upgrade</button></div>`); } });
     if (ups.length) html += ups.join('');
   } else if (townTab === 'more') {
     const tav = t.built.includes('tavern'), mk = t.built.includes('market');
     const heroes = G.heroes.filter((x) => x.alive && x.p === t.p).length;
-    html = `<div class="row-b ${tav ? '' : 'lock'}"><i>🍺</i><div><b>Tavern</b><small>${tav ? 'Hire a new hero with a few troops (2500 gold).' : 'Build a Tavern first.'}</small></div><button data-hire="1" ${tav && heroes < 4 && canPay(t.p, { gold: 2500 }) && !heroAt(t.v) ? '' : 'disabled'}>Hire</button></div>`;
-    html += `<div class="row-b ${mk ? '' : 'lock'}"><i>⚖️</i><div><b>Marketplace</b><small>${mk ? 'Buy and sell resources.' : 'Build a Marketplace first.'}</small></div></div>`;
-    if (mk) for (const r of ['wood', 'ore', 'gems']) { const buy = r === 'gems' ? 500 : 250, sell = r === 'gems' ? 200 : 100; html += `<div class="row-b"><i>${RES_ICON[r]}</i><div><b>${r[0].toUpperCase() + r.slice(1)}</b><small><span class="nw">Buy 1: ${icon('gold', 13)}${buy}</span> · <span class="nw">Sell 1: ${icon('gold', 13)}${sell}</span></small></div><button data-buy="${r}" ${Pl.res.gold >= buy ? '' : 'disabled'}>Buy</button><button data-sell="${r}" ${Pl.res[r] > 0 ? '' : 'disabled'}>Sell</button></div>`; }
+    html = `<div class="row-b ${tav ? '' : 'lock'}"><i>${icon('tavern', 30)}</i><div><b>Tavern</b>${tav ? `<small>Hire a new hero with a few troops.</small><small><span class="nw">${icon('gold', 13)}2,500</span></small>` : `<small class="req">${icon('lock', 13)} Build a Tavern first</small>`}</div><button data-hire="1" ${tav && heroes < 4 && canPay(t.p, { gold: 2500 }) && !heroAt(t.v) ? '' : 'disabled'}>Hire</button></div>`;
+    html += `<div class="row-b ${mk ? '' : 'lock'}"><i>${icon('market', 30)}</i><div><b>Marketplace</b>${mk ? '<small>Buy and sell resources, one at a time.</small>' : `<small class="req">${icon('lock', 13)} Build a Marketplace first</small>`}</div></div>`;
+    if (mk) for (const r of ['wood', 'ore', 'gems']) { const buy = r === 'gems' ? 500 : 250, sell = r === 'gems' ? 200 : 100; html += `<div class="row-b"><i>${icon(r, 30)}</i><div><b>${r[0].toUpperCase() + r.slice(1)} <em>${fmt(Pl.res[r])} owned</em></b><small><span class="nw">Buy ${icon('gold', 13)}${buy}</span><span class="nw">Sell ${icon('gold', 13)}${sell}</span></small></div><button data-buy="${r}" ${Pl.res.gold >= buy ? '' : 'disabled'}>Buy</button><button data-sell="${r}" ${Pl.res[r] > 0 ? '' : 'disabled'}>Sell</button></div>`; }
   }
   if (t.p !== 0) html = `<p class="hint2">${G.players[t.p]?.name || 'An enemy'} rules this town. Capture it to build and recruit here.</p>`;
   $('t-body').innerHTML = html;
@@ -1387,14 +1387,16 @@ function buildIn(t, id) {
 function openHero() {
   const hr = selHero(); if (!hr) return;
   const st = (k, ic, n) => `<div class="st"><i>${ic}</i><b>${statOf(hr, k)}</b><small>${n}</small></div>`;
-  const next = xpFor(hr.lvl + 1), prev = xpFor(hr.lvl);
-  showMsg(`🐎 ${hr.name}`, `<p class="sub">Level ${hr.lvl} · ⭐ ${fmt(hr.xp)} / ${fmt(next)}</p><div class="xpbar"><i style="width:${((hr.xp - prev) / (next - prev)) * 100}%"></i></div>
+  const next = xpFor(hr.lvl + 1), prev = xpFor(hr.lvl), pct = (a, b) => clamp((a / Math.max(1, b)) * 100, 0, 100);
+  const chips = (arr, none) => (arr.length ? `<div class="chips">${arr.join('')}</div>` : `<p class="none">${none}</p>`);
+  showMsg(`${icon('hero', 24)} ${hr.name}`, `<div class="hs-head"><span class="hs-lv"><small>Level</small><b>${hr.lvl}</b></span><div class="hs-xp"><div class="xpbar"><i style="width:${pct(hr.xp - prev, next - prev)}%"></i></div><small>${icon('experience', 14)} ${fmt(hr.xp)} / ${fmt(next)} experience</small></div></div>
     <div class="stats">${st('att', icon('attack', 24), 'Attack')}${st('def', icon('defense', 24), 'Defence')}${st('pow', icon('power', 24), 'Power')}${st('know', icon('knowledge', 24), 'Knowledge')}</div>
-    <p class="sub">🔮 Mana ${hr.mana}/${maxMana(hr)} · 🐎 ${hr.mp}/${moveMax(hr)}</p>
+    <div class="meters"><div class="meter"><span>${icon('mana', 16)}</span>Mana<b>${hr.mana}/${maxMana(hr)}</b><i><i style="width:${pct(hr.mana, maxMana(hr))}%"></i></i></div><div class="meter mp"><span>${icon('movement', 16)}</span>Move<b>${fmt(hr.mp)}</b><i><i style="width:${pct(hr.mp, moveMax(hr))}%"></i></i></div></div>
+    <h3 class="sec">Army</h3>
     <div class="slots big">${Array.from({ length: 7 }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
-    <p class="sub">${Object.keys(hr.skills).map((k) => `${icon(k, 16)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][hr.skills[k]]}`).join(' · ') || 'No skills yet'}</p>
-    <p class="sub">${hr.spells.map((id) => `${icon(id, 16)} ${SPELLS[id].name}`).join(' · ') || 'No spells'}</p>
-    <p class="sub">${hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `${A.icon} ${A.name}`; }).join(' · ') || 'No artifacts'}</p>`, true);
+    <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${icon(k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
+    <h3 class="sec">Spells</h3>${chips(hr.spells.map((id) => `<span class="chip">${icon(id, 18)}${SPELLS[id].name}</span>`), 'No spells yet: build a Mage Guild')}
+    <h3 class="sec">Artifacts</h3>${chips(hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; }), 'No artifacts yet')}`, true);
 }
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
@@ -1416,7 +1418,8 @@ function renderDialog() {
   $('dlg-card').classList.toggle('wide', !!d.wide);
   $('dlg-title').innerHTML = d.title;
   $('dlg-body').innerHTML = d.html;
-  $('dlg-btns').innerHTML = d.buttons.map(([label, fn, sub], i) => `<button class="btn ${i === 0 && d.buttons.length > 1 ? 'gold' : i === 0 ? 'gold' : 'ghost'}" data-i="${i}" ${fn === undefined ? 'disabled' : ''}>${label}${sub ? `<small>${sub}</small>` : ''}</button>`).join('');
+  // the first button is the primary (gold) one unless a button names its own style (4th entry), e.g. equal choices
+  $('dlg-btns').innerHTML = d.buttons.map(([label, fn, sub, cls], i) => `<button class="btn ${cls || (i === 0 ? 'gold' : 'ghost')}" data-i="${i}" ${fn === undefined ? 'disabled' : ''}>${label}${sub ? `<small>${sub}</small>` : ''}</button>`).join('');
 }
 $('dlg-btns').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
@@ -1451,17 +1454,17 @@ function updateFloaters(dt) {
 function updateRes() {
   const r = G.players[0]?.res; if (!r) return;
   for (const k of RES) { const el = $(`r-${k}`); if (el) el.textContent = fmt(r[k]); }
-  $('r-day').textContent = `Day ${((G.day - 1) % 7) + 1} · Week ${week()}`;
-  $('r2-gold').innerHTML = RES.map((k) => `<span>${icon(k, 16)}${fmt(r[k])}</span>`).join('');
+  $('r-day').innerHTML = `<small>Week ${week()}</small><b>Day ${((G.day - 1) % 7) + 1}</b>`;
+  $('r2-gold').innerHTML = RES.map((k) => `<span>${icon(k, 18)}${fmt(r[k])}</span>`).join('');
 }
 function updateHud() {
   if (!G.players.length) return;
   updateRes();
   const mine = G.heroes.filter((x) => x.alive && x.p === 0);
-  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}" data-h="${hr.id}"><i>${icon('hero', 26)}</i><b>${hr.name.split(' ').pop()}</b><span class="mp"><i style="width:${(hr.mp / moveMax(hr)) * 100}%"></i></span></button>`).join('') +
-    G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}"><i>${icon('town', 26)}</i><b>${t.name}</b>${!t.builtToday ? `<em>${icon('build', 13)}</em>` : ''}</button>`).join('');
+  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}" data-h="${hr.id}" aria-label="${hr.name}"><span class="hb-ic">${icon('hero', 28)}</span><b>${hr.name.split(' ').pop()}</b><span class="mp"><i style="width:${clamp((hr.mp / moveMax(hr)) * 100, 0, 100)}%"></i></span></button>`).join('') +
+    G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}" aria-label="${t.name}"><span class="hb-ic">${icon('town', 28)}</span><b>${t.name}</b>${!t.builtToday ? `<em title="Can build today">${icon('build', 13)}</em>` : ''}</button>`).join('');
   const hr = selHero();
-  $('sel').innerHTML = hr ? `<b>${hr.name}</b> · Lv ${hr.lvl} · ${icon('movement', 14)}${fmt(hr.mp)} · ${icon('mana', 14)}${hr.mana} · ${heroArmy(hr).map(([id, n]) => `${unitIcon(id)}${n}`).join(' ')}` : '';
+  $('sel').innerHTML = hr ? `<span class="sel-who">${icon('hero', 20)}<b>${hr.name}</b><span class="lv">Lv ${hr.lvl}</span></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>` : '';
 }
 // side buttons: tap = select hero / open hero sheet / open town; double tap = fly the camera there
 let sideTap = null;
@@ -1493,7 +1496,7 @@ $('b-end').addEventListener('click', () => {
   $('b-end').classList.remove('confirm');
   endTurn();
 });
-$('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') return; ask('☰ Menu', `Hex Realms ${APP_VERSION}`, [['Resume', null], ['💾 Save & quit', () => { save(); showMenu(); }], [`🎵 Music: ${store.get('realms.music', true) ? 'on' : 'off'}`, () => { store.set('realms.music', !store.get('realms.music', true)); if (store.get('realms.music', true)) score?.start(); else score?.stop(); }]]); });
+$('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') return; ask('Menu', `<div class="menu-brand">${icon('logo', 76)}<b>ORBIS</b><small>Five Crowns · v${APP_VERSION}</small></div><p>Day ${((G.day - 1) % 7) + 1} of week ${week()}. Your game is saved every morning.</p>`, [['Resume', null], [`${icon('save', 20)} Save & quit to title`, () => { save(); showMenu(); }], [`${icon('music', 20)} Music: ${store.get('realms.music', true) ? 'on' : 'off'}`, () => { store.set('realms.music', !store.get('realms.music', true)); if (store.get('realms.music', true)) score?.start(); else score?.stop(); }]]); });
 
 // ------------------------------------------------------------------ days and weeks
 function endTurn() {
@@ -1552,9 +1555,9 @@ function endGame(won) {
   const me = G.players[0], towns = G.towns.filter((t) => t.p === 0).length, heroes = G.heroes.filter((h) => h.alive && h.p === 0);
   const army = heroes.reduce((a, h) => a + heroArmy(h).reduce((x, st) => x + st[1], 0), 0), top = heroes.reduce((a, h) => Math.max(a, h.lvl), 0);
   const body = `<div class="endcard ${won ? 'win' : 'lose'}"><div class="crest2">${icon(won ? 'victory' : 'defeat', 84)}</div>
-    <p>${won ? `You rule the whole world after <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'}. All rival lords bow before ${FACTIONS[me.fac].name}.` : 'Your last town and hero are lost. The realm falls into shadow.'}</p>
-    <div class="endstats"><div><b>${G.day}</b><small>Days</small></div><div><b>${towns}</b><small>Towns</small></div><div><b>${fmt(army)}</b><small>Creatures</small></div><div><b>${top || '–'}</b><small>Best hero lvl</small></div></div></div>`;
-  ask(won ? 'Victory!' : 'Defeat', body, [['New game', () => showMenu()]], true);
+    <p>${won ? `After <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'} the whole world is yours. Every rival bows before ${FACTIONS[me.fac].name}.` : 'Your last town and hero are lost. Your crown falls into shadow.'}</p>
+    <div class="endstats"><div><b>${G.day}</b><small>Days</small></div><div><b>${towns}</b><small>Towns</small></div><div><b>${fmt(army)}</b><small>Creatures</small></div><div><b>${top || '–'}</b><small>Top level</small></div></div></div>`;
+  ask(won ? 'Victory!' : 'Defeat', body, [['Play again', () => showMenu()]], true);
   if (won) for (let i = 0; i < 40; i++) setTimeout(() => { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = `${Math.random() * 100}vw`; c.style.background = `hsl(${Math.random() * 360} 90% 60%)`; c.style.animationDuration = `${1.8 + Math.random() * 1.6}s`; document.body.appendChild(c); setTimeout(() => c.remove(), 4000); }, i * 40);
   won ? sfx.fanfare() : sfx.deny();
 }
@@ -1751,11 +1754,15 @@ function showMenu() {
   $('menu').hidden = false; $('hud').hidden = true; $('town').hidden = true; $('battle').hidden = true;
   const s = store.get('realms.save', null);
   $('m-continue').hidden = !s;
-  if (s) $('m-continue').innerHTML = `Continue<small>Day ${s.day}</small>`;
+  if (s) $('m-continue').innerHTML = `Continue<small>${s.players?.[0] ? `${FACTIONS[s.players[0].fac]?.name || ''} · ` : ''}Week ${Math.floor((s.day - 1) / 7) + 1}, day ${((s.day - 1) % 7) + 1}</small>`;
+  syncSound();
   for (const m of heroMeshes.values()) scene.remove(m); heroMeshes.clear();
 }
 for (const b of document.querySelectorAll('#menu .diffs button')) b.addEventListener('click', () => { store.set('realms.diff', +b.dataset.d); for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.toggle('on', x === b); sfx.click(); });
 for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.toggle('on', +x.dataset.d === store.get('realms.diff', 1));
+// title-screen music toggle (the same setting as the in-game menu)
+function syncSound() { const on = store.get('realms.music', true); $('m-sound').classList.toggle('off', !on); $('m-sound').querySelector('span').textContent = on ? 'Music on' : 'Music off'; }
+$('m-sound').addEventListener('click', () => { const on = !store.get('realms.music', true); store.set('realms.music', on); if (on) score?.start(); else score?.stop(); syncSound(); sfx.click(); });
 function play() {
   if (!prewarmed) { prewarmed = true; $('menu').hidden = true; G.mode = 'map'; worldDirty = true; layoutWorld(); prewarm(() => play()); return; }
   $('menu').hidden = true; $('hud').hidden = false; G.mode = 'map';
@@ -1765,23 +1772,42 @@ function play() {
   updateHud();
 }
 $('m-new').addEventListener('click', () => {
-  if (store.get('realms.save', null) && !confirm('Start a new game? Your saved game will be lost.')) return;
+  // an in-game confirmation instead of the browser's confirm() box
+  if (store.get('realms.save', null)) { ask('Start a new game?', '<p>Your saved game will be replaced when the new one begins.</p>', [['Start a new game', () => pickFaction()], ['Keep my game', null]]); sfx.click(); return; }
   pickFaction();
 });
-// faction choice: one card per faction with its colour, creature line-up and a short description
+// faction choice: one card per faction with its crest, colour, creature line-up, description and signature skill and spell.
+// Tap a card to select it; tap the selected card again (or the Begin button) to start.
+const FAC_CREST = { haven: 'defense', necro: 'necromancy', sylvan: 'luck', inferno: 'fireball', dungeon: 'sorcery' };
 function pickFaction() {
-  const el = $('factions'), last = store.get('realms.fac', 'haven');
-  el.innerHTML = `<h2>Choose your faction</h2><div class="fcards">${Object.entries(FACTIONS).map(([k, f]) => `<button class="fcard${k === last ? ' on' : ''}" data-f="${k}" style="--fc:${f.css}">
-    <b>${f.name}</b><span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 40)).join('')}</span><small>${f.desc || ''}</small></button>`).join('')}</div>
-    <button class="btn ghost" id="f-back">Back</button>`;
-  el.hidden = false;
-  el.querySelectorAll('.fcard').forEach((b) => b.addEventListener('click', () => {
-    const fac = b.dataset.f; store.set('realms.fac', fac); el.hidden = true; sfx.click();
+  const el = $('factions');
+  let sel = FACTIONS[store.get('realms.fac', 'haven')] ? store.get('realms.fac', 'haven') : 'haven';
+  const diff = ['Easy', 'Normal', 'Hard'][store.get('realms.diff', 1)] || 'Normal';
+  el.innerHTML = `<div class="fp"><header class="fp-head">${icon('logo', 44)}<div><small>New game · ${diff}</small><h2>Choose your crown</h2></div></header><div class="fcards">${Object.entries(FACTIONS).map(([k, f]) => {
+    const kit = FACTION_START[k] || FACTION_START.haven;
+    return `<button class="fcard${k === sel ? ' on' : ''}" data-f="${k}" style="--fc:${f.css}" aria-pressed="${k === sel}">
+    <span class="fc-crest">${icon(FAC_CREST[k] || 'banner', 30)}</span>
+    <span class="fc-body"><b class="fc-name">${f.name}</b><small class="fc-desc">${f.desc || ''}</small>
+    <span class="fc-sig"><em>Signature</em><span>${icon(kit.skill, 16)}${SKILLS[kit.skill]?.name || ''}</span><span>${icon(kit.spell, 16)}${SPELLS[kit.spell]?.name || ''}</span></span></span>
+    <span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 64)).join('')}</span><span class="fc-check">${icon('check', 16)}</span></button>`;
+  }).join('')}</div>
+    <footer class="fp-foot"><button class="btn ghost" id="f-back">Back</button><button class="btn gold" id="f-go">Begin as ${FACTIONS[sel].name}</button></footer></div>`;
+  el.hidden = false; el.scrollTop = 0;
+  const start = (fac) => {
+    store.set('realms.fac', fac); el.hidden = true; sfx.click();
     newWorld((Date.now() % 100000) + 1, store.get('realms.diff', 1), fac);
     play(); save();
     const rival = FACTIONS[G.players[1].fac].name;
-    setTimeout(() => showMsg(`🏰 Your realm`, `You lead the <b style="color:${FACTIONS[fac].css}">${FACTIONS[fac].name}</b>. Tap a hex to plan a route, tap it again to march. Flag mines, gather treasure, build your town every day and recruit its creatures. Defeat the <b style="color:${FACTIONS[G.players[1].fac].css}">${rival}</b> lord to win.<br><br>🐎 Tap your hero to see the hero sheet · 🏰 tap your town to build and recruit · double-tap them to fly there · ⏭ end the day when you are done.`, true), 600);
+    setTimeout(() => ask(`${icon('logo', 26)} Your crown`, `<p>You lead the <b style="color:${FACTIONS[fac].css}">${FACTIONS[fac].name}</b>. Defeat the <b style="color:${FACTIONS[G.players[1].fac].css}">${rival}</b> crown to rule the world.</p>
+      <ul class="tips"><li>${icon('movement', 22)}<span><b>Tap a hex</b> to plan a route, tap it again to march.</span></li><li>${icon('gold', 22)}<span><b>Flag mines</b> and pick up treasure for income.</span></li><li>${icon('town', 22)}<span><b>Tap your town</b> to build once a day and recruit.</span></li><li>${icon('hero', 22)}<span><b>Tap your hero</b> for the hero sheet. Double-tap either to fly there.</span></li><li>${icon('end', 22)}<span><b>End the day</b> when everyone has moved.</span></li></ul>`, [['Begin', null]], true), 600);
+  };
+  el.querySelectorAll('.fcard').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.f === sel) { start(sel); return; }
+    sel = b.dataset.f; sfx.click();
+    el.querySelectorAll('.fcard').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+    $('f-go').textContent = `Begin as ${FACTIONS[sel].name}`;
   }));
+  $('f-go').addEventListener('click', () => start(sel));
   $('f-back').addEventListener('click', () => { el.hidden = true; });
 }
 $('m-continue').addEventListener('click', () => { if (load()) play(); });
@@ -1802,7 +1828,7 @@ function frame() {
   if (G.mode === 'battle') {
     animateBattle(dt);
     const s = Math.sin(bview.yaw), c = Math.cos(bview.yaw);
-    // a HoMM-like three-quarter view: low enough that creatures show their figures, not just helmets
+    // a classic three-quarter view: low enough that creatures show their figures, not just helmets
     // never closer than what fits the full grid width on screen (portrait phones)
     const hf = Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2)) * bcam.aspect, d = Math.max(bview.dist, Math.min(18, (BT.COLS * 0.866 * 0.5 + 0.45) / hf / 1.1));
     bcam.position.set(s * d * 0.82, d * 0.86, c * d * 0.82 + 0.4);
