@@ -1225,9 +1225,6 @@ function prewarm(onDone) {
   // portraits for the creatures you will actually see first: your faction (+ upgrades) and the map guards
   const myFac = G.players[0]?.fac, need = new Set(G.objects.filter((o) => o.alive && o.type === 'monster').map((o) => o.unit));
   for (const [id, u] of Object.entries(UNITS)) if (u.fac === myFac) need.add(id);
-  // and every army you can already meet: rival heroes and town garrisons (other factions' models used to be built on
-  // the battle tap: a 1 s stall per new faction in swiftshader)
-  for (const a of [...G.heroes.filter((h) => h.p !== 0).map((h) => h.army), ...G.towns.filter((t) => t.p !== 0).map((t) => t.garrison)]) for (const st of a) if (st && UNITS[st[0]]) need.add(st[0]);
   for (const id of need) jobs.push(['Summoning creatures', () => portraitImg(id, 64)]);
   for (const hr of G.heroes.filter((h) => h.p === 0)) jobs.push(['Summoning heroes', () => { heroPic(hr, 40, 'round'); heroPic(hr, 96); }]);
   for (const t of new Set([ter[G.heroes[0]?.v] ?? 1, 1, 2, 3, 4, 5, 6, 7])) jobs.push(['Preparing battlefields', () => createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS)]);
@@ -2476,17 +2473,18 @@ let tt = 0;
 const loaderEl = document.getElementById('loader');
 // ---- map shadows: shadowMap.autoUpdate is off. The view-following sun moves with the camera, so a moving view
 // (or a walking hero, a rebuilt world, a zoom rescale) re-renders the shadow map every frame; a still map only
-// refreshes it at ~15 Hz for the heroes' gentle shader idle. Battle and town always update.
+// refreshes it at ~15 Hz (every 2nd-4th frame) for the heroes' gentle shader idle. Battle and town always update.
 const shSun = new THREE.Vector3(), shTgt = new THREE.Vector3();
-let shAge = 1, shMode = '', shKid = null, shN = -1, shFlora = null, shFig = 0;
+let shAge = 1, shFr = 9, shMode = '', shKid = null, shN = -1, shFlora = null, shFig = 0;
 function mapShadowsDue(dt) {
-  shAge += dt;
-  let due = G.mode !== shMode || shAge >= 1 / 15 || !!walking || figK !== shFig
+  shAge += dt; shFr++;
+  // idle refresh: ~15 Hz, and at most every other frame on a slow device (where it matters most)
+  let due = G.mode !== shMode || (shAge >= 1 / 15 && shFr >= 2) || shFr >= 4 || !!walking || figK !== shFig
     || world.children.length !== shN || world.children[0] !== shKid || flora.children[0] !== shFlora
     || shSun.distanceToSquared(sun.position) > 1e-12 || shTgt.distanceToSquared(sun.target.position) > 1e-12;
   if (!due) for (const h of G.heroes) if (h.anim) { due = true; break; }
   if (!due) return false;
-  shMode = G.mode; shAge = 0; shFig = figK; shN = world.children.length; shKid = world.children[0]; shFlora = flora.children[0];
+  shMode = G.mode; shAge = 0; shFr = 0; shFig = figK; shN = world.children.length; shKid = world.children[0]; shFlora = flora.children[0];
   shSun.copy(sun.position); shTgt.copy(sun.target.position);
   return true;
 }
