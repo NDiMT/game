@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BONE } from './rig.js?v=0.6';
 
 // =====================================================================
 // HEX REALMS: Haven (castle) creatures, round 4 "phone readability" pass.
@@ -16,6 +17,12 @@ import * as THREE from 'three';
 //  - no micro parts (rivets, fingers, thin straps, tiny sparkles)
 //  - upgrades keep the silhouette and add gold trim, capes, crowns, bigger
 //    plumes and wings
+//
+// Round 5 rig: every part carries aBone/aPivot (see rig.js). Parts are tagged
+// while being added via k.bone(bone, pivot, fn); pivots are given in the frame
+// current at that call and stored in model-local space. Side convention: the
+// weapon hand is on +x, so +x parts are *_R (ARM_R, LEG_FR, LEG_BR, WING_R) and
+// -x parts *_L; inside k.sym the mirrored pass swaps L/R automatically.
 // =====================================================================
 
 const V3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
@@ -35,22 +42,34 @@ const INK = 0x2e2c5a;
 // capes are seen from behind (in shade) by the player's own army: paint them a step lighter
 const CAPE_B = 0x86b2ff, CAPE_R = 0xff7c6c, CAPE_G = 0x8ee070;
 // ---------------------------------------------------------------- kit
-function makeKit(seed) {
+const SWAP = { [BONE.ARM_L]: BONE.ARM_R, [BONE.ARM_R]: BONE.ARM_L, [BONE.LEG_FL]: BONE.LEG_FR, [BONE.LEG_FR]: BONE.LEG_FL,
+  [BONE.LEG_BL]: BONE.LEG_BR, [BONE.LEG_BR]: BONE.LEG_BL, [BONE.WING_L]: BONE.WING_R, [BONE.WING_R]: BONE.WING_L };
+// bodyPivot: pivot of the default BODY bone (everything not tagged otherwise)
+function makeKit(seed, bodyPivot = [0, 0.42, 0]) {
   const parts = [];
   const stack = [new THREE.Matrix4()];
+  let rig = { b: BONE.BODY, p: bodyPivot }, mir = false;
   const k = {
     get M() { return stack[stack.length - 1]; },
     // run fn with an extra transform applied to everything it adds
     with(m, fn) { stack.push(k.M.clone().multiply(m)); fn(); stack.pop(); },
     at(p, r = [0, 0, 0], s = 1, fn) { k.with(mat(p, r, s), fn); },
     // run fn twice, the second time mirrored across x = 0
-    sym(fn) { fn(1); k.with(new THREE.Matrix4().makeScale(-1, 1, 1), () => fn(-1)); },
+    sym(fn) { fn(1); const pm = mir; mir = !mir; k.with(new THREE.Matrix4().makeScale(-1, 1, 1), () => fn(-1)); mir = pm; },
+    // tag everything fn adds with a rig bone; pivot is in the current frame
+    // (b == null: keep the current bone)
+    bone(b, p, fn) {
+      if (b == null) return fn();
+      const prev = rig;
+      rig = { b: mir ? (SWAP[b] ?? b) : b, p: V3(p).applyMatrix4(k.M).toArray() };
+      fn(); rig = prev;
+    },
     add(g, col, o = {}) {
       let ng = g.index ? g.toNonIndexed() : g;
       ng.deleteAttribute('normal'); ng.deleteAttribute('uv');
       ng.applyMatrix4(k.M);
       if (k.M.determinant() < 0) flip(ng);
-      const pr = { col: new THREE.Color(col), grad: o.grad ?? [0.9, 1.06], glow: !!o.glow, ao: o.ao ?? true, noise: o.noise ?? 0.025, top: o.top };
+      const pr = { bone: rig.b, pivot: rig.p, col: new THREE.Color(col), grad: o.grad ?? [0.9, 1.06], glow: !!o.glow, ao: o.ao ?? true, noise: o.noise ?? 0.025, top: o.top };
       parts.push({ g: ng, ...pr });
       // two-sided sheet (capes, pennants): add a back face, nudged inward a hair
       if (o.both) { const bg = ng.clone(); flip(bg); parts.push({ g: bg, ...pr }); }
@@ -117,7 +136,7 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 function finish(parts, seed) {
-  const out = { body: { p: [], c: [] }, glow: { p: [], c: [] } };
+  const out = { body: { p: [], c: [], b: [], v: [] }, glow: { p: [], c: [], b: [], v: [] } };
   // whole-model value band: light top, mid body, softer underside (never dark)
   let gy1 = 0.5;
   for (const pt of parts) if (!pt.glow) { const P = pt.g.attributes.position.array; for (let i = 1; i < P.length; i += 3) gy1 = Math.max(gy1, P[i]); }
@@ -147,13 +166,16 @@ function finish(parts, seed) {
       if (pt.top && y > y1 - span * pt.top[1]) c = new THREE.Color(pt.top[0]);
       // coloured (blue-violet) shade near the ground instead of black
       dst.p.push(x, y, z); dst.c.push(c.r * m + cool * 0.4, c.g * m + cool * 0.5, c.b * m + cool);
+      dst.b.push(pt.bone); dst.v.push(pt.pivot[0], pt.pivot[1], pt.pivot[2]);
     }
   }
-  const build = ({ p, c }, uv) => {
+  const build = ({ p, c, b, v }, uv) => {
     if (!p.length) return null;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3));
+    g.setAttribute('aBone', new THREE.Float32BufferAttribute(b, 1));
+    g.setAttribute('aPivot', new THREE.Float32BufferAttribute(v, 3));
     g.computeVertexNormals();
     if (uv) {
       // box-projected uv per triangle, about 1 unit = 1 uv
@@ -175,7 +197,7 @@ function finish(parts, seed) {
 
 // ---------------------------------------------------------------- humanoid
 // chunky heroic figure: head centre HY, radius HR (~1.35x a realistic head)
-const HY = 0.8, HR = 0.135, SH = [0.2, 0.645, 0];
+const HY = 0.8, HR = 0.135, SH = [0.2, 0.645, 0], SHL = [-0.2, 0.645, 0], NECK = [0, 0.7, 0], HIPS = [0, 0.42, 0];
 
 // Two-bone arm reaching from shoulder s to hand h, elbow pushed toward a pole.
 function arm(k, s, h, c) {
@@ -200,7 +222,9 @@ function eyes(k, y = HY + 0.005, z = 0.128, col = INK) {
 // Standing (or seated) figure ~0.95 tall to the crown. Returns hand positions.
 function figure(k, o) {
   const legs = o.legs, boots = o.boots ?? LEATHER;
-  if (!o.robe) k.sym(() => {
+  // rig: standing legs LEG_FR (+x) / LEG_FL from the hip; a seated rider's legs
+  // stay on the bone the caller set (RIDER); head on HEAD from the neck
+  if (!o.robe) k.sym(() => k.bone(o.sit ? null : BONE.LEG_FR, [0.085, 0.42, 0], () => {
     if (o.sit) {
       k.limb([0.09, 0.4, 0], [0.16, 0.37, 0.19], 0.078, 0.066, legs);
       k.limb([0.16, 0.37, 0.19], [0.18, 0.15, 0.13], 0.062, 0.054, legs);
@@ -212,22 +236,22 @@ function figure(k, o) {
       if (o.knee) k.ball(0.072, [st, 0.215, 0.03], o.knee, { d: 0 });
       k.ell(0.076, 0.072, 0.118, [st, 0.06, 0.035], boots, { d: 1 });
     }
-  });
+  }));
   k.ell(0.155, 0.085, 0.115, [0, 0.43, 0], o.hips ?? legs);
   k.lathe([[0.135, 0.4], [0.155, 0.48], [0.185, 0.56], [0.205, 0.63], [0.19, 0.69], [0.12, 0.73], [0.03, 0.745]], [0, 0, 0], o.torso, { s: [1, 1, 0.76], seg: 10, grad: o.torsoGrad ?? [0.82, 1.1] });
   if (o.belt) k.lathe([[0.158, 0.44], [0.162, 0.495]], [0, 0, 0], o.belt, { s: [1, 1, 0.8], seg: 10, grad: [1, 1] });
-  if (o.head !== false) {
+  if (o.head !== false) k.bone(BONE.HEAD, NECK, () => {
     k.ell(HR, HR * 1.02, HR * 0.98, [0, HY, 0.01], o.skin ?? SKIN, { grad: [0.95, 1.05] });
     if (o.eyes !== false) eyes(k);
-  }
+  });
   if (o.pauldron) k.sym(() => {
     k.ell(0.118, 0.088, 0.118, [0.2, 0.675, 0], o.pauldron, { r: [0, 0, -0.38], grad: [0.85, 1.12] });
     if (o.pTrim) k.torus(0.105, 0.024, [0.205, 0.652, 0], o.pTrim, { r: [Math.PI / 2, 0, -0.38], seg: 8, ts: 3, grad: [1, 1] });
   });
   const ac = { upper: o.upper ?? o.torso, fore: o.fore ?? o.upper ?? o.torso, hand: o.hand ?? SKIN, elbow: o.elbow, r1: o.armR ?? 0.064, r2: o.foreR ?? 0.056, hr: o.handR ?? 0.058 };
-  const R = arm(k, SH, o.rh ?? [0.24, 0.36, 0.06], ac);
+  let R; k.bone(BONE.ARM_R, SH, () => { R = arm(k, SH, o.rh ?? [0.24, 0.36, 0.06], ac); });
   const lh = o.lh ?? [-0.24, 0.36, 0.06];
-  let Lm; k.with(new THREE.Matrix4().makeScale(-1, 1, 1), () => { Lm = arm(k, SH, [-lh[0], lh[1], lh[2]], ac); });
+  let Lm; k.with(new THREE.Matrix4().makeScale(-1, 1, 1), () => k.bone(BONE.ARM_L, SH, () => { Lm = arm(k, SH, [-lh[0], lh[1], lh[2]], ac); }));
   return { R, L: [-Lm[0], Lm[1], Lm[2]] };
 }
 
@@ -269,12 +293,14 @@ function cape(k, o) {
   const prof = [];
   for (let i = 0; i <= 3; i++) { const t = i / 3; prof.push([r0 + (r1 - r0) * Math.pow(t, 1.3), y0 + (y1 - y0) * t]); }
   const phi = Math.PI - arc / 2, at = [0, 0, z];
+  k.bone(BONE.CLOTH, [0, y1, z - r1 * sz], () => {
   k.lathe(prof, at, col, { s: [1, 1, sz], seg, phi, len: arc, grad: [1.0, 1.18] });
   k.lathe(prof.map(([r, y]) => [r * 0.965, y]).reverse(), at, lin, { s: [1, 1, sz], seg, phi, len: arc, grad: [0.85, 1.05] });
   if (hem) {
     k.lathe([[r0 + 0.008, y0 - 0.005], [r0 * 0.99 + 0.006, y0 + 0.055]], at, hem, { s: [1, 1, sz], seg, phi: phi - 0.02, len: arc + 0.04, grad: [1, 1], ao: false });
     k.lathe([[r0 * 0.99 + 0.006, y0 + 0.055], [r0 + 0.008, y0 - 0.005]].map(([r, y]) => [r * 0.95, y]), at, hem, { s: [1, 1, sz], seg, phi: phi - 0.02, len: arc + 0.04, grad: [1, 1], ao: false });
   }
+  });
 }
 
 // a crossed pair of leaf blades (reads from any yaw): spear and pike heads
@@ -353,14 +379,16 @@ function pikeman(U) {
     k.box(0.08, 0.46, 0.37, [0, 0.58, 0], RED, { r: [0, 0, 0.78], grad: [0.95, 1.08] }); // the red sash: the accent
   }
   // kettle helm: a dome on a very wide brim (the pikeman's identity)
+  k.bone(BONE.HEAD, NECK, () => {
   k.lathe([[0.13, HY + 0.02], [0.232, HY + 0.008], [0.236, HY + 0.045], [0.155, HY + 0.06], [0.158, HY + 0.11], [0.125, HY + 0.17], [0.06, HY + 0.2], [0, HY + 0.205]], [0, 0, 0], U ? STEEL_L : STEEL, { seg: 10, grad: [0.8, 1.15] });
   if (U) {
     k.lathe([[0.244, HY + 0.0], [0.244, HY + 0.05]], [0, 0, 0], GOLD, { seg: 10, grad: [1, 1] });
     k.plate([[-0.15, 0], [0.15, 0], [0.12, 0.08], [0.04, 0.12], [-0.06, 0.12], [-0.13, 0.07]], 0.035, [0, HY + 0.14, 0], GOLD, { r: [0, Math.PI / 2, 0] });
     plume(k, [0, HY + 0.2, -0.07], [WHITE, RED, WHITE], 1.15);
   }
-  // pole: a long pike, or the great halberd
-  pole(k, A, B, (L) => {
+  });
+  // pole: a long pike, or the great halberd (held in the weapon hand: ARM_R)
+  k.bone(BONE.ARM_R, SH, () => pole(k, A, B, (L) => {
     k.limb([0, 0, 0], [0, L, 0], 0.032, 0.028, WOOD, { seg: 6, grad: [0.88, 1.1] });
     k.cyl(0.048, 0.042, 0.075, [0, L - 0.05, 0], GOLD, { seg: 6 });
     if (!U) {
@@ -377,7 +405,7 @@ function pikeman(U) {
       k.ball(0.06, [0, L - 0.36, 0], BLUE, { d: 0 });
       leafHead(k, [0, L, 0], 0.3, 0.07, STEEL_L);
     }
-  });
+  }));
   return k.done();
 }
 
@@ -397,6 +425,7 @@ function archer(U) {
   // capelet and big pointed hood
   k.lathe([[0.25, 0.55], [0.235, 0.6], [0.19, 0.67], [0.11, 0.73], [0.05, 0.75]], [0, 0, 0], GREEN, { s: [1, 1, 0.86], seg: 10, grad: [0.85, 1.1] });
   k.lathe([[0.258, 0.535], [0.254, 0.575]], [0, 0, 0], U ? GOLD : GREEN_D, { s: [1, 1, 0.86], seg: 10, grad: [1, 1] });
+  k.bone(BONE.HEAD, NECK, () => {
   k.ell(0.16, 0.165, 0.16, [0, HY + 0.015, -0.025], GREEN, { grad: [0.88, 1.1] });
   k.cone(0.09, 0.22, [0, HY + 0.07, -0.12], GREEN, { r: [-2.1, 0, 0], seg: 5 });
   k.ell(0.122, 0.125, 0.1, [0, HY - 0.012, 0.06], SKIN, { grad: [0.95, 1.05] });
@@ -405,6 +434,7 @@ function archer(U) {
     k.feather([0.1, HY + 0.08, -0.04], [0.26, HY + 0.32, -0.2], 0.12, RED, { t: 0.024 });
     k.feather([0.08, HY + 0.08, -0.06], [0.16, HY + 0.3, -0.26], 0.09, WHITE, { t: 0.022 });
   }
+  });
   // quiver on the back: a big leather tube crowned with red and white fletching
   k.at([0.1, 0.6, -0.17], [0.35, 0, -0.4], 1, () => {
     k.cyl(0.07, 0.076, 0.36, [0, -0.2, 0], U ? CRIMSON : LEATHER, { seg: 7, grad: [0.85, 1.08] });
@@ -412,22 +442,27 @@ function archer(U) {
     k.box(0.13, 0.1, 0.05, [0, 0.2, 0], RED, { r: [0, 0.4, 0] });
     k.box(0.05, 0.11, 0.13, [0, 0.21, 0], WHITE, { r: [0, 0.4, 0] });
   });
-  // longbow: thick limbs bowed back toward the archer (recurved, gilded tips when upgraded)
+  // longbow: thick limbs bowed back toward the archer (recurved, gilded tips when upgraded).
+  // Rig: bow and string on the bow arm (ARM_L), the nocked arrow on the drawing arm (ARM_R)
   const bowH = U ? 0.47 : 0.43, bend = 0.12, pts = [];
   for (let i = 0; i <= 8; i++) { const t = i / 4 - 1; pts.push([bowP[0], bowP[1] + t * bowH, bowP[2] + 0.02 - t * t * bend + (U ? Math.pow(Math.abs(t), 5) * 0.09 : 0)]); }
+  const R = [draw[0], draw[1], draw[2] - 0.02];
+  k.bone(BONE.ARM_L, SHL, () => {
   for (let i = 0; i < 8; i++) {
     const r = 0.034 - Math.abs(i - 3.5) * 0.0028, c = i === 3 || i === 4 ? (U ? GOLD : RED) : (U && (i === 0 || i === 7) ? GOLD : WOOD);
     k.limb(pts[i], pts[i + 1], r, r, c, { seg: 5 });
   }
   k.ball(0.03, pts[0], GOLD, { d: 0 }); k.ball(0.03, pts[8], GOLD, { d: 0 });
-  const R = [draw[0], draw[1], draw[2] - 0.02];
   k.limb(pts[8], R, 0.008, 0.008, CREAM, { seg: 3 });
   k.limb(pts[0], R, 0.008, 0.008, CREAM, { seg: 3 });
+  });
   // nocked arrow with a bold head
   const tipA = [bowP[0] + 0.01, bowP[1] + 0.02, bowP[2] + 0.2];
+  k.bone(BONE.ARM_R, SH, () => {
   k.limb(R, tipA, 0.014, 0.014, CREAM, { seg: 4 });
   const dA = V3(tipA).sub(V3(R)).normalize();
   k.stick(new THREE.ConeGeometry(0.032, 0.09, 4).translate(0, 0.045, 0), tipA, V3(tipA).add(dA).toArray(), U ? GOLD_L : STEEL_L, {});
+  });
   return k.done();
 }
 
@@ -435,29 +470,31 @@ function archer(U) {
 // big V wings in cream / orange / rust.
 // Royal griffin: + gold crown, royal-blue wing tips and saddle cloth, bigger wings.
 function griffin(U) {
-  const k = makeKit(U ? 39 : 37);
+  const k = makeKit(U ? 39 : 37, [0, 0.43, -0.08]);
   const FUR = U ? 0xf6c24e : 0xeeaa3e, FUR_D = U ? 0xd89838 : 0xcc8430, FEATH = 0xfff8ec, BEAK = 0xffb41e, TAL = 0xf2bc3c, CLAW = 0x8a7a9a;
   k.ell(0.19, 0.17, 0.3, [0, 0.43, -0.08], FUR, { r: [0.1, 0, 0], grad: [0.84, 1.1] });
-  k.sym(() => {
+  k.sym(() => k.bone(BONE.LEG_BR, [0.12, 0.44, -0.25], () => {
     k.ell(0.1, 0.15, 0.14, [0.12, 0.36, -0.25], FUR, { grad: [0.84, 1.08] });
     k.limb([0.13, 0.28, -0.28], [0.14, 0.13, -0.35], 0.075, 0.055, FUR);
     k.limb([0.14, 0.13, -0.35], [0.14, 0.04, -0.29], 0.055, 0.048, FUR_D);
     k.ell(0.062, 0.042, 0.08, [0.14, 0.035, -0.26], FUR_D, { d: 0 });
-  });
+  }));
   // tail with a big tuft
-  k.limb([0, 0.5, -0.34], [0, 0.42, -0.52], 0.04, 0.032, FUR);
-  k.limb([0, 0.42, -0.52], [0, 0.56, -0.66], 0.032, 0.028, FUR);
-  k.ell(0.075, 0.1, 0.075, [0, 0.62, -0.7], U ? GOLD : 0xc0602a, { r: [-0.6, 0, 0] });
+  k.bone(BONE.TAIL, [0, 0.5, -0.34], () => {
+    k.limb([0, 0.5, -0.34], [0, 0.42, -0.52], 0.04, 0.032, FUR);
+    k.limb([0, 0.42, -0.52], [0, 0.56, -0.66], 0.032, 0.028, FUR);
+    k.ell(0.075, 0.1, 0.075, [0, 0.62, -0.7], U ? GOLD : 0xc0602a, { r: [-0.6, 0, 0] });
+  });
   // white feathered chest and neck
   k.ell(0.18, 0.2, 0.18, [0, 0.5, 0.15], FEATH, { r: [-0.35, 0, 0], grad: [0.86, 1.06] });
   k.limb([0, 0.55, 0.22], [0, 0.72, 0.32], 0.135, 0.11, FEATH, { seg: 7 });
   // eagle front legs: feathered thighs, golden shins, two bold talons
-  k.sym(() => {
+  k.sym(() => k.bone(BONE.LEG_FR, [0.11, 0.44, 0.2], () => {
     k.ell(0.085, 0.12, 0.095, [0.11, 0.36, 0.22], FEATH, { r: [0.3, 0, 0] });
     k.limb([0.12, 0.3, 0.25], [0.13, 0.06, 0.3], 0.058, 0.046, TAL);
     k.ell(0.062, 0.04, 0.068, [0.13, 0.04, 0.32], TAL, { d: 0 });
     for (const t of [-1, 1]) k.cone(0.024, 0.08, [0.13 + t * 0.03, 0.035, 0.36], CLAW, { r: [Math.PI / 2 + 0.3, t * 0.3, 0], seg: 3 });
-  });
+  }));
   if (U) { // royal saddle cloth
     k.lathe([[0.208, 0.36], [0.2, 0.46], [0.165, 0.56], [0.06, 0.6]], [0, 0, -0.1], ROYAL, { s: [1, 1, 1.2], seg: 10, grad: [0.85, 1.08] });
     k.lathe([[0.215, 0.345], [0.212, 0.395]], [0, 0, -0.1], GOLD, { s: [1, 1, 1.2], seg: 10, grad: [1, 1] });
@@ -466,6 +503,7 @@ function griffin(U) {
   }
   // big eagle head: white, huge hooked yellow beak, fierce orange brow, crest
   const hy = 0.8, hz = 0.4;
+  k.bone(BONE.HEAD, [0, 0.66, 0.29], () => {
   k.ell(0.13, 0.13, 0.15, [0, hy, hz], FEATH, { grad: [0.9, 1.06] });
   k.cone(0.072, 0.18, [0, hy - 0.01, hz + 0.09], BEAK, { r: [Math.PI / 2 + 0.12, 0, 0], seg: 5, grad: [0.9, 1.1] });
   k.cone(0.036, 0.08, [0, hy - 0.04, hz + 0.26], BEAK, { r: [Math.PI - 0.35, 0, 0], seg: 4 });
@@ -478,11 +516,12 @@ function griffin(U) {
     k.lathe([[0.088, hy + 0.085], [0.094, hy + 0.14]], [0, 0, hz - 0.01], GOLD, { seg: 8, grad: [1, 1] });
     for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; k.cone(0.03, 0.08, [Math.sin(a) * 0.09, hy + 0.13, hz - 0.01 + Math.cos(a) * 0.09], GOLD_L, { seg: 4 }); }
   }
+  });
   // great wings raised in a V so the head stays clear
-  k.sym(() => wing(k, [0.12, 0.6, 0.02], {
+  k.sym(() => k.bone(BONE.WING_R, [0.12, 0.6, 0.02], () => wing(k, [0.12, 0.6, 0.02], {
     W: [0.26, 0.24, -0.06], T: U ? [0.64, 0.5, -0.26] : [0.58, 0.46, -0.24], len: U ? 0.52 : 0.45, drop: [0.15, -0.25, -1], dropIn: [0.1, -0.9, -0.5],
     n: 8, col: U ? GOLD : 0xf0922c, tip: U ? ROYAL : 0xc8501e, cov: 0xfff0c8, bone: U ? GOLD_L : 0xf8dc90, prim: 3,
-  }));
+  })));
   return k.done();
 }
 
@@ -497,14 +536,17 @@ function swordsman(U) {
     rh: [0.27, 0.56, 0.2], lh: [-0.22, 0.46, 0.2], pauldron: STEEL_L, pTrim: U ? GOLD : null, stance: 0.105, head: false, armR: 0.066,
   });
   cape(k, { y0: 0.16, y1: 0.7, r0: 0.26, r1: 0.2, col: CAPE, lin: U ? GOLD : BLUE_L, hem: GOLD, arc: 2.2 });
-  k.box(0.065, 0.3, 0.03, [0, 0.42, -0.215], GOLD, { r: [0.05, 0, 0] });
-  k.box(0.2, 0.065, 0.03, [0, 0.49, -0.212], GOLD, { r: [0.05, 0, 0] });
+  k.bone(BONE.CLOTH, [0, 0.7, -0.01 - 0.2 * 0.85], () => { // the cross on the cape moves with it
+    k.box(0.065, 0.3, 0.03, [0, 0.42, -0.215], GOLD, { r: [0.05, 0, 0] });
+    k.box(0.2, 0.065, 0.03, [0, 0.49, -0.212], GOLD, { r: [0.05, 0, 0] });
+  });
   // tabard with a bold cross
   k.box(0.26, 0.43, 0.03, [0, 0.47, 0.162], TAB, { r: [-0.1, 0, 0], grad: [0.85, 1.06] });
   k.box(0.065, 0.26, 0.02, [0, 0.49, 0.182], CROSS, { r: [-0.1, 0, 0] });
   k.box(0.19, 0.065, 0.02, [0, 0.54, 0.177], CROSS, { r: [-0.1, 0, 0] });
   if (U) k.box(0.27, 0.045, 0.036, [0, 0.27, 0.142], GOLD, { r: [-0.1, 0, 0], grad: [1, 1] });
   // great helm: bucket with a bold T visor
+  k.bone(BONE.HEAD, NECK, () => {
   k.lathe([[0, HY - 0.13], [0.135, HY - 0.13], [0.15, HY - 0.07], [0.15, HY + 0.07], [0.13, HY + 0.13], [0, HY + 0.15]], [0, 0, 0], U ? STEEL_L : STEEL, { seg: 10, grad: [0.8, 1.15] });
   k.box(0.22, 0.036, 0.03, [0, HY + 0.02, 0.145], INK, { grad: [1, 1], ao: false });
   k.box(0.038, 0.12, 0.03, [0, HY - 0.05, 0.146], U ? GOLD : STEEL_D, { grad: [1, 1] });
@@ -515,14 +557,15 @@ function swordsman(U) {
   } else {
     plume(k, [0, HY + 0.14, -0.02], [BLUE_L, WHITE], 0.95);
   }
+  });
   // broad sword raised in the right hand, flat facing the camera
-  k.at(R, [0.35, 0, -0.2], U ? 1.38 : 1.25, () => {
+  k.bone(BONE.ARM_R, SH, () => k.at(R, [0.35, 0, -0.2], U ? 1.38 : 1.25, () => {
     k.box(0.22, 0.04, 0.05, [0, 0.03, 0], GOLD, { grad: [0.95, 1.08] });
     k.limb([0, -0.08, 0], [0, 0.02, 0], 0.022, 0.022, U ? CRIMSON : LEATHER, { seg: 5 });
     k.ball(0.034, [0, -0.09, 0], U ? 0xff6a5a : GOLD, { d: 0, glow: U });
     k.plate([[-0.046, 0], [0.046, 0], [0.04, 0.48], [0, 0.58], [-0.04, 0.48]], 0.022, [0, 0.05, 0], STEEL_L, { r: [0, 0.3, 0], grad: [0.9, 1.2] });
-  });
-  shield(k, [L[0] - 0.04, L[1] + 0.03, L[2] + 0.07], [0.05, -0.35, 0.04], 1.08, U ? WHITE : BLUE, GOLD, 'cross', U ? CRIMSON : GOLD);
+  }));
+  k.bone(BONE.ARM_L, SHL, () => shield(k, [L[0] - 0.04, L[1] + 0.03, L[2] + 0.07], [0.05, -0.35, 0.04], 1.08, U ? WHITE : BLUE, GOLD, 'cross', U ? CRIMSON : GOLD));
   return k.done();
 }
 
@@ -538,44 +581,54 @@ function monk(U) {
     robe: true, torso: ROBE, hips: ROBE, upper: ROBE, fore: ROBE, hand: SKIN, belt: GOLD, armR: 0.068, foreR: 0.08,
     rh: [SX - 0.035, 0.5, SZ], lh: [-0.2, 0.56, 0.2], head: !U,
   });
-  // robe to the ground with a broad hem
-  k.lathe([[0.26, 0.0], [0.25, 0.06], [0.205, 0.25], [0.165, 0.42], [0.15, 0.5]], [0, 0, 0], ROBE, { s: [1, 1, 0.88], seg: 10, grad: [0.84, 1.04] });
-  k.lathe([[0.268, 0.0], [0.264, U ? 0.075 : 0.055]], [0, 0, 0], U ? GOLD : BLUE, { s: [1, 1, 0.88], seg: 10, grad: [1, 1] });
+  // robe to the ground with a broad hem (CLOTH, hung from the waist)
+  k.bone(BONE.CLOTH, [0, 0.5, 0], () => {
+    k.lathe([[0.26, 0.0], [0.25, 0.06], [0.205, 0.25], [0.165, 0.42], [0.15, 0.5]], [0, 0, 0], ROBE, { s: [1, 1, 0.88], seg: 10, grad: [0.84, 1.04] });
+    k.lathe([[0.268, 0.0], [0.264, U ? 0.075 : 0.055]], [0, 0, 0], U ? GOLD : BLUE, { s: [1, 1, 0.88], seg: 10, grad: [1, 1] });
+  });
   // scapular / stole down the front and back
   const scap = [[0.27, 0.05], [0.258, 0.09], [0.213, 0.25], [0.173, 0.42], [0.163, 0.5], [0.172, 0.56], [0.2, 0.63], [0.21, 0.69], [0.13, 0.74]];
   for (const ph of [0, Math.PI]) k.lathe(scap, [0, 0, 0], SCAP, { s: [1, 1, 0.9], seg: 2, phi: ph - 0.3, len: 0.6, grad: [0.85, 1.08] });
   if (U) {
     sunBadge(k, [0, 0.6, 0.19], [-0.25, 0, 0], 1.35, 0xff6a5a);
     // raised pointed hood, face, white beard, gold rim around the face
+    k.bone(BONE.HEAD, NECK, () => {
     k.ell(0.16, 0.165, 0.16, [0, HY + 0.015, -0.025], CRIMSON, { grad: [0.88, 1.1] });
     k.cone(0.09, 0.22, [0, HY + 0.08, -0.08], CRIMSON, { r: [-0.6, 0, 0], seg: 5 });
     k.ell(0.122, 0.125, 0.1, [0, HY - 0.012, 0.06], SKIN, { grad: [0.95, 1.05] });
     eyes(k, HY + 0.005, 0.148);
     k.torus(0.125, 0.026, [0, HY - 0.005, 0.085], GOLD, { seg: 12, ts: 4, s: [1, 1.08, 1] });
     k.ell(0.09, 0.095, 0.055, [0, HY - 0.085, 0.13], WHITE, { d: 1 });
+    });
   } else {
     k.torus(0.135, 0.06, [0, 0.725, -0.01], BLUE, { r: [Math.PI / 2 + 0.2, 0, 0], seg: 10, ts: 5 }); // cowl
-    k.ell(0.142, 0.095, 0.13, [0, HY - 0.012, -0.03], BROWN, {}); // tonsure fringe
-    k.ell(0.085, 0.08, 0.055, [0, HY - 0.085, 0.105], BROWN, { d: 1 }); // beard
+    k.bone(BONE.HEAD, NECK, () => {
+      k.ell(0.142, 0.095, 0.13, [0, HY - 0.012, -0.03], BROWN, {}); // tonsure fringe
+      k.ell(0.085, 0.08, 0.055, [0, HY - 0.085, 0.105], BROWN, { d: 1 }); // beard
+    });
   }
-  // staff
+  // staff in the right hand (ARM_R); the free hand's holy light rides ARM_L
   const top = U ? 0.86 : 0.88;
+  k.bone(BONE.ARM_R, SH, () => {
   k.limb([SX, 0.02, SZ], [SX, top, SZ], 0.028, 0.024, U ? CREAM : WOOD, { seg: 6, grad: [0.85, 1.12] });
   k.cyl(0.042, 0.048, 0.07, [SX, top - 0.03, SZ], GOLD, { seg: 6 });
   if (!U) {
     k.ball(0.1, [SX, top + 0.1, SZ], 0xffd050, { glow: true, d: 1 });
     k.torus(0.112, 0.02, [SX, top + 0.1, SZ], GOLD, { r: [0, 0.6, 0], seg: 12 });
     k.torus(0.112, 0.02, [SX, top + 0.1, SZ], GOLD, { r: [0, 0.6 + Math.PI / 2, 0], seg: 12 });
-    k.ball(0.055, [L[0], L[1] + 0.08, L[2] + 0.02], 0xffe080, { glow: true, d: 1 });
+    k.bone(BONE.ARM_L, SHL, () => k.ball(0.055, [L[0], L[1] + 0.08, L[2] + 0.02], 0xffe080, { glow: true, d: 1 }));
   } else {
     const c = [SX, top + 0.12, SZ];
     k.torus(0.105, 0.026, c, GOLD, { seg: 14, grad: [0.95, 1.08] });
     for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; k.cone(0.03, 0.065, [c[0] + Math.sin(a) * 0.12, c[1] + Math.cos(a) * 0.12, c[2]], GOLD_L, { r: [0, 0, -a], seg: 3 }); }
     k.ball(0.08, c, 0xffc040, { glow: true, d: 1 });
     k.ball(0.05, [c[0], c[1], c[2] + 0.05], 0xfff4c0, { glow: true, d: 0 });
-    k.ball(0.05, [L[0], L[1] + 0.06, L[2] + 0.02], 0xffa030, { glow: true, d: 0 });
-    k.cone(0.04, 0.13, [L[0], L[1] + 0.07, L[2] + 0.02], 0xfff0a0, { glow: true, seg: 4 });
+    k.bone(BONE.ARM_L, SHL, () => {
+      k.ball(0.05, [L[0], L[1] + 0.06, L[2] + 0.02], 0xffa030, { glow: true, d: 0 });
+      k.cone(0.04, 0.13, [L[0], L[1] + 0.07, L[2] + 0.02], 0xfff0a0, { glow: true, seg: 4 });
+    });
   }
+  });
   return k.done();
 }
 
@@ -584,17 +637,18 @@ function monk(U) {
 // Champion: royal caparison with gold suns, gilded armour and chanfron with a horn,
 // crowned helm and a huge plume, gilded lance with a long pennant.
 function cavalier(U) {
-  const k = makeKit(U ? 71 : 67);
+  const k = makeKit(U ? 71 : 67, [0, 0.64, -0.03]);
   const HORSE = 0xfbf8f2, HORSE_D = 0xe4ddd2, MANE = U ? 0xf6e2a8 : 0xf0dcb0, HOOF = 0xa07e5c, CAP = U ? ROYAL : BLUE;
   k.ell(0.2, 0.2, 0.4, [0, 0.64, -0.03], HORSE, { grad: [0.85, 1.06] });
   k.ell(0.18, 0.21, 0.18, [0, 0.68, 0.24], HORSE, {});
-  const legsAt = [[0.1, 0.3, 0.12], [-0.1, 0.24, -0.04], [0.1, -0.3, -0.06], [-0.1, -0.28, 0.06]];
-  for (const [x, z, sw] of legsAt) {
+  const legsAt = [[0.1, 0.3, 0.12, BONE.LEG_FR], [-0.1, 0.24, -0.04, BONE.LEG_FL], [0.1, -0.3, -0.06, BONE.LEG_BR], [-0.1, -0.28, 0.06, BONE.LEG_BL]];
+  for (const [x, z, sw, bn] of legsAt) k.bone(bn, [x, 0.6, z], () => {
     k.limb([x, 0.6, z], [x, 0.33, z + sw * 0.5], 0.08, 0.055, HORSE_D, { seg: 5 });
     k.limb([x, 0.33, z + sw * 0.5], [x, 0.06, z + sw], 0.05, 0.044, HORSE_D, { seg: 5 });
     k.cyl(0.056, 0.05, 0.075, [x, 0.0, z + sw], HOOF, { seg: 6, ao: false });
-  }
-  // neck, mane ridge, big head
+  });
+  // neck, mane ridge, big head (+ the champion's crinet): HEAD from the withers
+  k.bone(BONE.HEAD, [0, 0.76, 0.3], () => {
   k.limb([0, 0.74, 0.3], [0, 1.0, 0.47], 0.12, 0.09, HORSE, { seg: 7 });
   k.limb([0, 0.8, 0.235], [0, 1.07, 0.4], 0.055, 0.042, MANE, { seg: 5 });
   k.at([0, 1.02, 0.52], [0.95, 0, 0], 1, () => {
@@ -605,9 +659,12 @@ function cavalier(U) {
     k.sym(() => k.cone(0.032, 0.1, [0.05, 0.06, -0.04], HORSE, { r: [-0.5, 0, 0.25], seg: 4 }));
   });
   if (U) for (let i = 0; i < 2; i++) k.box(0.15, 0.05, 0.11, [0, 0.87 + i * 0.13, 0.33 + i * 0.09], GOLD, { r: [0.95, 0, 0] }); // gold crinet
+  });
   // tail
-  k.limb([0, 0.72, -0.42], [0, 0.55, -0.55], 0.06, 0.05, MANE);
-  k.limb([0, 0.55, -0.55], [0, 0.28, -0.56], 0.05, 0.03, MANE);
+  k.bone(BONE.TAIL, [0, 0.72, -0.42], () => {
+    k.limb([0, 0.72, -0.42], [0, 0.55, -0.55], 0.06, 0.05, MANE);
+    k.limb([0, 0.55, -0.55], [0, 0.28, -0.56], 0.05, 0.03, MANE);
+  });
   // caparison with a broad gold hem and flank emblems
   k.lathe([[0.226, 0.4], [0.216, 0.5], [0.2, 0.66], [0.16, 0.78], [0.06, 0.84]], [0, 0, -0.04], CAP, { s: [1, 1, 2.0], seg: 10, grad: [0.84, 1.08] });
   k.lathe([[0.234, U ? 0.37 : 0.38], [0.229, 0.43]], [0, 0, -0.04], GOLD, { s: [1, 1, 2.0], seg: 10, grad: [1, 1] });
@@ -617,9 +674,9 @@ function cavalier(U) {
   });
   k.box(0.28, 0.06, 0.25, [0, 0.84, -0.04], RED, { grad: [0.92, 1.06] });
   k.box(0.22, 0.09, 0.05, [0, 0.88, -0.15], GOLD, {});
-  // rider
+  // rider: RIDER pivoting at the saddle; its arms ARM_R / ARM_L, cape CLOTH
   let H;
-  k.at([0, 0.47, -0.03], [0, 0, 0], 0.8, () => {
+  k.at([0, 0.47, -0.03], [0, 0, 0], 0.8, () => k.bone(BONE.RIDER, HIPS, () => {
     H = figure(k, {
       sit: true, legs: U ? GOLD : STEEL, boots: STEEL_D, torso: U ? GOLD : STEEL, hips: CAP, upper: STEEL, fore: U ? GOLD : STEEL, hand: STEEL_D, elbow: STEEL_L,
       pauldron: U ? GOLD : STEEL_L, pTrim: U ? GOLD_L : null, rh: [0.2, 0.5, 0.14], lh: [-0.2, 0.5, 0.2], head: false, armR: 0.066,
@@ -637,9 +694,10 @@ function cavalier(U) {
     } else {
       plume(k, [0, HY + 0.13, -0.03], [WHITE, BLUE_L, RED], 1.25);
     }
-  });
+  }));
   const toW = (p) => [p[0] * 0.8, 0.47 + p[1] * 0.8, -0.03 + p[2] * 0.8];
   const rh = toW(H.R), lhw = toW(H.L);
+  k.bone(BONE.ARM_R, toW(SH), () => {
   // couched lance, thick, with coloured bands, vamplate and a big pennant
   const a = [rh[0] + 0.03, rh[1] - 0.05, rh[2] - 0.3], b = [rh[0] + 0.1, rh[1] + 0.28, rh[2] + (U ? 1.0 : 0.92)];
   const pt = (t) => a.map((v, j) => v + (b[j] - v) * t);
@@ -648,7 +706,8 @@ function cavalier(U) {
   k.stick(new THREE.ConeGeometry(0.085, 0.13, 8).rotateX(Math.PI).translate(0, 0.065, 0), [rh[0] + 0.03, rh[1] - 0.04, rh[2] + 0.03], [rh[0] + 0.033, rh[1] - 0.03, rh[2] + 0.16], U ? GOLD : STEEL_L, {});
   const ang = Math.atan2(b[1] - a[1], b[2] - a[2]);
   k.plate(U ? [[0, 0], [0, 0.17], [0.36, 0.13], [0.24, 0.085], [0.36, 0.04]] : [[0, 0], [0, 0.16], [0.28, 0.12], [0.18, 0.08], [0.28, 0.04]], 0.012, pt(0.86), CAP, { r: [-ang + Math.PI / 2, Math.PI / 2 + 0.25, Math.PI], grad: [0.9, 1.08], both: true });
-  shield(k, [lhw[0] - 0.04, lhw[1], lhw[2] + 0.03], [0.05, -0.5, 0.04], 0.85, CAP, GOLD, 'sun');
+  });
+  k.bone(BONE.ARM_L, toW(SHL), () => shield(k, [lhw[0] - 0.04, lhw[1], lhw[2] + 0.03], [0.05, -0.5, 0.04], 0.85, CAP, GOLD, 'sun'));
   return k.done();
 }
 
@@ -657,17 +716,20 @@ function cavalier(U) {
 // Archangel: royal-blue skirt with a broad gold hem, double halo, bigger wings
 // with gold bands, a larger blazing sword.
 function angel(U) {
-  const k = makeKit(U ? 83 : 79);
   const ARM = 0xffc844, SKIRT = U ? ROYAL : WHITE, HAIR = 0xffd868, S = 1.2;
+  const k = makeKit(U ? 83 : 79, HIPS.map((v) => v * S));
   let H;
   k.at([0, 0, 0], [0, 0, 0], S, () => {
     H = figure(k, {
       legs: ARM, boots: GOLD, torso: ARM, hips: SKIRT, upper: SKIN, fore: ARM, hand: SKIN, elbow: SKIN, pauldron: ARM, pTrim: U ? WHITE : null,
       belt: U ? GOLD_L : BLUE, rh: [0.26, 0.62, 0.2], lh: [-0.23, 0.4, 0.12], head: false, torsoGrad: [0.86, 1.14], stance: 0.07,
     });
-    k.lathe([[0.215, 0.0], [0.205, 0.1], [0.17, 0.3], [0.15, 0.46]], [0, 0, 0], SKIRT, { s: [1, 1, 0.86], seg: 10, grad: [0.88, 1.05] });
-    k.lathe([[0.222, 0.0], [0.218, U ? 0.07 : 0.05]], [0, 0, 0], U ? GOLD : BLUE, { s: [1, 1, 0.86], seg: 10, grad: [1, 1] });
-    // golden hair, face, circlet
+    k.bone(BONE.CLOTH, [0, 0.46, 0], () => { // long skirt hung from the waist
+      k.lathe([[0.215, 0.0], [0.205, 0.1], [0.17, 0.3], [0.15, 0.46]], [0, 0, 0], SKIRT, { s: [1, 1, 0.86], seg: 10, grad: [0.88, 1.05] });
+      k.lathe([[0.222, 0.0], [0.218, U ? 0.07 : 0.05]], [0, 0, 0], U ? GOLD : BLUE, { s: [1, 1, 0.86], seg: 10, grad: [1, 1] });
+    });
+    // golden hair, face, circlet, halo(s): HEAD
+    k.bone(BONE.HEAD, NECK, () => {
     k.ell(0.152, 0.152, 0.152, [0, HY + 0.02, -0.025], HAIR, { grad: [0.85, 1.12] });
     k.ell(0.135, 0.17, 0.075, [0, HY - 0.1, -0.085], HAIR, {});
     k.ell(0.125, 0.13, 0.12, [0, HY - 0.005, 0.03], SKIN, { grad: [0.95, 1.05] });
@@ -675,10 +737,11 @@ function angel(U) {
     k.lathe([[0.156, HY + 0.035], [0.156, HY + 0.07]], [0, 0, -0.02], GOLD, { seg: 10, grad: [1, 1] });
     k.torus(0.13, 0.024, [0, HY + 0.25, -0.05], 0xffe070, { glow: true, r: [Math.PI / 2 - 0.25, 0, 0], seg: 16, ts: 4 });
     if (U) k.torus(0.18, 0.016, [0, HY + 0.23, -0.06], 0xfff6c0, { glow: true, r: [Math.PI / 2 - 0.25, 0, 0], seg: 18, ts: 3 });
+    });
   });
   const rh = H.R.map((v) => v * S);
   // flaming sword raised forward
-  k.at(rh, [0.45, 0, -0.2], U ? 1.4 : 1.2, () => {
+  k.bone(BONE.ARM_R, SH.map((v) => v * S), () => k.at(rh, [0.45, 0, -0.2], U ? 1.4 : 1.2, () => {
     k.box(0.22, 0.04, 0.05, [0, 0.03, 0], GOLD, {});
     k.limb([0, -0.08, 0], [0, 0.02, 0], 0.022, 0.022, U ? ROYAL : BLUE_D, { seg: 5 });
     k.ball(0.032, [0, -0.09, 0], GOLD, { d: 0 });
@@ -688,13 +751,13 @@ function angel(U) {
       k.cone(0.05 - i * 0.006, 0.2, [0, 0.1 + i * 0.15, sd * 0.015], i % 2 ? 0xff7a1a : 0xffb030, { glow: true, r: [sd * 0.3, 0.3, sd * 0.12], seg: 4 });
     }
     k.cone(0.035, 0.18, [0, 0.52, 0], 0xffd050, { glow: true, seg: 4 });
-  });
+  }));
   // great wings sweeping up from the shoulder blades
-  k.sym(() => wing(k, [0.1, 0.86, -0.14], {
+  k.sym(() => k.bone(BONE.WING_R, [0.1, 0.86, -0.14], () => wing(k, [0.1, 0.86, -0.14], {
     W: [0.32, 0.24, -0.12], T: U ? [0.74, 0.5, -0.32] : [0.66, 0.44, -0.3], len: U ? 0.72 : 0.6, n: 9,
     col: U ? 0xfff6e0 : 0xf6f4ff, tip: U ? GOLD : 0xffd060, cov: WHITE, bone: U ? GOLD_L : 0xfff4d0,
     drop: [0.08, -0.4, -1], dropIn: [0.05, -1, -0.45], prim: 3,
-  }));
+  })));
   return k.done();
 }
 

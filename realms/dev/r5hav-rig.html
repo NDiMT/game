@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Haven rig debug</title>
+<style>html,body{margin:0;background:#222;overflow:hidden}canvas{display:block}#info{position:fixed;left:8px;top:6px;color:#fff;font:13px sans-serif;white-space:pre}
+.lab{position:fixed;color:#fff;font:bold 13px sans-serif;transform:translateX(-50%);text-shadow:0 0 3px #000}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.js"}}</script></head>
+<body><div id="info"></div><script type="module">
+// Round 5 rig debug: vertices coloured by aBone, pivots drawn as dots (always on top).
+// ?a=yaw (0 front, 1.5708 side) ?ids=a,b ?glow=0
+import * as THREE from 'three';
+const v = '?v=' + Date.now();
+const { havenModel, HAVEN_IDS } = await import('../units_haven.js' + v);
+const { havenUpModel, HAVEN_UP_IDS } = await import('../units_haven_up.js' + v);
+const { BONE } = await import('../rig.js' + v);
+const q = new URLSearchParams(location.search);
+const ids = q.get('ids') ? q.get('ids').split(',') : [...HAVEN_IDS, ...HAVEN_UP_IDS];
+const yaw = +(q.get('a') ?? 0), elev = +(q.get('e') ?? 0.15);
+const COL = { 0: 0x555555, 1: 0x9a9a9a, 2: 0xffe040, 3: 0x2060ff, 4: 0xff2a2a, 5: 0x30d0ff, 6: 0xff60c0, 7: 0x1a8a8a, 8: 0xa02060, 9: 0x40ff60, 10: 0xff9a20, 11: 0x9a50ff, 12: 0xffffff, 13: 0x8a5a2a, 14: 0x000000, 15: 0x000000 };
+const NAME = Object.fromEntries(Object.entries(BONE).map(([k, v]) => [v, k]));
+document.getElementById('info').textContent = Object.entries(COL).filter(([b]) => b < 14).map(([b, c]) => NAME[b] + ' #' + c.toString(16).padStart(6, '0')).join('  ');
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(1); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x30343c);
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(2, 5, 6); scene.add(sun, new THREE.AmbientLight(0xffffff, 1.0));
+const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+const dotG = new THREE.SphereGeometry(0.035, 8, 6);
+const cols = +(q.get('cols') ?? 7), rows = Math.ceil(ids.length / cols), SP = 1.75;
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+const W = cols * SP, H = rows * 1.9, asp = innerWidth / innerHeight;
+const hw = Math.max(W / 2, H / 2 * asp) + 0.1; cam.left = -hw; cam.right = hw; cam.top = hw / asp; cam.bottom = -hw / asp; cam.updateProjectionMatrix();
+cam.position.set(0, Math.sin(elev) * 20, Math.cos(elev) * 20); cam.lookAt(0, 0, 0); cam.updateMatrixWorld();
+const issues = [];
+ids.forEach((id, i) => {
+  const m = havenModel(id) || havenUpModel(id), g = new THREE.Group();
+  const pivots = new Map();
+  for (const key of ['body', 'glow']) {
+    const geo = m[key]; if (!geo) continue;
+    const b = geo.attributes.aBone, p = geo.attributes.aPivot;
+    if (!b || !p) { issues.push(id + ' ' + key + ' untagged'); continue; }
+    const d = geo.clone(), c = new Float32Array(b.count * 3), tc = new THREE.Color();
+    for (let j = 0; j < b.count; j++) {
+      tc.setHex(COL[b.array[j]] ?? 0xff00ff); if (key === 'glow') tc.lerp(new THREE.Color(0xffffff), 0.35);
+      c.set([tc.r, tc.g, tc.b], j * 3);
+      pivots.set(b.array[j] + ':' + p.array[j * 3].toFixed(3) + ',' + p.array[j * 3 + 1].toFixed(3) + ',' + p.array[j * 3 + 2].toFixed(3), [b.array[j], p.array[j * 3], p.array[j * 3 + 1], p.array[j * 3 + 2]]);
+    }
+    d.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    g.add(new THREE.Mesh(d, mat));
+  }
+  for (const [bn, x, y, z] of pivots.values()) {
+    const s = new THREE.Mesh(dotG, new THREE.MeshBasicMaterial({ color: COL[bn], depthTest: false }));
+    const o = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
+    s.position.set(x, y, z); o.position.set(x, y, z); o.renderOrder = 10; s.renderOrder = 11; g.add(o, s);
+  }
+  const cx = (i % cols - (cols - 1) / 2) * SP, cy = (rows - 1 - ((i / cols) | 0) - (rows - 1) / 2) * 1.9 - 0.55;
+  const holder = new THREE.Group(); holder.position.set(cx, cy, 0); g.rotation.y = yaw; holder.add(g);
+  holder.rotation.x = 0; scene.add(holder);
+  const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = id + ' (' + pivots.size + ' piv)'; document.body.appendChild(lab);
+  const sp = new THREE.Vector3(cx, cy - 0.12, 0).project(cam); lab.style.left = ((sp.x + 1) / 2 * innerWidth) + 'px'; lab.style.top = ((1 - sp.y) / 2 * innerHeight) + 'px';
+});
+if (issues.length) document.getElementById('info').textContent += '\nISSUES: ' + issues.join(', ');
+r.render(scene, cam); window.ready = true; window.issues = issues;
+</script></body></html>

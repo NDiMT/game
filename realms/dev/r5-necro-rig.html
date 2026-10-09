@@ -1,0 +1,81 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Necro Rig Debug</title>
+<style>html,body{margin:0;background:#20232e;color:#ddd;font:12px sans-serif;overflow:hidden}#info{position:fixed;left:6px;top:4px;white-space:pre;pointer-events:none;z-index:2;text-shadow:0 0 3px #000}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.js"}}</script>
+</head><body><div id="info"></div>
+<script type="module">
+// Round 5 rig debug: vertices coloured by aBone, pivots drawn as white-ringed dots.
+// ?up=1 upgrades, ?view=front|side, ?cmp=1 also checks geometry is unchanged vs dev/r5nec-orig.
+import * as THREE from 'three';
+import { necroBuild, NECRO_IDS } from '../units_necro.js?v=0.6';
+import { BONE } from '../rig.js?v=0.6';
+const Q = new URLSearchParams(location.search);
+const up = Q.get('up') === '1', view = Q.get('view') || 'front';
+const ids = Q.get('id') ? Q.get('id').split(',') : NECRO_IDS;
+const PAL = { 0: 0x555555, 1: 0xd8d8d8, 2: 0xffe000, 3: 0x2080ff, 4: 0xff2020, 5: 0x40ff40, 6: 0xff40ff, 7: 0x00a080, 8: 0xa000a0,
+  9: 0x00ffff, 10: 0xff8000, 11: 0x8040ff, 12: 0xff90c0, 13: 0x806020, 14: 0xffffff, 15: 0x000000 };
+const NAME = Object.fromEntries(Object.entries(BONE).map(([k, v]) => [v, k]));
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(innerWidth, innerHeight); renderer.setScissorTest(true);
+document.body.appendChild(renderer.domElement);
+let txt = `necro ${up ? 'UP' : 'base'} ${view}   legend: ` + Object.entries(PAL).slice(0, 14).map(([b]) => NAME[b]).join(' ') + '\n';
+let report = [];
+let orig = null;
+if (Q.get('cmp') === '1') orig = await import('./r5nec-orig/units_necro.js');
+const cells = [];
+for (const id of ids) {
+  const m = necroBuild(id, up), g = new THREE.Group(), seen = new Map(), counts = {};
+  for (const [geo, isGlow] of [[m.body, false], [m.glow, true]]) {
+    if (!geo) continue;
+    const b = geo.attributes.aBone, p = geo.attributes.aPivot;
+    if (!b || !p) { report.push(`${id}: ${isGlow ? 'glow' : 'body'} MISSING aBone/aPivot`); continue; }
+    const n = geo.attributes.position.count, col = new Float32Array(n * 3), c = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const bn = b.array[i]; c.set(PAL[bn] ?? 0x000000); if (isGlow) c.multiplyScalar(0.75);
+      col.set([c.r, c.g, c.b], i * 3); counts[NAME[bn]] = (counts[NAME[bn]] || 0) + 1;
+      const key = bn + ':' + p.array[i * 3].toFixed(3) + ',' + p.array[i * 3 + 1].toFixed(3) + ',' + p.array[i * 3 + 2].toFixed(3);
+      if (bn && !seen.has(key)) seen.set(key, [bn, p.array[i * 3], p.array[i * 3 + 1], p.array[i * 3 + 2]]);
+    }
+    const dg = new THREE.BufferGeometry(); dg.setAttribute('position', geo.attributes.position); dg.setAttribute('normal', geo.attributes.normal);
+    dg.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.add(new THREE.Mesh(dg, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: isGlow, opacity: isGlow ? 0.9 : 1 })));
+  }
+  for (const [bn, x, y, z] of seen.values()) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), new THREE.MeshBasicMaterial({ color: PAL[bn], depthTest: false }));
+    s.position.set(x, y, z); s.renderOrder = 10; g.add(s);
+    const r = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false, side: THREE.BackSide }));
+    r.position.set(x, y, z); r.renderOrder = 9; g.add(r);
+  }
+  if (orig) {
+    const o = orig.necroBuild(id, up); let same = true;
+    for (const k of ['body', 'glow']) {
+      const A = m[k], B = o[k]; if (!A !== !B) { same = false; continue; } if (!A) continue;
+      for (const att of ['position', 'normal', 'color', 'uv']) {
+        const a = A.attributes[att]?.array, bb = B.attributes[att]?.array;
+        if (!a !== !bb) { same = false; continue; } if (!a) continue;
+        if (a.length !== bb.length) { same = false; continue; }
+        for (let i = 0; i < a.length; i++) if (a[i] !== bb[i]) { same = false; break; }
+      }
+    }
+    report.push(`${id}${up ? '+' : ''}: geometry ${same ? 'IDENTICAL' : 'DIFFERS'}  bones ${JSON.stringify(counts)}`);
+  } else report.push(`${id}: ${JSON.stringify(counts)}`);
+  const bb = new THREE.Box3().setFromObject(g); cells.push({ g, sz: bb.getSize(new THREE.Vector3()), id });
+}
+const light = new THREE.DirectionalLight(0xffffff, 1.6); light.position.set(2, 4, 3);
+const cols = Q.get('cols') ? +Q.get('cols') : Math.min(cells.length, 4), rows = Math.ceil(cells.length / cols);
+const W = innerWidth, H = innerHeight, cw = W / cols, ch = H / rows;
+const cam = new THREE.PerspectiveCamera(28, cw / ch, 0.05, 50);
+cells.forEach((o, i) => {
+  const scene = new THREE.Scene(); scene.add(o.g, light, new THREE.AmbientLight(0xffffff, 1.2));
+  const c = i % cols, r = Math.floor(i / cols);
+  renderer.setViewport(c * cw, H - (r + 1) * ch, cw, ch); renderer.setScissor(c * cw, H - (r + 1) * ch, cw, ch);
+  renderer.setClearColor((c + r) % 2 ? 0x2a2e3c : 0x343848); renderer.clear();
+  const s = Math.max(o.sz.y, o.sz.z, o.sz.x) * 1.05;
+  if (view === 'side') o.g.rotation.y = Math.PI / 2; else if (view === 'back') o.g.rotation.y = Math.PI; else o.g.rotation.y = 0.35;
+  cam.position.set(0, s * 0.55, s * 2.7); cam.lookAt(0, o.sz.y * 0.5, 0);
+  renderer.render(scene, cam);
+});
+document.getElementById('info').textContent = txt + ids.join('  ');
+window.__report = report.join('\n'); window.__done = true;
+</script></body></html>
