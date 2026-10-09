@@ -237,7 +237,7 @@ void hxPose(int st, float t, int b, float dn, inout vec3 R, inout vec3 O, inout 
   }
   if (b == 16) return;
   // idle layer on the global clock: breathing, look-around, sway (also the base layer of other states)
-  float w = 6.2832 * T, br = sin(0.45 * w + ph);
+  float w = 6.2832 * T * 0.65, br = sin(0.45 * w + ph); // idle runs slow and calm
   vec3 iR = vec3(0.0), iO = vec3(0.0), iQ = vec3(0.0);
   if (b == 1) { iO.y = 0.012 * br; iQ = vec3(-0.008, 0.02, -0.008) * br; iR.x = 0.025 * sin(0.21 * w + ph * 1.3); iR.y = 0.06 * sin(0.17 * w + ph * 0.7); }
   else if (b == 2) { iR.y = 0.3 * sin(0.23 * w + ph * 1.7 + hxPPh); iR.x = 0.07 * sin(0.45 * w + ph - 0.6 + hxPPh * 1.3); iR.z = 0.04 * sin(0.31 * w + hxPPh * 2.1); }
