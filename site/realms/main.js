@@ -1,25 +1,25 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=1.1';
-import { havenModel } from './units_haven.js?v=1.1';
-import { necroModel } from './units_necro.js?v=1.1';
-import { necroUpModel } from './units_necro_up.js?v=1.1';
-import { havenUpModel } from './units_haven_up.js?v=1.1';
-import { neutralModel } from './units_neutral.js?v=1.1';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=1.1';
-import { objectModel } from './models_objects.js?v=1.1';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.1';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.1';
-import { createTownView } from './town_view.js?v=1.1';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.1';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.1';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=1.1';
-import * as BT from './battle.js?v=1.1';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.1';
-import { createScore } from './music.js?v=1.1';
-import { unitFit, applyFit } from './unit_fit.js?v=1.1';
-import { createMapFx } from './mapfx.js?v=1.1';
+import { mulberry32, unitModel } from './models.js?v=1.2';
+import { havenModel } from './units_haven.js?v=1.2';
+import { necroModel } from './units_necro.js?v=1.2';
+import { necroUpModel } from './units_necro_up.js?v=1.2';
+import { havenUpModel } from './units_haven_up.js?v=1.2';
+import { neutralModel } from './units_neutral.js?v=1.2';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=1.2';
+import { objectModel } from './models_objects.js?v=1.2';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.2';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.2';
+import { createTownView } from './town_view.js?v=1.2';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.2';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.2';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=1.2';
+import * as BT from './battle.js?v=1.2';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.2';
+import { createScore } from './music.js?v=1.2';
+import { unitFit, applyFit } from './unit_fit.js?v=1.2';
+import { createMapFx } from './mapfx.js?v=1.2';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.1';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.2';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -28,7 +28,7 @@ import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '1.1';
+const APP_VERSION = '1.2';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -226,7 +226,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=1.1';
+import { createPlanet } from './terrain.js?v=1.2';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -306,6 +306,7 @@ const geoCache = new Map();
 const unitGeo = (id) => { const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
 initPortraits(THREE, renderer, unitGeo);
 setTimeout(() => preloadPortraits(Object.keys(UNITS), 64), 1500);
+let prewarmed = false;
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
 // interactive things (towns, heroes, objects, creatures) get a painted ink outline so they read as figures on the ground
 setRigIdle(0.6); // map figures idle gently (battle units set their own amplitude)
@@ -920,6 +921,20 @@ const wallMat = new THREE.MeshStandardMaterial({ color: 0xb8ae9a, roughness: 0.9
 const activeRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 30).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd84a, toneMapped: false }));
 bscene.add(activeRing); activeRing.visible = false;
 const vfx = createVfx(THREE, bscene);
+// warm up the first battle in the background: fields, creature fits, rig + shadow shaders
+function prewarmBattle() {
+  const jobs = [];
+  // portraits first: the very first one compiles the portrait shaders (~2 s on slow phones) - do it while the intro shows
+  for (const id of Object.keys(UNITS)) jobs.push(() => portraitImg(id, 64));
+  for (const t of [ter[G.heroes[0]?.v] ?? 1, 1, 2, 3, 4, 5, 6, 7]) jobs.push(() => createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS));
+  for (const id of Object.keys(UNITS)) jobs.push(() => { const g = cached('u' + id, () => unitGeo(id)); unitFit(id, g, 'battle'); unitFit(id, g, 'map'); });
+  jobs.push(() => {
+    const m = meshOf(cached('upikeman', () => unitGeo('pikeman'))); m.position.set(0, 0, 0); setAnim(m, ANIM.IDLE);
+    bscene.add(m); try { renderer.compile(bscene, bcam); } catch (e) { /* not fatal */ } bscene.remove(m);
+  });
+  const step = () => { if (G.mode === 'battle') return; const j = jobs.shift(); if (!j) return; try { j(); } catch (e) { console.warn('prewarm', e); } setTimeout(step, 60); };
+  setTimeout(step, 600);
+}
 // scenery around the field
 let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
 function heroBattle(hr) { return { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know'), mana: hr.mana, skills: hr.skills, spells: hr.spells, luck: hr.arts.includes('clover') ? 1 : 0, morale: hr.arts.includes('banner') ? 1 : 0, name: hr.name, p: hr.p }; }
@@ -1023,9 +1038,15 @@ function battleTap(cx, cy) {
   const s = B.active; if (!s || sideOwner(s.side) !== 0 || bauto) return;
   ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, bcam);
-  const p = new THREE.Vector3(); ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p);
   let best = null, bd = 1e9;
-  for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { const d = hexPos(c, r).distanceTo(p); if (d < bd) { bd = d; best = [c, r]; } }
+  // tapping a creature's body selects its hex (the ground point behind a tall unit belongs to another hex)
+  const groups = B.stacks.filter((st) => st.count > 0 && bmesh.get(st.uid)).map((st) => [st, bmesh.get(st.uid)]);
+  const hit = ray.intersectObjects(groups.map(([, g]) => g), true).find((h) => !h.object.userData.blob);
+  if (hit) { const g = groups.find(([, gg]) => { let o = hit.object; while (o) { if (o === gg) return true; o = o.parent; } return false; }); if (g) { best = [g[0].c, g[0].r]; bd = 0; } }
+  if (!best) {
+    const p = new THREE.Vector3(); ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p);
+    for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { const d = hexPos(c, r).distanceTo(p); if (d < bd) { bd = d; best = [c, r]; } }
+  }
   if (!best || bd > HS * 1.2) return;
   const [c, r] = best, t = BT.stackAt(B, c, r);
   if (bspell) {
@@ -1432,7 +1453,8 @@ $('heroes').addEventListener('click', (e) => {
 $('b-hero').addEventListener('click', () => { if (!busy()) openHero(); });
 $('b-end').addEventListener('click', () => {
   if (busy()) return;
-  const left = G.heroes.filter((x) => x.alive && x.p === 0 && x.mp >= 100);
+  // only heroes that can actually afford a step into some neighbouring hex
+  const left = G.heroes.filter((x) => x.alive && x.p === 0 && NBR[x.v].some((n) => passable(n) && stepCost(x.v, n) <= x.mp));
   if (left.length && !$('b-end').classList.contains('confirm')) { $('b-end').classList.add('confirm'); toast(`${left.length} hero${left.length > 1 ? 'es' : ''} can still move. Tap again to end the day.`); setTimeout(() => $('b-end').classList.remove('confirm'), 2500); return; }
   $('b-end').classList.remove('confirm');
   endTurn();
@@ -1701,6 +1723,7 @@ function showMenu() {
 for (const b of document.querySelectorAll('#menu .diffs button')) b.addEventListener('click', () => { store.set('realms.diff', +b.dataset.d); for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.toggle('on', x === b); sfx.click(); });
 for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.toggle('on', +x.dataset.d === store.get('realms.diff', 1));
 function play() {
+  if (!prewarmed) { prewarmed = true; prewarmBattle(); }
   $('menu').hidden = true; $('hud').hidden = false; G.mode = 'map';
   worldDirty = true; layoutWorld();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
