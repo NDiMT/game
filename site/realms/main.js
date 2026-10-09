@@ -1,25 +1,25 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=1.0';
-import { havenModel } from './units_haven.js?v=1.0';
-import { necroModel } from './units_necro.js?v=1.0';
-import { necroUpModel } from './units_necro_up.js?v=1.0';
-import { havenUpModel } from './units_haven_up.js?v=1.0';
-import { neutralModel } from './units_neutral.js?v=1.0';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=1.0';
-import { objectModel } from './models_objects.js?v=1.0';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.0';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.0';
-import { createTownView } from './town_view.js?v=1.0';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.0';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.0';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=1.0';
-import * as BT from './battle.js?v=1.0';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.0';
-import { createScore } from './music.js?v=1.0';
-import { unitFit, applyFit } from './unit_fit.js?v=1.0';
-import { createMapFx } from './mapfx.js?v=1.0';
+import { mulberry32, unitModel } from './models.js?v=1.1';
+import { havenModel } from './units_haven.js?v=1.1';
+import { necroModel } from './units_necro.js?v=1.1';
+import { necroUpModel } from './units_necro_up.js?v=1.1';
+import { havenUpModel } from './units_haven_up.js?v=1.1';
+import { neutralModel } from './units_neutral.js?v=1.1';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=1.1';
+import { objectModel } from './models_objects.js?v=1.1';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.1';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.1';
+import { createTownView } from './town_view.js?v=1.1';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.1';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.1';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=1.1';
+import * as BT from './battle.js?v=1.1';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.1';
+import { createScore } from './music.js?v=1.1';
+import { unitFit, applyFit } from './unit_fit.js?v=1.1';
+import { createMapFx } from './mapfx.js?v=1.1';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.0';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.1';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -28,7 +28,7 @@ import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -226,7 +226,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=1.0';
+import { createPlanet } from './terrain.js?v=1.1';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -762,6 +762,16 @@ function interact(hr, v) {
   }
   if (!o) return;
   const O = OBJECTS[o.type], kind = O?.kind;
+  // guarded: a monster standing next to a mine, chest, site or town must be beaten first (as in HoMM)
+  if (o.type !== 'monster') {
+    const guard = NBR[v].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((g) => g && g.alive && g.type === 'monster');
+    if (guard) {
+      const what = o.type === 'town' ? G.towns[o.t].name : (O?.name || o.type);
+      if (you) ask(`${unitIcon(guard.unit)} ${what} is guarded`, `<div class="bigpt">${unitIcon(guard.unit, 128)}<div><b>${sizeWord(guard.n)} ${plural(guard.unit)}</b><small>${threatWord(guard)}</small></div></div>Defeat the guards before you can claim it.`, [['⚔️ Fight the guards', () => startBattle(hr, { kind: 'monster', obj: guard })], ['Leave', null]]);
+      else startBattle(hr, { kind: 'monster', obj: guard });
+      return;
+    }
+  }
   if (o.type === 'monster') {
     // much weaker monsters may offer to join you, or flee
     const ratio = BT.armyPower(heroArmy(hr), hr) / Math.max(1, BT.armyPower([[o.unit, o.n]]));
@@ -1554,6 +1564,7 @@ function aiValue(hr, v, power) {
   if (other && other !== hr) { if (other.p === hr.p) return 0; const theirs = BT.armyPower(heroArmy(other), other); return power > theirs * 1.3 ? 70 + theirs / 100 : 0; }
   if (!o) return 0;
   const O = OBJECTS[o.type], kind = O?.kind;
+  if (o.type !== 'monster') { const g = NBR[v].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((x) => x && x.alive && x.type === 'monster'); if (g && power < BT.armyPower([[g.unit, g.n]]) * 1.6) return 0; }
   if (o.type === 'monster') { const mp = BT.armyPower([[o.unit, o.n]]); if (power < mp * 1.6) return 0; return 6 + mp / 150 + (o.guards !== undefined ? 10 : 0); }
   if (o.type === 'town') {
     const t = G.towns[o.t];
