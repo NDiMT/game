@@ -1399,8 +1399,11 @@ function makePlate(s) {
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, sizeAttenuation: false, fog: false, toneMapped: false }));
   sp.renderOrder = 5; sp.frustumCulled = false; sp.visible = false;
-  sp.userData = { cv, tex, side: s.side, n: null, pr: 0 };
-  bplateMap.set(s.uid, sp);
+  // x-ray ghost: same texture, no depth test, faint, drawn first so the real plate covers it where visible
+  const ghost = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, opacity: 0.4, sizeAttenuation: false, fog: false, toneMapped: false }));
+  ghost.renderOrder = 4; ghost.frustumCulled = false; ghost.visible = false;
+  sp.userData = { cv, tex, side: s.side, n: null, pr: 0, ghost };
+  bplateMap.set(s.uid, sp); bplates.add(ghost);
   return sp;
 }
 function drawPlate(sp, n) {
@@ -1437,7 +1440,7 @@ function updatePlates() {
   for (const s of B.stacks) {
     const sp = bplateMap.get(s.uid), m = bmesh.get(s.uid); if (!sp) continue;
     const show = !!m && m.visible && !m.userData.dying && s.shown > 0;
-    sp.visible = show; if (!show) continue;
+    sp.visible = sp.userData.ghost.visible = show; if (!show) continue;
     if (sp.userData.pr !== pr) drawPlate(sp, s.shown);
     const cv = sp.userData.cv; sp.scale.set((sy * cv.width) / cv.height, sy, 1);
     // ground point at the front (camera-facing) edge of the hex, ignoring flight height and hops
@@ -1446,10 +1449,11 @@ function updatePlates() {
     // slide toward the camera along the view ray: same spot on screen, wins the depth test vs own body
     plateD.subVectors(bcam.position, plateA).normalize();
     sp.position.copy(plateA).addScaledVector(plateD, PLATE_BIAS);
+    sp.userData.ghost.position.copy(sp.position); sp.userData.ghost.scale.copy(sp.scale);
   }
 }
 function clearPlates() {
-  for (const sp of bplateMap.values()) { sp.userData.tex.dispose(); sp.material.dispose(); }
+  for (const sp of bplateMap.values()) { sp.userData.tex.dispose(); sp.material.dispose(); sp.userData.ghost.material.dispose(); }
   bplates.clear(); bplateMap.clear();
 }
 function refreshBattle() {
