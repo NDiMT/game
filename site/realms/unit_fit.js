@@ -22,11 +22,11 @@
 //
 // Pure math on the position arrays: no THREE import, results cached.
 // =====================================================================
-import { UNITS } from './data.js?v=0.4';
+import { UNITS } from './data.js?v=0.5';
 
 // battle: hex corner-to-corner = 2 * HS = 1.0 world unit, flat width 0.866,
 // rows 0.75 apart. Target body heights per tier, in world units.
-const BATTLE_H = [0.75, 0.8, 0.86, 0.92, 0.98, 1.06, 1.18];
+const BATTLE_H = [0.86, 0.9, 0.96, 1.02, 1.08, 1.14, 1.24]; // ~+12%: creatures fill more of their hex
 // the "core" (90% of the surface) must stay near the hex; thin or flat
 // extremities (wings, lances, tails) may overhang a bit more
 const BATTLE_CORE = { x: [0.40, 0.40, 0.46, 0.44, 0.44, 0.48, 0.52], z: [0.42, 0.44, 0.44, 0.44, 0.46, 0.52, 0.62] };
@@ -34,7 +34,7 @@ const BATTLE_FULL = { x: [0.62, 0.62, 0.8, 0.72, 0.72, 0.8, 0.86], z: [0.62, 0.6
 const UP_K = 1.05; // upgraded creatures read a touch grander
 // map guard: a planet hex is ~0.376 world units across (icosphere(4), R = 5)
 const MAP_HEX = 0.376;
-const MAP_H = [0.2, 0.21, 0.22, 0.23, 0.245, 0.26, 0.28];
+const MAP_H = [0.24, 0.25, 0.26, 0.27, 0.29, 0.305, 0.325]; // a touch bigger so map guards read as figures
 const MAP_CORE = 0.15, MAP_FULL = 0.26;
 const LABEL_PAD = { battle: 0.07, map: 0.03 };
 

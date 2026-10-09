@@ -1,25 +1,25 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=0.4';
-import { havenModel } from './units_haven.js?v=0.4';
-import { necroModel } from './units_necro.js?v=0.4';
-import { necroUpModel } from './units_necro_up.js?v=0.4';
-import { havenUpModel } from './units_haven_up.js?v=0.4';
-import { neutralModel } from './units_neutral.js?v=0.4';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=0.4';
-import { objectModel } from './models_objects.js?v=0.4';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.4';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=0.4';
-import { createTownView } from './town_view.js?v=0.4';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.4';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.4';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.4';
-import * as BT from './battle.js?v=0.4';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, tick as tickMaterials } from './materials.js?v=0.4';
-import { createScore } from './music.js?v=0.4';
-import { unitFit, applyFit } from './unit_fit.js?v=0.4';
-import { createMapFx } from './mapfx.js?v=0.4';
+import { mulberry32, unitModel } from './models.js?v=0.5';
+import { havenModel } from './units_haven.js?v=0.5';
+import { necroModel } from './units_necro.js?v=0.5';
+import { necroUpModel } from './units_necro_up.js?v=0.5';
+import { havenUpModel } from './units_haven_up.js?v=0.5';
+import { neutralModel } from './units_neutral.js?v=0.5';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=0.5';
+import { objectModel } from './models_objects.js?v=0.5';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.5';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=0.5';
+import { createTownView } from './town_view.js?v=0.5';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.5';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.5';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.5';
+import * as BT from './battle.js?v=0.5';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, tick as tickMaterials } from './materials.js?v=0.5';
+import { createScore } from './music.js?v=0.5';
+import { unitFit, applyFit } from './unit_fit.js?v=0.5';
+import { createMapFx } from './mapfx.js?v=0.5';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0.4';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0.5';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -28,7 +28,7 @@ import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '0.4';
+const APP_VERSION = '0.5';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -226,7 +226,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=0.4';
+import { createPlanet } from './terrain.js?v=0.5';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -302,12 +302,18 @@ const unitGeo = (id) => { const up = UNITS[id]?.up ? (necroUpModel(id) || havenU
 initPortraits(THREE, renderer, unitGeo);
 setTimeout(() => preloadPortraits(Object.keys(UNITS), 64), 1500);
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
-function meshOf(m) {
+// interactive things (towns, heroes, objects, creatures) get a painted ink outline so they read as figures on the ground
+const inkMat = makeInkHullMaterial(THREE), blobMat = makeBlobShadowMaterial(THREE), blobGeo = blobShadowGeometry(THREE);
+function meshOf(m, ink = true) {
   const g = new THREE.Group();
   const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = true; b.receiveShadow = true; g.add(b);
   if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
+  if (ink) g.add(new THREE.Mesh(m.body, inkMat));
   return g;
 }
+// soft contact shadow so a figure sits on the ground (radius in model units)
+function addBlob(g, r) { const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(r); bl.userData.blob = true; bl.renderOrder = -1; g.add(bl); return g; }
+const BLOB_R = { gold: 0.62, wood: 0.62, ore: 0.62, gems: 0.62, chest: 0.64, artifact: 0.55, campfire: 0.6, stone: 0.55, monster: 0.7 };
 const UP = new THREE.Vector3(0, 1, 0), qa = new THREE.Quaternion();
 // stands a group on a cell, local +y along the planet normal
 function placeOn(obj, v, scale, turn = 0, lift = 0) {
@@ -557,6 +563,7 @@ function layoutWorld() {
     const g = meshOf(objModel(o));
     placeOn(g, o.v, SCALE[o.type] || 0.24, o.type === 'monster' ? (hash(o.id) % 6) : 0);
     if (o.type === 'monster') { g.userData.bob = o.id; applyFit(g, unitFit(o.unit, objModel(o), 'map')); }
+    addBlob(g, o.type === 'monster' ? BLOB_R.monster / (g.scale.x / (SCALE.monster || 0.2)) : BLOB_R[o.type] || 0.66);
     world.add(g);
     const owner = o.type === 'town' ? G.towns[o.t].p : OBJECTS[o.type]?.kind === 'mine' ? o.owner : -2;
     if (owner > -2) { const f = flagMesh(ownerCol(owner)); g.add(f); f.position.set(0.55, 0, 0.45); f.scale.setScalar(o.type === 'town' ? 0.6 : 0.8); }
@@ -570,7 +577,7 @@ function layoutHeroes(force = false) {
     let m = heroMeshes.get(hr.id);
     if (!hr.alive || (!seen[hr.v] && hr.p !== 0)) { if (m) { scene.remove(m); heroMeshes.delete(hr.id); } continue; }
     if (!m) {
-      m = meshOf(cached('hero' + hr.p, () => heroModel(G.players[hr.p].fac, G.players[hr.p].color)));
+      m = addBlob(meshOf(cached('hero' + hr.p, () => heroModel(G.players[hr.p].fac, G.players[hr.p].color))), 0.5);
       scene.add(m); heroMeshes.set(hr.id, m);
     }
     if (!hr.anim || force) placeOn(m, hr.v, 0.27, hr.face || 0);
@@ -885,7 +892,7 @@ let bfield = null;
 const HS = 0.5, HW = Math.sqrt(3) * HS, VS = 1.5 * HS;
 const hexPos = (c, r) => new THREE.Vector3((c - (BT.COLS - 1) / 2 + (r & 1 ? 0.5 : 0) - 0.25) * HW, 0, (r - (BT.ROWS - 1) / 2) * VS);
 const hexGeo = new THREE.CylinderGeometry(HS * 0.95, HS * 0.95, 0.02, 6);
-const hexes = new THREE.InstancedMesh(hexGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.38, depthWrite: false }), BT.COLS * BT.ROWS);
+const hexes = new THREE.InstancedMesh(hexGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.26, depthWrite: false }), BT.COLS * BT.ROWS);
 hexes.frustumCulled = false; bscene.add(hexes);
 for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(1); dummy.updateMatrix(); hexes.setMatrixAt(BT.key(c, r), dummy.matrix); hexes.setColorAt(BT.key(c, r), new THREE.Color(0xffffff)); }
 const bstuff = new THREE.Group(); bscene.add(bstuff);
@@ -935,7 +942,7 @@ function enterBattle(B, ctx) {
   for (const k of B.obstacles) {
     const c = k % BT.COLS, r = (k / BT.COLS) | 0;
     if (B.walls.has(k)) { const w = meshOf(cached('wall_' + sfac, () => wallModel(sfac))); w.position.copy(hexPos(c, r)); w.rotation.y = lay.wallRotY; bstuff.add(w); continue; }
-    const m = meshOf(cached('obs' + ctx.terrain + '_' + (k % 3), () => bfield.obstacleModel(k % 3))); m.position.copy(hexPos(c, r)); m.rotation.y = k; bstuff.add(m);
+    const m = meshOf(cached('obs' + ctx.terrain + '_' + (k % 3), () => bfield.obstacleModel(k % 3)), false); m.position.copy(hexPos(c, r)); m.rotation.y = k; bstuff.add(m);
   }
   if (lay) {
     if (B.gate != null) { const g = meshOf(cached('gate_' + sfac, () => gateModel(sfac))); g.position.copy(hexPos(B.gate % BT.COLS, (B.gate / BT.COLS) | 0)); g.rotation.y = lay.wallRotY; bstuff.add(g); bctx.gate = g; }
@@ -946,6 +953,7 @@ function enterBattle(B, ctx) {
   for (const s of B.stacks) {
     const m = meshOf(cached('u' + s.id, () => unitGeo(s.id)));
     applyFit(m, unitFit(s.id, cached('u' + s.id, () => unitGeo(s.id)), 'battle'));
+    addBlob(m, 0.42 / m.scale.x);
     m.position.copy(hexPos(s.c, s.r)); m.rotation.y = s.side === 0 ? Math.PI : 0;
     bstuff.add(m); bmesh.set(s.uid, m);
     const lab = document.createElement('div'); lab.className = `blab s${s.side}`; lab.id = `bl${s.uid}`; $('blabels').appendChild(lab);
@@ -968,7 +976,7 @@ function refreshBattle() {
   // highlight what the active stack can do
   const s = B.active, mineTurn = s && sideOwner(s.side) === 0 && !bauto && !B.over && !banim.length;
   const reach = mineTurn ? BT.reachable(B, s) : new Map();
-  const white = new THREE.Color(0x203a10), grn = new THREE.Color(0xc8ff9a), red = new THREE.Color(0xff6a5a), blu = new THREE.Color(0x7ac8ff);
+  const white = new THREE.Color(0x203a10), grn = new THREE.Color(0xe8ffc0), red = new THREE.Color(0xff6a5a), blu = new THREE.Color(0x7ac8ff);
   for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) {
     const k = BT.key(c, r), st = BT.stackAt(B, c, r);
     let col = white;
@@ -976,7 +984,7 @@ function refreshBattle() {
     if (mineTurn && st && st.side !== s.side && (BT.canShoot(B, s) || BT.attackFrom(B, s, st).length || BT.nbrs(st.c, st.r).some(([x, y]) => x === s.c && y === s.r))) col = red;
     if (bspell && st) col = SPELLS[bspell].target === 'ally' ? (st.side === 0 ? blu : white) : st.side === 1 ? red : white;
     hexes.setColorAt(k, col);
-    dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(col === white ? 0.0001 : 1); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix);
+    dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(col === white ? 0.0001 : 0.92); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix);
   }
   hexes.instanceColor.needsUpdate = true; hexes.instanceMatrix.needsUpdate = true;
   if (s && s.count > 0) vfx.select(bmesh.get(s.uid), s.side === 0 ? 0xffd84a : 0xff5a4a); else vfx.select(null);
@@ -1686,6 +1694,9 @@ function frame() {
   const dt = Math.min(0.05, clock.getDelta());
   tt += dt;
   tickMaterials(tt);
+  // ink outlines thin out and soften as the map zooms out, so far views don't turn into uniform dark chips
+  const iu = inkMat.userData.uniforms, zk = G.mode === 'battle' ? 1 : clamp((19 - cam.dist) / 8, 0.3, 1);
+  iu.uHullW.value = 0.003 * zk; iu.uHullDark.value = 0.15 + (1 - zk) * 0.45;
   if (G.mode === 'battle') {
     animateBattle(dt);
     const s = Math.sin(bview.yaw), c = Math.cos(bview.yaw);
@@ -1709,7 +1720,7 @@ function frame() {
       const m = hr && heroMeshes.get(hr.id);
       fx.select(m ? m.position : null);
       fx.update(dt, camera);
-      for (const g of world.children) if (g.userData.bob !== undefined) for (const c of g.children) if (c.isMesh) c.position.y = (c.userData.fitY ?? 0) + Math.abs(Math.sin(tt * 2 + g.userData.bob)) * 0.15;
+      for (const g of world.children) if (g.userData.bob !== undefined) for (const c of g.children) if (c.isMesh && !c.userData.blob) c.position.y = (c.userData.fitY ?? 0) + Math.abs(Math.sin(tt * 2 + g.userData.bob)) * 0.15;
     }
     if (G.mode === 'town') { townInsets(); townView.update(dt); post.render(townView.scene, townView.camera); }
     else post.render(scene, camera);
