@@ -1321,6 +1321,9 @@ async function prepBattle(job) {
     f();
   }
   buildBattleScene(B, ctx);
+  // first turn and highlights (this also creates the selection ring, so its program is compiled below too)
+  BT.nextStack(B);
+  refreshBattle();
   // upload the arena's painted textures and compile every program the battle scene needs before its first frame
   for (const tx of [bfield.ground?.material.map, bfield.ground?.material.emissiveMap, bfield.overlay?.material.map]) if (tx) renderer.initTexture(tx);
   await nextFrame(); if (!live()) return;
@@ -1330,7 +1333,6 @@ async function prepBattle(job) {
   $('battle').hidden = false;
   const hs = ctx.sides.map((sd) => (sd.hero ? sd.hero.name : sd.owner < 0 ? 'Neutrals' : 'Garrison'));
   $('b-title').textContent = `${hs[0]} vs ${hs[1]}`;
-  BT.nextStack(B);
   refreshBattle();
   // lift the curtain once the first battle frame is on screen
   await nextFrame(); await nextFrame();
