@@ -109,3 +109,13 @@ Player asked for animations. Approach: GPU "shader rig" — see /home/user/game/
 - materials.js (tech agent) deforms vertices in makeBodyMaterial, makeGlowMaterial, makeInkHullMaterial and makeHitMaterial from per-mesh uniforms set via mesh.onBeforeRender: uAnimState (ANIM.*), uAnimT (seconds in state), uAnimSpeed, uSeed. Exported helper `setAnim(mesh/group, state, opts)`.
 - Animations must read at phone size: big, clear, snappy poses (anticipation → strike → recover), not subtle wiggles. Idle breathing + slight sway so the battlefield feels alive. Different seeds desync units.
 - Each model module: pivots at sensible joints; quadrupeds use LEG_FL/FR/BL/BR; mounted units: horse legs LEG_*, horse body BODY, rider RIDER; flyers WING_L/WING_R; weapons on ARM_R; shields on ARM_L.
+
+---
+# Round 6: three new factions (2026-10-09)
+New factions in data.js FACTIONS/UNITS/UPGRADES (read them for ids, names, colours, flags):
+- **sylvan** (green/gold/wood, elven forest): centaur, dwarf, woodelf, pegasus, dendroid, unicorn, greendragon; upgrades centaurcpt, battledwarf, grandelf, silverpegasus, dendroidsoldier, warunicorn, golddragon.
+- **inferno** (fire/brimstone, crimson-orange-black-gold — NOT murky: glowing lava accents, bright reds): imp, hellhound, demon, succubus, efreet, nightmare, devil (named "Pit Lord"); upgrades familiar, cerberus (3 heads), horneddemon, succubusmistress, efreetsultan, hellcharger, archdevil.
+- **dungeon** (violet/teal underworld, warlocks): troglodyte, harpy, beholder, medusa, minotaur, manticore, blackdragon; upgrades infernaltrog, harpyhag, evileye, medusaqueen, minotaurking, scorpicore, reddragon.
+All rules from rounds 2–5 apply: bright palette (no murk), mobile readability (Round 4: chunky silhouettes, colour blocking, big identity features, check at 40 px & 90 px), and Round 5 shader rig tags (aBone/aPivot via rig.js on body AND glow; read rig.js header conventions, +Z front, +X = *_R weapon side).
+Model contract: `{ body, glow }` with position/normal/color/uv (+ aBone/aPivot), base y=0, facing +Z, ~1 unit tall (tier 6–7 up to ~1.5, dragons wider). Upgrades keep the base silhouette but grander (gold trims, crowns, bigger wings/weapons) — build them with one builder per creature + an `up` flag, like units_haven.js / units_necro.js (read those as reference implementations!).
+Import other modules with the '?v=1.3' query that main.js uses (the lead bumps all ?v= together).

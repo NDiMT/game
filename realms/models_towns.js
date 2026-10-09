@@ -109,6 +109,8 @@ function makeKit(seed) {
       }
     },
     // a glowing window on the face of a cylinder at angle a (direction cos a, sin a)
+    // a crystal: an octahedron, stretched with o.s (e.g. [1, 2.4, 1])
+    gem(rad, x, y, z, c, o = {}) { return add(tf(new THREE.OctahedronGeometry(rad, 0), o).translate(x, y, z), c, o); },
     winCyl(cx, cz, rad, a, y, w, h, c) {
       const dx = Math.cos(a), dz = Math.sin(a);
       k.box(w, h, 0.012, cx + dx * rad, y, cz + dz * rad, c, { glow: true, ry: face(dx, dz) });
@@ -433,7 +435,7 @@ function horse(k, coat, mane, hoof, o = {}) {
     for (const s of [-1, 1]) k.cone(0.026, 0.085, s * 0.035, 0.85, 0.29, coat, 4, { rx: -0.25, rz: -s * 0.25 });
     if (o.eyes) for (const s of [-1, 1]) k.ball(0.017, s * 0.052, 0.79, 0.4, o.eyes, 0, { glow: true });
     // mane: three bold blocks along the crest (or flames for the undead steed)
-    if (!o.flameMane) for (let i = 0; i < 3; i++) { const t = i / 2; k.box(0.05, 0.1, 0.1, 0, 0.58 + t * 0.22, 0.12 + t * 0.15, mane, { rx: -0.6, top: 1.15 }); }
+    if (!o.flameMane && o.mane !== false) for (let i = 0; i < 3; i++) { const t = i / 2; k.box(0.05, 0.1, 0.1, 0, 0.58 + t * 0.22, 0.12 + t * 0.15, mane, { rx: -0.6, top: 1.15 }); }
   });
   // legs: thick upper legs, sturdy shins and big hooves; front pair mid-stride, rear planted
   const legs = [[-0.082, 0.16, 0.08, 0.07], [0.082, 0.17, -0.02, 0.15], [-0.082, -0.19, -0.02, -0.08], [0.082, -0.18, 0.02, -0.2]];
@@ -448,7 +450,7 @@ function horse(k, coat, mane, hoof, o = {}) {
     });
   }
   // a thick tail
-  if (!o.flameMane) k.bone(RIG.TAIL, HORSE_TAIL, () => {
+  if (!o.flameMane && o.mane !== false) k.bone(RIG.TAIL, HORSE_TAIL, () => {
     k.limb([0, 0.56, -0.29], [0, 0.42, -0.4], 0.04, 0.05, mane, 5);
     k.limb([0, 0.42, -0.4], [0, 0.2, -0.42], 0.05, 0.018, mane, 5);
   });

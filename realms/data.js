@@ -25,6 +25,30 @@ export const UNITS = {
   lich: { name: 'Lich', fac: 'necro', tier: 5, att: 13, def: 10, dmg: [11, 13], hp: 30, spd: 6, cost: { gold: 550 }, grow: 3, ranged: 12, undead: true, col: 0x6a4a9a },
   blackknight: { name: 'Black Knight', fac: 'necro', tier: 6, att: 16, def: 16, dmg: [15, 30], hp: 120, spd: 7, cost: { gold: 1200 }, grow: 2, undead: true, col: 0x2a2a34 },
   bonedragon: { name: 'Bone Dragon', fac: 'necro', tier: 7, att: 17, def: 15, dmg: [25, 50], hp: 150, spd: 9, cost: { gold: 1800, gems: 1 }, grow: 1, fly: true, undead: true, col: 0xd8d0b8 },
+  // Sylvan (forest folk)
+  centaur: { name: 'Centaur', fac: 'sylvan', tier: 1, att: 5, def: 3, dmg: [2, 3], hp: 8, spd: 6, cost: { gold: 70 }, grow: 14, col: 0xa8784a },
+  dwarf: { name: 'Dwarf', fac: 'sylvan', tier: 2, att: 6, def: 7, dmg: [2, 4], hp: 20, spd: 3, cost: { gold: 120 }, grow: 8, col: 0xb86a3a },
+  woodelf: { name: 'Wood Elf', fac: 'sylvan', tier: 3, att: 9, def: 5, dmg: [3, 5], hp: 15, spd: 6, cost: { gold: 200 }, grow: 7, ranged: 24, col: 0x5aa84a },
+  pegasus: { name: 'Pegasus', fac: 'sylvan', tier: 4, att: 9, def: 8, dmg: [5, 9], hp: 30, spd: 8, cost: { gold: 250 }, grow: 4, fly: true, col: 0xd8e8ff },
+  dendroid: { name: 'Dendroid', fac: 'sylvan', tier: 5, att: 9, def: 12, dmg: [10, 14], hp: 55, spd: 3, cost: { gold: 350 }, grow: 3, col: 0x6a8a3a },
+  unicorn: { name: 'Unicorn', fac: 'sylvan', tier: 6, att: 15, def: 14, dmg: [18, 22], hp: 90, spd: 7, cost: { gold: 850 }, grow: 2, col: 0xf4f0ff },
+  greendragon: { name: 'Green Dragon', fac: 'sylvan', tier: 7, att: 18, def: 18, dmg: [40, 50], hp: 180, spd: 10, cost: { gold: 2400, gems: 1 }, grow: 1, fly: true, breath: true, col: 0x3ab84a },
+  // Inferno (demons)
+  imp: { name: 'Imp', fac: 'inferno', tier: 1, att: 4, def: 3, dmg: [1, 2], hp: 4, spd: 5, cost: { gold: 50 }, grow: 15, col: 0xd84a2a },
+  hellhound: { name: 'Hell Hound', fac: 'inferno', tier: 2, att: 7, def: 5, dmg: [2, 7], hp: 15, spd: 7, cost: { gold: 120 }, grow: 8, col: 0x8a2a1a },
+  demon: { name: 'Demon', fac: 'inferno', tier: 3, att: 10, def: 10, dmg: [7, 9], hp: 35, spd: 5, cost: { gold: 250 }, grow: 6, col: 0xb8382a },
+  succubus: { name: 'Succubus', fac: 'inferno', tier: 4, att: 10, def: 8, dmg: [6, 10], hp: 30, spd: 6, cost: { gold: 350 }, grow: 4, ranged: 10, col: 0xc84a8a },
+  efreet: { name: 'Efreet', fac: 'inferno', tier: 5, att: 13, def: 9, dmg: [12, 16], hp: 50, spd: 9, cost: { gold: 600 }, grow: 3, fly: true, col: 0xff8a2a },
+  nightmare: { name: 'Nightmare', fac: 'inferno', tier: 6, att: 16, def: 13, dmg: [20, 28], hp: 110, spd: 8, cost: { gold: 1100 }, grow: 2, col: 0x3a1a2a },
+  devil: { name: 'Pit Lord', fac: 'inferno', tier: 7, att: 21, def: 18, dmg: [30, 40], hp: 180, spd: 9, cost: { gold: 2700, gems: 1 }, grow: 1, noRetal: true, col: 0x9a1a1a },
+  // Dungeon (the deep places)
+  troglodyte: { name: 'Troglodyte', fac: 'dungeon', tier: 1, att: 4, def: 3, dmg: [1, 3], hp: 5, spd: 4, cost: { gold: 50 }, grow: 14, col: 0x8a7a9a },
+  harpy: { name: 'Harpy', fac: 'dungeon', tier: 2, att: 6, def: 5, dmg: [1, 4], hp: 14, spd: 6, cost: { gold: 130 }, grow: 8, fly: true, noRetal: true, col: 0x7a9a5a },
+  beholder: { name: 'Beholder', fac: 'dungeon', tier: 3, att: 9, def: 7, dmg: [3, 5], hp: 22, spd: 5, cost: { gold: 250 }, grow: 7, ranged: 12, noMeleePenalty: true, col: 0xa85aa8 },
+  medusa: { name: 'Medusa', fac: 'dungeon', tier: 4, att: 9, def: 9, dmg: [6, 8], hp: 25, spd: 5, cost: { gold: 300 }, grow: 4, ranged: 8, col: 0x5a9a7a },
+  minotaur: { name: 'Minotaur', fac: 'dungeon', tier: 5, att: 14, def: 12, dmg: [12, 20], hp: 50, spd: 6, cost: { gold: 500 }, grow: 3, col: 0x8a5a3a },
+  manticore: { name: 'Manticore', fac: 'dungeon', tier: 6, att: 15, def: 15, dmg: [14, 20], hp: 80, spd: 7, cost: { gold: 850 }, grow: 2, fly: true, col: 0xc87a3a },
+  blackdragon: { name: 'Black Dragon', fac: 'dungeon', tier: 7, att: 21, def: 19, dmg: [40, 50], hp: 220, spd: 11, cost: { gold: 3200, gems: 2 }, grow: 1, fly: true, breath: true, col: 0x3a2a4a },
   // Neutrals, guarding the wilds
   goblin: { name: 'Goblin', fac: 'neutral', tier: 1, att: 4, def: 2, dmg: [1, 2], hp: 5, spd: 5, cost: { gold: 40 }, grow: 15, col: 0x7ac04a },
   wolf: { name: 'Wolf', fac: 'neutral', tier: 2, att: 6, def: 4, dmg: [2, 4], hp: 12, spd: 7, cost: { gold: 100 }, grow: 9, double: true, col: 0x8a8a92 },
@@ -50,11 +74,39 @@ Object.assign(UNITS, {
   powerlich: { name: 'Power Lich', fac: 'necro', tier: 5, up: 'lich', att: 13, def: 10, dmg: [11, 15], hp: 40, spd: 7, cost: { gold: 600 }, grow: 3, ranged: 24, undead: true, col: 0x8a4ab8 },
   dreadknight: { name: 'Dread Knight', fac: 'necro', tier: 6, up: 'blackknight', att: 18, def: 18, dmg: [15, 30], hp: 120, spd: 9, cost: { gold: 1500 }, grow: 2, undead: true, deathblow: true, col: 0x1a1a24 },
   ghostdragon: { name: 'Ghost Dragon', fac: 'necro', tier: 7, up: 'bonedragon', att: 19, def: 17, dmg: [25, 50], hp: 200, spd: 14, cost: { gold: 3000, gems: 1 }, grow: 1, fly: true, undead: true, col: 0xc8d8e8 },
+  // Sylvan upgrades
+  centaurcpt: { name: 'Centaur Captain', fac: 'sylvan', tier: 1, up: 'centaur', att: 6, def: 3, dmg: [2, 3], hp: 10, spd: 8, cost: { gold: 90 }, grow: 14, col: 0x985a3a },
+  battledwarf: { name: 'Battle Dwarf', fac: 'sylvan', tier: 2, up: 'dwarf', att: 7, def: 7, dmg: [2, 4], hp: 20, spd: 5, cost: { gold: 150 }, grow: 8, col: 0xc87a3a },
+  grandelf: { name: 'Grand Elf', fac: 'sylvan', tier: 3, up: 'woodelf', att: 9, def: 5, dmg: [3, 5], hp: 15, spd: 7, cost: { gold: 225 }, grow: 7, ranged: 24, twoShots: true, col: 0x3a9a5a },
+  silverpegasus: { name: 'Silver Pegasus', fac: 'sylvan', tier: 4, up: 'pegasus', att: 9, def: 10, dmg: [5, 9], hp: 30, spd: 12, cost: { gold: 275 }, grow: 4, fly: true, col: 0xe8f0ff },
+  dendroidsoldier: { name: 'Dendroid Soldier', fac: 'sylvan', tier: 5, up: 'dendroid', att: 9, def: 12, dmg: [10, 14], hp: 65, spd: 4, cost: { gold: 425 }, grow: 3, col: 0x5a7a2a },
+  warunicorn: { name: 'War Unicorn', fac: 'sylvan', tier: 6, up: 'unicorn', att: 15, def: 14, dmg: [18, 22], hp: 110, spd: 9, cost: { gold: 950 }, grow: 2, col: 0xfff4ff },
+  golddragon: { name: 'Gold Dragon', fac: 'sylvan', tier: 7, up: 'greendragon', att: 27, def: 27, dmg: [40, 50], hp: 250, spd: 16, cost: { gold: 4000, gems: 2 }, grow: 1, fly: true, breath: true, col: 0xf0c03a },
+  // Inferno upgrades
+  familiar: { name: 'Familiar', fac: 'inferno', tier: 1, up: 'imp', att: 4, def: 4, dmg: [1, 2], hp: 4, spd: 7, cost: { gold: 60 }, grow: 15, col: 0xe85a2a },
+  cerberus: { name: 'Cerberus', fac: 'inferno', tier: 2, up: 'hellhound', att: 8, def: 6, dmg: [2, 7], hp: 15, spd: 8, cost: { gold: 165 }, grow: 8, breath: true, col: 0x9a2a1a },
+  horneddemon: { name: 'Horned Demon', fac: 'inferno', tier: 3, up: 'demon', att: 10, def: 10, dmg: [7, 9], hp: 40, spd: 6, cost: { gold: 270 }, grow: 6, col: 0xc8382a },
+  succubusmistress: { name: 'Succubus Mistress', fac: 'inferno', tier: 4, up: 'succubus', att: 12, def: 10, dmg: [6, 12], hp: 35, spd: 7, cost: { gold: 450 }, grow: 4, ranged: 14, noMeleePenalty: true, col: 0xd85a9a },
+  efreetsultan: { name: 'Efreet Sultan', fac: 'inferno', tier: 5, up: 'efreet', att: 16, def: 12, dmg: [14, 20], hp: 60, spd: 13, cost: { gold: 900 }, grow: 3, fly: true, col: 0xffaa3a },
+  hellcharger: { name: 'Hell Charger', fac: 'inferno', tier: 6, up: 'nightmare', att: 18, def: 15, dmg: [22, 30], hp: 120, spd: 10, cost: { gold: 1300 }, grow: 2, jousting: true, col: 0x2a1020 },
+  archdevil: { name: 'Arch Devil', fac: 'inferno', tier: 7, up: 'devil', att: 26, def: 28, dmg: [30, 40], hp: 200, spd: 17, cost: { gold: 4500, gems: 2 }, grow: 1, noRetal: true, col: 0x7a0a1a },
+  // Dungeon upgrades
+  infernaltrog: { name: 'Infernal Troglodyte', fac: 'dungeon', tier: 1, up: 'troglodyte', att: 5, def: 4, dmg: [1, 3], hp: 6, spd: 5, cost: { gold: 65 }, grow: 14, col: 0x9a6a8a },
+  harpyhag: { name: 'Harpy Hag', fac: 'dungeon', tier: 2, up: 'harpy', att: 6, def: 6, dmg: [1, 4], hp: 14, spd: 9, cost: { gold: 170 }, grow: 8, fly: true, noRetal: true, col: 0x5a8a4a },
+  evileye: { name: 'Evil Eye', fac: 'dungeon', tier: 3, up: 'beholder', att: 10, def: 8, dmg: [3, 5], hp: 22, spd: 7, cost: { gold: 280 }, grow: 7, ranged: 24, noMeleePenalty: true, col: 0xb84ab8 },
+  medusaqueen: { name: 'Medusa Queen', fac: 'dungeon', tier: 4, up: 'medusa', att: 10, def: 10, dmg: [6, 8], hp: 30, spd: 6, cost: { gold: 330 }, grow: 4, ranged: 12, noMeleePenalty: true, col: 0x3a9a8a },
+  minotaurking: { name: 'Minotaur King', fac: 'dungeon', tier: 5, up: 'minotaur', att: 15, def: 15, dmg: [12, 20], hp: 50, spd: 8, cost: { gold: 575 }, grow: 3, double: true, col: 0x9a5a2a },
+  scorpicore: { name: 'Scorpicore', fac: 'dungeon', tier: 6, up: 'manticore', att: 16, def: 16, dmg: [14, 20], hp: 80, spd: 11, cost: { gold: 1050 }, grow: 2, fly: true, curse: true, col: 0xd8603a },
+  reddragon: { name: 'Red Dragon', fac: 'dungeon', tier: 7, up: 'blackdragon', att: 25, def: 25, dmg: [40, 50], hp: 300, spd: 15, cost: { gold: 4500, gems: 3 }, grow: 1, fly: true, breath: true, col: 0xc83a2a },
 });
-export const UPGRADES = { haven: ['halberdier', 'marksman', 'royalgriffin', 'crusader', 'zealot', 'champion', 'archangel'], necro: ['skelwarrior', 'plaguezombie', 'wraith', 'vampirelord', 'powerlich', 'dreadknight', 'ghostdragon'] };
+export const UPGRADES = { haven: ['halberdier', 'marksman', 'royalgriffin', 'crusader', 'zealot', 'champion', 'archangel'], necro: ['skelwarrior', 'plaguezombie', 'wraith', 'vampirelord', 'powerlich', 'dreadknight', 'ghostdragon'],
+  sylvan: ['centaurcpt', 'battledwarf', 'grandelf', 'silverpegasus', 'dendroidsoldier', 'warunicorn', 'golddragon'], inferno: ['familiar', 'cerberus', 'horneddemon', 'succubusmistress', 'efreetsultan', 'hellcharger', 'archdevil'], dungeon: ['infernaltrog', 'harpyhag', 'evileye', 'medusaqueen', 'minotaurking', 'scorpicore', 'reddragon'] };
 export const FACTIONS = {
-  haven: { name: 'Haven', color: 0x3a7aff, css: '#3a7aff', units: ['pikeman', 'archer', 'griffin', 'swordsman', 'monk', 'cavalier', 'angel'], heroes: ['Sir Aldric', 'Lady Brenna', 'Sir Corvin', 'Dame Elys'] },
-  necro: { name: 'Necropolis', color: 0xd83a3a, css: '#d83a3a', units: ['skeleton', 'zombie', 'wight', 'vampire', 'lich', 'blackknight', 'bonedragon'], heroes: ['Vex the Pale', 'Morra', 'Lord Sable', 'Kazrith'] },
+  haven: { name: 'Haven', color: 0x3a7aff, css: '#3a7aff', units: ['pikeman', 'archer', 'griffin', 'swordsman', 'monk', 'cavalier', 'angel'], heroes: ['Sir Aldric', 'Lady Brenna', 'Sir Corvin', 'Dame Elys'], desc: 'Knights, angels and griffins. Solid defence and holy magic.' },
+  necro: { name: 'Necropolis', color: 0xd83a3a, css: '#d83a3a', units: ['skeleton', 'zombie', 'wight', 'vampire', 'lich', 'blackknight', 'bonedragon'], heroes: ['Vex the Pale', 'Morra', 'Lord Sable', 'Kazrith'], desc: 'The undead. Necromancy raises the fallen as skeletons after every battle.' },
+  sylvan: { name: 'Sylvan', color: 0x3ac84a, css: '#3ac84a', units: ['centaur', 'dwarf', 'woodelf', 'pegasus', 'dendroid', 'unicorn', 'greendragon'], heroes: ['Elleshar', 'Gem', 'Thorgrim', 'Mephala'], desc: 'Elves, dwarves and dragons of the deep woods. Sharp archers and sturdy guardians.' },
+  inferno: { name: 'Inferno', color: 0xff7a1a, css: '#ff7a1a', units: ['imp', 'hellhound', 'demon', 'succubus', 'efreet', 'nightmare', 'devil'], heroes: ['Xeron', 'Calh', 'Ash', 'Nymus'], desc: 'Demons of fire. Fast, ferocious and hard to fight back against.' },
+  dungeon: { name: 'Dungeon', color: 0xa84ad8, css: '#a84ad8', units: ['troglodyte', 'harpy', 'beholder', 'medusa', 'minotaur', 'manticore', 'blackdragon'], heroes: ['Alamar', 'Jeddite', 'Shakti', 'Mutare'], desc: 'Warlocks of the underworld. Minotaurs, medusas and the mighty black dragon.' },
 };
 export const NEUTRALS = ['goblin', 'wolf', 'orc', 'ogre', 'troll', 'cyclops', 'hydra'];
 
@@ -150,4 +202,15 @@ export const OBJECTS = {
 export const START_ARMY = {
   haven: [['pikeman', 24], ['archer', 9], ['griffin', 3]],
   necro: [['skeleton', 28], ['zombie', 10], ['wight', 3]],
+  sylvan: [['centaur', 22], ['dwarf', 8], ['woodelf', 3]],
+  inferno: [['imp', 30], ['hellhound', 8], ['demon', 2]],
+  dungeon: [['troglodyte', 26], ['harpy', 8], ['beholder', 3]],
+};
+// each faction's hero starts with a signature skill and spell
+export const FACTION_START = {
+  haven: { skill: 'leadership', spell: 'bless' },
+  necro: { skill: 'necromancy', spell: 'arrow' },
+  sylvan: { skill: 'archery', spell: 'cure' },
+  inferno: { skill: 'offense', spell: 'haste' },
+  dungeon: { skill: 'wisdom', spell: 'slow' },
 };
