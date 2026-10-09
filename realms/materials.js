@@ -269,7 +269,7 @@ void hxRig() {
   hxRP = position; hxRR = mat3(1.0);
   int b = int(aBone + 0.5);
   if (b <= 0 || b > 15) return;
-  vec3 hxW = modelMatrix[3].xyz;
+  vec3 hxW = floor(modelMatrix[3].xyz * 4.0 + 0.5); // quantised so tiny motions can't reseed the pose every frame
   #ifdef USE_INSTANCING
     hxW += mat3(modelMatrix) * instanceMatrix[3].xyz;
   #endif
