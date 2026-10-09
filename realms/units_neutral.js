@@ -452,7 +452,7 @@ function troll() {
     k.ell(0.09, 0.05, 0.13, [s * 0.15, 0.045, 0.03], SKL, null, 0);
     // very long thick arms dragging near the ground, huge hands with two big claws
     k.chain([[s * 0.24, 0.88, 0.06], [s * 0.4, 0.6, 0.0], [s * 0.36, 0.26, 0.2]], [0.095, 0.085, 0.075], SKL);
-    k.rock(0.11, [s * 0.26, 0.97, 0.02], ROCK, [1.2, 0.9, 1]);
+    k.rock(0.085, [s * 0.27, 0.97, 0.02], ROCK, [1.2, 0.9, 1]);
     k.ell(0.115, 0.12, 0.11, [s * 0.36, 0.18, 0.24], SK, null, 1);
     for (let i = 0; i < 2; i++) k.cone([s * (0.33 + i * 0.07), 0.12, 0.3], [s * (0.33 + i * 0.08), 0.02, 0.38], 0.03, CLAW, 4);
     // droopy long ears, glowing eyes, one big lower tusk
@@ -466,7 +466,7 @@ function troll() {
   k.ell(0.16, 0.15, 0.14, [0, 0.58, -0.02], SK, null, 1);
   k.ell(0.24, 0.2, 0.2, [0, 0.79, 0.06], SK, [0.5, 0, 0], 1);
   // the mossy hump: one big bright cap over the back, plus a few stones poking out
-  k.ell(0.22, 0.13, 0.2, [0, 0.93, -0.06], MOSS, [0.4, 0, 0], 1);
+  k.ell(0.17, 0.1, 0.16, [0, 0.95, -0.07], MOSS, [0.4, 0, 0], 1);
   k.rock(0.09, [0.06, 1.0, -0.04], ROCK, [1, 0.9, 1]);
   k.rock(0.08, [-0.08, 0.92, -0.16], ROCK, [1, 0.9, 1]);
   k.rock(0.07, [0.02, 0.8, -0.22], ROCK);

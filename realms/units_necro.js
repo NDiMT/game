@@ -265,7 +265,7 @@ function skeleton(up) {
     // crimson cape with a torn hem
     const cape = (u, v) => { const a = (u - 0.5) * 2.3; return [Math.sin(a) * (0.18 + v * 0.1), 0.9 - v * 0.58, -Math.cos(a) * (0.11 + v * 0.06) - 0.07 - v * 0.1]; };
     k.surf(cape, 6, 2, grad(CRIM_D, CRIM, 0.3, 0.9), { ds: true });
-    k.tris(ragHem(cape, 5, 0.08, k.r), CRIM_D, { ds: true });
+    k.tris(ragHem(cape, 5, 0.08, k.r), CRIM, { ds: true });
   } else {
     for (const x of [-1, 1]) k.ball(0.058, [x * 0.21, 0.87, 0], BONE_M, [1, 1, 1], 0);
   }
@@ -275,13 +275,13 @@ function skeleton(up) {
   k.limb(el, hd, up ? 0.05 : 0.036, up ? 0.054 : 0.032, up ? steel : bone, 5);
   k.ball(0.052, hd, BONE, [1, 1.1, 1], 0);
   k.T(hd, [0.55, 0.1, 0], 1, () => {
-    k.limb([0, -0.09, 0], [0, 0.06, 0], 0.024, 0.024, up ? CRIM_D : 0x8a4a2e, 5);
-    k.ball(0.04, [0, -0.1, 0], up ? GOLD : 0xb8743e, [1, 1, 1], 0);
-    k.box(0.24, 0.05, 0.07, [0, 0.07, 0], up ? GOLD : 0xb8743e);
+    k.limb([0, -0.09, 0], [0, 0.06, 0], 0.024, 0.024, CRIM_D, 5);
+    k.ball(0.04, [0, -0.1, 0], up ? GOLD : STEEL_D, [1, 1, 1], 0);
+    k.box(0.24, 0.05, 0.07, [0, 0.07, 0], up ? GOLD : STEEL_D);
     const L = up ? 0.6 : 0.5;
     const blade = grad(up ? 0xb4bcd8 : 0xa8aab8, up ? 0xf8faff : 0xe8e4dc, 0.1, L);
-    k.box(0.1, L, 0.03, [0, 0.09 + L / 2, 0], blade);
-    k.add(new THREE.ConeGeometry(0.071, 0.13, 4).scale(1, 1, 0.3).rotateY(Math.PI / 4).translate(0, 0.09 + L + 0.065, 0), blade);
+    k.box(0.12, L, 0.03, [0, 0.09 + L / 2, 0], blade);
+    k.add(new THREE.ConeGeometry(0.085, 0.13, 4).scale(1, 1, 0.3).rotateY(Math.PI / 4).translate(0, 0.09 + L + 0.065, 0), blade);
     if (up) k.box(0.03, L * 0.8, 0.036, [0, 0.09 + L * 0.45, 0], GREEN_G, [0, 0, 0], GLOW);
   });
   // shield arm (left): big round crimson shield with bone (up: gold) rim and boss
@@ -449,14 +449,14 @@ function wight(up) {
   k.lathe([[0.1, 0], [0.065, 0.12]], 7, [0.29, 0.6, 0.22], SHROUD, { rot: [-1.6, -0.3, 0], jag: 0.04, ds: true });
   k.ball(0.035, [0.3, 0.6, 0.24], BONE, [1, 1, 1], 0);
   if (!up) claws([0.3, 0.6, 0.25], 1);
-  else k.T([0.3, 0.6, 0.25], [0.1, 0, 0.1], 1, () => {
+  else k.T([0.3, 0.6, 0.25], [-0.3, 0, 0.12], 1, () => {
     k.limb([0, -0.5, 0], [0, 0.66, 0], 0.026, 0.024, grad(0x6a4a6a, 0xb0a0a0, -0.4, 0.6), 5);
     k.box(0.06, 0.07, 0.06, [0, 0.64, 0], STEEL_D);
     const pts = [];
     for (let i = 0; i <= 6; i++) { const t = i / 6, a = t * 1.9; pts.push([-Math.sin(a) * 0.38, 0.66 + (1 - Math.cos(a)) * 0.13 - t * 0.16, -0.04 + Math.cos(a) * 0.04]); }
     const blade = [], edge = [];
     for (let i = 0; i < 6; i++) {
-      const w0 = 0.1 * (1 - i / 6), w1 = 0.1 * (1 - (i + 1) / 6), a = pts[i], b = pts[i + 1];
+      const w0 = 0.14 * (1 - i / 7), w1 = 0.14 * (1 - (i + 1) / 7), a = pts[i], b = pts[i + 1];
       const a2 = [a[0], a[1] - w0, a[2]], b2 = [b[0], b[1] - w1, b[2]];
       blade.push([a, a2, b], [b, a2, b2]);
       edge.push([[a2[0], a2[1], a2[2] + 0.006], [a2[0], a2[1] + 0.025, a2[2] + 0.006], [b2[0], b2[1], b2[2] + 0.006]]);
@@ -476,7 +476,7 @@ function wight(up) {
 // =====================================================================
 function vampire(up) {
   const k = nkit(up ? 441 : 41);
-  const PALE = 0xf4ecf6, HAIR = up ? 0xf4f0f8 : 0x4e3274;
+  const PALE = 0xf4ecf6, HAIR = up ? 0xf4f0f8 : 0x40305e;
   const CLOTH = grad(VIO_D, VIO, 0.2, 0.95), BOOT = grad(0x4a3668, 0x6a5290, 0.0, 0.3);
   // legs + boots
   for (const x of [-1, 1]) {
@@ -507,7 +507,7 @@ function vampire(up) {
   k.T([0, 1.03, 0.02], [-0.2, 0, 0], 1, () => {
     k.ball(0.125, [0, 0, 0], PALE, [0.9, 1.08, 1], 1);
     k.spike([0, -0.05, 0.08], [0, -0.14, 0.11], 0.05, PALE, 5);                               // pointed chin
-    k.ball(0.13, [0, 0.04, -0.02], HAIR, [0.96, 0.92, 1.05], 1);                             // slicked hair / mane
+    k.ball(0.13, [0, 0.05, -0.035], HAIR, [0.96, 0.9, 1.0], 1);                             // slicked hair / mane
     k.spike([0, 0.1, 0.07], [0, 0.04, 0.135], 0.05, HAIR, 4);                                // widow's peak
     k.spike([0, 0.06, -0.1], [0, -0.06, -0.17], up ? 0.1 : 0.07, HAIR, 5);
     for (const x of [-1, 1]) {
@@ -536,7 +536,7 @@ function vampire(up) {
     const s = u - 0.5, as = Math.abs(s) * 2;                                                  // 0 centre .. 1 hand
     const scallop = 1 - 0.2 * Math.sin(Math.PI * ((as * NS) % 1)) * smooth(0.55, 1, v);
     const vv = v * scallop;
-    const x = Math.sign(s) * (0.12 + as * (SPAN - 0.12)) * (1 - inset * 2);
+    const x = Math.sign(s) * (0.12 + as * (SPAN - 0.12));
     const yTop = 0.86 + as * as * 0.12, yBot = 0.08 + as * as * 0.5;
     const y = yTop + (yBot - yTop) * vv;
     const z = -0.06 - (1 - as) * 0.12 * (0.4 + vv) + as * 0.1 + inset;
@@ -650,7 +650,7 @@ function blackknight(up) {
   k.T([0, 1.06, 0.64], [-1.0, 0, 0], 1, () => {
     k.ball(0.095, [0, 0, 0], HORSE, [0.85, 1, 1], 1);
     k.box(0.14, 0.3, 0.13, [0, -0.15, 0.0], HORSE);
-    k.box(0.16, 0.3, 0.05, [0, -0.11, 0.065], up ? BONE : ARM);                             // chanfron (up: skull)
+    k.box(0.16, 0.3, 0.05, [0, -0.11, 0.065], up ? BONE : STEEL);                             // chanfron (up: skull)
     if (up) {
       k.spike([0, 0.02, 0.09], [0, 0.1, 0.3], 0.035, BONE, 5);                               // bone horn
       for (const x of [-1, 1]) k.chain([[x * 0.06, 0.05, -0.02], [x * 0.12, 0.12, -0.04], [x * 0.13, 0.21, -0.1]], [0.028, 0.018, 0], BONE_M, 4);
@@ -687,7 +687,7 @@ function blackknight(up) {
   // crimson cape
   const cape = (u, v) => { const a = (u - 0.5) * 2.4; return [Math.sin(a) * (0.18 + v * 0.1), 1.16 - v * 0.44 + Math.abs(u - 0.5) * 0.1, -Math.cos(a) * (0.13 + v * 0.08) - 0.06 - v * 0.16]; };
   k.surf(cape, 6, 2, grad(CRIM_D, CRIM_L, 0.7, 1.1), { ds: true });
-  k.tris(ragHem(cape, 4, 0.08, k.r), CRIM_D, { ds: true });
+  k.tris(ragHem(cape, 4, 0.08, k.r), CRIM, { ds: true });
   // left arm on the reins
   k.limb([-0.2, 1.12, 0], [-0.21, 0.97, 0.13], 0.052, 0.046, ARM, 6);
   k.limb([-0.21, 0.97, 0.13], [-0.09, 0.93, 0.26], 0.046, 0.04, ARM, 6);
@@ -699,7 +699,7 @@ function blackknight(up) {
   const L0 = [0.27, 0.72, -0.2], L1 = [0.29, 1.78, 0.62];
   const at = (t) => lerp3(L0, L1, t);
   k.limb(L0, at(0.86), 0.044, 0.03, grad(BONE_D, BONE, 0.7, 1.6), 5);
-  k.add(new THREE.ConeGeometry(up ? 0.09 : 0.075, 0.16, 6, 1, true).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), new V3(...L1).sub(new V3(...L0)).normalize())).translate(...at(0.43)), up ? GOLD : STEEL, { ds: true });   // vamplate
+  if (up) k.add(new THREE.ConeGeometry(0.09, 0.16, 6, 1, true).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), new V3(...L1).sub(new V3(...L0)).normalize())).translate(...at(0.43)), up ? GOLD : STEEL, { ds: true });   // vamplate
   k.spike(at(0.84), L1, 0.06, STEEL_L, 5);                                                     // steel tip
   { const p0 = at(0.7), p1 = at(0.83), w = up ? 0.36 : 0.28;                                   // pennant streaming back
     const tail = [p0[0] + 0.02, (p0[1] + p1[1]) / 2 - 0.08, (p0[2] + p1[2]) / 2 - w];

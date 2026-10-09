@@ -52,7 +52,7 @@ for (const id of all) {
   if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
   g.add(new THREE.Mesh(m.body, inkMat));
   const fit = unitFit(id, m, 'battle', { nocache: true }); applyFit(g, fit);
-  const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(0.7 / fit.scale); bl.renderOrder = -1; g.add(bl);
+  const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(0.42 / fit.scale); bl.renderOrder = -1; g.add(bl);
   g.visible = false; scene.add(g); groups[id] = g;
   const tris = (m.body.attributes.position.count + (m.glow ? m.glow.attributes.position.count : 0)) / 3;
   info.push({ id, tris, h: +fit.height.toFixed(3), top: +fit.top.toFixed(3), scale: +fit.scale.toFixed(3) });
