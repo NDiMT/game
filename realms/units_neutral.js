@@ -508,12 +508,14 @@ function troll() {
       k.ell(0.09, 0.05, 0.13, [s * 0.15, 0.045, 0.03], SKL, null, 0);
     });
     // very long thick arms dragging near the ground, huge hands with two big claws
-    k.bone(s > 0 ? B.ARM_L : B.ARM_R, [s * 0.24, 0.88, 0.06], () => {
-      k.chain([[s * 0.24, 0.88, 0.06], [s * 0.4, 0.6, 0.0], [s * 0.36, 0.26, 0.2]], [0.095, 0.085, 0.075], SKL);
+    // (part order kept as before so the merged geometry is byte-identical)
+    const ARM = [s > 0 ? B.ARM_L : B.ARM_R, [s * 0.24, 0.88, 0.06]];
+    k.bone(...ARM, () => k.chain([[s * 0.24, 0.88, 0.06], [s * 0.4, 0.6, 0.0], [s * 0.36, 0.26, 0.2]], [0.095, 0.085, 0.075], SKL));
+    k.rock(0.085, [s * 0.27, 0.97, 0.02], ROCK, [1.2, 0.9, 1]);
+    k.bone(...ARM, () => {
       k.ell(0.115, 0.12, 0.11, [s * 0.36, 0.18, 0.24], SK, null, 1);
       for (let i = 0; i < 2; i++) k.cone([s * (0.33 + i * 0.07), 0.12, 0.3], [s * (0.33 + i * 0.08), 0.02, 0.38], 0.03, CLAW, 4);
     });
-    k.rock(0.085, [s * 0.27, 0.97, 0.02], ROCK, [1.2, 0.9, 1]);
     // droopy long ears, glowing eyes, one big lower tusk
     k.bone(B.HEAD, NECK, () => {
       k.cone([s * 0.1, 0.9, 0.22], [s * 0.3, 0.85, 0.13], 0.05, SKL, 4, 0.4);
