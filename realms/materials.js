@@ -458,12 +458,18 @@ export function blobShadowGeometry(THREE) {
 // ---------------------------------------------------------------- ink hull (crisp silhouette line)
 /**
  * Optional second pass for a crisp, HoMM-style painted outline: draw the SAME body geometry again
- * with this material (BackSide "inverted hull", pushed out by a constant on-screen width).
- * The line colour is the model's own vertex colour, darkened and tinted deep violet (never black).
- * Works with Mesh and InstancedMesh (use the same instanceMatrix). No lighting, no shadows.
- * opts: width 0.003 (~2-3 px at map zoom; view-angle units), dark 0.15, tint (0x4a2860), bulge 0.55
- * (how much the push follows a smooth object-centred direction instead of the faceted normal: fewer cracks),
- * center 0.4 (object-space height of that centre), push 0.0008 (depth push, fraction of view distance).
+ * with this material (BackSide "inverted hull"). The line colour is the model's own vertex colour,
+ * darkened and tinted deep violet (never black). Works with Mesh and InstancedMesh. No lighting, no shadows.
+ * Line width (round 4): scales with the object's on-screen size, in DEVICE pixels:
+ *   px = clamp(sizeK * (pixels per local unit of the object) * width / 0.003, minPx, maxPx)
+ * so a ~40 css-px creature gets a ~1.5-2 px line and big / close figures cap at ~3 px. `width` (uHullW) stays a
+ * multiplier around its 0.003 default, so main.js's per-zoom uHullW = 0.003 * zk keeps working (clamped to minPx).
+ * The push never moves toward the camera (only sideways / away), so the hull of double-sided capes, flags and
+ * leaves cannot poke through the front sheet as dark patches.
+ * opts: width 0.003, sizeK 0.018, minPx 1.5, maxPx 3, fixed false (true = old constant-angle width: width is then
+ * view-angle units), dark 0.15, tint (0x4a2860), bulge 0.55 (how much the push follows a smooth object-centred
+ * direction instead of the surface normal: fewer cracks), center 0.4 (object-space height of that centre),
+ * push 0.0008 (depth push away from the camera, fraction of view distance).
  */
 export function makeInkHullMaterial(THREE, opts = {}) {
   const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide });
@@ -474,12 +480,19 @@ export function makeInkHullMaterial(THREE, opts = {}) {
     uHullBulge: { value: opts.bulge ?? 0.55 },
     uHullC: { value: opts.center ?? 0.4 },
     uHullPush: { value: opts.push ?? 0.0008 },
+    uHullK: { value: opts.sizeK ?? 0.018 },
+    uHullMin: { value: opts.minPx ?? 1.5 },
+    uHullMax: { value: opts.maxPx ?? 3 },
+    uHullFixed: { value: opts.fixed ? 1 : 0 },
+    uHullVH: { value: 1000 },
   };
   mat.userData.uniforms = u;
+  const vp = new THREE.Vector4();
+  mat.onBeforeRender = (renderer) => { renderer.getCurrentViewport(vp); u.uHullVH.value = Math.max(1, vp.w); };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, u);
     sh.vertexShader = sh.vertexShader
-      .replace('void main() {', 'uniform float uHullW, uHullBulge, uHullC, uHullPush;\nattribute vec3 formNormal;\nvoid main() {')
+      .replace('void main() {', 'uniform float uHullW, uHullBulge, uHullC, uHullPush, uHullK, uHullMin, uHullMax, uHullFixed, uHullVH;\nattribute vec3 formNormal;\nvoid main() {')
       .replace('#include <project_vertex>', `#include <project_vertex>
 {
   vec3 hxP = position - vec3(0.0, uHullC, 0.0);
@@ -487,12 +500,24 @@ export function makeInkHullMaterial(THREE, opts = {}) {
   // push along the smooth form normal when the body material has computed it (fewer cracks at hard corners)
   vec3 hxS = dot(formNormal, formNormal) > 0.25 ? normalize(formNormal) : normalize(normal);
   vec3 hxN = normalize(mix(hxS, hxB, uHullBulge));
+  float hxSc = length(modelMatrix[1].xyz);
   #ifdef USE_INSTANCING
     hxN = mat3(instanceMatrix) * hxN;
+    hxSc *= length(instanceMatrix[1].xyz);
   #endif
   hxN = normalize(normalMatrix * hxN);
+  // never push toward the camera: thin double-sided sheets would show the hull through their front
+  vec3 hxC = normalize(-mvPosition.xyz);
+  hxN -= hxC * max(dot(hxN, hxC), 0.0);
   float hxD = max(-mvPosition.z, 0.1);
-  mvPosition.xyz += hxN * uHullW * hxD;
+  if (uHullFixed > 0.5) {
+    mvPosition.xyz += hxN * uHullW * hxD;
+  } else {
+    // device px per view unit at this depth, and the object's on-screen size in px per local unit
+    float hxPpu = projectionMatrix[1][1] * 0.5 * uHullVH / (isPerspectiveMatrix(projectionMatrix) ? hxD : 1.0);
+    float hxPx = clamp(uHullK * hxSc * hxPpu * (uHullW / 0.003), uHullMin, uHullMax);
+    mvPosition.xyz += hxN * (hxPx / hxPpu);
+  }
   // push the hull a little away from the camera so thin parts (capes, flags, leaves) never show it in front
   mvPosition.xyz += normalize(mvPosition.xyz) * uHullPush * hxD;
   gl_Position = projectionMatrix * mvPosition;
@@ -507,6 +532,6 @@ export function makeInkHullMaterial(THREE, opts = {}) {
   diffuseColor.rgb = (hue * 0.5 + uHullTint * 0.5) * uHullDark * (0.8 + 0.4 * al);
 }`);
   };
-  mat.customProgramCacheKey = () => 'hexInkHull3';
+  mat.customProgramCacheKey = () => 'hexInkHull4';
   return mat;
 }

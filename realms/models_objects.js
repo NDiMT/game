@@ -365,7 +365,7 @@ function bar(k, x, y, z, ry, s = 1) {
 function goldPile(k) {
   // a low mound of gold, a few BIG coins on it, a stack of three bars and one big upright coin
   // the mound is a deeper amber so the bright coins and bars on it stand apart (value bands)
-  k.lathe([[0.001, 0], [0.31, 0], [0.28, 0.06], [0.19, 0.15], [0.08, 0.21], [0.001, 0.225]], 9, 0.0, 0.0, -0.03, [0xa85a0c, 0xf0a828], { jit: 0.1 });
+  k.lathe([[0.001, 0], [0.31, 0], [0.28, 0.06], [0.19, 0.15], [0.08, 0.21], [0.001, 0.225]], 9, 0.0, 0.0, -0.03, [0xb87010, 0xf4b82c], { jit: 0.1 });
   const coins = [[-0.12, 0.15, 0.02, 0.4, 0.3], [0.08, 0.17, -0.1, -0.35, 1.2], [-0.03, 0.22, -0.11, 0.2, 2.0], [0.2, 0.07, 0.04, -0.55, 0.6], [-0.24, 0.07, -0.1, 0.6, 2.6]];
   for (const [x, y, z, t, yw] of coins) coin(k, x, y, z, t, yw, 0.095);
   // the bar stack (front right): the strongest "treasury" shape
@@ -418,7 +418,7 @@ function chest(k) {
   // THE CHEST: one bold red-brown box, thick bright-gold bands, a big lock, a big DOMED lid
   // thrown open on a heap of gold. No planks, rivets or scattered coins.
   const W = 0.46, D = 0.3, H = 0.21, y0 = 0, z0 = -0.02;
-  k.box(W, H, D, 0, y0, z0, [0x7a2610, 0xc04a20], { bev: 0.014, jit: 0.04 });
+  k.box(W, H, D, 0, y0, z0, [0x5e180a, 0x9a3016], { bev: 0.014, jit: 0.04 });
   // dark inside rim, a high heap of gold
   k.box(W - 0.04, 0.01, D - 0.04, 0, y0 + H - 0.004, z0, 0x2e1008, { ao: false, jit: 0 });
   k.lathe([[0.001, 0], [0.21, 0], [0.17, 0.05], [0.09, 0.105], [0.001, 0.125]], 9, 0, y0 + H - 0.01, z0, [0xe09a10, 0xfff070], { s: [1, 1, 0.62], jit: 0.12 });
@@ -437,7 +437,7 @@ function chest(k) {
   lg.rotateZ(Math.PI / 2).scale(1, 1.05, 1).translate(0, 0, D / 2);
   lg.rotateX(tip);
   k.add(new THREE.BoxGeometry(W - 0.01, 0.012, D - 0.01).translate(0, 0.006, D / 2).rotateX(tip), 0, y0 + H, z0 - D / 2, 0x3a140a, { jit: 0.03, ao: false });
-  k.add(lg, 0, y0 + H, z0 - D / 2, [0xa83418, 0xe8662e], { jit: 0.06, ao: false });
+  k.add(lg, 0, y0 + H, z0 - D / 2, [0x8a2812, 0xc44a22], { jit: 0.06, ao: false });
   // gold trim along the lid's free edge (catches the light at the top of the silhouette)
   { const e = new THREE.BoxGeometry(W + 0.012, 0.04, 0.04).translate(0, 0, D).rotateX(tip); k.add(e, 0, y0 + H, z0 - D / 2, C.goldL, { jit: 0.03, ao: false }); }
   const band = (x) => {

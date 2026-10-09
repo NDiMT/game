@@ -449,10 +449,12 @@ function blanket(k, col, trim) {
 }
 // a wide cape in the player colour, draped from the shoulders over the horse's rump:
 // from the map camera it is the biggest colour block on the hero
-function cape(k, col, x0, y0, z0, w, len) {
-  k.sheet(3, 4, (u, v) => {
-    const x = (u - 0.5) * (w + v * 0.16);
-    const y = y0 - v * len * 0.62 + Math.sin(u * Math.PI) * 0.03 * v, z = z0 - v * len * 0.72 - Math.sin(u * Math.PI * 2) * 0.02 * v;
+function cape(k, col, x0, y0, z0, w, len, ragged = false) {
+  k.sheet(4, 4, (u, v) => {
+    const x = (u - 0.5) * (w + v * 0.1);
+    // the undead cape ends in big ragged points
+    const rag = ragged && v === 1 ? (Math.round(u * 4) % 2 ? -0.07 : 0.03) : 0;
+    const y = y0 - v * len * 0.62 - rag + Math.sin(u * Math.PI) * 0.03 * v, z = z0 - v * len * 0.72 - Math.sin(u * Math.PI * 2) * 0.02 * v;
     return [x0 + x, y + Math.sin(u * Math.PI) * 0.015, z];
   }, col, { shade: (u, v) => 1.12 - v * 0.22 + 0.1 * Math.sin(u * Math.PI), top: 1, bot: 1, ao: false, thick: 0.01 });
 }
@@ -507,7 +509,7 @@ function havenHero(k, col) {
   k.ball(1, 0, hy + 0.2, -0.07, 0xffffff, 1, { s: [0.05, 0.075, 0.1], rx: 0.5, top: 1.1, bot: 0.85 });
   k.ball(1, 0, hy + 0.15, -0.17, 0xf4f4ff, 1, { s: [0.045, 0.06, 0.09], rx: 0.9, top: 1.05, bot: 0.8 });
   // the wide cape
-  cape(k, col, 0, 0.86, -0.09, 0.26, 0.52);
+  cape(k, col, 0, 0.86, -0.09, 0.26, 0.4);
   // banner pole, gold finial and the big flag
   k.limb([-0.18, 0.4, 0.12], [-0.18, 1.36, 0.15], 0.016, 0.013, WOOD, 5);
   k.ball(0.04, -0.18, 1.37, 0.15, GOLD, 1, { ao: false });
@@ -547,7 +549,7 @@ function necroHero(k, col) {
   for (const s of [-1, 1]) k.ball(0.019, s * 0.026, hy + 0.075, 0.055, GREEN, 0, { glow: true });
   k.cone(0.05, 0.2, 0, hy + 0.15, -0.07, GREEN, 4, { glow: true, rx: -0.55 });
   k.cone(0.035, 0.14, 0, hy + 0.12, -0.15, 0x40e088, 4, { glow: true, rx: -1.0 });
-  cape(k, col, 0, 0.86, -0.09, 0.27, 0.54);
+  cape(k, col, 0, 0.86, -0.09, 0.27, 0.42, true);
   // a bone staff that bears the banner, topped by a big skull with green eyes
   k.limb([-0.18, 0.4, 0.12], [-0.18, 1.33, 0.15], 0.016, 0.013, 0x8a7a6a, 5);
   k.ball(0.055, -0.18, 1.38, 0.15, BONE, 1, { s: [1, 1.05, 1.05], ao: false });
