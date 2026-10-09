@@ -265,7 +265,8 @@ function log(k, a, b, rad, o = {}) {
   }, { jit: 0.06, ao: false });
 }
 function coin(k, x, y, z, tilt = 0, yaw = 0, rad = 0.05) {
-  k.cyl(rad, rad, 0.014, x, y, z, (c, px, py, pz, nx, ny) => c.set(Math.abs(ny) > 0.9 ? C.gold : C.goldD), 9, { rx: tilt, ry: yaw, jit: 0.12, ctr: true });
+  // R4: thick, bright pale-gold face with a deep amber rim (reads as a coin, not a speck)
+  k.cyl(rad, rad, Math.max(0.014, rad * 0.28), x, y, z, (c, px, py, pz, nx, ny) => c.set(Math.abs(ny) > 0.9 ? 0xffe066 : C.goldD), 9, { rx: tilt, ry: yaw, jit: 0.06, ctr: true });
 }
 function sparkle(k, x, y, z, s = 0.03, c = GL.goldL ?? 0xfff0b0) {
   k.add(new THREE.OctahedronGeometry(s, 0).scale(0.35, 1.6, 0.35), x, y, z, c, { glow: true });
@@ -353,156 +354,136 @@ function shingles(k, w, h, d, x, y, z, ca, cb, rows = 4) {
 }
 
 // ---------------------------------------------------------------- resource piles (~0.7)
+// R4 (mobile read): pickups are ~30-40 px on the map, so each is built from a few big
+// identity shapes (big coins and bars, big crystals, a domed chest lid, fat logs) with
+// strong colour blocks and light-top / dark-underside value bands. No scattered micro bits.
+function bar(k, x, y, z, ry, s = 1) {
+  // a gold ingot: trapezoid with a bright top face and a deeper amber side
+  const g = new THREE.CylinderGeometry(0.075 * Math.SQRT1_2, 0.1 * Math.SQRT1_2, 0.055, 4, 1).rotateY(Math.PI / 4).scale(1.9, 1, 1).toNonIndexed();
+  k.add(g, x, y + 0.0275 * s, z, (c, px, py, pz, nx, ny) => c.set(ny > 0.8 ? 0xffe46a : 0xe0951a), { s, ry, jit: 0.03 });
+}
 function goldPile(k) {
-  // a tall heap of bright gold coins: the whole thing reads as "gold"
-  k.lathe([[0.001, 0], [0.27, 0], [0.24, 0.05], [0.16, 0.13], [0.07, 0.19], [0.001, 0.21]], 11, 0.02, 0.01, 0.0, [0xe09a18, 0xffe060], { jit: 0.2 });
-  for (let i = 0; i < 14; i++) {
-    const a = k.r() * TAU, d = 0.03 + k.r() * 0.22;
-    const x = 0.02 + Math.cos(a) * d, z = Math.sin(a) * d;
-    const y = 0.01 + Math.max(0.01, 0.2 * (1 - d / 0.27)) + 0.008;
-    coin(k, x, y, z, k.rr(-0.7, 0.7), k.r() * TAU, 0.06);
-  }
-  for (let i = 0; i < 6; i++) { const a = k.r() * TAU, d = 0.29 + k.r() * 0.06; coin(k, Math.cos(a) * d, 0.02, Math.sin(a) * d, k.rr(-0.2, 0.2), k.r() * 3, 0.055); }
-  // a big upright coin at the front: the icon
-  k.cyl(0.12, 0.12, 0.03, 0.1, 0.13, 0.18, (c, x, y, z, nx, ny, nz) => c.set(Math.abs(nz) > 0.9 ? 0xffd030 : 0xe0a020), 14, { rx: Math.PI / 2 - 0.35, ry: -0.25, ctr: true, jit: 0.05 });
-  k.cyl(0.075, 0.075, 0.036, 0.1, 0.13, 0.18, 0xffec90, 14, { rx: Math.PI / 2 - 0.35, ry: -0.25, ctr: true, jit: 0.02 });
-  // a sack spilling coins, and gold bars
-  k.lathe([[0.001, 0], [0.11, 0.01], [0.14, 0.07], [0.13, 0.14], [0.09, 0.2], [0.04, 0.22], [0.03, 0.24]], 9, -0.2, 0.012, -0.12, [0xc09060, 0xf0d098], { jit: 0.1 });
-  k.lathe([[0.001, 0], [0.04, 0.0], [0.06, 0.05], [0.04, 0.07], [0.001, 0.075]], 7, -0.2, 0.24, -0.12, [0xd0a070, 0xf0d098]);
-  k.torus(0.035, 0.012, -0.2, 0.24, -0.12, 0xb04a2a, { rx: Math.PI / 2, rs: 10, ts: 4 });
-  k.box(0.15, 0.05, 0.065, 0.2, 0.012, -0.2, [C.gold, C.goldL], { bev: 0.012, ry: 0.4 });
-  k.box(0.15, 0.05, 0.065, 0.18, 0.062, -0.19, [C.gold, C.goldL], { bev: 0.012, ry: 0.2 });
-  k.add(new THREE.OctahedronGeometry(0.04, 0).scale(1, 1.3, 1), -0.08, 0.2, 0.0, 0xff3a5a, { jit: 0.05 });
-  sparkle(k, 0.02, 0.28, 0.0, 0.05, 0xfff0b0); sparkle(k, -0.1, 0.14, 0.2, 0.035, 0xfff0b0); sparkle(k, 0.24, 0.16, -0.12, 0.035, 0xfff0b0);
+  // a low mound of gold, a few BIG coins on it, a stack of three bars and one big upright coin
+  // the mound is a deeper amber so the bright coins and bars on it stand apart (value bands)
+  k.lathe([[0.001, 0], [0.31, 0], [0.28, 0.06], [0.19, 0.15], [0.08, 0.21], [0.001, 0.225]], 9, 0.0, 0.0, -0.03, [0xb87010, 0xf4b82c], { jit: 0.1 });
+  const coins = [[-0.12, 0.15, 0.02, 0.4, 0.3], [0.08, 0.17, -0.1, -0.35, 1.2], [-0.03, 0.22, -0.11, 0.2, 2.0], [0.2, 0.07, 0.04, -0.55, 0.6], [-0.24, 0.07, -0.1, 0.6, 2.6]];
+  for (const [x, y, z, t, yw] of coins) coin(k, x, y, z, t, yw, 0.095);
+  // the bar stack (front right): the strongest "treasury" shape
+  bar(k, 0.14, 0.0, 0.2, 0.25, 1.2); bar(k, 0.27, 0.0, 0.09, 0.25, 1.2); bar(k, 0.205, 0.066, 0.145, 0.25, 1.2);
+  // a big upright coin at the front left: the icon, with a raised rim and a bright face
+  k.cyl(0.14, 0.14, 0.04, -0.12, 0.14, 0.19, (c, x, y, z, nx, ny, nz) => c.set(Math.abs(nz) > 0.8 ? 0xffd030 : 0xd08a18), 12, { rx: Math.PI / 2 - 0.35, ry: 0.25, ctr: true, jit: 0.03 });
+  k.cyl(0.09, 0.09, 0.048, -0.12, 0.14, 0.19, 0xfff09a, 12, { rx: Math.PI / 2 - 0.35, ry: 0.25, ctr: true, jit: 0.02 });
+  sparkle(k, -0.02, 0.27, -0.04, 0.06, 0xfff0b0); sparkle(k, 0.2, 0.17, 0.12, 0.045, 0xfff0b0);
 }
 function woodPile(k) {
-  // a pyramid of logs running front to back, ring ends facing the viewer
-  const L = 0.5, rad = 0.075;
-  const rows = [[-0.225, -0.075, 0.075, 0.225], [-0.15, 0, 0.15], [-0.075, 0.075]];
+  // a pyramid of fat logs running front to back, pale ring ends facing the viewer
+  const L = 0.5, rad = 0.082;
+  const rows = [[-0.246, -0.082, 0.082, 0.246], [-0.164, 0, 0.164], [-0.082, 0.082]];
   rows.forEach((row, ri) => row.forEach((x) => {
-    const y = 0.012 + rad + ri * rad * 1.72, off = (k.r() - 0.5) * 0.08, rr = rad * k.rr(0.9, 1.06);
-    log(k, [x + (k.r() - 0.5) * 0.02, y, -L / 2 + off - 0.04], [x, y, L / 2 + off - 0.04], rr, { seg: 8, bark: [0x8a5430, 0xc08048] });
+    const y = 0.006 + rad + ri * rad * 1.72, off = (k.r() - 0.5) * 0.06, rr = rad * k.rr(0.94, 1.04);
+    log(k, [x + (k.r() - 0.5) * 0.02, y, -L / 2 + off - 0.04], [x, y, L / 2 + off - 0.04], rr, { seg: 7, bark: [0x8a5430, 0xc88a4c] });
   }));
-  // a stump with an axe
-  k.cyl(0.07, 0.085, 0.1, 0.27, 0.012, 0.24, (c, x, y, z, nx, ny) => c.set(ny > 0.9 ? C.ring : C.bark), 8);
-  k.plank([0.27, 0.11, 0.24], [0.36, 0.27, 0.3], 0.022, 0.022, C.woodL);
-  k.box(0.02, 0.06, 0.07, 0.28, 0.09, 0.24, C.steel, { rz: -0.9, ry: 0.3 });
-  // chips
-  for (let i = 0; i < 5; i++) k.box(0.04, 0.008, 0.02, k.rr(-0.25, 0.2), 0.012, k.rr(0.22, 0.32), C.ring, { ry: k.r() * 3 });
+  // a stump with a big axe
+  k.cyl(0.08, 0.095, 0.11, 0.28, 0.0, 0.25, (c, x, y, z, nx, ny) => c.set(ny > 0.9 ? C.ring : C.bark), 7);
+  k.plank([0.28, 0.11, 0.25], [0.38, 0.32, 0.31], 0.03, 0.03, C.woodL);
+  k.box(0.03, 0.09, 0.11, 0.29, 0.1, 0.25, C.steel, { rz: -0.9, ry: 0.3, bev: 0.008 });
 }
 function orePile(k) {
   cart(k, -0.1, -0.08, 0.5, 'ore', [0x3a4a78, 0x8a9ad0], false, 1.3);
-  // heaped chunks: iron-grey and rust-red ore, with metallic flecks
-  const cols = [[0x3a4a78, 0x8a9ad0], [0x8a2a10, 0xe8783a], [0x2e3a62, 0x7a8cc8]];
-  for (let i = 0; i < 8; i++) {
-    const a = -0.5 + i * 0.75, d = 0.18 + k.r() * 0.08;
-    k.rock(0.06 + k.r() * 0.04, Math.cos(a) * d + 0.05, 0.012, Math.sin(a) * d + 0.08, cols[i % 3], { amp: 0.3, s: [1, 0.8, 1] });
-  }
-  k.rock(0.11, 0.12, 0.012, 0.14, cols[0], { amp: 0.25, s: [1, 0.75, 1] });
-  for (let i = 0; i < 8; i++) k.add(new THREE.OctahedronGeometry(0.02, 0), k.rr(-0.15, 0.3), 0.04 + k.r() * 0.06, k.rr(0.0, 0.3), i % 2 ? 0xe08a4a : 0xe8ecf8, { jit: 0.02 });
-  // pickaxe leaning on the cart
-  k.plank([0.12, 0.012, 0.16], [0.07, 0.3, 0.0], 0.02, 0.02, C.woodL);
-  k.add(new THREE.BoxGeometry(0.2, 0.025, 0.025), 0.07, 0.3, 0.0, C.ironL, { rz: 0.25, ry: -0.3 });
-  sparkle(k, 0.14, 0.2, 0.18, 0.025, 0xe0f0ff);
+  // a few big chunks of iron-grey and rust-red ore in front of the cart
+  const cols = [[0x3a4a78, 0x9aaae0], [0x8a2a10, 0xf0884a]];
+  const set = [[0.16, 0.13, 0.12], [-0.03, 0.22, 0.1], [0.27, -0.02, 0.09], [-0.2, 0.16, 0.08]];
+  set.forEach(([x, z, r], i) => k.rock(r, x, 0.0, z, cols[i % 2], { amp: 0.22, s: [1, 0.8, 1] }));
+  // pickaxe leaning on the cart: a thick handle and a big steel head
+  k.plank([0.12, 0.0, 0.0], [0.05, 0.32, -0.12], 0.03, 0.03, C.woodL);
+  k.add(new THREE.BoxGeometry(0.26, 0.04, 0.04), 0.05, 0.32, -0.12, C.steel, { rz: 0.25, ry: -0.3 });
 }
 function gemPile(k) {
-  k.rock(0.22, 0, 0, 0, [0x9a88b8, 0xd0c4e8], { s: [1.1, 0.35, 1], amp: 0.2 });
-  const cols = [[0xd02060, 0xff80b0], [0x18b090, 0x80ffe0], [0x7040e0, 0xc8a0ff], [0x2060e0, 0x90d0ff], [0xe03030, 0xff9a80]];
-  const set = [[0, 0, 0.42, 0.075, 0.05, 0], [0.12, 0.04, 0.3, 0.06, -0.5, 0.4], [-0.12, 0.05, 0.32, 0.06, 0.55, -0.2], [0.04, -0.12, 0.26, 0.055, -0.35, 1.8], [-0.06, 0.13, 0.22, 0.05, 0.4, 2.6], [0.18, -0.1, 0.18, 0.045, -0.7, 0.9], [-0.18, -0.06, 0.2, 0.045, 0.7, -0.5]];
-  set.forEach(([x, z, len, rad, tilt, yaw], i) => {
-    k.crystal(x, 0.03, z, len, rad, cols[i % cols.length], tilt, yaw, { jit: 0.06 });
-  });
-  // inner glow cores and sparkles
-  k.crystal(0, 0.05, 0, 0.3, 0.035, GL.pink, 0.05, 0, { glow: true });
-  k.crystal(0.12, 0.06, 0.04, 0.2, 0.025, GL.cyan, -0.5, 0.4, { glow: true });
-  k.crystal(-0.12, 0.06, 0.05, 0.22, 0.025, GL.violet, 0.55, -0.2, { glow: true });
-  for (let i = 0; i < 5; i++) k.add(new THREE.OctahedronGeometry(0.03, 0).scale(1, 1.4, 1), Math.cos(i * 1.3) * 0.27, 0.025, Math.sin(i * 1.3) * 0.27, [0xff4a8a, 0x4affd0, 0xa070ff, 0x5ab0ff, 0xffd040][i], { jit: 0.05 });
-  sparkle(k, 0.02, 0.5, 0.02, 0.035, 0xffd0f0); sparkle(k, -0.18, 0.3, 0.1, 0.025, 0xc0f0ff);
+  // three BIG crystals in strong, distinct hues on a pale rock, one small blue at the front
+  k.rock(0.22, 0, 0, 0, [0x9a88b8, 0xd8ccf0], { s: [1.15, 0.32, 1], amp: 0.18 });
+  const set = [
+    [0.0, -0.03, 0.5, 0.1, 0.06, 0, [0xc8185a, 0xff8ab8]], // magenta: the tall centre stone
+    [0.14, 0.04, 0.34, 0.085, -0.55, 0.5, [0x10a088, 0x80ffe0]], // emerald-teal
+    [-0.15, 0.05, 0.36, 0.085, 0.55, -0.3, [0x6030d8, 0xc8a0ff]], // violet
+    [0.02, 0.17, 0.2, 0.065, 0.45, 2.4, [0x1a58e0, 0x90d0ff]], // sapphire
+  ];
+  for (const [x, z, len, rad, tilt, yaw, c] of set) k.crystal(x, 0.03, z, len, rad, c, tilt, yaw, { jit: 0.05 });
+  // inner glow in the big stone so it glints from any side
+  k.crystal(0, 0.05, -0.03, 0.36, 0.045, GL.pink, 0.06, 0, { glow: true });
+  sparkle(k, 0.03, 0.56, -0.02, 0.05, 0xffd0f0);
 }
 
 // ---------------------------------------------------------------- treasure
 function chest(k) {
-  // THE CHEST: deep red-brown planks with dark seams, thick bright-gold bands and corners,
-  // the lid thrown open on a heap of glinting gold. No ground patch: the lead adds a contact shadow.
-  const W = 0.44, D = 0.28, H = 0.2, y0 = 0, z0 = -0.02;
-  // three stacked planks around a dark core: the gaps read as seams
-  k.box(W - 0.02, H, D - 0.02, 0, y0, z0, 0x3a120a, { jit: 0, ao: false });
-  for (let i = 0; i < 3; i++) k.box(W, H / 3 - 0.012, D, 0, y0 + i * H / 3 + 0.006, z0, [[0x7a2810, 0x9a3416], [0x8a3014, 0xa83c1a], [0x9a3818, 0xbc4a20]][i], { bev: 0.01, jit: 0.06 });
+  // THE CHEST: one bold red-brown box, thick bright-gold bands, a big lock, a big DOMED lid
+  // thrown open on a heap of gold. No planks, rivets or scattered coins.
+  const W = 0.46, D = 0.3, H = 0.21, y0 = 0, z0 = -0.02;
+  k.box(W, H, D, 0, y0, z0, [0x5e180a, 0x9a3016], { bev: 0.014, jit: 0.04 });
   // dark inside rim, a high heap of gold
-  k.box(W - 0.04, 0.01, D - 0.04, 0, y0 + H - 0.005, z0, 0x2e1008, { ao: false, jit: 0 });
-  k.lathe([[0.001, 0], [0.2, 0], [0.16, 0.05], [0.08, 0.1], [0.001, 0.115]], 10, 0, y0 + H - 0.01, z0, [0xe09a10, 0xfff070], { s: [1, 1, 0.62], jit: 0.18 });
-  for (let i = 0; i < 5; i++) coin(k, k.rr(-0.13, 0.13), y0 + H + 0.05 + k.r() * 0.04, z0 + k.rr(-0.06, 0.06), k.rr(-0.5, 0.5), k.r() * 3, 0.045);
-  // bright gold bands, a base band and corner caps
-  const gold = [0xd88a10, 0xffd040];
-  for (const x of [-0.14, 0.14]) k.box(0.05, H + 0.01, D + 0.016, x, y0 - 0.004, z0, gold, { jit: 0.04, bev: 0.006 });
-  k.box(W + 0.016, 0.035, D + 0.016, 0, y0, z0, [0xb06a0c, 0xe8a828], { jit: 0.04 });
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.box(0.05, 0.05, 0.05, sx * (W / 2 - 0.018), y0 + H - 0.042, z0 + sz * (D / 2 - 0.018), C.goldL, { bev: 0.01, jit: 0.03 });
+  k.box(W - 0.04, 0.01, D - 0.04, 0, y0 + H - 0.004, z0, 0x2e1008, { ao: false, jit: 0 });
+  k.lathe([[0.001, 0], [0.21, 0], [0.17, 0.05], [0.09, 0.105], [0.001, 0.125]], 9, 0, y0 + H - 0.01, z0, [0xe09a10, 0xfff070], { s: [1, 1, 0.62], jit: 0.12 });
+  coin(k, 0.08, y0 + H + 0.07, z0 + 0.01, 0.4, 0.5, 0.075);
+  // thick gold bands, a base band and corner caps
+  const gold = [0xd88a10, 0xffd448];
+  for (const x of [-0.15, 0.15]) k.box(0.07, H + 0.012, D + 0.022, x, y0 - 0.004, z0, gold, { jit: 0.03, bev: 0.008 });
+  k.box(W + 0.02, 0.045, D + 0.02, 0, y0, z0, [0xb06a0c, 0xe8a828], { jit: 0.03, bev: 0.006 });
   // big lock plate with a dark keyhole
-  k.box(0.09, 0.1, 0.022, 0, y0 + H - 0.115, z0 + D / 2 + 0.006, [0xe0a020, 0xffe070], { bev: 0.01 });
-  k.box(0.02, 0.04, 0.01, 0, y0 + H - 0.095, z0 + D / 2 + 0.02, 0x241008, { ao: false, jit: 0 });
-  // the open lid: half cylinder hinged at the back, tipped back (stands up behind: a tall, readable silhouette)
+  k.box(0.13, 0.14, 0.03, 0, y0 + H - 0.15, z0 + D / 2 + 0.008, [0xe0a020, 0xffe878], { bev: 0.014 });
+  k.box(0.03, 0.055, 0.012, 0, y0 + H - 0.125, z0 + D / 2 + 0.026, 0x241008, { ao: false, jit: 0 });
+  // the open lid: a tall half-cylinder dome hinged at the back, tipped back so it stands up
+  // behind the chest (a tall, readable silhouette)
+  const tip = -1.9;
   const lg = new THREE.CylinderGeometry(D / 2, D / 2, W, 9, 1, false, 0, Math.PI).toNonIndexed();
-  lg.rotateZ(Math.PI / 2).scale(1, 0.75, 1).translate(0, 0, D / 2);
-  lg.rotateX(-1.95);
-  k.add(new THREE.BoxGeometry(W - 0.01, 0.012, D - 0.01).translate(0, 0.006, D / 2).rotateX(-1.95), 0, y0 + H, z0 - D / 2, 0x3a140a, { jit: 0.03, ao: false });
-  k.add(lg, 0, y0 + H, z0 - D / 2, [0xa83418, 0xe0602c], { jit: 0.08, ao: false });
+  lg.rotateZ(Math.PI / 2).scale(1, 1.05, 1).translate(0, 0, D / 2);
+  lg.rotateX(tip);
+  k.add(new THREE.BoxGeometry(W - 0.01, 0.012, D - 0.01).translate(0, 0.006, D / 2).rotateX(tip), 0, y0 + H, z0 - D / 2, 0x3a140a, { jit: 0.03, ao: false });
+  k.add(lg, 0, y0 + H, z0 - D / 2, [0x8a2812, 0xc44a22], { jit: 0.06, ao: false });
   // gold trim along the lid's free edge (catches the light at the top of the silhouette)
-  { const e = new THREE.BoxGeometry(W + 0.01, 0.03, 0.03).translate(0, 0, D).rotateX(-1.95); k.add(e, 0, y0 + H, z0 - D / 2, C.goldL, { jit: 0.03, ao: false }); }
+  { const e = new THREE.BoxGeometry(W + 0.012, 0.04, 0.04).translate(0, 0, D).rotateX(tip); k.add(e, 0, y0 + H, z0 - D / 2, C.goldL, { jit: 0.03, ao: false }); }
   const band = (x) => {
-    const bg = new THREE.CylinderGeometry(D / 2 + 0.008, D / 2 + 0.008, 0.05, 9, 1, false, 0, Math.PI).toNonIndexed();
-    bg.rotateZ(Math.PI / 2).scale(1, 0.75, 1).translate(x, 0, D / 2).rotateX(-1.95);
-    k.add(bg, 0, y0 + H, z0 - D / 2, gold, { jit: 0.04, ao: false });
+    const bg = new THREE.CylinderGeometry(D / 2 + 0.012, D / 2 + 0.012, 0.07, 9, 1, false, 0, Math.PI).toNonIndexed();
+    bg.rotateZ(Math.PI / 2).scale(1, 1.05, 1).translate(x, 0, D / 2).rotateX(tip);
+    k.add(bg, 0, y0 + H, z0 - D / 2, gold, { jit: 0.03, ao: false });
   };
-  band(-0.14); band(0.14);
-  // a few big coins spilling at the front and one red gem
-  for (let i = 0; i < 4; i++) coin(k, -0.15 + i * 0.1 + k.rr(-0.02, 0.02), 0.008, z0 + D / 2 + 0.07 + k.r() * 0.06, k.rr(-0.2, 0.2), k.r() * 3, 0.05);
-  coin(k, 0.1, y0 + 0.06, z0 + D / 2 + 0.03, 1.2, -0.3, 0.05);
-  k.add(new THREE.OctahedronGeometry(0.045, 0).scale(1, 1.3, 1), -0.07, y0 + H + 0.11, z0 + 0.02, 0xff2a4a, { jit: 0.05 });
-  // a warm glow coming off the gold and bright glints
+  band(-0.15); band(0.15);
+  // two big coins spilling at the front and one big red gem on the heap
+  coin(k, -0.12, 0.008, z0 + D / 2 + 0.1, 0.1, 0.4, 0.075);
+  coin(k, 0.13, 0.008, z0 + D / 2 + 0.12, -0.1, 1.3, 0.07);
+  k.add(new THREE.OctahedronGeometry(0.06, 0).scale(1, 1.3, 1), -0.08, y0 + H + 0.11, z0 + 0.02, 0xff2a4a, { jit: 0.04 });
+  // a warm glow coming off the gold and a bright glint
   k.lathe([[0.001, 0], [0.13, 0], [0.07, 0.045], [0.001, 0.06]], 8, 0, y0 + H + 0.05, z0, 0x9a6410, { glow: true, s: [1, 1, 0.6] });
-  sparkle(k, -0.04, y0 + H + 0.17, z0, 0.055, 0xfff0b0); sparkle(k, 0.13, y0 + H + 0.1, z0 + 0.05, 0.04, 0xfff0b0);
-  sparkle(k, -0.2, y0 + H + 0.3, z0 - 0.2, 0.04, 0xfff0b0);
+  sparkle(k, -0.03, y0 + H + 0.19, z0, 0.065, 0xfff0b0);
 }
 function artifact(k) {
-  // dais and a carved pedestal
-  k.cyl(0.3, 0.33, 0.05, 0, 0, 0, mottle(C.stoneD, C.stone), 8);
-  k.cyl(0.24, 0.26, 0.05, 0, 0.05, 0, mottle(C.stone, C.stoneL), 8);
-  k.lathe([[0.001, 0.1], [0.14, 0.1], [0.14, 0.14], [0.1, 0.17], [0.075, 0.2], [0.07, 0.42], [0.1, 0.45], [0.14, 0.48], [0.14, 0.51], [0.001, 0.51]], 8, 0, 0, 0, [C.stone, C.marble], { jit: 0.06 });
-  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; k.box(0.025, 0.12, 0.006, Math.sin(a) * 0.073, 0.25, Math.cos(a) * 0.073, GL.cyan, { glow: true, ry: a }); }
-  // the relic: a gold-caged gem floating above
-  const y = 0.72;
-  k.add(new THREE.OctahedronGeometry(0.11, 0).scale(1, 1.45, 1), 0, y, 0, GL.violet, { glow: true });
-  k.add(new THREE.OctahedronGeometry(0.06, 0).scale(1, 1.45, 1), 0, y, 0, 0xffe0ff, { glow: true, s: 1.05 });
-  k.torus(0.15, 0.014, 0, y, 0, [C.goldD, C.goldL], { rx: Math.PI / 2 + 0.3, rs: 18 });
-  k.torus(0.15, 0.014, 0, y, 0, [C.goldD, C.goldL], { ry: 0.6, rx: 0.2, rs: 18 });
-  k.cone(0.03, 0.06, 0, y + 0.16, 0, C.gold, 4);
-  k.cone(0.03, 0.06, 0, y - 0.16, 0, C.gold, 4, { rx: Math.PI });
-  // light pooling on the pedestal and halo rings
-  k.cyl(0.12, 0.12, 0.004, 0, 0.512, 0, 0x6a3aa0, 10, { glow: true });
-  k.torus(0.23, 0.008, 0, y - 0.02, 0, 0x8a5ad0, { glow: true, rx: Math.PI / 2, rs: 20, ts: 3 });
-  sparkle(k, 0.18, y + 0.15, 0.06, 0.04, 0xf0d8ff); sparkle(k, -0.16, y - 0.12, 0.1, 0.03, 0xf0d8ff); sparkle(k, 0.04, y + 0.28, -0.05, 0.03, 0xf0d8ff);
+  // dais and a plain pedestal (big shapes), the relic floating above: a big violet gem in a
+  // thick gold cage. No runes or scattered sparkles.
+  k.cyl(0.3, 0.33, 0.06, 0, 0, 0, [C.stoneD, C.stone], 8);
+  k.lathe([[0.001, 0.06], [0.16, 0.06], [0.16, 0.11], [0.1, 0.15], [0.085, 0.2], [0.085, 0.4], [0.12, 0.44], [0.16, 0.47], [0.16, 0.51], [0.001, 0.51]], 8, 0, 0, 0, [C.stone, C.marble], { jit: 0.05 });
+  const y = 0.74;
+  k.add(new THREE.OctahedronGeometry(0.14, 0).scale(1, 1.45, 1), 0, y, 0, GL.violet, { glow: true });
+  k.add(new THREE.OctahedronGeometry(0.075, 0).scale(1, 1.45, 1), 0, y, 0, 0xffe0ff, { glow: true, s: 1.05 });
+  k.torus(0.18, 0.024, 0, y, 0, [C.goldD, C.goldL], { rx: Math.PI / 2 + 0.3, rs: 14, ts: 4 });
+  k.torus(0.18, 0.024, 0, y, 0, [C.goldD, C.goldL], { ry: 0.6, rx: 0.2, rs: 14, ts: 4 });
+  k.cone(0.04, 0.08, 0, y + 0.2, 0, C.gold, 4);
+  k.cone(0.04, 0.08, 0, y - 0.2, 0, C.gold, 4, { rx: Math.PI });
+  // light pooling on the pedestal top
+  k.cyl(0.14, 0.14, 0.004, 0, 0.512, 0, 0x6a3aa0, 10, { glow: true });
+  sparkle(k, 0.2, y + 0.16, 0.06, 0.05, 0xf0d8ff);
 }
 function campfire(k) {
-  // R3: a tall flame gives a vertical silhouette that reads on any ground (swamp included);
-  // a pale stone ring and a warm glow disc mark the spot from above.
+  // R3/R4: a tall flame gives a vertical silhouette that reads on any ground (swamp included);
+  // a ring of a few big pale stones and a warm glow disc mark the spot from above.
   k.cyl(0.17, 0.18, 0.012, 0, 0.012, 0, 0x5a4034, 10);
-  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; k.rock(0.06, Math.cos(a) * 0.21, 0.012, Math.sin(a) * 0.21, [0xa8a296, 0xe8e0d0], { amp: 0.25, s: [1, 0.8, 1] }); }
-  // crossed logs (teepee)
-  for (let i = 0; i < 5; i++) { const a = i / 5 * TAU + 0.3; log(k, [Math.cos(a) * 0.16, 0.02, Math.sin(a) * 0.16], [Math.cos(a) * 0.02, 0.22, Math.sin(a) * 0.02], 0.024, { seg: 5, bark: [0x5a3418, 0x9a6034] }); }
-  // flames: nested glowing tongues, the core taller than the logs
-  for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; k.cone(0.07, 0.26 + k.r() * 0.1, Math.cos(a) * 0.05, 0.03, Math.sin(a) * 0.05, GL.fire, 5, { glow: true, rz: Math.cos(a) * 0.25, rx: -Math.sin(a) * 0.25 }); }
-  k.cone(0.1, 0.52, 0, 0.03, 0, 0xf05a1a, 6, { glow: true });
-  k.cone(0.06, 0.38, 0, 0.04, 0, GL.fireY, 5, { glow: true });
-  k.cone(0.03, 0.2, 0.02, 0.5, 0.0, GL.fire, 4, { glow: true, rz: -0.2 });
-  for (let i = 0; i < 8; i++) k.add(new THREE.OctahedronGeometry(0.014, 0), k.rr(-0.12, 0.12), 0.45 + k.r() * 0.3, k.rr(-0.12, 0.12), GL.fireY, { glow: true });
-  for (let i = 0; i < 6; i++) k.box(0.025, 0.012, 0.02, k.rr(-0.1, 0.1), 0.022, k.rr(-0.1, 0.1), GL.red, { glow: true, ry: k.r() * 3 });
-  // R3p4: no smoke balls (they read as a white caterpillar from above); a few rising
-  // sparks keep the vertical read without any solid shapes
-  for (let i = 0; i < 3; i++) k.add(new THREE.OctahedronGeometry(0.012, 0), 0.03 + i * 0.03, 0.62 + i * 0.07, -0.01 * i, GL.fire, { glow: true });
-  // log seats and a sack of supplies
-  log(k, [-0.34, 0.045, 0.12], [-0.3, 0.045, -0.2], 0.042, { bark: [0x4a2e18, 0x7a4e2a] });
-  log(k, [0.12, 0.045, 0.36], [0.36, 0.045, 0.2], 0.04, { bark: [0x4a2e18, 0x7a4e2a] });
-  k.lathe([[0.001, 0], [0.07, 0], [0.09, 0.06], [0.07, 0.13], [0.03, 0.15], [0.001, 0.15]], 7, 0.32, 0.012, -0.17, [0x9a7a50, 0xc8a878]);
+  for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; k.rock(0.085, Math.cos(a) * 0.23, 0.0, Math.sin(a) * 0.23, [0xa8a296, 0xf0e8d8], { amp: 0.2, s: [1, 0.75, 1] }); }
+  // crossed logs (teepee): fewer, thicker
+  for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.4; log(k, [Math.cos(a) * 0.17, 0.02, Math.sin(a) * 0.17], [Math.cos(a) * 0.02, 0.22, Math.sin(a) * 0.02], 0.034, { seg: 5, bark: [0x5a3418, 0x9a6034] }); }
+  // flames: a big orange cone, a yellow core and three outer tongues
+  for (let i = 0; i < 3; i++) { const a = i / 3 * TAU; k.cone(0.08, 0.3 + k.r() * 0.08, Math.cos(a) * 0.05, 0.03, Math.sin(a) * 0.05, GL.fire, 5, { glow: true, rz: Math.cos(a) * 0.25, rx: -Math.sin(a) * 0.25 }); }
+  k.cone(0.11, 0.54, 0, 0.03, 0, 0xf05a1a, 6, { glow: true });
+  k.cone(0.065, 0.4, 0, 0.04, 0, GL.fireY, 5, { glow: true });
+  // two log seats
+  log(k, [-0.36, 0.05, 0.12], [-0.32, 0.05, -0.2], 0.05, { bark: [0x4a2e18, 0x7a4e2a] });
+  log(k, [0.12, 0.05, 0.38], [0.38, 0.05, 0.2], 0.05, { bark: [0x4a2e18, 0x7a4e2a] });
   // warm light pooled on the ground: wide, so the spot reads even from above
   k.cyl(0.3, 0.3, 0.003, 0, 0.006, 0, 0x7a3008, 14, { glow: true });
   k.cyl(0.16, 0.16, 0.003, 0, 0.026, 0, 0x8a3a0a, 10, { glow: true });
@@ -729,9 +710,7 @@ function arena(k) {
   // fighting posts and crossed weapons in the sand
   k.cyl(0.03, 0.035, 0.14, -0.12, 0.04, -0.05, [C.woodD, C.wood], 6);
   k.plank([-0.17, 0.12, -0.05], [-0.07, 0.12, -0.05], 0.015, 0.015, C.wood);
-  k.plank([0.1, 0.04, 0.05], [0.18, 0.2, 0.0], 0.012, 0.006, C.steel);
-  k.plank([0.2, 0.04, 0.05], [0.1, 0.2, 0.0], 0.012, 0.006, C.steel);
-  k.cyl(0.06, 0.06, 0.012, 0.05, 0.042, 0.15, [C.redD, C.red], 10, { rx: 0.4, ctr: true });
+  k.cyl(0.09, 0.09, 0.02, 0.08, 0.05, 0.12, [C.redD, C.red], 10, { rx: 0.4, ctr: true });
 }
 function tower(k) {
   k.rock(0.3, 0, 0, 0, [0x8a8a98, 0xb8b8c8], { amp: 0.2, s: [1.3, 0.35, 1.3] });
@@ -754,7 +733,6 @@ function tower(k) {
   const roof = (c, x, y, z) => c.set(0x1428b8).lerp(_c2.set(0x4a78ff), Math.min(1, (y - 1.1) / 0.55));
   k.cone(0.29, 0.58, 0, 1.11, 0, roof, 10);
   k.torus(0.28, 0.016, 0, 1.12, 0, C.gold, { rx: Math.PI / 2, rs: 20, ts: 4 });
-  for (let i = 0; i < 8; i++) { const t = 0.15 + (i % 4) * 0.18, a = i * 2.4; const rad = 0.29 * (1 - t) + 0.01; k.add(new THREE.OctahedronGeometry(0.014, 0), Math.cos(a) * rad, 1.13 + t * 0.52, Math.sin(a) * rad, 0xffe080, { glow: true }); }
   // star finial
   k.beam([0, 1.66, 0], [0, 1.74, 0], 0.008, C.gold, 4);
   k.add(new THREE.OctahedronGeometry(0.05, 0).scale(1, 1, 0.35), 0, 1.78, 0, GL.gold, { glow: true });
@@ -766,12 +744,9 @@ function tower(k) {
   }
   k.box(0.08, 0.13, 0.02, 0, 0.05, 0.19, 0x6a4024, { ry: 0 });
   // brass telescope on the balcony pointing at the sky
-  k.beam([0.12, 1.0, 0.1], [0.12, 1.08, 0.1], 0.01, C.iron, 4);
-  k.beam([0.06, 1.04, 0.04], [0.3, 1.24, 0.24], 0.022, [0xa06a20, 0xe8b850], 8, { taper: 1.5 });
-  k.cyl(0.035, 0.035, 0.03, 0.3, 1.24, 0.24, C.goldD, 8, { ctr: true, rx: 0.9, ry: -0.8 });
+  k.beam([0.06, 1.04, 0.04], [0.3, 1.24, 0.24], 0.035, [0xa06a20, 0xe8b850], 6, { taper: 1.5 });
   // a floating rune ring
-  k.torus(0.3, 0.008, 0, 0.6, 0, GL.cyan, { glow: true, rx: Math.PI / 2 + 0.15, rs: 24, ts: 3 });
-  sparkle(k, 0.28, 0.6, 0.1, 0.03, 0xc0f0ff); sparkle(k, -0.25, 0.65, -0.15, 0.025, 0xc0f0ff);
+  k.torus(0.3, 0.016, 0, 0.6, 0, GL.cyan, { glow: true, rx: Math.PI / 2 + 0.15, rs: 20, ts: 3 });
 }
 function library(k) {
   // steps and plinth
@@ -808,10 +783,9 @@ function library(k) {
   k.box(0.06, 0.12, 0.012, 0, 0.08, 0.092, 0x8a5a10, { glow: true });
   for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; k.box(0.035, 0.06, 0.01, Math.sin(a) * 0.245, 0.43, -0.1 + Math.cos(a) * 0.245, GL.warm, { glow: true, ry: a }); }
   // stacked books and a lectern by the steps
-  const bc = [0x8a2a2a, 0x2a4a8a, 0x2a6a3a, 0x7a5a2a];
-  for (let i = 0; i < 4; i++) k.box(0.1, 0.025, 0.07, 0.36, 0.0 + i * 0.025, 0.3, bc[i], { ry: i * 0.3, bev: 0.004 });
-  k.box(0.1, 0.025, 0.07, -0.36, 0.0, 0.3, bc[1], { ry: 0.5, bev: 0.004 });
-  k.box(0.1, 0.025, 0.07, -0.36, 0.025, 0.3, bc[3], { ry: 0.2, bev: 0.004 });
+  // one big book on a lectern-block by the steps (identity: books)
+  k.box(0.14, 0.05, 0.1, 0.36, 0.0, 0.3, [0x6a1e1e, 0xa83030], { ry: 0.3, bev: 0.01 });
+  k.box(0.12, 0.012, 0.085, 0.36, 0.05, 0.3, 0xf4ead0, { ry: 0.3 });
 }
 function stone(k) {
   pad(k, 0.44);
@@ -819,45 +793,43 @@ function stone(k) {
   const sc = (c, x, y, z, nx, ny) => { c.set(0x343c62).lerp(_c2.set(0x7a88b8), Math.min(1, y / 0.8)); if (ny > 0.6) c.lerp(_c2.set(0xb8c4e8), 0.4); };
   k.rock(0.3, 0, -0.02, -0.02, sc, { det: 1, amp: 0.1, s: [0.95, 1.9, 0.6], sink: 0.0 });
   // a bright rune ring on the pad so the site reads from above
-  k.torus(0.3, 0.014, 0, 0.045, 0.0, GL.cyan, { glow: true, rx: Math.PI / 2, rs: 22, ts: 3 });
+  k.torus(0.3, 0.022, 0, 0.045, 0.0, GL.cyan, { glow: true, rx: Math.PI / 2, rs: 20, ts: 3 });
   // glowing runes on the front face
   const runes = [[0, 0.62, [[0, -0.05], [0, 0.05]], [[-0.03, 0.03], [0.03, 0.0]]], [-0.06, 0.42, [[0, -0.05], [0, 0.05]], [[0, 0.05], [0.04, 0.0]]], [0.07, 0.3, [[-0.03, -0.04], [0.03, 0.04]], [[0.03, -0.04], [-0.03, 0.04]]], [0.0, 0.18, [[-0.04, 0], [0.04, 0]], [[0, -0.04], [0, 0.04]]]];
   for (const [x, y, ...strokes] of runes) {
     const z = 0.155 - Math.abs(y - 0.4) * 0.18;
-    for (const [[ax, ay], [bx, by]] of strokes) k.plank([x + ax, y + ay, z], [x + bx, y + by, z], 0.014, 0.01, GL.cyan, { glow: true });
+    for (const [[ax, ay], [bx, by]] of strokes) k.plank([x + ax * 1.3, y + ay * 1.3, z], [x + bx * 1.3, y + by * 1.3, z], 0.024, 0.012, GL.cyan, { glow: true });
   }
   // circle of small stones and a glow pool
   for (let i = 0; i < 7; i++) { const a = i / 7 * TAU + 0.2; k.rock(0.06, Math.cos(a) * 0.38, 0.03, Math.sin(a) * 0.36, [0x3a4262, 0x8a96c0], { amp: 0.25, s: [1, 1.5, 1] }); }
   k.cyl(0.22, 0.22, 0.003, 0, 0.014, 0.08, 0x185a6a, 12, { glow: true, s: [1, 1, 0.7] });
-  for (let i = 0; i < 5; i++) k.add(new THREE.OctahedronGeometry(0.018, 0), k.rr(-0.25, 0.25), 0.2 + k.r() * 0.6, k.rr(0.05, 0.25), 0x90f0ff, { glow: true });
+  sparkle(k, 0.2, 0.7, 0.1, 0.04, 0x90f0ff);
 }
 function obelisk(k) {
   // stepped base
   k.box(0.56, 0.06, 0.56, 0, 0, 0, mottle(0x9a8a76, 0xc8b8a0), { bev: 0.012 });
   k.box(0.42, 0.06, 0.42, 0, 0.06, 0, mottle(0xa89a84, 0xd4c4ac), { bev: 0.012 });
   k.box(0.3, 0.08, 0.3, 0, 0.12, 0, mottle(0xb8aa94, 0xe0d2bc), { bev: 0.012 });
-  // tall tapered shaft and gold pyramidion
+  // R4: a thick tapered shaft (it was a 3-px needle at map zoom), a big gold pyramidion and
+  // one bold glowing rune band per face instead of twenty tiny glyphs
   const sh = (c, x, y, z) => c.set(0x8a86a8).lerp(_c2.set(0xd8d4ec), Math.min(1, (y - 0.2) / 1.1));
-  k.cyl(0.075 * Math.SQRT2, 0.12 * Math.SQRT2, 1.1, 0, 0.2, 0, sh, 4, { ry: Math.PI / 4, jit: 0.04 });
-  k.cone(0.075 * Math.SQRT2, 0.14, 0, 1.3, 0, [C.goldD, C.goldL], 4, { ry: Math.PI / 4 });
-  // carved glowing glyphs on all four faces
+  const tw = 0.105, bw = 0.155;
+  k.cyl(tw * Math.SQRT2, bw * Math.SQRT2, 1.05, 0, 0.2, 0, sh, 4, { ry: Math.PI / 4, jit: 0.04 });
+  k.cone(tw * Math.SQRT2 * 1.05, 0.2, 0, 1.25, 0, [C.goldD, C.goldL], 4, { ry: Math.PI / 4 });
   for (let f = 0; f < 4; f++) {
-    const a = f * Math.PI / 2;
-    for (let j = 0; j < 5; j++) {
-      const y = 0.35 + j * 0.17, half = 0.12 - (y - 0.2) / 1.1 * 0.045 + 0.003;
-      const glyph = (j + f) % 3;
-      const nx = Math.sin(a), nz = Math.cos(a), tx = Math.cos(a), tz = -Math.sin(a);
-      const pt = (u, v) => [nx * half + tx * u, y + v, nz * half + tz * u];
-      if (glyph === 0) { k.plank(pt(0, -0.05), pt(0, 0.05), 0.012, 0.006, GL.violet, { glow: true }); k.plank(pt(-0.03, 0.02), pt(0.03, 0.02), 0.012, 0.006, GL.violet, { glow: true }); }
-      else if (glyph === 1) { k.torus(0.025, 0.006, ...pt(0, 0), GL.violet, { glow: true, ry: a, rs: 8, ts: 3 }); }
-      else { k.plank(pt(-0.03, -0.04), pt(0, 0.04), 0.01, 0.006, GL.violet, { glow: true }); k.plank(pt(0, 0.04), pt(0.03, -0.04), 0.01, 0.006, GL.violet, { glow: true }); }
+    const a = f * Math.PI / 2, nx = Math.sin(a), nz = Math.cos(a);
+    const at = (y) => bw - (bw - tw) * (y - 0.2) / 1.05 + 0.004;
+    for (const [y0, y1] of [[0.34, 0.62], [0.72, 1.0]]) {
+      const ym = (y0 + y1) / 2;
+      k.plank([nx * at(y0), y0, nz * at(y0)], [nx * at(y1), y1, nz * at(y1)], 0.04, 0.008, GL.violet, { glow: true });
+      k.plank([nx * at(ym) - nz * 0.05, ym, nz * at(ym) + nx * 0.05], [nx * at(ym) + nz * 0.05, ym, nz * at(ym) - nx * 0.05], 0.03, 0.008, GL.violet, { glow: true });
     }
   }
-  k.add(new THREE.OctahedronGeometry(0.035, 0), 0, 1.5, 0, GL.violet, { glow: true });
+  k.add(new THREE.OctahedronGeometry(0.05, 0), 0, 1.52, 0, GL.violet, { glow: true });
   // braziers on the corners
   for (const [x, z] of [[-0.22, 0.22], [0.22, 0.22]]) {
-    k.lathe([[0.001, 0.06], [0.02, 0.06], [0.015, 0.12], [0.04, 0.15], [0.045, 0.17]], 6, x, 0, z, C.iron);
-    k.cone(0.03, 0.08, x, 0.16, z, GL.fire, 5, { glow: true });
+    k.lathe([[0.001, 0.06], [0.03, 0.06], [0.025, 0.12], [0.06, 0.16], [0.065, 0.19]], 6, x, 0, z, C.iron);
+    k.cone(0.05, 0.13, x, 0.17, z, GL.fire, 5, { glow: true });
   }
 }
 function shrine(k) {
@@ -894,12 +866,10 @@ function shrine(k) {
   k.torus(0.17, 0.009, 0, 0.5, 0, 0xc090ff, { glow: true, rx: 1.2, rs: 20, ts: 3 });
   k.torus(0.2, 0.007, 0, 0.5, 0, 0x80d0ff, { glow: true, rx: 1.9, ry: 0.8, rs: 20, ts: 3 });
   k.cyl(0.11, 0.11, 0.003, 0, 0.351, 0, 0x5a2aa0, 10, { glow: true });
-  for (let i = 0; i < 6; i++) { const a = i * 1.05; k.add(new THREE.OctahedronGeometry(0.016, 0), Math.cos(a) * 0.26, 0.4 + (i % 3) * 0.12, Math.sin(a) * 0.26, 0xe0c0ff, { glow: true }); }
 }
 function well(k) {
   pad(k, 0.48);
   // flagstones
-  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; k.box(0.12, 0.012, 0.09, Math.sin(a) * 0.38, 0.012, Math.cos(a) * 0.38, mottle(0xb0a898, 0xd8d0c0), { ry: a, bev: 0.004 }); }
   // the round stone wall: banded blocks
   const blocks = (c, x, y, z) => { const row = Math.floor(y / 0.06), ang = Math.atan2(z, x) + row * 0.35; const t = (Math.floor(ang * 9 / Math.PI) % 2 === 0) ? 0.2 : 0.65; c.set(0x9a9488).lerp(_c2.set(0xdcd6c8), t + Math.min(0.25, y)); };
   k.lathe([[0.2, 0.012], [0.28, 0.012], [0.28, 0.24], [0.3, 0.25], [0.3, 0.28], [0.21, 0.28], [0.21, 0.27], [0.2, 0.27], [0.2, 0.012]].reverse(), 12, 0, 0, 0, blocks, { jit: 0.06 });
@@ -910,16 +880,12 @@ function well(k) {
   // wooden posts, crank and a little shingled roof
   for (const s of [-1, 1]) k.box(0.04, 0.5, 0.05, s * 0.25, 0.25, 0, [C.woodD, C.wood], { bev: 0.006 });
   k.cyl(0.03, 0.03, 0.56, 0, 0.6, 0, C.wood, 7, { rz: Math.PI / 2, ctr: true });
-  k.beam([0.28, 0.6, 0], [0.32, 0.6, 0], 0.012, C.iron, 4);
-  k.beam([0.32, 0.6, 0], [0.32, 0.53, 0.04], 0.01, C.iron, 4);
-  k.beam([0, 0.6, 0], [0, 0.42, 0], 0.004, 0xc8b080, 3);
   k.lathe([[0.001, 0.34], [0.04, 0.34], [0.05, 0.42], [0.001, 0.42]], 7, 0, 0, 0, [C.woodD, C.wood]);
   k.box(0.6, 0.03, 0.06, 0, 0.73, 0, C.woodD);
   k.gable(0.5, 0.18, 0.36, 0, 0.73, 0, C.woodD);
   shingles(k, 0.66, 0.2, 0.44, 0, 0.72, 0, [0x2a50c0, 0x5a88f0], [0x3058c8, 0x6a98ff], 3);
   k.ball(0.03, 0, 0.94, 0, GL.cyan, { glow: true, det: 0 });
   // magic motes rising
-  for (let i = 0; i < 7; i++) { const a = i * 0.9; k.add(new THREE.OctahedronGeometry(0.016, 0), Math.cos(a) * 0.12, 0.3 + i * 0.05, Math.sin(a) * 0.12, 0xa0f0ff, { glow: true }); }
   // bucket by the side
   k.lathe([[0.001, 0.012], [0.045, 0.012], [0.055, 0.09], [0.001, 0.09]], 7, 0.32, 0, 0.25, [C.woodD, C.wood]);
   k.cyl(0.05, 0.05, 0.004, 0.32, 0.086, 0.25, GL.cyan, 7, { glow: true });
@@ -947,11 +913,10 @@ function windmill(k) {
     k.plank([0, hy, hz + 0.02], [dx * L, hy + dy * L, hz + 0.02], 0.025, 0.02, C.woodD);
     // cloth panel on one side of the spar
     const p0 = [dx * 0.12, hy + dy * 0.12, hz + 0.01], p1 = [dx * L, hy + dy * L, hz + 0.01];
-    const w = 0.13, q0 = [p0[0] + px * w, p0[1] + py * w, hz + 0.0], q1 = [p1[0] + px * w, p1[1] + py * w, hz + 0.0];
+    const w = 0.17, q0 = [p0[0] + px * w, p0[1] + py * w, hz + 0.0], q1 = [p1[0] + px * w, p1[1] + py * w, hz + 0.0];
     k.poly([p0, p1, q1, q0], (c, x, y, z) => c.set(0xf0e4c8), { ds: true, ao: false, jit: 0.04 });
     // lattice slats
-    for (let j = 0; j < 4; j++) { const t = 0.2 + j * 0.14; k.plank([dx * t, hy + dy * t, hz + 0.018], [dx * t + px * w, hy + dy * t + py * w, hz + 0.018], 0.01, 0.008, C.wood); }
-    k.plank(q0, q1, 0.01, 0.01, C.wood);
+    k.plank(q0, q1, 0.02, 0.016, C.wood);
   }
   // flour sacks and a cart wheel
   for (const [x, z, r] of [[0.28, 0.2, 0], [0.36, 0.1, 0.5], [0.31, 0.12, 0.2]]) k.lathe([[0.001, 0], [0.05, 0], [0.06, 0.05], [0.045, 0.11], [0.02, 0.12], [0.001, 0.12]], 7, x, 0.012 + (x === 0.31 ? 0.07 : 0), z, [0xc8b890, 0xf0e8d0]);
