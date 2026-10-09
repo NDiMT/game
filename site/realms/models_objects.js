@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BONE, tagRange, ensureRig } from './rig.js?v=0.7';
 
 // =====================================================================
 // HEX REALMS: adventure-map objects (resources, treasure, mines, sites).
@@ -73,14 +74,17 @@ function makeKit(seed) {
     if (o.ry) g.rotateY(o.ry);
     return g;
   };
+  // shader rig: parts added inside k.bone(b, pivot, fn) carry that bone + pivot (model space)
+  let rig = null;
   const k = {
     r, B, G,
     rr: (a, b) => a + r() * (b - a),
+    bone(b, pivot, fn) { const old = rig; rig = { b, p: pivot }; fn(); rig = old; },
     // generic: geometry already built at origin; o: {s, rx, rz, ry, glow, jit, ao}
     add(g, x, y, z, c, o = {}) {
       g = g.index ? g.toNonIndexed() : g;
       place(g, o).translate(x, y, z);
-      (o.glow ? G : B).push({ g, c, jit: o.jit ?? 0.1, ao: o.ao ?? true, seed: (r() * 1e9) | 0 });
+      (o.glow ? G : B).push({ g, c, jit: o.jit ?? 0.1, ao: o.ao ?? true, seed: (r() * 1e9) | 0, rig });
       return g;
     },
     // box standing on y (base)
@@ -182,10 +186,12 @@ function finish(parts, glow, aoH) {
   for (const p of parts) n += p.g.attributes.position.count;
   const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), uv = glow ? null : new Float32Array(n * 2);
   let o = 0;
+  const ranges = [];
   for (const p of parts) {
     const g = p.g;
     g.computeVertexNormals();
     const P = g.attributes.position.array, N = g.attributes.normal.array, cnt = g.attributes.position.count;
+    if (p.rig) ranges.push([o, cnt, p.rig]);
     let y0 = Infinity, y1 = -Infinity;
     for (let i = 1; i < P.length; i += 3) { y0 = Math.min(y0, P[i]); y1 = Math.max(y1, P[i]); }
     const rr = rng(p.seed);
@@ -222,6 +228,8 @@ function finish(parts, glow, aoH) {
   geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   if (uv) geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  ensureRig(THREE, geo); // every geometry drawn with the shared rig-aware materials carries aBone/aPivot
+  for (const [start, count, rg] of ranges) tagRange(THREE, geo, start, count, rg.b, rg.p);
   geo.computeBoundingSphere();
   return geo;
 }
@@ -305,16 +313,20 @@ function pad(k, rad, x = 0, z = 0, seg = 12) {
 function torch(k, x, y, z, h = 0.26) {
   k.beam([x, y, z], [x, y + h, z], 0.014, [0x4a2a18, 0x7a4a28], 5);
   k.lathe([[0.001, 0], [0.02, 0], [0.04, 0.04], [0.035, 0.045]], 6, x, y + h, z, 0x3a3236);
-  k.cone(0.035, 0.11, x, y + h + 0.03, z, GL.fire, 5, { glow: true });
-  k.cone(0.02, 0.07, x, y + h + 0.035, z, GL.fireY, 5, { glow: true });
+  k.bone(BONE.CLOTH, [x, y + h + 0.03, z], () => { // flame flicker
+    k.cone(0.035, 0.11, x, y + h + 0.03, z, GL.fire, 5, { glow: true });
+    k.cone(0.02, 0.07, x, y + h + 0.035, z, GL.fireY, 5, { glow: true });
+  });
 }
 // a tall pole with a hanging banner facing +z
 function banner(k, x, y, z, h, c, w = 0.14, bh = 0.22) {
   k.beam([x, y, z], [x, y + h, z], 0.014, [0x4a2a18, 0x8a5430], 5);
   k.beam([x - 0.01, y + h - 0.02, z + 0.015], [x + w + 0.01, y + h - 0.02, z + 0.015], 0.01, 0x5a3420, 4);
   const top = y + h - 0.03, bot = top - bh;
-  k.poly([[x, top, z + 0.02], [x + w, top, z + 0.02], [x + w, bot, z + 0.02], [x + w / 2, bot + 0.05, z + 0.02], [x, bot, z + 0.02]], (cc, px, py) => cc.set(c).lerp(_c2.set(0xffffff), py > top - 0.03 ? 0.15 : 0), { ds: true, ao: false, jit: 0.03 });
-  k.box(w * 0.4, w * 0.4, 0.008, x + w / 2, top - bh * 0.55, z + 0.024, C.gold, { ctr: true, rz: Math.PI / 4, ao: false });
+  k.bone(BONE.FLAG, [x, top, z + 0.02], () => {
+    k.poly([[x, top, z + 0.02], [x + w, top, z + 0.02], [x + w, bot, z + 0.02], [x + w / 2, bot + 0.05, z + 0.02], [x, bot, z + 0.02]], (cc, px, py) => cc.set(c).lerp(_c2.set(0xffffff), py > top - 0.03 ? 0.15 : 0), { ds: true, ao: false, jit: 0.03 });
+    k.box(w * 0.4, w * 0.4, 0.008, x + w / 2, top - bh * 0.55, z + 0.024, C.gold, { ctr: true, rz: Math.PI / 4, ao: false });
+  });
   k.ball(0.022, x, y + h + 0.012, z, C.gold, { det: 0 });
 }
 function cart(k, x, z, ry, load, loadCol, glowLoad = false, sc = 1) {
@@ -477,10 +489,12 @@ function campfire(k) {
   for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; k.rock(0.085, Math.cos(a) * 0.23, 0.0, Math.sin(a) * 0.23, [0xa8a296, 0xf0e8d8], { amp: 0.2, s: [1, 0.75, 1] }); }
   // crossed logs (teepee): fewer, thicker
   for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.4; log(k, [Math.cos(a) * 0.17, 0.02, Math.sin(a) * 0.17], [Math.cos(a) * 0.02, 0.22, Math.sin(a) * 0.02], 0.034, { seg: 5, bark: [0x5a3418, 0x9a6034] }); }
-  // flames: a big orange cone, a yellow core and three outer tongues
-  for (let i = 0; i < 3; i++) { const a = i / 3 * TAU; k.cone(0.08, 0.3 + k.r() * 0.08, Math.cos(a) * 0.05, 0.03, Math.sin(a) * 0.05, GL.fire, 5, { glow: true, rz: Math.cos(a) * 0.25, rx: -Math.sin(a) * 0.25 }); }
-  k.cone(0.11, 0.54, 0, 0.03, 0, 0xf05a1a, 6, { glow: true });
-  k.cone(0.065, 0.4, 0, 0.04, 0, GL.fireY, 5, { glow: true });
+  // flames: a big orange cone, a yellow core and three outer tongues (CLOTH: flicker about the base)
+  k.bone(BONE.CLOTH, [0, 0.03, 0], () => {
+    for (let i = 0; i < 3; i++) { const a = i / 3 * TAU; k.cone(0.08, 0.3 + k.r() * 0.08, Math.cos(a) * 0.05, 0.03, Math.sin(a) * 0.05, GL.fire, 5, { glow: true, rz: Math.cos(a) * 0.25, rx: -Math.sin(a) * 0.25 }); }
+    k.cone(0.11, 0.54, 0, 0.03, 0, 0xf05a1a, 6, { glow: true });
+    k.cone(0.065, 0.4, 0, 0.04, 0, GL.fireY, 5, { glow: true });
+  });
   // two log seats
   log(k, [-0.36, 0.05, 0.12], [-0.32, 0.05, -0.2], 0.05, { bark: [0x4a2e18, 0x7a4e2a] });
   log(k, [0.12, 0.05, 0.38], [0.38, 0.05, 0.2], 0.05, { bark: [0x4a2e18, 0x7a4e2a] });
@@ -528,7 +542,7 @@ function nuggets(k, x, y, z, s = 1) {
 }
 function pennant(k, x, y, z, h, c, pole = C.woodD) {
   k.beam([x, y, z], [x, y + h, z], 0.012, pole, 5);
-  k.poly([[x, y + h - 0.01, z], [x + 0.2, y + h - 0.05, z + 0.02], [x, y + h - 0.11, z]], c, { ds: true, ao: false, jit: 0.04 });
+  k.bone(BONE.FLAG, [x, y + h - 0.01, z], () => k.poly([[x, y + h - 0.01, z], [x + 0.2, y + h - 0.05, z + 0.02], [x, y + h - 0.11, z]], c, { ds: true, ao: false, jit: 0.04 }));
   k.ball(0.022, x, y + h + 0.01, z, C.gold, { det: 0 });
 }
 function goldmine(k) {
@@ -704,7 +718,7 @@ function arena(k) {
   for (let i = 0; i < 4; i++) {
     const a = i / 4 * TAU + Math.PI / 4, x = Math.sin(a) * 0.49, z = Math.cos(a) * 0.49;
     k.beam([x, 0.47, z], [x, 0.87, z], 0.016, C.woodD, 5);
-    k.poly([[x, 0.86, z], [x + Math.cos(a) * 0.26, 0.86, z - Math.sin(a) * 0.26], [x + Math.cos(a) * 0.22, 0.74, z - Math.sin(a) * 0.22], [x, 0.68, z]], i % 2 ? 0xe02a20 : 0x1a48e0, { ds: true, ao: false });
+    k.bone(BONE.FLAG, [x, 0.86, z], () => k.poly([[x, 0.86, z], [x + Math.cos(a) * 0.26, 0.86, z - Math.sin(a) * 0.26], [x + Math.cos(a) * 0.22, 0.74, z - Math.sin(a) * 0.22], [x, 0.68, z]], i % 2 ? 0xe02a20 : 0x1a48e0, { ds: true, ao: false }));
     k.cone(0.026, 0.06, x, 0.87, z, C.gold, 5);
   }
   // fighting posts and crossed weapons in the sand
@@ -724,8 +738,10 @@ function tower(k) {
   // long blue-and-gold banners hanging from the balcony (front and sides)
   for (const a of [0.15, 2.2, -2.0]) {
     const x = Math.sin(a) * 0.17, z = Math.cos(a) * 0.17, tx = Math.cos(a) * 0.05, tz = -Math.sin(a) * 0.05;
-    k.poly([[x - tx, 0.9, z], [x + tx, 0.9, z], [x + tx, 0.6, z], [x, 0.54, z], [x - tx, 0.6, z]].map(([px, py, pz]) => [px + Math.sin(a) * 0.01, py, pz + Math.cos(a) * 0.01]), 0x1a3ad8, { ds: true, ao: false, jit: 0.03 });
-    k.box(0.04, 0.04, 0.006, x + Math.sin(a) * 0.016, 0.74, z + Math.cos(a) * 0.016, C.gold, { ctr: true, ry: a, rz: Math.PI / 4, ao: false });
+    k.bone(BONE.FLAG, [x + Math.sin(a) * 0.01, 0.9, z + Math.cos(a) * 0.01], () => {
+      k.poly([[x - tx, 0.9, z], [x + tx, 0.9, z], [x + tx, 0.6, z], [x, 0.54, z], [x - tx, 0.6, z]].map(([px, py, pz]) => [px + Math.sin(a) * 0.01, py, pz + Math.cos(a) * 0.01]), 0x1a3ad8, { ds: true, ao: false, jit: 0.03 });
+      k.box(0.04, 0.04, 0.006, x + Math.sin(a) * 0.016, 0.74, z + Math.cos(a) * 0.016, C.gold, { ctr: true, ry: a, rz: Math.PI / 4, ao: false });
+    });
   }
   // upper chamber and the starry conical roof
   k.cyl(0.13, 0.14, 0.18, 0, 0.97, 0, stone, 8);
@@ -903,21 +919,23 @@ function windmill(k) {
   k.box(0.13, 0.03, 0.04, 0, 0.19, 0.2, C.woodD);
   k.box(0.05, 0.07, 0.01, 0.08, 0.42, 0.15, GL.warm, { glow: true, ry: 0.4 });
   k.box(0.05, 0.07, 0.01, -0.1, 0.6, 0.12, GL.warm, { glow: true, ry: -0.5 });
-  // hub and four lattice sails facing +z
+  // hub and four lattice sails facing +z: SPIN about the axle (local +Z through the hub)
   const hz = 0.2, hy = 0.78;
-  k.cyl(0.035, 0.045, 0.14, 0, hy, hz - 0.05, C.woodD, 8, { rx: Math.PI / 2, ctr: true });
-  k.ball(0.045, 0, hy, hz + 0.03, C.iron, { det: 0 });
-  for (let i = 0; i < 4; i++) {
-    const a = i * Math.PI / 2 + 0.35, dx = Math.sin(a), dy = Math.cos(a), px = Math.cos(a), py = -Math.sin(a);
-    const L = 0.6;
-    k.plank([0, hy, hz + 0.02], [dx * L, hy + dy * L, hz + 0.02], 0.025, 0.02, C.woodD);
-    // cloth panel on one side of the spar
-    const p0 = [dx * 0.12, hy + dy * 0.12, hz + 0.01], p1 = [dx * L, hy + dy * L, hz + 0.01];
-    const w = 0.17, q0 = [p0[0] + px * w, p0[1] + py * w, hz + 0.0], q1 = [p1[0] + px * w, p1[1] + py * w, hz + 0.0];
-    k.poly([p0, p1, q1, q0], (c, x, y, z) => c.set(0xf0e4c8), { ds: true, ao: false, jit: 0.04 });
-    // lattice slats
-    k.plank(q0, q1, 0.02, 0.016, C.wood);
-  }
+  k.bone(BONE.SPIN, [0, hy, hz], () => {
+    k.cyl(0.035, 0.045, 0.14, 0, hy, hz - 0.05, C.woodD, 8, { rx: Math.PI / 2, ctr: true });
+    k.ball(0.045, 0, hy, hz + 0.03, C.iron, { det: 0 });
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2 + 0.35, dx = Math.sin(a), dy = Math.cos(a), px = Math.cos(a), py = -Math.sin(a);
+      const L = 0.6;
+      k.plank([0, hy, hz + 0.02], [dx * L, hy + dy * L, hz + 0.02], 0.025, 0.02, C.woodD);
+      // cloth panel on one side of the spar
+      const p0 = [dx * 0.12, hy + dy * 0.12, hz + 0.01], p1 = [dx * L, hy + dy * L, hz + 0.01];
+      const w = 0.17, q0 = [p0[0] + px * w, p0[1] + py * w, hz + 0.0], q1 = [p1[0] + px * w, p1[1] + py * w, hz + 0.0];
+      k.poly([p0, p1, q1, q0], (c, x, y, z) => c.set(0xf0e4c8), { ds: true, ao: false, jit: 0.04 });
+      // lattice slats
+      k.plank(q0, q1, 0.02, 0.016, C.wood);
+    }
+  });
   // flour sacks and a cart wheel
   for (const [x, z, r] of [[0.28, 0.2, 0], [0.36, 0.1, 0.5], [0.31, 0.12, 0.2]]) k.lathe([[0.001, 0], [0.05, 0], [0.06, 0.05], [0.045, 0.11], [0.02, 0.12], [0.001, 0.12]], 7, x, 0.012 + (x === 0.31 ? 0.07 : 0), z, [0xc8b890, 0xf0e8d0]);
 }
@@ -995,7 +1013,7 @@ function dwelling(k) {
   const hide = (c, x, y) => c.set(Math.floor(y * 22) % 3 === 0 ? 0x9a2414 : 0xd88a3a).lerp(_c2.set(0xffd090), Math.max(0, (y - 0.5) * 1.2));
   k.cone(0.2, 0.34, 0.08, 0.38, -0.24, hide, 6, { jit: 0.08 });
   for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.3; k.beam([0.08 + Math.cos(a) * 0.04, 0.66, -0.24 + Math.sin(a) * 0.04], [0.08 + Math.cos(a) * 0.1, 0.8, -0.24 + Math.sin(a) * 0.1], 0.01, 0x4a2a18, 4); }
-  k.box(0.08, 0.13, 0.01, 0.08, 0.4, -0.05, 0x2a1410, { rx: -0.5, ao: false });
+  k.bone(BONE.CLOTH, [0.08, 0.4 + 0.13 * Math.cos(0.5), -0.05 - 0.13 * Math.sin(0.5)], () => k.box(0.08, 0.13, 0.01, 0.08, 0.4, -0.05, 0x2a1410, { rx: -0.5, ao: false })); // tent flap
   // red war banner on a tall pole (the colour flag of the site)
   banner(k, -0.36, 0.1, 0.0, 0.72, 0xd0201a, 0.16, 0.26);
   // totem with horned skull
@@ -1017,6 +1035,8 @@ export function objectModel(id) {
   if (!f) { k.box(0.3, 0.3, 0.3, 0, 0, 0, 0xff00ff); return done(k); }
   f(k);
   const m = done(k, AOH[id] ?? 0.25), g = GROW[id];
-  if (g) { m.body.scale(g, g, g); if (m.glow) m.glow.scale(g, g, g); }
+  // pivots scale with the positions
+  const scalePivots = (geo) => { const a = geo.attributes.aPivot; for (let i = 0; i < a.array.length; i++) a.array[i] *= g; a.needsUpdate = true; };
+  if (g) { m.body.scale(g, g, g); scalePivots(m.body); if (m.glow) { m.glow.scale(g, g, g); scalePivots(m.glow); } }
   return m;
 }
