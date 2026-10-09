@@ -43,19 +43,19 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // ------------------------------------------------------------------ terrain palettes
 const LIN = (h) => new THREE.Color(h);
 const TERRAINS = {
-  1: { name: 'grass', sky: 0x9fd2f6, fog: [0xc6e4f6, 17, 42], sun: [0xfff3d6, 2.6], hemi: [0xdcefff, 0x8ab060, 1.15], amb: [0x8a9ab8, 0.42], exposure: 1.05,
+  1: { name: 'grass', gk: 0.9, sky: 0x9fd2f6, fog: [0xc6e4f6, 23, 52], sun: [0xfff3d6, 2.6], hemi: [0xdcefff, 0x8ab060, 1.15], amb: [0x8a9ab8, 0.42], exposure: 1.05,
     tint: [0x74bc44, 0x58a63a, 0xa4cc58], grid: [36, 78, 22], gridHi: [236, 255, 190], field: [240, 250, 170], fieldA: 0.08, water: 0x4a9ac8, hill: 0.9, edge: [150, 130, 74], calm: [0.95, 0.8, 0.8], deco: [0.62, 0.16] },
-  2: { name: 'dirt', sky: 0xb8daf4, fog: [0xecdcc0, 16, 40], sun: [0xffeac4, 2.75], hemi: [0xe8eefa, 0xb08a5c, 1.2], amb: [0x988a90, 0.45], exposure: 1.08,
+  2: { name: 'dirt', gk: 0.82, sky: 0xb8daf4, fog: [0xecdcc0, 22, 50], sun: [0xffeac4, 2.75], hemi: [0xe8eefa, 0xb08a5c, 1.2], amb: [0x988a90, 0.45], exposure: 1.08,
     tint: [0xc49a68, 0xa87e52, 0xd2b07a], grid: [88, 58, 30], gridHi: [255, 236, 200], field: [255, 236, 196], water: 0x5a9ab0, hill: 0.8, edge: [120, 90, 54], calm: [0.95, 0.78, 0.82], deco: [0.66, 0.16] },
-  3: { name: 'sand', sky: 0xa8d4f2, fog: [0xf4dcb0, 16, 40], sun: [0xfff0d4, 2.55], hemi: [0xf4f0e8, 0xb88a50, 1.0], amb: [0x988870, 0.38], exposure: 1.0,
+  3: { name: 'sand', gk: 0.86, sky: 0xa8d4f2, fog: [0xf4dcb0, 22, 50], sun: [0xfff0d4, 2.55], hemi: [0xf4f0e8, 0xb88a50, 1.0], amb: [0x988870, 0.38], exposure: 1.0,
     tint: [0xe8c27a, 0xd8a862, 0xf0d090], grid: [150, 104, 50], gridHi: [255, 250, 225], field: [255, 248, 226], water: 0x3aa8c0, hill: 1.2, edge: [196, 150, 90], calm: [0.92, 0.76, 0.86], deco: [0.7, 0.14] },
-  4: { name: 'snow', sky: 0xb4d8f6, fog: [0xe0ecf8, 15, 38], sun: [0xfff4e4, 2.5], hemi: [0xe4f0ff, 0xa8c0e0, 1.3], amb: [0x8098c0, 0.45], exposure: 0.98,
+  4: { name: 'snow', gk: 0.9, sky: 0xb4d8f6, fog: [0xe0ecf8, 21, 48], sun: [0xfff4e4, 2.5], hemi: [0xe4f0ff, 0xa8c0e0, 1.3], amb: [0x8098c0, 0.45], exposure: 0.98,
     tint: [0xf4f8fc, 0xdce8f6, 0xffffff], grid: [90, 120, 170], gridHi: [255, 255, 255], field: [200, 222, 250], water: 0xa8d4f0, hill: 1.0, edge: [150, 176, 214], calm: [1.0, 0.8, 0.88], deco: [0.7, 0.12] },
-  5: { name: 'swamp', sky: 0xa8cab0, fog: [0xb8d0b0, 15, 38], sun: [0xfff8d4, 2.6], hemi: [0xe4f4d4, 0x7a9450, 1.25], amb: [0x7a9a88, 0.48], exposure: 1.1,
+  5: { name: 'swamp', gk: 0.88, sky: 0xa8cab0, fog: [0xb8d0b0, 21, 48], sun: [0xfff8d4, 2.6], hemi: [0xe4f4d4, 0x7a9450, 1.25], amb: [0x7a9a88, 0.48], exposure: 1.1,
     tint: [0x8aa850, 0x749440, 0xa0b858], grid: [40, 64, 24], gridHi: [220, 244, 170], field: [220, 230, 150], water: 0x3a8a78, hill: 0.5, edge: [96, 110, 50], calm: [0.9, 0.78, 0.8], deco: [0.5, 0.2] },
-  6: { name: 'rough', sky: 0xb0d0ec, fog: [0xd8d2c4, 16, 40], sun: [0xfff0d8, 2.75], hemi: [0xe4ecf8, 0x9a8a68, 1.2], amb: [0x8a8a98, 0.45], exposure: 1.08,
+  6: { name: 'rough', gk: 0.8, sky: 0xb0d0ec, fog: [0xd8d2c4, 22, 50], sun: [0xfff0d8, 2.75], hemi: [0xe4ecf8, 0x9a8a68, 1.2], amb: [0x8a8a98, 0.45], exposure: 1.08,
     tint: [0xbcac88, 0xa49474, 0xcabc98], grid: [76, 64, 46], gridHi: [255, 248, 228], field: [255, 246, 226], water: 0x4a8aa8, hill: 1.4, edge: [130, 112, 84], calm: [0.95, 0.76, 0.8], deco: [0.66, 0.16] },
-  7: { name: 'lava', sky: 0xb88a74, fog: [0xa87868, 14, 36], sun: [0xffdcb8, 2.5], hemi: [0xf0d0c0, 0x6a4a44, 1.05], amb: [0x8a6a70, 0.5], exposure: 1.05,
+  7: { name: 'lava', gk: 0.9, sky: 0xb88a74, fog: [0xa87868, 20, 46], sun: [0xffdcb8, 2.5], hemi: [0xf0d0c0, 0x6a4a44, 1.05], amb: [0x8a6a70, 0.5], exposure: 1.05,
     tint: [0x8a7470, 0x7a6460, 0x9a8078], grid: [60, 24, 12], gridHi: [255, 206, 160], hiA: 0.18, field: [244, 216, 196], fieldA: 0.16, water: 0x000000, hill: 1.3, edge: [150, 116, 104], calm: [0.95, 0.8, 0.82], deco: [0.7, 0.12] },
 };
 
@@ -377,13 +377,13 @@ const shrink = (m, k, fn) => { const n = m.B.length, ng = m.G.length; fn(m); for
 // Round 3: every obstacle contrasts with its ground in value AND hue (darker/stronger mass, a lit cap), so it
 // reads as "blocked" at a glance; kept saturated while the border decor around the field is calmed.
 const OBST = {
-  1: [(m) => P.mossyBoulder(m, 0xa49c90, 0xd2cabc, 0xffe060), (m) => { P.log(m, 0x8a5a30, 0xeac48a, 0x5a9a34, 0.85, 0.15); P.mushrooms(m, 0xe84a32, null, 2, 0.6); P.fern(m, 0x3a8a30, 0x7ab84a, 3); },
+  1: [(m) => P.mossyBoulder(m, 0x7e7672, 0x5e9a34, 0xffe060), (m) => { P.log(m, 0x8a5a30, 0xeac48a, 0x5a9a34, 0.85, 0.15); P.mushrooms(m, 0xe84a32, null, 2, 0.6); P.fern(m, 0x3a8a30, 0x7ab84a, 3); },
     (m) => { P.bush(m, 0x2e7a2c, 0x5aa040); for (let i = 0; i < 5; i++) { const a = m.rnd(0, 6.28), e = m.rnd(0.4, 1.1); m.add(G.blob(0.04, 0, 0, i).translate(Math.cos(a) * 0.3 * Math.cos(e * 0.6), 0.22 + Math.sin(e) * 0.26, Math.sin(a) * 0.3 * Math.cos(e * 0.6)), 0xe83a3a, { ao: 0 }); } }],
-  2: [(m) => { P.rockPile(m, 0x8e8478, 0xc4b8a4); P.tuft(m, 0x8a8a40, 0xc8c070, 4, 0.26); }, (m) => { shrink(m, 0.5, (m) => P.roundTree(m, 0xd8682a, 0xffb848, 0x6a4a30)); P.tuft(m, 0x8a8a40, 0xc8c070, 3, 0.22); }, (m) => { P.column(m, 0xe0d4bc, 0xf8f0dc, 0.55); m.add(G.rock(5, 0.14, 0.1, 0.12, 0).translate(0.32, 0, 0.2), 0x9a8e80); m.add(G.rock(6, 0.1, 0.08, 0.1, 0).translate(-0.28, 0, 0.26), 0xb0a490); }],
+  2: [(m) => { P.rockPile(m, 0x6e6058, 0xa89880); P.tuft(m, 0x6a7a2c, 0xa8b050, 4, 0.26); }, (m) => { shrink(m, 0.5, (m) => P.roundTree(m, 0xd8682a, 0xffb848, 0x6a4a30)); P.tuft(m, 0x8a8a40, 0xc8c070, 3, 0.22); }, (m) => { P.column(m, 0xe0d4bc, 0xf8f0dc, 0.55); m.add(G.rock(5, 0.14, 0.1, 0.12, 0).translate(0.32, 0, 0.2), 0x6e6058); m.add(G.rock(6, 0.1, 0.08, 0.1, 0).translate(-0.28, 0, 0.26), 0x84766a); }],
   3: [(m) => m.add(G.rock(m.seed, 0.4, 0.42, 0.34, 1, 0.2), 0xb86e48, { fn: (v, c) => c.multiplyScalar(0.92 + 0.14 * Math.sin(v.y * 22)), jit: 0.06, cap: 0xe0a070, capT: 0.7 }), (m) => { shrink(m, 0.82, (m) => P.cactus(m)); m.add(G.rock(m.seed, 0.12, 0.09, 0.1, 0).translate(0.3, 0, 0.15), 0xb07450); }, (m) => { P.bones(m); P.skull(m, -0.3, 0.3, 1.1); }],
   4: [(m) => P.rockPile(m, 0x7c8aa4, 0xe8f0fa), (m) => { m.add(G.blob(1, 1, 0.12, m.seed).scale(0.42, 0.1, 0.38), 0xc8d8ec, { ao: 0.2 }); P.crystals(m, 0x4aa0e0, null, 6, 1, 0x8a9ab4); }, (m) => { P.pine(m, 0x22684a, 0x4a9a70, true, 0.42); P.mound(m, 0xdce6f4, 0xf4f8ff, 0.6); }],
   5: [(m) => { P.log(m, 0x6a4a2c, 0xc8a878, 0x6aa838, 0.9, 0.15); P.mushrooms(m, 0xb04ac0, 0x9affc0, 2, 0.8); }, (m) => { P.deadTree(m, 0x5e4a34, 0x8a7a58, 0.75); P.fern(m, 0x3e7a2e, 0x7aa848, 4); }, (m) => P.mushrooms(m, 0xa04ad0, 0x9affc0, 4, 1.6)],
-  6: [(m) => P.spire(m, 0x8a7e6c, 0xb8ac94, 0.9), (m) => P.crystals(m, 0x3a62d8, 0x5a8aff, 6, 1, 0x7a7466), (m) => P.rockPile(m, 0x857a6a, 0xb4a890, 1.1)],
+  6: [(m) => P.spire(m, 0x5a5466, 0x8a8494, 0.9), (m) => P.crystals(m, 0x3a62d8, 0x5a8aff, 6, 1, 0x5a5466), (m) => P.rockPile(m, 0x5e5866, 0x8e8898, 1.1)],
   7: [(m) => P.magmaRock(m), (m) => { P.spire(m, 0x4e3c3a, 0x8a6e64, 0.95); m.add(G.disc(0.3, 9, 0.2, 2).translate(0.25, 0.02, 0.2), 0xff8a30, { glow: true, ao: 0 }); }, (m) => P.emberTree(m, 0.75)],
 };
 const terId = (t) => (TERRAINS[t] ? t : 1);
@@ -893,6 +893,7 @@ export function createBattlefield(_THREE, terrainId, hexPos, COLS, ROWS) {
   gg.setAttribute('color', new THREE.Float32BufferAttribute(cols.map((v) => Math.min(v, 1.4)), 3));
   gg.computeVertexNormals();
   const gmat = new THREE.MeshStandardMaterial({ map: gt.map, vertexColors: true, roughness: 1, metalness: 0 });
+  gmat.color.setScalar(pal.gk ?? 1); // mid-value ground: the units and obstacles carry the light end of the range
   if (gt.emissive) { gmat.emissiveMap = gt.emissive; gmat.emissive.set(0xff7a30); gmat.emissiveIntensity = 1.0; }
   const ground = new THREE.Mesh(gg, gmat); ground.receiveShadow = true; ground.name = 'ground';
   group.add(ground);

@@ -97,7 +97,7 @@ const PAL = {
     zenith: 0x3d7de0, mid: 0x7fb6f2, horizon: 0xdcEEF8, below: 0xb8d8c8, sunCol: 0xfff0c0, fog: 0xcfe2ee, fogNear: 70, fogFar: 1150,
     sunDir: [-0.55, 0.62, 0.55], sun: 0xfff0d2, sunI: 2.7, hemiSky: 0xd0e4ff, hemiGround: 0x768b57, hemiI: 1.05, amb: 0xfff8f0, ambI: 0.28,
     // round 3: calm backdrop (~30% less saturated, ~10% darker) so the buildings are the figures
-    grass: [0x6ea656, 0x90bd67, 0xa8bc78, 0x5b8e4d], bank: 0xd2c69c, field: [0xd0c080, 0xa2c774, 0xbea176, 0xc8c48c],
+    grass: [0x74a05e, 0x94b870, 0xaab87e, 0x5f8a52], bank: 0xd2c69c, field: [0xd0c080, 0xa2c774, 0xbea176, 0xc8c48c],
     mtn: [0x6e9a78, 0x8a9cc0, 0xf4f6ff], hill: 0x65945a,
     water: [0x2a78c8, 0x5fc0e8, 0xbfe8ff], waterSky: 0xd6ecff, waterGlow: 0,
     path: '#d8c8a2', pathEdge: '#b49a72', stone: ['#ccbc98', '#e4d8bc', '#bcaa86'], pad: 'rgba(84,96,58,0.24)',
@@ -110,7 +110,7 @@ const PAL = {
     zenith: 0x5c52ac, mid: 0xa690d0, horizon: 0xfac8c4, below: 0xc0b6b8, sunCol: 0xffd8ec, fog: 0xd8c8cc, fogNear: 90, fogFar: 950,
     sunDir: [0.55, 0.5, 0.5], sun: 0xffdcc0, sunI: 3.1, hemiSky: 0xc2bae6, hemiGround: 0x8a8670, hemiI: 0.95, amb: 0xc4bcd6, ambI: 0.26,
     // round 3: ash-grey / olive / bone ground, so the violet buildings stand out against it
-    grass: [0x9e9a8a, 0x8c9474, 0xcac2ac, 0x948a96], bank: 0xb8ac94, field: [0x9a9298, 0x8e9676, 0xa89c8a, 0x928c9c],
+    grass: [0xa8a492, 0x949a7c, 0xd0c8b2, 0x9a909a], bank: 0xb8ac94, field: [0x9a9298, 0x8e9676, 0xa89c8a, 0x928c9c],
     mtn: [0x837a98, 0x9a92ae, 0xe4dcec], hill: 0x8e8c82,
     water: [0x2a7c88, 0x56c0a8, 0xbaf8dc], waterSky: 0xb49ad4, waterGlow: 0.35,
     path: '#d8d0c0', pathEdge: '#a69c8a', stone: ['#bcb4a2', '#e6e0d2', '#aaa292'], pad: 'rgba(70,66,54,0.2)',
@@ -138,8 +138,8 @@ export function createTownView(THREE, renderer, opts = {}) {
   // materials
   const bodyMat = opts.bodyMat || keep(MAT ? MAT.makeBodyMaterial(T) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.8 }));
   const glowMat = opts.glowMat || keep(MAT ? MAT.makeGlowMaterial(T) : new T.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
-  const groundMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0, detail: 0.9, scale: 0.32, rim: 0, hemi: 0.06 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
-  const sceneryMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0.3, aoHeight: 0.4, rim: 0.3 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
+  const groundMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0, detail: 0.9, scale: 0.32, rim: 0, hemi: 0.06, sat: 0.86, contrast: 0.12, ink: 0 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
+  const sceneryMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0.3, aoHeight: 0.4, rim: 0.3, sat: 0.95 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
   if (!MAT && !opts.glowMat) glowMat.color.setScalar(2.2);
   for (const m of [groundMat, sceneryMat]) m.userData.baseDetail = m.userData.uniforms?.uDetail.value;
 
