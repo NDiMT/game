@@ -1,28 +1,29 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=1.5';
-import { havenModel } from './units_haven.js?v=1.5';
-import { necroModel } from './units_necro.js?v=1.5';
-import { necroUpModel } from './units_necro_up.js?v=1.5';
-import { havenUpModel } from './units_haven_up.js?v=1.5';
-import { neutralModel } from './units_neutral.js?v=1.5';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=1.5';
-import { objectModel } from './models_objects.js?v=1.5';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.5';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.5';
-import { createTownView } from './town_view.js?v=1.5';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.5';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.5';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.5';
+import { mulberry32, unitModel } from './models.js?v=1.6';
+import { havenModel } from './units_haven.js?v=1.6';
+import { necroModel } from './units_necro.js?v=1.6';
+import { necroUpModel } from './units_necro_up.js?v=1.6';
+import { havenUpModel } from './units_haven_up.js?v=1.6';
+import { neutralModel } from './units_neutral.js?v=1.6';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=1.6';
+import { objectModel } from './models_objects.js?v=1.6';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.6';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.6';
+import { createTownView } from './town_view.js?v=1.6';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.6';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.6';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.6';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
-const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.5'), import('./units_inferno.js?v=1.5'), import('./units_dungeon.js?v=1.5')]);
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.6'), import('./units_inferno.js?v=1.6'), import('./units_dungeon.js?v=1.6')]);
 const FAC_MODEL = { sylvan: SYLm.value?.sylvanModel, inferno: INFm.value?.infernoModel, dungeon: DUNm.value?.dungeonModel };
-import * as BT from './battle.js?v=1.5';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.5';
-import { createScore } from './music.js?v=1.5';
-import { unitFit, applyFit } from './unit_fit.js?v=1.5';
-import { createMapFx } from './mapfx.js?v=1.5';
+import * as BT from './battle.js?v=1.6';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.6';
+import { createScore } from './music.js?v=1.6';
+import { createSfx } from './sfx.js?v=1.6';
+import { unitFit, applyFit } from './unit_fit.js?v=1.6';
+import { createMapFx } from './mapfx.js?v=1.6';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.5';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.6';
 
 // =====================================================================
 // ORBIS · Five Crowns: a pocket strategy game on a tiny hex planet.
@@ -31,7 +32,7 @@ import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1
 // defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '1.5';
+const APP_VERSION = '1.6';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -229,7 +230,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=1.5';
+import { createPlanet } from './terrain.js?v=1.6';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -733,7 +734,7 @@ function updateWalk(dt) {
   if (target) { walking = null; layoutHeroes(true); interact(hr, b); return; }
   hr.mp -= stepCost(a, b); hr.v = b; W.i++;
   if (reveal(b, visionOf(hr))) worldDirty = true;
-  sfx.step();
+  sfx.step({ kind: 'hoof' });
   if (seen[b]) fx.burst('step', posOf(b));
   // a monster next to the path attacks
   const lurker = NBR[b].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((o) => o && o.alive && o.type === 'monster' && o.v !== W.path[W.path.length - 1]);
@@ -785,7 +786,7 @@ function interact(hr, v) {
     if (you && ratio > 4 && !o.refused && hash(o.id * 13 + G.day) % 100 < 55) {
       const u = UNITS[o.unit], price = Math.round(o.n * u.cost.gold * 0.6), free = ratio > 8;
       ask(`${unitIcon(o.unit)} The ${plural(o.unit)} bow before you`, free ? `${o.n} ${plural(o.unit, o.n)} are so impressed by your army that they offer to join you for free.` : `${o.n} ${plural(o.unit, o.n)} offer to join you for ${fmt(price)} 🪙.`, [
-        [free ? '🤝 Accept' : `🤝 Hire for ${fmt(price)}`, free || G.players[0].res.gold >= price ? () => { if (addTroops(hr.army, o.unit, o.n)) { if (!free) G.players[0].res.gold -= price; removeObject(o); toast(`${unitIcon(o.unit)} ${o.n} ${plural(o.unit, o.n)} join ${hr.name}.`); sfx.fanfare(); updateHud(); } else toast('No free slot in your army.'); } : undefined],
+        [free ? '🤝 Accept' : `🤝 Hire for ${fmt(price)}`, free || G.players[0].res.gold >= price ? () => { if (addTroops(hr.army, o.unit, o.n)) { if (!free) G.players[0].res.gold -= price; removeObject(o); sfx.recruit(); toast(`${unitIcon(o.unit)} ${o.n} ${plural(o.unit, o.n)} join ${hr.name}.`); sfx.fanfare(); updateHud(); } else toast('No free slot in your army.'); } : undefined],
         ['⚔️ Fight them', () => startBattle(hr, { kind: 'monster', obj: o })],
         ['Let them flee', () => { removeObject(o); giveXp(hr, 0); toast(`${plural(o.unit)} run for their lives.`); }],
       ]);
@@ -807,16 +808,16 @@ function interact(hr, v) {
   if (kind === 'pickup') {
     removeObject(o); hr.v = v; layoutHeroes(true);
     if (seen[v]) fx.burst(o.type === 'gems' ? 'gem' : o.type === 'artifact' ? 'artifact' : 'coin', posOf(v));
-    if (RES.includes(o.type)) { gain(hr.p, o.type, o.amount, v); if (you) sfx.coin(); }
+    if (RES.includes(o.type)) { gain(hr.p, o.type, o.amount, v); if (you) sfx.pickup({ kind: o.type }); }
     else if (o.type === 'campfire') { gain(hr.p, 'gold', 400 + ((rnd() * 3) | 0) * 100, v); const r = ['wood', 'ore', 'gems'][(rnd() * 3) | 0]; gain(hr.p, r, r === 'gems' ? 2 : 4, v); if (you) sfx.coin(); }
     else if (o.type === 'chest') {
       const g = 1000 + ((rnd() * 3) | 0) * 250, xp = g - 500;
-      if (you) ask('🧰 Treasure Chest', 'You find a chest full of gold. Keep it, or give it to the peasants for their wisdom?', [[`🪙 ${fmt(g)} gold`, () => { gain(0, 'gold', g, v); sfx.coin(); updateHud(); }], [`⭐ ${fmt(xp)} experience`, () => giveXp(hr, xp)]]);
+      if (you) { sfx.chest(); } if (you) ask('🧰 Treasure Chest', 'You find a chest full of gold. Keep it, or give it to the peasants for their wisdom?', [[`🪙 ${fmt(g)} gold`, () => { gain(0, 'gold', g, v); sfx.coin(); updateHud(); }], [`⭐ ${fmt(xp)} experience`, () => giveXp(hr, xp)]]);
       else gain(hr.p, 'gold', g);
     } else if (o.type === 'artifact') {
       const A = ARTIFACTS.find((x) => x.id === o.art);
       hr.arts.push(A.id); hr.mana = Math.min(maxMana(hr), hr.mana);
-      if (you) { showMsg(`${A.icon} ${A.name}`, `${artDesc(A)}`); sfx.fanfare(); }
+      if (you) { showMsg(`${A.icon} ${A.name}`, `${artDesc(A)}`); sfx.artifact(); }
     }
     updateHud(); return;
   }
@@ -839,7 +840,7 @@ function interact(hr, v) {
       const S = SPELLS[o.spell];
       if (S.circle >= 3 && !(hr.skills.wisdom >= 2)) { if (you) toast(`⛩️ ${S.name} is too difficult: you need Wisdom.`); hr.visited.pop(); return; }
       if (!hr.spells.includes(o.spell)) hr.spells.push(o.spell);
-      if (you) { showMsg(`⛩️ ${S.icon} ${S.name}`, S.desc); sfx.magic(); }
+      if (you) { showMsg(`⛩️ ${S.icon} ${S.name}`, S.desc); sfx.learn(); }
     }
     updateHud(); return;
   }
@@ -847,7 +848,7 @@ function interact(hr, v) {
     const key = `w${o.id}:${week()}`;
     if (hr.visited.includes(key)) { if (you) toast(`${O.icon} Come back next week.`); return; }
     hr.visited.push(key);
-    if (o.type === 'well') { hr.mana = maxMana(hr); if (you) { toast('⛲ Your mana is restored.'); sfx.magic(); } }
+    if (o.type === 'well') { hr.mana = maxMana(hr); if (you) { toast('⛲ Your mana is restored.'); sfx.mana(); } }
     else if (o.type === 'windmill') { const r = ['wood', 'ore', 'gems'][(rnd() * 3) | 0]; gain(hr.p, r, r === 'gems' ? 2 : 4 + ((rnd() * 3) | 0), v); }
     else if (o.type === 'stables') { hr.mp += 400; if (you) toast('🐴 +400 movement today.'); }
     updateHud(); return;
@@ -866,8 +867,8 @@ function captureTown(hr, t) {
   const was = t.p;
   t.p = hr.p; t.garrison = [];
   worldDirty = true;
-  if (hr.p === 0) { showMsg(`🏰 ${t.name} is yours!`, `The ${FACTIONS[t.fac].name} town now pays you gold and its dwellings will recruit for you.`); sfx.fanfare(); }
-  else if (was === 0) { showMsg(`🔥 ${t.name} has fallen`, `${P(hr).name} captured your town.`); sfx.deny(); }
+  if (hr.p === 0) { showMsg(`🏰 ${t.name} is yours!`, `The ${FACTIONS[t.fac].name} town now pays you gold and its dwellings will recruit for you.`); sfx.capture(); }
+  else if (was === 0) { showMsg(`🔥 ${t.name} has fallen`, `${P(hr).name} captured your town.`); sfx.alarm(); }
   checkEnd();
 }
 
@@ -900,7 +901,7 @@ function showLevel() {
   if (!L) return;
   const names = { att: 'Attack', def: 'Defence', pow: 'Power', know: 'Knowledge' };
   ask(`${icon('experience', 22)} Level ${L.hr.lvl}!`, `<div class="burst lvl"><span class="rays"></span><span class="medal"><small>Level</small><b>${L.hr.lvl}</b></span></div><p><b>${L.hr.name}</b> grows stronger.</p><p class="chips" style="justify-content:center"><span class="chip">${icon(L.stat, 18)}${names[L.stat]} <em>+1</em></span></p><p class="sec">Choose a skill</p>`, L.opts.map((k) => [`${icon(k, 20)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc, 'choice']), true);
-  sfx.fanfare();
+  sfx.levelup();
 }
 
 // ------------------------------------------------------------------ battle: a separate little scene
@@ -1014,10 +1015,10 @@ function enterBattle(B, ctx) {
   $('battle').hidden = false; $('hud').hidden = true;
   const hs = ctx.sides.map((sd) => (sd.hero ? sd.hero.name : sd.owner < 0 ? 'Neutrals' : 'Garrison'));
   $('b-title').textContent = `${hs[0]} vs ${hs[1]}`;
-  score?.setEra(3);
+  musicScene('battle');
   BT.nextStack(B);
   refreshBattle();
-  sfx.alarm();
+  sfx.battle();
 }
 function refreshBattle() {
   const B = BB; if (!B) return;
@@ -1071,7 +1072,7 @@ function battleTap(cx, cy) {
     const S = SPELLS[bspell];
     if (S.target === 'area' || (t && ((S.target === 'enemy' && t.side === 1) || (S.target === 'ally' && t.side === 0)))) {
       BT.castSpell(B, 0, bspell, S.target === 'area' ? null : t, c, r);
-      bspell = null; afterAction(); sfx.magic();
+      bspell = null; afterAction(); 
     } else sfx.deny();
     return;
   }
@@ -1099,7 +1100,7 @@ function battleTap(cx, cy) {
 function afterAction() { bpreview = null; queueEvents(); refreshBattle(); }
 function queueEvents() { bpreview = null; banim.push(...BB.events.map((e) => ({ e, t: 0 }))); BB.events.length = 0; }
 $('b-wait').addEventListener('click', () => { const s = BB?.active; if (!s || banim.length) return; BT.actWait(BB, s); BT.nextStack(BB); afterAction(); sfx.click(); });
-$('b-def').addEventListener('click', () => { const s = BB?.active; if (!s || banim.length) return; BT.actDefend(BB, s); afterAction(); sfx.click(); });
+$('b-def').addEventListener('click', () => { const s = BB?.active; if (!s || banim.length) return; BT.actDefend(BB, s); afterAction(); sfx.defend(); });
 $('b-auto').addEventListener('click', () => { bauto = !bauto; bspell = null; refreshBattle(); sfx.click(); });
 $('b-quick').addEventListener('click', () => { if (!BB || BB.over) return; BT.autoResolve(BB); BB.events.length = 0; banim = []; endBattleScreen(); });
 $('b-spell').addEventListener('click', () => {
@@ -1111,6 +1112,7 @@ const bfloat = (pos, text, cls) => floatText(pos, text, cls, bcam);
 // battle one-shot animations play a bit slower than authored so they read calmly on a phone
 const AS = 0.72;
 const blabFwd = new THREE.Vector3(), bctrTarget = new THREE.Vector3();
+const bpan = (m) => (m ? clamp(m.position.clone().project(bcam).x * 0.6, -1, 1) : 0);
 function animateBattle(dt) {
   const B = BB; if (!B) return;
   // gentle idle bob
@@ -1149,7 +1151,7 @@ function playEvent(e, t) {
     const dir = hexPos(...path[i + 1]).sub(hexPos(...path[i]));
     if (dir.lengthSq() > 0.001) m.rotation.y = Math.atan2(dir.x, dir.z);
     if (k >= 1) { m.rotation.y = S(e.s).side === 0 ? Math.PI : 0; setAnim(m, ANIM.IDLE); }
-    if (t === 0 || (t < 0.02)) sfx.step();
+    if (t === 0 || (t < 0.02)) sfx.step({ kind: e.fly ? 'fly' : 'walk', pan: bpan(m) });
     return k >= 1;
   }
   if (e.t === 'hit' || e.t === 'shot') {
@@ -1159,15 +1161,16 @@ function playEvent(e, t) {
       e.started = true;
       const dir = d.position.clone().sub(a.position); a.rotation.y = Math.atan2(dir.x, dir.z);
       setAnim(a, e.t === 'shot' && ['lich', 'powerlich', 'monk', 'zealot'].includes(sa.id) ? ANIM.CAST : ANIM.ATTACK, { speed: AS });
-      if (e.t === 'shot') { e.fly = vfx.projectile(shotKind(sa.id), a.position.clone().setY(sa.id === 'cyclops' ? 1.1 : 0.65), d.position.clone().setY(0.5), () => { e.landed = true; }); sfx.shoot(); }
-      else { e.fly = 0.18; sfx.hit(); }
+      if (e.t === 'shot') { e.fly = vfx.projectile(shotKind(sa.id), a.position.clone().setY(sa.id === 'cyclops' ? 1.1 : 0.65), d.position.clone().setY(0.5), () => { e.landed = true; }); sfx.shoot({ kind: shotKind(sa.id), pan: bpan(a) }); }
+      else { e.fly = 0.18; }
     }
     if (e.t === 'hit') { const k = Math.sin(Math.min(1, t / 0.5) * Math.PI) * 0.12; const dir = d.position.clone().sub(a.position).setY(0).normalize(); a.userData.busy = true; a.position.copy(hexPos(sa.c, sa.r)).addScaledVector(dir, k); }
     if ((e.t === 'shot' ? e.landed || t > 1.5 : t >= ANIM_IMPACT[ANIM.ATTACK] / AS) && !e.shown) {
       e.shown = true; e.shownAt = t;
       if (sd.count > 0) setAnim(d, ANIM.HIT, { speed: AS });
-      if (e.t === 'hit') vfx.hit(d.position.clone().setY(0.5), meleeKind(sa.u), { dir: d.position.clone().sub(a.position) });
-      if (e.lucky) vfx.sparkle(d.position, 'luck');
+      if (e.t === 'hit') { vfx.hit(d.position.clone().setY(0.5), meleeKind(sa.u), { dir: d.position.clone().sub(a.position) }); sfx.hit({ kind: meleeKind(sa.u), pan: bpan(d) }); }
+      else sfx.hit({ kind: 'arrow', pan: bpan(d) });
+      if (e.lucky) { vfx.sparkle(d.position, 'luck'); sfx.luck(); }
       d.userData.flash = 0.3;
       bfloat(d.position.clone().setY(1), `-${fmt(e.dmg)}${e.killed ? ` (${e.killed}💀)` : ''}${e.lucky ? ' 🍀' : ''}`, sd.side === 0 ? 'red' : 'gold');
       if (e.retal) bfloat(d.position.clone().setY(1.4), 'Retaliation', 'blue');
@@ -1176,30 +1179,30 @@ function playEvent(e, t) {
     if (e.shown && t >= Math.max(dur - (e.t === 'shot' ? 0.6 : 0), e.shownAt + 0.2)) { a.userData.busy = false; if (sa.count > 0) a.position.copy(hexPos(sa.c, sa.r)); a.rotation.y = sa.side === 0 ? Math.PI : 0; return true; }
     return false;
   }
-  if (e.t === 'die') { const m = M(e.s); if (!e.started) { e.started = true; sfx.die(); if (m) setAnim(m, ANIM.DEATH, { speed: AS }); } if (t > 0.85 && !e.diss) { e.diss = true; if (m) vfx.death(m, { undead: !!S(e.s).u?.undead }); } if (t > 1.45) { if (m) m.visible = false; return true; } return false; }
+  if (e.t === 'die') { const m = M(e.s); if (!e.started) { e.started = true; sfx.die({ kind: S(e.s).u?.undead ? 'undead' : '', pan: bpan(m) }); if (m) setAnim(m, ANIM.DEATH, { speed: AS }); } if (t > 0.85 && !e.diss) { e.diss = true; if (m) vfx.death(m, { undead: !!S(e.s).u?.undead }); } if (t > 1.45) { if (m) m.visible = false; return true; } return false; }
   if (e.t === 'spell') {
     const p = hexPos(e.c, e.r);
     if (!e.started) {
-      e.started = true; sfx.magic();
+      e.started = true; sfx.cast({ kind: e.id });
       let tg = e.hits.map((hh) => M(hh.s)).filter(Boolean);
       if (!tg.length) { const st = BT.stackAt(B, e.c, e.r); if (st && M(st.uid)) tg = [M(st.uid)]; }
       e.land = vfx.spell(e.id, p, tg, { side: e.side }) || 0.3;
       bfloat(p.clone().setY(1.8), `${SPELLS[e.id].icon} ${SPELLS[e.id].name}`, 'blue');
     }
     if (t >= e.land && !e.shown) {
-      e.shown = true;
+      e.shown = true; sfx.spell({ kind: e.id });
       for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; const lab = $(`bl${hh.s}`); if (lab) lab.textContent = S(hh.s).count > 0 ? S(hh.s).count : ''; }
     }
     return t > e.land + 0.45;
   }
   if (e.t === 'tower') {
     const m = M(e.s);
-    if (!e.started) { e.started = true; sfx.shoot(); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1 * bctx.tower.scale.y) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
+    if (!e.started) { e.started = true; sfx.shoot({ kind: 'tower' }); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1 * bctx.tower.scale.y) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
     if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (m) { m.userData.flash = 0.3; setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
-  if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.hit(); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
-  if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); setAnim(M(e.s), ANIM.CHEER, { speed: AS }); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
+  if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.gate({ kind: e.broken ? 'broken' : '' }); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
+  if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); sfx.morale(); setAnim(M(e.s), ANIM.CHEER, { speed: AS }); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
   if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; replay($('b-round'), 'pop'); } return true; }
   if (e.t === 'wait' || e.t === 'defend') { if (!e.started) { e.started = true; const m = M(e.s); if (m) bfloat(m.position.clone().setY(1.1), e.t === 'wait' ? '⏳ Wait' : '🛡️ Defend', 'blue'); } return t > 0.25; }
   return true;
@@ -1209,7 +1212,7 @@ function endBattleScreen() {
   BB = null; vfx.clear(); vfx.select(null);
   $('battle').hidden = true; $('hud').hidden = false; $('blabels').innerHTML = '';
   G.mode = 'map';
-  score?.setEra(2);
+  musicScene('map');
   finishBattle(B, ctx);
 }
 function finishBattle(B, ctx) {
@@ -1250,7 +1253,7 @@ function finishBattle(B, ctx) {
     const me = sides[0].owner === 0 ? 0 : 1, won = winSide === me;
     const list = (arr) => (arr.length ? arr.map(([id, n]) => `${unitIcon(id)} ${n} ${plural(id, n)}`).join('<br>') : 'None');
     showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="burst ${won ? 'win' : 'lose'}"><span class="rays"></span>${icon(won ? 'victory' : 'defeat', 64)}</div><div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p class="xp-line">${icon('experience', 18)} +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
-    won ? sfx.fanfare() : sfx.deny();
+    if (won) { sfx.victory(); musicScene('victory'); } else { sfx.defeat(); musicScene('defeat'); }
   }
   // after the battle summary, so the casualties card comes first
   if (ctx.foe.kind === 'town' && win.hero === ctx.hr) captureTown(ctx.hr, ctx.foe.town);
@@ -1274,12 +1277,12 @@ function openTown(id, hr) {
   if (vis) learnSpells(t, vis);
   $('town').hidden = false; $('hud').hidden = true;
   townView.highlight(null); townView.setTown({ fac: t.fac, built: t.built, name: t.name });
-  renderTown(); sfx.click(); townInsets();
-  score?.setEra(1);
+  renderTown(); sfx.town(); townInsets();
+  musicScene('town');
 }
-function closeTown() { renderTown.view = null; townView.highlight(null); $('town').hidden = true; $('hud').hidden = false; townOpen = null; G.mode = 'map'; score?.setEra(2); updateHud(); }
+function closeTown() { renderTown.view = null; townView.highlight(null); $('town').hidden = true; $('hud').hidden = false; townOpen = null; G.mode = 'map'; musicScene('map'); sfx.close(); updateHud(); }
 $('t-close').addEventListener('click', closeTown);
-for (const b of document.querySelectorAll('#town .tabs2 button')) b.addEventListener('click', () => { townTab = b.dataset.t; renderTown(); sfx.click(); });
+for (const b of document.querySelectorAll('#town .tabs2 button')) b.addEventListener('click', () => { townTab = b.dataset.t; renderTown(); sfx.tab(); });
 function learnSpells(t, hr) {
   const lv = t.built.includes('mage3') ? 3 : t.built.includes('mage2') ? 2 : t.built.includes('mage1') ? 1 : 0;
   if (!lv) return;
@@ -1355,12 +1358,12 @@ $('t-body').addEventListener('click', (e) => {
     if (n <= 0) return;
     const army = vis ? vis.army : t.garrison;
     if (!addTroops(army, id, n) && !(vis && addTroops(t.garrison, id, n))) { toast('No free slot.'); sfx.deny(); return; }
-    pay(t.p, UNITS[id].cost, n); t.avail[tier] -= n; sfx.coin();
+    pay(t.p, UNITS[id].cost, n); t.avail[tier] -= n; sfx.recruit();
     toast(`${unitIcon(id)} ${n} ${plural(id, n)} join ${vis ? vis.name : 'the garrison'}.`);
   } else if (b.dataset.up) {
     const [who, i] = b.dataset.up.split(':'), army = who === 'g' ? t.garrison : vis.army, st = army[i], upId = UPGRADES[t.fac][UNITS[st[0]].tier - 1];
     const cost = Object.fromEntries(RES.map((r) => [r, Math.max(0, (UNITS[upId].cost[r] || 0) - (UNITS[st[0]].cost[r] || 0))]));
-    if (canPay(t.p, cost, st[1])) { pay(t.p, cost, st[1]); st[0] = upId; sfx.fanfare(); toast(`⬆️ ${st[1]} ${plural(upId, st[1])}!`); }
+    if (canPay(t.p, cost, st[1])) { pay(t.p, cost, st[1]); st[0] = upId; sfx.upgrade(); toast(`⬆️ ${st[1]} ${plural(upId, st[1])}!`); }
   } else if (b.dataset.move) {
     const [who, i] = b.dataset.move.split(':'), from = who === 'g' ? t.garrison : vis.army, to = who === 'g' ? vis?.army : t.garrison;
     if (!to) return;
@@ -1376,7 +1379,7 @@ $('t-body').addEventListener('click', (e) => {
     const us = FACTIONS[t.fac].units; hr.army = [[us[0], 12], [us[1], 4]];
     hr.mp = moveMax(hr); hr.mana = maxMana(hr);
     G.heroes.push(hr); G.selHero = hr.id; learnSpells(t, hr);
-    layoutHeroes(true); toast(`🍺 ${hr.name} joins you.`); sfx.fanfare();
+    layoutHeroes(true); toast(`🍺 ${hr.name} joins you.`); sfx.hire();
   } else if (b.dataset.buy) { const r = b.dataset.buy; G.players[t.p].res.gold -= r === 'gems' ? 500 : 250; G.players[t.p].res[r]++; sfx.coin(); }
   else if (b.dataset.sell) { const r = b.dataset.sell; G.players[t.p].res.gold += r === 'gems' ? 200 : 100; G.players[t.p].res[r]--; sfx.coin(); }
   renderTown();
@@ -1575,7 +1578,7 @@ function newDay() {
   revealAll(); updateHud(); save();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
   if (hr) selectHero(hr.id);
-  sfx.day();
+  if (G.day % 7 === 1) sfx.week(); else sfx.day();
 }
 function checkEnd() {
   if (G.over) return;
@@ -1595,7 +1598,7 @@ function endGame(won) {
     <div class="endstats"><div><b>${G.day}</b><small>Days</small></div><div><b>${towns}</b><small>Towns</small></div><div><b>${fmt(army)}</b><small>Creatures</small></div><div><b>${top || '–'}</b><small>Top level</small></div></div></div>`;
   ask(won ? 'Victory!' : 'Defeat', body, [['Play again', () => showMenu()]], true);
   if (won) for (let i = 0; i < 40; i++) setTimeout(() => { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = `${Math.random() * 100}vw`; c.style.background = `hsl(${Math.random() * 360} 90% 60%)`; c.style.animationDuration = `${1.8 + Math.random() * 1.6}s`; document.body.appendChild(c); setTimeout(() => c.remove(), 4000); }, i * 40);
-  won ? sfx.fanfare() : sfx.deny();
+  won ? sfx.victory() : sfx.defeat(); musicScene(won ? 'victory' : 'defeat');
 }
 
 // ------------------------------------------------------------------ the computer lords
@@ -1738,56 +1741,34 @@ function load() {
 }
 
 // ------------------------------------------------------------------ sound
-let actx = null, master = null, score = null;
-const sfx = new Proxy({}, { get: (_, name) => () => playSfx(name) });
+let actx = null, score = null, sfxEngine = null;
+// sound: sampled orchestra (music.js) and magical effects (sfx.js); legacy sfx.name() calls keep working
+const sfx = new Proxy({}, { get: (_, n) => (o) => { if (sfxEngine && store.get('realms.sfx', true)) { try { sfxEngine.play(n, o); } catch (e) { /* never break the game for a sound */ } } } });
 function audio() {
   if (actx) return;
   try {
     actx = new (window.AudioContext || window.webkitAudioContext)();
-    master = actx.createGain(); master.gain.value = 0.5; master.connect(actx.destination);
-    const mus = actx.createGain(); mus.gain.value = 0.55; mus.connect(actx.destination);
-    score = createScore(actx, mus); score.setEra(2);
+    const sfxBus = actx.createGain(); sfxBus.gain.value = 0.85; sfxBus.connect(actx.destination);
+    sfxEngine = createSfx(actx, sfxBus);
+    const mus = actx.createGain(); mus.gain.value = 0.5; mus.connect(actx.destination);
+    score = createScore(actx, mus); musicScene();
     if (store.get('realms.music', true)) score.start();
   } catch { actx = null; }
 }
-function tone(f, t, dur, type = 'sine', vol = 0.2, slide = 0) {
-  const o = actx.createOscillator(), g = actx.createGain();
-  o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + dur);
-  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.05);
-}
-function noiseBurst(t, dur, f, vol = 0.2, type = 'bandpass') {
-  const b = actx.createBuffer(1, Math.floor(actx.sampleRate * dur), actx.sampleRate), d = b.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-  const s = actx.createBufferSource(), fl = actx.createBiquadFilter(), g = actx.createGain();
-  s.buffer = b; fl.type = type; fl.frequency.value = f; g.gain.value = vol;
-  s.connect(fl).connect(g).connect(master); s.start(t);
-}
-function playSfx(name) {
-  if (!actx || !store.get('realms.sfx', true)) return;
-  const t = actx.currentTime;
-  switch (name) {
-    case 'click': tone(880, t, 0.05, 'triangle', 0.08); break;
-    case 'deny': tone(220, t, 0.15, 'square', 0.06, 0.7); break;
-    case 'coin': tone(1320, t, 0.08, 'triangle', 0.12); tone(1760, t + 0.07, 0.12, 'triangle', 0.1); break;
-    case 'step': noiseBurst(t, 0.06, 600, 0.05, 'lowpass'); break;
-    case 'flag': tone(523, t, 0.12, 'triangle', 0.12); tone(784, t + 0.1, 0.2, 'triangle', 0.12); break;
-    case 'build': noiseBurst(t, 0.1, 400, 0.15); noiseBurst(t + 0.15, 0.1, 400, 0.15); tone(330, t + 0.3, 0.3, 'triangle', 0.1); break;
-    case 'fanfare': [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.1, 0.35, 'triangle', 0.12)); break;
-    case 'magic': for (let i = 0; i < 6; i++) tone(900 + i * 220, t + i * 0.04, 0.3, 'sine', 0.06); break;
-    case 'hit': noiseBurst(t, 0.12, 1200, 0.25); tone(140, t, 0.12, 'square', 0.08, 0.5); break;
-    case 'shoot': noiseBurst(t, 0.15, 3000, 0.12, 'highpass'); break;
-    case 'die': tone(300, t, 0.4, 'sawtooth', 0.06, 0.3); break;
-    case 'alarm': tone(392, t, 0.2, 'sawtooth', 0.07); tone(523, t + 0.18, 0.3, 'sawtooth', 0.07); break;
-    case 'day': tone(392, t, 0.4, 'sine', 0.1); tone(587, t + 0.2, 0.5, 'sine', 0.1); break;
-  }
+// which piece fits what is on screen now
+function musicScene(over) {
+  if (!score) return;
+  const fac = G.players?.[0]?.fac || store.get('realms.fac', 'haven');
+  const town = townOpen != null ? G.towns[townOpen]?.fac : null;
+  const sc = over || ($('menu') && !$('menu').hidden ? 'menu' : G.mode === 'battle' ? 'battle' : G.mode === 'town' ? 'town' : 'map');
+  score.setScene(sc, sc === 'town' && town ? town : fac);
 }
 window.addEventListener('pointerdown', () => { audio(); if (actx?.state === 'suspended') actx.resume(); }, { capture: true });
 
 // ------------------------------------------------------------------ menu
 function showMenu() {
   G.mode = 'menu'; dialogs.length = 0; renderDialog();
-  $('menu').hidden = false; $('hud').hidden = true; $('town').hidden = true; $('battle').hidden = true;
+  $('menu').hidden = false; $('hud').hidden = true; $('town').hidden = true; $('battle').hidden = true; musicScene('menu');
   const s = store.get('realms.save', null);
   $('m-continue').hidden = !s;
   if (s) $('m-continue').innerHTML = `Continue<small>${s.players?.[0] ? `${FACTIONS[s.players[0].fac]?.name || ''} · ` : ''}Week ${Math.floor((s.day - 1) / 7) + 1}, day ${((s.day - 1) % 7) + 1}</small>`;
@@ -1801,7 +1782,7 @@ function syncSound() { const on = store.get('realms.music', true); $('m-sound').
 $('m-sound').addEventListener('click', () => { const on = !store.get('realms.music', true); store.set('realms.music', on); if (on) score?.start(); else score?.stop(); syncSound(); sfx.click(); });
 function play() {
   if (!prewarmed) { prewarmed = true; $('menu').hidden = true; G.mode = 'map'; worldDirty = true; layoutWorld(); prewarm(() => play()); return; }
-  $('menu').hidden = true; $('hud').hidden = false; G.mode = 'map';
+  $('menu').hidden = true; $('hud').hidden = false; G.mode = 'map'; musicScene('map');
   worldDirty = true; layoutWorld();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
   if (hr) { G.selHero = hr.id; const sp = new THREE.Spherical().setFromVector3(DIRS[hr.v]); cam.theta = sp.theta; cam.phi = sp.phi; cam.dist = 20; cam.tDist = 10; flyTo(hr.v, 10); }
