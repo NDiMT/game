@@ -476,8 +476,11 @@ function claws(k, p, dir, n, len, cr, col, spread = 0.035) {
 function platesOn(k, C, R, list, size, cols, o = {}) {
   list.forEach(([lon, lat], i) => {
     const n = V3([Math.sin(lon) * Math.cos(lat), Math.sin(lat), Math.cos(lon) * Math.cos(lat)]);
-    const p = [C[0] + n.x * R[0] * (o.f ?? 1), C[1] + n.y * R[1] * (o.f ?? 1), C[2] + n.z * R[2] * (o.f ?? 1)];
     const nn = V3([n.x / R[0], n.y / R[1], n.z / R[2]]).normalize();
+    // sunk into the surface so only a low relief shows (keeps the ink hull from
+    // ringing every plate with a dark outline)
+    const t = (size[2] ?? size[0] * 0.3) * (o.sink ?? 0.6);
+    const p = [C[0] + n.x * R[0] * (o.f ?? 1) - nn.x * t, C[1] + n.y * R[1] * (o.f ?? 1) - nn.y * t, C[2] + n.z * R[2] * (o.f ?? 1) - nn.z * t];
     k.ell(size[0], size[1], size[2] ?? size[0] * 0.3, p, cols[i % cols.length], { d: o.d ?? 0, r: dirR(nn.toArray()), grad: [1, 1], ao: o.ao ?? true });
   });
 }
