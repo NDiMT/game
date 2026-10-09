@@ -75,7 +75,7 @@ function newRound(B) {
       const rams = foes.filter((s) => !s.u.fly && nbrs(gc, gr).some(([x, y]) => x === s.c && y === s.r)).length;
       if (rams) { B.gateHp = Math.max(0, B.gateHp - rams); B.events.push({ t: 'gate', hp: B.gateHp, broken: B.gateHp <= 0, c: gc, r: gr }); if (B.gateHp <= 0) B.gateOpen = true; }
     }
-    if (foes.length) { const t = foes[(rnd() * foes.length) | 0], dmg = 10 + (B.town.power || 3) * 6; const killed = hurt(B, t, dmg); B.events.push({ t: 'tower', s: t.uid, dmg, killed, side: def }); if (t.count <= 0) B.events.push({ t: 'die', s: t.uid }); checkOver(B); }
+    if (foes.length) { const t = foes[(rnd() * foes.length) | 0], dmg = 10 + (B.town.power || 3) * 6; const killed = hurt(B, t, dmg); B.events.push({ t: 'tower', s: t.uid, dmg, killed, side: def, left: t.count }); if (t.count <= 0) B.events.push({ t: 'die', s: t.uid }); checkOver(B); }
   }
 }
 // the next stack to act: fastest first, those who waited go last (slowest first)
@@ -148,13 +148,15 @@ function hurt(B, d, dmg) {
 function strike(B, a, d, opts) {
   const { dmg, lucky } = rollDamage(B, a, d, opts);
   const killed = hurt(B, d, dmg);
-  B.events.push({ t: opts.ranged ? 'shot' : 'hit', a: a.uid, d: d.uid, dmg, killed, lucky, retal: !!opts.retal });
+  const ev = { t: opts.ranged ? 'shot' : 'hit', a: a.uid, d: d.uid, dmg, killed, lucky, retal: !!opts.retal, left: d.count };
+  B.events.push(ev);
   // vampires drain life and raise their dead
   if (a.u.curse && d.count > 0 && rnd() < 0.3) d.fx.curse = 3;
   if (a.u.drain && dmg > 0 && a.count > 0) {
     let heal = Math.round(dmg * 0.5);
     while (heal > 0 && a.count < a.start) { const need = a.u.hp - a.hp; if (heal >= need) { heal -= need; a.count++; a.hp = a.u.hp; } else { a.hp += heal; heal = 0; } }
     if (heal > 0) a.hp = Math.min(a.u.hp, a.hp + heal);
+    ev.aLeft = a.count;
   }
   if (d.count <= 0) B.events.push({ t: 'die', s: d.uid });
 }
@@ -242,11 +244,11 @@ export function castSpell(B, side, id, target, c, r) {
   const p = h.pow, boost = 1 + 0.15 * (h.skills.sorcery || 0);
   const ev = { t: 'spell', id, side, c: target ? target.c : c, r: target ? target.r : r, hits: [] };
   B.events.push(ev);
-  const zap = (s, base) => { const dmg = Math.round(base * boost); const killed = hurt(B, s, dmg); ev.hits.push({ s: s.uid, dmg, killed }); if (s.count <= 0) B.events.push({ t: 'die', s: s.uid }); };
+  const zap = (s, base) => { const dmg = Math.round(base * boost); const killed = hurt(B, s, dmg); ev.hits.push({ s: s.uid, dmg, killed, left: s.count }); if (s.count <= 0) B.events.push({ t: 'die', s: s.uid }); };
   if (id === 'arrow') zap(target, 10 + 10 * p);
   else if (id === 'bolt') zap(target, 10 + 25 * p);
   else if (id === 'fireball') { for (const s of alive(B)) if (dist(s, [c, r]) <= 1) zap(s, 15 + 10 * p); }
-  else if (id === 'cure') { let heal = 10 + 5 * p; target.hp = Math.min(target.u.hp, target.hp + heal); delete target.fx.slow; ev.hits.push({ s: target.uid, heal }); }
+  else if (id === 'cure') { let heal = 10 + 5 * p; target.hp = Math.min(target.u.hp, target.hp + heal); delete target.fx.slow; ev.hits.push({ s: target.uid, heal, left: target.count }); }
   else if (id === 'bless') target.fx.bless = 3;
   else if (id === 'stoneskin') target.fx.stoneskin = 3;
   else if (id === 'haste') target.fx.haste = 3;
