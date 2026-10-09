@@ -710,9 +710,7 @@ function arena(k) {
   // fighting posts and crossed weapons in the sand
   k.cyl(0.03, 0.035, 0.14, -0.12, 0.04, -0.05, [C.woodD, C.wood], 6);
   k.plank([-0.17, 0.12, -0.05], [-0.07, 0.12, -0.05], 0.015, 0.015, C.wood);
-  k.plank([0.1, 0.04, 0.05], [0.18, 0.2, 0.0], 0.012, 0.006, C.steel);
-  k.plank([0.2, 0.04, 0.05], [0.1, 0.2, 0.0], 0.012, 0.006, C.steel);
-  k.cyl(0.06, 0.06, 0.012, 0.05, 0.042, 0.15, [C.redD, C.red], 10, { rx: 0.4, ctr: true });
+  k.cyl(0.09, 0.09, 0.02, 0.08, 0.05, 0.12, [C.redD, C.red], 10, { rx: 0.4, ctr: true });
 }
 function tower(k) {
   k.rock(0.3, 0, 0, 0, [0x8a8a98, 0xb8b8c8], { amp: 0.2, s: [1.3, 0.35, 1.3] });
@@ -735,7 +733,6 @@ function tower(k) {
   const roof = (c, x, y, z) => c.set(0x1428b8).lerp(_c2.set(0x4a78ff), Math.min(1, (y - 1.1) / 0.55));
   k.cone(0.29, 0.58, 0, 1.11, 0, roof, 10);
   k.torus(0.28, 0.016, 0, 1.12, 0, C.gold, { rx: Math.PI / 2, rs: 20, ts: 4 });
-  for (let i = 0; i < 8; i++) { const t = 0.15 + (i % 4) * 0.18, a = i * 2.4; const rad = 0.29 * (1 - t) + 0.01; k.add(new THREE.OctahedronGeometry(0.014, 0), Math.cos(a) * rad, 1.13 + t * 0.52, Math.sin(a) * rad, 0xffe080, { glow: true }); }
   // star finial
   k.beam([0, 1.66, 0], [0, 1.74, 0], 0.008, C.gold, 4);
   k.add(new THREE.OctahedronGeometry(0.05, 0).scale(1, 1, 0.35), 0, 1.78, 0, GL.gold, { glow: true });
@@ -747,12 +744,9 @@ function tower(k) {
   }
   k.box(0.08, 0.13, 0.02, 0, 0.05, 0.19, 0x6a4024, { ry: 0 });
   // brass telescope on the balcony pointing at the sky
-  k.beam([0.12, 1.0, 0.1], [0.12, 1.08, 0.1], 0.01, C.iron, 4);
-  k.beam([0.06, 1.04, 0.04], [0.3, 1.24, 0.24], 0.022, [0xa06a20, 0xe8b850], 8, { taper: 1.5 });
-  k.cyl(0.035, 0.035, 0.03, 0.3, 1.24, 0.24, C.goldD, 8, { ctr: true, rx: 0.9, ry: -0.8 });
+  k.beam([0.06, 1.04, 0.04], [0.3, 1.24, 0.24], 0.035, [0xa06a20, 0xe8b850], 6, { taper: 1.5 });
   // a floating rune ring
-  k.torus(0.3, 0.008, 0, 0.6, 0, GL.cyan, { glow: true, rx: Math.PI / 2 + 0.15, rs: 24, ts: 3 });
-  sparkle(k, 0.28, 0.6, 0.1, 0.03, 0xc0f0ff); sparkle(k, -0.25, 0.65, -0.15, 0.025, 0xc0f0ff);
+  k.torus(0.3, 0.016, 0, 0.6, 0, GL.cyan, { glow: true, rx: Math.PI / 2 + 0.15, rs: 20, ts: 3 });
 }
 function library(k) {
   // steps and plinth
@@ -789,10 +783,9 @@ function library(k) {
   k.box(0.06, 0.12, 0.012, 0, 0.08, 0.092, 0x8a5a10, { glow: true });
   for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; k.box(0.035, 0.06, 0.01, Math.sin(a) * 0.245, 0.43, -0.1 + Math.cos(a) * 0.245, GL.warm, { glow: true, ry: a }); }
   // stacked books and a lectern by the steps
-  const bc = [0x8a2a2a, 0x2a4a8a, 0x2a6a3a, 0x7a5a2a];
-  for (let i = 0; i < 4; i++) k.box(0.1, 0.025, 0.07, 0.36, 0.0 + i * 0.025, 0.3, bc[i], { ry: i * 0.3, bev: 0.004 });
-  k.box(0.1, 0.025, 0.07, -0.36, 0.0, 0.3, bc[1], { ry: 0.5, bev: 0.004 });
-  k.box(0.1, 0.025, 0.07, -0.36, 0.025, 0.3, bc[3], { ry: 0.2, bev: 0.004 });
+  // one big book on a lectern-block by the steps (identity: books)
+  k.box(0.14, 0.05, 0.1, 0.36, 0.0, 0.3, [0x6a1e1e, 0xa83030], { ry: 0.3, bev: 0.01 });
+  k.box(0.12, 0.012, 0.085, 0.36, 0.05, 0.3, 0xf4ead0, { ry: 0.3 });
 }
 function stone(k) {
   pad(k, 0.44);
@@ -800,17 +793,17 @@ function stone(k) {
   const sc = (c, x, y, z, nx, ny) => { c.set(0x343c62).lerp(_c2.set(0x7a88b8), Math.min(1, y / 0.8)); if (ny > 0.6) c.lerp(_c2.set(0xb8c4e8), 0.4); };
   k.rock(0.3, 0, -0.02, -0.02, sc, { det: 1, amp: 0.1, s: [0.95, 1.9, 0.6], sink: 0.0 });
   // a bright rune ring on the pad so the site reads from above
-  k.torus(0.3, 0.014, 0, 0.045, 0.0, GL.cyan, { glow: true, rx: Math.PI / 2, rs: 22, ts: 3 });
+  k.torus(0.3, 0.022, 0, 0.045, 0.0, GL.cyan, { glow: true, rx: Math.PI / 2, rs: 20, ts: 3 });
   // glowing runes on the front face
   const runes = [[0, 0.62, [[0, -0.05], [0, 0.05]], [[-0.03, 0.03], [0.03, 0.0]]], [-0.06, 0.42, [[0, -0.05], [0, 0.05]], [[0, 0.05], [0.04, 0.0]]], [0.07, 0.3, [[-0.03, -0.04], [0.03, 0.04]], [[0.03, -0.04], [-0.03, 0.04]]], [0.0, 0.18, [[-0.04, 0], [0.04, 0]], [[0, -0.04], [0, 0.04]]]];
   for (const [x, y, ...strokes] of runes) {
     const z = 0.155 - Math.abs(y - 0.4) * 0.18;
-    for (const [[ax, ay], [bx, by]] of strokes) k.plank([x + ax, y + ay, z], [x + bx, y + by, z], 0.014, 0.01, GL.cyan, { glow: true });
+    for (const [[ax, ay], [bx, by]] of strokes) k.plank([x + ax * 1.3, y + ay * 1.3, z], [x + bx * 1.3, y + by * 1.3, z], 0.024, 0.012, GL.cyan, { glow: true });
   }
   // circle of small stones and a glow pool
   for (let i = 0; i < 7; i++) { const a = i / 7 * TAU + 0.2; k.rock(0.06, Math.cos(a) * 0.38, 0.03, Math.sin(a) * 0.36, [0x3a4262, 0x8a96c0], { amp: 0.25, s: [1, 1.5, 1] }); }
   k.cyl(0.22, 0.22, 0.003, 0, 0.014, 0.08, 0x185a6a, 12, { glow: true, s: [1, 1, 0.7] });
-  for (let i = 0; i < 5; i++) k.add(new THREE.OctahedronGeometry(0.018, 0), k.rr(-0.25, 0.25), 0.2 + k.r() * 0.6, k.rr(0.05, 0.25), 0x90f0ff, { glow: true });
+  sparkle(k, 0.2, 0.7, 0.1, 0.04, 0x90f0ff);
 }
 function obelisk(k) {
   // stepped base
