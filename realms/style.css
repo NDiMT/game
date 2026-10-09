@@ -163,6 +163,10 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 .sel .sel-who b { --ol: #0b1236; font-family: 'Cinzel', Georgia, serif; font-size: 14px; color: #ffe27a; overflow: hidden; text-overflow: ellipsis; }
 .sel .st2 { display: flex; align-items: center; gap: 3px; flex: none; }
 .sel .army { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; padding: 2px 3px 3px 2px; }
+/* resume yesterday's unfinished march */
+.sel .sel-go { flex: none; margin-left: auto; min-height: 36px; padding: 0 12px; border: 0; border-radius: 18px; font: 800 13px 'Nunito', system-ui, sans-serif; color: #2a1606; white-space: nowrap; cursor: pointer;
+  background: linear-gradient(#ffe27a, #e0961e); box-shadow: 0 0 0 1.5px #4a2a0c, 0 2px 6px rgba(0,0,0,.35); }
+.sel .sel-go:active { transform: translateY(1px); filter: brightness(.95); }
 .sel .army span { position: relative; flex: none; width: 28px; height: 28px; border-radius: 8px; background: radial-gradient(circle at 50% 35%, #4b6fd6, #1d2d70 85%); box-shadow: 0 0 0 1.5px #c99a3e; }
 .sel .army span em { --ol: #000; position: absolute; right: -3px; bottom: -4px; font-style: normal; font-size: 10px; font-weight: 900; color: #fff; }
 .btns { display: flex; gap: 8px; }

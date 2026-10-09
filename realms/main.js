@@ -935,6 +935,7 @@ function mapTap(cx, cy) {
   if (!passable(v) && !o) { toast(`${TER_NAME[ter[v]]}: impassable.`); showPath(hr, null); return; }
   const path = findPath(hr.v, v, hr);
   if (!path) { toast('No way there.'); showPath(hr, null); return; }
+  if (hr.route && hr.route[hr.route.length - 1] !== v) { hr.route = null; hr.routeObj = -1; updateHud(); } // a new goal replaces yesterday's march
   showPath(hr, path);
   if (o) describe(o); else { const other = heroAt(v); if (other) toast(`${other.name} (${G.players[other.p].name}) · ${armyWord(heroArmy(other))}`); }
   sfx.click();
@@ -955,9 +956,26 @@ function describe(o) {
 function selectHero(id) {
   G.selHero = id; const hr = G.heroes[id];
   flyTo(hr.v, Math.min(cam.tDist, 10));
-  // a route left over from yesterday is shown again: tap its goal to carry on
-  showPath(hr, hr.route && hr.route[0] === hr.v ? findPath(hr.v, hr.route[hr.route.length - 1], hr) : null);
+  // a route left over from yesterday is shown again: tap its goal (or Continue ▶) to carry on
+  showPath(hr, pendingRoute(hr));
   updateHud(); sfx.click();
+}
+// HoMM-style unfinished march: hr.route = the rest of the path (saved with the hero), hr.routeObj = the object it was
+// heading for (-1: a bare hex). Re-checked whenever it is shown or resumed: re-routed if blocked, dropped if the goal is gone.
+function pendingRoute(hr, quiet = true) {
+  if (!hr || !hr.route || hr.route.length < 2) return null;
+  const goal = hr.route[hr.route.length - 1];
+  const o = hr.routeObj >= 0 ? G.objects[hr.routeObj] : null;
+  const gone = hr.routeObj >= 0 && (!o || !o.alive || o.v !== goal || (OBJECTS[o.type]?.kind === 'mine' && o.owner === hr.p));
+  const path = gone ? null : findPath(hr.v, goal, hr);
+  if (!path || path.length < 2) { hr.route = null; hr.routeObj = -1; if (!quiet) toast(gone ? 'The goal of that march is gone.' : 'The way there is blocked now.'); updateHud(); return null; }
+  hr.route = path; return path;
+}
+function resumeRoute(hr) {
+  if (busy() || !hr) return;
+  const path = pendingRoute(hr, false); if (!path) { showPath(hr, null); return; }
+  if (DIRS[hr.v].distanceTo(lookDir()) > 0.25) flyTo(hr.v, cam.tDist);
+  startWalk(hr, path);
 }
 
 // ------------------------------------------------------------------ walking
@@ -1001,7 +1019,7 @@ function updateWalk(dt) {
   if (W.i >= W.n) {
     fx.burst('dust', posOf(hr.v));
     walking = null; layoutHeroes(true);
-    if (W.i < W.path.length - 1) { hr.route = W.path.slice(W.i); showPath(hr, hr.route); } else hr.route = null;
+    if (W.i < W.path.length - 1) { hr.route = W.path.slice(W.i); hr.routeObj = objAt[hr.route[hr.route.length - 1]]; showPath(hr, hr.route); } else { hr.route = null; hr.routeObj = -1; }
     updateHud();
   }
 }
@@ -2035,7 +2053,7 @@ function updateHud() {
   setHTML($('heroes'), mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}${canStep(hr) ? '' : ' spent'}" data-h="${hr.id}" aria-label="${hr.name}"><span class="hb-ic">${heroPic(hr, 40, 'round') || icon('hero', 30)}</span><b>${hr.name.split(' ').pop()}</b><i class="lvb">${hr.lvl}</i><span class="mp"><i style="width:${clamp((hr.mp / moveMax(hr)) * 100, 0, 100)}%"></i></span></button>`).join('') +
     G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}" aria-label="${t.name}"><span class="hb-ic">${icon('town', 28)}</span><b>${t.name}</b>${!t.builtToday ? `<em title="Can build today">${icon('build', 13)}</em>` : ''}</button>`).join(''));
   const hr = selHero();
-  setHTML($('sel'), hr ? `<span class="sel-who"><span class="sel-pt">${heroPic(hr, 40, 'round') || icon('hero', 24)}<i class="lv">${hr.lvl}</i></span><b>${hr.name}</b></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>` : '');
+  setHTML($('sel'), hr ? `<span class="sel-who"><span class="sel-pt">${heroPic(hr, 40, 'round') || icon('hero', 24)}<i class="lv">${hr.lvl}</i></span><b>${hr.name}</b></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>${hr.route && canStep(hr) ? '<button class="sel-go" id="b-go" aria-label="Continue the march">Continue ▶</button>' : ''}` : '');
 }
 // side buttons: tap = select hero / open hero sheet / open town; double tap = fly the camera there
 let sideTap = null;
@@ -2060,13 +2078,14 @@ $('heroes').addEventListener('click', (e) => {
   sideTap = { key, t: now, timer: setTimeout(single, 300) };
 });
 $('b-hero').addEventListener('click', () => { if (!busy()) openHero(); });
+$('sel').addEventListener('click', (e) => { if (e.target.closest('#b-go')) { resumeRoute(selHero()); sfx.click(); } });
 let endConfirmT = 0;
 $('b-end').addEventListener('click', () => {
   if (busy() || G.over) return;
   // only heroes that can actually afford a step into some neighbouring hex
   const left = G.heroes.filter((x) => x.alive && x.p === 0 && NBR[x.v].some((n) => passable(n) && stepCost(x.v, n) <= x.mp));
   // (one live timer: a stale timeout from an earlier day must not cancel today's "tap again")
-  if (left.length && !$('b-end').classList.contains('confirm')) { $('b-end').classList.add('confirm'); toast(`${left.length} hero${left.length > 1 ? 'es' : ''} can still move. Tap again to end the day.`); clearTimeout(endConfirmT); endConfirmT = setTimeout(() => $('b-end').classList.remove('confirm'), 2500); return; }
+  if (left.length && !$('b-end').classList.contains('confirm')) { $('b-end').classList.add('confirm'); const marching = left.filter((x) => x.route).length; toast(`${left.length} hero${left.length > 1 ? 'es' : ''} can still move${marching ? ` (${marching === 1 && left.length === 1 ? 'a march is' : `${marching} with a march`} unfinished)` : ''}. Tap again to end the day.`); clearTimeout(endConfirmT); endConfirmT = setTimeout(() => $('b-end').classList.remove('confirm'), 2500); return; }
   clearTimeout(endConfirmT); $('b-end').classList.remove('confirm');
   endTurn();
 });
