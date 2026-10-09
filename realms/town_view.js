@@ -140,7 +140,7 @@ const PAL = {
     cloud: 0xfff0f8, cloudShade: [210, 170, 210], dust: 0xd0c0d4, smoke: 0xd8cce8, birds: 0x5a4870, banner: [0xc8183c, 0xf2e6c8],
     tree: 'dead', stars: 1,
     groundTune: { shade: 0xc0a090, lift: 0.18, toe: 0.2, detail: 0.8 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
-    seed: 23, groundMode: 'moor', bumpy: 0.6, groundVar: [0.9, 0.18], moon: true,
+    seed: 23, sceneSeed: 43, groundMode: 'moor', bumpy: 0.6, groundVar: [0.9, 0.18], moon: true,
     lamp: [0x6effa8, 0xb0ffd0, 0.5], mist: { c: 0xf4e8ff, n: 16, o: 0.3 },
     clouds: { n: 9, wispy: true, opacity: 0.7, w: 380, aspect: 0.32, y: 30, seeds: [6, 9] },
     mtnSeed: 37, mtnSpike: 'spiky', snow: false, mtnH: 1,
@@ -888,7 +888,7 @@ void main() {
     // ----- scenery: cottages, windmill / ruined tower, banners, graves, rocks
     const smokers = [];
     {
-      const k = kit((P.seed ?? 11) + 30);
+      const k = kit(P.sceneSeed ?? (P.seed ?? 11) + 30);
       const at = (x, z) => groundH(x, z, fac);
       const CT = P.cottage;
       const wall = CT.wall, roofC = CT.roof;
@@ -1145,9 +1145,9 @@ void main() {
           for (let i = 0; i < cp.count; i++) {
             const x = cp.getX(i), y = cp.getY(i), z = cp.getZ(i);
             const n = fbm(x * 0.12 + 3, y * 0.12, 3, 41) - 0.5;
-            cp.setXYZ(i, x + n * 3, y + (y > 0 ? n * 6 - (Math.abs(x) < 4 ? 3 : 0) : 0), z + n * 5 + (z > 0 ? -Math.abs(x) * 0.12 : 0));
+            cp.setXYZ(i, x + n * 1.5, y + (y > 0 ? n * 4 - (Math.abs(x) < 4 ? 3 : 0) : 0), z + n * 1.8);
           }
-          k.add(cl.translate(wx, wy + (wh + 10) / 2 - 3, wz - 5.2), (px, py, pz, c) => c.set(0x6a5c9c).lerp(col(0xa090cc), clamp((py - wy) / (wh + 6), 0, 1)));
+          k.add(cl.translate(wx, wy + (wh + 10) / 2 - 3, wz - 5.2), (px, py, pz, c) => c.set(0x7a6cae).lerp(col(0xa898d4), clamp((py - wy) / (wh + 6), 0, 1)));
           const fallTex = canvasTex(64, 256, (g, w, h) => {
             g.fillStyle = 'rgb(120,220,230)'; g.fillRect(0, 0, w, h);
             const r = rng32(17);
