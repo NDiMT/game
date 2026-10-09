@@ -313,7 +313,7 @@ function meshOf(m, ink = true) {
 }
 // soft contact shadow so a figure sits on the ground (radius in model units)
 function addBlob(g, r) { const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(r); bl.userData.blob = true; bl.renderOrder = -1; g.add(bl); return g; }
-const BLOB_R = { gold: 0.5, wood: 0.5, ore: 0.5, gems: 0.5, chest: 0.5, artifact: 0.45, campfire: 0.5, stone: 0.45, monster: 0.7 };
+const BLOB_R = { gold: 0.62, wood: 0.62, ore: 0.62, gems: 0.62, chest: 0.64, artifact: 0.55, campfire: 0.6, stone: 0.55, monster: 0.7 };
 const UP = new THREE.Vector3(0, 1, 0), qa = new THREE.Quaternion();
 // stands a group on a cell, local +y along the planet normal
 function placeOn(obj, v, scale, turn = 0, lift = 0) {
