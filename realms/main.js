@@ -1363,7 +1363,7 @@ function renderDialog() {
 }
 $('dlg-btns').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  const d = dialogs.shift(); const fn = d.buttons[+b.dataset.i][1];
+  const d = dialogs.shift(); if (!d) { renderDialog(); return; } const fn = d.buttons[+b.dataset.i]?.[1];
   renderDialog(); sfx.click();
   if (fn) fn();
 });
