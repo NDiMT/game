@@ -69,7 +69,7 @@ for (const c of cells) {
   cam.aspect = c.w / c.h; cam.updateProjectionMatrix();
   const d = c.h / (2 * TAN * c.ppu), cy = g.userData.fit.height * 0.5;
   cam.position.set(0, cy + Math.sin(ELEV) * d, Math.cos(ELEV) * d); cam.lookAt(0, cy, 0);
-  inkMat.userData.uniforms.uHullW.value = (HULL_PX * c.ppu / GAME_PPU) * 2 * TAN / c.h * (c.ppu < 100 ? GAME_PPU / c.ppu : 1);
+  inkMat.userData.uniforms.uHullW.value = (c.ppu > GAME_PPU ? HULL_PX * c.ppu / GAME_PPU : HULL_PX) * 2 * TAN / c.h;
   r.setClearColor(0x87a8d8); r.clear();
   r.render(scene, cam);
   g.visible = false;

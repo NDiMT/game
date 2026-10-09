@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Materials round 4</title>
+<style>html,body{margin:0;background:#20283a;color:#fff;font:12px sans-serif}canvas{display:block}
+#lab{position:absolute;left:0;top:0;width:100%;pointer-events:none}#lab div{position:absolute;text-shadow:0 1px 2px #000;white-space:nowrap}</style>
+<script type="importmap">{ "imports": { "three": "../../vendor/three.module.js" } }</script>
+</head><body><div id="lab"></div>
+<script type="module">
+// Round 4 A/B: old (round-3) body material vs new (form normals + painterly bands + top light).
+// ?view=small (default): every model at 40 px and 90 px tall, old | new side by side
+// ?view=big: a few models large, old | new.  ?el=40 camera elevation deg (map ~50, battle ~35)
+// ?form=&band=&top=... override new-material opts for tuning.
+import * as THREE from 'three';
+import { havenModel } from '../units_haven.js';
+import { necroModel } from '../units_necro.js';
+import { neutralModel } from '../units_neutral.js';
+import { townModel, heroModel } from '../models_towns.js';
+import { objectModel } from '../models_objects.js';
+import * as NEW from '../materials.js';
+const OLD = await import('./r4mat-orig-materials.js');
+const q = new URLSearchParams(location.search), view = q.get('view') || 'small', EL = +(q.get('el') || 42) * Math.PI / 180;
+const opts = {}; for (const k of ['form', 'formSmall', 'band', 'bandSmall', 'top', 'wrap', 'bandMid', 'detailSmall', 'formBulge', 'grad', 'shadowK', 'bandHi', 'bandLo', 'sunRef']) if (q.has(k)) opts[k] = +q.get(k);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.setScissorTest(true); renderer.autoClear = false;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const sun = new THREE.DirectionalLight(0xffe8c4, 2.5); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02; sun.shadow.intensity = 0.62; sun.shadow.radius = 3;
+scene.add(sun, sun.target, new THREE.HemisphereLight(0xcfe2ff, 0x7a6440, 1.05), new THREE.AmbientLight(0x7880b8, 0.4));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7d9a5c, roughness: 1 }));
+ground.receiveShadow = true; scene.add(ground);
+const mats = { old: OLD.makeBodyMaterial(THREE), neu: NEW.makeBodyMaterial(THREE, opts) };
+const hulls = { old: OLD.makeInkHullMaterial(THREE), neu: NEW.makeInkHullMaterial(THREE) };
+const glow = NEW.makeGlowMaterial(THREE);
+const blob = new THREE.Mesh(NEW.blobShadowGeometry(THREE), NEW.makeBlobShadowMaterial(THREE)); scene.add(blob);
+
+const H = (id) => () => havenModel(id), N = (id) => () => necroModel(id), U = (id) => () => neutralModel(id);
+const ALL = [
+  ['pikeman', H('pikeman')], ['archer', H('archer')], ['griffin', H('griffin')], ['swordsman', H('swordsman')], ['monk', H('monk')], ['cavalier', H('cavalier')], ['angel', H('angel')],
+  ['skeleton', N('skeleton')], ['zombie', N('zombie')], ['wight', N('wight')], ['vampire', N('vampire')], ['lich', N('lich')], ['blackknight', N('blackknight')], ['bonedragon', N('bonedragon')],
+  ['goblin', U('goblin')], ['wolf', U('wolf')], ['orc', U('orc')], ['ogre', U('ogre')], ['troll', U('troll')], ['cyclops', U('cyclops')], ['hydra', U('hydra')],
+  ['hero', () => heroModel('haven', 0xd03030)], ['hero N', () => heroModel('necro', 0x7a40c0)], ['town H', () => townModel('haven')], ['town N', () => townModel('necro')],
+  ['chest', () => objectModel('chest')], ['goldmine', () => objectModel('goldmine')], ['gold', () => objectModel('gold')],
+];
+const BIG = (q.get('big') || 'pikeman,griffin,skeleton,ogre,hero,chest').split(',');
+const ONLY = q.get('only') ? q.get('only').split(',') : null;
+const items = [];
+for (const [name, fn] of ALL) {
+  if (ONLY && !ONLY.includes(name)) continue;
+  let m = null; try { m = fn(); } catch (e) { console.warn(name, e); }
+  if (!m || !m.body) continue;
+  m.body.computeBoundingBox(); const bb = m.body.boundingBox;
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(m.body, mats.neu); body.castShadow = body.receiveShadow = true; g.add(body);
+  const hull = new THREE.Mesh(m.body, hulls.neu); g.add(hull);
+  if (m.glow) g.add(new THREE.Mesh(m.glow, glow));
+  g.visible = false; g.rotation.y = 0.5; scene.add(g);
+  const r = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2;
+  items.push({ name, g, body, hull, h: Math.max(0.2, bb.max.y, r * 1.3), r });
+}
+const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 200);
+const lab = document.getElementById('lab'), labels = [];
+const label = (x, y, t, c = '#fff') => labels.push(`<div style="left:${x}px;top:${y}px;color:${c}">${t}</div>`);
+// layout: list of cells {it, mode, x, y, w, h, px}
+const cells = [];
+let W, Ht;
+if (view === 'big') {
+  const sz = 300, list = items.filter((it) => BIG.includes(it.name));
+  const cols = 2; W = cols * 2 * sz + 20; Ht = Math.ceil(list.length / cols) * sz + 10;
+  list.forEach((it, i) => { const c = i % cols, r = Math.floor(i / cols); for (const [k, mode] of [[0, 'old'], [1, 'neu']]) cells.push({ it, mode, x: c * (2 * sz + 20) + k * sz, y: r * sz, w: sz, h: sz, px: sz * 0.72 }); label(c * (2 * sz + 20) + 4, r * sz + 4, `${it.name}: old | new`); });
+} else {
+  // per model a column block: [old40 new40] above [old90 new90]
+  const per = +(q.get('per') || 7), bw = 2 * 120 + 8; W = per * bw; const rowH = 60 + 128 + 16;
+  Ht = Math.ceil(items.length / per) * rowH;
+  items.forEach((it, i) => {
+    const c = i % per, r = Math.floor(i / per), x0 = c * bw, y0 = r * rowH;
+    label(x0 + 4, y0 + 1, it.name, '#ffe9a8');
+    for (const [k, mode] of [[0, 'old'], [1, 'neu']]) {
+      cells.push({ it, mode, x: x0 + k * 120 + 30, y: y0 + 12, w: 60, h: 52, px: 40 });
+      cells.push({ it, mode, x: x0 + k * 120, y: y0 + 64, w: 120, h: 128, px: 90 });
+    }
+  });
+  label(4, Ht - 14, 'each block: left = old (round 3), right = new (round 4); top 40 px, bottom 90 px tall', '#cfd8ff');
+}
+renderer.setSize(W, Ht);
+const Z = +(q.get('z') || 1); if (Z !== 1) { renderer.domElement.style.width = W * Z + 'px'; renderer.domElement.style.height = Ht * Z + 'px'; renderer.domElement.style.imageRendering = 'pixelated'; lab.style.transform = `scale(${Z})`; lab.style.transformOrigin = '0 0'; }
+lab.innerHTML = labels.join('');
+function render(t) {
+  NEW.tick(t / 1000); OLD.tick(t / 1000);
+  renderer.setScissor(0, 0, W, Ht); renderer.setViewport(0, 0, W, Ht); renderer.setClearColor(0x20283a); renderer.clear();
+  for (const c of cells) {
+    const { it } = c;
+    for (const o of items) o.g.visible = o === it;
+    it.body.material = mats[c.mode]; it.hull.material = hulls[c.mode];
+    blob.scale.setScalar(it.r * 1.25);
+    // fit: model height -> c.px pixels at the target, camera from EL elevation
+    const fovR = camera.fov * Math.PI / 180, D = (it.h / c.px) * (c.h / 2) / Math.tan(fovR / 2);
+    const tgt = new THREE.Vector3(0, it.h * 0.5, 0);
+    camera.aspect = c.w / c.h; camera.updateProjectionMatrix();
+    camera.position.set(0, tgt.y + Math.sin(EL) * D, Math.cos(EL) * D); camera.lookAt(tgt);
+    const S = Math.max(it.h, it.r) * 1.6;
+    sun.position.set(S * 1.2, S * 3, S * 1.5); sun.target.position.set(0, 0, 0);
+    Object.assign(sun.shadow.camera, { left: -S, right: S, top: S, bottom: -S, near: 0.1, far: S * 10 }); sun.shadow.camera.updateProjectionMatrix();
+    const y = Ht - c.y - c.h;
+    renderer.setViewport(c.x, y, c.w, c.h); renderer.setScissor(c.x, y, c.w, c.h);
+    renderer.setClearColor(0x8fc4ee); renderer.clear();
+    renderer.render(scene, camera);
+  }
+}
+let n = 0; (function loop(t) { render(t || 0); if (++n < 4) requestAnimationFrame(loop); else { window.__ready = true; window.__form = items.filter((it) => it.body.geometry.attributes.formNormal).length + '/' + items.length; } })();
+</script></body></html>

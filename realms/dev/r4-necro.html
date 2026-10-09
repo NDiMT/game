@@ -52,7 +52,7 @@ if (Q.has('info')) document.getElementById('info').textContent = info;
 const EL = THREE.MathUtils.degToRad(46);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 50);
 // rows per group: [kind, cellH, targetPx, facing]
-const ROWS = [['big', 230, 180, 'front'], ['p90', 108, 90, 'front'], ['p90', 108, 90, 'back'], ['p40', 58, 40, 'both']];
+const ROWS = Q.has('big') ? [['big', 360, 290, 'front'], ['big', 360, 290, 'back']] : [['big', 230, 180, 'front'], ['p90', 108, 90, 'front'], ['p90', 108, 90, 'back'], ['p40', 58, 40, 'both']];
 const cols = 7, W = innerWidth, cw = W / cols;
 function cell(x, y, w, h, id, px, back, ry = 0) {
   const o = models.get(id); if (!o) return;

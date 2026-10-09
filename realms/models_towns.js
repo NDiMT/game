@@ -6,7 +6,7 @@ import * as THREE from 'three';
 // BufferGeometry (position, normal, color, uv); glow holds the emissive
 // bits (windows, eyes, magic). Base at y = 0, front faces +Z.
 //   townModel(fac)          fac: 'haven' | 'necro'   (~1.3 wide)
-//   heroModel(fac, color)   rider on a horse, ~1.15 tall with the banner
+//   heroModel(fac, color)   rider on a horse, ~1.7 tall with the banner
 //   flagModel(color)        pole with a waving pennant, ~1 tall
 // =====================================================================
 
@@ -431,149 +431,163 @@ export function townModel(fac) {
 }
 
 // ------------------------------------------------------------------ mounted heroes
-function horse(k, coat, mane, hoof, glowEyes) {
-  const coatD = shadeOf(coat, 0.78), coatL = shadeOf(coat, 1.12);
-  // barrel, chest and rump
-  k.ball(1, 0, 0.47, 0.0, coat, 2, { s: [0.13, 0.13, 0.27], top: 1.15, bot: 0.75 });
-  k.ball(1, 0, 0.49, 0.17, coatL, 1, { s: [0.12, 0.13, 0.1] });
-  k.ball(1, 0, 0.5, -0.18, coat, 1, { s: [0.13, 0.13, 0.12], top: 1.15 });
-  // neck and head
-  k.limb([0, 0.52, 0.18], [0, 0.73, 0.31], 0.075, 0.052, coat, 7, { top: 1.12 });
-  k.limb([0, 0.75, 0.3], [0, 0.65, 0.45], 0.05, 0.03, coat, 7, { top: 1.1 });
-  k.ball(0.035, 0, 0.635, 0.45, coatD, 1);
-  for (const s of [-1, 1]) {
-    k.cone(0.016, 0.06, s * 0.025, 0.76, 0.29, coat, 4, { rx: -0.2, rz: -s * 0.2 });
-    if (glowEyes) k.ball(0.011, s * 0.038, 0.72, 0.37, glowEyes, 0, { glow: true });
-    else k.ball(0.009, s * 0.04, 0.72, 0.37, 0x1a1210, 0);
-  }
-  // mane along the neck
-  for (let i = 0; i < 5; i++) { const t = i / 4; k.box(0.025, 0.06, 0.06, 0, 0.56 + t * 0.2, 0.15 + t * 0.14, mane, { rx: -0.6 }); }
-  // legs: front pair mid-stride, rear planted
-  const legs = [[-0.075, 0.15, 0.08, 0.06], [0.075, 0.17, -0.02, 0.14], [-0.075, -0.18, -0.02, -0.08], [0.075, -0.17, 0.02, -0.2]];
+// R4 (mobile read): a hero is ~30-40 px on the map, so it is built from a few big blocks:
+// a chunky horse (thick legs, big head and neck), an oversized rider head and plume, a wide
+// cape and a big banner in the player colour. No eyes, straps, rivets or reins.
+//   Haven: white horse, gold mane, steel + gold rider, white plume.
+//   Necro: pale-lilac horse with a green flame mane and tail, violet robe, bone, green flame crest.
+function horse(k, coat, mane, hoof, o = {}) {
+  const coatD = shadeOf(coat, 0.8), coatL = shadeOf(coat, 1.1);
+  // barrel, chest and rump: one big, smooth mass
+  k.ball(1, 0, 0.48, 0.0, coat, 1, { s: [0.155, 0.15, 0.29], top: 1.12, bot: 0.72 });
+  k.ball(1, 0, 0.5, 0.17, coatL, 1, { s: [0.145, 0.155, 0.12], top: 1.1, bot: 0.8 });
+  k.ball(1, 0, 0.51, -0.19, coat, 1, { s: [0.155, 0.15, 0.13], top: 1.15, bot: 0.78 });
+  // thick arched neck and a big head (identity: the horse head must read at 30 px)
+  k.limb([0, 0.54, 0.17], [0, 0.8, 0.31], 0.095, 0.07, coat, 6, { top: 1.12 });
+  k.limb([0, 0.83, 0.3], [0, 0.7, 0.5], 0.068, 0.05, coat, 6, { top: 1.12, bot: 0.9 });
+  k.ball(0.058, 0, 0.69, 0.5, coatD, 1, { s: [0.9, 0.85, 1] });
+  for (const s of [-1, 1]) k.cone(0.026, 0.085, s * 0.035, 0.85, 0.29, coat, 4, { rx: -0.25, rz: -s * 0.25 });
+  if (o.eyes) for (const s of [-1, 1]) k.ball(0.017, s * 0.052, 0.79, 0.4, o.eyes, 0, { glow: true });
+  // mane: three bold blocks along the crest (or flames for the undead steed)
+  if (!o.flameMane) for (let i = 0; i < 3; i++) { const t = i / 2; k.box(0.05, 0.1, 0.1, 0, 0.58 + t * 0.22, 0.12 + t * 0.15, mane, { rx: -0.6, top: 1.15 }); }
+  // legs: thick upper legs, sturdy shins and big hooves; front pair mid-stride, rear planted
+  const legs = [[-0.082, 0.16, 0.08, 0.07], [0.082, 0.17, -0.02, 0.15], [-0.082, -0.19, -0.02, -0.08], [0.082, -0.18, 0.02, -0.2]];
   for (const [x, z, kn, ft] of legs) {
-    const hip = [x, 0.45, z], knee = [x, 0.24, z + kn * 0.5], foot = [x, 0.035, z + ft * 0.6];
-    k.limb(hip, knee, 0.05, 0.03, coat, 6);
-    k.limb(knee, foot, 0.022, 0.02, coatD, 5);
-    k.cyl(0.026, 0.03, 0.04, foot[0], 0, foot[2], hoof, 6);
+    const hip = [x, 0.47, z], knee = [x, 0.24, z + kn * 0.5], foot = [x, 0.05, z + ft * 0.6];
+    k.limb(hip, knee, 0.068, 0.045, coat, 6);
+    k.limb(knee, foot, 0.04, 0.034, coatD, 5);
+    k.cyl(0.042, 0.048, 0.06, foot[0], 0, foot[2], hoof, 6, { top: 1.1 });
   }
-  // tail
-  k.limb([0, 0.55, -0.28], [0, 0.42, -0.38], 0.03, 0.035, mane, 5);
-  k.limb([0, 0.42, -0.38], [0, 0.22, -0.4], 0.035, 0.012, mane, 5);
+  // a thick tail
+  if (!o.flameMane) {
+    k.limb([0, 0.56, -0.29], [0, 0.42, -0.4], 0.04, 0.05, mane, 5);
+    k.limb([0, 0.42, -0.4], [0, 0.2, -0.42], 0.05, 0.018, mane, 5);
+  }
 }
-// a cloth sheet hanging down one side of the horse
-function caparison(k, col, trim, side) {
-  const c = shadeOf(col, 1);
-  k.sheet(6, 2, (u, v) => {
-    const z = -0.24 + u * 0.46;
-    const yTop = 0.55 + Math.sin(u * Math.PI) * 0.02, yBot = 0.33 + Math.sin(u * TAU * 2.5) * 0.012;
-    const y = yTop + (yBot - yTop) * v;
-    return [side * (0.118 + v * 0.025 + Math.sin(u * 12) * 0.006 * v + Math.sin(u * Math.PI) * 0.02), y, z];
-  }, c, { shade: (u, v) => 1.12 - v * 0.35 + 0.1 * Math.sin(u * 12), top: 1, bot: 1, ao: false });
-  k.limb([side * 0.145, 0.33, -0.24], [side * 0.145, 0.33, 0.22], 0.008, 0.008, trim, 4, { ao: false });
+// a saddle blanket in the player colour (a short, bold block on each flank)
+function blanket(k, col, trim) {
+  for (const side of [-1, 1]) {
+    k.sheet(3, 1, (u, v) => {
+      const z = -0.17 + u * 0.32, y = 0.62 - v * 0.2;
+      return [side * (0.152 + v * 0.02 + Math.sin(u * Math.PI) * 0.012), y, z];
+    }, col, { shade: (u, v) => 1.12 - v * 0.3, top: 1, bot: 1, ao: false });
+    k.box(0.02, 0.025, 0.33, side * 0.172, 0.405, -0.01, trim, { ao: false, top: 1.2 });
+  }
 }
+// a wide cape in the player colour, draped from the shoulders over the horse's rump:
+// from the map camera it is the biggest colour block on the hero
 function cape(k, col, x0, y0, z0, w, len) {
-  k.sheet(4, 5, (u, v) => {
-    const x = (u - 0.5) * (w + v * 0.1) + Math.sin(v * 5 + u * 3) * 0.008;
-    const y = y0 - v * len * 0.7, z = z0 - v * len * 0.65 - Math.sin(u * Math.PI * 3) * 0.015 * v;
-    return [x0 + x, y + Math.sin(u * Math.PI) * 0.01, z];
-  }, col, { shade: (u, v) => 1.08 - v * 0.25 + 0.14 * Math.sin(u * Math.PI * 3), top: 1, bot: 1, ao: false });
+  k.sheet(3, 4, (u, v) => {
+    const x = (u - 0.5) * (w + v * 0.16);
+    const y = y0 - v * len * 0.62 + Math.sin(u * Math.PI) * 0.03 * v, z = z0 - v * len * 0.72 - Math.sin(u * Math.PI * 2) * 0.02 * v;
+    return [x0 + x, y + Math.sin(u * Math.PI) * 0.015, z];
+  }, col, { shade: (u, v) => 1.12 - v * 0.22 + 0.1 * Math.sin(u * Math.PI), top: 1, bot: 1, ao: false, thick: 0.01 });
 }
-// the hero's standard: crossbar, a big bright swallow-tailed banner streaming back and a trim stripe
-function heroBanner(k, col, trim) {
-  const c = shadeOf(col, 1).lerp(new THREE.Color(1, 1, 1), 0.08);
-  // streams back and outward at 45 degrees so it shows broad from the front, side and back
-  const ang = -2.3, ux = Math.sin(ang), uz = Math.cos(ang);
-  k.limb([-0.16, 1.27, 0.15], [-0.16 + ux * 0.3, 1.27, 0.15 + uz * 0.3], 0.006, 0.006, trim, 4, { ao: false });
-  pennant(k, -0.16, 1.15, 0.15, 0.46, 0.25, c, { ang, amp: 0.045, tail: 0.32, taper: 0.22, droop: 0.12, nu: 9 });
-  pennant(k, -0.16, 1.035, 0.15, 0.4, 0.03, trim, { ang, amp: 0.045, tail: 0, taper: 0.1, droop: 0.2, nu: 9 });
+// the hero's standard: a big swallow-tailed flag streaming back and outward from the pole.
+// The cloth is tilted ~30 degrees off vertical so it still shows a broad face from the
+// high map camera whichever way the hero faces.
+function heroBanner(k, px, py, pz, col, trim) {
+  const c = shadeOf(col, 1).lerp(new THREE.Color(1, 1, 1), 0.06);
+  const ang = -2.25, ux = Math.sin(ang), uz = Math.cos(ang);
+  const ox = uz, oz = -ux; // horizontal, perpendicular to the streaming direction (pointing away from the horse)
+  const tilt = 0.7, cu = Math.cos(tilt), su = Math.sin(tilt);
+  const len = 0.6, hgt = 0.4, tail = 0.28;
+  k.sheet(6, 3, (u, v) => {
+    const taper = 1 - u * 0.2;
+    const yy = (0.5 - v) * hgt * taper;
+    let along = u * len - Math.max(0, 1 - Math.abs(v - 0.5) * 4) * tail * len * smooth(0.5, 1, u);
+    const w = Math.sin(u * 1.4 * TAU) * 0.05 * u;
+    const droop = -u * u * 0.06;
+    const up = yy + droop, tl = Math.min(1, u * 2.5), ct = 1 - (1 - cu) * tl, st = su * tl;
+    return [px + ux * along + ox * ((up + hgt * 0.5) * st + w), py + (up + hgt * 0.5) * ct - hgt, pz + uz * along + oz * ((up + hgt * 0.5) * st + w)];
+  }, c, { shade: (u, v) => (v < 0.34 ? 1.12 : 0.98) + 0.12 * Math.cos(u * 1.4 * TAU), top: 1, bot: 1, ao: false, j: 0.02, thick: 0.01 });
+  // a bold trim band along the hoist
+  k.limb([px, py - hgt * 1.02, pz], [px, py + 0.01, pz], 0.024, 0.024, trim, 5, { ao: false, top: 1.2 });
 }
 function havenHero(k, col) {
-  const STEEL = 0xe8ecf4, STEELD = 0xb4bccb, GOLD = 0xffcf4a, WOOD = 0x9a6a42;
-  horse(k, 0xfbf8f0, 0xf0cc78, 0x8a6a48, null);
-  caparison(k, col, GOLD, -1); caparison(k, col, GOLD, 1);
-  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0xa8683a); // saddle
-  // bridle and reins
-  k.limb([0, 0.66, 0.45], [0, 0.82, 0.12], 0.004, 0.004, 0x7a4a2a, 3);
-  // rider
+  const STEEL = 0xeef0f6, STEELD = 0xb8c0d0, GOLD = 0xffc83a, WOOD = 0x8a5a36;
+  horse(k, 0xfffcf4, 0xf4c25a, 0x9a7048);
+  blanket(k, col, GOLD);
+  k.box(0.22, 0.04, 0.2, 0, 0.6, -0.02, 0xa8683a); // saddle
+  // legs of the rider: thick steel greaves
   for (const s of [-1, 1]) {
-    k.limb([s * 0.07, 0.65, -0.02], [s * 0.14, 0.53, 0.09], 0.035, 0.03, STEEL, 6);
-    k.limb([s * 0.14, 0.53, 0.09], [s * 0.145, 0.37, 0.04], 0.026, 0.024, STEELD, 6);
-    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x8a5a36);
+    k.limb([s * 0.08, 0.66, -0.02], [s * 0.16, 0.54, 0.09], 0.045, 0.038, STEEL, 5);
+    k.limb([s * 0.16, 0.54, 0.09], [s * 0.165, 0.38, 0.04], 0.034, 0.03, STEELD, 5);
   }
-  k.lathe([[0.075, 0], [0.095, 0.06], [0.1, 0.13], [0.085, 0.2], [0.04, 0.24]], 0, 0.62, -0.02, STEEL, 9, { top: 1.3, bot: 0.7 });
-  k.cyl(0.098, 0.1, 0.035, 0, 0.66, -0.02, col, 9, { top: 1.1 }); // tabard band
-  k.box(0.07, 0.11, 0.01, 0, 0.66, 0.075, col, { rx: -0.08 });
-  k.box(0.012, 0.07, 0.004, 0, 0.68, 0.082, GOLD, { ao: false }); k.box(0.04, 0.012, 0.004, 0, 0.73, 0.082, GOLD, { ao: false });
-  for (const s of [-1, 1]) k.ball(0.048, s * 0.1, 0.82, -0.02, STEEL, 1, { s: [1, 0.75, 1], top: 1.3 });
-  // arms: right holds reins, left holds the banner pole
-  k.limb([0.1, 0.81, -0.02], [0.13, 0.7, 0.08], 0.028, 0.024, STEEL, 6);
-  k.limb([0.13, 0.7, 0.08], [0.05, 0.66, 0.16], 0.022, 0.02, STEELD, 6);
-  k.limb([-0.1, 0.81, -0.02], [-0.16, 0.72, 0.07], 0.028, 0.024, STEEL, 6);
-  k.limb([-0.16, 0.72, 0.07], [-0.16, 0.76, 0.14], 0.022, 0.02, STEELD, 6);
-  // shield on the right side
-  k.lathe([[0.0, 0], [0.07, 0.005], [0.075, 0.015]], 0.18, 0.62, 0.02, col, 8, { rz: -Math.PI / 2 - 0.1, top: 1, bot: 1 });
-  k.tor(0.072, 0.008, 0.188, 0.62, 0.02, GOLD, TAU, { ry: Math.PI / 2, rs: 12 });
-  k.ball(0.018, 0.195, 0.62, 0.02, GOLD, 0);
-  // head and gold great helm with plume
-  k.ball(0.05, 0, 0.9, -0.02, 0xe8b890, 1);
-  k.lathe([[0.058, 0], [0.062, 0.05], [0.058, 0.085], [0.035, 0.11], [0.0, 0.115]], 0, 0.86, -0.02, GOLD, 9, { top: 1.35, bot: 0.75 });
-  k.box(0.08, 0.008, 0.02, 0, 0.905, 0.035, 0x5a3e22, { ao: false }); // visor slit
-  k.box(0.012, 0.05, 0.02, 0, 0.88, 0.04, GOLD, { ao: false });
-  for (let i = 0; i < 4; i++) k.ball(0.025 - i * 0.003, 0, 0.99 + i * 0.012 - i * i * 0.004, -0.03 - i * 0.03, 0xffffff, 1, { s: [0.6, 1, 1.2] });
-  // cape
-  cape(k, col, 0, 0.83, -0.08, 0.17, 0.42);
-  // banner pole and pennant
-  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.32, 0.15], 0.011, 0.009, WOOD, 5);
-  k.ball(0.026, -0.16, 1.33, 0.15, GOLD, 1, { ao: false });
-  k.cone(0.016, 0.07, -0.16, 1.35, 0.15, GOLD, 4, { ao: false });
-  heroBanner(k, col, GOLD);
+  // torso: steel with a broad tabard in the player colour
+  k.lathe([[0.09, 0], [0.11, 0.06], [0.115, 0.14], [0.1, 0.21], [0.05, 0.26]], 0, 0.62, -0.02, STEEL, 8, { top: 1.3, bot: 0.75 });
+  k.cyl(0.118, 0.12, 0.13, 0, 0.62, -0.02, col, 8, { top: 1.15, bot: 0.85 });
+  for (const s of [-1, 1]) k.ball(0.065, s * 0.115, 0.83, -0.02, GOLD, 1, { s: [1, 0.75, 1], top: 1.3 });
+  // arms: right on the reins, left raising the standard
+  k.limb([0.12, 0.82, -0.02], [0.15, 0.7, 0.08], 0.036, 0.03, STEEL, 5);
+  k.limb([0.15, 0.7, 0.08], [0.06, 0.67, 0.17], 0.03, 0.028, STEELD, 5);
+  k.limb([-0.12, 0.82, -0.02], [-0.18, 0.74, 0.07], 0.036, 0.03, STEEL, 5);
+  k.limb([-0.18, 0.74, 0.07], [-0.18, 0.79, 0.14], 0.03, 0.028, STEELD, 5);
+  // a big kite shield in the player colour with a thick gold rim and boss
+  k.lathe([[0.0, 0], [0.105, 0.006], [0.11, 0.022]], 0.2, 0.62, 0.02, col, 8, { rz: -Math.PI / 2 - 0.1, top: 1, bot: 1 });
+  k.tor(0.104, 0.017, 0.21, 0.62, 0.02, GOLD, TAU, { ry: Math.PI / 2, rs: 10, ts: 4 });
+  k.ball(0.032, 0.222, 0.62, 0.02, GOLD, 0);
+  // oversized head: a gold great helm with a big white plume
+  const hy = 0.86;
+  k.lathe([[0.078, 0], [0.084, 0.07], [0.078, 0.115], [0.048, 0.148], [0.0, 0.155]], 0, hy, -0.02, GOLD, 8, { top: 1.35, bot: 0.78 });
+  k.box(0.09, 0.024, 0.03, 0, hy + 0.06, 0.05, 0x6a4628, { ao: false }); // visor slit: one bold dark bar
+  k.ball(1, 0, hy + 0.2, -0.07, 0xffffff, 1, { s: [0.05, 0.075, 0.1], rx: 0.5, top: 1.1, bot: 0.85 });
+  k.ball(1, 0, hy + 0.15, -0.17, 0xf4f4ff, 1, { s: [0.045, 0.06, 0.09], rx: 0.9, top: 1.05, bot: 0.8 });
+  // the wide cape
+  cape(k, col, 0, 0.86, -0.09, 0.26, 0.52);
+  // banner pole, gold finial and the big flag
+  k.limb([-0.18, 0.4, 0.12], [-0.18, 1.36, 0.15], 0.016, 0.013, WOOD, 5);
+  k.ball(0.04, -0.18, 1.37, 0.15, GOLD, 1, { ao: false });
+  k.cone(0.024, 0.09, -0.18, 1.39, 0.15, GOLD, 4, { ao: false });
+  heroBanner(k, -0.18, 1.34, 0.15, col, GOLD);
 }
 function necroHero(k, col) {
-  const ROBE = 0x6c40a0, ROBED = 0x52307e, BONE = 0xf6eed4, IRON = 0x9a92ae, GREEN = 0x7affa8;
-  horse(k, 0xc4bcd6, 0x3ab06a, 0x6a5a82, GREEN);
-  // ghostly mane flames
-  for (let i = 0; i < 5; i++) { const t = i / 4; k.cone(0.02, 0.07, 0, 0.6 + t * 0.18, 0.15 + t * 0.14, GREEN, 4, { glow: true, rx: -0.9 }); }
-  caparison(k, col, BONE, -1); caparison(k, col, BONE, 1);
-  k.box(0.2, 0.03, 0.18, 0, 0.6, -0.02, 0x9a3048);
-  // skull-like horse armour plate
-  k.ball(1, 0, 0.715, 0.4, BONE, 1, { s: [0.03, 0.02, 0.055], rx: 0.6 });
-  for (const s of [-1, 1]) k.cone(0.012, 0.07, s * 0.03, 0.76, 0.3, BONE, 4, { rx: -0.5, rz: -s * 0.4 });
+  const ROBE = 0x7444b0, ROBED = 0x52307e, BONE = 0xf6eed4, IRON = 0xa49cbc, GREEN = 0x7affa8;
+  horse(k, 0xcab8ea, 0x3ab06a, 0x5a4a7a, { eyes: GREEN, flameMane: true });
+  // green flame mane and tail: the undead steed's signature
+  for (let i = 0; i < 4; i++) { const t = i / 3; k.cone(0.055, 0.2 - t * 0.03, 0, 0.6 + t * 0.24, 0.08 + t * 0.17, GREEN, 4, { glow: true, rx: -0.85 }); }
+  k.cone(0.05, 0.26, 0, 0.5, -0.3, GREEN, 4, { glow: true, rx: -2.2 });
+  k.cone(0.035, 0.18, 0, 0.42, -0.38, 0x40e088, 4, { glow: true, rx: -2.6 });
+  blanket(k, col, BONE);
+  k.box(0.22, 0.04, 0.2, 0, 0.6, -0.02, 0x9a3048);
+  // a bone skull plate on the horse's face
+  k.ball(1, 0, 0.765, 0.42, BONE, 1, { s: [0.05, 0.03, 0.09], rx: 0.6, top: 1.15 });
   for (const s of [-1, 1]) {
-    k.limb([s * 0.07, 0.65, -0.02], [s * 0.14, 0.53, 0.09], 0.035, 0.03, ROBE, 6);
-    k.limb([s * 0.14, 0.53, 0.09], [s * 0.145, 0.37, 0.04], 0.026, 0.024, ROBED, 6);
-    k.box(0.04, 0.03, 0.08, s * 0.145, 0.34, 0.06, 0x5a4a70);
+    k.limb([s * 0.08, 0.66, -0.02], [s * 0.16, 0.54, 0.09], 0.045, 0.038, ROBE, 5);
+    k.limb([s * 0.16, 0.54, 0.09], [s * 0.165, 0.38, 0.04], 0.034, 0.03, ROBED, 5);
   }
-  // robed torso with flared skirt over the saddle
-  k.lathe([[0.13, 0], [0.1, 0.06], [0.09, 0.14], [0.085, 0.2], [0.04, 0.25]], 0, 0.6, -0.02, ROBE, 9, { top: 1.3, bot: 0.65 });
-  k.box(0.05, 0.16, 0.01, 0, 0.62, 0.08, col, { rx: -0.1 });
+  // violet robe flaring over the saddle, a bone sash, big bone-spiked pauldrons
+  k.lathe([[0.15, 0], [0.12, 0.06], [0.105, 0.14], [0.1, 0.21], [0.05, 0.27]], 0, 0.6, -0.02, ROBE, 8, { top: 1.3, bot: 0.7 });
+  k.box(0.07, 0.18, 0.02, 0, 0.63, 0.085, col, { rx: -0.1 });
   for (const s of [-1, 1]) {
-    k.ball(0.05, s * 0.1, 0.82, -0.02, IRON, 1, { s: [1, 0.7, 1], top: 1.4 });
-    for (let i = 0; i < 2; i++) k.cone(0.012, 0.07, s * (0.1 + i * 0.03), 0.84, -0.03 - i * 0.03, BONE, 4, { rz: -s * 0.5 });
+    k.ball(0.066, s * 0.115, 0.83, -0.02, IRON, 1, { s: [1, 0.72, 1], top: 1.4 });
+    k.cone(0.026, 0.1, s * 0.13, 0.86, -0.03, BONE, 4, { rz: -s * 0.55 });
   }
-  k.limb([0.1, 0.81, -0.02], [0.13, 0.7, 0.08], 0.028, 0.024, ROBE, 6);
-  k.limb([0.13, 0.7, 0.08], [0.06, 0.67, 0.16], 0.022, 0.02, ROBED, 6);
-  k.ball(0.018, 0.06, 0.67, 0.17, BONE, 0);
-  k.limb([-0.1, 0.81, -0.02], [-0.16, 0.72, 0.07], 0.028, 0.024, ROBE, 6);
-  k.limb([-0.16, 0.72, 0.07], [-0.16, 0.76, 0.14], 0.022, 0.02, ROBED, 6);
-  // skull face in a deep hood
-  k.ball(0.048, 0, 0.9, -0.01, BONE, 1, { s: [0.95, 1.05, 1], top: 1.2 });
-  k.lathe([[0.075, 0], [0.07, 0.06], [0.055, 0.1], [0.02, 0.15], [0.0, 0.17]], 0, 0.855, -0.03, ROBED, 8, { top: 1.3, bot: 0.8, rx: -0.25 });
-  k.ball(0.044, 0, 0.9, 0.0, 0x4a3468, 1, { s: [1, 1.05, 0.6], ao: false });
-  for (const s of [-1, 1]) k.ball(0.011, s * 0.018, 0.905, 0.03, GREEN, 0, { glow: true });
-  cape(k, col, 0, 0.83, -0.08, 0.18, 0.44);
-  // a bone-topped staff that bears the banner
-  k.limb([-0.16, 0.42, 0.11], [-0.16, 1.3, 0.15], 0.011, 0.009, 0x8a7a6a, 5);
-  k.ball(0.036, -0.16, 1.33, 0.15, BONE, 1, { s: [1, 1.05, 1.05], ao: false });
-  for (const s of [-1, 1]) k.ball(0.01, -0.16 + s * 0.014, 1.335, 0.182, GREEN, 0, { glow: true });
-  for (const s of [-1, 1]) k.cone(0.009, 0.06, -0.16 + s * 0.022, 1.345, 0.14, BONE, 4, { rz: -s * 0.5, ao: false });
-  heroBanner(k, col, BONE);
+  k.limb([0.12, 0.82, -0.02], [0.15, 0.7, 0.08], 0.036, 0.03, ROBE, 5);
+  k.limb([0.15, 0.7, 0.08], [0.06, 0.67, 0.17], 0.03, 0.028, ROBED, 5);
+  k.limb([-0.12, 0.82, -0.02], [-0.18, 0.74, 0.07], 0.036, 0.03, ROBE, 5);
+  k.limb([-0.18, 0.74, 0.07], [-0.18, 0.79, 0.14], 0.03, 0.028, ROBED, 5);
+  // oversized head: a bone skull in a deep violet hood, glowing eyes and a green flame crest
+  const hy = 0.86;
+  k.lathe([[0.1, 0], [0.095, 0.08], [0.075, 0.13], [0.03, 0.19], [0.0, 0.205]], 0, hy - 0.005, -0.035, ROBED, 8, { top: 1.35, bot: 0.8, rx: -0.25 });
+  k.ball(0.066, 0, hy + 0.065, 0.0, BONE, 1, { s: [0.95, 1.05, 0.9], top: 1.2, bot: 0.85 });
+  for (const s of [-1, 1]) k.ball(0.019, s * 0.026, hy + 0.075, 0.055, GREEN, 0, { glow: true });
+  k.cone(0.05, 0.2, 0, hy + 0.15, -0.07, GREEN, 4, { glow: true, rx: -0.55 });
+  k.cone(0.035, 0.14, 0, hy + 0.12, -0.15, 0x40e088, 4, { glow: true, rx: -1.0 });
+  cape(k, col, 0, 0.86, -0.09, 0.27, 0.54);
+  // a bone staff that bears the banner, topped by a big skull with green eyes
+  k.limb([-0.18, 0.4, 0.12], [-0.18, 1.33, 0.15], 0.016, 0.013, 0x8a7a6a, 5);
+  k.ball(0.055, -0.18, 1.38, 0.15, BONE, 1, { s: [1, 1.05, 1.05], ao: false });
+  for (const s of [-1, 1]) k.ball(0.015, -0.18 + s * 0.021, 1.385, 0.2, GREEN, 0, { glow: true });
+  for (const s of [-1, 1]) k.cone(0.014, 0.08, -0.18 + s * 0.032, 1.41, 0.13, BONE, 4, { rz: -s * 0.5, ao: false });
+  heroBanner(k, -0.18, 1.32, 0.15, col, BONE);
 }
 export function heroModel(fac, color) {
   const k = makeKit(fac === 'necro' ? 23 : 21);
   (fac === 'necro' ? necroHero : havenHero)(k, color ?? (fac === 'necro' ? 0xd83a3a : 0x3a7aff));
-  const m = finish(k);
-  m.body.scale(1.12, 1.12, 1.12); m.body.computeBoundingSphere(); m.body.computeBoundingBox();
-  if (m.glow) { m.glow.scale(1.12, 1.12, 1.12); m.glow.computeBoundingSphere(); }
+  const m = finish(k), S = 1.22; // R4: a touch bigger than before (1.12) so the rider reads at map zoom
+  m.body.scale(S, S, S); m.body.computeBoundingSphere(); m.body.computeBoundingBox();
+  if (m.glow) { m.glow.scale(S, S, S); m.glow.computeBoundingSphere(); }
   return m;
 }
 

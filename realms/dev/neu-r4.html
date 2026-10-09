@@ -51,10 +51,14 @@ function draw(id, x, y, w, h, bg, sil = false) {
   // x, y: top-left in CSS px; model height fills ~78% of the cell
   const M = models[id]; for (const k in models) models[k].g.visible = k === id;
   M.b.material = sil ? silMat : bodyMat; if (M.gl) M.gl.material = sil ? silMat : glowMat;
-  const vh = M.h / 0.78, vw = vh * w / h;
-  cam.left = -vw / 2; cam.right = vw / 2; cam.top = vh / 2; cam.bottom = -vh / 2; cam.updateProjectionMatrix();
+  // fit the projected bbox (corners rotated by yaw) into the cell, centred
   const cy = M.h * 0.5;
-  cam.position.set(0, cy + Math.sin(pitch) * 20, Math.cos(pitch) * 20); cam.lookAt(0, cy, 0);
+  cam.position.set(0, cy + Math.sin(pitch) * 20, Math.cos(pitch) * 20); cam.lookAt(0, cy, 0); cam.updateMatrixWorld();
+  const bb = M.b.geometry.boundingBox, inv = cam.matrixWorldInverse; M.g.updateMatrixWorld();
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (let i = 0; i < 8; i++) { const v = new THREE.Vector3(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(M.g.matrixWorld).applyMatrix4(inv); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); }
+  const vh = Math.max((y1 - y0) / 0.86, (x1 - x0) / 0.86 * h / w), vw = vh * w / h, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  cam.left = mx - vw / 2; cam.right = mx + vw / 2; cam.top = my + vh / 2; cam.bottom = my - vh / 2; cam.updateProjectionMatrix();
   const H = innerHeight;
   renderer.setViewport(x, H - y - h, w, h); renderer.setScissor(x, H - y - h, w, h);
   scene.background = new THREE.Color(bg);
@@ -74,6 +78,7 @@ const cw90 = Math.floor(W / n);
 ids.forEach((id, i) => draw(id, i * cw90, y, cw90, 116, TER[i % TER.length]));
 y += 120;
 // 40 px rows on two backgrounds
+window.__smallBox = { x: Math.floor((W - n * 60) / 2), y, width: n * 60, height: 54 * 2 + 42 };
 for (const off of [0, 3]) {
   ids.forEach((id, i) => draw(id, i * 60 + (W - n * 60) / 2, y, 58, 52, TER[(i + off) % TER.length]));
   y += 54;
