@@ -81,3 +81,11 @@ When done, report:
   - Haven: white stone, blue roofs, gold.
   - Necropolis: dark violet-grey stone (not black), bone, green glows, crimson banners.
   - Dwellings should hint at their creature: pikeman barracks, archer tower, griffin tower, sword guild, monastery, jousting arena, angel portal; graveyard, zombie tomb, wight crypt, vampire mansion, lich mausoleum, black-knight stables, dragon vault.
+
+---
+# Round 3: figure/ground readability (5 passes)
+Player feedback (2026-10-09): "the ground and its textures don't stand apart from the objects on top (chests, caves...); everything is too intense and uniform."
+Goal: the HoMM3 read: the GROUND is a calm, lower-saturation, lower-contrast backdrop with large soft shapes (no confetti of flowers/pebbles/high-frequency noise); OBJECTS (towns, mines, caves, chests, piles, heroes, monsters, visit sites) pop with saturated local colour, clear dark-ish silhouette edge, and a soft contact shadow so they sit ON the ground.
+- Value hierarchy: ground mid-values, objects use the full value range (bright lit tops + darker openings/edges). Still NO near-black murk (the player hated "μαυρίλα") — dark accents are allowed only as small contrast details (cave mouths, chest seams, door openings, silhouette ink edge).
+- Colour: ground desaturated ~25–35% vs now and harmonised per biome; objects keep/raise saturation and use hues that contrast with the terrain they usually sit on (e.g. chests: red-brown wood + gold on any ground; caves: dark mouth + light rock rim).
+- Screenshot check for every change at map zoom (412x860, default zoom ~ cam.dist 10–12): squint test — can you spot every object instantly?
