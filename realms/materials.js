@@ -285,3 +285,57 @@ export function makeBlobShadowMaterial(THREE, opts = {}) {
 export function blobShadowGeometry(THREE) {
   return new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2).translate(0, 0.002, 0);
 }
+
+// ---------------------------------------------------------------- ink hull (crisp silhouette line)
+/**
+ * Optional second pass for a crisp, HoMM-style painted outline: draw the SAME body geometry again
+ * with this material (BackSide "inverted hull", pushed out by a constant on-screen width).
+ * The line colour is the model's own vertex colour, darkened and tinted deep violet (never black).
+ * Works with Mesh and InstancedMesh (use the same instanceMatrix). No lighting, no shadows.
+ * opts: width 0.0022 (~2-3 px at map zoom; view-angle units), dark 0.2, tint (0x4a2860), bulge 0.55
+ * (how much the push follows a smooth object-centred direction instead of the faceted normal: fewer cracks),
+ * center 0.4 (object-space height of that centre), push 0.0008 (depth push, fraction of view distance).
+ */
+export function makeInkHullMaterial(THREE, opts = {}) {
+  const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide });
+  const u = {
+    uHullW: { value: opts.width ?? 0.0022 },
+    uHullDark: { value: opts.dark ?? 0.2 },
+    uHullTint: { value: new THREE.Color(opts.tint ?? 0x4a2860) },
+    uHullBulge: { value: opts.bulge ?? 0.55 },
+    uHullC: { value: opts.center ?? 0.4 },
+    uHullPush: { value: opts.push ?? 0.0008 },
+  };
+  mat.userData.uniforms = u;
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, u);
+    sh.vertexShader = sh.vertexShader
+      .replace('void main() {', 'uniform float uHullW, uHullBulge, uHullC, uHullPush;\nvoid main() {')
+      .replace('#include <project_vertex>', `#include <project_vertex>
+{
+  vec3 hxP = position - vec3(0.0, uHullC, 0.0);
+  vec3 hxB = normalize(vec3(hxP.x, hxP.y * 0.6, hxP.z) + vec3(0.0, 1e-4, 0.0));
+  vec3 hxN = normalize(mix(normalize(normal), hxB, uHullBulge));
+  #ifdef USE_INSTANCING
+    hxN = mat3(instanceMatrix) * hxN;
+  #endif
+  hxN = normalize(normalMatrix * hxN);
+  float hxD = max(-mvPosition.z, 0.1);
+  mvPosition.xyz += hxN * uHullW * hxD;
+  // push the hull a little away from the camera so thin parts (capes, flags, leaves) never show it in front
+  mvPosition.xyz += normalize(mvPosition.xyz) * uHullPush * hxD;
+  gl_Position = projectionMatrix * mvPosition;
+}`);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('void main() {', 'uniform float uHullDark;\nuniform vec3 uHullTint;\nvoid main() {')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+{
+  vec3 alb = diffuseColor.rgb;
+  vec3 hue = alb / max(max(alb.r, max(alb.g, alb.b)), 0.05);
+  float al = dot(alb, vec3(0.2126, 0.7152, 0.0722));
+  diffuseColor.rgb = (hue * 0.5 + uHullTint * 0.5) * uHullDark * (0.8 + 0.4 * al);
+}`);
+  };
+  mat.customProgramCacheKey = () => 'hexInkHull1';
+  return mat;
+}

@@ -32,6 +32,7 @@ ground.receiveShadow = true; scene.add(ground);
 const ink = +(q.get('ink') ?? 0.5);
 const mats = { old: OLD.makeBodyMaterial(THREE), noink: NEW.makeBodyMaterial(THREE, { ink: 0 }), neu: NEW.makeBodyMaterial(THREE, { ink, inkWidth: +(q.get('w') || 0.3), inkProxy: +(q.get('px') || 0.45) }) };
 const glow = NEW.makeGlowMaterial(THREE);
+const hullMat = NEW.makeInkHullMaterial(THREE, { width: +(q.get('hw') || 0.0022) }), hulls = [];
 const blobMat = NEW.makeBlobShadowMaterial(THREE), blobGeo = NEW.blobShadowGeometry(THREE);
 const bodies = [], blobs = [];
 const list = [
@@ -43,6 +44,7 @@ list.forEach(([fn, s, br], i) => {
   const m = fn(); if (!m) return;
   const g = new THREE.Group();
   const b = new THREE.Mesh(m.body, mats.old); b.castShadow = b.receiveShadow = true; g.add(b); bodies.push(b);
+  if (q.get('hull') !== '0') { const hm = new THREE.Mesh(m.body, hullMat); g.add(hm); hulls.push(hm); }
   if (m.glow) g.add(new THREE.Mesh(m.glow, glow));
   const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(br * 1.15); g.add(bl); blobs.push(bl);
   const r = Math.floor(i / 4), c = i % 4;
@@ -56,7 +58,7 @@ function frame(t) {
   NEW.tick(t / 1000); OLD.tick(t / 1000);
   const w = innerWidth / 2, h = innerHeight;
   for (const [k, x] of [[lmode, 0], ['neu', w]]) {
-    bodies.forEach((b) => (b.material = mats[k])); blobs.forEach((b) => (b.visible = k !== 'old'));
+    bodies.forEach((b) => (b.material = mats[k])); blobs.forEach((b) => (b.visible = k !== 'old')); hulls.forEach((b) => (b.visible = k === 'neu'));
     renderer.setViewport(x, 0, w, h); renderer.setScissor(x, 0, w, h); renderer.render(scene, camera);
   }
   requestAnimationFrame(frame);

@@ -391,9 +391,9 @@ function woodPile(k) {
   for (let i = 0; i < 5; i++) k.box(0.04, 0.008, 0.02, k.rr(-0.25, 0.2), 0.012, k.rr(0.22, 0.32), C.ring, { ry: k.r() * 3 });
 }
 function orePile(k) {
-  cart(k, -0.1, -0.08, 0.5, 'ore', [0x7a8498, 0xc0c8dc], false, 1.3);
+  cart(k, -0.1, -0.08, 0.5, 'ore', [0x3a4a78, 0x8a9ad0], false, 1.3);
   // heaped chunks: iron-grey and rust-red ore, with metallic flecks
-  const cols = [[0x6a7488, 0xc0c8dc], [0xa04a26, 0xf0904e], [0x5a6478, 0xa8b4cc]];
+  const cols = [[0x3a4a78, 0x8a9ad0], [0x8a2a10, 0xe8783a], [0x2e3a62, 0x7a8cc8]];
   for (let i = 0; i < 8; i++) {
     const a = -0.5 + i * 0.75, d = 0.18 + k.r() * 0.08;
     k.rock(0.06 + k.r() * 0.04, Math.cos(a) * d + 0.05, 0.012, Math.sin(a) * d + 0.08, cols[i % 3], { amp: 0.3, s: [1, 0.8, 1] });
@@ -556,12 +556,12 @@ function goldmine(k) {
   mountain(k, cols);
   // fat gold veins and nuggets bursting from the rock faces
   const veins = [[0, -0.5, 0.45], [0, 0.55, 0.3], [0, 0.0, 0.8], [1, -0.4, 0.5], [2, 0.5, 0.55], [2, -0.2, 0.2], [5, 0.3, 0.7], [1, 0.9, 0.2], [0, -0.15, 0.25]];
-  for (const [pi, az, el] of veins) {
+  veins.forEach(([pi, az, el], vi) => {
     const { p, n } = onPeak(pi, az, el, 0.93);
     const t = [n[2], 0.55, -n[0]];
-    k.plank([p[0] - t[0] * 0.1, p[1] - 0.05, p[2] - t[2] * 0.1], [p[0] + t[0] * 0.1, p[1] + 0.05, p[2] + t[2] * 0.1], 0.045, 0.07, GL.gold, { glow: true });
+    k.plank([p[0] - t[0] * 0.1, p[1] - 0.05, p[2] - t[2] * 0.1], [p[0] + t[0] * 0.1, p[1] + 0.05, p[2] + t[2] * 0.1], 0.045, 0.07, vi % 3 === 0 ? GL.gold : [0xe89a18, 0xffe060], { glow: vi % 3 === 0, jit: 0.08 });
     k.add(new THREE.IcosahedronGeometry(0.045, 0), p[0] + n[0] * 0.03, p[1] + n[1] * 0.03 + 0.03, p[2] + n[2] * 0.03, [0xe8a010, 0xfff070], { jit: 0.1 });
-  }
+  });
   // a golden crown nugget on the summit
   nuggets(k, 0.0, 0.62, -0.24, 1.8);
   k.lathe([[0.001, 0], [0.12, 0], [0.08, 0.05], [0.001, 0.08]], 8, -0.33, 0.36, -0.14, [0xe8a010, 0xfff070], { jit: 0.15 });

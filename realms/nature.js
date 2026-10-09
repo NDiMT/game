@@ -298,7 +298,7 @@ function willow(b) {
   }
 }
 function deadTree(b, burnt) {
-  const tr = burnt ? barkPaint(ramp(0x4a3a3e, 0x6a5458, 0x96787a), 0.7, 0.3) : barkPaint(ramp(0x7a6a58, 0xa8957c, 0xd8c8aa), 0.7, 0.22);
+  const tr = burnt ? barkPaint(ramp(0x4a3a3e, 0x6a5458, 0x96787a), 0.7, 0.3) : barkPaint(ramp(0x76665a, 0x8a7a6a, 0xa49280), 0.7, 0.16);
   const top = burnt ? V(0.05, 0.72, 0.02) : V(0.04, 0.88, -0.02);
   b.part(tubeGeo(branchPts(V(0, 0, 0), top, V(0.07, 0, 0.04), 4), burnt ? [0.09, 0.07, 0.06, 0.05, 0.04] : [0.08, 0.06, 0.045, 0.03, 0], 6), tr, { jitter: 0.012, jf: 12 });
   if (burnt) b.part(new THREE.ConeGeometry(0.042, 0.1, 6).translate(top.x, top.y + 0.04, top.z), tr, { jitter: 0.02, jf: 20 });
@@ -414,9 +414,9 @@ export function bushModel(i = 0) {
   i = ((i % 6) + 6) % 6;
   const b = new Build(200 + i);
   const pal = [
-    ramp(0x46683c, 0x557848, 0x688a54, 0x84a068),
-    ramp(0x4a6040, 0x5a7048, 0x6c8256, 0x86986a), // berry: a faintly warmer, duskier leaf instead of red dots
-    ramp(0x4a6a40, 0x5a7c4a, 0x6e8e58, 0x8ca46e),
+    ramp(0x58784a, 0x668854, 0x7a9a60, 0x94ae74),
+    ramp(0x5a7048, 0x6a8052, 0x7c925e, 0x94a872), // berry: a faintly warmer, duskier leaf instead of red dots
+    ramp(0x5a7a4a, 0x6a8a54, 0x7e9c62, 0x98b078),
     ramp(0x86785a, 0x988a66, 0xae9e78, 0xc8ba94),
     ramp(0x6a8480, 0x7c968e, 0x92aaa2, 0xb0c4be),
     ramp(0x4a6a40, 0x5a7c48, 0x6e8e56, 0x8aa46a),
@@ -503,11 +503,11 @@ export function tuftModel(i = 0) {
 
 // ------------------------------------------------------------ rocks
 const ROCK_PAL = [
-  ramp(0x8e867a, 0xa09888, 0xb4ac9a, 0xc8c0ae), // warm grey (round 3: narrow, mid-value range)
-  ramp(0x8a8478, 0x9c9688, 0xb0a898, 0xc4bcaa),
+  ramp(0x857a6a, 0x968a78, 0xa89c88, 0xbab09a), // warm grey-brown (round 3: narrow, mid-value, earth-toned)
+  ramp(0x847a6c, 0x948a7a, 0xa69c8a, 0xb8ae9c),
   ramp(0xa48a72, 0xb49a7e, 0xc6ac8e, 0xd8c0a2), // sandstone
   ramp(0x828a98, 0x949caa, 0xa8b0bc, 0xbcc4ce), // cold slate
-  ramp(0x8e867a, 0xa09888, 0xb4ac9a, 0xc8c0ae),
+  ramp(0x7e806a, 0x8e9078, 0xa0a088, 0xb2b098), // mossy (sits on grass)
   ramp(0x828a98, 0x949caa, 0xa8b0bc, 0xbcc4ce),
   ramp(0x5e4c50, 0x6e5a5c, 0x806a68, 0x947c76), // basalt (violet-brown, never black)
 ];
@@ -518,7 +518,7 @@ function rockPaint(rmp, y1, moss = 0, snow = 0) {
     let c = rmp(0.3 + n.y * 0.25 + (p.y / y1) * 0.2 + (m - 0.5) * 0.3);
     if (crack > 0.8) c = mix(c, mul(SH, c[1] * 1.6 + 0.2), 0.18); // cracks: soft violet shade
     c = mix(c, L(0xf0e6d0), smooth(0.55, 1, n.y) * 0.08); // gentle sunlit tops
-    if (moss && n.y + (m - 0.5) * 0.9 > 0.68) c = M(n.y * 0.8 + (m - 0.4));
+    if (moss && n.y + (m - 0.5) * 0.9 > 0.45) c = M(n.y * 0.8 + (m - 0.4));
     if (snow && n.y + (m - 0.5) * 0.7 > 0.62) c = S(n.y * 0.8 + (m - 0.5) * 0.5);
     return c;
   };
@@ -585,9 +585,9 @@ function mound({ r0, h, segs = 12, rings = 8, seed = 1, rough = 0.28, sharp = 1.
 // the grass foot band: an opaque ring at the very base of every mountain, crisp edge just above FOOT_Y
 const PEAK_R = 0.46, FOOT_Y = 0.05, FOOT_RINGS = [0.042, 0.062];
 const ROCK_PEAK = ramp(0x7e6c60, 0x9a8676, 0xb8a490, 0xd2c0a8, 0xe8dcc6); // warm sandstone-grey, gently desaturated
-const COLD_PEAK = ramp(0x64708a, 0x7a86a0, 0x94a0b6, 0xb0bacc, 0xccd4e2); // pale blue-grey granite
+const COLD_PEAK = ramp(0x6e7686, 0x848c9c, 0x9ea4b2, 0xb8bdc8, 0xd0d4dc); // pale blue-grey granite
 const BASALT = ramp(0x664a46, 0x7e5c52, 0x987060, 0xb28a74, 0xc8a48c); // muted red-brown volcanic rock
-const PEAK_SHADE = L(0x7a7a92); // painted shade colour: soft grey-violet, never black
+const PEAK_SHADE = L(0x82828e); // painted shade colour: soft grey-violet, never black
 function peakPaint(kind, H) {
   const rock = kind === 'snow' ? COLD_PEAK : kind === 'volcano' ? BASALT : ROCK_PEAK;
   const grass = kind === 'volcano' ? ramp(0x7a5a4a, 0x8e6a56) : kind === 'snow' ? ramp(0xc8d0e0, 0xe4e8f0) : ramp(0x667e4a, 0x7a9258);
@@ -624,8 +624,11 @@ function addMiniTrees(b, kind, spots) {
   for (const [x, z, sc, y = 0] of spots) {
     const t = new Build(Math.floor(b.r() * 1e6));
     pineTree(t, kind === 'snow');
+    // round 3: lift the little pines towards the rock tone so they read as texture, not dark specks
+    const lift = kind === 'snow' ? L(0x8a9a94) : L(0xa0a48a);
     for (const part of t.B) {
-      const pp = part.p;
+      const pp = part.p, cc = part.c;
+      for (let i = 0; i < cc.length; i++) cc[i] = cc[i] + (lift[i % 3] - cc[i]) * 0.3;
       for (let i = 0; i < pp.length; i += 3) { pp[i] = pp[i] * sc + x; pp[i + 1] = pp[i + 1] * sc + y; pp[i + 2] = pp[i + 2] * sc + z; }
       b.B.push(part);
     }
@@ -669,7 +672,7 @@ export function peakModel(kind = 'rock', variant = 0) {
     // side vents and a smoke plume
     const side1 = mound({ r0: 0.22, h: 0.28, segs: 9, rings: 5, seed: seed * 0.2, rough: 0.3, ox: 0.24 * Math.cos(v + 1), oz: 0.24 * Math.sin(v + 1), maxR: PEAK_R, foot: FOOT_RINGS });
     b.part(side1.g, paint);
-    return b.done({ ao: 0.75, aoH: 0.1, sat: 0.85 });
+    return b.done({ ao: 0.75, aoH: 0.1, sat: 0.8 });
   }
   // rock / snow: one tall main spire plus 2-3 lower shoulders
   const layouts = [
@@ -691,7 +694,7 @@ export function peakModel(kind = 'rock', variant = 0) {
   const hAt = (x, z) => layouts.reduce((mx, [ox, oz, r0, h, sharp]) => { const d = Math.hypot(x - ox, z - oz) / (r0 * 0.9); return d >= 1 ? mx : Math.max(mx, h * (1 - Math.pow(d, 1 / sharp))); }, 0);
   for (let k = 0; k < 3; k++) { const a = a0 + 1.2 + k * 1.9 + R() * 0.4, d = 0.31 + R() * 0.05, x = Math.cos(a) * d, z = Math.sin(a) * d; tr.push([x, z, 0.19 + R() * 0.06, Math.max(0, hAt(x, z) - 0.03)]); }
   addMiniTrees(b, kind, tr);
-  return b.done({ ao: 0.75, aoH: 0.1, sat: 0.85 });
+  return b.done({ ao: 0.75, aoH: 0.1, sat: 0.8 });
 }
 
 // ------------------------------------------------------------ crystals
@@ -766,12 +769,12 @@ const DESERT_AVOID = [4, 5, 9];
 export const FLORA_FOR_TERRAIN = {
   0: { scatter: [] },
   1: { scatter: [{ key: 'tuft:0', p: 0.45, s: 0.152 }, { key: 'tuft:1', p: 0.3, s: 0.152 }, { key: 'oak', p: 0.1, s: 0.21 }, { key: 'birch', p: 0.05, s: 0.21 }, { key: 'bush:0', p: 0.15, s: 0.16 }, { key: 'bush:2', p: 0.07, s: 0.16 }, { key: 'bush:1', p: 0.05, s: 0.16 }, { key: 'rock:4', p: 0.05, s: 0.136 }, { key: 'mushroom:0', p: 0.03, s: 0.139 }] },
-  2: { scatter: [{ key: 'tuft:3', p: 0.35, s: 0.152 }, { key: 'bush:3', p: 0.15, s: 0.16 }, { key: 'rock:0', p: 0.12, s: 0.136 }, { key: 'rock:1', p: 0.1, s: 0.136 }, { key: 'dead', p: 0.06, s: 0.21 }, { key: 'mushroom:1', p: 0.04, s: 0.139 }] },
+  2: { scatter: [{ key: 'tuft:3', p: 0.35, s: 0.152 }, { key: 'bush:3', p: 0.15, s: 0.16 }, { key: 'rock:0', p: 0.08, s: 0.136 }, { key: 'rock:1', p: 0.07, s: 0.136 }, { key: 'dead', p: 0.06, s: 0.21 }, { key: 'mushroom:1', p: 0.04, s: 0.139 }] },
   3: { scatter: [{ key: 'cactus', p: 0.1, s: 0.21, avoid: DESERT_AVOID, maxLat: 0.68 }, { key: 'palm', p: 0.07, s: 0.21, avoid: DESERT_AVOID, maxLat: 0.68 }, { key: 'tuft:3', p: 0.2, s: 0.144 }, { key: 'rock:3', p: 0.08, s: 0.136 }, { key: 'bush:3', p: 0.06, s: 0.136 }] },
   4: { scatter: [{ key: 'snowpine', p: 0.14, s: 0.21, avoid: [3, 7] }, { key: 'rock:5', p: 0.12, s: 0.136 }, { key: 'bush:4', p: 0.08, s: 0.152 }, { key: 'crystal:0', p: 0.02, s: 0.16 }] },
   5: { scatter: [{ key: 'tuft:2', p: 0.45, s: 0.167 }, { key: 'willow', p: 0.14, s: 0.21 }, { key: 'dead', p: 0.08, s: 0.21 }, { key: 'bush:5', p: 0.15, s: 0.16 }, { key: 'mushroom:2', p: 0.08, s: 0.139 }] },
-  6: { scatter: [{ key: 'rock:0', p: 0.2, s: 0.152 }, { key: 'rock:1', p: 0.2, s: 0.152 }, { key: 'rock:2', p: 0.12, s: 0.152 }, { key: 'rock:3', p: 0.06, s: 0.136 }, { key: 'tuft:3', p: 0.2, s: 0.144 }, { key: 'bush:3', p: 0.08, s: 0.152 }, { key: 'pine', p: 0.05, s: 0.21 }, { key: 'crystal:1', p: 0.02, s: 0.16 }] },
-  7: { scatter: [{ key: 'rock:6', p: 0.22, s: 0.152 }, { key: 'burnt', p: 0.14, s: 0.21 }, { key: 'tuft:4', p: 0.25, s: 0.144 }, { key: 'crystal:3', p: 0.04, s: 0.16 }] },
+  6: { scatter: [{ key: 'rock:0', p: 0.13, s: 0.152 }, { key: 'rock:1', p: 0.12, s: 0.152 }, { key: 'rock:2', p: 0.07, s: 0.152 }, { key: 'rock:3', p: 0.06, s: 0.136 }, { key: 'tuft:3', p: 0.2, s: 0.144 }, { key: 'bush:3', p: 0.08, s: 0.152 }, { key: 'pine', p: 0.05, s: 0.21 }, { key: 'crystal:1', p: 0.02, s: 0.16 }] },
+  7: { scatter: [{ key: 'rock:6', p: 0.16, s: 0.152 }, { key: 'burnt', p: 0.14, s: 0.21 }, { key: 'tuft:4', p: 0.25, s: 0.144 }, { key: 'crystal:3', p: 0.04, s: 0.16 }] },
   8: { fill: [{ key: 'peak:rock:0', w: 1 }, { key: 'peak:rock:1', w: 1 }, { key: 'peak:rock:2', w: 1 }, { key: 'peak:rock:3', w: 1 }], count: [1, 1], fillScale: 0.36, scatter: [] },
   9: { fill: [{ key: 'oak', w: 0.5 }, { key: 'pine', w: 0.3 }, { key: 'birch', w: 0.2 }], count: [3, 5], fillScale: 0.21, scatter: [{ key: 'bush:0', p: 0.3, s: 0.152 }, { key: 'mushroom:0', p: 0.08, s: 0.131 }] },
 };
