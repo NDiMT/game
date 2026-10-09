@@ -1,25 +1,28 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=1.3';
-import { havenModel } from './units_haven.js?v=1.3';
-import { necroModel } from './units_necro.js?v=1.3';
-import { necroUpModel } from './units_necro_up.js?v=1.3';
-import { havenUpModel } from './units_haven_up.js?v=1.3';
-import { neutralModel } from './units_neutral.js?v=1.3';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=1.3';
-import { objectModel } from './models_objects.js?v=1.3';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.3';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.3';
-import { createTownView } from './town_view.js?v=1.3';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.3';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.3';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=1.3';
-import * as BT from './battle.js?v=1.3';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.3';
-import { createScore } from './music.js?v=1.3';
-import { unitFit, applyFit } from './unit_fit.js?v=1.3';
-import { createMapFx } from './mapfx.js?v=1.3';
+import { mulberry32, unitModel } from './models.js?v=1.4';
+import { havenModel } from './units_haven.js?v=1.4';
+import { necroModel } from './units_necro.js?v=1.4';
+import { necroUpModel } from './units_necro_up.js?v=1.4';
+import { havenUpModel } from './units_haven_up.js?v=1.4';
+import { neutralModel } from './units_neutral.js?v=1.4';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=1.4';
+import { objectModel } from './models_objects.js?v=1.4';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.4';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.4';
+import { createTownView } from './town_view.js?v=1.4';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.4';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.4';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.4';
+// newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.4'), import('./units_inferno.js?v=1.4'), import('./units_dungeon.js?v=1.4')]);
+const FAC_MODEL = { sylvan: SYLm.value?.sylvanModel, inferno: INFm.value?.infernoModel, dungeon: DUNm.value?.dungeonModel };
+import * as BT from './battle.js?v=1.4';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.4';
+import { createScore } from './music.js?v=1.4';
+import { unitFit, applyFit } from './unit_fit.js?v=1.4';
+import { createMapFx } from './mapfx.js?v=1.4';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.3';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.4';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -28,7 +31,7 @@ import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '1.3';
+const APP_VERSION = '1.4';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -226,7 +229,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=1.3';
+import { createPlanet } from './terrain.js?v=1.4';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -303,7 +306,7 @@ function townInsets() {
   townView.setInsets(side ? { bottom: 0, right: innerWidth - r.left } : { bottom: Math.max(0, innerHeight - r.top), right: 0 });
 }
 const geoCache = new Map();
-const unitGeo = (id) => { const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
+const unitGeo = (id) => { const ff = FAC_MODEL[UNITS[id]?.fac]; if (ff) { const g = ff(id); if (g) return g; } const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
 initPortraits(THREE, renderer, unitGeo);
 // portraits are warmed by the loading screen (prewarm); the rest render on demand
 let prewarmed = false;
@@ -408,11 +411,12 @@ function guardFor(v, strength) {
   const n = Math.max(2, Math.round((strength * 2600 + 250) / (u.hp * (u.dmg[0] + u.dmg[1]) / 2 + 20) * (0.7 + rnd() * 0.6) * [0.75, 1, 1.3][G.diff]));
   return { id, n };
 }
-const TOWN_NAMES = { haven: ['Highcastle', 'Brightwater', 'Stormhold', 'Valemere'], necro: ['Gravenreach', 'Duskmoor', 'Ashfall', 'Wraithgate'] };
+const TOWN_NAMES = { haven: ['Highcastle', 'Brightwater', 'Stormhold', 'Valemere'], necro: ['Gravenreach', 'Duskmoor', 'Ashfall', 'Wraithgate'],
+  sylvan: ['Elderglade', 'Mossvale', 'Silverleaf', 'Thornwood'], inferno: ['Ashenspire', 'Brimstone', 'Cinderhold', 'Pyrewatch'], dungeon: ['Deepvault', 'Shadowmere', 'Gloomhollow', 'Crystalreach'] };
 function newTown(v, p, fac, name) {
   return { id: G.towns.length, v, p, fac, name, built: ['d1'], avail: { 1: UNITS[FACTIONS[fac].units[0]].grow }, garrison: [], builtToday: false, spells: [] };
 }
-function newWorld(seed, diff = 1) {
+function newWorld(seed, diff = 1, myFac = 'haven') {
   Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [] });
   objAt.fill(-1); road.fill(0); seen.fill(0);
   rnd = mulberry32(seed);
@@ -431,7 +435,9 @@ function newWorld(seed, diff = 1) {
   const settle = (c) => { for (const [x] of bfs(c, 2)) { if (ter[x] === T.WATER || ter[x] === T.MOUNT || ter[x] === T.FOREST) ter[x] = T.GRASS; h[x] = h[c]; } };
   settle(a); settle(b);
   if (!connected(a, b)) carve(a, b);
-  G.players = [newPlayer(0, 'haven', false), newPlayer(1, 'necro', true)];
+  // the rival is a different faction; the two neutral towns use the remaining ones
+  const others = Object.keys(FACTIONS).filter((f) => f !== myFac).sort(() => rnd() - 0.5);
+  G.players = [newPlayer(0, myFac, false), newPlayer(1, others[0], true)];
   const capital = (v, p) => { const t = newTown(v, p, G.players[p].fac, TOWN_NAMES[G.players[p].fac][0]); t.garrison = [[FACTIONS[G.players[p].fac].units[0], 12], [FACTIONS[G.players[p].fac].units[1], 5]]; G.towns.push(t); addObject('town', v, { t: t.id }); return t; };
   capital(a, 0); capital(b, 1);
   // neutral towns half way round the world, each with a strong garrison
@@ -444,7 +450,7 @@ function newWorld(seed, diff = 1) {
   mids.forEach((v, i) => {
     settle(v);
     if (!connected(a, v)) carve(a, v);
-    const fac = i % 2 ? 'haven' : 'necro';
+    const fac = others[1 + (i % (others.length - 1))];
     const t = newTown(v, -1, fac, TOWN_NAMES[fac][1 + i]);
     const us = FACTIONS[fac].units;
     t.garrison = [[us[0], 30 + G.diff * 10], [us[1], 14], [us[2], 7], [us[3], 3]];
@@ -457,8 +463,8 @@ function newWorld(seed, diff = 1) {
     const P = G.players[t.p];
     const hr = newHero(t.p, v, FACTIONS[P.fac].heroes[0]);
     hr.army = START_ARMY[P.fac].map((x) => [...x]);
-    hr.spells = P.fac === 'haven' ? ['bless'] : ['arrow'];
-    if (P.fac === 'necro') hr.skills.necromancy = 1; else hr.skills.leadership = 1;
+    const kit = FACTION_START[P.fac] || FACTION_START.haven;
+    hr.spells = [kit.spell]; hr.skills[kit.skill] = 1;
     if (t.p === 1) { hr.att += 1; for (const s of hr.army) s[1] = Math.round(s[1] * [0.7, 1, 1.35][G.diff]); }
     hr.mp = moveMax(hr); hr.mana = maxMana(hr);
     G.heroes.push(hr);
@@ -1760,10 +1766,24 @@ function play() {
 }
 $('m-new').addEventListener('click', () => {
   if (store.get('realms.save', null) && !confirm('Start a new game? Your saved game will be lost.')) return;
-  newWorld((Date.now() % 100000) + 1, store.get('realms.diff', 1));
-  play(); save();
-  setTimeout(() => showMsg('🏰 Your realm', 'Tap a hex to plan a route, tap it again to march. Flag mines, gather treasure, build your town every day and recruit its creatures. Defeat the Necropolis lord to win.<br><br>🐎 Tap your hero to see his sheet · 🏰 tap your town to build and recruit · ⏭ end the day when you are done.', true), 600);
+  pickFaction();
 });
+// faction choice: one card per faction with its colour, creature line-up and a short description
+function pickFaction() {
+  const el = $('factions'), last = store.get('realms.fac', 'haven');
+  el.innerHTML = `<h2>Choose your faction</h2><div class="fcards">${Object.entries(FACTIONS).map(([k, f]) => `<button class="fcard${k === last ? ' on' : ''}" data-f="${k}" style="--fc:${f.css}">
+    <b>${f.name}</b><span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 40)).join('')}</span><small>${f.desc || ''}</small></button>`).join('')}</div>
+    <button class="btn ghost" id="f-back">Back</button>`;
+  el.hidden = false;
+  el.querySelectorAll('.fcard').forEach((b) => b.addEventListener('click', () => {
+    const fac = b.dataset.f; store.set('realms.fac', fac); el.hidden = true; sfx.click();
+    newWorld((Date.now() % 100000) + 1, store.get('realms.diff', 1), fac);
+    play(); save();
+    const rival = FACTIONS[G.players[1].fac].name;
+    setTimeout(() => showMsg(`🏰 Your realm`, `You lead the <b style="color:${FACTIONS[fac].css}">${FACTIONS[fac].name}</b>. Tap a hex to plan a route, tap it again to march. Flag mines, gather treasure, build your town every day and recruit its creatures. Defeat the <b style="color:${FACTIONS[G.players[1].fac].css}">${rival}</b> lord to win.<br><br>🐎 Tap your hero to see the hero sheet · 🏰 tap your town to build and recruit · double-tap them to fly there · ⏭ end the day when you are done.`, true), 600);
+  }));
+  $('f-back').addEventListener('click', () => { el.hidden = true; });
+}
 $('m-continue').addEventListener('click', () => { if (load()) play(); });
 
 // ------------------------------------------------------------------ the loop

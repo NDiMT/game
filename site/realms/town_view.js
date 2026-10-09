@@ -10,18 +10,25 @@
 //   each frame: tv.update(dt); render(tv.scene, tv.camera)
 //   tap:        const id = tv.pick(e.clientX, e.clientY); tv.highlight(id);
 //
-// Building models come from haven_town.js / necro_town.js (loaded with a
+// Building models come from haven_town.js / necro_town.js / sylvan_town.js /
+// inferno_town.js / dungeon_town.js (loaded with a
 // guarded dynamic import, so a missing or broken file falls back to a
 // placeholder house). Everything else is procedural.
 // =====================================================================
 
 const Q = new URL(import.meta.url).search; // keep the caller's ?v= cache key so shared modules stay shared
 const rel = (p) => new URL(p + Q, import.meta.url).href;
-const [MATm, HAVm, NECm] = await Promise.allSettled([import(rel('./materials.js')), import(rel('./haven_town.js')), import(rel('./necro_town.js'))]);
+const FAC_MODULES = { haven: ['./haven_town.js', 'havenTownBuilding'], necro: ['./necro_town.js', 'necroTownBuilding'],
+  sylvan: ['./sylvan_town.js', 'sylvanTownBuilding'], inferno: ['./inferno_town.js', 'infernoTownBuilding'], dungeon: ['./dungeon_town.js', 'dungeonTownBuilding'] };
+const FACS = Object.keys(FAC_MODULES);
+const [MATm, ...FACm] = await Promise.allSettled([import(rel('./materials.js')), ...FACS.map((f) => import(rel(FAC_MODULES[f][0])))]);
 const MAT = MATm.status === 'fulfilled' ? MATm.value : null;
-const MODEL_FN = { haven: HAVm.value?.havenTownBuilding ?? null, necro: NECm.value?.necroTownBuilding ?? null };
-if (HAVm.status === 'rejected') console.warn('town_view: haven_town.js unavailable, using placeholders', HAVm.reason);
-if (NECm.status === 'rejected') console.warn('town_view: necro_town.js unavailable, using placeholders', NECm.reason);
+const MODEL_FN = {};
+FACS.forEach((f, i) => {
+  const r = FACm[i];
+  MODEL_FN[f] = r.status === 'fulfilled' ? r.value?.[FAC_MODULES[f][1]] ?? null : null;
+  if (r.status === 'rejected') console.warn(`town_view: ${FAC_MODULES[f][0]} unavailable, using placeholders`, r.reason);
+});
 
 // ------------------------------------------------------------------ slots
 const S = (x, z, ry = 0, s = 1) => ({ x, z, ry, s });
@@ -59,7 +66,8 @@ const DIMS = {
 };
 for (let t = 1; t <= 7; t++) { const d = DIMS['d' + t]; DIMS['u' + t] = [d[0], d[1], d[2] * 1.15]; }
 // glow multipliers per building (faction:id or id); 1 = the shared glow material
-const GLOW_SCALE = { 'haven:u7': 0.5, 'haven:d7': 0.7, 'haven:mage3': 0.8 };
+const GLOW_SCALE = { 'haven:u7': 0.5, 'haven:d7': 0.7, 'haven:mage3': 0.8,
+  'dungeon:mage3': 0.8, 'dungeon:u7': 0.8, 'dungeon:u3': 0.8, 'inferno:u3': 0.6, 'inferno:d3': 0.7 };
 const SLOT_MAXH = { fort: 2.5, hall: 3.5, mage: 4.2, market: 1.8, tavern: 2, d1: 2.2, d2: 2.6, d3: 2.9, d4: 2.8, d5: 3.1, d6: 3.2, d7: 4.5 };
 const SLOT_DIM = (k) => { const id = k === 'hall' ? 'hall3' : k === 'mage' ? 'mage3' : k; return DIMS[id]; };
 
@@ -105,6 +113,15 @@ const PAL = {
     cloud: 0xffffff, cloudShade: [196, 210, 232], dust: 0xe0d0a8, smoke: 0xeeeef4, birds: 0x4a5470, banner: [0x2a5ad8, 0xf0c040],
     tree: 'round', stars: 0,
     groundTune: { shade: 0xb4a8f0, lift: 0.24, toe: 0.45, sat: 0.94 },
+    // generalised look switches (every faction sets these; see buildEnv)
+    seed: 11, groundMode: 'meadow', bumpy: 0, groundVar: [0.95, 0.1],
+    clouds: { n: 11, wispy: false, opacity: 0.95, w: 260, aspect: 0.5, y: 0, seeds: [5, 8] },
+    mtnSeed: 31, mtnSpike: 'soft', snow: true, mtnH: 1,
+    trees: [['round', 0.65], ['pine', 0.35]], treeDensity: 2.6, crown: [0x3e6c48, 0x6e9468], pineC: [0x3a6650, 0x689a74],
+    flyers: { n: 9, bat: false, h: 14 }, pole: [0xb08a50, 0xe8c070], knob: 0xf8d050,
+    cottage: { wall: [0xe8dcc0, 0xfff6e0], roof: [0xc85a3a, 0xe8804a], chimney: [0x9a6a5a, 0xb88a70], door: 0x8a5a32, win: 0xffd070 },
+    ph: { wall: [0xd8d0c4, 0xfaf6ee], roof: [0x2a5ad8, 0x5a8af0], trim: 0xf0c040, door: 0x7a5030, flag: 0x3a6ae0 },
+    keepOut: [[-14.5, -9, 4], [12, -8, 3], [15, -4.5, 2.5], [-12.5, 3.5, 2.5]],
   },
   necro: {
     // a luminous lavender / rose dusk: eerie but bright, never murky
@@ -123,6 +140,84 @@ const PAL = {
     cloud: 0xfff0f8, cloudShade: [210, 170, 210], dust: 0xd0c0d4, smoke: 0xd8cce8, birds: 0x5a4870, banner: [0xc8183c, 0xf2e6c8],
     tree: 'dead', stars: 1,
     groundTune: { shade: 0xc0a090, lift: 0.18, toe: 0.2, detail: 0.8 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
+    seed: 23, sceneSeed: 43, groundMode: 'moor', bumpy: 0.6, groundVar: [0.9, 0.18], moon: true,
+    lamp: [0x6effa8, 0xb0ffd0, 0.5], mist: { c: 0xf4e8ff, n: 16, o: 0.3 },
+    clouds: { n: 9, wispy: true, opacity: 0.7, w: 380, aspect: 0.32, y: 30, seeds: [6, 9] },
+    mtnSeed: 37, mtnSpike: 'spiky', snow: false, mtnH: 1,
+    trees: [['dead', 0.62], ['pine', 0.38]], treeDensity: 1.4, crown: [0x8a9478, 0xb0b8a0], pineC: [0x6a6878, 0x9c98a8], deadC: [0x8e7e88, 0xcabcc0],
+    flyers: { n: 12, bat: true, h: 12 }, pole: [0xb0a4a0, 0xe8dccc], knob: 0xd8d0c0,
+    cottage: { wall: [0xa69cb4, 0xd0c6da], roof: [0x7a5c96, 0xa486c0], chimney: [0x8a8098, 0xb0a6bc], door: 0x7a5a78, win: 0x9affc0 },
+    ph: { wall: [0x7a7090, 0xa49ab8], roof: [0x4a3a5a, 0x6e5a80], trim: 0x8affb0, door: 0x3e3248, flag: 0xb02040 },
+    keepOut: [[-14.5, -9, 4], [12.5, -8, 3], [-12, 3, 3], [13, 2, 3]],
+  },
+  sylvan: {
+    // an enchanted forest valley in late golden light: lush but calm greens, giant trees, fireflies
+    zenith: 0x3f8fd6, mid: 0x8cc8e6, horizon: 0xfff0c4, below: 0xc4d6a0, sunCol: 0xffe08a, fog: 0xeee6c0, fogNear: 60, fogFar: 1000,
+    sunDir: [-0.6, 0.42, 0.45], lightDir: [-0.55, 0.7, 0.5], shadowI: 0.85, shadowR: 2, sun: 0xffe2a4, sunI: 2.9, hemiSky: 0xd8ecc8, hemiGround: 0x6e8a4a, hemiI: 1.0, amb: 0xfff4d8, ambI: 0.28,
+    grass: [0x6c9a52, 0x86b260, 0xa4ba72, 0x5a8a4c], bank: 0xc8c294, field: [0x98b868, 0xb4c27a, 0x8aae66, 0xc0c486],
+    mtn: [0x5e9474, 0x7ea4b4, 0xe6f0e4], hill: 0x5a8e54,
+    water: [0x1e86a8, 0x5ad0d0, 0xc8fff0], waterSky: 0xd8f0e0, waterGlow: 0.1,
+    path: '#dccca0', pathEdge: '#a8946a', stone: ['#c8bc90', '#e2d8b4', '#b6a880'], pad: 'rgba(70,96,50,0.24)',
+    dots: ['rgba(250,230,140,0.55)', 'rgba(240,250,220,0.45)', 'rgba(230,180,220,0.4)', 'rgba(90,130,64,0.4)'],
+    cloud: 0xfffaf0, cloudShade: [214, 214, 196], dust: 0xd8cca0, smoke: 0xf0f0e4, birds: 0x4a5a40, banner: [0x2a9a40, 0xf0c848],
+    stars: 0,
+    groundTune: { shade: 0xa8b0d8, lift: 0.22, toe: 0.45, sat: 0.84 },
+    lamp: [0xffe080, 0xfff4b0, 0.42, 0.65],
+    seed: 31, groundMode: 'meadow', bumpy: 0.15, groundVar: [0.95, 0.1],
+    clouds: { n: 8, wispy: false, opacity: 0.85, w: 240, aspect: 0.48, y: 10, seeds: [12, 14] },
+    mtnSeed: 41, mtnSpike: 'soft', snow: false, mtnH: 0.85,
+    trees: [['giant', 0.35], ['round', 0.45], ['pine', 0.2]], treeDensity: 2.8, crown: [0x3a7448, 0x74a066], pineC: [0x2e6a4c, 0x5e9a6a],
+    flyers: { n: 9, bat: false, h: 15 }, pole: [0x9a7448, 0xd8b070], knob: 0xf0d060,
+    cottage: { wall: [0xe4d6b0, 0xfaf0d4], roof: [0x3e8a44, 0x7ab85a], chimney: [0x8a7058, 0xa88a6a], door: 0x7a5232, win: 0xffe080 },
+    ph: { wall: [0xd8ccaa, 0xf4ecd0], roof: [0x2e8a3e, 0x6abc5a], trim: 0xf0c848, door: 0x6a4a2a, flag: 0x2a9a40 },
+    keepOut: [[-14.5, -9, 4.5], [12, -8, 3], [15, -4.5, 2.5], [-12.5, 3.5, 2.5], [-15, -14, 4], [16, -15, 4]],
+  },
+  inferno: {
+    // a volcanic land kept BRIGHT: an orange-gold sky glow, warm red rock, glowing lava rivers, rising embers
+    zenith: 0xb03c30, mid: 0xe8783c, horizon: 0xffc878, below: 0xd08a64, sunCol: 0xffd070, fog: 0xeea47a, fogNear: 90, fogFar: 1150,
+    sunDir: [0.5, 0.4, 0.5], lightDir: [0.45, 0.78, 0.45], shadowI: 0.75, shadowR: 2, sun: 0xffd8a8, sunI: 2.9, hemiSky: 0xf4c8bc, hemiGround: 0x8a5a4a, hemiI: 0.95, amb: 0xffe4d8, ambI: 0.28,
+    // calm warm-ochre / red rock floor with large soft ashy patches (lifted: never charcoal)
+    // muted maroon-grey basalt and ash (red buildings and orange lava must pop off it), warmer red rock further out
+    grass: [0x8a625a, 0x7a5852, 0x9e7868, 0x6e5050], ash: 0x6c5654, bank: 0x5e3a34, field: [0x8a5e50, 0x7e5a50, 0x946a5a, 0x7a5850],
+    mtn: [0x8a4a3c, 0xb0644a, 0xf0b07a], hill: 0x92583e,
+    water: [0xe03c0a, 0xff7a1c, 0xffc050], waterSky: 0xff7020, waterGlow: 0.3, crust: 0.7, crustCol: 0x7a2614,
+    path: '#d8b494', pathEdge: '#9a6a52', stone: ['#c49c80', '#e0bc9c', '#b08870'], pad: 'rgba(90,50,40,0.22)',
+    dots: ['rgba(255,170,90,0.45)', 'rgba(230,200,170,0.45)', 'rgba(150,90,70,0.4)', 'rgba(255,210,120,0.4)'],
+    cloud: 0xffe4c8, cloudShade: [220, 150, 120], dust: 0xd8a888, smoke: 0xe8c8b8, birds: 0x6a2a24, banner: [0xd0281c, 0xf8b830],
+    stars: 0,
+    groundTune: { shade: 0xb87888, lift: 0.2, toe: 0.3, detail: 0.85, sat: 1.0 }, sceneryTune: { shade: 0xc07890, lift: 0.2, toe: 0.4 },
+    lamp: [0xff9a40, 0xffd070, 0.55, 0.9],
+    seed: 47, groundMode: 'moor', bumpy: 0.5, groundVar: [0.92, 0.14],
+    clouds: { n: 10, wispy: true, opacity: 0.6, w: 360, aspect: 0.3, y: 20, seeds: [16, 18] },
+    mtnSeed: 53, mtnSpike: 'spiky', snow: false, mtnH: 1.05,
+    trees: [['charred', 0.55], ['spire', 0.45]], treeDensity: 1.0, deadC: [0x6e3a30, 0x9a5a46],
+    flyers: { n: 7, bat: true, h: 16 }, pole: [0x8a4a3a, 0xc07050], knob: 0xffb030,
+    cottage: { wall: [0xb47a62, 0xd8a080], roof: [0x9a2a1e, 0xd04a2a], chimney: [0x8a5a4a, 0xa8705a], door: 0x5a2a20, win: 0xffa040 },
+    ph: { wall: [0xb47060, 0xd89a80], roof: [0xa02a1c, 0xe0502a], trim: 0xffa030, door: 0x5a2a20, flag: 0xd0281c },
+    keepOut: [[-14.5, -9, 4], [12.5, -8, 3], [-12, 3, 3], [13, 2, 3]],
+  },
+  dungeon: {
+    // a vast bright cavern: violet rock, teal crystal light, giant mushrooms and a glowing waterfall
+    zenith: 0x4a3a8e, mid: 0x7c62b8, horizon: 0xa8dce6, below: 0x8a7cb0, sunCol: 0x9af4ff, fog: 0x9c98cc, fogNear: 90, fogFar: 1100,
+    sunDir: [0.1, 0.7, -0.6], lightDir: [-0.3, 0.85, 0.4], shadowI: 0.7, shadowR: 3, sun: 0xeee4ff, sunI: 2.7, hemiSky: 0xbcb8f0, hemiGround: 0x5e6a80, hemiI: 0.95, amb: 0xe0dcff, ambI: 0.26,
+    cave: true, rock: [0x5a4a96, 0x8a74c4], starCol: [0.55, 1.0, 0.95],
+    grass: [0x6c6490, 0x605a84, 0x8078a2, 0x547282], ash: 0x585282, bank: 0x6a6a90, field: [0x56707a, 0x645c88, 0x4c6a74, 0x6c6290],
+    mtn: [0x6e5ea0, 0x8a78bc, 0xb8a8e0], hill: 0x7a729c,
+    water: [0x1a8aa0, 0x4ae0d0, 0xc8fff4], waterSky: 0xa8a0e0, waterGlow: 0.5,
+    path: '#c8c0d4', pathEdge: '#8e86a4', stone: ['#b0a8c4', '#d4cce0', '#a098b4'], pad: 'rgba(60,50,90,0.2)',
+    dots: ['rgba(120,240,220,0.45)', 'rgba(200,170,240,0.45)', 'rgba(140,200,190,0.4)', 'rgba(230,220,240,0.45)'],
+    cloud: 0xe8f4ff, cloudShade: [180, 170, 220], dust: 0xc8c0d8, smoke: 0xd8d4ee, birds: 0x4a3a6a, banner: [0x7a2ab8, 0x5ae6d6],
+    stars: 1,
+    groundTune: { shade: 0x8078c8, lift: 0.14, toe: 0.3, detail: 0.85, sat: 1.1 }, sceneryTune: { shade: 0x9890d8, lift: 0.2, toe: 0.4 },
+    lamp: [0x5af0e0, 0xa0fff4, 0.45, 0.8], mist: { c: 0xdcf4ff, n: 14, o: 0.26 },
+    seed: 59, groundMode: 'moor', bumpy: 0.5, groundVar: [0.92, 0.14],
+    clouds: { n: 0 },
+    mtnSeed: 61, mtnSpike: 'cave', snow: false, mtnH: 1.6,
+    trees: [['mushroom', 0.6], ['stalag', 0.4]], treeDensity: 1.3, crown: [0x8a4ab8, 0xc07ae0],
+    flyers: { n: 10, bat: true, h: 13 }, pole: [0x8a7aa8, 0xc0b0d8], knob: 0x6af0e0,
+    cottage: { wall: [0x9a90b4, 0xc4bcd8], roof: [0x5a3a9a, 0x8a62c8], chimney: [0x7a7094, 0x9a90b4], door: 0x4a3a6a, win: 0x6af0e0 },
+    ph: { wall: [0x8a7ca8, 0xb4a8cc], roof: [0x5a3aa0, 0x8a62d0], trim: 0x5ae6d6, door: 0x3e3258, flag: 0x7a2ab8 },
+    keepOut: [[-14.5, -9, 4], [12.5, -8, 3], [-12, 3, 3], [13, 2, 3]],
   },
 };
 // river centre line (shared, the valley shape is the same)
@@ -351,7 +446,7 @@ void main() { float r = length(gl_PointCoord - 0.5) * 2.0; float a = (1.0 - smoo
     h += out * smooth(-24, -80, z) * (1.5 + fbm(x * 0.028 + 7, z * 0.028, 3, 9) * 9);
     h += smooth(90, 330, r) * (4 + fbm(x * 0.011, z * 0.011, 3, 21) * 26);
     h *= 1 - smooth(6, 20, z) * smooth(16, 4, Math.abs(x)) * 0.85; // keep the foreground low
-    if (fac === 'necro') h += out * (fbm(x * 0.2, z * 0.2, 2, 5) - 0.5) * 0.6;
+    const bump = PAL[fac]?.bumpy ?? 0; if (bump) h += out * (fbm(x * 0.2, z * 0.2, 2, 5) - 0.5) * bump;
     const rd = riverDist(x, z), rw = riverWidth(x, z) / 2;
     h = lerp(-1.25, h, smooth(rw * 0.75, rw + 2.6, rd));
     return h;
@@ -360,14 +455,15 @@ void main() { float r = length(gl_PointCoord - 0.5) * 2.0; float a = (1.0 - smoo
   function buildEnv(fac) {
     const P = PAL[fac], env = { fac, group: new T.Group(), updaters: [] };
     const G = env.group;
-    const R = rng32(fac === 'haven' ? 11 : 23);
+    const R = rng32(P.seed ?? 11);
     // ----- sky dome
     {
       const mat = keep(new T.ShaderMaterial({
-        uniforms: { zen: { value: col(P.zenith) }, mid: { value: col(P.mid) }, hor: { value: col(P.horizon) }, bel: { value: col(P.below) }, sc: { value: col(P.sunCol) }, sd: { value: new V3(...P.sunDir).normalize() }, st: { value: P.stars }, uTime },
+        uniforms: { zen: { value: col(P.zenith) }, mid: { value: col(P.mid) }, hor: { value: col(P.horizon) }, bel: { value: col(P.below) }, sc: { value: col(P.sunCol) }, sd: { value: new V3(...P.sunDir).normalize() }, st: { value: P.stars }, uTime,
+          stc: { value: new V3(...(P.starCol || [0.9, 0.95, 1.0])) }, cave: { value: P.cave ? 1 : 0 }, rk0: { value: col(P.rock?.[0] ?? 0) }, rk1: { value: col(P.rock?.[1] ?? 0) } },
         side: T.BackSide, depthWrite: false, fog: false,
         vertexShader: 'varying vec3 vD; void main() { vD = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }',
-        fragmentShader: `uniform vec3 zen, mid, hor, bel, sc, sd; uniform float st, uTime; varying vec3 vD;
+        fragmentShader: `uniform vec3 zen, mid, hor, bel, sc, sd, stc, rk0, rk1; uniform float st, uTime, cave; varying vec3 vD;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 45758.5); }
 void main() { vec3 d = normalize(vD); float y = d.y;
   vec3 c = mix(hor, mid, smoothstep(0.0, 0.22, y)); c = mix(c, zen, smoothstep(0.18, 0.75, y));
@@ -377,7 +473,20 @@ void main() { vec3 d = normalize(vD); float y = d.y;
   c += hor * 0.25 * (1.0 - smoothstep(0.0, 0.12, abs(y)));
   if (st > 0.5) { vec2 g = vec2(atan(d.x, d.z) * 180.0, y * 260.0); vec2 id = floor(g); float h = h21(id);
     float tw = 0.6 + 0.4 * sin(uTime * 2.0 + h * 40.0);
-    c += vec3(0.9, 0.95, 1.0) * step(0.985, h) * smoothstep(0.12, 0.45, y) * tw * (1.0 - smoothstep(0.08, 0.25, length(fract(g) - 0.5))) * 1.6; }
+    c += stc * step(0.985, h) * smoothstep(0.12, 0.45, y) * tw * (1.0 - smoothstep(0.08, 0.25, length(fract(g) - 0.5))) * 1.6; }
+  if (cave > 0.5) {
+    // the cavern roof: a violet rock fringe of hanging stalactites, rim-lit teal from the crystal light below
+    float az = atan(d.x, d.z) * 9.0; float fi = floor(az), fr = fract(az);
+    float sp = pow(1.0 - abs(fr * 2.0 - 1.0), 2.5) * (0.35 + 0.65 * h21(vec2(fi, 3.0)));
+    float az2 = az * 2.7; float sp2 = pow(1.0 - abs(fract(az2) * 2.0 - 1.0), 3.0) * h21(vec2(floor(az2), 7.0));
+    float edge = 0.32 + 0.05 * sin(az * 0.37) + 0.04 * sin(az * 0.13 + 1.0) - sp * 0.16 - sp2 * 0.06;
+    float roof = smoothstep(edge - 0.004, edge + 0.004, y);
+    vec3 rc = mix(rk1, rk0, smoothstep(edge, edge + 0.3, y));
+    rc += vec3(0.35, 0.9, 0.85) * 0.35 * (1.0 - smoothstep(edge, edge + 0.035, y));
+    float gh = h21(floor(vec2(atan(d.x, d.z) * 90.0, y * 120.0)));
+    rc += stc * step(0.992, gh) * step(edge + 0.04, y) * 0.9;
+    c = mix(c, rc, roof);
+  }
   gl_FragColor = vec4(c, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -389,21 +498,23 @@ void main() { vec3 d = normalize(vD); float y = d.y;
     }
     // ----- clouds (sprites)
     {
-      const texA = cloudTexture(P.cloudShade, fac === 'necro', fac === 'haven' ? 5 : 6), texB = cloudTexture(P.cloudShade, fac === 'necro', fac === 'haven' ? 8 : 9);
+      const CL = P.clouds || { n: 0 };
       const clouds = [];
-      const n = fac === 'haven' ? 11 : 9;
-      for (let i = 0; i < n; i++) {
-        const m = keep(new T.SpriteMaterial({ map: i % 2 ? texA : texB, color: col(P.cloud), transparent: true, depthWrite: false, fog: false, opacity: fac === 'haven' ? 0.95 : 0.7 }));
-        const s = new T.Sprite(m);
-        const ang = (i / n - 0.5) * 2.4 + (R() - 0.5) * 0.25, dist = 900 + R() * 400;
-        const w = (fac === 'haven' ? 260 : 380) * (0.7 + R() * 0.6);
-        s.scale.set(w, w * (fac === 'haven' ? 0.5 : 0.32), 1);
-        s.position.set(Math.sin(ang) * dist, 70 + R() * 150 + (fac === 'necro' ? 30 : 0), 20 - Math.cos(ang) * dist);
-        s.renderOrder = -9; clouds.push({ s, sp: 2 + R() * 3 });
-        G.add(s);
+      if (CL.n) {
+        const texA = cloudTexture(P.cloudShade, CL.wispy, CL.seeds[0]), texB = cloudTexture(P.cloudShade, CL.wispy, CL.seeds[1]);
+        for (let i = 0; i < CL.n; i++) {
+          const m = keep(new T.SpriteMaterial({ map: i % 2 ? texA : texB, color: col(P.cloud), transparent: true, depthWrite: false, fog: false, opacity: CL.opacity }));
+          const s = new T.Sprite(m);
+          const ang = (i / CL.n - 0.5) * 2.4 + (R() - 0.5) * 0.25, dist = 900 + R() * 400;
+          const w = CL.w * (0.7 + R() * 0.6);
+          s.scale.set(w, w * CL.aspect, 1);
+          s.position.set(Math.sin(ang) * dist, 70 + R() * 150 + CL.y, 20 - Math.cos(ang) * dist);
+          s.renderOrder = -9; clouds.push({ s, sp: 2 + R() * 3 });
+          G.add(s);
+        }
       }
       env.updaters.push((dt) => { for (const c of clouds) { c.s.position.x += c.sp * dt; if (c.s.position.x > 1300) c.s.position.x -= 2600; } });
-      if (fac === 'necro') {
+      if (P.moon) {
         // a big pale moon with a halo
         const moonTex = canvasTex(256, 256, (g, w) => {
           let gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
@@ -435,7 +546,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         pos.push(x, y, z);
         // colour
         const n1 = fbm(x * 0.09, z * 0.09, 3, 1), n2 = fbm(x * 0.35, z * 0.35, 2, 2);
-        if (fac === 'necro') {
+        if (P.groundMode === 'moor') {
           // sage-grey moor, violet heather patches, pale ash drifts
           const n3 = fbm(x * 0.16 + 31, z * 0.16, 3, 7);
           c.copy(g0).lerp(g1, smooth(0.45, 0.75, n1) * 0.75).lerp(g3, smooth(0.5, 0.7, n3) * 0.5).lerp(g2, smooth(0.64, 0.86, n2) * 0.4);
@@ -452,7 +563,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         }
         const rd = riverDist(x, z), rw = riverWidth(x, z) / 2;
         c.lerp(bank, smooth(rw + 2.8, rw + 0.6, rd) * 0.85);
-        c.multiplyScalar(fac === 'necro' ? 0.9 + n2 * 0.18 : 0.95 + n2 * 0.1);
+        c.multiplyScalar(P.groundVar[0] + n2 * P.groundVar[1]);
         cols.push(c.r, c.g, c.b);
       }
       for (let k = 0; k < radii.length - 1; k++) for (let i = 0; i < N; i++) {
@@ -560,14 +671,14 @@ void main() { vec3 d = normalize(vD); float y = d.y;
       geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
       geo.setIndex(idx);
       const mat = keep(new T.ShaderMaterial({
-        uniforms: T.UniformsUtils.merge([T.UniformsLib.fog, { deep: { value: col(P.water[0]) }, shal: { value: col(P.water[1]) }, foam: { value: col(P.water[2]) }, sky: { value: col(P.waterSky) }, glow: { value: P.waterGlow } }]),
+        uniforms: T.UniformsUtils.merge([T.UniformsLib.fog, { deep: { value: col(P.water[0]) }, shal: { value: col(P.water[1]) }, foam: { value: col(P.water[2]) }, sky: { value: col(P.waterSky) }, glow: { value: P.waterGlow }, crust: { value: P.crust ?? 0 }, crustC: { value: col(P.crustCol ?? 0) } }]),
         fog: true, side: T.DoubleSide,
         vertexShader: `varying vec2 vUv; varying vec3 vW;
 #include <fog_pars_vertex>
 void main() { vUv = uv; vec4 wp = modelMatrix * vec4(position, 1.0); vW = wp.xyz; vec4 mvPosition = viewMatrix * wp; gl_Position = projectionMatrix * mvPosition;
 #include <fog_vertex>
 }`,
-        fragmentShader: `uniform vec3 deep, shal, foam, sky; uniform float glow, uTime; varying vec2 vUv; varying vec3 vW;
+        fragmentShader: `uniform vec3 deep, shal, foam, sky, crustC; uniform float glow, crust, uTime; varying vec2 vUv; varying vec3 vW;
 #include <fog_pars_fragment>
 float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
@@ -580,10 +691,18 @@ void main() {
   c = mix(c, sky, 0.25 + fres * 0.55);
   c += (fl - 0.5) * 0.12 * (1.0 + glow * 2.0) * shal;
   float sp = pow(vn(vW.xz * 2.2 + vec2(uTime * 0.6, -uTime * 0.25)) * vn(vW.xz * 3.1 - vec2(uTime * 0.4, uTime * 0.5)), 5.0);
-  c += vec3(1.0, 0.98, 0.9) * sp * 5.0 * (1.0 - glow * 0.6);
+  c += vec3(1.0, 0.98, 0.9) * sp * 5.0 * (1.0 - glow * 0.6) * (1.0 - crust);
   float fo = smoothstep(0.32, 0.0, e + (vn(vec2(vUv.x * 1.5 - uTime * 0.3, vUv.y * 9.0)) - 0.5) * 0.25);
   c = mix(c, foam, fo * 0.75);
   c += shal * glow * 0.4 * (0.6 + 0.4 * sin(uTime * 1.3 + vUv.x * 0.2));
+  if (crust > 0.0) {
+    // lava: drifting cooled-crust plates with bright glowing seams between them
+    vec2 q = vec2(vUv.x * 0.55 - uTime * 0.18, vUv.y * 3.0);
+    float n = vn(q) * 0.65 + vn(q * 2.3 + 5.0) * 0.35;
+    float plate = smoothstep(0.5, 0.62, n) * smoothstep(0.05, 0.3, e);
+    c = mix(c, crustC, plate * crust);
+    c += vec3(1.0, 0.75, 0.3) * smoothstep(0.08, 0.0, abs(n - 0.5)) * 0.3 * crust;
+  }
   gl_FragColor = vec4(c, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -602,15 +721,15 @@ void main() {
       for (let j = 0; j <= J; j++) for (let i = 0; i < N; i++) {
         const a = (i / N) * Math.PI * 2, t = j / J;
         const rr = 470 + t * 260 + (vnoise(i * 0.3, j, 4) - 0.5) * 40;
-        const ridge = Math.pow(Math.max(0, fbm(Math.cos(a) * 3 + 10, Math.sin(a) * 3 + 10, 4, fac === 'haven' ? 31 : 37) - 0.25), 1.25);
+        const ridge = Math.pow(Math.max(0, fbm(Math.cos(a) * 3 + 10, Math.sin(a) * 3 + 10, 4, P.mtnSeed ?? 31) - 0.25), 1.25);
         const front = Math.sin(Math.min(1, t * 1.6) * Math.PI * 0.5) * (1 - smooth(0.75, 1, t) * 0.6);
-        const spike = fac === 'necro' ? Math.pow(vnoise(i * 0.9, j * 1.3, 8), 3) * 50 : Math.pow(vnoise(i * 0.7, j * 1.1, 8), 2) * 30;
-        const y = -6 + front * (30 + ridge * 230 + spike * front);
+        const spike = P.mtnSpike === 'cave' ? Math.pow(vnoise(i * 1.3, j * 1.7, 8), 2) * 90 : P.mtnSpike === 'spiky' ? Math.pow(vnoise(i * 0.9, j * 1.3, 8), 3) * 50 : Math.pow(vnoise(i * 0.7, j * 1.1, 8), 2) * 30;
+        const y = -6 + front * (30 + ridge * 230 + spike * front) * (P.mtnH ?? 1);
         const x = Math.sin(a) * rr, z = -4 + Math.cos(a) * rr;
         pos.push(x, y, z);
         const hn = clamp(y / 150, 0, 1);
         c.copy(base).lerp(midc, smooth(0.08, 0.4, hn));
-        if (fac === 'haven') c.lerp(top, smooth(0.5, 0.62, hn + (vnoise(i * 1.7, j * 2.3, 2) - 0.5) * 0.15));
+        if (P.snow) c.lerp(top, smooth(0.5, 0.62, hn + (vnoise(i * 1.7, j * 2.3, 2) - 0.5) * 0.15));
         else c.lerp(top, smooth(0.45, 0.8, hn) * 0.7);
         cols.push(c.r, c.g, c.b);
       }
@@ -627,7 +746,14 @@ void main() {
     }
     // ----- trees (instanced)
     {
-      const trees = { round: [], pine: [], dead: [] };
+      const KINDS = P.trees || [['round', 1]];
+      const trees = Object.fromEntries(KINDS.map(([k]) => [k, []]));
+      const pickKind = (y) => {
+        if (P.snow && y > 8 && trees.pine) return 'pine';
+        let u = R();
+        for (const [k, w] of KINDS) { if ((u -= w) <= 0) return k; }
+        return KINDS[KINDS.length - 1][0];
+      };
       const blocked = (x, z) => {
         if (flatD(x, z) < 1.12) return true;
         if (z > 2 && Math.abs(x) < 8 + (z - 2) * 0.55) return true; // keep the view to the town clear
@@ -635,18 +761,17 @@ void main() {
         for (const [px, pz, pr] of env.keepOut || []) if (Math.hypot(x - px, z - pz) < pr) return true;
         return false;
       };
-      env.keepOut = fac === 'haven' ? [[-14.5, -9, 4], [12, -8, 3], [15, -4.5, 2.5], [-12.5, 3.5, 2.5]] : [[-14.5, -9, 4], [12.5, -8, 3], [-12, 3, 3], [13, 2, 3]];
+      env.keepOut = P.keepOut || [];
       const clusters = [];
       for (let i = 0; i < 26; i++) { const a = (R() - 0.5) * Math.PI * 1.7, d = 30 + R() * 110; clusters.push([Math.sin(a) * d * 1.2, -Math.cos(a) * d * 0.9 - 2, 3 + R() * 9]); }
       clusters.push([-13, -2, 4], [13, -2, 5], [-18, -20, 4], [20, -22, 5], [-18, 6, 4], [18, 8, 5]);
       for (const [cx, cz, cr] of clusters) {
-        const n = Math.round(cr * (fac === 'haven' ? 2.6 : 1.4));
+        const n = Math.round(cr * (P.treeDensity ?? 2));
         for (let k = 0; k < n; k++) {
           const a = R() * 7, d = Math.sqrt(R()) * cr, x = cx + Math.sin(a) * d, z = cz + Math.cos(a) * d;
           if (blocked(x, z)) continue;
           const y = groundH(x, z, fac), s = (1.1 + R() * 0.9) * (1 + smooth(40, 140, Math.hypot(x, z)) * 1.2);
-          const kind = fac === 'haven' ? (R() < 0.35 || y > 8 ? 'pine' : 'round') : (R() < 0.62 ? 'dead' : 'pine');
-          trees[kind].push([x, y - 0.05, z, s, R() * 7, R()]);
+          trees[pickKind(y)].push([x, y - 0.05, z, s, R() * 7, R()]);
         }
       }
       // scattered singles near the town
@@ -654,83 +779,138 @@ void main() {
         const x = (R() - 0.5) * 50, z = -R() * 30 + 8;
         if (z < -8 && Math.abs(x) < 14) continue;
         if (blocked(x, z)) continue;
-        const kind = fac === 'haven' ? (R() < 0.3 ? 'pine' : 'round') : (R() < 0.75 ? 'dead' : 'pine');
-        trees[kind].push([x, groundH(x, z, fac) - 0.05, z, 1 + R() * 0.8, R() * 7, R()]);
+        const y = groundH(x, z, fac);
+        let kind = pickKind(y);
+        if (kind === 'giant' && (z > -6 || Math.abs(x) < 12)) kind = 'round'; // giants stand back, never in front of the town
+        trees[kind].push([x, y - 0.05, z, 1 + R() * 0.8, R() * 7, R()]);
       }
-      const geos = {
-        round: (() => {
+      // sylvan: a few huge sentinel trees framing the valley behind the town
+      if (trees.giant) for (const [x, z, s] of [[-15.5, -13, 1.25], [17, -15, 1.35], [-23, -24, 1.5], [26, -28, 1.6], [-9, -26, 1.1], [33, -10, 1.3], [-31, -9, 1.4]]) {
+        if (riverDist(x, z) < riverWidth(x, z) / 2 + 2.5) continue;
+        trees.giant.push([x, groundH(x, z, fac) - 0.1, z, s, R() * 7, R()]);
+      }
+      const limbOf = (k, c) => (a, b, r) => {
+        const va = new V3(...a), vb = new V3(...b), len = va.distanceTo(vb);
+        const g = new T.CylinderGeometry(r * 0.6, r, len, 5);
+        g.applyQuaternion(new T.Quaternion().setFromUnitVectors(new V3(0, 1, 0), vb.clone().sub(va).normalize()));
+        g.translate((va.x + vb.x) / 2, (va.y + vb.y) / 2, (va.z + vb.z) / 2);
+        k.add(g, c);
+      };
+      const deadTree = (k, tc, ember) => {
+        const limb = limbOf(k, tc);
+        limb([0, 0, 0], [0.05, 0.9, 0], 0.11); limb([0.05, 0.9, 0], [-0.08, 1.5, 0.05], 0.07);
+        limb([0.05, 0.75, 0], [0.5, 1.15, 0.1], 0.05); limb([0.5, 1.15, 0.1], [0.75, 1.2, -0.05], 0.03);
+        limb([0.0, 1.0, 0], [-0.45, 1.35, -0.15], 0.045); limb([-0.45, 1.35, -0.15], [-0.6, 1.62, -0.1], 0.03);
+        limb([-0.08, 1.5, 0.05], [0.2, 1.8, 0.1], 0.03); limb([0.05, 0.55, 0], [0.1, 0.8, 0.4], 0.035);
+        if (ember) for (const [x, y, z] of [[0.75, 1.2, -0.05], [-0.6, 1.62, -0.1], [0.2, 1.8, 0.1], [0.1, 0.8, 0.4]]) k.add(new T.IcosahedronGeometry(0.06, 0).translate(x, y, z), ember, true);
+      };
+      const crown = P.crown || [0x3e6c48, 0x6e9468], pc = P.pineC || [0x3a6650, 0x689a74];
+      const MK = {
+        round: () => {
           const k = kit(3);
           k.cyl(0.07, 0.12, 0.7, 0, 0, 0, [0x7a5232, 0x9a6a3e], 6);
           // round 3 pass 4: calm sage / blue-green backdrop crowns (were lime-yellow and competed with the buildings);
           // the gradient stops at ~60% so the sunlit tops never turn yellow under the strong sun
-          const crown = fac === 'haven' ? [0x3e6c48, 0x6e9468] : [0x8a9478, 0xb0b8a0];
           for (const [x, y, z, r] of [[0, 1.0, 0, 0.55], [0.28, 1.25, 0.08, 0.38], [-0.24, 1.2, -0.1, 0.4], [0.02, 1.45, -0.02, 0.33]])
             k.add(new T.IcosahedronGeometry(r, 0).translate(x, y, z), (px, py, pz, c) => c.set(crown[0]).lerp(col(crown[1]), clamp((py - 0.55) / 1.25 + px * 0.15 + pz * 0.25, 0, 1) * 0.6));
-          return k.body();
-        })(),
-        pine: (() => {
+          return k;
+        },
+        pine: () => {
           const k = kit(4);
           k.cyl(0.06, 0.1, 0.5, 0, 0, 0, [0x6a4a2e, 0x8a5e38], 5);
-          const pc = fac === 'haven' ? [0x3a6650, 0x689a74] : [0x6a6878, 0x9c98a8];
           for (const [y, r, h] of [[0.35, 0.55, 0.8], [0.75, 0.42, 0.7], [1.1, 0.3, 0.65]]) k.cone(r, h, 0, y, 0, pc, 7);
-          return k.body();
-        })(),
-        dead: (() => {
-          const k = kit(5);
-          const tc = [0x8e7e88, 0xcabcc0];
-          const limb = (a, b, r) => {
-            const va = new V3(...a), vb = new V3(...b), len = va.distanceTo(vb);
-            const g = new T.CylinderGeometry(r * 0.6, r, len, 5);
-            g.applyQuaternion(new T.Quaternion().setFromUnitVectors(new V3(0, 1, 0), vb.clone().sub(va).normalize()));
-            g.translate((va.x + vb.x) / 2, (va.y + vb.y) / 2, (va.z + vb.z) / 2);
-            k.add(g, tc);
-          };
-          limb([0, 0, 0], [0.05, 0.9, 0], 0.11); limb([0.05, 0.9, 0], [-0.08, 1.5, 0.05], 0.07);
-          limb([0.05, 0.75, 0], [0.5, 1.15, 0.1], 0.05); limb([0.5, 1.15, 0.1], [0.75, 1.2, -0.05], 0.03);
-          limb([0.0, 1.0, 0], [-0.45, 1.35, -0.15], 0.045); limb([-0.45, 1.35, -0.15], [-0.6, 1.62, -0.1], 0.03);
-          limb([-0.08, 1.5, 0.05], [0.2, 1.8, 0.1], 0.03); limb([0.05, 0.55, 0], [0.1, 0.8, 0.4], 0.035);
-          return k.body();
-        })(),
+          return k;
+        },
+        dead: () => { const k = kit(5); deadTree(k, P.deadC || [0x8e7e88, 0xcabcc0]); return k; },
+        // inferno: charred red-brown snags with glowing ember tips
+        charred: () => { const k = kit(6); deadTree(k, P.deadC || [0x6e3a30, 0x9a5a46], 0xffa040); return k; },
+        // inferno: tall red-rock / basalt spires with a lava-lit crack
+        spire: () => {
+          const k = kit(8);
+          k.add(new T.CylinderGeometry(0.08, 0.34, 1.8, 6).translate(0, 0.9, 0), [0x7a4436, 0xc07a5a]);
+          k.add(new T.CylinderGeometry(0.05, 0.22, 1.1, 5).translate(0.28, 0.55, 0.1), [0x84483a, 0xb87054]);
+          k.add(new T.IcosahedronGeometry(0.3, 0).scale(1.2, 0.5, 1).translate(0, 0.05, 0), [0x8a5040, 0xa8644c]);
+          k.box(0.05, 0.6, 0.05, 0.02, 0.3, 0.29, 0xff8a30, 0, true);
+          return k;
+        },
+        // sylvan: a giant elder tree with buttress roots and a broad layered canopy
+        giant: () => {
+          const k = kit(10);
+          const bark = [0x6e4e34, 0x9a7450];
+          k.add(new T.CylinderGeometry(0.32, 0.55, 3.6, 8).translate(0, 1.8, 0), bark);
+          for (let i = 0; i < 5; i++) { const a = (i / 5) * 6.283 + 0.4; k.add(new T.ConeGeometry(0.22, 1.0, 4).rotateZ(-0.9).rotateY(-a).translate(Math.cos(a) * 0.5, 0.28, Math.sin(a) * 0.5), bark); }
+          const limb = limbOf(k, bark);
+          limb([0, 2.6, 0], [1.1, 3.6, 0.2], 0.14); limb([0, 2.9, 0], [-1.0, 3.9, -0.2], 0.13); limb([0, 3.2, 0], [0.2, 4.3, -0.6], 0.12);
+          const cr = [crown[0], crown[1]];
+          for (const [x, y, z, r] of [[0, 4.3, 0, 1.55], [1.3, 3.85, 0.25, 1.05], [-1.25, 4.05, -0.2, 1.1], [0.35, 5.2, -0.3, 1.0], [-0.5, 4.6, 0.7, 0.85], [0.7, 4.5, -0.9, 0.9]])
+            k.add(new T.IcosahedronGeometry(r, 1).scale(1, 0.72, 1).translate(x, y, z), (px, py, pz, c) => c.set(cr[0]).lerp(col(cr[1]), clamp((py - 3.2) / 2.6 + px * 0.1 + pz * 0.15, 0, 1) * 0.7));
+          return k;
+        },
+        // dungeon: a giant cave mushroom with a glowing teal underside and spots
+        mushroom: () => {
+          const k = kit(12);
+          k.add(new T.CylinderGeometry(0.11, 0.17, 1.3, 7).translate(0, 0.65, 0), [0xc8bcd8, 0xeee6f4]);
+          k.add(new T.SphereGeometry(0.62, 9, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.55, 1).translate(0, 1.22, 0), [crown[0], crown[1]]);
+          k.add(new T.CylinderGeometry(0.6, 0.15, 0.08, 9).translate(0, 1.16, 0), 0x6af0e0, true);
+          for (let i = 0; i < 5; i++) { const a = i * 1.26 + 0.3; k.add(new T.IcosahedronGeometry(0.06, 0).translate(Math.cos(a) * 0.38, 1.42, Math.sin(a) * 0.38), 0xb0fff4, true); }
+          k.add(new T.CylinderGeometry(0.06, 0.09, 0.55, 6).translate(0.38, 0.27, 0.2), [0xc8bcd8, 0xeee6f4]);
+          k.add(new T.SphereGeometry(0.24, 7, 4, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.6, 1).translate(0.38, 0.52, 0.2), [0x3aa8a0, 0x6ae0d0]);
+          return k;
+        },
+        // dungeon: violet stalagmites
+        stalag: () => {
+          const k = kit(14);
+          k.add(new T.ConeGeometry(0.32, 1.9, 6).translate(0, 0.95, 0), [0x6e5e9c, 0xb4a4dc]);
+          k.add(new T.ConeGeometry(0.2, 1.0, 5).translate(0.36, 0.5, 0.12), [0x76669e, 0xb0a0d4]);
+          k.add(new T.ConeGeometry(0.14, 0.65, 5).translate(-0.3, 0.32, -0.08), [0x76669e, 0xa898cc]);
+          k.add(new T.OctahedronGeometry(0.12, 0).scale(0.7, 1.8, 0.7).rotateZ(0.4).translate(-0.18, 0.25, 0.25), 0x6af0e0, true);
+          return k;
+        },
       };
       const m4 = new T.Matrix4(), q = new T.Quaternion(), sc = new V3(), p = new V3(), tint = new T.Color();
       for (const kind of Object.keys(trees)) {
         const list = trees[kind];
-        if (!list.length) continue;
-        keep(geos[kind]);
-        const im = new T.InstancedMesh(geos[kind], bodyMat, list.length);
+        if (!list.length || !MK[kind]) continue;
+        const kk = MK[kind](), body = keep(kk.body()), glow = kk.glow();
+        const ims = [new T.InstancedMesh(body, bodyMat, list.length)];
+        if (glow) ims.push(new T.InstancedMesh(keep(glow), glowMat, list.length));
         list.forEach(([x, y, z, s, rot, v], i) => {
           q.setFromAxisAngle(new V3(0, 1, 0), rot); p.set(x, y, z); sc.set(s, s * (0.9 + v * 0.25), s);
-          im.setMatrixAt(i, m4.compose(p, q, sc));
+          m4.compose(p, q, sc);
           tint.setRGB(0.9 + v * 0.2, 0.92 + ((v * 7) % 1) * 0.16, 0.9 + ((v * 13) % 1) * 0.12);
-          im.setColorAt(i, tint);
+          ims[0].setMatrixAt(i, m4); ims[0].setColorAt(i, tint);
+          if (ims[1]) ims[1].setMatrixAt(i, m4);
         });
-        im.castShadow = true; im.receiveShadow = true;
-        G.add(im);
+        ims[0].castShadow = true; ims[0].receiveShadow = true;
+        G.add(...ims);
       }
-      for (const k of Object.keys(geos)) if (!trees[k].length) geos[k].dispose();
     }
     // ----- scenery: cottages, windmill / ruined tower, banners, graves, rocks
     const smokers = [];
     {
-      const k = kit(fac === 'haven' ? 41 : 43);
+      const k = kit(P.sceneSeed ?? (P.seed ?? 11) + 30);
       const at = (x, z) => groundH(x, z, fac);
-      const H = fac === 'haven';
-      const wall = H ? [0xe8dcc0, 0xfff6e0] : [0xa69cb4, 0xd0c6da];
-      const roofC = H ? [0xc85a3a, 0xe8804a] : [0x7a5c96, 0xa486c0];
+      const CT = P.cottage;
+      const wall = CT.wall, roofC = CT.roof;
       const cottage = (x, z, ry, s = 1) => {
         const y = at(x, z) - 0.1;
         const tr = (dx, dz) => [x + (dx * Math.cos(ry) + dz * Math.sin(ry)) * s, z + (-dx * Math.sin(ry) + dz * Math.cos(ry)) * s];
         k.box(1.3 * s, 0.85 * s, 0.95 * s, x, y, z, wall, ry);
         k.roof(1.45 * s, 0.7 * s, 1.15 * s, x, y + 0.85 * s, z, roofC, ry);
         const [cx2, cz2] = tr(0.38, -0.15);
-        k.box(0.2 * s, 0.6 * s, 0.2 * s, cx2, y + 0.95 * s, cz2, H ? [0x9a6a5a, 0xb88a70] : [0x8a8098, 0xb0a6bc], ry);
+        k.box(0.2 * s, 0.6 * s, 0.2 * s, cx2, y + 0.95 * s, cz2, CT.chimney, ry);
         const [dx2, dz2] = tr(-0.15, 0.48);
-        k.box(0.28 * s, 0.48 * s, 0.04 * s, dx2, y, dz2, H ? 0x8a5a32 : 0x7a5a78, ry);
+        k.box(0.28 * s, 0.48 * s, 0.04 * s, dx2, y, dz2, CT.door, ry);
         const [wx, wz] = tr(0.3, 0.48);
-        k.box(0.22 * s, 0.22 * s, 0.04 * s, wx, y + 0.4 * s, wz, H ? 0xffd070 : 0x9affc0, ry, true);
+        k.box(0.22 * s, 0.22 * s, 0.04 * s, wx, y + 0.4 * s, wz, CT.win, ry, true);
         smokers.push([cx2, y + 1.6 * s, cz2]);
       };
-      if (H) {
+      // lit lanterns along the road (necro bone posts, inferno braziers, dungeon crystal lamps): halos + motes below
+      env.lanterns = [];
+      const lowAt = (x, z, r = 0.25) => Math.min(at(x, z), at(x - r, z - r), at(x + r, z - r), at(x - r, z + r), at(x + r, z + r));
+      const LAMPS = [[-1.0, -0.2, 0.9], [1.0, -0.2, 0.9], [-0.75, 5.0, 1], [0.75, 5.0, 1], [-6.3, -1.0, 1], [6.3, -1.0, 1], [-4.9, 4.6, 0.95], [4.9, 4.6, 0.95]];
+      const rocks = (n, c) => { for (let i = 0; i < n; i++) { const x = (R() - 0.5) * 40, z = -R() * 20 + 6; if (flatD(x, z) < 1.1 || (z > 2 && Math.abs(x) < 9)) continue; k.add(new T.IcosahedronGeometry(0.3 + R() * 0.5, 0).scale(1, 0.6, 1).translate(x, at(x, z), z), c); } };
+      if (fac === 'haven') {
         cottage(12, -8, -0.4); cottage(15, -4.5, -0.8, 0.85); cottage(-12.5, 3.5, 0.6, 0.9); cottage(-17, -5, 0.3, 0.8);
         // windmill on the left hill
         const wx = -14.5, wz = -9, wy = at(wx, wz) - 0.2;
@@ -749,10 +929,10 @@ void main() {
         G.add(bm);
         env.updaters.push((dt) => { bm.rotation.z -= dt * 0.7; });
         // rocks
-        for (let i = 0; i < 14; i++) { const x = (R() - 0.5) * 40, z = -R() * 20 + 6; if (flatD(x, z) < 1.1 || (z > 2 && Math.abs(x) < 9)) continue; k.add(new T.IcosahedronGeometry(0.3 + R() * 0.5, 0).scale(1, 0.6, 1).translate(x, at(x, z), z), [0x9a948a, 0xd0ccc0]); }
+        rocks(14, [0x9a948a, 0xd0ccc0]);
         // hay bales by the fields
         for (const [x, z] of [[-16, -16], [-18, -19], [-21, -15]]) k.add(new T.CylinderGeometry(0.4, 0.4, 0.5, 10).rotateZ(Math.PI / 2).translate(x, at(x, z) + 0.35, z), [0xd8b050, 0xf0d070]);
-      } else {
+      } else if (fac === 'necro') {
         cottage(12.5, -8, -0.4); cottage(-12, 3, 0.5, 0.9);
         // ruined watch tower with a green-lit window
         const wx = -14.5, wz = -9, wy = at(wx, wz) - 0.3;
@@ -775,7 +955,6 @@ void main() {
           }
         }
         // a broken bone fence along the foreground, every post sunk to the lowest ground under it
-        const lowAt = (x, z, r = 0.25) => Math.min(at(x, z), at(x - r, z - r), at(x + r, z - r), at(x - r, z + r), at(x + r, z + r));
         let prev = null;
         for (let i = 0; i < 16; i++) {
           const x = -8 + i * 1.1 + (R() - 0.5) * 0.2, z = 7.6 + Math.sin(i) * 0.3;
@@ -789,8 +968,7 @@ void main() {
           prev = [x, y, z];
         }
         // lanterns: bone posts with a skull and a green witch-light, along the road and round the plaza
-        env.lanterns = [];
-        for (const [x, z, s2] of [[-1.0, -0.2, 0.9], [1.0, -0.2, 0.9], [-0.75, 5.0, 1], [0.75, 5.0, 1], [-6.3, -1.0, 1], [6.3, -1.0, 1], [-4.9, 4.6, 0.95], [4.9, 4.6, 0.95]]) {
+        for (const [x, z, s2] of LAMPS) {
           const y = lowAt(x, z, 0.15) - 0.1, h = 1.45 * s2;
           k.cyl(0.05, 0.08, h, x, y, z, [0xb4a898, 0xf0e6d4], 6);
           k.cyl(0.13, 0.16, 0.12, x, y, z, [0x9a8ea8, 0xb8aec4], 7);
@@ -804,7 +982,7 @@ void main() {
           k.box(0.17, 0.04, 0.17, x + sx * 0.28, y + h - 0.54, z, 0x8a7e96);
           env.lanterns.push([x + sx * 0.28, y + h - 0.4, z]);
         }
-        for (let i = 0; i < 14; i++) { const x = (R() - 0.5) * 40, z = -R() * 20 + 6; if (flatD(x, z) < 1.1 || (z > 2 && Math.abs(x) < 9)) continue; k.add(new T.IcosahedronGeometry(0.3 + R() * 0.5, 0).scale(1, 0.6, 1).translate(x, at(x, z), z), [0x9c96ac, 0xc8c2d6]); }
+        rocks(14, [0x9c96ac, 0xc8c2d6]);
         // round 3 pass 4: calm, low foreground detail at the edges of the view (the small town's foreground was an
         // empty plain): sunken graves, flat ash rocks and dead-grass tufts in muted tones, never in the middle
         {
@@ -834,13 +1012,187 @@ void main() {
             }
           }
         }
+      } else if (fac === 'sylvan') {
+        cottage(12, -8, -0.4); cottage(15, -4.5, -0.8, 0.85); cottage(-12.5, 3.5, 0.6, 0.9);
+        // an elven stone circle with glowing runes on the left hill (where Haven's windmill stands)
+        const cx = -14.5, cz = -9, cy = at(cx, cz) - 0.15;
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * 6.283 + 0.3, x = cx + Math.cos(a) * 2.2, z = cz + Math.sin(a) * 1.7, h = 1.3 + R() * 0.6, y = at(x, z) - 0.15;
+          k.add(new T.BoxGeometry(0.45, h, 0.3).translate(0, h / 2, 0).rotateY(-a).rotateZ((R() - 0.5) * 0.12).translate(x, y, z), [0xa0a490, 0xd8dcc8]);
+          k.add(new T.BoxGeometry(0.47, 0.12, 0.32).translate(0, h, 0).rotateY(-a).translate(x, y, z), [0x5e9a48, 0x7ab85a]);
+          k.add(new T.BoxGeometry(0.1, 0.3, 0.02).translate(0, h * 0.55, 0.16).rotateY(-a + Math.PI / 2).translate(x, y, z), 0xc8ff80, true);
+        }
+        k.add(new T.CylinderGeometry(0.5, 0.65, 0.5, 8).translate(cx, cy + 0.25, cz), [0xa8ac98, 0xd0d4c0]);
+        k.add(new T.OctahedronGeometry(0.28, 0).scale(1, 1.6, 1).translate(cx, cy + 0.95, cz), 0xd8ffa0, true);
+        env.lanterns.push([cx, cy + 0.95, cz]);
+        // mossy rocks, red-capped toadstools and flowering bushes at the edges
+        rocks(12, [0x8c9480, 0xb8c4a4]);
+        for (let i = 0; i < 26; i++) {
+          const x = (R() - 0.5) * 36, z = -R() * 22 + 7;
+          if (flatD(x, z) < 1.12 || (z > 2 && Math.abs(x) < 8.5) || riverDist(x, z) < riverWidth(x, z) / 2 + 1.2) continue;
+          const y = at(x, z);
+          if (R() < 0.45) { // toadstool pair
+            for (const [dx, dz, sc] of [[0, 0, 1], [0.22, 0.12, 0.65]]) {
+              k.add(new T.CylinderGeometry(0.05 * sc, 0.07 * sc, 0.3 * sc, 6).translate(x + dx, y + 0.15 * sc, z + dz), [0xe8dcc4, 0xfff6e8]);
+              k.add(new T.SphereGeometry(0.2 * sc, 8, 4, 0, 6.283, 0, Math.PI / 2).scale(1, 0.6, 1).translate(x + dx, y + 0.28 * sc, z + dz), [0xc83a2a, 0xe8583a]);
+            }
+          } else { // a flowering bush
+            const fc = R() < 0.5 ? 0xf0d8f0 : 0xfff0a0;
+            k.add(new T.IcosahedronGeometry(0.42, 0).scale(1.2, 0.7, 1).translate(x, y + 0.2, z), (px, py, pz, c) => c.set(0x4a7e44).lerp(col(fc), py - y > 0.42 ? 0.55 : 0));
+          }
+        }
+        // elven lamps: slim wooden posts with a golden leaf lantern
+        for (const [x, z, s2] of LAMPS) {
+          const y = lowAt(x, z, 0.15) - 0.1, h = 1.35 * s2;
+          k.cyl(0.04, 0.07, h, x, y, z, [0x7a5a3a, 0xa88458], 6);
+          k.add(new T.ConeGeometry(0.16, 0.16, 6).rotateX(Math.PI).translate(x, y + h + 0.02, z), [0x4a8a40, 0x7ab85a]);
+          k.add(new T.OctahedronGeometry(0.1, 0).scale(1, 1.4, 1).translate(x, y + h - 0.12, z), 0xffe890, true);
+          env.lanterns.push([x, y + h - 0.12, z]);
+        }
+        // golden light shafts slanting through the canopy
+        const shaftTex = canvasTex(64, 256, (g, w, h) => {
+          const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,240,180,0)'); gr.addColorStop(0.25, 'rgba(255,236,170,0.55)'); gr.addColorStop(1, 'rgba(255,230,160,0)');
+          g.fillStyle = gr; g.fillRect(0, 0, w, h);
+          g.globalCompositeOperation = 'destination-in';
+          const gx = g.createLinearGradient(0, 0, w, 0); gx.addColorStop(0, 'rgba(0,0,0,0)'); gx.addColorStop(0.5, 'rgba(0,0,0,1)'); gx.addColorStop(1, 'rgba(0,0,0,0)');
+          g.fillStyle = gx; g.fillRect(0, 0, w, h);
+        });
+        const shaftMat = keep(new T.MeshBasicMaterial({ map: shaftTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.32, side: T.DoubleSide, fog: false }));
+        const shafts = [];
+        for (const [x, z, w2, h2] of [[-17, -16, 3.2, 16], [19, -18, 3.6, 18], [-10, -22, 2.4, 14], [28, -30, 4, 20], [-28, -28, 4, 20]]) {
+          const m = new T.Mesh(keep(new T.PlaneGeometry(w2, h2)), shaftMat);
+          m.position.set(x, at(x, z) + h2 * 0.42, z); m.rotation.z = -0.38; m.renderOrder = 6;
+          G.add(m); shafts.push(m);
+        }
+        env.updaters.push((dt, t) => { shaftMat.opacity = 0.26 + 0.06 * Math.sin(t * 0.5); });
+        // calm fern tufts at the foreground edges
+        const rf = rng32(78);
+        for (let i = 0; i < 70; i++) {
+          const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13, x = side * (1.6 + Math.pow(rf(), 1.4) * (z < 7 ? 4 : 2.6));
+          if (LAMPS.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6) || Math.hypot(x - 5.7 * side, z - 4) < 0.6) continue;
+          const y = at(x, z), ry = rf() * 6.3, n = 4 + ((rf() * 3) | 0), tc = rf() < 0.5 ? [0x4e8040, 0x80aa5a] : [0x5a8a46, 0x8ab060];
+          for (let b = 0; b < n; b++) { const a = ry + b * 1.3, hb = 0.18 + rf() * 0.16; k.add(new T.ConeGeometry(0.05, hb, 3).scale(1, 1, 0.4).translate(0, hb / 2, 0).rotateX(0.5 + rf() * 0.4).rotateY(a).translate(x, y - 0.02, z), tc); }
+        }
+      } else if (fac === 'inferno') {
+        cottage(12.5, -8, -0.4); cottage(-12, 3, 0.5, 0.9);
+        // a great volcano on the horizon with a glowing crater, lava runs and a smoke plume
+        {
+          const vx = -95, vz = -440, vr = 105, vh = 130, vy = at(vx, vz) - 4;
+          const cone = new T.CylinderGeometry(vr * 0.16, vr, vh, 28, 6, true);
+          const vp = cone.attributes.position;
+          for (let i = 0; i < vp.count; i++) { const x = vp.getX(i), z = vp.getZ(i), y = vp.getY(i), a = Math.atan2(z, x); const s2 = 1 + (vnoise(Math.cos(a) * 3 + 5, Math.sin(a) * 3 + y * 0.02, 5) - 0.5) * 0.22; vp.setX(i, x * s2); vp.setZ(i, z * s2); }
+          k.add(cone.translate(vx, vy + vh / 2, vz), (px, py, pz, c) => c.set(0x6e2a20).lerp(col(0xa04a34), clamp((py - vy) / vh, 0, 1)));
+          k.add(new T.CylinderGeometry(vr * 0.155, vr * 0.155, 2, 24).translate(vx, vy + vh - 3, vz), 0xffb040, true);
+          for (let i = 0; i < 6; i++) {
+            const a = 0.75 + i * 0.32 + (R() - 0.5) * 0.15, L = vh * (0.55 + R() * 0.35); // on the camera-facing (+z) flank
+            const pts = [];
+            for (let j = 0; j <= 8; j++) { const t = j / 8, r2 = lerp(vr * 0.17, vr * 0.17 + (vr * 0.83) * (L / vh), t), ww = Math.sin(t * 9 + i) * 0.08; pts.push(new V3(vx + Math.cos(a + ww) * r2, vy + vh - t * L - 0.5, vz + Math.sin(a + ww) * r2)); }
+            const tube = new T.TubeGeometry(new T.CatmullRomCurve3(pts), 16, 2.6 - i * 0.2, 4, false);
+            k.add(tube, 0xff7a20, true);
+          }
+          const plumeTex = cloudTexture([200, 140, 120], false, 21);
+          for (let i = 0; i < 4; i++) {
+            const pm = new T.Sprite(keep(new T.SpriteMaterial({ map: plumeTex, color: col(0xffd8c0), transparent: true, depthWrite: false, opacity: 0.75 - i * 0.12, fog: false })));
+            pm.position.set(vx + i * 26, vy + vh + 22 + i * 34, vz - 10); pm.scale.set(120 + i * 55, 70 + i * 24, 1); pm.renderOrder = -8;
+            G.add(pm);
+          }
+        }
+        // braziers along the road: a red-rock pedestal, a gold-rimmed bowl and a living flame
+        for (const [x, z, s2] of LAMPS) {
+          const y = lowAt(x, z, 0.15) - 0.1, h = 1.05 * s2;
+          k.cyl(0.12, 0.18, h, x, y, z, [0x8a4a3a, 0xc07658], 6);
+          k.cyl(0.24, 0.12, 0.18, x, y + h, z, [0xb08030, 0xf0c050], 8);
+          k.add(new T.ConeGeometry(0.14, 0.4, 6).translate(x, y + h + 0.32, z), 0xffa030, true);
+          env.lanterns.push([x, y + h + 0.3, z]);
+        }
+        // glowing lava pools rimmed with red rock, steaming
+        for (const [x, z, r] of [[-10.5, 4.2, 0.9], [11, 5, 1.0], [-16, -3.5, 1.3], [15.5, -2.5, 1.1], [-8, -12, 1.2], [9, -12.5, 1.0]]) {
+          if (riverDist(x, z) < riverWidth(x, z) / 2 + 1.5) continue;
+          const y = lowAt(x, z, r);
+          k.add(new T.CircleGeometry(r, 12).rotateX(-Math.PI / 2).translate(x, y + 0.04, z), 0xff8a2a, true);
+          for (let i = 0; i < 9; i++) { const a = (i / 9) * 6.283 + R() * 0.3; k.add(new T.IcosahedronGeometry(0.18 + R() * 0.16, 0).scale(1, 0.6, 1).translate(x + Math.cos(a) * r * 1.05, y + 0.02, z + Math.sin(a) * r * 1.05), [0x7e4636, 0xb06a50]); }
+          smokers.push([x, y + 0.3, z]);
+        }
+        rocks(16, [0x8e5444, 0xc08066]);
+        // calm foreground: flat red-rock slabs and small ember cracks at the edges
+        const rf = rng32(79);
+        for (let i = 0; i < 90; i++) {
+          const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13, x = side * (1.4 + Math.pow(rf(), 1.4) * (z < 7 ? 4.2 : 2.6));
+          if (LAMPS.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6) || Math.hypot(x - 5.7 * side, z - 4) < 0.6) continue;
+          const y = at(x, z), ry = rf() * 6.3;
+          { const r = 0.1 + rf() * 0.18; k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x8a5a48, 0xaa7458]); }
+        }
+      } else if (fac === 'dungeon') {
+        // crystal clusters: violet rock bases with tall teal / violet shards (the small ones glow)
+        const cluster = (x, z, s2, glowC = 0x5af0e0) => {
+          const y = at(x, z);
+          k.add(new T.IcosahedronGeometry(0.55 * s2, 0).scale(1.4, 0.4, 1.1).translate(x, y - 0.05 * s2, z), [0x5e4e8e, 0x8a7ab8]);
+          for (let i = 0; i < 6; i++) {
+            const a = R() * 6.283, r = R() * 0.45 * s2, h = (0.7 + R() * 1.3) * s2, w = (0.13 + R() * 0.08) * s2;
+            const g = new T.OctahedronGeometry(1, 0).scale(w, h / 2, w).translate(0, h * 0.4, 0).rotateZ((R() - 0.5) * 0.9).rotateY(a).translate(x + Math.cos(a) * r, y, z + Math.sin(a) * r);
+            if (i < 2) k.add(g, glowC, true); else k.add(g, glowC === 0x5af0e0 ? [0x0aa8b8, 0x7affef] : [0x8a3ad8, 0xd8a0ff]);
+          }
+          env.lanterns.push([x, y + 0.7 * s2, z]);
+        };
+        for (const [x, z, s2, c] of [[-14.5, -9, 1.6], [12.5, -8, 1.3, 0xd0a0ff], [-12, 3, 1.1], [13, 2, 1.2], [-20, -2, 1.4, 0xd0a0ff], [20, -4, 1.5], [-8.5, -13, 1.0], [8, -13.5, 1.1, 0xd0a0ff],
+          [-30, -38, 3.2], [34, -44, 3.6, 0xd0a0ff], [-48, -70, 5], [52, -80, 5.5]]) cluster(x, z, s2, c);
+        // a glowing waterfall pouring from the cavern wall
+        {
+          const wx = 26, wz = -62, wy = at(wx, wz) - 1, wh = 34, ww = 5;
+          // the cliff: one displaced slab of violet rock, lighter towards the top, with a notch the water pours from
+          const cl = new T.BoxGeometry(40, wh + 10, 10, 10, 8, 2);
+          const cp = cl.attributes.position;
+          for (let i = 0; i < cp.count; i++) {
+            const x = cp.getX(i), y = cp.getY(i), z = cp.getZ(i);
+            const n = fbm(x * 0.12 + 3, y * 0.12, 3, 41) - 0.5;
+            cp.setXYZ(i, x + n * 1.5, y + (y > 0 ? n * 4 - (Math.abs(x) < 4 ? 3 : 0) : 0), z + n * 1.8);
+          }
+          k.add(cl.translate(wx, wy + (wh + 10) / 2 - 3, wz - 5.2), (px, py, pz, c) => c.set(0x7a6cae).lerp(col(0xa898d4), clamp((py - wy) / (wh + 6), 0, 1)));
+          const fallTex = canvasTex(64, 256, (g, w, h) => {
+            g.fillStyle = 'rgb(120,220,230)'; g.fillRect(0, 0, w, h);
+            const r = rng32(17);
+            for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(240,255,255,${0.25 + r() * 0.5})`; g.fillRect(r() * w, r() * h, 1 + r() * 3, 18 + r() * 60); }
+          });
+          fallTex.wrapS = fallTex.wrapT = T.RepeatWrapping;
+          const fallMat = keep(new T.MeshBasicMaterial({ map: fallTex, transparent: true, opacity: 0.92, fog: true, toneMapped: false }));
+          fallMat.color.setScalar(1.15);
+          const fall = new T.Mesh(keep(new T.PlaneGeometry(ww, wh + 1, 1, 6).translate(0, (wh + 1) / 2, 0)), fallMat);
+          fall.position.set(wx, wy, wz); G.add(fall);
+          env.updaters.push((dt) => { fallTex.offset.y += dt * 0.9; });
+          k.add(new T.CircleGeometry(ww * 0.95, 14).scale(1.4, 1, 1).rotateX(-Math.PI / 2).translate(wx, wy + 0.6, wz + 2), 0x7af0f0, true);
+          const spray = [];
+          for (let i = 0; i < 5; i++) {
+            const m = new T.Sprite(keep(new T.SpriteMaterial({ map: mistTex, color: col(0xe8ffff), transparent: true, depthWrite: false, opacity: 0.55 })));
+            m.position.set(wx + (i - 2) * 2.5, wy + 2 + R() * 2, wz + 2.5); m.scale.set(12, 5, 1); G.add(m); spray.push([m, R() * 6]);
+          }
+          env.updaters.push((dt, t) => { for (const [m, ph] of spray) m.material.opacity = 0.4 + 0.15 * Math.sin(t * 0.9 + ph); });
+        }
+        // mushroom lamps along the road
+        for (const [x, z, s2] of LAMPS) {
+          const y = lowAt(x, z, 0.15) - 0.1, h = 1.2 * s2;
+          k.cyl(0.05, 0.09, h, x, y, z, [0xb8acd0, 0xe8e0f4], 6);
+          k.add(new T.SphereGeometry(0.24, 8, 4, 0, 6.283, 0, Math.PI / 2).scale(1, 0.6, 1).translate(x, y + h, z), [0x7a4ab8, 0xb07ae0]);
+          k.add(new T.CylinderGeometry(0.22, 0.06, 0.05, 8).translate(x, y + h - 0.03, z), 0x6af0e0, true);
+          env.lanterns.push([x, y + h - 0.1, z]);
+        }
+        rocks(14, [0x7e74a0, 0xaaa0c8]);
+        // calm foreground: violet pebbles, small crystal sprouts and pale cave moss at the edges
+        const rf = rng32(80);
+        for (let i = 0; i < 90; i++) {
+          const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13, x = side * (1.4 + Math.pow(rf(), 1.4) * (z < 7 ? 4.2 : 2.6));
+          if (LAMPS.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6) || Math.hypot(x - 5.7 * side, z - 4) < 0.6) continue;
+          const y = at(x, z), ry = rf() * 6.3, kind = rf();
+          if (kind < 0.18) { const h = 0.2 + rf() * 0.2; k.add(new T.OctahedronGeometry(1, 0).scale(0.06, h / 2, 0.06).translate(0, h * 0.4, 0).rotateZ((rf() - 0.5) * 0.6).rotateY(ry).translate(x, y, z), [0x3aa0b0, 0x9af4ee]); }
+          else if (kind < 0.6) { const r = 0.1 + rf() * 0.16; k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x8a80a4, 0xa69ec0]); }
+          else if (kind < 0.75) { const r = 0.25 + rf() * 0.2; k.add(new T.IcosahedronGeometry(r, 0).scale(1.4, 0.18, 1).rotateY(ry).translate(x, y - 0.01, z), [0x5e7a8e, 0x6e8a9c]); }
+        }
       }
       // banner poles along the main road and by the lots
       const flags = kit(9), wave = [];
       const banner = (x, z, h = 2.6, side = 1) => {
         const y = at(x, z);
-        k.cyl(0.04, 0.05, h, x, y, z, H ? [0xb08a50, 0xe8c070] : [0xb0a4a0, 0xe8dccc], 6);
-        k.add(new T.SphereGeometry(0.08, 6, 4).translate(x, y + h + 0.04, z), H ? 0xf8d050 : 0xd8d0c0);
+        k.cyl(0.04, 0.05, h, x, y, z, P.pole, 6);
+        k.add(new T.SphereGeometry(0.08, 6, 4).translate(x, y + h + 0.04, z), P.knob);
         // cloth: a strip of quads hanging from the top, extending along +x
         const L = 0.75, Hh = 1.0, nx = 6, ny = 3;
         const g = new T.PlaneGeometry(L, Hh, nx, ny).translate(L / 2, -Hh / 2, 0);
@@ -891,10 +1243,9 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
         while (acc > 0.18) {
           acc -= 0.18;
           const s = smokers[(Math.random() * smokers.length) | 0];
-          if (s) soft.spawn({ x: s[0] + (Math.random() - 0.5) * 0.1, y: s[1], z: s[2], vy: 0.45, vx: 0.1, wind: 0.18, drag: 0.2, s0: 0.35, s1: 1.6, a: H() ? 0.5 : 0.45, life: 3.5, c: smokeC });
+          if (s) soft.spawn({ x: s[0] + (Math.random() - 0.5) * 0.1, y: s[1], z: s[2], vy: 0.45, vx: 0.1, wind: 0.18, drag: 0.2, s0: 0.35, s1: 1.6, a: fac === 'haven' ? 0.5 : 0.45, life: 3.5, c: smokeC });
         }
       });
-      const H = () => fac === 'haven';
       if (fac === 'necro') {
         // green will-o'-wisps drifting over the moor and graves
         const wc = col(0x8affb0);
@@ -909,20 +1260,24 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
             glowP.spawn({ x, y: groundH(x, z, 'necro') + 0.3 + Math.random() * 1.2, z, vx: (Math.random() - 0.5) * 0.4, vy: 0.12, vz: (Math.random() - 0.5) * 0.4, drag: 0.1, s0: 0.25, s1: 0.2, a: 0.9, life: 4 + Math.random() * 3, c: wc, twinkle: true });
           }
         });
-        // lantern halos and rising motes
-        const haloMat = keep(new T.SpriteMaterial({ map: softTex, color: col(0x6effa8), transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.5, fog: false }));
-        const halos = (env.lanterns || []).map(([x, y, z], i) => { const h = new T.Sprite(haloMat); h.position.set(x, y, z + 0.02); h.scale.setScalar(0.8); h.renderOrder = 4; G.add(h); return [h, i * 1.7]; });
+      }
+      // lantern halos and rising motes
+      if (env.lanterns?.length && P.lamp) {
+        const haloMat = keep(new T.SpriteMaterial({ map: softTex, color: col(P.lamp[0]), transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: P.lamp[2] ?? 0.5, fog: false }));
+        const halos = env.lanterns.map(([x, y, z], i) => { const h = new T.Sprite(haloMat); h.position.set(x, y, z + 0.02); h.scale.setScalar(0.8); h.renderOrder = 4; G.add(h); return [h, i * 1.7]; });
         let lacc = 0;
-        const lc = col(0xb0ffd0);
+        const lc = col(P.lamp[1]), hs = P.lamp[3] ?? 0.75;
         env.updaters.push((dt, t) => {
-          for (const [h, ph] of halos) h.scale.setScalar(0.75 + 0.08 * Math.sin(t * 3.1 + ph) + 0.04 * Math.sin(t * 7.3 + ph * 2));
+          for (const [h, ph] of halos) h.scale.setScalar(hs + 0.08 * Math.sin(t * 3.1 + ph) + 0.04 * Math.sin(t * 7.3 + ph * 2));
           lacc += dt;
           while (lacc > 0.3) { lacc -= 0.3; const L = env.lanterns[(Math.random() * env.lanterns.length) | 0]; if (L) glowP.spawn({ x: L[0] + (Math.random() - 0.5) * 0.2, y: L[1], z: L[2], vx: (Math.random() - 0.5) * 0.15, vy: 0.25 + Math.random() * 0.2, drag: 0.4, s0: 0.1, s1: 0.04, a: 0.9, life: 1.8 + Math.random(), c: lc, twinkle: true }); }
         });
-        // low mist banks
-        const mists = [];
-        for (let i = 0; i < 16; i++) {
-          const m = keep(new T.SpriteMaterial({ map: mistTex, color: col(0xf4e8ff), transparent: true, depthWrite: false, opacity: 0.3 }));
+      }
+      // low mist banks
+      if (P.mist) {
+        const mists = [], MI = P.mist;
+        for (let i = 0; i < MI.n; i++) {
+          const m = keep(new T.SpriteMaterial({ map: mistTex, color: col(MI.c), transparent: true, depthWrite: false, opacity: MI.o }));
           const s = new T.Sprite(m);
           let x, z;
           do { x = (R() - 0.5) * 80; z = -R() * 50 - 2; } while (Math.abs(x) < 11 && z > -10);
@@ -931,35 +1286,50 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
           mists.push({ s, sp: 0.15 + R() * 0.25, x0: x });
           G.add(s);
         }
-        env.updaters.push((dt, t) => { for (const m of mists) { m.s.position.x = m.x0 + Math.sin(t * m.sp * 0.3 + m.x0) * 2.5; m.s.material.opacity = 0.24 + 0.08 * Math.sin(t * 0.4 + m.x0); } });
-      } else {
-        // butterflies / pollen sparkles over the meadow
-        const pc = col(0xfff4c0);
+        env.updaters.push((dt, t) => { for (const m of mists) { m.s.position.x = m.x0 + Math.sin(t * m.sp * 0.3 + m.x0) * 2.5; m.s.material.opacity = MI.o * 0.8 + MI.o * 0.27 * Math.sin(t * 0.4 + m.x0); } });
+      }
+      // free-floating motes: pollen (haven), fireflies (sylvan), embers (inferno), crystal motes (dungeon)
+      const MOTES = {
+        haven: { every: 0.35, c: [0xfff4c0], spawn: () => ({ x: (Math.random() - 0.5) * 24, z: (Math.random() - 0.5) * 18 - 2, y: 0.3 + Math.random() * 1.5, vx: (Math.random() - 0.5) * 0.3, vy: 0.08, drag: 0.1, s0: 0.08, s1: 0.06, a: 0.7, life: 3 }) },
+        sylvan: { every: 0.07, c: [0xe8ff70, 0xfff0a0, 0xc0ff80], spawn: () => { const a = Math.random() * 6.283, d = 4 + Math.random() * 16, x = Math.sin(a) * d * 1.3, z = -3 + Math.cos(a) * d * 0.8;
+          return { x, z, y: Math.max(0, groundH(x, z, fac)) + 0.2 + Math.random() * 2.2, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.4) * 0.2, vz: (Math.random() - 0.5) * 0.5, drag: 0.05, s0: 0.13, s1: 0.1, a: 1, life: 3 + Math.random() * 3 }; } },
+        inferno: { every: 0.045, c: [0xffa030, 0xffd060, 0xff6a20], spawn: () => {
+          // embers rise off the lava river and the scorched ground round the town
+          let x, z;
+          if (Math.random() < 0.55) { const pt = RIV.pts[150 + ((Math.random() * 600) | 0)]; x = pt.x + (Math.random() - 0.5) * 3; z = pt.z + (Math.random() - 0.5) * 2; }
+          else { x = (Math.random() - 0.5) * 30; z = -Math.random() * 20 + 4; }
+          return { x, z, y: Math.max(-0.3, groundH(x, z, fac)) + 0.1, vx: (Math.random() - 0.5) * 0.3, vy: 0.7 + Math.random() * 0.9, vz: (Math.random() - 0.5) * 0.3, wind: 0.25, drag: 0.15, s0: 0.14, s1: 0.05, a: 1, life: 2.5 + Math.random() * 2.5 }; } },
+        dungeon: { every: 0.09, c: [0x7af8ec, 0xc8a0ff, 0xb0fff8], spawn: () => { const x = (Math.random() - 0.5) * 34, z = -Math.random() * 26 + 6;
+          return { x, z, y: 0.4 + Math.random() * 3, vx: (Math.random() - 0.5) * 0.2, vy: 0.1 + Math.random() * 0.15, vz: (Math.random() - 0.5) * 0.2, drag: 0.05, s0: 0.11, s1: 0.07, a: 0.9, life: 4 + Math.random() * 3 }; } },
+      }[fac];
+      if (MOTES) {
+        const mc = MOTES.c.map(col);
         let pacc = 0;
         env.updaters.push((dt) => {
           pacc += dt;
-          while (pacc > 0.35) { pacc -= 0.35; const x = (Math.random() - 0.5) * 24, z = (Math.random() - 0.5) * 18 - 2; glowP.spawn({ x, y: 0.3 + Math.random() * 1.5, z, vx: (Math.random() - 0.5) * 0.3, vy: 0.08, drag: 0.1, s0: 0.08, s1: 0.06, a: 0.7, life: 3, c: pc, twinkle: true }); }
+          while (pacc > MOTES.every) { pacc -= MOTES.every; glowP.spawn({ ...MOTES.spawn(), c: mc[(Math.random() * mc.length) | 0], twinkle: true }); }
         });
       }
-      // birds (haven) / bats (necro): instanced wings, flapped on the CPU
-      const NB = fac === 'haven' ? 9 : 12;
+      // birds (haven, sylvan) / bats (necro, inferno, dungeon): instanced wings, flapped on the CPU
+      const FL = P.flyers || { n: 9, bat: false, h: 14 }, BAT = FL.bat;
+      const NB = FL.n;
       const wing = new T.BufferGeometry();
-      wing.setAttribute('position', new T.Float32BufferAttribute(fac === 'haven'
+      wing.setAttribute('position', new T.Float32BufferAttribute(!BAT
         ? [0, 0, 0.12, 0.62, 0, -0.06, 0, 0, -0.14, 0.62, 0, -0.06, 0.32, 0, 0.02, 0, 0, 0.12]
         : [0, 0, 0.1, 0.5, 0.0, 0.05, 0.25, 0, -0.08, 0.5, 0, 0.05, 0.42, 0, -0.14, 0.25, 0, -0.08, 0.25, 0, -0.08, 0, 0, -0.1, 0, 0, 0.1], 3));
       wing.computeVertexNormals(); keep(wing);
       const wm = keep(new T.MeshBasicMaterial({ color: col(P.birds), side: T.DoubleSide }));
       const im = new T.InstancedMesh(wing, wm, NB * 2); im.frustumCulled = false;
       G.add(im);
-      const birds = Array.from({ length: NB }, (_, i) => ({ cx: (R() - 0.5) * (fac === 'haven' ? 26 : 30), cz: -10 - R() * 30, r: 5 + R() * 9, h: (fac === 'haven' ? 14 : 12) + R() * 10, sp: (0.18 + R() * 0.15) * (R() < 0.5 ? -1 : 1) * (fac === 'necro' ? 1.8 : 1), ph: R() * 7, s: fac === 'haven' ? 0.9 + R() * 0.4 : 0.7 + R() * 0.3 }));
+      const birds = Array.from({ length: NB }, (_, i) => ({ cx: (R() - 0.5) * (BAT ? 30 : 26), cz: -10 - R() * 30, r: 5 + R() * 9, h: FL.h + R() * 10, sp: (0.18 + R() * 0.15) * (R() < 0.5 ? -1 : 1) * (BAT ? 1.8 : 1), ph: R() * 7, s: BAT ? 0.7 + R() * 0.3 : 0.9 + R() * 0.4 }));
       const m4 = new T.Matrix4(), q = new T.Quaternion(), qa = new T.Quaternion(), e = new T.Euler(), p = new V3(), sc = new V3();
       env.updaters.push((dt, t) => {
         birds.forEach((b, i) => {
           const a = b.ph + t * b.sp;
-          p.set(b.cx + Math.cos(a) * b.r, b.h + Math.sin(t * 0.7 + b.ph) * 0.8 + (fac === 'necro' ? Math.sin(t * 5 + b.ph) * 0.3 : 0), b.cz + Math.sin(a) * b.r * 0.6);
+          p.set(b.cx + Math.cos(a) * b.r, b.h + Math.sin(t * 0.7 + b.ph) * 0.8 + (BAT ? Math.sin(t * 5 + b.ph) * 0.3 : 0), b.cz + Math.sin(a) * b.r * 0.6);
           const heading = Math.atan2(-Math.sin(a) * b.sp, Math.cos(a) * b.sp * 0.6) ;
-          const flapping = fac === 'necro' || Math.sin(t * 0.5 + b.ph) > -0.2;
-          const flap = flapping ? Math.sin(t * (fac === 'haven' ? 7 : 13) + b.ph * 3) * 0.65 : 0.12;
+          const flapping = BAT || Math.sin(t * 0.5 + b.ph) > -0.2;
+          const flap = flapping ? Math.sin(t * (BAT ? 13 : 7) + b.ph * 3) * 0.65 : 0.12;
           q.setFromEuler(e.set(0, heading, -Math.sign(b.sp) * 0.25));
           for (let w = 0; w < 2; w++) {
             qa.setFromEuler(e.set(0, 0, (w ? -1 : 1) * flap)).premultiply(q);
@@ -986,15 +1356,13 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   function placeholder(fac, id) {
     const k = kit(id.length * 31 + id.charCodeAt(id.length - 1));
     const [w, d, h] = DIMS[id] || [2, 2, 2];
-    const H = fac === 'haven';
-    const wall = H ? [0xd8d0c4, 0xfaf6ee] : [0x7a7090, 0xa49ab8];
-    const roof = H ? [0x2a5ad8, 0x5a8af0] : [0x4a3a5a, 0x6e5a80];
-    const trim = H ? 0xf0c040 : 0x8affb0;
+    const PH = (PAL[fac] || PAL.haven).ph;
+    const wall = PH.wall, roof = PH.roof, trim = PH.trim;
     if (id === 'fort') {
       k.box(w, h * 0.7, d * 0.7, 0, 0, 0, wall);
       for (let i = 0; i < 15; i++) k.box(0.32, 0.3, d * 0.72, -w / 2 + 0.3 + i * ((w - 0.6) / 14), h * 0.7, 0, wall);
       for (const x of [-w / 2, w / 2, -1.1, 1.1]) { k.cyl(0.55, 0.6, h * (Math.abs(x) < 2 ? 1.05 : 0.95), x, 0, 0, wall, 8); k.cone(0.7, 0.9, x, h * (Math.abs(x) < 2 ? 1.05 : 0.95), 0, roof, 8); }
-      k.box(1.2, 1.3, 0.1, 0, 0, d * 0.36, H ? 0x7a5030 : 0x3e3248);
+      k.box(1.2, 1.3, 0.1, 0, 0, d * 0.36, PH.door);
     } else if (/^mage/.test(id)) {
       k.cyl(w * 0.36, w * 0.45, h * 0.72, 0, 0, 0, wall, 8);
       k.cone(w * 0.48, h * 0.3, 0, h * 0.7, 0, roof, 8);
@@ -1003,10 +1371,10 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
       const bh = h * 0.55;
       k.box(w * 0.82, bh, d * 0.7, 0, 0, 0, wall);
       k.roof(w * 0.92, h - bh, d * 0.85, 0, bh, 0, roof);
-      k.box(w * 0.22, bh * 0.55, 0.05, 0, 0, d * 0.355, H ? 0x7a5030 : 0x3e3248);
+      k.box(w * 0.22, bh * 0.55, 0.05, 0, 0, d * 0.355, PH.door);
       k.box(w * 0.16, w * 0.14, 0.05, -w * 0.25, bh * 0.55, d * 0.355, trim, 0, true);
       k.box(w * 0.16, w * 0.14, 0.05, w * 0.25, bh * 0.55, d * 0.355, trim, 0, true);
-      if (/^u/.test(id) || id === 'hall3' || id === 'hall2') { k.cyl(0.03, 0.03, 0.7, 0, h - 0.05, 0, 0x8a7050, 5); k.box(0.4, 0.25, 0.02, 0.2, h + 0.35, 0, H ? 0x3a6ae0 : 0xb02040); }
+      if (/^u/.test(id) || id === 'hall3' || id === 'hall2') { k.cyl(0.03, 0.03, 0.7, 0, h - 0.05, 0, 0x8a7050, 5); k.box(0.4, 0.25, 0.02, 0.2, h + 0.35, 0, PH.flag); }
     }
     return { body: k.body(), glow: k.glow() };
   }
