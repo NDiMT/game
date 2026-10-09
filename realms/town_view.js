@@ -108,17 +108,21 @@ const PAL = {
   },
   necro: {
     // a luminous lavender / rose dusk: eerie but bright, never murky
-    zenith: 0x5c52ac, mid: 0xa690d0, horizon: 0xfac8c4, below: 0xc0b6b8, sunCol: 0xffd8ec, fog: 0xd8c8cc, fogNear: 90, fogFar: 950,
-    sunDir: [0.55, 0.5, 0.5], sun: 0xffdcc0, sunI: 3.1, hemiSky: 0xc2bae6, hemiGround: 0x8a8670, hemiI: 0.95, amb: 0xc4bcd6, ambI: 0.26,
+    // round 3 pass 4: zenith / mid ~20% deeper so the dusk has some value range (was pastel and flat)
+    zenith: 0x4a4290, mid: 0x8a76b2, horizon: 0xfac8c4, below: 0xc0b6b8, sunCol: 0xffd8ec, fog: 0xd8c8cc, fogNear: 90, fogFar: 950,
+    // sunDir places the low dusk sun in the sky; lightDir is the key light, set higher so cast shadows are short.
+    // shadowI / shadowR: softer, lighter cast shadows (the shade tint below makes them warm, not blue)
+    sunDir: [0.55, 0.5, 0.5], lightDir: [0.42, 0.82, 0.4], shadowI: 0.7, shadowR: 3, sun: 0xffdcc0, sunI: 3.0, hemiSky: 0xc2bae6, hemiGround: 0x8e8270, hemiI: 0.95, amb: 0xccbcc8, ambI: 0.26,
     // round 3: ash-grey / olive / bone ground, so the violet buildings stand out against it
-    grass: [0xa8a492, 0x949a7c, 0xd0c8b2, 0x9a909a], bank: 0xb8ac94, field: [0x9a9298, 0x8e9676, 0xa89c8a, 0x928c9c],
+    // pass 4: ~10% darker, plus large soft darker ash-olive patches (ash) for tonal structure
+    grass: [0x98947f, 0x83886a, 0xbcb39c, 0x8a8088], ash: 0x6e6c58, bank: 0xa89c84, field: [0x8a8288, 0x7e8666, 0x988c7a, 0x827c8c],
     mtn: [0x837a98, 0x9a92ae, 0xe4dcec], hill: 0x8e8c82,
     water: [0x2a7c88, 0x56c0a8, 0xbaf8dc], waterSky: 0xb49ad4, waterGlow: 0.35,
     path: '#d8d0c0', pathEdge: '#a69c8a', stone: ['#bcb4a2', '#e6e0d2', '#aaa292'], pad: 'rgba(70,66,54,0.2)',
     dots: ['rgba(170,140,184,0.45)', 'rgba(140,152,118,0.45)', 'rgba(170,240,200,0.4)', 'rgba(236,228,214,0.5)'],
     cloud: 0xfff0f8, cloudShade: [210, 170, 210], dust: 0xd0c0d4, smoke: 0xd8cce8, birds: 0x5a4870, banner: [0xc8183c, 0xf2e6c8],
     tree: 'dead', stars: 1,
-    groundTune: { shade: 0x8ea8a0, lift: 0.1, toe: 0.2, detail: 0.75 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
+    groundTune: { shade: 0xc0a090, lift: 0.18, toe: 0.2, detail: 0.85 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
   },
 };
 // river centre line (shared, the valley shape is the same)
@@ -423,7 +427,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
       const N = 168, cx = 0, cz = -2;
       const pos = [], cols = [], idx = [];
       const c = new T.Color(), g0 = col(P.grass[0]), g1 = col(P.grass[1]), g2 = col(P.grass[2]), g3 = col(P.grass[3]), bank = col(P.bank), hill = col(P.hill);
-      const fields = P.field.map(col);
+      const fields = P.field.map(col), ash = col(P.ash ?? P.grass[1]);
       for (let k = 0; k < radii.length; k++) for (let i = 0; i < N; i++) {
         const a = (i / N) * Math.PI * 2 + (k % 2) * (Math.PI / N), rr = radii[k];
         const x = cx + Math.sin(a) * rr, z = cz + Math.cos(a) * rr;
@@ -435,6 +439,9 @@ void main() { vec3 d = normalize(vD); float y = d.y;
           // sage-grey moor, violet heather patches, pale ash drifts
           const n3 = fbm(x * 0.16 + 31, z * 0.16, 3, 7);
           c.copy(g0).lerp(g1, smooth(0.45, 0.75, n1) * 0.75).lerp(g3, smooth(0.5, 0.7, n3) * 0.5).lerp(g2, smooth(0.64, 0.86, n2) * 0.4);
+          // pass 4: large, soft darker ash / olive patches so the plain has tonal structure (kept well above murk)
+          const n4 = fbm(x * 0.12 + 57, z * 0.12 - 13, 3, 11);
+          c.lerp(ash, smooth(0.5, 0.7, n4) * 0.5);
         } else c.copy(g0).lerp(g1, smooth(0.35, 0.7, n1)).lerp(g3, smooth(0.55, 0.2, n1) * 0.6).lerp(g2, smooth(0.6, 0.85, n2) * 0.35);
         if (y > 4) c.lerp(hill, smooth(4, 20, y) * 0.5);
         // patchwork fields on the left hills (haven) / heather moor (necro)
@@ -445,7 +452,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         }
         const rd = riverDist(x, z), rw = riverWidth(x, z) / 2;
         c.lerp(bank, smooth(rw + 2.8, rw + 0.6, rd) * 0.85);
-        c.multiplyScalar(fac === 'necro' ? 0.92 + n2 * 0.14 : 0.95 + n2 * 0.1);
+        c.multiplyScalar(fac === 'necro' ? 0.9 + n2 * 0.18 : 0.95 + n2 * 0.1);
         cols.push(c.r, c.g, c.b);
       }
       for (let k = 0; k < radii.length - 1; k++) for (let i = 0; i < N; i++) {
@@ -654,15 +661,17 @@ void main() {
         round: (() => {
           const k = kit(3);
           k.cyl(0.07, 0.12, 0.7, 0, 0, 0, [0x7a5232, 0x9a6a3e], 6);
-          const crown = fac === 'haven' ? [0x4c8a44, 0x98c070] : [0x8a9478, 0xb0b8a0];
+          // round 3 pass 4: calm sage / blue-green backdrop crowns (were lime-yellow and competed with the buildings);
+          // the gradient stops at ~60% so the sunlit tops never turn yellow under the strong sun
+          const crown = fac === 'haven' ? [0x3e6c48, 0x6e9468] : [0x8a9478, 0xb0b8a0];
           for (const [x, y, z, r] of [[0, 1.0, 0, 0.55], [0.28, 1.25, 0.08, 0.38], [-0.24, 1.2, -0.1, 0.4], [0.02, 1.45, -0.02, 0.33]])
-            k.add(new T.IcosahedronGeometry(r, 0).translate(x, y, z), (px, py, pz, c) => c.set(crown[0]).lerp(col(crown[1]), clamp((py - 0.55) / 1.25 + px * 0.15 + pz * 0.25, 0, 1)));
+            k.add(new T.IcosahedronGeometry(r, 0).translate(x, y, z), (px, py, pz, c) => c.set(crown[0]).lerp(col(crown[1]), clamp((py - 0.55) / 1.25 + px * 0.15 + pz * 0.25, 0, 1) * 0.6));
           return k.body();
         })(),
         pine: (() => {
           const k = kit(4);
           k.cyl(0.06, 0.1, 0.5, 0, 0, 0, [0x6a4a2e, 0x8a5e38], 5);
-          const pc = fac === 'haven' ? [0x3e6e50, 0x7eae78] : [0x6a6878, 0x9c98a8];
+          const pc = fac === 'haven' ? [0x3a6650, 0x689a74] : [0x6a6878, 0x9c98a8];
           for (const [y, r, h] of [[0.35, 0.55, 0.8], [0.75, 0.42, 0.7], [1.1, 0.3, 0.65]]) k.cone(r, h, 0, y, 0, pc, 7);
           return k.body();
         })(),
@@ -796,6 +805,33 @@ void main() {
           env.lanterns.push([x + sx * 0.28, y + h - 0.4, z]);
         }
         for (let i = 0; i < 14; i++) { const x = (R() - 0.5) * 40, z = -R() * 20 + 6; if (flatD(x, z) < 1.1 || (z > 2 && Math.abs(x) < 9)) continue; k.add(new T.IcosahedronGeometry(0.3 + R() * 0.5, 0).scale(1, 0.6, 1).translate(x, at(x, z), z), [0x9c96ac, 0xc8c2d6]); }
+        // round 3 pass 4: calm, low foreground detail at the edges of the view (the small town's foreground was an
+        // empty plain): sunken graves, flat ash rocks and dead-grass tufts in muted tones, never in the middle
+        {
+          const rf = rng32(77), busy = [[-0.75, 5], [0.75, 5], [-4.9, 4.6], [4.9, 4.6], [-5.7, 4], [5.7, 4]];
+          for (let i = 0; i < 70; i++) {
+            const side = rf() < 0.5 ? -1 : 1, z = 4.4 + rf() * 8.5;
+            const x = side * (1.7 + Math.pow(rf(), 0.8) * (2.6 + (z - 4.4) * 0.4));
+            if (Math.abs(z - 7.6) < 0.4 || busy.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6)) continue;
+            const y = at(x, z), ry = rf() * 6.3, kind = rf();
+            if (kind < 0.18) {
+              // a low, sunken, leaning headstone
+              const lean = (rf() - 0.5) * 0.5, h = 0.18 + rf() * 0.12;
+              k.add(new T.BoxGeometry(0.26, h, 0.07).translate(0, h / 2, 0).rotateX(lean).rotateY(ry).translate(x, y - 0.06, z), [0x8a8494, 0xaaa4b2]);
+            } else if (kind < 0.42) {
+              // flat ash rock
+              const r = 0.1 + rf() * 0.16;
+              k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x86806e, 0xa29c8a]);
+            } else {
+              // dead-grass tuft: a few thin dry blades
+              const n = 3 + ((rf() * 3) | 0), tc = rf() < 0.5 ? [0x7e7a58, 0xa49e78] : [0x8a7e66, 0xaa9e82];
+              for (let b = 0; b < n; b++) {
+                const a = ry + b * 2.1, hb = 0.16 + rf() * 0.14;
+                k.add(new T.ConeGeometry(0.025, hb, 3).translate(0, hb / 2, 0).rotateX(0.25 + rf() * 0.35).rotateY(a).translate(x + Math.sin(a) * 0.04, y - 0.02, z + Math.cos(a) * 0.04), tc);
+              }
+            }
+          }
+        }
       }
       // banner poles along the main road and by the lots
       const flags = kit(9), wave = [];
@@ -1037,7 +1073,8 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     if (!envs[fac].group.parent) scene.add(envs[fac].group);
     activeEnv = envs[fac];
     sun.color.set(P.sun); sun.intensity = P.sunI;
-    sun.position.copy(new V3(...P.sunDir).normalize().multiplyScalar(45)).add(sun.target.position);
+    sun.position.copy(new V3(...(P.lightDir || P.sunDir)).normalize().multiplyScalar(45)).add(sun.target.position);
+    sun.shadow.intensity = P.shadowI ?? 1; sun.shadow.radius = P.shadowR ?? 1;
     hemi.color.set(P.hemiSky); hemi.groundColor.set(P.hemiGround); hemi.intensity = P.hemiI;
     amb.color.set(P.amb); amb.intensity = P.ambI;
     scene.fog.color.set(P.fog); scene.fog.near = P.fogNear; scene.fog.far = P.fogFar;

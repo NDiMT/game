@@ -62,17 +62,17 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         // sun: small hot disc, a gold corona and a broad rosy-amber wash that warms the whole quadrant
         // close in (uSunK < 1) the disc shrinks and the glare softens so castle silhouettes stay crisp
         float dr = mix(0.6, 1.0, uSunK);
-        float disc = smoothstep(0.022 * dr, 0.012 * dr, ang) * mix(0.55, 1.2, uSunK);
-        float corona = (exp(-ang * 36.0 / dr) * 0.45 + exp(-ang * 11.0 / dr) * 0.13) * mix(0.45, 1.0, uSunK);
-        float wash = exp(-ang * 2.5) * 0.035;
+        float disc = smoothstep(0.0165 * dr, 0.009 * dr, ang) * mix(0.55, 1.0, uSunK);
+        float corona = (exp(-ang * 44.0 / dr) * 0.36 + exp(-ang * 12.0 / dr) * 0.09) * mix(0.45, 1.0, uSunK);
+        float wash = exp(-ang * 2.5) * 0.022;
         // god-rays: angular streaks around the sun that slowly turn and breathe
         vec3 t = d - uVis * cs;
         float a = atan(dot(t, uVU), dot(t, uVR));
         float r1 = 0.5 + 0.5 * sin(a * 9.0 + uTime * 0.05) * sin(a * 14.0 - uTime * 0.035 + 1.7);
         float r2 = 0.5 + 0.5 * sin(a * 23.0 + uTime * 0.02 + 0.6);
         float rays = (r1 * r1 * r1 * 0.8 + r2 * r2 * r2 * r2 * 0.35) * (0.8 + 0.2 * sin(uTime * 0.3));
-        rays *= exp(-ang * 14.0) * smoothstep(0.02, 0.06, ang) * 0.14 * mix(0.5, 1.0, uSunK);
-        c += vec3(1.0, 0.88, 0.66) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.9, 0.5, 0.55) * wash
+        rays *= exp(-ang * 15.0) * smoothstep(0.016, 0.05, ang) * 0.1 * mix(0.5, 1.0, uSunK);
+        c += vec3(1.0, 0.88, 0.66) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.8, 0.62, 0.5) * wash
            + vec3(1.0, 0.82, 0.55) * rays;
         gl_FragColor = vec4(c, 1.0);
       }`,
@@ -179,17 +179,17 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         vec3 cp = cameraPosition + rd * t;
         float b = length(cp);
         float x = clamp((b - uRp) / (uRa - uRp), 0.0, 1.0);
-        float g = (1.0 - x) * (0.3 * exp(-x * 2.2) + 0.7 * exp(-x * 8.0));
+        float g = (1.0 - x) * (0.18 * exp(-x * 3.0) + 0.7 * exp(-x * 9.0));
         float s = dot(cp / max(b, 0.001), uSun);
-        // azure-cyan rim on the day side, magenta-violet on the night side, white-hot right at the limb
-        vec3 day = mix(vec3(0.22, 0.5, 1.25), vec3(0.62, 0.9, 1.35), exp(-x * 9.0));
-        vec3 dusk = mix(vec3(0.32, 0.16, 0.7), vec3(0.55, 0.35, 0.95), exp(-x * 9.0));
+        // a thin, subtle rim: soft azure on the day side, deep blue on the night side (the planet stays the focus)
+        vec3 day = mix(vec3(0.2, 0.42, 1.0), vec3(0.55, 0.8, 1.2), exp(-x * 9.0));
+        vec3 dusk = mix(vec3(0.14, 0.18, 0.55), vec3(0.32, 0.4, 0.85), exp(-x * 9.0));
         vec3 c = mix(dusk, day, smoothstep(-0.6, 0.4, s));
         c += vec3(1.0, 0.5, 0.35) * exp(-abs(s + 0.05) * 6.0) * 0.3 * exp(-x * 5.0); // warm terminator band
         // sunrise: the limb nearest the sun blazes gold-pink
         float sa = acos(clamp(dot(rd, uVis), -1.0, 1.0));
-        c += vec3(1.25, 0.66, 0.36) * (exp(-sa * 5.0) * 0.9 + exp(-sa * 1.6) * 0.15) * exp(-x * 5.0);
-        gl_FragColor = vec4(c * g * 0.7, 1.0);
+        c += vec3(1.15, 0.7, 0.42) * (exp(-sa * 5.0) * 0.7 + exp(-sa * 1.6) * 0.1) * exp(-x * 6.0);
+        gl_FragColor = vec4(c * g * 0.55, 1.0);
       }`,
   }));
   halo.renderOrder = 5;
@@ -208,7 +208,7 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         float b = length(cameraPosition - v * t);           // closest approach of the view ray
         f *= 1.0 - smoothstep(uRp - 0.15, uRp + 0.3, b);    // only over the ground, never a glassy edge
         float s = smoothstep(-0.4, 0.6, dot(vN, uSun));
-        vec3 c = mix(vec3(0.26, 0.16, 0.5), vec3(0.36, 0.64, 1.05), s);
+        vec3 c = mix(vec3(0.18, 0.2, 0.48), vec3(0.36, 0.62, 1.0), s);
         gl_FragColor = vec4(c * pow(f, 5.0) * 0.26 * uK, 1.0);
       }`,
   }));
@@ -438,8 +438,8 @@ function makeNoise(rand) {
   return { noise, fbm };
 }
 
-// equirect nebula: a luminous twilight-blue / violet sky, a tilted milky band with soft dust lanes,
-// and big glowing magenta / teal / gold / azure nebula clouds with bright cores
+// equirect nebula: a deep blue-indigo sky (never black), a tilted periwinkle milky band with soft dust lanes,
+// and small, soft, desaturated nebula clouds (dusty mauve / teal / amber / azure) so the planet stays the focus
 function bakeNebula(W, H, rand) {
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
@@ -447,12 +447,12 @@ function bakeNebula(W, H, rand) {
   const { fbm } = makeNoise(rand);
   const glowDir = [-0.5, 0.35, -0.75];
   const blobs = [
-    { d: norm([0.7, 0.3, -0.6]), c: [0.95, 0.22, 0.75], w: 3.2 },   // rose-magenta
-    { d: norm([-0.8, -0.2, 0.5]), c: [0.12, 0.7, 0.85], w: 3.0 },   // teal
-    { d: norm([0.1, -0.7, 0.7]), c: [0.95, 0.55, 0.2], w: 4.0 },    // gold
-    { d: norm([-0.3, 0.75, 0.55]), c: [0.3, 0.42, 1.0], w: 3.4 },   // azure
-    { d: norm([0.2, 0.1, 0.95]), c: [0.62, 0.3, 1.0], w: 3.6 },     // violet
-    { d: norm([-0.6, -0.7, -0.4]), c: [0.85, 0.3, 0.55], w: 3.6 },  // pink
+    { d: norm([0.7, 0.3, -0.6]), c: [0.4, 0.3, 0.6], w: 4.8 },     // dusty mauve
+    { d: norm([-0.8, -0.2, 0.5]), c: [0.16, 0.42, 0.56], w: 4.5 },  // muted teal
+    { d: norm([0.1, -0.7, 0.7]), c: [0.52, 0.42, 0.3], w: 6.0 },    // soft amber
+    { d: norm([-0.3, 0.75, 0.55]), c: [0.26, 0.36, 0.75], w: 5.1 }, // azure
+    { d: norm([0.2, 0.1, 0.95]), c: [0.32, 0.32, 0.7], w: 5.4 },    // indigo
+    { d: norm([-0.6, -0.7, -0.4]), c: [0.46, 0.32, 0.48], w: 5.4 }, // dusty rose
   ];
   for (let j = 0; j < H; j++) {
     const th = (j + 0.5) / H * Math.PI;           // 0 at top
@@ -467,23 +467,23 @@ function bakeNebula(W, H, rand) {
       const bandD = x * BAND_N.x + y * BAND_N.y + z * BAND_N.z;
       const band = Math.exp(-bandD * bandD * 7) * (0.4 + n1 * 1.1);
       const dust = Math.max(0, n2 - 0.5) * 2.0 * Math.exp(-bandD * bandD * 30);
-      // twilight base: royal blue above, indigo-violet below, never black
+      // deep blue-indigo base: a little lighter above, deeper below, never black
       const up = y * 0.5 + 0.5;
-      let r = 0.008 + 0.014 * (1 - up), g = 0.016 + 0.012 * up, b = 0.075 + 0.03 * up;
-      // big soft colour wash (violet <-> deep teal)
+      let r = 0.006 + 0.007 * (1 - up), g = 0.013 + 0.011 * up, b = 0.056 + 0.024 * up;
+      // big soft colour wash (indigo <-> deep teal-blue), low saturation
       const w1 = n3 * n3, w2 = (1 - n3) * (1 - n3);
-      r += w1 * 0.025; g += w1 * 0.004 + w2 * 0.016; b += w1 * 0.035 + w2 * 0.03;
+      r += w1 * 0.011; g += w1 * 0.006 + w2 * 0.011; b += w1 * 0.028 + w2 * 0.024;
       const w = n1 * n1 * n1;
-      r += w * 0.03; g += w * 0.008; b += w * 0.05;
-      // the milky band: luminous lavender-blue core, rosy fringes, soft dust lanes
+      r += w * 0.014; g += w * 0.012; b += w * 0.036;
+      // the milky band: soft periwinkle core, soft dust lanes
       const bandC = band * band;
-      r += bandC * (0.07 + 0.07 * n2); g += bandC * (0.07 + 0.03 * n2); b += bandC * 0.16;
+      r += bandC * (0.045 + 0.035 * n2); g += bandC * (0.055 + 0.025 * n2); b += bandC * 0.12;
       r *= 1 - dust * 0.35; g *= 1 - dust * 0.4; b *= 1 - dust * 0.3;
       // coloured nebula clouds with brighter cores
       for (const bl of blobs) {
         const dd = 1 - (x * bl.d[0] + y * bl.d[1] + z * bl.d[2]);
         const m = Math.max(0, n1 * 1.8 - 0.42);
-        const k = Math.exp(-dd * bl.w * 1.7) * (m * m * m * (0.5 + n2) * 1.7 + Math.exp(-dd * bl.w * 4) * 0.05);
+        const k = Math.exp(-dd * bl.w * 1.7) * (m * m * m * (0.5 + n2) * 0.95 + Math.exp(-dd * bl.w * 4) * 0.03);
         r += bl.c[0] * k; g += bl.c[1] * k; b += bl.c[2] * k;
       }
       // a soft glow behind the big moon
