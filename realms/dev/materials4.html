@@ -88,7 +88,7 @@ if (view === 'big') {
   label(4, Ht - 14, 'each block: left = old (round 3), right = new (round 4); top 40 px, bottom 90 px tall', '#cfd8ff');
 }
 renderer.setSize(W, Ht);
-const Z = +(q.get('z') || 1); if (Z !== 1) { renderer.domElement.style.width = W * Z + 'px'; renderer.domElement.style.height = Ht * Z + 'px'; renderer.domElement.style.imageRendering = 'pixelated'; lab.style.transform = `scale(${Z})`; lab.style.transformOrigin = '0 0'; }
+const Z = +(q.get('z') || 1); if (Z !== 1) { renderer.domElement.style.width = W * Z + 'px'; renderer.domElement.style.height = Ht * Z + 'px'; renderer.domElement.style.imageRendering = 'pixelated'; lab.style.transform = `scale(${Z})`; lab.style.width = W + 'px'; lab.style.transformOrigin = '0 0'; }
 lab.innerHTML = labels.join('');
 function render(t) {
   NEW.tick(t / 1000); OLD.tick(t / 1000);

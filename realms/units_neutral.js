@@ -393,10 +393,10 @@ function ogre() {
     k.ell(0.1, 0.07, 0.14, [s * 0.165, 0.06, 0.05], SKD, null, 0);
     k.ell(0.15, 0.13, 0.14, [s * 0.31, 0.98, -0.04], SK, null, 1);
     // little mean glowing eyes under a heavy brow, big underbite tusks
-    k.eye([s * 0.06, 1.12, 0.26], 0.026, 0xffb020);
-    k.cone([s * 0.07, 1.02, 0.29], [s * 0.08, 1.12, 0.31], 0.03, TEETH, 4);
+    k.eye([s * 0.07, 1.18, 0.28], 0.03, 0xffb020);
+    k.cone([s * 0.08, 1.05, 0.3], [s * 0.09, 1.17, 0.32], 0.034, TEETH, 4);
     // cauliflower ears
-    k.ell(0.055, 0.07, 0.035, [s * 0.17, 1.12, 0.1], SKD, [0, s * 0.5, 0], 0);
+    k.ell(0.06, 0.08, 0.04, [s * 0.2, 1.17, 0.1], SKD, [0, s * 0.5, 0], 0);
   });
   // blue loincloth with a front flap and a red hem
   k.frus(0.28, 0.31, 0.18, [0, 0.32, 0], HIDE, 9);
@@ -411,14 +411,14 @@ function ogre() {
   k.ell(0.05, 0.05, 0.03, [0.12, 0.98, 0.17], GOLD, null, 0);
   k.box(0.1, 0.5, 0.04, [0.05, 0.82, 0.18], 0xd8342a, [0.2, 0, -0.75]);
   // head: bigger than before, low and forward
-  k.ell(0.17, 0.16, 0.15, [0, 1.12, 0.12], SK, null, 1);
-  k.box(0.26, 0.1, 0.16, [0, 1.03, 0.17], SK);
-  k.box(0.18, 0.03, 0.03, [0, 1.06, 0.255], MOUTH);
-  k.ell(0.06, 0.055, 0.06, [0, 1.1, 0.29], 0xf0a07a, null, 0);
-  k.box(0.26, 0.045, 0.06, [0, 1.17, 0.24], SKD, [0.3, 0, 0]);
+  k.ell(0.2, 0.19, 0.18, [0, 1.17, 0.12], SK, null, 1);
+  k.box(0.3, 0.12, 0.18, [0, 1.06, 0.18], SK);
+  k.box(0.2, 0.035, 0.03, [0, 1.07, 0.275], MOUTH);
+  k.ell(0.07, 0.065, 0.07, [0, 1.14, 0.31], 0xf0a07a, null, 0);
+  k.box(0.3, 0.05, 0.07, [0, 1.22, 0.26], SKD, [0.3, 0, 0]);
   // dark top-knot with a gold band
-  k.cone([0, 1.24, 0.08], [0, 1.42, 0.0], 0.065, 0x6a3420, 5);
-  k.torus(0.05, 0.016, [0, 1.28, 0.06], GOLD, [Math.PI / 2, 0, 0], 1, 8);
+  k.cone([0, 1.32, 0.08], [0, 1.52, 0.0], 0.075, 0x6a3420, 5);
+  k.torus(0.056, 0.018, [0, 1.36, 0.06], GOLD, [Math.PI / 2, 0, 0], 1, 8);
   // left arm hangs, huge fist
   k.chain([[0.34, 0.95, -0.02], [0.45, 0.68, 0.04], [0.43, 0.44, 0.12]], [0.1, 0.085, 0.075], SK);
   k.ell(0.11, 0.1, 0.11, [0.43, 0.39, 0.14], SKD, null, 1);
@@ -547,7 +547,7 @@ function hydra() {
   });
   // thick tail curling to the side
   const tailc = (t, d) => (d.y < -0.4 ? BEL : d.y > 0.3 ? 0x34c890 : 0x1ea078);
-  k.tube([[0, 0.36, -0.55], [0, 0.22, -0.8], [0.14, 0.1, -1.0], [0.36, 0.06, -1.04], [0.5, 0.05, -0.92]], (t) => 0.18 * (1 - t) + 0.02, tailc, { seg: 6, n: 9 });
+  k.tube([[0, 0.36, -0.55], [0, 0.2, -0.78], [0.12, 0.08, -0.94], [0.3, 0.05, -0.98], [0.42, 0.04, -0.88]], (t) => 0.17 * (1 - t) + 0.02, tailc, { seg: 6, n: 9 });
   // five thick necks, big heads
   const neckc = (t, d) => (d.y < -0.45 ? BEL : d.y > 0.2 ? 0x34c890 : 0x1ea078);
   const heads = [
@@ -562,8 +562,8 @@ function hydra() {
   heads.forEach((h, i) => {
     const mid2 = [(h.m[0] + h.t[0]) / 2, h.t[1] - 0.04, (h.m[2] + h.t[2]) / 2 - 0.08];
     k.tube([h.b, h.m, mid2, h.t], (t) => 0.12 - t * 0.045, neckc, { seg: 6, n: 6, capEnd: false });
-    const dir = [h.t[0] * 0.5, -0.35, 1];
-    k.aim(h.t, dir, () => k.at([0, 0, 0], null, 1.65, () => {
+    const dir = [h.t[0] * 0.6, -0.2, 1];
+    k.aim(h.t, dir, () => k.at([0, 0, 0], null, 1.95, () => {
       k.ell(0.075, 0.065, 0.09, [0, 0.01, 0.0], HC, null, 1);
       k.limb([0, 0.02, 0.05], [0, 0.0, 0.18], 0.055, 0.032, HC, 6);
       // lower jaw, open red mouth
