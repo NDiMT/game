@@ -16,9 +16,9 @@
 // on the game's own renderer (no extra WebGL context), one 8-bit readback,
 // one toDataURL. Each (id, size) pair is rendered once, on first request.
 // =====================================================================
-import { UNITS } from './data.js?v=0.9';
-import { heroModel } from './models_towns.js?v=0.9';
-import { makeBodyMaterial, makeGlowMaterial } from './materials.js?v=0.9';
+import { UNITS } from './data.js?v=1.0';
+import { heroModel } from './models_towns.js?v=1.0';
+import { makeBodyMaterial, makeGlowMaterial } from './materials.js?v=1.0';
 
 // backdrop palettes, sRGB 0..1: inner glow, mid, outer, halo (light behind the silhouette)
 const hex = (h) => [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255];
