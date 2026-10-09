@@ -899,7 +899,7 @@ function showLevel() {
   const L = pendingLevels[0];
   if (!L) return;
   const names = { att: 'Attack', def: 'Defence', pow: 'Power', know: 'Knowledge' };
-  ask(`${icon('experience', 22)} Level ${L.hr.lvl}!`, `<p><b>${L.hr.name}</b> grows stronger.</p><p class="chips" style="justify-content:center"><span class="chip">${icon(L.stat, 18)}${names[L.stat]} <em>+1</em></span></p><p class="sec">Choose a skill</p>`, L.opts.map((k) => [`${icon(k, 20)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc, 'choice']), true);
+  ask(`${icon('experience', 22)} Level ${L.hr.lvl}!`, `<div class="burst lvl"><span class="rays"></span><span class="medal"><small>Level</small><b>${L.hr.lvl}</b></span></div><p><b>${L.hr.name}</b> grows stronger.</p><p class="chips" style="justify-content:center"><span class="chip">${icon(L.stat, 18)}${names[L.stat]} <em>+1</em></span></p><p class="sec">Choose a skill</p>`, L.opts.map((k) => [`${icon(k, 20)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc, 'choice']), true);
   sfx.fanfare();
 }
 
@@ -1200,7 +1200,7 @@ function playEvent(e, t) {
   }
   if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.hit(); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
   if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); setAnim(M(e.s), ANIM.CHEER, { speed: AS }); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
-  if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; } return true; }
+  if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; replay($('b-round'), 'pop'); } return true; }
   if (e.t === 'wait' || e.t === 'defend') { if (!e.started) { e.started = true; const m = M(e.s); if (m) bfloat(m.position.clone().setY(1.1), e.t === 'wait' ? '⏳ Wait' : '🛡️ Defend', 'blue'); } return t > 0.25; }
   return true;
 }
@@ -1249,7 +1249,7 @@ function finishBattle(B, ctx) {
   if (sides[0].owner === 0 || sides[1].owner === 0) {
     const me = sides[0].owner === 0 ? 0 : 1, won = winSide === me;
     const list = (arr) => (arr.length ? arr.map(([id, n]) => `${unitIcon(id)} ${n} ${plural(id, n)}`).join('<br>') : 'None');
-    showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p class="xp-line">${icon('experience', 18)} +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
+    showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="burst ${won ? 'win' : 'lose'}"><span class="rays"></span>${icon(won ? 'victory' : 'defeat', 64)}</div><div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p class="xp-line">${icon('experience', 18)} +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
     won ? sfx.fanfare() : sfx.deny();
   }
   // after the battle summary, so the casualties card comes first
@@ -1277,7 +1277,7 @@ function openTown(id, hr) {
   renderTown(); sfx.click(); townInsets();
   score?.setEra(1);
 }
-function closeTown() { townView.highlight(null); $('town').hidden = true; $('hud').hidden = false; townOpen = null; G.mode = 'map'; score?.setEra(2); updateHud(); }
+function closeTown() { renderTown.view = null; townView.highlight(null); $('town').hidden = true; $('hud').hidden = false; townOpen = null; G.mode = 'map'; score?.setEra(2); updateHud(); }
 $('t-close').addEventListener('click', closeTown);
 for (const b of document.querySelectorAll('#town .tabs2 button')) b.addEventListener('click', () => { townTab = b.dataset.t; renderTown(); sfx.click(); });
 function learnSpells(t, hr) {
@@ -1336,6 +1336,14 @@ function renderTown() {
   }
   if (t.p !== 0) html = `<p class="hint2">${G.players[t.p]?.name || 'An enemy'} rules this town. Capture it to build and recruit here.</p>`;
   $('t-body').innerHTML = html;
+  // rows bounce in only when a tab (or town) is opened, not on every purchase
+  const view = `${townOpen}:${townTab}`; $('t-body').classList.toggle('fresh', renderTown.view !== view); renderTown.view = view;
+  // tab badges: a glowing dot on Build when something can be built today, a count on Recruit when creatures can be hired
+  if (t.p === 0) {
+    const canB = !t.builtToday && BUILDINGS.some((b) => !t.built.includes(b.id) && b.req.every((r) => t.built.includes(r)) && canPay(t.p, b.cost));
+    const recN = BUILDINGS.filter((b) => b.tier && !b.up && t.built.includes(b.id)).reduce((a, b) => { const u = UNITS[tierUnit(t, b.tier)]; return a + Math.max(0, Math.min(t.avail[b.tier] || 0, ...RES.filter((r) => u.cost[r]).map((r) => Math.floor(Pl.res[r] / u.cost[r])))); }, 0);
+    for (const b of document.querySelectorAll('#town .tabs2 button')) { b.querySelector('.tb')?.remove(); const n = b.dataset.t === 'build' ? (canB ? '!' : '') : b.dataset.t === 'recruit' ? (recN ? (recN > 99 ? '99+' : String(recN)) : '') : ''; if (n) b.insertAdjacentHTML('beforeend', `<i class="tb">${n}</i>`); }
+  } else for (const x of document.querySelectorAll('#town .tabs2 .tb')) x.remove();
   updateRes();
 }
 $('t-body').addEventListener('click', (e) => {
@@ -1404,7 +1412,17 @@ const UICON = { pikeman: '🔱', archer: '🏹', griffin: '🦅', swordsman: '�
 const unitIcon = (id, s = 64) => portraitImg(id, s) || UICON[id] || UICON[UNITS[id]?.up] || '❔';
 const plural = (id, n = 2) => { const w = UNITS[id].name; if (n === 1) return w; if (/m[ae]n$/.test(w)) return w.replace(/man$/, 'men'); if (/[^aeiou]y$/.test(w)) return w.slice(0, -1) + 'ies'; if (/(s|x|ch|sh)$/.test(w)) return w + 'es'; return w.replace(/f$/, 'ves').replace(/([^s])$/, '$1s'); };
 let toastT = 0;
-function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
+function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
+// UI juice: a soft ripple from the touch point on chunky buttons (purely visual, removed after it plays)
+document.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest?.('.btn, .fb, .row-b button, .tabs2 button, .hb, .diffs button, .fcard, .slots button');
+  if (!b || b.disabled || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const r = b.getBoundingClientRect(), w = document.createElement('span'), c = document.createElement('i');
+  w.className = 'rip'; c.style.left = `${e.clientX - r.left}px`; c.style.top = `${e.clientY - r.top}px`;
+  w.appendChild(c); b.appendChild(w); setTimeout(() => w.remove(), 650);
+}, { passive: true, capture: true });
+// replay a one-shot CSS animation class (e.g. a counter pop)
+function replay(el, cls) { if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 function showMsg(title, html, wide = false) { ask(title, html, [['OK', null]], wide); }
 const dialogs = [];
 function ask(title, html, buttons, wide = false) {
@@ -1451,20 +1469,38 @@ function updateFloaters(dt) {
     f.el.style.transform = `translate(${x}px, ${y - f.t * 40}px) translate(-50%, -50%) scale(${Math.min(1, 0.6 + f.t * 4)})`;
   }
 }
+// resource counters pop and throw a floating "+500" / "−250" when a value changes (UI only)
 function updateRes() {
   const r = G.players[0]?.res; if (!r) return;
-  for (const k of RES) { const el = $(`r-${k}`); if (el) el.textContent = fmt(r[k]); }
+  const resPrev = updateRes.prev || (updateRes.prev = { pl: null });
+  const live = resPrev.pl === G.players[0], dl = {};
+  for (const k of RES) {
+    const el = $(`r-${k}`), d = live ? r[k] - resPrev[k] : 0; dl[k] = d; resPrev[k] = r[k];
+    if (!el) continue;
+    el.textContent = fmt(r[k]);
+    if (d) {
+      const s = el.parentElement; replay(s, d > 0 ? 'up' : 'down'); s.classList.remove(d > 0 ? 'down' : 'up');
+      const f = document.createElement('i'); f.className = `rdelta ${d > 0 ? 'up' : 'down'}`; f.textContent = `${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}`;
+      s.appendChild(f); setTimeout(() => f.remove(), 1500);
+    }
+  }
+  const dayNew = live && resPrev.day !== G.day; resPrev.day = G.day; resPrev.pl = G.players[0];
   $('r-day').innerHTML = `<small>Week ${week()}</small><b>Day ${((G.day - 1) % 7) + 1}</b>`;
-  $('r2-gold').innerHTML = RES.map((k) => `<span>${icon(k, 18)}${fmt(r[k])}</span>`).join('');
+  if (dayNew) replay($('r-day'), 'up');
+  $('r2-gold').innerHTML = RES.map((k) => `<span class="rc${dl[k] ? (dl[k] > 0 ? ' up' : ' down') : ''}"><i>${icon(k, 22)}</i><b>${fmt(r[k])}</b>${dl[k] ? `<i class="rdelta ${dl[k] > 0 ? 'up' : 'down'}">${dl[k] > 0 ? '+' : '−'}${fmt(Math.abs(dl[k]))}</i>` : ''}</span>`).join('');
 }
 function updateHud() {
   if (!G.players.length) return;
   updateRes();
   const mine = G.heroes.filter((x) => x.alive && x.p === 0);
-  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}" data-h="${hr.id}" aria-label="${hr.name}"><span class="hb-ic">${icon('hero', 28)}</span><b>${hr.name.split(' ').pop()}</b><span class="mp"><i style="width:${clamp((hr.mp / moveMax(hr)) * 100, 0, 100)}%"></i></span></button>`).join('') +
+  // UI: faction accent colour, and the End day button glows once no hero can take another step
+  document.body.style.setProperty('--fac', FACTIONS[G.players[0].fac]?.css || '#3a7aff');
+  const canStep = (x) => NBR[x.v].some((n) => passable(n) && stepCost(x.v, n) <= x.mp);
+  $('b-end').classList.toggle('ready', G.mode === 'map' && !mine.some(canStep));
+  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}${canStep(hr) ? '' : ' spent'}" data-h="${hr.id}" aria-label="${hr.name}"><span class="hb-ic">${icon('hero', 30)}</span><b>${hr.name.split(' ').pop()}</b><i class="lvb">${hr.lvl}</i><span class="mp"><i style="width:${clamp((hr.mp / moveMax(hr)) * 100, 0, 100)}%"></i></span></button>`).join('') +
     G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}" aria-label="${t.name}"><span class="hb-ic">${icon('town', 28)}</span><b>${t.name}</b>${!t.builtToday ? `<em title="Can build today">${icon('build', 13)}</em>` : ''}</button>`).join('');
   const hr = selHero();
-  $('sel').innerHTML = hr ? `<span class="sel-who">${icon('hero', 20)}<b>${hr.name}</b><span class="lv">Lv ${hr.lvl}</span></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>` : '';
+  $('sel').innerHTML = hr ? `<span class="sel-who"><span class="sel-pt">${icon('hero', 24)}<i class="lv">${hr.lvl}</i></span><b>${hr.name}</b></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>` : '';
 }
 // side buttons: tap = select hero / open hero sheet / open town; double tap = fly the camera there
 let sideTap = null;
@@ -1792,7 +1828,7 @@ function pickFaction() {
     <span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 64)).join('')}</span><span class="fc-check">${icon('check', 16)}</span></button>`;
   }).join('')}</div>
     <footer class="fp-foot"><button class="btn ghost" id="f-back">Back</button><button class="btn gold" id="f-go">Begin as ${FACTIONS[sel].name}</button></footer></div>`;
-  el.hidden = false; el.scrollTop = 0;
+  el.hidden = false; el.scrollTop = 0; document.body.style.setProperty('--fac', FACTIONS[sel].css);
   const start = (fac) => {
     store.set('realms.fac', fac); el.hidden = true; sfx.click();
     newWorld((Date.now() % 100000) + 1, store.get('realms.diff', 1), fac);
@@ -1805,7 +1841,7 @@ function pickFaction() {
     if (b.dataset.f === sel) { start(sel); return; }
     sel = b.dataset.f; sfx.click();
     el.querySelectorAll('.fcard').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
-    $('f-go').textContent = `Begin as ${FACTIONS[sel].name}`;
+    $('f-go').textContent = `Begin as ${FACTIONS[sel].name}`; document.body.style.setProperty('--fac', FACTIONS[sel].css);
   }));
   $('f-go').addEventListener('click', () => start(sel));
   $('f-back').addEventListener('click', () => { el.hidden = true; });

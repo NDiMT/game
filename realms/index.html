@@ -23,7 +23,7 @@
 <div id="app">
   <div id="hud" hidden>
     <header class="resbar">
-      <span><i data-ic="gold" data-size="20"></i><b id="r-gold">0</b></span><span><i data-ic="wood" data-size="20"></i><b id="r-wood">0</b></span><span><i data-ic="ore" data-size="20"></i><b id="r-ore">0</b></span><span><i data-ic="gems" data-size="20"></i><b id="r-gems">0</b></span>
+      <span class="rc rc-gold"><i data-ic="gold" data-size="24"></i><b id="r-gold">0</b></span><span class="rc"><i data-ic="wood" data-size="24"></i><b id="r-wood">0</b></span><span class="rc"><i data-ic="ore" data-size="24"></i><b id="r-ore">0</b></span><span class="rc"><i data-ic="gems" data-size="24"></i><b id="r-gems">0</b></span>
       <em id="r-day"><small>Week 1</small><b>Day 1</b></em>
     </header>
     <nav id="heroes" class="side"></nav>
@@ -64,8 +64,10 @@
   <div id="dialog" class="overlay" hidden>
     <div id="dlg-card" class="card">
       <h2 id="dlg-title"></h2>
-      <div id="dlg-body"></div>
-      <div id="dlg-btns" class="dbtns"></div>
+      <div class="card-scroll">
+        <div id="dlg-body"></div>
+        <div id="dlg-btns" class="dbtns"></div>
+      </div>
     </div>
   </div>
   <div id="toast" class="toast"></div>
@@ -74,8 +76,8 @@
   <div id="menu" class="menu">
     <div class="brand">
       <i class="emblem" data-ic="logo" data-size="128"></i>
-      <h1 class="wordmark">ORBIS</h1>
-      <p class="subtitle">FIVE CROWNS</p>
+      <h1 class="wordmark" data-text="ORBIS">ORBIS</h1>
+      <p class="subtitle"><span>FIVE CROWNS</span></p>
       <p class="tagline">Five crowns. One tiny world.</p>
     </div>
     <div class="mbtns">
@@ -88,7 +90,7 @@
   </div>
 </div>
 <div id="factions" class="factions" hidden></div>
-<div id="loader" hidden><div class="ld-card"><i class="ld-emblem" data-ic="logo" data-size="112"></i><h2>ORBIS<span>FIVE CROWNS</span></h2><div class="ld-track"><i id="ld-bar"></i></div><p id="ld-text">Loading…</p></div></div>
+<div id="loader" hidden><div class="ld-card"><i class="ld-emblem" data-ic="logo" data-size="112"></i><h2 data-text="ORBIS">ORBIS</h2><p class="ld-sub"><span>FIVE CROWNS</span></p><div class="ld-track"><i id="ld-bar"></i></div><p id="ld-text">Loading…</p></div></div>
 <script>
   // self-update: a cached page reloads itself when a newer build is live (GitHub Pages caches HTML ~10 min)
   (function () {
