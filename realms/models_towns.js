@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE as RIG, tagRange } from './rig.js?v=0.6';
+import { BONE as RIG, tagRange, ensureRig } from './rig.js?v=0.6';
 
 // =====================================================================
 // HEX REALMS: faction towns, mounted heroes and ownership flags.
@@ -159,6 +159,7 @@ function bake(parts, r, glow, uv) {
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   if (uvs) g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  ensureRig(THREE, g); // every geometry drawn with the shared rig-aware materials carries aBone/aPivot
   for (const [start, count, rg] of ranges) tagRange(THREE, g, start, count, rg.b, rg.p);
   g.computeBoundingSphere(); g.computeBoundingBox();
   return g;
