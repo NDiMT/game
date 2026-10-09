@@ -44,19 +44,19 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 const LIN = (h) => new THREE.Color(h);
 const TERRAINS = {
   1: { name: 'grass', sky: 0x9fd2f6, fog: [0xc6e4f6, 17, 42], sun: [0xfff3d6, 2.6], hemi: [0xdcefff, 0x8ab060, 1.15], amb: [0x8a9ab8, 0.42], exposure: 1.05,
-    tint: [0x74bc44, 0x58a63a, 0xa4cc58], grid: [36, 78, 22], gridHi: [236, 255, 190], field: [240, 250, 170], fieldA: 0.08, water: 0x4a9ac8, hill: 0.9, edge: [150, 130, 74], calm: [0.66, 0.68, 0.96], deco: [0.62, 0.16] },
+    tint: [0x74bc44, 0x58a63a, 0xa4cc58], grid: [36, 78, 22], gridHi: [236, 255, 190], field: [240, 250, 170], fieldA: 0.08, water: 0x4a9ac8, hill: 0.9, edge: [150, 130, 74], calm: [0.95, 0.8, 0.8], deco: [0.62, 0.16] },
   2: { name: 'dirt', sky: 0xb8daf4, fog: [0xecdcc0, 16, 40], sun: [0xffeac4, 2.75], hemi: [0xe8eefa, 0xb08a5c, 1.2], amb: [0x988a90, 0.45], exposure: 1.08,
-    tint: [0xc49a68, 0xa87e52, 0xd2b07a], grid: [88, 58, 30], gridHi: [255, 236, 200], field: [255, 236, 196], water: 0x5a9ab0, hill: 0.8, edge: [120, 90, 54], calm: [0.68, 0.66, 0.97], deco: [0.66, 0.16] },
+    tint: [0xc49a68, 0xa87e52, 0xd2b07a], grid: [88, 58, 30], gridHi: [255, 236, 200], field: [255, 236, 196], water: 0x5a9ab0, hill: 0.8, edge: [120, 90, 54], calm: [0.95, 0.78, 0.82], deco: [0.66, 0.16] },
   3: { name: 'sand', sky: 0xa8d4f2, fog: [0xf4dcb0, 16, 40], sun: [0xfff0d4, 2.55], hemi: [0xf4f0e8, 0xb88a50, 1.0], amb: [0x988870, 0.38], exposure: 1.0,
-    tint: [0xe8c27a, 0xd8a862, 0xf0d090], grid: [150, 104, 50], gridHi: [255, 250, 225], field: [255, 248, 226], water: 0x3aa8c0, hill: 1.2, edge: [196, 150, 90], calm: [0.7, 0.7, 0.96], deco: [0.7, 0.14] },
+    tint: [0xe8c27a, 0xd8a862, 0xf0d090], grid: [150, 104, 50], gridHi: [255, 250, 225], field: [255, 248, 226], water: 0x3aa8c0, hill: 1.2, edge: [196, 150, 90], calm: [0.92, 0.76, 0.86], deco: [0.7, 0.14] },
   4: { name: 'snow', sky: 0xb4d8f6, fog: [0xe0ecf8, 15, 38], sun: [0xfff4e4, 2.5], hemi: [0xe4f0ff, 0xa8c0e0, 1.3], amb: [0x8098c0, 0.45], exposure: 0.98,
-    tint: [0xf4f8fc, 0xdce8f6, 0xffffff], grid: [90, 120, 170], gridHi: [255, 255, 255], field: [200, 222, 250], water: 0xa8d4f0, hill: 1.0, edge: [150, 176, 214], calm: [0.85, 0.7, 0.9], deco: [0.7, 0.12] },
+    tint: [0xf4f8fc, 0xdce8f6, 0xffffff], grid: [90, 120, 170], gridHi: [255, 255, 255], field: [200, 222, 250], water: 0xa8d4f0, hill: 1.0, edge: [150, 176, 214], calm: [1.0, 0.8, 0.88], deco: [0.7, 0.12] },
   5: { name: 'swamp', sky: 0xa8cab0, fog: [0xb8d0b0, 15, 38], sun: [0xfff8d4, 2.6], hemi: [0xe4f4d4, 0x7a9450, 1.25], amb: [0x7a9a88, 0.48], exposure: 1.1,
-    tint: [0x8aa850, 0x749440, 0xa0b858], grid: [40, 64, 24], gridHi: [220, 244, 170], field: [220, 230, 150], water: 0x3a8a78, hill: 0.5, edge: [96, 110, 50], calm: [0.6, 0.66, 0.93], deco: [0.5, 0.2] },
+    tint: [0x8aa850, 0x749440, 0xa0b858], grid: [40, 64, 24], gridHi: [220, 244, 170], field: [220, 230, 150], water: 0x3a8a78, hill: 0.5, edge: [96, 110, 50], calm: [0.9, 0.78, 0.8], deco: [0.5, 0.2] },
   6: { name: 'rough', sky: 0xb0d0ec, fog: [0xd8d2c4, 16, 40], sun: [0xfff0d8, 2.75], hemi: [0xe4ecf8, 0x9a8a68, 1.2], amb: [0x8a8a98, 0.45], exposure: 1.08,
-    tint: [0xbcac88, 0xa49474, 0xcabc98], grid: [76, 64, 46], gridHi: [255, 248, 228], field: [255, 246, 226], water: 0x4a8aa8, hill: 1.4, edge: [130, 112, 84], calm: [0.72, 0.62, 0.96], deco: [0.66, 0.16] },
+    tint: [0xbcac88, 0xa49474, 0xcabc98], grid: [76, 64, 46], gridHi: [255, 248, 228], field: [255, 246, 226], water: 0x4a8aa8, hill: 1.4, edge: [130, 112, 84], calm: [0.95, 0.76, 0.8], deco: [0.66, 0.16] },
   7: { name: 'lava', sky: 0xb88a74, fog: [0xa87868, 14, 36], sun: [0xffdcb8, 2.5], hemi: [0xf0d0c0, 0x6a4a44, 1.05], amb: [0x8a6a70, 0.5], exposure: 1.05,
-    tint: [0x8a7470, 0x7a6460, 0x9a8078], grid: [60, 24, 12], gridHi: [255, 206, 160], hiA: 0.18, field: [244, 216, 196], fieldA: 0.16, water: 0x000000, hill: 1.3, edge: [150, 116, 104], calm: [0.72, 0.68, 1.0], deco: [0.7, 0.12] },
+    tint: [0x8a7470, 0x7a6460, 0x9a8078], grid: [60, 24, 12], gridHi: [255, 206, 160], hiA: 0.18, field: [244, 216, 196], fieldA: 0.16, water: 0x000000, hill: 1.3, edge: [150, 116, 104], calm: [0.95, 0.8, 0.82], deco: [0.7, 0.12] },
 };
 
 // ------------------------------------------------------------------ geometry kit
@@ -833,10 +833,10 @@ function paintGrid(t, hexPos, COLS, ROWS, HS, bounds) {
   x.filter = 'blur(14px)';
   for (const p of cells) { hexPath(p, 1.25); x.fillStyle = rgba(pal.edge, 0.2); x.fill(); }
   x.filter = 'blur(6px)';
-  for (const p of cells) { hexPath(p, 1.02); x.fillStyle = rgba(pal.field, pal.fieldA ?? 0.14); x.fill(); }
+  for (const p of cells) { hexPath(p, 1.02); x.fillStyle = rgba(pal.field, (pal.fieldA ?? 0.14) * 0.5); x.fill(); }
   x.filter = 'none';
   // a faint varied tint per hex
-  for (const p of cells) { hexPath(p, 1); x.fillStyle = rgba(pal.field, 0.03 + R() * 0.06); x.fill(); }
+  for (const p of cells) { hexPath(p, 1); x.fillStyle = rgba(pal.field, 0.02 + R() * 0.04); x.fill(); }
   // unique edges
   const edges = new Map();
   for (const p of cells) for (let i = 0; i < 6; i++) {
@@ -849,8 +849,8 @@ function paintGrid(t, hexPos, COLS, ROWS, HS, bounds) {
     for (const [p, q, f] of edges.values()) { x.strokeStyle = rgba(col, a * f); x.lineWidth = w; x.beginPath(); x.moveTo(p[0], p[1]); x.lineTo(q[0], q[1]); x.stroke(); }
     x.filter = 'none';
   };
-  pass(pal.grid, 0.22, 7, 3);
-  pass(pal.grid, 0.4, 1.8, 0);
+  pass(pal.grid, 0.3, 7, 3);
+  pass(pal.grid, 0.66, 2.2, 0);
   // inner bevel highlight, like a gently painted tile edge
   for (const p of cells) { hexPath(p, 0.9); x.strokeStyle = rgba(pal.gridHi, (pal.hiA ?? 0.16) + R() * 0.06); x.lineWidth = 1.8; x.stroke(); }
   const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;

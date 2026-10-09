@@ -258,7 +258,7 @@ function blobTexture(THREE) {
     // soft core that eases to exactly 0 at the unit radius (gaussian-ish, no hard rim)
     const t = Math.min(1, Math.max(0, (1 - r) / 0.8)), a = t * t * (3 - 2 * t);
     const i = (y * N + x) * 4;
-    d[i] = d[i + 1] = d[i + 2] = Math.round(Math.pow(a, 1.1) * 255); d[i + 3] = 255; // alphaMap reads .g
+    d[i] = d[i + 1] = d[i + 2] = Math.round(Math.pow(a, 0.7) * 255); d[i + 3] = 255; // alphaMap reads .g
   }
   ctx.putImageData(img, 0, 0);
   _blobTex = new THREE.CanvasTexture(cvs);
@@ -267,14 +267,14 @@ function blobTexture(THREE) {
 }
 
 /**
- * Soft contact shadow for map objects / heroes / towns: dark violet-brown, ~0.45 opacity at the
- * centre fading to 0 at radius 1. Transparent, no depth write, polygon offset against the ground.
- * opts: color (0x2e1a30), opacity (0.45). One shared material is fine for every blob.
+ * Soft contact shadow for map objects / heroes / towns: warm dark plum-brown, ~0.65 opacity over a
+ * wide core (so it reads at map zoom), fading to 0 at radius 1. Transparent, no depth write, polygon offset against the ground.
+ * opts: color (0x3a2028), opacity (0.65). One shared material is fine for every blob.
  */
 export function makeBlobShadowMaterial(THREE, opts = {}) {
   const mat = new THREE.MeshBasicMaterial({
-    color: opts.color ?? 0x2e1a30, alphaMap: blobTexture(THREE), transparent: true,
-    opacity: opts.opacity ?? 0.45, depthWrite: false,
+    color: opts.color ?? 0x3a2028, alphaMap: blobTexture(THREE), transparent: true,
+    opacity: opts.opacity ?? 0.65, depthWrite: false,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
     toneMapped: false, fog: true,
   });
@@ -292,15 +292,15 @@ export function blobShadowGeometry(THREE) {
  * with this material (BackSide "inverted hull", pushed out by a constant on-screen width).
  * The line colour is the model's own vertex colour, darkened and tinted deep violet (never black).
  * Works with Mesh and InstancedMesh (use the same instanceMatrix). No lighting, no shadows.
- * opts: width 0.0022 (~2-3 px at map zoom; view-angle units), dark 0.2, tint (0x4a2860), bulge 0.55
+ * opts: width 0.003 (~2-3 px at map zoom; view-angle units), dark 0.15, tint (0x4a2860), bulge 0.55
  * (how much the push follows a smooth object-centred direction instead of the faceted normal: fewer cracks),
  * center 0.4 (object-space height of that centre), push 0.0008 (depth push, fraction of view distance).
  */
 export function makeInkHullMaterial(THREE, opts = {}) {
   const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide });
   const u = {
-    uHullW: { value: opts.width ?? 0.0022 },
-    uHullDark: { value: opts.dark ?? 0.2 },
+    uHullW: { value: opts.width ?? 0.003 },
+    uHullDark: { value: opts.dark ?? 0.15 },
     uHullTint: { value: new THREE.Color(opts.tint ?? 0x4a2860) },
     uHullBulge: { value: opts.bulge ?? 0.55 },
     uHullC: { value: opts.center ?? 0.4 },
@@ -336,6 +336,6 @@ export function makeInkHullMaterial(THREE, opts = {}) {
   diffuseColor.rgb = (hue * 0.5 + uHullTint * 0.5) * uHullDark * (0.8 + 0.4 * al);
 }`);
   };
-  mat.customProgramCacheKey = () => 'hexInkHull1';
+  mat.customProgramCacheKey = () => 'hexInkHull2';
   return mat;
 }

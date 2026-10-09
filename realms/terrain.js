@@ -139,14 +139,14 @@ const rgb = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
 const mixc = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 
-function pebbles(ctx, wrap, r, n, rmin, rmax, cols, shadow = 0.3) {
+function pebbles(ctx, wrap, r, n, rmin, rmax, cols, shadow = 0.3, hi = 0.5) {
   for (let i = 0; i < n; i++) {
     const x = r() * S, y = r() * S, rad = rmin + r() * (rmax - rmin), ry = rad * (0.6 + r() * 0.35), ang = r() * Math.PI;
     const c = cols[(r() * cols.length) | 0], k = 0.85 + r() * 0.3;
     wrap(x, y, rmax + 3, (X, Y) => {
       ctx.fillStyle = `rgba(96,66,44,${shadow})`; ctx.beginPath(); ctx.ellipse(X + 1.1, Y + 1.3, rad * 1.05, ry * 1.05, ang, 0, 6.283); ctx.fill();
       ctx.fillStyle = rgb([c[0] * k, c[1] * k, c[2] * k]); ctx.beginPath(); ctx.ellipse(X, Y, rad, ry, ang, 0, 6.283); ctx.fill();
-      ctx.fillStyle = 'rgba(255,252,240,0.5)'; ctx.beginPath(); ctx.ellipse(X - rad * 0.3, Y - ry * 0.35, rad * 0.45, ry * 0.4, ang, 0, 6.283); ctx.fill();
+      ctx.fillStyle = `rgba(255,252,240,${hi})`; ctx.beginPath(); ctx.ellipse(X - rad * 0.3, Y - ry * 0.35, rad * 0.45, ry * 0.4, ang, 0, 6.283); ctx.fill();
     });
   }
 }
@@ -224,13 +224,13 @@ PAINT[LAYER.GRASS] = (ctx) => {
 PAINT[LAYER.DIRT] = (ctx) => {
   const n1 = fbm(31, 4, 4), n2 = fbm(32, 10, 2), r = mulberry(33);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([156, 126, 92], [200, 172, 132], n1[q]);
-    c = mixc(c, [150, 118, 86], sstep(0.55, 0.85, n2[q]) * 0.35);
+    let c = mixc([138, 100, 66], [178, 140, 98], n1[q]);
+    c = mixc(c, [128, 92, 62], sstep(0.55, 0.85, n2[q]) * 0.35);
     const k = 0.97 + lhash(x, y, 9) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    cracks(ctx, wrap, r, 6, 18, 'rgba(130,98,70,0.4)', 'rgba(226,204,166,0.25)', 1.2);
-    pebbles(ctx, wrap, r, 26, 1.4, 3.4, [[184, 168, 148], [170, 152, 128], [200, 188, 168]], 0.15);
+    cracks(ctx, wrap, r, 6, 18, 'rgba(110,78,52,0.4)', 'rgba(206,172,130,0.22)', 1.2);
+    pebbles(ctx, wrap, r, 18, 1.4, 3.4, [[164, 136, 108], [150, 122, 94], [178, 152, 122]], 0.15, 0.3);
   });
 };
 // 3 sand: warm dunes with wind ripples
@@ -239,7 +239,7 @@ PAINT[LAYER.SAND] = (ctx) => {
   return paintLayer(ctx, (q, x, y, set, glow) => {
         const ph = y / S * 11 + x / S * 2 + w[q] * 2.2;
     const s = Math.sin(6.283 * ph), rip = s > 0 ? Math.pow(s, 3) : s * 0.4;
-    const c = mixc([210, 184, 136], [232, 212, 166], n1[q]);
+    const c = mixc([220, 200, 156], [240, 226, 188], n1[q]);
     const k = 0.97 + rip * 0.045 + (lhash(x, y, 11) - 0.5) * 0.03;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
@@ -273,37 +273,38 @@ PAINT[LAYER.SNOW] = (ctx) => {
 };
 // 5 swamp: murky moss, puddles, lily pads and reeds
 PAINT[LAYER.SWAMP] = (ctx) => {
-  const n1 = fbm(61, 4, 4), pud = fbm(62, 5, 4), r = mulberry(63);
+  const n1 = fbm(61, 4, 4), pud = fbm(62, 3, 4), r = mulberry(63);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([98, 122, 82], [144, 156, 104], n1[q]);
+    let c = mixc([88, 96, 66], [126, 128, 88], n1[q]);
+    c = mixc(c, [112, 100, 72], sstep(0.55, 0.85, 1 - n1[q]) * 0.35); // brown peat patches
     const p = pud[q];
-    if (p > 0.69) { const dd = sstep(0.69, 0.82, p); c = mixc([108, 148, 108], [74, 128, 116], dd); const sp = 0; c = [c[0] + sp, c[1] + sp, c[2] + sp]; }
-    else if (p > 0.64) c = mixc(c, [166, 168, 92], sstep(0.64, 0.69, p) * 0.6);
+    if (p > 0.78) { const dd = sstep(0.78, 0.88, p); c = mixc(mixc(c, [80, 104, 94], 0.6), [70, 100, 96], dd); }
+    else if (p > 0.74) c = mixc(c, [134, 132, 90], sstep(0.74, 0.78, p) * 0.3);
     const k = 0.97 + lhash(x, y, 15) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
     for (let i = 0; i < 160; i++) {
       const x = r() * S, y = r() * S, q = ((y | 0) % S) * S + ((x | 0) % S);
-      if (pud[q] > 0.67) continue;
-      ctx.fillStyle = r() < 0.6 ? 'rgba(140,170,90,0.4)' : 'rgba(96,110,70,0.3)'; ctx.beginPath(); ctx.arc(x, y, 0.8 + r() * 1.4, 0, 6.283); ctx.fill();
+      if (pud[q] > 0.76) continue;
+      ctx.fillStyle = r() < 0.6 ? 'rgba(130,136,88,0.35)' : 'rgba(92,96,66,0.3)'; ctx.beginPath(); ctx.arc(x, y, 0.8 + r() * 1.4, 0, 6.283); ctx.fill();
     }
     let pads = 0;
-    for (let i = 0; i < 400 && pads < 8; i++) {
+    for (let i = 0; i < 400 && pads < 5; i++) {
       const x = r() * S, y = r() * S, q = ((y | 0) % S) * S + ((x | 0) % S);
-      if (pud[q] < 0.74) continue;
+      if (pud[q] < 0.83) continue;
       pads++;
       const s = 2.4 + r() * 1.6, a = r() * 6.28;
       wrap(x, y, 7, (X, Y) => {
-        ctx.fillStyle = 'rgba(40,90,80,0.35)'; ctx.beginPath(); ctx.arc(X + 0.8, Y + 1, s, 0, 6.283); ctx.fill();
-        ctx.fillStyle = 'rgb(118,160,84)'; ctx.beginPath(); ctx.moveTo(X, Y); ctx.arc(X, Y, s, a + 0.5, a + 6.0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(50,80,74,0.3)'; ctx.beginPath(); ctx.arc(X + 0.8, Y + 1, s, 0, 6.283); ctx.fill();
+        ctx.fillStyle = 'rgb(108,132,80)'; ctx.beginPath(); ctx.moveTo(X, Y); ctx.arc(X, Y, s, a + 0.5, a + 6.0); ctx.closePath(); ctx.fill();
         if (r() < 0.15) { ctx.fillStyle = 'rgb(230,214,222)'; ctx.beginPath(); ctx.arc(X, Y, 1.2, 0, 6.283); ctx.fill(); }
       });
     }
     for (let i = 0; i < 28; i++) {
       const x = r() * S, y = r() * S, q = ((y | 0) % S) * S + ((x | 0) % S);
-      if (pud[q] > 0.69) continue;
+      if (pud[q] > 0.76) continue;
       const l = 5 + r() * 6, a = -1.57 + (r() - 0.5) * 0.6;
-      wrap(x, y, 12, (X, Y) => { ctx.strokeStyle = 'rgb(104,126,52)'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * l, Y + Math.sin(a) * l); ctx.stroke(); ctx.fillStyle = 'rgb(150,100,56)'; ctx.fillRect(X + Math.cos(a) * l - 0.8, Y + Math.sin(a) * l - 1.5, 1.6, 2.6); });
+      wrap(x, y, 12, (X, Y) => { ctx.strokeStyle = 'rgb(100,108,60)'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * l, Y + Math.sin(a) * l); ctx.stroke(); ctx.fillStyle = 'rgb(150,100,56)'; ctx.fillRect(X + Math.cos(a) * l - 0.8, Y + Math.sin(a) * l - 1.5, 1.6, 2.6); });
     }
   });
 };
@@ -311,54 +312,50 @@ PAINT[LAYER.SWAMP] = (ctx) => {
 PAINT[LAYER.ROUGH] = (ctx) => {
   const vo = voronoi(6, 71, 0.95), n1 = fbm(72, 4, 4), n2 = fbm(75, 9, 3), r = mulberry(73);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([150, 136, 112], [182, 168, 140], n1[q]);
-    c = mixc(c, [148, 140, 126], sstep(0.5, 0.8, n2[q]) * 0.4);
+    let c = mixc([142, 134, 122], [174, 166, 152], n1[q]);
+    c = mixc(c, [132, 130, 128], sstep(0.5, 0.8, n2[q]) * 0.4);
     // a rock where we are near a feature point, its size varying per cell
     const id = vo.ID[q], e = vo.F2[q] - vo.F1[q] + (n2[q] - 0.5) * 0.12;
-    const gap = 0.12 + lhash(id, 4, 76) * 0.5;
+    const gap = 0.12 + lhash(id, 4, 76) * 0.75;
     if (gap < 0.55 && e > gap) {
       const tone = lhash(id, 1, 74);
-      const rock = mixc([162, 154, 140], [186, 178, 162], tone);
-      const sh = 1.0 - (vo.DX[q] + vo.DY[q]) * 0.22 + sstep(gap, gap + 0.25, e) * 0.05;
+      const rock = mixc([156, 154, 148], [178, 174, 166], tone);
+      const sh = 1.0 - (vo.DX[q] + vo.DY[q]) * 0.13 + sstep(gap, gap + 0.25, e) * 0.03;
       c = rock.map((v) => v * sh);
     } else if (gap < 0.55 && e > gap - 0.06) {
-      c = mixc(c, [128, 114, 96], 0.25); // soft warm contact shadow
+      c = mixc(c, [118, 114, 108], 0.18); // soft contact shadow
     }
     const k = 0.97 + lhash(x, y, 17) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    pebbles(ctx, wrap, r, 30, 0.8, 1.8, [[176, 166, 150], [160, 150, 134], [188, 180, 164]], 0.12);
-    cracks(ctx, wrap, r, 4, 9, 'rgba(130,112,92,0.35)', null, 1);
+    pebbles(ctx, wrap, r, 14, 0.8, 3.0, [[164, 160, 152], [154, 150, 142], [172, 168, 160]], 0.07, 0.3);
+    cracks(ctx, wrap, r, 4, 9, 'rgba(116,110,102,0.3)', null, 1);
     for (let i = 0; i < 8; i++) {
       const x = r() * S, y = r() * S;
-      wrap(x, y, 8, (X, Y) => { ctx.strokeStyle = 'rgba(150,164,104,0.6)'; ctx.lineWidth = 0.8; for (let k = 0; k < 4; k++) { const a = -1.57 + (k - 1.5) * 0.35; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * 4, Y + Math.sin(a) * 4); ctx.stroke(); } });
+      wrap(x, y, 8, (X, Y) => { ctx.strokeStyle = 'rgba(140,148,108,0.5)'; ctx.lineWidth = 0.8; for (let k = 0; k < 4; k++) { const a = -1.57 + (k - 1.5) * 0.35; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * 4, Y + Math.sin(a) * 4); ctx.stroke(); } });
     }
   });
 };
 // 7 lava: black crust with glowing veins (alpha = glow)
 PAINT[LAYER.LAVA] = (ctx) => {
-  const vo = voronoi(4, 81, 0.9), n1 = fbm(82, 6, 3), n2 = fbm(83, 3, 3), r = mulberry(84);
+  const vo = voronoi(3, 81, 0.9), n1 = fbm(82, 6, 3), n2 = fbm(83, 3, 3), hot = fbm(86, 2, 3);
   return paintLayer(ctx, (q, x, y, set, glow) => {
     const id = vo.ID[q], e = vo.F2[q] - vo.F1[q];
     const tone = lhash(id, 2, 85);
     let c = mixc([110, 78, 66], [150, 112, 92], tone * 0.5 + n1[q] * 0.5);
     const sh = 1 + (vo.DX[q] + vo.DY[q]) * 0.14;
     c = c.map((v) => v * sh);
-    const wid = 0.035 + n2[q] * 0.06;
-    const vein = 1 - sstep(0.0, wid, e), core = 1 - sstep(0.0, wid * 0.4, e);
-    const heat = 1 - sstep(wid, wid * 2.4, e);
-    c = mixc(c, [190, 84, 50], heat * 0.45);
-    c = mixc(c, [255, 92, 14], vein);
-    c = mixc(c, [255, 214, 90], core);
-    glow[q] = Math.max(vein * 0.75, heat * 0.12);
+    const wid = 0.02 + n2[q] * 0.035;
+    // only ~40% of the seams are live (a low-frequency mask); the rest are dim cooled seams
+    const live = sstep(0.5, 0.62, hot[q]);
+    const vein = 1 - sstep(0.0, wid, e), core = (1 - sstep(0.0, wid * 0.35, e)) * live;
+    const heat = (1 - sstep(wid, wid * 2.2, e)) * live;
+    c = mixc(c, [170, 84, 56], heat * 0.35);
+    c = mixc(c, mixc([120, 60, 40], [220, 90, 30], live), vein);
+    c = mixc(c, [246, 186, 92], core * 0.8);
+    glow[q] = Math.max(vein * live * 0.4, heat * 0.08);
     set(q, c[0], c[1], c[2]);
-  }, (ctx, wrap, glow) => {
-    for (let i = 0; i < 20; i++) {
-      const x = (r() * S) | 0, y = (r() * S) | 0;
-      ctx.fillStyle = 'rgb(255,140,40)'; ctx.fillRect(x, y, 1, 1);
-      glow[y * S + x] = 0.7;
-    }
-  });
+  }, null);
 };
 // 8 mountain rock: chiselled grey stone, layered, with lichen
 PAINT[LAYER.MOUNT] = (ctx) => {
@@ -476,11 +473,12 @@ GRADE[LAYER.SAND] = [0.95, 0.78, 1.0, 0.5, 0.75];
 GRADE[LAYER.SNOW] = [1.0, 0.9, 0.93, 0.55, 0.8];
 GRADE[LAYER.SWAMP] = [0.88, 0.85, 1.03, 0.5, 0.8];
 GRADE[LAYER.ROUGH] = [0.92, 0.82, 1.0, 0.4, 0.75];
-GRADE[LAYER.LAVA] = [0.85, 0.82, 1.0, 0.7, 0.85];
+GRADE[LAYER.LAVA] = [0.85, 0.7, 1.0, 0.7, 0.85];
 GRADE[LAYER.MOUNT] = [0.9, 0.82, 1.02, 0.55, 0.85];
 GRADE[LAYER.FOREST] = [0.9, 0.78, 1.0, 0.45, 0.8];
 GRADE[LAYER.ROAD] = [0.92, 0.8, 1.0, 0.6, 0.85];
 GRADE[LAYER.CLIFF] = [0.88, 0.8, 1.0, 0.6, 0.85];
+GRADE[LAYER.FOG] = [1.0, 0.8, 1.0]; // calmer, less saturated mist
 
 // average colour of each layer (linear 0..1), handy for minimaps or debugging
 export const LAYER_AVG = [];
@@ -572,7 +570,7 @@ export function createPlanetMaterial(waterLevel) {
         }
         diffuseColor.rgb *= tx.rgb;
         // the mist brightens into a pale lilac haze right at the explored frontier
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.5, 0.86), frontier * 0.45);`)
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.55, 0.8), frontier * 0.3);`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         {
           float fz = vRad - uWater;
@@ -591,10 +589,10 @@ export function createPlanetMaterial(waterLevel) {
           // a soft magic glow along the frontier: on the mist side, and where the mist bleeds onto explored rims
           float fogRim = (1.0 - isFog) * step(11.5, vNb) * step(vNb, 12.5) * smoothstep(0.3, 0.5, vNw);
           float pulse = 0.85 + 0.15 * sin(uTime * 1.2 + (vT.x + vT.y) * 4.0);
-          totalEmissiveRadiance += vec3(0.42, 0.28, 0.62) * (frontier * 0.55 + fogRim * 0.25) * pulse;
+          totalEmissiveRadiance += vec3(0.4, 0.32, 0.54) * (frontier * 0.3 + fogRim * 0.15) * pulse;
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-terrain-4';
+  mat.customProgramCacheKey = () => 'hexrealms-terrain-5';
   return mat;
 }
 
@@ -620,6 +618,7 @@ export function createWaterMaterial() {
         vec3 shallow = vec3(0.16, 0.64, 0.64), mid = vec3(0.07, 0.42, 0.66), deep = vec3(0.04, 0.25, 0.52);
         vec3 wc = mix(shallow, mid, smoothstep(0.0, 0.55, depth));
         wc = mix(wc, deep, smoothstep(0.5, 1.0, depth));
+        wc = mix(vec3(dot(wc, vec3(0.3, 0.55, 0.15))), wc, 0.85);
         wc *= 0.94 + 0.1 * wh / 2.9;
         float fn = 0.5 + 0.5 * sin(dot(vWPos, vec3(61.0, -43.0, 37.0)) + uTime * 1.3) * sin(dot(vWPos, vec3(-29.0, 53.0, 47.0)) - uTime * 0.9);
         float edge = 0.27 + 0.06 * sin(uTime * 1.4 + wh * 0.6);
@@ -637,6 +636,7 @@ export function createWaterMaterial() {
         vec3 mist = mix(vec3(0.055, 0.042, 0.16), vec3(0.15, 0.12, 0.36), 0.5 + 0.35 * sw);
         mist = mix(mist, vec3(0.25, 0.1, 0.34), smoothstep(0.5, 1.0, sw2) * 0.3);
         mist = mix(mist, vec3(0.36, 0.31, 0.62), smoothstep(0.75, 1.0, sw * sw2) * 0.5 + smoothstep(0.75, 1.0, fn) * 0.12);
+        mist = mix(vec3(dot(mist, vec3(0.3, 0.55, 0.15))), mist, 0.8);
         diffuseColor.rgb = mix(mist, mix(wc, vec3(0.93, 0.97, 1.0), f) * vColor, lit);
         diffuseColor.a = clamp(mix(0.62, 0.95, smoothstep(0.0, 0.9, depth)) + f, 0.0, 1.0);
         diffuseColor.a = mix(1.0, diffuseColor.a, lit);`)
@@ -657,7 +657,7 @@ export function createWaterMaterial() {
           normal = normalize(normal - gv * 0.0016 * lit);
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-water-4';
+  mat.customProgramCacheKey = () => 'hexrealms-water-5';
   return mat;
 }
 

@@ -170,7 +170,7 @@ function nkit(seed) {
 
 // merge parts -> { body, glow }, with per-face colour, a light fake AO (the shared
 // material adds its own), top light, saturation lift, painterly jitter and uv
-function finish(k, { ao = 0.3, jitter = 0.06, scale = 1, sat = 1.12 } = {}) {
+function finish(k, { ao = 0.3, jitter = 0.06, scale = 1, sat = 1.2 } = {}) {
   if (scale !== 1) for (const part of k.parts) part.g.scale(scale, scale, scale);
   const out = (glow) => {
     const pos = [], nor = [], col = [], uv = [];
@@ -229,8 +229,9 @@ const LEATHER = 0x9a6438, LEATHER_D = 0x7a4a2a, WOOD = 0xb87e44, WOOD_D = 0x8a5a
 // ---------------------------------------------------------------- goblin
 function goblin() {
   const k = nkit(11);
-  const SK = byN(0xb8f264, 0x8cd846, 0x64b034), SKD = 0x7cc63c, EARIN = 0xff9c8a;
-  const RAG = byN(0xe8a84c, 0xc8843a, 0x9a602c);
+  // Round 3: lighter acid-yellow skin (brighter than any grass) + a violet tunic: reads on green, tan and lava alike
+  const SK = byN(0xd8f860, 0xb4e43c, 0x7cb02a), SKD = 0x9ccc34, EARIN = 0xff8a8a;
+  const RAG = byN(0x8a6ae8, 0x6446c8, 0x40308e);
   k.both((s) => {
     // bent legs + bare clawed feet
     k.chain([[s * 0.075, 0.34, -0.02], [s * 0.115, 0.2, 0.07], [s * 0.095, 0.06, -0.01]], [0.042, 0.034, 0.03], SKD);
@@ -244,21 +245,21 @@ function goblin() {
     // eyes: big, yellow, mischievous
     k.eye([s * 0.05, 0.72, 0.17], 0.03, 0xfff04a);
     k.gem([s * 0.05, 0.72, 0.195], 0.012, DARK, false);
-    k.ell(0.045, 0.014, 0.022, [s * 0.052, 0.758, 0.165], 0x4e8a26, [0, 0, s * 0.4]);
+    k.ell(0.045, 0.014, 0.022, [s * 0.052, 0.758, 0.165], 0x4a7a1e, [0, 0, s * 0.4]);
   });
   // ragged tunic with a red patch + belt
   k.frus(0.11, 0.17, 0.2, [0, 0.24, 0], RAG, 7);
-  for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2 + 0.2; k.cone([Math.sin(a) * 0.14, 0.27, Math.cos(a) * 0.14], [Math.sin(a) * 0.18, 0.17, Math.cos(a) * 0.18], 0.04, 0xb87434, 3, 0.4); }
+  for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2 + 0.2; k.cone([Math.sin(a) * 0.14, 0.27, Math.cos(a) * 0.14], [Math.sin(a) * 0.18, 0.17, Math.cos(a) * 0.18], 0.04, 0x52389e, 3, 0.4); }
   k.torus(0.125, 0.02, [0, 0.43, 0], LEATHER_D);
   k.box(0.045, 0.04, 0.02, [0, 0.43, 0.135], GOLD);
   // hunched torso
   k.ell(0.13, 0.15, 0.11, [0, 0.52, 0.0], RAG, [0.35, 0, 0]);
-  k.box(0.06, 0.06, 0.02, [0.04, 0.53, 0.105], 0xe0402a, [0.35, 0, 0.3]);
+  k.box(0.06, 0.06, 0.02, [0.04, 0.53, 0.105], 0xf04a2a, [0.35, 0, 0.3]);
   k.ell(0.09, 0.07, 0.07, [0, 0.6, 0.06], SK, [0.35, 0, 0]);
   // head: big, with a long hooked nose and a wide toothy grin
   k.ell(0.135, 0.12, 0.13, [0, 0.71, 0.07], SK);
   k.ell(0.105, 0.05, 0.08, [0, 0.64, 0.11], SK, [0.2, 0, 0]);
-  k.tube([[0, 0.71, 0.18], [0, 0.69, 0.26], [0, 0.65, 0.31]], (t) => 0.034 * (1 - t) + 0.006, 0x96dc52, { seg: 5, n: 4 });
+  k.tube([[0, 0.71, 0.18], [0, 0.69, 0.26], [0, 0.65, 0.31]], (t) => 0.034 * (1 - t) + 0.006, 0xc0ec50, { seg: 5, n: 4 });
   k.box(0.13, 0.024, 0.03, [0, 0.638, 0.175], MOUTH);
   k.both((s) => { k.cone([s * 0.035, 0.632, 0.185], [s * 0.035, 0.665, 0.195], 0.013, TEETH, 3); k.cone([s * 0.065, 0.632, 0.172], [s * 0.065, 0.66, 0.18], 0.01, TEETH, 3); });
   // flame-red hair spikes
@@ -285,10 +286,10 @@ function goblin() {
 // ---------------------------------------------------------------- wolf
 function wolf() {
   const k = nkit(21);
-  // blue-grey back, warm silver flanks, cream belly
-  const FURC = byN(0x8a98b4, 0xc8c0ae, 0xfcf6e8, 0.3, -0.25);
-  const LEG = byN(0xb0a898, 0xbcb4a2, 0xece6d6);
-  const BACK = 0x7a88a6;
+  // Round 3: dark slate-blue back, cool blue-grey flanks, pale belly: a cool value-split that reads on any ground
+  const FURC = byN(0x4a5a80, 0x8a98b8, 0xeef0f4, 0.3, -0.25);
+  const LEG = byN(0x7a88a6, 0x8692b0, 0xdcdfe8);
+  const BACK = 0x3a4870;
   k.ell(0.16, 0.2, 0.24, [0, 0.47, 0.2], FURC, [-0.15, 0, 0]);
   k.ell(0.12, 0.13, 0.24, [0, 0.47, -0.1], FURC, [0.05, 0, 0]);
   k.ell(0.14, 0.16, 0.17, [0, 0.47, -0.32], FURC);
@@ -297,22 +298,22 @@ function wolf() {
   // neck ruff
   k.ell(0.16, 0.17, 0.15, [0, 0.52, 0.38], FURC, [0.5, 0, 0]);
   k.both((s) => {
-    for (let i = 0; i < 3; i++) k.cone([s * 0.1, 0.47 + i * 0.07, 0.4], [s * 0.22, 0.44 + i * 0.08, 0.3], 0.05, i === 0 ? 0xfcf6e8 : 0xc4bcaa, 4, 0.5);
+    for (let i = 0; i < 3; i++) k.cone([s * 0.1, 0.47 + i * 0.07, 0.4], [s * 0.22, 0.44 + i * 0.08, 0.3], 0.05, i === 0 ? 0xeef0f4 : 0x9aa6c2, 4, 0.5);
     k.ell(0.07, 0.13, 0.09, [s * 0.1, 0.4, 0.25], FURC, [0.3, 0, 0], 0);
     k.chain([[s * 0.11, 0.33, 0.29], [s * 0.115, 0.18, 0.31], [s * 0.11, 0.05, 0.35]], [0.055, 0.04, 0.033], LEG);
-    k.ell(0.045, 0.032, 0.065, [s * 0.11, 0.032, 0.38], 0x9a8c84);
+    k.ell(0.045, 0.032, 0.065, [s * 0.11, 0.032, 0.38], 0x56607e);
     k.ell(0.08, 0.15, 0.12, [s * 0.085, 0.42, -0.3], FURC);
     k.chain([[s * 0.1, 0.34, -0.27], [s * 0.11, 0.23, -0.22], [s * 0.1, 0.13, -0.38], [s * 0.1, 0.04, -0.35]], [0.06, 0.045, 0.035, 0.03], LEG);
-    k.ell(0.045, 0.032, 0.065, [s * 0.1, 0.032, -0.32], 0x9a8c84);
+    k.ell(0.045, 0.032, 0.065, [s * 0.1, 0.032, -0.32], 0x56607e);
   });
   // head: lowered, snarling
   k.at([0, 0.53, 0.53], [0.25, 0, 0], 1.1, () => {
     k.ell(0.11, 0.095, 0.11, [0, 0.02, 0], FURC);
-    k.limb([0, 0.0, 0.07], [0, -0.01, 0.25], 0.06, 0.04, byN(0x8a98b4, 0xc8c0ae, 0xf0eadc), 6);
+    k.limb([0, 0.0, 0.07], [0, -0.01, 0.25], 0.06, 0.04, byN(0x4e5e84, 0x8a98b8, 0xe4e8f0), 6);
     k.ell(0.032, 0.026, 0.024, [0, 0.0, 0.26], DARK);
     for (let i = 0; i < 3; i++) k.box(0.075 - i * 0.012, 0.006, 0.01, [0, 0.038 - i * 0.004, 0.11 + i * 0.035], 0x6a7090);
     // open jaw
-    k.limb([0, -0.05, 0.05], [0, -0.1, 0.2], 0.045, 0.028, byN(0xb0a898, 0xe0d8c8, 0xf0eadc), 6);
+    k.limb([0, -0.05, 0.05], [0, -0.1, 0.2], 0.045, 0.028, byN(0x8a98b8, 0xc8d0e0, 0xe4e8f0), 6);
     k.ell(0.04, 0.02, 0.08, [0, -0.045, 0.14], MOUTH, [0.2, 0, 0]);
     k.ell(0.02, 0.008, 0.04, [0, -0.06, 0.17], 0xf06a7a, [0.3, 0, 0]);
     k.both((s) => {
@@ -327,7 +328,7 @@ function wolf() {
     });
   });
   // bushy tail, white tip
-  const tc = (t, d) => (t > 0.8 ? 0xfcf8f0 : d.y > 0.2 ? 0x8a98b4 : 0xc8c0ae);
+  const tc = (t, d) => (t > 0.8 ? 0xf4f6fa : d.y > 0.2 ? 0x4a5a80 : 0x8a98b8);
   k.tube([[0, 0.53, -0.42], [0, 0.48, -0.58], [0.04, 0.38, -0.72], [0.1, 0.28, -0.8]], (t) => 0.035 + Math.sin(Math.min(1, t * 1.05) * Math.PI * 0.85) * 0.075, tc, { seg: 6, n: 9 });
   return finish(k);
 }
@@ -335,8 +336,10 @@ function wolf() {
 // ---------------------------------------------------------------- orc
 function orc() {
   const k = nkit(31);
-  const SK = byN(0x9cd45a, 0x78b444, 0x56903a), SKD = 0x6aa83e;
-  const PANTS = byN(0xa88458, 0x8a6a46, 0x664e34);
+  // Round 3: deep green skin + red-brown leather armour (no ochre): separates on tan, lava and grass
+  const SK = byN(0x5aa83c, 0x3e8a30, 0x2c6a28), SKD = 0x3a7e2e;
+  const PANTS = byN(0x8a4630, 0x6e3424, 0x4e261c);
+  const ARM = byN(0xc44a2c, 0x9a3424, 0x6a241c);
   const WAR = 0xe8342a;
   k.both((s) => {
     k.chain([[s * 0.1, 0.46, 0], [s * 0.14, 0.26, 0.06], [s * 0.14, 0.08, 0.0]], [0.07, 0.055, 0.05], PANTS);
@@ -352,11 +355,11 @@ function orc() {
   k.box(0.15, 0.022, 0.02, [0, 0.885, 0.142], WAR, [0.1, 0, 0]);
   // kilt with leather/red strips + belt
   k.frus(0.16, 0.2, 0.16, [0, 0.36, 0], PANTS, 8);
-  for (let i = 0; i < 6; i++) { const a = -1.1 + i * 0.44; k.box(0.07, 0.17, 0.02, [Math.sin(a) * 0.19, 0.36, Math.cos(a) * 0.19], i % 2 ? LEATHER : 0xc8402a, [0.15, a, 0]); }
+  for (let i = 0; i < 6; i++) { const a = -1.1 + i * 0.44; k.box(0.07, 0.17, 0.02, [Math.sin(a) * 0.19, 0.36, Math.cos(a) * 0.19], i % 2 ? 0x5a3020 : 0xd8402a, [0.15, a, 0]); }
   k.torus(0.165, 0.026, [0, 0.52, 0], LEATHER_D, undefined, 0.85);
   k.ell(0.045, 0.045, 0.02, [0, 0.52, 0.145], IRON);
   // torso: V-shaped and broad
-  k.ell(0.15, 0.13, 0.12, [0, 0.56, 0.02], SK);
+  k.ell(0.15, 0.13, 0.12, [0, 0.56, 0.02], ARM);
   k.ell(0.24, 0.17, 0.15, [0, 0.72, 0.0], SK);
   k.ell(0.15, 0.08, 0.12, [0, 0.82, -0.03], SK);
   // chest strap + quiver on back
@@ -369,11 +372,11 @@ function orc() {
   k.ell(0.115, 0.085, 0.115, [-0.23, 0.84, 0], STEEL, null, 1);
   k.cone([-0.25, 0.88, 0.03], [-0.34, 1.02, 0.03], 0.032, 0xfafcff, 5);
   k.cone([-0.2, 0.9, -0.05], [-0.25, 1.03, -0.09], 0.027, 0xfafcff, 5);
-  k.ell(0.08, 0.06, 0.08, [0.23, 0.82, 0], LEATHER);
+  k.ell(0.08, 0.06, 0.08, [0.23, 0.82, 0], ARM);
   // head: thrust forward, heavy jaw, scowling brow
   k.ell(0.1, 0.1, 0.1, [0, 0.9, 0.06], SK);
   k.box(0.15, 0.07, 0.1, [0, 0.83, 0.1], SK);
-  k.box(0.18, 0.038, 0.05, [0, 0.935, 0.13], 0x5a9036, [0.25, 0, 0]);
+  k.box(0.18, 0.038, 0.05, [0, 0.935, 0.13], 0x2e6a26, [0.25, 0, 0]);
   k.cone([0, 0.89, 0.15], [0, 0.875, 0.195], 0.026, SK, 4);
   k.box(0.08, 0.016, 0.02, [0, 0.8, 0.152], MOUTH);
   // tall crimson mohawk: reads at any size
@@ -401,9 +404,10 @@ function orc() {
 // ---------------------------------------------------------------- ogre
 function ogre() {
   const k = nkit(41);
-  const SK = byN(0xf6c690, 0xe0a46c, 0xb0804e), SKD = 0xcc905c, BELLY = byN(0xffdcae, 0xf8cc98, 0xd0a474);
-  const HIDE = byN(0xc08a4c, 0x9e6c3a, 0x76502a);
-  const CLUB = byN(0xd09450, 0xb07a40, 0x86592e);
+  // Round 3: ruddy tan skin (less ochre) + strong blue cloth and red trim; a dark club. Separates on sand, dirt and lava
+  const SK = byN(0xf0b294, 0xd88c70, 0xa8644e), SKD = 0xc47a62, BELLY = byN(0xf8cab0, 0xeab298, 0xc08870);
+  const HIDE = byN(0x4a82e0, 0x2e5cc0, 0x22408a);
+  const CLUB = byN(0x9a6438, 0x7a4a2a, 0x5a3820);
   k.both((s) => {
     k.chain([[s * 0.14, 0.38, 0], [s * 0.17, 0.2, 0.05], [s * 0.16, 0.07, 0.01]], [0.1, 0.08, 0.07], SK);
     k.ell(0.09, 0.06, 0.13, [s * 0.165, 0.055, 0.05], SK);
@@ -418,15 +422,15 @@ function ogre() {
   // hide loincloth with front flap and fringe
   k.frus(0.27, 0.3, 0.16, [0, 0.34, 0], HIDE, 9);
   k.box(0.2, 0.22, 0.03, [0, 0.27, 0.27], HIDE, [0.15, 0, 0]);
-  for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; k.cone([Math.sin(a) * 0.27, 0.37, Math.cos(a) * 0.27], [Math.sin(a) * 0.31, 0.3, Math.cos(a) * 0.31], 0.05, 0xf0d4a0, 3, 0.5); }
+  for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; k.cone([Math.sin(a) * 0.27, 0.37, Math.cos(a) * 0.27], [Math.sin(a) * 0.31, 0.3, Math.cos(a) * 0.31], 0.05, 0xe03a2a, 3, 0.5); }
   // huge belly + chest
   k.ell(0.31, 0.3, 0.29, [0, 0.62, 0.06], BELLY);
   k.ell(0.02, 0.02, 0.01, [0, 0.58, 0.345], 0xc08858, null, 0);
-  k.torus(0.27, 0.028, [0, 0.42, 0.04], 0xd8b870, [Math.PI / 2 - 0.1, 0, 0], 1.05);
+  k.torus(0.27, 0.028, [0, 0.42, 0.04], 0xd8342a, [Math.PI / 2 - 0.1, 0, 0], 1.05);
   k.ell(0.33, 0.2, 0.22, [0, 0.9, -0.04], SK);
   // spotted fur pelt over the left shoulder
-  k.ell(0.2, 0.1, 0.2, [0.22, 1.0, -0.04], (p, n, f) => (f % 5 === 0 ? 0x7a4e2a : n.y > 0.3 ? 0xc8925a : 0xa87444), [0, 0, -0.35]);
-  k.box(0.08, 0.5, 0.03, [0.05, 0.82, 0.17], 0x9a6a3a, [0.2, 0, -0.75]);
+  k.ell(0.2, 0.1, 0.2, [0.22, 1.0, -0.04], (p, n, f) => (f % 5 === 0 ? 0x4a2e1e : n.y > 0.3 ? 0x8a5a36 : 0x6a4428), [0, 0, -0.35]);
+  k.box(0.08, 0.5, 0.03, [0.05, 0.82, 0.17], 0xd8342a, [0.2, 0, -0.75]);
   // head: small, low, forward
   k.ell(0.13, 0.13, 0.12, [0, 1.08, 0.12], SK);
   k.box(0.2, 0.08, 0.13, [0, 1.0, 0.16], SK);
@@ -434,7 +438,7 @@ function ogre() {
   k.ell(0.05, 0.045, 0.055, [0, 1.06, 0.25], 0xf0a07a);
   k.box(0.19, 0.03, 0.045, [0, 1.12, 0.21], SKD, [0.3, 0, 0]);
   // top-knot of hair tied with a gold ring
-  k.cone([0, 1.19, 0.08], [0, 1.33, 0.02], 0.045, 0xa8542a, 5);
+  k.cone([0, 1.19, 0.08], [0, 1.33, 0.02], 0.045, 0x5a2e1e, 5);
   k.torus(0.03, 0.01, [0, 1.22, 0.07], GOLD, [Math.PI / 2, 0, 0], 1, 8);
   k.torus(0.026, 0.008, [-0.14, 1.03, 0.1], GOLD, [0, Math.PI / 2, 0], 1, 8);
   // left arm hangs, huge fist
@@ -460,9 +464,10 @@ function ogre() {
 function troll() {
   const k = nkit(51);
   // cool sea-green hide with mossy, sunlit shoulders
-  const SK = byN(0x9ad874, 0x72bc98, 0x5e9e84, 0.45, -0.3);
-  const SKL = byN(0x8ed080, 0x6cb894, 0x5e9e84);
-  const ROCK = byN(0xa8d850, 0xb4b2a8, 0x8a8a84, 0.4, -0.2);
+  // Round 3: cool slate blue-grey hide with bright moss on the rocks: no longer grass-green, reads on every ground
+  const SK = byN(0x8cb0cc, 0x6488aa, 0x4a6684, 0.45, -0.3);
+  const SKL = byN(0x7ca0c0, 0x5a7ea0, 0x4a6684);
+  const ROCK = byN(0xa8e04a, 0x8a8690, 0x6a6670, 0.4, -0.2);
   const CLAW = 0xf4ead0;
   k.both((s) => {
     k.chain([[s * 0.1, 0.5, -0.06], [s * 0.15, 0.3, 0.08], [s * 0.13, 0.07, -0.03]], [0.06, 0.045, 0.04], SKL);
@@ -481,8 +486,8 @@ function troll() {
     k.cone([s * 0.04, 0.79, 0.33], [s * 0.055, 0.85, 0.365], 0.014, BONE, 4);
   });
   // loin wrap of leaves
-  k.frus(0.13, 0.17, 0.12, [0, 0.42, -0.02], byN(0x8ac040, 0x6a9a34, 0x527a2a), 7);
-  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; k.cone([Math.sin(a) * 0.15, 0.45, Math.cos(a) * 0.15 - 0.02], [Math.sin(a) * 0.19, 0.36, Math.cos(a) * 0.19 - 0.02], 0.045, i % 2 ? 0x9ad048 : 0x74aa38, 3, 0.4); }
+  k.frus(0.13, 0.17, 0.12, [0, 0.42, -0.02], byN(0x8a5a34, 0x6a4426, 0x4e321c), 7);
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; k.cone([Math.sin(a) * 0.15, 0.45, Math.cos(a) * 0.15 - 0.02], [Math.sin(a) * 0.19, 0.36, Math.cos(a) * 0.19 - 0.02], 0.045, i % 2 ? 0x9ad048 : 0x5a3a22, 3, 0.4); }
   // hunched torso
   k.ell(0.14, 0.14, 0.12, [0, 0.58, -0.02], SK);
   k.ell(0.2, 0.17, 0.17, [0, 0.78, 0.06], SK, [0.5, 0, 0]);
@@ -494,9 +499,9 @@ function troll() {
   k.ell(0.105, 0.095, 0.11, [0, 0.88, 0.25], SK);
   k.box(0.11, 0.05, 0.08, [0, 0.8, 0.3], SKL);
   k.box(0.08, 0.014, 0.02, [0, 0.79, 0.342], MOUTH);
-  k.cone([0, 0.885, 0.33], [0, 0.76, 0.47], 0.052, 0xb4d89a, 5);
-  k.ell(0.03, 0.028, 0.028, [0, 0.77, 0.455], 0xc8e4a8, null, 0);
-  k.box(0.14, 0.03, 0.045, [0, 0.91, 0.32], 0x4e8a6c, [0.3, 0, 0]);
+  k.cone([0, 0.885, 0.33], [0, 0.76, 0.47], 0.052, 0x9ab8d4, 5);
+  k.ell(0.03, 0.028, 0.028, [0, 0.77, 0.455], 0xb4c8dc, null, 0);
+  k.box(0.14, 0.03, 0.045, [0, 0.91, 0.32], 0x3e5674, [0.3, 0, 0]);
   // mossy hair
   for (let i = 0; i < 6; i++) { const a = -1.2 + i * 0.48; k.cone([Math.sin(a) * 0.05, 0.95, 0.22 - Math.cos(a) * 0.04], [Math.sin(a) * 0.11, 0.92, 0.07 - Math.cos(a) * 0.06], 0.038, i % 2 ? 0x8ad040 : 0x6ab030, 3, 0.5); }
   return finish(k);
@@ -505,8 +510,9 @@ function troll() {
 // ---------------------------------------------------------------- cyclops
 function cyclops() {
   const k = nkit(61);
-  const SK = byN(0xf8a874, 0xe0865a, 0xb0603e), SKD = 0xc8704a;
-  const HIDE = byN(0xc08648, 0x9c6638, 0x744a28);
+  // Round 3: rosy skin + deep teal hide (was orange on brown: blended on sand / lava)
+  const SK = byN(0xf8a890, 0xe08070, 0xb0584c), SKD = 0xc86a5a;
+  const HIDE = byN(0x2e9a9a, 0x1e7a80, 0x165a62);
   const ROCK = byN(0x96cc56, 0xc0bab0, 0x948e86, 0.45, -0.3);
   k.both((s) => {
     k.chain([[s * 0.13, 0.62, 0], [s * 0.17, 0.35, 0.07], [s * 0.15, 0.09, 0.0]], [0.1, 0.075, 0.06], SK);
@@ -557,14 +563,14 @@ function cyclops() {
 function hydra() {
   const k = nkit(71);
   // emerald scales, golden belly plates, flame-orange spines
-  const SC = [0x3cb874, 0x4cc886, 0x30a064];
+  const SC = [0x1ea078, 0x2cb48a, 0x168a68];
   const BEL = [0xfce8a0, 0xecd282];
   const scales = (p, n, f) => (n.y < -0.35 ? BEL[Math.floor(p.z * 14 + 20) % 2] : SC[f % 3]);
   const SPIKE = (y0) => (p) => (p.y > y0 ? 0xffb436 : 0xf0602e);
   k.ell(0.34, 0.26, 0.5, [0, 0.4, -0.14], scales, null, 2);
   k.ell(0.27, 0.22, 0.2, [0, 0.47, 0.2], scales, [-0.3, 0, 0], 1);
   for (let i = 0; i < 7; i++) { const z = 0.2 - i * 0.13, y = 0.62 - Math.pow(Math.abs(z + 0.1) / 0.5, 2) * 0.12; k.cone([0, y - 0.03, z], [0, y + 0.12 - Math.abs(i - 3) * 0.01, z - 0.09], 0.055, SPIKE(y + 0.03), 4, 0.4); }
-  const LEGC = byN(0x44c07c, 0x36a868, 0x2e8e58);
+  const LEGC = byN(0x2ab084, 0x1e966e, 0x16785a);
   k.both((s) => {
     for (const [z, fz] of [[0.18, 0.3], [-0.42, -0.36]]) {
       k.ell(0.1, 0.12, 0.12, [s * 0.25, 0.36, z], scales, null, 0);
@@ -589,8 +595,8 @@ function hydra() {
     { b: [0.12, 0.55, 0.25], m: [0.22, 0.95, 0.2], t: [0.28, 1.14, 0.48] },
     { b: [0.24, 0.48, 0.22], m: [0.5, 0.75, 0.25], t: [0.56, 0.92, 0.48] },
   ];
-  const HC = byN(0x52d08a, 0x3cb874, 0xf4e098, 0.3, -0.4);
-  const JAW = byN(0x3cb874, 0xecd282, 0xf4e098);
+  const HC = byN(0x36c094, 0x1ea078, 0xf4e098, 0.3, -0.4);
+  const JAW = byN(0x1ea078, 0xecd282, 0xf4e098);
   heads.forEach((h, i) => {
     const mid2 = [(h.m[0] + h.t[0]) / 2, h.t[1] - 0.04, (h.m[2] + h.t[2]) / 2 - 0.08];
     k.tube([h.b, h.m, mid2, h.t], (t) => 0.09 - t * 0.04, neckc, { seg: 6, n: 7, capEnd: false });

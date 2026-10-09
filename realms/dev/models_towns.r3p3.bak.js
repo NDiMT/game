@@ -177,13 +177,11 @@ function pennant(k, x0, y0, z0, len, hgt, c, o = {}) {
 }
 
 // ------------------------------------------------------------------ towns
-const HV = { stone: 0xf6f0e2, stoneD: 0xd6c9ac, roof: 0x3a78f2, roofD: 0x2e60d0, gold: 0xffcf4a, win: 0xffd070, banner: 0x2f6af0, wood: 0x9a6a42, red: 0xe0583a, plaster: 0xfbf2da, grass: 0x86c64e, apron: 0x968a78, kerb: 0x6a6054, path: 0xe6d3a0, door: 0x7a4a2a, iron: 0x9a948a };
+const HV = { stone: 0xf6f0e2, stoneD: 0xd6c9ac, roof: 0x3a78f2, roofD: 0x2e60d0, gold: 0xffcf4a, win: 0xffd070, banner: 0x2f6af0, wood: 0x9a6a42, red: 0xe0583a, plaster: 0xfbf2da, grass: 0x86c64e, path: 0xe6d3a0, door: 0x7a4a2a, iron: 0x9a948a };
 function havenTown() {
   const k = makeKit(11);
-  // ground (R3): a warm grey stone apron with a darker kerb instead of a lime grass disc, so the
-  // town sits on any terrain without a neon halo; the walls and blue roofs carry the colour
-  k.lathe([[0.69, 0], [0.68, 0.025], [0.62, 0.05], [0, 0.05]], 0, 0, 0, HV.apron, 14, { top: 1.08, bot: 0.7 });
-  k.tor(0.665, 0.014, 0, 0.03, 0, HV.kerb, TAU, { rx: Math.PI / 2, rs: 28, ts: 3 });
+  // ground: a grassy mound with a paved courtyard
+  k.lathe([[0.69, 0], [0.68, 0.025], [0.62, 0.05], [0, 0.05]], 0, 0, 0, HV.grass, 14, { top: 1.1, bot: 0.75 });
   k.cyl(0.5, 0.52, 0.012, 0, 0.05, -0.02, HV.path, 12, { j: 0.08 });
   k.box(0.12, 0.012, 0.28, 0, 0.05, 0.5, HV.path, { j: 0.08 }); // road out of the gate
   const Y = 0.055;
@@ -302,12 +300,10 @@ function havenTown() {
   return finish(k);
 }
 
-const NC = { stone: 0x9c8fb4, stoneD: 0x76689a, stoneL: 0xc2b6d6, spike: 0x72669c, bone: 0xf6eed4, boneD: 0xd2c4a0, green: 0x7affa8, greenD: 0x34e078, red: 0xd8283c, ash: 0x8c877e, kerb: 0x5a5460, pave: 0x8a809a, wood: 0x7a6656, purple: 0x7a4aa0 };
+const NC = { stone: 0x9c8fb4, stoneD: 0x76689a, stoneL: 0xc2b6d6, spike: 0x72669c, bone: 0xf6eed4, boneD: 0xd2c4a0, green: 0x7affa8, greenD: 0x34e078, red: 0xd8283c, ash: 0x9a9a80, pave: 0x8a809a, wood: 0x7a6656, purple: 0x7a4aa0 };
 function necroTown() {
   const k = makeKit(13);
-  // R3: a neutral ash-grey apron with a dark kerb (no green cast) under the violet town
-  k.lathe([[0.69, 0], [0.68, 0.025], [0.62, 0.05], [0, 0.05]], 0, 0, 0, NC.ash, 14, { top: 1.05, bot: 0.75 });
-  k.tor(0.665, 0.014, 0, 0.03, 0, NC.kerb, TAU, { rx: Math.PI / 2, rs: 28, ts: 3 });
+  k.lathe([[0.69, 0], [0.68, 0.025], [0.62, 0.05], [0, 0.05]], 0, 0, 0, NC.ash, 14, { top: 1.05, bot: 0.8 });
   k.cyl(0.5, 0.52, 0.01, 0, 0.05, -0.02, NC.pave, 12, { j: 0.08 });
   k.box(0.12, 0.01, 0.28, 0, 0.05, 0.5, NC.pave, { j: 0.08 });
   const Y = 0.055;

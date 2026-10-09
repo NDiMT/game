@@ -95,26 +95,22 @@ function fbm(x, z, oct = 3, s = 0) { let v = 0, a = 0.5, t = 0; for (let k = 0; 
 const PAL = {
   haven: {
     zenith: 0x3d7de0, mid: 0x7fb6f2, horizon: 0xdcEEF8, below: 0xb8d8c8, sunCol: 0xfff0c0, fog: 0xcfe2ee, fogNear: 70, fogFar: 1150,
-    sunDir: [-0.55, 0.62, 0.55], sun: 0xfff0d2, sunI: 2.7, hemiSky: 0xd0e4ff, hemiGround: 0x768b57, hemiI: 1.05, amb: 0xfff8f0, ambI: 0.28,
-    // round 3: calm backdrop (~30% less saturated, ~10% darker) so the buildings are the figures
-    grass: [0x6ea656, 0x90bd67, 0xa8bc78, 0x5b8e4d], bank: 0xd2c69c, field: [0xd0c080, 0xa2c774, 0xbea176, 0xc8c48c],
-    mtn: [0x6e9a78, 0x8a9cc0, 0xf4f6ff], hill: 0x65945a,
+    sunDir: [-0.55, 0.62, 0.55], sun: 0xfff0d2, sunI: 2.7, hemiSky: 0xd0e4ff, hemiGround: 0x7a9a48, hemiI: 1.05, amb: 0xfff8f0, ambI: 0.28,
+    grass: [0x5fb83a, 0x8ad24a, 0xb8d860, 0x4c9e36], bank: 0xd8c890, field: [0xe2c858, 0x9ad255, 0xc89c5c, 0xd8d070],
+    mtn: [0x6e9a78, 0x8a9cc0, 0xf4f6ff], hill: 0x5aa448,
     water: [0x2a78c8, 0x5fc0e8, 0xbfe8ff], waterSky: 0xd6ecff, waterGlow: 0,
-    path: '#d8c8a2', pathEdge: '#b49a72', stone: ['#ccbc98', '#e4d8bc', '#bcaa86'], pad: 'rgba(84,96,58,0.24)',
-    dots: ['rgba(240,226,150,0.55)', 'rgba(244,240,226,0.5)', 'rgba(220,170,180,0.45)', 'rgba(96,130,70,0.4)'],
+    path: '#dccaa0', pathEdge: '#b8996a', stone: ['#c8b48a', '#efe2c0', '#b7a27a'], pad: 'rgba(120,150,60,0.35)',
     cloud: 0xffffff, cloudShade: [196, 210, 232], dust: 0xe0d0a8, smoke: 0xeeeef4, birds: 0x4a5470, banner: [0x2a5ad8, 0xf0c040],
     tree: 'round', stars: 0,
   },
   necro: {
     // a luminous lavender / rose dusk: eerie but bright, never murky
-    zenith: 0x5c52ac, mid: 0xa690d0, horizon: 0xfac8c4, below: 0xc0b6b8, sunCol: 0xffd8ec, fog: 0xd8c8cc, fogNear: 90, fogFar: 950,
-    sunDir: [0.55, 0.5, 0.5], sun: 0xffdcc0, sunI: 3.1, hemiSky: 0xc2bae6, hemiGround: 0x8a8670, hemiI: 0.95, amb: 0xc4bcd6, ambI: 0.26,
-    // round 3: ash-grey / olive / bone ground, so the violet buildings stand out against it
-    grass: [0x9e9a8a, 0x8c9474, 0xcac2ac, 0x948a96], bank: 0xb8ac94, field: [0x9a9298, 0x8e9676, 0xa89c8a, 0x928c9c],
-    mtn: [0x837a98, 0x9a92ae, 0xe4dcec], hill: 0x8e8c82,
+    zenith: 0x5a4cb4, mid: 0xa486d8, horizon: 0xffc2c8, below: 0xc4aacc, sunCol: 0xffd8ec, fog: 0xdcbcdc, fogNear: 90, fogFar: 950,
+    sunDir: [0.55, 0.5, 0.5], sun: 0xffdcc0, sunI: 3.1, hemiSky: 0xb4a4f0, hemiGround: 0x84789a, hemiI: 0.95, amb: 0xb0a0e0, ambI: 0.26,
+    grass: [0x9c90b8, 0x86a080, 0xd2c8d6, 0xa874b2], bank: 0xb4a490, field: [0xa678b8, 0x8c9c78, 0xbc8aa8, 0x8a78b0],
+    mtn: [0x7a6aa8, 0x9a88c4, 0xe4d6f4], hill: 0x8a84a4,
     water: [0x2a7c88, 0x56c0a8, 0xbaf8dc], waterSky: 0xb49ad4, waterGlow: 0.35,
-    path: '#d8d0c0', pathEdge: '#a69c8a', stone: ['#bcb4a2', '#e6e0d2', '#aaa292'], pad: 'rgba(70,66,54,0.2)',
-    dots: ['rgba(170,140,184,0.45)', 'rgba(140,152,118,0.45)', 'rgba(170,240,200,0.4)', 'rgba(236,228,214,0.5)'],
+    path: '#d4c8d8', pathEdge: '#ab9cb8', stone: ['#bcaec6', '#e8e0e8', '#a898b2'], pad: 'rgba(120,96,140,0.22)',
     cloud: 0xfff0f8, cloudShade: [210, 170, 210], dust: 0xd0c0d4, smoke: 0xd8cce8, birds: 0x5a4870, banner: [0xc8183c, 0xf2e6c8],
     tree: 'dead', stars: 1,
     groundTune: { shade: 0x8ea8a0, lift: 0.1, toe: 0.2, detail: 0.75 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
@@ -433,8 +429,8 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         if (fac === 'necro') {
           // sage-grey moor, violet heather patches, pale ash drifts
           const n3 = fbm(x * 0.16 + 31, z * 0.16, 3, 7);
-          c.copy(g0).lerp(g1, smooth(0.45, 0.75, n1) * 0.75).lerp(g3, smooth(0.5, 0.7, n3) * 0.5).lerp(g2, smooth(0.64, 0.86, n2) * 0.4);
-        } else c.copy(g0).lerp(g1, smooth(0.35, 0.7, n1)).lerp(g3, smooth(0.55, 0.2, n1) * 0.6).lerp(g2, smooth(0.6, 0.85, n2) * 0.35);
+          c.copy(g0).lerp(g1, smooth(0.45, 0.75, n1) * 0.75).lerp(g3, smooth(0.5, 0.7, n3) * 0.8).lerp(g2, smooth(0.64, 0.86, n2) * 0.45);
+        } else c.copy(g0).lerp(g1, smooth(0.35, 0.7, n1)).lerp(g3, smooth(0.55, 0.2, n1) * 0.6).lerp(g2, smooth(0.6, 0.85, n2) * 0.5);
         if (y > 4) c.lerp(hill, smooth(4, 20, y) * 0.5);
         // patchwork fields on the left hills (haven) / heather moor (necro)
         if (x < -14 && z < -18 && z > -110 && x > -140) {
@@ -444,7 +440,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         }
         const rd = riverDist(x, z), rw = riverWidth(x, z) / 2;
         c.lerp(bank, smooth(rw + 2.8, rw + 0.6, rd) * 0.85);
-        c.multiplyScalar(fac === 'necro' ? 0.92 + n2 * 0.14 : 0.95 + n2 * 0.1);
+        c.multiplyScalar(fac === 'necro' ? 0.88 + n2 * 0.22 : 0.94 + n2 * 0.12);
         cols.push(c.r, c.g, c.b);
       }
       for (let k = 0; k < radii.length - 1; k++) for (let i = 0; i < N; i++) {
@@ -513,15 +509,15 @@ void main() { vec3 d = normalize(vD); float y = d.y;
         L.globalCompositeOperation = 'source-atop';
         for (let i = 0; i < 4200; i++) {
           const x = r() * 512, y = r() * 512, s = 2 + r() * 3.2;
-          L.fillStyle = P.stone[(r() * 3) | 0]; L.globalAlpha = 0.3 + r() * 0.3;
+          L.fillStyle = P.stone[(r() * 3) | 0]; L.globalAlpha = 0.55 + r() * 0.35;
           L.beginPath(); L.ellipse(x, y, s, s * (0.6 + r() * 0.3), r() * 3, 0, 7); L.fill();
         }
         L.globalAlpha = 1;
         g.drawImage(lay, 0, 0);
         // flowers / tufts (haven) - heather, pale sage tufts and green glimmers (necro)
-        // round 3: a sparse, muted sprinkle (was 650 bright dots: read as confetti)
-        const dots = P.dots;
-        for (let i = 0; i < 190; i++) {
+        const dots = fac === 'haven' ? ['rgba(255,240,120,0.8)', 'rgba(255,255,255,0.8)', 'rgba(255,150,190,0.7)', 'rgba(120,180,60,0.5)']
+          : ['rgba(196,140,214,0.75)', 'rgba(150,170,128,0.6)', 'rgba(170,255,200,0.55)', 'rgba(240,226,236,0.7)', 'rgba(214,120,160,0.55)'];
+        for (let i = 0; i < 650; i++) {
           const x = r() * 512, y = r() * 512;
           g.fillStyle = dots[(r() * dots.length) | 0];
           g.beginPath(); g.arc(x, y, 1 + r() * 1.4, 0, 7); g.fill();
@@ -653,7 +649,7 @@ void main() {
         round: (() => {
           const k = kit(3);
           k.cyl(0.07, 0.12, 0.7, 0, 0, 0, [0x7a5232, 0x9a6a3e], 6);
-          const crown = fac === 'haven' ? [0x4c8a44, 0x98c070] : [0x8a9478, 0xb0b8a0];
+          const crown = fac === 'haven' ? [0x3f9a34, 0x9ad850] : [0x8a9a76, 0xb4c0a0];
           for (const [x, y, z, r] of [[0, 1.0, 0, 0.55], [0.28, 1.25, 0.08, 0.38], [-0.24, 1.2, -0.1, 0.4], [0.02, 1.45, -0.02, 0.33]])
             k.add(new T.IcosahedronGeometry(r, 0).translate(x, y, z), (px, py, pz, c) => c.set(crown[0]).lerp(col(crown[1]), clamp((py - 0.55) / 1.25 + px * 0.15 + pz * 0.25, 0, 1)));
           return k.body();
@@ -661,7 +657,7 @@ void main() {
         pine: (() => {
           const k = kit(4);
           k.cyl(0.06, 0.1, 0.5, 0, 0, 0, [0x6a4a2e, 0x8a5e38], 5);
-          const pc = fac === 'haven' ? [0x3e6e50, 0x7eae78] : [0x6a6878, 0x9c98a8];
+          const pc = fac === 'haven' ? [0x2f7a48, 0x76c068] : [0x6a6294, 0xa49cc8];
           for (const [y, r, h] of [[0.35, 0.55, 0.8], [0.75, 0.42, 0.7], [1.1, 0.3, 0.65]]) k.cone(r, h, 0, y, 0, pc, 7);
           return k.body();
         })(),
@@ -989,9 +985,6 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   let cur = { fac: null, name: null };
   let activeEnv = null;
 
-  const inkMat = MAT?.makeInkHullMaterial ? keep(MAT.makeInkHullMaterial(T, { width: 0.0016, dark: 0.26, center: 1.0, push: 0.0006 })) : null;
-  const blobMat = MAT?.makeBlobShadowMaterial ? keep(MAT.makeBlobShadowMaterial(T, { opacity: 0.32 })) : null;
-  const blobGeo = blobMat ? keep(MAT.blobShadowGeometry(T)) : null;
   function makeBuilding(fac, id, k) {
     const { m, s } = buildingModel(fac, id);
     const g = meshOf(m, true, GLOW_SCALE[fac + ':' + id] ?? GLOW_SCALE[id] ?? 1);
@@ -1002,13 +995,6 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     g.position.set(sp.x, 0, sp.z); g.rotation.y = sp.ry;
     g.userData = { id, slot: k, h: (DIMS[id] || [0, 0, 3])[2] * s * sp.s };
     for (const c of inner.children) { c.userData.bid = id; if (c.material === bodyMat) pickables.push(c); }
-    // round 3 figure/ground: a crisp painted ink outline + a soft contact shadow so each building sits ON the ground
-    if (inkMat) for (const c of [...inner.children]) if (c.material === bodyMat) { const h = new T.Mesh(c.geometry, inkMat); h.castShadow = h.receiveShadow = false; h.userData.ink = true; inner.add(h); }
-    if (blobMat) {
-      const d = SLOT_DIM(k) || [2, 2, 2], bl = new T.Mesh(blobGeo, blobMat);
-      bl.scale.set(d[0] * (k === 'fort' ? 0.58 : 0.7), 1, d[1] * (k === 'fort' ? 0.9 : 0.7)); bl.position.y = 0.03; bl.renderOrder = 2; bl.userData.blob = true;
-      g.add(bl);
-    }
     return g;
   }
   function removeBuilding(g) {
