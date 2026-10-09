@@ -1,25 +1,25 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=0.9';
-import { havenModel } from './units_haven.js?v=0.9';
-import { necroModel } from './units_necro.js?v=0.9';
-import { necroUpModel } from './units_necro_up.js?v=0.9';
-import { havenUpModel } from './units_haven_up.js?v=0.9';
-import { neutralModel } from './units_neutral.js?v=0.9';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=0.9';
-import { objectModel } from './models_objects.js?v=0.9';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.9';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=0.9';
-import { createTownView } from './town_view.js?v=0.9';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.9';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.9';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.9';
-import * as BT from './battle.js?v=0.9';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=0.9';
-import { createScore } from './music.js?v=0.9';
-import { unitFit, applyFit } from './unit_fit.js?v=0.9';
-import { createMapFx } from './mapfx.js?v=0.9';
+import { mulberry32, unitModel } from './models.js?v=1.0';
+import { havenModel } from './units_haven.js?v=1.0';
+import { necroModel } from './units_necro.js?v=1.0';
+import { necroUpModel } from './units_necro_up.js?v=1.0';
+import { havenUpModel } from './units_haven_up.js?v=1.0';
+import { neutralModel } from './units_neutral.js?v=1.0';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=1.0';
+import { objectModel } from './models_objects.js?v=1.0';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.0';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.0';
+import { createTownView } from './town_view.js?v=1.0';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.0';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.0';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=1.0';
+import * as BT from './battle.js?v=1.0';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.0';
+import { createScore } from './music.js?v=1.0';
+import { unitFit, applyFit } from './unit_fit.js?v=1.0';
+import { createMapFx } from './mapfx.js?v=1.0';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0.9';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.0';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -28,7 +28,7 @@ import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '0.9';
+const APP_VERSION = '1.0';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -226,7 +226,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=0.9';
+import { createPlanet } from './terrain.js?v=1.0';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -308,6 +308,7 @@ initPortraits(THREE, renderer, unitGeo);
 setTimeout(() => preloadPortraits(Object.keys(UNITS), 64), 1500);
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
 // interactive things (towns, heroes, objects, creatures) get a painted ink outline so they read as figures on the ground
+setRigIdle(0.6); // map figures idle gently (battle units set their own amplitude)
 const inkMat = makeInkHullMaterial(THREE), blobMat = makeBlobShadowMaterial(THREE), blobGeo = blobShadowGeometry(THREE);
 function meshOf(m, ink = true) {
   const g = new THREE.Group();
@@ -1763,4 +1764,4 @@ layoutWorld();
 resize();
 showMenu();
 frame();
-window.__realms = { G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam };
+window.__realms = { G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo };
