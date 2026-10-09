@@ -17,7 +17,7 @@ import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKIL
 const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.7'), import('./units_inferno.js?v=1.7'), import('./units_dungeon.js?v=1.7')]);
 const FAC_MODEL = { sylvan: SYLm.value?.sylvanModel, inferno: INFm.value?.infernoModel, dungeon: DUNm.value?.dungeonModel };
 import * as BT from './battle.js?v=1.7';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=1.7';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=1.7';
 import { createScore } from './music.js?v=1.7';
 import { createSfx } from './sfx.js?v=1.7';
 import { unitFit, applyFit } from './unit_fit.js?v=1.7';
@@ -408,10 +408,56 @@ function townInsets() {
   townView.setInsets(side ? { bottom: 0, right: innerWidth - r.left } : { bottom: Math.max(0, innerHeight - r.top), right: 0 });
 }
 const geoCache = new Map();
-const unitGeo = (id) => { const ff = FAC_MODEL[UNITS[id]?.fac]; if (ff) { const g = ff(id); if (g) return g; } const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
+const unitGeoRaw = (id) => { const ff = FAC_MODEL[UNITS[id]?.fac]; if (ff) { const g = ff(id); if (g) return g; } const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
+// perf: the body material otherwise computes the smooth form normals lazily on the first draw (~5-12 ms per creature on
+// desktop, several times that on a phone), i.e. inside the first battle frame; do it with the build instead
+const unitGeo = (id) => { const m = unitGeoRaw(id); if (m?.body && !m.body.attributes.formNormal) { addFormNormals(m.body); m.body.userData.hxForm = true; } return m; };
 // portraits are warmed by the loading screen (prewarm); the rest render on demand
 let prewarmed = false;
+// every model geometry is built once and shared by all its meshes (map, battle, portraits); never disposed
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
+// keyed by faction + colour, not player index: a second new game in the same session must not reuse the old look
+const heroKey = (p) => 'hero' + G.players[p].fac + ':' + G.players[p].color;
+const heroGeo = (p) => cached(heroKey(p), () => { const P = G.players[p], m = heroModel(P.fac, P.color); if (m.body) { addFormNormals(m.body); m.body.userData.hxForm = true; } return m; });
+// Idle-time geometry warm-up (perf): a creature that is not cached yet costs build + form normals + fits
+// (~25-60 ms desktop, ~100-250 ms on a mid phone) the first time it is drawn, so an enemy army of new creatures
+// used to stall battle entry. warmGeometryIdle() queues the creatures you are likely to fight next (AI heroes'
+// armies, garrisons, map guards, your own faction) and builds ONE model per idle callback, only while the map is
+// calm (no battle/town, no walk, no drag, no AI turn). It rescans every ~8 s, so armies the AI recruits later are
+// picked up too. Not every faction's full roster: each creature is ~1 MB of geometry. Idempotent; returns the queue length.
+const warmQ = [];
+let warmBusy = false, warmTimer = 0;
+function warmJobs() {
+  const ids = [], add = (id) => { if (id && UNITS[id] && !ids.includes(id)) ids.push(id); };
+  for (const hr of G.heroes) if (hr.alive && hr.p !== 0) for (const st of hr.army || []) add(st?.[0]); // armies keep null slots
+  for (const t of G.towns) for (const st of t.garrison || []) add(st?.[0]);
+  for (const o of G.objects) if (o.alive && o.type === 'monster') add(o.unit);
+  const myFac = G.players[0]?.fac;
+  for (const [id, u] of Object.entries(UNITS)) if (u.fac === myFac) add(id);
+  return ids;
+}
+function warmGeometryIdle(ids = warmJobs()) {
+  for (const id of ids) if (!warmQ.includes(id) && !warmed.has(id)) warmQ.push(id);
+  G.players.forEach((P, p) => { if (!geoCache.has(heroKey(p)) && !warmQ.includes('hero:' + p)) warmQ.push('hero:' + p); });
+  if (!warmBusy && warmQ.length) { warmBusy = true; idleCb(warmStep); }
+  else if (!warmBusy && !warmTimer) warmTimer = setTimeout(() => { warmTimer = 0; warmGeometryIdle(); }, 8000);
+  return warmQ.length;
+}
+const warmed = new Set();
+const idleCb = (f) => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 2000 }) : setTimeout(() => f({ didTimeout: true, timeRemaining: () => 0 }), 120));
+function warmCalm() { return G.mode === 'map' && !walking && !ptrs.size && !aiRunning && $('loader').hidden; }
+function warmStep(dl) {
+  // one model per callback (a build cannot be split); wait for real idle time unless the browser says we timed out
+  if (!warmQ.length) { warmBusy = false; warmGeometryIdle(); return; }
+  if (!warmCalm() || (!dl.didTimeout && dl.timeRemaining() < 6)) { setTimeout(() => idleCb(warmStep), 250); return; }
+  const id = warmQ.shift();
+  try {
+    if (id.startsWith('hero:')) { if (G.players[+id.slice(5)]) heroGeo(+id.slice(5)); }
+    else { const g = cached('u' + id, () => unitGeo(id)); unitFit(id, g, 'battle'); unitFit(id, g, 'map'); }
+  } catch (e) { console.warn('warm', id, e); }
+  warmed.add(id); // tried: a model that throws is not retried every rescan
+  if (warmQ.length) idleCb(warmStep); else { warmBusy = false; warmGeometryIdle(); }
+}
 initPortraits(THREE, renderer, (id) => cached('u' + id, () => unitGeo(id)), { dispose: false });
 const heroPic = (hr, size, shape = 'square') => { const P = G.players[hr.p]; return heroPortraitImg(P.fac, P.color, size, 'pt', shape); };
 // interactive things (towns, heroes, objects, creatures) get a painted ink outline so they read as figures on the ground
@@ -445,6 +491,8 @@ const flora = new THREE.Group(); scene.add(flora);
 const pickW = (list, r) => { const tot = list.reduce((x, e) => x + e.w, 0); let k = r * tot; for (const e of list) { k -= e.w; if (k <= 0) return e.key; } return list[0].key; };
 const dummy = new THREE.Object3D();
 function layoutFlora() {
+  // free the old instance-matrix GPU buffers (the shared nature geometries stay cached in nature.js)
+  for (const im of flora.children) im.dispose?.();
   flora.clear();
   const lists = new Map();
   const put = (key, v, s, x = 0, z = 0, turn = 0) => {
@@ -709,7 +757,7 @@ function layoutHeroes(force = false) {
     if (!hr.alive || (!seen[hr.v] && hr.p !== 0)) { if (m) { scene.remove(m); heroMeshes.delete(hr.id); } continue; }
     let fresh = false;
     if (!m) {
-      m = addBlob(meshOf(cached('hero' + hr.p, () => heroModel(G.players[hr.p].fac, G.players[hr.p].color))), 0.5);
+      m = addBlob(meshOf(heroGeo(hr.p)), 0.5);
       scene.add(m); heroMeshes.set(hr.id, m); fresh = true;
     }
     // a hero in motion is posed by updateWalk / frame(); re-laying it out mid-step (worldDirty → layoutWorld) would pop it
@@ -1148,13 +1196,25 @@ function prewarm(onDone) {
   // portraits for the creatures you will actually see first: your faction (+ upgrades) and the map guards
   const myFac = G.players[0]?.fac, need = new Set(G.objects.filter((o) => o.alive && o.type === 'monster').map((o) => o.unit));
   for (const [id, u] of Object.entries(UNITS)) if (u.fac === myFac) need.add(id);
+  // and every army you can already meet: rival heroes and town garrisons (other factions' models used to be built on
+  // the battle tap: a 1 s stall per new faction in swiftshader)
+  for (const a of [...G.heroes.filter((h) => h.p !== 0).map((h) => h.army), ...G.towns.filter((t) => t.p !== 0).map((t) => t.garrison)]) for (const st of a) if (st && UNITS[st[0]]) need.add(st[0]);
   for (const id of need) jobs.push(['Summoning creatures', () => portraitImg(id, 64)]);
   for (const hr of G.heroes.filter((h) => h.p === 0)) jobs.push(['Summoning heroes', () => { heroPic(hr, 40, 'round'); heroPic(hr, 96); }]);
   for (const t of new Set([ter[G.heroes[0]?.v] ?? 1, 1, 2, 3, 4, 5, 6, 7])) jobs.push(['Preparing battlefields', () => createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS)]);
   for (const id of need) jobs.push(['Training armies', () => { const g = cached('u' + id, () => unitGeo(id)); unitFit(id, g, 'battle'); unitFit(id, g, 'map'); }]);
+  for (const fac of new Set(G.towns.filter((t) => t.p !== 0 && t.built.includes('fort')).map((t) => t.fac))) jobs.push(['Raising walls', () => { cached('wall_' + fac, () => wallModel(fac)); cached('gate_' + fac, () => gateModel(fac)); cached('tower_' + fac, () => towerModel(fac)); cached('keep_' + fac, () => keepModel(fac)); }]);
+  // compile every battle program (units, arena ground/grid/decor/water, lava glow) and draw the likely first arena once,
+  // so its textures, buffers and shadow programs are on the GPU before the first fight (it used to cost the first
+  // battle ~4 frames' worth of stall)
   jobs.push(['Sharpening swords', () => {
     const m = meshOf(cached('upikeman', () => unitGeo('pikeman'))); setAnim(m, ANIM.IDLE);
-    bscene.add(m); try { renderer.compile(bscene, bcam); } catch (e) { /* ok */ } bscene.remove(m);
+    const t0 = ter[G.heroes.find((h) => h.p === 0)?.v] ?? 1, fields = [...new Set([t0, 1, 2, 3, 4, 5, 6, 7])].map((t) => createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS));
+    bscene.add(m); for (const f of fields) bscene.add(f.group);
+    try { renderer.compile(bscene, bcam); } catch (e) { /* ok */ }
+    for (const f of fields.slice(1)) bscene.remove(f.group);
+    try { bcam.position.set(0, 10.75, 10.6); bcam.lookAt(0, 0, -0.15); post.render(bscene, bcam); } catch (e) { /* ok */ }
+    bscene.remove(m, fields[0].group);
   }]);
   // perf: the first town open used to build the whole faction scene (env, buildings, ink hulls) and compile its shaders
   // on tap (a multi-second hitch on phones). Build the player's own town now and draw it once behind the loader, so
@@ -1193,12 +1253,74 @@ function startBattle(hr, foe) {
   const sides = playerDefends ? [{ hero: defHero, army: defArmy, owner: 0 }, { hero: hr, army: hr.army, owner: hr.p }] : [{ hero: hr, army: hr.army, owner: hr.p }, { hero: defHero, army: defArmy, owner: defOwner }];
   const B = BT.createBattle({ armyA: sides[0].army, heroA: sides[0].hero ? heroBattle(sides[0].hero) : null, armyB: sides[1].army, heroB: sides[1].hero ? heroBattle(sides[1].hero) : null, town: foe.kind === 'town' ? { fort: foe.town.built.includes('fort'), side: playerDefends ? 0 : 1, power: Math.max(2, foe.town.built.length / 2) } : null });
   const ctx = { hr, foe, sides, terrain: ter[foe.kind === 'monster' ? foe.obj.v : hr.v] };
+  // a side with no living troops cannot fight: settle it at once. Opening the arena would never end (the enemy AI
+  // has no target and never finishes its turn, or the player has nothing to attack).
+  if (!BT.alive(B, 0).length || !BT.alive(B, 1).length) { B.over = { winner: BT.alive(B, 0).length ? 0 : 1 }; B.events.length = 0; finishBattle(B, ctx); return; }
   if (sides[0].owner !== 0 && sides[1].owner !== 0) { BT.autoResolve(B); finishBattle(B, ctx); return; }
   enterBattle(B, ctx);
+}
+// Battle entry is staged behind a curtain that appears on the very tap: models that are not cached yet (another
+// faction's creatures, a town's walls, their portraits) are built a few per frame, the arena's shaders compile (in
+// parallel where KHR_parallel_shader_compile exists) and its textures upload, and only then is the battle shown.
+// The player never stares at a frozen map frame, input stays locked (G.mode) for the whole set-up, and any error
+// resolves the fight instead of leaving the game stuck in a half-built battle.
+let bprep = null;
+const bcurtain = document.createElement('div');
+bcurtain.id = 'bcurtain'; bcurtain.hidden = true; bcurtain.innerHTML = icon('attack', 72); document.body.appendChild(bcurtain);
+const nextFrame = () => new Promise((res) => requestAnimationFrame(() => res()));
+function curtain(on) {
+  if (on) { bcurtain.hidden = false; bcurtain.classList.remove('off'); bcurtain.classList.add('on'); return; }
+  bcurtain.classList.remove('on'); bcurtain.classList.add('off');
+  setTimeout(() => { if (!bcurtain.classList.contains('on')) bcurtain.hidden = true; }, 400);
 }
 function enterBattle(B, ctx) {
   BB = B; bctx = ctx; banim = []; bwait = 0.6; bspell = null; bauto = false; B.events.length = 0;
   G.mode = 'battle'; showPath(selHero(), null);
+  $('hud').hidden = true; curtain(true);
+  musicScene('battle'); sfx.battle();
+  const job = bprep = { B };
+  prepBattle(job).catch((e) => abortBattle(job, e));
+}
+async function prepBattle(job) {
+  const B = job.B, ctx = bctx, live = () => bprep === job && BB === B && G.mode === 'battle';
+  // let the curtain paint before any heavy work (its fade and pulse run on the compositor from then on)
+  await nextFrame(); await nextFrame();
+  if (!live()) return;
+  const todo = [() => createBattlefield(THREE, ctx.terrain, hexPos, BT.COLS, BT.ROWS)];
+  if (B.walls.size) { const f = ctx.foe.town?.fac; todo.push(() => cached('wall_' + f, () => wallModel(f)), () => cached('gate_' + f, () => gateModel(f)), () => cached('tower_' + f, () => towerModel(f)), () => cached('keep_' + f, () => keepModel(f))); }
+  for (const id of new Set(B.stacks.map((s) => s.id))) todo.push(() => unitFit(id, cached('u' + id, () => unitGeo(id)), 'battle'), () => portraitImg(id, 64));
+  let t0 = performance.now();
+  for (const f of todo) {
+    if (performance.now() - t0 > 14) { await nextFrame(); if (!live()) return; t0 = performance.now(); }
+    f();
+  }
+  buildBattleScene(B, ctx);
+  // upload the arena's painted textures and compile every program the battle scene needs before its first frame
+  for (const tx of [bfield.ground?.material.map, bfield.ground?.material.emissiveMap, bfield.overlay?.material.map]) if (tx) renderer.initTexture(tx);
+  await nextFrame(); if (!live()) return;
+  try { await Promise.race([renderer.compileAsync(bscene, bcam), new Promise((res) => setTimeout(res, 2500))]); } catch (e) { console.warn('battle shaders', e); }
+  if (!live()) return;
+  bprep = null;
+  $('battle').hidden = false;
+  const hs = ctx.sides.map((sd) => (sd.hero ? sd.hero.name : sd.owner < 0 ? 'Neutrals' : 'Garrison'));
+  $('b-title').textContent = `${hs[0]} vs ${hs[1]}`;
+  BT.nextStack(B);
+  refreshBattle();
+  // lift the curtain once the first battle frame is on screen
+  await nextFrame(); await nextFrame();
+  curtain(false);
+}
+function abortBattle(job, e) {
+  console.error('battle set-up failed', e);
+  if (bprep !== job) return;
+  bprep = null; curtain(false);
+  if (BB !== job.B || G.mode !== 'battle') return;
+  // never leave the game locked in a half-built battle: fight it out off screen
+  if (!job.B.over) BT.autoResolve(job.B);
+  job.B.events.length = 0; banim = [];
+  endBattleScreen();
+}
+function buildBattleScene(B, ctx) {
   if (bfield) bscene.remove(bfield.group);
   bfield = createBattlefield(THREE, ctx.terrain, hexPos, BT.COLS, BT.ROWS);
   bscene.add(bfield.group);
@@ -1234,13 +1356,6 @@ function enterBattle(B, ctx) {
     bstuff.add(m); bmesh.set(s.uid, m); setAnim(m, ANIM.IDLE, { seed: s.uid * 1.7 });
     bplates.add(makePlate(s));
   }
-  $('battle').hidden = false; $('hud').hidden = true;
-  const hs = ctx.sides.map((sd) => (sd.hero ? sd.hero.name : sd.owner < 0 ? 'Neutrals' : 'Garrison'));
-  $('b-title').textContent = `${hs[0]} vs ${hs[1]}`;
-  musicScene('battle');
-  BT.nextStack(B);
-  refreshBattle();
-  sfx.battle();
 }
 // stack count plates (HoMM-style): small sprites standing on the ground at the front edge of the
 // stack's hex. They are depth-tested inside the battle scene, so a creature standing in front of a
@@ -1481,6 +1596,12 @@ function walkDist(t, n) {
   if (t > T - WALK_RA) return n - (WALK_V * (T - t) * (T - t)) / (2 * WALK_RA);
   return WALK_V * (t - WALK_RA / 2);
 }
+// the death pose + cry start on the killing blow; the queued 'die' event only times the dissolve from dieAt
+function startDeath(m, s) {
+  if (!m || m.userData.dieAt !== undefined) return;
+  m.userData.dieAt = bclock; m.userData.dying = true;
+  setAnim(m, ANIM.DEATH, { speed: AS }); sfx.die({ kind: s?.u?.undead ? 'undead' : '', pan: bpan(m) });
+}
 function playEvent(e, t) {
   const B = BB, M = (uid) => bmesh.get(uid), S = (uid) => B.stacks[uid];
   if (e.t === 'move') {
@@ -1536,7 +1657,7 @@ function playEvent(e, t) {
     if ((e.t === 'shot' ? e.landed || t > imp + 1.5 : t >= imp) && !e.shown) {
       e.shown = true; e.shownAt = t;
       // a killing blow starts the death right on impact (the 'die' event that follows only finishes it)
-      if ((e.left ?? sd.count) > 0) setAnim(d, ANIM.HIT, { speed: AS }); else { setAnim(d, ANIM.DEATH, { speed: AS }); d.userData.dying = true; d.userData.dieAt = bclock; }
+      if ((e.left ?? sd.count) > 0) setAnim(d, ANIM.HIT, { speed: AS }); else startDeath(d, sd);
       if (e.t === 'hit') { vfx.hit(d.position.clone().setY(0.5), meleeKind(sa.u), { dir: d.position.clone().sub(a.position) }); sfx.hit({ kind: meleeKind(sa.u), pan: bpan(d) }); }
       else sfx.hit({ kind: 'arrow', pan: bpan(d) });
       if (e.lucky) { vfx.sparkle(d.position, 'luck'); sfx.luck(); }
@@ -1556,7 +1677,7 @@ function playEvent(e, t) {
   if (e.t === 'die') {
     const m = M(e.s); if (!m) return true;
     // the death pose may already be running since the killing blow landed (dieAt): time the dissolve from there
-    if (!e.started) { e.started = true; sfx.die({ kind: S(e.s).u?.undead ? 'undead' : '', pan: bpan(m) }); if (m.userData.dieAt === undefined) { setAnim(m, ANIM.DEATH, { speed: AS }); m.userData.dieAt = bclock; } m.userData.dying = true; }
+    if (!e.started) { e.started = true; startDeath(m, S(e.s)); }
     const age = bclock - m.userData.dieAt;
     if (age > 0.8 && !e.diss) { e.diss = true; vfx.death(m, { undead: !!S(e.s).u?.undead }); }
     if (age > 1.35 && e.diss) { m.visible = false; return true; }
@@ -1573,14 +1694,14 @@ function playEvent(e, t) {
     }
     if (t >= e.land && !e.shown) {
       e.shown = true; sfx.spell({ kind: e.id });
-      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; if (!hh.heal && (hh.left ?? 1) <= 0) { setAnim(m, ANIM.DEATH, { speed: AS }); m.userData.dying = true; m.userData.dieAt = bclock; } else setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; S(hh.s).shown = hh.left ?? S(hh.s).count; setPlate(S(hh.s)); }
+      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; if (!hh.heal && (hh.left ?? 1) <= 0) startDeath(m, S(hh.s)); else setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; S(hh.s).shown = hh.left ?? S(hh.s).count; setPlate(S(hh.s)); }
     }
     return t > e.land + 0.45;
   }
   if (e.t === 'tower') {
     const m = M(e.s);
     if (!e.started) { e.started = true; sfx.shoot({ kind: 'tower' }); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1 * bctx.tower.scale.y) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
-    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (S(e.s)) S(e.s).shown = e.left ?? S(e.s).count; if (m) { m.userData.flash = 0.3; if ((e.left ?? 1) <= 0) { setAnim(m, ANIM.DEATH, { speed: AS }); m.userData.dying = true; m.userData.dieAt = bclock; } else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
+    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (S(e.s)) S(e.s).shown = e.left ?? S(e.s).count; if (m) { m.userData.flash = 0.3; if ((e.left ?? 1) <= 0) startDeath(m, S(e.s)); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
   if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.gate({ kind: e.broken ? 'broken' : '' }); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
@@ -2270,7 +2391,7 @@ for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.to
 function syncSound() { const on = store.get('realms.music', true); $('m-sound').classList.toggle('off', !on); $('m-sound').querySelector('span').textContent = on ? 'Music on' : 'Music off'; }
 $('m-sound').addEventListener('click', () => { const on = !store.get('realms.music', true); store.set('realms.music', on); if (on) score?.start(); else score?.stop(); syncSound(); sfx.click(); });
 function play() {
-  if (!prewarmed) { prewarmed = true; $('menu').hidden = true; G.mode = 'map'; worldDirty = true; layoutWorld(); prewarm(() => play()); return; }
+  if (!prewarmed) { prewarmed = true; $('menu').hidden = true; G.mode = 'map'; worldDirty = true; layoutWorld(); prewarm(() => { play(); warmGeometryIdle(); }); return; }
   $('menu').hidden = true; $('hud').hidden = false; G.mode = 'map'; musicScene('map');
   stopAI(); walking = null;
   worldDirty = true; layoutWorld();
@@ -2357,8 +2478,11 @@ function horizonCull() {
   for (const g of heroMeshes.values()) hzOne(g, lim);
 }
 function frame(now) {
+  // schedule the next frame first: an exception anywhere below (a bad battle setup, an AI move) then costs one
+  // frame instead of silently killing the loop and freezing the whole game
+  requestAnimationFrame(frame);
   // nothing to draw behind the loading screen: give its time to the warm-up jobs
-  if (!loaderEl.hidden && !loaderEl.classList.contains('done')) { clock.getDelta(); requestAnimationFrame(frame); return; }
+  if (!loaderEl.hidden && !loaderEl.classList.contains('done')) { clock.getDelta(); return; }
   QG.sample(typeof now === 'number' ? now : performance.now());
   const dt = Math.min(0.05, clock.getDelta());
   tt += dt;
@@ -2366,7 +2490,8 @@ function frame(now) {
   // ink outlines thin out and soften as the map zooms out, so far views don't turn into uniform dark chips
   const iu = inkMat.userData.uniforms, zk = G.mode === 'battle' ? 1 : clamp((19 - cam.dist) / 8, 0.3, 1);
   iu.uHullW.value = 0.003 * zk; iu.uHullDark.value = 0.15 + (1 - zk) * 0.45;
-  if (G.mode === 'battle') {
+  if (G.mode === 'battle' && bprep) { /* the battle is being set up behind the curtain (enterBattle): nothing to draw yet */ }
+  else if (G.mode === 'battle') {
     animateBattle(dt);
     const s = Math.sin(bview.yaw), c = Math.cos(bview.yaw);
     // a classic three-quarter view: low enough that creatures show their figures, not just helmets
@@ -2413,7 +2538,6 @@ function frame(now) {
     else { horizonCull(); if (mapShadowsDue(dt)) renderer.shadowMap.needsUpdate = true; post.render(scene, camera); }
   }
   updateFloaters(dt);
-  requestAnimationFrame(frame);
 }
 const hitMat = makeHitMaterial(THREE);
 
@@ -2425,8 +2549,10 @@ resize();
 QG.init();
 showMenu();
 frame();
-window.__realms = { G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
+window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
 Object.assign(window.__realms, { quality: QG.state, renderer });
 // battle test hooks (battle-flow logs / soft-lock runs): fast-forward the battle without rendering
 Object.assign(window.__realms, { get bmesh() { return bmesh; }, get banim() { return banim; }, bstep: (dt) => { animateBattle(dt); vfx.update(dt, bcam); } });
+// geometry cache: idle warm-up hook + stats (models, triangles, CPU-side MB of vertex data)
+Object.assign(window.__realms, { warmGeometryIdle, warmQueue: () => warmQ.length, geoStats: () => { let tris = 0, bytes = 0; for (const m of geoCache.values()) for (const g of [m?.body, m?.glow]) if (g?.attributes?.position) { tris += g.attributes.position.count / 3; for (const a of Object.values(g.attributes)) bytes += a.array.byteLength; } return { models: geoCache.size, tris: Math.round(tris), mb: +(bytes / 1048576).toFixed(1) }; } });

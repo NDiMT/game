@@ -149,7 +149,11 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 function finish(parts, seed) {
-  const out = { body: { p: [], c: [], b: [], v: [] }, glow: { p: [], c: [], b: [], v: [] } };
+  // typed output sized up front (every vertex is kept): no growing JS arrays, no copy into the attributes
+  let nB = 0, nG = 0;
+  for (const pt of parts) { const l = pt.g.attributes.position.array.length; if (pt.glow) nG += l; else nB += l; }
+  const mk = (n) => ({ p: new Float32Array(n), c: new Float32Array(n), b: new Float32Array(n / 3), v: new Float32Array(n), n: 0 });
+  const out = { body: mk(nB), glow: mk(nG) };
   // whole-model value band: light top, mid body, softer underside (never dark)
   let gy1 = 0.5;
   for (const pt of parts) if (!pt.glow) { const P = pt.g.attributes.position.array; for (let i = 1; i < P.length; i += 3) gy1 = Math.max(gy1, P[i]); }
@@ -178,7 +182,7 @@ function finish(parts, seed) {
       }
       m *= ao * (1 + (hash3(x + seed, y, z) - 0.5) * 2 * pt.noise);
       let c = pt.col;
-      if (pt.top && y > y1 - span * pt.top[1]) c = new THREE.Color(pt.top[0]);
+      if (pt.top && y > y1 - span * pt.top[1]) c = pt.topC || (pt.topC = new THREE.Color(pt.top[0]));
       // per-facet patterns (crisp with flat shading): band = [axis, freq, amp] stripes
       // (mail rings, belly plates, feather bars); bandCol swaps the colour instead;
       // mottle = per-facet value jitter (scales, bark)
@@ -191,17 +195,19 @@ function finish(parts, seed) {
         if (pt.mottle) m *= 1 + (hash3(cx * 7.1 + seed, cy * 5.3, cz * 6.7) - 0.5) * 2 * pt.mottle;
       }
       // coloured (blue-violet) shade near the ground instead of black
-      dst.p.push(x, y, z); dst.c.push(c.r * m + cool * 0.4, c.g * m + cool * 0.5, c.b * m + cool);
-      dst.b.push(pt.bone); dst.v.push(pt.pivot[0], pt.pivot[1], pt.pivot[2]);
+      const o = dst.n * 3;
+      dst.p[o] = x; dst.p[o + 1] = y; dst.p[o + 2] = z;
+      dst.c[o] = c.r * m + cool * 0.4; dst.c[o + 1] = c.g * m + cool * 0.5; dst.c[o + 2] = c.b * m + cool;
+      dst.b[dst.n++] = pt.bone; dst.v[o] = pt.pivot[0]; dst.v[o + 1] = pt.pivot[1]; dst.v[o + 2] = pt.pivot[2];
     }
   }
   const build = ({ p, c, b, v }, uv) => {
     if (!p.length) return null;
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3));
-    g.setAttribute('aBone', new THREE.Float32BufferAttribute(b, 1));
-    g.setAttribute('aPivot', new THREE.Float32BufferAttribute(v, 3));
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    g.setAttribute('aBone', new THREE.BufferAttribute(b, 1));
+    g.setAttribute('aPivot', new THREE.BufferAttribute(v, 3));
     g.computeVertexNormals();
     if (uv) {
       // box-projected uv per triangle, about 1 unit = 1 uv
