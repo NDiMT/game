@@ -82,13 +82,15 @@ class Build {
     (o.glow ? this.G : this.B).push({ p, n, c });
     return this;
   }
-  done({ ao = 0.55, aoH = 0.22 } = {}) {
+  // sat: saturation kept (1 = as painted); tone: [rgb, amount] pulls the body towards one harmonising colour.
+  // Round 3 (figure/ground): nature is part of the GROUND layer, so every model is calmed here.
+  done({ ao = 0.55, aoH = 0.22, sat = 0.8, tone = null, gsat = 0.8 } = {}) {
     // the shared game material already adds its own height AO, so keep the baked one gentle
     ao = 0.55 + ao * 0.4;
-    return { body: merge(this.B, ao, aoH), glow: this.G.length ? merge(this.G, 1, 1) : null };
+    return { body: merge(this.B, ao, aoH, sat, tone), glow: this.G.length ? merge(this.G, 1, 1, gsat) : null };
   }
 }
-function merge(parts, ao, aoH) {
+function merge(parts, ao, aoH, sat = 1, tone = null) {
   let len = 0;
   for (const q of parts) len += q.p.length;
   const pos = new Float32Array(len), nor = new Float32Array(len), col = new Float32Array(len), uv = new Float32Array((len / 3) * 2);
@@ -98,6 +100,15 @@ function merge(parts, ao, aoH) {
     // soft coloured occlusion: shade goes cool violet-blue near the ground, never black
     const y = pos[i + 1], f = ao + (1 - ao) * smooth(0, aoH, y);
     col[i] *= f; col[i + 1] *= f + (1 - f) * 0.15; col[i + 2] *= f + (1 - f) * 0.45;
+    if (sat !== 1 || tone) {
+      // desaturate around luminance (keeps brightness, removes loudness), then an optional tonal pull
+      const lum = col[i] * 0.2126 + col[i + 1] * 0.7152 + col[i + 2] * 0.0722;
+      for (let k = 0; k < 3; k++) {
+        let v = lum + (col[i + k] - lum) * sat;
+        if (tone) v += (tone[0][k] * (0.6 + lum * 1.2) - v) * tone[1];
+        col[i + k] = v < 0 ? 0 : v;
+      }
+    }
     const ax = Math.abs(nor[i]), ay = Math.abs(nor[i + 1]), az = Math.abs(nor[i + 2]);
     if (ay >= ax && ay >= az) { uv[j] = pos[i]; uv[j + 1] = pos[i + 2]; }
     else if (ax >= az) { uv[j] = pos[i + 2]; uv[j + 1] = y; }
@@ -190,15 +201,15 @@ const ico = (r, d = 1) => new THREE.IcosahedronGeometry(r, d);
 // ------------------------------------------------------------ painters
 const SUNTINT = L(0xfff0b0);
 // foliage: gradient by height in the canopy, darker inside, lighter on top-facing faces, mottled
-function leafPaint(rmp, cx, cy, cz, R, y0, y1, mott = 0.28, sun = 0.12) {
+function leafPaint(rmp, cx, cy, cz, R, y0, y1, mott = 0.14, sun = 0.06) {
   return (p, n) => {
     const t = (p.y - y0) / (y1 - y0);
     const d = Math.hypot(p.x - cx, (p.y - cy) * 1.2, p.z - cz) / R;
-    const m = fbm(p.x * 7, p.y * 7, p.z * 7);
-    let c = rmp(0.1 + t * 0.55 + n.y * 0.15 + (m - 0.5) * mott);
-    c = mix(mul(c, 0.8), c, smooth(0.3, 0.95, d)); // gently deeper inside the crown (cool, not black)
+    const m = fbm(p.x * 4, p.y * 4, p.z * 4); // broad, soft mottling (no speckle)
+    let c = rmp(0.15 + t * 0.5 + n.y * 0.12 + (m - 0.5) * mott);
+    c = mix(mul(c, 0.86), c, smooth(0.3, 0.95, d)); // gently deeper inside the crown (cool, not black)
     // sun-kissed tops: warmer and more saturated, not whiter
-    if (n.y > 0.25 && t > 0.35) c = mix(c, [c[0] * 1.3 + 0.02, c[1] * 1.12, c[2] * 0.7], sun * 2 * smooth(0.25, 0.9, n.y));
+    if (n.y > 0.25 && t > 0.35) c = mix(c, [c[0] * 1.18 + 0.015, c[1] * 1.08, c[2] * 0.85], sun * 2 * smooth(0.25, 0.9, n.y));
     return c;
   };
 }
@@ -209,7 +220,7 @@ function barkPaint(rmp, top = 1, stripe = 0.25) {
     return mul(rmp(p.y / top * 0.6 + s * 0.4), 1 - stripe + stripe * 2 * noise(p.x * 30, p.y * 6, p.z * 30));
   };
 }
-const BARK = ramp(0x6a4a30, 0x8e6a44, 0xb89470);
+const BARK = ramp(0x6e5440, 0x8a6e52, 0xa88e72);
 
 // ------------------------------------------------------------ trees
 function roots(b, rad, col, n = 4) {
@@ -225,7 +236,7 @@ function canopy(b, blobs, rmp, opt = {}) {
   let R = 0;
   for (const [x, y, z, r] of blobs) R = Math.max(R, Math.hypot(x - cx, y - cy, z - cz) + r);
   const paint = leafPaint(rmp, cx, cy, cz, R, y0, y1, opt.mott, opt.sun);
-  for (const [x, y, z, r, sy = 0.85] of blobs) b.part(ico(r, 1).scale(1, sy, 1).translate(x, y, z), paint, { jitter: r * 0.22, jf: 7 });
+  for (const [x, y, z, r, sy = 0.85] of blobs) b.part(ico(r, 1).scale(1, sy, 1).translate(x, y, z), paint, { jitter: r * 0.16, jf: 5 });
 }
 function oak(b) {
   const tr = barkPaint(BARK, 0.6);
@@ -233,7 +244,7 @@ function oak(b) {
   roots(b, 0.06, tr);
   b.part(tubeGeo(branchPts(V(0.02, 0.36, 0), V(0.22, 0.58, 0.06), V(0, 0.04, 0), 2), [0.035, 0.026, 0.016], 5), tr);
   b.part(tubeGeo(branchPts(V(0.02, 0.4, 0), V(-0.18, 0.62, -0.1), V(0, 0.04, 0), 2), [0.032, 0.024, 0.015], 5), tr);
-  const leaves = ramp(0x1e6a2a, 0x2e8a30, 0x4caa34, 0x84c83c, 0xc4e45a);
+  const leaves = ramp(0x2c5a34, 0x3c7040, 0x56884a, 0x76a05a, 0x9cb672);
   const bl = [[0, 0.66, 0, 0.3], [0.24, 0.58, 0.08, 0.2], [-0.22, 0.6, -0.1, 0.21], [0.05, 0.56, 0.24, 0.19], [-0.06, 0.58, -0.24, 0.2], [0.04, 0.86, -0.02, 0.2], [0.17, 0.78, -0.14, 0.15], [-0.15, 0.8, 0.12, 0.15]];
   canopy(b, bl, leaves, { sun: 0.14 });
 }
@@ -242,8 +253,8 @@ function pineTree(b, snow) {
   b.part(tubeGeo([V(0, 0, 0), V(0, 0.3, 0), V(0, 0.95, 0)], [0.06, 0.045, 0], 6), tr);
   roots(b, 0.045, tr, 3);
   const tiers = [[0.15, 0.36, 0.36], [0.34, 0.3, 0.34], [0.52, 0.23, 0.31], [0.69, 0.16, 0.36]];
-  const green = snow ? ramp(0x1e5a4a, 0x2e7a5e, 0x4a9a76, 0x8ac0a0) : ramp(0x1e6a3a, 0x2e8a40, 0x4aac46, 0x9ad25a);
-  const SN = ramp(0xc4d4f4, 0xeef4ff, 0xffffff);
+  const green = snow ? ramp(0x2a5a52, 0x3a7062, 0x56887a, 0x86aa9e) : ramp(0x27583c, 0x356c46, 0x4e8452, 0x7aa266);
+  const SN = ramp(0xc8d2e6, 0xe6ecf6, 0xf6f8fc);
   tiers.forEach(([y, r, h], i) => {
     const paint = (p, n) => {
       const t = (p.y - y) / h, d = Math.hypot(p.x, p.z) / r, m = noise(p.x * 14, p.y * 14, p.z * 14);
@@ -254,10 +265,10 @@ function pineTree(b, snow) {
     };
     b.part(starCone(r, h, 8, 0.7, 0.055, i * 0.4 + b.rand()).translate(0, y, 0), paint, { jitter: 0.012, jf: 12 });
   });
-  if (snow) b.part(ico(0.035, 0).translate(0, 1.03, 0), 0xffffff);
+  if (snow) b.part(ico(0.035, 0).translate(0, 1.03, 0), 0xeef2f8);
 }
 function birch(b) {
-  const white = L(0xfaf6ee), black = L(0x5a4a44), warm = L(0xe0d0b8);
+  const white = L(0xeeeae0), black = L(0x8a7a70), warm = L(0xd8ccb8);
   const tr = (p) => {
     const a = Math.atan2(p.z, p.x), s = noise(Math.cos(a) * 2.5, p.y * 16, Math.sin(a) * 2.5);
     return s > 0.68 ? black : mix(white, warm, noise(p.y * 4, 0, a) * 0.5 + (p.y < 0.08 ? 0.5 : 0));
@@ -265,18 +276,18 @@ function birch(b) {
   b.part(tubeGeo(branchPts(V(0, 0, 0), V(-0.03, 0.82, 0.02), V(0.035, 0, 0), 4), [0.05, 0.042, 0.034, 0.026, 0.012], 6), tr);
   b.part(tubeGeo(branchPts(V(-0.01, 0.42, 0), V(0.14, 0.62, 0.05), V(0, 0.02, 0), 2), [0.018, 0.013, 0.008], 4), tr);
   b.part(tubeGeo(branchPts(V(-0.02, 0.5, 0), V(-0.15, 0.68, -0.06), V(0, 0.02, 0), 2), [0.016, 0.012, 0.007], 4), tr);
-  const leaves = ramp(0x3a8a2a, 0x5aa834, 0x8cc63e, 0xc0dc52, 0xe8ec7a);
+  const leaves = ramp(0x3e7038, 0x548644, 0x709c52, 0x92b064, 0xb4c680);
   canopy(b, [[-0.02, 0.7, 0, 0.21, 1.25], [0.15, 0.58, 0.05, 0.14, 1.2], [-0.16, 0.62, -0.06, 0.14, 1.2], [0.02, 0.6, 0.16, 0.14, 1.1], [0, 0.58, -0.16, 0.13, 1.1], [-0.02, 0.9, 0.01, 0.13, 1.2], [0.1, 0.8, -0.08, 0.1, 1.2]], leaves, { sun: 0.12 });
 }
 function willow(b) {
   const tr = barkPaint(ramp(0x5a4836, 0x7a6448, 0x9a8462), 0.5, 0.3);
   b.part(tubeGeo(branchPts(V(0, 0, 0), V(0.06, 0.5, 0), V(-0.06, 0, 0.03), 4), [0.1, 0.075, 0.06, 0.055, 0.05], 7), tr, { jitter: 0.012, jf: 14 });
   roots(b, 0.075, tr, 5);
-  const leaves = ramp(0x2e6a34, 0x4a8a3a, 0x72a846, 0xaccc62);
+  const leaves = ramp(0x365e3a, 0x4a7444, 0x668c52, 0x8aa66a);
   const bl = [[0.05, 0.64, 0, 0.27, 0.62], [0.24, 0.58, 0.1, 0.17, 0.6], [-0.15, 0.6, -0.12, 0.18, 0.6], [-0.08, 0.6, 0.2, 0.16, 0.6], [0.16, 0.6, -0.2, 0.16, 0.6], [0.04, 0.78, 0.02, 0.17, 0.6]];
   canopy(b, bl, leaves, { mott: 0.35, sun: 0.14 });
   // hanging curtains of fronds
-  const strand = ramp(0x3e6a34, 0x6a9442, 0xa0c058);
+  const strand = ramp(0x3e6038, 0x5c8048, 0x80a062);
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2 + b.rand(-0.15, 0.15), rr = b.rand(0.26, 0.36), y = b.rand(0.52, 0.6), l = b.rand(0.28, 0.42);
     const x = 0.04 + Math.cos(a) * rr, z = Math.sin(a) * rr, w = 0.05;
@@ -306,8 +317,8 @@ function deadTree(b, burnt) {
   }
   if (burnt) {
     // glowing ember cracks and a smouldering ash ring
-    const ember = ramp(0xff3000, 0xff8a10, 0xffd040);
-    for (let i = 0; i < 7; i++) {
+    const ember = ramp(0xd84010, 0xe8701c, 0xf0a040);
+    for (let i = 0; i < 4; i++) {
       const y = b.rand(0.06, 0.6), a = b.rand(0, Math.PI * 2), r = 0.09 - y * 0.06 + 0.004;
       b.part(new THREE.BoxGeometry(0.012, b.rand(0.05, 0.12), 0.012).rotateZ(b.rand(-0.4, 0.4)).translate(Math.cos(a) * r + y * 0.05, y, Math.sin(a) * r), ember(b.r()), { glow: true });
     }
@@ -316,7 +327,7 @@ function deadTree(b, burnt) {
       const a = b.rand(0, Math.PI * 2), r = b.rand(0.14, 0.26);
       b.part(ico(b.rand(0.03, 0.05), 0).scale(1, 0.5, 1).translate(Math.cos(a) * r, 0.005, Math.sin(a) * r), (p, n) => ash(n.y * 0.6 + noise(p.x * 30, p.y * 30, p.z * 30) * 0.4), { floor: 0 });
     }
-    for (let i = 0; i < 3; i++) { const a = b.rand(0, 6.28), r = b.rand(0.14, 0.24); b.part(ico(0.016, 0).translate(Math.cos(a) * r, 0.012, Math.sin(a) * r), ember(0.5 + b.r() * 0.5), { glow: true }); }
+    for (let i = 0; i < 1; i++) { const a = b.rand(0, 6.28), r = b.rand(0.14, 0.24); b.part(ico(0.016, 0).translate(Math.cos(a) * r, 0.012, Math.sin(a) * r), ember(0.5 + b.r() * 0.5), { glow: true }); }
   }
 }
 function palm(b) {
@@ -327,7 +338,7 @@ function palm(b) {
   b.part(tubeGeo(pts, rad, 7), (p) => bands(((p.y * 18) % 1) * 0.7 + noise(p.x * 20, p.y * 20, p.z * 20) * 0.3), { jitter: 0.005, jf: 30 });
   const top = pts[n];
   // fronds: V-folded, arched, tapering leaves
-  const leaf = ramp(0x2e7a26, 0x48a030, 0x86c840, 0xd0ec6a);
+  const leaf = ramp(0x3a6a34, 0x52843e, 0x76a052, 0xa4bc72);
   const nf = 8;
   for (let f = 0; f < nf; f++) {
     const a = (f / nf) * Math.PI * 2 + b.rand(-0.2, 0.2), len = b.rand(0.42, 0.52), lift = b.rand(0.12, 0.2);
@@ -353,7 +364,7 @@ function palm(b) {
   for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.3; b.part(ico(0.035, 1).translate(top.x + Math.cos(a) * 0.045, top.y - 0.04, top.z + Math.sin(a) * 0.045), nut); }
 }
 function cactus(b) {
-  const g1 = L(0x2e7a3a), g2 = L(0x5ab048), g3 = L(0xa8dc70);
+  const g1 = L(0x3a6a44), g2 = L(0x5e9058), g3 = L(0x96b882);
   const ribs = (cx, cz) => (p, n) => {
     const a = Math.atan2(p.z - cz, p.x - cx), s = Math.cos(a * 5) * 0.5 + 0.5;
     return mix(mix(g1, g2, s), g3, smooth(0.4, 1, n.y) * 0.55 + s * 0.15 + noise(p.x * 30, p.y * 30, p.z * 30) * 0.12);
@@ -371,14 +382,12 @@ function cactus(b) {
   arm(1, 0.3, 0.2, 0.26, 0.06);
   arm(-1, 0.42, 0.18, 0.2, 0.055);
   // flowers
-  const fl = L(0xf05a8a), fc = L(0xffe060);
+  const fl = L(0xc87a8e), fc = L(0xe8d088);
   b.part(new THREE.ConeGeometry(0.035, 0.04, 5).rotateX(Math.PI).translate(0.02, 0.83, 0.03), fl);
   b.part(ico(0.012, 0).translate(0.02, 0.84, 0.03), fc);
-  b.part(new THREE.ConeGeometry(0.03, 0.035, 5).rotateX(Math.PI).translate(0.2, 0.64, 0.02), fl);
-  // a small barrel cactus at the foot
+    // a small barrel cactus at the foot
   b.part(new THREE.SphereGeometry(0.07, 10, 4).scale(1, 1.1, 1).translate(0.16, 0.05, 0.12), ribs(0.16, 0.12), { floor: 0 });
-  b.part(new THREE.ConeGeometry(0.022, 0.025, 5).rotateX(Math.PI).translate(0.16, 0.14, 0.12), L(0xffc040));
-}
+  }
 
 /** treeModel(kind): 'oak','pine','birch','snowpine','willow','dead','palm','cactus','burnt' (about 1 unit tall). */
 export function treeModel(kind = 'oak') {
@@ -395,7 +404,7 @@ export function treeModel(kind = 'oak') {
     case 'cactus': cactus(b); break;
     default: oak(b);
   }
-  return b.done({ ao: 0.6, aoH: 0.18 });
+  return b.done({ ao: 0.6, aoH: 0.18, sat: 0.85 });
 }
 export const TREE_KINDS = ['oak', 'pine', 'birch', 'snowpine', 'willow', 'dead', 'palm', 'cactus', 'burnt'];
 
@@ -405,12 +414,12 @@ export function bushModel(i = 0) {
   i = ((i % 6) + 6) % 6;
   const b = new Build(200 + i);
   const pal = [
-    ramp(0x1e6a26, 0x2e8a2e, 0x52ac36, 0x9cd04a),
-    ramp(0x1e5e2e, 0x2e7a34, 0x4a9a3c, 0x86c04c),
-    ramp(0x24702e, 0x369034, 0x5cb040, 0xa0d45a),
-    ramp(0x7a6a3a, 0x9a8a48, 0xc0ae5e, 0xe8d890),
-    ramp(0x2a6a5a, 0x3e8a6e, 0x60a888, 0x9accb0),
-    ramp(0x2e6a2a, 0x46883a, 0x6ea648, 0xaccc60),
+    ramp(0x46683c, 0x557848, 0x688a54, 0x84a068),
+    ramp(0x4a6040, 0x5a7048, 0x6c8256, 0x86986a), // berry: a faintly warmer, duskier leaf instead of red dots
+    ramp(0x4a6a40, 0x5a7c4a, 0x6e8e58, 0x8ca46e),
+    ramp(0x86785a, 0x988a66, 0xae9e78, 0xc8ba94),
+    ramp(0x6a8480, 0x7c968e, 0x92aaa2, 0xb0c4be),
+    ramp(0x4a6a40, 0x5a7c48, 0x6e8e56, 0x8aa46a),
   ][i];
   if (i === 5) {
     // fern: arching fronds
@@ -423,27 +432,28 @@ export function bushModel(i = 0) {
         if (prev) tri.push(...prev[0], ...cur[0], ...cur[1], ...prev[0], ...cur[1], ...prev[1], ...prev[1], ...cur[1], ...cur[2], ...prev[1], ...cur[2], ...prev[2]);
         prev = cur;
       }
-      b.part(twoSided(tri), (p) => pal(Math.hypot(p.x, p.z) / l * 0.7 + 0.2 + noise(p.x * 30, p.y * 30, p.z * 30) * 0.2));
+      b.part(twoSided(tri), (p) => pal(Math.hypot(p.x, p.z) / l * 0.6 + 0.2 + noise(p.x * 8, p.y * 8, p.z * 8) * 0.12));
     }
-    return b.done({ ao: 0.5, aoH: 0.12 });
+    return b.done({ ao: 0.8, aoH: 0.08, sat: 0.7 });
   }
   const n = i === 3 ? 4 : 5, bl = [];
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2 + b.rand(0, 0.6), d = k === 0 ? 0 : b.rand(0.1, 0.16), r = k === 0 ? 0.16 : b.rand(0.09, 0.12);
-    bl.push(k === 0 ? [0, 0.15, 0, r, 0.85] : [Math.cos(a) * d, r * 0.75, Math.sin(a) * d, r, 0.85]);
+    bl.push(k === 0 ? [0, 0.1, 0, r, 0.62] : [Math.cos(a) * d, r * 0.5, Math.sin(a) * d, r, 0.62]); // low, mounded
   }
-  canopy(b, bl, pal, { mott: i === 3 ? 0.45 : 0.3 });
-  if (i === 3) for (let k = 0; k < 5; k++) { const a = b.rand(0, 6.28); b.part(tubeGeo([V(0, 0.05, 0), V(Math.cos(a) * 0.12, 0.2, Math.sin(a) * 0.12), V(Math.cos(a) * 0.2, 0.28, Math.sin(a) * 0.2)], [0.01, 0.006, 0], 3), 0x9a7450); }
-  const dots = i === 1 ? [L(0xff2a3a), L(0xd01a40)] : i === 2 ? [L(0xf4a0c8), L(0xffffff), L(0xe86aa0)] : i === 4 ? [L(0xffffff)] : null;
+  canopy(b, bl, pal, { mott: i === 3 ? 0.2 : 0.12, sun: 0.04 });
+  if (i === 3) for (let k = 0; k < 5; k++) { const a = b.rand(0, 6.28); b.part(tubeGeo([V(0, 0.05, 0), V(Math.cos(a) * 0.12, 0.2, Math.sin(a) * 0.12), V(Math.cos(a) * 0.2, 0.28, Math.sin(a) * 0.2)], [0.01, 0.006, 0], 3), 0xa08a6a); }
+  // round 3: only a handful of soft, low-contrast blossoms on the flowering bush; no berries
+  const dots = i === 2 ? [L(0xd8b8c0), L(0xe0d4c4)] : null;
   if (dots) {
-    const cnt = i === 4 ? 0 : 16;
+    const cnt = 4;
     for (let k = 0; k < cnt; k++) {
       const [x, y, z, r] = bl[k % bl.length], u = b.rand(0, 6.28), v = b.rand(0.15, 1.3);
       b.part(ico(i === 1 ? 0.022 : 0.026, 0).translate(x + Math.cos(u) * Math.sin(v) * r * 1.02, y + Math.cos(v) * r * 0.87, z + Math.sin(u) * Math.sin(v) * r * 1.02), dots[k % dots.length]);
     }
   }
-  if (i === 4) for (const [x, y, z, r] of bl) b.part(ico(r * 0.85, 1).scale(1.05, 0.35, 1.05).translate(x, y + r * 0.55, z), (p, nn) => mix(L(0xb8c8e8), L(0xffffff), clamp01(nn.y)), { jitter: r * 0.12, jf: 8 });
-  return b.done({ ao: 0.55, aoH: 0.12 });
+  if (i === 4) for (const [x, y, z, r] of bl) b.part(ico(r * 0.85, 1).scale(1.05, 0.3, 1.05).translate(x, y + r * 0.36, z), (p, nn) => mix(L(0xc4ccdc), L(0xeef0f4), clamp01(nn.y)), { jitter: r * 0.12, jf: 8 });
+  return b.done({ ao: 0.8, aoH: 0.08, sat: 0.7 });
 }
 
 // ------------------------------------------------------------ tufts and flowers
@@ -460,52 +470,54 @@ export function tuftModel(i = 0) {
       tri.push(x - tx, 0, z - tz, x + lx * 0.4 + tx * 0.6, hh * 0.55, z + lz * 0.4 + tz * 0.6, x + lx * 0.4 - tx * 0.6, hh * 0.55, z + lz * 0.4 - tz * 0.6);
       tri.push(x + lx * 0.4 - tx * 0.6, hh * 0.55, z + lz * 0.4 - tz * 0.6, x + lx * 0.4 + tx * 0.6, hh * 0.55, z + lz * 0.4 + tz * 0.6, x + lx, hh, z + lz);
     }
-    b.part(twoSided(tri), (p) => rmp(p.y / h + noise(p.x * 20, 0, p.z * 20) * 0.25 - 0.1));
+    b.part(twoSided(tri), (p) => rmp(p.y / h * 0.85 + noise(p.x * 9, 0, p.z * 9) * 0.12));
   };
-  if (i === 0) blades(22, 0.28, 0.026, ramp(0x3a8a26, 0x56aa30, 0x9cd848, 0xe8f890), 0.15, 0.1);
+  const GR = ramp(0x587a40, 0x668a4a, 0x7a9a58, 0x92aa6c); // close to the grass terrain
+  if (i === 0) blades(16, 0.2, 0.026, GR, 0.15, 0.08);
   if (i === 1) {
-    blades(14, 0.18, 0.022, ramp(0x3a8a26, 0x56aa30, 0x9cd848), 0.15);
-    const cols = [0xffe040, 0xffffff, 0xb070e0, 0xff7090, 0xffe040];
-    for (let k = 0; k < 7; k++) {
-      const a = b.rand(0, 6.28), d = b.rand(0.02, 0.13), x = Math.cos(a) * d, z = Math.sin(a) * d, h = b.rand(0.14, 0.24);
-      b.part(tubeGeo([V(x, 0, z), V(x + 0.01, h, z)], [0.006, 0.005], 3), 0x4a9a30);
-      b.part(new THREE.ConeGeometry(0.045, 0.03, 6).rotateX(Math.PI).translate(x + 0.01, h + 0.015, z), cols[k % cols.length]);
-      b.part(ico(0.015, 0).translate(x + 0.01, h + 0.018, z), 0xffb020);
+    blades(12, 0.16, 0.022, GR, 0.15);
+    // a few soft, pastel blooms that sit in the grass (no bright confetti)
+    const cols = [0xd8cc9c, 0xc8b4cc, 0xdcd4c0];
+    for (let k = 0; k < 3; k++) {
+      const a = b.rand(0, 6.28), d = b.rand(0.02, 0.13), x = Math.cos(a) * d, z = Math.sin(a) * d, h = b.rand(0.12, 0.18);
+      b.part(tubeGeo([V(x, 0, z), V(x + 0.01, h, z)], [0.006, 0.005], 3), 0x668a4a);
+      b.part(new THREE.ConeGeometry(0.036, 0.024, 6).rotateX(Math.PI).translate(x + 0.01, h + 0.015, z), cols[k % cols.length]);
+      b.part(ico(0.011, 0).translate(x + 0.01, h + 0.016, z), 0xd0b070);
     }
   }
   if (i === 2) {
-    blades(14, 0.42, 0.02, ramp(0x4a7a2e, 0x78a03a, 0xbcd060), 0.12, 0.08);
-    for (let k = 0; k < 4; k++) {
-      const a = b.rand(0, 6.28), d = b.rand(0.02, 0.09), x = Math.cos(a) * d, z = Math.sin(a) * d, h = b.rand(0.36, 0.48);
-      b.part(tubeGeo([V(x, 0, z), V(x + 0.02, h, z)], [0.006, 0.005], 3), 0x8a9a4a);
-      b.part(new THREE.CylinderGeometry(0.018, 0.018, 0.08, 6).translate(x + 0.02, h - 0.02, z), (p) => mix(L(0x7a4420), L(0xa8683a), (p.y - h + 0.06) / 0.08));
+    blades(12, 0.34, 0.02, ramp(0x56703e, 0x6e8a4c, 0x92a468), 0.12, 0.08);
+    for (let k = 0; k < 3; k++) {
+      const a = b.rand(0, 6.28), d = b.rand(0.02, 0.09), x = Math.cos(a) * d, z = Math.sin(a) * d, h = b.rand(0.3, 0.38);
+      b.part(tubeGeo([V(x, 0, z), V(x + 0.02, h, z)], [0.006, 0.005], 3), 0x7a8a52);
+      b.part(new THREE.CylinderGeometry(0.016, 0.016, 0.07, 6).translate(x + 0.02, h - 0.02, z), (p) => mix(L(0x7a5a40), L(0x9a7a58), (p.y - h + 0.06) / 0.08));
     }
   }
-  if (i === 3) blades(16, 0.26, 0.02, ramp(0x9a8034, 0xc0aa50, 0xe8d888, 0xfff0c0), 0.13, 0.12);
+  if (i === 3) blades(14, 0.2, 0.02, ramp(0x96845a, 0xa8966a, 0xbcac80, 0xcec096), 0.13, 0.1);
   if (i === 4) {
-    blades(8, 0.18, 0.016, ramp(0x6a3a2a, 0x9a4a2a, 0xd86a2a), 0.1, 0.1);
-    for (let k = 0; k < 3; k++) { const a = b.rand(0, 6.28), d = b.rand(0.02, 0.1); b.part(ico(0.02, 0).translate(Math.cos(a) * d, b.rand(0.08, 0.17), Math.sin(a) * d), [1, 0.35, 0.03], { glow: true }); }
+    blades(8, 0.16, 0.016, ramp(0x6a4a42, 0x84584a, 0xa0705a), 0.1, 0.1);
+    { const a = b.rand(0, 6.28), d = b.rand(0.02, 0.1); b.part(ico(0.016, 0).translate(Math.cos(a) * d, b.rand(0.08, 0.14), Math.sin(a) * d), [0.85, 0.36, 0.08], { glow: true }); }
   }
-  return b.done({ ao: 0.6, aoH: 0.1 });
+  return b.done({ ao: 0.85, aoH: 0.06, sat: 0.65 });
 }
 
 // ------------------------------------------------------------ rocks
 const ROCK_PAL = [
-  ramp(0x847a70, 0xa29a8c, 0xc4bcaa, 0xeae2ce), // warm grey
-  ramp(0x7c766e, 0x9c948a, 0xbcb4a4, 0xe2dac8),
-  ramp(0xa47456, 0xc4946a, 0xe0b684, 0xfadcae), // sandstone
-  ramp(0x6e7890, 0x8a96ae, 0xacb6cc, 0xd2daea), // cold slate
-  ramp(0x847a70, 0xa29a8c, 0xc4bcaa, 0xeae2ce),
-  ramp(0x6e7890, 0x8a96ae, 0xacb6cc, 0xd2daea),
-  ramp(0x4e3a44, 0x624a54, 0x7e6066, 0xa0807c), // basalt (violet-brown, never black)
+  ramp(0x8e867a, 0xa09888, 0xb4ac9a, 0xc8c0ae), // warm grey (round 3: narrow, mid-value range)
+  ramp(0x8a8478, 0x9c9688, 0xb0a898, 0xc4bcaa),
+  ramp(0xa48a72, 0xb49a7e, 0xc6ac8e, 0xd8c0a2), // sandstone
+  ramp(0x828a98, 0x949caa, 0xa8b0bc, 0xbcc4ce), // cold slate
+  ramp(0x8e867a, 0xa09888, 0xb4ac9a, 0xc8c0ae),
+  ramp(0x828a98, 0x949caa, 0xa8b0bc, 0xbcc4ce),
+  ramp(0x5e4c50, 0x6e5a5c, 0x806a68, 0x947c76), // basalt (violet-brown, never black)
 ];
 function rockPaint(rmp, y1, moss = 0, snow = 0) {
-  const M = ramp(0x4a8a2a, 0x6aaa34, 0xaad452), S = ramp(0xc0d0f0, 0xecf2ff, 0xffffff), SH = L(0x6a6488);
+  const M = ramp(0x5a7a44, 0x6a8a50, 0x84a066), S = ramp(0xc8d0e0, 0xe2e8f0, 0xf0f2f6), SH = L(0x7a7890);
   return (p, n) => {
     const m = fbm(p.x * 11 + 3, p.y * 11, p.z * 11), crack = noise(p.x * 22, p.y * 22, p.z * 22);
-    let c = rmp(0.25 + n.y * 0.3 + (p.y / y1) * 0.25 + (m - 0.5) * 0.5);
-    if (crack > 0.78) c = mix(c, mul(SH, c[1] * 1.6 + 0.2), 0.35); // cracks: soft violet shade
-    c = mix(c, mul(L(0xfff0d0), 1.05), smooth(0.55, 1, n.y) * 0.18); // sunlit tops
+    let c = rmp(0.3 + n.y * 0.25 + (p.y / y1) * 0.2 + (m - 0.5) * 0.3);
+    if (crack > 0.8) c = mix(c, mul(SH, c[1] * 1.6 + 0.2), 0.18); // cracks: soft violet shade
+    c = mix(c, L(0xf0e6d0), smooth(0.55, 1, n.y) * 0.08); // gentle sunlit tops
     if (moss && n.y + (m - 0.5) * 0.9 > 0.68) c = M(n.y * 0.8 + (m - 0.4));
     if (snow && n.y + (m - 0.5) * 0.7 > 0.62) c = S(n.y * 0.8 + (m - 0.5) * 0.5);
     return c;
@@ -525,8 +537,8 @@ export function rockModel(i = 0) {
     const shard = (r, h, x, z, tx, tz) => b.part(new THREE.CylinderGeometry(r * 0.25, r, h, 5, 2).translate(0, h / 2, 0).rotateX(tx).rotateZ(tz).translate(x, 0, z), p, { jitter: r * 0.25, jf: 5, floor: 0 });
     shard(0.16, 0.7, 0, 0, 0.08, 0.1); shard(0.11, 0.45, 0.17, 0.08, -0.15, -0.35); shard(0.09, 0.32, -0.15, 0.1, 0.3, 0.3); boulder(b, 0.1, 0.05, -0.17, 0.7, p);
     if (i === 6) {
-      const lava = ramp(0xc01800, 0xff6a00, 0xffc030);
-      for (let k = 0; k < 6; k++) { const a = b.rand(0, 6.28), y = b.rand(0.04, 0.4); b.part(new THREE.BoxGeometry(0.014, b.rand(0.06, 0.14), 0.014).rotateZ(b.rand(-0.5, 0.5)).translate(Math.cos(a) * (0.15 - y * 0.18), y, Math.sin(a) * (0.15 - y * 0.18)), lava(b.r()), { glow: true }); }
+      const lava = ramp(0xa83410, 0xd8601a, 0xe89a40);
+      for (let k = 0; k < 3; k++) { const a = b.rand(0, 6.28), y = b.rand(0.04, 0.4); b.part(new THREE.BoxGeometry(0.012, b.rand(0.06, 0.14), 0.014).rotateZ(b.rand(-0.5, 0.5)).translate(Math.cos(a) * (0.15 - y * 0.18), y, Math.sin(a) * (0.15 - y * 0.18)), lava(b.r()), { glow: true }); }
       b.part(new THREE.CircleGeometry(0.055, 7).rotateX(-Math.PI / 2).translate(-0.06, 0.012, 0.22), (p) => lava(0.8 - Math.hypot(p.x + 0.06, p.z - 0.22) * 8), { glow: true });
     }
   }
@@ -537,7 +549,7 @@ export function rockModel(i = 0) {
   }
   if (i === 4) { const p = rockPaint(rmp, 0.45, 1); boulder(b, 0.3, 0, 0, 0.85, p); boulder(b, 0.12, -0.27, 0.1, 0.75, p); }
   if (i === 5) { const p = rockPaint(rmp, 0.4, 0, 1); boulder(b, 0.24, -0.05, 0, 0.9, p); boulder(b, 0.15, 0.2, 0.08, 0.85, p); boulder(b, 0.09, 0.02, 0.22, 0.8, p); }
-  return b.done({ ao: 0.6, aoH: 0.12 });
+  return b.done({ ao: 0.8, aoH: 0.08, sat: 0.7 });
 }
 
 // ------------------------------------------------------------ mountain peaks
@@ -572,14 +584,14 @@ function mound({ r0, h, segs = 12, rings = 8, seed = 1, rough = 0.28, sharp = 1.
 }
 // the grass foot band: an opaque ring at the very base of every mountain, crisp edge just above FOOT_Y
 const PEAK_R = 0.46, FOOT_Y = 0.05, FOOT_RINGS = [0.042, 0.062];
-const ROCK_PEAK = ramp(0x7a6252, 0x9e8068, 0xc4a482, 0xe2c8a2, 0xfaeccc); // warm sunlit sandstone-grey
-const COLD_PEAK = ramp(0x56688e, 0x6e82a8, 0x8a9ec0, 0xaabcd6, 0xcad8ea); // pale blue granite
-const BASALT = ramp(0x5e3a3a, 0x7c4a44, 0x9c604c, 0xbc7c5a, 0xd89c74); // warm red-brown volcanic rock
-const PEAK_SHADE = L(0x6a6a96); // painted shade colour: violet, never black
+const ROCK_PEAK = ramp(0x7e6c60, 0x9a8676, 0xb8a490, 0xd2c0a8, 0xe8dcc6); // warm sandstone-grey, gently desaturated
+const COLD_PEAK = ramp(0x64708a, 0x7a86a0, 0x94a0b6, 0xb0bacc, 0xccd4e2); // pale blue-grey granite
+const BASALT = ramp(0x664a46, 0x7e5c52, 0x987060, 0xb28a74, 0xc8a48c); // muted red-brown volcanic rock
+const PEAK_SHADE = L(0x7a7a92); // painted shade colour: soft grey-violet, never black
 function peakPaint(kind, H) {
   const rock = kind === 'snow' ? COLD_PEAK : kind === 'volcano' ? BASALT : ROCK_PEAK;
-  const grass = kind === 'volcano' ? ramp(0x7a4a34, 0x9a6040) : kind === 'snow' ? ramp(0xc8d8f0, 0xf0f6ff) : ramp(0x4c9c2c, 0x7cc244);
-  const SN = ramp(0xa8bce8, 0xd4e0f8, 0xf6f9ff, 0xffffff);
+  const grass = kind === 'volcano' ? ramp(0x7a5a4a, 0x8e6a56) : kind === 'snow' ? ramp(0xc8d0e0, 0xe4e8f0) : ramp(0x667e4a, 0x7a9258);
+  const SN = ramp(0xb4bed4, 0xd2d8e6, 0xeaeef4, 0xf6f8fa);
   const snowLine = kind === 'snow' ? 0.48 : 0.54;
   return (p, n) => {
     const m = fbm(p.x * 4 + 7, p.y * 4, p.z * 4), fine = noise(p.x * 14, p.y * 14, p.z * 14), t = p.y / H;
@@ -589,15 +601,15 @@ function peakPaint(kind, H) {
     const strata = Math.sin(p.y * 38 + m * 5);
     c = mul(c, 0.94 + 0.08 * strata);
     // shaded faces lean violet instead of going dark
-    const shade = smooth(0.15, -0.65, facing) * 0.38 + (fine > 0.72 ? 0.2 : 0);
+    const shade = smooth(0.15, -0.65, facing) * 0.3 + (fine > 0.74 ? 0.1 : 0);
     c = mix(c, mul(PEAK_SHADE, 0.6 + c[1] * 0.8), shade);
     // warm sun kiss on lit ridges
-    c = mix(c, L(0xfff2d0), smooth(0.35, 0.9, facing) * 0.18);
+    c = mix(c, L(0xf4ead6), smooth(0.35, 0.9, facing) * 0.12);
     // opaque grass / snow / ash band at the very foot only: crisp edge, never a wash over the rock
     if (p.y < FOOT_Y) c = grass(m + Math.max(0, n.y) * 0.3);
     if (kind === 'volcano') {
       const heat = smooth(0.6, 0.97, t);
-      c = mix(c, mix(L(0xa04a2a), L(0xff8a3a), smooth(0.85, 1, t)), heat * 0.6 * (0.5 + m));
+      c = mix(c, mix(L(0x9a5a40), L(0xe08a50), smooth(0.85, 1, t)), heat * 0.5 * (0.5 + m));
       // pale ash streaks near the top
       if (t > 0.5 && n.y > 0.3 && m > 0.62) c = mix(c, L(0xc8b4ac), 0.5);
     } else {
@@ -636,7 +648,7 @@ export function peakModel(kind = 'rock', variant = 0) {
     for (let s = 0; s < segs; s++) { const a = (s / segs) * Math.PI * 2; rimRing.push(main.surf(a, 1)); innerRing.push(V(Math.cos(a) * floorR, floorY, Math.sin(a) * floorR)); }
     const wall = ringsGeo([rimRing, innerRing], { flip: true });
     b.part(wall, (p) => mix(L(0x8a4028), L(0xff6a1a), smooth(0.68, 0.62, p.y)));
-    const lava = ramp(0xd02000, 0xff7000, 0xffd040, 0xfff0a0);
+    const lava = ramp(0xc03010, 0xe8681c, 0xf0b048, 0xf8e0a0);
     b.part(new THREE.CircleGeometry(floorR * 1.02, segs).rotateX(-Math.PI / 2).translate(0, floorY + 0.005, 0), (p) => lava(1 - Math.hypot(p.x, p.z) / floorR * 0.8 + noise(p.x * 30, 0, p.z * 30) * 0.3), { glow: true });
     // lava streams down the flanks
     const flows = [0.4 + v, 2.3 + v * 0.7, 4.4 - v * 0.3];
@@ -657,7 +669,7 @@ export function peakModel(kind = 'rock', variant = 0) {
     // side vents and a smoke plume
     const side1 = mound({ r0: 0.22, h: 0.28, segs: 9, rings: 5, seed: seed * 0.2, rough: 0.3, ox: 0.24 * Math.cos(v + 1), oz: 0.24 * Math.sin(v + 1), maxR: PEAK_R, foot: FOOT_RINGS });
     b.part(side1.g, paint);
-    return b.done({ ao: 0.75, aoH: 0.1 });
+    return b.done({ ao: 0.75, aoH: 0.1, sat: 0.85 });
   }
   // rock / snow: one tall main spire plus 2-3 lower shoulders
   const layouts = [
@@ -679,7 +691,7 @@ export function peakModel(kind = 'rock', variant = 0) {
   const hAt = (x, z) => layouts.reduce((mx, [ox, oz, r0, h, sharp]) => { const d = Math.hypot(x - ox, z - oz) / (r0 * 0.9); return d >= 1 ? mx : Math.max(mx, h * (1 - Math.pow(d, 1 / sharp))); }, 0);
   for (let k = 0; k < 3; k++) { const a = a0 + 1.2 + k * 1.9 + R() * 0.4, d = 0.31 + R() * 0.05, x = Math.cos(a) * d, z = Math.sin(a) * d; tr.push([x, z, 0.19 + R() * 0.06, Math.max(0, hAt(x, z) - 0.03)]); }
   addMiniTrees(b, kind, tr);
-  return b.done({ ao: 0.75, aoH: 0.1 });
+  return b.done({ ao: 0.75, aoH: 0.1, sat: 0.85 });
 }
 
 // ------------------------------------------------------------ crystals
@@ -687,8 +699,8 @@ export function peakModel(kind = 'rock', variant = 0) {
 export function crystalModel(i = 0) {
   i = ((i % 4) + 4) % 4;
   const b = new Build(600 + i);
-  const pal = [ramp(0x2a5ab0, 0x4aa0f0, 0xa8e4ff, 0xf4ffff), ramp(0x5a2aa0, 0x9a50e8, 0xd0a0ff, 0xf8eaff), ramp(0x14805a, 0x2abc74, 0x7af0b0, 0xe8fff4), ramp(0x9a1a20, 0xe0302a, 0xff8a50, 0xffe8b0)][i];
-  const glowC = [[0.3, 0.7, 1], [0.7, 0.35, 1], [0.3, 1, 0.6], [1, 0.4, 0.1]][i];
+  const pal = [ramp(0x4a6a9a, 0x6a96c4, 0x9cc0dc, 0xc8dcea), ramp(0x6a4a96, 0x8c6abc, 0xb096d4, 0xd0c0e4), ramp(0x3a7a62, 0x54a07e, 0x84c0a2, 0xb8dcc8), ramp(0x8a3a34, 0xb4523e, 0xd0805a, 0xe0b090)][i];
+  const glowC = [[0.35, 0.6, 0.85], [0.6, 0.4, 0.85], [0.35, 0.8, 0.55], [0.85, 0.4, 0.15]][i];
   const rock = rockPaint(ROCK_PAL[i === 3 ? 6 : 3], 0.2);
   boulder(b, 0.17, 0, 0, 0.45, rock, 0.3);
   const shards = [[0, 0, 0.07, 0.5, 0, 0], [0.1, 0.04, 0.05, 0.32, -0.1, -0.45], [-0.09, 0.05, 0.05, 0.3, 0.2, 0.5], [0.02, -0.1, 0.045, 0.26, -0.5, 0.1], [0.05, 0.11, 0.035, 0.2, 0.55, -0.2]];
@@ -699,10 +711,9 @@ export function crystalModel(i = 0) {
     for (const g of [geo, tip]) b.part(g.rotateX(rx).rotateZ(rz).translate(x, 0.04, z), paint);
   }
   // sparkles
-  for (let k = 0; k < 4; k++) { const a = b.rand(0, 6.28); b.part(new THREE.OctahedronGeometry(0.018).translate(Math.cos(a) * 0.2, b.rand(0.1, 0.45), Math.sin(a) * 0.2), glowC, { glow: true }); }
-  // glowing shard chips on the ground
-  for (let k = 0; k < 4; k++) { const a = b.rand(0, 6.28), d = b.rand(0.17, 0.24); b.part(new THREE.OctahedronGeometry(0.03).scale(0.7, 1.3, 0.7).rotateZ(b.rand(-0.6, 0.6)).translate(Math.cos(a) * d, 0.02, Math.sin(a) * d), mul(glowC, 0.7), { glow: true }); }
-  return b.done({ ao: 0.6, aoH: 0.1 });
+  for (let k = 0; k < 2; k++) { const a = b.rand(0, 6.28); b.part(new THREE.OctahedronGeometry(0.014).translate(Math.cos(a) * 0.2, b.rand(0.1, 0.45), Math.sin(a) * 0.2), glowC, { glow: true }); }
+  // round 3: no glowing chips scattered on the ground (they read as pickups)
+  return b.done({ ao: 0.7, aoH: 0.1, sat: 0.8, gsat: 0.7 });
 }
 
 // ------------------------------------------------------------ mushrooms
@@ -710,17 +721,17 @@ export function crystalModel(i = 0) {
 export function mushroomModel(i = 0) {
   i = ((i % 3) + 3) % 3;
   const b = new Build(700 + i);
-  const cap = [ramp(0xb81a1a, 0xe82a20, 0xff6a40), ramp(0x8a5a2e, 0xb47c40, 0xe0b070), ramp(0x2a6a94, 0x3a9ac4, 0x7ae0f0)][i];
-  const stem = ramp(0xd8ccb4, 0xfff8ec);
+  const cap = [ramp(0x8a4a3c, 0xa45e48, 0xbc7a5e), ramp(0x8a6a4a, 0xa4825a, 0xbca078), ramp(0x4a7088, 0x5a8aa0, 0x80aab8)][i];
+  const stem = ramp(0xc8c0ae, 0xe2dccc);
   const set = [[0, 0, 0.11, 0.26], [0.13, 0.07, 0.075, 0.17], [-0.1, 0.09, 0.06, 0.12], [0.03, -0.13, 0.05, 0.1]];
   for (const [x, z, r, h] of set) {
     b.part(tubeGeo([V(x, 0, z), V(x + 0.01, h * 0.5, z), V(x, h, z)], [r * 0.38, r * 0.3, r * 0.28], 6), (p) => stem(p.y / h));
-    b.part(new THREE.SphereGeometry(r, 9, 4, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1, 0.75, 1).translate(x, h - 0.01, z), (p, n) => cap(0.3 + n.y * 0.6 + noise(p.x * 30, p.y * 30, p.z * 30) * 0.2));
-    b.part(new THREE.CircleGeometry(r, 9).rotateX(Math.PI / 2).translate(x, h - 0.01, z), L(0xe0ceb0));
-    if (i === 0) for (let k = 0; k < 5; k++) { const a = k * 1.3 + x * 10, el = 0.5 + (k % 3) * 0.3; b.part(ico(r * 0.13, 0).scale(1, 0.5, 1).translate(x + Math.cos(a) * Math.cos(el) * r, h - 0.01 + Math.sin(el) * r * 0.75, z + Math.sin(a) * Math.cos(el) * r), 0xffffff); }
-    if (i === 2) { for (let k = 0; k < 4; k++) { const a = k * 1.6 + x * 10, el = 0.6 + (k % 2) * 0.35; b.part(ico(r * 0.15, 0).translate(x + Math.cos(a) * Math.cos(el) * r, h - 0.01 + Math.sin(el) * r * 0.75, z + Math.sin(a) * Math.cos(el) * r), [0.4, 1, 0.9], { glow: true }); } b.part(new THREE.CircleGeometry(r * 0.9, 9).rotateX(Math.PI / 2).translate(x, h - 0.012, z), [0.2, 0.75, 0.8], { glow: true }); }
+    b.part(new THREE.SphereGeometry(r, 9, 4, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1, 0.75, 1).translate(x, h - 0.01, z), (p, n) => cap(0.3 + n.y * 0.55 + noise(p.x * 10, p.y * 10, p.z * 10) * 0.1));
+    b.part(new THREE.CircleGeometry(r, 9).rotateX(Math.PI / 2).translate(x, h - 0.01, z), L(0xcec2aa));
+    if (i === 0 && r > 0.07) for (let k = 0; k < 3; k++) { const a = k * 1.3 + x * 10, el = 0.5 + (k % 3) * 0.3; b.part(ico(r * 0.13, 0).scale(1, 0.5, 1).translate(x + Math.cos(a) * Math.cos(el) * r, h - 0.01 + Math.sin(el) * r * 0.75, z + Math.sin(a) * Math.cos(el) * r), 0xd8ccb8); }
+    if (i === 2) { for (let k = 0; k < 2; k++) { const a = k * 1.6 + x * 10, el = 0.6 + (k % 2) * 0.35; b.part(ico(r * 0.15, 0).translate(x + Math.cos(a) * Math.cos(el) * r, h - 0.01 + Math.sin(el) * r * 0.75, z + Math.sin(a) * Math.cos(el) * r), [0.4, 0.8, 0.75], { glow: true }); } b.part(new THREE.CircleGeometry(r * 0.9, 9).rotateX(Math.PI / 2).translate(x, h - 0.012, z), [0.2, 0.55, 0.6], { glow: true }); }
   }
-  return b.done({ ao: 0.6, aoH: 0.08 });
+  return b.done({ ao: 0.75, aoH: 0.08, sat: 0.75 });
 }
 
 // ------------------------------------------------------------ scattering table
@@ -754,15 +765,15 @@ export function natureModel(key) {
 const DESERT_AVOID = [4, 5, 9];
 export const FLORA_FOR_TERRAIN = {
   0: { scatter: [] },
-  1: { scatter: [{ key: 'tuft:0', p: 0.45, s: 0.20 }, { key: 'tuft:1', p: 0.3, s: 0.20 }, { key: 'oak', p: 0.1, s: 0.21 }, { key: 'birch', p: 0.05, s: 0.21 }, { key: 'bush:0', p: 0.15, s: 0.20 }, { key: 'bush:2', p: 0.07, s: 0.20 }, { key: 'bush:1', p: 0.05, s: 0.20 }, { key: 'rock:4', p: 0.05, s: 0.17 }, { key: 'mushroom:0', p: 0.03, s: 0.17 }] },
-  2: { scatter: [{ key: 'tuft:3', p: 0.35, s: 0.20 }, { key: 'bush:3', p: 0.15, s: 0.20 }, { key: 'rock:0', p: 0.12, s: 0.17 }, { key: 'rock:1', p: 0.1, s: 0.17 }, { key: 'dead', p: 0.06, s: 0.21 }, { key: 'mushroom:1', p: 0.04, s: 0.17 }] },
-  3: { scatter: [{ key: 'cactus', p: 0.1, s: 0.21, avoid: DESERT_AVOID, maxLat: 0.68 }, { key: 'palm', p: 0.07, s: 0.21, avoid: DESERT_AVOID, maxLat: 0.68 }, { key: 'tuft:3', p: 0.2, s: 0.19 }, { key: 'rock:3', p: 0.08, s: 0.17 }, { key: 'bush:3', p: 0.06, s: 0.17 }] },
-  4: { scatter: [{ key: 'snowpine', p: 0.14, s: 0.21, avoid: [3, 7] }, { key: 'rock:5', p: 0.12, s: 0.17 }, { key: 'bush:4', p: 0.08, s: 0.19 }, { key: 'crystal:0', p: 0.02, s: 0.19 }] },
-  5: { scatter: [{ key: 'tuft:2', p: 0.45, s: 0.22 }, { key: 'willow', p: 0.14, s: 0.21 }, { key: 'dead', p: 0.08, s: 0.21 }, { key: 'bush:5', p: 0.15, s: 0.20 }, { key: 'mushroom:2', p: 0.08, s: 0.17 }] },
-  6: { scatter: [{ key: 'rock:0', p: 0.2, s: 0.19 }, { key: 'rock:1', p: 0.2, s: 0.19 }, { key: 'rock:2', p: 0.12, s: 0.19 }, { key: 'rock:3', p: 0.06, s: 0.17 }, { key: 'tuft:3', p: 0.2, s: 0.19 }, { key: 'bush:3', p: 0.08, s: 0.19 }, { key: 'pine', p: 0.05, s: 0.21 }, { key: 'crystal:1', p: 0.02, s: 0.19 }] },
-  7: { scatter: [{ key: 'rock:6', p: 0.22, s: 0.19 }, { key: 'burnt', p: 0.14, s: 0.21 }, { key: 'tuft:4', p: 0.25, s: 0.19 }, { key: 'crystal:3', p: 0.04, s: 0.19 }] },
+  1: { scatter: [{ key: 'tuft:0', p: 0.45, s: 0.152 }, { key: 'tuft:1', p: 0.3, s: 0.152 }, { key: 'oak', p: 0.1, s: 0.21 }, { key: 'birch', p: 0.05, s: 0.21 }, { key: 'bush:0', p: 0.15, s: 0.16 }, { key: 'bush:2', p: 0.07, s: 0.16 }, { key: 'bush:1', p: 0.05, s: 0.16 }, { key: 'rock:4', p: 0.05, s: 0.136 }, { key: 'mushroom:0', p: 0.03, s: 0.139 }] },
+  2: { scatter: [{ key: 'tuft:3', p: 0.35, s: 0.152 }, { key: 'bush:3', p: 0.15, s: 0.16 }, { key: 'rock:0', p: 0.12, s: 0.136 }, { key: 'rock:1', p: 0.1, s: 0.136 }, { key: 'dead', p: 0.06, s: 0.21 }, { key: 'mushroom:1', p: 0.04, s: 0.139 }] },
+  3: { scatter: [{ key: 'cactus', p: 0.1, s: 0.21, avoid: DESERT_AVOID, maxLat: 0.68 }, { key: 'palm', p: 0.07, s: 0.21, avoid: DESERT_AVOID, maxLat: 0.68 }, { key: 'tuft:3', p: 0.2, s: 0.144 }, { key: 'rock:3', p: 0.08, s: 0.136 }, { key: 'bush:3', p: 0.06, s: 0.136 }] },
+  4: { scatter: [{ key: 'snowpine', p: 0.14, s: 0.21, avoid: [3, 7] }, { key: 'rock:5', p: 0.12, s: 0.136 }, { key: 'bush:4', p: 0.08, s: 0.152 }, { key: 'crystal:0', p: 0.02, s: 0.16 }] },
+  5: { scatter: [{ key: 'tuft:2', p: 0.45, s: 0.167 }, { key: 'willow', p: 0.14, s: 0.21 }, { key: 'dead', p: 0.08, s: 0.21 }, { key: 'bush:5', p: 0.15, s: 0.16 }, { key: 'mushroom:2', p: 0.08, s: 0.139 }] },
+  6: { scatter: [{ key: 'rock:0', p: 0.2, s: 0.152 }, { key: 'rock:1', p: 0.2, s: 0.152 }, { key: 'rock:2', p: 0.12, s: 0.152 }, { key: 'rock:3', p: 0.06, s: 0.136 }, { key: 'tuft:3', p: 0.2, s: 0.144 }, { key: 'bush:3', p: 0.08, s: 0.152 }, { key: 'pine', p: 0.05, s: 0.21 }, { key: 'crystal:1', p: 0.02, s: 0.16 }] },
+  7: { scatter: [{ key: 'rock:6', p: 0.22, s: 0.152 }, { key: 'burnt', p: 0.14, s: 0.21 }, { key: 'tuft:4', p: 0.25, s: 0.144 }, { key: 'crystal:3', p: 0.04, s: 0.16 }] },
   8: { fill: [{ key: 'peak:rock:0', w: 1 }, { key: 'peak:rock:1', w: 1 }, { key: 'peak:rock:2', w: 1 }, { key: 'peak:rock:3', w: 1 }], count: [1, 1], fillScale: 0.36, scatter: [] },
-  9: { fill: [{ key: 'oak', w: 0.5 }, { key: 'pine', w: 0.3 }, { key: 'birch', w: 0.2 }], count: [3, 5], fillScale: 0.21, scatter: [{ key: 'bush:0', p: 0.3, s: 0.19 }, { key: 'mushroom:0', p: 0.08, s: 0.16 }] },
+  9: { fill: [{ key: 'oak', w: 0.5 }, { key: 'pine', w: 0.3 }, { key: 'birch', w: 0.2 }], count: [3, 5], fillScale: 0.21, scatter: [{ key: 'bush:0', p: 0.3, s: 0.152 }, { key: 'mushroom:0', p: 0.08, s: 0.131 }] },
 };
 // forests and mountains take the look of their surroundings (choose by latitude / neighbouring terrain)
 export const FOREST_BY_BIOME = {

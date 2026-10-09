@@ -55,8 +55,10 @@ export function noiseTexture(THREE) {
 
 // ---------------------------------------------------------------- body material
 const VERT_DECL = /* glsl */`
+uniform float uInkC, uInkFlat, uInkProxy;
 varying vec3 vObjPos;
 varying vec3 vUpV;
+varying vec3 vInkN;
 void main() {`;
 const VERT_BODY = /* glsl */`#include <begin_vertex>
 vObjPos = position;
@@ -64,14 +66,26 @@ vec4 hxUp = vec4(0.0, 1.0, 0.0, 0.0);
 #ifdef USE_INSTANCING
   hxUp = instanceMatrix * hxUp;
 #endif
-vUpV = normalize((modelViewMatrix * hxUp).xyz);`;
+vUpV = normalize((modelViewMatrix * hxUp).xyz);
+// ink-edge normal: the geometric (attribute) normal bent toward a smooth object-centred
+// "bulge" normal, so faceted low-poly parts still get a thin silhouette gradient inside each facet
+{
+  vec3 hxP = position - vec3(0.0, uInkC, 0.0);
+  vec3 hxB = normalize(vec3(hxP.x, hxP.y * uInkFlat, hxP.z) + vec3(0.0, 1e-4, 0.0));
+  vec3 hxN = normalize(mix(normalize(objectNormal), hxB, uInkProxy));
+  #ifdef USE_INSTANCING
+    hxN = mat3(instanceMatrix) * hxN;
+  #endif
+  vInkN = normalize(normalMatrix * hxN);
+}`;
 
 const FRAG_DECL = /* glsl */`
 uniform sampler2D uNoise;
-uniform float uDetail, uScale, uAO, uAOHeight, uRim, uHemi, uHit, uToe, uLift;
-uniform vec3 uRimColor, uSky, uGround, uHitColor, uShade;
+uniform float uDetail, uScale, uAO, uAOHeight, uRim, uHemi, uHit, uToe, uLift, uSat, uCon, uInk, uInkW, uInkDark;
+uniform vec3 uRimColor, uSky, uGround, uHitColor, uShade, uInkTint;
 varying vec3 vObjPos;
 varying vec3 vUpV;
+varying vec3 vInkN;
 void main() {`;
 
 // after <color_fragment>: diffuseColor holds the vertex colour
@@ -96,6 +110,10 @@ const FRAG_COLOR = /* glsl */`#include <color_fragment>
   float ao = smoothstep(0.0, uAOHeight, vObjPos.y);
   ao = mix(1.0 - uAO, 1.0, ao * ao * (3.0 - 2.0 * ao));
   diffuseColor.rgb *= ao * mix(uShade / max(max(uShade.r, uShade.g), uShade.b), vec3(1.0), ao);
+  // figure pop: a little more saturation and local value contrast than the ground
+  lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+  diffuseColor.rgb = mix(vec3(lum), diffuseColor.rgb, uSat);
+  diffuseColor.rgb *= 1.0 + uCon * (lum - 0.38);
   diffuseColor.rgb = max(diffuseColor.rgb, 0.0);
 }`;
 
@@ -118,6 +136,18 @@ const FRAG_OUT = /* glsl */`{
   // warm sunny rim, brightest on upward-facing edges, faint underneath
   outgoingLight += uRimColor * fres * uRim * (0.35 + 0.65 * clamp(up + 0.4, 0.0, 1.0)) * (0.6 + 0.4 * dot(diffuseColor.rgb, vec3(0.33)));
   outgoingLight += uHitColor * fres * uHit * 1.5;
+  // ink edge: painted silhouette line. Smooth (bent) normal decides where the line sits,
+  // the face normal sharpens it on grazing facets; crisp smoothstep, coloured, never black.
+  if (uInk > 0.0) {
+    float sv = abs(dot(normalize(vInkN), hxV));
+    float e = 1.0 - (sv * 0.5 + ndv * 0.5);
+    float ink = smoothstep(1.0 - uInkW, 1.0 - uInkW * 0.6, e);
+    vec3 alb = diffuseColor.rgb;
+    float al = dot(alb, vec3(0.2126, 0.7152, 0.0722));
+    vec3 hue = alb / max(max(alb.r, max(alb.g, alb.b)), 0.05);
+    vec3 inkCol = (hue * 0.55 + uInkTint * 0.45) * uInkDark * (0.75 + 0.5 * al);
+    outgoingLight = mix(outgoingLight, inkCol, clamp(ink * uInk * 1.6, 0.0, 1.0));
+  }
 }
 #include <opaque_fragment>`;
 
@@ -138,6 +168,15 @@ function bodyUniforms(THREE, o) {
     uLift: { value: o.lift ?? 0.24 },
     uToe: { value: o.toe ?? 0.45 },
     uHit: { value: o.hit ?? 0 },
+    uSat: { value: o.sat ?? 1.1 },
+    uCon: { value: o.contrast ?? 0.22 },
+    uInk: { value: o.ink ?? 0.5 },
+    uInkW: { value: o.inkWidth ?? 0.3 },
+    uInkDark: { value: o.inkDark ?? 0.16 },
+    uInkTint: { value: new THREE.Color(o.inkTint ?? 0x5a3070) },
+    uInkC: { value: o.inkCenter ?? 0.4 },
+    uInkFlat: { value: o.inkFlat ?? 0.6 },
+    uInkProxy: { value: o.inkProxy ?? 0.45 },
     uHitColor: { value: new THREE.Color(o.hitColor ?? 0xff3a2a) },
   };
 }
@@ -147,7 +186,10 @@ function bodyUniforms(THREE, o) {
  *  detail 0.6 (0 = off), scale 2.2 (noise repeats per local unit), ao 0.16, aoHeight 0.22,
  *  rim 0.5, rimColor (warm), hemi 0.2 (sky/bounce), sky, ground (warm bounce colour),
  *  shade (coloured shadow tint), lift 0.16 (shadow fill), toe 0.35 (lifts dark albedos),
- *  roughness 0.8, metalness 0, hit 0, hitColor. Live-tweak via material.userData.uniforms.uDetail.value etc.
+ *  roughness 0.8, metalness 0, hit 0, hitColor,
+ *  sat 1.1 (albedo saturation), contrast 0.22 (albedo value contrast),
+ *  ink 0.5 (painted silhouette edge strength, 0 = off), inkWidth 0.3, inkDark 0.16, inkTint (deep violet),
+ *  inkCenter 0.4 / inkFlat 0.6 / inkProxy 0.45 (shape of the smooth "bulge" normal used for the edge). Live-tweak via material.userData.uniforms.uDetail.value etc.
  */
 export function makeBodyMaterial(THREE, opts = {}) {
   noiseTexture(THREE);
@@ -166,7 +208,7 @@ export function makeBodyMaterial(THREE, opts = {}) {
       .replace('#include <emissivemap_fragment>', FRAG_EMISSIVE)
       .replace('#include <opaque_fragment>', FRAG_OUT);
   };
-  mat.customProgramCacheKey = () => 'hexBody2';
+  mat.customProgramCacheKey = () => 'hexBody3';
   return mat;
 }
 
@@ -203,3 +245,43 @@ export function makeGlowMaterial(THREE, opts = {}) {
 
 /** Advance shared animated uniforms. Call once per frame with seconds. */
 export function tick(time) { shared.uTime.value = time; }
+
+// ---------------------------------------------------------------- contact (blob) shadow
+let _blobTex = null;
+function blobTexture(THREE) {
+  if (_blobTex) return _blobTex;
+  const N = 128, cvs = document.createElement('canvas');
+  cvs.width = cvs.height = N;
+  const ctx = cvs.getContext('2d'), img = ctx.createImageData(N, N), d = img.data;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const dx = (x + 0.5) / N * 2 - 1, dy = (y + 0.5) / N * 2 - 1, r = Math.sqrt(dx * dx + dy * dy);
+    // soft core that eases to exactly 0 at the unit radius (gaussian-ish, no hard rim)
+    const t = Math.min(1, Math.max(0, (1 - r) / 0.8)), a = t * t * (3 - 2 * t);
+    const i = (y * N + x) * 4;
+    d[i] = d[i + 1] = d[i + 2] = Math.round(Math.pow(a, 1.1) * 255); d[i + 3] = 255; // alphaMap reads .g
+  }
+  ctx.putImageData(img, 0, 0);
+  _blobTex = new THREE.CanvasTexture(cvs);
+  _blobTex.colorSpace = THREE.NoColorSpace;
+  return _blobTex;
+}
+
+/**
+ * Soft contact shadow for map objects / heroes / towns: dark violet-brown, ~0.45 opacity at the
+ * centre fading to 0 at radius 1. Transparent, no depth write, polygon offset against the ground.
+ * opts: color (0x2e1a30), opacity (0.45). One shared material is fine for every blob.
+ */
+export function makeBlobShadowMaterial(THREE, opts = {}) {
+  const mat = new THREE.MeshBasicMaterial({
+    color: opts.color ?? 0x2e1a30, alphaMap: blobTexture(THREE), transparent: true,
+    opacity: opts.opacity ?? 0.45, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    toneMapped: false, fog: true,
+  });
+  return mat;
+}
+
+/** Unit-radius quad in the XZ plane at y = 0.002 (normal +Y). Scale the mesh to the footprint radius. */
+export function blobShadowGeometry(THREE) {
+  return new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2).translate(0, 0.002, 0);
+}

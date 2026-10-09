@@ -24,6 +24,7 @@ const bodyMat = makeBodyMaterial(THREE); const glowMat = makeGlowMaterial(THREE)
 const cols = Math.ceil(Math.sqrt(ids.length)), sp = +(q.get('sp') || 1.6);
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x4a8a3a, roughness: 1 }));
 ground.receiveShadow = true; scene.add(ground);
+const GC = [0x5e8a44, 0xcdb27e, 0xe4e8ee, 0x7e6248];
 let info = '';
 ids.forEach((id, i) => {
   const m = objectModel(id);
@@ -33,6 +34,7 @@ ids.forEach((id, i) => {
   const rows = Math.ceil(ids.length / cols);
   g.position.set((i % cols - (cols - 1) / 2) * sp, 0, (Math.floor(i / cols) - (rows - 1) / 2) * sp);
   g.rotation.y = rot;
+  if (q.get('mix')) { const t = new THREE.Mesh(new THREE.PlaneGeometry(sp, sp).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: GC[i % 4], roughness: 1 })); t.position.copy(g.position); t.position.y = 0.002; t.receiveShadow = true; scene.add(t); }
   scene.add(g);
   const tris = (m.body.attributes.position.count + (m.glow ? m.glow.attributes.position.count : 0)) / 3;
   info += `${id}: ${tris} tris\n`;

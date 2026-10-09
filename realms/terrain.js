@@ -72,17 +72,46 @@ function voronoi(n, seed, jitter = 0.85) {
 }
 
 // one layer: per-pixel base, then canvas strokes (drawn wrapped so the tile repeats), then a glow mask in alpha
-// per-layer colour grade applied after painting: [gamma (<1 lifts darks), saturation, brightness]
+// per-layer colour grade applied after painting: [gamma (<1 lifts darks), saturation, brightness, detail, contrast]
+// detail < 1 squashes the high-frequency part (everything finer than a ~10 px blur) towards the soft
+// low-frequency shapes, so the ground reads as a calm painted backdrop rather than busy confetti;
+// contrast < 1 pulls the large shapes towards the layer's mean value.
 const GRADE = [];
+function boxBlurWrap(src, dst, rad, horiz) {
+  const w = 2 * rad + 1, tmp = new Float32Array(S);
+  for (let a = 0; a < S; a++) {
+    for (let c = 0; c < 3; c++) {
+      let acc = 0;
+      const at = (i) => { const j = ((i % S) + S) % S; return horiz ? src[(a * S + j) * 4 + c] : src[(j * S + a) * 4 + c]; };
+      for (let i = -rad; i <= rad; i++) acc += at(i);
+      for (let i = 0; i < S; i++) { tmp[i] = acc / w; acc += at(i + rad + 1) - at(i - rad); }
+      for (let i = 0; i < S; i++) { const q = horiz ? (a * S + i) * 4 + c : (i * S + a) * 4 + c; dst[q] = tmp[i]; }
+    }
+  }
+}
 function grade(out, g) {
   if (!g) return;
-  const [gam, sat, bri] = g, lut = new Float32Array(256);
+  const [gam, sat, bri, detail = 1, con = 1] = g, lut = new Float32Array(256);
   for (let i = 0; i < 256; i++) lut[i] = Math.pow(i / 255, gam) * 255 * bri;
+  const f = new Float32Array(out.length);
+  for (let q = 0; q < out.length; q += 4) { f[q] = lut[out[q]]; f[q + 1] = lut[out[q + 1]]; f[q + 2] = lut[out[q + 2]]; }
+  if (detail < 1 || con < 1) {
+    const a = new Float32Array(out.length), b = new Float32Array(out.length);
+    boxBlurWrap(f, a, 5, true); boxBlurWrap(a, b, 5, false); boxBlurWrap(b, a, 5, true); boxBlurWrap(a, b, 5, false);
+    let mr = 0, mg = 0, mb = 0;
+    for (let q = 0; q < out.length; q += 4) { mr += b[q]; mg += b[q + 1]; mb += b[q + 2]; }
+    const n = out.length / 4; mr /= n; mg /= n; mb /= n;
+    const M = [mr, mg, mb];
+    for (let q = 0; q < out.length; q += 4) for (let c = 0; c < 3; c++) {
+      const lo = M[c] + (b[q + c] - M[c]) * con;
+      f[q + c] = lo + (f[q + c] - b[q + c]) * detail;
+    }
+  }
   for (let q = 0; q < out.length; q += 4) {
-    const r = lut[out[q]], gg = lut[out[q + 1]], b = lut[out[q + 2]], l = r * 0.3 + gg * 0.55 + b * 0.15;
+    const r = f[q], gg = f[q + 1], bb = f[q + 2], l = r * 0.3 + gg * 0.55 + bb * 0.15;
     out[q] = Math.max(0, Math.min(255, l + (r - l) * sat));
     out[q + 1] = Math.max(0, Math.min(255, l + (gg - l) * sat));
-    out[q + 2] = Math.max(0, Math.min(255, l + (b - l) * sat));
+    out[q + 2] = Math.max(0, Math.min(255, l + (bb - l) * sat));
   }
 }
 function paintLayer(ctx, base, strokes, glowFn) {
@@ -159,35 +188,34 @@ PAINT[LAYER.SEABED] = (ctx) => {
 PAINT[LAYER.GRASS] = (ctx) => {
   const n1 = fbm(21, 4, 4), n2 = fbm(22, 3, 3), r = mulberry(23);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([62, 126, 38], [122, 182, 58], n1[q]);
-    c = mixc(c, [150, 172, 58], sstep(0.62, 0.9, n2[q]) * 0.55);
-    const k = 0.92 + lhash(x, y, 7) * 0.14;
+    let c = mixc([84, 124, 62], [130, 162, 88], n1[q]);
+    c = mixc(c, [160, 170, 96], sstep(0.58, 0.9, n2[q]) * 0.5);
+    const k = 0.97 + lhash(x, y, 7) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
     ctx.lineCap = 'round';
-    for (let i = 0; i < 3400; i++) {
-      const x = r() * S, y = r() * S, l = 3 + r() * 5, a = -1.57 + (r() - 0.5) * 1.3, hh = 76 + r() * 36, li = 30 + r() * 34;
-      wrap(x, y, 9, (X, Y) => { ctx.strokeStyle = `hsl(${hh},${48 + r() * 22}%,${li}%)`; ctx.lineWidth = 0.8 + r() * 0.8; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * l, Y + Math.sin(a) * l); ctx.stroke(); });
+    for (let i = 0; i < 1800; i++) {
+      const x = r() * S, y = r() * S, l = 3 + r() * 5, a = -1.57 + (r() - 0.5) * 1.3, hh = 80 + r() * 26, li = 38 + r() * 18;
+      wrap(x, y, 9, (X, Y) => { ctx.strokeStyle = `hsla(${hh},${30 + r() * 14}%,${li}%,0.7)`; ctx.lineWidth = 0.8 + r() * 0.8; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * l, Y + Math.sin(a) * l); ctx.stroke(); });
     }
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 6; i++) {
       const x = r() * S, y = r() * S, rot = r() * 6.28, s = 1.8 + r() * 0.8;
       wrap(x, y, 8, (X, Y) => {
         for (let p = 0; p < 3; p++) {
           const a = rot + p * 2.094;
-          ctx.fillStyle = 'rgba(40,90,30,0.4)'; ctx.beginPath(); ctx.arc(X + Math.cos(a) * s + 0.8, Y + Math.sin(a) * s + 0.8, s, 0, 6.283); ctx.fill();
-          ctx.fillStyle = 'rgb(66,148,62)'; ctx.beginPath(); ctx.arc(X + Math.cos(a) * s, Y + Math.sin(a) * s, s, 0, 6.283); ctx.fill();
-          ctx.fillStyle = 'rgba(170,220,150,0.5)'; ctx.beginPath(); ctx.arc(X + Math.cos(a) * s * 1.1, Y + Math.sin(a) * s * 1.1, s * 0.35, 0, 6.283); ctx.fill();
+          ctx.fillStyle = 'rgba(70,104,52,0.25)'; ctx.beginPath(); ctx.arc(X + Math.cos(a) * s + 0.8, Y + Math.sin(a) * s + 0.8, s, 0, 6.283); ctx.fill();
+          ctx.fillStyle = 'rgb(96,144,74)'; ctx.beginPath(); ctx.arc(X + Math.cos(a) * s, Y + Math.sin(a) * s, s, 0, 6.283); ctx.fill();
+          ctx.fillStyle = 'rgba(170,200,150,0.25)'; ctx.beginPath(); ctx.arc(X + Math.cos(a) * s * 1.1, Y + Math.sin(a) * s * 1.1, s * 0.35, 0, 6.283); ctx.fill();
         }
       });
     }
-    const petals = [[255, 255, 245], [255, 226, 60], [250, 140, 190], [150, 180, 255], [200, 130, 240], [255, 120, 80]];
-    for (let i = 0; i < 70; i++) {
+    const petals = [[236, 236, 216], [226, 210, 130], [214, 170, 186], [176, 186, 220]];
+    for (let i = 0; i < 12; i++) {
       const x = r() * S, y = r() * S, c = petals[(r() * petals.length) | 0], s = 1.1 + r() * 0.9;
       wrap(x, y, 6, (X, Y) => {
-        ctx.fillStyle = 'rgba(40,90,24,0.35)'; ctx.beginPath(); ctx.arc(X + 1, Y + 1.2, s * 1.9, 0, 6.283); ctx.fill();
-        ctx.fillStyle = rgb(c);
+        ctx.fillStyle = rgba(c, 0.6);
         for (let p = 0; p < 5; p++) { const a = p * 1.2566; ctx.beginPath(); ctx.arc(X + Math.cos(a) * s, Y + Math.sin(a) * s, s * 0.8, 0, 6.283); ctx.fill(); }
-        ctx.fillStyle = 'rgb(255,200,40)'; ctx.beginPath(); ctx.arc(X, Y, s * 0.55, 0, 6.283); ctx.fill();
+        ctx.fillStyle = 'rgba(230,200,110,0.6)'; ctx.beginPath(); ctx.arc(X, Y, s * 0.55, 0, 6.283); ctx.fill();
       });
     }
   });
@@ -196,30 +224,27 @@ PAINT[LAYER.GRASS] = (ctx) => {
 PAINT[LAYER.DIRT] = (ctx) => {
   const n1 = fbm(31, 4, 4), n2 = fbm(32, 10, 2), r = mulberry(33);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([158, 114, 66], [212, 170, 112], n1[q]);
-    c = mixc(c, [140, 98, 58], sstep(0.55, 0.85, n2[q]) * 0.45);
-    const k = 0.9 + lhash(x, y, 9) * 0.18;
+    let c = mixc([156, 126, 92], [200, 172, 132], n1[q]);
+    c = mixc(c, [150, 118, 86], sstep(0.55, 0.85, n2[q]) * 0.35);
+    const k = 0.97 + lhash(x, y, 9) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    cracks(ctx, wrap, r, 12, 18, 'rgba(112,72,40,0.7)', 'rgba(236,206,156,0.5)', 1.2);
-    pebbles(ctx, wrap, r, 110, 1.4, 3.8, [[190, 170, 146], [168, 146, 118], [214, 198, 172], [178, 164, 150]]);
-    for (let i = 0; i < 500; i++) { const x = r() * S, y = r() * S; ctx.fillStyle = r() < 0.5 ? 'rgba(120,80,44,0.4)' : 'rgba(240,214,166,0.5)'; ctx.fillRect(x, y, 1.2, 1.2); }
+    cracks(ctx, wrap, r, 6, 18, 'rgba(130,98,70,0.4)', 'rgba(226,204,166,0.25)', 1.2);
+    pebbles(ctx, wrap, r, 26, 1.4, 3.4, [[184, 168, 148], [170, 152, 128], [200, 188, 168]], 0.15);
   });
 };
 // 3 sand: warm dunes with wind ripples
 PAINT[LAYER.SAND] = (ctx) => {
   const n1 = fbm(41, 4, 4), w = fbm(42, 3, 3), r = mulberry(43);
   return paintLayer(ctx, (q, x, y, set, glow) => {
-    if (lhash(x, y, 47) > 0.996) glow[q] = 0.35 + lhash(x, y, 48) * 0.4; // mica glints
-    const ph = y / S * 11 + x / S * 2 + w[q] * 2.2;
+        const ph = y / S * 11 + x / S * 2 + w[q] * 2.2;
     const s = Math.sin(6.283 * ph), rip = s > 0 ? Math.pow(s, 3) : s * 0.4;
-    const c = mixc([214, 182, 116], [244, 218, 150], n1[q]);
-    const k = 0.95 + rip * 0.09 + (lhash(x, y, 11) - 0.5) * 0.1;
+    const c = mixc([210, 184, 136], [232, 212, 166], n1[q]);
+    const k = 0.97 + rip * 0.045 + (lhash(x, y, 11) - 0.5) * 0.03;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    for (let i = 0; i < 900; i++) { const x = r() * S, y = r() * S; ctx.fillStyle = r() < 0.5 ? 'rgba(150,110,60,0.45)' : 'rgba(255,245,215,0.6)'; ctx.fillRect(x, y, 1, 1); }
-    pebbles(ctx, wrap, r, 10, 1.2, 2.6, [[230, 220, 200], [190, 160, 130]], 0.18);
-    for (let i = 0; i < 6; i++) {
+    pebbles(ctx, wrap, r, 4, 1.2, 2.4, [[222, 212, 194], [196, 176, 150]], 0.12);
+    for (let i = 0; i < 0; i++) {
       const x = r() * S, y = r() * S;
       wrap(x, y, 5, (X, Y) => { ctx.fillStyle = 'rgba(250,230,220,0.95)'; ctx.beginPath(); ctx.arc(X, Y, 2.2, 3.14, 6.283); ctx.fill(); ctx.strokeStyle = 'rgba(200,140,120,0.8)'; ctx.lineWidth = 0.6; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + k * 1.8, Y - 1.8); ctx.stroke(); } });
     }
@@ -231,18 +256,18 @@ PAINT[LAYER.SNOW] = (ctx) => {
   return paintLayer(ctx, (q, x, y, set) => {
     const ph = y / S * 4 + x / S + w[q] * 1.6, s = 0.5 + 0.5 * Math.sin(6.283 * ph);
     const sh = sstep(0.4, 0.95, s) * 0.5 + (1 - n1[q]) * 0.5;
-    const c = mixc([250, 252, 255], [190, 208, 238], sh * 0.6);
+    const c = mixc([244, 246, 250], [196, 208, 230], sh * 0.6);
     const k = 0.98 + (lhash(x, y, 13) - 0.5) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap, glow) => {
-    for (let i = 0; i < 260; i++) {
+    for (let i = 0; i < 40; i++) {
       const x = (r() * S) | 0, y = (r() * S) | 0;
-      ctx.fillStyle = 'rgb(255,255,255)'; ctx.fillRect(x, y, 1, 1);
-      glow[y * S + x] = 0.25 + r() * 0.3;
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x, y, 1, 1);
+      glow[y * S + x] = 0.08 + r() * 0.1;
     }
     for (let i = 0; i < 18; i++) {
       const x = r() * S, y = r() * S, l = 10 + r() * 20;
-      wrap(x, y, l, (X, Y) => { ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X, Y); ctx.quadraticCurveTo(X + l / 2, Y - 3, X + l, Y); ctx.stroke(); ctx.strokeStyle = 'rgba(140,165,215,0.45)'; ctx.beginPath(); ctx.moveTo(X, Y + 1.6); ctx.quadraticCurveTo(X + l / 2, Y - 1.4, X + l, Y + 1.6); ctx.stroke(); });
+      wrap(x, y, l, (X, Y) => { ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X, Y); ctx.quadraticCurveTo(X + l / 2, Y - 3, X + l, Y); ctx.stroke(); ctx.strokeStyle = 'rgba(160,176,212,0.3)'; ctx.beginPath(); ctx.moveTo(X, Y + 1.6); ctx.quadraticCurveTo(X + l / 2, Y - 1.4, X + l, Y + 1.6); ctx.stroke(); });
     }
   });
 };
@@ -250,31 +275,31 @@ PAINT[LAYER.SNOW] = (ctx) => {
 PAINT[LAYER.SWAMP] = (ctx) => {
   const n1 = fbm(61, 4, 4), pud = fbm(62, 5, 4), r = mulberry(63);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([84, 120, 66], [140, 160, 82], n1[q]);
+    let c = mixc([98, 122, 82], [144, 156, 104], n1[q]);
     const p = pud[q];
-    if (p > 0.69) { const dd = sstep(0.69, 0.82, p); c = mixc([108, 148, 108], [74, 128, 116], dd); const sp = lhash(x, y, 3) > 0.98 ? 60 : 0; c = [c[0] + sp, c[1] + sp, c[2] + sp]; }
+    if (p > 0.69) { const dd = sstep(0.69, 0.82, p); c = mixc([108, 148, 108], [74, 128, 116], dd); const sp = 0; c = [c[0] + sp, c[1] + sp, c[2] + sp]; }
     else if (p > 0.64) c = mixc(c, [166, 168, 92], sstep(0.64, 0.69, p) * 0.6);
-    const k = 0.92 + lhash(x, y, 15) * 0.14;
+    const k = 0.97 + lhash(x, y, 15) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    for (let i = 0; i < 700; i++) {
+    for (let i = 0; i < 160; i++) {
       const x = r() * S, y = r() * S, q = ((y | 0) % S) * S + ((x | 0) % S);
       if (pud[q] > 0.67) continue;
-      ctx.fillStyle = r() < 0.6 ? 'rgba(140,184,62,0.75)' : 'rgba(84,104,48,0.5)'; ctx.beginPath(); ctx.arc(x, y, 0.8 + r() * 1.4, 0, 6.283); ctx.fill();
+      ctx.fillStyle = r() < 0.6 ? 'rgba(140,170,90,0.4)' : 'rgba(96,110,70,0.3)'; ctx.beginPath(); ctx.arc(x, y, 0.8 + r() * 1.4, 0, 6.283); ctx.fill();
     }
     let pads = 0;
-    for (let i = 0; i < 400 && pads < 16; i++) {
+    for (let i = 0; i < 400 && pads < 8; i++) {
       const x = r() * S, y = r() * S, q = ((y | 0) % S) * S + ((x | 0) % S);
       if (pud[q] < 0.74) continue;
       pads++;
       const s = 2.4 + r() * 1.6, a = r() * 6.28;
       wrap(x, y, 7, (X, Y) => {
         ctx.fillStyle = 'rgba(40,90,80,0.35)'; ctx.beginPath(); ctx.arc(X + 0.8, Y + 1, s, 0, 6.283); ctx.fill();
-        ctx.fillStyle = 'rgb(110,176,64)'; ctx.beginPath(); ctx.moveTo(X, Y); ctx.arc(X, Y, s, a + 0.5, a + 6.0); ctx.closePath(); ctx.fill();
-        if (r() < 0.35) { ctx.fillStyle = 'rgb(250,220,240)'; ctx.beginPath(); ctx.arc(X, Y, 1.2, 0, 6.283); ctx.fill(); }
+        ctx.fillStyle = 'rgb(118,160,84)'; ctx.beginPath(); ctx.moveTo(X, Y); ctx.arc(X, Y, s, a + 0.5, a + 6.0); ctx.closePath(); ctx.fill();
+        if (r() < 0.15) { ctx.fillStyle = 'rgb(230,214,222)'; ctx.beginPath(); ctx.arc(X, Y, 1.2, 0, 6.283); ctx.fill(); }
       });
     }
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 28; i++) {
       const x = r() * S, y = r() * S, q = ((y | 0) % S) * S + ((x | 0) % S);
       if (pud[q] > 0.69) continue;
       const l = 5 + r() * 6, a = -1.57 + (r() - 0.5) * 0.6;
@@ -286,49 +311,49 @@ PAINT[LAYER.SWAMP] = (ctx) => {
 PAINT[LAYER.ROUGH] = (ctx) => {
   const vo = voronoi(6, 71, 0.95), n1 = fbm(72, 4, 4), n2 = fbm(75, 9, 3), r = mulberry(73);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([164, 140, 104], [206, 184, 142], n1[q]);
-    c = mixc(c, [156, 146, 128], sstep(0.5, 0.8, n2[q]) * 0.45);
+    let c = mixc([150, 136, 112], [182, 168, 140], n1[q]);
+    c = mixc(c, [148, 140, 126], sstep(0.5, 0.8, n2[q]) * 0.4);
     // a rock where we are near a feature point, its size varying per cell
     const id = vo.ID[q], e = vo.F2[q] - vo.F1[q] + (n2[q] - 0.5) * 0.12;
     const gap = 0.12 + lhash(id, 4, 76) * 0.5;
     if (gap < 0.55 && e > gap) {
       const tone = lhash(id, 1, 74);
-      const rock = mixc([166, 158, 144], [214, 206, 188], tone);
-      const sh = 1.0 - (vo.DX[q] + vo.DY[q]) * 0.38 + sstep(gap, gap + 0.25, e) * 0.1;
+      const rock = mixc([162, 154, 140], [186, 178, 162], tone);
+      const sh = 1.0 - (vo.DX[q] + vo.DY[q]) * 0.22 + sstep(gap, gap + 0.25, e) * 0.05;
       c = rock.map((v) => v * sh);
     } else if (gap < 0.55 && e > gap - 0.06) {
-      c = mixc(c, [128, 104, 80], 0.45); // soft warm contact shadow
+      c = mixc(c, [128, 114, 96], 0.25); // soft warm contact shadow
     }
-    const k = 0.9 + lhash(x, y, 17) * 0.18;
+    const k = 0.97 + lhash(x, y, 17) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    pebbles(ctx, wrap, r, 220, 0.8, 2.0, [[196, 184, 160], [160, 148, 130], [222, 212, 190], [178, 154, 120]], 0.28);
-    cracks(ctx, wrap, r, 7, 9, 'rgba(118,92,64,0.6)', 'rgba(236,220,184,0.35)', 1);
-    for (let i = 0; i < 40; i++) {
+    pebbles(ctx, wrap, r, 30, 0.8, 1.8, [[176, 166, 150], [160, 150, 134], [188, 180, 164]], 0.12);
+    cracks(ctx, wrap, r, 4, 9, 'rgba(130,112,92,0.35)', null, 1);
+    for (let i = 0; i < 8; i++) {
       const x = r() * S, y = r() * S;
-      wrap(x, y, 8, (X, Y) => { ctx.strokeStyle = 'rgba(176,190,80,0.9)'; ctx.lineWidth = 0.8; for (let k = 0; k < 4; k++) { const a = -1.57 + (k - 1.5) * 0.35; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * 4, Y + Math.sin(a) * 4); ctx.stroke(); } });
+      wrap(x, y, 8, (X, Y) => { ctx.strokeStyle = 'rgba(150,164,104,0.6)'; ctx.lineWidth = 0.8; for (let k = 0; k < 4; k++) { const a = -1.57 + (k - 1.5) * 0.35; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * 4, Y + Math.sin(a) * 4); ctx.stroke(); } });
     }
   });
 };
 // 7 lava: black crust with glowing veins (alpha = glow)
 PAINT[LAYER.LAVA] = (ctx) => {
-  const vo = voronoi(6, 81, 0.9), n1 = fbm(82, 6, 3), n2 = fbm(83, 3, 3), r = mulberry(84);
+  const vo = voronoi(4, 81, 0.9), n1 = fbm(82, 6, 3), n2 = fbm(83, 3, 3), r = mulberry(84);
   return paintLayer(ctx, (q, x, y, set, glow) => {
     const id = vo.ID[q], e = vo.F2[q] - vo.F1[q];
     const tone = lhash(id, 2, 85);
-    let c = mixc([86, 58, 54], [146, 100, 84], tone * 0.5 + n1[q] * 0.5);
-    const sh = 1 + (vo.DX[q] + vo.DY[q]) * 0.28;
+    let c = mixc([110, 78, 66], [150, 112, 92], tone * 0.5 + n1[q] * 0.5);
+    const sh = 1 + (vo.DX[q] + vo.DY[q]) * 0.14;
     c = c.map((v) => v * sh);
-    const wid = 0.05 + n2[q] * 0.09;
+    const wid = 0.035 + n2[q] * 0.06;
     const vein = 1 - sstep(0.0, wid, e), core = 1 - sstep(0.0, wid * 0.4, e);
     const heat = 1 - sstep(wid, wid * 2.4, e);
-    c = mixc(c, [200, 70, 30], heat * 0.65);
+    c = mixc(c, [190, 84, 50], heat * 0.45);
     c = mixc(c, [255, 92, 14], vein);
     c = mixc(c, [255, 214, 90], core);
-    glow[q] = Math.max(vein * 0.9, heat * 0.2);
+    glow[q] = Math.max(vein * 0.75, heat * 0.12);
     set(q, c[0], c[1], c[2]);
   }, (ctx, wrap, glow) => {
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 20; i++) {
       const x = (r() * S) | 0, y = (r() * S) | 0;
       ctx.fillStyle = 'rgb(255,140,40)'; ctx.fillRect(x, y, 1, 1);
       glow[y * S + x] = 0.7;
@@ -346,31 +371,31 @@ PAINT[LAYER.MOUNT] = (ctx) => {
     const e = vo.F2[q] - vo.F1[q];
     c = mixc(c, [118, 108, 112], (1 - sstep(0.01, 0.05, e)) * 0.6);
     const l = sstep(0.68, 0.8, li[q]) * (lhash(x, y, 19) > 0.35 ? 1 : 0.4);
-    c = mixc(c, [170, 190, 84], l * 0.75);
+    c = mixc(c, [160, 172, 112], l * 0.45);
     const k = 0.92 + lhash(x, y, 21) * 0.14;
     set(q, c[0] * k, c[1] * k, c[2] * k);
-  }, (ctx, wrap) => { cracks(ctx, wrap, r, 10, 10, 'rgba(110,100,104,0.6)', 'rgba(240,236,224,0.45)', 1); });
+  }, (ctx, wrap) => { cracks(ctx, wrap, r, 6, 10, 'rgba(120,112,114,0.4)', 'rgba(236,232,222,0.25)', 1); });
 };
 // 9 forest floor: moss, leaf litter and needles
 PAINT[LAYER.FOREST] = (ctx) => {
   const n1 = fbm(101, 4, 4), n2 = fbm(102, 6, 3), r = mulberry(103);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([70, 110, 46], [112, 146, 62], n1[q]);
-    c = mixc(c, [146, 108, 64], sstep(0.55, 0.85, n2[q]) * 0.45);
-    const k = 0.9 + lhash(x, y, 23) * 0.16;
+    let c = mixc([84, 114, 64], [124, 148, 86], n1[q]);
+    c = mixc(c, [148, 122, 88], sstep(0.55, 0.85, n2[q]) * 0.4);
+    const k = 0.97 + lhash(x, y, 23) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    const leaf = [[104, 152, 58], [150, 128, 60], [182, 112, 52], [86, 132, 52], [120, 160, 66]];
-    for (let i = 0; i < 1100; i++) {
+    const leaf = [[108, 140, 76], [146, 132, 88], [164, 124, 82], [96, 126, 72], [124, 150, 86]];
+    for (let i = 0; i < 700; i++) {
       const x = r() * S, y = r() * S, a = r() * 6.28, c = leaf[(r() * leaf.length) | 0], s = 1.6 + r() * 1.6;
-      wrap(x, y, 5, (X, Y) => { ctx.fillStyle = rgba(c, 0.9); ctx.beginPath(); ctx.ellipse(X, Y, s, s * 0.45, a, 0, 6.283); ctx.fill(); });
+      wrap(x, y, 5, (X, Y) => { ctx.fillStyle = rgba(c, 0.6); ctx.beginPath(); ctx.ellipse(X, Y, s, s * 0.45, a, 0, 6.283); ctx.fill(); });
     }
-    for (let i = 0; i < 600; i++) {
+    for (let i = 0; i < 250; i++) {
       const x = r() * S, y = r() * S, a = r() * 6.28;
-      wrap(x, y, 6, (X, Y) => { ctx.strokeStyle = 'rgba(170,122,66,0.8)'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * 4, Y + Math.sin(a) * 4); ctx.stroke(); });
+      wrap(x, y, 6, (X, Y) => { ctx.strokeStyle = 'rgba(160,130,94,0.45)'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * 4, Y + Math.sin(a) * 4); ctx.stroke(); });
     }
-    pebbles(ctx, wrap, r, 14, 1.5, 3, [[160, 160, 146], [136, 146, 120]]);
-    for (let i = 0; i < 12; i++) {
+    pebbles(ctx, wrap, r, 5, 1.5, 3, [[160, 160, 146], [140, 146, 126]], 0.15);
+    for (let i = 0; i < 0; i++) {
       const x = r() * S, y = r() * S;
       wrap(x, y, 6, (X, Y) => { ctx.fillStyle = 'rgb(200,40,30)'; ctx.beginPath(); ctx.arc(X, Y, 1.8, 3.14, 6.283); ctx.fill(); ctx.fillStyle = 'rgb(240,230,210)'; ctx.fillRect(X - 0.5, Y, 1, 1.8); ctx.fillRect(X - 0.8, Y - 1.2, 0.8, 0.8); });
     }
@@ -379,16 +404,16 @@ PAINT[LAYER.FOREST] = (ctx) => {
 // 10 road: cobblestones bedded in packed dirt
 PAINT[LAYER.ROAD] = (ctx) => {
   const vo = voronoi(9, 111, 0.7), n1 = fbm(112, 6, 3);
-  const stones = [[214, 200, 172], [196, 182, 156], [228, 214, 186], [186, 172, 150], [210, 188, 150], [200, 170, 140]];
+  const stones = [[206, 196, 176], [196, 186, 166], [214, 204, 184], [190, 180, 160], [204, 190, 166], [198, 182, 160]];
   return paintLayer(ctx, (q, x, y, set) => {
     const id = vo.ID[q], e = vo.F2[q] - vo.F1[q];
     const st = stones[(lhash(id, 3, 113) * stones.length) | 0];
-    const round = 1 + (-vo.DX[q] - vo.DY[q]) * 0.0 + (0.45 - vo.F1[q]) * 0.35 - (vo.DX[q] + vo.DY[q]) * 0.3;
+    const round = 1 + (0.45 - vo.F1[q]) * 0.2 - (vo.DX[q] + vo.DY[q]) * 0.18;
     let c = st.map((v) => v * round * (0.92 + n1[q] * 0.16));
     const rim = sstep(0.05, 0.22, e);
-    c = c.map((v) => v * (0.84 + 0.16 * rim));
+    c = c.map((v) => v * (0.9 + 0.1 * rim));
     const mortar = 1 - sstep(0.05, 0.11, e);
-    c = mixc(c, [168, 136, 94].map((v) => v * (0.9 + n1[q] * 0.2)), mortar);
+    c = mixc(c, [170, 148, 116].map((v) => v * (0.94 + n1[q] * 0.12)), mortar * 0.85);
     const k = 0.94 + lhash(x, y, 25) * 0.1;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, null);
@@ -396,7 +421,7 @@ PAINT[LAYER.ROAD] = (ctx) => {
 // 11 cliff: layered rock strata
 PAINT[LAYER.CLIFF] = (ctx) => {
   const w = fbm(121, 4, 3), n1 = fbm(122, 8, 3), r = mulberry(123);
-  const pal = [[200, 156, 108], [176, 136, 96], [216, 182, 132], [162, 126, 92], [190, 150, 106], [226, 196, 146], [170, 132, 96], [186, 146, 102]];
+  const pal = [[196, 166, 132], [182, 152, 120], [208, 182, 148], [174, 146, 116], [190, 162, 128], [214, 192, 158], [178, 150, 120], [188, 160, 126]];
   return paintLayer(ctx, (q, x, y, set) => {
     const yy = y / S * 9 + (w[q] - 0.5) * 1.1 + Math.sin(x / S * 6.283) * 0.2;
     const b = Math.floor(yy), f = yy - b;
@@ -404,9 +429,9 @@ PAINT[LAYER.CLIFF] = (ctx) => {
     let c = pal[bi % pal.length];
     // a lit ledge on top of each band and a shadowed seam underneath
     const top = 1 - sstep(0.0, 0.14, f), bot = sstep(0.82, 1.0, f);
-    let k = 1 + top * 0.2 - bot * 0.2;
+    let k = 1 + top * 0.12 - bot * 0.12;
     const vcr = Math.abs(Math.sin(6.283 * (x / S * 7 + (n1[q] - 0.5) * 0.8 + bi * 0.37)));
-    k *= 1 - (1 - sstep(0.0, 0.07, vcr)) * 0.25;
+    k *= 1 - (1 - sstep(0.0, 0.07, vcr)) * 0.14;
     k *= 0.88 + n1[q] * 0.2 + (lhash(x, y, 27) - 0.5) * 0.08;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => { pebbles(ctx, wrap, r, 30, 1, 2.4, [[200, 168, 130], [176, 146, 112]], 0.22); });
@@ -444,17 +469,18 @@ PAINT[LAYER.FOG] = (ctx) => {
 };
 
 // colour grade per layer: [gamma, saturation, brightness]
-GRADE[LAYER.SEABED] = [0.9, 1.05, 1.0];
-GRADE[LAYER.GRASS] = [0.9, 1.0, 1.0];
-GRADE[LAYER.DIRT] = [0.85, 1.12, 1.03];
-GRADE[LAYER.SAND] = [0.95, 1.08, 1.0];
-GRADE[LAYER.SWAMP] = [0.82, 1.12, 1.04];
-GRADE[LAYER.ROUGH] = [0.85, 1.1, 1.03];
-GRADE[LAYER.LAVA] = [0.85, 1.15, 1.0];
-GRADE[LAYER.MOUNT] = [0.88, 1.08, 1.02];
-GRADE[LAYER.FOREST] = [0.86, 1.05, 1.0];
-GRADE[LAYER.ROAD] = [0.9, 1.08, 1.02];
-GRADE[LAYER.CLIFF] = [0.85, 1.1, 1.02];
+GRADE[LAYER.SEABED] = [0.9, 0.95, 1.0, 0.7, 0.9];
+GRADE[LAYER.GRASS] = [0.92, 0.76, 1.0, 0.45, 0.8];
+GRADE[LAYER.DIRT] = [0.9, 0.8, 1.02, 0.45, 0.8];
+GRADE[LAYER.SAND] = [0.95, 0.78, 1.0, 0.5, 0.75];
+GRADE[LAYER.SNOW] = [1.0, 0.9, 0.93, 0.55, 0.8];
+GRADE[LAYER.SWAMP] = [0.88, 0.85, 1.03, 0.5, 0.8];
+GRADE[LAYER.ROUGH] = [0.92, 0.82, 1.0, 0.4, 0.75];
+GRADE[LAYER.LAVA] = [0.85, 0.82, 1.0, 0.7, 0.85];
+GRADE[LAYER.MOUNT] = [0.9, 0.82, 1.02, 0.55, 0.85];
+GRADE[LAYER.FOREST] = [0.9, 0.78, 1.0, 0.45, 0.8];
+GRADE[LAYER.ROAD] = [0.92, 0.8, 1.0, 0.6, 0.85];
+GRADE[LAYER.CLIFF] = [0.88, 0.8, 1.0, 0.6, 0.85];
 
 // average colour of each layer (linear 0..1), handy for minimaps or debugging
 export const LAYER_AVG = [];
@@ -558,7 +584,7 @@ export function createPlanetMaterial(waterLevel) {
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         {
           // sparkles (snow, sand: lay 3..4) twinkle; lava veins breathe
-          float tw = (lay > 2.5 && lay < 4.5) ? pow(0.5 + 0.5 * sin(uTime * 2.6 + tx.a * 47.0 + (vT.x - vT.y) * 9.0), 3.0) * 1.6 : 0.8 + 0.2 * sin(uTime * 1.6 + vT.x * 5.0 + vT.y * 3.0);
+          float tw = (lay > 2.5 && lay < 4.5) ? pow(0.5 + 0.5 * sin(uTime * 2.6 + tx.a * 47.0 + (vT.x - vT.y) * 9.0), 3.0) * 0.8 : 0.8 + 0.2 * sin(uTime * 1.6 + vT.x * 5.0 + vT.y * 3.0);
           totalEmissiveRadiance += tx.rgb * tx.rgb * tx.a * uGlow * tw * smoothstep(0.2, 0.5, vColor.g + vColor.r);
           // a warm-cool fill so shadows stay soft and coloured, never black; the mist glows softly
           totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.15, 0.12, 0.22), isFog);
@@ -568,7 +594,7 @@ export function createPlanetMaterial(waterLevel) {
           totalEmissiveRadiance += vec3(0.42, 0.28, 0.62) * (frontier * 0.55 + fogRim * 0.25) * pulse;
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-terrain-3';
+  mat.customProgramCacheKey = () => 'hexrealms-terrain-4';
   return mat;
 }
 
@@ -591,7 +617,7 @@ export function createWaterMaterial() {
       .replace('#include <color_fragment>', `
         vec3 wg; float wh = wavesH(vWPos, wg);
         float shore = vWd.x, depth = vWd.y;
-        vec3 shallow = vec3(0.1, 0.7, 0.66), mid = vec3(0.035, 0.42, 0.72), deep = vec3(0.02, 0.22, 0.56);
+        vec3 shallow = vec3(0.16, 0.64, 0.64), mid = vec3(0.07, 0.42, 0.66), deep = vec3(0.04, 0.25, 0.52);
         vec3 wc = mix(shallow, mid, smoothstep(0.0, 0.55, depth));
         wc = mix(wc, deep, smoothstep(0.5, 1.0, depth));
         wc *= 0.94 + 0.1 * wh / 2.9;
@@ -620,7 +646,7 @@ export function createWaterMaterial() {
           // sun glitter dancing on the waves, and a soft glow in the mist
           float gl = sin(dot(vWPos, vec3(173.0, -151.0, 197.0)) + uTime * 2.1) * sin(dot(vWPos, vec3(-211.0, 181.0, 163.0)) - uTime * 1.7) * sin(dot(vWPos, vec3(97.0, 223.0, -139.0)) + uTime * 1.3);
           gl = pow(max(gl, 0.0), 22.0);
-          totalEmissiveRadiance += vec3(1.0, 0.97, 0.86) * gl * 3.0 * lit * (1.0 - f) * (0.4 + 0.6 * smoothstep(1.0, 2.6, wh + 1.5));
+          totalEmissiveRadiance += vec3(1.0, 0.97, 0.86) * gl * 1.9 * lit * (1.0 - f) * (0.4 + 0.6 * smoothstep(1.0, 2.6, wh + 1.5));
           totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.15, 0.12, 0.22), vec3(0.05, 0.08, 0.1), lit);
         }`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -631,7 +657,7 @@ export function createWaterMaterial() {
           normal = normalize(normal - gv * 0.0016 * lit);
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-water-3';
+  mat.customProgramCacheKey = () => 'hexrealms-water-4';
   return mat;
 }
 
