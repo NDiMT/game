@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE as RIG, tagRange, ensureRig } from './rig.js?v=0.6';
+import { BONE as RIG, tagRange, ensureRig } from './rig.js?v=0.7';
 
 // =====================================================================
 // HEX REALMS: faction towns, mounted heroes and ownership flags.

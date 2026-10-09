@@ -12,6 +12,27 @@
 // Hierarchy is deliberately shallow: each bone rotates about its own
 // pivot, then everything except ROOT and the legs follows BODY. Put a
 // weapon on ARM_R with the shoulder as pivot so it swings with the arm.
+//
+// Implementation: materials.js (RIG_DECL shader chunk + setAnim / getAnim /
+// clearAnim / ANIM_DUR / ANIM_IMPACT / setRigIdle). Conventions it relies on:
+//  - +Z is the front, +X is the *_R side (weapon hand): ARM_R, LEG_FR, LEG_BR,
+//    WING_R at +x. Side signs come from sign(aPivot.x) (bone id if |x| < 0.02).
+//  - Followers of BODY: HEAD, ARM_L/R, WING_*, TAIL, CLOTH, RIDER. Legs, ROOT,
+//    SPIN and FLAG don't (a FLAG follows BODY only on models that have a BODY,
+//    e.g. a hero's banner). When the model has a RIDER, ARM_L/ARM_R also follow
+//    the RIDER (they are the rider's arms) and ATTACK becomes a lance thrust.
+//  - The BODY / RIDER pivots are read from the first vertex with that bone, and
+//    the figure height from the max y; one group shares them (body + glow + hull).
+//  - DEATH / CHEER move the whole figure (all bones except ROOT/SPIN/FLAG), so
+//    untagged (ROOT) vertices must be only ground bits: tag every figure part.
+//  - WING pairs whose pivot has |x| < 0.02 are treated as a cape (gentle sway).
+//  - CLOTH rising ABOVE its pivot on a model without BODY = flame (flicker);
+//    CLOTH hanging below = cape/flap (bends more toward the hem).
+//  - FLAG hanging below its pivot sways in its own plane (wall banners);
+//    FLAG sticking out sideways flaps about the pole.
+//  - HEAD / FLAG motion gets a phase from the pivot position, so several heads
+//    (hydra necks) or rows of flags move independently.
+//  - SPIN: about local +Z through the pivot, ~1.4 rad/s, always on.
 // =====================================================================
 
 export const BONE = {

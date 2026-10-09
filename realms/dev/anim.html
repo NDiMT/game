@@ -1,0 +1,155 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rig animations</title>
+<style>html,body{margin:0;background:#6a8a5a;overflow:hidden}canvas{display:block}
+#info{position:fixed;left:6px;top:4px;color:#fff;font:11px sans-serif;text-shadow:0 1px 2px #000;white-space:pre}
+.lab{position:fixed;color:#fff;font:bold 11px sans-serif;text-shadow:0 1px 2px #000;transform:translateX(-50%)}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.js"}}</script></head>
+<body><div id="info"></div><script type="module">
+// Rig test bench. ?models=test,quad,props,haven:pikeman,necro:vampire,neutral:x,hero:haven,object:windmill,town:haven
+// ?states=IDLE,WALK,... (columns)   ?t=1.2 freezes time (screenshots drive window.setT(seconds))   ?yaw=0.5
+import * as THREE from 'three';
+const V = '?v=' + Date.now();
+const M = await import('../materials.js' + V);
+const { BONE, ANIM, tagPart } = await import('../rig.js' + V);
+const q = new URLSearchParams(location.search);
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(1); r.setSize(innerWidth, innerHeight);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFShadowMap;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x7a9a6a);
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(4, 10, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 });
+scene.add(sun, new THREE.HemisphereLight(0xcfe0ff, 0x6a5a3a, 1.0), new THREE.AmbientLight(0x606a90, 0.4));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x6a8a4a, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const bodyMat = M.makeBodyMaterial(THREE), glowMat = M.makeGlowMaterial(THREE), inkMat = M.makeInkHullMaterial(THREE), hitMat = M.makeHitMaterial(THREE);
+
+// ---- tiny model kit for the test figures
+function part(geo, color, bone, pivot, at = [0, 0, 0], rot = [0, 0, 0]) {
+  geo = geo.index ? geo.toNonIndexed() : geo;
+  geo.rotateX(rot[0]); geo.rotateY(rot[1]); geo.rotateZ(rot[2]); geo.translate(...at);
+  const c = new THREE.Color(color), n = geo.attributes.position.count, col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { const y = geo.attributes.position.getY(i), k = 0.85 + 0.25 * Math.min(1, y); col[i * 3] = c.r * k; col[i * 3 + 1] = c.g * k; col[i * 3 + 2] = c.b * k; }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  for (const k of Object.keys(geo.attributes)) if (!['position', 'normal', 'color'].includes(k)) geo.deleteAttribute(k);
+  return tagPart(THREE, geo, bone, pivot);
+}
+function merge(parts) {
+  const names = ['position', 'normal', 'color', 'aBone', 'aPivot'], out = new THREE.BufferGeometry();
+  for (const nm of names) {
+    const size = parts[0].attributes[nm].itemSize, total = parts.reduce((s, p) => s + p.attributes[nm].array.length, 0), arr = new Float32Array(total);
+    let o = 0; for (const p of parts) { arr.set(p.attributes[nm].array, o); o += p.attributes[nm].array.length; }
+    out.setAttribute(nm, new THREE.BufferAttribute(arr, size));
+  }
+  out.computeVertexNormals(); return out;
+}
+const Bx = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+function testBiped() { // knight: +x = weapon side (*_R)
+  const P = [];
+  const hip = [0, 0.42, 0], sh = 0.74;
+  P.push(part(Bx(0.36, 0.38, 0.24), 0x3a6ad0, BONE.BODY, hip, [0, 0.6, 0]));
+  P.push(part(Bx(0.26, 0.24, 0.24), 0xf0c8a0, BONE.HEAD, [0, 0.8, 0], [0, 0.93, 0]));
+  P.push(part(Bx(0.3, 0.06, 0.3), 0xc0c0d0, BONE.HEAD, [0, 0.8, 0], [0, 1.06, 0]));
+  P.push(part(Bx(0.1, 0.32, 0.1), 0x3a6ad0, BONE.ARM_R, [0.22, sh, 0], [0.24, 0.6, 0]));
+  P.push(part(Bx(0.05, 0.6, 0.04), 0xe0e0f0, BONE.ARM_R, [0.22, sh, 0], [0.24, 0.65, 0.12], [0.3, 0, 0]));
+  P.push(part(Bx(0.1, 0.32, 0.1), 0x3a6ad0, BONE.ARM_L, [-0.22, sh, 0], [-0.24, 0.6, 0]));
+  P.push(part(Bx(0.06, 0.32, 0.26), 0xd04030, BONE.ARM_L, [-0.22, sh, 0], [-0.3, 0.55, 0.06]));
+  P.push(part(Bx(0.12, 0.4, 0.12), 0x5a4030, BONE.LEG_FR, [0.09, 0.42, 0], [0.09, 0.2, 0]));
+  P.push(part(Bx(0.12, 0.4, 0.12), 0x5a4030, BONE.LEG_FL, [-0.09, 0.42, 0], [-0.09, 0.2, 0]));
+  P.push(part(Bx(0.32, 0.5, 0.02), 0xc02838, BONE.CLOTH, [0, 0.78, -0.14], [0, 0.53, -0.15]));
+  P.push(part(Bx(0.5, 0.04, 0.22), 0xf0f0ff, BONE.WING_R, [0.12, 0.72, -0.12], [0.37, 0.76, -0.16]));
+  P.push(part(Bx(0.5, 0.04, 0.22), 0xf0f0ff, BONE.WING_L, [-0.12, 0.72, -0.12], [-0.37, 0.76, -0.16]));
+  P.push(part(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 12), 0x8a7a5a, BONE.ROOT, [0, 0, 0], [0, 0.01, 0]));
+  return { body: merge(P), glow: merge([part(Bx(0.05, 0.05, 0.02), 0xffe080, BONE.HEAD, [0, 0.8, 0], [0.06, 0.95, 0.13]), part(Bx(0.05, 0.05, 0.02), 0xffe080, BONE.HEAD, [0, 0.8, 0], [-0.06, 0.95, 0.13])]) };
+}
+function testQuad() { // horse-ish + rider
+  const P = [], bp = [0, 0.55, 0];
+  P.push(part(Bx(0.32, 0.3, 0.75), 0x8a5a3a, BONE.BODY, bp, [0, 0.58, 0]));
+  P.push(part(Bx(0.16, 0.36, 0.18), 0x8a5a3a, BONE.HEAD, [0, 0.66, 0.32], [0, 0.82, 0.42], [-0.5, 0, 0]));
+  P.push(part(Bx(0.16, 0.14, 0.28), 0x7a4a2a, BONE.HEAD, [0, 0.66, 0.32], [0, 0.98, 0.56]));
+  for (const [b, x, z] of [[BONE.LEG_FR, 0.11, 0.28], [BONE.LEG_FL, -0.11, 0.28], [BONE.LEG_BR, 0.11, -0.28], [BONE.LEG_BL, -0.11, -0.28]])
+    P.push(part(Bx(0.09, 0.44, 0.09), 0x6a3a22, b, [x, 0.46, z], [x, 0.22, z]));
+  P.push(part(Bx(0.06, 0.32, 0.06), 0x3a2a1a, BONE.TAIL, [0, 0.66, -0.38], [0, 0.52, -0.44], [0.4, 0, 0]));
+  P.push(part(Bx(0.22, 0.3, 0.18), 0xd0d0e0, BONE.RIDER, [0, 0.76, 0], [0, 0.88, 0]));
+  P.push(part(Bx(0.16, 0.16, 0.16), 0xf0c8a0, BONE.RIDER, [0, 0.76, 0], [0, 1.1, 0]));
+  P.push(part(Bx(0.07, 0.24, 0.07), 0xd0d0e0, BONE.ARM_R, [0.14, 0.98, 0], [0.16, 0.88, 0]));
+  P.push(part(Bx(0.03, 0.04, 0.8), 0xe0d090, BONE.ARM_R, [0.14, 0.98, 0], [0.16, 0.8, 0.3]));
+  P.push(part(Bx(0.07, 0.24, 0.07), 0xd0d0e0, BONE.ARM_L, [-0.14, 0.98, 0], [-0.16, 0.88, 0]));
+  return { body: merge(P), glow: null };
+}
+function testProps() { // flag on a pole, windmill sails, a flame
+  const P = [];
+  P.push(part(Bx(0.04, 1.2, 0.04), 0x8a6a4a, BONE.ROOT, [0, 0, 0], [-0.35, 0.6, 0]));
+  const fg = new THREE.PlaneGeometry(0.45, 0.28, 8, 2); fg.translate(0.225, 0, 0);
+  P.push(part(fg, 0xe03030, BONE.FLAG, [-0.33, 1.05, 0], [-0.33, 1.05, 0]));
+  P.push(part(Bx(0.2, 0.8, 0.2), 0xd0c0a0, BONE.ROOT, [0, 0, 0], [0.25, 0.4, 0]));
+  for (let k = 0; k < 4; k++) P.push(part(Bx(0.07, 0.42, 0.02), 0xf0f0e0, BONE.SPIN, [0.25, 0.78, 0.12], [0.25, 0.78 + 0.21, 0.12], [0, 0, 0]).rotateZ(0) );
+  const g = P.slice(-4); g.forEach((p, k) => { p.translate(-0.25, -0.78, -0.12); p.rotateZ(k * Math.PI / 2); p.translate(0.25, 0.78, 0.12); });
+  P.push(part(Bx(0.18, 0.06, 0.18), 0x5a4030, BONE.ROOT, [0, 0, 0], [0, 0.03, 0.35]));
+  const fl = part(new THREE.ConeGeometry(0.08, 0.26, 6), 0xffa020, BONE.CLOTH, [0, 0.06, 0.35], [0, 0.19, 0.35]);
+  return { body: merge(P), glow: merge([fl]) };
+}
+
+// ---- real models (only those carrying aBone are kept)
+async function real(spec) {
+  const [kind, id] = spec.split(':');
+  try {
+    if (kind === 'haven') return (await import('../units_haven.js' + V)).havenModel(id);
+    if (kind === 'necro') return (await import('../units_necro.js' + V)).necroModel(id);
+    if (kind === 'neutral') return (await import('../units_neutral.js' + V)).neutralModel(id);
+    if (kind === 'hero') return (await import('../models_towns.js' + V)).heroModel(id);
+    if (kind === 'town') return (await import('../models_towns.js' + V)).townModel(id);
+    if (kind === 'flag') return (await import('../models_towns.js' + V)).flagModel(0xd03030);
+    if (kind === 'object') return (await import('../models_objects.js' + V)).objectModel(id);
+  } catch (e) { console.log('load fail', spec, e.message); }
+  return null;
+}
+const modelSpecs = (q.get('models') || 'test,quad').split(',');
+const stateNames = (q.get('states') || 'IDLE,WALK,FLY,ATTACK,CAST,HIT,DEATH,CHEER').split(',');
+const rows = [];
+for (const s of modelSpecs) {
+  const m = s === 'test' ? testBiped() : s === 'quad' ? testQuad() : s === 'props' ? testProps() : await real(s);
+  if (!m) continue;
+  const rigged = !!m.body.attributes.aBone || !!(m.glow && m.glow.attributes.aBone);
+  rows.push({ s, m, rigged });
+}
+const flat = !!q.get('row'), cols = flat ? rows.length * stateNames.length : stateNames.length, gap = +(q.get('gap') ?? 1.5), rowGap = +(q.get('rowgap') ?? 1.7);
+const cells = [];
+rows.forEach((row, ri) => stateNames.forEach((st, ci) => {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(row.m.body, bodyMat); b.castShadow = true; b.receiveShadow = true; g.add(b);
+  if (row.m.glow) g.add(new THREE.Mesh(row.m.glow, glowMat));
+  g.add(new THREE.Mesh(row.m.body, inkMat));
+  const h = row.m.body.boundingBox || (row.m.body.computeBoundingBox(), row.m.body.boundingBox);
+  const sc = 1 / Math.max(0.6, h.max.y - h.min.y, (h.max.x - h.min.x) * 0.8);
+  g.scale.setScalar(sc);
+  if (flat) g.position.set((ri * stateNames.length + ci - (cols - 1) / 2) * gap, 0, 0);
+  else g.position.set((ci - (cols - 1) / 2) * gap, 0, (ri - (rows.length - 1) / 2) * rowGap);
+  g.rotation.y = +(q.get('yaw') ?? 0.5);
+  scene.add(g); cells.push({ g, st, row });
+}));
+document.getElementById('info').textContent = rows.map((r) => `${r.s}${r.rigged ? '' : ' (no aBone)'}`).join('  ');
+const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 200);
+const W = cols * gap, H = (flat ? 1 : rows.length) * rowGap, dist = Math.max(W / (2 * Math.tan(0.26) * cam.aspect), H * 1.35 / (2 * Math.tan(0.26))) * 1.05;
+const el = +(q.get('e') ?? 0.5);
+cam.position.set(0, Math.sin(el) * dist, Math.cos(el) * dist + 0.2); cam.lookAt(0, 0.35, 0.2);
+// column labels
+if (!flat) stateNames.forEach((st, ci) => { const d = document.createElement('div'); d.className = 'lab'; d.textContent = st; const v = new THREE.Vector3((ci - (cols - 1) / 2) * gap, 1.25, -(rows.length - 1) / 2 * rowGap).project(cam); d.style.left = ((v.x * 0.5 + 0.5) * innerWidth) + 'px'; d.style.top = ((-v.y * 0.5 + 0.5) * innerHeight - 14) + 'px'; document.body.appendChild(d); });
+function start(t) { M.tick(t); if (q.get("auto")) return; for (const c of cells) M.setAnim(c.g, ANIM[c.st], { fade: 0, restart: true }); }
+window.setT = (t) => { M.tick(t); r.render(scene, cam); };
+window.restart = (t = 0) => start(t);
+window.flash = () => { for (const c of cells) c.g.children[0].material = hitMat; };
+start(0);
+const freeze = q.get('t');
+const t0 = performance.now();
+let loopT = 0;
+function frame() {
+  if (freeze == null) {
+    const t = (performance.now() - t0) / 1000;
+    // one-shots replay every 2 s
+    if (t - loopT > 2) { loopT = t; M.tick(t); for (const c of cells) if (M.ANIM_DUR[ANIM[c.st]]) M.setAnim(c.g, ANIM[c.st], { restart: true }); }
+    M.tick(t);
+    r.render(scene, cam);
+    requestAnimationFrame(frame);
+  } else window.setT(+freeze);
+}
+frame(); window.ready = true;
+</script></body></html>

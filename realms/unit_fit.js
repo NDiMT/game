@@ -22,7 +22,7 @@
 //
 // Pure math on the position arrays: no THREE import, results cached.
 // =====================================================================
-import { UNITS } from './data.js?v=0.6';
+import { UNITS } from './data.js?v=0.7';
 
 // battle: hex corner-to-corner = 2 * HS = 1.0 world unit, flat width 0.866,
 // rows 0.75 apart. Target body heights per tier, in world units.
