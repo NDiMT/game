@@ -1,5 +1,6 @@
-// Hex Realms: hand-crafted inline SVG icon set (HoMM3 flavour, bright and readable at 14–32 px).
+// ORBIS · Five Crowns: hand-crafted inline SVG icon set (painted fantasy style, bright and readable at 14–32 px).
 // icon(name, size = 20, cls = '') -> HTML string of an <svg class="ic">.
+// icon('logo', 96) is the ORBIS emblem; logoSVG(size) returns a standalone copy (own gradients) for favicons.
 // Shared gradients live in one hidden <svg> injected into <body> on import (ensureDefs()).
 // Elements with data-ic="name" (and optional data-size) are filled by hydrateIcons(root).
 
@@ -40,7 +41,7 @@ const RAD = {
   glowB: ['#ffffff', '#a8e4ff', 'rgba(80,170,255,0)'],
 };
 function defsMarkup() {
-  let s = '';
+  let s = logoDefs('hri-orl');
   for (const [k, c] of Object.entries(LIN)) s += `<linearGradient id="hri-${k}" x1="0" y1="0" x2=".35" y2="1">${c.map((col, i) => `<stop offset="${c.length === 1 ? 0 : i / (c.length - 1)}" stop-color="${col}"/>`).join('')}</linearGradient>`;
   for (const [k, c] of Object.entries(RAD)) s += `<radialGradient id="hri-${k}" cx=".38" cy=".34" r=".72">${c.map((col, i) => `<stop offset="${i / (c.length - 1)}" stop-color="${col}"/>`).join('')}</radialGradient>`;
   return s;
@@ -83,8 +84,58 @@ const sword = (rot = 45, blade = 'steel', hilt = 'gold') =>
   `<g transform="rotate(${rot} 16 16)"><path d="M14.4 3.5 L16 1.5 L17.6 3.5 V20 H14.4 Z" fill="${g(blade)}" ${O2}/><line x1="16" y1="4" x2="16" y2="19" stroke="#fff" stroke-opacity=".7" stroke-width=".8"/>` +
   `<rect x="10" y="20" width="12" height="3" rx="1.5" fill="${g(hilt)}" ${O2}/><rect x="14.6" y="23" width="2.8" height="5.2" rx="1" fill="${g('leather')}" ${O2}/><circle cx="16" cy="29.4" r="1.9" fill="${g(hilt)}" ${O2}/></g>`;
 
+
+// ---------------------------------------------------------------- the ORBIS emblem (drawn on a 64 grid)
+// A hex-faceted planet on an orbit ring, crowned by a five-point crown whose jewels are the five factions.
+const CROWN_JEWELS = ['#3ac84a', '#e0443a', '#4a86ff', '#ff8a1a', '#b05ae0']; // sylvan, necro, haven (centre), inferno, dungeon
+function logoDefs(p) {
+  const stops = (c) => c.map(([o, col, a = 1]) => `<stop offset="${o}" stop-color="${col}" stop-opacity="${a}"/>`).join('');
+  return `<radialGradient id="${p}-sea" cx=".36" cy=".3" r=".8">${stops([[0, '#9cc6ff'], [0.45, '#3f74e6'], [1, '#162f86']])}</radialGradient>` +
+    `<linearGradient id="${p}-land" x1="0" y1="0" x2=".3" y2="1">${stops([[0, '#c6f59a'], [0.5, '#4fc46e'], [1, '#1e7a4c']])}</linearGradient>` +
+    `<radialGradient id="${p}-shade" cx=".34" cy=".28" r=".78">${stops([[0, '#ffffff', 0.55], [0.38, '#ffffff', 0], [0.75, '#0b1440', 0.12], [1, '#0b1440', 0.62]])}</radialGradient>` +
+    `<linearGradient id="${p}-gold" x1="0" y1="0" x2=".25" y2="1">${stops([[0, '#fff8cc'], [0.35, '#ffd447'], [0.75, '#e0961e'], [1, '#a8620e']])}</linearGradient>` +
+    `<linearGradient id="${p}-band" x1="0" y1="0" x2="0" y2="1">${stops([[0, '#ffe27a'], [1, '#b8700e']])}</linearGradient>`;
+}
+function logoBody(p) {
+  const cx = 32, cy = 39, R = 19.5, s = 7.4, hh = Math.sqrt(3) * s, ox = -3.5, oy = 2.2;
+  // project a flat hex grid onto the visible hemisphere (orthographic), so the facets curve like a globe
+  const proj = (x, y) => { const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy) || 1e-6, a = Math.min(Math.PI / 2, d / R), k = (R * Math.sin(a)) / d; return [cx + dx * k, cy + dy * k]; };
+  const land = (i, j) => ['0,0', '-1,-1', '-1,0', '0,1', '2,0', '2,-1', '3,0', '1,2'].includes(`${i},${j}`);
+  let facets = '';
+  for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) {
+    const x = cx + ox + i * 1.5 * s, y = cy + oy + j * hh + (i & 1 ? hh / 2 : 0);
+    if (Math.hypot(x - cx, y - cy) > R * 1.5) continue;
+    const pts = [];
+    for (let k = 0; k < 6; k++) { const an = (k * Math.PI) / 3; pts.push(proj(x + Math.cos(an) * s * 0.9, y + Math.sin(an) * s * 0.9)); }
+    facets += `<polygon points="${pts.map(([a, b]) => `${+a.toFixed(1)},${+b.toFixed(1)}`).join(' ')}" fill="url(#${p}-${land(i, j) ? 'land' : 'sea'})"/>`;
+  }
+  const ring = (half) => `<path d="M3.5 ${half ? 44.5 : 44.5}A29 8.5 -12 0 ${half ? 0 : 1} 60.5 32.5" fill="none" stroke="#10183c" stroke-width="4.6" stroke-linecap="round"/>` +
+    `<path d="M3.5 44.5A29 8.5 -12 0 ${half ? 0 : 1} 60.5 32.5" fill="none" stroke="url(#${p}-gold)" stroke-width="2.4" stroke-linecap="round"/>`;
+  const tips = [[14.5, 9.5], [23, 5.5], [32, 2.8], [41, 5.5], [49.5, 9.5]];
+  return ring(false) +
+    `<circle cx="${cx}" cy="${cy}" r="${R + 1.4}" fill="#10183c"/><circle cx="${cx}" cy="${cy}" r="${R}" fill="#132a78"/>${facets}` +
+    `<circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#${p}-shade)"/>` +
+    `<circle cx="${cx}" cy="${cy}" r="${R - 0.6}" fill="none" stroke="url(#${p}-gold)" stroke-width="1.3"/>` +
+    `<path d="M19.5 31a14 14 0 0 1 8-8" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/>` +
+    ring(true) +
+    // the crown
+    `<path d="M18 22.5L14.5 9.5L19.8 15.5L23 5.5L27.6 13.2L32 2.8L36.4 13.2L41 5.5L44.2 15.5L49.5 9.5L46 22.5Q32 26.5 18 22.5Z" fill="url(#${p}-gold)" stroke="#4a2a0c" stroke-width="1.5" stroke-linejoin="round"/>` +
+    `<path d="M17.2 18.8Q32 22.6 46.8 18.8L46 22.5Q32 26.5 18 22.5Z" fill="url(#${p}-band)" stroke="#4a2a0c" stroke-width="1.2" stroke-linejoin="round"/>` +
+    `<path d="M20.5 12.5l1.6 5M30.2 9l.9 8.5" stroke="#fff" stroke-opacity=".75" stroke-width="1.1" stroke-linecap="round"/>` +
+    [24, 32, 40].map((x, i) => `<ellipse cx="${x}" cy="${21.6 + (i === 1 ? 0.9 : 0.3)}" rx="1.5" ry="1.1" fill="${['#e0443a', '#4a86ff', '#3ac84a'][i]}" stroke="#4a2a0c" stroke-width=".6"/>`).join('') +
+    tips.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${i === 2 ? 3.1 : 2.6}" fill="${CROWN_JEWELS[i]}" stroke="#2a1606" stroke-width="1.1"/><circle cx="${x - 0.8}" cy="${y - 0.9}" r="${i === 2 ? 1 : 0.85}" fill="#fff" fill-opacity=".85"/>`).join('');
+}
+// a standalone emblem (own gradients) for favicons and anywhere the shared defs are not available
+// tile = true puts it on a rounded night-sky tile (home-screen / apple-touch icon)
+export function logoSVG(size = 64, tile = false) {
+  const bg = tile ? `<radialGradient id="orf-bg" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#2a3d8e"/><stop offset="1" stop-color="#0a1030"/></radialGradient>` : '';
+  const body = tile ? `<rect width="64" height="64" rx="14" fill="url(#orf-bg)"/><g transform="translate(6.4 6.4) scale(.8)">${logoBody('orf')}</g>` : logoBody('orf');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 64 64"><defs>${logoDefs('orf')}${bg}</defs>${body}</svg>`;
+}
+
 // ---------------------------------------------------------------- the icons (32×32)
 const I = {
+  logo: `<g transform="scale(.5)">${logoBody('hri-orl')}</g>`,
   // ---------- resources
   gold: `<path d="M3.5 15v8.5a9 3.6 0 0 0 18 0V15" fill="${g('goldD')}" ${O}/><path d="M3.5 18a9 3.6 0 0 0 18 0M3.5 21a9 3.6 0 0 0 18 0" fill="none" stroke="${INK}" stroke-width="1" stroke-opacity=".7"/>` +
     `<ellipse cx="12.5" cy="15" rx="9" ry="3.6" fill="${g('gold')}" ${O}/><ellipse cx="12.5" cy="15" rx="5.2" ry="1.9" fill="none" stroke="#c98a17" stroke-width="1"/>` +
