@@ -115,14 +115,14 @@ const PAL = {
     sunDir: [0.55, 0.5, 0.5], lightDir: [0.42, 0.82, 0.4], shadowI: 0.7, shadowR: 3, sun: 0xffdcc0, sunI: 3.0, hemiSky: 0xc2bae6, hemiGround: 0x8e8270, hemiI: 0.95, amb: 0xccbcc8, ambI: 0.26,
     // round 3: ash-grey / olive / bone ground, so the violet buildings stand out against it
     // pass 4: ~10% darker, plus large soft darker ash-olive patches (ash) for tonal structure
-    grass: [0x98947f, 0x83886a, 0xbcb39c, 0x8a8088], ash: 0x6e6c58, bank: 0xa89c84, field: [0x8a8288, 0x7e8666, 0x988c7a, 0x827c8c],
+    grass: [0x98947f, 0x83886a, 0xbcb39c, 0x8a8088], ash: 0x6c6c58, bank: 0xa89c84, field: [0x8a8288, 0x7e8666, 0x988c7a, 0x827c8c],
     mtn: [0x837a98, 0x9a92ae, 0xe4dcec], hill: 0x8e8c82,
     water: [0x2a7c88, 0x56c0a8, 0xbaf8dc], waterSky: 0xb49ad4, waterGlow: 0.35,
     path: '#d8d0c0', pathEdge: '#a69c8a', stone: ['#bcb4a2', '#e6e0d2', '#aaa292'], pad: 'rgba(70,66,54,0.2)',
     dots: ['rgba(170,140,184,0.45)', 'rgba(140,152,118,0.45)', 'rgba(170,240,200,0.4)', 'rgba(236,228,214,0.5)'],
     cloud: 0xfff0f8, cloudShade: [210, 170, 210], dust: 0xd0c0d4, smoke: 0xd8cce8, birds: 0x5a4870, banner: [0xc8183c, 0xf2e6c8],
     tree: 'dead', stars: 1,
-    groundTune: { shade: 0xc0a090, lift: 0.18, toe: 0.2, detail: 0.85 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
+    groundTune: { shade: 0xc0a090, lift: 0.18, toe: 0.2, detail: 0.8 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
   },
 };
 // river centre line (shared, the valley shape is the same)
@@ -441,7 +441,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
           c.copy(g0).lerp(g1, smooth(0.45, 0.75, n1) * 0.75).lerp(g3, smooth(0.5, 0.7, n3) * 0.5).lerp(g2, smooth(0.64, 0.86, n2) * 0.4);
           // pass 4: large, soft darker ash / olive patches so the plain has tonal structure (kept well above murk)
           const n4 = fbm(x * 0.12 + 57, z * 0.12 - 13, 3, 11), n5 = fbm(x * 0.33 - 9, z * 0.33 + 21, 2, 13);
-          c.lerp(ash, Math.min(0.6, smooth(0.5, 0.7, n4) * 0.45 + smooth(0.56, 0.74, n5) * 0.3));
+          c.lerp(ash, Math.min(0.65, smooth(0.38, 0.6, n4) * 0.45 + smooth(0.45, 0.7, n5) * 0.4));
         } else c.copy(g0).lerp(g1, smooth(0.35, 0.7, n1)).lerp(g3, smooth(0.55, 0.2, n1) * 0.6).lerp(g2, smooth(0.6, 0.85, n2) * 0.35);
         if (y > 4) c.lerp(hill, smooth(4, 20, y) * 0.5);
         // patchwork fields on the left hills (haven) / heather moor (necro)
@@ -811,22 +811,22 @@ void main() {
           const rf = rng32(77), busy = [[-0.75, 5], [0.75, 5], [-4.9, 4.6], [4.9, 4.6], [-5.7, 4], [5.7, 4]];
           // the camera sits at z ~11..20 (by town size), so the near view is narrow in world units: keep most of
           // the detail within ~1.3..3.5 of the road, a wider spread further back
-          for (let i = 0; i < 110; i++) {
+          for (let i = 0; i < 150; i++) {
             const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13;
             const x = side * (1.35 + Math.pow(rf(), 1.4) * (z < 7 ? 4.2 : 2.6));
             if (Math.abs(z - 7.6) < 0.4 || busy.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6)) continue;
             const y = at(x, z), ry = rf() * 6.3, kind = rf();
-            if (kind < 0.18) {
+            if (kind < 0.15) {
               // a low, sunken, leaning headstone
               const lean = (rf() - 0.5) * 0.5, h = 0.18 + rf() * 0.12;
               k.add(new T.BoxGeometry(0.26, h, 0.07).translate(0, h / 2, 0).rotateX(lean).rotateY(ry).translate(x, y - 0.06, z), [0x8c8690, 0xa8a2aa]);
-            } else if (kind < 0.42) {
+            } else if (kind < 0.55) {
               // flat ash rock
               const r = 0.1 + rf() * 0.16;
               k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x86806e, 0xa29c8a]);
             } else {
               // dead-grass tuft: a few thin dry blades
-              const n = 4 + ((rf() * 3) | 0), tc = rf() < 0.5 ? [0x8a8462, 0xb0a880] : [0x928670, 0xb4a88a];
+              const n = 4 + ((rf() * 3) | 0), tc = rf() < 0.5 ? [0x908a68, 0xb4ac86] : [0x988c74, 0xb8ac8e];
               for (let b = 0; b < n; b++) {
                 const a = ry + b * 1.3, hb = 0.12 + rf() * 0.12;
                 k.add(new T.ConeGeometry(0.03, hb, 3).translate(0, hb / 2, 0).rotateX(0.35 + rf() * 0.45).rotateY(a).translate(x + Math.sin(a) * 0.05, y - 0.02, z + Math.cos(a) * 0.05), tc);

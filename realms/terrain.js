@@ -597,7 +597,7 @@ export function createPlanetMaterial(waterLevel) {
 }
 
 export function createWaterMaterial() {
-  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, roughness: 0.16, metalness: 0.05 });
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, roughness: 0.26, metalness: 0.05 });
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = uTime;
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 wd;\nvarying vec2 vWd;\nvarying vec3 vWPos;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvWd = wd; vWPos = (modelMatrix * vec4(position, 1.0)).xyz;');
@@ -638,7 +638,7 @@ export function createWaterMaterial() {
         mist = mix(mist, vec3(0.36, 0.31, 0.62), smoothstep(0.75, 1.0, sw * sw2) * 0.5 + smoothstep(0.75, 1.0, fn) * 0.12);
         mist = mix(vec3(dot(mist, vec3(0.3, 0.55, 0.15))), mist, 0.5) * 1.12;
         diffuseColor.rgb = mix(mist, mix(wc, vec3(0.84, 0.9, 0.92), f) * vColor, lit);
-        diffuseColor.a = clamp(mix(0.62, 0.95, smoothstep(0.0, 0.9, depth)) + f, 0.0, 1.0);
+        diffuseColor.a = clamp(mix(0.76, 0.96, smoothstep(0.0, 0.9, depth)) + f, 0.0, 1.0);
         diffuseColor.a = mix(1.0, diffuseColor.a, lit);`)
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(1.0, roughnessFactor + f * 0.5, lit);')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
