@@ -483,8 +483,8 @@ function artifact(k) {
   sparkle(k, 0.18, y + 0.15, 0.06, 0.04, 0xf0d8ff); sparkle(k, -0.16, y - 0.12, 0.1, 0.03, 0xf0d8ff); sparkle(k, 0.04, y + 0.28, -0.05, 0.03, 0xf0d8ff);
 }
 function campfire(k) {
-  // R3: a tall flame + a pale smoke column give a vertical silhouette that reads on any
-  // ground (swamp included); a pale stone ring and a warm glow disc mark the spot from above.
+  // R3: a tall flame gives a vertical silhouette that reads on any ground (swamp included);
+  // a pale stone ring and a warm glow disc mark the spot from above.
   k.cyl(0.17, 0.18, 0.012, 0, 0.012, 0, 0x5a4034, 10);
   for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; k.rock(0.06, Math.cos(a) * 0.21, 0.012, Math.sin(a) * 0.21, [0xa8a296, 0xe8e0d0], { amp: 0.25, s: [1, 0.8, 1] }); }
   // crossed logs (teepee)
@@ -496,9 +496,9 @@ function campfire(k) {
   k.cone(0.03, 0.2, 0.02, 0.5, 0.0, GL.fire, 4, { glow: true, rz: -0.2 });
   for (let i = 0; i < 8; i++) k.add(new THREE.OctahedronGeometry(0.014, 0), k.rr(-0.12, 0.12), 0.45 + k.r() * 0.3, k.rr(-0.12, 0.12), GL.fireY, { glow: true });
   for (let i = 0; i < 6; i++) k.box(0.025, 0.012, 0.02, k.rr(-0.1, 0.1), 0.022, k.rr(-0.1, 0.1), GL.red, { glow: true, ry: k.r() * 3 });
-  // smoke: a leaning column of pale puffs growing as they rise
-  const puffs = [[0.03, 0.66, 0.0, 0.07], [0.07, 0.78, -0.02, 0.085], [0.12, 0.91, -0.04, 0.1], [0.19, 1.04, -0.06, 0.11], [0.27, 1.15, -0.08, 0.1]];
-  puffs.forEach(([x, y, z, r], i) => k.ball(r, x, y, z, [0xb8b4b4, 0xf2f0ec], { det: 1, ao: false, jit: 0.04, s: [1, 0.85, 1] }));
+  // R3p4: no smoke balls (they read as a white caterpillar from above); a few rising
+  // sparks keep the vertical read without any solid shapes
+  for (let i = 0; i < 3; i++) k.add(new THREE.OctahedronGeometry(0.012, 0), 0.03 + i * 0.03, 0.62 + i * 0.07, -0.01 * i, GL.fire, { glow: true });
   // log seats and a sack of supplies
   log(k, [-0.34, 0.045, 0.12], [-0.3, 0.045, -0.2], 0.042, { bark: [0x4a2e18, 0x7a4e2a] });
   log(k, [0.12, 0.045, 0.36], [0.36, 0.045, 0.2], 0.04, { bark: [0x4a2e18, 0x7a4e2a] });
@@ -625,27 +625,39 @@ function orepit(k) {
   lantern(k, 0.3, 0.012, -0.08);
 }
 function gemmine(k) {
-  // CRYSTAL CAVERN: lavender crag split by huge vivid crystals, cavern mouth glowing violet
-  const cols = (c, x, y, z, nx, ny) => { c.set(0x7a6aa0).lerp(_c2.set(0xc8bce8), Math.min(1, y / 0.55)); if (ny > 0.8 && y > 0.45) c.lerp(_c2.set(0xf0ecff), 0.45); };
-  mountain(k, cols);
-  // cavern mouth: glowing violet depths ringed with rocks
-  k.lathe([[0.001, 0], [0.19, 0], [0.19, 0.17], [0.13, 0.27], [0.001, 0.3]], 8, 0, 0, 0.06, 0x24143a, { s: [1, 1, 0.5], ao: false, jit: 0 });
-  k.lathe([[0.001, 0], [0.09, 0], [0.09, 0.09], [0.06, 0.13], [0.001, 0.15]], 8, 0, 0, 0.13, 0x9050e0, { s: [1, 1, 0.4], glow: true });
-  for (let i = 0; i < 7; i++) { const a = Math.PI * i / 6; k.rock(0.065, Math.cos(a) * 0.23, Math.max(0, Math.sin(a) * 0.3 - 0.03), 0.13, cols, { amp: 0.3, flat: false }); }
-  // giant crystals bursting from the rock, each with a glowing core
-  const tint = [[0x8040e0, 0xe0b0ff], [0x1888d8, 0x90e8ff], [0xd02880, 0xff90c8], [0x10b090, 0x90ffe0]];
-  const gtint = [GL.violet, GL.cyan, GL.pink, GL.green];
-  const big = [[0, 0.15, 1.2, 0.68, 0.11, 0], [0, -0.7, 0.55, 0.5, 0.09, 2], [0, 0.8, 0.5, 0.48, 0.085, 3], [1, -0.6, 0.6, 0.48, 0.09, 1], [2, 0.6, 0.65, 0.52, 0.095, 0], [5, 0.0, 1.0, 0.46, 0.08, 1], [3, -0.4, 0.5, 0.3, 0.065, 2], [4, 0.5, 0.6, 0.3, 0.065, 3], [1, 0.4, 1.0, 0.32, 0.065, 2]];
-  for (const [pi, az, el, len, rad, ci] of big) {
-    const { p, n } = onPeak(pi, az, el, 0.86);
-    crystalAlong(k, p, n, len, rad, tint[ci], { jit: 0.05, ao: false });
-    crystalAlong(k, p, n, len * 0.55, rad * 1.12, gtint[ci], { glow: true });
+  // GEM MINE (R3p4): a compact grey-lavender crag (inside the ~1.2 footprint) with a dark cave
+  // mouth under a timber frame, and a modest cluster of saturated crystals as accents.
+  const cols = (c, x, y, z, nx, ny) => { c.set(0x6a6478).lerp(_c2.set(0xc4bccc), Math.min(1, 0.2 + y / 0.5)); if (ny > 0.65 && y > 0.22) c.lerp(_c2.set(0xe6e0ea), 0.4); };
+  const crag = [[0, -0.2, 0.3, 0.5, 0.24], [-0.29, -0.1, 0.2, 0.32, 0.19], [0.29, -0.13, 0.2, 0.38, 0.18], [-0.3, 0.1, 0.13, 0.13, 0.12], [0.3, 0.09, 0.12, 0.12, 0.11], [0.08, -0.38, 0.18, 0.3, 0.14]];
+  for (const [x, z, rx, ry, rz] of crag) k.rock(1, x, 0, z, cols, { det: 1, amp: 0.14, s: [rx, ry, rz] });
+  // the mouth: a dark arch cut into the crag, a faint violet gleam deep inside, pale rim boulders
+  k.lathe([[0.001, 0], [0.22, 0], [0.22, 0.2], [0.16, 0.3], [0.001, 0.34]], 10, 0, 0, 0.06, 0x1e1428, { s: [1, 1, 0.55], ao: false, jit: 0 });
+  k.lathe([[0.001, 0], [0.08, 0], [0.08, 0.08], [0.05, 0.12], [0.001, 0.13]], 8, 0, 0, 0.12, 0x9050e0, { s: [1, 1, 0.4], glow: true });
+  for (let i = 0; i < 8; i++) { const a = Math.PI * i / 7; k.rock(0.06, Math.cos(a) * 0.26, Math.max(0, Math.sin(a) * 0.33 - 0.03), 0.11, [0x8a8292, 0xdcd6e0], { amp: 0.3, flat: false }); }
+  // timber frame standing proud of the mouth
+  const fz = 0.2, fw = 0.34, fh = 0.33;
+  for (const s of [-1, 1]) {
+    k.box(0.07, fh, 0.07, s * (fw / 2 + 0.01), 0, fz, [0x7a3e18, 0xc87a3a], { bev: 0.01 });
+    k.plank([s * fw / 2, fh - 0.09, fz + 0.04], [s * (fw / 2 - 0.09), fh, fz + 0.04], 0.035, 0.026, 0xd89048);
   }
-  // crystals in the mouth and a scatter on the ground
-  for (let i = 0; i < 4; i++) k.crystal(-0.1 + i * 0.065, 0, 0.1, 0.1 + (i % 2) * 0.06, 0.025, gtint[i], (i - 1.5) * 0.3, 0, { glow: true });
-  for (let i = 0; i < 6; i++) { const a = 0.4 + i * 0.45; k.crystal(Math.cos(a) * 0.45, 0.012, 0.28 + Math.sin(a) * 0.14, 0.14, 0.035, tint[i % 4], k.rr(-0.4, 0.4), k.r() * 3); }
-  k.cyl(0.18, 0.2, 0.004, 0, 0.014, 0.3, 0x6040b0, 10, { glow: true, s: [1, 1, 0.5] });
-  sparkle(k, -0.3, 0.6, 0.05, 0.05, 0xe0c0ff); sparkle(k, 0.34, 0.7, -0.05, 0.05, 0xc0f0ff); sparkle(k, 0.06, 1.05, -0.2, 0.045, 0xffc0e0);
+  k.box(fw + 0.16, 0.07, 0.09, 0, fh, fz, [0x8a4a1e, 0xe0a058], { bev: 0.01 });
+  k.box(fw + 0.05, 0.045, 0.06, 0, fh + 0.07, fz - 0.01, 0xf0b468, { bev: 0.008 });
+  // a modest crystal cluster on the right shoulder and a smaller one on the left: saturated accents
+  const tint = [[0x7a30d8, 0xd8a0ff], [0x1080d0, 0x8ae4ff], [0xd02070, 0xff88c0]];
+  const gtint = [GL.violet, GL.cyan, GL.pink];
+  const cl = [[0.22, 0.26, -0.12, 0.34, 0.06, -0.25, 0.4, 0], [0.3, 0.22, -0.06, 0.24, 0.05, -0.6, 0.9, 1], [0.15, 0.24, -0.05, 0.22, 0.045, 0.35, 0.2, 2], [0.28, 0.2, -0.2, 0.2, 0.045, -0.35, -0.6, 0],
+    [-0.27, 0.16, -0.04, 0.2, 0.045, 0.45, 0.3, 1], [-0.33, 0.12, 0.02, 0.15, 0.038, 0.7, -0.4, 0]];
+  for (const [x, y, z, len, rad, tilt, yaw, ci] of cl) {
+    k.crystal(x, y, z, len, rad, tint[ci], tilt, yaw, { jit: 0.05, ao: false });
+    k.crystal(x, y, z, len * 0.55, rad * 1.12, gtint[ci], tilt, yaw, { glow: true });
+  }
+  // a small cart of gems on short rails and two loose crystals by the mouth
+  rails(k, 0, 0.12, 0.05, 0.5);
+  cart(k, 0.2, 0.42, -0.25, 'gems', [0x8040e0, 0xe0b0ff], false, 0.85);
+  k.crystal(-0.28, 0.012, 0.36, 0.12, 0.032, tint[2], 0.3, 0.5);
+  k.crystal(-0.22, 0.012, 0.42, 0.09, 0.028, tint[1], -0.4, 1.2);
+  lantern(k, -0.2, 0.26, 0.26, 0xd0a0ff);
+  sparkle(k, 0.26, 0.6, -0.1, 0.04, 0xe0c0ff); sparkle(k, -0.3, 0.38, 0.02, 0.035, 0xc0f0ff);
 }
 function sawmill(k) {
   pad(k, 0.58);
