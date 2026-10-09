@@ -892,7 +892,7 @@ let bfield = null;
 const HS = 0.5, HW = Math.sqrt(3) * HS, VS = 1.5 * HS;
 const hexPos = (c, r) => new THREE.Vector3((c - (BT.COLS - 1) / 2 + (r & 1 ? 0.5 : 0) - 0.25) * HW, 0, (r - (BT.ROWS - 1) / 2) * VS);
 const hexGeo = new THREE.CylinderGeometry(HS * 0.95, HS * 0.95, 0.02, 6);
-const hexes = new THREE.InstancedMesh(hexGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.38, depthWrite: false }), BT.COLS * BT.ROWS);
+const hexes = new THREE.InstancedMesh(hexGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: false }), BT.COLS * BT.ROWS);
 hexes.frustumCulled = false; bscene.add(hexes);
 for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(1); dummy.updateMatrix(); hexes.setMatrixAt(BT.key(c, r), dummy.matrix); hexes.setColorAt(BT.key(c, r), new THREE.Color(0xffffff)); }
 const bstuff = new THREE.Group(); bscene.add(bstuff);
@@ -976,7 +976,7 @@ function refreshBattle() {
   // highlight what the active stack can do
   const s = B.active, mineTurn = s && sideOwner(s.side) === 0 && !bauto && !B.over && !banim.length;
   const reach = mineTurn ? BT.reachable(B, s) : new Map();
-  const white = new THREE.Color(0x203a10), grn = new THREE.Color(0xc8ff9a), red = new THREE.Color(0xff6a5a), blu = new THREE.Color(0x7ac8ff);
+  const white = new THREE.Color(0x203a10), grn = new THREE.Color(0x58e04a), red = new THREE.Color(0xff6a5a), blu = new THREE.Color(0x7ac8ff);
   for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) {
     const k = BT.key(c, r), st = BT.stackAt(B, c, r);
     let col = white;

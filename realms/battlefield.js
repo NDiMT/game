@@ -54,7 +54,7 @@ const TERRAINS = {
   5: { name: 'swamp', gk: 0.88, sky: 0xa8cab0, fog: [0xb8d0b0, 21, 48], sun: [0xfff8d4, 2.6], hemi: [0xe4f4d4, 0x7a9450, 1.25], amb: [0x7a9a88, 0.48], exposure: 1.1,
     tint: [0x8aa850, 0x749440, 0xa0b858], grid: [40, 64, 24], gridHi: [220, 244, 170], field: [220, 230, 150], water: 0x3a8a78, hill: 0.5, edge: [96, 110, 50], calm: [0.9, 0.78, 0.8], deco: [0.5, 0.2] },
   6: { name: 'rough', gk: 0.74, sky: 0xb0d0ec, fog: [0xd8d2c4, 22, 50], sun: [0xfff0d8, 2.75], hemi: [0xe4ecf8, 0x9a8a68, 1.2], amb: [0x8a8a98, 0.45], exposure: 1.08,
-    tint: [0xbcac88, 0xa49474, 0xcabc98], grid: [76, 64, 46], gridHi: [255, 248, 228], field: [255, 246, 226], water: 0x4a8aa8, hill: 1.4, edge: [130, 112, 84], calm: [1.15, 0.76, 0.8], deco: [0.66, 0.16] },
+    tint: [0xbcac88, 0xa49474, 0xcabc98], grid: [76, 64, 46], gridHi: [255, 248, 228], field: [255, 246, 226], water: 0x4a8aa8, hill: 1.4, edge: [130, 112, 84], calm: [1.3, 0.76, 0.8], deco: [0.66, 0.16] },
   7: { name: 'lava', gk: 0.9, sky: 0xb88a74, fog: [0xa87868, 20, 46], sun: [0xffdcb8, 2.5], hemi: [0xf0d0c0, 0x6a4a44, 1.05], amb: [0x8a6a70, 0.5], exposure: 1.05,
     tint: [0x8a7470, 0x7a6460, 0x9a8078], grid: [60, 24, 12], gridHi: [255, 206, 160], hiA: 0.18, field: [244, 216, 196], fieldA: 0.16, water: 0x000000, hill: 1.3, edge: [150, 116, 104], calm: [0.95, 0.8, 0.82], deco: [0.7, 0.12] },
 };
