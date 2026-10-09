@@ -405,7 +405,7 @@ function orc() {
 function ogre() {
   const k = nkit(41);
   // Round 3: ruddy tan skin (less ochre) + strong blue cloth and red trim; a dark club. Separates on sand, dirt and lava
-  const SK = byN(0xf0b294, 0xd88c70, 0xa8644e), SKD = 0xc47a62, BELLY = byN(0xf8cab0, 0xeab298, 0xc08870);
+  const SK = byN(0xf0b294, 0xd88c70, 0xa8644e), SKD = 0xc47a62, BELLY = byN(0xf2b896, 0xe09c80, 0xb07460);
   const HIDE = byN(0x4a82e0, 0x2e5cc0, 0x22408a);
   const CLUB = byN(0x9a6438, 0x7a4a2a, 0x5a3820);
   k.both((s) => {
@@ -429,7 +429,8 @@ function ogre() {
   k.torus(0.27, 0.028, [0, 0.42, 0.04], 0xd8342a, [Math.PI / 2 - 0.1, 0, 0], 1.05);
   k.ell(0.33, 0.2, 0.22, [0, 0.9, -0.04], SK);
   // spotted fur pelt over the left shoulder
-  k.ell(0.2, 0.1, 0.2, [0.22, 1.0, -0.04], (p, n, f) => (f % 5 === 0 ? 0x4a2e1e : n.y > 0.3 ? 0x8a5a36 : 0x6a4428), [0, 0, -0.35]);
+  // blue cloth mantle over the shoulder (the blue reads from the battle camera's high angle too)
+  k.ell(0.2, 0.1, 0.2, [0.22, 1.0, -0.04], (p, n, f) => (f % 5 === 0 ? 0xe8c040 : n.y > 0.3 ? 0x4a82e0 : 0x2e5cc0), [0, 0, -0.35]);
   k.box(0.08, 0.5, 0.03, [0.05, 0.82, 0.17], 0xd8342a, [0.2, 0, -0.75]);
   // head: small, low, forward
   k.ell(0.13, 0.13, 0.12, [0, 1.08, 0.12], SK);

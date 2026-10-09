@@ -688,7 +688,7 @@ function arena(k) {
   const R0 = 0.42, R1 = 0.56;
   // R3: darker warm footing, a warm ochre floor and a red/gold crown so it holds on snow
   k.cyl(R1 + 0.04, R1 + 0.06, 0.03, 0, 0, 0, mottle(0x6a5444, 0x8a7058), 16);
-  k.cyl(R0, R0, 0.012, 0, 0.03, 0, [0xd08a40, 0xe8a858], 16, { ao: false });
+  k.cyl(R0, R0, 0.012, 0, 0.03, 0, [0xc89458, 0xdcae74], 16, { ao: false });
   const wall = mottle(0xb8845a, 0xe8c494, 11);
   const ringBand = (y, h, ri, ro, c, gap = 0) => k.lathe([[ri, y], [ro, y], [ro, y + h], [ri, y + h], [ri, y]], 20, 0, 0, 0, c, { jit: 0.06 });
   // two arcade tiers: piers between bands
@@ -704,7 +704,7 @@ function arena(k) {
   // gate pillars at the entrance
   for (const s of [-1, 1]) { const a = s * (TAU / N); k.box(0.1, 0.24, 0.14, Math.sin(a) * 0.49, 0.03, Math.cos(a) * 0.49, [0xb8a480, 0xe0d4b8], { ry: a, bev: 0.01 }); }
   ringBand(0.23, 0.045, R0 - 0.01, R1 + 0.01, [0x9a5a3a, 0xc87a50]);
-  ringBand(0.42, 0.05, R0, R1, (c, x, y, z) => c.set(Math.floor((Math.atan2(z, x) / TAU + 0.5) * 16) % 2 ? 0xc82a20 : 0xf0b830));
+  ringBand(0.42, 0.05, R0, R1, (c, x, y, z) => c.set(Math.floor((Math.atan2(z, x) / TAU + 0.5) * 16) % 2 ? 0xb82a22 : 0xe8d8b8));
   // inner seating steps visible from above
   k.lathe([[R0 - 0.0, 0.03], [R0 - 0.0, 0.1], [R0 - 0.05, 0.1], [R0 - 0.05, 0.05], [R0 - 0.0, 0.03]].reverse(), 20, 0, 0, 0, 0xa89070);
   // banners on poles

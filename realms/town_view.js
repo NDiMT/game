@@ -104,6 +104,7 @@ const PAL = {
     dots: ['rgba(240,226,150,0.55)', 'rgba(244,240,226,0.5)', 'rgba(220,170,180,0.45)', 'rgba(96,130,70,0.4)'],
     cloud: 0xffffff, cloudShade: [196, 210, 232], dust: 0xe0d0a8, smoke: 0xeeeef4, birds: 0x4a5470, banner: [0x2a5ad8, 0xf0c040],
     tree: 'round', stars: 0,
+    groundTune: { shade: 0xb4a8f0, lift: 0.24, toe: 0.45, sat: 0.94 },
   },
   necro: {
     // a luminous lavender / rose dusk: eerie but bright, never murky
@@ -141,7 +142,7 @@ export function createTownView(THREE, renderer, opts = {}) {
   const groundMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0, detail: 0.9, scale: 0.32, rim: 0, hemi: 0.06, sat: 0.86, contrast: 0.12, ink: 0 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
   const sceneryMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0.3, aoHeight: 0.4, rim: 0.3, sat: 0.95 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
   if (!MAT && !opts.glowMat) glowMat.color.setScalar(2.2);
-  for (const m of [groundMat, sceneryMat]) m.userData.baseDetail = m.userData.uniforms?.uDetail.value;
+  for (const m of [groundMat, sceneryMat]) { m.userData.baseDetail = m.userData.uniforms?.uDetail.value; m.userData.baseSat = m.userData.uniforms?.uSat.value; }
 
   // lights
   const sun = new T.DirectionalLight(0xffffff, 2.5);
@@ -1044,7 +1045,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     // per-faction tuning of the town's own painted materials (the shared building material is left alone)
     for (const [m, o] of [[groundMat, P.groundTune], [sceneryMat, P.sceneryTune]]) {
       const u = m.userData?.uniforms; if (!u) continue;
-      u.uShade.value.set(o?.shade ?? 0xb4a8f0); u.uLift.value = o?.lift ?? 0.24; u.uToe.value = o?.toe ?? 0.45; u.uDetail.value = o?.detail ?? m.userData.baseDetail;
+      u.uShade.value.set(o?.shade ?? 0xb4a8f0); u.uLift.value = o?.lift ?? 0.24; u.uToe.value = o?.toe ?? 0.45; u.uDetail.value = o?.detail ?? m.userData.baseDetail; u.uSat.value = o?.sat ?? m.userData.baseSat;
     }
   }
 
