@@ -1,25 +1,25 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=0.7';
-import { havenModel } from './units_haven.js?v=0.7';
-import { necroModel } from './units_necro.js?v=0.7';
-import { necroUpModel } from './units_necro_up.js?v=0.7';
-import { havenUpModel } from './units_haven_up.js?v=0.7';
-import { neutralModel } from './units_neutral.js?v=0.7';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=0.7';
-import { objectModel } from './models_objects.js?v=0.7';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.7';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=0.7';
-import { createTownView } from './town_view.js?v=0.7';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.7';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.7';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.7';
-import * as BT from './battle.js?v=0.7';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=0.7';
-import { createScore } from './music.js?v=0.7';
-import { unitFit, applyFit } from './unit_fit.js?v=0.7';
-import { createMapFx } from './mapfx.js?v=0.7';
+import { mulberry32, unitModel } from './models.js?v=0.8';
+import { havenModel } from './units_haven.js?v=0.8';
+import { necroModel } from './units_necro.js?v=0.8';
+import { necroUpModel } from './units_necro_up.js?v=0.8';
+import { havenUpModel } from './units_haven_up.js?v=0.8';
+import { neutralModel } from './units_neutral.js?v=0.8';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=0.8';
+import { objectModel } from './models_objects.js?v=0.8';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=0.8';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=0.8';
+import { createTownView } from './town_view.js?v=0.8';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=0.8';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=0.8';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY } from './data.js?v=0.8';
+import * as BT from './battle.js?v=0.8';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, ANIM, ANIM_IMPACT, tick as tickMaterials } from './materials.js?v=0.8';
+import { createScore } from './music.js?v=0.8';
+import { unitFit, applyFit } from './unit_fit.js?v=0.8';
+import { createMapFx } from './mapfx.js?v=0.8';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0.7';
+import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0.8';
 
 // =====================================================================
 // HEX REALMS: a heroes-and-magic strategy game on a small hex planet.
@@ -28,7 +28,7 @@ import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=0
 // turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '0.7';
+const APP_VERSION = '0.8';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -226,7 +226,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=0.7';
+import { createPlanet } from './terrain.js?v=0.8';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -1058,6 +1058,8 @@ $('b-spell').addEventListener('click', () => {
 });
 // battle animation: events play one after another
 const bfloat = (pos, text, cls) => floatText(pos, text, cls, bcam);
+// battle one-shot animations play a bit slower than authored so they read calmly on a phone
+const AS = 0.72;
 const blabFwd = new THREE.Vector3(), bctrTarget = new THREE.Vector3();
 function animateBattle(dt) {
   const B = BB; if (!B) return;
@@ -1072,7 +1074,7 @@ function animateBattle(dt) {
     return;
   }
   if (B.over) {
-    if (!B.cheered) { B.cheered = true; bwait = Math.max(bwait, 1.3); for (const st of B.stacks) if (st.count > 0 && st.side === B.over.winner) { const m = bmesh.get(st.uid); if (m) setAnim(m, ANIM.CHEER, { seed: st.uid }); } }
+    if (!B.cheered) { B.cheered = true; bwait = Math.max(bwait, 1.3); for (const st of B.stacks) if (st.count > 0 && st.side === B.over.winner) { const m = bmesh.get(st.uid); if (m) setAnim(m, ANIM.CHEER, { seed: st.uid, speed: AS }); } }
     if ((bwait -= dt) <= 0) endBattleScreen(); return;
   }
   const s = B.active && !B.active.acted && B.active.count > 0 ? B.active : BT.nextStack(B);
@@ -1088,11 +1090,11 @@ function animateBattle(dt) {
 function playEvent(e, t) {
   const B = BB, M = (uid) => bmesh.get(uid), S = (uid) => B.stacks[uid];
   if (e.t === 'move') {
-    const m = M(e.s), path = e.path && e.path.length > 1 ? e.path : [e.from, e.to], per = e.fly ? 0.5 : 0.16, total = e.fly ? 0.55 : per * (path.length - 1);
+    const m = M(e.s), path = e.path && e.path.length > 1 ? e.path : [e.from, e.to], per = e.fly ? 0.8 : 0.27, total = e.fly ? 0.85 : per * (path.length - 1);
     const k = Math.min(1, t / total), seg = k * (path.length - 1), i = Math.min(path.length - 2, Math.floor(seg)), f = seg - i;
     const p = hexPos(...path[i]).lerp(hexPos(...path[i + 1]), f);
     if (e.fly) p.y = Math.sin(k * Math.PI) * 1.2;
-    if (!e.animOn) { e.animOn = true; setAnim(m, e.fly ? ANIM.FLY : ANIM.WALK, { speed: e.fly ? 1.4 : 1.6 }); }
+    if (!e.animOn) { e.animOn = true; setAnim(m, e.fly ? ANIM.FLY : ANIM.WALK); }
     m.position.copy(p); m.userData.busy = k < 1;
     const dir = hexPos(...path[i + 1]).sub(hexPos(...path[i]));
     if (dir.lengthSq() > 0.001) m.rotation.y = Math.atan2(dir.x, dir.z);
@@ -1102,18 +1104,18 @@ function playEvent(e, t) {
   }
   if (e.t === 'hit' || e.t === 'shot') {
     const a = M(e.a), d = M(e.d), sa = S(e.a), sd = S(e.d);
-    const dur = e.t === 'shot' ? 0.6 : 0.45; // shots end once landed
+    const dur = e.t === 'shot' ? 0.6 : 0.75; // shots end once landed
     if (!e.started) {
       e.started = true;
       const dir = d.position.clone().sub(a.position); a.rotation.y = Math.atan2(dir.x, dir.z);
-      setAnim(a, e.t === 'shot' && ['lich', 'powerlich', 'monk', 'zealot'].includes(sa.id) ? ANIM.CAST : ANIM.ATTACK);
+      setAnim(a, e.t === 'shot' && ['lich', 'powerlich', 'monk', 'zealot'].includes(sa.id) ? ANIM.CAST : ANIM.ATTACK, { speed: AS });
       if (e.t === 'shot') { e.fly = vfx.projectile(shotKind(sa.id), a.position.clone().setY(sa.id === 'cyclops' ? 1.1 : 0.65), d.position.clone().setY(0.5), () => { e.landed = true; }); sfx.shoot(); }
       else { e.fly = 0.18; sfx.hit(); }
     }
-    if (e.t === 'hit') { const k = Math.sin(Math.min(1, t / 0.35) * Math.PI) * 0.12; const dir = d.position.clone().sub(a.position).setY(0).normalize(); a.userData.busy = true; a.position.copy(hexPos(sa.c, sa.r)).addScaledVector(dir, k); }
-    if ((e.t === 'shot' ? e.landed || t > 1.5 : t >= ANIM_IMPACT[ANIM.ATTACK]) && !e.shown) {
+    if (e.t === 'hit') { const k = Math.sin(Math.min(1, t / 0.5) * Math.PI) * 0.12; const dir = d.position.clone().sub(a.position).setY(0).normalize(); a.userData.busy = true; a.position.copy(hexPos(sa.c, sa.r)).addScaledVector(dir, k); }
+    if ((e.t === 'shot' ? e.landed || t > 1.5 : t >= ANIM_IMPACT[ANIM.ATTACK] / AS) && !e.shown) {
       e.shown = true; e.shownAt = t;
-      if (sd.count > 0) setAnim(d, ANIM.HIT);
+      if (sd.count > 0) setAnim(d, ANIM.HIT, { speed: AS });
       if (e.t === 'hit') vfx.hit(d.position.clone().setY(0.5), meleeKind(sa.u), { dir: d.position.clone().sub(a.position) });
       if (e.lucky) vfx.sparkle(d.position, 'luck');
       d.userData.flash = 0.3;
@@ -1124,7 +1126,7 @@ function playEvent(e, t) {
     if (e.shown && t >= Math.max(dur - (e.t === 'shot' ? 0.6 : 0), e.shownAt + 0.2)) { a.userData.busy = false; if (sa.count > 0) a.position.copy(hexPos(sa.c, sa.r)); a.rotation.y = sa.side === 0 ? Math.PI : 0; return true; }
     return false;
   }
-  if (e.t === 'die') { const m = M(e.s); if (!e.started) { e.started = true; sfx.die(); if (m) setAnim(m, ANIM.DEATH); } if (t > 0.55 && !e.diss) { e.diss = true; if (m) vfx.death(m, { undead: !!S(e.s).u?.undead }); } if (t > 1.15) { if (m) m.visible = false; return true; } return false; }
+  if (e.t === 'die') { const m = M(e.s); if (!e.started) { e.started = true; sfx.die(); if (m) setAnim(m, ANIM.DEATH, { speed: AS }); } if (t > 0.85 && !e.diss) { e.diss = true; if (m) vfx.death(m, { undead: !!S(e.s).u?.undead }); } if (t > 1.45) { if (m) m.visible = false; return true; } return false; }
   if (e.t === 'spell') {
     const p = hexPos(e.c, e.r);
     if (!e.started) {
@@ -1136,18 +1138,18 @@ function playEvent(e, t) {
     }
     if (t >= e.land && !e.shown) {
       e.shown = true;
-      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; const lab = $(`bl${hh.s}`); if (lab) lab.textContent = S(hh.s).count > 0 ? S(hh.s).count : ''; }
+      for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; const lab = $(`bl${hh.s}`); if (lab) lab.textContent = S(hh.s).count > 0 ? S(hh.s).count : ''; }
     }
     return t > e.land + 0.45;
   }
   if (e.t === 'tower') {
     const m = M(e.s);
     if (!e.started) { e.started = true; sfx.shoot(); if (m) vfx.projectile('tower', bctx.tower ? bctx.tower.position.clone().setY(2.1 * bctx.tower.scale.y) : new THREE.Vector3(0, 2, -4), m.position.clone().setY(0.5), () => { e.landed = true; }); else e.landed = true; }
-    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (m) { m.userData.flash = 0.3; setAnim(m, ANIM.HIT); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
+    if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (m) { m.userData.flash = 0.3; setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
   if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.hit(); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
-  if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); setAnim(M(e.s), ANIM.CHEER); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
+  if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); setAnim(M(e.s), ANIM.CHEER, { speed: AS }); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
   if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; } return true; }
   if (e.t === 'wait' || e.t === 'defend') { if (!e.started) { e.started = true; const m = M(e.s); if (m) bfloat(m.position.clone().setY(1.1), e.t === 'wait' ? '⏳ Wait' : '🛡️ Defend', 'blue'); } return t > 0.25; }
   return true;
@@ -1735,7 +1737,7 @@ function frame() {
       for (const h of G.heroes) {
         const hm = heroMeshes.get(h.id); if (!hm || !h.alive) continue;
         const st = (walking && walking.hr === h) || h.anim ? ANIM.WALK : ANIM.IDLE;
-        if (hm.userData.animState !== st) { hm.userData.animState = st; setAnim(hm, st, { speed: 1.8, seed: h.id * 2.3 }); }
+        if (hm.userData.animState !== st) { hm.userData.animState = st; setAnim(hm, st, { seed: h.id * 2.3 }); }
       }
       const nk = clamp(1 + (cam.dist - 9) * 0.045, 1, 1.4);
       if (Math.abs(nk - figK) > 0.01) {
