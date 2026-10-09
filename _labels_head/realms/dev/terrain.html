@@ -1,0 +1,18 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Terrain layers</title>
+<script type="importmap">{ "imports": { "three": "../../vendor/three.module.js" } }</script>
+<style>body{margin:0;background:#151820;color:#ddd;font:12px sans-serif;display:flex;flex-wrap:wrap;gap:6px;padding:6px}figure{margin:0}canvas{width:256px;height:256px;display:block}figcaption{padding:2px}</style>
+</head><body>
+<script type="module">
+import { LAYER, layerCanvas } from '../terrain.js';
+const t0 = performance.now();
+for (const [name, l] of Object.entries(LAYER)) {
+  const f = document.createElement('figure');
+  const c = layerCanvas(l);
+  // show the tile 2x2 to check it repeats
+  const big = document.createElement('canvas'); big.width = big.height = 512;
+  const g = big.getContext('2d'); for (let i = 0; i < 4; i++) g.drawImage(c, (i % 2) * 256, (i >> 1) * 256);
+  f.append(big); const cap = document.createElement('figcaption'); cap.textContent = name; f.append(cap); document.body.append(f);
+}
+document.title = 'done ' + (performance.now() - t0).toFixed(0);
+</script></body></html>
