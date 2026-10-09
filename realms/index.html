@@ -8,7 +8,7 @@
   <title>Hex Realms</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=1.0" />
+  <link rel="stylesheet" href="style.css?v=1.1" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -77,7 +77,7 @@
 <script>
   // self-update: a cached page reloads itself when a newer build is live (GitHub Pages caches HTML ~10 min)
   (function () {
-    var BUILD = '1.0';
+    var BUILD = '1.1';
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
       if (j && j.version && j.version !== BUILD && sessionStorage.getItem('realms.reload') !== j.version) {
         sessionStorage.setItem('realms.reload', j.version);
@@ -87,6 +87,6 @@
   })();
 </script>
 <script type="module" src="icons.js"></script>
-<script type="module" src="main.js?v=1.0"></script>
+<script type="module" src="main.js?v=1.1"></script>
 </body>
 </html>
