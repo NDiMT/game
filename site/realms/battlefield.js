@@ -406,9 +406,44 @@ export function obstacleModel(terrainId, kind = 0) {
 const SIEGE = {
   haven: { stone: 0xe4dac4, light: 0xfaf4e4, base: 0xc8bca2, roof: 0x3a7ae0, roofTop: 0x7ab4ff, trim: 0xe8c050, banner: 0x2a62d0, emblem: 0xf4d060, glow: 0xffd27a, moss: 0x8ab84a },
   necro: { stone: 0xa49ab4, light: 0xc8c0d6, base: 0x8a8098, roof: 0x8a2e6e, roofTop: 0xc85a9e, trim: 0xece0c4, banner: 0xb0263c, emblem: 0xece0c4, glow: 0x7affa8, moss: 0x7a9a5a },
+  // round 6: sylvan (pale mossy limestone, layered leaf roofs, gold), inferno (warm red rock, tall horned crimson spires,
+  // lava glow), dungeon (violet stone, crystal-capped roofs, teal glow). style picks the roof shape (styledRoof below).
+  sylvan: { stone: 0xd2ccaa, light: 0xeee8cc, base: 0xaaa486, roof: 0x3a9440, roofTop: 0x8ad05a, trim: 0xe8c050, banner: 0x2a9a3e, emblem: 0xf4d060, glow: 0xfff0a0, moss: 0x5aa83a, door: 0x8a6034, style: 'leaf' },
+  inferno: { stone: 0xb8644e, light: 0xdc9474, base: 0x8e4c3e, roof: 0xb0241a, roofTop: 0xff7a2a, trim: 0xf0b030, banner: 0xd0281c, emblem: 0xffc040, glow: 0xffa030, moss: 0x8a4a34, door: 0x5a2a20, horn: 0xf0e2c8, style: 'spike' },
+  dungeon: { stone: 0x9286b4, light: 0xbcb0d8, base: 0x6e6292, roof: 0x5a3aa8, roofTop: 0x9a6ae6, trim: 0x5ae0d0, banner: 0x7a2ab8, emblem: 0x6af0e0, glow: 0x6af0e0, moss: 0x5e8a8a, door: 0x4a3a6a, crystal: 0x5af0e0, style: 'crystal' },
   other: { stone: 0xd4c4a4, light: 0xeee2c6, base: 0xb8a684, roof: 0xc0603a, roofTop: 0xe8905a, trim: 0xf0d8a0, banner: 0xc04a3a, emblem: 0xf4e0a0, glow: 0xffc870, moss: 0x8ab84a },
 };
-const sfac = (fac) => SIEGE[fac] || SIEGE.other;
+const sfac = (fac) => SIEGE[fac] || SIEGE.haven;
+// a faction roof over a round/square top at height y, radius r, nominal height h. Returns the tip height.
+// Haven/necro keep their plain cones (drawn by the callers); this draws the round-6 shapes.
+function styledRoof(m, S, x, y, z, r, h, seg = 8, ry = 0) {
+  if (S.style === 'leaf') {
+    // three drooping leaf tiers and a golden acorn finial
+    for (let i = 0; i < 3; i++) { const yy = y + h * i * 0.3, hh = h * 0.5; m.add(G.cone(r * (1.18 - i * 0.3), hh, seg).rotateY(ry + i * 0.4).translate(x, yy, z), S.roof, { top: S.roofTop, h0: yy, h1: yy + hh, ao: 0, jit: 0.07 }); }
+    return y + h * 1.1;
+  }
+  if (S.style === 'spike') {
+    // a tall crimson spire with four bone horns curling out of its foot
+    const hh = h * 1.35;
+    m.add(G.cone(r * 0.82, hh, seg).rotateY(ry).translate(x, y, z), S.roof, { top: S.roofTop, h0: y, h1: y + hh, ao: 0, jit: 0.05 });
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * 6.283 + Math.PI / 4 + ry, c = Math.cos(a), sn = Math.sin(a);
+      m.add(G.limb([x + c * r * 0.6, y + h * 0.1, z + sn * r * 0.6], [x + c * r * 1.25, y + h * 0.5, z + sn * r * 1.25], r * 0.13, r * 0.03, 4), S.horn, { ao: 0 });
+    }
+    m.add(G.box(r * 0.16, h * 0.28, 0.02).translate(x, y + h * 0.14, z + r * 0.62), S.glow, { glow: true, ao: 0 });
+    return y + hh;
+  }
+  if (S.style === 'crystal') {
+    // a low violet roof crowned with a glowing teal crystal and two side shards
+    const hh = h * 0.5;
+    m.add(G.cone(r * 1.0, hh, seg).rotateY(ry).translate(x, y, z), S.roof, { top: S.roofTop, h0: y, h1: y + hh, ao: 0, jit: 0.05 });
+    const ch = h * 0.85;
+    m.add(new THREE.OctahedronGeometry(1, 0).scale(r * 0.28, ch / 2, r * 0.28).translate(x, y + hh * 0.7 + ch / 2, z), S.crystal, { glow: true, ao: 0 });
+    for (const sx of [-1, 1]) m.add(new THREE.OctahedronGeometry(1, 0).scale(r * 0.14, ch * 0.26, r * 0.14).rotateZ(-sx * 0.5).translate(x + sx * r * 0.32, y + hh * 0.55 + ch * 0.2, z), S.crystal, { glow: true, ao: 0 });
+    return y + hh * 0.7 + ch;
+  }
+  return y + h;
+}
 // a coursed band of jittered stone blocks between x0..x1, y0..y1, on a slab of depth d
 function masonry(m, S, x0, x1, y0, y1, d, rows, perRow, z = 0) {
   const rh = (y1 - y0) / rows;
@@ -458,9 +493,11 @@ export function gateModel(fac) {
       masonry(m, S, x - 0.13, x + 0.13, 0.08, 0.78, 0.5, 5, 1, z);
       m.add(G.box(0.34, 0.05, 0.54).translate(x, 0.78, z), S.trim, { ao: 0 });
       for (const dz of [-0.17, 0.17]) for (const dx of [-0.1, 0.1]) m.add(G.box(0.09, 0.1, 0.1).translate(x + dx, 0.82, z + dz), S.light, { ao: 0, jit: 0.05 });
-      m.add(G.cone(0.2, 0.36, 4).rotateY(Math.PI / 4).translate(x, 0.84, z), S.roof, { top: S.roofTop, h0: 0.85, h1: 1.2, ao: 0, jit: 0.04 });
-      m.add(G.cyl(0.01, 0.01, 0.16, 4).translate(x, 1.18, z), S.trim, { ao: 0 });
-      m.add(G.box(0.012, 0.08, 0.14).translate(x, 1.27, z + 0.07), S.banner, { ao: 0 });
+      let tip = 1.2;
+      if (S.style) tip = styledRoof(m, S, x, 0.84, z, 0.2, 0.36, 4, Math.PI / 4);
+      else m.add(G.cone(0.2, 0.36, 4).rotateY(Math.PI / 4).translate(x, 0.84, z), S.roof, { top: S.roofTop, h0: 0.85, h1: 1.2, ao: 0, jit: 0.04 });
+      m.add(G.cyl(0.01, 0.01, 0.16, 4).translate(x, tip - 0.02, z), S.trim, { ao: 0 });
+      m.add(G.box(0.012, 0.08, 0.14).translate(x, tip + 0.07, z + 0.07), S.banner, { ao: 0 });
       m.add(G.box(0.05, 0.13, 0.015).translate(x, 0.5, z + 0.257), S.glow, { glow: true, ao: 0 }); // arrow slit glow
       m.add(G.box(0.04, 0.14, 0.02).translate(x - sx * 0.14, 0.62, z + 0.25), S.trim, { ao: 0 }); // gold hinge plate
       // an open door leaf swung back (toward -Z, the defenders' side)
@@ -487,11 +524,13 @@ export function towerModel(fac) {
     m.add(G.cyl(0.66, 0.66, 0.14, 12).translate(0, 2.0, 0), S.light, { ao: 0 });
     for (let i = 0; i < 8; i++) { const a = (i / 8) * 6.283; m.add(G.box(0.2, 0.18, 0.14).rotateY(-a + Math.PI / 2).translate(Math.cos(a) * 0.58, 2.14, Math.sin(a) * 0.58), S.stone, { jit: 0.05, ao: 0 }); }
     // conical roof with a gold finial and pennant
-    m.add(G.cone(0.6, 0.95, 12).translate(0, 2.18, 0), S.roof, { top: S.roofTop, h0: 2.2, h1: 3.1, ao: 0, jit: 0.05 });
+    let tip = 3.13;
+    if (S.style) tip = styledRoof(m, S, 0, 2.18, 0, 0.6, 0.95, 12);
+    else m.add(G.cone(0.6, 0.95, 12).translate(0, 2.18, 0), S.roof, { top: S.roofTop, h0: 2.2, h1: 3.1, ao: 0, jit: 0.05 });
     m.add(G.cyl(0.62, 0.6, 0.05, 12).translate(0, 2.16, 0), S.trim, { ao: 0 });
-    m.add(G.cyl(0.015, 0.015, 0.3, 4).translate(0, 3.08, 0), S.trim, { ao: 0 });
-    m.add(G.blob(0.04, 0, 0, 1).translate(0, 3.12, 0), S.trim, { ao: 0 });
-    m.add(G.box(0.012, 0.11, 0.26).translate(0, 3.24, 0.13), S.banner, { ao: 0 });
+    m.add(G.cyl(0.015, 0.015, 0.3, 4).translate(0, tip - 0.05, 0), S.trim, { ao: 0 });
+    if (S.style !== 'crystal') m.add(G.blob(0.04, 0, 0, 1).translate(0, tip - 0.01, 0), S.trim, { ao: 0 });
+    m.add(G.box(0.012, 0.11, 0.26).translate(0, tip + 0.11, 0.13), S.banner, { ao: 0 });
     // glowing windows and arrow slits all round (one faces the camera)
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * 6.283 + Math.PI / 2, c = Math.cos(a), sn = Math.sin(a);
@@ -530,11 +569,13 @@ export function keepModel(fac) {
       for (let i = 0, n = Math.max(3, Math.round(h / 0.35)); i < n; i++) m.add(G.cyl(r - i * 0.006, r - i * 0.006 + 0.01, (h / n) * 0.97, seg).rotateY((i % 2) * 0.3).translate(x, (i * h) / n, z), m.pick([S.stone, S.light, S.stone]), { top: S.light, h0: 0, h1: h * 1.3, jit: 0.06, ao: i ? 0.15 : 1 });
       m.add(G.cyl(r + 0.07, r, 0.1, seg).translate(x, h - 0.02, z), S.trim, { ao: 0 });
       for (let i = 0; i < seg; i++) { const a = (i / seg) * 6.283; m.add(G.box(0.12, 0.14, 0.1).rotateY(-a + Math.PI / 2).translate(x + Math.cos(a) * (r + 0.02), h + 0.08, z + Math.sin(a) * (r + 0.02)), S.light, { ao: 0, jit: 0.05 }); }
-      if (necro) m.add(G.cone(r + 0.08, rh, seg).translate(x, h + 0.05, z), S.roof, { top: S.roofTop, h0: h, h1: h + rh, ao: 0, jit: 0.05, fn: (v, c) => { if (v.y < h + rh * 0.35) c.lerp(LIN(0x7a5a8a), 0.35); } });
+      let tip = h + rh;
+      if (S.style) tip = styledRoof(m, S, x, h + 0.05, z, r + 0.1, rh, seg);
+      else if (necro) m.add(G.cone(r + 0.08, rh, seg).translate(x, h + 0.05, z), S.roof, { top: S.roofTop, h0: h, h1: h + rh, ao: 0, jit: 0.05, fn: (v, c) => { if (v.y < h + rh * 0.35) c.lerp(LIN(0x7a5a8a), 0.35); } });
       else m.add(G.cone(r + 0.1, rh, seg).translate(x, h + 0.05, z), S.roof, { top: S.roofTop, h0: h, h1: h + rh, ao: 0, jit: 0.05 });
-      m.add(G.cyl(0.015, 0.015, 0.28, 4).translate(x, h + rh, z), S.trim, { ao: 0 });
-      m.add(G.blob(0.045, 0, 0, 2).translate(x, h + rh + 0.05, z), necro ? bone : S.trim, { ao: 0 });
-      m.add(G.box(0.012, 0.12, 0.3).translate(x, h + rh + 0.16, z + 0.15), S.banner, { ao: 0 });
+      m.add(G.cyl(0.015, 0.015, 0.28, 4).translate(x, tip, z), S.trim, { ao: 0 });
+      if (S.style !== 'crystal') m.add(G.blob(0.045, 0, 0, 2).translate(x, tip + 0.05, z), necro ? bone : S.trim, { ao: 0 });
+      m.add(G.box(0.012, 0.12, 0.3).translate(x, tip + 0.16, z + 0.15), S.banner, { ao: 0 });
       // two lit windows on the front
       for (const fy of [h * 0.45, h * 0.75]) m.add(G.box(0.1, 0.18, 0.02).translate(x, fy, z + r - 0.01), S.glow, { glow: true, ao: 0 });
     };
@@ -564,6 +605,23 @@ export function keepModel(fac) {
     for (const sx of [-0.55, 0.55]) m.add(G.box(0.14, 0.26, 0.02).translate(sx, 2.0, 0.01), S.glow, { glow: true, ao: 0 });
     roofed(0, -1.0, 0.6, 3.7, 1.55, 10);
     if (necro) for (const sx of [-1, 1]) m.add(G.blob(0.06, 0, 0, 5).translate(sx * 0.3, 3.0, -0.4), S.glow, { glow: true, ao: 0 }); // green spirit lights
+    // round 6 faction flavour on the keep
+    if (S.style === 'spike') {
+      // bone horns on the curtain wall and a glowing lava moat line along its foot
+      for (const sx of [-1, 1]) for (const x of [0.9, 2.0]) m.add(G.limb([sx * x, 1.2, 0.72], [sx * (x + 0.25), 1.75, 0.95], 0.07, 0.015, 4), S.horn, { ao: 0 });
+      m.add(G.box(4.6, 0.04, 0.12).translate(0, 0.0, 0.92), 0xff8a2a, { glow: true, ao: 0 });
+      for (const sx of [-1, 1]) m.add(G.limb([sx * 0.5, 2.3, 0.0], [sx * 1.0, 3.1, 0.15], 0.12, 0.02, 5), S.horn, { ao: 0 }); // great horns on the keep
+    } else if (S.style === 'crystal') {
+      // teal crystal clusters growing from the foot of the walls
+      for (const [x, s2] of [[-2.9, 1], [-0.75, 0.7], [0.8, 0.75], [2.95, 1.1]]) for (let i = 0; i < 3; i++) {
+        const hh = (0.35 + m.rnd(0, 0.35)) * s2;
+        m.add(new THREE.OctahedronGeometry(1, 0).scale(0.08 * s2, hh / 2, 0.08 * s2).rotateZ(m.rnd(-0.5, 0.5)).translate(x + m.rnd(-0.15, 0.15), hh * 0.4, 0.85 + m.rnd(-0.05, 0.08)), S.crystal, { glow: i === 0, ao: 0 });
+      }
+    } else if (S.style === 'leaf') {
+      // ivy hanging over the curtain wall and two round shrubs at the gate
+      for (let i = 0; i < 10; i++) { const x = m.rnd(-2.4, 2.4); if (Math.abs(x) < 0.6) continue; const hh = m.rnd(0.3, 0.7); m.add(G.box(m.rnd(0.12, 0.25), hh, 0.03).translate(x, 1.27 - hh, 0.79), S.roof, { top: S.roofTop, h0: 0.5, h1: 1.3, ao: 0 }); }
+      for (const sx of [-1, 1]) m.add(G.blob(0.28, 1, 0.15, 7).scale(1, 0.85, 1).translate(sx * 0.75, 0.22, 0.95), S.roof, { top: S.roofTop, h0: 0, h1: 0.5, ao: 0.4 });
+    }
     // a grassy mound at the foot so it sits on the land
     for (let i = 0; i < 14; i++) m.add(G.cone(0.05, m.rnd(0.12, 0.26), 3).translate(m.rnd(-3.5, 3.5), 0, m.rnd(0.78, 0.95)), S.moss, { ao: 0.3 });
   });

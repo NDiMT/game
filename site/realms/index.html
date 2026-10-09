@@ -8,7 +8,7 @@
   <title>Hex Realms</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Nunito:wght@600;800;900&display=swap" />
-  <link rel="stylesheet" href="style.css?v=1.3" />
+  <link rel="stylesheet" href="style.css?v=1.4" />
   <script type="importmap">
     { "imports": { "three": "../vendor/three.module.js" } }
   </script>
@@ -74,11 +74,12 @@
     </div>
   </div>
 </div>
+<div id="factions" class="factions" hidden></div>
 <div id="loader" hidden><div class="ld-card"><div class="ld-crest"></div><h2>HEX <span>REALMS</span></h2><div class="ld-track"><i id="ld-bar"></i></div><p id="ld-text">Loading…</p></div></div>
 <script>
   // self-update: a cached page reloads itself when a newer build is live (GitHub Pages caches HTML ~10 min)
   (function () {
-    var BUILD = '1.3';
+    var BUILD = '1.4';
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
       if (j && j.version && j.version !== BUILD && sessionStorage.getItem('realms.reload') !== j.version) {
         sessionStorage.setItem('realms.reload', j.version);
@@ -88,6 +89,6 @@
   })();
 </script>
 <script type="module" src="icons.js"></script>
-<script type="module" src="main.js?v=1.3"></script>
+<script type="module" src="main.js?v=1.4"></script>
 </body>
 </html>
