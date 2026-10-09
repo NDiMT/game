@@ -810,28 +810,26 @@ function obelisk(k) {
   k.box(0.56, 0.06, 0.56, 0, 0, 0, mottle(0x9a8a76, 0xc8b8a0), { bev: 0.012 });
   k.box(0.42, 0.06, 0.42, 0, 0.06, 0, mottle(0xa89a84, 0xd4c4ac), { bev: 0.012 });
   k.box(0.3, 0.08, 0.3, 0, 0.12, 0, mottle(0xb8aa94, 0xe0d2bc), { bev: 0.012 });
-  // tall tapered shaft and gold pyramidion
+  // R4: a thick tapered shaft (it was a 3-px needle at map zoom), a big gold pyramidion and
+  // one bold glowing rune band per face instead of twenty tiny glyphs
   const sh = (c, x, y, z) => c.set(0x8a86a8).lerp(_c2.set(0xd8d4ec), Math.min(1, (y - 0.2) / 1.1));
-  k.cyl(0.075 * Math.SQRT2, 0.12 * Math.SQRT2, 1.1, 0, 0.2, 0, sh, 4, { ry: Math.PI / 4, jit: 0.04 });
-  k.cone(0.075 * Math.SQRT2, 0.14, 0, 1.3, 0, [C.goldD, C.goldL], 4, { ry: Math.PI / 4 });
-  // carved glowing glyphs on all four faces
+  const tw = 0.105, bw = 0.155;
+  k.cyl(tw * Math.SQRT2, bw * Math.SQRT2, 1.05, 0, 0.2, 0, sh, 4, { ry: Math.PI / 4, jit: 0.04 });
+  k.cone(tw * Math.SQRT2 * 1.05, 0.2, 0, 1.25, 0, [C.goldD, C.goldL], 4, { ry: Math.PI / 4 });
   for (let f = 0; f < 4; f++) {
-    const a = f * Math.PI / 2;
-    for (let j = 0; j < 5; j++) {
-      const y = 0.35 + j * 0.17, half = 0.12 - (y - 0.2) / 1.1 * 0.045 + 0.003;
-      const glyph = (j + f) % 3;
-      const nx = Math.sin(a), nz = Math.cos(a), tx = Math.cos(a), tz = -Math.sin(a);
-      const pt = (u, v) => [nx * half + tx * u, y + v, nz * half + tz * u];
-      if (glyph === 0) { k.plank(pt(0, -0.05), pt(0, 0.05), 0.012, 0.006, GL.violet, { glow: true }); k.plank(pt(-0.03, 0.02), pt(0.03, 0.02), 0.012, 0.006, GL.violet, { glow: true }); }
-      else if (glyph === 1) { k.torus(0.025, 0.006, ...pt(0, 0), GL.violet, { glow: true, ry: a, rs: 8, ts: 3 }); }
-      else { k.plank(pt(-0.03, -0.04), pt(0, 0.04), 0.01, 0.006, GL.violet, { glow: true }); k.plank(pt(0, 0.04), pt(0.03, -0.04), 0.01, 0.006, GL.violet, { glow: true }); }
+    const a = f * Math.PI / 2, nx = Math.sin(a), nz = Math.cos(a);
+    const at = (y) => bw - (bw - tw) * (y - 0.2) / 1.05 + 0.004;
+    for (const [y0, y1] of [[0.34, 0.62], [0.72, 1.0]]) {
+      const ym = (y0 + y1) / 2;
+      k.plank([nx * at(y0), y0, nz * at(y0)], [nx * at(y1), y1, nz * at(y1)], 0.04, 0.008, GL.violet, { glow: true });
+      k.plank([nx * at(ym) - nz * 0.05, ym, nz * at(ym) + nx * 0.05], [nx * at(ym) + nz * 0.05, ym, nz * at(ym) - nx * 0.05], 0.03, 0.008, GL.violet, { glow: true });
     }
   }
-  k.add(new THREE.OctahedronGeometry(0.035, 0), 0, 1.5, 0, GL.violet, { glow: true });
+  k.add(new THREE.OctahedronGeometry(0.05, 0), 0, 1.52, 0, GL.violet, { glow: true });
   // braziers on the corners
   for (const [x, z] of [[-0.22, 0.22], [0.22, 0.22]]) {
-    k.lathe([[0.001, 0.06], [0.02, 0.06], [0.015, 0.12], [0.04, 0.15], [0.045, 0.17]], 6, x, 0, z, C.iron);
-    k.cone(0.03, 0.08, x, 0.16, z, GL.fire, 5, { glow: true });
+    k.lathe([[0.001, 0.06], [0.03, 0.06], [0.025, 0.12], [0.06, 0.16], [0.065, 0.19]], 6, x, 0, z, C.iron);
+    k.cone(0.05, 0.13, x, 0.17, z, GL.fire, 5, { glow: true });
   }
 }
 function shrine(k) {
@@ -868,12 +866,10 @@ function shrine(k) {
   k.torus(0.17, 0.009, 0, 0.5, 0, 0xc090ff, { glow: true, rx: 1.2, rs: 20, ts: 3 });
   k.torus(0.2, 0.007, 0, 0.5, 0, 0x80d0ff, { glow: true, rx: 1.9, ry: 0.8, rs: 20, ts: 3 });
   k.cyl(0.11, 0.11, 0.003, 0, 0.351, 0, 0x5a2aa0, 10, { glow: true });
-  for (let i = 0; i < 6; i++) { const a = i * 1.05; k.add(new THREE.OctahedronGeometry(0.016, 0), Math.cos(a) * 0.26, 0.4 + (i % 3) * 0.12, Math.sin(a) * 0.26, 0xe0c0ff, { glow: true }); }
 }
 function well(k) {
   pad(k, 0.48);
   // flagstones
-  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; k.box(0.12, 0.012, 0.09, Math.sin(a) * 0.38, 0.012, Math.cos(a) * 0.38, mottle(0xb0a898, 0xd8d0c0), { ry: a, bev: 0.004 }); }
   // the round stone wall: banded blocks
   const blocks = (c, x, y, z) => { const row = Math.floor(y / 0.06), ang = Math.atan2(z, x) + row * 0.35; const t = (Math.floor(ang * 9 / Math.PI) % 2 === 0) ? 0.2 : 0.65; c.set(0x9a9488).lerp(_c2.set(0xdcd6c8), t + Math.min(0.25, y)); };
   k.lathe([[0.2, 0.012], [0.28, 0.012], [0.28, 0.24], [0.3, 0.25], [0.3, 0.28], [0.21, 0.28], [0.21, 0.27], [0.2, 0.27], [0.2, 0.012]].reverse(), 12, 0, 0, 0, blocks, { jit: 0.06 });
@@ -884,16 +880,12 @@ function well(k) {
   // wooden posts, crank and a little shingled roof
   for (const s of [-1, 1]) k.box(0.04, 0.5, 0.05, s * 0.25, 0.25, 0, [C.woodD, C.wood], { bev: 0.006 });
   k.cyl(0.03, 0.03, 0.56, 0, 0.6, 0, C.wood, 7, { rz: Math.PI / 2, ctr: true });
-  k.beam([0.28, 0.6, 0], [0.32, 0.6, 0], 0.012, C.iron, 4);
-  k.beam([0.32, 0.6, 0], [0.32, 0.53, 0.04], 0.01, C.iron, 4);
-  k.beam([0, 0.6, 0], [0, 0.42, 0], 0.004, 0xc8b080, 3);
   k.lathe([[0.001, 0.34], [0.04, 0.34], [0.05, 0.42], [0.001, 0.42]], 7, 0, 0, 0, [C.woodD, C.wood]);
   k.box(0.6, 0.03, 0.06, 0, 0.73, 0, C.woodD);
   k.gable(0.5, 0.18, 0.36, 0, 0.73, 0, C.woodD);
   shingles(k, 0.66, 0.2, 0.44, 0, 0.72, 0, [0x2a50c0, 0x5a88f0], [0x3058c8, 0x6a98ff], 3);
   k.ball(0.03, 0, 0.94, 0, GL.cyan, { glow: true, det: 0 });
   // magic motes rising
-  for (let i = 0; i < 7; i++) { const a = i * 0.9; k.add(new THREE.OctahedronGeometry(0.016, 0), Math.cos(a) * 0.12, 0.3 + i * 0.05, Math.sin(a) * 0.12, 0xa0f0ff, { glow: true }); }
   // bucket by the side
   k.lathe([[0.001, 0.012], [0.045, 0.012], [0.055, 0.09], [0.001, 0.09]], 7, 0.32, 0, 0.25, [C.woodD, C.wood]);
   k.cyl(0.05, 0.05, 0.004, 0.32, 0.086, 0.25, GL.cyan, 7, { glow: true });
@@ -921,11 +913,10 @@ function windmill(k) {
     k.plank([0, hy, hz + 0.02], [dx * L, hy + dy * L, hz + 0.02], 0.025, 0.02, C.woodD);
     // cloth panel on one side of the spar
     const p0 = [dx * 0.12, hy + dy * 0.12, hz + 0.01], p1 = [dx * L, hy + dy * L, hz + 0.01];
-    const w = 0.13, q0 = [p0[0] + px * w, p0[1] + py * w, hz + 0.0], q1 = [p1[0] + px * w, p1[1] + py * w, hz + 0.0];
+    const w = 0.17, q0 = [p0[0] + px * w, p0[1] + py * w, hz + 0.0], q1 = [p1[0] + px * w, p1[1] + py * w, hz + 0.0];
     k.poly([p0, p1, q1, q0], (c, x, y, z) => c.set(0xf0e4c8), { ds: true, ao: false, jit: 0.04 });
     // lattice slats
-    for (let j = 0; j < 4; j++) { const t = 0.2 + j * 0.14; k.plank([dx * t, hy + dy * t, hz + 0.018], [dx * t + px * w, hy + dy * t + py * w, hz + 0.018], 0.01, 0.008, C.wood); }
-    k.plank(q0, q1, 0.01, 0.01, C.wood);
+    k.plank(q0, q1, 0.02, 0.016, C.wood);
   }
   // flour sacks and a cart wheel
   for (const [x, z, r] of [[0.28, 0.2, 0], [0.36, 0.1, 0.5], [0.31, 0.12, 0.2]]) k.lathe([[0.001, 0], [0.05, 0], [0.06, 0.05], [0.045, 0.11], [0.02, 0.12], [0.001, 0.12]], 7, x, 0.012 + (x === 0.31 ? 0.07 : 0), z, [0xc8b890, 0xf0e8d0]);
