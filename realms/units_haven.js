@@ -80,7 +80,7 @@ function makeKit(seed, bodyPivot = [0, 0.42, 0]) {
     // d 0: a 20-face icosahedron for small knobs; d 1 / 2: smooth uv spheres (round 7: sculpted, not boxy)
     ell(rx, ry, rz, p, col, o = {}) {
       const d = o.d ?? (Math.max(rx, ry, rz) < 0.035 ? 0.5 : 1);
-      const g = d === 0 ? new THREE.IcosahedronGeometry(1, 0) : d === 0.5 ? new THREE.SphereGeometry(1, 6, 4) : new THREE.SphereGeometry(1, d === 1 ? 9 : 12, d === 1 ? 6 : 9);
+      const g = d === -1 ? new THREE.OctahedronGeometry(1, 0) : d === 0 ? new THREE.IcosahedronGeometry(1, 0) : d === 0.5 ? new THREE.SphereGeometry(1, 6, 4) : new THREE.SphereGeometry(1, d === 1 ? 9 : 12, d === 1 ? 6 : 9);
       k.add(paint(g, o, [rx, ry, rz]).applyMatrix4(mat(p, o.r)), col, o);
     },
     ball(r, p, col, o = {}) { k.ell(r, r, r, p, col, o); },
@@ -267,7 +267,7 @@ function face(k, c, r, o = {}) {
 // a ring of rivet studs (a torus-like row of knobs) around +y at radius R, height y
 function rivets(k, n, R, y, col, o = {}) {
   const a0 = o.a0 ?? 0, arc = o.arc ?? Math.PI * 2, sz = o.sz ?? 1, rr = o.rr ?? 0.011;
-  for (let i = 0; i < n; i++) { const a = a0 + (arc * (i + (arc < 6.2 ? 0.5 : 0))) / n; k.ball(rr, [Math.sin(a) * R, y, Math.cos(a) * R * sz], col, { d: 0, grad: [1, 1.1], ao: false }); }
+  for (let i = 0; i < n; i++) { const a = a0 + (arc * (i + (arc < 6.2 ? 0.5 : 0))) / n; k.ball(rr, [Math.sin(a) * R, y, Math.cos(a) * R * sz], col, { d: -1, grad: [1, 1.1], ao: false }); }
 }
 // a belt (band around the waist) with a big square buckle at the front
 function belt(k, y, r, h, col, buckle = GOLD, sz = 0.8) {
@@ -282,7 +282,7 @@ function locks(k, roots, len, r, col, dir = [0, -1, 0], o = {}) {
   roots.forEach((p, i) => {
     const L = len * (o.var ? 1 + Math.sin(i * 2.7) * o.var : 1), d = V3(dir).normalize();
     const tip = V3(p).add(d.multiplyScalar(L)).add(new THREE.Vector3(o.curl ? Math.sin(i * 1.9) * o.curl : 0, 0, o.out ?? 0)).toArray();
-    k.stick(new THREE.ConeGeometry(r, L, 5).rotateX(Math.PI).translate(0, L / 2, 0), p, tip, i % 2 && o.alt ? o.alt : col, { grad: o.grad ?? [0.85, 1.1] });
+    k.stick(new THREE.ConeGeometry(r, L, o.seg ?? 4, 1, true).rotateX(Math.PI).translate(0, L / 2, 0), p, tip, i % 2 && o.alt ? o.alt : col, { grad: o.grad ?? [0.85, 1.1] });
   });
 }
 // a stripe band painter for o.paint: alternating colour every `per` along axis (0 x, 1 y, 2 z)
@@ -323,7 +323,7 @@ function figure(k, o) {
     k.ell(0.118, 0.088, 0.118, [0.2, 0.675, 0], o.pauldron, { r: [0, 0, -0.38], grad: [0.85, 1.12] });
     if (o.pTrim) k.torus(0.105, 0.024, [0.205, 0.652, 0], o.pTrim, { r: [Math.PI / 2, 0, -0.38], seg: 12, ts: 4, grad: [1, 1] });
     // round 7: a second lame under the cop and a rivet on top (layered plates)
-    k.ell(0.1, 0.05, 0.106, [0.232, 0.6, 0], o.lame ?? o.pauldron, { r: [0, 0, -0.55], grad: [0.82, 1.05] });
+    if (o.lame !== false) k.ell(0.1, 0.05, 0.106, [0.232, 0.6, 0], o.lame ?? o.pauldron, { r: [0, 0, -0.55], grad: [0.82, 1.05] });
     k.ball(0.016, [0.215, 0.755, 0.02], o.pTrim ?? STEEL_L, { d: 0, ao: false });
   });
   const ac = { cuff: o.cuff, upper: o.upper ?? o.torso, fore: o.fore ?? o.upper ?? o.torso, hand: o.hand ?? SKIN, elbow: o.elbow, r1: o.armR ?? 0.064, r2: o.foreR ?? 0.056, hr: o.handR ?? 0.058 };
@@ -340,7 +340,7 @@ function shield(k, p, r, sc, field, rim, emblem, emb = rim, o = {}) {
     // round 7: rivets around the rim (front), a leather grip and straps on the back
     for (let i = 0; i < O.length; i++) for (const t of [0.15, 0.5, 0.85]) {
       const a = O[i], b = O[(i + 1) % O.length], x = (a[0] + (b[0] - a[0]) * t) * 0.9, y = (a[1] + (b[1] - a[1]) * t) * 0.9;
-      k.ball(0.012, [x, y, 0.024], o.rivet ?? rim, { d: 0, grad: [1, 1.1], ao: false });
+      k.ball(0.013, [x, y, 0.024], o.rivet ?? rim, { d: -1, grad: [1, 1.1], ao: false });
     }
     k.box(0.05, 0.3, 0.02, [0, 0, -0.035], LEATHER, { grad: [0.9, 1] });
     k.box(0.3, 0.04, 0.02, [0, 0.08, -0.035], LEATHER, { grad: [0.9, 1] });
@@ -906,7 +906,7 @@ function cavalier(U) {
   for (const [x, z, sw, bn] of legsAt) k.bone(bn, [x, 0.6, z], () => {
     const kn = [x, 0.33, z + sw * 0.5], ft = [x, 0.09, z + sw * 0.95];
     k.limb([x, 0.6, z], kn, 0.08, 0.055, HORSE_D, { seg: 7 });
-    k.ell(0.056, 0.05, 0.056, kn, HORSE_D, { d: 1 });
+    k.ell(0.056, 0.05, 0.056, kn, HORSE_D, { d: 0.5 });
     k.limb(kn, [x, 0.06, z + sw], 0.05, 0.044, HORSE_D, { seg: 7 });
     locks(k, [0, 1, 2, 3, 4].map((i) => { const a = (i / 5) * Math.PI * 2; return [x + Math.sin(a) * 0.04, ft[1] + 0.02, ft[2] + Math.cos(a) * 0.04]; }), 0.07, 0.024, MANE, [0, -1, 0], { out: 0.0, alt: MANE_D });
     k.cyl(0.058, 0.05, 0.075, [x, 0.0, z + sw], HOOF, { seg: 8, ao: false, paint: (px, py) => (py > 0.055 ? 0x8a6a4a : null) });
@@ -917,7 +917,7 @@ function cavalier(U) {
   k.limb([0, 0.8, 0.235], [0, 1.07, 0.4], 0.055, 0.042, MANE, { seg: 7 });
   for (let i = 0; i < 6; i++) {
     const t = i / 5, p = [0, 0.8 + t * 0.27, 0.235 + t * 0.165];
-    for (const sd of [-1, 1]) locks(k, [[sd * 0.03, p[1], p[2]]], 0.11 - t * 0.03, 0.03, (i + (sd > 0 ? 1 : 0)) % 2 ? MANE : MANE_D, [sd * 0.9, -0.6, -0.5]);
+    for (const sd of [-1, 1]) locks(k, [[sd * 0.03, p[1], p[2]]], 0.12 - t * 0.03, 0.032, (i + (sd > 0 ? 1 : 0)) % 2 ? MANE : MANE_D, [sd * 0.45, -1, -0.35]);
   }
   k.at([0, 1.02, 0.52], [0.95, 0, 0], 1, () => {
     k.ell(0.082, 0.09, 0.19, [0, 0, 0.09], HORSE, { d: 2 });
@@ -954,8 +954,6 @@ function cavalier(U) {
   k.lathe([[0.226, 0.4], [0.216, 0.5], [0.2, 0.66], [0.16, 0.78], [0.06, 0.84]], [0, 0, -0.04], CAP, { s: [1, 1, 2.0], seg: 14, grad: [0.84, 1.08], paint: (x, y, z) => (Math.floor((Math.atan2(x, z) + 9) / (Math.PI / 8)) % 2 ? fold : null) });
   k.lathe([[0.234, U ? 0.37 : 0.38], [0.229, 0.43]], [0, 0, -0.04], GOLD, { s: [1, 1, 2.0], seg: 14, grad: [1, 1] });
   k.lathe([[0.226, 0.445], [0.224, 0.465]], [0, 0, -0.04], U ? GOLD_L : WHITE, { s: [1, 1, 2.0], seg: 30, grad: [1, 1], paint: (x, y, z) => (Math.floor((Math.atan2(x, z) + 9) / (Math.PI / 15)) % 2 ? CAP : null) });
-  // dagged scallops along the hem
-  for (let i = 0; i < 18; i++) { const a = (i / 18) * Math.PI * 2; k.cone(0.03, 0.05, [Math.sin(a) * 0.226, U ? 0.39 : 0.4, -0.04 + Math.cos(a) * 0.452], GOLD, { r: [Math.PI, a, 0], seg: 3, grad: [1, 1] }); }
   k.sym(() => {
     if (U) sunBadge(k, [0.218, 0.57, -0.12], [0, Math.PI / 2, 0], 1.7);
     else { k.box(0.03, 0.17, 0.055, [0.218, 0.57, -0.12], GOLD, { r: [0, 0, 0.1] }); k.box(0.03, 0.055, 0.16, [0.215, 0.6, -0.12], GOLD, { r: [0, 0, 0.1] }); }
@@ -969,14 +967,14 @@ function cavalier(U) {
   k.box(0.14, 0.06, 0.04, [0, 0.885, 0.085], GOLD, {});
   k.sym(() => {
     k.box(0.016, 0.24, 0.035, [0.145, 0.72, 0.03], STRAP, { r: [0, 0, 0.12] });
-    k.torus(0.03, 0.009, [0.162, 0.59, 0.04], FIT, { seg: 8, ts: 3, r: [0, Math.PI / 2, 0] });
+    k.torus(0.03, 0.009, [0.162, 0.59, 0.04], FIT, { seg: 6, ts: 3, r: [0, Math.PI / 2, 0] });
   });
   // rider: RIDER pivoting at the saddle; its arms ARM_R / ARM_L, cape CLOTH
   let H;
   k.at([0, 0.47, -0.03], [0, 0, 0], 0.8, () => k.bone(BONE.RIDER, HIPS, () => {
     H = figure(k, {
       sit: true, legs: U ? GOLD : STEEL, boots: STEEL_D, torso: U ? GOLD : STEEL, hips: CAP, upper: STEEL, fore: U ? GOLD : STEEL, hand: STEEL_D, elbow: STEEL_L,
-      pauldron: U ? GOLD : STEEL_L, pTrim: U ? GOLD_L : null, lame: U ? GOLD_L : STEEL, rh: [0.2, 0.5, 0.14], lh: [-0.2, 0.5, 0.2], head: false, armR: 0.066, cuff: U ? GOLD_L : STEEL_L, cuffB: STEEL_L,
+      pauldron: U ? GOLD : STEEL_L, pTrim: U ? GOLD_L : null, lame: false, rh: [0.2, 0.5, 0.14], lh: [-0.2, 0.5, 0.2], head: false, armR: 0.066, cuff: U ? GOLD_L : STEEL_L, cuffB: STEEL_L,
     });
     cape(k, { y0: 0.36, y1: 0.7, r0: 0.27, r1: 0.2, col: U ? 0x4a74f0 : CAPE_B, lin: GOLD, hem: GOLD, arc: 2.2, emb: U ? GOLD_L : null });
     k.lathe([[0.15, 0.7], [0.135, 0.735], [0.1, 0.76]], [0, 0, 0], STEEL_L, { s: [1, 1, 0.85], seg: 10, grad: [0.9, 1.12], paint: stripes(0.018, STEEL, 1, 0.3) }); // gorget
@@ -1006,7 +1004,7 @@ function cavalier(U) {
   // couched lance, thick, with spiral-painted bands, a vamplate and a big striped pennant
   const a = [rh[0] + 0.03, rh[1] - 0.05, rh[2] - 0.3], b = [rh[0] + 0.1, rh[1] + 0.28, rh[2] + (U ? 1.0 : 0.92)];
   const pt = (t) => a.map((v, j) => v + (b[j] - v) * t);
-  k.limb(a, b, 0.042, 0.015, U ? GOLD_L : WHITE, { seg: 8, grad: [0.95, 1.08], hs: 10, paint: (x, y, z, Ln) => (y / Ln > 0.35 && (Math.floor(y / 0.06 + (Math.atan2(x, z) / Math.PI) * 1.5 + 9) % 2) ? (U ? ROYAL : CAP) : null) });
+  k.limb(a, b, 0.042, 0.015, U ? GOLD_L : WHITE, { seg: 8, grad: [0.95, 1.08], hs: 8, paint: (x, y, z, Ln) => (y / Ln > 0.35 && (Math.floor(y / 0.06 + (Math.atan2(x, z) / Math.PI) * 1.5 + 9) % 2) ? (U ? ROYAL : CAP) : null) });
   k.limb(pt(0.02), pt(0.13), 0.046, 0.046, STRAP, { seg: 8, hs: 4, paint: (x, y, z, Ln) => (Math.floor((y / Ln) * 4) % 2 ? FIT : null) }); // grip
   k.stick(new THREE.ConeGeometry(0.085, 0.13, 10).rotateX(Math.PI).translate(0, 0.065, 0), [rh[0] + 0.03, rh[1] - 0.04, rh[2] + 0.03], [rh[0] + 0.033, rh[1] - 0.03, rh[2] + 0.16], U ? GOLD : STEEL_L, {});
   const ang = Math.atan2(b[1] - a[1], b[2] - a[2]);

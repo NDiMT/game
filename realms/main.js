@@ -23,7 +23,7 @@ import { createSfx } from './sfx.js?v=1.6';
 import { unitFit, applyFit } from './unit_fit.js?v=1.6';
 import { createMapFx } from './mapfx.js?v=1.6';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits } from './portraits.js?v=1.6';
+import { initPortraits, portraitImg, preloadPortraits, heroPortraitImg } from './portraits.js?v=1.6';
 
 // =====================================================================
 // ORBIS · Five Crowns: a pocket strategy game on a tiny hex planet.
@@ -308,10 +308,11 @@ function townInsets() {
 }
 const geoCache = new Map();
 const unitGeo = (id) => { const ff = FAC_MODEL[UNITS[id]?.fac]; if (ff) { const g = ff(id); if (g) return g; } const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
-initPortraits(THREE, renderer, unitGeo);
 // portraits are warmed by the loading screen (prewarm); the rest render on demand
 let prewarmed = false;
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
+initPortraits(THREE, renderer, (id) => cached('u' + id, () => unitGeo(id)), { dispose: false });
+const heroPic = (hr, size, shape = 'square') => { const P = G.players[hr.p]; return heroPortraitImg(P.fac, P.color, size, 'pt', shape); };
 // interactive things (towns, heroes, objects, creatures) get a painted ink outline so they read as figures on the ground
 setRigIdle(0.6); // map figures idle gently (battle units set their own amplitude)
 const inkMat = makeInkHullMaterial(THREE), blobMat = makeBlobShadowMaterial(THREE), blobGeo = blobShadowGeometry(THREE);
@@ -936,6 +937,7 @@ function prewarm(onDone) {
   const myFac = G.players[0]?.fac, need = new Set(G.objects.filter((o) => o.alive && o.type === 'monster').map((o) => o.unit));
   for (const [id, u] of Object.entries(UNITS)) if (u.fac === myFac) need.add(id);
   for (const id of need) jobs.push(['Summoning creatures', () => portraitImg(id, 64)]);
+  for (const hr of G.heroes.filter((h) => h.p === 0)) jobs.push(['Summoning heroes', () => { heroPic(hr, 40, 'round'); heroPic(hr, 96); }]);
   for (const t of new Set([ter[G.heroes[0]?.v] ?? 1, 1, 2, 3, 4, 5, 6, 7])) jobs.push(['Preparing battlefields', () => createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS)]);
   for (const id of need) jobs.push(['Training armies', () => { const g = cached('u' + id, () => unitGeo(id)); unitFit(id, g, 'battle'); unitFit(id, g, 'map'); }]);
   jobs.push(['Sharpening swords', () => {
@@ -1403,7 +1405,7 @@ function openHero() {
   const st = (k, ic, n) => `<div class="st"><i>${ic}</i><b>${statOf(hr, k)}</b><small>${n}</small></div>`;
   const next = xpFor(hr.lvl + 1), prev = xpFor(hr.lvl), pct = (a, b) => clamp((a / Math.max(1, b)) * 100, 0, 100);
   const chips = (arr, none) => (arr.length ? `<div class="chips">${arr.join('')}</div>` : `<p class="none">${none}</p>`);
-  showMsg(`${icon('hero', 24)} ${hr.name}`, `<div class="hs-head"><span class="hs-lv"><small>Level</small><b>${hr.lvl}</b></span><div class="hs-xp"><div class="xpbar"><i style="width:${pct(hr.xp - prev, next - prev)}%"></i></div><small>${icon('experience', 14)} ${fmt(hr.xp)} / ${fmt(next)} experience</small></div></div>
+  showMsg(`${icon('hero', 24)} ${hr.name}`, `<div class="hs-head"><span class="hs-pt">${heroPic(hr, 96)}</span><span class="hs-lv"><small>Level</small><b>${hr.lvl}</b></span><div class="hs-xp"><div class="xpbar"><i style="width:${pct(hr.xp - prev, next - prev)}%"></i></div><small>${icon('experience', 14)} ${fmt(hr.xp)} / ${fmt(next)} experience</small></div></div>
     <div class="stats">${st('att', icon('attack', 24), 'Attack')}${st('def', icon('defense', 24), 'Defence')}${st('pow', icon('power', 24), 'Power')}${st('know', icon('knowledge', 24), 'Knowledge')}</div>
     <div class="meters"><div class="meter"><span>${icon('mana', 16)}</span>Mana<b>${hr.mana}/${maxMana(hr)}</b><i><i style="width:${pct(hr.mana, maxMana(hr))}%"></i></i></div><div class="meter mp"><span>${icon('movement', 16)}</span>Move<b>${fmt(hr.mp)}</b><i><i style="width:${pct(hr.mp, moveMax(hr))}%"></i></i></div></div>
     <h3 class="sec">Army</h3>
@@ -1503,10 +1505,10 @@ function updateHud() {
   document.body.style.setProperty('--fac', FACTIONS[G.players[0].fac]?.css || '#3a7aff');
   const canStep = (x) => NBR[x.v].some((n) => passable(n) && stepCost(x.v, n) <= x.mp);
   $('b-end').classList.toggle('ready', G.mode === 'map' && !mine.some(canStep));
-  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}${canStep(hr) ? '' : ' spent'}" data-h="${hr.id}" aria-label="${hr.name}"><span class="hb-ic">${icon('hero', 30)}</span><b>${hr.name.split(' ').pop()}</b><i class="lvb">${hr.lvl}</i><span class="mp"><i style="width:${clamp((hr.mp / moveMax(hr)) * 100, 0, 100)}%"></i></span></button>`).join('') +
+  $('heroes').innerHTML = mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}${canStep(hr) ? '' : ' spent'}" data-h="${hr.id}" aria-label="${hr.name}"><span class="hb-ic">${heroPic(hr, 40, 'round') || icon('hero', 30)}</span><b>${hr.name.split(' ').pop()}</b><i class="lvb">${hr.lvl}</i><span class="mp"><i style="width:${clamp((hr.mp / moveMax(hr)) * 100, 0, 100)}%"></i></span></button>`).join('') +
     G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}" aria-label="${t.name}"><span class="hb-ic">${icon('town', 28)}</span><b>${t.name}</b>${!t.builtToday ? `<em title="Can build today">${icon('build', 13)}</em>` : ''}</button>`).join('');
   const hr = selHero();
-  $('sel').innerHTML = hr ? `<span class="sel-who"><span class="sel-pt">${icon('hero', 24)}<i class="lv">${hr.lvl}</i></span><b>${hr.name}</b></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>` : '';
+  $('sel').innerHTML = hr ? `<span class="sel-who"><span class="sel-pt">${heroPic(hr, 40, 'round') || icon('hero', 24)}<i class="lv">${hr.lvl}</i></span><b>${hr.name}</b></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>` : '';
 }
 // side buttons: tap = select hero / open hero sheet / open town; double tap = fly the camera there
 let sideTap = null;

@@ -269,7 +269,7 @@ function figure(k, o) {
       k.ell(0.076, 0.072, 0.118, [st, 0.06, 0.035], boots, { d: 1 });
     }
   }));
-  k.ell(0.155, 0.085, 0.115, [0, 0.43, 0], o.hips ?? legs, { sm: [12, 7] });
+  k.ell(0.155, 0.085, 0.115, [0, 0.43, 0], o.hips ?? legs, { sm: [10, 6] });
   k.lathe([[0.135, 0.4], [0.155, 0.48], [0.185, 0.56], [0.205, 0.63], [0.19, 0.69], [0.12, 0.73], [0.03, 0.745]], [0, 0, 0], o.torso, { s: [1, 1, 0.76], seg: 14, grad: o.torsoGrad ?? [0.82, 1.1] });
   if (o.belt) {
     k.lathe([[0.158, 0.44], [0.162, 0.495]], [0, 0, 0], o.belt, { s: [1, 1, 0.8], seg: 14, grad: [1, 1] });
@@ -306,13 +306,13 @@ function horn(k, p, segs, r, col, tip = col, o = {}) {
     const b = a.clone().add(V3(segs[i]));
     const r0 = r * (1 - (i / n) * 0.8), r1 = i === n - 1 ? 0.004 : r * (1 - ((i + 1) / n) * 0.8);
     const c = i >= n - 1 ? tip : col;
-    k.limb(a.toArray(), b.toArray(), r0, r1, c, { seg: 7, grad: [0.9, 1.1] });
+    k.limb(a.toArray(), b.toArray(), r0, r1, c, { seg: 6, grad: [0.9, 1.1] });
     if (i < n - 1) {
       k.ball(r1 * 1.02, b.toArray(), i >= n - 2 ? tip : col, { d: 0 });
       if (o.ridges !== false) {
         k.ring(a.toArray(), b.toArray(), r1 * 1.03, r1 * 0.26, i >= n - 2 ? shade(tip, 0.82) : rc, { seg: 5, grad: [1, 1] });
         const m = a.clone().lerp(b, 0.5);
-        k.ring(a.toArray(), m.toArray(), (r0 + r1) * 0.515, (r0 + r1) * 0.11, rc, { seg: 5, grad: [1, 1] });
+        if (n <= 3) k.ring(a.toArray(), m.toArray(), (r0 + r1) * 0.515, (r0 + r1) * 0.11, rc, { seg: 5, grad: [1, 1] });
       }
     }
     a = b;
@@ -351,7 +351,6 @@ function devilHead(k, c, o) {
     k.ell(0.05, 0.04, 0.04, [0, -0.118, 0.1], jaw, { d: 0 }); // chin
     k.ell(0.026, 0.05, 0.03, [0, 0.025, 0.13], skin, { d: 0, r: [-0.35, 0, 0] }); // nose bridge
     k.ball(0.04, [0, -0.012, 0.15], skin, { d: 1 }); // nose
-    k.ell(0.05, 0.02, 0.03, [0, 0.095, 0.11], skL, { d: 0, r: [-0.6, 0, 0] }); // brow boss
     k.sym(() => {
       k.ball(0.012, [0.018, -0.032, 0.18], skD, { d: 0, ao: false, grad: [1, 1] }); // nostril
       k.box(0.1, 0.038, 0.06, [0.055, 0.05, 0.12], brow, { r: [0, 0.25, 0.42], grad: [1, 1] });
@@ -518,10 +517,10 @@ function imp(U) {
   });
   hoofDetail(k, 0.12, SK_D);
   // pot belly with banded (scaly) plates and a navel
-  k.ell(0.16, 0.14, 0.13, [0, 0.5, 0.06], BELLY, { sm: [12, 9], grad: [0.95, 1.05] });
+  k.ell(0.16, 0.14, 0.13, [0, 0.5, 0.06], BELLY, { sm: [10, 8], grad: [0.95, 1.05] });
   for (const y of [0.44, 0.5, 0.56]) {
     const f = Math.sqrt(1 - ((y - 0.5) / 0.14) ** 2);
-    k.torus(0.16 * f, 0.008, [0, y, 0.06], shade(BELLY, 0.84), { arc: Math.PI, r: [Math.PI / 2, 0, 0], s: [1, 0.82, 1], seg: 8, ts: 3, grad: [1, 1] });
+    k.torus(0.16 * f, 0.008, [0, y, 0.06], shade(BELLY, 0.84), { arc: Math.PI, r: [Math.PI / 2, 0, 0], s: [1, 0.82, 1], seg: 6, ts: 3, grad: [1, 1] });
   }
   k.ball(0.012, [0, 0.47, 0.186], shade(BELLY, 0.7), { d: 0, ao: false });
   // spine nubs
@@ -739,12 +738,12 @@ function succubus(U) {
     // locks over the back hair, alternating highlights
     for (let i = -2; i <= 2; i++) k.limb([i * 0.05, HY - 0.02, -0.12], [i * 0.07, HY - 0.3 - Math.abs(i) * 0.025, -0.12 - Math.abs(i) * 0.01], 0.04, 0.012, i % 2 ? HAIR_L : HAIR, { seg: 5 });
     k.ell(0.122, 0.13, 0.115, [0, HY - 0.005, 0.03], SKN, { sm: [12, 9], grad: [0.95, 1.05] });
-    k.ell(0.016, 0.024, 0.014, [0, HY - 0.028, 0.15], SKN, {}); // nose
+    k.ell(0.012, 0.018, 0.01, [0, HY - 0.028, 0.146], SKN, {}); // nose
     k.sym(() => {
       k.ell(0.026, 0.024, 0.014, [0.05, HY + 0.005, 0.137], EYE, { glow: true, d: 1 });
       k.ell(0.006, 0.018, 0.005, [0.05, HY + 0.005, 0.151], HAIR, { d: 0, ao: false, grad: [1, 1] }); // cat-slit pupil
-      k.box(0.05, 0.009, 0.014, [0.054, HY + 0.03, 0.142], LASH, { r: [0, 0.3, 0.22], grad: [1, 1] }); // lashes
-      k.box(0.05, 0.011, 0.014, [0.052, HY + 0.058, 0.136], HAIR, { r: [0, 0.3, 0.32], grad: [1, 1] }); // arched brow
+      k.ell(0.027, 0.006, 0.008, [0.054, HY + 0.027, 0.14], LASH, { r: [0, 0.35, 0.22], d: 0, grad: [1, 1], ao: false }); // lashes
+      k.ell(0.028, 0.0065, 0.008, [0.052, HY + 0.056, 0.126], HAIR, { r: [0, 0.35, 0.3], d: 0, grad: [1, 1], ao: false }); // arched brow
       k.ell(0.026, 0.014, 0.008, [0.074, HY - 0.036, 0.121], 0xff7a90, { d: 0, grad: [1, 1] }); // blush
       k.cone(0.022, 0.08, [0.115, HY + 0.0, 0.02], SKN, { r: [0, 0.3, -1.3], seg: 4 }); // pointed ear
       k.ell(0.06, 0.03, 0.032, [0.042, HY + 0.1, 0.1], HAIR_L, { r: [0, 0, 0.45], d: 0 }); // bangs
@@ -946,8 +945,8 @@ function nightmare(U) {
     k.sym(() => k.ell(0.02, 0.07, 0.07, [0.222, 0.58, -0.08], LAVA, { glow: true, d: 0 }));
   } else {
     // a crimson saddle blanket with an orange hem
-    k.lathe([[0.205, 0.7], [0.19, 0.75], [0.15, 0.81], [0.06, 0.848]], [0, 0, -0.06], RED_D, { s: [1, 1, 1.2], seg: 14, grad: [0.85, 1.05] });
-    k.lathe([[0.212, 0.688], [0.208, 0.712]], [0, 0, -0.06], ORANGE_D, { s: [1, 1, 1.2], seg: 14, grad: [1, 1] });
+    k.lathe([[0.2, 0.73], [0.18, 0.77], [0.13, 0.82], [0.04, 0.846]], [0, 0, -0.04], RED_D, { s: [1, 1, 0.8], seg: 14, grad: [0.85, 1.05] });
+    k.lathe([[0.206, 0.72], [0.201, 0.742]], [0, 0, -0.04], ORANGE_D, { s: [1, 1, 0.8], seg: 14, grad: [1, 1] });
     k.sym(() => { // glowing lava cracks on the flanks, branching
       k.box(0.03, 0.2, 0.035, [0.19, 0.58, -0.12], LAVA, { glow: true, r: [0.5, 0, 0.12] });
       k.box(0.024, 0.09, 0.03, [0.188, 0.53, -0.2], FIRE_O, { glow: true, r: [-0.5, 0, 0.12] });
@@ -1015,7 +1014,7 @@ function devil(U) {
       k.bone(BONE.ARM_R, SH, () => pole(k, A, B, (Lp) => {
         k.limb([0, 0, 0], [0, Lp, 0], 0.03, 0.028, PLUM_L, { seg: 7 });
         k.ball(0.04, [0, 0.0, 0], IRON_L, { d: 0 }); // pommel
-        for (let i = 0; i < 4; i++) k.ring([0, 0, 0], [0, Lp * 0.37 + i * 0.03, 0], 0.031, 0.009, LEATHER, { seg: 6 }); // grip wrap
+        for (let i = 0; i < 3; i++) k.ring([0, 0, 0], [0, Lp * 0.38 + i * 0.035, 0], 0.031, 0.01, LEATHER, { seg: 6 }); // grip wrap
         k.box(0.012, 0.22, 0.066, [0, Lp - 0.33, 0], IRON, {}); // langets
         k.cone(0.04, 0.12, [0, Lp, 0], IRON_L, { seg: 5 });
         k.cone(0.03, 0.1, [-0.02, Lp - 0.2, 0], IRON_L, { r: [0, 0, Math.PI / 2], seg: 5 }); // back spike
@@ -1042,8 +1041,8 @@ function devil(U) {
       k.bone(BONE.ARM_R, SH, () => pole(k, A, B, (Lp) => {
         k.limb([0, 0, 0], [0, Lp - 0.14, 0], 0.03, 0.028, GOLD, { seg: 7, grad: [0.9, 1.12] });
         k.cone(0.045, 0.08, [0, 0.075, 0], GOLD_L, { r: [Math.PI, 0, 0], seg: 5 }); // butt spike
-        for (const y of [0.15, Lp * 0.62, Lp - 0.2]) k.ring([0, 0, 0], [0, y, 0], 0.033, 0.01, GOLD_L, { seg: 7 });
-        for (let i = 0; i < 4; i++) k.ring([0, 0, 0], [0, Lp * 0.37 + i * 0.03, 0], 0.031, 0.009, CRIMSON, { seg: 6 }); // grip wrap
+        for (const y of [0.15, Lp * 0.62]) k.ring([0, 0, 0], [0, y, 0], 0.033, 0.01, GOLD_L, { seg: 7 });
+        for (let i = 0; i < 3; i++) k.ring([0, 0, 0], [0, Lp * 0.38 + i * 0.035, 0], 0.031, 0.01, CRIMSON, { seg: 6 }); // grip wrap
         k.torus(0.12, 0.032, [0, Lp - 0.12, 0], GOLD, { arc: Math.PI, r: [0, 0, Math.PI], seg: 12, ts: 4 });
         for (const x of [-0.12, 0, 0.12]) {
           k.limb([x, Lp - 0.12 + (x ? 0 : -0.12), 0], [x, Lp + (x ? 0.04 : 0.1), 0], 0.026, 0.022, GOLD_L, { seg: 5 });
