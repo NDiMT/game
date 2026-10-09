@@ -31,11 +31,11 @@ const hash3 = (x, y, z, s) => { const v = Math.sin(x * 12.9898 + y * 78.233 + z 
 // ------------------------------------------------------------------ palette (bright lilac / violet / teal; no murk)
 const C = {
   stone: 0xcdbcf0, stone2: 0xb6a2e2, trim: 0xf0e8ff, deep: 0x9474d4,
-  roof: 0x7c48dc, roof2: 0x6a3ccc, roofL: 0x9c6cf2,
+  roof: 0x8a56ea, roof2: 0x7848d8, roofL: 0x9c6cf2,
   teal: 0x2fc8be, tealD: 0x1fa49e, tealL: 0x7ae8de,
   cyan: 0x8ffcf2, vglow: 0xe6a8ff, pglow: 0xff9ae0,
   gold: 0xffc63a, goldD: 0xe0a428,
-  rock: 0xa995d2, rockL: 0xc9b9ec, rockD: 0x8e7cc0,
+  rock: 0x8e96e2, rockL: 0xaeb6f4, rockD: 0x7c80d6,
   door: 0x7656b4, wood: 0x9a7aa8, woodD: 0x7a5c94,
   banner: 0xa84ad8, banner2: 0x2fb8b0,
   cap: 0xe85cb6, cap2: 0x36c6c0, cap3: 0x9a6af0, stem: 0xf4eadc,
@@ -110,7 +110,7 @@ function makeKit(seed) {
       for (let i = 0; i < P.count; i++) {
         const px = P.getX(i), py = P.getY(i), pz = P.getZ(i);
         const n = 1 + hash3(px / rad, py / rad, pz / rad, sd) * (o.amp ?? 0.22);
-        P.setXYZ(i, px * n, Math.max(py * n, o.flat ? -rad * 0.25 : -Infinity), pz * n);
+        P.setXYZ(i, px * n, o.flat ? Math.max(py * n, 0) : py * n, pz * n);
       }
       return add(tf(g, o).translate(x, y, z), c, { top: 1.25, bot: 0.86, j: 0.06, ...o });
     },
@@ -370,8 +370,8 @@ function village() {
   const k = makeKit(301);
   k.pad(2.2, 2.2);
   // rock outcrop behind, into which the hall is carved
-  k.rock(0.75, -0.55, 0.2, -0.75, C.rock, { s: [1.1, 1.0, 0.7] });
-  k.rock(0.6, 0.6, 0.15, -0.8, C.rockD, { s: [1.1, 0.9, 0.7] });
+  k.rock(0.62, -0.45, 0, -0.72, C.rock, { s: [1.1, 1.5, 0.7], flat: true });
+  k.rock(0.5, 0.5, 0, -0.78, C.rockD, { s: [1.1, 1.4, 0.7], flat: true });
   // main hall
   k.block(1.2, 0.85, 0.8, 0, 0.04, -0.15, C.stone);
   k.gable(1.2, 0.7, 0.8, 0, 0.89, -0.15, C.roof, C.stone);
@@ -406,10 +406,10 @@ function townHall(grand) {
   k.box(0.7, 0.95, 0.3, 0, 0.28, fz + 0.12, C.stone2, { top: 1.08 });
   k.gable(0.3, 0.38, 0.78, 0, 1.23, fz + 0.12, C.roofL, C.stone2, Math.PI / 2, 0.04);
   k.door(0, 0.28, fz + 0.27, 0.32, 0.42, 0, { glowDoor: grand ? C.cyan : null });
-  k.disc(0.09, 0.03, 0, 1.12, fz + 0.28, C.cyan, 6, { glow: true });
+  k.disc(0.07, 0.03, 0, 1.3, fz + 0.27, C.cyan, 6, { glow: true });
   if (!grand) {
     // single great central spire
-    k.spire(0, bz - 0.1, { r: 0.36, h: 1.55, y: 0.6, roofH: 1.05, flag: true, flagH: 0.4, wins: [[0, 0.62, 0.11, 0.24], [1.1, 0.62, 0.09, 0.2], [-1.1, 0.62, 0.09, 0.2]] });
+    k.spire(0, bz - 0.1, { r: 0.36, h: 1.25, y: 0.6, roofH: 0.95, wins: [[0, 0.62, 0.11, 0.24], [1.1, 0.62, 0.09, 0.2], [-1.1, 0.62, 0.09, 0.2]] });
     for (const s of [-1, 1]) {
       k.banner(s * 0.55, 0.98, fz + 0.01, 0.18, 0.46);
       k.cluster(s * 0.95, 0.04, 0.9, 0.5, s < 0 ? C.teal : C.cap3);
@@ -437,7 +437,7 @@ function fort() {
   const wh = 1.25, th = 0.55;
   const segs = [[-4.2, -2.3], [-2.0, -0.75], [0.75, 2.0], [2.3, 4.2]];
   // jagged rock spine behind the wall (cavern rim)
-  for (let i = 0; i < 9; i++) k.rock(0.55 + (i % 3) * 0.12, -4 + i, 0.3, -0.45, i % 2 ? C.rock : C.rockD, { s: [1.2, 1.35, 0.6], seed: i });
+  for (let i = 0; i < 9; i++) k.rock(0.55 + (i % 3) * 0.12, -4 + i, 0, -0.42, i % 2 ? C.rock : C.rockD, { s: [1.2, 1.9, 0.55], seed: i, flat: true });
   for (const [a, b] of segs) {
     const w = b - a, x = (a + b) / 2;
     k.box(w, wh, th, x, 0, 0, C.stone, { top: 1.06, bot: 0.86 });
@@ -567,8 +567,8 @@ function mageGuild(lvl) {
   y += rh - 0.04;
   // floating crystal heart
   const orb = 0.1 + lvl * 0.03, oy = y + 0.12 + orb * 1.6;
-  k.crystal(0, oy - orb * 1.4, 0, orb * 2.8, orb * 0.7, C.cyan, { glow: true });
-  k.crystal(0, oy + orb * 1.2, 0, orb * 1.0, orb * 0.7, C.cyan, { glow: true, rx: Math.PI, ry: 0 });
+  k.cone(orb * 0.9, orb * 1.6, 0, oy, 0, C.cyan, 6, { glow: true });
+  k.cone(orb * 0.9, orb * 1.1, 0, oy, 0, 0x5ee8e0, 6, { glow: true, rx: Math.PI });
   if (lvl >= 2) k.tor(orb * 1.9, 0.014, 0, oy, 0, C.gold, TAU, { rx: Math.PI / 2 - 0.4, ao: false, rs: 14 });
   if (lvl >= 3) {
     k.tor(orb * 1.9, 0.014, 0, oy, 0, C.gold, TAU, { rx: 0.5, ry: 0.8, ao: false, rs: 14 });
@@ -585,19 +585,21 @@ function warren(up) {
   const k = makeKit(310 + up);
   k.pad(1.8, 1.8);
   const mz = -0.2;
-  k.rock(0.78, 0, 0.0, mz, C.rock, { s: [1.05, 1.0 + up * 0.15, 0.85], flat: true, seed: 3 });
-  k.rock(0.48, -0.55, 0.0, mz + 0.2, C.rockL, { s: [1, 1.0, 0.9], flat: true, seed: 5 });
-  k.rock(0.42, 0.6, 0.0, mz + 0.15, C.rockD, { s: [1, 1.15, 0.9], flat: true, seed: 7 });
+  k.rock(0.74, 0, 0.0, mz, C.rock, { s: [1.05, 1.45 + up * 0.1, 0.85], flat: true, seed: 3 });
+  k.rock(0.42, -0.5, 0.0, mz + 0.2, C.rockL, { s: [1, 1.4, 0.9], flat: true, seed: 5 });
+  k.rock(0.38, 0.52, 0.0, mz + 0.15, C.rockD, { s: [1, 1.5, 0.9], flat: true, seed: 7 });
   // burrow holes: dark-violet mouth (not black) with a teal inner glow
   const hole = (x, y, z, s, ry = 0) => k.at(x, y, z, ry, s, () => {
     k.disc(0.16, 0.06, 0, 0.12, 0, 0x5a3c8a, 10, { s: [1, 1.15, 1], ao: false });
     k.disc(0.08, 0.02, 0, 0.11, 0.035, C.tealL, 8, { glow: true });
     k.tor(0.17, 0.05, 0, 0.12, 0.005, C.rockL, TAU, { rs: 10, s: [1, 1.12, 1] });
   });
-  hole(0, 0.0, mz + 0.62, 1.4);
-  hole(-0.5, 0.25, mz + 0.5, 0.8, -0.4);
-  hole(0.45, 0.42, mz + 0.5, 0.75, 0.35);
-  hole(0.05, 0.75, mz + 0.42, 0.6, 0);
+  hole(0, 0.13, mz + 0.6, 1.4);
+  hole(-0.45, 0.32, mz + 0.48, 0.8, -0.4);
+  hole(0.42, 0.5, mz + 0.45, 0.75, 0.35);
+  hole(0.02, 0.85, mz + 0.38, 0.6, 0);
+  k.rock(0.3, 0.1, 0.85, mz - 0.1, C.rockL, { s: [1, 1.6, 1], seed: 9 });
+  k.stalag(0.1, mz - 0.1, 1.05, 0.14, C.rockL, 0.9);
   // wooden entrance frame (troglodytes like a solid doorpost)
   k.limb([-0.22, 0.04, mz + 0.72], [-0.2, 0.52, mz + 0.72], 0.03, 0.03, C.woodD, 4);
   k.limb([0.22, 0.04, mz + 0.72], [0.2, 0.52, mz + 0.72], 0.03, 0.03, C.woodD, 4);
@@ -615,7 +617,6 @@ function warren(up) {
     k.crenels(0.72, 0.12, 0.66, 0, mz + 0.66, C.stone, { sides: 's', step: 0.18, m: 0.1 });
     k.door(0, 0.04, mz + 0.72, 0.3, 0.3, 0, { c: 0x6a4a9a, glowDoor: C.lava });
     for (const s of [-1, 1]) k.brazier(s * 0.48, 0.04, mz + 0.85, 1.0, C.lava);
-    k.banner(0, 0.6, mz + 0.73, 0.14, 0.0001, 0, C.banner, { emblem: false });
     k.spire(-0.55, mz - 0.25, { r: 0.18, h: 1.2, roofH: 0.6, flag: true, flagH: 0.3, flagDir: -1, wins: [[0.3, 0.6, 0.07, 0.15]] });
   } else {
     k.flag(-0.35, 0.6, mz + 0.3, 0.55, 0.35, 0.16, C.banner);
@@ -633,9 +634,10 @@ function nest(k, x, y, z, s) {
 function harpyLoft(up) {
   const k = makeKit(320 + up);
   k.pad(1.8, 1.8);
-  const tz = -0.2, H = up ? 2.1 : 1.85;
+  const tz = -0.2, H = up ? 2.15 : 1.82;
   // the crag: stacked jittered rocks narrowing upward
-  const tiers = [[0.5, 0.0], [0.42, 0.55], [0.34, 1.05], [0.27, 1.45]];
+  const tiers = [[0.5, 0.0], [0.42, 0.55], [0.34, 1.05], [0.3, 1.45]];
+  if (up) tiers.push([0.26, 1.8]);
   tiers.forEach(([rr, y], i) => k.rock(rr, (i % 2 ? 0.05 : -0.05), y + rr * 0.4, tz, i % 2 ? C.rockL : C.rock, { s: [1, 1.1, 0.95], flat: i === 0, seed: 20 + i }));
   // carved lilac masonry loft wrapped around the crag
   k.cyl(0.4, 0.44, 0.5, 0, 0.04, tz + 0.12, C.stone, 8, { top: 1.06, bot: 0.86 });
@@ -649,7 +651,7 @@ function harpyLoft(up) {
   };
   plat(0.48, 0.95, tz + 0.05, 1, 0.3);
   plat(-0.46, 1.3, tz - 0.02, 0.9, -0.3);
-  nest(k, 0, H - 0.05, tz, up ? 1.0 : 0.9);
+  nest(k, 0, H - 0.04, tz, up ? 1.0 : 0.9);
   // dangling feather totems / chimes
   for (const [x, z] of [[0.4, tz + 0.35], [-0.38, tz + 0.3]]) { k.limb([x, 0.9, z], [x, 0.62, z], 0.006, 0.006, C.woodD, 3); k.cone(0.04, 0.16, x, 0.48, z, C.cap, 4, { glow: false }); k.ball(0.03, x, 0.64, z, C.cyan, 0, { glow: true }); }
   // feather-shaped banners
@@ -658,7 +660,7 @@ function harpyLoft(up) {
   k.stalag(-0.7, 0.62, 0.45, 0.1); k.stalag(-0.55, 0.78, 0.28, 0.07);
   if (up) {
     // second spike with a rope bridge and a pointed roost-hut on top
-    k.rock(0.3, 0.68, 0.3, -0.5, C.rockD, { s: [1, 2.6, 1], seed: 41 });
+    k.rock(0.3, 0.68, 0, -0.5, C.rockD, { s: [1, 3.6, 1], seed: 41, flat: true });
     nest(k, 0.68, 1.12, -0.5, 0.6);
     k.sheet(6, 1, (u, v) => [0.1 + u * 0.55, 1.5 - Math.sin(u * Math.PI) * 0.12 - u * 0.36, tz - 0.05 - u * 0.25 + v * 0.1], C.wood, { ao: false });
     for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; k.limb([Math.sin(a) * 0.3, H + 0.1, tz + Math.cos(a) * 0.3], [0, H + 0.55, tz], 0.015, 0.012, C.woodD, 3); }
@@ -724,7 +726,7 @@ function eyePillar(up) {
       k.banner(s * 0.72, 0.55, tz - 0.14, 0.14, 0.3, 0, C.banner);
     }
   } else {
-    k.banner(0, 0.9, tz + rr * 1.15, 0.0001, 0.0001, 0, C.banner, { emblem: false });
+    k.flag(0.62, 0.04, tz - 0.35, 1.0, 0.4, 0.17, C.banner);
   }
   return finish(k);
 }
@@ -742,9 +744,17 @@ function medusaChapel(up) {
     k.win(nx + s * nw / 2, 0.36, nz + z, 0.1, 0.3, s * Math.PI / 2, { c: 0x8ff8c8, mull: false });
   }
   // serpent rose window
-  k.disc(0.2, 0.04, nx, nh + 0.2, fz + 0.01, C.trim, 12, { ao: false });
-  k.disc(0.16, 0.04, nx, nh + 0.2, fz + 0.03, 0x8ff8c8, 12, { glow: true });
-  k.tor(0.1, 0.018, nx, nh + 0.2, fz + 0.06, C.snake, TAU * 0.85, { rs: 10, ao: false });
+  // great medusa mask in the gable: face, glowing eyes, a crown of snakes
+  const my = nh + 0.24, mzf = fz + 0.04;
+  k.disc(0.24, 0.04, nx, my, fz + 0.01, C.trim, 12, { ao: false });
+  k.ball(0.13, nx, my - 0.01, mzf + 0.02, 0x7ad8a8, 1, { s: [1, 1.15, 0.5], ao: false, top: 1.2 });
+  for (const s2 of [-1, 1]) k.ball(0.028, nx + s2 * 0.05, my + 0.02, mzf + 0.075, C.ember, 0, { glow: true });
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 6 - 0.5) * 2.6, bx = nx + Math.sin(a) * 0.12, by = my + Math.cos(a) * 0.12;
+    const ex = nx + Math.sin(a * 1.15) * 0.28, ey = my + Math.cos(a * 1.15) * 0.26;
+    k.limb([bx, by, mzf + 0.03], [ex, ey, mzf + 0.06], 0.025, 0.016, C.snake, 4, { ao: false });
+    k.ball(0.03, ex, ey, mzf + 0.07, 0x3aa878, 0, { ao: false });
+  }
   k.door(nx, 0.04, fz, 0.3, 0.42, 0, { c: 0x4c9a7a });
   // serpent columns flanking the door
   for (const s of [-1, 1]) {
@@ -756,7 +766,7 @@ function medusaChapel(up) {
   }
   // the stilled: petrified figures in the courtyard (pale grey with lilac shade)
   const figs = up ? [[-0.72, 0.55, 0.3, 'up'], [0.72, 0.55, -0.4, true], [-0.55, 0.85, -0.2, true], [0.5, 0.88, 0.5, 'up'], [-0.8, -0.2, 0.6, true]] : [[-0.68, 0.55, 0.3, 'up'], [0.7, 0.6, -0.4, true], [0.45, 0.88, 0.5, false]];
-  for (const [x, z, ry, arms] of figs) k.statue(x, 0.04, z, 0.45, C.statue, { ry, arms });
+  for (const [x, z, ry, arms] of figs) k.statue(x, 0.04, z, 0.6, C.statue, { ry, arms });
   // snake-head gargoyle finials on the roof
   k.at(nx, 0.04 + nh + 0.72, fz - 0.05, 0, 1, () => { k.ball(0.07, 0, 0.05, 0, C.snake, 1, { s: [1, 0.8, 1.3], ao: false }); k.crystal(0, 0.1, 0, 0.18, 0.04, C.cyan, { glow: true }); });
   k.banner(nx - 0.28, 0.82, fz + 0.01, 0.13, 0.34, 0, C.banner2, { em: C.vglow });
@@ -812,8 +822,7 @@ function labyrinth(up) {
     for (const s of [-1, 1]) k.sheet(3, 1, (u, v) => [s * (0.03 + u * 0.18), 0.62 + (v - 0.5) * (0.12 + u * 0.16), 0], C.trim, { ao: false });
   });
   for (const s of [-1, 1]) k.brazier(s * 0.25, 0.04, 0.98, 0.9, up ? C.lava : C.cyan);
-  k.banner(0.0, gh - 0.38, gz + 0.26, 0.0001, 0.0001, 0, C.banner, { emblem: false });
-  for (const s of [-1, 1]) k.flag(s * 0.85, 0.04 + wh, -0.85, 0.65, 0.35, 0.15, s < 0 ? C.banner : C.banner2, { dir: s, phase: s });
+  for (const s of [-1, 1]) k.flag(s * 0.85, 0.04 + wh, -0.85, 0.65, 0.35, 0.15, s < 0 ? C.banner : C.banner2, { dir: -s, phase: s });
   if (up) {
     for (const s of [-1, 1]) k.spire(s * 0.38, gz - 0.2, { r: 0.13, h: 1.35, roofH: 0.5, crown: false, wins: [[0, 0.7, 0.05, 0.12]] });
     k.cluster(0.62, 0.04, 0.35, 0.3, C.teal, { n: 3 });
@@ -828,9 +837,9 @@ function manticoreLair(up) {
   k.pad(2.4, 2.4);
   const lz = -0.3;
   // rocky den mound
-  k.rock(1.0, 0, 0, lz, C.rock, { s: [1.15, 1.05, 0.85], flat: true, seed: 61 });
-  k.rock(0.6, -0.8, 0, lz + 0.1, C.rockL, { s: [1, 1.1, 1], flat: true, seed: 62 });
-  k.rock(0.55, 0.85, 0, lz + 0.15, C.rockD, { s: [1, 1.2, 1], flat: true, seed: 63 });
+  k.rock(0.95, 0, 0, lz, C.rock, { s: [1.1, 1.3, 0.85], flat: true, seed: 61 });
+  k.rock(0.5, -0.72, 0, lz + 0.1, C.rockL, { s: [1, 1.4, 1], flat: true, seed: 62 });
+  k.rock(0.46, 0.75, 0, lz + 0.15, C.rockD, { s: [1, 1.5, 1], flat: true, seed: 63 });
   // cave mouth: a pointed masonry arch set into the rock
   const mz = lz + 0.78;
   k.box(0.95, 0.9, 0.22, 0, 0.04, mz - 0.08, C.stone, { top: 1.1 });
@@ -838,18 +847,22 @@ function manticoreLair(up) {
   k.door(0, 0.04, mz + 0.03, 0.48, 0.42, 0, { c: 0x6a4aa0, glowDoor: up ? C.lava : C.ember });
   for (const s of [-1, 1]) k.win(s * 0.38, 0.5, mz + 0.03, 0.07, 0.14, 0, { frame: false, mull: false, c: C.ember });
   // the great segmented tail arching over the den, ending in a stinger
-  const tc = up ? 0xe8703a : 0xc87a4a, n = 9;
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1), a = t * Math.PI * 1.05;
-    const x = 0.85 - Math.sin(a * 0.5) * 0.4 - t * 0.3, y = 0.55 + Math.sin(a) * 1.3 + t * 0.5, z = lz - 0.15 + t * 0.35;
-    k.ball(0.17 - t * 0.07, x, y, z, i % 2 ? tc : 0xd88e5a, 1, { s: [1, 0.85, 1], ao: false });
-    if (i === n - 1) {
-      k.ball(0.13, x - 0.05, y + 0.02, z + 0.05, tc, 1, { ao: false });
-      k.cone(0.06, 0.32, x - 0.1, y - 0.02, z + 0.1, up ? C.gold : C.bone, 5, { rz: 2.3, ao: false });
-      k.ball(0.04, x - 0.3, y - 0.18, z + 0.1, up ? C.lava : C.iris, 0, { glow: true });
-    }
-    if (!up && i > 1 && i < n - 1 && i % 2 === 0) k.cone(0.05, 0.18, x, y + 0.1, z, C.bone, 4, { ao: false }); // manticore spikes
+  const tc = up ? 0xe85a3a : 0xe0a060, tc2 = up ? 0xf08a4a : 0xf0bc78, n = 8, pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const th = -0.42 * Math.PI + t * 1.2 * Math.PI, R = 0.72 + t * 0.05;
+    pts.push([0.2 + Math.cos(th) * R, 1.42 + Math.sin(th) * R, lz - 0.2 + t * 0.6]);
   }
+  for (let i = 0; i < n; i++) {
+    const t = i / n, r1 = 0.15 - t * 0.07;
+    k.limb(pts[i], pts[i + 1], r1, r1 * 0.85, i % 2 ? tc : tc2, 7, { ao: false });
+    k.ball(r1 * 1.08, ...pts[i], i % 2 ? tc2 : tc, 1, { ao: false });
+    if (i > 0 && i % 2 === 0) k.cone(0.05, 0.2, pts[i][0], pts[i][1] + r1 * 0.8, pts[i][2], up ? C.gold : C.bone, 4, { ao: false });
+  }
+  const tp = pts[n];
+  k.ball(0.11, ...tp, tc, 1, { ao: false, s: [1, 1.2, 1] });
+  k.cone(0.07, 0.38, tp[0], tp[1] - 0.05, tp[2] + 0.02, up ? C.gold : C.bone, 5, { rz: 3.6, ao: false });
+  k.ball(0.045, tp[0] + 0.15, tp[1] - 0.38, tp[2] + 0.02, up ? C.lava : C.iris, 0, { glow: true });
   // bat-wing awnings on the arch
   for (const s of [-1, 1]) k.sheet(4, 2, (u, v) => [s * (0.42 + u * 0.55), 0.95 + Math.sin(u * 2.6) * 0.32 - v * (0.4 - u * 0.22), mz - 0.12 - u * 0.2], up ? 0xd85a4a : 0xb85a8a, { ao: false, top: 1.15, bot: 0.85 });
   // bones and skulls scattered in front
@@ -879,9 +892,9 @@ function dragonCave(up) {
   k.pad(2.8, 2.8);
   const cz = -0.35;
   // the mountain: big jittered rock heaps, lighter toward the top
-  k.rock(1.25, 0, 0, cz, C.rock, { s: [1.05, 1.45, 0.82], flat: true, seed: 71, amp: 0.18 });
-  k.rock(0.8, -0.85, 0, cz + 0.2, C.rockL, { s: [1, 1.2, 1], flat: true, seed: 72 });
-  k.rock(0.75, 0.9, 0, cz + 0.25, C.rockD, { s: [1, 1.3, 1], flat: true, seed: 73 });
+  k.rock(1.15, 0, 0, cz, C.rock, { s: [1.05, 1.75, 0.82], flat: true, seed: 71, amp: 0.18 });
+  k.rock(0.62, -0.72, 0, cz + 0.2, C.rockL, { s: [1, 1.5, 1], flat: true, seed: 72 });
+  k.rock(0.58, 0.75, 0, cz + 0.25, C.rockD, { s: [1, 1.6, 1], flat: true, seed: 73 });
   k.rock(0.55, 0.05, 1.75, cz - 0.15, C.rockL, { s: [0.9, 1.2, 0.8], seed: 74 });
   // peak spires
   k.cone(0.32, 1.3, -0.25, 2.1, cz - 0.2, C.rockL, 5, { top: 1.3, bot: 0.9, rz: 0.12 });

@@ -280,7 +280,7 @@ const HORNS = {
 function flame(k, p, s = 1, o = {}) {
   const c = o.cols ?? [FIRE_R, FIRE_O, FIRE_Y];
   k.at(p, o.r ?? [0, 0, 0], s, () => {
-    k.cone(0.1, 0.3, [0, -0.02, 0], c[0], { glow: true, seg: 5 });
+    k.cone(0.1, 0.3, [0, -0.02, 0], c[0], { glow: true, seg: 4 });
     k.cone(0.07, 0.4, [0.035, 0, 0], c[1], { glow: true, seg: 4, r: [0, 0, -0.28] });
     k.cone(0.07, 0.34, [-0.035, 0, -0.01], c[1], { glow: true, seg: 4, r: [0, 0, 0.32] });
     k.cone(0.055, 0.24, [0, 0.0, 0.05], c[2], { glow: true, seg: 4 });
@@ -319,17 +319,21 @@ function batWing(k, sh, o) {
     const m = pts[i - 1].clone().lerp(pts[i], 0.5).lerp(Wp, pull);
     E.push(m, pts[i]);
   }
-  const P = [];
+  // the sheet facing back (-z) is seen in shade by the player's own army: paint it lighter
+  const PF = [], PB = [];
   const tri = (a, b, c) => {
     const n = b.clone().sub(a).cross(c.clone().sub(a)).normalize().multiplyScalar(th);
-    P.push(...a.toArray(), ...b.toArray(), ...c.toArray());
-    const [a2, b2, c2] = [a, b, c].map((v) => v.clone().add(n));
-    P.push(...a2.toArray(), ...c2.toArray(), ...b2.toArray());
+    const [f, bk] = n.z >= 0 ? [PF, PB] : [PB, PF];
+    f.push(...a.toArray(), ...b.toArray(), ...c.toArray());
+    const [a2, b2, c2] = [a, b, c].map((v) => v.clone().sub(n)); // back sheet behind, facing -n
+    bk.push(...a2.toArray(), ...c2.toArray(), ...b2.toArray());
   };
   for (let i = 0; i < E.length - 1; i++) tri(Wp, E[i], E[i + 1]);
   tri(S, Wp, Lp);
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  k.add(g, col, { grad: o.grad ?? [0.85, 1.1], noise: 0.02 });
+  for (const [P, c] of [[PF, col], [PB, o.back ?? new THREE.Color(col).lerp(new THREE.Color(0xffc0a0), 0.35)]]) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    k.add(g, c, { grad: o.grad ?? [0.85, 1.1], noise: 0.02 });
+  }
 }
 // a spade-tipped devil tail on TAIL from root p through offsets
 function devilTail(k, p, segs, r, col, tipCol, spade = 1) {
@@ -404,7 +408,7 @@ function hound(k, x, z, yaw, s, U, FUR, FUR_D) {
       k.box(0.07, 0.03, 0.05, [0.05, h[1] + 0.065, h[2] + 0.085], FUR_D, { r: [0, 0.2, 0.4] });
       k.cone(0.045, 0.13, [0.06, h[1] + 0.08, h[2] - 0.04], FUR_D, { r: [-0.5, 0, -0.35], seg: 4 });
     });
-    flame(k, [0, h[1] + 0.06, h[2] - 0.08], U ? 0.55 : 0.5, { r: [-0.7, 0, 0] });
+    if (!U || x === 0) flame(k, [0, h[1] + 0.06, h[2] - 0.08], U ? 0.6 : 0.5, { r: [-0.7, 0, 0] });
   }));
 }
 function hellhound(U) {
@@ -425,15 +429,15 @@ function hellhound(U) {
     });
   }
   // fire crest along the spine
-  for (let i = 0; i < 3; i++) flame(k, [0, 0.6 - i * 0.01, 0.08 - i * 0.14], (U ? 0.62 : 0.55) - i * 0.06, { r: [-0.6, 0, 0] });
+  for (let i = 0; i < (U ? 2 : 3); i++) flame(k, [0, 0.6 - i * 0.01, (U ? 0.0 : 0.08) - i * 0.14], (U ? 0.66 : 0.55) - i * 0.06, { r: [-0.6, 0, 0] });
   // tail with a burning tip
   k.bone(BONE.TAIL, [0, 0.52, -0.36], () => {
     k.limb([0, 0.52, -0.36], [0, 0.6, -0.5], 0.04, 0.03, FUR_D);
     k.limb([0, 0.6, -0.5], [0, 0.72, -0.56], 0.03, 0.022, FUR_D);
     flame(k, [0, 0.74, -0.56], 0.55, { r: [-0.4, 0, 0] });
   });
-  if (U) { hound(k, 0, 0.27, 0, 0.92, U, FUR, FUR_D); hound(k, 0.15, 0.22, 0.45, 0.86, U, FUR, FUR_D); hound(k, -0.15, 0.22, -0.45, 0.86, U, FUR, FUR_D); }
-  else hound(k, 0, 0.27, 0, 1.1, U, FUR, FUR_D);
+  if (U) { hound(k, 0, 0.27, 0, 1.08, U, FUR, FUR_D); hound(k, 0.16, 0.22, 0.5, 1.0, U, FUR, FUR_D); hound(k, -0.16, 0.22, -0.5, 1.0, U, FUR, FUR_D); }
+  else hound(k, 0, 0.27, 0, 1.3, U, FUR, FUR_D);
   return k.done();
 }
 
@@ -474,7 +478,7 @@ function demon(U) {
 // staff crowned with a crescent and a second flame in her other hand.
 function succubus(U) {
   const k = makeKit(U ? 137 : 131);
-  const SKN = 0xffa08c, GOWN = U ? CRIMSON : 0xd8407e, GOWN_L = U ? 0xff6a7a : 0xf06a9a, HAIR = 0x8a2a6e, TRIM = U ? GOLD : 0xffb0d0;
+  const SKN = 0xffa08c, GOWN = U ? CRIMSON : 0xd8407e, GOWN_L = U ? 0xff6a7a : 0xf06a9a, HAIR = 0x6e2254, TRIM = U ? GOLD : 0xffb0d0;
   const { R, L } = figure(k, {
     robe: true, torso: GOWN, hips: GOWN, upper: SKN, fore: SKN, hand: SKN, belt: TRIM, armR: 0.056, foreR: 0.05, handR: 0.052,
     rh: U ? [0.26, 0.5, 0.12] : [0.24, 0.74, 0.18], lh: [-0.25, 0.48, 0.16], head: false,
@@ -503,7 +507,7 @@ function succubus(U) {
   });
   k.sym(() => k.bone(BONE.WING_R, [0.07, 0.66, -0.1], () => batWing(k, [0.07, 0.66, -0.1], {
     W: [0.2, 0.2, -0.08], F: U ? [[0.56, 0.48, -0.16], [0.62, 0.2, -0.2], [0.5, -0.08, -0.2], [0.3, -0.24, -0.14]] : [[0.46, 0.4, -0.14], [0.52, 0.16, -0.18], [0.4, -0.08, -0.16]],
-    low: [0.02, -0.3, -0.04], col: U ? 0xc23a8a : 0xb84a9a, edge: U ? GOLD : PLUM, r: 0.032,
+    low: [0.02, -0.3, -0.04], col: U ? 0xe0509a : 0xd860b0, edge: U ? GOLD : PLUM, r: 0.032,
   })));
   devilTail(k, [0, 0.42, -0.14], [[0, -0.14, -0.1], [0, -0.1, -0.14], [0, 0.04, -0.12]], 0.022, GOWN, TRIM, 1.0);
   if (U) {
@@ -557,8 +561,8 @@ function efreet(U) {
     devilHead(k, [0, HY + 0.01, 0.02], { skin: SK, brow: SK_D, s: 0.95, type: U ? null : 'up', hk: 0.9, hr: 0.034, horn: HORN, tip: HORN_D, mouth: FIRE_Y });
     if (U) { // turban
       k.ell(0.165, 0.11, 0.16, [0, HY + 0.1, 0.0], GOLD, { grad: [0.9, 1.12] });
-      k.ell(0.13, 0.08, 0.13, [0, HY + 0.18, -0.01], 0xfff0c8, {});
-      k.ball(0.04, [0, HY + 0.12, 0.155], CRIMSON, { glow: true, d: 0 });
+      k.ell(0.135, 0.09, 0.135, [0, HY + 0.17, -0.01], CRIMSON, { grad: [0.9, 1.15] });
+      k.ball(0.045, [0, HY + 0.12, 0.155], 0xff4a7a, { glow: true, d: 0 });
       flame(k, [0, HY + 0.22, -0.02], 0.55, { cols: FC });
     } else {
       flame(k, [0, HY + 0.12, -0.03], 0.62, { cols: FC });
@@ -587,7 +591,7 @@ function efreet(U) {
 // horned chanfron and spiked collar, taller yellow-white fire.
 function nightmare(U) {
   const k = makeKit(U ? 163 : 157, [0, 0.64, -0.03]);
-  const HORSE = 0x6e4870, HORSE_D = 0x5c3c60, HORSE_L = 0x8e6290;
+  const HORSE = 0x5e4664, HORSE_D = 0x503a56, HORSE_L = 0x7c5e80;
   const FC = U ? [ORANGE, 0xffc040, 0xfff4b0] : [FIRE_R, FIRE_O, FIRE_Y];
   k.ell(0.2, 0.2, 0.4, [0, 0.64, -0.03], HORSE, { grad: [0.8, 1.12] });
   k.ell(0.18, 0.21, 0.18, [0, 0.68, 0.24], HORSE, { grad: [0.85, 1.1] });
@@ -601,7 +605,7 @@ function nightmare(U) {
   });
   k.bone(BONE.HEAD, [0, 0.76, 0.3], () => {
     k.limb([0, 0.74, 0.3], [0, 1.0, 0.47], 0.125, 0.092, HORSE, { seg: 7 });
-    k.at([0, 1.02, 0.52], [0.95, 0, 0], 1, () => {
+    k.at([0, 1.02, 0.52], [0.95, 0, 0], 1.15, () => {
       k.ell(0.085, 0.092, 0.19, [0, 0, 0.09], HORSE_L, {});
       k.ell(0.074, 0.076, 0.08, [0, -0.015, 0.24], HORSE, {});
       k.sym(() => {
@@ -632,6 +636,10 @@ function nightmare(U) {
     k.sym(() => k.ell(0.02, 0.07, 0.07, [0.222, 0.58, -0.08], LAVA, { glow: true, d: 0 }));
   } else {
     k.ell(0.14, 0.03, 0.2, [0, 0.83, -0.06], RED_D, { grad: [1, 1] }); // a crimson saddle-blanket accent
+    k.sym(() => { // glowing lava cracks on the flanks
+      k.box(0.03, 0.2, 0.035, [0.19, 0.6, -0.12], LAVA, { glow: true, r: [0.5, 0, 0.12] });
+      k.box(0.03, 0.14, 0.035, [0.195, 0.62, 0.04], FIRE_O, { glow: true, r: [-0.6, 0, 0.1] });
+    });
   }
   return k.done();
 }
@@ -665,7 +673,7 @@ function devil(U) {
     });
     k.sym(() => k.bone(BONE.WING_R, [0.09, 0.66, -0.12], () => batWing(k, [0.09, 0.66, -0.12], {
       W: [0.24, 0.24, -0.1], F: U ? [[0.66, 0.58, -0.22], [0.76, 0.24, -0.26], [0.62, -0.1, -0.26], [0.38, -0.3, -0.2]] : [[0.56, 0.5, -0.2], [0.64, 0.2, -0.24], [0.52, -0.1, -0.24], [0.32, -0.28, -0.18]],
-      low: [0.02, -0.34, -0.04], col: U ? 0xc02a48 : 0xb83048, edge: U ? GOLD : PLUM, r: 0.04,
+      low: [0.02, -0.34, -0.04], col: U ? 0xdc3c56 : 0xd8485a, edge: U ? GOLD : PLUM, r: 0.04,
     })));
     devilTail(k, [0, 0.4, -0.12], [[0, -0.14, -0.12], [0, -0.06, -0.16], [0, 0.08, -0.1]], 0.032, SK_D, U ? GOLD : SK_D, 1.2);
     if (!U) {
@@ -696,11 +704,11 @@ function devil(U) {
         for (const x of [-0.12, 0, 0.12]) {
           k.limb([x, Lp - 0.12 + (x ? 0 : -0.12), 0], [x, Lp + (x ? 0.04 : 0.1), 0], 0.026, 0.022, GOLD_L, { seg: 4 });
           k.cone(0.04, 0.11, [x, Lp + (x ? 0.03 : 0.09), 0], GOLD_L, { seg: 4 });
-          flame(k, [x, Lp + (x ? 0.11 : 0.17), 0], 0.42);
+          if (!x) flame(k, [x, Lp + 0.17, 0], 0.55);
         }
         k.ball(0.045, [0, Lp - 0.12, 0.02], FIRE_O, { glow: true, d: 0 });
       }));
-      k.bone(BONE.ARM_L, SHL, () => { k.ball(0.07, [H.L[0], H.L[1] + 0.06, H.L[2]], FIRE_O, { glow: true, d: 1 }); flame(k, [H.L[0], H.L[1] + 0.08, H.L[2]], 0.6); });
+      k.bone(BONE.ARM_L, SHL, () => { k.ball(0.07, [H.L[0], H.L[1] + 0.06, H.L[2]], FIRE_O, { glow: true, d: 0 }); flame(k, [H.L[0], H.L[1] + 0.08, H.L[2]], 0.6); });
     }
   });
   return k.done();

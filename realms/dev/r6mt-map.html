@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8"><title>towns map</title>
+<style>body{margin:0;background:#0a0d1e}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "../../vendor/three.module.js" } }</script></head><body>
+<script type="module">
+import * as THREE from 'three';
+const { townModel, heroModel, flagModel } = await import('../models_towns.js?v=' + Date.now());
+import { makeBodyMaterial, makeGlowMaterial } from '../materials.js';
+const q = new URLSearchParams(location.search);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(+(q.get('dpr') || 1));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x6a9ad8);
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(3, 6, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
+Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 3, bottom: -3, near: 0.5, far: 30 });
+scene.add(sun, new THREE.HemisphereLight(0xbcd4ff, 0x3a3020, 0.8), new THREE.AmbientLight(0x404a70, 0.35));
+const bodyMat = makeBodyMaterial(THREE), glowMat = makeGlowMaterial(THREE);
+// hex tiles
+const hexG = new THREE.CylinderGeometry(0.2, 0.2, 0.06, 6).translate(0, -0.03, 0);
+for (let i = -10; i <= 10; i++) for (let j = -6; j <= 6; j++) {
+  const x = (i + (j & 1) * 0.5) * 0.35, z = j * 0.303;
+  const m = new THREE.Mesh(hexG, new THREE.MeshStandardMaterial({ color: (i + j) % 3 ? 0x6fb03a : 0x7cc044, flatShading: true }));
+  m.position.set(x, 0, z); m.rotation.y = Math.PI / 6; m.receiveShadow = true; scene.add(m);
+}
+function meshOf(m) { const g = new THREE.Group(); const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = b.receiveShadow = true; g.add(b); if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat)); return g; }
+const big = q.get('big') ? 1 / 0.4 : 1;
+const P = (m, x, z, s, ry = 0) => { const g = meshOf(m); g.position.set(x, 0, z); g.scale.setScalar(s * big); g.rotation.y = ry; scene.add(g); return g; };
+const F = ['haven', 'necro', 'sylvan', 'inferno', 'dungeon'], C = [0x3a7aff, 0xd83a3a, 0x3ac84a, 0xff7a1a, 0xa84ad8];
+F.forEach((f, i) => {
+  const x = (i - 2) * 0.62 * big, t = P(townModel(f), x, -0.35 * big, 0.4); const fl = meshOf(flagModel(C[i])); t.add(fl); fl.position.set(0.55, 0, 0.45); fl.scale.setScalar(0.6);
+  P(heroModel(f, C[i]), x - 0.12 * big, 0.45 * big, 0.22, 0.6);
+  P(heroModel(f, C[(i + 2) % 5]), x + 0.16 * big, 0.62 * big, 0.22, -2.3);
+});
+P(townModel('nope'), 1.9 * big, 0.5 * big, 0.25);
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 100);
+const d = +(q.get('d') || 2.2) * big, el = +(q.get('el') || 0.6), az = +(q.get('az') || 0);
+camera.position.set(Math.sin(az) * d * Math.cos(el), d * Math.sin(el), Math.cos(az) * d * Math.cos(el)); camera.lookAt(0, 0.1 * big, 0.15 * big);
+renderer.render(scene, camera);
+const tri = (m) => Math.round(m.body.attributes.position.count / 3 + (m.glow ? m.glow.attributes.position.count / 3 : 0));
+document.title = ['haven', 'necro', 'sylvan', 'inferno', 'dungeon'].map((f) => f + ' town ' + tri(townModel(f)) + ' hero ' + tri(heroModel(f, 0xff0000))).join(' / ') + ' flag ' + tri(flagModel(0xffffff));
+window.DONE = true;
+</script></body></html>

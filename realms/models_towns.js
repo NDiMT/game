@@ -426,7 +426,7 @@ function wallBanner(k, x, y, z, w, h, c, ph = 0) {
 // ------------------------------------------------------------------ R6: Sylvan
 // a giant tree rising from the middle of the town (the map-zoom silhouette), elven halls
 // with green and gold leaf roofs, pale-wood towers with leaf-dome caps, a living hedge wall
-const SY = { apron: 0x948e74, kerb: 0x645e4a, pave: 0xd2c294, wood: 0xd6a466, woodD: 0xa87444, bark: 0x9a6a40, barkL: 0xc08a54, hedge: 0x3e9e3a, leaf: 0x4cbc3c, leafL: 0x8ad84a, leafD: 0x34983a, gold: 0xffcf4a, goldLeaf: 0xf0c030, win: 0xffe08a, banner: 0x22b84a, plaster: 0xf6eccc };
+const SY = { apron: 0x948e74, kerb: 0x645e4a, pave: 0xd2c294, wood: 0xd6a466, woodD: 0xa87444, bark: 0x9a6a40, barkL: 0xc08a54, hedge: 0x3e9e3a, leaf: 0x3ca834, leafL: 0x66c43a, leafD: 0x2e8a34, gold: 0xffcf4a, goldLeaf: 0xf0c030, win: 0xffe08a, banner: 0x22b84a, plaster: 0xf6eccc };
 function sylvanTown() {
   const k = makeKit(31);
   apron(k, SY.apron, SY.kerb, SY.pave);
@@ -476,7 +476,7 @@ function sylvanTown() {
   // branches to the crown
   for (const [bx, by, bz] of [[-0.22, 0.86, -0.04], [0.22, 0.88, -0.08], [0.02, 0.84, 0.1], [-0.08, 0.95, -0.26]]) k.limb([tx, Y + 0.7, tz], [tx + bx * 0.85, Y + by, tz + bz * 0.85], 0.045, 0.025, SY.barkL, 5);
   const crown = [[0, 1.0, -0.06, 0.27, SY.leaf], [-0.21, 0.9, 0.0, 0.19, SY.leafL], [0.22, 0.92, -0.04, 0.2, SY.leaf], [0.04, 0.86, 0.15, 0.18, SY.leafL], [-0.12, 0.98, -0.24, 0.19, SY.leafD], [0.15, 1.1, -0.18, 0.16, SY.leafL], [0.0, 1.22, -0.06, 0.16, SY.goldLeaf], [-0.17, 1.12, -0.06, 0.13, SY.goldLeaf]];
-  for (const [x, y, z, r0, c] of crown) k.ball(r0, tx + x, Y + y, tz + z, c, 1, { s: [1, 0.86, 1], top: 1.35, bot: 0.7 });
+  for (const [x, y, z, r0, c] of crown) k.ball(r0, tx + x, Y + y, tz + z, c, 1, { s: [1, 0.86, 1], top: 1.2, bot: 0.68 });
   // fairy lanterns hanging under the crown
   for (const [x, y, z] of [[-0.2, 0.72, 0.08], [0.2, 0.74, 0.06], [0.08, 0.7, 0.22], [-0.06, 0.73, 0.2]]) k.ball(0.022, tx + x, Y + y, tz + z, SY.win, 0, { glow: true });
   // elven halls: tall cream halls with steep green / gold leaf roofs and a gold ridge
@@ -577,7 +577,7 @@ function infernoTown() {
 // ------------------------------------------------------------------ R6: Dungeon
 // violet stone towers capped with teal crystals, a cavern-mouth gate in a rocky mound,
 // a central warlock tower with a giant floating crystal, crags and glowing crystal clusters
-const DG = { apron: 0x8a8298, kerb: 0x5a5268, pave: 0xa298b2, stone: 0x845ac8, stoneD: 0x6440a8, stoneL: 0xb898ea, rock: 0x8a80a2, rockL: 0xb2a8c6, teal: 0x46f4e0, tealD: 0x22c0b8, mouth: 0x40305a, banner: 0xd23ab4, gold: 0xf0c450, cap: 0x2eb8b0 };
+const DG = { apron: 0x8a8298, kerb: 0x5a5268, pave: 0xa298b2, stone: 0x845ac8, stoneD: 0x6440a8, stoneL: 0xb898ea, rock: 0x8c74b0, rockL: 0xae98cc, teal: 0x46f4e0, tealD: 0x22c0b8, mouth: 0x40305a, banner: 0xd23ab4, gold: 0xf0c450, cap: 0x2eb8b0 };
 function dungeonTown() {
   const k = makeKit(35);
   apron(k, DG.apron, DG.kerb, DG.pave);
@@ -605,12 +605,13 @@ function dungeonTown() {
   }
   // the cavern gate: a rocky mound with a dark mouth, teal glow inside, stalactite teeth
   const gz = 0.48;
-  k.ball(1, 0, Y + 0.17, gz - 0.02, DG.rock, 1, { s: [0.22, 0.24, 0.13], top: 1.3, bot: 0.75 });
-  for (const s of [-1, 1]) k.ball(1, s * 0.16, Y + 0.08, gz, DG.rockL, 0, { s: [0.1, 0.13, 0.1], top: 1.25, bot: 0.8 });
-  k.ball(1, 0.05, Y + 0.36, gz - 0.04, DG.rockL, 0, { s: [0.12, 0.08, 0.09], top: 1.3 });
-  k.cyl(0.105, 0.105, 0.02, 0, Y - 0.01, gz + 0.1, DG.mouth, 10, { rx: Math.PI / 2, ao: false, top: 1, bot: 1 });
-  k.cyl(0.06, 0.06, 0.01, 0, Y + 0.0, gz + 0.115, DG.tealD, 8, { rx: Math.PI / 2, glow: true });
-  for (let i = 0; i < 5; i++) { const b = Math.PI * (0.2 + i * 0.15); k.cone(0.02, 0.05, Math.cos(b) * 0.095, Y + Math.sin(b) * 0.095 - 0.005, gz + 0.115, DG.rockL, 4, { rx: Math.PI }); }
+  k.ball(1, 0, Y + 0.1, gz - 0.03, DG.rock, 1, { s: [0.24, 0.24, 0.14], top: 1.35, bot: 0.8 });
+  for (const s of [-1, 1]) k.ball(1, s * 0.17, Y + 0.06, gz + 0.01, DG.rockL, 0, { s: [0.09, 0.15, 0.09], top: 1.25, bot: 0.8, rz: s * 0.3 });
+  k.cone(0.07, 0.16, 0.06, Y + 0.24, gz - 0.06, DG.rockL, 5, { top: 1.3, rz: -0.25 });
+  k.cone(0.06, 0.12, -0.08, Y + 0.24, gz - 0.07, DG.rock, 5, { top: 1.3, rz: 0.3 });
+  k.cyl(0.14, 0.14, 0.02, 0, Y + 0.02, gz + 0.1, DG.mouth, 12, { rx: Math.PI / 2 - 0.25, ao: false, top: 1, bot: 1 });
+  k.cyl(0.085, 0.085, 0.01, 0, Y + 0.025, gz + 0.114, DG.tealD, 10, { rx: Math.PI / 2 - 0.25, glow: true });
+  for (let i = 0; i < 5; i++) { const b = Math.PI * (0.2 + i * 0.15); k.cone(0.024, 0.06, Math.cos(b) * 0.13, Y + Math.sin(b) * 0.125 + 0.03, gz + 0.13, DG.rockL, 4, { rx: Math.PI }); }
   for (const s of [-1, 1]) for (const [dx, hh, t] of [[0, 0.16, 0], [0.04, 0.1, 0.4], [-0.035, 0.09, -0.4]]) k.gem(0.03, s * (0.25 + dx), Y + hh * 0.5, gz + 0.04, DG.teal, { glow: true, s: [1, hh / 0.06, 1], rz: t * s });
   // the warlock hall and its tower with a giant floating crystal
   const cz = -0.12;
@@ -890,7 +891,7 @@ function sylvanHero(k, col) {
 function infernoHero(k, col) {
   const IRON = 0x84606e, IROND = 0x644452, GOLD = 0xffc23a, SKIN = 0xe0442a, HORN = 0xf6e2b8, FIRE = 0xff8a1a, FIREY = 0xffd04a;
   horse(k, 0x5a3a44, 0x000000, 0x4a3038, { eyes: FIREY, flameMane: true });
-  k.bone(RIG.HEAD, HORSE_NECK, () => { for (let i = 0; i < 4; i++) { const t = i / 3; k.cone(0.058, 0.21 - t * 0.03, 0, 0.6 + t * 0.24, 0.08 + t * 0.17, i % 2 ? FIREY : FIRE, 4, { glow: true, rx: -0.85 }); } });
+  k.bone(RIG.HEAD, HORSE_NECK, () => { for (let i = 0; i < 4; i++) { const t = i / 3; k.cone(0.068, 0.27 - t * 0.04, 0, 0.6 + t * 0.24, 0.08 + t * 0.17, i % 2 ? FIRE : FIREY, 4, { glow: true, rx: -0.75 }); } });
   k.bone(RIG.TAIL, HORSE_TAIL, () => {
     k.cone(0.055, 0.28, 0, 0.5, -0.3, FIRE, 4, { glow: true, rx: -2.2 });
     k.cone(0.035, 0.18, 0, 0.42, -0.38, FIREY, 4, { glow: true, rx: -2.6 });

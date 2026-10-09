@@ -236,7 +236,7 @@ function makeKit(seed) {
         k.cone(0.03, 0.22, x, top - 0.02, z, C.gold, 4, { ao: false });
         top += 0.2;
       }
-      if (o.flag) k.flag(x, top - 0.05, z, o.flagH ?? 0.45, 0.5 * (o.flagH ?? 0.45) / 0.45, 0.2, o.flag === true ? C.banner2 : o.flag, { dir: o.flagDir ?? 1, phase: x });
+      if (o.flag) k.flag(x, top - 0.05, z, o.flagH ?? 0.45, 0.5 * (o.flagH ?? 0.45) / 0.45, 0.2, (typeof o.flag === 'number' && o.flag > 1) ? o.flag : C.banner2, { dir: o.flagDir ?? 1, phase: x });
       for (const [a, f, ww, wh] of (o.wins || [[0, 0.62, 0.1, 0.2]])) k.winCyl(x, z, rr * 0.93, a, y + h * f, ww, wh);
       return top;
     },
@@ -573,7 +573,6 @@ function mageGuild(lvl) {
     k.tor(orb * 1.6, 0.014, 0, y + 0.12 + orb, 0, C.gold, TAU, { rx: 0.5, ry: 0.8, ao: false, rs: 14 });
     for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.4; k.ball(0.06, Math.sin(a) * 0.6, 2.5 + (i % 2) * 0.45, Math.cos(a) * 0.6, i % 2 ? C.lavaH : C.pink, 0, { glow: true, s: [0.7, 1.4, 0.7] }); }
   }
-  for (const s of [-1, 1]) { const a = s * 0.55; k.banner(Math.sin(a) * 0.42, 1.08, Math.cos(a) * 0.42, 0.13, 0.4, a, C.banner); }
   for (const s of [-1, 1]) k.brazier(s * 0.6, 0.04, 0.6, 0.55);
   return finish(k);
 }
@@ -618,9 +617,9 @@ function crucible(up) {
 function kennels(up) {
   const k = makeKit(220 + up);
   k.pad(1.8, 1.8);
-  const w = up ? 1.5 : 1.35, h = 0.6, z0 = -0.25, d = 0.85;
+  const w = up ? 1.5 : 1.35, h = 0.75, z0 = -0.25, d = 0.85;
   k.block(w, h, d, 0, 0.04, z0, C.stone2, { cornice: true });
-  k.gable(w, 0.45, d, 0, 0.04 + h, z0, C.roof, C.stone2);
+  k.gable(w, 0.6, d, 0, 0.04 + h, z0, C.roof, C.stone2);
   const fz = z0 + d / 2;
   const n = up ? 3 : 2;
   for (let i = 0; i < n; i++) {
@@ -633,7 +632,7 @@ function kennels(up) {
     for (const s of [-1, 1]) k.ball(0.028, x + s * 0.05, 0.22, fz + 0.04, C.lavaH, 0, { glow: true, s: [1.4, 0.8, 1] });
     k.tor(0.17, 0.035, x, 0.34, fz + 0.03, C.trim, Math.PI, { rs: 8 });
     // hound head keystone
-    k.at(x, 0.52, fz + 0.04, 0, 1, () => {
+    k.at(x, 0.6, fz + 0.04, 0, 1.3, () => {
       k.box(0.14, 0.1, 0.14, 0, 0, 0, C.stone, { top: 1.2 });
       k.box(0.08, 0.06, 0.1, 0, 0.0, 0.1, C.stone, { top: 1.2 });
       for (const s of [-1, 1]) { k.cone(0.03, 0.1, s * 0.05, 0.08, -0.02, C.stone, 4, { rz: -s * 0.4 }); k.ball(0.018, s * 0.035, 0.06, 0.07, C.lavaH, 0, { glow: true }); }
@@ -651,10 +650,10 @@ function kennels(up) {
   }
   k.brazier(0, 0.04, 0.42, 0.55);
   // side watchtower
-  k.tower(w / 2 + 0.12, z0 - 0.15, { r: 0.22, h: up ? 1.35 : 1.1, roofH: 0.5, flag: up, horns: up, wins: [[0, 0.55, 0.08, 0.16]] });
+  k.tower(w / 2 + 0.12, z0 - 0.15, { r: 0.24, h: up ? 1.75 : 1.5, roofH: 0.55, flag: up, horns: up, wins: [[0, 0.55, 0.08, 0.16]] });
   if (up) {
     // three hound heads on the ridge (cerberus)
-    for (let i = -1; i <= 1; i++) k.at(i * 0.24, 1.0 - Math.abs(i) * 0.04, z0 + 0.15, i * 0.35, 1.2, () => {
+    for (let i = -1; i <= 1; i++) k.at(i * 0.3, 1.25 - Math.abs(i) * 0.06, z0 + 0.2, i * 0.4, 1.7, () => {
       k.box(0.14, 0.12, 0.16, 0, 0, 0, C.dark, { top: 1.3 });
       k.box(0.09, 0.07, 0.12, 0, 0.0, 0.12, C.darkL, { top: 1.2 });
       for (const s of [-1, 1]) { k.cone(0.035, 0.12, s * 0.055, 0.1, -0.02, C.darkL, 4, { rz: -s * 0.35 }); k.ball(0.02, s * 0.04, 0.08, 0.08, C.lavaH, 0, { glow: true }); }
@@ -710,7 +709,7 @@ function hallOfSins(up) {
   const k = makeKit(240 + up);
   k.pad(2.0, 2.0);
   const z0 = -0.25, w = up ? 1.5 : 1.3, h = up ? 0.95 : 0.85, d = 0.95;
-  k.block(w, h, d, 0, 0.04, z0, C.pinkS);
+  k.block(w, h, d, 0, 0.04, z0, C.stoneL);
   const fz = z0 + d / 2;
   // crescent-arched colonnade
   const nc = up ? 6 : 4;
@@ -723,13 +722,13 @@ function hallOfSins(up) {
   for (let i = 0; i < nc - 1; i++) { const x = ((i + 0.5) / (nc - 1) - 0.5) * (w - 0.1); k.win(x, 0.3, fz, 0.13, 0.36, 0, { c: C.pink, frame: C.gold }); }
   // onion-ish dome roof in plum with gold ribs and horn spike
   const dome = [];
-  for (let i = 0; i <= 7; i++) { const t = i / 7; dome.push([(w * 0.42) * Math.sin(Math.PI * (0.15 + t * 0.85)) * (1 - t * 0.35), t * 0.85]); }
+  for (let i = 0; i <= 7; i++) { const t = i / 7; dome.push([(w * 0.33) * Math.sin(Math.PI * (0.18 + t * 0.82)) * (1 - t * 0.45) + 0.02, t * 0.8]); }
   dome.push([0, 0.95]);
-  k.lathe([[w * 0.36, 0], [w * 0.36, 0.2]], 0, 0.04 + h + 0.12, z0, C.pinkS, 8);
-  k.lathe(dome, 0, 0.04 + h + 0.32, z0, C.plum, 8, { top: 1.35, bot: 0.85, ao: false });
-  k.cone(0.03, 0.35, 0, 0.04 + h + 1.22, z0, C.gold, 4);
-  k.horns(0, 0.04 + h + 0.95, z0 + 0.12, 0.38, 0.05, C.gold, { gap: 0.08, fwd: 0.3 });
-  for (let i = -1; i <= 1; i++) k.winCyl(0, z0, w * 0.36, i * 0.8, h + 0.18, 0.08, 0.12, { c: C.pink, frame: false });
+  k.lathe([[w * 0.3, 0], [w * 0.3, 0.2]], 0, 0.04 + h + 0.12, z0, C.trim, 8);
+  k.lathe(dome, 0, 0.04 + h + 0.32, z0, C.plum, 10, { top: 1.35, bot: 0.85, ao: false });
+  k.cone(0.03, 0.35, 0, 0.04 + h + 1.12, z0, C.gold, 4);
+  k.horns(0, 0.04 + h + 0.7, z0 + 0.1, 0.38, 0.05, C.gold, { gap: 0.08, fwd: 0.3 });
+  for (let i = -1; i <= 1; i++) k.winCyl(0, z0, w * 0.3, i * 0.8, h + 0.18, 0.08, 0.12, { c: C.pink, frame: false });
   // heart-shaped sigil (two balls + cone) over the door
   k.at(0, h + 0.35, fz + 0.21, 0, 1, () => {
     for (const s of [-1, 1]) k.ball(0.07, s * 0.05, 0.03, 0, C.pink, 1, { glow: true, s: [1, 1, 0.4] });
@@ -815,15 +814,15 @@ function stables(up) {
     k.box(0.32, 0.22, 0.04, x, 0.04, fz + 0.02, C.woodD, { ao: false });
     k.box(0.36, 0.04, 0.05, x, 0.54, fz + 0.02, C.gold, { ao: false });
     // horse head (dark violet) with flaming mane and eyes
-    k.at(x, 0.3, fz + 0.05, 0, 1, () => {
-      k.limb([0, 0, 0], [0, 0.12, 0.06], 0.06, 0.055, 0x6e3a5a, 6);
-      k.box(0.09, 0.08, 0.2, 0, 0.1, 0.13, 0x6e3a5a, { rx: 0.5, top: 1.3 });
-      for (const s of [-1, 1]) { k.ball(0.016, s * 0.045, 0.16, 0.1, C.lavaH, 0, { glow: true }); k.cone(0.02, 0.07, s * 0.03, 0.19, 0.02, 0x6e3a5a, 4); }
+    k.at(x, 0.26, fz + 0.05, 0, 1.5, () => {
+      k.limb([0, 0, 0], [0, 0.12, 0.06], 0.06, 0.055, 0x7e4468, 6);
+      k.box(0.09, 0.08, 0.2, 0, 0.1, 0.13, 0x7e4468, { rx: 0.5, top: 1.3 });
+      for (const s of [-1, 1]) { k.ball(0.016, s * 0.045, 0.16, 0.1, C.lavaH, 0, { glow: true }); k.cone(0.02, 0.07, s * 0.03, 0.19, 0.02, 0x7e4468, 4); }
       k.flame(0, 0.12, -0.02, 0.45);
     });
   }
   // hayloft gable with horseshoe emblem
-  k.tor(0.13, 0.035, 0, 1.04, fz + 0.02, C.gold, Math.PI * 1.4, { rz: -0.7 * Math.PI + Math.PI, ao: false });
+  k.tor(0.13, 0.035, 0, 1.04, fz + 0.02, C.gold, Math.PI * 1.4, { rz: 0.8 * Math.PI, ao: false });
   k.disc(0.07, 0.02, 0, 1.0, fz + 0.01, C.lava, 8, { glow: true });
   // fiery paddock fence with spikes
   for (let i = 0; i < 7; i++) {
@@ -840,9 +839,9 @@ function stables(up) {
     // rearing nightmare statue on a plinth by the entrance
     k.box(0.36, 0.3, 0.36, -0.7, 0.04, 0.3, C.stone2, { top: 1.1 });
     k.at(-0.7, 0.34, 0.3, 0.6, 1.1, () => {
-      k.ball(0.14, 0, 0.28, 0, 0x6e3a5a, 1, { s: [0.8, 1.4, 1] });
-      k.box(0.09, 0.1, 0.2, 0, 0.55, 0.12, 0x6e3a5a, { rx: 0.7, top: 1.3 });
-      for (const s of [-1, 1]) { k.limb([s * 0.05, 0.05, -0.05], [s * 0.06, 0.0, -0.12], 0.035, 0.03, 0x6e3a5a, 5); k.limb([s * 0.05, 0.32, 0.1], [s * 0.06, 0.22, 0.26], 0.03, 0.025, 0x6e3a5a, 5); }
+      k.ball(0.14, 0, 0.28, 0, 0x7e4468, 1, { s: [0.8, 1.4, 1] });
+      k.box(0.09, 0.1, 0.2, 0, 0.55, 0.12, 0x7e4468, { rx: 0.7, top: 1.3 });
+      for (const s of [-1, 1]) { k.limb([s * 0.05, 0.05, -0.05], [s * 0.06, 0.0, -0.12], 0.035, 0.03, 0x7e4468, 5); k.limb([s * 0.05, 0.32, 0.1], [s * 0.06, 0.22, 0.26], 0.03, 0.025, 0x7e4468, 5); }
       k.flame(0, 0.42, -0.04, 0.6);
     });
     k.banner(0, 0.72, fz + 0.01, 0.2, 0.4, 0, C.banner);

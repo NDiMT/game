@@ -93,7 +93,10 @@ async function real(spec) {
   const [kind, id] = spec.split(':');
   try {
     if (kind === 'haven') return (await import('../units_haven.js' + V)).havenModel(id);
+    if (kind === 'inferno') return (await import('../units_inferno.js' + V)).infernoModel(id);
+    if (kind === 'dungeon') return (await import('../units_dungeon.js' + V)).dungeonModel(id);
     if (kind === 'necro') return (await import('../units_necro.js' + V)).necroModel(id);
+    if (kind === 'sylvan') return (await import('../units_sylvan.js' + V)).sylvanModel(id);
     if (kind === 'neutral') return (await import('../units_neutral.js' + V)).neutralModel(id);
     if (kind === 'hero') return (await import('../models_towns.js' + V)).heroModel(id);
     if (kind === 'town') return (await import('../models_towns.js' + V)).townModel(id);

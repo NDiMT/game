@@ -1,11 +1,11 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Inferno readability</title>
+<title>Dungeon creatures</title>
 <style>html,body{margin:0;background:#2c3440;color:#fff;font:11px sans-serif}canvas{display:block}
 .lab{position:absolute;color:#fff;text-shadow:0 1px 2px #000;white-space:nowrap;pointer-events:none}
 .sec{position:absolute;left:6px;color:#ffe08a;font:bold 12px sans-serif;text-shadow:0 1px 2px #000}</style>
 <script type="importmap">{"imports":{"three":"../../vendor/three.module.js"}}</script></head>
 <body><script type="module">
-// Round 6 preview: every Inferno creature and its upgrade from the battle camera
+// Round 6 preview: every Dungeon creature and its upgrade from the battle camera
 // angle (~46 deg down), front and back, at phone sizes (tier 1 ~40 px and true
 // battle scale ~67-95 px) plus a large view. Uses the game's materials, ink hull
 // and unit fitting, so what you see here is what the battle shows.
@@ -13,13 +13,13 @@ import * as THREE from 'three';
 const v = '?v=' + Date.now();
 const q = new URLSearchParams(location.search);
 const src = q.get('src') || '..';
-const { infernoModel, INFERNO_BASE_IDS, INFERNO_UP_IDS } = await import(src + '/units_inferno.js' + v);
+const { dungeonModel, DUNGEON_BASE_IDS, DUNGEON_UP_IDS } = await import(src + '/units_dungeon.js' + v);
 const { makeBodyMaterial, makeGlowMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, tick } = await import('../materials.js' + v);
 const { unitFit, applyFit } = await import('../unit_fit.js' + v);
 
 const W = 1300, FOV = 30, TAN = Math.tan(THREE.MathUtils.degToRad(FOV / 2)), ELEV = THREE.MathUtils.degToRad(46);
 const GAME_PPU = 109, HULL_PX = +(q.get('hull') ?? 5.3);
-const base = INFERNO_BASE_IDS, ups = INFERNO_UP_IDS, all = [...base, ...ups];
+const base = DUNGEON_BASE_IDS, ups = DUNGEON_UP_IDS, all = [...base, ...ups];
 // sections: [title, ids, cellW, cellH, pxPerUnit, yaws]
 const S = [
   ['~40 px (tier 1 = 40 px): front row, back row', all, 92, 92, 65, [0, Math.PI]],
@@ -45,11 +45,11 @@ const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshSta
 const bodyMat = makeBodyMaterial(THREE), glowMat = makeGlowMaterial(THREE), inkMat = makeInkHullMaterial(THREE), blobMat = makeBlobShadowMaterial(THREE), blobGeo = blobShadowGeometry(THREE);
 const groups = {}, info = [];
 for (const id of all) {
-  const m = infernoModel(id);
+  const m = dungeonModel(id);
   const g = new THREE.Group();
   const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = b.receiveShadow = true; g.add(b);
   if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
-  if (!q.get('nohull')) g.add(new THREE.Mesh(m.body, inkMat));
+  g.add(new THREE.Mesh(m.body, inkMat));
   const fit = unitFit(id, m, 'battle', { nocache: true }); applyFit(g, fit);
   const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(0.42 / fit.scale); bl.renderOrder = -1; g.add(bl);
   g.visible = false; scene.add(g); groups[id] = g;

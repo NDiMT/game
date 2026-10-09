@@ -160,7 +160,8 @@ const PAL = {
     dots: ['rgba(250,230,140,0.55)', 'rgba(240,250,220,0.45)', 'rgba(230,180,220,0.4)', 'rgba(90,130,64,0.4)'],
     cloud: 0xfffaf0, cloudShade: [214, 214, 196], dust: 0xd8cca0, smoke: 0xf0f0e4, birds: 0x4a5a40, banner: [0x2a9a40, 0xf0c848],
     stars: 0,
-    groundTune: { shade: 0xa8b0d8, lift: 0.24, toe: 0.45, sat: 0.92 },
+    groundTune: { shade: 0xa8b0d8, lift: 0.22, toe: 0.45, sat: 0.84 },
+    lamp: [0xffe080, 0xfff4b0, 0.42, 0.65],
     seed: 31, groundMode: 'meadow', bumpy: 0.15, groundVar: [0.95, 0.1],
     clouds: { n: 8, wispy: false, opacity: 0.85, w: 240, aspect: 0.48, y: 10, seeds: [12, 14] },
     mtnSeed: 41, mtnSpike: 'soft', snow: false, mtnH: 0.85,
@@ -172,17 +173,19 @@ const PAL = {
   },
   inferno: {
     // a volcanic land kept BRIGHT: an orange-gold sky glow, warm red rock, glowing lava rivers, rising embers
-    zenith: 0xb8483a, mid: 0xec8a4c, horizon: 0xffd890, below: 0xd89a74, sunCol: 0xffd070, fog: 0xf2b888, fogNear: 70, fogFar: 1000,
-    sunDir: [0.5, 0.4, 0.5], lightDir: [0.45, 0.78, 0.45], shadowI: 0.75, shadowR: 2, sun: 0xffd8a8, sunI: 2.9, hemiSky: 0xffc8a0, hemiGround: 0x9a5a3a, hemiI: 1.0, amb: 0xffe0c8, ambI: 0.3,
+    zenith: 0xb03c30, mid: 0xe8783c, horizon: 0xffc878, below: 0xd08a64, sunCol: 0xffd070, fog: 0xeea47a, fogNear: 90, fogFar: 1150,
+    sunDir: [0.5, 0.4, 0.5], lightDir: [0.45, 0.78, 0.45], shadowI: 0.75, shadowR: 2, sun: 0xffd8a8, sunI: 2.9, hemiSky: 0xf4c8bc, hemiGround: 0x8a5a4a, hemiI: 0.95, amb: 0xffe4d8, ambI: 0.28,
     // calm warm-ochre / red rock floor with large soft ashy patches (lifted: never charcoal)
-    grass: [0xa8705a, 0x9a6a54, 0xc49070, 0x8e6656], ash: 0x8a7064, bank: 0x6e4a40, field: [0xa87460, 0x9a6a58, 0xb48268, 0x946c5c],
-    mtn: [0x8e5446, 0xb46e56, 0xf0b88a], hill: 0x9a6250,
-    water: [0xff5a14, 0xffa838, 0xfff0a0], waterSky: 0xffb860, waterGlow: 1, crust: 0.5, crustCol: 0x8a2c1a,
+    // muted maroon-grey basalt and ash (red buildings and orange lava must pop off it), warmer red rock further out
+    grass: [0x8a625a, 0x7a5852, 0x9e7868, 0x6e5050], ash: 0x6c5654, bank: 0x5e3a34, field: [0x8a5e50, 0x7e5a50, 0x946a5a, 0x7a5850],
+    mtn: [0x8a4a3c, 0xb0644a, 0xf0b07a], hill: 0x92583e,
+    water: [0xe03c0a, 0xff7a1c, 0xffc050], waterSky: 0xff7020, waterGlow: 0.3, crust: 0.7, crustCol: 0x7a2614,
     path: '#d8b494', pathEdge: '#9a6a52', stone: ['#c49c80', '#e0bc9c', '#b08870'], pad: 'rgba(90,50,40,0.22)',
     dots: ['rgba(255,170,90,0.45)', 'rgba(230,200,170,0.45)', 'rgba(150,90,70,0.4)', 'rgba(255,210,120,0.4)'],
     cloud: 0xffe4c8, cloudShade: [220, 150, 120], dust: 0xd8a888, smoke: 0xe8c8b8, birds: 0x6a2a24, banner: [0xd0281c, 0xf8b830],
     stars: 0,
-    groundTune: { shade: 0xc08890, lift: 0.22, toe: 0.3, detail: 0.85, sat: 0.92 }, sceneryTune: { shade: 0xc07890, lift: 0.2, toe: 0.4 },
+    groundTune: { shade: 0xb87888, lift: 0.2, toe: 0.3, detail: 0.85, sat: 1.0 }, sceneryTune: { shade: 0xc07890, lift: 0.2, toe: 0.4 },
+    lamp: [0xff9a40, 0xffd070, 0.55, 0.9],
     seed: 47, groundMode: 'moor', bumpy: 0.5, groundVar: [0.92, 0.14],
     clouds: { n: 10, wispy: true, opacity: 0.6, w: 360, aspect: 0.3, y: 20, seeds: [16, 18] },
     mtnSeed: 53, mtnSpike: 'spiky', snow: false, mtnH: 1.05,
@@ -194,17 +197,18 @@ const PAL = {
   },
   dungeon: {
     // a vast bright cavern: violet rock, teal crystal light, giant mushrooms and a glowing waterfall
-    zenith: 0x4a3a8e, mid: 0x7c62b8, horizon: 0xb8e2ea, below: 0x9a8cbc, sunCol: 0x9af4ff, fog: 0xb4b4dc, fogNear: 60, fogFar: 900,
-    sunDir: [0.1, 0.7, -0.6], lightDir: [-0.3, 0.85, 0.4], shadowI: 0.7, shadowR: 3, sun: 0xeee4ff, sunI: 2.7, hemiSky: 0xc4c0f4, hemiGround: 0x6e7a8a, hemiI: 1.05, amb: 0xe4e0ff, ambI: 0.3,
+    zenith: 0x4a3a8e, mid: 0x7c62b8, horizon: 0xa8dce6, below: 0x8a7cb0, sunCol: 0x9af4ff, fog: 0x9c98cc, fogNear: 90, fogFar: 1100,
+    sunDir: [0.1, 0.7, -0.6], lightDir: [-0.3, 0.85, 0.4], shadowI: 0.7, shadowR: 3, sun: 0xeee4ff, sunI: 2.7, hemiSky: 0xbcb8f0, hemiGround: 0x5e6a80, hemiI: 0.95, amb: 0xe0dcff, ambI: 0.26,
     cave: true, rock: [0x5a4a96, 0x8a74c4], starCol: [0.55, 1.0, 0.95],
-    grass: [0x8e86a6, 0x7e7c9c, 0xa8a0bc, 0x6e8c94], ash: 0x76749a, bank: 0x8c8ca8, field: [0x7a9094, 0x8a82a4, 0x6e8a8c, 0x9488aa],
+    grass: [0x625a86, 0x56527a, 0x766e98, 0x4c6a7a], ash: 0x4e4a78, bank: 0x6a6a90, field: [0x56707a, 0x645c88, 0x4c6a74, 0x6c6290],
     mtn: [0x6e5ea0, 0x8a78bc, 0xb8a8e0], hill: 0x7a729c,
     water: [0x1a8aa0, 0x4ae0d0, 0xc8fff4], waterSky: 0xa8a0e0, waterGlow: 0.5,
     path: '#c8c0d4', pathEdge: '#8e86a4', stone: ['#b0a8c4', '#d4cce0', '#a098b4'], pad: 'rgba(60,50,90,0.2)',
     dots: ['rgba(120,240,220,0.45)', 'rgba(200,170,240,0.45)', 'rgba(140,200,190,0.4)', 'rgba(230,220,240,0.45)'],
     cloud: 0xe8f4ff, cloudShade: [180, 170, 220], dust: 0xc8c0d8, smoke: 0xd8d4ee, birds: 0x4a3a6a, banner: [0x7a2ab8, 0x5ae6d6],
     stars: 1,
-    groundTune: { shade: 0xa098d8, lift: 0.22, toe: 0.3, detail: 0.85 }, sceneryTune: { shade: 0x9890d8, lift: 0.2, toe: 0.4 },
+    groundTune: { shade: 0x8078c8, lift: 0.14, toe: 0.3, detail: 0.85, sat: 1.1 }, sceneryTune: { shade: 0x9890d8, lift: 0.2, toe: 0.4 },
+    lamp: [0x5af0e0, 0xa0fff4, 0.45, 0.8], mist: { c: 0xdcf4ff, n: 14, o: 0.26 },
     seed: 59, groundMode: 'moor', bumpy: 0.5, groundVar: [0.92, 0.14],
     clouds: { n: 0 },
     mtnSeed: 61, mtnSpike: 'cave', snow: false, mtnH: 1.6,
@@ -474,7 +478,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
     float az = atan(d.x, d.z) * 9.0; float fi = floor(az), fr = fract(az);
     float sp = pow(1.0 - abs(fr * 2.0 - 1.0), 2.5) * (0.35 + 0.65 * h21(vec2(fi, 3.0)));
     float az2 = az * 2.7; float sp2 = pow(1.0 - abs(fract(az2) * 2.0 - 1.0), 3.0) * h21(vec2(floor(az2), 7.0));
-    float edge = 0.5 + 0.06 * sin(az * 0.37) + 0.05 * sin(az * 0.13 + 1.0) - sp * 0.2 - sp2 * 0.08;
+    float edge = 0.32 + 0.05 * sin(az * 0.37) + 0.04 * sin(az * 0.13 + 1.0) - sp * 0.16 - sp2 * 0.06;
     float roof = smoothstep(edge - 0.004, edge + 0.004, y);
     vec3 rc = mix(rk1, rk0, smoothstep(edge, edge + 0.3, y));
     rc += vec3(0.35, 0.9, 0.85) * 0.35 * (1.0 - smoothstep(edge, edge + 0.035, y));
@@ -686,7 +690,7 @@ void main() {
   c = mix(c, sky, 0.25 + fres * 0.55);
   c += (fl - 0.5) * 0.12 * (1.0 + glow * 2.0) * shal;
   float sp = pow(vn(vW.xz * 2.2 + vec2(uTime * 0.6, -uTime * 0.25)) * vn(vW.xz * 3.1 - vec2(uTime * 0.4, uTime * 0.5)), 5.0);
-  c += vec3(1.0, 0.98, 0.9) * sp * 5.0 * (1.0 - glow * 0.6);
+  c += vec3(1.0, 0.98, 0.9) * sp * 5.0 * (1.0 - glow * 0.6) * (1.0 - crust);
   float fo = smoothstep(0.32, 0.0, e + (vn(vec2(vUv.x * 1.5 - uTime * 0.3, vUv.y * 9.0)) - 0.5) * 0.25);
   c = mix(c, foam, fo * 0.75);
   c += shal * glow * 0.4 * (0.6 + 0.4 * sin(uTime * 1.3 + vUv.x * 0.2));
@@ -696,7 +700,7 @@ void main() {
     float n = vn(q) * 0.65 + vn(q * 2.3 + 5.0) * 0.35;
     float plate = smoothstep(0.5, 0.62, n) * smoothstep(0.05, 0.3, e);
     c = mix(c, crustC, plate * crust);
-    c += vec3(1.0, 0.85, 0.4) * smoothstep(0.08, 0.0, abs(n - 0.5)) * 0.6 * crust;
+    c += vec3(1.0, 0.75, 0.3) * smoothstep(0.08, 0.0, abs(n - 0.5)) * 0.3 * crust;
   }
   gl_FragColor = vec4(c, 1.0);
   #include <tonemapping_fragment>
@@ -1006,6 +1010,177 @@ void main() {
               }
             }
           }
+        }
+      } else if (fac === 'sylvan') {
+        cottage(12, -8, -0.4); cottage(15, -4.5, -0.8, 0.85); cottage(-12.5, 3.5, 0.6, 0.9);
+        // an elven stone circle with glowing runes on the left hill (where Haven's windmill stands)
+        const cx = -14.5, cz = -9, cy = at(cx, cz) - 0.15;
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * 6.283 + 0.3, x = cx + Math.cos(a) * 2.2, z = cz + Math.sin(a) * 1.7, h = 1.3 + R() * 0.6, y = at(x, z) - 0.15;
+          k.add(new T.BoxGeometry(0.45, h, 0.3).translate(0, h / 2, 0).rotateY(-a).rotateZ((R() - 0.5) * 0.12).translate(x, y, z), [0xa0a490, 0xd8dcc8]);
+          k.add(new T.BoxGeometry(0.47, 0.12, 0.32).translate(0, h, 0).rotateY(-a).translate(x, y, z), [0x5e9a48, 0x7ab85a]);
+          k.add(new T.BoxGeometry(0.1, 0.3, 0.02).translate(0, h * 0.55, 0.16).rotateY(-a + Math.PI / 2).translate(x, y, z), 0xc8ff80, true);
+        }
+        k.add(new T.CylinderGeometry(0.5, 0.65, 0.5, 8).translate(cx, cy + 0.25, cz), [0xa8ac98, 0xd0d4c0]);
+        k.add(new T.OctahedronGeometry(0.28, 0).scale(1, 1.6, 1).translate(cx, cy + 0.95, cz), 0xd8ffa0, true);
+        env.lanterns.push([cx, cy + 0.95, cz]);
+        // mossy rocks, red-capped toadstools and flowering bushes at the edges
+        rocks(12, [0x8c9480, 0xb8c4a4]);
+        for (let i = 0; i < 26; i++) {
+          const x = (R() - 0.5) * 36, z = -R() * 22 + 7;
+          if (flatD(x, z) < 1.12 || (z > 2 && Math.abs(x) < 8.5) || riverDist(x, z) < riverWidth(x, z) / 2 + 1.2) continue;
+          const y = at(x, z);
+          if (R() < 0.45) { // toadstool pair
+            for (const [dx, dz, sc] of [[0, 0, 1], [0.22, 0.12, 0.65]]) {
+              k.add(new T.CylinderGeometry(0.05 * sc, 0.07 * sc, 0.3 * sc, 6).translate(x + dx, y + 0.15 * sc, z + dz), [0xe8dcc4, 0xfff6e8]);
+              k.add(new T.SphereGeometry(0.2 * sc, 8, 4, 0, 6.283, 0, Math.PI / 2).scale(1, 0.6, 1).translate(x + dx, y + 0.28 * sc, z + dz), [0xc83a2a, 0xe8583a]);
+            }
+          } else { // a flowering bush
+            const fc = R() < 0.5 ? 0xf0d8f0 : 0xfff0a0;
+            k.add(new T.IcosahedronGeometry(0.42, 0).scale(1.2, 0.7, 1).translate(x, y + 0.2, z), (px, py, pz, c) => c.set(0x4a7e44).lerp(col(fc), py - y > 0.42 ? 0.55 : 0));
+          }
+        }
+        // elven lamps: slim wooden posts with a golden leaf lantern
+        for (const [x, z, s2] of LAMPS) {
+          const y = lowAt(x, z, 0.15) - 0.1, h = 1.35 * s2;
+          k.cyl(0.04, 0.07, h, x, y, z, [0x7a5a3a, 0xa88458], 6);
+          k.add(new T.ConeGeometry(0.16, 0.16, 6).rotateX(Math.PI).translate(x, y + h + 0.02, z), [0x4a8a40, 0x7ab85a]);
+          k.add(new T.OctahedronGeometry(0.1, 0).scale(1, 1.4, 1).translate(x, y + h - 0.12, z), 0xffe890, true);
+          env.lanterns.push([x, y + h - 0.12, z]);
+        }
+        // golden light shafts slanting through the canopy
+        const shaftTex = canvasTex(64, 256, (g, w, h) => {
+          const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,240,180,0)'); gr.addColorStop(0.25, 'rgba(255,236,170,0.55)'); gr.addColorStop(1, 'rgba(255,230,160,0)');
+          g.fillStyle = gr; g.fillRect(0, 0, w, h);
+          g.globalCompositeOperation = 'destination-in';
+          const gx = g.createLinearGradient(0, 0, w, 0); gx.addColorStop(0, 'rgba(0,0,0,0)'); gx.addColorStop(0.5, 'rgba(0,0,0,1)'); gx.addColorStop(1, 'rgba(0,0,0,0)');
+          g.fillStyle = gx; g.fillRect(0, 0, w, h);
+        });
+        const shaftMat = keep(new T.MeshBasicMaterial({ map: shaftTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.32, side: T.DoubleSide, fog: false }));
+        const shafts = [];
+        for (const [x, z, w2, h2] of [[-17, -16, 3.2, 16], [19, -18, 3.6, 18], [-10, -22, 2.4, 14], [28, -30, 4, 20], [-28, -28, 4, 20]]) {
+          const m = new T.Mesh(keep(new T.PlaneGeometry(w2, h2)), shaftMat);
+          m.position.set(x, at(x, z) + h2 * 0.42, z); m.rotation.z = -0.38; m.renderOrder = 6;
+          G.add(m); shafts.push(m);
+        }
+        env.updaters.push((dt, t) => { shaftMat.opacity = 0.26 + 0.06 * Math.sin(t * 0.5); });
+        // calm fern tufts at the foreground edges
+        const rf = rng32(78);
+        for (let i = 0; i < 70; i++) {
+          const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13, x = side * (1.6 + Math.pow(rf(), 1.4) * (z < 7 ? 4 : 2.6));
+          if (LAMPS.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6) || Math.hypot(x - 5.7 * side, z - 4) < 0.6) continue;
+          const y = at(x, z), ry = rf() * 6.3, n = 4 + ((rf() * 3) | 0), tc = rf() < 0.5 ? [0x4e8040, 0x80aa5a] : [0x5a8a46, 0x8ab060];
+          for (let b = 0; b < n; b++) { const a = ry + b * 1.3, hb = 0.18 + rf() * 0.16; k.add(new T.ConeGeometry(0.05, hb, 3).scale(1, 1, 0.4).translate(0, hb / 2, 0).rotateX(0.5 + rf() * 0.4).rotateY(a).translate(x, y - 0.02, z), tc); }
+        }
+      } else if (fac === 'inferno') {
+        cottage(12.5, -8, -0.4); cottage(-12, 3, 0.5, 0.9);
+        // a great volcano on the horizon with a glowing crater, lava runs and a smoke plume
+        {
+          const vx = -95, vz = -440, vr = 105, vh = 130, vy = at(vx, vz) - 4;
+          const cone = new T.CylinderGeometry(vr * 0.16, vr, vh, 28, 6, true);
+          const vp = cone.attributes.position;
+          for (let i = 0; i < vp.count; i++) { const x = vp.getX(i), z = vp.getZ(i), y = vp.getY(i), a = Math.atan2(z, x); const s2 = 1 + (vnoise(Math.cos(a) * 3 + 5, Math.sin(a) * 3 + y * 0.02, 5) - 0.5) * 0.22; vp.setX(i, x * s2); vp.setZ(i, z * s2); }
+          k.add(cone.translate(vx, vy + vh / 2, vz), (px, py, pz, c) => c.set(0x8a4a3c).lerp(col(0xc07a5e), clamp((py - vy) / vh, 0, 1)));
+          k.add(new T.CylinderGeometry(vr * 0.155, vr * 0.155, 2, 24).translate(vx, vy + vh - 3, vz), 0xffb040, true);
+          for (let i = 0; i < 6; i++) {
+            const a = -1.9 + i * 0.36 + (R() - 0.5) * 0.15, L = vh * (0.55 + R() * 0.35);
+            const pts = [];
+            for (let j = 0; j <= 8; j++) { const t = j / 8, r2 = lerp(vr * 0.17, vr * 0.17 + (vr * 0.83) * (L / vh), t), ww = Math.sin(t * 9 + i) * 0.08; pts.push(new V3(vx + Math.cos(a + ww) * r2, vy + vh - t * L - 0.5, vz + Math.sin(a + ww) * r2)); }
+            const tube = new T.TubeGeometry(new T.CatmullRomCurve3(pts), 16, 1.3 - i * 0.1, 4, false);
+            k.add(tube, 0xff7a20, true);
+          }
+          const plumeTex = cloudTexture([200, 140, 120], false, 21);
+          for (let i = 0; i < 4; i++) {
+            const pm = new T.Sprite(keep(new T.SpriteMaterial({ map: plumeTex, color: col(0xffd8c0), transparent: true, depthWrite: false, opacity: 0.75 - i * 0.12, fog: false })));
+            pm.position.set(vx + i * 26, vy + vh + 22 + i * 34, vz - 10); pm.scale.set(120 + i * 55, 70 + i * 24, 1); pm.renderOrder = -8;
+            G.add(pm);
+          }
+        }
+        // braziers along the road: a red-rock pedestal, a gold-rimmed bowl and a living flame
+        for (const [x, z, s2] of LAMPS) {
+          const y = lowAt(x, z, 0.15) - 0.1, h = 1.05 * s2;
+          k.cyl(0.12, 0.18, h, x, y, z, [0x8a4a3a, 0xc07658], 6);
+          k.cyl(0.24, 0.12, 0.18, x, y + h, z, [0xb08030, 0xf0c050], 8);
+          k.add(new T.ConeGeometry(0.14, 0.4, 6).translate(x, y + h + 0.32, z), 0xffa030, true);
+          env.lanterns.push([x, y + h + 0.3, z]);
+        }
+        // glowing lava pools rimmed with red rock, steaming
+        for (const [x, z, r] of [[-10.5, 4.2, 0.9], [11, 5, 1.0], [-16, -3.5, 1.3], [15.5, -2.5, 1.1], [-8, -12, 1.2], [9, -12.5, 1.0]]) {
+          if (riverDist(x, z) < riverWidth(x, z) / 2 + 1.5) continue;
+          const y = lowAt(x, z, r);
+          k.add(new T.CircleGeometry(r, 12).rotateX(-Math.PI / 2).translate(x, y + 0.04, z), 0xff8a2a, true);
+          for (let i = 0; i < 9; i++) { const a = (i / 9) * 6.283 + R() * 0.3; k.add(new T.IcosahedronGeometry(0.18 + R() * 0.16, 0).scale(1, 0.6, 1).translate(x + Math.cos(a) * r * 1.05, y + 0.02, z + Math.sin(a) * r * 1.05), [0x7e4636, 0xb06a50]); }
+          smokers.push([x, y + 0.3, z]);
+        }
+        rocks(16, [0x8e5444, 0xc08066]);
+        // calm foreground: flat red-rock slabs and small ember cracks at the edges
+        const rf = rng32(79);
+        for (let i = 0; i < 90; i++) {
+          const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13, x = side * (1.4 + Math.pow(rf(), 1.4) * (z < 7 ? 4.2 : 2.6));
+          if (LAMPS.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6) || Math.hypot(x - 5.7 * side, z - 4) < 0.6) continue;
+          const y = at(x, z), ry = rf() * 6.3;
+          if (rf() < 0.2) k.add(new T.BoxGeometry(0.05, 0.02, 0.4 + rf() * 0.4).rotateY(ry).translate(x, y + 0.005, z), 0xff8a30, true);
+          else { const r = 0.1 + rf() * 0.18; k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x8a5a48, 0xaa7458]); }
+        }
+      } else if (fac === 'dungeon') {
+        // crystal clusters: violet rock bases with tall teal / violet shards (the small ones glow)
+        const cluster = (x, z, s2, glowC = 0x5af0e0) => {
+          const y = at(x, z);
+          k.add(new T.IcosahedronGeometry(0.55 * s2, 0).scale(1.4, 0.4, 1.1).translate(x, y - 0.05 * s2, z), [0x5e4e8e, 0x8a7ab8]);
+          for (let i = 0; i < 6; i++) {
+            const a = R() * 6.283, r = R() * 0.45 * s2, h = (0.7 + R() * 1.3) * s2, w = (0.13 + R() * 0.08) * s2;
+            const g = new T.OctahedronGeometry(1, 0).scale(w, h / 2, w).translate(0, h * 0.4, 0).rotateZ((R() - 0.5) * 0.9).rotateY(a).translate(x + Math.cos(a) * r, y, z + Math.sin(a) * r);
+            if (i < 2) k.add(g, glowC, true); else k.add(g, glowC === 0x5af0e0 ? [0x0aa8b8, 0x7affef] : [0x8a3ad8, 0xd8a0ff]);
+          }
+          env.lanterns.push([x, y + 0.7 * s2, z]);
+        };
+        for (const [x, z, s2, c] of [[-14.5, -9, 1.6], [12.5, -8, 1.3, 0xd0a0ff], [-12, 3, 1.1], [13, 2, 1.2], [-20, -2, 1.4, 0xd0a0ff], [20, -4, 1.5], [-8.5, -13, 1.0], [8, -13.5, 1.1, 0xd0a0ff],
+          [-30, -38, 3.2], [34, -44, 3.6, 0xd0a0ff], [-48, -70, 5], [52, -80, 5.5]]) cluster(x, z, s2, c);
+        // a glowing waterfall pouring from the cavern wall
+        {
+          const wx = 26, wz = -62, wy = at(wx, wz) - 1, wh = 34, ww = 5;
+          for (let i = 0; i < 26; i++) {
+            const dx = (R() - 0.5) * 26, dy = R() * (wh + 6), r = 3 + R() * 4;
+            k.add(new T.IcosahedronGeometry(r, 0).scale(1, 1.2, 0.8).translate(wx + dx + Math.sign(dx || 1) * (ww * 0.5 + r * 0.55), wy + dy, wz - 3 - R() * 3), [0x6a5a98, 0x9a88c8]);
+          }
+          k.add(new T.BoxGeometry(ww + 6, 4, 6).translate(wx, wy + wh + 1, wz - 4), [0x7a6aa8, 0xa898d0]);
+          const fallTex = canvasTex(64, 256, (g, w, h) => {
+            g.fillStyle = 'rgb(120,220,230)'; g.fillRect(0, 0, w, h);
+            const r = rng32(17);
+            for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(240,255,255,${0.25 + r() * 0.5})`; g.fillRect(r() * w, r() * h, 1 + r() * 3, 18 + r() * 60); }
+          });
+          fallTex.wrapS = fallTex.wrapT = T.RepeatWrapping;
+          const fallMat = keep(new T.MeshBasicMaterial({ map: fallTex, transparent: true, opacity: 0.92, fog: true, toneMapped: false }));
+          fallMat.color.setScalar(1.15);
+          const fall = new T.Mesh(keep(new T.PlaneGeometry(ww, wh + 1, 1, 6).translate(0, (wh + 1) / 2, 0)), fallMat);
+          fall.position.set(wx, wy, wz); G.add(fall);
+          env.updaters.push((dt) => { fallTex.offset.y += dt * 0.9; });
+          k.add(new T.CircleGeometry(ww * 0.95, 14).scale(1.4, 1, 1).rotateX(-Math.PI / 2).translate(wx, wy + 0.6, wz + 2), 0x7af0f0, true);
+          const spray = [];
+          for (let i = 0; i < 5; i++) {
+            const m = new T.Sprite(keep(new T.SpriteMaterial({ map: mistTex, color: col(0xe8ffff), transparent: true, depthWrite: false, opacity: 0.55 })));
+            m.position.set(wx + (i - 2) * 2.5, wy + 2 + R() * 2, wz + 2.5); m.scale.set(12, 5, 1); G.add(m); spray.push([m, R() * 6]);
+          }
+          env.updaters.push((dt, t) => { for (const [m, ph] of spray) m.material.opacity = 0.4 + 0.15 * Math.sin(t * 0.9 + ph); });
+        }
+        // mushroom lamps along the road
+        for (const [x, z, s2] of LAMPS) {
+          const y = lowAt(x, z, 0.15) - 0.1, h = 1.2 * s2;
+          k.cyl(0.05, 0.09, h, x, y, z, [0xb8acd0, 0xe8e0f4], 6);
+          k.add(new T.SphereGeometry(0.24, 8, 4, 0, 6.283, 0, Math.PI / 2).scale(1, 0.6, 1).translate(x, y + h, z), [0x7a4ab8, 0xb07ae0]);
+          k.add(new T.CylinderGeometry(0.22, 0.06, 0.05, 8).translate(x, y + h - 0.03, z), 0x6af0e0, true);
+          env.lanterns.push([x, y + h - 0.1, z]);
+        }
+        rocks(14, [0x7e74a0, 0xaaa0c8]);
+        // calm foreground: violet pebbles, small crystal sprouts and pale cave moss at the edges
+        const rf = rng32(80);
+        for (let i = 0; i < 90; i++) {
+          const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13, x = side * (1.4 + Math.pow(rf(), 1.4) * (z < 7 ? 4.2 : 2.6));
+          if (LAMPS.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6) || Math.hypot(x - 5.7 * side, z - 4) < 0.6) continue;
+          const y = at(x, z), ry = rf() * 6.3, kind = rf();
+          if (kind < 0.18) { const h = 0.2 + rf() * 0.2; k.add(new T.OctahedronGeometry(1, 0).scale(0.06, h / 2, 0.06).translate(0, h * 0.4, 0).rotateZ((rf() - 0.5) * 0.6).rotateY(ry).translate(x, y, z), [0x3aa0b0, 0x9af4ee]); }
+          else if (kind < 0.6) { const r = 0.1 + rf() * 0.16; k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x8a80a4, 0xa69ec0]); }
+          else { const r = 0.25 + rf() * 0.2; k.add(new T.IcosahedronGeometry(r, 0).scale(1.4, 0.18, 1).rotateY(ry).translate(x, y - 0.01, z), [0x6e9a98, 0x88b0ac]); }
         }
       }
       // banner poles along the main road and by the lots
