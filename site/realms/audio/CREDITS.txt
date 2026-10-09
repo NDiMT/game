@@ -1,0 +1,49 @@
+ORBIS: Five Crowns - orchestral samples
+=======================================
+
+The instrument samples in this folder (*.bin) come from the FluidR3_GM
+General MIDI SoundFont by Frank Wen (fluid@pdq.net), released under the
+MIT License. They were taken from the per-note MP3 renderings repackaged
+by Benjamin Gleitzman in https://github.com/gleitz/midi-js-soundfonts
+(FluidR3_GM, gh-pages branch), also MIT licensed.
+
+Only a subset of notes is kept (every 3rd or 4th semitone; music.js
+pitch-shifts to the neighbouring notes). Each .bin file packs the
+original, unmodified MP3 notes of one instrument:
+
+  uint32 LE  header length H
+  H bytes    UTF-8 JSON {"notes": [[midi, offset, length], ...]}
+  ...        MP3 data; note i = bytes [4 + H + offset, 4 + H + offset + length)
+
+File          FluidR3_GM instrument
+strings.bin   string_ensemble_1   cello.bin    cello
+horn.bin      french_horn         brass.bin    brass_section
+harp.bin      orchestral_harp     choir.bin    choir_aahs
+flute.bin     flute               oboe.bin     oboe
+celesta.bin   celesta             glock.bin    glockenspiel
+bells.bin     tubular_bells       timpani.bin  timpani
+taiko.bin     taiko_drum          pizz.bin     pizzicato_strings
+
+----------------------------------------------------------------------
+The MIT License (MIT)
+
+Copyright (c) 2000-2002, 2008, 2012 Frank Wen <fluid@pdq.net>
+Copyright (c) 2014 Benjamin Gleitzman (gleitz@mit.edu)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
