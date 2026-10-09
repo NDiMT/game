@@ -1084,7 +1084,7 @@ void main() {
           k.add(cone.translate(vx, vy + vh / 2, vz), (px, py, pz, c) => c.set(0x6e2a20).lerp(col(0xa04a34), clamp((py - vy) / vh, 0, 1)));
           k.add(new T.CylinderGeometry(vr * 0.155, vr * 0.155, 2, 24).translate(vx, vy + vh - 3, vz), 0xffb040, true);
           for (let i = 0; i < 6; i++) {
-            const a = -1.9 + i * 0.36 + (R() - 0.5) * 0.15, L = vh * (0.55 + R() * 0.35);
+            const a = 0.75 + i * 0.32 + (R() - 0.5) * 0.15, L = vh * (0.55 + R() * 0.35); // on the camera-facing (+z) flank
             const pts = [];
             for (let j = 0; j <= 8; j++) { const t = j / 8, r2 = lerp(vr * 0.17, vr * 0.17 + (vr * 0.83) * (L / vh), t), ww = Math.sin(t * 9 + i) * 0.08; pts.push(new V3(vx + Math.cos(a + ww) * r2, vy + vh - t * L - 0.5, vz + Math.sin(a + ww) * r2)); }
             const tube = new T.TubeGeometry(new T.CatmullRomCurve3(pts), 16, 2.6 - i * 0.2, 4, false);
@@ -1147,7 +1147,7 @@ void main() {
             const n = fbm(x * 0.12 + 3, y * 0.12, 3, 41) - 0.5;
             cp.setXYZ(i, x + n * 3, y + (y > 0 ? n * 6 - (Math.abs(x) < 4 ? 3 : 0) : 0), z + n * 5 + (z > 0 ? -Math.abs(x) * 0.12 : 0));
           }
-          k.add(cl.translate(wx, wy + (wh + 10) / 2 - 3, wz - 5.2), (px, py, pz, c) => c.set(0x54468a).lerp(col(0x9a88c8), clamp((py - wy) / (wh + 6), 0, 1)));
+          k.add(cl.translate(wx, wy + (wh + 10) / 2 - 3, wz - 5.2), (px, py, pz, c) => c.set(0x6a5c9c).lerp(col(0xa090cc), clamp((py - wy) / (wh + 6), 0, 1)));
           const fallTex = canvasTex(64, 256, (g, w, h) => {
             g.fillStyle = 'rgb(120,220,230)'; g.fillRect(0, 0, w, h);
             const r = rng32(17);
