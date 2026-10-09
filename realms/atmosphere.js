@@ -15,8 +15,9 @@ vec3 grade(vec3 c) {
   float lift = 1.0 + 0.2 * (1.0 - smoothstep(0.02, 0.4, l)) * smoothstep(0.0, 0.03, l);
   c *= lift;
   l *= lift;
-  // richer colour: stronger in the mids, gentler in the deep shadows and highlights (no neon clipping)
-  float sat = 1.1 + 0.14 * smoothstep(0.03, 0.25, l) * (1.0 - smoothstep(0.9, 2.2, l));
+  // near-neutral saturation: the ground stays calm, objects carry their own boost in the body material;
+  // a small lift in the mids only, so nothing turns dull (no neon clipping in the highlights)
+  float sat = 1.0 + 0.08 * smoothstep(0.03, 0.25, l) * (1.0 - smoothstep(0.9, 2.2, l));
   c = max(mix(vec3(l), c, sat), 0.0);
   // coloured shadows: a violet-blue veil instead of black, warm golden light
   float sh = 1.0 - smoothstep(0.0, 0.22, l);
@@ -62,7 +63,7 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         // close in (uSunK < 1) the disc shrinks and the glare softens so castle silhouettes stay crisp
         float dr = mix(0.6, 1.0, uSunK);
         float disc = smoothstep(0.022 * dr, 0.012 * dr, ang) * mix(0.55, 1.2, uSunK);
-        float corona = (exp(-ang * 26.0 / dr) * 0.6 + exp(-ang * 8.0 / dr) * 0.18) * mix(0.45, 1.0, uSunK);
+        float corona = (exp(-ang * 36.0 / dr) * 0.45 + exp(-ang * 11.0 / dr) * 0.13) * mix(0.45, 1.0, uSunK);
         float wash = exp(-ang * 2.5) * 0.035;
         // god-rays: angular streaks around the sun that slowly turn and breathe
         vec3 t = d - uVis * cs;
@@ -70,7 +71,7 @@ export function createAtmosphere(THREE, scene, opts = {}) {
         float r1 = 0.5 + 0.5 * sin(a * 9.0 + uTime * 0.05) * sin(a * 14.0 - uTime * 0.035 + 1.7);
         float r2 = 0.5 + 0.5 * sin(a * 23.0 + uTime * 0.02 + 0.6);
         float rays = (r1 * r1 * r1 * 0.8 + r2 * r2 * r2 * r2 * 0.35) * (0.8 + 0.2 * sin(uTime * 0.3));
-        rays *= exp(-ang * 10.0) * smoothstep(0.02, 0.07, ang) * 0.2 * mix(0.5, 1.0, uSunK);
+        rays *= exp(-ang * 14.0) * smoothstep(0.02, 0.06, ang) * 0.14 * mix(0.5, 1.0, uSunK);
         c += vec3(1.0, 0.88, 0.66) * disc + vec3(1.0, 0.74, 0.42) * corona + vec3(0.9, 0.5, 0.55) * wash
            + vec3(1.0, 0.82, 0.55) * rays;
         gl_FragColor = vec4(c, 1.0);
