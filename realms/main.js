@@ -2553,6 +2553,6 @@ window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G,
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
 Object.assign(window.__realms, { quality: QG.state, renderer });
 // battle test hooks (battle-flow logs / soft-lock runs): fast-forward the battle without rendering
-Object.assign(window.__realms, { get bmesh() { return bmesh; }, get banim() { return banim; }, bstep: (dt) => { animateBattle(dt); vfx.update(dt, bcam); } });
+Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get bmesh() { return bmesh; }, get banim() { return banim; }, bstep: (dt) => { animateBattle(dt); vfx.update(dt, bcam); } }));
 // geometry cache: idle warm-up hook + stats (models, triangles, CPU-side MB of vertex data)
 Object.assign(window.__realms, { warmGeometryIdle, warmQueue: () => warmQ.length, geoStats: () => { let tris = 0, bytes = 0; for (const m of geoCache.values()) for (const g of [m?.body, m?.glow]) if (g?.attributes?.position) { tris += g.attributes.position.count / 3; for (const a of Object.values(g.attributes)) bytes += a.array.byteLength; } return { models: geoCache.size, tris: Math.round(tris), mb: +(bytes / 1048576).toFixed(1) }; } });
