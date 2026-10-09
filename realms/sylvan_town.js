@@ -47,12 +47,12 @@ const C = {
   bark: 0xb27a42, barkL: 0xcc955a, barkD: 0x956034,
   wood: 0xe2b070, woodL: 0xf0ca8e, woodD: 0xb27c48, door: 0x9a6a3e,
   stone: 0xe8e0c8, stone2: 0xd2c9aa, moss: 0x8fcc52, mossD: 0x6cb240,
-  roof: 0x45b845, roofL: 0x86dc5a, roofD: 0x34a040,
-  gold: 0xffc63a, goldD: 0xe0a428, goldL: 0xffe27a, goldLeaf: 0xf6c838, goldLeafL: 0xffe070,
-  leaf: 0x58bf3e, leafL: 0x8ee25c, leafY: 0xc6e04a, silverLeaf: 0xa8e47a,
+  roof: 0x45b845, roofL: 0x76cc4e, roofD: 0x34a040,
+  gold: 0xffc63a, goldD: 0xe0a428, goldL: 0xffe27a, goldLeaf: 0xe6b02c, goldLeafL: 0xf0c84a,
+  leaf: 0x58bf3e, leafL: 0x80d452, leafY: 0xc6e04a, silverLeaf: 0x9ad868,
   win: 0xffe08a, lamp: 0xfff0a0, fairy: 0xdcff9a, magic: 0x8ff4ff, water: 0x7fe0ff, waterG: 0xc8fbff,
   banner: 0x2fb84a, bannerL: 0x46d060, white: 0xffffff, marble: 0xf6f3ea, silver: 0xe6eef6, pearl: 0xf6e8ff,
-  rock: 0xd8bc8e, rockL: 0xeed8ae, rockD: 0xb8966c, grass: 0x8fd055, path: 0xeadcb0, pave: 0xd9d0b0,
+  rock: 0xd8b07e, rockL: 0xe8c898, rockD: 0xb88c62, grass: 0x8fd055, path: 0xeadcb0, pave: 0xd9d0b0,
   hay: 0xf2d462, red: 0xe8483a, pink: 0xff9ac8, steel: 0xdfe6f0, mine: 0x8a5a3a, emberG: 0xffa848,
 };
 
@@ -146,7 +146,7 @@ function makeKit(seed) {
     // dome of overlapping pointed leaves (the Rampart roof); returns apex y
     leafDome(rad, h, x, y, z, o = {}) {
       const n = o.n || 8, c1 = o.c || C.roof, c2 = o.c2 || C.roofL, ph = o.phi || 0, ext = o.ext ?? 1.14;
-      k.lathe([[rad * 0.96, 0], [rad * 0.88, h * 0.32], [rad * 0.62, h * 0.68], [rad * 0.26, h * 0.92], [0, h]], x, y, z, o.cb || C.roofD, n, { top: 1.15, bot: 0.85, ao: false, phi: ph });
+      k.lathe([[rad * 0.96, 0], [rad * 0.88, h * 0.32], [rad * 0.62, h * 0.68], [rad * 0.26, h * 0.92], [0, h]], x, y, z, o.cb || C.roofD, n, { top: 1.04, bot: 0.85, ao: false, phi: ph });
       for (let i = 0; i < n; i++) {
         const a = ph + (i + 0.5) / n * TAU;
         k.sheet(2, 5, (u, v) => {
@@ -158,7 +158,7 @@ function makeKit(seed) {
           const ang = a + (u - 0.5) * 2 * wdt;
           const lift = 0.015 + (1 - Math.abs(u - 0.5) * 2) * rad * 0.07 * Math.sin(Math.PI * v);
           return [x + Math.sin(ang) * (rr + lift), y + yy + lift * 0.4, z + Math.cos(ang) * (rr + lift)];
-        }, i % 2 ? c2 : c1, { ao: false, shade: (u, v) => 1.16 - v * 0.26 + (1 - Math.abs(u - 0.5) * 2) * 0.1, thick: 0.014 });
+        }, i % 2 ? c2 : c1, { ao: false, shade: (u, v) => 1.04 - v * 0.2 + (1 - Math.abs(u - 0.5) * 2) * 0.08, thick: 0.014 });
       }
       let top = y + h;
       if (o.finial !== false) {
@@ -187,7 +187,7 @@ function makeKit(seed) {
             const ww = hw * Math.pow(Math.sin(Math.PI * Math.min(v * 0.92 + 0.08, 0.999)), 0.6);
             const lift = 0.018 + (1 - Math.abs(u - 0.5) * 2) * 0.03;
             return [cx + (u - 0.5) * 2 * ww, h * (1 - t) + lift - (t > 1 ? (t - 1) * h * 0.4 : 0), s * t * D];
-          }, (i + (s > 0 ? 0 : 1)) % 2 ? (o.c2 || C.roofL) : (o.c || C.roof), { ao: false, shade: (u, v) => 1.14 - v * 0.24 + (1 - Math.abs(u - 0.5) * 2) * 0.08 });
+          }, (i + (s > 0 ? 0 : 1)) % 2 ? (o.c2 || C.roofL) : (o.c || C.roof), { ao: false, shade: (u, v) => 1.04 - v * 0.2 + (1 - Math.abs(u - 0.5) * 2) * 0.07 });
         }
         k.limb([-W - 0.04, h + 0.03, 0], [W + 0.04, h + 0.03, 0], 0.04, 0.04, o.ridge || C.barkL, 5, { ao: false });
         for (const s of [-1, 1]) k.cone(0.035, 0.16, s * (W + 0.03), h + 0.05, 0, C.gold, 5, { ao: false, rz: -s * 0.4 });
@@ -248,7 +248,7 @@ function makeKit(seed) {
     canopy(x, y, z, rad, o = {}) {
       const g = jitter(new THREE.IcosahedronGeometry(1, 1), 0.28, o.seed || 7);
       g.scale(rad, rad * (o.sy || 0.86), rad);
-      add(g.translate(x, y, z), o.c || C.leaf, { top: 1.32, bot: 0.78, ao: false, j: 0.06 });
+      add(g.translate(x, y, z), o.c || C.leaf, { top: 1.14, bot: 0.8, ao: false, j: 0.06 });
     },
     // giant living tree; returns the canopy top y
     bigTree(x, z, o = {}) {
