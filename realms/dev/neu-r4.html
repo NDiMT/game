@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Neutral Readability</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #2a3040; color: #eee; font: 600 12px system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  #info { position: fixed; left: 6px; top: 4px; pointer-events: none; white-space: pre; font-size: 11px; text-shadow: 0 1px 2px #000; }
+</style>
+<script type="importmap">{ "imports": { "three": "../../vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="info"></div>
+<script type="module">
+// Round 4 readability sheet: big turntable-angle views on top, then rows at 90 px and 40 px
+// tall on four terrain colours, then black silhouettes at 32 px. Orthographic, map-like pitch.
+import * as THREE from 'three';
+const { neutralModel, NEUTRAL_IDS } = await import('../units_neutral.js?v=' + Date.now());
+import { makeBodyMaterial, makeGlowMaterial, tick } from '../materials.js';
+const Q = new URLSearchParams(location.search);
+const ids = Q.get('id') ? Q.get('id').split(',') : NEUTRAL_IDS;
+const yaw = Q.has('a') ? +Q.get('a') : 0.55;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(1);
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(4, 10, 6);
+scene.add(sun, new THREE.HemisphereLight(0xcfe0ff, 0x4a3a2a, 0.9), new THREE.AmbientLight(0x404a70, 0.3));
+const bodyMat = makeBodyMaterial(THREE), glowMat = makeGlowMaterial(THREE);
+const silMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+const models = {}; let info = '';
+for (const id of ids) {
+  const m = neutralModel(id), g = new THREE.Group();
+  const b = new THREE.Mesh(m.body, bodyMat); g.add(b);
+  const gl = m.glow ? new THREE.Mesh(m.glow, glowMat) : null; if (gl) g.add(gl);
+  g.rotation.y = yaw; scene.add(g); g.visible = false;
+  const bb = m.body.boundingBox;
+  const tris = (m.body.attributes.position.count + (m.glow ? m.glow.attributes.position.count : 0)) / 3;
+  info += `${id}: ${tris} tris h ${bb.max.y.toFixed(2)} w ${(bb.max.x - bb.min.x).toFixed(2)} len ${(bb.max.z - bb.min.z).toFixed(2)}\n`;
+  models[id] = { g, b, gl, h: bb.max.y };
+}
+document.getElementById('info').textContent = info;
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
+const pitch = +(Q.get('pitch') || 0.62);
+function draw(id, x, y, w, h, bg, sil = false) {
+  // x, y: top-left in CSS px; model height fills ~78% of the cell
+  const M = models[id]; for (const k in models) models[k].g.visible = k === id;
+  M.b.material = sil ? silMat : bodyMat; if (M.gl) M.gl.material = sil ? silMat : glowMat;
+  const vh = M.h / 0.78, vw = vh * w / h;
+  cam.left = -vw / 2; cam.right = vw / 2; cam.top = vh / 2; cam.bottom = -vh / 2; cam.updateProjectionMatrix();
+  const cy = M.h * 0.5;
+  cam.position.set(0, cy + Math.sin(pitch) * 20, Math.cos(pitch) * 20); cam.lookAt(0, cy, 0);
+  const H = innerHeight;
+  renderer.setViewport(x, H - y - h, w, h); renderer.setScissor(x, H - y - h, w, h);
+  scene.background = new THREE.Color(bg);
+  renderer.render(scene, cam);
+}
+renderer.setScissorTest(true);
+const TER = [0x6f9a4e, 0xc8b078, 0x8a7a68, 0x5e8a6a, 0xb86a48, 0xd8dee6, 0x7a8a5a];
+tick(1);
+const W = innerWidth, n = ids.length;
+let y = 0;
+// big views: 4 per row
+const per = Math.min(4, n), bw = Math.floor(W / per), bh = Math.floor(bw * 1.15);
+ids.forEach((id, i) => draw(id, (i % per) * bw, y + Math.floor(i / per) * bh, bw, bh, 0x6a8ab0));
+y += Math.ceil(n / per) * bh + 6;
+// 90 px row
+const cw90 = Math.floor(W / n);
+ids.forEach((id, i) => draw(id, i * cw90, y, cw90, 116, TER[i % TER.length]));
+y += 120;
+// 40 px rows on two backgrounds
+for (const off of [0, 3]) {
+  ids.forEach((id, i) => draw(id, i * 60 + (W - n * 60) / 2, y, 58, 52, TER[(i + off) % TER.length]));
+  y += 54;
+}
+// silhouettes at 32 px
+ids.forEach((id, i) => draw(id, i * 60 + (W - n * 60) / 2, y, 58, 42, 0xf0f0f0, true));
+</script>
+</body>
+</html>

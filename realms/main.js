@@ -260,10 +260,15 @@ const post = (() => {
     fragmentShader: 'uniform sampler2D tMap; varying vec2 vUv; void main() { vec3 c = texture2D(tMap, vUv).rgb; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(c * smoothstep(0.9, 1.7, l), 1.0); }' });
   const blur = new THREE.ShaderMaterial({ uniforms: { tMap: { value: null }, uDir: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false,
     fragmentShader: 'uniform sampler2D tMap; uniform vec2 uDir; varying vec2 vUv; void main() { vec3 c = texture2D(tMap, vUv).rgb * 0.227; c += (texture2D(tMap, vUv + uDir * 1.38).rgb + texture2D(tMap, vUv - uDir * 1.38).rgb) * 0.316; c += (texture2D(tMap, vUv + uDir * 3.23).rgb + texture2D(tMap, vUv - uDir * 3.23).rgb) * 0.07; gl_FragColor = vec4(c, 1.0); }' });
-  const comp = new THREE.ShaderMaterial({ uniforms: { tScene: { value: null }, tBloom: { value: null } }, vertexShader: vs, depthTest: false,
-    fragmentShader: `uniform sampler2D tScene; uniform sampler2D tBloom; varying vec2 vUv;
+  const comp = new THREE.ShaderMaterial({ uniforms: { tScene: { value: null }, tBloom: { value: null }, uTexel: { value: new THREE.Vector2(1, 1) }, uSharp: { value: 0.35 } }, vertexShader: vs, depthTest: false,
+    fragmentShader: `uniform sampler2D tScene; uniform sampler2D tBloom; uniform vec2 uTexel; uniform float uSharp; varying vec2 vUv;
       ${gradeGLSL}
-      void main() { vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * 0.8; c = grade(c); c = c / (1.0 + c * 0.12);
+      void main() {
+        // light adaptive sharpening: small models keep crisp edges on phone screens
+        vec3 c0 = texture2D(tScene, vUv).rgb;
+        vec3 n4 = texture2D(tScene, vUv + vec2(uTexel.x, 0.0)).rgb + texture2D(tScene, vUv - vec2(uTexel.x, 0.0)).rgb + texture2D(tScene, vUv + vec2(0.0, uTexel.y)).rgb + texture2D(tScene, vUv - vec2(0.0, uTexel.y)).rgb;
+        vec3 mn = min(c0, n4 * 0.25), mx = max(c0, n4 * 0.25);
+        vec3 c = clamp(c0 + (c0 * 4.0 - n4) * uSharp * 0.25, mn * 0.85, mx * 1.15 + 0.02) + texture2D(tBloom, vUv).rgb * 0.8; c = grade(c); c = c / (1.0 + c * 0.12);
         float v = smoothstep(1.15, 0.35, length(vUv - 0.5)); c *= mix(0.84, 1.0, v);
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
@@ -271,7 +276,7 @@ const post = (() => {
       }` });
   let w = 1, hh = 1;
   return {
-    setSize(W, H, pr) { w = W * pr; hh = H * pr; rtScene.setSize(w, hh); rtA.setSize(w / 2, hh / 2); rtB.setSize(w / 2, hh / 2); },
+    setSize(W, H, pr) { w = W * pr; hh = H * pr; rtScene.setSize(w, hh); comp.uniforms.uTexel.value.set(1 / w, 1 / hh); rtA.setSize(w / 2, hh / 2); rtB.setSize(w / 2, hh / 2); },
     render(sc, cm) {
       renderer.setRenderTarget(rtScene); renderer.render(sc, cm);
       const tm = renderer.toneMapping; renderer.toneMapping = THREE.NoToneMapping;
@@ -316,12 +321,15 @@ function addBlob(g, r) { const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.s
 const BLOB_R = { gold: 0.62, wood: 0.62, ore: 0.62, gems: 0.62, chest: 0.64, artifact: 0.55, campfire: 0.6, stone: 0.55, monster: 0.7 };
 const UP = new THREE.Vector3(0, 1, 0), qa = new THREE.Quaternion();
 // stands a group on a cell, local +y along the planet normal
+// figures grow a little as the camera pulls back, so they stay readable on a phone (like map icons)
+let figK = 1;
 function placeOn(obj, v, scale, turn = 0, lift = 0) {
+  obj.userData.s0 = scale;
   qa.setFromUnitVectors(UP, DIRS[v]);
   obj.quaternion.copy(qa);
   obj.rotateY(YAW[v] + turn);
   obj.position.copy(DIRS[v]).multiplyScalar(radiusOf(v) + lift);
-  obj.scale.setScalar(scale);
+  obj.scale.setScalar(scale * figK);
 }
 const world = new THREE.Group(); scene.add(world);
 const flora = new THREE.Group(); scene.add(flora);
@@ -562,7 +570,8 @@ function layoutWorld() {
     if (!o.alive || !seen[o.v]) continue;
     const g = meshOf(objModel(o));
     placeOn(g, o.v, SCALE[o.type] || 0.24, o.type === 'monster' ? (hash(o.id) % 6) : 0);
-    if (o.type === 'monster') { g.userData.bob = o.id; applyFit(g, unitFit(o.unit, objModel(o), 'map')); }
+    if (o.type === 'monster') { g.userData.bob = o.id; applyFit(g, unitFit(o.unit, objModel(o), 'map')); g.userData.s0 = g.scale.x; g.scale.multiplyScalar(figK); }
+    if (o.type === 'town') { g.userData.noGrow = true; g.scale.setScalar(g.userData.s0); }
     addBlob(g, o.type === 'monster' ? BLOB_R.monster / (g.scale.x / (SCALE.monster || 0.2)) : BLOB_R[o.type] || 0.66);
     world.add(g);
     const owner = o.type === 'town' ? G.towns[o.t].p : OBJECTS[o.type]?.kind === 'mine' ? o.owner : -2;
@@ -764,7 +773,7 @@ function interact(hr, v) {
       ]);
       return;
     }
-    if (you) ask(`${sizeWord(o.n)} ${plural(o.unit)}`, `${unitIcon(o.unit)} About ${o.n <= 4 ? o.n : `${Math.round(o.n * 0.8)}–${Math.round(o.n * 1.2)}`} of them. ${threatWord(o)}.`, [['⚔️ Fight', () => startBattle(hr, { kind: 'monster', obj: o })], ['Leave', null]]);
+    if (you) ask(`${sizeWord(o.n)} ${plural(o.unit)}`, `<div class="bigpt">${unitIcon(o.unit, 128)}<div><b>${UNITS[o.unit].name}</b><small>${icon('attack', 13)}${UNITS[o.unit].att} ${icon('defense', 13)}${UNITS[o.unit].def} ${icon('hp', 13)}${UNITS[o.unit].hp}${UNITS[o.unit].ranged ? ` ${icon('shots', 13)}` : ''}${UNITS[o.unit].fly ? ` ${icon('fly', 13)}` : ''}</small></div></div>About ${o.n <= 4 ? o.n : `${Math.round(o.n * 0.8)}–${Math.round(o.n * 1.2)}`} of them. ${threatWord(o)}.`, [['⚔️ Fight', () => startBattle(hr, { kind: 'monster', obj: o })], ['Leave', null]]);
     else startBattle(hr, { kind: 'monster', obj: o });
     return;
   }
@@ -1718,6 +1727,11 @@ function frame() {
       if (worldDirty) { revealAll(); layoutWorld(); }
       const hr = selHero();
       const m = hr && heroMeshes.get(hr.id);
+      const nk = clamp(1 + (cam.dist - 9) * 0.045, 1, 1.4);
+      if (Math.abs(nk - figK) > 0.01) {
+        figK = nk;
+        for (const g of [...world.children, ...heroMeshes.values()]) if (g.userData.s0) g.scale.setScalar(g.userData.s0 * (g.userData.noGrow ? 1 : figK));
+      }
       fx.select(m ? m.position : null);
       fx.update(dt, camera);
       for (const g of world.children) if (g.userData.bob !== undefined) for (const c of g.children) if (c.isMesh && !c.userData.blob) c.position.y = (c.userData.fitY ?? 0) + Math.abs(Math.sin(tt * 2 + g.userData.bob)) * 0.15;

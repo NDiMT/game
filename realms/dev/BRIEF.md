@@ -89,3 +89,15 @@ Goal: the HoMM3 read: the GROUND is a calm, lower-saturation, lower-contrast bac
 - Value hierarchy: ground mid-values, objects use the full value range (bright lit tops + darker openings/edges). Still NO near-black murk (the player hated "μαυρίλα") — dark accents are allowed only as small contrast details (cave mouths, chest seams, door openings, silhouette ink edge).
 - Colour: ground desaturated ~25–35% vs now and harmonised per biome; objects keep/raise saturation and use hues that contrast with the terrain they usually sit on (e.g. chests: red-brown wood + gold on any ground; caves: dark mouth + light rock rim).
 - Screenshot check for every change at map zoom (412x860, default zoom ~ cam.dist 10–12): squint test — can you spot every object instantly?
+
+---
+# Round 4: mobile readability of MODELS (2026-10-09)
+Player: "models — chests, monsters, heroes — lose their detail; how do we make them look better on a phone screen?"
+At default map zoom a creature/hero/chest is only ~25–40 px tall; in battle ~60–90 px. Detail smaller than ~2–3 px turns into noise.
+Rules (mobile-game readability, like HoMM mobile / Clash / Rumble):
+- SILHOUETTE FIRST: exaggerate the 1–2 identity features of each model (pikeman = huge halberd + kettle helm; griffin = big wings + beak; skeleton = skull + ribcage + bone white; chest = big lid + gold bands; hero = horse + big banner). Heads ~1.25–1.4×, weapons/shields ~1.3×, chunkier limbs. A creature must be identifiable as a black silhouette at 32 px.
+- COLOUR BLOCKING: 2–3 large flat-ish colour regions per model with one strong accent; avoid many small parts of similar value. Each faction/creature gets a signature colour that differs from its neighbours.
+- VALUE BANDS: light top / mid body / dark-ish underside (not black). Strong value contrast between adjacent big regions (e.g. skin vs armour).
+- REMOVE micro-detail: delete parts smaller than ~3% of model height (rivets, tiny straps, fingers) unless they are an identity feature; merge small parts into bolder ones. Fewer, larger polygons on curved parts read better than many tiny facets.
+- Check every model at 40 px and 90 px tall (render the preview grid small!) plus one big view.
+- Keep APIs, orientation (+Z front, base y=0), triangle budgets, bright palette (no murk).
