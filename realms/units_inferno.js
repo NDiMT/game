@@ -835,7 +835,7 @@ function efreet(U) {
       k.sym(() => k.torus(0.15, 0.018, [0, HY + 0.12, -0.005], GOLD_L, { r: [Math.PI / 2, 0.0, 0.3], s: [1, 1.0, 1], seg: 14, ts: 3, grad: [1, 1] }));
       k.torus(0.05, 0.012, [0, HY + 0.12, 0.148], GOLD_L, { seg: 10, ts: 3, grad: [1, 1] });
       k.ball(0.045, [0, HY + 0.12, 0.155], RUBY, { glow: true, d: 1 });
-      k.feather([0, HY + 0.15, 0.13], [0.0, HY + 0.33, 0.06], 0.07, 0xfff0d0, { t: 0.016 });
+      k.feather([0, HY + 0.15, 0.12], [0.0, HY + 0.29, -0.03], 0.06, 0xffd870, { t: 0.016 });
       flame(k, [0, HY + 0.22, -0.02], 0.55, { cols: FC, rich: true });
     } else {
       flame(k, [0, HY + 0.12, -0.03], 0.62, { cols: FC, rich: true });
@@ -945,7 +945,7 @@ function nightmare(U) {
     k.sym(() => k.ell(0.02, 0.07, 0.07, [0.222, 0.58, -0.08], LAVA, { glow: true, d: 0 }));
   } else {
     // a crimson saddle blanket with an orange hem
-    k.lathe([[0.2, 0.73], [0.18, 0.77], [0.13, 0.82], [0.04, 0.846]], [0, 0, -0.04], RED_D, { s: [1, 1, 0.8], seg: 14, grad: [0.85, 1.05] });
+    k.lathe([[0.2, 0.73], [0.18, 0.77], [0.13, 0.82], [0.06, 0.845], [0, 0.853]], [0, 0, -0.04], RED_D, { s: [1, 1, 0.8], seg: 14, grad: [0.85, 1.05] });
     k.lathe([[0.206, 0.72], [0.201, 0.742]], [0, 0, -0.04], ORANGE_D, { s: [1, 1, 0.8], seg: 14, grad: [1, 1] });
     k.sym(() => { // glowing lava cracks on the flanks, branching
       k.box(0.03, 0.2, 0.035, [0.19, 0.58, -0.12], LAVA, { glow: true, r: [0.5, 0, 0.12] });

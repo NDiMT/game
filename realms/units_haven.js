@@ -1020,47 +1020,64 @@ function cavalier(U) {
 // Archangel: royal-blue skirt with a broad gold hem, double halo, bigger wings
 // with gold bands, a larger blazing sword.
 function angel(U) {
-  const ARM = 0xffc844, SKIRT = U ? ROYAL : WHITE, HAIR = 0xffd868, S = 1.2;
+  const ARM = 0xffc844, SKIRT = U ? ROYAL : WHITE, HAIR = 0xffd868, HAIR_D = 0xf0b840, S = 1.2;
   const k = makeKit(U ? 83 : 79, HIPS.map((v) => v * S));
   let H;
   k.at([0, 0, 0], [0, 0, 0], S, () => {
     H = figure(k, {
-      legs: ARM, boots: GOLD, torso: ARM, hips: SKIRT, upper: SKIN, fore: ARM, hand: SKIN, elbow: SKIN, pauldron: ARM, pTrim: U ? WHITE : null,
-      belt: U ? GOLD_L : BLUE, rh: [0.26, 0.62, 0.2], lh: [-0.23, 0.4, 0.12], head: false, torsoGrad: [0.86, 1.14], stance: 0.07,
+      legs: ARM, boots: GOLD, torso: ARM, hips: SKIRT, upper: SKIN, fore: ARM, hand: SKIN, elbow: SKIN, pauldron: ARM, pTrim: U ? WHITE : null, lame: U ? GOLD_L : 0xffe08a,
+      rh: [0.26, 0.62, 0.2], lh: [-0.23, 0.4, 0.12], head: false, torsoGrad: [0.86, 1.14], stance: 0.07, cuff: U ? GOLD_L : GOLD, cuffB: GOLD_L, sole: 0xd89a2a,
     });
-    k.bone(BONE.CLOTH, [0, 0.46, 0], () => { // long skirt hung from the waist
-      k.lathe([[0.215, 0.0], [0.205, 0.1], [0.17, 0.3], [0.15, 0.46]], [0, 0, 0], SKIRT, { s: [1, 1, 0.86], seg: 10, grad: [0.88, 1.05] });
-      k.lathe([[0.222, 0.0], [0.218, U ? 0.07 : 0.05]], [0, 0, 0], U ? GOLD : BLUE, { s: [1, 1, 0.86], seg: 10, grad: [1, 1] });
+    // sculpted cuirass: pectoral plates, a centre ridge and a belt with a sun buckle
+    k.sym(() => k.ell(0.085, 0.07, 0.04, [0.068, 0.6, 0.128], ARM, { r: [-0.2, 0.25, 0], grad: [0.9, 1.15] }));
+    k.box(0.016, 0.16, 0.02, [0, 0.55, 0.15], GOLD_L, { r: [-0.15, 0, 0] });
+    belt(k, 0.46, 0.155, 0.045, U ? GOLD_L : BLUE, GOLD, 0.8);
+    if (U) sunBadge(k, [0, 0.63, 0.17], [-0.25, 0, 0], 1.0, 0x80c8ff);
+    k.bone(BONE.CLOTH, [0, 0.46, 0], () => { // long skirt hung from the waist: folds, hem band, embroidery, pteruges
+      const fd = new THREE.Color(SKIRT).multiplyScalar(0.9).getHex();
+      k.lathe([[0.215, 0.0], [0.205, 0.1], [0.17, 0.3], [0.15, 0.46]], [0, 0, 0], SKIRT, { s: [1, 1, 0.86], seg: 14, grad: [0.88, 1.05], paint: (x, y, z) => (Math.floor((Math.atan2(x, z) + 9) / (Math.PI / 8)) % 2 ? fd : null) });
+      k.lathe([[0.222, 0.0], [0.218, U ? 0.07 : 0.05]], [0, 0, 0], U ? GOLD : BLUE, { s: [1, 1, 0.86], seg: 14, grad: [1, 1] });
+      k.lathe([[0.214, U ? 0.085 : 0.065], [0.212, U ? 0.105 : 0.08]], [0, 0, 0], U ? GOLD_L : GOLD, { s: [1, 1, 0.86], seg: 28, grad: [1, 1], paint: (x, y, z) => (Math.floor((Math.atan2(x, z) + 9) / (Math.PI / 14)) % 2 ? SKIRT : null) });
+      for (let i = 0; i < 12; i++) { // pteruges: gold-tipped strips over the hips
+        const a = (i / 12) * Math.PI * 2 + 0.26, r = 0.165;
+        k.box(0.06, 0.12, 0.014, [Math.sin(a) * r, 0.39, Math.cos(a) * r * 0.86], i % 2 ? ARM : 0xffe08a, { r: [0.12, a, 0], grad: [0.9, 1.08], paint: (x, y) => (y < -0.04 ? (U ? WHITE : BLUE) : null) });
+      }
     });
-    // golden hair, face, circlet, halo(s): HEAD
+    // golden hair with flowing locks, face, circlet with a jewel, halo(s): HEAD
     k.bone(BONE.HEAD, NECK, () => {
-    k.ell(0.152, 0.152, 0.152, [0, HY + 0.02, -0.025], HAIR, { grad: [0.85, 1.12] });
+    k.ell(0.152, 0.152, 0.152, [0, HY + 0.02, -0.025], HAIR, { d: 2, grad: [0.85, 1.12] });
     k.ell(0.135, 0.17, 0.075, [0, HY - 0.1, -0.085], HAIR, {});
-    k.ell(0.125, 0.13, 0.12, [0, HY - 0.005, 0.03], SKIN, { grad: [0.95, 1.05] });
-    eyes(k, HY, 0.14, 0x3a5ab8);
+    k.ell(0.125, 0.13, 0.12, [0, HY - 0.005, 0.03], SKIN, { d: 2, grad: [0.95, 1.05] });
+    face(k, [0, HY - 0.005, 0.03], [0.125, 0.13, 0.12], { ey: 0.005, iris: 0x3a7ae0, brow: HAIR_D, blush: true, browA: 0.05 });
+    // curls framing the face and falling down the back
+    k.sym(() => locks(k, [[0.12, HY + 0.02, 0.06], [0.13, HY - 0.04, 0.02], [0.12, HY - 0.1, -0.03]], 0.12, 0.034, HAIR, [0.25, -1, -0.1], { var: 0.2, curl: 0.02, alt: HAIR_D }));
+    locks(k, [-0.09, -0.045, 0, 0.045, 0.09].map((x) => [x, HY - 0.12, -0.1]), 0.14, 0.04, HAIR, [0, -1, -0.25], { var: 0.18, alt: HAIR_D });
+    locks(k, [[-0.06, HY + 0.13, 0.08], [0, HY + 0.15, 0.08], [0.06, HY + 0.13, 0.08]], 0.07, 0.03, HAIR, [0.3, -0.6, 1], { curl: 0.02, alt: HAIR_D }); // fringe
     k.lathe([[0.156, HY + 0.035], [0.156, HY + 0.07]], [0, 0, -0.02], GOLD, { seg: 10, grad: [1, 1] });
-    k.torus(0.13, 0.024, [0, HY + 0.25, -0.05], 0xffe070, { glow: true, r: [Math.PI / 2 - 0.25, 0, 0], seg: 16, ts: 4 });
-    if (U) k.torus(0.18, 0.016, [0, HY + 0.23, -0.06], 0xfff6c0, { glow: true, r: [Math.PI / 2 - 0.25, 0, 0], seg: 18, ts: 3 });
+    k.ball(0.02, [0, HY + 0.055, 0.135], U ? 0x80c8ff : 0xff6070, { glow: true, d: 0 });
+    k.torus(0.13, 0.024, [0, HY + 0.25, -0.05], 0xffe070, { glow: true, r: [Math.PI / 2 - 0.25, 0, 0], seg: 20, ts: 4 });
+    if (U) k.torus(0.18, 0.016, [0, HY + 0.23, -0.06], 0xfff6c0, { glow: true, r: [Math.PI / 2 - 0.25, 0, 0], seg: 22, ts: 3 });
     });
   });
   const rh = H.R.map((v) => v * S);
-  // flaming sword raised forward
+  // flaming sword raised forward: fullered blade, winged guard, wrapped grip, gem pommel
   k.bone(BONE.ARM_R, SH.map((v) => v * S), () => k.at(rh, [0.45, 0, -0.2], U ? 1.4 : 1.2, () => {
-    k.box(0.22, 0.04, 0.05, [0, 0.03, 0], GOLD, {});
-    k.limb([0, -0.08, 0], [0, 0.02, 0], 0.022, 0.022, U ? ROYAL : BLUE_D, { seg: 5 });
-    k.ball(0.032, [0, -0.09, 0], GOLD, { d: 0 });
-    k.plate([[-0.042, 0], [0.042, 0], [0.036, 0.48], [0, 0.58], [-0.036, 0.48]], 0.02, [0, 0.05, 0], 0xfff6d0, { r: [0, 0.3, 0], glow: true });
+    k.box(0.12, 0.04, 0.05, [0, 0.03, 0], GOLD, {});
+    k.sym(() => k.plate([[0, 0], [0.09, 0.07], [0.13, 0.03], [0.1, 0.0], [0.12, -0.03], [0.05, -0.02]], 0.02, [0.04, 0.03, 0], GOLD_L, { grad: [0.95, 1.1] }));
+    k.limb([0, -0.08, 0], [0, 0.02, 0], 0.022, 0.022, U ? ROYAL : BLUE_D, { seg: 6, hs: 4, paint: (x, y, z, L) => (Math.floor((y / L) * 5) % 2 ? GOLD : null) });
+    k.ball(0.032, [0, -0.09, 0], U ? 0x80c8ff : 0xff6070, { d: 1, glow: true });
+    k.plate([[-0.042, 0], [0.042, 0], [0.036, 0.48], [0, 0.58], [-0.036, 0.48]], 0.02, [0, 0.05, 0], 0xfff6d0, { r: [0, 0.3, 0], glow: true, paint: (x, y) => (Math.abs(x) < 0.01 && y < 0.44 ? 0xffd890 : null) });
     for (let i = 0; i < 3; i++) {
       const sd = i % 2 ? 1 : -1;
-      k.cone(0.05 - i * 0.006, 0.2, [0, 0.1 + i * 0.15, sd * 0.015], i % 2 ? 0xff7a1a : 0xffb030, { glow: true, r: [sd * 0.3, 0.3, sd * 0.12], seg: 4 });
+      k.cone(0.05 - i * 0.006, 0.2, [0, 0.1 + i * 0.15, sd * 0.015], i % 2 ? 0xff7a1a : 0xffb030, { glow: true, r: [sd * 0.3, 0.3, sd * 0.12], seg: 5 });
     }
-    k.cone(0.035, 0.18, [0, 0.52, 0], 0xffd050, { glow: true, seg: 4 });
+    k.cone(0.035, 0.18, [0, 0.52, 0], 0xffd050, { glow: true, seg: 5 });
   }));
   // great wings sweeping up from the shoulder blades
   k.sym(() => k.bone(BONE.WING_R, [0.1, 0.86, -0.14], () => wing(k, [0.1, 0.86, -0.14], {
     W: [0.32, 0.24, -0.12], T: U ? [0.74, 0.5, -0.32] : [0.66, 0.44, -0.3], len: U ? 0.72 : 0.6, n: 9,
     col: U ? 0xfff6e0 : 0xf6f4ff, tip: U ? GOLD : 0xffd060, cov: WHITE, bone: U ? GOLD_L : 0xfff4d0,
-    drop: [0.08, -0.4, -1], dropIn: [0.05, -1, -0.45], prim: 3,
+    drop: [0.08, -0.4, -1], dropIn: [0.05, -1, -0.45], prim: 4, stripe: 0.92, shaft: U ? GOLD_L : 0xfff0c0,
   })));
   return k.done();
 }
