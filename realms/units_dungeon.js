@@ -602,45 +602,82 @@ function troglodyte(U) {
 // necklace, glowing red eyes, bigger wings and talons.
 function harpy(U) {
   const k = makeKit(U ? 113 : 111, [0, 0.45, 0]);
-  const FE = U ? 0xa244a6 : 0x2fb48c, FE_D = U ? 0x7e3088 : 0x23947a, TIP = U ? MAG : 0x8a5ae0;
-  const SKN = U ? 0xdcbce6 : 0xf4c8b4, HAIR = U ? 0xeef0ff : 0xe84aa8, TAL = 0xf6c040, CLAW = U ? 0xffe8f0 : 0x7a5aa8;
-  // bird legs: feathered thighs, scaly yellow shins, three big forward talons + one back
+  const FE = U ? 0xa244a6 : 0x2fb48c, FE_D = U ? 0x7e3088 : 0x23947a, TIP = U ? MAG : 0x8a5ae0, FE_L = mix(FE, WHITE, 0.22);
+  const SKN = U ? 0xdcbce6 : 0xf4c8b4, HAIR = U ? 0xeef0ff : 0xe84aa8, HAIR_D = U ? 0xb8b4d8 : 0xb8307e, TAL = 0xf6c040, TAL_D = 0xd8962a, CLAW = U ? 0xffe8f0 : 0x7a5aa8;
+  // bird legs: feathered thighs with a fringe, scaly banded shins, knuckled
+  // talons with hooked claws, one back toe
   k.sym(() => k.bone(BONE.LEG_FR, [0.09, 0.42, 0], () => {
-    k.ell(0.095, 0.13, 0.105, [0.1, 0.34, 0.0], FE, { grad: [0.88, 1.08] });
+    k.ell(0.095, 0.13, 0.105, [0.1, 0.34, 0.0], FE, { grad: [0.88, 1.08], d: 2 });
+    for (let i = 0; i < 4; i++) { const a = -0.9 + i * 0.6; spike(k, [0.1 + Math.sin(a) * 0.075, 0.27, Math.cos(a) * 0.08], [0.1 + Math.sin(a) * 0.09, 0.2, Math.cos(a) * 0.095], 0.032, i % 2 ? FE_D : TIP, { seg: 4 }); }
     k.limb([0.11, 0.25, 0.0], [0.12, 0.06, 0.03], 0.042, 0.036, TAL);
+    wraps(k, [0.11, 0.24, 0.0], [0.12, 0.08, 0.028], 0.045, 4, TAL_D, { w: 0.3, taper: 0.95 });
     const ts = U ? 1.15 : 1;
     for (const t of [-1, 0, 1]) {
-      k.cone(0.032 * ts, 0.14 * ts, [0.12 + t * 0.034, 0.045, 0.04], TAL, { r: [Math.PI / 2 - 0.25, 0, -t * 0.4], seg: 4 });
+      k.cone(0.032 * ts, 0.14 * ts, [0.12 + t * 0.034, 0.045, 0.04], TAL, { r: [Math.PI / 2 - 0.25, 0, -t * 0.4], seg: 5 });
+      k.ball(0.026 * ts, [0.12 + t * 0.055, 0.04, 0.11 * ts], TAL_D, { d: 0 });
       k.cone(0.022 * ts, 0.07 * ts, [0.12 + t * 0.07, 0.04, 0.17 * ts], CLAW, { r: [Math.PI - 0.6, 0, -t * 0.4], seg: 4 });
     }
     k.cone(0.03, 0.11, [0.12, 0.05, 0.0], TAL, { r: [-Math.PI / 2 - 0.3, 0, 0], seg: 4 });
+    k.cone(0.02, 0.06, [0.12, 0.03, -0.1], CLAW, { r: [-Math.PI / 2 - 0.9, 0, 0], seg: 4 });
   }));
-  // feather skirt + tail fan
+  // feather skirt + a tail fan of banded feathers
   k.ell(0.16, 0.11, 0.13, [0, 0.45, 0], FE_D, {});
+  for (let i = 0; i < 7; i++) { const a = -1.4 + i * 0.47; spike(k, [Math.sin(a) * 0.15, 0.42, Math.cos(a) * 0.12], [Math.sin(a) * 0.17, 0.33, Math.cos(a) * 0.14], 0.04, i % 2 ? FE : FE_D, { seg: 4 }); }
   k.bone(BONE.TAIL, [0, 0.44, -0.1], () => {
-    for (let i = 0; i < 3; i++) k.feather([(i - 1) * 0.04, 0.44, -0.1], [(i - 1) * 0.13, 0.3, -0.38], 0.12, i === 1 ? TIP : FE, { t: 0.02 });
-  });
-  // feathered body, skin shoulders / neck, a ruff of tip-coloured feathers
-  k.lathe([[0.135, 0.4], [0.155, 0.48], [0.18, 0.56], [0.19, 0.63], [0.17, 0.69], [0.1, 0.73], [0.03, 0.745]], [0, 0, 0], FE, { s: [1, 1, 0.78], seg: 10, grad: [0.84, 1.1] });
-  k.lathe([[0.165, 0.6], [0.2, 0.64], [0.19, 0.69], [0.11, 0.73], [0.04, 0.745]], [0, 0, 0.005], SKN, { s: [1, 1, 0.8], seg: 10, grad: [0.92, 1.05] });
-  for (let i = 0; i < 6; i++) { const a = -1.1 + (i / 5) * 2.2; k.cone(0.05, 0.1, [Math.sin(a) * 0.17, 0.6, Math.cos(a) * 0.13], TIP, { r: [Math.PI - 0.5, a, 0], seg: 4 }); }
-  if (U) k.torus(0.12, 0.024, [0, 0.69, 0.02], GOLD, { r: [Math.PI / 2 + 0.3, 0, 0], seg: 10, ts: 4 });
-  // head: face, fierce brows, a big mane of wild hair sweeping back
-  k.bone(BONE.HEAD, NECK, () => {
-    k.ell(0.125, 0.13, 0.12, [0, HY, 0.02], SKN, { grad: [0.95, 1.05] });
-    if (U) k.sym(() => k.ell(0.026, 0.026, 0.014, [0.05, HY + 0.005, 0.13], G_RED, { glow: true, d: 0 }));
-    else eyes(k, HY + 0.005, 0.128);
-    k.sym(() => k.box(0.07, 0.022, 0.03, [0.05, HY + 0.045, 0.125], HAIR === 0xeef0ff ? 0x9a8ab8 : 0xa83a7a, { r: [0, 0, -0.35] }));
-    k.ell(0.145, 0.15, 0.13, [0, HY + 0.06, -0.07], HAIR, { grad: [0.88, 1.12] });
     for (let i = 0; i < 5; i++) {
-      const a = (i - 2) * 0.45;
-      k.cone(0.065, 0.24, [Math.sin(a) * 0.08, HY + 0.09, -0.08], HAIR, { r: [-2.0 + Math.abs(i - 2) * 0.15, 0, a * 0.9], seg: 4 });
+      const x = (i - 2), a = [x * 0.02, 0.44, -0.1], b = [x * 0.075, 0.3 - Math.abs(x) * 0.02, -0.38 + Math.abs(x) * 0.03];
+      k.feather(a, b, 0.1, i % 2 ? FE_D : FE, { t: 0.02 });
+      k.feather(L3(a, b, 0.62), L3(a, b, 1.04), 0.085, TIP, { t: 0.026 });
     }
   });
-  // wings for arms (shoulder -> wrist -> tip), raised in a V
+  // feathered body with rows of scalloped feathers, skin shoulders / neck, a
+  // two-layer ruff of tip-coloured feathers
+  k.lathe([[0.135, 0.4], [0.155, 0.48], [0.18, 0.56], [0.19, 0.63], [0.17, 0.69], [0.1, 0.73], [0.03, 0.745]], [0, 0, 0], FE, { s: [1, 1, 0.78], seg: 12, grad: [0.84, 1.1] });
+  const rows = [];
+  for (let r = 0; r < 3; r++) for (let i = 0; i < 7; i++) rows.push([-1.35 + (i + (r % 2) * 0.5) * 0.42, -0.55 + r * 0.32]);
+  platesOn(k, [0, 0.53, 0], [0.17, 0.13, 0.135], rows, [0.035, 0.03, 0.012], [FE_L, FE, FE_D], { f: 1.0 });
+  k.lathe([[0.165, 0.6], [0.2, 0.64], [0.19, 0.69], [0.11, 0.73], [0.04, 0.745]], [0, 0, 0.005], SKN, { s: [1, 1, 0.8], seg: 12, grad: [0.92, 1.05] });
+  for (let i = 0; i < 6; i++) { const a = -1.1 + (i / 5) * 2.2; k.cone(0.05, 0.1, [Math.sin(a) * 0.17, 0.6, Math.cos(a) * 0.13], TIP, { r: [Math.PI - 0.5, a, 0], seg: 5 }); }
+  for (let i = 0; i < 5; i++) { const a = -0.88 + (i / 4) * 1.76; k.cone(0.042, 0.08, [Math.sin(a) * 0.18, 0.575, Math.cos(a) * 0.14], FE_D, { r: [Math.PI - 0.6, a, 0], seg: 4 }); }
+  if (U) {
+    // gold necklace with a glowing pendant and two bone charms
+    k.torus(0.12, 0.024, [0, 0.69, 0.02], GOLD, { r: [Math.PI / 2 + 0.3, 0, 0], seg: 14, ts: 4 });
+    k.ell(0.026, 0.034, 0.016, [0, 0.645, 0.145], G_MAG, { glow: true, d: 1 });
+    k.torus(0.03, 0.007, [0, 0.645, 0.14], GOLD_L, { seg: 10, ts: 3, r: [0.25, 0, 0] });
+    k.sym(() => spike(k, [0.06, 0.67, 0.12], [0.07, 0.625, 0.135], 0.012, BONEC, { seg: 4 }));
+  } else {
+    k.torus(0.115, 0.01, [0, 0.69, 0.02], TEAL_D, { r: [Math.PI / 2 + 0.3, 0, 0], seg: 14, ts: 3 });
+    k.feather([0, 0.67, 0.14], [0.015, 0.6, 0.16], 0.03, TIP, { t: 0.01 });
+  }
+  // head: face with real eyes, nose, lips, fierce brows, earrings, a headband and
+  // a big mane of wild hair in two tones, locks framing the face
+  k.bone(BONE.HEAD, NECK, () => {
+    k.ell(0.125, 0.13, 0.12, [0, HY, 0.02], SKN, { grad: [0.95, 1.05] });
+    k.sym(() => {
+      eyeBall(k, [0.048, HY + 0.008, 0.118], 0.026, U ? { iris: G_RED, glow: true, white: 0xfff0c8, slit: true } : { iris: 0xe8a020 });
+      k.box(0.07, 0.022, 0.03, [0.05, HY + 0.045, 0.125], U ? 0x9a8ab8 : 0xa83a7a, { r: [0, 0, -0.35] });
+      k.ell(0.022, 0.012, 0.01, [0.068, HY - 0.035, 0.122], mix(SKN, MAG, 0.25), { d: 0, ao: false });
+      k.torus(0.016, 0.005, [0.12, HY - 0.045, 0.02], GOLD, { seg: 8, ts: 3, r: [0, Math.PI / 2, 0] });
+    });
+    k.ell(0.014, 0.022, 0.02, [0, HY - 0.012, 0.142], sh(SKN, 0.92), { d: 0 });
+    k.ell(0.036, 0.011, 0.014, [0, HY - 0.055, 0.128], U ? 0x8a3a6a : 0xd04a6a, { d: 0, ao: false });
+    if (U) k.sym(() => spike(k, [0.018, HY - 0.055, 0.135], [0.02, HY - 0.078, 0.137], 0.007, WHITE, { seg: 3 }));
+    k.ell(0.145, 0.15, 0.13, [0, HY + 0.06, -0.07], HAIR, { grad: [0.88, 1.12] });
+    k.torus(0.128, 0.012, [0, HY + 0.07, -0.01], U ? GOLD : TEAL, { r: [Math.PI / 2 + 0.5, 0, 0], seg: 14, ts: 3 });
+    for (let i = 0; i < 5; i++) {
+      const a = (i - 2) * 0.45;
+      k.cone(0.065, 0.24, [Math.sin(a) * 0.08, HY + 0.09, -0.08], i % 2 ? HAIR_D : HAIR, { r: [-2.0 + Math.abs(i - 2) * 0.15, 0, a * 0.9], seg: 5 });
+    }
+    for (let i = 0; i < 4; i++) { const a = (i - 1.5) * 0.55; k.cone(0.045, 0.2, [Math.sin(a) * 0.1, HY + 0.02, -0.11], i % 2 ? HAIR : HAIR_D, { r: [-2.35, 0, a * 0.8], seg: 4 }); }
+    k.sym(() => k.cone(0.035, 0.15, [0.105, HY + 0.03, 0.05], HAIR, { r: [Math.PI - 0.15, 0, -0.25], seg: 4 }));
+    k.feather([-0.07, HY + 0.1, 0.0], [-0.17, HY + 0.24, -0.05], 0.05, TIP, { t: 0.012 });
+  });
+  // wings for arms (shoulder -> wrist -> tip), raised in a V, with layered feather
+  // rows and clawed fingers at the wrist
   k.sym(() => k.bone(BONE.WING_R, [0.16, 0.64, -0.02], () => wing(k, [0.16, 0.64, -0.02], {
     W: [0.2, 0.24, 0.0], T: U ? [0.46, 0.6, -0.16] : [0.42, 0.55, -0.14], len: U ? 0.42 : 0.38, drop: [0.15, -0.3, -1], dropIn: [0.05, -1, -0.3],
     n: 8, col: FE, tip: TIP, cov: FE_D, bone: SKN, prim: 3, th: 0.018,
+    rows: [[0.02, 0.5, FE_L], [0.42, 0.86, mix(FE, TIP, 0.35)]], claw: CLAW, hand: SKN,
   })));
   return k.done();
 }
