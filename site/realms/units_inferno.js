@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE } from './rig.js?v=1.4';
+import { BONE } from './rig.js?v=1.5';
 
 // =====================================================================
 // HEX REALMS: Inferno creatures (round 6), base and upgraded.

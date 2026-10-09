@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE as RB, ensureRig, tagRange } from './rig.js?v=1.4';
+import { BONE as RB, ensureRig, tagRange } from './rig.js?v=1.5';
 
 // =====================================================================
 // HEX REALMS: Necropolis creatures (procedural, vertex-coloured).
