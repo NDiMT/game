@@ -23,19 +23,26 @@ const only = q.get('f'); // faction filter
 const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(16, 16);
 r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; r.shadowMap.enabled = true;
 const unitGeo = (id) => { const ff = FAC_MODEL[UNITS[id]?.fac]; if (ff) { const g = ff(id); if (g) return g; } const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
-P.initPortraits(THREE, r, unitGeo);
+P.initPortraits(THREE, r, unitGeo, { profile: true });
 const times = [];
 const tm = (f) => { const t = performance.now(); const h = f(); times.push(performance.now() - t); return h; };
-const facs = Object.keys(FACTIONS).filter((f) => !only || f === only);
+const facs = Object.keys(FACTIONS).filter((f) => !only || only.split(',').includes(f));
 let h = '';
 const heroCols = [null, 0xd83a3a, 0x3ac84a, 0xffd83a, 0x3a7aff];
 for (const s of sizes) {
   const sec = (title, ids) => `<h3>${title} · ${s}px</h3><div class="grid" style="--w:${s + 4}px">${ids.map((id) => `<div class="c">${tm(() => P.portraitImg(id, s))}${s >= 64 ? (UNITS[id]?.name || id) : ''}</div>`).join('')}</div>`;
   for (const f of facs) h += sec(FACTIONS[f].name, [...FACTIONS[f].units, ...UPGRADES[f]]);
-  if (!only || only === 'neutral') h += sec('Neutral', NEUTRALS);
-  if (P.heroPortraitImg) h += `<h3>Heroes · ${s}px</h3><div class="grid" style="--w:${s + 4}px">${Object.keys(FACTIONS).map((f, i) => `<div class="c">${tm(() => P.heroPortraitImg(f, heroCols[i] ?? FACTIONS[f].color, s))}${f}</div>`).join('')}</div>`;
+  if (!only || only.split(',').includes('neutral')) h += sec('Neutral', NEUTRALS);
+  if (P.heroPortraitImg && !q.has('nohero')) h += `<h3>Heroes · ${s}px</h3><div class="grid" style="--w:${s + 4}px">${Object.keys(FACTIONS).map((f, i) => `<div class="c">${tm(() => P.heroPortraitImg(f, heroCols[i] ?? FACTIONS[f].color, s))}${f}</div>`).join('')}</div>`;
+}
+if (q.has('extra')) {
+  const ids = ['pikeman', 'halberdier', 'vampirelord', 'griffin', 'blackdragon', 'goblin', 'efreetsultan', 'centaur'];
+  h += `<h3>48px</h3><div class="grid" style="--w:52px">${ids.map((id) => `<div class="c">${P.portraitImg(id, 48)}</div>`).join('')}</div>`;
+  h += `<h3>Hero buttons (round, 40px) · hero sheet (square 96px)</h3><div class="grid" style="--w:100px">${Object.keys(FACTIONS).map((f, i) => `<div class="c"><div style="width:40px;height:40px;margin:0 auto 4px;border-radius:50%;box-shadow:0 0 0 2px #0b1236">${P.heroPortraitImg(f, heroCols[i] ?? FACTIONS[f].color, 40, 'pt', 'round')}</div>${P.heroPortraitImg(f, heroCols[i] ?? FACTIONS[f].color, 96)}</div>`).join('')}</div>`;
 }
 times.sort((a, b) => a - b);
+const pf = globalThis.__portraitProfile || [], med = (k) => { const a = pf.map((x) => x[k]).sort((x, y) => x - y); return a.length ? a[a.length >> 1].toFixed(1) + '/' + a[Math.floor(a.length * 0.9)].toFixed(1) : '-'; };
+console.log('# phases median/p90 ms: model ' + med('model') + ' frame ' + med('frame') + ' gpu+readback ' + med('gpu') + ' encode ' + med('encode'));
 document.getElementById('out').innerHTML = `<h3>${times.length} portraits · median ${times[times.length >> 1]?.toFixed(1)} ms · max ${times[times.length - 1]?.toFixed(1)} ms (swiftshader)</h3>` + h;
 window.ready = true;
 </script></body></html>

@@ -35,8 +35,8 @@ let W = 1300;
 if (close) { // ?close=pikeman,halberdier : big close-ups, 3/4 front, front, back
   const ids = close.split(','), cw = 430, chh = 520, ppu = +(q.get('ppu') ?? 420);
   W = cw * 3 + 12;
-  secs.push(['close-up 3/4 / front / back', H]); H += 16;
-  for (const id of ids) { [0.6, 0, Math.PI].forEach((yw, i) => cells.push({ id, x: 6 + i * cw, y: H, w: cw, h: chh, ppu, yaw: yw })); H += chh; }
+  secs.push(['close-up: battle 3/4 / portrait (8 deg, 1.25x) / back', H]); H += 16;
+  for (const id of ids) { [[0.6, 46], [0.25, 8], [Math.PI, 46]].forEach(([yw, el], i) => cells.push({ id, x: 6 + i * cw, y: H, w: cw, h: chh, ppu: i === 1 ? ppu * 1.25 : ppu, yaw: yw, elev: el, fy: i === 1 ? 0.62 : 0.5 })); H += chh; }
 } else {
 secs.push([S[0][0], H]); H += 16; addRow(all, 92, 92, 65, 0); addRow(all, 92, 92, 65, Math.PI);
 secs.push([S[1][0], H]); H += 16; addRow(base, 185, 165, GAME_PPU, 0); addRow(base, 185, 165, GAME_PPU, Math.PI); addRow(ups, 185, 165, GAME_PPU, 0); addRow(ups, 185, 165, GAME_PPU, Math.PI);
@@ -76,8 +76,8 @@ for (const c of cells) {
   const yb = H - c.y - c.h;
   r.setViewport(c.x, yb, c.w, c.h); r.setScissor(c.x, yb, c.w, c.h);
   cam.aspect = c.w / c.h; cam.updateProjectionMatrix();
-  const d = c.h / (2 * TAN * c.ppu), cy = g.userData.fit.height * 0.5;
-  cam.position.set(0, cy + Math.sin(ELEV) * d, Math.cos(ELEV) * d); cam.lookAt(0, cy, 0);
+  const d = c.h / (2 * TAN * c.ppu), cy = g.userData.fit.height * (c.fy ?? 0.5), EL = c.elev != null ? THREE.MathUtils.degToRad(c.elev) : ELEV;
+  cam.position.set(0, cy + Math.sin(EL) * d, Math.cos(EL) * d); cam.lookAt(0, cy, 0);
   inkMat.userData.uniforms.uHullW.value = (c.ppu > GAME_PPU ? HULL_PX * c.ppu / GAME_PPU : HULL_PX) * 2 * TAN / c.h;
   r.setClearColor(0x87a8d8); r.clear();
   r.render(scene, cam);

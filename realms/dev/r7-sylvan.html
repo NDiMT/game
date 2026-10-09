@@ -18,7 +18,7 @@ const UPB = { centaurcpt: 'centaur', battledwarf: 'dwarf', grandelf: 'woodelf', 
 const { makeBodyMaterial, makeGlowMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, tick } = await import('../materials.js' + v);
 const { unitFit, applyFit } = await import('../unit_fit.js' + v);
 
-const W = q.get('big') ? 2652 : 1300, FOV = 30, TAN = Math.tan(THREE.MathUtils.degToRad(FOV / 2)), ELEV = THREE.MathUtils.degToRad(46);
+const W = q.get('big') ? 2652 : 1300, FOV = 30, TAN = Math.tan(THREE.MathUtils.degToRad(FOV / 2)), ELEV = THREE.MathUtils.degToRad(q.get('big') ? +(q.get('elev') ?? 22) : 46);
 const GAME_PPU = 109, HULL_PX = +(q.get('hull') ?? 5.3);
 const base = SYLVAN_BASE_IDS, ups = SYLVAN_UP_IDS, all = [...base, ...ups];
 // sections: [title, ids, cellW, cellH, pxPerUnit, yaws]
@@ -33,9 +33,9 @@ const secs = [];
 const only = q.get('ids') ? q.get('ids').split(',') : null;
 if (q.get('big')) {
   // close-up mode: each id large, front three-quarter and back three-quarter
-  const ids = only || all, cw = 330, ch = 380;
+  const ids = only || all, cw = 440, ch = 470;
   secs.push(['close-up (detail check)', H]); H += 16;
-  for (let i = 0; i < ids.length; i += 4) { const row = ids.slice(i, i + 4); row.forEach((id, j) => { cells.push({ id, x: 6 + j * 2 * cw, y: H, w: cw, h: ch, ppu: 0, yaw: 0.45 }); cells.push({ id, x: 6 + (j * 2 + 1) * cw, y: H, w: cw, h: ch, ppu: 0, yaw: Math.PI - 0.6 }); }); H += ch; }
+  for (let i = 0; i < ids.length; i += 3) { const row = ids.slice(i, i + 3); row.forEach((id, j) => { cells.push({ id, x: 6 + j * 2 * cw, y: H, w: cw, h: ch, ppu: 0, yaw: 0.45 }); cells.push({ id, x: 6 + (j * 2 + 1) * cw, y: H, w: cw, h: ch, ppu: 0, yaw: Math.PI - 0.6 }); }); H += ch; }
 } else {
 secs.push([S[0][0], H]); H += 16; addRow(all, 92, 92, 65, 0); addRow(all, 92, 92, 65, Math.PI);
 secs.push([S[1][0], H]); H += 16; addRow(base, 185, 165, GAME_PPU, 0); addRow(base, 185, 165, GAME_PPU, Math.PI); addRow(ups, 185, 165, GAME_PPU, 0); addRow(ups, 185, 165, GAME_PPU, Math.PI);
@@ -74,8 +74,8 @@ for (const c of cells) {
   const yb = H - c.y - c.h;
   r.setViewport(c.x, yb, c.w, c.h); r.setScissor(c.x, yb, c.w, c.h);
   cam.aspect = c.w / c.h; cam.updateProjectionMatrix();
-  if (!c.ppu) { const f = g.userData.fit; c.ppu = c.h / (Math.max(f.height, 0.6) * 1.35); }
-  const d = c.h / (2 * TAN * c.ppu), cy = g.userData.fit.height * 0.5;
+  if (!c.ppu) { const f = g.userData.fit; c.ppu = c.h / (Math.max(f.height, 0.6) * 1.45) * +(q.get('zoom') ?? 1); c.big = 1; }
+  const d = c.h / (2 * TAN * c.ppu), cy = g.userData.fit.height * (c.big ? +(q.get('fy') ?? 0.58) : 0.5);
   cam.position.set(0, cy + Math.sin(ELEV) * d, Math.cos(ELEV) * d); cam.lookAt(0, cy, 0);
   inkMat.userData.uniforms.uHullW.value = (c.ppu > GAME_PPU ? HULL_PX * c.ppu / GAME_PPU : HULL_PX) * 2 * TAN / c.h;
   r.setClearColor(0x87a8d8); r.clear();

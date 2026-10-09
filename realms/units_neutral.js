@@ -86,7 +86,7 @@ function nkit(seed) {
     // ellipsoid
     ell(rx, ry, rz, p, col, rot = null, det = 1, glow = false) {
       // R7: big bodies / heads get a finer sphere so they look sculpted, not faceted
-      if (det === 1 && Math.max(rx, ry, rz) >= 0.14) det = 2;
+      if (det === 1 && Math.max(rx, ry, rz) >= 0.17) det = 2;
       const g = new THREE.IcosahedronGeometry(1, det).scale(rx, ry, rz);
       if (rot) g.applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot, 'YXZ')));
       g.translate(...p);
@@ -676,9 +676,9 @@ function troll() {
   // R7: lichen-spotted hide, pale eyes with glowing irises, warty nostrilled nose, jagged teeth, bone ear
   // ring; mushrooms + moss tufts on the hump, hanging moss strands, rope belt with a bone fetish and
   // hanging strips, a tooth necklace, four claws per hand, toe claws, knobbly stone knees/elbows
-  const lichen = (p) => hash3(p, 2.3) > 0.82;
-  const SK = tint(byN(0xc4b0d8, 0x9c86b8, 0x6e5c8a, 0.45, -0.3), 0xa8c870, lichen);
-  const SKL = tint(byN(0xb4a0cc, 0x8e78ac, 0x6e5c8a), 0x9cbc6a, lichen);
+  const lichen = (p) => hash3(p, 2.3) > 0.9;
+  const SK = tint(byN(0xc4b0d8, 0x9c86b8, 0x6e5c8a, 0.45, -0.3), 0xb4c488, lichen);
+  const SKL = tint(byN(0xb4a0cc, 0x8e78ac, 0x6e5c8a), 0xa4b47e, lichen);
   const MOSS = banded(byN(0xb8f04a, 0x8ac436, 0x5e8a2c, 0.3, -0.3), 0.85, (p) => hash3(p, 4) > 0.7);
   const ROCK = byN(0xb0e84a, 0x9a90a4, 0x766c80, 0.4, -0.2);
   const CLAW = 0xf8f0d8, ROPE = 0xb8945a;
@@ -825,7 +825,7 @@ function cyclops() {
     k.ell(0.04, 0.058, 0.014, [0, 1.35, 0.345], DARK, null, 1);
     k.ell(0.016, 0.016, 0.008, [0.03, 1.39, 0.348], 0xffffff, null, 0, true); // highlight
     // heavy lids, lashes, the big brow
-    k.ell(0.18, 0.07, 0.11, [0, 1.47, 0.22], SKD, [-0.25, 0, 0], 1);
+    k.ell(0.165, 0.07, 0.11, [0, 1.47, 0.22], SKD, [-0.25, 0, 0], 1);
     k.ell(0.17, 0.045, 0.1, [0, 1.225, 0.21], SK, [0.2, 0, 0], 1);
     for (let i = 0; i < 5; i++) { const x = (i - 2) * 0.06; k.cone([x, 1.43 - Math.abs(i - 2) * 0.02, 0.3], [x * 1.25, 1.47 - Math.abs(i - 2) * 0.02, 0.35], 0.012, 0x6a3a30, 3); }
     k.box(0.38, 0.06, 0.09, [0, 1.52, 0.24], SKD, [0.35, 0, 0]);

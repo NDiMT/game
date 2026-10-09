@@ -137,6 +137,7 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 function finish(parts, seed) {
+  if (globalThis.DBG_DUN) { const m = {}; for (const pt of parts) { const key = (pt.glow ? 'G' : '') + pt.col.getHexString() + ':' + pt.g.attributes.position.count / 3; m[key] = (m[key] || 0) + 1; } console.log(Object.entries(m).map(([k, n]) => [k, n, n * +k.split(':')[1]]).sort((a, b) => b[2] - a[2]).slice(0, +(globalThis.DBG_N || 25)).map((e) => e.join(' ')).join('\n')); }
   const out = { body: { p: [], c: [], b: [], v: [] }, glow: { p: [], c: [], b: [], v: [] } };
   // whole-model value band: light top, mid body, softer underside (never dark)
   let gy1 = 0.5;
@@ -453,7 +454,7 @@ function eyeBall(k, p, r, o = {}) {
   const dir = o.dir ?? [0, 0, 1], D = V3(dir).normalize(), rr = dirR(dir), P = V3(p), sy = o.sy ?? 1;
   const at = (f, dx = 0, dy = 0) => P.clone().addScaledVector(D, f).add(V3([dx, dy, 0])).toArray();
   k.ell(r, r * sy, r * 0.62, p, o.white ?? WHITE, { d: 1, r: rr, grad: [1, 1], ao: false, glow: !!o.wglow });
-  k.ell(r * 0.68, r * 0.68 * Math.min(sy, 1.1), r * 0.3, at(r * 0.42), o.iris ?? 0x8a5a2a, { d: 1, r: rr, grad: [1, 1], ao: false, glow: !!o.glow });
+  k.ell(r * 0.68, r * 0.68 * Math.min(sy, 1.1), r * 0.3, at(r * 0.42), o.iris ?? 0x8a5a2a, { d: r >= 0.03 ? 1 : 0, r: rr, grad: [1, 1], ao: false, glow: !!o.glow });
   k.ell(r * (o.slit ? 0.13 : 0.32), r * (o.slit ? 0.6 : 0.34), r * 0.2, at(r * 0.56), o.pupil ?? INK, { d: 0, r: rr, ao: false, glow: !!o.glow });
   k.ell(r * 0.13, r * 0.13, r * 0.08, at(r * 0.62, r * 0.22, r * 0.24), WHITE, { d: 0, r: rr, glow: true });
 }
@@ -690,26 +691,52 @@ function beholder(U) {
   const C = [0, 0.56, 0];
   const k = makeKit(U ? 127 : 121, C);
   const BOD = U ? 0xc8449c : 0xb460d8, LID = U ? 0x9a2c86 : 0x8a42b8, SCL = 0xfbf6ff, IRIS = U ? G_RED : G_TEAL, PUP = 0x3a1650;
+  const IRIS_D = U ? 0xc8202a : 0x18a0b0, PLATE = U ? 0xa83486 : 0x9a4ec4, PLATE_L = U ? 0xe068b0 : 0xc888ee, VEIN = 0xe8607a;
   const R = 0.35;
-  k.ell(R, R * 0.96, R * 0.95, C, BOD, { d: 2, grad: [0.78, 1.12] });
+  // the orb as a fine lathe (smooth silhouette for fewer triangles than a subdivided icosphere)
+  const orb = []; for (let i = 0; i <= 12; i++) { const th = (i / 12) * Math.PI; orb.push([R * Math.sin(th), -R * 0.96 * Math.cos(th)]); }
+  k.lathe(orb, C, BOD, { seg: 20, s: [1, 1, 0.95], grad: [0.78, 1.12] });
   // belly paler (value band)
-  k.ell(R * 0.8, R * 0.5, R * 0.8, [0, C[1] - 0.12, 0.02], U ? 0xe27ab8 : 0xd292ec, { d: 1 });
-  // the great eye
+  k.ell(R * 0.8, R * 0.5, R * 0.8, [0, C[1] - 0.12, 0.02], U ? 0xe27ab8 : 0xd292ec, { d: 2 });
+  // chitin plates over the crown and back, in two tones (scale pattern), and
+  // pale warts on the flanks
+  const plates = [];
+  for (const [lat, n, o] of [[1.25, 5, 0], [0.82, 8, 0.3], [0.38, 10, 0], [-0.02, 7, 0.5]]) for (let i = 0; i < n; i++) {
+    const lon = Math.PI + ((i + o) / n - 0.5) * (lat > 1 ? 6.28 : 4.2);
+    if (Math.cos(lon) > 0.35 && lat < 1.1) continue; // keep the face clear
+    plates.push([lon, lat]);
+  }
+  platesOn(k, C, [R, R * 0.96, R * 0.95], plates, [0.085, 0.07, 0.03], [PLATE, PLATE_L], { f: 0.99, d: 0 });
+  if (!U) platesOn(k, C, [R, R * 0.96, R * 0.95], [[1.5, -0.15], [-1.5, -0.15], [1.2, -0.55], [-1.2, -0.55], [2.3, -0.4], [-2.3, -0.4]], [0.025, 0.025, 0.014], [PLATE_L], { f: 1.0 });
+  // the great eye: lid socket, sclera with red veins, two-tone iris, pupil, glint
   k.ell(0.21, 0.19, 0.1, [0, 0.61, 0.26], LID, { d: 1 });
-  k.ell(0.175, 0.16, 0.09, [0, 0.6, 0.3], SCL, { d: 1, grad: [0.95, 1.05], ao: false });
-  k.ell(0.1, 0.1, 0.03, [0, 0.6, 0.378], IRIS, { glow: true, d: 1 });
-  k.ell(0.032, 0.07, 0.02, [0, 0.6, 0.398], PUP, { glow: true, d: 0 });
-  // heavy angry upper lid
-  k.ell(0.21, 0.075, 0.12, [0, 0.745, 0.25], LID, { r: [0.35, 0, 0] });
-  // wide grin: dark mouth band, teeth top and bottom
-  k.ell(0.24, 0.065, 0.1, [0, 0.39, 0.22], MOUTH, { r: [-0.25, 0, 0], ao: false });
+  k.ell(0.175, 0.16, 0.09, [0, 0.6, 0.3], SCL, { d: 2, grad: [0.95, 1.05], ao: false });
+  for (let i = 0; i < 7; i++) {
+    const a = i * 0.9 + 0.3, pt = (u, w = 0) => { const x = Math.cos(a + w) * 0.175 * u, y = Math.sin(a + w) * 0.16 * u; return [x, 0.6 + y, 0.3 + 0.09 * Math.sqrt(Math.max(0, 1 - u * u)) + 0.004]; };
+    tube(k, [pt(0.97), pt(0.82, 0.08), pt(0.66, -0.04)], 0.006, 0.003, VEIN, { seg: 3, n: 4, ao: false, grad: [1, 1] });
+  }
+  k.ell(0.105, 0.105, 0.03, [0, 0.6, 0.376], IRIS_D, { glow: true, d: 1 });
+  k.ell(0.078, 0.078, 0.03, [0, 0.6, 0.383], IRIS, { glow: true, d: 1 });
+  k.ell(0.032, 0.07, 0.02, [0, 0.6, 0.4], PUP, { glow: true, d: 1 });
+  k.ell(0.02, 0.02, 0.01, [0.035, 0.635, 0.405], WHITE, { glow: true, d: 0 });
+  // heavy angry upper lid with a pale rim, angled brow plates, a thin lower lid
+  k.ell(0.21, 0.075, 0.12, [0, 0.745, 0.25], LID, { r: [0.35, 0, 0], d: 1 });
+  k.ell(0.2, 0.022, 0.05, [0, 0.705, 0.335], PLATE_L, { r: [0.35, 0, 0], d: 1 });
+  k.sym(() => k.ell(0.1, 0.03, 0.07, [0.1, 0.8, 0.25], U ? GOLD : PLATE, { r: [0.3, -0.2, -0.38], d: 1 }));
+  k.ell(0.16, 0.026, 0.07, [0, 0.462, 0.32], LID, { r: [-0.3, 0, 0], d: 1 });
+  // wide grin: dark mouth band with lips, a tongue, teeth top and bottom
+  k.ell(0.24, 0.065, 0.1, [0, 0.39, 0.22], MOUTH, { r: [-0.25, 0, 0], ao: false, d: 1 });
+  k.ell(0.25, 0.022, 0.08, [0, 0.435, 0.245], LID, { r: [-0.25, 0, 0], d: 1 });
+  k.ell(0.1, 0.03, 0.07, [0.03, 0.37, 0.28], 0xf0709a, { r: [-0.4, 0.2, 0], d: 1 });
   const nT = U ? 9 : 7;
   for (let i = 0; i < nT; i++) {
     const a = (i / (nT - 1) - 0.5) * 1.5, x = Math.sin(a) * 0.23, z = Math.cos(a) * 0.29 - 0.03;
-    k.cone(0.03, U ? 0.08 : 0.065, [x, 0.43, z], BONEC, { r: [Math.PI, 0, 0], seg: 4 });
+    k.cone(0.03, U ? 0.08 : 0.065, [x, 0.43, z], BONEC, { r: [Math.PI, 0, 0], seg: 5 });
     if (i % 2) k.cone(0.026, 0.05, [x, 0.35, z - 0.01], BONEC, { seg: 4 });
+    else if (i > 0 && i < nT - 1) k.cone(0.018, 0.032, [x, 0.355, z - 0.01], BONEC, { seg: 4 });
   }
-  // eye-stalks: each its own HEAD bone pivoting at its root on the orb
+  // eye-stalks: each its own HEAD bone pivoting at its root on the orb; banded
+  // stalks, little eyes with an iris, pupil and lid
   const nS = U ? 8 : 6;
   for (let i = 0; i < nS; i++) {
     const a = (i / (nS - 1) - 0.5) * (U ? 3.4 : 3.0);
@@ -720,22 +747,33 @@ function beholder(U) {
     const p1 = base.clone().addScaledVector(dir, len * 0.5).add(V3([0, 0.04, 0]));
     const tip = base.clone().addScaledVector(dir, len * 0.75).addScaledVector(out, 0.08).add(V3([0, 0.1, 0.06]));
     k.bone(BONE.HEAD, base.toArray(), () => {
-      tube(k, [base.toArray(), p1.toArray(), tip.toArray()], 0.035, 0.026, BOD, { seg: 6, n: 5 });
+      k.ell(0.05, 0.02, 0.05, base.clone().addScaledVector(dir, 0.01).toArray(), U ? GOLD : LID, { d: 0, r: dirR(dir.toArray()).map((v, j) => j === 0 ? v + Math.PI / 2 : v) });
+      tube(k, [base.toArray(), p1.toArray(), tip.toArray()], 0.035, 0.026, BOD, { seg: 6, n: 6, bands: stripes(0, 0.9, 3, BOD, LID, 0.3).concat([[0.9, 1, BOD]]) });
       k.ball(0.058, tip.toArray(), SCL, { d: 1, ao: false });
       const fw = V3([out.x * 0.5, 0.1, 1]).normalize();
-      k.ball(0.032, tip.clone().addScaledVector(fw, 0.042).toArray(), IRIS, { glow: true, d: 0 });
-      k.ell(0.064, 0.03, 0.064, tip.clone().add(V3([0, 0.035, -0.01])).toArray(), LID, { d: 0 });
+      k.ell(0.034, 0.034, 0.016, tip.clone().addScaledVector(fw, 0.046).toArray(), IRIS, { glow: true, d: 0, r: dirR(fw.toArray()) });
+      k.ell(0.012, 0.024, 0.01, tip.clone().addScaledVector(fw, 0.058).toArray(), PUP, { glow: true, d: 0, r: dirR(fw.toArray()) });
+      k.ell(0.066, 0.03, 0.066, tip.clone().add(V3([0, 0.035, -0.01])).toArray(), LID, { d: 0 });
+      if (U) k.torus(0.03, 0.009, p1.toArray(), GOLD_L, { r: dirR(dir.toArray()), seg: 6, ts: 3 });
     });
   }
-  if (U) for (let i = 0; i < 5; i++) { // gold horn spikes around the back and sides
+  if (U) for (let i = 0; i < 5; i++) { // ridged gold horn spikes around the back and sides
     const a = Math.PI * 0.5 + (i / 4) * Math.PI;
-    k.cone(0.05, 0.16, [Math.sin(a) * R * 0.92, 0.6 + (i % 2) * 0.06, Math.cos(a) * R * 0.92], GOLD, { r: [Math.cos(a) * 1.3, 0, -Math.sin(a) * 1.3], seg: 4 });
+    const b = [Math.sin(a) * R * 0.92, 0.6 + (i % 2) * 0.06, Math.cos(a) * R * 0.92], o = [Math.sin(a), 0.25, Math.cos(a)];
+    k.cone(0.05, 0.16, b, GOLD, { r: [Math.cos(a) * 1.3, 0, -Math.sin(a) * 1.3], seg: 6 });
+    k.cone(0.06, 0.04, L3(b, C, 0.03), sh(GOLD, 0.82), { r: [Math.cos(a) * 1.3, 0, -Math.sin(a) * 1.3], seg: 6 });
   }
-  if (U) k.sym(() => k.cone(0.045, 0.14, [0.17, 0.76, 0.22], GOLD_L, { r: [0.4, 0, -0.7], seg: 4 }));
-  // tendrils hanging below (TAIL), reaching the ground
+  if (U) {
+    k.sym(() => k.cone(0.045, 0.14, [0.17, 0.76, 0.22], GOLD_L, { r: [0.4, 0, -0.7], seg: 5 }));
+    // a glowing rune on the brow
+    k.plate([[0, -0.04], [0.028, 0], [0, 0.04], [-0.028, 0]], 0.02, [0, 0.83, 0.3], G_GOLD, { glow: true, r: [-0.6, 0, 0] });
+  }
+  // tendrils hanging below (TAIL), reaching the ground, banded with sucker bulbs
   for (let i = 0; i < 3; i++) {
     const a = (i - 1) * 0.9, x = Math.sin(a) * 0.12, z = Math.cos(a) * 0.08 - 0.06;
-    k.bone(BONE.TAIL, [x, 0.27, z], () => tube(k, [[x, 0.3, z], [x * 1.4, 0.16, z + 0.02], [x * 1.2 + 0.03, 0.02, z + 0.08]], 0.05, 0.012, LID, { seg: 5, n: 6 }));
+    k.bone(BONE.TAIL, [x, 0.27, z], () => {
+      tube(k, [[x, 0.3, z], [x * 1.4, 0.16, z + 0.02], [x * 1.2 + 0.03, 0.02, z + 0.08]], 0.05, 0.012, LID, { seg: 7, n: 8, bands: stripes(0, 1, 3, LID, PLATE_L, 0.25) });
+    });
   }
   return k.done();
 }
@@ -748,22 +786,71 @@ function beholder(U) {
 function medusa(U) {
   const k = makeKit(U ? 139 : 137, [0, 0.25, 0]);
   const SC = U ? 0x22a8a0 : 0x3cb46a, BAND = U ? GOLD_L : 0xf2dc6a, SKN = U ? 0xb0ead8 : 0xa8e2b0, TOP = U ? GOLD : VIO;
-  const SNK = U ? 0x2cb8a8 : 0x46b84a, SNH = U ? GOLD : MAG;
-  // coil: from the hips down and around, the tail curling up at the front-right
+  const SNK = U ? 0x2cb8a8 : 0x46b84a, SNK_D = U ? 0x1a8a84 : 0x2e8a3a, SNH = U ? GOLD : MAG, SC_D = sh(SC, 0.78), TRIM = U ? TEAL : GOLD;
+  // coil: from the hips down and around, the tail curling up at the front-right;
+  // banded, with a row of diamond scales along the spine and darker side scales
   const coil = [[0, 0.46, 0.0], [0, 0.3, 0.04], [0.12, 0.15, 0.13], [0.25, 0.09, 0.0], [0.18, 0.085, -0.19], [-0.02, 0.085, -0.25], [-0.21, 0.085, -0.14], [-0.24, 0.08, 0.06], [-0.09, 0.07, 0.21]];
   const tail = [[-0.09, 0.07, 0.21], [0.08, 0.06, 0.27], [0.24, 0.08, 0.22], [0.31, 0.17, 0.12], [0.3, 0.26, 0.04]];
-  tube(k, coil, 0.135, 0.075, SC, { n: 28, seg: 8, bands: stripes(0.08, 1, 7, SC, BAND), rad: (t) => 0.14 - 0.06 * t, cap: false });
+  const crad = (t) => 0.14 - 0.06 * t;
+  const CF = tube(k, coil, 0.135, 0.075, SC, { n: 28, seg: 10, bands: stripes(0.08, 1, 7, SC, BAND), rad: crad, cap: false });
+  const onTube = (F, i, r, up = 0.92, side = 0) => {
+    const T = F.T[i], u = V3([0, 1, 0]).sub(T.clone().multiplyScalar(T.y)).normalize(), sd = T.clone().cross(u).normalize();
+    const n = u.clone().multiplyScalar(Math.cos(side)).addScaledVector(sd, Math.sin(side));
+    return { p: F.P[i].clone().addScaledVector(n, r * up), n };
+  };
+  for (let i = 3; i < 28; i += 2) {
+    const r = crad(i / 28), { p, n } = onTube(CF, i, r);
+    k.ell(r * 0.42, r * 0.42, r * 0.16, p.toArray(), i % 4 === 1 ? BAND : SC_D, { d: 0, r: dirR(n.toArray()), grad: [1, 1] });
+  }
   k.ell(0.13, 0.1, 0.13, [0, 0.44, 0], SC, { d: 1 });
-  k.bone(BONE.TAIL, tail[0], () => tube(k, tail, 0.08, 0.01, SC, { n: 14, seg: 7, bands: stripes(0, 0.85, 3, SC, BAND).concat([[0.85, 1, BAND]]), rad: (t) => 0.08 * (1 - t) + 0.008 }));
-  // torso + arms, bow pose like an archer
+  k.bone(BONE.TAIL, tail[0], () => {
+    const F = tube(k, tail, 0.08, 0.01, SC, { n: 16, seg: 8, bands: stripes(0, 0.85, 4, SC, BAND).concat([[0.85, 1, BAND]]), rad: (t) => 0.08 * (1 - t) + 0.008 });
+    // a little rattle / fin of scales at the tip
+    for (let j = 0; j < 3; j++) { const p = F.P[12 + j]; k.ell(0.03 - j * 0.006, 0.02, 0.03 - j * 0.006, [p.x, p.y, p.z], j % 2 ? BAND : SC_D, { d: 0 }); }
+    spike(k, F.P[15].toArray(), F.P[16].clone().add(F.T[16].clone().multiplyScalar(0.05)).toArray(), 0.016, BAND, { seg: 4 });
+  });
+  // torso + arms, bow pose like an archer; bracers on the forearms
   const bowP = [-0.27, 0.6, 0.2], draw = [0.02, 0.64, 0.1];
-  figure(k, { robe: true, torso: SKN, hips: SC, upper: SKN, fore: SKN, hand: SKN, rh: draw, lh: bowP, head: false, armR: 0.058, foreR: 0.052, handR: 0.054 });
-  k.lathe([[0.17, 0.55], [0.19, 0.6], [0.2, 0.64], [0.16, 0.67]], [0, 0, 0.01], TOP, { s: [1, 1, 0.82], seg: 10, grad: [0.9, 1.08] });
-  if (U) { k.lathe([[0.165, 0.43], [0.16, 0.49]], [0, 0, 0], GOLD, { s: [1, 1, 0.82], seg: 10, grad: [1, 1] }); k.torus(0.12, 0.022, [0, 0.705, 0.02], GOLD, { r: [Math.PI / 2 + 0.3, 0, 0], seg: 10, ts: 4 }); }
-  // head with glowing eyes and a crown of snakes (all HEAD)
+  const H = figure(k, { robe: true, torso: SKN, hips: SC, upper: SKN, fore: SKN, hand: SKN, rh: draw, lh: bowP, head: false, armR: 0.058, foreR: 0.052, handR: 0.054 });
+  k.bone(BONE.ARM_R, SH, () => { k.limb(L3(H.RE, H.R, 0.45), L3(H.RE, H.R, 0.8), 0.06, 0.056, TRIM, { seg: 8 }); wraps(k, L3(H.RE, H.R, 0.45), L3(H.RE, H.R, 0.8), 0.062, 2, TOP, { w: 0.25 }); });
+  k.bone(BONE.ARM_L, SHL, () => { k.limb(L3(H.LE, H.L, 0.45), L3(H.LE, H.L, 0.8), 0.06, 0.056, TRIM, { seg: 8 }); wraps(k, L3(H.LE, H.L, 0.45), L3(H.LE, H.L, 0.8), 0.062, 2, TOP, { w: 0.25 }); });
+  // scaled hips blending into the coil (green scales over pale skin)
+  if (!U) platesOn(k, [0, 0.45, 0], [0.155, 0.08, 0.12], [[0, 0.6], [0.7, 0.6], [-0.7, 0.6], [1.4, 0.6], [-1.4, 0.6], [0.35, 1.0], [-0.35, 1.0]], [0.035, 0.028, 0.012], [SC, SC_D]);
+  // top with trims, a brooch and shoulder straps
+  k.lathe([[0.17, 0.55], [0.19, 0.6], [0.2, 0.64], [0.16, 0.67]], [0, 0, 0.01], TOP, { s: [1, 1, 0.82], seg: 12, grad: [0.9, 1.08] });
+  k.lathe([[0.173, 0.54], [0.18, 0.565]], [0, 0, 0.01], TRIM, { s: [1, 1, 0.84], seg: 12, grad: [1, 1] });
+  k.lathe([[0.2, 0.635], [0.17, 0.67], [0.15, 0.675]], [0, 0, 0.012], TRIM, { s: [1, 1, 0.84], seg: 12, grad: [1, 1] });
+  k.ell(0.03, 0.03, 0.016, [0, 0.635, 0.178], U ? G_TEAL : MAG_L, { d: 1, glow: !!U });
+  k.torus(0.034, 0.008, [0, 0.635, 0.172], GOLD, { seg: 10, ts: 3 });
+  k.sym(() => tube(k, [[0.1, 0.665, 0.1], [0.14, 0.72, 0.02], [0.11, 0.68, -0.1]], 0.012, 0.012, TRIM, { seg: 5, n: 5 }));
+  if (U) {
+    k.lathe([[0.165, 0.43], [0.16, 0.49]], [0, 0, 0], GOLD, { s: [1, 1, 0.82], seg: 12, grad: [1, 1] });
+    k.torus(0.12, 0.022, [0, 0.705, 0.02], GOLD, { r: [Math.PI / 2 + 0.3, 0, 0], seg: 14, ts: 4 });
+    // scale-pattern breastplate
+    const rows = []; for (let r = 0; r < 2; r++) for (let i = 0; i < 5; i++) rows.push([-0.9 + (i + (r % 2) * 0.5) * 0.4, -0.3 + r * 0.35]);
+    platesOn(k, [0, 0.61, 0.01], [0.2, 0.06, 0.165], rows, [0.03, 0.025, 0.01], [GOLD_L, sh(GOLD, 0.85)]);
+  } else k.torus(0.115, 0.01, [0, 0.7, 0.02], GOLD, { r: [Math.PI / 2 + 0.3, 0, 0], seg: 14, ts: 3 });
+  // quiver on the back with fletched arrows
+  k.at([0.02, 0.6, -0.16], [0.15, 0, 0.55], 1, () => {
+    k.cyl(0.05, 0.055, 0.32, [0, -0.17, 0], U ? GOLD : LEATHER, { seg: 8 });
+    k.cyl(0.058, 0.058, 0.03, [0, 0.12, 0], TRIM, { seg: 8 });
+    k.cyl(0.058, 0.058, 0.025, [0, -0.15, 0], TRIM, { seg: 8 });
+    for (let i = 0; i < 3; i++) { const x = (i - 1) * 0.025; k.limb([x, 0.1, 0], [x, 0.2, 0], 0.007, 0.007, CREAM, { seg: 3 }); k.feather([x, 0.17, 0], [x, 0.24, 0], 0.03, U ? MAG : TEAL_L, { t: 0.01 }); }
+  });
+  // head: glowing eyes with dark lids, brows, nose, painted lips, gold earrings and
+  // a crown of banded snakes with eyes and forked tongues (all HEAD)
   k.bone(BONE.HEAD, NECK, () => {
     k.ell(HR * 1.02, HR * 1.06, HR, [0, HY, 0.01], SKN, { grad: [0.95, 1.05] });
-    k.sym(() => k.ell(0.03, 0.022, 0.014, [0.05, HY + 0.005, 0.124], U ? G_MAG : G_GOLD, { glow: true, d: 0 }));
+    k.sym(() => {
+      k.ell(0.034, 0.024, 0.014, [0.05, HY + 0.005, 0.122], sh(SNK_D, 0.9), { d: 0 });
+      k.ell(0.026, 0.018, 0.012, [0.05, HY + 0.005, 0.128], U ? G_MAG : G_GOLD, { glow: true, d: 1 });
+      k.ell(0.006, 0.016, 0.006, [0.05, HY + 0.005, 0.138], 0x3a1650, { glow: true, d: 0 });
+      k.box(0.06, 0.016, 0.02, [0.05, HY + 0.04, 0.124], SNK_D, { r: [0, 0, -0.3] });
+      k.torus(0.016, 0.005, [0.128, HY - 0.05, 0.01], GOLD, { seg: 8, ts: 3, r: [0, Math.PI / 2, 0] });
+      k.ball(0.011, [0.128, HY - 0.072, 0.01], U ? G_TEAL : MAG, { d: 0, glow: !!U });
+    });
+    k.ell(0.013, 0.024, 0.018, [0, HY - 0.02, 0.138], sh(SKN, 0.9), { d: 0 });
+    k.ell(0.034, 0.012, 0.012, [0, HY - 0.058, 0.124], U ? 0x9a3a8a : 0xb43a7a, { d: 0, ao: false });
     k.ell(0.14, 0.12, 0.13, [0, HY + 0.05, -0.02], SNK, {});
     const nH = U ? 9 : 8;
     for (let i = 0; i < nH; i++) {
@@ -772,21 +859,33 @@ function medusa(U) {
       const b = [sx * 0.1, HY + 0.08, cz * 0.09 - 0.02];
       const m = [sx * 0.22, HY + 0.16 + (i % 2) * 0.05, cz * 0.18 - 0.05];
       const t = [sx * (U ? 0.3 : 0.27), HY + 0.12 + (i % 2) * 0.1, cz * 0.22 - 0.02 + 0.06];
-      tube(k, [b, m, t], 0.034, 0.026, SNK, { seg: 5, n: 5 });
-      k.ell(0.042, 0.032, 0.055, t, SNH, { d: 0 });
+      const F = tube(k, [b, m, t], 0.034, 0.026, SNK, { seg: 5, n: 6, bands: stripes(0, 1, 2, SNK, SNK_D, 0.35) });
+      // snake head facing out along the curve's end, with eyes and a red tongue
+      const D = F.T[6].clone(), Dr = dirR(D.toArray());
+      k.ell(0.034, 0.03, 0.058, t, SNH, { d: 0, r: Dr });
+      const side = V3([0, 1, 0]).cross(D).normalize();
+      for (const sd of [-1, 1]) k.box(0.014, 0.012, 0.014, V3(t).addScaledVector(D, 0.025).addScaledVector(side, sd * 0.024).add(V3([0, 0.012, 0])).toArray(), U ? G_RED : G_LIME, { glow: true, r: Dr });
+      const tg = V3(t).addScaledVector(D, 0.055).add(V3([0, -0.01, 0]));
+      k.limb(tg.toArray(), tg.clone().addScaledVector(D, 0.035).toArray(), 0.005, 0.004, 0xe83a5a, { seg: 3 });
     }
-    if (U) for (let i = 0; i < 5; i++) { const a = (i / 4 - 0.5) * 1.6; k.cone(0.03, 0.11 - Math.abs(i - 2) * 0.015, [Math.sin(a) * 0.12, HY + 0.12, Math.cos(a) * 0.08 + 0.02], GOLD_L, { seg: 4 }); }
+    if (U) for (let i = 0; i < 5; i++) {
+      const a = (i / 4 - 0.5) * 1.6, hgt = 0.11 - Math.abs(i - 2) * 0.015, p = [Math.sin(a) * 0.12, HY + 0.12, Math.cos(a) * 0.08 + 0.02];
+      k.cone(0.03, hgt, p, GOLD_L, { seg: 5 });
+      if (i % 2 === 0) k.ball(0.014, [p[0], p[1] + hgt * 0.35, p[2] + 0.02], G_TEAL, { glow: true, d: 0 });
+    }
+    if (U) k.torus(0.125, 0.014, [0, HY + 0.11, 0.0], GOLD, { r: [Math.PI / 2 - 0.2, 0, 0], seg: 14, ts: 3 });
   });
-  // bow (ARM_L) and nocked arrow (ARM_R)
+  // bow (ARM_L) with a wrapped grip and curled tips, and a fletched arrow (ARM_R)
   const bowH = U ? 0.45 : 0.41, bend = 0.12, pts = [];
   for (let i = 0; i <= 8; i++) { const t = i / 4 - 1; pts.push([bowP[0], bowP[1] + t * bowH, bowP[2] + 0.02 - t * t * bend + (U ? Math.pow(Math.abs(t), 5) * 0.09 : 0)]); }
   const R = [draw[0], draw[1], draw[2] - 0.02];
   k.bone(BONE.ARM_L, SHL, () => {
     for (let i = 0; i < 8; i++) {
       const r = 0.034 - Math.abs(i - 3.5) * 0.0028, c = i === 3 || i === 4 ? (U ? VIO : GOLD) : (U ? GOLD : 0xc0884a);
-      k.limb(pts[i], pts[i + 1], r, r, c, { seg: 5 });
+      k.limb(pts[i], pts[i + 1], r, r, c, { seg: 6 });
     }
-    k.ball(0.03, pts[0], U ? GOLD_L : TEAL, { d: 0 }); k.ball(0.03, pts[8], U ? GOLD_L : TEAL, { d: 0 });
+    wraps(k, pts[3], pts[5], 0.037, 4, U ? GOLD_L : LEATHER, { w: 0.45 });
+    for (const j of [0, 8]) { k.ball(0.03, pts[j], U ? GOLD_L : TEAL, { d: 1 }); spike(k, pts[j], L3(pts[j], j ? pts[7] : pts[1], -0.55).map((v, q) => q === 2 ? v + 0.04 : v), 0.018, U ? GOLD_L : TEAL, { seg: 4 }); }
     k.limb(pts[8], R, 0.008, 0.008, CREAM, { seg: 3 });
     k.limb(pts[0], R, 0.008, 0.008, CREAM, { seg: 3 });
   });
@@ -795,6 +894,8 @@ function medusa(U) {
     k.limb(R, tipA, 0.014, 0.014, CREAM, { seg: 4 });
     const dA = V3(tipA).sub(V3(R)).normalize();
     k.stick(new THREE.ConeGeometry(0.034, 0.1, 4).translate(0, 0.05, 0), tipA, V3(tipA).add(dA).toArray(), U ? G_MAG : TEAL_L, { glow: U });
+    // fletching: three vanes near the nock
+    for (let j = 0; j < 3; j++) k.feather(V3(R).addScaledVector(dA, 0.02).toArray(), V3(R).addScaledVector(dA, 0.11).toArray(), 0.035, j ? (U ? MAG : TEAL) : WHITE, { t: 0.008, roll: j * 2.09 });
   });
   return k.done();
 }
@@ -806,53 +907,108 @@ function medusa(U) {
 function minotaur(U) {
   const S = 1.1;
   const k = makeKit(U ? 151 : 149, [0, 0.42 * S, 0]);
-  const FUR = U ? 0xc06a36 : 0xb8683c, FUR_D = U ? 0x9a5030 : 0x94522e, CHEST = U ? 0xe0925a : 0xd8905e, MUZ = 0xe8b088, HORN = 0xf6ead0, HOOF = 0x7a6a90, CL = VIO;
+  const FUR = U ? 0xc06a36 : 0xb8683c, FUR_D = U ? 0x9a5030 : 0x94522e, CHEST = U ? 0xe0925a : 0xd8905e, MUZ = 0xe8b088, HORN = 0xf6ead0, HORN_D = 0xd8c49a, HOOF = 0x7a6a90, CL = VIO;
+  const BRC = U ? GOLD : LEATHER, STUD = U ? GOLD_L : STEEL;
   let H;
   k.at([0, 0, 0], [0, 0, 0], S, () => {
     H = figure(k, {
       legs: FUR_D, boots: HOOF, torso: FUR, hips: CL, upper: FUR, fore: FUR, hand: FUR_D, rh: [0.29, 0.52, 0.16], lh: [-0.27, 0.42, 0.12],
       head: false, belt: GOLD, armR: 0.08, foreR: 0.07, handR: 0.072, pauldron: U ? GOLD : null, pTrim: U ? GOLD_L : null, stance: 0.12,
     });
-    // chest muscles (or the king's gold breastplate)
-    if (U) k.lathe([[0.17, 0.5], [0.2, 0.57], [0.215, 0.63], [0.2, 0.69], [0.12, 0.73]], [0, 0, 0.005], GOLD, { s: [1, 1, 0.8], seg: 10, grad: [0.86, 1.14] });
-    else k.sym(() => k.ell(0.1, 0.085, 0.06, [0.08, 0.6, 0.125], CHEST, { d: 1 }));
-    // loincloth skirt + front flap
-    k.lathe([[0.215, 0.26], [0.18, 0.36], [0.16, 0.45]], [0, 0, 0], CL, { s: [1, 1, 0.82], seg: 9, grad: [0.85, 1.05] });
+    // hooves: a cloven split and a shaggy fetlock tuft
+    k.sym(() => k.bone(BONE.LEG_FR, [0.085, 0.42, 0], () => {
+      k.box(0.012, 0.06, 0.06, [0.12, 0.04, 0.12], 0x4e3e6e, { ao: false });
+      for (let i = 0; i < 5; i++) { const a = -1.4 + i * 0.7; spike(k, [0.12 + Math.sin(a) * 0.06, 0.13, 0.03 + Math.cos(a) * 0.06], [0.12 + Math.sin(a) * 0.075, 0.075, 0.03 + Math.cos(a) * 0.08], 0.026, FUR_D, { seg: 4 }); }
+      k.box(0.11, 0.035, 0.07, [0.12, 0.22, 0.06], BRC, { r: [0.15, 0, 0] });
+    }));
+    // leather (or gold) bracers with studs on both forearms
+    const bracer = (E, Hd) => { k.limb(L3(E, Hd, 0.35), L3(E, Hd, 0.82), 0.082, 0.076, BRC, { seg: 8 }); for (let i = 0; i < 3; i++) { const p = L3(E, Hd, 0.45 + i * 0.15); k.ball(0.016, [p[0], p[1] + 0.02, p[2] + 0.07], STUD, { d: 0 }); } };
+    k.bone(BONE.ARM_R, SH, () => bracer(H.RE, H.R));
+    k.bone(BONE.ARM_L, SHL, () => bracer(H.LE, H.L));
+    // chest muscles + abs and a fur V (or the king's segmented gold breastplate)
+    if (U) {
+      k.lathe([[0.17, 0.5], [0.2, 0.57], [0.215, 0.63], [0.2, 0.69], [0.12, 0.73]], [0, 0, 0.005], GOLD, { s: [1, 1, 0.8], seg: 12, grad: [0.86, 1.14] });
+      for (const y of [0.565, 0.625]) k.lathe([[0.205 + (y - 0.565) * 0.15, y], [0.214 + (y - 0.565) * 0.05, y + 0.016]], [0, 0, 0.006], GOLD_L, { s: [1, 1, 0.81], seg: 12, phi: -1.2, len: 2.4, grad: [1, 1] });
+      k.ell(0.04, 0.04, 0.02, [0, 0.64, 0.172], G_TEAL, { glow: true, d: 1 });
+      k.torus(0.045, 0.01, [0, 0.64, 0.168], GOLD_L, { seg: 12, ts: 3 });
+      k.sym(() => { for (let i = 0; i < 3; i++) k.ball(0.012, [0.07 + i * 0.045, 0.69 - i * 0.03, 0.115 - i * 0.02], GOLD_L, { d: 0 }); });
+    } else {
+      k.sym(() => k.ell(0.1, 0.085, 0.06, [0.08, 0.6, 0.125], CHEST, { d: 1 }));
+      k.sym(() => { for (let i = 0; i < 2; i++) k.ell(0.042, 0.03, 0.025, [0.04, 0.51 - i * 0.055, 0.15], mix(FUR, CHEST, 0.6), { d: 0 }); });
+      for (let i = 0; i < 3; i++) spike(k, [0, 0.69 - i * 0.03, 0.12], [0, 0.65 - i * 0.04, 0.145], 0.03 - i * 0.005, FUR_D, { seg: 4 });
+    }
+    // shoulder / neck mane of shaggy fur tufts
+    for (let i = 0; i < 7; i++) { const a = Math.PI + (i - 3) * 0.42; spike(k, [Math.sin(a) * 0.14, 0.72, Math.cos(a) * 0.1], [Math.sin(a) * 0.2, 0.64 - Math.abs(i - 3) * 0.015, Math.cos(a) * 0.17], 0.04, i % 2 ? FUR_D : FUR, { seg: 4 }); }
+    // loincloth skirt with an embroidered hem, front flap with a sigil
+    k.lathe([[0.215, 0.26], [0.18, 0.36], [0.16, 0.45]], [0, 0, 0], CL, { s: [1, 1, 0.82], seg: 12, grad: [0.85, 1.05] });
+    k.lathe([[0.22, 0.255], [0.212, 0.29]], [0, 0, 0], GOLD, { s: [1, 1, 0.82], seg: 12, grad: [1, 1] });
+    k.lathe([[0.2, 0.31], [0.196, 0.325]], [0, 0, 0], VIO_L, { s: [1, 1, 0.82], seg: 12, grad: [1, 1] });
     k.box(0.15, 0.22, 0.03, [0, 0.3, 0.15], U ? GOLD : VIO_L, { r: [-0.08, 0, 0] });
-    if (U) cape(k, { y0: 0.18, y1: 0.7, r0: 0.27, r1: 0.2, col: VIO_L, lin: VIO, hem: GOLD, arc: 2.1 });
-    // tail with a tuft
-    k.bone(BONE.TAIL, [0, 0.42, -0.12], () => { tube(k, [[0, 0.42, -0.12], [0, 0.3, -0.24], [0.04, 0.16, -0.28]], 0.025, 0.02, FUR_D, { seg: 5, n: 5 }); k.ell(0.04, 0.07, 0.04, [0.04, 0.13, -0.28], FUR_D, { d: 0 }); });
-    // bull head: big skull, pale muzzle, gold ring, ears, huge horns
+    k.box(0.155, 0.025, 0.036, [0, 0.205, 0.157], U ? VIO : GOLD, { r: [-0.08, 0, 0] });
+    k.plate([[0, -0.05], [0.04, 0], [0, 0.05], [-0.04, 0]], 0.04, [0, 0.31, 0.165], U ? VIO : GOLD, { r: [-0.08, 0, 0] });
+    k.ball(0.016, [0, 0.31, 0.188], U ? G_TEAL : TEAL, { d: 0, glow: !!U });
+    // big belt buckle and a pouch
+    k.box(0.09, 0.075, 0.03, [0, 0.468, 0.165], GOLD_L, { grad: [0.9, 1.1] });
+    k.box(0.05, 0.035, 0.034, [0, 0.468, 0.168], U ? VIO : MAG, {});
+    k.at([-0.17, 0.4, 0.07], [0, -0.95, 0], 1, () => { k.box(0.085, 0.09, 0.05, [0, 0, 0], LEATHER, {}); k.box(0.09, 0.035, 0.056, [0, 0.032, 0.002], sh(LEATHER, 0.8), {}); k.ball(0.012, [0, 0.02, 0.03], GOLD, { d: 0 }); });
+    if (U) cape(k, { y0: 0.18, y1: 0.7, r0: 0.27, r1: 0.2, col: VIO_L, lin: VIO, hem: GOLD, arc: 2.1, seg: 9 });
+    if (U) k.bone(BONE.CLOTH, [0, 0.7, -0.17], () => k.lathe([[0.27 * 0.99 + 0.006, 0.27], [0.272 + 0.006, 0.255]], [0, 0, -0.01], GOLD_L, { s: [1, 1, 0.85], seg: 9, phi: Math.PI - 1.05, len: 2.1, grad: [1, 1], ao: false }));
+    // tail with a big tuft
+    k.bone(BONE.TAIL, [0, 0.42, -0.12], () => {
+      tube(k, [[0, 0.42, -0.12], [0, 0.3, -0.24], [0.04, 0.16, -0.28]], 0.025, 0.02, FUR_D, { seg: 6, n: 6 });
+      k.ell(0.045, 0.075, 0.045, [0.04, 0.13, -0.28], FUR_D, { d: 1 });
+      for (let i = 0; i < 4; i++) { const a = i * 1.57; spike(k, [0.04, 0.12, -0.28], [0.04 + Math.sin(a) * 0.04, 0.03, -0.28 + Math.cos(a) * 0.04], 0.03, i % 2 ? FUR : FUR_D, { seg: 4 }); }
+    });
+    // bull head: big skull, pale muzzle with nostrils and a mouth line, gold ring,
+    // real eyes, heavy brows, cheek tufts, ears with pink insides, ridged horns
     k.bone(BONE.HEAD, NECK, () => {
       k.ell(0.155, 0.15, 0.15, [0, HY + 0.01, 0.0], FUR, { grad: [0.9, 1.1] });
       k.ell(0.11, 0.095, 0.11, [0, HY - 0.06, 0.13], MUZ, { grad: [0.95, 1.05] });
+      k.ell(0.08, 0.008, 0.05, [0, HY - 0.105, 0.2], 0x8a4a5a, { d: 0, ao: false });
       k.sym(() => k.ell(0.022, 0.018, 0.012, [0.045, HY - 0.05, 0.235], MOUTH, { d: 0, ao: false }));
-      k.torus(0.045, 0.014, [0, HY - 0.12, 0.215], GOLD, { seg: 10, ts: 4, r: [0.3, 0, 0] });
-      if (U) k.sym(() => k.ell(0.03, 0.022, 0.014, [0.065, HY + 0.035, 0.13], G_RED, { glow: true, d: 0 }));
-      else eyes(k, HY + 0.035, 0.125);
-      k.sym(() => k.box(0.08, 0.03, 0.04, [0.065, HY + 0.07, 0.12], FUR_D, { r: [0, 0, -0.3] }));
-      k.sym(() => k.cone(0.045, 0.11, [0.15, HY + 0.02, -0.01], FUR_D, { r: [0, 0, -1.9], seg: 4 }));
-      k.cone(0.06, 0.1, [0, HY + 0.12, 0.02], FUR_D, { r: [0.4, 0, 0], seg: 4 });
-      k.sym(() => tube(k, [[0.1, HY + 0.09, 0.0], [0.24, HY + 0.11, 0.02], [0.33, HY + 0.22, 0.06], [0.32, HY + 0.33, 0.13]], 0.052, 0.012, HORN,
-        { seg: 6, n: 9, bands: U ? [[0, 0.62, HORN], [0.62, 1, GOLD]] : [[0, 1, HORN]] }));
+      k.torus(0.045, 0.014, [0, HY - 0.12, 0.215], GOLD, { seg: 12, ts: 4, r: [0.3, 0, 0] });
+      k.sym(() => {
+        eyeBall(k, [0.066, HY + 0.034, 0.122], 0.024, U ? { iris: G_RED, glow: true, white: 0xfff0d0, dir: [0.3, 0, 1] } : { iris: 0x6a3a1a, dir: [0.3, 0, 1] });
+        k.box(0.085, 0.032, 0.045, [0.065, HY + 0.068, 0.12], FUR_D, { r: [0, 0, -0.3] });
+        spike(k, [0.12, HY - 0.03, 0.06], [0.17, HY - 0.07, 0.07], 0.03, FUR_D, { seg: 4 });
+        k.cone(0.045, 0.11, [0.15, HY + 0.02, -0.01], FUR_D, { r: [0, 0, -1.9], seg: 5 });
+        k.ell(0.03, 0.012, 0.045, [0.2, HY + 0.008, -0.003], 0xe89a9a, { d: 0, r: [0, 0, 0.35] });
+        tube(k, [[0.1, HY + 0.09, 0.0], [0.24, HY + 0.11, 0.02], [0.33, HY + 0.22, 0.06], [0.32, HY + 0.33, 0.13]], 0.052, 0.012, HORN,
+          { seg: 7, n: 12, bands: stripes(0, 0.6, 4, HORN, HORN_D, 0.28).concat(U ? [[0.6, 1, GOLD]] : [[0.6, 1, HORN]]) });
+      });
+      k.cone(0.06, 0.1, [0, HY + 0.12, 0.02], FUR_D, { r: [0.4, 0, 0], seg: 5 });
+      k.cone(0.045, 0.08, [0.03, HY + 0.11, 0.04], FUR, { r: [0.6, 0, -0.3], seg: 4 });
+      if (U) { // a spiked gold circlet between the horns
+        k.torus(0.13, 0.014, [0, HY + 0.075, 0.005], GOLD, { r: [Math.PI / 2 - 0.15, 0, 0], seg: 14, ts: 3 });
+        for (let i = 0; i < 3; i++) { const a = (i - 1) * 0.55; k.cone(0.022, 0.06 - Math.abs(i - 1) * 0.015, [Math.sin(a) * 0.125, HY + 0.08, Math.cos(a) * 0.12], GOLD_L, { seg: 4, r: [0.2, 0, -a * 0.4] }); }
+      }
     });
   });
-  // the great double axe (ARM_R), blades in the picture plane
+  // the great double axe (ARM_R), blades in the picture plane: engraved inlays,
+  // bright bevelled edges, a wrapped grip, a pommel and a leather tassel
   const rh = H.R.map((v) => v * S);
   const A = [rh[0] - 0.04, rh[1] - 0.36, rh[2] - 0.05], B = [rh[0] + 0.12, rh[1] + 0.62, rh[2] + 0.12];
   k.bone(BONE.ARM_R, SH.map((v) => v * S), () => pole(k, A, B, (L) => {
-    k.limb([0, 0, 0], [0, L, 0], 0.034, 0.03, U ? 0x8a4ad0 : WOOD, { seg: 6, grad: [0.88, 1.1] });
-    k.cyl(0.05, 0.05, 0.06, [0, 0.12, 0], GOLD, { seg: 6 });
+    k.limb([0, 0, 0], [0, L, 0], 0.034, 0.03, U ? 0x8a4ad0 : WOOD, { seg: 7, grad: [0.88, 1.1] });
+    wraps(k, [0, 0.24, 0], [0, 0.5, 0], 0.038, 6, U ? GOLD : LEATHER, { w: 0.6 });
+    k.cyl(0.05, 0.05, 0.06, [0, 0.12, 0], GOLD, { seg: 8 });
+    k.ball(0.05, [0, 0.0, 0], GOLD, { d: 1 }); k.cone(0.03, 0.07, [0, -0.1, 0], GOLD_L, { r: [Math.PI, 0, 0], seg: 5 });
     const bl = [[0.02, -0.11], [0.1, -0.2], [0.22, -0.22], [0.27, -0.06], [0.27, 0.06], [0.22, 0.22], [0.1, 0.2], [0.02, 0.11]];
     const sc = U ? 1.18 : 1.05;
     k.at([0, L - 0.16, 0], [0, 0, 0], sc, () => {
       for (const sd of [1, -1]) {
         k.plate(bl.map(([x, y]) => [x * sd, y]), 0.036, [0, 0, 0], U ? GOLD : STEEL, { grad: [0.88, 1.14] });
         k.plate([[0.2 * sd, -0.2], [0.29 * sd, -0.07], [0.29 * sd, 0.07], [0.2 * sd, 0.2], [0.245 * sd, 0]], 0.042, [0, 0, 0], U ? GOLD_L : STEEL_L, { grad: [1, 1.1] });
+        // engraved inlay (a crescent fuller) on both faces
+        k.plate([[0.06 * sd, -0.08], [0.15 * sd, -0.13], [0.19 * sd, -0.05], [0.19 * sd, 0.05], [0.15 * sd, 0.13], [0.06 * sd, 0.08], [0.11 * sd, 0]], 0.044, [0, 0, 0], U ? VIO : STEEL_D, { grad: [1, 1] });
+        k.ball(0.022, [0.14 * sd, 0, 0], U ? G_TEAL : TEAL, { d: 0, glow: !!U, s: [1, 1, 0.5] });
       }
-      k.cyl(0.06, 0.06, 0.12, [0, -0.06, 0], U ? GOLD_L : STEEL_D, { seg: 6 });
-      if (U) k.ball(0.045, [0, 0, 0.04], G_TEAL, { glow: true, d: 0 });
-      k.cone(0.04, 0.12, [0, 0.06, 0], U ? GOLD_L : STEEL_L, { seg: 4 });
+      k.cyl(0.06, 0.06, 0.12, [0, -0.06, 0], U ? GOLD_L : STEEL_D, { seg: 8 });
+      wraps(k, [0, -0.06, 0], [0, 0.06, 0], 0.064, 2, GOLD, { w: 0.3 });
+      if (U) k.ball(0.045, [0, 0, 0.04], G_TEAL, { glow: true, d: 1 });
+      k.cone(0.04, 0.12, [0, 0.06, 0], U ? GOLD_L : STEEL_L, { seg: 5 });
+      tube(k, [[0.0, -0.1, 0.05], [0.03, -0.2, 0.07], [0.02, -0.3, 0.06]], 0.012, 0.01, U ? VIO_L : LEATHER, { seg: 4, n: 4 });
+      k.ell(0.02, 0.05, 0.02, [0.02, -0.32, 0.06], U ? VIO_L : MAG, { d: 0 });
     });
   }));
   return k.done();
@@ -865,48 +1021,76 @@ function minotaur(U) {
 // edge, spiked tail and a big glowing lime stinger.
 function manticore(U) {
   const k = makeKit(U ? 163 : 161, [0, 0.48, -0.05]);
-  const FUR = U ? 0xee8044 : 0xeca456, FUR_D = U ? 0xc8603a : 0xcc8640, MANE = U ? 0xc82a4a : 0xd8502a, FACE = U ? 0xf6b48a : 0xf6c890;
-  const MEM = U ? 0x26b4ac : 0x9a52e0, EDGE = U ? GOLD_L : MAG_L, WB = U ? 0x1e8a8a : 0x7442b8, CAR = U ? 0xd84a3a : 0x8c44c0, STG = U ? G_LIME : G_MAG;
+  const FUR = U ? 0xee8044 : 0xeca456, FUR_D = U ? 0xc8603a : 0xcc8640, MANE = U ? 0xc82a4a : 0xd8502a, MANE_D = U ? 0x9a1e3e : 0xb03a22, MANE_L = U ? 0xe8506a : 0xf07a3a, FACE = U ? 0xf6b48a : 0xf6c890;
+  const MEM = U ? 0x26b4ac : 0x9a52e0, EDGE = U ? GOLD_L : MAG_L, WB = U ? 0x1e8a8a : 0x7442b8, CAR = U ? 0xd84a3a : 0x8c44c0, CAR_L = U ? 0xf07a5a : 0xa868dc, STG = U ? G_LIME : G_MAG;
   k.ell(0.2, 0.19, 0.36, [0, 0.48, -0.05], FUR, { r: [0.05, 0, 0], grad: [0.84, 1.1] });
   k.ell(0.16, 0.12, 0.3, [0, 0.4, -0.02], FACE, {});
-  // four lion legs
+  // a darker dorsal stripe and soft flank shading, a belly fringe
+  k.ell(0.07, 0.04, 0.3, [0, 0.66, -0.08], FUR_D, { r: [0.05, 0, 0], d: 1 });
+  for (let i = 0; i < 6; i++) { const z = 0.16 - i * 0.075; spike(k, [0.0, 0.32, z], [0, 0.26, z - 0.02], 0.05, i % 2 ? FACE : mix(FACE, FUR, 0.5), { seg: 4 }); }
+  // four lion legs: elbow tufts, toes and cream claws
   const legs = [[0.12, 0.2, BONE.LEG_FR, 0.03], [-0.12, 0.2, BONE.LEG_FL, -0.03], [0.13, -0.28, BONE.LEG_BR, -0.02], [-0.13, -0.28, BONE.LEG_BL, 0.02]];
   for (const [x, z, bn, sw] of legs) k.bone(bn, [x, 0.5, z], () => {
-    k.ell(0.09, 0.15, 0.12, [x * 1.05, 0.38, z], FUR, { grad: [0.86, 1.06] });
-    k.limb([x * 1.05, 0.3, z], [x * 1.05, 0.06, z + sw], 0.062, 0.052, FUR_D);
-    k.ell(0.065, 0.045, 0.085, [x * 1.05, 0.04, z + sw + 0.03], FUR_D, { d: 0 });
+    const X = x * 1.05, fz = z + sw + 0.03;
+    k.ell(0.09, 0.15, 0.12, [X, 0.38, z], FUR, { grad: [0.86, 1.06], d: 1 });
+    k.limb([X, 0.3, z], [X, 0.06, z + sw], 0.062, 0.052, FUR_D);
+    spike(k, [X, 0.28, z - 0.04], [X + Math.sign(x) * 0.02, 0.2, z - 0.1], 0.035, FUR_D, { seg: 4 });
+    k.ell(0.068, 0.045, 0.088, [X, 0.04, fz], FUR_D, { d: 1 });
+    for (const t of [-1, 0, 1]) {
+      k.ball(0.024, [X + t * 0.034, 0.03, fz + 0.065], FUR, { d: 0 });
+      spike(k, [X + t * 0.034, 0.03, fz + 0.08], [X + t * 0.042, 0.012, fz + 0.12], 0.012, BONEC, { seg: 4 });
+    }
   });
-  // scorpion tail arched over the back
+  // scorpion tail arched over the back: segments with darker dorsal plates and
+  // spines, a ridged bulb with a glowing venom sac and a barbed stinger
   const tp = [[0, 0.56, -0.38], [0, 0.78, -0.56], [0, 1.0, -0.52], [0, 1.14, -0.36], [0, 1.15, -0.18]];
   k.bone(BONE.TAIL, tp[0], () => {
     const F = frames(tp, 7);
     for (let i = 0; i <= 7; i++) {
-      const r = 0.085 - i * 0.006, p = F.P[i].toArray();
-      k.ell(r, r, r * 1.1, p, i % 2 ? CAR : (U ? 0xf07a5a : 0xa868dc), { d: 1 });
-      if (U && i % 2 === 0 && i > 1) k.cone(0.03, 0.09, [p[0], p[1] + r * 0.8, p[2]], GOLD_L, { seg: 4 });
+      const r = 0.085 - i * 0.006, p = F.P[i].toArray(), out = F.P[i].clone().sub(V3([0, 0.8, -0.35])).normalize();
+      k.ell(r, r, r * 1.1, p, i % 2 ? CAR : CAR_L, { d: 1 });
+      k.ell(r * 0.85, r * 0.3, r * 0.9, V3(p).addScaledVector(out, r * 0.78).toArray(), sh(CAR, 0.8), { d: 0, r: dirR(F.T[i].toArray()).map((v, j) => j === 0 ? v + Math.PI / 2 : v) });
+      if (i > 0 && i < 7) { const b = V3(p).addScaledVector(out, r * 0.95); spike(k, b.toArray(), b.clone().addScaledVector(out, U && i % 2 === 0 ? 0.09 : 0.045).toArray(), U && i % 2 === 0 ? 0.03 : 0.018, U ? GOLD_L : BONEC, { seg: 4 }); }
     }
     const end = F.P[7].toArray();
     k.ell(0.07, 0.065, 0.08, [end[0], end[1] - 0.02, end[2] + 0.05], STG, { glow: true, d: 1 });
-    k.cone(0.04, U ? 0.2 : 0.17, [end[0], end[1] - 0.04, end[2] + 0.1], BONEC, { r: [2.2, 0, 0], seg: 5 });
+    k.sym(() => k.ell(0.03, 0.06, 0.07, [end[0] + 0.05, end[1] - 0.02, end[2] + 0.05], CAR, { d: 1 }));
+    k.cone(0.04, U ? 0.2 : 0.17, [end[0], end[1] - 0.04, end[2] + 0.1], BONEC, { r: [2.2, 0, 0], seg: 6 });
+    k.cone(0.018, 0.05, [end[0], end[1] - 0.07, end[2] + 0.17], BONEC, { r: [0.9, 0, 0], seg: 4 });
   });
-  // head: big mane (with tufts) and a lion-man face with fangs
+  // head: a two-ring mane of tufts in three tones, a chin beard, a lion-man face
+  // with real eyes, whisker pads, a nose, an open snarl with fangs and a tongue
   k.bone(BONE.HEAD, [0, 0.6, 0.24], () => {
     k.ell(0.21, 0.21, 0.16, [0, 0.7, 0.3], MANE, { grad: [0.85, 1.1] });
-    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; k.cone(0.07, 0.15, [Math.sin(a) * 0.17, 0.7 + Math.cos(a) * 0.17, 0.27], MANE, { r: [0, 0, -a], seg: 4 }); }
-    if (U) k.torus(0.17, 0.03, [0, 0.66, 0.3], GOLD, { r: [Math.PI / 2 + 0.4, 0, 0], seg: 12, ts: 4 });
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; k.cone(0.07, 0.15, [Math.sin(a) * 0.17, 0.7 + Math.cos(a) * 0.17, 0.27], i % 2 ? MANE_D : MANE, { r: [0, 0, -a], seg: 5 }); }
+    for (let i = 0; i < 8; i++) { const a = ((i + 0.5) / 8) * Math.PI * 2; k.cone(0.05, 0.12, [Math.sin(a) * 0.15, 0.7 + Math.cos(a) * 0.15, 0.33], i % 2 ? MANE_L : MANE, { r: [0.35, 0, -a], seg: 4 }); }
+    for (let i = 0; i < 6; i++) { const a = Math.PI + (i - 2.5) * 0.4; k.cone(0.05, 0.13, [Math.sin(a) * 0.12, 0.7 + Math.cos(a) * 0.12, 0.17], MANE_D, { r: [-0.6, 0, -a], seg: 4 }); }
+    spike(k, [0, 0.58, 0.47], [0, 0.49, 0.47], 0.04, MANE, { seg: 5 });
+    if (U) {
+      k.torus(0.17, 0.03, [0, 0.66, 0.3], GOLD, { r: [Math.PI / 2 + 0.4, 0, 0], seg: 16, ts: 4 });
+      for (let i = 0; i < 6; i++) { const a = (i / 5 - 0.5) * 2.4; k.cone(0.02, 0.05, [Math.sin(a) * 0.17, 0.66 - Math.cos(a) * 0.065, 0.3 + Math.cos(a) * 0.155], GOLD_L, { r: [Math.PI / 2 + 0.4, 0, -a * 0.3], seg: 4 }); }
+    }
     k.ell(0.125, 0.135, 0.11, [0, 0.7, 0.42], FACE, { grad: [0.92, 1.06] });
-    k.ell(0.075, 0.06, 0.07, [0, 0.64, 0.51], 0xfde0b8, {});
+    k.ell(0.075, 0.06, 0.07, [0, 0.64, 0.51], 0xfde0b8, { d: 1 });
+    k.sym(() => { k.ell(0.035, 0.03, 0.03, [0.035, 0.635, 0.545], 0xfff0d8, { d: 1 }); });
     k.ell(0.03, 0.022, 0.02, [0, 0.672, 0.578], 0x8a3a5a, { d: 0 });
+    k.ell(0.008, 0.03, 0.01, [0, 0.69, 0.555], sh(FACE, 0.85), { d: 0 });
     k.ell(0.065, 0.025, 0.04, [0, 0.6, 0.52], MOUTH, { ao: false });
-    k.sym(() => k.cone(0.018, 0.06, [0.035, 0.62, 0.55], WHITE, { r: [Math.PI, 0, 0], seg: 3 }));
-    k.sym(() => { k.ell(0.026, 0.024, 0.014, [0.05, 0.73, 0.52], U ? G_GOLD : INK, { d: 0, glow: U }); k.box(0.07, 0.022, 0.03, [0.05, 0.765, 0.515], FUR_D, { r: [0, 0, -0.35] }); });
-    k.sym(() => k.cone(0.045, 0.09, [0.11, 0.83, 0.36], FACE, { r: [-0.2, 0, -0.5], seg: 4 }));
+    k.ell(0.035, 0.012, 0.025, [0, 0.592, 0.54], 0xe8607a, { d: 0, ao: false });
+    k.sym(() => {
+      k.cone(0.018, 0.06, [0.035, 0.62, 0.55], WHITE, { r: [Math.PI, 0, 0], seg: 4 });
+      k.cone(0.012, 0.035, [0.03, 0.58, 0.545], WHITE, { seg: 3 });
+      eyeBall(k, [0.05, 0.73, 0.515], 0.026, U ? { iris: G_GOLD, glow: true, slit: true, white: 0xfff4c0 } : { iris: 0xe0a020, slit: true });
+      k.box(0.07, 0.022, 0.03, [0.05, 0.765, 0.515], FUR_D, { r: [0, 0, -0.35] });
+      k.cone(0.045, 0.09, [0.11, 0.83, 0.36], FACE, { r: [-0.2, 0, -0.5], seg: 5 });
+      k.ell(0.022, 0.04, 0.008, [0.112, 0.86, 0.372], 0xe89a9a, { d: 0, r: [-0.2, 0, -0.5] });
+    });
   });
-  // bat wings raised in a V from the shoulders
+  // bat wings raised in a V from the shoulders, with veined membranes
   k.sym(() => k.bone(BONE.WING_R, [0.12, 0.62, 0.06], () => batWing(k, {
     root: [0.12, 0.62, 0.06], elbow: [0.32, 0.86, 0.02], wrist: [0.5, 1.08, -0.06],
     tips: U ? [[0.86, 0.98, -0.2], [0.78, 0.72, -0.3], [0.52, 0.56, -0.32]] : [[0.8, 0.94, -0.2], [0.72, 0.7, -0.3], [0.5, 0.56, -0.3]],
-    back: [0.12, 0.56, -0.2], mem: MEM, bone: WB, r: 0.042, claw: BONEC, edge: EDGE,
+    back: [0.12, 0.56, -0.2], mem: MEM, bone: WB, r: 0.042, claw: BONEC, edge: EDGE, vein: mix(MEM, WB, 0.6),
   })));
   return k.done();
 }
@@ -918,63 +1102,102 @@ function manticore(U) {
 // glowing yellow eyes and fire in the jaw.
 function dragon(U) {
   const k = makeKit(U ? 181 : 179, [0, 0.58, -0.1]);
-  const BD = U ? 0xe0442e : 0x6e3aa8, BD_D = U ? 0xb83226 : 0x58308c, BEL = U ? 0xffb84a : 0xc69af0;
-  const SP = U ? GOLD : MAG, HRN = U ? GOLD_L : TEAL_L, CLAW = U ? 0xfff0c8 : TEAL;
+  const BD = U ? 0xe0442e : 0x6e3aa8, BD_D = U ? 0xb83226 : 0x58308c, BD_L = U ? 0xf06a44 : 0x8a52c8, BEL = U ? 0xffb84a : 0xc69af0, BEL_D = U ? 0xe8963a : 0xa87ad8;
+  const SP = U ? GOLD : MAG, HRN = U ? GOLD_L : TEAL_L, HRN_D = U ? GOLD : TEAL, CLAW = U ? 0xfff0c8 : TEAL;
   const MEM = U ? 0xf6782e : 0xb44ac0, EDGE = U ? GOLD_L : TEAL_L, WB = U ? 0xc03a28 : 0x5e3296, EYE = U ? G_GOLD : G_TEAL, BR = U ? 0xffa030 : G_MAG;
   // body, chest, belly
   k.ell(0.25, 0.24, 0.42, [0, 0.6, -0.12], BD, { grad: [0.82, 1.12] });
   k.ell(0.22, 0.24, 0.2, [0, 0.66, 0.18], BD, {});
   k.ell(0.19, 0.15, 0.4, [0, 0.5, -0.04], BEL, { r: [-0.08, 0, 0], grad: [0.9, 1.06] });
-  for (let i = 0; i < 4; i++) k.cone(0.06 - i * 0.004, 0.16, [0, 0.83 - i * 0.025, 0.12 - i * 0.16], SP, { r: [-0.6, 0, 0], seg: 4 });
-  // legs
+  // pale chest plate crossed by transverse scute bands
+  k.at([0, 0.64, 0.3], [-0.25, 0, 0], 1, () => {
+    k.ell(0.15, 0.2, 0.08, [0, 0, 0], BEL, { d: 2 });
+    for (let i = -3; i <= 3; i++) { const v = i / 4, c = Math.sqrt(1 - v * v); k.ell(0.15 * c, 0.012, 0.025, [0, v * 0.2, 0.08 * c - 0.012], BEL_D, { d: 0, grad: [1, 1], ao: false }); }
+  });
+  // scale pattern on the flanks (two tones) and small spines between the big ones
+  const sc = [];
+  for (let r = 0; r < 2; r++) for (let i = 0; i < 5; i++) { const lon = 1.25 + i * 0.36 + (r % 2) * 0.18, lat = 0.1 + r * 0.28; sc.push([lon, lat], [-lon, lat]); }
+  platesOn(k, [0, 0.6, -0.12], [0.25, 0.24, 0.42], sc, [0.05, 0.04, 0.014], [BD_D, BD_D, BD_L, BD_L]);
+  for (let i = 0; i < 4; i++) {
+    k.cone(0.06 - i * 0.004, 0.16, [0, 0.83 - i * 0.025, 0.12 - i * 0.16], SP, { r: [-0.6, 0, 0], seg: 5 });
+    k.cone(0.07 - i * 0.004, 0.04, [0, 0.83 - i * 0.025, 0.12 - i * 0.16], BD_D, { r: [-0.6, 0, 0], seg: 5 });
+    if (i < 3) k.cone(0.03, 0.07, [0, 0.83 - i * 0.025, 0.04 - i * 0.16], SP, { r: [-0.6, 0, 0], seg: 4 });
+  }
+  // legs: knee / elbow spikes, banded shins, knuckled toes, curved claws
   const legs = [[0.17, -0.3, BONE.LEG_BR, true], [-0.17, -0.3, BONE.LEG_BL, true], [0.15, 0.22, BONE.LEG_FR, false], [-0.15, 0.22, BONE.LEG_FL, false]];
   for (const [x, z, bn, back] of legs) k.bone(bn, [x, 0.6, z], () => {
     const s = Math.sign(x);
     if (back) {
-      k.ell(0.11, 0.18, 0.17, [x + s * 0.04, 0.45, z], BD, { grad: [0.86, 1.06] });
+      k.ell(0.11, 0.18, 0.17, [x + s * 0.04, 0.45, z], BD, { grad: [0.86, 1.06], d: 1 });
       k.limb([x + s * 0.05, 0.32, z - 0.04], [x + s * 0.05, 0.07, z + 0.0], 0.07, 0.058, BD_D);
+      wraps(k, [x + s * 0.05, 0.3, z - 0.035], [x + s * 0.05, 0.1, z - 0.005], 0.071, 3, BD, { w: 0.3, taper: 0.9 });
+      spike(k, [x + s * 0.1, 0.42, z - 0.12], [x + s * 0.13, 0.42, z - 0.24], 0.035, SP, { seg: 4 });
     } else {
-      k.ell(0.09, 0.14, 0.11, [x + s * 0.03, 0.5, z], BD, {});
+      k.ell(0.09, 0.14, 0.11, [x + s * 0.03, 0.5, z], BD, { d: 1 });
       k.limb([x + s * 0.04, 0.42, z], [x + s * 0.05, 0.07, z + 0.1], 0.062, 0.05, BD_D);
+      wraps(k, [x + s * 0.04, 0.38, z + 0.01], [x + s * 0.05, 0.1, z + 0.08], 0.063, 3, BD, { w: 0.3, taper: 0.9 });
+      spike(k, [x + s * 0.07, 0.42, z - 0.04], [x + s * 0.1, 0.38, z - 0.14], 0.028, SP, { seg: 4 });
     }
     const fz = back ? z + 0.03 : z + 0.13;
-    k.ell(0.075, 0.05, 0.1, [x + s * 0.05, 0.045, fz], BD_D, { d: 0 });
-    for (const t of [-1, 0, 1]) k.cone(0.022, 0.07, [x + s * 0.05 + t * 0.04, 0.03, fz + 0.08], CLAW, { r: [Math.PI / 2, 0, -t * 0.3], seg: 4 });
+    k.ell(0.075, 0.05, 0.1, [x + s * 0.05, 0.045, fz], BD_D, { d: 1 });
+    for (const t of [-1, 0, 1]) {
+      k.ball(0.026, [x + s * 0.05 + t * 0.04, 0.035, fz + 0.075], BD, { d: 0 });
+      spike(k, [x + s * 0.05 + t * 0.04, 0.035, fz + 0.09], [x + s * 0.05 + t * 0.05, 0.005, fz + 0.16], 0.02, CLAW, { seg: 4 });
+    }
   });
-  // tail with spines and a spade tip
+  // tail: banded, with spines and a veined spade tip
   const tp = [[0, 0.58, -0.46], [0, 0.42, -0.74], [0.1, 0.2, -0.96], [0.3, 0.08, -1.06], [0.48, 0.06, -1.02]];
   k.bone(BONE.TAIL, tp[0], () => {
-    const F = tube(k, tp, 0.15, 0.025, BD, { n: 12, seg: 7, pow: 0.8 });
-    for (let i = 2; i < 11; i += 3) { const p = F.P[i]; k.cone(0.045 - i * 0.002, 0.12 - i * 0.005, [p.x, p.y + 0.11 - i * 0.008, p.z], SP, { r: [-0.6, 0, 0], seg: 4 }); }
+    const F = tube(k, tp, 0.15, 0.025, BD, { n: 15, seg: 9, pow: 0.8, bands: [[0, 0.1, BD]].concat(stripes(0.1, 1, 6, BD, BD_D, 0.3)) });
+    for (let i = 2; i < 14; i += 3) { const p = F.P[i]; k.cone(0.045 - i * 0.0018, 0.12 - i * 0.004, [p.x, p.y + 0.11 - i * 0.0065, p.z], SP, { r: [-0.6, 0, 0], seg: 5 }); }
     k.plate([[0, -0.03], [0.1, -0.1], [0.2, 0], [0.1, 0.1], [0, 0.03]], 0.03, [0.46, 0.07, -1.03], SP, { r: [Math.PI / 2, 0, 0.1] });
+    k.at([0.46, 0.07, -1.03], [Math.PI / 2, 0, 0.1], 1, () => {
+      for (const e of [[0.2, 0], [0.1, 0.085], [0.1, -0.085]]) k.limb([0.01, 0, 0], [e[0] * 0.92, e[1] * 0.92, 0], 0.008, 0.004, sh(SP, 0.72), { seg: 4, s: 1 });
+      k.limb([0.01, 0, -0.02], [0.18, 0, -0.02], 0.02, 0.006, sh(SP, 0.72), { seg: 4 });
+    });
   });
   // neck + head (HEAD from the chest)
   k.bone(BONE.HEAD, [0, 0.74, 0.26], () => {
-    const F = tube(k, [[0, 0.7, 0.22], [0, 0.92, 0.36], [0, 1.12, 0.44], [0, 1.2, 0.5]], 0.13, 0.085, BD, { n: 8, seg: 7 });
-    k.ell(0.09, 0.2, 0.08, [0, 0.9, 0.44], BEL, { r: [-0.55, 0, 0] });
-    for (let i = 2; i < 8; i += 2) { const p = F.P[i]; k.cone(0.045, 0.12, [p.x, p.y + 0.06, p.z - 0.09], SP, { r: [-1.2, 0, 0], seg: 4 }); }
+    const F = tube(k, [[0, 0.7, 0.22], [0, 0.92, 0.36], [0, 1.12, 0.44], [0, 1.2, 0.5]], 0.13, 0.085, BD, { n: 10, seg: 10 });
+    k.at([0, 0.9, 0.44], [-0.55, 0, 0], 1, () => {
+      k.ell(0.09, 0.2, 0.08, [0, 0, 0], BEL, { d: 2 });
+      for (let i = -3; i <= 3; i++) { const v = i / 4, c = Math.sqrt(1 - v * v); k.ell(0.09 * c, 0.01, 0.024, [0, v * 0.2, 0.08 * c - 0.01], BEL_D, { d: 0, grad: [1, 1], ao: false }); }
+    });
+    for (let i = 2; i < 10; i += 2) { const p = F.P[i]; k.cone(0.045, 0.12, [p.x, p.y + 0.06, p.z - 0.09], SP, { r: [-1.2, 0, 0], seg: 5 }); }
     const hc = [0, 1.22, 0.56];
     // the head is drawn 1.3x around its centre so it reads at phone size
     const HM = new THREE.Matrix4().makeTranslation(...hc).multiply(new THREE.Matrix4().makeScale(1.3, 1.3, 1.3)).multiply(new THREE.Matrix4().makeTranslation(-hc[0], -hc[1], -hc[2]));
     k.with(HM, () => {
     k.ell(0.135, 0.11, 0.15, hc, BD, { grad: [0.9, 1.1] });
     k.ell(0.095, 0.07, 0.16, [0, 1.19, 0.71], BD, {});
-    k.ell(0.085, 0.04, 0.15, [0, 1.09, 0.66], BEL, { r: [0.25, 0, 0] });
+    k.ell(0.085, 0.04, 0.15, [0, 1.09, 0.66], BEL, { r: [0.25, 0, 0], d: 1 });
     k.ell(0.07, 0.035, 0.12, [0, 1.13, 0.68], BR, { glow: true, d: 1 });
+    // snout ridge plates
+    for (let i = 0; i < 3; i++) k.ell(0.04 - i * 0.006, 0.014, 0.035, [0, 1.258 - i * 0.012, 0.62 + i * 0.07], BD_L, { d: 0, r: [0.25, 0, 0] });
     k.sym(() => {
-      k.ell(0.036, 0.028, 0.022, [0.075, 1.255, 0.66], EYE, { glow: true, d: 0 });
+      // eye with a slit pupil, heavy brow, nostril, teeth rows, cheek frill
+      k.ell(0.036, 0.028, 0.022, [0.075, 1.255, 0.66], EYE, { glow: true, d: 1 });
+      k.ell(0.006, 0.022, 0.008, [0.082, 1.255, 0.678], 0x2a1040, { glow: true, d: 0 });
       k.box(0.08, 0.03, 0.06, [0.075, 1.29, 0.64], BD_D, { r: [0, -0.3, -0.3] });
-      tube(k, [[0.07, 1.28, 0.52], [0.14, 1.36, 0.42], [0.17, 1.4, 0.26]], 0.05, 0.01, HRN, { seg: 5, n: 7 });
+      k.ell(0.016, 0.01, 0.014, [0.036, 1.222, 0.85], 0x3a1a4a, { d: 0, ao: false });
+      k.ell(0.026, 0.02, 0.03, [0.036, 1.226, 0.83], BD_L, { d: 0 });
+      for (let i = 0; i < 4; i++) spike(k, [0.072 - i * 0.008, 1.14, 0.6 + i * 0.065], [0.074 - i * 0.008, 1.1, 0.605 + i * 0.065], 0.012, WHITE, { seg: 3 });
+      for (let i = 0; i < 3; i++) spike(k, [0.06 - i * 0.008, 1.1, 0.63 + i * 0.065], [0.061 - i * 0.008, 1.13, 0.64 + i * 0.065], 0.01, WHITE, { seg: 3 });
+      spike(k, [0.11, 1.16, 0.55], [0.2, 1.13, 0.46], 0.025, SP, { seg: 4 });
+      spike(k, [0.1, 1.2, 0.52], [0.19, 1.22, 0.42], 0.022, SP, { seg: 4 });
+      tube(k, [[0.07, 1.28, 0.52], [0.14, 1.36, 0.42], [0.17, 1.4, 0.26]], 0.05, 0.01, HRN, { seg: 6, n: 10, bands: stripes(0, 0.7, 4, HRN, HRN_D, 0.3).concat([[0.7, 1, HRN]]) });
       k.cone(0.03, 0.09, [0.12, 1.2, 0.5], HRN, { r: [-1.2, 0, -1.0], seg: 4 });
+      k.cone(0.02, 0.06, [0.05, 1.3, 0.45], HRN, { r: [-1.3, 0, -0.3], seg: 4 });
     });
+    spike(k, [0, 1.07, 0.6], [0, 1.03, 0.54], 0.02, SP, { seg: 4 });
     });
   });
-  // huge bat wings raised high
+  // huge bat wings raised high, veined membranes
   const Sw = U ? 1.0 : 0.93;
   k.sym(() => k.bone(BONE.WING_R, [0.13, 0.82, 0.02], () => batWing(k, {
     root: [0.13, 0.82, 0.02], elbow: [0.42 * Sw, 1.12 * Sw, -0.04], wrist: [0.66 * Sw, 1.4 * Sw, -0.12],
     tips: [[1.02 * Sw, 1.2 * Sw, -0.3], [0.94 * Sw, 0.86, -0.42], [0.66 * Sw, 0.62, -0.46]],
-    back: [0.14, 0.66, -0.32], mem: MEM, bone: WB, r: 0.06, claw: HRN, edge: EDGE,
+    back: [0.14, 0.66, -0.32], mem: MEM, bone: WB, r: 0.06, claw: HRN, edge: EDGE, vein: mix(MEM, WB, 0.55),
   })));
   return k.done();
 }
