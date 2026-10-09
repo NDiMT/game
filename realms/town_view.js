@@ -140,6 +140,7 @@ const PAL = {
     tree: 'dead', stars: 1,
     groundTune: { shade: 0xc0a090, lift: 0.18, toe: 0.2, detail: 0.8 }, sceneryTune: { shade: 0xa898d0, lift: 0.18, toe: 0.4 },
     seed: 23, groundMode: 'moor', bumpy: 0.6, groundVar: [0.9, 0.18], moon: true,
+    lamp: [0x6effa8, 0xb0ffd0, 0.5], mist: { c: 0xf4e8ff, n: 16, o: 0.3 },
     clouds: { n: 9, wispy: true, opacity: 0.7, w: 380, aspect: 0.32, y: 30, seeds: [6, 9] },
     mtnSeed: 37, mtnSpike: 'spiky', snow: false, mtnH: 1,
     trees: [['dead', 0.62], ['pine', 0.38]], treeDensity: 1.4, crown: [0x8a9478, 0xb0b8a0], pineC: [0x6a6878, 0x9c98a8], deadC: [0x8e7e88, 0xcabcc0],
@@ -1080,20 +1081,24 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
             glowP.spawn({ x, y: groundH(x, z, 'necro') + 0.3 + Math.random() * 1.2, z, vx: (Math.random() - 0.5) * 0.4, vy: 0.12, vz: (Math.random() - 0.5) * 0.4, drag: 0.1, s0: 0.25, s1: 0.2, a: 0.9, life: 4 + Math.random() * 3, c: wc, twinkle: true });
           }
         });
-        // lantern halos and rising motes
-        const haloMat = keep(new T.SpriteMaterial({ map: softTex, color: col(0x6effa8), transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.5, fog: false }));
-        const halos = (env.lanterns || []).map(([x, y, z], i) => { const h = new T.Sprite(haloMat); h.position.set(x, y, z + 0.02); h.scale.setScalar(0.8); h.renderOrder = 4; G.add(h); return [h, i * 1.7]; });
+      }
+      // lantern halos and rising motes
+      if (env.lanterns?.length && P.lamp) {
+        const haloMat = keep(new T.SpriteMaterial({ map: softTex, color: col(P.lamp[0]), transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: P.lamp[2] ?? 0.5, fog: false }));
+        const halos = env.lanterns.map(([x, y, z], i) => { const h = new T.Sprite(haloMat); h.position.set(x, y, z + 0.02); h.scale.setScalar(0.8); h.renderOrder = 4; G.add(h); return [h, i * 1.7]; });
         let lacc = 0;
-        const lc = col(0xb0ffd0);
+        const lc = col(P.lamp[1]), hs = P.lamp[3] ?? 0.75;
         env.updaters.push((dt, t) => {
-          for (const [h, ph] of halos) h.scale.setScalar(0.75 + 0.08 * Math.sin(t * 3.1 + ph) + 0.04 * Math.sin(t * 7.3 + ph * 2));
+          for (const [h, ph] of halos) h.scale.setScalar(hs + 0.08 * Math.sin(t * 3.1 + ph) + 0.04 * Math.sin(t * 7.3 + ph * 2));
           lacc += dt;
           while (lacc > 0.3) { lacc -= 0.3; const L = env.lanterns[(Math.random() * env.lanterns.length) | 0]; if (L) glowP.spawn({ x: L[0] + (Math.random() - 0.5) * 0.2, y: L[1], z: L[2], vx: (Math.random() - 0.5) * 0.15, vy: 0.25 + Math.random() * 0.2, drag: 0.4, s0: 0.1, s1: 0.04, a: 0.9, life: 1.8 + Math.random(), c: lc, twinkle: true }); }
         });
-        // low mist banks
-        const mists = [];
-        for (let i = 0; i < 16; i++) {
-          const m = keep(new T.SpriteMaterial({ map: mistTex, color: col(0xf4e8ff), transparent: true, depthWrite: false, opacity: 0.3 }));
+      }
+      // low mist banks
+      if (P.mist) {
+        const mists = [], MI = P.mist;
+        for (let i = 0; i < MI.n; i++) {
+          const m = keep(new T.SpriteMaterial({ map: mistTex, color: col(MI.c), transparent: true, depthWrite: false, opacity: MI.o }));
           const s = new T.Sprite(m);
           let x, z;
           do { x = (R() - 0.5) * 80; z = -R() * 50 - 2; } while (Math.abs(x) < 11 && z > -10);
@@ -1102,14 +1107,28 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
           mists.push({ s, sp: 0.15 + R() * 0.25, x0: x });
           G.add(s);
         }
-        env.updaters.push((dt, t) => { for (const m of mists) { m.s.position.x = m.x0 + Math.sin(t * m.sp * 0.3 + m.x0) * 2.5; m.s.material.opacity = 0.24 + 0.08 * Math.sin(t * 0.4 + m.x0); } });
-      } else {
-        // butterflies / pollen sparkles over the meadow
-        const pc = col(0xfff4c0);
+        env.updaters.push((dt, t) => { for (const m of mists) { m.s.position.x = m.x0 + Math.sin(t * m.sp * 0.3 + m.x0) * 2.5; m.s.material.opacity = MI.o * 0.8 + MI.o * 0.27 * Math.sin(t * 0.4 + m.x0); } });
+      }
+      // free-floating motes: pollen (haven), fireflies (sylvan), embers (inferno), crystal motes (dungeon)
+      const MOTES = {
+        haven: { every: 0.35, c: [0xfff4c0], spawn: () => ({ x: (Math.random() - 0.5) * 24, z: (Math.random() - 0.5) * 18 - 2, y: 0.3 + Math.random() * 1.5, vx: (Math.random() - 0.5) * 0.3, vy: 0.08, drag: 0.1, s0: 0.08, s1: 0.06, a: 0.7, life: 3 }) },
+        sylvan: { every: 0.07, c: [0xe8ff70, 0xfff0a0, 0xc0ff80], spawn: () => { const a = Math.random() * 6.283, d = 4 + Math.random() * 16, x = Math.sin(a) * d * 1.3, z = -3 + Math.cos(a) * d * 0.8;
+          return { x, z, y: Math.max(0, groundH(x, z, fac)) + 0.2 + Math.random() * 2.2, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.4) * 0.2, vz: (Math.random() - 0.5) * 0.5, drag: 0.05, s0: 0.13, s1: 0.1, a: 1, life: 3 + Math.random() * 3 }; } },
+        inferno: { every: 0.045, c: [0xffa030, 0xffd060, 0xff6a20], spawn: () => {
+          // embers rise off the lava river and the scorched ground round the town
+          let x, z;
+          if (Math.random() < 0.55) { const pt = RIV.pts[150 + ((Math.random() * 600) | 0)]; x = pt.x + (Math.random() - 0.5) * 3; z = pt.z + (Math.random() - 0.5) * 2; }
+          else { x = (Math.random() - 0.5) * 30; z = -Math.random() * 20 + 4; }
+          return { x, z, y: Math.max(-0.3, groundH(x, z, fac)) + 0.1, vx: (Math.random() - 0.5) * 0.3, vy: 0.7 + Math.random() * 0.9, vz: (Math.random() - 0.5) * 0.3, wind: 0.25, drag: 0.15, s0: 0.14, s1: 0.05, a: 1, life: 2.5 + Math.random() * 2.5 }; } },
+        dungeon: { every: 0.09, c: [0x7af8ec, 0xc8a0ff, 0xb0fff8], spawn: () => { const x = (Math.random() - 0.5) * 34, z = -Math.random() * 26 + 6;
+          return { x, z, y: 0.4 + Math.random() * 3, vx: (Math.random() - 0.5) * 0.2, vy: 0.1 + Math.random() * 0.15, vz: (Math.random() - 0.5) * 0.2, drag: 0.05, s0: 0.11, s1: 0.07, a: 0.9, life: 4 + Math.random() * 3 }; } },
+      }[fac];
+      if (MOTES) {
+        const mc = MOTES.c.map(col);
         let pacc = 0;
         env.updaters.push((dt) => {
           pacc += dt;
-          while (pacc > 0.35) { pacc -= 0.35; const x = (Math.random() - 0.5) * 24, z = (Math.random() - 0.5) * 18 - 2; glowP.spawn({ x, y: 0.3 + Math.random() * 1.5, z, vx: (Math.random() - 0.5) * 0.3, vy: 0.08, drag: 0.1, s0: 0.08, s1: 0.06, a: 0.7, life: 3, c: pc, twinkle: true }); }
+          while (pacc > MOTES.every) { pacc -= MOTES.every; glowP.spawn({ ...MOTES.spawn(), c: mc[(Math.random() * mc.length) | 0], twinkle: true }); }
         });
       }
       // birds (haven, sylvan) / bats (necro, inferno, dungeon): instanced wings, flapped on the CPU

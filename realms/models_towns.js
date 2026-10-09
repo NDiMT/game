@@ -6,7 +6,7 @@ import { BONE as RIG, tagRange, ensureRig } from './rig.js?v=1.3';
 // Every model returns { body, glow }: body is a merged, vertex-coloured
 // BufferGeometry (position, normal, color, uv); glow holds the emissive
 // bits (windows, eyes, magic). Base at y = 0, front faces +Z.
-//   townModel(fac)          fac: 'haven' | 'necro'   (~1.3 wide)
+//   townModel(fac)          fac: 'haven' | 'necro' | 'sylvan' | 'inferno' | 'dungeon' (~1.3 wide; unknown -> haven)
 //   heroModel(fac, color)   rider on a horse, ~1.7 tall with the banner
 //   flagModel(color)        pole with a waving pennant, ~1 tall
 // =====================================================================
@@ -409,8 +409,247 @@ function necroTown() {
   return finish(k);
 }
 
+// ---- R6: shared bits for the new towns
+// the stone apron pad every town stands on (same footprint as haven / necro)
+function apron(k, c, kerb, pave) {
+  k.lathe([[0.69, 0], [0.68, 0.025], [0.62, 0.05], [0, 0.05]], 0, 0, 0, c, 14, { top: 1.06, bot: 0.72 });
+  k.tor(0.665, 0.014, 0, 0.03, 0, kerb, TAU, { rx: Math.PI / 2, rs: 28, ts: 3 });
+  k.cyl(0.5, 0.52, 0.012, 0, 0.05, -0.02, pave, 12, { j: 0.08 });
+  k.box(0.12, 0.012, 0.28, 0, 0.05, 0.5, pave, { j: 0.08 });
+}
+const hexRing = (R) => { const t = []; for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU; t.push([Math.cos(a) * R, Math.sin(a) * R, a]); } return t; };
+// a banner hanging flat against a wall face (z = const), swallow-tailed hem; FLAG-rigged
+function wallBanner(k, x, y, z, w, h, c, ph = 0) {
+  k.bone(RIG.FLAG, [x, y, z], () => k.sheet(1, 4, (u, v) => [x + (u - 0.5) * w, y - v * h + (v === 1 && Math.abs(u - 0.5) > 0.4 ? h * 0.16 : 0), z + Math.sin(v * 3 + ph) * 0.006], c, { top: 1.15, bot: 0.78, ao: false }));
+}
+
+// ------------------------------------------------------------------ R6: Sylvan
+// a giant tree rising from the middle of the town (the map-zoom silhouette), elven halls
+// with green and gold leaf roofs, pale-wood towers with leaf-dome caps, a living hedge wall
+const SY = { apron: 0x948e74, kerb: 0x645e4a, pave: 0xd2c294, wood: 0xd6a466, woodD: 0xa87444, bark: 0x9a6a40, barkL: 0xc08a54, hedge: 0x3e9e3a, leaf: 0x4cbc3c, leafL: 0x8ad84a, leafD: 0x34983a, gold: 0xffcf4a, goldLeaf: 0xf0c030, win: 0xffe08a, banner: 0x22b84a, plaster: 0xf6eccc };
+function sylvanTown() {
+  const k = makeKit(31);
+  apron(k, SY.apron, SY.kerb, SY.pave);
+  const Y = 0.055, R = 0.56, tw = hexRing(R);
+  // living hedge wall: a green band with a row of round leaf tufts on top
+  const hedge = (ax, az, bx, bz) => {
+    const dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz), ry = Math.atan2(-dz, dx);
+    k.box(len, 0.17, 0.08, (ax + bx) / 2, Y - 0.005, (az + bz) / 2, SY.hedge, { ry, top: 1.12, bot: 0.78 });
+    const n = Math.max(2, Math.round(len / 0.085));
+    for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; k.ball(0.052, ax + dx * t, Y + 0.17, az + dz * t, i % 2 ? SY.leaf : SY.leafL, 0, { s: [1, 0.8, 1], top: 1.25, bot: 0.85 }); }
+  };
+  for (let i = 0; i < 6; i++) {
+    const [ax, az] = tw[i], [bx, bz] = tw[(i + 1) % 6];
+    if (i === 1) { hedge(ax, az, 0.15, 0.485); hedge(-0.15, 0.485, bx, bz); } else hedge(ax, az, bx, bz);
+  }
+  // pale-wood towers with big elven leaf domes (gold on the front pair, green behind)
+  for (let i = 0; i < 6; i++) {
+    const [x, z, a] = tw[i];
+    const front = i === 1 || i === 2, h = front ? 0.44 : 0.36, rr = 0.075;
+    k.lathe([[rr * 1.5, 0], [rr * 1.08, 0.07], [rr, 0.14], [rr * 0.92, h - 0.03], [rr * 1.25, h], [rr * 1.25, h + 0.025], [rr * 0.9, h + 0.025]], x, Y, z, SY.wood, 8, { top: 1.12, bot: 0.72 });
+    const dh = front ? 0.36 : 0.3;
+    k.lathe([[rr * 1.75, 0], [rr * 1.85, 0.05], [rr * 1.5, dh * 0.42], [rr * 0.7, dh * 0.78], [0.001, dh]], x, Y + h + 0.025, z, front ? SY.goldLeaf : SY.leaf, 8, { top: 1.35, bot: 0.78 });
+    k.cone(0.018, 0.1, x, Y + h + 0.025 + dh - 0.01, z, SY.gold, 4);
+    k.winCyl(x, z, rr * 0.95, a, Y + h * 0.5, 0.035, 0.08, SY.win);
+    if (front) { const th = Y + h + dh + 0.06; k.limb([x, th - 0.04, z], [x, th + 0.14, z], 0.008, 0.007, SY.woodD, 4); pennant(k, x, th + 0.1, z, 0.2, 0.08, SY.banner, { dir: i === 1 ? 1 : -1, amp: 0.025, tail: 0.3 }); }
+  }
+  // the gate: two wooden posts under a leafy arch, doors and a green banner
+  const gz = 0.49;
+  for (const s of [-1, 1]) k.cyl(0.042, 0.055, 0.32, s * 0.12, Y, gz, SY.woodD, 7, { top: 1.15, bot: 0.75 });
+  k.tor(0.12, 0.045, 0, Y + 0.3, gz, SY.leaf, Math.PI, { rs: 8, ts: 5, top: 1.3, bot: 0.85 });
+  for (const [x, y] of [[0, 0.44], [-0.09, 0.39], [0.09, 0.39]]) k.ball(0.05, x, Y + y, gz, SY.leafL, 0, { top: 1.3 });
+  k.box(0.17, 0.2, 0.025, 0, Y, gz - 0.01, SY.woodD, { ao: false });
+  k.tor(0.085, 0.012, 0, Y + 0.2, gz + 0.004, SY.gold, Math.PI, { rs: 8 });
+  wallBanner(k, 0, Y + 0.3, gz + 0.05, 0.08, 0.15, SY.banner);
+  // the great tree: flared trunk with roots, a tree-house balcony and a huge leaf crown
+  const tx = 0, tz = -0.1;
+  k.lathe([[0.2, 0], [0.15, 0.05], [0.115, 0.15], [0.1, 0.4], [0.1, 0.58], [0.13, 0.72], [0.07, 0.82]], tx, Y, tz, SY.bark, 10, { top: 1.15, bot: 0.8 });
+  for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + 0.3; k.limb([tx + Math.cos(a) * 0.1, Y + 0.08, tz + Math.sin(a) * 0.1], [tx + Math.cos(a) * 0.27, Y + 0.005, tz + Math.sin(a) * 0.27], 0.045, 0.02, SY.bark, 5); }
+  // a door and lit windows in the trunk
+  k.box(0.07, 0.11, 0.012, tx, Y + 0.02, tz + 0.142, SY.win, { glow: true });
+  k.tor(0.035, 0.01, tx, Y + 0.13, tz + 0.145, SY.gold, Math.PI, { rs: 6, glow: true });
+  for (const a of [Math.PI / 2 - 0.7, Math.PI / 2 + 0.7]) k.winCyl(tx, tz, 0.102, a, Y + 0.3, 0.035, 0.06, SY.win);
+  // balcony ring with a gold rail
+  k.cyl(0.21, 0.19, 0.035, tx, Y + 0.44, tz, SY.woodD, 10, { top: 1.2 });
+  k.tor(0.205, 0.011, tx, Y + 0.51, tz, SY.gold, TAU, { rx: Math.PI / 2, rs: 12, ts: 3 });
+  for (const s of [-1, 1]) wallBanner(k, tx + s * 0.11, Y + 0.44, tz + 0.18, 0.06, 0.2, SY.banner, s);
+  // branches to the crown
+  for (const [bx, by, bz] of [[-0.22, 0.86, -0.04], [0.22, 0.88, -0.08], [0.02, 0.84, 0.1], [-0.08, 0.95, -0.26]]) k.limb([tx, Y + 0.7, tz], [tx + bx * 0.85, Y + by, tz + bz * 0.85], 0.045, 0.025, SY.barkL, 5);
+  const crown = [[0, 1.0, -0.06, 0.27, SY.leaf], [-0.21, 0.9, 0.0, 0.19, SY.leafL], [0.22, 0.92, -0.04, 0.2, SY.leaf], [0.04, 0.86, 0.15, 0.18, SY.leafL], [-0.12, 0.98, -0.24, 0.19, SY.leafD], [0.15, 1.1, -0.18, 0.16, SY.leafL], [0.0, 1.22, -0.06, 0.16, SY.goldLeaf], [-0.17, 1.12, -0.06, 0.13, SY.goldLeaf]];
+  for (const [x, y, z, r0, c] of crown) k.ball(r0, tx + x, Y + y, tz + z, c, 1, { s: [1, 0.86, 1], top: 1.35, bot: 0.7 });
+  // fairy lanterns hanging under the crown
+  for (const [x, y, z] of [[-0.2, 0.72, 0.08], [0.2, 0.74, 0.06], [0.08, 0.7, 0.22], [-0.06, 0.73, 0.2]]) k.ball(0.022, tx + x, Y + y, tz + z, SY.win, 0, { glow: true });
+  // elven halls: tall cream halls with steep green / gold leaf roofs and a gold ridge
+  const halls = [[-0.31, 0.08, Math.PI / 2, SY.leaf, 0.26], [0.31, 0.06, Math.PI / 2, SY.goldLeaf, 0.24]];
+  for (const [x, z, ry, rc, d] of halls) {
+    k.box(0.14, 0.14, d, x, Y, z, SY.plaster, { top: 1.08, bot: 0.75 });
+    k.gable(d, 0.17, 0.14, x, Y + 0.14, z, rc, SY.plaster, ry, 0.03);
+    k.limb([x, Y + 0.312, z - d / 2 - 0.03], [x, Y + 0.312, z + d / 2 + 0.03], 0.012, 0.012, SY.gold, 4);
+    k.box(0.012, 0.07, d * 0.55, x + Math.sign(-x) * 0.072, Y + 0.04, z, SY.win, { glow: true });
+  }
+  // round elven cottages with leaf domes
+  for (const [x, z, c] of [[-0.16, 0.32, SY.leafL], [0.17, 0.31, SY.goldLeaf], [0.3, -0.24, SY.leaf]]) {
+    k.cyl(0.06, 0.065, 0.09, x, Y, z, SY.plaster, 8, { top: 1.08, bot: 0.78 });
+    k.lathe([[0.085, 0], [0.088, 0.02], [0.065, 0.07], [0.025, 0.12], [0.001, 0.15]], x, Y + 0.09, z, c, 8, { top: 1.3, bot: 0.8 });
+    k.box(0.03, 0.045, 0.01, x, Y + 0.015, z + 0.062, SY.win, { glow: true });
+  }
+  return finish(k);
+}
+
+// ------------------------------------------------------------------ R6: Inferno
+// a red-orange basalt citadel: stepped ziggurat with a jagged central spire crowned in fire,
+// huge ivory horns, spiky towers with braziers, lava falls and glowing cracks
+const IN = { apron: 0x94766a, kerb: 0x644a46, pave: 0xa88270, rock: 0xc84a30, rockD: 0x9a3626, rockL: 0xec7a44, spike: 0x7c2c36, horn: 0xf6e2b8, gold: 0xffc23a, lava: 0xff8a1a, lavaY: 0xffd04a, banner: 0xe0261e, iron: 0x8a6a74 };
+function infernoTown() {
+  const k = makeKit(33);
+  apron(k, IN.apron, IN.kerb, IN.pave);
+  const Y = 0.055, R = 0.56, tw = hexRing(R);
+  // glowing lava cracks in the paving and a lava pool
+  for (const [x, z, l, a] of [[-0.32, 0.22, 0.14, 0.4], [0.36, 0.08, 0.12, -0.7], [-0.2, 0.36, 0.1, 1.2], [0.26, -0.32, 0.12, 0.2], [-0.36, -0.2, 0.12, -0.3]]) k.box(0.016, 0.004, l, x, Y + 0.002, z, IN.lava, { glow: true, ry: a });
+  k.cyl(0.1, 0.1, 0.004, 0.24, Y + 0.004, 0.24, IN.lava, 10, { glow: true });
+  k.cyl(0.06, 0.06, 0.004, 0.24, Y + 0.006, 0.24, IN.lavaY, 8, { glow: true });
+  k.lathe([[0.105, 0], [0.12, 0.025], [0.1, 0.025]], 0.24, Y, 0.24, IN.rockD, 10);
+  // basalt curtain wall with a row of spikes
+  for (let i = 0; i < 6; i++) {
+    const [ax, az] = tw[i], [bx, bz] = tw[(i + 1) % 6];
+    const o = { trim: IN.rockL, spikes: IN.spike, step: 0.09, sw: 0.034, sh: 0.1 };
+    if (i === 1) { k.wall(ax, az, 0.15, 0.485, 0.25, 0.07, IN.rock, o); k.wall(-0.15, 0.485, bx, bz, 0.25, 0.07, IN.rock, o); } else k.wall(ax, az, bx, bz, 0.25, 0.07, IN.rock, o);
+  }
+  // spiky towers: tapered hexagonal shafts, a crown of outward spikes, a fire brazier
+  for (let i = 0; i < 6; i++) {
+    const [x, z, a] = tw[i];
+    const front = i === 1 || i === 2, h = front ? 0.5 : 0.42, rr = 0.085;
+    k.lathe([[rr * 1.45, 0], [rr * 1.1, 0.1], [rr * 0.85, h], [rr * 1.3, h + 0.02], [rr * 1.3, h + 0.06], [rr * 0.6, h + 0.06]], x, Y, z, IN.rock, 6, { top: 1.15, bot: 0.7 });
+    for (let s = 0; s < 4; s++) { const b = s / 4 * TAU + 0.4; k.cone(0.03, 0.15, x + Math.cos(b) * rr * 1.1, Y + h + 0.05, z + Math.sin(b) * rr * 1.1, IN.spike, 4, { rz: -Math.cos(b) * 0.55, rx: Math.sin(b) * 0.55, top: 1.4 }); }
+    k.cone(0.05, front ? 0.22 : 0.17, x, Y + h + 0.06, z, IN.lava, 5, { glow: true });
+    k.cone(0.028, front ? 0.14 : 0.1, x, Y + h + 0.06, z, IN.lavaY, 4, { glow: true });
+    k.winCyl(x, z, rr * 0.93, a, Y + h * 0.55, 0.03, 0.11, IN.lava);
+    if (front) { const ty = Y + h * 0.9, dx = Math.cos(a), dz = Math.sin(a);
+      k.bone(RIG.FLAG, [x + dx * rr * 1.3, ty, z + dz * rr * 1.3], () => k.sheet(1, 3, (u, v) => [x + dx * rr * 1.3 + (u - 0.5) * 0.09 * dz, ty - v * 0.26 - (v === 1 && Math.abs(u - 0.5) > 0.4 ? -0.04 : 0), z + dz * rr * 1.3 - (u - 0.5) * 0.09 * dx], IN.banner, { top: 1.15, bot: 0.75, ao: false })); }
+  }
+  // horn chain helper: a tapered curve through pts
+  const horn = (pts, r0, r1, c) => { for (let i = 0; i < pts.length - 1; i++) { const t0 = i / (pts.length - 1), t1 = (i + 1) / (pts.length - 1); k.limb(pts[i], pts[i + 1], r0 + (r1 - r0) * t0, r0 + (r1 - r0) * t1, c, 5, { top: 1.2 }); } };
+  // the gate: a basalt block with a lava portal and two huge horns
+  const gz = 0.49;
+  k.box(0.3, 0.28, 0.14, 0, Y, gz - 0.01, IN.rock, { top: 1.12, bot: 0.7 });
+  k.box(0.32, 0.03, 0.16, 0, Y + 0.27, gz - 0.01, IN.rockL);
+  k.box(0.12, 0.16, 0.02, 0, Y, gz + 0.06, IN.spike, { ao: false });
+  k.box(0.095, 0.14, 0.01, 0, Y, gz + 0.066, IN.lava, { glow: true });
+  k.cone(0.06, 0.05, 0, Y + 0.14, gz + 0.066, IN.lava, 4, { glow: true, s: [1, 1, 0.15] });
+  for (const s of [-1, 1]) horn([[s * 0.12, Y + 0.28, gz], [s * 0.21, Y + 0.33, gz + 0.02], [s * 0.25, Y + 0.43, gz + 0.03], [s * 0.21, Y + 0.53, gz + 0.04]], 0.035, 0.006, IN.horn);
+  // the citadel: a three-step ziggurat
+  const cz = -0.12;
+  const tiers = [[0.44, 0.2, 0.36], [0.32, 0.17, 0.27], [0.22, 0.15, 0.19]];
+  let ty = Y;
+  for (const [w, h, d] of tiers) {
+    k.box(w, h, d, 0, ty, cz, IN.rock, { top: 1.15, bot: 0.72 });
+    k.box(w + 0.02, 0.025, d + 0.02, 0, ty + h - 0.01, cz, IN.rockL, { top: 1.1 });
+    ty += h;
+  }
+  // corner spikes on the lower tiers
+  for (const [w, , d, y0] of [[0.44, 0, 0.36, Y + 0.2], [0.32, 0, 0.27, Y + 0.37]]) for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) k.cone(0.04, 0.22, sx * w / 2, y0, cz + sz * d / 2, IN.spike, 5, { rz: -sx * 0.18, rx: sz * 0.18, top: 1.45 });
+  // lava falls pouring down the front steps, windows
+  for (const [w, h, d, y0] of [[0.06, 0.17, 0.27, Y + 0.2], [0.07, 0.2, 0.36, Y]]) k.box(w, h, 0.012, 0, y0, cz + d / 2 + 0.004, IN.lava, { glow: true });
+  for (const x of [-0.13, 0.13]) { k.box(0.04, 0.09, 0.012, x, Y + 0.06, cz + 0.184, IN.lava, { glow: true }); k.cone(0.028, 0.04, x, Y + 0.15, cz + 0.184, IN.lava, 4, { glow: true, s: [0.7, 1, 0.25] }); }
+  // jagged central spire with lava veins and a crown of fire
+  const st = ty;
+  k.lathe([[0.12, 0], [0.1, 0.12], [0.075, 0.36], [0.045, 0.52], [0.001, 0.62]], 0, st, cz, IN.rockD, 5, { top: 1.5, bot: 0.85 });
+  for (let i = 0; i < 3; i++) { const b = i / 3 * TAU + Math.PI / 2; k.box(0.016, 0.3, 0.012, Math.cos(b) * 0.08, st + 0.04, cz + Math.sin(b) * 0.08, IN.lava, { glow: true, ry: face(Math.cos(b), Math.sin(b)), rx: 0 }); }
+  for (let s = 0; s < 4; s++) { const b = s / 4 * TAU + Math.PI / 4; k.cone(0.03, 0.16, Math.cos(b) * 0.09, st + 0.22, cz + Math.sin(b) * 0.09, IN.spike, 4, { rz: -Math.cos(b) * 0.6, rx: Math.sin(b) * 0.6 }); }
+  k.cone(0.08, 0.3, 0, st + 0.56, cz, IN.lava, 6, { glow: true });
+  k.cone(0.05, 0.2, 0, st + 0.58, cz, IN.lavaY, 5, { glow: true });
+  for (const s of [-1, 1]) k.cone(0.04, 0.16, s * 0.06, st + 0.54, cz, IN.lava, 4, { glow: true, rz: -s * 0.35 });
+  // giant gold-tipped horns sweeping up from the top step
+  for (const s of [-1, 1]) {
+    horn([[s * 0.1, st - 0.06, cz + 0.02], [s * 0.22, st + 0.0, cz + 0.04], [s * 0.3, st + 0.14, cz + 0.05], [s * 0.28, st + 0.3, cz + 0.06], [s * 0.2, st + 0.42, cz + 0.06]], 0.05, 0.008, IN.horn);
+  }
+  // crimson banners on the lower tier
+  for (const s of [-1, 1]) wallBanner(k, s * 0.12, Y + 0.18, cz + 0.186, 0.06, 0.16, IN.banner, s);
+  // small basalt shrines with braziers
+  for (const [x, z] of [[-0.3, 0.12], [0.33, -0.1], [-0.14, 0.33]]) {
+    k.cyl(0.05, 0.065, 0.1, x, Y, z, IN.rockD, 6, { top: 1.2, bot: 0.75 });
+    k.cyl(0.06, 0.045, 0.03, x, Y + 0.1, z, IN.iron, 6);
+    k.cone(0.04, 0.12, x, Y + 0.12, z, IN.lava, 5, { glow: true });
+  }
+  return finish(k);
+}
+
+// ------------------------------------------------------------------ R6: Dungeon
+// violet stone towers capped with teal crystals, a cavern-mouth gate in a rocky mound,
+// a central warlock tower with a giant floating crystal, crags and glowing crystal clusters
+const DG = { apron: 0x8a8298, kerb: 0x5a5268, pave: 0xa298b2, stone: 0x845ac8, stoneD: 0x6440a8, stoneL: 0xb898ea, rock: 0x8a80a2, rockL: 0xb2a8c6, teal: 0x46f4e0, tealD: 0x22c0b8, mouth: 0x40305a, banner: 0xd23ab4, gold: 0xf0c450, cap: 0x2eb8b0 };
+function dungeonTown() {
+  const k = makeKit(35);
+  apron(k, DG.apron, DG.kerb, DG.pave);
+  const Y = 0.055, R = 0.56, tw = hexRing(R);
+  // crags and stalagmites behind the town: the underworld rock it is carved from
+  for (const [x, z, h, rr] of [[-0.3, -0.4, 0.5, 0.09], [-0.18, -0.48, 0.66, 0.1], [0.24, -0.44, 0.56, 0.09], [0.38, -0.32, 0.4, 0.08], [0.05, -0.5, 0.42, 0.08]]) {
+    k.cone(rr, h, x, Y, z, DG.rock, 5, { top: 1.35, bot: 0.78, ry: x * 7 });
+  }
+  // violet stone wall
+  for (let i = 0; i < 6; i++) {
+    const [ax, az] = tw[i], [bx, bz] = tw[(i + 1) % 6];
+    if (i === 1) { k.wall(ax, az, 0.17, 0.485, 0.25, 0.07, DG.stone, { trim: DG.stoneL, step: 0.08 }); k.wall(-0.17, 0.485, bx, bz, 0.25, 0.07, DG.stone, { trim: DG.stoneL, step: 0.08 }); } else k.wall(ax, az, bx, bz, 0.25, 0.07, DG.stone, { trim: DG.stoneL });
+  }
+  // slender round towers, each capped with a big tall teal crystal
+  for (let i = 0; i < 6; i++) {
+    const [x, z, a] = tw[i];
+    const front = i === 1 || i === 2, h = front ? 0.52 : 0.44, rr = 0.075;
+    k.lathe([[rr * 1.35, 0], [rr * 1.02, 0.1], [rr * 0.9, h], [rr * 1.35, h + 0.02], [rr * 1.35, h + 0.05], [rr * 0.8, h + 0.05]], x, Y, z, DG.stone, 8, { top: 1.18, bot: 0.7 });
+    for (let s = 0; s < 3; s++) { const b = s / 3 * TAU + a; k.cone(0.022, 0.07, x + Math.cos(b) * rr * 1.25, Y + h + 0.05, z + Math.sin(b) * rr * 1.25, DG.stoneL, 4, { top: 1.3 }); }
+    const ch = front ? 0.17 : 0.14; // crystal half-height
+    k.gem(0.068, x, Y + h + 0.06 + ch, z, DG.teal, { glow: true, s: [1, ch / 0.068, 1], ry: a });
+    k.winCyl(x, z, rr * 0.92, a, Y + h * 0.55, 0.03, 0.1, DG.teal);
+    if (front) { const ty = Y + h * 0.88, dx = Math.cos(a), dz = Math.sin(a);
+      k.bone(RIG.FLAG, [x + dx * rr * 1.2, ty, z + dz * rr * 1.2], () => k.sheet(1, 3, (u, v) => [x + dx * rr * 1.2 + (u - 0.5) * 0.085 * dz, ty - v * 0.25 - (v === 1 && Math.abs(u - 0.5) > 0.4 ? -0.04 : 0), z + dz * rr * 1.2 - (u - 0.5) * 0.085 * dx], DG.banner, { top: 1.15, bot: 0.75, ao: false })); }
+  }
+  // the cavern gate: a rocky mound with a dark mouth, teal glow inside, stalactite teeth
+  const gz = 0.48;
+  k.ball(1, 0, Y + 0.17, gz - 0.02, DG.rock, 1, { s: [0.22, 0.24, 0.13], top: 1.3, bot: 0.75 });
+  for (const s of [-1, 1]) k.ball(1, s * 0.16, Y + 0.08, gz, DG.rockL, 0, { s: [0.1, 0.13, 0.1], top: 1.25, bot: 0.8 });
+  k.ball(1, 0.05, Y + 0.36, gz - 0.04, DG.rockL, 0, { s: [0.12, 0.08, 0.09], top: 1.3 });
+  k.cyl(0.105, 0.105, 0.02, 0, Y - 0.01, gz + 0.1, DG.mouth, 10, { rx: Math.PI / 2, ao: false, top: 1, bot: 1 });
+  k.cyl(0.06, 0.06, 0.01, 0, Y + 0.0, gz + 0.115, DG.tealD, 8, { rx: Math.PI / 2, glow: true });
+  for (let i = 0; i < 5; i++) { const b = Math.PI * (0.2 + i * 0.15); k.cone(0.02, 0.05, Math.cos(b) * 0.095, Y + Math.sin(b) * 0.095 - 0.005, gz + 0.115, DG.rockL, 4, { rx: Math.PI }); }
+  for (const s of [-1, 1]) for (const [dx, hh, t] of [[0, 0.16, 0], [0.04, 0.1, 0.4], [-0.035, 0.09, -0.4]]) k.gem(0.03, s * (0.25 + dx), Y + hh * 0.5, gz + 0.04, DG.teal, { glow: true, s: [1, hh / 0.06, 1], rz: t * s });
+  // the warlock hall and its tower with a giant floating crystal
+  const cz = -0.12;
+  k.box(0.4, 0.22, 0.3, 0, Y, cz, DG.stone, { top: 1.15, bot: 0.7 });
+  k.box(0.42, 0.03, 0.32, 0, Y + 0.21, cz, DG.stoneL);
+  for (let i = 0; i < 5; i++) { const x = -0.17 + i * 0.085; k.box(0.04, 0.045, 0.04, x, Y + 0.24, cz + 0.15, DG.stone, { top: 1.2 }); }
+  k.box(0.09, 0.13, 0.02, 0, Y, cz + 0.152, DG.mouth, { ao: false });
+  k.box(0.07, 0.11, 0.01, 0, Y, cz + 0.16, DG.tealD, { glow: true });
+  for (const x of [-0.12, 0.12]) k.box(0.04, 0.08, 0.012, x, Y + 0.08, cz + 0.153, DG.teal, { glow: true });
+  for (const s of [-1, 1]) wallBanner(k, s * 0.065, Y + 0.2, cz + 0.164, 0.05, 0.15, DG.banner, s);
+  const tY = Y + 0.24;
+  k.lathe([[0.13, 0], [0.11, 0.1], [0.095, 0.44], [0.14, 0.48], [0.14, 0.53], [0.09, 0.53]], 0, tY, cz - 0.02, DG.stone, 10, { top: 1.2, bot: 0.78 });
+  for (let i = 0; i < 4; i++) k.winCyl(0, cz - 0.02, 0.1, i * Math.PI / 2 + Math.PI / 2, tY + 0.28, 0.03, 0.11, DG.teal);
+  for (let s = 0; s < 4; s++) { const b = s / 4 * TAU + Math.PI / 4; k.cone(0.03, 0.12, Math.cos(b) * 0.125, tY + 0.53, cz - 0.02 + Math.sin(b) * 0.125, DG.stoneL, 4, { rz: -Math.cos(b) * 0.3, rx: Math.sin(b) * 0.3 }); }
+  const gy = tY + 0.53 + 0.28;
+  k.gem(0.12, 0, gy, cz - 0.02, DG.teal, { glow: true, s: [1, 2.1, 1], ry: 0.4 });
+  k.tor(0.17, 0.014, 0, gy - 0.02, cz - 0.02, DG.gold, TAU, { rx: Math.PI / 2 - 0.35, rs: 14, ts: 3 });
+  for (let s = 0; s < 3; s++) { const b = s / 3 * TAU + 0.5; k.gem(0.03, Math.cos(b) * 0.17, gy + 0.08 * Math.sin(b * 2), cz - 0.02 + Math.sin(b) * 0.17, DG.teal, { glow: true, s: [1, 1.6, 1] }); }
+  // flanking spires with violet cone roofs and crystal finials
+  for (const sx of [-1, 1]) {
+    const x = sx * 0.2, z = cz + 0.06, hh = 0.5;
+    k.lathe([[0.055, 0], [0.048, hh], [0.064, hh + 0.02], [0.03, hh + 0.02]], x, Y, z, DG.stone, 8, { top: 1.18, bot: 0.72 });
+    k.cone(0.075, 0.26, x, Y + hh + 0.02, z, DG.stoneD, 8, { top: 1.5, bot: 0.85 });
+    k.gem(0.028, x, Y + hh + 0.31, z, DG.teal, { glow: true, s: [1, 1.8, 1] });
+    k.winCyl(x, z, 0.05, Math.atan2(1, sx * 0.6), Y + hh - 0.14, 0.026, 0.09, DG.teal);
+  }
+  // glowing crystal clusters and giant cave mushrooms in the courtyard
+  for (const [x, z] of [[0.3, 0.18], [-0.32, 0.16], [0.18, 0.33]]) for (const [dx, dz, hh, t] of [[0, 0, 0.14, 0], [0.035, 0.02, 0.09, 0.45], [-0.03, 0.025, 0.08, -0.45]]) k.gem(0.028, x + dx, Y + hh * 0.5, z + dz, DG.teal, { glow: true, s: [1, hh / 0.056, 1], rz: t });
+  for (const [x, z, h] of [[-0.18, 0.32, 0.17], [0.34, -0.12, 0.2], [-0.34, -0.06, 0.15]]) {
+    k.limb([x, Y, z], [x + 0.01, Y + h, z], 0.026, 0.02, DG.stoneL, 6);
+    k.lathe([[0.001, 0], [0.085, 0.0], [0.08, 0.03], [0.05, 0.065], [0.001, 0.08]], x + 0.01, Y + h - 0.01, z, DG.cap, 8, { top: 1.35, bot: 0.7 });
+    k.cyl(0.07, 0.07, 0.006, x + 0.01, Y + h - 0.016, z, DG.teal, 8, { glow: true });
+  }
+  return finish(k);
+}
+
+const TOWNS = { haven: havenTown, necro: necroTown, sylvan: sylvanTown, inferno: infernoTown, dungeon: dungeonTown };
 export function townModel(fac) {
-  return fac === 'necro' ? necroTown() : havenTown();
+  return (TOWNS[fac] || havenTown)();
 }
 
 // ------------------------------------------------------------------ mounted heroes
@@ -581,10 +820,196 @@ function necroHero(k, col) {
   for (const s of [-1, 1]) k.cone(0.014, 0.08, -0.18 + s * 0.032, 1.41, 0.13, BONE, 4, { rz: -s * 0.5, ao: false });
   heroBanner(k, -0.18, 1.32, 0.15, col, BONE);
 }
+// ---- R6 heroes. Shared rider pieces (same pose / pivots as the haven and necro riders).
+function riderLegs(k, c, cD) {
+  for (const s of [-1, 1]) {
+    k.limb([s * 0.08, 0.66, -0.02], [s * 0.16, 0.54, 0.09], 0.045, 0.038, c, 5);
+    k.limb([s * 0.16, 0.54, 0.09], [s * 0.165, 0.38, 0.04], 0.034, 0.03, cD, 5);
+  }
+}
+// right arm forward on the reins / weapon, left arm raised to the standard
+function riderArms(k, c, cD) {
+  k.limb([0.12, 0.82, -0.02], [0.15, 0.7, 0.08], 0.036, 0.03, c, 5);
+  k.limb([0.15, 0.7, 0.08], [0.1, 0.7, 0.17], 0.03, 0.028, cD, 5);
+  k.limb([-0.12, 0.82, -0.02], [-0.18, 0.74, 0.07], 0.036, 0.03, c, 5);
+  k.limb([-0.18, 0.74, 0.07], [-0.18, 0.79, 0.14], 0.03, 0.028, cD, 5);
+}
+// a tapered curve through pts (horns, antlers, tails)
+function curve(k, pts, r0, r1, c, seg = 5, o = {}) {
+  for (let i = 0; i < pts.length - 1; i++) { const t0 = i / (pts.length - 1), t1 = (i + 1) / (pts.length - 1); k.limb(pts[i], pts[i + 1], r0 + (r1 - r0) * t0, r0 + (r1 - r0) * t1, c, seg, o); }
+}
+
+//   Sylvan: elf ranger in a green hood with a big longbow, riding a white stag with golden antlers.
+function sylvanHero(k, col) {
+  const TUNIC = 0x3cae4c, TUNICD = 0x2a8a3c, LEATHER = 0xb27a44, SKIN = 0xf6d0a8, HAIR = 0xffd860, GOLD = 0xffc83a, BOW = 0xc8843a, ANTLER = 0xf2d49a;
+  horse(k, 0xfaf6ea, 0xffffff, 0x9a7a54, { mane: false });
+  // the stag's identity: big branching antlers (on the head bone) and a white tail puff
+  k.bone(RIG.HEAD, HORSE_NECK, () => {
+    for (const s of [-1, 1]) {
+      curve(k, [[s * 0.035, 0.85, 0.3], [s * 0.1, 0.96, 0.27], [s * 0.17, 1.05, 0.2], [s * 0.2, 1.16, 0.12]], 0.022, 0.012, ANTLER, 4, { top: 1.2 });
+      k.limb([s * 0.1, 0.96, 0.27], [s * 0.1, 1.07, 0.33], 0.016, 0.008, ANTLER, 4);
+      k.limb([s * 0.17, 1.05, 0.2], [s * 0.24, 1.12, 0.26], 0.014, 0.007, ANTLER, 4);
+      k.limb([s * 0.2, 1.16, 0.12], [s * 0.14, 1.22, 0.05], 0.012, 0.006, ANTLER, 4);
+    }
+  });
+  k.bone(RIG.TAIL, HORSE_TAIL, () => k.ball(0.055, 0, 0.55, -0.31, 0xffffff, 0, { s: [0.8, 1.1, 0.8] }));
+  blanket(k, col, GOLD);
+  k.box(0.22, 0.04, 0.2, 0, 0.6, -0.02, 0x8a5a34);
+  k.bone(RIG.RIDER, SADDLE, () => {
+    riderLegs(k, LEATHER, 0x8a5a34);
+    // green tunic with a gold belt, leather shoulder guards
+    k.lathe([[0.1, 0], [0.11, 0.06], [0.11, 0.14], [0.095, 0.21], [0.05, 0.26]], 0, 0.62, -0.02, TUNIC, 8, { top: 1.3, bot: 0.78 });
+    k.tor(0.108, 0.016, 0, 0.66, -0.02, GOLD, TAU, { rx: Math.PI / 2, rs: 10, ts: 3 });
+    for (const s of [-1, 1]) k.ball(0.055, s * 0.105, 0.83, -0.02, LEATHER, 1, { s: [1, 0.7, 1], top: 1.3 });
+    riderArms(k, TUNIC, TUNICD);
+    // quiver on the back with white fletchings
+    k.cyl(0.035, 0.03, 0.2, 0.06, 0.7, -0.12, LEATHER, 6, { rz: -0.35, rx: -0.25 });
+    for (const dx of [-0.015, 0.015]) k.cone(0.02, 0.05, 0.12 + dx, 0.88, -0.17, 0xffffff, 4, { rz: -0.35, rx: -0.25 });
+    // a big longbow held out on the right: the ranger's identity at map zoom
+    const bowPts = []; for (let i = 0; i <= 6; i++) { const th = (i / 6 - 0.5) * 2.5; bowPts.push([0.2, 0.74 + 0.21 * Math.sin(th), 0.07 + 0.11 * Math.cos(th)]); }
+    curve(k, bowPts, 0.02, 0.02, BOW, 5, { top: 1.15 });
+    k.limb(bowPts[0], bowPts[6], 0.005, 0.005, 0xfff4d8, 3, { ao: false });
+    // oversized head: green hood, fair face, golden hair, pointed ears
+    const hy = 0.86;
+    k.lathe([[0.1, 0], [0.095, 0.08], [0.075, 0.13], [0.03, 0.2], [0.0, 0.24]], 0, hy - 0.005, -0.03, TUNICD, 8, { top: 1.35, bot: 0.82, rx: -0.3 });
+    k.ball(0.064, 0, hy + 0.07, 0.01, SKIN, 1, { s: [0.95, 1.05, 0.9], top: 1.15, bot: 0.9 });
+    k.box(0.09, 0.03, 0.02, 0, hy + 0.11, 0.06, HAIR, { ao: false, top: 1.1 });
+    k.box(0.12, 0.16, 0.05, 0, hy - 0.06, -0.09, HAIR, { rx: 0.25, top: 1.15, bot: 0.85 });
+    for (const s of [-1, 1]) k.cone(0.018, 0.08, s * 0.07, hy + 0.08, 0.0, SKIN, 4, { rz: -s * 1.15 });
+  });
+  cape(k, col, 0, 0.86, -0.1, 0.26, 0.4);
+  // a pale-wood pole with a golden leaf finial
+  k.limb([-0.18, 0.4, 0.12], [-0.18, 1.36, 0.15], 0.016, 0.013, 0xa87444, 5);
+  k.cone(0.045, 0.13, -0.18, 1.36, 0.15, GOLD, 4, { ao: false, s: [1, 1, 0.45] });
+  k.ball(0.022, -0.18, 1.36, 0.15, 0x5acc4a, 0, { ao: false });
+  heroBanner(k, -0.18, 1.34, 0.15, col, GOLD);
+}
+
+//   Inferno: horned crimson demon lord in dark iron and gold, a flaming sword, riding a
+//   black-plum hellsteed with an orange fire mane, tail and hooves.
+function infernoHero(k, col) {
+  const IRON = 0x84606e, IROND = 0x644452, GOLD = 0xffc23a, SKIN = 0xe0442a, HORN = 0xf6e2b8, FIRE = 0xff8a1a, FIREY = 0xffd04a;
+  horse(k, 0x5a3a44, 0x000000, 0x4a3038, { eyes: FIREY, flameMane: true });
+  k.bone(RIG.HEAD, HORSE_NECK, () => { for (let i = 0; i < 4; i++) { const t = i / 3; k.cone(0.058, 0.21 - t * 0.03, 0, 0.6 + t * 0.24, 0.08 + t * 0.17, i % 2 ? FIREY : FIRE, 4, { glow: true, rx: -0.85 }); } });
+  k.bone(RIG.TAIL, HORSE_TAIL, () => {
+    k.cone(0.055, 0.28, 0, 0.5, -0.3, FIRE, 4, { glow: true, rx: -2.2 });
+    k.cone(0.035, 0.18, 0, 0.42, -0.38, FIREY, 4, { glow: true, rx: -2.6 });
+  });
+  // burning hooves (glow rings that follow each leg)
+  const legs = [[-0.082, 0.16, 0.07], [0.082, 0.17, 0.15], [-0.082, -0.19, -0.08], [0.082, -0.18, -0.2]];
+  for (const [x, z, ft] of legs) {
+    const bone = z > 0 ? (x > 0 ? RIG.LEG_FL : RIG.LEG_FR) : (x > 0 ? RIG.LEG_BL : RIG.LEG_BR);
+    k.bone(bone, [x, 0.47, z], () => k.cyl(0.05, 0.056, 0.03, x, 0.0, z + ft * 0.6, FIRE, 6, { glow: true }));
+  }
+  blanket(k, col, GOLD);
+  k.box(0.22, 0.04, 0.2, 0, 0.6, -0.02, 0x8a2a2a);
+  k.bone(RIG.RIDER, SADDLE, () => {
+    riderLegs(k, IRON, IROND);
+    // dark iron cuirass with a gold collar, big spiked gold pauldrons
+    k.lathe([[0.1, 0], [0.12, 0.06], [0.125, 0.14], [0.11, 0.21], [0.05, 0.26]], 0, 0.62, -0.02, IRON, 8, { top: 1.35, bot: 0.75 });
+    k.cyl(0.12, 0.12, 0.1, 0, 0.62, -0.02, col, 8, { top: 1.15, bot: 0.85 });
+    for (const s of [-1, 1]) {
+      k.ball(0.07, s * 0.12, 0.83, -0.02, GOLD, 1, { s: [1, 0.72, 1], top: 1.3 });
+      k.cone(0.026, 0.11, s * 0.14, 0.86, -0.02, IROND, 4, { rz: -s * 0.6 });
+    }
+    riderArms(k, SKIN, SKIN);
+    // a flaming sword raised forward in the right hand
+    k.box(0.07, 0.02, 0.02, 0.1, 0.7, 0.18, GOLD);
+    k.box(0.03, 0.3, 0.012, 0.1, 0.71, 0.18, FIREY, { glow: true, rx: 0.5 });
+    k.cone(0.045, 0.34, 0.1, 0.71, 0.18, FIRE, 4, { glow: true, rx: 0.5, s: [1, 1, 0.4] });
+    // oversized horned head: crimson skin, glowing eyes, big ivory horns
+    const hy = 0.86;
+    k.ball(0.072, 0, hy + 0.07, -0.01, SKIN, 1, { s: [1, 1.05, 0.95], top: 1.2, bot: 0.85 });
+    k.box(0.1, 0.03, 0.06, 0, hy + 0.0, 0.03, 0x9a2a2a, { ao: false }); // jaw / beard
+    for (const s of [-1, 1]) k.ball(0.017, s * 0.028, hy + 0.08, 0.055, FIREY, 0, { glow: true });
+    k.tor(0.07, 0.014, 0, hy + 0.12, -0.01, GOLD, TAU, { rx: Math.PI / 2, rs: 10, ts: 3 }); // circlet
+    for (const s of [-1, 1]) curve(k, [[s * 0.05, hy + 0.12, -0.01], [s * 0.13, hy + 0.17, -0.03], [s * 0.17, hy + 0.27, -0.01], [s * 0.14, hy + 0.36, 0.04]], 0.03, 0.006, HORN, 5, { top: 1.2 });
+  });
+  cape(k, col, 0, 0.86, -0.1, 0.28, 0.42, true);
+  // an iron pole with a gold trident head
+  k.limb([-0.18, 0.4, 0.12], [-0.18, 1.36, 0.15], 0.016, 0.013, 0x6a4a52, 5);
+  k.box(0.13, 0.02, 0.02, -0.18, 1.36, 0.15, GOLD, { ao: false });
+  for (const dx of [-0.06, 0, 0.06]) k.cone(0.018, dx ? 0.09 : 0.13, -0.18 + dx, 1.38, 0.15, GOLD, 4, { ao: false });
+  heroBanner(k, -0.18, 1.34, 0.15, col, GOLD);
+}
+
+//   Dungeon: warlock in violet robes and a tall pointed hood with teal eyes and a crystal staff,
+//   riding a slate-blue raptor-lizard with teal crest spines and a long tail.
+const LZ_NECK = [0, 0.56, 0.2], LZ_TAIL = [0, 0.5, -0.28];
+function lizard(k, coat, belly, glowC) {
+  const coatL = shadeOf(coat, 1.15);
+  k.ball(1, 0, 0.47, -0.02, coat, 1, { s: [0.16, 0.145, 0.31], top: 1.2, bot: 0.75 });
+  k.ball(1, 0, 0.42, 0.02, belly, 1, { s: [0.135, 0.09, 0.25], top: 1.0, bot: 0.88 });
+  k.ball(1, 0, 0.5, 0.17, coatL, 1, { s: [0.13, 0.13, 0.12], top: 1.15, bot: 0.8 });
+  k.bone(RIG.HEAD, LZ_NECK, () => {
+    k.limb([0, 0.5, 0.2], [0, 0.72, 0.36], 0.09, 0.062, coat, 6, { top: 1.15 });
+    k.ball(1, 0, 0.76, 0.42, coat, 1, { s: [0.08, 0.072, 0.1], top: 1.2, bot: 0.8 });
+    k.limb([0, 0.77, 0.46], [0, 0.74, 0.62], 0.058, 0.036, coatL, 6, { top: 1.15 });
+    k.limb([0, 0.7, 0.42], [0, 0.68, 0.58], 0.042, 0.026, belly, 5);
+    for (const s of [-1, 1]) k.ball(0.02, s * 0.055, 0.8, 0.47, glowC, 0, { glow: true });
+    // crest of glowing fins down the head and neck
+    for (let i = 0; i < 4; i++) { const t = i / 3; k.cone(0.03, 0.11 - t * 0.03, 0, 0.82 - t * 0.24, 0.4 - t * 0.2, glowC, 4, { glow: true, rx: -0.7, s: [0.5, 1, 1] }); }
+  });
+  // four splayed lizard legs, clawed feet
+  const legs = [[0.1, 0.15, 0.06, 0.1], [-0.1, 0.16, -0.04, 0.16], [0.1, -0.17, -0.02, -0.06], [-0.1, -0.16, 0.03, -0.18]];
+  for (const [x, z, kn, ft] of legs) {
+    const s = Math.sign(x), hip = [x, 0.44, z], knee = [x + s * 0.1, 0.3, z + kn], foot = [x + s * 0.09, 0.04, z + ft * 0.6];
+    const bone = z > 0 ? (x > 0 ? RIG.LEG_FL : RIG.LEG_FR) : (x > 0 ? RIG.LEG_BL : RIG.LEG_BR);
+    k.bone(bone, hip, () => {
+      k.limb(hip, knee, 0.068, 0.048, coat, 6);
+      k.limb(knee, foot, 0.044, 0.034, coat, 5);
+      k.box(0.08, 0.04, 0.11, foot[0], 0, foot[2] + 0.02, belly, { top: 1.1 });
+    });
+  }
+  // a long, thick tail with glowing spines
+  k.bone(RIG.TAIL, LZ_TAIL, () => {
+    curve(k, [[0, 0.5, -0.26], [0, 0.42, -0.46], [0, 0.28, -0.64], [0, 0.12, -0.8]], 0.095, 0.014, coat, 6, { top: 1.15 });
+    for (let i = 0; i < 3; i++) { const t = i / 2; k.cone(0.026, 0.08 - t * 0.02, 0, 0.53 - t * 0.2, -0.36 - t * 0.28, glowC, 4, { glow: true, rx: -0.9, s: [0.5, 1, 1] }); }
+  });
+}
+function dungeonHero(k, col) {
+  const ROBE = 0x9a4ae0, ROBED = 0x6a30b0, GOLD = 0xf0c450, TEAL = 0x46f4e0, SKIN = 0xb8a8d8, FACE = 0x3a2a58;
+  lizard(k, 0x4a6488, 0x9cbcc4, TEAL);
+  blanket(k, col, GOLD);
+  k.box(0.22, 0.04, 0.2, 0, 0.6, -0.02, 0x5a3a7a);
+  k.bone(RIG.RIDER, SADDLE, () => {
+    riderLegs(k, ROBE, ROBED);
+    // flaring violet robe with gold trim, high pointed collar
+    k.lathe([[0.16, 0], [0.125, 0.06], [0.105, 0.14], [0.1, 0.21], [0.05, 0.27]], 0, 0.6, -0.02, ROBE, 8, { top: 1.3, bot: 0.72 });
+    k.tor(0.15, 0.014, 0, 0.605, -0.02, GOLD, TAU, { rx: Math.PI / 2, rs: 10, ts: 3 });
+    k.box(0.05, 0.2, 0.02, 0, 0.62, 0.095, GOLD, { rx: -0.12 });
+    for (const s of [-1, 1]) {
+      k.ball(0.064, s * 0.11, 0.83, -0.02, ROBED, 1, { s: [1, 0.72, 1], top: 1.4 });
+      k.cone(0.05, 0.15, s * 0.07, 0.82, -0.06, ROBED, 4, { rz: -s * 0.25, s: [1, 1, 0.4] }); // collar wings
+    }
+    riderArms(k, ROBE, ROBED);
+    // a crystal staff in the right hand with a big teal crystal
+    k.limb([0.1, 0.5, 0.17], [0.1, 1.0, 0.2], 0.012, 0.012, 0x6a4a8a, 4);
+    k.gem(0.05, 0.1, 1.06, 0.2, TEAL, { glow: true, s: [1, 1.7, 1] });
+    k.tor(0.05, 0.008, 0.1, 1.02, 0.2, GOLD, TAU, { rx: Math.PI / 2, rs: 8, ts: 3 });
+    // oversized head: a tall pointed violet hood, shadowed face, glowing teal eyes
+    const hy = 0.86;
+    k.lathe([[0.1, 0], [0.098, 0.08], [0.08, 0.14], [0.045, 0.24], [0.0, 0.34]], 0, hy - 0.005, -0.04, ROBE, 8, { top: 1.4, bot: 0.8, rx: -0.3 });
+    k.ball(0.06, 0, hy + 0.065, 0.01, FACE, 1, { s: [0.95, 1.0, 0.8], top: 1.1, bot: 0.9 });
+    k.box(0.05, 0.04, 0.03, 0, hy + 0.0, 0.05, SKIN, { ao: false }); // pale chin
+    for (const s of [-1, 1]) k.ball(0.019, s * 0.026, hy + 0.075, 0.055, TEAL, 0, { glow: true });
+    k.gem(0.02, 0, hy + 0.15, 0.055, TEAL, { glow: true, s: [1, 1.5, 0.6] }); // brow gem
+  });
+  cape(k, col, 0, 0.86, -0.1, 0.27, 0.42);
+  // a dark pole topped with a teal crystal in a gold claw
+  k.limb([-0.18, 0.4, 0.12], [-0.18, 1.36, 0.15], 0.016, 0.013, 0x5a4472, 5);
+  for (let s = 0; s < 3; s++) { const b = s / 3 * TAU; k.cone(0.012, 0.07, -0.18 + Math.cos(b) * 0.03, 1.35, 0.15 + Math.sin(b) * 0.03, GOLD, 4, { rz: -Math.cos(b) * 0.4, rx: Math.sin(b) * 0.4, ao: false }); }
+  k.gem(0.045, -0.18, 1.42, 0.15, TEAL, { glow: true, s: [1, 1.6, 1] });
+  heroBanner(k, -0.18, 1.34, 0.15, col, GOLD);
+}
+
+// fac -> [builder, kit seed, default player colour]; unknown factions fall back to haven
+const HEROES = { haven: [havenHero, 21, 0x3a7aff], necro: [necroHero, 23, 0xd83a3a], sylvan: [sylvanHero, 25, 0x3ac84a], inferno: [infernoHero, 27, 0xff7a1a], dungeon: [dungeonHero, 29, 0xa84ad8] };
 export function heroModel(fac, color) {
-  const k = makeKit(fac === 'necro' ? 23 : 21);
-  // rig: anything not given its own bone (horse barrel, blanket, saddle, banner pole) is BODY
-  k.bone(RIG.BODY, HORSE_BODY, () => (fac === 'necro' ? necroHero : havenHero)(k, color ?? (fac === 'necro' ? 0xd83a3a : 0x3a7aff)));
+  const [build, seed, defCol] = HEROES[fac] || HEROES.haven;
+  const k = makeKit(seed);
+  // rig: anything not given its own bone (mount barrel, blanket, saddle, banner pole) is BODY
+  k.bone(RIG.BODY, HORSE_BODY, () => build(k, color ?? defCol));
   const m = finish(k), S = 1.22; // R4: a touch bigger than before (1.12) so the rider reads at map zoom
   // pivots scale with the positions
   const scalePivots = (g) => { const a = g.attributes.aPivot; if (a) { for (let i = 0; i < a.array.length; i++) a.array[i] *= S; a.needsUpdate = true; } };
