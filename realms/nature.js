@@ -253,14 +253,14 @@ function pineTree(b, snow) {
   b.part(tubeGeo([V(0, 0, 0), V(0, 0.3, 0), V(0, 0.95, 0)], [0.06, 0.045, 0], 6), tr);
   roots(b, 0.045, tr, 3);
   const tiers = [[0.15, 0.36, 0.36], [0.34, 0.3, 0.34], [0.52, 0.23, 0.31], [0.69, 0.16, 0.36]];
-  const green = snow ? ramp(0x24523e, 0x30664a, 0x4a7e5c, 0x76a083) : ramp(0x27583c, 0x356c46, 0x4e8452, 0x7aa266);
+  const green = snow ? ramp(0x1f4a38, 0x2a5e44, 0x427656, 0x689478) : ramp(0x27583c, 0x356c46, 0x4e8452, 0x7aa266);
   const SN = ramp(0xc8d2e6, 0xe6ecf6, 0xf6f8fc);
   tiers.forEach(([y, r, h], i) => {
     const paint = (p, n) => {
       const t = (p.y - y) / h, d = Math.hypot(p.x, p.z) / r, m = noise(p.x * 14, p.y * 14, p.z * 14);
       let c = green(d * 0.55 + t * 0.25 + (m - 0.5) * 0.3 + i * 0.06);
       if (n.y < 0) c = green(0.12);
-      if (snow && n.y > 0.2 && d < 0.34 + m * 0.4) c = SN(0.3 + n.y * 0.5 + (1 - d) * 0.3 + (m - 0.5) * 0.3);
+      if (snow && n.y > 0.3 && d < 0.26 + m * 0.34) c = SN(0.3 + n.y * 0.5 + (1 - d) * 0.3 + (m - 0.5) * 0.3);
       return c;
     };
     b.part(starCone(r, h, 8, 0.7, 0.055, i * 0.4 + b.rand()).translate(0, y, 0), paint, { jitter: 0.012, jf: 12 });
