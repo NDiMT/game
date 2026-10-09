@@ -169,7 +169,7 @@ function finish(parts, seed) {
       _a.fromArray(P, t0); _b.fromArray(P, t0 + 3).sub(_a); _c.fromArray(P, t0 + 6).sub(_a);
       const fn = _b.cross(_c).normalize(), ny = fn.y || 0;
       // thin sheets (membranes): faces turned away from the sun get lifted so the shaded side never goes murky
-      if (pt.under) { const sd = fn.x * 0.35 + fn.y * 0.87 + fn.z * 0.26; if (sd < 0.55) m *= 1 + pt.under * Math.min(1, (0.55 - sd) * 1.2); if (globalThis.__dbgUnder) m *= 3; }
+      if (pt.under) { const sd = fn.x * 0.35 + fn.y * 0.87 + fn.z * 0.26; if (sd < 0.55) m *= 1 + pt.under * Math.min(1, (0.55 - sd) * 1.2); }
       let ao = 1, cool = 0;
       if (!pt.glow) {
         m *= 1 + 0.12 * Math.max(0, ny) - 0.07 * Math.max(0, -ny);
@@ -1132,7 +1132,8 @@ function dragonWing(k, o) {
   const tri = (P, a, b, c) => {
     const n = b.clone().sub(a).cross(c.clone().sub(a)).normalize().multiplyScalar(th);
     P.push(...a.toArray(), ...b.toArray(), ...c.toArray());
-    bk.get(P).push(...a.clone().add(n).toArray(), ...c.clone().add(n).toArray(), ...b.clone().add(n).toArray());
+    // the reversed sheet sits BEHIND the front one (not in front): otherwise its ink hull covers the membrane
+    bk.get(P).push(...a.clone().sub(n).toArray(), ...c.clone().sub(n).toArray(), ...b.clone().sub(n).toArray());
   };
   // each panel: inner part (lighter) and an outer rim strip (edge colour) toward the scallop
   const panel = (P, A, B, C, f = 0.8) => {
@@ -1148,7 +1149,7 @@ function dragonWing(k, o) {
   tri(P1, W, V3(back), V3(elbow)); tri(P1, V3(elbow), V3(back), V3(root));
   for (const [P, c] of [[P1, mem], [P2, mem2 ?? mem], [PE, o.edge ?? mem2 ?? mem]]) for (const Q of [P, bk.get(P)]) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Q, 3));
-    k.add(g, c, { grad: [0.9, 1.08], noise: 0.02, under: 0.9 });
+    k.add(g, c, { grad: [0.9, 1.08], noise: 0.02, under: 0.4 });
   }
   // veins: thin ribs from the fingers' bases fanning into the membrane
   for (let i = 0; i < anchors.length - 1; i++) {
