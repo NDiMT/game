@@ -330,7 +330,7 @@ function batWing(k, sh, o) {
   };
   for (let i = 0; i < E.length - 1; i++) tri(Wp, E[i], E[i + 1]);
   tri(S, Wp, Lp);
-  for (const [P, c] of [[PF, col], [PB, o.back ?? new THREE.Color(col).lerp(new THREE.Color(0xffc0a0), 0.35)]]) {
+  for (const [P, c] of [[PF, col], [PB, o.back ?? new THREE.Color(col).lerp(new THREE.Color(0xffb090), 0.25)]]) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
     k.add(g, c, { grad: o.grad ?? [0.85, 1.1], noise: 0.02 });
   }

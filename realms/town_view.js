@@ -66,7 +66,8 @@ const DIMS = {
 };
 for (let t = 1; t <= 7; t++) { const d = DIMS['d' + t]; DIMS['u' + t] = [d[0], d[1], d[2] * 1.15]; }
 // glow multipliers per building (faction:id or id); 1 = the shared glow material
-const GLOW_SCALE = { 'haven:u7': 0.5, 'haven:d7': 0.7, 'haven:mage3': 0.8 };
+const GLOW_SCALE = { 'haven:u7': 0.5, 'haven:d7': 0.7, 'haven:mage3': 0.8,
+  'dungeon:mage3': 0.8, 'dungeon:u7': 0.8, 'dungeon:u3': 0.8, 'inferno:u3': 0.6, 'inferno:d3': 0.7 };
 const SLOT_MAXH = { fort: 2.5, hall: 3.5, mage: 4.2, market: 1.8, tavern: 2, d1: 2.2, d2: 2.6, d3: 2.9, d4: 2.8, d5: 3.1, d6: 3.2, d7: 4.5 };
 const SLOT_DIM = (k) => { const id = k === 'hall' ? 'hall3' : k === 'mage' ? 'mage3' : k; return DIMS[id]; };
 
@@ -200,7 +201,7 @@ const PAL = {
     zenith: 0x4a3a8e, mid: 0x7c62b8, horizon: 0xa8dce6, below: 0x8a7cb0, sunCol: 0x9af4ff, fog: 0x9c98cc, fogNear: 90, fogFar: 1100,
     sunDir: [0.1, 0.7, -0.6], lightDir: [-0.3, 0.85, 0.4], shadowI: 0.7, shadowR: 3, sun: 0xeee4ff, sunI: 2.7, hemiSky: 0xbcb8f0, hemiGround: 0x5e6a80, hemiI: 0.95, amb: 0xe0dcff, ambI: 0.26,
     cave: true, rock: [0x5a4a96, 0x8a74c4], starCol: [0.55, 1.0, 0.95],
-    grass: [0x625a86, 0x56527a, 0x766e98, 0x4c6a7a], ash: 0x4e4a78, bank: 0x6a6a90, field: [0x56707a, 0x645c88, 0x4c6a74, 0x6c6290],
+    grass: [0x6c6490, 0x605a84, 0x8078a2, 0x547282], ash: 0x585282, bank: 0x6a6a90, field: [0x56707a, 0x645c88, 0x4c6a74, 0x6c6290],
     mtn: [0x6e5ea0, 0x8a78bc, 0xb8a8e0], hill: 0x7a729c,
     water: [0x1a8aa0, 0x4ae0d0, 0xc8fff4], waterSky: 0xa8a0e0, waterGlow: 0.5,
     path: '#c8c0d4', pathEdge: '#8e86a4', stone: ['#b0a8c4', '#d4cce0', '#a098b4'], pad: 'rgba(60,50,90,0.2)',
@@ -1080,13 +1081,13 @@ void main() {
           const cone = new T.CylinderGeometry(vr * 0.16, vr, vh, 28, 6, true);
           const vp = cone.attributes.position;
           for (let i = 0; i < vp.count; i++) { const x = vp.getX(i), z = vp.getZ(i), y = vp.getY(i), a = Math.atan2(z, x); const s2 = 1 + (vnoise(Math.cos(a) * 3 + 5, Math.sin(a) * 3 + y * 0.02, 5) - 0.5) * 0.22; vp.setX(i, x * s2); vp.setZ(i, z * s2); }
-          k.add(cone.translate(vx, vy + vh / 2, vz), (px, py, pz, c) => c.set(0x8a4a3c).lerp(col(0xc07a5e), clamp((py - vy) / vh, 0, 1)));
+          k.add(cone.translate(vx, vy + vh / 2, vz), (px, py, pz, c) => c.set(0x6e2a20).lerp(col(0xa04a34), clamp((py - vy) / vh, 0, 1)));
           k.add(new T.CylinderGeometry(vr * 0.155, vr * 0.155, 2, 24).translate(vx, vy + vh - 3, vz), 0xffb040, true);
           for (let i = 0; i < 6; i++) {
             const a = -1.9 + i * 0.36 + (R() - 0.5) * 0.15, L = vh * (0.55 + R() * 0.35);
             const pts = [];
             for (let j = 0; j <= 8; j++) { const t = j / 8, r2 = lerp(vr * 0.17, vr * 0.17 + (vr * 0.83) * (L / vh), t), ww = Math.sin(t * 9 + i) * 0.08; pts.push(new V3(vx + Math.cos(a + ww) * r2, vy + vh - t * L - 0.5, vz + Math.sin(a + ww) * r2)); }
-            const tube = new T.TubeGeometry(new T.CatmullRomCurve3(pts), 16, 1.3 - i * 0.1, 4, false);
+            const tube = new T.TubeGeometry(new T.CatmullRomCurve3(pts), 16, 2.6 - i * 0.2, 4, false);
             k.add(tube, 0xff7a20, true);
           }
           const plumeTex = cloudTexture([200, 140, 120], false, 21);
@@ -1119,8 +1120,7 @@ void main() {
           const side = rf() < 0.5 ? -1 : 1, z = 4.4 + Math.pow(rf(), 0.85) * 13, x = side * (1.4 + Math.pow(rf(), 1.4) * (z < 7 ? 4.2 : 2.6));
           if (LAMPS.some(([bx, bz]) => Math.hypot(x - bx, z - bz) < 0.6) || Math.hypot(x - 5.7 * side, z - 4) < 0.6) continue;
           const y = at(x, z), ry = rf() * 6.3;
-          if (rf() < 0.2) k.add(new T.BoxGeometry(0.05, 0.02, 0.4 + rf() * 0.4).rotateY(ry).translate(x, y + 0.005, z), 0xff8a30, true);
-          else { const r = 0.1 + rf() * 0.18; k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x8a5a48, 0xaa7458]); }
+          { const r = 0.1 + rf() * 0.18; k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x8a5a48, 0xaa7458]); }
         }
       } else if (fac === 'dungeon') {
         // crystal clusters: violet rock bases with tall teal / violet shards (the small ones glow)
@@ -1139,11 +1139,15 @@ void main() {
         // a glowing waterfall pouring from the cavern wall
         {
           const wx = 26, wz = -62, wy = at(wx, wz) - 1, wh = 34, ww = 5;
-          for (let i = 0; i < 26; i++) {
-            const dx = (R() - 0.5) * 26, dy = R() * (wh + 6), r = 3 + R() * 4;
-            k.add(new T.IcosahedronGeometry(r, 0).scale(1, 1.2, 0.8).translate(wx + dx + Math.sign(dx || 1) * (ww * 0.5 + r * 0.55), wy + dy, wz - 3 - R() * 3), [0x6a5a98, 0x9a88c8]);
+          // the cliff: one displaced slab of violet rock, lighter towards the top, with a notch the water pours from
+          const cl = new T.BoxGeometry(40, wh + 10, 10, 10, 8, 2);
+          const cp = cl.attributes.position;
+          for (let i = 0; i < cp.count; i++) {
+            const x = cp.getX(i), y = cp.getY(i), z = cp.getZ(i);
+            const n = fbm(x * 0.12 + 3, y * 0.12, 3, 41) - 0.5;
+            cp.setXYZ(i, x + n * 3, y + (y > 0 ? n * 6 - (Math.abs(x) < 4 ? 3 : 0) : 0), z + n * 5 + (z > 0 ? -Math.abs(x) * 0.12 : 0));
           }
-          k.add(new T.BoxGeometry(ww + 6, 4, 6).translate(wx, wy + wh + 1, wz - 4), [0x7a6aa8, 0xa898d0]);
+          k.add(cl.translate(wx, wy + (wh + 10) / 2 - 3, wz - 5.2), (px, py, pz, c) => c.set(0x54468a).lerp(col(0x9a88c8), clamp((py - wy) / (wh + 6), 0, 1)));
           const fallTex = canvasTex(64, 256, (g, w, h) => {
             g.fillStyle = 'rgb(120,220,230)'; g.fillRect(0, 0, w, h);
             const r = rng32(17);
@@ -1180,7 +1184,7 @@ void main() {
           const y = at(x, z), ry = rf() * 6.3, kind = rf();
           if (kind < 0.18) { const h = 0.2 + rf() * 0.2; k.add(new T.OctahedronGeometry(1, 0).scale(0.06, h / 2, 0.06).translate(0, h * 0.4, 0).rotateZ((rf() - 0.5) * 0.6).rotateY(ry).translate(x, y, z), [0x3aa0b0, 0x9af4ee]); }
           else if (kind < 0.6) { const r = 0.1 + rf() * 0.16; k.add(new T.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 1).rotateY(ry).translate(x, y - 0.02, z), [0x8a80a4, 0xa69ec0]); }
-          else { const r = 0.25 + rf() * 0.2; k.add(new T.IcosahedronGeometry(r, 0).scale(1.4, 0.18, 1).rotateY(ry).translate(x, y - 0.01, z), [0x6e9a98, 0x88b0ac]); }
+          else if (kind < 0.75) { const r = 0.25 + rf() * 0.2; k.add(new T.IcosahedronGeometry(r, 0).scale(1.4, 0.18, 1).rotateY(ry).translate(x, y - 0.01, z), [0x5e7a8e, 0x6e8a9c]); }
         }
       }
       // banner poles along the main road and by the lots
