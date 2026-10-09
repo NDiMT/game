@@ -64,7 +64,9 @@ const FRAME = {
   dendroid: { zoom: 0.72 }, dendroidsoldier: { zoom: 0.72 },
   minotaur: { az: -0.5 }, minotaurking: { az: -0.5 },
   skeleton: { az: -0.5 }, skelwarrior: { az: -0.5 },
-  zombie: { az: 0.18, el: 0.16 }, plaguezombie: { az: 0.18, el: 0.16 },
+  zombie: { az: 0.2, el: -0.04 }, plaguezombie: { az: 0.2, el: -0.04 },
+  troll: { az: 0.25, el: -0.06 }, ogre: { az: 0.35, el: 0.0 },
+  centaur: { az: -0.7, zoom: 0.85 }, centaurcpt: { az: -0.7, zoom: 0.85 },
   blackknight: { az: -0.8 }, dreadknight: { az: -0.8 },
 };
 

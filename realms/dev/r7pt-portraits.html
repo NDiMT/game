@@ -35,6 +35,7 @@ for (const s of sizes) {
   if (!only || only.split(',').includes('neutral')) h += sec('Neutral', NEUTRALS);
   if (P.heroPortraitImg && !q.has('nohero')) h += `<h3>Heroes · ${s}px</h3><div class="grid" style="--w:${s + 4}px">${Object.keys(FACTIONS).map((f, i) => `<div class="c">${tm(() => P.heroPortraitImg(f, heroCols[i] ?? FACTIONS[f].color, s))}${f}</div>`).join('')}</div>`;
 }
+if (q.get('ids')) for (const s2 of sizes) h += `<h3>ids · ${s2}px</h3><div class="grid" style="--w:${s2 + 4}px">${q.get('ids').split(',').map((id) => `<div class="c">${tm(() => P.portraitImg(id, s2))}${id}</div>`).join('')}</div>`;
 if (q.has('extra')) {
   const ids = ['pikeman', 'halberdier', 'vampirelord', 'griffin', 'blackdragon', 'goblin', 'efreetsultan', 'centaur'];
   h += `<h3>48px</h3><div class="grid" style="--w:52px">${ids.map((id) => `<div class="c">${P.portraitImg(id, 48)}</div>`).join('')}</div>`;

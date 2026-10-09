@@ -846,7 +846,7 @@ function saddle(k, seat, trim, strap) {
   k.box(0.16, 0.07, 0.035, 0, 0.615, -0.12, seat, { rx: 0.35, top: 1.2 });
   k.box(0.17, 0.014, 0.04, 0, 0.678, -0.135, trim, { rx: 0.35, ao: false });
   for (const s of [-1, 1]) {
-    k.box(0.016, 0.09, 0.13, s * 0.182, 0.52, -0.01, seat, { top: 1.15, bot: 0.85 });
+    k.box(0.016, 0.08, 0.09, s * 0.182, 0.53, 0.02, seat, { top: 1.15, bot: 0.85 });
     k.limb([s * 0.186, 0.6, 0.03], [s * 0.186, 0.41, 0.05], 0.007, 0.007, strap, 4);
     k.tor(0.024, 0.006, s * 0.186, 0.39, 0.05, trim, TAU, { ry: Math.PI / 2, rs: 8, ts: 3, ao: false });
   }
@@ -859,7 +859,7 @@ function blanket(k, col, trim, fac) {
     k.box(0.02, 0.025, 0.33, side * 0.172, 0.405, -0.01, trim, { ao: false, top: 1.2 });
     const G = gridMap(F, 3, 1);
     decalUV(k, G, 3, 1, uvRect(0, 0.72, 1, 0.8), trim, 0.006, [side]); // embroidered band above the hem
-    if (fac) sheetSigil(k, G, 3, 1, fac, trim, 0.5, 0.42, 0.26, 0.4, 0.006, [side]);
+    if (fac) sheetSigil(k, G, 3, 1, fac, trim, 0.2, 0.42, 0.22, 0.36, 0.006, [side]);
   }
 }
 // a wide cape in the player colour, draped from the shoulders over the horse's rump:

@@ -466,11 +466,14 @@ function horse(k, o) {
   k.bone(BONE.TAIL, [0, 0.72, -0.42], () => {
     k.ell(0.06, 0.06, 0.08, [0, 0.72, -0.43], tc[0], { d: 1 });
     tc.forEach((c, i) => {
-      const x = (i - (tc.length - 1) / 2) * (tc.length > 3 ? 0.036 : 0.026), r = tc.length > 3 ? 0.04 : 0.058;
-      const M = [x, 0.64, -0.6], E = [x * 1.8, 0.36, -0.72];
-      k.limb([0, 0.74, -0.42], M, r, r * 0.95, c, { seg: 6 });
-      k.limb(M, E, r * 0.95, r * 0.75, c, { seg: 6 });
-      k.cone(r * 0.85, 0.12, E, c, { r: [Math.PI + 0.15, 0, x * 3], seg: 6, grad: [0.9, 1.08] });
+      const x = (i - (tc.length - 1) / 2) * (tc.length > 3 ? 0.036 : 0.034), r = tc.length > 3 ? 0.04 : 0.052;
+      const dz = (i % 2 ? 0.025 : -0.015);
+      const M = [x, 0.66, -0.6 + dz], N = [x * 1.5, 0.5, -0.72 + dz], E = [x * 2, 0.32, -0.7 + dz * 1.5];
+      k.limb([0, 0.74, -0.42], M, r, r, c, { seg: 6 });
+      k.ball(r, M, c, { d: 0 });
+      k.limb(M, N, r, r * 0.95, c, { seg: 6 });
+      k.limb(N, E, r * 0.95, r * 0.7, c, { seg: 6 });
+      k.cone(r * 0.75, 0.11, E, c, { r: [Math.PI - 0.15, 0, x * 3], seg: 6, grad: [0.9, 1.08] });
     });
   });
   if (o.noHead) return;
@@ -588,9 +591,9 @@ function centaur(U) {
     k.at([0, HY, 0], [0, 0, 0], 1.12, () => k.at([0, -HY, 0], [0, 0, 0], 1, () => {
     k.ell(HR, HR * 1.02, HR * 0.98, [0, HY, 0.01], SKIN, { grad: [0.95, 1.05] });
     face(k, { y: HY + 0.005, z: 0.128, x: 0.05, iris: 0x5a8a3a, brow: MANE, browT: 0.22, lid: 0xe8a888 });
-    k.ell(0.026, 0.04, 0.03, [0, HY - 0.035, 0.14], 0xf0b088, { d: 1 }); // nose
+    k.ell(0.026, 0.04, 0.03, [0, HY - 0.035, 0.14], 0xf0b088, { d: 0 }); // nose
     k.box(0.045, 0.01, 0.02, [0, HY - 0.08, 0.118], 0xb85a50, { ao: false, r: [-0.4, 0, 0] }); // mouth
-    k.sym(() => k.ell(0.025, 0.04, 0.02, [0.13, HY - 0.01, 0.0], SKIN, { d: 1 })); // ears
+    k.sym(() => k.ell(0.025, 0.04, 0.02, [0.13, HY - 0.01, 0.0], SKIN, { d: 0 })); // ears
     k.ell(0.148, 0.12, 0.14, [0, HY + 0.045, -0.03], MANE, { grad: [0.9, 1.1] });
     // hair locks over the brow and temples
     // braided pony-tail: alternating lobes with leather wraps
@@ -621,7 +624,7 @@ function centaur(U) {
       k.limb(A, B, 0.028, 0.024, U ? GOLD_L : WOOD, { seg: 8, grad: [0.88, 1.1] });
       // grip wrap (banded), butt cap
       k.limb(tup(A, B, 0.0), tup(A, B, 0.1), 0.034, 0.034, U ? EMER : LEATHER, { seg: 8, hs: 5, band: [1, 60, 0.18] });
-      k.ball(0.04, A, U ? GOLD : STEEL_D, { d: 1 });
+      k.ball(0.04, A, U ? GOLD : STEEL_D, { d: 0 });
       const d = V3(B).sub(V3(A)).normalize();
       pole(k, B, V3(B).add(d).toArray(), (L) => {
         const HL = U ? 0.28 : 0.25;
@@ -949,47 +952,110 @@ function pegasus(U) {
 // with splayed root toes, branch arms with club hands and leafy twigs, a big
 // leafy crown. Dendroid soldier: pink blossoms in the crown, thorny arms,
 // bark shoulder plates, amber eyes, gold-leaf belt.
+// Round 7 detail: mottled bark with deep grooves and knot holes, a climbing vine
+// with leaves, moss patches and shelf fungus, heavy bark brows over deep sockets
+// with bright pupils, a jagged mouth with wooden teeth and a hanging moss beard,
+// twig fingers, rootlets, leaves breaking the crown outline; soldier: layered
+// bark pauldrons, gold-leaf belt with a buckle, five-petal blossoms.
 function dendroid(U) {
   const k = makeKit(U ? 179 : 173, [0, 0.42, 0]);
-  const BK = U ? 0xa06e3c : BARK;
-  // root legs (LEG_FR / LEG_FL)
+  const BK = U ? 0xa06e3c : BARK, EYE = U ? 0xffc040 : 0xd8ff5a, FUN = 0xffd890;
+  // root legs (LEG_FR / LEG_FL) with toe roots and rootlets
   k.sym(() => k.bone(BONE.LEG_FR, [0.11, 0.4, 0], () => {
-    k.limb([0.11, 0.44, 0], [0.15, 0.08, 0.03], 0.11, 0.09, BARK_D, { seg: 6 });
-    for (const [yaw, len] of [[-0.7, 0.2], [0, 0.24], [0.7, 0.2], [Math.PI, 0.14]]) k.cone(0.05, len, [0.15, 0.06, 0.03], BARK_D, { r: [1.72, yaw, 0], seg: 4 });
+    k.limb([0.11, 0.44, 0], [0.15, 0.08, 0.03], 0.11, 0.09, BARK_D, { seg: 8, hs: 3, mottle: 0.08 });
+    for (const [yaw, len] of [[-0.7, 0.2], [0, 0.24], [0.7, 0.2], [Math.PI, 0.14]]) {
+      k.cone(0.05, len, [0.15, 0.06, 0.03], BARK_D, { r: [1.72, yaw, 0], seg: 5 });
+      k.cone(0.02, len * 0.6, [0.15 + Math.sin(yaw) * len * 0.5, 0.03, 0.03 + Math.cos(yaw) * len * 0.5], BARK, { r: [1.9, yaw + 0.6, 0], seg: 3 });
+    }
+    k.ell(0.06, 0.03, 0.05, [0.13, 0.3, 0.1], MOSS, { d: 0 });
   }));
-  // trunk with bold ridges
-  k.lathe([[0.2, 0.28], [0.245, 0.4], [0.225, 0.55], [0.215, 0.7], [0.24, 0.86], [0.27, 0.96], [0.18, 1.04], [0.05, 1.06]], [0, 0, 0], BK, { s: [1, 1, 0.84], seg: 8, grad: [0.8, 1.1] });
-  for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + 0.45; if (Math.abs(Math.sin(a)) < 0.35 && Math.cos(a) > 0) continue; k.box(0.06, 0.5, 0.05, [Math.sin(a) * 0.22, 0.66, Math.cos(a) * 0.185], BARK_D, { r: [0, a, 0] }); }
-  if (U) k.lathe([[0.25, 0.42], [0.252, 0.48]], [0, 0, 0], GOLD, { s: [1, 1, 0.86], seg: 8, grad: [1, 1] });
-  // the face: brow, glowing eyes, a knotted nose and a mouth crack
-  k.box(0.26, 0.055, 0.08, [0, 0.83, 0.17], BARK_L, { r: [0.25, 0, 0] });
+  // trunk with bold grooves, mottled bark
+  k.lathe([[0.2, 0.28], [0.245, 0.4], [0.225, 0.55], [0.215, 0.7], [0.24, 0.86], [0.27, 0.96], [0.18, 1.04], [0.05, 1.06]], [0, 0, 0], BK, { s: [1, 1, 0.84], seg: 12, sub: 2, grad: [0.8, 1.1], mottle: 0.07 });
+  for (let i = 0; i < 9; i++) {
+    const a = i / 9 * Math.PI * 2 + 0.3; if (Math.abs(Math.sin(a)) < 0.4 && Math.cos(a) > 0) continue;
+    const h = 0.42 + (i % 3) * 0.06;
+    k.box(0.055, h, 0.05, [Math.sin(a) * 0.225, 0.62 + (i % 2) * 0.05, Math.cos(a) * 0.19], i % 2 ? BARK_D : 0x9a663a, { r: [0, a, (i % 3 - 1) * 0.06], mottle: 0.06 });
+  }
+  // knot holes and shelf fungus
+  for (const [x, y, z, r] of [[-0.19, 0.5, 0.12, 0.04], [0.16, 0.38, -0.15, 0.035], [-0.1, 0.8, -0.19, 0.04]]) {
+    k.ell(r * 1.3, r * 1.5, r * 0.6, [x, y, z], BARK_L, { d: 1, r: [0, Math.atan2(x, z), 0] });
+    k.ell(r * 0.8, r, r * 0.5, [x * 1.04, y, z * 1.04], KNOT, { d: 0, r: [0, Math.atan2(x, z), 0], ao: false, grad: [1, 1] });
+  }
+  for (const [y, s2] of [[0.46, 1], [0.54, 0.8]]) k.cyl(0.07 * s2, 0.06 * s2, 0.025, [-0.2, y, -0.06], FUN, { seg: 8, phi: 0, r: [0, 0, 0.1], grad: [0.95, 1.1] });
+  // moss patches
+  for (const [x, y, z] of [[0.15, 0.32, 0.13], [-0.2, 0.68, -0.05], [0.12, 0.6, -0.17]]) k.ell(0.07, 0.05, 0.05, [x, y, z], MOSS, { d: 1, r: [0, Math.atan2(x, z), 0] });
+  // a climbing vine with leaves
+  {
+    const pts = []; for (let i = 0; i <= 16; i++) { const t = i / 16, a = t * Math.PI * 2.2 + 2.2; pts.push(new THREE.Vector3(Math.sin(a) * 0.235, 0.3 + t * 0.6, Math.cos(a) * 0.2)); }
+    k.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.014, 4, false), LEAF_D, { grad: [0.95, 1.05] });
+    for (let i = 2; i < 16; i += 3) { const P = pts[i], a = Math.atan2(P.x, P.z); leafPlate(k, P.toArray(), [-0.4, a, (i % 2 ? 1 : -1) * 0.9], 0.08, 0.05, i % 2 ? LEAF : LEAF_L, null, 0.012); }
+  }
+  if (U) {
+    // gold-leaf belt with a buckle
+    k.lathe([[0.25, 0.42], [0.252, 0.48]], [0, 0, 0], GOLD, { s: [1, 1, 0.86], seg: 12, grad: [1, 1] });
+    for (let i = 0; i < 6; i++) { const a = (i - 2.5) * 0.45; leafEmblem(k, [Math.sin(a) * 0.255, 0.45, Math.cos(a) * 0.22], 0.35, i % 2 ? GOLD_L : LEAF_L, [0, a, Math.PI / 2]); }
+    k.box(0.07, 0.07, 0.03, [0, 0.45, 0.225], GOLD_L, { r: [0, 0, Math.PI / 4] });
+    k.ball(0.022, [0, 0.45, 0.24], 0xffc040, { glow: true, d: 0 });
+  }
+  // the face: heavy brows, deep sockets with glowing eyes and bright pupils, a knotted nose,
+  // a jagged mouth with wooden teeth and a hanging moss beard
+  k.sym(() => k.box(0.15, 0.06, 0.09, [0.07, 0.835, 0.17], BARK_L, { r: [0.25, -0.2, -0.22], mottle: 0.05 }));
   k.sym(() => {
-    k.ell(0.055, 0.042, 0.03, [0.075, 0.775, 0.175], KNOT, { grad: [1, 1], ao: false });
-    k.ball(0.032, [0.075, 0.775, 0.195], U ? 0xffc040 : 0xd8ff5a, { glow: true, d: 0 });
+    k.ell(0.058, 0.045, 0.03, [0.075, 0.775, 0.175], KNOT, { d: 1, grad: [1, 1], ao: false });
+    k.ball(0.033, [0.075, 0.775, 0.192], EYE, { glow: true, d: 1 });
+    k.ball(0.014, [0.075, 0.775, 0.222], 0xffffe0, { glow: true, d: 0 });
   });
-  k.cone(0.04, 0.09, [0, 0.72, 0.18], BARK_L, { r: [Math.PI / 2 + 0.3, 0, 0], seg: 4 });
-  k.ell(0.085, 0.024, 0.03, [0, 0.64, 0.18], KNOT, { grad: [1, 1], ao: false });
-  // moss on the shoulders
-  k.sym(() => k.ell(0.12, 0.06, 0.13, [0.17, 0.95, 0.0], U ? BARK_L : MOSS, { r: [0, 0, -0.4] }));
-  // branch arms (ARM_R / ARM_L) with big club hands, root fingers and a leafy twig
+  k.cone(0.045, 0.1, [0, 0.72, 0.18], BARK_L, { r: [Math.PI / 2 + 0.3, 0, 0], seg: 5 });
+  k.ell(0.1, 0.04, 0.035, [0, 0.64, 0.18], KNOT, { d: 1, grad: [1, 1], ao: false });
+  for (let i = 0; i < 4; i++) {
+    const x = (i - 1.5) * 0.04;
+    k.cone(0.014, 0.035, [x, 0.67, 0.2], 0xf0d8a0, { r: [Math.PI, 0, 0], seg: 3, ao: false });
+    if (i < 3) k.cone(0.013, 0.03, [x + 0.02, 0.612, 0.2], 0xf0d8a0, { seg: 3, ao: false });
+  }
+  for (let i = 0; i < 5; i++) { const x = (i - 2) * 0.04; k.cone(0.026, 0.12 + (i % 2) * 0.05, [x, 0.6, 0.18 - Math.abs(x) * 0.3], i % 2 ? MOSS : 0x7ab83e, { r: [Math.PI + 0.15, 0, x * 1.5], seg: 4 }); }
+  // moss on the shoulders (bark pauldrons on the soldier)
+  k.sym(() => {
+    if (U) for (let j = 0; j < 2; j++) k.ell(0.13 - j * 0.015, 0.05, 0.14 - j * 0.015, [0.18 + j * 0.02, 0.97 - j * 0.05, 0], j % 2 ? BARK_L : 0xc08a50, { r: [0, 0, -0.45 - j * 0.12], d: 1, mottle: 0.06 });
+    else k.ell(0.12, 0.06, 0.13, [0.17, 0.95, 0.0], MOSS, { r: [0, 0, -0.4] });
+  });
+  // branch arms (ARM_R / ARM_L) with club hands, twig fingers and a leafy twig
   k.sym(() => k.bone(BONE.ARM_R, [0.21, 0.88, 0], () => {
     const S0 = [0.2, 0.88, 0], E = [0.38, 0.68, 0.06], Hn = [0.44, 0.44, 0.14];
-    k.limb(S0, E, 0.085, 0.066, BK, { seg: 6 });
-    k.limb(E, Hn, 0.066, 0.06, BK, { seg: 6 });
-    k.ell(0.1, 0.11, 0.1, Hn, BARK_L, { grad: [0.85, 1.1] });
-    for (const [yaw, dz] of [[-0.5, 0], [0.3, 0.04], [1.1, 0]]) k.cone(0.034, 0.16, [Hn[0], Hn[1] - 0.06, Hn[2] + dz], BARK_D, { r: [Math.PI - 0.5, yaw, 0], seg: 4 });
-    k.limb([0.31, 0.77, 0.03], [0.42, 0.97, -0.04], 0.034, 0.016, BK, { seg: 4 });
+    k.limb(S0, E, 0.085, 0.066, BK, { seg: 7, hs: 2, mottle: 0.08 });
+    k.ball(0.07, E, BK, { d: 1, mottle: 0.06 });
+    k.limb(E, Hn, 0.066, 0.06, BK, { seg: 7, hs: 2, mottle: 0.08 });
+    k.ell(0.1, 0.11, 0.1, Hn, BARK_L, { grad: [0.85, 1.1], mottle: 0.06 });
+    for (const [yaw, dz] of [[-0.5, 0], [0.3, 0.04], [1.1, 0]]) {
+      k.cone(0.034, 0.16, [Hn[0], Hn[1] - 0.06, Hn[2] + dz], BARK_D, { r: [Math.PI - 0.5, yaw, 0], seg: 5 });
+    }
+    k.cone(0.03, 0.12, [Hn[0] - 0.04, Hn[1] + 0.02, Hn[2] + 0.06], BARK_D, { r: [1.6, 0.3, 0.5], seg: 4 }); // thumb twig
+    k.limb([0.31, 0.77, 0.03], [0.42, 0.97, -0.04], 0.034, 0.016, BK, { seg: 5 });
     k.ball(0.095, [0.43, 0.99, -0.04], LEAF, { top: [LEAF_L, 0.4] });
-    if (U) for (const t of [0.3, 0.65]) { const p = tup(S0, Hn, t); k.cone(0.03, 0.1, p, BARK_L, { r: [0, 0, -1.3 - t], seg: 3 }); }
+    for (let j = 0; j < 4; j++) { const a = j * 1.6; leafPlate(k, [0.43 + Math.sin(a) * 0.08, 0.99 + Math.cos(a) * 0.05, -0.04 + Math.cos(a) * 0.05], [0.3, a, -1.2 + j * 0.6], 0.09, 0.06, j % 2 ? LEAF_L : LEAF_D, null, 0.012); }
+    if (U) for (const t of [0.2, 0.42, 0.65, 0.85]) { const p = tup(S0, Hn, t); k.cone(0.026, 0.1, p, 0xe8c080, { r: [0, 0, -1.3 - t], seg: 4 }); }
   }));
-  // leafy crown (HEAD: rustles / looks around), a few branches poking through
+  // leafy crown (HEAD: rustles / looks around), branches poking through, loose leaves
   k.bone(BONE.HEAD, [0, 1.0, 0], () => {
-    k.sym(() => k.limb([0.04, 0.98, 0], [0.22, 1.3, -0.06], 0.05, 0.03, BK, { seg: 5 }));
+    k.sym(() => k.limb([0.04, 0.98, 0], [0.22, 1.3, -0.06], 0.05, 0.03, BK, { seg: 6 }));
     const blobs = [[0, 1.22, -0.07, 0.3, LEAF], [0.25, 1.1, -0.05, 0.18, LEAF_D], [-0.25, 1.12, -0.06, 0.19, LEAF], [0.11, 1.4, -0.08, 0.18, LEAF], [-0.13, 1.36, 0.02, 0.16, LEAF_D], [0, 1.15, -0.3, 0.19, LEAF_D], [0.2, 1.28, -0.22, 0.15, LEAF]];
-    for (const [x, y, z, r, c] of blobs) k.ell(r * 1.08, r * 0.9, r, [x, y, z], c, { top: [LEAF_L, 0.35], grad: [0.82, 1.1] });
+    for (const [x, y, z, r, c] of blobs) k.ell(r * 1.08, r * 0.9, r, [x, y, z], c, { top: [LEAF_L, 0.35], grad: [0.82, 1.1], d: r > 0.2 ? 2 : 1, mottle: 0.05 });
+    // individual leaves breaking the outline of the crown
+    const rnd = (i) => hash3(i * 1.7, 3.1, 0.7);
+    for (let i = 0; i < 16; i++) {
+      const [x, y, z, r] = blobs[i % blobs.length], a = rnd(i) * Math.PI * 2, e = (rnd(i + 9) - 0.3) * 1.4;
+      const P = [x + Math.sin(a) * Math.cos(e) * r * 1.1, y + Math.sin(e) * r * 0.95, z + Math.cos(a) * Math.cos(e) * r * 1.08];
+      leafPlate(k, P, [-0.6 + e, a, rnd(i + 4) * 2 - 1], 0.11, 0.07, i % 3 ? LEAF_L : LEAF, null, 0.014);
+    }
     if (U) {
+      // five-petal blossoms with sun-yellow hearts
       const bl = [[0.02, 1.5, 0.0], [0.24, 1.3, 0.05], [-0.24, 1.3, 0.04], [0.12, 1.3, 0.18], [-0.12, 1.28, 0.16], [0.3, 1.18, -0.14], [-0.33, 1.18, -0.06], [0.0, 1.38, -0.25], [-0.1, 1.48, -0.1]];
-      bl.forEach((p, i) => k.ball(0.055, p, i % 3 ? PINK : WHITE, { d: 0, grad: [1, 1.05], ao: false }));
+      bl.forEach((p, i) => {
+        const dv = V3(p).sub(V3([0, 1.22, -0.07])).normalize(), a = Math.atan2(dv.x, dv.z), c = i % 3 ? PINK : WHITE;
+        k.at(V3(p).add(dv.clone().multiplyScalar(0.07)).toArray(), [-Math.asin(dv.y), a, 0], 1.4, () => {
+          for (let j = 0; j < 5; j++) { const b = j / 5 * Math.PI * 2; k.stud(1, [Math.sin(b) * 0.03, Math.cos(b) * 0.03, 0], c, { r: [0, 0, -b], s: [0.024, 0.034, 0.012] }); }
+          k.stud(0.018, [0, 0, 0.012], SUN);
+        });
+      });
     }
   });
   return k.done();
@@ -998,29 +1064,47 @@ function dendroid(U) {
 // Unicorn: white horse, long golden spiral horn, rainbow mane and tail.
 // War unicorn: gold chanfron, white caparison with a violet band and gold hem,
 // gold hooves, a longer glowing horn.
+// Round 7 detail: ridged spiral horn with a gold base ring, lashed violet eyes,
+// a goat beard, feathered fetlocks, layered rainbow mane and tufted tail; war
+// unicorn: riveted chanfron with a gem, a violet noseband, a violet saddle, star-embroidered caparison with tassels.
 function unicorn(U) {
   const k = makeKit(U ? 191 : 181, [0, 0.64, -0.03]);
   const RB = [PINK, ORANGE, SUN, MINT, SKY, VIOLET];
   horse(k, {
-    coat: WHITE, coatD: 0xeee8f4, hoof: U ? GOLD : 0xd8b07a, mane: RB, tail: [PINK, SUN, MINT, SKY, VIOLET],
+    coat: WHITE, coatD: 0xeee8f4, coatL: 0xffffff, hoof: U ? GOLD : 0xd8b07a, coronet: U ? GOLD_L : 0xffe0f0, mane: RB, tail: [PINK, SUN, MINT, SKY, VIOLET],
+    feath: true, sock: 0xfff6fa, eye: 0x7a4ad0, lash: 0x6a4aa0, earIn: 0xffb4d8,
     headFx: () => {
       const L = U ? 0.4 : 0.34;
       k.at([0, 0.07, 0.06], [-0.55, 0, 0], 1, () => {
-        k.cone(0.045, L, [0, 0, 0], GOLD_L, { seg: 6, grad: [0.9, 1.15] });
+        k.cone(0.045, L, [0, 0, 0], GOLD_L, { seg: 8, grad: [0.9, 1.15], band: [1, 30, 0.08] });
         const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24, a = t * Math.PI * 2 * 3.5, r = 0.046 * (1 - t) + 0.003; pts.push(new THREE.Vector3(Math.cos(a) * r, t * L * 0.92, Math.sin(a) * r)); }
         k.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 36, 0.012, 4, false), GOLD, { grad: [0.95, 1.05] });
-        k.ball(U ? 0.05 : 0.035, [0, L, 0], 0xfff4b0, { glow: true, d: 0 });
+        k.torus(0.05, 0.014, [0, 0.01, 0], U ? GOLD : 0xffe0f0, { r: [Math.PI / 2, 0, 0], seg: 10, ts: 3 });
+        k.ball(U ? 0.05 : 0.035, [0, L, 0], 0xfff4b0, { glow: true, d: 1 });
         if (U) k.cone(0.03, 0.2, [0, L * 0.6, 0], 0xfff8d0, { glow: true, seg: 4 });
       });
-      if (U) k.ell(0.066, 0.044, 0.17, [0, 0.062, 0.12], GOLD, { grad: [0.85, 1.12] });
+      // goat beard under the chin
+      k.cone(0.03, 0.11, [0, -0.08, 0.2], 0xfff6fa, { r: [Math.PI + 0.5, 0, 0], seg: 5 });
+      if (U) {
+        k.ell(0.066, 0.044, 0.17, [0, 0.062, 0.12], GOLD, { grad: [0.85, 1.12] });
+        for (const z of [0.03, 0.13, 0.22]) k.sym(() => k.stud(0.012, [0.05, 0.085, z], GOLD_L));
+        k.ball(0.022, [0, 0.105, 0.17], 0xe0a0ff, { glow: true, d: 0 });
+        k.torus(0.082, 0.012, [0, -0.02, 0.22], VIOLET, { seg: 12, ts: 3 });
+      }
     },
   });
   if (U) {
-    k.lathe([[0.226, 0.4], [0.216, 0.5], [0.2, 0.66], [0.16, 0.78], [0.06, 0.84]], [0, 0, -0.04], WHITE, { s: [1, 1, 2.0], seg: 10, grad: [0.86, 1.06] });
-    k.lathe([[0.232, 0.44], [0.228, 0.5]], [0, 0, -0.04], VIOLET, { s: [1, 1, 2.0], seg: 10, grad: [1, 1] });
-    k.lathe([[0.236, 0.38], [0.232, 0.43]], [0, 0, -0.04], GOLD, { s: [1, 1, 2.0], seg: 10, grad: [1, 1] });
+    k.lathe([[0.226, 0.4], [0.216, 0.5], [0.2, 0.66], [0.16, 0.78], [0.06, 0.84]], [0, 0, -0.04], WHITE, { s: [1, 1, 2.0], seg: 14, grad: [0.86, 1.06] });
+    k.lathe([[0.232, 0.44], [0.228, 0.5]], [0, 0, -0.04], VIOLET, { s: [1, 1, 2.0], seg: 14, grad: [1, 1] });
+    k.lathe([[0.236, 0.38], [0.232, 0.43]], [0, 0, -0.04], GOLD, { s: [1, 1, 2.0], seg: 14, grad: [1, 1] });
+    // embroidered stars along the violet band, tassels on the hem
+    for (let i = 0; i < 5; i++) { const a = Math.PI / 2 + (i - 2) * 0.5; k.sym(() => k.at([Math.sin(a) * 0.236, 0.47, -0.04 + Math.cos(a) * 0.236 * 2.0], [0, a, 0], 1, () => { for (let j = 0; j < 4; j++) k.cone(0.012, 0.03, [0, 0, 0.004], GOLD_L, { r: [0, 0, j * Math.PI / 2], seg: 3, ao: false }); })); }
+    for (let i = 0; i < 4; i++) { const a = Math.PI / 2 + (i - 1.5) * 0.55; k.sym(() => k.cone(0.02, 0.07, [Math.sin(a) * 0.238, 0.385, -0.04 + Math.cos(a) * 0.238 * 2.0], GOLD, { r: [Math.PI, 0, 0], seg: 4, ao: false })); }
     k.sym(() => sunBadge(k, [0.2, 0.62, -0.1], [0, Math.PI / 2, 0], 1.6, 0xe0a0ff));
-    k.torus(0.17, 0.035, [0, 0.72, 0.3], GOLD, { r: [Math.PI / 2 - 0.6, 0, 0], seg: 12, ts: 4 });
+    // violet saddle with a gold cantle
+    k.lathe([[0.2, 0.8], [0.15, 0.85], [0.05, 0.87]], [0, 0, -0.06], VIOLET, { s: [1, 1, 1.3], seg: 12, grad: [0.9, 1.1] });
+    k.torus(0.17, 0.035, [0, 0.72, 0.3], GOLD, { r: [Math.PI / 2 - 0.6, 0, 0], seg: 14, ts: 4 });
+    for (let i = 0; i < 5; i++) { const a = (i - 2) * 0.45; k.stud(0.016, [Math.sin(a) * 0.19, 0.72 + 0.06 * (1 - Math.cos(a)) - Math.cos(a) * 0.05, 0.3 + Math.cos(a) * 0.13], VIOLET); }
   }
   return k.done();
 }

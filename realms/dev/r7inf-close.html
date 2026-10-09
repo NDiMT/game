@@ -1,0 +1,80 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inferno close-ups</title>
+<style>html,body{margin:0;background:#2c3440;color:#fff;font:11px sans-serif}canvas{display:block}
+.lab{position:absolute;color:#fff;text-shadow:0 1px 2px #000;white-space:nowrap;pointer-events:none}
+.sec{position:absolute;left:6px;color:#ffe08a;font:bold 12px sans-serif;text-shadow:0 1px 2px #000}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.js"}}</script></head>
+<body><script type="module">
+// Round 6 preview: every Inferno creature and its upgrade from the battle camera
+// angle (~46 deg down), front and back, at phone sizes (tier 1 ~40 px and true
+// battle scale ~67-95 px) plus a large view. Uses the game's materials, ink hull
+// and unit fitting, so what you see here is what the battle shows.
+import * as THREE from 'three';
+const v = '?v=' + Date.now();
+const q = new URLSearchParams(location.search);
+const src = q.get('src') || '..';
+const { infernoModel, INFERNO_BASE_IDS, INFERNO_UP_IDS } = await import(src + '/units_inferno.js' + v);
+const { makeBodyMaterial, makeGlowMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, tick } = await import('../materials.js' + v);
+const { unitFit, applyFit } = await import('../unit_fit.js' + v);
+
+const W = 1300, FOV = 30, TAN = Math.tan(THREE.MathUtils.degToRad(FOV / 2)), ELEV = THREE.MathUtils.degToRad(46);
+const GAME_PPU = 109, HULL_PX = +(q.get('hull') ?? 5.3);
+const base = INFERNO_BASE_IDS, ups = INFERNO_UP_IDS, all = [...base, ...ups];
+// sections: [title, ids, cellW, cellH, pxPerUnit, yaws]
+const S = [
+  ['~40 px (tier 1 = 40 px): front row, back row', all, 92, 92, 65, [0, Math.PI]],
+  ['battle scale (~109 px/unit, as the game at 412x860 DPR2): base front / base back / up front / up back', null, 185, 165, GAME_PPU, null],
+  ['large, three-quarter', null, 185, 250, 175, null],
+];
+let H = 0; const cells = [];
+// Round 7 close-up bench: ?ids=imp,familiar&ppu=330&cw=320&ch=400&yaw=0.5,-0.5 (each id in each yaw)
+const ids = (q.get('ids') || all.join(',')).split(','), PPU = +(q.get('ppu') || 330), CW = +(q.get('cw') || 320), CH = +(q.get('ch') || 400);
+const yaws = (q.get('yaw') || '0.5').split(',').map(Number), COLS = Math.floor(W / CW);
+const secs = []; let n = 0;
+for (const yaw of yaws) for (const id of ids) { cells.push({ id, x: 6 + (n % COLS) * CW, y: Math.floor(n / COLS) * CH, w: CW, h: CH, ppu: PPU, yaw }); n++; }
+H = Math.ceil(n / COLS) * CH;
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(1); r.setSize(W, H);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.1; r.outputColorSpace = THREE.SRGBColorSpace;
+r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFShadowMap; r.autoClear = false;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene();
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.4); sun.position.set(4, 10, 3); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.radius = 2.5; sun.shadow.intensity = 0.6;
+Object.assign(sun.shadow.camera, { left: -2, right: 2, top: 2, bottom: -2, near: 1, far: 30 }); sun.shadow.bias = -0.0005;
+scene.add(sun, new THREE.HemisphereLight(0xcfe0ff, 0x4a3a2a, 0.9), new THREE.AmbientLight(0x404a70, 0.3));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x7e9a5c, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const bodyMat = makeBodyMaterial(THREE), glowMat = makeGlowMaterial(THREE), inkMat = makeInkHullMaterial(THREE), blobMat = makeBlobShadowMaterial(THREE), blobGeo = blobShadowGeometry(THREE);
+const groups = {}, info = [];
+for (const id of all) {
+  const m = infernoModel(id);
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = b.receiveShadow = true; g.add(b);
+  if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
+  if (!q.get('nohull')) g.add(new THREE.Mesh(m.body, inkMat));
+  const fit = unitFit(id, m, 'battle', { nocache: true }); applyFit(g, fit);
+  const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(0.42 / fit.scale); bl.renderOrder = -1; g.add(bl);
+  g.visible = false; scene.add(g); groups[id] = g;
+  const tris = (m.body.attributes.position.count + (m.glow ? m.glow.attributes.position.count : 0)) / 3;
+  info.push({ id, tris, h: +fit.height.toFixed(3), top: +fit.top.toFixed(3), scale: +fit.scale.toFixed(3) });
+}
+window.info = info;
+tick(1.0);
+const cam = new THREE.PerspectiveCamera(FOV, 1, 0.05, 100);
+r.setScissorTest(true);
+r.setViewport(0, 0, W, H); r.setScissor(0, 0, W, H); r.setClearColor(0x2c3440); r.clear();
+for (const c of cells) {
+  const g = groups[c.id]; g.visible = true; g.rotation.y = c.yaw;
+  const yb = H - c.y - c.h;
+  r.setViewport(c.x, yb, c.w, c.h); r.setScissor(c.x, yb, c.w, c.h);
+  cam.aspect = c.w / c.h; cam.updateProjectionMatrix();
+  const d = c.h / (2 * TAN * c.ppu), cy = g.userData.fit.height * (+(q.get('cy') || 0.5));
+  cam.position.set(0, cy + Math.sin(ELEV) * d, Math.cos(ELEV) * d); cam.lookAt(0, cy, 0);
+  inkMat.userData.uniforms.uHullW.value = (c.ppu > GAME_PPU ? HULL_PX * c.ppu / GAME_PPU : HULL_PX) * 2 * TAN / c.h;
+  r.setClearColor(0x87a8d8); r.clear();
+  r.render(scene, cam);
+  g.visible = false;
+}
+const lab = (t, x, y, cls = 'lab') => { const e = document.createElement('div'); e.className = cls; e.textContent = t; e.style.left = x + 'px'; e.style.top = y + 'px'; document.body.appendChild(e); };
+for (const [t, y] of secs) lab(t, 6, y + 1, 'sec');
+for (const c of cells) if (c.h > 100 && ids.includes(c.id)) { const i = info.find((o) => o.id === c.id); lab(`${c.id} ${i.tris}t s${i.scale}`, c.x + 3, c.y + 2); }
+window.ready = true;
+</script></body></html>

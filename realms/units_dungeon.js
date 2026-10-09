@@ -22,6 +22,14 @@ import { BONE } from './rig.js?v=1.6';
 // (kit shared with units_haven.js). +x = *_R (weapon side); quadrupeds use
 // LEG_FL/FR/BL/BR, flyers WING_L/R, tails TAIL, beholder eye-stalks are HEAD
 // bones with their own pivots, the medusa coil is BODY with its tail on TAIL.
+// Detail (Round 7): a secondary layer for close-ups that leaves the silhouettes
+// alone: real eyes (white / iris / pupil / glint), teeth, nostrils, brows,
+// claws on hands and feet, banded scales / horn ridges / grip wraps (wraps,
+// stripes), plate and scale patterns sunk into the hide (platesOn), belts with
+// buckles, pouches, straps, embroidered hems, quivers and fletching, layered
+// feather rows on the harpy wings, veined / panelled bat-wing membranes with
+// knuckled fingers, finer lathes / spheres on the big curved forms.
+// Budgets: ~3.7-5.4k tris per creature, dragons ~6k.
 // =====================================================================
 
 const V3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
@@ -137,7 +145,6 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 function finish(parts, seed) {
-  if (globalThis.DBG_DUN) { const m = {}; for (const pt of parts) { const key = (pt.glow ? 'G' : '') + pt.col.getHexString() + ':' + pt.g.attributes.position.count / 3; m[key] = (m[key] || 0) + 1; } console.log(Object.entries(m).map(([k, n]) => [k, n, n * +k.split(':')[1]]).sort((a, b) => b[2] - a[2]).slice(0, +(globalThis.DBG_N || 25)).map((e) => e.join(' ')).join('\n')); }
   const out = { body: { p: [], c: [], b: [], v: [] }, glow: { p: [], c: [], b: [], v: [] } };
   // whole-model value band: light top, mid body, softer underside (never dark)
   let gy1 = 0.5;
@@ -725,7 +732,7 @@ function beholder(U) {
   // heavy angry upper lid with a pale rim, angled brow plates, a thin lower lid
   k.ell(0.21, 0.075, 0.12, [0, 0.745, 0.25], LID, { r: [0.35, 0, 0], d: 1 });
   k.ell(0.2, 0.022, 0.05, [0, 0.705, 0.335], PLATE_L, { r: [0.35, 0, 0], d: 1 });
-  k.sym(() => k.ell(0.1, 0.03, 0.07, [0.1, 0.8, 0.25], U ? GOLD : PLATE, { r: [0.3, -0.2, -0.38], d: 1 }));
+  k.sym(() => k.ell(0.1, 0.03, 0.07, [0.1, 0.8, 0.25], PLATE, { r: [0.3, -0.2, -0.38], d: 1 }));
   k.ell(0.16, 0.026, 0.07, [0, 0.462, 0.32], LID, { r: [-0.3, 0, 0], d: 1 });
   // wide grin: dark mouth band with lips, a tongue, teeth top and bottom
   k.ell(0.24, 0.065, 0.1, [0, 0.39, 0.22], MOUTH, { r: [-0.25, 0, 0], ao: false, d: 1 });
