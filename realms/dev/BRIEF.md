@@ -101,3 +101,11 @@ Rules (mobile-game readability, like HoMM mobile / Clash / Rumble):
 - REMOVE micro-detail: delete parts smaller than ~3% of model height (rivets, tiny straps, fingers) unless they are an identity feature; merge small parts into bolder ones. Fewer, larger polygons on curved parts read better than many tiny facets.
 - Check every model at 40 px and 90 px tall (render the preview grid small!) plus one big view.
 - Keep APIs, orientation (+Z front, base y=0), triangle budgets, bright palette (no murk).
+
+---
+# Round 5: animations (2026-10-09)
+Player asked for animations. Approach: GPU "shader rig" — see /home/user/game/realms/rig.js (the contract; read it).
+- Model modules tag parts with `aBone` + `aPivot` (rig.js tagPart before merging, or tagRange after). Untagged = static. Body AND glow geometries both need tags (glow parts like eyes/orbs must follow their bone).
+- materials.js (tech agent) deforms vertices in makeBodyMaterial, makeGlowMaterial, makeInkHullMaterial and makeHitMaterial from per-mesh uniforms set via mesh.onBeforeRender: uAnimState (ANIM.*), uAnimT (seconds in state), uAnimSpeed, uSeed. Exported helper `setAnim(mesh/group, state, opts)`.
+- Animations must read at phone size: big, clear, snappy poses (anticipation → strike → recover), not subtle wiggles. Idle breathing + slight sway so the battlefield feels alive. Different seeds desync units.
+- Each model module: pivots at sensible joints; quadrupeds use LEG_FL/FR/BL/BR; mounted units: horse legs LEG_*, horse body BODY, rider RIDER; flyers WING_L/WING_R; weapons on ARM_R; shields on ARM_L.
