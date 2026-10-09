@@ -282,7 +282,7 @@ function locks(k, roots, len, r, col, dir = [0, -1, 0], o = {}) {
   roots.forEach((p, i) => {
     const L = len * (o.var ? 1 + Math.sin(i * 2.7) * o.var : 1), d = V3(dir).normalize();
     const tip = V3(p).add(d.multiplyScalar(L)).add(new THREE.Vector3(o.curl ? Math.sin(i * 1.9) * o.curl : 0, 0, o.out ?? 0)).toArray();
-    k.stick(new THREE.ConeGeometry(r, L, o.seg ?? 4, 1, true).rotateX(Math.PI).translate(0, L / 2, 0), p, tip, i % 2 && o.alt ? o.alt : col, { grad: o.grad ?? [0.85, 1.1] });
+    k.stick(new THREE.ConeGeometry(r, L, o.seg ?? 4).rotateX(Math.PI).translate(0, L / 2, 0), p, tip, i % 2 && o.alt ? o.alt : col, { grad: o.grad ?? [0.85, 1.1] });
   });
 }
 // a stripe band painter for o.paint: alternating colour every `per` along axis (0 x, 1 y, 2 z)
