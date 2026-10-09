@@ -312,25 +312,25 @@ PAINT[LAYER.SWAMP] = (ctx) => {
 PAINT[LAYER.ROUGH] = (ctx) => {
   const vo = voronoi(6, 71, 0.95), n1 = fbm(72, 4, 4), n2 = fbm(75, 9, 3), r = mulberry(73);
   return paintLayer(ctx, (q, x, y, set) => {
-    let c = mixc([142, 134, 122], [174, 166, 152], n1[q]);
-    c = mixc(c, [132, 130, 128], sstep(0.5, 0.8, n2[q]) * 0.4);
+    let c = mixc([118, 108, 96], [146, 134, 118], n1[q]);
+    c = mixc(c, [112, 108, 106], sstep(0.5, 0.8, n2[q]) * 0.35); // cooler grey-taupe patches
     // a rock where we are near a feature point, its size varying per cell
     const id = vo.ID[q], e = vo.F2[q] - vo.F1[q] + (n2[q] - 0.5) * 0.12;
     const gap = 0.12 + lhash(id, 4, 76) * 0.75;
-    if (gap < 0.55 && e > gap) {
+    if (gap < 0.36 && e > gap) {
       const tone = lhash(id, 1, 74);
-      const rock = mixc([156, 154, 148], [178, 174, 166], tone);
+      const rock = mixc([138, 130, 120], [160, 150, 138], tone);
       const sh = 1.0 - (vo.DX[q] + vo.DY[q]) * 0.13 + sstep(gap, gap + 0.25, e) * 0.03;
       c = rock.map((v) => v * sh);
-    } else if (gap < 0.55 && e > gap - 0.06) {
-      c = mixc(c, [118, 114, 108], 0.18); // soft contact shadow
+    } else if (gap < 0.36 && e > gap - 0.06) {
+      c = mixc(c, [98, 90, 84], 0.18); // soft contact shadow
     }
     const k = 0.97 + lhash(x, y, 17) * 0.05;
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => {
-    pebbles(ctx, wrap, r, 14, 0.8, 3.0, [[164, 160, 152], [154, 150, 142], [172, 168, 160]], 0.07, 0.3);
-    cracks(ctx, wrap, r, 4, 9, 'rgba(116,110,102,0.3)', null, 1);
-    for (let i = 0; i < 8; i++) {
+    pebbles(ctx, wrap, r, 7, 0.8, 3.0, [[146, 136, 124], [136, 128, 118], [154, 144, 130]], 0.07, 0.3);
+    cracks(ctx, wrap, r, 2, 9, 'rgba(96,88,80,0.3)', null, 1);
+    for (let i = 0; i < 4; i++) {
       const x = r() * S, y = r() * S;
       wrap(x, y, 8, (X, Y) => { ctx.strokeStyle = 'rgba(140,148,108,0.5)'; ctx.lineWidth = 0.8; for (let k = 0; k < 4; k++) { const a = -1.57 + (k - 1.5) * 0.35; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + Math.cos(a) * 4, Y + Math.sin(a) * 4); ctx.stroke(); } });
     }
@@ -342,7 +342,7 @@ PAINT[LAYER.LAVA] = (ctx) => {
   return paintLayer(ctx, (q, x, y, set, glow) => {
     const id = vo.ID[q], e = vo.F2[q] - vo.F1[q];
     const tone = lhash(id, 2, 85);
-    let c = mixc([110, 78, 66], [150, 112, 92], tone * 0.5 + n1[q] * 0.5);
+    let c = mixc([70, 58, 66], [100, 84, 92], tone * 0.5 + n1[q] * 0.5); // cool charcoal-plum basalt
     const sh = 1 + (vo.DX[q] + vo.DY[q]) * 0.14;
     c = c.map((v) => v * sh);
     const wid = 0.02 + n2[q] * 0.035;
@@ -350,8 +350,8 @@ PAINT[LAYER.LAVA] = (ctx) => {
     const live = sstep(0.5, 0.62, hot[q]);
     const vein = 1 - sstep(0.0, wid, e), core = (1 - sstep(0.0, wid * 0.35, e)) * live;
     const heat = (1 - sstep(wid, wid * 2.2, e)) * live;
-    c = mixc(c, [170, 84, 56], heat * 0.35);
-    c = mixc(c, mixc([120, 60, 40], [220, 90, 30], live), vein);
+    c = mixc(c, [150, 76, 56], heat * 0.35);
+    c = mixc(c, mixc([86, 62, 64], [220, 90, 30], live), vein);
     c = mixc(c, [246, 186, 92], core * 0.8);
     glow[q] = Math.max(vein * live * 0.4, heat * 0.08);
     set(q, c[0], c[1], c[2]);
@@ -433,22 +433,22 @@ PAINT[LAYER.CLIFF] = (ctx) => {
     set(q, c[0] * k, c[1] * k, c[2] * k);
   }, (ctx, wrap) => { pebbles(ctx, wrap, r, 30, 1, 2.4, [[200, 168, 130], [176, 146, 112]], 0.22); });
 };
-// 12 fog: the unexplored, a swirling violet-indigo sea of magic mist (clearly NOT snow: saturated, mid-value)
+// 12 fog: the unexplored, a swirling soft lavender-grey mist (clearly NOT snow: mid-value, muted)
 PAINT[LAYER.FOG] = (ctx) => {
   const n1 = fbm(131, 3, 4), n2 = fbm(132, 8, 2), n3 = fbm(133, 2, 3), n4 = fbm(135, 5, 3), r = mulberry(134);
   return paintLayer(ctx, (q, x, y, set) => {
     // domain-warped swirl bands
     const t = n1[q] * 0.6 + n2[q] * 0.25 + Math.sin((x / S + n4[q] * 0.9) * 12.566 + (y / S) * 6.283) * 0.08;
-    let c = mixc([66, 58, 118], [110, 98, 164], sstep(0.12, 0.7, t)); // deep indigo to violet
-    c = mixc(c, [138, 92, 160], sstep(0.55, 0.92, n3[q]) * 0.32); // orchid pools
-    c = mixc(c, [70, 82, 140], sstep(0.6, 0.95, 1 - n3[q]) * 0.3); // cooler indigo eddies
-    c = mixc(c, [164, 152, 210], sstep(0.68, 0.95, t) * 0.5); // lavender cloud tops
+    let c = mixc([84, 82, 108], [120, 116, 146], sstep(0.12, 0.7, t)); // slate to lavender-grey
+    c = mixc(c, [128, 112, 138], sstep(0.55, 0.92, n3[q]) * 0.3); // muted mauve pools
+    c = mixc(c, [88, 96, 122], sstep(0.6, 0.95, 1 - n3[q]) * 0.3); // cooler slate eddies
+    c = mixc(c, [166, 162, 188], sstep(0.68, 0.95, t) * 0.45); // pale lavender-grey cloud tops
     set(q, c[0], c[1], c[2]);
   }, (ctx, wrap, glow) => {
     // soft curling wisps
     for (let i = 0; i < 34; i++) {
       const x = r() * S, y = r() * S, l = 34 + r() * 60, bend = (r() - 0.5) * 50, lw = 3 + r() * 7, a = 0.08 + r() * 0.1;
-      const col = r() < 0.7 ? '196,176,246' : '226,170,236';
+      const col = r() < 0.7 ? '196,192,222' : '212,196,220';
       wrap(x, y, l + 30, (X, Y) => {
         ctx.strokeStyle = `rgba(${col},${a})`; ctx.lineWidth = lw; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(X, Y); ctx.bezierCurveTo(X + l * 0.3, Y + bend, X + l * 0.7, Y - bend, X + l, Y + bend * 0.3); ctx.stroke();
@@ -458,7 +458,7 @@ PAINT[LAYER.FOG] = (ctx) => {
     // faint magic motes that glimmer in the mist
     for (let i = 0; i < 70; i++) {
       const x = (r() * S) | 0, y = (r() * S) | 0, big = r() < 0.2;
-      ctx.fillStyle = big ? 'rgba(236,214,255,0.85)' : 'rgba(214,196,255,0.6)';
+      ctx.fillStyle = big ? 'rgba(236,230,250,0.8)' : 'rgba(214,208,236,0.55)';
       ctx.beginPath(); ctx.arc(x, y, big ? 1.6 : 0.9, 0, 6.283); ctx.fill();
       glow[y * S + x] = big ? 0.9 : 0.5;
     }
@@ -478,7 +478,7 @@ GRADE[LAYER.MOUNT] = [0.9, 0.82, 1.02, 0.55, 0.85];
 GRADE[LAYER.FOREST] = [0.9, 0.78, 1.0, 0.45, 0.8];
 GRADE[LAYER.ROAD] = [0.92, 0.8, 1.0, 0.6, 0.85];
 GRADE[LAYER.CLIFF] = [0.88, 0.8, 1.0, 0.6, 0.85];
-GRADE[LAYER.FOG] = [1.0, 0.8, 1.0]; // calmer, less saturated mist
+GRADE[LAYER.FOG] = [1.0, 0.75, 1.0]; // calmer, less saturated mist
 
 // average colour of each layer (linear 0..1), handy for minimaps or debugging
 export const LAYER_AVG = [];
@@ -570,14 +570,14 @@ export function createPlanetMaterial(waterLevel) {
         }
         diffuseColor.rgb *= tx.rgb;
         // the mist brightens into a pale lilac haze right at the explored frontier
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.55, 0.8), frontier * 0.3);`)
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.64, 0.62, 0.74), frontier * 0.3);`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         {
           float fz = vRad - uWater;
-          float lap = 0.016 + 0.009 * sin(uTime * 1.9 + (vT.x + vT.y) * 9.0);
+          float lap = 0.010 + 0.005 * sin(uTime * 1.9 + (vT.x + vT.y) * 9.0);
           float foam = (1.0 - smoothstep(lap * 0.6, lap + 0.012, fz)) * smoothstep(-0.03, -0.005, fz);
           foam *= 0.75 + 0.25 * sin(vT.x * 70.0 + uTime * 3.0);
-          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.96, 1.0), foam * step(lay, 11.5) * 0.85);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.91, 0.93), foam * step(lay, 11.5) * 0.6);
         }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         {
@@ -585,14 +585,14 @@ export function createPlanetMaterial(waterLevel) {
           float tw = (lay > 2.5 && lay < 4.5) ? pow(0.5 + 0.5 * sin(uTime * 2.6 + tx.a * 47.0 + (vT.x - vT.y) * 9.0), 3.0) * 0.8 : 0.8 + 0.2 * sin(uTime * 1.6 + vT.x * 5.0 + vT.y * 3.0);
           totalEmissiveRadiance += tx.rgb * tx.rgb * tx.a * uGlow * tw * smoothstep(0.2, 0.5, vColor.g + vColor.r);
           // a warm-cool fill so shadows stay soft and coloured, never black; the mist glows softly
-          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.15, 0.12, 0.22), isFog);
+          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.14, 0.135, 0.17), isFog);
           // a soft magic glow along the frontier: on the mist side, and where the mist bleeds onto explored rims
           float fogRim = (1.0 - isFog) * step(11.5, vNb) * step(vNb, 12.5) * smoothstep(0.3, 0.5, vNw);
           float pulse = 0.85 + 0.15 * sin(uTime * 1.2 + (vT.x + vT.y) * 4.0);
-          totalEmissiveRadiance += vec3(0.4, 0.32, 0.54) * (frontier * 0.3 + fogRim * 0.15) * pulse;
+          totalEmissiveRadiance += vec3(0.36, 0.34, 0.46) * (frontier * 0.3 + fogRim * 0.15) * pulse;
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-terrain-5';
+  mat.customProgramCacheKey = () => 'hexrealms-terrain-6';
   return mat;
 }
 
@@ -615,18 +615,18 @@ export function createWaterMaterial() {
       .replace('#include <color_fragment>', `
         vec3 wg; float wh = wavesH(vWPos, wg);
         float shore = vWd.x, depth = vWd.y;
-        vec3 shallow = vec3(0.16, 0.64, 0.64), mid = vec3(0.07, 0.42, 0.66), deep = vec3(0.04, 0.25, 0.52);
+        vec3 shallow = vec3(0.13, 0.5, 0.54), mid = vec3(0.07, 0.36, 0.56), deep = vec3(0.04, 0.22, 0.44);
         vec3 wc = mix(shallow, mid, smoothstep(0.0, 0.55, depth));
         wc = mix(wc, deep, smoothstep(0.5, 1.0, depth));
-        wc = mix(vec3(dot(wc, vec3(0.3, 0.55, 0.15))), wc, 0.85);
+        wc = mix(vec3(dot(wc, vec3(0.3, 0.55, 0.15))), wc, 0.72);
         wc *= 0.94 + 0.1 * wh / 2.9;
         float fn = 0.5 + 0.5 * sin(dot(vWPos, vec3(61.0, -43.0, 37.0)) + uTime * 1.3) * sin(dot(vWPos, vec3(-29.0, 53.0, 47.0)) - uTime * 0.9);
-        float edge = 0.27 + 0.06 * sin(uTime * 1.4 + wh * 0.6);
-        float foam = 1.0 - smoothstep(edge * 0.45, edge, shore + (fn - 0.5) * 0.12);
+        float edge = 0.15 + 0.03 * sin(uTime * 1.4 + wh * 0.6);
+        float foam = 1.0 - smoothstep(edge * 0.7, edge, shore + (fn - 0.5) * 0.04);
         float ring = 0.32 + 0.1 * fract(uTime * 0.18 + wh * 0.02);
-        float foam2 = (1.0 - smoothstep(0.0, 0.035, abs(shore - ring))) * (1.0 - smoothstep(0.2, 0.5, shore)) * smoothstep(0.35, 0.8, fn);
-        float crest = smoothstep(2.1, 2.7, wh) * 0.35 * (1.0 - depth * 0.5);
-        float f = clamp(foam * (0.75 + 0.25 * fn) + foam2 * 0.6 + crest, 0.0, 1.0);
+        float foam2 = (1.0 - smoothstep(0.0, 0.018, abs(shore - ring))) * (1.0 - smoothstep(0.2, 0.45, shore)) * smoothstep(0.5, 0.85, fn);
+        float crest = smoothstep(2.3, 2.8, wh) * 0.12 * (1.0 - depth * 0.5);
+        float f = clamp(foam * 0.8 + foam2 * 0.35 + crest, 0.0, 0.8);
         float lit = smoothstep(0.15, 0.45, vColor.g);
         // unexplored sea: the same soft bluish mist as the land fog
         // (matches the land fog: indigo-violet with orchid pools and drifting lavender wisps)
@@ -636,8 +636,8 @@ export function createWaterMaterial() {
         vec3 mist = mix(vec3(0.055, 0.042, 0.16), vec3(0.15, 0.12, 0.36), 0.5 + 0.35 * sw);
         mist = mix(mist, vec3(0.25, 0.1, 0.34), smoothstep(0.5, 1.0, sw2) * 0.3);
         mist = mix(mist, vec3(0.36, 0.31, 0.62), smoothstep(0.75, 1.0, sw * sw2) * 0.5 + smoothstep(0.75, 1.0, fn) * 0.12);
-        mist = mix(vec3(dot(mist, vec3(0.3, 0.55, 0.15))), mist, 0.8);
-        diffuseColor.rgb = mix(mist, mix(wc, vec3(0.93, 0.97, 1.0), f) * vColor, lit);
+        mist = mix(vec3(dot(mist, vec3(0.3, 0.55, 0.15))), mist, 0.5) * 1.12;
+        diffuseColor.rgb = mix(mist, mix(wc, vec3(0.84, 0.9, 0.92), f) * vColor, lit);
         diffuseColor.a = clamp(mix(0.62, 0.95, smoothstep(0.0, 0.9, depth)) + f, 0.0, 1.0);
         diffuseColor.a = mix(1.0, diffuseColor.a, lit);`)
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(1.0, roughnessFactor + f * 0.5, lit);')
@@ -657,7 +657,7 @@ export function createWaterMaterial() {
           normal = normalize(normal - gv * 0.0016 * lit);
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-water-5';
+  mat.customProgramCacheKey = () => 'hexrealms-water-6';
   return mat;
 }
 

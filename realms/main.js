@@ -892,7 +892,7 @@ let bfield = null;
 const HS = 0.5, HW = Math.sqrt(3) * HS, VS = 1.5 * HS;
 const hexPos = (c, r) => new THREE.Vector3((c - (BT.COLS - 1) / 2 + (r & 1 ? 0.5 : 0) - 0.25) * HW, 0, (r - (BT.ROWS - 1) / 2) * VS);
 const hexGeo = new THREE.CylinderGeometry(HS * 0.95, HS * 0.95, 0.02, 6);
-const hexes = new THREE.InstancedMesh(hexGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: false }), BT.COLS * BT.ROWS);
+const hexes = new THREE.InstancedMesh(hexGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.26, depthWrite: false }), BT.COLS * BT.ROWS);
 hexes.frustumCulled = false; bscene.add(hexes);
 for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(1); dummy.updateMatrix(); hexes.setMatrixAt(BT.key(c, r), dummy.matrix); hexes.setColorAt(BT.key(c, r), new THREE.Color(0xffffff)); }
 const bstuff = new THREE.Group(); bscene.add(bstuff);
@@ -976,7 +976,7 @@ function refreshBattle() {
   // highlight what the active stack can do
   const s = B.active, mineTurn = s && sideOwner(s.side) === 0 && !bauto && !B.over && !banim.length;
   const reach = mineTurn ? BT.reachable(B, s) : new Map();
-  const white = new THREE.Color(0x203a10), grn = new THREE.Color(0x58e04a), red = new THREE.Color(0xff6a5a), blu = new THREE.Color(0x7ac8ff);
+  const white = new THREE.Color(0x203a10), grn = new THREE.Color(0xe8ffc0), red = new THREE.Color(0xff6a5a), blu = new THREE.Color(0x7ac8ff);
   for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) {
     const k = BT.key(c, r), st = BT.stackAt(B, c, r);
     let col = white;
@@ -984,7 +984,7 @@ function refreshBattle() {
     if (mineTurn && st && st.side !== s.side && (BT.canShoot(B, s) || BT.attackFrom(B, s, st).length || BT.nbrs(st.c, st.r).some(([x, y]) => x === s.c && y === s.r))) col = red;
     if (bspell && st) col = SPELLS[bspell].target === 'ally' ? (st.side === 0 ? blu : white) : st.side === 1 ? red : white;
     hexes.setColorAt(k, col);
-    dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(col === white ? 0.0001 : 1); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix);
+    dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(col === white ? 0.0001 : 0.92); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix);
   }
   hexes.instanceColor.needsUpdate = true; hexes.instanceMatrix.needsUpdate = true;
   if (s && s.count > 0) vfx.select(bmesh.get(s.uid), s.side === 0 ? 0xffd84a : 0xff5a4a); else vfx.select(null);
@@ -1694,6 +1694,9 @@ function frame() {
   const dt = Math.min(0.05, clock.getDelta());
   tt += dt;
   tickMaterials(tt);
+  // ink outlines thin out and soften as the map zooms out, so far views don't turn into uniform dark chips
+  const iu = inkMat.userData.uniforms, zk = G.mode === 'battle' ? 1 : clamp((19 - cam.dist) / 8, 0.3, 1);
+  iu.uHullW.value = 0.003 * zk; iu.uHullDark.value = 0.15 + (1 - zk) * 0.45;
   if (G.mode === 'battle') {
     animateBattle(dt);
     const s = Math.sin(bview.yaw), c = Math.cos(bview.yaw);
