@@ -283,7 +283,7 @@ window.addEventListener('resize', resize);
 // setting, so a fast device looks exactly as before) and it steps down by 0.25 to 1.25 when frames run long.
 // Anti-pumping: decisions use the median of ~1 s of frames (GC spikes / hitches > 250 ms are ignored), a wide
 // band between "too slow" (> 22 ms) and "room to spare" (< 17.5 ms), and every failed step up doubles the wait
-// before the next try (8 s .. 2 min). ?q=high / ?q=low pins the level. State: window.__realms.quality().
+// before the next try (8 s .. 5 min). ?q=high / ?q=low pins the level. State: window.__realms.quality().
 const QG = (() => {
   const maxPR = Math.min(window.devicePixelRatio || 1, 2), minPR = Math.min(maxPR, 1.25);
   const steps = [];
@@ -292,7 +292,7 @@ const QG = (() => {
   const pin = new URLSearchParams(location.search).get('q');
   const S = { auto: pin !== 'high' && pin !== 'low' && steps.length > 1, level: pin === 'low' ? steps.length - 1 : 0, steps, pr: steps[0], ms: 0, changes: 0, waitUp: 8 };
   const win = new Float32Array(60), sorted = new Float32Array(60);
-  let n = 0, k = 0, lastT = 0, lastChange = 0, lastUp = -1e9, holdUp = 0;
+  let n = 0, k = 0, acc = 0, lastT = 0, lastChange = 0, lastUp = -1e9, holdUp = 0;
   function apply(level) {
     S.level = level; S.pr = steps[level]; S.changes++;
     renderer.setPixelRatio(S.pr);
@@ -301,19 +301,21 @@ const QG = (() => {
     if (typeof inkMat !== 'undefined') { const u = inkMat.userData.uniforms, f = S.pr / maxPR; u.uHullMin.value = Math.max(1, 1.5 * f); u.uHullMax.value = Math.max(1.25, 2.5 * f); }
     resize();
   }
-  function reset() { n = 0; k = 0; }
+  function reset() { n = 0; k = 0; acc = 0; }
   // called once per drawn frame with the rAF timestamp
   function sample(now) {
     const dt = lastT ? now - lastT : 0; lastT = now;
     if (!S.auto || !dt) return;
     if (dt > 250 || document.hidden) { reset(); return; } // a load / shader compile / tab switch says nothing about the GPU
-    win[k] = dt; k = (k + 1) % win.length; n++;
-    if (n < win.length || n % 30) return;
-    sorted.set(win); sorted.sort();
-    const ms = S.ms = sorted[win.length >> 1];
+    win[k] = dt; k = (k + 1) % win.length; if (n < win.length) n++;
+    acc += dt;
+    if (n < 6 || acc < 1000) return; // judge about once a second, on the last <= 60 frames
+    acc = 0;
+    const srt = sorted.subarray(0, n); srt.set(win.subarray(0, n)); srt.sort();
+    const ms = S.ms = srt[n >> 1];
     if (ms > 22 && S.level < steps.length - 1 && now - lastChange > 1500) {
       // a step up that did not hold: wait twice as long before the next attempt
-      if (now - lastUp < 12000) S.waitUp = Math.min(120, S.waitUp * 2);
+      if (now - lastUp < 12000) S.waitUp = Math.min(300, S.waitUp * 2);
       holdUp = now + S.waitUp * 1000; lastChange = now;
       apply(Math.min(steps.length - 1, S.level + (ms > 40 ? 2 : 1))); reset();
     } else if (ms < 17.5 && S.level > 0 && now > holdUp && now - lastChange > 4000) {
@@ -444,12 +446,12 @@ function warmGeometryIdle(ids = warmJobs()) {
   return warmQ.length;
 }
 const warmed = new Set();
-const idleCb = (f) => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 2000 }) : setTimeout(() => f({ didTimeout: true, timeRemaining: () => 0 }), 120));
+const idleCb = (f) => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 1000 }) : setTimeout(() => f({ didTimeout: true, timeRemaining: () => 0 }), 120));
 function warmCalm() { return G.mode === 'map' && !walking && !ptrs.size && !aiRunning && $('loader').hidden; }
 function warmStep(dl) {
   // one model per callback (a build cannot be split); wait for real idle time unless the browser says we timed out
   if (!warmQ.length) { warmBusy = false; warmGeometryIdle(); return; }
-  if (!warmCalm() || (!dl.didTimeout && dl.timeRemaining() < 6)) { setTimeout(() => idleCb(warmStep), 250); return; }
+  if (!warmCalm() || (!dl.didTimeout && dl.timeRemaining() < 3)) { setTimeout(() => idleCb(warmStep), 250); return; }
   const id = warmQ.shift();
   try {
     if (id.startsWith('hero:')) { if (G.players[+id.slice(5)]) heroGeo(+id.slice(5)); }
