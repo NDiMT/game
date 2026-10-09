@@ -191,7 +191,7 @@ scene.add(new THREE.AmbientLight(0x7880b8, 0.4));
 //  - flyTo: target jumps, the spring eases out of rest and into the goal; any touch takes over where the camera is
 //  - follow: while a hero walks in view, the target tracks its (smoothly lerped) mesh, never the per-step hex
 const cam = { theta: 0, phi: 1.2, dist: 10, tTheta: 0, tPhi: 1.2, tDist: 10, vTheta: 0, vPhi: 0, fly: false, shake: 0,
-  sTheta: 0, sPhi: 0, sDist: 0, dragTheta: 0, dragPhi: 0, dragging: false, spin: 0, holdFollow: null };
+  sTheta: 0, sPhi: 0, sDist: 0, dragTheta: 0, dragPhi: 0, dragging: false, spin: 0, holdFollow: null, aiFollow: null };
 const lookAtP = new THREE.Vector3(), camFocus = new THREE.Vector3(), camRight = new THREE.Vector3(), camTmp = new THREE.Vector3();
 const PHI_MIN = 0.12, PHI_MAX = Math.PI - 0.12;
 const wrapPi = (a) => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
@@ -207,6 +207,7 @@ function camGrab() {
   cam.fly = false; cam.vTheta = cam.vPhi = 0;
   cam.tTheta = cam.theta + cam.sTheta * 0.04; cam.tPhi = clamp(cam.phi + cam.sPhi * 0.04, PHI_MIN, PHI_MAX);
   if (walking) cam.holdFollow = walking;
+  else if (aiRunning) cam.holdFollow = 'ai'; // grabbing the map during the enemy turn hands the camera back for that turn
 }
 function camSnap(theta, phi) { cam.theta = cam.tTheta = theta; cam.phi = cam.tPhi = phi; cam.sTheta = cam.sPhi = cam.vTheta = cam.vPhi = 0; cam.fly = false; }
 const followDir = new THREE.Vector3(), followSp = new THREE.Spherical();
@@ -214,8 +215,16 @@ function followTarget() {
   // the hero to keep in frame: ours while it walks (until the player grabs the map), or an enemy walking in sight
   if (cam.dragging) return null;
   if (walking && cam.holdFollow !== walking && walking.hr.p === 0) return heroMeshes.get(walking.hr.id) || null;
-  if (aiRunning && aiWatch) for (const h of G.heroes) if (h.anim && h.alive) return heroMeshes.get(h.id) || null;
-  return null;
+  // enemy turn: once the camera has been brought to a visible mover (aiWatch), lock onto whichever enemy hero is
+  // stepping in sight and keep tracking its interpolated mesh, also through the short pauses between its steps
+  // (so the spring never brakes and restarts per hex). Ends when it is out of sight or the AI turn is over; the
+  // camera then simply eases to rest where it is (the target stops moving, nothing snaps).
+  if (!aiRunning) { cam.aiFollow = null; if (cam.holdFollow === 'ai') cam.holdFollow = null; return null; }
+  if (!aiWatch || cam.holdFollow === 'ai') return null;
+  for (const h of G.heroes) if (h.anim && h.alive && h.p !== 0 && (seen[h.anim.from] || seen[h.anim.to])) { cam.aiFollow = h; break; }
+  const h = cam.aiFollow;
+  if (!h || !h.alive || (!h.anim && !seen[h.v])) { cam.aiFollow = null; return null; }
+  return heroMeshes.get(h.id) || null;
 }
 function updateCamera(dt) {
   let st = 0.05; // spring time while dragging/flinging: tight enough to feel 1:1, loose enough to hide event jitter
