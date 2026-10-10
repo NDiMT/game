@@ -1,431 +1,321 @@
 # Crown Run: design (v2.0, agent "crown")
 
-A roguelite run in the spirit of Balatro and Slay the Spire, played on a full HoMM map. Each run is one map and one hero. Every week ends in a Trial battle, banners break the rules, and a shop runs between fights. Losing a Trial ends the run. What you earn (Glory, unlocks, the Collection) carries over to the next run.
+The Crown Run is a roguelite built only from Heroes mechanics. You lead one hero across one full map, and if he dies the run is over.
 
-The code lives in `realms/crown.js`, which holds the data and rules and is pure enough to test in node. The battle hooks are in `realms/battle.js` (the `mods` option of `createBattle`). The tests are in `realms/dev/crown_test.mjs`.
+- The map is split into **regions** sealed by **Border Guards**.
+- Each region's **Legendary Hero** guards the **Keymaster's Tent** that holds the key to the next region.
+- Every week an **invasion** marches on your capital.
+- Your hero grows through **artifacts in equipment slots** (with **artifact sets**), skills, spells and troops. He finds them at map sites that offer a choice.
+- What carries over between runs is Glory, unlocks and the Collection.
 
-**The four pillars stay intact:**
+**Where the code lives:**
+
+| File | What it holds |
+|---|---|
+| `realms/crown.js` | Rules and data, pure and node-testable. |
+| `realms/crown_ui.js` | The screens, DOM only. |
+| `realms/battle.js` | The battle-modifier hooks (`createBattle({ mods })`). |
+| `realms/dev/crown_test.mjs` | The node tests. |
+| `realms/dev/crown-ui.html` | Every screen against mock state. |
+| `realms/models_objects.js` | The map-site models (in the "crown agent" block). |
+| `realms/main.js` | The run loop (the "Crown Run (agent crown)" block plus small hooks marked `// crown:`). |
+
+**The four pillars:**
 
 | Pillar | How the run uses it |
 |---|---|
-| Exploration | Map chests become packs. Mines pay the gold that buys your army. Each Age opens a new region. |
-| Tactical battles | Trials are normal hex battles. Banners and boss rules only change the numbers and rules inside them. |
-| Town building | Your capital still builds one thing a day and recruits weekly growth. Some banners and vouchers feed on buildings. |
-| Hero and army | Levels (pick 1 of 3 skills), army slot order (Vanguard, Shield Bearer), Seals on stacks. |
+| Exploration | Sites with choices, artifact merchants, the Grail and Seer's Huts. Each new region is opened with its key. |
+| Tactical battles | Legendary Heroes with special rules, invasions, and artifacts that change the rules. |
+| Town building | Your capital still builds and recruits every day. An invasion that reaches your walls is fought there, and Fortress gear rewards walls. |
+| Hero and army | Equipment slots and sets, 3-choice level-ups, Witch Huts and Scholars. |
+
+No card-game mechanics remain: no jokers, shop rerolls, interest, vouchers, packs, blinds or antes, and no second currency. The only currencies are gold and resources.
 
 ---
 
 ## 1. Run structure
 
-**Ages and weeks.** A run is 8 Ages; the MVP plays 3. Each Age is one in-game week (days 1–7) on the same map.
+**One hero, one map, permadeath.** A Crown Run is a full Medium map with one rival crown in the far corner.
 
-**Region gates.** Age *k* opens region *k*: ring *k* around your capital, given by `regionOf(cell)` from the flat map. Until that exists, the fallback is grid distance from the capital, in bands 0–9, 10–17, 18–25 and so on.
-- Cells beyond the current Age's region cannot be entered. Their border shows as a Crown Gate.
-- Deeper regions hold more and richer objects (gems, artifacts, more chests) and stronger guards. The flat map's guard strength already scales with distance.
+**Regions.**
+- The map is banded into regions by walking distance from your capital: 3 regions in the MVP, up to 6 in the full design.
+- Each band is ringed by a wall of mountains. The wall has one or two gaps, and a **Border Guard** stands in each gap.
+- The last band is the rival crown's homeland, and its heroes stay there.
+- The region map is saved with the run, because walking distances change once the walls stand.
+- After placement, any treasure or wandering monster that walls a corridor off from a Legendary Hero or a Border Guard is cleared away, so every region can be finished.
 
-**Trials each week.** All three are mandatory. Each one fires at dusk, when the day ends, before the night.
+**Keys.**
+- Deep in each region stands a **Keymaster's Tent** in the region's colour.
+- That region's **Legendary Hero** camps beside it. In HoMM terms the hero is the tent's guard, so you must defeat him first.
+- Visiting the tent gives you the key, the Border Guards of that colour stand aside, and the next region opens.
+- **The last region's tent holds the Crown.** Taking it wins the run.
 
-| Day | Trial | Threat ×P | Crowns paid | Hero |
-|---|---|---|---|---|
-| End of day 3 | **Raid** | ×1.0 | 3 | none |
-| End of day 5 | **Warlord** | ×1.5 | 4 | a Warlord hero (att/def = Age) |
-| End of day 7 | **Crown Boss** | ×2.2 | 5 | Boss hero (att/def/pow = Age+1), plus the boss rule |
+**Invasions.**
+- **Day 4 of every week:** an invasion appears at the open frontier, the farthest open cell from your capital. You see a telegraph: "Invasion from the east, 3 days away", a pulsing HUD warning, and the camera flies to it.
+- **Each dawn:** it marches toward your capital, paced to arrive at the end of day 7 (day 6 at Knight difficulty).
+- **If it steps next to your hero**, it attacks him in the field.
+- **If it reaches your capital:**
+  - your hero fights it if he is inside or beside the town;
+  - otherwise the garrison fights alone, with the Fort's walls. The creatures still waiting in your dwellings take up arms beside it, and the survivors go back to the dwellings.
+  - If the garrison loses, the capital falls and the run is over.
+- **Winning an invasion battle** earns the **spoils of war**: choose 1 of 3 artifacts from its baggage train.
+- **Invasion strength:** `P(w) = 1500 · 1.9^(w−1) · 1.45 · difficulty factor`. The army comes from the rival crown's faction, and a Marshal hero leads it.
 
-- **Who fights.** The Trial army attacks your run hero (hero #0) wherever he stands.
-  - Win: casualties stick, XP is paid as usual, the payout screen shows, then the shop opens.
-  - Lose, or the hero dies: the run is over.
-- **The boss is shown ahead.** The Crown Boss of each Age is rolled at the start of that Age and shown from day 1 in the Trial warning: the HUD pill, plus a preview card with the rule.
-- **Skipping (full game only).** A Raid or a Warlord can be skipped for a Tag, such as a free War Chest or −50% on the next voucher. A skipped Trial gives no shop.
+**Legendary Hero strength.** `P(r) = 1500 · 2.3^(r−1) · 2.2 · difficulty factor`. The army is built from the hero's faction line-up, and the hero adds stats and spells.
 
-**Threat power.** The target is `armyPower(army, hero)` from battle.js:
+**Pacing.** No timer forces you onward, but invasions grow 1.9× a week. Lingering in a safe region loses to the invasion curve, and pushing too early loses to the Legendary Hero.
 
-```
-P(ante, blind, stake) = 1500 · 2.3^(ante−1) · BLIND[blind] · (1 + 0.08·(stake−1)) · (stake ≥ 3 ? 1.1^(ante−1) : 1)
-BLIND = { raid: 1.0, warlord: 1.5, boss: 2.2 }
-```
+## 2. Legendary Heroes (9; MVP ★ 3)
 
-**Threat army generator.** `threatArmy(run, ante, blind)`, seeded from the run's seed:
-- **Faction.** The Age's theme. MVP: Age 1 is neutral, Age 2 is the boss's faction, Age 3 is Necropolis.
-- **Size and tiers.**
-  - Stacks: raid 3, warlord 4, boss 5, then +1 for every 2 Ages after the first, up to 7.
-  - Tier window: `maxTier = min(7, 2 + ante + (boss ? 1 : 0))`, `minTier = max(1, ante − 1)`.
-- **Upgrades.** From Age 3 on, units are upgraded with a 25% chance per Age (100% at Age 6 and later).
-- **Filling to P.** Each stack's share of P is weighted toward the higher tiers. Its count is `round(share · P / armyPower([[id,1]]) / heroMult)`, with a minimum of 1.
+Each Legendary Hero has a specialty rule that bends the battle. It is shown on the region pill and when you meet the hero. At King difficulty they follow a second rule as well.
 
----
-
-## 2. Bosses (12; MVP uses ★ 3)
-
-The boss rule is a battle modifier that applies only to the Boss Trial. Rules hit **you** (side 0) unless they say otherwise.
-
-| Boss | Faction | Rule |
-|---|---|---|
-| ★ **The Wall** | neutral (ogres, orcs) | Your ranged stacks cannot shoot (they walk and melee at half damage). |
-| ★ **The Plague** | Inferno | Your first army stack starts the battle with 30% fewer creatures (lost for good). |
-| ★ **The Lich Queen** | Necropolis | Enemy stacks drain life (heal 50% of the damage they deal and raise their dead). Beating her unlocks Necropolis. |
-| The Silence | Dungeon | Your hero cannot cast spells. |
-| The Chain | any | Your leftmost banner is disabled for this battle. |
-| The Hunger | neutral (trolls) | Enemy stacks regenerate fully at the start of every round. |
-| The Gale | Sylvan | Your fliers are grounded (walk instead of fly). |
-| The Eclipse | Dungeon | Your hero's Attack and Defence count as 0. |
-| The Stampede | Inferno | Enemy stacks +3 speed (they always act first). |
-| The Iron Hide | Haven | Enemy stacks take −50% damage from your shots. |
-| The Duel | any | You may only bring your 3 largest stacks (the rest sit out, unharmed). |
-| **The Usurper** (Age 8) | the rival crown | Two random rules from the list above, both shown. |
-
----
-
-## 3. Banners (40; MVP ★ 16)
-
-**Slots.** The hero has **5 slots** for banners, Balatro-joker style.
-
-**Order matters.**
-- When one of your stacks strikes, the HoMM damage roll is the base.
-- Banners then apply **left → right**:
-  - `[+]` banners add flat damage per creature.
-  - `[×]` banners multiply the running total.
-  - `[rule]` banners change rules.
-- So `[+]` banners belong to the left of `[×]` banners.
-- Copy banners copy whatever sits at their position, so moving them changes what they copy.
-
-**Rarity and price.**
-
-| Rarity | Price | Frame | In shop / War Chest |
+| ★ | Hero | Title | Rule |
 |---|---|---|---|
-| Common | 4₵ | steel | 70% |
-| Uncommon | 6₵ | green | 25% |
-| Rare | 8–9₵ | purple | 5% |
-| Legendary | 12₵ | gold | packs only, at 2% |
+| ★ | Gorrak the Wall | Ogre Warlord | Shieldwall: your shooters cannot shoot. |
+| ★ | Malphas the Plaguebringer | Pit Lord of Inferno | Plague: your first stack starts the battle with 30% fewer creatures. |
+| ★ | Vesperine, the Lich Queen | Necromancer of the Last Crown | Lifedrinker: her stacks heal half the damage they deal and raise their dead. Defeating her unlocks Necropolis. |
+| | Sorceress Ilvane | Warlock of Dungeon | Silence: your hero cannot cast spells. |
+| | Krug the Endless | Troll Chieftain | Regeneration: his stacks heal fully every round. |
+| | Windcaller Aelis | Druid of Sylvan | Gale: your fliers are grounded. |
+| | Shadowmother Zyra | Dungeon Overlord | Eclipse: your hero's Attack and Defence count as 0. |
+| | Khazrak Hellrider | Demon Knight | Stampede: his stacks +3 speed. |
+| | Sir Brannoc Ironhide | Fallen Paladin | Ironhide: his stacks take −50% damage from your shots. |
 
-- **Selling** pays `floor(price/2)`.
-- **Gilded edition** (1 in 15, +3₵): the banner's numbers ×1.5. A multiplier `×m` becomes `×(1 + (m−1)·1.5)`.
+The MVP line-up is Gorrak (region 1), Malphas (region 2) and Vesperine (region 3). In the full game the line-up is rolled, with Vesperine always last.
 
-**Damage and armies**
+## 3. Artifacts and equipment (48 artifacts, 5 sets)
 
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| ★ | War Drum | C 4 | `[+]` Your melee strikes +1 damage per creature. | Big tier-1 stacks; place left of × banners. |
-| ★ | Pike Wall | C 4 | Your tier 1–2 stacks +4 Defence. | Haven pikemen tank; with Haven Oath. |
-| ★ | Vanguard | C 5 | `[×]` The stack in army slot 1 deals ×1.5. | Army order: put your best stack first. |
-| ★ | Executioner's Flag | R 8 | `[×]` ×2 damage against stacks below half their starting count. | Finish what ranged softened. |
-| | Last Stand | U 6 | `[×]` While you have one stack left, it deals ×3. | Comeback; with Shield Bearer. |
-| | Bloodlust | U 6 | Each enemy stack destroyed: your stacks +2 Attack (this battle). | Snowball; with Executioner. |
-| | Iron Oath | U 6 | `[rule]` Your stacks retaliate twice per round. | Griffins retaliate 3×. |
-| | Shield Bearer | C 4 | Your slot-1 stack takes −35% damage. | Order: tank first. |
-| | Berserker Standard | R 9 | `[×]` Your stacks deal ×1.6 but take ×1.3. | Glass cannon. |
-| | Riposte Pennant | C 5 | `[×]` Retaliation strikes ×1.5. | Iron Oath, Pike Wall. |
+**The paper doll.** There are 11 slots: head, neck, torso, weapon, shield, feet, 2 rings and 3 misc.
+- Artifacts beyond the slots go into the **backpack**.
+- Tap an artifact to see its effect. You can equip it, unequip it, or swap it with the one in the slot.
+- In a run, the Hero button opens the paper doll, and "Skills & army" opens the classic hero sheet.
 
-**Ranged**
+**Rarity and gold value.**
 
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| ★ | Fletcher's Banner | C 5 | Ranged stacks +4 shots; `[+]` +2 damage per creature on shots. | Archers/marksmen. |
-| ★ | Heavy Volley | U 7 | `[×]` Your shots ×1.5. | Right of Fletcher. |
-| ★ | Sky Lances | R 8 | `[rule]` Your ranged stacks may shoot while enemies are adjacent. | Counters melee rush; anti-Wall partner. |
-| | Echoing Volley | R 9 | Every shot also hits a second random enemy stack for 50%. | Heavy Volley stacks on both. |
-| | Falconer | U 6 | `[×]` Shots ×2 against fliers. | Anti-dragon. |
-
-**Fliers**
-
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| ★ | Gryphon Standard | U 6 | `[rule]` Your fliers attack without retaliation. | Griffins, angels, wights. |
-| | Sky Lord | R 8 | Fliers +3 speed; `[×]` ×1.4 in round 1. | Alpha strike. |
-| | Updraft | C 4 | `[rule]` Your tier 1–3 walkers fly. | Gryphon Standard on pikemen. |
-
-**Necromancy**
-
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| ★ | Bone Tally | R 8 | After each won battle, raise skeletons equal to (10% + 5% per Trial won this run, max 40%) of the slain living enemies. Works for any faction. | Scaling army; War Drum on skeleton hordes. |
-| | Lich Lantern | R 9 | Raised skeletons arrive as Skeleton Warriors; your undead heal their top creature each round. | Bone Tally. |
-| | Grave Robber | U 6 | `[×]` Undead stacks ×(1 + 0.25 × enemy stacks destroyed this battle). | Necro snowball. |
-| | Phylactery | L 12 | Your stacks cannot drop below 1 creature before round 3. | Last Stand insurance. |
-
-**Economy**
-
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| ★ | Golden Purse | C 4 | +2₵ after each Trial won. | Interest engine. |
-| ★ | Royal Treasury | U 6 | Interest cap +5₵. | Golden Purse; Merchant origin. |
-| | Miser's Banner | U 6 | `[×]` ×(1 + 0.03 × Crowns held), max ×1.6. | Hoard instead of rerolling. |
-| | Mine Charter | C 4 | Your mines produce +50%. | Exploration → gold → army. |
-| | Bounty Board | C 5 | Each map monster beaten pays 1₵ (max 3 a day). | Clear the region. |
-
-**Building**
-
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| ★ | Mason's Mark | U 6 | Buildings cost −25% gold. | Masonry Guild voucher. |
-| | Foundry | U 6 | `[×]` +2% damage per building in your capital. | Town pillar → battle. |
-| | Garrison Flag | C 4 | Recruiting costs −15%. | Overflowing Pens. |
-| | Fortress Banner | R 8 | If your capital has a Fort: your stacks +3 Defence. | Pike Wall. |
-
-**Scaling**
-
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| ★ | Trophy Pike | U 6 | `[×]` +3% damage per enemy stack destroyed since you bought it (counter on the card). | Buy early, keep. |
-| | Veteran's Colours | R 8 | +1 Attack and +1 Defence to your stacks per Boss beaten while held. | Long runs. |
-| | Rising Tide | U 6 | `[×]` ×(1 + 0.1 × round). | Defensive armies. |
-
-**Copy and order**
-
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| ★ | Mirror Banner | R 9 | Copies the banner to its **right** (Blueprint). | Mirror + Heavy Volley = ×2.25. |
-| ★ | Crown Herald | R 8 | `[×]` ×1.2 for each banner to its **left**. | Put it last. |
-| | Echo Standard | R 9 | Copies your **leftmost** banner (Brainstorm). | Mirror chains. |
-
-**Faction synergy** (the shop offers only unlocked factions)
-
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| ★ | Haven Oath | U 6 | Haven stacks +2 Att / +2 Def; `[×]` ×1.25 if every stack is Haven. | Pure Haven. |
-| | Oath of Dust | U 6 | Undead stacks +2 Att / +2 Def; ×1.25 if all undead. | Necro. |
-| | Oath of Leaves | U 6 | Sylvan stacks +2 Att; ranged Sylvan +2 shots. | Sylvan archers. |
-| | Oath of Embers | U 6 | Inferno stacks +2 speed and +2 Attack. | Inferno rush. |
-| | Oath of the Deep | U 6 | Dungeon stacks +2 Def; the first strike each round ×1.25. | Dungeon. |
-
-**Legendary**
-
-| ★ | Banner | Rarity ₵ | Effect | Combo intent |
-|---|---|---|---|---|
-| | Usurper's Crown | L 12 | `[rule]` The boss rule also applies to the enemy. | Wall vs. Wall. |
-
----
-
-## 4. Vouchers (MVP ★ 6)
-
-- **One per Age.** One voucher is offered in every shop of the Age until you buy it. It costs **10₵** and lasts for the rest of the run.
-- **Tier II versions** (full game) unlock when you buy the first.
-
-| ★ | Voucher | Effect |
+| Rarity | Value | Frame |
 |---|---|---|
-| ★ | Masonry Guild | Your towns may build twice per day. |
-| ★ | Standard Bearer | +1 banner slot. |
-| ★ | Overflowing Pens | Weekly dwelling growth +50%. |
-| ★ | Clearance | Shop prices −25% (rounded down, minimum 1₵). |
-| ★ | Surplus | Rerolls cost 2₵ less. |
-| ★ | Seed Money | Interest cap +5₵. |
-| | War College | Level-ups offer 4 skills. |
-| | Cartographer | +2 vision; gates of the next region are shown. |
-| | Blacksmith | Unit upgrades in the shop −50%. |
-| | Tithe | +1₵ per town you own at each Trial payout. |
-| | Crystal Ball | Packs offer 4 choices. |
-| | Recruiter | Map dwellings restock +50%. |
+| Treasure | 600 | steel |
+| Minor | 1,800 | green |
+| Major | 4,500 | purple |
+| Relic | 9,000 | gold, with a sheen |
 
-## 5. Packs
+Merchants sell at full value; the Black Market charges ×1.5. They buy from your backpack at half value.
 
-| Pack | Shop price | Offers (pick 1 of 3; skip = +1₵) |
-|---|---|---|
-| **War Chest** | 4₵ | 3 banners (rarity table above, Legendary 2%). |
-| **Tome** | 3₵ | 3 spells. Pick = your hero learns it for good, ignoring the Mage Guild level. If he already knows it: +5 mana. |
-| **Muster** | 4₵ | 3 creature stacks of the Age's tier window. A stack is worth ~12% of the next Trial's P. One in four comes with a Seal. |
+**Order of effects.** Artifacts apply in slot order (head → misc), so flat bonuses come before multipliers.
 
-- **On the map**, every Treasure Chest becomes a pack chest. The type comes from the object id: 35% War Chest, 25% Tome, 40% Muster.
-- Deeper regions carry more chests.
-- A chest's mesh is the same; the pick dialog shows the pack art with a card flip.
-
-## 6. Seals (on a unit stack; one per stack, kept through merges)
-
-| Seal | Effect |
+| Group | Artifacts and effects |
 |---|---|
-| Gold Seal | +1₵ each time this stack destroys an enemy stack in a Trial. |
-| Iron Seal | This stack takes −20% damage. |
-| Swift Seal | +2 speed. |
-| Red Seal | This stack retaliates twice. |
-| Ward Seal | The boss rule ignores this stack. |
+| **Plain stats** | Centaur Axe +2 Att, Lion Shield +2 Def, Staff of Embers +2 Pow, Helm of Command +1/+1/+1, Cloak of Shadows +3 Def, Sword of Judgement +4 Att, Orb of Tempest +3 Pow, Four-leaf Clover +1 Luck, Badge of Valor +1 Morale, Ring of Vitality (+1 HP per creature), Boots of Speed (+1 speed), Pikeman's Pauldron (tier 1–2 +4 Def). |
+| **Warlord's Regalia** (set) | War Drum (+1 damage per creature in melee), Vanguard Standard (first army slot ×1.5), Executioner's Axe (×2 against stacks below half). **Set bonus:** Bloodlust, +2 Attack to your stacks for each enemy stack destroyed. |
+| **Sentinel's Armour** (set, Haven) | Sentinel's Helm (+1 Def, Haven +1 Att), Sentinel's Breastplate (−15% damage taken), Sentinel's Tower Shield (first slot −35% damage taken). **Set bonus:** Haven stacks +2/+2 and retaliate twice; ×1.25 damage if every stack is Haven. |
+| **Sharpshooter's Kit** (set) | Quiver of Plenty (+4 shots, +2 damage per creature on shots), Sharpshooter's Bow (shots ×1.5), Elven Bowstring (shots ×2 against fliers). **Set bonus:** shoot even with an enemy adjacent, and every shot ricochets onto a second stack for 50%. |
+| **Wings of the Griffin** (set) | Griffin-feather Cape (fliers +3 speed), Feathered Boots (fliers ×1.4 in round 1), Talon Ring (fliers +2 Att). **Set bonus:** fliers attack without retaliation; tier 1–3 walkers take wing. |
+| **Cloak of the Undead King** (set) | Bone Cloak (raise 10% of the slain), Skull Helm (undead +2/+2), Vampire's Ring (undead heal their top creature every round). **Set bonus:** raise 25% (+5% per Legendary Hero defeated) as Skeleton Warriors; undead ×1.25. |
+| **Singles** | Heart of the Last Stand (last stack ×3), Berserker's Helm (×1.6 dealt, ×1.3 taken), Riposte Bracer (retaliation ×1.5), Ring of the Iron Oath (retaliate twice), Necklace of Trophies (+3% per stack slain while worn, grows), Veteran's Medal (+1/+1 per Legendary Hero slain while worn), Hourglass of the Long Battle (×(1 + 0.1·round)), Bracers of the Sky Lances (shoot point-blank), Miser's Ring (+1% per 1,000 gold, max +40%). |
+| **Relics** | Crown of Command (×1.05 per artifact worn), Phylactery (no stack drops below 1 creature before round 3), Usurper's Crown (a Legendary Hero's rule binds his own army too). |
+| **Economy and building** | Endless Purse of Gold (+500 gold a day), Endless Cart of Ore (+1 wood and +1 ore a day), Mason's Hammer (buildings −25% gold), Builder's Circlet (+2% damage per building in your capital), Shield of the Fortress (+3 Def if your capital has a Fort). |
+| **Faction relics** | Offered only once the faction is unlocked: Leaf of the World Tree (Sylvan), Brand of the Pit (Inferno), Eye of the Deep (Dungeon). |
 
-Seals come from Muster packs, and full-game shops also sell them as 3₵ "Rites". In the save, the stack carries its seal as the 3rd element of the army entry: `[id, n, seal]`.
+## 4. Map sites (choices where natural)
 
-## 7. Shop (after every Trial won)
+| Site | What it offers |
+|---|---|
+| **Treasure Chest** (existing object) | Choose gold, experience or a Treasure/Minor artifact. |
+| **Pandora's Box** (2 per region, guarded) | Choose 1 of 3 from gold, experience, an artifact (rarer in deeper regions), a creature stack, or a spell. |
+| **Witch Hut** (1 per region) | Learn or raise 1 of 3 skills. |
+| **Scholar** (1 per region) | One lesson: +2 to a primary stat, a skill, or a spell. |
+| **Shrine** (existing object) | Learn 1 of 3 spells you don't know. |
+| **Seer's Hut** (regions 1–2) | A resource quest (wood, ore or gems, plus gold) for a Major artifact, shown up front. |
+| **Artifact Merchant** (region 1) | 4 artifacts, restocked weekly. Buys from your backpack. |
+| **Black Market** (region 2, guarded) | 2 Major or Relic artifacts at ×1.5 price. |
+| **Trading Post** (region 1) | Buy and sell wood, ore and gems for gold at fixed rates. |
+| **Artifacts on the road** (existing object) | A random artifact, rarer in deeper regions. |
+| **The Grail** (one per run, region 2, heavily guarded) | Raises the **Crown Forge** in your capital: creature growth +50%, two buildings a day, +1,000 gold a day. |
+| **Keymaster's Tent / Border Guard** | See §1. |
 
-**The payout comes first:**
-- the Trial's base pay (Raid 3, Warlord 4, Boss 5)
-- +1₵ per stack of yours that lost nothing, max 3 ("Unbroken")
-- banner pay (such as Golden Purse)
-- **interest: +1₵ per 5₵ held, cap 5₵** (Royal Treasury and Seed Money each add +5 to the cap)
+Every offer is seeded by the site and the run, so reloading never changes it. The town's own Marketplace and Tavern work as in Free Play.
 
-**Stock:**
-- **3 cards.** Each one is a banner (70%), a spell scroll (15%, 3₵) or a unit upgrade (15%, 5₵, which upgrades one of your stacks to its upgraded creature).
-- **1 pack**, rotating War Chest, Tome and Muster.
-- **The Age's voucher.**
+## 5. Hero backgrounds, difficulty, level-ups
 
-**Rerolls** cost 5₵, +1₵ for every reroll in the same shop, and reset each shop. The stock is seeded from `(run seed, ante, blind, reroll#)`, so a saved and reloaded shop is identical.
+**Backgrounds:**
 
-**Banner bar.**
-- Drag or tap to reorder.
-- Tap a banner to select it, then tap a gap to move it there.
-- The Sell button pays half the price.
-- When all slots are full, buying asks you to sell first.
-
-## 8. Origins (Balatro decks)
-
-| Origin | Effect | Unlock |
+| Background | Effect | Unlock |
 |---|---|---|
-| ★ Banneret | No changes. | start |
-| ★ Merchant | Start with 8₵; interest cap +5. | start |
-| ★ Warband | Starting army ×1.5; 4 banner slots. | start |
-| ★ Pauper | Start with 0₵ and half the resources; 6 banner slots. | start |
-| Scholar | Mage Guild I built, +2 spells, Wisdom I; army ×0.8. | win a run |
-| Gravecaller | Necropolis only; starts with Bone Tally. | unlock Necropolis |
-| Siegelord | Capital starts with a Fort; the first Raid is weaker (×0.8). | beat The Wall |
+| Knight-Errant | No changes. | start |
+| Merchant Prince | +5,000 gold at the start; +250 gold a day. | start |
+| Warlord | Army ×1.5, one Misc slot fewer. | start |
+| Exile | Half resources, army ×0.8, starts with a Major artifact. | start |
+| Scholar | Mage Guild I, +2 spells, Wisdom; army ×0.8. | win a run |
+| Gravecaller | Necropolis; wears the Bone Cloak. | unlock Necropolis |
+| Siegelord | Capital starts with a Fort. | defeat Gorrak |
 
-## 9. Stakes (each includes the ones before)
+**Difficulty tiers.** Each tier adds to the ones before, and every tier also adds +8% to threat strength.
 
-| # | Stake | Change |
+| # | Tier | Change |
 |---|---|---|
-| 1 | White | Base. |
-| 2 | Red | The Raid pays no base Crowns. |
-| 3 | Green | Threat grows ×1.1 more per Age. |
-| 4 | Black | 30% of shop banners are *Tattered* (cannot be sold). |
-| 5 | Blue | The Crown Boss arrives at the end of day 6. |
-| 6 | Purple | Shop prices +1₵. |
-| 7 | Orange | Interest cap −2₵. |
-| 8 | Gold | Bosses have two rules. |
+| 1 | Squire | Base. |
+| 2 | Knight | Invasions arrive a day sooner. |
+| 3 | Baron | Invasions grow ×1.1 more per week. |
+| 4 | Count | Merchants +25%. |
+| 5 | Duke | Legendary armies +20%. |
+| 6 | Prince | Growth −25%. |
+| 7 | King | Legendary Heroes follow two rules. |
+| 8 | Emperor | Starting army halved. |
 
-Winning on a stake unlocks the next stake for that faction. Every stake also raises P by 8%.
+Winning on a tier unlocks the next one for that faction.
 
-## 10. Meta progression
+**Level-ups** offer 3 skills instead of 2.
 
-**The meta save.** It sits in its own store key, `realms.crown.meta`:
+## 6. Meta progression
+
+**The meta save.** It sits in its own key, `realms.crown.meta`, at version 2:
 
 ```
-{ v, glory, runs, wins, best: { score, ante }, unlocks: { factions: ['haven'], origins: [...], stakes: { haven: 1 } }, collection: { banners: {id: timesBought}, seen: {id: 1}, bosses: {id: 1}, units: {id: 1} }, trophies: [], perks: { id: level } }
+{ v: 2, glory, runs, wins, best: { score, region }, unlocks: { factions: ['haven'], backgrounds, diffs: { haven: 1 } }, collection: { artifacts: {id: timesFound}, seen: {id: 1}, guardians: {id: 1}, units: {id: 1} }, trophies: [], perks: {} }
 ```
 
-**Faction unlocks.** Every run starts as Haven until another faction is unlocked.
+**Faction unlocks:**
 
 | Faction | How to unlock |
 |---|---|
-| Necropolis | Beat **The Lich Queen** (Age 3 boss). |
-| Sylvan | Win a run (clear Age 3 in the MVP, Age 8 in the full game). |
-| Inferno | Beat a Crown Boss in 3 rounds or fewer. |
-| Dungeon | Hold 5 banners at once. |
+| Haven | Available from the start. |
+| Necropolis | Defeat Vesperine. |
+| Sylvan | Win a run. |
+| Inferno | Defeat a Legendary Hero in 3 rounds or fewer. |
+| Dungeon | Complete an artifact set. |
 
 **Collection.**
-- An album of every banner, boss and unit.
-- Undiscovered entries are dark silhouettes.
-- An entry is discovered when it shows up in a shop or pack, or when you fight it.
-- Owned banners show their times-bought count.
+- Tabs: Artifacts (with the times-found count), Legends, Creatures.
+- Undiscovered entries are silhouettes.
+- An entry counts as discovered once it has been seen at a site, sold by a merchant, or fought.
 
 **Trophies:**
-- First Blood: win a Trial.
+- First Blood: repel an invasion.
 - Crowned: win a run.
-- Hoarder: hold 25₵.
-- Full Banner: 5 banners at once.
-- Bone Lord: raise 100 skeletons in one run.
-- Untouchable: win a Trial with no losses.
-- Big Hit: one strike of 1000+ damage.
+- Hoarder: hold 50,000 gold.
+- Set Collector: complete an artifact set.
+- Bone Lord: raise 100 in one run.
+- Untouchable: repel an invasion with no losses.
+- Big Hit: one strike of 1,000+ damage.
 - Collector: discover 30 entries.
 
-**Permanent upgrades.** These are small and bought with Glory on the Collection screen:
+**Glory perks:**
 
-| Upgrade | Effect | Cost |
+| Perk | Effect | Cost |
 |---|---|---|
-| Quartermaster | +2₵ at run start | 30 Glory per level, 2 levels |
+| Quartermaster | +1,500 starting gold | 30 Glory per level, 2 levels |
 | Drillmaster | Starting army +10% | 40 per level, 2 levels |
-| Haggler | First reroll of each shop free | 60 |
-| Scout | +1 hero vision | 25 |
+| Haggler | Merchants −10% | 60 |
+| Heirloom | Start with a Treasure artifact | 50 |
 
-## 11. Scoring
+## 7. Score and the end of the run
 
 ```
-score = Σ blinds won (Raid 100, Warlord 200, Boss 400) × ante
-      + 5 × Crowns held + floor(final armyPower / 50)
-      + (won ? 1000 : 0)
-      then × (1 + 0.25·(stake−1))
-glory = floor(score / 100) + 5 × bosses beaten + (won ? 20 : 0)
+score = Σ Legendary Heroes defeated (600 × their number) + Σ invasions repelled (200 × week)
+      + 300 × sets completed + gold / 100 + army power / 50 + (Crown taken ? 1500 : 0), then × (1 + 0.25·(difficulty−1))
+glory = floor(score / 100) + 5 × Legendary Heroes defeated + (won ? 20 : 0)
 ```
 
-The run also tracks "best strike" (largest single hit, like Balatro's best hand), stacks destroyed, skeletons raised and rerolls. All of these show on the end screen.
+**The end screen.** It shows, in order:
+1. The crest: "Crowned!", or how the run ended ("Sir Aldric fell in battle", "Highcastle fell to the invasion").
+2. The run stats: best strike, stacks slain, invasions, legends.
+3. The score rows, each ticking up.
+4. The difficulty multiplier.
+5. The total, with a "New best!" badge when it applies.
+6. The Glory tick.
+7. The unlock cards flipping in (factions, backgrounds, difficulty tiers, trophies).
+8. The buttons: New run · Collection · Title.
 
-## 12. End-of-run rewards screen
+## 8. Balance levers (`crown.js` → `TUNE`)
 
-1. **Banner.** "Crowned!" or "The run ends at Age N · Boss".
-2. **Score rows, one at a time.** Each row ticks up from 0, with a sound tick on each step:
-   - Trials
-   - Crowns
-   - Army
-   - Victory
-   - Stake ×
-3. **Totals.** The total, then a **Glory +N** tick into the meta total, with a "New best!" badge when it applies.
-4. **New unlocks** as cards that flip over with a rarity glow, for example: Necropolis unlocked, new origin, new trophy.
-5. **Stats strip:** best strike, stacks destroyed, skeletons raised, banners held. The final banner bar sits beneath it.
-6. **Buttons:** New run · Collection · Title.
+**Threat curves:**
+- `guardian` {base 1500, growth 2.3, mult 2.2}
+- `invasion` {base 1500, growth 1.9, mult 1.45, warnDay 4, arriveDay 7}
+- `diffStep` 0.08
 
-## 13. Balance levers (all live in `crown.js` → `TUNE`)
+**Economy:**
+- artifact values per rarity
+- the merchant/Black Market markups and the half-value buy price
+- `TRADE` rates
+- chest and Pandora amounts
+- `rarityW`, and the region-scaled rarity used for road artifacts, spoils and Pandora's Boxes
 
-- **Threat curve** (tuned with `autoResolve` on both sides against a Haven army recruiting every week: then checked with the soak bot (Quick combat on every fight, so no tactics). The bot's armies bleed between Trials. At growth 2.5 it reached Age 3 three times out of four but fell to the Warlord or the Lich Queen. At growth 2.3 it cleared all 3 Ages. Hand-played battles lose far fewer troops): `TUNE.base` (1500), `TUNE.growth` (2.3/Age), the `BLIND` multipliers, and the stake steps.
-- **Economy:**
-  - the per-Trial pay
-  - the Unbroken bonus cap
-  - interest (1 per 5, cap 5)
-  - reroll base and step (5 / +1)
-  - prices per rarity
-  - the Gilded chance
-- **Pack odds** (rarity weights), the Muster stack value (12% of the next P), and the chest type split.
-- **Region size** (distance bands) and when the gates open.
-- **Banner numbers:** each banner's numbers are named constants in its definition, so a pass of tuning means editing just those.
-- **Battle hooks.** These cost nothing in Free Play: `createBattle` without `mods` keeps the old code path.
+**Map:**
+- the number of regions
+- the band fractions (`crownNew`: 0.3 … 0.8 of the distance to the rival capital)
+- the number of sites per region and their guard strengths (`crownPlace`)
 
-## 14. MVP integration (as built)
+**Artifacts:** every artifact's numbers are literals in its definition.
 
-**Files.**
-- `crown.js`: the rules and data.
-- `crown_ui.js`: the screens (DOM only; main.js passes in `icon`, `unitIcon` and `sfx`).
-- `dev/crown-ui.html`: every screen against mock state, for quick UI work (`?s=shop|pack|muster|boss|intro|end|coll|origin|hud`).
-- `dev/crown_test.mjs`: the node tests.
+**Free Play:** the battle hooks cost nothing there. `createBattle` without `mods` keeps the classic code path, and seeded battles replay identically to v1.10.
 
-**main.js.** One block, "Crown Run (agent crown)", plus small marked hooks (`// crown:`):
+## 9. Free Play
 
-| Hook | What it does |
-|---|---|
-| imports | `crown.js` and `crown_ui.js`. |
-| `findPath` / `dijkstra` | `crownShut(v, hr)`. Your heroes stay in regions `< ante`; the rival crown stays in its homeland (the last band). |
-| `splitMonster` | A Trial's ready-made threat army (`obj.army`). |
-| `startBattle` | `mods: crownMods(...)`: banners, seals, the boss rule and the Warlord/Boss hero, for any battle of the run hero. |
-| `finishBattle` | `crownAfter(B, ctx)`: run counters, Bone Tally, then for a Trial the payout, `advanceBlind` and the shop. A loss is the end screen. |
-| `interact` (chest) | Opens a pack (type from `chestPack`). |
-| `endTurn` | `crownDusk()`: a Trial due tonight shows its intro, is fought, and the shop's Next resumes `endTurn`. |
-| `newDay` | Resets the per-day build counter (Masonry Guild). Weekly growth × Overflowing Pens. A new week calls `crownWeek()` (toast + boss preview). |
-| `buildIn` | Masonry Guild (2 builds a day) and Mason's Mark (refunds the discount). |
-| `levelUp` | 3 skill choices in a run. |
-| `save` / `load` | `run` in the save (`G.run`). `newWorld` resets `G.run`. Resume re-marks `regionOf` (the gate walls are already in `ter`). |
-| `updateHud` | `crownHud()` (banner bar + Trial pill). |
-| `showMenu` | Closes any run screen. |
-| `playEvent` | The `mod` event (Plague, Echoing Volley floaters). |
+Free Play is unchanged.
+- The artifact slots and sets exist **only in the Crown Run**. Free Play heroes keep the classic list of stat artifacts (`hr.arts`).
+- Adding slots and sets to Free Play would change its balance (stacked multipliers on AI heroes too), so it is left for a separate, tuned change.
+- The new map sites are only placed in a run.
 
-**Regions.**
-- `markRegions({ from: capital, bands, wall: true, per: 2 })` from the flat agent.
-- `bands = D × (0.3 … 0.8) × 0.95`, where D is the hex distance to the rival capital.
-- There is one band per Age, and the last band is the rival's homeland.
-- Gates are the gaps the wall leaves. MVP: there is no 3D gate model; the gate simply cannot be pathed through until its Age.
-
-**Entry.** `window.CrownRun = { start, resume }`, which the freeplay agent's title button and Continue call. `window.__realms.crown` holds the test hooks.
-
-## 15. Layout: landscape first (owner direction for v2.0)
+## 10. Layout: landscape first (v2.0)
 
 Landscape is the primary target: 844×390, 915×412 and 1280×720. Portrait (412×860) must still work.
 
-**Landscape layout:**
-- **Banner bar.** A row of 5 slots plus the Crowns wallet, directly under the resource bar on the left. In landscape the minimap and the hero column take the right edge, so the bar stays clear of them.
-- **Trial pill.** Next to the bar: the days left to the next Trial, plus a boss sigil. It pulses the day before a Trial and on the day itself. Tap it for the boss preview card.
-- **Shop.** A full-screen overlay:
-  - the payout tally as a strip on the left
-  - a wide row of cards in the middle: 3 cards + pack + voucher
-  - the banner bar along the bottom, with reorder and sell
-  - Reroll and Continue on the right
-- **Pack opening.** 3 cards side by side, centred. Each one flips face up in turn.
-- **Boss preview and end-of-run.** A two-column card:
-  - left: the crest and the score tally
-  - right: the rule text or the unlock cards
-- **Collection.** A tabbed grid (Banners / Bosses / Units) that fills the width, with 6–8 columns.
+**HUD** (under the resource bar, left), three buttons:
+- **Equipment:** worn and packed counts, with a gold glow when a set is complete.
+- **Region:** region n/3, keys held, and whose key comes next. Tap it for that Legendary Hero's card.
+- **Invasion warning:** only while an invasion marches. It pulses when one day is left. Tap it for the card and a camera fly-to.
 
-**Portrait fallback** (`@media (orientation: portrait)`):
-- The banner bar drops under the resource bar.
-- Shop cards wrap 3 + 2, the banner bar stays at the bottom, and the buttons stack.
-- Pack cards stay 3 across at a smaller size.
-- Two-column cards become a single column.
-- The Collection uses 4 columns.
+**Paper doll.** The slots surround the hero portrait, with the primary stats including artifact bonuses. The side panel has the artifact details, set progress and the backpack.
+
+**Site choices.** 3 cards that flip over one after another. Major and Relic cards shine.
+
+**Merchants.** Buy and Sell tabs, with a wide row of priced cards.
+
+**Notices** (Legendary Hero, invasion, key, quest, Grail, end of run). A two-column card: the crest on the left, the details and buttons on the right.
+
+**Portrait fallback:**
+- The HUD drops under the minimap.
+- Two-column cards stack.
+- The paper doll's side panel moves under the doll.
+- Card rows wrap.
+
+## 11. Main.js integration (as built)
+
+**The block:** "Crown Run (agent crown)", inserted after `window.__realms`. Its functions:
+
+| Function | What it does |
+|---|---|
+| `crownShut` | Gates pathing in `findPath` and `dijkstra`. |
+| `crownHud` | Draws the HUD. |
+| `crownDoll` | Opens the paper doll. |
+| `crownMods` | Builds the battle mods. |
+| `crownAfter` | Runs after every battle. |
+| `crownInteract` | Handles all run sites, Legendary Heroes and invasions. |
+| `crownDescribe` | Names a tapped site. |
+| `crownDawn` | Daily income; invasion spawn, march and strike. |
+| `crownInvaded` | Resolves an invasion that strikes (field or siege). |
+| `crownEnd` | Ends the run. |
+| `crownStart` / `crownNew` | Hero pick, then the world, regions, walls and gates. |
+| `crownPlace` | Places the sites. |
+| `crownResume` | Resumes a saved run. |
+| `window.CrownRun` | `{ start, resume }`, used by the title and by Continue. |
+
+**Hooks marked `// crown:`:**
+- imports
+- `findPath` / `dijkstra`
+- `interact` (first thing after the hero check)
+- `describe`
+- `splitMonster` (ready-made armies)
+- `startBattle` `mods`
+- `finishBattle` → `crownAfter`
+- `newDay` → `crownDawn`, plus the build counter and growth multiplier
+- `buildIn` (Crown Forge: 2 a day; Mason's Hammer)
+- `levelUp` (3 choices)
+- `openHero` (paper doll; artifacts listed in the sheet)
+- save/load `run`; `newWorld` resets it
+- `updateHud`, `showMenu`
+- the `mod` battle event
+
+**Models.** The new site models live in `models_objects.js` (the "crown agent" block):
+- `border1–6` and `keymaster1–6`, in the key colours
+- `pandora`, `witchhut`, `scholar`, `seer`, `merchant`, `blackmarket`, `tradingpost`, `grail`

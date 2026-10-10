@@ -1026,7 +1026,129 @@ function dwelling(k) {
   for (const s of [-1, 1]) k.box(0.022, 0.022, 0.01, 0.36 + s * 0.024, 0.52, 0.385, 0x1c0e0c, { ao: false, jit: 0 });
 }
 
-const BUILDERS = { gold: goldPile, wood: woodPile, ore: orePile, gems: gemPile, chest, artifact, campfire, goldmine, orepit, gemmine, sawmill, arena, tower, library, stone, obelisk, shrine, well, windmill, stables, dwelling };
+// ---------------------------------------------------------------- crown agent: Crown Run map sites (v2.0)
+// Border Guards and Keymaster's Tents come in the region's key colour; the rest are one-off sites with a choice.
+const KEYCOL = [0xd0201a, 0x2a6ae0, 0x2aa83a, 0xa83ad8, 0xe8a020, 0xe8e8f0];
+function striped(c0, c1, sc = 10) { return (c, x, y) => c.set(Math.floor((x + y) * sc) % 2 ? c0 : c1); }
+function borderguard(k, col) {
+  // a striped toll barrier between two stone towers with the region's colour flying from both
+  for (const sx of [-1, 1]) {
+    k.lathe([[0.001, 0], [0.15, 0], [0.15, 0.62], [0.18, 0.64], [0.18, 0.72], [0.001, 0.72]], 8, sx * 0.38, 0, 0, mottle(C.stoneD, C.stoneL, 14), { jit: 0.05 });
+    for (let i = 0; i < 4; i++) { const a = i / 4 * TAU; k.box(0.06, 0.08, 0.06, sx * 0.38 + Math.cos(a) * 0.13, 0.72, Math.sin(a) * 0.13, C.stoneL); }
+    k.cone(0.2, 0.3, sx * 0.38, 0.72, 0, col, 8);
+    banner(k, sx * 0.38, 1.0, 0, 0.3, col, 0.12, 0.16);
+  }
+  k.plank([-0.3, 0.38, 0.06], [0.3, 0.38, 0.06], 0.07, 0.05, striped(col, 0xf4f0e6, 12));
+  k.plank([-0.3, 0.22, 0.06], [0.3, 0.22, 0.06], 0.06, 0.04, striped(col, 0xf4f0e6, 12));
+  k.box(0.14, 0.14, 0.03, 0, 0.24, 0.1, C.gold, { bev: 0.01 }); // the lock
+  k.ball(0.03, 0, 0.27, 0.12, col, { glow: true, det: 0 });
+}
+function keymaster(k, col) {
+  // a tall round pavilion in the key colour with a giant gilded key over the door
+  pad(k, 0.5);
+  const cloth = (c, x, y, z) => { const a = Math.atan2(z, x); c.set(Math.floor(a * 8 / Math.PI) % 2 ? col : 0xf4ead8); };
+  k.cyl(0.36, 0.38, 0.42, 0, 0, 0, cloth, 12);
+  k.cone(0.46, 0.46, 0, 0.42, 0, cloth, 12);
+  k.box(0.18, 0.28, 0.02, 0, 0, 0.37, 0x2a1408, { ao: false });
+  k.beam([0, 0.88, 0], [0, 1.12, 0], 0.012, C.woodD, 5);
+  banner(k, 0, 0.86, 0, 0.36, col, 0.14, 0.18);
+  // the key: ring, shaft and bit, floating and glowing in front of the door
+  k.torus(0.08, 0.022, 0, 0.62, 0.46, [C.goldD, C.goldL], { rs: 14, ts: 5 });
+  k.beam([0, 0.54, 0.46], [0, 0.3, 0.46], 0.022, C.gold, 6);
+  k.box(0.08, 0.04, 0.03, 0.04, 0.31, 0.46, C.gold, { ctr: true });
+  k.ball(0.04, 0, 0.62, 0.46, col, { glow: true, det: 0 });
+}
+function pandora(k) {
+  // an ornate gilded casket on a plinth, lid ajar, violet light pouring out
+  k.cyl(0.3, 0.33, 0.08, 0, 0, 0, [C.stoneD, C.stone], 8);
+  k.box(0.42, 0.24, 0.3, 0, 0.08, 0, [0x3a1a5a, 0x6a2a9a], { bev: 0.02 });
+  for (const x of [-0.17, 0.17]) k.box(0.05, 0.26, 0.32, x, 0.07, 0, [C.goldD, C.goldL], { bev: 0.008 });
+  k.box(0.44, 0.06, 0.32, 0, 0.36, -0.04, [C.goldD, C.goldL], { rx: -0.45, bev: 0.01 });
+  k.lathe([[0.001, 0], [0.16, 0], [0.08, 0.3], [0.001, 0.42]], 8, 0, 0.32, 0, GL.violet, { glow: true });
+  k.ball(0.05, 0, 0.62, 0, 0xffe0ff, { glow: true, det: 1 });
+  sparkle(k, 0.14, 0.7, 0.04, 0.05, 0xf0d8ff); sparkle(k, -0.12, 0.58, 0.08, 0.04, 0xf0d8ff);
+  k.box(0.08, 0.08, 0.02, 0, 0.14, 0.16, C.gold, { bev: 0.01 });
+}
+function witchhut(k) {
+  // a crooked hut on chicken legs with a mossy thatch and a green glow at the door
+  for (const s of [-1, 1]) { k.beam([s * 0.12, 0, 0.04], [s * 0.1, 0.24, 0], 0.035, [0xc8a050, 0xe8c070], 5); for (const t of [-1, 0, 1]) k.beam([s * 0.12, 0.01, 0.04], [s * 0.12 + t * 0.06, 0.01, 0.14], 0.012, 0xc8a050, 4); }
+  k.box(0.42, 0.3, 0.34, 0, 0.24, 0, mottle(C.woodD, C.wood, 12), { rz: 0.06, bev: 0.01 });
+  k.cone(0.36, 0.34, 0, 0.53, 0, [0x4a6a2a, 0x8aa040], 6, { rz: -0.1, jit: 0.15 });
+  k.box(0.12, 0.18, 0.02, 0.02, 0.27, 0.18, 0x1a2a10, { ao: false });
+  k.ball(0.04, 0.02, 0.34, 0.19, GL.green, { glow: true, det: 0 });
+  k.lathe([[0.001, 0], [0.07, 0], [0.08, 0.08], [0.06, 0.1], [0.001, 0.1]], 7, 0.32, 0, 0.18, 0x2a2a30);
+  k.cyl(0.06, 0.06, 0.01, 0.32, 0.1, 0.18, GL.green, 7, { glow: true });
+  k.beam([-0.14, 0.75, -0.06], [-0.18, 0.95, -0.06], 0.03, C.stoneD, 5);
+}
+function scholar(k) {
+  // a reading pavilion: a lectern with a glowing open book under a small blue canopy, stacked tomes around
+  pad(k, 0.42);
+  for (const [x, z] of [[-0.28, -0.24], [0.28, -0.24], [-0.28, 0.24], [0.28, 0.24]]) k.cyl(0.025, 0.025, 0.62, x, 0, z, C.woodL, 6);
+  k.box(0.7, 0.04, 0.6, 0, 0.62, 0, C.woodD);
+  k.gable(0.66, 0.2, 0.56, 0, 0.66, 0, 0x2a4aa8);
+  shingles(k, 0.74, 0.22, 0.64, 0, 0.65, 0, [0x2a50c0, 0x5a88f0], [0x3058c8, 0x6a98ff], 3);
+  k.beam([0, 0, 0], [0, 0.3, 0], 0.03, C.woodD, 6);
+  k.box(0.24, 0.03, 0.18, 0, 0.3, 0, C.wood, { rx: -0.35 });
+  k.box(0.22, 0.015, 0.16, 0, 0.33, 0.01, 0xfff4d8, { rx: -0.35, ao: false });
+  k.ball(0.05, 0, 0.42, 0.02, GL.cyan, { glow: true, det: 0 });
+  for (let i = 0; i < 3; i++) k.box(0.14, 0.04, 0.1, 0.22, i * 0.04, 0.12, [0x8a2a2a, 0x2a4a8a, 0x2a7a3a][i], { ry: i * 0.3 });
+}
+function seer(k) {
+  // a stone hut with a great painted eye over the door and a crystal on the roof
+  pad(k, 0.44);
+  k.cyl(0.3, 0.32, 0.36, 0, 0, 0, mottle(C.stoneD, C.stoneL, 12), 10);
+  k.cone(0.4, 0.34, 0, 0.36, 0, [0x6a2a8a, 0x9a4ac8], 10);
+  k.box(0.13, 0.2, 0.02, 0, 0, 0.31, 0x1a1010, { ao: false });
+  k.ball(0.07, 0, 0.27, 0.3, 0xf4f0e6, { s: [1.5, 0.8, 0.4], det: 1 });
+  k.ball(0.035, 0, 0.27, 0.33, GL.cyan, { glow: true, det: 0 });
+  k.crystal(0, 0.68, 0, 0.22, 0.05, GL.violet, 0, 0, { glow: true });
+  torch(k, -0.22, 0, 0.3, 0.26); torch(k, 0.22, 0, 0.3, 0.26);
+}
+function merchant(k) {
+  // a market stall: striped awning, a counter of wares (an urn, a shield, a glowing gem) and a big sign
+  pad(k, 0.48);
+  for (const x of [-0.32, 0.32]) for (const z of [-0.18, 0.2]) k.cyl(0.022, 0.022, 0.52, x, 0, z, C.woodL, 6);
+  k.box(0.7, 0.2, 0.22, 0, 0, 0.1, mottle(C.woodD, C.wood, 12), { bev: 0.01 });
+  k.poly([[-0.4, 0.52, -0.22], [0.4, 0.52, -0.22], [0.4, 0.4, 0.36], [-0.4, 0.4, 0.36]], striped(0xc8322a, 0xf4ead8, 8), { ds: true });
+  k.lathe([[0.001, 0], [0.05, 0], [0.07, 0.06], [0.04, 0.12], [0.05, 0.14], [0.001, 0.14]], 7, -0.2, 0.2, 0.1, [C.goldD, C.goldL]);
+  k.box(0.12, 0.14, 0.02, 0, 0.2, 0.08, [C.blueD, C.blue], { bev: 0.02 });
+  k.add(new THREE.OctahedronGeometry(0.05, 0), 0.2, 0.27, 0.1, GL.pink, { glow: true });
+  k.beam([0.5, 0, 0.3], [0.5, 0.62, 0.3], 0.018, C.woodD, 5);
+  k.box(0.2, 0.14, 0.02, 0.5, 0.48, 0.32, [C.goldD, C.goldL], { bev: 0.01 });
+}
+function blackmarket(k) {
+  // a dark, half-hidden tent with a purple lantern, crates and a cloaked dummy
+  pad(k, 0.46);
+  k.cone(0.42, 0.62, 0, 0, 0, [0x1a1028, 0x3a2a4a], 6, { jit: 0.1 });
+  k.box(0.18, 0.28, 0.02, 0, 0, 0.32, 0x0a0610, { ao: false });
+  lantern(k, 0.16, 0.3, 0.3, GL.violet);
+  for (const [x, z, s] of [[-0.36, 0.22, 0.14], [-0.3, 0.36, 0.1], [0.36, 0.26, 0.12]]) k.box(s, s, s, x, 0, z, mottle(C.woodD, C.wood, 14), { bev: 0.006 });
+  k.add(new THREE.OctahedronGeometry(0.04, 0), -0.3, 0.2, 0.36, GL.violet, { glow: true });
+}
+function tradingpost(k) {
+  // a log trading house with a big balance scale out front and stacked goods
+  pad(k, 0.48);
+  k.box(0.5, 0.32, 0.36, 0, 0, -0.06, mottle(C.woodD, C.woodL, 10), { bev: 0.01 });
+  k.gable(0.5, 0.2, 0.4, 0, 0.32, -0.06, C.woodD);
+  shingles(k, 0.58, 0.22, 0.48, 0, 0.31, -0.06, [0xb83a28, 0xe85a40], [0xc84a30, 0xf06a48], 3);
+  k.beam([0.3, 0, 0.3], [0.3, 0.42, 0.3], 0.018, C.iron, 5);
+  k.beam([0.16, 0.42, 0.3], [0.44, 0.42, 0.3], 0.012, C.iron, 4);
+  for (const x of [0.16, 0.44]) k.cyl(0.07, 0.05, 0.02, x, 0.3, 0.3, [C.goldD, C.goldL], 8);
+  for (let i = 0; i < 3; i++) log(k, [-0.36, 0.04 + i * 0.07, 0.24], [-0.1, 0.04 + i * 0.07, 0.24], 0.035);
+  nuggets(k, 0.16, 0.32, 0.3, 0.6);
+}
+function grail(k) {
+  // the Grail: a golden chalice brimming with light on a stepped altar
+  k.cyl(0.4, 0.44, 0.06, 0, 0, 0, [C.stoneD, C.stone], 10);
+  k.cyl(0.3, 0.32, 0.06, 0, 0.06, 0, [C.stone, C.marble], 10);
+  k.lathe([[0.001, 0.12], [0.12, 0.12], [0.06, 0.16], [0.03, 0.3], [0.06, 0.34], [0.15, 0.46], [0.16, 0.56], [0.14, 0.56], [0.001, 0.48]], 12, 0, 0, 0, [C.goldD, C.goldL]);
+  k.cyl(0.14, 0.14, 0.01, 0, 0.55, 0, GL.fireY, 12, { glow: true });
+  k.lathe([[0.001, 0], [0.12, 0], [0.05, 0.3], [0.001, 0.4]], 8, 0, 0.55, 0, GL.gold, { glow: true });
+  sparkle(k, 0.18, 0.8, 0.04, 0.06); sparkle(k, -0.16, 0.7, 0.06, 0.05);
+}
+const CROWN_BUILDERS = { pandora, witchhut, scholar, seer, merchant, blackmarket, tradingpost, grail };
+KEYCOL.forEach((col, i) => { CROWN_BUILDERS['border' + (i + 1)] = (k) => borderguard(k, col); CROWN_BUILDERS['keymaster' + (i + 1)] = (k) => keymaster(k, col); });
+const BUILDERS = { gold: goldPile, wood: woodPile, ore: orePile, gems: gemPile, chest, artifact, campfire, goldmine, orepit, gemmine, sawmill, arena, tower, library, stone, obelisk, shrine, well, windmill, stables, dwelling, ...CROWN_BUILDERS };
 const AOH = { gold: 0.12, wood: 0.12, ore: 0.12, gems: 0.12, chest: 0.12, campfire: 0.12 };
 // small pickups are drawn bigger so they read as figures at map zoom (still inside the hex)
 const GROW = { stone: 1.15, gold: 1.3, wood: 1.25, ore: 1.25, gems: 1.3, chest: 1.45, artifact: 1.1, campfire: 1.6 };

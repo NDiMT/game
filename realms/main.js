@@ -1427,6 +1427,7 @@ function threatWord(o) {
   return r < 0.3 ? '😴 Effortless' : r < 0.6 ? '🙂 Easy' : r < 1 ? '😐 Fair fight' : r < 1.6 ? '😬 Hard' : '💀 Deadly';
 }
 function describe(o) {
+  if (G.run && crownDescribe(o)) return; // crown: Crown Run sites, Legendary Heroes, invasions
   if (o.type === 'monster') toast(`${sizeWord(o.n)} ${plural(o.unit)} · ${threatWord(o)}`);
   else if (o.type === 'town') { const t = G.towns[o.t]; toast(`${t.name} (${FACTIONS[t.fac].name}) · ${t.p === 0 ? 'yours' : t.p > 0 ? G.players[t.p].name : 'neutral'}${t.p !== 0 && heroArmy({ army: t.garrison }).length ? ' · guarded' : ''}`); }
   else { const O = OBJECTS[o.type]; toast(`${O.icon} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? (G.players[o.owner]?.name || 'enemy') : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
@@ -1574,6 +1575,7 @@ function interact(hr, v) {
     startBattle(hr, { kind: 'hero', hero: other }); return;
   }
   if (!o) return;
+  if (G.run && you && crownInteract(hr, o, v)) { updateHud(); return; } // crown: Crown Run sites, Legendary Heroes, invasions
   const O = OBJECTS[o.type], kind = O?.kind;
   if (you && (o.type === 'monster' || o.type === 'town' || guardOf(v))) bumpWarm('battle', [o.type === 'monster' ? o.unit : guardOf(v)?.unit, ...(o.type === 'town' ? (G.towns[o.t].garrison || []).map((st) => st?.[0]) : []), ...(hr.army || []).map((st) => st?.[0])]); // a fight may follow
   // guarded: a monster standing next to a mine, chest, site or town must be beaten first
@@ -1616,7 +1618,6 @@ function interact(hr, v) {
     if (seen[v]) fx.burst(o.type === 'gems' ? 'gem' : o.type === 'artifact' ? 'artifact' : 'coin', posOf(v));
     if (RES.includes(o.type)) { gain(hr.p, o.type, o.amount, v); if (you) sfx.pickup({ kind: o.type }); }
     else if (o.type === 'campfire') { gain(hr.p, 'gold', 400 + ((rnd() * 3) | 0) * 100, v); const r = ['wood', 'ore', 'gems'][(rnd() * 3) | 0]; gain(hr.p, r, r === 'gems' ? 2 : 4, v); if (you) sfx.coin(); }
-    else if (o.type === 'chest' && G.run && you) { crownPack(CR.chestPack(G.run, o.id), `chest:${o.id}`); sfx.chest(); } // crown: chests hold packs
     else if (o.type === 'chest') {
       const g = 1000 + ((rnd() * 3) | 0) * 250, xp = g - 500;
       if (you) { sfx.chest(); } if (you) ask('🧰 Treasure Chest', 'You find a chest full of gold. Keep it, or give it to the peasants for their wisdom?', [[`🪙 ${fmt(g)} gold`, () => { gain(0, 'gold', g, v); sfx.coin(); updateHud(); }], [`⭐ ${fmt(xp)} experience`, () => giveXp(hr, xp)]]);
@@ -1934,7 +1935,7 @@ function bumpWarm(kind, ids = []) {
 let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
 function heroBattle(hr) { return { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know'), mana: hr.mana, skills: hr.skills, spells: hr.spells, luck: hr.arts.includes('clover') ? 1 : 0, morale: hr.arts.includes('banner') ? 1 : 0, name: hr.name, p: hr.p }; }
 function splitMonster(o) {
-  if (o.army) return o.army.map((st) => [...st]); // crown: a Trial's threat army comes ready-made
+  if (o.army) return o.army.map((st) => [...st]); // crown: a Legendary Hero's or an invasion's army comes ready-made
   const k = clamp(Math.round(o.n / 6), 1, 5) + (o.n > 3 ? 1 : 0), parts = Math.min(k, 5, o.n), arr = [];
   for (let i = 0; i < parts; i++) arr.push([o.unit, Math.floor(o.n / parts) + (i < o.n % parts ? 1 : 0)]);
   return arr;
@@ -2600,7 +2601,7 @@ function playEvent(e, t) {
     if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (S(e.s)) S(e.s).shown = e.left ?? S(e.s).count; if (m) { m.userData.flash = 0.3; if ((e.left ?? 1) <= 0) startDeath(m, S(e.s)); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
-  // crown: a banner / boss rule effect (the Plague, Echoing Volley): floaters and hits like a spell, no projectile
+  // crown: an artifact / Legendary Hero effect (the Plague, a ricochet): floaters and hits like a spell, no projectile
   if (e.t === 'mod') {
     if (!e.started) { e.started = true; for (const hh of e.hits || []) { const m = M(hh.s), st = S(hh.s); if (!m || !st) continue; m.userData.flash = 0.3; if ((hh.left ?? 1) <= 0) startDeath(m, st); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `${e.text} -${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, st.side === 0 ? 'red' : 'gold'); st.shown = hh.left ?? st.count; setPlate(st); } }
     return t > 0.5;
@@ -2668,7 +2669,7 @@ function finishBattle(B, ctx) {
   }
   // after the battle summary, so the casualties card comes first
   if (ctx.foe.kind === 'town' && win.hero === ctx.hr) captureTown(ctx.hr, ctx.foe.town);
-  crownAfter(B, ctx); // crown: run counters, Bone Tally, a Trial's payout and shop (or the end of the run)
+  crownAfter(B, ctx); // crown: run counters, raised dead, invasion spoils, a Legendary Hero's fall (or the end of the run)
   checkEnd();
   updateHud();
 }
@@ -2801,7 +2802,7 @@ function buildIn(t, id) {
   const b = BUILDINGS.find((x) => x.id === id);
   if (t.builtToday || t.built.includes(id) || !b.req.every((r) => t.built.includes(r)) || !canPay(t.p, b.cost)) return false;
   pay(t.p, b.cost); t.built.push(id); t.builds = (t.builds || 0) + 1; t.builtToday = !(G.run && t.p === 0 && t.builds < CR.buildsPerDay(G.run));
-  if (G.run && t.p === 0 && b.cost.gold && CR.buildDiscount(G.run)) G.players[0].res.gold += Math.round(b.cost.gold * CR.buildDiscount(G.run)); // crown: Mason's Mark
+  if (G.run && t.p === 0 && b.cost.gold && CR.buildDiscount(G.run)) G.players[0].res.gold += Math.round(b.cost.gold * CR.buildDiscount(G.run)); // crown: Mason's Hammer
   // a new dwelling comes with its first week of creatures
   if (b.tier) t.avail[b.tier] = (t.avail[b.tier] || 0) + UNITS[tierUnit(t, b.tier)].grow;
   if (id.startsWith('mage')) { const vis = visitorOf(t); if (vis) learnSpells(t, vis); }
@@ -2811,6 +2812,7 @@ function buildIn(t, id) {
 // ------------------------------------------------------------------ the hero sheet
 function openHero() {
   const hr = selHero(); if (!hr) return;
+  if (G.run && !openHero.sheet && hr === runHero()) { crownDoll(); return; } // crown: the paper doll (it links back here)
   const st = (k, ic, n) => `<div class="st"><i>${ic}</i><b>${statOf(hr, k)}</b><small>${n}</small></div>`;
   const next = xpFor(hr.lvl + 1), prev = xpFor(hr.lvl), pct = (a, b) => clamp((a / Math.max(1, b)) * 100, 0, 100);
   const chips = (arr, none) => (arr.length ? `<div class="chips">${arr.join('')}</div>` : `<p class="none">${none}</p>`);
@@ -2821,7 +2823,7 @@ function openHero() {
     <div class="slots big">${Array.from({ length: Math.max(ARMY_SLOTS, hr.army.length) }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
     <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${icon(k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
     <h3 class="sec">Spells</h3>${chips(hr.spells.map((id) => `<span class="chip">${icon(id, 18)}${SPELLS[id].name}</span>`), 'No spells yet: build a Mage Guild')}
-    <h3 class="sec">Artifacts</h3>${chips(hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; }), 'No artifacts yet')}`, true);
+    <h3 class="sec">Artifacts</h3>${chips([...(G.run ? CR.equippedIds(G.run).map((id) => `<span class="chip">${icon(CR.ARTIFACTS[id].icon, 18)}${CR.ARTIFACTS[id].name}</span>`) : []), ...hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; })], 'No artifacts yet')}`, true);
 }
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
@@ -2951,7 +2953,7 @@ function setHTML(el, html) { if (el && el.__html !== html) { el.innerHTML = html
 function updateHud() {
   if (!G.players.length) return;
   updateRes();
-  crownHud(); // crown: banner bar + Trial pill
+  crownHud(); // crown: equipment, region key, invasion warning
   const mine = G.heroes.filter((x) => x.alive && x.p === 0);
   // UI: faction accent colour, and the End day button glows once no hero can take another step
   document.body.style.setProperty('--fac', FACTIONS[G.players[0].fac]?.css || '#3a7aff');
@@ -2996,7 +2998,6 @@ $('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') re
 // ------------------------------------------------------------------ days and weeks
 function endTurn() {
   if (G.mode !== 'map' || aiRunning || walking || G.over) return;
-  if (crownDusk()) return; // crown: a Trial due tonight is fought first, then the day ends
   showPath(selHero(), null);
   aiRunning = true; aiGen = runAI(); aiDelay = 0; $('b-end').disabled = true;
   toast(G.players.filter((x) => x.ai && x.alive).length > 1 ? '⏳ The rival crowns are moving…' : '⏳ The enemy is moving…'); dayFx('night');
@@ -3068,7 +3069,7 @@ function newDay() {
   }
   for (const hr of G.heroes) if (hr.alive) { hr.mp = moveMax(hr); hr.mana = Math.min(maxMana(hr), hr.mana + 1 + Math.floor(statOf(hr, 'know') / 3)); }
   for (const t of G.towns) { t.builtToday = false; t.builds = 0; }
-  if (newWeek && G.run) crownWeek(); // crown: a new Age opens its region and shows its boss
+  if (G.run) crownDawn(); // crown: artifact income, the week's invasion (warned on day 4, marching, striking on day 7)
   if (newWeek) {
     // each week honours a creature: +5 growth in every town that breeds it
     const all = Object.values(FACTIONS).flatMap((f) => f.units), star = UNITS[G.nextWeekOf] ? G.nextWeekOf : all[(rnd() * all.length) | 0];
@@ -3458,8 +3459,8 @@ $('m-new').addEventListener('click', () => {
 $('m-crown').addEventListener('click', () => {
   sfx.click();
   if (typeof window.CrownRun?.start === 'function') { window.CrownRun.start(); return; }
-  ask(`${icon('victory', 26)} Crown Run`, `<p>A roguelite on a full map: <b>8 Ages</b>, one week each. Every week ends in a <b>Trial</b> battle against a rising threat, up to a Crown Boss with a rule-breaking twist.</p>
-    <ul class="tips"><li>${icon('banner', 22)}<span><b>Banners</b>: five slots of rule-breaking passives that combo.</span></li><li>${icon('market', 22)}<span><b>The shop</b> after every Trial: banners, upgrades, scrolls, vouchers.</span></li><li>${icon('chest', 22)}<span><b>Packs</b>: pick one of three from every treasure.</span></li></ul><p class="hint2">Coming soon. Free Play is ready now.</p>`, [['Play Free Play', () => $('m-new').click()], ['Back', null]]);
+  ask(`${icon('victory', 26)} Crown Run`, `<p>A roguelite on a full map: one hero, no second chances. Win the key from each region's <b>Legendary Hero</b>, hold off the weekly <b>invasions</b>, and claim the Crown.</p>
+    <ul class="tips"><li>${icon('artifact', 22)}<span><b>Artifacts</b> in equipment slots; complete a set for its bonus.</span></li><li>${icon('lock', 22)}<span><b>Border Guards</b>: the key lies with each region's Legendary Hero.</span></li><li>${icon('attack', 22)}<span><b>Invasions</b> march on your capital every week.</span></li></ul><p class="hint2">Coming soon. Free Play is ready now.</p>`, [['Play Free Play', () => $('m-new').click()], ['Back', null]]);
 });
 // faction choice: one card per faction with its crest, colour, creature line-up, description and signature skill and spell.
 const FAC_CREST = { haven: 'defense', necro: 'necromancy', sylvan: 'luck', inferno: 'fireball', dungeon: 'sorcery' };
@@ -3823,151 +3824,338 @@ function warmPicker() {
 }
 window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
 
-// ------------------------------------------------------------------ Crown Run (agent "crown"): the roguelite loop on top of the map game.
-// Rules and data: crown.js; screens: crown_ui.js; design: dev/CROWN_RUN.md. G.run holds the run (saved with the game);
-// the meta progression (unlocks, Collection, Glory) lives in its own store key (CR.META_KEY).
+// ------------------------------------------------------------------ Crown Run (agent "crown"): a roguelite told in Heroes terms.
+// One hero, permadeath; regions behind Border Guards, each opened by the key its Legendary Hero guards; weekly
+// invasions; artifacts in equipment slots and artifact sets; map sites with choices. Rules and data: crown.js;
+// screens: crown_ui.js; design: dev/CROWN_RUN.md. G.run holds the run (saved with the game); the meta progression
+// (unlocks, Collection, Glory) lives in its own store key (CR.META_KEY).
 // (var: updateHud may run before this point of the module has been evaluated; crownHud waits for CUI)
 var cmeta = null, CUI = null;
 const crownMeta = () => (cmeta ||= CR.metaLoad(store));
 const saveMeta = () => { if (cmeta) CR.metaSave(store, cmeta); };
-CUI = createCrownUI({ icon, unitIcon, sfx, onChange: (k) => { if (k === 'meta') saveMeta(); else if (G.run) crownHud(); } });
+CUI = createCrownUI({ icon, unitIcon, sfx, onChange: (k) => { if (k === 'meta') saveMeta(); else if (G.run) { crownHud(); updateHud(); } } });
 CUI.mountHud($('hud'));
 const runHero = () => (G.run ? G.heroes[G.run.hero] : null);
-// region gates: your heroes stay inside the regions this Age has opened; the rival crown keeps to its homeland (the last band)
+const capital = () => G.towns.find((t) => t.p === 0 && t.capOf === 0) || G.towns.find((t) => t.p === 0);
+const invObj = () => { const I = G.run?.invasion; return I ? G.objects[I.obj] : null; };
+// region gates: your heroes stay inside the regions opened so far; the rival crown keeps to its homeland (the last band)
 function crownShut(v, hr) {
-  const R = G.run; if (!R || !hr || !R.regions) return false;
-  return hr.p === 0 ? regionOf[v] >= R.ante : regionOf[v] < R.antes;
+  const R = G.run; if (!R || !hr || !R.regionsAt) return false;
+  return hr.p === 0 ? regionOf[v] >= R.region : regionOf[v] < R.regions;
 }
 function crownHud() {
   if (!CUI) return;
   const R = G.run;
-  CUI.renderHud(R && !R.over ? R : null, G.day, { onPill: () => { const nb = CR.nextBlind(R); CUI.bossPreview(R, G.day, { threat: nb ? CR.threatArmy(R) : null }); } });
+  if (!R || R.over) { CUI.renderHud(null); return; }
+  const I = R.invasion, o = invObj();
+  CUI.renderHud(R, {
+    invasion: I && o?.alive ? { dir: I.dir, days: I.arrive - G.day, week: I.week } : null,
+    onEquip: () => crownDoll(),
+    onRegion: () => CUI.guardianCard(R, R.region, CR.guardianArmy(R, R.region), { onClose: () => { const g = G.objects.find((x) => x.alive && x.guardian?.region === R.region); if (g) flyTo(g.v, 9); } }),
+    onInvasion: () => { if (o) CUI.invasionCard(R, I.army, { days: I.arrive - G.day, dir: I.dir, onFly: () => flyTo(o.v, 9) }); },
+  });
+}
+// the hero's paper doll (the hero button opens it in a run; "Skills & army" opens the classic sheet)
+function crownDoll() {
+  const hr = runHero(); if (!hr) return;
+  CUI.paperDoll(G.run, { heroName: hr.name, heroPic: heroPic(hr, 104, 'round'), heroStats: { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know') }, onSheet: () => { openHero.sheet = true; openHero(); openHero.sheet = false; } });
 }
 function crownMods(ctx) {
   const R = G.run, hr = runHero();
   if (!R || R.over || !hr || ctx.sides[0].hero !== hr) return null;
-  const bl = ctx.foe.obj?.blind || null, cap = G.towns.find((t) => t.p === 0);
-  return CR.battleMods(R, { boss: bl?.kind === 'boss' ? bl.boss : null, enemyHero: bl?.hero || null, seals: hr.army.map((st) => st?.[2] || null), buildings: cap ? cap.built.length : 0, fort: !!cap?.built.includes('fort') });
+  const o = ctx.foe.obj, cap = capital();
+  return CR.battleMods(R, { guardian: o?.guardian?.id || null, enemyHero: o?.ghero || null, buildings: cap ? cap.built.length : 0, fort: !!cap?.built.includes('fort'), gold: G.players[0].res.gold });
 }
-// after every battle of the run hero: counters, Bone Tally, and for a Trial the payout, the shop or the end of the run
+// after every battle of the run hero: counters, raised dead, invasion spoils, a fallen Legendary Hero (or the end)
 function crownAfter(B, ctx) {
   const R = G.run, hr = runHero();
   if (!R || R.over || !hr || ctx.sides[0].hero !== hr) return;
-  const won = B.over.winner === 0, bl = ctx.foe.obj?.blind || null;
-  const res = CR.afterBattle(R, B, { won, kind: bl?.kind || null });
+  const won = B.over.winner === 0, o = ctx.foe.obj, kind = o?.guardian ? 'guardian' : o?.invasion ? 'invasion' : null;
+  const res = CR.afterBattle(R, B, { won, kind });
   for (const s of B.stacks) CR.discover(crownMeta(), 'unit', UNITS[s.id]?.up || s.id);
-  if (res.raise > 0 && hr.alive && addTroops(hr.army, res.raiseAs, res.raise)) toast(`${icon('necromancy', 18)} Bone Tally raises ${res.raise} ${plural(res.raiseAs, res.raise)}.`);
-  if (bl) CR.discover(crownMeta(), 'boss', bl.boss && won ? bl.boss : null);
-  if (!won || !hr.alive) { R.over = true; R.won = false; afterDialogs(crownEnd); return; }
-  if (!bl) { crownHud(); return; }
-  const p = CR.payout(R, bl.kind, { unbroken: res.unbroken, goldSeals: res.goldSeals, towns: G.towns.filter((t) => t.p === 0).length });
-  R.crowns += p.total;
-  CR.advanceBlind(R);
-  saveMeta();
-  if (R.over) { afterDialogs(crownEnd); return; }
-  CR.genShop(R, crownMeta(), crownCtx());
-  afterDialogs(() => crownShop(p));
+  if (res.raise > 0 && hr.alive && addTroops(hr.army, res.raiseAs, res.raise)) toast(`${icon('necromancy', 18)} ${res.raise} ${plural(res.raiseAs, res.raise)} rise to serve you.`);
+  if (!won || !hr.alive) { R.over = true; R.won = false; afterDialogs(() => crownEnd(`${hr.name} fell in battle`)); return; }
+  if (kind === 'guardian') { CR.discover(crownMeta(), 'guardian', o.guardian.id); saveMeta(); afterDialogs(() => CUI.notice({ icon: CR.GUARDIANS[o.guardian.id].icon, title: `${CR.GUARDIANS[o.guardian.id].name.split(',')[0]} is defeated`, sub: `Region ${o.guardian.region}`, body: `<p>${o.guardian.region >= R.regions ? 'The way to the Crown lies open: walk into the tent to claim it.' : "The Keymaster's Tent stands unguarded: visit it for the key to the next region."}</p>`, sound: 'fanfare' })); }
+  if (kind === 'invasion') afterDialogs(() => CUI.choice({ title: 'Spoils of war', sub: `The invaders' baggage train is yours. Choose one artifact.`, icon: 'chest', choices: CR.spoilsChoices(R, o.invasion.week, crownMeta()), leave: 'Leave it', onPick: (c) => crownGive(c, hr), onDone: () => { crownHud(); updateHud(); } }));
+  crownHud();
 }
-// the casualties card comes first; the run's screens wait until it (and any level-up) is closed
-function afterDialogs(f) { const go = () => { if (dialogOpen() || G.mode === 'battle') { setTimeout(go, 250); return; } f(); }; setTimeout(go, 300); }
-const crownCtx = () => { const hr = runHero(); return { known: hr?.spells || [], army: hr?.army || [] }; };
-function crownShop(payout = null) {
-  const R = G.run; crownHud();
-  CUI.shop(R, { payout, meta: crownMeta(), ctx: crownCtx, apply: crownApply, onDone: () => { saveMeta(); crownHud(); updateHud(); save(); if (G.crownResume) { const f = G.crownResume; G.crownResume = null; f(); } } });
+// the run's screens queue up: each waits until the casualties card, any level-up, a battle and the previous run screen
+// are gone (two screens never open over each other, so none is lost)
+const crownQ = [];
+function afterDialogs(f) { crownQ.push(f); if (crownQ.length === 1) setTimeout(crownQRun, 300); }
+function crownQRun() {
+  if (!crownQ.length) return;
+  if (G.mode === 'menu') { crownQ.length = 0; return; }
+  if (dialogOpen() || G.mode !== 'map' || CUI.isOpen() || walking) { setTimeout(crownQRun, 250); return; }
+  const f = crownQ.shift();
+  try { f(); } catch (e) { console.error('Crown Run screen failed', e); }
+  if (crownQ.length) setTimeout(crownQRun, 400);
 }
-// shop goods that touch the game: scrolls teach a spell, upgrades turn a stack into its upgraded creature, packs open
-async function crownApply(item, buy) {
-  const R = G.run, hr = runHero(); if (!hr) return false;
-  if (item.kind === 'scroll') { buy(); if (!hr.spells.includes(item.id)) hr.spells.push(item.id); sfx.learn(); return true; }
-  if (item.kind === 'upgrade') {
-    const i = hr.army.findIndex((st) => st && st[0] === item.id && st[1] > 0); if (i < 0) { toast('That stack is gone.'); return false; }
-    buy(); const n = hr.army[i][1], j = hr.army.findIndex((st) => st && st[0] === item.to && st[1] > 0);
-    if (j >= 0) { hr.army[j][1] += n; hr.army[i] = null; } else hr.army[i][0] = item.to;
-    sfx.upgrade(); updateHud(); return true;
+const crownCtx = (hr = runHero()) => ({ known: hr?.spells || [], skills: hr?.skills || {}, fac: G.run.fac, region: G.run.region });
+// apply a choice from a site: gold, experience, an artifact, troops, a spell, a skill, a lesson
+function crownGive(c, hr) {
+  const R = G.run;
+  if (c.kind === 'gold') { gain(0, 'gold', c.n, hr.v); sfx.coin(); }
+  else if (c.kind === 'xp') giveXp(hr, c.n);
+  else if (c.kind === 'artifact') { const at = CR.addArtifact(R, c.id, crownMeta()); toast(`${icon(CR.ARTIFACTS[c.id].icon, 18)} ${CR.ARTIFACTS[c.id].name} ${at === 'backpack' ? 'goes into your backpack' : 'is equipped'}.`); sfx.artifact(); saveMeta(); }
+  else if (c.kind === 'troops') { if (!addTroops(hr.army, c.id, c.n)) { toast('No free slot in your army.'); return false; } sfx.recruit(); }
+  else if (c.kind === 'spell') { if (!hr.spells.includes(c.id)) hr.spells.push(c.id); sfx.learn(); }
+  else if (c.kind === 'skill') { hr.skills[c.id] = c.lvl; if (c.id === 'logistics') hr.mp += 150; sfx.learn(); }
+  else if (c.kind === 'stat') { hr[c.id] += c.n; sfx.learn(); }
+  updateHud(); return true;
+}
+// map sites in a run (true = handled). Sites keep the HoMM rule: guards next to a site must be beaten first.
+function crownInteract(hr, o, v) {
+  const R = G.run, meta = crownMeta(), t = o.type;
+  const fight = (obj) => startBattle(hr, { kind: 'monster', obj });
+  if (t === 'monster' && o.guardian) { CUI.guardianCard(R, o.guardian.region, { army: o.army }, { onFight: () => fight(o) }); return true; }
+  if (t === 'monster' && o.invasion) { CUI.invasionCard(R, R.invasion?.army || { army: o.army, hero: o.ghero, week: o.invasion.week }, { days: 0, dir: R.invasion?.dir || '', onFight: () => fight(o) }); return true; }
+  if (t === 'monster') return false;
+  const g = guardOf(v);
+  if (g) { if (g.guardian) { CUI.guardianCard(R, g.guardian.region, { army: g.army }, { onFight: () => fight(g) }); return true; } return false; }
+  const take = () => { removeObject(o); hr.v = v; layoutHeroes(true); };
+  const once = (k) => { if (o.done) { toast(`${k} has nothing more for you.`); return false; } return true; };
+  if (t === 'chest' || t === 'artifact' || t === 'pandora') {
+    take(); if (seen[v]) fx.burst(t === 'chest' ? 'coin' : 'artifact', posOf(v));
+    if (t === 'artifact') { const id = CR.rollArtifact(R, `map:${o.id}`, meta, { rarityW: { treasure: 45, minor: 35, major: 16 + 6 * regionOf[v], relic: 4 + 2 * regionOf[v] } }); if (id) CUI.notice({ icon: CR.ARTIFACTS[id].icon, title: 'An artifact!', sub: 'Found on the road', card: { kind: 'artifact', id }, buttons: [['Take it', () => crownGive({ kind: 'artifact', id }, hr), 'gold']], sound: 'artifact' }); return true; }
+    const ch = t === 'chest' ? CR.chestChoices(R, o.id, meta, { region: regionOf[v] + 1 }) : CR.pandoraChoices(R, o.id, meta, { ...crownCtx(hr), region: regionOf[v] + 1 });
+    CUI.choice({ title: t === 'chest' ? 'Treasure Chest' : "Pandora's Box", sub: t === 'chest' ? 'Keep the gold, give it to the peasants for their wisdom, or take the trinket inside?' : 'The lid creaks open. Choose one gift.', icon: 'chest', choices: ch, leave: null, onPick: (c) => crownGive(c, hr) });
+    sfx.chest(); return true;
   }
-  if (item.kind === 'pack') { buy(); crownPack(item.id, `shop:${R.ante}:${R.blind}:${R.stats.rerolls}:${R.crowns}`, () => crownShop(null)); return false; }
+  if (t === 'witchhut' || t === 'scholar' || t === 'shrine') {
+    const nm = { witchhut: 'The Witch Hut', scholar: 'The Scholar', shrine: 'The Shrine' }[t]; if (!once(nm)) return true;
+    const ch = t === 'witchhut' ? CR.witchChoices(R, o.id, crownCtx(hr)) : t === 'scholar' ? CR.scholarChoices(R, o.id, crownCtx(hr)) : CR.shrineChoices(R, o.id, crownCtx(hr));
+    if (!ch.length) { toast(`${nm} has nothing to teach you.`); return true; }
+    CUI.choice({ title: nm.replace(/^The /, ''), sub: t === 'witchhut' ? 'The witch offers to teach one skill.' : t === 'scholar' ? 'The scholar offers one lesson.' : 'Kneel and learn one spell, for good.', icon: t === 'witchhut' ? 'sorcery' : t === 'scholar' ? 'wisdom' : 'spellbook', choices: ch, onPick: (c) => { o.done = true; return crownGive(c, hr); } });
+    return true;
+  }
+  if (t === 'seer') {
+    const q = CR.seerQuest(R, o.id, meta), P = G.players[0];
+    if (q.done) { toast("The seer has nothing more for you."); return true; }
+    const can = Object.entries(q.need).every(([k, n]) => P.res[k] >= n);
+    CUI.notice({ icon: 'scouting', title: "Seer's Hut", sub: 'A quest', body: `<p>"Bring me ${Object.entries(q.need).map(([k, n]) => `<b>${fmt(n)} ${k}</b>`).join(' and ')}, and this is yours."</p>`, card: { kind: 'artifact', id: q.reward },
+      buttons: can ? [['Hand them over', () => { for (const [k, n] of Object.entries(q.need)) P.res[k] -= n; q.done = true; crownGive({ kind: 'artifact', id: q.reward }, hr); }, 'gold'], ['Later', null, 'ghost']] : [['I will return', null, 'gold']] });
+    return true;
+  }
+  if (t === 'merchant' || t === 'blackmarket') {
+    const black = t === 'blackmarket', P = G.players[0];
+    o.stock = o.stockWeek === CR.week(G.day) && o.stock ? o.stock : CR.merchantStock(R, o.id, G.day, meta, black); o.stockWeek = CR.week(G.day);
+    for (const it of o.stock) CR.discover(meta, 'artifact', it.id);
+    CUI.merchant(R, { title: black ? 'Black Market' : 'Artifact Merchant', black, stock: o.stock, gold: () => P.res.gold,
+      onBuy: (it) => { if (P.res.gold < it.price) return false; P.res.gold -= it.price; crownGive({ kind: 'artifact', id: it.id }, hr); return true; },
+      sellList: () => R.backpack.map((inst, i) => ({ inst, i, price: CR.sellPrice(inst.id) })),
+      onSell: (e) => { const i = R.backpack.indexOf(e.inst); if (i < 0) return false; R.backpack.splice(i, 1); P.res.gold += e.price; updateHud(); return true; },
+      onClose: () => { saveMeta(); updateHud(); } });
+    return true;
+  }
+  if (t === 'tradingpost') {
+    const P = G.players[0];
+    CUI.tradingPost({ res: () => P.res, trade: (k, d) => { const T = CR.TRADE[k]; if (d === 'buy') { if (P.res.gold < T.buy) return false; P.res.gold -= T.buy; P.res[k]++; } else { if (P.res[k] < 1) return false; P.res[k]--; P.res.gold += T.sell; } updateHud(); return true; }, onClose: () => updateHud() });
+    return true;
+  }
+  if (t === 'grail') {
+    take(); R.forge = true; if (seen[v]) fx.burst('artifact', posOf(v), { scale: 1.6 });
+    CUI.notice({ icon: 'victory', title: 'The Grail!', sub: 'One per world', body: `<p>Your masons raise the <b>Crown Forge</b> in ${capital()?.name || 'your capital'}: creature growth <b>+50%</b>, <b>two buildings a day</b>, and <b>+1,000 gold</b> every day.</p>`, sound: 'fanfare' });
+    return true;
+  }
+  const km = /^keymaster(\d)$/.exec(t), bg = /^border(\d)$/.exec(t);
+  if (km) {
+    const reg = +km[1];
+    if (reg !== R.region) { toast(reg < R.region ? 'You already hold this key.' : 'This tent lies beyond your reach.'); return true; }
+    const r = CR.takeKey(R);
+    if (r === 'crown') { sfx.victory(); crownEnd(''); return true; }
+    if (r === 'key') {
+      for (const x of G.objects) if (x.alive && x.type === `border${reg}`) removeObject(x);
+      worldDirty = true; save();
+      CUI.notice({ icon: 'lock', title: `The ${['Red', 'Blue', 'Green', 'Violet', 'Amber', 'White'][reg - 1]} Key`, sub: `Keymaster's Tent of region ${reg}`, body: `<p>The keymaster bows. The Border Guards of region ${reg} stand aside: <b>region ${R.region}</b> is open. Its Legendary Hero, <b>${CR.GUARDIANS[R.guardians[R.region - 1]].name}</b>, waits beyond.</p>`, sound: 'fanfare' });
+    }
+    return true;
+  }
+  if (bg) { toast(`${icon('lock', 18)} The Border Guard will not let you pass without the key from the Keymaster's Tent of region ${bg[1]}.`); return true; }
   return false;
 }
-// pick 1 of 3: banners go into a free slot, spells are learnt for good, creatures join the run hero
-function crownPack(kind, tag, then = null) {
-  const R = G.run, hr = runHero();
-  const pk = CR.openPack(R, kind, tag, crownMeta(), crownCtx());
-  CUI.pack(R, pk, {
-    onPick: (c) => {
-      if (c.kind === 'banner') { if (!CR.addBanner(R, c, crownMeta())) { toast('Your banner slots are full: skip, or sell one in the shop.'); return false; } }
-      else if (c.kind === 'spell') { if (hr.spells.includes(c.id)) hr.mana += 5; else hr.spells.push(c.id); }
-      else if (c.kind === 'unit') { if (!addTroops(hr.army, c.id, c.n)) { toast('No free slot in your army.'); return false; } if (c.seal) { const st = hr.army.find((x) => x && x[0] === c.id); if (st) st[2] = c.seal; } }
-      saveMeta(); return true;
-    },
-    onSkip: () => { R.crowns += 1; },
-    onDone: () => { crownHud(); updateHud(); then?.(); },
-  });
+// dawn: daily income from artifacts and the Crown Forge; the week's invasion is telegraphed on day 4 and marches
+// on your capital; it fights your hero if it reaches him, else your walls at the end of day 7
+function crownDawn() {
+  const R = G.run; if (!R || R.over || G.over) return;
+  const P = G.players[0], inc = CR.dailyIncome(R);
+  for (const k of Object.keys(inc)) if (inc[k]) P.res[k] += inc[k];
+  const hr = runHero(), cap = capital();
+  if (!hr?.alive) { crownEnd(`${hr?.name || 'Your hero'} is gone`); return; }
+  if (!cap) { crownEnd('Your capital has fallen'); return; }
+  const due = CR.invasionDue(R, G.day);
+  if (due.warn && !R.invasion) crownInvade(due, cap);
+  const o = invObj();
+  if (!o || !o.alive) { if (R.invasion && !o?.alive) R.invasion = null; return; }
+  // march: a straight walk toward the capital (around water, mountains and objects), paced to stand at your walls on the
+  // dawn after its arrival day (the warning counts down to "tonight")
+  const path = crownPath(o.v, cap.v), left = Math.max(1, R.invasion.arrive - G.day + 2);
+  if (path && path.length > 2) {
+    const steps = Math.ceil((path.length - 2) / left);
+    let to = -1; for (let i = Math.min(steps, path.length - 2); i >= 1; i--) if (objAt[path[i]] < 0 && !heroAt(path[i])) { to = path[i]; break; }
+    if (to >= 0) { objAt[o.v] = -1; o.v = to; objAt[to] = o.id; worldDirty = true; }
+  }
+  const near = (a, b) => a === b || NBR[a].includes(b);
+  if (near(o.v, hr.v)) { afterDialogs(() => { if (o.alive && G.mode === 'map') crownInvaded(o, 'field'); }); return; }
+  if (G.day > R.invasion.arrive) afterDialogs(() => { if (o.alive && G.mode === 'map') crownInvaded(o, 'siege'); });
 }
-// dusk: a Trial due tonight is fought before the night falls (endTurn calls this first; true = it took over)
-function crownDusk() {
-  const R = G.run; if (!R || R.over || G.over) return false;
-  const hr = runHero();
-  if (!hr || !hr.alive) { R.over = true; crownEnd(); return true; }
-  const nb = CR.blindDue(R, G.day); if (!nb) return false;
-  const T = CR.threatArmy(R);
-  if (nb.kind === 'boss') CR.discover(crownMeta(), 'boss', nb.boss);
-  G.crownResume = () => endTurn();
-  CUI.blindIntro(R, nb, T, { onFight: () => {
-    const n = T.army.reduce((a, s) => a + s[1], 0);
-    startBattle(hr, { kind: 'monster', obj: { id: -1, v: hr.v, unit: T.army[0][0], n, army: T.army, alive: true, blind: { kind: nb.kind, boss: nb.boss, hero: T.hero } } });
-  } });
-  return true;
+function crownPath(from, to) {
+  const prev = new Map([[from, -1]]), q = [from];
+  for (let i = 0; i < q.length; i++) { const x = q[i]; if (x === to) break; for (const n of NBR[x]) if (!prev.has(n) && passable(n) && (n === to || !(objAt[n] >= 0 && G.objects[objAt[n]].alive && G.objects[objAt[n]].type === 'town'))) { prev.set(n, x); q.push(n); } }
+  if (!prev.has(to)) return null;
+  const p = []; for (let x = to; x !== -1; x = prev.get(x)) p.unshift(x); return p;
 }
-function crownEnd() {
-  const R = G.run; if (!R || G.over && R.ended) return;
+function crownInvade(due, cap) {
+  const R = G.run, rival = G.players.find((p) => p.ai && p.alive);
+  const inv = CR.invasionArmy(R, due.week, rival?.fac || null);
+  // they come from the open frontier: the free cell of the open regions farthest from your capital
+  const D = new Map([[cap.v, 0]]), q = [cap.v];
+  for (let i = 0; i < q.length; i++) { const x = q[i]; for (const n of NBR[x]) if (!D.has(n) && passable(n) && regionOf[n] < R.region) { D.set(n, D.get(x) + 1); q.push(n); } }
+  let v = -1, best = -1; for (const [x, d] of D) if (d > best && objAt[x] < 0 && !heroAt(x) && !NBR[x].some((n) => objAt[n] >= 0 && G.objects[objAt[n]].type === 'monster')) { best = d; v = x; }
+  if (v < 0) return;
+  const lead = inv.army.slice().sort((a, b) => UNITS[b[0]].tier - UNITS[a[0]].tier)[0][0];
+  const o = addObject('monster', v, { unit: lead, n: inv.army.reduce((a, s) => a + s[1], 0), army: inv.army, ghero: inv.hero, invasion: { week: due.week }, refused: true });
+  const a = posOf(v), c = posOf(cap.v), dir = CR.directionWord(a.x - c.x, a.z - c.z);
+  R.invasion = { obj: o.id, week: due.week, arrive: due.arrive, dir, army: inv };
+  bumpWarm('battle', inv.army.map((s) => s[0]));
+  worldDirty = true; reveal(v, 2);
+  afterDialogs(() => { flyTo(v, 10); CUI.invasionCard(R, inv, { days: due.arrive - G.day, dir, onFly: () => flyTo(v, 9), onClose: () => { const hr = runHero(); if (hr) flyTo(hr.v, 10); } }); });
+  crownHud();
+}
+// the invasion strikes: your hero (in the field, or inside / beside the capital), else the capital's garrison alone
+function crownInvaded(o, how) {
+  const R = G.run, hr = runHero(), cap = capital(); if (!hr || !cap) return;
+  const heroHome = hr.v === cap.v || NBR[cap.v].includes(hr.v);
+  if (how === 'field' || heroHome) { CUI.invasionCard(R, R.invasion.army, { days: 0, dir: R.invasion.dir, onFight: () => startBattle(hr, { kind: 'monster', obj: o }) }); return; }
+  // the garrison holds the walls, and the townsfolk take up arms: creatures still waiting in the dwellings fight too
+  const def = (cap.garrison || []).filter((s) => s && s[1] > 0).map((s) => [...s]), nGar = def.length, folk = [];
+  for (const [tier, n] of Object.entries(cap.avail || {})) if (n > 0 && def.length < 7) { const id = FACTIONS[cap.fac].units[tier - 1]; folk.push([def.length, tier]); def.push([id, n]); }
+  let held = false;
+  if (def.length) {
+    const B = BT.createBattle({ armyA: def, armyB: o.army, heroB: o.ghero, town: { fort: cap.built.includes('fort'), side: 0, power: Math.max(2, cap.built.length / 2) } });
+    BT.autoResolve(B); held = B.over.winner === 0;
+    const left = new Map(B.stacks.filter((x) => x.side === 0).map((x) => [x.slot, x.count]));
+    cap.garrison = def.slice(0, nGar).map((s, i) => (left.get(i) > 0 ? [s[0], left.get(i)] : null));
+    for (const [slot, tier] of folk) cap.avail[tier] = left.get(slot) || 0;
+  }
+  if (held) { removeObject(o); R.invasion = null; R.invasionsBeaten++; R.stats.invasions.push(o.invasion.week); toast(`${icon('fort', 18)} The walls of ${cap.name} hold: the invasion is broken.`); sfx.victory(); crownHud(); return; }
+  R.over = true; R.won = false; crownEnd(`${cap.name} fell to the invasion`);
+}
+function crownEnd(reason = '') {
+  const R = G.run; if (!R || R.ended) return;
   R.over = true; R.ended = true; G.over = true; stopAI();
   const hr = runHero(), meta = crownMeta();
-  const res = CR.endRun(R, meta, { armyPower: hr && hr.alive ? BT.armyPower(heroArmy(hr), heroBattle(hr)) : 0 });
+  const res = CR.endRun(R, meta, { armyPower: hr && hr.alive ? BT.armyPower(heroArmy(hr), heroBattle(hr)) : 0, gold: G.players[0].res.gold });
   saveMeta(); store.del('realms.save'); crownHud();
-  CUI.endScreen(R, res, meta, { onNew: () => crownStart(), onCollection: () => CUI.collection(meta, { onClose: () => showMenu() }), onTitle: () => showMenu() });
+  CUI.endScreen(R, res, meta, { reason, onNew: () => crownStart(), onCollection: () => CUI.collection(meta, { onClose: () => showMenu() }), onTitle: () => showMenu() });
 }
-// a new run: origin and stake, then a full map with the Age regions banded out from your capital
+// a new run: hero background and difficulty, then a full map banded into regions out from your capital
 function crownStart() {
   const meta = crownMeta();
-  const go = () => { fadeHide($('menu')); CUI.originPick(meta, { onStart: crownNew, onBack: () => fadeShow($('menu')), onCollection: () => CUI.collection(meta, { onClose: () => fadeShow($('menu')) }) }); };
+  const go = () => { fadeHide($('menu')); CUI.heroPick(meta, { onStart: crownNew, onBack: () => fadeShow($('menu')), onCollection: () => CUI.collection(meta, { onClose: () => fadeShow($('menu')) }) }); };
   if (store.get('realms.save', null) && G.mode === 'menu') { ask('Start a Crown Run?', '<p>Your saved game will be replaced when the run begins.</p>', [['Start the run', go], ['Keep my game', null]]); return; }
   go();
 }
-function crownNew({ origin, stake, fac }) {
+function crownNew({ background, diff, fac }) {
+  crownQ.length = 0;
   const seed = (Date.now() % 100000) + 1, meta = crownMeta();
   newWorld(seed, 1, fac, { mode: 'crown', opponents: [{ fac: 'random', col: -1 }], size: 'M', res: 1, fog: true, win: 'conquer' });
-  const R = CR.newRun({ seed, origin, stake, fac, meta });
-  const hr = G.heroes.find((x) => x.p === 0), cap = G.towns.find((t) => t.p === 0), riv = G.towns.find((t) => t.p === 1);
+  const R = CR.newRun({ seed, background, diff, fac, meta });
+  const hr = G.heroes.find((x) => x.p === 0), cap = capital(), riv = G.towns.find((t) => t.p === 1);
   R.hero = hr.id;
   for (const st of hr.army) if (st) st[1] = Math.max(1, Math.round(st[1] * R.originFx.armyMul));
   for (const k of RES) G.players[0].res[k] = Math.round(G.players[0].res[k] * R.originFx.resMul);
+  G.players[0].res.gold += R.originFx.gold;
   if (R.originFx.fort && !cap.built.includes('fort')) cap.built.push('fort');
-  // the Age regions: bands of walking distance from your capital up to the rival's homeland (the last band)
+  if (background === 'scholar') { cap.built.push('mage1'); hr.skills.wisdom = 1; for (const s of ['stoneskin', 'haste']) if (!hr.spells.includes(s)) hr.spells.push(s); }
+  for (const id of CR.equippedIds(R)) CR.discover(meta, 'artifact', id);
+  // regions: bands of walking distance from your capital up to the rival's homeland (the last band), walled, with gates
   const D = Math.max(12, cellSteps(cap.v, riv ? riv.v : cap.v));
-  R.regions = { from: cap.v, bands: Array.from({ length: R.antes }, (_, i) => Math.round(D * (0.3 + 0.5 * i / Math.max(1, R.antes - 1)) * 0.95)) };
-  markRegions({ from: R.regions.from, bands: R.regions.bands, wall: true, per: 2 });
+  R.regionsAt = { from: cap.v, bands: Array.from({ length: R.regions }, (_, i) => Math.round(D * (0.3 + 0.5 * i / Math.max(1, R.regions - 1)) * 0.95)) };
+  const gates = markRegions({ from: cap.v, bands: R.regionsAt.bands, wall: true, per: 2, walkOnly: true });
+  R.regionMap = Array.from(regionOf.subarray(0, NV)).join(''); // (walking bands change once the walls stand: keep the map)
   G.run = R;
+  crownPlace(R, cap, gates);
   play(); save(); crownHud();
-  setTimeout(() => CUI.bossPreview(R, G.day, { threat: CR.threatArmy(R) }), 900);
+  setTimeout(() => CUI.guardianCard(R, 1, CR.guardianArmy(R, 1), { onClose: () => { const g = G.objects.find((x) => x.alive && x.guardian?.region === 1); if (g) { flyTo(g.v, 9); setTimeout(() => flyTo(hr.v, 10), 2200); } } }), 900);
 }
 // hex steps between two cells (the region bands are in steps)
 function cellSteps(a, b) { let d = 0; const seen0 = new Set([a]); let fr = [a]; while (fr.length && d < 400) { if (fr.includes(b)) return d; const nx = []; for (const v of fr) for (const n of NBR[v]) if (!seen0.has(n)) { seen0.add(n); nx.push(n); } fr = nx; d++; } return d; }
+// the run's sites: Border Guards on the gates, a Keymaster's Tent and its Legendary Hero deep in each region, the
+// Grail, merchants, the Trading Post and sites with choices; chests, artifacts and shrines already on the map join in
+function crownPlace(R, cap, gates) {
+  // walking distance from the capital through the regions open so far (a region's cells walled off from it never count)
+  const walk = (ri) => { const D = new Map([[cap.v, 0]]), q = [cap.v]; for (let i = 0; i < q.length; i++) { const x = q[i]; for (const n of NBR[x]) if (!D.has(n) && passable(n) && regionOf[n] <= ri) { D.set(n, D.get(x) + 1); q.push(n); } } return D; };
+  const Ds = Array.from({ length: R.regions }, (_, ri) => walk(ri));
+  let D = Ds[0];
+  const free = (v) => objAt[v] < 0 && !road[v] && !heroAt(v) && NBR[v].every((n) => objAt[n] < 0) && NBR[v].filter((n) => passable(n)).length >= 3;
+  const spotIn = (ri, where = 'mid', ok = () => true) => {
+    const c = [...D].filter(([v]) => regionOf[v] === ri && free(v) && v !== cap.v && ok(v)).sort((a, b) => a[1] - b[1]); if (!c.length) return -1;
+    const n = c.length, [lo, hi] = where === 'near' ? [0, n / 3] : where === 'far' ? [n * 2 / 3, n] : [n / 4, n * 3 / 4];
+    return c[Math.min(n - 1, Math.floor(lo + rnd() * Math.max(1, hi - lo)))][0];
+  };
+  for (const g of gates) {
+    if (g.b !== g.a + 1 || g.a >= R.regions - 1) continue;
+    const at = objAt[g.v] < 0 ? g.v : objAt[g.u] < 0 ? g.u : g.v;
+    if (objAt[at] >= 0) removeObject(G.objects[objAt[at]]);
+    addObject(`border${g.a + 1}`, at);
+  }
+  for (let ri = 0; ri < R.regions; ri++) {
+    D = Ds[ri];
+    // the tent stands deep in the region with room around it: its Legendary Hero camps on a neighbouring hex of the
+    // same region, and that hex can be reached from inside the region (never from behind the next wall)
+    const inReg = (n) => passable(n) && objAt[n] < 0 && D.has(n) && regionOf[n] === ri;
+    const reg = ri + 1, tv = spotIn(ri, 'far', (v) => NBR[v].filter(inReg).length >= 3); if (tv < 0) continue;
+    addObject(`keymaster${reg}`, tv);
+    const GA = CR.guardianArmy(R, reg), gv = NBR[tv].filter(inReg).sort((a, b) => D.get(a) - D.get(b))[0];
+    if (gv != null) { const lead = GA.army.slice().sort((a, b) => UNITS[b[0]].tier - UNITS[a[0]].tier)[0][0]; addObject('monster', gv, { unit: lead, n: GA.army.reduce((a, s) => a + s[1], 0), army: GA.army, ghero: GA.hero, guardian: { id: R.guardians[ri], region: reg }, guards: tv, refused: true }); }
+    const put = (type, where, g) => { const v = spotIn(ri, where); if (v >= 0) { addObject(type, v); if (g) guard(v, g); } };
+    if (ri === 0) { put('merchant', 'near'); put('tradingpost', 'near'); put('seer', 'mid'); }
+    if (ri === 1) { put('blackmarket', 'mid', 0.35); put('grail', 'far', 0.75); put('seer', 'mid'); }
+    put('witchhut', 'mid', ri ? 0.3 : 0); put('scholar', 'mid', 0.2 + 0.15 * ri);
+    put('pandora', 'mid', 0.35 + 0.2 * ri); put('pandora', 'far', 0.45 + 0.2 * ri);
+  }
+  // keep the way open: each region's Legendary Hero and Border Guards must be reachable from the capital through the
+  // regions open by then; treasure, wandering monsters or guards that wall a corridor off are cleared away
+  const keep = (o) => o.guardian || o.invasion || /^(border|keymaster)/.test(o.type) || o.type === 'town' || ['merchant', 'blackmarket', 'tradingpost', 'seer', 'grail'].includes(o.type);
+  const blocked = (v) => objAt[v] >= 0 && G.objects[objAt[v]].alive;
+  for (let ri = 0; ri < R.regions; ri++) {
+    const inR = (n) => passable(n) && regionOf[n] <= ri;
+    const targets = G.objects.filter((o) => o.alive && ((o.guardian && o.guardian.region === ri + 1) || o.type === `border${ri + 1}`));
+    for (const t of targets) {
+      const seen0 = new Set([cap.v]), q = [cap.v];
+      for (let i = 0; i < q.length; i++) for (const n of NBR[q[i]]) if (!seen0.has(n) && inR(n) && !blocked(n)) { seen0.add(n); q.push(n); }
+      if (NBR[t.v].some((n) => seen0.has(n))) continue;
+      const prev = new Map([[cap.v, -1]]), q2 = [cap.v]; let end = -1;
+      for (let i = 0; i < q2.length && end < 0; i++) for (const n of NBR[q2[i]]) { if (prev.has(n) || !inR(n)) continue; prev.set(n, q2[i]); q2.push(n); if (NBR[t.v].includes(n) && n !== t.v) { end = n; break; } }
+      for (let x = end; x >= 0 && x !== cap.v; x = prev.get(x)) if (blocked(x) && !keep(G.objects[objAt[x]])) removeObject(G.objects[objAt[x]]);
+    }
+  }
+}
+// a tap on a run site names it (the classic describe() only knows the data.js objects)
+function crownDescribe(o) {
+  const R = G.run;
+  if (o.type === 'monster' && o.guardian) { const Gd = CR.GUARDIANS[o.guardian.id]; toast(`${icon(Gd.icon, 18)} <b>${Gd.name}</b>, ${Gd.title} · ${Gd.rule}`); return true; }
+  if (o.type === 'monster' && o.invasion) { toast(`${icon('attack', 18)} <b>Invasion</b> · ${R.invasion ? `${R.invasion.arrive - G.day} day(s) from your walls` : 'marching'}`); return true; }
+  const km = /^keymaster(\d)$/.exec(o.type), bg = /^border(\d)$/.exec(o.type);
+  const S = { pandora: ['chest', "Pandora's Box", 'Choose one of its gifts'], witchhut: ['sorcery', 'Witch Hut', 'Learn one of three skills'], scholar: ['wisdom', 'Scholar', 'One lesson: a stat, a skill or a spell'], seer: ['scouting', "Seer's Hut", 'A quest for a Major artifact'],
+    merchant: ['market', 'Artifact Merchant', 'Buy and sell artifacts'], blackmarket: ['tavern', 'Black Market', 'Rare artifacts at a premium'], tradingpost: ['market', 'Trading Post', 'Resources for gold'], grail: ['victory', 'The Grail', 'Raise the Crown Forge in your capital'] }[o.type];
+  if (S) { toast(`${icon(S[0], 18)} <b>${S[1]}</b> · ${S[2]}${o.done ? ' (visited)' : ''}`); return true; }
+  if (km) { toast(`${icon('lock', 18)} <b>Keymaster's Tent</b> · ${+km[1] >= R.regions ? 'the Crown' : `the key to region ${+km[1] + 1}`}`); return true; }
+  if (bg) { toast(`${icon('lock', 18)} <b>Border Guard</b> · needs the key of region ${bg[1]}`); return true; }
+  if (o.type === 'chest' || o.type === 'artifact' || o.type === 'shrine') { toast(`${icon(o.type === 'shrine' ? 'spellbook' : o.type, 18)} <b>${o.type === 'chest' ? 'Treasure Chest' : o.type === 'artifact' ? 'Artifact' : 'Shrine'}</b> · ${o.type === 'chest' ? 'gold, experience or a trinket' : o.type === 'shrine' ? 'learn one of three spells' : 'unknown until you take it'}`); return true; }
+  return false;
+}
 function crownResume() {
+  crownQ.length = 0;
   if (!load()) return;
   const R = G.run;
-  if (R?.regions) markRegions({ from: R.regions.from, bands: R.regions.bands, wall: false }); // regionOf is not saved (the walls are, in ter)
+  if (R?.regionMap) { regionOf.fill(0); for (let v = 0; v < R.regionMap.length; v++) regionOf[v] = R.regionMap.charCodeAt(v) - 48; } // (the walls are in ter)
   play(); crownHud();
-  if (R?.shop) crownShop(null);
-}
-// a new week = a new Age (the Boss Trial already moved run.ante on): its region is open, its boss is shown
-function crownWeek() {
-  const R = G.run; if (!R || R.over) return;
-  toast(`${icon('victory', 18)} Age ${R.ante}: a new region opens beyond the Crown Gate.`);
-  afterDialogs(() => { if (G.run === R && !R.over && G.mode === 'map') CUI.bossPreview(R, G.day, { threat: CR.threatArmy(R) }); });
 }
 window.CrownRun = { start: crownStart, resume: crownResume };
 // test hooks (crown bot / node-free checks)
-Object.assign(window.__realms, { crown: { CR, get CUI() { return CUI; }, UNITS, meta: crownMeta, regionOf, get run() { return G.run; } } });
+Object.assign(window.__realms, { crown: { CR, get CUI() { return CUI; }, UNITS, meta: crownMeta, regionOf, get run() { return G.run; }, crownInteract, crownDoll, crownInvade, crownInvaded, capital } });
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
 Object.assign(window.__realms, { quality: QG.state, renderer });
 // flat world (agent "flat"): grid + regions API for other modes / tests. GRID changes with the map size, so it is a getter.

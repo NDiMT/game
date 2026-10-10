@@ -215,7 +215,7 @@ export function melee(B, a, d) {
 }
 export function shoot(B, a, d) {
   a.shots--;
-  if (B.mods.length) fire(B, 'onShoot', a, d);
+  if (B.mods.length) for (const m of B.mods) m.onShoot?.(B, a, d);
   if (d.count <= 0 || a.count <= 0) return;
   strike(B, a, d, { ranged: true });
   // marksmen loose two arrows
