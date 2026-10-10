@@ -6,8 +6,8 @@
 // DOM only: main.js passes in what it owns (icons, unit portraits, hero portrait, sound) and applies the effects.
 // Landscape first, with a portrait fallback in style.css ("crown" block).
 // =====================================================================
-import * as C from './crown.js?v=2.0';
-import { UNITS, SPELLS, SKILLS, FACTIONS } from './data.js?v=2.0';
+import * as C from './crown.js?v=2.1';
+import { UNITS, SPELLS, SKILLS, FACTIONS } from './data.js?v=2.1';
 
 export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} }) {
   const S = (n, o) => { try { sfx[n]?.(o); } catch { /* sound is optional */ } };
