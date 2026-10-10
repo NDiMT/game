@@ -1,32 +1,32 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=1.8';
-import { havenModel } from './units_haven.js?v=1.8';
-import { necroModel } from './units_necro.js?v=1.8';
-import { necroUpModel } from './units_necro_up.js?v=1.8';
-import { havenUpModel } from './units_haven_up.js?v=1.8';
-import { neutralModel } from './units_neutral.js?v=1.8';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=1.8';
-import { objectModel } from './models_objects.js?v=1.8';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.8';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.8';
-import { createTownView } from './town_view.js?v=1.8';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.8';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.8';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.8';
+import { mulberry32, unitModel } from './models.js?v=1.9';
+import { havenModel } from './units_haven.js?v=1.9';
+import { necroModel } from './units_necro.js?v=1.9';
+import { necroUpModel } from './units_necro_up.js?v=1.9';
+import { havenUpModel } from './units_haven_up.js?v=1.9';
+import { neutralModel } from './units_neutral.js?v=1.9';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=1.9';
+import { objectModel } from './models_objects.js?v=1.9';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.9';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.9';
+import { createTownView } from './town_view.js?v=1.9';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.9';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.9';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.9';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
-const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.8'), import('./units_inferno.js?v=1.8'), import('./units_dungeon.js?v=1.8')]);
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.9'), import('./units_inferno.js?v=1.9'), import('./units_dungeon.js?v=1.9')]);
 // memory: build through the modules' uncached builders (base id + upgraded flag), so main.js's geoCache is the only
 // owner of a creature's geometry and trimGeoCache() really frees it (the modules' own caches would pin ~11 MB per roster)
 const facBuild = (mod, build, model) => (id) => { const b = mod.value?.[build], u = UNITS[id]; const m = b && u ? b(u.up || id, !!u.up) : null; return m || mod.value?.[model]?.(id) || null; };
 const FAC_MODEL = { sylvan: facBuild(SYLm, 'sylvanBuild', 'sylvanModel'), inferno: facBuild(INFm, 'infernoBuild', 'infernoModel'), dungeon: facBuild(DUNm, 'dungeonBuild', 'dungeonModel') };
-import * as BT from './battle.js?v=1.8';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=1.8';
-import { createScore } from './music.js?v=1.8';
-import { createSfx } from './sfx.js?v=1.8';
-import { unitFit, applyFit } from './unit_fit.js?v=1.8';
-import { createMapFx } from './mapfx.js?v=1.8';
+import * as BT from './battle.js?v=1.9';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=1.9';
+import { createScore } from './music.js?v=1.9';
+import { createSfx } from './sfx.js?v=1.9';
+import { unitFit, applyFit } from './unit_fit.js?v=1.9';
+import { createMapFx } from './mapfx.js?v=1.9';
 import { icon } from './icons.js';
-import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=1.8';
+import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=1.9';
 
 // =====================================================================
 // ORBIS · Five Crowns: a pocket strategy game on a tiny hex planet.
@@ -35,7 +35,7 @@ import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, her
 // defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -456,7 +456,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=1.8';
+import { createPlanet } from './terrain.js?v=1.9';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -3190,7 +3190,7 @@ function pickFaction() {
     play(); save();
     const rival = FACTIONS[G.players[1].fac].name;
     setTimeout(() => ask(`${icon('logo', 26)} Your crown`, `<p>You lead the <b style="color:${FACTIONS[fac].css}">${FACTIONS[fac].name}</b>. Defeat the <b style="color:${FACTIONS[G.players[1].fac].css}">${rival}</b> crown to rule the world.</p>
-      <ul class="tips"><li>${icon('movement', 22)}<span><b>Tap a hex</b> to plan a route, tap it again to march.</span></li><li>${icon('gold', 22)}<span><b>Flag mines</b> and pick up treasure for income.</span></li><li>${icon('town', 22)}<span><b>Tap your town</b> to build once a day and recruit.</span></li><li>${icon('hero', 22)}<span><b>Tap your hero</b> for the hero sheet. Double-tap either to fly there.</span></li><li>${icon('end', 22)}<span><b>End the day</b> when everyone has moved.</span></li></ul>`, [['Begin', null]], true), 600);
+      <ul class="tips"><li>${icon('movement', 22)}<span><b>Tap a hex</b> to plan a route, tap it again to march.</span></li><li>${icon('gold', 22)}<span><b>Flag mines</b> and pick up treasure for income.</span></li><li>${icon('town', 22)}<span><b>Walk into your town</b> (or double-tap it) to build once a day and recruit.</span></li><li>${icon('hero', 22)}<span><b>Tap your hero</b> for the hero sheet. Double-tap either to fly there.</span></li><li>${icon('end', 22)}<span><b>End the day</b> when everyone has moved.</span></li></ul>`, [['Begin', null]], true), 600);
   };
   el.querySelectorAll('.fcard').forEach((b) => b.addEventListener('click', () => {
     if (b.dataset.f === sel) { start(sel); return; }
