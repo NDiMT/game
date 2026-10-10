@@ -653,6 +653,12 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
   .fp { max-width: 900px; }
 }
 @keyframes sidein { from { transform: translateX(60%); } }
+/* wide screens (desktop / landscape tablets): the battle top bar is one centred row too, not a full-width double row */
+@media (min-width: 900px) and (min-aspect-ratio: 5/4) {
+  .btop { left: 50%; right: auto; width: min(860px, calc(100% - var(--safe-l) - var(--safe-r) - 16px)); transform: translateX(-50%); flex-wrap: nowrap; padding: 4px 10px 14px; }
+  .btop b { flex: 0 1 auto; max-width: 34%; }
+  .bq { flex: 1 1 0; min-width: 0; margin-top: 0; padding: 4px 4px 5px; }
+}
 
 #town:not([hidden]) ~ .toast { top: calc(var(--safe-t) + 14px); right: calc(var(--safe-r) + var(--gut) + 14px); }
 #battle:not([hidden]) ~ .toast { top: calc(var(--safe-t) + 136px); right: calc(var(--safe-r) + var(--gut) + 14px); }

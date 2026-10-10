@@ -385,9 +385,9 @@ function mapViewOffset(dt) {
   if (G.mode === 'map' && B - T > H * 0.3) {
     camera.updateMatrixWorld();
     const sy = (p) => (-p.project(camera).y * 0.5 + 0.5) * H - lay.mapOff; // screen y without the current offset
-    const feet = sy(mvP.copy(camFocus).setLength(R + 0.03)), head = sy(mvP.copy(camFocus).setLength(R + 0.62 * figK));
+    const feet = sy(mvP.copy(camFocus).setLength(R + 0.03)), head = sy(mvP.copy(camFocus).setLength(R + 0.8 * figK)); // hero + banner tip
     want = T + (feet / H) * (B - T) - feet;
-    const lo = T + 8 - head, hi = B - 12 - feet;
+    const lo = T + 12 - head, hi = B - 12 - feet;
     want = lo > hi ? (lo + hi) / 2 : clamp(want, lo, hi);
     want = clamp(want, -H * 0.25, H * 0.25);
   }
