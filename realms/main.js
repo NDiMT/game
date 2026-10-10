@@ -1204,7 +1204,8 @@ function mapTap(cx, cy) {
   if (mine && mine.p === 0) { selectHero(mine.id); return; }
   if (!seen[v]) { toast('Unexplored land.'); return; }
   const o = objAt[v] >= 0 && G.objects[objAt[v]].alive ? G.objects[objAt[v]] : null;
-  if (o && o.type === 'town' && G.towns[o.t].p === 0 && hr && (!plan || plan.path[plan.path.length - 1] !== v) && DIRS[hr.v].distanceTo(DIRS[v]) > 0.25) { openTown(o.t); return; }
+  // your own town: like any goal, tap shows the route and tapping again walks there; arriving opens the town screen
+  // (a quick double tap opens it straight away, see above)
   if (!hr) { if (o) describe(o); return; }
   // second tap on the same goal: go
   if (plan && plan.hr === hr.id && plan.path[plan.path.length - 1] === v) { startWalk(hr, plan.path); return; }
