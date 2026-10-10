@@ -191,7 +191,8 @@ scene.add(new THREE.AmbientLight(0x7880b8, 0.4));
 //  - flyTo: target jumps, the spring eases out of rest and into the goal; any touch takes over where the camera is
 //  - follow: while a hero walks in view, the target tracks its (smoothly lerped) mesh, never the per-step hex
 const cam = { theta: 0, phi: 1.2, dist: 10, tTheta: 0, tPhi: 1.2, tDist: 10, vTheta: 0, vPhi: 0, fly: false, shake: 0,
-  sTheta: 0, sPhi: 0, sDist: 0, dragTheta: 0, dragPhi: 0, dragging: false, spin: 0, holdFollow: null, aiFollow: null, st: 0.3 };
+  sTheta: 0, sPhi: 0, sDist: 0, dragTheta: 0, dragPhi: 0, dragging: false, spin: 0, holdFollow: null, aiFollow: null, st: 0.3,
+  gTheta: 0, gPhi: 1.2, gsTheta: 0, gsPhi: 0 };
 const lookAtP = new THREE.Vector3(), camFocus = new THREE.Vector3(), camRight = new THREE.Vector3(), camTmp = new THREE.Vector3();
 const PHI_MIN = 0.12, PHI_MAX = Math.PI - 0.12;
 const wrapPi = (a) => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
@@ -209,7 +210,7 @@ function camGrab() {
   if (walking) cam.holdFollow = walking;
   else if (aiRunning) cam.holdFollow = 'ai'; // grabbing the map during the enemy turn hands the camera back for that turn
 }
-function camSnap(theta, phi) { cam.theta = cam.tTheta = theta; cam.phi = cam.tPhi = phi; cam.sTheta = cam.sPhi = cam.vTheta = cam.vPhi = 0; cam.fly = false; }
+function camSnap(theta, phi) { cam.theta = cam.tTheta = cam.gTheta = theta; cam.phi = cam.tPhi = cam.gPhi = phi; cam.sTheta = cam.sPhi = cam.gsTheta = cam.gsPhi = cam.vTheta = cam.vPhi = 0; cam.fly = false; }
 const followDir = new THREE.Vector3(), followSp = new THREE.Spherical();
 function followTarget() {
   // the hero to keep in frame: ours while it walks (until the player grabs the map), or an enemy walking in sight
@@ -241,7 +242,7 @@ function updateCamera(dt) {
       cam.tTheta = cam.theta + wrapPi(followSp.theta - cam.theta); cam.tPhi = followSp.phi; cam.fly = false; cam.vTheta = cam.vPhi = 0;
       st = 0.32;
     } else if (cam.fly) {
-      st = 0.3;
+      st = 0.34;
       if (Math.abs(wrapPi(cam.tTheta - cam.theta)) < 0.0008 && Math.abs(cam.tPhi - cam.phi) < 0.0008 && Math.abs(cam.sTheta) + Math.abs(cam.sPhi) < 0.01) cam.fly = false;
     } else {
       // fling inertia (rad/s), decaying exponentially with time, plus the title-screen spin
@@ -258,8 +259,20 @@ function updateCamera(dt) {
   if (Math.abs(cam.theta) > 1000) { const w = cam.theta - wrapPi(cam.theta); cam.theta -= w; }
   cam.tTheta = cam.theta + dth;
   cam.st = st;
-  [cam.theta, cam.sTheta] = smoothDamp(cam.theta, cam.tTheta, cam.sTheta, st, dt);
-  [cam.phi, cam.sPhi] = smoothDamp(cam.phi, cam.tPhi, cam.sPhi, st, dt);
+  if (st >= 0.2) {
+    // flights and follow go through two springs in a row (target -> goal -> camera): the speed then builds up
+    // with no acceleration kick on the first frame, which is what makes a long flight read as a camera move
+    cam.gTheta = cam.theta + wrapPi(cam.gTheta - cam.theta);
+    [cam.gTheta, cam.gsTheta] = smoothDamp(cam.gTheta, cam.tTheta, cam.gsTheta, st * 0.45, dt);
+    [cam.gPhi, cam.gsPhi] = smoothDamp(cam.gPhi, cam.tPhi, cam.gsPhi, st * 0.45, dt);
+    [cam.theta, cam.sTheta] = smoothDamp(cam.theta, cam.gTheta, cam.sTheta, st * 0.55, dt);
+    [cam.phi, cam.sPhi] = smoothDamp(cam.phi, cam.gPhi, cam.sPhi, st * 0.55, dt);
+  } else {
+    [cam.theta, cam.sTheta] = smoothDamp(cam.theta, cam.tTheta, cam.sTheta, st, dt);
+    [cam.phi, cam.sPhi] = smoothDamp(cam.phi, cam.tPhi, cam.sPhi, st, dt);
+    // the middle spring rides along with the camera, so switching to a flight/follow starts from its exact motion
+    cam.gTheta = cam.theta; cam.gPhi = cam.phi; cam.gsTheta = cam.sTheta; cam.gsPhi = cam.sPhi;
+  }
   cam.phi = clamp(cam.phi, PHI_MIN, PHI_MAX);
   [cam.dist, cam.sDist] = smoothDamp(cam.dist, cam.tDist, cam.sDist, 0.14, dt);
   // close up, the camera tilts toward the horizon like a strategy map
