@@ -990,11 +990,11 @@ function resumeRoute(hr) {
 let walking = null;
 const busy = () => !!walking || G.mode !== 'map' || aiRunning;
 function startWalk(hr, path) {
-  hr.route = null;
   const n = stepsToday(hr, path);
-  if (n < 1) { toast('Not enough movement left today. End the turn.'); sfx.deny(); return; }
+  if (n < 1) { toast('Not enough movement left today. End the turn.'); sfx.deny(); return; } // (an unfinished march stays stored)
+  hr.route = null; hr.routeObj = -1;
   walking = { hr, path, i: 0, t: 0, n };
-  showPath(hr, null);
+  showPath(hr, null); updateHud();
 }
 const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3();
 function updateWalk(dt) {
@@ -1023,7 +1023,12 @@ function updateWalk(dt) {
   if (seen[b]) fx.burst('step', posOf(b));
   // a monster next to the path attacks
   const lurker = lurkerAt(b, W);
-  if (lurker) { walking = null; layoutHeroes(true); interact(hr, lurker.v); return; }
+  if (lurker) {
+    // keep the rest of the march so it can be resumed after the ambush (Continue ▶ / tap the goal again)
+    walking = null; layoutHeroes(true);
+    if (W.i < W.path.length - 1) { hr.route = W.path.slice(W.i); hr.routeObj = objAt[hr.route[hr.route.length - 1]]; }
+    updateHud(); interact(hr, lurker.v); return;
+  }
   if (W.i >= W.n) {
     fx.burst('dust', posOf(hr.v));
     walking = null; layoutHeroes(true);
