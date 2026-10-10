@@ -151,12 +151,13 @@ const heroArmy = (hr) => hr.army.filter((x) => x && x[1] > 0);
 const statOf = (hr, k) => hr[k] + hr.arts.reduce((a, id) => a + (ARTIFACTS.find((x) => x.id === id)[k] || 0), 0);
 const maxMana = (hr) => statOf(hr, 'know') * 10;
 const moveMax = (hr) => Math.round((1500 + hr.arts.reduce((a, id) => a + (ARTIFACTS.find((x) => x.id === id).move || 0), 0)) * (1 + 0.15 * (hr.skills.logistics || 0)));
+const ARMY_SLOTS = 6; // up to 6 different creature stacks per hero / garrison
 function addTroops(army, id, n) {
-  const slot = army.findIndex((x) => x && x[0] === id);
+  const slot = army.findIndex((x) => x && x[1] > 0 && x[0] === id);
   if (slot >= 0) { army[slot][1] += n; return true; }
-  const free = army.findIndex((x) => !x || x[1] <= 0);
+  const free = army.findIndex((x, i) => i < ARMY_SLOTS && (!x || x[1] <= 0));
   if (free >= 0) { army[free] = [id, n]; return true; }
-  if (army.length < 7) { army.push([id, n]); return true; }
+  if (army.length < ARMY_SLOTS) { army.push([id, n]); return true; }
   return false;
 }
 const xpFor = (lvl) => Math.round(1000 * (Math.pow(1.6, lvl - 1) - 1) / 0.6);
@@ -1601,10 +1602,6 @@ function compileSoon(sc, cm, ms = 6000) {
   finally { renderer.setRenderTarget(prev); }
   return Promise.race([p, new Promise((res) => setTimeout(res, ms))]);
 }
-function uploadTextures(root) { // first-use texture uploads (painted canvases) done now instead of in a first frame
-  const seen = new Set();
-  root.traverse((o) => { for (const m of [].concat(o.material || [])) for (const v of Object.values(m)) if (v?.isTexture && !seen.has(v)) { seen.add(v); try { renderer.initTexture(v); } catch (e) { /* ok */ } } });
-}
 function prewarm(onDone) {
   loadProf = [];
   const jobs = []; // [label, weight, fn]; fn may return a promise (awaited while the bar creeps on)
@@ -1641,26 +1638,48 @@ function prewarm(onDone) {
   })();
 }
 // the idle-time remainder of the warm-up, in priority order
+// Draw a scene once into the tiny off-screen target (never the canvas: nothing flashes on screen). After compileSoon
+// this costs no compile wait where programs link in parallel, and it does what a compile alone cannot: the shadow-pass
+// depth programs, and every vertex buffer and texture upload, i.e. what used to make a first battle / town frame hitch.
+function drawOffscreen(sc, cm) {
+  const prev = renderer.getRenderTarget(), sh = renderer.shadowMap.needsUpdate;
+  try { renderer.shadowMap.needsUpdate = true; renderer.setRenderTarget(warmRT); renderer.render(sc, cm); } catch (e) { console.warn('warm draw', e); }
+  finally { renderer.setRenderTarget(prev); renderer.shadowMap.needsUpdate = sh; }
+}
 function postJobs() {
   const out = [], add = (k, label, f) => out.push({ k, label, f });
-  // the player's own town: geometry now, its programs compiled in parallel (opening it later is a DOM toggle)
+  // battle first (the arena of the hero's own terrain, one creature): programs compiled in parallel, then one off-screen draw
+  const t0 = ter[G.heroes.find((h) => h.p === 0)?.v] ?? 1, terrs = [...new Set([t0, 1, 2, 3, 4, 5, 6, 7])];
+  let a0 = null;
+  const arena0 = () => { if (!a0) { const m = meshOf(cached('upikeman', () => unitGeo('pikeman'))); setAnim(m, ANIM.IDLE); a0 = [createBattlefield(THREE, t0, hexPos, BT.COLS, BT.ROWS).group, m]; } return a0; };
+  add('battle', 'arena', () => {
+    if (G.mode === 'battle') return; // a battle in progress owns bscene
+    const objs = arena0(); bscene.add(...objs);
+    const p = compileSoon(bscene, bcam);
+    bscene.remove(...objs);
+    return p;
+  });
+  add('battle', 'arena draw', () => {
+    if (G.mode === 'battle') return;
+    const objs = arena0(); bscene.add(...objs);
+    bcam.position.set(0, 10.75, 10.6); bcam.lookAt(0, 0, -0.15);
+    drawOffscreen(bscene, bcam);
+    bscene.remove(...objs);
+  });
+  // the player's own town: geometry, programs, one off-screen draw (opening it later is a DOM toggle)
   const myTown = G.towns.find((t) => t.p === 0);
   if (myTown) {
     add('town', 'town', () => { if (G.mode !== 'map') return; townView.highlight(null); townView.setTown({ fac: myTown.fac, built: myTown.built, name: myTown.name }); });
-    add('town', 'town shaders', () => { if (G.mode !== 'map') return; townView.update(1 / 60); uploadTextures(townView.scene); return compileSoon(townView.scene, townView.camera); });
+    add('town', 'town shaders', () => { if (G.mode !== 'map') return; townView.update(1 / 60); return compileSoon(townView.scene, townView.camera); });
+    add('town', 'town draw', () => { if (G.mode !== 'map') return; drawOffscreen(townView.scene, townView.camera); });
   }
-  // battle: every battle program (units, arena ground/grid/decor/water, lava glow), the likely first arena first
-  const t0 = ter[G.heroes.find((h) => h.p === 0)?.v] ?? 1, terrs = [...new Set([t0, 1, 2, 3, 4, 5, 6, 7])];
-  terrs.forEach((t, i) => add('battle', 'arena ' + t, () => {
-    if (G.mode === 'battle') return; // a battle in progress owns bscene
-    const f = createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS);
-    const m = i ? null : meshOf(cached('upikeman', () => unitGeo('pikeman')));
-    if (m) { setAnim(m, ANIM.IDLE); bscene.add(m); }
-    bscene.add(f.group); if (i === 0) uploadTextures(f.group);
-    const p = compileSoon(bscene, bcam);
-    bscene.remove(f.group); if (m) bscene.remove(m);
+  // the other terrains' arenas (their decor / water / lava programs)
+  for (const t of terrs.slice(1)) add('battle', 'arena ' + t, () => {
+    if (G.mode === 'battle') return;
+    const g = createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS).group;
+    bscene.add(g); const p = compileSoon(bscene, bcam); bscene.remove(g);
     return p;
-  }));
+  });
   // creature geometry + fits and every portrait size the UI uses come from warmGeometryIdle (its own idle queue)
   for (const fac of new Set(G.towns.filter((t) => t.p !== 0 && t.built.includes('fort')).map((t) => t.fac))) add('walls', 'walls ' + fac, () => { cached('wall_' + fac, () => wallModel(fac)); cached('gate_' + fac, () => gateModel(fac)); cached('tower_' + fac, () => towerModel(fac)); cached('keep_' + fac, () => keepModel(fac)); });
   return out;
@@ -2469,7 +2488,7 @@ function renderTown() {
       return `<div class="row-b"><i>${unitIcon(id)}</i><div><b>${u.name} <em>${n} available</em></b><small>${costText(u.cost)} <span>each</span></small><small class="stats2"><span>${icon('attack', 13)}${u.att}</span><span>${icon('defense', 13)}${u.def}</span><span>${icon('hp', 13)}${u.hp}</span><span>${icon('damage', 13)}${u.dmg[0]}–${u.dmg[1]}</span><span>${icon('movement', 13)}${u.spd}</span>${u.ranged ? `<span>${icon('shots', 13)}</span>` : ''}${u.fly ? `<span>${icon('fly', 13)}</span>` : ''}</small></div><button data-rec="${tier}" data-n="${max}" ${max > 0 ? '' : 'disabled'}>Recruit<small>×${max}</small></button></div>`;
     }).join('') + '<p class="hint2">Recruits join the hero beside the town, or the garrison.</p>' : '<p class="hint2">Build a dwelling to recruit creatures.</p>';
   } else if (townTab === 'army') {
-    const row = (title, army, who) => `<div class="armyrow"><b>${title}</b><div class="slots">${Array.from({ length: 7 }, (_, i) => army[i] && army[i][1] > 0 ? `<button data-move="${who}:${i}">${unitIcon(army[i][0])}<em>${army[i][1]}</em></button>` : '<button disabled></button>').join('')}</div></div>`;
+    const row = (title, army, who) => `<div class="armyrow"><b>${title}</b><div class="slots">${Array.from({ length: Math.max(ARMY_SLOTS, army.length) }, (_, i) => army[i] && army[i][1] > 0 ? `<button data-move="${who}:${i}">${unitIcon(army[i][0])}<em>${army[i][1]}</em></button>` : '<button disabled></button>').join('')}</div></div>`;
     html = row(`${icon('town', 18)} Garrison`, t.garrison, 'g') + (vis ? row(`${icon('hero', 18)} ${vis.name}`, vis.army, 'h') : '<p class="hint2">No hero beside the town.</p>') + '<p class="hint2">Tap a stack to move it across.</p>';
     // upgrades for troops whose upgraded dwelling stands here
     const ups = [];
@@ -2550,7 +2569,7 @@ function openHero() {
     <div class="stats">${st('att', icon('attack', 24), 'Attack')}${st('def', icon('defense', 24), 'Defence')}${st('pow', icon('power', 24), 'Power')}${st('know', icon('knowledge', 24), 'Knowledge')}</div>
     <div class="meters"><div class="meter"><span>${icon('mana', 16)}</span>Mana<b>${hr.mana}/${maxMana(hr)}</b><i><i style="width:${pct(hr.mana, maxMana(hr))}%"></i></i></div><div class="meter mp"><span>${icon('movement', 16)}</span>Move<b>${fmt(hr.mp)}</b><i><i style="width:${pct(hr.mp, moveMax(hr))}%"></i></i></div></div>
     <h3 class="sec">Army</h3>
-    <div class="slots big">${Array.from({ length: 7 }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
+    <div class="slots big">${Array.from({ length: Math.max(ARMY_SLOTS, hr.army.length) }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
     <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${icon(k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
     <h3 class="sec">Spells</h3>${chips(hr.spells.map((id) => `<span class="chip">${icon(id, 18)}${SPELLS[id].name}</span>`), 'No spells yet: build a Mage Guild')}
     <h3 class="sec">Artifacts</h3>${chips(hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; }), 'No artifacts yet')}`, true);
