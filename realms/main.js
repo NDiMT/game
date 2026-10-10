@@ -1566,7 +1566,18 @@ const vfx = createVfx(THREE, bscene);
 // builds what it needs itself (prepBattle's curtain, setTown), and bumpWarm('battle') pulls the battle jobs forward
 // as soon as a fight is offered (monster / guard / siege dialog).
 let loadProf = null; // __realms.prewarmProfile(): [label, ms] per loader and postwarm job (perf checks)
-const compileSoon = (sc, cm, ms = 6000) => Promise.race([renderer.compileAsync(sc, cm).catch((e) => console.warn('compile', e)), new Promise((res) => setTimeout(res, ms))]);
+// Compile against a half-float render target like post's: three keys programs on the target (no tone mapping and linear
+// output off-screen vs ACES + sRGB on the canvas), and every view is drawn through post into rtScene, so a compile with
+// the canvas bound would build variants no frame ever uses while the real ones still compiled on the first draw.
+const warmRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+function compileSoon(sc, cm, ms = 6000) {
+  const prev = renderer.getRenderTarget();
+  let p;
+  renderer.setRenderTarget(warmRT);
+  try { p = renderer.compileAsync(sc, cm).catch((e) => console.warn('compile', e)); } catch (e) { p = Promise.resolve(); console.warn('compile', e); }
+  finally { renderer.setRenderTarget(prev); }
+  return Promise.race([p, new Promise((res) => setTimeout(res, ms))]);
+}
 function uploadTextures(root) { // first-use texture uploads (painted canvases) done now instead of in a first frame
   const seen = new Set();
   root.traverse((o) => { for (const m of [].concat(o.material || [])) for (const v of Object.values(m)) if (v?.isTexture && !seen.has(v)) { seen.add(v); try { renderer.initTexture(v); } catch (e) { /* ok */ } } });
@@ -1574,8 +1585,10 @@ function uploadTextures(root) { // first-use texture uploads (painted canvases) 
 function prewarm(onDone) {
   loadProf = [];
   const jobs = []; // [label, weight, fn]; fn may return a promise (awaited while the bar creeps on)
+  jobs.push(['Shaping the world', 2, () => { if (worldDirty) layoutWorld(); }]);
   jobs.push(['Painting the world', 6, () => compileSoon(scene, camera)]);
-  for (const hr of G.heroes.filter((h) => h.p === 0)) jobs.push(['Summoning heroes', 1, () => { heroPic(hr, 40, 'round'); }]);
+  // the HUD's hero buttons (40 px round): rendered with a fenced readback, so waiting for it costs no main-thread stall
+  if (G.heroes.some((h) => h.p === 0)) jobs.push(['Summoning heroes', 1, () => { const P = G.players[0]; return portraitAsync(heroPortraitId(P.fac, P.color), 40, 'round'); }]);
   const total = jobs.reduce((a, j) => a + j[1], 0), el = $('loader'), bar = $('ld-bar'), txt = $('ld-text');
   let done = 0, shown = 0;
   const show = (f) => { f = Math.min(1, Math.max(shown, f)); if (f - shown < 0.004 && f < 1) return; shown = f; bar.style.width = `${(f * 100).toFixed(1)}%`; };
@@ -1720,7 +1733,7 @@ async function prepBattle(job) {
   // upload the arena's painted textures and compile every program the battle scene needs before its first frame
   for (const tx of [bfield.ground?.material.map, bfield.ground?.material.emissiveMap, bfield.overlay?.material.map]) if (tx) renderer.initTexture(tx);
   await nextFrame(); if (!live()) return;
-  try { await Promise.race([renderer.compileAsync(bscene, bcam), new Promise((res) => setTimeout(res, 2500))]); } catch (e) { console.warn('battle shaders', e); }
+  try { await compileSoon(bscene, bcam, 2500); } catch (e) { console.warn('battle shaders', e); } // the off-screen variants post draws with
   if (!live()) return;
   bprep = null;
   $('battle').hidden = false;
@@ -3070,7 +3083,8 @@ for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.to
 function syncSound() { const on = store.get('realms.music', true); $('m-sound').classList.toggle('off', !on); $('m-sound').querySelector('span').textContent = on ? 'Music on' : 'Music off'; }
 $('m-sound').addEventListener('click', () => { const on = !store.get('realms.music', true); store.set('realms.music', on); if (on) score?.start(); else score?.stop(); syncSound(); sfx.click(); });
 function play() {
-  if (!prewarmed) { prewarmed = true; fadeHide($('menu')); G.mode = 'map'; worldDirty = true; layoutWorld(); musicWarm(); prewarm(() => { play(); warmGeometryIdle(); }); return; }
+  // first play: the loader shows on this very tap; the world layout is its first job (after the loader has painted)
+  if (!prewarmed) { prewarmed = true; fadeHide($('menu')); G.mode = 'map'; worldDirty = true; musicWarm(); prewarm(() => { play(); warmGeometryIdle(); }); return; }
   fadeHide($('menu')); $('hud').hidden = false; G.mode = 'map'; musicScene('map');
   stopAI(); walking = null; fx.clearPath(true);
   trimGeoCache(); // a new game / a loaded save: free the models of factions this world no longer has
