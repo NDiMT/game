@@ -2784,7 +2784,8 @@ function newDay() {
     for (const o of G.objects) if (o.alive && o.type === 'dwelling') o.stock = Math.max(o.stock, 4 + ((rnd() * 4) | 0));
     // (after the "Week N" reveal has played, so the card does not cover it)
     const wkMsg = () => showMsg(`📅 Week ${week()}: Week of the ${UNITS[G.weekOf].name}`, `${unitIcon(G.weekOf)} ${plural(G.weekOf)} grow by +5 this week. Creatures in your dwellings have multiplied: visit your town to recruit them.`);
-    if (reduceMo.matches) wkMsg(); else { const d0 = G.day; setTimeout(() => { if (G.day === d0 && G.mode !== 'menu' && !G.over) wkMsg(); }, 950); }
+    // (a tap in that window may already have opened the town or a battle: the card waits until the map is back)
+    if (reduceMo.matches) wkMsg(); else { const d0 = G.day, tryMsg = () => { if (G.day !== d0 || G.mode === 'menu' || G.over) return; if (G.mode !== 'map' || walking) { setTimeout(tryMsg, 400); return; } wkMsg(); }; setTimeout(tryMsg, 950); }
   }
   revealAll(); updateHud(); saveSoon();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
