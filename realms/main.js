@@ -1341,6 +1341,7 @@ function interact(hr, v) {
   }
   if (!o) return;
   const O = OBJECTS[o.type], kind = O?.kind;
+  if (you && (o.type === 'monster' || o.type === 'town' || guardOf(v))) bumpWarm('battle'); // a fight may follow: battle programs first
   // guarded: a monster standing next to a mine, chest, site or town must be beaten first
   if (o.type !== 'monster') {
     const guard = guardOf(v);
@@ -1557,49 +1558,102 @@ const wallMat = new THREE.MeshStandardMaterial({ color: 0xb8ae9a, roughness: 0.9
 const activeRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 30).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd84a, toneMapped: false }));
 bscene.add(activeRing); activeRing.visible = false;
 const vfx = createVfx(THREE, bscene);
-// warm everything up behind a loading screen: map + battle shaders, portraits, battlefields, creature fits
+// ---- loading: New game / Continue -> playable map.
+// Only what the first seconds of play need runs behind the loader: the map's shader programs (compileAsync: in
+// parallel where KHR_parallel_shader_compile exists, so the bar keeps moving) and the HUD's hero portraits.
+// Everything else (own town, battle programs + arenas, enemy walls) is queued for idle time
+// after the loader (postwarm below), most-likely-needed first; a battle or town opened before its job ran still
+// builds what it needs itself (prepBattle's curtain, setTown), and bumpWarm('battle') pulls the battle jobs forward
+// as soon as a fight is offered (monster / guard / siege dialog).
+let loadProf = null; // __realms.prewarmProfile(): [label, ms] per loader and postwarm job (perf checks)
+const compileSoon = (sc, cm, ms = 6000) => Promise.race([renderer.compileAsync(sc, cm).catch((e) => console.warn('compile', e)), new Promise((res) => setTimeout(res, ms))]);
+function uploadTextures(root) { // first-use texture uploads (painted canvases) done now instead of in a first frame
+  const seen = new Set();
+  root.traverse((o) => { for (const m of [].concat(o.material || [])) for (const v of Object.values(m)) if (v?.isTexture && !seen.has(v)) { seen.add(v); try { renderer.initTexture(v); } catch (e) { /* ok */ } } });
+}
 function prewarm(onDone) {
-  const jobs = [];
-  jobs.push(['Painting the world', () => { try { renderer.compile(scene, camera); } catch (e) { /* ok */ } }]);
-  // portraits for the creatures you will actually see first: your faction (+ upgrades) and the map guards
-  const myFac = G.players[0]?.fac, need = new Set(G.objects.filter((o) => o.alive && o.type === 'monster').map((o) => o.unit));
-  for (const [id, u] of Object.entries(UNITS)) if (u.fac === myFac) need.add(id);
-  for (const id of need) jobs.push(['Summoning creatures', () => portraitImg(id, 64)]);
-  for (const hr of G.heroes.filter((h) => h.p === 0)) jobs.push(['Summoning heroes', () => { heroPic(hr, 40, 'round'); heroPic(hr, 96); }]);
-  for (const t of new Set([ter[G.heroes[0]?.v] ?? 1, 1, 2, 3, 4, 5, 6, 7])) jobs.push(['Preparing battlefields', () => createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS)]);
-  for (const id of need) jobs.push(['Training armies', () => { const g = cached('u' + id, () => unitGeo(id)); unitFit(id, g, 'battle'); unitFit(id, g, 'map'); }]);
-  for (const fac of new Set(G.towns.filter((t) => t.p !== 0 && t.built.includes('fort')).map((t) => t.fac))) jobs.push(['Raising walls', () => { cached('wall_' + fac, () => wallModel(fac)); cached('gate_' + fac, () => gateModel(fac)); cached('tower_' + fac, () => towerModel(fac)); cached('keep_' + fac, () => keepModel(fac)); }]);
-  // compile every battle program (units, arena ground/grid/decor/water, lava glow) and draw the likely first arena once,
-  // so its textures, buffers and shadow programs are on the GPU before the first fight (it used to cost the first
-  // battle ~4 frames' worth of stall)
-  jobs.push(['Sharpening swords', () => {
-    const m = meshOf(cached('upikeman', () => unitGeo('pikeman'))); setAnim(m, ANIM.IDLE);
-    const t0 = ter[G.heroes.find((h) => h.p === 0)?.v] ?? 1, fields = [...new Set([t0, 1, 2, 3, 4, 5, 6, 7])].map((t) => createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS));
-    bscene.add(m); for (const f of fields) bscene.add(f.group);
-    try { renderer.compile(bscene, bcam); } catch (e) { /* ok */ }
-    for (const f of fields.slice(1)) bscene.remove(f.group);
-    try { bcam.position.set(0, 10.75, 10.6); bcam.lookAt(0, 0, -0.15); post.render(bscene, bcam); } catch (e) { /* ok */ }
-    bscene.remove(m, fields[0].group);
-  }]);
-  // perf: the first town open used to build the whole faction scene (env, buildings, ink hulls) and compile its shaders
-  // on tap (a multi-second hitch on phones). Build the player's own town now and draw it once behind the loader, so
-  // opening it later only toggles the DOM sheet. town_view keeps each faction's environment and building geometry cached.
+  loadProf = [];
+  const jobs = []; // [label, weight, fn]; fn may return a promise (awaited while the bar creeps on)
+  jobs.push(['Painting the world', 6, () => compileSoon(scene, camera)]);
+  for (const hr of G.heroes.filter((h) => h.p === 0)) jobs.push(['Summoning heroes', 1, () => { heroPic(hr, 40, 'round'); }]);
+  const total = jobs.reduce((a, j) => a + j[1], 0), el = $('loader'), bar = $('ld-bar'), txt = $('ld-text');
+  let done = 0, shown = 0;
+  const show = (f) => { f = Math.min(1, Math.max(shown, f)); if (f - shown < 0.004 && f < 1) return; shown = f; bar.style.width = `${(f * 100).toFixed(1)}%`; };
+  el.hidden = false; show(0.02);
+  const yieldNow = () => new Promise((res) => setTimeout(res, 0));
+  (async () => {
+    await new Promise((res) => setTimeout(res, 30)); // let the loader paint first
+    let t0 = performance.now();
+    for (const [label, w, f] of jobs) {
+      if (txt.textContent !== label + '…') txt.textContent = label + '…';
+      const a = performance.now();
+      let r = null; try { r = f(); } catch (e) { console.warn('prewarm', label, e); }
+      if (r && typeof r.then === 'function') {
+        // creep toward this job's end while it runs off the main thread, so the bar never sits still
+        const from = done / total, to = (done + w) / total;
+        const iv = setInterval(() => show(shown + (to - shown) * 0.12), 100);
+        await r.catch(() => {}); clearInterval(iv); t0 = performance.now();
+        void from;
+      }
+      loadProf.push([label, Math.round(performance.now() - a)]);
+      done += w; show(done / total);
+      if (performance.now() - t0 > 40) { await yieldNow(); t0 = performance.now(); }
+    }
+    show(1);
+    el.classList.add('done'); setTimeout(() => { el.hidden = true; el.classList.remove('done'); }, 350);
+    onDone?.();
+    postwarm(postJobs());
+  })();
+}
+// the idle-time remainder of the warm-up, in priority order
+function postJobs() {
+  const out = [], add = (k, label, f) => out.push({ k, label, f });
+  // the player's own town: geometry now, its programs compiled in parallel (opening it later is a DOM toggle)
   const myTown = G.towns.find((t) => t.p === 0);
   if (myTown) {
-    jobs.push(['Raising your town', () => { townView.highlight(null); townView.setTown({ fac: myTown.fac, built: myTown.built, name: myTown.name }); }]);
-    jobs.push(['Raising your town', () => { townView.update(1 / 60); try { post.render(townView.scene, townView.camera); } catch (e) { /* ok */ } }]);
+    add('town', 'town', () => { if (G.mode !== 'map') return; townView.highlight(null); townView.setTown({ fac: myTown.fac, built: myTown.built, name: myTown.name }); });
+    add('town', 'town shaders', () => { if (G.mode !== 'map') return; townView.update(1 / 60); uploadTextures(townView.scene); return compileSoon(townView.scene, townView.camera); });
   }
-  const total = jobs.length, el = $('loader');
-  el.hidden = false;
-  const step = () => {
-    const t0 = performance.now();
-    // run jobs for ~110 ms per slice, then let the bar repaint
-    while (jobs.length && performance.now() - t0 < 110) { const [label, f] = jobs.shift(); $('ld-text').textContent = label + '…'; try { f(); } catch (e) { console.warn('prewarm', e); } }
-    $('ld-bar').style.width = `${Math.round(((total - jobs.length) / total) * 100)}%`;
-    if (jobs.length) setTimeout(step, 0);
-    else { el.classList.add('done'); setTimeout(() => { el.hidden = true; el.classList.remove('done'); }, 350); onDone?.(); }
-  };
-  setTimeout(step, 30);
+  // battle: every battle program (units, arena ground/grid/decor/water, lava glow), the likely first arena first
+  const t0 = ter[G.heroes.find((h) => h.p === 0)?.v] ?? 1, terrs = [...new Set([t0, 1, 2, 3, 4, 5, 6, 7])];
+  terrs.forEach((t, i) => add('battle', 'arena ' + t, () => {
+    if (G.mode === 'battle') return; // a battle in progress owns bscene
+    const f = createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS);
+    const m = i ? null : meshOf(cached('upikeman', () => unitGeo('pikeman')));
+    if (m) { setAnim(m, ANIM.IDLE); bscene.add(m); }
+    bscene.add(f.group); if (i === 0) uploadTextures(f.group);
+    const p = compileSoon(bscene, bcam);
+    bscene.remove(f.group); if (m) bscene.remove(m);
+    return p;
+  }));
+  // creature geometry + fits and every portrait size the UI uses come from warmGeometryIdle (its own idle queue)
+  for (const fac of new Set(G.towns.filter((t) => t.p !== 0 && t.built.includes('fort')).map((t) => t.fac))) add('walls', 'walls ' + fac, () => { cached('wall_' + fac, () => wallModel(fac)); cached('gate_' + fac, () => gateModel(fac)); cached('tower_' + fac, () => towerModel(fac)); cached('keep_' + fac, () => keepModel(fac)); });
+  return out;
+}
+// One job per idle slice, only while the map is calm (warmCalm); urgent (bumped) jobs run at once, calm or not.
+// Creature geometry (warmGeometryIdle) follows when this queue is empty.
+const postQ = [];
+let postT = 0, postIn = false;
+function postSchedule(ms) { clearTimeout(postT); postT = setTimeout(() => { postT = 0; if (postQ[0]?.urgent) postRun(null); else idleCb(postRun); }, ms); }
+function postwarm(jobs) { postQ.length = 0; postQ.push(...jobs); postSchedule(400); }
+async function postRun(dl) {
+  if (postIn) return;
+  if (!postQ.length) { warmGeometryIdle(); return; }
+  const j = postQ[0];
+  if (!j.urgent && (!warmCalm() || (dl && !dl.didTimeout && dl.timeRemaining() < 3))) { postSchedule(250); return; }
+  postIn = true; postQ.shift();
+  const a = performance.now();
+  try { await j.f(); } catch (e) { console.warn('postwarm', j.label, e); }
+  loadProf?.push(['idle:' + j.label, Math.round(performance.now() - a)]);
+  postIn = false;
+  if (postQ.length) postSchedule(j.urgent ? 0 : 30); else warmGeometryIdle();
+}
+function bumpWarm(kind) {
+  const hit = postQ.filter((j) => j.k === kind);
+  if (!hit.length) return;
+  for (const j of hit) { j.urgent = true; postQ.splice(postQ.indexOf(j), 1); }
+  postQ.unshift(...hit);
+  if (!postIn) postSchedule(0);
 }
 // scenery around the field
 let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
@@ -3272,10 +3326,35 @@ layoutWorld();
 resize();
 QG.init();
 showMenu();
-frame();
+// title (perf): the menu takes taps at once and the spinning world fades in when its shader programs are compiled
+// (in parallel where KHR_parallel_shader_compile exists), instead of the very first frame blocking the page on them.
+{
+  const cv = renderer.domElement;
+  let go = false;
+  const start = () => {
+    if (go) return; go = true; frame();
+    requestAnimationFrame(() => { cv.style.transition = 'opacity 0.6s'; cv.style.opacity = ''; setTimeout(() => { cv.style.transition = ''; }, 700); });
+    warmPicker();
+  };
+  cv.style.opacity = '0';
+  compileSoon(scene, camera, 4000).then(start);
+}
+// the faction picker shows three creature portraits per faction: render them in the title's idle time (off-thread
+// readback), so tapping New game does not render 15 portraits synchronously
+function warmPicker() {
+  const ids = [...new Set(Object.values(FACTIONS).flatMap((f) => [0, 3, 6].map((i) => f.units?.[i])))].filter((id) => id && UNITS[id]);
+  const next = () => {
+    if (G.mode !== 'menu') return;
+    while (ids.length && hasPortrait(ids[0], 64)) ids.shift();
+    if (!ids.length) return;
+    idleCb((dl) => { if (G.mode !== 'menu' || (!dl.didTimeout && dl.timeRemaining() < 3)) { setTimeout(next, 200); return; } portraitAsync(ids.shift(), 64).finally(next); });
+  };
+  setTimeout(next, 600);
+}
 window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
 Object.assign(window.__realms, { quality: QG.state, renderer });
+Object.assign(window.__realms, { prewarmProfile: () => loadProf, postQueue: () => postQ.map((j) => j.label), bumpWarm });
 // battle test hooks (battle-flow logs / soft-lock runs): fast-forward the battle without rendering
 Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get bmesh() { return bmesh; }, get banim() { return banim; }, bstep: (dt) => { if (!bprep) { animateBattle(dt); vfx.update(dt, bcam); } } }));
 // geometry cache: idle warm-up hook + stats (models, triangles, CPU-side MB of vertex data)
