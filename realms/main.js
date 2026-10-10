@@ -381,29 +381,50 @@ function resize(force) {
 window.addEventListener('resize', () => resize());
 // The free screen area between the HUD bars, measured from the DOM only when something changed (resize, a bar's
 // size, a mode switch), never per frame. Layout boxes (offset*) are used, so slide-in transforms don't count.
-const lay = { dirty: true, townDirty: true, snapMap: true, snapBat: true, mode: '', sinceMode: 0, mapT: 0, mapB: 0, batT: 0, batB: 0, mapOff: 0, bOffX: 0, bOffY: 0, bD: 0 };
+const lay = { dirty: true, townDirty: true, snapMap: true, snapBat: true, mode: '', sinceMode: 0, mapT: 0, mapB: 0, mapL: 0, mapR: 0, batT: 0, batB: 0, batL: 0, batR: 0, mapOff: 0, mapOffX: 0, bOffX: 0, bOffY: 0, bD: 0 };
 function boxIn(e) {
   if (!e || !e.offsetParent) return null; // hidden
   let t = 0, l = 0;
   for (let x = e; x && x.id !== 'app'; x = x.offsetParent) { t += x.offsetTop; l += x.offsetLeft; }
   return { t, l, w: e.offsetWidth, h: e.offsetHeight, b: t + e.offsetHeight, r: l + e.offsetWidth };
 }
+// landscape (agent "landscape"): the HUD lives on the side edges (map: a sidebar rail on the right; battle: the turn
+// queue down the left, the status scroll + buttons down the right), so the free rectangle has four edges. A chrome
+// box hugging the left / right edge (narrow and tall) narrows it from that side; anything else (the portrait bars,
+// the landscape resource strip) from the top or the bottom.
+function freeRect(boxes, W, H, o) {
+  let T = 0, B = H, L = 0, R = W;
+  for (const x of boxes) {
+    if (!x) continue;
+    if (x.r <= W * 0.36 && x.h > H * 0.4) L = Math.max(L, x.r);
+    else if (x.l >= W * 0.6 && x.h > H * 0.4) R = Math.min(R, x.l);
+    else if (x.t + x.h / 2 < H / 2) T = Math.max(T, x.b);
+    else B = Math.min(B, x.t);
+  }
+  o.T = T; o.B = B; o.L = L; o.R = R;
+  return o;
+}
+const _fr = { T: 0, B: 0, L: 0, R: 0 };
 function measureLayout() {
   lay.dirty = false;
-  const H = rsz.h || innerHeight, q = (s) => document.querySelector(s);
-  const rb = boxIn(q('#hud .resbar')), bt = boxIn(q('#hud .bottom'));
-  lay.mapT = rb ? rb.b : 0; lay.mapB = bt ? bt.t : H;
-  const top = boxIn(q('#battle .btop')), rd = boxIn($('b-round')), btn = boxIn(q('#battle .btns')), msg = boxIn($('b-msg'));
-  lay.batT = Math.max(top ? top.b : 0, rd ? rd.b : 0) + 4;
-  let B = btn ? btn.t : H;
+  const H = rsz.h || innerHeight, W = rsz.w || innerWidth, q = (s) => document.querySelector(s);
+  const rail = boxIn(q('#hud .rail'));
+  // map: in landscape the bottom-left hero card is a corner overlay, not a band; the focus keeps clear of it
+  freeRect([boxIn(q('#hud .resbar')), rail, rail ? boxIn($('sel')) : boxIn(q('#hud .bottom'))], W, H, _fr);
+  lay.mapT = _fr.T; lay.mapB = _fr.B; lay.mapL = _fr.L; lay.mapR = _fr.R;
+  const top = boxIn(q('#battle .btop')), rd = boxIn($('b-round')), bot = boxIn(q('#battle .bbot')), btn = boxIn(q('#battle .btns')), msg = boxIn($('b-msg'));
+  const side = !!(bot && bot.l >= W * 0.6 && bot.h > H * 0.4);
+  freeRect(side ? [top, bot] : [top, rd, btn], W, H, _fr);
+  lay.batT = _fr.T + (_fr.T ? 4 : 0); lay.batL = _fr.L; lay.batR = _fr.R;
+  let B = _fr.B;
   // the status scroll stacked above the buttons (portrait): reserve its one-line height, so a message
   // wrapping to two lines doesn't re-frame the camera
-  if (msg && btn && msg.t < btn.t - 4) { const cs = getComputedStyle($('b-msg')); B = btn.t - (parseFloat(cs.minHeight) || 38) - (parseFloat(cs.marginBottom) || 0); }
+  if (!side && msg && btn && msg.t < btn.t - 4) { const cs = getComputedStyle($('b-msg')); B = btn.t - (parseFloat(cs.minHeight) || 38) - (parseFloat(cs.marginBottom) || 0); }
   lay.batB = B - 4;
 }
 if (typeof ResizeObserver !== 'undefined') {
   const ro = new ResizeObserver(() => { lay.dirty = true; });
-  for (const s of ['#hud .resbar', '#hud .bottom', '#battle .btop', '#battle .bbot']) { const e = document.querySelector(s); if (e) ro.observe(e); }
+  for (const s of ['#hud .resbar', '#hud .bottom', '#hud .rail', '#sel', '#battle .btop', '#battle .bbot']) { const e = document.querySelector(s); if (e) ro.observe(e); }
   const tro = new ResizeObserver(() => { lay.townDirty = true; });
   tro.observe($('town'));
 }
@@ -425,12 +446,16 @@ function mapViewOffset(dt) {
     want = lo > hi ? (lo + hi) / 2 : clamp(want, lo, hi);
     want = clamp(want, -H * 0.25, H * 0.25);
   }
+  // landscape: the sidebar rail takes the right edge, so the view's centre moves to the middle of the free part
+  const wantX = G.mode === 'map' ? Math.round(W / 2 - (lay.mapL + Math.min(W, lay.mapR || W)) / 2) : 0;
   const snap = lay.snapMap || lay.sinceMode < 0.5; lay.snapMap = false;
   let o = Math.abs(want - lay.mapOff) < 0.3 || snap ? want : lay.mapOff + (want - lay.mapOff) * (1 - Math.exp(-dt * 6));
+  let ox = Math.abs(wantX - lay.mapOffX) < 0.3 || snap ? wantX : lay.mapOffX + (wantX - lay.mapOffX) * (1 - Math.exp(-dt * 6));
   if (Math.abs(o) < 0.5) o = 0;
-  const key = `${o.toFixed(2)}:${W}:${H}`;
-  lay.mapOff = o; if (key === lay.mapKey) return; lay.mapKey = key;
-  if (!o) camera.clearViewOffset(); else camera.setViewOffset(W, H, 0, -o, W, H);
+  if (Math.abs(ox) < 0.5) ox = 0;
+  const key = `${o.toFixed(2)}:${ox.toFixed(2)}:${W}:${H}`;
+  lay.mapOff = o; lay.mapOffX = ox; if (key === lay.mapKey) return; lay.mapKey = key;
+  if (!o && !ox) camera.clearViewOffset(); else camera.setViewOffset(W, H, ox, -o, W, H);
 }
 // ------------------------------------------------------------------ adaptive quality governor
 // The render resolution follows the measured frame time: full quality is min(devicePixelRatio, 2) (the old fixed
@@ -1131,7 +1156,7 @@ const mini = (() => {
   const M = { el, dirty: true, fresh: null, sig: '', t: 0, w: 0, h: 0, s: 1, pr: 1, gw: 0, gh: 0 };
   const COLS = TER_COL.map((c) => '#' + c.getHexString()), ROADC = '#' + ROAD_COL.getHexString(), FOGC = '#1d2236';
   function size() {
-    const land = innerWidth > innerHeight, cw = land ? clamp(innerWidth * 0.17, 120, 190) : clamp(innerWidth * 0.32, 104, 150);
+    const land = innerWidth > innerHeight, cw = land ? clamp(innerWidth * 0.155, 124, 200) - 16 : clamp(innerWidth * 0.32, 104, 150); // landscape: the rail's inner width (style.css --rail)
     const gw = GRID.W + 0.5, gh = (GRID.H - 1) * 0.866 + 1, ch = cw * gh / gw, pr = Math.min(2, devicePixelRatio || 1);
     if (Math.abs(cw - M.w) < 0.5 && gw === M.gw && gh === M.gh && pr === M.pr) return false;
     M.w = cw; M.h = ch; M.gw = gw; M.gh = gh; M.pr = pr; M.s = (cw * pr) / gw;
@@ -1153,7 +1178,8 @@ const mini = (() => {
   const _a = new THREE.Vector3();
   function viewPoly() {
     const pts = [], W = innerWidth, H = innerHeight, D = viewDist(cam.dist) * 2.6;
-    for (const [x, y] of [[0, lay.mapT || 0], [W, lay.mapT || 0], [W, lay.mapB || H], [0, lay.mapB || H]]) {
+    const L = lay.mapL || 0, R = Math.min(W, lay.mapR || W);
+    for (const [x, y] of [[L, lay.mapT || 0], [R, lay.mapT || 0], [R, lay.mapB || H], [L, lay.mapB || H]]) {
       ndc.set((x / W) * 2 - 1, -(y / H) * 2 + 1); ray.setFromCamera(ndc, camera); _gp.constant = -cam.y;
       let p = ray.ray.intersectPlane(_gp, _a);
       if (!p || p.distanceTo(camFocus) > D) { const d = ray.ray.direction; const k = Math.hypot(d.x, d.z) || 1; p = _a.set(camFocus.x + d.x / k * D, 0, camFocus.z + d.z / k * D); }
@@ -1312,7 +1338,7 @@ cvs.addEventListener('pointerdown', (e) => {
   if (ptrs.size > 2) return;
   if (ptrs.size === 2) {
     const [p, q] = [...ptrs.values()];
-    pinch = { d: Math.max(1, Math.hypot(p.x - q.x, p.y - q.y)), dist: G.mode === 'battle' ? bview.dist : cam.tDist, mx: (p.x + q.x) / 2, my: (p.y + q.y) / 2, ang: Math.atan2(q.y - p.y, q.x - p.x), twist: 0 };
+    pinch = { d: Math.max(1, Math.hypot(p.x - q.x, p.y - q.y)), dist: G.mode === 'battle' ? Math.max(bview.dist, lay.bDcur || 0) : cam.tDist, mx: (p.x + q.x) / 2, my: (p.y + q.y) / 2, ang: Math.atan2(q.y - p.y, q.x - p.x), twist: 0 };
     press = null; if (camMode()) camGrab(); return;
   }
   // touching a gliding map just stops it: that touch is a grab, not a tap (a flight only stops once the finger drags)
@@ -1378,7 +1404,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) dropP
 window.addEventListener('blur', dropPtrs);
 cvs.addEventListener('wheel', (e) => {
   e.preventDefault(); if (G.mode === 'town') return;
-  if (G.mode === 'battle') bview.dist = clamp(bview.dist * (e.deltaY > 0 ? 1.08 : 0.92), 8, 16);
+  if (G.mode === 'battle') bview.dist = clamp(Math.max(bview.dist, lay.bDcur || 0) * (e.deltaY > 0 ? 1.08 : 0.92), 8, 16);
   else {
     // proportional to the scroll amount, so trackpads (many tiny deltas) zoom as smoothly as a mouse notch
     const dy = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
@@ -1722,7 +1748,8 @@ const bscene = new THREE.Scene();
 bscene.background = new THREE.Color(0x87a8d8);
 bscene.fog = new THREE.Fog(0x87a8d8, 14, 34);
 const bcam = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
-const bview = { dist: 12.5, yaw: 0 };
+// dist: the player's pinch-zoom; the fitted framing (frameBattleCam) is the floor, so 0 = always the fitted view
+const bview = { dist: 0, yaw: 0 };
 {
 }
 const bSun = new THREE.DirectionalLight(0xfff0d8, 2.4); bSun.position.set(4, 10, 3); bSun.castShadow = true; bSun.shadow.mapSize.set(2048, 2048); bSun.shadow.radius = 2.5; bSun.shadow.intensity = 0.6;
@@ -2268,7 +2295,8 @@ function renderQueue(B) {
   const live = new Map();
   for (const el of box.children) if (!el.classList.contains('gone')) live.set(el.dataset.k, el);
   const keep = new Set(items.map((it) => it.k)), old = new Map();
-  if (!first) for (const [k, el] of live) if (keep.has(k)) old.set(el, el.getBoundingClientRect().left);
+  // (landscape: the strip is a column down the left edge, so the slide is vertical: both axes are measured)
+  if (!first) for (const [k, el] of live) if (keep.has(k)) { const r = el.getBoundingClientRect(); old.set(el, [r.left, r.top]); }
   for (const [k, el] of live) if (!keep.has(k)) { el.classList.add('gone'); el.classList.remove('now'); setTimeout(() => el.remove(), 360); }
   const fresh = [];
   const order = items.map((it, i) => {
@@ -2288,7 +2316,7 @@ function renderQueue(B) {
   if (first) return;
   // FLIP the icons that changed place
   const moved = [];
-  for (const [el, x0] of old) { const dx = x0 - el.getBoundingClientRect().left; if (Math.abs(dx) > 2) { el.style.transition = 'none'; el.style.transform = `translateX(${dx}px)`; moved.push(el); } }
+  for (const [el, [x0, y0]] of old) { const r = el.getBoundingClientRect(), dx = x0 - r.left, dy = y0 - r.top; if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { el.style.transition = 'none'; el.style.transform = `translate(${dx}px, ${dy}px)`; moved.push(el); } }
   void box.offsetWidth;
   for (const el of moved) { el.style.transition = ''; el.style.transform = ''; }
   for (const el of fresh) el.classList.remove('in');
@@ -2816,14 +2844,14 @@ function openHero() {
   const st = (k, ic, n) => `<div class="st"><i>${ic}</i><b>${statOf(hr, k)}</b><small>${n}</small></div>`;
   const next = xpFor(hr.lvl + 1), prev = xpFor(hr.lvl), pct = (a, b) => clamp((a / Math.max(1, b)) * 100, 0, 100);
   const chips = (arr, none) => (arr.length ? `<div class="chips">${arr.join('')}</div>` : `<p class="none">${none}</p>`);
-  showMsg(`${icon('hero', 24)} ${hr.name}`, `<div class="hs-head"><span class="hs-pt">${heroPic(hr, 96)}</span><span class="hs-lv"><small>Level</small><b>${hr.lvl}</b></span><div class="hs-xp"><div class="xpbar"><i style="width:${pct(hr.xp - prev, next - prev)}%"></i></div><small>${icon('experience', 14)} ${fmt(hr.xp)} / ${fmt(next)} experience</small></div></div>
+  showMsg(`${icon('hero', 24)} ${hr.name}`, `<div class="hs-grid"><div class="hs-a"><div class="hs-head"><span class="hs-pt">${heroPic(hr, 96)}</span><span class="hs-lv"><small>Level</small><b>${hr.lvl}</b></span><div class="hs-xp"><div class="xpbar"><i style="width:${pct(hr.xp - prev, next - prev)}%"></i></div><small>${icon('experience', 14)} ${fmt(hr.xp)} / ${fmt(next)} experience</small></div></div>
     <div class="stats">${st('att', icon('attack', 24), 'Attack')}${st('def', icon('defense', 24), 'Defence')}${st('pow', icon('power', 24), 'Power')}${st('know', icon('knowledge', 24), 'Knowledge')}</div>
-    <div class="meters"><div class="meter"><span>${icon('mana', 16)}</span>Mana<b>${hr.mana}/${maxMana(hr)}</b><i><i style="width:${pct(hr.mana, maxMana(hr))}%"></i></i></div><div class="meter mp"><span>${icon('movement', 16)}</span>Move<b>${fmt(hr.mp)}</b><i><i style="width:${pct(hr.mp, moveMax(hr))}%"></i></i></div></div>
+    <div class="meters"><div class="meter"><span>${icon('mana', 16)}</span>Mana<b>${hr.mana}/${maxMana(hr)}</b><i><i style="width:${pct(hr.mana, maxMana(hr))}%"></i></i></div><div class="meter mp"><span>${icon('movement', 16)}</span>Move<b>${fmt(hr.mp)}</b><i><i style="width:${pct(hr.mp, moveMax(hr))}%"></i></i></div></div></div><div class="hs-b">
     <h3 class="sec">Army</h3>
     <div class="slots big">${Array.from({ length: Math.max(ARMY_SLOTS, hr.army.length) }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
     <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${icon(k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
     <h3 class="sec">Spells</h3>${chips(hr.spells.map((id) => `<span class="chip">${icon(id, 18)}${SPELLS[id].name}</span>`), 'No spells yet: build a Mage Guild')}
-    <h3 class="sec">Artifacts</h3>${chips([...(G.run ? CR.equippedIds(G.run).map((id) => `<span class="chip">${icon(CR.ARTIFACTS[id].icon, 18)}${CR.ARTIFACTS[id].name}</span>`) : []), ...hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; })], 'No artifacts yet')}`, true);
+    <h3 class="sec">Artifacts</h3>${chips([...(G.run ? CR.equippedIds(G.run).map((id) => `<span class="chip">${icon(CR.ARTIFACTS[id].icon, 18)}${CR.ARTIFACTS[id].name}</span>`) : []), ...hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; })], 'No artifacts yet')}</div></div>`, true);
 }
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
@@ -3696,8 +3724,12 @@ const BGRID = (() => {
   return [[-x, 0, -z], [x, 0, -z], [-x, 1.55, -z], [x, 1.55, -z], [-x, 0, z], [x, 0, z], [-x, 0.7, z], [x, 0.7, z]].map((a) => new THREE.Vector3(...a));
 })();
 const bfV = new THREE.Vector3(), bfE = [0, 0, 0, 0];
+// camera elevation: 46 deg in portrait; landscape (height is the scarce side, the deep grid is height-bound) looks a
+// little lower, 40 deg, so the field foreshortens and the creatures read taller (same orbit radius: 1.188 d)
+const TILT_P = [0.82, 0.86], TILT_L = [0.91, 0.764];
+let bTilt = TILT_P;
 function bcamPlace(s, c, d) {
-  bcam.position.set(s * d * 0.82, d * 0.86, c * d * 0.82 + 0.4);
+  bcam.position.set(s * d * bTilt[0], d * bTilt[1], c * d * bTilt[0] + 0.4);
   bcam.lookAt(0, 0, -0.15);
   bcam.updateMatrixWorld(true);
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
@@ -3713,8 +3745,11 @@ function frameBattleCam(s, c, dt) {
   if (lay.dirty) measureLayout();
   const W = rsz.w || innerWidth, H = rsz.h || innerHeight;
   const T = clamp(lay.batT, 0, H * 0.45), B = clamp(lay.batB, H * 0.55, H);
+  const L = clamp(lay.batL, 0, W * 0.36), R = clamp(lay.batR || W, W * 0.64, W);
+  const land = W > H * 1.15;
+  bTilt = land ? TILT_L : TILT_P;
   const ppt = H / 2 / Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2)); // px per tangent unit
-  const avW = W * 0.99, avH = Math.max(H * 0.3, B - T) * 0.97;
+  const avW = (R - L) * 0.99, avH = Math.max(H * 0.3, B - T) * 0.97;
   let d = lay.bD || 14;
   for (let i = 0; i < 4; i++) {
     const e = bcamPlace(s, c, d), k = Math.max(((e[1] - e[0]) * ppt) / avW, ((e[3] - e[2]) * ppt) / avH);
@@ -3728,7 +3763,7 @@ function frameBattleCam(s, c, dt) {
   lay.bD = d; lay.bDcur = D;
   const e = bcamPlace(s, c, D);
   // optical centre so that the grid box's middle lands on the band's middle
-  const ox = ((e[0] + e[1]) / 2) * ppt, oy = H / 2 - ((T + B) / 2 + ((e[2] + e[3]) / 2) * ppt);
+  const ox = ((e[0] + e[1]) / 2) * ppt + W / 2 - (L + R) / 2, oy = H / 2 - ((T + B) / 2 + ((e[2] + e[3]) / 2) * ppt);
   const k = snap ? 1 : 1 - Math.exp(-dt * 8);
   lay.bOffX += (ox - lay.bOffX) * k; lay.bOffY += (oy - lay.bOffY) * k;
   const v = bcam.view;
@@ -4166,3 +4201,5 @@ Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get 
 // geometry cache: idle warm-up hook + stats (models, triangles, CPU-side MB of vertex data)
 Object.assign(window.__realms, { trimGeoCache, memStats: () => ({ geoCache: geoCache.size, floaters: floaters.length, heroMeshes: heroMeshes.size, plates: bplateMap.size, bstuff: bstuff.children.length, world: world.children.length, flora: flora.children.length, townScene: townView.scene.children.length, glLost: !!glLost }) });
 Object.assign(window.__realms, { warmGeometryIdle, warmQueue: () => warmQ.length + ptQ.length, portraitQueue: () => ptQ.length + portraitsPending(), geoStats: () => { let tris = 0, bytes = 0; for (const m of geoCache.values()) for (const g of [m?.body, m?.glow]) if (g?.attributes?.position) { tris += g.attributes.position.count / 3; for (const a of Object.values(g.attributes)) bytes += a.array.byteLength; } return { models: geoCache.size, tris: Math.round(tris), mb: +(bytes / 1048576).toFixed(1) }; } });
+// layout test hooks (agent "landscape"): open the screens the layout screenshots need
+Object.assign(window.__realms, { ui: { openHero, levelUp, endGame, crownDoll, get lay() { return lay; } } });

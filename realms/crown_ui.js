@@ -59,6 +59,19 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
     parent.appendChild(hud);
     return hud;
   }
+  // landscape (agent "landscape"): the chips are icons down the left edge; the first tap expands one (its label slides
+  // out, collapsing again after 4 s), a tap on the expanded chip opens it. Portrait shows the labels and acts at once.
+  let openT = 0;
+  const compact = () => typeof matchMedia === 'function' && matchMedia('(orientation: landscape)').matches;
+  function tapChip(node, act) {
+    S('click');
+    if (compact() && !node.classList.contains('open')) {
+      for (const c of hud.querySelectorAll('.open')) c.classList.remove('open');
+      node.classList.add('open'); clearTimeout(openT); openT = setTimeout(() => node.classList.remove('open'), 4000);
+      return;
+    }
+    node.classList.remove('open'); act?.();
+  }
   // h: { day, invasion: { dir, days, week } | null, onEquip, onRegion, onInvasion }
   function renderHud(run, h = {}) {
     if (!hud) return;
@@ -66,20 +79,20 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
     const n = C.equippedIds(run).length, sets = C.activeSets(run);
     const eq = `<span class="cr-sig">${icon('artifact', 24)}</span><span class="cr-pt2"><small>Equipment</small><b>${n} worn${run.backpack.length ? ` · ${run.backpack.length} packed` : ''}</b></span>${sets.length ? `<em class="cr-setglow" title="${esc(sets.map((s) => s.name).join(', '))}">${icon(sets[0].icon, 14)}</em>` : ''}`;
     const E = hud.querySelector('#cr-eq'); if (E.__h !== eq) { E.innerHTML = eq; E.__h = eq; E.classList.toggle('set', !!sets.length); }
-    E.onclick = () => { S('click'); h.onEquip?.(); };
+    E.onclick = () => tapChip(E, h.onEquip);
     const G = C.GUARDIANS[run.guardians[run.region - 1]];
     const R = hud.querySelector('#cr-reg');
     const rg = `<span class="cr-sig">${icon('lock', 20)}</span><span class="cr-pt2"><small>Region ${run.region}/${run.regions}${run.keys.length ? ` · ${run.keys.length} key${run.keys.length > 1 ? 's' : ''}` : ''}</small><b>${run.region >= run.regions ? 'The Crown' : 'Key'}: ${esc(G.name.split(',')[0])}</b></span>`;
     if (R.__h !== rg) { R.innerHTML = rg; R.__h = rg; }
-    R.onclick = () => { S('click'); h.onRegion?.(); };
+    R.onclick = () => tapChip(R, h.onRegion);
     const I = hud.querySelector('#cr-inv'), inv = h.invasion;
     I.hidden = !inv;
     if (inv) {
       const t = inv.days <= 0 ? 'At your walls tonight!' : inv.days === 1 ? 'Arrives tomorrow night' : `${inv.days} days away`;
       const ih = `<span class="cr-sig">${icon('attack', 22)}</span><span class="cr-pt2"><small>Invasion from the ${inv.dir}</small><b>${t}</b></span>`;
       if (I.__h !== ih) { I.innerHTML = ih; I.__h = ih; }
-      I.className = `cr-pill k-inv${inv.days <= 1 ? ' due' : ' soon'}`;
-      I.onclick = () => { S('click'); h.onInvasion?.(); };
+      I.className = `cr-pill k-inv${inv.days <= 1 ? ' due' : ' soon'}${I.classList.contains('open') ? ' open' : ''}`;
+      I.onclick = () => tapChip(I, h.onInvasion);
     }
   }
 
