@@ -179,15 +179,28 @@ export function createVfx(THREE, scene) {
       camPos.setFromMatrixPosition(cam.matrixWorld);
     };
     root.add(obj);
+    geo.setDrawRange(0, 0); // perf: only [0, hi) is stepped, uploaded and drawn (see stepPool)
     const F = () => new Float32Array(n);
     return { n, obj, geo, pos, col, misc, cur: 0, P: new Float32Array(n * 3), V: new Float32Array(n * 3), C: new Float32Array(n * 3), T: new Float32Array(n * 3),
-      age: F(), max: F(), s0: F(), s1: F(), a0: F(), tile: F(), rot: F(), rv: F(), drag: F(), g: F(), fin: F(), ak: F(), ap: F(), floor: F(), live: 0 };
+      age: F(), max: F(), s0: F(), s1: F(), a0: F(), tile: F(), rot: F(), rv: F(), drag: F(), g: F(), fin: F(), ak: F(), ap: F(), floor: F(), live: 0, add: !!additive, hi: 0, free: 0 };
   }
   const ADD = pointPool(1600, true), ALP = pointPool(500, false);
 
+  // perf: the additive pool takes the lowest free slot (additive blending is order-independent), so its live particles
+  // stay packed in [0, hi) and the per-frame step + GPU upload cover only those instead of all 1600 slots. The
+  // alpha-blended pool keeps its round-robin order (newer puffs draw over older ones), bounded by hi as well.
   function slot(S) {
-    for (let k = 0; k < S.n; k++) { const i = (S.cur + k) % S.n; if (S.max[i] === 0) { S.cur = (i + 1) % S.n; return i; } }
-    const i = S.cur; S.cur = (S.cur + 1) % S.n; return i;
+    if (S.add) {
+      for (let i = S.free; i < S.n; i++) if (S.max[i] === 0) { S.free = i + 1; if (i >= S.hi) S.hi = i + 1; return i; }
+      S.free = S.n;
+    } else for (let k = 0; k < S.n; k++) { const i = (S.cur + k) % S.n; if (S.max[i] === 0) { S.cur = (i + 1) % S.n; if (i >= S.hi) S.hi = i + 1; return i; } }
+    const i = S.cur; S.cur = (S.cur + 1) % S.n; if (i >= S.hi) S.hi = i + 1; return i;
+  }
+  // upload [0, count) of a dynamic attribute; ranges not yet consumed by a render (bstep runs without one) are widened
+  function upload(attr, count) {
+    const r = attr.updateRanges;
+    if (r.length) { r[0].start = 0; r[0].count = Math.max(r[0].count, count); r.length = 1; } else attr.addUpdateRange(0, count);
+    attr.needsUpdate = true;
   }
   // o: { p, v, c:[r,g,b], life, s0, s1, a, tile, rot, rv, drag, g, fin, ap, at (attractor V3), ak, floor }
   function emit(S, p, o) {
@@ -202,14 +215,18 @@ export function createVfx(THREE, scene) {
     return i;
   }
   function stepPool(S, dt) {
-    let live = 0;
-    for (let i = 0; i < S.n; i++) {
+    // slots >= hi are not drawn (draw range), so their stale GPU data never shows; every slot < hi is either live or
+    // has alpha 0 on the CPU side, and [0, hi) is re-uploaded whenever anything is drawn
+    let live = 0, top = 0;
+    const hi = S.hi;
+    if (!hi) { S.live = 0; return; }
+    for (let i = 0; i < hi; i++) {
       const i3 = i * 3, i4 = i * 4;
       if (S.max[i] === 0) { if (S.col[i4 + 3] !== 0) S.col[i4 + 3] = 0; continue; }
       S.age[i] += dt;
       const k = S.age[i] / S.max[i];
-      if (k >= 1) { S.max[i] = 0; S.col[i4 + 3] = 0; continue; }
-      live++;
+      if (k >= 1) { S.max[i] = 0; S.col[i4 + 3] = 0; if (i < S.free) S.free = i; continue; }
+      live++; top = i + 1;
       const dr = Math.max(0, 1 - S.drag[i] * dt);
       let vx = S.V[i3] * dr, vy = S.V[i3 + 1] * dr - S.g[i] * dt, vz = S.V[i3 + 2] * dr;
       if (S.ak[i]) { const ak = S.ak[i] * dt; vx += (S.T[i3] - S.P[i3]) * ak; vy += (S.T[i3 + 1] - S.P[i3 + 1]) * ak; vz += (S.T[i3 + 2] - S.P[i3 + 2]) * ak; }
@@ -223,8 +240,10 @@ export function createVfx(THREE, scene) {
       S.col[i4] = S.C[i3]; S.col[i4 + 1] = S.C[i3 + 1]; S.col[i4 + 2] = S.C[i3 + 2]; S.col[i4 + 3] = a;
       S.misc[i3] = S.s0[i] + (S.s1[i] - S.s0[i]) * ke; S.misc[i3 + 1] = S.tile[i]; S.misc[i3 + 2] = S.rot[i];
     }
-    S.live = live;
-    const at = S.geo.attributes; at.position.needsUpdate = at.aCol.needsUpdate = at.aMisc.needsUpdate = true;
+    S.live = live; S.hi = top;
+    S.geo.setDrawRange(0, top);
+    if (!top) return;
+    const at = S.geo.attributes; upload(at.position, top * 3); upload(at.aCol, top * 4); upload(at.aMisc, top * 3);
   }
 
   // ---------------- streaks: camera-facing quads, sparks (velocity-stretched) or fixed segments
@@ -236,14 +255,17 @@ export function createVfx(THREE, scene) {
   sGeo.setAttribute('aCol', new THREE.BufferAttribute(sCol, 4).setUsage(THREE.DynamicDrawUsage));
   sGeo.setAttribute('aV', new THREE.BufferAttribute(sV, 1));
   sGeo.setIndex(new THREE.BufferAttribute(sIdx, 1));
+  sGeo.setDrawRange(0, 0); // perf: only quads [0, ST.hi) are stepped, uploaded and drawn
   const sMat = new THREE.ShaderMaterial({ vertexShader: ST_VS, fragmentShader: ST_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
   const sMesh = new THREE.Mesh(sGeo, sMat); sMesh.frustumCulled = false; sMesh.renderOrder = 13; root.add(sMesh);
   const ST = { A: new Float32Array(SN * 3), B: new Float32Array(SN * 3), V: new Float32Array(SN * 3), C: new Float32Array(SN * 3),
     age: new Float32Array(SN), max: new Float32Array(SN), w0: new Float32Array(SN), w1: new Float32Array(SN), a0: new Float32Array(SN),
-    len: new Float32Array(SN), g: new Float32Array(SN), drag: new Float32Array(SN), tail: new Float32Array(SN), ak: new Float32Array(SN), T: new Float32Array(SN * 3), cur: 0 };
+    len: new Float32Array(SN), g: new Float32Array(SN), drag: new Float32Array(SN), tail: new Float32Array(SN), ak: new Float32Array(SN), T: new Float32Array(SN * 3), cur: 0, hi: 0, free: 0 };
   function sslot() {
-    for (let k = 0; k < SN; k++) { const i = (ST.cur + k) % SN; if (ST.max[i] === 0) { ST.cur = (i + 1) % SN; return i; } }
-    const i = ST.cur; ST.cur = (ST.cur + 1) % SN; return i;
+    // lowest free slot (additive: order-independent) keeps live streaks packed in [0, hi)
+    for (let i = ST.free; i < SN; i++) if (ST.max[i] === 0) { ST.free = i + 1; if (i >= ST.hi) ST.hi = i + 1; return i; }
+    ST.free = SN;
+    const i = ST.cur; ST.cur = (ST.cur + 1) % SN; if (i >= ST.hi) ST.hi = i + 1; return i;
   }
   // spark: head at p moving with v; drawn from p - v*len to p
   function spark(p, v, o) {
@@ -261,11 +283,14 @@ export function createVfx(THREE, scene) {
     ST.w0[i] = o.w ?? 0.05; ST.w1[i] = o.w1 ?? ST.w0[i]; ST.a0[i] = o.a ?? 1; ST.g[i] = 0; ST.drag[i] = 0; ST.tail[i] = o.tail ?? 1; ST.ak[i] = 0;
   }
   function stepStreaks(dt) {
-    for (let i = 0; i < SN; i++) {
+    const hi = ST.hi; let top = 0;
+    if (!hi) return;
+    for (let i = 0; i < hi; i++) {
       const i3 = i * 3, o12 = i * 12, o16 = i * 16;
       if (ST.max[i] === 0) { if (sCol[o16 + 3] !== 0) { for (let j = 0; j < 4; j++) sCol[o16 + j * 4 + 3] = 0; sPos.fill(0, o12, o12 + 12); } continue; }
       ST.age[i] += dt; const k = ST.age[i] / ST.max[i];
-      if (k >= 1) { ST.max[i] = 0; for (let j = 0; j < 4; j++) sCol[o16 + j * 4 + 3] = 0; sPos.fill(0, o12, o12 + 12); continue; }
+      if (k >= 1) { ST.max[i] = 0; for (let j = 0; j < 4; j++) sCol[o16 + j * 4 + 3] = 0; sPos.fill(0, o12, o12 + 12); if (i < ST.free) ST.free = i; continue; }
+      top = i + 1;
       if (ST.len[i] >= 0) {
         const dr = Math.max(0, 1 - ST.drag[i] * dt);
         ST.V[i3] *= dr; ST.V[i3 + 1] = ST.V[i3 + 1] * dr - ST.g[i] * dt; ST.V[i3 + 2] *= dr;
@@ -284,7 +309,8 @@ export function createVfx(THREE, scene) {
       const a = ST.a0[i] * (1 - k) * (k < 0.08 ? k / 0.08 * 0.5 + 0.5 : 1), at = a * ST.tail[i];
       for (let j = 0; j < 4; j++) { const o = o16 + j * 4; sCol[o] = ST.C[i3]; sCol[o + 1] = ST.C[i3 + 1]; sCol[o + 2] = ST.C[i3 + 2]; sCol[o + 3] = j < 2 ? at : a; }
     }
-    sGeo.attributes.position.needsUpdate = sGeo.attributes.aCol.needsUpdate = true;
+    ST.hi = top; sGeo.setDrawRange(0, top * 6);
+    if (top) { upload(sGeo.attributes.position, top * 12); upload(sGeo.attributes.aCol, top * 16); }
   }
 
   // ---------------- decals (flat on the ground, or at any height), pooled meshes
@@ -430,6 +456,9 @@ export function createVfx(THREE, scene) {
 
   // ---------------- helpers
   const vec = (x, y, z) => new V3(x, y, z);
+  // perf: scratch vectors for values emit()/spark() copy immediately (no allocation per emitted particle)
+  const TVP = Array.from({ length: 16 }, () => new V3()); let tvi = 0;
+  const tv = (x, y, z) => TVP[tvi = (tvi + 1) & 15].set(x, y, z);
   const posOf = (t) => (t && t.isObject3D ? t.position : t);
   const randDir = (out, up = 0) => { const a = rand() * TAU, z = rr(-1, 1) * (1 - up) + up * rand(); const r = Math.sqrt(1 - z * z); return out.set(Math.cos(a) * r, Math.abs(z) * (up ? 1 : Math.sign(z) || 1), Math.sin(a) * r); };
   const COLORS = {
@@ -448,7 +477,7 @@ export function createVfx(THREE, scene) {
   function dust(p, n, c = COLORS.dust, o = {}) {
     for (let i = 0; i < n; i++) {
       const a = rand() * TAU, r = rr(0.05, o.r ?? 0.3), sp = rr(0.4, o.sp ?? 1.2);
-      emit(ALP, vec(p.x + Math.cos(a) * r, 0.08 + rand() * 0.1, p.z + Math.sin(a) * r), { v: vec(Math.cos(a) * sp, rr(0.2, 0.7), Math.sin(a) * sp), c, s0: o.s0 ?? 0.25, s1: o.s1 ?? 0.75,
+      emit(ALP, tv(p.x + Math.cos(a) * r, 0.08 + rand() * 0.1, p.z + Math.sin(a) * r), { v: tv(Math.cos(a) * sp, rr(0.2, 0.7), Math.sin(a) * sp), c, s0: o.s0 ?? 0.25, s1: o.s1 ?? 0.75,
         life: rr(0.5, o.life ?? 0.9), a: o.a ?? 0.5, tile: 2, drag: 3, g: -0.15, rv: rr(-1, 1), fin: 0.1 });
     }
   }
@@ -495,7 +524,7 @@ export function createVfx(THREE, scene) {
     if (kind === 'death') {
       glowPt(p, COLORS.death, 0.7, 1.5, 0.3); glowPt(p, COLORS.deathHalo, 1.2, 2.0, 0.4, 0.6);
       for (let i = 0; i < 14; i++) emit(ADD, p, { v: randDir(_a, 0.3).multiplyScalar(rr(0.8, 2.4)), c: rand() < 0.5 ? COLORS.death : COLORS.deathHalo, s0: rr(0.12, 0.22), s1: 0.02, life: rr(0.4, 0.8), drag: 2.5, g: -1.2 });
-      for (let i = 0; i < 5; i++) emit(ALP, vec(p.x + rr(-0.2, 0.2), p.y, p.z + rr(-0.2, 0.2)), { v: vec(rr(-0.3, 0.3), rr(0.5, 1.0), rr(-0.3, 0.3)), c: [0.62, 0.5, 0.78], s0: 0.3, s1: 0.8, life: rr(0.6, 0.9), a: 0.4, tile: 2, drag: 1.5, fin: 0.15, rv: rr(-1, 1) });
+      for (let i = 0; i < 5; i++) emit(ALP, tv(p.x + rr(-0.2, 0.2), p.y, p.z + rr(-0.2, 0.2)), { v: tv(rr(-0.3, 0.3), rr(0.5, 1.0), rr(-0.3, 0.3)), c: [0.62, 0.5, 0.78], s0: 0.3, s1: 0.8, life: rr(0.6, 0.9), a: 0.4, tile: 2, drag: 1.5, fin: 0.15, rv: rr(-1, 1) });
       decal(ground, { tex: 'ring', c: [0.9, 0.5, 1.8], s0: 0.3, s1: 1.7, life: 0.45, a: 0.9, fin: 0.05 });
       return;
     }
@@ -571,9 +600,9 @@ export function createVfx(THREE, scene) {
         const ang = s.t * 26;
         _c.subVectors(s.b, s.a).normalize(); _d.set(-_c.z, 0, _c.x);
         for (const sg of [1, -1]) emit(ADD, _a.copy(p).addScaledVector(_d, Math.cos(ang) * 0.18 * sg).setY(p.y + Math.sin(ang) * 0.18 * sg), { c: sg > 0 ? COLORS.death : COLORS.deathHalo, s0: 0.16, s1: 0.03, life: 0.3 });
-        for (let j = rate(s, 30, dt); j > 0; j--) emit(ALP, p, { v: vec(rr(-0.2, 0.2), rr(0.2, 0.5), rr(-0.2, 0.2)), c: [0.55, 0.35, 0.75], s0: 0.2, s1: 0.55, life: 0.5, a: 0.35, tile: 2, rv: rr(-1, 1) });
+        for (let j = rate(s, 30, dt); j > 0; j--) emit(ALP, p, { v: tv(rr(-0.2, 0.2), rr(0.2, 0.5), rr(-0.2, 0.2)), c: [0.55, 0.35, 0.75], s0: 0.2, s1: 0.55, life: 0.5, a: 0.35, tile: 2, rv: rr(-1, 1) });
       } else if (kind === 'boulder') {
-        for (let j = rate(s, 22, dt); j > 0; j--) emit(ALP, p, { v: vec(rr(-0.2, 0.2), rr(0, 0.3), rr(-0.2, 0.2)), c: COLORS.dust, s0: 0.18, s1: 0.45, life: 0.45, a: 0.35, tile: 2, rv: rr(-1, 1) });
+        for (let j = rate(s, 22, dt); j > 0; j--) emit(ALP, p, { v: tv(rr(-0.2, 0.2), rr(0, 0.3), rr(-0.2, 0.2)), c: COLORS.dust, s0: 0.18, s1: 0.45, life: 0.45, a: 0.35, tile: 2, rv: rr(-1, 1) });
       } else if (kind === 'magic') {
         glowPt(p, COLORS.magic, 0.6, 0.3, 0.1);
         if (moved) seg(s.prev, p, { c: [0.35, 0.9, 2.4], w: 0.18, w1: 0.02, life: 0.3, a: 0.8 });
@@ -582,8 +611,8 @@ export function createVfx(THREE, scene) {
         glowPt(p, [2.4, 1.4, 0.5], 0.75, 0.5, 0.08);
         glowPt(p, COLORS.fire, 1.3, 0.8, 0.1, 0.7);
         if (moved) seg(s.prev, p, { c: COLORS.fire, w: 0.4, w1: 0.05, life: 0.3, a: 0.7 });
-        for (let j = rate(s, 70, dt); j > 0; j--) emit(ADD, _a.copy(p).add(randDir(_b).multiplyScalar(0.12)), { v: vec(rr(-0.3, 0.3), rr(0.2, 0.8), rr(-0.3, 0.3)), c: rand() < 0.5 ? COLORS.fire : [2.0, 0.55, 0.15], s0: rr(0.3, 0.5), s1: 0.1, life: rr(0.25, 0.45), tile: 2, rv: rr(-2, 2) });
-        for (let j = rate(s, 14, dt, 'acc2'); j > 0; j--) emit(ALP, p, { v: vec(0, 0.4, 0), c: COLORS.smoke, s0: 0.3, s1: 0.8, life: 0.6, a: 0.3, tile: 2, fin: 0.3, rv: rr(-1, 1) });
+        for (let j = rate(s, 70, dt); j > 0; j--) emit(ADD, _a.copy(p).add(randDir(_b).multiplyScalar(0.12)), { v: tv(rr(-0.3, 0.3), rr(0.2, 0.8), rr(-0.3, 0.3)), c: rand() < 0.5 ? COLORS.fire : [2.0, 0.55, 0.15], s0: rr(0.3, 0.5), s1: 0.1, life: rr(0.25, 0.45), tile: 2, rv: rr(-2, 2) });
+        for (let j = rate(s, 14, dt, 'acc2'); j > 0; j--) emit(ALP, p, { v: tv(0, 0.4, 0), c: COLORS.smoke, s0: 0.3, s1: 0.8, life: 0.6, a: 0.3, tile: 2, fin: 0.3, rv: rr(-1, 1) });
       }
       if (k >= 1) {
         shots.splice(i, 1);
@@ -610,12 +639,12 @@ export function createVfx(THREE, scene) {
       const m = Math.max(c[0], c[1], c[2], 0.05), boost = 1.5 / m * 0.6 + 0.5;
       const cc = [Math.min(2.2, c[0] * boost + 0.2), Math.min(2.2, c[1] * boost + 0.2), Math.min(2.2, c[2] * boost + 0.2)];
       _b.subVectors(_a, base).setY(0).normalize().multiplyScalar(rr(0.2, 0.7));
-      emit(ADD, _a, { v: vec(_b.x + rr(-0.2, 0.2), rr(0.3, 1.4), _b.z + rr(-0.2, 0.2)), c: cc, s0: rr(0.07, 0.13) * sc, s1: 0.02, life: rr(0.55, 1.1), drag: 1.8, g: -1.4, fin: 0.12, tile: rand() < 0.25 ? 1 : 0, rv: rr(-4, 4) });
+      emit(ADD, _a, { v: tv(_b.x + rr(-0.2, 0.2), rr(0.3, 1.4), _b.z + rr(-0.2, 0.2)), c: cc, s0: rr(0.07, 0.13) * sc, s1: 0.02, life: rr(0.55, 1.1), drag: 1.8, g: -1.4, fin: 0.12, tile: rand() < 0.25 ? 1 : 0, rv: rr(-4, 4) });
     }
     // a soft poof at the feet
     for (let i = 0; i < 9; i++) {
       const a = (i / 9) * TAU + rand() * 0.5;
-      emit(ALP, vec(base.x + Math.cos(a) * 0.15, rr(0.1, 0.45), base.z + Math.sin(a) * 0.15), { v: vec(Math.cos(a) * rr(0.8, 1.4), rr(0.2, 0.7), Math.sin(a) * rr(0.8, 1.4)), c: undead ? [0.75, 0.85, 0.78] : [0.92, 0.88, 0.95], s0: 0.3, s1: 0.9, life: rr(0.6, 0.9), a: 0.35, tile: 2, drag: 3, fin: 0.1, rv: rr(-1, 1) });
+      emit(ALP, tv(base.x + Math.cos(a) * 0.15, rr(0.1, 0.45), base.z + Math.sin(a) * 0.15), { v: tv(Math.cos(a) * rr(0.8, 1.4), rr(0.2, 0.7), Math.sin(a) * rr(0.8, 1.4)), c: undead ? [0.75, 0.85, 0.78] : [0.92, 0.88, 0.95], s0: 0.3, s1: 0.9, life: rr(0.6, 0.9), a: 0.35, tile: 2, drag: 3, fin: 0.1, rv: rr(-1, 1) });
     }
     decal(base, { tex: 'glow', c: undead ? [0.5, 1.4, 0.8] : [1.4, 1.3, 1.0], s0: 1.4, s1: 1.8, life: 0.6, a: 0.7, fin: 0.1 });
     // a little soul rising
@@ -650,7 +679,7 @@ export function createVfx(THREE, scene) {
     during(0.6, (k, dt, age) => {
       for (let j = 0; j < 2; j++) {
         const a = age * 13 + j * Math.PI, r = 0.5 - k * 0.2;
-        emit(ADD, vec(b.x + Math.cos(a) * r, 0.1 + k * 1.3, b.z + Math.sin(a) * r), { v: vec(0, 0.3, 0), c: j ? c : c2, s0: 0.24, s1: 0.03, life: 0.5, tile: 1, rv: 3 });
+        emit(ADD, tv(b.x + Math.cos(a) * r, 0.1 + k * 1.3, b.z + Math.sin(a) * r), { v: tv(0, 0.3, 0), c: j ? c : c2, s0: 0.24, s1: 0.03, life: 0.5, tile: 1, rv: 3 });
       }
     });
     after(0.6, () => { const top = vec(b.x, 1.45, b.z); stars(top, 18, c, { min: 1, max: 2.6, size: 0.3, g: 1.5, up: 0 }); glowPt(top, c, 0.45, 1.0, 0.3, 0.6); });
@@ -685,7 +714,7 @@ export function createVfx(THREE, scene) {
     }
     if (id === 'bolt') {
       decal(tp, { tex: 'rune', c: [0.6, 0.9, 2.4], s0: 1.4, s1: 1.1, life: 0.5, a: 0.9, rv: -3, fin: 0.3 });
-      for (let i = 0; i < 6; i++) emit(ADD, vec(tp.x + rr(-0.4, 0.4), rr(0.1, 0.5), tp.z + rr(-0.4, 0.4)), { v: vec(0, rr(1, 2), 0), c: [1.0, 1.6, 3.0], s0: 0.12, s1: 0.02, life: 0.25, tile: 1 });
+      for (let i = 0; i < 6; i++) emit(ADD, tv(tp.x + rr(-0.4, 0.4), rr(0.1, 0.5), tp.z + rr(-0.4, 0.4)), { v: tv(0, rr(1, 2), 0), c: [1.0, 1.6, 3.0], s0: 0.12, s1: 0.02, life: 0.25, tile: 1 });
       const top = vec(tp.x + rr(-1, 1), 9, tp.z + rr(-1.5, -0.5));
       const strike = (w) => lightning(top, vec(tp.x, 0.35, tp.z), w, 0.13);
       after(0.12, () => {
@@ -712,10 +741,10 @@ export function createVfx(THREE, scene) {
       const d = projectile('fireball', from, vec(center.x, 0.3, center.z), () => {
         const c = vec(center.x, 0.35, center.z);
         flash(c, [1.8, 0.6, 0.12], 1.4, 4.0, 0.35, 0.7);
-        for (let i = 0; i < 14; i++) { const a = rand() * TAU, sp = rr(0.5, 3.5); emit(ADD, c, { v: vec(Math.cos(a) * sp, rr(0.3, 2.0), Math.sin(a) * sp), c: [1.6, 0.75, 0.18], s0: rr(0.5, 0.8), s1: 1.2, life: rr(0.2, 0.35), tile: 2, drag: 4, g: -1, rv: rr(-2, 2) }); }
-        for (let i = 0; i < 26; i++) { const a = rand() * TAU, sp = rr(1, 4.5); emit(ALP, c, { v: vec(Math.cos(a) * sp, rr(0.2, 1.8), Math.sin(a) * sp), c: [1.7, 0.62, 0.12], s0: rr(0.45, 0.7), s1: 1.2, life: rr(0.4, 0.65), tile: 2, drag: 4, g: -1.5, rv: rr(-2, 2), ap: 1.3, a: 0.9 }); }
-        for (let i = 0; i < 18; i++) { const a = rand() * TAU, sp = rr(1, 4); emit(ALP, c, { v: vec(Math.cos(a) * sp, rr(0.5, 2.0), Math.sin(a) * sp), c: [1.2, 0.3, 0.08], s0: rr(0.5, 0.8), s1: 1.4, life: rr(0.6, 0.9), tile: 2, drag: 4, g: -1.8, rv: rr(-2, 2), fin: 0.15 }); }
-        for (let i = 0; i < 11; i++) { const a = rand() * TAU, sp = rr(0.5, 2.5); emit(ALP, vec(c.x + Math.cos(a) * 0.4, rr(0.3, 0.8), c.z + Math.sin(a) * 0.4), { v: vec(Math.cos(a) * sp, rr(0.6, 1.6), Math.sin(a) * sp), c: [0.58, 0.44, 0.38].map((x) => x * rr(0.9, 1.1)), s0: 0.5, s1: 1.4, life: rr(0.8, 1.2), a: 0.3, tile: 2, drag: 2.5, fin: 0.35, rv: rr(-1, 1) }); }
+        for (let i = 0; i < 14; i++) { const a = rand() * TAU, sp = rr(0.5, 3.5); emit(ADD, c, { v: tv(Math.cos(a) * sp, rr(0.3, 2.0), Math.sin(a) * sp), c: [1.6, 0.75, 0.18], s0: rr(0.5, 0.8), s1: 1.2, life: rr(0.2, 0.35), tile: 2, drag: 4, g: -1, rv: rr(-2, 2) }); }
+        for (let i = 0; i < 26; i++) { const a = rand() * TAU, sp = rr(1, 4.5); emit(ALP, c, { v: tv(Math.cos(a) * sp, rr(0.2, 1.8), Math.sin(a) * sp), c: [1.7, 0.62, 0.12], s0: rr(0.45, 0.7), s1: 1.2, life: rr(0.4, 0.65), tile: 2, drag: 4, g: -1.5, rv: rr(-2, 2), ap: 1.3, a: 0.9 }); }
+        for (let i = 0; i < 18; i++) { const a = rand() * TAU, sp = rr(1, 4); emit(ALP, c, { v: tv(Math.cos(a) * sp, rr(0.5, 2.0), Math.sin(a) * sp), c: [1.2, 0.3, 0.08], s0: rr(0.5, 0.8), s1: 1.4, life: rr(0.6, 0.9), tile: 2, drag: 4, g: -1.8, rv: rr(-2, 2), fin: 0.15 }); }
+        for (let i = 0; i < 11; i++) { const a = rand() * TAU, sp = rr(0.5, 2.5); emit(ALP, tv(c.x + Math.cos(a) * 0.4, rr(0.3, 0.8), c.z + Math.sin(a) * 0.4), { v: tv(Math.cos(a) * sp, rr(0.6, 1.6), Math.sin(a) * sp), c: [0.58, 0.44, 0.38].map((x) => x * rr(0.9, 1.1)), s0: 0.5, s1: 1.4, life: rr(0.8, 1.2), a: 0.3, tile: 2, drag: 2.5, fin: 0.35, rv: rr(-1, 1) }); }
         sparks(c, 30, COLORS.ember, { min: 3, max: 7, up: 0.6, g: 6, life: 0.6, w: 0.05, len: 0.05 });
         decal(center, { tex: 'ring', c: [2.4, 1.0, 0.3], s0: 0.6, s1: 3.6, life: 0.5, a: 1, fin: 0.04 });
         decal(center, { tex: 'glow', c: [1.4, 0.45, 0.1], s0: 3.2, s1: 3.6, life: 0.7, a: 0.8, fin: 0.05 });
@@ -729,7 +758,7 @@ export function createVfx(THREE, scene) {
       column(tp, [1.8, 1.2, 0.35], 1.1, follow);
       decal(tp, { tex: 'rune', c: [2.0, 1.5, 0.5], s0: 1.2, s1: 1.35, life: 1.1, a: 0.9, rv: 1.2, fin: 0.2, follow });
       during(0.9, (k, dt) => {
-        for (let j = 0; j < 2; j++) { const a = rand() * TAU, r = rr(0.1, 0.45); emit(ADD, vec(tp.x + Math.cos(a) * r, rr(0, 0.6), tp.z + Math.sin(a) * r), { v: vec(0, rr(0.8, 1.8), 0), c: rand() < 0.5 ? COLORS.gold : [2.6, 2.4, 1.8], s0: rr(0.12, 0.24), s1: 0.02, life: rr(0.5, 0.8), tile: 1, rv: rr(-3, 3), drag: 0.5 }); }
+        for (let j = 0; j < 2; j++) { const a = rand() * TAU, r = rr(0.1, 0.45); emit(ADD, tv(tp.x + Math.cos(a) * r, rr(0, 0.6), tp.z + Math.sin(a) * r), { v: tv(0, rr(0.8, 1.8), 0), c: rand() < 0.5 ? COLORS.gold : [2.6, 2.4, 1.8], s0: rr(0.12, 0.24), s1: 0.02, life: rr(0.5, 0.8), tile: 1, rv: rr(-3, 3), drag: 0.5 }); }
       });
       after(0.3, () => { glowPt(body, COLORS.holy, 0.8, 1.6, 0.3, 0.8); decal(tp, { tex: 'ring', c: [2.0, 1.6, 0.6], y0: 1.25, y1: 1.15, s0: 0.25, s1: 0.5, life: 0.9, a: 1, fin: 0.2, follow }); });
       return 0.3;
@@ -739,7 +768,7 @@ export function createVfx(THREE, scene) {
       decal(tp, { tex: 'ring', c: [0.6, 2.0, 0.8], s0: 0.3, s1: 1.6, life: 0.6, a: 1, fin: 0.05 });
       decal(tp, { tex: 'glow', c: [0.4, 1.4, 0.6], s0: 1.4, s1: 1.4, life: 1.0, a: 0.6, fin: 0.2, follow });
       during(0.85, (k, dt) => {
-        for (let j = 0; j < 2; j++) { const a = rand() * TAU, r = rr(0.05, 0.45); emit(ADD, vec(tp.x + Math.cos(a) * r, rr(0, 0.5), tp.z + Math.sin(a) * r), { v: vec(0, rr(0.6, 1.5), 0), c: rand() < 0.6 ? COLORS.green : [1.8, 2.6, 1.6], s0: rr(0.1, 0.22), s1: 0.03, life: rr(0.5, 0.9), tile: rand() < 0.5 ? 1 : 0, rot: rand() < 0.5 ? 0 : Math.PI / 4, drag: 0.5 }); }
+        for (let j = 0; j < 2; j++) { const a = rand() * TAU, r = rr(0.05, 0.45); emit(ADD, tv(tp.x + Math.cos(a) * r, rr(0, 0.5), tp.z + Math.sin(a) * r), { v: tv(0, rr(0.6, 1.5), 0), c: rand() < 0.6 ? COLORS.green : [1.8, 2.6, 1.6], s0: rr(0.1, 0.22), s1: 0.03, life: rr(0.5, 0.9), tile: rand() < 0.5 ? 1 : 0, rot: rand() < 0.5 ? 0 : Math.PI / 4, drag: 0.5 }); }
       });
       after(0.3, () => glowPt(body, COLORS.green, 0.9, 1.6, 0.35, 0.8));
       return 0.3;
@@ -749,7 +778,7 @@ export function createVfx(THREE, scene) {
       for (let i = 0; i < 16; i++) {
         const a = (i / 16) * TAU + rr(-0.2, 0.2), r = rr(1.0, 1.5);
         const p = vec(tp.x + Math.cos(a) * r, rr(0.1, 1.2), tp.z + Math.sin(a) * r);
-        emit(ALP, p, { v: vec(-Math.sin(a) * 2.5, rr(1, 2), Math.cos(a) * 2.5), c: [0.8, 0.72, 0.6].map((x) => x * rr(0.85, 1.15)), s0: rr(0.14, 0.24), s1: 0.1, life: 0.45, tile: 3, at, ak: 40, drag: 7, rv: rr(-6, 6), fin: 0.15, ap: 0.5 });
+        emit(ALP, p, { v: tv(-Math.sin(a) * 2.5, rr(1, 2), Math.cos(a) * 2.5), c: [0.8, 0.72, 0.6].map((x) => x * rr(0.85, 1.15)), s0: rr(0.14, 0.24), s1: 0.1, life: 0.45, tile: 3, at, ak: 40, drag: 7, rv: rr(-6, 6), fin: 0.15, ap: 0.5 });
       }
       decal(tp, { tex: 'rune', c: [1.3, 1.1, 0.75], s0: 1.4, s1: 1.1, life: 0.7, a: 0.7, rv: -2, fin: 0.2 });
       after(0.38, () => {
@@ -767,9 +796,9 @@ export function createVfx(THREE, scene) {
         for (let j = 0; j < 2; j++) {
           const a = rand() * TAU, y = rr(0.1, 1.1), r = 0.5;
           const ax = vec(tp.x, y + 0.4, tp.z);
-          spark(vec(tp.x + Math.cos(a) * r, y, tp.z + Math.sin(a) * r), vec(-Math.sin(a) * 5, 1.2, Math.cos(a) * 5), { c: COLORS.cyan, life: rr(0.3, 0.45), w: 0.05, w1: 0.01, len: 0.06, at: ax, ak: 50, drag: 0.5, a: 0.9 });
+          spark(tv(tp.x + Math.cos(a) * r, y, tp.z + Math.sin(a) * r), tv(-Math.sin(a) * 5, 1.2, Math.cos(a) * 5), { c: COLORS.cyan, life: rr(0.3, 0.45), w: 0.05, w1: 0.01, len: 0.06, at: ax, ak: 50, drag: 0.5, a: 0.9 });
         }
-        if (rand() < 0.4) emit(ADD, vec(tp.x + rr(-0.4, 0.4), rr(0.1, 1), tp.z + rr(-0.4, 0.4)), { v: vec(0, 1, 0), c: [1.6, 2.6, 2.6], s0: 0.16, s1: 0.02, life: 0.4, tile: 1, rv: 4 });
+        if (rand() < 0.4) emit(ADD, tv(tp.x + rr(-0.4, 0.4), rr(0.1, 1), tp.z + rr(-0.4, 0.4)), { v: tv(0, 1, 0), c: [1.6, 2.6, 2.6], s0: 0.16, s1: 0.02, life: 0.4, tile: 1, rv: 4 });
       });
       return 0.25;
     }
@@ -780,7 +809,7 @@ export function createVfx(THREE, scene) {
       after(0.15, () => decal(tp, { tex: 'ring', c: [1.3, 0.55, 2.4], y0: 1.5, y1: 0.06, s0: 1.2, s1: 0.75, life: 0.45, a: 0.9, fin: 0.2, ap: 0.6, follow }));
       after(0.3, () => decal(tp, { tex: 'ring', c: [1.3, 0.55, 2.4], y0: 1.5, y1: 0.06, s0: 1.2, s1: 0.75, life: 0.45, a: 0.9, fin: 0.2, ap: 0.6, follow }));
       during(0.8, (k, dt) => {
-        if (rand() < 0.6) emit(ADD, vec(tp.x + rr(-0.45, 0.45), rr(1.2, 1.7), tp.z + rr(-0.45, 0.45)), { v: vec(0, -0.5, 0), c: rand() < 0.5 ? COLORS.purple : [1.8, 1.2, 2.6], s0: rr(0.1, 0.2), s1: 0.05, life: rr(0.5, 0.7), g: 3, floor: true, fin: 0.1 });
+        if (rand() < 0.6) emit(ADD, tv(tp.x + rr(-0.45, 0.45), rr(1.2, 1.7), tp.z + rr(-0.45, 0.45)), { v: tv(0, -0.5, 0), c: rand() < 0.5 ? COLORS.purple : [1.8, 1.2, 2.6], s0: rr(0.1, 0.2), s1: 0.05, life: rr(0.5, 0.7), g: 3, floor: true, fin: 0.1 });
       });
       after(0.45, () => dust(tp, 6, [0.78, 0.72, 0.8], { r: 0.4, sp: 1.2 }));
       return 0.3;
@@ -827,7 +856,7 @@ export function createVfx(THREE, scene) {
     const pu = Math.sin(sel.t * 4);
     selGlow.scale.setScalar((0.98 + 0.05 * pu) * ea); selMatG.opacity = (0.75 + 0.25 * pu) * a; selMatR.opacity = 0.9 * a;
     if (!sel.target) return;
-    for (let j = rate(sel, 7, dt); j > 0; j--) { const a = rand() * TAU; emit(ADD, vec(p.x + Math.cos(a) * 0.4, 0.06, p.z + Math.sin(a) * 0.4), { v: vec(0, rr(0.3, 0.6), 0), c: sel.c, s0: rr(0.07, 0.12), s1: 0.02, life: rr(0.7, 1.1), fin: 0.2 }); }
+    for (let j = rate(sel, 7, dt); j > 0; j--) { const a = rand() * TAU; emit(ADD, tv(p.x + Math.cos(a) * 0.4, 0.06, p.z + Math.sin(a) * 0.4), { v: tv(0, rr(0.3, 0.6), 0), c: sel.c, s0: rr(0.07, 0.12), s1: 0.02, life: rr(0.7, 1.1), fin: 0.2 }); }
   }
 
   function update(dt, camera) {
@@ -840,8 +869,8 @@ export function createVfx(THREE, scene) {
     tasks.length = 0;
     for (const s of shots) if (s.mesh) s.mesh.visible = false; shots.length = 0;
     for (const D of dying) { D.mesh.scale.copy(D.s); D.mesh.position.y = D.y0; } dying.length = 0;
-    for (const S of [ADD, ALP]) { S.max.fill(0); S.col.fill(0); S.geo.attributes.aCol.needsUpdate = true; }
-    ST.max.fill(0); sCol.fill(0); sGeo.attributes.aCol.needsUpdate = true;
+    for (const S of [ADD, ALP]) { S.max.fill(0); S.col.fill(0); S.hi = S.free = 0; S.geo.setDrawRange(0, 0); S.geo.attributes.aCol.clearUpdateRanges(); S.geo.attributes.aCol.needsUpdate = true; }
+    ST.max.fill(0); sCol.fill(0); ST.hi = ST.free = 0; sGeo.setDrawRange(0, 0); sGeo.attributes.aCol.clearUpdateRanges(); sGeo.attributes.aCol.needsUpdate = true;
     for (const d of decals) { d.max = 0; d.m.visible = false; }
     for (const f of flashes) { f.max = 0; f.s.visible = false; }
     for (const c of columns) { c.max = 0; c.m.visible = false; }

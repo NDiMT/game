@@ -534,6 +534,12 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     }
   }
 
+  // a dynamic attribute's [0, count) goes up on the next render (ranges not yet consumed by a render are widened)
+  function upRange(attr, count) {
+    const r = attr.updateRanges;
+    if (r.length) { r[0].start = 0; r[0].count = Math.max(r[0].count, count); r.length = 1; } else attr.addUpdateRange(0, count);
+    attr.needsUpdate = true;
+  }
   function updateParticles(dt) {
     let w = 0;
     const ip = PB.iPos.array, ic = PB.iCol.array, is = PB.iSz.array;
@@ -562,7 +568,8 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     }
     np = w;
     PB.g.instanceCount = np;
-    if (np) PB.iPos.needsUpdate = PB.iCol.needsUpdate = PB.iSz.needsUpdate = true;
+    // perf: upload only the live instances [0, np) instead of all MAXP (instanceCount hides the rest)
+    if (np) { upRange(PB.iPos, np * 3); upRange(PB.iCol, np * 4); upRange(PB.iSz, np * 4); }
     for (const s of SHOCK) {
       if (!s.m.visible) continue;
       s.t += dt; const k = s.t / s.life;

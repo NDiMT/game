@@ -15,7 +15,10 @@ import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.8';
 import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.8';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
 const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.8'), import('./units_inferno.js?v=1.8'), import('./units_dungeon.js?v=1.8')]);
-const FAC_MODEL = { sylvan: SYLm.value?.sylvanModel, inferno: INFm.value?.infernoModel, dungeon: DUNm.value?.dungeonModel };
+// memory: build through the modules' uncached builders (base id + upgraded flag), so main.js's geoCache is the only
+// owner of a creature's geometry and trimGeoCache() really frees it (the modules' own caches would pin ~11 MB per roster)
+const facBuild = (mod, build, model) => (id) => { const b = mod.value?.[build], u = UNITS[id]; const m = b && u ? b(u.up || id, !!u.up) : null; return m || mod.value?.[model]?.(id) || null; };
+const FAC_MODEL = { sylvan: facBuild(SYLm, 'sylvanBuild', 'sylvanModel'), inferno: facBuild(INFm, 'infernoBuild', 'infernoModel'), dungeon: facBuild(DUNm, 'dungeonBuild', 'dungeonModel') };
 import * as BT from './battle.js?v=1.8';
 import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=1.8';
 import { createScore } from './music.js?v=1.8';
@@ -23,7 +26,7 @@ import { createSfx } from './sfx.js?v=1.8';
 import { unitFit, applyFit } from './unit_fit.js?v=1.8';
 import { createMapFx } from './mapfx.js?v=1.8';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=1.8';
+import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=1.8';
 
 // =====================================================================
 // ORBIS · Five Crowns: a pocket strategy game on a tiny hex planet.
@@ -530,11 +533,37 @@ const unitGeoRaw = (id) => { const ff = FAC_MODEL[UNITS[id]?.fac]; if (ff) { con
 const unitGeo = (id) => { const m = unitGeoRaw(id); if (m?.body && !m.body.attributes.formNormal) { addFormNormals(m.body); m.body.userData.hxForm = true; } return m; };
 // portraits are warmed by the loading screen (prewarm); the rest render on demand
 let prewarmed = false;
-// every model geometry is built once and shared by all its meshes (map, battle, portraits); never disposed
+// every model geometry is built once and shared by all its meshes (map, battle, portraits); freed only by trimGeoCache()
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
 // keyed by faction + colour, not player index: a second new game in the same session must not reuse the old look
 const heroKey = (p) => 'hero' + G.players[p].fac + ':' + G.players[p].color;
 const heroGeo = (p) => cached(heroKey(p), () => { const P = G.players[p], m = heroModel(P.fac, P.color); if (m.body) { addFormNormals(m.body); m.body.userData.hxForm = true; } return m; });
+// Bounded geometry cache (memory): when a game starts or a save is loaded, models the new world can never show are freed
+// (CPU arrays + GPU buffers): other factions' creatures, heroes, towns and siege walls left over from earlier games in
+// this session. Each creature is ~0.3-1 MB, a faction roster ~11 MB, so trying every faction used to keep ~60 MB alive.
+// Kept: every creature of a faction in this world (players and towns, base + upgraded), neutrals, anything in an army,
+// garrison or on the map, and the small shared pieces (map objects, flags, battle obstacles).
+function trimGeoCache() {
+  if (!G.players.length) return 0;
+  const facs = new Set([...G.players.map((P) => P.fac), ...G.towns.map((t) => t.fac)]);
+  const units = new Set(), add = (id) => { if (id && UNITS[id]) { units.add(id); if (UNITS[id].up) units.add(UNITS[id].up); } };
+  for (const [id, u] of Object.entries(UNITS)) if (!FACTIONS[u.fac] || facs.has(u.fac)) add(id);
+  for (const hr of G.heroes) for (const st of hr.army || []) add(st?.[0]);
+  for (const t of G.towns) for (const st of t.garrison || []) add(st?.[0]);
+  for (const o of G.objects) add(o.unit);
+  const heroes = new Set(G.players.map((_, p) => heroKey(p)));
+  let n = 0;
+  for (const [k, m] of [...geoCache]) {
+    let keep = true;
+    if (k.startsWith('hero')) keep = heroes.has(k);
+    else if (k[0] === 'u' && UNITS[k.slice(1)]) keep = units.has(k.slice(1));
+    else { const f = /^(?:town|wall_|gate_|tower_|keep_)(\w+)$/.exec(k)?.[1]; if (f && FACTIONS[f]) keep = facs.has(f); }
+    if (keep) continue;
+    geoCache.delete(k); warmed.delete(k.slice(1)); n++;
+    releasePortraitModel(m); m?.body?.dispose(); m?.glow?.dispose();
+  }
+  return n;
+}
 // Idle-time geometry warm-up (perf): a creature that is not cached yet costs build + form normals + fits
 // (~25-60 ms desktop, ~100-250 ms on a mid phone) the first time it is drawn, so an enemy army of new creatures
 // used to stall battle entry. warmGeometryIdle() queues the creatures you are likely to fight next (AI heroes'
@@ -2923,7 +2952,7 @@ function audio() {
     // music bus + sfx bus → master limiter → speakers. Each engine has its own compressor; this one only stops their
     // sum from clipping when a victory sting lands on a full battle score
     const lim = actx.createDynamicsCompressor();
-    lim.threshold.value = -4; lim.knee.value = 2; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
+    lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
     lim.connect(actx.destination);
     const sfxBus = actx.createGain(); sfxBus.gain.value = 0.85; sfxBus.connect(lim);
     sfxEngine = createSfx(actx, sfxBus);
@@ -2990,6 +3019,7 @@ function play() {
   if (!prewarmed) { prewarmed = true; fadeHide($('menu')); G.mode = 'map'; worldDirty = true; layoutWorld(); musicWarm(); prewarm(() => { play(); warmGeometryIdle(); }); return; }
   fadeHide($('menu')); $('hud').hidden = false; G.mode = 'map'; musicScene('map');
   stopAI(); walking = null; fx.clearPath(true);
+  trimGeoCache(); // a new game / a loaded save: free the models of factions this world no longer has
   worldDirty = true; layoutWorld();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
   if (hr) { G.selHero = hr.id; const sp = new THREE.Spherical().setFromVector3(DIRS[hr.v]); camSnap(sp.theta, sp.phi); cam.dist = 20; cam.sDist = 0; cam.tDist = 10; flyTo(hr.v, 10); }
@@ -3114,7 +3144,7 @@ function frame(now) {
   } else {
     updateCamera(dt);
     mapViewOffset(dt);
-    atmos.update(dt, camera);
+    if (G.mode !== 'town') atmos.update(dt, camera); // perf: the town screen does not draw the map's sky
     if (atmos.objects?.clouds) atmos.objects.clouds.visible = G.mode === 'menu' || cam.dist > 13;
     cam.spin = G.mode === 'menu' ? 0.09 : 0; if (G.mode === 'menu') cam.tDist = 16;
     else {

@@ -598,3 +598,11 @@ export function clearPortraits() {
   if (OPTS.dispose) for (const m of geoLRU.values()) { m.body.dispose(); m.glow?.dispose(); }
   geoLRU.clear();
 }
+
+/** The caller is freeing model `m` (main.js trimGeoCache): forget it here too and free the trimmed draw views made for
+ *  it. A view shares m's attribute buffers, so it is only disposed together with m (the caller disposes m itself). */
+export function releasePortraitModel(m) {
+  if (!m) return;
+  for (const [k, x] of geoLRU) if (x === m) geoLRU.delete(k);
+  for (const g of [m.body, m.glow]) { const v = g && views.get(g); if (v && v !== g) { views.delete(g); v.dispose(); } }
+}

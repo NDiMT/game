@@ -562,9 +562,23 @@ export function createScore(ac, out) {
     while (decoding < 3 && dq.length) {
       const [ab, res, rej] = dq.shift(); let fin = false; decoding++;
       const done = (f) => (x) => { if (fin) return; fin = true; decoding--; f(x); pump(); };
-      const ok = done(res), bad = done(rej);
+      const ok = done((b) => res(mono(b))), bad = done(rej);
       try { const p = ac.decodeAudioData(ab, ok, bad); if (p && p.then) p.then(ok, bad); } catch (e) { bad(e); }
     }
+  }
+  // the soundfont notes decode as stereo float at the context rate: ~180 MB for the whole bank, a real risk of
+  // the tab being killed (or GC stalls) on a phone. Every instrument gets its own stereo seat and the hall reverb
+  // anyway, so fold each note to mono (RMS-matched, so uncorrelated L/R doesn't drop in level): half the memory.
+  function mono(b) {
+    if (!b || b.numberOfChannels < 2) return b;
+    try {
+      const L = b.getChannelData(0), R = b.getChannelData(1), n = b.length, m = ac.createBuffer(1, n, b.sampleRate), M = m.getChannelData(0);
+      let e2 = 0, m2 = 0;
+      for (let i = 0; i < n; i++) { const l = L[i], r = R[i], x = (l + r) * 0.5; M[i] = x; e2 += l * l + r * r; m2 += x * x; }
+      const g = m2 > 0 ? Math.min(1.41, Math.sqrt(e2 * 0.5 / m2)) : 1;
+      if (g > 1.001) for (let i = 0; i < n; i++) M[i] *= g;
+      return m;
+    } catch { return b; }
   }
   const decode = (ab, urgent) => new Promise((res, rej) => { dq[urgent ? 'unshift' : 'push']([ab, res, rej]); pump(); });
   function load(name, urgent) {
