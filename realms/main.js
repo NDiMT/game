@@ -3185,7 +3185,7 @@ function save() {
   // saved mid-walk (Save & quit): the rest of the march is kept as an unfinished route (Continue ▶ after loading)
   const W = walking, rest = W && W.i < W.path.length - 1 ? W.path.slice(W.i) : null, keep = rest && [W.hr.route, W.hr.routeObj];
   if (rest) { W.hr.route = rest; W.hr.routeObj = objAt[rest[rest.length - 1]]; }
-  try { store.set('realms.save', { v: 1, ver: APP_VERSION, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter), h: pack(h), road: pack(road), seen: pack(seen) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
+  try { store.set('realms.save', { v: 1, ver: APP_VERSION, mode: G.gameMode || 'free', size: G.size, resLv: G.resLv, win: G.win, fog: G.fog, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter), h: pack(h), road: pack(road), seen: pack(seen) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
 }
 // the morning save serialises the whole world (~100 KB of JSON): run it when the browser is idle,
 // not in the same frame as the new day's income, growth, HUD and camera work
@@ -3199,7 +3199,10 @@ function load() {
   const s = store.get('realms.save', null);
   if (!s || s.v !== 1) return false;
   pendingLevels.length = 0;
-  Object.assign(G, { seed: s.seed, day: s.day, diff: s.diff, selHero: s.selHero, players: s.players, heroes: s.heroes, towns: s.towns, objects: s.objects, over: false, mode: 'map' });
+  Object.assign(G, { seed: s.seed, day: s.day, diff: s.diff, selHero: s.selHero, players: s.players, heroes: s.heroes, towns: s.towns, objects: s.objects, over: false, mode: 'map',
+    gameMode: s.mode || 'free', size: s.size || 'M', resLv: s.resLv ?? 1, win: s.win || 'conquer', fog: s.fog !== false });
+  // saves from v1.10 and older: two crowns, the capitals are the starting towns
+  for (const Pl of G.players) { if (!Pl.css) Pl.css = colCss(Pl.color); if (!G.towns.some((t) => t.capOf === Pl.i)) { const t = G.towns.find((x) => x.p === Pl.i); if (t && G.win === 'conquer') t.capOf = Pl.i; } }
   unpack(s.ter, ter); unpack(s.h, h); unpack(s.road, road); unpack(s.seen, seen);
   objAt.fill(-1); for (const o of G.objects) if (o.alive) objAt[o.v] = o.id;
   for (const hr of G.heroes) hr.anim = null; // saved mid-step during an enemy turn
