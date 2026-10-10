@@ -3154,7 +3154,8 @@ function frame(now) {
 // is solved from the projected grid box; a view offset then centres the grid in that band (bcam.fov stays as it is,
 // so the px maths of the count plates and picking still hold). Pinch-zoom can only move out from the fitted view.
 const BGRID = (() => {
-  const x = 3.75 * HW + 0.12, z = ((BT.ROWS - 1) / 2) * VS + HS + 0.08;
+  // x: the outer creatures' centres sit at 3.25 HW; the outermost hex edge (3.75 HW) may be trimmed a little
+  const x = 3.55 * HW, z = ((BT.ROWS - 1) / 2) * VS + HS + 0.08;
   return [[-x, 0, -z], [x, 0, -z], [-x, 1.55, -z], [x, 1.55, -z], [-x, 0, z], [x, 0, z], [-x, 0.7, z], [x, 0.7, z]].map((a) => new THREE.Vector3(...a));
 })();
 const bfV = new THREE.Vector3(), bfE = [0, 0, 0, 0];
@@ -3176,7 +3177,7 @@ function frameBattleCam(s, c, dt) {
   const W = rsz.w || innerWidth, H = rsz.h || innerHeight;
   const T = clamp(lay.batT, 0, H * 0.45), B = clamp(lay.batB, H * 0.55, H);
   const ppt = H / 2 / Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2)); // px per tangent unit
-  const avW = W * 0.97, avH = Math.max(H * 0.3, B - T) * 0.97;
+  const avW = W * 0.99, avH = Math.max(H * 0.3, B - T) * 0.97;
   let d = lay.bD || 14;
   for (let i = 0; i < 4; i++) {
     const e = bcamPlace(s, c, d), k = Math.max(((e[1] - e[0]) * ppt) / avW, ((e[3] - e[2]) * ppt) / avH);
