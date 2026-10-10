@@ -1594,11 +1594,11 @@ let loadProf = null; // __realms.prewarmProfile(): [label, ms] per loader and po
 // output off-screen vs ACES + sRGB on the canvas), and every view is drawn through post into rtScene, so a compile with
 // the canvas bound would build variants no frame ever uses while the real ones still compiled on the first draw.
 const warmRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
-function compileSoon(sc, cm, ms = 6000) {
+function compileSoon(sc, cm, ms = 6000, target = null) {
   const prev = renderer.getRenderTarget();
   let p;
   renderer.setRenderTarget(warmRT);
-  try { p = renderer.compileAsync(sc, cm).catch((e) => console.warn('compile', e)); } catch (e) { p = Promise.resolve(); console.warn('compile', e); }
+  try { p = renderer.compileAsync(sc, cm, target).catch((e) => console.warn('compile', e)); } catch (e) { p = Promise.resolve(); console.warn('compile', e); }
   finally { renderer.setRenderTarget(prev); }
   return Promise.race([p, new Promise((res) => setTimeout(res, ms))]);
 }
@@ -1646,58 +1646,59 @@ function drawOffscreen(sc, cm) {
   try { renderer.shadowMap.needsUpdate = true; renderer.setRenderTarget(warmRT); renderer.render(sc, cm); } catch (e) { console.warn('warm draw', e); }
   finally { renderer.setRenderTarget(prev); renderer.shadowMap.needsUpdate = sh; }
 }
+// Compile a group's programs one top-level child per idle slice, with `target`'s lights and fog: each slice only
+// compiles that child's new programs, so a device without parallel shader compile gets a few short hitches instead
+// of one long one (and where programs link in parallel, nothing waits at all).
+const compileJobs = (k, label, root, cm, target) => root.children.map((c, i) => ({ k, label: `${label}.${i}`, f: () => compileSoon(c, cm, 6000, target) }));
 function postJobs() {
   const out = [], add = (k, label, f) => out.push({ k, label, f });
-  // battle first (the arena of the hero's own terrain, one creature): programs compiled in parallel, then one off-screen draw
+  // battle first: the arena of the hero's own terrain + one creature, compiled piece by piece, then one off-screen draw
   const t0 = ter[G.heroes.find((h) => h.p === 0)?.v] ?? 1, terrs = [...new Set([t0, 1, 2, 3, 4, 5, 6, 7])];
   let a0 = null;
-  const arena0 = () => { if (!a0) { const m = meshOf(cached('upikeman', () => unitGeo('pikeman'))); setAnim(m, ANIM.IDLE); a0 = [createBattlefield(THREE, t0, hexPos, BT.COLS, BT.ROWS).group, m]; } return a0; };
   add('battle', 'arena', () => {
-    if (G.mode === 'battle') return; // a battle in progress owns bscene
-    const objs = arena0(); bscene.add(...objs);
-    const p = compileSoon(bscene, bcam);
-    bscene.remove(...objs);
-    return p;
+    const m = meshOf(cached('upikeman', () => unitGeo('pikeman'))); setAnim(m, ANIM.IDLE);
+    a0 = [createBattlefield(THREE, t0, hexPos, BT.COLS, BT.ROWS).group, m];
+    const g = new THREE.Group(); g.children.push(...a0[0].children, m); // a view for compileJobs only (no reparenting)
+    return { expand: [...compileJobs('battle', 'arena', g, bcam, bscene), { k: 'battle', label: 'arena draw', f: () => {
+      if (G.mode === 'battle') return; // a battle in progress owns bscene
+      bscene.add(...a0);
+      bcam.position.set(0, 10.75, 10.6); bcam.lookAt(0, 0, -0.15);
+      drawOffscreen(bscene, bcam);
+      bscene.remove(...a0);
+    } }] };
   });
-  add('battle', 'arena draw', () => {
-    if (G.mode === 'battle') return;
-    const objs = arena0(); bscene.add(...objs);
-    bcam.position.set(0, 10.75, 10.6); bcam.lookAt(0, 0, -0.15);
-    drawOffscreen(bscene, bcam);
-    bscene.remove(...objs);
-  });
-  // the player's own town: geometry, programs, one off-screen draw (opening it later is a DOM toggle)
+  // the player's own town: geometry, programs piece by piece, one off-screen draw (opening it later is a DOM toggle)
   const myTown = G.towns.find((t) => t.p === 0);
   if (myTown) {
-    add('town', 'town', () => { if (G.mode !== 'map') return; townView.highlight(null); townView.setTown({ fac: myTown.fac, built: myTown.built, name: myTown.name }); });
-    add('town', 'town shaders', () => { if (G.mode !== 'map') return; townView.update(1 / 60); return compileSoon(townView.scene, townView.camera); });
-    add('town', 'town draw', () => { if (G.mode !== 'map') return; drawOffscreen(townView.scene, townView.camera); });
+    add('town', 'town', () => {
+      if (G.mode !== 'map') return;
+      townView.highlight(null); townView.setTown({ fac: myTown.fac, built: myTown.built, name: myTown.name }); townView.update(1 / 60);
+      return { expand: [...compileJobs('town', 'town', townView.scene, townView.camera, townView.scene), { k: 'town', label: 'town draw', f: () => { if (G.mode === 'map') drawOffscreen(townView.scene, townView.camera); } }] };
+    });
   }
-  // the other terrains' arenas (their decor / water / lava programs)
-  for (const t of terrs.slice(1)) add('battle', 'arena ' + t, () => {
-    if (G.mode === 'battle') return;
-    const g = createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS).group;
-    bscene.add(g); const p = compileSoon(bscene, bcam); bscene.remove(g);
-    return p;
-  });
   // creature geometry + fits and every portrait size the UI uses come from warmGeometryIdle (its own idle queue)
   for (const fac of new Set(G.towns.filter((t) => t.p !== 0 && t.built.includes('fort')).map((t) => t.fac))) add('walls', 'walls ' + fac, () => { cached('wall_' + fac, () => wallModel(fac)); cached('gate_' + fac, () => gateModel(fac)); cached('tower_' + fac, () => towerModel(fac)); cached('keep_' + fac, () => keepModel(fac)); });
+  // last: the other terrains' arenas (their own decor / water / lava programs)
+  for (const t of terrs.slice(1)) add('battle2', 'arena ' + t, () => ({ expand: compileJobs('battle2', 'arena ' + t, createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS).group, bcam, bscene) }));
   return out;
 }
-// One job per idle slice, only while the map is calm (warmCalm); urgent (bumped) jobs run at once, calm or not.
-// Creature geometry (warmGeometryIdle) follows when this queue is empty.
+// One job per idle slice, only while the map is calm (warmCalm) and the browser reports idle time (forced by the idle
+// timeout only once the first seconds of play are over); urgent (bumped) jobs run at once, calm or not. A job may
+// return { expand: [jobs] }: those run next. Creature geometry (warmGeometryIdle) follows when this queue is empty.
 const postQ = [];
-let postT = 0, postIn = false;
+let postT = 0, postIn = false, postT0 = 0;
 function postSchedule(ms) { clearTimeout(postT); postT = setTimeout(() => { postT = 0; if (postQ[0]?.urgent) postRun(null); else idleCb(postRun); }, ms); }
-function postwarm(jobs) { postQ.length = 0; postQ.push(...jobs); postSchedule(400); }
+function postwarm(jobs) { postQ.length = 0; postQ.push(...jobs); postT0 = performance.now(); postSchedule(1200); }
 async function postRun(dl) {
   if (postIn) return;
   if (!postQ.length) { warmGeometryIdle(); return; }
-  const j = postQ[0];
-  if (!j.urgent && (!warmCalm() || (dl && !dl.didTimeout && dl.timeRemaining() < 3))) { postSchedule(250); return; }
+  const j = postQ[0], forced = dl?.didTimeout && performance.now() - postT0 > 4000;
+  if (!j.urgent && (!warmCalm() || (dl && !forced && dl.timeRemaining() < 4))) { postSchedule(250); return; }
   postIn = true; postQ.shift();
   const a = performance.now();
-  try { await j.f(); } catch (e) { console.warn('postwarm', j.label, e); }
+  let r = null;
+  try { r = await j.f(); } catch (e) { console.warn('postwarm', j.label, e); }
+  if (r?.expand) postQ.unshift(...r.expand.map((x) => Object.assign(x, { urgent: j.urgent })));
   loadProf?.push(['idle:' + j.label, Math.round(performance.now() - a)]);
   postIn = false;
   if (postQ.length) postSchedule(j.urgent ? 0 : 30); else warmGeometryIdle();
