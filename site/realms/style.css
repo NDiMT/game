@@ -730,3 +730,7 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
   background: radial-gradient(circle, rgba(255, 226, 122, 0.55), rgba(255, 200, 80, 0) 65%); animation: dcweek 1.6s ease-out 0.1s forwards; }
 @keyframes dcweek { 0% { opacity: 0; transform: scale(0.4); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
 @media (prefers-reduced-motion: reduce) { .flyres, .dc-orb, .dc-ban, #daycyc::after { display: none; } }
+
+/* selected-hero strip on phones: Continue shrinks to a round ▶ so the name and army keep their room */
+.sel .sel-who b { min-width: 4.2em; }
+@media (max-width: 560px) { .sel .sel-go { width: 36px; padding: 0; border-radius: 50%; font-size: 15px; } .sel .sel-go .go-t { display: none; } }
