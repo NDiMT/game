@@ -95,11 +95,21 @@
   // self-update: a cached page reloads itself when a newer build is live (GitHub Pages caches HTML ~10 min)
   (function () {
     var BUILD = '1.8';
+    var sw = navigator.serviceWorker, local = /^(localhost|127\.|\[::1\])/.test(location.hostname) && !/[?&]sw=1/.test(location.search);
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
       if (j && j.version && j.version !== BUILD && sessionStorage.getItem('realms.reload') !== j.version) {
         sessionStorage.setItem('realms.reload', j.version);
         location.replace(location.pathname + '?v=' + encodeURIComponent(j.version));
+        return;
       }
+      // kill switch: { "sw": false } in version.json removes the worker and its caches
+      if (!sw) return;
+      if (j && j.sw === false) { sw.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }); if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('orbis-') === 0) caches.delete(k); }); }); return; }
+      // long-term asset cache (sw.js): versioned files cache-first, audio + three.js stale-while-revalidate.
+      // Registered a little after load so it never competes with the first boot; not on localhost (dev edits keep
+      // their ?v=) unless the URL has ?sw=1.
+      var reg = function () { setTimeout(function () { sw.register('sw.js?b=' + encodeURIComponent(BUILD)).catch(function () {}); }, 3000); };
+      if (!local) { if (document.readyState === 'complete') reg(); else addEventListener('load', reg); }
     }).catch(function () {});
   })();
 </script>
