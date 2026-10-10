@@ -1187,10 +1187,18 @@ cvs.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 const selHero = () => (G.selHero >= 0 && G.heroes[G.selHero]?.alive && G.heroes[G.selHero].p === 0 ? G.heroes[G.selHero] : null);
+let lastMapTap = { v: -1, t: 0 };
 function mapTap(cx, cy) {
   if (busy()) return;
   const v = pickCell(cx, cy);
   if (v === null) return;
+  // double tap on one of your towns (even with a hero standing in it): open it for building / recruiting
+  const now = performance.now(), dbl = lastMapTap.v === v && now - lastMapTap.t < 450;
+  lastMapTap = dbl ? { v: -1, t: 0 } : { v, t: now };
+  if (dbl && seen[v] && objAt[v] >= 0) {
+    const ot = G.objects[objAt[v]];
+    if (ot.alive && ot.type === 'town' && G.towns[ot.t].p === 0) { showPath(selHero(), pendingRoute(selHero())); openTown(ot.t); return; }
+  }
   const hr = selHero();
   const mine = heroAt(v);
   if (mine && mine.p === 0) { selectHero(mine.id); return; }
@@ -1255,7 +1263,7 @@ function startWalk(hr, path) {
   hr.route = null; hr.routeObj = -1;
   walking = { hr, path, i: 0, t: 0, n };
   // perf: marching on your own town / a fight -> its idle warm-up jobs run now, not on arrival
-  if (hr.p === 0) { const e = objAt[path[path.length - 1]], o = e >= 0 ? G.objects[e] : null; if (o?.type === 'town' && G.towns[o.t]?.p === 0) bumpWarm('town'); else if (o?.type === 'monster' || o?.type === 'town') bumpWarm('battle'); }
+  if (hr.p === 0) { const e = objAt[path[path.length - 1]], o = e >= 0 ? G.objects[e] : null; if (o?.type === 'town' && G.towns[o.t]?.p === 0) bumpWarm('town'); else if (o?.type === 'monster' || o?.type === 'town') bumpWarm('battle', [o.unit, ...(hr.army || []).map((st) => st?.[0])]); }
   // feel: the route stays drawn while the hero walks it and is consumed underfoot (fx.eatPath in updateWalk);
   // it is only re-drawn if the planned one differs (a resumed march re-routed around something)
   const same = plan && plan.hr === hr.id && plan.path.length === path.length && plan.path.every((v, i) => v === path[i]);
@@ -1365,7 +1373,7 @@ function interact(hr, v) {
   }
   if (!o) return;
   const O = OBJECTS[o.type], kind = O?.kind;
-  if (you && (o.type === 'monster' || o.type === 'town' || guardOf(v))) bumpWarm('battle'); // a fight may follow: battle programs first
+  if (you && (o.type === 'monster' || o.type === 'town' || guardOf(v))) bumpWarm('battle', [o.type === 'monster' ? o.unit : guardOf(v)?.unit, ...(o.type === 'town' ? (G.towns[o.t].garrison || []).map((st) => st?.[0]) : []), ...(hr.army || []).map((st) => st?.[0])]); // a fight may follow
   // guarded: a monster standing next to a mine, chest, site or town must be beaten first
   if (o.type !== 'monster') {
     const guard = guardOf(v);
@@ -1678,8 +1686,10 @@ function postJobs() {
   }
   // creature geometry + fits and every portrait size the UI uses come from warmGeometryIdle (its own idle queue)
   for (const fac of new Set(G.towns.filter((t) => t.p !== 0 && t.built.includes('fort')).map((t) => t.fac))) add('walls', 'walls ' + fac, () => { cached('wall_' + fac, () => wallModel(fac)); cached('gate_' + fac, () => gateModel(fac)); cached('tower_' + fac, () => towerModel(fac)); cached('keep_' + fac, () => keepModel(fac)); });
-  // last: the other terrains' arenas (their own decor / water / lava programs)
-  for (const t of terrs.slice(1)) add('battle2', 'arena ' + t, () => ({ expand: compileJobs('battle2', 'arena ' + t, createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS).group, bcam, bscene) }));
+  // last: the other terrains' arenas (their own decor / water / lava programs). Only where programs link in parallel:
+  // without KHR_parallel_shader_compile every compile occupies the GPU queue, and a fight started meanwhile would wait
+  // behind compiles it does not need (prepBattle compiles its own arena behind the curtain anyway)
+  if (renderer.extensions.has('KHR_parallel_shader_compile')) for (const t of terrs.slice(1)) add('battle2', 'arena ' + t, () => ({ expand: compileJobs('battle2', 'arena ' + t, createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS).group, bcam, bscene) }));
   return out;
 }
 // One job per idle slice, only while the map is calm (warmCalm) and the browser reports idle time (forced by the idle
@@ -1703,10 +1713,16 @@ async function postRun(dl) {
   postIn = false;
   if (postQ.length) postSchedule(j.urgent ? 0 : 30); else warmGeometryIdle();
 }
-function bumpWarm(kind) {
+// bumpWarm('battle', [unit ids]): also the creatures of the fight on offer (geometry, battle fit, 64 px portrait), so
+// prepBattle behind the curtain finds them cached instead of building them and reading portraits back synchronously
+function bumpWarm(kind, ids = []) {
   const hit = postQ.filter((j) => j.k === kind);
+  for (const id of new Set(ids)) {
+    if (!id || !UNITS[id] || (geoCache.has('u' + id) && hasPortrait(id, 64)) || postQ.some((j) => j.label === 'foe ' + id)) continue;
+    hit.push({ k: kind, label: 'foe ' + id, f: () => { unitFit(id, cached('u' + id, () => unitGeo(id)), 'battle'); return hasPortrait(id, 64) ? null : portraitAsync(id, 64); } });
+  }
   if (!hit.length) return;
-  for (const j of hit) { j.urgent = true; postQ.splice(postQ.indexOf(j), 1); }
+  for (const j of hit) { j.urgent = true; const i = postQ.indexOf(j); if (i >= 0) postQ.splice(i, 1); }
   postQ.unshift(...hit);
   if (!postIn) postSchedule(0);
 }
