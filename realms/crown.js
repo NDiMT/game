@@ -7,8 +7,8 @@
 //   - map sites with choices: Pandora's Box, Witch Hut, Scholar, Shrine, Treasure Chest, Seer's Hut, merchants
 // main.js owns the screens and the map; it calls in here for every rule.
 // =====================================================================
-import { UNITS, FACTIONS, UPGRADES, NEUTRALS, SPELLS, SKILLS } from './data.js?v=1.10';
-import { armyPower, harm, alive } from './battle.js?v=1.10';
+import { UNITS, FACTIONS, UPGRADES, NEUTRALS, SPELLS, SKILLS } from './data.js?v=2.0';
+import { armyPower, harm, alive } from './battle.js?v=2.0';
 
 // ---------------------------------------------------------------- balance levers (CROWN_RUN.md "Balance levers")
 export const TUNE = {
