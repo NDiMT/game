@@ -3048,7 +3048,10 @@ const pack = (a, off = 48) => { let s = ''; for (let i = 0; i < a.length; i++) s
 const unpack = (s, a, off = 48) => { for (let i = 0; i < a.length; i++) a[i] = s.charCodeAt(i) - off; };
 function save() {
   if (G.over || !G.players.length) return;
-  store.set('realms.save', { v: 1, ver: APP_VERSION, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter), h: pack(h), road: pack(road), seen: pack(seen) });
+  // saved mid-walk (Save & quit): the rest of the march is kept as an unfinished route (Continue ▶ after loading)
+  const W = walking, rest = W && W.i < W.path.length - 1 ? W.path.slice(W.i) : null, keep = rest && [W.hr.route, W.hr.routeObj];
+  if (rest) { W.hr.route = rest; W.hr.routeObj = objAt[rest[rest.length - 1]]; }
+  try { store.set('realms.save', { v: 1, ver: APP_VERSION, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter), h: pack(h), road: pack(road), seen: pack(seen) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
 }
 // the morning save serialises the whole world (~100 KB of JSON): run it when the browser is idle,
 // not in the same frame as the new day's income, growth, HUD and camera work
