@@ -1456,6 +1456,13 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     }
   }
 
+  /** perf: build (and cache) a faction's environment + building geometry ahead of time, without showing it,
+   *  so a later setTown() for that faction only attaches cached pieces instead of stalling on the tap. */
+  function prepare(fac, built = []) {
+    if (!PAL[fac]) return;
+    if (!envs[fac]) envs[fac] = buildEnv(fac);
+    for (const id of Object.values(resolveSlots(built))) if (id) buildingModel(fac, id);
+  }
   function setTown({ fac, built = [], name = '' } = {}) {
     if (!PAL[fac]) fac = 'haven';
     const same = cur.fac === fac && cur.name === name;
@@ -1708,5 +1715,5 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   }
 
   resize(renderer.domElement.clientWidth || 412, renderer.domElement.clientHeight || 860);
-  return { scene, camera, setTown, update, resize, pick, highlight, dispose, setInsets, slotScreen, get slots() { return Object.fromEntries(Object.entries(slots).map(([k, s]) => [k, s.id])); } };
+  return { scene, camera, setTown, prepare, update, resize, pick, highlight, dispose, setInsets, slotScreen, get slots() { return Object.fromEntries(Object.entries(slots).map(([k, s]) => [k, s.id])); } };
 }

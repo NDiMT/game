@@ -83,9 +83,13 @@ export function addFormNormals(geo, creaseDeg = 66) {
     fn[t * 3] = x / l; fn[t * 3 + 1] = y / l; fn[t * 3 + 2] = z / l;
   }
   // triangle corners grouped by quantised position
+  // numeric keys (17 bits per axis, ~2x faster) while the model fits in +-6.5 units, string keys beyond that
   const q = 1e4, groups = new Map(), ckey = new Array(nt * 3);
+  let ext = 0; for (let v = 0; v < nv; v++) ext = Math.max(ext, Math.abs(P.getX(v)), Math.abs(P.getY(v)), Math.abs(P.getZ(v)));
+  const num = ext * q < 65000;
   for (let t = 0; t < nt; t++) for (let c = 0; c < 3; c++) {
-    const v = vi(t, c), k = Math.round(P.getX(v) * q) + ',' + Math.round(P.getY(v) * q) + ',' + Math.round(P.getZ(v) * q);
+    const v = vi(t, c), X = Math.round(P.getX(v) * q), Y = Math.round(P.getY(v) * q), Z = Math.round(P.getZ(v) * q);
+    const k = num ? ((X + 65536) * 131072 + (Y + 65536)) * 131072 + (Z + 65536) : X + ',' + Y + ',' + Z;
     ckey[t * 3 + c] = k;
     let g = groups.get(k); if (!g) groups.set(k, g = []); g.push(t);
   }

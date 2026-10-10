@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE as RIG, tagRange, ensureRig } from './rig.js?v=1.7';
+import { BONE as RIG, tagRange, ensureRig } from './rig.js?v=1.8';
 
 // =====================================================================
 // HEX REALMS: faction towns, mounted heroes and ownership flags.
@@ -142,15 +142,16 @@ function bake(parts, r, glow, uv) {
       const jf = 1 + (r() - 0.5) * 2 * jit;
       for (let v = 0; v < 3; v++) {
         const vi = t + v, x = P[vi * 3], y = P[vi * 3 + 1], z = P[vi * 3 + 2];
-        pos.set([x, y, z], o * 3); nor.set([fn.x, fn.y, fn.z], o * 3);
+        const o3 = o * 3, o2 = o * 2;
+        pos[o3] = x; pos[o3 + 1] = y; pos[o3 + 2] = z; nor[o3] = fn.x; nor[o3 + 1] = fn.y; nor[o3 + 2] = fn.z;
         let m = jf * (bot + (top - bot) * ((y - ymin) / span));
         if (p.o.cols) m *= p.o.cols[vi];
         if (!glow && p.o.ao !== false) m *= 0.84 + 0.16 * smooth(-0.01, 0.14, y);
         tmpC.copy(base).multiplyScalar(m);
-        col.set([tmpC.r, tmpC.g, tmpC.b], o * 3);
+        col[o3] = tmpC.r; col[o3 + 1] = tmpC.g; col[o3 + 2] = tmpC.b;
         if (uvs) {
           const ax = Math.abs(fn.x), ay = Math.abs(fn.y), az = Math.abs(fn.z);
-          if (ay >= ax && ay >= az) uvs.set([x, z], o * 2); else if (ax >= az) uvs.set([z, y], o * 2); else uvs.set([x, y], o * 2);
+          if (ay >= ax && ay >= az) { uvs[o2] = x; uvs[o2 + 1] = z; } else if (ax >= az) { uvs[o2] = z; uvs[o2 + 1] = y; } else { uvs[o2] = x; uvs[o2 + 1] = y; }
         }
         o++;
       }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE as RB, ensureRig, tagRange } from './rig.js?v=1.7';
+import { BONE as RB, ensureRig, tagRange } from './rig.js?v=1.8';
 
 // =====================================================================
 // HEX REALMS: Necropolis creatures (procedural, vertex-coloured).
@@ -152,13 +152,17 @@ function nkit(seed) {
 // mid body, plum-tinted darker underside, never black) and a light sky lift
 const SHADE = C(0x6a5a9a);
 function bake(parts, glow, r, scale, top) {
-  const pos = [], nor = [], col = [], uv = [];
-  const p = new V3(), n = new V3(), t = new THREE.Color();
+  // typed output sized for the worst case (no degenerate triangles), trimmed at the end
+  let cap = 0; for (const part of parts) cap += part.g.attributes.position.array.length * (part.ds ? 2 : 1);
+  const pos = new Float32Array(cap), nor = new Float32Array(cap), col = new Float32Array(cap), uv = new Float32Array(glow ? 0 : (cap / 3) * 2);
+  let nv = 0;
+  const p = new V3(), n = new V3(), t = new THREE.Color(), pcol = new THREE.Color();
   const a = new V3(), b = new V3(), c = new V3(), e = new V3(), ctr = new V3();
   const tags = [], tcc = new THREE.Color();
   for (const part of parts) {
-    const start = pos.length / 3, perTri = typeof part.rig === 'function';
-    const arr = part.g.attributes.position.array;
+    const start = nv, perTri = typeof part.rig === 'function';
+    const arr = part.g.attributes.position.array, fixedCol = !part.tc && typeof part.c !== 'function';
+    if (fixedCol) pcol.set(part.c); // colour conversion once per part, not per vertex
     const passes = part.ds ? 2 : 1;
     for (let pass = 0; pass < passes; pass++) {
       for (let i = 0; i < arr.length; i += 9) {
@@ -168,12 +172,12 @@ function bake(parts, glow, r, scale, top) {
         if (n.lengthSq() < 1e-14) continue;
         n.normalize();
         if (perTri || part.tc) ctr.copy(a).add(b).add(c).multiplyScalar(1 / 3);
-        if (perTri) tags.push([pos.length / 3, 3, ...part.rig(ctr)]);
+        if (perTri) tags.push([nv, 3, ...part.rig(ctr)]);
         if (part.tc) tcc.copy(part.tc(ctr, n));
         const jit = glow ? 1 : 1 + (r() - 0.5) * 0.05;
         for (const v of tri) {
           p.copy(v);
-          if (part.tc) t.copy(tcc); else if (typeof part.c === 'function') t.copy(part.c(p, n)); else t.set(part.c);
+          if (part.tc) t.copy(tcc); else if (!fixedCol) t.copy(part.c(p, n)); else t.copy(pcol);
           if (!glow) {
             const h = smooth(0.0, top, p.y);
             t.lerp(SHADE, 0.14 * (1 - smooth(0, 0.35 * top, p.y)));         // coloured (lilac) foot shade
@@ -183,25 +187,26 @@ function bake(parts, glow, r, scale, top) {
             const l = t.r * 0.3 + t.g * 0.55 + t.b * 0.15;                   // floor: no murk
             if (l < 0.07) { const f = (0.07 - l) / 0.07; t.r += 0.035 * f; t.g += 0.025 * f; t.b += 0.05 * f; }
           }
-          pos.push(p.x * scale, p.y * scale, p.z * scale);
-          nor.push(n.x, n.y, n.z);
-          col.push(t.r, t.g, t.b);
+          const o3 = nv * 3, o2 = nv * 2; nv++;
+          pos[o3] = p.x * scale; pos[o3 + 1] = p.y * scale; pos[o3 + 2] = p.z * scale;
+          nor[o3] = n.x; nor[o3 + 1] = n.y; nor[o3 + 2] = n.z;
+          col[o3] = t.r; col[o3 + 1] = t.g; col[o3 + 2] = t.b;
           if (!glow) {
             const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
-            if (ay >= ax && ay >= az) uv.push(p.x * scale, p.z * scale);
-            else if (ax >= az) uv.push(p.z * scale, p.y * scale);
-            else uv.push(p.x * scale, p.y * scale);
+            if (ay >= ax && ay >= az) { uv[o2] = p.x * scale; uv[o2 + 1] = p.z * scale; }
+            else if (ax >= az) { uv[o2] = p.z * scale; uv[o2 + 1] = p.y * scale; }
+            else { uv[o2] = p.x * scale; uv[o2 + 1] = p.y * scale; }
           }
         }
       }
     }
-    if (part.rig && !perTri && pos.length / 3 > start) tags.push([start, pos.length / 3 - start, ...part.rig]);
+    if (part.rig && !perTri && nv > start) tags.push([start, nv - start, ...part.rig]);
   }
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  if (!glow) geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, nv * 3), 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nor.slice(0, nv * 3), 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col.slice(0, nv * 3), 3));
+  if (!glow) geo.setAttribute('uv', new THREE.BufferAttribute(uv.slice(0, nv * 2), 2));
   ensureRig(THREE, geo);
   for (const [st, cnt, bn, pv] of tags) tagRange(THREE, geo, st, cnt, bn, [pv[0] * scale, pv[1] * scale, pv[2] * scale]);
   geo.computeBoundingSphere();

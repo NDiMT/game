@@ -403,6 +403,14 @@ export function createVfx(THREE, scene) {
     if (!m) { m = new THREE.Mesh(type === 'boulder' ? boulderGeo : arrowGeo, type === 'boulder' ? boulderMat : arrowMat); if (type === 'boulder') m.castShadow = true; root.add(m); meshPool[type].push(m); }
     m.visible = true; m.scale.setScalar(1); return m;
   };
+  // pre-pool one projectile mesh per material (hidden): renderer.compile()/compileAsync() of the battle scene then
+  // builds the arrow / magic-arrow / boulder programs up front instead of on the first shot (a hitch on the first
+  // archer or siege-tower volley)
+  for (const [type, mat] of [['arrow', arrowMat], ['arrow', magicArrowMat], ['boulder', boulderMat]]) {
+    const m = new THREE.Mesh(type === 'boulder' ? boulderGeo : arrowGeo, mat); m.visible = false; m.frustumCulled = false;
+    if (type === 'boulder') m.castShadow = true;
+    root.add(m); meshPool[type].push(m);
+  }
 
   // ---------------- timers: after(delay, fn), during(duration, fn(k, dt, age))
   const tasks = [];
