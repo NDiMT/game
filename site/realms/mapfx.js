@@ -9,7 +9,8 @@
 //                                   route: green today, red later, a gold day-end
 //                                   ring where today's walk stops, a waving green
 //                                   flag at a goal reached today, a red cross if not.
-//   fx.clearPath()
+//   fx.clearPath(now?)              eases the route out (~0.16 s); now = true drops it at once
+//   fx.eatPath(k)                   hero progress along the shown path (cells): arrows underfoot swell and fade
 //   fx.select(position|null, normal?, color?)   glowing animated ring under the hero
 //   fx.burst(kind, position, opts?)  'coin' | 'pickup' | 'gem' | 'artifact' | 'flag' |
 //                                   'dust' | 'step' | 'magic' | 'level' | 'battle'
@@ -144,22 +145,27 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
   const aCol = new THREE.InstancedBufferAttribute(new Float32Array(MAXA * 4), 4);   // rgb + index along path
   aGeo.setAttribute('aCol', aCol);
   const arrowMat = new THREE.ShaderMaterial({
-    uniforms: { uTime: T, uStart: { value: -10 } },
+    uniforms: { uTime: T, uStart: { value: -10 }, uEnd: { value: 1e9 }, uEat: { value: -10 } },
     vertexShader: /* glsl */`
       attribute float aTone; attribute vec4 aCol;
-      uniform float uTime, uStart;
+      uniform float uTime, uStart, uEnd, uEat;
       varying float vTone, vGlow, vA; varying vec3 vCol; varying vec2 vUv;
       void main() {
         float idx = aCol.w;
         // pop in one after another when a route is drawn
         float k = clamp((uTime - uStart) * 14.0 - idx * 0.6, 0.0, 1.0);
         float pop = k * (1.0 + 0.35 * sin(k * 3.14159));
+        // feel: a cleared route shrinks away in ~0.15 s instead of vanishing (uEnd = clear time)
+        float out1 = clamp(1.0 - (uTime - uEnd) * 7.0, 0.0, 1.0);
+        // consumed as the hero walks over it (uEat = hero progress in path cells): a quick swell + fade underfoot
+        float eat = smoothstep(idx - 0.75, idx + 0.05, uEat);
+        pop *= out1 * out1 * (1.0 + 0.4 * eat);
         // a light travelling along the route, toward the goal
         float m = fract(idx * 0.11 - uTime * 0.55);
         vGlow = pow(1.0 - m, 6.0);
         vec3 p = position * pop;
-        p.y += vGlow * 0.006;
-        vTone = aTone; vCol = aCol.rgb; vA = k; vUv = uv;
+        p.y += vGlow * 0.006 + eat * 0.012;
+        vTone = aTone; vCol = aCol.rgb; vA = k * out1 * (1.0 - eat); vUv = uv;
         gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
       }`,
     fragmentShader: /* glsl */`
@@ -252,6 +258,8 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     }
     arrows.count = n; arrows.instanceMatrix.needsUpdate = true; aCol.needsUpdate = true;
     arrowMat.uniforms.uStart.value = T.value;
+    arrowMat.uniforms.uEnd.value = 1e9; arrowMat.uniforms.uEat.value = -10; fade = null;
+    goalRing.material.uniforms.uAlpha.value = dayRing.material.uniforms.uAlpha.value = 1;
 
     const g = path[last], reach = today >= last;
     _v.copy(posOf(g)).sub(posOf(path[last - 1]));
@@ -268,8 +276,28 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     if (today > 0 && today < last) { placeFlat(dayRing, cellPos(path[today], 0.012), DIRS[path[today]], 0.3); dayRing.visible = true; }
     else dayRing.visible = false;
   }
-  function clearPath() {
-    arrows.count = 0; goalFlag.visible = goalCross.visible = goalRing.visible = dayRing.visible = false; goalBob = null;
+  // feel: clearPath() eases everything out over ~0.16 s (arrows shrink in the shader, the goal markers scale down and
+  // fade); clearPath(true) or a reduced-motion user drops it at once. A new showPath() mid-fade simply takes over.
+  let fade = null;   // { t0, flag }
+  const RM = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  function hideAll() { arrows.count = 0; goalFlag.visible = goalCross.visible = goalRing.visible = dayRing.visible = false; goalBob = null; fade = null; arrowMat.uniforms.uEat.value = -10; }
+  function clearPath(now = false) {
+    if (now || RM.matches || !(arrows.count || goalRing.visible)) { hideAll(); return; }
+    if (fade) return;
+    arrowMat.uniforms.uEnd.value = T.value;
+    fade = { t0: T.value, flag: goalFlag.visible ? goalFlag : goalCross.visible ? goalCross : null, s: 1 };
+    if (fade.flag) fade.s = fade.flag.scale.x;
+    fade.rs = goalRing.scale.x;
+  }
+  // the hero walking the route: k = how far along it is, in path cells (cell i of the path is reached at k = i)
+  function eatPath(k) { if (!fade) arrowMat.uniforms.uEat.value = k; }
+  function stepFade() {
+    if (!fade) return;
+    const u = Math.min(1, (T.value - fade.t0) / 0.16), e = 1 - u * u;
+    if (fade.flag) fade.flag.scale.setScalar(fade.s * Math.max(0.001, 1 - u * u * u));
+    goalRing.scale.setScalar(fade.rs * (1 + 0.25 * u));
+    goalRing.material.uniforms.uAlpha.value = e; dayRing.material.uniforms.uAlpha.value = e;
+    if (u >= 1) hideAll();
   }
   function placeFlat(obj, p, n, s) {
     obj.position.copy(p);
@@ -282,11 +310,28 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
   const selRing = new THREE.Mesh(quadGeo, selMat); selRing.visible = false; selRing.renderOrder = 2; root.add(selRing);
   const selGlint = new THREE.Mesh(quadGeo, ringMat({ color: 0xfff2b0, r0: 0.86, w: 0.035, dash: 3, spin: -2.6, fill: 0, pulse: 0.3, add: 0.8, alpha: 0.85 }));
   selRing.add(selGlint);
-  function select(position, normal, color) {
-    if (!position) { selRing.visible = false; return; }
+  // feel: the ring eases in (a small overshoot) and out (shrink + fade) instead of popping; called every frame.
+  // Moving to a different hero (a jump of more than ~half a hex) restarts the ease-in at the new spot.
+  const selPos = new THREE.Vector3(), selNrm = new THREE.Vector3();
+  const sel = { a: 0, want: 0, has: false };
+  const selA0 = selMat.uniforms.uAlpha, selA1 = selGlint.material.uniforms.uAlpha;
+  function select(position, normal, color, now = false) {
     if (color !== undefined) selMat.uniforms.uColor.value.set(color);
-    placeFlat(selRing, position, normal || _v.copy(position), 0.42);
+    if (!position) { sel.want = 0; if (now) { sel.a = 0; sel.has = false; selRing.visible = false; } return; }
+    if (!sel.has || selPos.distanceToSquared(position) > 0.09) sel.a = 0;
+    sel.has = true; sel.want = 1;
+    selPos.copy(position); selNrm.copy(normal || position);
+  }
+  function stepSelect(dt) {
+    if (!sel.has) return;
+    sel.a = sel.want ? Math.min(1, sel.a + dt / (RM.matches ? 0.01 : 0.22)) : Math.max(0, sel.a - dt / (RM.matches ? 0.01 : 0.14));
+    if (sel.a <= 0 && !sel.want) { selRing.visible = false; sel.has = false; return; }
+    const a = sel.a, u = 1 - a;
+    // ease-in: easeOutBack-ish swell; ease-out: shrink toward 0.7
+    const s = sel.want ? 1 + 0.12 * Math.sin(a * Math.PI) - 0.3 * u * u * u : 0.7 + 0.3 * a;
+    placeFlat(selRing, selPos, selNrm, 0.42 * s);
     selRing.position.addScaledVector(_n, 0.012);
+    selA0.value = a * (2 - a); selA1.value = 0.85 * a * a;
     selRing.visible = true;
   }
 
@@ -489,6 +534,12 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     }
   }
 
+  // a dynamic attribute's [0, count) goes up on the next render (ranges not yet consumed by a render are widened)
+  function upRange(attr, count) {
+    const r = attr.updateRanges;
+    if (r.length) { r[0].start = 0; r[0].count = Math.max(r[0].count, count); r.length = 1; } else attr.addUpdateRange(0, count);
+    attr.needsUpdate = true;
+  }
   function updateParticles(dt) {
     let w = 0;
     const ip = PB.iPos.array, ic = PB.iCol.array, is = PB.iSz.array;
@@ -517,7 +568,8 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     }
     np = w;
     PB.g.instanceCount = np;
-    if (np) PB.iPos.needsUpdate = PB.iCol.needsUpdate = PB.iSz.needsUpdate = true;
+    // perf: upload only the live instances [0, np) instead of all MAXP (instanceCount hides the rest)
+    if (np) { upRange(PB.iPos, np * 3); upRange(PB.iCol, np * 4); upRange(PB.iSz, np * 4); }
     for (const s of SHOCK) {
       if (!s.m.visible) continue;
       s.t += dt; const k = s.t / s.life;
@@ -610,7 +662,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
   // ------------------------------------------------------------ frame
   function update(dt, camera) {
     T.value += dt;
-    updateParticles(dt);
+    updateParticles(dt); stepFade(); stepSelect(dt);
     if (goalBob) {
       const k = T.value - goalBob.t0;
       const drop = Math.max(0, 1 - k * 4); // drops in, then bobs gently
@@ -630,5 +682,5 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     atlasTex.dispose();
   }
 
-  return { showPath, clearPath, select, burst, update, flagMaterial, setHalos, setFogEdge, dispose, root };
+  return { showPath, clearPath, eatPath, select, burst, update, flagMaterial, setHalos, setFogEdge, dispose, root };
 }

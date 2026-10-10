@@ -531,9 +531,9 @@ export function createPlanetMaterial(waterLevel) {
   const uniforms = { uTer: { value: terrainTexture() }, uTime, uWater: { value: waterLevel }, uGlow: { value: 2.6 } };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, uniforms);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 tdat;\nattribute vec2 tnb;\nvarying vec4 vT;\nvarying float vRad;\nflat varying float vNb;\nvarying float vNw;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvT = tdat; vRad = length(position); vNb = tnb.x; vNw = tnb.y;');
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 tdat;\nattribute vec2 tnb;\nattribute float trev;\nvarying vec4 vT;\nvarying float vRad;\nflat varying float vNb;\nvarying float vNw;\nvarying float vRev;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvT = tdat; vRad = length(position); vNb = tnb.x; vNw = tnb.y; vRev = trev;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform highp sampler2DArray uTer;\nuniform float uTime, uWater, uGlow;\nvarying vec4 vT;\nvarying float vRad;\nflat varying float vNb;\nvarying float vNw;')
+      .replace('#include <common>', '#include <common>\nuniform highp sampler2DArray uTer;\nuniform float uTime, uWater, uGlow;\nvarying vec4 vT;\nvarying float vRad;\nflat varying float vNb;\nvarying float vNw;\nvarying float vRev;')
       .replace('#include <map_fragment>', `
         float lay = floor(vT.z + 0.5);
         float isFog = step(11.5, lay);
@@ -568,6 +568,15 @@ export function createPlanetMaterial(waterLevel) {
           tx.rgb *= 1.0 - 0.1 * smoothstep(0.42, 0.47, m) * (1.0 - smoothstep(0.48, 0.52, m));
           tx = mix(tx, vec4(rd.rgb, 0.0), smoothstep(0.47, 0.53, m));
         }
+        // freshly explored land: the mist dissolves into it over ~0.8 s in a soft, patchy wipe (vRev = reveal time)
+        float revK = 1.0;
+        if (isFog < 0.5 && uTime - vRev < 1.2) {
+          float rn = sin(q.x * 1.3 + sin(q.y * 1.9) * 1.4) * 0.5 + 0.5;
+          revK = smoothstep(0.0, 1.0, clamp((uTime - vRev) * 1.7 - rn * 0.6, 0.0, 1.0));
+          vec2 fuv = vT.xy + vec2(uTime * 0.013, uTime * 0.008) + swirl;
+          vec4 f1 = texture(uTer, vec3(fuv, 12.0)), f2 = texture(uTer, vec3(vT.xy * 0.61 - vec2(uTime * 0.01, -uTime * 0.012) - swirl * 1.3, 12.0));
+          tx = mix(vec4(mix(f1.rgb, f2.rgb, 0.5), max(f1.a, f2.a)), tx, revK);
+        }
         diffuseColor.rgb *= tx.rgb;
         // the mist brightens into a pale lilac haze right at the explored frontier
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.64, 0.62, 0.74), frontier * 0.3);`)
@@ -585,14 +594,14 @@ export function createPlanetMaterial(waterLevel) {
           float tw = (lay > 2.5 && lay < 4.5) ? pow(0.5 + 0.5 * sin(uTime * 2.6 + tx.a * 47.0 + (vT.x - vT.y) * 9.0), 3.0) * 0.8 : 0.8 + 0.2 * sin(uTime * 1.6 + vT.x * 5.0 + vT.y * 3.0);
           totalEmissiveRadiance += tx.rgb * tx.rgb * tx.a * uGlow * tw * smoothstep(0.2, 0.5, vColor.g + vColor.r);
           // a warm-cool fill so shadows stay soft and coloured, never black; the mist glows softly
-          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.14, 0.135, 0.17), isFog);
+          totalEmissiveRadiance += diffuseColor.rgb * mix(vec3(0.07, 0.075, 0.1), vec3(0.14, 0.135, 0.17), max(isFog, 1.0 - revK));
           // a soft magic glow along the frontier: on the mist side, and where the mist bleeds onto explored rims
           float fogRim = (1.0 - isFog) * step(11.5, vNb) * step(vNb, 12.5) * smoothstep(0.3, 0.5, vNw);
           float pulse = 0.85 + 0.15 * sin(uTime * 1.2 + (vT.x + vT.y) * 4.0);
           totalEmissiveRadiance += vec3(0.36, 0.34, 0.46) * (frontier * 0.3 + fogRim * 0.15) * pulse;
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-terrain-6';
+  mat.customProgramCacheKey = () => 'hexrealms-terrain-7';
   return mat;
 }
 
@@ -600,7 +609,7 @@ export function createWaterMaterial() {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, roughness: 0.26, metalness: 0.05 });
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = uTime;
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 wd;\nvarying vec2 vWd;\nvarying vec3 vWPos;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvWd = wd; vWPos = (modelMatrix * vec4(position, 1.0)).xyz;');
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 wd;\nattribute float wrev;\nvarying vec2 vWd;\nvarying vec3 vWPos;\nvarying float vRev;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvWd = wd; vRev = wrev; vWPos = (modelMatrix * vec4(position, 1.0)).xyz;');
     const waves = `
       float wavesH(vec3 p, out vec3 g) {
         float t = uTime; float h = 0.0; g = vec3(0.0);
@@ -611,7 +620,7 @@ export function createWaterMaterial() {
         return h;
       }`;
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uTime;\nvarying vec2 vWd;\nvarying vec3 vWPos;\n' + waves)
+      .replace('#include <common>', '#include <common>\nuniform float uTime;\nvarying vec2 vWd;\nvarying vec3 vWPos;\nvarying float vRev;\n' + waves)
       .replace('#include <color_fragment>', `
         vec3 wg; float wh = wavesH(vWPos, wg);
         float shore = vWd.x, depth = vWd.y;
@@ -628,6 +637,8 @@ export function createWaterMaterial() {
         float crest = smoothstep(2.3, 2.8, wh) * 0.12 * (1.0 - depth * 0.5);
         float f = clamp(foam * 0.8 + foam2 * 0.35 + crest, 0.0, 0.8);
         float lit = smoothstep(0.15, 0.45, vColor.g);
+        // freshly explored sea: the mist clears over ~0.8 s (vRev = reveal time)
+        if (uTime - vRev < 1.2) lit *= smoothstep(0.0, 1.0, clamp((uTime - vRev) * 1.7 - (0.5 + 0.5 * sin(dot(vWPos, vec3(9.0, -7.0, 8.0)))) * 0.6, 0.0, 1.0));
         // unexplored sea: the same soft bluish mist as the land fog
         // (matches the land fog: indigo-violet with orchid pools and drifting lavender wisps)
         vec3 mp = vWPos * 3.0;
@@ -657,7 +668,7 @@ export function createWaterMaterial() {
           normal = normalize(normal - gv * 0.0016 * lit);
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-water-6';
+  mat.customProgramCacheKey = () => 'hexrealms-water-7';
   return mat;
 }
 
@@ -719,6 +730,9 @@ export function createPlanet(ctx) {
   geo.setAttribute('color', new THREE.BufferAttribute(C, 3));
   geo.setAttribute('tdat', new THREE.BufferAttribute(TD, 4));
   geo.setAttribute('tnb', new THREE.BufferAttribute(NB, 2));
+  // per-vertex reveal time (uTime seconds) for the fog fade-in; long ago = fully revealed
+  const RV = new Float32Array(maxV).fill(-1e4);
+  geo.setAttribute('trev', new THREE.BufferAttribute(RV, 1));
   geo.setIndex(new THREE.BufferAttribute(IDX, 1));
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), R + 2);
   const planet = new THREE.Mesh(geo, createPlanetMaterial(waterLevel));
@@ -732,6 +746,8 @@ export function createPlanet(ctx) {
   wgeo.setAttribute('normal', new THREE.BufferAttribute(WN, 3));
   wgeo.setAttribute('color', new THREE.BufferAttribute(WC, 3));
   wgeo.setAttribute('wd', new THREE.BufferAttribute(WD, 2));
+  const WR = new Float32Array(wMaxV).fill(-1e4);
+  wgeo.setAttribute('wrev', new THREE.BufferAttribute(WR, 1));
   wgeo.setIndex(new THREE.BufferAttribute(WI, 1));
   wgeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), R + 2);
   const water = new THREE.Mesh(wgeo, createWaterMaterial());
@@ -739,19 +755,21 @@ export function createPlanet(ctx) {
   water.renderOrder = 1;
 
   const pa = new THREE.Vector3(), pb = new THREE.Vector3(), qa = new THREE.Vector3(), qb = new THREE.Vector3(), wn = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
-  function rebuild(ter, h, road, seen) {
-    const WATER = 0;
-    const isW = (x) => ter[x] === WATER;
-    let nv = 0, ni = 0, nt = 0;
-    const vert = (x, y, z, nx, ny, nz, r, g, bb, u, vv, lay, rm, nbl = lay, nbw = 0) => {
+  // per-cell spans in the vertex / index buffers. The layout (vertex count, triangles, cliff walls) depends only on
+  // ter + h, so a fog reveal can rewrite just the touched cells' attributes in place (refog) instead of rebuilding
+  const cellV = new Int32Array(NV + 1), cellI = new Int32Array(NV), wCell = new Int32Array(NV).fill(-1);
+  let nv = 0, ni = 0, nt = 0, wv = 0, wi = 0;
+  const vert = (x, y, z, nx, ny, nz, r, g, bb, u, vv, lay, rm, nbl = lay, nbw = 0) => {
       const o = nv * 3, o4 = nv * 4;
       NB[nv * 2] = nbl; NB[nv * 2 + 1] = nbw;
       P[o] = x; P[o + 1] = y; P[o + 2] = z; N[o] = nx; N[o + 1] = ny; N[o + 2] = nz; C[o] = r; C[o + 1] = g; C[o + 2] = bb;
       TD[o4] = u; TD[o4 + 1] = vv; TD[o4 + 2] = lay; TD[o4 + 3] = rm;
       return nv++;
     };
-    const tri = (i0, i1, i2, cell) => { IDX[ni++] = i0; IDX[ni++] = i1; IDX[ni++] = i2; triCell[nt++] = cell; };
-    for (let v = 0; v < NV; v++) {
+  const tri = (i0, i1, i2, cell) => { IDX[ni++] = i0; IDX[ni++] = i1; IDX[ni++] = i2; triCell[nt++] = cell; };
+  function writeCell(v, ter, h, road, seen) {
+      const WATER = 0;
+      const isW = (x) => ter[x] === WATER;
       const T = tmpl[v], k = T.k, rad = R + h[v] * STEP, vis = !!seen[v], w = isW(v);
       const lay = !vis ? LAYER.FOG : ter[v];
       const isRoad = vis && !w && road[v];
@@ -817,13 +835,21 @@ export function createPlanet(ctx) {
         if (e1.cross(e2).dot(wn) > 0) { tri(i0, i1, i2, v); tri(i0, i2, i3, v); } else { tri(i0, i2, i1, v); tri(i0, i3, i2, v); }
         wu += len;
       }
-    }
+  }
+  function rebuild(ter, h, road, seen) {
+    const WATER = 0;
+    const isW = (x) => ter[x] === WATER;
+    nv = 0; ni = 0; nt = 0;
+    for (let v = 0; v < NV; v++) { cellV[v] = nv; cellI[v] = ni; writeCell(v, ter, h, road, seen); }
+    cellV[NV] = nv;
+    RV.fill(-1e4, 0, nv);
     geo.setDrawRange(0, ni);
-    for (const k of ['position', 'normal', 'color', 'tdat', 'tnb']) { const at = geo.attributes[k]; at.clearUpdateRanges(); at.addUpdateRange(0, nv * at.itemSize); at.needsUpdate = true; }
+    for (const k of ['position', 'normal', 'color', 'tdat', 'tnb', 'trev']) { const at = geo.attributes[k]; at.clearUpdateRanges(); at.addUpdateRange(0, nv * at.itemSize); at.needsUpdate = true; }
     geo.index.clearUpdateRanges(); geo.index.addUpdateRange(0, ni); geo.index.needsUpdate = true;
 
     // ---- water
-    let wv = 0, wi = 0;
+    wv = 0; wi = 0;
+    wCell.fill(-1);
     const depthOf = (x) => (isW(x) ? Math.min(1, Math.max(0.25, (SEA - h[x]) / 2)) : 0);
     const wvert = (p, r, sh, dp, col) => {
       const o = wv * 3;
@@ -840,6 +866,7 @@ export function createPlanet(ctx) {
         cs[i] = isW(f[0]) && isW(f[1]) && isW(f[2]) ? 1 : 0;
         cd[i] = (depthOf(f[0]) + depthOf(f[1]) + depthOf(f[2])) / 3;
       }
+      wCell[v] = wv;
       const c0 = wvert(DIRS[v], waterLevel, 1, depthOf(v), col);
       const first = wv;
       for (let i = 0; i < k; i++) {
@@ -855,10 +882,47 @@ export function createPlanet(ctx) {
       }
     }
     wgeo.setDrawRange(0, wi);
-    for (const k of ['position', 'normal', 'color', 'wd']) wgeo.attributes[k].needsUpdate = true;
+    WR.fill(-1e4, 0, wv);
+    for (const k of ['position', 'normal', 'color', 'wd', 'wrev']) { const at = wgeo.attributes[k]; at.clearUpdateRanges(); at.needsUpdate = true; }
     wgeo.index.needsUpdate = true;
   }
-  const api = { planet, water, triCell, rebuild, waterLevel };
+  // a fog reveal on unchanged land: `cells` just turned seen. Rewrites only those cells and their neighbours
+  // (edge bleeds, frontier rims and road joins read the neighbours' fog) and uploads just those spans.
+  // `now` (performance.now() / 1000) starts the fade-in of the newly revealed cells. Returns false if a full rebuild is needed.
+  function refog(ter, h, road, seen, cells, now = performance.now() / 1000) {
+    if (!cellV[NV]) return false;
+    const touch = new Set();
+    for (const v of cells) { touch.add(v); for (const n of CELLS[v].nb) touch.add(n); }
+    const list = [...touch].sort((x, y) => x - y);
+    const keepV = nv, keepI = ni, keepT = nt;
+    for (const v of list) {
+      nv = cellV[v]; ni = cellI[v]; nt = ni / 3;
+      writeCell(v, ter, h, road, seen);
+      if (nv !== cellV[v + 1]) { nv = keepV; ni = keepI; nt = keepT; rebuild(ter, h, road, seen); return true; } // layout moved: be safe
+    }
+    nv = keepV; ni = keepI; nt = keepT;
+    for (const v of cells) RV.fill(now, cellV[v], cellV[v + 1]);
+    // merge nearby spans so a reveal costs a handful of buffer uploads, not one per cell
+    const ats = ['color', 'tdat', 'tnb', 'trev'].map((k) => geo.attributes[k]);
+    let s0 = -1, s1 = -1;
+    const flush = () => { if (s0 < 0) return; for (const at of ats) { at.addUpdateRange(s0 * at.itemSize, (s1 - s0) * at.itemSize); at.needsUpdate = true; } };
+    for (const v of list) {
+      const a = cellV[v], b = cellV[v + 1];
+      if (s0 >= 0 && a - s1 <= 256) s1 = b; else { flush(); s0 = a; s1 = b; }
+    }
+    flush();
+    // water: only the revealed sea cells change (their brightness), plus their fade-in clock
+    const wc = wgeo.attributes.color, wr = wgeo.attributes.wrev;
+    for (const v of cells) {
+      const w0 = wCell[v];
+      if (w0 < 0) continue;
+      const n = 1 + 2 * CELLS[v].fs.length, col = seen[v] ? 1 : 0.1;
+      WC.fill(col, w0 * 3, (w0 + n) * 3); WR.fill(now, w0, w0 + n);
+      wc.addUpdateRange(w0 * 3, n * 3); wr.addUpdateRange(w0, n); wc.needsUpdate = wr.needsUpdate = true;
+    }
+    return true;
+  }
+  const api = { planet, water, triCell, rebuild, refog, waterLevel };
   globalThis.__hexTerrain = api; // debug handle for previews
   return api;
 }

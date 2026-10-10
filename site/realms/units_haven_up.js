@@ -6,7 +6,7 @@
 // (units_haven.js havenBuild(base, true)), so the silhouette and identity stay
 // the same and the upgrade adds gold trim, capes, crowns, bigger plumes/wings.
 // =====================================================================
-import { havenBuild } from './units_haven.js?v=1.8';
+import { havenBuild } from './units_haven.js?v=1.9';
 
 const BASE_OF = { halberdier: 'pikeman', marksman: 'archer', royalgriffin: 'griffin', crusader: 'swordsman', zealot: 'monk', champion: 'cavalier', archangel: 'angel' };
 export const HAVEN_UP_IDS = Object.keys(BASE_OF);
