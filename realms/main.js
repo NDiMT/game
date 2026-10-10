@@ -3040,7 +3040,7 @@ function audio() {
     lim.connect(actx.destination);
     const sfxBus = actx.createGain(); sfxBus.gain.value = 0.85; sfxBus.connect(lim);
     sfxEngine = createSfx(actx, sfxBus);
-    const mus = actx.createGain(); mus.gain.value = 0.5; mus.connect(lim);
+    const mus = actx.createGain(); mus.gain.value = 0.58; mus.connect(lim); // 0.5 before the mono sample fold (-1.3 dB), restored
     score = createScore(actx, mus); musicScene();
     if (store.get('realms.music', true)) score.start();
     // iOS: a phone call, Siri or an alarm leaves the context 'interrupted' (Safari) or 'suspended'; ask it back as soon
