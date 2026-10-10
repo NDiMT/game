@@ -2693,7 +2693,7 @@ let toastT = 0;
 function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
 // UI juice: a soft ripple from the touch point on chunky buttons (purely visual, removed after it plays)
 document.addEventListener('pointerdown', (e) => {
-  const b = e.target.closest?.('.btn, .fb, .row-b button, .tabs2 button, .hb, .diffs button, .fcard, .slots button');
+  const b = e.target.closest?.('.btn, .fb, .row-b button, .tabs2 button, .hb, .diffs button, .fcard, .mode, .opp button, .slots button');
   if (!b || b.disabled || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const r = b.getBoundingClientRect(), w = document.createElement('span'), c = document.createElement('i');
   w.className = 'rip'; c.style.left = `${e.clientX - r.left}px`; c.style.top = `${e.clientY - r.top}px`;
@@ -3279,12 +3279,10 @@ function showMenu() {
   fadeShow($('menu')); $('hud').hidden = true; $('town').hidden = true; $('battle').hidden = true; musicScene('menu');
   const s = store.get('realms.save', null);
   $('m-continue').hidden = !s;
-  if (s) $('m-continue').innerHTML = `Continue<small>${s.players?.[0] ? `${FACTIONS[s.players[0].fac]?.name || ''} · ` : ''}Week ${Math.floor((s.day - 1) / 7) + 1}, day ${((s.day - 1) % 7) + 1}</small>`;
+  if (s) $('m-continue').innerHTML = `Continue<small>${s.mode === 'crown' ? 'Crown Run · ' : `Free Play${(s.players?.length || 2) > 2 ? ` 1v${s.players.length - 1}` : ''} · `}${s.players?.[0] ? `${FACTIONS[s.players[0].fac]?.name || ''} · ` : ''}Week ${Math.floor((s.day - 1) / 7) + 1}, day ${((s.day - 1) % 7) + 1}</small>`;
   syncSound();
   for (const m of heroMeshes.values()) scene.remove(m); heroMeshes.clear();
 }
-for (const b of document.querySelectorAll('#menu .diffs button')) b.addEventListener('click', () => { store.set('realms.diff', +b.dataset.d); for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.toggle('on', x === b); sfx.click(); });
-for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.toggle('on', +x.dataset.d === store.get('realms.diff', 1));
 // title-screen music toggle (the same setting as the in-game menu)
 function syncSound() { const on = store.get('realms.music', true); $('m-sound').classList.toggle('off', !on); $('m-sound').querySelector('span').textContent = on ? 'Music on' : 'Music off'; }
 $('m-sound').addEventListener('click', () => { const on = !store.get('realms.music', true); store.set('realms.music', on); if (on) score?.start(); else score?.stop(); syncSound(); sfx.click(); });
@@ -3304,41 +3302,120 @@ $('m-new').addEventListener('click', () => {
   if (store.get('realms.save', null)) { ask('Start a new game?', '<p>Your saved game will be replaced when the new one begins.</p>', [['Start a new game', () => pickFaction()], ['Keep my game', null]]); sfx.click(); return; }
   pickFaction();
 });
+// Crown Run (the "crown" agent's roguelite): its entry point registers itself as window.CrownRun = { start(), resume(save) }.
+// Until it lands, the button explains what is coming.
+$('m-crown').addEventListener('click', () => {
+  sfx.click();
+  if (typeof window.CrownRun?.start === 'function') { window.CrownRun.start(); return; }
+  ask(`${icon('victory', 26)} Crown Run`, `<p>A roguelite on a full map: <b>8 Antes</b>, one week each. Every week ends in a <b>Blind</b> battle against a rising threat, up to a Crown Boss with a rule-breaking twist.</p>
+    <ul class="tips"><li>${icon('banner', 22)}<span><b>Banners</b>: five slots of rule-breaking passives that combo.</span></li><li>${icon('market', 22)}<span><b>The shop</b> after every Blind: banners, upgrades, scrolls, vouchers.</span></li><li>${icon('chest', 22)}<span><b>Packs</b>: pick one of three from every treasure.</span></li></ul><p class="hint2">Coming soon. Free Play is ready now.</p>`, [['Play Free Play', () => $('m-new').click()], ['Back', null]]);
+});
 // faction choice: one card per faction with its crest, colour, creature line-up, description and signature skill and spell.
-// Tap a card to select it; tap the selected card again (or the Begin button) to start.
 const FAC_CREST = { haven: 'defense', necro: 'necromancy', sylvan: 'luck', inferno: 'fireball', dungeon: 'sorcery' };
+// ---- freeplay: the Free Play setup screen (your crown, rivals, map and rules). The last settings are remembered.
+const FP_DEF = { size: 'M', res: 1, win: 'conquer', fog: true, opp: [{ fac: 'random', col: -1 }] };
+function fpLoad() {
+  const s = { ...FP_DEF, ...store.get('realms.fp', {}) };
+  if (!MAP_SIZES[s.size]) s.size = 'M';
+  s.res = clamp(s.res | 0, 0, 2); s.win = s.win === 'capitals' ? 'capitals' : 'conquer'; s.fog = s.fog !== false;
+  s.opp = (Array.isArray(s.opp) && s.opp.length ? s.opp : FP_DEF.opp).slice(0, 4).map((o) => ({ fac: FACTIONS[o?.fac] ? o.fac : 'random', col: Number.isInteger(o?.col) && PLAYER_COLS[o.col] !== undefined ? o.col : -1 }));
+  s.diff = clamp(store.get('realms.diff', 1) | 0, 0, 3); // (also the harnesses' knob)
+  s.fac = FACTIONS[store.get('realms.fac', 'haven')] ? store.get('realms.fac', 'haven') : 'haven';
+  return s;
+}
 function pickFaction() {
-  const el = $('factions');
-  let sel = FACTIONS[store.get('realms.fac', 'haven')] ? store.get('realms.fac', 'haven') : 'haven';
-  const diff = ['Easy', 'Normal', 'Hard'][store.get('realms.diff', 1)] || 'Normal';
-  el.innerHTML = `<div class="fp"><header class="fp-head">${icon('logo', 44)}<div><small>New game · ${diff}</small><h2>Choose your crown</h2></div></header><div class="fcards">${Object.entries(FACTIONS).map(([k, f]) => {
-    const kit = FACTION_START[k] || FACTION_START.haven;
-    return `<button class="fcard${k === sel ? ' on' : ''}" data-f="${k}" style="--fc:${f.css}" aria-pressed="${k === sel}">
-    <span class="fc-crest">${icon(FAC_CREST[k] || 'banner', 30)}</span>
-    <span class="fc-body"><b class="fc-name">${f.name}</b><small class="fc-desc">${f.desc || ''}</small>
-    <span class="fc-sig"><em>Signature</em><span>${icon(kit.skill, 16)}${SKILLS[kit.skill]?.name || ''}</span><span>${icon(kit.spell, 16)}${SPELLS[kit.spell]?.name || ''}</span></span></span>
-    <span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 64)).join('')}</span><span class="fc-check">${icon('check', 16)}</span></button>`;
-  }).join('')}</div>
-    <footer class="fp-foot"><button class="btn ghost" id="f-back">Back</button><button class="btn gold" id="f-go">Begin as ${FACTIONS[sel].name}</button></footer></div>`;
-  fadeShow(el); el.scrollTop = 0; document.body.style.setProperty('--fac', FACTIONS[sel].css);
-  const start = (fac) => {
-    store.set('realms.fac', fac); fadeHide(el, 320); sfx.click();
-    newWorld((Date.now() % 100000) + 1, store.get('realms.diff', 1), fac);
+  const el = $('factions'), S = fpLoad();
+  const keep = () => { store.set('realms.fp', { size: S.size, res: S.res, win: S.win, fog: S.fog, opp: S.opp }); store.set('realms.diff', S.diff); store.set('realms.fac', S.fac); };
+  const facKeys = Object.keys(FACTIONS);
+  // the colour each rival will really get (the same rule newWorld uses), so the swatches show the outcome
+  const colsNow = () => {
+    const taken = [FACTIONS[S.fac].color];
+    return S.opp.map((o) => { let c = PLAYER_COLS[o.col] ?? -1; const fac = FACTIONS[o.fac] ? o.fac : null; if (c < 0 || taken.includes(c)) c = fac ? FACTIONS[fac].color : -1; if (c < 0 || taken.includes(c)) c = PLAYER_COLS.find((x) => !taken.includes(x) && !S.opp.some((q) => PLAYER_COLS[q.col] === x)) ?? PLAYER_COLS.find((x) => !taken.includes(x)); taken.push(c); return c; });
+  };
+  const seg = (key, opts, cur) => `<div class="diffs seg" role="radiogroup" data-k="${key}">${opts.map(([v, label, ic]) => `<button data-v="${v}" class="${String(v) === String(cur) ? 'on' : ''}" role="radio" aria-checked="${String(v) === String(cur)}">${ic ? icon(ic, 16) : ''}${label}</button>`).join('')}</div>`;
+  const row = (label, html) => `<div class="fs-row"><p class="mlabel">${label}</p>${html}</div>`;
+  const oppHTML = () => {
+    const cs = colsNow();
+    return S.opp.map((o, k) => { const f = FACTIONS[o.fac], css = colCss(cs[k]);
+      return `<div class="opp" style="--pc:${css}"><span class="opp-n">${k + 1}</span>
+        <button class="opp-fac" data-o="${k}" style="--fc:${f ? f.css : '#8a8aa0'}" aria-label="Rival ${k + 1} faction: ${f ? f.name : 'Random'}"><span class="fc-crest mini">${f ? icon(FAC_CREST[o.fac] || 'banner', 18) : '<b class="q">?</b>'}</span><b>${f ? f.name : 'Random'}</b><i class="cyc">▸</i></button>
+        <button class="opp-col" data-c="${k}" aria-label="Rival ${k + 1} colour: ${COL_NAMES[PLAYER_COLS.indexOf(cs[k])] || ''}"><i style="background:${css}"></i><small>${o.col < 0 ? 'Auto' : COL_NAMES[o.col]}</small></button></div>`; }).join('');
+  };
+  const summary = () => `${FACTIONS[S.fac].name} vs ${S.opp.length} rival${S.opp.length > 1 ? 's' : ''}`;
+  el.innerHTML = `<div class="fp fs"><header class="fp-head">${icon('logo', 44)}<div><small>Free Play · skirmish</small><h2>Set up your war</h2></div></header>
+    <div class="fs-cols">
+      <section class="fs-you"><p class="mlabel">Your crown</p><div class="fcards mini">${Object.entries(FACTIONS).map(([k, f]) => {
+        const kit = FACTION_START[k] || FACTION_START.haven;
+        return `<button class="fcard${k === S.fac ? ' on' : ''}" data-f="${k}" style="--fc:${f.css}" aria-pressed="${k === S.fac}">
+        <span class="fc-crest">${icon(FAC_CREST[k] || 'banner', 30)}</span>
+        <span class="fc-body"><b class="fc-name">${f.name}</b><small class="fc-desc">${f.desc || ''}</small>
+        <span class="fc-sig"><em>Signature</em><span>${icon(kit.skill, 16)}${SKILLS[kit.skill]?.name || ''}</span><span>${icon(kit.spell, 16)}${SPELLS[kit.spell]?.name || ''}</span></span></span>
+        <span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 64)).join('')}</span><span class="fc-check">${icon('check', 16)}</span></button>`;
+      }).join('')}</div></section>
+      <section class="fs-set">
+        ${row('Rival crowns', seg('n', [1, 2, 3, 4].map((n) => [n, `1 v ${n}`]), S.opp.length))}
+        <div class="opps" id="fs-opps">${oppHTML()}</div>
+        ${row('Map size', seg('size', Object.keys(MAP_SIZES).map((k) => [k, k]), S.size))}
+        ${row('Difficulty', seg('diff', [[0, 'Easy', 'luck'], [1, 'Normal', 'attack'], [2, 'Hard', 'fireball'], [3, 'Impossible', 'defeat']], S.diff))}
+        ${row('Starting resources', seg('res', [[0, 'Poor', 'wood'], [1, 'Normal', 'gold'], [2, 'Rich', 'gems']], S.res))}
+        ${row('Victory', seg('win', [['conquer', 'Conquer all', 'victory'], ['capitals', 'Capitals', 'town']], S.win))}
+        ${row('Fog of war', seg('fog', [[1, 'On', 'scouting'], [0, 'Off', 'day']], S.fog ? 1 : 0))}
+        <p class="hint2 fs-hint" id="fs-hint"></p>
+      </section>
+    </div>
+    <footer class="fp-foot"><button class="btn ghost" id="f-back">Back</button><button class="btn gold" id="f-go">Begin<small id="f-sum">${summary()}</small></button></footer></div>`;
+  fadeShow(el); el.scrollTop = 0; for (const s of el.querySelectorAll('.fs-you, .fs-set')) s.scrollTop = 0;
+  document.body.style.setProperty('--fac', FACTIONS[S.fac].css);
+  const hint = () => {
+    $('fs-hint').textContent = `${S.win === 'capitals' ? 'Take every rival capital; a crown that loses its capital is out (so are you).' : 'Win by taking every town and defeating every hero.'} ${S.size !== 'M' ? `${MAP_SIZES[S.size]} map.` : ''}`.trim();
+  };
+  const refresh = () => {
+    $('fs-opps').innerHTML = oppHTML(); $('f-sum').textContent = summary(); hint(); keep();
+  };
+  hint();
+  const start = () => {
+    keep(); fadeHide(el, 320); sfx.click();
+    newWorld((Date.now() % 100000) + 1, S.diff, S.fac, { mode: 'free', opponents: S.opp, size: S.size, res: S.res, win: S.win, fog: S.fog });
     play(); save();
-    const rival = FACTIONS[G.players[1].fac].name;
-    setTimeout(() => ask(`${icon('logo', 26)} Your crown`, `<p>You lead the <b style="color:${FACTIONS[fac].css}">${FACTIONS[fac].name}</b>. Defeat the <b style="color:${FACTIONS[G.players[1].fac].css}">${rival}</b> crown to rule the world.</p>
+    const rivals = G.players.filter((x) => x.ai), fac = S.fac;
+    const names = rivals.map((P) => `<b style="color:${P.css}">${P.name}</b>`), list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+    setTimeout(() => ask(`${icon('logo', 26)} Your crown`, `<p>You lead the <b style="color:${FACTIONS[fac].css}">${FACTIONS[fac].name}</b>. ${G.win === 'capitals' ? `Capture the capital${rivals.length > 1 ? 's' : ''} of ${list} and keep your own.` : `Defeat ${rivals.length > 1 ? 'the crowns of ' : 'the '}${list}${rivals.length > 1 ? '' : ' crown'} to rule the world.`}</p>
       <ul class="tips"><li>${icon('movement', 22)}<span><b>Tap a hex</b> to plan a route, tap it again to march.</span></li><li>${icon('gold', 22)}<span><b>Flag mines</b> and pick up treasure for income.</span></li><li>${icon('town', 22)}<span><b>Walk into your town</b> (or double-tap it) to build once a day and recruit.</span></li><li>${icon('hero', 22)}<span><b>Tap your hero</b> for the hero sheet. Double-tap either to fly there.</span></li><li>${icon('end', 22)}<span><b>End the day</b> when everyone has moved.</span></li></ul>`, [['Begin', null]], true), 600);
   };
   el.querySelectorAll('.fcard').forEach((b) => b.addEventListener('click', () => {
-    if (b.dataset.f === sel) { start(sel); return; }
-    sel = b.dataset.f; sfx.click();
+    if (b.dataset.f === S.fac) return;
+    S.fac = b.dataset.f; sfx.click();
     el.querySelectorAll('.fcard').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
-    $('f-go').textContent = `Begin as ${FACTIONS[sel].name}`; document.body.style.setProperty('--fac', FACTIONS[sel].css);
+    document.body.style.setProperty('--fac', FACTIONS[S.fac].css); refresh();
   }));
-  $('f-go').addEventListener('click', () => start(sel));
-  $('f-back').addEventListener('click', () => { fadeHide(el); });
+  el.querySelectorAll('.seg').forEach((g) => g.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    const k = g.dataset.k, v = b.dataset.v; sfx.click();
+    for (const x of g.querySelectorAll('button')) { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); }
+    if (k === 'n') { const n = +v; while (S.opp.length < n) S.opp.push({ fac: 'random', col: -1 }); S.opp.length = n; }
+    else if (k === 'size') S.size = v; else if (k === 'diff') S.diff = +v; else if (k === 'res') S.res = +v; else if (k === 'win') S.win = v; else if (k === 'fog') S.fog = v === '1';
+    refresh();
+  }));
+  // a rival's faction cycles Random → each faction; its colour cycles Auto → each colour nobody else has
+  $('fs-opps').addEventListener('click', (e) => {
+    const f = e.target.closest('.opp-fac'), c = e.target.closest('.opp-col');
+    if (f) { const o = S.opp[+f.dataset.o], seq = ['random', ...facKeys]; o.fac = seq[(seq.indexOf(o.fac) + 1) % seq.length]; }
+    else if (c) {
+      const k = +c.dataset.c, o = S.opp[k], cs = colsNow(), busy = [FACTIONS[S.fac].color, ...cs.filter((_, i) => i !== k)];
+      let i = o.col; do { i = i + 1 >= PLAYER_COLS.length ? -1 : i + 1; } while (i >= 0 && busy.includes(PLAYER_COLS[i]));
+      o.col = i;
+    } else return;
+    sfx.click(); refresh();
+  });
+  $('f-go').addEventListener('click', start);
+  $('f-back').addEventListener('click', () => { keep(); fadeHide(el); sfx.click(); });
 }
-$('m-continue').addEventListener('click', () => { if (load()) play(); });
+// Continue resumes the last save, whichever mode it belongs to
+$('m-continue').addEventListener('click', () => {
+  const s = store.get('realms.save', null);
+  if (s?.mode === 'crown' && typeof window.CrownRun?.resume === 'function') { window.CrownRun.resume(s); return; }
+  if (load()) play();
+});
 
 // ------------------------------------------------------------------ the loop
 const clock = new THREE.Clock();
