@@ -1295,7 +1295,7 @@ function updateWalk(dt) {
   if (W.t < 1) return;
   W.t = bump || stop ? 0 : W.t - 1;
   // arrive at b (or back at a after a bump)
-  if (target) { walking = null; fx.clearPath(); layoutHeroes(true); interact(hr, b); return; }
+  if (target) { if (onto) hr.mp = Math.max(0, hr.mp - stepCost(a, b)); walking = null; fx.clearPath(); layoutHeroes(true); interact(hr, b); return; } // stepping onto a pickup costs the step like any other
   hr.mp -= stepCost(a, b); hr.v = b; W.i++;
   if (reveal(b, visionOf(hr))) worldDirty = true;
   sfx.step({ kind: 'hoof' });
@@ -1796,7 +1796,8 @@ async function prepBattle(job) {
   if (!live()) return;
   bprep = null;
   $('battle').hidden = false;
-  const hs = ctx.sides.map((sd) => (sd.hero ? sd.hero.name : sd.owner < 0 ? 'Neutrals' : 'Garrison'));
+  const town = ctx.foe && ctx.foe.kind === 'town' ? ctx.foe.town : null;
+  const hs = ctx.sides.map((sd) => (sd.hero ? sd.hero.name : town && sd.army === town.garrison ? town.name : sd.owner < 0 ? 'Neutrals' : 'Garrison'));
   $('b-title').textContent = `${hs[0]} vs ${hs[1]}`;
   refreshBattle();
   // lift the curtain once the first battle frame is on screen
@@ -2093,7 +2094,10 @@ function pickHex(cx, cy) {
     for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { const d = hexPos(c, r).distanceTo(p); if (d < bd) { bd = d; best = [c, r]; } }
   }
   if (!best || bd > HS * 1.2) return null;
-  return { c: best[0], r: best[1], k: BT.key(best[0], best[1]), p };
+  // the ground hex under the pointer too (a tall body standing in front can cover an empty hex behind it)
+  let g = null, gd = 1e9;
+  for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { const d = hexPos(c, r).distanceTo(p); if (d < gd) { gd = d; g = [c, r]; } }
+  return { c: best[0], r: best[1], k: BT.key(best[0], best[1]), p, gc: gd <= HS * 1.05 ? g[0] : -1, gr: gd <= HS * 1.05 ? g[1] : -1 };
 }
 // how the active stack would hit t: shoot, strike from where it stands, or from the reachable neighbour hex
 // closest to the pointer
@@ -2129,7 +2133,11 @@ function battleTap(cx, cy) {
   const { c, r } = pk, t = BT.stackAt(B, c, r);
   if (t && t.side !== s.side) {
     const plan = attackPlan(B, s, t, pk.p);
-    if (!plan) { bpreview = null; refreshBattle(); toast('Too far to reach this turn.'); sfx.deny(); return; }
+    if (!plan) {
+      // the tap landed on an out-of-reach enemy's body, but the ground under it is an empty hex we can walk to: move there
+      if (pk.gc >= 0 && !BT.stackAt(B, pk.gc, pk.gr) && BT.reachable(B, s).has(BT.key(pk.gc, pk.gr))) { bpreview = null; BT.actMove(B, s, pk.gc, pk.gr); afterAction(); return; }
+      bpreview = null; refreshBattle(); toast('Too far to reach this turn.'); sfx.deny(); return;
+    }
     const pv = bpreview, same = pv && pv.kind === 'atk' && pv.uid === t.uid;
     // tap 1 (or a tap on another side of the target) previews: kills on its plate, the strike-from hex and arrow
     if (!same || !sameFrom(pv.from, plan.from)) { bpreview = { kind: 'atk', uid: t.uid, from: plan.from, shoot: plan.shoot, at: now, src: 'tap' }; sfx.click(); refreshBattle(); return; }
@@ -2658,7 +2666,9 @@ function recruitDialog(title, id, stock, onBuy) {
 const floaters = [], _flV = new THREE.Vector3();
 function floatText(pos, text, cls = '', cm = null) {
   const el = document.createElement('div'); el.className = `floater ${cls}`; el.textContent = text; $('floaters').appendChild(el);
-  floaters.push({ el, p: pos, t: 0, cm, slot: pos ? 0 : floaters.filter((f) => !f.p).length });
+  // texts spawned close together (damage, "Retaliation", kills) stack upward instead of landing on each other
+  const near = pos ? floaters.filter((f) => f.p && f.t < 0.9 && f.cm === cm && f.p.distanceTo(pos) < 1.2).length : 0;
+  floaters.push({ el, p: pos, t: 0, cm, near, slot: pos ? 0 : floaters.filter((f) => !f.p).length });
   if (floaters.length > 14) floaters.shift().el.remove();
 }
 function updateFloaters(dt) {
@@ -2666,7 +2676,7 @@ function updateFloaters(dt) {
     const f = floaters[i]; f.t += dt;
     if (f.t > 1.6) { f.el.remove(); floaters.splice(i, 1); continue; }
     let x = innerWidth / 2, y = innerHeight * 0.4 + f.slot * 34;
-    if (f.p) { const v = _flV.copy(f.p).project(f.cm || camera); x = (v.x * 0.5 + 0.5) * innerWidth; y = (-v.y * 0.5 + 0.5) * innerHeight; }
+    if (f.p) { const v = _flV.copy(f.p).project(f.cm || camera); x = (v.x * 0.5 + 0.5) * innerWidth; y = (-v.y * 0.5 + 0.5) * innerHeight - f.near * 26; }
     const hw = (f.w ??= f.el.offsetWidth) / 2 + 6; x = clamp(x, hw, innerWidth - hw);
     // feel: pops in with an overshoot (easeOutBack over 0.28 s), rises fast then floats (easeOutCubic), fades at the end
     const t = f.t, up = 1 - Math.pow(1 - Math.min(1, t / 1.2), 3), pu = Math.min(1, t / 0.28) - 1;
@@ -2726,7 +2736,7 @@ function updateHud() {
   setHTML($('heroes'), mine.map((hr) => `<button class="hb ${hr.id === G.selHero ? 'on' : ''}${canStep(hr) ? '' : ' spent'}" data-h="${hr.id}" aria-label="${hr.name}"><span class="hb-ic">${heroPic(hr, 40, 'round') || icon('hero', 30)}</span><b>${hr.name.split(' ').pop()}</b><i class="lvb">${hr.lvl}</i><span class="mp"><i style="width:${clamp((hr.mp / moveMax(hr)) * 100, 0, 100)}%"></i></span></button>`).join('') +
     G.towns.filter((t) => t.p === 0).map((t) => `<button class="hb town" data-t="${t.id}" aria-label="${t.name}"><span class="hb-ic">${icon('town', 28)}</span><b>${t.name}</b>${!t.builtToday ? `<em title="Can build today">${icon('build', 13)}</em>` : ''}</button>`).join(''));
   const hr = selHero();
-  setHTML($('sel'), hr ? `<span class="sel-who"><span class="sel-pt">${heroPic(hr, 40, 'round') || icon('hero', 24)}<i class="lv">${hr.lvl}</i></span><b>${hr.name}</b></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>${hr.route && canStep(hr) ? '<button class="sel-go" id="b-go" aria-label="Continue the march">Continue ▶</button>' : ''}` : '');
+  setHTML($('sel'), hr ? `<span class="sel-who"><span class="sel-pt">${heroPic(hr, 40, 'round') || icon('hero', 24)}<i class="lv">${hr.lvl}</i></span><b>${hr.name}</b></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>${hr.route && canStep(hr) ? '<button class="sel-go" id="b-go" aria-label="Continue the march"><span class="go-t">Continue </span>▶</button>' : ''}` : '');
 }
 // side buttons act on the first tap (no wait for a possible double tap): hero not selected -> select it (the camera
 // follows); the selected hero -> its sheet; town -> open it. A second tap on the same button within 320 ms

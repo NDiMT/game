@@ -481,10 +481,22 @@ export function portrait(id, size = 64, shape = 'square') {
     if (glGone()) return '';
     try { u = renderPortrait(id, size, shape); } catch (e) { console.warn('portrait', id, e); u = ''; }
     if (glGone()) return '';
-    cache.set(key, u);
+    put(key, u);
     if (u) toBlobUrl(key, u);
-  } else if (u) keepWarm(key);
+  } else if (u) { cache.delete(key); cache.set(key, u); keepWarm(key); } // most recently used last (LRU order)
   return u;
+}
+// bounded (memory, long sessions): each entry is a blob (~5-60 KB) in the browser's blob store. Every creature at both
+// card sizes plus the heroes is ~250 keys; keep the most recently used ones and revoke the rest (they re-render on
+// demand). An <img> already showing a revoked URL keeps its decoded bitmap.
+const CACHE_MAX = 160;
+function put(key, u) {
+  cache.delete(key); cache.set(key, u);
+  while (cache.size > CACHE_MAX) {
+    const k = cache.keys().next().value, x = cache.get(k);
+    cache.delete(k); warm.delete(k);
+    if (typeof x === 'string' && x.startsWith('blob:')) URL.revokeObjectURL(x);
+  }
 }
 // perf (mobile): a PNG data URL is ~20-40 KB of base64 that every innerHTML rebuild (HUD, town rows, dialogs) re-parses
 // and re-decodes. Swap the cached entry for a short blob: URL once it is decoded off the main thread; a held, decoded
@@ -526,15 +538,15 @@ export function portraitAsync(id, size = 64, shape = 'square') {
   if (glGone()) return Promise.resolve(''); // context lost: not now, and nothing cached (see portrait())
   let p;
   try { p = renderPortrait(id, size, shape, true); } catch (e) { console.warn('portrait', id, e); p = null; }
-  if (!p || typeof p.then !== 'function') { cache.set(key, ''); return Promise.resolve(''); } // no model
+  if (!p || typeof p.then !== 'function') { put(key, ''); return Promise.resolve(''); } // no model
   const job = p.then((cv) => new Promise((res) => (cv.toBlob ? cv.toBlob((b) => res(b), 'image/png') : res(null))).then((b) => {
     if (cache.has(key)) return cache.get(key); // a synchronous render won the race
-    if (!b) { const u = cv.toDataURL('image/png'); cache.set(key, u); return u; }
+    if (!b) { const u = cv.toDataURL('image/png'); put(key, u); return u; }
     const url = URL.createObjectURL(b), img = new Image();
     img.src = url;
     return (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => {
       if (cache.has(key)) { URL.revokeObjectURL(url); return cache.get(key); }
-      cache.set(key, url); keepWarm(key, img);
+      put(key, url); keepWarm(key, img);
       if (typeof document !== 'undefined') for (const el of document.querySelectorAll(`img[data-ptk="${CSS.escape(key)}"]`)) { el.src = url; el.removeAttribute('data-ptk'); }
       return url;
     });
