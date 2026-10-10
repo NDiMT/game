@@ -527,6 +527,11 @@ const post = (() => {
 // ------------------------------------------------------------------ meshes for map things
 const bodyMat = makeBodyMaterial(THREE);
 const glowMat = makeGlowMaterial(THREE);
+// perf: three.js keys a material's program on instancing, so a material drawn by both InstancedMesh (flora) and Mesh
+// (map figures) objects re-resolved its program (getParameters + program cache key) twice per frame, and so did the
+// shared shadow-depth material. Flora gets its own variants (same uniforms, same shader, same look).
+const floraBodyMat = bodyMat.userData.rigVariant(bodyMat.userData.rig), floraGlowMat = glowMat.userData.rigVariant(glowMat.userData.rig);
+const floraDepthMat = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); // = three's default shadow depth material
 const townView = createTownView(THREE, renderer, { bodyMat, glowMat });
 // the town sheet's footprint, re-measured only when the sheet or the window changed size (ResizeObserver / resize),
 // from its layout box (its slide-in transform doesn't count). Whole px >= 2: town_view reads values <= 1 as fractions.
@@ -557,9 +562,12 @@ const heroGeo = (p) => cached(heroKey(p), () => { const P = G.players[p], m = he
 // garrison or on the map, and the small shared pieces (map objects, flags, battle obstacles).
 function trimGeoCache() {
   if (!G.players.length) return 0;
-  const facs = new Set([...G.players.map((P) => P.fac), ...G.towns.map((t) => t.fac)]);
+  // rosters: the crowns' factions and the towns they own (what they can recruit); a neutral town's line-up is kept
+  // through its garrison and built on demand if it is captured later. Town and siege models: every town on the map.
+  const pfacs = new Set([...G.players.map((P) => P.fac), ...G.towns.filter((t) => t.p >= 0).map((t) => t.fac)]);
+  const facs = new Set([...pfacs, ...G.towns.map((t) => t.fac)]);
   const units = new Set(), add = (id) => { if (id && UNITS[id]) { units.add(id); if (UNITS[id].up) units.add(UNITS[id].up); } };
-  for (const [id, u] of Object.entries(UNITS)) if (!FACTIONS[u.fac] || facs.has(u.fac)) add(id);
+  for (const [id, u] of Object.entries(UNITS)) if (!FACTIONS[u.fac] || pfacs.has(u.fac)) add(id);
   for (const hr of G.heroes) for (const st of hr.army || []) add(st?.[0]);
   for (const t of G.towns) for (const st of t.garrison || []) add(st?.[0]);
   for (const o of G.objects) add(o.unit);
@@ -574,7 +582,7 @@ function trimGeoCache() {
     geoCache.delete(k); warmed.delete(k.slice(1)); n++;
     releasePortraitModel(m); m?.body?.dispose(); m?.glow?.dispose();
   }
-  try { n += townView.trim?.(facs) || 0; } catch (e) { console.warn('town trim', e); } // other factions' town scenes
+  try { n += townView.trim?.(pfacs) || 0; } catch (e) { console.warn('town trim', e); } // other factions' town scenes
   return n;
 }
 // Idle-time geometry warm-up (perf): a creature that is not cached yet costs build + form normals + fits
@@ -717,8 +725,8 @@ function floraSet(key, extra) {
     im.count = n; im.visible = n > 0; im.boundingSphere = floraSphere; // grows in place: cull against the whole planet
     return im;
   };
-  const im = mk(model.body, bodyMat); im.castShadow = true; im.receiveShadow = true;
-  const ig = model.glow ? mk(model.glow, glowMat) : null;
+  const im = mk(model.body, floraBodyMat); im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = floraDepthMat;
+  const ig = model.glow ? mk(model.glow, floraGlowMat) : null;
   if (S) {
     im.instanceMatrix.array.set(S.im.instanceMatrix.array.subarray(0, n * 16));
     if (ig) ig.instanceMatrix.array.set(S.ig.instanceMatrix.array.subarray(0, n * 16));
@@ -1892,7 +1900,10 @@ function drawPlate(sp, n, est = '', hpf = 1) {
 function setPlate(s) {
   const sp = bplateMap.get(s.uid); if (!sp) return;
   if (s.shown === s.count) s.shownHp = s.count > 0 ? s.hp / s.u.hp : 1;
-  if (s.shown > 0) drawPlate(sp, s.shown, plateEst.get(s.uid) || '', s.shownHp ?? 1);
+  const est = plateEst.get(s.uid) || '';
+  // a previewed target's plate (with its kill estimate) is the focus: it draws over whatever stands in front of it
+  if (sp.material.depthTest !== !est) sp.material.depthTest = !est;
+  if (s.shown > 0) drawPlate(sp, s.shown, est, s.shownHp ?? 1);
 }
 // per frame, after the battle camera moved: anchor each plate on the ground in front of its stack
 function updatePlates() {
@@ -1919,7 +1930,7 @@ function clearPlates() {
   bplates.clear(); bplateMap.clear(); plateEst.clear();
 }
 // highlight palette (battle hexes)
-const HX = { grn: new THREE.Color(0xe8ffc0), red: new THREE.Color(0xff6a5a), blu: new THREE.Color(0x7ac8ff), vio: new THREE.Color(0xd2a0ff), gold: new THREE.Color(0xffd84a) };
+const HX = { grn: new THREE.Color(0xb6ff7c), red: new THREE.Color(0xff6a5a), blu: new THREE.Color(0x7ac8ff), vio: new THREE.Color(0xd2a0ff), gold: new THREE.Color(0xffd84a) };
 const killTxt = (lo, hi) => (lo === hi ? `−${lo}` : `−${lo}…${hi}`);
 // stacks of d that a flat hit of dmg would kill (no dice: spell damage)
 function killsBy(d, dmg) { const pool = (d.count - 1) * d.u.hp + d.hp; return dmg >= pool ? d.count : Math.max(0, d.count - Math.ceil((pool - dmg) / d.u.hp)); }
@@ -1965,10 +1976,10 @@ function refreshBattle() {
       if (S.target === 'area') { col = HX.vio; a = 0.35; if (pv && BT.dist([c, r], [pv.c, pv.r]) <= 1) a = c === pv.c && r === pv.r ? 2.8 : 1.9; }
       else if (spellValid(bspell, st)) { col = S.target === 'ally' ? HX.blu : HX.vio; a = pv && pv.uid === st.uid ? 2.8 : 1.5; }
     } else if (mineTurn) {
-      if (reach.has(k) && !st && !(c === s.c && r === s.r)) { col = HX.grn; a = bhover && bhover.k === k ? 2.2 : 1; }
-      if (st && st.side !== s.side && attackable(st)) { col = HX.red; a = pv && pv.uid === st.uid ? 2.6 : 1; }
+      if (reach.has(k) && !st && !(c === s.c && r === s.r)) { col = HX.grn; a = bhover && bhover.k === k ? 2.4 : 1.25; }
+      if (st && st.side !== s.side && attackable(st)) { col = HX.red; a = pv && pv.uid === st.uid ? 2.8 : 1.4; }
       // the hex the attacker will strike from
-      if (pv && pv.kind === 'atk' && pv.from && pv.from[0] === c && pv.from[1] === r) { col = HX.gold; a = 2.2; }
+      if (pv && pv.kind === 'atk' && pv.from && pv.from[0] === c && pv.from[1] === r) { col = HX.gold; a = 2.6; }
     }
     if (col) hexTarget(k, col, a); else { hexT.a[k] = 0; hexT.busy = true; }
   }
