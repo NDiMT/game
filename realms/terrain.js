@@ -5,6 +5,7 @@
 // shore foam and sun glints.
 // =====================================================================
 import * as THREE from 'three';
+import { CORN6, DIR6, CORNER_R } from './hexgrid.js';
 
 export const LAYER = { SEABED: 0, GRASS: 1, DIRT: 2, SAND: 3, SNOW: 4, SWAMP: 5, ROUGH: 6, LAVA: 7, MOUNT: 8, FOREST: 9, ROAD: 10, CLIFF: 11, FOG: 12 };
 const NLAYERS = 13;
@@ -924,5 +925,238 @@ export function createPlanet(ctx) {
   }
   const api = { planet, water, triCell, rebuild, refog, waterLevel };
   globalThis.__hexTerrain = api; // debug handle for previews
+  return api;
+}
+
+// =====================================================================
+// FLAT WORLD (agent "flat", v2.0): the same bevelled hex columns, cliff strata, roads, fog of war and water
+// as the planet, on a flat hex grid (hexgrid.js), split into render chunks so the camera frustum culls them.
+// ctx: { STEP, SEA }. Returns { group, waterLevel, setGrid(grid), rebuild(ter, h, road, seen), refog(...),
+// pick(raycaster) -> cell | null, meshes }. Heights: a cell top sits at y = h * STEP; the sea at (SEA - 0.35) * STEP.
+// An open ocean plane (same water shader) runs from the map's rim to the horizon.
+// =====================================================================
+export function createFlatMap(ctx) {
+  const { STEP, SEA } = ctx;
+  const waterLevel = (SEA - 0.35) * STEP;
+  const landMat = createPlanetMaterial(waterLevel, true), waterMat = createWaterMaterial(true);
+  const group = new THREE.Group(); group.name = 'flatmap';
+  // the open sea around the map: drawn after the map's own water, a hair lower, so where map water exists the depth
+  // test drops it (no double layer), elsewhere it carries the waves out to the fogged horizon
+  const ocean = (() => {
+    const g = new THREE.PlaneGeometry(1, 1, 1, 1).rotateX(-Math.PI / 2);
+    const n = g.attributes.position.count;
+    g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+    g.setAttribute('wd', new THREE.BufferAttribute(new Float32Array(n * 2).fill(1), 2));
+    g.setAttribute('wrev', new THREE.BufferAttribute(new Float32Array(n).fill(-1e4), 1));
+    const m = new THREE.Mesh(g, waterMat); m.renderOrder = 2; m.onBeforeRender = tick; m.receiveShadow = true; m.name = 'ocean';
+    return m;
+  })();
+  group.add(ocean);
+  let grid = null, chunks = [], cellV = null, cellI = null, wCell = null;
+  const meshes = [];
+  // the static hex template (same for every cell): offsets of the 1 + 4*6 top/bevel vertices and their normals
+  const K = 6, OFF = [], NRM = [];
+  {
+    const cx = (i) => CORN6[i % 6];
+    OFF.push([0, 0]); NRM.push([0, 1, 0]);
+    for (let i = 0; i < K; i++) OFF[1 + i] = [cx(i)[0] * BEV, cx(i)[1] * BEV];
+    for (let i = 0; i < K; i++) OFF[1 + K + i] = [(cx(i)[0] + cx(i + 1)[0]) / 2 * BEV, (cx(i)[1] + cx(i + 1)[1]) / 2 * BEV];
+    for (let i = 0; i < K; i++) OFF[1 + 2 * K + i] = [cx(i)[0], cx(i)[1]];
+    for (let i = 0; i < K; i++) OFF[1 + 3 * K + i] = [(cx(i)[0] + cx(i + 1)[0]) / 2, (cx(i)[1] + cx(i + 1)[1]) / 2];
+    for (let i = 1; i < 1 + 2 * K; i++) NRM[i] = [0, 1, 0];
+    for (let i = 1 + 2 * K; i < 1 + 4 * K; i++) { const o = OFF[i], l = Math.hypot(o[0], o[1]), x = o[0] / l * 0.85, z = o[1] / l * 0.85, m = Math.hypot(x, 1, z); NRM[i] = [x / m, 1 / m, z / m]; }
+  }
+  function setGrid(g) {
+    grid = g;
+    for (const c of chunks) for (const m of [c.land, c.water]) { group.remove(m); m.geometry.dispose(); }
+    chunks = []; meshes.length = 0;
+    cellV = new Int32Array(g.N); cellI = new Int32Array(g.N); wCell = new Int32Array(g.N).fill(-1);
+    for (const C of g.chunks) {
+      const land = new THREE.Mesh(new THREE.BufferGeometry(), landMat); land.castShadow = land.receiveShadow = true; land.onBeforeRender = tick;
+      const water = new THREE.Mesh(new THREE.BufferGeometry(), waterMat); water.receiveShadow = true; water.renderOrder = 1; water.onBeforeRender = tick;
+      const ch = { C, land, water, triCell: null, nv: 0, ni: 0, A: null, wnv: 0, W: null };
+      land.userData.chunk = ch;
+      group.add(land, water); meshes.push(land); chunks.push(ch);
+    }
+    const b = g.bounds, s = Math.max(b.x1 - b.x0, b.z1 - b.z0) + 260;
+    ocean.scale.set(s, 1, s); ocean.position.set(g.cx, waterLevel - 0.012, g.cz);
+  }
+  // per-cell look, fixed by the cell id: texture rotation / offset, painterly tint, wall texture offset
+  function cellLook(v) {
+    const r = mulberry(v * 7919 + 17), ang = r() * 6.283;
+    const ca = Math.cos(ang), sa = Math.sin(ang), ou = r() * 10, ov = r() * 10;
+    const x = grid.X[v], z = grid.Z[v];
+    const lf1 = Math.sin(x * 0.64 + 1.7) * Math.sin(z * 0.55 - 0.4), lf2 = Math.sin(x * 0.41 - z * 0.37 + 0.4);
+    const jit = 0.93 + r() * 0.12;
+    return { ca, sa, ou, ov, tint: [jit * (1 + 0.07 * lf1), jit * (1 + 0.035 * lf2), jit * (1 - 0.06 * lf1)], wallU: r() * 10 };
+  }
+  const nbOf = (v, i) => grid.NB6[v * 6 + i];
+  const OFFMAP_H = SEA - 3;
+  const hOf = (h, n) => (n < 0 ? OFFMAP_H : h[n]);
+  // ---- land: write one cell's vertices / triangles at the chunk cursor (A = the chunk's arrays)
+  let A = null;
+  const vert = (x, y, z, nx, ny, nz, r, g, bb, u, vv, lay, rm, nbl = lay, nbw = 0) => {
+    const n = A.nv, o = n * 3, o4 = n * 4;
+    A.NB[n * 2] = nbl; A.NB[n * 2 + 1] = nbw;
+    A.P[o] = x; A.P[o + 1] = y; A.P[o + 2] = z; A.N[o] = nx; A.N[o + 1] = ny; A.N[o + 2] = nz; A.Cc[o] = r; A.Cc[o + 1] = g; A.Cc[o + 2] = bb;
+    A.TD[o4] = u; A.TD[o4 + 1] = vv; A.TD[o4 + 2] = lay; A.TD[o4 + 3] = rm;
+    return A.nv++;
+  };
+  const tri = (i0, i1, i2, cell) => { A.IDX[A.ni++] = i0; A.IDX[A.ni++] = i1; A.IDX[A.ni++] = i2; A.triCell[A.nt++] = cell; };
+  function writeCell(v, ter, h, road, seen) {
+    const isW = (x) => x < 0 || ter[x] === 0;
+    const Lk = cellLook(v), cx = grid.X[v], cz = grid.Z[v];
+    const rad = h[v] * STEP, vis = !!seen[v], w = ter[v] === 0;
+    const lay = !vis ? LAYER.FOG : ter[v];
+    const isRoad = vis && !w && road[v];
+    let tr = 1, tgc = 1, tb = 1;
+    if (vis) { tr = Lk.tint[0]; tgc = Lk.tint[1]; tb = Lk.tint[2]; if (w) { const dk = 1 - (SEA - h[v] - 1) * 0.12; tr *= dk * 0.9; tgc *= dk * 0.98; tb *= dk; } }
+    else { const f = 0.85 + Lk.tint[0] * 0.2; tr = tgc = tb = f; }
+    const base = A.nv;
+    const nbLay = [];
+    for (let i = 0; i < K; i++) {
+      const n = nbOf(v, i), nvis = n >= 0 ? !!seen[n] : vis;
+      let L = lay;
+      if (!vis) { if (nvis) L = LAYER.FOG + 1; }
+      else if (!w) {
+        if (!nvis) L = LAYER.FOG;
+        else if (isW(n)) L = BEACH.has(ter[v]) ? LAYER.SAND : lay;
+        else if (h[n] === h[v]) L = ter[n];
+      }
+      nbLay.push(L);
+    }
+    for (let i = 0; i < 1 + 4 * K; i++) {
+      const ring = i === 0 ? 0 : ((i - 1) / K) | 0;
+      const y = ring >= 2 ? rad - DROP : rad;
+      const sh = ring >= 2 ? (ring === 2 ? 0.9 : 0.94) : 1;
+      const nbl = (ring === 1 || ring === 3) ? nbLay[(i - 1) % K] : lay, nbw = ring >= 2 ? 0.5 : ring === 1 ? 0.15 : 0;
+      let rm = 0;
+      if (isRoad) {
+        if (i === 0) rm = 1;
+        else if (ring === 1 || ring === 3) { const n = nbOf(v, (i - 1) % K); rm = n >= 0 && road[n] && !isW(n) && seen[n] ? 1 : 0; }
+      }
+      const o = OFF[i], nn = NRM[i];
+      const u = (o[0] * Lk.ca + o[1] * Lk.sa) / TILE + Lk.ou, vv = (-o[0] * Lk.sa + o[1] * Lk.ca) / TILE + Lk.ov;
+      vert(cx + o[0], y, cz + o[1], nn[0], nn[1], nn[2], tr * sh, tgc * sh, tb * sh, u, vv, lay, rm, nbl, nbw);
+    }
+    const C0 = base, I = (i) => base + 1 + i, IM = (i) => base + 1 + K + i, O = (i) => base + 1 + 2 * K + i, OM = (i) => base + 1 + 3 * K + i;
+    for (let i = 0; i < K; i++) {
+      const j = (i + 1) % K;
+      tri(C0, I(i), IM(i), v); tri(I(j), C0, IM(i), v);
+      tri(I(i), O(i), OM(i), v); tri(I(i), OM(i), IM(i), v); tri(O(j), IM(i), OM(i), v); tri(O(j), I(j), IM(i), v);
+    }
+    // cliff walls down to lower neighbours (and off the map's rim, down into the sea)
+    const ct = CLIFF_TINT[ter[v]] || CLIFF_TINT[2];
+    let wu = Lk.wallU;
+    for (let i = 0; i < K; i++) {
+      const n = nbOf(v, i), hn = hOf(h, n);
+      if (hn >= h[v]) continue;
+      const j = (i + 1) % K, ci = CORN6[i], cj = CORN6[j];
+      const rt = rad - DROP, rb = hn * STEP - DROP;
+      const nx = DIR6[i][0], nz = DIR6[i][1];
+      const len = CORNER_R / TILE;
+      const wl = vis ? LAYER.CLIFF : LAYER.FOG;
+      const top = vis ? 1.1 : 0.96, bot = vis ? 0.8 : 0.88;
+      const cr = vis ? ct[0] : 1, cg = vis ? ct[1] : 1, cb = vis ? ct[2] : 1;
+      const vt = (rt + 5) / (TILE * 1.6), vb = (rb + 5) / (TILE * 1.6);
+      const ax = cx + ci[0], az = cz + ci[1], bx = cx + cj[0], bz = cz + cj[1];
+      const i0 = vert(ax, rt, az, nx, 0, nz, cr * top, cg * top, cb * top, wu, vt, wl, 0);
+      const i1 = vert(bx, rt, bz, nx, 0, nz, cr * top, cg * top, cb * top, wu + len, vt, wl, 0);
+      const i2 = vert(bx, rb, bz, nx, 0, nz, cr * bot, cg * bot, cb * bot, wu + len, vb, wl, 0);
+      const i3 = vert(ax, rb, az, nx, 0, nz, cr * bot, cg * bot, cb * bot, wu, vb, wl, 0);
+      // outward winding: tri (i0, i1, i2) faces (b - a) x (b_bottom - a_top) = dy * (-ez, 0, ex), dy = rb - rt
+      const ex = bx - ax, ez = bz - az;
+      if ((rb - rt) * (-ez * nx + ex * nz) > 0) { tri(i0, i1, i2, v); tri(i0, i2, i3, v); } else { tri(i0, i2, i1, v); tri(i0, i3, i2, v); }
+      wu += len;
+    }
+  }
+  const landCount = (v, h) => { let nv = 1 + 4 * K, nt = 6 * K; for (let i = 0; i < K; i++) if (hOf(h, nbOf(v, i)) < h[v]) { nv += 4; nt += 2; } return [nv, nt]; };
+  const mkAttr = (geo, name, arr, size) => { geo.setAttribute(name, new THREE.BufferAttribute(arr, size)); return arr; };
+  function rebuild(ter, h, road, seen) {
+    if (!grid) return;
+    const isW = (x) => x < 0 || ter[x] === 0;
+    for (const ch of chunks) {
+      let nv = 0, nt = 0, wn = 0;
+      for (const v of ch.C.cells) { const [a, b] = landCount(v, h); nv += a; nt += b; if (ter[v] === 0) wn++; }
+      // ---- land
+      const geo = new THREE.BufferGeometry();
+      A = { nv: 0, ni: 0, nt: 0, P: mkAttr(geo, 'position', new Float32Array(nv * 3), 3), N: mkAttr(geo, 'normal', new Float32Array(nv * 3), 3), Cc: mkAttr(geo, 'color', new Float32Array(nv * 3), 3),
+        TD: mkAttr(geo, 'tdat', new Float32Array(nv * 4), 4), NB: mkAttr(geo, 'tnb', new Float32Array(nv * 2), 2), RV: mkAttr(geo, 'trev', new Float32Array(nv).fill(-1e4), 1), IDX: new Uint32Array(nt * 3), triCell: new Int32Array(nt) };
+      geo.setIndex(new THREE.BufferAttribute(A.IDX, 1));
+      for (const v of ch.C.cells) { cellV[v] = A.nv; cellI[v] = A.ni; writeCell(v, ter, h, road, seen); }
+      geo.computeBoundingSphere(); geo.computeBoundingBox();
+      ch.land.geometry.dispose(); ch.land.geometry = geo; ch.A = A; ch.triCell = A.triCell; A = null;
+      // ---- water: a flat hex fan per sea cell
+      const wgeo = new THREE.BufferGeometry();
+      const W = { n: 0, P: mkAttr(wgeo, 'position', new Float32Array(wn * 13 * 3), 3), N: mkAttr(wgeo, 'normal', new Float32Array(wn * 13 * 3), 3), C: mkAttr(wgeo, 'color', new Float32Array(wn * 13 * 3), 3),
+        D: mkAttr(wgeo, 'wd', new Float32Array(wn * 13 * 2), 2), R: mkAttr(wgeo, 'wrev', new Float32Array(wn * 13).fill(-1e4), 1) };
+      const WI = new Uint32Array(wn * 12 * 3); let wi = 0;
+      const depthOf = (x) => (isW(x) ? (x < 0 ? 1 : Math.min(1, Math.max(0.25, (SEA - h[x]) / 2))) : 0);
+      const wvert = (x, z, sh, dp, col) => { const o = W.n * 3; W.P[o] = x; W.P[o + 1] = waterLevel; W.P[o + 2] = z; W.N[o + 1] = 1; W.C[o] = W.C[o + 1] = W.C[o + 2] = col; W.D[W.n * 2] = sh; W.D[W.n * 2 + 1] = dp; return W.n++; };
+      const cs = new Float32Array(6), cd = new Float32Array(6);
+      for (const v of ch.C.cells) {
+        if (ter[v] !== 0) continue;
+        const col = seen[v] ? 1 : 0.1, cx = grid.X[v], cz = grid.Z[v];
+        for (let i = 0; i < K; i++) { const p = nbOf(v, (i + 5) % 6), q = nbOf(v, i); cs[i] = isW(p) && isW(q) ? 1 : 0; cd[i] = (depthOf(v) + depthOf(p) + depthOf(q)) / 3; }
+        wCell[v] = W.n;
+        const c0 = wvert(cx, cz, 1, depthOf(v), col), first = W.n;
+        for (let i = 0; i < K; i++) {
+          const j = (i + 1) % K, n = nbOf(v, i);
+          wvert(cx + CORN6[i][0], cz + CORN6[i][1], cs[i], cd[i], col);
+          wvert(cx + (CORN6[i][0] + CORN6[j][0]) / 2, cz + (CORN6[i][1] + CORN6[j][1]) / 2, isW(n) ? 0.35 + 0.65 * 0.5 * (cs[i] + cs[j]) : 0, (cd[i] + cd[j] + depthOf(n) + depthOf(v)) / 4, col);
+        }
+        for (let i = 0; i < K; i++) { const cI = first + i * 2, mI = cI + 1, cJ = first + ((i + 1) % K) * 2; WI[wi++] = c0; WI[wi++] = cI; WI[wi++] = mI; WI[wi++] = c0; WI[wi++] = mI; WI[wi++] = cJ; }
+      }
+      wgeo.setIndex(new THREE.BufferAttribute(WI, 1));
+      if (wn) { wgeo.computeBoundingSphere(); wgeo.computeBoundingBox(); }
+      ch.water.geometry.dispose(); ch.water.geometry = wgeo; ch.W = W; ch.water.visible = wn > 0;
+    }
+  }
+  // fog reveal on unchanged land: rewrite only the touched cells (and neighbours) in place, upload just those spans
+  function refog(ter, h, road, seen, cells, now = performance.now() / 1000) {
+    if (!grid || !chunks.length || !chunks[0].A) return false;
+    const touch = new Set();
+    for (const v of cells) { touch.add(v); for (const n of grid.NBR[v]) touch.add(n); }
+    const per = new Map();
+    for (const v of touch) { const k = grid.chunkOf[v]; if (!per.has(k)) per.set(k, []); per.get(k).push(v); }
+    const fresh = new Set(cells);
+    for (const [k, list] of per) {
+      const ch = chunks[k]; A = ch.A;
+      list.sort((x, y) => x - y);
+      const keep = [A.nv, A.ni, A.nt];
+      for (const v of list) {
+        const end = landCount(v, h)[0] + cellV[v];
+        A.nv = cellV[v]; A.ni = cellI[v]; A.nt = A.ni / 3;
+        writeCell(v, ter, h, road, seen);
+        if (A.nv !== end) { [A.nv, A.ni, A.nt] = keep; A = null; rebuild(ter, h, road, seen); return true; }
+        if (fresh.has(v)) A.RV.fill(now, cellV[v], end);
+      }
+      [A.nv, A.ni, A.nt] = keep;
+      const geo = ch.land.geometry, ats = ['color', 'tdat', 'tnb', 'trev'].map((n) => geo.attributes[n]);
+      let s0 = -1, s1 = -1;
+      const flush = () => { if (s0 < 0) return; for (const at of ats) { at.addUpdateRange(s0 * at.itemSize, (s1 - s0) * at.itemSize); at.needsUpdate = true; } };
+      for (const v of list) { const a = cellV[v], b = a + landCount(v, h)[0]; if (s0 >= 0 && a - s1 <= 256) s1 = Math.max(s1, b); else { flush(); s0 = a; s1 = b; } }
+      flush();
+      A = null;
+      // water: only the revealed sea cells change (brightness + fade clock)
+      const W = ch.W, wc = ch.water.geometry.attributes.color, wr = ch.water.geometry.attributes.wrev;
+      for (const v of list) {
+        if (!fresh.has(v) || wCell[v] < 0) continue;
+        const w0 = wCell[v], n = 13, col = seen[v] ? 1 : 0.1;
+        W.C.fill(col, w0 * 3, (w0 + n) * 3); W.R.fill(now, w0, w0 + n);
+        wc.addUpdateRange(w0 * 3, n * 3); wr.addUpdateRange(w0, n); wc.needsUpdate = wr.needsUpdate = true;
+      }
+    }
+    return true;
+  }
+  const hits = [];
+  function pick(raycaster) {
+    hits.length = 0;
+    raycaster.intersectObjects(meshes, false, hits);
+    const hit = hits[0];
+    return hit ? hit.object.userData.chunk.triCell[hit.faceIndex] : null;
+  }
+  const api = { group, ocean, waterLevel, setGrid, rebuild, refog, pick, meshes, chunks: () => chunks, landMat, waterMat };
+  globalThis.__hexTerrain = api;
   return api;
 }

@@ -132,3 +132,25 @@ export function regionGates(grid, regionOf, pass = null, per = 1) {
   }
   return gates;
 }
+
+// ------------------------------------------------------------------ the old planet grid (kept for a future decorative globe screen)
+// icosphere(THREE, detail) -> { verts: unit Vector3[], faces: [a, b, c][] } (detail 4: the v1.x planet's 2562 cells)
+export function icosphere(THREE, detail) {
+  const t = (1 + Math.sqrt(5)) / 2;
+  const verts = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map((v) => new THREE.Vector3(...v).normalize());
+  let faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+  for (let d = 0; d < detail; d++) {
+    const cache = new Map();
+    const mid = (a, b) => {
+      const key = a < b ? a * 100000 + b : b * 100000 + a;
+      if (cache.has(key)) return cache.get(key);
+      verts.push(verts[a].clone().add(verts[b]).normalize());
+      cache.set(key, verts.length - 1);
+      return verts.length - 1;
+    };
+    const nf = [];
+    for (const [a, b, c] of faces) { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); nf.push([a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]); }
+    faces = nf;
+  }
+  return { verts, faces };
+}

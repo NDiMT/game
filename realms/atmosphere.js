@@ -582,3 +582,123 @@ function birdGeometry(THREE) {
   g.computeVertexNormals();
   return g;
 }
+
+// =====================================================================
+// FLAT WORLD sky (agent "flat", v2.0): a daylight backdrop for the flat hex map.
+// createFlatSky(THREE, scene, { fogColor }) -> { update(dt, camera, focus, viewDist), setFog(on), objects: { sky, clouds, birds }, fog }
+//  - sky dome: zenith blue -> pale horizon haze -> the fog colour below the horizon, a warm sun anchored to the
+//    upper right of the view (it shows whenever the horizon does) with a soft corona
+//  - scene.fog (linear, follows the zoom): the open sea and the far map fade into the horizon haze
+//  - clouds: instanced puffs drifting high over and around the map; they fade out near the lens and over the
+//    middle of the screen, so they frame the view instead of hiding it
+//  - birds: a few V flocks wheeling over the view
+// Draws: dome 1, clouds 1 (instanced), birds 1 (instanced).
+// =====================================================================
+export function createFlatSky(THREE, scene, opts = {}) {
+  const V3 = THREE.Vector3;
+  const rand = mulberry32(opts.seed ?? 11);
+  const uTime = { value: 0 };
+  const fogCol = new THREE.Color(opts.fogColor ?? 0xbfd2e2);
+  const fog = new THREE.Fog(fogCol.getHex(), 20, 60);
+  scene.fog = fog;
+  const sky = new THREE.Group(); sky.name = 'flat-sky'; scene.add(sky);
+  const uVis = { value: new V3(0, 0.2, -1).normalize() }, uFog = { value: fogCol }, uSunK = { value: 1 };
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(150, 32, 16), new THREE.ShaderMaterial({
+    uniforms: { uVis, uFog, uTime, uSunK }, side: THREE.BackSide, depthWrite: false, fog: false,
+    vertexShader: 'varying vec3 vD; void main() { vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform vec3 uVis; uniform vec3 uFog; uniform float uTime; uniform float uSunK; varying vec3 vD;
+      void main() {
+        vec3 d = normalize(vD);
+        float y = d.y;
+        vec3 zen = vec3(0.16, 0.36, 0.78), mid = vec3(0.42, 0.62, 0.9), hor = vec3(0.86, 0.88, 0.86);
+        vec3 c = mix(hor, mid, smoothstep(0.0, 0.22, y));
+        c = mix(c, zen, smoothstep(0.18, 0.75, y));
+        c = mix(uFog, c, smoothstep(-0.04, 0.03, y));
+        float cs = dot(d, uVis), ang = acos(clamp(cs, -1.0, 1.0));
+        // warm sun: a hot disc, a gold corona, and a broad amber glow over the horizon on its side
+        float disc = smoothstep(0.03, 0.022, ang);
+        float corona = exp(-ang * 30.0) * 0.5 + exp(-ang * 7.0) * 0.16;
+        float wash = exp(-ang * 2.2) * 0.12 * (1.0 - smoothstep(0.0, 0.35, y));
+        c += (vec3(1.3, 1.15, 0.9) * disc + vec3(1.0, 0.78, 0.48) * corona) * uSunK + vec3(1.0, 0.72, 0.45) * wash;
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  }));
+  dome.renderOrder = -10; dome.frustumCulled = false; sky.add(dome);
+
+  // ---- clouds
+  const NC = 22;
+  const cloudGeo = cloudGeometry(THREE, rand);
+  const cloudMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1, metalness: 0, emissive: new THREE.Color(0xc6cfe6), emissiveIntensity: 0.55, transparent: true, depthWrite: false });
+  const clouds = new THREE.InstancedMesh(cloudGeo, cloudMat, NC);
+  clouds.frustumCulled = false; clouds.castShadow = false; clouds.name = 'flat-clouds'; clouds.renderOrder = 8;
+  scene.add(clouds);
+  const cl = [];
+  for (let i = 0; i < NC; i++) cl.push({ u: rand(), w: rand(), alt: 2.6 + rand() * 1.4, yaw: rand() * 6.28, s: 1.1 + rand() * 1.3, sy: 0.6 + rand() * 0.3, fade: 0, bob: rand() * 6 });
+  let area = { x0: -10, x1: 30, z0: -10, z1: 25 };
+  // ---- birds
+  const flocks = [];
+  for (let f = 0; f < 3; f++) flocks.push({ a: rand() * 6.28, r: 2.5 + rand() * 3, spd: (0.12 + rand() * 0.08) * (f % 2 ? -1 : 1), alt: 1.3 + rand() * 0.5, n: 5, ox: (rand() - 0.5) * 6, oz: (rand() - 0.5) * 6 });
+  const NB = flocks.reduce((s, f) => s + f.n, 0);
+  const birdMat = new THREE.MeshLambertMaterial({ color: 0xf2eee6, side: THREE.DoubleSide, emissive: 0x3a3a50 });
+  birdMat.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = uTime;
+    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+       float fl = sin(uTime * 13.0 + float(gl_InstanceID) * 1.9);
+       transformed.y += fl * abs(position.x) * 0.9 - abs(position.x) * 0.15;`);
+  };
+  const birds = new THREE.InstancedMesh(birdGeometry(THREE), birdMat, NB);
+  birds.frustumCulled = false; scene.add(birds);
+
+  const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new V3(), p = new V3(), ndc = new V3(), Y = new V3(0, 1, 0), fw = new V3(), rt = new V3(), tmp = new V3();
+  let fogOn = true, wind = 0;
+  function setArea(b) { area = { x0: b.x0 - 14, x1: b.x1 + 14, z0: b.z0 - 14, z1: b.z1 + 14 }; }
+  function update(dt, camera, focus, viewDist = 6) {
+    uTime.value += dt; wind += dt * 0.06;
+    sky.position.copy(camera.position);
+    // fog: starts past the far edge of a normal view, so only the distance and the open sea fade into the haze
+    const k = fogOn ? 1 : 3;
+    fog.near = (6 + viewDist * 2.2) * k; fog.far = fog.near + 26 + viewDist * 3;
+    // the sun: up-right of the view direction, a little above the horizon
+    camera.updateMatrixWorld();
+    const e = camera.matrixWorld.elements;
+    fw.set(-e[8], 0, -e[10]); if (fw.lengthSq() < 1e-6) fw.set(0, 0, -1); fw.normalize();
+    rt.set(-fw.z, 0, fw.x);
+    uVis.value.copy(fw).addScaledVector(rt, 0.42).setY(0.2).normalize();
+    // clouds drift east over the map's surroundings; over the middle of the view and near the lens they fade
+    const W = area.x1 - area.x0, D = area.z1 - area.z0;
+    for (let i = 0; i < NC; i++) {
+      const c = cl[i];
+      const x = area.x0 + ((c.u * W + wind * (0.6 + c.s * 0.3)) % W), z = area.z0 + c.w * D;
+      p.set(x, c.alt + Math.sin(uTime.value * 0.3 + c.bob) * 0.05, z);
+      const dCam = p.distanceTo(camera.position);
+      ndc.copy(p).project(camera);
+      const centre = Math.hypot(ndc.x * 0.75, ndc.y + 0.1);
+      let want = THREE.MathUtils.smoothstep(dCam, 3.5, 7) * THREE.MathUtils.smoothstep(centre, 0.55, 0.95);
+      // and fade at the ends of the drift lane (wrap-around)
+      const lane = ((c.u * W + wind * (0.6 + c.s * 0.3)) % W) / W;
+      want *= THREE.MathUtils.smoothstep(lane, 0, 0.08) * (1 - THREE.MathUtils.smoothstep(lane, 0.92, 1));
+      c.fade += (want - c.fade) * Math.min(1, dt * 2.5);
+      const s = c.s * (0.3 + 0.7 * c.fade) * (c.fade < 0.03 ? 0 : 1);
+      q.setFromAxisAngle(Y, c.yaw); sc.set(s, s * c.sy, s);
+      mtx.compose(p, q, sc); clouds.setMatrixAt(i, mtx);
+    }
+    clouds.instanceMatrix.needsUpdate = true;
+    // birds circle around the view focus
+    let n = 0;
+    const fx = focus ? focus.x : 0, fz = focus ? focus.z : 0;
+    for (const f of flocks) {
+      f.a += f.spd * dt;
+      const cx = fx + f.ox + Math.cos(f.a) * f.r, cz = fz + f.oz + Math.sin(f.a) * f.r;
+      const hx = -Math.sin(f.a) * Math.sign(f.spd), hz = Math.cos(f.a) * Math.sign(f.spd); // heading
+      for (let i = 0; i < f.n; i++) {
+        const row = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? 1 : -1);
+        p.set(cx - hx * row * 0.16 + -hz * side * row * 0.14, f.alt + row * 0.01 + Math.sin(uTime.value * 1.3 + i * 2.1) * 0.02, cz - hz * row * 0.16 + hx * side * row * 0.14);
+        tmp.set(hx, 0, hz);
+        mtx.makeBasis(sc.crossVectors(Y, tmp).normalize(), Y, tmp); mtx.setPosition(p);
+        birds.setMatrixAt(n++, mtx.scale(ndc.set(0.6, 0.6, 0.6)));
+      }
+    }
+    birds.instanceMatrix.needsUpdate = true;
+  }
+  return { update, setFog(on) { fogOn = !!on; }, setArea, fog, gradeGLSL, objects: { sky, clouds, birds } };
+}

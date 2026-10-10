@@ -27,9 +27,9 @@ The code lives in `realms/crown.js`, which holds the data and rules and is pure 
 
 | Day | Blind | Threat ×P | Crowns paid | Hero |
 |---|---|---|---|---|
-| End of day 3 | **Raid** | ×1.00 | 3 | none |
-| End of day 5 | **Warlord** | ×1.45 | 4 | a Warlord hero (att/def = Ante) |
-| End of day 7 | **Crown Boss** | ×2.00 | 5 | Boss hero (att/def/pow = Ante+1), plus the boss rule |
+| End of day 3 | **Raid** | ×1.0 | 3 | none |
+| End of day 5 | **Warlord** | ×1.5 | 4 | a Warlord hero (att/def = Ante) |
+| End of day 7 | **Crown Boss** | ×2.3 | 5 | Boss hero (att/def/pow = Ante+1), plus the boss rule |
 
 - **Who fights.** The Blind army attacks your run hero (hero #0) wherever he stands.
   - Win: casualties stick, XP is paid as usual, the payout screen shows, then the shop opens.
@@ -40,8 +40,8 @@ The code lives in `realms/crown.js`, which holds the data and rules and is pure 
 **Threat power.** The target is `armyPower(army, hero)` from battle.js:
 
 ```
-P(ante, blind, stake) = 1500 · 1.75^(ante−1) · BLIND[blind] · (1 + 0.08·(stake−1)) · (stake ≥ 3 ? 1.1^(ante−1) : 1)
-BLIND = { raid: 1.0, warlord: 1.45, boss: 2.0 }
+P(ante, blind, stake) = 2000 · 2.4^(ante−1) · BLIND[blind] · (1 + 0.08·(stake−1)) · (stake ≥ 3 ? 1.1^(ante−1) : 1)
+BLIND = { raid: 1.0, warlord: 1.5, boss: 2.3 }
 ```
 
 **Threat army generator.** `threatArmy(run, ante, blind)`, seeded from the run's seed:
@@ -357,7 +357,7 @@ The run also tracks "best strike" (largest single hit, like Balatro's best hand)
 
 ## 13. Balance levers (all live in `crown.js` → `TUNE`)
 
-- **Threat curve:** `TUNE.base` (1500), `TUNE.growth` (1.75/Ante), the `BLIND` multipliers, and the stake steps.
+- **Threat curve** (tuned with `autoResolve` on both sides against a Haven army recruiting every week: Raids are near-certain wins, the Ante 3 boss is about 30% without banners and 100% with 3–5 synergised banners; the player's own tactics are worth more than the AI's): `TUNE.base` (2000), `TUNE.growth` (2.4/Ante), the `BLIND` multipliers, and the stake steps.
 - **Economy:**
   - the per-Blind pay
   - the Unbroken bonus cap

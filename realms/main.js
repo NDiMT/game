@@ -11,7 +11,7 @@ import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf
 import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.10';
 import { createTownView } from './town_view.js?v=1.10';
 import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.10';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.10';
+import { createFlatSky, gradeGLSL } from './atmosphere.js?v=1.10';
 import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.10';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
 const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.10'), import('./units_inferno.js?v=1.10'), import('./units_dungeon.js?v=1.10')]);
@@ -47,52 +47,29 @@ const fmt = (n) => Math.round(n).toLocaleString('en-US');
 let rnd = Math.random;
 const hash = (n) => { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n ^= n >>> 4; n = Math.imul(n, 0x27d4eb2d); n ^= n >>> 15; return n >>> 0; };
 
-// ------------------------------------------------------------------ the planet: an icosphere of hex columns
-const R = 5, STEP = 0.07, SEA = 3;
-function icosphere(detail) {
-  const t = (1 + Math.sqrt(5)) / 2;
-  const verts = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map((v) => new THREE.Vector3(...v).normalize());
-  let faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
-  for (let d = 0; d < detail; d++) {
-    const cache = new Map();
-    const mid = (a, b) => {
-      const key = a < b ? a * 100000 + b : b * 100000 + a;
-      if (cache.has(key)) return cache.get(key);
-      verts.push(verts[a].clone().add(verts[b]).normalize());
-      cache.set(key, verts.length - 1);
-      return verts.length - 1;
-    };
-    const nf = [];
-    for (const [a, b, c] of faces) { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); nf.push([a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]); }
-    faces = nf;
-  }
-  return { verts, faces };
+// ------------------------------------------------------------------ the world: a flat hex map (agent "flat", v2.0)
+// The planet (icosphere grid, terrain.js createPlanet, atmosphere.js createAtmosphere) stays in the repo for a future
+// decorative globe screen; gameplay runs on the flat grid of hexgrid.js. The abstract grid API the game uses is
+// unchanged: cell ids 0..NV-1, NBR[v], posOf(v, lift), plus cellDist(a, b) (hex steps) in place of the old
+// DIRS[a].distanceTo(DIRS[b]). The grid can change size per game (MAP_PRESETS S/M/L/XL): every per-cell array is
+// allocated for the largest map and NBR is refilled in place, so references to them stay valid.
+import { makeGrid, MAP_PRESETS, MAX_CELLS, CELL, regionsVoronoi, regionsBands, regionGates } from './hexgrid.js';
+const STEP = 0.07, SEA = 3;
+let GRID = makeGrid(...MAP_PRESETS.M);
+let NV = GRID.N;
+const NBR = GRID.NBR.slice();
+const UPV = new THREE.Vector3(0, 1, 0);
+// hex steps between two cells (exact): distances, the A* heuristic, AI ranges
+const cellDist = (a, b) => GRID.dist(a, b);
+// switch the map size (a new world / a loaded save); the terrain meshes, flora and figures rebuild on the next layout
+function setGrid(size) {
+  const wh = Array.isArray(size) ? size : MAP_PRESETS[size] || MAP_PRESETS.M;
+  if (GRID.W === wh[0] && GRID.H === wh[1]) return false;
+  GRID = makeGrid(wh[0], wh[1]); NV = GRID.N;
+  NBR.length = 0; for (const a of GRID.NBR) NBR.push(a);
+  if (typeof TERRAIN !== 'undefined') { TERRAIN.setGrid(GRID); landSnap.ok = false; atmos.setArea?.(GRID.bounds); }
+  return true;
 }
-const { verts: DIRS, faces: FACES } = icosphere(4);
-const NV = DIRS.length;
-const NBR = (() => {
-  const s = Array.from({ length: NV }, () => new Set());
-  for (const [a, b, c] of FACES) { s[a].add(b).add(c); s[b].add(a).add(c); s[c].add(a).add(b); }
-  return s.map((x) => [...x]);
-})();
-const CORN = FACES.map(([a, b, c]) => DIRS[a].clone().add(DIRS[b]).add(DIRS[c]).normalize());
-const CELLS = (() => {
-  const around = Array.from({ length: NV }, () => []);
-  FACES.forEach((f, i) => { for (const v of f) around[v].push(i); });
-  const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
-  return around.map((fs, v) => {
-    const d = DIRS[v];
-    const t1 = new THREE.Vector3().crossVectors(d, Math.abs(d.y) < 0.9 ? Y : X).normalize(), t2 = d.clone().cross(t1);
-    const ang = (f) => Math.atan2(CORN[f].dot(t2), CORN[f].dot(t1));
-    fs.sort((p, q) => ang(p) - ang(q));
-    const nb = fs.map((f, i) => { const g = fs[(i + 1) % fs.length]; return FACES[f].find((x) => x !== v && FACES[g].includes(x)); });
-    return { fs, nb };
-  });
-})();
-const YAW = (() => {
-  const Y = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion(), c = new THREE.Vector3();
-  return DIRS.map((d, v) => { q.setFromUnitVectors(Y, d).invert(); c.copy(CORN[CELLS[v].fs[0]]).applyQuaternion(q); return Math.atan2(-c.z, c.x); });
-})();
 function bfs(v, r, pass = null) {
   const out = [[v, 0]], seen = new Set([v]);
   for (let i = 0; i < out.length; i++) {
@@ -110,26 +87,58 @@ const TER_NAME = ['Water', 'Grass', 'Dirt', 'Sand', 'Snow', 'Swamp', 'Rough', 'L
 const TER_COST = [0, 100, 100, 150, 150, 175, 125, 100, 0, 0];
 const TER_COL = [0x2a5a9a, 0x5aaa3a, 0x9a7a4a, 0xe2cc8a, 0xeef4f8, 0x4a6a3a, 0x9a8a6a, 0x5a3430, 0x7a6e64, 0x3e7e34].map((c) => new THREE.Color(c));
 const ROAD_COL = new THREE.Color(0xc8a874);
-const ter = new Uint8Array(NV), h = new Int8Array(NV), road = new Uint8Array(NV), seen = new Uint8Array(NV);
-const objAt = new Int32Array(NV).fill(-1);
+const ter = new Uint8Array(MAX_CELLS), h = new Int8Array(MAX_CELLS), road = new Uint8Array(MAX_CELLS), seen = new Uint8Array(MAX_CELLS);
+const objAt = new Int32Array(MAX_CELLS).fill(-1);
 const passable = (v) => ter[v] !== T.WATER && ter[v] !== T.MOUNT && ter[v] !== T.FOREST;
-const posOf = (v, lift = 0) => DIRS[v].clone().multiplyScalar(R + h[v] * STEP + lift);
-const radiusOf = (v) => R + h[v] * STEP;
-
-function noise3(seed) {
-  const r = mulberry32(seed), waves = [];
-  for (let i = 0; i < 9; i++) waves.push({ d: new THREE.Vector3(r() * 2 - 1, r() * 2 - 1, r() * 2 - 1).normalize(), f: 1.5 + r() * 3.5 * (1 + i * 0.3), p: r() * 6.28, a: 1 / (1 + i * 0.6) });
-  return (v) => { let s = 0, t = 0; for (const w of waves) { s += Math.sin(DIRS[v].dot(w.d) * w.f + w.p) * w.a; t += w.a; } return s / t; };
+const posOf = (v, lift = 0) => new THREE.Vector3(GRID.X[v], h[v] * STEP + lift, GRID.Z[v]);
+const radiusOf = (v) => h[v] * STEP; // height of a cell top (the planet's radius, kept as a name)
+// map regions for Crown Run gates: markRegions({ seeds | from+bands, wall, per }) fills regionOf[v] and returns the gates
+const regionOf = new Int16Array(MAX_CELLS);
+function markRegions(o = {}) {
+  const pass = o.walkOnly ? passable : null;
+  const r = o.seeds ? regionsVoronoi(GRID, o.seeds, pass) : regionsBands(GRID, o.from ?? 0, o.bands || [12, 24, 36], pass);
+  regionOf.fill(0); regionOf.set(r);
+  const gates = regionGates(GRID, regionOf, passable, o.per || 1);
+  if (o.wall) {
+    // raise a mountain wall along every region border, except at the gates (kept walkable)
+    const keep = new Set(); for (const g of gates) { keep.add(g.v); keep.add(g.u); for (const n of NBR[g.v]) keep.add(n); for (const n of NBR[g.u]) keep.add(n); }
+    for (let v = 0; v < NV; v++) {
+      if (keep.has(v) || ter[v] === T.WATER || objAt[v] >= 0) continue;
+      if (NBR[v].some((n) => regionOf[n] > regionOf[v])) { ter[v] = T.MOUNT; h[v] = SEA + 4; }
+    }
+    worldDirty = true;
+  }
+  return gates;
 }
-function generate(seed) {
-  const elev = noise3(seed), moist = noise3(seed + 7), heat = noise3(seed + 13), ridge = noise3(seed + 21);
+
+// 2D wave noise over the map (same waves as the planet's, in world units)
+function noise2(seed) {
+  const r = mulberry32(seed), waves = [];
+  for (let i = 0; i < 9; i++) { const a = r() * 6.283, z = r() * 2 - 1; waves.push({ dx: Math.cos(a), dz: Math.sin(a), f: (1.5 + r() * 3.5 * (1 + i * 0.3)) / 5.2 * (0.75 + Math.abs(z) * 0.5), p: r() * 6.28, a: 1 / (1 + i * 0.6) }); }
+  return (v) => { let s = 0, t = 0; const x = GRID.X[v], z = GRID.Z[v]; for (const w of waves) { s += Math.sin((x * w.dx + z * w.dz) * w.f + w.p) * w.a; t += w.a; } return s / t; };
+}
+// opts: { size: 'S'|'M'|'L'|'XL'|[w, h], players } (freeplay passes the size; players is a hint, unused for now)
+function generate(seed, opts = {}) {
+  if (opts.size) setGrid(opts.size);
+  const elev = noise2(seed), moist = noise2(seed + 7), heat = noise2(seed + 13), ridge = noise2(seed + 21), rim = noise2(seed + 29);
+  const W = GRID.W, H = GRID.H;
+  // which sides get a mountain rim (the rest fall away into the sea): one or two of the four
+  const rr = mulberry32(seed + 5), sides = [rr() < 0.45, rr() < 0.45, rr() < 0.45, rr() < 0.45];
   for (let v = 0; v < NV; v++) {
-    const e = elev(v) + 0.18, lat = Math.abs(DIRS[v].y), m = moist(v), ht = heat(v) - lat * 0.9;
+    const c = GRID.col[v], rw = GRID.row[v];
+    const bd = Math.min(c, W - 1 - c, rw, H - 1 - rw); // cells to the border
+    const side = bd === c ? 0 : bd === W - 1 - c ? 1 : bd === rw ? 2 : 3;
+    const lat = GRID.lat(v), m = moist(v), ht = heat(v) - 0.42 + (0.5 - lat) * 0.85;
+    // coastline: the land falls away over the last ~7 cells, ragged with noise; the outer two rings are open sea
+    let e = elev(v) + 0.24 - Math.max(0, (7 - bd + rim(v) * 4) / 7) * 0.75;
+    if (bd < 2) e = -1;
     if (e < -0.12) { ter[v] = T.WATER; h[v] = SEA - 1 - (e < -0.3 ? 1 : 0); continue; }
     h[v] = SEA + 1 + (e > 0.25 ? 1 : 0) + (e > 0.45 ? 1 : 0);
     const rg = Math.abs(ridge(v));
+    // a broken mountain rim on some sides: peaks and cliffs drop straight into the sea
+    if (sides[side] && bd <= 4 && rim(v) > -0.25 + bd * 0.08) { ter[v] = T.MOUNT; h[v] = SEA + 4 + (bd > 2 ? 1 : 0); continue; }
     if (rg < 0.06 && e > 0.05) { ter[v] = T.MOUNT; h[v] = SEA + 4 + (rg < 0.03 ? 1 : 0); continue; }
-    if (lat > 0.8 || ht < -0.85) ter[v] = T.SNOW;
+    if (lat > 0.93 || ht < -0.85) ter[v] = T.SNOW;
     else if (e < -0.04) ter[v] = T.SAND;
     else if (ht > 0.38 && m < -0.1) ter[v] = T.LAVA;
     else if (m > 0.38 && e < 0.2) ter[v] = T.SWAMP;
@@ -187,7 +196,7 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true; // frame() decides when the shadow maps re-render
 $('app').prepend(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0d1e);
+scene.background = new THREE.Color(0xbfd2e2);
 const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 400);
 const sunDir = new THREE.Vector3(0.6, 0.8, 0.4).normalize();
 const sun = new THREE.DirectionalLight(0xffe8c4, 2.5);
@@ -199,35 +208,46 @@ sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
 scene.add(sun, sun.target);
 scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x7a6440, 1.05));
 scene.add(new THREE.AmbientLight(0x7880b8, 0.4));
-// Map camera: (theta, phi, dist) chase a target (tTheta, tPhi, tDist) through a critically damped spring
-// (smoothDamp), so every motion is frame-rate independent and velocity-continuous: a retarget (flyTo, follow,
-// a grab mid-flight) bends the path instead of kinking it. Input only moves the target:
-//  - drag: finger deltas accumulate in dragTheta/dragPhi and are applied once per frame (no lost or doubled events)
-//  - fling: on release the target keeps moving at the measured finger speed (rad/s) and decays exponentially
-//  - flyTo: target jumps, the spring eases out of rest and into the goal; any touch takes over where the camera is
-//  - follow: while a hero walks in view, the target tracks its (smoothly lerped) mesh, never the per-step hex
-const cam = { theta: 0, phi: 1.2, dist: 10, tTheta: 0, tPhi: 1.2, tDist: 10, vTheta: 0, vPhi: 0, fly: false, shake: 0,
-  sTheta: 0, sPhi: 0, sDist: 0, dragTheta: 0, dragPhi: 0, dragging: false, spin: 0, holdFollow: null, aiFollow: null, st: 0.3,
-  gTheta: 0, gPhi: 1.2, gsTheta: 0, gsPhi: 0 };
+// Map camera (flat world): a classic strategy view. The camera looks at a focus point on the ground (x, z) from a
+// distance and tilt that follow the zoom (cam.dist keeps the planet's 6.4..22 scale: close up the view tilts toward
+// the horizon, far out it looks down more steeply), turned by cam.yaw. Focus, yaw and zoom chase their targets
+// (tx, tz, tYaw, tDist) through critically damped springs (smoothDamp), so every motion is frame-rate independent and
+// velocity-continuous: a retarget (flyTo, follow, a grab mid-flight) bends the path instead of kinking it.
+//  - drag: finger deltas (converted to ground units under the finger) accumulate and are applied once per frame
+//  - fling: on release the target keeps gliding at the measured finger speed and decays exponentially
+//  - pinch zooms, a two-finger twist turns the view; the focus is clamped to the map
+//  - flyTo / follow (our walking hero, an enemy hero walking in sight) as before
+const cam = { x: 0, z: 0, y: 0.3, tx: 0, tz: 0, vx: 0, vz: 0, sx: 0, sz: 0, gx: 0, gz: 0, gsx: 0, gsz: 0,
+  yaw: 0, tYaw: 0, sYaw: 0, dist: 10, tDist: 10, sDist: 0, fly: false, shake: 0,
+  dragX: 0, dragZ: 0, dragYaw: 0, dragging: false, spin: 0, holdFollow: null, aiFollow: null, st: 0.3 };
 const lookAtP = new THREE.Vector3(), camFocus = new THREE.Vector3(), camRight = new THREE.Vector3(), camTmp = new THREE.Vector3();
-const PHI_MIN = 0.12, PHI_MAX = Math.PI - 0.12;
 const wrapPi = (a) => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
 // critically damped spring toward `to` (Game Programming Gems 4, ch. 1.10); stable for any dt; returns [x, v]
 function smoothDamp(x, to, v, st, dt) {
   const w = 2 / st, k = w * dt, e = 1 / (1 + k + 0.48 * k * k + 0.235 * k * k * k), c = x - to, tmp = (v + w * c) * dt;
   return [to + (c + tmp) * e, (v - w * tmp) * e];
 }
-const FLING_DECAY = 7, FLING_MAX = 2.8; // 1/s, rad/s: the longest glide is FLING_MAX / FLING_DECAY = 0.4 rad
+// eye distance from the focus and tilt (radians below the horizon) for a zoom level
+const viewDist = (d) => Math.max(1.6, d - 4.6);
+const viewPitch = (d) => (G.mode === 'menu' ? 0.3 : 0.5 + 0.55 * (1 - Math.exp(-Math.max(0, d - 6.4) / 3.2)));
+const CAM_DEFAULT = 10; // the zoom a new game, a selected hero and a load start at
+const FLING_DECAY = 7; // 1/s; the speed cap scales with the zoom (the longest glide is ~0.3 view distances)
+const flingMax = () => 2.2 * viewDist(cam.dist);
+function camClamp() {
+  const b = GRID.bounds, m = 0.4;
+  const x = clamp(cam.tx, b.x0 - m, b.x1 + m), z = clamp(cam.tz, b.z0 - m, b.z1 + m);
+  if (x !== cam.tx) cam.vx = 0; if (z !== cam.tz) cam.vz = 0;
+  cam.tx = x; cam.tz = z;
+}
 function camGrab() {
   // a finger lands: stop flights, flings and follow right where the camera is (plus a hair of its momentum,
   // so a fast flight settles in ~0.1 s instead of stopping dead); no positional jump either way
-  cam.fly = false; cam.vTheta = cam.vPhi = 0;
-  cam.tTheta = cam.theta + cam.sTheta * 0.04; cam.tPhi = clamp(cam.phi + cam.sPhi * 0.04, PHI_MIN, PHI_MAX);
+  cam.fly = false; cam.vx = cam.vz = 0;
+  cam.tx = cam.x + cam.sx * 0.04; cam.tz = cam.z + cam.sz * 0.04; cam.tYaw = cam.yaw; camClamp();
   if (walking) cam.holdFollow = walking;
   else if (aiRunning) cam.holdFollow = 'ai'; // grabbing the map during the enemy turn hands the camera back for that turn
 }
-function camSnap(theta, phi) { cam.theta = cam.tTheta = cam.gTheta = theta; cam.phi = cam.tPhi = cam.gPhi = phi; cam.sTheta = cam.sPhi = cam.gsTheta = cam.gsPhi = cam.vTheta = cam.vPhi = 0; cam.fly = false; }
-const followDir = new THREE.Vector3(), followSp = new THREE.Spherical();
+function camSnapTo(x, z) { cam.x = cam.tx = cam.gx = x; cam.z = cam.tz = cam.gz = z; cam.sx = cam.sz = cam.gsx = cam.gsz = cam.vx = cam.vz = 0; cam.fly = false; }
 function followTarget() {
   // the hero to keep in frame: ours while it walks (until the player grabs the map), or an enemy walking in sight
   if (cam.dragging) return null;
@@ -243,6 +263,8 @@ function followTarget() {
   if (!h || !h.alive || (!h.anim && !seen[h.v])) { cam.aiFollow = null; return null; }
   return heroMeshes.get(h.id) || null;
 }
+// ground height under the focus (smoothed in updateCamera), so the view rides over hills and cliffs gently
+function groundAt(x, z) { const v = GRID.cellAt(x, z); return v >= 0 ? Math.max(h[v], SEA) * STEP : SEA * STEP; }
 function updateCamera(dt) {
   // spring time: 0.05 s under the finger (feels 1:1 but hides uneven touch events), ~0.3 s for flights and follow.
   // It is kept between frames: when a follow or flight ends, the camera finishes its approach at the same pace
@@ -250,63 +272,59 @@ function updateCamera(dt) {
   let st = cam.st || 0.3;
   if (cam.dragging) {
     st = 0.05;
-    cam.tTheta += cam.dragTheta; cam.tPhi += cam.dragPhi; cam.dragTheta = cam.dragPhi = 0; cam.fly = false;
+    cam.tx += cam.dragX; cam.tz += cam.dragZ; cam.tYaw += cam.dragYaw; cam.dragX = cam.dragZ = cam.dragYaw = 0; cam.fly = false;
   } else {
     const fm = followTarget();
     if (fm) {
-      followSp.setFromVector3(followDir.copy(fm.position));
-      cam.tTheta = cam.theta + wrapPi(followSp.theta - cam.theta); cam.tPhi = followSp.phi; cam.fly = false; cam.vTheta = cam.vPhi = 0;
+      cam.tx = fm.position.x; cam.tz = fm.position.z; cam.fly = false; cam.vx = cam.vz = 0;
       st = 0.32;
     } else if (cam.fly) {
       st = 0.34;
-      if (Math.abs(wrapPi(cam.tTheta - cam.theta)) < 0.0008 && Math.abs(cam.tPhi - cam.phi) < 0.0008 && Math.abs(cam.sTheta) + Math.abs(cam.sPhi) < 0.01) cam.fly = false;
+      if (Math.abs(cam.tx - cam.x) < 0.004 && Math.abs(cam.tz - cam.z) < 0.004 && Math.abs(cam.sx) + Math.abs(cam.sz) < 0.05) cam.fly = false;
     } else {
-      // fling inertia (rad/s), decaying exponentially with time, plus the title-screen spin
-      if (cam.vTheta || cam.vPhi) st = 0.05;
-      cam.tTheta += (cam.vTheta + cam.spin) * dt; cam.tPhi += cam.vPhi * dt;
-      const k = Math.exp(-FLING_DECAY * dt); cam.vTheta *= k; cam.vPhi *= k;
-      if (Math.abs(cam.vTheta) + Math.abs(cam.vPhi) < 1e-3) cam.vTheta = cam.vPhi = 0;
+      // fling inertia (world units/s), decaying exponentially with time; the title screen slowly turns the view
+      if (cam.vx || cam.vz) st = 0.05;
+      cam.tx += cam.vx * dt; cam.tz += cam.vz * dt; cam.tYaw += cam.spin * dt;
+      const k = Math.exp(-FLING_DECAY * dt); cam.vx *= k; cam.vz *= k;
+      if (Math.abs(cam.vx) + Math.abs(cam.vz) < 1e-3) cam.vx = cam.vz = 0;
     }
   }
-  // the pole clamp acts on the target (a fling into the pole just stops there)
-  if (cam.tPhi < PHI_MIN || cam.tPhi > PHI_MAX) { cam.tPhi = clamp(cam.tPhi, PHI_MIN, PHI_MAX); cam.vPhi = 0; }
-  // spin along the short way round; keep theta bounded so float precision never drifts
-  const dth = wrapPi(cam.tTheta - cam.theta);
-  if (Math.abs(cam.theta) > 1000) { const w = cam.theta - wrapPi(cam.theta); cam.theta -= w; }
-  cam.tTheta = cam.theta + dth;
+  camClamp();
   cam.st = st;
   if (st >= 0.2) {
     // flights and follow go through two springs in a row (target -> goal -> camera): the speed then builds up
     // with no acceleration kick on the first frame, which is what makes a long flight read as a camera move
-    cam.gTheta = cam.theta + wrapPi(cam.gTheta - cam.theta);
-    [cam.gTheta, cam.gsTheta] = smoothDamp(cam.gTheta, cam.tTheta, cam.gsTheta, st * 0.45, dt);
-    [cam.gPhi, cam.gsPhi] = smoothDamp(cam.gPhi, cam.tPhi, cam.gsPhi, st * 0.45, dt);
-    [cam.theta, cam.sTheta] = smoothDamp(cam.theta, cam.gTheta, cam.sTheta, st * 0.55, dt);
-    [cam.phi, cam.sPhi] = smoothDamp(cam.phi, cam.gPhi, cam.sPhi, st * 0.55, dt);
+    [cam.gx, cam.gsx] = smoothDamp(cam.gx, cam.tx, cam.gsx, st * 0.45, dt);
+    [cam.gz, cam.gsz] = smoothDamp(cam.gz, cam.tz, cam.gsz, st * 0.45, dt);
+    [cam.x, cam.sx] = smoothDamp(cam.x, cam.gx, cam.sx, st * 0.55, dt);
+    [cam.z, cam.sz] = smoothDamp(cam.z, cam.gz, cam.sz, st * 0.55, dt);
   } else {
-    [cam.theta, cam.sTheta] = smoothDamp(cam.theta, cam.tTheta, cam.sTheta, st, dt);
-    [cam.phi, cam.sPhi] = smoothDamp(cam.phi, cam.tPhi, cam.sPhi, st, dt);
+    [cam.x, cam.sx] = smoothDamp(cam.x, cam.tx, cam.sx, st, dt);
+    [cam.z, cam.sz] = smoothDamp(cam.z, cam.tz, cam.sz, st, dt);
     // the middle spring rides along with the camera, so switching to a flight/follow starts from its exact motion
-    cam.gTheta = cam.theta; cam.gPhi = cam.phi; cam.gsTheta = cam.sTheta; cam.gsPhi = cam.sPhi;
+    cam.gx = cam.x; cam.gz = cam.z; cam.gsx = cam.sx; cam.gsz = cam.sz;
   }
-  cam.phi = clamp(cam.phi, PHI_MIN, PHI_MAX);
+  if (Math.abs(cam.yaw) > 1000) { const w = cam.yaw - wrapPi(cam.yaw); cam.yaw -= w; cam.tYaw -= w; }
+  [cam.yaw, cam.sYaw] = smoothDamp(cam.yaw, cam.tYaw, cam.sYaw, cam.dragging ? 0.06 : 0.2, dt);
   [cam.dist, cam.sDist] = smoothDamp(cam.dist, cam.tDist, cam.sDist, 0.14, dt);
-  // close up, the camera tilts toward the horizon like a strategy map
-  const f = clamp((16 - cam.dist) / 9, 0, 1);
-  const cphi = cam.phi + f * 0.4;
-  camera.position.setFromSphericalCoords(cam.dist, cphi, cam.theta);
-  lookAtP.setFromSphericalCoords(R * f * 0.98, cam.phi, cam.theta);
-  // 'up' is the local north tangent: continuous even when the tilt carries the camera past a pole
-  camera.up.set(-Math.cos(cphi) * Math.sin(cam.theta), Math.sin(cphi), -Math.cos(cphi) * Math.cos(cam.theta));
+  cam.y += (groundAt(cam.x, cam.z) - cam.y) * (1 - Math.exp(-dt * 3));
+  const D = viewDist(cam.dist), pt = viewPitch(cam.dist), cp = Math.cos(pt), sy = Math.sin(cam.yaw), cy = Math.cos(cam.yaw);
+  lookAtP.set(cam.x, cam.y, cam.z);
+  camera.position.set(cam.x + sy * cp * D, cam.y + Math.sin(pt) * D, cam.z + cy * cp * D);
+  camera.up.set(0, 1, 0);
   camera.lookAt(lookAtP);
   applyShake(camera, dt, 0.014);
-  // the shadow-casting sun follows the view so shadows stay crisp near the camera
-  // (scratch vectors: this runs every frame, so no allocations)
-  const focus = camFocus.copy(lookAtP.lengthSq() > 0.01 ? lookAtP : camera.position).setLength(R);
-  const right = camRight.crossVectors(camera.position, UP).normalize();
-  sun.position.copy(focus).addScaledVector(camTmp.copy(camera.position).sub(focus).normalize(), 9).addScaledVector(right, 5).addScaledVector(camTmp.copy(focus).normalize(), 6);
-  sun.target.position.copy(focus);
+  // the shadow-casting sun follows the view (from behind the camera, up and to the right) so figures are front-lit
+  // and shadows stay crisp where you look; its box grows with the zoom and leans toward the far part of the view
+  const focus = camFocus.copy(lookAtP);
+  const S = clamp(Math.round(D * 0.8 * 2) / 2, 3, 9), sc = sun.shadow.camera;
+  if (sc.right !== S) { sc.left = sc.bottom = -S; sc.right = sc.top = S; sc.updateProjectionMatrix(); }
+  const right = camRight.set(cy, 0, -sy);
+  sun.target.position.copy(focus).addScaledVector(camTmp.set(-sy, 0, -cy), S * 0.3);
+  sun.position.copy(sun.target.position).addScaledVector(camTmp.set(sy, 0, cy), 7).addScaledVector(right, 5).add(camTmp.set(0, 9, 0));
 }
+// is a cell far from the middle of the view (more than `n` hex steps from the focus)?
+const offView = (v, n = 4) => Math.hypot(GRID.X[v] - cam.tx, GRID.Z[v] - cam.tz) > n * CELL;
 // ---- screen shake (feel): "trauma" in 0..1 decays linearly; the offset is trauma² × smooth 2D noise (two sines per
 // axis at incommensurate rates: continuous, no per-frame random jitter), applied as a tiny yaw/pitch of the camera
 // AFTER its lookAt, so the framing target and the camera springs are never disturbed. cam.shake (legacy) feeds it.
@@ -327,8 +345,7 @@ let hitStop = 0, bTimeK = 1;
 function addHitStop(s) { if (!reduceMo.matches) hitStop = Math.max(hitStop, s); }
 function flyTo(v, dist) {
   // the spring eases from the current motion into the new goal (no velocity kink if a flight is retargeted)
-  const sp = new THREE.Spherical().setFromVector3(DIRS[v]);
-  cam.tTheta = cam.theta + wrapPi(sp.theta - cam.theta); cam.tPhi = clamp(sp.phi, PHI_MIN, PHI_MAX); cam.fly = true; cam.vTheta = cam.vPhi = 0;
+  cam.tx = GRID.X[v]; cam.tz = GRID.Z[v]; cam.fly = true; cam.vx = cam.vz = 0; camClamp();
   if (dist) cam.tDist = dist;
 }
 // ------------------------------------------------------------------ resize + screen layout
@@ -398,7 +415,7 @@ function mapViewOffset(dt) {
   if (G.mode === 'map' && B - T > H * 0.3) {
     camera.updateMatrixWorld();
     const sy = (p) => (-p.project(camera).y * 0.5 + 0.5) * H - lay.mapOff; // screen y without the current offset
-    const feet = sy(mvP.copy(camFocus).setLength(R + 0.03)), head = sy(mvP.copy(camFocus).setLength(R + 0.8 * figK)); // hero + banner tip
+    const feet = sy(mvP.copy(camFocus).setY(camFocus.y + 0.03)), head = sy(mvP.copy(camFocus).setY(camFocus.y + 0.8 * figK)); // hero + banner tip
     want = T + (feet / H) * (B - T) - feet;
     const lo = T + 12 - head, hi = B - 12 - feet;
     want = lo > hi ? (lo + hi) / 2 : clamp(want, lo, hi);
@@ -463,16 +480,15 @@ const QG = (() => {
   state.set = (o = {}) => { if (o.auto !== undefined) S.auto = !!o.auto; if (o.cull !== undefined) hzOn = !!o.cull; if (o.shadowsAlways !== undefined) shAlways = !!o.shadowsAlways; if (o.level !== undefined && o.level !== S.level) apply(clamp(o.level | 0, 0, steps.length - 1)); reset(); return state(); };
   return { sample, state, init() { if (S.level) apply(S.level); else camera.userData.pixelRatio = bcam.userData.pixelRatio = S.pr; } };
 })();
-const atmos = createAtmosphere(THREE, scene, { R });
+const atmos = createFlatSky(THREE, scene, { fogColor: 0xbfd2e2 }); // flat world: daylight sky, horizon haze, clouds, birds
 
 
-// ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
-// the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=1.10';
-const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
-const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
-planet.castShadow = planet.receiveShadow = true;
-scene.add(planet);
+// ------------------------------------------------------------------ the map mesh: bevelled hex columns with cliff walls, in chunks
+// the surface itself (textures, bevels, cliffs, roads, fog, water, the open sea) is built by terrain.js
+import { createFlatMap } from './terrain.js?v=1.10';
+const TERRAIN = createFlatMap({ STEP, SEA });
+TERRAIN.setGrid(GRID); atmos.setArea(GRID.bounds);
+scene.add(TERRAIN.group);
 const FOG = new THREE.Color(0x10131f);
 const tc = new THREE.Color();
 function cellColor(v) {
@@ -483,10 +499,6 @@ function cellColor(v) {
   return tc.multiplyScalar(0.93 + (hash(v * 3) % 1000) / 9000);
 }
 function rebuildPlanet() { TERRAIN.rebuild(ter, h, road, seen); }
-// water: flat hex tiles at sea level with depth colour, shore foam, waves and glints
-const water = TERRAIN.water;
-water.receiveShadow = true;
-scene.add(water);
 
 
 // ------------------------------------------------------------------ bloom
@@ -685,32 +697,33 @@ function meshOf(m, ink = true) {
 function addBlob(g, r) { const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(r); bl.userData.blob = true; bl.renderOrder = -1; g.add(bl); return g; }
 const BLOB_R = { gold: 0.62, wood: 0.62, ore: 0.62, gems: 0.62, chest: 0.64, artifact: 0.55, campfire: 0.6, stone: 0.55, monster: 0.7 };
 const UP = new THREE.Vector3(0, 1, 0), qa = new THREE.Quaternion();
-// stands a group on a cell, local +y along the planet normal
+// stands a group on a cell (local +y up), turned by `turn` around the vertical
 // figures grow a little as the camera pulls back, so they stay readable on a phone (like map icons)
 let figK = 1;
 function placeOn(obj, v, scale, turn = 0, lift = 0) {
   obj.userData.s0 = scale;
-  qa.setFromUnitVectors(UP, DIRS[v]);
-  obj.quaternion.copy(qa);
-  obj.rotateY(YAW[v] + turn);
-  obj.position.copy(DIRS[v]).multiplyScalar(radiusOf(v) + lift);
+  obj.quaternion.identity();
+  obj.rotateY(turn);
+  obj.position.set(GRID.X[v], radiusOf(v) + lift, GRID.Z[v]);
   obj.scale.setScalar(scale * figK);
 }
 const world = new THREE.Group(); scene.add(world);
 const flora = new THREE.Group(); scene.add(flora);
 // forests, mountains and rocks: instanced per model
+const dummy = new THREE.Object3D(); // scratch (the battle hex grid uses it too)
 const pickW = (list, r) => { const tot = list.reduce((x, e) => x + e.w, 0); let k = r * tot; for (const e of list) { k -= e.w; if (k <= 0) return e.key; } return list[0].key; };
-const dummy = new THREE.Object3D();
-// One InstancedMesh (+ glow) per model, with spare capacity: a fog reveal only appends the newly seen cells' instances
-// (and uploads just those matrices) instead of rebuilding every forest on the planet.
-const floraSets = new Map(); // key -> { model, im, ig, n, cap }
-const floraDone = new Uint8Array(NV); // cells whose flora is already placed
-const floraSphere = new THREE.Sphere(new THREE.Vector3(), R + 3);
+// Flora (flat world): one InstancedMesh (+ glow) per model, holding only the instances of the render chunks in (or
+// just around) the view. Each model keeps its instance matrices per chunk; a fog reveal appends the new cells' ones,
+// and floraCull() re-packs a model's instance buffer only when the set of chunks in view (or its content) changed,
+// so a still or slowly panning view uploads nothing and the GPU never processes forests off screen.
+const floraSets = new Map(); // key -> { model, im, ig, cap, per: Map(chunk -> { a: Float32Array, n }), dirty }
+const floraDone = new Uint8Array(MAX_CELLS); // cells whose flora is already placed
+const floraBig = new THREE.Sphere(new THREE.Vector3(), 1e4);
 function floraCell(v, put) {
   const hv = hash(v * 11), rr = (k) => (hash(v * 31 + k * 7) % 1000) / 1000;
-  const F = FLORA_FOR_TERRAIN[ter[v]];
+  const F = FLORA_FOR_TERRAIN[ter[v]], lat = GRID.lat(v) * 0.9; // north = colder (snowy pines and peaks), no palms there
   if (ter[v] === T.FOREST || ter[v] === T.MOUNT) {
-    const biome = biomeOf(NBR[v].map((n) => ter[n]), Math.abs(DIRS[v].y));
+    const biome = biomeOf(NBR[v].map((n) => ter[n]), lat);
     if (ter[v] === T.FOREST) {
       const n = F.count[0] + (hv % (F.count[1] - F.count[0] + 1));
       for (let i = 0; i < n; i++) { const a = i * 2.1 + hv, d = i ? 0.1 + rr(i) * 0.03 : 0; put(pickW(FOREST_BY_BIOME[biome] || FOREST_BY_BIOME.temperate, rr(i + 9)), v, F.fillScale * (0.85 + rr(i + 3) * 0.3), Math.cos(a) * d, Math.sin(a) * d, a); }
@@ -719,62 +732,71 @@ function floraCell(v, put) {
   }
   if (objAt[v] >= 0 || road[v] || !F || !F.scatter) return;
   let placed = 0;
-  F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; if ((e.avoid && NBR[v].some((n) => e.avoid.includes(ter[n]))) || (e.maxLat && Math.abs(DIRS[v].y) > e.maxLat)) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
+  F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; if ((e.avoid && NBR[v].some((n) => e.avoid.includes(ter[n]))) || (e.maxLat && lat > e.maxLat)) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
 }
-const flT1 = new THREE.Vector3(), flT2 = new THREE.Vector3(), flX = new THREE.Vector3(1, 0, 0);
-function floraMatrix(v, s, x, z, turn) {
-  flT1.crossVectors(DIRS[v], Math.abs(DIRS[v].y) < 0.9 ? UP : flX).normalize(); flT2.copy(DIRS[v]).cross(flT1);
-  dummy.position.copy(DIRS[v]).multiplyScalar(radiusOf(v)).addScaledVector(flT1, x).addScaledVector(flT2, z);
-  dummy.quaternion.setFromUnitVectors(UP, DIRS[v]); dummy.rotateY(turn); dummy.scale.setScalar(s); dummy.updateMatrix();
-  return dummy.matrix;
-}
-// the set for a model with room for `extra` more instances (grows by reallocating just that model's meshes)
-function floraSet(key, extra) {
+// the set for a model (its meshes are (re)allocated by floraPack when the instances outgrow them)
+function floraSet(key) {
   let S = floraSets.get(key);
-  if (S && S.n + extra <= S.cap) return S;
-  const model = S ? S.model : natureModel(key), n = S ? S.n : 0, cap = Math.ceil((n + extra) * 1.5) + 32;
-  const mk = (geo, mat) => {
-    const im = new THREE.InstancedMesh(geo, mat, cap);
-    im.count = n; im.visible = n > 0; im.boundingSphere = floraSphere; // grows in place: cull against the whole planet
-    return im;
-  };
-  const im = mk(model.body, floraBodyMat); im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = floraDepthMat;
-  const ig = model.glow ? mk(model.glow, floraGlowMat) : null;
-  if (S) {
-    im.instanceMatrix.array.set(S.im.instanceMatrix.array.subarray(0, n * 16));
-    if (ig) ig.instanceMatrix.array.set(S.ig.instanceMatrix.array.subarray(0, n * 16));
-    for (const o of [S.im, S.ig]) if (o) { flora.remove(o); o.dispose(); }
-  }
-  flora.add(im); if (ig) flora.add(ig);
-  S = { model, im, ig, n, cap }; floraSets.set(key, S);
+  if (!S) { S = { model: natureModel(key), im: null, ig: null, cap: 0, per: new Map(), dirty: true }; floraSets.set(key, S); }
   return S;
+}
+function floraAlloc(S, need) {
+  const cap = Math.ceil(need * 1.4) + 32;
+  for (const o of [S.im, S.ig]) if (o) { flora.remove(o); o.dispose(); }
+  const mk = (geo, mat) => { const im = new THREE.InstancedMesh(geo, mat, cap); im.count = 0; im.visible = false; im.frustumCulled = false; im.boundingSphere = floraBig; return im; };
+  S.im = mk(S.model.body, floraBodyMat); S.im.castShadow = true; S.im.receiveShadow = true; S.im.customDepthMaterial = floraDepthMat;
+  S.ig = S.model.glow ? mk(S.model.glow, floraGlowMat) : null;
+  flora.add(S.im); if (S.ig) flora.add(S.ig);
+  S.cap = cap;
+}
+// chunks in view (frustum, widened a little for shadows cast into it from just outside)
+const floraVis = { key: '', chunks: [] }, _frus = new THREE.Frustum(), _fm = new THREE.Matrix4(), _fb = new THREE.Box3();
+function floraPack(S) {
+  S.dirty = false;
+  let n = 0; for (const c of floraVis.chunks) n += S.per.get(c)?.n || 0;
+  if (n > S.cap) floraAlloc(S, n);
+  if (!S.im) return;
+  let o = 0;
+  for (const c of floraVis.chunks) { const L = S.per.get(c); if (!L || !L.n) continue; const src = L.a.subarray(0, L.n * 16); S.im.instanceMatrix.array.set(src, o); if (S.ig) S.ig.instanceMatrix.array.set(src, o); o += L.n * 16; }
+  for (const m of [S.im, S.ig]) { if (!m) continue; m.count = n; m.visible = n > 0; if (n) { m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.addUpdateRange(0, n * 16); m.instanceMatrix.needsUpdate = true; } }
+}
+let floraOn = true; // A/B switch for perf tests (quality.set({ cull: false }) packs every chunk)
+function floraCull() {
+  camera.updateMatrixWorld();
+  _frus.setFromProjectionMatrix(_fm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  const vis = [];
+  for (const C of GRID.chunks) {
+    _fb.min.set(C.x0 - 0.8, -0.4, C.z0 - 0.8); _fb.max.set(C.x1 + 0.8, 1.6, C.z1 + 0.8);
+    if (!floraOn || _frus.intersectsBox(_fb)) vis.push(C.id);
+  }
+  const key = vis.join(',');
+  const all = key !== floraVis.key;
+  if (all) { floraVis.key = key; floraVis.chunks = vis; }
+  let packed = false;
+  for (const S of floraSets.values()) if (all || S.dirty) { floraPack(S); packed = true; }
+  return packed;
 }
 // cells = the cells that just turned seen (incremental), or nothing for a full rebuild of the flora
 function layoutFlora(cells = null) {
   if (!cells) {
     // free the old instance-matrix GPU buffers (the shared nature geometries stay cached in nature.js)
     for (const im of flora.children) im.dispose?.();
-    flora.clear(); floraSets.clear(); floraDone.fill(0);
+    flora.clear(); floraSets.clear(); floraDone.fill(0); floraVis.key = '';
     cells = [];
     for (let v = 0; v < NV; v++) if (seen[v]) cells.push(v);
   }
-  const lists = new Map();
+  let any = false;
   const put = (key, v, s, x = 0, z = 0, turn = 0) => {
-    let L = lists.get(key); if (!L) lists.set(key, (L = []));
-    L.push(floraMatrix(v, s, x, z, turn).clone());
+    const S = floraSet(key), c = GRID.chunkOf[v];
+    let L = S.per.get(c); if (!L) S.per.set(c, (L = { a: new Float32Array(64 * 16), n: 0 }));
+    if ((L.n + 1) * 16 > L.a.length) { const b = new Float32Array(L.a.length * 2); b.set(L.a); L.a = b; }
+    const e = L.a, o = L.n * 16, cs = Math.cos(turn) * s, sn = Math.sin(turn) * s;
+    e[o] = cs; e[o + 1] = 0; e[o + 2] = -sn; e[o + 3] = 0; e[o + 4] = 0; e[o + 5] = s; e[o + 6] = 0; e[o + 7] = 0;
+    e[o + 8] = sn; e[o + 9] = 0; e[o + 10] = cs; e[o + 11] = 0; e[o + 12] = GRID.X[v] + x; e[o + 13] = radiusOf(v); e[o + 14] = GRID.Z[v] + z; e[o + 15] = 1;
+    L.n++; S.dirty = true; any = true;
   };
   for (const v of cells) { if (!seen[v] || floraDone[v]) continue; floraDone[v] = 1; floraCell(v, put); }
-  for (const [key, m] of lists) {
-    const S = floraSet(key, m.length), i0 = S.n;
-    for (const o of [S.im, S.ig]) {
-      if (!o) continue;
-      m.forEach((x, i) => o.setMatrixAt(i0 + i, x));
-      o.count = i0 + m.length; o.visible = true;
-      o.instanceMatrix.addUpdateRange(i0 * 16, m.length * 16); o.instanceMatrix.needsUpdate = true;
-    }
-    S.n += m.length;
-  }
-  return lists.size > 0;
+  return any;
 }
 
 // ------------------------------------------------------------------ building the world
@@ -788,7 +810,7 @@ function connected(a, b) {
 function carve(a, b) {
   let x = a;
   for (let i = 0; i < 400 && x !== b; i++) {
-    x = NBR[x].reduce((p, n) => (DIRS[n].distanceTo(DIRS[b]) < DIRS[p].distanceTo(DIRS[b]) ? n : p));
+    x = NBR[x].reduce((p, n) => (cellDist(n, b) < cellDist(p, b) ? n : p));
     if (!passable(x)) { ter[x] = T.DIRT; h[x] = SEA + 1; }
   }
 }
@@ -819,8 +841,8 @@ function newTown(v, p, fac, name) {
 }
 // freeplay: grid-agnostic helpers for placing crowns. cellDist works on any grid that keeps posOf (planet: chord length).
 // edgeOk(v, m): far enough from the map's "edge" for a town (planet: away from the poles; flat grid: a margin from the border)
-const cellDist = (a, b) => posOf(a).distanceTo(posOf(b));
-const edgeOk = (v, m) => Math.abs(DIRS[v].y) < m;
+// (flat: cellDist is the grid's hex distance, defined with the grid; edgeOk keeps towns off the coastal rim)
+const edgeOk = (v, m) => GRID.edge(v) < m + 0.3;
 // Free Play map sizes (passed to the terrain generator; the planet grid has one size, so it only stores it for now)
 const MAP_SIZES = { S: 'Small', M: 'Medium', L: 'Large', XL: 'Huge' };
 // one attempt at the terrain (flat agent: generateWorld({ size, players }) plugs in here)
@@ -992,11 +1014,11 @@ const zoc = (v) => NBR[v].some((n) => { const o = objAt[n] >= 0 ? G.objects[objA
 function findPath(from, to, hr, ignore = false) {
   if (from === to) return [from];
   const came = new Map(), g = new Map([[from, 0]]);
-  const heur = (v) => DIRS[v].distanceTo(DIRS[to]) * 600;
+  const heur = (v) => cellDist(v, to) * 50; // admissible: no step costs less than a road step (50)
   const fScore = new Map([[from, heur(from)]]), open = minHeap();
   open.push(fScore.get(from), from);
   let guardSteps = 0;
-  while (open.size && guardSteps < 6000) {
+  while (open.size && guardSteps < NV + 4000) {
     let cur = open.pop();
     if (open.d !== fScore.get(cur)) continue; // a stale entry: this cell was re-queued with a better cost
     guardSteps++;
@@ -1034,7 +1056,7 @@ const SCALE = { gold: 0.3, wood: 0.3, ore: 0.3, gems: 0.3, chest: 0.28, artifact
 // (an enemy picking up gold or flagging a mine used to re-tessellate the whole planet in the middle of the AI turn).
 // A plain fog reveal (cells only ever turning seen, land unchanged) is incremental: the terrain rewrites just the
 // touched cells' vertex attributes and fades them in, the flora appends the new cells' instances.
-const landSnap = { ter: new Uint8Array(NV), h: new Int8Array(NV), road: new Uint8Array(NV), seen: new Uint8Array(NV), ok: false };
+const landSnap = { ter: new Uint8Array(MAX_CELLS), h: new Int8Array(MAX_CELLS), road: new Uint8Array(MAX_CELLS), seen: new Uint8Array(MAX_CELLS), ok: false };
 // null: nothing changed; 'full': rebuild; an array: only these cells turned seen
 function landChanged() {
   const S = landSnap;
@@ -1076,6 +1098,7 @@ function layoutWorld() {
   const land = landChanged();
   if (land === 'full') { rebuildPlanet(); layoutFlora(); changed = true; }
   else if (land) { if (!TERRAIN.refog(ter, h, road, seen, land)) rebuildPlanet(); layoutFlora(land); changed = true; }
+  if (land) mini.mark(land);
   if (objMeshesOf !== G.objects) { for (const id of [...objMeshes.keys()]) dropObjMesh(id); world.clear(); objMeshesOf = G.objects; changed = true; }
   for (const o of G.objects) {
     let g = objMeshes.get(o.id);
@@ -1088,6 +1111,84 @@ function layoutWorld() {
   if (changed) renderer.shadowMap.needsUpdate = true; // the still-map shadow refresh would catch up anyway; don't wait for it
   layoutHeroes(true);
 }
+// ------------------------------------------------------------------ minimap (flat world)
+// A small 2D canvas in a HUD corner: explored terrain (a base layer redrawn only for cells whose land / fog changed),
+// towns, mines and heroes in their owners' colours, and the ground the camera sees. The overlay is redrawn at most
+// ~12 times a second and only when the view or a marker moved. Tap (or drag on) it to fly there.
+const mini = (() => {
+  const el = document.createElement('canvas'); el.id = 'minimap'; el.setAttribute('aria-label', 'Map overview: tap to fly there');
+  $('hud').appendChild(el);
+  const ctx = el.getContext('2d'), base = document.createElement('canvas'), bctx = base.getContext('2d');
+  const M = { el, dirty: true, fresh: null, sig: '', t: 0, w: 0, h: 0, s: 1, pr: 1, gw: 0, gh: 0 };
+  const COLS = TER_COL.map((c) => '#' + c.getHexString()), ROADC = '#' + ROAD_COL.getHexString(), FOGC = '#1d2236';
+  function size() {
+    const land = innerWidth > innerHeight, cw = land ? clamp(innerWidth * 0.17, 120, 190) : clamp(innerWidth * 0.32, 104, 150);
+    const gw = GRID.W + 0.5, gh = (GRID.H - 1) * 0.866 + 1, ch = cw * gh / gw, pr = Math.min(2, devicePixelRatio || 1);
+    if (Math.abs(cw - M.w) < 0.5 && gw === M.gw && gh === M.gh && pr === M.pr) return false;
+    M.w = cw; M.h = ch; M.gw = gw; M.gh = gh; M.pr = pr; M.s = (cw * pr) / gw;
+    el.style.width = cw + 'px'; el.style.height = ch + 'px'; document.documentElement.style.setProperty('--mm-h', Math.round(ch + 4) + 'px');
+    el.width = base.width = Math.round(cw * pr); el.height = base.height = Math.round(ch * pr);
+    M.dirty = true; return true;
+  }
+  const px = (v) => (GRID.col[v] + 0.5 * (GRID.row[v] & 1) + 0.5) * M.s, py = (v) => (GRID.row[v] * 0.866 + 0.5) * M.s;
+  function cell(v) {
+    let c = FOGC;
+    if (seen[v]) c = road[v] && ter[v] !== T.WATER ? ROADC : COLS[ter[v]];
+    bctx.fillStyle = c; bctx.fillRect(px(v) - M.s * 0.5 - 0.3, py(v) - M.s * 0.55, M.s + 0.6, M.s * 1.1);
+  }
+  function drawBase() {
+    if (M.dirty) { bctx.fillStyle = '#1d3d6a'; bctx.fillRect(0, 0, base.width, base.height); for (let v = 0; v < NV; v++) cell(v); M.dirty = false; }
+    else if (M.fresh) for (const v of M.fresh) cell(v);
+    M.fresh = null;
+  }
+  const _a = new THREE.Vector3();
+  function viewPoly() {
+    const pts = [], W = innerWidth, H = innerHeight, D = viewDist(cam.dist) * 2.6;
+    for (const [x, y] of [[0, lay.mapT || 0], [W, lay.mapT || 0], [W, lay.mapB || H], [0, lay.mapB || H]]) {
+      ndc.set((x / W) * 2 - 1, -(y / H) * 2 + 1); ray.setFromCamera(ndc, camera); _gp.constant = -cam.y;
+      let p = ray.ray.intersectPlane(_gp, _a);
+      if (!p || p.distanceTo(camFocus) > D) { const d = ray.ray.direction; const k = Math.hypot(d.x, d.z) || 1; p = _a.set(camFocus.x + d.x / k * D, 0, camFocus.z + d.z / k * D); }
+      pts.push([(p.x / CELL + 0.5) * M.s, (p.z / CELL + 0.5) * M.s]);
+    }
+    return pts;
+  }
+  function draw(now, force) {
+    if (G.mode !== 'map' || $('hud').hidden) return;
+    if (size()) force = true;
+    if (!force && now - M.t < 80) return;
+    let sig = `${cam.x.toFixed(2)},${cam.z.toFixed(2)},${cam.yaw.toFixed(2)},${cam.dist.toFixed(1)},${M.dirty ? 1 : 0}${M.fresh ? M.fresh.length : 0}`;
+    for (const hr of G.heroes) if (hr.alive) sig += ',' + hr.v;
+    for (const t of G.towns) sig += ',' + t.p;
+    sig += ',' + G.objects.reduce((n, o) => n + (o.owner > -1 ? o.owner + 1 : 0), 0);
+    if (!force && sig === M.sig) return;
+    M.sig = sig; M.t = now;
+    drawBase();
+    ctx.drawImage(base, 0, 0);
+    const s = M.s, dot = (v, r, fill, line) => { ctx.beginPath(); ctx.arc(px(v), py(v), r, 0, 6.283); ctx.fillStyle = fill; ctx.fill(); if (line) { ctx.lineWidth = Math.max(1, s * 0.35); ctx.strokeStyle = line; ctx.stroke(); } };
+    for (const o of G.objects) if (o.alive && seen[o.v] && OBJECTS[o.type]?.kind === 'mine') dot(o.v, Math.max(1.5, s * 0.75), o.owner >= 0 ? G.players[o.owner]?.css || '#999' : '#c9c2b0', 'rgba(0,0,0,0.55)');
+    for (const t of G.towns) if (seen[t.v] || t.p === 0) {
+      const r = Math.max(3, s * 1.5); ctx.fillStyle = t.p >= 0 ? G.players[t.p]?.css || '#bbb' : '#c8c8cc';
+      ctx.fillRect(px(t.v) - r, py(t.v) - r, r * 2, r * 2); ctx.lineWidth = Math.max(1, s * 0.4); ctx.strokeStyle = '#fff8e0'; ctx.strokeRect(px(t.v) - r, py(t.v) - r, r * 2, r * 2);
+    }
+    for (const hr of G.heroes) if (hr.alive && (hr.p === 0 || seen[hr.v])) dot(hr.v, Math.max(2.4, s * 1.15), G.players[hr.p]?.css || '#fff', hr.p === 0 ? '#ffffff' : '#000000');
+    // the ground in view
+    const P = viewPoly();
+    ctx.beginPath(); P.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill(); ctx.lineWidth = Math.max(1, M.pr); ctx.strokeStyle = 'rgba(255,246,214,0.95)'; ctx.stroke();
+  }
+  // tap / drag: fly the view there
+  let down = false;
+  const go = (e) => {
+    const r = el.getBoundingClientRect(), x = (e.clientX - r.left) * M.pr / M.s - 0.5, z = (e.clientY - r.top) * M.pr / M.s - 0.5;
+    const v = GRID.cellAt(x * CELL, z * CELL);
+    if (v >= 0) { cam.holdFollow = walking || (aiRunning ? 'ai' : null); flyTo(v); }
+  };
+  el.addEventListener('pointerdown', (e) => { e.stopPropagation(); down = true; try { el.setPointerCapture(e.pointerId); } catch {} go(e); sfx.click(); }, { passive: true });
+  el.addEventListener('pointermove', (e) => { if (down) go(e); }, { passive: true });
+  const up = () => { down = false; };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  return { draw, mark(cells) { if (cells === 'full') M.dirty = true; else if (cells) M.fresh = M.fresh ? M.fresh.concat(cells) : cells.slice(); }, el };
+})();
 // heroes are persistent so they can walk smoothly
 const heroMeshes = new Map();
 function layoutHeroes(force = false) {
@@ -1112,18 +1213,18 @@ function faceQuat(q, up, fwd) {
 }
 function standHero(m, hr) {
   placeOn(m, hr.v, 0.27, hr.face || 0);
-  if (m.userData.fwd) faceQuat(m.quaternion, DIRS[hr.v], m.userData.fwd);
+  if (m.userData.fwd) faceQuat(m.quaternion, UP, m.userData.fwd);
 }
 // pose a hero part-way along a step a→b: kk is the fraction travelled (may go out and back for a bump)
 const _qT = new THREE.Quaternion(), _ZF = new THREE.Vector3(0, 0, 1), _pa = new THREE.Vector3(), _pb = new THREE.Vector3(), _up = new THREE.Vector3(), _dv = new THREE.Vector3();
 function poseStep(m, a, b, kk, dt) {
-  _pa.copy(DIRS[a]).multiplyScalar(radiusOf(a)); _pb.copy(DIRS[b]).multiplyScalar(radiusOf(b));
-  _dv.copy(DIRS[a]).lerp(DIRS[b], kk).normalize().multiplyScalar(Math.sin(Math.min(1, Math.abs(kk)) * Math.PI) * 0.015); // a little hop
+  _pa.set(GRID.X[a], radiusOf(a), GRID.Z[a]); _pb.set(GRID.X[b], radiusOf(b), GRID.Z[b]);
+  _dv.set(0, Math.sin(Math.min(1, Math.abs(kk)) * Math.PI) * 0.015, 0); // a little hop
   m.position.copy(_pa).lerp(_pb, kk).add(_dv);
   // turn toward the way we go through a critically damped spring on the remaining angle (m.userData.turnV = its
   // speed): the turn accelerates out of rest and settles in ~0.25 s, instead of an exponential chase that swung
   // 25-33° in the very first frame of a walk; velocity carries across steps, so mid-route bends stay fluid
-  faceQuat(_qT, _up.copy(m.position).normalize(), _dv.copy(_pb).sub(_pa));
+  faceQuat(_qT, _up.copy(UP), _dv.copy(_pb).sub(_pa));
   const ang = m.quaternion.angleTo(_qT);
   if (ang > 1e-4 && dt > 0) {
     // (smoothDamp toward 0, inlined: no per-frame array)
@@ -1138,7 +1239,7 @@ const stepEase = (k, s0, s1) => ((s0 + s1 - 2) * k + (3 - 2 * s0 - s1)) * k * k 
 // bumping into something: out toward it and back to the start; v0 = entry speed in step-fractions per bump duration
 const bumpEase = (k, v0) => { const u = 1 - k; return v0 * k * u * u + 16 * Math.max(0, 0.38 - v0 * 4 / 27) * k * k * u * u; };
 // path preview: green dots for today, red for later days, a banner on the goal
-const fx = createMapFx(THREE, scene, { DIRS, radiusOf, posOf });
+const fx = createMapFx(THREE, scene, { DIRS: null, radiusOf, posOf, flat: true, count: () => NV });
 let plan = null;
 function showPath(hr, path) {
   plan = path ? { hr: hr.id, path } : null;
@@ -1146,29 +1247,45 @@ function showPath(hr, path) {
   fx.showPath(path, stepsToday(hr, path));
 }
 
-// ------------------------------------------------------------------ input: drag turns the planet, pinch zooms, tap selects and moves
+// ------------------------------------------------------------------ input: drag pans the map, pinch zooms (twist turns), tap selects and moves
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+// exact: a ray against the terrain chunks' triangles (tops, bevels and cliff walls), each mapped back to its cell
 function pickCell(cx, cy) {
   ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const hit = ray.intersectObject(planet, false)[0];
-  return hit ? triCell[hit.faceIndex] : null;
+  return TERRAIN.pick(ray);
+}
+// where a screen point meets the ground plane at the focus height (for 1:1 panning); null near/above the horizon
+const _gp = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _gHit = new THREE.Vector3();
+function groundPoint(cx, cy, out) {
+  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera); _gp.constant = -cam.y;
+  if (!ray.ray.intersectPlane(_gp, out)) return null;
+  return out.distanceTo(camFocus) > viewDist(cam.dist) * 3 ? null : out;
 }
 const ptrs = new Map();
 let press = null, pinch = null;
 const cvs = renderer.domElement;
 // taps fire on pointerup (no click, no 300 ms wait: touch-action is none); a press becomes a drag past TAP_SLOP px.
-// Map drags only feed cam.dragTheta/dragPhi (applied once per frame); the last ~100 ms of samples give the fling speed.
+// Map drags only feed cam.dragX/dragZ (applied once per frame); the last ~100 ms of samples give the fling speed.
 const TAP_SLOP = 8, TAP_MS = 500, FLING_WIN = 100, FLING_STALE = 60;
 const camMode = () => G.mode !== 'battle' && G.mode !== 'town';
-const dragK = () => cam.dist / 1800; // radians per CSS px: the ground under the finger moves with it at any zoom
+const _gA = new THREE.Vector3(), _gB = new THREE.Vector3();
 function startPress(e, x, y, moved) {
   press = { id: e.pointerId, x, y, lx: x, ly: y, t: performance.now(), ts: e.timeStamp, moved, noTap: moved, samples: [] };
 }
-function camDrag(dx, dy, ts) {
-  const k = dragK(), dth = -dx * k, dph = -dy * k;
-  cam.dragTheta += dth; cam.dragPhi += dph; cam.dragging = true;
-  if (press) { press.samples.push([ts, dth, dph]); while (press.samples.length > 2 && ts - press.samples[0][0] > FLING_WIN) press.samples.shift(); }
+// the ground under the finger moves with it: the drag is the difference of the two ground points (x, y: where the
+// finger is now; dx, dy: how far it moved); near the horizon it falls back to the scale at the focus
+function camDrag(dx, dy, ts, x = innerWidth / 2, y = innerHeight / 2) {
+  let wx, wz;
+  const a = groundPoint(x - dx, y - dy, _gA), b = a && groundPoint(x, y, _gB);
+  if (a && b) { wx = a.x - b.x; wz = a.z - b.z; }
+  else {
+    const fov = THREE.MathUtils.degToRad(camera.fov), k = 2 * viewDist(cam.dist) * Math.tan(fov / 2) / innerHeight, sy = Math.sin(cam.yaw), cy = Math.cos(cam.yaw), f = k / Math.sin(viewPitch(cam.dist));
+    wx = -dx * k * cy + dy * f * -sy; wz = dx * k * sy + dy * f * -cy;
+  }
+  cam.dragX += wx; cam.dragZ += wz; cam.dragging = true;
+  if (press) { press.samples.push([ts, wx, wz]); while (press.samples.length > 2 && ts - press.samples[0][0] > FLING_WIN) press.samples.shift(); }
 }
 function camRelease(ts) {
   // fling only if the finger was still moving when it lifted; speed is averaged over the last ~100 ms
@@ -1177,7 +1294,8 @@ function camRelease(ts) {
   if (!S.length || ts - S[S.length - 1][0] > FLING_STALE) return;
   const t0 = S[0][0], span = Math.max(16, ts - t0) / 1000;
   let a = 0, b = 0; for (const [, x, y] of S) { a += x; b += y; }
-  cam.vTheta = clamp(a / span, -FLING_MAX, FLING_MAX); cam.vPhi = clamp(b / span, -FLING_MAX, FLING_MAX);
+  const vx = a / span, vz = b / span, sp = Math.hypot(vx, vz), mx = flingMax(), k = sp > mx ? mx / sp : 1;
+  cam.vx = vx * k; cam.vz = vz * k;
 }
 cvs.addEventListener('pointerdown', (e) => {
   try { cvs.setPointerCapture(e.pointerId); } catch {}
@@ -1185,11 +1303,11 @@ cvs.addEventListener('pointerdown', (e) => {
   if (ptrs.size > 2) return;
   if (ptrs.size === 2) {
     const [p, q] = [...ptrs.values()];
-    pinch = { d: Math.max(1, Math.hypot(p.x - q.x, p.y - q.y)), dist: G.mode === 'battle' ? bview.dist : cam.tDist, mx: (p.x + q.x) / 2, my: (p.y + q.y) / 2 };
+    pinch = { d: Math.max(1, Math.hypot(p.x - q.x, p.y - q.y)), dist: G.mode === 'battle' ? bview.dist : cam.tDist, mx: (p.x + q.x) / 2, my: (p.y + q.y) / 2, ang: Math.atan2(q.y - p.y, q.x - p.x), twist: 0 };
     press = null; if (camMode()) camGrab(); return;
   }
   // touching a gliding map just stops it: that touch is a grab, not a tap (a flight only stops once the finger drags)
-  const gliding = Math.abs(cam.vTheta) + Math.abs(cam.vPhi) > 0.25;
+  const gliding = Math.hypot(cam.vx, cam.vz) > 0.2 * viewDist(cam.dist);
   if (gliding && camMode()) camGrab();
   startPress(e, e.clientX, e.clientY, false);
   if (gliding) press.noTap = true;
@@ -1203,9 +1321,12 @@ cvs.addEventListener('pointermove', (e) => {
     if (G.mode === 'battle') bview.dist = clamp(pinch.dist * pinch.d / d, 9, 18);
     else {
       cam.tDist = clamp(pinch.dist * pinch.d / d, 6.4, 22);
-      // two fingers also pan: the planet follows their midpoint
+      // two fingers also pan (the map follows their midpoint) and turn it: a twist past ~10 degrees starts the turn
       const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-      camDrag(mx - pinch.mx, my - pinch.my, e.timeStamp); pinch.mx = mx; pinch.my = my;
+      camDrag(mx - pinch.mx, my - pinch.my, e.timeStamp, mx, my); pinch.mx = mx; pinch.my = my;
+      const ang = Math.atan2(b.y - a.y, b.x - a.x), da = wrapPi(ang - pinch.ang); pinch.ang = ang;
+      pinch.twist += da;
+      if (Math.abs(pinch.twist) > 0.17 || pinch.turning) { if (!pinch.turning) { pinch.turning = true; cam.dragYaw += pinch.twist; } else cam.dragYaw += da; }
     }
     return;
   }
@@ -1222,7 +1343,7 @@ cvs.addEventListener('pointermove', (e) => {
   }
   if (G.mode === 'battle') { bview.yaw = clamp(bview.yaw - dx * 0.004, -0.6, 0.6); return; }
   if (G.mode === 'town') return;
-  camDrag(dx, dy, e.timeStamp);
+  camDrag(dx, dy, e.timeStamp, e.clientX, e.clientY);
 }, { passive: true });
 const endPtr = (e) => {
   ptrs.delete(e.pointerId);
@@ -1240,7 +1361,7 @@ const endPtr = (e) => {
   else if (!press.noTap && e.timeStamp - press.ts < TAP_MS) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); else if (G.mode === 'town') townTap(e.clientX, e.clientY); }
   press = null; cam.dragging = false;
 };
-const dropPtrs = () => { ptrs.clear(); press = null; pinch = null; cam.dragging = false; cam.dragTheta = cam.dragPhi = 0; cam.vTheta = cam.vPhi = 0; };
+const dropPtrs = () => { ptrs.clear(); press = null; pinch = null; cam.dragging = false; cam.dragX = cam.dragZ = cam.dragYaw = 0; cam.vx = cam.vz = 0; };
 cvs.addEventListener('pointerup', endPtr, { passive: true });
 cvs.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); if (!ptrs.size) dropPtrs(); else { press = null; pinch = null; cam.dragging = false; } }, { passive: true });
 // a tab switch or app swap mid-gesture never leaves a stuck finger or a fling that resumes later
@@ -1298,7 +1419,7 @@ function threatWord(o) {
 function describe(o) {
   if (o.type === 'monster') toast(`${sizeWord(o.n)} ${plural(o.unit)} · ${threatWord(o)}`);
   else if (o.type === 'town') { const t = G.towns[o.t]; toast(`${t.name} (${FACTIONS[t.fac].name}) · ${t.p === 0 ? 'yours' : t.p > 0 ? G.players[t.p].name : 'neutral'}${t.p !== 0 && heroArmy({ army: t.garrison }).length ? ' · guarded' : ''}`); }
-  else { const O = OBJECTS[o.type]; toast(`${O.icon} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? 'enemy' : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
+  else { const O = OBJECTS[o.type]; toast(`${O.icon} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? (G.players[o.owner]?.name || 'enemy') : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
 }
 function selectHero(id) {
   G.selHero = id; const hr = G.heroes[id];
@@ -1321,7 +1442,7 @@ function pendingRoute(hr, quiet = true) {
 function resumeRoute(hr) {
   if (busy() || !hr) return;
   const path = pendingRoute(hr, false); if (!path) { showPath(hr, null); return; }
-  if (DIRS[hr.v].distanceTo(lookDir()) > 0.25) flyTo(hr.v, cam.tDist);
+  if (offView(hr.v)) flyTo(hr.v, cam.tDist);
   startWalk(hr, path);
 }
 
@@ -3103,12 +3224,12 @@ function* aiHero(hr) {
     const power = BT.armyPower(heroArmy(hr), hr);
     const { dist, prev } = dijkstra(hr, hr.mp + 4500);
     // a stronger enemy hero close by: run home to the garrison
-    const threat = G.heroes.find((x) => x.alive && x.p !== hr.p && DIRS[x.v].distanceTo(DIRS[hr.v]) < 1.2 && BT.armyPower(heroArmy(x), x) > power * 1.25);
+    const threat = G.heroes.find((x) => x.alive && x.p !== hr.p && cellDist(x.v, hr.v) < 16 && BT.armyPower(heroArmy(x), x) > power * 1.25);
     let best = null, bs = 0;
     for (const [v, d] of dist) {
       if (v === hr.v) continue;
       let val = aiValue(hr, v, power);
-      if (threat) { const o = objAt[v] >= 0 ? G.objects[objAt[v]] : null; if (o && o.type === 'town' && G.towns[o.t].p === hr.p) val += 150; else if (DIRS[v].distanceTo(DIRS[threat.v]) < 0.5) val *= 0.2; }
+      if (threat) { const o = objAt[v] >= 0 ? G.objects[objAt[v]] : null; if (o && o.type === 'town' && G.towns[o.t].p === hr.p) val += 150; else if (cellDist(v, threat.v) < 7) val *= 0.2; }
       if (val <= 0) continue;
       const sc = val / (1 + d / 900); if (sc > bs) { bs = sc; best = v; }
     }
@@ -3141,7 +3262,7 @@ function* aiHero(hr) {
         while (hr.anim.t < 1 && heroMeshes.has(hr.id)) yield 0.001;
         hr.anim = null; layoutHeroes(true);
         flow = goesOn;
-        if (cam.fly === false && DIRS[hr.v].distanceTo(lookDir()) > 0.25) flyTo(hr.v, cam.tDist);
+        if (cam.fly === false && offView(hr.v)) flyTo(hr.v, cam.tDist);
       } else flow = false;
     }
     layoutHeroes(true);
@@ -3157,7 +3278,6 @@ function* aiShow(hr, v) {
   if (aiWatch) return;
   aiWatch = true; flyTo(v, Math.max(cam.tDist, 9)); toast(`👁️ ${hr.name} (${G.players[hr.p].name}) is on the move`); yield 0.6;
 }
-const lookDir = () => new THREE.Vector3().setFromSphericalCoords(1, cam.phi, cam.theta);
 function* runAI() {
   for (const Pl of G.players) {
     if (G.over) return;
@@ -3178,6 +3298,7 @@ function* runAI() {
 }
 
 // ------------------------------------------------------------------ save and load
+const SAVE_V = 2; // 2: flat hex map (v2.0); 1: the planet (v1.x), rejected on load
 const pack = (a, off = 48) => { let s = ''; for (let i = 0; i < a.length; i++) s += String.fromCharCode(a[i] + off); return s; };
 const unpack = (s, a, off = 48) => { for (let i = 0; i < a.length; i++) a[i] = s.charCodeAt(i) - off; };
 function save() {
@@ -3185,7 +3306,7 @@ function save() {
   // saved mid-walk (Save & quit): the rest of the march is kept as an unfinished route (Continue ▶ after loading)
   const W = walking, rest = W && W.i < W.path.length - 1 ? W.path.slice(W.i) : null, keep = rest && [W.hr.route, W.hr.routeObj];
   if (rest) { W.hr.route = rest; W.hr.routeObj = objAt[rest[rest.length - 1]]; }
-  try { store.set('realms.save', { v: 1, ver: APP_VERSION, mode: G.gameMode || 'free', size: G.size, resLv: G.resLv, win: G.win, fog: G.fog, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter), h: pack(h), road: pack(road), seen: pack(seen) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
+  try { store.set('realms.save', { v: SAVE_V, grid: [GRID.W, GRID.H], ver: APP_VERSION, mode: G.gameMode || 'free', size: G.size, resLv: G.resLv, win: G.win, fog: G.fog, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter.subarray(0, NV)), h: pack(h.subarray(0, NV)), road: pack(road.subarray(0, NV)), seen: pack(seen.subarray(0, NV)) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
 }
 // the morning save serialises the whole world (~100 KB of JSON): run it when the browser is idle,
 // not in the same frame as the new day's income, growth, HUD and camera work
@@ -3197,13 +3318,17 @@ function saveSoon() {
 }
 function load() {
   const s = store.get('realms.save', null);
-  if (!s || s.v !== 1) return false;
+  if (!s) return false;
+  // v2 (flat world): v1 saves hold a planet (2562 cells, no grid size) and cannot be mapped onto a flat map
+  if (s.v !== SAVE_V || !Array.isArray(s.grid)) { toast('This save is from an older version'); return false; }
   pendingLevels.length = 0;
+  setGrid(s.grid);
   Object.assign(G, { seed: s.seed, day: s.day, diff: s.diff, selHero: s.selHero, players: s.players, heroes: s.heroes, towns: s.towns, objects: s.objects, over: false, mode: 'map',
     gameMode: s.mode || 'free', size: s.size || 'M', resLv: s.resLv ?? 1, win: s.win || 'conquer', fog: s.fog !== false });
   // saves from v1.10 and older: two crowns, the capitals are the starting towns
   for (const Pl of G.players) { if (!Pl.css) Pl.css = colCss(Pl.color); if (!G.towns.some((t) => t.capOf === Pl.i)) { const t = G.towns.find((x) => x.p === Pl.i); if (t && G.win === 'conquer') t.capOf = Pl.i; } }
-  unpack(s.ter, ter); unpack(s.h, h); unpack(s.road, road); unpack(s.seen, seen);
+  ter.fill(0); h.fill(0); road.fill(0); seen.fill(0);
+  unpack(s.ter, ter.subarray(0, NV)); unpack(s.h, h.subarray(0, NV)); unpack(s.road, road.subarray(0, NV)); unpack(s.seen, seen.subarray(0, NV));
   objAt.fill(-1); for (const o of G.objects) if (o.alive) objAt[o.v] = o.id;
   for (const hr of G.heroes) hr.anim = null; // saved mid-step during an enemy turn
   rnd = mulberry32(s.seed + s.day * 977);
@@ -3294,7 +3419,7 @@ function play() {
   trimGeoCache(); // a new game / a loaded save: free the models of factions this world no longer has
   worldDirty = true; layoutWorld();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
-  if (hr) { G.selHero = hr.id; const sp = new THREE.Spherical().setFromVector3(DIRS[hr.v]); camSnap(sp.theta, sp.phi); cam.dist = 20; cam.sDist = 0; cam.tDist = 10; flyTo(hr.v, 10); }
+  if (hr) { G.selHero = hr.id; camSnapTo(GRID.X[hr.v], GRID.Z[hr.v]); cam.yaw = cam.tYaw = cam.sYaw = 0; cam.y = groundAt(cam.x, cam.z); cam.dist = 16; cam.sDist = 0; cam.tDist = CAM_DEFAULT; flyTo(hr.v, CAM_DEFAULT); }
   updateHud();
 }
 $('m-new').addEventListener('click', () => {
@@ -3438,24 +3563,24 @@ function mapShadowsDue(dt) {
   shSun.copy(sun.position); shTgt.copy(sun.target.position);
   return true;
 }
-// ---- back-of-planet culling: map figures beyond the horizon are hidden by the planet anyway, but frustum culling
-// keeps them (they sit inside the view cone), so each would still cost its body + ink hull + glow + blob draws.
-// Visible cone = the horizon angle seen from the camera + how far a figure up to ~1.5 above the surface peeks over it.
-// Only objects this code hid are ever un-hidden (userData.hzCull), so other code may still hide figures itself.
-const hzDir = new THREE.Vector3();
-function hzOne(g, lim) {
-  const p = g.position, back = p.x * hzDir.x + p.y * hzDir.y + p.z * hzDir.z < lim * p.length();
-  if (back) { if (g.visible) { g.visible = false; g.userData.hzCull = true; } }
+// ---- view culling (flat world): flora chunks outside the view are not packed into the instance buffers (floraCull),
+// and whole map figures (towns, objects, heroes: body + ink + glow + blob + flag) outside the view are hidden as one,
+// so the renderer skips their subtrees. Only objects this code hid are ever un-hidden (userData.hzCull), so other code
+// may still hide figures itself. quality.set({ cull: false }) turns both off for A/B tests.
+const _fs = new THREE.Sphere();
+function hzOne(g) {
+  _fs.center.copy(g.position); _fs.center.y += 0.25; _fs.radius = 0.75 * Math.max(1, g.scale.x * 3);
+  const out = !_frus.intersectsSphere(_fs);
+  if (out) { if (g.visible) { g.visible = false; g.userData.hzCull = true; } }
   else if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; }
 }
 let hzOn = true, shAlways = false; // A/B switches for perf tests: __realms.quality.set({ cull, shadowsAlways })
 function horizonCull() {
+  floraOn = hzOn;
+  if (floraCull()) renderer.shadowMap.needsUpdate = true;
   if (!hzOn) { for (const g of world.children) if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; } for (const g of heroMeshes.values()) if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; } return; }
-  const d = camera.position.length();
-  hzDir.copy(camera.position).divideScalar(d);
-  const lim = Math.cos(Math.min(Math.PI, Math.acos(Math.min(1, R / d)) + 0.7));
-  for (const g of world.children) hzOne(g, lim);
-  for (const g of heroMeshes.values()) hzOne(g, lim);
+  for (const g of world.children) hzOne(g);
+  for (const g of heroMeshes.values()) hzOne(g);
 }
 function frame(now) {
   // schedule the next frame first: an exception anywhere below (a bad battle setup, an AI move) then costs one
@@ -3495,9 +3620,8 @@ function frame(now) {
   } else {
     updateCamera(dt);
     mapViewOffset(dt);
-    if (G.mode !== 'town') atmos.update(dt, camera); // perf: the town screen does not draw the map's sky
-    if (atmos.objects?.clouds) atmos.objects.clouds.visible = G.mode === 'menu' || cam.dist > 13;
-    cam.spin = G.mode === 'menu' ? 0.09 : 0; if (G.mode === 'menu') cam.tDist = 16;
+    if (G.mode !== 'town') atmos.update(dt, camera, camFocus, viewDist(cam.dist)); // perf: the town screen does not draw the map's sky
+    cam.spin = G.mode === 'menu' ? 0.035 : 0; if (G.mode === 'menu') cam.tDist = 12.5;
     else {
       updateWalk(dt); tickAI(dt);
       if (worldDirty) { revealAll(); layoutWorld(); }
@@ -3521,6 +3645,7 @@ function frame(now) {
       }
       fx.select(m ? m.position : null);
       fx.update(dt, camera);
+      mini.draw(performance.now());
       // map guards get their life from the shader idle (a moving mesh would reseed its animation every frame)
     }
     if (G.mode === 'town') { townInsets(); townView.update(dt); renderer.shadowMap.needsUpdate = true; shMode = 'town'; post.render(townView.scene, townView.camera); }
@@ -3668,6 +3793,8 @@ function warmPicker() {
 window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
 Object.assign(window.__realms, { quality: QG.state, renderer });
+// flat world (agent "flat"): grid + regions API for other modes / tests. GRID changes with the map size, so it is a getter.
+Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get GRID() { return GRID; }, get NV() { return NV; }, cellDist, posOf, setGrid, generate, makeGrid, MAP_PRESETS, markRegions, regionOf, regionsVoronoi, regionsBands, regionGates, pickCell, mini, h, road, TERRAIN, floraStats: () => { let n = 0, sets = 0; for (const S of floraSets.values()) { if (S.im?.count) { sets++; n += S.im.count; } } return { sets, drawn: n, chunks: floraVis.chunks.length }; } }));
 Object.assign(window.__realms, { prewarmProfile: () => loadProf, postQueue: () => postQ.map((j) => j.label), bumpWarm });
 // battle test hooks (battle-flow logs / soft-lock runs): fast-forward the battle without rendering
 Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get bmesh() { return bmesh; }, get banim() { return banim; }, bstep: (dt) => { if (!bprep) { animateBattle(dt); vfx.update(dt, bcam); } } }));
