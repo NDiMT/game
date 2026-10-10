@@ -1702,6 +1702,35 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     soft.update(dt); glowP.update(dt);
   }
 
+  /** memory: free the environments and building models of factions not in `keepFacs` (main.js calls it when a new game
+   *  or a loaded save no longer has those factions). Only resources nothing else uses are disposed (shared materials,
+   *  textures shared with a kept environment and three's sprite quad stay); a freed faction is rebuilt if shown again. */
+  function trim(keepFacs) {
+    const drop = Object.keys(envs).filter((f) => !keepFacs.has(f) && envs[f] !== activeEnv && f !== cur.fac);
+    const dropB = [...geoCache.keys()].filter((k) => { const f = k.slice(0, k.indexOf(':')); return !keepFacs.has(f) && f !== cur.fac; });
+    if (!drop.length && !dropB.length) return 0;
+    const used = new Set([bodyMat, glowMat, groundMat, sceneryMat, inkMat, blobMat, blobGeo]);
+    const collect = (o, into) => {
+      if (o.geometry && !o.isSprite) into.add(o.geometry);
+      for (const m of [].concat(o.material || [])) {
+        into.add(m);
+        for (const v of Object.values(m)) if (v?.isTexture) into.add(v);
+        for (const u of Object.values(m.uniforms || {})) if (u?.value?.isTexture) into.add(u.value);
+      }
+    };
+    for (const f of drop) scene.remove(envs[f].group);
+    scene.traverse((o) => collect(o, used));
+    for (const [f, e] of Object.entries(envs)) if (!drop.includes(f)) e.group.traverse((o) => collect(o, used));
+    for (const f of drop) {
+      const own = new Set();
+      envs[f].group.traverse((o) => { if (o.isInstancedMesh) o.dispose(); collect(o, own); });
+      for (const x of own) if (!used.has(x)) { x.dispose?.(); disposables.delete(x); }
+      delete envs[f];
+    }
+    for (const k of dropB) { const { m } = geoCache.get(k); geoCache.delete(k); for (const g of [m.body, m.glow]) if (g && !used.has(g)) g.dispose(); }
+    return drop.length + dropB.length;
+  }
+
   function dispose() {
     for (const k of Object.keys(slots)) removeBuilding(slots[k].group);
     for (const g of sinking) removeBuilding(g);
@@ -1715,5 +1744,5 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   }
 
   resize(renderer.domElement.clientWidth || 412, renderer.domElement.clientHeight || 860);
-  return { scene, camera, setTown, prepare, update, resize, pick, highlight, dispose, setInsets, slotScreen, get slots() { return Object.fromEntries(Object.entries(slots).map(([k, s]) => [k, s.id])); } };
+  return { scene, camera, setTown, prepare, update, resize, pick, highlight, dispose, trim, setInsets, slotScreen, get slots() { return Object.fromEntries(Object.entries(slots).map(([k, s]) => [k, s.id])); } };
 }

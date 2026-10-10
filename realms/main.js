@@ -364,7 +364,7 @@ function measureLayout() {
   let B = btn ? btn.t : H;
   // the status scroll stacked above the buttons (portrait): reserve its one-line height, so a message
   // wrapping to two lines doesn't re-frame the camera
-  if (msg && btn && msg.t < btn.t - 4) { const cs = getComputedStyle(msg); B = btn.t - (parseFloat(cs.minHeight) || 38) - (parseFloat(cs.marginBottom) || 0); }
+  if (msg && btn && msg.t < btn.t - 4) { const cs = getComputedStyle($('b-msg')); B = btn.t - (parseFloat(cs.minHeight) || 38) - (parseFloat(cs.marginBottom) || 0); }
   lay.batB = B - 4;
 }
 if (typeof ResizeObserver !== 'undefined') {
@@ -562,6 +562,7 @@ function trimGeoCache() {
     geoCache.delete(k); warmed.delete(k.slice(1)); n++;
     releasePortraitModel(m); m?.body?.dispose(); m?.glow?.dispose();
   }
+  try { n += townView.trim?.(facs) || 0; } catch (e) { console.warn('town trim', e); } // other factions' town scenes
   return n;
 }
 // Idle-time geometry warm-up (perf): a creature that is not cached yet costs build + form normals + fits
@@ -1232,6 +1233,8 @@ function startWalk(hr, path) {
   if (n < 1) { toast('Not enough movement left today. End the turn.'); sfx.deny(); return; } // (an unfinished march stays stored)
   hr.route = null; hr.routeObj = -1;
   walking = { hr, path, i: 0, t: 0, n };
+  // perf: marching on your own town / a fight -> its idle warm-up jobs run now, not on arrival
+  if (hr.p === 0) { const e = objAt[path[path.length - 1]], o = e >= 0 ? G.objects[e] : null; if (o?.type === 'town' && G.towns[o.t]?.p === 0) bumpWarm('town'); else if (o?.type === 'monster' || o?.type === 'town') bumpWarm('battle'); }
   // feel: the route stays drawn while the hero walks it and is consumed underfoot (fx.eatPath in updateWalk);
   // it is only re-drawn if the planned one differs (a resumed march re-routed around something)
   const same = plan && plan.hr === hr.id && plan.path.length === path.length && plan.path.every((v, i) => v === path[i]);
@@ -1603,10 +1606,9 @@ function prewarm(onDone) {
       let r = null; try { r = f(); } catch (e) { console.warn('prewarm', label, e); }
       if (r && typeof r.then === 'function') {
         // creep toward this job's end while it runs off the main thread, so the bar never sits still
-        const from = done / total, to = (done + w) / total;
+        const to = (done + w) / total;
         const iv = setInterval(() => show(shown + (to - shown) * 0.12), 100);
         await r.catch(() => {}); clearInterval(iv); t0 = performance.now();
-        void from;
       }
       loadProf.push([label, Math.round(performance.now() - a)]);
       done += w; show(done / total);
@@ -1979,6 +1981,9 @@ function renderQueue(B) {
   if (bqB !== B) { bqB = B; bqSig = ''; box.textContent = ''; }
   const q = BT.queue(B, 9), L = B.stacks.filter((x) => x.count > 0 && !x.acted).length;
   const items = q.map((x, i) => ({ x, k: `${x.uid}@${B.round + (i >= L ? 1 : 0)}`, n: x.shown ?? x.count, ic: unitIcon(x.id) }));
+  // the stack whose action is still playing keeps the head (and its ring) until the queue drains
+  const ax = banim.length && bactor >= 0 ? B.stacks[bactor] : null;
+  if (ax && ax.acted && (ax.shown ?? ax.count) > 0) { items.unshift({ x: ax, k: `${ax.uid}@${B.round}`, n: ax.shown ?? ax.count, ic: unitIcon(ax.id) }); items.length = Math.min(items.length, 9); }
   const sig = items.map((it) => `${it.k}:${it.n}:${it.ic.length}`).join(',');
   if (sig === bqSig) return;
   const first = !bqSig; bqSig = sig;
@@ -3372,4 +3377,5 @@ Object.assign(window.__realms, { prewarmProfile: () => loadProf, postQueue: () =
 // battle test hooks (battle-flow logs / soft-lock runs): fast-forward the battle without rendering
 Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get bmesh() { return bmesh; }, get banim() { return banim; }, bstep: (dt) => { if (!bprep) { animateBattle(dt); vfx.update(dt, bcam); } } }));
 // geometry cache: idle warm-up hook + stats (models, triangles, CPU-side MB of vertex data)
+Object.assign(window.__realms, { trimGeoCache, memStats: () => ({ geoCache: geoCache.size, floaters: floaters.length, heroMeshes: heroMeshes.size, plates: bplateMap.size, bstuff: bstuff.children.length, world: world.children.length, flora: flora.children.length, townScene: townView.scene.children.length, glLost: !!glLost }) });
 Object.assign(window.__realms, { warmGeometryIdle, warmQueue: () => warmQ.length + ptQ.length, portraitQueue: () => ptQ.length + portraitsPending(), geoStats: () => { let tris = 0, bytes = 0; for (const m of geoCache.values()) for (const g of [m?.body, m?.glow]) if (g?.attributes?.position) { tris += g.attributes.position.count / 3; for (const a of Object.values(g.attributes)) bytes += a.array.byteLength; } return { models: geoCache.size, tris: Math.round(tris), mb: +(bytes / 1048576).toFixed(1) }; } });

@@ -17,12 +17,14 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Nunito:wght@600;800;900&display=swap" />
   <link rel="stylesheet" href="style.css?v=1.8" />
   <script type="importmap">
-    { "imports": { "three": "../vendor/three.module.js" } }
+    { "imports": { "three": "../vendor/three.module.min.js" } }
   </script>
+  <!-- three.module.min.js: the official r170 minified build (npm three@0.170.0, verified against the registry tarball;
+       same code as three.module.js): 171 KB gzipped instead of 267 KB. -->
   <!-- the whole module graph is fetched in parallel right away instead of import-by-import (4-5 round trips deep:
        main -> its imports -> rig/data -> town + faction modules loaded by top-level await). The URLs must match the
        import specifiers exactly (same ?v=), otherwise the file is fetched twice. -->
-  <link rel="modulepreload" href="../vendor/three.module.js" />
+  <link rel="modulepreload" href="../vendor/three.module.min.js" />
   <link rel="modulepreload" href="main.js?v=1.8" />
   <link rel="modulepreload" href="materials.js?v=1.8" />
   <link rel="modulepreload" href="rig.js?v=1.8" />
