@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE as B, tagRange } from './rig.js?v=1.8';
+import { BONE as B, tagRange } from './rig.js?v=1.9';
 
 // =====================================================================
 // HEX REALMS: neutral wild creatures (goblin, wolf, orc, ogre, troll,

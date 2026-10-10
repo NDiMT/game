@@ -241,6 +241,12 @@ export function createTownView(THREE, renderer, opts = {}) {
   const groundMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0, detail: 0.9, scale: 0.32, rim: 0, hemi: 0.06, sat: 0.86, contrast: 0.12, ink: 0 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
   const sceneryMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0.3, aoHeight: 0.4, rim: 0.3, sat: 0.95 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
   if (!MAT && !opts.glowMat) glowMat.color.setScalar(2.2);
+  // perf: instanced trees get their own variants of the shared body / glow materials (same uniforms and shader) and
+  // their own shadow-depth material: three.js keys a material's program on instancing, so one material drawn by both
+  // InstancedMesh and Mesh objects re-resolved its program (getParameters + cache key) several times every frame
+  const instVariant = (m) => (m.userData?.rigVariant ? m.userData.rigVariant(m.userData.rig) : m.clone());
+  let treeMats = null;
+  const treeMat = () => treeMats || (treeMats = { body: instVariant(bodyMat), glow: instVariant(glowMat), depth: new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking }) });
   for (const m of [groundMat, sceneryMat]) { m.userData.baseDetail = m.userData.uniforms?.uDetail.value; m.userData.baseSat = m.userData.uniforms?.uSat.value; }
 
   // lights
@@ -872,8 +878,9 @@ void main() {
         const list = trees[kind];
         if (!list.length || !MK[kind]) continue;
         const kk = MK[kind](), body = keep(kk.body()), glow = kk.glow();
-        const ims = [new T.InstancedMesh(body, bodyMat, list.length)];
-        if (glow) ims.push(new T.InstancedMesh(keep(glow), glowMat, list.length));
+        const ims = [new T.InstancedMesh(body, treeMat().body, list.length)];
+        if (glow) ims.push(new T.InstancedMesh(keep(glow), treeMat().glow, list.length));
+        ims[0].customDepthMaterial = treeMat().depth; // = three's default shadow depth material, kept apart (see treeMat)
         list.forEach(([x, y, z, s, rot, v], i) => {
           q.setFromAxisAngle(new V3(0, 1, 0), rot); p.set(x, y, z); sc.set(s, s * (0.9 + v * 0.25), s);
           m4.compose(p, q, sc);
@@ -1702,6 +1709,35 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     soft.update(dt); glowP.update(dt);
   }
 
+  /** memory: free the environments and building models of factions not in `keepFacs` (main.js calls it when a new game
+   *  or a loaded save no longer has those factions). Only resources nothing else uses are disposed (shared materials,
+   *  textures shared with a kept environment and three's sprite quad stay); a freed faction is rebuilt if shown again. */
+  function trim(keepFacs) {
+    const drop = Object.keys(envs).filter((f) => !keepFacs.has(f) && envs[f] !== activeEnv && f !== cur.fac);
+    const dropB = [...geoCache.keys()].filter((k) => { const f = k.slice(0, k.indexOf(':')); return !keepFacs.has(f) && f !== cur.fac; });
+    if (!drop.length && !dropB.length) return 0;
+    const used = new Set([bodyMat, glowMat, groundMat, sceneryMat, inkMat, blobMat, blobGeo, ...(treeMats ? Object.values(treeMats) : [])]);
+    const collect = (o, into) => {
+      if (o.geometry && !o.isSprite) into.add(o.geometry);
+      for (const m of [].concat(o.material || [])) {
+        into.add(m);
+        for (const v of Object.values(m)) if (v?.isTexture) into.add(v);
+        for (const u of Object.values(m.uniforms || {})) if (u?.value?.isTexture) into.add(u.value);
+      }
+    };
+    for (const f of drop) scene.remove(envs[f].group);
+    scene.traverse((o) => collect(o, used));
+    for (const [f, e] of Object.entries(envs)) if (!drop.includes(f)) e.group.traverse((o) => collect(o, used));
+    for (const f of drop) {
+      const own = new Set();
+      envs[f].group.traverse((o) => { if (o.isInstancedMesh) o.dispose(); collect(o, own); });
+      for (const x of own) if (!used.has(x)) { x.dispose?.(); disposables.delete(x); }
+      delete envs[f];
+    }
+    for (const k of dropB) { const { m } = geoCache.get(k); geoCache.delete(k); for (const g of [m.body, m.glow]) if (g && !used.has(g)) g.dispose(); }
+    return drop.length + dropB.length;
+  }
+
   function dispose() {
     for (const k of Object.keys(slots)) removeBuilding(slots[k].group);
     for (const g of sinking) removeBuilding(g);
@@ -1715,5 +1751,5 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   }
 
   resize(renderer.domElement.clientWidth || 412, renderer.domElement.clientHeight || 860);
-  return { scene, camera, setTown, prepare, update, resize, pick, highlight, dispose, setInsets, slotScreen, get slots() { return Object.fromEntries(Object.entries(slots).map(([k, s]) => [k, s.id])); } };
+  return { scene, camera, setTown, prepare, update, resize, pick, highlight, dispose, trim, setInsets, slotScreen, get slots() { return Object.fromEntries(Object.entries(slots).map(([k, s]) => [k, s.id])); } };
 }

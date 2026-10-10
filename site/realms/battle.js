@@ -239,6 +239,12 @@ export function attackFrom(B, s, t) {
 
 // ---- spells cast by a hero, once per round
 export function spellPower(B, side) { const h = hero(B, side); return h ? h.pow : 0; }
+// damage a strike spell would deal (no dice), for the targeting preview; keep in step with castSpell below
+export function spellDamage(B, side, id) {
+  const h = hero(B, side); if (!h) return 0;
+  const p = h.pow, base = id === 'arrow' ? 10 + 10 * p : id === 'bolt' ? 10 + 25 * p : id === 'fireball' ? 15 + 10 * p : 0;
+  return Math.round(base * (1 + 0.15 * (h.skills.sorcery || 0)));
+}
 export function castSpell(B, side, id, target, c, r) {
   const h = hero(B, side), S = SPELLS[id];
   if (!h || B.cast[side] || h.mana < S.mana) return false;

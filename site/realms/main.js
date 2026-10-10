@@ -1,29 +1,32 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=1.8';
-import { havenModel } from './units_haven.js?v=1.8';
-import { necroModel } from './units_necro.js?v=1.8';
-import { necroUpModel } from './units_necro_up.js?v=1.8';
-import { havenUpModel } from './units_haven_up.js?v=1.8';
-import { neutralModel } from './units_neutral.js?v=1.8';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=1.8';
-import { objectModel } from './models_objects.js?v=1.8';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.8';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.8';
-import { createTownView } from './town_view.js?v=1.8';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.8';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.8';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.8';
+import { mulberry32, unitModel } from './models.js?v=1.9';
+import { havenModel } from './units_haven.js?v=1.9';
+import { necroModel } from './units_necro.js?v=1.9';
+import { necroUpModel } from './units_necro_up.js?v=1.9';
+import { havenUpModel } from './units_haven_up.js?v=1.9';
+import { neutralModel } from './units_neutral.js?v=1.9';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=1.9';
+import { objectModel } from './models_objects.js?v=1.9';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.9';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.9';
+import { createTownView } from './town_view.js?v=1.9';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.9';
+import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.9';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.9';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
-const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.8'), import('./units_inferno.js?v=1.8'), import('./units_dungeon.js?v=1.8')]);
-const FAC_MODEL = { sylvan: SYLm.value?.sylvanModel, inferno: INFm.value?.infernoModel, dungeon: DUNm.value?.dungeonModel };
-import * as BT from './battle.js?v=1.8';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=1.8';
-import { createScore } from './music.js?v=1.8';
-import { createSfx } from './sfx.js?v=1.8';
-import { unitFit, applyFit } from './unit_fit.js?v=1.8';
-import { createMapFx } from './mapfx.js?v=1.8';
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.9'), import('./units_inferno.js?v=1.9'), import('./units_dungeon.js?v=1.9')]);
+// memory: build through the modules' uncached builders (base id + upgraded flag), so main.js's geoCache is the only
+// owner of a creature's geometry and trimGeoCache() really frees it (the modules' own caches would pin ~11 MB per roster)
+const facBuild = (mod, build, model) => (id) => { const b = mod.value?.[build], u = UNITS[id]; const m = b && u ? b(u.up || id, !!u.up) : null; return m || mod.value?.[model]?.(id) || null; };
+const FAC_MODEL = { sylvan: facBuild(SYLm, 'sylvanBuild', 'sylvanModel'), inferno: facBuild(INFm, 'infernoBuild', 'infernoModel'), dungeon: facBuild(DUNm, 'dungeonBuild', 'dungeonModel') };
+import * as BT from './battle.js?v=1.9';
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=1.9';
+import { createScore } from './music.js?v=1.9';
+import { createSfx } from './sfx.js?v=1.9';
+import { unitFit, applyFit } from './unit_fit.js?v=1.9';
+import { createMapFx } from './mapfx.js?v=1.9';
 import { icon } from './icons.js';
-import { initPortraits, portraitImg, preloadPortraits, heroPortraitImg } from './portraits.js?v=1.8';
+import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=1.9';
 
 // =====================================================================
 // ORBIS · Five Crowns: a pocket strategy game on a tiny hex planet.
@@ -32,7 +35,7 @@ import { initPortraits, portraitImg, preloadPortraits, heroPortraitImg } from '.
 // defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -148,12 +151,13 @@ const heroArmy = (hr) => hr.army.filter((x) => x && x[1] > 0);
 const statOf = (hr, k) => hr[k] + hr.arts.reduce((a, id) => a + (ARTIFACTS.find((x) => x.id === id)[k] || 0), 0);
 const maxMana = (hr) => statOf(hr, 'know') * 10;
 const moveMax = (hr) => Math.round((1500 + hr.arts.reduce((a, id) => a + (ARTIFACTS.find((x) => x.id === id).move || 0), 0)) * (1 + 0.15 * (hr.skills.logistics || 0)));
+const ARMY_SLOTS = 7; // up to 7 different creature stacks per hero / garrison
 function addTroops(army, id, n) {
-  const slot = army.findIndex((x) => x && x[0] === id);
+  const slot = army.findIndex((x) => x && x[1] > 0 && x[0] === id);
   if (slot >= 0) { army[slot][1] += n; return true; }
-  const free = army.findIndex((x) => !x || x[1] <= 0);
+  const free = army.findIndex((x, i) => i < ARMY_SLOTS && (!x || x[1] <= 0));
   if (free >= 0) { army[free] = [id, n]; return true; }
-  if (army.length < 7) { army.push([id, n]); return true; }
+  if (army.length < ARMY_SLOTS) { army.push([id, n]); return true; }
   return false;
 }
 const xpFor = (lvl) => Math.round(1000 * (Math.pow(1.6, lvl - 1) - 1) / 0.6);
@@ -279,11 +283,11 @@ function updateCamera(dt) {
   const f = clamp((16 - cam.dist) / 9, 0, 1);
   const cphi = cam.phi + f * 0.4;
   camera.position.setFromSphericalCoords(cam.dist, cphi, cam.theta);
-  if (cam.shake > 0) { camera.position.x += (rnd() - 0.5) * cam.shake * 0.1; cam.shake = Math.max(0, cam.shake - dt * 2); }
   lookAtP.setFromSphericalCoords(R * f * 0.98, cam.phi, cam.theta);
   // 'up' is the local north tangent: continuous even when the tilt carries the camera past a pole
   camera.up.set(-Math.cos(cphi) * Math.sin(cam.theta), Math.sin(cphi), -Math.cos(cphi) * Math.cos(cam.theta));
   camera.lookAt(lookAtP);
+  applyShake(camera, dt, 0.014);
   // the shadow-casting sun follows the view so shadows stay crisp near the camera
   // (scratch vectors: this runs every frame, so no allocations)
   const focus = camFocus.copy(lookAtP.lengthSq() > 0.01 ? lookAtP : camera.position).setLength(R);
@@ -291,21 +295,110 @@ function updateCamera(dt) {
   sun.position.copy(focus).addScaledVector(camTmp.copy(camera.position).sub(focus).normalize(), 9).addScaledVector(right, 5).addScaledVector(camTmp.copy(focus).normalize(), 6);
   sun.target.position.copy(focus);
 }
+// ---- screen shake (feel): "trauma" in 0..1 decays linearly; the offset is trauma² × smooth 2D noise (two sines per
+// axis at incommensurate rates: continuous, no per-frame random jitter), applied as a tiny yaw/pitch of the camera
+// AFTER its lookAt, so the framing target and the camera springs are never disturbed. cam.shake (legacy) feeds it.
+// Off for prefers-reduced-motion. No allocations.
+const reduceMo = matchMedia('(prefers-reduced-motion: reduce)');
+const shake = { tr: 0, t: 0 };
+function addShake(a) { if (!reduceMo.matches) shake.tr = Math.min(1, shake.tr + a); }
+function applyShake(c, dt, amp) {
+  if (cam.shake > 0) { addShake(Math.min(1, cam.shake * 0.5)); cam.shake = 0; }
+  if (shake.tr <= 0) return;
+  shake.t += dt; shake.tr = Math.max(0, shake.tr - dt * 2.2);
+  const k = shake.tr * shake.tr * amp, t = shake.t * 21;
+  c.rotateY((Math.sin(t) + 0.5 * Math.sin(t * 2.31 + 1.3)) * k);
+  c.rotateX((Math.sin(t * 1.13 + 2.1) + 0.5 * Math.sin(t * 2.71 + 0.4)) * k);
+}
+// ---- hit-stop (feel): battle time (animations, rigs, effects) freezes for a few frames on a heavy impact
+let hitStop = 0, bTimeK = 1;
+function addHitStop(s) { if (!reduceMo.matches) hitStop = Math.max(hitStop, s); }
 function flyTo(v, dist) {
   // the spring eases from the current motion into the new goal (no velocity kink if a flight is retargeted)
   const sp = new THREE.Spherical().setFromVector3(DIRS[v]);
   cam.tTheta = cam.theta + wrapPi(sp.theta - cam.theta); cam.tPhi = clamp(sp.phi, PHI_MIN, PHI_MAX); cam.fly = true; cam.vTheta = cam.vPhi = 0;
   if (dist) cam.tDist = dist;
 }
-function resize() {
-  const w = window.innerWidth, hh = window.innerHeight;
-  renderer.setSize(w, hh);
-  post.setSize(w, hh, renderer.getPixelRatio());
+// ------------------------------------------------------------------ resize + screen layout
+// Render targets are reallocated only for a real size change. Height-only changes (the mobile address bar / toolbar
+// sliding, which fires a burst of resize events) are coalesced into one reallocation 180 ms after they settle; in
+// the meantime the canvas is CSS-stretched to the viewport (#app > canvas is 100% x 100%), so nothing flickers.
+// Width / orientation / pixel-ratio changes apply at once (and are re-checked 300 ms later: iOS reports the new
+// size late on rotation). Sub-3px height wobbles are ignored.
+const rsz = { w: 0, h: 0, pr: 0, timer: 0, late: 0 };
+function resize(force) {
+  const w = window.innerWidth, hh = window.innerHeight, pr = renderer.getPixelRatio();
+  lay.dirty = lay.townDirty = true;
+  if (force !== true && w === rsz.w && pr === rsz.pr && Math.abs(hh - rsz.h) < 3) return;
+  clearTimeout(rsz.timer);
+  if (force !== true && rsz.w && w === rsz.w && pr === rsz.pr) { rsz.timer = setTimeout(() => resize(true), 180); return; }
+  clearTimeout(rsz.late); rsz.late = setTimeout(resize, 300);
+  rsz.w = w; rsz.h = hh; rsz.pr = pr; lay.snapMap = lay.snapBat = true;
+  renderer.setSize(w, hh, false);
+  post.setSize(w, hh, pr);
   camera.aspect = w / hh; camera.fov = w < hh ? 50 : 40; camera.updateProjectionMatrix();
   bcam.aspect = w / hh; bcam.fov = w < hh ? 52 : 40; bcam.updateProjectionMatrix();
-  if (typeof townView !== 'undefined') townView.resize(w, hh);
+  if (typeof townView !== 'undefined') {
+    // the town sheet moves (bottom sheet <-> side sheet) with the orientation: give the view its new insets
+    // first, so the snap below lands on the right framing instead of easing out of a squashed one
+    if (G.mode === 'town') townInsets();
+    townView.resize(w, hh);
+  }
 }
-window.addEventListener('resize', resize);
+window.addEventListener('resize', () => resize());
+// The free screen area between the HUD bars, measured from the DOM only when something changed (resize, a bar's
+// size, a mode switch), never per frame. Layout boxes (offset*) are used, so slide-in transforms don't count.
+const lay = { dirty: true, townDirty: true, snapMap: true, snapBat: true, mode: '', sinceMode: 0, mapT: 0, mapB: 0, batT: 0, batB: 0, mapOff: 0, bOffX: 0, bOffY: 0, bD: 0 };
+function boxIn(e) {
+  if (!e || !e.offsetParent) return null; // hidden
+  let t = 0, l = 0;
+  for (let x = e; x && x.id !== 'app'; x = x.offsetParent) { t += x.offsetTop; l += x.offsetLeft; }
+  return { t, l, w: e.offsetWidth, h: e.offsetHeight, b: t + e.offsetHeight, r: l + e.offsetWidth };
+}
+function measureLayout() {
+  lay.dirty = false;
+  const H = rsz.h || innerHeight, q = (s) => document.querySelector(s);
+  const rb = boxIn(q('#hud .resbar')), bt = boxIn(q('#hud .bottom'));
+  lay.mapT = rb ? rb.b : 0; lay.mapB = bt ? bt.t : H;
+  const top = boxIn(q('#battle .btop')), rd = boxIn($('b-round')), btn = boxIn(q('#battle .btns')), msg = boxIn($('b-msg'));
+  lay.batT = Math.max(top ? top.b : 0, rd ? rd.b : 0) + 4;
+  let B = btn ? btn.t : H;
+  // the status scroll stacked above the buttons (portrait): reserve its one-line height, so a message
+  // wrapping to two lines doesn't re-frame the camera
+  if (msg && btn && msg.t < btn.t - 4) { const cs = getComputedStyle($('b-msg')); B = btn.t - (parseFloat(cs.minHeight) || 38) - (parseFloat(cs.marginBottom) || 0); }
+  lay.batB = B - 4;
+}
+if (typeof ResizeObserver !== 'undefined') {
+  const ro = new ResizeObserver(() => { lay.dirty = true; });
+  for (const s of ['#hud .resbar', '#hud .bottom', '#battle .btop', '#battle .bbot']) { const e = document.querySelector(s); if (e) ro.observe(e); }
+  const tro = new ResizeObserver(() => { lay.townDirty = true; });
+  tro.observe($('town'));
+}
+// map: the camera focus (where the followed / centred hero stands) keeps its place in the composition, but relative
+// to the free band between the resource bar and the bottom bar rather than to the whole screen, and the hero's
+// figure is kept clear of both bars (close-up landscape views put its head under the top bar otherwise).
+// Done with a vertical view offset (fov unchanged), eased; projections and picking follow it automatically.
+const mvP = new THREE.Vector3();
+function mapViewOffset(dt) {
+  if (lay.dirty) measureLayout();
+  const H = rsz.h || innerHeight, W = rsz.w || innerWidth, T = lay.mapT, B = lay.mapB;
+  let want = 0;
+  if (G.mode === 'map' && B - T > H * 0.3) {
+    camera.updateMatrixWorld();
+    const sy = (p) => (-p.project(camera).y * 0.5 + 0.5) * H - lay.mapOff; // screen y without the current offset
+    const feet = sy(mvP.copy(camFocus).setLength(R + 0.03)), head = sy(mvP.copy(camFocus).setLength(R + 0.8 * figK)); // hero + banner tip
+    want = T + (feet / H) * (B - T) - feet;
+    const lo = T + 12 - head, hi = B - 12 - feet;
+    want = lo > hi ? (lo + hi) / 2 : clamp(want, lo, hi);
+    want = clamp(want, -H * 0.25, H * 0.25);
+  }
+  const snap = lay.snapMap || lay.sinceMode < 0.5; lay.snapMap = false;
+  let o = Math.abs(want - lay.mapOff) < 0.3 || snap ? want : lay.mapOff + (want - lay.mapOff) * (1 - Math.exp(-dt * 6));
+  if (Math.abs(o) < 0.5) o = 0;
+  const key = `${o.toFixed(2)}:${W}:${H}`;
+  lay.mapOff = o; if (key === lay.mapKey) return; lay.mapKey = key;
+  if (!o) camera.clearViewOffset(); else camera.setViewOffset(W, H, 0, -o, W, H);
+}
 // ------------------------------------------------------------------ adaptive quality governor
 // The render resolution follows the measured frame time: full quality is min(devicePixelRatio, 2) (the old fixed
 // setting, so a fast device looks exactly as before) and it steps down by 0.25 to 1.25 when frames run long.
@@ -363,7 +456,7 @@ const atmos = createAtmosphere(THREE, scene, { R });
 
 // ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
 // the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=1.8';
+import { createPlanet } from './terrain.js?v=1.9';
 const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
 const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
 planet.castShadow = planet.receiveShadow = true;
@@ -397,15 +490,17 @@ const post = (() => {
     fragmentShader: 'uniform sampler2D tMap; varying vec2 vUv; void main() { vec3 c = texture2D(tMap, vUv).rgb; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(c * smoothstep(0.9, 1.7, l), 1.0); }' });
   const blur = new THREE.ShaderMaterial({ uniforms: { tMap: { value: null }, uDir: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false,
     fragmentShader: 'uniform sampler2D tMap; uniform vec2 uDir; varying vec2 vUv; void main() { vec3 c = texture2D(tMap, vUv).rgb * 0.227; c += (texture2D(tMap, vUv + uDir * 1.38).rgb + texture2D(tMap, vUv - uDir * 1.38).rgb) * 0.316; c += (texture2D(tMap, vUv + uDir * 3.23).rgb + texture2D(tMap, vUv - uDir * 3.23).rgb) * 0.07; gl_FragColor = vec4(c, 1.0); }' });
-  const comp = new THREE.ShaderMaterial({ uniforms: { tScene: { value: null }, tBloom: { value: null }, uTexel: { value: new THREE.Vector2(1, 1) }, uSharp: { value: 0.35 } }, vertexShader: vs, depthTest: false,
-    fragmentShader: `uniform sampler2D tScene; uniform sampler2D tBloom; uniform vec2 uTexel; uniform float uSharp; varying vec2 vUv;
+  const comp = new THREE.ShaderMaterial({ uniforms: { tScene: { value: null }, tBloom: { value: null }, uTexel: { value: new THREE.Vector2(1, 1) }, uSharp: { value: 0.35 }, uPlate: { value: 0 } }, vertexShader: vs, depthTest: false,
+    fragmentShader: `uniform sampler2D tScene; uniform sampler2D tBloom; uniform vec2 uTexel; uniform float uSharp; uniform float uPlate; varying vec2 vUv;
       ${gradeGLSL}
       void main() {
         // light adaptive sharpening: small models keep crisp edges on phone screens
-        vec3 c0 = texture2D(tScene, vUv).rgb;
+        vec4 s0 = texture2D(tScene, vUv); vec3 c0 = s0.rgb;
+        // battle count plates clear the scene alpha under them (see makePlate): no bloom halo over their pixels
+        float pm = clamp(1.0 - s0.a, 0.0, 1.0) * uPlate;
         vec3 n4 = texture2D(tScene, vUv + vec2(uTexel.x, 0.0)).rgb + texture2D(tScene, vUv - vec2(uTexel.x, 0.0)).rgb + texture2D(tScene, vUv + vec2(0.0, uTexel.y)).rgb + texture2D(tScene, vUv - vec2(0.0, uTexel.y)).rgb;
         vec3 mn = min(c0, n4 * 0.25), mx = max(c0, n4 * 0.25);
-        vec3 c = clamp(c0 + (c0 * 4.0 - n4) * uSharp * 0.25, mn * 0.85, mx * 1.15 + 0.02) + texture2D(tBloom, vUv).rgb * 0.8; c = grade(c); c = c / (1.0 + c * 0.12);
+        vec3 c = clamp(c0 + (c0 * 4.0 - n4) * uSharp * 0.25, mn * 0.85, mx * 1.15 + 0.02) + texture2D(tBloom, vUv).rgb * (0.8 * (1.0 - pm)); c = grade(c); c = c / (1.0 + c * 0.12);
         float v = smoothstep(1.15, 0.35, length(vUv - 0.5)); c *= mix(0.84, 1.0, v);
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
@@ -424,7 +519,7 @@ const post = (() => {
         blur.uniforms.tMap.value = rtB.texture; blur.uniforms.uDir.value.set(0, 2 / hh); renderer.setRenderTarget(rtA); renderer.render(quadScene, quadCam);
       }
       renderer.toneMapping = tm;
-      quad.material = comp; comp.uniforms.tScene.value = rtScene.texture; comp.uniforms.tBloom.value = rtA.texture;
+      quad.material = comp; comp.uniforms.tScene.value = rtScene.texture; comp.uniforms.uPlate.value = sc === bscene ? 1 : 0; comp.uniforms.tBloom.value = rtA.texture;
       renderer.setRenderTarget(null); renderer.render(quadScene, quadCam);
     },
   };
@@ -433,11 +528,21 @@ const post = (() => {
 // ------------------------------------------------------------------ meshes for map things
 const bodyMat = makeBodyMaterial(THREE);
 const glowMat = makeGlowMaterial(THREE);
+// perf: three.js keys a material's program on instancing, so a material drawn by both InstancedMesh (flora) and Mesh
+// (map figures) objects re-resolved its program (getParameters + program cache key) twice per frame, and so did the
+// shared shadow-depth material. Flora gets its own variants (same uniforms, same shader, same look).
+const floraBodyMat = bodyMat.userData.rigVariant(bodyMat.userData.rig), floraGlowMat = glowMat.userData.rigVariant(glowMat.userData.rig);
+const floraDepthMat = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); // = three's default shadow depth material
 const townView = createTownView(THREE, renderer, { bodyMat, glowMat });
+// the town sheet's footprint, re-measured only when the sheet or the window changed size (ResizeObserver / resize),
+// from its layout box (its slide-in transform doesn't count). Whole px >= 2: town_view reads values <= 1 as fractions.
 function townInsets() {
-  const r = $('town').getBoundingClientRect();
-  const side = innerWidth > innerHeight && r.width < innerWidth * 0.7;
-  townView.setInsets(side ? { bottom: 0, right: innerWidth - r.left } : { bottom: Math.max(0, innerHeight - r.top), right: 0 });
+  if (!lay.townDirty) return;
+  const r = boxIn($('town')); if (!r) return;
+  lay.townDirty = false;
+  const W = innerWidth, H = innerHeight, side = W > H && r.w < W * 0.7;
+  const px = (v) => { v = Math.round(v); return v < 2 ? 0 : v; };
+  townView.setInsets(side ? { bottom: 0, right: px(W - r.l) } : { bottom: px(H - r.t), right: 0 });
 }
 const geoCache = new Map();
 const unitGeoRaw = (id) => { const ff = FAC_MODEL[UNITS[id]?.fac]; if (ff) { const g = ff(id); if (g) return g; } const up = UNITS[id]?.up ? (necroUpModel(id) || havenUpModel(id)) : null; if (up) return up; const base = UNITS[id]?.up || id; return havenModel(base) || necroModel(base) || neutralModel(base) || unitModel(base, UNITS[id].col); };
@@ -446,11 +551,41 @@ const unitGeoRaw = (id) => { const ff = FAC_MODEL[UNITS[id]?.fac]; if (ff) { con
 const unitGeo = (id) => { const m = unitGeoRaw(id); if (m?.body && !m.body.attributes.formNormal) { addFormNormals(m.body); m.body.userData.hxForm = true; } return m; };
 // portraits are warmed by the loading screen (prewarm); the rest render on demand
 let prewarmed = false;
-// every model geometry is built once and shared by all its meshes (map, battle, portraits); never disposed
+// every model geometry is built once and shared by all its meshes (map, battle, portraits); freed only by trimGeoCache()
 const cached = (k, f) => { if (!geoCache.has(k)) geoCache.set(k, f()); return geoCache.get(k); };
 // keyed by faction + colour, not player index: a second new game in the same session must not reuse the old look
 const heroKey = (p) => 'hero' + G.players[p].fac + ':' + G.players[p].color;
 const heroGeo = (p) => cached(heroKey(p), () => { const P = G.players[p], m = heroModel(P.fac, P.color); if (m.body) { addFormNormals(m.body); m.body.userData.hxForm = true; } return m; });
+// Bounded geometry cache (memory): when a game starts or a save is loaded, models the new world can never show are freed
+// (CPU arrays + GPU buffers): other factions' creatures, heroes, towns and siege walls left over from earlier games in
+// this session. Each creature is ~0.3-1 MB, a faction roster ~11 MB, so trying every faction used to keep ~60 MB alive.
+// Kept: every creature of a faction in this world (players and towns, base + upgraded), neutrals, anything in an army,
+// garrison or on the map, and the small shared pieces (map objects, flags, battle obstacles).
+function trimGeoCache() {
+  if (!G.players.length) return 0;
+  // rosters: the crowns' factions and the towns they own (what they can recruit); a neutral town's line-up is kept
+  // through its garrison and built on demand if it is captured later. Town and siege models: every town on the map.
+  const pfacs = new Set([...G.players.map((P) => P.fac), ...G.towns.filter((t) => t.p >= 0).map((t) => t.fac)]);
+  const facs = new Set([...pfacs, ...G.towns.map((t) => t.fac)]);
+  const units = new Set(), add = (id) => { if (id && UNITS[id]) { units.add(id); if (UNITS[id].up) units.add(UNITS[id].up); } };
+  for (const [id, u] of Object.entries(UNITS)) if (!FACTIONS[u.fac] || pfacs.has(u.fac)) add(id);
+  for (const hr of G.heroes) for (const st of hr.army || []) add(st?.[0]);
+  for (const t of G.towns) for (const st of t.garrison || []) add(st?.[0]);
+  for (const o of G.objects) add(o.unit);
+  const heroes = new Set(G.players.map((_, p) => heroKey(p)));
+  let n = 0;
+  for (const [k, m] of [...geoCache]) {
+    let keep = true;
+    if (k.startsWith('hero')) keep = heroes.has(k);
+    else if (k[0] === 'u' && UNITS[k.slice(1)]) keep = units.has(k.slice(1));
+    else { const f = /^(?:town|wall_|gate_|tower_|keep_)(\w+)$/.exec(k)?.[1]; if (f && FACTIONS[f]) keep = facs.has(f); }
+    if (keep) continue;
+    geoCache.delete(k); warmed.delete(k.slice(1)); n++;
+    releasePortraitModel(m); m?.body?.dispose(); m?.glow?.dispose();
+  }
+  try { n += townView.trim?.(pfacs) || 0; } catch (e) { console.warn('town trim', e); } // other factions' town scenes
+  return n;
+}
 // Idle-time geometry warm-up (perf): a creature that is not cached yet costs build + form normals + fits
 // (~25-60 ms desktop, ~100-250 ms on a mid phone) the first time it is drawn, so an enemy army of new creatures
 // used to stall battle entry. warmGeometryIdle() queues the creatures you are likely to fight next (AI heroes'
@@ -466,12 +601,29 @@ function warmJobs() {
   for (const o of G.objects) if (o.alive && o.type === 'monster') add(o.unit);
   const myFac = G.players[0]?.fac;
   for (const [id, u] of Object.entries(UNITS)) if (u.fac === myFac) add(id);
+  // what every town can hire right now (rival towns, and captured towns of another faction): the town recruit rows
+  for (const t of G.towns) for (let tier = 1; tier <= 7; tier++) if (t.built.includes(`d${tier}`)) add(tierUnit(t, tier));
   return ids;
+}
+// Portraits (perf): every <img> size the UI asks for, rendered in the background after the creature's geometry is
+// warm. 64 px: turn strip, army rows, town recruit/upgrade rows, toasts, week of the creature; 128 px: the guard /
+// monster dialogs (bigpt); hero 40 px round (side buttons, selection bar) and 96 px (hero sheet). A synchronous
+// render costs a model framing + MSAA draw + a blocking readPixels (GPU pipeline stall, 70-110 ms measured on arrival
+// at a monster); portraitAsync() uses a fenced pixel-pack readback and toBlob, so an idle slice only pays the CPU side.
+const ptQ = [];
+function portraitJobs(ids) {
+  const out = [], push = (id, size, shape = 'square') => { if (!hasPortrait(id, size, shape)) out.push([id, size, shape]); };
+  const monsters = new Set(G.objects.filter((o) => o.alive && o.type === 'monster').map((o) => o.unit));
+  for (const id of monsters) push(id, 128); // the dialog you see on arrival first
+  for (const id of ids) push(id, 64);
+  for (const hr of G.heroes) if (hr.alive && hr.p === 0) { const P = G.players[0], hid = heroPortraitId(P.fac, P.color); push(hid, 40, 'round'); push(hid, 96); }
+  return out;
 }
 function warmGeometryIdle(ids = warmJobs()) {
   for (const id of ids) if (!warmQ.includes(id) && !warmed.has(id)) warmQ.push(id);
   G.players.forEach((P, p) => { if (!geoCache.has(heroKey(p)) && !warmQ.includes('hero:' + p)) warmQ.push('hero:' + p); });
-  if (!warmBusy && warmQ.length) { warmBusy = true; idleCb(warmStep); }
+  for (const j of portraitJobs(ids)) if (!ptQ.some((q) => q[0] === j[0] && q[1] === j[1] && q[2] === j[2])) ptQ.push(j);
+  if (!warmBusy && (warmQ.length || ptQ.length)) { warmBusy = true; idleCb(warmStep); }
   else if (!warmBusy && !warmTimer) warmTimer = setTimeout(() => { warmTimer = 0; warmGeometryIdle(); }, 8000);
   return warmQ.length;
 }
@@ -480,15 +632,30 @@ const idleCb = (f) => (window.requestIdleCallback ? requestIdleCallback(f, { tim
 function warmCalm() { return G.mode === 'map' && !walking && !ptrs.size && !aiRunning && $('loader').hidden; }
 function warmStep(dl) {
   // one model per callback (a build cannot be split); wait for real idle time unless the browser says we timed out
-  if (!warmQ.length) { warmBusy = false; warmGeometryIdle(); return; }
+  if (!warmQ.length && !ptQ.length) { warmBusy = false; warmGeometryIdle(); return; }
   if (!warmCalm() || (!dl.didTimeout && dl.timeRemaining() < 3)) { setTimeout(() => idleCb(warmStep), 250); return; }
+  if (!warmQ.length) { warmPortraitStep(dl); return; }
   const id = warmQ.shift();
   try {
     if (id.startsWith('hero:')) { if (G.players[+id.slice(5)]) heroGeo(+id.slice(5)); }
     else { const g = cached('u' + id, () => unitGeo(id)); unitFit(id, g, 'battle'); unitFit(id, g, 'map'); }
   } catch (e) { console.warn('warm', id, e); }
   warmed.add(id); // tried: a model that throws is not retried every rescan
-  if (warmQ.length) idleCb(warmStep); else { warmBusy = false; warmGeometryIdle(); }
+  if (warmQ.length || ptQ.length) idleCb(warmStep); else { warmBusy = false; warmGeometryIdle(); }
+}
+// portraits: start background renders while the idle slice lasts (each costs ~2-6 ms of CPU on desktop: framing + draw
+// submission), at most 3 per slice and 3 in flight so readbacks and PNG encodes never pile up
+function warmPortraitStep(dl) {
+  let n = 0;
+  const t0 = performance.now(), budget = dl.didTimeout ? 6 : Math.min(10, dl.timeRemaining() - 2);
+  while (ptQ.length && n < 3 && portraitsPending() < 3 && performance.now() - t0 < budget) {
+    const [id, size, shape] = ptQ[0];
+    // a creature whose geometry is not built yet costs a whole build: give it its own slice
+    if (!id.startsWith('hero:') && !geoCache.has('u' + id) && n > 0) break;
+    ptQ.shift(); n++;
+    try { portraitAsync(id, size, shape); } catch (e) { console.warn('warm portrait', id, e); }
+  }
+  if (warmQ.length || ptQ.length) (n ? idleCb(warmStep) : setTimeout(() => idleCb(warmStep), 120)); else { warmBusy = false; warmGeometryIdle(); }
 }
 initPortraits(THREE, renderer, (id) => cached('u' + id, () => unitGeo(id)), { dispose: false });
 const heroPic = (hr, size, shape = 'square') => { const P = G.players[hr.p]; return heroPortraitImg(P.fac, P.color, size, 'pt', shape); };
@@ -522,41 +689,80 @@ const flora = new THREE.Group(); scene.add(flora);
 // forests, mountains and rocks: instanced per model
 const pickW = (list, r) => { const tot = list.reduce((x, e) => x + e.w, 0); let k = r * tot; for (const e of list) { k -= e.w; if (k <= 0) return e.key; } return list[0].key; };
 const dummy = new THREE.Object3D();
-function layoutFlora() {
-  // free the old instance-matrix GPU buffers (the shared nature geometries stay cached in nature.js)
-  for (const im of flora.children) im.dispose?.();
-  flora.clear();
+// One InstancedMesh (+ glow) per model, with spare capacity: a fog reveal only appends the newly seen cells' instances
+// (and uploads just those matrices) instead of rebuilding every forest on the planet.
+const floraSets = new Map(); // key -> { model, im, ig, n, cap }
+const floraDone = new Uint8Array(NV); // cells whose flora is already placed
+const floraSphere = new THREE.Sphere(new THREE.Vector3(), R + 3);
+function floraCell(v, put) {
+  const hv = hash(v * 11), rr = (k) => (hash(v * 31 + k * 7) % 1000) / 1000;
+  const F = FLORA_FOR_TERRAIN[ter[v]];
+  if (ter[v] === T.FOREST || ter[v] === T.MOUNT) {
+    const biome = biomeOf(NBR[v].map((n) => ter[n]), Math.abs(DIRS[v].y));
+    if (ter[v] === T.FOREST) {
+      const n = F.count[0] + (hv % (F.count[1] - F.count[0] + 1));
+      for (let i = 0; i < n; i++) { const a = i * 2.1 + hv, d = i ? 0.1 + rr(i) * 0.03 : 0; put(pickW(FOREST_BY_BIOME[biome] || FOREST_BY_BIOME.temperate, rr(i + 9)), v, F.fillScale * (0.85 + rr(i + 3) * 0.3), Math.cos(a) * d, Math.sin(a) * d, a); }
+    } else { const keys = PEAK_BY_BIOME[biome] || PEAK_BY_BIOME.temperate; put(keys[hv % keys.length], v, F.fillScale * (0.95 + rr(2) * 0.2), 0, 0, hv); }
+    return;
+  }
+  if (objAt[v] >= 0 || road[v] || !F || !F.scatter) return;
+  let placed = 0;
+  F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; if ((e.avoid && NBR[v].some((n) => e.avoid.includes(ter[n]))) || (e.maxLat && Math.abs(DIRS[v].y) > e.maxLat)) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
+}
+const flT1 = new THREE.Vector3(), flT2 = new THREE.Vector3(), flX = new THREE.Vector3(1, 0, 0);
+function floraMatrix(v, s, x, z, turn) {
+  flT1.crossVectors(DIRS[v], Math.abs(DIRS[v].y) < 0.9 ? UP : flX).normalize(); flT2.copy(DIRS[v]).cross(flT1);
+  dummy.position.copy(DIRS[v]).multiplyScalar(radiusOf(v)).addScaledVector(flT1, x).addScaledVector(flT2, z);
+  dummy.quaternion.setFromUnitVectors(UP, DIRS[v]); dummy.rotateY(turn); dummy.scale.setScalar(s); dummy.updateMatrix();
+  return dummy.matrix;
+}
+// the set for a model with room for `extra` more instances (grows by reallocating just that model's meshes)
+function floraSet(key, extra) {
+  let S = floraSets.get(key);
+  if (S && S.n + extra <= S.cap) return S;
+  const model = S ? S.model : natureModel(key), n = S ? S.n : 0, cap = Math.ceil((n + extra) * 1.5) + 32;
+  const mk = (geo, mat) => {
+    const im = new THREE.InstancedMesh(geo, mat, cap);
+    im.count = n; im.visible = n > 0; im.boundingSphere = floraSphere; // grows in place: cull against the whole planet
+    return im;
+  };
+  const im = mk(model.body, floraBodyMat); im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = floraDepthMat;
+  const ig = model.glow ? mk(model.glow, floraGlowMat) : null;
+  if (S) {
+    im.instanceMatrix.array.set(S.im.instanceMatrix.array.subarray(0, n * 16));
+    if (ig) ig.instanceMatrix.array.set(S.ig.instanceMatrix.array.subarray(0, n * 16));
+    for (const o of [S.im, S.ig]) if (o) { flora.remove(o); o.dispose(); }
+  }
+  flora.add(im); if (ig) flora.add(ig);
+  S = { model, im, ig, n, cap }; floraSets.set(key, S);
+  return S;
+}
+// cells = the cells that just turned seen (incremental), or nothing for a full rebuild of the flora
+function layoutFlora(cells = null) {
+  if (!cells) {
+    // free the old instance-matrix GPU buffers (the shared nature geometries stay cached in nature.js)
+    for (const im of flora.children) im.dispose?.();
+    flora.clear(); floraSets.clear(); floraDone.fill(0);
+    cells = [];
+    for (let v = 0; v < NV; v++) if (seen[v]) cells.push(v);
+  }
   const lists = new Map();
   const put = (key, v, s, x = 0, z = 0, turn = 0) => {
-    if (!lists.has(key)) lists.set(key, { model: natureModel(key), m: [] });
-    const t1 = new THREE.Vector3().crossVectors(DIRS[v], Math.abs(DIRS[v].y) < 0.9 ? UP : new THREE.Vector3(1, 0, 0)).normalize(), t2 = DIRS[v].clone().cross(t1);
-    const p = DIRS[v].clone().multiplyScalar(radiusOf(v)).addScaledVector(t1, x).addScaledVector(t2, z);
-    dummy.position.copy(p); dummy.quaternion.setFromUnitVectors(UP, DIRS[v]); dummy.rotateY(turn); dummy.scale.setScalar(s); dummy.updateMatrix();
-    lists.get(key).m.push(dummy.matrix.clone());
+    let L = lists.get(key); if (!L) lists.set(key, (L = []));
+    L.push(floraMatrix(v, s, x, z, turn).clone());
   };
-  for (let v = 0; v < NV; v++) {
-    if (!seen[v]) continue;
-    const hv = hash(v * 11), rr = (k) => (hash(v * 31 + k * 7) % 1000) / 1000;
-    const F = FLORA_FOR_TERRAIN[ter[v]];
-    if (ter[v] === T.FOREST || ter[v] === T.MOUNT) {
-      const biome = biomeOf(NBR[v].map((n) => ter[n]), Math.abs(DIRS[v].y));
-      if (ter[v] === T.FOREST) {
-        const n = F.count[0] + (hv % (F.count[1] - F.count[0] + 1));
-        for (let i = 0; i < n; i++) { const a = i * 2.1 + hv, d = i ? 0.1 + rr(i) * 0.03 : 0; put(pickW(FOREST_BY_BIOME[biome] || FOREST_BY_BIOME.temperate, rr(i + 9)), v, F.fillScale * (0.85 + rr(i + 3) * 0.3), Math.cos(a) * d, Math.sin(a) * d, a); }
-      } else { const keys = PEAK_BY_BIOME[biome] || PEAK_BY_BIOME.temperate; put(keys[hv % keys.length], v, F.fillScale * (0.95 + rr(2) * 0.2), 0, 0, hv); }
-      continue;
+  for (const v of cells) { if (!seen[v] || floraDone[v]) continue; floraDone[v] = 1; floraCell(v, put); }
+  for (const [key, m] of lists) {
+    const S = floraSet(key, m.length), i0 = S.n;
+    for (const o of [S.im, S.ig]) {
+      if (!o) continue;
+      m.forEach((x, i) => o.setMatrixAt(i0 + i, x));
+      o.count = i0 + m.length; o.visible = true;
+      o.instanceMatrix.addUpdateRange(i0 * 16, m.length * 16); o.instanceMatrix.needsUpdate = true;
     }
-    if (objAt[v] >= 0 || road[v] || !F || !F.scatter) continue;
-    let placed = 0;
-    F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; if ((e.avoid && NBR[v].some((n) => e.avoid.includes(ter[n]))) || (e.maxLat && Math.abs(DIRS[v].y) > e.maxLat)) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
+    S.n += m.length;
   }
-  for (const { model, m } of lists.values()) {
-    const im = new THREE.InstancedMesh(model.body, bodyMat, m.length);
-    m.forEach((x, i) => im.setMatrixAt(i, x));
-    im.castShadow = true; im.receiveShadow = true;
-    flora.add(im);
-    if (model.glow) { const ig = new THREE.InstancedMesh(model.glow, glowMat, m.length); m.forEach((x, i) => ig.setMatrixAt(i, x)); flora.add(ig); }
-  }
+  return lists.size > 0;
 }
 
 // ------------------------------------------------------------------ building the world
@@ -602,6 +808,7 @@ function newTown(v, p, fac, name) {
 function newWorld(seed, diff = 1, myFac = 'haven') {
   Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [] });
   objAt.fill(-1); road.fill(0); seen.fill(0);
+  pendingLevels.length = 0; // level-ups queued in a previous game (quit with the dialog open) belong to that game
   rnd = mulberry32(seed);
   let a = -1, b = -1;
   for (let tries = 0; tries < 60 && b < 0; tries++) {
@@ -754,31 +961,61 @@ function objModel(o) {
 }
 const SCALE = { gold: 0.3, wood: 0.3, ore: 0.3, gems: 0.3, chest: 0.28, artifact: 0.28, town: 0.4, monster: 0.2, goldmine: 0.3, gemmine: 0.3, orepit: 0.3, sawmill: 0.28, dwelling: 0.3, arena: 0.28, tower: 0.24, library: 0.27, stone: 0.24, obelisk: 0.24, shrine: 0.27, well: 0.27, windmill: 0.27, stables: 0.27 };
 // the terrain mesh and the flora only depend on the land and the fog: rebuild them only when those changed
-// (an enemy picking up gold or flagging a mine used to re-tessellate the whole planet in the middle of the AI turn)
+// (an enemy picking up gold or flagging a mine used to re-tessellate the whole planet in the middle of the AI turn).
+// A plain fog reveal (cells only ever turning seen, land unchanged) is incremental: the terrain rewrites just the
+// touched cells' vertex attributes and fades them in, the flora appends the new cells' instances.
 const landSnap = { ter: new Uint8Array(NV), h: new Int8Array(NV), road: new Uint8Array(NV), seen: new Uint8Array(NV), ok: false };
+// null: nothing changed; 'full': rebuild; an array: only these cells turned seen
 function landChanged() {
   const S = landSnap;
-  let same = S.ok;
-  for (let v = 0; same && v < NV; v++) if (S.seen[v] !== seen[v] || S.ter[v] !== ter[v] || S.road[v] !== road[v] || S.h[v] !== h[v]) same = false;
-  if (same) return false;
-  S.ter.set(ter); S.h.set(h); S.road.set(road); S.seen.set(seen); S.ok = true;
+  let full = !S.ok, fresh = null;
+  for (let v = 0; !full && v < NV; v++) {
+    if (S.ter[v] !== ter[v] || S.road[v] !== road[v] || S.h[v] !== h[v]) full = true;
+    else if (S.seen[v] !== seen[v]) { if (seen[v]) (fresh || (fresh = [])).push(v); else full = true; }
+  }
+  if (full) { S.ter.set(ter); S.h.set(h); S.road.set(road); S.seen.set(seen); S.ok = true; return 'full'; }
+  if (fresh) for (const v of fresh) S.seen[v] = seen[v];
+  return fresh;
+}
+// map objects keep their meshes between layouts: only appearing, vanishing or re-flagged objects are touched
+const objMeshes = new Map(); // object id -> group (userData.sig: what it shows, userData.flagOwner / flag)
+let objMeshesOf = null; // the G.objects array these belong to (a new game / load starts over)
+const objSig = (o) => o.v + '|' + o.type + '|' + (o.type === 'town' ? G.towns[o.t].fac : o.type === 'monster' ? o.unit : '');
+function dropObjMesh(id) { const g = objMeshes.get(id); if (g) { world.remove(g); objMeshes.delete(id); } } // geometries are shared (cached): nothing to dispose
+function setObjFlag(g, o) {
+  const owner = o.type === 'town' ? G.towns[o.t].p : OBJECTS[o.type]?.kind === 'mine' ? o.owner : -2;
+  if (owner === g.userData.flagOwner) return false;
+  if (g.userData.flag) g.remove(g.userData.flag);
+  g.userData.flag = null; g.userData.flagOwner = owner;
+  if (owner > -2) { const f = flagMesh(ownerCol(owner)); g.add(f); f.position.set(0.55, 0, 0.45); f.scale.setScalar(o.type === 'town' ? 0.6 : 0.8); g.userData.flag = f; }
   return true;
+}
+function objMeshFor(o) {
+  const g = meshOf(objModel(o));
+  placeOn(g, o.v, SCALE[o.type] || 0.24, o.type === 'monster' ? (hash(o.id) % 6) : 0);
+  if (o.type === 'monster') { applyFit(g, unitFit(o.unit, objModel(o), 'map')); g.userData.s0 = g.scale.x; g.scale.multiplyScalar(figK); }
+  if (o.type === 'town') { g.userData.noGrow = true; g.scale.setScalar(g.userData.s0); }
+  addBlob(g, o.type === 'monster' ? BLOB_R.monster / (g.scale.x / (SCALE.monster || 0.2)) : BLOB_R[o.type] || 0.66);
+  g.userData.sig = objSig(o); g.userData.flagOwner = -3;
+  setObjFlag(g, o);
+  return g;
 }
 function layoutWorld() {
   worldDirty = false;
-  if (landChanged()) { rebuildPlanet(); layoutFlora(); }
-  world.clear();
+  let changed = false;
+  const land = landChanged();
+  if (land === 'full') { rebuildPlanet(); layoutFlora(); changed = true; }
+  else if (land) { if (!TERRAIN.refog(ter, h, road, seen, land)) rebuildPlanet(); layoutFlora(land); changed = true; }
+  if (objMeshesOf !== G.objects) { for (const id of [...objMeshes.keys()]) dropObjMesh(id); world.clear(); objMeshesOf = G.objects; changed = true; }
   for (const o of G.objects) {
-    if (!o.alive || !seen[o.v]) continue;
-    const g = meshOf(objModel(o));
-    placeOn(g, o.v, SCALE[o.type] || 0.24, o.type === 'monster' ? (hash(o.id) % 6) : 0);
-    if (o.type === 'monster') { applyFit(g, unitFit(o.unit, objModel(o), 'map')); g.userData.s0 = g.scale.x; g.scale.multiplyScalar(figK); }
-    if (o.type === 'town') { g.userData.noGrow = true; g.scale.setScalar(g.userData.s0); }
-    addBlob(g, o.type === 'monster' ? BLOB_R.monster / (g.scale.x / (SCALE.monster || 0.2)) : BLOB_R[o.type] || 0.66);
-    world.add(g);
-    const owner = o.type === 'town' ? G.towns[o.t].p : OBJECTS[o.type]?.kind === 'mine' ? o.owner : -2;
-    if (owner > -2) { const f = flagMesh(ownerCol(owner)); g.add(f); f.position.set(0.55, 0, 0.45); f.scale.setScalar(o.type === 'town' ? 0.6 : 0.8); }
+    let g = objMeshes.get(o.id);
+    if (!o.alive || !seen[o.v]) { if (g) { dropObjMesh(o.id); changed = true; } continue; }
+    if (g && g.userData.sig !== objSig(o)) { dropObjMesh(o.id); g = null; }
+    if (!g) { g = objMeshFor(o); objMeshes.set(o.id, g); world.add(g); changed = true; }
+    else if (setObjFlag(g, o)) changed = true;
   }
+  for (const id of objMeshes.keys()) if (!G.objects[id]) { dropObjMesh(id); changed = true; }
+  if (changed) renderer.shadowMap.needsUpdate = true; // the still-map shadow refresh would catch up anyway; don't wait for it
   layoutHeroes(true);
 }
 // heroes are persistent so they can walk smoothly
@@ -813,9 +1050,17 @@ function poseStep(m, a, b, kk, dt) {
   _pa.copy(DIRS[a]).multiplyScalar(radiusOf(a)); _pb.copy(DIRS[b]).multiplyScalar(radiusOf(b));
   _dv.copy(DIRS[a]).lerp(DIRS[b], kk).normalize().multiplyScalar(Math.sin(Math.min(1, Math.abs(kk)) * Math.PI) * 0.015); // a little hop
   m.position.copy(_pa).lerp(_pb, kk).add(_dv);
-  // turn toward the way we go over ~0.15 s instead of snapping at every hex
+  // turn toward the way we go through a critically damped spring on the remaining angle (m.userData.turnV = its
+  // speed): the turn accelerates out of rest and settles in ~0.25 s, instead of an exponential chase that swung
+  // 25-33° in the very first frame of a walk; velocity carries across steps, so mid-route bends stay fluid
   faceQuat(_qT, _up.copy(m.position).normalize(), _dv.copy(_pb).sub(_pa));
-  m.quaternion.slerp(_qT, 1 - Math.exp(-dt * 20));
+  const ang = m.quaternion.angleTo(_qT);
+  if (ang > 1e-4 && dt > 0) {
+    // (smoothDamp toward 0, inlined: no per-frame array)
+    const w = 2 / 0.085, k = w * dt, e = 1 / (1 + k + 0.48 * k * k + 0.235 * k * k * k), tmp = ((m.userData.turnV || 0) + w * ang) * dt;
+    const na = (ang + tmp) * e; m.userData.turnV = ((m.userData.turnV || 0) - w * tmp) * e;
+    m.quaternion.slerp(_qT, clamp(1 - Math.max(0, na) / ang, 0, 1));
+  } else m.userData.turnV = 0;
   (m.userData.fwd ||= new THREE.Vector3()).copy(_ZF).applyQuaternion(m.quaternion);
 }
 // cubic easing over one step: starts at speed s0, ends at speed s1 (1 = the steady walking pace)
@@ -848,7 +1093,7 @@ const TAP_SLOP = 8, TAP_MS = 500, FLING_WIN = 100, FLING_STALE = 60;
 const camMode = () => G.mode !== 'battle' && G.mode !== 'town';
 const dragK = () => cam.dist / 1800; // radians per CSS px: the ground under the finger moves with it at any zoom
 function startPress(e, x, y, moved) {
-  press = { id: e.pointerId, x, y, lx: x, ly: y, t: performance.now(), moved, noTap: moved, samples: [] };
+  press = { id: e.pointerId, x, y, lx: x, ly: y, t: performance.now(), ts: e.timeStamp, moved, noTap: moved, samples: [] };
 }
 function camDrag(dx, dy, ts) {
   const k = dragK(), dth = -dx * k, dph = -dy * k;
@@ -920,7 +1165,9 @@ const endPtr = (e) => {
   }
   if (!press || press.id !== e.pointerId) return;
   if (press.moved) { if (camMode()) camRelease(e.timeStamp); }
-  else if (!press.noTap && performance.now() - press.t < TAP_MS) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); else if (G.mode === 'town') townTap(e.clientX, e.clientY); }
+  // the press length from the events' own timestamps: a long frame (battle entry, a heavy dialog) delays the handler,
+  // not the finger, so a wall-clock check used to drop real taps
+  else if (!press.noTap && e.timeStamp - press.ts < TAP_MS) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); else if (G.mode === 'town') townTap(e.clientX, e.clientY); }
   press = null; cam.dragging = false;
 };
 const dropPtrs = () => { ptrs.clear(); press = null; pinch = null; cam.dragging = false; cam.dragTheta = cam.dragPhi = 0; cam.vTheta = cam.vPhi = 0; };
@@ -940,16 +1187,25 @@ cvs.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 const selHero = () => (G.selHero >= 0 && G.heroes[G.selHero]?.alive && G.heroes[G.selHero].p === 0 ? G.heroes[G.selHero] : null);
+let lastMapTap = { v: -1, t: 0 };
 function mapTap(cx, cy) {
   if (busy()) return;
   const v = pickCell(cx, cy);
   if (v === null) return;
+  // double tap on one of your towns (even with a hero standing in it): open it for building / recruiting
+  const now = performance.now(), dbl = lastMapTap.v === v && now - lastMapTap.t < 450;
+  lastMapTap = dbl ? { v: -1, t: 0 } : { v, t: now };
+  if (dbl && seen[v] && objAt[v] >= 0) {
+    const ot = G.objects[objAt[v]];
+    if (ot.alive && ot.type === 'town' && G.towns[ot.t].p === 0) { showPath(selHero(), pendingRoute(selHero())); openTown(ot.t); return; }
+  }
   const hr = selHero();
   const mine = heroAt(v);
   if (mine && mine.p === 0) { selectHero(mine.id); return; }
   if (!seen[v]) { toast('Unexplored land.'); return; }
   const o = objAt[v] >= 0 && G.objects[objAt[v]].alive ? G.objects[objAt[v]] : null;
-  if (o && o.type === 'town' && G.towns[o.t].p === 0 && hr && (!plan || plan.path[plan.path.length - 1] !== v) && DIRS[hr.v].distanceTo(DIRS[v]) > 0.25) { openTown(o.t); return; }
+  // your own town: like any goal, tap shows the route and tapping again walks there; arriving opens the town screen
+  // (a quick double tap opens it straight away, see above)
   if (!hr) { if (o) describe(o); return; }
   // second tap on the same goal: go
   if (plan && plan.hr === hr.id && plan.path[plan.path.length - 1] === v) { startWalk(hr, plan.path); return; }
@@ -1007,7 +1263,14 @@ function startWalk(hr, path) {
   if (n < 1) { toast('Not enough movement left today. End the turn.'); sfx.deny(); return; } // (an unfinished march stays stored)
   hr.route = null; hr.routeObj = -1;
   walking = { hr, path, i: 0, t: 0, n };
-  showPath(hr, null); updateHud();
+  // perf: marching on your own town / a fight -> its idle warm-up jobs run now, not on arrival
+  if (hr.p === 0) { const e = objAt[path[path.length - 1]], o = e >= 0 ? G.objects[e] : null; if (o?.type === 'town' && G.towns[o.t]?.p === 0) bumpWarm('town'); else if (o?.type === 'monster' || o?.type === 'town') bumpWarm('battle', [o.unit, ...(hr.army || []).map((st) => st?.[0])]); }
+  // feel: the route stays drawn while the hero walks it and is consumed underfoot (fx.eatPath in updateWalk);
+  // it is only re-drawn if the planned one differs (a resumed march re-routed around something)
+  const same = plan && plan.hr === hr.id && plan.path.length === path.length && plan.path.every((v, i) => v === path[i]);
+  plan = null;
+  if (!same) fx.showPath(path, n);
+  updateHud();
 }
 const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3();
 function updateWalk(dt) {
@@ -1023,13 +1286,16 @@ function updateWalk(dt) {
   W.t += bump ? dt / BUMP_T : dt * 6 / f;
   if (m) {
     const k = Math.min(1, W.t);
-    const kk = bump ? bumpEase(k, start ? 0 : 6 * BUMP_T) : stepEase(k, start ? 0 : f, stop ? 0 : f);
+    let kk = bump ? bumpEase(k, start ? 0 : 6 * BUMP_T) : stepEase(k, start ? 0 : f, stop ? 0 : f);
+    // anticipation: setting off, the hero first rocks back a hair (while it turns) before stepping out
+    if (start && !bump && !reduceMo.matches) kk -= 0.045 * Math.sin(Math.PI * Math.min(1, k / 0.32));
     poseStep(m, a, b, kk, dt);
+    fx.eatPath(W.i + Math.max(0, kk));
   }
   if (W.t < 1) return;
   W.t = bump || stop ? 0 : W.t - 1;
   // arrive at b (or back at a after a bump)
-  if (target) { walking = null; layoutHeroes(true); interact(hr, b); return; }
+  if (target) { walking = null; fx.clearPath(); layoutHeroes(true); interact(hr, b); return; }
   hr.mp -= stepCost(a, b); hr.v = b; W.i++;
   if (reveal(b, visionOf(hr))) worldDirty = true;
   sfx.step({ kind: 'hoof' });
@@ -1038,14 +1304,14 @@ function updateWalk(dt) {
   const lurker = lurkerAt(b, W);
   if (lurker) {
     // keep the rest of the march so it can be resumed after the ambush (Continue ▶ / tap the goal again)
-    walking = null; layoutHeroes(true);
+    walking = null; fx.clearPath(); layoutHeroes(true);
     if (W.i < W.path.length - 1) { hr.route = W.path.slice(W.i); hr.routeObj = objAt[hr.route[hr.route.length - 1]]; }
     updateHud(); interact(hr, lurker.v); return;
   }
   if (W.i >= W.n) {
     fx.burst('dust', posOf(hr.v));
     walking = null; layoutHeroes(true);
-    if (W.i < W.path.length - 1) { hr.route = W.path.slice(W.i); hr.routeObj = objAt[hr.route[hr.route.length - 1]]; showPath(hr, hr.route); } else { hr.route = null; hr.routeObj = -1; }
+    if (W.i < W.path.length - 1) { hr.route = W.path.slice(W.i); hr.routeObj = objAt[hr.route[hr.route.length - 1]]; showPath(hr, hr.route); } else { hr.route = null; hr.routeObj = -1; fx.clearPath(); }
     updateHud();
   }
 }
@@ -1069,9 +1335,35 @@ function blockingAt(v, hr) {
 const P = (hr) => G.players[hr.p];
 function gain(p, res, n, v = -1) {
   G.players[p].res[res] += n;
-  if (p === 0) floatText(v >= 0 ? posOf(v, 0.2) : null, `+${fmt(n)} ${RES_ICON[res]}`, 'gold');
+  if (p === 0) { floatText(v >= 0 ? posOf(v, 0.2) : null, `+${fmt(n)} ${RES_ICON[res]}`, 'gold'); if (v >= 0 && n > 0) flyRes(posOf(v, 0.2), res, n); }
 }
-function removeObject(o) { o.alive = false; if (objAt[o.v] === o.id) objAt[o.v] = -1; if (seen[o.v]) worldDirty = true; }
+// feel: picked-up resources fly from the map to their HUD counter (1-4 icons along a short arc, Web Animations on the
+// compositor: no per-frame JS), each landing with a soft tick; the counter then pops and counts up (updateRes/tickRes)
+const resFly = { gold: 0, wood: 0, ore: 0, gems: 0 }; // performance.now() when the first icon lands on each counter
+const _flyV = new THREE.Vector3();
+function flyRes(pos, res, n) {
+  if (reduceMo.matches || G.mode !== 'map' || $('hud').hidden) return;
+  const dst = $(`r-${res}`)?.parentElement?.firstElementChild; if (!dst) return;
+  const v = _flyV.copy(pos).project(camera); if (v.z > 1 || Math.abs(v.x) > 1.2 || Math.abs(v.y) > 1.2) return;
+  const x0 = (v.x * 0.5 + 0.5) * innerWidth, y0 = (-v.y * 0.5 + 0.5) * innerHeight;
+  const r = dst.getBoundingClientRect(); if (!r.width) return;
+  const x1 = r.left + r.width / 2, y1 = r.top + r.height / 2;
+  const cnt = clamp(Math.floor(Math.log10(Math.max(1, n))), 1, 4), dur = 640, gap = 75, box = $('floaters');
+  resFly[res] = performance.now() + dur;
+  for (let i = 0; i < cnt; i++) {
+    const el = document.createElement('i'); el.className = 'flyres'; el.innerHTML = icon(res, 26); box.appendChild(el);
+    const jx = (i - (cnt - 1) / 2) * 22, at = (x, y, sc) => `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${sc})`;
+    const a = el.animate([
+      { transform: at(x0, y0, 0.3), opacity: 0, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)' },
+      { transform: at(x0 + jx, y0 - 34 - i * 4, 1.15), opacity: 1, offset: 0.3, easing: 'cubic-bezier(0.55, 0, 0.85, 0.35)' },
+      { transform: at(x1, y1, 0.7), opacity: 0.95 },
+    ], { duration: dur, delay: i * gap, fill: 'both' });
+    a.onfinish = () => { el.remove(); sfx.tab({ vol: 0.4, pitch: 1.15 + i * 0.09 }); replay(dst.parentElement, 'land'); };
+    a.oncancel = () => el.remove();
+  }
+}
+// only that object's mesh goes (shared geometries stay cached); the rest of the world is untouched
+function removeObject(o) { o.alive = false; if (objAt[o.v] === o.id) objAt[o.v] = -1; if (objMeshes.has(o.id)) { dropObjMesh(o.id); renderer.shadowMap.needsUpdate = true; } }
 function interact(hr, v) {
   const o = objAt[v] >= 0 && G.objects[objAt[v]].alive ? G.objects[objAt[v]] : null;
   const other = heroAt(v);
@@ -1082,6 +1374,7 @@ function interact(hr, v) {
   }
   if (!o) return;
   const O = OBJECTS[o.type], kind = O?.kind;
+  if (you && (o.type === 'monster' || o.type === 'town' || guardOf(v))) bumpWarm('battle', [o.type === 'monster' ? o.unit : guardOf(v)?.unit, ...(o.type === 'town' ? (G.towns[o.t].garrison || []).map((st) => st?.[0]) : []), ...(hr.army || []).map((st) => st?.[0])]); // a fight may follow
   // guarded: a monster standing next to a mine, chest, site or town must be beaten first
   if (o.type !== 'monster') {
     const guard = guardOf(v);
@@ -1236,57 +1529,203 @@ let bfield = null;
 const HS = 0.5, HW = Math.sqrt(3) * HS, VS = 1.5 * HS;
 const hexPos = (c, r) => new THREE.Vector3((c - (BT.COLS - 1) / 2 + (r & 1 ? 0.5 : 0) - 0.25) * HW, 0, (r - (BT.ROWS - 1) / 2) * VS);
 const hexGeo = new THREE.CylinderGeometry(HS * 0.95, HS * 0.95, 0.02, 6);
-const hexes = new THREE.InstancedMesh(hexGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.26, depthWrite: false }), BT.COLS * BT.ROWS);
+// battle hex highlights: one instanced mesh; every hex has its own colour and alpha (aHexA scales the base
+// opacity) and both ease toward their targets in stepHexes(), so highlights fade in/out instead of popping
+const HEXN = BT.COLS * BT.ROWS;
+const hexA = new THREE.InstancedBufferAttribute(new Float32Array(HEXN), 1); hexGeo.setAttribute('aHexA', hexA);
+const hexMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.26, depthWrite: false });
+hexMat.onBeforeCompile = (sh) => {
+  sh.vertexShader = sh.vertexShader.replace('void main() {', 'attribute float aHexA;\nvarying float vHexA;\nvoid main() {\nvHexA = aHexA;');
+  sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'varying float vHexA;\nvoid main() {').replace('#include <opaque_fragment>', '#include <opaque_fragment>\ngl_FragColor.a *= vHexA;');
+};
+hexMat.customProgramCacheKey = () => 'hexFade';
+const hexes = new THREE.InstancedMesh(hexGeo, hexMat, HEXN);
 hexes.frustumCulled = false; bscene.add(hexes);
-for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(1); dummy.updateMatrix(); hexes.setMatrixAt(BT.key(c, r), dummy.matrix); hexes.setColorAt(BT.key(c, r), new THREE.Color(0xffffff)); }
+for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(0.0001); dummy.updateMatrix(); hexes.setMatrixAt(BT.key(c, r), dummy.matrix); hexes.setColorAt(BT.key(c, r), new THREE.Color(0xffffff)); }
+const hexT = { col: new Float32Array(HEXN * 3), a: new Float32Array(HEXN), on: new Uint8Array(HEXN), busy: true, snap: true };
+function hexTarget(k, col, a) { hexT.col[k * 3] = col.r; hexT.col[k * 3 + 1] = col.g; hexT.col[k * 3 + 2] = col.b; hexT.a[k] = a; hexT.busy = true; }
+function stepHexes(dt) {
+  if (!hexT.busy) return;
+  const C = hexes.instanceColor.array, A = hexA.array, ka = hexT.snap ? 1 : 1 - Math.exp(-dt * 14), kc = hexT.snap ? 1 : 1 - Math.exp(-dt * 18);
+  let busy = false, mat = false;
+  for (let k = 0; k < HEXN; k++) {
+    const ta = hexT.a[k];
+    // a hex fading in from nothing takes its new colour at once; otherwise colours blend (green -> red etc.)
+    const fresh = A[k] < 0.004;
+    for (let j = k * 3; j < k * 3 + 3; j++) { const d = hexT.col[j] - C[j]; if (fresh) C[j] = hexT.col[j]; else if (Math.abs(d) > 0.002) { C[j] += d * kc; busy = true; } else C[j] = hexT.col[j]; }
+    const da = ta - A[k]; if (Math.abs(da) > 0.003) { A[k] += da * ka; busy = true; } else A[k] = ta;
+    // hexes at zero alpha shrink away so they cost no fill
+    const on = A[k] > 0.003 ? 1 : 0;
+    if (on !== hexT.on[k]) { hexT.on[k] = on; dummy.position.copy(hexPos(k % BT.COLS, (k / BT.COLS) | 0)); dummy.quaternion.identity(); dummy.scale.setScalar(on ? 0.92 : 0.0001); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix); mat = true; }
+  }
+  hexes.instanceColor.needsUpdate = true; hexA.needsUpdate = true; if (mat) hexes.instanceMatrix.needsUpdate = true;
+  hexT.busy = busy; hexT.snap = false;
+}
+// attack-from marker: a gold chevron on the hex the attacker will strike from, pointing at the target
+const atkArrow = (() => {
+  const s = new THREE.Shape(); const L = HS * 0.62, W = HS * 0.34, N = HS * 0.16;
+  s.moveTo(0, L * 0.55); s.lineTo(W, -L * 0.1); s.lineTo(W * 0.42, -L * 0.1); s.lineTo(W * 0.42, -L * 0.5); s.lineTo(-W * 0.42, -L * 0.5); s.lineTo(-W * 0.42, -L * 0.1); s.lineTo(-W, -L * 0.1); s.closePath();
+  const g = new THREE.ShapeGeometry(s).rotateX(-Math.PI / 2); g.translate(0, 0, -N);
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd84a).multiplyScalar(1.6), transparent: true, opacity: 0, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+  m.renderOrder = 9; m.visible = false; m.userData = { a: 0, ta: 0, t: 0 };
+  return m;
+})();
+bscene.add(atkArrow);
+function stepArrow(dt) {
+  const u = atkArrow.userData; u.t += dt;
+  u.a += (u.ta - u.a) * (1 - Math.exp(-dt * 16)); if (Math.abs(u.ta - u.a) < 0.01) u.a = u.ta;
+  atkArrow.visible = u.a > 0.01;
+  // a gentle nudge toward the target
+  if (atkArrow.visible) { atkArrow.material.opacity = u.a * (0.8 + 0.2 * Math.sin(u.t * 6)); atkArrow.position.copy(u.p0).addScaledVector(u.dir, 0.05 * Math.sin(u.t * 6)).setY(0.04); }
+}
+function showArrow(from, t) {
+  const u = atkArrow.userData;
+  if (!from || !t) { u.ta = 0; return; }
+  const p0 = hexPos(from[0], from[1]), p1 = hexPos(t.c, t.r), dir = p1.clone().sub(p0).setY(0).normalize();
+  // fading in somewhere new: jump there instead of sliding across the field
+  u.p0 = p0.addScaledVector(dir, HS * 0.28); u.dir = dir; u.ta = 1;
+  atkArrow.rotation.y = Math.atan2(dir.x, dir.z) + Math.PI;
+}
 const bstuff = new THREE.Group(); bscene.add(bstuff);
 const wallMat = new THREE.MeshStandardMaterial({ color: 0xb8ae9a, roughness: 0.9, flatShading: true });
 const activeRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 30).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd84a, toneMapped: false }));
 bscene.add(activeRing); activeRing.visible = false;
 const vfx = createVfx(THREE, bscene);
-// warm everything up behind a loading screen: map + battle shaders, portraits, battlefields, creature fits
+// ---- loading: New game / Continue -> playable map.
+// Only what the first seconds of play need runs behind the loader: the map's shader programs (compileAsync: in
+// parallel where KHR_parallel_shader_compile exists, so the bar keeps moving) and the HUD's hero portraits.
+// Everything else (own town, battle programs + arenas, enemy walls) is queued for idle time
+// after the loader (postwarm below), most-likely-needed first; a battle or town opened before its job ran still
+// builds what it needs itself (prepBattle's curtain, setTown), and bumpWarm('battle') pulls the battle jobs forward
+// as soon as a fight is offered (monster / guard / siege dialog).
+let loadProf = null; // __realms.prewarmProfile(): [label, ms] per loader and postwarm job (perf checks)
+// Compile against a half-float render target like post's: three keys programs on the target (no tone mapping and linear
+// output off-screen vs ACES + sRGB on the canvas), and every view is drawn through post into rtScene, so a compile with
+// the canvas bound would build variants no frame ever uses while the real ones still compiled on the first draw.
+const warmRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+function compileSoon(sc, cm, ms = 6000, target = null) {
+  const prev = renderer.getRenderTarget();
+  let p;
+  renderer.setRenderTarget(warmRT);
+  try { p = renderer.compileAsync(sc, cm, target).catch((e) => console.warn('compile', e)); } catch (e) { p = Promise.resolve(); console.warn('compile', e); }
+  finally { renderer.setRenderTarget(prev); }
+  return Promise.race([p, new Promise((res) => setTimeout(res, ms))]);
+}
 function prewarm(onDone) {
-  const jobs = [];
-  jobs.push(['Painting the world', () => { try { renderer.compile(scene, camera); } catch (e) { /* ok */ } }]);
-  // portraits for the creatures you will actually see first: your faction (+ upgrades) and the map guards
-  const myFac = G.players[0]?.fac, need = new Set(G.objects.filter((o) => o.alive && o.type === 'monster').map((o) => o.unit));
-  for (const [id, u] of Object.entries(UNITS)) if (u.fac === myFac) need.add(id);
-  for (const id of need) jobs.push(['Summoning creatures', () => portraitImg(id, 64)]);
-  for (const hr of G.heroes.filter((h) => h.p === 0)) jobs.push(['Summoning heroes', () => { heroPic(hr, 40, 'round'); heroPic(hr, 96); }]);
-  for (const t of new Set([ter[G.heroes[0]?.v] ?? 1, 1, 2, 3, 4, 5, 6, 7])) jobs.push(['Preparing battlefields', () => createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS)]);
-  for (const id of need) jobs.push(['Training armies', () => { const g = cached('u' + id, () => unitGeo(id)); unitFit(id, g, 'battle'); unitFit(id, g, 'map'); }]);
-  for (const fac of new Set(G.towns.filter((t) => t.p !== 0 && t.built.includes('fort')).map((t) => t.fac))) jobs.push(['Raising walls', () => { cached('wall_' + fac, () => wallModel(fac)); cached('gate_' + fac, () => gateModel(fac)); cached('tower_' + fac, () => towerModel(fac)); cached('keep_' + fac, () => keepModel(fac)); }]);
-  // compile every battle program (units, arena ground/grid/decor/water, lava glow) and draw the likely first arena once,
-  // so its textures, buffers and shadow programs are on the GPU before the first fight (it used to cost the first
-  // battle ~4 frames' worth of stall)
-  jobs.push(['Sharpening swords', () => {
+  loadProf = [];
+  const jobs = []; // [label, weight, fn]; fn may return a promise (awaited while the bar creeps on)
+  jobs.push(['Shaping the world', 2, () => { if (worldDirty) layoutWorld(); }]);
+  jobs.push(['Painting the world', 6, () => compileSoon(scene, camera)]);
+  // the HUD's hero buttons (40 px round): rendered with a fenced readback, so waiting for it costs no main-thread stall
+  if (G.heroes.some((h) => h.p === 0)) jobs.push(['Summoning heroes', 1, () => { const P = G.players[0]; return portraitAsync(heroPortraitId(P.fac, P.color), 40, 'round'); }]);
+  const total = jobs.reduce((a, j) => a + j[1], 0), el = $('loader'), bar = $('ld-bar'), txt = $('ld-text');
+  let done = 0, shown = 0;
+  const show = (f) => { f = Math.min(1, Math.max(shown, f)); if (f - shown < 0.004 && f < 1) return; shown = f; bar.style.width = `${(f * 100).toFixed(1)}%`; };
+  el.hidden = false; show(0.02);
+  const yieldNow = () => new Promise((res) => setTimeout(res, 0));
+  (async () => {
+    await new Promise((res) => setTimeout(res, 30)); // let the loader paint first
+    let t0 = performance.now();
+    for (const [label, w, f] of jobs) {
+      if (txt.textContent !== label + '…') txt.textContent = label + '…';
+      const a = performance.now();
+      let r = null; try { r = f(); } catch (e) { console.warn('prewarm', label, e); }
+      if (r && typeof r.then === 'function') {
+        // creep toward this job's end while it runs off the main thread, so the bar never sits still
+        const to = (done + w) / total;
+        const iv = setInterval(() => show(shown + (to - shown) * 0.12), 100);
+        await r.catch(() => {}); clearInterval(iv); t0 = performance.now();
+      }
+      loadProf.push([label, Math.round(performance.now() - a)]);
+      done += w; show(done / total);
+      if (performance.now() - t0 > 40) { await yieldNow(); t0 = performance.now(); }
+    }
+    show(1);
+    el.classList.add('done'); setTimeout(() => { el.hidden = true; el.classList.remove('done'); }, 350);
+    onDone?.();
+    postwarm(postJobs());
+  })();
+}
+// the idle-time remainder of the warm-up, in priority order
+// Draw a scene once into the tiny off-screen target (never the canvas: nothing flashes on screen). After compileSoon
+// this costs no compile wait where programs link in parallel, and it does what a compile alone cannot: the shadow-pass
+// depth programs, and every vertex buffer and texture upload, i.e. what used to make a first battle / town frame hitch.
+function drawOffscreen(sc, cm) {
+  const prev = renderer.getRenderTarget(), sh = renderer.shadowMap.needsUpdate;
+  try { renderer.shadowMap.needsUpdate = true; renderer.setRenderTarget(warmRT); renderer.render(sc, cm); } catch (e) { console.warn('warm draw', e); }
+  finally { renderer.setRenderTarget(prev); renderer.shadowMap.needsUpdate = sh; }
+}
+// Compile a group's programs one top-level child per idle slice, with `target`'s lights and fog: each slice only
+// compiles that child's new programs, so a device without parallel shader compile gets a few short hitches instead
+// of one long one (and where programs link in parallel, nothing waits at all).
+const compileJobs = (k, label, root, cm, target) => root.children.map((c, i) => ({ k, label: `${label}.${i}`, f: () => compileSoon(c, cm, 6000, target) }));
+function postJobs() {
+  const out = [], add = (k, label, f) => out.push({ k, label, f });
+  // battle first: the arena of the hero's own terrain + one creature, compiled piece by piece, then one off-screen draw
+  const t0 = ter[G.heroes.find((h) => h.p === 0)?.v] ?? 1, terrs = [...new Set([t0, 1, 2, 3, 4, 5, 6, 7])];
+  let a0 = null;
+  add('battle', 'arena', () => {
     const m = meshOf(cached('upikeman', () => unitGeo('pikeman'))); setAnim(m, ANIM.IDLE);
-    const t0 = ter[G.heroes.find((h) => h.p === 0)?.v] ?? 1, fields = [...new Set([t0, 1, 2, 3, 4, 5, 6, 7])].map((t) => createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS));
-    bscene.add(m); for (const f of fields) bscene.add(f.group);
-    try { renderer.compile(bscene, bcam); } catch (e) { /* ok */ }
-    for (const f of fields.slice(1)) bscene.remove(f.group);
-    try { bcam.position.set(0, 10.75, 10.6); bcam.lookAt(0, 0, -0.15); post.render(bscene, bcam); } catch (e) { /* ok */ }
-    bscene.remove(m, fields[0].group);
-  }]);
-  // perf: the first town open used to build the whole faction scene (env, buildings, ink hulls) and compile its shaders
-  // on tap (a multi-second hitch on phones). Build the player's own town now and draw it once behind the loader, so
-  // opening it later only toggles the DOM sheet. town_view keeps each faction's environment and building geometry cached.
+    a0 = [createBattlefield(THREE, t0, hexPos, BT.COLS, BT.ROWS).group, m];
+    const g = new THREE.Group(); g.children.push(...a0[0].children, m); // a view for compileJobs only (no reparenting)
+    return { expand: [...compileJobs('battle', 'arena', g, bcam, bscene), { k: 'battle', label: 'arena draw', f: () => {
+      if (G.mode === 'battle') return; // a battle in progress owns bscene
+      bscene.add(...a0);
+      bcam.position.set(0, 10.75, 10.6); bcam.lookAt(0, 0, -0.15);
+      drawOffscreen(bscene, bcam);
+      bscene.remove(...a0);
+    } }] };
+  });
+  // the player's own town: geometry, programs piece by piece, one off-screen draw (opening it later is a DOM toggle)
   const myTown = G.towns.find((t) => t.p === 0);
   if (myTown) {
-    jobs.push(['Raising your town', () => { townView.highlight(null); townView.setTown({ fac: myTown.fac, built: myTown.built, name: myTown.name }); }]);
-    jobs.push(['Raising your town', () => { townView.update(1 / 60); try { post.render(townView.scene, townView.camera); } catch (e) { /* ok */ } }]);
+    add('town', 'town', () => {
+      if (G.mode !== 'map') return;
+      townView.highlight(null); townView.setTown({ fac: myTown.fac, built: myTown.built, name: myTown.name }); townView.update(1 / 60);
+      return { expand: [...compileJobs('town', 'town', townView.scene, townView.camera, townView.scene), { k: 'town', label: 'town draw', f: () => { if (G.mode === 'map') drawOffscreen(townView.scene, townView.camera); } }] };
+    });
   }
-  const total = jobs.length, el = $('loader');
-  el.hidden = false;
-  const step = () => {
-    const t0 = performance.now();
-    // run jobs for ~110 ms per slice, then let the bar repaint
-    while (jobs.length && performance.now() - t0 < 110) { const [label, f] = jobs.shift(); $('ld-text').textContent = label + '…'; try { f(); } catch (e) { console.warn('prewarm', e); } }
-    $('ld-bar').style.width = `${Math.round(((total - jobs.length) / total) * 100)}%`;
-    if (jobs.length) setTimeout(step, 0);
-    else { el.classList.add('done'); setTimeout(() => { el.hidden = true; el.classList.remove('done'); }, 350); onDone?.(); }
-  };
-  setTimeout(step, 30);
+  // creature geometry + fits and every portrait size the UI uses come from warmGeometryIdle (its own idle queue)
+  for (const fac of new Set(G.towns.filter((t) => t.p !== 0 && t.built.includes('fort')).map((t) => t.fac))) add('walls', 'walls ' + fac, () => { cached('wall_' + fac, () => wallModel(fac)); cached('gate_' + fac, () => gateModel(fac)); cached('tower_' + fac, () => towerModel(fac)); cached('keep_' + fac, () => keepModel(fac)); });
+  // last: the other terrains' arenas (their own decor / water / lava programs). Only where programs link in parallel:
+  // without KHR_parallel_shader_compile every compile occupies the GPU queue, and a fight started meanwhile would wait
+  // behind compiles it does not need (prepBattle compiles its own arena behind the curtain anyway)
+  if (renderer.extensions.has('KHR_parallel_shader_compile')) for (const t of terrs.slice(1)) add('battle2', 'arena ' + t, () => ({ expand: compileJobs('battle2', 'arena ' + t, createBattlefield(THREE, t, hexPos, BT.COLS, BT.ROWS).group, bcam, bscene) }));
+  return out;
+}
+// One job per idle slice, only while the map is calm (warmCalm) and the browser reports idle time (forced by the idle
+// timeout only once the first seconds of play are over); urgent (bumped) jobs run at once, calm or not. A job may
+// return { expand: [jobs] }: those run next. Creature geometry (warmGeometryIdle) follows when this queue is empty.
+const postQ = [];
+let postT = 0, postIn = false, postT0 = 0;
+function postSchedule(ms) { clearTimeout(postT); postT = setTimeout(() => { postT = 0; if (postQ[0]?.urgent) postRun(null); else idleCb(postRun); }, ms); }
+function postwarm(jobs) { postQ.length = 0; postQ.push(...jobs); postT0 = performance.now(); postSchedule(1200); }
+async function postRun(dl) {
+  if (postIn) return;
+  if (!postQ.length) { warmGeometryIdle(); return; }
+  const j = postQ[0], forced = dl?.didTimeout && performance.now() - postT0 > 4000;
+  if (!j.urgent && (!warmCalm() || (dl && !forced && dl.timeRemaining() < 4))) { postSchedule(250); return; }
+  postIn = true; postQ.shift();
+  const a = performance.now();
+  let r = null;
+  try { r = await j.f(); } catch (e) { console.warn('postwarm', j.label, e); }
+  if (r?.expand) postQ.unshift(...r.expand.map((x) => Object.assign(x, { urgent: j.urgent })));
+  loadProf?.push(['idle:' + j.label, Math.round(performance.now() - a)]);
+  postIn = false;
+  if (postQ.length) postSchedule(j.urgent ? 0 : 30); else warmGeometryIdle();
+}
+// bumpWarm('battle', [unit ids]): also the creatures of the fight on offer (geometry, battle fit, 64 px portrait), so
+// prepBattle behind the curtain finds them cached instead of building them and reading portraits back synchronously
+function bumpWarm(kind, ids = []) {
+  const hit = postQ.filter((j) => j.k === kind);
+  for (const id of new Set(ids)) {
+    if (!id || !UNITS[id] || (geoCache.has('u' + id) && hasPortrait(id, 64)) || postQ.some((j) => j.label === 'foe ' + id)) continue;
+    hit.push({ k: kind, label: 'foe ' + id, f: () => { unitFit(id, cached('u' + id, () => unitGeo(id)), 'battle'); return hasPortrait(id, 64) ? null : portraitAsync(id, 64); } });
+  }
+  if (!hit.length) return;
+  for (const j of hit) { j.urgent = true; const i = postQ.indexOf(j); if (i >= 0) postQ.splice(i, 1); }
+  postQ.unshift(...hit);
+  if (!postIn) postSchedule(0);
 }
 // scenery around the field
 let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
@@ -1320,8 +1759,8 @@ let bprep = null;
 const bcurtain = document.createElement('div');
 bcurtain.id = 'bcurtain'; bcurtain.hidden = true; bcurtain.innerHTML = icon('attack', 72); document.body.appendChild(bcurtain);
 const nextFrame = () => new Promise((res) => requestAnimationFrame(() => res()));
-function curtain(on) {
-  if (on) { bcurtain.hidden = false; bcurtain.classList.remove('off'); bcurtain.classList.add('on'); return; }
+function curtain(on, exit = false) {
+  if (on) { bcurtain.hidden = false; bcurtain.classList.toggle('exit', exit); bcurtain.classList.remove('off'); bcurtain.classList.add('on'); return; }
   bcurtain.classList.remove('on'); bcurtain.classList.add('off');
   setTimeout(() => { if (!bcurtain.classList.contains('on')) bcurtain.hidden = true; }, 400);
 }
@@ -1353,7 +1792,7 @@ async function prepBattle(job) {
   // upload the arena's painted textures and compile every program the battle scene needs before its first frame
   for (const tx of [bfield.ground?.material.map, bfield.ground?.material.emissiveMap, bfield.overlay?.material.map]) if (tx) renderer.initTexture(tx);
   await nextFrame(); if (!live()) return;
-  try { await Promise.race([renderer.compileAsync(bscene, bcam), new Promise((res) => setTimeout(res, 2500))]); } catch (e) { console.warn('battle shaders', e); }
+  try { await compileSoon(bscene, bcam, 2500); } catch (e) { console.warn('battle shaders', e); } // the off-screen variants post draws with
   if (!live()) return;
   bprep = null;
   $('battle').hidden = false;
@@ -1402,6 +1841,8 @@ function buildBattleScene(B, ctx) {
     if (lay.keep) { const kp = meshOf(cached('keep_' + sfac, () => keepModel(sfac))); kp.position.copy(lay.keep); kp.scale.setScalar(lay.keepScale); bstuff.add(kp); }
   }
   clearPlates(); for (const f of floaters) f.el.remove(); floaters.length = 0;
+  // a new field: highlights start from nothing (no fade from the last battle), no stale preview or arrow
+  hexT.snap = true; hexT.a.fill(0); hexT.busy = true; bpreview = null; bhover = null; atkArrow.userData.a = atkArrow.userData.ta = 0; atkArrow.visible = false;
   for (const s of B.stacks) {
     const m = meshOf(cached('u' + s.id, () => unitGeo(s.id)));
     applyFit(m, unitFit(s.id, cached('u' + s.id, () => unitGeo(s.id)), 'battle'));
@@ -1415,48 +1856,91 @@ function buildBattleScene(B, ctx) {
 // stack's hex. They are depth-tested inside the battle scene, so a creature standing in front of a
 // plate hides it, while each plate is pulled a little toward the camera so its own creature's
 // feet/chest never swallow it. Fixed screen size (no size attenuation); text is redrawn into a tiny
-// canvas only when the shown count changes.
+// canvas only when what it shows changes (count, kill preview, top member's HP).
+// Readability: plates draw after the selection ring and particles (renderOrder), and their blending
+// clears the scene alpha under them; post.render reads that as a mask and keeps bloom (the ring's and
+// glowing creatures' halo) off the plate pixels.
 const bplates = new THREE.Group(); bscene.add(bplates);
 const bplateMap = new Map();
 const PLATE_PX = 15, PLATE_FWD = 0.3, PLATE_BIAS = 0.22;
 const plateA = new THREE.Vector3(), plateD = new THREE.Vector3();
+// estimated kills shown on a plate while an attack/spell on that stack is being previewed (uid -> text)
+const plateEst = new Map();
+function plateMat(extra) {
+  return new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false, fog: false, toneMapped: false,
+    blending: THREE.CustomBlending, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+    blendSrcAlpha: THREE.ZeroFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor, ...extra });
+}
 function makePlate(s) {
   const cv = document.createElement('canvas');
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, sizeAttenuation: false, fog: false, toneMapped: false }));
-  sp.renderOrder = 5; sp.frustumCulled = false; sp.visible = false;
+  const sp = new THREE.Sprite(plateMat({ map: tex }));
+  sp.renderOrder = 61; sp.frustumCulled = false; sp.visible = false;
   // x-ray ghost: same texture, no depth test, faint, drawn first so the real plate covers it where visible
-  const ghost = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, opacity: 0.4, sizeAttenuation: false, fog: false, toneMapped: false }));
-  ghost.renderOrder = 4; ghost.frustumCulled = false; ghost.visible = false;
-  sp.userData = { cv, tex, side: s.side, n: null, pr: 0, ghost };
+  const ghost = new THREE.Sprite(plateMat({ map: tex, depthTest: false, opacity: 0.4 }));
+  ghost.renderOrder = 60; ghost.frustumCulled = false; ghost.visible = false;
+  sp.userData = { cv, tex, side: s.side, sig: '', pr: 0, ghost };
   bplateMap.set(s.uid, sp); bplates.add(ghost);
   return sp;
 }
-function drawPlate(sp, n) {
+function drawPlate(sp, n, est = '', hpf = 1) {
   const u = sp.userData, pr = Math.min(3, Math.max(1, renderer.getPixelRatio()));
-  if (u.n === n && u.pr === pr) return;
-  u.n = n; u.pr = pr;
+  const hq = hpf >= 0.999 ? 20 : Math.max(1, Math.round(hpf * 20)), sig = `${n}|${pr}|${est}|${hq}`;
+  if (u.sig === sig) return;
+  u.sig = sig; u.pr = pr;
   const txt = n >= 10000 ? `${Math.round(n / 1000)}k` : String(n);
   const h = Math.round(PLATE_PX * pr), cv = u.cv, g = cv.getContext('2d');
-  const font = `900 ${Math.round(h * 0.78)}px Nunito, system-ui, sans-serif`;
+  const font = `900 ${Math.round(h * 0.78)}px Nunito, system-ui, sans-serif`, tfont = `900 ${Math.round(h * 0.74)}px Nunito, system-ui, sans-serif`;
   g.font = font;
-  const w = Math.max(Math.round(h * 1.5), Math.ceil(g.measureText(txt).width + h * 0.75));
-  cv.width = w; cv.height = h;
+  const pw = Math.max(Math.round(h * 1.5), Math.ceil(g.measureText(txt).width + h * 0.75));
+  g.font = tfont;
+  const tw = est ? Math.ceil(g.measureText(est).width + h * 0.6) : 0;
+  // layout (device px, top to bottom): kill-preview tag, pill, HP bar; the space is always reserved so the
+  // pill never shifts when a preview or a wound appears
+  const pad = Math.round(2 * pr), tagH = Math.round(h * 0.95), barH = Math.round(h * 0.34);
+  const w = Math.max(pw, tw) + pad * 2, H = pad + tagH + h + barH + pad;
+  cv.width = w; cv.height = H;
+  const x0 = (w - pw) / 2, y0 = pad + tagH;
+  const dark = u.side === 1 ? '#4a0a0a' : '#0a1440';
+  // a soft dark backing keeps the pill readable over bright ground, glows and spell light
+  g.save(); g.shadowColor = 'rgba(0,0,0,0.7)'; g.shadowBlur = 2 * pr; g.shadowOffsetY = 0.5 * pr;
+  g.beginPath(); g.roundRect(x0, y0, pw, h, h / 2); g.fillStyle = dark; g.fill(); g.restore();
   // the plate: rounded pill, faction-side colour, dark rim
   const lw = Math.max(1, pr), r = h / 2 - lw / 2;
-  g.beginPath(); g.roundRect(lw / 2, lw / 2, w - lw, h - lw, r);
-  const grd = g.createLinearGradient(0, 0, 0, h);
-  if (u.side === 1) { grd.addColorStop(0, '#ff8a72'); grd.addColorStop(1, '#b02a22'); } else { grd.addColorStop(0, '#6a94ff'); grd.addColorStop(1, '#2a4aa8'); }
-  g.fillStyle = grd; g.fill(); g.lineWidth = lw; g.strokeStyle = u.side === 1 ? '#4a0a0a' : '#0a1440'; g.stroke();
+  g.beginPath(); g.roundRect(x0 + lw / 2, y0 + lw / 2, pw - lw, h - lw, r);
+  const grd = g.createLinearGradient(0, y0, 0, y0 + h);
+  if (u.side === 1) { grd.addColorStop(0, '#f07a62'); grd.addColorStop(1, '#a0241c'); } else { grd.addColorStop(0, '#5a84f0'); grd.addColorStop(1, '#22409a'); }
+  g.fillStyle = grd; g.fill(); g.lineWidth = lw; g.strokeStyle = dark; g.stroke();
   g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-  g.lineWidth = Math.max(2, pr * 1.6); g.strokeStyle = u.side === 1 ? '#4a0a0a' : '#0a1440'; g.strokeText(txt, w / 2, h * 0.54);
-  g.fillStyle = '#fff'; g.fillText(txt, w / 2, h * 0.54);
+  g.lineWidth = Math.max(2, pr * 1.6); g.strokeStyle = dark; g.strokeText(txt, w / 2, y0 + h * 0.54);
+  g.fillStyle = '#fff'; g.fillText(txt, w / 2, y0 + h * 0.54);
+  // top member's HP (only once it is wounded)
+  if (hq < 20) {
+    const bw = Math.round(pw * 0.8), bx = (w - bw) / 2, by = y0 + h + Math.round(barH * 0.2), bh = Math.max(2, Math.round(barH * 0.62));
+    g.beginPath(); g.roundRect(bx, by, bw, bh, bh / 2); g.fillStyle = 'rgba(10,6,4,0.85)'; g.fill();
+    const f = hq / 20, fw = Math.max(bh, (bw - 2) * f);
+    g.beginPath(); g.roundRect(bx + 1, by + 1, fw, bh - 2, (bh - 2) / 2); g.fillStyle = f > 0.6 ? '#62e04e' : f > 0.3 ? '#ffd23c' : '#ff5a3a'; g.fill();
+  }
+  // estimated kills of the attack/spell being previewed, red on a dark tag above the pill
+  if (est) {
+    const tx = (w - tw) / 2, ty = pad, th = tagH - Math.round(h * 0.12);
+    g.beginPath(); g.roundRect(tx, ty, tw, th, th / 2.4); g.fillStyle = 'rgba(28,4,4,0.88)'; g.fill(); g.lineWidth = lw; g.strokeStyle = '#ff6a5a'; g.stroke();
+    g.font = tfont; g.fillStyle = '#ff6a5a'; g.fillText(est, w / 2, ty + th * 0.54);
+  }
+  // the sprite's anchor stays on the pill's centre
+  sp.center.set(0.5, 1 - (y0 + h / 2) / H); u.ghost.center.copy(sp.center);
+  u.H = H;
   u.tex.dispose(); u.tex.needsUpdate = true; // canvas size can change: drop the old GPU texture
 }
-// shown count (what the player has SEEN) -> plate text/visibility
+// shown count (what the player has SEEN) -> plate text/visibility. The HP bar follows the top member's HP
+// only once the plate shows the real count (pending hits keep the last seen value).
 function setPlate(s) {
   const sp = bplateMap.get(s.uid); if (!sp) return;
-  if (s.shown > 0) drawPlate(sp, s.shown);
+  if (s.shown === s.count) s.shownHp = s.count > 0 ? s.hp / s.u.hp : 1;
+  const est = plateEst.get(s.uid) || '';
+  // a previewed target's plate (with its kill estimate) is the focus: it draws over whatever stands in front of it
+  if (sp.material.depthTest !== !est) sp.material.depthTest = !est;
+  if (s.shown > 0) drawPlate(sp, s.shown, est, s.shownHp ?? 1);
 }
 // per frame, after the battle camera moved: anchor each plate on the ground in front of its stack
 function updatePlates() {
@@ -1467,8 +1951,8 @@ function updatePlates() {
     const sp = bplateMap.get(s.uid), m = bmesh.get(s.uid); if (!sp) continue;
     const show = !!m && m.visible && !m.userData.dying && s.shown > 0;
     sp.visible = sp.userData.ghost.visible = show; if (!show) continue;
-    if (sp.userData.pr !== pr) drawPlate(sp, s.shown);
-    const cv = sp.userData.cv; sp.scale.set((sy * cv.width) / cv.height, sy, 1);
+    if (sp.userData.pr !== pr) setPlate(s);
+    const cv = sp.userData.cv, k = cv.height / (PLATE_PX * pr); sp.scale.set((sy * k * cv.width) / cv.height, sy * k, 1);
     // ground point at the front (camera-facing) edge of the hex, ignoring flight height and hops
     plateD.set(bcam.position.x - m.position.x, 0, bcam.position.z - m.position.z).normalize();
     plateA.set(m.position.x, 0.06, m.position.z).addScaledVector(plateD, PLATE_FWD);
@@ -1480,102 +1964,225 @@ function updatePlates() {
 }
 function clearPlates() {
   for (const sp of bplateMap.values()) { sp.userData.tex.dispose(); sp.material.dispose(); sp.userData.ghost.material.dispose(); }
-  bplates.clear(); bplateMap.clear();
+  bplates.clear(); bplateMap.clear(); plateEst.clear();
 }
+// highlight palette (battle hexes)
+const HX = { grn: new THREE.Color(0xb6ff7c), red: new THREE.Color(0xff6a5a), blu: new THREE.Color(0x7ac8ff), vio: new THREE.Color(0xd2a0ff), gold: new THREE.Color(0xffd84a) };
+const killTxt = (lo, hi) => (lo === hi ? `−${lo}` : `−${lo}…${hi}`);
+// stacks of d that a flat hit of dmg would kill (no dice: spell damage)
+function killsBy(d, dmg) { const pool = (d.count - 1) * d.u.hp + d.hp; return dmg >= pool ? d.count : Math.max(0, d.count - Math.ceil((pool - dmg) / d.u.hp)); }
+const spellValid = (id, t) => { const S = SPELLS[id]; return S.target === 'area' || (!!t && t.count > 0 && ((S.target === 'enemy' && t.side === 1) || (S.target === 'ally' && t.side === 0))); };
 function refreshBattle() {
   const B = BB; if (!B) return;
-  for (const s of B.stacks) {
-    // labels show what the player has SEEN: pending attack animations update them on impact
-    if (!banim.length || s.shown === undefined) s.shown = s.count;
-    setPlate(s);
-  }
   // highlight what the active stack can do
   const s = B.active, mineTurn = s && sideOwner(s.side) === 0 && !bauto && !B.over && !banim.length;
-  const reach = mineTurn ? BT.reachable(B, s) : new Map();
-  const white = new THREE.Color(0x203a10), grn = new THREE.Color(0xe8ffc0), red = new THREE.Color(0xff6a5a), blu = new THREE.Color(0x7ac8ff);
+  // the preview (tap 1 / mouse hover) only lives during the player's own turn, on a live target, in the matching mode
+  if (!mineTurn) { bpreview = null; bhover = null; }
+  if (bpreview && bpreview.uid >= 0 && !(B.stacks[bpreview.uid]?.count > 0)) bpreview = null;
+  if (bpreview && (bpreview.kind === 'spell') !== !!bspell) bpreview = null;
+  const pv = bpreview, S = bspell ? SPELLS[bspell] : null, pt = pv && pv.uid >= 0 ? B.stacks[pv.uid] : null;
+  // estimated kills on the previewed target's plate (every stack an area spell would hit, own ones included)
+  plateEst.clear();
+  let pmsg = '';
+  if (pv && pv.kind === 'atk' && pt) {
+    const est = BT.estimate(B, s, pt, pv.shoot);
+    plateEst.set(pt.uid, killTxt(est.klo, est.khi));
+    pmsg = `${icon(pv.shoot ? 'shots' : 'attack', 16)} ${est.lo === est.hi ? est.lo : `${est.lo}–${est.hi}`} damage · kills ${est.klo === est.khi ? est.klo : `${est.klo}–${est.khi}`} of ${pt.count} ${plural(pt.id, pt.count)} · <b>${pv.src === 'hover' ? 'click' : 'tap again'} to strike</b>`;
+  } else if (pv && pv.kind === 'spell') {
+    const dmg = BT.spellDamage ? BT.spellDamage(B, 0, bspell) : 0;
+    const hit = S.target === 'area' ? B.stacks.filter((x) => x.count > 0 && BT.dist(x, [pv.c, pv.r]) <= 1) : pt ? [pt] : [];
+    let kills = 0;
+    if (dmg > 0) for (const x of hit) { const k = killsBy(x, dmg); plateEst.set(x.uid, killTxt(k, k)); if (x.side === 1) kills += k; }
+    const own = S.target === 'area' && hit.some((x) => x.side === 0);
+    pmsg = `${icon(bspell, 18)} <b>${S.name}</b>${pt ? ` on ${UNITS[pt.id].name} ×${pt.count}` : hit.length ? ` hits ${hit.length} stack${hit.length > 1 ? 's' : ''}` : ''}${dmg ? ` · ${dmg} damage · kills ${kills}` : ''}${own ? ' · <b>hits your troops too!</b>' : ''} · <b>${pv.src === 'hover' ? 'click' : 'tap again'} to cast</b>`;
+  }
+  for (const st of B.stacks) {
+    // labels show what the player has SEEN: pending attack animations update them on impact
+    if (!banim.length || st.shown === undefined) st.shown = st.count;
+    setPlate(st);
+  }
+  const reach = mineTurn && !bspell ? BT.reachable(B, s) : null;
+  const canHit = new Map();
+  const attackable = (st) => { if (!canHit.has(st.uid)) canHit.set(st.uid, BT.canShoot(B, s) || BT.nbrs(st.c, st.r).some(([x, y]) => x === s.c && y === s.r) || BT.attackFrom(B, s, st).length > 0); return canHit.get(st.uid); };
   for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) {
     const k = BT.key(c, r), st = BT.stackAt(B, c, r);
-    let col = white;
-    if (mineTurn && reach.has(k) && !st) col = grn;
-    if (mineTurn && st && st.side !== s.side && (BT.canShoot(B, s) || BT.attackFrom(B, s, st).length || BT.nbrs(st.c, st.r).some(([x, y]) => x === s.c && y === s.r))) col = red;
-    if (bspell && st) col = SPELLS[bspell].target === 'ally' ? (st.side === 0 ? blu : white) : st.side === 1 ? red : white;
-    hexes.setColorAt(k, col);
-    dummy.position.copy(hexPos(c, r)); dummy.quaternion.identity(); dummy.scale.setScalar(col === white ? 0.0001 : 0.92); dummy.updateMatrix(); hexes.setMatrixAt(k, dummy.matrix);
+    let col = null, a = 0;
+    if (mineTurn && bspell) {
+      // spell targeting: every valid target lit (violet for a strike, blue for a blessing); the previewed one, or the
+      // blast of an area spell, brighter
+      if (S.target === 'area') { col = HX.vio; a = 0.35; if (pv && BT.dist([c, r], [pv.c, pv.r]) <= 1) a = c === pv.c && r === pv.r ? 2.8 : 1.9; }
+      else if (spellValid(bspell, st)) { col = S.target === 'ally' ? HX.blu : HX.vio; a = pv && pv.uid === st.uid ? 2.8 : 1.5; }
+    } else if (mineTurn) {
+      if (reach.has(k) && !st && !(c === s.c && r === s.r)) { col = HX.grn; a = bhover && bhover.k === k ? 2.4 : 1.25; }
+      if (st && st.side !== s.side && attackable(st)) { col = HX.red; a = pv && pv.uid === st.uid ? 2.8 : 1.4; }
+      // the hex the attacker will strike from
+      if (pv && pv.kind === 'atk' && pv.from && pv.from[0] === c && pv.from[1] === r) { col = HX.gold; a = 2.6; }
+    }
+    if (col) hexTarget(k, col, a); else { hexT.a[k] = 0; hexT.busy = true; }
   }
-  hexes.instanceColor.needsUpdate = true; hexes.instanceMatrix.needsUpdate = true;
+  showArrow(pv && pv.kind === 'atk' && pv.from ? pv.from : null, pt);
   // the ring stays on the stack whose action is playing and moves on only once the queue has drained
   const rs = banim.length && bactor >= 0 ? B.stacks[bactor] : s;
   if (rs && rs.count > 0) vfx.select(bmesh.get(rs.uid), rs.side === 0 ? 0xffd84a : 0xff5a4a); else vfx.select(null);
-  // the turn order strip
-  $('b-queue').innerHTML = BT.queue(B, 9).map((x, i) => `<span class="q s${x.side}${i === 0 ? ' now' : ''}">${unitIcon(x.id)}<b>${x.shown ?? x.count}</b></span>`).join('');
+  renderQueue(B);
   const h0 = B.heroes[0];
   $('b-spell').disabled = !h0 || B.cast[0] || !h0.spells.some((id) => h0.mana >= SPELLS[id].mana) || !mineTurn;
-  $('b-spell').innerHTML = `${icon('spellbook', 24)}<small>${h0 ? `Mana ${h0.mana}` : 'Spells'}</small>`;
+  $('b-spell').classList.toggle('on', !!bspell);
+  $('b-spell').innerHTML = `${icon('spellbook', 24)}<small>${bspell ? 'Cancel' : h0 ? `Mana ${h0.mana}` : 'Spells'}</small>`;
   $('b-wait').disabled = $('b-def').disabled = !mineTurn;
   $('b-auto').classList.toggle('on', bauto);
-  $('b-msg').innerHTML = !s ? '' : mineTurn ? (bspell ? `${icon(bspell, 18)} Choose a target for <b>${SPELLS[bspell].name}</b>` : `<b>${UNITS[s.id].name} ×${s.count}</b> · ${BT.canShoot(B, s) ? `${icon('shots', 16)} ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move, a red enemy to attack'}`) : sideOwner(s.side) === 0 ? (bauto ? `${icon('auto', 16)} Auto battle…` : '…') : `Enemy ${UNITS[s.id].name} ×${s.count} is acting…`;
+  $('b-msg').innerHTML = !s ? '' : mineTurn ? (pmsg || (bspell ? `${icon(bspell, 18)} Choose a target for <b>${S.name}</b> · tap elsewhere to cancel` : `<b>${UNITS[s.id].name} ×${s.count}</b> · ${BT.canShoot(B, s) ? `${icon('shots', 16)} ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move, a red enemy to attack'}`)) : sideOwner(s.side) === 0 ? (bauto ? `${icon('auto', 16)} Auto battle…` : '…') : `Enemy ${UNITS[s.id].name} ×${s.count} is acting…`;
+}
+// the turn order strip: icons are keyed by stack and round, so when a stack acts its icon collapses away and the
+// rest slide along (CSS width transitions); reorders (waits) slide via FLIP; new ones grow in at the tail
+let bqB = null, bqSig = '';
+function renderQueue(B) {
+  const box = $('b-queue');
+  if (bqB !== B) { bqB = B; bqSig = ''; box.textContent = ''; }
+  const q = BT.queue(B, 9), L = B.stacks.filter((x) => x.count > 0 && !x.acted).length;
+  const items = q.map((x, i) => ({ x, k: `${x.uid}@${B.round + (i >= L ? 1 : 0)}`, n: x.shown ?? x.count, ic: unitIcon(x.id) }));
+  // the stack whose action is still playing keeps the head (and its ring) until the queue drains
+  const ax = banim.length && bactor >= 0 ? B.stacks[bactor] : null;
+  if (ax && ax.acted && (ax.shown ?? ax.count) > 0) { items.unshift({ x: ax, k: `${ax.uid}@${B.round}`, n: ax.shown ?? ax.count, ic: unitIcon(ax.id) }); items.length = Math.min(items.length, 9); }
+  const sig = items.map((it) => `${it.k}:${it.n}:${it.ic.length}`).join(',');
+  if (sig === bqSig) return;
+  const first = !bqSig; bqSig = sig;
+  const live = new Map();
+  for (const el of box.children) if (!el.classList.contains('gone')) live.set(el.dataset.k, el);
+  const keep = new Set(items.map((it) => it.k)), old = new Map();
+  if (!first) for (const [k, el] of live) if (keep.has(k)) old.set(el, el.getBoundingClientRect().left);
+  for (const [k, el] of live) if (!keep.has(k)) { el.classList.add('gone'); el.classList.remove('now'); setTimeout(() => el.remove(), 360); }
+  const fresh = [];
+  const order = items.map((it, i) => {
+    let el = live.get(it.k);
+    if (!el) { el = document.createElement('span'); el.dataset.k = it.k; el.className = `q s${it.x.side}`; if (!first) { el.classList.add('in'); fresh.push(el); } }
+    if (el._ic !== it.ic) { el._ic = it.ic; el.innerHTML = `${it.ic}<b></b>`; }
+    const b = el.lastElementChild; if (b.textContent !== String(it.n)) b.textContent = it.n;
+    el.classList.toggle('now', i === 0);
+    return el;
+  });
+  // live icons in queue order; collapsing ones stay where they were (moving a node would cancel its transition)
+  let ref = box.firstElementChild;
+  for (const el of order) {
+    while (ref && ref.classList.contains('gone')) ref = ref.nextElementSibling;
+    if (ref === el) ref = ref.nextElementSibling; else box.insertBefore(el, ref);
+  }
+  if (first) return;
+  // FLIP the icons that changed place
+  const moved = [];
+  for (const [el, x0] of old) { const dx = x0 - el.getBoundingClientRect().left; if (Math.abs(dx) > 2) { el.style.transition = 'none'; el.style.transform = `translateX(${dx}px)`; moved.push(el); } }
+  void box.offsetWidth;
+  for (const el of moved) { el.style.transition = ''; el.style.transform = ''; }
+  for (const el of fresh) el.classList.remove('in');
 }
 const sideOwner = (side) => bctx.sides[side].owner;
 // the player may act: their stack's turn, nothing animating, auto off (guards taps and the wait/defend buttons)
 function myTurn() { const B = BB, s = B?.active; return !!s && !B.over && !banim.length && !bauto && !s.acted && s.count > 0 && sideOwner(s.side) === 0; }
-let bpreviewAt = 0;
-function battleTap(cx, cy) {
-  const B = BB; if (!myTurn()) return;
-  const s = B.active;
+// screen point -> battle hex: tapping a creature's body selects its hex (the ground point behind a tall unit
+// belongs to another hex); p is the ground point under the finger (it picks the attack-from side)
+function pickHex(cx, cy) {
+  const B = BB, s = B.active;
   ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, bcam);
   let best = null, bd = 1e9;
-  // tapping a creature's body selects its hex (the ground point behind a tall unit belongs to another hex)
   const groups = B.stacks.filter((st) => st.count > 0 && bmesh.get(st.uid)).map((st) => [st, bmesh.get(st.uid)]);
   const hit = ray.intersectObjects(groups.map(([, g]) => g), true).find((h) => !h.object.userData.blob);
   if (hit) { const g = groups.find(([, gg]) => { let o = hit.object; while (o) { if (o === gg) return true; o = o.parent; } return false; }); if (g) { best = [g[0].c, g[0].r]; bd = 0; } }
-  // ground point under the finger: picks the hex, and the attack-from hex when a unit's body was tapped
   const p = new THREE.Vector3(); if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p)) p.copy(hexPos(s.c, s.r));
   if (!best) {
     for (let r = 0; r < BT.ROWS; r++) for (let c = 0; c < BT.COLS; c++) { const d = hexPos(c, r).distanceTo(p); if (d < bd) { bd = d; best = [c, r]; } }
   }
-  if (!best || bd > HS * 1.2) return;
-  const [c, r] = best, t = BT.stackAt(B, c, r);
+  if (!best || bd > HS * 1.2) return null;
+  return { c: best[0], r: best[1], k: BT.key(best[0], best[1]), p };
+}
+// how the active stack would hit t: shoot, strike from where it stands, or from the reachable neighbour hex
+// closest to the pointer
+function attackPlan(B, s, t, p) {
+  if (BT.canShoot(B, s)) return { shoot: true, from: null };
+  if (BT.nbrs(t.c, t.r).some(([x, y]) => x === s.c && y === s.r)) return { shoot: false, from: [s.c, s.r] };
+  const fr = BT.attackFrom(B, s, t); if (!fr.length) return null;
+  return { shoot: false, from: fr.sort((a, b) => hexPos(a[0], a[1]).distanceTo(p) - hexPos(b[0], b[1]).distanceTo(p))[0] };
+}
+const sameFrom = (a, b) => (!a && !b) || (!!a && !!b && a[0] === b[0] && a[1] === b[1]);
+function cancelSpell() { bspell = null; bpreview = null; sfx.click(); refreshBattle(); }
+// the previewed action commits only on a second tap at least this long after the preview appeared (an accidental
+// double tap never strikes); a mouse that hovered the target first commits with one click
+const PREVIEW_HOLD = 250, HOVER_HOLD = 150;
+const previewReady = (pv) => performance.now() - pv.at >= (pv.src === 'hover' ? HOVER_HOLD : PREVIEW_HOLD);
+// bhover: the hex under the mouse (desktop only)
+let bhover = null;
+function battleTap(cx, cy) {
+  const B = BB; if (!myTurn()) return;
+  const s = B.active, pk = pickHex(cx, cy), now = performance.now();
   if (bspell) {
-    const S = SPELLS[bspell];
-    if (S.target === 'area' || (t && ((S.target === 'enemy' && t.side === 1) || (S.target === 'ally' && t.side === 0)))) {
-      BT.castSpell(B, 0, bspell, S.target === 'area' ? null : t, c, r);
-      bspell = null; afterAction(); 
-    } else sfx.deny();
-    return;
+    // tap 1 on a valid target previews it, tap 2 casts; tapping anything else (or off the field) cancels the spell
+    const S = SPELLS[bspell], t = pk && BT.stackAt(B, pk.c, pk.r);
+    if (!pk || !spellValid(bspell, t)) { cancelSpell(); return; }
+    const uid = S.target === 'area' ? -1 : t.uid, pv = bpreview;
+    const same = pv && pv.kind === 'spell' && (uid >= 0 ? pv.uid === uid : pv.c === pk.c && pv.r === pk.r);
+    if (!same) { bpreview = { kind: 'spell', uid, c: pk.c, r: pk.r, at: now, src: 'tap' }; sfx.click(); refreshBattle(); return; }
+    if (!previewReady(pv)) return;
+    BT.castSpell(B, 0, bspell, uid >= 0 ? t : null, pk.c, pk.r);
+    bspell = null; afterAction(); return;
   }
+  if (!pk) return;
+  const { c, r } = pk, t = BT.stackAt(B, c, r);
   if (t && t.side !== s.side) {
-    const shoot = BT.canShoot(B, s);
-    if (bpreview !== t.uid) {
-      const adj0 = BT.nbrs(t.c, t.r).some(([x, y]) => x === s.c && y === s.r);
-      if (!shoot && !adj0 && !BT.attackFrom(B, s, t).length) { toast('Too far to reach this turn.'); sfx.deny(); return; }
-      const est = BT.estimate(B, s, t, shoot);
-      bpreview = t.uid; bpreviewAt = performance.now(); sfx.click();
-      $('b-msg').innerHTML = `${icon(shoot ? 'shots' : 'attack', 16)} ${est.lo === est.hi ? est.lo : `${est.lo}–${est.hi}`} damage · kills ${est.klo === est.khi ? est.klo : `${est.klo}–${est.khi}`} of ${t.count} ${plural(t.id, t.count)} · <b>tap again to strike</b>`;
-      return;
-    }
-    // an accidental double tap must not turn the damage preview straight into a strike
-    if (performance.now() - bpreviewAt < 250) return;
+    const plan = attackPlan(B, s, t, pk.p);
+    if (!plan) { bpreview = null; refreshBattle(); toast('Too far to reach this turn.'); sfx.deny(); return; }
+    const pv = bpreview, same = pv && pv.kind === 'atk' && pv.uid === t.uid;
+    // tap 1 (or a tap on another side of the target) previews: kills on its plate, the strike-from hex and arrow
+    if (!same || !sameFrom(pv.from, plan.from)) { bpreview = { kind: 'atk', uid: t.uid, from: plan.from, shoot: plan.shoot, at: now, src: 'tap' }; sfx.click(); refreshBattle(); return; }
+    if (!previewReady(pv)) return;
     bpreview = null;
-    if (shoot) { BT.actShoot(B, s, t); afterAction(); return; }
-    const adj = BT.nbrs(t.c, t.r).some(([x, y]) => x === s.c && y === s.r);
-    // attack from the reachable neighbour hex closest to where you tapped
-    const from = adj ? [s.c, s.r] : BT.attackFrom(B, s, t).sort((a, b) => hexPos(a[0], a[1]).distanceTo(p) - hexPos(b[0], b[1]).distanceTo(p))[0];
-    if (!from) { toast('Too far to reach this turn.'); sfx.deny(); return; }
-    BT.actAttack(B, s, t, from); afterAction(); return;
+    if (plan.shoot) { BT.actShoot(B, s, t); afterAction(); return; }
+    BT.actAttack(B, s, t, pv.from); afterAction(); return;
   }
   if (!t && BT.reachable(B, s).has(BT.key(c, r)) && !(c === s.c && r === s.r)) { BT.actMove(B, s, c, r); afterAction(); return; }
+  if (bpreview) { bpreview = null; refreshBattle(); }
   sfx.deny();
+}
+// desktop: hovering previews the attack / spell target and lights the hex under the pointer
+function battleHover(cx, cy) {
+  const B = BB; if (!B || !myTurn()) return;
+  const s = B.active, pk = pickHex(cx, cy), t = pk && BT.stackAt(B, pk.c, pk.r), now = performance.now();
+  let pv = bpreview && bpreview.src === 'tap' ? bpreview : null;
+  if (!pv && pk) {
+    const cur = bpreview;
+    if (bspell) {
+      if (spellValid(bspell, t)) {
+        const uid = SPELLS[bspell].target === 'area' ? -1 : t.uid;
+        pv = cur && cur.kind === 'spell' && (uid >= 0 ? cur.uid === uid : cur.c === pk.c && cur.r === pk.r) ? cur : { kind: 'spell', uid, c: pk.c, r: pk.r, at: now, src: 'hover' };
+      }
+    } else if (t && t.side !== s.side) {
+      const plan = attackPlan(B, s, t, pk.p);
+      if (plan) pv = cur && cur.kind === 'atk' && cur.uid === t.uid && sameFrom(cur.from, plan.from) ? cur : { kind: 'atk', uid: t.uid, from: plan.from, shoot: plan.shoot, at: now, src: 'hover' };
+    }
+  }
+  const hk = pk ? pk.k : -1, changed = pv !== bpreview || (bhover ? bhover.k : -1) !== hk;
+  bpreview = pv; bhover = pk;
+  if (changed) refreshBattle();
+}
+{
+  let hx = 0, hy = 0, hq = false;
+  cvs.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse' || G.mode !== 'battle' || e.buttons) return;
+    hx = e.clientX; hy = e.clientY;
+    if (!hq) { hq = true; requestAnimationFrame(() => { hq = false; if (G.mode === 'battle' && BB) battleHover(hx, hy); }); }
+  }, { passive: true });
+  cvs.addEventListener('pointerleave', () => { if (G.mode !== 'battle' || !BB) return; if (bhover || bpreview?.src === 'hover') { bhover = null; if (bpreview?.src === 'hover') bpreview = null; refreshBattle(); } }, { passive: true });
 }
 function afterAction(actor = BB.active) { bpreview = null; bactor = actor ? actor.uid : -1; queueEvents(); refreshBattle(); }
 function queueEvents() { bpreview = null; banim.push(...BB.events.map((e) => ({ e, t: 0 }))); BB.events.length = 0; }
 $('b-wait').addEventListener('click', () => { if (!myTurn()) return; const s = BB.active; bspell = null; BT.actWait(BB, s); BT.nextStack(BB); afterAction(s); sfx.click(); });
 $('b-def').addEventListener('click', () => { if (!myTurn()) return; const s = BB.active; bspell = null; BT.actDefend(BB, s); afterAction(s); sfx.defend(); });
-$('b-auto').addEventListener('click', () => { bauto = !bauto; bspell = null; refreshBattle(); sfx.click(); });
+// auto on/off mid-animation: whatever is playing finishes; the highlights fade, and an auto stack waits a beat before acting
+$('b-auto').addEventListener('click', () => { if (!BB) return; bauto = !bauto; bspell = null; bpreview = null; bhover = null; if (bauto) bwait = Math.max(bwait, 0.2); refreshBattle(); sfx.click(); });
 $('b-quick').addEventListener('click', () => { if (!BB || BB.over) return; BT.autoResolve(BB); BB.events.length = 0; banim = []; endBattleScreen(); });
 $('b-spell').addEventListener('click', () => {
   const h0 = BB?.heroes[0]; if (!h0) return;
-  ask(`${icon('spellbook', 22)} Spellbook`, `<p class="chips" style="justify-content:center"><span class="chip">${icon('mana', 18)}<em>${h0.mana}</em> mana</span><span class="chip">One spell per round</span></p>`, h0.spells.map((id) => [`${icon(id, 22)} ${SPELLS[id].name} · ${icon('mana', 14)}${SPELLS[id].mana}`, h0.mana >= SPELLS[id].mana ? () => { bspell = id; refreshBattle(); } : undefined, SPELLS[id].desc, 'choice']).concat([['Close', null, '', 'ghost']]));
+  if (bspell) { cancelSpell(); return; }
+  ask(`${icon('spellbook', 22)} Spellbook`, `<p class="chips" style="justify-content:center"><span class="chip">${icon('mana', 18)}<em>${h0.mana}</em> mana</span><span class="chip">One spell per round</span></p>`, h0.spells.map((id) => [`${icon(id, 22)} ${SPELLS[id].name} · ${icon('mana', 14)}${SPELLS[id].mana}`, h0.mana >= SPELLS[id].mana ? () => { if (!myTurn()) return; bspell = id; bpreview = null; refreshBattle(); } : undefined, SPELLS[id].desc, 'choice']).concat([['Close', null, '', 'ghost']]));
 });
 // battle animation: events play one after another
 const bfloat = (pos, text, cls) => floatText(pos, text, cls, bcam);
@@ -1590,6 +2197,7 @@ function animateBattle(dt) {
   // gentle idle bob
   // count plates follow their stacks in updatePlates(), run after the camera moves
   bclock += dt;
+  stepHexes(dt); stepArrow(dt);
   stepFacing(dt);
   if (banim.length) {
     const a = banim[0], e = a.e; a.t += dt;
@@ -1598,7 +2206,9 @@ function animateBattle(dt) {
     return;
   }
   if (B.over) {
-    if (!B.cheered) { B.cheered = true; bwait = Math.max(bwait, 1.15); for (const st of B.stacks) if (st.count > 0 && st.side === B.over.winner) { const m = bmesh.get(st.uid); if (m) setAnim(m, ANIM.CHEER, { seed: st.uid, speed: AS }); } }
+    if (!B.cheered) { B.cheered = true; bwait = Math.max(bwait, 1.15); bTimeK = 0.35; for (const st of B.stacks) if (st.count > 0 && st.side === B.over.winner) { const m = bmesh.get(st.uid); if (m) setAnim(m, ANIM.CHEER, { seed: st.uid, speed: AS }); } }
+    // feel: the decided battle plays its last beat in slow motion (bTimeK), then dips to dark and the map fades back in
+    if (bwait < 0.3 && !B.exitFade && !reduceMo.matches && dt > 0) { B.exitFade = true; curtain(true, true); }
     if ((bwait -= dt) <= 0) endBattleScreen(); return;
   }
   let s = B.active;
@@ -1720,7 +2330,10 @@ function playEvent(e, t) {
       else sfx.hit({ kind: 'arrow', pan: bpan(d) });
       if (e.lucky) { vfx.sparkle(d.position, 'luck'); sfx.luck(); }
       d.userData.flash = 0.3;
-      bfloat(d.position.clone().setY(1), `-${fmt(e.dmg)}${e.killed ? ` (${e.killed}💀)` : ''}${e.lucky ? ' 🍀' : ''}`, sd.side === 0 ? 'red' : 'gold');
+      // feel: heavy blows (tier 6+ melee, boulders) and killing blows freeze the action for a few frames and shake the view
+      const heavy = (e.t === 'hit' && meleeKind(sa.u) === 'heavy') || (e.t === 'shot' && sa.id === 'cyclops'), kill = (e.left ?? sd.count) <= 0;
+      if (heavy || kill) { addHitStop(heavy ? 0.055 : 0.04); addShake(heavy ? 0.42 : 0.28); } else if (e.lucky) addShake(0.22);
+      bfloat(d.position.clone().setY(1), `-${fmt(e.dmg)}${e.killed ? ` (${e.killed}💀)` : ''}${e.lucky ? ' 🍀' : ''}`, (sd.side === 0 ? 'red' : 'gold') + (heavy || kill || e.lucky ? ' big' : ''));
       if (e.retal) bfloat(d.position.clone().setY(1.4), 'Retaliation', 'blue');
       sd.shown = e.left ?? sd.count; if (e.aLeft !== undefined) { sa.shown = e.aLeft; setPlate(sa); }
       setPlate(sd);
@@ -1752,6 +2365,7 @@ function playEvent(e, t) {
     }
     if (t >= e.land && !e.shown) {
       e.shown = true; sfx.spell({ kind: e.id });
+      if (e.hits.some((hh) => !hh.heal && hh.dmg)) addShake(e.id === 'fireball' ? 0.4 : 0.25);
       for (const hh of e.hits) { const m = M(hh.s); if (!m) continue; if (!hh.heal && (hh.left ?? 1) <= 0) startDeath(m, S(hh.s)); else setAnim(m, hh.heal ? ANIM.CHEER : ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), hh.heal ? `+${hh.heal}` : `-${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, hh.heal ? 'green' : 'gold'); m.userData.flash = 0.3; S(hh.s).shown = hh.left ?? S(hh.s).count; setPlate(S(hh.s)); }
     }
     return t > e.land + 0.45;
@@ -1762,7 +2376,7 @@ function playEvent(e, t) {
     if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (S(e.s)) S(e.s).shown = e.left ?? S(e.s).count; if (m) { m.userData.flash = 0.3; if ((e.left ?? 1) <= 0) startDeath(m, S(e.s)); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
-  if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.gate({ kind: e.broken ? 'broken' : '' }); bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
+  if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.gate({ kind: e.broken ? 'broken' : '' }); if (e.broken) { addShake(0.5); addHitStop(0.05); } bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
   if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); sfx.morale(); setAnim(M(e.s), ANIM.CHEER, { speed: AS }); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
   if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; replay($('b-round'), 'pop'); } return true; }
   if (e.t === 'wait' || e.t === 'defend') { if (!e.started) { e.started = true; const m = M(e.s); if (m) bfloat(m.position.clone().setY(1.1), e.t === 'wait' ? '⏳ Wait' : '🛡️ Defend', 'blue'); } return t > 0.25; }
@@ -1773,6 +2387,12 @@ function endBattleScreen() {
   BB = null; vfx.clear(); vfx.select(null);
   $('battle').hidden = true; $('hud').hidden = false; clearPlates();
   for (const f of floaters) f.el.remove(); floaters.length = 0;
+  // feel: never a hard cut back to the map. After the slow-mo dip (above) the curtain is already dark; a Quick
+  // resolve snaps it dark now. Either way it fades off once the map has drawn a frame or two.
+  if (!reduceMo.matches && !bprep) {
+    if (!bcurtain.classList.contains('on')) { bcurtain.classList.add('snap'); curtain(true, true); void bcurtain.offsetWidth; bcurtain.classList.remove('snap'); }
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (G.mode !== 'battle') curtain(false); }));
+  }
   G.mode = 'map';
   musicScene('map');
   finishBattle(B, ctx);
@@ -1839,7 +2459,7 @@ function openTown(id, hr) {
   if (vis) learnSpells(t, vis);
   $('town').hidden = false; $('hud').hidden = true;
   townView.highlight(null); townView.setTown({ fac: t.fac, built: t.built, name: t.name });
-  renderTown(); sfx.town(); townInsets();
+  renderTown(); sfx.town(); lay.townDirty = true; townInsets();
   musicScene('town');
 }
 function closeTown() { renderTown.view = null; townView.highlight(null); $('town').hidden = true; $('hud').hidden = false; townOpen = null; G.mode = 'map'; musicScene('map'); sfx.close(); updateHud(); }
@@ -1886,7 +2506,7 @@ function renderTown() {
       return `<div class="row-b"><i>${unitIcon(id)}</i><div><b>${u.name} <em>${n} available</em></b><small>${costText(u.cost)} <span>each</span></small><small class="stats2"><span>${icon('attack', 13)}${u.att}</span><span>${icon('defense', 13)}${u.def}</span><span>${icon('hp', 13)}${u.hp}</span><span>${icon('damage', 13)}${u.dmg[0]}–${u.dmg[1]}</span><span>${icon('movement', 13)}${u.spd}</span>${u.ranged ? `<span>${icon('shots', 13)}</span>` : ''}${u.fly ? `<span>${icon('fly', 13)}</span>` : ''}</small></div><button data-rec="${tier}" data-n="${max}" ${max > 0 ? '' : 'disabled'}>Recruit<small>×${max}</small></button></div>`;
     }).join('') + '<p class="hint2">Recruits join the hero beside the town, or the garrison.</p>' : '<p class="hint2">Build a dwelling to recruit creatures.</p>';
   } else if (townTab === 'army') {
-    const row = (title, army, who) => `<div class="armyrow"><b>${title}</b><div class="slots">${Array.from({ length: 7 }, (_, i) => army[i] && army[i][1] > 0 ? `<button data-move="${who}:${i}">${unitIcon(army[i][0])}<em>${army[i][1]}</em></button>` : '<button disabled></button>').join('')}</div></div>`;
+    const row = (title, army, who) => `<div class="armyrow"><b>${title}</b><div class="slots">${Array.from({ length: Math.max(ARMY_SLOTS, army.length) }, (_, i) => army[i] && army[i][1] > 0 ? `<button data-move="${who}:${i}">${unitIcon(army[i][0])}<em>${army[i][1]}</em></button>` : '<button disabled></button>').join('')}</div></div>`;
     html = row(`${icon('town', 18)} Garrison`, t.garrison, 'g') + (vis ? row(`${icon('hero', 18)} ${vis.name}`, vis.army, 'h') : '<p class="hint2">No hero beside the town.</p>') + '<p class="hint2">Tap a stack to move it across.</p>';
     // upgrades for troops whose upgraded dwelling stands here
     const ups = [];
@@ -1967,7 +2587,7 @@ function openHero() {
     <div class="stats">${st('att', icon('attack', 24), 'Attack')}${st('def', icon('defense', 24), 'Defence')}${st('pow', icon('power', 24), 'Power')}${st('know', icon('knowledge', 24), 'Knowledge')}</div>
     <div class="meters"><div class="meter"><span>${icon('mana', 16)}</span>Mana<b>${hr.mana}/${maxMana(hr)}</b><i><i style="width:${pct(hr.mana, maxMana(hr))}%"></i></i></div><div class="meter mp"><span>${icon('movement', 16)}</span>Move<b>${fmt(hr.mp)}</b><i><i style="width:${pct(hr.mp, moveMax(hr))}%"></i></i></div></div>
     <h3 class="sec">Army</h3>
-    <div class="slots big">${Array.from({ length: 7 }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
+    <div class="slots big">${Array.from({ length: Math.max(ARMY_SLOTS, hr.army.length) }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
     <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${icon(k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
     <h3 class="sec">Spells</h3>${chips(hr.spells.map((id) => `<span class="chip">${icon(id, 18)}${SPELLS[id].name}</span>`), 'No spells yet: build a Mage Guild')}
     <h3 class="sec">Artifacts</h3>${chips(hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; }), 'No artifacts yet')}`, true);
@@ -1975,7 +2595,9 @@ function openHero() {
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
 const UICON = { pikeman: '🔱', archer: '🏹', griffin: '🦅', swordsman: '⚔️', monk: '🧙', cavalier: '🏇', angel: '👼', skeleton: '💀', zombie: '🧟', wight: '👻', vampire: '🧛', lich: '☠️', blackknight: '♞', bonedragon: '🐉', goblin: '👺', wolf: '🐺', orc: '👹', ogre: '🦣', troll: '🧌', cyclops: '👁️', hydra: '🐍' };
-const unitIcon = (id, s = 64) => portraitImg(id, s) || UICON[id] || UICON[UNITS[id]?.up] || '❔';
+// lazy: when another size of the portrait is cached (e.g. the 64 px one for a 128 px dialog) it is shown scaled at once
+// and the sharp render is swapped in from the background; it only renders synchronously when nothing is cached at all
+const unitIcon = (id, s = 64) => portraitImgLazy(id, s) || UICON[id] || UICON[UNITS[id]?.up] || '❔';
 const plural = (id, n = 2) => { const w = UNITS[id].name; if (n === 1) return w; if (/m[ae]n$/.test(w)) return w.replace(/man$/, 'men'); if (/[^aeiou]y$/.test(w)) return w.slice(0, -1) + 'ies'; if (/(s|x|ch|sh)$/.test(w)) return w + 'es'; return w.replace(/f$/, 'ves').replace(/([^s])$/, '$1s'); };
 let toastT = 0;
 function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
@@ -2033,7 +2655,7 @@ function recruitDialog(title, id, stock, onBuy) {
   ask(title, `${unitIcon(id)} <b>${u.name}</b> · ${stock} available · ${costText(u.cost)} each`, [[`Hire ${max}`, max > 0 ? () => { const hr = onBuy(max); if (addTroops(hr.army, id, max)) { pay(0, u.cost, max); sfx.coin(); toast(`${unitIcon(id)} ${max} ${plural(id, max)} join ${hr.name}.`); } else toast('No free slot in your army.'); updateHud(); } : undefined], ['Leave', null]]);
 }
 // floating numbers over the world (or the battlefield)
-const floaters = [];
+const floaters = [], _flV = new THREE.Vector3();
 function floatText(pos, text, cls = '', cm = null) {
   const el = document.createElement('div'); el.className = `floater ${cls}`; el.textContent = text; $('floaters').appendChild(el);
   floaters.push({ el, p: pos, t: 0, cm, slot: pos ? 0 : floaters.filter((f) => !f.p).length });
@@ -2044,10 +2666,13 @@ function updateFloaters(dt) {
     const f = floaters[i]; f.t += dt;
     if (f.t > 1.6) { f.el.remove(); floaters.splice(i, 1); continue; }
     let x = innerWidth / 2, y = innerHeight * 0.4 + f.slot * 34;
-    if (f.p) { const v = f.p.clone().project(f.cm || camera); x = (v.x * 0.5 + 0.5) * innerWidth; y = (-v.y * 0.5 + 0.5) * innerHeight; }
+    if (f.p) { const v = _flV.copy(f.p).project(f.cm || camera); x = (v.x * 0.5 + 0.5) * innerWidth; y = (-v.y * 0.5 + 0.5) * innerHeight; }
     const hw = (f.w ??= f.el.offsetWidth) / 2 + 6; x = clamp(x, hw, innerWidth - hw);
-    f.el.style.opacity = String(Math.min(1, (1.6 - f.t) * 2));
-    f.el.style.transform = `translate(${x}px, ${y - f.t * 40}px) translate(-50%, -50%) scale(${Math.min(1, 0.6 + f.t * 4)})`;
+    // feel: pops in with an overshoot (easeOutBack over 0.28 s), rises fast then floats (easeOutCubic), fades at the end
+    const t = f.t, up = 1 - Math.pow(1 - Math.min(1, t / 1.2), 3), pu = Math.min(1, t / 0.28) - 1;
+    const sc = reduceMo.matches ? 1 : 1 + 2.7 * pu * pu * pu + 1.7 * pu * pu;
+    f.el.style.opacity = String(Math.min(1, t * 12, (1.6 - t) * 2.5));
+    f.el.style.transform = `translate(${x}px, ${y - up * 46}px) translate(-50%, -50%) scale(${sc})`;
   }
 }
 // resource counters pop and throw a floating "+500" / "−250" when a value changes (UI only)
@@ -2058,17 +2683,35 @@ function updateRes() {
   for (const k of RES) {
     const el = $(`r-${k}`), d = live ? r[k] - resPrev[k] : 0; dl[k] = d; resPrev[k] = r[k];
     if (!el) continue;
-    el.textContent = fmt(r[k]);
-    if (d) {
+    const T = resTick[k];
+    if (!d) { if (!T.on || !live) { T.on = false; T.b = T.cur = r[k]; el.textContent = fmt(r[k]); } continue; }
+    // the pop, the "+500" and the count-up wait for a resource flying in from the map (flyRes)
+    const wait = Math.max(0, resFly[k] - performance.now());
+    T.el = el; T.a = T.on ? T.cur : r[k] - d; T.b = r[k]; T.t0 = performance.now() + wait; T.on = true;
+    if (reduceMo.matches) { T.on = false; el.textContent = fmt(r[k]); }
+    const pop = () => {
       const s = el.parentElement; replay(s, d > 0 ? 'up' : 'down'); s.classList.remove(d > 0 ? 'down' : 'up');
       const f = document.createElement('i'); f.className = `rdelta ${d > 0 ? 'up' : 'down'}`; f.textContent = `${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}`;
       s.appendChild(f); setTimeout(() => f.remove(), 1500);
-    }
+    };
+    if (wait > 0) setTimeout(pop, wait); else pop();
   }
   const dayNew = live && resPrev.day !== G.day; resPrev.day = G.day; resPrev.pl = G.players[0];
   setHTML($('r-day'), `<small>Week ${week()}</small><b>Day ${((G.day - 1) % 7) + 1}</b>`);
   if (dayNew) replay($('r-day'), 'up');
   $('r2-gold').innerHTML = RES.map((k) => `<span class="rc${dl[k] ? (dl[k] > 0 ? ' up' : ' down') : ''}"><i>${icon(k, 22)}</i><b>${fmt(r[k])}</b>${dl[k] ? `<i class="rdelta ${dl[k] > 0 ? 'up' : 'down'}">${dl[k] > 0 ? '+' : '−'}${fmt(Math.abs(dl[k]))}</i>` : ''}</span>`).join('');
+}
+// counters count up/down to a new value over ~0.5 s (ease-out) instead of jumping; driven from frame() only while active
+const resTick = {}; for (const k of RES) resTick[k] = { on: false, el: null, a: 0, b: 0, cur: 0, t0: 0, txt: -1 };
+function tickRes(now) {
+  for (let i = 0; i < RES.length; i++) {
+    const T = resTick[RES[i]]; if (!T.on) continue;
+    const u = clamp((now - T.t0) / 520, 0, 1), e = 1 - (1 - u) * (1 - u) * (1 - u);
+    T.cur = T.a + (T.b - T.a) * e;
+    const n = u >= 1 ? T.b : Math.round(T.cur);
+    if (n !== T.txt && T.el) { T.txt = n; T.el.textContent = fmt(n); }
+    if (u >= 1) { T.on = false; T.cur = T.b; }
+  }
 }
 // perf: HUD rebuilds only when the markup really changed (an innerHTML rebuild re-parses portrait <img>s and restarts the badge animations)
 function setHTML(el, html) { if (el && el.__html !== html) { el.innerHTML = html; el.__html = html; } }
@@ -2085,27 +2728,22 @@ function updateHud() {
   const hr = selHero();
   setHTML($('sel'), hr ? `<span class="sel-who"><span class="sel-pt">${heroPic(hr, 40, 'round') || icon('hero', 24)}<i class="lv">${hr.lvl}</i></span><b>${hr.name}</b></span><span class="st2">${icon('movement', 16)}${fmt(hr.mp)}</span><span class="st2">${icon('mana', 16)}${hr.mana}</span><span class="army">${heroArmy(hr).map(([id, n]) => `<span>${unitIcon(id)}<em>${n}</em></span>`).join('')}</span>${hr.route && canStep(hr) ? '<button class="sel-go" id="b-go" aria-label="Continue the march">Continue ▶</button>' : ''}` : '');
 }
-// side buttons: tap = select hero / open hero sheet / open town; double tap = fly the camera there
+// side buttons act on the first tap (no wait for a possible double tap): hero not selected -> select it (the camera
+// follows); the selected hero -> its sheet; town -> open it. A second tap on the same button within 320 ms
+// additionally flies the camera in close (hero) or is swallowed (town: already open), so a double tap never acts twice.
 let sideTap = null;
 $('heroes').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || busy()) return;
   const key = b.dataset.h ? 'h' + b.dataset.h : 't' + b.dataset.t, now = performance.now();
-  if (sideTap && sideTap.key === key && now - sideTap.t < 320) {
-    clearTimeout(sideTap.timer); sideTap = null;
-    if (b.dataset.h) { const id = +b.dataset.h; if (G.selHero !== id) selectHero(id); flyTo(G.heroes[id].v, 7.5); }
-    else flyTo(G.towns[+b.dataset.t].v, 7.5);
-    sfx.click(); return;
+  const dbl = !!sideTap && sideTap.key === key && now - sideTap.t < 320;
+  sideTap = dbl ? null : { key, t: now };
+  if (b.dataset.h) {
+    const id = +b.dataset.h;
+    if (dbl) { if (G.selHero !== id) selectHero(id); flyTo(G.heroes[id].v, 7.5); sfx.click(); return; }
+    if (G.selHero === id) openHero(); else selectHero(id);
+    return;
   }
-  if (sideTap) clearTimeout(sideTap.timer);
-  const single = () => {
-    sideTap = null;
-    if (busy()) return; // End Day (or a walk) started during the 300 ms double-tap window
-    if (b.dataset.h) { const id = +b.dataset.h; if (G.selHero === id) openHero(); else selectHero(id); }
-    if (b.dataset.t) openTown(+b.dataset.t);
-  };
-  // selecting a different hero is instant (it flies there anyway); actions that open a panel wait for a possible 2nd tap
-  if (b.dataset.h && G.selHero !== +b.dataset.h) { single(); sideTap = { key, t: now, timer: 0 }; return; }
-  sideTap = { key, t: now, timer: setTimeout(single, 300) };
+  if (b.dataset.t && !dbl) openTown(+b.dataset.t);
 });
 $('b-hero').addEventListener('click', () => { if (!busy()) openHero(); });
 $('sel').addEventListener('click', (e) => { if (e.target.closest('#b-go')) { resumeRoute(selHero()); sfx.click(); } });
@@ -2126,7 +2764,7 @@ function endTurn() {
   if (G.mode !== 'map' || aiRunning || walking || G.over) return;
   showPath(selHero(), null);
   aiRunning = true; aiGen = runAI(); aiDelay = 0; $('b-end').disabled = true;
-  toast('⏳ The enemy is moving…');
+  toast('⏳ The enemy is moving…'); dayFx('night');
   // tomorrow starts a new week: choose its creature now and paint its portrait while the enemy moves,
   // so the "Week of …" card does not render a 3D portrait in the same frame as the new morning
   if (G.day % 7 === 0) {
@@ -2138,7 +2776,25 @@ function endTurn() {
 let aiRunning = false, aiGen = null, aiDelay = 0;
 // drop an enemy turn in progress (quit to the title, game over, a new game): a stale generator must never
 // keep running against the next game, nor leave End Day disabled
+// day/night feel layer (DOM, compositor-only animations): dusk falls while the enemy moves (a soft vignette and the moon
+// rising on an arc), then the sun sweeps across with the "Day N" banner; a new week gets a gold "Week N" reveal first
+const daycyc = document.createElement('div');
+daycyc.id = 'daycyc'; daycyc.innerHTML = '<i class="dc-orb dc-moon"></i><i class="dc-orb"></i><div class="dc-ban"><small></small><b></b></div>'; document.body.appendChild(daycyc);
+let dcHide = false;
+function dayFx(kind) {
+  if (kind === 'night') { clearTimeout(dayFx.t); daycyc.classList.remove('dawn', 'week', 'moonset'); daycyc.classList.add('night'); return; }
+  if (daycyc.classList.contains('night')) {
+    daycyc.classList.remove('night'); daycyc.classList.add('moonset');
+    clearTimeout(dayFx.t); dayFx.t = setTimeout(() => daycyc.classList.remove('moonset'), 1100);
+  }
+  if (kind !== 'dawn' || reduceMo.matches) return;
+  const wk = (G.day - 1) % 7 === 0;
+  daycyc.querySelector('small').textContent = wk ? 'A new week dawns' : `Week ${week()}`;
+  daycyc.querySelector('b').textContent = wk ? `Week ${week()}` : `Day ${((G.day - 1) % 7) + 1}`;
+  daycyc.classList.toggle('week', wk); replay(daycyc, 'dawn');
+}
 function stopAI() {
+  dayFx('off');
   aiRunning = false; aiGen = null; aiDelay = 0;
   $('b-end').disabled = false; $('b-end').classList.remove('confirm');
 }
@@ -2174,12 +2830,16 @@ function newDay() {
     for (const t of G.towns) for (const b of BUILDINGS) if (b.tier && !b.up && t.built.includes(b.id)) { const base = FACTIONS[t.fac].units[b.tier - 1]; t.avail[b.tier] = (t.avail[b.tier] || 0) + Math.ceil(UNITS[base].grow * (t.built.includes('fort') ? 1.5 : 1)) + (base === star ? 5 : 0); }
     for (const o of G.objects) if (o.alive && o.type === 'monster') o.n = Math.ceil(o.n * 1.08);
     for (const o of G.objects) if (o.alive && o.type === 'dwelling') o.stock = Math.max(o.stock, 4 + ((rnd() * 4) | 0));
-    showMsg(`📅 Week ${week()}: Week of the ${UNITS[G.weekOf].name}`, `${unitIcon(G.weekOf)} ${plural(G.weekOf)} grow by +5 this week. Creatures in your dwellings have multiplied: visit your town to recruit them.`);
+    // (after the "Week N" reveal has played, so the card does not cover it)
+    const wkMsg = () => showMsg(`📅 Week ${week()}: Week of the ${UNITS[G.weekOf].name}`, `${unitIcon(G.weekOf)} ${plural(G.weekOf)} grow by +5 this week. Creatures in your dwellings have multiplied: visit your town to recruit them.`);
+    // (a tap in that window may already have opened the town or a battle: the card waits until the map is back)
+    if (reduceMo.matches) wkMsg(); else { const d0 = G.day, tryMsg = () => { if (G.day !== d0 || G.mode === 'menu' || G.over) return; if (G.mode !== 'map' || walking) { setTimeout(tryMsg, 400); return; } wkMsg(); }; setTimeout(tryMsg, 950); }
   }
   revealAll(); updateHud(); saveSoon();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
   if (hr) selectHero(hr.id);
   if (G.day % 7 === 1) sfx.week(); else sfx.day();
+  dayFx('dawn');
 }
 function checkEnd() {
   if (G.over) return;
@@ -2388,7 +3048,10 @@ const pack = (a, off = 48) => { let s = ''; for (let i = 0; i < a.length; i++) s
 const unpack = (s, a, off = 48) => { for (let i = 0; i < a.length; i++) a[i] = s.charCodeAt(i) - off; };
 function save() {
   if (G.over || !G.players.length) return;
-  store.set('realms.save', { v: 1, ver: APP_VERSION, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter), h: pack(h), road: pack(road), seen: pack(seen) });
+  // saved mid-walk (Save & quit): the rest of the march is kept as an unfinished route (Continue ▶ after loading)
+  const W = walking, rest = W && W.i < W.path.length - 1 ? W.path.slice(W.i) : null, keep = rest && [W.hr.route, W.hr.routeObj];
+  if (rest) { W.hr.route = rest; W.hr.routeObj = objAt[rest[rest.length - 1]]; }
+  try { store.set('realms.save', { v: 1, ver: APP_VERSION, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter), h: pack(h), road: pack(road), seen: pack(seen) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
 }
 // the morning save serialises the whole world (~100 KB of JSON): run it when the browser is idle,
 // not in the same frame as the new day's income, growth, HUD and camera work
@@ -2401,6 +3064,7 @@ function saveSoon() {
 function load() {
   const s = store.get('realms.save', null);
   if (!s || s.v !== 1) return false;
+  pendingLevels.length = 0;
   Object.assign(G, { seed: s.seed, day: s.day, diff: s.diff, selHero: s.selHero, players: s.players, heroes: s.heroes, towns: s.towns, objects: s.objects, over: false, mode: 'map' });
   unpack(s.ter, ter); unpack(s.h, h); unpack(s.road, road); unpack(s.seen, seen);
   objAt.fill(-1); for (const o of G.objects) if (o.alive) objAt[o.v] = o.id;
@@ -2412,33 +3076,70 @@ function load() {
 // ------------------------------------------------------------------ sound
 let actx = null, score = null, sfxEngine = null;
 // sound: sampled orchestra (music.js) and magical effects (sfx.js); legacy sfx.name() calls keep working
-const sfx = new Proxy({}, { get: (_, n) => (o) => { if (sfxEngine && store.get('realms.sfx', true)) { try { sfxEngine.play(n, o); } catch (e) { /* never break the game for a sound */ } } } });
+// (a sound fired while the context is suspended or interrupted would queue up and burst out on resume: skip it)
+const sfx = new Proxy({}, { get: (_, n) => (o) => { if (sfxEngine && actx.state === 'running' && store.get('realms.sfx', true)) { try { sfxEngine.play(n, o); } catch (e) { /* never break the game for a sound */ } } } });
 function audio() {
   if (actx) return;
   try {
-    actx = new (window.AudioContext || window.webkitAudioContext)();
-    const sfxBus = actx.createGain(); sfxBus.gain.value = 0.85; sfxBus.connect(actx.destination);
+    const AC = window.AudioContext || window.webkitAudioContext;
+    // 'balanced' = a slightly larger hardware buffer: far fewer audio-thread underruns (crackle) on phones while the
+    // GPU and main thread are busy, for a few ms of extra latency
+    try { actx = new AC({ latencyHint: 'balanced' }); } catch { actx = new AC(); }
+    // music bus + sfx bus → master limiter → speakers. Each engine has its own compressor; this one only stops their
+    // sum from clipping when a victory sting lands on a full battle score
+    const lim = actx.createDynamicsCompressor();
+    lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
+    lim.connect(actx.destination);
+    const sfxBus = actx.createGain(); sfxBus.gain.value = 0.85; sfxBus.connect(lim);
     sfxEngine = createSfx(actx, sfxBus);
-    const mus = actx.createGain(); mus.gain.value = 0.5; mus.connect(actx.destination);
+    const mus = actx.createGain(); mus.gain.value = 0.58; mus.connect(lim); // 0.5 before the mono sample fold (-1.3 dB), restored
     score = createScore(actx, mus); musicScene();
     if (store.get('realms.music', true)) score.start();
+    // iOS: a phone call, Siri or an alarm leaves the context 'interrupted' (Safari) or 'suspended'; ask it back as soon
+    // as the page is in front again (when the OS refuses, the next tap's wakeAudio retries inside a gesture)
+    actx.onstatechange = () => { if (actx.state !== 'running' && actx.state !== 'closed' && !document.hidden) actx.resume().catch(() => {}); };
   } catch { actx = null; }
 }
+function wakeAudio() {
+  audio();
+  if (actx && actx.state !== 'running' && actx.state !== 'closed' && !document.hidden) actx.resume().catch(() => {});
+}
+// decode the chosen faction's battle / town / map samples while the loading screen is up, not at the first battle
+function musicWarm() { try { score?.warm?.(G.players?.[0]?.fac); } catch { /* sound is optional */ } }
 // which piece fits what is on screen now
 function musicScene(over) {
   if (!score) return;
   const fac = G.players?.[0]?.fac || store.get('realms.fac', 'haven');
   const town = townOpen != null ? G.towns[townOpen]?.fac : null;
-  const sc = over || ($('menu') && !$('menu').hidden ? 'menu' : G.mode === 'battle' ? 'battle' : G.mode === 'town' ? 'town' : 'map');
+  const sc = over || ($('menu') && !$('menu').hidden && !$('menu').classList.contains('fading') ? 'menu' : G.mode === 'battle' ? 'battle' : G.mode === 'town' ? 'town' : 'map');
   score.setScene(sc, sc === 'town' && town ? town : fac);
 }
-window.addEventListener('pointerdown', () => { audio(); if (actx?.state === 'suspended') actx.resume(); }, { capture: true });
+// unlock on the first gesture. iOS Safari only counts touchend / click as a gesture for audio (not pointerdown on
+// older versions), so listen to all of them; each is a no-op once the context runs
+for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(ev, wakeAudio, { capture: true, passive: true });
+// background: suspend (the music scheduler's timers get throttled there and the clock would run past its queue);
+// foreground / back from bfcache: resume
+document.addEventListener('visibilitychange', () => {
+  if (!actx) return;
+  if (document.hidden) { if (actx.state === 'running') actx.suspend().catch(() => {}); } else wakeAudio();
+});
+window.addEventListener('pageshow', () => { if (actx) wakeAudio(); });
 
 // ------------------------------------------------------------------ menu
+// screen-to-screen feel: full-screen layers (title, faction picker) fade out instead of vanishing (CSS .fading);
+// taps pass through while they fade. fadeShow cancels a fade still in flight.
+function fadeHide(el, ms = 280) {
+  if (!el || el.hidden) return;
+  clearTimeout(el._fadeT);
+  if (reduceMo.matches) { el.hidden = true; el.classList.remove('fading'); return; }
+  el.classList.add('fading');
+  el._fadeT = setTimeout(() => { el.hidden = true; el.classList.remove('fading'); }, ms);
+}
+function fadeShow(el) { clearTimeout(el._fadeT); el.classList.remove('fading'); el.hidden = false; }
 function showMenu() {
-  G.mode = 'menu'; dialogs.length = 0; renderDialog();
-  stopAI(); walking = null; // a quit mid enemy turn / mid walk must not carry over into the next game
-  $('menu').hidden = false; $('hud').hidden = true; $('town').hidden = true; $('battle').hidden = true; musicScene('menu');
+  G.mode = 'menu'; dialogs.length = 0; pendingLevels.length = 0; renderDialog(); // a queued level-up would block every later one (showLevel only runs on the first push)
+  stopAI(); walking = null; fx.clearPath(true); fx.select(null, null, undefined, true); // a quit mid enemy turn / mid walk must not carry over into the next game
+  fadeShow($('menu')); $('hud').hidden = true; $('town').hidden = true; $('battle').hidden = true; musicScene('menu');
   const s = store.get('realms.save', null);
   $('m-continue').hidden = !s;
   if (s) $('m-continue').innerHTML = `Continue<small>${s.players?.[0] ? `${FACTIONS[s.players[0].fac]?.name || ''} · ` : ''}Week ${Math.floor((s.day - 1) / 7) + 1}, day ${((s.day - 1) % 7) + 1}</small>`;
@@ -2451,9 +3152,11 @@ for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.to
 function syncSound() { const on = store.get('realms.music', true); $('m-sound').classList.toggle('off', !on); $('m-sound').querySelector('span').textContent = on ? 'Music on' : 'Music off'; }
 $('m-sound').addEventListener('click', () => { const on = !store.get('realms.music', true); store.set('realms.music', on); if (on) score?.start(); else score?.stop(); syncSound(); sfx.click(); });
 function play() {
-  if (!prewarmed) { prewarmed = true; $('menu').hidden = true; G.mode = 'map'; worldDirty = true; layoutWorld(); prewarm(() => { play(); warmGeometryIdle(); }); return; }
-  $('menu').hidden = true; $('hud').hidden = false; G.mode = 'map'; musicScene('map');
-  stopAI(); walking = null;
+  // first play: the loader shows on this very tap; the world layout is its first job (after the loader has painted)
+  if (!prewarmed) { prewarmed = true; fadeHide($('menu')); G.mode = 'map'; worldDirty = true; musicWarm(); prewarm(() => { play(); warmGeometryIdle(); }); return; }
+  fadeHide($('menu')); $('hud').hidden = false; G.mode = 'map'; musicScene('map');
+  stopAI(); walking = null; fx.clearPath(true);
+  trimGeoCache(); // a new game / a loaded save: free the models of factions this world no longer has
   worldDirty = true; layoutWorld();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
   if (hr) { G.selHero = hr.id; const sp = new THREE.Spherical().setFromVector3(DIRS[hr.v]); camSnap(sp.theta, sp.phi); cam.dist = 20; cam.sDist = 0; cam.tDist = 10; flyTo(hr.v, 10); }
@@ -2480,14 +3183,14 @@ function pickFaction() {
     <span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 64)).join('')}</span><span class="fc-check">${icon('check', 16)}</span></button>`;
   }).join('')}</div>
     <footer class="fp-foot"><button class="btn ghost" id="f-back">Back</button><button class="btn gold" id="f-go">Begin as ${FACTIONS[sel].name}</button></footer></div>`;
-  el.hidden = false; el.scrollTop = 0; document.body.style.setProperty('--fac', FACTIONS[sel].css);
+  fadeShow(el); el.scrollTop = 0; document.body.style.setProperty('--fac', FACTIONS[sel].css);
   const start = (fac) => {
-    store.set('realms.fac', fac); el.hidden = true; sfx.click();
+    store.set('realms.fac', fac); fadeHide(el, 320); sfx.click();
     newWorld((Date.now() % 100000) + 1, store.get('realms.diff', 1), fac);
     play(); save();
     const rival = FACTIONS[G.players[1].fac].name;
     setTimeout(() => ask(`${icon('logo', 26)} Your crown`, `<p>You lead the <b style="color:${FACTIONS[fac].css}">${FACTIONS[fac].name}</b>. Defeat the <b style="color:${FACTIONS[G.players[1].fac].css}">${rival}</b> crown to rule the world.</p>
-      <ul class="tips"><li>${icon('movement', 22)}<span><b>Tap a hex</b> to plan a route, tap it again to march.</span></li><li>${icon('gold', 22)}<span><b>Flag mines</b> and pick up treasure for income.</span></li><li>${icon('town', 22)}<span><b>Tap your town</b> to build once a day and recruit.</span></li><li>${icon('hero', 22)}<span><b>Tap your hero</b> for the hero sheet. Double-tap either to fly there.</span></li><li>${icon('end', 22)}<span><b>End the day</b> when everyone has moved.</span></li></ul>`, [['Begin', null]], true), 600);
+      <ul class="tips"><li>${icon('movement', 22)}<span><b>Tap a hex</b> to plan a route, tap it again to march.</span></li><li>${icon('gold', 22)}<span><b>Flag mines</b> and pick up treasure for income.</span></li><li>${icon('town', 22)}<span><b>Walk into your town</b> (or double-tap it) to build once a day and recruit.</span></li><li>${icon('hero', 22)}<span><b>Tap your hero</b> for the hero sheet. Double-tap either to fly there.</span></li><li>${icon('end', 22)}<span><b>End the day</b> when everyone has moved.</span></li></ul>`, [['Begin', null]], true), 600);
   };
   el.querySelectorAll('.fcard').forEach((b) => b.addEventListener('click', () => {
     if (b.dataset.f === sel) { start(sel); return; }
@@ -2496,7 +3199,7 @@ function pickFaction() {
     $('f-go').textContent = `Begin as ${FACTIONS[sel].name}`; document.body.style.setProperty('--fac', FACTIONS[sel].css);
   }));
   $('f-go').addEventListener('click', () => start(sel));
-  $('f-back').addEventListener('click', () => { el.hidden = true; });
+  $('f-back').addEventListener('click', () => { fadeHide(el); });
 }
 $('m-continue').addEventListener('click', () => { if (load()) play(); });
 
@@ -2548,28 +3251,37 @@ function frame(now) {
   if (!loaderEl.hidden && !loaderEl.classList.contains('done')) { clock.getDelta(); return; }
   QG.sample(typeof now === 'number' ? now : performance.now());
   const dt = Math.min(0.05, clock.getDelta());
-  tt += dt;
+  // a screen switch (or the battle leaving its curtain) re-measures the HUD bars and snaps the framing
+  const lmode = G.mode + (bprep ? '~' : '');
+  if (lmode !== lay.mode) { lay.mode = lmode; lay.dirty = lay.townDirty = true; lay.sinceMode = 0; } else lay.sinceMode += dt;
+  // battle time: frozen during a hit-stop, slowed for a beat when the battle is decided (bTimeK eases back to 1)
+  let bdt = dt;
+  if (G.mode === 'battle') {
+    if (hitStop > 0) { hitStop -= dt; bdt = 0; }
+    if (bTimeK < 1) { bTimeK = reduceMo.matches ? 1 : Math.min(1, bTimeK + dt * 1.3); bdt *= bTimeK; }
+  } else { hitStop = 0; bTimeK = 1; }
+  tt += bdt;
   tickMaterials(tt);
   // ink outlines thin out and soften as the map zooms out, so far views don't turn into uniform dark chips
   const iu = inkMat.userData.uniforms, zk = G.mode === 'battle' ? 1 : clamp((19 - cam.dist) / 8, 0.3, 1);
   iu.uHullW.value = 0.003 * zk; iu.uHullDark.value = 0.15 + (1 - zk) * 0.45;
   if (G.mode === 'battle' && bprep) { /* the battle is being set up behind the curtain (enterBattle): nothing to draw yet */ }
   else if (G.mode === 'battle') {
-    animateBattle(dt);
+    animateBattle(bdt);
     const s = Math.sin(bview.yaw), c = Math.cos(bview.yaw);
     // a classic three-quarter view: low enough that creatures show their figures, not just helmets
     // never closer than what fits the full grid width on screen (portrait phones)
-    const hf = Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2)) * bcam.aspect, d = Math.max(bview.dist, Math.min(18, (BT.COLS * 0.866 * 0.5 + 0.45) / hf / 1.1));
-    bcam.position.set(s * d * 0.82, d * 0.86, c * d * 0.82 + 0.4);
-    bcam.lookAt(0, 0, -0.15);
+    frameBattleCam(s, c, dt);
+    applyShake(bcam, dt, 0.011);
     updatePlates();
-    for (const m of bmesh.values()) if (m.userData.flash > 0) { m.userData.flash -= dt; m.children[0].material = m.userData.flash > 0 ? hitMat : bodyMat; }
-    vfx.update(dt, bcam);
+    for (const m of bmesh.values()) if (m.userData.flash > 0) { m.userData.flash -= bdt; m.children[0].material = m.userData.flash > 0 ? hitMat : bodyMat; }
+    vfx.update(bdt, bcam);
     renderer.shadowMap.needsUpdate = true; // battle figures always animate
     post.render(bscene, bcam);
   } else {
     updateCamera(dt);
-    atmos.update(dt, camera);
+    mapViewOffset(dt);
+    if (G.mode !== 'town') atmos.update(dt, camera); // perf: the town screen does not draw the map's sky
     if (atmos.objects?.clouds) atmos.objects.clouds.visible = G.mode === 'menu' || cam.dist > 13;
     cam.spin = G.mode === 'menu' ? 0.09 : 0; if (G.mode === 'menu') cam.tDist = 16;
     else {
@@ -2600,9 +3312,111 @@ function frame(now) {
     if (G.mode === 'town') { townInsets(); townView.update(dt); renderer.shadowMap.needsUpdate = true; shMode = 'town'; post.render(townView.scene, townView.camera); }
     else { horizonCull(); if (mapShadowsDue(dt) || shAlways) renderer.shadowMap.needsUpdate = true; post.render(scene, camera); }
   }
-  updateFloaters(dt);
+  updateFloaters(dt); tickRes(performance.now());
+  // the day/night layer only belongs over the map (an enemy hero may start a battle at dusk)
+  const dh = G.mode !== 'map'; if (dh !== dcHide) { dcHide = dh; daycyc.classList.toggle('off', dh); }
+}
+// Battle framing: the whole grid (plus the far row's figures) fits the free band between the top bar and the
+// bottom buttons, in any orientation / aspect ratio (tall phones, landscape phones, tablets, desktop). The distance
+// is solved from the projected grid box; a view offset then centres the grid in that band (bcam.fov stays as it is,
+// so the px maths of the count plates and picking still hold). Pinch-zoom can only move out from the fitted view.
+const BGRID = (() => {
+  // x: the outer creatures' centres sit at 3.25 HW; the outermost hex edge (3.75 HW) may be trimmed a little
+  const x = 3.55 * HW, z = ((BT.ROWS - 1) / 2) * VS + HS + 0.08;
+  return [[-x, 0, -z], [x, 0, -z], [-x, 1.55, -z], [x, 1.55, -z], [-x, 0, z], [x, 0, z], [-x, 0.7, z], [x, 0.7, z]].map((a) => new THREE.Vector3(...a));
+})();
+const bfV = new THREE.Vector3(), bfE = [0, 0, 0, 0];
+function bcamPlace(s, c, d) {
+  bcam.position.set(s * d * 0.82, d * 0.86, c * d * 0.82 + 0.4);
+  bcam.lookAt(0, 0, -0.15);
+  bcam.updateMatrixWorld(true);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of BGRID) {
+    bfV.copy(p).applyMatrix4(bcam.matrixWorldInverse);
+    const tx = bfV.x / -bfV.z, ty = bfV.y / -bfV.z;
+    x0 = Math.min(x0, tx); x1 = Math.max(x1, tx); y0 = Math.min(y0, ty); y1 = Math.max(y1, ty);
+  }
+  bfE[0] = x0; bfE[1] = x1; bfE[2] = y0; bfE[3] = y1;
+  return bfE;
+}
+function frameBattleCam(s, c, dt) {
+  if (lay.dirty) measureLayout();
+  const W = rsz.w || innerWidth, H = rsz.h || innerHeight;
+  const T = clamp(lay.batT, 0, H * 0.45), B = clamp(lay.batB, H * 0.55, H);
+  const ppt = H / 2 / Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2)); // px per tangent unit
+  const avW = W * 0.99, avH = Math.max(H * 0.3, B - T) * 0.97;
+  let d = lay.bD || 14;
+  for (let i = 0; i < 4; i++) {
+    const e = bcamPlace(s, c, d), k = Math.max(((e[1] - e[0]) * ppt) / avW, ((e[3] - e[2]) * ppt) / avH);
+    if (Math.abs(k - 1) < 0.002) break;
+    d *= k;
+  }
+  d = clamp(d, 8, 26);
+  const want = Math.max(bview.dist, d), snap = lay.snapBat || lay.sinceMode < 0.5 || !lay.bDcur; lay.snapBat = false;
+  // ease toward the new fit (a bar changing size), snap on a resize / battle start
+  const D = snap ? want : lay.bDcur + (want - lay.bDcur) * (1 - Math.exp(-dt * 8));
+  lay.bD = d; lay.bDcur = D;
+  const e = bcamPlace(s, c, D);
+  // optical centre so that the grid box's middle lands on the band's middle
+  const ox = ((e[0] + e[1]) / 2) * ppt, oy = H / 2 - ((T + B) / 2 + ((e[2] + e[3]) / 2) * ppt);
+  const k = snap ? 1 : 1 - Math.exp(-dt * 8);
+  lay.bOffX += (ox - lay.bOffX) * k; lay.bOffY += (oy - lay.bOffY) * k;
+  const v = bcam.view;
+  if (!v || !v.enabled || v.fullWidth !== W || v.fullHeight !== H || Math.abs(v.offsetX - lay.bOffX) > 0.05 || Math.abs(v.offsetY - lay.bOffY) > 0.05) bcam.setViewOffset(W, H, lay.bOffX, lay.bOffY, W, H);
 }
 const hitMat = makeHitMaterial(THREE);
+
+// ------------------------------------------------------------------ app lifecycle: backgrounding and WebGL context loss
+// A good moment to write the save: on the map or in a town sheet, not mid-walk, mid-battle or mid enemy turn (those
+// are settled by the regular saves; a save there would let a reload undo a battle or replay half an AI turn).
+const safeToSave = () => (G.mode === 'map' || G.mode === 'town') && !walking && !aiRunning && !bprep && !G.over && G.players.length > 0 && $('loader').hidden;
+// Backgrounding (phones): save while we still can (the OS may kill a hidden tab), silence the audio and drop the time
+// spent away. rAF stops by itself while hidden, which stops the render loop, the AI and every animation.
+let audioPaused = false;
+function onHide() {
+  try { if (safeToSave()) save(); } catch (e) { console.warn('save on hide', e); }
+  if (actx && actx.state === 'running') { audioPaused = true; actx.suspend().catch(() => {}); }
+}
+function onShow() {
+  clock.getDelta(); // the first frame back gets a normal dt, not the minutes spent away (frame() clamps it too)
+  if (audioPaused && actx) { audioPaused = false; actx.resume().catch(() => {}); }
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) onHide(); else onShow(); });
+window.addEventListener('pagehide', onHide); // iOS Safari: the reliable "going away" signal
+window.addEventListener('pageshow', (e) => { if (e.persisted) onShow(); });
+// WebGL context loss: iOS Safari and Android Chrome drop the context of a backgrounded tab or under memory pressure.
+// three.js calls preventDefault (so the browser may restore it) and, on restore, rebuilds its GL state; every geometry,
+// texture, render target (post targets, shadow maps, portrait targets) and program the game keeps is re-uploaded or
+// recompiled lazily on its next use, so nothing has to be rebuilt by hand and the game state is untouched. Portraits
+// are 2D images (independent of GL); the ones requested while the context was gone are not cached (portraits.js), so
+// they render again once it is back.
+let glLost = 0, glEpoch = 0;
+// three's compileAsync polls program.isReady() every 10 ms: while the context is lost that never becomes true, and
+// after a restore it throws (the new GL state has no program for those materials), an uncaught error in a timer.
+// Same contract, but it settles as soon as the context is lost or replaced (the programs then compile on first draw).
+renderer.compileAsync = function compileAsyncSafe(sc, cm, target = null) {
+  if (renderer.getContext().isContextLost()) return Promise.resolve(sc);
+  const mats = renderer.compile(sc, cm, target), ep = glEpoch;
+  return new Promise((resolve) => {
+    const check = () => {
+      if (ep !== glEpoch || renderer.getContext().isContextLost()) { resolve(sc); return; }
+      for (const m of mats) { const pr = renderer.properties.get(m).currentProgram; if (!pr || pr.isReady()) mats.delete(m); }
+      if (!mats.size) resolve(sc); else setTimeout(check, 10);
+    };
+    if (renderer.extensions.get('KHR_parallel_shader_compile') !== null) check(); else setTimeout(check, 10);
+  });
+};
+cvs.addEventListener('webglcontextlost', (e) => {
+  glEpoch++;
+  e.preventDefault(); glLost = performance.now();
+  try { if (safeToSave()) save(); } catch (err) { /* ignore */ } // in case the browser gives up and reloads the tab
+}, false);
+cvs.addEventListener('webglcontextrestored', () => {
+  glLost = 0; glEpoch++;
+  renderer.shadowMap.needsUpdate = true;
+  resize(); // re-sizes the post-processing targets on the new context
+  clock.getDelta();
+}, false);
 
 // first boot: a world spinning behind the title
 newWorld(12345, 1);
@@ -2611,11 +3425,38 @@ layoutWorld();
 resize();
 QG.init();
 showMenu();
-frame();
+// title (perf): the menu takes taps at once and the spinning world fades in when its shader programs are compiled
+// (in parallel where KHR_parallel_shader_compile exists), instead of the very first frame blocking the page on them.
+{
+  const cv = renderer.domElement;
+  let go = false;
+  const start = () => {
+    if (go) return; go = true;
+    requestAnimationFrame(() => { cv.style.transition = 'opacity 0.6s'; cv.style.opacity = ''; setTimeout(() => { cv.style.transition = ''; }, 700); });
+    warmPicker();
+    frame();
+  };
+  cv.style.opacity = '0';
+  compileSoon(scene, camera, 4000).then(start);
+}
+// the faction picker shows three creature portraits per faction: render them in the title's idle time (off-thread
+// readback), so tapping New game does not render 15 portraits synchronously
+function warmPicker() {
+  const ids = [...new Set(Object.values(FACTIONS).flatMap((f) => [0, 3, 6].map((i) => f.units?.[i])))].filter((id) => id && UNITS[id]);
+  const next = () => {
+    if (G.mode !== 'menu') return;
+    while (ids.length && hasPortrait(ids[0], 64)) ids.shift();
+    if (!ids.length) return;
+    idleCb((dl) => { if (G.mode !== 'menu' || (!dl.didTimeout && dl.timeRemaining() < 3)) { setTimeout(next, 200); return; } portraitAsync(ids.shift(), 64).finally(next); });
+  };
+  setTimeout(next, 600);
+}
 window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
 Object.assign(window.__realms, { quality: QG.state, renderer });
+Object.assign(window.__realms, { prewarmProfile: () => loadProf, postQueue: () => postQ.map((j) => j.label), bumpWarm });
 // battle test hooks (battle-flow logs / soft-lock runs): fast-forward the battle without rendering
 Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get bmesh() { return bmesh; }, get banim() { return banim; }, bstep: (dt) => { if (!bprep) { animateBattle(dt); vfx.update(dt, bcam); } } }));
 // geometry cache: idle warm-up hook + stats (models, triangles, CPU-side MB of vertex data)
-Object.assign(window.__realms, { warmGeometryIdle, warmQueue: () => warmQ.length, geoStats: () => { let tris = 0, bytes = 0; for (const m of geoCache.values()) for (const g of [m?.body, m?.glow]) if (g?.attributes?.position) { tris += g.attributes.position.count / 3; for (const a of Object.values(g.attributes)) bytes += a.array.byteLength; } return { models: geoCache.size, tris: Math.round(tris), mb: +(bytes / 1048576).toFixed(1) }; } });
+Object.assign(window.__realms, { trimGeoCache, memStats: () => ({ geoCache: geoCache.size, floaters: floaters.length, heroMeshes: heroMeshes.size, plates: bplateMap.size, bstuff: bstuff.children.length, world: world.children.length, flora: flora.children.length, townScene: townView.scene.children.length, glLost: !!glLost }) });
+Object.assign(window.__realms, { warmGeometryIdle, warmQueue: () => warmQ.length + ptQ.length, portraitQueue: () => ptQ.length + portraitsPending(), geoStats: () => { let tris = 0, bytes = 0; for (const m of geoCache.values()) for (const g of [m?.body, m?.glow]) if (g?.attributes?.position) { tris += g.attributes.position.count / 3; for (const a of Object.values(g.attributes)) bytes += a.array.byteLength; } return { models: geoCache.size, tris: Math.round(tris), mb: +(bytes / 1048576).toFixed(1) }; } });

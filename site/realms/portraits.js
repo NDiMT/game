@@ -20,6 +20,9 @@
 //   heroPortrait(fac, color, size = 64, shape)       -> dataURL (cached) | ''
 //   heroPortraitImg(fac, color, size = 64, cls = 'pt hero', shape = 'square') -> '<img>' | ''
 //   preloadPortraits(ids, size)   warms the cache in idle time
+//   portraitAsync(id, size, shape) -> Promise<url>: background render (fenced readback, toBlob encode: no GPU stall)
+//   portraitImgLazy(id, size, cls) -> '<img>' now (a cached other size, scaled) and the sharp one swapped in when ready
+//   hasPortrait(id, size, shape), portraitsPending(), heroPortraitId(fac, color)
 //   clearPortraits()
 //
 // ids: every key of data.js UNITS, plus heroes 'hero:<fac>' or 'hero:<fac>:<rrggbb>'.
@@ -31,10 +34,10 @@
 // sizes through a small LRU), one MSAA render at 2x, one composite pass on the
 // game's own renderer (no extra WebGL context), one 8-bit readback, one PNG encode.
 // =====================================================================
-import { UNITS } from './data.js?v=1.8';
-import { heroModel } from './models_towns.js?v=1.8';
-import { makeBodyMaterial, makeGlowMaterial } from './materials.js?v=1.8';
-import { BONE } from './rig.js?v=1.8';
+import { UNITS } from './data.js?v=1.9';
+import { heroModel } from './models_towns.js?v=1.9';
+import { makeBodyMaterial, makeGlowMaterial } from './materials.js?v=1.9';
+import { BONE } from './rig.js?v=1.9';
 
 const hex = (h) => [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255];
 const css = (h) => '#' + (h >>> 0).toString(16).padStart(6, '0').slice(-6);
@@ -299,7 +302,9 @@ function frameCamera(b, f) {
 }
 
 // ------------------------------------------------------------------ render
-function renderPortrait(id, size, shape) {
+// async = true: the readback goes through a pixel-pack buffer + fence (no GPU pipeline stall on the main thread) and the
+// function returns a Promise<canvas>; otherwise it returns the PNG data URL synchronously (one blocking readPixels).
+function renderPortrait(id, size, shape, async = false) {
   const pr = Math.min(2, (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) * (OPTS.scale ?? 1));
   const N = Math.max(16, Math.round(size * pr)), S = N * (OPTS.ss || 2);
   if (!rtScene) {
@@ -338,21 +343,57 @@ function renderPortrait(id, size, shape) {
   u.uSpark.value = T.MathUtils.clamp((N - 56) / 90, 0, 1) * (isUp || isHero ? 0.75 : 0.45);
   let seed = 0; for (let i = 0; i < id.length; i++) seed = (seed * 31 + id.charCodeAt(i)) % 997; u.uSeed.value = seed * 0.37;
   R.setRenderTarget(rtOut); R.render(quadScene, quadCam);
-  const px = new Uint8Array(N * N * 4);
-  R.readRenderTargetPixels(rtOut, 0, 0, N, N, px);
+  let px = null, pending = null;
+  if (async && canAsync()) pending = readAsync(N); // rtOut is bound: the copy is queued on the GPU, rtOut is free to reuse
+  else { px = new Uint8Array(N * N * 4); R.readRenderTargetPixels(rtOut, 0, 0, N, N, px); }
   const t3 = performance.now();
   R.setRenderTarget(prevRT); R.autoClear = prevAuto; R.setClearColor(prevCC, prevCA); R.shadowMap.autoUpdate = prevSM;
   meshes.forEach((x) => scene.remove(x));
 
   // to a 2D canvas (flip rows), then the frame and marks
-  const cv = document.createElement('canvas'); cv.width = cv.height = N;
-  const ctx = cv.getContext('2d'), img = ctx.createImageData(N, N), row = N * 4;
-  for (let y = 0; y < N; y++) img.data.set(px.subarray((N - 1 - y) * row, (N - y) * row), y * row);
-  ctx.putImageData(img, 0, 0);
-  decorate(ctx, N, shape, { up: isUp, heroCol: isHero ? (heroCol ?? null) : undefined, pal });
+  const finish = (px) => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = N;
+    const ctx = cv.getContext('2d'), img = ctx.createImageData(N, N), row = N * 4;
+    for (let y = 0; y < N; y++) img.data.set(px.subarray((N - 1 - y) * row, (N - y) * row), y * row);
+    ctx.putImageData(img, 0, 0);
+    decorate(ctx, N, shape, { up: isUp, heroCol: isHero ? (heroCol ?? null) : undefined, pal });
+    return cv;
+  };
+  if (pending) return pending.then(finish);
+  const cv = finish(px);
+  if (async) return Promise.resolve(cv);
   const url = cv.toDataURL('image/png');
   if (OPTS.profile) (globalThis.__portraitProfile ||= []).push({ id, N, model: t1 - t0, frame: t2 - t1, gpu: t3 - t2, encode: performance.now() - t3 });
   return url;
+}
+
+// Non-blocking readback (WebGL2): readPixels into a PIXEL_PACK buffer (a GPU-side copy), fence, poll the fence from
+// timers and fetch the bytes only once the GPU is done, so the main thread never waits on the pipeline ("GPU stall due
+// to ReadPixels"). Not three's readRenderTargetPixelsAsync: that one leaves the pack buffer bound while it waits, which
+// breaks any synchronous readPixels issued meanwhile.
+const canAsync = () => { const gl = R.getContext(); return !!(gl && gl.fenceSync && gl.PIXEL_PACK_BUFFER); };
+function readAsync(N) {
+  const gl = R.getContext(), bytes = N * N * 4;
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buf);
+  gl.bufferData(gl.PIXEL_PACK_BUFFER, bytes, gl.STREAM_READ);
+  gl.readPixels(0, 0, N, N, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+  gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+  const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+  gl.flush();
+  return new Promise((resolve, reject) => {
+    const done = () => { gl.deleteSync(sync); gl.deleteBuffer(buf); };
+    const poll = () => {
+      if (gl.isContextLost()) { reject(new Error('context lost')); return; }
+      const st = gl.clientWaitSync(sync, 0, 0);
+      if (st === gl.TIMEOUT_EXPIRED) { setTimeout(poll, 8); return; }
+      if (st === gl.WAIT_FAILED) { done(); reject(new Error('fence failed')); return; }
+      const px = new Uint8Array(bytes);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buf); gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, px); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      done(); resolve(px);
+    };
+    setTimeout(poll, 8);
+  });
 }
 
 // ------------------------------------------------------------------ frame, star, hero plate
@@ -428,21 +469,34 @@ function star(ctx, N, cx, cy) {
 
 // ------------------------------------------------------------------ public API
 /** Cached dataURL of the portrait of `id` at `size` CSS px (rendered at device pixel ratio, max 2x). */
+const keyOf = (id, size, shape) => id + '@' + size + (shape === 'round' ? 'r' : '');
+const glGone = () => { try { return R.getContext().isContextLost(); } catch { return false; } };
 export function portrait(id, size = 64, shape = 'square') {
   if (!R || !id) return '';
-  const key = id + '@' + size + (shape === 'round' ? 'r' : '');
+  const key = keyOf(id, size, shape);
   let u = cache.get(key);
   if (u === undefined) {
+    // WebGL context lost (backgrounded phone, memory pressure): the render would read back blank pixels. Draw nothing
+    // and cache nothing, so the portrait renders for real once three.js has restored the context.
+    if (glGone()) return '';
     try { u = renderPortrait(id, size, shape); } catch (e) { console.warn('portrait', id, e); u = ''; }
+    if (glGone()) return '';
     cache.set(key, u);
     if (u) toBlobUrl(key, u);
-  }
+  } else if (u) keepWarm(key);
   return u;
 }
 // perf (mobile): a PNG data URL is ~20-40 KB of base64 that every innerHTML rebuild (HUD, town rows, dialogs) re-parses
 // and re-decodes. Swap the cached entry for a short blob: URL once it is decoded off the main thread; a held, decoded
 // Image keeps the bitmap warm so new <img> tags with that URL paint without another decode.
 const warm = new Map();
+// bounded (memory): each held Image pins a decoded bitmap (~16-150 KB). Keep the most recently used ones decoded; the
+// rest stay cached as small blob: URLs and simply decode again when shown.
+const WARM_MAX = 64;
+function keepWarm(key, img) {
+  if (img) { warm.delete(key); warm.set(key, img); } else if (warm.has(key)) { const x = warm.get(key); warm.delete(key); warm.set(key, x); }
+  while (warm.size > WARM_MAX) warm.delete(warm.keys().next().value);
+}
 function toBlobUrl(key, dataUrl) {
   if (typeof fetch !== 'function' || typeof URL?.createObjectURL !== 'function') return;
   fetch(dataUrl).then((r) => r.blob()).then((b) => {
@@ -450,9 +504,60 @@ function toBlobUrl(key, dataUrl) {
     img.src = url;
     return (img.decode ? img.decode() : Promise.resolve()).then(() => {
       if (cache.get(key) !== dataUrl) { URL.revokeObjectURL(url); return; } // cleared or replaced meanwhile
-      cache.set(key, url); warm.set(key, img);
+      cache.set(key, url); keepWarm(key, img);
     });
   }).catch(() => { /* keep the data URL */ });
+}
+
+/** true when the portrait is already rendered (calling portrait() for it costs nothing). */
+export function hasPortrait(id, size = 64, shape = 'square') { return cache.has(keyOf(id, size, shape)); }
+
+/** Number of async renders in flight (callers budget their idle work with it). */
+export const portraitsPending = () => inflight.size;
+// Render in the background: GPU pass now (a few ms of CPU: framing + draw submission), readback through a fence and PNG
+// encode through canvas.toBlob, both off the critical path. Resolves to the cached URL ('' on failure). Any <img> that
+// was handed out by portraitImgLazy() for this key gets its src swapped in place when it is ready.
+const inflight = new Map();
+export function portraitAsync(id, size = 64, shape = 'square') {
+  if (!R || !id) return Promise.resolve('');
+  const key = keyOf(id, size, shape);
+  if (cache.has(key)) return Promise.resolve(cache.get(key));
+  if (inflight.has(key)) return inflight.get(key);
+  if (glGone()) return Promise.resolve(''); // context lost: not now, and nothing cached (see portrait())
+  let p;
+  try { p = renderPortrait(id, size, shape, true); } catch (e) { console.warn('portrait', id, e); p = null; }
+  if (!p || typeof p.then !== 'function') { cache.set(key, ''); return Promise.resolve(''); } // no model
+  const job = p.then((cv) => new Promise((res) => (cv.toBlob ? cv.toBlob((b) => res(b), 'image/png') : res(null))).then((b) => {
+    if (cache.has(key)) return cache.get(key); // a synchronous render won the race
+    if (!b) { const u = cv.toDataURL('image/png'); cache.set(key, u); return u; }
+    const url = URL.createObjectURL(b), img = new Image();
+    img.src = url;
+    return (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => {
+      if (cache.has(key)) { URL.revokeObjectURL(url); return cache.get(key); }
+      cache.set(key, url); keepWarm(key, img);
+      if (typeof document !== 'undefined') for (const el of document.querySelectorAll(`img[data-ptk="${CSS.escape(key)}"]`)) { el.src = url; el.removeAttribute('data-ptk'); }
+      return url;
+    });
+  })).catch((e) => { console.warn('portrait', id, e); return ''; }).finally(() => inflight.delete(key));
+  inflight.set(key, job);
+  return job;
+}
+
+/**
+ * '<img>' HTML that never renders synchronously when a smaller (or any) size of the same portrait is cached: it shows
+ * that one scaled to `size` and swaps in the sharp one when the background render finishes. Only when nothing at all is
+ * cached for `id` does it fall back to the blocking render.
+ */
+export function portraitImgLazy(id, size = 64, cls = 'pt') {
+  if (!R || !id) return '';
+  const key = keyOf(id, size, 'square');
+  if (cache.has(key)) return portraitImg(id, size, cls);
+  let best = null, bs = 0;
+  for (const k of cache.keys()) { const at = k.lastIndexOf('@'); if (k.slice(0, at) !== id || k.endsWith('r') || !cache.get(k)) continue; const s = +k.slice(at + 1); if (s > bs) { bs = s; best = k; } }
+  if (!best) return portraitImg(id, size, cls);
+  portraitAsync(id, size);
+  const name = id.startsWith('hero:') ? 'Hero' : (UNITS[id]?.name || id);
+  return `<img class="${cls}" src="${cache.get(best)}" data-ptk="${key}" width="${size}" height="${size}" alt="${name}" draggable="false">`;
 }
 
 /** '<img>' HTML for templates; '' when portraits are unavailable (fall back to the emoji). */
@@ -463,6 +568,7 @@ export function portraitImg(id, size = 64, cls = 'pt') {
   return `<img class="${cls}" src="${u}" width="${size}" height="${size}" alt="${name}" draggable="false">`;
 }
 
+export const heroPortraitId = (fac, color) => heroId(fac, color);
 const heroId = (fac, color) => {
   const c = typeof color === 'string' ? parseInt(color.replace('#', ''), 16) : color;
   return `hero:${fac}` + (Number.isFinite(c) ? ':' + (c >>> 0).toString(16).padStart(6, '0') : '');
@@ -479,7 +585,7 @@ export function heroPortraitImg(fac, color, size = 64, cls = 'pt hero', shape = 
 
 /** Warm the cache a few portraits at a time when the browser is idle. Hero ids: 'hero:<fac>:<rrggbb>'. */
 export function preloadPortraits(ids, size = 64) {
-  const todo = ids.filter((id) => !cache.has(id + '@' + size));
+  const todo = ids.filter((id) => !cache.has(keyOf(id, size, 'square')));
   const idle = globalThis.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 50));
   const run = (dl) => { while (todo.length && dl.timeRemaining() > 4) portrait(todo.shift(), size); if (todo.length) idle(run); };
   if (todo.length) idle(run);
@@ -491,4 +597,12 @@ export function clearPortraits() {
   cache.clear(); warm.clear();
   if (OPTS.dispose) for (const m of geoLRU.values()) { m.body.dispose(); m.glow?.dispose(); }
   geoLRU.clear();
+}
+
+/** The caller is freeing model `m` (main.js trimGeoCache): forget it here too and free the trimmed draw views made for
+ *  it. A view shares m's attribute buffers, so it is only disposed together with m (the caller disposes m itself). */
+export function releasePortraitModel(m) {
+  if (!m) return;
+  for (const [k, x] of geoLRU) if (x === m) geoLRU.delete(k);
+  for (const g of [m.body, m.glow]) { const v = g && views.get(g); if (v && v !== g) { views.delete(g); v.dispose(); } }
 }

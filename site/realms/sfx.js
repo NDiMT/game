@@ -611,8 +611,17 @@ export function createSfx(ac, out, { base = new URL('./audio/sfx/', import.meta.
     },
   };
 
-  // ---- voices: per-sound gain → pan → bus (+ reverb send); light throttling for rapid repeats
-  const last = {}, live = typeof ac.startRendering !== 'function'; let busyUntil = [];
+  // ---- voices: per-sound gain → pan → bus (+ reverb send).
+  // Voice limiting: a big battle or a burst of taps must never pile up hundreds of nodes or sum into clipping.
+  //  · the same sound twice within 35 ms plays once
+  //  · per-sound cap: at most CAP[name] (default 3) starts of one sound per 0.3 s; stacked copies get quieter
+  //  · global cap: past 14 sounds per second only the "story" sounds below still play
+  const KEY = new Set(['battle', 'victory', 'defeat', 'levelup', 'fanfare', 'capture', 'alarm', 'week', 'day', 'town', 'hire', 'artifact', 'chest', 'deny', 'open', 'close', 'confirm', 'flag', 'build', 'recruit', 'upgrade']);
+  const CAP = { step: 2, click: 2, tab: 2, select: 2, coin: 3, hit: 3, heavy: 2, shoot: 3, die: 3, die_undead: 2, luck: 1, morale: 1, cast: 2, spell: 2, gate: 1 };
+  const last = {}, recent = {}, live = typeof ac.startRendering !== 'function'; let busyUntil = [];
+  // schedule slightly ahead of currentTime: on phones the audio clock advances in hardware-buffer chunks, and a
+  // start time already in the past skips the attack ramp (an audible click)
+  const lead = () => Math.min(0.025, Math.max(0.006, ac.baseLatency || 0));
   function play(name, o = {}) {
     name = ALIAS[name] || name;
     let kind = o.kind;
@@ -623,10 +632,13 @@ export function createSfx(ac, out, { base = new URL('./audio/sfx/', import.meta.
     const now = ac.currentTime, mix = MIX[name] || [0.8, 0.25, 0], lvl = LEVEL[`${name}:${kind}`] ?? LEVEL[name] ?? mix[0];
     if (last[name] && now - last[name] < 0.035) return; // same sound twice in one frame
     busyUntil = busyUntil.filter((x) => x > now);
-    if (busyUntil.length > 18 && (name === 'step' || name === 'click' || name === 'coin')) return;
-    last[name] = now; busyUntil.push(now + 1);
-    const t = now + 0.006;
-    const g = ac.createGain(); g.gain.value = lvl * (o.vol ?? 1);
+    if (busyUntil.length >= 14 && !KEY.has(name)) return;
+    const rec = (recent[name] = (recent[name] || []).filter((x) => x > now - 0.3));
+    if (rec.length >= (CAP[name] ?? 3)) return;
+    const stacked = rec.filter((x) => x > now - 0.12).length;
+    last[name] = now; busyUntil.push(now + 1); rec.push(now);
+    const t = now + lead();
+    const g = ac.createGain(); g.gain.value = lvl * (o.vol ?? 1) / (1 + 0.4 * stacked);
     const p = panTo(bus, o.pan);
     g.connect(p);
     if (mix[1] > 0) { const s = ac.createGain(); s.gain.value = mix[1]; g.connect(s).connect(rev); }
