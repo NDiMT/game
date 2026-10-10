@@ -761,7 +761,7 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 .fs-you, .fs-set { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .fs-you > .mlabel, .fs-row > .mlabel { margin: 2px 0 0; text-align: left; }
 .fs-row { display: flex; flex-direction: column; gap: 6px; }
-.fs-set .seg button { height: 42px; padding: 0 4px; font-size: 13px; gap: 4px; min-width: 0; white-space: nowrap; }
+.fs-set .seg button { height: 44px; padding: 0 4px; font-size: 13px; gap: 4px; min-width: 0; white-space: nowrap; }
 .fs-set .seg button .ic { flex: none; }
 .fs-hint { text-align: left; margin: 4px 2px 0; color: var(--text-2); }
 /* compact faction cards: the chosen one shows its description and signature */
@@ -1081,4 +1081,244 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 @media (orientation: landscape) and (min-width: 900px) {
   #minimap { top: calc(var(--safe-t) + var(--gut)); }
   #hud .side { top: calc(var(--safe-t) + var(--gut) + var(--mm-h, 110px) + 10px); }
+}
+
+/* ============================================================ landscape agent (v2.1): landscape-first layout
+   Height is the scarce side of a landscape phone, so the chrome lives on the side edges and the top / bottom stay thin.
+   Map: a sidebar rail on the right (minimap, heroes + towns, Hero / Menu / End day), a thin resource strip top-left,
+   the selected hero as a corner card bottom-left, Crown Run chips down the left edge (icons; tap to expand).
+   Battle: the turn queue down the left edge, the status scroll + buttons down the right, the field fills the middle.
+   Town: the 3D town on the left, a ~40% panel on the right. Dialogs: wider cards, two columns, buttons in a row.
+   main.js measures the free rectangle (measureLayout / freeRect) and frames the map and the battle in it; the
+   minimap width follows --rail (main.js mini.size uses the same clamp). Portrait keeps the bars above. */
+.rail { display: none; }
+@media (orientation: landscape) {
+  :root { --rail: clamp(124px, 15.5vw, 200px); --strip: 38px; --rbtn-h: 116px; --bq-w: 62px; --bpanel: clamp(148px, 18vw, 236px); --tpanel: clamp(300px, 40vw, 470px); }
+
+  /* ---------------- map: the sidebar rail */
+  #hud .rail { display: block; position: absolute; z-index: 2; top: 0; bottom: 0; right: 0; width: calc(var(--rail) + var(--safe-r)); pointer-events: auto;
+    border-left: 3px solid transparent; background: linear-gradient(90deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0) 16px) padding-box, var(--slate) padding-box, var(--rim) border-box;
+    box-shadow: -2px 0 0 var(--ink), -10px 0 24px rgba(2, 4, 20, 0.45); }
+  #hud .rail::before { content: ''; position: absolute; left: -13px; top: -9px; bottom: -9px; width: 34px; pointer-events: none;
+    background: var(--orn-tl) left top / 34px no-repeat, var(--orn-bl) left bottom / 34px no-repeat; }
+  #minimap { z-index: 3; left: auto; right: calc(var(--safe-r) + 8px); top: calc(var(--safe-t) + 8px); border-radius: 8px; opacity: 1; border: 2px solid #e9b84e;
+    box-shadow: 0 0 0 1.5px var(--ink), inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 3px 8px rgba(0, 0, 0, 0.45); }
+  #hud .side { z-index: 3; left: auto; right: var(--safe-r); width: var(--rail); top: calc(var(--safe-t) + 14px + var(--mm-h, 80px)); bottom: calc(var(--safe-b) + var(--rbtn-h) + 12px);
+    max-height: none; margin: 0; padding: 10px 11px 10px 11px; display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); grid-auto-rows: max-content; align-content: start; gap: 13px 7px; }
+  #hud .side .hb { width: auto; min-height: 60px; padding: 5px 2px 12px; }
+  #hud .side .hb-ic { width: 34px; height: 34px; }
+  #hud .side .hb-ic img.pt { width: 34px; height: 34px; }
+  #hud .side .hb b { max-width: 100%; font-size: 10px; -webkit-line-clamp: 1; }
+  #hud .side .hb.on { transform: translateY(-2px); }
+  #hud .side .hb > em { width: 22px; height: 22px; top: -7px; right: -6px; }
+  /* the action buttons stack at the bottom of the rail: Hero | Menu over a wide End day */
+  #hud .bottom { position: static; }
+  #hud .btns { position: absolute; z-index: 3; right: calc(var(--safe-r) + 8px); bottom: calc(var(--safe-b) + 8px); width: calc(var(--rail) - 14px); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 7px; }
+  #hud .btns .fb { height: 48px; min-width: 0; gap: 2px; }
+  #hud .btns .fb small { font-size: 10px; letter-spacing: 0.04em; }
+  #hud .btns .fb .ic { width: 22px; height: 22px; }
+  #hud .btns .fb.end { grid-column: 1 / -1; height: 54px; flex-direction: row; gap: 8px; }
+  #hud .btns .fb.end small { font-size: 13px; }
+  #hud .btns .fb.end .ic { width: 26px; height: 26px; }
+  /* the selected hero: a compact card in the bottom-left corner (not a full-width bar) */
+  #hud .sel { position: absolute; z-index: 3; left: calc(var(--safe-l) + var(--gut)); bottom: calc(var(--safe-b) + var(--gut)); margin: 0;
+    max-width: calc(100% - var(--rail) - var(--safe-l) - var(--safe-r) - 3 * var(--gut)); min-height: 44px; padding: 3px 8px 3px 3px; gap: 8px; }
+  /* the resource strip: thin, top-left, day inline */
+  .resbar { left: calc(var(--safe-l) + var(--gut)); right: auto; top: calc(var(--safe-t) + var(--gut)); width: auto; height: var(--strip); gap: 3px; padding: 0 4px 0 5px; border-radius: 12px;
+    max-width: calc(100% - var(--rail) - var(--safe-l) - var(--safe-r) - 3 * var(--gut)); }
+  .resbar .rc { flex: none; width: 80px; }
+  .resbar .rc-gold { width: 100px; }
+  .resbar .rc > i:first-child { width: 26px; height: 26px; margin-right: -10px; }
+  .resbar .rc > i:first-child .ic { width: 20px; height: 20px; }
+  .resbar .rc > b { height: 21px; font-size: 13px; padding: 0 6px 0 12px; }
+  #r-day { flex-direction: row; align-self: center; gap: 5px; width: auto; height: 26px; margin: 0 0 0 3px; padding: 0 10px; filter: none; }
+  #r-day::before { clip-path: none; border-radius: 13px; box-shadow: 0 0 0 1.5px var(--ink), 0 2px 0 #8a4a0c; }
+  #r-day small { font-size: 9px; }
+  #r-day b { margin: 0; font-size: 13px; white-space: nowrap; }
+  #r-day small { white-space: nowrap; }
+  /* overlays of the free map area: centred on it, under the strip */
+  #turnbar { top: calc(var(--safe-t) + var(--gut) + var(--strip) + 8px); bottom: auto; left: calc((100% - var(--rail) - var(--safe-r)) / 2); max-width: calc(100% - var(--rail) - 120px); padding: 3px 12px 3px 6px; }
+  #turnbar b { font-size: 14px; }
+  /* (the toast sits under the turn chip, so whose turn it is stays readable while a toast shows) */
+  .toast { left: calc(var(--safe-l) + var(--gut) + 56px); right: calc(var(--rail) + var(--safe-r) + var(--gut)); top: calc(var(--safe-t) + var(--gut) + var(--strip) + 50px); }
+  .dc-orb, .dc-ban, #daycyc.week::after { left: calc((100% - var(--rail) - var(--safe-r)) / 2); }
+  .dc-ban { top: calc(var(--safe-t) + 84px); }
+  /* Crown Run: icon chips down the left edge under the strip; a tap expands one (crown_ui.js), a second tap opens it */
+  #crown-hud { top: calc(var(--safe-t) + var(--gut) + var(--strip) + 10px); left: calc(var(--safe-l) + var(--gut)); right: auto; flex-direction: column; align-items: flex-start; gap: 9px; }
+  #crown-hud .cr-eq, #crown-hud .cr-pill { height: 44px; min-width: 44px; padding: 0 3px; gap: 0; transition: padding 0.2s var(--ease); }
+  #crown-hud .cr-pt2 { display: none; }
+  #crown-hud .open { gap: 7px; padding-right: 12px; z-index: 2; box-shadow: var(--bevel), 0 3px 0 var(--ink-b), 0 6px 16px rgba(0, 0, 0, 0.5); }
+  #crown-hud .open .cr-pt2 { display: flex; animation: crexp 0.22s var(--ease); }
+  @keyframes crexp { from { opacity: 0; transform: translateX(-8px); } }
+
+  /* ---------------- battle: queue down the left, status + buttons down the right, the field in between */
+  #battle .btop { left: calc(var(--safe-l) + var(--gut)); top: calc(var(--safe-t) + var(--gut)); bottom: calc(var(--safe-b) + var(--gut)); right: auto; width: var(--bq-w); transform: none;
+    flex-direction: column; flex-wrap: nowrap; align-items: center; justify-content: flex-start; padding: 44px 4px 8px; column-gap: 0; }
+  #battle .btop #b-title { display: none; }
+  #b-round { top: 6px; bottom: auto; width: 52px; padding: 4px 2px 5px; font-size: 10px; line-height: 1.12; white-space: normal; text-align: center; letter-spacing: 0.06em; }
+  #b-round::before, #b-round::after { width: 14px; }
+  #b-round::before { left: -9px; } #b-round::after { right: -9px; }
+  #battle .bq { flex: 1 1 0; flex-basis: auto; min-height: 0; width: 100%; flex-direction: column; align-items: center; margin: 0; padding: 6px 0; gap: 8px; overflow: hidden; }
+  #battle .bq .q { width: 40px; height: 40px; }
+  #battle .bq .q.now { width: 48px; height: 48px; margin: 0 0 2px; }
+  #battle .bq .q.gone, #battle .bq .q.in { width: 40px; height: 0; margin: 0 0 -8px; }
+  #battle .bbot { left: auto; right: calc(var(--safe-r) + var(--gut)); top: calc(var(--safe-t) + var(--gut)); bottom: calc(var(--safe-b) + var(--gut)); width: var(--bpanel);
+    display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 10px; pointer-events: none; }
+  #b-msg { flex: 0 1 auto; min-height: 0; max-height: 100%; width: auto; max-width: none; margin: 0; overflow: hidden; padding: 7px 10px; font-size: 12px; line-height: 1.35; text-align: left; }
+  #battle .bbot .btns { pointer-events: auto; flex: none; width: auto; display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; grid-auto-columns: 1fr; justify-items: center; gap: 19px 6px; padding: 0 0 10px; }
+  #battle .fb { width: 56px; height: 56px; }
+  #battle .fb .ic { width: 22px; height: 22px; }
+  #battle:not([hidden]) ~ .toast { top: calc(var(--safe-t) + 10px); left: calc(var(--safe-l) + var(--bq-w) + 2 * var(--gut)); right: calc(var(--safe-r) + var(--bpanel) + 2 * var(--gut)); }
+
+  /* ---------------- town: the panel on the right (~40%), compact rows; town_view frames the town in the rest */
+  .panel { left: auto; right: 0; top: 0; bottom: 0; width: var(--tpanel); max-height: none; border-radius: 22px 0 0 22px; border-top: 0; border-left: 3px solid transparent;
+    padding: calc(var(--safe-t) + 6px) calc(var(--safe-r) + 10px) calc(var(--safe-b) + 8px) 12px; box-shadow: -2px 0 0 var(--ink), -14px 0 32px rgba(2, 4, 20, 0.5); animation-name: sidein; }
+  .panel::before { left: -12px; right: auto; width: 34px; top: -9px; height: auto; bottom: -9px; background: var(--orn-tl) left top / 34px no-repeat, var(--orn-bl) left bottom / 34px no-repeat; }
+  .panel .grab, .phead .chev { display: none; }
+  .fold:checked ~ .tabs2, .fold:checked ~ .pbody { display: flex; } .fold:checked ~ .tfoot { display: block; }
+  #town .phead { padding: 6px 0 8px; }
+  #town .phead h2 { font-size: 19px; }
+  #town .tabs2 { gap: 4px; margin: 0 0 8px; }
+  #town .tabs2 button { flex-direction: column; gap: 1px; height: 46px; padding: 2px; font-size: 11px; }
+  .pbody { gap: 7px; }
+  #town .row-b { min-height: 56px; gap: 9px; padding: 6px 8px 6px 7px; }
+  #town .row-b > i, #town .row-b > i img.pt { width: 42px; height: 42px; }
+  #town .row-b > i { border-radius: 10px; }
+  #town .row-b b { font-size: 14px; }
+  #town .row-b button { min-width: 66px; height: 44px; padding: 0 9px; font-size: 13px; }
+  #town .row-b button + button { min-width: 56px; }
+  .tfoot { margin-top: 4px; padding-top: 7px; }
+  .reslist { gap: 6px; }
+  .reslist .rc > i:first-child { width: 24px; height: 24px; margin-right: -10px; }
+  .reslist .rc > b { height: 20px; font-size: 12px; padding: 0 3px 0 11px; }
+  .reslist .rc:first-child { flex-grow: 1.45; }
+  .armyrow { padding: 8px; }
+  .armyrow > b { margin-bottom: 7px; font-size: 13px; }
+  .slots button, .slots span { min-height: 44px; }
+  #town:not([hidden]) ~ .toast { top: calc(var(--safe-t) + 12px); left: calc(var(--safe-l) + var(--gut)); right: calc(var(--tpanel) + var(--gut)); }
+
+  /* ---------------- dialogs: wider cards, buttons in a row, two columns where it saves height */
+  .overlay { padding: calc(var(--safe-t) + 24px) calc(var(--safe-r) + 16px) calc(var(--safe-b) + 10px) calc(var(--safe-l) + 16px); }
+  .card { width: min(420px, 100%); max-height: calc(100vh - var(--safe-t) - var(--safe-b) - 34px); max-height: calc(100dvh - var(--safe-t) - var(--safe-b) - 34px); padding: 0 14px 12px; }
+  .card.wide { width: min(720px, 100%); }
+  .card h2 { margin-bottom: 8px; }
+  #dlg-body p { margin: 6px 0; }
+  .dbtns { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
+  .dbtns .btn { flex: 1 1 0; width: auto; min-width: min(150px, 100%); max-width: 340px; min-height: 46px; padding: 6px 12px 7px; font-size: 15px; }
+  .dbtns .btn.choice { min-height: 56px; }
+  .menu-brand .ic { width: 52px; height: 52px; }
+  .menu-brand b { font-size: 20px; }
+  /* hero sheet: stats on the left, army / skills / spells / artifacts on the right */
+  .hs-grid { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 0 18px; align-items: start; text-align: left; }
+  .hs-head { margin: 2px 0 10px; gap: 10px; }
+  .hs-pt img.pt { width: 64px; height: 64px; }
+  .hs-lv { width: 52px; height: 52px; }
+  #dlg-body .hs-lv b { font-size: 21px; }
+  /* stat tiles: icon beside the number (half the height) */
+  .hs-grid .st { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 5px; align-items: center; padding: 5px 7px; text-align: left; }
+  .hs-grid .st i { grid-row: span 2; height: auto; } .hs-grid .st small { font-size: 8.5px; letter-spacing: 0.03em; }
+  #dlg-body .hs-grid .st b { font-size: 18px; line-height: 1.05; }
+  /* the sheet's OK sits under the (shorter) left column instead of adding a row under both */
+  .card:has(.hs-grid) .dbtns { position: absolute; z-index: 3; left: 14px; bottom: 12px; width: calc((100% - 28px - 18px) * 0.475); margin: 0; }
+  .card:has(.hs-grid) .dbtns .btn { max-width: none; }
+  .hs-a { padding-bottom: 54px; }
+  .hs-grid .sec { margin: 10px 0 6px; } .hs-b > .sec:first-child { margin-top: 2px; }
+  .hs-grid .chips { gap: 5px; } .hs-grid .chip { min-height: 30px; padding: 3px 9px 3px 5px; }
+  /* level-up and battle results: the crest on the left, the story on the right */
+  .card:has(.burst) #dlg-body { display: grid; grid-template-columns: 136px minmax(0, 1fr); column-gap: 14px; align-items: center; }
+  .card:has(.burst) #dlg-body > * { grid-column: 2; }
+  .card:has(.burst) #dlg-body > .burst { grid-column: 1; grid-row: 1 / span 8; height: 120px; margin: 0; }
+  .card:has(.burst) #dlg-body > .burst .rays { width: 190px; height: 190px; margin: -95px 0 0 -95px; }
+  .card:has(.burst) #dlg-body > .sec { margin: 8px 0 0; }
+  .card:has(.burst) #dlg-body .xp-line { margin: 10px 0 0; }
+  /* end of the game: crest left, verdict + rivals + stats right */
+  .endcard { display: grid; grid-template-columns: 150px minmax(0, 1fr); column-gap: 16px; align-items: center; text-align: left; }
+  .endcard > * { grid-column: 2; }
+  .endcard > .crest2 { grid-column: 1; grid-row: 1 / span 3; width: 140px; height: 130px; margin: 0; }
+  .endcard p { margin: 0 0 10px; }
+  .endcard .rivals { justify-content: flex-start; }
+  .endcard .endstats { text-align: center; }
+}
+/* landscape phones (<= 560 px tall): a notch tighter */
+@media (orientation: landscape) and (max-height: 560px) {
+  :root { --gut: 6px; }
+  .card h2 { min-height: 36px; padding: 5px 16px 6px; font-size: 16px; margin-top: -18px; }
+  .burst { height: 84px; }
+  .hs-grid .stats { gap: 5px; }
+  .hs-grid .meters { margin-top: 6px; } .hs-grid .meter { padding: 6px 8px 12px; }
+  .hs-grid .stats { grid-template-columns: 1fr 1fr; }
+  .card:has(.menu-brand) { width: min(600px, 100%); }
+  .menu-brand .ic { display: none; }
+  .hs-grid .slots.big small { display: none; } .hs-grid .slots.big span { aspect-ratio: 1; } .hs-grid .slots.big em { bottom: 0; }
+}
+/* landscape tablets / desktop (taller than a phone): a roomier strip and rail */
+@media (orientation: landscape) and (min-height: 561px) {
+  :root { --strip: 46px; --rbtn-h: 132px; --bq-w: 72px; }
+  .resbar .rc { width: 104px; } .resbar .rc-gold { width: 124px; }
+  .resbar .rc > i:first-child { width: 32px; height: 32px; } .resbar .rc > i:first-child .ic { width: 24px; height: 24px; }
+  .resbar .rc > b { height: 26px; font-size: 15px; }
+  #r-day { height: 32px; } #r-day small { font-size: 10px; } #r-day b { font-size: 15px; }
+  #hud .side { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+  #hud .side .hb { min-height: 76px; } #hud .side .hb-ic, #hud .side .hb-ic img.pt { width: 42px; height: 42px; } #hud .side .hb b { font-size: 11px; }
+  #hud .btns .fb { height: 56px; } #hud .btns .fb.end { height: 62px; } #hud .btns .fb small { font-size: 11px; }
+  #battle .bq .q { width: 48px; height: 48px; } #battle .bq .q.now { width: 58px; height: 58px; } #battle .bq .q.gone, #battle .bq .q.in { width: 48px; }
+  #battle .fb { width: 66px; height: 66px; } #battle .fb .ic { width: 26px; height: 26px; }
+  #b-msg { font-size: 14px; padding: 9px 12px; }
+  #b-round { width: 60px; font-size: 12px; }
+  #battle .btop { padding-top: 52px; }
+}
+/* landscape phones: Free Play setup fits more per screen (label beside its choices, 44 px targets, compact head / foot);
+   Crown Run screens keep 44 px buttons and the end-of-run panel fits a 360-390 px height */
+@media (orientation: landscape) and (max-height: 560px) {
+  .fp.fs { padding-top: calc(var(--safe-t) + 6px); }
+  .fp.fs .fp-head { margin-bottom: 6px; gap: 8px; }
+  .fp.fs .fp-head > div { flex-direction: row; align-items: center; gap: 4px; }
+  .fp.fs .fp-head small { margin: 0; }
+  .fp.fs .fp-head .ic { width: 30px; height: 30px; }
+  .fs-cols { gap: 14px; }
+  .fs-set { gap: 7px; }
+  .fs-set > .fs-row { flex-direction: row; align-items: center; gap: 8px; }
+  .fs-set > .fs-row > .mlabel { flex: 0 0 74px; margin: 0; font-size: 10px; letter-spacing: 0.08em; line-height: 1.25; white-space: normal; }
+  .fs-set > .fs-row > :not(.mlabel) { flex: 1 1 auto; min-width: 0; }
+  .fs-set .seg button { height: 44px; font-size: 12px; padding: 0 2px; }
+  .opp button { height: 44px; }
+  .opp { padding: 4px 6px; }
+  .fp.fs .fp-foot { padding-top: 6px; padding-bottom: calc(var(--safe-b) + 8px); }
+  .fp.fs .fp-foot .btn { min-height: 48px; padding-top: 4px; padding-bottom: 5px; }
+  .fp.fs .fp-foot .btn.gold > small { margin-top: 1px; }
+  .fcards.mini .fcard { padding: 7px 10px; }
+  /* Crown Run */
+  .crown-layer .btn, .cr-detb .btn, .cr-trow .btn, .cr-endbtns .btn, .cr-originwrap footer .btn { min-height: 44px; }
+  .cr-end .cr-panel { max-height: 100%; padding: 8px 14px; }
+  .cr-end .cr-score { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
+  .cr-end .cr-score li { font-size: 12px; padding: 2px 0; }
+  .cr-end .cr-sum b { font-size: 22px; }
+  .cr-end .cr-side { gap: 5px; }
+  .cr-end .cr-crest .ic { width: 64px; height: 64px; }
+  .cr-end .cr-unl { width: 70px; }
+  .cr-end .cr-unl .cr-face b { font-size: 9px; }
+}
+@media (orientation: landscape) and (max-width: 900px) and (max-height: 560px) { .fs-set .seg button .ic { display: none; } }
+/* the hero sheet's portrait: the generic inline-portrait size for dialog text (#dlg-body img.pt, 1.5em) shrank it to an icon */
+#dlg-body .hs-pt img.pt { width: 72px; height: 72px; border-radius: 14px; box-shadow: var(--plate-ring); }
+@media (orientation: landscape) and (max-height: 560px) { #dlg-body .hs-pt img.pt { width: 56px; height: 56px; } }
+/* Crown Run hero picker on landscape phones: the factions take one compact row (unlock hint under the name), so the
+   background cards get the height to show their text; end of the run: the score tally in two columns on every
+   landscape screen */
+@media (orientation: landscape) and (max-height: 560px) {
+  .cr-originwrap { gap: 6px; }
+  .cr-originwrap .cr-facs { flex-wrap: nowrap; gap: 6px; }
+  .cr-originwrap .cr-fac { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 5px; align-items: center; align-content: center; min-height: 44px; padding: 2px 6px 2px 3px; border-radius: 22px; font-size: 12px; text-align: left; }
+  .cr-originwrap .cr-fac img.pt { grid-row: span 2; }
+  .cr-originwrap .cr-fac b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cr-originwrap .cr-fac small { max-width: none; font-size: 8px; line-height: 1.12; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .cr-originwrap .cr-origins .cr-in { aspect-ratio: 0.7; }
+  .cr-originwrap .cr-origins .cr-face { padding: 8px 4px 4px; }
+  .cr-originwrap .cr-origins .cr-art { height: 36px; }
+  .cr-originwrap .cr-origins .cr-txt { font-size: 9.5px; -webkit-line-clamp: 5; }
+  .cr-originwrap .cr-stakes { row-gap: 2px; }
+  .cr-originwrap .cr-stake { min-height: 44px; min-width: 44px; justify-content: center; }
+}
+@media (orientation: landscape) {
+  .cr-end .cr-score { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
 }

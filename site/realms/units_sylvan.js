@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE } from './rig.js?v=2.0';
+import { BONE } from './rig.js?v=2.1';
 
 // =====================================================================
 // HEX REALMS: Sylvan (elven forest) creatures, round 6.
