@@ -373,12 +373,24 @@ if (typeof ResizeObserver !== 'undefined') {
   const tro = new ResizeObserver(() => { lay.townDirty = true; });
   tro.observe($('town'));
 }
-// map: the camera's optical centre (where the followed hero stands) sits in the middle of the band between the
-// resource bar and the bottom bar, not in the middle of the whole screen (an off-axis view offset, fov unchanged)
+// map: the camera focus (where the followed / centred hero stands) keeps its place in the composition, but relative
+// to the free band between the resource bar and the bottom bar rather than to the whole screen, and the hero's
+// figure is kept clear of both bars (close-up landscape views put its head under the top bar otherwise).
+// Done with a vertical view offset (fov unchanged), eased; projections and picking follow it automatically.
+const mvP = new THREE.Vector3();
 function mapViewOffset(dt) {
   if (lay.dirty) measureLayout();
-  const H = rsz.h || innerHeight, W = rsz.w || innerWidth;
-  const want = G.mode === 'map' && lay.mapB > lay.mapT ? clamp((lay.mapT + lay.mapB) / 2 - H / 2, -H * 0.2, H * 0.2) : 0;
+  const H = rsz.h || innerHeight, W = rsz.w || innerWidth, T = lay.mapT, B = lay.mapB;
+  let want = 0;
+  if (G.mode === 'map' && B - T > H * 0.3) {
+    camera.updateMatrixWorld();
+    const sy = (p) => (-p.project(camera).y * 0.5 + 0.5) * H - lay.mapOff; // screen y without the current offset
+    const feet = sy(mvP.copy(camFocus).setLength(R + 0.03)), head = sy(mvP.copy(camFocus).setLength(R + 0.62 * figK));
+    want = T + (feet / H) * (B - T) - feet;
+    const lo = T + 8 - head, hi = B - 12 - feet;
+    want = lo > hi ? (lo + hi) / 2 : clamp(want, lo, hi);
+    want = clamp(want, -H * 0.25, H * 0.25);
+  }
   const snap = lay.snapMap || lay.sinceMode < 0.5; lay.snapMap = false;
   let o = Math.abs(want - lay.mapOff) < 0.3 || snap ? want : lay.mapOff + (want - lay.mapOff) * (1 - Math.exp(-dt * 6));
   if (Math.abs(o) < 0.5) o = 0;
@@ -3351,9 +3363,10 @@ showMenu();
   const cv = renderer.domElement;
   let go = false;
   const start = () => {
-    if (go) return; go = true; frame();
+    if (go) return; go = true;
     requestAnimationFrame(() => { cv.style.transition = 'opacity 0.6s'; cv.style.opacity = ''; setTimeout(() => { cv.style.transition = ''; }, 700); });
     warmPicker();
+    frame();
   };
   cv.style.opacity = '0';
   compileSoon(scene, camera, 4000).then(start);
