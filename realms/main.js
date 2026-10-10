@@ -143,7 +143,19 @@ function generate(seed) {
 // ------------------------------------------------------------------ world state
 const G = { mode: 'menu', seed: 1, day: 1, players: [], heroes: [], towns: [], objects: [], diff: 1, selHero: -1, over: false };
 // player 0 is you; the others are computer lords
-function newPlayer(i, fac, ai) { return { i, fac, ai, res: { gold: ai ? 7500 : 10000, wood: 20, ore: 20, gems: 5 }, alive: true, color: FACTIONS[fac].color, css: FACTIONS[fac].css, name: i === 0 ? 'You' : FACTIONS[fac].name }; }
+// freeplay: player colours (flags, heroes, HUD). Each crown takes its faction's colour unless another crown has it.
+const PLAYER_COLS = [0x3a7aff, 0xd83a3a, 0x3ac84a, 0xff7a1a, 0xa84ad8, 0x22c4c0, 0xe8c020, 0xff5aa8];
+const COL_NAMES = ['Blue', 'Red', 'Green', 'Orange', 'Purple', 'Teal', 'Gold', 'Pink'];
+const colCss = (c) => '#' + c.toString(16).padStart(6, '0');
+// difficulty 0 Easy · 1 Normal · 2 Hard · 3 Impossible; byDiff picks from a per-difficulty table (short tables clamp)
+const DIFF_NAMES = ['Easy', 'Normal', 'Hard', 'Impossible'];
+const byDiff = (arr) => arr[clamp(G.diff | 0, 0, arr.length - 1)];
+// starting resources 0 Poor · 1 Normal · 2 Rich
+const RES_START = [{ gold: 5000, wood: 10, ore: 10, gems: 2 }, { gold: 10000, wood: 20, ore: 20, gems: 5 }, { gold: 20000, wood: 40, ore: 40, gems: 10 }];
+function newPlayer(i, fac, ai, color = FACTIONS[fac].color, resLv = 1) {
+  const r = RES_START[resLv] || RES_START[1], aiGold = [0.75, 0.75, 0.9, 1.2][G.diff] ?? 0.75; // AI: 7500 gold on Normal, as before
+  return { i, fac, ai, res: { gold: Math.round(r.gold * (ai ? aiGold : 1)), wood: r.wood, ore: r.ore, gems: r.gems }, alive: true, color, css: colCss(color), name: i === 0 ? 'You' : FACTIONS[fac].name };
+}
 function newHero(p, v, name) {
   return { id: G.heroes.length, p, v, name, lvl: 1, xp: 0, att: 1, def: 1, pow: 1, know: 1, mana: 10, mp: 0, mpMax: 1500, skills: {}, spells: [], arts: [], army: [], visited: [], alive: true, path: null };
 }
@@ -797,7 +809,7 @@ function addObject(type, v, extra = {}) {
 // a neutral guard: bigger and meaner the further from any capital
 function guardFor(v, strength) {
   const tier = clamp(Math.round(strength * 6 + rnd() * 1.5), 0, 6), id = NEUTRALS[tier], u = UNITS[id];
-  const n = Math.max(2, Math.round((strength * 2600 + 250) / (u.hp * (u.dmg[0] + u.dmg[1]) / 2 + 20) * (0.7 + rnd() * 0.6) * [0.75, 1, 1.3][G.diff]));
+  const n = Math.max(2, Math.round((strength * 2600 + 250) / (u.hp * (u.dmg[0] + u.dmg[1]) / 2 + 20) * (0.7 + rnd() * 0.6) * byDiff([0.75, 1, 1.3, 1.45])));
   return { id, n };
 }
 const TOWN_NAMES = { haven: ['Highcastle', 'Brightwater', 'Stormhold', 'Valemere'], necro: ['Gravenreach', 'Duskmoor', 'Ashfall', 'Wraithgate'],
@@ -805,43 +817,93 @@ const TOWN_NAMES = { haven: ['Highcastle', 'Brightwater', 'Stormhold', 'Valemere
 function newTown(v, p, fac, name) {
   return { id: G.towns.length, v, p, fac, name, built: ['d1'], avail: { 1: UNITS[FACTIONS[fac].units[0]].grow }, garrison: [], builtToday: false, spells: [] };
 }
-function newWorld(seed, diff = 1, myFac = 'haven') {
-  Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [] });
+// freeplay: grid-agnostic helpers for placing crowns. cellDist works on any grid that keeps posOf (planet: chord length).
+// edgeOk(v, m): far enough from the map's "edge" for a town (planet: away from the poles; flat grid: a margin from the border)
+const cellDist = (a, b) => posOf(a).distanceTo(posOf(b));
+const edgeOk = (v, m) => Math.abs(DIRS[v].y) < m;
+// Free Play map sizes (passed to the terrain generator; the planet grid has one size, so it only stores it for now)
+const MAP_SIZES = { S: 'Small', M: 'Medium', L: 'Large', XL: 'Huge' };
+// one attempt at the terrain (flat agent: generateWorld({ size, players }) plugs in here)
+const genTerrain = (seed, size, players) => generate(seed, { size, players });
+// opts (Free Play): { opponents: [{ fac: key|'random', col: index|-1 }], size, res, win: 'conquer'|'capitals', fog, mode }
+function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
+  const opp = (opts.opponents?.length ? opts.opponents : [{ fac: 'random', col: -1 }]).slice(0, 4);
+  const N = opp.length + 1;
+  Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [],
+    gameMode: opts.mode || 'free', size: MAP_SIZES[opts.size] ? opts.size : 'M', resLv: opts.res ?? 1, win: opts.win === 'capitals' ? 'capitals' : 'conquer', fog: opts.fog !== false });
   objAt.fill(-1); road.fill(0); seen.fill(0);
   pendingLevels.length = 0; // level-ups queued in a previous game (quit with the dialog open) belong to that game
   rnd = mulberry32(seed);
-  let a = -1, b = -1;
-  for (let tries = 0; tries < 60 && b < 0; tries++) {
-    generate(seed + tries * 101);
-    const ok = (v) => passable(v) && ter[v] !== T.SNOW && ter[v] !== T.SWAMP && Math.abs(DIRS[v].y) < 0.6 && bfs(v, 2).filter(([x]) => passable(x)).length >= 16;
+  // capitals: farthest-point picks over good sites, retried on new terrain until every pair is far apart.
+  // need = the fraction of the world's span each pair must keep (2 crowns ~ opposite sides, 5 crowns ~ spread evenly)
+  const need0 = [0, 0, 0.86, 0.74, 0.64, 0.55][N];
+  let caps = null, span = 1, best = null, bestMin = -1;
+  for (let tries = 0; tries < 60 && !caps; tries++) {
+    genTerrain(seed + tries * 101, G.size, N);
+    const ok = (v) => passable(v) && ter[v] !== T.SNOW && ter[v] !== T.SWAMP && edgeOk(v, 0.6) && bfs(v, 2).filter(([x]) => passable(x)).length >= 16;
     const cands = []; for (let v = 0; v < NV; v += 3) if (ok(v)) cands.push(v);
-    if (cands.length < 40) continue;
-    const ca = cands[(rnd() * cands.length) | 0];
-    const cb = cands.reduce((p, x) => (DIRS[x].dot(DIRS[ca]) < DIRS[p].dot(DIRS[ca]) ? x : p));
-    if (DIRS[cb].dot(DIRS[ca]) > -0.55) continue;
-    a = ca; b = cb;
+    if (cands.length < 20 * N) continue;
+    const c0 = cands[(rnd() * cands.length) | 0], far0 = cands.reduce((p, x) => (cellDist(x, c0) > cellDist(p, c0) ? x : p));
+    span = Math.max(1e-6, cands.reduce((m, x) => Math.max(m, cellDist(x, far0)), 0));
+    const pick = [far0], md = cands.map((x) => cellDist(x, far0));
+    while (pick.length < N) {
+      let bi = 0; for (let i = 1; i < cands.length; i++) if (md[i] > md[bi]) bi = i;
+      const nv = cands[bi]; pick.push(nv);
+      for (let i = 0; i < cands.length; i++) md[i] = Math.min(md[i], cellDist(cands[i], nv));
+    }
+    let mn = Infinity; for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) mn = Math.min(mn, cellDist(pick[i], pick[j]) / span);
+    if (mn > bestMin) { bestMin = mn; best = { pick, seed: seed + tries * 101, span }; }
+    if (mn >= need0 * Math.pow(0.985, tries)) caps = pick;
   }
+  if (!caps) { genTerrain(best.seed, G.size, N); caps = best.pick; span = best.span; } // keep the best spread found
+  // who sits where: you take a random capital, the rivals the rest
+  for (let i = caps.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [caps[i], caps[j]] = [caps[j], caps[i]]; }
   // flat grass around each capital
   const settle = (c) => { for (const [x] of bfs(c, 2)) { if (ter[x] === T.WATER || ter[x] === T.MOUNT || ter[x] === T.FOREST) ter[x] = T.GRASS; h[x] = h[c]; } };
-  settle(a); settle(b);
-  if (!connected(a, b)) carve(a, b);
-  // the rival is a different faction; the two neutral towns use the remaining ones
-  const others = Object.keys(FACTIONS).filter((f) => f !== myFac).sort(() => rnd() - 0.5);
-  G.players = [newPlayer(0, myFac, false), newPlayer(1, others[0], true)];
-  const capital = (v, p) => { const t = newTown(v, p, G.players[p].fac, TOWN_NAMES[G.players[p].fac][0]); t.garrison = [[FACTIONS[G.players[p].fac].units[0], 12], [FACTIONS[G.players[p].fac].units[1], 5]]; G.towns.push(t); addObject('town', v, { t: t.id }); return t; };
-  capital(a, 0); capital(b, 1);
-  // neutral towns half way round the world, each with a strong garrison
-  const mids = [];
-  for (let v = 0; v < NV; v += 7) {
-    if (!passable(v) || Math.abs(DIRS[v].dot(DIRS[a]) - DIRS[v].dot(DIRS[b])) > 0.25 || Math.abs(DIRS[v].y) > 0.7) continue;
-    if (mids.some((m) => DIRS[m].dot(DIRS[v]) > 0.2) || bfs(v, 1).filter(([x]) => passable(x)).length < 6) continue;
-    mids.push(v); if (mids.length >= 2) break;
+  for (const c of caps) settle(c);
+  for (const c of caps.slice(1)) if (!connected(caps[0], c)) carve(caps[0], c);
+  // the crowns: rivals pick a faction (Random prefers one nobody leads yet) and a colour (their faction's unless taken)
+  const facs = Object.keys(FACTIONS), used = [myFac], cols = [];
+  const takeCol = (want, fac) => { let c = PLAYER_COLS[want] ?? -1; if (c < 0 || cols.includes(c)) c = FACTIONS[fac].color; if (cols.includes(c)) c = PLAYER_COLS.find((x) => !cols.includes(x)); cols.push(c); return c; };
+  G.players = [newPlayer(0, myFac, false, takeCol(opts.myCol ?? -1, myFac), G.resLv)];
+  opp.forEach((o, k) => {
+    let fac = FACTIONS[o.fac] ? o.fac : null;
+    if (!fac) { const free = facs.filter((f) => !used.includes(f)); const pool = free.length ? free : facs; fac = pool[(rnd() * pool.length) | 0]; }
+    used.push(fac);
+    G.players.push(newPlayer(k + 1, fac, true, takeCol(o.col ?? -1, fac), G.resLv));
+  });
+  // two crowns of one faction: tell them apart by colour
+  for (const Pl of G.players) if (Pl.ai && G.players.filter((x) => x.fac === Pl.fac).length > 1) Pl.name = `${COL_NAMES[PLAYER_COLS.indexOf(Pl.color)] || ''} ${FACTIONS[Pl.fac].name}`.trim();
+  const capital = (v, p) => {
+    const P = G.players[p], names = TOWN_NAMES[P.fac], nth = G.players.slice(0, p).filter((x) => x.fac === P.fac).length;
+    const t = newTown(v, p, P.fac, names[nth % names.length]); t.capOf = p;
+    t.garrison = [[FACTIONS[P.fac].units[0], 12], [FACTIONS[P.fac].units[1], 5]]; G.towns.push(t); addObject('town', v, { t: t.id }); return t;
+  };
+  caps.forEach((v, p) => capital(v, p));
+  // neutral towns between neighbouring crowns (closest pairs first: the frontiers), each with a strong garrison
+  const pairs = []; for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) pairs.push([caps[i], caps[j], cellDist(caps[i], caps[j])]);
+  pairs.sort((x, y) => x[2] - y[2]);
+  const nMid = N === 2 ? 2 : Math.min(N + 1, 6), mids = [], midCands = [];
+  for (let v = 0; v < NV; v += 5) if (passable(v) && objAt[v] < 0 && edgeOk(v, 0.7) && bfs(v, 1).filter(([x]) => passable(x)).length >= 6) midCands.push(v);
+  for (let k = 0; mids.length < nMid && k < pairs.length * 2; k++) {
+    const [a, b, dab] = pairs[k % pairs.length];
+    let bv = -1, bs = Infinity;
+    for (const v of midCands) {
+      if (objAt[v] >= 0 || mids.some((m) => cellDist(m, v) < span * 0.28)) continue;
+      const da = cellDist(v, a), db = cellDist(v, b);
+      if (caps.some((c) => cellDist(v, c) < dab * 0.36)) continue; // never on anyone's doorstep
+      const sc = Math.abs(da - db) * 2 + da + db;
+      if (sc < bs) { bs = sc; bv = v; }
+    }
+    if (bv >= 0) mids.push(bv);
   }
+  const spare = facs.filter((f) => !used.includes(f)).sort(() => rnd() - 0.5);
   mids.forEach((v, i) => {
     settle(v);
-    if (!connected(a, v)) carve(a, v);
-    const fac = others[1 + (i % (others.length - 1))];
-    const t = newTown(v, -1, fac, TOWN_NAMES[fac][1 + i]);
+    if (!connected(caps[0], v)) carve(caps[0], v);
+    const fac = spare.length ? spare[i % spare.length] : facs[(rnd() * facs.length) | 0];
+    const nth = G.towns.filter((x) => x.fac === fac).length, names = TOWN_NAMES[fac];
+    const t = newTown(v, -1, fac, names[(1 + nth) % names.length]);
     const us = FACTIONS[fac].units;
     t.garrison = [[us[0], 30 + G.diff * 10], [us[1], 14], [us[2], 7], [us[3], 3]];
     t.built.push('d2', 'd3');
@@ -851,19 +913,22 @@ function newWorld(seed, diff = 1, myFac = 'haven') {
   for (const t of G.towns.filter((x) => x.p >= 0)) {
     const v = NBR[t.v].find((x) => passable(x)) ?? t.v;
     const P = G.players[t.p];
-    const hr = newHero(t.p, v, FACTIONS[P.fac].heroes[0]);
+    const hr = newHero(t.p, v, FACTIONS[P.fac].heroes[G.heroes.filter((x) => G.players[x.p].fac === P.fac).length % FACTIONS[P.fac].heroes.length]);
     hr.army = START_ARMY[P.fac].map((x) => [...x]);
     const kit = FACTION_START[P.fac] || FACTION_START.haven;
     hr.spells = [kit.spell]; hr.skills[kit.skill] = 1;
-    if (t.p === 1) { hr.att += 1; for (const s of hr.army) s[1] = Math.round(s[1] * [0.7, 1, 1.35][G.diff]); }
+    if (P.ai) { hr.att += byDiff([1, 1, 1, 2]); for (const s of hr.army) s[1] = Math.round(s[1] * byDiff([0.7, 1, 1.35, 1.6])); }
     hr.mp = moveMax(hr); hr.mana = maxMana(hr);
     G.heroes.push(hr);
   }
-  // roads between the capitals and the neutral towns
-  for (const m of mids) { makeRoad(a, m); makeRoad(b, m); }
-  if (!mids.length) makeRoad(a, b);
+  // roads: every capital to its nearest neutral towns (or straight to its nearest rival when there are none)
+  for (const c of caps) {
+    const near = [...mids].sort((x, y) => cellDist(c, x) - cellDist(c, y)).slice(0, N === 2 ? 2 : 2);
+    if (near.length) for (const m of near) makeRoad(c, m);
+    else { const o = caps.filter((x) => x !== c).sort((x, y) => cellDist(c, x) - cellDist(c, y))[0]; if (o !== undefined) makeRoad(c, o); }
+  }
   // treasure around each capital: free mines and piles close by, guarded riches further out
-  for (const c of [a, b]) {
+  for (const c of caps) {
     for (const type of ['sawmill', 'orepit']) { const v = spot(c, 3, 6); if (v >= 0) addObject(type, v); }
     for (let i = 0; i < 6; i++) { const v = spot(c, 2, 7); if (v >= 0) addObject(['gold', 'wood', 'ore', 'gold', 'chest', 'campfire'][i], v, { amount: 0 }); }
     for (const type of ['goldmine', 'gemmine', 'dwelling', 'arena', 'shrine', 'well', 'windmill', 'library']) {
@@ -875,10 +940,14 @@ function newWorld(seed, diff = 1, myFac = 'haven') {
       guard(v, 0.25 + rnd() * 0.25);
     }
   }
-  // the wilds: scattered objects everywhere, guarded harder the farther from home
-  const far = (v) => Math.min(...[a, b].map((c) => (1 - DIRS[v].dot(DIRS[c])) / 2));
+  // the wilds: scattered objects everywhere, guarded harder the farther from any home (0 at a capital, 1 at the
+  // loneliest spot of this map, so more crowns don't make the in-between land any softer)
+  const farRaw = (v) => { let m = Infinity; for (const c of caps) m = Math.min(m, cellDist(v, c)); return (m / span) ** 2; };
+  let farMax = 1e-6; for (let v = 0; v < NV; v += 4) if (passable(v)) farMax = Math.max(farMax, farRaw(v));
+  const far = (v) => farRaw(v) / farMax;
+  const dens = NV / 2562; // object counts follow the grid's size (the planet has 2562 cells)
   const kinds = ['gold', 'wood', 'ore', 'gems', 'chest', 'chest', 'artifact', 'artifact', 'artifact', 'tower', 'stone', 'stables', 'obelisk', 'goldmine', 'gemmine', 'sawmill', 'orepit', 'dwelling', 'shrine', 'well', 'campfire', 'library', 'arena'];
-  for (let i = 0, n = 0; i < 900 && n < 120; i++) {
+  for (let i = 0, n = 0, nMax = Math.round(120 * dens); i < 900 * dens && n < nMax; i++) {
     const v = (rnd() * NV) | 0;
     if (!passable(v) || objAt[v] >= 0 || road[v] || NBR[v].some((x) => objAt[x] >= 0) || far(v) < 0.03) continue;
     const type = kinds[(rnd() * kinds.length) | 0];
@@ -891,9 +960,10 @@ function newWorld(seed, diff = 1, myFac = 'haven') {
     n++;
   }
   // wandering monsters on the roads
-  for (let i = 0; i < 14; i++) { const v = (rnd() * NV) | 0; if (passable(v) && objAt[v] < 0 && far(v) > 0.15 && NBR[v].every((x) => objAt[x] < 0)) { const g = guardFor(v, far(v) * 1.3); addObject('monster', v, { unit: g.id, n: g.n }); } }
+  for (let i = 0; i < Math.round(14 * dens); i++) { const v = (rnd() * NV) | 0; if (passable(v) && objAt[v] < 0 && far(v) > 0.15 && NBR[v].every((x) => objAt[x] < 0)) { const g = guardFor(v, far(v) * 1.3); addObject('monster', v, { unit: g.id, n: g.n }); } }
   for (const o of G.objects) if (['gold', 'wood', 'ore', 'gems'].includes(o.type)) o.amount = o.type === 'gold' ? 500 + ((rnd() * 6) | 0) * 100 : 3 + ((rnd() * 5) | 0);
   G.selHero = 0;
+  if (!G.fog) seen.fill(1);
   revealAll();
 }
 function guard(v, strength) {
@@ -1747,7 +1817,19 @@ function startBattle(hr, foe) {
   // a side with no living troops cannot fight: settle it at once. Opening the arena would never end (the enemy AI
   // has no target and never finishes its turn, or the player has nothing to attack).
   if (!BT.alive(B, 0).length || !BT.alive(B, 1).length) { B.over = { winner: BT.alive(B, 0).length ? 0 : 1 }; B.events.length = 0; finishBattle(B, ctx); return; }
-  if (sides[0].owner !== 0 && sides[1].owner !== 0) { BT.autoResolve(B); finishBattle(B, ctx); return; }
+  if (sides[0].owner !== 0 && sides[1].owner !== 0) {
+    BT.autoResolve(B); finishBattle(B, ctx);
+    // freeplay: rival crowns fighting each other (or a town) are resolved at once; in sight, the clash is shown
+    const fv = foe.kind === 'hero' ? foe.hero.v : foe.kind === 'town' ? foe.town.v : foe.obj.v;
+    if ((seen[hr.v] || seen[fv]) && (G.fog !== false || foe.kind !== 'monster')) {
+      fx.burst('battle', posOf(fv, 0.3));
+      if (foe.kind !== 'monster') {
+        const foeName = foe.kind === 'hero' ? `${foe.hero.name} (${G.players[foe.hero.p].name})` : foe.town.name, won = B.over.winner === sides.findIndex((sd) => sd.hero === hr);
+        toast(`⚔️ ${hr.name} (${G.players[hr.p].name}) ${won ? 'defeats' : 'falls to'} ${foeName}`);
+      }
+    }
+    return;
+  }
   enterBattle(B, ctx);
 }
 // Battle entry is staged behind a curtain that appears on the very tap: models that are not cached yet (another
@@ -2774,7 +2856,7 @@ function endTurn() {
   if (G.mode !== 'map' || aiRunning || walking || G.over) return;
   showPath(selHero(), null);
   aiRunning = true; aiGen = runAI(); aiDelay = 0; $('b-end').disabled = true;
-  toast('⏳ The enemy is moving…'); dayFx('night');
+  toast(G.players.filter((x) => x.ai && x.alive).length > 1 ? '⏳ The rival crowns are moving…' : '⏳ The enemy is moving…'); dayFx('night');
   // tomorrow starts a new week: choose its creature now and paint its portrait while the enemy moves,
   // so the "Week of …" card does not render a 3D portrait in the same frame as the new morning
   if (G.day % 7 === 0) {
@@ -2803,8 +2885,17 @@ function dayFx(kind) {
   daycyc.querySelector('b').textContent = wk ? `Week ${week()}` : `Day ${((G.day - 1) % 7) + 1}`;
   daycyc.classList.toggle('week', wk); replay(daycyc, 'dawn');
 }
+// freeplay: whose turn it is while the computer lords move: one pip per crown in turn order (you first), the one moving lit
+const turnbar = document.createElement('div');
+turnbar.id = 'turnbar'; turnbar.hidden = true; turnbar.setAttribute('aria-live', 'polite');
+$('hud').appendChild(turnbar);
+function turnBar(Pl) {
+  if (!Pl) { turnbar.hidden = true; return; }
+  setHTML(turnbar, `<span class="tq-pips">${G.players.map((x) => `<i class="${x === Pl ? 'on' : ''}${x.alive ? '' : ' out'}" style="--pc:${x.css}"></i>`).join('')}</span><span class="tq-crest" style="--pc:${Pl.css}">${icon(FAC_CREST[Pl.fac] || 'banner', 18)}</span><b style="--pc:${Pl.css}">${Pl.name}</b><small>${Pl.i === 0 ? 'your turn' : 'is moving'}</small>`);
+  turnbar.hidden = false;
+}
 function stopAI() {
-  dayFx('off');
+  dayFx('off'); turnBar(null);
   aiRunning = false; aiGen = null; aiDelay = 0;
   $('b-end').disabled = false; $('b-end').classList.remove('confirm');
 }
@@ -2828,6 +2919,7 @@ function newDay() {
     for (const t of G.towns) if (t.p === Pl.i) gold += townIncome(t);
     for (const o of G.objects) if (o.alive && o.owner === Pl.i) { const O = OBJECTS[o.type]; if (O.res === 'gold') gold += O.amount; else res[O.res] += O.amount; }
     for (const hr of G.heroes) if (hr.alive && hr.p === Pl.i) gold += 250 * (hr.skills.estates || 0);
+    if (Pl.ai) gold = Math.round(gold * byDiff([1, 1, 1, 1.5])); // Impossible: the computer lords collect half again
     Pl.res.gold += gold; for (const k of Object.keys(res)) Pl.res[k] += res[k];
     if (Pl.i === 0 && G.day > 1) floatText(null, `+${fmt(gold)} 🪙${res.wood ? ` +${res.wood} 🪵` : ''}${res.ore ? ` +${res.ore} 🪨` : ''}${res.gems ? ` +${res.gems} 💎` : ''}`, 'gold');
   }
@@ -2853,20 +2945,44 @@ function newDay() {
 }
 function checkEnd() {
   if (G.over) return;
+  const out = [];
   for (const Pl of G.players) {
+    if (!Pl.alive) continue;
     const has = G.towns.some((t) => t.p === Pl.i) || G.heroes.some((x) => x.alive && x.p === Pl.i);
-    if (Pl.alive && !has) { Pl.alive = false; if (Pl.i !== 0) toast(`☠️ ${Pl.name} is defeated!`); }
+    // freeplay "Capture capitals": a crown whose capital has fallen is out of the game
+    const cap = G.towns.find((t) => t.capOf === Pl.i), capLost = G.win === 'capitals' && cap && cap.p !== Pl.i;
+    if (!has || capLost) { eliminate(Pl, capLost && has); out.push(Pl); }
   }
-  if (!G.players[0].alive) endGame(false);
-  else if (G.players.every((Pl) => Pl.i === 0 || !Pl.alive)) endGame(true);
+  if (!G.players[0].alive) { endGame(false); return; }
+  if (G.players.every((Pl) => Pl.i === 0 || !Pl.alive)) { endGame(true); return; }
+  const left = G.players.filter((Pl) => Pl.i !== 0 && Pl.alive).length;
+  for (const Pl of out) if (Pl.i !== 0) showMsg(`☠️ ${Pl.name} is defeated`, `<p><b style="color:${Pl.css}">${Pl.name}</b> ${G.win === 'capitals' ? 'has lost its capital and' : ''} falls from the game. ${left} rival crown${left === 1 ? '' : 's'} remain${left === 1 ? 's' : ''}.</p>`);
+}
+// a crown leaves the game: what it still held (capitals mode) goes back to the wilds
+function eliminate(Pl, scatter) {
+  Pl.alive = false; Pl.outDay = G.day;
+  if (scatter) {
+    for (const hr of G.heroes) if (hr.alive && hr.p === Pl.i) hr.alive = false;
+    for (const t of G.towns) if (t.p === Pl.i) t.p = -1;
+    for (const o of G.objects) if (o.owner === Pl.i) o.owner = -1;
+    worldDirty = true; layoutHeroes(true);
+  }
+  if (Pl.i !== 0) toast(`☠️ ${Pl.name} is defeated!`);
 }
 function endGame(won) {
-  G.over = true; store.del('realms.save');
+  G.over = true; turnBar(null); store.del('realms.save');
   const me = G.players[0], towns = G.towns.filter((t) => t.p === 0).length, heroes = G.heroes.filter((h) => h.alive && h.p === 0);
   const army = heroes.reduce((a, h) => a + heroArmy(h).reduce((x, st) => x + st[1], 0), 0), top = heroes.reduce((a, h) => Math.max(a, h.lvl), 0);
+  const rivals = G.players.filter((Pl) => Pl.i !== 0), beaten = rivals.filter((Pl) => !Pl.alive).length;
+  // the strongest crown still standing (towns, then army) is the one that took the world from you
+  const power = (Pl) => G.towns.filter((t) => t.p === Pl.i).length * 1e6 + G.heroes.filter((x) => x.alive && x.p === Pl.i).reduce((a, x) => a + BT.armyPower(heroArmy(x), x), 0);
+  const victor = won ? null : rivals.filter((Pl) => Pl.alive).sort((x, y) => power(y) - power(x))[0];
+  const roll = `<div class="rivals">${rivals.map((Pl) => `<span class="rv${Pl.alive ? '' : ' out'}" style="--pc:${Pl.css}"><span class="rv-crest">${icon(FAC_CREST[Pl.fac] || 'banner', 18)}</span><b>${Pl.name}</b><small>${Pl.alive ? (Pl === victor ? 'Rules the world' : 'Still standing') : `Fell on day ${Pl.outDay || G.day}`}</small></span>`).join('')}</div>`;
+  const why = G.win === 'capitals' ? 'your capital has fallen' : 'your last town and hero are lost';
   const body = `<div class="endcard ${won ? 'win' : 'lose'}"><div class="crest2">${icon(won ? 'victory' : 'defeat', 84)}</div>
-    <p>${won ? `After <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'} the whole world is yours. Every rival bows before ${FACTIONS[me.fac].name}.` : 'Your last town and hero are lost. Your crown falls into shadow.'}</p>
-    <div class="endstats"><div><b>${G.day}</b><small>Days</small></div><div><b>${towns}</b><small>Towns</small></div><div><b>${fmt(army)}</b><small>Creatures</small></div><div><b>${top || '–'}</b><small>Top level</small></div></div></div>`;
+    <p>${won ? `After <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'} the whole world is yours. ${rivals.length > 1 ? `All ${rivals.length} rival crowns bow` : 'Every rival bows'} before ${FACTIONS[me.fac].name}.` : `${why[0].toUpperCase() + why.slice(1)}. ${victor ? `<b style="color:${victor.css}">${victor.name}</b> claims the world.` : 'Your crown falls into shadow.'}`}</p>
+    ${rivals.length > 1 || !won ? roll : ''}
+    <div class="endstats"><div><b>${G.day}</b><small>Days</small></div><div><b>${beaten}/${rivals.length}</b><small>Rivals out</small></div><div><b>${towns}</b><small>Towns</small></div><div><b>${fmt(army)}</b><small>Creatures</small></div><div><b>${top || '–'}</b><small>Top level</small></div></div></div>`;
   ask(won ? 'Victory!' : 'Defeat', body, [['Play again', () => showMenu()]], true);
   if (won) for (let i = 0; i < 40; i++) setTimeout(() => { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = `${Math.random() * 100}vw`; c.style.background = `hsl(${Math.random() * 360} 90% 60%)`; c.style.animationDuration = `${1.8 + Math.random() * 1.6}s`; document.body.appendChild(c); setTimeout(() => c.remove(), 4000); }, i * 40);
   won ? sfx.victory() : sfx.defeat(); musicScene(won ? 'victory' : 'defeat');
@@ -2899,7 +3015,7 @@ function aiTown(t) {
   const vis = visitorOf(t); if (vis) aiVisitTown(vis, t);
   // a second hero once the town can afford one
   const heroes = G.heroes.filter((x) => x.alive && x.p === t.p).length;
-  if (t.built.includes('tavern') && heroes < 2 + (G.diff === 2 ? 1 : 0) && G.players[t.p].res.gold > 5000 && G.day > 6) {
+  if (t.built.includes('tavern') && heroes < 2 + (G.diff >= 2 ? 1 : 0) && G.players[t.p].res.gold > 5000 && G.day > 6) {
     const v = NBR[t.v].find((x) => passable(x) && !heroAt(x) && objAt[x] < 0);
     if (v !== undefined) {
       pay(t.p, { gold: 2500 });
@@ -2953,10 +3069,17 @@ function dijkstra(hr, maxCost) {
   }
   return { dist, prev };
 }
+// freeplay: days before the computer lords go for the human; on Easy/Normal each extra rival adds a day, so 1v4 is no rush
+const aiGraceDay = (d) => d + (G.diff < 2 ? Math.max(0, G.players.length - 2) : 0);
 function aiValue(hr, v, power) {
   const o = objAt[v] >= 0 && G.objects[objAt[v]].alive ? G.objects[objAt[v]] : null;
   const other = heroAt(v);
-  if (other && other !== hr) { if (other.p === hr.p) return 0; const theirs = BT.armyPower(heroArmy(other), other); return power > theirs * 1.3 ? 70 + theirs / 100 : 0; }
+  if (other && other !== hr) {
+    if (other.p === hr.p) return 0;
+    // freeplay: the human's heroes are left alone for the first days (later with more rivals on Easy/Normal) and need a clearer edge
+    if (other.p === 0 && G.day < aiGraceDay(byDiff([10, 7, 4, 2]))) return 0;
+    const theirs = BT.armyPower(heroArmy(other), other); return power > theirs * (other.p === 0 ? byDiff([1.7, 1.45, 1.3, 1.15]) : 1.3) ? 70 + theirs / 100 : 0;
+  }
   if (!o) return 0;
   const O = OBJECTS[o.type], kind = O?.kind;
   if (o.type !== 'monster') { const g = NBR[v].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((x) => x && x.alive && x.type === 'monster'); if (g && power < BT.armyPower([[g.unit, g.n]]) * 1.6) return 0; }
@@ -2965,8 +3088,8 @@ function aiValue(hr, v, power) {
     const t = G.towns[o.t];
     if (t.p === hr.p) return heroArmy({ army: t.garrison }).length ? 12 + BT.armyPower(t.garrison) / 120 : 0;
     const gp = BT.armyPower(t.garrison) * (t.built.includes('fort') ? 1.3 : 1);
-    if (t.p === 0 && G.day < [12, 8, 5][G.diff]) return 0;
-    return power > gp * 1.4 ? (t.p === 0 ? 120 : 70) : 0;
+    if (t.p === 0 && G.day < aiGraceDay(byDiff([14, 10, 6, 3]))) return 0;
+    return power > gp * 1.4 ? (t.p === 0 ? (G.players.length > 2 ? 85 : 120) : 70) : 0;
   }
   if (kind === 'pickup') return o.type === 'gold' ? o.amount / 80 : o.type === 'chest' ? 14 : o.type === 'artifact' ? 25 : o.type === 'campfire' ? 9 : 7;
   if (kind === 'mine') return o.owner === hr.p ? 0 : (O.res === 'gold' ? 45 : 22) + (o.owner === 0 ? 10 : 0);
@@ -3036,10 +3159,11 @@ function* aiShow(hr, v) {
 }
 const lookDir = () => new THREE.Vector3().setFromSphericalCoords(1, cam.phi, cam.theta);
 function* runAI() {
-  aiWatch = false;
   for (const Pl of G.players) {
     if (G.over) return;
     if (!Pl.ai || !Pl.alive) continue;
+    aiWatch = false; // each crown's first move in sight gets the camera once
+    turnBar(Pl);
     for (const t of G.towns) if (t.p === Pl.i) aiTown(t);
     yield 0.02; // towns and heroes in separate frames
     for (const hr of G.heroes.filter((x) => x.alive && x.p === Pl.i)) {
