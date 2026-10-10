@@ -27,7 +27,8 @@
 // shock rings <= 6, halos 1, mist 1. Everything is pooled; nothing allocates per frame.
 // =====================================================================
 
-export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
+export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf, flat = false, count = null }) {
+  // flat world (v2.0): every cell's normal is +y; DIRS may be null, count() gives the number of cells
   const root = new THREE.Group(); root.name = 'mapfx'; scene.add(root);
   const T = { value: 0 };                      // shared time uniform
   const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _n = new THREE.Vector3(), _x = new THREE.Vector3();
@@ -47,7 +48,10 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     _x.crossVectors(_n, _w);
     return out.makeBasis(_x, _n, _w);
   }
-  const cellPos = (v, lift) => DIRS[v].clone().multiplyScalar(radiusOf(v) + lift);
+  const cellPos = (v, lift) => posOf(v, lift);
+  const NUP = new THREE.Vector3(0, 1, 0);
+  const nrm = (v) => (flat ? NUP : DIRS[v]);       // surface normal of a cell
+  const upAt = (p) => (flat ? NUP : p);             // surface normal at a world point
 
   // ------------------------------------------------------------ ring shader (select ring, halos, shock waves, goal/day rings)
   const RING_VS = /* glsl */`
@@ -249,7 +253,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     for (let i = 1; i < last && n < MAXA; i++) {
       const v = path[i];
       _v.copy(posOf(path[i + 1])).sub(posOf(path[i - 1]));  // smooth heading through the cell
-      basis(DIRS[v], _v, _m);
+      basis(nrm(v), _v, _m);
       _m.setPosition(cellPos(v, 0.014));
       arrows.setMatrixAt(n, _m);
       const c = i === today && today < last ? GOLD : i <= today ? GREEN : RED;
@@ -265,15 +269,15 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     _v.copy(posOf(g)).sub(posOf(path[last - 1]));
     const flag = reach ? goalFlag : goalCross;
     (reach ? goalCross : goalFlag).visible = false;
-    basis(DIRS[g], _v, _m); _m.setPosition(cellPos(g, 0.006));
+    basis(nrm(g), _v, _m); _m.setPosition(cellPos(g, 0.006));
     _m.decompose(flag.position, flag.quaternion, flag.scale);
     if (reach) flag.rotateY(-0.9);   // pennant reads side-on
     flag.visible = true;
-    goalBob = { obj: flag, base: flag.position.clone(), n: DIRS[g].clone(), t0: T.value };
-    placeFlat(goalRing, cellPos(g, 0.01), DIRS[g], 0.34);
+    goalBob = { obj: flag, base: flag.position.clone(), n: nrm(g).clone(), t0: T.value };
+    placeFlat(goalRing, cellPos(g, 0.01), nrm(g), 0.34);
     goalRing.material.uniforms.uColor.value.copy(reach ? GREEN : RED);
     goalRing.visible = true;
-    if (today > 0 && today < last) { placeFlat(dayRing, cellPos(path[today], 0.012), DIRS[path[today]], 0.3); dayRing.visible = true; }
+    if (today > 0 && today < last) { placeFlat(dayRing, cellPos(path[today], 0.012), nrm(path[today]), 0.3); dayRing.visible = true; }
     else dayRing.visible = false;
   }
   // feel: clearPath() eases everything out over ~0.16 s (arrows shrink in the shader, the goal markers scale down and
@@ -320,7 +324,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     if (!position) { sel.want = 0; if (now) { sel.a = 0; sel.has = false; selRing.visible = false; } return; }
     if (!sel.has || selPos.distanceToSquared(position) > 0.09) sel.a = 0;
     sel.has = true; sel.want = 1;
-    selPos.copy(position); selNrm.copy(normal || position);
+    selPos.copy(position); selNrm.copy(normal || upAt(position));
   }
   function stepSelect(dt) {
     if (!sel.has) return;
@@ -474,7 +478,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
   function burst(kind, position, opts = {}) {
     if (!position) return;
     const p = position.clone ? position : new THREE.Vector3(...position);
-    const n = (opts.normal ? _n.copy(opts.normal) : _n.copy(p)).normalize().clone();
+    const n = (opts.normal ? _n.copy(opts.normal) : _n.copy(upAt(p))).normalize().clone();
     const S = opts.scale ?? 1;
     tangents(n);
     const at = (lift) => _w.copy(p).addScaledVector(n, lift * S);
@@ -590,7 +594,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     let n = 0;
     for (const h of list) {
       if (n >= MAXH) break;
-      const p = h.position, nn = _v.copy(h.normal || p).normalize();
+      const p = h.position, nn = _v.copy(h.normal || upAt(p)).normalize();
       _q.setFromUnitVectors(UPV, nn);
       _m.compose(_w.copy(p).addScaledVector(nn, 0.01), _q, _x.setScalar(h.size ?? 0.34));
       halos.setMatrixAt(n, _m);
@@ -608,17 +612,24 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
   function setFogEdge(seen, NBR) {
     let n = 0;
     if (seen && NBR) {
-      for (let v = 0; v < DIRS.length && n < MAXM; v++) {
+      for (let v = 0, N = count ? count() : DIRS.length; v < N && n < MAXM; v++) {
         if (seen[v]) continue;
         let edge = 0;
         for (const u of NBR[v]) if (seen[u]) { edge++; }
         if (!edge) continue;
         // one puff on the frontier cell, nudged a touch toward the seen side, lifted
-        _v.copy(DIRS[v]);
-        for (const u of NBR[v]) if (seen[u]) _v.addScaledVector(DIRS[u], 0.12 / edge);
-        _v.normalize();
-        const r = radiusOf(v) + 0.07, h = (v * 2654435761) >>> 0;
-        MB.iPos.setXYZ(n, _v.x * r, _v.y * r, _v.z * r);
+        const h = (v * 2654435761) >>> 0;
+        if (flat) {
+          _v.copy(posOf(v, 0.07)); const c = _v.clone();
+          for (const u of NBR[v]) if (seen[u]) _v.addScaledVector(_w.copy(posOf(u, 0.07)).sub(c), 0.12 / edge);
+          MB.iPos.setXYZ(n, _v.x, _v.y, _v.z);
+        } else {
+          _v.copy(DIRS[v]);
+          for (const u of NBR[v]) if (seen[u]) _v.addScaledVector(DIRS[u], 0.12 / edge);
+          _v.normalize();
+          const r = radiusOf(v) + 0.07;
+          MB.iPos.setXYZ(n, _v.x * r, _v.y * r, _v.z * r);
+        }
         const a = 0.42 + (edge > 2 ? 0.12 : 0);
         MB.iCol.setXYZW(n, MIST_COL.r, MIST_COL.g, MIST_COL.b, a);
         MB.iSz.setXYZW(n, 0.48 + (h % 100) / 100 * 0.22, (h % 6283) / 1000, 1.0 + ((h >> 8) % 40) / 100, 0);
@@ -670,7 +681,7 @@ export function createMapFx(THREE, scene, { DIRS, radiusOf, posOf }) {
     }
     if (camera && MB.g.instanceCount) {
       // thin the mist when zoomed far out so the planet silhouette stays crisp
-      const d = camera.position.length();
+      const d = flat ? camera.position.y * 1.6 : camera.position.length();
       MB.mesh.material.uniforms.uTime.value = T.value;
       MB.mesh.visible = d < 30;
     }

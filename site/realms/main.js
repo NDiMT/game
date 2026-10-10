@@ -1,32 +1,34 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=1.10';
-import { havenModel } from './units_haven.js?v=1.10';
-import { necroModel } from './units_necro.js?v=1.10';
-import { necroUpModel } from './units_necro_up.js?v=1.10';
-import { havenUpModel } from './units_haven_up.js?v=1.10';
-import { neutralModel } from './units_neutral.js?v=1.10';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=1.10';
-import { objectModel } from './models_objects.js?v=1.10';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=1.10';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=1.10';
-import { createTownView } from './town_view.js?v=1.10';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=1.10';
-import { createAtmosphere, gradeGLSL } from './atmosphere.js?v=1.10';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=1.10';
+import { mulberry32, unitModel } from './models.js?v=2.0';
+import { havenModel } from './units_haven.js?v=2.0';
+import { necroModel } from './units_necro.js?v=2.0';
+import { necroUpModel } from './units_necro_up.js?v=2.0';
+import { havenUpModel } from './units_haven_up.js?v=2.0';
+import { neutralModel } from './units_neutral.js?v=2.0';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=2.0';
+import { objectModel } from './models_objects.js?v=2.0';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=2.0';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.0';
+import { createTownView } from './town_view.js?v=2.0';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.0';
+import { createFlatSky, gradeGLSL } from './atmosphere.js?v=2.0';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=2.0';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
-const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=1.10'), import('./units_inferno.js?v=1.10'), import('./units_dungeon.js?v=1.10')]);
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=2.0'), import('./units_inferno.js?v=2.0'), import('./units_dungeon.js?v=2.0')]);
 // memory: build through the modules' uncached builders (base id + upgraded flag), so main.js's geoCache is the only
 // owner of a creature's geometry and trimGeoCache() really frees it (the modules' own caches would pin ~11 MB per roster)
 const facBuild = (mod, build, model) => (id) => { const b = mod.value?.[build], u = UNITS[id]; const m = b && u ? b(u.up || id, !!u.up) : null; return m || mod.value?.[model]?.(id) || null; };
 const FAC_MODEL = { sylvan: facBuild(SYLm, 'sylvanBuild', 'sylvanModel'), inferno: facBuild(INFm, 'infernoBuild', 'infernoModel'), dungeon: facBuild(DUNm, 'dungeonBuild', 'dungeonModel') };
-import * as BT from './battle.js?v=1.10';
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=1.10';
-import { createScore } from './music.js?v=1.10';
-import { createSfx } from './sfx.js?v=1.10';
-import { unitFit, applyFit } from './unit_fit.js?v=1.10';
-import { createMapFx } from './mapfx.js?v=1.10';
+import * as BT from './battle.js?v=2.0';
+import * as CR from './crown.js?v=2.0'; // crown: Crown Run rules and data
+import { createCrownUI } from './crown_ui.js?v=2.0'; // crown: Crown Run screens
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=2.0';
+import { createScore } from './music.js?v=2.0';
+import { createSfx } from './sfx.js?v=2.0';
+import { unitFit, applyFit } from './unit_fit.js?v=2.0';
+import { createMapFx } from './mapfx.js?v=2.0';
 import { icon } from './icons.js';
-import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=1.10';
+import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.0';
 
 // =====================================================================
 // ORBIS · Five Crowns: a pocket strategy game on a tiny hex planet.
@@ -35,7 +37,7 @@ import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, her
 // defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '1.10';
+const APP_VERSION = '2.0';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -47,52 +49,29 @@ const fmt = (n) => Math.round(n).toLocaleString('en-US');
 let rnd = Math.random;
 const hash = (n) => { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n ^= n >>> 4; n = Math.imul(n, 0x27d4eb2d); n ^= n >>> 15; return n >>> 0; };
 
-// ------------------------------------------------------------------ the planet: an icosphere of hex columns
-const R = 5, STEP = 0.07, SEA = 3;
-function icosphere(detail) {
-  const t = (1 + Math.sqrt(5)) / 2;
-  const verts = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map((v) => new THREE.Vector3(...v).normalize());
-  let faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
-  for (let d = 0; d < detail; d++) {
-    const cache = new Map();
-    const mid = (a, b) => {
-      const key = a < b ? a * 100000 + b : b * 100000 + a;
-      if (cache.has(key)) return cache.get(key);
-      verts.push(verts[a].clone().add(verts[b]).normalize());
-      cache.set(key, verts.length - 1);
-      return verts.length - 1;
-    };
-    const nf = [];
-    for (const [a, b, c] of faces) { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); nf.push([a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]); }
-    faces = nf;
-  }
-  return { verts, faces };
+// ------------------------------------------------------------------ the world: a flat hex map (agent "flat", v2.0)
+// The planet (icosphere grid, terrain.js createPlanet, atmosphere.js createAtmosphere) stays in the repo for a future
+// decorative globe screen; gameplay runs on the flat grid of hexgrid.js. The abstract grid API the game uses is
+// unchanged: cell ids 0..NV-1, NBR[v], posOf(v, lift), plus cellDist(a, b) (hex steps) in place of the old
+// DIRS[a].distanceTo(DIRS[b]). The grid can change size per game (MAP_PRESETS S/M/L/XL): every per-cell array is
+// allocated for the largest map and NBR is refilled in place, so references to them stay valid.
+import { makeGrid, MAP_PRESETS, MAX_CELLS, CELL, regionsVoronoi, regionsBands, regionGates } from './hexgrid.js';
+const STEP = 0.07, SEA = 3;
+let GRID = makeGrid(...MAP_PRESETS.M);
+let NV = GRID.N;
+const NBR = GRID.NBR.slice();
+const UPV = new THREE.Vector3(0, 1, 0);
+// hex steps between two cells (exact): distances, the A* heuristic, AI ranges
+const cellDist = (a, b) => GRID.dist(a, b);
+// switch the map size (a new world / a loaded save); the terrain meshes, flora and figures rebuild on the next layout
+function setGrid(size) {
+  const wh = Array.isArray(size) ? size : MAP_PRESETS[size] || MAP_PRESETS.M;
+  if (GRID.W === wh[0] && GRID.H === wh[1]) return false;
+  GRID = makeGrid(wh[0], wh[1]); NV = GRID.N;
+  NBR.length = 0; for (const a of GRID.NBR) NBR.push(a);
+  if (typeof TERRAIN !== 'undefined') { TERRAIN.setGrid(GRID); landSnap.ok = false; atmos.setArea?.(GRID.bounds); }
+  return true;
 }
-const { verts: DIRS, faces: FACES } = icosphere(4);
-const NV = DIRS.length;
-const NBR = (() => {
-  const s = Array.from({ length: NV }, () => new Set());
-  for (const [a, b, c] of FACES) { s[a].add(b).add(c); s[b].add(a).add(c); s[c].add(a).add(b); }
-  return s.map((x) => [...x]);
-})();
-const CORN = FACES.map(([a, b, c]) => DIRS[a].clone().add(DIRS[b]).add(DIRS[c]).normalize());
-const CELLS = (() => {
-  const around = Array.from({ length: NV }, () => []);
-  FACES.forEach((f, i) => { for (const v of f) around[v].push(i); });
-  const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
-  return around.map((fs, v) => {
-    const d = DIRS[v];
-    const t1 = new THREE.Vector3().crossVectors(d, Math.abs(d.y) < 0.9 ? Y : X).normalize(), t2 = d.clone().cross(t1);
-    const ang = (f) => Math.atan2(CORN[f].dot(t2), CORN[f].dot(t1));
-    fs.sort((p, q) => ang(p) - ang(q));
-    const nb = fs.map((f, i) => { const g = fs[(i + 1) % fs.length]; return FACES[f].find((x) => x !== v && FACES[g].includes(x)); });
-    return { fs, nb };
-  });
-})();
-const YAW = (() => {
-  const Y = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion(), c = new THREE.Vector3();
-  return DIRS.map((d, v) => { q.setFromUnitVectors(Y, d).invert(); c.copy(CORN[CELLS[v].fs[0]]).applyQuaternion(q); return Math.atan2(-c.z, c.x); });
-})();
 function bfs(v, r, pass = null) {
   const out = [[v, 0]], seen = new Set([v]);
   for (let i = 0; i < out.length; i++) {
@@ -110,26 +89,58 @@ const TER_NAME = ['Water', 'Grass', 'Dirt', 'Sand', 'Snow', 'Swamp', 'Rough', 'L
 const TER_COST = [0, 100, 100, 150, 150, 175, 125, 100, 0, 0];
 const TER_COL = [0x2a5a9a, 0x5aaa3a, 0x9a7a4a, 0xe2cc8a, 0xeef4f8, 0x4a6a3a, 0x9a8a6a, 0x5a3430, 0x7a6e64, 0x3e7e34].map((c) => new THREE.Color(c));
 const ROAD_COL = new THREE.Color(0xc8a874);
-const ter = new Uint8Array(NV), h = new Int8Array(NV), road = new Uint8Array(NV), seen = new Uint8Array(NV);
-const objAt = new Int32Array(NV).fill(-1);
+const ter = new Uint8Array(MAX_CELLS), h = new Int8Array(MAX_CELLS), road = new Uint8Array(MAX_CELLS), seen = new Uint8Array(MAX_CELLS);
+const objAt = new Int32Array(MAX_CELLS).fill(-1);
 const passable = (v) => ter[v] !== T.WATER && ter[v] !== T.MOUNT && ter[v] !== T.FOREST;
-const posOf = (v, lift = 0) => DIRS[v].clone().multiplyScalar(R + h[v] * STEP + lift);
-const radiusOf = (v) => R + h[v] * STEP;
-
-function noise3(seed) {
-  const r = mulberry32(seed), waves = [];
-  for (let i = 0; i < 9; i++) waves.push({ d: new THREE.Vector3(r() * 2 - 1, r() * 2 - 1, r() * 2 - 1).normalize(), f: 1.5 + r() * 3.5 * (1 + i * 0.3), p: r() * 6.28, a: 1 / (1 + i * 0.6) });
-  return (v) => { let s = 0, t = 0; for (const w of waves) { s += Math.sin(DIRS[v].dot(w.d) * w.f + w.p) * w.a; t += w.a; } return s / t; };
+const posOf = (v, lift = 0) => new THREE.Vector3(GRID.X[v], h[v] * STEP + lift, GRID.Z[v]);
+const radiusOf = (v) => h[v] * STEP; // height of a cell top (the planet's radius, kept as a name)
+// map regions for Crown Run gates: markRegions({ seeds | from+bands, wall, per }) fills regionOf[v] and returns the gates
+const regionOf = new Int16Array(MAX_CELLS);
+function markRegions(o = {}) {
+  const pass = o.walkOnly ? passable : null;
+  const r = o.seeds ? regionsVoronoi(GRID, o.seeds, pass) : regionsBands(GRID, o.from ?? 0, o.bands || [12, 24, 36], pass);
+  regionOf.fill(0); regionOf.set(r);
+  const gates = regionGates(GRID, regionOf, passable, o.per || 1);
+  if (o.wall) {
+    // raise a mountain wall along every region border, except at the gates (kept walkable)
+    const keep = new Set(); for (const g of gates) { keep.add(g.v); keep.add(g.u); for (const n of NBR[g.v]) keep.add(n); for (const n of NBR[g.u]) keep.add(n); }
+    for (let v = 0; v < NV; v++) {
+      if (keep.has(v) || ter[v] === T.WATER || objAt[v] >= 0) continue;
+      if (NBR[v].some((n) => regionOf[n] > regionOf[v])) { ter[v] = T.MOUNT; h[v] = SEA + 4; }
+    }
+    worldDirty = true;
+  }
+  return gates;
 }
-function generate(seed) {
-  const elev = noise3(seed), moist = noise3(seed + 7), heat = noise3(seed + 13), ridge = noise3(seed + 21);
+
+// 2D wave noise over the map (same waves as the planet's, in world units)
+function noise2(seed) {
+  const r = mulberry32(seed), waves = [];
+  for (let i = 0; i < 9; i++) { const a = r() * 6.283, z = r() * 2 - 1; waves.push({ dx: Math.cos(a), dz: Math.sin(a), f: (1.5 + r() * 3.5 * (1 + i * 0.3)) / 5.2 * (0.75 + Math.abs(z) * 0.5), p: r() * 6.28, a: 1 / (1 + i * 0.6) }); }
+  return (v) => { let s = 0, t = 0; const x = GRID.X[v], z = GRID.Z[v]; for (const w of waves) { s += Math.sin((x * w.dx + z * w.dz) * w.f + w.p) * w.a; t += w.a; } return s / t; };
+}
+// opts: { size: 'S'|'M'|'L'|'XL'|[w, h], players } (freeplay passes the size; players is a hint, unused for now)
+function generate(seed, opts = {}) {
+  if (opts.size) setGrid(opts.size);
+  const elev = noise2(seed), moist = noise2(seed + 7), heat = noise2(seed + 13), ridge = noise2(seed + 21), rim = noise2(seed + 29);
+  const W = GRID.W, H = GRID.H;
+  // which sides get a mountain rim (the rest fall away into the sea): one or two of the four
+  const rr = mulberry32(seed + 5), sides = [rr() < 0.45, rr() < 0.45, rr() < 0.45, rr() < 0.45];
   for (let v = 0; v < NV; v++) {
-    const e = elev(v) + 0.18, lat = Math.abs(DIRS[v].y), m = moist(v), ht = heat(v) - lat * 0.9;
+    const c = GRID.col[v], rw = GRID.row[v];
+    const bd = Math.min(c, W - 1 - c, rw, H - 1 - rw); // cells to the border
+    const side = bd === c ? 0 : bd === W - 1 - c ? 1 : bd === rw ? 2 : 3;
+    const lat = GRID.lat(v), m = moist(v), ht = heat(v) - 0.42 + (0.5 - lat) * 0.85;
+    // coastline: the land falls away over the last ~5 cells, ragged with noise; the outer two rings are open sea
+    let e = elev(v) + 0.24 - Math.max(0, (5 - bd + rim(v) * 3) / 5) * 0.75;
+    if (bd < 2) e = -1;
     if (e < -0.12) { ter[v] = T.WATER; h[v] = SEA - 1 - (e < -0.3 ? 1 : 0); continue; }
     h[v] = SEA + 1 + (e > 0.25 ? 1 : 0) + (e > 0.45 ? 1 : 0);
     const rg = Math.abs(ridge(v));
+    // a broken mountain rim on some sides: peaks and cliffs drop straight into the sea
+    if (sides[side] && bd <= 3 && rim(v) > -0.15 + bd * 0.1) { ter[v] = T.MOUNT; h[v] = SEA + 4 + (bd > 2 ? 1 : 0); continue; }
     if (rg < 0.06 && e > 0.05) { ter[v] = T.MOUNT; h[v] = SEA + 4 + (rg < 0.03 ? 1 : 0); continue; }
-    if (lat > 0.8 || ht < -0.85) ter[v] = T.SNOW;
+    if (lat > 0.93 || ht < -0.85) ter[v] = T.SNOW;
     else if (e < -0.04) ter[v] = T.SAND;
     else if (ht > 0.38 && m < -0.1) ter[v] = T.LAVA;
     else if (m > 0.38 && e < 0.2) ter[v] = T.SWAMP;
@@ -143,7 +154,21 @@ function generate(seed) {
 // ------------------------------------------------------------------ world state
 const G = { mode: 'menu', seed: 1, day: 1, players: [], heroes: [], towns: [], objects: [], diff: 1, selHero: -1, over: false };
 // player 0 is you; the others are computer lords
-function newPlayer(i, fac, ai) { return { i, fac, ai, res: { gold: ai ? 7500 : 10000, wood: 20, ore: 20, gems: 5 }, alive: true, color: FACTIONS[fac].color, css: FACTIONS[fac].css, name: i === 0 ? 'You' : FACTIONS[fac].name }; }
+// freeplay: player colours (flags, heroes, HUD). Each crown takes its faction's colour unless another crown has it.
+const PLAYER_COLS = [0x3a7aff, 0xd83a3a, 0x3ac84a, 0xff7a1a, 0xa84ad8, 0x22c4c0, 0xe8c020, 0xff5aa8];
+const COL_NAMES = ['Blue', 'Red', 'Green', 'Orange', 'Purple', 'Teal', 'Gold', 'Pink'];
+// a crown whose faction colour is taken gets a spare colour first (teal, gold, pink), so no faction colour is misused early
+const COL_SPARE = [5, 6, 7, 0, 1, 2, 3, 4].map((i) => PLAYER_COLS[i]);
+const colCss = (c) => '#' + c.toString(16).padStart(6, '0');
+// difficulty 0 Easy · 1 Normal · 2 Hard · 3 Impossible; byDiff picks from a per-difficulty table (short tables clamp)
+const DIFF_NAMES = ['Easy', 'Normal', 'Hard', 'Impossible'];
+const byDiff = (arr) => arr[clamp(G.diff | 0, 0, arr.length - 1)];
+// starting resources 0 Poor · 1 Normal · 2 Rich
+const RES_START = [{ gold: 5000, wood: 10, ore: 10, gems: 2 }, { gold: 10000, wood: 20, ore: 20, gems: 5 }, { gold: 20000, wood: 40, ore: 40, gems: 10 }];
+function newPlayer(i, fac, ai, color = FACTIONS[fac].color, resLv = 1) {
+  const r = RES_START[resLv] || RES_START[1], aiGold = [0.75, 0.75, 0.9, 1.2][G.diff] ?? 0.75; // AI: 7500 gold on Normal, as before
+  return { i, fac, ai, res: { gold: Math.round(r.gold * (ai ? aiGold : 1)), wood: r.wood, ore: r.ore, gems: r.gems }, alive: true, color, css: colCss(color), name: i === 0 ? 'You' : FACTIONS[fac].name };
+}
 function newHero(p, v, name) {
   return { id: G.heroes.length, p, v, name, lvl: 1, xp: 0, att: 1, def: 1, pow: 1, know: 1, mana: 10, mp: 0, mpMax: 1500, skills: {}, spells: [], arts: [], army: [], visited: [], alive: true, path: null };
 }
@@ -175,7 +200,7 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true; // frame() decides when the shadow maps re-render
 $('app').prepend(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0d1e);
+scene.background = new THREE.Color(0xa8c6e2);
 const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 400);
 const sunDir = new THREE.Vector3(0.6, 0.8, 0.4).normalize();
 const sun = new THREE.DirectionalLight(0xffe8c4, 2.5);
@@ -187,35 +212,46 @@ sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
 scene.add(sun, sun.target);
 scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x7a6440, 1.05));
 scene.add(new THREE.AmbientLight(0x7880b8, 0.4));
-// Map camera: (theta, phi, dist) chase a target (tTheta, tPhi, tDist) through a critically damped spring
-// (smoothDamp), so every motion is frame-rate independent and velocity-continuous: a retarget (flyTo, follow,
-// a grab mid-flight) bends the path instead of kinking it. Input only moves the target:
-//  - drag: finger deltas accumulate in dragTheta/dragPhi and are applied once per frame (no lost or doubled events)
-//  - fling: on release the target keeps moving at the measured finger speed (rad/s) and decays exponentially
-//  - flyTo: target jumps, the spring eases out of rest and into the goal; any touch takes over where the camera is
-//  - follow: while a hero walks in view, the target tracks its (smoothly lerped) mesh, never the per-step hex
-const cam = { theta: 0, phi: 1.2, dist: 10, tTheta: 0, tPhi: 1.2, tDist: 10, vTheta: 0, vPhi: 0, fly: false, shake: 0,
-  sTheta: 0, sPhi: 0, sDist: 0, dragTheta: 0, dragPhi: 0, dragging: false, spin: 0, holdFollow: null, aiFollow: null, st: 0.3,
-  gTheta: 0, gPhi: 1.2, gsTheta: 0, gsPhi: 0 };
+// Map camera (flat world): a classic strategy view. The camera looks at a focus point on the ground (x, z) from a
+// distance and tilt that follow the zoom (cam.dist keeps the planet's 6.4..22 scale: close up the view tilts toward
+// the horizon, far out it looks down more steeply), turned by cam.yaw. Focus, yaw and zoom chase their targets
+// (tx, tz, tYaw, tDist) through critically damped springs (smoothDamp), so every motion is frame-rate independent and
+// velocity-continuous: a retarget (flyTo, follow, a grab mid-flight) bends the path instead of kinking it.
+//  - drag: finger deltas (converted to ground units under the finger) accumulate and are applied once per frame
+//  - fling: on release the target keeps gliding at the measured finger speed and decays exponentially
+//  - pinch zooms, a two-finger twist turns the view; the focus is clamped to the map
+//  - flyTo / follow (our walking hero, an enemy hero walking in sight) as before
+const cam = { x: 0, z: 0, y: 0.3, tx: 0, tz: 0, vx: 0, vz: 0, sx: 0, sz: 0, gx: 0, gz: 0, gsx: 0, gsz: 0,
+  yaw: 0, tYaw: 0, sYaw: 0, dist: 10, tDist: 10, sDist: 0, fly: false, shake: 0,
+  dragX: 0, dragZ: 0, dragYaw: 0, dragging: false, spin: 0, holdFollow: null, aiFollow: null, st: 0.3 };
 const lookAtP = new THREE.Vector3(), camFocus = new THREE.Vector3(), camRight = new THREE.Vector3(), camTmp = new THREE.Vector3();
-const PHI_MIN = 0.12, PHI_MAX = Math.PI - 0.12;
 const wrapPi = (a) => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
 // critically damped spring toward `to` (Game Programming Gems 4, ch. 1.10); stable for any dt; returns [x, v]
 function smoothDamp(x, to, v, st, dt) {
   const w = 2 / st, k = w * dt, e = 1 / (1 + k + 0.48 * k * k + 0.235 * k * k * k), c = x - to, tmp = (v + w * c) * dt;
   return [to + (c + tmp) * e, (v - w * tmp) * e];
 }
-const FLING_DECAY = 7, FLING_MAX = 2.8; // 1/s, rad/s: the longest glide is FLING_MAX / FLING_DECAY = 0.4 rad
+// eye distance from the focus and tilt (radians below the horizon) for a zoom level
+const viewDist = (d) => Math.max(1.6, d - 4.6);
+const viewPitch = (d) => (G.mode === 'menu' ? 0.2 : 0.5 + 0.55 * (1 - Math.exp(-Math.max(0, d - 6.4) / 3.2)));
+const CAM_DEFAULT = 10; // the zoom a new game, a selected hero and a load start at
+const FLING_DECAY = 7; // 1/s; the speed cap scales with the zoom (the longest glide is ~0.3 view distances)
+const flingMax = () => 2.2 * viewDist(cam.dist);
+function camClamp() {
+  const b = GRID.bounds, m = 0.4;
+  const x = clamp(cam.tx, b.x0 - m, b.x1 + m), z = clamp(cam.tz, b.z0 - m, b.z1 + m);
+  if (x !== cam.tx) cam.vx = 0; if (z !== cam.tz) cam.vz = 0;
+  cam.tx = x; cam.tz = z;
+}
 function camGrab() {
   // a finger lands: stop flights, flings and follow right where the camera is (plus a hair of its momentum,
   // so a fast flight settles in ~0.1 s instead of stopping dead); no positional jump either way
-  cam.fly = false; cam.vTheta = cam.vPhi = 0;
-  cam.tTheta = cam.theta + cam.sTheta * 0.04; cam.tPhi = clamp(cam.phi + cam.sPhi * 0.04, PHI_MIN, PHI_MAX);
+  cam.fly = false; cam.vx = cam.vz = 0;
+  cam.tx = cam.x + cam.sx * 0.04; cam.tz = cam.z + cam.sz * 0.04; cam.tYaw = cam.yaw; camClamp();
   if (walking) cam.holdFollow = walking;
   else if (aiRunning) cam.holdFollow = 'ai'; // grabbing the map during the enemy turn hands the camera back for that turn
 }
-function camSnap(theta, phi) { cam.theta = cam.tTheta = cam.gTheta = theta; cam.phi = cam.tPhi = cam.gPhi = phi; cam.sTheta = cam.sPhi = cam.gsTheta = cam.gsPhi = cam.vTheta = cam.vPhi = 0; cam.fly = false; }
-const followDir = new THREE.Vector3(), followSp = new THREE.Spherical();
+function camSnapTo(x, z) { cam.x = cam.tx = cam.gx = x; cam.z = cam.tz = cam.gz = z; cam.sx = cam.sz = cam.gsx = cam.gsz = cam.vx = cam.vz = 0; cam.fly = false; }
 function followTarget() {
   // the hero to keep in frame: ours while it walks (until the player grabs the map), or an enemy walking in sight
   if (cam.dragging) return null;
@@ -231,6 +267,8 @@ function followTarget() {
   if (!h || !h.alive || (!h.anim && !seen[h.v])) { cam.aiFollow = null; return null; }
   return heroMeshes.get(h.id) || null;
 }
+// ground height under the focus (smoothed in updateCamera), so the view rides over hills and cliffs gently
+function groundAt(x, z) { const v = GRID.cellAt(x, z); return v >= 0 ? Math.max(h[v], SEA) * STEP : SEA * STEP; }
 function updateCamera(dt) {
   // spring time: 0.05 s under the finger (feels 1:1 but hides uneven touch events), ~0.3 s for flights and follow.
   // It is kept between frames: when a follow or flight ends, the camera finishes its approach at the same pace
@@ -238,63 +276,59 @@ function updateCamera(dt) {
   let st = cam.st || 0.3;
   if (cam.dragging) {
     st = 0.05;
-    cam.tTheta += cam.dragTheta; cam.tPhi += cam.dragPhi; cam.dragTheta = cam.dragPhi = 0; cam.fly = false;
+    cam.tx += cam.dragX; cam.tz += cam.dragZ; cam.tYaw += cam.dragYaw; cam.dragX = cam.dragZ = cam.dragYaw = 0; cam.fly = false;
   } else {
     const fm = followTarget();
     if (fm) {
-      followSp.setFromVector3(followDir.copy(fm.position));
-      cam.tTheta = cam.theta + wrapPi(followSp.theta - cam.theta); cam.tPhi = followSp.phi; cam.fly = false; cam.vTheta = cam.vPhi = 0;
+      cam.tx = fm.position.x; cam.tz = fm.position.z; cam.fly = false; cam.vx = cam.vz = 0;
       st = 0.32;
     } else if (cam.fly) {
       st = 0.34;
-      if (Math.abs(wrapPi(cam.tTheta - cam.theta)) < 0.0008 && Math.abs(cam.tPhi - cam.phi) < 0.0008 && Math.abs(cam.sTheta) + Math.abs(cam.sPhi) < 0.01) cam.fly = false;
+      if (Math.abs(cam.tx - cam.x) < 0.004 && Math.abs(cam.tz - cam.z) < 0.004 && Math.abs(cam.sx) + Math.abs(cam.sz) < 0.05) cam.fly = false;
     } else {
-      // fling inertia (rad/s), decaying exponentially with time, plus the title-screen spin
-      if (cam.vTheta || cam.vPhi) st = 0.05;
-      cam.tTheta += (cam.vTheta + cam.spin) * dt; cam.tPhi += cam.vPhi * dt;
-      const k = Math.exp(-FLING_DECAY * dt); cam.vTheta *= k; cam.vPhi *= k;
-      if (Math.abs(cam.vTheta) + Math.abs(cam.vPhi) < 1e-3) cam.vTheta = cam.vPhi = 0;
+      // fling inertia (world units/s), decaying exponentially with time; the title screen slowly turns the view
+      if (cam.vx || cam.vz) st = 0.05;
+      cam.tx += cam.vx * dt; cam.tz += cam.vz * dt; cam.tYaw += cam.spin * dt;
+      const k = Math.exp(-FLING_DECAY * dt); cam.vx *= k; cam.vz *= k;
+      if (Math.abs(cam.vx) + Math.abs(cam.vz) < 1e-3) cam.vx = cam.vz = 0;
     }
   }
-  // the pole clamp acts on the target (a fling into the pole just stops there)
-  if (cam.tPhi < PHI_MIN || cam.tPhi > PHI_MAX) { cam.tPhi = clamp(cam.tPhi, PHI_MIN, PHI_MAX); cam.vPhi = 0; }
-  // spin along the short way round; keep theta bounded so float precision never drifts
-  const dth = wrapPi(cam.tTheta - cam.theta);
-  if (Math.abs(cam.theta) > 1000) { const w = cam.theta - wrapPi(cam.theta); cam.theta -= w; }
-  cam.tTheta = cam.theta + dth;
+  camClamp();
   cam.st = st;
   if (st >= 0.2) {
     // flights and follow go through two springs in a row (target -> goal -> camera): the speed then builds up
     // with no acceleration kick on the first frame, which is what makes a long flight read as a camera move
-    cam.gTheta = cam.theta + wrapPi(cam.gTheta - cam.theta);
-    [cam.gTheta, cam.gsTheta] = smoothDamp(cam.gTheta, cam.tTheta, cam.gsTheta, st * 0.45, dt);
-    [cam.gPhi, cam.gsPhi] = smoothDamp(cam.gPhi, cam.tPhi, cam.gsPhi, st * 0.45, dt);
-    [cam.theta, cam.sTheta] = smoothDamp(cam.theta, cam.gTheta, cam.sTheta, st * 0.55, dt);
-    [cam.phi, cam.sPhi] = smoothDamp(cam.phi, cam.gPhi, cam.sPhi, st * 0.55, dt);
+    [cam.gx, cam.gsx] = smoothDamp(cam.gx, cam.tx, cam.gsx, st * 0.45, dt);
+    [cam.gz, cam.gsz] = smoothDamp(cam.gz, cam.tz, cam.gsz, st * 0.45, dt);
+    [cam.x, cam.sx] = smoothDamp(cam.x, cam.gx, cam.sx, st * 0.55, dt);
+    [cam.z, cam.sz] = smoothDamp(cam.z, cam.gz, cam.sz, st * 0.55, dt);
   } else {
-    [cam.theta, cam.sTheta] = smoothDamp(cam.theta, cam.tTheta, cam.sTheta, st, dt);
-    [cam.phi, cam.sPhi] = smoothDamp(cam.phi, cam.tPhi, cam.sPhi, st, dt);
+    [cam.x, cam.sx] = smoothDamp(cam.x, cam.tx, cam.sx, st, dt);
+    [cam.z, cam.sz] = smoothDamp(cam.z, cam.tz, cam.sz, st, dt);
     // the middle spring rides along with the camera, so switching to a flight/follow starts from its exact motion
-    cam.gTheta = cam.theta; cam.gPhi = cam.phi; cam.gsTheta = cam.sTheta; cam.gsPhi = cam.sPhi;
+    cam.gx = cam.x; cam.gz = cam.z; cam.gsx = cam.sx; cam.gsz = cam.sz;
   }
-  cam.phi = clamp(cam.phi, PHI_MIN, PHI_MAX);
+  if (Math.abs(cam.yaw) > 1000) { const w = cam.yaw - wrapPi(cam.yaw); cam.yaw -= w; cam.tYaw -= w; }
+  [cam.yaw, cam.sYaw] = smoothDamp(cam.yaw, cam.tYaw, cam.sYaw, cam.dragging ? 0.06 : 0.2, dt);
   [cam.dist, cam.sDist] = smoothDamp(cam.dist, cam.tDist, cam.sDist, 0.14, dt);
-  // close up, the camera tilts toward the horizon like a strategy map
-  const f = clamp((16 - cam.dist) / 9, 0, 1);
-  const cphi = cam.phi + f * 0.4;
-  camera.position.setFromSphericalCoords(cam.dist, cphi, cam.theta);
-  lookAtP.setFromSphericalCoords(R * f * 0.98, cam.phi, cam.theta);
-  // 'up' is the local north tangent: continuous even when the tilt carries the camera past a pole
-  camera.up.set(-Math.cos(cphi) * Math.sin(cam.theta), Math.sin(cphi), -Math.cos(cphi) * Math.cos(cam.theta));
+  cam.y += (groundAt(cam.x, cam.z) - cam.y) * (1 - Math.exp(-dt * 3));
+  const D = viewDist(cam.dist), pt = viewPitch(cam.dist), cp = Math.cos(pt), sy = Math.sin(cam.yaw), cy = Math.cos(cam.yaw);
+  lookAtP.set(cam.x, cam.y, cam.z);
+  camera.position.set(cam.x + sy * cp * D, cam.y + Math.sin(pt) * D, cam.z + cy * cp * D);
+  camera.up.set(0, 1, 0);
   camera.lookAt(lookAtP);
   applyShake(camera, dt, 0.014);
-  // the shadow-casting sun follows the view so shadows stay crisp near the camera
-  // (scratch vectors: this runs every frame, so no allocations)
-  const focus = camFocus.copy(lookAtP.lengthSq() > 0.01 ? lookAtP : camera.position).setLength(R);
-  const right = camRight.crossVectors(camera.position, UP).normalize();
-  sun.position.copy(focus).addScaledVector(camTmp.copy(camera.position).sub(focus).normalize(), 9).addScaledVector(right, 5).addScaledVector(camTmp.copy(focus).normalize(), 6);
-  sun.target.position.copy(focus);
+  // the shadow-casting sun follows the view (from behind the camera, up and to the right) so figures are front-lit
+  // and shadows stay crisp where you look; its box grows with the zoom and leans toward the far part of the view
+  const focus = camFocus.copy(lookAtP);
+  const S = clamp(Math.round(D * 0.8 * 2) / 2, 3, 9), sc = sun.shadow.camera;
+  if (sc.right !== S) { sc.left = sc.bottom = -S; sc.right = sc.top = S; sc.updateProjectionMatrix(); }
+  const right = camRight.set(cy, 0, -sy);
+  sun.target.position.copy(focus).addScaledVector(camTmp.set(-sy, 0, -cy), S * 0.3);
+  sun.position.copy(sun.target.position).addScaledVector(camTmp.set(sy, 0, cy), 7).addScaledVector(right, 5).add(camTmp.set(0, 9, 0));
 }
+// is a cell far from the middle of the view (more than `n` hex steps from the focus)?
+const offView = (v, n = 4) => Math.hypot(GRID.X[v] - cam.tx, GRID.Z[v] - cam.tz) > n * CELL;
 // ---- screen shake (feel): "trauma" in 0..1 decays linearly; the offset is trauma² × smooth 2D noise (two sines per
 // axis at incommensurate rates: continuous, no per-frame random jitter), applied as a tiny yaw/pitch of the camera
 // AFTER its lookAt, so the framing target and the camera springs are never disturbed. cam.shake (legacy) feeds it.
@@ -315,8 +349,7 @@ let hitStop = 0, bTimeK = 1;
 function addHitStop(s) { if (!reduceMo.matches) hitStop = Math.max(hitStop, s); }
 function flyTo(v, dist) {
   // the spring eases from the current motion into the new goal (no velocity kink if a flight is retargeted)
-  const sp = new THREE.Spherical().setFromVector3(DIRS[v]);
-  cam.tTheta = cam.theta + wrapPi(sp.theta - cam.theta); cam.tPhi = clamp(sp.phi, PHI_MIN, PHI_MAX); cam.fly = true; cam.vTheta = cam.vPhi = 0;
+  cam.tx = GRID.X[v]; cam.tz = GRID.Z[v]; cam.fly = true; cam.vx = cam.vz = 0; camClamp();
   if (dist) cam.tDist = dist;
 }
 // ------------------------------------------------------------------ resize + screen layout
@@ -386,7 +419,7 @@ function mapViewOffset(dt) {
   if (G.mode === 'map' && B - T > H * 0.3) {
     camera.updateMatrixWorld();
     const sy = (p) => (-p.project(camera).y * 0.5 + 0.5) * H - lay.mapOff; // screen y without the current offset
-    const feet = sy(mvP.copy(camFocus).setLength(R + 0.03)), head = sy(mvP.copy(camFocus).setLength(R + 0.8 * figK)); // hero + banner tip
+    const feet = sy(mvP.copy(camFocus).setY(camFocus.y + 0.03)), head = sy(mvP.copy(camFocus).setY(camFocus.y + 0.8 * figK)); // hero + banner tip
     want = T + (feet / H) * (B - T) - feet;
     const lo = T + 12 - head, hi = B - 12 - feet;
     want = lo > hi ? (lo + hi) / 2 : clamp(want, lo, hi);
@@ -451,16 +484,15 @@ const QG = (() => {
   state.set = (o = {}) => { if (o.auto !== undefined) S.auto = !!o.auto; if (o.cull !== undefined) hzOn = !!o.cull; if (o.shadowsAlways !== undefined) shAlways = !!o.shadowsAlways; if (o.level !== undefined && o.level !== S.level) apply(clamp(o.level | 0, 0, steps.length - 1)); reset(); return state(); };
   return { sample, state, init() { if (S.level) apply(S.level); else camera.userData.pixelRatio = bcam.userData.pixelRatio = S.pr; } };
 })();
-const atmos = createAtmosphere(THREE, scene, { R });
+const atmos = createFlatSky(THREE, scene, { fogColor: 0xa8c6e2 }); // flat world: daylight sky, horizon haze, clouds, birds
 
 
-// ------------------------------------------------------------------ the planet mesh: bevelled hex columns with cliff walls
-// the surface itself (textures, bevels, cliffs, roads, fog, water) is built by terrain.js
-import { createPlanet } from './terrain.js?v=1.10';
-const TERRAIN = createPlanet({ R, STEP, SEA, DIRS, CORN, FACES, CELLS });
-const planet = TERRAIN.planet, triCell = TERRAIN.triCell;
-planet.castShadow = planet.receiveShadow = true;
-scene.add(planet);
+// ------------------------------------------------------------------ the map mesh: bevelled hex columns with cliff walls, in chunks
+// the surface itself (textures, bevels, cliffs, roads, fog, water, the open sea) is built by terrain.js
+import { createFlatMap } from './terrain.js?v=2.0';
+const TERRAIN = createFlatMap({ STEP, SEA });
+TERRAIN.setGrid(GRID); atmos.setArea(GRID.bounds);
+scene.add(TERRAIN.group);
 const FOG = new THREE.Color(0x10131f);
 const tc = new THREE.Color();
 function cellColor(v) {
@@ -471,10 +503,6 @@ function cellColor(v) {
   return tc.multiplyScalar(0.93 + (hash(v * 3) % 1000) / 9000);
 }
 function rebuildPlanet() { TERRAIN.rebuild(ter, h, road, seen); }
-// water: flat hex tiles at sea level with depth colour, shore foam, waves and glints
-const water = TERRAIN.water;
-water.receiveShadow = true;
-scene.add(water);
 
 
 // ------------------------------------------------------------------ bloom
@@ -662,43 +690,45 @@ const heroPic = (hr, size, shape = 'square') => { const P = G.players[hr.p]; ret
 // interactive things (towns, heroes, objects, creatures) get a painted ink outline so they read as figures on the ground
 setRigIdle(0.6); // map figures idle gently (battle units set their own amplitude)
 const inkMat = makeInkHullMaterial(THREE), blobMat = makeBlobShadowMaterial(THREE), blobGeo = blobShadowGeometry(THREE);
+let inkLod = true; // map figures' ink hulls shown (off when zoomed far out)
 function meshOf(m, ink = true) {
   const g = new THREE.Group();
   const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = true; b.receiveShadow = true; g.add(b);
   if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
-  if (ink) g.add(new THREE.Mesh(m.body, inkMat));
+  if (ink) { const k = new THREE.Mesh(m.body, inkMat); k.userData.ink = true; g.add(k); }
   return g;
 }
 // soft contact shadow so a figure sits on the ground (radius in model units)
 function addBlob(g, r) { const bl = new THREE.Mesh(blobGeo, blobMat); bl.scale.setScalar(r); bl.userData.blob = true; bl.renderOrder = -1; g.add(bl); return g; }
 const BLOB_R = { gold: 0.62, wood: 0.62, ore: 0.62, gems: 0.62, chest: 0.64, artifact: 0.55, campfire: 0.6, stone: 0.55, monster: 0.7 };
 const UP = new THREE.Vector3(0, 1, 0), qa = new THREE.Quaternion();
-// stands a group on a cell, local +y along the planet normal
+// stands a group on a cell (local +y up), turned by `turn` around the vertical
 // figures grow a little as the camera pulls back, so they stay readable on a phone (like map icons)
 let figK = 1;
 function placeOn(obj, v, scale, turn = 0, lift = 0) {
   obj.userData.s0 = scale;
-  qa.setFromUnitVectors(UP, DIRS[v]);
-  obj.quaternion.copy(qa);
-  obj.rotateY(YAW[v] + turn);
-  obj.position.copy(DIRS[v]).multiplyScalar(radiusOf(v) + lift);
+  obj.quaternion.identity();
+  obj.rotateY(turn);
+  obj.position.set(GRID.X[v], radiusOf(v) + lift, GRID.Z[v]);
   obj.scale.setScalar(scale * figK);
 }
 const world = new THREE.Group(); scene.add(world);
 const flora = new THREE.Group(); scene.add(flora);
 // forests, mountains and rocks: instanced per model
+const dummy = new THREE.Object3D(); // scratch (the battle hex grid uses it too)
 const pickW = (list, r) => { const tot = list.reduce((x, e) => x + e.w, 0); let k = r * tot; for (const e of list) { k -= e.w; if (k <= 0) return e.key; } return list[0].key; };
-const dummy = new THREE.Object3D();
-// One InstancedMesh (+ glow) per model, with spare capacity: a fog reveal only appends the newly seen cells' instances
-// (and uploads just those matrices) instead of rebuilding every forest on the planet.
-const floraSets = new Map(); // key -> { model, im, ig, n, cap }
-const floraDone = new Uint8Array(NV); // cells whose flora is already placed
-const floraSphere = new THREE.Sphere(new THREE.Vector3(), R + 3);
+// Flora (flat world): one InstancedMesh (+ glow) per model, holding only the instances of the render chunks in (or
+// just around) the view. Each model keeps its instance matrices per chunk; a fog reveal appends the new cells' ones,
+// and floraCull() re-packs a model's instance buffer only when the set of chunks in view (or its content) changed,
+// so a still or slowly panning view uploads nothing and the GPU never processes forests off screen.
+const floraSets = new Map(); // key -> { model, im, ig, cap, per: Map(chunk -> { a: Float32Array, n }), dirty }
+const floraDone = new Uint8Array(MAX_CELLS); // cells whose flora is already placed
+const floraBig = new THREE.Sphere(new THREE.Vector3(), 1e4);
 function floraCell(v, put) {
   const hv = hash(v * 11), rr = (k) => (hash(v * 31 + k * 7) % 1000) / 1000;
-  const F = FLORA_FOR_TERRAIN[ter[v]];
+  const F = FLORA_FOR_TERRAIN[ter[v]], lat = GRID.lat(v) * 0.9; // north = colder (snowy pines and peaks), no palms there
   if (ter[v] === T.FOREST || ter[v] === T.MOUNT) {
-    const biome = biomeOf(NBR[v].map((n) => ter[n]), Math.abs(DIRS[v].y));
+    const biome = biomeOf(NBR[v].map((n) => ter[n]), lat);
     if (ter[v] === T.FOREST) {
       const n = F.count[0] + (hv % (F.count[1] - F.count[0] + 1));
       for (let i = 0; i < n; i++) { const a = i * 2.1 + hv, d = i ? 0.1 + rr(i) * 0.03 : 0; put(pickW(FOREST_BY_BIOME[biome] || FOREST_BY_BIOME.temperate, rr(i + 9)), v, F.fillScale * (0.85 + rr(i + 3) * 0.3), Math.cos(a) * d, Math.sin(a) * d, a); }
@@ -707,62 +737,74 @@ function floraCell(v, put) {
   }
   if (objAt[v] >= 0 || road[v] || !F || !F.scatter) return;
   let placed = 0;
-  F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; if ((e.avoid && NBR[v].some((n) => e.avoid.includes(ter[n]))) || (e.maxLat && Math.abs(DIRS[v].y) > e.maxLat)) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
+  F.scatter.forEach((e, i) => { if (placed >= 2 || rr(i + 20) > e.p) return; if ((e.avoid && NBR[v].some((n) => e.avoid.includes(ter[n]))) || (e.maxLat && lat > e.maxLat)) return; const a = rr(i + 30) * 6.28, d = 0.05 + rr(i + 40) * 0.07; put(e.key, v, e.s, Math.cos(a) * d, Math.sin(a) * d, a * 3); placed++; });
 }
-const flT1 = new THREE.Vector3(), flT2 = new THREE.Vector3(), flX = new THREE.Vector3(1, 0, 0);
-function floraMatrix(v, s, x, z, turn) {
-  flT1.crossVectors(DIRS[v], Math.abs(DIRS[v].y) < 0.9 ? UP : flX).normalize(); flT2.copy(DIRS[v]).cross(flT1);
-  dummy.position.copy(DIRS[v]).multiplyScalar(radiusOf(v)).addScaledVector(flT1, x).addScaledVector(flT2, z);
-  dummy.quaternion.setFromUnitVectors(UP, DIRS[v]); dummy.rotateY(turn); dummy.scale.setScalar(s); dummy.updateMatrix();
-  return dummy.matrix;
-}
-// the set for a model with room for `extra` more instances (grows by reallocating just that model's meshes)
-function floraSet(key, extra) {
+// the set for a model (its meshes are (re)allocated by floraPack when the instances outgrow them)
+function floraSet(key) {
   let S = floraSets.get(key);
-  if (S && S.n + extra <= S.cap) return S;
-  const model = S ? S.model : natureModel(key), n = S ? S.n : 0, cap = Math.ceil((n + extra) * 1.5) + 32;
-  const mk = (geo, mat) => {
-    const im = new THREE.InstancedMesh(geo, mat, cap);
-    im.count = n; im.visible = n > 0; im.boundingSphere = floraSphere; // grows in place: cull against the whole planet
-    return im;
-  };
-  const im = mk(model.body, floraBodyMat); im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = floraDepthMat;
-  const ig = model.glow ? mk(model.glow, floraGlowMat) : null;
-  if (S) {
-    im.instanceMatrix.array.set(S.im.instanceMatrix.array.subarray(0, n * 16));
-    if (ig) ig.instanceMatrix.array.set(S.ig.instanceMatrix.array.subarray(0, n * 16));
-    for (const o of [S.im, S.ig]) if (o) { flora.remove(o); o.dispose(); }
-  }
-  flora.add(im); if (ig) flora.add(ig);
-  S = { model, im, ig, n, cap }; floraSets.set(key, S);
+  if (!S) { S = { model: natureModel(key), im: null, ig: null, cap: 0, per: new Map(), dirty: true }; floraSets.set(key, S); }
   return S;
+}
+function floraAlloc(S, need) {
+  const cap = Math.ceil(need * 1.4) + 32;
+  for (const o of [S.im, S.ig]) if (o) { flora.remove(o); o.dispose(); }
+  const mk = (geo, mat) => { const im = new THREE.InstancedMesh(geo, mat, cap); im.count = 0; im.visible = false; im.frustumCulled = false; im.boundingSphere = floraBig; return im; };
+  S.im = mk(S.model.body, floraBodyMat); S.im.castShadow = true; S.im.receiveShadow = true; S.im.customDepthMaterial = floraDepthMat;
+  S.ig = S.model.glow ? mk(S.model.glow, floraGlowMat) : null;
+  flora.add(S.im); if (S.ig) flora.add(S.ig);
+  S.cap = cap;
+}
+// chunks in view (frustum, widened a little for shadows cast into it from just outside)
+const floraVis = { key: '', chunks: [] }, _frus = new THREE.Frustum(), _fm = new THREE.Matrix4(), _fb = new THREE.Box3();
+function floraPack(S) {
+  S.dirty = false;
+  let n = 0; for (const c of floraVis.chunks) n += S.per.get(c)?.n || 0;
+  if (n > S.cap) floraAlloc(S, n);
+  if (!S.im) return;
+  let o = 0;
+  for (const c of floraVis.chunks) { const L = S.per.get(c); if (!L || !L.n) continue; const src = L.a.subarray(0, L.n * 16); S.im.instanceMatrix.array.set(src, o); if (S.ig) S.ig.instanceMatrix.array.set(src, o); o += L.n * 16; }
+  for (const m of [S.im, S.ig]) { if (!m) continue; m.count = n; m.visible = n > 0; if (n) { m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.addUpdateRange(0, n * 16); m.instanceMatrix.needsUpdate = true; } }
+}
+let floraOn = true; // A/B switch for perf tests (quality.set({ cull: false }) packs every chunk)
+function floraCull() {
+  camera.updateMatrixWorld();
+  _frus.setFromProjectionMatrix(_fm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  const vis = [];
+  for (const C of GRID.chunks) {
+    _fb.min.set(C.x0 - 0.8, -0.4, C.z0 - 0.8); _fb.max.set(C.x1 + 0.8, 1.6, C.z1 + 0.8);
+    // in view and nearer than the far haze (beyond it everything has faded into the sky colour)
+    const on = !floraOn || (_frus.intersectsBox(_fb) && _fb.distanceToPoint(camera.position) < atmos.fog.far);
+    if (on) vis.push(C.id);
+    const ch = TERRAIN.chunks()[C.id]; if (ch) { ch.land.visible = on; ch.water.visible = on && ch.W?.n > 0; }
+  }
+  const key = vis.join(',');
+  const all = key !== floraVis.key;
+  if (all) { floraVis.key = key; floraVis.chunks = vis; }
+  let packed = false;
+  for (const S of floraSets.values()) if (all || S.dirty) { floraPack(S); packed = true; }
+  return packed;
 }
 // cells = the cells that just turned seen (incremental), or nothing for a full rebuild of the flora
 function layoutFlora(cells = null) {
   if (!cells) {
     // free the old instance-matrix GPU buffers (the shared nature geometries stay cached in nature.js)
     for (const im of flora.children) im.dispose?.();
-    flora.clear(); floraSets.clear(); floraDone.fill(0);
+    flora.clear(); floraSets.clear(); floraDone.fill(0); floraVis.key = '';
     cells = [];
     for (let v = 0; v < NV; v++) if (seen[v]) cells.push(v);
   }
-  const lists = new Map();
+  let any = false;
   const put = (key, v, s, x = 0, z = 0, turn = 0) => {
-    let L = lists.get(key); if (!L) lists.set(key, (L = []));
-    L.push(floraMatrix(v, s, x, z, turn).clone());
+    const S = floraSet(key), c = GRID.chunkOf[v];
+    let L = S.per.get(c); if (!L) S.per.set(c, (L = { a: new Float32Array(64 * 16), n: 0 }));
+    if ((L.n + 1) * 16 > L.a.length) { const b = new Float32Array(L.a.length * 2); b.set(L.a); L.a = b; }
+    const e = L.a, o = L.n * 16, cs = Math.cos(turn) * s, sn = Math.sin(turn) * s;
+    e[o] = cs; e[o + 1] = 0; e[o + 2] = -sn; e[o + 3] = 0; e[o + 4] = 0; e[o + 5] = s; e[o + 6] = 0; e[o + 7] = 0;
+    e[o + 8] = sn; e[o + 9] = 0; e[o + 10] = cs; e[o + 11] = 0; e[o + 12] = GRID.X[v] + x; e[o + 13] = radiusOf(v); e[o + 14] = GRID.Z[v] + z; e[o + 15] = 1;
+    L.n++; S.dirty = true; any = true;
   };
   for (const v of cells) { if (!seen[v] || floraDone[v]) continue; floraDone[v] = 1; floraCell(v, put); }
-  for (const [key, m] of lists) {
-    const S = floraSet(key, m.length), i0 = S.n;
-    for (const o of [S.im, S.ig]) {
-      if (!o) continue;
-      m.forEach((x, i) => o.setMatrixAt(i0 + i, x));
-      o.count = i0 + m.length; o.visible = true;
-      o.instanceMatrix.addUpdateRange(i0 * 16, m.length * 16); o.instanceMatrix.needsUpdate = true;
-    }
-    S.n += m.length;
-  }
-  return lists.size > 0;
+  return any;
 }
 
 // ------------------------------------------------------------------ building the world
@@ -776,7 +818,7 @@ function connected(a, b) {
 function carve(a, b) {
   let x = a;
   for (let i = 0; i < 400 && x !== b; i++) {
-    x = NBR[x].reduce((p, n) => (DIRS[n].distanceTo(DIRS[b]) < DIRS[p].distanceTo(DIRS[b]) ? n : p));
+    x = NBR[x].reduce((p, n) => (cellDist(n, b) < cellDist(p, b) ? n : p));
     if (!passable(x)) { ter[x] = T.DIRT; h[x] = SEA + 1; }
   }
 }
@@ -797,7 +839,7 @@ function addObject(type, v, extra = {}) {
 // a neutral guard: bigger and meaner the further from any capital
 function guardFor(v, strength) {
   const tier = clamp(Math.round(strength * 6 + rnd() * 1.5), 0, 6), id = NEUTRALS[tier], u = UNITS[id];
-  const n = Math.max(2, Math.round((strength * 2600 + 250) / (u.hp * (u.dmg[0] + u.dmg[1]) / 2 + 20) * (0.7 + rnd() * 0.6) * [0.75, 1, 1.3][G.diff]));
+  const n = Math.max(2, Math.round((strength * 2600 + 250) / (u.hp * (u.dmg[0] + u.dmg[1]) / 2 + 20) * (0.7 + rnd() * 0.6) * byDiff([0.75, 1, 1.3, 1.45])));
   return { id, n };
 }
 const TOWN_NAMES = { haven: ['Highcastle', 'Brightwater', 'Stormhold', 'Valemere'], necro: ['Gravenreach', 'Duskmoor', 'Ashfall', 'Wraithgate'],
@@ -805,43 +847,93 @@ const TOWN_NAMES = { haven: ['Highcastle', 'Brightwater', 'Stormhold', 'Valemere
 function newTown(v, p, fac, name) {
   return { id: G.towns.length, v, p, fac, name, built: ['d1'], avail: { 1: UNITS[FACTIONS[fac].units[0]].grow }, garrison: [], builtToday: false, spells: [] };
 }
-function newWorld(seed, diff = 1, myFac = 'haven') {
-  Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [] });
+// freeplay: grid-agnostic helpers for placing crowns. cellDist works on any grid that keeps posOf (planet: chord length).
+// edgeOk(v, m): far enough from the map's "edge" for a town (planet: away from the poles; flat grid: a margin from the border)
+// (flat: cellDist is the grid's hex distance, defined with the grid; edgeOk keeps towns off the coastal rim)
+const edgeOk = (v, m) => GRID.edge(v) < m + 0.3;
+// Free Play map sizes (passed to the terrain generator; the planet grid has one size, so it only stores it for now)
+const MAP_SIZES = { S: 'Small', M: 'Medium', L: 'Large', XL: 'Huge' };
+// one attempt at the terrain (flat agent: generateWorld({ size, players }) plugs in here)
+const genTerrain = (seed, size, players) => generate(seed, { size, players });
+// opts (Free Play): { opponents: [{ fac: key|'random', col: index|-1 }], size, res, win: 'conquer'|'capitals', fog, mode }
+function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
+  const opp = (opts.opponents?.length ? opts.opponents : [{ fac: 'random', col: -1 }]).slice(0, 4);
+  const N = opp.length + 1;
+  Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [], run: null,
+    gameMode: opts.mode || 'free', size: MAP_SIZES[opts.size] ? opts.size : 'M', resLv: opts.res ?? 1, win: opts.win === 'capitals' ? 'capitals' : 'conquer', fog: opts.fog !== false });
   objAt.fill(-1); road.fill(0); seen.fill(0);
   pendingLevels.length = 0; // level-ups queued in a previous game (quit with the dialog open) belong to that game
   rnd = mulberry32(seed);
-  let a = -1, b = -1;
-  for (let tries = 0; tries < 60 && b < 0; tries++) {
-    generate(seed + tries * 101);
-    const ok = (v) => passable(v) && ter[v] !== T.SNOW && ter[v] !== T.SWAMP && Math.abs(DIRS[v].y) < 0.6 && bfs(v, 2).filter(([x]) => passable(x)).length >= 16;
+  // capitals: farthest-point picks over good sites, retried on new terrain until every pair is far apart.
+  // need = the fraction of the world's span each pair must keep (2 crowns ~ opposite sides, 5 crowns ~ spread evenly)
+  const need0 = [0, 0, 0.8, 0.6, 0.5, 0.42][N]; // (flat rectangle: 4 crowns ~ the corners, 5 ~ corners + centre)
+  let caps = null, span = 1, best = null, bestMin = -1;
+  for (let tries = 0; tries < 60 && !caps; tries++) {
+    genTerrain(seed + tries * 101, G.size, N);
+    const ok = (v) => passable(v) && ter[v] !== T.SNOW && ter[v] !== T.SWAMP && edgeOk(v, 0.6) && bfs(v, 2).filter(([x]) => passable(x)).length >= 16;
     const cands = []; for (let v = 0; v < NV; v += 3) if (ok(v)) cands.push(v);
-    if (cands.length < 40) continue;
-    const ca = cands[(rnd() * cands.length) | 0];
-    const cb = cands.reduce((p, x) => (DIRS[x].dot(DIRS[ca]) < DIRS[p].dot(DIRS[ca]) ? x : p));
-    if (DIRS[cb].dot(DIRS[ca]) > -0.55) continue;
-    a = ca; b = cb;
+    if (cands.length < 20 * N) continue;
+    const c0 = cands[(rnd() * cands.length) | 0], far0 = cands.reduce((p, x) => (cellDist(x, c0) > cellDist(p, c0) ? x : p));
+    span = Math.max(1e-6, cands.reduce((m, x) => Math.max(m, cellDist(x, far0)), 0));
+    const pick = [far0], md = cands.map((x) => cellDist(x, far0));
+    while (pick.length < N) {
+      let bi = 0; for (let i = 1; i < cands.length; i++) if (md[i] > md[bi]) bi = i;
+      const nv = cands[bi]; pick.push(nv);
+      for (let i = 0; i < cands.length; i++) md[i] = Math.min(md[i], cellDist(cands[i], nv));
+    }
+    let mn = Infinity; for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) mn = Math.min(mn, cellDist(pick[i], pick[j]) / span);
+    if (mn > bestMin) { bestMin = mn; best = { pick, seed: seed + tries * 101, span }; }
+    if (mn >= need0 * Math.pow(0.985, tries)) caps = pick;
   }
+  if (!caps) { genTerrain(best.seed, G.size, N); caps = best.pick; span = best.span; } // keep the best spread found
+  // who sits where: you take a random capital, the rivals the rest
+  for (let i = caps.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [caps[i], caps[j]] = [caps[j], caps[i]]; }
   // flat grass around each capital
   const settle = (c) => { for (const [x] of bfs(c, 2)) { if (ter[x] === T.WATER || ter[x] === T.MOUNT || ter[x] === T.FOREST) ter[x] = T.GRASS; h[x] = h[c]; } };
-  settle(a); settle(b);
-  if (!connected(a, b)) carve(a, b);
-  // the rival is a different faction; the two neutral towns use the remaining ones
-  const others = Object.keys(FACTIONS).filter((f) => f !== myFac).sort(() => rnd() - 0.5);
-  G.players = [newPlayer(0, myFac, false), newPlayer(1, others[0], true)];
-  const capital = (v, p) => { const t = newTown(v, p, G.players[p].fac, TOWN_NAMES[G.players[p].fac][0]); t.garrison = [[FACTIONS[G.players[p].fac].units[0], 12], [FACTIONS[G.players[p].fac].units[1], 5]]; G.towns.push(t); addObject('town', v, { t: t.id }); return t; };
-  capital(a, 0); capital(b, 1);
-  // neutral towns half way round the world, each with a strong garrison
-  const mids = [];
-  for (let v = 0; v < NV; v += 7) {
-    if (!passable(v) || Math.abs(DIRS[v].dot(DIRS[a]) - DIRS[v].dot(DIRS[b])) > 0.25 || Math.abs(DIRS[v].y) > 0.7) continue;
-    if (mids.some((m) => DIRS[m].dot(DIRS[v]) > 0.2) || bfs(v, 1).filter(([x]) => passable(x)).length < 6) continue;
-    mids.push(v); if (mids.length >= 2) break;
+  for (const c of caps) settle(c);
+  for (const c of caps.slice(1)) if (!connected(caps[0], c)) carve(caps[0], c);
+  // the crowns: rivals pick a faction (Random prefers one nobody leads yet) and a colour (their faction's unless taken)
+  const facs = Object.keys(FACTIONS), used = [myFac], cols = [];
+  const takeCol = (want, fac) => { let c = PLAYER_COLS[want] ?? -1; if (c < 0 || cols.includes(c)) c = FACTIONS[fac].color; if (cols.includes(c)) c = COL_SPARE.find((x) => !cols.includes(x)); cols.push(c); return c; };
+  G.players = [newPlayer(0, myFac, false, takeCol(opts.myCol ?? -1, myFac), G.resLv)];
+  opp.forEach((o, k) => {
+    let fac = FACTIONS[o.fac] ? o.fac : null;
+    if (!fac) { const free = facs.filter((f) => !used.includes(f)); const pool = free.length ? free : facs; fac = pool[(rnd() * pool.length) | 0]; }
+    used.push(fac);
+    G.players.push(newPlayer(k + 1, fac, true, takeCol(o.col ?? -1, fac), G.resLv));
+  });
+  // two crowns of one faction: tell them apart by colour
+  for (const Pl of G.players) if (Pl.ai && G.players.filter((x) => x.fac === Pl.fac).length > 1) Pl.name = `${COL_NAMES[PLAYER_COLS.indexOf(Pl.color)] || ''} ${FACTIONS[Pl.fac].name}`.trim();
+  const capital = (v, p) => {
+    const P = G.players[p], names = TOWN_NAMES[P.fac], nth = G.players.slice(0, p).filter((x) => x.fac === P.fac).length;
+    const t = newTown(v, p, P.fac, names[nth % names.length]); t.capOf = p;
+    t.garrison = [[FACTIONS[P.fac].units[0], 12], [FACTIONS[P.fac].units[1], 5]]; G.towns.push(t); addObject('town', v, { t: t.id }); return t;
+  };
+  caps.forEach((v, p) => capital(v, p));
+  // neutral towns between neighbouring crowns (closest pairs first: the frontiers), each with a strong garrison
+  const pairs = []; for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) pairs.push([caps[i], caps[j], cellDist(caps[i], caps[j])]);
+  pairs.sort((x, y) => x[2] - y[2]);
+  const nMid = N === 2 ? 2 : Math.min(N + 1, 6), mids = [], midCands = [];
+  for (let v = 0; v < NV; v += 5) if (passable(v) && objAt[v] < 0 && edgeOk(v, 0.7) && bfs(v, 1).filter(([x]) => passable(x)).length >= 6) midCands.push(v);
+  for (let k = 0; mids.length < nMid && k < pairs.length * 2; k++) {
+    const [a, b, dab] = pairs[k % pairs.length];
+    let bv = -1, bs = Infinity;
+    for (const v of midCands) {
+      if (objAt[v] >= 0 || mids.some((m) => cellDist(m, v) < span * 0.28)) continue;
+      const da = cellDist(v, a), db = cellDist(v, b);
+      if (caps.some((c) => cellDist(v, c) < dab * 0.36)) continue; // never on anyone's doorstep
+      const sc = Math.abs(da - db) * 2 + da + db;
+      if (sc < bs) { bs = sc; bv = v; }
+    }
+    if (bv >= 0) mids.push(bv);
   }
+  const spare = facs.filter((f) => !used.includes(f)).sort(() => rnd() - 0.5);
   mids.forEach((v, i) => {
     settle(v);
-    if (!connected(a, v)) carve(a, v);
-    const fac = others[1 + (i % (others.length - 1))];
-    const t = newTown(v, -1, fac, TOWN_NAMES[fac][1 + i]);
+    if (!connected(caps[0], v)) carve(caps[0], v);
+    const fac = spare.length ? spare[i % spare.length] : facs[(rnd() * facs.length) | 0];
+    const nth = G.towns.filter((x) => x.fac === fac).length, names = TOWN_NAMES[fac];
+    const t = newTown(v, -1, fac, names[(1 + nth) % names.length]);
     const us = FACTIONS[fac].units;
     t.garrison = [[us[0], 30 + G.diff * 10], [us[1], 14], [us[2], 7], [us[3], 3]];
     t.built.push('d2', 'd3');
@@ -851,19 +943,22 @@ function newWorld(seed, diff = 1, myFac = 'haven') {
   for (const t of G.towns.filter((x) => x.p >= 0)) {
     const v = NBR[t.v].find((x) => passable(x)) ?? t.v;
     const P = G.players[t.p];
-    const hr = newHero(t.p, v, FACTIONS[P.fac].heroes[0]);
+    const hr = newHero(t.p, v, FACTIONS[P.fac].heroes[G.heroes.filter((x) => G.players[x.p].fac === P.fac).length % FACTIONS[P.fac].heroes.length]);
     hr.army = START_ARMY[P.fac].map((x) => [...x]);
     const kit = FACTION_START[P.fac] || FACTION_START.haven;
     hr.spells = [kit.spell]; hr.skills[kit.skill] = 1;
-    if (t.p === 1) { hr.att += 1; for (const s of hr.army) s[1] = Math.round(s[1] * [0.7, 1, 1.35][G.diff]); }
+    if (P.ai) { hr.att += byDiff([1, 1, 1, 2]); for (const s of hr.army) s[1] = Math.round(s[1] * byDiff([0.7, 1, 1.35, 1.6])); }
     hr.mp = moveMax(hr); hr.mana = maxMana(hr);
     G.heroes.push(hr);
   }
-  // roads between the capitals and the neutral towns
-  for (const m of mids) { makeRoad(a, m); makeRoad(b, m); }
-  if (!mids.length) makeRoad(a, b);
+  // roads: every capital to its nearest neutral towns (or straight to its nearest rival when there are none)
+  for (const c of caps) {
+    const near = [...mids].sort((x, y) => cellDist(c, x) - cellDist(c, y)).slice(0, N === 2 ? 2 : 2);
+    if (near.length) for (const m of near) makeRoad(c, m);
+    else { const o = caps.filter((x) => x !== c).sort((x, y) => cellDist(c, x) - cellDist(c, y))[0]; if (o !== undefined) makeRoad(c, o); }
+  }
   // treasure around each capital: free mines and piles close by, guarded riches further out
-  for (const c of [a, b]) {
+  for (const c of caps) {
     for (const type of ['sawmill', 'orepit']) { const v = spot(c, 3, 6); if (v >= 0) addObject(type, v); }
     for (let i = 0; i < 6; i++) { const v = spot(c, 2, 7); if (v >= 0) addObject(['gold', 'wood', 'ore', 'gold', 'chest', 'campfire'][i], v, { amount: 0 }); }
     for (const type of ['goldmine', 'gemmine', 'dwelling', 'arena', 'shrine', 'well', 'windmill', 'library']) {
@@ -875,10 +970,14 @@ function newWorld(seed, diff = 1, myFac = 'haven') {
       guard(v, 0.25 + rnd() * 0.25);
     }
   }
-  // the wilds: scattered objects everywhere, guarded harder the farther from home
-  const far = (v) => Math.min(...[a, b].map((c) => (1 - DIRS[v].dot(DIRS[c])) / 2));
+  // the wilds: scattered objects everywhere, guarded harder the farther from any home (0 at a capital, 1 at the
+  // loneliest spot of this map, so more crowns don't make the in-between land any softer)
+  const farRaw = (v) => { let m = Infinity; for (const c of caps) m = Math.min(m, cellDist(v, c)); return (m / span) ** 2; };
+  let farMax = 1e-6; for (let v = 0; v < NV; v += 4) if (passable(v)) farMax = Math.max(farMax, farRaw(v));
+  const far = (v) => farRaw(v) / farMax;
+  const dens = NV / 2562; // object counts follow the grid's size (the planet has 2562 cells)
   const kinds = ['gold', 'wood', 'ore', 'gems', 'chest', 'chest', 'artifact', 'artifact', 'artifact', 'tower', 'stone', 'stables', 'obelisk', 'goldmine', 'gemmine', 'sawmill', 'orepit', 'dwelling', 'shrine', 'well', 'campfire', 'library', 'arena'];
-  for (let i = 0, n = 0; i < 900 && n < 120; i++) {
+  for (let i = 0, n = 0, nMax = Math.round(120 * dens); i < 900 * dens && n < nMax; i++) {
     const v = (rnd() * NV) | 0;
     if (!passable(v) || objAt[v] >= 0 || road[v] || NBR[v].some((x) => objAt[x] >= 0) || far(v) < 0.03) continue;
     const type = kinds[(rnd() * kinds.length) | 0];
@@ -891,9 +990,10 @@ function newWorld(seed, diff = 1, myFac = 'haven') {
     n++;
   }
   // wandering monsters on the roads
-  for (let i = 0; i < 14; i++) { const v = (rnd() * NV) | 0; if (passable(v) && objAt[v] < 0 && far(v) > 0.15 && NBR[v].every((x) => objAt[x] < 0)) { const g = guardFor(v, far(v) * 1.3); addObject('monster', v, { unit: g.id, n: g.n }); } }
+  for (let i = 0; i < Math.round(14 * dens); i++) { const v = (rnd() * NV) | 0; if (passable(v) && objAt[v] < 0 && far(v) > 0.15 && NBR[v].every((x) => objAt[x] < 0)) { const g = guardFor(v, far(v) * 1.3); addObject('monster', v, { unit: g.id, n: g.n }); } }
   for (const o of G.objects) if (['gold', 'wood', 'ore', 'gems'].includes(o.type)) o.amount = o.type === 'gold' ? 500 + ((rnd() * 6) | 0) * 100 : 3 + ((rnd() * 5) | 0);
   G.selHero = 0;
+  if (!G.fog) seen.fill(1);
   revealAll();
 }
 function guard(v, strength) {
@@ -922,17 +1022,17 @@ const zoc = (v) => NBR[v].some((n) => { const o = objAt[n] >= 0 ? G.objects[objA
 function findPath(from, to, hr, ignore = false) {
   if (from === to) return [from];
   const came = new Map(), g = new Map([[from, 0]]);
-  const heur = (v) => DIRS[v].distanceTo(DIRS[to]) * 600;
+  const heur = (v) => cellDist(v, to) * 50; // admissible: no step costs less than a road step (50)
   const fScore = new Map([[from, heur(from)]]), open = minHeap();
   open.push(fScore.get(from), from);
   let guardSteps = 0;
-  while (open.size && guardSteps < 6000) {
+  while (open.size && guardSteps < NV + 4000) {
     let cur = open.pop();
     if (open.d !== fScore.get(cur)) continue; // a stale entry: this cell was re-queued with a better cost
     guardSteps++;
     if (cur === to) { const p = [cur]; while (came.has(cur)) { cur = came.get(cur); p.unshift(cur); } return p; }
     for (const n of NBR[cur]) {
-      if (!passable(n)) continue;
+      if (!passable(n) || crownShut(n, hr)) continue;
       if (!ignore && n !== to) {
         if (objAt[n] >= 0 && G.objects[objAt[n]].alive) continue;
         const hh = heroAt(n); if (hh && hh !== hr) continue;
@@ -964,7 +1064,7 @@ const SCALE = { gold: 0.3, wood: 0.3, ore: 0.3, gems: 0.3, chest: 0.28, artifact
 // (an enemy picking up gold or flagging a mine used to re-tessellate the whole planet in the middle of the AI turn).
 // A plain fog reveal (cells only ever turning seen, land unchanged) is incremental: the terrain rewrites just the
 // touched cells' vertex attributes and fades them in, the flora appends the new cells' instances.
-const landSnap = { ter: new Uint8Array(NV), h: new Int8Array(NV), road: new Uint8Array(NV), seen: new Uint8Array(NV), ok: false };
+const landSnap = { ter: new Uint8Array(MAX_CELLS), h: new Int8Array(MAX_CELLS), road: new Uint8Array(MAX_CELLS), seen: new Uint8Array(MAX_CELLS), ok: false };
 // null: nothing changed; 'full': rebuild; an array: only these cells turned seen
 function landChanged() {
   const S = landSnap;
@@ -996,6 +1096,7 @@ function objMeshFor(o) {
   if (o.type === 'monster') { applyFit(g, unitFit(o.unit, objModel(o), 'map')); g.userData.s0 = g.scale.x; g.scale.multiplyScalar(figK); }
   if (o.type === 'town') { g.userData.noGrow = true; g.scale.setScalar(g.userData.s0); }
   addBlob(g, o.type === 'monster' ? BLOB_R.monster / (g.scale.x / (SCALE.monster || 0.2)) : BLOB_R[o.type] || 0.66);
+  if (!inkLod) for (const c of g.children) if (c.userData.ink) c.visible = false;
   g.userData.sig = objSig(o); g.userData.flagOwner = -3;
   setObjFlag(g, o);
   return g;
@@ -1006,6 +1107,7 @@ function layoutWorld() {
   const land = landChanged();
   if (land === 'full') { rebuildPlanet(); layoutFlora(); changed = true; }
   else if (land) { if (!TERRAIN.refog(ter, h, road, seen, land)) rebuildPlanet(); layoutFlora(land); changed = true; }
+  if (land) mini.mark(land);
   if (objMeshesOf !== G.objects) { for (const id of [...objMeshes.keys()]) dropObjMesh(id); world.clear(); objMeshesOf = G.objects; changed = true; }
   for (const o of G.objects) {
     let g = objMeshes.get(o.id);
@@ -1018,6 +1120,84 @@ function layoutWorld() {
   if (changed) renderer.shadowMap.needsUpdate = true; // the still-map shadow refresh would catch up anyway; don't wait for it
   layoutHeroes(true);
 }
+// ------------------------------------------------------------------ minimap (flat world)
+// A small 2D canvas in a HUD corner: explored terrain (a base layer redrawn only for cells whose land / fog changed),
+// towns, mines and heroes in their owners' colours, and the ground the camera sees. The overlay is redrawn at most
+// ~12 times a second and only when the view or a marker moved. Tap (or drag on) it to fly there.
+const mini = (() => {
+  const el = document.createElement('canvas'); el.id = 'minimap'; el.setAttribute('aria-label', 'Map overview: tap to fly there');
+  $('hud').appendChild(el);
+  const ctx = el.getContext('2d'), base = document.createElement('canvas'), bctx = base.getContext('2d');
+  const M = { el, dirty: true, fresh: null, sig: '', t: 0, w: 0, h: 0, s: 1, pr: 1, gw: 0, gh: 0 };
+  const COLS = TER_COL.map((c) => '#' + c.getHexString()), ROADC = '#' + ROAD_COL.getHexString(), FOGC = '#1d2236';
+  function size() {
+    const land = innerWidth > innerHeight, cw = land ? clamp(innerWidth * 0.17, 120, 190) : clamp(innerWidth * 0.32, 104, 150);
+    const gw = GRID.W + 0.5, gh = (GRID.H - 1) * 0.866 + 1, ch = cw * gh / gw, pr = Math.min(2, devicePixelRatio || 1);
+    if (Math.abs(cw - M.w) < 0.5 && gw === M.gw && gh === M.gh && pr === M.pr) return false;
+    M.w = cw; M.h = ch; M.gw = gw; M.gh = gh; M.pr = pr; M.s = (cw * pr) / gw;
+    el.style.width = cw + 'px'; el.style.height = ch + 'px'; document.documentElement.style.setProperty('--mm-h', Math.round(ch + 4) + 'px');
+    el.width = base.width = Math.round(cw * pr); el.height = base.height = Math.round(ch * pr);
+    M.dirty = true; return true;
+  }
+  const px = (v) => (GRID.col[v] + 0.5 * (GRID.row[v] & 1) + 0.5) * M.s, py = (v) => (GRID.row[v] * 0.866 + 0.5) * M.s;
+  function cell(v) {
+    let c = FOGC;
+    if (seen[v]) c = road[v] && ter[v] !== T.WATER ? ROADC : COLS[ter[v]];
+    bctx.fillStyle = c; bctx.fillRect(px(v) - M.s * 0.5 - 0.3, py(v) - M.s * 0.55, M.s + 0.6, M.s * 1.1);
+  }
+  function drawBase() {
+    if (M.dirty) { bctx.fillStyle = '#1d3d6a'; bctx.fillRect(0, 0, base.width, base.height); for (let v = 0; v < NV; v++) cell(v); M.dirty = false; }
+    else if (M.fresh) for (const v of M.fresh) cell(v);
+    M.fresh = null;
+  }
+  const _a = new THREE.Vector3();
+  function viewPoly() {
+    const pts = [], W = innerWidth, H = innerHeight, D = viewDist(cam.dist) * 2.6;
+    for (const [x, y] of [[0, lay.mapT || 0], [W, lay.mapT || 0], [W, lay.mapB || H], [0, lay.mapB || H]]) {
+      ndc.set((x / W) * 2 - 1, -(y / H) * 2 + 1); ray.setFromCamera(ndc, camera); _gp.constant = -cam.y;
+      let p = ray.ray.intersectPlane(_gp, _a);
+      if (!p || p.distanceTo(camFocus) > D) { const d = ray.ray.direction; const k = Math.hypot(d.x, d.z) || 1; p = _a.set(camFocus.x + d.x / k * D, 0, camFocus.z + d.z / k * D); }
+      pts.push([(p.x / CELL + 0.5) * M.s, (p.z / CELL + 0.5) * M.s]);
+    }
+    return pts;
+  }
+  function draw(now, force) {
+    if (G.mode !== 'map' || $('hud').hidden) return;
+    if (size()) force = true;
+    if (!force && now - M.t < 80) return;
+    let sig = `${cam.x.toFixed(2)},${cam.z.toFixed(2)},${cam.yaw.toFixed(2)},${cam.dist.toFixed(1)},${M.dirty ? 1 : 0}${M.fresh ? M.fresh.length : 0}`;
+    for (const hr of G.heroes) if (hr.alive) sig += ',' + hr.v;
+    for (const t of G.towns) sig += ',' + t.p;
+    sig += ',' + G.objects.reduce((n, o) => n + (o.owner > -1 ? o.owner + 1 : 0), 0);
+    if (!force && sig === M.sig) return;
+    M.sig = sig; M.t = now;
+    drawBase();
+    ctx.drawImage(base, 0, 0);
+    const s = M.s, dot = (v, r, fill, line) => { ctx.beginPath(); ctx.arc(px(v), py(v), r, 0, 6.283); ctx.fillStyle = fill; ctx.fill(); if (line) { ctx.lineWidth = Math.max(1, s * 0.35); ctx.strokeStyle = line; ctx.stroke(); } };
+    for (const o of G.objects) if (o.alive && seen[o.v] && OBJECTS[o.type]?.kind === 'mine') dot(o.v, Math.max(1.5, s * 0.75), o.owner >= 0 ? G.players[o.owner]?.css || '#999' : '#c9c2b0', 'rgba(0,0,0,0.55)');
+    for (const t of G.towns) if (seen[t.v] || t.p === 0) {
+      const r = Math.max(3, s * 1.5); ctx.fillStyle = t.p >= 0 ? G.players[t.p]?.css || '#bbb' : '#c8c8cc';
+      ctx.fillRect(px(t.v) - r, py(t.v) - r, r * 2, r * 2); ctx.lineWidth = Math.max(1, s * 0.4); ctx.strokeStyle = '#fff8e0'; ctx.strokeRect(px(t.v) - r, py(t.v) - r, r * 2, r * 2);
+    }
+    for (const hr of G.heroes) if (hr.alive && (hr.p === 0 || seen[hr.v])) dot(hr.v, Math.max(2.4, s * 1.15), G.players[hr.p]?.css || '#fff', hr.p === 0 ? '#ffffff' : '#000000');
+    // the ground in view
+    const P = viewPoly();
+    ctx.beginPath(); P.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill(); ctx.lineWidth = Math.max(1, M.pr); ctx.strokeStyle = 'rgba(255,246,214,0.95)'; ctx.stroke();
+  }
+  // tap / drag: fly the view there
+  let down = false;
+  const go = (e) => {
+    const r = el.getBoundingClientRect(), x = (e.clientX - r.left) * M.pr / M.s - 0.5, z = (e.clientY - r.top) * M.pr / M.s - 0.5;
+    const v = GRID.cellAt(x * CELL, z * CELL);
+    if (v >= 0) { cam.holdFollow = walking || (aiRunning ? 'ai' : null); flyTo(v); }
+  };
+  el.addEventListener('pointerdown', (e) => { e.stopPropagation(); down = true; try { el.setPointerCapture(e.pointerId); } catch {} go(e); sfx.click(); }, { passive: true });
+  el.addEventListener('pointermove', (e) => { if (down) go(e); }, { passive: true });
+  const up = () => { down = false; };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  return { draw, mark(cells) { if (cells === 'full') M.dirty = true; else if (cells) M.fresh = M.fresh ? M.fresh.concat(cells) : cells.slice(); }, el };
+})();
 // heroes are persistent so they can walk smoothly
 const heroMeshes = new Map();
 function layoutHeroes(force = false) {
@@ -1026,7 +1206,7 @@ function layoutHeroes(force = false) {
     if (!hr.alive || (!seen[hr.v] && hr.p !== 0)) { if (m) { scene.remove(m); heroMeshes.delete(hr.id); } continue; }
     let fresh = false;
     if (!m) {
-      m = addBlob(meshOf(heroGeo(hr.p)), 0.5);
+      m = addBlob(meshOf(heroGeo(hr.p)), 0.5); if (!inkLod) for (const c of m.children) if (c.userData.ink) c.visible = false;
       scene.add(m); heroMeshes.set(hr.id, m); fresh = true;
     }
     // a hero in motion is posed by updateWalk / frame(); re-laying it out mid-step (worldDirty → layoutWorld) would pop it
@@ -1042,18 +1222,18 @@ function faceQuat(q, up, fwd) {
 }
 function standHero(m, hr) {
   placeOn(m, hr.v, 0.27, hr.face || 0);
-  if (m.userData.fwd) faceQuat(m.quaternion, DIRS[hr.v], m.userData.fwd);
+  if (m.userData.fwd) faceQuat(m.quaternion, UP, m.userData.fwd);
 }
 // pose a hero part-way along a step a→b: kk is the fraction travelled (may go out and back for a bump)
 const _qT = new THREE.Quaternion(), _ZF = new THREE.Vector3(0, 0, 1), _pa = new THREE.Vector3(), _pb = new THREE.Vector3(), _up = new THREE.Vector3(), _dv = new THREE.Vector3();
 function poseStep(m, a, b, kk, dt) {
-  _pa.copy(DIRS[a]).multiplyScalar(radiusOf(a)); _pb.copy(DIRS[b]).multiplyScalar(radiusOf(b));
-  _dv.copy(DIRS[a]).lerp(DIRS[b], kk).normalize().multiplyScalar(Math.sin(Math.min(1, Math.abs(kk)) * Math.PI) * 0.015); // a little hop
+  _pa.set(GRID.X[a], radiusOf(a), GRID.Z[a]); _pb.set(GRID.X[b], radiusOf(b), GRID.Z[b]);
+  _dv.set(0, Math.sin(Math.min(1, Math.abs(kk)) * Math.PI) * 0.015, 0); // a little hop
   m.position.copy(_pa).lerp(_pb, kk).add(_dv);
   // turn toward the way we go through a critically damped spring on the remaining angle (m.userData.turnV = its
   // speed): the turn accelerates out of rest and settles in ~0.25 s, instead of an exponential chase that swung
   // 25-33° in the very first frame of a walk; velocity carries across steps, so mid-route bends stay fluid
-  faceQuat(_qT, _up.copy(m.position).normalize(), _dv.copy(_pb).sub(_pa));
+  faceQuat(_qT, _up.copy(UP), _dv.copy(_pb).sub(_pa));
   const ang = m.quaternion.angleTo(_qT);
   if (ang > 1e-4 && dt > 0) {
     // (smoothDamp toward 0, inlined: no per-frame array)
@@ -1068,7 +1248,7 @@ const stepEase = (k, s0, s1) => ((s0 + s1 - 2) * k + (3 - 2 * s0 - s1)) * k * k 
 // bumping into something: out toward it and back to the start; v0 = entry speed in step-fractions per bump duration
 const bumpEase = (k, v0) => { const u = 1 - k; return v0 * k * u * u + 16 * Math.max(0, 0.38 - v0 * 4 / 27) * k * k * u * u; };
 // path preview: green dots for today, red for later days, a banner on the goal
-const fx = createMapFx(THREE, scene, { DIRS, radiusOf, posOf });
+const fx = createMapFx(THREE, scene, { DIRS: null, radiusOf, posOf, flat: true, count: () => NV });
 let plan = null;
 function showPath(hr, path) {
   plan = path ? { hr: hr.id, path } : null;
@@ -1076,29 +1256,45 @@ function showPath(hr, path) {
   fx.showPath(path, stepsToday(hr, path));
 }
 
-// ------------------------------------------------------------------ input: drag turns the planet, pinch zooms, tap selects and moves
+// ------------------------------------------------------------------ input: drag pans the map, pinch zooms (twist turns), tap selects and moves
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+// exact: a ray against the terrain chunks' triangles (tops, bevels and cliff walls), each mapped back to its cell
 function pickCell(cx, cy) {
   ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const hit = ray.intersectObject(planet, false)[0];
-  return hit ? triCell[hit.faceIndex] : null;
+  return TERRAIN.pick(ray);
+}
+// where a screen point meets the ground plane at the focus height (for 1:1 panning); null near/above the horizon
+const _gp = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _gHit = new THREE.Vector3();
+function groundPoint(cx, cy, out) {
+  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera); _gp.constant = -cam.y;
+  if (!ray.ray.intersectPlane(_gp, out)) return null;
+  return out.distanceTo(camFocus) > viewDist(cam.dist) * 3 ? null : out;
 }
 const ptrs = new Map();
 let press = null, pinch = null;
 const cvs = renderer.domElement;
 // taps fire on pointerup (no click, no 300 ms wait: touch-action is none); a press becomes a drag past TAP_SLOP px.
-// Map drags only feed cam.dragTheta/dragPhi (applied once per frame); the last ~100 ms of samples give the fling speed.
+// Map drags only feed cam.dragX/dragZ (applied once per frame); the last ~100 ms of samples give the fling speed.
 const TAP_SLOP = 8, TAP_MS = 500, FLING_WIN = 100, FLING_STALE = 60;
 const camMode = () => G.mode !== 'battle' && G.mode !== 'town';
-const dragK = () => cam.dist / 1800; // radians per CSS px: the ground under the finger moves with it at any zoom
+const _gA = new THREE.Vector3(), _gB = new THREE.Vector3();
 function startPress(e, x, y, moved) {
   press = { id: e.pointerId, x, y, lx: x, ly: y, t: performance.now(), ts: e.timeStamp, moved, noTap: moved, samples: [] };
 }
-function camDrag(dx, dy, ts) {
-  const k = dragK(), dth = -dx * k, dph = -dy * k;
-  cam.dragTheta += dth; cam.dragPhi += dph; cam.dragging = true;
-  if (press) { press.samples.push([ts, dth, dph]); while (press.samples.length > 2 && ts - press.samples[0][0] > FLING_WIN) press.samples.shift(); }
+// the ground under the finger moves with it: the drag is the difference of the two ground points (x, y: where the
+// finger is now; dx, dy: how far it moved); near the horizon it falls back to the scale at the focus
+function camDrag(dx, dy, ts, x = innerWidth / 2, y = innerHeight / 2) {
+  let wx, wz;
+  const a = groundPoint(x - dx, y - dy, _gA), b = a && groundPoint(x, y, _gB);
+  if (a && b) { wx = a.x - b.x; wz = a.z - b.z; }
+  else {
+    const fov = THREE.MathUtils.degToRad(camera.fov), k = 2 * viewDist(cam.dist) * Math.tan(fov / 2) / innerHeight, sy = Math.sin(cam.yaw), cy = Math.cos(cam.yaw), f = k / Math.sin(viewPitch(cam.dist));
+    wx = -dx * k * cy + dy * f * -sy; wz = dx * k * sy + dy * f * -cy;
+  }
+  cam.dragX += wx; cam.dragZ += wz; cam.dragging = true;
+  if (press) { press.samples.push([ts, wx, wz]); while (press.samples.length > 2 && ts - press.samples[0][0] > FLING_WIN) press.samples.shift(); }
 }
 function camRelease(ts) {
   // fling only if the finger was still moving when it lifted; speed is averaged over the last ~100 ms
@@ -1107,7 +1303,8 @@ function camRelease(ts) {
   if (!S.length || ts - S[S.length - 1][0] > FLING_STALE) return;
   const t0 = S[0][0], span = Math.max(16, ts - t0) / 1000;
   let a = 0, b = 0; for (const [, x, y] of S) { a += x; b += y; }
-  cam.vTheta = clamp(a / span, -FLING_MAX, FLING_MAX); cam.vPhi = clamp(b / span, -FLING_MAX, FLING_MAX);
+  const vx = a / span, vz = b / span, sp = Math.hypot(vx, vz), mx = flingMax(), k = sp > mx ? mx / sp : 1;
+  cam.vx = vx * k; cam.vz = vz * k;
 }
 cvs.addEventListener('pointerdown', (e) => {
   try { cvs.setPointerCapture(e.pointerId); } catch {}
@@ -1115,11 +1312,11 @@ cvs.addEventListener('pointerdown', (e) => {
   if (ptrs.size > 2) return;
   if (ptrs.size === 2) {
     const [p, q] = [...ptrs.values()];
-    pinch = { d: Math.max(1, Math.hypot(p.x - q.x, p.y - q.y)), dist: G.mode === 'battle' ? bview.dist : cam.tDist, mx: (p.x + q.x) / 2, my: (p.y + q.y) / 2 };
+    pinch = { d: Math.max(1, Math.hypot(p.x - q.x, p.y - q.y)), dist: G.mode === 'battle' ? bview.dist : cam.tDist, mx: (p.x + q.x) / 2, my: (p.y + q.y) / 2, ang: Math.atan2(q.y - p.y, q.x - p.x), twist: 0 };
     press = null; if (camMode()) camGrab(); return;
   }
   // touching a gliding map just stops it: that touch is a grab, not a tap (a flight only stops once the finger drags)
-  const gliding = Math.abs(cam.vTheta) + Math.abs(cam.vPhi) > 0.25;
+  const gliding = Math.hypot(cam.vx, cam.vz) > 0.2 * viewDist(cam.dist);
   if (gliding && camMode()) camGrab();
   startPress(e, e.clientX, e.clientY, false);
   if (gliding) press.noTap = true;
@@ -1133,9 +1330,12 @@ cvs.addEventListener('pointermove', (e) => {
     if (G.mode === 'battle') bview.dist = clamp(pinch.dist * pinch.d / d, 9, 18);
     else {
       cam.tDist = clamp(pinch.dist * pinch.d / d, 6.4, 22);
-      // two fingers also pan: the planet follows their midpoint
+      // two fingers also pan (the map follows their midpoint) and turn it: a twist past ~10 degrees starts the turn
       const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-      camDrag(mx - pinch.mx, my - pinch.my, e.timeStamp); pinch.mx = mx; pinch.my = my;
+      camDrag(mx - pinch.mx, my - pinch.my, e.timeStamp, mx, my); pinch.mx = mx; pinch.my = my;
+      const ang = Math.atan2(b.y - a.y, b.x - a.x), da = wrapPi(ang - pinch.ang); pinch.ang = ang;
+      pinch.twist += da;
+      if (Math.abs(pinch.twist) > 0.17 || pinch.turning) { if (!pinch.turning) { pinch.turning = true; cam.dragYaw += pinch.twist; } else cam.dragYaw += da; }
     }
     return;
   }
@@ -1152,7 +1352,7 @@ cvs.addEventListener('pointermove', (e) => {
   }
   if (G.mode === 'battle') { bview.yaw = clamp(bview.yaw - dx * 0.004, -0.6, 0.6); return; }
   if (G.mode === 'town') return;
-  camDrag(dx, dy, e.timeStamp);
+  camDrag(dx, dy, e.timeStamp, e.clientX, e.clientY);
 }, { passive: true });
 const endPtr = (e) => {
   ptrs.delete(e.pointerId);
@@ -1170,7 +1370,7 @@ const endPtr = (e) => {
   else if (!press.noTap && e.timeStamp - press.ts < TAP_MS) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); else if (G.mode === 'town') townTap(e.clientX, e.clientY); }
   press = null; cam.dragging = false;
 };
-const dropPtrs = () => { ptrs.clear(); press = null; pinch = null; cam.dragging = false; cam.dragTheta = cam.dragPhi = 0; cam.vTheta = cam.vPhi = 0; };
+const dropPtrs = () => { ptrs.clear(); press = null; pinch = null; cam.dragging = false; cam.dragX = cam.dragZ = cam.dragYaw = 0; cam.vx = cam.vz = 0; };
 cvs.addEventListener('pointerup', endPtr, { passive: true });
 cvs.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); if (!ptrs.size) dropPtrs(); else { press = null; pinch = null; cam.dragging = false; } }, { passive: true });
 // a tab switch or app swap mid-gesture never leaves a stuck finger or a fling that resumes later
@@ -1182,6 +1382,7 @@ cvs.addEventListener('wheel', (e) => {
   else {
     // proportional to the scroll amount, so trackpads (many tiny deltas) zoom as smoothly as a mouse notch
     const dy = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
+    if (e.shiftKey || e.altKey) { cam.tYaw += clamp(dy, -150, 150) * 0.004; return; } // desktop: shift + wheel turns the view
     cam.tDist = clamp(cam.tDist * Math.exp(clamp(dy, -150, 150) * 0.0011), 6.4, 22);
   }
 }, { passive: false });
@@ -1226,9 +1427,10 @@ function threatWord(o) {
   return r < 0.3 ? '😴 Effortless' : r < 0.6 ? '🙂 Easy' : r < 1 ? '😐 Fair fight' : r < 1.6 ? '😬 Hard' : '💀 Deadly';
 }
 function describe(o) {
+  if (G.run && crownDescribe(o)) return; // crown: Crown Run sites, Legendary Heroes, invasions
   if (o.type === 'monster') toast(`${sizeWord(o.n)} ${plural(o.unit)} · ${threatWord(o)}`);
   else if (o.type === 'town') { const t = G.towns[o.t]; toast(`${t.name} (${FACTIONS[t.fac].name}) · ${t.p === 0 ? 'yours' : t.p > 0 ? G.players[t.p].name : 'neutral'}${t.p !== 0 && heroArmy({ army: t.garrison }).length ? ' · guarded' : ''}`); }
-  else { const O = OBJECTS[o.type]; toast(`${O.icon} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? 'enemy' : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
+  else { const O = OBJECTS[o.type]; toast(`${O.icon} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? (G.players[o.owner]?.name || 'enemy') : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
 }
 function selectHero(id) {
   G.selHero = id; const hr = G.heroes[id];
@@ -1251,7 +1453,7 @@ function pendingRoute(hr, quiet = true) {
 function resumeRoute(hr) {
   if (busy() || !hr) return;
   const path = pendingRoute(hr, false); if (!path) { showPath(hr, null); return; }
-  if (DIRS[hr.v].distanceTo(lookDir()) > 0.25) flyTo(hr.v, cam.tDist);
+  if (offView(hr.v)) flyTo(hr.v, cam.tDist);
   startWalk(hr, path);
 }
 
@@ -1373,6 +1575,7 @@ function interact(hr, v) {
     startBattle(hr, { kind: 'hero', hero: other }); return;
   }
   if (!o) return;
+  if (G.run && you && crownInteract(hr, o, v)) { updateHud(); return; } // crown: Crown Run sites, Legendary Heroes, invasions
   const O = OBJECTS[o.type], kind = O?.kind;
   if (you && (o.type === 'monster' || o.type === 'town' || guardOf(v))) bumpWarm('battle', [o.type === 'monster' ? o.unit : guardOf(v)?.unit, ...(o.type === 'town' ? (G.towns[o.t].garrison || []).map((st) => st?.[0]) : []), ...(hr.army || []).map((st) => st?.[0])]); // a fight may follow
   // guarded: a monster standing next to a mine, chest, site or town must be beaten first
@@ -1499,8 +1702,9 @@ function levelUp(hr) {
   const fresh = Object.keys(SKILLS).filter((k) => !(k in hr.skills) && (k !== 'necromancy' || fac === 'necro'));
   const opts = [];
   if (have.length) opts.push(have[(rnd() * have.length) | 0]);
-  while (opts.length < 2 && fresh.length && Object.keys(hr.skills).length < 6) { const k = fresh.splice((rnd() * fresh.length) | 0, 1)[0]; opts.push(k); }
-  while (opts.length < 2 && have.length > 1) { const k = have[(rnd() * have.length) | 0]; if (!opts.includes(k)) opts.push(k); }
+  const nOpt = G.run && hr.p === 0 ? 3 : 2; // crown: Crown Run level-ups offer 3 skills
+  while (opts.length < nOpt && fresh.length && Object.keys(hr.skills).length < 6) { const k = fresh.splice((rnd() * fresh.length) | 0, 1)[0]; opts.push(k); }
+  while (opts.length < nOpt && have.some((k) => !opts.includes(k))) { const k = have[(rnd() * have.length) | 0]; if (!opts.includes(k)) opts.push(k); }
   if (hr.p !== 0) { if (opts.length) { const k = opts[(rnd() * opts.length) | 0]; hr.skills[k] = (hr.skills[k] || 0) + 1; } return; }
   pendingLevels.push({ hr, stat, opts });
   if (pendingLevels.length === 1) showLevel();
@@ -1731,6 +1935,7 @@ function bumpWarm(kind, ids = []) {
 let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
 function heroBattle(hr) { return { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know'), mana: hr.mana, skills: hr.skills, spells: hr.spells, luck: hr.arts.includes('clover') ? 1 : 0, morale: hr.arts.includes('banner') ? 1 : 0, name: hr.name, p: hr.p }; }
 function splitMonster(o) {
+  if (o.army) return o.army.map((st) => [...st]); // crown: a Legendary Hero's or an invasion's army comes ready-made
   const k = clamp(Math.round(o.n / 6), 1, 5) + (o.n > 3 ? 1 : 0), parts = Math.min(k, 5, o.n), arr = [];
   for (let i = 0; i < parts; i++) arr.push([o.unit, Math.floor(o.n / parts) + (i < o.n % parts ? 1 : 0)]);
   return arr;
@@ -1742,12 +1947,24 @@ function startBattle(hr, foe) {
   const playerDefends = defOwner === 0 && hr.p !== 0;
   // the player always fights from the bottom of the screen
   const sides = playerDefends ? [{ hero: defHero, army: defArmy, owner: 0 }, { hero: hr, army: hr.army, owner: hr.p }] : [{ hero: hr, army: hr.army, owner: hr.p }, { hero: defHero, army: defArmy, owner: defOwner }];
-  const B = BT.createBattle({ armyA: sides[0].army, heroA: sides[0].hero ? heroBattle(sides[0].hero) : null, armyB: sides[1].army, heroB: sides[1].hero ? heroBattle(sides[1].hero) : null, town: foe.kind === 'town' ? { fort: foe.town.built.includes('fort'), side: playerDefends ? 0 : 1, power: Math.max(2, foe.town.built.length / 2) } : null });
+  const B = BT.createBattle({ armyA: sides[0].army, heroA: sides[0].hero ? heroBattle(sides[0].hero) : null, armyB: sides[1].army, heroB: sides[1].hero ? heroBattle(sides[1].hero) : null, town: foe.kind === 'town' ? { fort: foe.town.built.includes('fort'), side: playerDefends ? 0 : 1, power: Math.max(2, foe.town.built.length / 2) } : null, mods: crownMods({ sides, foe }) });
   const ctx = { hr, foe, sides, terrain: ter[foe.kind === 'monster' ? foe.obj.v : hr.v] };
   // a side with no living troops cannot fight: settle it at once. Opening the arena would never end (the enemy AI
   // has no target and never finishes its turn, or the player has nothing to attack).
   if (!BT.alive(B, 0).length || !BT.alive(B, 1).length) { B.over = { winner: BT.alive(B, 0).length ? 0 : 1 }; B.events.length = 0; finishBattle(B, ctx); return; }
-  if (sides[0].owner !== 0 && sides[1].owner !== 0) { BT.autoResolve(B); finishBattle(B, ctx); return; }
+  if (sides[0].owner !== 0 && sides[1].owner !== 0) {
+    BT.autoResolve(B); finishBattle(B, ctx);
+    // freeplay: rival crowns fighting each other (or a town) are resolved at once; in sight, the clash is shown
+    const fv = foe.kind === 'hero' ? foe.hero.v : foe.kind === 'town' ? foe.town.v : foe.obj.v;
+    if ((seen[hr.v] || seen[fv]) && (G.fog !== false || foe.kind !== 'monster')) {
+      fx.burst('battle', posOf(fv, 0.3));
+      if (foe.kind !== 'monster') {
+        const foeName = foe.kind === 'hero' ? `${foe.hero.name} (${G.players[foe.hero.p].name})` : foe.town.name, won = B.over.winner === sides.findIndex((sd) => sd.hero === hr);
+        toast(`⚔️ ${hr.name} (${G.players[hr.p].name}) ${won ? 'defeats' : 'falls to'} ${foeName}`);
+      }
+    }
+    return;
+  }
   enterBattle(B, ctx);
 }
 // Battle entry is staged behind a curtain that appears on the very tap: models that are not cached yet (another
@@ -2384,6 +2601,11 @@ function playEvent(e, t) {
     if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (S(e.s)) S(e.s).shown = e.left ?? S(e.s).count; if (m) { m.userData.flash = 0.3; if ((e.left ?? 1) <= 0) startDeath(m, S(e.s)); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
+  // crown: an artifact / Legendary Hero effect (the Plague, a ricochet): floaters and hits like a spell, no projectile
+  if (e.t === 'mod') {
+    if (!e.started) { e.started = true; for (const hh of e.hits || []) { const m = M(hh.s), st = S(hh.s); if (!m || !st) continue; m.userData.flash = 0.3; if ((hh.left ?? 1) <= 0) startDeath(m, st); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `${e.text} -${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, st.side === 0 ? 'red' : 'gold'); st.shown = hh.left ?? st.count; setPlate(st); } }
+    return t > 0.5;
+  }
   if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.gate({ kind: e.broken ? 'broken' : '' }); if (e.broken) { addShake(0.5); addHitStop(0.05); } bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
   if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); sfx.morale(); setAnim(M(e.s), ANIM.CHEER, { speed: AS }); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
   if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; replay($('b-round'), 'pop'); } return true; }
@@ -2447,6 +2669,7 @@ function finishBattle(B, ctx) {
   }
   // after the battle summary, so the casualties card comes first
   if (ctx.foe.kind === 'town' && win.hero === ctx.hr) captureTown(ctx.hr, ctx.foe.town);
+  crownAfter(B, ctx); // crown: run counters, raised dead, invasion spoils, a Legendary Hero's fall (or the end of the run)
   checkEnd();
   updateHud();
 }
@@ -2578,7 +2801,8 @@ $('t-body').addEventListener('click', (e) => {
 function buildIn(t, id) {
   const b = BUILDINGS.find((x) => x.id === id);
   if (t.builtToday || t.built.includes(id) || !b.req.every((r) => t.built.includes(r)) || !canPay(t.p, b.cost)) return false;
-  pay(t.p, b.cost); t.built.push(id); t.builtToday = true;
+  pay(t.p, b.cost); t.built.push(id); t.builds = (t.builds || 0) + 1; t.builtToday = !(G.run && t.p === 0 && t.builds < CR.buildsPerDay(G.run));
+  if (G.run && t.p === 0 && b.cost.gold && CR.buildDiscount(G.run)) G.players[0].res.gold += Math.round(b.cost.gold * CR.buildDiscount(G.run)); // crown: Mason's Hammer
   // a new dwelling comes with its first week of creatures
   if (b.tier) t.avail[b.tier] = (t.avail[b.tier] || 0) + UNITS[tierUnit(t, b.tier)].grow;
   if (id.startsWith('mage')) { const vis = visitorOf(t); if (vis) learnSpells(t, vis); }
@@ -2588,6 +2812,7 @@ function buildIn(t, id) {
 // ------------------------------------------------------------------ the hero sheet
 function openHero() {
   const hr = selHero(); if (!hr) return;
+  if (G.run && !openHero.sheet && hr === runHero()) { crownDoll(); return; } // crown: the paper doll (it links back here)
   const st = (k, ic, n) => `<div class="st"><i>${ic}</i><b>${statOf(hr, k)}</b><small>${n}</small></div>`;
   const next = xpFor(hr.lvl + 1), prev = xpFor(hr.lvl), pct = (a, b) => clamp((a / Math.max(1, b)) * 100, 0, 100);
   const chips = (arr, none) => (arr.length ? `<div class="chips">${arr.join('')}</div>` : `<p class="none">${none}</p>`);
@@ -2598,7 +2823,7 @@ function openHero() {
     <div class="slots big">${Array.from({ length: Math.max(ARMY_SLOTS, hr.army.length) }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
     <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${icon(k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
     <h3 class="sec">Spells</h3>${chips(hr.spells.map((id) => `<span class="chip">${icon(id, 18)}${SPELLS[id].name}</span>`), 'No spells yet: build a Mage Guild')}
-    <h3 class="sec">Artifacts</h3>${chips(hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; }), 'No artifacts yet')}`, true);
+    <h3 class="sec">Artifacts</h3>${chips([...(G.run ? CR.equippedIds(G.run).map((id) => `<span class="chip">${icon(CR.ARTIFACTS[id].icon, 18)}${CR.ARTIFACTS[id].name}</span>`) : []), ...hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; })], 'No artifacts yet')}`, true);
 }
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
@@ -2611,7 +2836,7 @@ let toastT = 0;
 function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
 // UI juice: a soft ripple from the touch point on chunky buttons (purely visual, removed after it plays)
 document.addEventListener('pointerdown', (e) => {
-  const b = e.target.closest?.('.btn, .fb, .row-b button, .tabs2 button, .hb, .diffs button, .fcard, .slots button');
+  const b = e.target.closest?.('.btn, .fb, .row-b button, .tabs2 button, .hb, .diffs button, .fcard, .mode, .opp button, .slots button');
   if (!b || b.disabled || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const r = b.getBoundingClientRect(), w = document.createElement('span'), c = document.createElement('i');
   w.className = 'rip'; c.style.left = `${e.clientX - r.left}px`; c.style.top = `${e.clientY - r.top}px`;
@@ -2728,6 +2953,7 @@ function setHTML(el, html) { if (el && el.__html !== html) { el.innerHTML = html
 function updateHud() {
   if (!G.players.length) return;
   updateRes();
+  crownHud(); // crown: equipment, region key, invasion warning
   const mine = G.heroes.filter((x) => x.alive && x.p === 0);
   // UI: faction accent colour, and the End day button glows once no hero can take another step
   document.body.style.setProperty('--fac', FACTIONS[G.players[0].fac]?.css || '#3a7aff');
@@ -2774,7 +3000,7 @@ function endTurn() {
   if (G.mode !== 'map' || aiRunning || walking || G.over) return;
   showPath(selHero(), null);
   aiRunning = true; aiGen = runAI(); aiDelay = 0; $('b-end').disabled = true;
-  toast('⏳ The enemy is moving…'); dayFx('night');
+  toast(G.players.filter((x) => x.ai && x.alive).length > 1 ? '⏳ The rival crowns are moving…' : '⏳ The enemy is moving…'); dayFx('night');
   // tomorrow starts a new week: choose its creature now and paint its portrait while the enemy moves,
   // so the "Week of …" card does not render a 3D portrait in the same frame as the new morning
   if (G.day % 7 === 0) {
@@ -2803,8 +3029,17 @@ function dayFx(kind) {
   daycyc.querySelector('b').textContent = wk ? `Week ${week()}` : `Day ${((G.day - 1) % 7) + 1}`;
   daycyc.classList.toggle('week', wk); replay(daycyc, 'dawn');
 }
+// freeplay: whose turn it is while the computer lords move: one pip per crown in turn order (you first), the one moving lit
+const turnbar = document.createElement('div');
+turnbar.id = 'turnbar'; turnbar.hidden = true; turnbar.setAttribute('aria-live', 'polite');
+$('hud').appendChild(turnbar);
+function turnBar(Pl) {
+  if (!Pl) { turnbar.hidden = true; return; }
+  setHTML(turnbar, `<span class="tq-pips">${G.players.map((x) => `<i class="${x === Pl ? 'on' : ''}${x.alive ? '' : ' out'}" style="--pc:${x.css}"></i>`).join('')}</span><span class="tq-crest" style="--pc:${Pl.css}">${icon(FAC_CREST[Pl.fac] || 'banner', 18)}</span><b style="--pc:${Pl.css}">${Pl.name}</b><small>${Pl.i === 0 ? 'your turn' : 'is moving'}</small>`);
+  turnbar.hidden = false;
+}
 function stopAI() {
-  dayFx('off');
+  dayFx('off'); turnBar(null);
   aiRunning = false; aiGen = null; aiDelay = 0;
   $('b-end').disabled = false; $('b-end').classList.remove('confirm');
 }
@@ -2828,16 +3063,18 @@ function newDay() {
     for (const t of G.towns) if (t.p === Pl.i) gold += townIncome(t);
     for (const o of G.objects) if (o.alive && o.owner === Pl.i) { const O = OBJECTS[o.type]; if (O.res === 'gold') gold += O.amount; else res[O.res] += O.amount; }
     for (const hr of G.heroes) if (hr.alive && hr.p === Pl.i) gold += 250 * (hr.skills.estates || 0);
+    if (Pl.ai) gold = Math.round(gold * byDiff([1, 1, 1, 1.5])); // Impossible: the computer lords collect half again
     Pl.res.gold += gold; for (const k of Object.keys(res)) Pl.res[k] += res[k];
     if (Pl.i === 0 && G.day > 1) floatText(null, `+${fmt(gold)} 🪙${res.wood ? ` +${res.wood} 🪵` : ''}${res.ore ? ` +${res.ore} 🪨` : ''}${res.gems ? ` +${res.gems} 💎` : ''}`, 'gold');
   }
   for (const hr of G.heroes) if (hr.alive) { hr.mp = moveMax(hr); hr.mana = Math.min(maxMana(hr), hr.mana + 1 + Math.floor(statOf(hr, 'know') / 3)); }
-  for (const t of G.towns) t.builtToday = false;
+  for (const t of G.towns) { t.builtToday = false; t.builds = 0; }
+  if (G.run) crownDawn(); // crown: artifact income, the week's invasion (warned on day 4, marching, striking on day 7)
   if (newWeek) {
     // each week honours a creature: +5 growth in every town that breeds it
     const all = Object.values(FACTIONS).flatMap((f) => f.units), star = UNITS[G.nextWeekOf] ? G.nextWeekOf : all[(rnd() * all.length) | 0];
     G.weekOf = star; G.nextWeekOf = null;
-    for (const t of G.towns) for (const b of BUILDINGS) if (b.tier && !b.up && t.built.includes(b.id)) { const base = FACTIONS[t.fac].units[b.tier - 1]; t.avail[b.tier] = (t.avail[b.tier] || 0) + Math.ceil(UNITS[base].grow * (t.built.includes('fort') ? 1.5 : 1)) + (base === star ? 5 : 0); }
+    for (const t of G.towns) for (const b of BUILDINGS) if (b.tier && !b.up && t.built.includes(b.id)) { const base = FACTIONS[t.fac].units[b.tier - 1]; t.avail[b.tier] = (t.avail[b.tier] || 0) + Math.ceil(UNITS[base].grow * (t.built.includes('fort') ? 1.5 : 1) * (G.run && t.p === 0 ? CR.growthMul(G.run) : 1)) + (base === star ? 5 : 0); }
     for (const o of G.objects) if (o.alive && o.type === 'monster') o.n = Math.ceil(o.n * 1.08);
     for (const o of G.objects) if (o.alive && o.type === 'dwelling') o.stock = Math.max(o.stock, 4 + ((rnd() * 4) | 0));
     // (after the "Week N" reveal has played, so the card does not cover it)
@@ -2853,20 +3090,44 @@ function newDay() {
 }
 function checkEnd() {
   if (G.over) return;
+  const out = [];
   for (const Pl of G.players) {
+    if (!Pl.alive) continue;
     const has = G.towns.some((t) => t.p === Pl.i) || G.heroes.some((x) => x.alive && x.p === Pl.i);
-    if (Pl.alive && !has) { Pl.alive = false; if (Pl.i !== 0) toast(`☠️ ${Pl.name} is defeated!`); }
+    // freeplay "Capture capitals": a crown whose capital has fallen is out of the game
+    const cap = G.towns.find((t) => t.capOf === Pl.i), capLost = G.win === 'capitals' && cap && cap.p !== Pl.i;
+    if (!has || capLost) { eliminate(Pl, capLost && has); out.push(Pl); }
   }
-  if (!G.players[0].alive) endGame(false);
-  else if (G.players.every((Pl) => Pl.i === 0 || !Pl.alive)) endGame(true);
+  if (!G.players[0].alive) { endGame(false); return; }
+  if (G.players.every((Pl) => Pl.i === 0 || !Pl.alive)) { endGame(true); return; }
+  const left = G.players.filter((Pl) => Pl.i !== 0 && Pl.alive).length;
+  for (const Pl of out) if (Pl.i !== 0) showMsg(`☠️ ${Pl.name} is defeated`, `<p><b style="color:${Pl.css}">${Pl.name}</b> ${G.win === 'capitals' ? 'has lost its capital and' : ''} falls from the game. ${left} rival crown${left === 1 ? '' : 's'} remain${left === 1 ? 's' : ''}.</p>`);
+}
+// a crown leaves the game: what it still held (capitals mode) goes back to the wilds
+function eliminate(Pl, scatter) {
+  Pl.alive = false; Pl.outDay = G.day;
+  if (scatter) {
+    for (const hr of G.heroes) if (hr.alive && hr.p === Pl.i) hr.alive = false;
+    for (const t of G.towns) if (t.p === Pl.i) t.p = -1;
+    for (const o of G.objects) if (o.owner === Pl.i) o.owner = -1;
+    worldDirty = true; layoutHeroes(true);
+  }
+  if (Pl.i !== 0) toast(`☠️ ${Pl.name} is defeated!`);
 }
 function endGame(won) {
-  G.over = true; store.del('realms.save');
+  G.over = true; turnBar(null); store.del('realms.save');
   const me = G.players[0], towns = G.towns.filter((t) => t.p === 0).length, heroes = G.heroes.filter((h) => h.alive && h.p === 0);
   const army = heroes.reduce((a, h) => a + heroArmy(h).reduce((x, st) => x + st[1], 0), 0), top = heroes.reduce((a, h) => Math.max(a, h.lvl), 0);
+  const rivals = G.players.filter((Pl) => Pl.i !== 0), beaten = rivals.filter((Pl) => !Pl.alive).length;
+  // the strongest crown still standing (towns, then army) is the one that took the world from you
+  const power = (Pl) => G.towns.filter((t) => t.p === Pl.i).length * 1e6 + G.heroes.filter((x) => x.alive && x.p === Pl.i).reduce((a, x) => a + BT.armyPower(heroArmy(x), x), 0);
+  const victor = won ? null : rivals.filter((Pl) => Pl.alive).sort((x, y) => power(y) - power(x))[0];
+  const roll = `<div class="rivals">${rivals.map((Pl) => `<span class="rv${Pl.alive ? '' : ' out'}" style="--pc:${Pl.css}"><span class="rv-crest">${icon(FAC_CREST[Pl.fac] || 'banner', 18)}</span><b>${Pl.name}</b><small>${Pl.alive ? (Pl === victor ? 'Rules the world' : 'Still standing') : `Fell on day ${Pl.outDay || G.day}`}</small></span>`).join('')}</div>`;
+  const why = G.win === 'capitals' ? 'your capital has fallen' : 'your last town and hero are lost';
   const body = `<div class="endcard ${won ? 'win' : 'lose'}"><div class="crest2">${icon(won ? 'victory' : 'defeat', 84)}</div>
-    <p>${won ? `After <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'} the whole world is yours. Every rival bows before ${FACTIONS[me.fac].name}.` : 'Your last town and hero are lost. Your crown falls into shadow.'}</p>
-    <div class="endstats"><div><b>${G.day}</b><small>Days</small></div><div><b>${towns}</b><small>Towns</small></div><div><b>${fmt(army)}</b><small>Creatures</small></div><div><b>${top || '–'}</b><small>Top level</small></div></div></div>`;
+    <p>${won ? `After <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'} the whole world is yours. ${rivals.length > 1 ? `All ${rivals.length} rival crowns bow` : 'Every rival bows'} before ${FACTIONS[me.fac].name}.` : `${why[0].toUpperCase() + why.slice(1)}. ${victor ? `<b style="color:${victor.css}">${victor.name}</b> claims the world.` : 'Your crown falls into shadow.'}`}</p>
+    ${rivals.length > 1 || !won ? roll : ''}
+    <div class="endstats"><div><b>${G.day}</b><small>Days</small></div><div><b>${beaten}/${rivals.length}</b><small>Rivals out</small></div><div><b>${towns}</b><small>Towns</small></div><div><b>${fmt(army)}</b><small>Creatures</small></div><div><b>${top || '–'}</b><small>Top level</small></div></div></div>`;
   ask(won ? 'Victory!' : 'Defeat', body, [['Play again', () => showMenu()]], true);
   if (won) for (let i = 0; i < 40; i++) setTimeout(() => { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = `${Math.random() * 100}vw`; c.style.background = `hsl(${Math.random() * 360} 90% 60%)`; c.style.animationDuration = `${1.8 + Math.random() * 1.6}s`; document.body.appendChild(c); setTimeout(() => c.remove(), 4000); }, i * 40);
   won ? sfx.victory() : sfx.defeat(); musicScene(won ? 'victory' : 'defeat');
@@ -2899,7 +3160,7 @@ function aiTown(t) {
   const vis = visitorOf(t); if (vis) aiVisitTown(vis, t);
   // a second hero once the town can afford one
   const heroes = G.heroes.filter((x) => x.alive && x.p === t.p).length;
-  if (t.built.includes('tavern') && heroes < 2 + (G.diff === 2 ? 1 : 0) && G.players[t.p].res.gold > 5000 && G.day > 6) {
+  if (t.built.includes('tavern') && heroes < 2 + (G.diff >= 2 ? 1 : 0) && G.players[t.p].res.gold > 5000 && G.day > 6) {
     const v = NBR[t.v].find((x) => passable(x) && !heroAt(x) && objAt[x] < 0);
     if (v !== undefined) {
       pay(t.p, { gold: 2500 });
@@ -2945,7 +3206,7 @@ function dijkstra(hr, maxCost) {
     if (d > (dist.get(v) ?? Infinity) || d > maxCost) continue;
     if (v !== hr.v && (objAt[v] >= 0 && G.objects[objAt[v]].alive || others.has(v))) continue;
     for (const n of NBR[v]) {
-      if (!passable(n)) continue;
+      if (!passable(n) || crownShut(n, hr)) continue;
       const blockedTarget = (objAt[n] >= 0 && G.objects[objAt[n]].alive) || others.has(n);
       const nd = d + stepCost(v, n) + (!blockedTarget && zoc(n) ? 3000 : 0);
       if (nd < (dist.get(n) ?? Infinity)) { dist.set(n, nd); prev.set(n, v); heap.push(nd, n); }
@@ -2953,10 +3214,18 @@ function dijkstra(hr, maxCost) {
   }
   return { dist, prev };
 }
+// freeplay: days before the computer lords go for the human; on Easy/Normal each extra rival adds a day, so 1v4 is no rush
+const aiGraceDay = (d) => d + (G.diff < 2 ? Math.max(0, G.players.length - 2) : 0);
 function aiValue(hr, v, power) {
   const o = objAt[v] >= 0 && G.objects[objAt[v]].alive ? G.objects[objAt[v]] : null;
   const other = heroAt(v);
-  if (other && other !== hr) { if (other.p === hr.p) return 0; const theirs = BT.armyPower(heroArmy(other), other); return power > theirs * 1.3 ? 70 + theirs / 100 : 0; }
+  if (other && other !== hr) {
+    if (other.p === hr.p) return 0;
+    // freeplay: the human's heroes are left alone for the first days (later with more rivals on Easy/Normal) and need a clearer edge
+    if (other.p === 0 && G.day < aiGraceDay(byDiff([10, 7, 4, 2]))) return 0;
+    if (other.p > 0 && G.day < byDiff([6, 4, 3, 2])) return 0;
+    const theirs = BT.armyPower(heroArmy(other), other); return power > theirs * (other.p === 0 ? byDiff([1.7, 1.45, 1.3, 1.15]) : 1.3) ? 70 + theirs / 100 : 0;
+  }
   if (!o) return 0;
   const O = OBJECTS[o.type], kind = O?.kind;
   if (o.type !== 'monster') { const g = NBR[v].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((x) => x && x.alive && x.type === 'monster'); if (g && power < BT.armyPower([[g.unit, g.n]]) * 1.6) return 0; }
@@ -2965,8 +3234,9 @@ function aiValue(hr, v, power) {
     const t = G.towns[o.t];
     if (t.p === hr.p) return heroArmy({ army: t.garrison }).length ? 12 + BT.armyPower(t.garrison) / 120 : 0;
     const gp = BT.armyPower(t.garrison) * (t.built.includes('fort') ? 1.3 : 1);
-    if (t.p === 0 && G.day < [12, 8, 5][G.diff]) return 0;
-    return power > gp * 1.4 ? (t.p === 0 ? 120 : 70) : 0;
+    if (t.p === 0 && G.day < aiGraceDay(byDiff([14, 10, 6, 3]))) return 0;
+    if (t.p > 0 && G.day < byDiff([8, 6, 5, 3])) return 0; // rival crowns don't knock each other out in the first days either
+    return power > gp * 1.4 ? (t.p === 0 ? (G.players.length > 2 ? 85 : 120) : 70) : 0;
   }
   if (kind === 'pickup') return o.type === 'gold' ? o.amount / 80 : o.type === 'chest' ? 14 : o.type === 'artifact' ? 25 : o.type === 'campfire' ? 9 : 7;
   if (kind === 'mine') return o.owner === hr.p ? 0 : (O.res === 'gold' ? 45 : 22) + (o.owner === 0 ? 10 : 0);
@@ -2980,12 +3250,12 @@ function* aiHero(hr) {
     const power = BT.armyPower(heroArmy(hr), hr);
     const { dist, prev } = dijkstra(hr, hr.mp + 4500);
     // a stronger enemy hero close by: run home to the garrison
-    const threat = G.heroes.find((x) => x.alive && x.p !== hr.p && DIRS[x.v].distanceTo(DIRS[hr.v]) < 1.2 && BT.armyPower(heroArmy(x), x) > power * 1.25);
+    const threat = G.heroes.find((x) => x.alive && x.p !== hr.p && cellDist(x.v, hr.v) < 16 && BT.armyPower(heroArmy(x), x) > power * 1.25);
     let best = null, bs = 0;
     for (const [v, d] of dist) {
       if (v === hr.v) continue;
       let val = aiValue(hr, v, power);
-      if (threat) { const o = objAt[v] >= 0 ? G.objects[objAt[v]] : null; if (o && o.type === 'town' && G.towns[o.t].p === hr.p) val += 150; else if (DIRS[v].distanceTo(DIRS[threat.v]) < 0.5) val *= 0.2; }
+      if (threat) { const o = objAt[v] >= 0 ? G.objects[objAt[v]] : null; if (o && o.type === 'town' && G.towns[o.t].p === hr.p) val += 150; else if (cellDist(v, threat.v) < 7) val *= 0.2; }
       if (val <= 0) continue;
       const sc = val / (1 + d / 900); if (sc > bs) { bs = sc; best = v; }
     }
@@ -3018,7 +3288,7 @@ function* aiHero(hr) {
         while (hr.anim.t < 1 && heroMeshes.has(hr.id)) yield 0.001;
         hr.anim = null; layoutHeroes(true);
         flow = goesOn;
-        if (cam.fly === false && DIRS[hr.v].distanceTo(lookDir()) > 0.25) flyTo(hr.v, cam.tDist);
+        if (cam.fly === false && offView(hr.v)) flyTo(hr.v, cam.tDist);
       } else flow = false;
     }
     layoutHeroes(true);
@@ -3034,12 +3304,12 @@ function* aiShow(hr, v) {
   if (aiWatch) return;
   aiWatch = true; flyTo(v, Math.max(cam.tDist, 9)); toast(`👁️ ${hr.name} (${G.players[hr.p].name}) is on the move`); yield 0.6;
 }
-const lookDir = () => new THREE.Vector3().setFromSphericalCoords(1, cam.phi, cam.theta);
 function* runAI() {
-  aiWatch = false;
   for (const Pl of G.players) {
     if (G.over) return;
     if (!Pl.ai || !Pl.alive) continue;
+    aiWatch = false; // each crown's first move in sight gets the camera once
+    turnBar(Pl);
     for (const t of G.towns) if (t.p === Pl.i) aiTown(t);
     yield 0.02; // towns and heroes in separate frames
     for (const hr of G.heroes.filter((x) => x.alive && x.p === Pl.i)) {
@@ -3054,6 +3324,7 @@ function* runAI() {
 }
 
 // ------------------------------------------------------------------ save and load
+const SAVE_V = 2; // 2: flat hex map (v2.0); 1: the planet (v1.x), rejected on load
 const pack = (a, off = 48) => { let s = ''; for (let i = 0; i < a.length; i++) s += String.fromCharCode(a[i] + off); return s; };
 const unpack = (s, a, off = 48) => { for (let i = 0; i < a.length; i++) a[i] = s.charCodeAt(i) - off; };
 function save() {
@@ -3061,7 +3332,7 @@ function save() {
   // saved mid-walk (Save & quit): the rest of the march is kept as an unfinished route (Continue ▶ after loading)
   const W = walking, rest = W && W.i < W.path.length - 1 ? W.path.slice(W.i) : null, keep = rest && [W.hr.route, W.hr.routeObj];
   if (rest) { W.hr.route = rest; W.hr.routeObj = objAt[rest[rest.length - 1]]; }
-  try { store.set('realms.save', { v: 1, ver: APP_VERSION, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter), h: pack(h), road: pack(road), seen: pack(seen) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
+  try { store.set('realms.save', { v: SAVE_V, grid: [GRID.W, GRID.H], ver: APP_VERSION, mode: G.gameMode || 'free', size: G.size, resLv: G.resLv, win: G.win, fog: G.fog, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, run: G.run || null, ter: pack(ter.subarray(0, NV)), h: pack(h.subarray(0, NV)), road: pack(road.subarray(0, NV)), seen: pack(seen.subarray(0, NV)) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
 }
 // the morning save serialises the whole world (~100 KB of JSON): run it when the browser is idle,
 // not in the same frame as the new day's income, growth, HUD and camera work
@@ -3073,10 +3344,17 @@ function saveSoon() {
 }
 function load() {
   const s = store.get('realms.save', null);
-  if (!s || s.v !== 1) return false;
+  if (!s) return false;
+  // v2 (flat world): v1 saves hold a planet (2562 cells, no grid size) and cannot be mapped onto a flat map
+  if (s.v !== SAVE_V || !Array.isArray(s.grid)) { toast('This save is from an older version'); return false; }
   pendingLevels.length = 0;
-  Object.assign(G, { seed: s.seed, day: s.day, diff: s.diff, selHero: s.selHero, players: s.players, heroes: s.heroes, towns: s.towns, objects: s.objects, over: false, mode: 'map' });
-  unpack(s.ter, ter); unpack(s.h, h); unpack(s.road, road); unpack(s.seen, seen);
+  setGrid(s.grid);
+  Object.assign(G, { seed: s.seed, day: s.day, diff: s.diff, selHero: s.selHero, players: s.players, heroes: s.heroes, towns: s.towns, objects: s.objects, over: false, mode: 'map',
+    gameMode: s.mode || 'free', size: s.size || 'M', resLv: s.resLv ?? 1, win: s.win || 'conquer', fog: s.fog !== false, run: s.run ? CR.runLoad(s.run) : null });
+  // saves from v1.10 and older: two crowns, the capitals are the starting towns
+  for (const Pl of G.players) { if (!Pl.css) Pl.css = colCss(Pl.color); if (!G.towns.some((t) => t.capOf === Pl.i)) { const t = G.towns.find((x) => x.p === Pl.i); if (t && G.win === 'conquer') t.capOf = Pl.i; } }
+  ter.fill(0); h.fill(0); road.fill(0); seen.fill(0);
+  unpack(s.ter, ter.subarray(0, NV)); unpack(s.h, h.subarray(0, NV)); unpack(s.road, road.subarray(0, NV)); unpack(s.seen, seen.subarray(0, NV));
   objAt.fill(-1); for (const o of G.objects) if (o.alive) objAt[o.v] = o.id;
   for (const hr of G.heroes) hr.anim = null; // saved mid-step during an enemy turn
   rnd = mulberry32(s.seed + s.day * 977);
@@ -3150,14 +3428,13 @@ function showMenu() {
   G.mode = 'menu'; dialogs.length = 0; pendingLevels.length = 0; renderDialog(); // a queued level-up would block every later one (showLevel only runs on the first push)
   stopAI(); walking = null; fx.clearPath(true); fx.select(null, null, undefined, true); // a quit mid enemy turn / mid walk must not carry over into the next game
   fadeShow($('menu')); $('hud').hidden = true; $('town').hidden = true; $('battle').hidden = true; musicScene('menu');
+  CUI?.close(true); CUI?.hideTip(); // crown: no run screen survives a quit to the title
   const s = store.get('realms.save', null);
   $('m-continue').hidden = !s;
-  if (s) $('m-continue').innerHTML = `Continue<small>${s.players?.[0] ? `${FACTIONS[s.players[0].fac]?.name || ''} · ` : ''}Week ${Math.floor((s.day - 1) / 7) + 1}, day ${((s.day - 1) % 7) + 1}</small>`;
+  if (s) $('m-continue').innerHTML = `Continue<small>${s.mode === 'crown' ? 'Crown Run · ' : `Free Play${(s.players?.length || 2) > 2 ? ` 1v${s.players.length - 1}` : ''} · `}${s.players?.[0] ? `${FACTIONS[s.players[0].fac]?.name || ''} · ` : ''}Week ${Math.floor((s.day - 1) / 7) + 1}, day ${((s.day - 1) % 7) + 1}</small>`;
   syncSound();
   for (const m of heroMeshes.values()) scene.remove(m); heroMeshes.clear();
 }
-for (const b of document.querySelectorAll('#menu .diffs button')) b.addEventListener('click', () => { store.set('realms.diff', +b.dataset.d); for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.toggle('on', x === b); sfx.click(); });
-for (const x of document.querySelectorAll('#menu .diffs button')) x.classList.toggle('on', +x.dataset.d === store.get('realms.diff', 1));
 // title-screen music toggle (the same setting as the in-game menu)
 function syncSound() { const on = store.get('realms.music', true); $('m-sound').classList.toggle('off', !on); $('m-sound').querySelector('span').textContent = on ? 'Music on' : 'Music off'; }
 $('m-sound').addEventListener('click', () => { const on = !store.get('realms.music', true); store.set('realms.music', on); if (on) score?.start(); else score?.stop(); syncSound(); sfx.click(); });
@@ -3169,7 +3446,7 @@ function play() {
   trimGeoCache(); // a new game / a loaded save: free the models of factions this world no longer has
   worldDirty = true; layoutWorld();
   const hr = selHero() || G.heroes.find((x) => x.alive && x.p === 0);
-  if (hr) { G.selHero = hr.id; const sp = new THREE.Spherical().setFromVector3(DIRS[hr.v]); camSnap(sp.theta, sp.phi); cam.dist = 20; cam.sDist = 0; cam.tDist = 10; flyTo(hr.v, 10); }
+  if (hr) { G.selHero = hr.id; camSnapTo(GRID.X[hr.v], GRID.Z[hr.v]); cam.yaw = cam.tYaw = cam.sYaw = 0; cam.y = groundAt(cam.x, cam.z); cam.dist = 16; cam.sDist = 0; cam.tDist = CAM_DEFAULT; flyTo(hr.v, CAM_DEFAULT); }
   updateHud();
 }
 $('m-new').addEventListener('click', () => {
@@ -3177,41 +3454,121 @@ $('m-new').addEventListener('click', () => {
   if (store.get('realms.save', null)) { ask('Start a new game?', '<p>Your saved game will be replaced when the new one begins.</p>', [['Start a new game', () => pickFaction()], ['Keep my game', null]]); sfx.click(); return; }
   pickFaction();
 });
+// Crown Run (the "crown" agent's roguelite): its entry point registers itself as window.CrownRun = { start(), resume(save) }.
+// Until it lands, the button explains what is coming.
+$('m-crown').addEventListener('click', () => {
+  sfx.click();
+  if (typeof window.CrownRun?.start === 'function') { window.CrownRun.start(); return; }
+  ask(`${icon('victory', 26)} Crown Run`, `<p>A roguelite on a full map: one hero, no second chances. Win the key from each region's <b>Legendary Hero</b>, hold off the weekly <b>invasions</b>, and claim the Crown.</p>
+    <ul class="tips"><li>${icon('artifact', 22)}<span><b>Artifacts</b> in equipment slots; complete a set for its bonus.</span></li><li>${icon('lock', 22)}<span><b>Border Guards</b>: the key lies with each region's Legendary Hero.</span></li><li>${icon('attack', 22)}<span><b>Invasions</b> march on your capital every week.</span></li></ul><p class="hint2">Coming soon. Free Play is ready now.</p>`, [['Play Free Play', () => $('m-new').click()], ['Back', null]]);
+});
 // faction choice: one card per faction with its crest, colour, creature line-up, description and signature skill and spell.
-// Tap a card to select it; tap the selected card again (or the Begin button) to start.
 const FAC_CREST = { haven: 'defense', necro: 'necromancy', sylvan: 'luck', inferno: 'fireball', dungeon: 'sorcery' };
+// ---- freeplay: the Free Play setup screen (your crown, rivals, map and rules). The last settings are remembered.
+const FP_DEF = { size: 'M', res: 1, win: 'conquer', fog: true, opp: [{ fac: 'random', col: -1 }] };
+function fpLoad() {
+  const s = { ...FP_DEF, ...store.get('realms.fp', {}) };
+  if (!MAP_SIZES[s.size]) s.size = 'M';
+  s.res = clamp(s.res | 0, 0, 2); s.win = s.win === 'capitals' ? 'capitals' : 'conquer'; s.fog = s.fog !== false;
+  s.opp = (Array.isArray(s.opp) && s.opp.length ? s.opp : FP_DEF.opp).slice(0, 4).map((o) => ({ fac: FACTIONS[o?.fac] ? o.fac : 'random', col: Number.isInteger(o?.col) && PLAYER_COLS[o.col] !== undefined ? o.col : -1 }));
+  s.diff = clamp(store.get('realms.diff', 1) | 0, 0, 3); // (also the harnesses' knob)
+  s.fac = FACTIONS[store.get('realms.fac', 'haven')] ? store.get('realms.fac', 'haven') : 'haven';
+  return s;
+}
 function pickFaction() {
-  const el = $('factions');
-  let sel = FACTIONS[store.get('realms.fac', 'haven')] ? store.get('realms.fac', 'haven') : 'haven';
-  const diff = ['Easy', 'Normal', 'Hard'][store.get('realms.diff', 1)] || 'Normal';
-  el.innerHTML = `<div class="fp"><header class="fp-head">${icon('logo', 44)}<div><small>New game · ${diff}</small><h2>Choose your crown</h2></div></header><div class="fcards">${Object.entries(FACTIONS).map(([k, f]) => {
-    const kit = FACTION_START[k] || FACTION_START.haven;
-    return `<button class="fcard${k === sel ? ' on' : ''}" data-f="${k}" style="--fc:${f.css}" aria-pressed="${k === sel}">
-    <span class="fc-crest">${icon(FAC_CREST[k] || 'banner', 30)}</span>
-    <span class="fc-body"><b class="fc-name">${f.name}</b><small class="fc-desc">${f.desc || ''}</small>
-    <span class="fc-sig"><em>Signature</em><span>${icon(kit.skill, 16)}${SKILLS[kit.skill]?.name || ''}</span><span>${icon(kit.spell, 16)}${SPELLS[kit.spell]?.name || ''}</span></span></span>
-    <span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 64)).join('')}</span><span class="fc-check">${icon('check', 16)}</span></button>`;
-  }).join('')}</div>
-    <footer class="fp-foot"><button class="btn ghost" id="f-back">Back</button><button class="btn gold" id="f-go">Begin as ${FACTIONS[sel].name}</button></footer></div>`;
-  fadeShow(el); el.scrollTop = 0; document.body.style.setProperty('--fac', FACTIONS[sel].css);
-  const start = (fac) => {
-    store.set('realms.fac', fac); fadeHide(el, 320); sfx.click();
-    newWorld((Date.now() % 100000) + 1, store.get('realms.diff', 1), fac);
+  const el = $('factions'), S = fpLoad();
+  const keep = () => { store.set('realms.fp', { size: S.size, res: S.res, win: S.win, fog: S.fog, opp: S.opp }); store.set('realms.diff', S.diff); store.set('realms.fac', S.fac); };
+  const facKeys = Object.keys(FACTIONS);
+  // the colour each rival will really get (the same rule newWorld uses), so the swatches show the outcome
+  const colsNow = () => {
+    const taken = [FACTIONS[S.fac].color];
+    return S.opp.map((o) => { let c = PLAYER_COLS[o.col] ?? -1; const fac = FACTIONS[o.fac] ? o.fac : null; if (c < 0 || taken.includes(c)) c = fac ? FACTIONS[fac].color : -1; if (c < 0 && !fac) return null; /* Random + Auto: decided at the start */ if (c < 0 || taken.includes(c)) c = COL_SPARE.find((x) => !taken.includes(x) && !S.opp.some((q) => PLAYER_COLS[q.col] === x)) ?? COL_SPARE.find((x) => !taken.includes(x)); taken.push(c); return c; });
+  };
+  const seg = (key, opts, cur) => `<div class="diffs seg" role="radiogroup" data-k="${key}">${opts.map(([v, label, ic]) => `<button data-v="${v}" class="${String(v) === String(cur) ? 'on' : ''}" role="radio" aria-checked="${String(v) === String(cur)}">${ic ? icon(ic, 16) : ''}${label}</button>`).join('')}</div>`;
+  const row = (label, html) => `<div class="fs-row"><p class="mlabel">${label}</p>${html}</div>`;
+  const oppHTML = () => {
+    const cs = colsNow();
+    return S.opp.map((o, k) => { const f = FACTIONS[o.fac], css = cs[k] == null ? 'conic-gradient(#3a7aff, #d83a3a, #3ac84a, #e8c020, #a84ad8, #3a7aff)' : colCss(cs[k]);
+      return `<div class="opp" style="--pc:${cs[k] == null ? '#8a8aa0' : css}"><span class="opp-n">${k + 1}</span>
+        <button class="opp-fac" data-o="${k}" style="--fc:${f ? f.css : '#8a8aa0'}" aria-label="Rival ${k + 1} faction: ${f ? f.name : 'Random'}"><span class="fc-crest mini">${f ? icon(FAC_CREST[o.fac] || 'banner', 18) : '<b class="q">?</b>'}</span><b>${f ? f.name : 'Random'}</b><i class="cyc">▸</i></button>
+        <button class="opp-col" data-c="${k}" aria-label="Rival ${k + 1} colour: ${COL_NAMES[PLAYER_COLS.indexOf(cs[k])] || ''}"><i style="background:${css}"></i><small>${o.col < 0 ? 'Auto' : COL_NAMES[o.col]}</small></button></div>`; }).join('');
+  };
+  const summary = () => `${FACTIONS[S.fac].name} vs ${S.opp.length} rival${S.opp.length > 1 ? 's' : ''}`;
+  el.innerHTML = `<div class="fp fs"><header class="fp-head">${icon('logo', 44)}<div><small>Free Play · skirmish</small><h2>Set up your war</h2></div></header>
+    <div class="fs-cols">
+      <section class="fs-you"><p class="mlabel">Your crown</p><div class="fcards mini">${Object.entries(FACTIONS).map(([k, f]) => {
+        const kit = FACTION_START[k] || FACTION_START.haven;
+        return `<button class="fcard${k === S.fac ? ' on' : ''}" data-f="${k}" style="--fc:${f.css}" aria-pressed="${k === S.fac}">
+        <span class="fc-crest">${icon(FAC_CREST[k] || 'banner', 30)}</span>
+        <span class="fc-body"><b class="fc-name">${f.name}</b><small class="fc-desc">${f.desc || ''}</small>
+        <span class="fc-sig"><em>Signature</em><span>${icon(kit.skill, 16)}${SKILLS[kit.skill]?.name || ''}</span><span>${icon(kit.spell, 16)}${SPELLS[kit.spell]?.name || ''}</span></span></span>
+        <span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 64)).join('')}</span><span class="fc-check">${icon('check', 16)}</span></button>`;
+      }).join('')}</div></section>
+      <section class="fs-set">
+        ${row('Rival crowns', seg('n', [1, 2, 3, 4].map((n) => [n, `1 v ${n}`]), S.opp.length))}
+        <div class="opps" id="fs-opps">${oppHTML()}</div>
+        ${row('Map size', seg('size', Object.keys(MAP_SIZES).map((k) => [k, k]), S.size))}
+        ${row('Difficulty', seg('diff', [[0, 'Easy', 'luck'], [1, 'Normal', 'attack'], [2, 'Hard', 'fireball'], [3, 'Impossible', 'defeat']], S.diff))}
+        ${row('Starting resources', seg('res', [[0, 'Poor', 'wood'], [1, 'Normal', 'gold'], [2, 'Rich', 'gems']], S.res))}
+        ${row('Victory', seg('win', [['conquer', 'Conquer all', 'victory'], ['capitals', 'Capitals', 'town']], S.win))}
+        ${row('Fog of war', seg('fog', [[1, 'On', 'scouting'], [0, 'Off', 'day']], S.fog ? 1 : 0))}
+        <p class="hint2 fs-hint" id="fs-hint"></p>
+      </section>
+    </div>
+    <footer class="fp-foot"><button class="btn ghost" id="f-back">Back</button><button class="btn gold" id="f-go">Begin<small id="f-sum">${summary()}</small></button></footer></div>`;
+  fadeShow(el); el.scrollTop = 0; for (const s of el.querySelectorAll('.fs-you, .fs-set')) s.scrollTop = 0;
+  document.body.style.setProperty('--fac', FACTIONS[S.fac].css);
+  const hint = () => {
+    const small = S.opp.length >= 3 && (S.size === 'S' || S.size === 'M') || S.opp.length >= 2 && S.size === 'S';
+    $('fs-hint').textContent = `${S.win === 'capitals' ? 'Take every rival capital; a crown that loses its capital is out (so are you).' : 'Win by taking every town and defeating every hero.'} ${small ? `${S.opp.length} rivals on a ${MAP_SIZES[S.size].toLowerCase()} map: expect early clashes (L or XL gives room).` : ''}`.trim();
+  };
+  const refresh = () => {
+    $('fs-opps').innerHTML = oppHTML(); $('f-sum').textContent = summary(); hint(); keep();
+  };
+  hint();
+  const start = () => {
+    keep(); fadeHide(el, 320); sfx.click();
+    newWorld((Date.now() % 100000) + 1, S.diff, S.fac, { mode: 'free', opponents: S.opp, size: S.size, res: S.res, win: S.win, fog: S.fog });
     play(); save();
-    const rival = FACTIONS[G.players[1].fac].name;
-    setTimeout(() => ask(`${icon('logo', 26)} Your crown`, `<p>You lead the <b style="color:${FACTIONS[fac].css}">${FACTIONS[fac].name}</b>. Defeat the <b style="color:${FACTIONS[G.players[1].fac].css}">${rival}</b> crown to rule the world.</p>
+    const rivals = G.players.filter((x) => x.ai), fac = S.fac;
+    const names = rivals.map((P) => `<b style="color:${P.css}">${P.name}</b>`), list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+    setTimeout(() => ask(`${icon('logo', 26)} Your crown`, `<p>You lead the <b style="color:${FACTIONS[fac].css}">${FACTIONS[fac].name}</b>. ${G.win === 'capitals' ? `Capture the capital${rivals.length > 1 ? 's' : ''} of ${list} and keep your own.` : `Defeat ${rivals.length > 1 ? 'the crowns of ' : 'the '}${list}${rivals.length > 1 ? '' : ' crown'} to rule the world.`}</p>
       <ul class="tips"><li>${icon('movement', 22)}<span><b>Tap a hex</b> to plan a route, tap it again to march.</span></li><li>${icon('gold', 22)}<span><b>Flag mines</b> and pick up treasure for income.</span></li><li>${icon('town', 22)}<span><b>Walk into your town</b> (or double-tap it) to build once a day and recruit.</span></li><li>${icon('hero', 22)}<span><b>Tap your hero</b> for the hero sheet. Double-tap either to fly there.</span></li><li>${icon('end', 22)}<span><b>End the day</b> when everyone has moved.</span></li></ul>`, [['Begin', null]], true), 600);
   };
   el.querySelectorAll('.fcard').forEach((b) => b.addEventListener('click', () => {
-    if (b.dataset.f === sel) { start(sel); return; }
-    sel = b.dataset.f; sfx.click();
+    if (b.dataset.f === S.fac) return;
+    S.fac = b.dataset.f; sfx.click();
     el.querySelectorAll('.fcard').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
-    $('f-go').textContent = `Begin as ${FACTIONS[sel].name}`; document.body.style.setProperty('--fac', FACTIONS[sel].css);
+    document.body.style.setProperty('--fac', FACTIONS[S.fac].css); refresh();
   }));
-  $('f-go').addEventListener('click', () => start(sel));
-  $('f-back').addEventListener('click', () => { fadeHide(el); });
+  el.querySelectorAll('.seg').forEach((g) => g.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    const k = g.dataset.k, v = b.dataset.v; sfx.click();
+    for (const x of g.querySelectorAll('button')) { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); }
+    if (k === 'n') { const n = +v; while (S.opp.length < n) S.opp.push({ fac: 'random', col: -1 }); S.opp.length = n; }
+    else if (k === 'size') S.size = v; else if (k === 'diff') S.diff = +v; else if (k === 'res') S.res = +v; else if (k === 'win') S.win = v; else if (k === 'fog') S.fog = v === '1';
+    refresh();
+  }));
+  // a rival's faction cycles Random → each faction; its colour cycles Auto → each colour nobody else has
+  $('fs-opps').addEventListener('click', (e) => {
+    const f = e.target.closest('.opp-fac'), c = e.target.closest('.opp-col');
+    if (f) { const o = S.opp[+f.dataset.o], seq = ['random', ...facKeys]; o.fac = seq[(seq.indexOf(o.fac) + 1) % seq.length]; }
+    else if (c) {
+      const k = +c.dataset.c, o = S.opp[k], cs = colsNow(), busy = [FACTIONS[S.fac].color, ...cs.filter((_, i) => i !== k)];
+      let i = o.col; do { i = i + 1 >= PLAYER_COLS.length ? -1 : i + 1; } while (i >= 0 && busy.includes(PLAYER_COLS[i]));
+      o.col = i;
+    } else return;
+    sfx.click(); refresh();
+  });
+  $('f-go').addEventListener('click', start);
+  $('f-back').addEventListener('click', () => { keep(); fadeHide(el); sfx.click(); });
 }
-$('m-continue').addEventListener('click', () => { if (load()) play(); });
+// Continue resumes the last save, whichever mode it belongs to
+$('m-continue').addEventListener('click', () => {
+  const s = store.get('realms.save', null);
+  if (s?.mode === 'crown' && typeof window.CrownRun?.resume === 'function') { window.CrownRun.resume(s); return; }
+  if (load()) play();
+});
 
 // ------------------------------------------------------------------ the loop
 const clock = new THREE.Clock();
@@ -3234,24 +3591,24 @@ function mapShadowsDue(dt) {
   shSun.copy(sun.position); shTgt.copy(sun.target.position);
   return true;
 }
-// ---- back-of-planet culling: map figures beyond the horizon are hidden by the planet anyway, but frustum culling
-// keeps them (they sit inside the view cone), so each would still cost its body + ink hull + glow + blob draws.
-// Visible cone = the horizon angle seen from the camera + how far a figure up to ~1.5 above the surface peeks over it.
-// Only objects this code hid are ever un-hidden (userData.hzCull), so other code may still hide figures itself.
-const hzDir = new THREE.Vector3();
-function hzOne(g, lim) {
-  const p = g.position, back = p.x * hzDir.x + p.y * hzDir.y + p.z * hzDir.z < lim * p.length();
-  if (back) { if (g.visible) { g.visible = false; g.userData.hzCull = true; } }
+// ---- view culling (flat world): flora chunks outside the view are not packed into the instance buffers (floraCull),
+// and whole map figures (towns, objects, heroes: body + ink + glow + blob + flag) outside the view are hidden as one,
+// so the renderer skips their subtrees. Only objects this code hid are ever un-hidden (userData.hzCull), so other code
+// may still hide figures itself. quality.set({ cull: false }) turns both off for A/B tests.
+const _fs = new THREE.Sphere();
+function hzOne(g) {
+  _fs.center.copy(g.position); _fs.center.y += 0.25; _fs.radius = 0.75 * Math.max(1, g.scale.x * 3);
+  const out = !_frus.intersectsSphere(_fs) || _fs.center.distanceTo(camera.position) > atmos.fog.far;
+  if (out) { if (g.visible) { g.visible = false; g.userData.hzCull = true; } }
   else if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; }
 }
 let hzOn = true, shAlways = false; // A/B switches for perf tests: __realms.quality.set({ cull, shadowsAlways })
 function horizonCull() {
+  floraOn = hzOn;
+  if (floraCull()) renderer.shadowMap.needsUpdate = true;
   if (!hzOn) { for (const g of world.children) if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; } for (const g of heroMeshes.values()) if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; } return; }
-  const d = camera.position.length();
-  hzDir.copy(camera.position).divideScalar(d);
-  const lim = Math.cos(Math.min(Math.PI, Math.acos(Math.min(1, R / d)) + 0.7));
-  for (const g of world.children) hzOne(g, lim);
-  for (const g of heroMeshes.values()) hzOne(g, lim);
+  for (const g of world.children) hzOne(g);
+  for (const g of heroMeshes.values()) hzOne(g);
 }
 function frame(now) {
   // schedule the next frame first: an exception anywhere below (a bad battle setup, an AI move) then costs one
@@ -3291,9 +3648,8 @@ function frame(now) {
   } else {
     updateCamera(dt);
     mapViewOffset(dt);
-    if (G.mode !== 'town') atmos.update(dt, camera); // perf: the town screen does not draw the map's sky
-    if (atmos.objects?.clouds) atmos.objects.clouds.visible = G.mode === 'menu' || cam.dist > 13;
-    cam.spin = G.mode === 'menu' ? 0.09 : 0; if (G.mode === 'menu') cam.tDist = 16;
+    if (G.mode !== 'town') atmos.update(dt, camera, camFocus, viewDist(cam.dist), G.mode === 'menu'); // perf: the town screen does not draw the map's sky
+    cam.spin = G.mode === 'menu' ? 0.035 : 0; if (G.mode === 'menu') cam.tDist = 12.5;
     else {
       updateWalk(dt); tickAI(dt);
       if (worldDirty) { revealAll(); layoutWorld(); }
@@ -3310,6 +3666,9 @@ function frame(now) {
         // walk → idle blends over 0.3 s so the stride settles instead of popping into the rest pose
         if (hm.userData.animState !== st) { hm.userData.animState = st; setAnim(hm, st, { seed: h.id * 2.3, fade: st === ANIM.IDLE ? 0.3 : 0.15 }); }
       }
+      // LOD (flat world): zoomed far out the ink outlines are hair-thin anyway; dropping them halves the figures' triangles
+      const il = cam.dist < 15.5;
+      if (il !== inkLod) { inkLod = il; for (const g of [...world.children, ...heroMeshes.values()]) for (const c of g.children) if (c.userData.ink) c.visible = il; }
       const nk = clamp(1 + (cam.dist - 9) * 0.045, 1, 1.4);
       if (Math.abs(nk - figK) > 0.01) {
         figK = nk;
@@ -3317,6 +3676,7 @@ function frame(now) {
       }
       fx.select(m ? m.position : null);
       fx.update(dt, camera);
+      mini.draw(performance.now());
       // map guards get their life from the shader idle (a moving mesh would reseed its animation every frame)
     }
     if (G.mode === 'town') { townInsets(); townView.update(dt); renderer.shadowMap.needsUpdate = true; shMode = 'town'; post.render(townView.scene, townView.camera); }
@@ -3432,6 +3792,7 @@ cvs.addEventListener('webglcontextrestored', () => {
 newWorld(12345, 1);
 for (let v = 0; v < NV; v++) seen[v] = 1;
 layoutWorld();
+camSnapTo(GRID.cx, GRID.cz + 3); cam.dist = cam.tDist = 12.5; // the title looks across the middle of the map
 resize();
 QG.init();
 showMenu();
@@ -3462,8 +3823,343 @@ function warmPicker() {
   setTimeout(next, 600);
 }
 window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
+
+// ------------------------------------------------------------------ Crown Run (agent "crown"): a roguelite told in Heroes terms.
+// One hero, permadeath; regions behind Border Guards, each opened by the key its Legendary Hero guards; weekly
+// invasions; artifacts in equipment slots and artifact sets; map sites with choices. Rules and data: crown.js;
+// screens: crown_ui.js; design: dev/CROWN_RUN.md. G.run holds the run (saved with the game); the meta progression
+// (unlocks, Collection, Glory) lives in its own store key (CR.META_KEY).
+// (var: updateHud may run before this point of the module has been evaluated; crownHud waits for CUI)
+var cmeta = null, CUI = null;
+const crownMeta = () => (cmeta ||= CR.metaLoad(store));
+const saveMeta = () => { if (cmeta) CR.metaSave(store, cmeta); };
+CUI = createCrownUI({ icon, unitIcon, sfx, onChange: (k) => { if (k === 'meta') saveMeta(); else if (G.run) { crownHud(); updateHud(); } } });
+CUI.mountHud($('hud'));
+const runHero = () => (G.run ? G.heroes[G.run.hero] : null);
+const capital = () => G.towns.find((t) => t.p === 0 && t.capOf === 0) || G.towns.find((t) => t.p === 0);
+const invObj = () => { const I = G.run?.invasion; return I ? G.objects[I.obj] : null; };
+// region gates: your heroes stay inside the regions opened so far; the rival crown keeps to its homeland (the last band)
+function crownShut(v, hr) {
+  const R = G.run; if (!R || !hr || !R.regionsAt) return false;
+  return hr.p === 0 ? regionOf[v] >= R.region : regionOf[v] < R.regions;
+}
+function crownHud() {
+  if (!CUI) return;
+  const R = G.run;
+  if (!R || R.over) { CUI.renderHud(null); return; }
+  const I = R.invasion, o = invObj();
+  CUI.renderHud(R, {
+    invasion: I && o?.alive ? { dir: I.dir, days: I.arrive - G.day, week: I.week } : null,
+    onEquip: () => crownDoll(),
+    onRegion: () => CUI.guardianCard(R, R.region, CR.guardianArmy(R, R.region), { onClose: () => { const g = G.objects.find((x) => x.alive && x.guardian?.region === R.region); if (g) flyTo(g.v, 9); } }),
+    onInvasion: () => { if (o) CUI.invasionCard(R, I.army, { days: I.arrive - G.day, dir: I.dir, onFly: () => flyTo(o.v, 9) }); },
+  });
+}
+// the hero's paper doll (the hero button opens it in a run; "Skills & army" opens the classic sheet)
+function crownDoll() {
+  const hr = runHero(); if (!hr) return;
+  CUI.paperDoll(G.run, { heroName: hr.name, heroPic: heroPic(hr, 104, 'round'), heroStats: { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know') }, onSheet: () => { openHero.sheet = true; openHero(); openHero.sheet = false; } });
+}
+function crownMods(ctx) {
+  const R = G.run, hr = runHero();
+  if (!R || R.over || !hr || ctx.sides[0].hero !== hr) return null;
+  const o = ctx.foe.obj, cap = capital();
+  return CR.battleMods(R, { guardian: o?.guardian?.id || null, enemyHero: o?.ghero || null, buildings: cap ? cap.built.length : 0, fort: !!cap?.built.includes('fort'), gold: G.players[0].res.gold });
+}
+// after every battle of the run hero: counters, raised dead, invasion spoils, a fallen Legendary Hero (or the end)
+function crownAfter(B, ctx) {
+  const R = G.run, hr = runHero();
+  if (!R || R.over || !hr || ctx.sides[0].hero !== hr) return;
+  const won = B.over.winner === 0, o = ctx.foe.obj, kind = o?.guardian ? 'guardian' : o?.invasion ? 'invasion' : null;
+  const res = CR.afterBattle(R, B, { won, kind });
+  for (const s of B.stacks) CR.discover(crownMeta(), 'unit', UNITS[s.id]?.up || s.id);
+  if (res.raise > 0 && hr.alive && addTroops(hr.army, res.raiseAs, res.raise)) toast(`${icon('necromancy', 18)} ${res.raise} ${plural(res.raiseAs, res.raise)} rise to serve you.`);
+  if (!won || !hr.alive) { R.over = true; R.won = false; afterDialogs(() => crownEnd(`${hr.name} fell in battle`)); return; }
+  if (kind === 'guardian') { CR.discover(crownMeta(), 'guardian', o.guardian.id); saveMeta(); afterDialogs(() => CUI.notice({ icon: CR.GUARDIANS[o.guardian.id].icon, title: `${CR.GUARDIANS[o.guardian.id].name.split(',')[0]} is defeated`, sub: `Region ${o.guardian.region}`, body: `<p>${o.guardian.region >= R.regions ? 'The way to the Crown lies open: walk into the tent to claim it.' : "The Keymaster's Tent stands unguarded: visit it for the key to the next region."}</p>`, sound: 'fanfare' })); }
+  if (kind === 'invasion') afterDialogs(() => CUI.choice({ title: 'Spoils of war', sub: `The invaders' baggage train is yours. Choose one artifact.`, icon: 'chest', choices: CR.spoilsChoices(R, o.invasion.week, crownMeta()), leave: 'Leave it', onPick: (c) => crownGive(c, hr), onDone: () => { crownHud(); updateHud(); } }));
+  crownHud();
+}
+// the run's screens queue up: each waits until the casualties card, any level-up, a battle and the previous run screen
+// are gone (two screens never open over each other, so none is lost)
+const crownQ = [];
+function afterDialogs(f) { crownQ.push(f); if (crownQ.length === 1) setTimeout(crownQRun, 300); }
+function crownQRun() {
+  if (!crownQ.length) return;
+  if (G.mode === 'menu') { crownQ.length = 0; return; }
+  if (dialogOpen() || G.mode !== 'map' || CUI.isOpen() || walking) { setTimeout(crownQRun, 250); return; }
+  const f = crownQ.shift();
+  try { f(); } catch (e) { console.error('Crown Run screen failed', e); }
+  if (crownQ.length) setTimeout(crownQRun, 400);
+}
+const crownCtx = (hr = runHero()) => ({ known: hr?.spells || [], skills: hr?.skills || {}, fac: G.run.fac, region: G.run.region });
+// apply a choice from a site: gold, experience, an artifact, troops, a spell, a skill, a lesson
+function crownGive(c, hr) {
+  const R = G.run;
+  if (c.kind === 'gold') { gain(0, 'gold', c.n, hr.v); sfx.coin(); }
+  else if (c.kind === 'xp') giveXp(hr, c.n);
+  else if (c.kind === 'artifact') { const at = CR.addArtifact(R, c.id, crownMeta()); toast(`${icon(CR.ARTIFACTS[c.id].icon, 18)} ${CR.ARTIFACTS[c.id].name} ${at === 'backpack' ? 'goes into your backpack' : 'is equipped'}.`); sfx.artifact(); saveMeta(); }
+  else if (c.kind === 'troops') { if (!addTroops(hr.army, c.id, c.n)) { toast('No free slot in your army.'); return false; } sfx.recruit(); }
+  else if (c.kind === 'spell') { if (!hr.spells.includes(c.id)) hr.spells.push(c.id); sfx.learn(); }
+  else if (c.kind === 'skill') { hr.skills[c.id] = c.lvl; if (c.id === 'logistics') hr.mp += 150; sfx.learn(); }
+  else if (c.kind === 'stat') { hr[c.id] += c.n; sfx.learn(); }
+  updateHud(); return true;
+}
+// map sites in a run (true = handled). Sites keep the HoMM rule: guards next to a site must be beaten first.
+function crownInteract(hr, o, v) {
+  const R = G.run, meta = crownMeta(), t = o.type;
+  const fight = (obj) => startBattle(hr, { kind: 'monster', obj });
+  if (t === 'monster' && o.guardian) { CUI.guardianCard(R, o.guardian.region, { army: o.army }, { onFight: () => fight(o) }); return true; }
+  if (t === 'monster' && o.invasion) { CUI.invasionCard(R, R.invasion?.army || { army: o.army, hero: o.ghero, week: o.invasion.week }, { days: 0, dir: R.invasion?.dir || '', onFight: () => fight(o) }); return true; }
+  if (t === 'monster') return false;
+  const g = guardOf(v);
+  if (g) { if (g.guardian) { CUI.guardianCard(R, g.guardian.region, { army: g.army }, { onFight: () => fight(g) }); return true; } return false; }
+  const take = () => { removeObject(o); hr.v = v; layoutHeroes(true); };
+  const once = (k) => { if (o.done) { toast(`${k} has nothing more for you.`); return false; } return true; };
+  if (t === 'chest' || t === 'artifact' || t === 'pandora') {
+    take(); if (seen[v]) fx.burst(t === 'chest' ? 'coin' : 'artifact', posOf(v));
+    if (t === 'artifact') { const id = CR.rollArtifact(R, `map:${o.id}`, meta, { rarityW: { treasure: 45, minor: 35, major: 16 + 6 * regionOf[v], relic: 4 + 2 * regionOf[v] } }); if (id) CUI.notice({ icon: CR.ARTIFACTS[id].icon, title: 'An artifact!', sub: 'Found on the road', card: { kind: 'artifact', id }, buttons: [['Take it', () => crownGive({ kind: 'artifact', id }, hr), 'gold']], sound: 'artifact' }); return true; }
+    const ch = t === 'chest' ? CR.chestChoices(R, o.id, meta, { region: regionOf[v] + 1 }) : CR.pandoraChoices(R, o.id, meta, { ...crownCtx(hr), region: regionOf[v] + 1 });
+    CUI.choice({ title: t === 'chest' ? 'Treasure Chest' : "Pandora's Box", sub: t === 'chest' ? 'Keep the gold, give it to the peasants for their wisdom, or take the trinket inside?' : 'The lid creaks open. Choose one gift.', icon: 'chest', choices: ch, leave: null, onPick: (c) => crownGive(c, hr) });
+    sfx.chest(); return true;
+  }
+  if (t === 'witchhut' || t === 'scholar' || t === 'shrine') {
+    const nm = { witchhut: 'The Witch Hut', scholar: 'The Scholar', shrine: 'The Shrine' }[t]; if (!once(nm)) return true;
+    const ch = t === 'witchhut' ? CR.witchChoices(R, o.id, crownCtx(hr)) : t === 'scholar' ? CR.scholarChoices(R, o.id, crownCtx(hr)) : CR.shrineChoices(R, o.id, crownCtx(hr));
+    if (!ch.length) { toast(`${nm} has nothing to teach you.`); return true; }
+    CUI.choice({ title: nm.replace(/^The /, ''), sub: t === 'witchhut' ? 'The witch offers to teach one skill.' : t === 'scholar' ? 'The scholar offers one lesson.' : 'Kneel and learn one spell, for good.', icon: t === 'witchhut' ? 'sorcery' : t === 'scholar' ? 'wisdom' : 'spellbook', choices: ch, onPick: (c) => { o.done = true; return crownGive(c, hr); } });
+    return true;
+  }
+  if (t === 'seer') {
+    const q = CR.seerQuest(R, o.id, meta), P = G.players[0];
+    if (q.done) { toast("The seer has nothing more for you."); return true; }
+    const can = Object.entries(q.need).every(([k, n]) => P.res[k] >= n);
+    CUI.notice({ icon: 'scouting', title: "Seer's Hut", sub: 'A quest', body: `<p>"Bring me ${Object.entries(q.need).map(([k, n]) => `<b>${fmt(n)} ${k}</b>`).join(' and ')}, and this is yours."</p>`, card: { kind: 'artifact', id: q.reward },
+      buttons: can ? [['Hand them over', () => { for (const [k, n] of Object.entries(q.need)) P.res[k] -= n; q.done = true; crownGive({ kind: 'artifact', id: q.reward }, hr); }, 'gold'], ['Later', null, 'ghost']] : [['I will return', null, 'gold']] });
+    return true;
+  }
+  if (t === 'merchant' || t === 'blackmarket') {
+    const black = t === 'blackmarket', P = G.players[0];
+    o.stock = o.stockWeek === CR.week(G.day) && o.stock ? o.stock : CR.merchantStock(R, o.id, G.day, meta, black); o.stockWeek = CR.week(G.day);
+    for (const it of o.stock) CR.discover(meta, 'artifact', it.id);
+    CUI.merchant(R, { title: black ? 'Black Market' : 'Artifact Merchant', black, stock: o.stock, gold: () => P.res.gold,
+      onBuy: (it) => { if (P.res.gold < it.price) return false; P.res.gold -= it.price; crownGive({ kind: 'artifact', id: it.id }, hr); return true; },
+      sellList: () => R.backpack.map((inst, i) => ({ inst, i, price: CR.sellPrice(inst.id) })),
+      onSell: (e) => { const i = R.backpack.indexOf(e.inst); if (i < 0) return false; R.backpack.splice(i, 1); P.res.gold += e.price; updateHud(); return true; },
+      onClose: () => { saveMeta(); updateHud(); } });
+    return true;
+  }
+  if (t === 'tradingpost') {
+    const P = G.players[0];
+    CUI.tradingPost({ res: () => P.res, trade: (k, d) => { const T = CR.TRADE[k]; if (d === 'buy') { if (P.res.gold < T.buy) return false; P.res.gold -= T.buy; P.res[k]++; } else { if (P.res[k] < 1) return false; P.res[k]--; P.res.gold += T.sell; } updateHud(); return true; }, onClose: () => updateHud() });
+    return true;
+  }
+  if (t === 'grail') {
+    take(); R.forge = true; if (seen[v]) fx.burst('artifact', posOf(v), { scale: 1.6 });
+    CUI.notice({ icon: 'victory', title: 'The Grail!', sub: 'One per world', body: `<p>Your masons raise the <b>Crown Forge</b> in ${capital()?.name || 'your capital'}: creature growth <b>+50%</b>, <b>two buildings a day</b>, and <b>+1,000 gold</b> every day.</p>`, sound: 'fanfare' });
+    return true;
+  }
+  const km = /^keymaster(\d)$/.exec(t), bg = /^border(\d)$/.exec(t);
+  if (km) {
+    const reg = +km[1];
+    if (reg !== R.region) { toast(reg < R.region ? 'You already hold this key.' : 'This tent lies beyond your reach.'); return true; }
+    const r = CR.takeKey(R);
+    if (r === 'crown') { sfx.victory(); crownEnd(''); return true; }
+    if (r === 'key') {
+      for (const x of G.objects) if (x.alive && x.type === `border${reg}`) removeObject(x);
+      worldDirty = true; save();
+      CUI.notice({ icon: 'lock', title: `The ${['Red', 'Blue', 'Green', 'Violet', 'Amber', 'White'][reg - 1]} Key`, sub: `Keymaster's Tent of region ${reg}`, body: `<p>The keymaster bows. The Border Guards of region ${reg} stand aside: <b>region ${R.region}</b> is open. Its Legendary Hero, <b>${CR.GUARDIANS[R.guardians[R.region - 1]].name}</b>, waits beyond.</p>`, sound: 'fanfare' });
+    }
+    return true;
+  }
+  if (bg) { toast(`${icon('lock', 18)} The Border Guard will not let you pass without the key from the Keymaster's Tent of region ${bg[1]}.`); return true; }
+  return false;
+}
+// dawn: daily income from artifacts and the Crown Forge; the week's invasion is telegraphed on day 4 and marches
+// on your capital; it fights your hero if it reaches him, else your walls at the end of day 7
+function crownDawn() {
+  const R = G.run; if (!R || R.over || G.over) return;
+  const P = G.players[0], inc = CR.dailyIncome(R);
+  for (const k of Object.keys(inc)) if (inc[k]) P.res[k] += inc[k];
+  const hr = runHero(), cap = capital();
+  if (!hr?.alive) { crownEnd(`${hr?.name || 'Your hero'} is gone`); return; }
+  if (!cap) { crownEnd('Your capital has fallen'); return; }
+  const due = CR.invasionDue(R, G.day);
+  if (due.warn && !R.invasion) crownInvade(due, cap);
+  const o = invObj();
+  if (!o || !o.alive) { if (R.invasion && !o?.alive) R.invasion = null; return; }
+  // march: a straight walk toward the capital (around water, mountains and objects), paced to stand at your walls on the
+  // dawn after its arrival day (the warning counts down to "tonight")
+  const path = crownPath(o.v, cap.v), left = Math.max(1, R.invasion.arrive - G.day + 2);
+  if (path && path.length > 2) {
+    const steps = Math.ceil((path.length - 2) / left);
+    let to = -1; for (let i = Math.min(steps, path.length - 2); i >= 1; i--) if (objAt[path[i]] < 0 && !heroAt(path[i])) { to = path[i]; break; }
+    if (to >= 0) { objAt[o.v] = -1; o.v = to; objAt[to] = o.id; worldDirty = true; }
+  }
+  const near = (a, b) => a === b || NBR[a].includes(b);
+  if (near(o.v, hr.v)) { afterDialogs(() => { if (o.alive && G.mode === 'map') crownInvaded(o, 'field'); }); return; }
+  if (G.day > R.invasion.arrive) afterDialogs(() => { if (o.alive && G.mode === 'map') crownInvaded(o, 'siege'); });
+}
+function crownPath(from, to) {
+  const prev = new Map([[from, -1]]), q = [from];
+  for (let i = 0; i < q.length; i++) { const x = q[i]; if (x === to) break; for (const n of NBR[x]) if (!prev.has(n) && passable(n) && (n === to || !(objAt[n] >= 0 && G.objects[objAt[n]].alive && G.objects[objAt[n]].type === 'town'))) { prev.set(n, x); q.push(n); } }
+  if (!prev.has(to)) return null;
+  const p = []; for (let x = to; x !== -1; x = prev.get(x)) p.unshift(x); return p;
+}
+function crownInvade(due, cap) {
+  const R = G.run, rival = G.players.find((p) => p.ai && p.alive);
+  const inv = CR.invasionArmy(R, due.week, rival?.fac || null);
+  // they come from the open frontier: the free cell of the open regions farthest from your capital
+  const D = new Map([[cap.v, 0]]), q = [cap.v];
+  for (let i = 0; i < q.length; i++) { const x = q[i]; for (const n of NBR[x]) if (!D.has(n) && passable(n) && regionOf[n] < R.region) { D.set(n, D.get(x) + 1); q.push(n); } }
+  let v = -1, best = -1; for (const [x, d] of D) if (d > best && objAt[x] < 0 && !heroAt(x) && !NBR[x].some((n) => objAt[n] >= 0 && G.objects[objAt[n]].type === 'monster')) { best = d; v = x; }
+  if (v < 0) return;
+  const lead = inv.army.slice().sort((a, b) => UNITS[b[0]].tier - UNITS[a[0]].tier)[0][0];
+  const o = addObject('monster', v, { unit: lead, n: inv.army.reduce((a, s) => a + s[1], 0), army: inv.army, ghero: inv.hero, invasion: { week: due.week }, refused: true });
+  const a = posOf(v), c = posOf(cap.v), dir = CR.directionWord(a.x - c.x, a.z - c.z);
+  R.invasion = { obj: o.id, week: due.week, arrive: due.arrive, dir, army: inv };
+  bumpWarm('battle', inv.army.map((s) => s[0]));
+  worldDirty = true; reveal(v, 2);
+  afterDialogs(() => { flyTo(v, 10); CUI.invasionCard(R, inv, { days: due.arrive - G.day, dir, onFly: () => flyTo(v, 9), onClose: () => { const hr = runHero(); if (hr) flyTo(hr.v, 10); } }); });
+  crownHud();
+}
+// the invasion strikes: your hero (in the field, or inside / beside the capital), else the capital's garrison alone
+function crownInvaded(o, how) {
+  const R = G.run, hr = runHero(), cap = capital(); if (!hr || !cap) return;
+  const heroHome = hr.v === cap.v || NBR[cap.v].includes(hr.v);
+  if (how === 'field' || heroHome) { CUI.invasionCard(R, R.invasion.army, { days: 0, dir: R.invasion.dir, onFight: () => startBattle(hr, { kind: 'monster', obj: o }) }); return; }
+  // the garrison holds the walls, and the townsfolk take up arms: creatures still waiting in the dwellings fight too
+  const def = (cap.garrison || []).filter((s) => s && s[1] > 0).map((s) => [...s]), nGar = def.length, folk = [];
+  for (const [tier, n] of Object.entries(cap.avail || {})) if (n > 0 && def.length < 7) { const id = FACTIONS[cap.fac].units[tier - 1]; folk.push([def.length, tier]); def.push([id, n]); }
+  let held = false;
+  if (def.length) {
+    const B = BT.createBattle({ armyA: def, armyB: o.army, heroB: o.ghero, town: { fort: cap.built.includes('fort'), side: 0, power: Math.max(2, cap.built.length / 2) } });
+    BT.autoResolve(B); held = B.over.winner === 0;
+    const left = new Map(B.stacks.filter((x) => x.side === 0).map((x) => [x.slot, x.count]));
+    cap.garrison = def.slice(0, nGar).map((s, i) => (left.get(i) > 0 ? [s[0], left.get(i)] : null));
+    for (const [slot, tier] of folk) cap.avail[tier] = left.get(slot) || 0;
+  }
+  if (held) { removeObject(o); R.invasion = null; R.invasionsBeaten++; R.stats.invasions.push(o.invasion.week); toast(`${icon('fort', 18)} The walls of ${cap.name} hold: the invasion is broken.`); sfx.victory(); crownHud(); return; }
+  R.over = true; R.won = false; crownEnd(`${cap.name} fell to the invasion`);
+}
+function crownEnd(reason = '') {
+  const R = G.run; if (!R || R.ended) return;
+  R.over = true; R.ended = true; G.over = true; stopAI();
+  const hr = runHero(), meta = crownMeta();
+  const res = CR.endRun(R, meta, { armyPower: hr && hr.alive ? BT.armyPower(heroArmy(hr), heroBattle(hr)) : 0, gold: G.players[0].res.gold });
+  saveMeta(); store.del('realms.save'); crownHud();
+  CUI.endScreen(R, res, meta, { reason, onNew: () => crownStart(), onCollection: () => CUI.collection(meta, { onClose: () => showMenu() }), onTitle: () => showMenu() });
+}
+// a new run: hero background and difficulty, then a full map banded into regions out from your capital
+function crownStart() {
+  const meta = crownMeta();
+  const go = () => { fadeHide($('menu')); CUI.heroPick(meta, { onStart: crownNew, onBack: () => fadeShow($('menu')), onCollection: () => CUI.collection(meta, { onClose: () => fadeShow($('menu')) }) }); };
+  if (store.get('realms.save', null) && G.mode === 'menu') { ask('Start a Crown Run?', '<p>Your saved game will be replaced when the run begins.</p>', [['Start the run', go], ['Keep my game', null]]); return; }
+  go();
+}
+function crownNew({ background, diff, fac }) {
+  crownQ.length = 0;
+  const seed = (Date.now() % 100000) + 1, meta = crownMeta();
+  newWorld(seed, 1, fac, { mode: 'crown', opponents: [{ fac: 'random', col: -1 }], size: 'M', res: 1, fog: true, win: 'conquer' });
+  const R = CR.newRun({ seed, background, diff, fac, meta });
+  const hr = G.heroes.find((x) => x.p === 0), cap = capital(), riv = G.towns.find((t) => t.p === 1);
+  R.hero = hr.id;
+  for (const st of hr.army) if (st) st[1] = Math.max(1, Math.round(st[1] * R.originFx.armyMul));
+  for (const k of RES) G.players[0].res[k] = Math.round(G.players[0].res[k] * R.originFx.resMul);
+  G.players[0].res.gold += R.originFx.gold;
+  if (R.originFx.fort && !cap.built.includes('fort')) cap.built.push('fort');
+  if (background === 'scholar') { cap.built.push('mage1'); hr.skills.wisdom = 1; for (const s of ['stoneskin', 'haste']) if (!hr.spells.includes(s)) hr.spells.push(s); }
+  for (const id of CR.equippedIds(R)) CR.discover(meta, 'artifact', id);
+  // regions: bands of walking distance from your capital up to the rival's homeland (the last band), walled, with gates
+  const D = Math.max(12, cellSteps(cap.v, riv ? riv.v : cap.v));
+  R.regionsAt = { from: cap.v, bands: Array.from({ length: R.regions }, (_, i) => Math.round(D * (0.3 + 0.5 * i / Math.max(1, R.regions - 1)) * 0.95)) };
+  const gates = markRegions({ from: cap.v, bands: R.regionsAt.bands, wall: true, per: 2, walkOnly: true });
+  R.regionMap = Array.from(regionOf.subarray(0, NV)).join(''); // (walking bands change once the walls stand: keep the map)
+  G.run = R;
+  crownPlace(R, cap, gates);
+  play(); save(); crownHud();
+  setTimeout(() => CUI.guardianCard(R, 1, CR.guardianArmy(R, 1), { onClose: () => { const g = G.objects.find((x) => x.alive && x.guardian?.region === 1); if (g) { flyTo(g.v, 9); setTimeout(() => flyTo(hr.v, 10), 2200); } } }), 900);
+}
+// hex steps between two cells (the region bands are in steps)
+function cellSteps(a, b) { let d = 0; const seen0 = new Set([a]); let fr = [a]; while (fr.length && d < 400) { if (fr.includes(b)) return d; const nx = []; for (const v of fr) for (const n of NBR[v]) if (!seen0.has(n)) { seen0.add(n); nx.push(n); } fr = nx; d++; } return d; }
+// the run's sites: Border Guards on the gates, a Keymaster's Tent and its Legendary Hero deep in each region, the
+// Grail, merchants, the Trading Post and sites with choices; chests, artifacts and shrines already on the map join in
+function crownPlace(R, cap, gates) {
+  // walking distance from the capital through the regions open so far (a region's cells walled off from it never count)
+  const walk = (ri) => { const D = new Map([[cap.v, 0]]), q = [cap.v]; for (let i = 0; i < q.length; i++) { const x = q[i]; for (const n of NBR[x]) if (!D.has(n) && passable(n) && regionOf[n] <= ri) { D.set(n, D.get(x) + 1); q.push(n); } } return D; };
+  const Ds = Array.from({ length: R.regions }, (_, ri) => walk(ri));
+  let D = Ds[0];
+  const free = (v) => objAt[v] < 0 && !road[v] && !heroAt(v) && NBR[v].every((n) => objAt[n] < 0) && NBR[v].filter((n) => passable(n)).length >= 3;
+  const spotIn = (ri, where = 'mid', ok = () => true) => {
+    const c = [...D].filter(([v]) => regionOf[v] === ri && free(v) && v !== cap.v && ok(v)).sort((a, b) => a[1] - b[1]); if (!c.length) return -1;
+    const n = c.length, [lo, hi] = where === 'near' ? [0, n / 3] : where === 'far' ? [n * 2 / 3, n] : [n / 4, n * 3 / 4];
+    return c[Math.min(n - 1, Math.floor(lo + rnd() * Math.max(1, hi - lo)))][0];
+  };
+  for (const g of gates) {
+    if (g.b !== g.a + 1 || g.a >= R.regions - 1) continue;
+    const at = objAt[g.v] < 0 ? g.v : objAt[g.u] < 0 ? g.u : g.v;
+    if (objAt[at] >= 0) removeObject(G.objects[objAt[at]]);
+    addObject(`border${g.a + 1}`, at);
+  }
+  for (let ri = 0; ri < R.regions; ri++) {
+    D = Ds[ri];
+    // the tent stands deep in the region with room around it: its Legendary Hero camps on a neighbouring hex of the
+    // same region, and that hex can be reached from inside the region (never from behind the next wall)
+    const inReg = (n) => passable(n) && objAt[n] < 0 && D.has(n) && regionOf[n] === ri;
+    const reg = ri + 1, tv = spotIn(ri, 'far', (v) => NBR[v].filter(inReg).length >= 3); if (tv < 0) continue;
+    addObject(`keymaster${reg}`, tv);
+    const GA = CR.guardianArmy(R, reg), gv = NBR[tv].filter(inReg).sort((a, b) => D.get(a) - D.get(b))[0];
+    if (gv != null) { const lead = GA.army.slice().sort((a, b) => UNITS[b[0]].tier - UNITS[a[0]].tier)[0][0]; addObject('monster', gv, { unit: lead, n: GA.army.reduce((a, s) => a + s[1], 0), army: GA.army, ghero: GA.hero, guardian: { id: R.guardians[ri], region: reg }, guards: tv, refused: true }); }
+    const put = (type, where, g) => { const v = spotIn(ri, where); if (v >= 0) { addObject(type, v); if (g) guard(v, g); } };
+    if (ri === 0) { put('merchant', 'near'); put('tradingpost', 'near'); put('seer', 'mid'); }
+    if (ri === 1) { put('blackmarket', 'mid', 0.35); put('grail', 'far', 0.75); put('seer', 'mid'); }
+    put('witchhut', 'mid', ri ? 0.3 : 0); put('scholar', 'mid', 0.2 + 0.15 * ri);
+    put('pandora', 'mid', 0.35 + 0.2 * ri); put('pandora', 'far', 0.45 + 0.2 * ri);
+  }
+  // keep the way open: each region's Legendary Hero and Border Guards must be reachable from the capital through the
+  // regions open by then; treasure, wandering monsters or guards that wall a corridor off are cleared away
+  const keep = (o) => o.guardian || o.invasion || /^(border|keymaster)/.test(o.type) || o.type === 'town' || ['merchant', 'blackmarket', 'tradingpost', 'seer', 'grail'].includes(o.type);
+  const blocked = (v) => objAt[v] >= 0 && G.objects[objAt[v]].alive;
+  for (let ri = 0; ri < R.regions; ri++) {
+    const inR = (n) => passable(n) && regionOf[n] <= ri;
+    const targets = G.objects.filter((o) => o.alive && ((o.guardian && o.guardian.region === ri + 1) || o.type === `border${ri + 1}`));
+    for (const t of targets) {
+      const seen0 = new Set([cap.v]), q = [cap.v];
+      for (let i = 0; i < q.length; i++) for (const n of NBR[q[i]]) if (!seen0.has(n) && inR(n) && !blocked(n)) { seen0.add(n); q.push(n); }
+      if (NBR[t.v].some((n) => seen0.has(n))) continue;
+      const prev = new Map([[cap.v, -1]]), q2 = [cap.v]; let end = -1;
+      for (let i = 0; i < q2.length && end < 0; i++) for (const n of NBR[q2[i]]) { if (prev.has(n) || !inR(n)) continue; prev.set(n, q2[i]); q2.push(n); if (NBR[t.v].includes(n) && n !== t.v) { end = n; break; } }
+      for (let x = end; x >= 0 && x !== cap.v; x = prev.get(x)) if (blocked(x) && !keep(G.objects[objAt[x]])) removeObject(G.objects[objAt[x]]);
+    }
+  }
+}
+// a tap on a run site names it (the classic describe() only knows the data.js objects)
+function crownDescribe(o) {
+  const R = G.run;
+  if (o.type === 'monster' && o.guardian) { const Gd = CR.GUARDIANS[o.guardian.id]; toast(`${icon(Gd.icon, 18)} <b>${Gd.name}</b>, ${Gd.title} · ${Gd.rule}`); return true; }
+  if (o.type === 'monster' && o.invasion) { toast(`${icon('attack', 18)} <b>Invasion</b> · ${R.invasion ? `${R.invasion.arrive - G.day} day(s) from your walls` : 'marching'}`); return true; }
+  const km = /^keymaster(\d)$/.exec(o.type), bg = /^border(\d)$/.exec(o.type);
+  const S = { pandora: ['chest', "Pandora's Box", 'Choose one of its gifts'], witchhut: ['sorcery', 'Witch Hut', 'Learn one of three skills'], scholar: ['wisdom', 'Scholar', 'One lesson: a stat, a skill or a spell'], seer: ['scouting', "Seer's Hut", 'A quest for a Major artifact'],
+    merchant: ['market', 'Artifact Merchant', 'Buy and sell artifacts'], blackmarket: ['tavern', 'Black Market', 'Rare artifacts at a premium'], tradingpost: ['market', 'Trading Post', 'Resources for gold'], grail: ['victory', 'The Grail', 'Raise the Crown Forge in your capital'] }[o.type];
+  if (S) { toast(`${icon(S[0], 18)} <b>${S[1]}</b> · ${S[2]}${o.done ? ' (visited)' : ''}`); return true; }
+  if (km) { toast(`${icon('lock', 18)} <b>Keymaster's Tent</b> · ${+km[1] >= R.regions ? 'the Crown' : `the key to region ${+km[1] + 1}`}`); return true; }
+  if (bg) { toast(`${icon('lock', 18)} <b>Border Guard</b> · needs the key of region ${bg[1]}`); return true; }
+  if (o.type === 'chest' || o.type === 'artifact' || o.type === 'shrine') { toast(`${icon(o.type === 'shrine' ? 'spellbook' : o.type, 18)} <b>${o.type === 'chest' ? 'Treasure Chest' : o.type === 'artifact' ? 'Artifact' : 'Shrine'}</b> · ${o.type === 'chest' ? 'gold, experience or a trinket' : o.type === 'shrine' ? 'learn one of three spells' : 'unknown until you take it'}`); return true; }
+  return false;
+}
+function crownResume() {
+  crownQ.length = 0;
+  if (!load()) return;
+  const R = G.run;
+  if (R?.regionMap) { regionOf.fill(0); for (let v = 0; v < R.regionMap.length; v++) regionOf[v] = R.regionMap.charCodeAt(v) - 48; } // (the walls are in ter)
+  play(); crownHud();
+}
+window.CrownRun = { start: crownStart, resume: crownResume };
+// test hooks (crown bot / node-free checks)
+Object.assign(window.__realms, { crown: { CR, get CUI() { return CUI; }, UNITS, meta: crownMeta, regionOf, get run() { return G.run; }, crownInteract, crownDoll, crownInvade, crownInvaded, capital } });
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
 Object.assign(window.__realms, { quality: QG.state, renderer });
+// flat world (agent "flat"): grid + regions API for other modes / tests. GRID changes with the map size, so it is a getter.
+Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get GRID() { return GRID; }, get NV() { return NV; }, cellDist, posOf, setGrid, generate, makeGrid, MAP_PRESETS, markRegions, regionOf, regionsVoronoi, regionsBands, regionGates, pickCell, mini, h, road, TERRAIN, floraStats: () => { let n = 0, sets = 0; for (const S of floraSets.values()) { if (S.im?.count) { sets++; n += S.im.count; } } return { sets, drawn: n, chunks: floraVis.chunks.length }; } }));
 Object.assign(window.__realms, { prewarmProfile: () => loadProf, postQueue: () => postQ.map((j) => j.label), bumpWarm });
 // battle test hooks (battle-flow logs / soft-lock runs): fast-forward the battle without rendering
 Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get bmesh() { return bmesh; }, get banim() { return banim; }, bstep: (dt) => { if (!bprep) { animateBattle(dt); vfx.update(dt, bcam); } } }));
