@@ -42,6 +42,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg0); 
   user-select: none; -webkit-user-select: none; touch-action: none; -webkit-font-smoothing: antialiased; }
 #app { position: fixed; inset: 0; }
 canvas { display: block; touch-action: none; }
+/* the 3D view always fills the screen; its drawing buffer is resized by main.js (debounced while the mobile toolbar slides) */
+#app > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; touch-action: manipulation; }
 button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 [hidden] { display: none !important; }
@@ -311,6 +313,12 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 .bq .q img.pt { border-radius: 10px; }
 .bq .q b { --ol: #000; position: absolute; right: 1px; bottom: -1px; font-size: 11px; font-weight: 900; color: #fff; }
 .bq .q:nth-child(n + 6) { opacity: 0.85; }
+/* turn strip motion (main.js renderQueue): the acting stack's icon collapses away and the rest slide along, the new
+   head grows into its larger 'now' size, new icons grow in at the tail; the negative margin eats the flex gap */
+.bq .q { transition: width 0.28s ease, height 0.28s ease, margin 0.28s ease, opacity 0.24s ease, transform 0.28s ease, box-shadow 0.28s ease; }
+.bq .q.gone, .bq .q.in { width: 0; margin: 0 -5px 0 0; opacity: 0; transform: scale(0.5); overflow: hidden; pointer-events: none; }
+.bq .q.gone::after { display: none; }
+@media (prefers-reduced-motion: reduce) { .bq .q { transition: none; } }
 .bbot { position: absolute; left: calc(var(--safe-l) + var(--gut)); right: calc(var(--safe-r) + var(--gut)); bottom: calc(var(--safe-b) + var(--gut) + 10px); pointer-events: auto; }
 /* the status line is a parchment scroll */
 #b-msg { display: block; margin: 0 auto 14px; max-width: 100%; width: fit-content; min-height: 38px; padding: 7px 16px; border-radius: 12px;
@@ -629,7 +637,10 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
   .card { max-height: calc(92vh - 16px); max-height: calc(92dvh - 16px); }
   .card.wide { width: min(520px, 100%); }
   .burst { height: 84px; }
-  .btop { right: auto; width: min(560px, calc(100% - 12px)); }
+  /* one row (title | turn queue): the top bar leaves the battlefield ~35px more height (main.js frames the grid in the free band) */
+  .btop { right: auto; width: min(620px, calc(100% - var(--safe-l) - var(--safe-r) - 12px)); flex-wrap: nowrap; padding: 4px 10px 14px; }
+  .btop b { flex: 0 1 auto; max-width: 34%; }
+  .bq { flex: 1 1 0; min-width: 0; margin-top: 0; padding: 4px 4px 5px; }
   .bbot { display: flex; align-items: flex-end; gap: 12px; }
   #b-msg { flex: 1; margin: 0 0 10px; width: auto; }
   .bbot .btns { flex: none; width: min(360px, 48vw); }
@@ -669,3 +680,47 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 #bcurtain .ic { filter: drop-shadow(0 4px 0 rgba(10, 6, 30, 0.55)); animation: bcur 0.7s ease-in-out infinite alternate; will-change: transform; }
 @keyframes bcur { from { transform: scale(0.9) rotate(-5deg); } to { transform: scale(1.06) rotate(5deg); } }
 @media (prefers-reduced-motion: reduce) { #bcurtain .ic { animation: none; } }
+
+/* ------------------------------------------------------------ feel layer (r2): transitions, pickups, day/night */
+/* screen-to-screen: layers fade instead of cutting (main.js fadeHide/fadeShow, prewarm loader, HUD re-entry) */
+.menu:not([hidden]) { animation: fadein 0.32s ease-out; }
+.menu.fading, .factions.fading { pointer-events: none; animation: fadeout 0.28s ease-in forwards; }
+#loader:not([hidden]):not(.done) { animation: fadein 0.25s ease-out; }
+#hud:not([hidden]) { animation: fadein 0.3s ease-out; }
+/* battle exit: a plain dark dip (no crest); .snap = appear at once (Quick resolve), then fade off as usual */
+#bcurtain.exit .ic { display: none; }
+#bcurtain.exit.on { transition-duration: 0.26s; transition-timing-function: ease-in; }
+#bcurtain.snap { transition: none !important; }
+/* damage numbers: bigger for heavy / killing / lucky blows */
+.floater.big { font-size: 26px; }
+/* resources flying to the HUD (main.js flyRes) and the counter's catch */
+.flyres { position: absolute; left: 0; top: 0; line-height: 0; pointer-events: none; will-change: transform, opacity; filter: drop-shadow(0 2px 0 rgba(10, 6, 30, 0.5)) drop-shadow(0 0 6px rgba(255, 220, 120, 0.6)); }
+.rc.land > i:first-child { animation: rcland 0.22s ease-out; }
+@keyframes rcland { 40% { transform: scale(1.22); filter: brightness(1.5); } }
+/* day / night (main.js dayFx): dusk vignette + moon while the enemy moves; sun sweep + day banner at dawn */
+#daycyc { position: fixed; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
+#daycyc.off { display: none; }
+#daycyc::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.7s ease;
+  background: radial-gradient(ellipse 120% 85% at 50% 45%, rgba(8, 12, 48, 0) 40%, rgba(6, 8, 36, 0.6) 100%), rgba(16, 22, 80, 0.14); }
+#daycyc.night::before { opacity: 1; }
+.dc-orb { position: absolute; left: 50%; top: calc(var(--safe-t) + 132px); width: 42px; height: 42px; margin-left: -21px; border-radius: 50%; opacity: 0;
+  transform-origin: 50% 280px; transform: rotate(-70deg); will-change: transform, opacity; }
+/* the moon rises while the enemy moves and keeps travelling (and fades) when the night ends */
+.dc-orb.dc-moon { width: 34px; height: 34px; margin-left: -17px; background: radial-gradient(circle at 36% 34%, #ffffff, #e2e8ff 45%, #9ba8d8);
+  box-shadow: 0 0 22px 6px rgba(170, 195, 255, 0.4), inset -8px -3px 0 rgba(60, 70, 130, 0.35); transform: rotate(-70deg); }
+#daycyc.night .dc-orb.dc-moon { transform: rotate(-36deg); opacity: 0.85; transition: transform 1.4s var(--ease), opacity 0.8s ease-out; }
+#daycyc.moonset .dc-orb.dc-moon { transform: rotate(-8deg); opacity: 0; transition: transform 1s ease-in, opacity 0.7s ease-in; }
+#daycyc.dawn .dc-orb:not(.dc-moon) { background: radial-gradient(circle, #fffbe0, #ffd84a 50%, #f59a1a); box-shadow: 0 0 30px 10px rgba(255, 200, 80, 0.5);
+  animation: dcsun 1.5s cubic-bezier(0.3, 0.1, 0.3, 1) forwards; }
+@keyframes dcsun { 0% { transform: rotate(-62deg) scale(0.7); opacity: 0; } 18% { opacity: 1; } 70% { opacity: 1; } 100% { transform: rotate(58deg) scale(1); opacity: 0; } }
+.dc-ban { position: absolute; left: 50%; top: calc(var(--safe-t) + 112px); display: flex; flex-direction: column; align-items: center; opacity: 0; white-space: nowrap; transform: translateX(-50%); }
+.dc-ban small { font-size: 11px; font-weight: 900; letter-spacing: 0.24em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 0 var(--ink), 0 0 3px var(--ink); }
+.dc-ban b { font-family: 'Cinzel', Georgia, serif; font-size: 34px; font-weight: 900; letter-spacing: 0.08em; color: #ffe27a;
+  text-shadow: 0 3px 0 #24140a, 0 0 2px #24140a, 0 0 2px #24140a, 0 6px 14px rgba(0, 0, 0, 0.45); }
+#daycyc.dawn .dc-ban { animation: dcban 1.7s var(--ease) 0.15s forwards; }
+@keyframes dcban { 0% { opacity: 0; transform: translate(-50%, 12px) scale(0.86); } 16% { opacity: 1; transform: translate(-50%, 0) scale(1.05); } 28% { transform: translate(-50%, 0) scale(1); } 74% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -10px) scale(1); } }
+#daycyc.week .dc-ban b { font-size: 42px; }
+#daycyc.week::after { content: ''; position: absolute; left: 50%; top: calc(var(--safe-t) + 135px); width: 360px; height: 360px; margin: -180px 0 0 -180px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, rgba(255, 226, 122, 0.55), rgba(255, 200, 80, 0) 65%); animation: dcweek 1.6s ease-out 0.1s forwards; }
+@keyframes dcweek { 0% { opacity: 0; transform: scale(0.4); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
+@media (prefers-reduced-motion: reduce) { .flyres, .dc-orb, .dc-ban, #daycyc::after { display: none; } }

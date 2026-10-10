@@ -555,18 +555,29 @@ export function createScore(ac, out) {
 
   // ---- sample bank
   const bank = {}, loading = {};
-  async function decode(ab) { return await new Promise((res, rej) => { const p = ac.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }); }
-  function load(name) {
+  // decodeAudioData runs off the main thread, but ~160 notes decoding at once still flood a phone's few cores
+  // (and its memory) right when the loader builds the world; a small pool keeps it a steady trickle
+  let decoding = 0; const dq = [];
+  function pump() {
+    while (decoding < 3 && dq.length) {
+      const [ab, res, rej] = dq.shift(); let fin = false; decoding++;
+      const done = (f) => (x) => { if (fin) return; fin = true; decoding--; f(x); pump(); };
+      const ok = done(res), bad = done(rej);
+      try { const p = ac.decodeAudioData(ab, ok, bad); if (p && p.then) p.then(ok, bad); } catch (e) { bad(e); }
+    }
+  }
+  const decode = (ab, urgent) => new Promise((res, rej) => { dq[urgent ? 'unshift' : 'push']([ab, res, rej]); pump(); });
+  function load(name, urgent) {
     if (loading[name]) return loading[name];
     return (loading[name] = (async () => {
       const ab = await (await fetch(AUDIO + name + '.bin')).arrayBuffer();
       const hl = new DataView(ab).getUint32(0, true), h = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, hl)));
-      const notes = await Promise.all(h.notes.map(async ([m, off, len]) => ({ m, buf: await decode(ab.slice(4 + hl + off, 4 + hl + off + len)) })));
+      const notes = await Promise.all(h.notes.map(async ([m, off, len]) => ({ m, buf: await decode(ab.slice(4 + hl + off, 4 + hl + off + len), urgent) })));
       bank[name] = notes.sort((a, b) => a.m - b.m);
     })().catch((e) => { delete loading[name]; throw e; }));
   }
   const ready = (list) => list.every((n) => bank[n]);
-  const ensure = (list) => Promise.all(list.map(load));
+  const ensure = (list, urgent) => Promise.all(list.map((n) => load(n, urgent)));
 
   // ---- decks: one playing piece each, crossfaded
   let decks = [], running = false, timer = null, scene = 'map', fac = 'haven', want = 0, back = null;
@@ -674,21 +685,22 @@ export function createScore(ac, out) {
       decks.push(d); tick();
       prefetch();
     };
-    if (ready(C.inst)) go(); else ensure(C.inst).then(go, () => {});
+    if (ready(C.inst)) go(); else ensure(C.inst, true).then(go, () => {});
   }
   let prefetched = false;
-  function prefetch() { // warm the rest of this faction's music in the background, one file at a time
-    if (prefetched) return; prefetched = true;
+  function prefetch(f = fac) { // warm the rest of this faction's music in the background, one file at a time
+    if (prefetched === f) return; prefetched = f;
     const names = new Set();
-    for (const s of ['map', 'town', 'battle', 'victory', 'defeat']) for (const n of compile(pieceFor(s, fac)).inst) names.add(n);
+    // battle and the stingers first: a battle can start at any moment and must not wait for its samples
+    for (const s of ['battle', 'victory', 'defeat', 'map', 'town']) for (const n of compile(pieceFor(s, f)).inst) names.add(n);
     let chain = Promise.resolve();
     for (const n of names) chain = chain.then(() => load(n)).catch(() => {});
-    chain.then(() => { prefetched = false; });
+    chain.then(() => { if (prefetched === f) prefetched = false; });
   }
 
   function setScene(sc, f) {
     if (!SCENES.includes(sc)) sc = 'map';
-    if (f && THEMES[f]) { if (f !== fac) prefetched = false; fac = f; }
+    if (f && THEMES[f]) fac = f;
     const cur = decks.find((d) => d.stopAt === Infinity);
     if (sc === 'victory' || sc === 'defeat') {
       const resume = scene === 'victory' || scene === 'defeat' ? 'map' : scene === 'battle' ? 'map' : scene;
@@ -704,13 +716,17 @@ export function createScore(ac, out) {
     if (running) cue();
   }
 
+  // freeze a param at its current (possibly mid-ramp) value before a new ramp, so a ramp never starts with a jump
+  function hold(p, now) {
+    if (p.cancelAndHoldAtTime) { try { p.cancelAndHoldAtTime(now); return; } catch { /* fall through */ } }
+    const v = p.value; p.cancelScheduledValues(now); p.setValueAtTime(v, now);
+  }
   const api = {
     start() {
       if (running) return;
       running = true;
       const now = clock();
-      master.gain.cancelScheduledValues(now); master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), now);
-      master.gain.linearRampToValueAtTime(1, now + 2);
+      hold(master.gain, now); master.gain.linearRampToValueAtTime(1, now + 2);
       if (!decks.some((d) => d.stopAt === Infinity)) cue();
       if (!timer && typeof setInterval === 'function') timer = setInterval(tick, 200);
     },
@@ -718,8 +734,7 @@ export function createScore(ac, out) {
       if (!running) return;
       running = false; want++;
       const now = clock();
-      master.gain.cancelScheduledValues(now); master.gain.setValueAtTime(master.gain.value, now);
-      master.gain.linearRampToValueAtTime(0.0001, now + 1);
+      hold(master.gain, now); master.gain.linearRampToValueAtTime(0.0001, now + 1);
       for (const d of decks) { d.stopAt = Math.min(d.stopAt, now + 1); d.killAt = Math.min(d.killAt, now + 1.2); }
     },
     setScene,
@@ -730,6 +745,8 @@ export function createScore(ac, out) {
     get playing() { return running; },
     // load everything a scene needs (resolves when it can play)
     preload(sc = scene, f = fac) { return ensure(compile(pieceFor(sc, f)).inst); },
+    // decode a faction's map/town/battle/stinger samples in the background (call from the loading screen)
+    warm(f = fac) { if (THEMES[f]) prefetch(f); },
     // testing: drive the scheduler on a simulated clock (OfflineAudioContext)
     scheduleUntil(t) { const real = clock; for (let x = ac.currentTime; x <= t; x += 0.2) { clock = () => x; tick(); } clock = real; },
     _useClock(fn) { clock = fn; sim = true; },

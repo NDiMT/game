@@ -793,21 +793,40 @@ export function createVfx(THREE, scene) {
   const selMatG = selMatR.clone(); selMatG.map = ringTex;
   const selRune = new THREE.Mesh(planeGeo, selMatR), selGlow = new THREE.Mesh(planeGeo, selMatG);
   selRune.renderOrder = selGlow.renderOrder = 10; selRune.visible = selGlow.visible = false; root.add(selRune, selGlow);
-  const sel = { target: null, c: [2, 1.6, 0.5], t: 0, acc: 0 };
-  function select(target, color = 0xffd84a) {
-    sel.target = target || null;
-    const C = color && color.isColor ? color : new THREE.Color(color);
+  // feel: the ring eases in (swell from 0.6 with a slight overshoot) and out (shrink + fade at its last spot) instead of
+  // popping; switching stacks fades the old one out first, then eases in on the new one (~0.1 s + 0.2 s)
+  const sel = { target: null, c: [2, 1.6, 0.5], t: 0, acc: 0, a: 0, last: new THREE.Vector3(), has: false, next: null, nc: null };
+  const selRM = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  const selC = new THREE.Color();
+  function selColor(color) {
+    const C = color && color.isColor ? color : selC.set(color);
     sel.c = [C.r * 1.8, C.g * 1.8, C.b * 1.8];
     selMatR.color.setRGB(sel.c[0] * 0.75, sel.c[1] * 0.75, sel.c[2] * 0.75); selMatG.color.setRGB(sel.c[0], sel.c[1], sel.c[2]);
-    selRune.visible = selGlow.visible = !!target;
+  }
+  function select(target, color = 0xffd84a) {
+    target = target || null;
+    if (target === sel.target && target) { selColor(color); return; }
+    if (target && sel.target && sel.a > 0.05 && !selRM.matches) { sel.next = target; sel.nc = color; sel.target = null; return; } // fade out, then switch
+    sel.next = null;
+    if (target) { sel.target = target; selColor(color); sel.has = true; if (selRM.matches) sel.a = 1; }
+    else { sel.target = null; if (selRM.matches) sel.a = 0; }
   }
   function stepSelect(dt) {
-    if (!sel.target) return;
-    const p = posOf(sel.target); sel.t += dt;
+    if (!sel.has) return;
+    const inS = selRM.matches ? 0.01 : 0.2, outS = selRM.matches ? 0.01 : 0.1;
+    sel.a = sel.target ? Math.min(1, sel.a + dt / inS) : Math.max(0, sel.a - dt / outS);
+    if (!sel.target && sel.a <= 0) {
+      if (sel.next) { const n = sel.next; sel.next = null; sel.target = n; selColor(sel.nc); }
+      else { selRune.visible = selGlow.visible = false; sel.has = false; return; }
+    }
+    const p = sel.target ? sel.last.copy(posOf(sel.target)) : sel.last; sel.t += dt;
+    const a = sel.a, ea = sel.target ? 0.6 + 0.4 * a + 0.1 * Math.sin(a * Math.PI) : 0.75 + 0.25 * a;
+    selRune.visible = selGlow.visible = true;
     selRune.position.set(p.x, 0.045, p.z); selGlow.position.set(p.x, 0.05, p.z);
-    selRune.rotation.y += dt * 0.7; selRune.scale.setScalar(0.98);
+    selRune.rotation.y += dt * 0.7; selRune.scale.setScalar(0.98 * ea);
     const pu = Math.sin(sel.t * 4);
-    selGlow.scale.setScalar(0.98 + 0.05 * pu); selMatG.opacity = 0.75 + 0.25 * pu; selMatR.opacity = 0.9;
+    selGlow.scale.setScalar((0.98 + 0.05 * pu) * ea); selMatG.opacity = (0.75 + 0.25 * pu) * a; selMatR.opacity = 0.9 * a;
+    if (!sel.target) return;
     for (let j = rate(sel, 7, dt); j > 0; j--) { const a = rand() * TAU; emit(ADD, vec(p.x + Math.cos(a) * 0.4, 0.06, p.z + Math.sin(a) * 0.4), { v: vec(0, rr(0.3, 0.6), 0), c: sel.c, s0: rr(0.07, 0.12), s1: 0.02, life: rr(0.7, 1.1), fin: 0.2 }); }
   }
 
@@ -826,6 +845,7 @@ export function createVfx(THREE, scene) {
     for (const d of decals) { d.max = 0; d.m.visible = false; }
     for (const f of flashes) { f.max = 0; f.s.visible = false; }
     for (const c of columns) { c.max = 0; c.m.visible = false; }
+    sel.target = sel.next = null; sel.a = 0; sel.has = false; selRune.visible = selGlow.visible = false;
   }
   const busy = () => shots.length > 0 || dying.length > 0;
   return { projectile, hit, death, spell, sparkle, select, update, clear, busy, root, stats: () => ({ add: ADD.live, alpha: ALP.live, shots: shots.length }) };
