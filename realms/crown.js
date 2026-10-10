@@ -19,7 +19,7 @@ export const TUNE = {
   voucherCost: 10, scrollCost: 3, upgradeCost: 5, packCost: { war: 4, tome: 3, muster: 4 },
   cardMix: { banner: 70, scroll: 15, upgrade: 15 }, cardSlots: 3, slots: 5,
   musterShare: 0.12, chestSplit: { war: 35, tome: 25, muster: 40 },
-  region: { first: 10, band: 8 }, // fallback gates: grid distance from the capital per Ante
+  region: { first: 10, band: 8 }, // fallback gates: grid distance from the capital per Age
 };
 export const BLINDS = ['raid', 'warlord', 'boss'];
 export const BLIND_NAME = { raid: 'Raid', warlord: 'Warlord', boss: 'Crown Boss' };
@@ -38,7 +38,7 @@ const pickW = (r, w) => { const e = Object.entries(w); let k = r() * e.reduce((a
 // Each banner: name, icon (icons.js name), rarity, cost, tag ('+', '×', 'rule', 'econ', 'build', 'scale', 'copy'),
 // text(g) (g = 1 or 1.5 Gilded), combo, mvp (in the MVP pool), fac (only when that faction is unlocked), and its effect:
 //   mod(x) -> battle hook object (see battle.js), x = { g, inst, copy, idx, run, opts, S }
-//   run hooks: pay (₵ after a Blind won), cap (interest cap), build (gold discount), after (after a battle)
+//   run hooks: pay (₵ after a Trial won), cap (interest cap), build (gold discount), after (after a battle)
 const add = (v, g) => v * g, mul = (m, g) => 1 + (m - 1) * g, pct = (v) => `${Math.round(v * 100)}%`, fx = (m) => `×${+m.toFixed(2)}`;
 const mine = (s, S) => s && s.side === S;
 const foe = (s, S) => s && s.side !== S;
@@ -89,7 +89,7 @@ export const BANNERS = {
   updraft: { name: 'Updraft', icon: 'movement', rarity: 'common', cost: 4, tag: 'rule', text: () => 'Your tier 1–3 walkers can fly.', combo: 'Gryphon Standard on pikemen.',
     mod: ({ S }) => ({ stats(u, i) { if (i.side === S && u.tier <= 3 && !u.ranged) u.fly = true; } }) },
   // necromancy
-  bone_tally: { name: 'Bone Tally', icon: 'necromancy', rarity: 'rare', cost: 8, tag: 'scale', mvp: true, text: (g) => `After each battle won, raise skeletons: ${pct(add(0.1, g))} of slain living foes, +5% per Blind won (max 40%).`, combo: 'Any faction. War Drum on the skeleton horde.',
+  bone_tally: { name: 'Bone Tally', icon: 'necromancy', rarity: 'rare', cost: 8, tag: 'scale', mvp: true, text: (g) => `After each battle won, raise skeletons: ${pct(add(0.1, g))} of slain living foes, +5% per Trial won (max 40%).`, combo: 'Any faction. War Drum on the skeleton horde.',
     after: ({ g, run }, res) => { if (res.won) res.raise += Math.floor(res.slainLiving * Math.min(0.4, add(0.1, g) + 0.05 * run.stats.blindsWon)); } },
   lich_lantern: { name: 'Lich Lantern', icon: 'mana', rarity: 'rare', cost: 9, tag: 'rule', text: () => 'Raised skeletons come as Skeleton Warriors; your undead heal their top creature every round.', combo: 'Bone Tally.',
     mod: ({ S }) => ({ onRoundStart(B) { for (const s of alive(B, S)) if (s.u.undead) s.hp = s.u.hp; } }), after: (x, res) => { res.raiseAs = 'skelwarrior'; } },
@@ -98,7 +98,7 @@ export const BANNERS = {
   phylactery: { name: 'Phylactery', icon: 'artifact', rarity: 'legendary', cost: 12, tag: 'rule', text: () => 'Your stacks cannot drop below 1 creature before round 3.', combo: 'Last Stand insurance.',
     mod: ({ S }) => ({ onDamage(c, B) { if (mine(c.d, S) && B.round < 3 && !c.preview) c.dmg = Math.min(c.dmg, Math.max(0, (c.d.count - 1) * c.d.u.hp + c.d.hp - 1)); } }) },
   // economy
-  golden_purse: { name: 'Golden Purse', icon: 'gold', rarity: 'common', cost: 4, tag: 'econ', mvp: true, text: (g) => `+${Math.round(add(2, g))}₵ after each Blind won.`, combo: 'Feeds interest.',
+  golden_purse: { name: 'Golden Purse', icon: 'gold', rarity: 'common', cost: 4, tag: 'econ', mvp: true, text: (g) => `+${Math.round(add(2, g))}₵ after each Trial won.`, combo: 'Feeds interest.',
     pay: ({ g }) => Math.round(add(2, g)) },
   treasury: { name: 'Royal Treasury', icon: 'estates', rarity: 'uncommon', cost: 6, tag: 'econ', mvp: true, text: (g) => `Interest cap +${Math.round(add(5, g))}₵.`, combo: 'Golden Purse, Merchant.',
     cap: ({ g }) => Math.round(add(5, g)) },
@@ -190,7 +190,7 @@ export const PACKS = {
   muster: { name: 'Muster', icon: 'recruit', text: 'Pick 1 of 3 creature stacks.', col: '#ff8a6a' },
 };
 export const SEALS = {
-  gold: { name: 'Gold Seal', icon: 'gold', text: '+1₵ when this stack destroys an enemy stack in a Blind.' },
+  gold: { name: 'Gold Seal', icon: 'gold', text: '+1₵ when this stack destroys an enemy stack in a Trial.' },
   iron: { name: 'Iron Seal', icon: 'armorer', text: 'This stack takes −20% damage.' },
   swift: { name: 'Swift Seal', icon: 'haste', text: '+2 speed.' },
   red: { name: 'Red Seal', icon: 'attack', text: 'This stack retaliates twice.' },
@@ -209,7 +209,7 @@ for (const [id, o] of Object.entries(ORIGINS)) o.id = id;
 export const STAKES = [null,
   { name: 'White', col: '#f4f4f4', text: 'The base game.' },
   { name: 'Red', col: '#f0453a', text: 'Raids pay no base Crowns.' },
-  { name: 'Green', col: '#5bd352', text: 'Threats grow ×1.1 faster per Ante.' },
+  { name: 'Green', col: '#5bd352', text: 'Threats grow ×1.1 faster per Age.' },
   { name: 'Black', col: '#3a3a44', text: '30% of shop banners are Tattered (cannot be sold).' },
   { name: 'Blue', col: '#4aa8ff', text: 'The Crown Boss comes at the end of day 6.' },
   { name: 'Purple', col: '#b36bff', text: 'Shop prices +1₵.' },
@@ -224,12 +224,12 @@ export const FAC_UNLOCK = {
   dungeon: { text: 'Hold 5 banners at once.' },
 };
 export const TROPHIES = {
-  first_blood: { name: 'First Blood', icon: 'attack', text: 'Win a Blind.' },
+  first_blood: { name: 'First Blood', icon: 'attack', text: 'Win a Trial.' },
   crowned: { name: 'Crowned', icon: 'victory', text: 'Win a Crown Run.' },
   hoarder: { name: 'Hoarder', icon: 'gold', text: 'Hold 25₵.' },
   full_banner: { name: 'Full Banner', icon: 'banner', text: 'Hold 5 banners at once.' },
   bone_lord: { name: 'Bone Lord', icon: 'necromancy', text: 'Raise 100 skeletons in one run.' },
-  untouchable: { name: 'Untouchable', icon: 'defense', text: 'Win a Blind with no losses.' },
+  untouchable: { name: 'Untouchable', icon: 'defense', text: 'Win a Trial with no losses.' },
   big_hit: { name: 'Big Hit', icon: 'damage', text: 'Deal 1000+ damage in one strike.' },
   collector: { name: 'Collector', icon: 'chest', text: 'Discover 30 entries.' },
 };
@@ -294,14 +294,14 @@ function rollVoucher(run) {
   run.voucherOffer = pool.length ? pick(r, pool) : null;
 }
 
-// ---- the schedule: three Blinds per Ante (week), each at the end of its day
+// ---- the schedule: three Trials per Age (week), each at the end of its day
 export function blindDay(run, kind) { return kind === 'boss' && run.stake >= 5 ? 6 : TUNE.blindDays[kind]; }
 export function nextBlind(run) {
   if (run.over) return null;
   const kind = BLINDS[run.blind];
   return { ante: run.ante, kind, day: (run.ante - 1) * 7 + blindDay(run, kind), boss: kind === 'boss' ? run.bosses[run.ante - 1] : null };
 }
-// called when the player ends a day: the Blind fought at this dusk, if any
+// called when the player ends a day: the Trial fought at this dusk, if any
 export function blindDue(run, day) { const n = nextBlind(run); return n && day >= n.day ? n : null; }
 export function daysLeft(run, day) { const n = nextBlind(run); return n ? n.day - day : 0; }
 // the region gate: cells of region > ante cannot be entered (regionOf from the flat map, else distance bands)
@@ -385,7 +385,7 @@ export function battleMods(run, opts = {}) {
     const both = run.banners.some((b) => b.id === 'usurper');
     for (const id of rules) { const m = BOSSES[id].rule(S); m.id = 'boss:' + id; mods.push(m); if (both) { const e = BOSSES[id].rule(1 - S); e.id = 'boss2:' + id; mods.push(e); } }
   }
-  // the Blind's Warlord / Boss hero: its stats and spells join the battle (the map battle code has no enemy hero)
+  // the Trial's Warlord / Boss hero: its stats and spells join the battle (the map battle code has no enemy hero)
   if (opts.enemyHero) { const h = opts.enemyHero; mods.unshift({ id: 'enemyHero', onBattleStart(B) { if (!B.heroes[1 - S]) B.heroes[1 - S] = { ...h, skills: { ...h.skills }, spells: [...h.spells] }; } }); }
   mods.push(tracker(S));
   return mods;
@@ -407,7 +407,7 @@ function tracker(S) {
     onStackDeath(s, k, B) { if (s.side !== S && B.crown) B.crown.stacksKilled++; },
   };
 }
-// after any battle of the run hero: run counters, banner after-effects (Bone Tally), the Blind's bookkeeping.
+// after any battle of the run hero: run counters, banner after-effects (Bone Tally), the Trial's bookkeeping.
 // Returns { raise, raiseAs, goldSeals } for main.js to apply (add skeletons, pay seals).
 export function afterBattle(run, B, { won, kind = null } = {}) {
   const S = PLAYER;
@@ -429,7 +429,7 @@ export function afterBattle(run, B, { won, kind = null } = {}) {
   return res;
 }
 
-// ---- payout after a Blind won: base + unbroken + banners + interest (on the Crowns held before this payout)
+// ---- payout after a Trial won: base + unbroken + banners + interest (on the Crowns held before this payout)
 export function interestCap(run) {
   return Math.max(0, TUNE.interestCap + runSum(run, 'cap') + (has(run, 'seed_money') ? 5 : 0) + (ORIGINS[run.origin]?.cap || 0) - (run.stake >= 7 ? 2 : 0));
 }
@@ -445,7 +445,7 @@ export function payout(run, kind, { unbroken = 0, goldSeals = 0, towns = 0 } = {
   const total = lines.reduce((a, l) => a + l.n, 0);
   return { lines, total };
 }
-// a won Blind moves the schedule on: the Boss closes the Ante (the next region opens, a new voucher is offered)
+// a won Trial moves the schedule on: the Boss closes the Age (the next region opens, a new voucher is offered)
 export function advanceBlind(run) {
   const was = BLINDS[run.blind];
   run.blind++;
@@ -497,7 +497,7 @@ function rollCards(run, meta, ctx) {
   for (let i = 0; i < TUNE.cardSlots; i++) { const c = rollCard(run, r, meta, ctx, cards.map((x) => x.id)); if (c) cards.push(c); }
   return cards;
 }
-// the shop that opens after the Blind just won (call after advanceBlind: keyed on the schedule position)
+// the shop that opens after the Trial just won (call after advanceBlind: keyed on the schedule position)
 export function genShop(run, meta = null, ctx = {}) {
   run.shop = { rerolls: 0, cards: [], pack: null, voucher: null, key: `${run.ante}:${run.blind}` };
   run.shop.cards = rollCards(run, meta, ctx);
@@ -574,7 +574,7 @@ export function openPack(run, kind, tag, meta = null, ctx = {}) {
 export function scoreRun(run, { armyPower: ap = 0 } = {}) {
   const rows = [];
   const bl = run.stats.blindLog.filter((b) => b.won).reduce((a, b) => a + { raid: 100, warlord: 200, boss: 400 }[b.kind] * b.ante, 0);
-  rows.push({ k: 'blinds', label: 'Blinds won', n: bl });
+  rows.push({ k: 'blinds', label: 'Trials won', n: bl });
   rows.push({ k: 'crowns', label: 'Crowns held', n: 5 * run.crowns });
   rows.push({ k: 'army', label: 'Army strength', n: Math.floor(ap / 50) });
   if (run.won) rows.push({ k: 'win', label: 'Crowned!', n: 1000 });

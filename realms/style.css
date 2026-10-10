@@ -863,7 +863,7 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
   #hud .side { top: calc(var(--safe-t) + var(--gut) + var(--mm-h, 90px) + 8px); max-height: calc(100% - var(--safe-t) - var(--safe-b) - 150px - var(--mm-h, 90px)); }
 }
 
-/* ===== crown agent: Crown Run UI (v2.0). Landscape first: banner bar + Blind pill under the resource bar, the shop
+/* ===== crown agent: Crown Run UI (v2.0). Landscape first: banner bar + Trial pill under the resource bar, the shop
    and packs as wide rows of cards; portrait fallback at the end of this block. ===== */
 #crown-hud { position: absolute; z-index: 4; left: calc(var(--safe-l) + var(--gut)); top: calc(var(--safe-t) + 60px); display: flex; align-items: flex-start; gap: 8px; pointer-events: none; }
 #crown-hud[hidden] { display: none; }
@@ -993,7 +993,7 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 .cr-pk.pk-tome { background: radial-gradient(circle at 40% 30%, #c9eeff, #1f55c8); } .cr-pk.pk-muster { background: radial-gradient(circle at 40% 30%, #ffb2a2, #a81e22); }
 .cr-packwrap .cr-card { --w: clamp(120px, 17vw, 170px); }
 
-/* boss preview, Blind intro, end screen: two columns */
+/* boss preview, Trial intro, end screen: two columns */
 .cr-panel { position: relative; width: min(760px, 100%); padding: 16px 18px; border-radius: 20px; background: var(--slate) padding-box, var(--rim) border-box; border: 3px solid transparent; box-shadow: 0 0 0 2px var(--ink), 0 16px 40px rgba(0, 0, 0, 0.6); animation: popin 0.35s var(--boing); }
 .cr-cols { display: grid; grid-template-columns: minmax(180px, 0.8fr) 1.2fr; gap: 18px; align-items: center; }
 .cr-crest { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; isolation: isolate; }

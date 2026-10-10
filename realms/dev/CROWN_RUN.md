@@ -1,6 +1,6 @@
 # Crown Run: design (v2.0, agent "crown")
 
-A roguelite run in the spirit of Balatro and Slay the Spire, played on a full HoMM map. Each run is one map and one hero. Every week ends in a Blind battle, banners break the rules, and a shop runs between fights. Losing a Blind ends the run. What you earn (Glory, unlocks, the Collection) carries over to the next run.
+A roguelite run in the spirit of Balatro and Slay the Spire, played on a full HoMM map. Each run is one map and one hero. Every week ends in a Trial battle, banners break the rules, and a shop runs between fights. Losing a Trial ends the run. What you earn (Glory, unlocks, the Collection) carries over to the next run.
 
 The code lives in `realms/crown.js`, which holds the data and rules and is pure enough to test in node. The battle hooks are in `realms/battle.js` (the `mods` option of `createBattle`). The tests are in `realms/dev/crown_test.mjs`.
 
@@ -8,8 +8,8 @@ The code lives in `realms/crown.js`, which holds the data and rules and is pure 
 
 | Pillar | How the run uses it |
 |---|---|
-| Exploration | Map chests become packs. Mines pay the gold that buys your army. Each Ante opens a new region. |
-| Tactical battles | Blinds are normal hex battles. Banners and boss rules only change the numbers and rules inside them. |
+| Exploration | Map chests become packs. Mines pay the gold that buys your army. Each Age opens a new region. |
+| Tactical battles | Trials are normal hex battles. Banners and boss rules only change the numbers and rules inside them. |
 | Town building | Your capital still builds one thing a day and recruits weekly growth. Some banners and vouchers feed on buildings. |
 | Hero and army | Levels (pick 1 of 3 skills), army slot order (Vanguard, Shield Bearer), Seals on stacks. |
 
@@ -17,25 +17,25 @@ The code lives in `realms/crown.js`, which holds the data and rules and is pure 
 
 ## 1. Run structure
 
-**Antes and weeks.** A run is 8 Antes; the MVP plays 3. Each Ante is one in-game week (days 1–7) on the same map.
+**Ages and weeks.** A run is 8 Ages; the MVP plays 3. Each Age is one in-game week (days 1–7) on the same map.
 
-**Region gates.** Ante *k* opens region *k*: ring *k* around your capital, given by `regionOf(cell)` from the flat map. Until that exists, the fallback is grid distance from the capital, in bands 0–9, 10–17, 18–25 and so on.
-- Cells beyond the current Ante's region cannot be entered. Their border shows as a Crown Gate.
+**Region gates.** Age *k* opens region *k*: ring *k* around your capital, given by `regionOf(cell)` from the flat map. Until that exists, the fallback is grid distance from the capital, in bands 0–9, 10–17, 18–25 and so on.
+- Cells beyond the current Age's region cannot be entered. Their border shows as a Crown Gate.
 - Deeper regions hold more and richer objects (gems, artifacts, more chests) and stronger guards. The flat map's guard strength already scales with distance.
 
-**Blinds each week.** All three are mandatory. Each one fires at dusk, when the day ends, before the night.
+**Trials each week.** All three are mandatory. Each one fires at dusk, when the day ends, before the night.
 
-| Day | Blind | Threat ×P | Crowns paid | Hero |
+| Day | Trial | Threat ×P | Crowns paid | Hero |
 |---|---|---|---|---|
 | End of day 3 | **Raid** | ×1.0 | 3 | none |
-| End of day 5 | **Warlord** | ×1.5 | 4 | a Warlord hero (att/def = Ante) |
-| End of day 7 | **Crown Boss** | ×2.2 | 5 | Boss hero (att/def/pow = Ante+1), plus the boss rule |
+| End of day 5 | **Warlord** | ×1.5 | 4 | a Warlord hero (att/def = Age) |
+| End of day 7 | **Crown Boss** | ×2.2 | 5 | Boss hero (att/def/pow = Age+1), plus the boss rule |
 
-- **Who fights.** The Blind army attacks your run hero (hero #0) wherever he stands.
+- **Who fights.** The Trial army attacks your run hero (hero #0) wherever he stands.
   - Win: casualties stick, XP is paid as usual, the payout screen shows, then the shop opens.
   - Lose, or the hero dies: the run is over.
-- **The boss is shown ahead.** The Crown Boss of each Ante is rolled at the start of that Ante and shown from day 1 in the Blind warning: the HUD pill, plus a preview card with the rule.
-- **Skipping (full game only).** A Raid or a Warlord can be skipped for a Tag, such as a free War Chest or −50% on the next voucher. A skipped Blind gives no shop.
+- **The boss is shown ahead.** The Crown Boss of each Age is rolled at the start of that Age and shown from day 1 in the Trial warning: the HUD pill, plus a preview card with the rule.
+- **Skipping (full game only).** A Raid or a Warlord can be skipped for a Tag, such as a free War Chest or −50% on the next voucher. A skipped Trial gives no shop.
 
 **Threat power.** The target is `armyPower(army, hero)` from battle.js:
 
@@ -45,18 +45,18 @@ BLIND = { raid: 1.0, warlord: 1.5, boss: 2.2 }
 ```
 
 **Threat army generator.** `threatArmy(run, ante, blind)`, seeded from the run's seed:
-- **Faction.** The Ante's theme. MVP: Ante 1 is neutral, Ante 2 is the boss's faction, Ante 3 is Necropolis.
+- **Faction.** The Age's theme. MVP: Age 1 is neutral, Age 2 is the boss's faction, Age 3 is Necropolis.
 - **Size and tiers.**
-  - Stacks: raid 3, warlord 4, boss 5, then +1 for every 2 Antes after the first, up to 7.
+  - Stacks: raid 3, warlord 4, boss 5, then +1 for every 2 Ages after the first, up to 7.
   - Tier window: `maxTier = min(7, 2 + ante + (boss ? 1 : 0))`, `minTier = max(1, ante − 1)`.
-- **Upgrades.** From Ante 3 on, units are upgraded with a 25% chance per Ante (100% at Ante 6 and later).
+- **Upgrades.** From Age 3 on, units are upgraded with a 25% chance per Age (100% at Age 6 and later).
 - **Filling to P.** Each stack's share of P is weighted toward the higher tiers. Its count is `round(share · P / armyPower([[id,1]]) / heroMult)`, with a minimum of 1.
 
 ---
 
 ## 2. Bosses (12; MVP uses ★ 3)
 
-The boss rule is a battle modifier that applies only to the Boss Blind. Rules hit **you** (side 0) unless they say otherwise.
+The boss rule is a battle modifier that applies only to the Boss Trial. Rules hit **you** (side 0) unless they say otherwise.
 
 | Boss | Faction | Rule |
 |---|---|---|
@@ -71,7 +71,7 @@ The boss rule is a battle modifier that applies only to the Boss Blind. Rules hi
 | The Stampede | Inferno | Enemy stacks +3 speed (they always act first). |
 | The Iron Hide | Haven | Enemy stacks take −50% damage from your shots. |
 | The Duel | any | You may only bring your 3 largest stacks (the rest sit out, unharmed). |
-| **The Usurper** (Ante 8) | the rival crown | Two random rules from the list above, both shown. |
+| **The Usurper** (Age 8) | the rival crown | Two random rules from the list above, both shown. |
 
 ---
 
@@ -137,7 +137,7 @@ The boss rule is a battle modifier that applies only to the Boss Blind. Rules hi
 
 | ★ | Banner | Rarity ₵ | Effect | Combo intent |
 |---|---|---|---|---|
-| ★ | Bone Tally | R 8 | After each won battle, raise skeletons equal to (10% + 5% per Blind won this run, max 40%) of the slain living enemies. Works for any faction. | Scaling army; War Drum on skeleton hordes. |
+| ★ | Bone Tally | R 8 | After each won battle, raise skeletons equal to (10% + 5% per Trial won this run, max 40%) of the slain living enemies. Works for any faction. | Scaling army; War Drum on skeleton hordes. |
 | | Lich Lantern | R 9 | Raised skeletons arrive as Skeleton Warriors; your undead heal their top creature each round. | Bone Tally. |
 | | Grave Robber | U 6 | `[×]` Undead stacks ×(1 + 0.25 × enemy stacks destroyed this battle). | Necro snowball. |
 | | Phylactery | L 12 | Your stacks cannot drop below 1 creature before round 3. | Last Stand insurance. |
@@ -146,7 +146,7 @@ The boss rule is a battle modifier that applies only to the Boss Blind. Rules hi
 
 | ★ | Banner | Rarity ₵ | Effect | Combo intent |
 |---|---|---|---|---|
-| ★ | Golden Purse | C 4 | +2₵ after each Blind won. | Interest engine. |
+| ★ | Golden Purse | C 4 | +2₵ after each Trial won. | Interest engine. |
 | ★ | Royal Treasury | U 6 | Interest cap +5₵. | Golden Purse; Merchant origin. |
 | | Miser's Banner | U 6 | `[×]` ×(1 + 0.03 × Crowns held), max ×1.6. | Hoard instead of rerolling. |
 | | Mine Charter | C 4 | Your mines produce +50%. | Exploration → gold → army. |
@@ -197,7 +197,7 @@ The boss rule is a battle modifier that applies only to the Boss Blind. Rules hi
 
 ## 4. Vouchers (MVP ★ 6)
 
-- **One per Ante.** One voucher is offered in every shop of the Ante until you buy it. It costs **10₵** and lasts for the rest of the run.
+- **One per Age.** One voucher is offered in every shop of the Age until you buy it. It costs **10₵** and lasts for the rest of the run.
 - **Tier II versions** (full game) unlock when you buy the first.
 
 | ★ | Voucher | Effect |
@@ -211,7 +211,7 @@ The boss rule is a battle modifier that applies only to the Boss Blind. Rules hi
 | | War College | Level-ups offer 4 skills. |
 | | Cartographer | +2 vision; gates of the next region are shown. |
 | | Blacksmith | Unit upgrades in the shop −50%. |
-| | Tithe | +1₵ per town you own at each Blind payout. |
+| | Tithe | +1₵ per town you own at each Trial payout. |
 | | Crystal Ball | Packs offer 4 choices. |
 | | Recruiter | Map dwellings restock +50%. |
 
@@ -221,7 +221,7 @@ The boss rule is a battle modifier that applies only to the Boss Blind. Rules hi
 |---|---|---|
 | **War Chest** | 4₵ | 3 banners (rarity table above, Legendary 2%). |
 | **Tome** | 3₵ | 3 spells. Pick = your hero learns it for good, ignoring the Mage Guild level. If he already knows it: +5 mana. |
-| **Muster** | 4₵ | 3 creature stacks of the Ante's tier window. A stack is worth ~12% of the next Blind's P. One in four comes with a Seal. |
+| **Muster** | 4₵ | 3 creature stacks of the Age's tier window. A stack is worth ~12% of the next Trial's P. One in four comes with a Seal. |
 
 - **On the map**, every Treasure Chest becomes a pack chest. The type comes from the object id: 35% War Chest, 25% Tome, 40% Muster.
 - Deeper regions carry more chests.
@@ -231,7 +231,7 @@ The boss rule is a battle modifier that applies only to the Boss Blind. Rules hi
 
 | Seal | Effect |
 |---|---|
-| Gold Seal | +1₵ each time this stack destroys an enemy stack in a Blind. |
+| Gold Seal | +1₵ each time this stack destroys an enemy stack in a Trial. |
 | Iron Seal | This stack takes −20% damage. |
 | Swift Seal | +2 speed. |
 | Red Seal | This stack retaliates twice. |
@@ -239,10 +239,10 @@ The boss rule is a battle modifier that applies only to the Boss Blind. Rules hi
 
 Seals come from Muster packs, and full-game shops also sell them as 3₵ "Rites". In the save, the stack carries its seal as the 3rd element of the army entry: `[id, n, seal]`.
 
-## 7. Shop (after every Blind won)
+## 7. Shop (after every Trial won)
 
 **The payout comes first:**
-- the Blind's base pay (Raid 3, Warlord 4, Boss 5)
+- the Trial's base pay (Raid 3, Warlord 4, Boss 5)
 - +1₵ per stack of yours that lost nothing, max 3 ("Unbroken")
 - banner pay (such as Golden Purse)
 - **interest: +1₵ per 5₵ held, cap 5₵** (Royal Treasury and Seed Money each add +5 to the cap)
@@ -250,7 +250,7 @@ Seals come from Muster packs, and full-game shops also sell them as 3₵ "Rites"
 **Stock:**
 - **3 cards.** Each one is a banner (70%), a spell scroll (15%, 3₵) or a unit upgrade (15%, 5₵, which upgrades one of your stacks to its upgraded creature).
 - **1 pack**, rotating War Chest, Tome and Muster.
-- **The Ante's voucher.**
+- **The Age's voucher.**
 
 **Rerolls** cost 5₵, +1₵ for every reroll in the same shop, and reset each shop. The stock is seeded from `(run seed, ante, blind, reroll#)`, so a saved and reloaded shop is identical.
 
@@ -278,7 +278,7 @@ Seals come from Muster packs, and full-game shops also sell them as 3₵ "Rites"
 |---|---|---|
 | 1 | White | Base. |
 | 2 | Red | The Raid pays no base Crowns. |
-| 3 | Green | Threat grows ×1.1 more per Ante. |
+| 3 | Green | Threat grows ×1.1 more per Age. |
 | 4 | Black | 30% of shop banners are *Tattered* (cannot be sold). |
 | 5 | Blue | The Crown Boss arrives at the end of day 6. |
 | 6 | Purple | Shop prices +1₵. |
@@ -299,8 +299,8 @@ Winning on a stake unlocks the next stake for that faction. Every stake also rai
 
 | Faction | How to unlock |
 |---|---|
-| Necropolis | Beat **The Lich Queen** (Ante 3 boss). |
-| Sylvan | Win a run (clear Ante 3 in the MVP, Ante 8 in the full game). |
+| Necropolis | Beat **The Lich Queen** (Age 3 boss). |
+| Sylvan | Win a run (clear Age 3 in the MVP, Age 8 in the full game). |
 | Inferno | Beat a Crown Boss in 3 rounds or fewer. |
 | Dungeon | Hold 5 banners at once. |
 
@@ -311,12 +311,12 @@ Winning on a stake unlocks the next stake for that faction. Every stake also rai
 - Owned banners show their times-bought count.
 
 **Trophies:**
-- First Blood: win a Blind.
+- First Blood: win a Trial.
 - Crowned: win a run.
 - Hoarder: hold 25₵.
 - Full Banner: 5 banners at once.
 - Bone Lord: raise 100 skeletons in one run.
-- Untouchable: win a Blind with no losses.
+- Untouchable: win a Trial with no losses.
 - Big Hit: one strike of 1000+ damage.
 - Collector: discover 30 entries.
 
@@ -343,9 +343,9 @@ The run also tracks "best strike" (largest single hit, like Balatro's best hand)
 
 ## 12. End-of-run rewards screen
 
-1. **Banner.** "Crowned!" or "The run ends at Ante N · Boss".
+1. **Banner.** "Crowned!" or "The run ends at Age N · Boss".
 2. **Score rows, one at a time.** Each row ticks up from 0, with a sound tick on each step:
-   - Blinds
+   - Trials
    - Crowns
    - Army
    - Victory
@@ -357,9 +357,9 @@ The run also tracks "best strike" (largest single hit, like Balatro's best hand)
 
 ## 13. Balance levers (all live in `crown.js` → `TUNE`)
 
-- **Threat curve** (tuned with `autoResolve` on both sides against a Haven army recruiting every week: then checked with the soak bot (Quick combat on every fight, so no tactics). The bot's armies bleed between Blinds. At growth 2.5 it reached Ante 3 three times out of four but fell to the Warlord or the Lich Queen. At growth 2.3 it cleared all 3 Antes. Hand-played battles lose far fewer troops): `TUNE.base` (1500), `TUNE.growth` (2.3/Ante), the `BLIND` multipliers, and the stake steps.
+- **Threat curve** (tuned with `autoResolve` on both sides against a Haven army recruiting every week: then checked with the soak bot (Quick combat on every fight, so no tactics). The bot's armies bleed between Trials. At growth 2.5 it reached Age 3 three times out of four but fell to the Warlord or the Lich Queen. At growth 2.3 it cleared all 3 Ages. Hand-played battles lose far fewer troops): `TUNE.base` (1500), `TUNE.growth` (2.3/Age), the `BLIND` multipliers, and the stake steps.
 - **Economy:**
-  - the per-Blind pay
+  - the per-Trial pay
   - the Unbroken bonus cap
   - interest (1 per 5, cap 5)
   - reroll base and step (5 / +1)
@@ -384,24 +384,24 @@ The run also tracks "best strike" (largest single hit, like Balatro's best hand)
 |---|---|
 | imports | `crown.js` and `crown_ui.js`. |
 | `findPath` / `dijkstra` | `crownShut(v, hr)`. Your heroes stay in regions `< ante`; the rival crown stays in its homeland (the last band). |
-| `splitMonster` | A Blind's ready-made threat army (`obj.army`). |
+| `splitMonster` | A Trial's ready-made threat army (`obj.army`). |
 | `startBattle` | `mods: crownMods(...)`: banners, seals, the boss rule and the Warlord/Boss hero, for any battle of the run hero. |
-| `finishBattle` | `crownAfter(B, ctx)`: run counters, Bone Tally, then for a Blind the payout, `advanceBlind` and the shop. A loss is the end screen. |
+| `finishBattle` | `crownAfter(B, ctx)`: run counters, Bone Tally, then for a Trial the payout, `advanceBlind` and the shop. A loss is the end screen. |
 | `interact` (chest) | Opens a pack (type from `chestPack`). |
-| `endTurn` | `crownDusk()`: a Blind due tonight shows its intro, is fought, and the shop's Next resumes `endTurn`. |
+| `endTurn` | `crownDusk()`: a Trial due tonight shows its intro, is fought, and the shop's Next resumes `endTurn`. |
 | `newDay` | Resets the per-day build counter (Masonry Guild). Weekly growth × Overflowing Pens. A new week calls `crownWeek()` (toast + boss preview). |
 | `buildIn` | Masonry Guild (2 builds a day) and Mason's Mark (refunds the discount). |
 | `levelUp` | 3 skill choices in a run. |
 | `save` / `load` | `run` in the save (`G.run`). `newWorld` resets `G.run`. Resume re-marks `regionOf` (the gate walls are already in `ter`). |
-| `updateHud` | `crownHud()` (banner bar + Blind pill). |
+| `updateHud` | `crownHud()` (banner bar + Trial pill). |
 | `showMenu` | Closes any run screen. |
 | `playEvent` | The `mod` event (Plague, Echoing Volley floaters). |
 
 **Regions.**
 - `markRegions({ from: capital, bands, wall: true, per: 2 })` from the flat agent.
 - `bands = D × (0.3 … 0.8) × 0.95`, where D is the hex distance to the rival capital.
-- There is one band per Ante, and the last band is the rival's homeland.
-- Gates are the gaps the wall leaves. MVP: there is no 3D gate model; the gate simply cannot be pathed through until its Ante.
+- There is one band per Age, and the last band is the rival's homeland.
+- Gates are the gaps the wall leaves. MVP: there is no 3D gate model; the gate simply cannot be pathed through until its Age.
 
 **Entry.** `window.CrownRun = { start, resume }`, which the freeplay agent's title button and Continue call. `window.__realms.crown` holds the test hooks.
 
@@ -411,7 +411,7 @@ Landscape is the primary target: 844×390, 915×412 and 1280×720. Portrait (412
 
 **Landscape layout:**
 - **Banner bar.** A row of 5 slots plus the Crowns wallet, directly under the resource bar on the left. In landscape the minimap and the hero column take the right edge, so the bar stays clear of them.
-- **Blind pill.** Next to the bar: the days left to the next Blind, plus a boss sigil. It pulses the day before a Blind and on the day itself. Tap it for the boss preview card.
+- **Trial pill.** Next to the bar: the days left to the next Trial, plus a boss sigil. It pulses the day before a Trial and on the day itself. Tap it for the boss preview card.
 - **Shop.** A full-screen overlay:
   - the payout tally as a strip on the left
   - a wide row of cards in the middle: 3 cards + pack + voucher

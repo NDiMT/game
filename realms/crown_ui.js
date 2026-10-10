@@ -1,6 +1,6 @@
 // =====================================================================
-// ORBIS · Crown Run screens (agent "crown"): the banner bar and Blind pill in the HUD, the shop, pack opening,
-// the boss preview, the Blind intro, the end-of-run rewards, the Collection and the origin picker.
+// ORBIS · Crown Run screens (agent "crown"): the banner bar and Trial pill in the HUD, the shop, pack opening,
+// the boss preview, the Trial intro, the end-of-run rewards, the Collection and the origin picker.
 // DOM only: main.js passes in what it owns (icons, unit portraits, sound) and does the game-side effects.
 // Landscape first (cards in a wide row), with a portrait fallback in style.css ("crown" block).
 // =====================================================================
@@ -48,7 +48,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
       <div class="cr-back"><span>${icon(k === 'pack' ? C.PACKS[item.id].icon : 'banner', 44)}</span></div></div>${price}</div>`;
   }
 
-  // ---------------------------------------------------------------- HUD: banner bar + Blind pill
+  // ---------------------------------------------------------------- HUD: banner bar + Trial pill
   let hud = null, tip = null;
   function mountHud(parent) {
     if (hud && hud.isConnected) return hud;
@@ -75,7 +75,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
     if (nb) {
       const left = nb.day - day, boss = C.BOSSES[run.bosses[run.ante - 1]];
       pill.className = `cr-pill k-${nb.kind}${left <= 0 ? ' due' : left === 1 ? ' soon' : ''}`;
-      pill.innerHTML = `<span class="cr-sig">${icon(nb.kind === 'boss' ? boss.icon : nb.kind === 'warlord' ? 'hero' : 'attack', 22)}</span><span class="cr-pt2"><small>Ante ${run.ante}/${run.antes} · ${C.BLIND_NAME[nb.kind]}</small><b>${left <= 0 ? 'Tonight!' : left === 1 ? 'Tomorrow night' : `In ${left} days`}</b></span>`;
+      pill.innerHTML = `<span class="cr-sig">${icon(nb.kind === 'boss' ? boss.icon : nb.kind === 'warlord' ? 'hero' : 'attack', 22)}</span><span class="cr-pt2"><small>Age ${run.ante}/${run.antes} · ${C.BLIND_NAME[nb.kind]}</small><b>${left <= 0 ? 'Tonight!' : left === 1 ? 'Tomorrow night' : `In ${left} days`}</b></span>`;
       pill.onclick = () => { S('click'); onPill ? onPill() : bossPreview(run, day); };
     }
   }
@@ -106,27 +106,27 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
   }
   const isOpen = () => !!layer;
 
-  // ---------------------------------------------------------------- boss preview (tap the Blind pill)
+  // ---------------------------------------------------------------- boss preview (tap the Trial pill)
   function bossPreview(run, day, { threat = null, onClose = null } = {}) {
     const id = run.bosses[run.ante - 1], B = C.BOSSES[id], nb = C.nextBlind(run);
     const sched = C.BLINDS.map((k, i) => { const d = C.blindDay(run, k), done = i < run.blind, now = nb && nb.kind === k; return `<li class="${done ? 'done' : ''}${now ? ' now' : ''}"><span>${icon(done ? 'check' : k === 'boss' ? B.icon : k === 'warlord' ? 'hero' : 'attack', 20)}</span><b>${C.BLIND_NAME[k]}</b><small>Day ${d} · ×${C.TUNE.blind[k]}</small></li>`; }).join('');
     const L = open('cr-boss', `<div class="cr-panel ornate"><div class="cr-cols">
-      <div class="cr-crest b-${id}"><span class="cr-rays"></span>${icon(B.icon, 96)}<h2>${B.name}</h2><small>Crown Boss of Ante ${run.ante}</small></div>
+      <div class="cr-crest b-${id}"><span class="cr-rays"></span>${icon(B.icon, 96)}<h2>${B.name}</h2><small>Crown Boss of Age ${run.ante}</small></div>
       <div class="cr-side"><p class="cr-rule"><em>Boss rule</em>${esc(B.text)}${id === 'usurper' ? `<br>${(run.usurperRules || []).map((r) => C.BOSSES[r].text).join('<br>')}` : ''}</p>
       ${B.unlocks ? `<p class="cr-unl">${icon('lock', 16)} Beat her to unlock <b>${FACTIONS[B.unlocks].name}</b></p>` : ''}
       <ol class="cr-sched">${sched}</ol>
       ${threat ? `<div class="cr-army"><small>${C.BLIND_NAME[threat.kind]} army</small>${threat.army.map(([u, n]) => `<span>${unitIcon(u, 48)}<em>${n}</em></span>`).join('')}</div>` : ''}
-      <p class="cr-days">${nb ? (nb.day - day <= 0 ? 'The Blind comes <b>tonight</b>.' : `${C.BLIND_NAME[nb.kind]} in <b>${nb.day - day}</b> day${nb.day - day > 1 ? 's' : ''}.`) : ''}</p>
+      <p class="cr-days">${nb ? (nb.day - day <= 0 ? 'The Trial comes <b>tonight</b>.' : `${C.BLIND_NAME[nb.kind]} in <b>${nb.day - day}</b> day${nb.day - day > 1 ? 's' : ''}.`) : ''}</p>
       <button class="btn gold" id="cr-ok">Got it</button></div></div></div>`);
     L.querySelector('#cr-ok').onclick = () => { S('close'); close(); onClose?.(); };
     S('open');
   }
 
-  // ---------------------------------------------------------------- the Blind arrives (before the fight)
+  // ---------------------------------------------------------------- the Trial arrives (before the fight)
   function blindIntro(run, blind, threat, { onFight }) {
     const boss = blind.kind === 'boss' ? C.BOSSES[blind.boss] : null;
     const L = open('cr-intro', `<div class="cr-panel ornate k-${blind.kind}"><div class="cr-cols">
-      <div class="cr-crest"><span class="cr-rays"></span>${icon(boss ? boss.icon : blind.kind === 'warlord' ? 'hero' : 'attack', 92)}<h2>${boss ? boss.name : C.BLIND_NAME[blind.kind]}</h2><small>Ante ${run.ante} · dusk of day ${blind.day}</small></div>
+      <div class="cr-crest"><span class="cr-rays"></span>${icon(boss ? boss.icon : blind.kind === 'warlord' ? 'hero' : 'attack', 92)}<h2>${boss ? boss.name : C.BLIND_NAME[blind.kind]}</h2><small>Age ${run.ante} · dusk of day ${blind.day}</small></div>
       <div class="cr-side">${boss ? `<p class="cr-rule"><em>Boss rule</em>${esc(boss.text)}</p>` : `<p>${blind.kind === 'raid' ? 'Raiders strike at your hero before nightfall.' : 'A warlord and his host march on you.'} Win, or the run ends here.</p>`}
       <div class="cr-army"><small>Enemy army${threat.hero ? ` · led by ${esc(threat.hero.name)}` : ''}</small>${threat.army.map(([u, n]) => `<span>${unitIcon(u, 48)}<em>${n}</em></span>`).join('')}</div>
       <p class="cr-pay">Victory pays ${crowns(blind.kind === 'raid' && run.stake >= 2 ? 0 : C.TUNE.pay[blind.kind])} and opens the shop.</p>
@@ -140,7 +140,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
   function shop(run, h) {
     const L = open('cr-shop', `<div class="cr-shopwrap">
       <aside class="cr-pay ornate"><h3>${icon('victory', 20)} Payout</h3><ul id="cr-lines"></ul><div class="cr-total"><small>Crowns</small><b id="cr-wal">${run.crowns}</b></div></aside>
-      <section class="cr-stock"><header><h2>The Crown Market</h2><small>Ante ${run.blind === 0 ? run.ante - 1 : run.ante} · after the ${C.BLIND_NAME[C.BLINDS[(run.blind + 2) % 3]]}</small></header>
+      <section class="cr-stock"><header><h2>The Crown Market</h2><small>Age ${run.blind === 0 ? run.ante - 1 : run.ante} · after the ${C.BLIND_NAME[C.BLINDS[(run.blind + 2) % 3]]}</small></header>
         <div class="cr-row" id="cr-cards"></div></section>
       <footer class="cr-foot"><div class="cr-bbar" id="cr-bbar"></div>
         <div class="cr-acts"><button class="btn ghost" id="cr-sell" disabled>${icon('gold', 18)} Sell</button><button class="btn" id="cr-reroll"></button><button class="btn gold" id="cr-done">Next ▶</button></div></footer></div>`);
@@ -265,7 +265,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
     const L = open('cr-origin', '');
     const render = () => {
       const facs = Object.keys(FACTIONS), maxStake = meta.unlocks.stakes[fac] || 1;
-      L.innerHTML = `<div class="cr-originwrap"><header><span>${icon('victory', 40)}</span><div><small>Crown Run · ${C.TUNE.mvpAntes} Antes</small><h2>Choose your origin</h2></div><span class="cr-glory">${icon('experience', 18)} ${meta.glory} Glory</span></header>
+      L.innerHTML = `<div class="cr-originwrap"><header><span>${icon('victory', 40)}</span><div><small>Crown Run · ${C.TUNE.mvpAntes} Ages</small><h2>Choose your origin</h2></div><span class="cr-glory">${icon('experience', 18)} ${meta.glory} Glory</span></header>
         <div class="cr-facs">${facs.map((f) => { const ok = meta.unlocks.factions.includes(f); return `<button class="cr-fac${f === fac ? ' on' : ''}${ok ? '' : ' locked'}" data-f="${f}" style="--fc:${FACTIONS[f].css}" ${ok ? '' : 'aria-disabled="true"'}>${unitIcon(FACTIONS[f].units[0], 48)}<b>${FACTIONS[f].name}</b>${ok ? '' : `<small>${icon('lock', 12)} ${C.FAC_UNLOCK[f].text}</small>`}</button>`; }).join('')}</div>
         <div class="cr-row cr-origins">${Object.values(C.ORIGINS).map((o) => { const ok = meta.unlocks.origins.includes(o.id) && (!o.fac || meta.unlocks.factions.includes(o.fac)); return `<button class="cr-card r-origin${o.id === origin ? ' on' : ''}${ok ? '' : ' locked'}" data-o="${o.id}"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon(ok ? o.icon : 'lock', 46)}</span><b class="cr-name">${o.name}</b><p class="cr-txt">${ok ? o.text : o.unlock}</p></div></div></button>`; }).join('')}</div>
         <div class="cr-stakes">${C.STAKES.slice(1).map((s, i) => `<button class="cr-stake${i + 1 === stake ? ' on' : ''}${i + 1 > maxStake ? ' locked' : ''}" data-s="${i + 1}" style="--sc:${s.col}" title="${esc(s.text)}"><i></i><small>${s.name}</small></button>`).join('')}<p>${esc(C.STAKES[stake].text)}</p></div>
@@ -284,8 +284,8 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
   async function endScreen(run, res, meta, { onNew, onCollection, onTitle }) {
     const won = run.won, boss = C.BOSSES[run.bosses[run.ante - 1]];
     const L = open('cr-end', `<div class="cr-panel ornate ${won ? 'win' : 'lose'}"><div class="cr-cols">
-      <div class="cr-crest"><span class="cr-rays"></span>${icon(won ? 'victory' : 'defeat', 96)}<h2>${won ? 'Crowned!' : 'The run ends'}</h2><small>${won ? `All ${run.antes} Antes cleared` : `Ante ${run.ante} · ${C.BLIND_NAME[C.BLINDS[run.blind]]}${run.blind === 2 ? ` (${boss.name})` : ''}`}</small>
-        <div class="cr-stats"><span><b>${run.stats.bestHit}</b><small>Best strike</small></span><span><b>${run.stats.stacksKilled}</b><small>Stacks slain</small></span><span><b>${run.stats.raised}</b><small>Raised</small></span><span><b>${run.stats.blindsWon}</b><small>Blinds</small></span></div></div>
+      <div class="cr-crest"><span class="cr-rays"></span>${icon(won ? 'victory' : 'defeat', 96)}<h2>${won ? 'Crowned!' : 'The run ends'}</h2><small>${won ? `All ${run.antes} Ages cleared` : `Age ${run.ante} · ${C.BLIND_NAME[C.BLINDS[run.blind]]}${run.blind === 2 ? ` (${boss.name})` : ''}`}</small>
+        <div class="cr-stats"><span><b>${run.stats.bestHit}</b><small>Best strike</small></span><span><b>${run.stats.stacksKilled}</b><small>Stacks slain</small></span><span><b>${run.stats.raised}</b><small>Raised</small></span><span><b>${run.stats.blindsWon}</b><small>Trials</small></span></div></div>
       <div class="cr-side"><ul class="cr-score" id="cr-score"></ul>
         <div class="cr-sum"><span><small>Score${res.best ? ' <em class="cr-best">New best!</em>' : ''}</small><b id="cr-sc">0</b></span><span><small>Glory</small><b id="cr-gl">+0</b></span></div>
         <div class="cr-unlocks" id="cr-unl"></div>

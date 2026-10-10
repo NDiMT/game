@@ -1934,7 +1934,7 @@ function bumpWarm(kind, ids = []) {
 let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
 function heroBattle(hr) { return { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know'), mana: hr.mana, skills: hr.skills, spells: hr.spells, luck: hr.arts.includes('clover') ? 1 : 0, morale: hr.arts.includes('banner') ? 1 : 0, name: hr.name, p: hr.p }; }
 function splitMonster(o) {
-  if (o.army) return o.army.map((st) => [...st]); // crown: a Blind's threat army comes ready-made
+  if (o.army) return o.army.map((st) => [...st]); // crown: a Trial's threat army comes ready-made
   const k = clamp(Math.round(o.n / 6), 1, 5) + (o.n > 3 ? 1 : 0), parts = Math.min(k, 5, o.n), arr = [];
   for (let i = 0; i < parts; i++) arr.push([o.unit, Math.floor(o.n / parts) + (i < o.n % parts ? 1 : 0)]);
   return arr;
@@ -2668,7 +2668,7 @@ function finishBattle(B, ctx) {
   }
   // after the battle summary, so the casualties card comes first
   if (ctx.foe.kind === 'town' && win.hero === ctx.hr) captureTown(ctx.hr, ctx.foe.town);
-  crownAfter(B, ctx); // crown: run counters, Bone Tally, a Blind's payout and shop (or the end of the run)
+  crownAfter(B, ctx); // crown: run counters, Bone Tally, a Trial's payout and shop (or the end of the run)
   checkEnd();
   updateHud();
 }
@@ -2951,7 +2951,7 @@ function setHTML(el, html) { if (el && el.__html !== html) { el.innerHTML = html
 function updateHud() {
   if (!G.players.length) return;
   updateRes();
-  crownHud(); // crown: banner bar + Blind pill
+  crownHud(); // crown: banner bar + Trial pill
   const mine = G.heroes.filter((x) => x.alive && x.p === 0);
   // UI: faction accent colour, and the End day button glows once no hero can take another step
   document.body.style.setProperty('--fac', FACTIONS[G.players[0].fac]?.css || '#3a7aff');
@@ -2996,7 +2996,7 @@ $('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') re
 // ------------------------------------------------------------------ days and weeks
 function endTurn() {
   if (G.mode !== 'map' || aiRunning || walking || G.over) return;
-  if (crownDusk()) return; // crown: a Blind due tonight is fought first, then the day ends
+  if (crownDusk()) return; // crown: a Trial due tonight is fought first, then the day ends
   showPath(selHero(), null);
   aiRunning = true; aiGen = runAI(); aiDelay = 0; $('b-end').disabled = true;
   toast(G.players.filter((x) => x.ai && x.alive).length > 1 ? '⏳ The rival crowns are moving…' : '⏳ The enemy is moving…'); dayFx('night');
@@ -3068,7 +3068,7 @@ function newDay() {
   }
   for (const hr of G.heroes) if (hr.alive) { hr.mp = moveMax(hr); hr.mana = Math.min(maxMana(hr), hr.mana + 1 + Math.floor(statOf(hr, 'know') / 3)); }
   for (const t of G.towns) { t.builtToday = false; t.builds = 0; }
-  if (newWeek && G.run) crownWeek(); // crown: a new Ante opens its region and shows its boss
+  if (newWeek && G.run) crownWeek(); // crown: a new Age opens its region and shows its boss
   if (newWeek) {
     // each week honours a creature: +5 growth in every town that breeds it
     const all = Object.values(FACTIONS).flatMap((f) => f.units), star = UNITS[G.nextWeekOf] ? G.nextWeekOf : all[(rnd() * all.length) | 0];
@@ -3458,8 +3458,8 @@ $('m-new').addEventListener('click', () => {
 $('m-crown').addEventListener('click', () => {
   sfx.click();
   if (typeof window.CrownRun?.start === 'function') { window.CrownRun.start(); return; }
-  ask(`${icon('victory', 26)} Crown Run`, `<p>A roguelite on a full map: <b>8 Antes</b>, one week each. Every week ends in a <b>Blind</b> battle against a rising threat, up to a Crown Boss with a rule-breaking twist.</p>
-    <ul class="tips"><li>${icon('banner', 22)}<span><b>Banners</b>: five slots of rule-breaking passives that combo.</span></li><li>${icon('market', 22)}<span><b>The shop</b> after every Blind: banners, upgrades, scrolls, vouchers.</span></li><li>${icon('chest', 22)}<span><b>Packs</b>: pick one of three from every treasure.</span></li></ul><p class="hint2">Coming soon. Free Play is ready now.</p>`, [['Play Free Play', () => $('m-new').click()], ['Back', null]]);
+  ask(`${icon('victory', 26)} Crown Run`, `<p>A roguelite on a full map: <b>8 Ages</b>, one week each. Every week ends in a <b>Trial</b> battle against a rising threat, up to a Crown Boss with a rule-breaking twist.</p>
+    <ul class="tips"><li>${icon('banner', 22)}<span><b>Banners</b>: five slots of rule-breaking passives that combo.</span></li><li>${icon('market', 22)}<span><b>The shop</b> after every Trial: banners, upgrades, scrolls, vouchers.</span></li><li>${icon('chest', 22)}<span><b>Packs</b>: pick one of three from every treasure.</span></li></ul><p class="hint2">Coming soon. Free Play is ready now.</p>`, [['Play Free Play', () => $('m-new').click()], ['Back', null]]);
 });
 // faction choice: one card per faction with its crest, colour, creature line-up, description and signature skill and spell.
 const FAC_CREST = { haven: 'defense', necro: 'necromancy', sylvan: 'luck', inferno: 'fireball', dungeon: 'sorcery' };
@@ -3833,7 +3833,7 @@ const saveMeta = () => { if (cmeta) CR.metaSave(store, cmeta); };
 CUI = createCrownUI({ icon, unitIcon, sfx, onChange: (k) => { if (k === 'meta') saveMeta(); else if (G.run) crownHud(); } });
 CUI.mountHud($('hud'));
 const runHero = () => (G.run ? G.heroes[G.run.hero] : null);
-// region gates: your heroes stay inside the regions this Ante has opened; the rival crown keeps to its homeland (the last band)
+// region gates: your heroes stay inside the regions this Age has opened; the rival crown keeps to its homeland (the last band)
 function crownShut(v, hr) {
   const R = G.run; if (!R || !hr || !R.regions) return false;
   return hr.p === 0 ? regionOf[v] >= R.ante : regionOf[v] < R.antes;
@@ -3849,7 +3849,7 @@ function crownMods(ctx) {
   const bl = ctx.foe.obj?.blind || null, cap = G.towns.find((t) => t.p === 0);
   return CR.battleMods(R, { boss: bl?.kind === 'boss' ? bl.boss : null, enemyHero: bl?.hero || null, seals: hr.army.map((st) => st?.[2] || null), buildings: cap ? cap.built.length : 0, fort: !!cap?.built.includes('fort') });
 }
-// after every battle of the run hero: counters, Bone Tally, and for a Blind the payout, the shop or the end of the run
+// after every battle of the run hero: counters, Bone Tally, and for a Trial the payout, the shop or the end of the run
 function crownAfter(B, ctx) {
   const R = G.run, hr = runHero();
   if (!R || R.over || !hr || ctx.sides[0].hero !== hr) return;
@@ -3903,7 +3903,7 @@ function crownPack(kind, tag, then = null) {
     onDone: () => { crownHud(); updateHud(); then?.(); },
   });
 }
-// dusk: a Blind due tonight is fought before the night falls (endTurn calls this first; true = it took over)
+// dusk: a Trial due tonight is fought before the night falls (endTurn calls this first; true = it took over)
 function crownDusk() {
   const R = G.run; if (!R || R.over || G.over) return false;
   const hr = runHero();
@@ -3926,7 +3926,7 @@ function crownEnd() {
   saveMeta(); store.del('realms.save'); crownHud();
   CUI.endScreen(R, res, meta, { onNew: () => crownStart(), onCollection: () => CUI.collection(meta, { onClose: () => showMenu() }), onTitle: () => showMenu() });
 }
-// a new run: origin and stake, then a full map with the Ante regions banded out from your capital
+// a new run: origin and stake, then a full map with the Age regions banded out from your capital
 function crownStart() {
   const meta = crownMeta();
   const go = () => { fadeHide($('menu')); CUI.originPick(meta, { onStart: crownNew, onBack: () => fadeShow($('menu')), onCollection: () => CUI.collection(meta, { onClose: () => fadeShow($('menu')) }) }); };
@@ -3942,7 +3942,7 @@ function crownNew({ origin, stake, fac }) {
   for (const st of hr.army) if (st) st[1] = Math.max(1, Math.round(st[1] * R.originFx.armyMul));
   for (const k of RES) G.players[0].res[k] = Math.round(G.players[0].res[k] * R.originFx.resMul);
   if (R.originFx.fort && !cap.built.includes('fort')) cap.built.push('fort');
-  // the Ante regions: bands of walking distance from your capital up to the rival's homeland (the last band)
+  // the Age regions: bands of walking distance from your capital up to the rival's homeland (the last band)
   const D = Math.max(12, cellSteps(cap.v, riv ? riv.v : cap.v));
   R.regions = { from: cap.v, bands: Array.from({ length: R.antes }, (_, i) => Math.round(D * (0.3 + 0.5 * i / Math.max(1, R.antes - 1)) * 0.95)) };
   markRegions({ from: R.regions.from, bands: R.regions.bands, wall: true, per: 2 });
@@ -3959,10 +3959,10 @@ function crownResume() {
   play(); crownHud();
   if (R?.shop) crownShop(null);
 }
-// a new week = a new Ante (the Boss Blind already moved run.ante on): its region is open, its boss is shown
+// a new week = a new Age (the Boss Trial already moved run.ante on): its region is open, its boss is shown
 function crownWeek() {
   const R = G.run; if (!R || R.over) return;
-  toast(`${icon('victory', 18)} Ante ${R.ante}: a new region opens beyond the Crown Gate.`);
+  toast(`${icon('victory', 18)} Age ${R.ante}: a new region opens beyond the Crown Gate.`);
   afterDialogs(() => { if (G.run === R && !R.over && G.mode === 'map') CUI.bossPreview(R, G.day, { threat: CR.threatArmy(R) }); });
 }
 window.CrownRun = { start: crownStart, resume: crownResume };
