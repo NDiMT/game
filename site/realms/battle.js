@@ -22,7 +22,9 @@ export function createBattle({ armyA, heroA, armyB, heroB, town = false }) {
   const B = { stacks: [], obstacles: new Set(), round: 1, log: [], events: [], heroes: [heroA || null, heroB || null], cast: [false, false], over: null, town, active: null, queue: [] };
   const place = (army, side) => {
     const n = army.length, row = side === 0 ? ROWS - 1 : 0;
-    army.forEach(([id, count], i) => {
+    // armies keep empty slots as null (a stack that died mid-army): skip them instead of throwing
+    army.forEach((st, i) => {
+      const [id, count] = st || [];
       if (!id || count <= 0) return;
       const u = UNITS[id];
       const c = Math.min(COLS - 1, Math.round(((i + 0.5) / n) * COLS - 0.5));
@@ -316,7 +318,7 @@ export function autoResolve(B, maxSteps = 600) {
 // rough strength of an army, for the AI and for the "how dangerous is this" hint
 export function armyPower(army, h) {
   let p = 0;
-  for (const [id, n] of army) if (id && n > 0) { const u = UNITS[id]; p += n * u.hp * ((u.dmg[0] + u.dmg[1]) / 2) * (1 + (u.att + u.def) * 0.03) * (u.ranged ? 1.25 : 1) * (u.fly ? 1.1 : 1); }
+  for (const st of army) { if (!st) continue; const [id, n] = st; if (!(id && n > 0)) continue; const u = UNITS[id]; p += n * u.hp * ((u.dmg[0] + u.dmg[1]) / 2) * (1 + (u.att + u.def) * 0.03) * (u.ranged ? 1.25 : 1) * (u.fly ? 1.1 : 1); }
   if (h) p *= 1 + (h.att + h.def) * 0.05 + h.pow * 0.03;
   return p;
 }

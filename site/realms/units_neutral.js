@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE as B, tagRange } from './rig.js?v=1.7';
+import { BONE as B, tagRange } from './rig.js?v=1.8';
 
 // =====================================================================
 // HEX REALMS: neutral wild creatures (goblin, wolf, orc, ogre, troll,
@@ -208,7 +208,10 @@ function nkit(seed) {
 function finish(k, { ao = 0.3, jitter = 0.03, scale = 1, sat = 1.2 } = {}) {
   if (scale !== 1) for (const part of k.parts) part.g.scale(scale, scale, scale);
   const out = (glow) => {
-    const pos = [], nor = [], col = [], uv = [];
+    // typed output sized for the worst case (no degenerate triangles), trimmed at the end
+    let cap = 0; for (const part of k.parts) if (!!part.glow === glow) cap += part.g.attributes.position.array.length;
+    const pos = new Float32Array(cap), nor = new Float32Array(cap), col = new Float32Array(cap), uv = new Float32Array(glow ? 0 : (cap / 3) * 2);
+    let nv = 0;
     const rnd = mulberry32(97);
     const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3(), m = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
     const cc = new THREE.Color();
@@ -217,7 +220,7 @@ function finish(k, { ao = 0.3, jitter = 0.03, scale = 1, sat = 1.2 } = {}) {
     for (const part of k.parts) {
       if (!!part.glow !== glow) continue;
       any = true;
-      ranges.push({ start: pos.length / 3, part });
+      ranges.push({ start: nv, part });
       const p = part.g.attributes.position.array;
       for (let i = 0, f = 0; i < p.length; i += 9, f++) {
         a.fromArray(p, i); b.fromArray(p, i + 3); c.fromArray(p, i + 6);
@@ -242,18 +245,20 @@ function finish(k, { ao = 0.3, jitter = 0.03, scale = 1, sat = 1.2 } = {}) {
         }
         const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
         for (const v of [a, b, c]) {
-          pos.push(v.x, v.y, v.z); nor.push(n.x, n.y, n.z); col.push(cc.r, cc.g, cc.b);
-          if (ax >= ay && ax >= az) uv.push(v.z, v.y); else if (ay >= az) uv.push(v.x, v.z); else uv.push(v.x, v.y);
+          const o3 = nv * 3, o2 = nv * 2; nv++;
+          pos[o3] = v.x; pos[o3 + 1] = v.y; pos[o3 + 2] = v.z; nor[o3] = n.x; nor[o3 + 1] = n.y; nor[o3 + 2] = n.z; col[o3] = cc.r; col[o3 + 1] = cc.g; col[o3 + 2] = cc.b;
+          if (glow) continue;
+          if (ax >= ay && ax >= az) { uv[o2] = v.z; uv[o2 + 1] = v.y; } else if (ay >= az) { uv[o2] = v.x; uv[o2 + 1] = v.z; } else { uv[o2] = v.x; uv[o2 + 1] = v.y; }
         }
       }
-      ranges[ranges.length - 1].count = pos.length / 3 - ranges[ranges.length - 1].start;
+      ranges[ranges.length - 1].count = nv - ranges[ranges.length - 1].start;
     }
     if (!any) return null;
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    if (!glow) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, nv * 3), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor.slice(0, nv * 3), 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col.slice(0, nv * 3), 3));
+    if (!glow) g.setAttribute('uv', new THREE.BufferAttribute(uv.slice(0, nv * 2), 2));
     // shader rig: every part carries its bone + pivot (scaled with the model)
     for (const { start, count, part } of ranges) if (count) tagRange(THREE, g, start, count, part.bone, part.pivot.map((v) => v * scale));
     g.computeBoundingSphere(); g.computeBoundingBox();

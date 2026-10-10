@@ -42,7 +42,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg0); 
   user-select: none; -webkit-user-select: none; touch-action: none; -webkit-font-smoothing: antialiased; }
 #app { position: fixed; inset: 0; }
 canvas { display: block; touch-action: none; }
-button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; touch-action: manipulation; }
 button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 [hidden] { display: none !important; }
 h1, h2, h3 { font-family: 'Cinzel', Georgia, serif; font-weight: 900; }
@@ -51,7 +51,7 @@ b { font-weight: 800; }
 
 /* outlined "game" lettering: set --ol for the outline colour */
 .btn, .fb small, .tabs2 button, .row-b button, .card h2, .toast, .subtitle span, .ld-sub span, #b-round, .lvb, .tb, .hb b, .rc b, .sel-who b, .phead h2,
-.fp-head h2, .fc-name, .diffs button, .floater, .rdelta, .blab, .bq .q b, .slots em, .sel .army em, .medal b, .hs-lv b, .st b, .endstats b, .mlabel, .sec {
+.fp-head h2, .fc-name, .diffs button, .floater, .rdelta, .bq .q b, .slots em, .sel .army em, .medal b, .hs-lv b, .st b, .endstats b, .mlabel, .sec {
   text-shadow: -1px -1px 0 var(--ol), 1px -1px 0 var(--ol), -1px 1px 0 var(--ol), 1px 1px 0 var(--ol), 0 2px 0 var(--ol);
 }
 
@@ -163,6 +163,10 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 .sel .sel-who b { --ol: #0b1236; font-family: 'Cinzel', Georgia, serif; font-size: 14px; color: #ffe27a; overflow: hidden; text-overflow: ellipsis; }
 .sel .st2 { display: flex; align-items: center; gap: 3px; flex: none; }
 .sel .army { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; padding: 2px 3px 3px 2px; }
+/* resume yesterday's unfinished march */
+.sel .sel-go { flex: none; margin-left: auto; min-height: 36px; padding: 0 12px; border: 0; border-radius: 18px; font: 800 13px 'Nunito', system-ui, sans-serif; color: #2a1606; white-space: nowrap; cursor: pointer;
+  background: linear-gradient(#ffe27a, #e0961e); box-shadow: 0 0 0 1.5px #4a2a0c, 0 2px 6px rgba(0,0,0,.35); }
+.sel .sel-go:active { transform: translateY(1px); filter: brightness(.95); }
 .sel .army span { position: relative; flex: none; width: 28px; height: 28px; border-radius: 8px; background: radial-gradient(circle at 50% 35%, #4b6fd6, #1d2d70 85%); box-shadow: 0 0 0 1.5px #c99a3e; }
 .sel .army span em { --ol: #000; position: absolute; right: -3px; bottom: -4px; font-style: normal; font-size: 10px; font-weight: 900; color: #fff; }
 .btns { display: flex; gap: 8px; }
@@ -173,7 +177,11 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 .fb.end { --ol: #6a3408; flex: 1.35; background: linear-gradient(180deg, #fff09a 0%, #ffd03c 42%, #f6a01e 100%); border-color: #4a2606;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), inset 0 -4px 0 rgba(0, 0, 0, 0.16), 0 4px 0 #8a4a0c, 0 8px 14px rgba(240, 150, 30, 0.3); }
 .fb.end small { font-size: 13px; }
-.fb.end.confirm { animation: pulse 0.6s infinite alternate; }
+/* perf: the confirm pulse fades a pre-painted glow ring (opacity, compositor) instead of animating box-shadow + filter (a repaint every frame) */
+.fb.end.confirm { filter: brightness(1.1) saturate(1.1); }
+.fb.end.confirm::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 2px #fff0a0, 0 0 0 5px rgba(255, 211, 92, 0.45), 0 0 24px rgba(255, 211, 92, 0.9); animation: pulseglow 0.6s ease-in-out infinite alternate; }
+@keyframes pulseglow { to { opacity: 1; } }
 /* nothing left to do today: End day breathes and glows */
 .fb.end.ready { animation: breathe 1.4s ease-in-out infinite; }
 .fb.end.ready::before { content: ''; position: absolute; inset: -5px; border-radius: 18px; pointer-events: none; box-shadow: 0 0 0 3px #ffe27a, 0 0 22px 6px rgba(255, 200, 60, 0.75); animation: glow 1.4s ease-in-out infinite; }
@@ -183,7 +191,6 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 .fb:disabled { filter: grayscale(0.8) brightness(0.75); }
 .fb:active:not(:disabled) { transform: translateY(3px); box-shadow: var(--bevel), 0 1px 0 var(--ink-b), 0 2px 4px rgba(2, 4, 20, 0.4); filter: brightness(1.1); }
 .fb.end:active { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 1px 0 #8a4a0c; }
-@keyframes pulse { to { filter: brightness(1.2) saturate(1.2); box-shadow: 0 0 0 2px #fff0a0, 0 0 0 5px rgba(255, 211, 92, 0.45), 0 0 24px rgba(255, 211, 92, 0.9); } }
 @keyframes rise { from { transform: translateY(10px) scale(0.96); opacity: 0; } }
 
 /* ------------------------------------------------------------ the town: a framed bottom sheet over the 3D town view */
@@ -330,9 +337,6 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 #b-quick { --face: radial-gradient(circle at 50% 30%, #ffb08a, #e8562c 55%, #8a2010) !important; }
 #battle .fb:disabled { filter: grayscale(0.85) brightness(0.7); }
 #blabels { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-.blab { --ol: #0a1440; position: absolute; left: 0; top: 0; margin: 6px 0 0 -16px; min-width: 32px; padding: 0 7px; border-radius: 9px; font-weight: 900; font-size: 12.5px; line-height: 19px; text-align: center; color: #fff;
-  background: linear-gradient(180deg, #6a94ff, #2a4aa8); border: 1.5px solid #0a1440; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 0 #0a1440, 0 3px 5px rgba(0, 0, 0, 0.4); font-variant-numeric: tabular-nums; }
-.blab.s1 { --ol: #4a0a0a; background: linear-gradient(180deg, #ff8a72, #b02a22); border-color: #4a0a0a; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 0 #4a0a0a, 0 3px 5px rgba(0, 0, 0, 0.4); }
 
 /* ------------------------------------------------------------ ribbons: titles, toast, round, subtitles */
 .card h2, .toast, #b-round, .subtitle span, .ld-sub span, .fp-head h2 { --rb: linear-gradient(180deg, var(--fac-hi) 0%, var(--fac) 40%, var(--fac-lo) 100%); --rb-tail: var(--fac-lo); --rb-fold: var(--fac-deep); }
@@ -368,6 +372,13 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 #dlg-body b { color: #fff; }
 .dbtns { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; padding-bottom: 4px; }
 @keyframes popin { 0% { transform: translateY(24px) scale(0.82); opacity: 0; } 60% { opacity: 1; } }
+/* close: a short fade on the compositor (opacity/transform only); a chained dialog gets a quick swap pop */
+.overlay.closing { pointer-events: none; animation: fadeout 0.17s ease-in forwards; }
+.overlay.closing .card { animation: popout 0.17s ease-in forwards; }
+.card.swap { animation: cardswap 0.3s var(--boing); }
+@keyframes fadeout { to { opacity: 0; } }
+@keyframes popout { to { transform: translateY(12px) scale(0.94); } }
+@keyframes cardswap { from { transform: scale(0.94); opacity: 0.5; } }
 .cas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; font-size: 13px; line-height: 1.7; }
 .cas > div { padding: 10px; border-radius: var(--r-m); background: rgba(4, 8, 28, 0.4); border: 2px solid var(--ink-b); box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4); }
 .cas b { display: block; color: #ffe27a !important; margin-bottom: 4px; font-size: 11px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -467,6 +478,7 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 .diffs button { --ol: #0b1540; position: relative; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 46px; border-radius: 12px; color: var(--text-2); font-weight: 900; font-size: 14px;
   background: linear-gradient(180deg, #1a2350, #121a40); border: 2px solid var(--ink-b); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45); transition: transform 0.15s var(--boing); }
 .diffs button i { line-height: 0; }
+.diffs button:active { transform: translateY(1px) scale(0.97); }
 .diffs button.on { --ol: #6a3408; color: #fff; transform: translateY(-2px); border-color: #4a2606; background: linear-gradient(180deg, #fff09a 0%, #ffd03c 45%, #f6a01e 100%);
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 3px 0 #8a4a0c, 0 6px 10px rgba(0, 0, 0, 0.35); }
 .mfoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 0; }
@@ -530,9 +542,12 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 .ld-track { position: relative; height: 20px; margin-top: 30px; border-radius: 10px; background: #050818; border: 2px solid var(--ink); overflow: hidden;
   box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.7), 0 0 0 2.5px #e0ac48, 0 0 0 4px var(--ink); }
 #ld-bar { display: block; height: 100%; width: 0; border-radius: 8px; transition: width 0.2s;
-  background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.28) 0 7px, rgba(255, 255, 255, 0) 7px 14px), linear-gradient(180deg, #fff6b0 0%, #ffd040 45%, #e8901a 100%);
-  background-size: 19.8px 100%, 100% 100%; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 0 12px rgba(255, 200, 80, 0.7); animation: stripes 0.7s linear infinite; }
-@keyframes stripes { to { background-position: 19.8px 0, 0 0; } }
+  position: relative; overflow: hidden; background: linear-gradient(180deg, #fff6b0 0%, #ffd040 45%, #e8901a 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 0 12px rgba(255, 200, 80, 0.7); }
+/* perf: the moving stripes slide on the compositor (transform) instead of repainting background-position every frame */
+#ld-bar::after { content: ''; position: absolute; top: 0; bottom: 0; left: -19.8px; right: 0; pointer-events: none;
+  background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.28) 0 7px, rgba(255, 255, 255, 0) 7px 14px) 0 0 / 19.8px 100%; animation: stripes 0.7s linear infinite; will-change: transform; }
+@keyframes stripes { to { transform: translateX(19.8px); } }
 #ld-text { margin: 14px 0 0; font-size: 13px; font-weight: 800; color: var(--text-2); }
 
 /* ------------------------------------------------------------ faction picker */
@@ -644,3 +659,13 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 @media (prefers-reduced-motion: reduce) { .mbtns .btn.gold::before, .fp-foot .btn.gold::before { display: none; } }
 
 .hs-pt img.pt { width: 96px; height: 96px; border-radius: 14px; flex: none; }
+
+/* battle entry curtain (main.js enterBattle): up on the tap while the arena, models and shaders get ready.
+   Opacity and the crest pulse run on the compositor, so it keeps moving even while the main thread is busy. */
+#bcurtain { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; pointer-events: auto; opacity: 0; transition: opacity 0.12s ease-out;
+  background: radial-gradient(circle at 50% 46%, rgba(54, 40, 86, 0.82), rgba(10, 8, 22, 0.97) 72%); }
+#bcurtain.on { opacity: 1; }
+#bcurtain.off { opacity: 0; transition-duration: 0.35s; pointer-events: none; }
+#bcurtain .ic { filter: drop-shadow(0 4px 0 rgba(10, 6, 30, 0.55)); animation: bcur 0.7s ease-in-out infinite alternate; will-change: transform; }
+@keyframes bcur { from { transform: scale(0.9) rotate(-5deg); } to { transform: scale(1.06) rotate(5deg); } }
+@media (prefers-reduced-motion: reduce) { #bcurtain .ic { animation: none; } }

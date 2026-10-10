@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE, tagRange, ensureRig } from './rig.js?v=1.7';
+import { BONE, tagRange, ensureRig } from './rig.js?v=1.8';
 
 // =====================================================================
 // HEX REALMS: adventure-map objects (resources, treasure, mines, sites).
@@ -196,20 +196,23 @@ function finish(parts, glow, aoH) {
     for (let i = 1; i < P.length; i += 3) { y0 = Math.min(y0, P[i]); y1 = Math.max(y1, P[i]); }
     const rr = rng(p.seed);
     let jf = 1;
+    // a plain colour is the same for every vertex: convert (and grade) it once per part
+    let fixed = null;
+    if (typeof p.c !== 'function' && !Array.isArray(p.c)) { fixed = new THREE.Color().set(p.c); if (!glow) grade(fixed); }
     for (let v = 0; v < cnt; v++) {
       const i3 = v * 3, x = P[i3], y = P[i3 + 1], z = P[i3 + 2], nx = N[i3], ny = N[i3 + 1], nz = N[i3 + 2];
       if (v % 3 === 0) jf = 1 + (rr() - 0.5) * 2 * p.jit;
       const c = p.c;
       if (typeof c === 'function') c(_c, x, y, z, nx, ny, nz, (y - y0) / Math.max(1e-6, y1 - y0));
       else if (Array.isArray(c)) { const t = (y - y0) / Math.max(1e-6, y1 - y0); _c.set(c[0]).lerp(_c2.set(c[1]), t); }
-      else _c.set(c);
+      else _c.copy(fixed);
       let f = jf;
       if (!glow) {
         // the shared material already darkens near the ground: keep ours soft and warm
         // value structure: lit tops bright, sides mid, undersides and the base darker
         if (p.ao) f *= 0.74 + 0.26 * Math.min(1, Math.max(0, y / aoH));
         f *= ny > 0 ? 1 + 0.24 * ny : 1 + 0.2 * ny;
-        grade(_c);
+        if (!fixed) grade(_c);
       }
       pos[o * 3] = x; pos[o * 3 + 1] = y; pos[o * 3 + 2] = z;
       nor[o * 3] = nx; nor[o * 3 + 1] = ny; nor[o * 3 + 2] = nz;
