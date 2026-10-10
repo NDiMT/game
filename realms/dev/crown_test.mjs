@@ -142,5 +142,17 @@ const alive0 = (B) => BT.alive(B, 0).reduce((a, s) => a + s.count, 0);
   C.metaSave(store, m2); ok(C.metaLoad(store).unlocks.factions.includes('necro') && Object.keys(store.m)[0] === 'realms.crown.meta', 'meta save in its own key');
 }
 
+// ---- 11. a full 3-Ante schedule: 9 Blinds, then the run is won; the Warlord's hero joins the battle
+{
+  const r = run0(); let k = 0;
+  while (!r.over && k++ < 20) C.advanceBlind(r);
+  ok(r.won && k === 9, `9 Blinds win a 3-Ante run (${k})`);
+  const T = C.threatArmy(run0(), 2, 'warlord');
+  const B = BT.createBattle({ armyA: [['pikeman', 10]], armyB: T.army, mods: C.battleMods(run0(), { enemyHero: T.hero }), rng: C.mulberry32(1) });
+  ok(B.heroes[1] && B.heroes[1].att === T.hero.att, 'Warlord hero stats join the battle');
+  const sw = BT.createBattle({ armyA: [['pikeman', 10]], armyB: [['goblin', 3]], mods: C.battleMods(run0(), { seals: ['swift'] }), rng: C.mulberry32(1) });
+  ok(BT.speedOf(sw.stacks[0]) === UNITS.pikeman.spd + 2, 'Swift Seal: +2 speed');
+}
+
 console.log(`\n${n - fails}/${n} passed`);
 if (fails) process.exit(1);

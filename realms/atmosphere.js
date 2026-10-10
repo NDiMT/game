@@ -598,7 +598,7 @@ export function createFlatSky(THREE, scene, opts = {}) {
   const V3 = THREE.Vector3;
   const rand = mulberry32(opts.seed ?? 11);
   const uTime = { value: 0 };
-  const fogCol = new THREE.Color(opts.fogColor ?? 0xbfd2e2);
+  const fogCol = new THREE.Color(opts.fogColor ?? 0xa8c6e2);
   const fog = new THREE.Fog(fogCol.getHex(), 20, 60);
   scene.fog = fog;
   const sky = new THREE.Group(); sky.name = 'flat-sky'; scene.add(sky);
@@ -610,7 +610,7 @@ export function createFlatSky(THREE, scene, opts = {}) {
       void main() {
         vec3 d = normalize(vD);
         float y = d.y;
-        vec3 zen = vec3(0.16, 0.36, 0.78), mid = vec3(0.42, 0.62, 0.9), hor = vec3(0.86, 0.88, 0.86);
+        vec3 zen = vec3(0.13, 0.32, 0.74), mid = vec3(0.36, 0.58, 0.9), hor = vec3(0.8, 0.86, 0.92);
         vec3 c = mix(hor, mid, smoothstep(0.0, 0.22, y));
         c = mix(c, zen, smoothstep(0.18, 0.75, y));
         c = mix(uFog, c, smoothstep(-0.04, 0.03, y));
@@ -652,18 +652,20 @@ export function createFlatSky(THREE, scene, opts = {}) {
   const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new V3(), p = new V3(), ndc = new V3(), Y = new V3(0, 1, 0), fw = new V3(), rt = new V3(), tmp = new V3();
   let fogOn = true, wind = 0;
   function setArea(b) { area = { x0: b.x0 - 14, x1: b.x1 + 14, z0: b.z0 - 14, z1: b.z1 + 14 }; }
-  function update(dt, camera, focus, viewDist = 6) {
+  function update(dt, camera, focus, viewDist = 6, title = false) {
     uTime.value += dt; wind += dt * 0.06;
     sky.position.copy(camera.position);
     // fog: starts past the far edge of a normal view, so only the distance and the open sea fade into the haze
+    // (title: a low, wide view, so the haze closes in sooner; opts.near / far override)
     const k = fogOn ? 1 : 3;
-    fog.near = (6 + viewDist * 2.2) * k; fog.far = fog.near + 26 + viewDist * 3;
+    if (title) { fog.near = 8 * k; fog.far = 28 * k; }
+    else { fog.near = (5 + viewDist * 1.6) * k; fog.far = fog.near + 12 + viewDist * 2; }
     // the sun: up-right of the view direction, a little above the horizon
     camera.updateMatrixWorld();
     const e = camera.matrixWorld.elements;
     fw.set(-e[8], 0, -e[10]); if (fw.lengthSq() < 1e-6) fw.set(0, 0, -1); fw.normalize();
     rt.set(-fw.z, 0, fw.x);
-    uVis.value.copy(fw).addScaledVector(rt, 0.42).setY(0.2).normalize();
+    uVis.value.copy(fw).addScaledVector(rt, 0.5).setY(0.09).normalize();
     // clouds drift east over the map's surroundings; over the middle of the view and near the lens they fade
     const W = area.x1 - area.x0, D = area.z1 - area.z0;
     for (let i = 0; i < NC; i++) {

@@ -385,6 +385,8 @@ export function battleMods(run, opts = {}) {
     const both = run.banners.some((b) => b.id === 'usurper');
     for (const id of rules) { const m = BOSSES[id].rule(S); m.id = 'boss:' + id; mods.push(m); if (both) { const e = BOSSES[id].rule(1 - S); e.id = 'boss2:' + id; mods.push(e); } }
   }
+  // the Blind's Warlord / Boss hero: its stats and spells join the battle (the map battle code has no enemy hero)
+  if (opts.enemyHero) { const h = opts.enemyHero; mods.unshift({ id: 'enemyHero', onBattleStart(B) { if (!B.heroes[1 - S]) B.heroes[1 - S] = { ...h, skills: { ...h.skills }, spells: [...h.spells] }; } }); }
   mods.push(tracker(S));
   return mods;
 }

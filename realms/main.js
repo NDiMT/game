@@ -155,6 +155,8 @@ const G = { mode: 'menu', seed: 1, day: 1, players: [], heroes: [], towns: [], o
 // freeplay: player colours (flags, heroes, HUD). Each crown takes its faction's colour unless another crown has it.
 const PLAYER_COLS = [0x3a7aff, 0xd83a3a, 0x3ac84a, 0xff7a1a, 0xa84ad8, 0x22c4c0, 0xe8c020, 0xff5aa8];
 const COL_NAMES = ['Blue', 'Red', 'Green', 'Orange', 'Purple', 'Teal', 'Gold', 'Pink'];
+// a crown whose faction colour is taken gets a spare colour first (teal, gold, pink), so no faction colour is misused early
+const COL_SPARE = [5, 6, 7, 0, 1, 2, 3, 4].map((i) => PLAYER_COLS[i]);
 const colCss = (c) => '#' + c.toString(16).padStart(6, '0');
 // difficulty 0 Easy · 1 Normal · 2 Hard · 3 Impossible; byDiff picks from a per-difficulty table (short tables clamp)
 const DIFF_NAMES = ['Easy', 'Normal', 'Hard', 'Impossible'];
@@ -196,7 +198,7 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true; // frame() decides when the shadow maps re-render
 $('app').prepend(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xbfd2e2);
+scene.background = new THREE.Color(0xa8c6e2);
 const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 400);
 const sunDir = new THREE.Vector3(0.6, 0.8, 0.4).normalize();
 const sun = new THREE.DirectionalLight(0xffe8c4, 2.5);
@@ -229,7 +231,7 @@ function smoothDamp(x, to, v, st, dt) {
 }
 // eye distance from the focus and tilt (radians below the horizon) for a zoom level
 const viewDist = (d) => Math.max(1.6, d - 4.6);
-const viewPitch = (d) => (G.mode === 'menu' ? 0.3 : 0.5 + 0.55 * (1 - Math.exp(-Math.max(0, d - 6.4) / 3.2)));
+const viewPitch = (d) => (G.mode === 'menu' ? 0.2 : 0.5 + 0.55 * (1 - Math.exp(-Math.max(0, d - 6.4) / 3.2)));
 const CAM_DEFAULT = 10; // the zoom a new game, a selected hero and a load start at
 const FLING_DECAY = 7; // 1/s; the speed cap scales with the zoom (the longest glide is ~0.3 view distances)
 const flingMax = () => 2.2 * viewDist(cam.dist);
@@ -480,7 +482,7 @@ const QG = (() => {
   state.set = (o = {}) => { if (o.auto !== undefined) S.auto = !!o.auto; if (o.cull !== undefined) hzOn = !!o.cull; if (o.shadowsAlways !== undefined) shAlways = !!o.shadowsAlways; if (o.level !== undefined && o.level !== S.level) apply(clamp(o.level | 0, 0, steps.length - 1)); reset(); return state(); };
   return { sample, state, init() { if (S.level) apply(S.level); else camera.userData.pixelRatio = bcam.userData.pixelRatio = S.pr; } };
 })();
-const atmos = createFlatSky(THREE, scene, { fogColor: 0xbfd2e2 }); // flat world: daylight sky, horizon haze, clouds, birds
+const atmos = createFlatSky(THREE, scene, { fogColor: 0xa8c6e2 }); // flat world: daylight sky, horizon haze, clouds, birds
 
 
 // ------------------------------------------------------------------ the map mesh: bevelled hex columns with cliff walls, in chunks
@@ -767,7 +769,10 @@ function floraCull() {
   const vis = [];
   for (const C of GRID.chunks) {
     _fb.min.set(C.x0 - 0.8, -0.4, C.z0 - 0.8); _fb.max.set(C.x1 + 0.8, 1.6, C.z1 + 0.8);
-    if (!floraOn || _frus.intersectsBox(_fb)) vis.push(C.id);
+    // in view and nearer than the far haze (beyond it everything has faded into the sky colour)
+    const on = !floraOn || (_frus.intersectsBox(_fb) && _fb.distanceToPoint(camera.position) < atmos.fog.far);
+    if (on) vis.push(C.id);
+    const ch = TERRAIN.chunks()[C.id]; if (ch) { ch.land.visible = on; ch.water.visible = on && ch.W?.n > 0; }
   }
   const key = vis.join(',');
   const all = key !== floraVis.key;
@@ -858,7 +863,7 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
   rnd = mulberry32(seed);
   // capitals: farthest-point picks over good sites, retried on new terrain until every pair is far apart.
   // need = the fraction of the world's span each pair must keep (2 crowns ~ opposite sides, 5 crowns ~ spread evenly)
-  const need0 = [0, 0, 0.86, 0.74, 0.64, 0.55][N];
+  const need0 = [0, 0, 0.8, 0.6, 0.5, 0.42][N]; // (flat rectangle: 4 crowns ~ the corners, 5 ~ corners + centre)
   let caps = null, span = 1, best = null, bestMin = -1;
   for (let tries = 0; tries < 60 && !caps; tries++) {
     genTerrain(seed + tries * 101, G.size, N);
@@ -886,7 +891,7 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
   for (const c of caps.slice(1)) if (!connected(caps[0], c)) carve(caps[0], c);
   // the crowns: rivals pick a faction (Random prefers one nobody leads yet) and a colour (their faction's unless taken)
   const facs = Object.keys(FACTIONS), used = [myFac], cols = [];
-  const takeCol = (want, fac) => { let c = PLAYER_COLS[want] ?? -1; if (c < 0 || cols.includes(c)) c = FACTIONS[fac].color; if (cols.includes(c)) c = PLAYER_COLS.find((x) => !cols.includes(x)); cols.push(c); return c; };
+  const takeCol = (want, fac) => { let c = PLAYER_COLS[want] ?? -1; if (c < 0 || cols.includes(c)) c = FACTIONS[fac].color; if (cols.includes(c)) c = COL_SPARE.find((x) => !cols.includes(x)); cols.push(c); return c; };
   G.players = [newPlayer(0, myFac, false, takeCol(opts.myCol ?? -1, myFac), G.resLv)];
   opp.forEach((o, k) => {
     let fac = FACTIONS[o.fac] ? o.fac : null;
@@ -3199,6 +3204,7 @@ function aiValue(hr, v, power) {
     if (other.p === hr.p) return 0;
     // freeplay: the human's heroes are left alone for the first days (later with more rivals on Easy/Normal) and need a clearer edge
     if (other.p === 0 && G.day < aiGraceDay(byDiff([10, 7, 4, 2]))) return 0;
+    if (other.p > 0 && G.day < byDiff([6, 4, 3, 2])) return 0;
     const theirs = BT.armyPower(heroArmy(other), other); return power > theirs * (other.p === 0 ? byDiff([1.7, 1.45, 1.3, 1.15]) : 1.3) ? 70 + theirs / 100 : 0;
   }
   if (!o) return 0;
@@ -3210,6 +3216,7 @@ function aiValue(hr, v, power) {
     if (t.p === hr.p) return heroArmy({ army: t.garrison }).length ? 12 + BT.armyPower(t.garrison) / 120 : 0;
     const gp = BT.armyPower(t.garrison) * (t.built.includes('fort') ? 1.3 : 1);
     if (t.p === 0 && G.day < aiGraceDay(byDiff([14, 10, 6, 3]))) return 0;
+    if (t.p > 0 && G.day < byDiff([8, 6, 5, 3])) return 0; // rival crowns don't knock each other out in the first days either
     return power > gp * 1.4 ? (t.p === 0 ? (G.players.length > 2 ? 85 : 120) : 70) : 0;
   }
   if (kind === 'pickup') return o.type === 'gold' ? o.amount / 80 : o.type === 'chest' ? 14 : o.type === 'artifact' ? 25 : o.type === 'campfire' ? 9 : 7;
@@ -3455,14 +3462,14 @@ function pickFaction() {
   // the colour each rival will really get (the same rule newWorld uses), so the swatches show the outcome
   const colsNow = () => {
     const taken = [FACTIONS[S.fac].color];
-    return S.opp.map((o) => { let c = PLAYER_COLS[o.col] ?? -1; const fac = FACTIONS[o.fac] ? o.fac : null; if (c < 0 || taken.includes(c)) c = fac ? FACTIONS[fac].color : -1; if (c < 0 || taken.includes(c)) c = PLAYER_COLS.find((x) => !taken.includes(x) && !S.opp.some((q) => PLAYER_COLS[q.col] === x)) ?? PLAYER_COLS.find((x) => !taken.includes(x)); taken.push(c); return c; });
+    return S.opp.map((o) => { let c = PLAYER_COLS[o.col] ?? -1; const fac = FACTIONS[o.fac] ? o.fac : null; if (c < 0 || taken.includes(c)) c = fac ? FACTIONS[fac].color : -1; if (c < 0 && !fac) return null; /* Random + Auto: decided at the start */ if (c < 0 || taken.includes(c)) c = COL_SPARE.find((x) => !taken.includes(x) && !S.opp.some((q) => PLAYER_COLS[q.col] === x)) ?? COL_SPARE.find((x) => !taken.includes(x)); taken.push(c); return c; });
   };
   const seg = (key, opts, cur) => `<div class="diffs seg" role="radiogroup" data-k="${key}">${opts.map(([v, label, ic]) => `<button data-v="${v}" class="${String(v) === String(cur) ? 'on' : ''}" role="radio" aria-checked="${String(v) === String(cur)}">${ic ? icon(ic, 16) : ''}${label}</button>`).join('')}</div>`;
   const row = (label, html) => `<div class="fs-row"><p class="mlabel">${label}</p>${html}</div>`;
   const oppHTML = () => {
     const cs = colsNow();
-    return S.opp.map((o, k) => { const f = FACTIONS[o.fac], css = colCss(cs[k]);
-      return `<div class="opp" style="--pc:${css}"><span class="opp-n">${k + 1}</span>
+    return S.opp.map((o, k) => { const f = FACTIONS[o.fac], css = cs[k] == null ? 'conic-gradient(#3a7aff, #d83a3a, #3ac84a, #e8c020, #a84ad8, #3a7aff)' : colCss(cs[k]);
+      return `<div class="opp" style="--pc:${cs[k] == null ? '#8a8aa0' : css}"><span class="opp-n">${k + 1}</span>
         <button class="opp-fac" data-o="${k}" style="--fc:${f ? f.css : '#8a8aa0'}" aria-label="Rival ${k + 1} faction: ${f ? f.name : 'Random'}"><span class="fc-crest mini">${f ? icon(FAC_CREST[o.fac] || 'banner', 18) : '<b class="q">?</b>'}</span><b>${f ? f.name : 'Random'}</b><i class="cyc">▸</i></button>
         <button class="opp-col" data-c="${k}" aria-label="Rival ${k + 1} colour: ${COL_NAMES[PLAYER_COLS.indexOf(cs[k])] || ''}"><i style="background:${css}"></i><small>${o.col < 0 ? 'Auto' : COL_NAMES[o.col]}</small></button></div>`; }).join('');
   };
@@ -3492,7 +3499,8 @@ function pickFaction() {
   fadeShow(el); el.scrollTop = 0; for (const s of el.querySelectorAll('.fs-you, .fs-set')) s.scrollTop = 0;
   document.body.style.setProperty('--fac', FACTIONS[S.fac].css);
   const hint = () => {
-    $('fs-hint').textContent = `${S.win === 'capitals' ? 'Take every rival capital; a crown that loses its capital is out (so are you).' : 'Win by taking every town and defeating every hero.'} ${S.size !== 'M' ? `${MAP_SIZES[S.size]} map.` : ''}`.trim();
+    const small = S.opp.length >= 3 && (S.size === 'S' || S.size === 'M') || S.opp.length >= 2 && S.size === 'S';
+    $('fs-hint').textContent = `${S.win === 'capitals' ? 'Take every rival capital; a crown that loses its capital is out (so are you).' : 'Win by taking every town and defeating every hero.'} ${small ? `${S.opp.length} rivals on a ${MAP_SIZES[S.size].toLowerCase()} map: expect early clashes (L or XL gives room).` : ''}`.trim();
   };
   const refresh = () => {
     $('fs-opps').innerHTML = oppHTML(); $('f-sum').textContent = summary(); hint(); keep();
@@ -3570,7 +3578,7 @@ function mapShadowsDue(dt) {
 const _fs = new THREE.Sphere();
 function hzOne(g) {
   _fs.center.copy(g.position); _fs.center.y += 0.25; _fs.radius = 0.75 * Math.max(1, g.scale.x * 3);
-  const out = !_frus.intersectsSphere(_fs);
+  const out = !_frus.intersectsSphere(_fs) || _fs.center.distanceTo(camera.position) > atmos.fog.far;
   if (out) { if (g.visible) { g.visible = false; g.userData.hzCull = true; } }
   else if (g.userData.hzCull) { g.visible = true; g.userData.hzCull = false; }
 }
@@ -3620,7 +3628,7 @@ function frame(now) {
   } else {
     updateCamera(dt);
     mapViewOffset(dt);
-    if (G.mode !== 'town') atmos.update(dt, camera, camFocus, viewDist(cam.dist)); // perf: the town screen does not draw the map's sky
+    if (G.mode !== 'town') atmos.update(dt, camera, camFocus, viewDist(cam.dist), G.mode === 'menu'); // perf: the town screen does not draw the map's sky
     cam.spin = G.mode === 'menu' ? 0.035 : 0; if (G.mode === 'menu') cam.tDist = 12.5;
     else {
       updateWalk(dt); tickAI(dt);
@@ -3761,6 +3769,7 @@ cvs.addEventListener('webglcontextrestored', () => {
 newWorld(12345, 1);
 for (let v = 0; v < NV; v++) seen[v] = 1;
 layoutWorld();
+camSnapTo(GRID.cx, GRID.cz + 3); cam.dist = cam.tDist = 12.5; // the title looks across the middle of the map
 resize();
 QG.init();
 showMenu();

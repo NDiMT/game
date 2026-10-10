@@ -260,7 +260,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
   }
 
   // ---------------------------------------------------------------- origin + stake picker (new run)
-  function originPick(meta, { onStart, onBack }) {
+  function originPick(meta, { onStart, onBack, onCollection = null }) {
     let origin = 'banneret', stake = 1, fac = 'haven';
     const L = open('cr-origin', '');
     const render = () => {
@@ -269,11 +269,12 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
         <div class="cr-facs">${facs.map((f) => { const ok = meta.unlocks.factions.includes(f); return `<button class="cr-fac${f === fac ? ' on' : ''}${ok ? '' : ' locked'}" data-f="${f}" style="--fc:${FACTIONS[f].css}" ${ok ? '' : 'aria-disabled="true"'}>${unitIcon(FACTIONS[f].units[0], 48)}<b>${FACTIONS[f].name}</b>${ok ? '' : `<small>${icon('lock', 12)} ${C.FAC_UNLOCK[f].text}</small>`}</button>`; }).join('')}</div>
         <div class="cr-row cr-origins">${Object.values(C.ORIGINS).map((o) => { const ok = meta.unlocks.origins.includes(o.id) && (!o.fac || meta.unlocks.factions.includes(o.fac)); return `<button class="cr-card r-origin${o.id === origin ? ' on' : ''}${ok ? '' : ' locked'}" data-o="${o.id}"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon(ok ? o.icon : 'lock', 46)}</span><b class="cr-name">${o.name}</b><p class="cr-txt">${ok ? o.text : o.unlock}</p></div></div></button>`; }).join('')}</div>
         <div class="cr-stakes">${C.STAKES.slice(1).map((s, i) => `<button class="cr-stake${i + 1 === stake ? ' on' : ''}${i + 1 > maxStake ? ' locked' : ''}" data-s="${i + 1}" style="--sc:${s.col}" title="${esc(s.text)}"><i></i><small>${s.name}</small></button>`).join('')}<p>${esc(C.STAKES[stake].text)}</p></div>
-        <footer><button class="btn ghost" id="cr-back">Back</button><button class="btn gold" id="cr-go">${icon('attack', 20)} Begin the run</button></footer></div>`;
+        <footer><button class="btn ghost" id="cr-back">Back</button>${onCollection ? `<button class="btn" id="cr-coll">${icon('chest', 18)} Collection</button>` : ''}<button class="btn gold" id="cr-go">${icon('attack', 20)} Begin the run</button></footer></div>`;
       L.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { if (!meta.unlocks.factions.includes(b.dataset.f)) { S('deny'); replayCls(b, 'shake'); return; } fac = b.dataset.f; if (C.ORIGINS[origin].fac && C.ORIGINS[origin].fac !== fac) origin = 'banneret'; stake = Math.min(stake, meta.unlocks.stakes[fac] || 1); S('click'); render(); });
       L.querySelectorAll('[data-o]').forEach((b) => b.onclick = () => { const o = C.ORIGINS[b.dataset.o]; if (b.classList.contains('locked')) { S('deny'); replayCls(b, 'shake'); return; } origin = o.id; if (o.fac) fac = o.fac; S('select'); render(); });
       L.querySelectorAll('[data-s]').forEach((b) => b.onclick = () => { if (+b.dataset.s > maxStake) { S('deny'); replayCls(b, 'shake'); return; } stake = +b.dataset.s; S('click'); render(); });
       L.querySelector('#cr-back').onclick = () => { S('close'); close(); onBack?.(); };
+      if (onCollection) L.querySelector('#cr-coll').onclick = () => { S('click'); close(true); onCollection(); };
       L.querySelector('#cr-go').onclick = () => { S('confirm'); close(true); onStart({ origin, stake, fac }); };
     };
     render(); S('open');

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Crown Run UI · dev</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Nunito:wght@600;800;900&display=swap" />
+<link rel="stylesheet" href="../style.css" />
+<style>body { background: #2a4a2a; } #hud { position: fixed; inset: 0; } .note { position: fixed; right: 8px; bottom: 6px; z-index: 50; color: #fff; font: 700 11px Nunito; opacity: .6; }</style>
+</head>
+<body>
+<!-- Crown Run screens against mock state (agent "crown"). ?s=hud|shop|pack|boss|intro|end|coll|origin -->
+<div id="hud"><header class="resbar"><span class="rc rc-gold"><i data-ic="gold" data-size="24"></i><b>12,500</b></span><span class="rc"><i data-ic="wood" data-size="24"></i><b>20</b></span><span class="rc"><i data-ic="ore" data-size="24"></i><b>20</b></span><span class="rc"><i data-ic="gems" data-size="24"></i><b>5</b></span><em id="r-day"><small>Week 2</small><b>Day 4</b></em></header></div>
+<p class="note" id="note"></p>
+<script type="module">
+import { icon, hydrateIcons, ensureDefs } from '../icons.js';
+import * as C from '../crown.js?v=1.10';
+import { createCrownUI } from '../crown_ui.js?v=1.10';
+import { UNITS } from '../data.js?v=1.10';
+ensureDefs(); hydrateIcons(document);
+// stand-in portraits (the game passes real 3D portraits)
+const unitIcon = (id, s = 64) => { const u = UNITS[id]; const c = '#' + (u?.col ?? 0x888888).toString(16).padStart(6, '0'); return `<img class="pt" alt="" src="data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' rx='10' fill='${c}'/><text x='32' y='42' font-size='26' font-family='Georgia' font-weight='bold' text-anchor='middle' fill='#fff' stroke='#000' stroke-width='1'>${(u?.name || '?').slice(0, 2)}</text></svg>`)}" width="${s}" height="${s}">`; };
+const UI = createCrownUI({ icon, unitIcon, sfx: {} });
+const meta = C.metaDefault(); meta.glory = 74; meta.collection.seen = { war_drum: 1, fletcher: 1, heavy_volley: 1, mirror: 1, herald: 1, gryphon: 1, bone_tally: 1 }; meta.collection.banners = { war_drum: 2, mirror: 1 }; meta.collection.bosses = { wall: 1 }; meta.collection.units = { pikeman: 1, archer: 1, griffin: 1, goblin: 1, orc: 1 }; meta.trophies = ['first_blood'];
+const run = C.newRun({ seed: 42, meta });
+run.ante = 2; run.blind = 1; run.crowns = 14;
+run.banners = [{ id: 'war_drum', gilded: false, n: 0 }, { id: 'mirror', gilded: false, n: 0 }, { id: 'heavy_volley', gilded: true, n: 0 }, { id: 'trophy_pike', gilded: false, n: 7 }];
+run.stats.blindsWon = 4;
+const s = new URLSearchParams(location.search).get('s') || 'shop';
+document.getElementById('note').textContent = `crown-ui dev · ${s} · ${innerWidth}x${innerHeight}`;
+UI.mountHud(document.getElementById('hud')); UI.renderHud(run, 11);
+const army = [['pikeman', 40], ['archer', 18], ['griffin', 9], ['swordsman', 4]];
+if (s === 'shop') { const p = C.payout(run, 'raid', { unbroken: 2 }); run.crowns += p.total; C.genShop(run, meta, { known: ['bless'], army }); UI.shop(run, { payout: p, meta, ctx: () => ({ known: ['bless'], army }), apply: async (it, buy) => { buy(); return true; }, onDone: () => {} }); }
+if (s === 'pack') UI.pack(run, C.openPack(run, 'war', 'demo:3', meta), { onPick: () => true });
+if (s === 'muster') UI.pack(run, C.openPack(run, 'muster', 'demo:4', meta), { onPick: () => true });
+if (s === 'boss') UI.bossPreview(run, 11, { threat: C.threatArmy(run, 2, 'warlord') });
+if (s === 'intro') { run.blind = 2; UI.blindIntro(run, C.nextBlind(run), C.threatArmy(run, 2, 'boss'), { onFight: () => {} }); }
+if (s === 'end') { run.ante = 3; run.blind = 2; run.won = true; run.over = true; run.stats.bossesBeaten = ['wall', 'plague', 'lich_queen']; run.stats.bestHit = 1240; run.stats.stacksKilled = 31; run.stats.raised = 44; run.stats.blindsWon = 9; for (let a = 1; a <= 3; a++) for (const k of C.BLINDS) run.stats.blindLog.push({ ante: a, kind: k, won: true }); const res = C.endRun(run, meta, { armyPower: 31000 }); UI.endScreen(run, res, meta, { onNew() {}, onCollection() {}, onTitle() {} }); }
+if (s === 'coll') UI.collection(meta, {});
+if (s === 'origin') UI.originPick(meta, { onStart() {} });
+window.__crownUI = { UI, run, meta, C };
+</script>
+</body>
+</html>
