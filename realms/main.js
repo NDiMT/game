@@ -151,7 +151,7 @@ const heroArmy = (hr) => hr.army.filter((x) => x && x[1] > 0);
 const statOf = (hr, k) => hr[k] + hr.arts.reduce((a, id) => a + (ARTIFACTS.find((x) => x.id === id)[k] || 0), 0);
 const maxMana = (hr) => statOf(hr, 'know') * 10;
 const moveMax = (hr) => Math.round((1500 + hr.arts.reduce((a, id) => a + (ARTIFACTS.find((x) => x.id === id).move || 0), 0)) * (1 + 0.15 * (hr.skills.logistics || 0)));
-const ARMY_SLOTS = 6; // up to 6 different creature stacks per hero / garrison
+const ARMY_SLOTS = 7; // up to 7 different creature stacks per hero / garrison
 function addTroops(army, id, n) {
   const slot = army.findIndex((x) => x && x[1] > 0 && x[0] === id);
   if (slot >= 0) { army[slot][1] += n; return true; }
@@ -3369,13 +3369,29 @@ window.addEventListener('pageshow', (e) => { if (e.persisted) onShow(); });
 // recompiled lazily on its next use, so nothing has to be rebuilt by hand and the game state is untouched. Portraits
 // are 2D images (independent of GL); the ones requested while the context was gone are not cached (portraits.js), so
 // they render again once it is back.
-let glLost = 0;
+let glLost = 0, glEpoch = 0;
+// three's compileAsync polls program.isReady() every 10 ms: while the context is lost that never becomes true, and
+// after a restore it throws (the new GL state has no program for those materials), an uncaught error in a timer.
+// Same contract, but it settles as soon as the context is lost or replaced (the programs then compile on first draw).
+renderer.compileAsync = function compileAsyncSafe(sc, cm, target = null) {
+  if (renderer.getContext().isContextLost()) return Promise.resolve(sc);
+  const mats = renderer.compile(sc, cm, target), ep = glEpoch;
+  return new Promise((resolve) => {
+    const check = () => {
+      if (ep !== glEpoch || renderer.getContext().isContextLost()) { resolve(sc); return; }
+      for (const m of mats) { const pr = renderer.properties.get(m).currentProgram; if (!pr || pr.isReady()) mats.delete(m); }
+      if (!mats.size) resolve(sc); else setTimeout(check, 10);
+    };
+    if (renderer.extensions.get('KHR_parallel_shader_compile') !== null) check(); else setTimeout(check, 10);
+  });
+};
 cvs.addEventListener('webglcontextlost', (e) => {
+  glEpoch++;
   e.preventDefault(); glLost = performance.now();
   try { if (safeToSave()) save(); } catch (err) { /* ignore */ } // in case the browser gives up and reloads the tab
 }, false);
 cvs.addEventListener('webglcontextrestored', () => {
-  glLost = 0;
+  glLost = 0; glEpoch++;
   renderer.shadowMap.needsUpdate = true;
   resize(); // re-sizes the post-processing targets on the new context
   clock.getDelta();

@@ -280,13 +280,13 @@ i[data-ic], .fb > i, .hb-ic, .row-b > i, .st > i, .rc > i:first-child { font-sty
 .hint2 { font-size: var(--fs-s); font-weight: 800; color: var(--text-3); text-align: center; margin: 2px 0; }
 .armyrow { padding: 10px; border-radius: var(--r-m); flex: none; background: rgba(4, 8, 28, 0.35); border: 2px solid var(--ink-b); box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.06); }
 .armyrow > b { display: flex; align-items: center; gap: 6px; font-family: 'Cinzel', Georgia, serif; font-size: 14px; font-weight: 900; color: #ffe27a; margin-bottom: 9px; text-shadow: 0 2px 0 var(--ink-b); }
-.slots { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 2px; }
-.slots button, .slots span { position: relative; aspect-ratio: 1; min-height: 44px; border-radius: 10px; display: grid; place-items: center; line-height: 1; color: var(--text); overflow: visible;
+.slots { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(3px, 1.4vw, 6px); padding: 2px; }
+.slots button, .slots span { position: relative; aspect-ratio: 1; min-width: 0; padding: 0; border-radius: 10px; display: grid; place-items: center; line-height: 1; color: var(--text); overflow: visible;
   background: radial-gradient(circle at 50% 35%, #5a7ee0, #1d2d70 80%); box-shadow: 0 0 0 2px #e0ac48, 0 0 0 3.5px var(--ink), 0 3px 0 2px var(--ink); transition: transform 0.12s var(--boing); }
-.slots button img.pt, .slots span img.pt { border-radius: 10px; }
+.slots button img.pt, .slots span img.pt { border-radius: 10px; display: block; width: 100%; height: auto; max-width: 100%; aspect-ratio: 1; }
 .slots button:disabled, .slots .e { background: rgba(0, 0, 0, 0.35); box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6), 0 0 0 1.5px rgba(255, 255, 255, 0.07); opacity: 1; }
 .slots button:active:not(:disabled) { transform: scale(0.92); }
-.slots em { --ol: #000; position: absolute; right: 2px; bottom: 0; font-style: normal; font-size: 12px; font-weight: 900; color: #fff; }
+.slots em { --ol: #000; position: absolute; right: 2px; bottom: 0; font-style: normal; font-size: clamp(10px, 3vw, 12px); font-weight: 900; color: #fff; }
 .slots.big { margin: 0; }
 .slots.big span { aspect-ratio: 0.78; align-items: start; padding-top: 2px; }
 .slots.big span img.pt { width: 100%; height: auto; aspect-ratio: 1; }
