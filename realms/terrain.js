@@ -526,12 +526,12 @@ export function layerCanvas(l) {
 const uTime = { value: 0 };
 const tick = () => { uTime.value = performance.now() / 1000; };
 
-export function createPlanetMaterial(waterLevel) {
+export function createPlanetMaterial(waterLevel, flat = false) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
   const uniforms = { uTer: { value: terrainTexture() }, uTime, uWater: { value: waterLevel }, uGlow: { value: 2.6 } };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, uniforms);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 tdat;\nattribute vec2 tnb;\nattribute float trev;\nvarying vec4 vT;\nvarying float vRad;\nflat varying float vNb;\nvarying float vNw;\nvarying float vRev;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvT = tdat; vRad = length(position); vNb = tnb.x; vNw = tnb.y; vRev = trev;');
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 tdat;\nattribute vec2 tnb;\nattribute float trev;\nvarying vec4 vT;\nvarying float vRad;\nflat varying float vNb;\nvarying float vNw;\nvarying float vRev;').replace('#include <begin_vertex>', `#include <begin_vertex>\nvT = tdat; vRad = ${flat ? 'position.y' : 'length(position)'}; vNb = tnb.x; vNw = tnb.y; vRev = trev;`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform highp sampler2DArray uTer;\nuniform float uTime, uWater, uGlow;\nvarying vec4 vT;\nvarying float vRad;\nflat varying float vNb;\nvarying float vNw;\nvarying float vRev;')
       .replace('#include <map_fragment>', `
@@ -601,11 +601,11 @@ export function createPlanetMaterial(waterLevel) {
           totalEmissiveRadiance += vec3(0.36, 0.34, 0.46) * (frontier * 0.3 + fogRim * 0.15) * pulse;
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-terrain-7';
+  mat.customProgramCacheKey = () => (flat ? 'hexrealms-terrain-flat-1' : 'hexrealms-terrain-7');
   return mat;
 }
 
-export function createWaterMaterial() {
+export function createWaterMaterial(flat = false) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, roughness: 0.26, metalness: 0.05 });
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = uTime;
@@ -662,13 +662,13 @@ export function createWaterMaterial() {
         }`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         {
-          vec3 up = normalize(vWPos);
+          vec3 up = ${flat ? 'vec3(0.0, 1.0, 0.0)' : 'normalize(vWPos)'};
           vec3 gt = wg - up * dot(wg, up);
           vec3 gv = (viewMatrix * vec4(gt, 0.0)).xyz;
           normal = normalize(normal - gv * 0.0016 * lit);
         }`);
   };
-  mat.customProgramCacheKey = () => 'hexrealms-water-7';
+  mat.customProgramCacheKey = () => (flat ? 'hexrealms-water-flat-1' : 'hexrealms-water-7');
   return mat;
 }
 

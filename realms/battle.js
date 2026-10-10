@@ -18,15 +18,29 @@ export function nbrs(c, r) {
 function cube(c, r) { const x = c - (r - (r & 1)) / 2, z = r; return [x, -x - z, z]; }
 export function dist(a, b) { const p = cube(a.c ?? a[0], a.r ?? a[1]), q = cube(b.c ?? b[0], b.r ?? b[1]); return Math.max(Math.abs(p[0] - q[0]), Math.abs(p[1] - q[1]), Math.abs(p[2] - q[2])); }
 
-export function createBattle({ armyA, heroA, armyB, heroB, town = false }) {
-  const B = { stacks: [], obstacles: new Set(), round: 1, log: [], events: [], heroes: [heroA || null, heroB || null], cast: [false, false], over: null, town, active: null, queue: [] };
+// ---- modifiers (Crown Run banners, boss rules, seals). `mods` is a list of hook objects applied in list order
+// (banner slot order matters: flat adds before multipliers). With no mods (Free Play) every hook is skipped and
+// the rules are exactly the classic ones. Hooks (all optional):
+//   stats(u, { side, slot, id }, B)  edit the stack's private copy of its unit stats before it is placed
+//   onBattleStart(B)                 after deployment, before round 1
+//   onRoundStart(B)                  at the start of every round (round 1 included)
+//   onDamage(calc, B)                calc = { a, d, side, dmg, ranged, melee, retal, spell, lucky, preview }: edit calc.dmg
+//   onShoot(B, a, d)                 before a shot lands
+//   canShoot(B, s, ok) -> bool       may forbid (ok -> false) or allow (rule-breaking) a shot
+//   onStackDeath(B, s, killer)       a stack was destroyed (killer: the striking stack, or null)
+// Hook code may push { t: 'mod', icon, text, s, side, hits } events for the renderer, and use harm() and B.rand().
+const fire = (B, k, ...args) => { for (const m of B.mods) if (m[k]) m[k](...args, B); };
+export function createBattle({ armyA, heroA, armyB, heroB, town = false, mods = null, rng = null }) {
+  const B = { stacks: [], obstacles: new Set(), round: 1, log: [], events: [], heroes: [heroA || null, heroB || null], cast: [false, false], over: null, town, active: null, queue: [], mods: mods || [], rand: rng || rnd };
   const place = (army, side) => {
     const n = army.length, row = side === 0 ? ROWS - 1 : 0;
     // armies keep empty slots as null (a stack that died mid-army): skip them instead of throwing
     army.forEach((st, i) => {
       const [id, count] = st || [];
       if (!id || count <= 0) return;
-      const u = UNITS[id];
+      let u = UNITS[id];
+      // modded battles give each stack its own copy of the stats, so hooks never touch the shared table
+      if (B.mods.length) { u = { ...u, dmg: [...u.dmg] }; fire(B, 'stats', u, { side, slot: i, id }); }
       const c = Math.min(COLS - 1, Math.round(((i + 0.5) / n) * COLS - 0.5));
       const r = row + (u.ranged ? 0 : side === 0 ? -1 : 1) * (i % 2);
       B.stacks.push({ uid: B.stacks.length, id, u, side, count, start: count, hp: u.hp, c, r, shots: u.ranged || 0, retal: 0, fx: {}, waited: false, acted: false, defending: false, slot: i });
@@ -43,11 +57,12 @@ export function createBattle({ armyA, heroA, armyB, heroB, town = false }) {
   }
   // a few rocks and dead trees in the middle rows (never right in front of the gate)
   const nearGate = (c, r) => B.gate != null && nbrs(B.gate % COLS, (B.gate / COLS) | 0).some(([x, y]) => x === c && y === r);
-  const nObs = 3 + ((rnd() * 4) | 0);
+  const nObs = 3 + ((B.rand() * 4) | 0);
   for (let i = 0; i < nObs * 3 && B.obstacles.size - B.walls.size < nObs; i++) {
-    const c = (rnd() * COLS) | 0, r = 3 + ((rnd() * (ROWS - 6)) | 0);
+    const c = (B.rand() * COLS) | 0, r = 3 + ((B.rand() * (ROWS - 6)) | 0);
     if (!B.stacks.some((s) => s.c === c && s.r === r) && !B.walls.has(key(c, r)) && r !== B.wallRow && !nearGate(c, r)) B.obstacles.add(key(c, r));
   }
+  if (B.mods.length) fire(B, 'onBattleStart');
   newRound(B);
   return B;
 }
@@ -77,8 +92,9 @@ function newRound(B) {
       const rams = foes.filter((s) => !s.u.fly && nbrs(gc, gr).some(([x, y]) => x === s.c && y === s.r)).length;
       if (rams) { B.gateHp = Math.max(0, B.gateHp - rams); B.events.push({ t: 'gate', hp: B.gateHp, broken: B.gateHp <= 0, c: gc, r: gr }); if (B.gateHp <= 0) B.gateOpen = true; }
     }
-    if (foes.length) { const t = foes[(rnd() * foes.length) | 0], dmg = 10 + (B.town.power || 3) * 6; const killed = hurt(B, t, dmg); B.events.push({ t: 'tower', s: t.uid, dmg, killed, side: def, left: t.count }); if (t.count <= 0) B.events.push({ t: 'die', s: t.uid }); checkOver(B); }
+    if (foes.length) { const t = foes[(B.rand() * foes.length) | 0], dmg = 10 + (B.town.power || 3) * 6; const killed = hurt(B, t, dmg); B.events.push({ t: 'tower', s: t.uid, dmg, killed, side: def, left: t.count }); if (t.count <= 0) died(B, t, null); checkOver(B); }
   }
+  if (B.mods.length) { fire(B, 'onRoundStart'); checkOver(B); }
 }
 // the next stack to act: fastest first, those who waited go last (slowest first)
 export function nextStack(B) {
@@ -114,14 +130,20 @@ export function reachable(B, s) {
   return out;
 }
 export const adjacentEnemy = (B, s) => nbrs(s.c, s.r).some(([x, y]) => { const o = stackAt(B, x, y); return o && o.side !== s.side; });
-export const canShoot = (B, s) => s.shots > 0 && !adjacentEnemy(B, s);
+export function canShoot(B, s) {
+  let ok = s.shots > 0 && !adjacentEnemy(B, s);
+  if (B.mods?.length) for (const m of B.mods) if (m.canShoot) ok = !!m.canShoot(B, s, ok);
+  return ok;
+}
+// run the damage hooks over a computed hit (also for previews: calc.preview, where hooks must not roll dice or keep state)
+function modDamage(B, calc) { for (const m of B.mods) if (m.onDamage) m.onDamage(calc, B); return calc.dmg; }
 
 // damage: HoMM style, attack vs defence decides the multiplier
 function rollDamage(B, a, d, { ranged = false, melee = false, retal = false } = {}) {
   let lucky = false;
   const ha = hero(B, a.side), hd = hero(B, d.side);
   const A = a.u.att + (ha ? ha.att : 0), D = d.u.def + (hd ? hd.def : 0) + (d.fx.stoneskin ? 4 : 0) + (d.defending ? Math.ceil(d.u.def * 0.3) : 0) + (B.town && d.side === (B.town.side ?? 1) && B.town.fort ? Math.ceil(d.u.def * 0.3) : 0);
-  let per = a.fx.bless ? a.u.dmg[1] : a.u.dmg[0] + rnd() * (a.u.dmg[1] - a.u.dmg[0] + 1) | 0;
+  let per = a.fx.bless ? a.u.dmg[1] : a.u.dmg[0] + B.rand() * (a.u.dmg[1] - a.u.dmg[0] + 1) | 0;
   if (a.fx.bless) per = a.u.dmg[1];
   let dmg = per * a.count;
   dmg *= A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
@@ -133,11 +155,12 @@ function rollDamage(B, a, d, { ranged = false, melee = false, retal = false } = 
   if (melee && a.u.ranged && !a.u.noMeleePenalty) dmg *= 0.5;
   if (a.fx.curse) dmg *= 0.8;
   // dread knights sometimes strike a death blow
-  if (a.u.deathblow && rnd() < 0.2) { dmg *= 2; lucky = true; }
+  if (a.u.deathblow && B.rand() < 0.2) { dmg *= 2; lucky = true; }
   if (a.u.jousting && a.moved) dmg *= 1 + 0.05 * a.moved;
   // luck: a chance of double damage
   const luck = ha ? (ha.skills.luck || 0) + (ha.luck || 0) : 0;
-  if (luck > 0 && rnd() < luck * 0.0417) { dmg *= 2; lucky = true; }
+  if (luck > 0 && B.rand() < luck * 0.0417) { dmg *= 2; lucky = true; }
+  if (B.mods.length) { const calc = { a, d, side: a.side, dmg, ranged, melee, retal, spell: null, lucky, preview: false }; dmg = modDamage(B, calc); lucky = calc.lucky; }
   return { dmg: Math.max(1, Math.round(dmg)), lucky };
 }
 function hurt(B, d, dmg) {
@@ -147,20 +170,23 @@ function hurt(B, d, dmg) {
   else { d.count = Math.ceil(total / d.u.hp); d.hp = total - (d.count - 1) * d.u.hp; }
   return before - d.count;
 }
+// harm: damage from outside a strike (a hook's effect); returns creatures killed. The caller pushes the event.
+export function harm(B, s, dmg, killer = null) { const k = hurt(B, s, Math.max(0, Math.round(dmg))); if (s.count <= 0) died(B, s, killer); checkOver(B); return k; }
+function died(B, s, killer) { B.events.push({ t: 'die', s: s.uid }); if (B.mods.length) fire(B, 'onStackDeath', s, killer); }
 function strike(B, a, d, opts) {
   const { dmg, lucky } = rollDamage(B, a, d, opts);
   const killed = hurt(B, d, dmg);
   const ev = { t: opts.ranged ? 'shot' : 'hit', a: a.uid, d: d.uid, dmg, killed, lucky, retal: !!opts.retal, left: d.count };
   B.events.push(ev);
   // vampires drain life and raise their dead
-  if (a.u.curse && d.count > 0 && rnd() < 0.3) d.fx.curse = 3;
+  if (a.u.curse && d.count > 0 && B.rand() < 0.3) d.fx.curse = 3;
   if (a.u.drain && dmg > 0 && a.count > 0) {
     let heal = Math.round(dmg * 0.5);
     while (heal > 0 && a.count < a.start) { const need = a.u.hp - a.hp; if (heal >= need) { heal -= need; a.count++; a.hp = a.u.hp; } else { a.hp += heal; heal = 0; } }
     if (heal > 0) a.hp = Math.min(a.u.hp, a.hp + heal);
     ev.aLeft = a.count;
   }
-  if (d.count <= 0) B.events.push({ t: 'die', s: d.uid });
+  if (d.count <= 0) died(B, d, a);
 }
 export function moveTo(B, s, c, r) {
   const d = dist(s, [c, r]);
@@ -189,6 +215,8 @@ export function melee(B, a, d) {
 }
 export function shoot(B, a, d) {
   a.shots--;
+  if (B.mods.length) fire(B, 'onShoot', a, d);
+  if (d.count <= 0 || a.count <= 0) return;
   strike(B, a, d, { ranged: true });
   // marksmen loose two arrows
   if (a.u.twoShots && d.count > 0 && a.count > 0 && a.shots > 0) { a.shots--; strike(B, a, d, { ranged: true }); }
@@ -205,7 +233,9 @@ export function estimate(B, a, d, ranged) {
   if (!ranged && a.u.ranged && !a.u.noMeleePenalty) m *= 0.5;
   if (a.fx.curse) m *= 0.8;
   const hits = (ranged && a.u.twoShots) || (!ranged && a.u.double) ? 2 : 1;
-  const lo = Math.max(1, Math.round((a.fx.bless ? a.u.dmg[1] : a.u.dmg[0]) * a.count * m)) * hits, hi = Math.max(1, Math.round(a.u.dmg[1] * a.count * m)) * hits;
+  let lo0 = (a.fx.bless ? a.u.dmg[1] : a.u.dmg[0]) * a.count * m, hi0 = a.u.dmg[1] * a.count * m;
+  if (B.mods.length) { const c = (dmg) => modDamage(B, { a, d, side: a.side, dmg, ranged: !!ranged, melee: !ranged, retal: false, spell: null, lucky: false, preview: true }); lo0 = c(lo0); hi0 = c(hi0); }
+  const lo = Math.max(1, Math.round(lo0)) * hits, hi = Math.max(1, Math.round(hi0)) * hits;
   const pool = (d.count - 1) * d.u.hp + d.hp, kills = (x) => Math.min(d.count, x >= pool ? d.count : d.count - Math.ceil((pool - x) / d.u.hp));
   return { lo, hi, klo: kills(lo), khi: kills(hi) };
 }
@@ -221,7 +251,7 @@ function endTurn(B, s) {
   s.acted = true; s.moved = 0;
   // good morale: a chance to act again at once
   const h = hero(B, s.side), m = h ? (h.skills.leadership || 0) + (h.morale || 0) : 0;
-  if (m > 0 && s.count > 0 && !s.morale && rnd() < m * 0.0417) { s.acted = false; s.morale = true; B.events.push({ t: 'morale', s: s.uid }); }
+  if (m > 0 && s.count > 0 && !s.morale && B.rand() < m * 0.0417) { s.acted = false; s.morale = true; B.events.push({ t: 'morale', s: s.uid }); }
   checkOver(B);
 }
 function checkOver(B) {
@@ -243,7 +273,8 @@ export function spellPower(B, side) { const h = hero(B, side); return h ? h.pow 
 export function spellDamage(B, side, id) {
   const h = hero(B, side); if (!h) return 0;
   const p = h.pow, base = id === 'arrow' ? 10 + 10 * p : id === 'bolt' ? 10 + 25 * p : id === 'fireball' ? 15 + 10 * p : 0;
-  return Math.round(base * (1 + 0.15 * (h.skills.sorcery || 0)));
+  const dmg = base * (1 + 0.15 * (h.skills.sorcery || 0));
+  return Math.round(B.mods.length && base ? modDamage(B, { a: null, d: null, side, dmg, ranged: false, melee: false, retal: false, spell: id, lucky: false, preview: true }) : dmg);
 }
 export function castSpell(B, side, id, target, c, r) {
   const h = hero(B, side), S = SPELLS[id];
@@ -252,7 +283,7 @@ export function castSpell(B, side, id, target, c, r) {
   const p = h.pow, boost = 1 + 0.15 * (h.skills.sorcery || 0);
   const ev = { t: 'spell', id, side, c: target ? target.c : c, r: target ? target.r : r, hits: [] };
   B.events.push(ev);
-  const zap = (s, base) => { const dmg = Math.round(base * boost); const killed = hurt(B, s, dmg); ev.hits.push({ s: s.uid, dmg, killed, left: s.count }); if (s.count <= 0) B.events.push({ t: 'die', s: s.uid }); };
+  const zap = (s, base) => { let dmg = base * boost; if (B.mods.length) dmg = modDamage(B, { a: null, d: s, side, dmg, ranged: false, melee: false, retal: false, spell: id, lucky: false, preview: false }); dmg = Math.max(0, Math.round(dmg)); const killed = hurt(B, s, dmg); ev.hits.push({ s: s.uid, dmg, killed, left: s.count }); if (s.count <= 0) died(B, s, null); };
   if (id === 'arrow') zap(target, 10 + 10 * p);
   else if (id === 'bolt') zap(target, 10 + 25 * p);
   else if (id === 'fireball') { for (const s of alive(B)) if (dist(s, [c, r]) <= 1) zap(s, 15 + 10 * p); }
@@ -278,7 +309,7 @@ export function aiCast(B, side) {
     const S = SPELLS[id];
     if (S.target === 'enemy') { const t = id === 'slow' ? foes.find((f) => !f.fx.slow && !f.u.ranged) : foes[0]; if (t) return castSpell(B, side, id, t); }
     if (S.target === 'area') { const t = foes[0]; if (t && !mine.some((m) => dist(m, t) <= 1)) return castSpell(B, side, id, null, t.c, t.r); }
-    if (S.target === 'ally') { const t = mine.find((m) => !m.fx[id]); if (t && rnd() < 0.6) return castSpell(B, side, id, t); }
+    if (S.target === 'ally') { const t = mine.find((m) => !m.fx[id]); if (t && B.rand() < 0.6) return castSpell(B, side, id, t); }
   }
   return false;
 }
@@ -297,7 +328,8 @@ export function aiAct(B, s) {
   }
   if (best) { actAttack(B, s, best.t, best.from); return; }
   // shooters with no arrows left, or nothing in reach: close in (ranged stacks hang back)
-  if (s.u.ranged && s.shots > 0) { actDefend(B, s); return; }
+  // (unless a rule forbids this stack to shoot at all: then it marches like a walker)
+  if (s.u.ranged && s.shots > 0 && !(B.mods.length && !adjacentEnemy(B, s) && !canShoot(B, s))) { actDefend(B, s); return; }
   const reach = reachable(B, s);
   let goal = foes.slice().sort((a, b) => dist(s, a) - dist(s, b))[0];
   // besiegers on foot head for the gate while it is shut and the defenders are behind the wall
@@ -314,7 +346,7 @@ export function autoResolve(B, maxSteps = 600) {
   for (let i = 0; i < maxSteps && !B.over; i++) {
     const s = nextStack(B);
     if (!s) break;
-    if (!B.cast[s.side] && rnd() < 0.5) aiCast(B, s.side);
+    if (!B.cast[s.side] && B.rand() < 0.5) aiCast(B, s.side);
     if (B.over) break;
     aiAct(B, s);
   }
