@@ -20,6 +20,8 @@ const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v
 const facBuild = (mod, build, model) => (id) => { const b = mod.value?.[build], u = UNITS[id]; const m = b && u ? b(u.up || id, !!u.up) : null; return m || mod.value?.[model]?.(id) || null; };
 const FAC_MODEL = { sylvan: facBuild(SYLm, 'sylvanBuild', 'sylvanModel'), inferno: facBuild(INFm, 'infernoBuild', 'infernoModel'), dungeon: facBuild(DUNm, 'dungeonBuild', 'dungeonModel') };
 import * as BT from './battle.js?v=1.10';
+import * as CR from './crown.js?v=1.10'; // crown: Crown Run rules and data
+import { createCrownUI } from './crown_ui.js?v=1.10'; // crown: Crown Run screens
 import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=1.10';
 import { createScore } from './music.js?v=1.10';
 import { createSfx } from './sfx.js?v=1.10';
@@ -129,14 +131,14 @@ function generate(seed, opts = {}) {
     const bd = Math.min(c, W - 1 - c, rw, H - 1 - rw); // cells to the border
     const side = bd === c ? 0 : bd === W - 1 - c ? 1 : bd === rw ? 2 : 3;
     const lat = GRID.lat(v), m = moist(v), ht = heat(v) - 0.42 + (0.5 - lat) * 0.85;
-    // coastline: the land falls away over the last ~7 cells, ragged with noise; the outer two rings are open sea
-    let e = elev(v) + 0.24 - Math.max(0, (7 - bd + rim(v) * 4) / 7) * 0.75;
+    // coastline: the land falls away over the last ~5 cells, ragged with noise; the outer two rings are open sea
+    let e = elev(v) + 0.24 - Math.max(0, (5 - bd + rim(v) * 3) / 5) * 0.75;
     if (bd < 2) e = -1;
     if (e < -0.12) { ter[v] = T.WATER; h[v] = SEA - 1 - (e < -0.3 ? 1 : 0); continue; }
     h[v] = SEA + 1 + (e > 0.25 ? 1 : 0) + (e > 0.45 ? 1 : 0);
     const rg = Math.abs(ridge(v));
     // a broken mountain rim on some sides: peaks and cliffs drop straight into the sea
-    if (sides[side] && bd <= 4 && rim(v) > -0.25 + bd * 0.08) { ter[v] = T.MOUNT; h[v] = SEA + 4 + (bd > 2 ? 1 : 0); continue; }
+    if (sides[side] && bd <= 3 && rim(v) > -0.15 + bd * 0.1) { ter[v] = T.MOUNT; h[v] = SEA + 4 + (bd > 2 ? 1 : 0); continue; }
     if (rg < 0.06 && e > 0.05) { ter[v] = T.MOUNT; h[v] = SEA + 4 + (rg < 0.03 ? 1 : 0); continue; }
     if (lat > 0.93 || ht < -0.85) ter[v] = T.SNOW;
     else if (e < -0.04) ter[v] = T.SAND;
@@ -688,11 +690,12 @@ const heroPic = (hr, size, shape = 'square') => { const P = G.players[hr.p]; ret
 // interactive things (towns, heroes, objects, creatures) get a painted ink outline so they read as figures on the ground
 setRigIdle(0.6); // map figures idle gently (battle units set their own amplitude)
 const inkMat = makeInkHullMaterial(THREE), blobMat = makeBlobShadowMaterial(THREE), blobGeo = blobShadowGeometry(THREE);
+let inkLod = true; // map figures' ink hulls shown (off when zoomed far out)
 function meshOf(m, ink = true) {
   const g = new THREE.Group();
   const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = true; b.receiveShadow = true; g.add(b);
   if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
-  if (ink) g.add(new THREE.Mesh(m.body, inkMat));
+  if (ink) { const k = new THREE.Mesh(m.body, inkMat); k.userData.ink = true; g.add(k); }
   return g;
 }
 // soft contact shadow so a figure sits on the ground (radius in model units)
@@ -856,7 +859,7 @@ const genTerrain = (seed, size, players) => generate(seed, { size, players });
 function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
   const opp = (opts.opponents?.length ? opts.opponents : [{ fac: 'random', col: -1 }]).slice(0, 4);
   const N = opp.length + 1;
-  Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [],
+  Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [], run: null,
     gameMode: opts.mode || 'free', size: MAP_SIZES[opts.size] ? opts.size : 'M', resLv: opts.res ?? 1, win: opts.win === 'capitals' ? 'capitals' : 'conquer', fog: opts.fog !== false });
   objAt.fill(-1); road.fill(0); seen.fill(0);
   pendingLevels.length = 0; // level-ups queued in a previous game (quit with the dialog open) belong to that game
@@ -1029,7 +1032,7 @@ function findPath(from, to, hr, ignore = false) {
     guardSteps++;
     if (cur === to) { const p = [cur]; while (came.has(cur)) { cur = came.get(cur); p.unshift(cur); } return p; }
     for (const n of NBR[cur]) {
-      if (!passable(n)) continue;
+      if (!passable(n) || crownShut(n, hr)) continue;
       if (!ignore && n !== to) {
         if (objAt[n] >= 0 && G.objects[objAt[n]].alive) continue;
         const hh = heroAt(n); if (hh && hh !== hr) continue;
@@ -1093,6 +1096,7 @@ function objMeshFor(o) {
   if (o.type === 'monster') { applyFit(g, unitFit(o.unit, objModel(o), 'map')); g.userData.s0 = g.scale.x; g.scale.multiplyScalar(figK); }
   if (o.type === 'town') { g.userData.noGrow = true; g.scale.setScalar(g.userData.s0); }
   addBlob(g, o.type === 'monster' ? BLOB_R.monster / (g.scale.x / (SCALE.monster || 0.2)) : BLOB_R[o.type] || 0.66);
+  if (!inkLod) for (const c of g.children) if (c.userData.ink) c.visible = false;
   g.userData.sig = objSig(o); g.userData.flagOwner = -3;
   setObjFlag(g, o);
   return g;
@@ -1202,7 +1206,7 @@ function layoutHeroes(force = false) {
     if (!hr.alive || (!seen[hr.v] && hr.p !== 0)) { if (m) { scene.remove(m); heroMeshes.delete(hr.id); } continue; }
     let fresh = false;
     if (!m) {
-      m = addBlob(meshOf(heroGeo(hr.p)), 0.5);
+      m = addBlob(meshOf(heroGeo(hr.p)), 0.5); if (!inkLod) for (const c of m.children) if (c.userData.ink) c.visible = false;
       scene.add(m); heroMeshes.set(hr.id, m); fresh = true;
     }
     // a hero in motion is posed by updateWalk / frame(); re-laying it out mid-step (worldDirty → layoutWorld) would pop it
@@ -1378,6 +1382,7 @@ cvs.addEventListener('wheel', (e) => {
   else {
     // proportional to the scroll amount, so trackpads (many tiny deltas) zoom as smoothly as a mouse notch
     const dy = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
+    if (e.shiftKey || e.altKey) { cam.tYaw += clamp(dy, -150, 150) * 0.004; return; } // desktop: shift + wheel turns the view
     cam.tDist = clamp(cam.tDist * Math.exp(clamp(dy, -150, 150) * 0.0011), 6.4, 22);
   }
 }, { passive: false });
@@ -1611,6 +1616,7 @@ function interact(hr, v) {
     if (seen[v]) fx.burst(o.type === 'gems' ? 'gem' : o.type === 'artifact' ? 'artifact' : 'coin', posOf(v));
     if (RES.includes(o.type)) { gain(hr.p, o.type, o.amount, v); if (you) sfx.pickup({ kind: o.type }); }
     else if (o.type === 'campfire') { gain(hr.p, 'gold', 400 + ((rnd() * 3) | 0) * 100, v); const r = ['wood', 'ore', 'gems'][(rnd() * 3) | 0]; gain(hr.p, r, r === 'gems' ? 2 : 4, v); if (you) sfx.coin(); }
+    else if (o.type === 'chest' && G.run && you) { crownPack(CR.chestPack(G.run, o.id), `chest:${o.id}`); sfx.chest(); } // crown: chests hold packs
     else if (o.type === 'chest') {
       const g = 1000 + ((rnd() * 3) | 0) * 250, xp = g - 500;
       if (you) { sfx.chest(); } if (you) ask('🧰 Treasure Chest', 'You find a chest full of gold. Keep it, or give it to the peasants for their wisdom?', [[`🪙 ${fmt(g)} gold`, () => { gain(0, 'gold', g, v); sfx.coin(); updateHud(); }], [`⭐ ${fmt(xp)} experience`, () => giveXp(hr, xp)]]);
@@ -1695,8 +1701,9 @@ function levelUp(hr) {
   const fresh = Object.keys(SKILLS).filter((k) => !(k in hr.skills) && (k !== 'necromancy' || fac === 'necro'));
   const opts = [];
   if (have.length) opts.push(have[(rnd() * have.length) | 0]);
-  while (opts.length < 2 && fresh.length && Object.keys(hr.skills).length < 6) { const k = fresh.splice((rnd() * fresh.length) | 0, 1)[0]; opts.push(k); }
-  while (opts.length < 2 && have.length > 1) { const k = have[(rnd() * have.length) | 0]; if (!opts.includes(k)) opts.push(k); }
+  const nOpt = G.run && hr.p === 0 ? 3 : 2; // crown: Crown Run level-ups offer 3 skills
+  while (opts.length < nOpt && fresh.length && Object.keys(hr.skills).length < 6) { const k = fresh.splice((rnd() * fresh.length) | 0, 1)[0]; opts.push(k); }
+  while (opts.length < nOpt && have.some((k) => !opts.includes(k))) { const k = have[(rnd() * have.length) | 0]; if (!opts.includes(k)) opts.push(k); }
   if (hr.p !== 0) { if (opts.length) { const k = opts[(rnd() * opts.length) | 0]; hr.skills[k] = (hr.skills[k] || 0) + 1; } return; }
   pendingLevels.push({ hr, stat, opts });
   if (pendingLevels.length === 1) showLevel();
@@ -1927,6 +1934,7 @@ function bumpWarm(kind, ids = []) {
 let bpreview = null, BB = null, bctx = null, bmesh = new Map(), banim = [], bwait = 0, bspell = null, bauto = false;
 function heroBattle(hr) { return { att: statOf(hr, 'att'), def: statOf(hr, 'def'), pow: statOf(hr, 'pow'), know: statOf(hr, 'know'), mana: hr.mana, skills: hr.skills, spells: hr.spells, luck: hr.arts.includes('clover') ? 1 : 0, morale: hr.arts.includes('banner') ? 1 : 0, name: hr.name, p: hr.p }; }
 function splitMonster(o) {
+  if (o.army) return o.army.map((st) => [...st]); // crown: a Blind's threat army comes ready-made
   const k = clamp(Math.round(o.n / 6), 1, 5) + (o.n > 3 ? 1 : 0), parts = Math.min(k, 5, o.n), arr = [];
   for (let i = 0; i < parts; i++) arr.push([o.unit, Math.floor(o.n / parts) + (i < o.n % parts ? 1 : 0)]);
   return arr;
@@ -1938,7 +1946,7 @@ function startBattle(hr, foe) {
   const playerDefends = defOwner === 0 && hr.p !== 0;
   // the player always fights from the bottom of the screen
   const sides = playerDefends ? [{ hero: defHero, army: defArmy, owner: 0 }, { hero: hr, army: hr.army, owner: hr.p }] : [{ hero: hr, army: hr.army, owner: hr.p }, { hero: defHero, army: defArmy, owner: defOwner }];
-  const B = BT.createBattle({ armyA: sides[0].army, heroA: sides[0].hero ? heroBattle(sides[0].hero) : null, armyB: sides[1].army, heroB: sides[1].hero ? heroBattle(sides[1].hero) : null, town: foe.kind === 'town' ? { fort: foe.town.built.includes('fort'), side: playerDefends ? 0 : 1, power: Math.max(2, foe.town.built.length / 2) } : null });
+  const B = BT.createBattle({ armyA: sides[0].army, heroA: sides[0].hero ? heroBattle(sides[0].hero) : null, armyB: sides[1].army, heroB: sides[1].hero ? heroBattle(sides[1].hero) : null, town: foe.kind === 'town' ? { fort: foe.town.built.includes('fort'), side: playerDefends ? 0 : 1, power: Math.max(2, foe.town.built.length / 2) } : null, mods: crownMods({ sides, foe }) });
   const ctx = { hr, foe, sides, terrain: ter[foe.kind === 'monster' ? foe.obj.v : hr.v] };
   // a side with no living troops cannot fight: settle it at once. Opening the arena would never end (the enemy AI
   // has no target and never finishes its turn, or the player has nothing to attack).
@@ -2592,6 +2600,11 @@ function playEvent(e, t) {
     if ((e.landed || t > 1.5) && !e.shown) { e.shown = true; e.shownAt = t; if (S(e.s)) S(e.s).shown = e.left ?? S(e.s).count; if (m) { m.userData.flash = 0.3; if ((e.left ?? 1) <= 0) startDeath(m, S(e.s)); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `🏹 Tower -${e.dmg}${e.killed ? ` (${e.killed}💀)` : ''}`, 'red'); } refreshBattle(); }
     return e.shown && t > e.shownAt + 0.1;
   }
+  // crown: a banner / boss rule effect (the Plague, Echoing Volley): floaters and hits like a spell, no projectile
+  if (e.t === 'mod') {
+    if (!e.started) { e.started = true; for (const hh of e.hits || []) { const m = M(hh.s), st = S(hh.s); if (!m || !st) continue; m.userData.flash = 0.3; if ((hh.left ?? 1) <= 0) startDeath(m, st); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `${e.text} -${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, st.side === 0 ? 'red' : 'gold'); st.shown = hh.left ?? st.count; setPlate(st); } }
+    return t > 0.5;
+  }
   if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.gate({ kind: e.broken ? 'broken' : '' }); if (e.broken) { addShake(0.5); addHitStop(0.05); } bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
   if (e.t === 'morale') { if (!e.started) { e.started = true; vfx.sparkle(M(e.s).position, 'morale'); sfx.morale(); setAnim(M(e.s), ANIM.CHEER, { speed: AS }); bfloat(M(e.s).position.clone().setY(1.3), '🎺 Good morale!', 'gold'); } return t > 0.5; }
   if (e.t === 'round') { if (!e.started) { e.started = true; $('b-round').textContent = `Round ${e.round}`; replay($('b-round'), 'pop'); } return true; }
@@ -2655,6 +2668,7 @@ function finishBattle(B, ctx) {
   }
   // after the battle summary, so the casualties card comes first
   if (ctx.foe.kind === 'town' && win.hero === ctx.hr) captureTown(ctx.hr, ctx.foe.town);
+  crownAfter(B, ctx); // crown: run counters, Bone Tally, a Blind's payout and shop (or the end of the run)
   checkEnd();
   updateHud();
 }
@@ -2786,7 +2800,8 @@ $('t-body').addEventListener('click', (e) => {
 function buildIn(t, id) {
   const b = BUILDINGS.find((x) => x.id === id);
   if (t.builtToday || t.built.includes(id) || !b.req.every((r) => t.built.includes(r)) || !canPay(t.p, b.cost)) return false;
-  pay(t.p, b.cost); t.built.push(id); t.builtToday = true;
+  pay(t.p, b.cost); t.built.push(id); t.builds = (t.builds || 0) + 1; t.builtToday = !(G.run && t.p === 0 && t.builds < CR.buildsPerDay(G.run));
+  if (G.run && t.p === 0 && b.cost.gold && CR.buildDiscount(G.run)) G.players[0].res.gold += Math.round(b.cost.gold * CR.buildDiscount(G.run)); // crown: Mason's Mark
   // a new dwelling comes with its first week of creatures
   if (b.tier) t.avail[b.tier] = (t.avail[b.tier] || 0) + UNITS[tierUnit(t, b.tier)].grow;
   if (id.startsWith('mage')) { const vis = visitorOf(t); if (vis) learnSpells(t, vis); }
@@ -2936,6 +2951,7 @@ function setHTML(el, html) { if (el && el.__html !== html) { el.innerHTML = html
 function updateHud() {
   if (!G.players.length) return;
   updateRes();
+  crownHud(); // crown: banner bar + Blind pill
   const mine = G.heroes.filter((x) => x.alive && x.p === 0);
   // UI: faction accent colour, and the End day button glows once no hero can take another step
   document.body.style.setProperty('--fac', FACTIONS[G.players[0].fac]?.css || '#3a7aff');
@@ -2980,6 +2996,7 @@ $('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') re
 // ------------------------------------------------------------------ days and weeks
 function endTurn() {
   if (G.mode !== 'map' || aiRunning || walking || G.over) return;
+  if (crownDusk()) return; // crown: a Blind due tonight is fought first, then the day ends
   showPath(selHero(), null);
   aiRunning = true; aiGen = runAI(); aiDelay = 0; $('b-end').disabled = true;
   toast(G.players.filter((x) => x.ai && x.alive).length > 1 ? '⏳ The rival crowns are moving…' : '⏳ The enemy is moving…'); dayFx('night');
@@ -3050,12 +3067,13 @@ function newDay() {
     if (Pl.i === 0 && G.day > 1) floatText(null, `+${fmt(gold)} 🪙${res.wood ? ` +${res.wood} 🪵` : ''}${res.ore ? ` +${res.ore} 🪨` : ''}${res.gems ? ` +${res.gems} 💎` : ''}`, 'gold');
   }
   for (const hr of G.heroes) if (hr.alive) { hr.mp = moveMax(hr); hr.mana = Math.min(maxMana(hr), hr.mana + 1 + Math.floor(statOf(hr, 'know') / 3)); }
-  for (const t of G.towns) t.builtToday = false;
+  for (const t of G.towns) { t.builtToday = false; t.builds = 0; }
+  if (newWeek && G.run) crownWeek(); // crown: a new Ante opens its region and shows its boss
   if (newWeek) {
     // each week honours a creature: +5 growth in every town that breeds it
     const all = Object.values(FACTIONS).flatMap((f) => f.units), star = UNITS[G.nextWeekOf] ? G.nextWeekOf : all[(rnd() * all.length) | 0];
     G.weekOf = star; G.nextWeekOf = null;
-    for (const t of G.towns) for (const b of BUILDINGS) if (b.tier && !b.up && t.built.includes(b.id)) { const base = FACTIONS[t.fac].units[b.tier - 1]; t.avail[b.tier] = (t.avail[b.tier] || 0) + Math.ceil(UNITS[base].grow * (t.built.includes('fort') ? 1.5 : 1)) + (base === star ? 5 : 0); }
+    for (const t of G.towns) for (const b of BUILDINGS) if (b.tier && !b.up && t.built.includes(b.id)) { const base = FACTIONS[t.fac].units[b.tier - 1]; t.avail[b.tier] = (t.avail[b.tier] || 0) + Math.ceil(UNITS[base].grow * (t.built.includes('fort') ? 1.5 : 1) * (G.run && t.p === 0 ? CR.growthMul(G.run) : 1)) + (base === star ? 5 : 0); }
     for (const o of G.objects) if (o.alive && o.type === 'monster') o.n = Math.ceil(o.n * 1.08);
     for (const o of G.objects) if (o.alive && o.type === 'dwelling') o.stock = Math.max(o.stock, 4 + ((rnd() * 4) | 0));
     // (after the "Week N" reveal has played, so the card does not cover it)
@@ -3187,7 +3205,7 @@ function dijkstra(hr, maxCost) {
     if (d > (dist.get(v) ?? Infinity) || d > maxCost) continue;
     if (v !== hr.v && (objAt[v] >= 0 && G.objects[objAt[v]].alive || others.has(v))) continue;
     for (const n of NBR[v]) {
-      if (!passable(n)) continue;
+      if (!passable(n) || crownShut(n, hr)) continue;
       const blockedTarget = (objAt[n] >= 0 && G.objects[objAt[n]].alive) || others.has(n);
       const nd = d + stepCost(v, n) + (!blockedTarget && zoc(n) ? 3000 : 0);
       if (nd < (dist.get(n) ?? Infinity)) { dist.set(n, nd); prev.set(n, v); heap.push(nd, n); }
@@ -3313,7 +3331,7 @@ function save() {
   // saved mid-walk (Save & quit): the rest of the march is kept as an unfinished route (Continue ▶ after loading)
   const W = walking, rest = W && W.i < W.path.length - 1 ? W.path.slice(W.i) : null, keep = rest && [W.hr.route, W.hr.routeObj];
   if (rest) { W.hr.route = rest; W.hr.routeObj = objAt[rest[rest.length - 1]]; }
-  try { store.set('realms.save', { v: SAVE_V, grid: [GRID.W, GRID.H], ver: APP_VERSION, mode: G.gameMode || 'free', size: G.size, resLv: G.resLv, win: G.win, fog: G.fog, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, ter: pack(ter.subarray(0, NV)), h: pack(h.subarray(0, NV)), road: pack(road.subarray(0, NV)), seen: pack(seen.subarray(0, NV)) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
+  try { store.set('realms.save', { v: SAVE_V, grid: [GRID.W, GRID.H], ver: APP_VERSION, mode: G.gameMode || 'free', size: G.size, resLv: G.resLv, win: G.win, fog: G.fog, seed: G.seed, day: G.day, diff: G.diff, selHero: G.selHero, players: G.players, heroes: G.heroes, towns: G.towns, objects: G.objects, run: G.run || null, ter: pack(ter.subarray(0, NV)), h: pack(h.subarray(0, NV)), road: pack(road.subarray(0, NV)), seen: pack(seen.subarray(0, NV)) }); } finally { if (rest) [W.hr.route, W.hr.routeObj] = keep; }
 }
 // the morning save serialises the whole world (~100 KB of JSON): run it when the browser is idle,
 // not in the same frame as the new day's income, growth, HUD and camera work
@@ -3331,7 +3349,7 @@ function load() {
   pendingLevels.length = 0;
   setGrid(s.grid);
   Object.assign(G, { seed: s.seed, day: s.day, diff: s.diff, selHero: s.selHero, players: s.players, heroes: s.heroes, towns: s.towns, objects: s.objects, over: false, mode: 'map',
-    gameMode: s.mode || 'free', size: s.size || 'M', resLv: s.resLv ?? 1, win: s.win || 'conquer', fog: s.fog !== false });
+    gameMode: s.mode || 'free', size: s.size || 'M', resLv: s.resLv ?? 1, win: s.win || 'conquer', fog: s.fog !== false, run: s.run ? CR.runLoad(s.run) : null });
   // saves from v1.10 and older: two crowns, the capitals are the starting towns
   for (const Pl of G.players) { if (!Pl.css) Pl.css = colCss(Pl.color); if (!G.towns.some((t) => t.capOf === Pl.i)) { const t = G.towns.find((x) => x.p === Pl.i); if (t && G.win === 'conquer') t.capOf = Pl.i; } }
   ter.fill(0); h.fill(0); road.fill(0); seen.fill(0);
@@ -3409,6 +3427,7 @@ function showMenu() {
   G.mode = 'menu'; dialogs.length = 0; pendingLevels.length = 0; renderDialog(); // a queued level-up would block every later one (showLevel only runs on the first push)
   stopAI(); walking = null; fx.clearPath(true); fx.select(null, null, undefined, true); // a quit mid enemy turn / mid walk must not carry over into the next game
   fadeShow($('menu')); $('hud').hidden = true; $('town').hidden = true; $('battle').hidden = true; musicScene('menu');
+  CUI?.close(true); CUI?.hideTip(); // crown: no run screen survives a quit to the title
   const s = store.get('realms.save', null);
   $('m-continue').hidden = !s;
   if (s) $('m-continue').innerHTML = `Continue<small>${s.mode === 'crown' ? 'Crown Run · ' : `Free Play${(s.players?.length || 2) > 2 ? ` 1v${s.players.length - 1}` : ''} · `}${s.players?.[0] ? `${FACTIONS[s.players[0].fac]?.name || ''} · ` : ''}Week ${Math.floor((s.day - 1) / 7) + 1}, day ${((s.day - 1) % 7) + 1}</small>`;
@@ -3646,6 +3665,9 @@ function frame(now) {
         // walk → idle blends over 0.3 s so the stride settles instead of popping into the rest pose
         if (hm.userData.animState !== st) { hm.userData.animState = st; setAnim(hm, st, { seed: h.id * 2.3, fade: st === ANIM.IDLE ? 0.3 : 0.15 }); }
       }
+      // LOD (flat world): zoomed far out the ink outlines are hair-thin anyway; dropping them halves the figures' triangles
+      const il = cam.dist < 15.5;
+      if (il !== inkLod) { inkLod = il; for (const g of [...world.children, ...heroMeshes.values()]) for (const c of g.children) if (c.userData.ink) c.visible = il; }
       const nk = clamp(1 + (cam.dist - 9) * 0.045, 1, 1.4);
       if (Math.abs(nk - figK) > 0.01) {
         figK = nk;
@@ -3800,6 +3822,152 @@ function warmPicker() {
   setTimeout(next, 600);
 }
 window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
+
+// ------------------------------------------------------------------ Crown Run (agent "crown"): the roguelite loop on top of the map game.
+// Rules and data: crown.js; screens: crown_ui.js; design: dev/CROWN_RUN.md. G.run holds the run (saved with the game);
+// the meta progression (unlocks, Collection, Glory) lives in its own store key (CR.META_KEY).
+// (var: updateHud may run before this point of the module has been evaluated; crownHud waits for CUI)
+var cmeta = null, CUI = null;
+const crownMeta = () => (cmeta ||= CR.metaLoad(store));
+const saveMeta = () => { if (cmeta) CR.metaSave(store, cmeta); };
+CUI = createCrownUI({ icon, unitIcon, sfx, onChange: (k) => { if (k === 'meta') saveMeta(); else if (G.run) crownHud(); } });
+CUI.mountHud($('hud'));
+const runHero = () => (G.run ? G.heroes[G.run.hero] : null);
+// region gates: your heroes stay inside the regions this Ante has opened; the rival crown keeps to its homeland (the last band)
+function crownShut(v, hr) {
+  const R = G.run; if (!R || !hr || !R.regions) return false;
+  return hr.p === 0 ? regionOf[v] >= R.ante : regionOf[v] < R.antes;
+}
+function crownHud() {
+  if (!CUI) return;
+  const R = G.run;
+  CUI.renderHud(R && !R.over ? R : null, G.day, { onPill: () => { const nb = CR.nextBlind(R); CUI.bossPreview(R, G.day, { threat: nb ? CR.threatArmy(R) : null }); } });
+}
+function crownMods(ctx) {
+  const R = G.run, hr = runHero();
+  if (!R || R.over || !hr || ctx.sides[0].hero !== hr) return null;
+  const bl = ctx.foe.obj?.blind || null, cap = G.towns.find((t) => t.p === 0);
+  return CR.battleMods(R, { boss: bl?.kind === 'boss' ? bl.boss : null, enemyHero: bl?.hero || null, seals: hr.army.map((st) => st?.[2] || null), buildings: cap ? cap.built.length : 0, fort: !!cap?.built.includes('fort') });
+}
+// after every battle of the run hero: counters, Bone Tally, and for a Blind the payout, the shop or the end of the run
+function crownAfter(B, ctx) {
+  const R = G.run, hr = runHero();
+  if (!R || R.over || !hr || ctx.sides[0].hero !== hr) return;
+  const won = B.over.winner === 0, bl = ctx.foe.obj?.blind || null;
+  const res = CR.afterBattle(R, B, { won, kind: bl?.kind || null });
+  for (const s of B.stacks) CR.discover(crownMeta(), 'unit', UNITS[s.id]?.up || s.id);
+  if (res.raise > 0 && hr.alive && addTroops(hr.army, res.raiseAs, res.raise)) toast(`${icon('necromancy', 18)} Bone Tally raises ${res.raise} ${plural(res.raiseAs, res.raise)}.`);
+  if (bl) CR.discover(crownMeta(), 'boss', bl.boss && won ? bl.boss : null);
+  if (!won || !hr.alive) { R.over = true; R.won = false; afterDialogs(crownEnd); return; }
+  if (!bl) { crownHud(); return; }
+  const p = CR.payout(R, bl.kind, { unbroken: res.unbroken, goldSeals: res.goldSeals, towns: G.towns.filter((t) => t.p === 0).length });
+  R.crowns += p.total;
+  CR.advanceBlind(R);
+  saveMeta();
+  if (R.over) { afterDialogs(crownEnd); return; }
+  CR.genShop(R, crownMeta(), crownCtx());
+  afterDialogs(() => crownShop(p));
+}
+// the casualties card comes first; the run's screens wait until it (and any level-up) is closed
+function afterDialogs(f) { const go = () => { if (dialogOpen() || G.mode === 'battle') { setTimeout(go, 250); return; } f(); }; setTimeout(go, 300); }
+const crownCtx = () => { const hr = runHero(); return { known: hr?.spells || [], army: hr?.army || [] }; };
+function crownShop(payout = null) {
+  const R = G.run; crownHud();
+  CUI.shop(R, { payout, meta: crownMeta(), ctx: crownCtx, apply: crownApply, onDone: () => { saveMeta(); crownHud(); updateHud(); save(); if (G.crownResume) { const f = G.crownResume; G.crownResume = null; f(); } } });
+}
+// shop goods that touch the game: scrolls teach a spell, upgrades turn a stack into its upgraded creature, packs open
+async function crownApply(item, buy) {
+  const R = G.run, hr = runHero(); if (!hr) return false;
+  if (item.kind === 'scroll') { buy(); if (!hr.spells.includes(item.id)) hr.spells.push(item.id); sfx.learn(); return true; }
+  if (item.kind === 'upgrade') {
+    const i = hr.army.findIndex((st) => st && st[0] === item.id && st[1] > 0); if (i < 0) { toast('That stack is gone.'); return false; }
+    buy(); const n = hr.army[i][1], j = hr.army.findIndex((st) => st && st[0] === item.to && st[1] > 0);
+    if (j >= 0) { hr.army[j][1] += n; hr.army[i] = null; } else hr.army[i][0] = item.to;
+    sfx.upgrade(); updateHud(); return true;
+  }
+  if (item.kind === 'pack') { buy(); crownPack(item.id, `shop:${R.ante}:${R.blind}:${R.stats.rerolls}:${R.crowns}`, () => crownShop(null)); return false; }
+  return false;
+}
+// pick 1 of 3: banners go into a free slot, spells are learnt for good, creatures join the run hero
+function crownPack(kind, tag, then = null) {
+  const R = G.run, hr = runHero();
+  const pk = CR.openPack(R, kind, tag, crownMeta(), crownCtx());
+  CUI.pack(R, pk, {
+    onPick: (c) => {
+      if (c.kind === 'banner') { if (!CR.addBanner(R, c, crownMeta())) { toast('Your banner slots are full: skip, or sell one in the shop.'); return false; } }
+      else if (c.kind === 'spell') { if (hr.spells.includes(c.id)) hr.mana += 5; else hr.spells.push(c.id); }
+      else if (c.kind === 'unit') { if (!addTroops(hr.army, c.id, c.n)) { toast('No free slot in your army.'); return false; } if (c.seal) { const st = hr.army.find((x) => x && x[0] === c.id); if (st) st[2] = c.seal; } }
+      saveMeta(); return true;
+    },
+    onSkip: () => { R.crowns += 1; },
+    onDone: () => { crownHud(); updateHud(); then?.(); },
+  });
+}
+// dusk: a Blind due tonight is fought before the night falls (endTurn calls this first; true = it took over)
+function crownDusk() {
+  const R = G.run; if (!R || R.over || G.over) return false;
+  const hr = runHero();
+  if (!hr || !hr.alive) { R.over = true; crownEnd(); return true; }
+  const nb = CR.blindDue(R, G.day); if (!nb) return false;
+  const T = CR.threatArmy(R);
+  if (nb.kind === 'boss') CR.discover(crownMeta(), 'boss', nb.boss);
+  G.crownResume = () => endTurn();
+  CUI.blindIntro(R, nb, T, { onFight: () => {
+    const n = T.army.reduce((a, s) => a + s[1], 0);
+    startBattle(hr, { kind: 'monster', obj: { id: -1, v: hr.v, unit: T.army[0][0], n, army: T.army, alive: true, blind: { kind: nb.kind, boss: nb.boss, hero: T.hero } } });
+  } });
+  return true;
+}
+function crownEnd() {
+  const R = G.run; if (!R || G.over && R.ended) return;
+  R.over = true; R.ended = true; G.over = true; stopAI();
+  const hr = runHero(), meta = crownMeta();
+  const res = CR.endRun(R, meta, { armyPower: hr && hr.alive ? BT.armyPower(heroArmy(hr), heroBattle(hr)) : 0 });
+  saveMeta(); store.del('realms.save'); crownHud();
+  CUI.endScreen(R, res, meta, { onNew: () => crownStart(), onCollection: () => CUI.collection(meta, { onClose: () => showMenu() }), onTitle: () => showMenu() });
+}
+// a new run: origin and stake, then a full map with the Ante regions banded out from your capital
+function crownStart() {
+  const meta = crownMeta();
+  const go = () => { fadeHide($('menu')); CUI.originPick(meta, { onStart: crownNew, onBack: () => fadeShow($('menu')), onCollection: () => CUI.collection(meta, { onClose: () => fadeShow($('menu')) }) }); };
+  if (store.get('realms.save', null) && G.mode === 'menu') { ask('Start a Crown Run?', '<p>Your saved game will be replaced when the run begins.</p>', [['Start the run', go], ['Keep my game', null]]); return; }
+  go();
+}
+function crownNew({ origin, stake, fac }) {
+  const seed = (Date.now() % 100000) + 1, meta = crownMeta();
+  newWorld(seed, 1, fac, { mode: 'crown', opponents: [{ fac: 'random', col: -1 }], size: 'M', res: 1, fog: true, win: 'conquer' });
+  const R = CR.newRun({ seed, origin, stake, fac, meta });
+  const hr = G.heroes.find((x) => x.p === 0), cap = G.towns.find((t) => t.p === 0), riv = G.towns.find((t) => t.p === 1);
+  R.hero = hr.id;
+  for (const st of hr.army) if (st) st[1] = Math.max(1, Math.round(st[1] * R.originFx.armyMul));
+  for (const k of RES) G.players[0].res[k] = Math.round(G.players[0].res[k] * R.originFx.resMul);
+  if (R.originFx.fort && !cap.built.includes('fort')) cap.built.push('fort');
+  // the Ante regions: bands of walking distance from your capital up to the rival's homeland (the last band)
+  const D = Math.max(12, cellSteps(cap.v, riv ? riv.v : cap.v));
+  R.regions = { from: cap.v, bands: Array.from({ length: R.antes }, (_, i) => Math.round(D * (0.3 + 0.5 * i / Math.max(1, R.antes - 1)) * 0.95)) };
+  markRegions({ from: R.regions.from, bands: R.regions.bands, wall: true, per: 2 });
+  G.run = R;
+  play(); save(); crownHud();
+  setTimeout(() => CUI.bossPreview(R, G.day, { threat: CR.threatArmy(R) }), 900);
+}
+// hex steps between two cells (the region bands are in steps)
+function cellSteps(a, b) { let d = 0; const seen0 = new Set([a]); let fr = [a]; while (fr.length && d < 400) { if (fr.includes(b)) return d; const nx = []; for (const v of fr) for (const n of NBR[v]) if (!seen0.has(n)) { seen0.add(n); nx.push(n); } fr = nx; d++; } return d; }
+function crownResume() {
+  if (!load()) return;
+  const R = G.run;
+  if (R?.regions) markRegions({ from: R.regions.from, bands: R.regions.bands, wall: false }); // regionOf is not saved (the walls are, in ter)
+  play(); crownHud();
+  if (R?.shop) crownShop(null);
+}
+// a new week = a new Ante (the Boss Blind already moved run.ante on): its region is open, its boss is shown
+function crownWeek() {
+  const R = G.run; if (!R || R.over) return;
+  toast(`${icon('victory', 18)} Ante ${R.ante}: a new region opens beyond the Crown Gate.`);
+  afterDialogs(() => { if (G.run === R && !R.over && G.mode === 'map') CUI.bossPreview(R, G.day, { threat: CR.threatArmy(R) }); });
+}
+window.CrownRun = { start: crownStart, resume: crownResume };
+// test hooks (crown bot / node-free checks)
+Object.assign(window.__realms, { crown: { CR, get CUI() { return CUI; }, UNITS, meta: crownMeta, regionOf, get run() { return G.run; } } });
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
 Object.assign(window.__realms, { quality: QG.state, renderer });
 // flat world (agent "flat"): grid + regions API for other modes / tests. GRID changes with the map size, so it is a getter.

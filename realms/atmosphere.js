@@ -637,7 +637,7 @@ export function createFlatSky(THREE, scene, opts = {}) {
   let area = { x0: -10, x1: 30, z0: -10, z1: 25 };
   // ---- birds
   const flocks = [];
-  for (let f = 0; f < 3; f++) flocks.push({ a: rand() * 6.28, r: 2.5 + rand() * 3, spd: (0.12 + rand() * 0.08) * (f % 2 ? -1 : 1), alt: 1.3 + rand() * 0.5, n: 5, ox: (rand() - 0.5) * 6, oz: (rand() - 0.5) * 6 });
+  for (let f = 0; f < 3; f++) flocks.push({ a: rand() * 6.28, r: 2.5 + rand() * 3, spd: (0.12 + rand() * 0.08) * (f % 2 ? -1 : 1), alt: 0.95 + rand() * 0.3, n: 5, ox: (rand() - 0.5) * 6, oz: (rand() - 0.5) * 6 });
   const NB = flocks.reduce((s, f) => s + f.n, 0);
   const birdMat = new THREE.MeshLambertMaterial({ color: 0xf2eee6, side: THREE.DoubleSide, emissive: 0x3a3a50 });
   birdMat.onBeforeCompile = (sh) => {
@@ -648,6 +648,7 @@ export function createFlatSky(THREE, scene, opts = {}) {
   };
   const birds = new THREE.InstancedMesh(birdGeometry(THREE), birdMat, NB);
   birds.frustumCulled = false; scene.add(birds);
+  birds.visible = !!opts.birds; // off by default: seen from above, the gulls read as white shards on the map
 
   const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new V3(), p = new V3(), ndc = new V3(), Y = new V3(0, 1, 0), fw = new V3(), rt = new V3(), tmp = new V3();
   let fogOn = true, wind = 0;
@@ -658,7 +659,7 @@ export function createFlatSky(THREE, scene, opts = {}) {
     // fog: starts past the far edge of a normal view, so only the distance and the open sea fade into the haze
     // (title: a low, wide view, so the haze closes in sooner; opts.near / far override)
     const k = fogOn ? 1 : 3;
-    if (title) { fog.near = 8 * k; fog.far = 28 * k; }
+    if (title) { fog.near = 6 * k; fog.far = 21 * k; }
     else { fog.near = (5 + viewDist * 1.6) * k; fog.far = fog.near + 12 + viewDist * 2; }
     // the sun: up-right of the view direction, a little above the horizon
     camera.updateMatrixWorld();
@@ -686,6 +687,7 @@ export function createFlatSky(THREE, scene, opts = {}) {
     }
     clouds.instanceMatrix.needsUpdate = true;
     // birds circle around the view focus
+    if (birds.visible) {
     let n = 0;
     const fx = focus ? focus.x : 0, fz = focus ? focus.z : 0;
     for (const f of flocks) {
@@ -694,13 +696,14 @@ export function createFlatSky(THREE, scene, opts = {}) {
       const hx = -Math.sin(f.a) * Math.sign(f.spd), hz = Math.cos(f.a) * Math.sign(f.spd); // heading
       for (let i = 0; i < f.n; i++) {
         const row = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? 1 : -1);
-        p.set(cx - hx * row * 0.16 + -hz * side * row * 0.14, f.alt + row * 0.01 + Math.sin(uTime.value * 1.3 + i * 2.1) * 0.02, cz - hz * row * 0.16 + hx * side * row * 0.14);
+        p.set(cx - hx * row * 0.09 + -hz * side * row * 0.08, f.alt + row * 0.006 + Math.sin(uTime.value * 1.3 + i * 2.1) * 0.015, cz - hz * row * 0.09 + hx * side * row * 0.08);
         tmp.set(hx, 0, hz);
         mtx.makeBasis(sc.crossVectors(Y, tmp).normalize(), Y, tmp); mtx.setPosition(p);
-        birds.setMatrixAt(n++, mtx.scale(ndc.set(0.6, 0.6, 0.6)));
+        birds.setMatrixAt(n++, mtx.scale(ndc.set(0.32, 0.32, 0.32)));
       }
     }
     birds.instanceMatrix.needsUpdate = true;
+    }
   }
   return { update, setFog(on) { fogOn = !!on; }, setArea, fog, gradeGLSL, objects: { sky, clouds, birds } };
 }

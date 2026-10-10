@@ -19,7 +19,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
       if (reduce || from === to) { node.textContent = to; res(); return; }
       const t0 = performance.now(); let last = from;
       const f = (now) => {
-        const u = Math.min(1, (now - t0) / ms), v = Math.round(from + (to - from) * (1 - (1 - u) ** 3));
+        const u = Math.max(0, Math.min(1, (now - t0) / ms)), v = Math.round(from + (to - from) * (1 - (1 - u) ** 3));
         if (v !== last) { node.textContent = v; last = v; if (sound) S('tab', { vol: 0.25, pitch: 1.2 + u * 0.6 }); }
         if (u < 1) requestAnimationFrame(f); else res();
       };
@@ -140,7 +140,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
   function shop(run, h) {
     const L = open('cr-shop', `<div class="cr-shopwrap">
       <aside class="cr-pay ornate"><h3>${icon('victory', 20)} Payout</h3><ul id="cr-lines"></ul><div class="cr-total"><small>Crowns</small><b id="cr-wal">${run.crowns}</b></div></aside>
-      <section class="cr-stock"><header><h2>The Crown Market</h2><small>Ante ${run.ante} · after the ${C.BLIND_NAME[C.BLINDS[(run.blind + 2) % 3]]}</small></header>
+      <section class="cr-stock"><header><h2>The Crown Market</h2><small>Ante ${run.blind === 0 ? run.ante - 1 : run.ante} · after the ${C.BLIND_NAME[C.BLINDS[(run.blind + 2) % 3]]}</small></header>
         <div class="cr-row" id="cr-cards"></div></section>
       <footer class="cr-foot"><div class="cr-bbar" id="cr-bbar"></div>
         <div class="cr-acts"><button class="btn ghost" id="cr-sell" disabled>${icon('gold', 18)} Sell</button><button class="btn" id="cr-reroll"></button><button class="btn gold" id="cr-done">Next ▶</button></div></footer></div>`);
@@ -287,7 +287,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
       <div class="cr-crest"><span class="cr-rays"></span>${icon(won ? 'victory' : 'defeat', 96)}<h2>${won ? 'Crowned!' : 'The run ends'}</h2><small>${won ? `All ${run.antes} Antes cleared` : `Ante ${run.ante} · ${C.BLIND_NAME[C.BLINDS[run.blind]]}${run.blind === 2 ? ` (${boss.name})` : ''}`}</small>
         <div class="cr-stats"><span><b>${run.stats.bestHit}</b><small>Best strike</small></span><span><b>${run.stats.stacksKilled}</b><small>Stacks slain</small></span><span><b>${run.stats.raised}</b><small>Raised</small></span><span><b>${run.stats.blindsWon}</b><small>Blinds</small></span></div></div>
       <div class="cr-side"><ul class="cr-score" id="cr-score"></ul>
-        <div class="cr-sum"><span><small>Score</small><b id="cr-sc">0</b>${res.best ? '<em class="cr-best">New best!</em>' : ''}</span><span><small>Glory</small><b id="cr-gl">+0</b></span></div>
+        <div class="cr-sum"><span><small>Score${res.best ? ' <em class="cr-best">New best!</em>' : ''}</small><b id="cr-sc">0</b></span><span><small>Glory</small><b id="cr-gl">+0</b></span></div>
         <div class="cr-unlocks" id="cr-unl"></div>
         <div class="cr-endbtns"><button class="btn gold" id="cr-new">New run</button><button class="btn" id="cr-col">Collection</button><button class="btn ghost" id="cr-title">Title</button></div></div></div>
       <div class="cr-finalbar">${run.banners.map((b) => cardHTML({ kind: 'banner', ...b }, { cls: 'mini' })).join('')}</div></div>`);

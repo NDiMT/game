@@ -9,7 +9,7 @@ import { armyPower, harm, alive } from './battle.js?v=1.10';
 // ---------------------------------------------------------------- balance levers (CROWN_RUN.md §13)
 export const TUNE = {
   antes: 8, mvpAntes: 3,
-  base: 2000, growth: 2.4, blind: { raid: 1, warlord: 1.5, boss: 2.3 }, stakeStep: 0.08,
+  base: 1500, growth: 2.3, blind: { raid: 1, warlord: 1.5, boss: 2.2 }, stakeStep: 0.08,
   blindDays: { raid: 3, warlord: 5, boss: 7 },
   pay: { raid: 3, warlord: 4, boss: 5 }, unbrokenMax: 3,
   interestPer: 5, interestCap: 5,
@@ -580,7 +580,7 @@ export function scoreRun(run, { armyPower: ap = 0 } = {}) {
   if (run.won) rows.push({ k: 'win', label: 'Crowned!', n: 1000 });
   const sub = rows.reduce((a, r) => a + r.n, 0), mult = 1 + 0.25 * (run.stake - 1);
   const score = Math.round(sub * mult);
-  const glory = Math.floor(score / 150) + 5 * run.stats.bossesBeaten.length + (run.won ? 20 : 0);
+  const glory = Math.floor(score / 100) + 5 * run.stats.bossesBeaten.length + (run.won ? 20 : 0);
   return { rows, sub, mult, score, glory };
 }
 // merges the run into the meta save: Glory, best score, unlocks (factions, origins, stakes), trophies

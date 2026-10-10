@@ -1018,7 +1018,7 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 .cr-score li b { color: #fff; font-variant-numeric: tabular-nums; } .cr-score li.mult b { color: #ff9a3a; }
 .cr-sum { display: flex; gap: 18px; } .cr-sum span { position: relative; } .cr-sum small { display: block; font-size: 11px; text-transform: uppercase; font-weight: 900; color: var(--text-3); }
 .cr-sum b { --ol: #3a2206; display: inline-block; font-family: 'Cinzel', Georgia, serif; font-size: 30px; color: #ffe27a; font-variant-numeric: tabular-nums; text-shadow: -1px -1px 0 var(--ol), 1px 1px 0 var(--ol), 1px -1px 0 var(--ol), -1px 1px 0 var(--ol), 0 3px 0 var(--ol); }
-.cr-best { position: absolute; top: -22px; left: 0; white-space: nowrap; font-style: normal; font-size: 11px; font-weight: 900; padding: 2px 8px; border-radius: 9px; background: #f0453a; color: #fff; transform: rotate(8deg); animation: crland 0.5s var(--boing); }
+.cr-best { position: relative; display: inline-block; margin-left: 4px; white-space: nowrap; text-transform: none; font-style: normal; font-size: 11px; font-weight: 900; padding: 2px 8px; border-radius: 9px; background: #f0453a; color: #fff; transform: rotate(8deg); animation: crland 0.5s var(--boing); }
 .cr-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 6px; width: 100%; }
 .cr-stats span { display: flex; flex-direction: column; padding: 5px 0; border-radius: 10px; background: rgba(0, 0, 0, 0.25); } .cr-stats b { color: #fff; font-size: 16px; } .cr-stats small { font-size: 9px; }
 .cr-unlocks { display: flex; flex-wrap: wrap; gap: 8px; perspective: 700px; }
@@ -1078,7 +1078,8 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 }
 /* portrait fallback: the bar below the resource bar, cards wrap 3 + 2, two-column cards stack */
 @media (orientation: portrait) {
-  #crown-hud { left: calc(var(--safe-l) + var(--gut)); right: calc(var(--safe-r) + 84px); flex-wrap: wrap; }
+  /* (the flat agent's minimap sits top-left under the resource bar in portrait: the bar goes below it) */
+  #crown-hud { left: calc(var(--safe-l) + var(--gut)); right: calc(var(--safe-r) + 84px); top: calc(var(--safe-t) + 72px + var(--mm-h, 96px)); flex-wrap: wrap; }
   .cr-shopwrap { grid-template-columns: 1fr; }
   .cr-pay.ornate { grid-row: auto; display: flex; align-items: center; gap: 10px; } .cr-pay ul { flex: 1; } .cr-pay h3 { display: none; } .cr-total { margin: 0; }
   .cr-foot { flex-direction: column; align-items: stretch; } .cr-bbar { justify-content: center; } .cr-acts .btn { flex: 1; }
@@ -1095,3 +1096,7 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 }
 /* freeplay agent: portrait keeps the turn chip clear of the minimap (top-left): it sits above the selected-hero strip */
 @media (orientation: portrait) { #turnbar { top: auto; bottom: calc(var(--safe-b) + 142px); } }
+@media (orientation: landscape) and (min-width: 900px) {
+  #minimap { top: calc(var(--safe-t) + var(--gut)); }
+  #hud .side { top: calc(var(--safe-t) + var(--gut) + var(--mm-h, 110px) + 10px); }
+}

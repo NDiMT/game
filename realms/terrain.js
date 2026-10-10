@@ -630,6 +630,7 @@ export function createWaterMaterial(flat = false) {
         wc = mix(wc, deep, smoothstep(0.5, 1.0, depth));
         wc = mix(vec3(dot(wc, vec3(0.3, 0.55, 0.15))), wc, 0.72);
         wc *= 0.94 + 0.1 * wh / 2.9;
+        ${flat ? 'wc *= 0.55;' : ''} // flat world: the sun stands high over a top-down view, so the sea takes far more light than the planet's limb did
         float fn = 0.5 + 0.5 * sin(dot(vWPos, vec3(61.0, -43.0, 37.0)) + uTime * 1.3) * sin(dot(vWPos, vec3(-29.0, 53.0, 47.0)) - uTime * 0.9);
         float edge = 0.15 + 0.03 * sin(uTime * 1.4 + wh * 0.6);
         float foam = 1.0 - smoothstep(edge * 0.7, edge, shore + (fn - 0.5) * 0.04);
@@ -1095,6 +1096,7 @@ export function createFlatMap(ctx) {
       const wvert = (x, z, sh, dp, col) => { const o = W.n * 3; W.P[o] = x; W.P[o + 1] = waterLevel; W.P[o + 2] = z; W.N[o + 1] = 1; W.C[o] = W.C[o + 1] = W.C[o + 2] = col; W.D[W.n * 2] = sh; W.D[W.n * 2 + 1] = dp; return W.n++; };
       const cs = new Float32Array(6), cd = new Float32Array(6);
       for (const v of ch.C.cells) {
+        wCell[v] = -1; // (a cell that was sea in an earlier world keeps no stale offset)
         if (ter[v] !== 0) continue;
         const col = seen[v] ? 1 : 0.1, cx = grid.X[v], cz = grid.Z[v];
         for (let i = 0; i < K; i++) { const p = nbOf(v, (i + 5) % 6), q = nbOf(v, i); cs[i] = isW(p) && isW(q) ? 1 : 0; cd[i] = (depthOf(v) + depthOf(p) + depthOf(q)) / 3; }

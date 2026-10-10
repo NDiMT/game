@@ -29,7 +29,7 @@ The code lives in `realms/crown.js`, which holds the data and rules and is pure 
 |---|---|---|---|---|
 | End of day 3 | **Raid** | ×1.0 | 3 | none |
 | End of day 5 | **Warlord** | ×1.5 | 4 | a Warlord hero (att/def = Ante) |
-| End of day 7 | **Crown Boss** | ×2.3 | 5 | Boss hero (att/def/pow = Ante+1), plus the boss rule |
+| End of day 7 | **Crown Boss** | ×2.2 | 5 | Boss hero (att/def/pow = Ante+1), plus the boss rule |
 
 - **Who fights.** The Blind army attacks your run hero (hero #0) wherever he stands.
   - Win: casualties stick, XP is paid as usual, the payout screen shows, then the shop opens.
@@ -40,8 +40,8 @@ The code lives in `realms/crown.js`, which holds the data and rules and is pure 
 **Threat power.** The target is `armyPower(army, hero)` from battle.js:
 
 ```
-P(ante, blind, stake) = 2000 · 2.4^(ante−1) · BLIND[blind] · (1 + 0.08·(stake−1)) · (stake ≥ 3 ? 1.1^(ante−1) : 1)
-BLIND = { raid: 1.0, warlord: 1.5, boss: 2.3 }
+P(ante, blind, stake) = 1500 · 2.3^(ante−1) · BLIND[blind] · (1 + 0.08·(stake−1)) · (stake ≥ 3 ? 1.1^(ante−1) : 1)
+BLIND = { raid: 1.0, warlord: 1.5, boss: 2.2 }
 ```
 
 **Threat army generator.** `threatArmy(run, ante, blind)`, seeded from the run's seed:
@@ -336,7 +336,7 @@ score = Σ blinds won (Raid 100, Warlord 200, Boss 400) × ante
       + 5 × Crowns held + floor(final armyPower / 50)
       + (won ? 1000 : 0)
       then × (1 + 0.25·(stake−1))
-glory = floor(score / 150) + 5 × bosses beaten + (won ? 20 : 0)
+glory = floor(score / 100) + 5 × bosses beaten + (won ? 20 : 0)
 ```
 
 The run also tracks "best strike" (largest single hit, like Balatro's best hand), stacks destroyed, skeletons raised and rerolls. All of these show on the end screen.
@@ -357,7 +357,7 @@ The run also tracks "best strike" (largest single hit, like Balatro's best hand)
 
 ## 13. Balance levers (all live in `crown.js` → `TUNE`)
 
-- **Threat curve** (tuned with `autoResolve` on both sides against a Haven army recruiting every week: Raids are near-certain wins, the Ante 3 boss is about 30% without banners and 100% with 3–5 synergised banners; the player's own tactics are worth more than the AI's): `TUNE.base` (2000), `TUNE.growth` (2.4/Ante), the `BLIND` multipliers, and the stake steps.
+- **Threat curve** (tuned with `autoResolve` on both sides against a Haven army recruiting every week: then checked with the soak bot (Quick combat on every fight, so no tactics). The bot's armies bleed between Blinds. At growth 2.5 it reached Ante 3 three times out of four but fell to the Warlord or the Lich Queen. At growth 2.3 it cleared all 3 Antes. Hand-played battles lose far fewer troops): `TUNE.base` (1500), `TUNE.growth` (2.3/Ante), the `BLIND` multipliers, and the stake steps.
 - **Economy:**
   - the per-Blind pay
   - the Unbroken bonus cap
@@ -370,25 +370,48 @@ The run also tracks "best strike" (largest single hit, like Balatro's best hand)
 - **Banner numbers:** each banner's numbers are named constants in its definition, so a pass of tuning means editing just those.
 - **Battle hooks.** These cost nothing in Free Play: `createBattle` without `mods` keeps the old code path.
 
-## 14. MVP integration notes (main.js)
+## 14. MVP integration (as built)
 
-- **Entry.** The title's "Crown Run" button opens the origin choice (Haven), then `newWorld()` with Crown Run flags, and `G.run` holds the run state.
-- **Timing.** The `endTurn` → `newDay` boundary checks `C.blindDue(run, day)`, and a Blind starts before the night. At dawn of day 8 the Ante advances, a new region opens, and the next boss is rolled.
-- **Battles.**
-  - `startBattle` passes `mods: C.battleMods(run, { boss })`.
-  - `finishBattle` calls `C.afterBattle` (Bone Tally, Trophy Pike counters, the run's stats).
-  - A Blind win opens the payout and then the shop.
-- **Map.** A map chest opens a pack.
-- **HUD.** The HUD shows the banner bar (5 slots, tap for a tooltip) and the Blind pill (days left, the boss preview).
-- **Saves.** The run state is saved inside the normal save (`G.run`). The meta has its own key.
+**Files.**
+- `crown.js`: the rules and data.
+- `crown_ui.js`: the screens (DOM only; main.js passes in `icon`, `unitIcon` and `sfx`).
+- `dev/crown-ui.html`: every screen against mock state, for quick UI work (`?s=shop|pack|muster|boss|intro|end|coll|origin|hud`).
+- `dev/crown_test.mjs`: the node tests.
+
+**main.js.** One block, "Crown Run (agent crown)", plus small marked hooks (`// crown:`):
+
+| Hook | What it does |
+|---|---|
+| imports | `crown.js` and `crown_ui.js`. |
+| `findPath` / `dijkstra` | `crownShut(v, hr)`. Your heroes stay in regions `< ante`; the rival crown stays in its homeland (the last band). |
+| `splitMonster` | A Blind's ready-made threat army (`obj.army`). |
+| `startBattle` | `mods: crownMods(...)`: banners, seals, the boss rule and the Warlord/Boss hero, for any battle of the run hero. |
+| `finishBattle` | `crownAfter(B, ctx)`: run counters, Bone Tally, then for a Blind the payout, `advanceBlind` and the shop. A loss is the end screen. |
+| `interact` (chest) | Opens a pack (type from `chestPack`). |
+| `endTurn` | `crownDusk()`: a Blind due tonight shows its intro, is fought, and the shop's Next resumes `endTurn`. |
+| `newDay` | Resets the per-day build counter (Masonry Guild). Weekly growth × Overflowing Pens. A new week calls `crownWeek()` (toast + boss preview). |
+| `buildIn` | Masonry Guild (2 builds a day) and Mason's Mark (refunds the discount). |
+| `levelUp` | 3 skill choices in a run. |
+| `save` / `load` | `run` in the save (`G.run`). `newWorld` resets `G.run`. Resume re-marks `regionOf` (the gate walls are already in `ter`). |
+| `updateHud` | `crownHud()` (banner bar + Blind pill). |
+| `showMenu` | Closes any run screen. |
+| `playEvent` | The `mod` event (Plague, Echoing Volley floaters). |
+
+**Regions.**
+- `markRegions({ from: capital, bands, wall: true, per: 2 })` from the flat agent.
+- `bands = D × (0.3 … 0.8) × 0.95`, where D is the hex distance to the rival capital.
+- There is one band per Ante, and the last band is the rival's homeland.
+- Gates are the gaps the wall leaves. MVP: there is no 3D gate model; the gate simply cannot be pathed through until its Ante.
+
+**Entry.** `window.CrownRun = { start, resume }`, which the freeplay agent's title button and Continue call. `window.__realms.crown` holds the test hooks.
 
 ## 15. Layout: landscape first (owner direction for v2.0)
 
 Landscape is the primary target: 844×390, 915×412 and 1280×720. Portrait (412×860) must still work.
 
 **Landscape layout:**
-- **Banner bar.** A row of 5 slots at the top centre of the HUD, between the resource bar and the Blind pill.
-- **Blind pill.** Top right: the days left to the next Blind, plus a boss sigil. Tap it for the boss preview card.
+- **Banner bar.** A row of 5 slots plus the Crowns wallet, directly under the resource bar on the left. In landscape the minimap and the hero column take the right edge, so the bar stays clear of them.
+- **Blind pill.** Next to the bar: the days left to the next Blind, plus a boss sigil. It pulses the day before a Blind and on the day itself. Tap it for the boss preview card.
 - **Shop.** A full-screen overlay:
   - the payout tally as a strip on the left
   - a wide row of cards in the middle: 3 cards + pack + voucher

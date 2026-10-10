@@ -21,7 +21,7 @@ export const CELL = 0.39;                // centre-to-centre spacing (the planet
 export const ROW = CELL * Math.sqrt(3) / 2;
 export const CORNER_R = CELL / Math.sqrt(3); // centre to corner
 // M is about the planet's playable land, XL ~2.5x that
-export const MAP_PRESETS = { S: [40, 30], M: [60, 44], L: [76, 56], XL: [96, 70] };
+export const MAP_PRESETS = { S: [44, 32], M: [64, 46], L: [80, 58], XL: [100, 72] };
 export const MAX_CELLS = MAP_PRESETS.XL[0] * MAP_PRESETS.XL[1];
 export const CHUNK_W = 20, CHUNK_H = 16; // render chunks (terrain meshes, flora culling)
 export const DIR6 = Array.from({ length: 6 }, (_, k) => [Math.cos((-60 * k) * Math.PI / 180), Math.sin((-60 * k) * Math.PI / 180)]);
