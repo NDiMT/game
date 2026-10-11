@@ -160,6 +160,7 @@ export function initPortraits(THREE, renderer, modelFn, opts = {}) {
       }`,
   });
   quadScene.add(new T.Mesh(new T.PlaneGeometry(2, 2), comp));
+  for (const f of ['haven', 'necro', 'sylvan', 'inferno', 'dungeon']) artImage('hero:' + f); // icons: the hero art first
 }
 
 const facOf = (id) => (id.startsWith('hero:') ? id.split(':')[1] : UNITS[id]?.fac) || 'neutral';
@@ -320,6 +321,14 @@ function artImage(id) {
     im.src = artUrl(f);
   }
   return im && im.complete && im.naturalWidth ? im : null;
+}
+// a Promise while the painted art of `id` is still downloading (resolves when it has loaded or failed), else null
+function artPending(id) {
+  const f = typeof document !== 'undefined' && artOf(id);
+  if (!f) return null;
+  const im = artImgs.get(f) ?? (artImage(id), artImgs.get(f));
+  if (!im || (im.complete && im.naturalWidth)) return null;
+  return im.decode ? im.decode().catch(() => {}) : new Promise((res) => { im.addEventListener('load', res, { once: true }); im.addEventListener('error', res, { once: true }); });
 }
 function artLoaded(f) {
   for (const [key, old] of [...cache]) {
@@ -587,16 +596,18 @@ export function portraitAsync(id, size = 64, shape = 'square') {
   if (cache.has(key)) return Promise.resolve(cache.get(key));
   if (inflight.has(key)) return inflight.get(key);
   if (glGone()) return Promise.resolve(''); // context lost: not now, and nothing cached (see portrait())
+  const wait = shape !== 'raw' && artPending(id); // the painted art is on its way: render with it, not the 3D bust
+  if (wait) { const j = wait.then(() => { inflight.delete(key); return portraitAsync(id, size, shape); }).then((u) => swapPtk(key, u)); inflight.set(key, j); return j; }
   let p;
   try { p = renderPortrait(id, size, shape, true); } catch (e) { console.warn('portrait', id, e); p = null; }
   if (!p || typeof p.then !== 'function') { put(key, ''); return Promise.resolve(''); } // no model
   const job = p.then((cv) => new Promise((res) => (cv.toBlob ? cv.toBlob((b) => res(b), 'image/png') : res(null))).then((b) => {
-    if (cache.has(key)) return cache.get(key); // a synchronous render won the race
+    if (cache.has(key)) return swapPtk(key, cache.get(key)); // a synchronous render won the race
     if (!b) { const u = cv.toDataURL('image/png'); put(key, u); return u; }
     const url = URL.createObjectURL(b), img = new Image();
     img.src = url;
     return (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => {
-      if (cache.has(key)) { URL.revokeObjectURL(url); return cache.get(key); }
+      if (cache.has(key)) { URL.revokeObjectURL(url); return swapPtk(key, cache.get(key)); }
       put(key, url); keepWarm(key, img);
       if (typeof document !== 'undefined') for (const el of document.querySelectorAll(`img[data-ptk="${CSS.escape(key)}"]`)) { el.src = url; el.removeAttribute('data-ptk'); }
       return url;
@@ -611,10 +622,25 @@ export function portraitAsync(id, size = 64, shape = 'square') {
  * that one scaled to `size` and swaps in the sharp one when the background render finishes. Only when nothing at all is
  * cached for `id` does it fall back to the blocking render.
  */
+// icons: while the painted art is downloading, a transparent placeholder that portraitAsync fills (no 3D stand-in)
+// fill every <img data-ptk=key> (placeholders and stand-ins) with url; returns url
+function swapPtk(key, url) {
+  if (url && typeof document !== 'undefined') for (const el of document.querySelectorAll(`img[data-ptk="${CSS.escape(key)}"]`)) { el.src = url; el.removeAttribute('data-ptk'); }
+  return url;
+}
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+function pendingImg(id, size, shape, cls, alt) {
+  const key = keyOf(id, size, shape);
+  if (cache.has(key) || !artPending(id)) return null;
+  portraitAsync(id, size, shape);
+  return `<img class="${cls}" src="${BLANK}" data-ptk="${key}" width="${size}" height="${size}" alt="${alt}" draggable="false">`;
+}
 export function portraitImgLazy(id, size = 64, cls = 'pt') {
   if (!R || !id) return '';
   const key = keyOf(id, size, 'square');
   if (cache.has(key)) return portraitImg(id, size, cls);
+  const pend = pendingImg(id, size, 'square', cls, id.startsWith('hero:') ? 'Hero' : (UNITS[id]?.name || id));
+  if (pend) return pend;
   let best = null, bs = 0;
   for (const k of cache.keys()) { const at = k.lastIndexOf('@'); if (k.slice(0, at) !== id || /[rw]$/.test(k) || !cache.get(k)) continue; const s = +k.slice(at + 1); if (s > bs) { bs = s; best = k; } }
   if (!best) return portraitImg(id, size, cls);
@@ -625,6 +651,8 @@ export function portraitImgLazy(id, size = 64, cls = 'pt') {
 
 /** '<img>' HTML for templates; '' when portraits are unavailable (fall back to the emoji). */
 export function portraitImg(id, size = 64, cls = 'pt') {
+  const pend = R && id && pendingImg(id, size, 'square', cls, id.startsWith('hero:') ? 'Hero' : (UNITS[id]?.name || id));
+  if (pend) return pend;
   const u = portrait(id, size);
   if (!u) return '';
   const name = id.startsWith('hero:') ? 'Hero' : (UNITS[id]?.name || id);
@@ -641,6 +669,8 @@ export function heroPortrait(fac, color, size = 64, shape = 'square') { return p
 
 /** '<img>' HTML of a hero bust: faction backdrop, player-colour plate. color: 0xrrggbb or '#rrggbb'. */
 export function heroPortraitImg(fac, color, size = 64, cls = 'pt hero', shape = 'square') {
+  const pend = R && pendingImg(heroId(fac, color), size, shape, cls, 'Hero');
+  if (pend) return pend;
   const u = heroPortrait(fac, color, size, shape);
   if (!u) return '';
   return `<img class="${cls}" src="${u}" width="${size}" height="${size}" alt="Hero" draggable="false">`;
