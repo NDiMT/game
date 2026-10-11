@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE } from './rig.js?v=2.4';
+import { BONE } from './rig.js?v=2.5';
 
 // =====================================================================
 // HEX REALMS: Dungeon (warlock underworld) creatures, round 6.
