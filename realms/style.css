@@ -1354,17 +1354,17 @@ html.vp-rot .pbody, html.vp-rot .card-scroll, html.vp-rot .factions, html.vp-rot
 .cr-fac .cr-fn small .ic { vertical-align: -2px; }
 .cr-originwrap .cr-fac { display: flex; align-items: center; gap: 6px; }
 .cr-originwrap .cr-origins .cr-card { display: flex; flex-direction: column; }
-.cr-originwrap .cr-origins .cr-in { flex: 1; aspect-ratio: auto; min-height: calc(var(--w) * 1.1); display: flex; }
+.cr-originwrap .cr-origins .cr-in { flex: 1; aspect-ratio: auto; min-height: calc(var(--w) * 1.1); }
 .cr-originwrap .cr-origins .cr-face { position: relative; inset: auto; flex: 1; }
 .cr-originwrap .cr-origins .cr-txt { display: block; -webkit-line-clamp: none; overflow: visible; }
 .cr-originwrap .cr-fac .cr-fn small { -webkit-line-clamp: 3; }
 /* every Crown card (artifacts, choices, shop, collection): the face is in flow, so a card keeps its ratio as a
    minimum but grows to show all of its text (the back face still covers it for the flip); no line clamp */
 .cr-card { display: flex; flex-direction: column; }
-.cr-in { display: flex; flex: 1 0 auto; }
-.cr-face { position: relative; inset: auto; flex: 1 0 auto; overflow-wrap: break-word; }
+.cr-in { display: flex; flex-direction: column; flex: 1 0 auto; }
+.cr-face { position: relative; inset: auto; flex: 1 0 auto; min-width: 0; overflow-wrap: break-word; }
 .cr-txt { display: block; -webkit-line-clamp: none; overflow: visible; }
-.cr-card .cr-set { flex-wrap: wrap; justify-content: center; text-align: center; line-height: 1.1; }
+.cr-card .cr-set { flex-wrap: wrap; justify-content: center; text-align: center; line-height: 1.1; max-width: 100%; overflow-wrap: anywhere; }
 /* paper doll: artifact names wrap to two lines instead of an ellipsis */
 .cr-slot2 small { white-space: normal; text-overflow: clip; text-align: center; line-height: 1.12; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: break-word; }
 /* Free Play setup on the narrowest landscape phones: "Impossible" fits its segment */
@@ -1398,3 +1398,15 @@ html.vp-rot .pbody, html.vp-rot .card-scroll, html.vp-rot .factions, html.vp-rot
 /* agent "icons": painted PixelLab icons (icons.js artIcon/icon) are downscaled smoothly, never pixelated */
 img.ic-art { image-rendering: auto; object-fit: contain; vertical-align: -0.24em; }
 .btn img.ic-art { vertical-align: -0.3em; }
+/* hero picker on short landscape screens: wider background cards (fewer text lines), and "Begin the run" stays in view
+   if the picker still has to scroll */
+@media (orientation: landscape) and (max-height: 560px) {
+  .cr-originwrap .cr-origins .cr-card { --w: clamp(84px, 12.2vw, 128px); }
+  .cr-originwrap .cr-origins .cr-txt { line-height: 1.15; }
+  .cr-originwrap .cr-origins .cr-in { min-height: calc(var(--w) * 1.05); }
+  .cr-originwrap footer { position: sticky; bottom: 0; z-index: 3; padding: 6px 0 2px; background: linear-gradient(180deg, rgba(8, 13, 38, 0), rgba(8, 13, 38, 0.92) 10px); }
+}
+/* dialog buttons with an inline icon: icon beside the (possibly two-line) label, both centred, instead of the icon
+   wrapping onto its own line above the text */
+.dbtns .btn:not(:has(> small)) { flex-wrap: nowrap; gap: 6px; text-align: center; }
+.dbtns .btn > .ic { flex: none; }

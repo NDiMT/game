@@ -3043,18 +3043,27 @@ function updateHud() {
 // follows); the selected hero -> its sheet; town -> open it. A second tap on the same button within 320 ms
 // additionally flies the camera in close (hero) or is swallowed (town: already open), so a double tap never acts twice.
 let sideTap = null;
+let sideTapT = 0;
 $('heroes').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || busy()) return;
   const key = b.dataset.h ? 'h' + b.dataset.h : 't' + b.dataset.t, now = performance.now();
   const dbl = !!sideTap && sideTap.key === key && now - sideTap.t < 320;
   sideTap = dbl ? null : { key, t: now };
+  // a second tap within 320 ms flies the camera there on the map; a single tap that would open a screen (hero sheet,
+  // town) waits out that window so the double tap is never swallowed by the screen it opened
+  clearTimeout(sideTapT);
   if (b.dataset.h) {
     const id = +b.dataset.h;
     if (dbl) { if (G.selHero !== id) selectHero(id); flyTo(G.heroes[id].v, 7.5); sfx.click(); return; }
-    if (G.selHero === id) openHero(); else selectHero(id);
+    if (G.selHero === id) sideTapT = setTimeout(() => { if (!busy() && G.mode === 'map') openHero(); }, 300);
+    else selectHero(id);
     return;
   }
-  if (b.dataset.t && !dbl) openTown(+b.dataset.t);
+  if (b.dataset.t) {
+    const t = G.towns[+b.dataset.t];
+    if (dbl) { flyTo(t.v, 8); sfx.click(); return; }
+    sideTapT = setTimeout(() => { if (!busy() && G.mode === 'map') openTown(t.id); }, 300);
+  }
 });
 $('b-hero').addEventListener('click', () => { if (!busy()) openHero(); });
 $('sel').addEventListener('click', (e) => { if (e.target.closest('#b-go')) { resumeRoute(selHero()); sfx.click(); } });
@@ -3906,7 +3915,7 @@ function warmPicker() {
   };
   setTimeout(next, 600);
 }
-window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * VP.W, (-v.y * 0.5 + 0.5) * VP.H]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, cellScreen: (v) => { camera.updateMatrixWorld(); const p = posOf(v).project(camera); return [(p.x * 0.5 + 0.5) * VP.W, (-p.y * 0.5 + 0.5) * VP.H]; }, pickCell: (x, y) => pickCell(x, y), pickHex: (x, y) => { const k = BB && pickHex(x, y); return k ? [k.c, k.r] : null; }, myTurn: () => myTurn(), heroMeshes, get walking() { return walking; } };
+window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * VP.W, (-v.y * 0.5 + 0.5) * VP.H]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, cellScreen: (v) => { camera.updateMatrixWorld(); const p = posOf(v).project(camera); return [(p.x * 0.5 + 0.5) * VP.W, (-p.y * 0.5 + 0.5) * VP.H]; }, pickCell: (x, y) => pickCell(x, y), pickHex: (x, y) => { const k = BB && pickHex(x, y); return k ? [k.c, k.r] : null; }, myTurn: () => myTurn(), get plan() { return plan; }, busy: () => busy(), heroMeshes, get walking() { return walking; } };
 
 // ------------------------------------------------------------------ Crown Run (agent "crown"): a roguelite told in Heroes terms.
 // One hero, permadeath; regions behind Border Guards, each opened by the key its Legendary Hero guards; weekly
