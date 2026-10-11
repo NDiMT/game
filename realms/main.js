@@ -1023,9 +1023,48 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
   // wandering monsters on the roads
   for (let i = 0; i < Math.round(14 * dens); i++) { const v = (rnd() * NV) | 0; if (passable(v) && objAt[v] < 0 && far(v) > 0.15 && NBR[v].every((x) => objAt[x] < 0)) { const g = guardFor(v, far(v) * 1.3); addObject('monster', v, { unit: g.id, n: g.n }); } }
   for (const o of G.objects) if (['gold', 'wood', 'ore', 'gems'].includes(o.type)) o.amount = o.type === 'gold' ? 500 + ((rnd() * 6) | 0) * 100 : 3 + ((rnd() * 5) | 0);
+  ensureReachable(caps); // nothing placed behind rocks / trees / water with no way in
   G.selHero = 0;
   if (!G.fog) seen.fill(1);
   revealAll();
+}
+// every object must be reachable: walkable cells (plus monster cells: you can fight through a guard) flooded from the
+// capitals; an object counts as reachable when one of its neighbours is. A blocked one gets the cheapest way in carved
+// through rock/forest/water (never through other objects; in a Crown Run never across a region wall except at its gate),
+// or is removed if no way exists. Returns { carved, removed } for tests.
+function ensureReachable(starts) {
+  const walk = (x) => { if (!passable(x) || objAt[x] < 0) return passable(x); const t = G.objects[objAt[x]]; return !t || !t.alive || t.type === 'monster' || t.type.startsWith('border'); };
+  const zoned = !!G.run, crossOk = (a, b) => !zoned || regionOf[a] === regionOf[b] || (passable(a) && passable(b));
+  let carved = 0, removed = 0;
+  const flood = () => {
+    const R = new Uint8Array(NV), q = [];
+    for (const v of starts) for (const n of [v, ...NBR[v]]) if (!R[n] && (n === v || walk(n))) { R[n] = 1; q.push(n); }
+    for (let i = 0; i < q.length; i++) for (const n of NBR[q[i]]) if (!R[n] && walk(n) && crossOk(q[i], n)) { R[n] = 1; q.push(n); }
+    return R;
+  };
+  let R = flood();
+  for (const o of G.objects) {
+    if (!o.alive || o.type === 'monster' && !o.guards && NBR[o.v].some((n) => R[n])) continue;
+    if (NBR[o.v].some((n) => R[n]) || R[o.v]) continue;
+    // 0-1 BFS from the reachable set: free steps over walkable cells, cost 1 over rock/forest/water; objects are walls
+    const dist = new Int32Array(NV).fill(1e9), prev = new Int32Array(NV).fill(-1), dq = [];
+    for (let v = 0; v < NV; v++) if (R[v]) { dist[v] = 0; dq.push(v); }
+    let head = 0, hit = -1; const deque = { front: [], push0(v) { this.front.push(v); } };
+    while (head < dq.length || deque.front.length) {
+      const v = deque.front.length ? deque.front.pop() : dq[head++];
+      if (NBR[o.v].includes(v) && v !== o.v) { hit = v; break; }
+      for (const n of NBR[v]) {
+        if (n === o.v || (objAt[n] >= 0 && G.objects[objAt[n]]?.alive) || ter[n] === undefined || GRID.edge(n) > 0.92 || !crossOk(v, n) && !passable(n)) continue;
+        const w = walk(n) ? 0 : 1, nd = dist[v] + w;
+        if (nd < dist[n]) { dist[n] = nd; prev[n] = v; if (w === 0) deque.push0(n); else dq.push(n); }
+      }
+    }
+    if (hit >= 0 && (dist[hit] <= 8 || o.type === 'town')) {
+      for (let x = hit; x >= 0 && dist[x] > 0; x = prev[x]) if (!passable(x)) { const p = prev[x] >= 0 ? prev[x] : x; ter[x] = T.DIRT; h[x] = h[p]; carved++; }
+      R = flood();
+    } else if (o.type !== 'town') { o.alive = false; if (objAt[o.v] === o.id) objAt[o.v] = -1; removed++; }
+  }
+  return (ensureReachable.last = { carved, removed });
 }
 function guard(v, strength) {
   const n = NBR[v].filter((x) => passable(x) && objAt[x] < 0);
@@ -4121,6 +4160,7 @@ function crownNew({ background, diff, fac }) {
   R.regionMap = Array.from(regionOf.subarray(0, NV)).join(''); // (walking bands change once the walls stand: keep the map)
   G.run = R;
   crownPlace(R, cap, gates);
+  ensureReachable([cap.v]); // the run's sites too: nothing walled in behind rock or forest
   play(); save(); crownHud();
   setTimeout(() => CUI.guardianCard(R, 1, CR.guardianArmy(R, 1), { onClose: () => { const g = G.objects.find((x) => x.alive && x.guardian?.region === 1); if (g) { flyTo(g.v, 9); setTimeout(() => flyTo(hr.v, 10), 2200); } } }), 900);
 }
@@ -4202,7 +4242,7 @@ window.CrownRun = { start: crownStart, resume: crownResume };
 // test hooks (crown bot / node-free checks)
 Object.assign(window.__realms, { crown: { CR, get CUI() { return CUI; }, UNITS, meta: crownMeta, regionOf, get run() { return G.run; }, crownInteract, crownDoll, crownInvade, crownInvaded, capital } });
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
-Object.assign(window.__realms, { quality: QG.state, renderer });
+Object.assign(window.__realms, { quality: QG.state, renderer, ensureReachable });
 // flat world (agent "flat"): grid + regions API for other modes / tests. GRID changes with the map size, so it is a getter.
 Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get GRID() { return GRID; }, get NV() { return NV; }, cellDist, posOf, setGrid, generate, makeGrid, MAP_PRESETS, markRegions, regionOf, regionsVoronoi, regionsBands, regionGates, pickCell, mini, h, road, TERRAIN, floraStats: () => { let n = 0, sets = 0; for (const S of floraSets.values()) { if (S.im?.count) { sets++; n += S.im.count; } } return { sets, drawn: n, chunks: floraVis.chunks.length }; } }));
 Object.assign(window.__realms, { prewarmProfile: () => loadProf, postQueue: () => postQ.map((j) => j.label), bumpWarm });
