@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE } from './rig.js?v=2.1';
+import { BONE } from './rig.js?v=2.2';
 
 // =====================================================================
 // HEX REALMS: Dungeon town-interior buildings (HoMM3 "Dungeon" style).
