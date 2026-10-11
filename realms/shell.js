@@ -9,7 +9,7 @@
 //    screen points to Share -> Add to Home Screen (the home-screen app runs standalone, without bars).
 // When neither fullscreen nor an orientation lock is possible, vport.js turns the game frame so it is still landscape.
 // =====================================================================
-import { isTouch } from './vport.js?v=2.1';
+import { isTouch } from './vport.js?v=2.2';
 
 const d = document, de = d.documentElement;
 const mq = (q) => (typeof matchMedia === 'function' ? matchMedia(q) : { matches: false, addEventListener() {} });
