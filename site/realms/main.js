@@ -1,38 +1,38 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=2.3';
-import { havenModel } from './units_haven.js?v=2.3';
-import { necroModel } from './units_necro.js?v=2.3';
-import { necroUpModel } from './units_necro_up.js?v=2.3';
-import { havenUpModel } from './units_haven_up.js?v=2.3';
-import { neutralModel } from './units_neutral.js?v=2.3';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=2.3';
-import { objectModel } from './models_objects.js?v=2.3';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=2.3';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.3';
-import { createTownView } from './town_view.js?v=2.3';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.3';
-import { createFlatSky, gradeGLSL } from './atmosphere.js?v=2.3';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=2.3';
+import { mulberry32, unitModel } from './models.js?v=2.4';
+import { havenModel } from './units_haven.js?v=2.4';
+import { necroModel } from './units_necro.js?v=2.4';
+import { necroUpModel } from './units_necro_up.js?v=2.4';
+import { havenUpModel } from './units_haven_up.js?v=2.4';
+import { neutralModel } from './units_neutral.js?v=2.4';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=2.4';
+import { objectModel } from './models_objects.js?v=2.4';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=2.4';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.4';
+import { createTownView } from './town_view.js?v=2.4';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.4';
+import { createFlatSky, gradeGLSL } from './atmosphere.js?v=2.4';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=2.4';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
-const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=2.3'), import('./units_inferno.js?v=2.3'), import('./units_dungeon.js?v=2.3')]);
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=2.4'), import('./units_inferno.js?v=2.4'), import('./units_dungeon.js?v=2.4')]);
 // memory: build through the modules' uncached builders (base id + upgraded flag), so main.js's geoCache is the only
 // owner of a creature's geometry and trimGeoCache() really frees it (the modules' own caches would pin ~11 MB per roster)
 const facBuild = (mod, build, model) => (id) => { const b = mod.value?.[build], u = UNITS[id]; const m = b && u ? b(u.up || id, !!u.up) : null; return m || mod.value?.[model]?.(id) || null; };
 const FAC_MODEL = { sylvan: facBuild(SYLm, 'sylvanBuild', 'sylvanModel'), inferno: facBuild(INFm, 'infernoBuild', 'infernoModel'), dungeon: facBuild(DUNm, 'dungeonBuild', 'dungeonModel') };
-import * as BT from './battle.js?v=2.3';
-import * as CR from './crown.js?v=2.3'; // crown: Crown Run rules and data
-import { createCrownUI } from './crown_ui.js?v=2.3'; // crown: Crown Run screens
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=2.3';
-import { createScore } from './music.js?v=2.3';
-import { createSfx } from './sfx.js?v=2.3';
-import { unitFit, applyFit } from './unit_fit.js?v=2.3';
-import { createMapFx } from './mapfx.js?v=2.3';
+import * as BT from './battle.js?v=2.4';
+import * as CR from './crown.js?v=2.4'; // crown: Crown Run rules and data
+import { createCrownUI } from './crown_ui.js?v=2.4'; // crown: Crown Run screens
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=2.4';
+import { createScore } from './music.js?v=2.4';
+import { createSfx } from './sfx.js?v=2.4';
+import { unitFit, applyFit } from './unit_fit.js?v=2.4';
+import { createMapFx } from './mapfx.js?v=2.4';
 import { icon, artIcon, artFile } from './icons.js';
 // fullscreen: the virtual viewport (the game may be drawn turned by 90 degrees on a portrait screen): game-space sizes and
 // screen -> game coordinate mapping for every piece of manual pointer / layout maths below
-import { VP, toGame, gRect } from './vport.js?v=2.3';
-import { fsAvailable, fsActive, toggleFullscreen } from './shell.js?v=2.3';
-import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.3';
+import { VP, toGame, gRect } from './vport.js?v=2.4';
+import { fsAvailable, fsActive, toggleFullscreen } from './shell.js?v=2.4';
+import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.4';
 
 // =====================================================================
 // ORBIS · Five Crowns: a 3D fantasy strategy game on a hex map.
@@ -41,7 +41,7 @@ import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, her
 // defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '2.3';
+const APP_VERSION = '2.4';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -539,7 +539,7 @@ const atmos = createFlatSky(THREE, scene, { fogColor: 0xa8c6e2 }); // flat world
 
 // ------------------------------------------------------------------ the map mesh: bevelled hex columns with cliff walls, in chunks
 // the surface itself (textures, bevels, cliffs, roads, fog, water, the open sea) is built by terrain.js
-import { createFlatMap } from './terrain.js?v=2.3';
+import { createFlatMap } from './terrain.js?v=2.4';
 const TERRAIN = createFlatMap({ STEP, SEA });
 TERRAIN.setGrid(GRID); atmos.setArea(GRID.bounds);
 scene.add(TERRAIN.group);
@@ -3052,16 +3052,17 @@ function showIncome(inc) {
   const items = ['gold', 'wood', 'ore', 'gems'].filter((k) => inc[k] > 0);
   if (!items.length) return;
   resQuietUntil = performance.now() + 2500;
-  const el = document.createElement('div'); el.className = 'income-pop';
-  el.innerHTML = `<small>Daily income</small><div>${items.map((k) => `<span>${icon(k, 40)}<b>+${fmt(inc[k])}</b></span>`).join('')}</div>`;
-  setTimeout(() => { document.body.appendChild(el); sfx.coin?.(); setTimeout(() => el.remove(), 2600); }, 700);
+  // the classic floating text in the middle of the screen, as before, just with the resource icons instead of emoji
+  const f = floatText(null, '', 'gold income');
+  f.el.innerHTML = items.map((k) => `<span>+${fmt(inc[k])}${icon(k, 26)}</span>`).join('');
 }
 function floatText(pos, text, cls = '', cm = null) {
   const el = document.createElement('div'); el.className = `floater ${cls}`; el.textContent = text; $('floaters').appendChild(el);
   // texts spawned close together (damage, "Retaliation", kills) stack upward instead of landing on each other
   const near = pos ? floaters.filter((f) => f.p && f.t < 0.9 && f.cm === cm && f.p.distanceTo(pos) < 1.2).length : 0;
-  floaters.push({ el, p: pos, t: 0, cm, near, slot: pos ? 0 : floaters.filter((f) => !f.p).length });
+  const rec = { el, p: pos, t: 0, cm, near, slot: pos ? 0 : floaters.filter((f) => !f.p).length }; floaters.push(rec);
   if (floaters.length > 14) floaters.shift().el.remove();
+  return rec;
 }
 function updateFloaters(dt) {
   for (let i = floaters.length - 1; i >= 0; i--) {

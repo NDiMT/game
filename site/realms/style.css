@@ -1411,16 +1411,10 @@ img.ic-art { image-rendering: auto; object-fit: contain; vertical-align: -0.24em
 .dbtns .btn:not(:has(> small)) { flex-wrap: nowrap; gap: 6px; text-align: center; }
 .dbtns .btn > .ic { flex: none; }
 
-/* lead: the morning income card, centred, with the resource icons */
-.income-pop { position: fixed; left: 50%; top: 42%; z-index: 11; transform: translate(-50%, -50%); pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 10px 20px 12px; border-radius: 18px; background: linear-gradient(#1d2a6e, #0e1640); box-shadow: 0 0 0 2px #e0ac48, 0 0 0 4px #0b1236, 0 10px 30px rgba(0, 0, 0, 0.5);
-  animation: incomePop 2.6s cubic-bezier(.2, 1.4, .4, 1) both; }
-.income-pop small { font-size: 11px; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; color: #ffe27a; }
-.income-pop div { display: flex; gap: 16px; }
-.income-pop span { display: flex; align-items: center; gap: 6px; }
-.income-pop b { --ol: #3a1e04; font-size: 22px; font-weight: 900; color: #fff3c4; text-shadow: 0 2px 0 #3a1e04, 0 0 8px rgba(255, 200, 80, 0.5); }
-@keyframes incomePop { 0% { opacity: 0; transform: translate(-50%, -40%) scale(0.6); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); } 20% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; transform: translate(-50%, -50%); } 100% { opacity: 0; transform: translate(-50%, -70%); } }
-@media (prefers-reduced-motion: reduce) { .income-pop { animation: none; } }
+/* lead: the morning income floats in the middle (classic floater) with the resource icons */
+.floater.income { display: flex; gap: 12px; font-size: 24px; }
+.floater.income span { display: inline-flex; align-items: center; gap: 3px; }
+.floater.income .ic { width: 26px; height: 26px; }
 
 /* lead: army slots breathe: the gold ring + ink shadow reach ~4px past each cell, so the gap must clear them */
 .slots { gap: clamp(9px, 1.5vw, 12px) !important; padding: 5px 5px 7px !important; }
