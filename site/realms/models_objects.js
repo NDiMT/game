@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BONE, tagRange, ensureRig } from './rig.js?v=2.3';
+import { BONE, tagRange, ensureRig } from './rig.js?v=2.4';
 
 // =====================================================================
 // HEX REALMS: adventure-map objects (resources, treasure, mines, sites).
