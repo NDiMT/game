@@ -28,6 +28,10 @@ import { createSfx } from './sfx.js?v=2.1';
 import { unitFit, applyFit } from './unit_fit.js?v=2.1';
 import { createMapFx } from './mapfx.js?v=2.1';
 import { icon } from './icons.js';
+// fullscreen: the virtual viewport (the game may be drawn turned by 90 degrees on a portrait screen): game-space sizes and
+// screen -> game coordinate mapping for every piece of manual pointer / layout maths below
+import { VP, toGame, gRect } from './vport.js?v=2.1';
+import { fsAvailable, fsActive, toggleFullscreen } from './shell.js?v=2.1';
 import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.1';
 
 // =====================================================================
@@ -360,11 +364,13 @@ function flyTo(v, dist) {
 // size late on rotation). Sub-3px height wobbles are ignored.
 const rsz = { w: 0, h: 0, pr: 0, timer: 0, late: 0 };
 function resize(force) {
-  const w = window.innerWidth, hh = window.innerHeight, pr = renderer.getPixelRatio();
+  const w = VP.W, hh = VP.H, pr = renderer.getPixelRatio();
   lay.dirty = lay.townDirty = true;
-  if (force !== true && w === rsz.w && pr === rsz.pr && Math.abs(hh - rsz.h) < 3) return;
+  // fullscreen: in the turned frame (VP.rot) the toolbar changes the game's WIDTH, so the steady axis swaps
+  const [sa, sb, ra, rb] = VP.rot ? [hh, w, rsz.h, rsz.w] : [w, hh, rsz.w, rsz.h];
+  if (force !== true && sa === ra && pr === rsz.pr && Math.abs(sb - rb) < 3) return;
   clearTimeout(rsz.timer);
-  if (force !== true && rsz.w && w === rsz.w && pr === rsz.pr) { rsz.timer = setTimeout(() => resize(true), 180); return; }
+  if (force !== true && ra && sa === ra && pr === rsz.pr) { rsz.timer = setTimeout(() => resize(true), 180); return; }
   clearTimeout(rsz.late); rsz.late = setTimeout(resize, 300);
   rsz.w = w; rsz.h = hh; rsz.pr = pr; lay.snapMap = lay.snapBat = true;
   renderer.setSize(w, hh, false);
@@ -407,7 +413,7 @@ function freeRect(boxes, W, H, o) {
 const _fr = { T: 0, B: 0, L: 0, R: 0 };
 function measureLayout() {
   lay.dirty = false;
-  const H = rsz.h || innerHeight, W = rsz.w || innerWidth, q = (s) => document.querySelector(s);
+  const H = rsz.h || VP.H, W = rsz.w || VP.W, q = (s) => document.querySelector(s);
   const rail = boxIn(q('#hud .rail'));
   // map: in landscape the bottom-left hero card is a corner overlay, not a band; the focus keeps clear of it
   freeRect([boxIn(q('#hud .resbar')), rail, rail ? boxIn($('sel')) : boxIn(q('#hud .bottom'))], W, H, _fr);
@@ -435,7 +441,7 @@ if (typeof ResizeObserver !== 'undefined') {
 const mvP = new THREE.Vector3();
 function mapViewOffset(dt) {
   if (lay.dirty) measureLayout();
-  const H = rsz.h || innerHeight, W = rsz.w || innerWidth, T = lay.mapT, B = lay.mapB;
+  const H = rsz.h || VP.H, W = rsz.w || VP.W, T = lay.mapT, B = lay.mapB;
   let want = 0;
   if (G.mode === 'map' && B - T > H * 0.3) {
     camera.updateMatrixWorld();
@@ -593,7 +599,7 @@ function townInsets() {
   if (!lay.townDirty) return;
   const r = boxIn($('town')); if (!r) return;
   lay.townDirty = false;
-  const W = innerWidth, H = innerHeight, side = W > H && r.w < W * 0.7;
+  const W = VP.W, H = VP.H, side = W > H && r.w < W * 0.7;
   const px = (v) => { v = Math.round(v); return v < 2 ? 0 : v; };
   townView.setInsets(side ? { bottom: 0, right: px(W - r.l) } : { bottom: px(H - r.t), right: 0 });
 }
@@ -1156,7 +1162,7 @@ const mini = (() => {
   const M = { el, dirty: true, fresh: null, sig: '', t: 0, w: 0, h: 0, s: 1, pr: 1, gw: 0, gh: 0 };
   const COLS = TER_COL.map((c) => '#' + c.getHexString()), ROADC = '#' + ROAD_COL.getHexString(), FOGC = '#1d2236';
   function size() {
-    const land = innerWidth > innerHeight, cw = land ? clamp(innerWidth * 0.155, 124, 200) - 16 : clamp(innerWidth * 0.32, 104, 150); // landscape: the rail's inner width (style.css --rail)
+    const land = VP.W > VP.H, cw = land ? clamp(VP.W * 0.155, 124, 200) - 16 : clamp(VP.W * 0.32, 104, 150); // landscape: the rail's inner width (style.css --rail)
     const gw = GRID.W + 0.5, gh = (GRID.H - 1) * 0.866 + 1, ch = cw * gh / gw, pr = Math.min(2, devicePixelRatio || 1);
     if (Math.abs(cw - M.w) < 0.5 && gw === M.gw && gh === M.gh && pr === M.pr) return false;
     M.w = cw; M.h = ch; M.gw = gw; M.gh = gh; M.pr = pr; M.s = (cw * pr) / gw;
@@ -1177,7 +1183,7 @@ const mini = (() => {
   }
   const _a = new THREE.Vector3();
   function viewPoly() {
-    const pts = [], W = innerWidth, H = innerHeight, D = viewDist(cam.dist) * 2.6;
+    const pts = [], W = VP.W, H = VP.H, D = viewDist(cam.dist) * 2.6;
     const L = lay.mapL || 0, R = Math.min(W, lay.mapR || W);
     for (const [x, y] of [[L, lay.mapT || 0], [R, lay.mapT || 0], [R, lay.mapB || H], [L, lay.mapB || H]]) {
       ndc.set((x / W) * 2 - 1, -(y / H) * 2 + 1); ray.setFromCamera(ndc, camera); _gp.constant = -cam.y;
@@ -1214,7 +1220,7 @@ const mini = (() => {
   // tap / drag: fly the view there
   let down = false;
   const go = (e) => {
-    const r = el.getBoundingClientRect(), x = (e.clientX - r.left) * M.pr / M.s - 0.5, z = (e.clientY - r.top) * M.pr / M.s - 0.5;
+    const r = gRect(el), g = toGame(e.clientX, e.clientY), x = (g.x - r.left) * M.pr / M.s - 0.5, z = (g.y - r.top) * M.pr / M.s - 0.5; // fullscreen: game px
     const v = GRID.cellAt(x * CELL, z * CELL);
     if (v >= 0) { cam.holdFollow = walking || (aiRunning ? 'ai' : null); flyTo(v); }
   };
@@ -1286,14 +1292,14 @@ function showPath(hr, path) {
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 // exact: a ray against the terrain chunks' triangles (tops, bevels and cliff walls), each mapped back to its cell
 function pickCell(cx, cy) {
-  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ndc.set((cx / VP.W) * 2 - 1, -(cy / VP.H) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   return TERRAIN.pick(ray);
 }
 // where a screen point meets the ground plane at the focus height (for 1:1 panning); null near/above the horizon
 const _gp = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _gHit = new THREE.Vector3();
 function groundPoint(cx, cy, out) {
-  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ndc.set((cx / VP.W) * 2 - 1, -(cy / VP.H) * 2 + 1);
   ray.setFromCamera(ndc, camera); _gp.constant = -cam.y;
   if (!ray.ray.intersectPlane(_gp, out)) return null;
   return out.distanceTo(camFocus) > viewDist(cam.dist) * 3 ? null : out;
@@ -1311,12 +1317,12 @@ function startPress(e, x, y, moved) {
 }
 // the ground under the finger moves with it: the drag is the difference of the two ground points (x, y: where the
 // finger is now; dx, dy: how far it moved); near the horizon it falls back to the scale at the focus
-function camDrag(dx, dy, ts, x = innerWidth / 2, y = innerHeight / 2) {
+function camDrag(dx, dy, ts, x = VP.W / 2, y = VP.H / 2) {
   let wx, wz;
   const a = groundPoint(x - dx, y - dy, _gA), b = a && groundPoint(x, y, _gB);
   if (a && b) { wx = a.x - b.x; wz = a.z - b.z; }
   else {
-    const fov = THREE.MathUtils.degToRad(camera.fov), k = 2 * viewDist(cam.dist) * Math.tan(fov / 2) / innerHeight, sy = Math.sin(cam.yaw), cy = Math.cos(cam.yaw), f = k / Math.sin(viewPitch(cam.dist));
+    const fov = THREE.MathUtils.degToRad(camera.fov), k = 2 * viewDist(cam.dist) * Math.tan(fov / 2) / VP.H, sy = Math.sin(cam.yaw), cy = Math.cos(cam.yaw), f = k / Math.sin(viewPitch(cam.dist));
     wx = -dx * k * cy + dy * f * -sy; wz = dx * k * sy + dy * f * -cy;
   }
   cam.dragX += wx; cam.dragZ += wz; cam.dragging = true;
@@ -1333,8 +1339,9 @@ function camRelease(ts) {
   cam.vx = vx * k; cam.vz = vz * k;
 }
 cvs.addEventListener('pointerdown', (e) => {
+  const g = toGame(e.clientX, e.clientY), ex = g.x, ey = g.y; // fullscreen: game px (the frame may be rotated)
   try { cvs.setPointerCapture(e.pointerId); } catch {}
-  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  ptrs.set(e.pointerId, { x: ex, y: ey });
   if (ptrs.size > 2) return;
   if (ptrs.size === 2) {
     const [p, q] = [...ptrs.values()];
@@ -1344,12 +1351,13 @@ cvs.addEventListener('pointerdown', (e) => {
   // touching a gliding map just stops it: that touch is a grab, not a tap (a flight only stops once the finger drags)
   const gliding = Math.hypot(cam.vx, cam.vz) > 0.2 * viewDist(cam.dist);
   if (gliding && camMode()) camGrab();
-  startPress(e, e.clientX, e.clientY, false);
+  startPress(e, ex, ey, false);
   if (gliding) press.noTap = true;
 }, { passive: true });
 cvs.addEventListener('pointermove', (e) => {
   const p = ptrs.get(e.pointerId); if (!p) return;
-  p.x = e.clientX; p.y = e.clientY;
+  const g = toGame(e.clientX, e.clientY), ex = g.x, ey = g.y;
+  p.x = ex; p.y = ey;
   if (pinch && ptrs.size === 2) {
     const [a, b] = [...ptrs.values()], d = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
     if (G.mode === 'town') return;
@@ -1366,10 +1374,10 @@ cvs.addEventListener('pointermove', (e) => {
     return;
   }
   if (!press || press.id !== e.pointerId) return;
-  const dx = e.clientX - press.lx, dy = e.clientY - press.ly;
-  press.lx = e.clientX; press.ly = e.clientY;
+  const dx = ex - press.lx, dy = ey - press.ly;
+  press.lx = ex; press.ly = ey;
   if (!press.moved) {
-    if (Math.hypot(e.clientX - press.x, e.clientY - press.y) <= TAP_SLOP) return;
+    if (Math.hypot(ex - press.x, ey - press.y) <= TAP_SLOP) return;
     // the press turns into a drag: take over from any flight/follow where the camera is now; the slop itself is not
     // replayed (that would be an 8 px lurch), the planet starts moving with the finger from here
     press.moved = true;
@@ -1378,7 +1386,7 @@ cvs.addEventListener('pointermove', (e) => {
   }
   if (G.mode === 'battle') { bview.yaw = clamp(bview.yaw - dx * 0.004, -0.6, 0.6); return; }
   if (G.mode === 'town') return;
-  camDrag(dx, dy, e.timeStamp, e.clientX, e.clientY);
+  camDrag(dx, dy, e.timeStamp, ex, ey);
 }, { passive: true });
 const endPtr = (e) => {
   ptrs.delete(e.pointerId);
@@ -1393,7 +1401,7 @@ const endPtr = (e) => {
   if (press.moved) { if (camMode()) camRelease(e.timeStamp); }
   // the press length from the events' own timestamps: a long frame (battle entry, a heavy dialog) delays the handler,
   // not the finger, so a wall-clock check used to drop real taps
-  else if (!press.noTap && e.timeStamp - press.ts < TAP_MS) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); else if (G.mode === 'town') townTap(e.clientX, e.clientY); }
+  else if (!press.noTap && e.timeStamp - press.ts < TAP_MS) { const g = toGame(e.clientX, e.clientY), ex = g.x, ey = g.y; if (G.mode === 'battle') battleTap(ex, ey); else if (G.mode === 'map') mapTap(ex, ey); else if (G.mode === 'town') townTap(ex, ey); }
   press = null; cam.dragging = false;
 };
 const dropPtrs = () => { ptrs.clear(); press = null; pinch = null; cam.dragging = false; cam.dragX = cam.dragZ = cam.dragYaw = 0; cam.vx = cam.vz = 0; };
@@ -1573,8 +1581,8 @@ function flyRes(pos, res, n) {
   if (reduceMo.matches || G.mode !== 'map' || $('hud').hidden) return;
   const dst = $(`r-${res}`)?.parentElement?.firstElementChild; if (!dst) return;
   const v = _flyV.copy(pos).project(camera); if (v.z > 1 || Math.abs(v.x) > 1.2 || Math.abs(v.y) > 1.2) return;
-  const x0 = (v.x * 0.5 + 0.5) * innerWidth, y0 = (-v.y * 0.5 + 0.5) * innerHeight;
-  const r = dst.getBoundingClientRect(); if (!r.width) return;
+  const x0 = (v.x * 0.5 + 0.5) * VP.W, y0 = (-v.y * 0.5 + 0.5) * VP.H;
+  const r = gRect(dst); if (!r.width) return;
   const x1 = r.left + r.width / 2, y1 = r.top + r.height / 2;
   const cnt = clamp(Math.floor(Math.log10(Math.max(1, n))), 1, 4), dur = 640, gap = 75, box = $('floaters');
   resFly[res] = performance.now() + dur;
@@ -2191,7 +2199,7 @@ function setPlate(s) {
 function updatePlates() {
   const B = BB; if (!B) return;
   const pr = Math.min(3, Math.max(1, renderer.getPixelRatio()));
-  const sy = (PLATE_PX * 2 * Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2))) / Math.max(1, innerHeight);
+  const sy = (PLATE_PX * 2 * Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2))) / Math.max(1, VP.H);
   for (const s of B.stacks) {
     const sp = bplateMap.get(s.uid), m = bmesh.get(s.uid); if (!sp) continue;
     const show = !!m && m.visible && !m.userData.dying && s.shown > 0;
@@ -2296,7 +2304,7 @@ function renderQueue(B) {
   for (const el of box.children) if (!el.classList.contains('gone')) live.set(el.dataset.k, el);
   const keep = new Set(items.map((it) => it.k)), old = new Map();
   // (landscape: the strip is a column down the left edge, so the slide is vertical: both axes are measured)
-  if (!first) for (const [k, el] of live) if (keep.has(k)) { const r = el.getBoundingClientRect(); old.set(el, [r.left, r.top]); }
+  if (!first) for (const [k, el] of live) if (keep.has(k)) { const r = gRect(el); old.set(el, [r.left, r.top]); }
   for (const [k, el] of live) if (!keep.has(k)) { el.classList.add('gone'); el.classList.remove('now'); setTimeout(() => el.remove(), 360); }
   const fresh = [];
   const order = items.map((it, i) => {
@@ -2316,7 +2324,7 @@ function renderQueue(B) {
   if (first) return;
   // FLIP the icons that changed place
   const moved = [];
-  for (const [el, [x0, y0]] of old) { const r = el.getBoundingClientRect(), dx = x0 - r.left, dy = y0 - r.top; if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { el.style.transition = 'none'; el.style.transform = `translate(${dx}px, ${dy}px)`; moved.push(el); } }
+  for (const [el, [x0, y0]] of old) { const r = gRect(el), dx = x0 - r.left, dy = y0 - r.top; if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { el.style.transition = 'none'; el.style.transform = `translate(${dx}px, ${dy}px)`; moved.push(el); } }
   void box.offsetWidth;
   for (const el of moved) { el.style.transition = ''; el.style.transform = ''; }
   for (const el of fresh) el.classList.remove('in');
@@ -2328,7 +2336,7 @@ function myTurn() { const B = BB, s = B?.active; return !!s && !B.over && !banim
 // belongs to another hex); p is the ground point under the finger (it picks the attack-from side)
 function pickHex(cx, cy) {
   const B = BB, s = B.active;
-  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ndc.set((cx / VP.W) * 2 - 1, -(cy / VP.H) * 2 + 1);
   ray.setFromCamera(ndc, bcam);
   let best = null, bd = 1e9;
   const groups = B.stacks.filter((st) => st.count > 0 && bmesh.get(st.uid)).map((st) => [st, bmesh.get(st.uid)]);
@@ -2420,7 +2428,7 @@ function battleHover(cx, cy) {
   let hx = 0, hy = 0, hq = false;
   cvs.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse' || G.mode !== 'battle' || e.buttons) return;
-    hx = e.clientX; hy = e.clientY;
+    const g = toGame(e.clientX, e.clientY); hx = g.x; hy = g.y;
     if (!hq) { hq = true; requestAnimationFrame(() => { hq = false; if (G.mode === 'battle' && BB) battleHover(hx, hy); }); }
   }, { passive: true });
   cvs.addEventListener('pointerleave', () => { if (G.mode !== 'battle' || !BB) return; if (bhover || bpreview?.src === 'hover') { bhover = null; if (bpreview?.src === 'hover') bpreview = null; refreshBattle(); } }, { passive: true });
@@ -2866,8 +2874,8 @@ function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.re
 document.addEventListener('pointerdown', (e) => {
   const b = e.target.closest?.('.btn, .fb, .row-b button, .tabs2 button, .hb, .diffs button, .fcard, .mode, .opp button, .slots button');
   if (!b || b.disabled || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const r = b.getBoundingClientRect(), w = document.createElement('span'), c = document.createElement('i');
-  w.className = 'rip'; c.style.left = `${e.clientX - r.left}px`; c.style.top = `${e.clientY - r.top}px`;
+  const r = gRect(b), g = toGame(e.clientX, e.clientY), w = document.createElement('span'), c = document.createElement('i');
+  w.className = 'rip'; c.style.left = `${g.x - r.left}px`; c.style.top = `${g.y - r.top}px`;
   w.appendChild(c); b.appendChild(w); setTimeout(() => w.remove(), 650);
 }, { passive: true, capture: true });
 // replay a one-shot CSS animation class (e.g. a counter pop)
@@ -2928,9 +2936,9 @@ function updateFloaters(dt) {
   for (let i = floaters.length - 1; i >= 0; i--) {
     const f = floaters[i]; f.t += dt;
     if (f.t > 1.6) { f.el.remove(); floaters.splice(i, 1); continue; }
-    let x = innerWidth / 2, y = innerHeight * 0.4 + f.slot * 34;
-    if (f.p) { const v = _flV.copy(f.p).project(f.cm || camera); x = (v.x * 0.5 + 0.5) * innerWidth; y = (-v.y * 0.5 + 0.5) * innerHeight - f.near * 26; }
-    const hw = (f.w ??= f.el.offsetWidth) / 2 + 6; x = clamp(x, hw, innerWidth - hw);
+    let x = VP.W / 2, y = VP.H * 0.4 + f.slot * 34;
+    if (f.p) { const v = _flV.copy(f.p).project(f.cm || camera); x = (v.x * 0.5 + 0.5) * VP.W; y = (-v.y * 0.5 + 0.5) * VP.H - f.near * 26; }
+    const hw = (f.w ??= f.el.offsetWidth) / 2 + 6; x = clamp(x, hw, VP.W - hw);
     // feel: pops in with an overshoot (easeOutBack over 0.28 s), rises fast then floats (easeOutCubic), fades at the end
     const t = f.t, up = 1 - Math.pow(1 - Math.min(1, t / 1.2), 3), pu = Math.min(1, t / 0.28) - 1;
     const sc = reduceMo.matches ? 1 : 1 + 2.7 * pu * pu * pu + 1.7 * pu * pu;
@@ -3021,7 +3029,9 @@ $('b-end').addEventListener('click', () => {
   clearTimeout(endConfirmT); $('b-end').classList.remove('confirm');
   endTurn();
 });
-$('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') return; ask('Menu', `<div class="menu-brand">${icon('logo', 76)}<b>ORBIS</b><small>Five Crowns · v${APP_VERSION}</small></div><p>Day ${((G.day - 1) % 7) + 1} of week ${week()}. Your game is saved every morning.</p>`, [['Resume', null], [`${icon('save', 20)} Save & quit to title`, () => { save(); showMenu(); }], [`${icon('music', 20)} Music: ${store.get('realms.music', true) ? 'on' : 'off'}`, () => { store.set('realms.music', !store.get('realms.music', true)); if (store.get('realms.music', true)) score?.start(); else score?.stop(); }]]); });
+$('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') return; ask('Menu', `<div class="menu-brand">${icon('logo', 76)}<b>ORBIS</b><small>Five Crowns · v${APP_VERSION}</small></div><p>Day ${((G.day - 1) % 7) + 1} of week ${week()}. Your game is saved every morning.</p>`, [['Resume', null], [`${icon('save', 20)} Save & quit to title`, () => { save(); showMenu(); }], [`${icon('music', 20)} Music: ${store.get('realms.music', true) ? 'on' : 'off'}`, () => { store.set('realms.music', !store.get('realms.music', true)); if (store.get('realms.music', true)) score?.start(); else score?.stop(); }],
+  // fullscreen: the explicit toggle (only where the Fullscreen API exists and the game isn't an installed app); the tap is the gesture
+  ...(fsAvailable() || fsActive() ? [[`<svg class="ic" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="${fsActive() ? 'M12 5v7H5M27 12h-7V5M20 27v-7h7M5 20h7v7' : 'M5 12V5h7M20 5h7v7M27 20v7h-7M12 27H5v-7'}" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg> ${fsActive() ? 'Exit fullscreen' : 'Fullscreen'}`, () => toggleFullscreen()]] : [])]); });
 
 // ------------------------------------------------------------------ days and weeks
 function endTurn() {
@@ -3743,7 +3753,7 @@ function bcamPlace(s, c, d) {
 }
 function frameBattleCam(s, c, dt) {
   if (lay.dirty) measureLayout();
-  const W = rsz.w || innerWidth, H = rsz.h || innerHeight;
+  const W = rsz.w || VP.W, H = rsz.h || VP.H;
   const T = clamp(lay.batT, 0, H * 0.45), B = clamp(lay.batB, H * 0.55, H);
   const L = clamp(lay.batL, 0, W * 0.36), R = clamp(lay.batR || W, W * 0.64, W);
   const land = W > H * 1.15;
@@ -3857,7 +3867,7 @@ function warmPicker() {
   };
   setTimeout(next, 600);
 }
-window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
+window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * VP.W, (-v.y * 0.5 + 0.5) * VP.H]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, cellScreen: (v) => { camera.updateMatrixWorld(); const p = posOf(v).project(camera); return [(p.x * 0.5 + 0.5) * VP.W, (-p.y * 0.5 + 0.5) * VP.H]; }, pickCell: (x, y) => pickCell(x, y), pickHex: (x, y) => { const k = BB && pickHex(x, y); return k ? [k.c, k.r] : null; }, myTurn: () => myTurn(), heroMeshes, get walking() { return walking; } };
 
 // ------------------------------------------------------------------ Crown Run (agent "crown"): a roguelite told in Heroes terms.
 // One hero, permadeath; regions behind Border Guards, each opened by the key its Legendary Hero guards; weekly
@@ -3868,7 +3878,7 @@ window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G,
 var cmeta = null, CUI = null;
 const crownMeta = () => (cmeta ||= CR.metaLoad(store));
 const saveMeta = () => { if (cmeta) CR.metaSave(store, cmeta); };
-CUI = createCrownUI({ icon, unitIcon, sfx, onChange: (k) => { if (k === 'meta') saveMeta(); else if (G.run) { crownHud(); updateHud(); } } });
+CUI = createCrownUI({ icon, unitIcon, sfx, facCrest: (f) => FAC_CREST[f], onChange: (k) => { if (k === 'meta') saveMeta(); else if (G.run) { crownHud(); updateHud(); } } });
 CUI.mountHud($('hud'));
 const runHero = () => (G.run ? G.heroes[G.run.hero] : null);
 const capital = () => G.towns.find((t) => t.p === 0 && t.capOf === 0) || G.towns.find((t) => t.p === 0);

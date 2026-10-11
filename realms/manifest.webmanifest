@@ -1,0 +1,19 @@
+{
+  "name": "ORBIS: Five Crowns",
+  "short_name": "ORBIS",
+  "description": "Five factions, one tiny world: explore, build and battle in a pocket-sized 3D strategy game.",
+  "id": "./",
+  "start_url": ".",
+  "scope": ".",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#080d26",
+  "theme_color": "#0a1030",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

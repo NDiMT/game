@@ -1640,8 +1640,12 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
 
   // ---------------------------------------------------------------- picking
   const ray = new T.Raycaster(), ndc = new T.Vector2(), box = new T.Box3(), hitP = new V3();
+  // fullscreen: callers pass game px (main.js maps screen -> game through vport.js; the frame may be turned 90 degrees),
+  // and the canvas fills the game frame from its origin, so its layout size is the rect (no getBoundingClientRect:
+  // that is screen space)
+  const viewRect = () => { const c = renderer.domElement; return { left: 0, top: 0, width: c.clientWidth || 1, height: c.clientHeight || 1 }; };
   function pick(clientX, clientY) {
-    const r = renderer.domElement.getBoundingClientRect();
+    const r = viewRect();
     ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
     camera.updateMatrixWorld();
     ray.setFromCamera(ndc, camera);
@@ -1669,7 +1673,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   /** screen position (client px) of a slot's top, for labels/tooltips */
   function slotScreen(id) {
     const k = slotOf(id), sp = SLOT_POS[k]; if (!sp) return null;
-    const r = renderer.domElement.getBoundingClientRect();
+    const r = viewRect();
     const v = new V3(sp.x, SLOT_MAXH[k], sp.z).project(camera);
     return [r.left + (v.x * 0.5 + 0.5) * r.width, r.top + (-v.y * 0.5 + 0.5) * r.height];
   }

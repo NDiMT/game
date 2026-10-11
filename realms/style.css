@@ -1322,3 +1322,49 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
 @media (orientation: landscape) {
   .cr-end .cr-score { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
 }
+/* ============================================================ fullscreen agent (v2.2): always landscape, app-like
+   vport.js turns the game frame on a portrait screen: <body> becomes a fixed landscape box (--vp-w x --vp-h, set
+   inline) turned by --vp-t (transform-origin 0 0). Being transformed, body is the containing block of every
+   position: fixed layer, so the whole UI turns with it. A portrait desktop window is letterboxed (vp-box). */
+html.vp-on { background: #03061a; }
+html.vp-on body { position: fixed; left: 0; top: 0; margin: 0; transform-origin: 0 0; transform: var(--vp-t); overflow: hidden; }
+/* scrollers inside the turned frame: allow the browser to pan along either screen axis (it maps the gesture into the
+   element's own, turned, axis) */
+html.vp-rot .pbody, html.vp-rot .card-scroll, html.vp-rot .factions, html.vp-rot .crown-layer { touch-action: pan-x pan-y; }
+/* fill the visible viewport (not the large one behind a mobile toolbar) when nothing is turned */
+@supports (height: 100dvh) { html:not(.vp-on), html:not(.vp-on) body { height: 100dvh; } }
+/* title screen: sound + fullscreen + install chips */
+.mchips { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+#m-fs { width: 44px; padding: 0; justify-content: center; flex: none; }
+#m-fs span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#m-fs[aria-pressed="true"] { border-color: #e9b84e; }
+.chipbtn.gold { --ol: #6a3408; color: #3a2206; background: var(--gold-grad); border-color: #4a2606; }
+.chipbtn[hidden] { display: none; }
+/* iOS Safari in a tab: the one-time "Add to Home Screen" hint */
+.a2hs { position: relative; display: flex; align-items: center; gap: 10px; padding: 8px 40px 8px 10px; border-radius: 14px; text-align: left; line-height: 1.25;
+  background: rgba(4, 8, 28, 0.5); border: 2px solid rgba(233, 184, 78, 0.6); animation: popin 0.3s var(--boing) both; }
+.a2hs .a2-ic { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: #fff; line-height: 0; }
+.a2hs p { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.a2hs b { font-size: 13px; color: #fff; } .a2hs b .ic { vertical-align: -3px; background: #fff; border-radius: 4px; }
+.a2hs em { font-style: normal; color: #ffe27a; } .a2hs small { font-size: 11px; color: var(--text-2); font-weight: 700; }
+.a2hs .a2-x { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 36px; height: 44px; display: grid; place-items: center; font-size: 16px; color: var(--text-2); }
+/* Crown Run hero picker: crest + name (and the unlock line) centred on the pill's axis; the hero-background cards
+   grow with their text instead of clipping it (no fixed card ratio, no line clamp) */
+.cr-fac .fc-crest.mini { flex: none; }
+.cr-fac .cr-fn { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; line-height: 1.15; text-align: left; }
+.cr-fac .cr-fn small .ic { vertical-align: -2px; }
+.cr-originwrap .cr-fac { display: flex; align-items: center; gap: 6px; }
+.cr-originwrap .cr-origins .cr-card { display: flex; flex-direction: column; }
+.cr-originwrap .cr-origins .cr-in { flex: 1; aspect-ratio: auto; min-height: calc(var(--w) * 1.1); display: flex; }
+.cr-originwrap .cr-origins .cr-face { position: relative; inset: auto; flex: 1; }
+.cr-originwrap .cr-origins .cr-txt { display: block; -webkit-line-clamp: none; overflow: visible; }
+.cr-originwrap .cr-fac .cr-fn small { -webkit-line-clamp: 3; }
+/* every Crown card (artifacts, choices, shop, collection): the face is in flow, so a card keeps its ratio as a
+   minimum but grows to show all of its text (the back face still covers it for the flip); no line clamp */
+.cr-card { display: flex; flex-direction: column; }
+.cr-in { display: flex; flex: 1 0 auto; }
+.cr-face { position: relative; inset: auto; flex: 1 0 auto; overflow-wrap: break-word; }
+.cr-txt { display: block; -webkit-line-clamp: none; overflow: visible; }
+.cr-card .cr-set { flex-wrap: wrap; justify-content: center; text-align: center; line-height: 1.1; }
+/* paper doll: artifact names wrap to two lines instead of an ellipsis */
+.cr-slot2 small { white-space: normal; text-overflow: clip; text-align: center; line-height: 1.12; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: break-word; }

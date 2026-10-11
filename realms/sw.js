@@ -50,7 +50,8 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || req.mode === 'navigate' || req.cache === 'no-store' || req.headers.has('range')) return;
   const u = new URL(req.url);
   if (u.origin !== self.location.origin) return;
-  if (/\/(version\.json|sw\.js)$/.test(u.pathname) || u.pathname.endsWith('.html') || u.pathname.endsWith('/')) return;
+  // the web app manifest (and its icons) stay on the network too: install metadata must never be served stale
+  if (/\/(version\.json|sw\.js|manifest\.webmanifest)$/.test(u.pathname) || u.pathname.endsWith('.html') || u.pathname.endsWith('/') || /\/icons\//.test(u.pathname)) return;
   if (BUILD && u.searchParams.get('v') === BUILD && !u.searchParams.has('t')) { e.respondWith(cacheFirst(req, e)); return; }
   if (!u.search && (/\/vendor\/[^/]+\.js$/.test(u.pathname) || /\/audio\//.test(u.pathname))) { e.respondWith(staleWhileRevalidate(req, e)); return; }
 });

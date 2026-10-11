@@ -8,8 +8,12 @@
 // =====================================================================
 import * as C from './crown.js?v=2.1';
 import { UNITS, SPELLS, SKILLS, FACTIONS } from './data.js?v=2.1';
+import { landscape } from './vport.js?v=2.1'; // fullscreen: the game frame's orientation (it may be turned on a portrait screen)
 
-export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} }) {
+export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {}, facCrest = null }) {
+  // the faction crests of the title / Free Play setup (main.js FAC_CREST); the same fallback here for the dev harness
+  const CREST = { haven: 'defense', necro: 'necromancy', sylvan: 'luck', inferno: 'fireball', dungeon: 'sorcery' };
+  const crestOf = (f) => (facCrest && facCrest(f)) || CREST[f] || 'banner';
   const S = (n, o) => { try { sfx[n]?.(o); } catch { /* sound is optional */ } };
   const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -62,7 +66,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
   // landscape (agent "landscape"): the chips are icons down the left edge; the first tap expands one (its label slides
   // out, collapsing again after 4 s), a tap on the expanded chip opens it. Portrait shows the labels and acts at once.
   let openT = 0;
-  const compact = () => typeof matchMedia === 'function' && matchMedia('(orientation: landscape)').matches;
+  const compact = () => landscape();
   function tapChip(node, act) {
     S('click');
     if (compact() && !node.classList.contains('open')) {
@@ -242,7 +246,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
     const render = () => {
       const facs = Object.keys(FACTIONS), maxD = meta.unlocks.diffs[fac] || 1;
       L.innerHTML = `<div class="cr-originwrap"><header><span>${icon('victory', 40)}</span><div><small>Crown Run · ${C.TUNE.regions} regions</small><h2>Choose your hero</h2></div><span class="cr-glory">${icon('experience', 18)} ${meta.glory} Glory</span></header>
-        <div class="cr-facs">${facs.map((f) => { const ok = meta.unlocks.factions.includes(f); return `<button class="cr-fac${f === fac ? ' on' : ''}${ok ? '' : ' locked'}" data-f="${f}" style="--fc:${FACTIONS[f].css}">${unitIcon(FACTIONS[f].units[0], 48)}<b>${FACTIONS[f].name}</b>${ok ? '' : `<small>${icon('lock', 12)} ${C.FAC_UNLOCK[f].text}</small>`}</button>`; }).join('')}</div>
+        <div class="cr-facs">${facs.map((f) => { const ok = meta.unlocks.factions.includes(f); return `<button class="cr-fac${f === fac ? ' on' : ''}${ok ? '' : ' locked'}" data-f="${f}" style="--fc:${FACTIONS[f].css}"><span class="fc-crest mini">${icon(crestOf(f), 18)}</span><span class="cr-fn"><b>${FACTIONS[f].name}</b>${ok ? '' : `<small>${icon('lock', 12)} ${C.FAC_UNLOCK[f].text}</small>`}</span></button>`; }).join('')}</div>
         <div class="cr-row cr-origins">${Object.values(C.BACKGROUNDS).map((o) => { const ok = meta.unlocks.backgrounds.includes(o.id) && (!o.fac || meta.unlocks.factions.includes(o.fac)); return `<button class="cr-card r-origin${o.id === bg ? ' on' : ''}${ok ? '' : ' locked'}" data-o="${o.id}"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon(ok ? o.icon : 'lock', 46)}</span><b class="cr-name">${o.name}</b><p class="cr-txt">${ok ? o.text : o.unlock}</p></div></div></button>`; }).join('')}</div>
         <div class="cr-stakes">${C.DIFFS.slice(1).map((s, i) => `<button class="cr-stake${i + 1 === diff ? ' on' : ''}${i + 1 > maxD ? ' locked' : ''}" data-s="${i + 1}" style="--sc:${s.col}" title="${esc(s.text)}"><i></i><small>${s.name}</small></button>`).join('')}<p>${esc(C.DIFFS[diff].text)}</p></div>
         <footer><button class="btn ghost" id="cr-back">Back</button>${onCollection ? `<button class="btn" id="cr-coll">${icon('chest', 18)} Collection</button>` : ''}<button class="btn gold" id="cr-go">${icon('attack', 20)} Begin the run</button></footer></div>`;
