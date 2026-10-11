@@ -21,7 +21,7 @@ Under 14 px, or with `?art=0` in the URL, the hand-drawn SVG is used. If a file 
 |---|---|---|---|---|---|
 | `res_gold` | `gold` | a heap of shiny gold coins, a few coins standing on edge | 1 | 201263124 | final |
 | `res_wood` | `wood` | a neat stack of three chopped brown wooden logs with light round cut ends | 1 | 159899431 | final |
-| `res_ore` | `ore` | a pile of grey iron ore rocks with metallic glints | 1 | 264764958 | final |
+| `res_ore` | `ore` | a pile of chunky light grey iron ore rocks with rusty orange-brown patches and bright silver metallic glints, light grey stone, high contrast, no crystals | 3 | 222495249 | final (v2) |
 | `res_gems` | `gems` | a cluster of three cut gemstones, one red ruby, one blue sapphire, one green emerald, sparkling | 1 | 18097966 | final |
 | `stat_attack` | `attack`, `att` | a steel sword pointing up diagonally, golden hilt | 1 | 240266037 | final |
 | `stat_defense` | `defense`, `def`, `defend` | a blue heater shield with a golden rim and gold cross | 1 | 215999043 | final |
@@ -72,7 +72,7 @@ Under 14 px, or with `?art=0` in the URL, the hand-drawn SVG is used. If a file 
 |---|---|---|---|---|---|
 | `art_centaur_axe` | `centaur_axe`, `fp:sword` | a heavy double-headed bronze battle axe with two huge curved blades and a short carved wooden handle, upright, blades filling the frame | 3 | 266024641 | final (v2) |
 | `art_lion_shield` | `lion_shield`, `fp:shield` | a round golden shield with a roaring lion head emblem | 1 | 173063284 | final |
-| `art_staff_embers` | `staff_embers`, `fp:staff` | a short thick gnarled wooden staff held diagonally, its top a burning ember crown with bright orange flames, bold chunky silhouette | 2 | 137350558 | final (v1) |
+| `art_staff_embers` | `staff_embers`, `fp:staff` | a wooden mage staff held diagonally, long straight dark wood shaft, topped with a large glowing orange ember crystal held in curled wooden prongs, small sparks, clearly a magic staff not a torch, bold chunky silhouette | 3 | 122383929 | final (v2) |
 | `art_helm_command` | `helm_command`, `fp:helm` | a golden knight helmet with a red plume and a small crown circlet | 1 | 127669157 | final |
 | `art_shadow_cloak` | `shadow_cloak`, `fp:cloak` | a dark purple hooded cloak with wisps of shadow and a silver clasp | 1 | 237065694 | final |
 | `art_judgement` | `judgement`, `fp:blade` | a broad holy greatsword held diagonally with a wide glowing white blade and a golden winged crossguard, bold chunky silhouette | 2 | 52011968 | final (v1) |
@@ -96,7 +96,7 @@ Under 14 px, or with `?art=0` in the URL, the hand-drawn SVG is used. If a file 
 | `art_sentinel_plate` | `sentinel_plate` | a knight breastplate cuirass, polished silver plate with royal blue enamel and a golden sunburst emblem | 1 | 208896295 | final |
 | `art_sentinel_shield` | `sentinel_shield` | a tall tower shield, polished silver plate with royal blue enamel and a golden sunburst emblem | 1 | 113852509 | final |
 | `art_plenty_quiver` | `plenty_quiver` | a quiver overflowing with many arrows, dark green elven leather with silver leaf filigree | 1 | 125409903 | final |
-| `art_sharpshooter_bow` | `sharpshooter_bow` | an elegant recurve longbow, dark green elven leather with silver leaf filigree | 3 | 115251468 | final |
+| `art_sharpshooter_bow` | `sharpshooter_bow` | a short thick recurve bow drawn very large with chunky curved limbs filling the frame, bright lime green elven wood with silver tips, white string and one nocked arrow, diagonal, simple bold silhouette | 6 | 137242740 | final (v5) |
 | `art_elven_bowstring` | `elven_bowstring` | a coiled shimmering silver bowstring wound around a green elven leaf, dark green leather tie, glowing | 2 | 179863564 | final (v1) |
 | `art_griffin_cape` | `griffin_cape` | a hooded cloak cape made of tawny golden-brown griffin feathers with a burnished bronze clasp | 2 | 215906187 | final (v1) |
 | `art_feathered_boots` | `feathered_boots` | a pair of boots with feathered wings, tawny griffin feathers and burnished bronze | 1 | 149492771 | final |
@@ -250,7 +250,7 @@ Under 14 px, or with `?art=0` in the URL, the hand-drawn SVG is used. If a file 
 | `bld_haven_fort` | `haven:fort` | isometric fortress with crenellated walls, a gate and towers, white stone walls and bright blue roofs with gold trim, knightly | 1 | 255462533 | final |
 | `bld_haven_market` | `haven:market` | isometric marketplace stall with an awning, crates and golden scales, white stone walls and bright blue roofs with gold trim, knightly | 1 | 263307636 | final |
 | `bld_haven_tavern` | `haven:tavern` | isometric tavern with a big hanging beer mug sign, barrels and a bench outside, in haven style: white stone and blue roofs | 2 | 209477108 | final (v1) |
-| `bld_haven_mage1` | `haven:mage1` | isometric small round mage tower topped by a glowing magic orb, in haven style: white stone and blue roofs | 2 | 123250191 | final (v1) |
+| `bld_haven_mage1` | `haven:mage1` | isometric small round mage guild tower of white stone with a bright blue conical roof, gold trim and a glowing blue magic orb on top, in haven style: white stone and blue roofs | 3 | 183293158 | final (v2) |
 | `bld_haven_mage2` | `haven:mage2` | isometric tall mage tower with a big glowing rune circle and floating books, in haven style: white stone and blue roofs | 2 | 185461299 | final (v1) |
 | `bld_haven_mage3` | `haven:mage3` | isometric grand mage guild tower with a crystal spire and arcane glow, white stone walls and bright blue roofs with gold trim, knightly | 1 | 67569611 | final |
 | `bld_haven_d1` | `haven:d1` | isometric creature dwelling: guardhouse with pikes and a shield, white stone walls and bright blue roofs with gold trim, knightly | 1 | 131498833 | final |
@@ -405,7 +405,7 @@ Under 14 px, or with `?art=0` in the URL, the hand-drawn SVG is used. If a file 
 
 | id | serves (game ids) | prompt | gens | seed | status |
 |---|---|---|---|---|---|
-| `unit_pikeman` | `pikeman` | bust portrait of a sturdy human pikeman facing the viewer, steel kettle helmet, red sash over a blue tabard, holding a pike, three-quarter view facing the viewer, cute chibi proportions, game unit portrait, whole figure inside the frame | 2 | 19527657 | final (v1) |
+| `unit_pikeman` | `pikeman` | bust portrait of a sturdy bearded human pikeman wearing a round wide-brimmed steel kettle hat helmet, red sash over a blue tabard, holding a long pike, three-quarter view facing the viewer, cute chibi proportions, game unit portrait | 3 | 224055844 | final (v2) |
 | `unit_archer` | `archer` | bust portrait of a human archer in a green hood and leather jerkin holding a bow, three-quarter view, cute chibi proportions, game unit portrait | 1 | 263649738 | final |
 | `unit_griffin` | `griffin` | bust portrait of a griffin with a golden eagle head, white feathered neck and brown wings, three-quarter view, cute chibi proportions, game unit portrait | 1 | 18629289 | final |
 | `unit_swordsman` | `swordsman` | bust portrait of a human swordsman knight in silver plate armour with a sword and shield, three-quarter view, cute chibi proportions, game unit portrait | 1 | 210663587 | final |
@@ -413,7 +413,7 @@ Under 14 px, or with `?art=0` in the URL, the hand-drawn SVG is used. If a file 
 | `unit_cavalier` | `cavalier` | bust portrait of a knight cavalier in silver plate armour with a white plumed helmet riding a white warhorse with blue caparison, holding a lance, three-quarter view, cute chibi proportions, game unit portrait | 2 | 37880731 | final (v1) |
 | `unit_angel` | `angel` | bust portrait of a radiant angel warrior with white feathered wings, golden armour and a flaming sword, three-quarter view, cute chibi proportions, game unit portrait | 1 | 103300293 | final |
 | `unit_halberdier` | `halberdier` | bust portrait of a human halberdier in a steel helmet and blue tabard holding a halberd, upgraded elite version with gold trim and a richer ornate outfit, three-quarter view, cute chibi proportions, game unit portrait | 1 | 63327430 | final |
-| `unit_marksman` | `marksman` | bust portrait of a human marksman with a feathered hat and a crossbow, upgraded elite version with gold trim and a richer ornate outfit, three-quarter view, cute chibi proportions, game unit portrait | 1 | 208714285 | final |
+| `unit_marksman` | `marksman` | bust portrait of a crossbowman in a green hood and red feathered cap, holding a T-shaped wooden crossbow levelled at the shoulder like a rifle, the small steel bow arms crosswise at the front tip, gold trim on his tunic, three-quarter view facing the viewer, cute chibi proportions, game unit portrait | 6 | 87002264 | final (v4) |
 | `unit_royalgriffin` | `royalgriffin` | bust portrait of a royal griffin with a golden eagle head, white mane and golden wings, upgraded elite version with gold trim and a richer ornate outfit, three-quarter view, cute chibi proportions, game unit portrait | 1 | 30128808 | final |
 | `unit_crusader` | `crusader` | bust portrait of a crusader knight in white and gold plate armour with a red cross and a sword, upgraded elite version with gold trim and a richer ornate outfit, three-quarter view, cute chibi proportions, game unit portrait | 1 | 169593316 | final |
 | `unit_zealot` | `zealot` | bust portrait of a zealot priest in white and gold robes holding a glowing holy staff, upgraded elite version with gold trim and a richer ornate outfit, three-quarter view, cute chibi proportions, game unit portrait | 1 | 33528658 | final |
@@ -462,7 +462,7 @@ Under 14 px, or with `?art=0` in the URL, the hand-drawn SVG is used. If a file 
 
 | id | serves (game ids) | prompt | gens | seed | status |
 |---|---|---|---|---|---|
-| `unit_imp` | `imp` | bust portrait of a small red imp with bat wings and a mischievous grin, three-quarter view, cute chibi proportions, game unit portrait | 1 | 183914547 | final |
+| `unit_imp` | `imp` | bust portrait of a small red imp with horns and bat wings and a mischievous grin, holding a golden three-pronged trident pitchfork upright in one hand, three-quarter view facing the viewer, cute chibi proportions, game unit portrait | 2 | 209465147 | final (v1) |
 | `unit_hellhound` | `hellhound` | bust portrait of a black and red hell hound with glowing eyes and fiery breath, three-quarter view, cute chibi proportions, game unit portrait | 1 | 234221811 | final |
 | `unit_demon` | `demon` | bust portrait of a muscular red demon with curved horns, three-quarter view, cute chibi proportions, game unit portrait | 1 | 5831649 | final |
 | `unit_succubus` | `succubus` | bust portrait of a succubus with red skin, horns and dark bat wings holding a fire orb, three-quarter view, cute chibi proportions, game unit portrait | 1 | 188099069 | final |
@@ -521,5 +521,5 @@ Under 14 px, or with `?art=0` in the URL, the hand-drawn SVG is used. If a file 
 ## Totals
 
 - icons: 358; shipped: 358
-- PixelLab generations: 454 (style tests: 4), i.e. 1.27 per icon
-- shipped WebP total: 2488 KB; PNG masters: 15631 KB (not downloaded by the game; each WebP is fetched only when shown)
+- PixelLab generations: 468 (style tests: 4), i.e. 1.31 per icon
+- shipped WebP total: 2490 KB; PNG masters: 15638 KB (not downloaded by the game; each WebP is fetched only when shown)

@@ -1102,7 +1102,9 @@ function ensureReachable(starts) {
     return R;
   };
   let R = flood();
-  for (const o of G.objects) {
+  // (mapgen) two passes: carve for everything first, remove only in the second; a carve made for a later object can
+  // open a whole area, and removing earlier objects of that area before it was carved emptied rival homelands
+  for (const pass of [0, 1]) for (const o of G.objects) {
     if (!o.alive || o.type === 'monster' && !o.guards && NBR[o.v].some((n) => R[n])) continue;
     if (NBR[o.v].some((n) => R[n]) || R[o.v]) continue;
     // 0-1 BFS from the reachable set: free steps over walkable cells, cost 1 over rock/forest/water; objects are walls
@@ -1121,7 +1123,7 @@ function ensureReachable(starts) {
     if (hit >= 0 && (dist[hit] <= 8 || o.type === 'town')) {
       for (let x = hit; x >= 0 && dist[x] > 0; x = prev[x]) if (!passable(x)) { const p = prev[x] >= 0 ? prev[x] : x; ter[x] = T.DIRT; h[x] = h[p]; carved++; }
       R = flood();
-    } else if (o.type !== 'town') { o.alive = false; if (objAt[o.v] === o.id) objAt[o.v] = -1; removed++; }
+    } else if (pass && o.type !== 'town') { o.alive = false; if (objAt[o.v] === o.id) objAt[o.v] = -1; removed++; }
   }
   return (ensureReachable.last = { carved, removed });
 }
