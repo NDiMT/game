@@ -27,7 +27,7 @@ import { createScore } from './music.js?v=2.1';
 import { createSfx } from './sfx.js?v=2.1';
 import { unitFit, applyFit } from './unit_fit.js?v=2.1';
 import { createMapFx } from './mapfx.js?v=2.1';
-import { icon } from './icons.js';
+import { icon, artIcon } from './icons.js';
 // fullscreen: the virtual viewport (the game may be drawn turned by 90 degrees on a portrait screen): game-space sizes and
 // screen -> game coordinate mapping for every piece of manual pointer / layout maths below
 import { VP, toGame, gRect } from './vport.js?v=2.1';
@@ -1503,7 +1503,7 @@ function describe(o) {
   if (G.run && crownDescribe(o)) return; // crown: Crown Run sites, Legendary Heroes, invasions
   if (o.type === 'monster') toast(`${sizeWord(o.n)} ${plural(o.unit)} · ${threatWord(o)}`);
   else if (o.type === 'town') { const t = G.towns[o.t]; toast(`${t.name} (${FACTIONS[t.fac].name}) · ${t.p === 0 ? 'yours' : t.p > 0 ? G.players[t.p].name : 'neutral'}${t.p !== 0 && heroArmy({ army: t.garrison }).length ? ' · guarded' : ''}`); }
-  else { const O = OBJECTS[o.type]; toast(`${O.icon} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? (G.players[o.owner]?.name || 'enemy') : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
+  else { const O = OBJECTS[o.type]; toast(`${artIcon('object', o.type, 18, O.icon)} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? (G.players[o.owner]?.name || 'enemy') : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
 }
 function selectHero(id) {
   G.selHero = id; const hr = G.heroes[id];
@@ -1698,18 +1698,18 @@ function interact(hr, v) {
     } else if (o.type === 'artifact') {
       const A = ARTIFACTS.find((x) => x.id === o.art);
       hr.arts.push(A.id); hr.mana = Math.min(maxMana(hr), hr.mana);
-      if (you) { showMsg(`${A.icon} ${A.name}`, `${artDesc(A)}`); sfx.artifact(); }
+      if (you) { showMsg(`${artIcon('fpart', A.id, 22, A.icon)} ${A.name}`, `${artDesc(A)}`); sfx.artifact(); }
     }
     updateHud(); return;
   }
   if (kind === 'mine') {
-    if (o.owner !== hr.p) { o.owner = hr.p; if (seen[v]) worldDirty = true; if (seen[v]) fx.burst('flag', posOf(v), { color: ownerCol(hr.p) }); if (you) { toast(`${O.icon} ${O.name} is yours: +${O.amount} ${RES_ICON[O.res]} every day.`); sfx.flag(); } else if (seen[o.v]) toast(`🚩 ${P(hr).name} took a ${O.name}.`); }
+    if (o.owner !== hr.p) { o.owner = hr.p; if (seen[v]) worldDirty = true; if (seen[v]) fx.burst('flag', posOf(v), { color: ownerCol(hr.p) }); if (you) { toast(`${artIcon('object', o.type, 18, O.icon)} ${O.name} is yours: +${O.amount} ${RES_ICON[O.res]} every day.`); sfx.flag(); } else if (seen[o.v]) toast(`🚩 ${P(hr).name} took a ${O.name}.`); }
     revealAll(); updateHud(); return;
   }
   if (kind === 'visit') {
     const key = `o${o.id}`;
     if (o.type === 'obelisk') { if (you) { reveal(o.v, 12); worldDirty = true; toast('🗿 The obelisk shows you the land around it.'); } return; }
-    if (hr.visited.includes(key)) { if (you) toast(`${O.icon} You have already visited the ${O.name}.`); return; }
+    if (hr.visited.includes(key)) { if (you) toast(`${artIcon('object', o.type, 18, O.icon)} You have already visited the ${O.name}.`); return; }
     hr.visited.push(key);
     if (o.type === 'arena') {
       if (you) ask('🏟️ Arena', 'Train here to become a better warrior.', [['🗡️ +2 Attack', () => { hr.att += 2; updateHud(); }], ['🛡️ +2 Defence', () => { hr.def += 2; updateHud(); }]]);
@@ -1721,13 +1721,13 @@ function interact(hr, v) {
       const S = SPELLS[o.spell];
       if (S.circle >= 3 && !(hr.skills.wisdom >= 2)) { if (you) toast(`⛩️ ${S.name} is too difficult: you need Wisdom.`); hr.visited.pop(); return; }
       if (!hr.spells.includes(o.spell)) hr.spells.push(o.spell);
-      if (you) { showMsg(`⛩️ ${S.icon} ${S.name}`, S.desc); sfx.learn(); }
+      if (you) { showMsg(`${icon(o.spell, 22)} ${S.name}`, S.desc); sfx.learn(); }
     }
     updateHud(); return;
   }
   if (kind === 'weekly') {
     const key = `w${o.id}:${week()}`;
-    if (hr.visited.includes(key)) { if (you) toast(`${O.icon} Come back next week.`); return; }
+    if (hr.visited.includes(key)) { if (you) toast(`${artIcon('object', o.type, 18, O.icon)} Come back next week.`); return; }
     hr.visited.push(key);
     if (o.type === 'well') { hr.mana = maxMana(hr); if (you) { toast('⛲ Your mana is restored.'); sfx.mana(); } }
     else if (o.type === 'windmill') { const r = ['wood', 'ore', 'gems'][(rnd() * 3) | 0]; gain(hr.p, r, r === 'gems' ? 2 : 4 + ((rnd() * 3) | 0), v); }
@@ -1736,7 +1736,7 @@ function interact(hr, v) {
   }
   if (kind === 'dwelling') {
     const u = UNITS[o.unit];
-    if (!o.stock) { if (you) toast(`${O.icon} No ${u.name}s left this week.`); return; }
+    if (!o.stock) { if (you) toast(`${artIcon('object', o.type, 18, O.icon)} No ${u.name}s left this week.`); return; }
     if (you) recruitDialog(`🛖 ${u.name} dwelling`, o.unit, o.stock, (n) => { o.stock -= n; return hr; });
     else { const n = Math.min(o.stock, Math.floor(P(hr).res.gold / u.cost.gold)); if (n > 0 && addTroops(hr.army, o.unit, n)) { o.stock -= n; P(hr).res.gold -= n * u.cost.gold; } }
   }
@@ -1786,7 +1786,7 @@ function showLevel() {
   const L = pendingLevels[0];
   if (!L) return;
   const names = { att: 'Attack', def: 'Defence', pow: 'Power', know: 'Knowledge' };
-  ask(`${icon('experience', 22)} Level ${L.hr.lvl}!`, `<div class="burst lvl"><span class="rays"></span><span class="medal"><small>Level</small><b>${L.hr.lvl}</b></span></div><p><b>${L.hr.name}</b> grows stronger.</p><p class="chips" style="justify-content:center"><span class="chip">${icon(L.stat, 18)}${names[L.stat]} <em>+1</em></span></p><p class="sec">Choose a skill</p>`, L.opts.map((k) => [`${icon(k, 20)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc, 'choice']), true);
+  ask(`${icon('experience', 22)} Level ${L.hr.lvl}!`, `<div class="burst lvl"><span class="rays"></span><span class="medal"><small>Level</small><b>${L.hr.lvl}</b></span></div><p><b>${L.hr.name}</b> grows stronger.</p><p class="chips" style="justify-content:center"><span class="chip">${icon(L.stat, 18)}${names[L.stat]} <em>+1</em></span></p><p class="sec">Choose a skill</p>`, L.opts.map((k) => [`${artIcon('skill', k, 22)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc, 'choice']), true);
   sfx.levelup();
 }
 
@@ -2784,7 +2784,7 @@ function learnSpells(t, hr) {
     hr.spells.push(id); learned.push(id);
   }
   hr.mana = maxMana(hr);
-  if (learned.length && hr.p === 0) toast(`📘 ${hr.name} learns ${learned.map((id) => SPELLS[id].icon + ' ' + SPELLS[id].name).join(', ')}`);
+  if (learned.length && hr.p === 0) toast(`📘 ${hr.name} learns ${learned.map((id) => icon(id, 18) + ' ' + SPELLS[id].name).join(', ')}`);
 }
 function townTap(cx, cy) {
   const id = townView.pick(cx, cy); if (!id) return;
@@ -2896,9 +2896,9 @@ function openHero() {
     <div class="meters"><div class="meter"><span>${icon('mana', 16)}</span>Mana<b>${hr.mana}/${maxMana(hr)}</b><i><i style="width:${pct(hr.mana, maxMana(hr))}%"></i></i></div><div class="meter mp"><span>${icon('movement', 16)}</span>Move<b>${fmt(hr.mp)}</b><i><i style="width:${pct(hr.mp, moveMax(hr))}%"></i></i></div></div></div><div class="hs-b">
     <h3 class="sec">Army</h3>
     <div class="slots big">${Array.from({ length: Math.max(ARMY_SLOTS, hr.army.length) }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
-    <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${icon(k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
+    <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${artIcon('skill', k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
     <h3 class="sec">Spells</h3>${chips(hr.spells.map((id) => `<span class="chip">${icon(id, 18)}${SPELLS[id].name}</span>`), 'No spells yet: build a Mage Guild')}
-    <h3 class="sec">Artifacts</h3>${chips([...(G.run ? CR.equippedIds(G.run).map((id) => `<span class="chip">${icon(CR.ARTIFACTS[id].icon, 18)}${CR.ARTIFACTS[id].name}</span>`) : []), ...hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; })], 'No artifacts yet')}</div></div>`, true);
+    <h3 class="sec">Artifacts</h3>${chips([...(G.run ? CR.equippedIds(G.run).map((id) => `<span class="chip">${artIcon('artifact', id, 18, CR.ARTIFACTS[id].icon)}${CR.ARTIFACTS[id].name}</span>`) : []), ...hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${artIcon('fpart', id, 18)}${A.name}</span>`; })], 'No artifacts yet')}</div></div>`, true);
 }
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
@@ -3112,7 +3112,7 @@ turnbar.id = 'turnbar'; turnbar.hidden = true; turnbar.setAttribute('aria-live',
 $('hud').appendChild(turnbar);
 function turnBar(Pl) {
   if (!Pl) { turnbar.hidden = true; return; }
-  setHTML(turnbar, `<span class="tq-pips">${G.players.map((x) => `<i class="${x === Pl ? 'on' : ''}${x.alive ? '' : ' out'}" style="--pc:${x.css}"></i>`).join('')}</span><span class="tq-crest" style="--pc:${Pl.css}">${icon(FAC_CREST[Pl.fac] || 'banner', 18)}</span><b style="--pc:${Pl.css}">${Pl.name}</b><small>${Pl.i === 0 ? 'your turn' : 'is moving'}</small>`);
+  setHTML(turnbar, `<span class="tq-pips">${G.players.map((x) => `<i class="${x === Pl ? 'on' : ''}${x.alive ? '' : ' out'}" style="--pc:${x.css}"></i>`).join('')}</span><span class="tq-crest" style="--pc:${Pl.css}">${artIcon('faction', Pl.fac, 18, FAC_CREST[Pl.fac] || 'banner')}</span><b style="--pc:${Pl.css}">${Pl.name}</b><small>${Pl.i === 0 ? 'your turn' : 'is moving'}</small>`);
   turnbar.hidden = false;
 }
 function stopAI() {
@@ -3199,7 +3199,7 @@ function endGame(won) {
   // the strongest crown still standing (towns, then army) is the one that took the world from you
   const power = (Pl) => G.towns.filter((t) => t.p === Pl.i).length * 1e6 + G.heroes.filter((x) => x.alive && x.p === Pl.i).reduce((a, x) => a + BT.armyPower(heroArmy(x), x), 0);
   const victor = won ? null : rivals.filter((Pl) => Pl.alive).sort((x, y) => power(y) - power(x))[0];
-  const roll = `<div class="rivals">${rivals.map((Pl) => `<span class="rv${Pl.alive ? '' : ' out'}" style="--pc:${Pl.css}"><span class="rv-crest">${icon(FAC_CREST[Pl.fac] || 'banner', 18)}</span><b>${Pl.name}</b><small>${Pl.alive ? (Pl === victor ? 'Rules the world' : 'Still standing') : `Fell on day ${Pl.outDay || G.day}`}</small></span>`).join('')}</div>`;
+  const roll = `<div class="rivals">${rivals.map((Pl) => `<span class="rv${Pl.alive ? '' : ' out'}" style="--pc:${Pl.css}"><span class="rv-crest">${artIcon('faction', Pl.fac, 18, FAC_CREST[Pl.fac] || 'banner')}</span><b>${Pl.name}</b><small>${Pl.alive ? (Pl === victor ? 'Rules the world' : 'Still standing') : `Fell on day ${Pl.outDay || G.day}`}</small></span>`).join('')}</div>`;
   const why = G.win === 'capitals' ? 'your capital has fallen' : 'your last town and hero are lost';
   const body = `<div class="endcard ${won ? 'win' : 'lose'}"><div class="crest2">${icon(won ? 'victory' : 'defeat', 84)}</div>
     <p>${won ? `After <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'} the whole world is yours. ${rivals.length > 1 ? `All ${rivals.length} rival crowns bow` : 'Every rival bows'} before ${FACTIONS[me.fac].name}.` : `${why[0].toUpperCase() + why.slice(1)}. ${victor ? `<b style="color:${victor.css}">${victor.name}</b> claims the world.` : 'Your crown falls into shadow.'}`}</p>
@@ -3567,7 +3567,7 @@ function pickFaction() {
     const cs = colsNow();
     return S.opp.map((o, k) => { const f = FACTIONS[o.fac], css = cs[k] == null ? 'conic-gradient(#3a7aff, #d83a3a, #3ac84a, #e8c020, #a84ad8, #3a7aff)' : colCss(cs[k]);
       return `<div class="opp" style="--pc:${cs[k] == null ? '#8a8aa0' : css}"><span class="opp-n">${k + 1}</span>
-        <button class="opp-fac" data-o="${k}" style="--fc:${f ? f.css : '#8a8aa0'}" aria-label="Rival ${k + 1} faction: ${f ? f.name : 'Random'}"><span class="fc-crest mini">${f ? icon(FAC_CREST[o.fac] || 'banner', 18) : '<b class="q">?</b>'}</span><b>${f ? f.name : 'Random'}</b><i class="cyc">▸</i></button>
+        <button class="opp-fac" data-o="${k}" style="--fc:${f ? f.css : '#8a8aa0'}" aria-label="Rival ${k + 1} faction: ${f ? f.name : 'Random'}"><span class="fc-crest mini">${f ? artIcon('faction', o.fac, 18, FAC_CREST[o.fac] || 'banner') : '<b class="q">?</b>'}</span><b>${f ? f.name : 'Random'}</b><i class="cyc">▸</i></button>
         <button class="opp-col" data-c="${k}" aria-label="Rival ${k + 1} colour: ${COL_NAMES[PLAYER_COLS.indexOf(cs[k])] || ''}"><i style="background:${css}"></i><small>${o.col < 0 ? 'Auto' : COL_NAMES[o.col]}</small></button></div>`; }).join('');
   };
   const summary = () => `${FACTIONS[S.fac].name} vs ${S.opp.length} rival${S.opp.length > 1 ? 's' : ''}`;
@@ -3576,9 +3576,9 @@ function pickFaction() {
       <section class="fs-you"><p class="mlabel">Your crown</p><div class="fcards mini">${Object.entries(FACTIONS).map(([k, f]) => {
         const kit = FACTION_START[k] || FACTION_START.haven;
         return `<button class="fcard${k === S.fac ? ' on' : ''}" data-f="${k}" style="--fc:${f.css}" aria-pressed="${k === S.fac}">
-        <span class="fc-crest">${icon(FAC_CREST[k] || 'banner', 30)}</span>
+        <span class="fc-crest">${artIcon('faction', k, 30, FAC_CREST[k] || 'banner')}</span>
         <span class="fc-body"><b class="fc-name">${f.name}</b><small class="fc-desc">${f.desc || ''}</small>
-        <span class="fc-sig"><em>Signature</em><span>${icon(kit.skill, 16)}${SKILLS[kit.skill]?.name || ''}</span><span>${icon(kit.spell, 16)}${SPELLS[kit.spell]?.name || ''}</span></span></span>
+        <span class="fc-sig"><em>Signature</em><span>${artIcon('skill', kit.skill, 16)}${SKILLS[kit.skill]?.name || ''}</span><span>${icon(kit.spell, 16)}${SPELLS[kit.spell]?.name || ''}</span></span></span>
         <span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 64)).join('')}</span><span class="fc-check">${icon('check', 16)}</span></button>`;
       }).join('')}</div></section>
       <section class="fs-set">
@@ -3959,7 +3959,7 @@ function crownAfter(B, ctx) {
   for (const s of B.stacks) CR.discover(crownMeta(), 'unit', UNITS[s.id]?.up || s.id);
   if (res.raise > 0 && hr.alive && addTroops(hr.army, res.raiseAs, res.raise)) toast(`${icon('necromancy', 18)} ${res.raise} ${plural(res.raiseAs, res.raise)} rise to serve you.`);
   if (!won || !hr.alive) { R.over = true; R.won = false; afterDialogs(() => crownEnd(`${hr.name} fell in battle`)); return; }
-  if (kind === 'guardian') { CR.discover(crownMeta(), 'guardian', o.guardian.id); saveMeta(); afterDialogs(() => CUI.notice({ icon: CR.GUARDIANS[o.guardian.id].icon, title: `${CR.GUARDIANS[o.guardian.id].name.split(',')[0]} is defeated`, sub: `Region ${o.guardian.region}`, body: `<p>${o.guardian.region >= R.regions ? 'The way to the Crown lies open: walk into the tent to claim it.' : "The Keymaster's Tent stands unguarded: visit it for the key to the next region."}</p>`, sound: 'fanfare' })); }
+  if (kind === 'guardian') { CR.discover(crownMeta(), 'guardian', o.guardian.id); saveMeta(); afterDialogs(() => CUI.notice({ icon: CR.GUARDIANS[o.guardian.id].icon, crest: artIcon('guardian', o.guardian.id, 92, CR.GUARDIANS[o.guardian.id].icon), title: `${CR.GUARDIANS[o.guardian.id].name.split(',')[0]} is defeated`, sub: `Region ${o.guardian.region}`, body: `<p>${o.guardian.region >= R.regions ? 'The way to the Crown lies open: walk into the tent to claim it.' : "The Keymaster's Tent stands unguarded: visit it for the key to the next region."}</p>`, sound: 'fanfare' })); }
   if (kind === 'invasion') afterDialogs(() => CUI.choice({ title: 'Spoils of war', sub: `The invaders' baggage train is yours. Choose one artifact.`, icon: 'chest', choices: CR.spoilsChoices(R, o.invasion.week, crownMeta()), leave: 'Leave it', onPick: (c) => crownGive(c, hr), onDone: () => { crownHud(); updateHud(); } }));
   crownHud();
 }
@@ -3981,7 +3981,7 @@ function crownGive(c, hr) {
   const R = G.run;
   if (c.kind === 'gold') { gain(0, 'gold', c.n, hr.v); sfx.coin(); }
   else if (c.kind === 'xp') giveXp(hr, c.n);
-  else if (c.kind === 'artifact') { const at = CR.addArtifact(R, c.id, crownMeta()); toast(`${icon(CR.ARTIFACTS[c.id].icon, 18)} ${CR.ARTIFACTS[c.id].name} ${at === 'backpack' ? 'goes into your backpack' : 'is equipped'}.`); sfx.artifact(); saveMeta(); }
+  else if (c.kind === 'artifact') { const at = CR.addArtifact(R, c.id, crownMeta()); toast(`${artIcon('artifact', c.id, 18, CR.ARTIFACTS[c.id].icon)} ${CR.ARTIFACTS[c.id].name} ${at === 'backpack' ? 'goes into your backpack' : 'is equipped'}.`); sfx.artifact(); saveMeta(); }
   else if (c.kind === 'troops') { if (!addTroops(hr.army, c.id, c.n)) { toast('No free slot in your army.'); return false; } sfx.recruit(); }
   else if (c.kind === 'spell') { if (!hr.spells.includes(c.id)) hr.spells.push(c.id); sfx.learn(); }
   else if (c.kind === 'skill') { hr.skills[c.id] = c.lvl; if (c.id === 'logistics') hr.mp += 150; sfx.learn(); }
@@ -4001,16 +4001,16 @@ function crownInteract(hr, o, v) {
   const once = (k) => { if (o.done) { toast(`${k} has nothing more for you.`); return false; } return true; };
   if (t === 'chest' || t === 'artifact' || t === 'pandora') {
     take(); if (seen[v]) fx.burst(t === 'chest' ? 'coin' : 'artifact', posOf(v));
-    if (t === 'artifact') { const id = CR.rollArtifact(R, `map:${o.id}`, meta, { rarityW: { treasure: 45, minor: 35, major: 16 + 6 * regionOf[v], relic: 4 + 2 * regionOf[v] } }); if (id) CUI.notice({ icon: CR.ARTIFACTS[id].icon, title: 'An artifact!', sub: 'Found on the road', card: { kind: 'artifact', id }, buttons: [['Take it', () => crownGive({ kind: 'artifact', id }, hr), 'gold']], sound: 'artifact' }); return true; }
+    if (t === 'artifact') { const id = CR.rollArtifact(R, `map:${o.id}`, meta, { rarityW: { treasure: 45, minor: 35, major: 16 + 6 * regionOf[v], relic: 4 + 2 * regionOf[v] } }); if (id) CUI.notice({ icon: CR.ARTIFACTS[id].icon, crest: artIcon('artifact', id, 92, CR.ARTIFACTS[id].icon), title: 'An artifact!', sub: 'Found on the road', card: { kind: 'artifact', id }, buttons: [['Take it', () => crownGive({ kind: 'artifact', id }, hr), 'gold']], sound: 'artifact' }); return true; }
     const ch = t === 'chest' ? CR.chestChoices(R, o.id, meta, { region: regionOf[v] + 1 }) : CR.pandoraChoices(R, o.id, meta, { ...crownCtx(hr), region: regionOf[v] + 1 });
-    CUI.choice({ title: t === 'chest' ? 'Treasure Chest' : "Pandora's Box", sub: t === 'chest' ? 'Keep the gold, give it to the peasants for their wisdom, or take the trinket inside?' : 'The lid creaks open. Choose one gift.', icon: 'chest', choices: ch, leave: null, onPick: (c) => crownGive(c, hr) });
+    CUI.choice({ title: t === 'chest' ? 'Treasure Chest' : "Pandora's Box", sub: t === 'chest' ? 'Keep the gold, give it to the peasants for their wisdom, or take the trinket inside?' : 'The lid creaks open. Choose one gift.', icon: 'chest', site: t, choices: ch, leave: null, onPick: (c) => crownGive(c, hr) });
     sfx.chest(); return true;
   }
   if (t === 'witchhut' || t === 'scholar' || t === 'shrine') {
     const nm = { witchhut: 'The Witch Hut', scholar: 'The Scholar', shrine: 'The Shrine' }[t]; if (!once(nm)) return true;
     const ch = t === 'witchhut' ? CR.witchChoices(R, o.id, crownCtx(hr)) : t === 'scholar' ? CR.scholarChoices(R, o.id, crownCtx(hr)) : CR.shrineChoices(R, o.id, crownCtx(hr));
     if (!ch.length) { toast(`${nm} has nothing to teach you.`); return true; }
-    CUI.choice({ title: nm.replace(/^The /, ''), sub: t === 'witchhut' ? 'The witch offers to teach one skill.' : t === 'scholar' ? 'The scholar offers one lesson.' : 'Kneel and learn one spell, for good.', icon: t === 'witchhut' ? 'sorcery' : t === 'scholar' ? 'wisdom' : 'spellbook', choices: ch, onPick: (c) => { o.done = true; return crownGive(c, hr); } });
+    CUI.choice({ title: nm.replace(/^The /, ''), sub: t === 'witchhut' ? 'The witch offers to teach one skill.' : t === 'scholar' ? 'The scholar offers one lesson.' : 'Kneel and learn one spell, for good.', icon: t === 'witchhut' ? 'sorcery' : t === 'scholar' ? 'wisdom' : 'spellbook', site: t === 'shrine' ? '' : t, choices: ch, onPick: (c) => { o.done = true; return crownGive(c, hr); } });
     return true;
   }
   if (t === 'seer') {
@@ -4220,15 +4220,15 @@ function crownPlace(R, cap, gates) {
 // a tap on a run site names it (the classic describe() only knows the data.js objects)
 function crownDescribe(o) {
   const R = G.run;
-  if (o.type === 'monster' && o.guardian) { const Gd = CR.GUARDIANS[o.guardian.id]; toast(`${icon(Gd.icon, 18)} <b>${Gd.name}</b>, ${Gd.title} · ${Gd.rule}`); return true; }
+  if (o.type === 'monster' && o.guardian) { const Gd = CR.GUARDIANS[o.guardian.id]; toast(`${artIcon('guardian', o.guardian.id, 18, Gd.icon)} <b>${Gd.name}</b>, ${Gd.title} · ${Gd.rule}`); return true; }
   if (o.type === 'monster' && o.invasion) { toast(`${icon('attack', 18)} <b>Invasion</b> · ${R.invasion ? `${R.invasion.arrive - G.day} day(s) from your walls` : 'marching'}`); return true; }
   const km = /^keymaster(\d)$/.exec(o.type), bg = /^border(\d)$/.exec(o.type);
   const S = { pandora: ['chest', "Pandora's Box", 'Choose one of its gifts'], witchhut: ['sorcery', 'Witch Hut', 'Learn one of three skills'], scholar: ['wisdom', 'Scholar', 'One lesson: a stat, a skill or a spell'], seer: ['scouting', "Seer's Hut", 'A quest for a Major artifact'],
     merchant: ['market', 'Artifact Merchant', 'Buy and sell artifacts'], blackmarket: ['tavern', 'Black Market', 'Rare artifacts at a premium'], tradingpost: ['market', 'Trading Post', 'Resources for gold'], grail: ['victory', 'The Grail', 'Raise the Crown Forge in your capital'] }[o.type];
-  if (S) { toast(`${icon(S[0], 18)} <b>${S[1]}</b> · ${S[2]}${o.done ? ' (visited)' : ''}`); return true; }
-  if (km) { toast(`${icon('lock', 18)} <b>Keymaster's Tent</b> · ${+km[1] >= R.regions ? 'the Crown' : `the key to region ${+km[1] + 1}`}`); return true; }
-  if (bg) { toast(`${icon('lock', 18)} <b>Border Guard</b> · needs the key of region ${bg[1]}`); return true; }
-  if (o.type === 'chest' || o.type === 'artifact' || o.type === 'shrine') { toast(`${icon(o.type === 'shrine' ? 'spellbook' : o.type, 18)} <b>${o.type === 'chest' ? 'Treasure Chest' : o.type === 'artifact' ? 'Artifact' : 'Shrine'}</b> · ${o.type === 'chest' ? 'gold, experience or a trinket' : o.type === 'shrine' ? 'learn one of three spells' : 'unknown until you take it'}`); return true; }
+  if (S) { toast(`${artIcon('site', o.type, 18, S[0])} <b>${S[1]}</b> · ${S[2]}${o.done ? ' (visited)' : ''}`); return true; }
+  if (km) { toast(`${artIcon('site', 'keymaster', 18, 'lock')} <b>Keymaster's Tent</b> · ${+km[1] >= R.regions ? 'the Crown' : `the key to region ${+km[1] + 1}`}`); return true; }
+  if (bg) { toast(`${artIcon('site', 'border', 18, 'lock')} <b>Border Guard</b> · needs the key of region ${bg[1]}`); return true; }
+  if (o.type === 'chest' || o.type === 'artifact' || o.type === 'shrine') { toast(`${artIcon('object', o.type, 18, o.type === 'shrine' ? 'spellbook' : o.type)} <b>${o.type === 'chest' ? 'Treasure Chest' : o.type === 'artifact' ? 'Artifact' : 'Shrine'}</b> · ${o.type === 'chest' ? 'gold, experience or a trinket' : o.type === 'shrine' ? 'learn one of three spells' : 'unknown until you take it'}`); return true; }
   return false;
 }
 function crownResume() {

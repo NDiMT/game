@@ -323,8 +323,65 @@ const ALIAS = {
 export const ICON_NAMES = [...Object.keys(I), ...Object.keys(ALIAS)];
 export const hasIcon = (name) => !!(I[name] || I[ALIAS[name]]);
 
-// icon('gold', 18) -> '<svg class="ic ic-gold" ...>'. Unknown names give an empty-width spacer.
+// ---------------------------------------------------------------- painted art (agent "icons")
+// PixelLab-painted icons: art/icons/<file>.webp (144 px, shown downscaled with smooth filtering; 192 px PNG masters
+// next to them). ART is the ONE table that maps game ids to art files, per kind:
+//   glyph: plain icon() names (resources, stats, spells, skills, UI, buildings, map objects) -> icon() uses it
+//   artifact (Crown Run ids), fpart (Free Play ids), spell, skill, building, object, site, guardian, background, set, faction
+// artIcon(kind, id, size, fallback) draws the art, or icon(fallback || id) when there is none.
+// Below ART_MIN px the hand-drawn SVG reads better, so tiny inline glyphs keep it; NO_ART glyphs are always SVG.
+// A file that fails to load (offline before it was cached) swaps itself back to the SVG (see the error listener).
+// ART-TABLE-BEGIN (generated from scratchpad icons/inv.py by table.py; edit both together)
+const ART = {
+  glyph: { gold: 'res_gold', wood: 'res_wood', ore: 'res_ore', gems: 'res_gems', attack: 'stat_attack', att: 'stat_attack', defense: 'stat_defense', def: 'stat_defense', defend: 'stat_defense', power: 'stat_power', pow: 'stat_power', knowledge: 'stat_knowledge', know: 'stat_knowledge', morale: 'stat_morale', luck: 'stat_luck', clover: 'stat_luck', movement: 'stat_movement', move: 'stat_movement', mp: 'stat_movement', spd: 'stat_movement', speed: 'stat_movement', boots: 'stat_movement', mana: 'stat_mana', experience: 'stat_experience', xp: 'stat_experience', hp: 'stat_hp', heart: 'stat_hp', damage: 'stat_damage', dmg: 'stat_damage', shots: 'stat_shots', ranged: 'stat_shots', fly: 'stat_fly', arrow: 'spell_arrow', bless: 'spell_bless', stoneskin: 'spell_stoneskin', cure: 'spell_cure', haste: 'spell_haste', slow: 'spell_slow', bolt: 'spell_bolt', fireball: 'spell_fireball', logistics: 'skill_logistics', offense: 'skill_offense', archery: 'skill_archery', armorer: 'skill_armorer', wisdom: 'skill_wisdom', sorcery: 'skill_sorcery', leadership: 'skill_leadership', scouting: 'skill_scouting', estates: 'skill_estates', necromancy: 'skill_necromancy', hall2: 'bld_hall2', village: 'bld_hall2', hall: 'bld_hall2', hall3: 'bld_hall3', fort: 'bld_fort', market: 'bld_market', tavern: 'bld_tavern', mage1: 'bld_mage1', mage: 'bld_mage1', guild: 'bld_mage1', mage2: 'bld_mage2', mage3: 'bld_mage3', chest: 'obj_chest', treasure: 'obj_chest', artifact: 'obj_artifact', campfire: 'obj_campfire', goldmine: 'obj_goldmine', sawmill: 'obj_sawmill', orepit: 'obj_orepit', gemmine: 'obj_gemmine', arena: 'obj_arena', tower: 'obj_tower', library: 'obj_library', stone: 'obj_stone', shrine: 'obj_shrine', well: 'obj_well', windmill: 'obj_windmill', stables: 'obj_stables', dwelling: 'obj_dwelling', obelisk: 'obj_obelisk', hero: 'ui_hero', town: 'ui_town', end: 'ui_end', lock: 'ui_lock', day: 'ui_day', calendar: 'ui_calendar', week: 'ui_calendar', wait: 'ui_wait', spellbook: 'ui_spellbook', spells: 'ui_spellbook', spell: 'ui_spellbook', magic: 'ui_spellbook', auto: 'ui_auto', build: 'ui_build', recruit: 'ui_recruit', army: 'ui_army', victory: 'ui_victory', crown: 'ui_victory', defeat: 'ui_defeat', skull: 'ui_defeat', music: 'ui_music', save: 'ui_save', banner: 'ui_banner', upgrade: 'ui_upgrade', up: 'ui_upgrade', quick: 'ui_quick', axe: 'art_centaur_axe', ring: 'art_vitality_ring', cloak: 'art_shadow_cloak', u1: 'ui_upgrade', u2: 'ui_upgrade', u3: 'ui_upgrade', u4: 'ui_upgrade', u5: 'ui_upgrade', u6: 'ui_upgrade', u7: 'ui_upgrade', d1: 'ui_dwelling', d2: 'ui_dwelling', d3: 'ui_dwelling', d4: 'ui_dwelling', d5: 'ui_dwelling', d6: 'ui_dwelling', d7: 'ui_dwelling' },
+  spell: { arrow: 'spell_arrow', bless: 'spell_bless', stoneskin: 'spell_stoneskin', cure: 'spell_cure', haste: 'spell_haste', slow: 'spell_slow', bolt: 'spell_bolt', fireball: 'spell_fireball' },
+  skill: { logistics: 'skill_logistics', offense: 'skill_offense', archery: 'skill_archery', armorer: 'skill_armorer', wisdom: 'skill_wisdom', sorcery: 'skill_sorcery', leadership: 'skill_leadership', luck: 'skill_luck', scouting: 'skill_scouting', estates: 'skill_estates', necromancy: 'skill_necromancy' },
+  artifact: { centaur_axe: 'art_centaur_axe', lion_shield: 'art_lion_shield', staff_embers: 'art_staff_embers', helm_command: 'art_helm_command', shadow_cloak: 'art_shadow_cloak', judgement: 'art_judgement', tempest_orb: 'art_tempest_orb', clover: 'art_clover', valor_badge: 'art_valor_badge', vitality_ring: 'art_vitality_ring', speed_boots: 'art_speed_boots', pike_pauldron: 'art_pike_pauldron', war_drum: 'art_war_drum', vanguard_standard: 'art_vanguard_standard', executioner_axe: 'art_executioner_axe', sentinel_helm: 'art_sentinel_helm', sentinel_plate: 'art_sentinel_plate', sentinel_shield: 'art_sentinel_shield', plenty_quiver: 'art_plenty_quiver', sharpshooter_bow: 'art_sharpshooter_bow', elven_bowstring: 'art_elven_bowstring', griffin_cape: 'art_griffin_cape', feathered_boots: 'art_feathered_boots', talon_ring: 'art_talon_ring', bone_cloak: 'art_bone_cloak', skull_helm: 'art_skull_helm', vampire_ring: 'art_vampire_ring', last_stand: 'art_last_stand', berserker_helm: 'art_berserker_helm', riposte_bracer: 'art_riposte_bracer', iron_oath: 'art_iron_oath', trophy_necklace: 'art_trophy_necklace', veteran_medal: 'art_veteran_medal', hourglass: 'art_hourglass', sky_lances: 'art_sky_lances', crown_command: 'art_crown_command', phylactery: 'art_phylactery', usurper_crown: 'art_usurper_crown', miser_ring: 'art_miser_ring', endless_purse: 'art_endless_purse', endless_sack: 'art_endless_sack', mason_hammer: 'art_mason_hammer', builders_crown: 'art_builders_crown', fortress_shield: 'art_fortress_shield', sylvan_leaf: 'art_sylvan_leaf', inferno_brand: 'art_inferno_brand', dungeon_eye: 'art_dungeon_eye' },
+  fpart: { sword: 'art_centaur_axe', shield: 'art_lion_shield', staff: 'art_staff_embers', helm: 'art_helm_command', cloak: 'art_shadow_cloak', blade: 'art_judgement', orb: 'art_tempest_orb', clover: 'art_clover', ring: 'art_vitality_ring', boots: 'art_speed_boots', tome: 'art_tome', banner: 'art_banner_valor' },
+  set: { warlord: 'set_warlord', sentinel: 'set_sentinel', sharpshooter: 'set_sharpshooter', wings: 'set_wings', undead: 'set_undead' },
+  guardian: { wall: 'guard_wall', plague: 'guard_plague', lich_queen: 'guard_lich_queen', silence: 'guard_silence', hunger: 'guard_hunger', gale: 'guard_gale', eclipse: 'guard_eclipse', stampede: 'guard_stampede', iron_hide: 'guard_iron_hide' },
+  background: { knight: 'bg_knight', merchant: 'bg_merchant', warlord: 'bg_warlord', exile: 'bg_exile', scholar: 'bg_scholar', gravecaller: 'bg_gravecaller', siegelord: 'bg_siegelord' },
+  faction: { haven: 'crest_haven', necro: 'crest_necro', sylvan: 'crest_sylvan', inferno: 'crest_inferno', dungeon: 'crest_dungeon' },
+  building: { hall2: 'bld_hall2', village: 'bld_hall2', hall: 'bld_hall2', hall3: 'bld_hall3', fort: 'bld_fort', market: 'bld_market', tavern: 'bld_tavern', mage1: 'bld_mage1', mage: 'bld_mage1', guild: 'bld_mage1', mage2: 'bld_mage2', mage3: 'bld_mage3' },
+  object: { chest: 'obj_chest', treasure: 'obj_chest', artifact: 'obj_artifact', campfire: 'obj_campfire', goldmine: 'obj_goldmine', sawmill: 'obj_sawmill', orepit: 'obj_orepit', gemmine: 'obj_gemmine', arena: 'obj_arena', tower: 'obj_tower', library: 'obj_library', stone: 'obj_stone', shrine: 'obj_shrine', well: 'obj_well', windmill: 'obj_windmill', stables: 'obj_stables', dwelling: 'obj_dwelling', obelisk: 'obj_obelisk', gold: 'res_gold', wood: 'res_wood', ore: 'res_ore', gems: 'res_gems' },
+  site: { pandora: 'site_pandora', witchhut: 'site_witchhut', scholar: 'site_scholar', seer: 'site_seer', merchant: 'site_merchant', blackmarket: 'site_blackmarket', tradingpost: 'site_tradingpost', grail: 'site_grail', keymaster: 'site_keymaster', border: 'site_border' },
+};
+// 166 art files
+// ART-TABLE-END
+const ART_MIN = 14;
+const ART_BASE = (() => { try { return new URL('./art/icons/', import.meta.url).href; } catch (e) { return 'art/icons/'; } })();
+const ART_BAD = new Set();
+// ?art=0 in the page URL turns the painted art off (A/B comparisons, or if a device draws it badly)
+const ART_OFF = typeof location !== 'undefined' && /[?&]art=0\b/.test(location.search);
+export const artUrl = (file) => `${ART_BASE}${file}.webp`;
+export function artFile(kind, id) { const f = !ART_OFF && ART[kind]?.[id]; return f && !ART_BAD.has(f) ? f : null; }
+const artImg = (f, size, cls, fb) => `<img class="ic ic-art${cls ? ' ' + cls : ''}" src="${artUrl(f)}" width="${size}" height="${size}" alt="" aria-hidden="true" decoding="async" draggable="false" data-fb="${fb || ''}">`;
+export function artIcon(kind, id, size = 20, fallback = '', cls = '') {
+  const f = size >= ART_MIN && artFile(kind, id), fb = fallback || id;
+  if (f) return artImg(f, size, cls, hasIcon(fb) ? fb : '');
+  return !hasIcon(fb) && /[^\w-]/.test(fb) ? fb : svgIcon(fb, size, cls); // a data emoji stays as text
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('error', (e) => {
+    const t = e.target;
+    if (!t || t.tagName !== 'IMG' || !t.classList.contains('ic-art')) return;
+    const f = t.src.split('/').pop().replace(/\.webp.*$/, ''); ART_BAD.add(f);
+    const fb = t.dataset.fb, s = +t.getAttribute('width') || 20;
+    t.outerHTML = fb ? svgIcon(fb, s) : '';
+  }, true);
+  // warm the HTTP / service-worker cache with the always-visible glyphs once the game is idle
+  const warm = () => { for (const f of new Set(Object.values(ART.glyph || {}))) if (/^(res|stat|ui)_/.test(f)) { const im = new Image(); im.decoding = 'async'; im.src = artUrl(f); } };
+  const idle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 8000 }) : setTimeout(fn, 3000));
+  if (document.readyState === 'complete') idle(warm); else window.addEventListener('load', () => idle(warm), { once: true });
+}
+
+// icon('gold', 18) -> painted <img> when the glyph has art (and size >= ART_MIN), else the SVG below.
 export function icon(name, size = 20, cls = '') {
+  const f = size >= ART_MIN && artFile('glyph', name);
+  return f ? artImg(f, size, cls, name) : svgIcon(name, size, cls);
+}
+// the hand-drawn SVG set (always available; also the fallback of every painted icon)
+export function svgIcon(name, size = 20, cls = '') {
   // the game emblem is a pixel-art PNG (art/emblem.png), not an SVG glyph
   if (name === 'logo') return `<img class="ic ic-logo${cls ? ' ' + cls : ''}" src="art/emblem.png" width="${size}" height="${size}" alt="" draggable="false" style="image-rendering:pixelated;object-fit:contain">`;
   ensureDefs();
