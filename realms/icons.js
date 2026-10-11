@@ -325,6 +325,8 @@ export const hasIcon = (name) => !!(I[name] || I[ALIAS[name]]);
 
 // icon('gold', 18) -> '<svg class="ic ic-gold" ...>'. Unknown names give an empty-width spacer.
 export function icon(name, size = 20, cls = '') {
+  // the game emblem is a pixel-art PNG (art/emblem.png), not an SVG glyph
+  if (name === 'logo') return `<img class="ic ic-logo${cls ? ' ' + cls : ''}" src="art/emblem.png" width="${size}" height="${size}" alt="" draggable="false" style="image-rendering:pixelated;object-fit:contain">`;
   ensureDefs();
   const key = I[name] ? name : ALIAS[name];
   const body = I[key];
