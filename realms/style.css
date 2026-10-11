@@ -1385,3 +1385,12 @@ html.vp-rot .pbody, html.vp-rot .card-scroll, html.vp-rot .factions, html.vp-rot
   .mbtns { flex: none; width: min(320px, 42vw); min-width: 280px; }
   .mbtns .mode small { font-size: 12px; line-height: 1.25; }
 }
+
+/* lead: the unified Crownforge logo (PixelLab art: name + crown + gems in one image) */
+.logo-full { margin: 0; line-height: 0; animation: float 5s ease-in-out infinite alternate; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 26px rgba(255, 211, 92, 0.25)); }
+.logo-full img { display: block; width: min(440px, 46vw); height: auto; image-rendering: auto; }
+@media (orientation: portrait) { .logo-full img { width: min(360px, 84vw); } }
+@media (orientation: landscape) and (max-height: 560px) { .logo-full img { width: min(400px, 44vw, calc(62vh * 1.54)); } }
+.ld-logo { display: block; width: min(300px, 70vw); height: auto; margin: 0 auto 6px; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5)); }
+@media (orientation: landscape) and (max-height: 560px) { .ld-logo { width: min(260px, 36vw); } }
+.menu-brand .mb-logo { display: block; width: 200px; max-width: 70%; height: auto; margin: 0 auto 4px; }
