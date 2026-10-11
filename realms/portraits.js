@@ -376,7 +376,7 @@ function renderPortrait(id, size, shape, async = false) {
     if (m.glow) meshes.push(new T.Mesh(view(m.glow), glowMat));
     meshes.forEach((x) => { x.frustumCulled = false; scene.add(x); });
     kickL.color.setRGB(...hex(heroCol ?? pal.kick));
-    focus = frameCamera(b, shape === 'round' ? { ...f, zoom: (f.zoom || 1) * 1.18 } : f);
+    focus = frameCamera(b, shape === 'round' ? { ...f, zoom: (f.zoom || 1) * 1.18 } : raw ? { ...f, zoom: (f.zoom || 1) * 0.8 } : f);
   }
   const t2 = performance.now();
 
