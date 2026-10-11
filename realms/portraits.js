@@ -38,6 +38,7 @@ import { UNITS } from './data.js?v=2.1';
 import { heroModel } from './models_towns.js?v=2.1';
 import { makeBodyMaterial, makeGlowMaterial } from './materials.js?v=2.1';
 import { BONE } from './rig.js?v=2.1';
+import { artFile, artUrl } from './icons.js'; // icons: painted portraits (art/icons/unit_*.webp, hero_*.webp)
 
 const hex = (h) => [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255];
 const css = (h) => '#' + (h >>> 0).toString(16).padStart(6, '0').slice(-6);
@@ -98,11 +99,11 @@ export function initPortraits(THREE, renderer, modelFn, opts = {}) {
       tMap: { value: null }, uPx: { value: 1 / 128 }, uExp: { value: 0.85 }, uOut: { value: 64 },
       uInner: { value: new T.Vector3() }, uMid: { value: new T.Vector3() }, uOuter: { value: new T.Vector3() },
       uHalo: { value: new T.Vector3() }, uRay: { value: new T.Vector3() },
-      uFocus: { value: new T.Vector2(0.5, 0.62) }, uRays: { value: 0.3 }, uSpark: { value: 0.5 }, uSeed: { value: 0 },
+      uFocus: { value: new T.Vector2(0.5, 0.62) }, uRays: { value: 0.3 }, uSpark: { value: 0.5 }, uSeed: { value: 0 }, uRaw: { value: 0 },
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: /* glsl */`
-      uniform sampler2D tMap; uniform float uPx, uExp, uOut, uRays, uSpark, uSeed;
+      uniform sampler2D tMap; uniform float uPx, uExp, uOut, uRays, uSpark, uSeed, uRaw;
       uniform vec3 uInner, uMid, uOuter, uHalo, uRay; uniform vec2 uFocus;
       varying vec2 vUv;
       vec3 RRTAndODTFit(vec3 v){ vec3 a = v*(v+0.0245786)-0.000090537; vec3 b = v*(0.983729*v+0.4329510)+0.238081; return a/b; }
@@ -116,6 +117,7 @@ export function initPortraits(THREE, renderer, modelFn, opts = {}) {
       void main(){
         // one bilinear tap at the output pixel centre = a 2x2 box over the 2x source
         vec4 s = texture2D(tMap, vUv);
+        if (uRaw > 0.5) { gl_FragColor = vec4(s.a > 0.001 ? toSRGB(aces(s.rgb / s.a)) : vec3(0.0), s.a); return; } // 'raw' shape: the model alone
         vec2 p = vUv - uFocus;
         float r = length(p * vec2(1.0, 1.08));
         // backdrop: radial glow centred behind the head
@@ -301,6 +303,47 @@ function frameCamera(b, f) {
   return new T.Vector2(T.MathUtils.clamp(fp.x * 0.5 + 0.5, 0.25, 0.75), T.MathUtils.clamp(fp.y * 0.5 + 0.5, 0.4, 0.82));
 }
 
+// ------------------------------------------------------------------ painted portraits (agent "icons")
+// PixelLab art per creature (icons.js ART.unit) and per faction hero (ART.hero, colour-neutral: the player colour is the
+// plate). Loaded on first request; until it has loaded the 3D bust is used, and when it arrives every cached render of
+// that id is redrawn in the background and swapped into any <img> still showing the old one.
+const artImgs = new Map(); // file -> Image (loading or loaded) | false (failed)
+const artOf = (id) => (id.startsWith('hero:') ? artFile('hero', id.split(':')[1]) : artFile('unit', id));
+function artImage(id) {
+  const f = typeof document !== 'undefined' && artOf(id);
+  if (!f) return null;
+  let im = artImgs.get(f);
+  if (im === undefined) {
+    im = new Image(); im.decoding = 'async'; artImgs.set(f, im);
+    im.onload = () => artLoaded(f);
+    im.onerror = () => artImgs.set(f, false);
+    im.src = artUrl(f);
+  }
+  return im && im.complete && im.naturalWidth ? im : null;
+}
+function artLoaded(f) {
+  for (const [key, old] of [...cache]) {
+    const at = key.lastIndexOf('@'), id = key.slice(0, at);
+    if (key.endsWith('w') || artOf(id) !== f) continue;
+    const size = parseInt(key.slice(at + 1), 10), shape = key.endsWith('r') ? 'round' : 'square';
+    cache.delete(key); warm.delete(key);
+    portraitAsync(id, size, shape).then((u) => {
+      if (!u || !old || typeof document === 'undefined') return;
+      for (const el of document.querySelectorAll('img')) if (el.getAttribute('src') === old) el.src = u;
+      if (typeof old === 'string' && old.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(old), 2000);
+    });
+  }
+}
+function drawArt(ctx, N, img, shape, pal) {
+  const k = shape === 'round' ? 0.84 : 0.9, w = N * k, x = (N - w) / 2, y = N - w - N * (shape === 'round' ? 0.08 : 0.03);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  const [hr, hg, hb] = hex(pal.halo).map((v) => Math.round(v * 255));
+  ctx.shadowColor = `rgba(${hr},${hg},${hb},0.55)`; ctx.shadowBlur = Math.max(2, N * 0.05); // the silhouette halo
+  ctx.drawImage(img, x, y, w, w);
+  ctx.restore();
+}
+
 // ------------------------------------------------------------------ render
 // async = true: the readback goes through a pixel-pack buffer + fence (no GPU pipeline stall on the main thread) and the
 // function returns a Promise<canvas>; otherwise it returns the PNG data URL synchronously (one blocking readPixels).
@@ -318,16 +361,23 @@ function renderPortrait(id, size, shape, async = false) {
   const heroCol = isHero && id.split(':')[2] ? parseInt(id.split(':')[2], 16) : null;
   const f = FRAME[id] || (U?.up && FRAME[U.up]) || {};
   const t0 = performance.now();
-  const m = geometryFor(id);
-  if (!m || !m.body) return '';
+  // icons: a painted portrait (loaded) replaces the 3D bust; the backdrop, frame, star and plate stay the same
+  const raw = shape === 'raw', art = raw ? null : artImage(id);
+  const m = art ? null : geometryFor(id);
+  if (!art && (!m || !m.body)) return '';
   const t1 = performance.now();
-  const b = bust(m.body);
-  const view = (g) => (g && b.hide ? without(g, b.hide) : g);
-  const meshes = [new T.Mesh(view(m.body), bodyMat)];
-  if (m.glow) meshes.push(new T.Mesh(view(m.glow), glowMat));
-  meshes.forEach((x) => { x.frustumCulled = false; scene.add(x); });
-  kickL.color.setRGB(...hex(heroCol ?? pal.kick));
-  const focus = frameCamera(b, shape === 'round' ? { ...f, zoom: (f.zoom || 1) * 1.18 } : f);
+  const meshes = [];
+  let focus;
+  if (art) focus = new T.Vector2(0.5, 0.6);
+  else {
+    const b = bust(m.body);
+    const view = (g) => (g && b.hide ? without(g, b.hide) : g);
+    meshes.push(new T.Mesh(view(m.body), bodyMat));
+    if (m.glow) meshes.push(new T.Mesh(view(m.glow), glowMat));
+    meshes.forEach((x) => { x.frustumCulled = false; scene.add(x); });
+    kickL.color.setRGB(...hex(heroCol ?? pal.kick));
+    focus = frameCamera(b, shape === 'round' ? { ...f, zoom: (f.zoom || 1) * 1.18 } : f);
+  }
   const t2 = performance.now();
 
   // save renderer state
@@ -336,7 +386,7 @@ function renderPortrait(id, size, shape, async = false) {
   R.autoClear = true; R.setClearColor(0x000000, 0);
   R.setRenderTarget(rtScene); R.clear(); R.render(scene, cam);
   const u = comp.uniforms;
-  u.tMap.value = rtScene.texture; u.uPx.value = 1 / S; u.uOut.value = N; u.uFocus.value.copy(focus);
+  u.tMap.value = rtScene.texture; u.uPx.value = 1 / S; u.uOut.value = N; u.uFocus.value.copy(focus); u.uRaw.value = raw ? 1 : 0;
   u.uInner.value.set(...hex(isUp ? UPGLOW : pal.inner)); u.uMid.value.set(...hex(pal.mid));
   u.uOuter.value.set(...hex(pal.outer)); u.uHalo.value.set(...hex(pal.halo)); u.uRay.value.set(...hex(isUp ? 0xffe68a : pal.ray));
   u.uRays.value = isUp || isHero ? 0.42 : 0.26;
@@ -356,7 +406,8 @@ function renderPortrait(id, size, shape, async = false) {
     const ctx = cv.getContext('2d'), img = ctx.createImageData(N, N), row = N * 4;
     for (let y = 0; y < N; y++) img.data.set(px.subarray((N - 1 - y) * row, (N - y) * row), y * row);
     ctx.putImageData(img, 0, 0);
-    decorate(ctx, N, shape, { up: isUp, heroCol: isHero ? (heroCol ?? null) : undefined, pal });
+    if (art) drawArt(ctx, N, art, shape, pal);
+    if (!raw) decorate(ctx, N, shape, { up: isUp, heroCol: isHero ? (heroCol ?? null) : undefined, pal });
     return cv;
   };
   if (pending) return pending.then(finish);
@@ -469,7 +520,7 @@ function star(ctx, N, cx, cy) {
 
 // ------------------------------------------------------------------ public API
 /** Cached dataURL of the portrait of `id` at `size` CSS px (rendered at device pixel ratio, max 2x). */
-const keyOf = (id, size, shape) => id + '@' + size + (shape === 'round' ? 'r' : '');
+const keyOf = (id, size, shape) => id + '@' + size + (shape === 'round' ? 'r' : shape === 'raw' ? 'w' : '');
 const glGone = () => { try { return R.getContext().isContextLost(); } catch { return false; } };
 export function portrait(id, size = 64, shape = 'square') {
   if (!R || !id) return '';
@@ -565,7 +616,7 @@ export function portraitImgLazy(id, size = 64, cls = 'pt') {
   const key = keyOf(id, size, 'square');
   if (cache.has(key)) return portraitImg(id, size, cls);
   let best = null, bs = 0;
-  for (const k of cache.keys()) { const at = k.lastIndexOf('@'); if (k.slice(0, at) !== id || k.endsWith('r') || !cache.get(k)) continue; const s = +k.slice(at + 1); if (s > bs) { bs = s; best = k; } }
+  for (const k of cache.keys()) { const at = k.lastIndexOf('@'); if (k.slice(0, at) !== id || /[rw]$/.test(k) || !cache.get(k)) continue; const s = +k.slice(at + 1); if (s > bs) { bs = s; best = k; } }
   if (!best) return portraitImg(id, size, cls);
   portraitAsync(id, size);
   const name = id.startsWith('hero:') ? 'Hero' : (UNITS[id]?.name || id);
@@ -597,6 +648,7 @@ export function heroPortraitImg(fac, color, size = 64, cls = 'pt hero', shape = 
 
 /** Warm the cache a few portraits at a time when the browser is idle. Hero ids: 'hero:<fac>:<rrggbb>'. */
 export function preloadPortraits(ids, size = 64) {
+  for (const id of ids) artImage(id); // start loading the painted art early
   const todo = ids.filter((id) => !cache.has(keyOf(id, size, 'square')));
   const idle = globalThis.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 50));
   const run = (dl) => { while (todo.length && dl.timeRemaining() > 4) portrait(todo.shift(), size); if (todo.length) idle(run); };

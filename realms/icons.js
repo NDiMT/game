@@ -359,7 +359,7 @@ const artImg = (f, size, cls, fb) => `<img class="ic ic-art${cls ? ' ' + cls : '
 export function artIcon(kind, id, size = 20, fallback = '', cls = '') {
   const f = size >= ART_MIN && artFile(kind, id), fb = fallback || id;
   if (f) return artImg(f, size, cls, hasIcon(fb) ? fb : '');
-  return !hasIcon(fb) && /[^\w-]/.test(fb) ? fb : svgIcon(fb, size, cls); // a data emoji stays as text
+  return !hasIcon(fb) && /[^\w-]/.test(fb) ? fb : icon(fb, size, cls); // a data emoji stays as text; a glyph may have its own art
 }
 if (typeof document !== 'undefined') {
   document.addEventListener('error', (e) => {

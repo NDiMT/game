@@ -27,7 +27,7 @@ import { createScore } from './music.js?v=2.1';
 import { createSfx } from './sfx.js?v=2.1';
 import { unitFit, applyFit } from './unit_fit.js?v=2.1';
 import { createMapFx } from './mapfx.js?v=2.1';
-import { icon, artIcon } from './icons.js';
+import { icon, artIcon, artFile } from './icons.js';
 // fullscreen: the virtual viewport (the game may be drawn turned by 90 degrees on a portrait screen): game-space sizes and
 // screen -> game coordinate mapping for every piece of manual pointer / layout maths below
 import { VP, toGame, gRect } from './vport.js?v=2.1';
@@ -2803,7 +2803,7 @@ function renderTown() {
     html = BUILDINGS.map((b) => {
       const has = t.built.includes(b.id), reqOk = b.req.every((r) => t.built.includes(r)), can = !has && reqOk && !t.builtToday && canPay(t.p, b.cost);
       const name = b.tier ? `${b.up ? '⬆️ ' : ''}${UNITS[b.up ? UPGRADES[t.fac][b.tier - 1] : FACTIONS[t.fac].units[b.tier - 1]].name} dwelling` : b.name;
-      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : icon(b.id, 30)}</i><div><b>${name}</b>${has ? '<small class="ok">Built</small>' : reqOk ? `<small>${costText(b.cost)}</small>` : `<small class="req">${icon('lock', 13)} Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}</small>`}<small class="d">${b.desc}</small></div>${has ? `<span class="done">${icon('check', 18)}</span>` : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
+      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier && !artFile('building', t.fac + ':' + b.id) ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : artIcon('building', t.fac + ':' + b.id, 30, b.id)}</i><div><b>${name}</b>${has ? '<small class="ok">Built</small>' : reqOk ? `<small>${costText(b.cost)}</small>` : `<small class="req">${icon('lock', 13)} Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}</small>`}<small class="d">${b.desc}</small></div>${has ? `<span class="done">${icon('check', 18)}</span>` : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
     }).join('');
   } else if (townTab === 'recruit') {
     const tiers = [...new Set(BUILDINGS.filter((b) => b.tier && t.built.includes(b.id)).map((b) => b.tier))].sort((x, y) => x - y);
