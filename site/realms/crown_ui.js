@@ -6,9 +6,9 @@
 // DOM only: main.js passes in what it owns (icons, unit portraits, hero portrait, sound) and applies the effects.
 // Landscape first, with a portrait fallback in style.css ("crown" block).
 // =====================================================================
-import * as C from './crown.js?v=2.6';
-import { UNITS, SPELLS, SKILLS, FACTIONS } from './data.js?v=2.6';
-import { landscape } from './vport.js?v=2.6';
+import * as C from './crown.js?v=2.7';
+import { UNITS, SPELLS, SKILLS, FACTIONS } from './data.js?v=2.7';
+import { landscape } from './vport.js?v=2.7';
 import { artIcon } from './icons.js'; // icons: painted art per artifact / skill / Legendary Hero / background / set / crest // fullscreen: the game frame's orientation (it may be turned on a portrait screen)
 
 export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {}, facCrest = null }) {
