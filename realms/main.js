@@ -60,6 +60,7 @@ const hash = (n) => { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n ^= n >>> 4;
 // DIRS[a].distanceTo(DIRS[b]). The grid can change size per game (MAP_PRESETS S/M/L/XL): every per-cell array is
 // allocated for the largest map and NBR is refilled in place, so references to them stay valid.
 import { makeGrid, MAP_PRESETS, MAX_CELLS, CELL, regionsVoronoi, regionsBands, regionGates } from './hexgrid.js';
+import { crownRegions, validateWorld as checkWorld, roadGap } from './worldgen.js'; // mapgen: Crown Run regions + the world validator
 const STEP = 0.07, SEA = 3;
 let GRID = makeGrid(...MAP_PRESETS.M);
 let NV = GRID.N;
@@ -101,6 +102,7 @@ const radiusOf = (v) => h[v] * STEP; // height of a cell top (the planet's radiu
 // map regions for Crown Run gates: markRegions({ seeds | from+bands, wall, per }) fills regionOf[v] and returns the gates
 const regionOf = new Int16Array(MAX_CELLS);
 function markRegions(o = {}) {
+  if (o.wall && o.from != null && !o.seeds) return crownWalls(o); // mapgen: the Crown Run's walls, gates and regions
   const pass = o.walkOnly ? passable : null;
   const r = o.seeds ? regionsVoronoi(GRID, o.seeds, pass) : regionsBands(GRID, o.from ?? 0, o.bands || [12, 24, 36], pass);
   regionOf.fill(0); regionOf.set(r);
@@ -115,6 +117,23 @@ function markRegions(o = {}) {
     worldDirty = true;
   }
   return gates;
+}
+
+// mapgen: Crown Run regions (worldgen.js crownRegions): a closed one-cell mountain wall on every band border, gates
+// at natural chokepoints, region membership by actual walking connectivity. Then the world is tidied around it:
+// objects walled in or standing in a gate's pass go (with their guards), and the roads are re-laid around the walls.
+const worldCtx = () => ({ grid: GRID, NBR, ter, h, road, objAt, objects: G.objects, passable, T, SEA });
+function crownWalls(o) {
+  const towns = new Set(G.towns.map((t) => t.v)), heroes = new Set(G.heroes.map((x) => x.v));
+  const rival = G.towns.find((t) => t.p > 0 && t.capOf != null)?.v ?? -1;
+  const res = crownRegions(worldCtx(), { from: o.from, bands: o.bands, per: o.per || 2, rival, protect: (v) => towns.has(v) || heroes.has(v) });
+  regionOf.fill(0); regionOf.set(res.regionOf);
+  const drop = (ob) => { removeObject(ob); for (const g of G.objects) if (g.alive && g.guards === ob.v && g.type === 'monster') removeObject(g); };
+  for (const ob of G.objects) if (ob.alive && ob.type !== 'town' && !passable(ob.v)) drop(ob);
+  for (const g of res.gates) for (const x of [g.v, ...NBR[g.v]]) { const ob = objAt[x] >= 0 ? G.objects[objAt[x]] : null; if (ob?.alive && ob.type !== 'town') drop(ob); }
+  relayRoads();
+  markRegions.last = res; worldDirty = true;
+  return res.gates;
 }
 
 // 2D wave noise over the map (same waves as the planet's, in world units)
@@ -755,8 +774,25 @@ const pickW = (list, r) => { const tot = list.reduce((x, e) => x + e.w, 0); let 
 const floraSets = new Map(); // key -> { model, im, ig, cap, per: Map(chunk -> { a: Float32Array, n }), dirty }
 const floraDone = new Uint8Array(MAX_CELLS); // cells whose flora is already placed
 const floraBig = new THREE.Sphere(new THREE.Vector3(), 1e4);
-function floraCell(v, put) {
+// mapgen: a model's footprint (its widest reach from the trunk / centre in x-z, model units), and the road check:
+// a prop (scatter or forest tree) is left out when its footprint would reach the painted road (+ a small margin)
+const fpCache = new Map();
+function footprint(key, model) {
+  let r = fpCache.get(key);
+  if (r === undefined) { r = 0; const a = model?.body?.attributes.position.array; if (a) for (let i = 0; i < a.length; i += 3) r = Math.max(r, Math.hypot(a[i], a[i + 2])); fpCache.set(key, r); }
+  return r;
+}
+const PROP_MARGIN = 0.012;
+const roadNear = (v) => road[v] || NBR[v].some((n) => road[n] || NBR[n].some((m) => road[m]));
+const propClear = (v, key, s, x, z) => roadGap(worldCtx(), v, GRID.X[v] + x, GRID.Z[v] + z) >= footprint(key, natureModel(key)) * s + PROP_MARGIN;
+function floraCell(v, put0) {
   const hv = hash(v * 11), rr = (k) => (hash(v * 31 + k * 7) % 1000) / 1000;
+  // (mountain peaks always stand; a forest's centre tree shrinks to fit rather than leave a bare impassable cell)
+  const near = roadNear(v) && ter[v] !== T.MOUNT;
+  const put = !near ? put0 : (key, c, s, x, z, turn) => {
+    if (propClear(c, key, s, x, z)) return put0(key, c, s, x, z, turn);
+    if (ter[c] === T.FOREST && !x && !z) { const fit = (roadGap(worldCtx(), c, GRID.X[c], GRID.Z[c]) - PROP_MARGIN) / (footprint(key, natureModel(key)) || 1); put0(key, c, Math.max(s * 0.55, Math.min(s, fit)), 0, 0, turn); }
+  };
   const F = FLORA_FOR_TERRAIN[ter[v]], lat = GRID.lat(v) * 0.9; // north = colder (snowy pines and peaks), no palms there
   if (ter[v] === T.FOREST || ter[v] === T.MOUNT) {
     const biome = biomeOf(NBR[v].map((n) => ter[n]), lat);
@@ -853,10 +889,30 @@ function carve(a, b) {
     if (!passable(x)) { ter[x] = T.DIRT; h[x] = SEA + 1; }
   }
 }
+const roadPairs = []; // mapgen: every road laid this world (relayRoads re-lays them once the Crown Run walls stand)
 function makeRoad(a, b) {
+  if (!roadPairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) roadPairs.push([a, b]);
   const p = findPath(a, b, null, true);
   if (p) for (const x of p) road[x] = 1;
   road[a] = road[b] = 1;
+}
+// mapgen: re-lay every road over walkable land, around objects (a wandering monster may stay on one), reusing the
+// stretches already laid; a pair with no way between them (a sealed rival homeland) gets no road
+function relayRoads() {
+  road.fill(0);
+  const blocks = (v) => { const ob = objAt[v] >= 0 ? G.objects[objAt[v]] : null; return ob && ob.alive && !(ob.type === 'monster' && !ob.guards); };
+  for (const [a, b] of roadPairs) {
+    const g = new Map([[a, 0]]), came = new Map(), open = minHeap(); open.push(0, a);
+    while (open.size) {
+      const cur = open.pop(), gc = open.d; if (gc !== g.get(cur)) continue;
+      if (cur === b) { for (let x = b; x !== undefined; x = came.get(x)) road[x] = 1; break; }
+      for (const n of NBR[cur]) {
+        if (!passable(n) || (n !== b && blocks(n))) continue;
+        const ng = gc + (road[n] ? 50 : TER_COST[ter[n]] || 100); // (Dijkstra: roads are few)
+        if (ng < (g.get(n) ?? Infinity)) { g.set(n, ng); came.set(n, cur); open.push(ng, n); }
+      }
+    }
+  }
 }
 function spot(near, minD, maxD, ok = () => true) {
   const c = bfs(near, maxD).filter(([x, d]) => d >= minD && passable(x) && objAt[x] < 0 && !road[x] && NBR[x].every((n) => objAt[n] < 0) && ok(x)).map(([x]) => x);
@@ -892,7 +948,7 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
   const N = opp.length + 1;
   Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [], run: null,
     gameMode: opts.mode || 'free', size: MAP_SIZES[opts.size] ? opts.size : 'M', resLv: opts.res ?? 1, win: opts.win === 'capitals' ? 'capitals' : 'conquer', fog: opts.fog !== false });
-  objAt.fill(-1); road.fill(0); seen.fill(0);
+  objAt.fill(-1); road.fill(0); seen.fill(0); roadPairs.length = 0;
   pendingLevels.length = 0; // level-ups queued in a previous game (quit with the dialog open) belong to that game
   rnd = mulberry32(seed);
   // capitals: farthest-point picks over good sites, retried on new terrain until every pair is far apart.
@@ -1034,7 +1090,10 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
 // or is removed if no way exists. Returns { carved, removed } for tests.
 function ensureReachable(starts) {
   const walk = (x) => { if (!passable(x) || objAt[x] < 0) return passable(x); const t = G.objects[objAt[x]]; return !t || !t.alive || t.type === 'monster' || t.type.startsWith('border'); };
+  // (mapgen) in a Crown Run a step may change region only between two walkable cells (a gate), and rock/forest is
+  // carved only where it touches no walkable cell of another region (a carved hole in a wall would be a new gate)
   const zoned = !!G.run, crossOk = (a, b) => !zoned || regionOf[a] === regionOf[b] || (passable(a) && passable(b));
+  const carveOk = (n) => !zoned || NBR[n].every((m) => !passable(m) || regionOf[m] === regionOf[n]);
   let carved = 0, removed = 0;
   const flood = () => {
     const R = new Uint8Array(NV), q = [];
@@ -1054,7 +1113,7 @@ function ensureReachable(starts) {
       const v = deque.front.length ? deque.front.pop() : dq[head++];
       if (NBR[o.v].includes(v) && v !== o.v) { hit = v; break; }
       for (const n of NBR[v]) {
-        if (n === o.v || (objAt[n] >= 0 && G.objects[objAt[n]]?.alive) || ter[n] === undefined || GRID.edge(n) > 0.92 || !crossOk(v, n) && !passable(n)) continue;
+        if (n === o.v || (objAt[n] >= 0 && G.objects[objAt[n]]?.alive) || ter[n] === undefined || GRID.edge(n) > 0.92 || !crossOk(v, n) || (!passable(n) && !carveOk(n))) continue;
         const w = walk(n) ? 0 : 1, nd = dist[v] + w;
         if (nd < dist[n]) { dist[n] = nd; prev[n] = v; if (w === 0) deque.push0(n); else dq.push(n); }
       }
@@ -1066,8 +1125,29 @@ function ensureReachable(starts) {
   }
   return (ensureReachable.last = { carved, removed });
 }
+// mapgen: check a generated world (window.__realms.validateWorld()): every object reachable (ensureReachable's
+// flood), roads walkable and clear (no object on them but towns at their ends, wandering monsters and Border Guards;
+// no prop or object footprint over the painted road), capitals connected, and in a Crown Run every region and gate.
+function validateWorld() {
+  const caps = G.towns.filter((t) => t.capOf != null).map((t) => t.v);
+  const starts = G.run ? [capital().v] : caps;
+  const walk = (x) => { if (!passable(x) || objAt[x] < 0) return passable(x); const t = G.objects[objAt[x]]; return !t || !t.alive || t.type === 'monster' || t.type.startsWith('border'); };
+  const zoned = !!G.run, reach = new Uint8Array(NV), q = [];
+  for (const v of starts) for (const n of [v, ...NBR[v]]) if (!reach[n] && (n === v || walk(n))) { reach[n] = 1; q.push(n); }
+  for (let i = 0; i < q.length; i++) for (const n of NBR[q[i]]) if (!reach[n] && walk(n) && (!zoned || regionOf[q[i]] === regionOf[n] || passable(q[i]))) { reach[n] = 1; q.push(n); }
+  const flora = []; for (let v = 0; v < NV; v++) floraCell(v, (key, c, sc, x = 0, z = 0) => flora.push({ key, v: c, x: GRID.X[c] + x, z: GRID.Z[c] + z, r: footprint(key, natureModel(key)) * sc }));
+  const objR = (o) => (o.type === 'town' || o.type === 'monster' ? 0 : footprint('o' + o.type, objModel(o)) * (SCALE[o.type] || 0.24));
+  let crown = null;
+  if (G.run?.regionsAt) {
+    const gates = G.objects.filter((o) => o.alive && /^border\d$/.test(o.type)).map((o) => ({ a: +o.type.slice(6) - 1, v: o.v }));
+    for (const g of markRegions.last?.gates || []) if (!gates.some((x) => x.v === g.v)) gates.push({ a: g.a, v: g.v });
+    crown = { regions: G.run.regions, regionOf, gates, from: capital().v };
+  }
+  return checkWorld(worldCtx(), { caps, reach, flora, objR, crown });
+}
 function guard(v, strength) {
-  const n = NBR[v].filter((x) => passable(x) && objAt[x] < 0);
+  // (mapgen: never on a road: a guard standing in the road blocks it for everyone, not just the treasure)
+  const n = NBR[v].filter((x) => passable(x) && objAt[x] < 0 && !road[x]);
   if (!n.length) return;
   const g = guardFor(v, strength), at = n[(rnd() * n.length) | 0];
   addObject('monster', at, { unit: g.id, n: g.n, guards: v });
@@ -4149,9 +4229,16 @@ function crownStart() {
   if (store.get('realms.save', null) && G.mode === 'menu') { ask('Start a Crown Run?', '<p>Your saved game will be replaced when the run begins.</p>', [['Start the run', go], ['Keep my game', null]]); return; }
   go();
 }
-function crownNew({ background, diff, fac }) {
+function crownNew({ background, diff, fac, seed }) {
   crownQ.length = 0;
-  const seed = (Date.now() % 100000) + 1, meta = crownMeta();
+  const { R, hr } = crownWorld({ background, diff, fac, seed });
+  play(); save(); crownHud();
+  setTimeout(() => CUI.guardianCard(R, 1, CR.guardianArmy(R, 1), { onClose: () => { const g = G.objects.find((x) => x.alive && x.guardian?.region === 1); if (g) { flyTo(g.v, 9); setTimeout(() => flyTo(hr.v, 10), 2200); } } }), 900);
+}
+// the run's world (mapgen: split from crownNew so tests can build and validate runs without starting play)
+function crownWorld({ background, diff, fac, seed }) {
+  seed = seed ?? (Date.now() % 100000) + 1;
+  const meta = crownMeta();
   newWorld(seed, 1, fac, { mode: 'crown', opponents: [{ fac: 'random', col: -1 }], size: 'M', res: 1, fog: true, win: 'conquer' });
   const R = CR.newRun({ seed, background, diff, fac, meta });
   const hr = G.heroes.find((x) => x.p === 0), cap = capital(), riv = G.towns.find((t) => t.p === 1);
@@ -4170,8 +4257,7 @@ function crownNew({ background, diff, fac }) {
   G.run = R;
   crownPlace(R, cap, gates);
   ensureReachable([cap.v]); // the run's sites too: nothing walled in behind rock or forest
-  play(); save(); crownHud();
-  setTimeout(() => CUI.guardianCard(R, 1, CR.guardianArmy(R, 1), { onClose: () => { const g = G.objects.find((x) => x.alive && x.guardian?.region === 1); if (g) { flyTo(g.v, 9); setTimeout(() => flyTo(hr.v, 10), 2200); } } }), 900);
+  return { R, hr };
 }
 // hex steps between two cells (the region bands are in steps)
 function cellSteps(a, b) { let d = 0; const seen0 = new Set([a]); let fr = [a]; while (fr.length && d < 400) { if (fr.includes(b)) return d; const nx = []; for (const v of fr) for (const n of NBR[v]) if (!seen0.has(n)) { seen0.add(n); nx.push(n); } fr = nx; d++; } return d; }
@@ -4189,7 +4275,7 @@ function crownPlace(R, cap, gates) {
     return c[Math.min(n - 1, Math.floor(lo + rnd() * Math.max(1, hi - lo)))][0];
   };
   for (const g of gates) {
-    if (g.b !== g.a + 1 || g.a >= R.regions - 1) continue;
+    if (g.b !== g.a + 1) continue; // (mapgen: the rival's homeland is gated too: its guard never stands aside)
     const at = objAt[g.v] < 0 ? g.v : objAt[g.u] < 0 ? g.u : g.v;
     if (objAt[at] >= 0) removeObject(G.objects[objAt[at]]);
     addObject(`border${g.a + 1}`, at);
@@ -4199,9 +4285,9 @@ function crownPlace(R, cap, gates) {
     // the tent stands deep in the region with room around it: its Legendary Hero camps on a neighbouring hex of the
     // same region, and that hex can be reached from inside the region (never from behind the next wall)
     const inReg = (n) => passable(n) && objAt[n] < 0 && D.has(n) && regionOf[n] === ri;
-    const reg = ri + 1, tv = spotIn(ri, 'far', (v) => NBR[v].filter(inReg).length >= 3); if (tv < 0) continue;
+    const reg = ri + 1, tv = spotIn(ri, 'far', (v) => NBR[v].filter(inReg).length >= 3 && NBR[v].some((n) => inReg(n) && !road[n])); if (tv < 0) continue;
     addObject(`keymaster${reg}`, tv);
-    const GA = CR.guardianArmy(R, reg), gv = NBR[tv].filter(inReg).sort((a, b) => D.get(a) - D.get(b))[0];
+    const GA = CR.guardianArmy(R, reg), gv = NBR[tv].filter(inReg).sort((a, b) => road[a] - road[b] || D.get(a) - D.get(b))[0];
     if (gv != null) { const lead = GA.army.slice().sort((a, b) => UNITS[b[0]].tier - UNITS[a[0]].tier)[0][0]; addObject('monster', gv, { unit: lead, n: GA.army.reduce((a, s) => a + s[1], 0), army: GA.army, ghero: GA.hero, guardian: { id: R.guardians[ri], region: reg }, guards: tv, refused: true }); }
     const put = (type, where, g) => { const v = spotIn(ri, where); if (v >= 0) { addObject(type, v); if (g) guard(v, g); } };
     if (ri === 0) { put('merchant', 'near'); put('tradingpost', 'near'); put('seer', 'mid'); }
@@ -4251,7 +4337,8 @@ window.CrownRun = { start: crownStart, resume: crownResume };
 // test hooks (crown bot / node-free checks)
 Object.assign(window.__realms, { crown: { CR, get CUI() { return CUI; }, UNITS, meta: crownMeta, regionOf, get run() { return G.run; }, crownInteract, crownDoll, crownInvade, crownInvaded, capital } });
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
-Object.assign(window.__realms, { quality: QG.state, renderer, ensureReachable });
+Object.assign(window.__realms, { quality: QG.state, renderer, ensureReachable, validateWorld }); // (validateWorld: mapgen)
+Object.assign(window.__realms.crown, { world: crownWorld }); // mapgen: build a run's world (no play) for validation
 // flat world (agent "flat"): grid + regions API for other modes / tests. GRID changes with the map size, so it is a getter.
 Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get GRID() { return GRID; }, get NV() { return NV; }, cellDist, posOf, setGrid, generate, makeGrid, MAP_PRESETS, markRegions, regionOf, regionsVoronoi, regionsBands, regionGates, pickCell, mini, h, road, TERRAIN, floraStats: () => { let n = 0, sets = 0; for (const S of floraSets.values()) { if (S.im?.count) { sets++; n += S.im.count; } } return { sets, drawn: n, chunks: floraVis.chunks.length }; } }));
 Object.assign(window.__realms, { prewarmProfile: () => loadProf, postQueue: () => postQ.map((j) => j.label), bumpWarm });
