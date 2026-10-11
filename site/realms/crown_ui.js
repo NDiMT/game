@@ -6,10 +6,15 @@
 // DOM only: main.js passes in what it owns (icons, unit portraits, hero portrait, sound) and applies the effects.
 // Landscape first, with a portrait fallback in style.css ("crown" block).
 // =====================================================================
-import * as C from './crown.js?v=2.1';
-import { UNITS, SPELLS, SKILLS, FACTIONS } from './data.js?v=2.1';
+import * as C from './crown.js?v=2.2';
+import { UNITS, SPELLS, SKILLS, FACTIONS } from './data.js?v=2.2';
+import { landscape } from './vport.js?v=2.2';
+import { artIcon } from './icons.js'; // icons: painted art per artifact / skill / Legendary Hero / background / set / crest // fullscreen: the game frame's orientation (it may be turned on a portrait screen)
 
-export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} }) {
+export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {}, facCrest = null }) {
+  // the faction crests of the title / Free Play setup (main.js FAC_CREST); the same fallback here for the dev harness
+  const CREST = { haven: 'defense', necro: 'necromancy', sylvan: 'luck', inferno: 'fireball', dungeon: 'sorcery' };
+  const crestOf = (f) => (facCrest && facCrest(f)) || CREST[f] || 'banner';
   const S = (n, o) => { try { sfx[n]?.(o); } catch { /* sound is optional */ } };
   const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -33,15 +38,15 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
 
   // ---------------------------------------------------------------- cards (artifacts and choices)
   function artText(inst) { const A = C.ARTIFACTS[inst.id || inst]; return A.text + (A.grows && inst.n ? ` (now ${inst.n})` : ''); }
-  function setLine(id) { const A = C.ARTIFACTS[id]; if (!A.set) return ''; const St = C.SETS[A.set]; return `<small class="cr-set">${icon(St.icon, 12)} ${St.name}</small>`; }
+  function setLine(id) { const A = C.ARTIFACTS[id]; if (!A.set) return ''; const St = C.SETS[A.set]; return `<small class="cr-set">${artIcon('set', A.set, 12, St.icon)} ${St.name}</small>`; }
   function cardHTML(item, o = {}) {
     const k = item.kind;
     let rar = 'treasure', name = '', body = '', art = '', tag = '', foot = '';
-    if (k === 'artifact') { const A = C.ARTIFACTS[item.id]; rar = A.rarity; name = A.name; art = icon(A.icon, 52); tag = C.SLOT_NAME[A.slot] || A.slot; body = esc(artText(item)); foot = `${setLine(item.id)}<small class="cr-rar">${C.RARITY[rar].name} artifact</small>`; }
+    if (k === 'artifact') { const A = C.ARTIFACTS[item.id]; rar = A.rarity; name = A.name; art = artIcon('artifact', item.id, 52, A.icon); tag = C.SLOT_NAME[A.slot] || A.slot; body = esc(artText(item)); foot = `${setLine(item.id)}<small class="cr-rar">${C.RARITY[rar].name} artifact</small>`; }
     else if (k === 'gold') { rar = 'gold'; name = `${fmt(item.n)} gold`; art = icon('gold', 56); tag = 'Gold'; body = 'Into your treasury.'; }
     else if (k === 'xp') { rar = 'xp'; name = `${fmt(item.n)} experience`; art = icon('experience', 56); tag = 'Wisdom'; body = 'Your hero grows wiser.'; }
     else if (k === 'spell') { const Sp = SPELLS[item.id]; rar = 'spell'; name = Sp.name; art = icon(item.id, 52); tag = `Circle ${Sp.circle}`; body = `${Sp.desc} Learnt for good.`; }
-    else if (k === 'skill') { const Sk = SKILLS[item.id]; rar = 'skill'; name = `${Sk.name} ${['', 'I', 'II', 'III'][item.lvl] || ''}`; art = icon(item.id, 52); tag = 'Skill'; body = Sk.desc; }
+    else if (k === 'skill') { const Sk = SKILLS[item.id]; rar = 'skill'; name = `${Sk.name} ${['', 'I', 'II', 'III'][item.lvl] || ''}`; art = artIcon('skill', item.id, 52); tag = 'Skill'; body = Sk.desc; }
     else if (k === 'stat') { rar = 'skill'; const nm = { att: 'Attack', def: 'Defence', pow: 'Power', know: 'Knowledge' }[item.id]; name = `+${item.n} ${nm}`; art = icon(item.id, 52); tag = 'Lesson'; body = `The scholar teaches your hero +${item.n} ${nm}.`; }
     else if (k === 'troops') { const U = UNITS[item.id]; rar = 'unit'; name = `${item.n} ${U.name}`; art = `<span class="cr-pt">${unitIcon(item.id, 64)}</span>`; tag = `Tier ${U.tier}`; body = `${icon('attack', 13)}${U.att} ${icon('defense', 13)}${U.def} ${icon('hp', 13)}${U.hp}${U.ranged ? ` ${icon('shots', 13)}` : ''}${U.fly ? ` ${icon('fly', 13)}` : ''}<br>They join your army.`; }
     const price = o.price != null ? `<span class="cr-price${o.poor ? ' poor' : ''}">${icon('gold', 14)}${fmt(o.price)}</span>` : '';
@@ -62,7 +67,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
   // landscape (agent "landscape"): the chips are icons down the left edge; the first tap expands one (its label slides
   // out, collapsing again after 4 s), a tap on the expanded chip opens it. Portrait shows the labels and acts at once.
   let openT = 0;
-  const compact = () => typeof matchMedia === 'function' && matchMedia('(orientation: landscape)').matches;
+  const compact = () => landscape();
   function tapChip(node, act) {
     S('click');
     if (compact() && !node.classList.contains('open')) {
@@ -120,7 +125,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
     const render = () => {
       const st = C.heroStats(run), hs = h.heroStats || {};
       const slot = (s) => { const inst = run.equip[s], A = inst && C.ARTIFACTS[inst.id], locked = run.locked.includes(s), on = sel?.where === 'slot' && sel.key === s;
-        return `<button class="cr-slot2 s-${s}${A ? ` r-${A.rarity}` : ''}${locked ? ' locked' : ''}${on ? ' on' : ''}" data-s="${s}" style="grid-area:${s}" ${locked ? 'disabled' : ''}>${A ? icon(A.icon, 30) : `<i>${icon(locked ? 'lock' : 'artifact', 18)}</i>`}<small>${A ? esc(A.name) : C.SLOT_NAME[s]}</small>${A?.set ? '<em class="cr-pip"></em>' : ''}</button>`; };
+        return `<button class="cr-slot2 s-${s}${A ? ` r-${A.rarity}` : ''}${locked ? ' locked' : ''}${on ? ' on' : ''}" data-s="${s}" style="grid-area:${s}" ${locked ? 'disabled' : ''}>${A ? artIcon('artifact', A.id, 30, A.icon) : `<i>${icon(locked ? 'lock' : 'artifact', 18)}</i>`}<small>${A ? esc(A.name) : C.SLOT_NAME[s]}</small>${A?.set ? '<em class="cr-pip"></em>' : ''}</button>`; };
       const sets = C.setProgress(run).filter((p) => p.have > 0);
       const cur = sel && (sel.where === 'slot' ? run.equip[sel.key] : run.backpack[sel.key]);
       const A = cur && C.ARTIFACTS[cur.id];
@@ -130,13 +135,13 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
         if (sel.where === 'slot') btns.push(`<button class="btn ghost" data-act="off">Unequip</button>`);
         else if (C.slotsFor(run, cur.id).length) btns.push(`<button class="btn gold" data-act="on">Equip (${C.SLOT_NAME[A.slot] || A.slot})</button>`);
         const ex = h.extra?.(cur, sel); if (ex) btns.push(`<button class="btn" data-act="extra">${ex[0]}</button>`);
-        detail = `<div class="cr-det r-${A.rarity}"><b>${icon(A.icon, 22)} ${esc(A.name)}</b><small>${C.RARITY[A.rarity].name} · ${C.SLOT_NAME[A.slot] || A.slot}${A.set ? ` · ${C.SETS[A.set].name}` : ''}</small><p>${esc(artText(cur))}</p><div class="cr-detb">${btns.join('')}</div></div>`;
+        detail = `<div class="cr-det r-${A.rarity}"><b>${artIcon('artifact', A.id, 22, A.icon)} ${esc(A.name)}</b><small>${C.RARITY[A.rarity].name} · ${C.SLOT_NAME[A.slot] || A.slot}${A.set ? ` · ${C.SETS[A.set].name}` : ''}</small><p>${esc(artText(cur))}</p><div class="cr-detb">${btns.join('')}</div></div>`;
       }
       L.innerHTML = `<div class="cr-dollwrap"><header><h2>${esc(h.heroName || 'Your hero')}</h2><small>Equipment</small>${h.onSheet ? `<button class="btn ghost cr-sheet" id="cr-sheet">${icon('hero', 18)} Skills &amp; army</button>` : ''}<button class="x" id="cr-x" aria-label="Close">${icon('close', 18)}</button></header>
         <div class="cr-dollcols"><div class="cr-doll-grid">${C.SLOTS.map(slot).join('')}<div class="cr-hero" style="grid-area:hero">${h.heroPic || icon('hero', 96)}<div class="cr-hst"><span>${icon('attack', 15)}${(hs.att || 0) + st.att}</span><span>${icon('defense', 15)}${(hs.def || 0) + st.def}</span><span>${icon('power', 15)}${(hs.pow || 0) + st.pow}</span><span>${icon('knowledge', 15)}${hs.know || 0}</span>${st.luck ? `<span>${icon('luck', 15)}+${st.luck}</span>` : ''}${st.morale ? `<span>${icon('morale', 15)}+${st.morale}</span>` : ''}</div></div></div>
         <div class="cr-dollside">${detail}
-          <div class="cr-sets">${sets.length ? sets.map((p) => `<div class="cr-setrow${p.active ? ' on' : ''}"><b>${icon(p.set.icon, 16)} ${p.set.name} <em>${p.have}/${p.need}</em></b><small>${esc(p.set.text)}</small><span>${p.set.pieces.map((id) => `<i class="${C.equippedIds(run).includes(id) ? 'have' : ''}" title="${esc(C.ARTIFACTS[id].name)}">${icon(C.ARTIFACTS[id].icon, 16)}</i>`).join('')}</span></div>`).join('') : '<p class="cr-hint">Wear every piece of an artifact set to unlock its bonus.</p>'}</div>
-          <h3>${icon('chest', 16)} Backpack</h3><div class="cr-pack">${run.backpack.length ? run.backpack.map((b, i) => { const B = C.ARTIFACTS[b.id]; return `<button class="cr-slot2 r-${B.rarity}${sel?.where === 'pack' && sel.key === i ? ' on' : ''}" data-b="${i}">${icon(B.icon, 26)}<small>${esc(B.name)}</small></button>`; }).join('') : '<p class="cr-hint">Empty.</p>'}</div></div></div></div>`;
+          <div class="cr-sets">${sets.length ? sets.map((p) => `<div class="cr-setrow${p.active ? ' on' : ''}"><b>${artIcon('set', p.set.id, 16, p.set.icon)} ${p.set.name} <em>${p.have}/${p.need}</em></b><small>${esc(p.set.text)}</small><span>${p.set.pieces.map((id) => `<i class="${C.equippedIds(run).includes(id) ? 'have' : ''}" title="${esc(C.ARTIFACTS[id].name)}">${artIcon('artifact', id, 16, C.ARTIFACTS[id].icon)}</i>`).join('')}</span></div>`).join('') : '<p class="cr-hint">Wear every piece of an artifact set to unlock its bonus.</p>'}</div>
+          <h3>${icon('chest', 16)} Backpack</h3><div class="cr-pack">${run.backpack.length ? run.backpack.map((b, i) => { const B = C.ARTIFACTS[b.id]; return `<button class="cr-slot2 r-${B.rarity}${sel?.where === 'pack' && sel.key === i ? ' on' : ''}" data-b="${i}">${artIcon('artifact', b.id, 26, B.icon)}<small>${esc(B.name)}</small></button>`; }).join('') : '<p class="cr-hint">Empty.</p>'}</div></div></div></div>`;
       L.querySelectorAll('[data-s]').forEach((b) => b.onclick = () => { if (!run.equip[b.dataset.s]) { sel = null; render(); return; } sel = { where: 'slot', key: b.dataset.s }; S('select'); render(); });
       L.querySelectorAll('[data-b]').forEach((b) => b.onclick = () => { sel = { where: 'pack', key: +b.dataset.b }; S('select'); render(); });
       const act = (a) => L.querySelector(`[data-act="${a}"]`);
@@ -153,7 +158,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
   // ---------------------------------------------------------------- a site with a choice: pick 1 of N
   // h: { title, sub, icon, choices, onPick(choice) -> bool, onDone, leave: label | null }
   function choice(h) {
-    const L = open('cr-choice', `<div class="cr-packwrap"><header><span class="cr-pk">${icon(h.icon || 'chest', 40)}</span><div><h2>${esc(h.title)}</h2><small>${h.sub || 'Choose one. Tap a card to look, tap it again to take it.'}</small></div></header>
+    const L = open('cr-choice', `<div class="cr-packwrap"><header><span class="cr-pk">${h.site ? artIcon('site', h.site, 40, h.icon || 'chest') : icon(h.icon || 'chest', 40)}</span><div><h2>${esc(h.title)}</h2><small>${h.sub || 'Choose one. Tap a card to look, tap it again to take it.'}</small></div></header>
       <div class="cr-row" id="cr-pick">${h.choices.map((c, i) => cardHTML(c, { back: true, backIcon: h.icon, attrs: `data-i="${i}"` })).join('')}</div>
       ${h.leave === null ? '' : `<footer><button class="btn ghost" id="cr-skip">${h.leave || 'Leave'}</button></footer>`}</div>`);
     const cards = [...L.querySelectorAll('#cr-pick .cr-card')];
@@ -177,7 +182,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
     let tab = 'buy';
     const render = () => {
       const g = h.gold(), sells = h.sellList();
-      L.innerHTML = `<div class="cr-shopwrap2"><header><span class="cr-pk ${h.black ? 'pk-black' : ''}">${icon(h.black ? 'tavern' : 'market', 40)}</span><div><h2>${esc(h.title)}</h2><small>${h.black ? 'Rare goods, no questions asked. The stock changes every week.' : 'Artifacts bought and sold. New stock every week.'}</small></div><span class="cr-wallet2">${gold(g)}</span><button class="x" id="cr-x" aria-label="Close">${icon('close', 18)}</button></header>
+      L.innerHTML = `<div class="cr-shopwrap2"><header><span class="cr-pk ${h.black ? 'pk-black' : ''}">${artIcon('site', h.black ? 'blackmarket' : 'merchant', 40, h.black ? 'tavern' : 'market')}</span><div><h2>${esc(h.title)}</h2><small>${h.black ? 'Rare goods, no questions asked. The stock changes every week.' : 'Artifacts bought and sold. New stock every week.'}</small></div><span class="cr-wallet2">${gold(g)}</span><button class="x" id="cr-x" aria-label="Close">${icon('close', 18)}</button></header>
         <nav class="tabs2"><button data-t="buy" class="${tab === 'buy' ? 'on' : ''}">${icon('gold', 18)}Buy</button><button data-t="sell" class="${tab === 'sell' ? 'on' : ''}">${icon('artifact', 18)}Sell</button></nav>
         <div class="cr-row" id="cr-cards">${tab === 'buy' ? (h.stock.length ? h.stock.map((it, i) => cardHTML(it, { price: it.price, sold: it.sold, poor: g < it.price, cls: 'deal', attrs: `data-i="${i}"` })).join('') : '<p class="cr-hint">Sold out until next week.</p>')
           : (sells.length ? sells.map((e, i) => cardHTML({ kind: 'artifact', id: e.inst.id, n: e.inst.n }, { price: e.price, cls: 'deal sellc', attrs: `data-i="${i}"` })).join('') : '<p class="cr-hint">Nothing to sell: your backpack is empty.</p>')}</div>
@@ -201,7 +206,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
     const L = open('cr-trade', '');
     const render = () => {
       const r = h.res();
-      L.innerHTML = `<div class="cr-panel ornate"><div class="cr-tradewrap"><header><span class="cr-pk">${icon('market', 40)}</span><div><h2>Trading Post</h2><small>Caravans buy and sell at fixed rates.</small></div><span class="cr-wallet2">${gold(r.gold)}</span></header>
+      L.innerHTML = `<div class="cr-panel ornate"><div class="cr-tradewrap"><header><span class="cr-pk">${artIcon('site', 'tradingpost', 40, 'market')}</span><div><h2>Trading Post</h2><small>Caravans buy and sell at fixed rates.</small></div><span class="cr-wallet2">${gold(r.gold)}</span></header>
         <div class="cr-trades">${Object.entries(C.TRADE).map(([k, t]) => `<div class="cr-trow"><span>${icon(k, 30)}<b>${r[k]}</b></span><button class="btn" data-k="${k}" data-d="buy" ${r.gold < t.buy ? 'disabled' : ''}>Buy 1 <small>${fmt(t.buy)}</small></button><button class="btn ghost" data-k="${k}" data-d="sell" ${r[k] < 1 ? 'disabled' : ''}>Sell 1 <small>${fmt(t.sell)}</small></button></div>`).join('')}</div>
         <button class="btn gold" id="cr-ok">Done</button></div></div>`;
       L.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => { if (h.trade(b.dataset.k, b.dataset.d)) { S('coin'); render(); } else S('deny'); });
@@ -223,7 +228,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
   function guardianCard(run, region, army, { onFight = null, onClose = null } = {}) {
     const id = run.guardians[region - 1], Gd = C.GUARDIANS[id];
     const rules = [Gd.rule]; if (run.diff >= 7 && run.secondRule?.[id]) rules.push(C.GUARDIANS[run.secondRule[id]].rule);
-    notice({ crest: icon(Gd.icon, 92), title: Gd.name, sub: `${Gd.title} · Legendary Hero of region ${region}`, cls: 'k-guardian',
+    notice({ crest: artIcon('guardian', Gd.id, 92, Gd.icon), title: Gd.name, sub: `${Gd.title} · Legendary Hero of region ${region}`, cls: 'k-guardian',
       body: `<p class="cr-rule"><em>Specialty</em>${rules.map(esc).join('<br>')}</p>${Gd.unlocks ? `<p class="cr-unl">${icon('lock', 16)} Defeat her to unlock <b>${FACTIONS[Gd.unlocks].name}</b></p>` : ''}
         <div class="cr-army"><small>${region >= run.regions ? 'Guards the Crown' : "Guards the Keymaster's Tent"}</small>${army.army.map(([u, n]) => `<span>${unitIcon(u, 48)}<em>${n}</em></span>`).join('')}</div>`,
       buttons: onFight ? [[`${icon('attack', 20)} To battle!`, onFight, 'gold'], ['Retreat', onClose, 'ghost']] : [['Got it', onClose, 'gold']], sound: onFight ? 'alarm' : 'open' });
@@ -242,8 +247,8 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
     const render = () => {
       const facs = Object.keys(FACTIONS), maxD = meta.unlocks.diffs[fac] || 1;
       L.innerHTML = `<div class="cr-originwrap"><header><span>${icon('victory', 40)}</span><div><small>Crown Run · ${C.TUNE.regions} regions</small><h2>Choose your hero</h2></div><span class="cr-glory">${icon('experience', 18)} ${meta.glory} Glory</span></header>
-        <div class="cr-facs">${facs.map((f) => { const ok = meta.unlocks.factions.includes(f); return `<button class="cr-fac${f === fac ? ' on' : ''}${ok ? '' : ' locked'}" data-f="${f}" style="--fc:${FACTIONS[f].css}">${unitIcon(FACTIONS[f].units[0], 48)}<b>${FACTIONS[f].name}</b>${ok ? '' : `<small>${icon('lock', 12)} ${C.FAC_UNLOCK[f].text}</small>`}</button>`; }).join('')}</div>
-        <div class="cr-row cr-origins">${Object.values(C.BACKGROUNDS).map((o) => { const ok = meta.unlocks.backgrounds.includes(o.id) && (!o.fac || meta.unlocks.factions.includes(o.fac)); return `<button class="cr-card r-origin${o.id === bg ? ' on' : ''}${ok ? '' : ' locked'}" data-o="${o.id}"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon(ok ? o.icon : 'lock', 46)}</span><b class="cr-name">${o.name}</b><p class="cr-txt">${ok ? o.text : o.unlock}</p></div></div></button>`; }).join('')}</div>
+        <div class="cr-facs">${facs.map((f) => { const ok = meta.unlocks.factions.includes(f); return `<button class="cr-fac${f === fac ? ' on' : ''}${ok ? '' : ' locked'}" data-f="${f}" style="--fc:${FACTIONS[f].css}"><span class="fc-crest mini">${artIcon('faction', f, 18, crestOf(f))}</span><span class="cr-fn"><b>${FACTIONS[f].name}</b>${ok ? '' : `<small>${icon('lock', 12)} ${C.FAC_UNLOCK[f].text}</small>`}</span></button>`; }).join('')}</div>
+        <div class="cr-row cr-origins">${Object.values(C.BACKGROUNDS).map((o) => { const ok = meta.unlocks.backgrounds.includes(o.id) && (!o.fac || meta.unlocks.factions.includes(o.fac)); return `<button class="cr-card r-origin${o.id === bg ? ' on' : ''}${ok ? '' : ' locked'}" data-o="${o.id}"><div class="cr-in"><div class="cr-face"><span class="cr-art">${ok ? artIcon('background', o.id, 46, o.icon) : icon('lock', 46)}</span><b class="cr-name">${o.name}</b><p class="cr-txt">${ok ? o.text : o.unlock}</p></div></div></button>`; }).join('')}</div>
         <div class="cr-stakes">${C.DIFFS.slice(1).map((s, i) => `<button class="cr-stake${i + 1 === diff ? ' on' : ''}${i + 1 > maxD ? ' locked' : ''}" data-s="${i + 1}" style="--sc:${s.col}" title="${esc(s.text)}"><i></i><small>${s.name}</small></button>`).join('')}<p>${esc(C.DIFFS[diff].text)}</p></div>
         <footer><button class="btn ghost" id="cr-back">Back</button>${onCollection ? `<button class="btn" id="cr-coll">${icon('chest', 18)} Collection</button>` : ''}<button class="btn gold" id="cr-go">${icon('attack', 20)} Begin the run</button></footer></div>`;
       L.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { if (!meta.unlocks.factions.includes(b.dataset.f)) { S('deny'); replayCls(b, 'shake'); return; } fac = b.dataset.f; if (C.BACKGROUNDS[bg].fac && C.BACKGROUNDS[bg].fac !== fac) bg = 'knight'; diff = Math.min(diff, meta.unlocks.diffs[fac] || 1); S('click'); render(); });
@@ -294,7 +299,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {} })
       const c = meta.collection;
       let grid = '';
       if (tab === 'artifacts') grid = Object.values(C.ARTIFACTS).map((a) => { const seen = c.seen[a.id] || c.artifacts[a.id]; return seen ? cardHTML({ kind: 'artifact', id: a.id }, { cls: 'coll' }).replace('</div></div>', `</div></div>${c.artifacts[a.id] ? `<em class="cr-owned">×${c.artifacts[a.id]}</em>` : ''}`) : `<div class="cr-card coll unknown r-${a.rarity}"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon('artifact', 46)}</span><b class="cr-name">???</b><p class="cr-txt">${C.RARITY[a.rarity].name}</p></div></div></div>`; }).join('');
-      if (tab === 'guardians') grid = Object.values(C.GUARDIANS).map((b) => c.guardians[b.id] ? `<div class="cr-card coll r-boss"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon(b.icon, 50)}</span><b class="cr-name">${b.name}</b><p class="cr-txt">${esc(b.rule)}</p></div></div></div>` : `<div class="cr-card coll unknown r-boss"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon('hero', 46)}</span><b class="cr-name">???</b><p class="cr-txt">Meet this Legendary Hero to learn more.</p></div></div></div>`).join('');
+      if (tab === 'guardians') grid = Object.values(C.GUARDIANS).map((b) => c.guardians[b.id] ? `<div class="cr-card coll r-boss"><div class="cr-in"><div class="cr-face"><span class="cr-art">${artIcon('guardian', b.id, 50, b.icon)}</span><b class="cr-name">${b.name}</b><p class="cr-txt">${esc(b.rule)}</p></div></div></div>` : `<div class="cr-card coll unknown r-boss"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon('hero', 46)}</span><b class="cr-name">???</b><p class="cr-txt">Meet this Legendary Hero to learn more.</p></div></div></div>`).join('');
       if (tab === 'units') grid = Object.keys(UNITS).filter((u) => !UNITS[u].up).map((u) => `<div class="cr-unit${c.units[u] ? '' : ' unknown'}">${unitIcon(u, 56)}<small>${c.units[u] ? UNITS[u].name : '???'}</small></div>`).join('');
       if (tab === 'perks') grid = Object.entries(C.PERKS).map(([id, p]) => { const lv = meta.perks[id] || 0; return `<button class="cr-card coll r-perk" data-p="${id}"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon(p.icon, 46)}</span><b class="cr-name">${p.name} ${lv}/${p.max}</b><p class="cr-txt">${p.text}</p></div></div><span class="cr-price${meta.glory < p.cost || lv >= p.max ? ' poor' : ''}">${lv >= p.max ? 'Max' : `${icon('experience', 14)}${p.cost}`}</span></button>`; }).join('') +
         Object.entries(C.TROPHIES).map(([id, t]) => `<div class="cr-card coll r-trophy${meta.trophies.includes(id) ? '' : ' unknown'}"><div class="cr-in"><div class="cr-face"><span class="cr-art">${icon(t.icon, 42)}</span><b class="cr-name">${t.name}</b><p class="cr-txt">${t.text}</p></div></div></div>`).join('');

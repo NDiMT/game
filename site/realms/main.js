@@ -1,43 +1,47 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=2.1';
-import { havenModel } from './units_haven.js?v=2.1';
-import { necroModel } from './units_necro.js?v=2.1';
-import { necroUpModel } from './units_necro_up.js?v=2.1';
-import { havenUpModel } from './units_haven_up.js?v=2.1';
-import { neutralModel } from './units_neutral.js?v=2.1';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=2.1';
-import { objectModel } from './models_objects.js?v=2.1';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=2.1';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.1';
-import { createTownView } from './town_view.js?v=2.1';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.1';
-import { createFlatSky, gradeGLSL } from './atmosphere.js?v=2.1';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=2.1';
+import { mulberry32, unitModel } from './models.js?v=2.2';
+import { havenModel } from './units_haven.js?v=2.2';
+import { necroModel } from './units_necro.js?v=2.2';
+import { necroUpModel } from './units_necro_up.js?v=2.2';
+import { havenUpModel } from './units_haven_up.js?v=2.2';
+import { neutralModel } from './units_neutral.js?v=2.2';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=2.2';
+import { objectModel } from './models_objects.js?v=2.2';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=2.2';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.2';
+import { createTownView } from './town_view.js?v=2.2';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.2';
+import { createFlatSky, gradeGLSL } from './atmosphere.js?v=2.2';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=2.2';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
-const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=2.1'), import('./units_inferno.js?v=2.1'), import('./units_dungeon.js?v=2.1')]);
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=2.2'), import('./units_inferno.js?v=2.2'), import('./units_dungeon.js?v=2.2')]);
 // memory: build through the modules' uncached builders (base id + upgraded flag), so main.js's geoCache is the only
 // owner of a creature's geometry and trimGeoCache() really frees it (the modules' own caches would pin ~11 MB per roster)
 const facBuild = (mod, build, model) => (id) => { const b = mod.value?.[build], u = UNITS[id]; const m = b && u ? b(u.up || id, !!u.up) : null; return m || mod.value?.[model]?.(id) || null; };
 const FAC_MODEL = { sylvan: facBuild(SYLm, 'sylvanBuild', 'sylvanModel'), inferno: facBuild(INFm, 'infernoBuild', 'infernoModel'), dungeon: facBuild(DUNm, 'dungeonBuild', 'dungeonModel') };
-import * as BT from './battle.js?v=2.1';
-import * as CR from './crown.js?v=2.1'; // crown: Crown Run rules and data
-import { createCrownUI } from './crown_ui.js?v=2.1'; // crown: Crown Run screens
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=2.1';
-import { createScore } from './music.js?v=2.1';
-import { createSfx } from './sfx.js?v=2.1';
-import { unitFit, applyFit } from './unit_fit.js?v=2.1';
-import { createMapFx } from './mapfx.js?v=2.1';
-import { icon } from './icons.js';
-import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.1';
+import * as BT from './battle.js?v=2.2';
+import * as CR from './crown.js?v=2.2'; // crown: Crown Run rules and data
+import { createCrownUI } from './crown_ui.js?v=2.2'; // crown: Crown Run screens
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=2.2';
+import { createScore } from './music.js?v=2.2';
+import { createSfx } from './sfx.js?v=2.2';
+import { unitFit, applyFit } from './unit_fit.js?v=2.2';
+import { createMapFx } from './mapfx.js?v=2.2';
+import { icon, artIcon, artFile } from './icons.js';
+// fullscreen: the virtual viewport (the game may be drawn turned by 90 degrees on a portrait screen): game-space sizes and
+// screen -> game coordinate mapping for every piece of manual pointer / layout maths below
+import { VP, toGame, gRect } from './vport.js?v=2.2';
+import { fsAvailable, fsActive, toggleFullscreen } from './shell.js?v=2.2';
+import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.2';
 
 // =====================================================================
-// ORBIS · Five Crowns: a pocket strategy game on a tiny hex planet.
-// Five crowns, one tiny world. Lead your heroes across the world, flag
+// ORBIS · Five Crowns: a 3D fantasy strategy game on a hex map.
+// Lead your heroes across the world, flag
 // mines, gather treasure, build your town and recruit its creatures, and
 // defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -56,6 +60,7 @@ const hash = (n) => { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n ^= n >>> 4;
 // DIRS[a].distanceTo(DIRS[b]). The grid can change size per game (MAP_PRESETS S/M/L/XL): every per-cell array is
 // allocated for the largest map and NBR is refilled in place, so references to them stay valid.
 import { makeGrid, MAP_PRESETS, MAX_CELLS, CELL, regionsVoronoi, regionsBands, regionGates } from './hexgrid.js';
+import { crownRegions, validateWorld as checkWorld, roadGap } from './worldgen.js'; // mapgen: Crown Run regions + the world validator
 const STEP = 0.07, SEA = 3;
 let GRID = makeGrid(...MAP_PRESETS.M);
 let NV = GRID.N;
@@ -97,6 +102,7 @@ const radiusOf = (v) => h[v] * STEP; // height of a cell top (the planet's radiu
 // map regions for Crown Run gates: markRegions({ seeds | from+bands, wall, per }) fills regionOf[v] and returns the gates
 const regionOf = new Int16Array(MAX_CELLS);
 function markRegions(o = {}) {
+  if (o.wall && o.from != null && !o.seeds) return crownWalls(o); // mapgen: the Crown Run's walls, gates and regions
   const pass = o.walkOnly ? passable : null;
   const r = o.seeds ? regionsVoronoi(GRID, o.seeds, pass) : regionsBands(GRID, o.from ?? 0, o.bands || [12, 24, 36], pass);
   regionOf.fill(0); regionOf.set(r);
@@ -111,6 +117,23 @@ function markRegions(o = {}) {
     worldDirty = true;
   }
   return gates;
+}
+
+// mapgen: Crown Run regions (worldgen.js crownRegions): a closed one-cell mountain wall on every band border, gates
+// at natural chokepoints, region membership by actual walking connectivity. Then the world is tidied around it:
+// objects walled in or standing in a gate's pass go (with their guards), and the roads are re-laid around the walls.
+const worldCtx = () => ({ grid: GRID, NBR, ter, h, road, objAt, objects: G.objects, passable, T, SEA });
+function crownWalls(o) {
+  const towns = new Set(G.towns.map((t) => t.v)), heroes = new Set(G.heroes.map((x) => x.v));
+  const rival = G.towns.find((t) => t.p > 0 && t.capOf != null)?.v ?? -1;
+  const res = crownRegions(worldCtx(), { from: o.from, bands: o.bands, per: o.per || 2, rival, protect: (v) => towns.has(v) || heroes.has(v) });
+  regionOf.fill(0); regionOf.set(res.regionOf);
+  let dropped = 0; const drop = (ob) => { dropped++; removeObject(ob); for (const g of G.objects) if (g.alive && g.guards === ob.v && g.type === 'monster') removeObject(g); };
+  for (const ob of G.objects) if (ob.alive && ob.type !== 'town' && !passable(ob.v)) drop(ob);
+  for (const g of res.gates) for (const x of [g.v, ...NBR[g.v]]) { const ob = objAt[x] >= 0 ? G.objects[objAt[x]] : null; if (ob?.alive && ob.type !== 'town') drop(ob); }
+  relayRoads();
+  markRegions.last = res; res.dropped = dropped; worldDirty = true;
+  return res.gates;
 }
 
 // 2D wave noise over the map (same waves as the planet's, in world units)
@@ -360,11 +383,13 @@ function flyTo(v, dist) {
 // size late on rotation). Sub-3px height wobbles are ignored.
 const rsz = { w: 0, h: 0, pr: 0, timer: 0, late: 0 };
 function resize(force) {
-  const w = window.innerWidth, hh = window.innerHeight, pr = renderer.getPixelRatio();
+  const w = VP.W, hh = VP.H, pr = renderer.getPixelRatio();
   lay.dirty = lay.townDirty = true;
-  if (force !== true && w === rsz.w && pr === rsz.pr && Math.abs(hh - rsz.h) < 3) return;
+  // fullscreen: in the turned frame (VP.rot) the toolbar changes the game's WIDTH, so the steady axis swaps
+  const [sa, sb, ra, rb] = VP.rot ? [hh, w, rsz.h, rsz.w] : [w, hh, rsz.w, rsz.h];
+  if (force !== true && sa === ra && pr === rsz.pr && Math.abs(sb - rb) < 3) return;
   clearTimeout(rsz.timer);
-  if (force !== true && rsz.w && w === rsz.w && pr === rsz.pr) { rsz.timer = setTimeout(() => resize(true), 180); return; }
+  if (force !== true && ra && sa === ra && pr === rsz.pr) { rsz.timer = setTimeout(() => resize(true), 180); return; }
   clearTimeout(rsz.late); rsz.late = setTimeout(resize, 300);
   rsz.w = w; rsz.h = hh; rsz.pr = pr; lay.snapMap = lay.snapBat = true;
   renderer.setSize(w, hh, false);
@@ -407,7 +432,7 @@ function freeRect(boxes, W, H, o) {
 const _fr = { T: 0, B: 0, L: 0, R: 0 };
 function measureLayout() {
   lay.dirty = false;
-  const H = rsz.h || innerHeight, W = rsz.w || innerWidth, q = (s) => document.querySelector(s);
+  const H = rsz.h || VP.H, W = rsz.w || VP.W, q = (s) => document.querySelector(s);
   const rail = boxIn(q('#hud .rail'));
   // map: in landscape the bottom-left hero card is a corner overlay, not a band; the focus keeps clear of it
   freeRect([boxIn(q('#hud .resbar')), rail, rail ? boxIn($('sel')) : boxIn(q('#hud .bottom'))], W, H, _fr);
@@ -435,7 +460,7 @@ if (typeof ResizeObserver !== 'undefined') {
 const mvP = new THREE.Vector3();
 function mapViewOffset(dt) {
   if (lay.dirty) measureLayout();
-  const H = rsz.h || innerHeight, W = rsz.w || innerWidth, T = lay.mapT, B = lay.mapB;
+  const H = rsz.h || VP.H, W = rsz.w || VP.W, T = lay.mapT, B = lay.mapB;
   let want = 0;
   if (G.mode === 'map' && B - T > H * 0.3) {
     camera.updateMatrixWorld();
@@ -514,7 +539,7 @@ const atmos = createFlatSky(THREE, scene, { fogColor: 0xa8c6e2 }); // flat world
 
 // ------------------------------------------------------------------ the map mesh: bevelled hex columns with cliff walls, in chunks
 // the surface itself (textures, bevels, cliffs, roads, fog, water, the open sea) is built by terrain.js
-import { createFlatMap } from './terrain.js?v=2.1';
+import { createFlatMap } from './terrain.js?v=2.2';
 const TERRAIN = createFlatMap({ STEP, SEA });
 TERRAIN.setGrid(GRID); atmos.setArea(GRID.bounds);
 scene.add(TERRAIN.group);
@@ -593,7 +618,7 @@ function townInsets() {
   if (!lay.townDirty) return;
   const r = boxIn($('town')); if (!r) return;
   lay.townDirty = false;
-  const W = innerWidth, H = innerHeight, side = W > H && r.w < W * 0.7;
+  const W = VP.W, H = VP.H, side = W > H && r.w < W * 0.7;
   const px = (v) => { v = Math.round(v); return v < 2 ? 0 : v; };
   townView.setInsets(side ? { bottom: 0, right: px(W - r.l) } : { bottom: px(H - r.t), right: 0 });
 }
@@ -749,8 +774,25 @@ const pickW = (list, r) => { const tot = list.reduce((x, e) => x + e.w, 0); let 
 const floraSets = new Map(); // key -> { model, im, ig, cap, per: Map(chunk -> { a: Float32Array, n }), dirty }
 const floraDone = new Uint8Array(MAX_CELLS); // cells whose flora is already placed
 const floraBig = new THREE.Sphere(new THREE.Vector3(), 1e4);
-function floraCell(v, put) {
+// mapgen: a model's footprint (its widest reach from the trunk / centre in x-z, model units), and the road check:
+// a prop (scatter or forest tree) is left out when its footprint would reach the painted road (+ a small margin)
+const fpCache = new Map();
+function footprint(key, model) {
+  let r = fpCache.get(key);
+  if (r === undefined) { r = 0; const a = model?.body?.attributes.position.array; if (a) for (let i = 0; i < a.length; i += 3) r = Math.max(r, Math.hypot(a[i], a[i + 2])); fpCache.set(key, r); }
+  return r;
+}
+const PROP_MARGIN = 0.012;
+const roadNear = (v) => road[v] || NBR[v].some((n) => road[n] || NBR[n].some((m) => road[m]));
+const propClear = (v, key, s, x, z) => roadGap(worldCtx(), v, GRID.X[v] + x, GRID.Z[v] + z) >= footprint(key, natureModel(key)) * s + PROP_MARGIN;
+function floraCell(v, put0) {
   const hv = hash(v * 11), rr = (k) => (hash(v * 31 + k * 7) % 1000) / 1000;
+  // (mountain peaks always stand; a forest's centre tree shrinks to fit rather than leave a bare impassable cell)
+  const near = roadNear(v) && ter[v] !== T.MOUNT;
+  const put = !near ? put0 : (key, c, s, x, z, turn) => {
+    if (propClear(c, key, s, x, z)) return put0(key, c, s, x, z, turn);
+    if (ter[c] === T.FOREST && !x && !z) { const fit = (roadGap(worldCtx(), c, GRID.X[c], GRID.Z[c]) - PROP_MARGIN) / (footprint(key, natureModel(key)) || 1); put0(key, c, Math.max(s * 0.55, Math.min(s, fit)), 0, 0, turn); }
+  };
   const F = FLORA_FOR_TERRAIN[ter[v]], lat = GRID.lat(v) * 0.9; // north = colder (snowy pines and peaks), no palms there
   if (ter[v] === T.FOREST || ter[v] === T.MOUNT) {
     const biome = biomeOf(NBR[v].map((n) => ter[n]), lat);
@@ -847,10 +889,30 @@ function carve(a, b) {
     if (!passable(x)) { ter[x] = T.DIRT; h[x] = SEA + 1; }
   }
 }
+const roadPairs = []; // mapgen: every road laid this world (relayRoads re-lays them once the Crown Run walls stand)
 function makeRoad(a, b) {
+  if (!roadPairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) roadPairs.push([a, b]);
   const p = findPath(a, b, null, true);
   if (p) for (const x of p) road[x] = 1;
   road[a] = road[b] = 1;
+}
+// mapgen: re-lay every road over walkable land, around objects (a wandering monster may stay on one), reusing the
+// stretches already laid; a pair with no way between them (a sealed rival homeland) gets no road
+function relayRoads() {
+  road.fill(0);
+  const blocks = (v) => { const ob = objAt[v] >= 0 ? G.objects[objAt[v]] : null; return ob && ob.alive && !(ob.type === 'monster' && !ob.guards); };
+  for (const [a, b] of roadPairs) {
+    const g = new Map([[a, 0]]), came = new Map(), open = minHeap(); open.push(0, a);
+    while (open.size) {
+      const cur = open.pop(), gc = open.d; if (gc !== g.get(cur)) continue;
+      if (cur === b) { for (let x = b; x !== undefined; x = came.get(x)) road[x] = 1; break; }
+      for (const n of NBR[cur]) {
+        if (!passable(n) || (n !== b && blocks(n))) continue;
+        const ng = gc + (road[n] ? 50 : TER_COST[ter[n]] || 100); // (Dijkstra: roads are few)
+        if (ng < (g.get(n) ?? Infinity)) { g.set(n, ng); came.set(n, cur); open.push(ng, n); }
+      }
+    }
+  }
 }
 function spot(near, minD, maxD, ok = () => true) {
   const c = bfs(near, maxD).filter(([x, d]) => d >= minD && passable(x) && objAt[x] < 0 && !road[x] && NBR[x].every((n) => objAt[n] < 0) && ok(x)).map(([x]) => x);
@@ -886,7 +948,7 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
   const N = opp.length + 1;
   Object.assign(G, { seed, day: 1, players: [], heroes: [], towns: [], objects: [], diff, selHero: -1, over: false, mode: 'map', log: [], run: null,
     gameMode: opts.mode || 'free', size: MAP_SIZES[opts.size] ? opts.size : 'M', resLv: opts.res ?? 1, win: opts.win === 'capitals' ? 'capitals' : 'conquer', fog: opts.fog !== false });
-  objAt.fill(-1); road.fill(0); seen.fill(0);
+  objAt.fill(-1); road.fill(0); seen.fill(0); roadPairs.length = 0;
   pendingLevels.length = 0; // level-ups queued in a previous game (quit with the dialog open) belong to that game
   rnd = mulberry32(seed);
   // capitals: farthest-point picks over good sites, retried on new terrain until every pair is far apart.
@@ -1017,12 +1079,77 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
   // wandering monsters on the roads
   for (let i = 0; i < Math.round(14 * dens); i++) { const v = (rnd() * NV) | 0; if (passable(v) && objAt[v] < 0 && far(v) > 0.15 && NBR[v].every((x) => objAt[x] < 0)) { const g = guardFor(v, far(v) * 1.3); addObject('monster', v, { unit: g.id, n: g.n }); } }
   for (const o of G.objects) if (['gold', 'wood', 'ore', 'gems'].includes(o.type)) o.amount = o.type === 'gold' ? 500 + ((rnd() * 6) | 0) * 100 : 3 + ((rnd() * 5) | 0);
+  ensureReachable(caps); // nothing placed behind rocks / trees / water with no way in
   G.selHero = 0;
   if (!G.fog) seen.fill(1);
   revealAll();
 }
+// every object must be reachable: walkable cells (plus monster cells: you can fight through a guard) flooded from the
+// capitals; an object counts as reachable when one of its neighbours is. A blocked one gets the cheapest way in carved
+// through rock/forest/water (never through other objects; in a Crown Run never across a region wall except at its gate),
+// or is removed if no way exists. Returns { carved, removed } for tests.
+function ensureReachable(starts) {
+  const walk = (x) => { if (!passable(x) || objAt[x] < 0) return passable(x); const t = G.objects[objAt[x]]; return !t || !t.alive || t.type === 'monster' || t.type.startsWith('border'); };
+  // (mapgen) in a Crown Run a step may change region only between two walkable cells (a gate), and rock/forest is
+  // carved only where it touches no walkable cell of another region (a carved hole in a wall would be a new gate)
+  const zoned = !!G.run, crossOk = (a, b) => !zoned || regionOf[a] === regionOf[b] || (passable(a) && passable(b));
+  const carveOk = (n) => !zoned || NBR[n].every((m) => !passable(m) || regionOf[m] === regionOf[n]);
+  let carved = 0, removed = 0;
+  const flood = () => {
+    const R = new Uint8Array(NV), q = [];
+    for (const v of starts) for (const n of [v, ...NBR[v]]) if (!R[n] && (n === v || walk(n))) { R[n] = 1; q.push(n); }
+    for (let i = 0; i < q.length; i++) for (const n of NBR[q[i]]) if (!R[n] && walk(n) && crossOk(q[i], n)) { R[n] = 1; q.push(n); }
+    return R;
+  };
+  let R = flood();
+  // (mapgen) two passes: carve for everything first, remove only in the second; a carve made for a later object can
+  // open a whole area, and removing earlier objects of that area before it was carved emptied rival homelands
+  for (const pass of [0, 1]) for (const o of G.objects) {
+    if (!o.alive || o.type === 'monster' && !o.guards && NBR[o.v].some((n) => R[n])) continue;
+    if (NBR[o.v].some((n) => R[n]) || R[o.v]) continue;
+    // 0-1 BFS from the reachable set: free steps over walkable cells, cost 1 over rock/forest/water; objects are walls
+    const dist = new Int32Array(NV).fill(1e9), prev = new Int32Array(NV).fill(-1), dq = [];
+    for (let v = 0; v < NV; v++) if (R[v]) { dist[v] = 0; dq.push(v); }
+    let head = 0, hit = -1; const deque = { front: [], push0(v) { this.front.push(v); } };
+    while (head < dq.length || deque.front.length) {
+      const v = deque.front.length ? deque.front.pop() : dq[head++];
+      if (NBR[o.v].includes(v) && v !== o.v) { hit = v; break; }
+      for (const n of NBR[v]) {
+        if (n === o.v || (objAt[n] >= 0 && G.objects[objAt[n]]?.alive) || ter[n] === undefined || GRID.edge(n) > 0.92 || !crossOk(v, n) || (!passable(n) && !carveOk(n))) continue;
+        const w = walk(n) ? 0 : 1, nd = dist[v] + w;
+        if (nd < dist[n]) { dist[n] = nd; prev[n] = v; if (w === 0) deque.push0(n); else dq.push(n); }
+      }
+    }
+    if (hit >= 0 && (dist[hit] <= 8 || o.type === 'town')) {
+      for (let x = hit; x >= 0 && dist[x] > 0; x = prev[x]) if (!passable(x)) { const p = prev[x] >= 0 ? prev[x] : x; ter[x] = T.DIRT; h[x] = h[p]; carved++; }
+      R = flood();
+    } else if (pass && o.type !== 'town') { o.alive = false; if (objAt[o.v] === o.id) objAt[o.v] = -1; removed++; }
+  }
+  return (ensureReachable.last = { carved, removed });
+}
+// mapgen: check a generated world (window.__realms.validateWorld()): every object reachable (ensureReachable's
+// flood), roads walkable and clear (no object on them but towns at their ends, wandering monsters and Border Guards;
+// no prop or object footprint over the painted road), capitals connected, and in a Crown Run every region and gate.
+function validateWorld() {
+  const caps = G.towns.filter((t) => t.capOf != null).map((t) => t.v);
+  const starts = G.run ? [capital().v] : caps;
+  const walk = (x) => { if (!passable(x) || objAt[x] < 0) return passable(x); const t = G.objects[objAt[x]]; return !t || !t.alive || t.type === 'monster' || t.type.startsWith('border'); };
+  const zoned = !!G.run, reach = new Uint8Array(NV), q = [];
+  for (const v of starts) for (const n of [v, ...NBR[v]]) if (!reach[n] && (n === v || walk(n))) { reach[n] = 1; q.push(n); }
+  for (let i = 0; i < q.length; i++) for (const n of NBR[q[i]]) if (!reach[n] && walk(n) && (!zoned || regionOf[q[i]] === regionOf[n] || passable(q[i]))) { reach[n] = 1; q.push(n); }
+  const flora = []; for (let v = 0; v < NV; v++) floraCell(v, (key, c, sc, x = 0, z = 0) => flora.push({ key, v: c, x: GRID.X[c] + x, z: GRID.Z[c] + z, r: footprint(key, natureModel(key)) * sc }));
+  const objR = (o) => (o.type === 'town' || o.type === 'monster' ? 0 : footprint('o' + o.type, objModel(o)) * (SCALE[o.type] || 0.24));
+  let crown = null;
+  if (G.run?.regionsAt) {
+    const gates = G.objects.filter((o) => o.alive && /^border\d$/.test(o.type)).map((o) => ({ a: +o.type.slice(6) - 1, v: o.v }));
+    for (const g of markRegions.last?.gates || []) if (!gates.some((x) => x.v === g.v)) gates.push({ a: g.a, v: g.v });
+    crown = { regions: G.run.regions, regionOf, gates, from: capital().v };
+  }
+  return checkWorld(worldCtx(), { caps, reach, flora, objR, crown });
+}
 function guard(v, strength) {
-  const n = NBR[v].filter((x) => passable(x) && objAt[x] < 0);
+  // (mapgen: never on a road: a guard standing in the road blocks it for everyone, not just the treasure)
+  const n = NBR[v].filter((x) => passable(x) && objAt[x] < 0 && !road[x]);
   if (!n.length) return;
   const g = guardFor(v, strength), at = n[(rnd() * n.length) | 0];
   addObject('monster', at, { unit: g.id, n: g.n, guards: v });
@@ -1156,7 +1283,7 @@ const mini = (() => {
   const M = { el, dirty: true, fresh: null, sig: '', t: 0, w: 0, h: 0, s: 1, pr: 1, gw: 0, gh: 0 };
   const COLS = TER_COL.map((c) => '#' + c.getHexString()), ROADC = '#' + ROAD_COL.getHexString(), FOGC = '#1d2236';
   function size() {
-    const land = innerWidth > innerHeight, cw = land ? clamp(innerWidth * 0.155, 124, 200) - 16 : clamp(innerWidth * 0.32, 104, 150); // landscape: the rail's inner width (style.css --rail)
+    const land = VP.W > VP.H, cw = land ? clamp(VP.W * 0.155, 124, 200) - 16 : clamp(VP.W * 0.32, 104, 150); // landscape: the rail's inner width (style.css --rail)
     const gw = GRID.W + 0.5, gh = (GRID.H - 1) * 0.866 + 1, ch = cw * gh / gw, pr = Math.min(2, devicePixelRatio || 1);
     if (Math.abs(cw - M.w) < 0.5 && gw === M.gw && gh === M.gh && pr === M.pr) return false;
     M.w = cw; M.h = ch; M.gw = gw; M.gh = gh; M.pr = pr; M.s = (cw * pr) / gw;
@@ -1177,7 +1304,7 @@ const mini = (() => {
   }
   const _a = new THREE.Vector3();
   function viewPoly() {
-    const pts = [], W = innerWidth, H = innerHeight, D = viewDist(cam.dist) * 2.6;
+    const pts = [], W = VP.W, H = VP.H, D = viewDist(cam.dist) * 2.6;
     const L = lay.mapL || 0, R = Math.min(W, lay.mapR || W);
     for (const [x, y] of [[L, lay.mapT || 0], [R, lay.mapT || 0], [R, lay.mapB || H], [L, lay.mapB || H]]) {
       ndc.set((x / W) * 2 - 1, -(y / H) * 2 + 1); ray.setFromCamera(ndc, camera); _gp.constant = -cam.y;
@@ -1214,7 +1341,7 @@ const mini = (() => {
   // tap / drag: fly the view there
   let down = false;
   const go = (e) => {
-    const r = el.getBoundingClientRect(), x = (e.clientX - r.left) * M.pr / M.s - 0.5, z = (e.clientY - r.top) * M.pr / M.s - 0.5;
+    const r = gRect(el), g = toGame(e.clientX, e.clientY), x = (g.x - r.left) * M.pr / M.s - 0.5, z = (g.y - r.top) * M.pr / M.s - 0.5; // fullscreen: game px
     const v = GRID.cellAt(x * CELL, z * CELL);
     if (v >= 0) { cam.holdFollow = walking || (aiRunning ? 'ai' : null); flyTo(v); }
   };
@@ -1286,14 +1413,14 @@ function showPath(hr, path) {
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 // exact: a ray against the terrain chunks' triangles (tops, bevels and cliff walls), each mapped back to its cell
 function pickCell(cx, cy) {
-  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ndc.set((cx / VP.W) * 2 - 1, -(cy / VP.H) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   return TERRAIN.pick(ray);
 }
 // where a screen point meets the ground plane at the focus height (for 1:1 panning); null near/above the horizon
 const _gp = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _gHit = new THREE.Vector3();
 function groundPoint(cx, cy, out) {
-  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ndc.set((cx / VP.W) * 2 - 1, -(cy / VP.H) * 2 + 1);
   ray.setFromCamera(ndc, camera); _gp.constant = -cam.y;
   if (!ray.ray.intersectPlane(_gp, out)) return null;
   return out.distanceTo(camFocus) > viewDist(cam.dist) * 3 ? null : out;
@@ -1311,12 +1438,12 @@ function startPress(e, x, y, moved) {
 }
 // the ground under the finger moves with it: the drag is the difference of the two ground points (x, y: where the
 // finger is now; dx, dy: how far it moved); near the horizon it falls back to the scale at the focus
-function camDrag(dx, dy, ts, x = innerWidth / 2, y = innerHeight / 2) {
+function camDrag(dx, dy, ts, x = VP.W / 2, y = VP.H / 2) {
   let wx, wz;
   const a = groundPoint(x - dx, y - dy, _gA), b = a && groundPoint(x, y, _gB);
   if (a && b) { wx = a.x - b.x; wz = a.z - b.z; }
   else {
-    const fov = THREE.MathUtils.degToRad(camera.fov), k = 2 * viewDist(cam.dist) * Math.tan(fov / 2) / innerHeight, sy = Math.sin(cam.yaw), cy = Math.cos(cam.yaw), f = k / Math.sin(viewPitch(cam.dist));
+    const fov = THREE.MathUtils.degToRad(camera.fov), k = 2 * viewDist(cam.dist) * Math.tan(fov / 2) / VP.H, sy = Math.sin(cam.yaw), cy = Math.cos(cam.yaw), f = k / Math.sin(viewPitch(cam.dist));
     wx = -dx * k * cy + dy * f * -sy; wz = dx * k * sy + dy * f * -cy;
   }
   cam.dragX += wx; cam.dragZ += wz; cam.dragging = true;
@@ -1333,8 +1460,9 @@ function camRelease(ts) {
   cam.vx = vx * k; cam.vz = vz * k;
 }
 cvs.addEventListener('pointerdown', (e) => {
+  const g = toGame(e.clientX, e.clientY), ex = g.x, ey = g.y; // fullscreen: game px (the frame may be rotated)
   try { cvs.setPointerCapture(e.pointerId); } catch {}
-  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  ptrs.set(e.pointerId, { x: ex, y: ey });
   if (ptrs.size > 2) return;
   if (ptrs.size === 2) {
     const [p, q] = [...ptrs.values()];
@@ -1344,12 +1472,13 @@ cvs.addEventListener('pointerdown', (e) => {
   // touching a gliding map just stops it: that touch is a grab, not a tap (a flight only stops once the finger drags)
   const gliding = Math.hypot(cam.vx, cam.vz) > 0.2 * viewDist(cam.dist);
   if (gliding && camMode()) camGrab();
-  startPress(e, e.clientX, e.clientY, false);
+  startPress(e, ex, ey, false);
   if (gliding) press.noTap = true;
 }, { passive: true });
 cvs.addEventListener('pointermove', (e) => {
   const p = ptrs.get(e.pointerId); if (!p) return;
-  p.x = e.clientX; p.y = e.clientY;
+  const g = toGame(e.clientX, e.clientY), ex = g.x, ey = g.y;
+  p.x = ex; p.y = ey;
   if (pinch && ptrs.size === 2) {
     const [a, b] = [...ptrs.values()], d = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
     if (G.mode === 'town') return;
@@ -1366,10 +1495,10 @@ cvs.addEventListener('pointermove', (e) => {
     return;
   }
   if (!press || press.id !== e.pointerId) return;
-  const dx = e.clientX - press.lx, dy = e.clientY - press.ly;
-  press.lx = e.clientX; press.ly = e.clientY;
+  const dx = ex - press.lx, dy = ey - press.ly;
+  press.lx = ex; press.ly = ey;
   if (!press.moved) {
-    if (Math.hypot(e.clientX - press.x, e.clientY - press.y) <= TAP_SLOP) return;
+    if (Math.hypot(ex - press.x, ey - press.y) <= TAP_SLOP) return;
     // the press turns into a drag: take over from any flight/follow where the camera is now; the slop itself is not
     // replayed (that would be an 8 px lurch), the planet starts moving with the finger from here
     press.moved = true;
@@ -1378,7 +1507,7 @@ cvs.addEventListener('pointermove', (e) => {
   }
   if (G.mode === 'battle') { bview.yaw = clamp(bview.yaw - dx * 0.004, -0.6, 0.6); return; }
   if (G.mode === 'town') return;
-  camDrag(dx, dy, e.timeStamp, e.clientX, e.clientY);
+  camDrag(dx, dy, e.timeStamp, ex, ey);
 }, { passive: true });
 const endPtr = (e) => {
   ptrs.delete(e.pointerId);
@@ -1393,7 +1522,7 @@ const endPtr = (e) => {
   if (press.moved) { if (camMode()) camRelease(e.timeStamp); }
   // the press length from the events' own timestamps: a long frame (battle entry, a heavy dialog) delays the handler,
   // not the finger, so a wall-clock check used to drop real taps
-  else if (!press.noTap && e.timeStamp - press.ts < TAP_MS) { if (G.mode === 'battle') battleTap(e.clientX, e.clientY); else if (G.mode === 'map') mapTap(e.clientX, e.clientY); else if (G.mode === 'town') townTap(e.clientX, e.clientY); }
+  else if (!press.noTap && e.timeStamp - press.ts < TAP_MS) { const g = toGame(e.clientX, e.clientY), ex = g.x, ey = g.y; if (G.mode === 'battle') battleTap(ex, ey); else if (G.mode === 'map') mapTap(ex, ey); else if (G.mode === 'town') townTap(ex, ey); }
   press = null; cam.dragging = false;
 };
 const dropPtrs = () => { ptrs.clear(); press = null; pinch = null; cam.dragging = false; cam.dragX = cam.dragZ = cam.dragYaw = 0; cam.vx = cam.vz = 0; };
@@ -1456,7 +1585,7 @@ function describe(o) {
   if (G.run && crownDescribe(o)) return; // crown: Crown Run sites, Legendary Heroes, invasions
   if (o.type === 'monster') toast(`${sizeWord(o.n)} ${plural(o.unit)} · ${threatWord(o)}`);
   else if (o.type === 'town') { const t = G.towns[o.t]; toast(`${t.name} (${FACTIONS[t.fac].name}) · ${t.p === 0 ? 'yours' : t.p > 0 ? G.players[t.p].name : 'neutral'}${t.p !== 0 && heroArmy({ army: t.garrison }).length ? ' · guarded' : ''}`); }
-  else { const O = OBJECTS[o.type]; toast(`${O.icon} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? (G.players[o.owner]?.name || 'enemy') : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
+  else { const O = OBJECTS[o.type]; toast(`${artIcon('object', o.type, 18, O.icon)} ${O.name}${o.type === 'artifact' ? `: ${ARTIFACTS.find((a) => a.id === o.art).name}` : ''}${O.kind === 'mine' ? ` · ${o.owner === 0 ? 'yours' : o.owner > 0 ? (G.players[o.owner]?.name || 'enemy') : 'unclaimed'} (+${O.amount} ${RES_ICON[O.res]}/day)` : O.desc ? ` · ${O.desc}` : ''}${o.type === 'shrine' ? `: ${SPELLS[o.spell].name}` : ''}`); }
 }
 function selectHero(id) {
   G.selHero = id; const hr = G.heroes[id];
@@ -1573,8 +1702,8 @@ function flyRes(pos, res, n) {
   if (reduceMo.matches || G.mode !== 'map' || $('hud').hidden) return;
   const dst = $(`r-${res}`)?.parentElement?.firstElementChild; if (!dst) return;
   const v = _flyV.copy(pos).project(camera); if (v.z > 1 || Math.abs(v.x) > 1.2 || Math.abs(v.y) > 1.2) return;
-  const x0 = (v.x * 0.5 + 0.5) * innerWidth, y0 = (-v.y * 0.5 + 0.5) * innerHeight;
-  const r = dst.getBoundingClientRect(); if (!r.width) return;
+  const x0 = (v.x * 0.5 + 0.5) * VP.W, y0 = (-v.y * 0.5 + 0.5) * VP.H;
+  const r = gRect(dst); if (!r.width) return;
   const x1 = r.left + r.width / 2, y1 = r.top + r.height / 2;
   const cnt = clamp(Math.floor(Math.log10(Math.max(1, n))), 1, 4), dur = 640, gap = 75, box = $('floaters');
   resFly[res] = performance.now() + dur;
@@ -1651,18 +1780,18 @@ function interact(hr, v) {
     } else if (o.type === 'artifact') {
       const A = ARTIFACTS.find((x) => x.id === o.art);
       hr.arts.push(A.id); hr.mana = Math.min(maxMana(hr), hr.mana);
-      if (you) { showMsg(`${A.icon} ${A.name}`, `${artDesc(A)}`); sfx.artifact(); }
+      if (you) { showMsg(`${artIcon('fpart', A.id, 22, A.icon)} ${A.name}`, `${artDesc(A)}`); sfx.artifact(); }
     }
     updateHud(); return;
   }
   if (kind === 'mine') {
-    if (o.owner !== hr.p) { o.owner = hr.p; if (seen[v]) worldDirty = true; if (seen[v]) fx.burst('flag', posOf(v), { color: ownerCol(hr.p) }); if (you) { toast(`${O.icon} ${O.name} is yours: +${O.amount} ${RES_ICON[O.res]} every day.`); sfx.flag(); } else if (seen[o.v]) toast(`🚩 ${P(hr).name} took a ${O.name}.`); }
+    if (o.owner !== hr.p) { o.owner = hr.p; if (seen[v]) worldDirty = true; if (seen[v]) fx.burst('flag', posOf(v), { color: ownerCol(hr.p) }); if (you) { toast(`${artIcon('object', o.type, 18, O.icon)} ${O.name} is yours: +${O.amount} ${RES_ICON[O.res]} every day.`); sfx.flag(); } else if (seen[o.v]) toast(`🚩 ${P(hr).name} took a ${O.name}.`); }
     revealAll(); updateHud(); return;
   }
   if (kind === 'visit') {
     const key = `o${o.id}`;
     if (o.type === 'obelisk') { if (you) { reveal(o.v, 12); worldDirty = true; toast('🗿 The obelisk shows you the land around it.'); } return; }
-    if (hr.visited.includes(key)) { if (you) toast(`${O.icon} You have already visited the ${O.name}.`); return; }
+    if (hr.visited.includes(key)) { if (you) toast(`${artIcon('object', o.type, 18, O.icon)} You have already visited the ${O.name}.`); return; }
     hr.visited.push(key);
     if (o.type === 'arena') {
       if (you) ask('🏟️ Arena', 'Train here to become a better warrior.', [['🗡️ +2 Attack', () => { hr.att += 2; updateHud(); }], ['🛡️ +2 Defence', () => { hr.def += 2; updateHud(); }]]);
@@ -1674,13 +1803,13 @@ function interact(hr, v) {
       const S = SPELLS[o.spell];
       if (S.circle >= 3 && !(hr.skills.wisdom >= 2)) { if (you) toast(`⛩️ ${S.name} is too difficult: you need Wisdom.`); hr.visited.pop(); return; }
       if (!hr.spells.includes(o.spell)) hr.spells.push(o.spell);
-      if (you) { showMsg(`⛩️ ${S.icon} ${S.name}`, S.desc); sfx.learn(); }
+      if (you) { showMsg(`${icon(o.spell, 22)} ${S.name}`, S.desc); sfx.learn(); }
     }
     updateHud(); return;
   }
   if (kind === 'weekly') {
     const key = `w${o.id}:${week()}`;
-    if (hr.visited.includes(key)) { if (you) toast(`${O.icon} Come back next week.`); return; }
+    if (hr.visited.includes(key)) { if (you) toast(`${artIcon('object', o.type, 18, O.icon)} Come back next week.`); return; }
     hr.visited.push(key);
     if (o.type === 'well') { hr.mana = maxMana(hr); if (you) { toast('⛲ Your mana is restored.'); sfx.mana(); } }
     else if (o.type === 'windmill') { const r = ['wood', 'ore', 'gems'][(rnd() * 3) | 0]; gain(hr.p, r, r === 'gems' ? 2 : 4 + ((rnd() * 3) | 0), v); }
@@ -1689,7 +1818,7 @@ function interact(hr, v) {
   }
   if (kind === 'dwelling') {
     const u = UNITS[o.unit];
-    if (!o.stock) { if (you) toast(`${O.icon} No ${u.name}s left this week.`); return; }
+    if (!o.stock) { if (you) toast(`${artIcon('object', o.type, 18, O.icon)} No ${u.name}s left this week.`); return; }
     if (you) recruitDialog(`🛖 ${u.name} dwelling`, o.unit, o.stock, (n) => { o.stock -= n; return hr; });
     else { const n = Math.min(o.stock, Math.floor(P(hr).res.gold / u.cost.gold)); if (n > 0 && addTroops(hr.army, o.unit, n)) { o.stock -= n; P(hr).res.gold -= n * u.cost.gold; } }
   }
@@ -1739,7 +1868,7 @@ function showLevel() {
   const L = pendingLevels[0];
   if (!L) return;
   const names = { att: 'Attack', def: 'Defence', pow: 'Power', know: 'Knowledge' };
-  ask(`${icon('experience', 22)} Level ${L.hr.lvl}!`, `<div class="burst lvl"><span class="rays"></span><span class="medal"><small>Level</small><b>${L.hr.lvl}</b></span></div><p><b>${L.hr.name}</b> grows stronger.</p><p class="chips" style="justify-content:center"><span class="chip">${icon(L.stat, 18)}${names[L.stat]} <em>+1</em></span></p><p class="sec">Choose a skill</p>`, L.opts.map((k) => [`${icon(k, 20)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc, 'choice']), true);
+  ask(`${icon('experience', 22)} Level ${L.hr.lvl}!`, `<div class="burst lvl"><span class="rays"></span><span class="medal"><small>Level</small><b>${L.hr.lvl}</b></span></div><p><b>${L.hr.name}</b> grows stronger.</p><p class="chips" style="justify-content:center"><span class="chip">${icon(L.stat, 18)}${names[L.stat]} <em>+1</em></span></p><p class="sec">Choose a skill</p>`, L.opts.map((k) => [`${artIcon('skill', k, 22)} ${SKILLS[k].name} ${['', 'I', 'II', 'III'][(L.hr.skills[k] || 0) + 1]}`, () => { L.hr.skills[k] = (L.hr.skills[k] || 0) + 1; if (k === 'logistics') L.hr.mp += 150; pendingLevels.shift(); updateHud(); setTimeout(showLevel, 200); }, SKILLS[k].desc, 'choice']), true);
   sfx.levelup();
 }
 
@@ -2191,7 +2320,7 @@ function setPlate(s) {
 function updatePlates() {
   const B = BB; if (!B) return;
   const pr = Math.min(3, Math.max(1, renderer.getPixelRatio()));
-  const sy = (PLATE_PX * 2 * Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2))) / Math.max(1, innerHeight);
+  const sy = (PLATE_PX * 2 * Math.tan(THREE.MathUtils.degToRad(bcam.fov / 2))) / Math.max(1, VP.H);
   for (const s of B.stacks) {
     const sp = bplateMap.get(s.uid), m = bmesh.get(s.uid); if (!sp) continue;
     const show = !!m && m.visible && !m.userData.dying && s.shown > 0;
@@ -2296,7 +2425,7 @@ function renderQueue(B) {
   for (const el of box.children) if (!el.classList.contains('gone')) live.set(el.dataset.k, el);
   const keep = new Set(items.map((it) => it.k)), old = new Map();
   // (landscape: the strip is a column down the left edge, so the slide is vertical: both axes are measured)
-  if (!first) for (const [k, el] of live) if (keep.has(k)) { const r = el.getBoundingClientRect(); old.set(el, [r.left, r.top]); }
+  if (!first) for (const [k, el] of live) if (keep.has(k)) { const r = gRect(el); old.set(el, [r.left, r.top]); }
   for (const [k, el] of live) if (!keep.has(k)) { el.classList.add('gone'); el.classList.remove('now'); setTimeout(() => el.remove(), 360); }
   const fresh = [];
   const order = items.map((it, i) => {
@@ -2316,7 +2445,7 @@ function renderQueue(B) {
   if (first) return;
   // FLIP the icons that changed place
   const moved = [];
-  for (const [el, [x0, y0]] of old) { const r = el.getBoundingClientRect(), dx = x0 - r.left, dy = y0 - r.top; if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { el.style.transition = 'none'; el.style.transform = `translate(${dx}px, ${dy}px)`; moved.push(el); } }
+  for (const [el, [x0, y0]] of old) { const r = gRect(el), dx = x0 - r.left, dy = y0 - r.top; if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { el.style.transition = 'none'; el.style.transform = `translate(${dx}px, ${dy}px)`; moved.push(el); } }
   void box.offsetWidth;
   for (const el of moved) { el.style.transition = ''; el.style.transform = ''; }
   for (const el of fresh) el.classList.remove('in');
@@ -2328,7 +2457,7 @@ function myTurn() { const B = BB, s = B?.active; return !!s && !B.over && !banim
 // belongs to another hex); p is the ground point under the finger (it picks the attack-from side)
 function pickHex(cx, cy) {
   const B = BB, s = B.active;
-  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ndc.set((cx / VP.W) * 2 - 1, -(cy / VP.H) * 2 + 1);
   ray.setFromCamera(ndc, bcam);
   let best = null, bd = 1e9;
   const groups = B.stacks.filter((st) => st.count > 0 && bmesh.get(st.uid)).map((st) => [st, bmesh.get(st.uid)]);
@@ -2420,7 +2549,7 @@ function battleHover(cx, cy) {
   let hx = 0, hy = 0, hq = false;
   cvs.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse' || G.mode !== 'battle' || e.buttons) return;
-    hx = e.clientX; hy = e.clientY;
+    const g = toGame(e.clientX, e.clientY); hx = g.x; hy = g.y;
     if (!hq) { hq = true; requestAnimationFrame(() => { hq = false; if (G.mode === 'battle' && BB) battleHover(hx, hy); }); }
   }, { passive: true });
   cvs.addEventListener('pointerleave', () => { if (G.mode !== 'battle' || !BB) return; if (bhover || bpreview?.src === 'hover') { bhover = null; if (bpreview?.src === 'hover') bpreview = null; refreshBattle(); } }, { passive: true });
@@ -2737,7 +2866,7 @@ function learnSpells(t, hr) {
     hr.spells.push(id); learned.push(id);
   }
   hr.mana = maxMana(hr);
-  if (learned.length && hr.p === 0) toast(`📘 ${hr.name} learns ${learned.map((id) => SPELLS[id].icon + ' ' + SPELLS[id].name).join(', ')}`);
+  if (learned.length && hr.p === 0) toast(`📘 ${hr.name} learns ${learned.map((id) => icon(id, 18) + ' ' + SPELLS[id].name).join(', ')}`);
 }
 function townTap(cx, cy) {
   const id = townView.pick(cx, cy); if (!id) return;
@@ -2756,7 +2885,7 @@ function renderTown() {
     html = BUILDINGS.map((b) => {
       const has = t.built.includes(b.id), reqOk = b.req.every((r) => t.built.includes(r)), can = !has && reqOk && !t.builtToday && canPay(t.p, b.cost);
       const name = b.tier ? `${b.up ? '⬆️ ' : ''}${UNITS[b.up ? UPGRADES[t.fac][b.tier - 1] : FACTIONS[t.fac].units[b.tier - 1]].name} dwelling` : b.name;
-      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : icon(b.id, 30)}</i><div><b>${name}</b>${has ? '<small class="ok">Built</small>' : reqOk ? `<small>${costText(b.cost)}</small>` : `<small class="req">${icon('lock', 13)} Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}</small>`}<small class="d">${b.desc}</small></div>${has ? `<span class="done">${icon('check', 18)}</span>` : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
+      return `<div class="row-b ${has ? 'has' : reqOk ? '' : 'lock'}"><i>${b.tier && !artFile('building', t.fac + ':' + b.id) ? unitIcon(FACTIONS[t.fac].units[b.tier - 1]) : artIcon('building', t.fac + ':' + b.id, 30, b.id)}</i><div><b>${name}</b>${has ? '<small class="ok">Built</small>' : reqOk ? `<small>${costText(b.cost)}</small>` : `<small class="req">${icon('lock', 13)} Needs ${b.req.map((r) => BUILDINGS.find((x) => x.id === r).name).join(', ')}</small>`}<small class="d">${b.desc}</small></div>${has ? `<span class="done">${icon('check', 18)}</span>` : `<button data-build="${b.id}" ${can ? '' : 'disabled'}>Build</button>`}</div>`;
     }).join('');
   } else if (townTab === 'recruit') {
     const tiers = [...new Set(BUILDINGS.filter((b) => b.tier && t.built.includes(b.id)).map((b) => b.tier))].sort((x, y) => x - y);
@@ -2849,9 +2978,9 @@ function openHero() {
     <div class="meters"><div class="meter"><span>${icon('mana', 16)}</span>Mana<b>${hr.mana}/${maxMana(hr)}</b><i><i style="width:${pct(hr.mana, maxMana(hr))}%"></i></i></div><div class="meter mp"><span>${icon('movement', 16)}</span>Move<b>${fmt(hr.mp)}</b><i><i style="width:${pct(hr.mp, moveMax(hr))}%"></i></i></div></div></div><div class="hs-b">
     <h3 class="sec">Army</h3>
     <div class="slots big">${Array.from({ length: Math.max(ARMY_SLOTS, hr.army.length) }, (_, i) => hr.army[i] && hr.army[i][1] > 0 ? `<span>${unitIcon(hr.army[i][0])}<em>${hr.army[i][1]}</em><small>${UNITS[hr.army[i][0]].name}</small></span>` : '<span class="e"></span>').join('')}</div>
-    <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${icon(k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
+    <h3 class="sec">Skills</h3>${chips(Object.keys(hr.skills).map((k) => `<span class="chip">${artIcon('skill', k, 18)}${SKILLS[k].name} <em>${['', 'I', 'II', 'III'][hr.skills[k]]}</em></span>`), 'No skills yet')}
     <h3 class="sec">Spells</h3>${chips(hr.spells.map((id) => `<span class="chip">${icon(id, 18)}${SPELLS[id].name}</span>`), 'No spells yet: build a Mage Guild')}
-    <h3 class="sec">Artifacts</h3>${chips([...(G.run ? CR.equippedIds(G.run).map((id) => `<span class="chip">${icon(CR.ARTIFACTS[id].icon, 18)}${CR.ARTIFACTS[id].name}</span>`) : []), ...hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${icon(id, 18)}${A.name}</span>`; })], 'No artifacts yet')}</div></div>`, true);
+    <h3 class="sec">Artifacts</h3>${chips([...(G.run ? CR.equippedIds(G.run).map((id) => `<span class="chip">${artIcon('artifact', id, 18, CR.ARTIFACTS[id].icon)}${CR.ARTIFACTS[id].name}</span>`) : []), ...hr.arts.map((id) => { const A = ARTIFACTS.find((x) => x.id === id); return `<span class="chip">${artIcon('fpart', id, 18)}${A.name}</span>`; })], 'No artifacts yet')}</div></div>`, true);
 }
 
 // ------------------------------------------------------------------ HUD, messages and dialogs
@@ -2866,8 +2995,8 @@ function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.re
 document.addEventListener('pointerdown', (e) => {
   const b = e.target.closest?.('.btn, .fb, .row-b button, .tabs2 button, .hb, .diffs button, .fcard, .mode, .opp button, .slots button');
   if (!b || b.disabled || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const r = b.getBoundingClientRect(), w = document.createElement('span'), c = document.createElement('i');
-  w.className = 'rip'; c.style.left = `${e.clientX - r.left}px`; c.style.top = `${e.clientY - r.top}px`;
+  const r = gRect(b), g = toGame(e.clientX, e.clientY), w = document.createElement('span'), c = document.createElement('i');
+  w.className = 'rip'; c.style.left = `${g.x - r.left}px`; c.style.top = `${g.y - r.top}px`;
   w.appendChild(c); b.appendChild(w); setTimeout(() => w.remove(), 650);
 }, { passive: true, capture: true });
 // replay a one-shot CSS animation class (e.g. a counter pop)
@@ -2928,9 +3057,9 @@ function updateFloaters(dt) {
   for (let i = floaters.length - 1; i >= 0; i--) {
     const f = floaters[i]; f.t += dt;
     if (f.t > 1.6) { f.el.remove(); floaters.splice(i, 1); continue; }
-    let x = innerWidth / 2, y = innerHeight * 0.4 + f.slot * 34;
-    if (f.p) { const v = _flV.copy(f.p).project(f.cm || camera); x = (v.x * 0.5 + 0.5) * innerWidth; y = (-v.y * 0.5 + 0.5) * innerHeight - f.near * 26; }
-    const hw = (f.w ??= f.el.offsetWidth) / 2 + 6; x = clamp(x, hw, innerWidth - hw);
+    let x = VP.W / 2, y = VP.H * 0.4 + f.slot * 34;
+    if (f.p) { const v = _flV.copy(f.p).project(f.cm || camera); x = (v.x * 0.5 + 0.5) * VP.W; y = (-v.y * 0.5 + 0.5) * VP.H - f.near * 26; }
+    const hw = (f.w ??= f.el.offsetWidth) / 2 + 6; x = clamp(x, hw, VP.W - hw);
     // feel: pops in with an overshoot (easeOutBack over 0.28 s), rises fast then floats (easeOutCubic), fades at the end
     const t = f.t, up = 1 - Math.pow(1 - Math.min(1, t / 1.2), 3), pu = Math.min(1, t / 0.28) - 1;
     const sc = reduceMo.matches ? 1 : 1 + 2.7 * pu * pu * pu + 1.7 * pu * pu;
@@ -2996,18 +3125,27 @@ function updateHud() {
 // follows); the selected hero -> its sheet; town -> open it. A second tap on the same button within 320 ms
 // additionally flies the camera in close (hero) or is swallowed (town: already open), so a double tap never acts twice.
 let sideTap = null;
+let sideTapT = 0;
 $('heroes').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || busy()) return;
   const key = b.dataset.h ? 'h' + b.dataset.h : 't' + b.dataset.t, now = performance.now();
   const dbl = !!sideTap && sideTap.key === key && now - sideTap.t < 320;
   sideTap = dbl ? null : { key, t: now };
+  // a second tap within 320 ms flies the camera there on the map; a single tap that would open a screen (hero sheet,
+  // town) waits out that window so the double tap is never swallowed by the screen it opened
+  clearTimeout(sideTapT);
   if (b.dataset.h) {
     const id = +b.dataset.h;
     if (dbl) { if (G.selHero !== id) selectHero(id); flyTo(G.heroes[id].v, 7.5); sfx.click(); return; }
-    if (G.selHero === id) openHero(); else selectHero(id);
+    if (G.selHero === id) sideTapT = setTimeout(() => { if (!busy() && G.mode === 'map') openHero(); }, 300);
+    else selectHero(id);
     return;
   }
-  if (b.dataset.t && !dbl) openTown(+b.dataset.t);
+  if (b.dataset.t) {
+    const t = G.towns[+b.dataset.t];
+    if (dbl) { flyTo(t.v, 8); sfx.click(); return; }
+    sideTapT = setTimeout(() => { if (!busy() && G.mode === 'map') openTown(t.id); }, 300);
+  }
 });
 $('b-hero').addEventListener('click', () => { if (!busy()) openHero(); });
 $('sel').addEventListener('click', (e) => { if (e.target.closest('#b-go')) { resumeRoute(selHero()); sfx.click(); } });
@@ -3021,7 +3159,9 @@ $('b-end').addEventListener('click', () => {
   clearTimeout(endConfirmT); $('b-end').classList.remove('confirm');
   endTurn();
 });
-$('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') return; ask('Menu', `<div class="menu-brand">${icon('logo', 76)}<b>ORBIS</b><small>Five Crowns · v${APP_VERSION}</small></div><p>Day ${((G.day - 1) % 7) + 1} of week ${week()}. Your game is saved every morning.</p>`, [['Resume', null], [`${icon('save', 20)} Save & quit to title`, () => { save(); showMenu(); }], [`${icon('music', 20)} Music: ${store.get('realms.music', true) ? 'on' : 'off'}`, () => { store.set('realms.music', !store.get('realms.music', true)); if (store.get('realms.music', true)) score?.start(); else score?.stop(); }]]); });
+$('b-menu').addEventListener('click', () => { if (busy() && G.mode !== 'map') return; ask('Menu', `<div class="menu-brand"><img class="mb-logo" src="art/logo.png" alt="Crownforge" draggable="false"><small>Five Crowns · v${APP_VERSION}</small></div><p>Day ${((G.day - 1) % 7) + 1} of week ${week()}. Your game is saved every morning.</p>`, [['Resume', null], [`${icon('save', 20)} Save & quit to title`, () => { save(); showMenu(); }], [`${icon('music', 20)} Music: ${store.get('realms.music', true) ? 'on' : 'off'}`, () => { store.set('realms.music', !store.get('realms.music', true)); if (store.get('realms.music', true)) score?.start(); else score?.stop(); }],
+  // fullscreen: the explicit toggle (only where the Fullscreen API exists and the game isn't an installed app); the tap is the gesture
+  ...(fsAvailable() || fsActive() ? [[`<svg class="ic" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="${fsActive() ? 'M12 5v7H5M27 12h-7V5M20 27v-7h7M5 20h7v7' : 'M5 12V5h7M20 5h7v7M27 20v7h-7M12 27H5v-7'}" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg> ${fsActive() ? 'Exit fullscreen' : 'Fullscreen'}`, () => toggleFullscreen()]] : [])]); });
 
 // ------------------------------------------------------------------ days and weeks
 function endTurn() {
@@ -3063,7 +3203,7 @@ turnbar.id = 'turnbar'; turnbar.hidden = true; turnbar.setAttribute('aria-live',
 $('hud').appendChild(turnbar);
 function turnBar(Pl) {
   if (!Pl) { turnbar.hidden = true; return; }
-  setHTML(turnbar, `<span class="tq-pips">${G.players.map((x) => `<i class="${x === Pl ? 'on' : ''}${x.alive ? '' : ' out'}" style="--pc:${x.css}"></i>`).join('')}</span><span class="tq-crest" style="--pc:${Pl.css}">${icon(FAC_CREST[Pl.fac] || 'banner', 18)}</span><b style="--pc:${Pl.css}">${Pl.name}</b><small>${Pl.i === 0 ? 'your turn' : 'is moving'}</small>`);
+  setHTML(turnbar, `<span class="tq-pips">${G.players.map((x) => `<i class="${x === Pl ? 'on' : ''}${x.alive ? '' : ' out'}" style="--pc:${x.css}"></i>`).join('')}</span><span class="tq-crest" style="--pc:${Pl.css}">${artIcon('faction', Pl.fac, 18, FAC_CREST[Pl.fac] || 'banner')}</span><b style="--pc:${Pl.css}">${Pl.name}</b><small>${Pl.i === 0 ? 'your turn' : 'is moving'}</small>`);
   turnbar.hidden = false;
 }
 function stopAI() {
@@ -3150,7 +3290,7 @@ function endGame(won) {
   // the strongest crown still standing (towns, then army) is the one that took the world from you
   const power = (Pl) => G.towns.filter((t) => t.p === Pl.i).length * 1e6 + G.heroes.filter((x) => x.alive && x.p === Pl.i).reduce((a, x) => a + BT.armyPower(heroArmy(x), x), 0);
   const victor = won ? null : rivals.filter((Pl) => Pl.alive).sort((x, y) => power(y) - power(x))[0];
-  const roll = `<div class="rivals">${rivals.map((Pl) => `<span class="rv${Pl.alive ? '' : ' out'}" style="--pc:${Pl.css}"><span class="rv-crest">${icon(FAC_CREST[Pl.fac] || 'banner', 18)}</span><b>${Pl.name}</b><small>${Pl.alive ? (Pl === victor ? 'Rules the world' : 'Still standing') : `Fell on day ${Pl.outDay || G.day}`}</small></span>`).join('')}</div>`;
+  const roll = `<div class="rivals">${rivals.map((Pl) => `<span class="rv${Pl.alive ? '' : ' out'}" style="--pc:${Pl.css}"><span class="rv-crest">${artIcon('faction', Pl.fac, 18, FAC_CREST[Pl.fac] || 'banner')}</span><b>${Pl.name}</b><small>${Pl.alive ? (Pl === victor ? 'Rules the world' : 'Still standing') : `Fell on day ${Pl.outDay || G.day}`}</small></span>`).join('')}</div>`;
   const why = G.win === 'capitals' ? 'your capital has fallen' : 'your last town and hero are lost';
   const body = `<div class="endcard ${won ? 'win' : 'lose'}"><div class="crest2">${icon(won ? 'victory' : 'defeat', 84)}</div>
     <p>${won ? `After <b>${G.day}</b> ${G.day === 1 ? 'day' : 'days'} the whole world is yours. ${rivals.length > 1 ? `All ${rivals.length} rival crowns bow` : 'Every rival bows'} before ${FACTIONS[me.fac].name}.` : `${why[0].toUpperCase() + why.slice(1)}. ${victor ? `<b style="color:${victor.css}">${victor.name}</b> claims the world.` : 'Your crown falls into shadow.'}`}</p>
@@ -3518,7 +3658,7 @@ function pickFaction() {
     const cs = colsNow();
     return S.opp.map((o, k) => { const f = FACTIONS[o.fac], css = cs[k] == null ? 'conic-gradient(#3a7aff, #d83a3a, #3ac84a, #e8c020, #a84ad8, #3a7aff)' : colCss(cs[k]);
       return `<div class="opp" style="--pc:${cs[k] == null ? '#8a8aa0' : css}"><span class="opp-n">${k + 1}</span>
-        <button class="opp-fac" data-o="${k}" style="--fc:${f ? f.css : '#8a8aa0'}" aria-label="Rival ${k + 1} faction: ${f ? f.name : 'Random'}"><span class="fc-crest mini">${f ? icon(FAC_CREST[o.fac] || 'banner', 18) : '<b class="q">?</b>'}</span><b>${f ? f.name : 'Random'}</b><i class="cyc">▸</i></button>
+        <button class="opp-fac" data-o="${k}" style="--fc:${f ? f.css : '#8a8aa0'}" aria-label="Rival ${k + 1} faction: ${f ? f.name : 'Random'}"><span class="fc-crest mini">${f ? artIcon('faction', o.fac, 18, FAC_CREST[o.fac] || 'banner') : '<b class="q">?</b>'}</span><b>${f ? f.name : 'Random'}</b><i class="cyc">▸</i></button>
         <button class="opp-col" data-c="${k}" aria-label="Rival ${k + 1} colour: ${COL_NAMES[PLAYER_COLS.indexOf(cs[k])] || ''}"><i style="background:${css}"></i><small>${o.col < 0 ? 'Auto' : COL_NAMES[o.col]}</small></button></div>`; }).join('');
   };
   const summary = () => `${FACTIONS[S.fac].name} vs ${S.opp.length} rival${S.opp.length > 1 ? 's' : ''}`;
@@ -3527,9 +3667,9 @@ function pickFaction() {
       <section class="fs-you"><p class="mlabel">Your crown</p><div class="fcards mini">${Object.entries(FACTIONS).map(([k, f]) => {
         const kit = FACTION_START[k] || FACTION_START.haven;
         return `<button class="fcard${k === S.fac ? ' on' : ''}" data-f="${k}" style="--fc:${f.css}" aria-pressed="${k === S.fac}">
-        <span class="fc-crest">${icon(FAC_CREST[k] || 'banner', 30)}</span>
+        <span class="fc-crest">${artIcon('faction', k, 30, FAC_CREST[k] || 'banner')}</span>
         <span class="fc-body"><b class="fc-name">${f.name}</b><small class="fc-desc">${f.desc || ''}</small>
-        <span class="fc-sig"><em>Signature</em><span>${icon(kit.skill, 16)}${SKILLS[kit.skill]?.name || ''}</span><span>${icon(kit.spell, 16)}${SPELLS[kit.spell]?.name || ''}</span></span></span>
+        <span class="fc-sig"><em>Signature</em><span>${artIcon('skill', kit.skill, 16)}${SKILLS[kit.skill]?.name || ''}</span><span>${icon(kit.spell, 16)}${SPELLS[kit.spell]?.name || ''}</span></span></span>
         <span class="fu">${[0, 3, 6].map((i) => unitIcon(f.units[i], 64)).join('')}</span><span class="fc-check">${icon('check', 16)}</span></button>`;
       }).join('')}</div></section>
       <section class="fs-set">
@@ -3743,7 +3883,7 @@ function bcamPlace(s, c, d) {
 }
 function frameBattleCam(s, c, dt) {
   if (lay.dirty) measureLayout();
-  const W = rsz.w || innerWidth, H = rsz.h || innerHeight;
+  const W = rsz.w || VP.W, H = rsz.h || VP.H;
   const T = clamp(lay.batT, 0, H * 0.45), B = clamp(lay.batB, H * 0.55, H);
   const L = clamp(lay.batL, 0, W * 0.36), R = clamp(lay.batR || W, W * 0.64, W);
   const land = W > H * 1.15;
@@ -3857,7 +3997,7 @@ function warmPicker() {
   };
   setTimeout(next, 600);
 }
-window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, heroMeshes, get walking() { return walking; } };
+window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G, BT, newWorld, findPath, startWalk, interact, startBattle, endTurn, openTown, closeTown, buildIn, save, load, play, selectHero, heroArmy, objAt, ter, seen, NBR, passable, get BB() { return BB; }, autoBattle: () => { bauto = true; }, hexScreen: (c, r) => { const v = hexPos(c, r).project(bcam); return [(v.x * 0.5 + 0.5) * VP.W, (-v.y * 0.5 + 0.5) * VP.H]; }, aiRunning: () => aiRunning, layoutWorld, cam, flyTo, cellScreen: (v) => { camera.updateMatrixWorld(); const p = posOf(v).project(camera); return [(p.x * 0.5 + 0.5) * VP.W, (-p.y * 0.5 + 0.5) * VP.H]; }, pickCell: (x, y) => pickCell(x, y), pickHex: (x, y) => { const k = BB && pickHex(x, y); return k ? [k.c, k.r] : null; }, myTurn: () => myTurn(), heroMeshes, get walking() { return walking; } };
 
 // ------------------------------------------------------------------ Crown Run (agent "crown"): a roguelite told in Heroes terms.
 // One hero, permadeath; regions behind Border Guards, each opened by the key its Legendary Hero guards; weekly
@@ -3868,7 +4008,7 @@ window.__realms = { battleReady: () => G.mode === 'battle' && !bprep && !!BB, G,
 var cmeta = null, CUI = null;
 const crownMeta = () => (cmeta ||= CR.metaLoad(store));
 const saveMeta = () => { if (cmeta) CR.metaSave(store, cmeta); };
-CUI = createCrownUI({ icon, unitIcon, sfx, onChange: (k) => { if (k === 'meta') saveMeta(); else if (G.run) { crownHud(); updateHud(); } } });
+CUI = createCrownUI({ icon, unitIcon, sfx, facCrest: (f) => FAC_CREST[f], onChange: (k) => { if (k === 'meta') saveMeta(); else if (G.run) { crownHud(); updateHud(); } } });
 CUI.mountHud($('hud'));
 const runHero = () => (G.run ? G.heroes[G.run.hero] : null);
 const capital = () => G.towns.find((t) => t.p === 0 && t.capOf === 0) || G.towns.find((t) => t.p === 0);
@@ -3910,7 +4050,7 @@ function crownAfter(B, ctx) {
   for (const s of B.stacks) CR.discover(crownMeta(), 'unit', UNITS[s.id]?.up || s.id);
   if (res.raise > 0 && hr.alive && addTroops(hr.army, res.raiseAs, res.raise)) toast(`${icon('necromancy', 18)} ${res.raise} ${plural(res.raiseAs, res.raise)} rise to serve you.`);
   if (!won || !hr.alive) { R.over = true; R.won = false; afterDialogs(() => crownEnd(`${hr.name} fell in battle`)); return; }
-  if (kind === 'guardian') { CR.discover(crownMeta(), 'guardian', o.guardian.id); saveMeta(); afterDialogs(() => CUI.notice({ icon: CR.GUARDIANS[o.guardian.id].icon, title: `${CR.GUARDIANS[o.guardian.id].name.split(',')[0]} is defeated`, sub: `Region ${o.guardian.region}`, body: `<p>${o.guardian.region >= R.regions ? 'The way to the Crown lies open: walk into the tent to claim it.' : "The Keymaster's Tent stands unguarded: visit it for the key to the next region."}</p>`, sound: 'fanfare' })); }
+  if (kind === 'guardian') { CR.discover(crownMeta(), 'guardian', o.guardian.id); saveMeta(); afterDialogs(() => CUI.notice({ icon: CR.GUARDIANS[o.guardian.id].icon, crest: artIcon('guardian', o.guardian.id, 92, CR.GUARDIANS[o.guardian.id].icon), title: `${CR.GUARDIANS[o.guardian.id].name.split(',')[0]} is defeated`, sub: `Region ${o.guardian.region}`, body: `<p>${o.guardian.region >= R.regions ? 'The way to the Crown lies open: walk into the tent to claim it.' : "The Keymaster's Tent stands unguarded: visit it for the key to the next region."}</p>`, sound: 'fanfare' })); }
   if (kind === 'invasion') afterDialogs(() => CUI.choice({ title: 'Spoils of war', sub: `The invaders' baggage train is yours. Choose one artifact.`, icon: 'chest', choices: CR.spoilsChoices(R, o.invasion.week, crownMeta()), leave: 'Leave it', onPick: (c) => crownGive(c, hr), onDone: () => { crownHud(); updateHud(); } }));
   crownHud();
 }
@@ -3932,7 +4072,7 @@ function crownGive(c, hr) {
   const R = G.run;
   if (c.kind === 'gold') { gain(0, 'gold', c.n, hr.v); sfx.coin(); }
   else if (c.kind === 'xp') giveXp(hr, c.n);
-  else if (c.kind === 'artifact') { const at = CR.addArtifact(R, c.id, crownMeta()); toast(`${icon(CR.ARTIFACTS[c.id].icon, 18)} ${CR.ARTIFACTS[c.id].name} ${at === 'backpack' ? 'goes into your backpack' : 'is equipped'}.`); sfx.artifact(); saveMeta(); }
+  else if (c.kind === 'artifact') { const at = CR.addArtifact(R, c.id, crownMeta()); toast(`${artIcon('artifact', c.id, 18, CR.ARTIFACTS[c.id].icon)} ${CR.ARTIFACTS[c.id].name} ${at === 'backpack' ? 'goes into your backpack' : 'is equipped'}.`); sfx.artifact(); saveMeta(); }
   else if (c.kind === 'troops') { if (!addTroops(hr.army, c.id, c.n)) { toast('No free slot in your army.'); return false; } sfx.recruit(); }
   else if (c.kind === 'spell') { if (!hr.spells.includes(c.id)) hr.spells.push(c.id); sfx.learn(); }
   else if (c.kind === 'skill') { hr.skills[c.id] = c.lvl; if (c.id === 'logistics') hr.mp += 150; sfx.learn(); }
@@ -3952,16 +4092,16 @@ function crownInteract(hr, o, v) {
   const once = (k) => { if (o.done) { toast(`${k} has nothing more for you.`); return false; } return true; };
   if (t === 'chest' || t === 'artifact' || t === 'pandora') {
     take(); if (seen[v]) fx.burst(t === 'chest' ? 'coin' : 'artifact', posOf(v));
-    if (t === 'artifact') { const id = CR.rollArtifact(R, `map:${o.id}`, meta, { rarityW: { treasure: 45, minor: 35, major: 16 + 6 * regionOf[v], relic: 4 + 2 * regionOf[v] } }); if (id) CUI.notice({ icon: CR.ARTIFACTS[id].icon, title: 'An artifact!', sub: 'Found on the road', card: { kind: 'artifact', id }, buttons: [['Take it', () => crownGive({ kind: 'artifact', id }, hr), 'gold']], sound: 'artifact' }); return true; }
+    if (t === 'artifact') { const id = CR.rollArtifact(R, `map:${o.id}`, meta, { rarityW: { treasure: 45, minor: 35, major: 16 + 6 * regionOf[v], relic: 4 + 2 * regionOf[v] } }); if (id) CUI.notice({ icon: CR.ARTIFACTS[id].icon, crest: artIcon('artifact', id, 92, CR.ARTIFACTS[id].icon), title: 'An artifact!', sub: 'Found on the road', card: { kind: 'artifact', id }, buttons: [['Take it', () => crownGive({ kind: 'artifact', id }, hr), 'gold']], sound: 'artifact' }); return true; }
     const ch = t === 'chest' ? CR.chestChoices(R, o.id, meta, { region: regionOf[v] + 1 }) : CR.pandoraChoices(R, o.id, meta, { ...crownCtx(hr), region: regionOf[v] + 1 });
-    CUI.choice({ title: t === 'chest' ? 'Treasure Chest' : "Pandora's Box", sub: t === 'chest' ? 'Keep the gold, give it to the peasants for their wisdom, or take the trinket inside?' : 'The lid creaks open. Choose one gift.', icon: 'chest', choices: ch, leave: null, onPick: (c) => crownGive(c, hr) });
+    CUI.choice({ title: t === 'chest' ? 'Treasure Chest' : "Pandora's Box", sub: t === 'chest' ? 'Keep the gold, give it to the peasants for their wisdom, or take the trinket inside?' : 'The lid creaks open. Choose one gift.', icon: 'chest', site: t, choices: ch, leave: null, onPick: (c) => crownGive(c, hr) });
     sfx.chest(); return true;
   }
   if (t === 'witchhut' || t === 'scholar' || t === 'shrine') {
     const nm = { witchhut: 'The Witch Hut', scholar: 'The Scholar', shrine: 'The Shrine' }[t]; if (!once(nm)) return true;
     const ch = t === 'witchhut' ? CR.witchChoices(R, o.id, crownCtx(hr)) : t === 'scholar' ? CR.scholarChoices(R, o.id, crownCtx(hr)) : CR.shrineChoices(R, o.id, crownCtx(hr));
     if (!ch.length) { toast(`${nm} has nothing to teach you.`); return true; }
-    CUI.choice({ title: nm.replace(/^The /, ''), sub: t === 'witchhut' ? 'The witch offers to teach one skill.' : t === 'scholar' ? 'The scholar offers one lesson.' : 'Kneel and learn one spell, for good.', icon: t === 'witchhut' ? 'sorcery' : t === 'scholar' ? 'wisdom' : 'spellbook', choices: ch, onPick: (c) => { o.done = true; return crownGive(c, hr); } });
+    CUI.choice({ title: nm.replace(/^The /, ''), sub: t === 'witchhut' ? 'The witch offers to teach one skill.' : t === 'scholar' ? 'The scholar offers one lesson.' : 'Kneel and learn one spell, for good.', icon: t === 'witchhut' ? 'sorcery' : t === 'scholar' ? 'wisdom' : 'spellbook', site: t === 'shrine' ? '' : t, choices: ch, onPick: (c) => { o.done = true; return crownGive(c, hr); } });
     return true;
   }
   if (t === 'seer') {
@@ -4091,9 +4231,16 @@ function crownStart() {
   if (store.get('realms.save', null) && G.mode === 'menu') { ask('Start a Crown Run?', '<p>Your saved game will be replaced when the run begins.</p>', [['Start the run', go], ['Keep my game', null]]); return; }
   go();
 }
-function crownNew({ background, diff, fac }) {
+function crownNew({ background, diff, fac, seed }) {
   crownQ.length = 0;
-  const seed = (Date.now() % 100000) + 1, meta = crownMeta();
+  const { R, hr } = crownWorld({ background, diff, fac, seed });
+  play(); save(); crownHud();
+  setTimeout(() => CUI.guardianCard(R, 1, CR.guardianArmy(R, 1), { onClose: () => { const g = G.objects.find((x) => x.alive && x.guardian?.region === 1); if (g) { flyTo(g.v, 9); setTimeout(() => flyTo(hr.v, 10), 2200); } } }), 900);
+}
+// the run's world (mapgen: split from crownNew so tests can build and validate runs without starting play)
+function crownWorld({ background, diff, fac, seed }) {
+  seed = seed ?? (Date.now() % 100000) + 1;
+  const meta = crownMeta();
   newWorld(seed, 1, fac, { mode: 'crown', opponents: [{ fac: 'random', col: -1 }], size: 'M', res: 1, fog: true, win: 'conquer' });
   const R = CR.newRun({ seed, background, diff, fac, meta });
   const hr = G.heroes.find((x) => x.p === 0), cap = capital(), riv = G.towns.find((t) => t.p === 1);
@@ -4111,8 +4258,8 @@ function crownNew({ background, diff, fac }) {
   R.regionMap = Array.from(regionOf.subarray(0, NV)).join(''); // (walking bands change once the walls stand: keep the map)
   G.run = R;
   crownPlace(R, cap, gates);
-  play(); save(); crownHud();
-  setTimeout(() => CUI.guardianCard(R, 1, CR.guardianArmy(R, 1), { onClose: () => { const g = G.objects.find((x) => x.alive && x.guardian?.region === 1); if (g) { flyTo(g.v, 9); setTimeout(() => flyTo(hr.v, 10), 2200); } } }), 900);
+  ensureReachable([cap.v]); // the run's sites too: nothing walled in behind rock or forest
+  return { R, hr };
 }
 // hex steps between two cells (the region bands are in steps)
 function cellSteps(a, b) { let d = 0; const seen0 = new Set([a]); let fr = [a]; while (fr.length && d < 400) { if (fr.includes(b)) return d; const nx = []; for (const v of fr) for (const n of NBR[v]) if (!seen0.has(n)) { seen0.add(n); nx.push(n); } fr = nx; d++; } return d; }
@@ -4130,7 +4277,7 @@ function crownPlace(R, cap, gates) {
     return c[Math.min(n - 1, Math.floor(lo + rnd() * Math.max(1, hi - lo)))][0];
   };
   for (const g of gates) {
-    if (g.b !== g.a + 1 || g.a >= R.regions - 1) continue;
+    if (g.b !== g.a + 1) continue; // (mapgen: the rival's homeland is gated too: its guard never stands aside)
     const at = objAt[g.v] < 0 ? g.v : objAt[g.u] < 0 ? g.u : g.v;
     if (objAt[at] >= 0) removeObject(G.objects[objAt[at]]);
     addObject(`border${g.a + 1}`, at);
@@ -4140,9 +4287,9 @@ function crownPlace(R, cap, gates) {
     // the tent stands deep in the region with room around it: its Legendary Hero camps on a neighbouring hex of the
     // same region, and that hex can be reached from inside the region (never from behind the next wall)
     const inReg = (n) => passable(n) && objAt[n] < 0 && D.has(n) && regionOf[n] === ri;
-    const reg = ri + 1, tv = spotIn(ri, 'far', (v) => NBR[v].filter(inReg).length >= 3); if (tv < 0) continue;
+    const reg = ri + 1, tv = spotIn(ri, 'far', (v) => NBR[v].filter(inReg).length >= 3 && NBR[v].some((n) => inReg(n) && !road[n])); if (tv < 0) continue;
     addObject(`keymaster${reg}`, tv);
-    const GA = CR.guardianArmy(R, reg), gv = NBR[tv].filter(inReg).sort((a, b) => D.get(a) - D.get(b))[0];
+    const GA = CR.guardianArmy(R, reg), gv = NBR[tv].filter(inReg).sort((a, b) => road[a] - road[b] || D.get(a) - D.get(b))[0];
     if (gv != null) { const lead = GA.army.slice().sort((a, b) => UNITS[b[0]].tier - UNITS[a[0]].tier)[0][0]; addObject('monster', gv, { unit: lead, n: GA.army.reduce((a, s) => a + s[1], 0), army: GA.army, ghero: GA.hero, guardian: { id: R.guardians[ri], region: reg }, guards: tv, refused: true }); }
     const put = (type, where, g) => { const v = spotIn(ri, where); if (v >= 0) { addObject(type, v); if (g) guard(v, g); } };
     if (ri === 0) { put('merchant', 'near'); put('tradingpost', 'near'); put('seer', 'mid'); }
@@ -4170,15 +4317,15 @@ function crownPlace(R, cap, gates) {
 // a tap on a run site names it (the classic describe() only knows the data.js objects)
 function crownDescribe(o) {
   const R = G.run;
-  if (o.type === 'monster' && o.guardian) { const Gd = CR.GUARDIANS[o.guardian.id]; toast(`${icon(Gd.icon, 18)} <b>${Gd.name}</b>, ${Gd.title} · ${Gd.rule}`); return true; }
+  if (o.type === 'monster' && o.guardian) { const Gd = CR.GUARDIANS[o.guardian.id]; toast(`${artIcon('guardian', o.guardian.id, 18, Gd.icon)} <b>${Gd.name}</b>, ${Gd.title} · ${Gd.rule}`); return true; }
   if (o.type === 'monster' && o.invasion) { toast(`${icon('attack', 18)} <b>Invasion</b> · ${R.invasion ? `${R.invasion.arrive - G.day} day(s) from your walls` : 'marching'}`); return true; }
   const km = /^keymaster(\d)$/.exec(o.type), bg = /^border(\d)$/.exec(o.type);
   const S = { pandora: ['chest', "Pandora's Box", 'Choose one of its gifts'], witchhut: ['sorcery', 'Witch Hut', 'Learn one of three skills'], scholar: ['wisdom', 'Scholar', 'One lesson: a stat, a skill or a spell'], seer: ['scouting', "Seer's Hut", 'A quest for a Major artifact'],
     merchant: ['market', 'Artifact Merchant', 'Buy and sell artifacts'], blackmarket: ['tavern', 'Black Market', 'Rare artifacts at a premium'], tradingpost: ['market', 'Trading Post', 'Resources for gold'], grail: ['victory', 'The Grail', 'Raise the Crown Forge in your capital'] }[o.type];
-  if (S) { toast(`${icon(S[0], 18)} <b>${S[1]}</b> · ${S[2]}${o.done ? ' (visited)' : ''}`); return true; }
-  if (km) { toast(`${icon('lock', 18)} <b>Keymaster's Tent</b> · ${+km[1] >= R.regions ? 'the Crown' : `the key to region ${+km[1] + 1}`}`); return true; }
-  if (bg) { toast(`${icon('lock', 18)} <b>Border Guard</b> · needs the key of region ${bg[1]}`); return true; }
-  if (o.type === 'chest' || o.type === 'artifact' || o.type === 'shrine') { toast(`${icon(o.type === 'shrine' ? 'spellbook' : o.type, 18)} <b>${o.type === 'chest' ? 'Treasure Chest' : o.type === 'artifact' ? 'Artifact' : 'Shrine'}</b> · ${o.type === 'chest' ? 'gold, experience or a trinket' : o.type === 'shrine' ? 'learn one of three spells' : 'unknown until you take it'}`); return true; }
+  if (S) { toast(`${artIcon('site', o.type, 18, S[0])} <b>${S[1]}</b> · ${S[2]}${o.done ? ' (visited)' : ''}`); return true; }
+  if (km) { toast(`${artIcon('site', 'keymaster', 18, 'lock')} <b>Keymaster's Tent</b> · ${+km[1] >= R.regions ? 'the Crown' : `the key to region ${+km[1] + 1}`}`); return true; }
+  if (bg) { toast(`${artIcon('site', 'border', 18, 'lock')} <b>Border Guard</b> · needs the key of region ${bg[1]}`); return true; }
+  if (o.type === 'chest' || o.type === 'artifact' || o.type === 'shrine') { toast(`${artIcon('object', o.type, 18, o.type === 'shrine' ? 'spellbook' : o.type)} <b>${o.type === 'chest' ? 'Treasure Chest' : o.type === 'artifact' ? 'Artifact' : 'Shrine'}</b> · ${o.type === 'chest' ? 'gold, experience or a trinket' : o.type === 'shrine' ? 'learn one of three spells' : 'unknown until you take it'}`); return true; }
   return false;
 }
 function crownResume() {
@@ -4192,7 +4339,8 @@ window.CrownRun = { start: crownStart, resume: crownResume };
 // test hooks (crown bot / node-free checks)
 Object.assign(window.__realms, { crown: { CR, get CUI() { return CUI; }, UNITS, meta: crownMeta, regionOf, get run() { return G.run; }, crownInteract, crownDoll, crownInvade, crownInvaded, capital } });
 // render perf hooks: adaptive-resolution state / control, and the renderer (renderer.info for draw-call counts)
-Object.assign(window.__realms, { quality: QG.state, renderer });
+Object.assign(window.__realms, { quality: QG.state, renderer, ensureReachable, validateWorld }); // (validateWorld: mapgen)
+Object.assign(window.__realms.crown, { world: crownWorld }); // mapgen: build a run's world (no play) for validation
 // flat world (agent "flat"): grid + regions API for other modes / tests. GRID changes with the map size, so it is a getter.
 Object.defineProperties(window.__realms, Object.getOwnPropertyDescriptors({ get GRID() { return GRID; }, get NV() { return NV; }, cellDist, posOf, setGrid, generate, makeGrid, MAP_PRESETS, markRegions, regionOf, regionsVoronoi, regionsBands, regionGates, pickCell, mini, h, road, TERRAIN, floraStats: () => { let n = 0, sets = 0; for (const S of floraSets.values()) { if (S.im?.count) { sets++; n += S.im.count; } } return { sets, drawn: n, chunks: floraVis.chunks.length }; } }));
 Object.assign(window.__realms, { prewarmProfile: () => loadProf, postQueue: () => postQ.map((j) => j.label), bumpWarm });

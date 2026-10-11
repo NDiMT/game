@@ -4,9 +4,9 @@
 //  - HTML / navigations, version.json, sw.js and anything requested with cache:'no-store' are NOT touched:
 //    the page's own self-update (index.html -> version.json -> reload with ?v=) works exactly as without a worker.
 //  - versioned files whose ?v= equals this worker's build (registered as sw.js?b=<BUILD> by index.html), e.g.
-//    main.js?v=2.1 under build 1.8: cache-first. A new build has a new ?v=, i.e. a new URL; older copies of the same
+//    main.js?v=2.2 under build 1.8: cache-first. A new build has a new ?v=, i.e. a new URL; older copies of the same
 //    path are pruned when the new one is stored. A file whose ?v= was not bumped with the build stays on the network.
-//  - big unversioned static payloads that practically never change (vendor/three.module.min.js, audio/**):
+//  - big unversioned static payloads that practically never change (vendor/three.module.min.js, audio/**, art/icons/**):
 //    stale-while-revalidate (served from cache at once, refreshed in the background for the next visit).
 //  - everything else: plain network (browser HTTP cache), as before.
 // Kill switch: version.json { "sw": false } makes index.html unregister the worker and drop its caches.
@@ -50,7 +50,10 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || req.mode === 'navigate' || req.cache === 'no-store' || req.headers.has('range')) return;
   const u = new URL(req.url);
   if (u.origin !== self.location.origin) return;
-  if (/\/(version\.json|sw\.js)$/.test(u.pathname) || u.pathname.endsWith('.html') || u.pathname.endsWith('/')) return;
+  // painted UI icons (art/icons/*.webp, agent "icons"): stale-while-revalidate like other static payloads
+  if (/\/art\/icons\/[^/]+\.(webp|png)$/.test(u.pathname)) { e.respondWith(staleWhileRevalidate(req, e)); return; }
+  // the web app manifest (and its icons) stay on the network too: install metadata must never be served stale
+  if (/\/(version\.json|sw\.js|manifest\.webmanifest)$/.test(u.pathname) || u.pathname.endsWith('.html') || u.pathname.endsWith('/') || /\/icons\//.test(u.pathname)) return;
   if (BUILD && u.searchParams.get('v') === BUILD && !u.searchParams.has('t')) { e.respondWith(cacheFirst(req, e)); return; }
   if (!u.search && (/\/vendor\/[^/]+\.js$/.test(u.pathname) || /\/audio\//.test(u.pathname))) { e.respondWith(staleWhileRevalidate(req, e)); return; }
 });
