@@ -1,38 +1,38 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=2.5';
-import { havenModel } from './units_haven.js?v=2.5';
-import { necroModel } from './units_necro.js?v=2.5';
-import { necroUpModel } from './units_necro_up.js?v=2.5';
-import { havenUpModel } from './units_haven_up.js?v=2.5';
-import { neutralModel } from './units_neutral.js?v=2.5';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=2.5';
-import { objectModel } from './models_objects.js?v=2.5';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=2.5';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.5';
-import { createTownView } from './town_view.js?v=2.5';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.5';
-import { createFlatSky, gradeGLSL } from './atmosphere.js?v=2.5';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=2.5';
+import { mulberry32, unitModel } from './models.js?v=2.6';
+import { havenModel } from './units_haven.js?v=2.6';
+import { necroModel } from './units_necro.js?v=2.6';
+import { necroUpModel } from './units_necro_up.js?v=2.6';
+import { havenUpModel } from './units_haven_up.js?v=2.6';
+import { neutralModel } from './units_neutral.js?v=2.6';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=2.6';
+import { objectModel } from './models_objects.js?v=2.6';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=2.6';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.6';
+import { createTownView } from './town_view.js?v=2.6';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.6';
+import { createFlatSky, gradeGLSL } from './atmosphere.js?v=2.6';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=2.6';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
-const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=2.5'), import('./units_inferno.js?v=2.5'), import('./units_dungeon.js?v=2.5')]);
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=2.6'), import('./units_inferno.js?v=2.6'), import('./units_dungeon.js?v=2.6')]);
 // memory: build through the modules' uncached builders (base id + upgraded flag), so main.js's geoCache is the only
 // owner of a creature's geometry and trimGeoCache() really frees it (the modules' own caches would pin ~11 MB per roster)
 const facBuild = (mod, build, model) => (id) => { const b = mod.value?.[build], u = UNITS[id]; const m = b && u ? b(u.up || id, !!u.up) : null; return m || mod.value?.[model]?.(id) || null; };
 const FAC_MODEL = { sylvan: facBuild(SYLm, 'sylvanBuild', 'sylvanModel'), inferno: facBuild(INFm, 'infernoBuild', 'infernoModel'), dungeon: facBuild(DUNm, 'dungeonBuild', 'dungeonModel') };
-import * as BT from './battle.js?v=2.5';
-import * as CR from './crown.js?v=2.5'; // crown: Crown Run rules and data
-import { createCrownUI } from './crown_ui.js?v=2.5'; // crown: Crown Run screens
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=2.5';
-import { createScore } from './music.js?v=2.5';
-import { createSfx } from './sfx.js?v=2.5';
-import { unitFit, applyFit } from './unit_fit.js?v=2.5';
-import { createMapFx } from './mapfx.js?v=2.5';
+import * as BT from './battle.js?v=2.6';
+import * as CR from './crown.js?v=2.6'; // crown: Crown Run rules and data
+import { createCrownUI } from './crown_ui.js?v=2.6'; // crown: Crown Run screens
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=2.6';
+import { createScore } from './music.js?v=2.6';
+import { createSfx } from './sfx.js?v=2.6';
+import { unitFit, applyFit } from './unit_fit.js?v=2.6';
+import { createMapFx } from './mapfx.js?v=2.6';
 import { icon, artIcon, artFile } from './icons.js';
 // fullscreen: the virtual viewport (the game may be drawn turned by 90 degrees on a portrait screen): game-space sizes and
 // screen -> game coordinate mapping for every piece of manual pointer / layout maths below
-import { VP, toGame, gRect } from './vport.js?v=2.5';
-import { fsAvailable, fsActive, toggleFullscreen } from './shell.js?v=2.5';
-import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.5';
+import { VP, toGame, gRect } from './vport.js?v=2.6';
+import { fsAvailable, fsActive, toggleFullscreen } from './shell.js?v=2.6';
+import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.6';
 
 // =====================================================================
 // ORBIS · Five Crowns: a 3D fantasy strategy game on a hex map.
@@ -41,7 +41,7 @@ import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, her
 // defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '2.5';
+const APP_VERSION = '2.6';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -539,7 +539,7 @@ const atmos = createFlatSky(THREE, scene, { fogColor: 0xa8c6e2 }); // flat world
 
 // ------------------------------------------------------------------ the map mesh: bevelled hex columns with cliff walls, in chunks
 // the surface itself (textures, bevels, cliffs, roads, fog, water, the open sea) is built by terrain.js
-import { createFlatMap } from './terrain.js?v=2.5';
+import { createFlatMap } from './terrain.js?v=2.6';
 const TERRAIN = createFlatMap({ STEP, SEA });
 TERRAIN.setGrid(GRID); atmos.setArea(GRID.bounds);
 scene.add(TERRAIN.group);
@@ -1700,8 +1700,8 @@ const resFly = { gold: 0, wood: 0, ore: 0, gems: 0 }; // performance.now() when 
 const _flyV = new THREE.Vector3();
 function flyRes(pos, res, n) {
   if (reduceMo.matches || G.mode !== 'map' || $('hud').hidden) return;
-  const v = _flyV.copy(pos).project(camera); if (v.z > 1 || Math.abs(v.x) > 1.2 || Math.abs(v.y) > 1.2) return;
-  flyResFrom((v.x * 0.5 + 0.5) * VP.W, (-v.y * 0.5 + 0.5) * VP.H, res, n);
+  const v = _flyV.copy(pos).project(camera); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) return false;
+  flyResFrom((v.x * 0.5 + 0.5) * VP.W, (-v.y * 0.5 + 0.5) * VP.H, res, n); return true;
 }
 // resource icons fly from a screen point (x0, y0) to their counter in the resource bar
 function flyResFrom(x0, y0, res, n, cntMax = 4) {
@@ -3056,7 +3056,7 @@ let resQuietUntil = 0;
 // its icons fly up into the resource counters), then whatever else the morning brings (invasion warnings, week card)
 let dawnUntil = 0;
 const afterDawn = (fn) => { const w = dawnUntil - performance.now(); if (w > 30) setTimeout(fn, w); else fn(); };
-function showIncome(inc) {
+function showIncome(inc, srcs = []) {
   const items = ['gold', 'wood', 'ore', 'gems'].filter((k) => inc[k] > 0);
   if (!items.length) return;
   const t0 = reduceMo.matches ? 0 : 1300, tFly = t0 + 900;
@@ -3067,7 +3067,16 @@ function showIncome(inc) {
     const f = floatText(null, '', 'gold income');
     f.el.innerHTML = items.map((k) => `<span data-r="${k}">+${fmt(inc[k])}${icon(k, 26)}</span>`).join('');
     setTimeout(() => {
-      for (const k of items) { const sp = f.el.querySelector(`[data-r="${k}"] .ic, [data-r="${k}"] img, [data-r="${k}"] svg`); const r = sp ? gRect(sp) : null;
+      // like picking treasure up: every source in view (towns, mines) bursts and throws its resource to the counter
+      const flown = new Set(); let i = 0;
+      for (const sc of srcs) {
+        if (!seen[sc.v] || i >= 8) continue;
+        const at = posOf(sc.v, 0.6);
+        if (!flyRes(at, sc.res, sc.n)) continue;
+        flown.add(sc.res); fx.burst(sc.res === 'gems' ? 'gem' : 'coin', at);
+        if (i++ < 3) setTimeout(() => sfx.pickup({ kind: sc.res }), i * 110);
+      }
+      for (const k of items) { if (flown.has(k)) continue; const sp = f.el.querySelector(`[data-r="${k}"] .ic, [data-r="${k}"] img, [data-r="${k}"] svg`); const r = sp ? gRect(sp) : null;
         flyResFrom(r && r.width ? r.left + r.width / 2 : VP.W / 2, r && r.width ? r.top + r.height / 2 : VP.H * 0.4, k, inc[k]); }
     }, tFly - t0);
   }, t0);
@@ -3263,7 +3272,11 @@ function newDay() {
     for (const hr of G.heroes) if (hr.alive && hr.p === Pl.i) gold += 250 * (hr.skills.estates || 0);
     if (Pl.ai) gold = Math.round(gold * byDiff([1, 1, 1, 1.5])); // Impossible: the computer lords collect half again
     Pl.res.gold += gold; for (const k of Object.keys(res)) Pl.res[k] += res[k];
-    if (Pl.i === 0 && G.day > 1) showIncome({ gold, ...res });
+    if (Pl.i === 0 && G.day > 1) {
+      const srcs = G.towns.filter((t) => t.p === 0).map((t) => ({ v: t.v, res: 'gold', n: townIncome(t) }));
+      for (const o of G.objects) if (o.alive && o.owner === 0 && OBJECTS[o.type]?.res) srcs.push({ v: o.v, res: OBJECTS[o.type].res, n: OBJECTS[o.type].amount });
+      showIncome({ gold, ...res }, srcs);
+    }
   }
   for (const hr of G.heroes) if (hr.alive) { hr.mp = moveMax(hr); hr.mana = Math.min(maxMana(hr), hr.mana + 1 + Math.floor(statOf(hr, 'know') / 3)); }
   for (const t of G.towns) { t.builtToday = false; t.builds = 0; }
