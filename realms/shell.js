@@ -66,7 +66,8 @@ function sync() {
   if (fsBtn) {
     const on = fsActive();
     fsBtn.hidden = !fsAvailable() && !on;
-    fsBtn.innerHTML = `${on ? ICON.fsOff() : ICON.fsOn()}<span>${on ? 'Exit full' : 'Fullscreen'}</span>`;
+    fsBtn.innerHTML = on ? ICON.fsOff() : ICON.fsOn();
+    fsBtn.setAttribute('aria-label', on ? 'Exit fullscreen' : 'Fullscreen'); fsBtn.title = on ? 'Exit fullscreen' : 'Fullscreen';
     fsBtn.setAttribute('aria-pressed', String(on));
   }
   if (instBtn) instBtn.hidden = !deferred || standalone();

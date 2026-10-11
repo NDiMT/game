@@ -1336,7 +1336,6 @@ html.vp-rot .pbody, html.vp-rot .card-scroll, html.vp-rot .factions, html.vp-rot
 /* title screen: sound + fullscreen + install chips */
 .mchips { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 #m-fs { width: 44px; padding: 0; justify-content: center; flex: none; }
-#m-fs span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 #m-fs[aria-pressed="true"] { border-color: #e9b84e; }
 .chipbtn.gold { --ol: #6a3408; color: #3a2206; background: var(--gold-grad); border-color: #4a2606; }
 .chipbtn[hidden] { display: none; }
@@ -1368,3 +1367,5 @@ html.vp-rot .pbody, html.vp-rot .card-scroll, html.vp-rot .factions, html.vp-rot
 .cr-card .cr-set { flex-wrap: wrap; justify-content: center; text-align: center; line-height: 1.1; }
 /* paper doll: artifact names wrap to two lines instead of an ellipsis */
 .cr-slot2 small { white-space: normal; text-overflow: clip; text-align: center; line-height: 1.12; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: break-word; }
+/* Free Play setup on the narrowest landscape phones: "Impossible" fits its segment */
+@media (orientation: landscape) and (max-width: 820px) and (max-height: 560px) { .fs-set .seg button { font-size: 11px; letter-spacing: -0.01em; } }
