@@ -35,8 +35,8 @@ import { fsAvailable, fsActive, toggleFullscreen } from './shell.js?v=2.1';
 import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.1';
 
 // =====================================================================
-// ORBIS · Five Crowns: a pocket strategy game on a tiny hex planet.
-// Five crowns, one tiny world. Lead your heroes across the world, flag
+// ORBIS · Five Crowns: a 3D fantasy strategy game on a hex map.
+// Lead your heroes across the world, flag
 // mines, gather treasure, build your town and recruit its creatures, and
 // defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
