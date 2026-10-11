@@ -1377,3 +1377,11 @@ html.vp-rot .pbody, html.vp-rot .card-scroll, html.vp-rot .factions, html.vp-rot
 @media (orientation: landscape) and (max-height: 560px) {
   .card-scroll > .dbtns { position: sticky; bottom: 0; z-index: 2; margin-top: 6px; padding: 10px 0 4px; background: linear-gradient(180deg, rgba(21, 29, 74, 0), #151d4a 12px); }
 }
+
+/* lead: the longer CROWNFORGE wordmark scales with the viewport so the mode panel keeps its width on small landscape phones */
+.wordmark { font-size: clamp(30px, min(6.4vw, 11vh), 66px); letter-spacing: 0.1em; padding-left: 0.1em; white-space: nowrap; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .wordmark { font-size: clamp(28px, 5.2vw, 52px); }
+  .mbtns { flex: none; width: min(320px, 42vw); min-width: 280px; }
+  .mbtns .mode small { font-size: 12px; line-height: 1.25; }
+}
