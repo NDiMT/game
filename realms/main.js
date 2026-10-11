@@ -3046,6 +3046,16 @@ function recruitDialog(title, id, stock, onBuy) {
 }
 // floating numbers over the world (or the battlefield)
 const floaters = [], _flV = new THREE.Vector3();
+// the morning income: a card in the middle of the screen with each resource's icon and amount (not a small +N)
+let resQuietUntil = 0;
+function showIncome(inc) {
+  const items = ['gold', 'wood', 'ore', 'gems'].filter((k) => inc[k] > 0);
+  if (!items.length) return;
+  resQuietUntil = performance.now() + 2500;
+  const el = document.createElement('div'); el.className = 'income-pop';
+  el.innerHTML = `<small>Daily income</small><div>${items.map((k) => `<span>${icon(k, 40)}<b>+${fmt(inc[k])}</b></span>`).join('')}</div>`;
+  setTimeout(() => { document.body.appendChild(el); sfx.coin?.(); setTimeout(() => el.remove(), 2600); }, 700);
+}
 function floatText(pos, text, cls = '', cm = null) {
   const el = document.createElement('div'); el.className = `floater ${cls}`; el.textContent = text; $('floaters').appendChild(el);
   // texts spawned close together (damage, "Retaliation", kills) stack upward instead of landing on each other
@@ -3083,6 +3093,7 @@ function updateRes() {
     if (reduceMo.matches) { T.on = false; el.textContent = fmt(r[k]); }
     const pop = () => {
       const s = el.parentElement; replay(s, d > 0 ? 'up' : 'down'); s.classList.remove(d > 0 ? 'down' : 'up');
+      if (performance.now() < resQuietUntil) return; // the morning income has its own card in the centre
       const f = document.createElement('i'); f.className = `rdelta ${d > 0 ? 'up' : 'down'}`; f.textContent = `${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}`;
       s.appendChild(f); setTimeout(() => f.remove(), 1500);
     };
@@ -3233,7 +3244,7 @@ function newDay() {
     for (const hr of G.heroes) if (hr.alive && hr.p === Pl.i) gold += 250 * (hr.skills.estates || 0);
     if (Pl.ai) gold = Math.round(gold * byDiff([1, 1, 1, 1.5])); // Impossible: the computer lords collect half again
     Pl.res.gold += gold; for (const k of Object.keys(res)) Pl.res[k] += res[k];
-    if (Pl.i === 0 && G.day > 1) floatText(null, `+${fmt(gold)} 🪙${res.wood ? ` +${res.wood} 🪵` : ''}${res.ore ? ` +${res.ore} 🪨` : ''}${res.gems ? ` +${res.gems} 💎` : ''}`, 'gold');
+    if (Pl.i === 0 && G.day > 1) showIncome({ gold, ...res });
   }
   for (const hr of G.heroes) if (hr.alive) { hr.mp = moveMax(hr); hr.mana = Math.min(maxMana(hr), hr.mana + 1 + Math.floor(statOf(hr, 'know') / 3)); }
   for (const t of G.towns) { t.builtToday = false; t.builds = 0; }
