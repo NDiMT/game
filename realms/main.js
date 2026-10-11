@@ -128,11 +128,11 @@ function crownWalls(o) {
   const rival = G.towns.find((t) => t.p > 0 && t.capOf != null)?.v ?? -1;
   const res = crownRegions(worldCtx(), { from: o.from, bands: o.bands, per: o.per || 2, rival, protect: (v) => towns.has(v) || heroes.has(v) });
   regionOf.fill(0); regionOf.set(res.regionOf);
-  const drop = (ob) => { removeObject(ob); for (const g of G.objects) if (g.alive && g.guards === ob.v && g.type === 'monster') removeObject(g); };
+  let dropped = 0; const drop = (ob) => { dropped++; removeObject(ob); for (const g of G.objects) if (g.alive && g.guards === ob.v && g.type === 'monster') removeObject(g); };
   for (const ob of G.objects) if (ob.alive && ob.type !== 'town' && !passable(ob.v)) drop(ob);
   for (const g of res.gates) for (const x of [g.v, ...NBR[g.v]]) { const ob = objAt[x] >= 0 ? G.objects[objAt[x]] : null; if (ob?.alive && ob.type !== 'town') drop(ob); }
   relayRoads();
-  markRegions.last = res; worldDirty = true;
+  markRegions.last = res; res.dropped = dropped; worldDirty = true;
   return res.gates;
 }
 
