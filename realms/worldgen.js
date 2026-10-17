@@ -48,6 +48,56 @@ function flood(N, NBR, sources, ok, d = new Int32Array(N).fill(-1)) {
   return d;
 }
 
+// ------------------------------------------------------------------ corridors (terrain r4)
+// chokeAt: v is a local chokepoint when the open cells around it form two or more separate runs (walking through v
+// is the only short way between them): nothing that stands still (an object, a guard) should stand there.
+export function chokeAt(W, v, open) {
+  const NB6 = W.grid.NB6; let runs = 0, any = 0;
+  for (let k = 0; k < 6; k++) {
+    const a = NB6[v * 6 + k], b = NB6[v * 6 + (k + 5) % 6], oa = a >= 0 && open(a), ob = b >= 0 && open(b);
+    if (oa) any++; if (oa && !ob) runs++;
+  }
+  return any < 6 && runs >= 2;
+}
+// widenRoads: every road step x -> y gets a second lane. The two cells beside the step (the common neighbours of x
+// and y) must not both be rock / forest: the better of the two (forest before rock, never water, never the map's rim,
+// never a cell `keep` protects) is cleared to x's ground at x's height. Returns the cells cleared.
+export function widenRoads(W, keep = () => false) {
+  const { grid, ter, h, road, T } = W, NB6 = grid.NB6, N = grid.N, pass = W.passable, out = [];
+  const plain = (t) => (t === T.GRASS || t === T.DIRT || t === T.SAND || t === T.SNOW || t === T.ROUGH || t === T.SWAMP || t === T.LAVA ? t : T.GRASS);
+  const clearable = (c) => c >= 0 && (ter[c] === T.FOREST || ter[c] === T.MOUNT) && grid.edge(c) < 0.9 && !keep(c);
+  for (let x = 0; x < N; x++) {
+    if (!road[x] || !pass(x)) continue;
+    for (let k = 0; k < 6; k++) {
+      const y = NB6[x * 6 + k]; if (y < 0 || !road[y] || !pass(y)) continue;
+      const a = NB6[x * 6 + (k + 1) % 6], b = NB6[x * 6 + (k + 5) % 6];
+      if ((a >= 0 && pass(a)) || (b >= 0 && pass(b))) continue;
+      const cs = [a, b].filter(clearable).sort((p, q) => (ter[p] === T.FOREST ? 0 : 1) - (ter[q] === T.FOREST ? 0 : 1) || grid.edge(p) - grid.edge(q));
+      if (!cs.length) continue;
+      const c = cs[0]; ter[c] = plain(ter[x]); h[c] = h[x]; out.push(c);
+    }
+  }
+  return out;
+}
+// fillPockets: walkable land nobody can walk to (cut off from the starts by rock, forest, water or a standing object)
+// and holding nothing (`held`: an object or a hero stands there) becomes scenery: forest, or rock on sand / lava.
+// walk(v): the cells the flood may cross (objects that can be fought or taken count as crossable or not, as the
+// caller decides). Returns the number of cells filled.
+export function fillPockets(W, starts, walk, held) {
+  const { grid, NBR, ter, h, T, SEA } = W, N = grid.N, pass = W.passable;
+  const s0 = []; for (const v of starts) { s0.push(v); for (const n of NBR[v]) if (walk(n)) s0.push(n); }
+  const d = flood(N, NBR, s0, walk), comp = new Uint8Array(N); let filled = 0;
+  const reached = (v) => d[v] >= 0 || (held(v) && NBR[v].some((n) => d[n] >= 0));
+  for (let v = 0; v < N; v++) {
+    if (comp[v] || !pass(v) || reached(v)) continue;
+    const q = [v]; comp[v] = 1; let busy = false;
+    for (let i = 0; i < q.length; i++) { const x = q[i]; if (held(x)) busy = true; for (const n of NBR[x]) if (!comp[n] && pass(n) && !reached(n)) { comp[n] = 1; q.push(n); } }
+    if (busy) continue;
+    for (const x of q) { if (ter[x] === T.SAND || ter[x] === T.LAVA) { ter[x] = T.MOUNT; h[x] = Math.max(h[x], SEA + 4); } else ter[x] = T.FOREST; filled++; }
+  }
+  return filled;
+}
+
 // Crown Run regions.
 //  1. band[v] = which of `bands` the walking distance from `from` falls in (bands.length + 1 bands; the last one is
 //     the rival crown's homeland).
@@ -203,6 +253,51 @@ export function validateWorld(W, o = {}) {
     if (!ob.alive || road[ob.v] || roadOk(ob)) continue;
     const r = o.objR(ob), g = roadGap(W, ob.v, grid.X[ob.v], grid.Z[ob.v], true);
     if (g < r) err('road-object-overlap', ob.v, `${ob.type} covers the road by ${(r - g).toFixed(3)}`);
+  }
+  // 1b. (terrain r4) the walk itself, from the start cells with every gate open (a Border Guard is fought, never
+  // walked around): monsters can be fought and Border Guards opened, every other object stands in the way.
+  //  - every object, every hero and every town is on (or beside) that walk
+  //  - towns and enemy heroes stay reachable even with every monster left standing as a wall (a single wandering
+  //    monster or guard never seals the way to a town or a crown)
+  //  - a walkable pocket cut off from the start (by rock, forest, water or a standing object) must be empty
+  if (o.starts?.length) {
+    const fightable = (ob) => ob.type === 'monster' || /^border\d/.test(ob.type);
+    const walkFight = (x) => pass(x) && (!alive(x) || fightable(alive(x)));
+    const walkWall = (x) => pass(x) && (!alive(x) || /^border\d/.test(alive(x).type));
+    const from = (ok) => { const s = []; for (const v of o.starts) { s.push(v); for (const n of NBR[v]) if (ok(n)) s.push(n); } return flood(N, NBR, s, ok); };
+    const dF = from(walkFight), dW = from(walkWall), dP = from(pass);
+    const near = (d, v) => d[v] >= 0 || NBR[v].some((n) => d[n] >= 0);
+    for (const ob of objects) {
+      if (!ob.alive) continue;
+      if (!near(dF, ob.v)) err('walk-unreachable', ob.v, `${ob.type} cannot be walked to from the start`);
+      else if (ob.type === 'town' && !near(dW, ob.v)) err('town-sealed', ob.v, 'town sealed off by a monster');
+    }
+    for (const hr of o.heroes || []) {
+      if (!near(dF, hr.v)) err('hero-unreachable', hr.v, `hero of player ${hr.p} cannot be reached`);
+      else if (hr.p !== 0 && !near(dW, hr.v)) err('hero-sealed', hr.v, `hero of player ${hr.p} sealed off by a monster`);
+    }
+    for (const t of o.towns || []) if (!near(dF, t.v)) err('town-unreachable', t.v, `town of player ${t.p} cannot be reached`);
+    // cut-off pockets of walkable land (by terrain, or behind a standing object): empty ones are tolerated (counted)
+    const comp = new Int32Array(N).fill(-1); stats.pockets = 0; stats.pocketCells = 0;
+    const heroAt = new Set((o.heroes || []).map((x) => x.v));
+    for (let v = 0; v < N; v++) {
+      if (comp[v] >= 0 || !pass(v) || dF[v] >= 0 || (alive(v) && near(dF, v))) continue;
+      const q = [v]; comp[v] = v; let held = -1;
+      for (let i = 0; i < q.length; i++) {
+        const x = q[i]; if (alive(x) || heroAt.has(x)) held = x;
+        for (const n of NBR[x]) if (comp[n] < 0 && pass(n) && dF[n] < 0 && !(alive(n) && near(dF, n))) { comp[n] = v; q.push(n); }
+      }
+      if (held >= 0) err('pocket-held', held, `a cut-off pocket of ${q.length} walkable cell(s) holds ${alive(held)?.type || 'a hero'}`);
+      else { stats.pockets++; stats.pocketCells += q.length; }
+    }
+    stats.cutOff = 0; for (let v = 0; v < N; v++) if (pass(v) && dP[v] < 0) stats.cutOff++;
+  }
+  // 2b. (terrain r4) roads connect every town: one road network (towns stand at road ends)
+  const towns = o.towns || [];
+  if (towns.length > 1) {
+    const onRoad = (x) => road[x] && pass(x);
+    const d = flood(N, NBR, [towns[0].v], onRoad);
+    for (const t of towns.slice(1)) if (d[t.v] < 0) err('road-town', t.v, `town of player ${t.p} not on the road network of the first town`);
   }
   // 3. capitals connected (Free Play: on foot through walkable land; towns and objects can be passed)
   const caps = o.caps || [];

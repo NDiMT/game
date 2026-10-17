@@ -106,26 +106,88 @@ const alive0 = (B) => BT.alive(B, 0).reduce((a, s) => a + s.count, 0);
   const inv = [1, 2, 3, 4].map((w) => C.invasionArmy(r, w)); ok(inv.every((x, i) => i === 0 || x.power > inv[i - 1].power), `invasions escalate ${inv.map((x) => x.power).join(' < ')}`);
   ok(C.invasionDue(r, 4).warn && !C.invasionDue(r, 5).warn && C.invasionDue(r, 4).arrive === 7, 'invasion warned on day 4, at the walls on day 7');
   ok(C.takeKey(r) === 'guarded', "the Keymaster's Tent is guarded until its Legendary Hero falls");
-  r.stats.guardians.push('wall'); ok(C.takeKey(r) === 'key' && r.region === 2, 'the key opens region 2');
-  r.stats.guardians.push('plague'); C.takeKey(r); r.stats.guardians.push('lich_queen'); ok(C.takeKey(r) === 'crown' && r.won && r.over, 'the last tent holds the Crown: the run is won');
+  r.stats.guardians.push(r.guardians[0]); ok(C.takeKey(r) === 'key' && r.region === 2, 'the key opens region 2');
+  r.stats.guardians.push(r.guardians[1]); C.takeKey(r); r.stats.guardians.push(r.guardians[2]); ok(C.takeKey(r) === 'crown' && r.won && r.over, 'the last tent holds the Crown: the run is won');
 }
 
 // ---- 10. sites with choices, merchants, save/load, meta
 {
   const r = run0(), meta = C.metaDefault(), ctx = { known: ['bless'], skills: { leadership: 1 } };
   const pc = C.pandoraChoices(r, 12, meta, ctx); ok(pc.length === 3 && JSON.stringify(pc) === JSON.stringify(C.pandoraChoices(C.runLoad(C.runSave(r)), 12, meta, ctx)), `Pandora's Box: ${pc.map((c) => c.kind + ':' + (c.id || c.n)).join(', ')} (seeded)`);
-  ok(C.chestChoices(r, 3, meta).map((c) => c.kind).join() === 'gold,xp,artifact', 'Treasure Chest: gold, experience or an artifact');
+  const chests = Array.from({ length: 200 }, (_, i) => C.chestChoices(r, i, meta)), artChests = chests.filter((ch) => ch.some((c) => c.kind === 'artifact')).length;
+  ok(chests.every((ch) => ch.length === 3 && ch[0].kind === 'gold' && ch[1].kind === 'xp') && artChests > 40 && artChests < 100, `Treasure Chest: gold, experience, and a trinket only sometimes (${artChests}/200)`);
   ok(C.witchChoices(r, 5, ctx).length === 3 && C.shrineChoices(r, 5, ctx).every((c) => c.id !== 'bless'), 'Witch Hut 3 skills, Shrine 3 unknown spells');
-  const st = C.merchantStock(r, 9, 3, meta), st2 = C.merchantStock(r, 9, 9, meta); ok(st.length === 4 && st.every((x) => x.price > 0) && JSON.stringify(st) !== JSON.stringify(st2), `Artifact Merchant stock rotates weekly (${st.map((x) => x.id + ' ' + x.price).join(', ')})`);
+  const st = C.merchantStock(r, 9, 3, meta), st2 = C.merchantStock(r, 9, 9, meta); ok(st.length === 3 && st.every((x) => x.price > 0) && JSON.stringify(st) !== JSON.stringify(st2), `Artifact Merchant stock rotates weekly (${st.map((x) => x.id + ' ' + x.price).join(', ')})`);
   ok(C.merchantStock(r, 9, 3, meta, true).every((x) => ['major', 'relic'].includes(C.ARTIFACTS[x.id].rarity)), 'Black Market: Major and Relic only');
-  const q = C.seerQuest(r, 4, meta); ok(q.need.gold && q.reward && C.ARTIFACTS[q.reward].rarity === 'major', `Seer's Hut: bring ${JSON.stringify(q.need)} for ${q.reward}`);
+  const q = C.seerQuest(r, 4, meta); ok(q.need.gold && q.reward && C.ARTIFACTS[q.reward].rarity === 'minor', `Seer's Hut (region 1): bring ${JSON.stringify(q.need)} for ${q.reward}`);
+  const r2 = run0(); r2.region = 2; ok(C.ARTIFACTS[C.seerQuest(r2, 4, meta).reward].rarity === 'major', "Seer's Hut deeper in: a Major artifact");
   C.addArtifact(r, 'endless_purse'); ok(C.dailyIncome(r).gold === 500, 'Endless Purse: +500 gold a day');
-  const w = run0(); w.stats.guardians = ['wall', 'plague', 'lich_queen']; w.won = true; w.over = true; w.stats.invasions = [1, 2]; w.invasionsBeaten = 2; w.stats.setsDone = ['warlord'];
+  const w = run0(); w.stats.guardians = [...w.guardians]; w.won = true; w.over = true; w.stats.invasions = [1, 2]; w.invasionsBeaten = 2; w.stats.setsDone = ['warlord'];
   const m2 = C.metaDefault(), E = C.endRun(w, m2, { armyPower: 20000, gold: 12000 });
-  ok(m2.unlocks.factions.includes('necro') && m2.unlocks.factions.includes('dungeon') && E.score > 0 && m2.glory === E.glory, `end of run: score ${E.score}, glory ${E.glory}, unlocks ${E.unlocks.map((u) => u.name).join(', ')}`);
+  ok(m2.unlocks.factions.length === 1 && E.unlocks.length <= 2 && E.score > 0 && m2.glory === E.glory && m2.life.glory === E.glory, `a first run, even won, unlocks little: score ${E.score}, glory ${E.glory}, unlocks [${E.unlocks.map((u) => u.name).join(', ')}]`);
   const store = { m: {}, get(k, d) { return k in this.m ? JSON.parse(this.m[k]) : d; }, set(k, v) { this.m[k] = JSON.stringify(v); } };
-  C.metaSave(store, m2); ok(C.metaLoad(store).unlocks.factions.includes('necro') && Object.keys(store.m)[0] === 'realms.crown.meta', 'meta save in its own key');
+  C.metaSave(store, m2); const back = C.metaLoad(store); ok(back.v === 3 && back.life.wins === 1 && back.unlocks.backgrounds.join() === m2.unlocks.backgrounds.join() && Object.keys(store.m)[0] === 'realms.crown.meta', 'meta save (v3) in its own key');
   const ex = run0({ background: 'exile' }); ok(C.equippedIds(ex).length === 1 && C.ARTIFACTS[C.equippedIds(ex)[0]].rarity === 'major', 'Exile starts with a Major artifact');
+}
+
+// ---- 11. v2.8 (crown2): the Legendary Hero pool, drawn per run
+{
+  const G = Object.values(C.GUARDIANS), by = (f) => G.filter(f).length;
+  ok(G.length >= 20 && by((g) => g.mythic) >= 3 && new Set(G.map((g) => g.fac)).size === 6, `${G.length} Legendary Heroes, ${by((g) => g.mythic)} mythic, factions ${[...new Set(G.map((g) => g.fac))].join('/')}`);
+  ok(G.every((g) => g.rule && g.look && g.units?.length >= 3 && g.units.every((u) => UNITS[u]) && typeof g.mod(0) === 'object'), 'every hero: a rule, a look, a themed army of real units');
+  const runs = Array.from({ length: 60 }, (_, i) => C.newRun({ seed: 100 + i }));
+  ok(runs.every((r) => new Set(r.guardians).size === r.regions && r.guardians.every((g, i) => !C.GUARDIANS[g].mythic && C.GUARDIANS[g].tier === i + 1)), 'Squire: one hero per region from its tier, no repeats, no mythics');
+  const first = new Set(runs.map((r) => r.guardians[0])), lines = new Set(runs.map((r) => r.guardians.join()));
+  ok(first.size >= 6 && lines.size >= 40, `runs differ: ${first.size} region-1 heroes, ${lines.size}/60 distinct line-ups`);
+  ok(JSON.stringify(C.newRun({ seed: 5 }).guardians) === JSON.stringify(C.newRun({ seed: 5 }).guardians), 'seeded: the same seed draws the same heroes');
+  const hi = Array.from({ length: 100 }, (_, i) => C.newRun({ seed: 300 + i, diff: 6 })), myth = hi.filter((r) => C.GUARDIANS[r.guardians[2]].mythic).length;
+  ok(myth > 35 && myth < 85 && hi.every((r) => !C.GUARDIANS[r.guardians[0]].mythic && !C.GUARDIANS[r.guardians[1]].mythic), `Prince: a Mythic hero guards the last region in ${myth}/100 runs, never earlier`);
+  let bad = 0, worst = 0;
+  for (const r of runs.slice(0, 20)) for (let reg = 1; reg <= 3; reg++) { const a = C.guardianArmy(r, reg); worst = Math.max(worst, Math.abs(a.power / a.target - 1)); if (!a.army.length || a.army.some(([u, k]) => !UNITS[u] || !(k > 0))) bad++; }
+  ok(!bad && worst < 0.6, `themed armies are valid and on target (worst ±${Math.round(worst * 100)}%)`);
+  let crash = 0;
+  for (const g of G) try { const r = run0(); fight([['pikeman', 40], ['archer', 15], ['griffin', 6], ['swordsman', 5]], C.guardianArmy({ ...r, guardians: [g.id, g.id, g.id] }, 2).army, C.battleMods(r, { guardian: g.id }), 3); } catch (e) { crash++; console.log('  rule crash', g.id, e.message); }
+  ok(!crash, 'every Legendary Hero rule plays out a full battle');
+}
+
+// ---- 12. v2.8: the artifact pool and sets
+{
+  const A = Object.values(C.ARTIFACTS), kinds = new Set(['head', 'neck', 'torso', 'weapon', 'shield', 'feet', 'ring', 'misc']);
+  ok(A.length >= 100 && A.every((a) => kinds.has(a.slot) && C.RARITY[a.rarity] && a.text), `${A.length} artifacts, every one with a slot, a rarity and a text`);
+  ok(Object.keys(C.SETS).length >= 8 && Object.values(C.SETS).every((S) => S.pieces.every((p) => C.ARTIFACTS[p]?.set === S.id)), `${Object.keys(C.SETS).length} sets, pieces point back at their set`);
+  ok(Object.values(C.SETS).every((S) => { const r = run0(); for (const p of S.pieces) if (C.addArtifact(r, p) === 'backpack') return false; return C.activeSets(r).some((x) => x.id === S.id); }), 'every set can be worn whole');
+  let crash = 0;
+  for (const a of A) try { const r = run0(); C.addArtifact(r, a.id); const B = fight([['pikeman', 30], ['archer', 12], ['griffin', 5]], [['orc', 18], ['wolf', 10], ['skeleton', 12]], C.battleMods(r, { gold: 9000, buildings: 6, fort: true }), 2, hero0(), hero0()); C.afterBattle(r, B, { won: B.over?.winner === 0 }); } catch (e) { crash++; console.log('  artifact crash', a.id, e.message); }
+  for (const S of Object.values(C.SETS)) try { const r = run0(); for (const p of S.pieces) C.addArtifact(r, p); fight([['pikeman', 30], ['archer', 12], ['griffin', 5]], [['orc', 18], ['wolf', 10]], C.battleMods(r, { gold: 9000 }), 2, hero0(), hero0()); } catch (e) { crash++; console.log('  set crash', S.id, e.message); }
+  ok(!crash, 'every artifact and every set bonus plays out a full battle');
+  const r1 = C.rarityFor(1), tot = Object.values(r1).reduce((a, b) => a + b, 0);
+  ok((r1.major + r1.relic) / tot < 0.09 && C.rarityFor(3).major > r1.major * 2, `region 1: Major+Relic ${Math.round((r1.major + r1.relic) / tot * 100)}% (region 3: ${Math.round((C.rarityFor(3).major + C.rarityFor(3).relic) / Object.values(C.rarityFor(3)).reduce((a, b) => a + b, 0) * 100)}%)`);
+  const r = run0(), meta = C.metaDefault(), boxes = Array.from({ length: 300 }, (_, i) => C.pandoraChoices(r, i, meta, { region: 1 }));
+  const artBox = boxes.filter((b) => b.some((c) => c.kind === 'artifact')).length, goldXp = boxes.flat().filter((c) => c.kind === 'gold' || c.kind === 'xp').length / boxes.flat().length;
+  ok(artBox < 120 && goldXp > 0.45, `Pandora's Box leans to gold/xp (${Math.round(goldXp * 100)}%), an artifact in ${artBox}/300`);
+  ok(C.buyPrice(r, 'judgement') === 6000 && C.buyPrice(r, 'judgement', true) === 9600 && C.sellPrice('judgement') === 3000, 'merchants: Major 6,000, Black Market ×1.6, buy back at half');
+  const sp = C.spoilsChoices(r, 1, meta); ok(sp.length === 3 && sp.filter((c) => c.kind === 'artifact').length === 2 && sp[2].kind === 'gold', 'spoils of war: 2 artifacts or the war chest');
+  const g = wearing(['coin_ring', 'golden_goose', 'gilded_ledger']); ok(C.dailyIncome(g).gold === 1500 && C.buyPrice(g, 'judgement') === 5100, 'Gilded Trappings: set income +1,000/day, ledger −15%');
+}
+
+// ---- 13. v2.8: meta pacing and the v2 migration
+{
+  const m = C.metaDefault();
+  ok(m.unlocks.factions.join() === 'haven' && m.unlocks.backgrounds.join() === 'knight' && m.unlocks.perks.join() === 'quartermaster', 'a fresh meta: Haven, the Knight-Errant, one perk');
+  const mm = C.metaDefault(); mm.glory = 1000; ok(!C.buyPerk(mm, 'haggler') && C.buyPerk(mm, 'quartermaster') && C.buyPerk(mm, 'quartermaster') && mm.glory === 1000 - 40 - 80, 'quartermaster: 40 then 80 Glory; haggler stays locked');
+  // a big won run on a rich meta still unlocks at most 2
+  const rich = C.metaDefault(); rich.life.glory = 5000; rich.life.guardians = 50; rich.life.invasions = 50; rich.life.wins = 5; rich.life.sets = 5; rich.life.maxGold = 60000; rich.life.bestRegion = 3; rich.life.bestGuardians = 3; rich.life.wallsHeld = 2; rich.life.facRuns.necro = 4;
+  const w = run0(); w.won = true; w.over = true; w.stats.guardians = [...w.guardians];
+  const E = C.endRun(w, rich, { armyPower: 20000, gold: 12000 });
+  const l = run0(); l.over = true; const E2 = C.endRun(l, rich, {});
+  ok(E.unlocks.length === 2 && E2.unlocks.length === 1, `cap: a win unlocks ${E.unlocks.length} (${E.unlocks.map((u) => u.name).join(', ')}), a loss ${E2.unlocks.length} (${E2.unlocks.map((u) => u.name).join(', ')})`);
+  // the v2 migration keeps everything
+  const v2 = { v: 2, glory: 35, runs: 2, wins: 1, best: { score: 7000, region: 3 }, unlocks: { factions: ['haven', 'necro', 'sylvan', 'dungeon'], backgrounds: ['knight', 'merchant', 'warlord', 'exile', 'scholar', 'gravecaller', 'siegelord'], diffs: { haven: 2 } }, collection: { artifacts: {}, seen: { clover: 1 }, guardians: { wall: 1, plague: 1, lich_queen: 1 }, units: {} }, trophies: ['first_blood', 'crowned', 'full_set'], perks: { haggler: 1 } };
+  const st = { m: { 'realms.crown.meta': JSON.stringify(v2) }, get(k, d) { return k in this.m ? JSON.parse(this.m[k]) : d; }, set(k, v) { this.m[k] = JSON.stringify(v); } };
+  const M = C.metaLoad(st);
+  ok(M.v === 3 && M.unlocks.factions.length === 4 && M.unlocks.backgrounds.length === 7 && M.unlocks.diffs.haven === 2 && M.perks.haggler === 1 && M.glory === 35, 'v2 meta migrates: every unlock, perk and the Glory kept');
+  ok(M.life.glory === 95 && M.life.guardians === 3 && M.life.wins === 1 && M.life.sets === 1 && M.life.wonAt.haven === 1 && C.perkUnlocked(M, 'drillmaster') && !C.perkUnlocked(M, 'tactician'), `v2 meta: lifetime counters rebuilt (Renown ${M.life.glory}), old perks stay on sale, new ones locked`);
+  const nx = C.unlockStatus(M); ok(nx.length && nx.every((u) => !(u.kind === 'faction' && M.unlocks.factions.includes(u.id))), `migrated: still locked ${nx.map((u) => u.name).join(', ')}`);
 }
 
 console.log(`\n${n - fails}/${n} passed`);

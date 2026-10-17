@@ -21,8 +21,10 @@ const rel = (p) => new URL(p + Q, import.meta.url).href;
 const FAC_MODULES = { haven: ['./haven_town.js', 'havenTownBuilding'], necro: ['./necro_town.js', 'necroTownBuilding'],
   sylvan: ['./sylvan_town.js', 'sylvanTownBuilding'], inferno: ['./inferno_town.js', 'infernoTownBuilding'], dungeon: ['./dungeon_town.js', 'dungeonTownBuilding'] };
 const FACS = Object.keys(FAC_MODULES);
-const [MATm, ...FACm] = await Promise.allSettled([import(rel('./materials.js')), ...FACS.map((f) => import(rel(FAC_MODULES[f][0])))]);
+const [MATm, TEXm, ...FACm] = await Promise.allSettled([import(rel('./materials.js')), import(rel('./town_tex.js')), ...FACS.map((f) => import(rel(FAC_MODULES[f][0])))]);
 const MAT = MATm.status === 'fulfilled' ? MATm.value : null;
+const TEX = TEXm.status === 'fulfilled' ? TEXm.value : null; // round 4: procedural surface textures (optional)
+if (!TEX) console.warn('town_view: town_tex.js unavailable, untextured', TEXm.reason);
 const MODEL_FN = {};
 FACS.forEach((f, i) => {
   const r = FACm[i];
@@ -31,22 +33,33 @@ FACS.forEach((f, i) => {
 });
 
 // ------------------------------------------------------------------ slots
-const S = (x, z, ry = 0, s = 1) => ({ x, z, ry, s });
-// one entry per slot; upgrades share their base's slot
+const S = (x, z, ry = 0, s = 1, y = 0) => ({ x, z, ry, s, y });
+// one entry per slot; upgrades share their base's slot.
+// Round 4 layout: three clear rows along streets with breathing room between the lots. The hall (the focal point),
+// the dwelling of the top tier and the mage guild stand on a raised stone terrace at the back (TERRACE_Y), the fort
+// wall frames everything behind it, two rows of lots line the cross streets in front, and the avenue runs up the middle.
+const TERRACE_Y = 0.45;
 const SLOT_POS = {
-  fort: S(0, -5.1),
-  hall: S(0, -2.6),
-  d7: S(-3.4, -2.8, 0.18),
-  mage: S(3.4, -2.6, -0.18),
-  d6: S(-4.5, 0.05, 0.25),
-  d5: S(-2.2, 0.15, 0.08),
-  d4: S(2.2, 0.15, -0.08),
-  tavern: S(4.5, 0.05, -0.25),
-  market: S(-3.35, 2.75, 0.2),
-  d1: S(-1.12, 2.8, 0.06),
-  d2: S(1.12, 2.8, -0.06),
-  d3: S(3.35, 2.75, -0.2),
+  fort: S(0, -7.5, 0, 1.36),
+  hall: S(0, -4.15, 0, 1.06, TERRACE_Y),
+  d7: S(-5.5, -3.95, 0.16, 1, TERRACE_Y),
+  mage: S(5.3, -3.95, -0.16, 1, TERRACE_Y),
+  d6: S(-7.5, 0.55, 0.22),
+  d5: S(-3.75, 0.5, 0.1),
+  d4: S(3.75, 0.5, -0.1),
+  tavern: S(7.4, 0.55, -0.22),
+  market: S(-6.8, 4.75, 0.16),
+  d1: S(-2.55, 4.85, 0.06),
+  d2: S(2.55, 4.85, -0.06),
+  d3: S(6.8, 4.75, -0.16),
 };
+// streets (x0, z0, x1, z1, width) in town units; the floor paints them, the scenery keeps off them
+const STREETS = [[0, 13, 0, -2.2, 1.7], [-9.2, 2.65, 9.2, 2.65, 1.25], [-9.2, -1.45, 9.2, -1.45, 1.1], [-9.6, 6.75, 9.6, 6.75, 1.15]];
+const PLAZA = [0, 0.55, 2.05];
+// the terrace platform [x0, x1, z0, z1] and its central stair
+const TERRACE = [-7.9, 7.9, -6.2, -2.25];
+// the town footprint: environment props never land inside it
+const inTown = (x, z) => Math.abs(x) < 10 && z > -9.6 && z < 7.7;
 export const BUILDING_IDS = ['village', 'hall2', 'hall3', 'fort', 'market', 'tavern', 'mage1', 'mage2', 'mage3',
   'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'];
 /** slot key for a building id: village/hall2/hall3 -> 'hall', mage1..3 -> 'mage', uN -> 'dN' */
@@ -68,8 +81,8 @@ for (let t = 1; t <= 7; t++) { const d = DIMS['d' + t]; DIMS['u' + t] = [d[0], d
 // glow multipliers per building (faction:id or id); 1 = the shared glow material
 const GLOW_SCALE = { 'haven:u7': 0.5, 'haven:d7': 0.7, 'haven:mage3': 0.8,
   'dungeon:mage3': 0.8, 'dungeon:u7': 0.8, 'dungeon:u3': 0.8, 'inferno:u3': 0.6, 'inferno:d3': 0.7 };
-const SLOT_MAXH = { fort: 2.5, hall: 3.5, mage: 4.2, market: 1.8, tavern: 2, d1: 2.2, d2: 2.6, d3: 2.9, d4: 2.8, d5: 3.1, d6: 3.2, d7: 4.5 };
-const SLOT_DIM = (k) => { const id = k === 'hall' ? 'hall3' : k === 'mage' ? 'mage3' : k; return DIMS[id]; };
+const SLOT_MAXH = { fort: 3.6, hall: 3.8, mage: 4.2, market: 1.8, tavern: 2, d1: 2.2, d2: 2.6, d3: 2.9, d4: 2.8, d5: 3.1, d6: 3.2, d7: 4.5 };
+const SLOT_DIM = (k) => { const id = k === 'hall' ? 'hall3' : k === 'mage' ? 'mage3' : k, d = DIMS[id], s = SLOT_POS[k]?.s ?? 1; return d && [d[0] * s, d[1] * s, d[2] * s]; };
 
 // which id stands in each slot for a given built list
 function resolveSlots(built) {
@@ -445,7 +458,7 @@ void main() { float r = length(gl_PointCoord - 0.5) * 2.0; float a = (1.0 - smoo
     return Math.sqrt(best);
   }
   // flat ground under the town, rolling hills around, river valley behind
-  function flatD(x, z) { const dz = z < -0.8 ? (z + 0.8) / 8.2 : (z + 0.8) / 15; return Math.hypot(x / 10.5, dz); }
+  function flatD(x, z) { const dz = z < -0.8 ? (z + 0.8) / 9.9 : (z + 0.8) / 15; return Math.hypot(x / 13.2, dz); } // round 4: wider town
   function groundH(x, z, fac) {
     const d = flatD(x, z), out = smooth(1.0, 1.7, d), r = Math.hypot(x, z + 4);
     let h = out * (Math.max(fbm(x * 0.05, z * 0.05, 3, 3) - 0.38, -0.1) * 7);

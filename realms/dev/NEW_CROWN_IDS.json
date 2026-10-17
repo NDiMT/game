@@ -1,0 +1,1797 @@
+{
+ "note": "Crown Run ids (agent crown2, v2.8). new=true: no painted art yet (icons.js ART table). icon = the SVG glyph fallback used until art exists. File names suggested: art_<id>, guard_<id>, set_<id>.",
+ "artifacts": [
+  {
+   "id": "centaur_axe",
+   "name": "Centaur Axe",
+   "slot": "weapon",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "+2 Attack.",
+   "icon": "axe",
+   "new": false
+  },
+  {
+   "id": "lion_shield",
+   "name": "Lion Shield",
+   "slot": "shield",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "+2 Defence.",
+   "icon": "defense",
+   "new": false
+  },
+  {
+   "id": "staff_embers",
+   "name": "Staff of Embers",
+   "slot": "weapon",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "+2 Power.",
+   "icon": "power",
+   "new": false
+  },
+  {
+   "id": "helm_command",
+   "name": "Helm of Command",
+   "slot": "head",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "+1 Attack, Defence and Power.",
+   "icon": "hero",
+   "new": false
+  },
+  {
+   "id": "shadow_cloak",
+   "name": "Cloak of Shadows",
+   "slot": "neck",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "+3 Defence.",
+   "icon": "cloak",
+   "new": false
+  },
+  {
+   "id": "judgement",
+   "name": "Sword of Judgement",
+   "slot": "weapon",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "+4 Attack.",
+   "icon": "attack",
+   "new": false
+  },
+  {
+   "id": "tempest_orb",
+   "name": "Orb of Tempest",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "+3 Power.",
+   "icon": "sorcery",
+   "new": false
+  },
+  {
+   "id": "clover",
+   "name": "Four-leaf Clover",
+   "slot": "misc",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "+1 Luck.",
+   "icon": "luck",
+   "new": false
+  },
+  {
+   "id": "valor_badge",
+   "name": "Badge of Valor",
+   "slot": "misc",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "+1 Morale.",
+   "icon": "morale",
+   "new": false
+  },
+  {
+   "id": "vitality_ring",
+   "name": "Ring of Vitality",
+   "slot": "ring",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Your creatures +1 hit point.",
+   "icon": "ring",
+   "new": false
+  },
+  {
+   "id": "speed_boots",
+   "name": "Boots of Speed",
+   "slot": "feet",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks +1 speed.",
+   "icon": "movement",
+   "new": false
+  },
+  {
+   "id": "pike_pauldron",
+   "name": "Pikeman's Pauldron",
+   "slot": "torso",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Your tier 1–2 stacks +4 Defence.",
+   "icon": "armorer",
+   "new": false
+  },
+  {
+   "id": "war_drum",
+   "name": "War Drum",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": "warlord",
+   "fac": null,
+   "desc": "+1 damage per creature on your melee strikes.",
+   "icon": "attack",
+   "new": false
+  },
+  {
+   "id": "vanguard_standard",
+   "name": "Vanguard Standard",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": "warlord",
+   "fac": null,
+   "desc": "The stack in your first army slot deals ×1.5 damage.",
+   "icon": "army",
+   "new": false
+  },
+  {
+   "id": "executioner_axe",
+   "name": "Executioner's Axe",
+   "slot": "weapon",
+   "rarity": "major",
+   "set": "warlord",
+   "fac": null,
+   "desc": "×2 damage against stacks below half their starting size.",
+   "icon": "axe",
+   "new": false
+  },
+  {
+   "id": "sentinel_helm",
+   "name": "Sentinel's Helm",
+   "slot": "head",
+   "rarity": "minor",
+   "set": "sentinel",
+   "fac": null,
+   "desc": "+1 Defence. Haven stacks +1 Attack.",
+   "icon": "hero",
+   "new": false
+  },
+  {
+   "id": "sentinel_plate",
+   "name": "Sentinel's Breastplate",
+   "slot": "torso",
+   "rarity": "major",
+   "set": "sentinel",
+   "fac": null,
+   "desc": "Your stacks take −15% damage.",
+   "icon": "armorer",
+   "new": false
+  },
+  {
+   "id": "sentinel_shield",
+   "name": "Sentinel's Tower Shield",
+   "slot": "shield",
+   "rarity": "minor",
+   "set": "sentinel",
+   "fac": null,
+   "desc": "Your first-slot stack takes −35% damage.",
+   "icon": "defense",
+   "new": false
+  },
+  {
+   "id": "plenty_quiver",
+   "name": "Quiver of Plenty",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": "sharpshooter",
+   "fac": null,
+   "desc": "Your shooters +4 shots and +2 damage per creature on shots.",
+   "icon": "shots",
+   "new": false
+  },
+  {
+   "id": "sharpshooter_bow",
+   "name": "Sharpshooter's Bow",
+   "slot": "weapon",
+   "rarity": "major",
+   "set": "sharpshooter",
+   "fac": null,
+   "desc": "Your shots deal ×1.5 damage.",
+   "icon": "archery",
+   "new": false
+  },
+  {
+   "id": "elven_bowstring",
+   "name": "Elven Bowstring",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": "sharpshooter",
+   "fac": null,
+   "desc": "Your shots deal ×2 to fliers.",
+   "icon": "arrow",
+   "new": false
+  },
+  {
+   "id": "griffin_cape",
+   "name": "Griffin-feather Cape",
+   "slot": "neck",
+   "rarity": "minor",
+   "set": "wings",
+   "fac": null,
+   "desc": "Your fliers +3 speed.",
+   "icon": "fly",
+   "new": false
+  },
+  {
+   "id": "feathered_boots",
+   "name": "Feathered Boots",
+   "slot": "feet",
+   "rarity": "minor",
+   "set": "wings",
+   "fac": null,
+   "desc": "Your fliers deal ×1.4 damage in round 1.",
+   "icon": "movement",
+   "new": false
+  },
+  {
+   "id": "talon_ring",
+   "name": "Talon Ring",
+   "slot": "ring",
+   "rarity": "treasure",
+   "set": "wings",
+   "fac": null,
+   "desc": "Your fliers +2 Attack.",
+   "icon": "ring",
+   "new": false
+  },
+  {
+   "id": "bone_cloak",
+   "name": "Bone Cloak",
+   "slot": "neck",
+   "rarity": "minor",
+   "set": "undead",
+   "fac": null,
+   "desc": "After each battle won, raise 10% of the slain living foes as skeletons.",
+   "icon": "necromancy",
+   "new": false
+  },
+  {
+   "id": "skull_helm",
+   "name": "Skull Helm",
+   "slot": "head",
+   "rarity": "minor",
+   "set": "undead",
+   "fac": null,
+   "desc": "Your undead +2 Attack and Defence.",
+   "icon": "defeat",
+   "new": false
+  },
+  {
+   "id": "vampire_ring",
+   "name": "Vampire's Ring",
+   "slot": "ring",
+   "rarity": "major",
+   "set": "undead",
+   "fac": null,
+   "desc": "Your undead heal their top creature every round.",
+   "icon": "ring",
+   "new": false
+  },
+  {
+   "id": "last_stand",
+   "name": "Heart of the Last Stand",
+   "slot": "neck",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "While you have one stack left, it deals ×3 damage.",
+   "icon": "hp",
+   "new": false
+  },
+  {
+   "id": "berserker_helm",
+   "name": "Berserker's Helm",
+   "slot": "head",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal ×1.6 damage but take ×1.3.",
+   "icon": "offense",
+   "new": false
+  },
+  {
+   "id": "riposte_bracer",
+   "name": "Riposte Bracer",
+   "slot": "misc",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Your retaliation strikes deal ×1.5.",
+   "icon": "defend",
+   "new": false
+  },
+  {
+   "id": "iron_oath",
+   "name": "Ring of the Iron Oath",
+   "slot": "ring",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks retaliate twice per round.",
+   "icon": "ring",
+   "new": false
+  },
+  {
+   "id": "trophy_necklace",
+   "name": "Necklace of Trophies",
+   "slot": "neck",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal +3% per enemy stack destroyed while you wear it.",
+   "icon": "victory",
+   "new": false
+  },
+  {
+   "id": "veteran_medal",
+   "name": "Veteran's Medal",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks +1 Attack and Defence per Legendary Hero defeated while you wear it.",
+   "icon": "experience",
+   "new": false
+  },
+  {
+   "id": "hourglass",
+   "name": "Hourglass of the Long Battle",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal ×(1 + 0.1 × round).",
+   "icon": "wait",
+   "new": false
+  },
+  {
+   "id": "sky_lances",
+   "name": "Bracers of the Sky Lances",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your shooters may shoot even with an enemy next to them.",
+   "icon": "arrow",
+   "new": false
+  },
+  {
+   "id": "crown_command",
+   "name": "Crown of Command",
+   "slot": "head",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal ×1.05 per artifact you wear.",
+   "icon": "victory",
+   "new": false
+  },
+  {
+   "id": "phylactery",
+   "name": "Phylactery",
+   "slot": "neck",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks cannot drop below 1 creature before round 3.",
+   "icon": "artifact",
+   "new": false
+  },
+  {
+   "id": "usurper_crown",
+   "name": "Usurper's Crown",
+   "slot": "head",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "A Legendary Hero's special rule also binds his own army.",
+   "icon": "victory",
+   "new": false
+  },
+  {
+   "id": "miser_ring",
+   "name": "Miser's Ring",
+   "slot": "ring",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal +1% per 1,000 gold in your treasury (max +40%).",
+   "icon": "ring",
+   "new": false
+  },
+  {
+   "id": "endless_purse",
+   "name": "Endless Purse of Gold",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "+500 gold every day.",
+   "icon": "gold",
+   "new": false
+  },
+  {
+   "id": "endless_sack",
+   "name": "Endless Cart of Ore",
+   "slot": "misc",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "+1 wood and +1 ore every day.",
+   "icon": "ore",
+   "new": false
+  },
+  {
+   "id": "mason_hammer",
+   "name": "Mason's Hammer",
+   "slot": "weapon",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Buildings cost 25% less gold.",
+   "icon": "build",
+   "new": false
+  },
+  {
+   "id": "builders_crown",
+   "name": "Builder's Circlet",
+   "slot": "head",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal +2% per building in your capital.",
+   "icon": "fort",
+   "new": false
+  },
+  {
+   "id": "fortress_shield",
+   "name": "Shield of the Fortress",
+   "slot": "shield",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "If your capital has a Fort, your stacks +3 Defence.",
+   "icon": "fort",
+   "new": false
+  },
+  {
+   "id": "sylvan_leaf",
+   "name": "Leaf of the World Tree",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": "sylvan",
+   "desc": "Sylvan stacks +2 Attack; Sylvan shooters +2 shots.",
+   "icon": "luck",
+   "new": false
+  },
+  {
+   "id": "inferno_brand",
+   "name": "Brand of the Pit",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": "inferno",
+   "desc": "Inferno stacks +2 speed and +2 Attack.",
+   "icon": "fireball",
+   "new": false
+  },
+  {
+   "id": "dungeon_eye",
+   "name": "Eye of the Deep",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": "dungeon",
+   "desc": "Dungeon stacks +2 Defence and ×1.25 on their first strike each round.",
+   "icon": "sorcery",
+   "new": false
+  },
+  {
+   "id": "haven_seal",
+   "name": "Seal of the Lightbringer",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": "haven",
+   "desc": "Haven stacks +2 Defence; Haven fliers heal fully every round.",
+   "icon": "bless",
+   "new": true
+  },
+  {
+   "id": "black_grimoire",
+   "name": "Black Grimoire",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": "necro",
+   "desc": "Necropolis stacks +1 speed and +2 Attack. After each battle won, raise 10% of the slain living foes.",
+   "icon": "necromancy",
+   "new": true
+  },
+  {
+   "id": "iron_cap",
+   "name": "Iron Cap",
+   "slot": "head",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "+1 Defence. Your tier 1 stacks +2 Defence.",
+   "icon": "helm",
+   "new": true
+  },
+  {
+   "id": "bronze_buckler",
+   "name": "Bronze Buckler",
+   "slot": "shield",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks take −10% damage from shots.",
+   "icon": "shield",
+   "new": true
+  },
+  {
+   "id": "traveler_boots",
+   "name": "Traveller's Boots",
+   "slot": "feet",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Your tier 1–3 stacks +1 speed.",
+   "icon": "boots",
+   "new": true
+  },
+  {
+   "id": "militia_horn",
+   "name": "Militia Horn",
+   "slot": "misc",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Your tier 1 stacks +2 Attack.",
+   "icon": "banner",
+   "new": true
+  },
+  {
+   "id": "leather_jerkin",
+   "name": "Leather Jerkin",
+   "slot": "torso",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Your tier 1–2 creatures +2 hit points.",
+   "icon": "armorer",
+   "new": true
+  },
+  {
+   "id": "hunting_knife",
+   "name": "Hunter's Knife",
+   "slot": "weapon",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "+1 Attack. Your stacks deal ×1.25 against neutral creatures.",
+   "icon": "blade",
+   "new": true
+  },
+  {
+   "id": "ward_amulet",
+   "name": "Ward Amulet",
+   "slot": "neck",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Enemy spells deal −35% damage to your stacks.",
+   "icon": "cloak",
+   "new": true
+  },
+  {
+   "id": "spyglass",
+   "name": "Scout's Spyglass",
+   "slot": "misc",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "Your shooters +2 shots.",
+   "icon": "scouting",
+   "new": true
+  },
+  {
+   "id": "woodcutter_charm",
+   "name": "Woodcutter's Charm",
+   "slot": "misc",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "+2 wood every day.",
+   "icon": "wood",
+   "new": true
+  },
+  {
+   "id": "copper_band",
+   "name": "Copper Band",
+   "slot": "ring",
+   "rarity": "treasure",
+   "set": null,
+   "fac": null,
+   "desc": "+1 Defence. +100 gold every day.",
+   "icon": "ring",
+   "new": true
+  },
+  {
+   "id": "spiked_shield",
+   "name": "Spiked Shield",
+   "slot": "shield",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your retaliation strikes +2 damage per creature.",
+   "icon": "shield",
+   "new": true
+  },
+  {
+   "id": "adept_circlet",
+   "name": "Circlet of the Adept",
+   "slot": "head",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "+2 Power. Your hero starts every battle with +5 mana.",
+   "icon": "helm",
+   "new": true
+  },
+  {
+   "id": "swift_ring",
+   "name": "Ring of Swiftness",
+   "slot": "ring",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks with speed 6 or more +1 speed and +1 Attack.",
+   "icon": "ring",
+   "new": true
+  },
+  {
+   "id": "phoenix_feather",
+   "name": "Phoenix Feather",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your fliers heal their top creature every round.",
+   "icon": "fly",
+   "new": true
+  },
+  {
+   "id": "bandit_mask",
+   "name": "Bandit's Mask",
+   "slot": "head",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Each battle won pays 150 gold per enemy stack destroyed.",
+   "icon": "gold",
+   "new": true
+  },
+  {
+   "id": "tower_shield",
+   "name": "Tower Shield",
+   "slot": "shield",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks take −25% damage from shots.",
+   "icon": "defense",
+   "new": true
+  },
+  {
+   "id": "charge_horn",
+   "name": "Horn of the Charge",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks with speed 7 or more deal ×1.25 damage.",
+   "icon": "movement",
+   "new": true
+  },
+  {
+   "id": "legion_mail",
+   "name": "Chainmail of the Legion",
+   "slot": "torso",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "+1 Defence. Your tier 1–3 stacks take −12% damage.",
+   "icon": "armorer",
+   "new": true
+  },
+  {
+   "id": "blood_ring",
+   "name": "Ring of Blood",
+   "slot": "ring",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your tier 1–2 stacks drain life: they heal from the damage they deal.",
+   "icon": "ring",
+   "new": true
+  },
+  {
+   "id": "sun_amulet",
+   "name": "Amulet of the Sun",
+   "slot": "neck",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal ×1.35 against undead.",
+   "icon": "bless",
+   "new": true
+  },
+  {
+   "id": "trollskin",
+   "name": "Trollskin Cloak",
+   "slot": "neck",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your largest stack regenerates: it heals fully every round.",
+   "icon": "cloak",
+   "new": true
+  },
+  {
+   "id": "parry_bracer",
+   "name": "Duellist's Bracer",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks take −30% damage from retaliation.",
+   "icon": "defend",
+   "new": true
+  },
+  {
+   "id": "eagle_lens",
+   "name": "Eagle-eye Lens",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Your shooters +2 Attack and fight in melee without penalty.",
+   "icon": "archery",
+   "new": true
+  },
+  {
+   "id": "battle_standard",
+   "name": "Battle Standard",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "+1 Attack and +1 Morale.",
+   "icon": "banner",
+   "new": true
+  },
+  {
+   "id": "merchant_scales",
+   "name": "Merchant's Scales",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "Merchants buy your artifacts at 75% of their worth instead of half.",
+   "icon": "market",
+   "new": true
+  },
+  {
+   "id": "prospector_ring",
+   "name": "Prospector's Ring",
+   "slot": "ring",
+   "rarity": "minor",
+   "set": null,
+   "fac": null,
+   "desc": "+1 ore and +1 gem every day.",
+   "icon": "gems",
+   "new": true
+  },
+  {
+   "id": "dragonscale",
+   "name": "Dragonscale Armour",
+   "slot": "torso",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks take −25% damage from tier 6–7 attackers.",
+   "icon": "armorer",
+   "new": true
+  },
+  {
+   "id": "giant_slayer",
+   "name": "Giant-slayer Blade",
+   "slot": "weapon",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal ×1.5 against tier 5–7 stacks.",
+   "icon": "sword",
+   "new": true
+  },
+  {
+   "id": "horde_banner",
+   "name": "Banner of the Horde",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your tier 1–2 stacks deal ×1.5, but your tier 5–7 stacks deal ×0.8.",
+   "icon": "army",
+   "new": true
+  },
+  {
+   "id": "thorn_crown",
+   "name": "Crown of Thorns",
+   "slot": "head",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "+5 Attack, but your stacks take ×1.2 damage.",
+   "icon": "crown",
+   "new": true
+  },
+  {
+   "id": "mirror_shield",
+   "name": "Mirror Shield",
+   "slot": "shield",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Enemy spells deal −50% damage to your stacks, and enemy shots −20%.",
+   "icon": "shield",
+   "new": true
+  },
+  {
+   "id": "second_wind",
+   "name": "Horn of the Second Wind",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "From round 3 on, your stacks deal ×1.35.",
+   "icon": "morale",
+   "new": true
+  },
+  {
+   "id": "vanguard_boots",
+   "name": "Boots of the Vanguard",
+   "slot": "feet",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks +2 speed, but −2 Defence.",
+   "icon": "boots",
+   "new": true
+  },
+  {
+   "id": "ruin_grimoire",
+   "name": "Grimoire of Ruin",
+   "slot": "misc",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your hero's spells deal ×1.5.",
+   "icon": "tome",
+   "new": true
+  },
+  {
+   "id": "storm_staff",
+   "name": "Staff of Storms",
+   "slot": "weapon",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "+3 Power. Your spells deal ×1.25.",
+   "icon": "staff",
+   "new": true
+  },
+  {
+   "id": "soul_amulet",
+   "name": "Soulbinder Amulet",
+   "slot": "neck",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "After each battle won, raise 15% of the slain living foes as skeletons.",
+   "icon": "necromancy",
+   "new": true
+  },
+  {
+   "id": "conquest_ring",
+   "name": "Ring of Conquest",
+   "slot": "ring",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal +2% per invasion repelled and +6% per Legendary Hero defeated this run.",
+   "icon": "ring",
+   "new": true
+  },
+  {
+   "id": "twin_axes",
+   "name": "Twin Axes of Gorr",
+   "slot": "weapon",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your tier 1–3 walkers strike twice, at ×0.65 damage per strike.",
+   "icon": "axe",
+   "new": true
+  },
+  {
+   "id": "bastion_aegis",
+   "name": "Aegis of the Bastion",
+   "slot": "shield",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "+2 Defence. Your stacks take −40% damage while they defend.",
+   "icon": "defense",
+   "new": true
+  },
+  {
+   "id": "bloodlust_ring",
+   "name": "Ring of Bloodlust",
+   "slot": "ring",
+   "rarity": "major",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks deal +4% per battle won while you wear it (max +40%).",
+   "icon": "ring",
+   "new": true
+  },
+  {
+   "id": "dawn_sword",
+   "name": "Sword of the Dawn",
+   "slot": "weapon",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "+6 Attack. Your stacks deal ×1.25 in rounds 1 and 2.",
+   "icon": "sword",
+   "new": true
+  },
+  {
+   "id": "damned_armour",
+   "name": "Armour of the Damned",
+   "slot": "torso",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "At the start of every round, every enemy stack loses 5% of its creatures.",
+   "icon": "skull",
+   "new": true
+  },
+  {
+   "id": "angel_wings",
+   "name": "Angel Feather Wings",
+   "slot": "neck",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "All your stacks fly; your fliers +2 speed.",
+   "icon": "fly",
+   "new": true
+  },
+  {
+   "id": "inhibition_orb",
+   "name": "Orb of Inhibition",
+   "slot": "misc",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "No hero can cast spells in your battles. Your stacks +2 Defence.",
+   "icon": "orb",
+   "new": true
+  },
+  {
+   "id": "life_ring",
+   "name": "Ring of Life Eternal",
+   "slot": "ring",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "Your stacks heal fully every round.",
+   "icon": "heart",
+   "new": true
+  },
+  {
+   "id": "cornucopia",
+   "name": "Cornucopia",
+   "slot": "misc",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "+1,000 gold, +2 wood, +2 ore and +1 gem every day.",
+   "icon": "treasure",
+   "new": true
+  },
+  {
+   "id": "heavens_helm",
+   "name": "Helm of Heavenly Light",
+   "slot": "head",
+   "rarity": "relic",
+   "set": null,
+   "fac": null,
+   "desc": "+4 Attack, Defence and Power; +1 Luck and Morale.",
+   "icon": "helm",
+   "new": true
+  },
+  {
+   "id": "archmage_hat",
+   "name": "Archmage's Hat",
+   "slot": "head",
+   "rarity": "minor",
+   "set": "archmage",
+   "fac": null,
+   "desc": "+2 Power. Your spells deal ×1.1.",
+   "icon": "magic",
+   "new": true
+  },
+  {
+   "id": "magi_robe",
+   "name": "Robe of the Magi",
+   "slot": "torso",
+   "rarity": "major",
+   "set": "archmage",
+   "fac": null,
+   "desc": "+1 Defence. Your spells deal ×1.3.",
+   "icon": "cloak",
+   "new": true
+  },
+  {
+   "id": "storm_wand",
+   "name": "Wand of Storms",
+   "slot": "weapon",
+   "rarity": "minor",
+   "set": "archmage",
+   "fac": null,
+   "desc": "+1 Power. Magic Arrow and Lightning Bolt deal ×1.5.",
+   "icon": "bolt",
+   "new": true
+  },
+  {
+   "id": "hellfire_blade",
+   "name": "Hellfire Blade",
+   "slot": "weapon",
+   "rarity": "major",
+   "set": "hellforged",
+   "fac": null,
+   "desc": "Your melee strikes deal ×1.2; ×1.5 against Haven and Sylvan stacks.",
+   "icon": "fireball",
+   "new": true
+  },
+  {
+   "id": "brimstone_plate",
+   "name": "Brimstone Plate",
+   "slot": "torso",
+   "rarity": "minor",
+   "set": "hellforged",
+   "fac": null,
+   "desc": "Your stacks take −15% damage in melee.",
+   "icon": "armorer",
+   "new": true
+  },
+  {
+   "id": "cinder_boots",
+   "name": "Cinder Boots",
+   "slot": "feet",
+   "rarity": "minor",
+   "set": "hellforged",
+   "fac": null,
+   "desc": "Your stacks +1 speed; Inferno stacks +2 instead.",
+   "icon": "boots",
+   "new": true
+  },
+  {
+   "id": "titan_helm",
+   "name": "Titan's Helm",
+   "slot": "head",
+   "rarity": "minor",
+   "set": "titan",
+   "fac": null,
+   "desc": "Your tier 5–7 stacks +3 Defence.",
+   "icon": "helm",
+   "new": true
+  },
+  {
+   "id": "titan_cuirass",
+   "name": "Titan's Cuirass",
+   "slot": "torso",
+   "rarity": "major",
+   "set": "titan",
+   "fac": null,
+   "desc": "Your tier 5–7 creatures +20% hit points.",
+   "icon": "armorer",
+   "new": true
+  },
+  {
+   "id": "titan_gauntlet",
+   "name": "Titan's Gauntlet",
+   "slot": "misc",
+   "rarity": "major",
+   "set": "titan",
+   "fac": null,
+   "desc": "Your tier 6–7 stacks +4 Attack.",
+   "icon": "attack",
+   "new": true
+  },
+  {
+   "id": "coin_ring",
+   "name": "Ring of the Golden Coin",
+   "slot": "ring",
+   "rarity": "treasure",
+   "set": "gilded",
+   "fac": null,
+   "desc": "+150 gold every day.",
+   "icon": "ring",
+   "new": true
+  },
+  {
+   "id": "golden_goose",
+   "name": "Golden Goose",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": "gilded",
+   "fac": null,
+   "desc": "+350 gold every day.",
+   "icon": "gold",
+   "new": true
+  },
+  {
+   "id": "gilded_ledger",
+   "name": "Gilded Ledger",
+   "slot": "misc",
+   "rarity": "minor",
+   "set": "gilded",
+   "fac": null,
+   "desc": "Merchants charge 15% less.",
+   "icon": "tome",
+   "new": true
+  },
+  {
+   "id": "shadow_hood",
+   "name": "Shadow Hood",
+   "slot": "head",
+   "rarity": "minor",
+   "set": "nightstalker",
+   "fac": null,
+   "desc": "Your stacks +1 speed.",
+   "icon": "cloak",
+   "new": true
+  },
+  {
+   "id": "venom_dagger",
+   "name": "Venom Dagger",
+   "slot": "weapon",
+   "rarity": "minor",
+   "set": "nightstalker",
+   "fac": null,
+   "desc": "Your melee strikes deal ×1.25 against stacks that have not acted yet this round.",
+   "icon": "blade",
+   "new": true
+  },
+  {
+   "id": "shadowstep_boots",
+   "name": "Shadowstep Boots",
+   "slot": "feet",
+   "rarity": "major",
+   "set": "nightstalker",
+   "fac": null,
+   "desc": "In round 1 your stacks deal ×1.3.",
+   "icon": "boots",
+   "new": true
+  }
+ ],
+ "bosses": [
+  {
+   "id": "wall",
+   "name": "Gorrak the Wall",
+   "title": "Ogre Warlord",
+   "faction": "neutral",
+   "tier": 1,
+   "mythic": false,
+   "rule": "Shieldwall: your shooters cannot shoot.",
+   "look": "a hulking grey-skinned ogre in riveted iron plate behind a tower shield as tall as a door",
+   "army": [
+    "goblin",
+    "orc",
+    "ogre",
+    "troll"
+   ],
+   "icon": "fort",
+   "new": false
+  },
+  {
+   "id": "silence",
+   "name": "Sorceress Ilvane",
+   "title": "Warlock of Dungeon",
+   "faction": "dungeon",
+   "tier": 1,
+   "mythic": false,
+   "rule": "Silence: your hero cannot cast spells.",
+   "look": "a pale dark-elf sorceress with a finger to her lips, violet runes sealing a floating spellbook",
+   "army": [
+    "troglodyte",
+    "harpy",
+    "beholder",
+    "medusa"
+   ],
+   "icon": "spellbook",
+   "new": false
+  },
+  {
+   "id": "gale",
+   "name": "Windcaller Aelis",
+   "title": "Druid of Sylvan",
+   "faction": "sylvan",
+   "tier": 1,
+   "mythic": false,
+   "rule": "Gale: your fliers are grounded.",
+   "look": "a young elven druid in green robes, hair whipped by a gale, staff wrapped in swirling leaves",
+   "army": [
+    "centaur",
+    "woodelf",
+    "pegasus",
+    "dendroid"
+   ],
+   "icon": "fly",
+   "new": false
+  },
+  {
+   "id": "goblin_king",
+   "name": "Skrag the Goblin King",
+   "title": "Lord of the Warrens",
+   "faction": "neutral",
+   "tier": 1,
+   "mythic": false,
+   "rule": "Swarm: his tier 1–2 stacks are half again as large.",
+   "look": "a scrawny grinning goblin on a throne of junk, oversized dented crown, a crowd of goblins behind",
+   "army": [
+    "goblin",
+    "wolf",
+    "orc"
+   ],
+   "icon": "crown",
+   "new": true
+  },
+  {
+   "id": "wolf_mother",
+   "name": "Fenra Wolfmother",
+   "title": "Huntress of the Wilds",
+   "faction": "neutral",
+   "tier": 1,
+   "mythic": false,
+   "rule": "Pack Hunt: her stacks deal ×1.3 to a stack already struck this round.",
+   "look": "a wild-haired huntress in a wolf-pelt hood, bone spear, a great grey wolf at her side",
+   "army": [
+    "goblin",
+    "wolf",
+    "centaur",
+    "woodelf"
+   ],
+   "icon": "movement",
+   "new": true
+  },
+  {
+   "id": "pikemaster",
+   "name": "Captain Odric Vale",
+   "title": "Pikemaster of Haven",
+   "faction": "haven",
+   "tier": 1,
+   "mythic": false,
+   "rule": "Phalanx: his stacks +4 Defence, and his first-slot stack takes −50% damage.",
+   "look": "a grizzled human captain in blue-and-silver plate, a long pike planted, a wall of shields behind",
+   "army": [
+    "pikeman",
+    "halberdier",
+    "archer",
+    "swordsman"
+   ],
+   "icon": "defense",
+   "new": true
+  },
+  {
+   "id": "bone_tide",
+   "name": "Mordecai Bonetide",
+   "title": "Gravelord of Necropolis",
+   "faction": "necro",
+   "tier": 1,
+   "mythic": false,
+   "rule": "Grave Chill: your stacks −1 speed and −1 Attack.",
+   "look": "a gaunt necromancer in tattered black robes, lantern of green soul-fire, skeleton hands rising from the ground",
+   "army": [
+    "skeleton",
+    "zombie",
+    "wight",
+    "skelwarrior"
+   ],
+   "icon": "skull",
+   "new": true
+  },
+  {
+   "id": "plague",
+   "name": "Malphas the Plaguebringer",
+   "title": "Pit Lord of Inferno",
+   "faction": "inferno",
+   "tier": 2,
+   "mythic": false,
+   "rule": "Plague: your first stack starts the battle with 30% fewer creatures.",
+   "look": "a horned pit lord wreathed in sickly green smoke, a rusted scythe, flies around him",
+   "army": [
+    "familiar",
+    "demon",
+    "horneddemon",
+    "efreet"
+   ],
+   "icon": "defeat",
+   "new": false
+  },
+  {
+   "id": "hunger",
+   "name": "Krug the Endless",
+   "title": "Troll Chieftain",
+   "faction": "neutral",
+   "tier": 2,
+   "mythic": false,
+   "rule": "Regeneration: his stacks heal fully every round.",
+   "look": "a towering green troll chieftain with a tree-trunk club, wounds visibly closing, tusks and war paint",
+   "army": [
+    "wolf",
+    "orc",
+    "ogre",
+    "troll"
+   ],
+   "icon": "hp",
+   "new": false
+  },
+  {
+   "id": "stampede",
+   "name": "Khazrak Hellrider",
+   "title": "Demon Knight",
+   "faction": "inferno",
+   "tier": 2,
+   "mythic": false,
+   "rule": "Stampede: his stacks +3 speed.",
+   "look": "a demon knight in black spiked armour astride a flaming nightmare steed, mid-charge",
+   "army": [
+    "hellhound",
+    "cerberus",
+    "nightmare",
+    "hellcharger"
+   ],
+   "icon": "movement",
+   "new": false
+  },
+  {
+   "id": "iron_hide",
+   "name": "Sir Brannoc Ironhide",
+   "title": "Fallen Paladin",
+   "faction": "haven",
+   "tier": 2,
+   "mythic": false,
+   "rule": "Ironhide: his stacks take −50% damage from your shots.",
+   "look": "a fallen paladin in scarred plate, cracked holy symbol on his breastplate, arrows broken against it",
+   "army": [
+    "swordsman",
+    "crusader",
+    "monk",
+    "cavalier"
+   ],
+   "icon": "armorer",
+   "new": false
+  },
+  {
+   "id": "ember_witch",
+   "name": "Ashka the Emberwitch",
+   "title": "Pyromancer of Inferno",
+   "faction": "inferno",
+   "tier": 2,
+   "mythic": false,
+   "rule": "Firestorm: at the start of rounds 2, 4 and 6, fire burns each of your stacks for 6% of its hit points.",
+   "look": "a red-skinned witch with smouldering hair and ember eyes, a ring of fire in her raised palms",
+   "army": [
+    "imp",
+    "familiar",
+    "succubus",
+    "efreet"
+   ],
+   "icon": "fireball",
+   "new": true
+  },
+  {
+   "id": "thornqueen",
+   "name": "Lysara Thornqueen",
+   "title": "Warden of the Briars",
+   "faction": "sylvan",
+   "tier": 2,
+   "mythic": false,
+   "rule": "Entangling Roots: your walkers have speed 1 in rounds 1 and 2.",
+   "look": "a regal dryad crowned with thorned roses, bark-skinned arms, vines coiling from the ground",
+   "army": [
+    "centaurcpt",
+    "woodelf",
+    "dendroid",
+    "dendroidsoldier"
+   ],
+   "icon": "luck",
+   "new": true
+  },
+  {
+   "id": "beholder_lord",
+   "name": "Xyloth the Many-Eyed",
+   "title": "Beholder Overseer",
+   "faction": "dungeon",
+   "tier": 2,
+   "mythic": false,
+   "rule": "Petrifying Gaze: at the start of every round one of your stacks turns to stone and loses its turn.",
+   "look": "a huge floating beholder with one great central eye and a crown of eyestalks, stony light from its gaze",
+   "army": [
+    "troglodyte",
+    "beholder",
+    "evileye",
+    "medusa"
+   ],
+   "icon": "sorcery",
+   "new": true
+  },
+  {
+   "id": "cyclops_lord",
+   "name": "Grumm One-Eye",
+   "title": "Cyclops Warlord",
+   "faction": "neutral",
+   "tier": 2,
+   "mythic": false,
+   "rule": "Boulders: his shooters throw twice per turn.",
+   "look": "a one-eyed cyclops warlord hefting a boulder overhead, rope belt of skulls, crude iron crown",
+   "army": [
+    "goblin",
+    "orc",
+    "ogre",
+    "cyclops"
+   ],
+   "icon": "attack",
+   "new": true
+  },
+  {
+   "id": "lich_queen",
+   "name": "Vesperine, the Lich Queen",
+   "title": "Necromancer of the Last Crown",
+   "faction": "necro",
+   "tier": 3,
+   "mythic": false,
+   "rule": "Lifedrinker: her stacks heal half the damage they deal and raise their dead.",
+   "look": "a skeletal queen in a tall black-iron crown and violet gown, glowing eye-sockets, a staff topped with a soul gem",
+   "army": [
+    "wight",
+    "vampire",
+    "lich",
+    "powerlich",
+    "blackknight"
+   ],
+   "icon": "necromancy",
+   "new": false
+  },
+  {
+   "id": "eclipse",
+   "name": "Shadowmother Zyra",
+   "title": "Dungeon Overlord",
+   "faction": "dungeon",
+   "tier": 3,
+   "mythic": false,
+   "rule": "Eclipse: your hero's Attack and Defence count as 0.",
+   "look": "a dark-elf matriarch in obsidian armour before a black sun, shadow tendrils spreading behind her",
+   "army": [
+    "harpyhag",
+    "medusaqueen",
+    "minotaur",
+    "manticore",
+    "blackdragon"
+   ],
+   "icon": "end",
+   "new": false
+  },
+  {
+   "id": "minotaur_king",
+   "name": "Asterion the Labyrinth King",
+   "title": "Minotaur Warlord",
+   "faction": "dungeon",
+   "tier": 3,
+   "mythic": false,
+   "rule": "Bloodrage: his stacks gain +1 Attack every time they are struck (up to +10).",
+   "look": "a massive minotaur king with a gold-ringed horn, double-headed labrys, a stone labyrinth behind",
+   "army": [
+    "troglodyte",
+    "harpy",
+    "minotaur",
+    "minotaurking",
+    "manticore"
+   ],
+   "icon": "axe",
+   "new": true
+  },
+  {
+   "id": "hydra_mother",
+   "name": "Ssylith Hydra-Mother",
+   "title": "Mistress of the Mire",
+   "faction": "neutral",
+   "tier": 3,
+   "mythic": false,
+   "rule": "Many Heads: her stacks retaliate twice, at ×1.5 damage.",
+   "look": "a serpent-bodied naga queen coiled in a swamp, three hydra heads rising behind her",
+   "army": [
+    "wolf",
+    "troll",
+    "cyclops",
+    "hydra"
+   ],
+   "icon": "hp",
+   "new": true
+  },
+  {
+   "id": "stormcaller",
+   "name": "Elder Thalion Stormcaller",
+   "title": "Archdruid of Sylvan",
+   "faction": "sylvan",
+   "tier": 3,
+   "mythic": false,
+   "rule": "Chain Lightning: at the start of every round lightning strikes your two largest stacks for 8% of their hit points.",
+   "look": "an ancient elf archdruid with a white beard braided with leaves, lightning arcing from an oak staff, storm clouds",
+   "army": [
+    "woodelf",
+    "grandelf",
+    "silverpegasus",
+    "unicorn",
+    "greendragon"
+   ],
+   "icon": "bolt",
+   "new": true
+  },
+  {
+   "id": "dragon_mother",
+   "name": "Vyrmathra the Dragonmother",
+   "title": "Mythic · Queen of All Dragons",
+   "faction": "neutral",
+   "tier": 3,
+   "mythic": true,
+   "rule": "Dragonmother: her stacks are immune to your spells, and her tier 7 creatures +50% hit points.",
+   "look": "a colossal ancient dragon with scales shifting through green, gold, red and black, wings spread over a hoard",
+   "army": [
+    "hydra",
+    "greendragon",
+    "blackdragon",
+    "reddragon",
+    "golddragon"
+   ],
+   "icon": "fly",
+   "new": true
+  },
+  {
+   "id": "archdevil",
+   "name": "Baal'zareth the Unbound",
+   "title": "Mythic · Archdevil of the Pit",
+   "faction": "inferno",
+   "tier": 3,
+   "mythic": true,
+   "rule": "Hellgate: at the start of every round his weakest stack is restored to full strength.",
+   "look": "a towering archdevil with curling ram horns and burning wings, a gate of hellfire opening behind him",
+   "army": [
+    "horneddemon",
+    "efreetsultan",
+    "hellcharger",
+    "devil",
+    "archdevil"
+   ],
+   "icon": "fireball",
+   "new": true
+  },
+  {
+   "id": "seraphine",
+   "name": "Seraphine the Fallen",
+   "title": "Mythic · Archangel Unbound",
+   "faction": "haven",
+   "tier": 3,
+   "mythic": true,
+   "rule": "Divine Wrath: your hero cannot cast spells, and her stacks heal fully every round.",
+   "look": "a fallen archangel with tarnished gold armour and wings half white, half ash-grey, a flaming sword lowered",
+   "army": [
+    "monk",
+    "zealot",
+    "champion",
+    "angel",
+    "archangel"
+   ],
+   "icon": "bless",
+   "new": true
+  },
+  {
+   "id": "dread_king",
+   "name": "Morvane the Dread King",
+   "title": "Mythic · Lord of the Endless Night",
+   "faction": "necro",
+   "tier": 3,
+   "mythic": true,
+   "rule": "Dread: from round 2, your stacks lose 8% of their creatures at the start of every round.",
+   "look": "a spectral king in rusted black plate on a ghostly throne, a crown of cold blue fire, mist pouring from his cloak",
+   "army": [
+    "wraith",
+    "vampirelord",
+    "powerlich",
+    "dreadknight",
+    "ghostdragon"
+   ],
+   "icon": "skull",
+   "new": true
+  }
+ ],
+ "sets": [
+  {
+   "id": "warlord",
+   "name": "Warlord's Regalia",
+   "pieces": [
+    "war_drum",
+    "vanguard_standard",
+    "executioner_axe"
+   ],
+   "desc": "Bloodlust: each enemy stack destroyed gives your stacks +2 Attack for the battle.",
+   "icon": "army",
+   "new": false
+  },
+  {
+   "id": "sentinel",
+   "name": "Sentinel's Armour",
+   "pieces": [
+    "sentinel_helm",
+    "sentinel_plate",
+    "sentinel_shield"
+   ],
+   "desc": "Haven stacks +2 Attack and Defence and retaliate twice; ×1.25 damage if every stack is Haven.",
+   "icon": "defense",
+   "new": false
+  },
+  {
+   "id": "sharpshooter",
+   "name": "Sharpshooter's Kit",
+   "pieces": [
+    "plenty_quiver",
+    "sharpshooter_bow",
+    "elven_bowstring"
+   ],
+   "desc": "Your shooters may shoot with an enemy next to them, and every shot also hits a second enemy stack for 50%.",
+   "icon": "archery",
+   "new": false
+  },
+  {
+   "id": "wings",
+   "name": "Wings of the Griffin",
+   "pieces": [
+    "griffin_cape",
+    "feathered_boots",
+    "talon_ring"
+   ],
+   "desc": "Your fliers attack without retaliation, and your tier 1–3 walkers take wing.",
+   "icon": "fly",
+   "new": false
+  },
+  {
+   "id": "undead",
+   "name": "Cloak of the Undead King",
+   "pieces": [
+    "bone_cloak",
+    "skull_helm",
+    "vampire_ring"
+   ],
+   "desc": "Raise 25% of the slain (+5% per Legendary Hero defeated) as Skeleton Warriors; your undead deal ×1.25.",
+   "icon": "necromancy",
+   "new": false
+  },
+  {
+   "id": "archmage",
+   "name": "Archmage's Regalia",
+   "pieces": [
+    "archmage_hat",
+    "magi_robe",
+    "storm_wand"
+   ],
+   "desc": "Your spells deal ×1.5, and your hero starts every battle with +15 mana.",
+   "icon": "spellbook",
+   "new": true
+  },
+  {
+   "id": "hellforged",
+   "name": "Hellforged Arms",
+   "pieces": [
+    "hellfire_blade",
+    "brimstone_plate",
+    "cinder_boots"
+   ],
+   "desc": "Hellfire: at the start of every round, every enemy stack burns for 4% of its hit points.",
+   "icon": "fireball",
+   "new": true
+  },
+  {
+   "id": "titan",
+   "name": "Titan's Panoply",
+   "pieces": [
+    "titan_helm",
+    "titan_cuirass",
+    "titan_gauntlet"
+   ],
+   "desc": "Colossus: your tier 5–7 stacks deal ×1.3 and retaliate twice.",
+   "icon": "attack",
+   "new": true
+  },
+  {
+   "id": "gilded",
+   "name": "Gilded Trappings",
+   "pieces": [
+    "coin_ring",
+    "golden_goose",
+    "gilded_ledger"
+   ],
+   "desc": "Midas: +1,000 gold every day, and your stacks deal +1% per 2,000 gold in your treasury (max +30%).",
+   "icon": "gold",
+   "new": true
+  },
+  {
+   "id": "nightstalker",
+   "name": "Nightstalker's Garb",
+   "pieces": [
+    "shadow_hood",
+    "venom_dagger",
+    "shadowstep_boots"
+   ],
+   "desc": "Ambush: in round 1 your stacks +2 speed and their strikes cannot be retaliated.",
+   "icon": "cloak",
+   "new": true
+  }
+ ],
+ "counts": {
+  "artifacts": 111,
+  "newArtifacts": 64,
+  "bosses": 24,
+  "newBosses": 15,
+  "sets": 10,
+  "newSets": 5
+ }
+}

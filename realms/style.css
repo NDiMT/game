@@ -1230,7 +1230,7 @@ img.pt { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; d
   .card:has(.burst) #dlg-body > .burst { grid-column: 1; grid-row: 1 / span 8; height: 120px; margin: 0; }
   .card:has(.burst) #dlg-body > .burst .rays { width: 190px; height: 190px; margin: -95px 0 0 -95px; }
   .card:has(.burst) #dlg-body > .sec { margin: 8px 0 0; }
-  .card:has(.burst) #dlg-body .xp-line { margin: 10px 0 0; }
+  .card:has(.burst) #dlg-body .xp-line, .card:has(.burst) #dlg-body .raise-line { margin: 10px 0 0; }
   /* end of the game: crest left, verdict + rivals + stats right */
   .endcard { display: grid; grid-template-columns: 150px minmax(0, 1fr); column-gap: 16px; align-items: center; text-align: left; }
   .endcard > * { grid-column: 2; }
@@ -1424,3 +1424,31 @@ img.ic-art { image-rendering: auto; object-fit: contain; vertical-align: -0.24em
 .slots { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)) !important; }
 .slots button, .slots span { min-height: 0 !important; width: 100%; }
 .slots.big { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)) !important; }
+/* battle odds: the threat word badge (pre-battle dialogs, map toast) and the Quick offer for a trivial fight */
+.threat { display: inline-flex; align-items: center; gap: 5px; width: fit-content; margin-top: 7px; padding: 3px 11px; border-radius: 13px; font-size: 14px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 0 0 3.5px var(--ink); }
+.threat.t-effortless { background: linear-gradient(180deg, #4ac86a, #1f8a3e); }
+.threat.t-easy { background: linear-gradient(180deg, #7ab84a, #4a7e22); }
+.threat.t-fair { background: linear-gradient(180deg, #d8a83a, #9a6a14); }
+.threat.t-hard { background: linear-gradient(180deg, #e8703a, #a83a14); }
+.threat.t-deadly { background: linear-gradient(180deg, #d83a4a, #8a1424); }
+.toast .threat, #dlg-title .threat { margin: 0 2px; padding: 1px 8px; font-size: 12px; vertical-align: middle; }
+.threat-line { display: flex; justify-content: center; margin: 10px 0 0; }
+#dlg-btns .btn.quick { font-size: 18px; min-height: 58px; animation: breathe 1.8s ease-in-out infinite; }
+/* necromancy: "Raised 37 Skeletons" with the creature's portrait, on the victory card */
+#dlg-body .raise-line, .raise-line { display: flex; align-items: center; gap: 10px; width: fit-content; margin: 10px auto 0; padding: 4px 14px 4px 4px; border-radius: 30px; font-weight: 900; color: #fff; text-align: left;
+  background: linear-gradient(180deg, #5a4a7a, #2e2448); box-shadow: 0 0 0 2px #c8b8f0, 0 0 0 3.5px var(--ink); text-shadow: 0 1px 0 #10082a; animation: rise 0.5s 0.45s var(--boing) both; }
+.raise-line img.pt { width: 44px !important; height: 44px !important; flex: none; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #8a7ac0, #2a1e50 85%); }
+.raise-line b { color: #ffe27a; }
+.raise-line small { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #d8ccf8; letter-spacing: 0.04em; }
+
+/* ---- crown2 (v2.8): Mythic Legendary Heroes, the paced unlocks ("Next", "Still locked") */
+.r-mythic { --rc: #c56bff; }
+.k-mythic .cr-rays { background: repeating-conic-gradient(rgba(197, 107, 255, 0.3) 0 10deg, transparent 10deg 20deg); }
+.cr-next, .cr-road { flex-basis: 100%; display: flex; flex-direction: column; gap: 4px; margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); font-size: 12px; line-height: 1.35; text-align: left; }
+.cr-road { grid-column: 1 / -1; }
+.cr-road h3 { margin: 0 0 2px; font-size: 13px; display: flex; align-items: center; gap: 5px; color: #ffe27a; }
+.cr-next > small, .cr-road > small { opacity: 0.75; font-size: 11px; }
+.cr-next span, .cr-road span { display: block; }
+.cr-next em, .cr-road em { font-style: normal; font-weight: 900; color: #ff9a7a; white-space: nowrap; }
+.cr-next em.ok, .cr-road em.ok { color: #7be07b; }
+.cr-road span.ready b { color: #7be07b; }

@@ -60,7 +60,7 @@ const hash = (n) => { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n ^= n >>> 4;
 // DIRS[a].distanceTo(DIRS[b]). The grid can change size per game (MAP_PRESETS S/M/L/XL): every per-cell array is
 // allocated for the largest map and NBR is refilled in place, so references to them stay valid.
 import { makeGrid, MAP_PRESETS, MAX_CELLS, CELL, regionsVoronoi, regionsBands, regionGates } from './hexgrid.js';
-import { crownRegions, validateWorld as checkWorld, roadGap } from './worldgen.js'; // mapgen: Crown Run regions + the world validator
+import { crownRegions, validateWorld as checkWorld, roadGap, chokeAt, widenRoads, fillPockets } from './worldgen.js'; // mapgen: Crown Run regions + the world validator
 const STEP = 0.07, SEA = 3;
 let GRID = makeGrid(...MAP_PRESETS.M);
 let NV = GRID.N;
@@ -896,11 +896,48 @@ function makeRoad(a, b) {
   if (p) for (const x of p) road[x] = 1;
   road[a] = road[b] = 1;
 }
+// terrain r4: already joined by road (a walk over road cells only)
+function roadLinked(a, b) {
+  if (!road[a] || !road[b]) return false;
+  const seenS = new Uint8Array(NV), q = [a]; seenS[a] = 1;
+  for (let i = 0; i < q.length; i++) { const x = q[i]; if (x === b) return true; for (const n of NBR[x]) if (!seenS[n] && road[n] && passable(n)) { seenS[n] = 1; q.push(n); } }
+  return false;
+}
+// terrain r4: side roads. Each mine / dwelling (and in a Crown Run the run's key sites) within `maxLen` steps of the
+// network gets a road from the nearest road cell to a free cell beside it: over walkable land, around every object,
+// shy of the cells next to other objects (so no footprint sits over the paint). Re-laid with the rest (roadPairs).
+const BRANCH_TO = ['goldmine', 'gemmine', 'sawmill', 'orepit', 'dwelling'];
+function branchRoads(types = BRANCH_TO, maxLen = 9) {
+  let made = 0;
+  const busy = (x) => objAt[x] >= 0 && G.objects[objAt[x]].alive, want = typeof types === 'function' ? types : (t) => types.includes(t);
+  for (const o of G.objects) {
+    if (!o.alive || !want(o.type)) continue;
+    const ends = NBR[o.v].filter((n) => passable(n) && !busy(n) && !heroAt(n) && (!G.run || regionOf[n] === regionOf[o.v]));
+    if (!ends.length || ends.some((n) => road[n])) continue;
+    const g = new Map(), came = new Map(), steps = new Map(), open = minHeap();
+    for (const e of ends) { g.set(e, 0); steps.set(e, 0); open.push(0, e); }
+    let hit = -1;
+    while (open.size) {
+      const cur = open.pop(), gc = open.d; if (gc !== g.get(cur)) continue;
+      if (road[cur]) { hit = cur; break; }
+      if (steps.get(cur) >= maxLen) continue;
+      for (const n of NBR[cur]) {
+        if (!passable(n) || busy(n) || (G.run && regionOf[n] !== regionOf[cur])) continue;
+        const ng = gc + (TER_COST[ter[n]] || 100) + (NBR[n].some((m) => m !== o.v && busy(m) && G.objects[objAt[m]].type !== 'monster') ? 80 : 0);
+        if (ng < (g.get(n) ?? Infinity)) { g.set(n, ng); came.set(n, cur); steps.set(n, steps.get(cur) + 1); open.push(ng, n); }
+      }
+    }
+    if (hit < 0) continue;
+    let end = hit; for (let x = hit; x !== undefined; x = came.get(x)) { road[x] = 1; end = x; }
+    roadPairs.push([hit, end]); made++;
+  }
+  return made;
+}
 // mapgen: re-lay every road over walkable land, around objects (a wandering monster may stay on one), reusing the
 // stretches already laid; a pair with no way between them (a sealed rival homeland) gets no road
 function relayRoads() {
   road.fill(0);
-  const blocks = (v) => { const ob = objAt[v] >= 0 ? G.objects[objAt[v]] : null; return ob && ob.alive && !(ob.type === 'monster' && !ob.guards); };
+  const blocks = (v) => { const ob = objAt[v] >= 0 ? G.objects[objAt[v]] : null; return ob && ob.alive && !(ob.type === 'monster' && !ob.guards) && !/^border\d/.test(ob.type); }; // (terrain r4: a Border Guard stands on its road)
   for (const [a, b] of roadPairs) {
     const g = new Map([[a, 0]]), came = new Map(), open = minHeap(); open.push(0, a);
     while (open.size) {
@@ -914,8 +951,10 @@ function relayRoads() {
     }
   }
 }
+// terrain r4: a cell where something standing would seal a corridor (see worldgen chokeAt): objects and guards keep off
+const chokeCell = (v) => chokeAt(worldCtx(), v, (x) => passable(x) && (objAt[x] < 0 || !G.objects[objAt[x]].alive));
 function spot(near, minD, maxD, ok = () => true) {
-  const c = bfs(near, maxD).filter(([x, d]) => d >= minD && passable(x) && objAt[x] < 0 && !road[x] && NBR[x].every((n) => objAt[n] < 0) && ok(x)).map(([x]) => x);
+  const c = bfs(near, maxD).filter(([x, d]) => d >= minD && passable(x) && objAt[x] < 0 && !road[x] && NBR[x].every((n) => objAt[n] < 0) && !chokeCell(x) && ok(x)).map(([x]) => x);
   return c.length ? c[(rnd() * c.length) | 0] : -1;
 }
 function addObject(type, v, extra = {}) {
@@ -1044,6 +1083,15 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
     if (near.length) for (const m of near) makeRoad(c, m);
     else { const o = caps.filter((x) => x !== c).sort((x, y) => cellDist(c, x) - cellDist(c, y))[0]; if (o !== undefined) makeRoad(c, o); }
   }
+  // (terrain r4) one network: a spanning tree over every town (shortest links first) joins whatever the nearest-town
+  // roads left apart; then every road gets a second lane where rock or forest pinches it to one cell
+  { const tv = [...caps, ...mids], inT = [tv[0]], rest = tv.slice(1);
+    while (rest.length) {
+      let bi = 0, bj = 0, bd = Infinity;
+      rest.forEach((a, i) => inT.forEach((b, j) => { const d = cellDist(a, b); if (d < bd) { bd = d; bi = i; bj = j; } }));
+      const a = rest.splice(bi, 1)[0]; if (!roadLinked(a, inT[bj])) makeRoad(a, inT[bj]); inT.push(a);
+    }
+    widenRoads(worldCtx(), (v) => caps.includes(v) || mids.includes(v)); }
   // treasure around each capital: free mines and piles close by, guarded riches further out
   for (const c of caps) {
     for (const type of ['sawmill', 'orepit']) { const v = spot(c, 3, 6); if (v >= 0) addObject(type, v); }
@@ -1066,7 +1114,7 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
   const kinds = ['gold', 'wood', 'ore', 'gems', 'chest', 'chest', 'artifact', 'artifact', 'artifact', 'tower', 'stone', 'stables', 'obelisk', 'goldmine', 'gemmine', 'sawmill', 'orepit', 'dwelling', 'shrine', 'well', 'campfire', 'library', 'arena'];
   for (let i = 0, n = 0, nMax = Math.round(120 * dens); i < 900 * dens && n < nMax; i++) {
     const v = (rnd() * NV) | 0;
-    if (!passable(v) || objAt[v] >= 0 || road[v] || NBR[v].some((x) => objAt[x] >= 0) || far(v) < 0.03) continue;
+    if (!passable(v) || objAt[v] >= 0 || road[v] || NBR[v].some((x) => objAt[x] >= 0) || far(v) < 0.03 || chokeCell(v)) continue;
     const type = kinds[(rnd() * kinds.length) | 0];
     const o = addObject(type, v);
     if (type === 'dwelling') o.unit = NEUTRALS[(rnd() * 5) | 0], o.stock = 5;
@@ -1077,8 +1125,9 @@ function newWorld(seed, diff = 1, myFac = 'haven', opts = {}) {
     n++;
   }
   // wandering monsters on the roads
-  for (let i = 0; i < Math.round(14 * dens); i++) { const v = (rnd() * NV) | 0; if (passable(v) && objAt[v] < 0 && far(v) > 0.15 && NBR[v].every((x) => objAt[x] < 0)) { const g = guardFor(v, far(v) * 1.3); addObject('monster', v, { unit: g.id, n: g.n }); } }
+  for (let i = 0; i < Math.round(14 * dens); i++) { const v = (rnd() * NV) | 0; if (passable(v) && objAt[v] < 0 && far(v) > 0.15 && NBR[v].every((x) => objAt[x] < 0) && !chokeCell(v)) { const g = guardFor(v, far(v) * 1.3); addObject('monster', v, { unit: g.id, n: g.n }); } }
   for (const o of G.objects) if (['gold', 'wood', 'ore', 'gems'].includes(o.type)) o.amount = o.type === 'gold' ? 500 + ((rnd() * 6) | 0) * 100 : 3 + ((rnd() * 5) | 0);
+  branchRoads(); // (terrain r4) side roads to the mines and dwellings near the network
   ensureReachable(caps); // nothing placed behind rocks / trees / water with no way in
   G.selHero = 0;
   if (!G.fog) seen.fill(1);
@@ -1125,7 +1174,39 @@ function ensureReachable(starts) {
       R = flood();
     } else if (pass && o.type !== 'town') { o.alive = false; if (objAt[o.v] === o.id) objAt[o.v] = -1; removed++; }
   }
-  return (ensureReachable.last = { carved, removed });
+  // (terrain r4) towns and enemy heroes are never sealed off by a single monster: with every monster left standing as
+  // a wall (Border Guards excepted: a gate is fought through by design), a sealed one gets the shortest way in cleared.
+  // A guard on it steps to another side of its treasure (off the way, off the chokepoints); a wandering monster goes.
+  let moved = 0;
+  const isMon = (x) => objAt[x] >= 0 && G.objects[objAt[x]].alive && G.objects[objAt[x]].type === 'monster';
+  const wallWalk = (x) => walk(x) && !isMon(x);
+  for (let round = 0; round < 60; round++) {
+    const RW = new Uint8Array(NV), q = [];
+    for (const v of starts) for (const n of [v, ...NBR[v]]) if (!RW[n] && (n === v || wallWalk(n))) { RW[n] = 1; q.push(n); }
+    for (let i = 0; i < q.length; i++) for (const n of NBR[q[i]]) if (!RW[n] && wallWalk(n) && crossOk(q[i], n)) { RW[n] = 1; q.push(n); }
+    const near = (v) => RW[v] || NBR[v].some((n) => RW[n]);
+    const t = [...G.towns.map((x) => x.v), ...G.heroes.filter((x) => x.alive && x.p !== 0).map((x) => x.v)].find((v) => !near(v));
+    if (t === undefined) break;
+    const prev = new Int32Array(NV).fill(-2), bq = [];
+    for (let v = 0; v < NV; v++) if (RW[v]) { prev[v] = -1; bq.push(v); }
+    let end = -1;
+    for (let i = 0; i < bq.length && end < 0; i++) for (const n of NBR[bq[i]]) {
+      if (prev[n] !== -2 || !walk(n) || !crossOk(bq[i], n)) continue;
+      prev[n] = bq[i]; bq.push(n); if (n === t || NBR[t].includes(n)) { end = n; break; }
+    }
+    const way = []; for (let x = end; x >= 0; x = prev[x]) way.push(x);
+    const mons = way.filter(isMon).map((x) => G.objects[objAt[x]]).filter((o) => !o.guardian && !o.invasion);
+    if (!mons.length) break; // nothing a monster seals (or a run's Legendary Hero / an invasion: those stay)
+    for (const o of mons) {
+      const to = o.guards != null ? NBR[o.guards].find((c) => passable(c) && objAt[c] < 0 && !road[c] && !way.includes(c) && !heroAt(c) && crossOk(o.guards, c) && !chokeCell(c)) : undefined;
+      if (to !== undefined) { if (objAt[o.v] === o.id) objAt[o.v] = -1; o.v = to; objAt[to] = o.id; } else removeObject(o);
+      moved++;
+    }
+  }
+  // (terrain r4) walkable land nobody can walk to and nothing stands on turns to scenery (forest; rock on sand / lava)
+  const held = (x) => (objAt[x] >= 0 && G.objects[objAt[x]].alive) || !!heroAt(x);
+  const filled = fillPockets(worldCtx(), starts, walk, held);
+  return (ensureReachable.last = { carved, removed, moved, filled });
 }
 // mapgen: check a generated world (window.__realms.validateWorld()): every object reachable (ensureReachable's
 // flood), roads walkable and clear (no object on them but towns at their ends, wandering monsters and Border Guards;
@@ -1145,12 +1226,14 @@ function validateWorld() {
     for (const g of markRegions.last?.gates || []) if (!gates.some((x) => x.v === g.v)) gates.push({ a: g.a, v: g.v });
     crown = { regions: G.run.regions, regionOf, gates, from: capital().v };
   }
-  return checkWorld(worldCtx(), { caps, reach, flora, objR, crown });
+  const heroes = G.heroes.filter((x) => x.alive).map((x) => ({ v: x.v, p: x.p })), towns = G.towns.map((t) => ({ v: t.v, p: t.p }));
+  return checkWorld(worldCtx(), { caps, reach, flora, objR, crown, starts, heroes, towns }); // (terrain r4: starts/heroes/towns)
 }
 function guard(v, strength) {
   // (mapgen: never on a road: a guard standing in the road blocks it for everyone, not just the treasure)
-  const n = NBR[v].filter((x) => passable(x) && objAt[x] < 0 && !road[x]);
-  if (!n.length) return;
+  const n0 = NBR[v].filter((x) => passable(x) && objAt[x] < 0 && !road[x]);
+  if (!n0.length) return;
+  const n1 = n0.filter((x) => !chokeCell(x)), n = n1.length ? n1 : n0; // (terrain r4: off the chokepoints when it can)
   const g = guardFor(v, strength), at = n[(rnd() * n.length) | 0];
   addObject('monster', at, { unit: g.id, n: g.n, guards: v });
 }
@@ -1576,11 +1659,15 @@ function mapTap(cx, cy) {
 const SIZE_WORDS = [[5, 'A few'], [10, 'Several'], [20, 'A pack of'], [50, 'Lots of'], [100, 'A horde of'], [250, 'A throng of'], [1e9, 'A legion of']];
 const sizeWord = (n) => SIZE_WORDS.find(([m]) => n < m)[1];
 function armyWord(army) { const p = BT.armyPower(army); return p < 600 ? 'weak' : p < 2000 ? 'modest' : p < 6000 ? 'strong' : p < 15000 ? 'mighty' : 'overwhelming'; }
-function threatWord(o) {
-  const hr = selHero(); if (!hr) return '';
-  const r = BT.armyPower([[o.unit, o.n]]) / Math.max(1, BT.armyPower(heroArmy(hr), hr));
-  return r < 0.3 ? '😴 Effortless' : r < 0.6 ? '🙂 Easy' : r < 1 ? '😐 Fair fight' : r < 1.6 ? '😬 Hard' : '💀 Deadly';
+// the threat of a monster fight for a hero (default: the selected one), from the same odds that decide the Quick
+// offer, so "Effortless" always comes with Quick and nothing else does. Plain = text only (no badge markup).
+const THREAT_ICON = { effortless: '😴', easy: '🙂', fair: '😐', hard: '😬', deadly: '💀' };
+function threatWord(o, hr = selHero(), plain = false) {
+  if (!hr) return '';
+  const w = fightOdds(hr, { kind: 'monster', obj: o }).word;
+  return plain ? `${THREAT_ICON[w]} ${BT.THREATS[w]}` : threatHtml(w);
 }
+const threatHtml = (w) => `<span class="threat t-${w}">${THREAT_ICON[w]} ${BT.THREATS[w]}</span>`;
 function describe(o) {
   if (G.run && crownDescribe(o)) return; // crown: Crown Run sites, Legendary Heroes, invasions
   if (o.type === 'monster') toast(`${sizeWord(o.n)} ${plural(o.unit)} · ${threatWord(o)}`);
@@ -1742,7 +1829,7 @@ function interact(hr, v) {
     const guard = guardOf(v);
     if (guard) {
       const what = o.type === 'town' ? G.towns[o.t].name : (O?.name || o.type);
-      if (you) ask(`${unitIcon(guard.unit)} ${what} is guarded`, `<div class="bigpt">${unitIcon(guard.unit, 128)}<div><b>${sizeWord(guard.n)} ${plural(guard.unit)}</b><small>${threatWord(guard)}</small></div></div>Defeat the guards before you can claim it.`, [['⚔️ Fight the guards', () => startBattle(hr, { kind: 'monster', obj: guard })], ['Leave', null]]);
+      if (you) ask(`${unitIcon(guard.unit)} ${what} is guarded`, `<div class="bigpt">${unitIcon(guard.unit, 128)}<div><b>${sizeWord(guard.n)} ${plural(guard.unit)}</b>${threatWord(guard, hr)}</div></div>Defeat the guards before you can claim it.`, fightButtons(hr, { kind: 'monster', obj: guard }, '⚔️ Fight the guards'));
       else startBattle(hr, { kind: 'monster', obj: guard });
       return;
     }
@@ -1754,12 +1841,12 @@ function interact(hr, v) {
       const u = UNITS[o.unit], price = Math.round(o.n * u.cost.gold * 0.6), free = ratio > 8;
       ask(`${unitIcon(o.unit)} The ${plural(o.unit)} bow before you`, free ? `${o.n} ${plural(o.unit, o.n)} are so impressed by your army that they offer to join you for free.` : `${o.n} ${plural(o.unit, o.n)} offer to join you for ${fmt(price)} 🪙.`, [
         [free ? '🤝 Accept' : `🤝 Hire for ${fmt(price)}`, free || G.players[0].res.gold >= price ? () => { if (addTroops(hr.army, o.unit, o.n)) { if (!free) G.players[0].res.gold -= price; removeObject(o); sfx.recruit(); toast(`${unitIcon(o.unit)} ${o.n} ${plural(o.unit, o.n)} join ${hr.name}.`); sfx.fanfare(); updateHud(); } else toast('No free slot in your army.'); } : undefined],
-        ['⚔️ Fight them', () => startBattle(hr, { kind: 'monster', obj: o })],
+        ...fightButtons(hr, { kind: 'monster', obj: o }, '⚔️ Fight them', false).map(([l, f, sub]) => [l, f, sub, 'ghost']),
         ['Let them flee', () => { removeObject(o); giveXp(hr, 0); toast(`${plural(o.unit)} run for their lives.`); }],
       ]);
       return;
     }
-    if (you) ask(`${sizeWord(o.n)} ${plural(o.unit)}`, `<div class="bigpt">${unitIcon(o.unit, 128)}<div><b>${UNITS[o.unit].name}</b><small>${icon('attack', 13)}${UNITS[o.unit].att} ${icon('defense', 13)}${UNITS[o.unit].def} ${icon('hp', 13)}${UNITS[o.unit].hp}${UNITS[o.unit].ranged ? ` ${icon('shots', 13)}` : ''}${UNITS[o.unit].fly ? ` ${icon('fly', 13)}` : ''}</small></div></div>About ${o.n <= 4 ? o.n : `${Math.round(o.n * 0.8)}–${Math.round(o.n * 1.2)}`} of them. ${threatWord(o)}.`, [['⚔️ Fight', () => startBattle(hr, { kind: 'monster', obj: o })], ['Leave', null]]);
+    if (you) ask(`${sizeWord(o.n)} ${plural(o.unit)}`, `<div class="bigpt">${unitIcon(o.unit, 128)}<div><b>${UNITS[o.unit].name}</b><small>${icon('attack', 13)}${UNITS[o.unit].att} ${icon('defense', 13)}${UNITS[o.unit].def} ${icon('hp', 13)}${UNITS[o.unit].hp}${UNITS[o.unit].ranged ? ` ${icon('shots', 13)}` : ''}${UNITS[o.unit].fly ? ` ${icon('fly', 13)}` : ''}</small>${threatWord(o, hr)}</div></div>About ${o.n <= 4 ? o.n : `${Math.round(o.n * 0.8)}–${Math.round(o.n * 1.2)}`} of them.`, fightButtons(hr, { kind: 'monster', obj: o }, '⚔️ Fight'));
     else startBattle(hr, { kind: 'monster', obj: o });
     return;
   }
@@ -1767,7 +1854,7 @@ function interact(hr, v) {
     const t = G.towns[o.t];
     if (t.p === hr.p) { if (you) openTown(t.id, hr); else aiVisitTown(hr, t); return; }
     if (heroArmy({ army: t.garrison }).length) {
-      if (you) ask(`Siege of ${t.name}`, `The town is defended by ${armyWord(heroArmy({ army: t.garrison }))} troops${t.built.includes('fort') ? ' behind walls' : ''}.`, [['⚔️ Attack', () => startBattle(hr, { kind: 'town', town: t })], ['Leave', null]]);
+      if (you) ask(`Siege of ${t.name}`, `The town is defended by ${armyWord(heroArmy({ army: t.garrison }))} troops${t.built.includes('fort') ? ' behind walls' : ''}.<p class="threat-line">${threatHtml(fightOdds(hr, { kind: 'town', town: t }).word)}</p>`, fightButtons(hr, { kind: 'town', town: t }, '⚔️ Attack'));
       else startBattle(hr, { kind: 'town', town: t });
     } else captureTown(hr, t);
     return;
@@ -2100,14 +2187,45 @@ function splitMonster(o) {
   for (let i = 0; i < parts; i++) arr.push([o.unit, Math.floor(o.n / parts) + (i < o.n % parts ? 1 : 0)]);
   return arr;
 }
-function startBattle(hr, foe) {
+// who fights on which side: the player always fights from the bottom of the screen (side 0)
+function battleSides(hr, foe) {
   const defHero = foe.kind === 'hero' ? foe.hero : null;
   const defArmy = foe.kind === 'monster' ? splitMonster(foe.obj) : foe.kind === 'hero' ? foe.hero.army : foe.town.garrison;
   const defOwner = foe.kind === 'hero' ? foe.hero.p : foe.kind === 'town' ? foe.town.p : -1;
   const playerDefends = defOwner === 0 && hr.p !== 0;
-  // the player always fights from the bottom of the screen
   const sides = playerDefends ? [{ hero: defHero, army: defArmy, owner: 0 }, { hero: hr, army: hr.army, owner: hr.p }] : [{ hero: hr, army: hr.army, owner: hr.p }, { hero: defHero, army: defArmy, owner: defOwner }];
-  const B = BT.createBattle({ armyA: sides[0].army, heroA: sides[0].hero ? heroBattle(sides[0].hero) : null, armyB: sides[1].army, heroB: sides[1].hero ? heroBattle(sides[1].hero) : null, town: foe.kind === 'town' ? { fort: foe.town.built.includes('fort'), side: playerDefends ? 0 : 1, power: Math.max(2, foe.town.built.length / 2) } : null, mods: crownMods({ sides, foe }) });
+  const town = foe.kind === 'town' ? { fort: foe.town.built.includes('fort'), side: playerDefends ? 0 : 1, power: Math.max(2, foe.town.built.length / 2) } : null;
+  return { sides, town };
+}
+// the odds of a fight for side 0 (BT.odds: a few seeded simulations, so every ask gets the same answer). Cached
+// by what decides it. Crown fights whose rules are not in the plain simulation (a guardian's rule, a Legendary
+// Hero joining by a mod) are never "trivial": no Quick for them.
+const oddsCache = new Map();
+function fightOdds(hr, foe) {
+  const { sides, town } = battleSides(hr, foe);
+  const h = sides.map((sd) => (sd.hero ? heroBattle(sd.hero) : null));
+  const sig = JSON.stringify([sides.map((sd) => sd.army), h.map((x) => x && [x.att, x.def, x.pow, x.mana, x.skills, x.spells, x.luck, x.morale]), town, !!(foe.obj?.guardian || foe.obj?.ghero)]);
+  let od = oddsCache.get(sig);
+  if (!od) {
+    od = BT.odds({ armyA: sides[0].army, heroA: h[0], armyB: sides[1].army, heroB: h[1], town });
+    if (foe.obj?.guardian || foe.obj?.ghero) { od.trivial = false; od.word = BT.threatOf(od); }
+    if (oddsCache.size > 200) oddsCache.clear();
+    oddsCache.set(sig, od);
+  }
+  return od;
+}
+// the buttons of a pre-battle dialog: a trivial fight offers Quick first (gold, one tap settles it, no arena);
+// anything harder offers only the fight itself
+function fightButtons(hr, foe, label, leave = true) {
+  const od = fightOdds(hr, foe), out = [];
+  if (od.trivial) out.push([`${icon('quick', 22)} Quick win`, () => startBattle(hr, foe, { quick: true }), 'Settle it at once · no losses expected', 'gold quick']);
+  out.push([label, () => startBattle(hr, foe, { offered: od.trivial }), '', od.trivial ? 'ghost' : 'gold']);
+  if (leave) out.push(['Leave', null, '', 'ghost']);
+  return out;
+}
+function startBattle(hr, foe, opts = {}) {
+  const { sides, town } = battleSides(hr, foe);
+  const B = BT.createBattle({ armyA: sides[0].army, heroA: sides[0].hero ? heroBattle(sides[0].hero) : null, armyB: sides[1].army, heroB: sides[1].hero ? heroBattle(sides[1].hero) : null, town, mods: crownMods({ sides, foe }) });
   const ctx = { hr, foe, sides, terrain: ter[foe.kind === 'monster' ? foe.obj.v : hr.v] };
   // a side with no living troops cannot fight: settle it at once. Opening the arena would never end (the enemy AI
   // has no target and never finishes its turn, or the player has nothing to attack).
@@ -2125,6 +2243,9 @@ function startBattle(hr, foe) {
     }
     return;
   }
+  // the player's fight: Quick only when it is trivial (the same odds the dialog showed)
+  ctx.odds = fightOdds(hr, foe); ctx.offered = !!opts.offered;
+  if (opts.quick && ctx.odds.trivial) { BT.autoResolve(B); B.events.length = 0; finishBattle(B, ctx); return; }
   enterBattle(B, ctx);
 }
 // Battle entry is staged behind a curtain that appears on the very tap: models that are not cached yet (another
@@ -2180,7 +2301,14 @@ async function prepBattle(job) {
   // lift the curtain once the first battle frame is on screen
   await nextFrame(); await nextFrame();
   curtain(false);
+  // a trivial fight that no dialog offered Quick for yet (a hero's attack, a Crown Run site): offer it now, on top
+  // of the opened arena. The enemy waits while the dialog is up (battleStep).
+  if (ctx.odds?.trivial && !ctx.offered && live()) {
+    ask(`${threatHtml('effortless')} An effortless fight`, `<p>Your army is far stronger: no losses are expected.</p>`, [[`${icon('quick', 22)} Quick win`, () => quickBattle(), 'Settle it at once', 'gold quick'], ['⚔️ Fight it out', null, '', 'ghost']]);
+  }
 }
+// Quick combat: only for a trivial fight (ctx.odds.trivial); the AI plays both sides off screen
+function quickBattle(force = false) { if (!BB || BB.over || G.mode !== 'battle' || !(force || bctx?.odds?.trivial)) return; bprep = null; BT.autoResolve(BB); BB.events.length = 0; banim = []; endBattleScreen(); }
 function abortBattle(job, e) {
   console.error('battle set-up failed', e);
   if (bprep !== job) return;
@@ -2409,6 +2537,7 @@ function refreshBattle() {
   $('b-spell').innerHTML = `${icon('spellbook', 24)}<small>${bspell ? 'Cancel' : h0 ? `Mana ${h0.mana}` : 'Spells'}</small>`;
   $('b-wait').disabled = $('b-def').disabled = !mineTurn;
   $('b-auto').classList.toggle('on', bauto);
+  $('b-quick').hidden = !bctx?.odds?.trivial; // Quick exists only for a trivial fight
   $('b-msg').innerHTML = !s ? '' : mineTurn ? (pmsg || (bspell ? `${icon(bspell, 18)} Choose a target for <b>${S.name}</b> · tap elsewhere to cancel` : `<b>${UNITS[s.id].name} ×${s.count}</b> · ${BT.canShoot(B, s) ? `${icon('shots', 16)} ${s.shots} shots · tap an enemy to shoot` : 'tap a green hex to move, a red enemy to attack'}`)) : sideOwner(s.side) === 0 ? (bauto ? `${icon('auto', 16)} Auto battle…` : '…') : `Enemy ${UNITS[s.id].name} ×${s.count} is acting…`;
 }
 // the turn order strip: icons are keyed by stack and round, so when a stack acts its icon collapses away and the
@@ -2564,7 +2693,8 @@ $('b-wait').addEventListener('click', () => { if (!myTurn()) return; const s = B
 $('b-def').addEventListener('click', () => { if (!myTurn()) return; const s = BB.active; bspell = null; BT.actDefend(BB, s); afterAction(s); sfx.defend(); });
 // auto on/off mid-animation: whatever is playing finishes; the highlights fade, and an auto stack waits a beat before acting
 $('b-auto').addEventListener('click', () => { if (!BB) return; bauto = !bauto; bspell = null; bpreview = null; bhover = null; if (bauto) bwait = Math.max(bwait, 0.2); refreshBattle(); sfx.click(); });
-$('b-quick').addEventListener('click', () => { if (!BB || BB.over) return; BT.autoResolve(BB); BB.events.length = 0; banim = []; endBattleScreen(); });
+// (a scripted .click() from a dev/test harness is untrusted and still resolves any fight; a player can only tap it when shown)
+$('b-quick').addEventListener('click', (e) => quickBattle(!e.isTrusted));
 $('b-spell').addEventListener('click', () => {
   const h0 = BB?.heroes[0]; if (!h0) return;
   if (bspell) { cancelSpell(); return; }
@@ -2607,6 +2737,7 @@ function animateBattle(dt) {
   }
   if (!s) return;
   if (sideOwner(s.side) === 0 && !bauto) return;
+  if (dialogOpen()) return; // the Quick offer (or any dialog) holds the AI until it is answered
   if ((bwait -= dt) > 0) return;
   bwait = 0;
   // the AI acts; the turn advances (nextStack) only once its animations have played, so the selection ring,
@@ -2764,7 +2895,7 @@ function playEvent(e, t) {
   }
   // crown: an artifact / Legendary Hero effect (the Plague, a ricochet): floaters and hits like a spell, no projectile
   if (e.t === 'mod') {
-    if (!e.started) { e.started = true; for (const hh of e.hits || []) { const m = M(hh.s), st = S(hh.s); if (!m || !st) continue; m.userData.flash = 0.3; if ((hh.left ?? 1) <= 0) startDeath(m, st); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `${e.text} -${fmt(hh.dmg)}${hh.killed ? ` (${hh.killed}💀)` : ''}`, st.side === 0 ? 'red' : 'gold'); st.shown = hh.left ?? st.count; setPlate(st); } }
+    if (!e.started) { e.started = true; for (const hh of e.hits || []) { const m = M(hh.s), st = S(hh.s); if (!m || !st) continue; m.userData.flash = 0.3; if ((hh.left ?? 1) <= 0) startDeath(m, st); else setAnim(m, ANIM.HIT, { speed: AS }); bfloat(m.position.clone().setY(1.1), `${e.text}${hh.dmg ? ` -${fmt(hh.dmg)}` : ""}${hh.killed ? ` (${hh.killed}💀)` : ''}`, st.side === 0 ? 'red' : 'gold'); st.shown = hh.left ?? st.count; setPlate(st); } }
     return t > 0.5;
   }
   if (e.t === 'gate') { if (!e.started) { e.started = true; sfx.gate({ kind: e.broken ? 'broken' : '' }); if (e.broken) { addShake(0.5); addHitStop(0.05); } bfloat(hexPos(e.c, e.r).setY(1.2), e.broken ? '💥 The gate falls!' : `🪵 Gate ${e.hp}`, e.broken ? 'gold' : 'red'); if (e.broken && bctx.gate) bctx.gate.visible = false; } return t > 0.5; }
@@ -2802,11 +2933,16 @@ function finishBattle(B, ctx) {
     if (sd.hero) sd.hero.mana = B.heroes[side] ? B.heroes[side].mana : sd.hero.mana;
   });
   const win = sides[winSide], lose = sides[1 - winSide];
-  // necromancy: the winner raises some of the fallen as skeletons
+  // necromancy (HoMM-like, BT.necromancy): 10% + 10% per level (+5% for a Necropolis hero) of the LIVING foes slain
+  // rise as Skeletons (a big body gives up to 1.5 skeletons' worth), never more than the bodies that fell. They join
+  // the Skeleton stack or a free slot; with neither, an upgraded Skeleton Warrior stack takes them. AI heroes too.
+  let necro = null;
   if (win.hero && win.hero.skills.necromancy) {
-    const dead = B.stacks.filter((s) => s.side !== winSide && !s.u.undead).reduce((a, s) => a + (s.start - s.count), 0);
-    const raised = Math.floor(dead * 0.1 * win.hero.skills.necromancy);
-    if (raised > 0 && addTroops(win.hero.army, 'skeleton', raised) && win.owner === 0) toast(`💀 Necromancy raises ${raised} skeletons.`);
+    necro = BT.necromancy(B, winSide, { level: win.hero.skills.necromancy, bonus: G.players[win.hero.p]?.fac === 'necro' ? BT.NECRO.facBonus : 0 });
+    if (necro.raised > 0) {
+      necro.ok = addTroops(win.hero.army, 'skeleton', necro.raised);
+      if (!necro.ok && win.hero.army.some((x) => x && x[1] > 0 && x[0] === 'skelwarrior')) { necro.as = 'skelwarrior'; necro.ok = addTroops(win.hero.army, 'skelwarrior', necro.raised); }
+    }
   }
   if (win.hero) giveXp(win.hero, killedHp[winSide] + (ctx.foe.kind === 'hero' ? 500 : 0));
   // the loser
@@ -2825,7 +2961,7 @@ function finishBattle(B, ctx) {
   if (sides[0].owner === 0 || sides[1].owner === 0) {
     const me = sides[0].owner === 0 ? 0 : 1, won = winSide === me;
     const list = (arr) => (arr.length ? arr.map(([id, n]) => `${unitIcon(id)} ${n} ${plural(id, n)}`).join('<br>') : 'None');
-    showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="burst ${won ? 'win' : 'lose'}"><span class="rays"></span>${icon(won ? 'victory' : 'defeat', 64)}</div><div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p class="xp-line">${icon('experience', 18)} +${fmt(killedHp[me])} experience</p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
+    showMsg(won ? `${icon('victory', 22)} Victory!` : `${icon('defeat', 22)} Defeat`, `<div class="burst ${won ? 'win' : 'lose'}"><span class="rays"></span>${icon(won ? 'victory' : 'defeat', 64)}</div><div class="cas"><div><b>Your losses</b>${list(lost[me])}</div><div><b>Enemy losses</b>${list(lost[1 - me])}</div></div>${won && sides[me].hero ? `<p class="xp-line">${icon('experience', 18)} +${fmt(killedHp[me])} experience</p>` : ''}${won && necro?.raised > 0 && sides[me].hero === win.hero ? `<p class="raise-line">${unitIcon(necro.as, 44)}<span>${necro.ok ? `Raised <b>${fmt(necro.raised)}</b> ${plural(necro.as, necro.raised)}` : `No room for <b>${fmt(necro.raised)}</b> ${plural(necro.as, necro.raised)}`}<small>${icon('necromancy', 14)} Necromancy ${Math.round(necro.pct * 100)}%</small></span></p>` : ''}${!won && sides[me].hero ? `<p>${sides[me].hero.name} has fallen.</p>` : ''}`, true);
     if (won) { sfx.victory(); musicScene('victory'); } else { sfx.defeat(); musicScene('defeat'); }
   }
   // after the battle summary, so the casualties card comes first
@@ -4091,6 +4227,7 @@ function crownAfter(B, ctx) {
   const won = B.over.winner === 0, o = ctx.foe.obj, kind = o?.guardian ? 'guardian' : o?.invasion ? 'invasion' : null;
   const res = CR.afterBattle(R, B, { won, kind });
   for (const s of B.stacks) CR.discover(crownMeta(), 'unit', UNITS[s.id]?.up || s.id);
+  if (res.gold > 0 && won) { gain(0, 'gold', res.gold, hr.v); toast(`${icon('gold', 18)} +${fmt(res.gold)} gold from the fallen.`); }
   if (res.raise > 0 && hr.alive && addTroops(hr.army, res.raiseAs, res.raise)) toast(`${icon('necromancy', 18)} ${res.raise} ${plural(res.raiseAs, res.raise)} rise to serve you.`);
   if (!won || !hr.alive) { R.over = true; R.won = false; afterDialogs(() => crownEnd(`${hr.name} fell in battle`)); return; }
   if (kind === 'guardian') { CR.discover(crownMeta(), 'guardian', o.guardian.id); saveMeta(); afterDialogs(() => CUI.notice({ icon: CR.GUARDIANS[o.guardian.id].icon, crest: artIcon('guardian', o.guardian.id, 92, CR.GUARDIANS[o.guardian.id].icon), title: `${CR.GUARDIANS[o.guardian.id].name.split(',')[0]} is defeated`, sub: `Region ${o.guardian.region}`, body: `<p>${o.guardian.region >= R.regions ? 'The way to the Crown lies open: walk into the tent to claim it.' : "The Keymaster's Tent stands unguarded: visit it for the key to the next region."}</p>`, sound: 'fanfare' })); }
@@ -4135,7 +4272,7 @@ function crownInteract(hr, o, v) {
   const once = (k) => { if (o.done) { toast(`${k} has nothing more for you.`); return false; } return true; };
   if (t === 'chest' || t === 'artifact' || t === 'pandora') {
     take(); if (seen[v]) fx.burst(t === 'chest' ? 'coin' : 'artifact', posOf(v));
-    if (t === 'artifact') { const id = CR.rollArtifact(R, `map:${o.id}`, meta, { rarityW: { treasure: 45, minor: 35, major: 16 + 6 * regionOf[v], relic: 4 + 2 * regionOf[v] } }); if (id) CUI.notice({ icon: CR.ARTIFACTS[id].icon, crest: artIcon('artifact', id, 92, CR.ARTIFACTS[id].icon), title: 'An artifact!', sub: 'Found on the road', card: { kind: 'artifact', id }, buttons: [['Take it', () => crownGive({ kind: 'artifact', id }, hr), 'gold']], sound: 'artifact' }); return true; }
+    if (t === 'artifact') { const id = CR.rollArtifact(R, `map:${o.id}`, meta, { rarityW: CR.roadRarity(regionOf[v] + 1) }); if (id) CUI.notice({ icon: CR.ARTIFACTS[id].icon, crest: artIcon('artifact', id, 92, CR.ARTIFACTS[id].icon), title: 'An artifact!', sub: 'Found on the road', card: { kind: 'artifact', id }, buttons: [['Take it', () => crownGive({ kind: 'artifact', id }, hr), 'gold']], sound: 'artifact' }); return true; }
     const ch = t === 'chest' ? CR.chestChoices(R, o.id, meta, { region: regionOf[v] + 1 }) : CR.pandoraChoices(R, o.id, meta, { ...crownCtx(hr), region: regionOf[v] + 1 });
     CUI.choice({ title: t === 'chest' ? 'Treasure Chest' : "Pandora's Box", sub: t === 'chest' ? 'Keep the gold, give it to the peasants for their wisdom, or take the trinket inside?' : 'The lid creaks open. Choose one gift.', icon: 'chest', site: t, choices: ch, leave: null, onPick: (c) => crownGive(c, hr) });
     sfx.chest(); return true;
@@ -4161,7 +4298,7 @@ function crownInteract(hr, o, v) {
     for (const it of o.stock) CR.discover(meta, 'artifact', it.id);
     CUI.merchant(R, { title: black ? 'Black Market' : 'Artifact Merchant', black, stock: o.stock, gold: () => P.res.gold,
       onBuy: (it) => { if (P.res.gold < it.price) return false; P.res.gold -= it.price; crownGive({ kind: 'artifact', id: it.id }, hr); return true; },
-      sellList: () => R.backpack.map((inst, i) => ({ inst, i, price: CR.sellPrice(inst.id) })),
+      sellList: () => R.backpack.map((inst, i) => ({ inst, i, price: CR.sellPrice(inst.id, R) })),
       onSell: (e) => { const i = R.backpack.indexOf(e.inst); if (i < 0) return false; R.backpack.splice(i, 1); P.res.gold += e.price; updateHud(); return true; },
       onClose: () => { saveMeta(); updateHud(); } });
     return true;
@@ -4256,7 +4393,7 @@ function crownInvaded(o, how) {
     cap.garrison = def.slice(0, nGar).map((s, i) => (left.get(i) > 0 ? [s[0], left.get(i)] : null));
     for (const [slot, tier] of folk) cap.avail[tier] = left.get(slot) || 0;
   }
-  if (held) { removeObject(o); R.invasion = null; R.invasionsBeaten++; R.stats.invasions.push(o.invasion.week); toast(`${icon('fort', 18)} The walls of ${cap.name} hold: the invasion is broken.`); sfx.victory(); crownHud(); return; }
+  if (held) { removeObject(o); R.invasion = null; R.invasionsBeaten++; R.stats.invasions.push(o.invasion.week); R.stats.wallsHeld = (R.stats.wallsHeld || 0) + 1; toast(`${icon('fort', 18)} The walls of ${cap.name} hold: the invasion is broken.`); sfx.victory(); crownHud(); return; }
   R.over = true; R.won = false; crownEnd(`${cap.name} fell to the invasion`);
 }
 function crownEnd(reason = '') {
@@ -4301,6 +4438,7 @@ function crownWorld({ background, diff, fac, seed }) {
   R.regionMap = Array.from(regionOf.subarray(0, NV)).join(''); // (walking bands change once the walls stand: keep the map)
   G.run = R;
   crownPlace(R, cap, gates);
+  branchRoads((t) => BRANCH_TO.includes(t) || /^keymaster\d$/.test(t) || ['merchant', 'tradingpost', 'blackmarket'].includes(t)); // (terrain r4)
   ensureReachable([cap.v]); // the run's sites too: nothing walled in behind rock or forest
   return { R, hr };
 }
@@ -4339,6 +4477,13 @@ function crownPlace(R, cap, gates) {
     if (ri === 1) { put('blackmarket', 'mid', 0.35); put('grail', 'far', 0.75); put('seer', 'mid'); }
     put('witchhut', 'mid', ri ? 0.3 : 0); put('scholar', 'mid', 0.2 + 0.15 * ri);
     put('pandora', 'mid', 0.35 + 0.2 * ri); put('pandora', 'far', 0.45 + 0.2 * ri);
+  }
+  // v2.8 (crown2): fewer free artifacts. Most artifacts lying in the wilds become chests or gold (region 1 keeps the
+  // fewest), and every artifact left is guarded
+  for (const o of G.objects) if (o.alive && o.type === 'artifact') {
+    const ri = regionOf[o.v];
+    if (rnd() > (ri === 0 ? 0.35 : 0.55)) { dropObjMesh(o.id); if (rnd() < 0.6) o.type = 'chest'; else { o.type = 'gold'; o.amount = 800 + 200 * ri + ((rnd() * 5) | 0) * 100; } continue; }
+    if (!G.objects.some((m) => m.alive && m.type === 'monster' && m.guards === o.v)) guard(o.v, clamp(0.3 + 0.2 * ri, 0.05, 1));
   }
   // keep the way open: each region's Legendary Hero and Border Guards must be reachable from the capital through the
   // regions open by then; treasure, wandering monsters or guards that wall a corridor off are cleared away
