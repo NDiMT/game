@@ -799,7 +799,8 @@ export function cragKey({ biome = 'temperate', nb = [], high = false, hash = 0, 
   // tall in the heart of a range and on the high rim, low rubble only at a lone range end, mid crags elsewhere
   // (a Crown Run wall is a line of mountains: mid or tall, so it always reads as a wall)
   const score = mt + (high ? 2 : 0) + ((hash >>> 3) % 3) - 1;
-  let tier = score >= 5 ? 2 : score >= 2 || mt >= 2 ? 1 : 0;
+  let tier = score >= 6 ? 2 : score >= 2 || mt >= 2 ? 1 : 0;
+  if (tier === 2 && !high && ((hash >>> 11) % 3) === 0) tier = 1; // break up big ranges: a third of the heart stays mid height
   if (wall) tier = gate || score >= 4 ? 2 : Math.max(1, tier); // a Crown Run wall: never rubble; tall where it flanks a gate
   const kind = biome === 'lava' ? 'volcano' : biome === 'cold' || (biome === 'boreal' && tier === 2) ? 'snow' : biome === 'sand' || (biome === 'dry' && sand >= 1) ? 'sand' : forest >= 2 || biome === 'swamp' ? 'moss' : 'rock';
   return `crag:${kind}:${tier}:${(hash >>> 7) % 3}`;

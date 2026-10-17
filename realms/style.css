@@ -1467,6 +1467,8 @@ img.ic-art { image-rendering: auto; object-fit: contain; vertical-align: -0.24em
 }
 .crown-layer.mq-wait { visibility: hidden; pointer-events: none; animation: none; }
 .overlay:not([hidden]):not(.closing) ~ .toast.show, body:has(> .crown-layer:not(.closing):not(.mq-wait)) .toast.show { opacity: 0; transition: opacity 0.12s; }
+/* the morning income float never shows through a dialog (the week card waits for it; on a stalled frame it could linger) */
+.overlay:not([hidden]):not(.closing) ~ #floaters .floater.income { opacity: 0 !important; }
 /* modal backdrop: a touch deeper, so the card reads as the only thing on screen */
 .overlay { background: radial-gradient(ellipse at 50% 45%, rgba(6, 10, 34, 0.55), rgba(3, 5, 20, 0.86)); }
 /* panels: fine grain, a cool top sheen and a soft inner edge (one pseudo-element, painted once, no blur) */
@@ -1506,4 +1508,7 @@ img.ic-art { image-rendering: auto; object-fit: contain; vertical-align: -0.24em
   .crown-layer .cr-originwrap > .cr-stakes p { text-align: left; font-size: 11px; line-height: 1.2; }
   .crown-layer .cr-originwrap > footer { grid-column: 2; position: static; padding: 0; background: none; }
   .crown-layer .cr-originwrap .cr-stake { min-width: 44px; padding: 2px 3px; }
+  .crown-layer .cr-originwrap > footer { gap: 6px; }
+  .crown-layer .cr-originwrap > footer .btn { min-width: 0; padding: 4px 10px; font-size: 14px; }
+  .crown-layer .cr-originwrap > footer .btn .ic { width: 18px; height: 18px; margin-right: 4px; }
 }
