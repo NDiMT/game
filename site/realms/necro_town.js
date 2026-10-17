@@ -16,6 +16,8 @@ export const NECRO_TOWN_IDS = ['village', 'hall2', 'hall3', 'fort', 'market', 't
   'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'];
 
 const TAU = Math.PI * 2;
+// round 4 (town3d): small loose props are skipped so each building reads as one clean shape
+const DECLUTTER = true;
 function rand(seed) {
   let a = seed >>> 0;
   return () => {
@@ -285,6 +287,7 @@ function grave(k, x, z, ry, open = false) {
   tomb(k, x - Math.sin(ry) * 0.12, z - Math.cos(ry) * 0.12, ry, 0.8);
 }
 function deadTree(k, x, z, s = 1) {
+  if (DECLUTTER) return; // round 4: the scene has its own dead trees; inside the lots they were clutter
   const W = C.woodD;
   k.at(x, 0, z, k.r() * TAU, s, () => {
     k.limb([0, 0, 0], [0.04, 0.7, 0], 0.07, 0.04, W, 5);

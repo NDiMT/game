@@ -560,14 +560,15 @@ export function createPlanetMaterial(waterLevel, flat = false) {
         }
         if (vT.w > 0.003) {
           float nz = sin(q.x * 2.3 + sin(q.y * 1.7)) * 0.5 + sin(q.y * 3.1 - q.x * 1.3) * 0.5;
-          float m = vT.w + nz * 0.1;
+          float m = vT.w + nz * 0.08;
           vec4 rd = texture(uTer, vec3(vT.xy * 1.15, 10.0));
-          // a sunny packed-earth verge, then the cobbles
-          vec3 verge = texture(uTer, vec3(vT.xy * 1.3, 2.0)).rgb * vec3(1.12, 1.06, 0.96);
-          float vm = smoothstep(0.2, 0.42, m) * (1.0 - smoothstep(0.47, 0.53, m));
-          tx.rgb = mix(tx.rgb, verge, vm * 0.75);
-          tx.rgb *= 1.0 - 0.1 * smoothstep(0.42, 0.47, m) * (1.0 - smoothstep(0.48, 0.52, m));
-          tx = mix(tx, vec4(rd.rgb, 0.0), smoothstep(0.47, 0.53, m));
+          // (terrain r4: wider roads that read at a glance) a broad packed-earth verge, a kerb of darker set stones,
+          // then the cobbles: the road band runs from m 0.08 (verge) / 0.32 (cobbles) up, see worldgen ROAD_* sizes
+          vec3 verge = texture(uTer, vec3(vT.xy * 1.3, 2.0)).rgb * vec3(1.02, 0.92, 0.8);
+          float vm = smoothstep(0.08, 0.24, m) * (1.0 - smoothstep(0.31, 0.37, m));
+          tx.rgb = mix(tx.rgb, verge, vm * 0.85);
+          tx.rgb *= 1.0 - 0.26 * smoothstep(0.24, 0.29, m) * (1.0 - smoothstep(0.33, 0.37, m));
+          tx = mix(tx, vec4(rd.rgb, 0.0), smoothstep(0.32, 0.37, m));
         }
         // freshly explored land: the mist dissolves into it over ~0.8 s in a soft, patchy wipe (vRev = reveal time)
         float revK = 1.0;

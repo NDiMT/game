@@ -9,6 +9,8 @@ import * as THREE from 'three';
 // =====================================================================
 
 const TAU = Math.PI * 2;
+// round 4 (town3d): small loose props (bushes, saplings, barrels, crates...) are skipped so each building reads as one clean shape
+const DECLUTTER = true;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 function rand(seed) {
   let a = seed >>> 0;
@@ -231,14 +233,14 @@ function makeKit(seed) {
         if (o.sword) { k.box(0.03, 0.5, 0.012, 0.14, 0.45, 0.1, C.steel, { ao: false }); k.box(0.14, 0.025, 0.03, 0.14, 0.45, 0.1, C.gold, { ao: false }); }
       });
     },
-    barrel(x, y, z, s = 1, c = C.wood) {
+    barrel(x, y, z, s = 1, c = C.wood) { if (DECLUTTER) return;
       k.lathe([[0.1 * s, 0], [0.125 * s, 0.13 * s], [0.1 * s, 0.26 * s]], x, y, z, c, 8);
       k.tor(0.118 * s, 0.01 * s, x, y + 0.07 * s, z, C.goldD, TAU, { rx: Math.PI / 2, rs: 8, ts: 3 });
       k.tor(0.118 * s, 0.01 * s, x, y + 0.19 * s, z, C.goldD, TAU, { rx: Math.PI / 2, rs: 8, ts: 3 });
     },
-    crate(x, y, z, s = 1, ry = 0) { k.box(0.22 * s, 0.2 * s, 0.22 * s, x, y, z, C.wood, { ry, j: 0.1 }); k.box(0.23 * s, 0.03, 0.23 * s, x, y + 0.17 * s, z, C.woodD, { ry }); },
-    bush(x, z, s = 1) { k.ball(0.2 * s, x, 0.13 * s, z, C.leaf, 1, { s: [1, 0.8, 1], top: 1.35, bot: 0.85 }); },
-    tree(x, z, s = 1) {
+    crate(x, y, z, s = 1, ry = 0) { if (DECLUTTER) return; k.box(0.22 * s, 0.2 * s, 0.22 * s, x, y, z, C.wood, { ry, j: 0.1 }); k.box(0.23 * s, 0.03, 0.23 * s, x, y + 0.17 * s, z, C.woodD, { ry }); },
+    bush(x, z, s = 1) { if (DECLUTTER) return; k.ball(0.2 * s, x, 0.13 * s, z, C.leaf, 1, { s: [1, 0.8, 1], top: 1.35, bot: 0.85 }); },
+    tree(x, z, s = 1) { if (DECLUTTER) return;
       k.cyl(0.04 * s, 0.06 * s, 0.4 * s, x, 0, z, C.woodD, 6);
       k.ball(0.28 * s, x, 0.55 * s, z, C.leaf, 1, { top: 1.35, bot: 0.8 });
       k.ball(0.2 * s, x + 0.12 * s, 0.75 * s, z - 0.05 * s, 0x72c048, 1, { top: 1.3, bot: 0.85 });
