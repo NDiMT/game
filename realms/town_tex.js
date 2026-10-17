@@ -1,8 +1,8 @@
 // =====================================================================
 // HEX REALMS: town-screen surface textures (round 4).
 // Small procedural greyscale patterns, generated once and shared by every town:
-//   atlas  RGBA 256 px: R rough stone bricks, G roof tiles / shingles, B wood planks, A ashlar / flagstones
-//   ground RGBA 256 px: R grass / ash tufts
+//   atlas  RGBA 128 px: R rough stone bricks, G roof tiles / shingles, B wood planks
+//   ground RGBA 128 px: R grass / ash tufts, G ashlar / flagstones
 // tagTownTex(geo, fac) gives each triangle of a building an `aTex` id (0 = plain paint) from its colour (the faction
 // palette below) and its slope; townMaterial() wraps the painted body material so it multiplies the albedo with the
 // pattern, projected per face (rows always horizontal, so bricks and tiles line up on any wall or roof).
@@ -105,8 +105,9 @@ function bake(T, fns) {
   t.needsUpdate = true;
   return t;
 }
-export function townAtlas(T) { if (!cache.has('atlas')) cache.set('atlas', bake(T, [bricks, tiles, planks, ashlar])); return cache.get('atlas'); }
-export function groundTex(T) { if (!cache.has('ground')) cache.set('ground', bake(T, [grass])); return cache.get('ground'); }
+// (no pattern in the alpha channel: alpha is the one channel drivers / uploads may treat specially)
+export function townAtlas(T) { if (!cache.has('atlas')) cache.set('atlas', bake(T, [bricks, tiles, planks])); return cache.get('atlas'); }
+export function groundTex(T) { if (!cache.has('ground')) cache.set('ground', bake(T, [grass, ashlar])); return cache.get('ground'); }
 
 /** a small tileable cobblestone canvas (for the painted town floor), cached: stones in `cols`, joints in `joint` */
 export function cobbleCanvas(cols, joint, size = 96) {
@@ -220,9 +221,9 @@ export function townMaterial(T, mat, opts = {}) {
   float tHl = length(tN.xz);
   vec2 tHd = tN.xz / max(tHl, 1e-4);
   vec2 tuv = abs(tN.y) > 0.93 ? vObjPos.xz : vec2(dot(vObjPos.xz, vec2(-tHd.y, tHd.x)), -vObjPos.y / max(tHl, 0.35)); // texture rows run top-down
-  vec4 tA = texture2D(uTownTex, tuv * uTexScale);
-  float tG = texture2D(uTownTex2, tuv * uTex2Scale).r;
-  float tP = tid < 0.5 ? 0.5 : tid < 1.5 ? tA.r : tid < 2.5 ? tA.g : tid < 3.5 ? tA.b : tid < 4.5 ? tA.a : tG;
+  vec3 tA = texture2D(uTownTex, tuv * uTexScale).rgb;
+  vec2 tG = texture2D(uTownTex2, tuv * (tid > 4.5 ? uTex2Scale : uTexScale)).rg;
+  float tP = tid < 0.5 ? 0.5 : tid < 1.5 ? tA.r : tid < 2.5 ? tA.g : tid < 3.5 ? tA.b : tid < 4.5 ? tG.g : tG.r;
   diffuseColor.rgb *= 1.0 + (tP - 0.5) * 2.0 * uTexK * (1.0 - 0.25 * hxSmall);
 }`);
   };

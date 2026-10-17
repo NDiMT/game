@@ -800,7 +800,12 @@ function floraCell(v, put0) {
     if (ter[v] === T.FOREST) {
       const n = F.count[0] + (hv % (F.count[1] - F.count[0] + 1));
       for (let i = 0; i < n; i++) { const a = i * 2.1 + hv, d = i ? 0.1 + rr(i) * 0.03 : 0; put(pickW(FOREST_BY_BIOME[biome] || FOREST_BY_BIOME.temperate, rr(i + 9)), v, F.fillScale * (0.85 + rr(i + 3) * 0.3), Math.cos(a) * d, Math.sin(a) * d, a); }
-    } else put(cragKey({ biome, nb: NBR[v].map((n) => ter[n]), high: h[v] > SEA + 4, hash: hv }), v, CRAG_SCALE, 0, 0, ((hv >>> 11) % 6) * Math.PI / 3); // (terrain r4: hex-column crags, turned by 60-degree steps to fit the hex)
+    } else {
+      // (terrain r4) a Crown Run wall cell (walkable land of two regions on its sides) and the ones flanking a gate
+      const wall = !!G.run?.regionsAt && new Set(NBR[v].filter(passable).map((n) => regionOf[n])).size > 1;
+      const gate = wall && NBR[v].some((n) => objAt[n] >= 0 && /^border\d/.test(G.objects[objAt[n]]?.type));
+      put(cragKey({ biome, nb: NBR[v].map((n) => ter[n]), high: h[v] > SEA + 4, hash: hv, wall, gate }), v, CRAG_SCALE, 0, 0, ((hv >>> 11) % 6) * Math.PI / 3);
+    } // (terrain r4: hex-column crags, turned by 60-degree steps to fit the hex)
     return;
   }
   if (objAt[v] >= 0 || road[v] || !F || !F.scatter) return;

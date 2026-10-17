@@ -791,14 +791,16 @@ export function cragModel(kind = 'rock', tier = 1, variant = 0) {
   return b.done({ ao: 0.72, aoH: 0.12, sat: 0.82 });
 }
 /** cragKey(o): which crag a mountain cell gets, deterministic per cell. o: { biome (biomeOf), nb: neighbour terrain ids,
- *  high: the cell stands a step above the usual mountain height, hash: a per-cell integer hash }. */
-export function cragKey({ biome = 'temperate', nb = [], high = false, hash = 0 }) {
+ *  high: the cell stands a step above the usual mountain height, hash: a per-cell integer hash, wall: a Crown Run region
+ *  wall cell, gate: it flanks a gate }. */
+export function cragKey({ biome = 'temperate', nb = [], high = false, hash = 0, wall = false, gate = false }) {
   let mt = 0, forest = 0, sand = 0;
   for (const t of nb) { if (t === 8) mt++; else if (t === 9 || t === 5) forest++; else if (t === 3) sand++; }
   // tall in the heart of a range and on the high rim, low rubble only at a lone range end, mid crags elsewhere
   // (a Crown Run wall is a line of mountains: mid or tall, so it always reads as a wall)
   const score = mt + (high ? 2 : 0) + ((hash >>> 3) % 3) - 1;
-  const tier = score >= 5 ? 2 : score >= 2 || mt >= 2 ? 1 : 0;
+  let tier = score >= 5 ? 2 : score >= 2 || mt >= 2 ? 1 : 0;
+  if (wall) tier = gate || score >= 4 ? 2 : Math.max(1, tier); // a Crown Run wall: never rubble; tall where it flanks a gate
   const kind = biome === 'lava' ? 'volcano' : biome === 'cold' || (biome === 'boreal' && tier === 2) ? 'snow' : biome === 'sand' || (biome === 'dry' && sand >= 1) ? 'sand' : forest >= 2 || biome === 'swamp' ? 'moss' : 'rock';
   return `crag:${kind}:${tier}:${(hash >>> 7) % 3}`;
 }
