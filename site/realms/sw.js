@@ -4,13 +4,13 @@
 //  - HTML / navigations, version.json, sw.js and anything requested with cache:'no-store' are NOT touched:
 //    the page's own self-update (index.html -> version.json -> reload with ?v=) works exactly as without a worker.
 //  - versioned files whose ?v= equals this worker's build (registered as sw.js?b=<BUILD> by index.html), e.g.
-//    main.js?v=2.7 under build 1.8: cache-first. A new build has a new ?v=, i.e. a new URL; older copies of the same
+//    main.js?v=2.8 under build 1.8: cache-first. A new build has a new ?v=, i.e. a new URL; older copies of the same
 //    path are pruned when the new one is stored. A file whose ?v= was not bumped with the build stays on the network.
 //  - big unversioned static payloads that practically never change (vendor/three.module.min.js, audio/**, art/icons/**):
 //    stale-while-revalidate (served from cache at once, refreshed in the background for the next visit).
 //  - everything else: plain network (browser HTTP cache), as before.
 // Kill switch: version.json { "sw": false } makes index.html unregister the worker and drop its caches.
-const CACHE = 'orbis-rt-1'; // bump only when these rules change (old caches are deleted on activate)
+const CACHE = 'orbis-rt-2'; // bump only when these rules change (old caches are deleted on activate)
 const BUILD = new URL(self.location.href).searchParams.get('b') || '';
 
 self.addEventListener('install', () => self.skipWaiting());

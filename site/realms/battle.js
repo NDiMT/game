@@ -360,3 +360,46 @@ export function armyPower(army, h) {
   if (h) p *= 1 + (h.att + h.def) * 0.05 + h.pow * 0.03;
   return p;
 }
+
+// ---- the odds of a fight, from side A's point of view, for the threat word and the Quick offer. A few quick
+// AI-vs-AI simulations with fixed seeds (so the same fight always gets the same answer: the dialog, the battle
+// bar and a re-tap agree). Only fights that look lopsided on paper are simulated at all (cheap on a phone).
+// Quick combat is offered only for a TRIVIAL fight: our power >= QUICK_RATIO x theirs, every simulation won, and
+// the losses within QUICK_LOSS of our army's power on average (a stray skeleton, not a stack).
+export const QUICK_RATIO = 4, QUICK_LOSS = 0.02, QUICK_LOSS_MAX = 0.05;
+function seeded(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const heroCopy = (h) => (h ? { ...h } : null); // mana is spent in a simulation: never on the real hero
+export function odds({ armyA, heroA = null, armyB, heroB = null, town = null }, sims = 6) {
+  const pa = armyPower(armyA, heroA), pb = armyPower(armyB, heroB), ratio = pa / Math.max(1, pb);
+  const out = { ratio, power: [pa, pb], sims: 0, wins: 0, loss: 0, maxLoss: 0, trivial: false, word: '' };
+  if (pa > 0 && ratio >= QUICK_RATIO) {
+    for (let i = 0; i < sims; i++) {
+      const B = createBattle({ armyA, heroA: heroCopy(heroA), armyB, heroB: heroCopy(heroB), town, rng: seeded(0x9e3779b9 + i * 7919) });
+      autoResolve(B);
+      const lost = B.stacks.filter((s) => s.side === 0 && s.start > s.count).map((s) => [s.id, s.start - s.count]);
+      const f = armyPower(lost, heroA) / pa;
+      out.sims++; if (B.over.winner === 0) out.wins++; out.loss += f / sims; out.maxLoss = Math.max(out.maxLoss, f);
+    }
+    out.trivial = out.wins === out.sims && out.loss <= QUICK_LOSS && out.maxLoss <= QUICK_LOSS_MAX;
+  }
+  out.word = threatOf(out);
+  return out;
+}
+// the threat word: Effortless only for a trivial fight (so "Effortless" and the Quick offer always go together)
+export const THREATS = { effortless: 'Effortless', easy: 'Easy', fair: 'Fair', hard: 'Hard', deadly: 'Deadly' };
+export function threatOf(o) { const r = 1 / Math.max(1e-6, o.ratio); return o.trivial ? 'effortless' : r < 0.6 ? 'easy' : r < 1 ? 'fair' : r < 1.6 ? 'hard' : 'deadly'; }
+
+// ---- necromancy (HoMM-like): after a won battle the winner raises part of the LIVING enemies slain as Skeletons.
+// pct = 10% base + 10% per Necromancy level + the Necropolis bonus, at most NECRO.max. Bigger bodies give more
+// bone: a slain creature counts as 1 to 1.5 skeletons' worth by hit points (6 hp each), and never more skeletons
+// rise than bodies fell (the cap keeps a slaughter of dragons from turning into a bone avalanche).
+export const NECRO = { base: 0.1, perLevel: 0.1, facBonus: 0.05, max: 0.5, as: 'skeleton', weight: 1.5 };
+export function necromancy(B, side, { level = 0, bonus = 0 } = {}) {
+  const res = { raised: 0, pct: 0, bodies: 0, hp: 0, as: NECRO.as };
+  if (!(level > 0) || !B.over || B.over.winner !== side) return res;
+  for (const s of B.stacks) if (s.side !== side && !s.u.undead && s.start > s.count) { const n = s.start - s.count; res.bodies += n; res.hp += n * s.u.hp; }
+  res.pct = Math.min(NECRO.max, NECRO.base + NECRO.perLevel * level + bonus);
+  const worth = Math.min(NECRO.weight * res.bodies, Math.max(res.bodies, res.hp / UNITS[NECRO.as].hp));
+  res.raised = Math.min(res.bodies, Math.round(worth * res.pct));
+  return res;
+}

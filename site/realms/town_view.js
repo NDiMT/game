@@ -21,8 +21,10 @@ const rel = (p) => new URL(p + Q, import.meta.url).href;
 const FAC_MODULES = { haven: ['./haven_town.js', 'havenTownBuilding'], necro: ['./necro_town.js', 'necroTownBuilding'],
   sylvan: ['./sylvan_town.js', 'sylvanTownBuilding'], inferno: ['./inferno_town.js', 'infernoTownBuilding'], dungeon: ['./dungeon_town.js', 'dungeonTownBuilding'] };
 const FACS = Object.keys(FAC_MODULES);
-const [MATm, ...FACm] = await Promise.allSettled([import(rel('./materials.js')), ...FACS.map((f) => import(rel(FAC_MODULES[f][0])))]);
+const [MATm, TEXm, ...FACm] = await Promise.allSettled([import(rel('./materials.js')), import(rel('./town_tex.js')), ...FACS.map((f) => import(rel(FAC_MODULES[f][0])))]);
 const MAT = MATm.status === 'fulfilled' ? MATm.value : null;
+const TEX = TEXm.status === 'fulfilled' ? TEXm.value : null; // round 4: procedural surface textures (optional)
+if (!TEX) console.warn('town_view: town_tex.js unavailable, untextured', TEXm.reason);
 const MODEL_FN = {};
 FACS.forEach((f, i) => {
   const r = FACm[i];
@@ -31,22 +33,36 @@ FACS.forEach((f, i) => {
 });
 
 // ------------------------------------------------------------------ slots
-const S = (x, z, ry = 0, s = 1) => ({ x, z, ry, s });
-// one entry per slot; upgrades share their base's slot
+const S = (x, z, ry = 0, s = 1, y = 0) => ({ x, z, ry, s, y });
+// one entry per slot; upgrades share their base's slot.
+// Round 4 layout: three clear rows along streets with breathing room between the lots. The hall (the focal point),
+// the dwelling of the top tier and the mage guild stand on a raised stone terrace at the back (TERRACE_Y), the fort
+// wall frames everything behind it, two rows of lots line the cross streets in front, and the avenue runs up the middle.
+const TERRACE_Y = 0.45;
+const BS = 1.15; // buildings stand a little larger than their model contract: the lots have room for it
 const SLOT_POS = {
-  fort: S(0, -5.1),
-  hall: S(0, -2.6),
-  d7: S(-3.4, -2.8, 0.18),
-  mage: S(3.4, -2.6, -0.18),
-  d6: S(-4.5, 0.05, 0.25),
-  d5: S(-2.2, 0.15, 0.08),
-  d4: S(2.2, 0.15, -0.08),
-  tavern: S(4.5, 0.05, -0.25),
-  market: S(-3.35, 2.75, 0.2),
-  d1: S(-1.12, 2.8, 0.06),
-  d2: S(1.12, 2.8, -0.06),
-  d3: S(3.35, 2.75, -0.2),
+  fort: S(0, -7.45, 0, 1.42),
+  hall: S(0, -4.2, 0, 1.42, TERRACE_Y),
+  d7: S(-5.45, -4.0, 0.16, BS, TERRACE_Y),
+  mage: S(5.3, -4.0, -0.16, 1.22, TERRACE_Y),
+  d6: S(-7.65, 0.6, 0.22, BS),
+  d5: S(-3.8, 0.5, 0.1, BS),
+  d4: S(3.8, 0.5, -0.1, BS),
+  tavern: S(7.55, 0.6, -0.22, BS),
+  market: S(-6.9, 4.8, 0.16, BS),
+  d1: S(-2.6, 4.9, 0.06, BS),
+  d2: S(2.6, 4.9, -0.06, BS),
+  d3: S(6.9, 4.8, -0.16, BS),
 };
+// streets (x0, z0, x1, z1, width) in town units; the floor paints them, the scenery keeps off them
+const STREETS = [[0, 13, 0, -2.2, 1.45], [-9.0, 2.7, 9.0, 2.7, 0.95], [-8.6, -1.5, 8.6, -1.5, 0.85], [-9.4, 6.9, 9.4, 6.9, 0.95]];
+const PLAZA = [0, 0.55, 1.85];
+// bare soil inside the kerb of an empty lot
+const SOIL = { haven: 'rgba(122,100,62,0.42)', necro: 'rgba(78,70,62,0.38)', sylvan: 'rgba(112,90,54,0.42)', inferno: 'rgba(72,40,34,0.42)', dungeon: 'rgba(58,50,92,0.38)' };
+// the terrace platform [x0, x1, z0, z1] and its central stair
+const TERRACE = [-7.6, 7.6, -5.9, -2.35];
+// the town footprint: environment props never land inside it
+const inTown = (x, z) => Math.abs(x) < 10 && z > -9.6 && z < 7.7;
 export const BUILDING_IDS = ['village', 'hall2', 'hall3', 'fort', 'market', 'tavern', 'mage1', 'mage2', 'mage3',
   'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'];
 /** slot key for a building id: village/hall2/hall3 -> 'hall', mage1..3 -> 'mage', uN -> 'dN' */
@@ -68,8 +84,8 @@ for (let t = 1; t <= 7; t++) { const d = DIMS['d' + t]; DIMS['u' + t] = [d[0], d
 // glow multipliers per building (faction:id or id); 1 = the shared glow material
 const GLOW_SCALE = { 'haven:u7': 0.5, 'haven:d7': 0.7, 'haven:mage3': 0.8,
   'dungeon:mage3': 0.8, 'dungeon:u7': 0.8, 'dungeon:u3': 0.8, 'inferno:u3': 0.6, 'inferno:d3': 0.7 };
-const SLOT_MAXH = { fort: 2.5, hall: 3.5, mage: 4.2, market: 1.8, tavern: 2, d1: 2.2, d2: 2.6, d3: 2.9, d4: 2.8, d5: 3.1, d6: 3.2, d7: 4.5 };
-const SLOT_DIM = (k) => { const id = k === 'hall' ? 'hall3' : k === 'mage' ? 'mage3' : k; return DIMS[id]; };
+const SLOT_MAXH = { fort: 4.2, hall: 5.2, mage: 5.4, market: 2.8, tavern: 2.5, d1: 3.3, d2: 4.4, d3: 5.1, d4: 3.6, d5: 3.7, d6: 4.0, d7: 6.0 }; // world units (round 4: incl. the slot scale)
+const SLOT_DIM = (k) => { const id = k === 'hall' ? 'hall3' : k === 'mage' ? 'mage3' : k, d = DIMS[id], s = SLOT_POS[k]?.s ?? 1; return d && [d[0] * s, d[1] * s, d[2] * s]; };
 
 // which id stands in each slot for a given built list
 function resolveSlots(built) {
@@ -241,6 +257,22 @@ export function createTownView(THREE, renderer, opts = {}) {
   const groundMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0, detail: 0.9, scale: 0.32, rim: 0, hemi: 0.06, sat: 0.86, contrast: 0.12, ink: 0 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
   const sceneryMat = keep(MAT ? MAT.makeBodyMaterial(T, { ao: 0.3, aoHeight: 0.4, rim: 0.3, sat: 0.95 }) : new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
   if (!MAT && !opts.glowMat) glowMat.color.setScalar(2.2);
+  // round 4: surface textures. The buildings get their own copy of the painted body material (same look, plus the
+  // brick / tile / plank / ashlar patterns picked per triangle by town_tex.js); the ground gets soft grass / ash tufts.
+  const townBodyMat = TEX && MAT ? keep(TEX.townMaterial(T, MAT.makeBodyMaterial(T), { k: 0.5, scale: 0.55 })) : bodyMat;
+  if (TEX && MAT) { TEX.townMaterial(T, groundMat, { def: 5, k: 0.3, gscale: 0.45 }); TEX.townMaterial(T, sceneryMat, { k: 0.4, scale: 0.55 }); }
+  // tag a merged geometry by slope only: upright faces = bricks, flat tops = flagstones (terrace, kerbs, scenery)
+  const tagFlat = (geo, up = 4, side = 1) => {
+    if (!geo || !TEX) return geo;
+    const P = geo.attributes.position.array, n = P.length / 9, A = new Float32Array(n * 3);
+    for (let t = 0; t < n; t++) {
+      const o = t * 9, ux = P[o + 3] - P[o], uy = P[o + 4] - P[o + 1], uz = P[o + 5] - P[o + 2], vx = P[o + 6] - P[o], vy = P[o + 7] - P[o + 1], vz = P[o + 8] - P[o + 2];
+      const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx, ny = Math.abs(cy) / (Math.hypot(cx, cy, cz) || 1);
+      A[t * 3] = A[t * 3 + 1] = A[t * 3 + 2] = ny > 0.9 ? up : ny < 0.3 ? side : 0;
+    }
+    geo.setAttribute('aTex', new T.BufferAttribute(A, 1));
+    return geo;
+  };
   // perf: instanced trees get their own variants of the shared body / glow materials (same uniforms and shader) and
   // their own shadow-depth material: three.js keys a material's program on instancing, so one material drawn by both
   // InstancedMesh and Mesh objects re-resolved its program (getParameters + cache key) several times every frame
@@ -327,7 +359,7 @@ export function createTownView(THREE, renderer, opts = {}) {
   };
   const meshOf = (m, castShadow = true, gScale = 1) => {
     const g = new T.Group();
-    if (m.body) { const b = new T.Mesh(m.body, bodyMat); b.castShadow = castShadow; b.receiveShadow = true; g.add(b); }
+    if (m.body) { const b = new T.Mesh(m.body, townBodyMat); b.castShadow = castShadow; b.receiveShadow = true; g.add(b); }
     if (m.glow) g.add(new T.Mesh(m.glow, glowMatFor(gScale)));
     return g;
   };
@@ -445,7 +477,7 @@ void main() { float r = length(gl_PointCoord - 0.5) * 2.0; float a = (1.0 - smoo
     return Math.sqrt(best);
   }
   // flat ground under the town, rolling hills around, river valley behind
-  function flatD(x, z) { const dz = z < -0.8 ? (z + 0.8) / 8.2 : (z + 0.8) / 15; return Math.hypot(x / 10.5, dz); }
+  function flatD(x, z) { const dz = z < -0.8 ? (z + 0.8) / 9.9 : (z + 0.8) / 15; return Math.hypot(x / 13.2, dz); } // round 4: wider town
   function groundH(x, z, fac) {
     const d = flatD(x, z), out = smooth(1.0, 1.7, d), r = Math.hypot(x, z + 4);
     let h = out * (Math.max(fbm(x * 0.05, z * 0.05, 3, 3) - 0.38, -0.1) * 7);
@@ -584,79 +616,105 @@ void main() { vec3 d = normalize(vD); float y = d.y;
       ground.receiveShadow = true; ground.name = 'ground';
       G.add(ground);
     }
-    // ----- the painted town floor: paths and building lots, redrawn for the built slots only
+    // ----- the painted town floor (round 4): cobbled streets and a plaza, paved lots under the built slots and bare
+    //       soil inside a low kerb on the empty ones; repainted only when the set of built slots changes
     {
-      const X0 = -11, Z0 = -9.5, W = 22, PX = 512 / W;
-      const cv = document.createElement('canvas'); cv.width = cv.height = 512;
+      const X0 = -15, Z0 = -10.5, W = 30, RES = 768, PX = RES / W;
+      const cv = document.createElement('canvas'); cv.width = cv.height = RES;
       const tex = keep(new T.CanvasTexture(cv)); tex.colorSpace = T.SRGBColorSpace;
       tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-      const lay = document.createElement('canvas'); lay.width = lay.height = 512;
+      const cob = TEX?.cobbleCanvas ? TEX.cobbleCanvas(P.stone, P.pathEdge) : null;
+      const kerbC = [parseInt(P.stone[2].slice(1), 16), parseInt(P.stone[1].slice(1), 16)];
       env.floorKey = null;
       env.drawFloor = (keys) => {
         const key = keys.slice().sort().join(',');
         if (key === env.floorKey) return;
         env.floorKey = key;
-        const g = cv.getContext('2d'), L = lay.getContext('2d');
-        g.clearRect(0, 0, 512, 512); L.clearRect(0, 0, 512, 512); L.globalCompositeOperation = 'source-over';
-        const tx = (x) => (x - X0) * PX, tz = (z) => (z - Z0) * PX;
-        const r = rng32(5);
+        const g = cv.getContext('2d');
+        g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, RES, RES);
+        g.setTransform(PX, 0, 0, PX, -X0 * PX, -Z0 * PX); // draw in town units
         const has = (k) => keys.includes(k);
-        // lots under the built slots
+        let pave = P.path;
+        if (cob) { pave = g.createPattern(cob, 'repeat'); const s = 1.35 / cob.width; pave.setTransform?.(new DOMMatrix([s, 0, 0, s, 0, 0])); }
+        const lines = [];
+        for (const [x0, z0, x1, z1, w] of STREETS) lines.push([[[x0, z0], [x1, z1]], w]);
+        // short walks from each built ground lot to its street
         for (const k of keys) {
-          if (k === 'fort' || !SLOT_POS[k]) continue;
-          const s = SLOT_POS[k], d = SLOT_DIM(k);
-          const rad = Math.max(d[0], d[1]) * 0.66 * PX;
-          const gr = g.createRadialGradient(tx(s.x), tz(s.z), rad * 0.3, tx(s.x), tz(s.z), rad);
-          gr.addColorStop(0, P.pad); gr.addColorStop(1, 'rgba(0,0,0,0)');
-          g.fillStyle = gr; g.beginPath(); g.arc(tx(s.x), tz(s.z), rad, 0, 7); g.fill();
+          const s = SLOT_POS[k]; if (!s || s.y || k === 'fort') continue;
+          const toZ = s.z > 3 ? 6.75 : 2.65;
+          lines.push([[[s.x, s.z], [s.x + Math.sin(s.ry) * 0.6, toZ]], 0.85]);
         }
-        // roads: the entry road to the hall plaza, then a branch to each built slot only
-        const roads = [[[0, 12], [0.1, 6], [-0.03, 3.6], [0, 1.4], [0, -1.0]]];
-        const MID = ['d6', 'd5', 'd4', 'tavern'], FRONT = ['market', 'd1', 'd2', 'd3'], BACK = ['d7', 'mage'];
-        for (const side of [-1, 1]) {
-          // middle row: the street at z 1.5 runs out to the furthest built house on this side
-          const mx = Math.max(0, ...MID.filter((k) => has(k) && Math.sign(SLOT_POS[k].x) === side).map((k) => Math.abs(SLOT_POS[k].x)));
-          if (mx) roads.push([[0, 1.45], [side * mx * 0.5, 1.5], [side * mx, 1.55], [side * mx, 1.0]]);
-          for (const k of MID) if (has(k) && Math.sign(SLOT_POS[k].x) === side && Math.abs(SLOT_POS[k].x) < mx) roads.push([[SLOT_POS[k].x, 1.5], [SLOT_POS[k].x, 1.0]]);
-          // back row: the street at z -1.15 from the plaza
-          const bx = Math.max(0, ...BACK.filter((k) => has(k) && Math.sign(SLOT_POS[k].x) === side).map((k) => Math.abs(SLOT_POS[k].x)));
-          if (bx) roads.push([[0, -1.1], [side * bx * 0.5, -1.15], [side * bx, -1.2], [side * bx, -1.6]]);
-        }
-        // front row: short walks from the entry road to each front door
-        for (const k of FRONT) if (has(k)) { const s = SLOT_POS[k]; roads.push([[0, 4.5], [s.x * 0.55, 4.45], [s.x, 4.15], [s.x, 3.6]]); }
-        if (has('fort')) roads.push([[0, -3.6], [0, -4.7]]);
-        const stroke = (ctx, w, style, blur = 0) => {
-          ctx.strokeStyle = style; ctx.lineWidth = w * PX; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-          ctx.shadowColor = style; ctx.shadowBlur = blur;
-          for (const rd of roads) { ctx.beginPath(); rd.forEach(([x, z], i) => (i ? ctx.lineTo(tx(x), tz(z)) : ctx.moveTo(tx(x), tz(z)))); ctx.stroke(); }
-          ctx.shadowBlur = 0;
+        const strokeAll = (style, extra, blur) => {
+          g.strokeStyle = style; g.lineCap = 'round'; g.lineJoin = 'round'; g.shadowColor = typeof style === 'string' ? style : P.pathEdge; g.shadowBlur = blur;
+          for (const [pts, w] of lines) { g.lineWidth = w + extra; g.beginPath(); pts.forEach(([x, z], i) => (i ? g.lineTo(x, z) : g.moveTo(x, z))); g.stroke(); }
+          g.shadowBlur = 0;
         };
-        stroke(L, 1.2, P.pathEdge, 8);
-        L.fillStyle = P.pathEdge; L.beginPath(); L.ellipse(tx(0), tz(-0.95), 1.6 * PX, 1.05 * PX, 0, 0, 7); L.fill();
-        stroke(L, 0.8, P.path);
-        L.fillStyle = P.path; L.beginPath(); L.ellipse(tx(0), tz(-0.95), 1.3 * PX, 0.82 * PX, 0, 0, 7); L.fill();
-        L.globalCompositeOperation = 'source-atop';
-        for (let i = 0; i < 4200; i++) {
-          const x = r() * 512, y = r() * 512, s = 2 + r() * 3.2;
-          L.fillStyle = P.stone[(r() * 3) | 0]; L.globalAlpha = 0.3 + r() * 0.3;
-          L.beginPath(); L.ellipse(x, y, s, s * (0.6 + r() * 0.3), r() * 3, 0, 7); L.fill();
+        // lots: soft paved aprons under the built ground slots, bare soil on the empty ones
+        for (const k of Object.keys(SLOT_POS)) {
+          const s = SLOT_POS[k]; if (s.y || k === 'fort') continue;
+          const d = SLOT_DIM(k), w = d[0] + 0.5, dd = d[1] + 0.5;
+          g.save(); g.translate(s.x, s.z); g.rotate(-s.ry);
+          if (has(k)) { g.globalAlpha = 0.4; g.fillStyle = P.pathEdge; g.beginPath(); g.roundRect?.(-w / 2 + 0.1, -dd / 2 + 0.1, w - 0.2, dd - 0.2, 0.5); g.fill(); g.globalAlpha = 1; }
+          else { g.fillStyle = SOIL[fac] || 'rgba(110,92,64,0.45)'; g.beginPath(); g.roundRect?.(-w / 2 + 0.25, -dd / 2 + 0.25, w - 0.5, dd - 0.5, 0.12); g.fill(); }
+          g.restore();
         }
-        L.globalAlpha = 1;
-        g.drawImage(lay, 0, 0);
-        // flowers / tufts (haven) - heather, pale sage tufts and green glimmers (necro)
-        // round 3: a sparse, muted sprinkle (was 650 bright dots: read as confetti)
-        const dots = P.dots;
-        for (let i = 0; i < 190; i++) {
-          const x = r() * 512, y = r() * 512;
-          g.fillStyle = dots[(r() * dots.length) | 0];
-          g.beginPath(); g.arc(x, y, 1 + r() * 1.4, 0, 7); g.fill();
-        }
+        strokeAll(P.pathEdge, 0.3, 0.12 * PX);
+        g.fillStyle = P.pathEdge; g.beginPath(); g.arc(PLAZA[0], PLAZA[1], PLAZA[2] + 0.15, 0, 7); g.fill();
+        strokeAll(pave, 0, 0);
+        g.fillStyle = pave; g.beginPath(); g.arc(PLAZA[0], PLAZA[1], PLAZA[2], 0, 7); g.fill();
+        // a ring of larger kerb stones round the plaza
+        g.strokeStyle = P.pathEdge; g.lineWidth = 0.1; g.beginPath(); g.arc(PLAZA[0], PLAZA[1], PLAZA[2] * 0.62, 0, 7); g.stroke();
         tex.needsUpdate = true;
+        // low stone kerbs + corner stones round every empty lot (ground and terrace)
+        if (env.kerb) { G.remove(env.kerb); env.kerb.geometry.dispose(); env.kerb = null; }
+        const kk = kit(77);
+        for (const k of Object.keys(SLOT_POS)) {
+          if (has(k) || k === 'fort') continue;
+          const s = SLOT_POS[k], d = SLOT_DIM(k), w = d[0] + 0.2, dd = d[1] + 0.2, c = Math.cos(s.ry), sn = Math.sin(s.ry);
+          const at = (lx, lz) => [s.x + lx * c + lz * sn, s.z - lx * sn + lz * c];
+          for (const [lx, lz, bw, bd] of [[0, dd / 2, w, 0.14], [0, -dd / 2, w, 0.14], [w / 2, 0, 0.14, dd], [-w / 2, 0, 0.14, dd]]) { const [x, z] = at(lx, lz); kk.box(bw, 0.1, bd, x, s.y, z, kerbC, s.ry); }
+          for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const [x, z] = at(sx * w / 2, sz * dd / 2); kk.box(0.24, 0.2, 0.24, x, s.y, z, kerbC, s.ry); }
+        }
+        const kg = kk.body();
+        if (kg) { env.kerb = new T.Mesh(tagFlat(kg), sceneryMat); env.kerb.receiveShadow = true; G.add(env.kerb); }
       };
       const m = keep(new T.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
       const plane = new T.Mesh(keep(new T.PlaneGeometry(W, W).rotateX(-Math.PI / 2).translate(X0 + W / 2, 0.015, Z0 + W / 2)), m);
       plane.receiveShadow = true; plane.renderOrder = 1;
       G.add(plane);
+    }
+    // ----- the terrace under the hall: a stone platform with a retaining wall, coping, a low parapet and a central stair
+    {
+      const k = kit(91), hex = (c) => parseInt(c.slice(1), 16), wall = [hex(P.stone[2]), hex(P.stone[0])], cap = hex(P.stone[1]); // the street stone
+      const [x0, x1, z0, z1] = TERRACE, w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, H = TERRACE_Y;
+      k.box(w, H + 0.3, d, cx, -0.3, cz, wall);
+      k.box(w + 0.14, 0.07, d + 0.14, cx, H - 0.04, cz, cap);
+      // parapet along the front, open at the stair, with square posts
+      const sw = 2.9;
+      for (const sd of [-1, 1]) {
+        const a = sd < 0 ? x0 + 0.1 : sw / 2 + 0.1, b = sd < 0 ? -sw / 2 - 0.1 : x1 - 0.1, mx = (a + b) / 2;
+        k.box(b - a, 0.2, 0.16, mx, H, z1 - 0.1, wall);
+        k.box(b - a + 0.04, 0.05, 0.22, mx, H + 0.2, z1 - 0.1, cap);
+        for (let x = a; x <= b + 1e-6; x += (b - a) / Math.max(1, Math.round((b - a) / 1.6))) k.box(0.26, 0.36, 0.26, x, H, z1 - 0.1, cap);
+      }
+      // the stair: three steps forward from the front edge, with cheek walls
+      for (let i = 0; i < 3; i++) k.box(sw, H * (3 - i) / 3, 0.3, 0, 0, z1 + 0.15 + i * 0.3, wall);
+      for (const sd of [-1, 1]) k.box(0.28, H + 0.12, 0.95, sd * (sw / 2 + 0.14), 0, z1 + 0.45, cap);
+      const tg = tagFlat(k.body());
+      const tm = new T.Mesh(keep(tg), sceneryMat); tm.receiveShadow = true; tm.name = 'terrace'; // (no castShadow: its big flat top self-shadowed into grey acne)
+      G.add(tm);
+      // the plaza monument: a low round basin and a slim faction obelisk with a lit finial (small: the hall stays the focus)
+      const mk = kit(93), [px, pz] = PLAZA, lampC = P.lamp?.[0] ?? 0xffd070, trim = P.ph.trim;
+      mk.cyl(0.95, 1.0, 0.22, px, 0, pz, wall, 16);
+      mk.cyl(0.82, 0.82, 0.05, px, 0.2, pz, cap, 16);
+      mk.add(new T.CylinderGeometry(0.78, 0.78, 0.02, 16).translate(px, 0.23, pz), fac === 'inferno' ? 0xff8a2a : fac === 'necro' ? 0x7af0b0 : P.water[1], true);
+      mk.cyl(0.24, 0.3, 0.3, px, 0.2, pz, cap, 8);
+      mk.add(new T.CylinderGeometry(0.07, 0.15, 1.5, 4).rotateY(Math.PI / 4).translate(px, 0.5 + 0.75, pz), [wall[0], cap]);
+      mk.add(new T.OctahedronGeometry(0.14, 0).scale(1, 1.4, 1).translate(px, 2.15, pz), lampC, true);
+      mk.cyl(0.12, 0.09, 0.08, px, 1.98, pz, trim, 8);
+      const mb = new T.Mesh(keep(tagFlat(mk.body(), 4, 4)), sceneryMat); mb.castShadow = true; mb.receiveShadow = true; G.add(mb);
+      const mgl = mk.glow(); if (mgl) G.add(new T.Mesh(keep(mgl), glowMat));
+      if (inkMat) { const h = new T.Mesh(mb.geometry, inkMat); h.userData.ink = true; G.add(h); }
     }
     // ----- the river
     {
@@ -896,6 +954,13 @@ void main() {
     const smokers = [];
     {
       const k = kit(P.sceneSeed ?? (P.seed ?? 11) + 30);
+      // round 4: keep the town footprint clean: scenery that lands inside it is dropped (except the avenue lamps)
+      { const add0 = k.add.bind(k), bb = new T.Box3(), cc = new V3();
+        k.add = (g, c, glow, jit) => {
+          bb.setFromBufferAttribute(g.attributes.position).getCenter(cc);
+          if (inTown(cc.x, cc.z) && bb.max.y < 30 && !LAMPS.some(([lx, lz]) => Math.hypot(cc.x - lx, cc.z - lz) < 0.7)) { g.dispose(); return; }
+          add0(g, c, glow, jit);
+        }; }
       const at = (x, z) => groundH(x, z, fac);
       const CT = P.cottage;
       const wall = CT.wall, roofC = CT.roof;
@@ -915,7 +980,8 @@ void main() {
       // lit lanterns along the road (necro bone posts, inferno braziers, dungeon crystal lamps): halos + motes below
       env.lanterns = [];
       const lowAt = (x, z, r = 0.25) => Math.min(at(x, z), at(x - r, z - r), at(x + r, z - r), at(x - r, z + r), at(x + r, z + r));
-      const LAMPS = [[-1.0, -0.2, 0.9], [1.0, -0.2, 0.9], [-0.75, 5.0, 1], [0.75, 5.0, 1], [-6.3, -1.0, 1], [6.3, -1.0, 1], [-4.9, 4.6, 0.95], [4.9, 4.6, 0.95]];
+      // round 4: a few lamps only, in pairs along the avenue
+      const LAMPS = [[-1.25, 8.4, 1], [1.25, 8.4, 1], [-1.3, 3.55, 0.95], [1.3, 3.55, 0.95], [-2.05, -1.2, 0.9], [2.05, -1.2, 0.9]];
       const rocks = (n, c) => { for (let i = 0; i < n; i++) { const x = (R() - 0.5) * 40, z = -R() * 20 + 6; if (flatD(x, z) < 1.1 || (z > 2 && Math.abs(x) < 9)) continue; k.add(new T.IcosahedronGeometry(0.3 + R() * 0.5, 0).scale(1, 0.6, 1).translate(x, at(x, z), z), c); } };
       if (fac === 'haven') {
         cottage(12, -8, -0.4); cottage(15, -4.5, -0.8, 0.85); cottage(-12.5, 3.5, 0.6, 0.9); cottage(-17, -5, 0.3, 0.8);
@@ -1212,8 +1278,8 @@ void main() {
         ng.setAttribute('aWave', new T.BufferAttribute(wv, 1)); ng.setAttribute('aPhase', new T.BufferAttribute(ph, 1));
         wave.push(ng);
       };
-      banner(-6.3, 1.7, 2.4, -1); banner(6.3, 1.7, 2.4, 1);
-      banner(-5.7, 4.0, 2.2, -1); banner(5.7, 4.0, 2.2, 1);
+      // round 4: one pair of tall banners framing the town gate at the end of the avenue (was four inside the town)
+      banner(-10.3, 7.9, 2.8, -1); banner(10.3, 7.9, 2.8, 1);
       // merge flags with wave attributes
       {
         let n = 0; for (const g of wave) n += g.attributes.position.count;
@@ -1392,6 +1458,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     const fn = MODEL_FN[fac];
     if (fn) { try { m = fn(id); } catch (e) { console.warn('town_view: model failed', fac, id, e); m = null; } }
     if (!m || !m.body) m = placeholder(fac, id);
+    if (TEX && m.body && !m.body.attributes.aTex) m = { ...m, body: TEX.tagTownTex(m.body, fac) };
     const out = normalise(m, id);
     geoCache.set(key, out);
     return out;
@@ -1413,11 +1480,11 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     const inner = new T.Group(); inner.add(...g.children);
     inner.scale.setScalar(s * sp.s);
     g.add(inner);
-    g.position.set(sp.x, 0, sp.z); g.rotation.y = sp.ry;
+    g.position.set(sp.x, sp.y, sp.z); g.rotation.y = sp.ry;
     g.userData = { id, slot: k, h: (DIMS[id] || [0, 0, 3])[2] * s * sp.s };
-    for (const c of inner.children) { c.userData.bid = id; if (c.material === bodyMat) pickables.push(c); }
+    for (const c of inner.children) { c.userData.bid = id; if (c.material === townBodyMat) pickables.push(c); }
     // round 3 figure/ground: a crisp painted ink outline + a soft contact shadow so each building sits ON the ground
-    if (inkMat) for (const c of [...inner.children]) if (c.material === bodyMat) { const h = new T.Mesh(c.geometry, inkMat); h.castShadow = h.receiveShadow = false; h.userData.ink = true; inner.add(h); }
+    if (inkMat) for (const c of [...inner.children]) if (c.material === townBodyMat) { const h = new T.Mesh(c.geometry, inkMat); h.castShadow = h.receiveShadow = false; h.userData.ink = true; inner.add(h); }
     if (blobMat) {
       const d = SLOT_DIM(k) || [2, 2, 2], bl = new T.Mesh(blobGeo, blobMat);
       bl.scale.set(d[0] * (k === 'fort' ? 0.58 : 0.7), 1, d[1] * (k === 'fort' ? 0.9 : 0.7)); bl.position.y = 0.03; bl.renderOrder = 2; bl.userData.blob = true;
@@ -1435,12 +1502,12 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
       const a = Math.random() * Math.PI * 2, rx = d[0] * 0.55, rz = d[1] * 0.55;
       const ex = Math.cos(a), ez = Math.sin(a);
       const x = sp.x + ex * rx * (k === 'fort' ? 1 : 0.9 + Math.random() * 0.2), z = sp.z + ez * rz;
-      soft.spawn({ x, y: 0.1 + Math.random() * 0.3, z, vx: ex * (1 + Math.random() * 2) * strong, vy: 0.4 + Math.random() * 0.9, vz: ez * (1 + Math.random() * 2) * strong, drag: 2.2, s0: 0.5 + Math.random() * 0.4, s1: 1.4 + Math.random() * 1.2, a: 0.75, life: 1.2 + Math.random() * 0.9, c: dc });
+      soft.spawn({ x, y: sp.y + 0.1 + Math.random() * 0.3, z, vx: ex * (1 + Math.random() * 2) * strong, vy: 0.4 + Math.random() * 0.9, vz: ez * (1 + Math.random() * 2) * strong, drag: 2.2, s0: 0.5 + Math.random() * 0.4, s1: 1.4 + Math.random() * 1.2, a: 0.75, life: 1.2 + Math.random() * 0.9, c: dc });
     }
   }
   function sparkle(k) {
     const sp = SLOT_POS[k], d = SLOT_DIM(k), gc = col(0xffe08a);
-    for (let i = 0; i < 26; i++) glowP.spawn({ x: sp.x + (Math.random() - 0.5) * d[0], y: 0.4 + Math.random() * d[2], z: sp.z + (Math.random() - 0.5) * d[1], vy: 0.6 + Math.random(), drag: 1, s0: 0.22, s1: 0.05, a: 1, life: 1 + Math.random(), c: gc, twinkle: true });
+    for (let i = 0; i < 26; i++) glowP.spawn({ x: sp.x + (Math.random() - 0.5) * d[0], y: sp.y + 0.4 + Math.random() * d[2], z: sp.z + (Math.random() - 0.5) * d[1], vy: 0.6 + Math.random(), drag: 1, s0: 0.22, s1: 0.05, a: 1, life: 1 + Math.random(), c: gc, twinkle: true });
   }
 
   function applyEnv(fac) {
@@ -1488,7 +1555,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
       const g = makeBuilding(fac, id, k);
       town.add(g);
       slots[k] = { id, group: g };
-      if (animate) { g.userData.anim = { t: 0, dur: 1.9, delay: s ? 0.45 : 0 }; g.position.y = -g.userData.h * 1.05; dustBurst(k, 18, 0.8); }
+      if (animate) { g.userData.anim = { t: 0, dur: 1.9, delay: s ? 0.45 : 0 }; g.position.y = SLOT_POS[k].y - g.userData.h * 1.05; dustBurst(k, 18, 0.8); }
     }
     activeEnv?.drawFloor?.(Object.keys(want));
     const snap = !same;
@@ -1517,15 +1584,15 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     if (!k || !SLOT_POS[k]) { hl.id = hl.slot = null; ring.visible = ghost.visible = marker.visible = false; if (focus.extra) { focus.extra = null; aim(); } return; }
     hl.id = id; hl.slot = k;
     const sp = SLOT_POS[k], d = SLOT_DIM(k);
-    ring.position.set(sp.x, 0.06, sp.z); ring.rotation.y = sp.ry;
-    ring.scale.set(d[0] * 0.66, 1, d[1] * (k === 'fort' ? 1.4 : 0.66));
+    ring.position.set(sp.x, sp.y + 0.06, sp.z); ring.rotation.y = sp.ry;
+    ring.scale.set(d[0] * 0.66, 1, d[1] * (k === 'fort' ? 1.4 : 0.66)); // (d: world size)
     ring.visible = true;
     ghost.visible = !slots[k];
-    if (ghost.visible) { ghost.position.set(sp.x, 0, sp.z); ghost.rotation.y = sp.ry; ghost.scale.set(d[0] * 0.8, SLOT_MAXH[k] * 0.8, d[1] * 0.8); }
+    if (ghost.visible) { ghost.position.set(sp.x, sp.y, sp.z); ghost.rotation.y = sp.ry; ghost.scale.set(d[0] * 0.8, SLOT_MAXH[k] * 0.8, d[1] * 0.8); }
     // keep a highlighted empty lot in view
-    const ex = ghost.visible ? [sp.x, sp.z, d[0], d[1], SLOT_MAXH[k]] : null;
+    const ex = ghost.visible ? [sp.x, sp.z, d[0], d[1], SLOT_MAXH[k], sp.y] : null;
     if (String(ex) !== String(focus.extra)) { focus.extra = ex; if (shot.cur) aim(); }
-    let top = SLOT_MAXH[k] * 0.8;
+    let top = sp.y + SLOT_MAXH[k] * 0.8;
     if (slots[k]) { const g = slots[k].group, y = g.position.y; g.position.y = 0; box.setFromObject(g); g.position.y = y; if (isFinite(box.max.y)) top = box.max.y; }
     hl.top = top + 0.35;
     marker.position.set(sp.x, hl.top, k === 'fort' ? sp.z + 0.5 : sp.z); marker.visible = true;
@@ -1536,8 +1603,11 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   // fills the screen above the bottom sheet and the view eases outwards as the town grows.
   const insets = { top: 0, bottom: 0.45, left: 0, right: 0 };
   const view = { w: 1, h: 1 };
-  const PITCH = 0.06; // the view axis is nearly level; an off-axis frustum keeps verticals upright
-  const MIN_BOX = [-2.9, 2.9, -3.9, 3.8]; // x0, x1, z0, z1 (hall + front lots)
+  // round 4: a higher, three-quarter view so the rows of lots read one behind the other instead of piling up.
+  // The view axis tilts down by part of the elevation (PITCH_K); the off-axis frustum does the rest, so verticals
+  // converge only slightly.
+  const PITCH_K = 0.55;
+  const MIN_BOX = [-4.6, 4.6, -6.3, 5.8]; // x0, x1, z0, z1 (terrace + the inner lots)
   const focus = { boxes: [], extra: null };
   const shot = { cur: null, want: null };
   function setInsets(o = {}) {
@@ -1551,15 +1621,15 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     const boxes = [];
     for (const [k, id] of pairs) {
       const sp = SLOT_POS[k]; if (!sp) continue;
-      const d = DIMS[id] || SLOT_DIM(k);
-      boxes.push([sp.x, sp.z, d[0], d[1], Math.min(SLOT_MAXH[k] * 1.05, d[2] * 1.05)]);
+      const d = DIMS[id] ? DIMS[id].map((v) => v * sp.s) : SLOT_DIM(k);
+      boxes.push([sp.x, sp.z, d[0], d[1], Math.min(SLOT_MAXH[k] * 1.05, d[2] * 1.05), sp.y]);
     }
     focus.boxes = boxes;
     aim();
     if (snap || !shot.cur) shot.cur = cloneShot(shot.want);
     applyShot();
   }
-  const cloneShot = (s) => ({ pos: s.pos.clone(), L: s.L, R: s.R, T: s.T, B: s.B });
+  const cloneShot = (s) => ({ pitch: s.pitch, pos: s.pos.clone(), L: s.L, R: s.R, T: s.T, B: s.B });
   // compute the wanted shot: camera position + off-axis frustum (tangents)
   function aim() {
     const { w, h } = view;
@@ -1569,9 +1639,9 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     const fb = focus.extra ? [...focus.boxes, focus.extra] : focus.boxes;
     for (const [x, z, bw, bd] of fb) { bx0 = Math.min(bx0, x - bw / 2); bx1 = Math.max(bx1, x + bw / 2); bz0 = Math.min(bz0, z - bd / 2); bz1 = Math.max(bz1, z + bd / 2); }
     // portrait screens look down more steeply so the town's depth fills the tall view
-    const elev = lerp(0.4, 0.3, smooth(0.8, 1.9, A));
+    const elev = lerp(0.74, 0.6, smooth(0.8, 1.9, A)), PITCH = elev * PITCH_K;
     const span = Math.max(bx1 - bx0, (bz1 - bz0) * 0.9);
-    const dist = clamp(span * 1.7, 11.5, 23);
+    const dist = clamp(span * 1.75, 13, 34);
     const cx = (bx0 + bx1) / 2, cz = (bz0 + bz1) / 2;
     const pos = new V3(cx, 0.9 + Math.sin(elev) * dist, cz + Math.cos(elev) * dist);
     camera.position.copy(pos);
@@ -1582,9 +1652,9 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     const boxes = [[0, 0, 0, 0, 0], ...fb];
     boxes[0] = [cx, cz, bx1 - bx0, bz1 - bz0, 1.2];
-    for (const [x, z, bw, bd, bh] of boxes) {
+    for (const [x, z, bw, bd, bh, by = 0] of boxes) {
       for (const sx of [-0.5, 0.5]) for (const sz of [-0.5, 0.5]) for (const sy of [0, 1]) {
-        v.set(x + sx * bw, sy * bh, z + sz * bd).applyMatrix4(inv);
+        v.set(x + sx * bw, by + sy * bh, z + sz * bd).applyMatrix4(inv);
         const tx = v.x / -v.z, ty = v.y / -v.z;
         x0 = Math.min(x0, tx); x1 = Math.max(x1, tx); y0 = Math.min(y0, ty); y1 = Math.max(y1, ty);
       }
@@ -1605,13 +1675,13 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
       const rest = (x1 - x0) / A - (yt - yb); if (rest > 0) { yt += rest * 0.5; yb -= rest * 0.5; }
     }
     const k = vh / (yt - yb); // px per tan unit
-    shot.want = { pos, L: x0 - px(insets.left, w) / k, R: x1 + px(insets.right, w) / k, T: yt + px(insets.top, h) / k, B: yb - px(insets.bottom, h) / k };
+    shot.want = { pitch: PITCH, pos, L: x0 - px(insets.left, w) / k, R: x1 + px(insets.right, w) / k, T: yt + px(insets.top, h) / k, B: yb - px(insets.bottom, h) / k };
   }
   function applyShot() {
     const s = shot.cur; if (!s) return;
     camera.position.copy(s.pos);
     camera.up.set(0, 1, 0);
-    camera.lookAt(s.pos.x, s.pos.y - Math.sin(PITCH), s.pos.z - Math.cos(PITCH));
+    camera.lookAt(s.pos.x, s.pos.y - Math.sin(s.pitch), s.pos.z - Math.cos(s.pitch));
     camera.updateMatrixWorld(true);
     const n = camera.near;
     camera.projectionMatrix.makePerspective(s.L * n, s.R * n, s.T * n, s.B * n, n, camera.far);
@@ -1622,10 +1692,10 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   }
   function easeShot(dt) {
     const a = shot.cur, b = shot.want; if (!a || !b) return;
-    const d = Math.abs(a.L - b.L) + Math.abs(a.R - b.R) + Math.abs(a.T - b.T) + Math.abs(a.B - b.B) + a.pos.distanceTo(b.pos) * 0.05;
+    const d = Math.abs(a.pitch - b.pitch) + Math.abs(a.L - b.L) + Math.abs(a.R - b.R) + Math.abs(a.T - b.T) + Math.abs(a.B - b.B) + a.pos.distanceTo(b.pos) * 0.05;
     if (d < 1e-5) return;
     const t = 1 - Math.exp(-dt * 2.6);
-    a.pos.lerp(b.pos, t); a.L = lerp(a.L, b.L, t); a.R = lerp(a.R, b.R, t); a.T = lerp(a.T, b.T, t); a.B = lerp(a.B, b.B, t);
+    a.pos.lerp(b.pos, t); a.pitch = lerp(a.pitch, b.pitch, t); a.L = lerp(a.L, b.L, t); a.R = lerp(a.R, b.R, t); a.T = lerp(a.T, b.T, t); a.B = lerp(a.B, b.B, t);
     applyShot();
   }
   camera.updateProjectionMatrix = () => applyShot();
@@ -1663,7 +1733,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     let bp = 34;
     for (const k of Object.keys(slots)) {
       const sp = SLOT_POS[k];
-      const v = new V3(sp.x, SLOT_MAXH[k] * 0.4, sp.z).project(camera);
+      const v = new V3(sp.x, sp.y + SLOT_MAXH[k] * 0.4, sp.z).project(camera);
       const sx = r.left + (v.x * 0.5 + 0.5) * r.width, sy = r.top + (-v.y * 0.5 + 0.5) * r.height;
       const d = Math.hypot(sx - clientX, sy - clientY);
       if (d < bp) { bp = d; best = slots[k].id; }
@@ -1674,7 +1744,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
   function slotScreen(id) {
     const k = slotOf(id), sp = SLOT_POS[k]; if (!sp) return null;
     const r = viewRect();
-    const v = new V3(sp.x, SLOT_MAXH[k], sp.z).project(camera);
+    const v = new V3(sp.x, sp.y + SLOT_MAXH[k], sp.z).project(camera);
     return [r.left + (v.x * 0.5 + 0.5) * r.width, r.top + (-v.y * 0.5 + 0.5) * r.height];
   }
 
@@ -1692,18 +1762,18 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
       a.t += dt / a.dur;
       const t = Math.min(1, a.t), e = 1 - Math.pow(1 - t, 3);
       const H = g.userData.h;
-      g.position.y = -H * 1.05 * (1 - e) + Math.sin(t * Math.PI) * 0.06;
+      g.position.y = SLOT_POS[k].y - H * 1.05 * (1 - e) + Math.sin(t * Math.PI) * 0.06;
       const sh = (1 - t) * 0.04;
       g.position.x = SLOT_POS[k].x + Math.sin(time * 47) * sh;
       g.position.z = SLOT_POS[k].z + Math.cos(time * 39) * sh;
       if (Math.random() < dt * 40 * (1 - t)) dustBurst(k, 2, 0.6);
-      if (t >= 1) { g.position.set(SLOT_POS[k].x, 0, SLOT_POS[k].z); delete g.userData.anim; dustBurst(k, 22, 1.2); sparkle(k); }
+      if (t >= 1) { g.position.set(SLOT_POS[k].x, SLOT_POS[k].y, SLOT_POS[k].z); delete g.userData.anim; dustBurst(k, 22, 1.2); sparkle(k); }
     }
     for (let i = sinking.length - 1; i >= 0; i--) {
       const g = sinking[i], a = g.userData.anim;
       a.t += dt / a.dur;
       const t = Math.min(1, a.t);
-      g.position.y = -g.userData.h * 1.05 * t * t;
+      g.position.y = SLOT_POS[g.userData.slot].y - g.userData.h * 1.05 * t * t;
       if (Math.random() < dt * 30) dustBurst(g.userData.slot, 2, 0.5);
       if (t >= 1) { removeBuilding(g); sinking.splice(i, 1); }
     }
@@ -1720,7 +1790,7 @@ transformed.z += wv * aWave; transformed.y += abs(wv) * aWave * 0.15;`);
     const drop = Object.keys(envs).filter((f) => !keepFacs.has(f) && envs[f] !== activeEnv && f !== cur.fac);
     const dropB = [...geoCache.keys()].filter((k) => { const f = k.slice(0, k.indexOf(':')); return !keepFacs.has(f) && f !== cur.fac; });
     if (!drop.length && !dropB.length) return 0;
-    const used = new Set([bodyMat, glowMat, groundMat, sceneryMat, inkMat, blobMat, blobGeo, ...(treeMats ? Object.values(treeMats) : [])]);
+    const used = new Set([bodyMat, townBodyMat, glowMat, groundMat, sceneryMat, inkMat, blobMat, blobGeo, ...(treeMats ? Object.values(treeMats) : [])]);
     const collect = (o, into) => {
       if (o.geometry && !o.isSprite) into.add(o.geometry);
       for (const m of [].concat(o.material || [])) {
