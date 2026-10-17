@@ -259,7 +259,7 @@ export function createTownView(THREE, renderer, opts = {}) {
   if (!MAT && !opts.glowMat) glowMat.color.setScalar(2.2);
   // round 4: surface textures. The buildings get their own copy of the painted body material (same look, plus the
   // brick / tile / plank / ashlar patterns picked per triangle by town_tex.js); the ground gets soft grass / ash tufts.
-  const townBodyMat = TEX && MAT ? keep(TEX.townMaterial(T, MAT.makeBodyMaterial(T), { k: 0.6, scale: 0.55 })) : bodyMat;
+  const townBodyMat = TEX && MAT ? keep(TEX.townMaterial(T, MAT.makeBodyMaterial(T), { k: 0.5, scale: 0.55 })) : bodyMat;
   if (TEX && MAT) { TEX.townMaterial(T, groundMat, { def: 5, k: 0.3, gscale: 0.45 }); TEX.townMaterial(T, sceneryMat, { k: 0.4, scale: 0.55 }); }
   // tag a merged geometry by slope only: upright faces = bricks, flat tops = flagstones (terrace, kerbs, scenery)
   const tagFlat = (geo, up = 4, side = 1) => {

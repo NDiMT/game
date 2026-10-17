@@ -155,7 +155,9 @@ const TEXPAL = {
 };
 const palCache = new Map();
 function palette(key, map) {
-  if (!palCache.has(key)) palCache.set(key, Object.entries(map).map(([h, id]) => { const v = +h; return [((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255, id]; }));
+  // vertex colours are linear (THREE.Color converts sRGB hex on input), so the palette is linearised too
+  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  if (!palCache.has(key)) palCache.set(key, Object.entries(map).map(([h, id]) => { const v = +h; return [lin(((v >> 16) & 255) / 255), lin(((v >> 8) & 255) / 255), lin((v & 255) / 255), id]; }));
   return palCache.get(key);
 }
 /** register an extra colour -> id table (e.g. the environment's cottages) under `key` */
