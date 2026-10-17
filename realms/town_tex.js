@@ -127,7 +127,7 @@ export function cobbleCanvas(cols, joint, size = 96) {
       if (d < d1) { d2 = d1; d1 = d; best = k; } else if (d < d2) d2 = d;
     }
     const edge = Math.sqrt(d2) - Math.sqrt(d1), s = rgb[Math.floor(pts[best][2] * rgb.length) % rgb.length];
-    const k = 0.5 + 0.5 * (edge < 1.4 ? 0 : Math.min(1, (edge - 1.4) / 2.5)), lit = 0.9 + 0.16 * Math.min(1, edge / 9);
+    const k = 0.62 + 0.38 * (edge < 1.4 ? 0 : Math.min(1, (edge - 1.4) / 2.5)), lit = 0.94 + 0.08 * Math.min(1, edge / 9);
     const o = (y * size + x) * 4;
     for (let q = 0; q < 3; q++) D[o + q] = Math.round(jr[q] + (s[q] * lit - jr[q]) * k);
     D[o + 3] = 255;
@@ -223,7 +223,7 @@ export function townMaterial(T, mat, opts = {}) {
   vec4 tA = texture2D(uTownTex, tuv * uTexScale);
   float tG = texture2D(uTownTex2, tuv * uTex2Scale).r;
   float tP = tid < 0.5 ? 0.5 : tid < 1.5 ? tA.r : tid < 2.5 ? tA.g : tid < 3.5 ? tA.b : tid < 4.5 ? tA.a : tG;
-  diffuseColor.rgb *= 1.0 + (tP - 0.5) * 2.0 * uTexK * (1.0 - 0.55 * hxSmall);
+  diffuseColor.rgb *= 1.0 + (tP - 0.5) * 2.0 * uTexK * (1.0 - 0.25 * hxSmall);
 }`);
   };
   const key = mat.customProgramCacheKey?.() || '';

@@ -14,9 +14,10 @@ let pumpT = 0;
 
 /** is a modal other than `key` on screen? */
 export const modalBusy = (key = '') => { for (const k of held) if (k !== key) return true; return false; };
-/** show the modal `key` now (returns true) or when the gate frees (returns false; `show` runs then) */
+/** may the modal `key` show now? true: it holds the gate and the caller shows it itself (`show` is NOT called, so a
+ *  caller can pass itself as `show` without recursing); false: it waits in line and `show` runs when the gate frees */
 export function modalShow(key, show) {
-  if (held.has(key) || !modalBusy(key)) { held.add(key); show(); return true; }
+  if (held.has(key) || !modalBusy(key)) { held.add(key); return true; }
   const i = line.findIndex((x) => x.key === key);
   if (i >= 0) line[i].show = show; else line.push({ key, show });
   return false;

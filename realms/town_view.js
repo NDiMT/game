@@ -42,7 +42,7 @@ const TERRACE_Y = 0.45;
 const BS = 1.15; // buildings stand a little larger than their model contract: the lots have room for it
 const SLOT_POS = {
   fort: S(0, -7.45, 0, 1.42),
-  hall: S(0, -4.2, 0, 1.32, TERRACE_Y),
+  hall: S(0, -4.2, 0, 1.42, TERRACE_Y),
   d7: S(-5.45, -4.0, 0.16, BS, TERRACE_Y),
   mage: S(5.3, -4.0, -0.16, 1.22, TERRACE_Y),
   d6: S(-7.65, 0.6, 0.22, BS),
@@ -84,7 +84,7 @@ for (let t = 1; t <= 7; t++) { const d = DIMS['d' + t]; DIMS['u' + t] = [d[0], d
 // glow multipliers per building (faction:id or id); 1 = the shared glow material
 const GLOW_SCALE = { 'haven:u7': 0.5, 'haven:d7': 0.7, 'haven:mage3': 0.8,
   'dungeon:mage3': 0.8, 'dungeon:u7': 0.8, 'dungeon:u3': 0.8, 'inferno:u3': 0.6, 'inferno:d3': 0.7 };
-const SLOT_MAXH = { fort: 3.6, hall: 3.8, mage: 4.2, market: 1.8, tavern: 2, d1: 2.2, d2: 2.6, d3: 2.9, d4: 2.8, d5: 3.1, d6: 3.2, d7: 4.5 };
+const SLOT_MAXH = { fort: 4.2, hall: 5.2, mage: 5.4, market: 2.8, tavern: 2.5, d1: 3.3, d2: 4.4, d3: 5.1, d4: 3.6, d5: 3.7, d6: 4.0, d7: 6.0 }; // world units (round 4: incl. the slot scale)
 const SLOT_DIM = (k) => { const id = k === 'hall' ? 'hall3' : k === 'mage' ? 'mage3' : k, d = DIMS[id], s = SLOT_POS[k]?.s ?? 1; return d && [d[0] * s, d[1] * s, d[2] * s]; };
 
 // which id stands in each slot for a given built list
@@ -259,8 +259,8 @@ export function createTownView(THREE, renderer, opts = {}) {
   if (!MAT && !opts.glowMat) glowMat.color.setScalar(2.2);
   // round 4: surface textures. The buildings get their own copy of the painted body material (same look, plus the
   // brick / tile / plank / ashlar patterns picked per triangle by town_tex.js); the ground gets soft grass / ash tufts.
-  const townBodyMat = TEX && MAT ? keep(TEX.townMaterial(T, MAT.makeBodyMaterial(T), { k: 0.55 })) : bodyMat;
-  if (TEX && MAT) { TEX.townMaterial(T, groundMat, { def: 5, k: 0.3, gscale: 0.45 }); TEX.townMaterial(T, sceneryMat, { k: 0.4 }); }
+  const townBodyMat = TEX && MAT ? keep(TEX.townMaterial(T, MAT.makeBodyMaterial(T), { k: 0.6, scale: 0.55 })) : bodyMat;
+  if (TEX && MAT) { TEX.townMaterial(T, groundMat, { def: 5, k: 0.3, gscale: 0.45 }); TEX.townMaterial(T, sceneryMat, { k: 0.4, scale: 0.55 }); }
   // tag a merged geometry by slope only: upright faces = bricks, flat tops = flagstones (terrace, kerbs, scenery)
   const tagFlat = (geo, up = 4, side = 1) => {
     if (!geo || !TEX) return geo;
@@ -619,7 +619,7 @@ void main() { vec3 d = normalize(vD); float y = d.y;
     // ----- the painted town floor (round 4): cobbled streets and a plaza, paved lots under the built slots and bare
     //       soil inside a low kerb on the empty ones; repainted only when the set of built slots changes
     {
-      const X0 = -15, Z0 = -10.5, W = 30, RES = 1024, PX = RES / W;
+      const X0 = -15, Z0 = -10.5, W = 30, RES = 768, PX = RES / W;
       const cv = document.createElement('canvas'); cv.width = cv.height = RES;
       const tex = keep(new T.CanvasTexture(cv)); tex.colorSpace = T.SRGBColorSpace;
       tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -701,9 +701,20 @@ void main() { vec3 d = normalize(vD); float y = d.y;
       for (let i = 0; i < 3; i++) k.box(sw, H * (3 - i) / 3, 0.3, 0, 0, z1 + 0.15 + i * 0.3, wall);
       for (const sd of [-1, 1]) k.box(0.28, H + 0.12, 0.95, sd * (sw / 2 + 0.14), 0, z1 + 0.45, cap);
       const tg = tagFlat(k.body());
-      const tm = new T.Mesh(keep(tg), sceneryMat); tm.castShadow = true; tm.receiveShadow = true; tm.name = 'terrace';
+      const tm = new T.Mesh(keep(tg), sceneryMat); tm.receiveShadow = true; tm.name = 'terrace'; // (no castShadow: its big flat top self-shadowed into grey acne)
       G.add(tm);
-      if (inkMat) { const h = new T.Mesh(tg, inkMat); h.userData.ink = true; G.add(h); }
+      // the plaza monument: a low round basin and a slim faction obelisk with a lit finial (small: the hall stays the focus)
+      const mk = kit(93), [px, pz] = PLAZA, lampC = P.lamp?.[0] ?? 0xffd070, trim = P.ph.trim;
+      mk.cyl(0.95, 1.0, 0.22, px, 0, pz, wall, 16);
+      mk.cyl(0.82, 0.82, 0.05, px, 0.2, pz, cap, 16);
+      mk.add(new T.CylinderGeometry(0.78, 0.78, 0.02, 16).translate(px, 0.23, pz), fac === 'inferno' ? 0xff8a2a : fac === 'necro' ? 0x7af0b0 : P.water[1], true);
+      mk.cyl(0.24, 0.3, 0.3, px, 0.2, pz, cap, 8);
+      mk.add(new T.CylinderGeometry(0.07, 0.15, 1.5, 4).rotateY(Math.PI / 4).translate(px, 0.5 + 0.75, pz), [wall[0], cap]);
+      mk.add(new T.OctahedronGeometry(0.14, 0).scale(1, 1.4, 1).translate(px, 2.15, pz), lampC, true);
+      mk.cyl(0.12, 0.09, 0.08, px, 1.98, pz, trim, 8);
+      const mb = new T.Mesh(keep(tagFlat(mk.body(), 4, 4)), sceneryMat); mb.castShadow = true; mb.receiveShadow = true; G.add(mb);
+      const mgl = mk.glow(); if (mgl) G.add(new T.Mesh(keep(mgl), glowMat));
+      if (inkMat) { const h = new T.Mesh(mb.geometry, inkMat); h.userData.ink = true; G.add(h); }
     }
     // ----- the river
     {
