@@ -14,6 +14,8 @@ import * as THREE from 'three';
 // =====================================================================
 
 const TAU = Math.PI * 2;
+// round 4 (town3d): small loose props (rocks round the lots) are skipped so each building reads as one clean shape
+const DECLUTTER = true;
 const BONE_FLAG = 15, BONE_CLOTH = 12;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 function rand(seed) {
@@ -283,7 +285,7 @@ function makeKit(seed) {
       k.box(w, 0.02, len - 0.02, (x1 + x2) / 2, y + 0.03, (z1 + z2) / 2, C.lava, { ry: a, glow: true });
       k.box(w * 0.35, 0.02, len - 0.06, (x1 + x2) / 2, y + 0.035, (z1 + z2) / 2, C.lavaH, { ry: a, glow: true });
     },
-    rock(x, z, s = 1, c = C.dark) { k.ball(0.18 * s, x, 0.08 * s, z, c, 0, { s: [1.2, 0.8, 1], top: 1.25, bot: 0.85 }); },
+    rock(x, z, s = 1, c = C.dark) { if (DECLUTTER) return; k.ball(0.18 * s, x, 0.08 * s, z, c, 0, { s: [1.2, 0.8, 1], top: 1.25, bot: 0.85 }); },
     crystal(x, z, s = 1, c = C.stoneL) { for (let i = 0; i < 3; i++) k.cone(0.06 * s, (0.4 - i * 0.08) * s, x + (i - 1) * 0.07 * s, 0.02, z + (i % 2) * 0.05 * s, c, 4, { rz: (i - 1) * 0.35, ao: false, top: 1.3 }); },
   };
   return k;

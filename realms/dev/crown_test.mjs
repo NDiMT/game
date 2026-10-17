@@ -143,8 +143,8 @@ const alive0 = (B) => BT.alive(B, 0).reduce((a, s) => a + s.count, 0);
   const hi = Array.from({ length: 100 }, (_, i) => C.newRun({ seed: 300 + i, diff: 6 })), myth = hi.filter((r) => C.GUARDIANS[r.guardians[2]].mythic).length;
   ok(myth > 35 && myth < 85 && hi.every((r) => !C.GUARDIANS[r.guardians[0]].mythic && !C.GUARDIANS[r.guardians[1]].mythic), `Prince: a Mythic hero guards the last region in ${myth}/100 runs, never earlier`);
   let bad = 0, worst = 0;
-  for (const r of runs.slice(0, 20)) for (let reg = 1; reg <= 3; reg++) { const a = C.guardianArmy(r, reg); worst = Math.max(worst, Math.abs(a.power / a.target - 1)); if (!a.army.length || a.army.some(([u, k]) => !UNITS[u] || !(k > 0))) bad++; }
-  ok(!bad && worst < 0.6, `themed armies are valid and on target (worst ±${Math.round(worst * 100)}%)`);
+  for (const r of runs.slice(0, 20)) for (let reg = 1; reg <= 3; reg++) { const a = C.guardianArmy(r, reg); if (!C.GUARDIANS[a.guardian].lead) worst = Math.max(worst, Math.abs(a.power / a.target - 1)); if (!a.army.length || a.army.some(([u, k]) => !UNITS[u] || !(k > 0))) bad++; }
+  ok(!bad && worst < 0.6, `themed armies are valid and on target (worst ±${Math.round(worst * 100)}%; signature-stack heroes excepted)`);
   let crash = 0;
   for (const g of G) try { const r = run0(); fight([['pikeman', 40], ['archer', 15], ['griffin', 6], ['swordsman', 5]], C.guardianArmy({ ...r, guardians: [g.id, g.id, g.id] }, 2).army, C.battleMods(r, { guardian: g.id }), 3); } catch (e) { crash++; console.log('  rule crash', g.id, e.message); }
   ok(!crash, 'every Legendary Hero rule plays out a full battle');

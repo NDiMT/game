@@ -14,6 +14,7 @@ const groups = {
   trees: N.TREE_KINDS.map((k) => [k, 'tan']),
   small: [0,1,2,3,4,5].map((i) => ['bush:' + i]).concat([0,1,2,3,4].map((i) => ['tuft:' + i])).concat([0,1,2].map((i) => ['mushroom:' + i])).concat([0,1,2,3].map((i) => ['crystal:' + i])),
   rocks: [0,1,2,3,4,5,6].map((i) => ['rock:' + i]),
+  crags: ['rock', 'snow', 'volcano', 'moss', 'sand'].flatMap((k) => [0, 1, 2].map((t) => ['crag:' + k + ':' + t + ':' + (t % 3)])).concat([['crag:rock:2:1'], ['crag:rock:2:2'], ['crag:rock:1:1'], ['crag:rock:1:2']]), // terrain r4
   peaks: ['peak:rock:0','peak:rock:1','peak:rock:2','peak:rock:3','peak:snow:0','peak:snow:1','peak:snow:2','peak:snow:3','peak:volcano:0','peak:volcano:1','peak:volcano:2'].map((k) => [k]),
 };
 const list = set === 'all' ? [...groups.trees, ...groups.small, ...groups.rocks, ...groups.peaks] : groups[set];
@@ -34,7 +35,7 @@ const items = []; let tris = [];
 const groundCol = (k) => k.includes('snow') ? 0xeef4f8 : k.includes('volcano') || k === 'burnt' || k.endsWith(':6') || k === 'tuft:4' || k === 'crystal:3' ? 0x5a3430 : k === 'palm' || k === 'cactus' || k === 'tuft:3' || k === 'bush:3' || k === 'rock:3' ? 0xe2cc8a : k === 'willow' || k === 'tuft:2' || k === 'bush:5' || k === 'mushroom:2' ? 0x4a6a3a : 0x5aaa3a;
 list.forEach(([k], i) => {
   const m = N.natureModel(k), g = new THREE.Group();
-  const big = k.startsWith('peak') ? 1 : k.match(/^(bush|tuft|rock|mush|crys)/) ? 1.9 : 1.15;
+  const big = k.startsWith('peak') || k.startsWith('crag') ? 1 : k.match(/^(bush|tuft|rock|mush|crys)/) ? 1.9 : 1.15;
   const b = new THREE.Mesh(m.body, bodyMat); b.castShadow = b.receiveShadow = true; g.add(b);
   if (m.glow) g.add(new THREE.Mesh(m.glow, glowMat));
   g.scale.setScalar(big);

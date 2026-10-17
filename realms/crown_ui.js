@@ -9,6 +9,7 @@
 import * as C from './crown.js?v=2.7';
 import { UNITS, SPELLS, SKILLS, FACTIONS } from './data.js?v=2.7';
 import { landscape } from './vport.js?v=2.7';
+import { modalShow, modalFree } from './modal.js'; // ui3: one modal at a time
 import { artIcon } from './icons.js'; // icons: painted art per artifact / skill / Legendary Hero / background / set / crest // fullscreen: the game frame's orientation (it may be turned on a portrait screen)
 
 export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {}, facCrest = null }) {
@@ -107,10 +108,13 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {}, f
     close(true);
     layer = el('div', `crown-layer ${cls}`, html); layer.id = 'crown-layer';
     document.body.appendChild(layer);
+    // ui3: one modal at a time: while a dialog (level-up, week card…) is up, the layer is built but waits hidden
+    const L = layer; if (!modalShow('crown', () => { if (L.isConnected) L.classList.remove('mq-wait'); })) L.classList.add('mq-wait');
     return layer;
   }
   function close(now = false) {
     const L = layer; layer = null; if (!L) return;
+    modalFree('crown');
     if (now || reduce) { L.remove(); return; }
     L.classList.add('closing'); setTimeout(() => L.remove(), 220);
   }
@@ -229,7 +233,7 @@ export function createCrownUI({ icon, unitIcon, sfx = {}, onChange = () => {}, f
     const id = run.guardians[region - 1], Gd = C.GUARDIANS[id];
     const rules = [Gd.rule]; if (run.diff >= 7 && run.secondRule?.[id]) rules.push(C.GUARDIANS[run.secondRule[id]].rule);
     notice({ crest: artIcon('guardian', Gd.id, 92, Gd.icon), title: Gd.name, sub: `${Gd.title} · ${Gd.mythic ? 'Mythic Legendary Hero' : 'Legendary Hero'} of region ${region}`, cls: `k-guardian${Gd.mythic ? ' k-mythic' : ''}`,
-      body: `<p class="cr-rule"><em>Specialty</em>${rules.map(esc).join('<br>')}</p>${Gd.mythic ? `<p class="cr-unl">${icon('skull', 16)} A <b>Mythic</b> foe: rarely met, worth half again the score.</p>` : ''}
+      body: `<p class="cr-rule"><em>${Gd.mythic ? 'Mythic · specialty' : 'Specialty'}</em>${rules.map(esc).join('<br>')}${Gd.mythic ? '<br><small>A Mythic foe: rarely met, worth half again the score.</small>' : ''}</p>
         <div class="cr-army"><small>${region >= run.regions ? 'Guards the Crown' : "Guards the Keymaster's Tent"}</small>${army.army.map(([u, n]) => `<span>${unitIcon(u, 48)}<em>${n}</em></span>`).join('')}</div>`,
       buttons: onFight ? [[`${icon('attack', 20)} To battle!`, onFight, 'gold'], ['Retreat', onClose, 'ghost']] : [['Got it', onClose, 'gold']], sound: onFight ? 'alarm' : 'open' });
   }

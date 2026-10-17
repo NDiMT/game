@@ -348,7 +348,7 @@ function drawArt(ctx, N, img, shape, pal) {
   ctx.save();
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   const [hr, hg, hb] = hex(pal.halo).map((v) => Math.round(v * 255));
-  ctx.shadowColor = `rgba(${hr},${hg},${hb},0.55)`; ctx.shadowBlur = Math.max(2, N * 0.05); // the silhouette halo
+  ctx.shadowColor = `rgba(${hr},${hg},${hb},0.3)`; ctx.shadowBlur = Math.max(2, N * 0.04); // the silhouette halo (icons2: the art carries its own ink outline + faction glow, so this stays light)
   ctx.drawImage(img, x, y, w, w);
   ctx.restore();
 }

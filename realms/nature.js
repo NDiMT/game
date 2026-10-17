@@ -697,6 +697,112 @@ export function peakModel(kind = 'rock', variant = 0) {
   return b.done({ ao: 0.75, aoH: 0.1, sat: 0.8 });
 }
 
+// ------------------------------------------------------------ crags (terrain r4): impassable rock as hex columns
+// The mountain tile is a cluster of faceted basalt / stone hex columns packed on the tile's own hex lattice (pointy-top,
+// faces parallel to the tile's edges), with boulders in the gaps. kind: 'rock' | 'snow' | 'volcano' | 'moss' | 'sand';
+// tier: 0 low rubble, 1 mid crag, 2 tall cliff; variant 0..2: dome, stepped ramp, split twin peaks. The cluster stays
+// inside the tile's flat top (radius ~0.5 model units at the game's CRAG_SCALE) and sinks below y = 0 into the
+// raised plateau, so any of the six 60-degree turns fits the hex.
+export const CRAG_SCALE = 0.36;
+const CRAG_PAL = {
+  rock: ramp(0x4e4a48, 0x625c58, 0x787068, 0x8e857a, 0xa69c8e), // grey-brown stone
+  snow: ramp(0x46505e, 0x56606e, 0x687282, 0x7c8696, 0x949cac), // blue slate under the snow caps
+  volcano: ramp(0x2c2428, 0x362c30, 0x423638, 0x504244, 0x605052), // dark basalt (violet-brown, never black)
+  moss: ramp(0x4a4e44, 0x5a5e52, 0x6c7062, 0x808272, 0x969684), // green-grey stone
+  sand: ramp(0x8a6a50, 0x9c7a5c, 0xae8a6a, 0xc09c7a, 0xd2b08c), // sandstone
+};
+const CRAG_TOP = { rock: ramp(0x9a9284, 0xb4ac9c), snow: ramp(0xe8eef6, 0xfafcff), volcano: ramp(0x5e5250, 0x7a6c66), moss: ramp(0x557a3c, 0x76984c), sand: ramp(0xd8bc94, 0xead4b0) };
+const CRAG_TIERS = [
+  // [centre h, ring-1 h, ring-2 h] ranges (model units), share of ring-2 slots kept, boulders
+  { h: [[0.28, 0.36], [0.16, 0.3], [0.1, 0.2]], keep2: 0.35, keep1: 0.7, boulders: 5 },
+  { h: [[0.62, 0.74], [0.4, 0.62], [0.2, 0.42]], keep2: 0.6, keep1: 1, boulders: 3 },
+  { h: [[1.02, 1.16], [0.72, 1.0], [0.36, 0.7]], keep2: 0.85, keep1: 1, boulders: 2 },
+];
+// one faceted hex column: sunk to y0, an optional joint (a shallow inset ring), a tilted top with a chamfer
+function hexColumn(r, h, x, z, { y0 = -0.22, sx = 0, sz = 0, joint = 0, rot = 0 } = {}) {
+  const ring = (rr, y, tilt = 0) => { const out = []; for (let k = 0; k < 6; k++) { const a = rot + Math.PI / 6 + (k * Math.PI) / 3, px = Math.cos(a) * rr, pz = Math.sin(a) * rr; out.push(V(x + px, y + tilt * (sx * px + sz * pz), z + pz)); } return out; };
+  const rings = [ring(r, y0)];
+  if (joint > 0) { rings.push(ring(r, joint - 0.012)); rings.push(ring(r * 0.94, joint)); rings.push(ring(r, joint + 0.012)); }
+  const ch = Math.min(0.04, h * 0.12);
+  rings.push(ring(r, h - ch, 1)); rings.push(ring(r * 0.8, h, 1));
+  return ringsGeo(rings, { apexTop: V(x, h + 0.004, z), flip: true });
+}
+function cragPaint(kind, tone, hTop, R) {
+  const P = CRAG_PAL[kind], TOP = CRAG_TOP[kind], snowCaps = kind === 'snow', moss = kind === 'moss';
+  const lichen = L(0xb8b47a), ash = L(0x9a8c86), SHD = L(0x6e6a84);
+  return (p, n) => {
+    const m = fbm(p.x * 9 + R, p.y * 9, p.z * 9), facing = n.x * 0.55 + n.z * 0.45, up = n.y;
+    let c = P(0.18 + tone * 0.32 + (p.y / Math.max(0.2, hTop)) * 0.22 + facing * 0.32 + (m - 0.5) * 0.25);
+    if (kind === 'sand') c = mul(c, 0.93 + 0.08 * Math.sin(p.y * 46 + m * 3)); // sandstone strata
+    c = mix(c, mul(SHD, 0.55 + c[1] * 0.8), smooth(0.1, -0.7, facing) * 0.28 * (1 - Math.max(0, up))); // shaded faces lean violet
+    if (up > 0.6) {
+      // the top faces: lit stone, then the biome's cap
+      c = mix(c, TOP(m), kind === 'rock' || kind === 'volcano' || kind === 'sand' ? 0.45 : 0);
+      if (snowCaps && p.y > 0.12) c = TOP(m * 0.6 + up * 0.4);
+      if (moss) c = TOP(m + (tone - 0.5) * 0.4);
+      if (kind === 'rock' && m > 0.66) c = mix(c, lichen, 0.35);
+      if (kind === 'volcano' && m > 0.6) c = mix(c, ash, 0.45);
+    } else if (snowCaps && p.y > hTop - 0.07 && p.y > 0.12 && m > 0.35) c = mix(c, TOP(0.4), 0.7); // snow lip on the sides
+    else if (moss && p.y > hTop - 0.06 && m > 0.45) c = mix(c, TOP(0.3), 0.75); // moss drips over the edge
+    return c;
+  };
+}
+/** cragModel(kind, tier, variant): a hex-column rock formation for an impassable mountain tile (see CRAG_SCALE). */
+export function cragModel(kind = 'rock', tier = 1, variant = 0) {
+  kind = CRAG_PAL[kind] ? kind : 'rock'; tier = Math.max(0, Math.min(2, tier | 0)); variant = ((variant | 0) % 3 + 3) % 3;
+  const seed = 900 + tier * 31 + variant * 7 + Object.keys(CRAG_PAL).indexOf(kind) * 101;
+  const b = new Build(seed), R = () => b.r(), T = CRAG_TIERS[tier];
+  const rc = 0.112, sp = rc * Math.sqrt(3) * 1.02; // column circumradius, lattice spacing (flat faces touching, a hair apart)
+  // the lattice: centre, ring 1 (6, along the flat-face directions), ring 2 (6 straight out, 6 between)
+  const slots = [[0, 0, 0]];
+  for (let k = 0; k < 6; k++) { const a = (k * Math.PI) / 3; slots.push([Math.cos(a) * sp, Math.sin(a) * sp, 1]); }
+  for (let k = 0; k < 6; k++) { const a = (k * Math.PI) / 3; slots.push([Math.cos(a) * sp * 1.86, Math.sin(a) * sp * 1.86, 2]); const a2 = a + Math.PI / 6; slots.push([Math.cos(a2) * sp * Math.sqrt(3), Math.sin(a2) * sp * Math.sqrt(3), 2]); }
+  // the variant's shape: 0 dome, 1 a ramp rising to one side (a cliff face), 2 twin peaks
+  const dir = R() * Math.PI * 2, dx = Math.cos(dir), dz = Math.sin(dir);
+  const shapeK = (x, z) => variant === 1 ? 1 + 0.55 * ((x * dx + z * dz) / 0.45) : variant === 2 ? 0.7 + 0.45 * Math.max(Math.exp(-((x - dx * 0.2) ** 2 + (z - dz * 0.2) ** 2) / 0.03), Math.exp(-((x + dx * 0.2) ** 2 + (z + dz * 0.2) ** 2) / 0.03)) : 1;
+  const tops = [];
+  for (const [x0, z0, ring] of slots) {
+    const keep = ring === 2 ? T.keep2 : ring === 1 ? T.keep1 : 1;
+    if (R() > keep) { tops.push(null); continue; }
+    const [lo, hi] = T.h[ring], x = x0 + (R() - 0.5) * 0.02, z = z0 + (R() - 0.5) * 0.02;
+    const hh = Math.max(0.08, (lo + (hi - lo) * R()) * shapeK(x0, z0));
+    const r = rc * (0.84 + R() * 0.12) * (ring === 2 ? 0.92 : 1);
+    const broken = R() < 0.4, sx = broken ? (R() - 0.5) * 0.9 : (R() - 0.5) * 0.15, sz = broken ? (R() - 0.5) * 0.9 : (R() - 0.5) * 0.15;
+    const joint = hh > 0.5 && R() < 0.75 ? hh * (0.35 + R() * 0.25) : 0;
+    b.part(hexColumn(r, hh, x, z, { sx, sz, joint }), cragPaint(kind, R(), hh, seed * 0.01 + x * 3));
+    tops.push([x, z, hh, r]);
+  }
+  // boulders and scree in the gaps and at the foot
+  const bp = rockPaint(kind === 'snow' ? ROCK_PAL[3] : kind === 'sand' ? ROCK_PAL[2] : kind === 'volcano' ? ROCK_PAL[6] : kind === 'moss' ? ROCK_PAL[4] : ROCK_PAL[0], 0.3, kind === 'moss' ? 1 : 0, kind === 'snow' ? 1 : 0);
+  for (let k = 0; k < T.boulders; k++) { const a = R() * Math.PI * 2, d = 0.3 + R() * 0.12; boulder(b, 0.05 + R() * 0.04 + (tier === 0 ? 0.03 : 0), Math.cos(a) * d, Math.sin(a) * d, 0.7, bp); }
+  if (tier === 0) for (let i = 0; i < tops.length; i++) if (!tops[i] && slots[i][2] === 1) boulder(b, 0.08 + R() * 0.03, slots[i][0], slots[i][1], 0.75, bp);
+  // biome touches: glowing magma seams between basalt columns; a small pine or two on mossy crags
+  if (kind === 'volcano') {
+    const lava = ramp(0xa83410, 0xd8601a, 0xf0a040);
+    for (let k = 0; k < 4; k++) {
+      const a = (Math.floor(R() * 6) * Math.PI) / 3 + Math.PI / 6, d = sp * 0.5 * (k < 2 ? 1 : 2.2), y = 0.02 + R() * 0.1;
+      b.part(new THREE.BoxGeometry(0.014, 0.08 + R() * 0.12 * (tier + 1), 0.05).rotateY(-a).translate(Math.cos(a) * d, y + 0.06, Math.sin(a) * d), lava(0.4 + R() * 0.5), { glow: true });
+    }
+  }
+  if (kind === 'moss' && tier < 2) {
+    const spots = []; for (let i = 0; i < tops.length && spots.length < 1 + variant % 2; i++) { const t = tops[(i * 5 + variant) % tops.length]; if (t && slots[(i * 5 + variant) % tops.length][2] === 2) spots.push([t[0], t[1], 0.16 + R() * 0.05, t[2] - 0.01]); }
+    addMiniTrees(b, 'rock', spots);
+  }
+  return b.done({ ao: 0.72, aoH: 0.12, sat: 0.82 });
+}
+/** cragKey(o): which crag a mountain cell gets, deterministic per cell. o: { biome (biomeOf), nb: neighbour terrain ids,
+ *  high: the cell stands a step above the usual mountain height, hash: a per-cell integer hash }. */
+export function cragKey({ biome = 'temperate', nb = [], high = false, hash = 0 }) {
+  let mt = 0, forest = 0, sand = 0;
+  for (const t of nb) { if (t === 8) mt++; else if (t === 9 || t === 5) forest++; else if (t === 3) sand++; }
+  // tall in the heart of a range and on the high rim, low rubble only at a lone range end, mid crags elsewhere
+  // (a Crown Run wall is a line of mountains: mid or tall, so it always reads as a wall)
+  const score = mt + (high ? 2 : 0) + ((hash >>> 3) % 3) - 1;
+  const tier = score >= 5 ? 2 : score >= 2 || mt >= 2 ? 1 : 0;
+  const kind = biome === 'lava' ? 'volcano' : biome === 'cold' || (biome === 'boreal' && tier === 2) ? 'snow' : biome === 'sand' || (biome === 'dry' && sand >= 1) ? 'sand' : forest >= 2 || biome === 'swamp' ? 'moss' : 'rock';
+  return `crag:${kind}:${tier}:${(hash >>> 7) % 3}`;
+}
+
 // ------------------------------------------------------------ crystals
 /** crystalModel(i): 0 ice blue, 1 amethyst, 2 emerald, 3 fire ruby. A glowing cluster about 0.5 tall. */
 export function crystalModel(i = 0) {
@@ -739,7 +845,7 @@ export function mushroomModel(i = 0) {
 
 // ------------------------------------------------------------ scattering table
 // key grammar for natureModel(): 'oak' (any TREE_KINDS entry), 'bush:N', 'tuft:N',
-// 'rock:N', 'crystal:N', 'mushroom:N', 'peak:<rock|snow|volcano>:<variant>'.
+// 'rock:N', 'crystal:N', 'mushroom:N', 'peak:<rock|snow|volcano>:<variant>', 'crag:<kind>:<tier>:<variant>'.
 const _cache = new Map();
 /** natureModel(key): builds (and caches) the model for a FLORA_FOR_TERRAIN key. */
 export function natureModel(key) {
@@ -747,7 +853,7 @@ export function natureModel(key) {
   const [a, b, c] = key.split(':');
   const n = +b || 0;
   const m = a === 'bush' ? bushModel(n) : a === 'tuft' ? tuftModel(n) : a === 'rock' ? rockModel(n) : a === 'crystal' ? crystalModel(n)
-    : a === 'mushroom' ? mushroomModel(n) : a === 'peak' ? peakModel(b || 'rock', +c || 0) : treeModel(a);
+    : a === 'mushroom' ? mushroomModel(n) : a === 'peak' ? peakModel(b || 'rock', +c || 0) : a === 'crag' ? cragModel(b, +c || 0, +key.split(':')[3] || 0) : treeModel(a);
   _cache.set(key, m);
   return m;
 }

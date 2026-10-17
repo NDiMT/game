@@ -1452,3 +1452,58 @@ img.ic-art { image-rendering: auto; object-fit: contain; vertical-align: -0.24em
 .cr-next em, .cr-road em { font-style: normal; font-weight: 900; color: #ff9a7a; white-space: nowrap; }
 .cr-next em.ok, .cr-road em.ok { color: #7be07b; }
 .cr-road span.ready b { color: #7be07b; }
+
+/* ============================================================ ui3 (v2.8): one modal at a time, toasts, finish
+   - modal.js gates every modal: a Crown Run layer that arrives while a dialog is up is built but waits hidden (.mq-wait)
+   - a toast never sits on an open modal (they queue in main.js; one already showing hides under a modal)
+   - finish: one spacing / radius / type scale, a fine grain + top sheen on every framed panel, gold scrollbars in
+     scrolling panels, a deeper modal backdrop, and lighter secondary text for contrast on the slate */
+:root {
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
+  --fs-xs: 10px;
+  --text-2: #d9def5; --text-3: #aab3dc; /* (was #cfd5f0 / #95a0cc: secondary text now >= 4.5:1 on the slate) */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --sheen: radial-gradient(120% 70% at 50% 0%, rgba(160, 185, 255, 0.13), rgba(160, 185, 255, 0) 62%);
+}
+.crown-layer.mq-wait { visibility: hidden; pointer-events: none; animation: none; }
+.overlay:not([hidden]):not(.closing) ~ .toast.show, body:has(> .crown-layer:not(.closing):not(.mq-wait)) .toast.show { opacity: 0; transition: opacity 0.12s; }
+/* modal backdrop: a touch deeper, so the card reads as the only thing on screen */
+.overlay { background: radial-gradient(ellipse at 50% 45%, rgba(6, 10, 34, 0.55), rgba(3, 5, 20, 0.86)); }
+/* panels: fine grain, a cool top sheen and a soft inner edge (one pseudo-element, painted once, no blur) */
+.cr-panel { isolation: isolate; }
+.card::after, .panel::after, .cr-panel::after, #hud .rail::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: var(--sheen), var(--grain) 0 0 / 180px 180px; opacity: 0.55; mix-blend-mode: soft-light;
+  box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.07); }
+#hud .rail::after { z-index: 0; }
+.panel { isolation: isolate; }
+/* the resource strip and the selected hero card: the same sheen (no grain at that size) */
+.resbar, .sel, .btop { background-image: var(--sheen), var(--slate), var(--rim); background-origin: padding-box, padding-box, border-box; background-clip: padding-box, padding-box, border-box; }
+/* scrolling inside panels: a thin gold bar (was hidden in dialogs, so "more below" was invisible) */
+.card-scroll, .pbody, .crown-layer, .crown-layer .cr-grid, .crown-layer .cr-side, .fs-you, .fs-set, .factions {
+  scrollbar-width: thin; scrollbar-color: rgba(242, 197, 80, 0.6) rgba(0, 0, 0, 0.2); }
+.card-scroll::-webkit-scrollbar, .pbody::-webkit-scrollbar, .crown-layer::-webkit-scrollbar, .crown-layer .cr-grid::-webkit-scrollbar, .fs-you::-webkit-scrollbar, .fs-set::-webkit-scrollbar, .factions::-webkit-scrollbar { display: block; width: 6px; height: 6px; }
+.card-scroll::-webkit-scrollbar-thumb, .pbody::-webkit-scrollbar-thumb, .crown-layer::-webkit-scrollbar-thumb, .crown-layer .cr-grid::-webkit-scrollbar-thumb, .fs-you::-webkit-scrollbar-thumb, .fs-set::-webkit-scrollbar-thumb, .factions::-webkit-scrollbar-thumb {
+  border-radius: 3px; background: linear-gradient(180deg, #fff0a0, #e0a23a 50%, #a8681a); box-shadow: 0 0 0 1px rgba(10, 6, 2, 0.6); }
+.card-scroll::-webkit-scrollbar-track, .pbody::-webkit-scrollbar-track, .crown-layer::-webkit-scrollbar-track, .factions::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 3px; }
+.card-scroll { padding-right: 8px; }
+/* touch targets: 44 px everywhere in the Crown Run screens too (trade rows, the doll's sheet link, difficulty pips) */
+.cr-trow .btn, .crown-layer header .cr-sheet { min-height: 44px; }
+.cr-stake { min-width: 44px; min-height: 44px; justify-content: center; }
+/* type scale floor: nothing under 9px */
+.hs-grid .st small, .slots.big small { font-size: 9px; }
+/* buttons: one radius and one focus ring everywhere */
+.btn, .fb, .row-b button, .tabs2 button { border-radius: var(--r-m); }
+.btn:focus-visible, .fb:focus-visible, .row-b button:focus-visible, .tabs2 button:focus-visible, .cr-card:focus-visible, .hb:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+/* section headers in panels: the same gold rule as the dialogs */
+.crown-layer h3 { font-family: 'Cinzel', Georgia, serif; letter-spacing: 0.04em; }
+/* hero picker on a short landscape phone (<= 440 px tall): difficulty and the buttons share the last row, so nothing
+   hides under the sticky footer and the whole picker fits without scrolling */
+@media (orientation: landscape) and (max-height: 440px) {
+  .crown-layer .cr-originwrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--sp-3); row-gap: 6px; align-items: center; }
+  .crown-layer .cr-originwrap > :not(.cr-stakes):not(footer) { grid-column: 1 / -1; }
+  .crown-layer .cr-originwrap > .cr-stakes { grid-column: 1; justify-content: flex-start; gap: 2px 4px; min-width: 0; }
+  .crown-layer .cr-originwrap > .cr-stakes p { text-align: left; font-size: 11px; line-height: 1.2; }
+  .crown-layer .cr-originwrap > footer { grid-column: 2; position: static; padding: 0; background: none; }
+  .crown-layer .cr-originwrap .cr-stake { min-width: 44px; padding: 2px 3px; }
+}

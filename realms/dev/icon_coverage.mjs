@@ -26,6 +26,15 @@ for (const id of Object.keys(C.GUARDIANS)) add('Legendary Heroes', 'guardian', i
 for (const id of Object.keys(C.BACKGROUNDS)) add('hero backgrounds', 'background', id);
 for (const id of ['pandora', 'witchhut', 'scholar', 'seer', 'merchant', 'blackmarket', 'tradingpost', 'grail', 'keymaster', 'border']) add('Crown Run sites', 'site', id);
 for (const r of D.RES) add('resources', 'glyph', r);
+// icons2: ids the crown2 agent announces in dev/NEW_CROWN_IDS.json ({kind: [ids]} or [{kind, id}]), on top of crown.js itself
+const NEW_F = path.join(ROOT, 'dev/NEW_CROWN_IDS.json');
+if (fs.existsSync(NEW_F)) {
+  const KIND = { artifact: 'artifact', artifacts: 'artifact', guardian: 'guardian', guardians: 'guardian', hero: 'guardian', heroes: 'guardian', legendary: 'guardian', legendary_heroes: 'guardian', boss: 'guardian', bosses: 'guardian',
+    set: 'set', sets: 'set', background: 'background', backgrounds: 'background', origin: 'background', origins: 'background' };
+  let N = {}; try { N = JSON.parse(fs.readFileSync(NEW_F, 'utf8')); } catch (e) { console.log('NEW_CROWN_IDS.json unreadable:', e.message); }
+  const rows = Array.isArray(N) ? N : Object.entries(N).flatMap(([k, v]) => (Array.isArray(v) ? v.map((id) => (typeof id === 'string' ? { kind: k, id } : { kind: k, ...id })) : []));
+  for (const r of rows) { const k = KIND[String(r.kind || r.type || '').toLowerCase()]; if (k && r.id) add('NEW_CROWN_IDS.json (crown2)', k, r.id); }
+}
 // every glyph name the game's own fields and code ask icon() for
 const glyphs = new Set();
 for (const T of [C.TROPHIES, C.PERKS, C.GUARDIANS, C.BACKGROUNDS, C.SETS, C.ARTIFACTS]) for (const x of Object.values(T)) if (x.icon) glyphs.add(x.icon);

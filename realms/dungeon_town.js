@@ -14,6 +14,8 @@ import { BONE } from './rig.js?v=2.7';
 // =====================================================================
 
 const TAU = Math.PI * 2;
+// round 4 (town3d): small loose props at the lot corners are skipped so each building reads as one clean shape
+const DECLUTTER = true;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 function rand(seed) {
   let a = seed >>> 0;
@@ -123,6 +125,7 @@ function makeKit(seed) {
     },
     // a cluster of crystals; glowing cores (glow) unless o.dull
     cluster(x, y, z, s, c = C.teal, o = {}) {
+      if (DECLUTTER && y < 0.1 && s < 0.62 && !o.keep) return; // round 4: no loose ground-level crystal tufts
       const n = o.n || 5;
       for (let i = 0; i < n; i++) {
         const a = (i / n) * TAU + r() * 0.6, t = i === 0 ? 0 : 0.35 + r() * 0.35;
@@ -132,6 +135,7 @@ function makeKit(seed) {
     },
     // giant mushroom: stem + domed cap + glowing spots
     mushroom(x, y, z, s, cap = C.cap, o = {}) {
+      if (DECLUTTER && y < 0.1 && s < 0.5 && !o.keep) return; // round 4: no small loose mushrooms round the lots
       const lean = o.lean || 0;
       k.at(x, y, z, o.ry || 0, s, () => {
         k.lathe([[0.1, 0], [0.075, 0.2], [0.065, 0.5], [0.08, 0.6]], 0, 0, 0, C.stem, 7, { top: 1.08, bot: 0.86, rz: lean });

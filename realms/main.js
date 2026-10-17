@@ -7,7 +7,7 @@ import { havenUpModel } from './units_haven_up.js?v=2.7';
 import { neutralModel } from './units_neutral.js?v=2.7';
 import { townModel, heroModel, flagModel } from './models_towns.js?v=2.7';
 import { objectModel } from './models_objects.js?v=2.7';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf } from './nature.js?v=2.7';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf, cragKey, CRAG_SCALE } from './nature.js?v=2.7';
 import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.7';
 import { createTownView } from './town_view.js?v=2.7';
 import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.7';
@@ -28,6 +28,7 @@ import { createSfx } from './sfx.js?v=2.7';
 import { unitFit, applyFit } from './unit_fit.js?v=2.7';
 import { createMapFx } from './mapfx.js?v=2.7';
 import { icon, artIcon, artFile } from './icons.js';
+import { modalShow, modalFree, modalBusy, onModalFree } from './modal.js'; // ui3: one modal at a time (dialogs + Crown Run layers)
 // fullscreen: the virtual viewport (the game may be drawn turned by 90 degrees on a portrait screen): game-space sizes and
 // screen -> game coordinate mapping for every piece of manual pointer / layout maths below
 import { VP, toGame, gRect } from './vport.js?v=2.7';
@@ -799,7 +800,7 @@ function floraCell(v, put0) {
     if (ter[v] === T.FOREST) {
       const n = F.count[0] + (hv % (F.count[1] - F.count[0] + 1));
       for (let i = 0; i < n; i++) { const a = i * 2.1 + hv, d = i ? 0.1 + rr(i) * 0.03 : 0; put(pickW(FOREST_BY_BIOME[biome] || FOREST_BY_BIOME.temperate, rr(i + 9)), v, F.fillScale * (0.85 + rr(i + 3) * 0.3), Math.cos(a) * d, Math.sin(a) * d, a); }
-    } else { const keys = PEAK_BY_BIOME[biome] || PEAK_BY_BIOME.temperate; put(keys[hv % keys.length], v, F.fillScale * (0.95 + rr(2) * 0.2), 0, 0, hv); }
+    } else put(cragKey({ biome, nb: NBR[v].map((n) => ter[n]), high: h[v] > SEA + 4, hash: hv }), v, CRAG_SCALE, 0, 0, ((hv >>> 11) % 6) * Math.PI / 3); // (terrain r4: hex-column crags, turned by 60-degree steps to fit the hex)
     return;
   }
   if (objAt[v] >= 0 || road[v] || !F || !F.scatter) return;
@@ -939,16 +940,28 @@ function relayRoads() {
   road.fill(0);
   const blocks = (v) => { const ob = objAt[v] >= 0 ? G.objects[objAt[v]] : null; return ob && ob.alive && !(ob.type === 'monster' && !ob.guards) && !/^border\d/.test(ob.type); }; // (terrain r4: a Border Guard stands on its road)
   for (const [a, b] of roadPairs) {
+    if (!passable(a) || !passable(b)) continue; // (terrain r4: a side road whose end the walls took)
     const g = new Map([[a, 0]]), came = new Map(), open = minHeap(); open.push(0, a);
     while (open.size) {
       const cur = open.pop(), gc = open.d; if (gc !== g.get(cur)) continue;
       if (cur === b) { for (let x = b; x !== undefined; x = came.get(x)) road[x] = 1; break; }
       for (const n of NBR[cur]) {
-        if (!passable(n) || (n !== b && blocks(n))) continue;
-        const ng = gc + (road[n] ? 50 : TER_COST[ter[n]] || 100); // (Dijkstra: roads are few)
+        // (terrain r4) only a town truly blocks; through anything else the road passes at a heavy price, and whatever
+        // it then runs over steps aside below (the walls can leave a guard or a pile in the only pass)
+        const bl = n !== b && blocks(n);
+        if (!passable(n) || (bl && G.objects[objAt[n]].type === 'town')) continue;
+        const ng = gc + (road[n] ? 50 : TER_COST[ter[n]] || 100) + (bl ? 5000 : 0); // (Dijkstra: roads are few)
         if (ng < (g.get(n) ?? Infinity)) { g.set(n, ng); came.set(n, cur); open.push(ng, n); }
       }
     }
+  }
+  // (terrain r4) off the road: a guard steps to another side of its treasure (or goes), anything else goes with its guards
+  for (const o of G.objects) {
+    if (!o.alive || !road[o.v] || !blocks(o.v) || o.type === 'town' || o.guardian || o.invasion) continue;
+    if (o.type === 'monster') {
+      const to = NBR[o.guards].find((c) => passable(c) && objAt[c] < 0 && !road[c] && !heroAt(c) && regionOf[c] === regionOf[o.guards]);
+      if (to !== undefined) { if (objAt[o.v] === o.id) objAt[o.v] = -1; o.v = to; objAt[to] = o.id; } else removeObject(o);
+    } else { removeObject(o); for (const g of G.objects) if (g.alive && g.guards === o.v && g.type === 'monster') removeObject(g); }
   }
 }
 // terrain r4: a cell where something standing would seal a corridor (see worldgen chokeAt): objects and guards keep off
@@ -3129,8 +3142,31 @@ const UICON = { pikeman: '🔱', archer: '🏹', griffin: '🦅', swordsman: '�
 // and the sharp render is swapped in from the background; it only renders synchronously when nothing is cached at all
 const unitIcon = (id, s = 64) => portraitImgLazy(id, s) || UICON[id] || UICON[UNITS[id]?.up] || '❔';
 const plural = (id, n = 2) => { const w = UNITS[id].name; if (n === 1) return w; if (/m[ae]n$/.test(w)) return w.replace(/man$/, 'men'); if (/[^aeiou]y$/.test(w)) return w.slice(0, -1) + 'ies'; if (/(s|x|ch|sh)$/.test(w)) return w + 'es'; return w.replace(/f$/, 'ves').replace(/([^s])$/, '$1s'); };
-let toastT = 0;
-function toast(msg) { const el = $('toast'); el.innerHTML = msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
+// ui3: toasts queue instead of replacing each other unseen (each shows >= 1.1 s, the same text is never stacked), and
+// wait while a modal is up or the dawn banner plays (they sat on the dialog's title ribbon / the "Day N" banner)
+let toastT = 0, toastCur = '', toastAt = 0;
+const toastQ = [];
+function toast(msg) {
+  const el = $('toast');
+  if (msg === toastCur && el.classList.contains('show')) { clearTimeout(toastT); toastT = setTimeout(toastDone, 2600); return; }
+  if (toastQ.includes(msg)) return;
+  toastQ.push(msg); if (toastQ.length > 3) toastQ.shift();
+  toastNext();
+}
+function toastNext() {
+  clearTimeout(toastNext.t);
+  if (!toastQ.length) return;
+  const el = $('toast'), now = performance.now();
+  if (modalBusy()) return; // (onModalFree below runs it again)
+  const wait = Math.max(dawnUntil - now - 400, el.classList.contains('show') ? toastAt + 1100 - now : 0);
+  if (wait > 20) { toastNext.t = setTimeout(toastNext, wait); return; }
+  toastCur = toastQ.shift(); toastAt = now;
+  el.innerHTML = toastCur; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(toastDone, toastQ.length ? 1700 : 2600);
+}
+function toastDone() { $('toast').classList.remove('show'); toastCur = ''; if (toastQ.length) toastNext.t = setTimeout(toastNext, 260); }
+function toastClear() { toastQ.length = 0; clearTimeout(toastT); clearTimeout(toastNext.t); toastCur = ''; $('toast').classList.remove('show'); }
+onModalFree(() => setTimeout(toastNext, 220));
 // UI juice: a soft ripple from the touch point on chunky buttons (purely visual, removed after it plays)
 document.addEventListener('pointerdown', (e) => {
   const b = e.target.closest?.('.btn, .fb, .row-b button, .tabs2 button, .hb, .diffs button, .fcard, .mode, .opp button, .slots button');
@@ -3149,9 +3185,12 @@ function ask(title, html, buttons, wide = false) {
 }
 function renderDialog() {
   const d = dialogs[0], el = $('dialog'), card = $('dlg-card');
+  // ui3: one modal at a time: while a Crown Run screen is up the dialog waits in line (modal.js) and shows after it
+  if (d && (el.hidden || el.classList.contains('closing')) && !modalShow('dlg', renderDialog)) return;
   // perf/feel: the last dialog fades out (compositor-only opacity/transform) instead of vanishing; taps pass through meanwhile
   clearTimeout(renderDialog.t); el.classList.remove('closing');
   if (!d) {
+    modalFree('dlg');
     if (el.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.hidden = true; return; }
     el.classList.add('closing'); renderDialog.t = setTimeout(() => { el.hidden = true; el.classList.remove('closing'); }, 170);
     return;
@@ -3191,7 +3230,7 @@ let resQuietUntil = 0;
 // the dawn plays as a sequence, never all at once: the "Day N" banner, then the income (floating in the middle, then
 // its icons fly up into the resource counters), then whatever else the morning brings (invasion warnings, week card)
 let dawnUntil = 0;
-const afterDawn = (fn) => { const w = dawnUntil - performance.now(); if (w > 30) setTimeout(fn, w); else fn(); };
+const afterDawn = (fn) => { const w = Math.max(dawnUntil, resQuietUntil) - performance.now(); if (w > 30) setTimeout(fn, w); else fn(); }; // ui3: also after the income has landed (the week card sat on it)
 function showIncome(inc, srcs = []) {
   const items = ['gold', 'wood', 'ore', 'gems'].filter((k) => inc[k] > 0);
   if (!items.length) return;
@@ -3397,7 +3436,7 @@ function tickAI(dt) {
 }
 function newDay() {
   G.day++;
-  clearTimeout(toastT); $('toast').classList.remove('show'); // "the enemy is moving…" is over
+  toastClear(); // "the enemy is moving…" is over
   dawnUntil = performance.now() + (reduceMo.matches ? 0 : 3400);
   const newWeek = (G.day - 1) % 7 === 0;
   for (const Pl of G.players) {
@@ -3775,7 +3814,8 @@ function showMenu() {
   G.mode = 'menu'; dialogs.length = 0; pendingLevels.length = 0; renderDialog(); // a queued level-up would block every later one (showLevel only runs on the first push)
   stopAI(); walking = null; fx.clearPath(true); fx.select(null, null, undefined, true); // a quit mid enemy turn / mid walk must not carry over into the next game
   fadeShow($('menu')); $('hud').hidden = true; $('town').hidden = true; $('battle').hidden = true; musicScene('menu');
-  CUI?.close(true); CUI?.hideTip(); // crown: no run screen survives a quit to the title
+  CUI?.close(true); CUI?.hideTip?.(); // crown: no run screen survives a quit to the title
+  toastClear(); // ui3: no queued toast follows into the title
   const s = store.get('realms.save', null);
   $('m-continue').hidden = !s;
   if (s) $('m-continue').innerHTML = `Continue<small>${s.mode === 'crown' ? 'Crown Run · ' : `Free Play${(s.players?.length || 2) > 2 ? ` 1v${s.players.length - 1}` : ''} · `}${s.players?.[0] ? `${FACTIONS[s.players[0].fac]?.name || ''} · ` : ''}Week ${Math.floor((s.day - 1) / 7) + 1}, day ${((s.day - 1) % 7) + 1}</small>`;

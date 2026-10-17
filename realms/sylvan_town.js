@@ -15,6 +15,8 @@ import * as THREE from 'three';
 // =====================================================================
 
 const TAU = Math.PI * 2;
+// round 4 (town3d): small loose props (bushes, saplings, barrels, crates...) are skipped so each building reads as one clean shape
+const DECLUTTER = true;
 const FLAG = 15; // BONE.FLAG in rig.js
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 function rand(seed) {
@@ -306,12 +308,12 @@ function makeKit(seed) {
       // braces back to the trunk
       for (const a of (o.braces || [0.6, 2.6, 4.6])) k.limb([x + Math.sin(a) * rad * 0.8, y - 0.07, z + Math.cos(a) * rad * 0.8], [x + Math.sin(a) * rad * 0.15, y - 0.45, z + Math.cos(a) * rad * 0.15], 0.025, 0.02, C.barkD, 4);
     },
-    bush(x, z, s = 1, c = C.leaf) { k.canopy(x, 0.13 * s, z, 0.2 * s, { c, sy: 0.75, seed: Math.round(x * 13 + z * 7) }); },
-    flowers(x, z, s = 1, c = C.pink) {
+    bush(x, z, s = 1, c = C.leaf) { if (DECLUTTER) return; k.canopy(x, 0.13 * s, z, 0.2 * s, { c, sy: 0.75, seed: Math.round(x * 13 + z * 7) }); },
+    flowers(x, z, s = 1, c = C.pink) { if (DECLUTTER) return;
       k.bush(x, z, s * 0.8, C.leafL);
       for (let i = 0; i < 4; i++) { const a = i * 1.7 + x; k.ball(0.035 * s, x + Math.sin(a) * 0.1 * s, 0.17 * s, z + Math.cos(a) * 0.1 * s, i % 2 ? c : C.white, 0, { ao: false }); }
     },
-    tree(x, z, s = 1, c = C.leaf, c2 = C.leafL) {
+    tree(x, z, s = 1, c = C.leaf, c2 = C.leafL) { if (DECLUTTER) return;
       k.cyl(0.04 * s, 0.07 * s, 0.42 * s, x, 0, z, C.bark, 6);
       k.canopy(x, 0.6 * s, z, 0.3 * s, { c, seed: Math.round(x * 31 + z * 17) });
       k.canopy(x + 0.1 * s, 0.82 * s, z - 0.04 * s, 0.2 * s, { c: c2, seed: Math.round(x * 7 + z * 3) });
@@ -321,13 +323,13 @@ function makeKit(seed) {
       k.cyl(0.035 * s, 0.05 * s, 0.25 * s, x, 0, z, C.bark, 5);
       k.lathe([[0.18 * s, 0], [0.22 * s, 0.25 * s], [0.15 * s, 0.65 * s], [0, 1.0 * s]], x, 0.15 * s, z, c, 7, { top: 1.3, bot: 0.8, ao: false, jit: 0.04 * s });
     },
-    barrel(x, y, z, s = 1, c = C.wood) {
+    barrel(x, y, z, s = 1, c = C.wood) { if (DECLUTTER) return;
       k.lathe([[0.1 * s, 0], [0.125 * s, 0.13 * s], [0.1 * s, 0.26 * s]], x, y, z, c, 8);
       k.tor(0.118 * s, 0.012 * s, x, y + 0.07 * s, z, C.goldD, TAU, { rx: Math.PI / 2, rs: 8, ts: 3 });
       k.tor(0.118 * s, 0.012 * s, x, y + 0.19 * s, z, C.goldD, TAU, { rx: Math.PI / 2, rs: 8, ts: 3 });
     },
-    crate(x, y, z, s = 1, ry = 0) { k.box(0.22 * s, 0.2 * s, 0.22 * s, x, y, z, C.wood, { ry, j: 0.1 }); k.box(0.23 * s, 0.03, 0.23 * s, x, y + 0.17 * s, z, C.woodD, { ry }); },
-    basket(x, y, z, c = C.red, s = 1) {
+    crate(x, y, z, s = 1, ry = 0) { if (DECLUTTER) return; k.box(0.22 * s, 0.2 * s, 0.22 * s, x, y, z, C.wood, { ry, j: 0.1 }); k.box(0.23 * s, 0.03, 0.23 * s, x, y + 0.17 * s, z, C.woodD, { ry }); },
+    basket(x, y, z, c = C.red, s = 1) { if (DECLUTTER) return;
       k.lathe([[0.08 * s, 0], [0.13 * s, 0.1 * s], [0.13 * s, 0.11 * s]], x, y, z, C.hay, 8, { ao: false });
       for (let i = 0; i < 4; i++) k.ball(0.05 * s, x + Math.sin(i * 1.6) * 0.06 * s, y + 0.12 * s, z + Math.cos(i * 1.6) * 0.06 * s, c, 0, { ao: false, top: 1.2 });
     },

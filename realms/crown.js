@@ -239,21 +239,22 @@ for (const [id, s] of Object.entries(SETS)) s.id = id;
 // rule(T) builds the battle hook for the victim side T (the player). v2.8 (crown2): a pool of 24, drawn per run.
 //   tier 1-3: which region band draws them (region r of n draws tier ceil(3r/n)); mythic: only for the last region at
 //   higher difficulty (TUNE.mythic). units: the themed army (by tier; buildArmy keeps to the region's tier window).
-//   look: the portrait brief for the icons agent. powMul: army power scale for heroes whose rule is itself a big army buff.
+//   look: the portrait brief for the icons agent. powMul: army power scale (rules that are themselves big buffs get less).
+//   lead: a signature stack (a dragon, a devil…) that joins the army whatever the tier window; the rest shares what is left.
 const ward = () => false;
 const foesOf = (B, T) => alive(B, 1 - T);
 export const GUARDIANS = {
   // ---- tier 1 (region 1)
-  wall: { name: 'Gorrak the Wall', title: 'Ogre Warlord', icon: 'fort', fac: 'neutral', tier: 1, units: ['goblin', 'orc', 'ogre', 'troll'],
+  wall: { name: 'Gorrak the Wall', title: 'Ogre Warlord', icon: 'fort', fac: 'neutral', tier: 1, units: ['goblin', 'orc', 'ogre', 'troll'], powMul: 0.7,
     look: 'a hulking grey-skinned ogre in riveted iron plate behind a tower shield as tall as a door',
     rule: 'Shieldwall: your shooters cannot shoot.', mod: (T) => ({ canShoot(B, s, ok) { return s.side === T && !ward(s) ? false : ok; } }) },
   silence: { name: 'Sorceress Ilvane', title: 'Warlock of Dungeon', icon: 'spellbook', fac: 'dungeon', tier: 1, units: ['troglodyte', 'harpy', 'beholder', 'medusa'],
     look: 'a pale dark-elf sorceress with a finger to her lips, violet runes sealing a floating spellbook',
     rule: 'Silence: your hero cannot cast spells.', mod: (T) => ({ onRoundStart(B) { B.cast[T] = true; } }) },
-  gale: { name: 'Windcaller Aelis', title: 'Druid of Sylvan', icon: 'fly', fac: 'sylvan', tier: 1, units: ['centaur', 'woodelf', 'pegasus', 'dendroid'],
+  gale: { name: 'Windcaller Aelis', title: 'Druid of Sylvan', icon: 'fly', fac: 'sylvan', tier: 1, units: ['centaur', 'woodelf', 'pegasus', 'dendroid'], powMul: 1.15,
     look: 'a young elven druid in green robes, hair whipped by a gale, staff wrapped in swirling leaves',
     rule: 'Gale: your fliers are grounded.', mod: (T) => ({ stats(u, i) { if (i.side === T) u.fly = false; } }) },
-  goblin_king: { name: 'Skrag the Goblin King', title: 'Lord of the Warrens', icon: 'crown', fac: 'neutral', tier: 1, units: ['goblin', 'wolf', 'orc'], powMul: 0.8,
+  goblin_king: { name: 'Skrag the Goblin King', title: 'Lord of the Warrens', icon: 'crown', fac: 'neutral', tier: 1, units: ['goblin', 'wolf', 'orc'], powMul: 0.75,
     look: 'a scrawny grinning goblin on a throne of junk, oversized dented crown, a crowd of goblins behind',
     rule: 'Swarm: his tier 1–2 stacks are half again as large.', mod: (T) => ({ onBattleStart(B) { for (const s of B.stacks) if (s.side !== T && s.u.tier <= 2) { s.count = Math.round(s.count * 1.5); s.start = s.count; } } }) },
   wolf_mother: { name: 'Fenra Wolfmother', title: 'Huntress of the Wilds', icon: 'movement', fac: 'neutral', tier: 1, units: ['goblin', 'wolf', 'centaur', 'woodelf'],
@@ -268,72 +269,72 @@ export const GUARDIANS = {
     look: 'a gaunt necromancer in tattered black robes, lantern of green soul-fire, skeleton hands rising from the ground',
     rule: 'Grave Chill: your stacks −1 speed and −1 Attack.', mod: (T) => ({ stats(u, i) { if (i.side === T) { u.spd = Math.max(1, u.spd - 1); u.att = Math.max(0, u.att - 1); } } }) },
   // ---- tier 2 (the middle regions)
-  plague: { name: 'Malphas the Plaguebringer', title: 'Pit Lord of Inferno', icon: 'defeat', fac: 'inferno', tier: 2, units: ['familiar', 'demon', 'horneddemon', 'efreet'],
+  plague: { name: 'Malphas the Plaguebringer', title: 'Pit Lord of Inferno', icon: 'defeat', fac: 'inferno', tier: 2, units: ['familiar', 'demon', 'horneddemon', 'efreet'], powMul: 1.15,
     look: 'a horned pit lord wreathed in sickly green smoke, a rusted scythe, flies around him',
     rule: 'Plague: your first stack starts the battle with 30% fewer creatures.', mod: (T) => ({ onBattleStart(B) {
       const s = B.stacks.filter((x) => x.side === T).sort((a, b) => a.slot - b.slot)[0]; if (!s) return;
       const n = Math.max(1, Math.ceil(s.count * 0.7)), lost = s.count - n; s.count = n;
       if (lost) B.events.push({ t: 'mod', icon: 'defeat', text: `Plague −${lost}`, side: 1 - T, s: s.uid, hits: [{ s: s.uid, dmg: lost * s.u.hp, killed: lost, left: n }] });
     } }) },
-  hunger: { name: 'Krug the Endless', title: 'Troll Chieftain', icon: 'hp', fac: 'neutral', tier: 2, units: ['wolf', 'orc', 'ogre', 'troll'],
+  hunger: { name: 'Krug the Endless', title: 'Troll Chieftain', icon: 'hp', fac: 'neutral', tier: 2, units: ['wolf', 'orc', 'ogre', 'troll'], powMul: 1.25,
     look: 'a towering green troll chieftain with a tree-trunk club, wounds visibly closing, tusks and war paint',
     rule: 'Regeneration: his stacks heal fully every round.', mod: (T) => ({ stats(u, i) { if (i.side !== T) u.regen = true; } }) },
-  stampede: { name: 'Khazrak Hellrider', title: 'Demon Knight', icon: 'movement', fac: 'inferno', tier: 2, units: ['hellhound', 'cerberus', 'nightmare', 'hellcharger'],
+  stampede: { name: 'Khazrak Hellrider', title: 'Demon Knight', icon: 'movement', fac: 'inferno', tier: 2, units: ['hellhound', 'cerberus', 'nightmare', 'hellcharger'], powMul: 0.8,
     look: 'a demon knight in black spiked armour astride a flaming nightmare steed, mid-charge',
     rule: 'Stampede: his stacks +3 speed.', mod: (T) => ({ stats(u, i) { if (i.side !== T) u.spd += 3; } }) },
-  iron_hide: { name: 'Sir Brannoc Ironhide', title: 'Fallen Paladin', icon: 'armorer', fac: 'haven', tier: 2, units: ['swordsman', 'crusader', 'monk', 'cavalier'],
+  iron_hide: { name: 'Sir Brannoc Ironhide', title: 'Fallen Paladin', icon: 'armorer', fac: 'haven', tier: 2, units: ['swordsman', 'crusader', 'monk', 'cavalier'], powMul: 1.25,
     look: 'a fallen paladin in scarred plate, cracked holy symbol on his breastplate, arrows broken against it',
     rule: 'Ironhide: his stacks take −50% damage from your shots.', mod: (T) => ({ onDamage(c) { if (c.ranged && c.a?.side === T && c.d?.side !== T) c.dmg *= 0.5; } }) },
-  ember_witch: { name: 'Ashka the Emberwitch', title: 'Pyromancer of Inferno', icon: 'fireball', fac: 'inferno', tier: 2, units: ['imp', 'familiar', 'succubus', 'efreet'], spells: ['fireball'],
+  ember_witch: { name: 'Ashka the Emberwitch', title: 'Pyromancer of Inferno', icon: 'fireball', fac: 'inferno', tier: 2, units: ['imp', 'familiar', 'succubus', 'efreet'], spells: ['fireball'], powMul: 0.75,
     look: 'a red-skinned witch with smouldering hair and ember eyes, a ring of fire in her raised palms',
     rule: 'Firestorm: at the start of rounds 2, 4 and 6, fire burns each of your stacks for 6% of its hit points.',
     mod: (T) => ({ onRoundStart(B) { if (B.round % 2 || B.round > 6) return; burn(B, alive(B, T), (s) => ((s.count - 1) * s.u.hp + s.hp) * 0.06, 1 - T, 'fireball', 'Firestorm'); } }) },
-  thornqueen: { name: 'Lysara Thornqueen', title: 'Warden of the Briars', icon: 'luck', fac: 'sylvan', tier: 2, units: ['centaurcpt', 'woodelf', 'dendroid', 'dendroidsoldier'],
+  thornqueen: { name: 'Lysara Thornqueen', title: 'Warden of the Briars', icon: 'luck', fac: 'sylvan', tier: 2, units: ['centaurcpt', 'woodelf', 'dendroid', 'dendroidsoldier'], powMul: 0.85,
     look: 'a regal dryad crowned with thorned roses, bark-skinned arms, vines coiling from the ground',
     rule: 'Entangling Roots: your walkers have speed 1 in rounds 1 and 2.',
     mod: (T) => { const sp = new Map(); return {
       stats(u, i) { if (i.side === T && !u.fly) { sp.set(u, u.spd); u.spd = 1; } },
       onRoundStart(B) { if (B.round !== 3) return; for (const s of B.stacks) if (sp.has(s.u)) s.u.spd = sp.get(s.u); },
     }; } },
-  beholder_lord: { name: 'Xyloth the Many-Eyed', title: 'Beholder Overseer', icon: 'sorcery', fac: 'dungeon', tier: 2, units: ['troglodyte', 'beholder', 'evileye', 'medusa'],
+  beholder_lord: { name: 'Xyloth the Many-Eyed', title: 'Beholder Overseer', icon: 'sorcery', fac: 'dungeon', tier: 2, units: ['troglodyte', 'beholder', 'evileye', 'medusa'], powMul: 1.1,
     look: 'a huge floating beholder with one great central eye and a crown of eyestalks, stony light from its gaze',
     rule: 'Petrifying Gaze: at the start of every round one of your stacks turns to stone and loses its turn.',
     mod: (T) => ({ onRoundStart(B) { const m = alive(B, T); if (!m.length || !foesOf(B, T).length) return; const s = m[(B.rand() * m.length) | 0]; s.acted = true; B.events.push({ t: 'mod', icon: 'sorcery', text: 'Petrified', side: 1 - T, hits: [{ s: s.uid, dmg: 0, killed: 0, left: s.count }] }); } }) },
-  cyclops_lord: { name: 'Grumm One-Eye', title: 'Cyclops Warlord', icon: 'attack', fac: 'neutral', tier: 2, units: ['goblin', 'orc', 'ogre', 'cyclops'],
+  cyclops_lord: { name: 'Grumm One-Eye', title: 'Cyclops Warlord', icon: 'attack', fac: 'neutral', tier: 2, units: ['goblin', 'orc', 'ogre'], lead: ['cyclops', 1],
     look: 'a one-eyed cyclops warlord hefting a boulder overhead, rope belt of skulls, crude iron crown',
     rule: 'Boulders: his shooters throw twice per turn.', mod: (T) => ({ stats(u, i) { if (i.side !== T && u.ranged) u.twoShots = true; } }) },
   // ---- tier 3 (the last region)
-  lich_queen: { name: 'Vesperine, the Lich Queen', title: 'Necromancer of the Last Crown', icon: 'necromancy', fac: 'necro', tier: 3, units: ['wight', 'vampire', 'lich', 'powerlich', 'blackknight'],
+  lich_queen: { name: 'Vesperine, the Lich Queen', title: 'Necromancer of the Last Crown', icon: 'necromancy', fac: 'necro', tier: 3, units: ['wight', 'vampire', 'lich', 'powerlich', 'blackknight'], powMul: 1.1,
     look: 'a skeletal queen in a tall black-iron crown and violet gown, glowing eye-sockets, a staff topped with a soul gem',
     rule: 'Lifedrinker: her stacks heal half the damage they deal and raise their dead.', mod: (T) => ({ stats(u, i) { if (i.side !== T) u.drain = true; } }) },
-  eclipse: { name: 'Shadowmother Zyra', title: 'Dungeon Overlord', icon: 'end', fac: 'dungeon', tier: 3, units: ['harpyhag', 'medusaqueen', 'minotaur', 'manticore', 'blackdragon'],
+  eclipse: { name: 'Shadowmother Zyra', title: 'Dungeon Overlord', icon: 'end', fac: 'dungeon', tier: 3, units: ['harpyhag', 'medusaqueen', 'minotaur', 'manticore', 'blackdragon'], powMul: 1.1,
     look: 'a dark-elf matriarch in obsidian armour before a black sun, shadow tendrils spreading behind her',
     rule: "Eclipse: your hero's Attack and Defence count as 0.", mod: (T) => ({ onBattleStart(B) { const h = B.heroes[T]; if (h) { h.att = 0; h.def = 0; } } }) },
   minotaur_king: { name: 'Asterion the Labyrinth King', title: 'Minotaur Warlord', icon: 'axe', fac: 'dungeon', tier: 3, units: ['troglodyte', 'harpy', 'minotaur', 'minotaurking', 'manticore'],
     look: 'a massive minotaur king with a gold-ringed horn, double-headed labrys, a stone labyrinth behind',
     rule: 'Bloodrage: his stacks gain +1 Attack every time they are struck (up to +10).',
     mod: (T) => { const n = new Map(); return { onDamage(c) { if (c.preview || !c.d || c.d.side === T) return; const k = n.get(c.d.uid) || 0; if (k < 10) { n.set(c.d.uid, k + 1); c.d.u.att += 1; } } }; } },
-  hydra_mother: { name: 'Ssylith Hydra-Mother', title: 'Mistress of the Mire', icon: 'hp', fac: 'neutral', tier: 3, units: ['wolf', 'troll', 'cyclops', 'hydra'],
+  hydra_mother: { name: 'Ssylith Hydra-Mother', title: 'Mistress of the Mire', icon: 'hp', fac: 'neutral', tier: 3, units: ['ogre', 'troll', 'cyclops', 'hydra'],
     look: 'a serpent-bodied naga queen coiled in a swamp, three hydra heads rising behind her',
     rule: 'Many Heads: her stacks retaliate twice, at ×1.5 damage.', mod: (T) => ({ stats(u, i) { if (i.side !== T) u.twoRetal = true; }, onDamage(c) { if (c.retal && c.a && c.a.side !== T) c.dmg *= 1.5; } }) },
-  stormcaller: { name: 'Elder Thalion Stormcaller', title: 'Archdruid of Sylvan', icon: 'bolt', fac: 'sylvan', tier: 3, units: ['woodelf', 'grandelf', 'silverpegasus', 'unicorn', 'greendragon'], spells: ['bolt', 'slow'],
+  stormcaller: { name: 'Elder Thalion Stormcaller', title: 'Archdruid of Sylvan', icon: 'bolt', fac: 'sylvan', tier: 3, units: ['woodelf', 'grandelf', 'silverpegasus', 'unicorn', 'greendragon'], spells: ['bolt', 'slow'], powMul: 1.2,
     look: 'an ancient elf archdruid with a white beard braided with leaves, lightning arcing from an oak staff, storm clouds',
     rule: 'Chain Lightning: at the start of every round lightning strikes your two largest stacks for 8% of their hit points.',
     mod: (T) => ({ onRoundStart(B) { const m = alive(B, T).sort((a, b) => b.count * b.u.hp - a.count * a.u.hp).slice(0, 2); burn(B, m, (s) => ((s.count - 1) * s.u.hp + s.hp) * 0.08, 1 - T, 'bolt', 'Lightning'); } }) },
   // ---- mythic (the last region, at higher difficulty only)
-  dragon_mother: { name: 'Vyrmathra the Dragonmother', title: 'Mythic · Queen of All Dragons', icon: 'fly', fac: 'neutral', tier: 3, mythic: true, units: ['hydra', 'greendragon', 'blackdragon', 'reddragon', 'golddragon'],
+  dragon_mother: { name: 'Vyrmathra the Dragonmother', title: 'Queen of All Dragons', icon: 'fly', fac: 'neutral', tier: 3, mythic: true, units: ['harpy', 'troll', 'manticore', 'scorpicore'], lead: ['greendragon', 1], powMul: 0.7,
     look: 'a colossal ancient dragon with scales shifting through green, gold, red and black, wings spread over a hoard',
     rule: 'Dragonmother: her stacks are immune to your spells, and her tier 7 creatures +50% hit points.',
     mod: (T) => ({ stats(u, i) { if (i.side !== T && u.tier === 7) u.hp = Math.round(u.hp * 1.5); }, onDamage(c) { if (c.spell && c.side === T && c.d && c.d.side !== T) c.dmg = 0; } }) },
-  archdevil: { name: "Baal'zareth the Unbound", title: 'Mythic · Archdevil of the Pit', icon: 'fireball', fac: 'inferno', tier: 3, mythic: true, powMul: 0.85, units: ['horneddemon', 'efreetsultan', 'hellcharger', 'devil', 'archdevil'],
+  archdevil: { name: "Baal'zareth the Unbound", title: 'Archdevil of the Pit', icon: 'fireball', fac: 'inferno', tier: 3, mythic: true, powMul: 0.85, units: ['horneddemon', 'efreetsultan', 'nightmare', 'hellcharger'], lead: ['devil', 1],
     look: 'a towering archdevil with curling ram horns and burning wings, a gate of hellfire opening behind him',
     rule: 'Hellgate: at the start of every round his weakest stack is restored to full strength.',
     mod: (T) => ({ onRoundStart(B) { if (B.round < 2) return; const s = alive(B, 1 - T).sort((a, b) => a.count / a.start - b.count / b.start)[0]; if (!s || s.count >= s.start) return; const n = s.start - s.count; s.count = s.start; s.hp = s.u.hp; B.events.push({ t: 'mod', icon: 'fireball', text: `Hellgate +${n}`, side: 1 - T, hits: [{ s: s.uid, dmg: 0, killed: 0, left: s.count }] }); } }) },
-  seraphine: { name: 'Seraphine the Fallen', title: 'Mythic · Archangel Unbound', icon: 'bless', fac: 'haven', tier: 3, mythic: true, units: ['monk', 'zealot', 'champion', 'angel', 'archangel'],
+  seraphine: { name: 'Seraphine the Fallen', title: 'Archangel Unbound', icon: 'bless', fac: 'haven', tier: 3, mythic: true, units: ['crusader', 'monk', 'zealot', 'angel'], lead: ['champion', 2],
     look: 'a fallen archangel with tarnished gold armour and wings half white, half ash-grey, a flaming sword lowered',
     rule: 'Divine Wrath: your hero cannot cast spells, and her stacks heal fully every round.',
     mod: (T) => ({ stats(u, i) { if (i.side !== T) u.regen = true; }, onRoundStart(B) { B.cast[T] = true; } }) },
-  dread_king: { name: 'Morvane the Dread King', title: 'Mythic · Lord of the Endless Night', icon: 'skull', fac: 'necro', tier: 3, mythic: true, units: ['wraith', 'vampirelord', 'powerlich', 'dreadknight', 'ghostdragon'],
+  dread_king: { name: 'Morvane the Dread King', title: 'Lord of the Endless Night', icon: 'skull', fac: 'necro', tier: 3, mythic: true, units: ['wraith', 'vampirelord', 'powerlich', 'dreadknight'], lead: ['bonedragon', 1],
     look: 'a spectral king in rusted black plate on a ghostly throne, a crown of cold blue fire, mist pouring from his cloak',
     rule: 'Dread: from round 2, your stacks lose 8% of their creatures at the start of every round.',
     mod: (T) => ({ onRoundStart(B) { if (B.round < 2) return; burn(B, alive(B, T), (s) => s.count * 0.08 * s.u.hp, 1 - T, 'skull', 'Dread'); } }) },
@@ -614,7 +615,9 @@ export function guardianArmy(run, region = run.region) {
   const fac = Gd.fac === 'neutral' ? 'neutral' : Gd.fac, lvl = region + 1 + (Gd.mythic ? 1 : 0);
   const P = guardianPower(region, run.diff) * (Gd.powMul || 1) * (Gd.mythic ? TUNE.mythic.power : 1);
   const hero = { att: region + 1, def: region + 1, pow: region + 1 + (Gd.spells ? 2 : 0), know: 2 + region, mana: 10 + 5 * region + (Gd.spells ? 10 : 0), skills: {}, spells: [...new Set([...(region >= 3 ? ['arrow', 'bolt'] : ['arrow']), ...(Gd.spells || [])])], luck: 0, morale: 0, name: Gd.name, p: -1 };
-  const army = buildArmy(r, fac, P, lvl, Math.min(7, 5 + Math.floor((region - 1) / 2)), hero, Gd.units);
+  const lead = Gd.lead && UNITS[Gd.lead[0]] ? Gd.lead : null, leadP = lead ? armyPower([lead]) : 0, nSt = Math.min(7, 5 + Math.floor((region - 1) / 2));
+  const army = buildArmy(r, fac, Math.max(P * 0.35, P - leadP), lvl, nSt - (lead ? 1 : 0), hero, Gd.units);
+  if (lead) { const same = army.find((x) => x[0] === lead[0]); if (same) same[1] += lead[1]; else army.unshift([...lead]); }
   return { army, hero, fac, guardian: id, region, mythic: !!Gd.mythic, power: Math.round(armyPower(army, hero)), target: Math.round(P) };
 }
 // whose banner the invasions fly: the rival crown's faction (falls back to the next guardian's)

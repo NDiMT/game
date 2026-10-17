@@ -127,7 +127,7 @@ export function cobbleCanvas(cols, joint, size = 96) {
       if (d < d1) { d2 = d1; d1 = d; best = k; } else if (d < d2) d2 = d;
     }
     const edge = Math.sqrt(d2) - Math.sqrt(d1), s = rgb[Math.floor(pts[best][2] * rgb.length) % rgb.length];
-    const k = edge < 1.4 ? 0 : Math.min(1, (edge - 1.4) / 2.5), lit = 0.9 + 0.16 * Math.min(1, edge / 9);
+    const k = 0.5 + 0.5 * (edge < 1.4 ? 0 : Math.min(1, (edge - 1.4) / 2.5)), lit = 0.9 + 0.16 * Math.min(1, edge / 9);
     const o = (y * size + x) * 4;
     for (let q = 0; q < 3; q++) D[o + q] = Math.round(jr[q] + (s[q] * lit - jr[q]) * k);
     D[o + 3] = 255;

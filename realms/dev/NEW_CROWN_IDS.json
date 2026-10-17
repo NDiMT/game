@@ -1239,6 +1239,7 @@
     "ogre",
     "troll"
    ],
+   "lead": null,
    "icon": "fort",
    "new": false
   },
@@ -1257,6 +1258,7 @@
     "beholder",
     "medusa"
    ],
+   "lead": null,
    "icon": "spellbook",
    "new": false
   },
@@ -1275,6 +1277,7 @@
     "pegasus",
     "dendroid"
    ],
+   "lead": null,
    "icon": "fly",
    "new": false
   },
@@ -1292,6 +1295,7 @@
     "wolf",
     "orc"
    ],
+   "lead": null,
    "icon": "crown",
    "new": true
   },
@@ -1310,6 +1314,7 @@
     "centaur",
     "woodelf"
    ],
+   "lead": null,
    "icon": "movement",
    "new": true
   },
@@ -1328,6 +1333,7 @@
     "archer",
     "swordsman"
    ],
+   "lead": null,
    "icon": "defense",
    "new": true
   },
@@ -1346,6 +1352,7 @@
     "wight",
     "skelwarrior"
    ],
+   "lead": null,
    "icon": "skull",
    "new": true
   },
@@ -1364,6 +1371,7 @@
     "horneddemon",
     "efreet"
    ],
+   "lead": null,
    "icon": "defeat",
    "new": false
   },
@@ -1382,6 +1390,7 @@
     "ogre",
     "troll"
    ],
+   "lead": null,
    "icon": "hp",
    "new": false
   },
@@ -1400,6 +1409,7 @@
     "nightmare",
     "hellcharger"
    ],
+   "lead": null,
    "icon": "movement",
    "new": false
   },
@@ -1418,6 +1428,7 @@
     "monk",
     "cavalier"
    ],
+   "lead": null,
    "icon": "armorer",
    "new": false
   },
@@ -1436,6 +1447,7 @@
     "succubus",
     "efreet"
    ],
+   "lead": null,
    "icon": "fireball",
    "new": true
   },
@@ -1454,6 +1466,7 @@
     "dendroid",
     "dendroidsoldier"
    ],
+   "lead": null,
    "icon": "luck",
    "new": true
   },
@@ -1472,6 +1485,7 @@
     "evileye",
     "medusa"
    ],
+   "lead": null,
    "icon": "sorcery",
    "new": true
   },
@@ -1487,9 +1501,9 @@
    "army": [
     "goblin",
     "orc",
-    "ogre",
-    "cyclops"
+    "ogre"
    ],
+   "lead": "cyclops",
    "icon": "attack",
    "new": true
   },
@@ -1509,6 +1523,7 @@
     "powerlich",
     "blackknight"
    ],
+   "lead": null,
    "icon": "necromancy",
    "new": false
   },
@@ -1528,6 +1543,7 @@
     "manticore",
     "blackdragon"
    ],
+   "lead": null,
    "icon": "end",
    "new": false
   },
@@ -1547,6 +1563,7 @@
     "minotaurking",
     "manticore"
    ],
+   "lead": null,
    "icon": "axe",
    "new": true
   },
@@ -1560,11 +1577,12 @@
    "rule": "Many Heads: her stacks retaliate twice, at ×1.5 damage.",
    "look": "a serpent-bodied naga queen coiled in a swamp, three hydra heads rising behind her",
    "army": [
-    "wolf",
+    "ogre",
     "troll",
     "cyclops",
     "hydra"
    ],
+   "lead": null,
    "icon": "hp",
    "new": true
   },
@@ -1584,32 +1602,33 @@
     "unicorn",
     "greendragon"
    ],
+   "lead": null,
    "icon": "bolt",
    "new": true
   },
   {
    "id": "dragon_mother",
    "name": "Vyrmathra the Dragonmother",
-   "title": "Mythic · Queen of All Dragons",
+   "title": "Queen of All Dragons",
    "faction": "neutral",
    "tier": 3,
    "mythic": true,
    "rule": "Dragonmother: her stacks are immune to your spells, and her tier 7 creatures +50% hit points.",
    "look": "a colossal ancient dragon with scales shifting through green, gold, red and black, wings spread over a hoard",
    "army": [
-    "hydra",
-    "greendragon",
-    "blackdragon",
-    "reddragon",
-    "golddragon"
+    "harpy",
+    "troll",
+    "manticore",
+    "scorpicore"
    ],
+   "lead": "greendragon",
    "icon": "fly",
    "new": true
   },
   {
    "id": "archdevil",
    "name": "Baal'zareth the Unbound",
-   "title": "Mythic · Archdevil of the Pit",
+   "title": "Archdevil of the Pit",
    "faction": "inferno",
    "tier": 3,
    "mythic": true,
@@ -1618,36 +1637,36 @@
    "army": [
     "horneddemon",
     "efreetsultan",
-    "hellcharger",
-    "devil",
-    "archdevil"
+    "nightmare",
+    "hellcharger"
    ],
+   "lead": "devil",
    "icon": "fireball",
    "new": true
   },
   {
    "id": "seraphine",
    "name": "Seraphine the Fallen",
-   "title": "Mythic · Archangel Unbound",
+   "title": "Archangel Unbound",
    "faction": "haven",
    "tier": 3,
    "mythic": true,
    "rule": "Divine Wrath: your hero cannot cast spells, and her stacks heal fully every round.",
    "look": "a fallen archangel with tarnished gold armour and wings half white, half ash-grey, a flaming sword lowered",
    "army": [
+    "crusader",
     "monk",
     "zealot",
-    "champion",
-    "angel",
-    "archangel"
+    "angel"
    ],
+   "lead": "champion",
    "icon": "bless",
    "new": true
   },
   {
    "id": "dread_king",
    "name": "Morvane the Dread King",
-   "title": "Mythic · Lord of the Endless Night",
+   "title": "Lord of the Endless Night",
    "faction": "necro",
    "tier": 3,
    "mythic": true,
@@ -1657,9 +1676,9 @@
     "wraith",
     "vampirelord",
     "powerlich",
-    "dreadknight",
-    "ghostdragon"
+    "dreadknight"
    ],
+   "lead": "bonedragon",
    "icon": "skull",
    "new": true
   }

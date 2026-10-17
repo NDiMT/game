@@ -14,9 +14,10 @@
 
 // the painted road (terrain.js writeCell + its shader): a disc at each road cell's centre, and a ribbon from the
 // centre to the middle of every edge shared with another road cell. Verge included (shader mask m >= 0.2).
-export const ROAD_DISC = 0.14, ROAD_HALF = 0.075;
-// the cobbles alone (mask m >= 0.5): what an object must never cover
-export const COBBLE_DISC = 0.09, COBBLE_HALF = 0.045;
+// (terrain r4: the wider roads, verge mask m >= 0.08, cobbles m >= 0.32; half width = (1 - m) * 0.09 on a straight)
+export const ROAD_DISC = 0.17, ROAD_HALF = 0.085;
+// the cobbles alone (mask m >= 0.32): what an object must never cover
+export const COBBLE_DISC = 0.12, COBBLE_HALF = 0.062;
 
 function segDist(px, pz, ax, az, bx, bz) {
   const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
