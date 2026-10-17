@@ -34,10 +34,10 @@
 // sizes through a small LRU), one MSAA render at 2x, one composite pass on the
 // game's own renderer (no extra WebGL context), one 8-bit readback, one PNG encode.
 // =====================================================================
-import { UNITS } from './data.js?v=2.7';
-import { heroModel } from './models_towns.js?v=2.7';
-import { makeBodyMaterial, makeGlowMaterial } from './materials.js?v=2.7';
-import { BONE } from './rig.js?v=2.7';
+import { UNITS } from './data.js?v=2.8';
+import { heroModel } from './models_towns.js?v=2.8';
+import { makeBodyMaterial, makeGlowMaterial } from './materials.js?v=2.8';
+import { BONE } from './rig.js?v=2.8';
 import { artFile, artUrl } from './icons.js'; // icons: painted portraits (art/icons/unit_*.webp, hero_*.webp)
 
 const hex = (h) => [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255];
