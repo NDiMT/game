@@ -1,39 +1,39 @@
 import * as THREE from 'three';
-import { mulberry32, unitModel } from './models.js?v=2.8';
-import { havenModel } from './units_haven.js?v=2.8';
-import { necroModel } from './units_necro.js?v=2.8';
-import { necroUpModel } from './units_necro_up.js?v=2.8';
-import { havenUpModel } from './units_haven_up.js?v=2.8';
-import { neutralModel } from './units_neutral.js?v=2.8';
-import { townModel, heroModel, flagModel } from './models_towns.js?v=2.8';
-import { objectModel } from './models_objects.js?v=2.8';
-import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf, cragKey, CRAG_SCALE } from './nature.js?v=2.8';
-import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.8';
-import { createTownView } from './town_view.js?v=2.8';
-import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.8';
-import { createFlatSky, gradeGLSL } from './atmosphere.js?v=2.8';
-import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=2.8';
+import { mulberry32, unitModel } from './models.js?v=2.9';
+import { havenModel } from './units_haven.js?v=2.9';
+import { necroModel } from './units_necro.js?v=2.9';
+import { necroUpModel } from './units_necro_up.js?v=2.9';
+import { havenUpModel } from './units_haven_up.js?v=2.9';
+import { neutralModel } from './units_neutral.js?v=2.9';
+import { townModel, heroModel, flagModel } from './models_towns.js?v=2.9';
+import { objectModel } from './models_objects.js?v=2.9';
+import { natureModel, FLORA_FOR_TERRAIN, FOREST_BY_BIOME, PEAK_BY_BIOME, biomeOf, cragKey, CRAG_SCALE } from './nature.js?v=2.9';
+import { createBattlefield, wallModel, towerModel, gateModel, keepModel, siegeLayout } from './battlefield.js?v=2.9';
+import { createTownView } from './town_view.js?v=2.9';
+import { createVfx, shotKind, meleeKind } from './vfx.js?v=2.9';
+import { createFlatSky, gradeGLSL } from './atmosphere.js?v=2.9';
+import { UNITS, UPGRADES, FACTIONS, NEUTRALS, BUILDINGS, SPELLS, ARTIFACTS, SKILLS, OBJECTS, RES, RES_ICON, START_ARMY, FACTION_START } from './data.js?v=2.9';
 // newer factions load guarded, so a missing or broken module never stops the game (it falls back to placeholders)
-const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=2.8'), import('./units_inferno.js?v=2.8'), import('./units_dungeon.js?v=2.8')]);
+const [SYLm, INFm, DUNm] = await Promise.allSettled([import('./units_sylvan.js?v=2.9'), import('./units_inferno.js?v=2.9'), import('./units_dungeon.js?v=2.9')]);
 // memory: build through the modules' uncached builders (base id + upgraded flag), so main.js's geoCache is the only
 // owner of a creature's geometry and trimGeoCache() really frees it (the modules' own caches would pin ~11 MB per roster)
 const facBuild = (mod, build, model) => (id) => { const b = mod.value?.[build], u = UNITS[id]; const m = b && u ? b(u.up || id, !!u.up) : null; return m || mod.value?.[model]?.(id) || null; };
 const FAC_MODEL = { sylvan: facBuild(SYLm, 'sylvanBuild', 'sylvanModel'), inferno: facBuild(INFm, 'infernoBuild', 'infernoModel'), dungeon: facBuild(DUNm, 'dungeonBuild', 'dungeonModel') };
-import * as BT from './battle.js?v=2.8';
-import * as CR from './crown.js?v=2.8'; // crown: Crown Run rules and data
-import { createCrownUI } from './crown_ui.js?v=2.8'; // crown: Crown Run screens
-import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=2.8';
-import { createScore } from './music.js?v=2.8';
-import { createSfx } from './sfx.js?v=2.8';
-import { unitFit, applyFit } from './unit_fit.js?v=2.8';
-import { createMapFx } from './mapfx.js?v=2.8';
+import * as BT from './battle.js?v=2.9';
+import * as CR from './crown.js?v=2.9'; // crown: Crown Run rules and data
+import { createCrownUI } from './crown_ui.js?v=2.9'; // crown: Crown Run screens
+import { makeBodyMaterial, makeGlowMaterial, makeHitMaterial, makeInkHullMaterial, makeBlobShadowMaterial, blobShadowGeometry, setAnim, setRigIdle, ANIM, ANIM_IMPACT, tick as tickMaterials, addFormNormals } from './materials.js?v=2.9';
+import { createScore } from './music.js?v=2.9';
+import { createSfx } from './sfx.js?v=2.9';
+import { unitFit, applyFit } from './unit_fit.js?v=2.9';
+import { createMapFx } from './mapfx.js?v=2.9';
 import { icon, artIcon, artFile } from './icons.js';
-import { modalShow, modalFree, modalBusy, onModalFree } from './modal.js?v=2.8'; // ui3: one modal at a time (dialogs + Crown Run layers)
+import { modalShow, modalFree, modalBusy, onModalFree } from './modal.js?v=2.9'; // ui3: one modal at a time (dialogs + Crown Run layers)
 // fullscreen: the virtual viewport (the game may be drawn turned by 90 degrees on a portrait screen): game-space sizes and
 // screen -> game coordinate mapping for every piece of manual pointer / layout maths below
-import { VP, toGame, gRect } from './vport.js?v=2.8';
-import { fsAvailable, fsActive, toggleFullscreen } from './shell.js?v=2.8';
-import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.8';
+import { VP, toGame, gRect } from './vport.js?v=2.9';
+import { fsAvailable, fsActive, toggleFullscreen } from './shell.js?v=2.9';
+import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, heroPortraitImg, portraitAsync, portraitImgLazy, hasPortrait, portraitsPending, heroPortraitId } from './portraits.js?v=2.9';
 
 // =====================================================================
 // ORBIS · Five Crowns: a 3D fantasy strategy game on a hex map.
@@ -42,7 +42,7 @@ import { releasePortraitModel, initPortraits, portraitImg, preloadPortraits, her
 // defeat the rival crowns in turn-based battles on a hex battlefield.
 // =====================================================================
 
-const APP_VERSION = '2.8';
+const APP_VERSION = '2.9';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -540,7 +540,7 @@ const atmos = createFlatSky(THREE, scene, { fogColor: 0xa8c6e2 }); // flat world
 
 // ------------------------------------------------------------------ the map mesh: bevelled hex columns with cliff walls, in chunks
 // the surface itself (textures, bevels, cliffs, roads, fog, water, the open sea) is built by terrain.js
-import { createFlatMap } from './terrain.js?v=2.8';
+import { createFlatMap } from './terrain.js?v=2.9';
 const TERRAIN = createFlatMap({ STEP, SEA });
 TERRAIN.setGrid(GRID); atmos.setArea(GRID.bounds);
 scene.add(TERRAIN.group);
@@ -1855,8 +1855,9 @@ function interact(hr, v) {
   if (o.type === 'monster') {
     // much weaker monsters may offer to join you, or flee
     const ratio = BT.armyPower(heroArmy(hr), hr) / Math.max(1, BT.armyPower([[o.unit, o.n]]));
-    if (you && ratio > 4 && !o.refused && hash(o.id * 13 + G.day) % 100 < 55) {
-      const u = UNITS[o.unit], price = Math.round(o.n * u.cost.gold * 0.6), free = ratio > 8;
+    // (v2.9 fitted power: 8x/14x keep the offers as often as the old 4x/8x did)
+    if (you && ratio > 8 && !o.refused && hash(o.id * 13 + G.day) % 100 < 55) {
+      const u = UNITS[o.unit], price = Math.round(o.n * u.cost.gold * 0.6), free = ratio > 14;
       ask(`${unitIcon(o.unit)} The ${plural(o.unit)} bow before you`, free ? `${o.n} ${plural(o.unit, o.n)} are so impressed by your army that they offer to join you for free.` : `${o.n} ${plural(o.unit, o.n)} offer to join you for ${fmt(price)} 🪙.`, [
         [free ? '🤝 Accept' : `🤝 Hire for ${fmt(price)}`, free || G.players[0].res.gold >= price ? () => { if (addTroops(hr.army, o.unit, o.n)) { if (!free) G.players[0].res.gold -= price; removeObject(o); sfx.recruit(); toast(`${unitIcon(o.unit)} ${o.n} ${plural(o.unit, o.n)} join ${hr.name}.`); sfx.fanfare(); updateHud(); } else toast('No free slot in your army.'); } : undefined],
         ...fightButtons(hr, { kind: 'monster', obj: o }, '⚔️ Fight them', false).map(([l, f, sub]) => [l, f, sub, 'ghost']),
@@ -3609,6 +3610,10 @@ function dijkstra(hr, maxCost) {
 }
 // freeplay: days before the computer lords go for the human; on Easy/Normal each extra rival adds a day, so 1v4 is no rush
 const aiGraceDay = (d) => d + (G.diff < 2 ? Math.max(0, G.players.length - 2) : 0);
+// the edge (power ratio) the AI wants before a fight. v2.9: BT.armyPower is now a fitted predictor (ratio 1 = an even
+// fight, 1.4 ~ 90%, 2 ~ 99%); these keep the old aggression: as many monsters taken (4x: the old 1.6x on the old
+// power, which overrated elites), heroes and towns at the same share of encounters as before (old 1.3x ~ 1.2x now)
+const AI_EDGE = { monster: 4, hero: [1.4, 1.27, 1.2, 1.1], rival: 1.2, town: 1.25, flee: 1.15 };
 function aiValue(hr, v, power) {
   const o = objAt[v] >= 0 && G.objects[objAt[v]].alive ? G.objects[objAt[v]] : null;
   const other = heroAt(v);
@@ -3617,19 +3622,19 @@ function aiValue(hr, v, power) {
     // freeplay: the human's heroes are left alone for the first days (later with more rivals on Easy/Normal) and need a clearer edge
     if (other.p === 0 && G.day < aiGraceDay(byDiff([10, 7, 4, 2]))) return 0;
     if (other.p > 0 && G.day < byDiff([6, 4, 3, 2])) return 0;
-    const theirs = BT.armyPower(heroArmy(other), other); return power > theirs * (other.p === 0 ? byDiff([1.7, 1.45, 1.3, 1.15]) : 1.3) ? 70 + theirs / 100 : 0;
+    const theirs = BT.armyPower(heroArmy(other), other); return power > theirs * (other.p === 0 ? byDiff(AI_EDGE.hero) : AI_EDGE.rival) ? 70 + theirs / 100 : 0;
   }
   if (!o) return 0;
   const O = OBJECTS[o.type], kind = O?.kind;
-  if (o.type !== 'monster') { const g = NBR[v].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((x) => x && x.alive && x.type === 'monster'); if (g && power < BT.armyPower([[g.unit, g.n]]) * 1.6) return 0; }
-  if (o.type === 'monster') { const mp = BT.armyPower([[o.unit, o.n]]); if (power < mp * 1.6) return 0; return 6 + mp / 150 + (o.guards !== undefined ? 10 : 0); }
+  if (o.type !== 'monster') { const g = NBR[v].map((n) => (objAt[n] >= 0 ? G.objects[objAt[n]] : null)).find((x) => x && x.alive && x.type === 'monster'); if (g && power < BT.armyPower([[g.unit, g.n]]) * AI_EDGE.monster) return 0; }
+  if (o.type === 'monster') { const mp = BT.armyPower([[o.unit, o.n]]); if (power < mp * AI_EDGE.monster) return 0; return 6 + mp / 150 + (o.guards !== undefined ? 10 : 0); }
   if (o.type === 'town') {
     const t = G.towns[o.t];
     if (t.p === hr.p) return heroArmy({ army: t.garrison }).length ? 12 + BT.armyPower(t.garrison) / 120 : 0;
     const gp = BT.armyPower(t.garrison) * (t.built.includes('fort') ? 1.3 : 1);
     if (t.p === 0 && G.day < aiGraceDay(byDiff([14, 10, 6, 3]))) return 0;
     if (t.p > 0 && G.day < byDiff([8, 6, 5, 3])) return 0; // rival crowns don't knock each other out in the first days either
-    return power > gp * 1.4 ? (t.p === 0 ? (G.players.length > 2 ? 85 : 120) : 70) : 0;
+    return power > gp * AI_EDGE.town ? (t.p === 0 ? (G.players.length > 2 ? 85 : 120) : 70) : 0;
   }
   if (kind === 'pickup') return o.type === 'gold' ? o.amount / 80 : o.type === 'chest' ? 14 : o.type === 'artifact' ? 25 : o.type === 'campfire' ? 9 : 7;
   if (kind === 'mine') return o.owner === hr.p ? 0 : (O.res === 'gold' ? 45 : 22) + (o.owner === 0 ? 10 : 0);
@@ -3643,7 +3648,7 @@ function* aiHero(hr) {
     const power = BT.armyPower(heroArmy(hr), hr);
     const { dist, prev } = dijkstra(hr, hr.mp + 4500);
     // a stronger enemy hero close by: run home to the garrison
-    const threat = G.heroes.find((x) => x.alive && x.p !== hr.p && cellDist(x.v, hr.v) < 16 && BT.armyPower(heroArmy(x), x) > power * 1.25);
+    const threat = G.heroes.find((x) => x.alive && x.p !== hr.p && cellDist(x.v, hr.v) < 16 && BT.armyPower(heroArmy(x), x) > power * AI_EDGE.flee);
     let best = null, bs = 0;
     for (const [v, d] of dist) {
       if (v === hr.v) continue;
