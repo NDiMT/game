@@ -353,12 +353,26 @@ export function autoResolve(B, maxSteps = 600) {
   if (!B.over) B.over = { winner: alive(B, 0).reduce((a, s) => a + s.count * s.u.hp, 0) >= alive(B, 1).reduce((a, s) => a + s.count * s.u.hp, 0) ? 0 : 1 };
   return B.over;
 }
-// rough strength of an army, for the AI and for the "how dangerous is this" hint
+// rough strength of an army: the threat word, the Quick offer, the AI and the Crown Run's army sizing.
+// v2.9 (balance2): fitted to ~950 auto-resolve duels (the army size at which a fight is even: hordes vs elites,
+// shooters, fliers, every faction, with and without heroes). Lanchester-style, a creature is worth about
+// √hp · dmg^0.6 (its punch and its staying power multiply; the fight goes by the root), so power stays ADDITIVE
+// in creatures and a ratio r reads "r times the army that would fight us to a draw": ~50% win at r 1, ~90% at
+// 1.4, ~99% at 1.8, and the winner loses about 1 − √(1 − 1/r²) of its army (13% at 2, 3% at 4). The old
+// n·hp·dmg rated 4 hydras 15x 400 goblins; the goblins are the deadlier army. Predictor quality on 1200
+// random duels: Pearson(log ratio, logit win) 0.59 -> 0.86, the favourite wins 78% -> 96%.
+export const POWER = { scale: 8, hp: 0.5, dmg: 0.6, stat: 0.025, spd: 0.15, ranged: 1.07, longShot: 1.1, twice: 1.2, noRetal: 1.25, drain: 1.9 };
+export function unitWorth(u) {
+  const P = POWER;
+  return P.scale * Math.pow(u.hp, P.hp) * Math.pow((u.dmg[0] + u.dmg[1]) / 2, P.dmg) * (1 + (u.att + u.def) * P.stat) * Math.pow(u.spd / 6, P.spd)
+    * (u.ranged ? P.ranged * (u.ranged >= 20 ? P.longShot : 1) : 1) * (u.double || u.twoShots ? P.twice : 1) * (u.noRetal ? P.noRetal : 1) * (u.drain ? P.drain : 1);
+}
+// what a hero adds (fitted with the units): attack/defence, power, and the fighting skills
+export function heroPowMul(h) { if (!h) return 1; const sk = h.skills || {}; return 1 + ((h.att || 0) + (h.def || 0)) * 0.03 + (h.pow || 0) * 0.025 + ((sk.offense || 0) + (sk.armorer || 0) + (sk.archery || 0) * 0.5) * 0.04; }
 export function armyPower(army, h) {
   let p = 0;
-  for (const st of army) { if (!st) continue; const [id, n] = st; if (!(id && n > 0)) continue; const u = UNITS[id]; p += n * u.hp * ((u.dmg[0] + u.dmg[1]) / 2) * (1 + (u.att + u.def) * 0.03) * (u.ranged ? 1.25 : 1) * (u.fly ? 1.1 : 1); }
-  if (h) p *= 1 + (h.att + h.def) * 0.05 + h.pow * 0.03;
-  return p;
+  for (const st of army) { if (!st) continue; const [id, n] = st; if (!(id && n > 0)) continue; p += n * unitWorth(UNITS[id]); }
+  return p * heroPowMul(h);
 }
 
 // ---- the odds of a fight, from side A's point of view, for the threat word and the Quick offer. A few quick
@@ -366,7 +380,7 @@ export function armyPower(army, h) {
 // bar and a re-tap agree). Only fights that look lopsided on paper are simulated at all (cheap on a phone).
 // Quick combat is offered only for a TRIVIAL fight: our power >= QUICK_RATIO x theirs, every simulation won, and
 // the losses within QUICK_LOSS of our army's power on average (a stray skeleton, not a stack).
-export const QUICK_RATIO = 4, QUICK_LOSS = 0.02, QUICK_LOSS_MAX = 0.05;
+export const QUICK_RATIO = 3.5, QUICK_LOSS = 0.02, QUICK_LOSS_MAX = 0.05;
 function seeded(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const heroCopy = (h) => (h ? { ...h } : null); // mana is spent in a simulation: never on the real hero
 export function odds({ armyA, heroA = null, armyB, heroB = null, town = null }, sims = 6) {
@@ -386,8 +400,11 @@ export function odds({ armyA, heroA = null, armyB, heroB = null, town = null }, 
   return out;
 }
 // the threat word: Effortless only for a trivial fight (so "Effortless" and the Quick offer always go together)
+// v2.9: on the fitted power, ratio >= 1.7 wins ~99% with light losses (Easy), 1-1.7 wins ~85% at a real cost
+// (Fair), 0.75-1 is a coin flip at best (Hard), below 0.75 you lose almost surely (Deadly)
 export const THREATS = { effortless: 'Effortless', easy: 'Easy', fair: 'Fair', hard: 'Hard', deadly: 'Deadly' };
-export function threatOf(o) { const r = 1 / Math.max(1e-6, o.ratio); return o.trivial ? 'effortless' : r < 0.6 ? 'easy' : r < 1 ? 'fair' : r < 1.6 ? 'hard' : 'deadly'; }
+export const THREAT_RATIO = { easy: 1.7, fair: 1, hard: 0.75 };
+export function threatOf(o) { const q = o.ratio, T = THREAT_RATIO; return o.trivial ? 'effortless' : q >= T.easy ? 'easy' : q >= T.fair ? 'fair' : q >= T.hard ? 'hard' : 'deadly'; }
 
 // ---- necromancy (HoMM-like): after a won battle the winner raises part of the LIVING enemies slain as Skeletons.
 // pct = 10% base + 10% per Necromancy level + the Necropolis bonus, at most NECRO.max. Bigger bodies give more
