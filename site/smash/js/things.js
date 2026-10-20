@@ -26,10 +26,10 @@ export const PAINT = [0xd8392f, 0x2a73d6, 0xf0ad1f, 0x2fa462, 0xe8722a, 0x7d55cf
 
 // projectile definitions. budget = how many bricks one throw may crumble directly
 export const PROJ = {
-  ball: { mass: 5, speed: 1, r: 0.2, budget: 2 },
-  brick: { mass: 2.5, speed: 1, budget: 1 },
-  bowling: { mass: 9, speed: 0.92, r: 0.22, budget: 4 },
-  anvil: { mass: 22, speed: 0.75, budget: 5 },
+  ball: { mass: 5, speed: 1, r: 0.2, budget: 5 },
+  brick: { mass: 2.5, speed: 1, budget: 3 },
+  bowling: { mass: 9, speed: 0.92, r: 0.22, budget: 8 },
+  anvil: { mass: 22, speed: 0.75, budget: 9 },
   bomb: { mass: 4, speed: 1, r: 0.18, budget: 0 },
 };
 

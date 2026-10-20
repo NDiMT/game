@@ -9,7 +9,7 @@ import { SCENES, SCENE_NAMES } from './scenes.js';
 
 export const AMMO_START = { brick: 6, bowling: 3, anvil: 1, bomb: 1 };
 export const AMMO_CAP = { brick: 12, bowling: 6, anvil: 3, bomb: 3 };
-export const CLEAR_AT = 0.9;
+export const CLEAR_AT = 0.6;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
 const NOOP = () => {};
@@ -294,8 +294,8 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
         const dx = p.x - o.x, dy = p.y - o.y, dz = p.z - o.z;
         if (!it.anchored && !it.supportFreed && dx * dx + dy * dy + dz * dz > 0.006) K.freeAbove(it);
         if (it.counted || it.noKnock) continue;
-        let knocked = dx * dx + dz * dz > 0.2 || dy < -0.25;
-        if (!knocked && it.upright) { const q = b.quaternion; knocked = 1 - 2 * (q.x * q.x + q.z * q.z) < 0.7; }
+        let knocked = dx * dx + dz * dz > 0.07 || dy < -0.14;
+        if (!knocked && it.upright) { const q = b.quaternion; knocked = 1 - 2 * (q.x * q.x + q.z * q.z) < 0.85; }
         if (knocked) G.smash(it);
       }
       G.items.length = alive;

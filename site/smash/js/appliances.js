@@ -211,7 +211,7 @@ export function setupAppliances(G, K) {
       if (q) root.quaternion.copy(q);
       return K.addItem({
         type: 'appliance', kind: type, mat: 'metal', w: D.w, body: b, mesh: root, shell, parts: A.parts, def: D,
-        hp: D.hp, maxHp: D.hp, stage: 0, sizeClass: D.size, dentR: 0.22, dentMax: 0.07, noKnock: true, lastHit: -1, smokeT: 0, husk: false,
+        hp: D.hp * 0.65, maxHp: D.hp * 0.65, stage: 0, sizeClass: D.size, dentR: 0.22, dentMax: 0.07, noKnock: true, lastHit: -1, smokeT: 0, husk: false,
       });
     };
   }
@@ -311,7 +311,7 @@ export function setupAppliances(G, K) {
   }
   function damage(it, dmg, power) {
     if (it.husk) return;
-    it.hp = Math.max(0, it.hp - Math.min(dmg, it.maxHp * 0.36));
+    it.hp = Math.max(0, it.hp - Math.min(dmg, it.maxHp * 0.5));
     const f = it.hp / it.maxHp;
     let s = 0;
     while (s < 4 && f <= STAGE_HP[s + 1]) s++;
@@ -329,7 +329,7 @@ export function setupAppliances(G, K) {
     const dmg = (force - 4) * (proj ? 1.5 : 0.6);
     if (dmg > 0) { it.lastHit = G.time; damage(it, dmg, force); }
   };
-  G.applianceBlast = (it, f, x, y, z) => damage(it, it.maxHp * 0.36 * clamp(f * 1.5, 0.3, 1), 20);
+  G.applianceBlast = (it, f, x, y, z) => damage(it, it.maxHp * 0.5 * clamp(f * 1.5, 0.3, 1), 20);
 
   // per-frame: dangling doors swing, smoke from husks (called from core.update)
   G.updateAppliances = (dt) => {
