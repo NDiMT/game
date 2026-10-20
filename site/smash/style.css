@@ -1,0 +1,72 @@
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none;
+  background: #5db8ff; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body.framed { background: radial-gradient(circle at 50% 30%, #2d3f63, #141a2a 70%); display: flex; align-items: center; justify-content: center; }
+#wrap { position: relative; width: 100vw; height: 100vh; overflow: hidden; touch-action: none; margin: 0 auto; }
+body.framed #wrap { border-radius: 26px; box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 6px #0c111d; }
+#c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+
+#top { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: flex-start;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 0; pointer-events: none; }
+#score { color: #fff; text-shadow: 0 2px 0 rgba(20,40,80,.35), 0 3px 10px rgba(0,40,90,.25); line-height: 1; }
+#num { display: block; font-size: 44px; font-weight: 900; letter-spacing: -1px; font-variant-numeric: tabular-nums; transform-origin: 0 70%; }
+#num.tick { animation: tick .22s ease-out; }
+@keyframes tick { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+#score span { display: block; font-size: 12px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; opacity: .92; margin-top: 2px; }
+#prog { display: block; width: 92px; height: 6px; margin-top: 7px; border-radius: 3px; background: rgba(255,255,255,.35); overflow: hidden; }
+#prog u { display: block; height: 100%; background: #fff; transform-origin: 0 50%; transform: scaleX(0); transition: transform .25s; }
+#btns { display: flex; gap: 10px; pointer-events: auto; }
+#btns button, #bar button { border: 0; padding: 0; cursor: pointer; touch-action: manipulation; }
+#btns button { width: 44px; height: 44px; border-radius: 14px; background: rgba(255,255,255,.28); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); }
+#btns svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+#btns .spk { fill: #fff; }
+#bMute .x { display: none; }
+#bMute.muted .x { display: inline; }
+#bMute.muted .wave { display: none; }
+#btns button:active, #bar button:active { transform: scale(.92); }
+
+#bar { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%); display: flex; gap: 8px;
+  padding: 7px; border-radius: 22px; background: rgba(255,255,255,.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.5), 0 6px 20px rgba(60,40,10,.15); }
+#bar button { width: 50px; height: 50px; border-radius: 16px; background: rgba(255,255,255,.35); display: grid; place-items: center; transition: background .15s, transform .15s; }
+#bar button svg { width: 32px; height: 32px; }
+#bar button.on { background: #fff; transform: translateY(-3px); box-shadow: 0 4px 10px rgba(40,30,10,.2); }
+
+#combo { position: absolute; left: 0; right: 0; top: 24%; text-align: center; pointer-events: none; color: #fff; font-weight: 900; font-style: italic;
+  font-size: 38px; letter-spacing: 1px; opacity: 0; white-space: nowrap; -webkit-text-stroke: 2px #ff5a2a; text-shadow: 0 4px 0 #c2361a, 0 8px 18px rgba(0,0,0,.25); }
+#combo.pop { animation: combo 1s cubic-bezier(.2,1.6,.4,1) forwards; }
+@keyframes combo {
+  0% { opacity: 0; transform: scale(calc(var(--s) * .4)) rotate(var(--r)); }
+  15% { opacity: 1; transform: scale(var(--s)) rotate(var(--r)); }
+  70% { opacity: 1; transform: scale(calc(var(--s) * .95)) rotate(var(--r)); }
+  100% { opacity: 0; transform: translateY(-30px) scale(calc(var(--s) * .9)) rotate(var(--r)); }
+}
+#banner { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+#banner span { font-size: 54px; font-weight: 900; font-style: italic; color: #fff; letter-spacing: 2px; opacity: 0;
+  -webkit-text-stroke: 2.5px #18a86b; text-shadow: 0 5px 0 #0f7a4c, 0 10px 30px rgba(0,0,0,.25); }
+#banner.show span { animation: banner 1.9s ease-out forwards; }
+@keyframes banner {
+  0% { opacity: 0; transform: scale(2.2) rotate(-6deg); }
+  14% { opacity: 1; transform: scale(1) rotate(-4deg); }
+  80% { opacity: 1; transform: scale(1.04) rotate(-4deg); }
+  100% { opacity: 0; transform: scale(.8) rotate(-4deg); }
+}
+#hint { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 112px); text-align: center; color: #fff; font-weight: 800;
+  font-size: 18px; letter-spacing: 1px; text-shadow: 0 2px 6px rgba(60,40,10,.4); opacity: 0; transition: opacity .4s; pointer-events: none; }
+#hint.show { opacity: 1; }
+#hint .hand { display: block; width: 18px; height: 18px; margin: 0 auto 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 6px rgba(255,255,255,.35);
+  animation: swipe 1.4s ease-in-out infinite; }
+@keyframes swipe { 0% { transform: translateY(30px); opacity: 0; } 20% { opacity: 1; } 70% { transform: translateY(-40px); opacity: 0; } 100% { transform: translateY(-40px); opacity: 0; } }
+
+#splash { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;
+  background: linear-gradient(#5db8ff, #ffd9b0); transition: opacity .45s ease, transform .45s ease; }
+#splash h1 { margin: 0; font-size: 84px; font-weight: 900; font-style: italic; color: #fff; letter-spacing: 1px;
+  -webkit-text-stroke: 3px #ff5a2a; text-shadow: 0 7px 0 #c2361a, 0 14px 30px rgba(0,0,0,.25); animation: slam .5s cubic-bezier(.2,1.6,.4,1); }
+#splash p { margin: 14px 0 0; color: #fff; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; font-size: 14px; text-shadow: 0 2px 6px rgba(60,40,10,.35); }
+@keyframes slam { 0% { transform: scale(2.5) rotate(-8deg); opacity: 0; } 100% { transform: scale(1) rotate(-4deg); opacity: 1; } }
+#splash h1 { transform: rotate(-4deg); }
+#splash.gone { opacity: 0; transform: scale(1.08); }
