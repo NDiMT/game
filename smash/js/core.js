@@ -9,7 +9,7 @@ import { SCENES, SCENE_NAMES } from './scenes.js';
 
 export const AMMO_START = { brick: 6, bowling: 3, anvil: 1, bomb: 1 };
 export const AMMO_CAP = { brick: 12, bowling: 6, anvil: 3, bomb: 3 };
-export const CLEAR_AT = 0.85;
+export const CLEAR_AT = 0.9;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
 const NOOP = () => {};
@@ -20,7 +20,7 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
   // ---------------------------------------------------------------- physics
   const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0), allowSleep: true });
   world.broadphase = new CANNON.SAPBroadphase(world);
-  world.solver.iterations = 8;
+  world.solver.iterations = 10;
   world.solver.tolerance = 0.001;
   world.quatNormalizeFast = true;
   world.quatNormalizeSkip = 2;
@@ -39,8 +39,9 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
   cm(pm.debris, pm.ground, 0.9, 0.05);
   cm(pm.debris, pm.gen, 0.7, 0.05);
   cm(pm.debris, pm.debris, 0.8, 0.02);
-  const ground = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: pm.ground, collisionFilterGroup: GR.GROUND, collisionFilterMask: 15 });
-  ground.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+  // thick static box ground (1 m deep): nothing can tunnel through a plane-thin surface
+  const ground = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Box(new CANNON.Vec3(60, 1, 60)), material: pm.ground, collisionFilterGroup: GR.GROUND, collisionFilterMask: 15 });
+  ground.position.set(0, -1, 0);
   world.addBody(ground);
 
   // ---------------------------------------------------------------- state
@@ -53,7 +54,8 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     hitstopT: 0, slowT: 0, slowDur: 1, lastSlow: -10,
     combo: 0, lastSmashT: -10, comboAward: 0, smashSinceBowl: 0, smashSinceBrick: 0,
     prof: { phys: 0, steps: 0 },
-    tune: { sleepLimit: 0.7 },
+    tune: { sleepLimit: 0.6 },
+    supportDirty: false, fastPhys: false, guard: { snapped: 0, clamped: 0, woke: 0, nan: 0 },
   };
   const S = sprites || {};
   G.dust = S.dust || { emit: NOOP, update: NOOP };
@@ -212,7 +214,16 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     const B = world.bodies;
     for (let i = 0; i < B.length; i++) {
       const b = B[i], q = b.position, v = b.velocity, w = b.angularVelocity;
+      // ground safety net: a dynamic body whose centre got below the ground surface is snapped back on top
+      if (b.type === CANNON.Body.DYNAMIC && q.y < 0.015 && b.collisionFilterMask !== 0) {
+        q.y = Math.max(0.03, b.boundingRadius * 0.5);
+        if (v.y < 0) v.y = 0;
+        v.x *= 0.5; v.z *= 0.5;
+        b.previousPosition.y = q.y;
+        G.guard.snapped++;
+      }
       if (!Number.isFinite(q.x + q.y + q.z + v.x + v.y + v.z + w.x + w.y + w.z + b.quaternion.w)) {
+        G.guard.nan++;
         if (G.onNaN) G.onNaN(b);
         q.set(0, -10, 0); v.set(0, 0, 0); w.set(0, 0, 0); b.quaternion.set(0, 0, 0, 1); b.collisionFilterMask = 0;
         b.previousPosition.copy(q); b.interpolatedPosition.copy(q); b.previousQuaternion.set(0, 0, 0, 1); b.interpolatedQuaternion.set(0, 0, 0, 1);
@@ -221,10 +232,24 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
   });
   world.addEventListener('preStep', () => {
     for (const p of G.projs) if (p.pass && !p.dead) { p.pass = false; p.body.velocity.set(p.pre.x * 0.85, p.pre.y * 0.85, p.pre.z * 0.85); }
+    // after the solve, before integration: clamp runaway velocities (CCD-ish protection, NaN prevention)
+    const B = world.bodies;
+    let fast = false;
+    for (let i = 0; i < B.length; i++) {
+      const b = B[i];
+      if (b.type !== CANNON.Body.DYNAMIC || b.sleepState === CANNON.Body.SLEEPING) continue;
+      const v = b.velocity, w = b.angularVelocity;
+      const vmax = b.proj ? 34 : 24, v2 = v.x * v.x + v.y * v.y + v.z * v.z;
+      if (v2 > vmax * vmax) { const k = vmax / Math.sqrt(v2); v.x *= k; v.y *= k; v.z *= k; G.guard.clamped++; }
+      const w2 = w.x * w.x + w.y * w.y + w.z * w.z;
+      if (w2 > 1600) { const k = 40 / Math.sqrt(w2); w.x *= k; w.y *= k; w.z *= k; }
+      if (v2 > 144) fast = true;
+    }
+    G.fastPhys = fast;
   });
 
   // ---------------------------------------------------------------- update
-  let frameN = 0;
+  let frameN = 0, supT = 0;
   const now = typeof performance !== 'undefined' ? () => performance.now() : () => Date.now();
   // rdt: real frame delta (seconds, already clamped by caller). Fixed 60 Hz physics with interpolation.
   G.update = (rdt, { buildPerFrame = 14, fixed = false } = {}) => {
@@ -237,11 +262,17 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     G.time += dt;
     const t0 = now();
     const s0 = world.stepnumber;
-    if (fixed) world.step(1 / 60); else if (dt > 0) world.step(1 / 60, dt, 3);
+    // 60 Hz normally; 120 Hz substeps while anything moves fast (thrown projectiles, flying debris)
+    const h = G.fastPhys ? 1 / 120 : 1 / 60;
+    world.solver.iterations = G.fastPhys ? 6 : 10; // two 120 Hz substeps x 6 iterations ~ same cost as one 60 Hz step x 10
+    if (fixed) { world.step(h); if (G.fastPhys) world.step(h); }
+    else if (dt > 0) world.step(h, dt, G.fastPhys ? 6 : 3);
     G.prof.phys = now() - t0;
     G.prof.steps = world.stepnumber - s0;
     G.processHits();
     G.processBreaks();
+    supT += rdt;
+    if ((G.supportDirty || supT > 0.25) && G.state !== 'intro') { G.supportDirty = false; supT = 0; G.guard.woke += K.checkSupport(); }
     if (G.state === 'intro') updateIntro(rdt, buildPerFrame);
 
     if (frameN % 6 === 0) {

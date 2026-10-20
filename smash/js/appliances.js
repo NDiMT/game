@@ -60,7 +60,9 @@ export function setupAppliances(G, K) {
   function mk(geo, mat, x, y, z, parent) {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z);
-    m.castShadow = true; m.receiveShadow = true;
+    if (!geo.boundingSphere) geo.computeBoundingSphere();
+    m.castShadow = geo.boundingSphere.radius > 0.15; // tiny parts skip the shadow pass (draw calls)
+    m.receiveShadow = true;
     parent.add(m);
     return m;
   }

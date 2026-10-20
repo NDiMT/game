@@ -64,7 +64,7 @@ export function setupThings(G) {
   function mkBody(mass, shape, x, y, z, q, mat = G.pm.gen, group = GR.TARGET) {
     const b = new CANNON.Body({
       mass, material: mat, collisionFilterGroup: group, collisionFilterMask: ALL,
-      allowSleep: true, sleepSpeedLimit: G.tune.sleepLimit, sleepTimeLimit: 0.3, linearDamping: 0.04, angularDamping: 0.12,
+      allowSleep: true, sleepSpeedLimit: G.tune.sleepLimit, sleepTimeLimit: 0.5, linearDamping: 0.04, angularDamping: 0.12,
     });
     if (shape) b.addShape(shape);
     b.position.set(x, y, z);
@@ -133,15 +133,15 @@ export function setupThings(G) {
     const col = tint(0xffffff, 0.08);
     const h = Gp.crate.add({ scale: new THREE.Vector3(s, s, s), color: col, yo: 0 });
     if (!h) return null;
-    const b = mkBody(5 * (s / 0.5) ** 2, new CANNON.Box(new CANNON.Vec3(s / 2, s / 2, s / 2)), x, y + s / 2, z, rotY ? qY(rotY) : null);
+    const b = mkBody(8 * (s / 0.5) ** 2, new CANNON.Box(new CANNON.Vec3(s / 2, s / 2, s / 2)), x, y + s / 2, z, rotY ? qY(rotY) : null);
     h.body = b;
     return addItem({ type: 'crate', mat: 'wood', w: 3, body: b, h, color: col, size: new THREE.Vector3(s, s, s) });
   };
-  K.board = (x, y, z, len, depth, thick = 0.05, rotY = 0) => {
+  K.board = (x, y, z, len, depth, thick = 0.05, rotY = 0, heavy = false) => {
     const col = tint(0xffffff, 0.08);
     const h = Gp.plank.add({ scale: new THREE.Vector3(len, thick, depth), color: col, yo: 0 });
     if (!h) return null;
-    const b = mkBody(Math.max(2, len * 5), new CANNON.Box(new CANNON.Vec3(len / 2, thick / 2, depth / 2)), x, y + thick / 2, z, rotY ? qY(rotY) : null);
+    const b = mkBody(Math.max(2, len * (heavy ? 12 : 5)), new CANNON.Box(new CANNON.Vec3(len / 2, thick / 2, depth / 2)), x, y + thick / 2, z, rotY ? qY(rotY) : null);
     h.body = b;
     return addItem({ type: 'board', mat: 'wood', w: 1, body: b, h, color: col, size: new THREE.Vector3(len, thick, depth) });
   };
@@ -197,6 +197,37 @@ export function setupThings(G) {
     }
   }
   K.freeAbove = freeAbove;
+
+  // Support check: no sleeping (or anchored) body may hang in the air. A body counts as supported when
+  // its AABB bottom touches the ground or the top of another body that overlaps it in x/z.
+  const SUP = [];
+  function aabbOf(b) { if (b.aabbNeedsUpdate) b.updateAABB(); return b.aabb; }
+  K.checkSupport = () => {
+    const B = world.bodies;
+    SUP.length = 0;
+    for (let i = 0; i < B.length; i++) if (B[i].type !== CANNON.Body.STATIC) SUP.push(B[i]);
+    let woke = 0;
+    for (let i = 0; i < SUP.length; i++) {
+      const b = SUP[i];
+      if (b.sleepState !== CANNON.Body.SLEEPING) continue;
+      const a = aabbOf(b), bot = a.lowerBound.y;
+      if (bot < 0.05) continue;
+      let ok = false;
+      for (let j = 0; j < SUP.length && !ok; j++) {
+        if (j === i) continue;
+        const c = aabbOf(SUP[j]);
+        if (c.upperBound.y > bot - 0.06 && c.lowerBound.y < bot - 0.005 &&
+          c.lowerBound.x < a.upperBound.x - 0.015 && c.upperBound.x > a.lowerBound.x + 0.015 &&
+          c.lowerBound.z < a.upperBound.z - 0.015 && c.upperBound.z > a.lowerBound.z + 0.015) ok = true;
+      }
+      if (!ok) {
+        woke++;
+        if (b.item && b.item.anchored) release(b.item);
+        else b.wakeUp();
+      }
+    }
+    return woke;
+  };
   function wakeNear(x, y, z, r) {
     const r2 = r * r, I = G.items;
     for (let i = 0; i < I.length; i++) {
@@ -219,6 +250,7 @@ export function setupThings(G) {
     it.anchored = false;
     freeAbove(it);
     wakeNear(b.position.x, b.position.y, b.position.z, wakeR);
+    G.supportDirty = true;
     if (!it.counted) G.smash(it);
   }
   K.removeItem = removeItem;
@@ -232,7 +264,8 @@ export function setupThings(G) {
     if (!arr) dpool.set(key, (arr = []));
     if (arr.length) return arr.pop();
     const b = mkBody(mass, new CANNON.Box(new CANNON.Vec3(hx, hy, hz)), 0, -50, 0, null, G.pm.debris || G.pm.gen, GR.DEBRIS);
-    b.sleepSpeedLimit = 0.9;
+    b.sleepSpeedLimit = 0.6;
+    b.sleepTimeLimit = 0.6;
     b.linearDamping = 0.08;
     b.angularDamping = 0.25;
     const d = { body: b, key, h: { body: b, scale: new THREE.Vector3(), color: new THREE.Color(), yo: 0, k: 1, i: -1 }, life: 0, kind: '', lastSnd: -1, gone: true };
@@ -249,11 +282,11 @@ export function setupThings(G) {
   };
   function getDebrisFor(kind, a, b, c) {
     if (kind === 'chunk') {
-      const hx = a * 0.42, hy = b * 0.42, hz = c * 0.38;
+      const hx = Math.max(0.035, a * 0.42), hy = Math.max(0.035, b * 0.42), hz = Math.max(0.035, c * 0.38);
       return getDebris('c' + hx.toFixed(3) + ',' + hy.toFixed(3), hx, hy, hz, Math.max(0.25, (2 * a * b) / (BL * BH)));
     }
-    if (kind === 'plank') return getDebris('p' + a.toFixed(2), a * 0.45, a * 0.21, 0.02, 0.5);
-    return getDebris('b' + a.toFixed(2) + ',' + b.toFixed(3) + ',' + c.toFixed(3), a / 2, b / 2, c / 2, Math.max(0.5, a * 1.6));
+    if (kind === 'plank') return getDebris('p' + a.toFixed(2), a * 0.45, a * 0.21, 0.03, 0.5);
+    return getDebris('b' + a.toFixed(2) + ',' + b.toFixed(3) + ',' + c.toFixed(3), a / 2, Math.max(0.03, b / 2), Math.max(0.03, c / 2), Math.max(0.5, a * 1.6));
   }
   function spawnDebris(d, group, x, y, z, q, sx, sy, sz, color, vx, vy, vz, life, kind) {
     if (group.full) {
@@ -262,7 +295,7 @@ export function setupThings(G) {
       if (group.full) { dpool.get(d.key).push(d); return; }
     }
     const b = d.body;
-    b.position.set(x, y, z);
+    b.position.set(x, Math.max(y, 0.045), z);
     b.quaternion.set(q.x, q.y, q.z, q.w);
     syncInterp(b);
     b.velocity.set(vx, vy, vz);
@@ -291,7 +324,7 @@ export function setupThings(G) {
     const d = getDebris('m' + key, hx, hy, hz, mass);
     d.h = null;
     const b = d.body;
-    b.position.set(pos.x, pos.y, pos.z);
+    b.position.set(pos.x, Math.max(pos.y, hy + 0.01), pos.z);
     b.quaternion.set(quat.x, quat.y, quat.z, quat.w);
     syncInterp(b);
     b.velocity.set(vx, vy, vz);
@@ -706,6 +739,7 @@ export function setupThings(G) {
     else b.addShape(new CANNON.Sphere(D.r));
     b.linearDamping = 0.01;
     b.sleepSpeedLimit = 0.3;
+    b.sleepTimeLimit = 0.6;
     const mesh = K.projMesh(kind);
     const p = { kind, body: b, mesh, mass: D.mass, age: 0, life: 0, hit: false, lastSnd: -1, dead: true, pre: new CANNON.Vec3(), pass: false, budget: 0, s0: mesh.scale.clone() };
     b.proj = p;
@@ -787,8 +821,8 @@ export function setupThings(G) {
       const a = Math.random() * 6.283, e = rnd(-0.3, 1.2), s = rnd(3, 11);
       G.spark.emit(x, y, z, Math.cos(a) * Math.cos(e) * s, Math.sin(e) * s + 1, Math.sin(a) * Math.cos(e) * s, rnd(0.25, 0.6), rnd(0.03, 0.06), 1, rnd(0.5, 0.8), rnd(0.15, 0.3), 5, 2.5, 0, 1, 0.035);
     }
-    for (let i = 0; i < 14; i++) G.fire.emit(x + rnd(-0.2, 0.2), y + rnd(-0.1, 0.3), z + rnd(-0.2, 0.2), rnd(-2, 2), rnd(0.5, 3), rnd(-2, 2), rnd(0.25, 0.5), rnd(0.4, 0.8), 1, rnd(0.45, 0.7), 0.2, -1, 3, 0.8, 1, 0, rnd(-2, 2));
-    for (let i = 0; i < 18; i++) G.dust.emit(x + rnd(-0.3, 0.3), y + rnd(0, 0.4), z + rnd(-0.3, 0.3), rnd(-2, 2), rnd(0.5, 2.5), rnd(-2, 2), rnd(1.2, 2.2), rnd(0.5, 0.9), 0.36, 0.34, 0.34, -0.5, 2.2, 1.4, 0.75, 0, rnd(-1, 1));
+    for (let i = 0; i < 10; i++) G.fire.emit(x + rnd(-0.2, 0.2), y + rnd(-0.1, 0.3), z + rnd(-0.2, 0.2), rnd(-2, 2), rnd(0.5, 2.5), rnd(-2, 2), rnd(0.2, 0.4), rnd(0.3, 0.55), 1, rnd(0.4, 0.6), 0.15, -1, 3, 0.5, 0.8, 0, rnd(-2, 2));
+    for (let i = 0; i < 12; i++) G.dust.emit(x + rnd(-0.3, 0.3), y + rnd(0, 0.4), z + rnd(-0.3, 0.3), rnd(-1.5, 1.5), rnd(0.5, 2), rnd(-1.5, 1.5), rnd(1.2, 2), rnd(0.35, 0.6), 0.3, 0.29, 0.3, -0.5, 2.2, 0.9, 0.55, 0, rnd(-1, 1));
     G.flash(x, y, z);
     sfx.boom();
     G.impactFx(1, x, y, z, true);

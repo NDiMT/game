@@ -91,7 +91,7 @@ export const SCENES = {
 
   // crate pyramid with barrels and cans
   crates(K) {
-    const rows = irnd(3, 4), s = 0.52, g = 0.015;
+    const rows = irnd(4, 5), s = rows === 5 ? 0.44 : 0.5, g = 0.012;
     for (let r = 0; r < rows; r++) {
       const n = rows - r;
       for (let i = 0; i < n; i++) K.crate((i - (n - 1) / 2) * (s + g), r * s, 0, s);
@@ -103,17 +103,17 @@ export const SCENES = {
       if (chance(0.5)) { K.can(sx * bx - 0.08, BARREL_H, 0.05); K.can(sx * bx + 0.08, BARREL_H, 0.05); }
       else K.bottle(sx * bx, BARREL_H, 0.05);
     }
-    if (rows === 3) { K.pane(0, 0, 0.75, 0.9, 0.6, { tint: pick(GLASS_TINTS) }); }
+    if (rows === 4) K.pane(0, 0, 0.75, 0.9, 0.6, { tint: pick(GLASS_TINTS) });
   },
 
   // kitchen shelf full of bottles
   shelf(K) {
-    const cs = 0.4, bt = 0.05, L = 3.3, levels = irnd(3, 4), xs = [-1.45, 0, 1.45];
+    const cs = 0.4, bt = 0.05, L = 3.3, levels = 4, xs = [-1.45, 0, 1.45];
     let y = 0;
     for (let lv = 0; lv < levels; lv++) {
       for (const x of xs) K.crate(x, y, 0, cs);
       y += cs;
-      K.board(0, y, 0, L, 0.44, bt);
+      K.board(0, y, 0, L, 0.44, bt, 0, true);
       y += bt;
       if (lv < levels - 1) { bottlesRow(K, -1.25, -0.2, y, 0); bottlesRow(K, 0.2, 1.25, y, 0); }
       else bottlesRow(K, -1.6, 1.6, y, 0, 0.2, 0.2);
@@ -124,7 +124,7 @@ export const SCENES = {
   junk(K) {
     const xs = [-0.62, 0, 0.62];
     for (const x of xs) K.barrel(x, 0, -0.55);
-    K.board(0, BARREL_H, -0.55, 1.9, 0.5, 0.05);
+    K.board(0, BARREL_H, -0.55, 1.9, 0.5, 0.05, 0, true);
     canPyramid(K, 0, BARREL_H + 0.05, -0.55, 4);
     const fx = chance(0.5) ? 1 : -1;
     K.fridge(fx * 1.4, 0, -0.15, -fx * 0.2);
@@ -141,7 +141,7 @@ export const SCENES = {
     K.fridge(-1.35 * flip, 0, -0.1);
     K.washer(-0.5 * flip, 0, -0.05);
     for (const x of [0.02, 1.62]) for (let r = 0; r < 4; r++) { K.brick(x * flip - BD / 2, r * BH, 0, BL, Math.PI / 2); K.brick(x * flip + BD / 2, r * BH, 0, BL, Math.PI / 2); }
-    K.board(0.82 * flip, 4 * BH, 0, 1.95, 0.56, 0.05);
+    K.board(0.82 * flip, 4 * BH, 0, 1.95, 0.56, 0.05, 0, true);
     const ty = 4 * BH + 0.05;
     K.microwave(0.5 * flip, ty, -0.05);
     for (let i = 0; i < 4; i++) K.bottle((1.05 + i * 0.17) * flip, ty, -0.1 + (i % 2) * 0.16);
@@ -163,7 +163,7 @@ export const SCENES = {
 
   // glass rack: brick pillars, boards, rows of coloured panes
   glassrack(K) {
-    const levels = irnd(3, 4), ph = 3 * BH, bt = 0.05, xs = [-1.5, 0, 1.5];
+    const levels = 4, ph = 3 * BH, bt = 0.05, xs = [-1.5, 0, 1.5];
     let y = 0;
     for (let lv = 0; lv < levels; lv++) {
       for (const x of xs) for (let k = 0; k < 3; k++) K.brick(x, y + k * BH, 0, BL, Math.PI / 2);
@@ -172,7 +172,7 @@ export const SCENES = {
         for (let i = 0; i < n; i++) K.pane(bay[0] + w * (i + 0.5), y, 0, w - 0.03, ph - 0.03, { tint: pick(GLASS_TINTS) });
       }
       y += ph;
-      K.board(0, y, 0, 3.35, BL, bt);
+      K.board(0, y, 0, 3.35, BL, bt, 0, true);
       y += bt;
     }
     bottlesRow(K, -1.5, 1.5, y, 0, 0.25, 0.3);
@@ -180,9 +180,9 @@ export const SCENES = {
 
   // fairground table: bottles and a can pyramid, shop windows behind
   fair(K) {
-    for (const x of [-1.2, 1.2]) for (let r = 0; r < 4; r++) { K.brick(x - BD / 2 - 0.001, r * BH, 0, BL, Math.PI / 2); K.brick(x + BD / 2 + 0.001, r * BH, 0, BL, Math.PI / 2); }
-    const ty = 4 * BH;
-    K.board(0, ty, 0, 3.0, 0.5, 0.06);
+    for (const x of [-1.15, 1.15]) K.barrel(x, 0, 0);
+    const ty = BARREL_H;
+    K.board(0, ty, 0, 3.0, 0.5, 0.06, 0, true);
     const y = ty + 0.06;
     bottlesRow(K, -1.45, -0.35, y, 0.12, 0.18, 0.15);
     bottlesRow(K, 0.35, 1.45, y, 0.12, 0.18, 0.15);

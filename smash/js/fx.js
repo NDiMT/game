@@ -106,6 +106,8 @@ void main(){
   a *= vCol.a;
   if (a < 0.004) discard;
   gl_FragColor = vec4(vCol.rgb * uBoost, a);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }`;
 
 export class Sprites {
