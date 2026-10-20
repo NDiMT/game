@@ -1,7 +1,7 @@
 {
   "name": "SPASE! - smash stuff",
   "short_name": "SPASE!",
-  "description": "A silly, relaxing destruction toy. Throw things and smash glass, bricks and metal.",
+  "description": "A silly, relaxing destruction toy. Throw things and smash glass, bricks, metal and appliances.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
