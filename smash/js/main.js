@@ -5,6 +5,7 @@ import { Sfx } from './audio.js';
 import { createCore, AMMO_START } from './core.js';
 import { SCENES } from './scenes.js';
 import { buildMaterials, buildWorld, puffTexture, Post } from './look.js';
+import { ThemeManager, THEMES } from './themes.js';
 
 const params = new URLSearchParams(location.search);
 const DEV = params.has('dev');
@@ -55,6 +56,59 @@ const sprites = {
   spark: new Sprites(scene, 700, { mode: 1, additive: true, boost: 5, order: 9 }),
   glint: new Sprites(scene, 300, { mode: 2, additive: true, boost: 4, order: 9 }),
 };
+// ambient particles owned by the environment theme (snow, dust motes, chimney smoke)
+const ambient = new Sprites(scene, 500, { mode: 0, map: puff, order: 6 });
+const themes = new ThemeManager({ renderer, scene, base: W0, ambient, post });
+
+// ---------------------------------------------------------------- fake contact shadows (soft blobs under objects)
+const blobTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(0,0,0,0.85)'); gr.addColorStop(0.5, 'rgba(0,0,0,0.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+const BLOBS = 260;
+const blobs = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, opacity: 0.55, fog: false }), BLOBS);
+blobs.count = 0; blobs.frustumCulled = false; blobs.renderOrder = 1;
+scene.add(blobs);
+const _bm = new THREE.Matrix4(), _bp = new THREE.Vector3(), _bs = new THREE.Vector3(), _bq = new THREE.Quaternion();
+function updateBlobs() {
+  let n = 0;
+  const put = (x, z, size, h) => {
+    if (n >= BLOBS || h > 0.9) return;
+    const k = 1 - h / 0.9, sz = size * (0.6 + 0.4 * k) * k + 0.05;
+    _bm.compose(_bp.set(x, 0.016, z), _bq, _bs.set(sz, 1, sz));
+    blobs.setMatrixAt(n++, _bm);
+  };
+  for (const it of G.items) {
+    if (it.dead) continue;
+    const b = it.body;
+    if (b.world && b.aabbNeedsUpdate) b.updateAABB();
+    const a = b.aabb;
+    if (!b.world) { const r = b.boundingRadius; put(b.position.x, b.position.z, r * 1.4, b.position.y - r + (it.h ? it.h.yo || 0 : it.yo)); continue; }
+    put((a.lowerBound.x + a.upperBound.x) / 2, (a.lowerBound.z + a.upperBound.z) / 2, Math.max(a.upperBound.x - a.lowerBound.x, a.upperBound.z - a.lowerBound.z) * 1.15 + 0.08, a.lowerBound.y);
+  }
+  for (const p of G.projs) if (!p.dead) put(p.body.position.x, p.body.position.z, 0.5, p.body.position.y - 0.2);
+  blobs.count = n;
+  blobs.instanceMatrix.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------- theme switching (fade through the theme colour)
+const fadeEl = document.getElementById('fade');
+let transitioning = false;
+function tintUI(name) {
+  const u = THEMES[name].ui, r = document.documentElement.style;
+  r.setProperty('--glass', u.glass); r.setProperty('--accent', u.a2); r.setProperty('--accent2', u.a1); r.setProperty('--bg', u.bg);
+  document.body.dataset.theme = name;
+}
+function goScene(sceneName, themeName) {
+  const th = themeName || themes.pickFor(sceneName);
+  themes.apply(th);
+  tintUI(th);
+  for (const k in sprites) sprites[k].n = 0; // the old scene's smoke / sparks don't follow into the new environment
+  G.startScene(sceneName);
+}
 
 // ---------------------------------------------------------------- core + hooks
 const sfx = new Sfx();
@@ -73,6 +127,14 @@ const G = createCore({
   },
 });
 if (!G.PROJ[kind]) kind = 'ball';
+G.next = () => {
+  if (transitioning) return;
+  transitioning = true;
+  const n = G.pickNext(), th = themes.pickFor(n);
+  fadeEl.style.setProperty('--fade', THEMES[th].ui.bg);
+  fadeEl.classList.add('on');
+  setTimeout(() => { goScene(n, th); requestAnimationFrame(() => { fadeEl.classList.remove('on'); transitioning = false; }); }, 420);
+};
 let flashT = 0;
 let lastVib = 0;
 function vibrate(p) {
@@ -350,10 +412,15 @@ async function prewarm() {
   for (const k in held.meshes) { held.meshes[k].visible = true; held.meshes[k].position.set(rnd(-0.5, 0.5), 1, 5); }
   dots.count = 1;
   W0.flash.intensity = 0.001;
+  for (const k in themes.T) themes.T[k].group.visible = true;
+  ambient.emit(0, 1, 5, 0, 0, 0, 0.05, 0.1, 1, 1, 1); ambient.update(0);
+  blobs.count = 1;
   for (const k in sprites) sprites[k].update(0);
   G.shards.update(0);
   try { if (renderer.compileAsync) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera); } catch (e) { renderer.compile(scene, camera); }
   renderFrame(0);
+  for (const k in themes.T) themes.T[k].group.visible = false;
+  blobs.count = 0;
   scene.remove(grp);
   for (const k in held.meshes) held.meshes[k].visible = false;
   dots.count = 0;
@@ -386,6 +453,14 @@ function frame(tms) {
   G.sync();
   cam.update(rdt);
   W0.skyMat.uniforms.uT.value += rdt * 0.0015;
+  themes.update(rdt);
+  ambient.update(rdt);
+  updateBlobs();
+  // glass catches the light: occasional star glints on intact panes / bottles
+  if (started && Math.random() < rdt * 2.5 && G.items.length) {
+    const it = G.items[(Math.random() * G.items.length) | 0];
+    if (!it.dead && it.mat === 'glass') { const p = it.body.interpolatedPosition, sz = it.size; G.glintAt(p.x + (sz ? (Math.random() - 0.5) * sz.x : 0), p.y + (sz ? (Math.random() - 0.5) * sz.y : 0.08) + (it.h ? it.h.yo || 0 : 0), p.z + 0.03); }
+  }
   if (flashT > 0) { flashT -= rdt; W0.flash.intensity = Math.max(0, flashT / 0.4) * 350; } else W0.flash.intensity = 0;
   // HUD
   if (shown < G.count) {
@@ -413,12 +488,14 @@ setKind(kind);
 ammoUI();
 requestAnimationFrame(frame);
 const splashStart = now();
-prewarm().then(() => {
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+themes.buildAll(nextFrame).then(() => { BOOT.themes = now() - splashStart; return prewarm(); }).then(() => {
   BOOT.prewarm = now() - splashStart;
   const first = SCENES[params.get('scene')] ? params.get('scene') : 'wall';
+  const th = THEMES[params.get('theme')] ? params.get('theme') : null;
   const wait = Math.max(0, 1100 - (now() - splashStart));
   setTimeout(() => {
-    G.startScene(first);
+    goScene(first, th);
     started = true;
     $('splash').classList.add('gone');
     if (!hinted) setTimeout(() => hintEl.classList.add('show'), 900);
@@ -438,8 +515,10 @@ if (DEV) {
       if (p && !G.canThrow(kind)) setKind('ball');
       return !!p;
     },
-    scene: (n) => G.startScene(n),
-    stats: () => ({ bodies: G.world.bodies.length, items: G.items.length, debris: G.debris.filter((d) => !d.gone).length, shards: G.shards.live, projs: G.projs.filter((p) => !p.dead).length, count: G.count, prog: +(G.progress || 0).toFixed(2), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, state: G.state, scene: G.sceneName, ammo: { ...G.ammo }, tier, guard: { ...G.guard } }),
+    scene: (n, th) => goScene(n, th),
+    themes: () => Object.keys(THEMES),
+    get theme() { return themes.cur; },
+    stats: () => ({ bodies: G.world.bodies.length, items: G.items.length, debris: G.debris.filter((d) => !d.gone).length, shards: G.shards.live, projs: G.projs.filter((p) => !p.dead).length, count: G.count, prog: +(G.progress || 0).toFixed(2), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, state: G.state, scene: G.sceneName, theme: themes.cur, ammo: { ...G.ammo }, tier, guard: { ...G.guard } }),
   };
 }
 void AMMO_START;

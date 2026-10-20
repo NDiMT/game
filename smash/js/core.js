@@ -162,6 +162,7 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     H.ammo();
   };
   G.next = () => G.startScene(null);
+  G.pickNext = () => nextName();
   const easeOutBounce = (x) => {
     const n1 = 7.5625, d1 = 2.75;
     if (x < 1 / d1) return n1 * x * x;
