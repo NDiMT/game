@@ -266,19 +266,26 @@ export function puffTexture() {
 const SKY_VS = `varying vec3 vDir; void main(){ vDir = position; vec4 p = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * p; gl_Position.z = gl_Position.w; }`;
 const SKY_FS = `
 uniform vec3 uTop; uniform vec3 uHor; uniform vec3 uLow; uniform vec3 uSun; uniform vec3 uSunCol; uniform sampler2D uClouds; uniform float uT; uniform float uCloudOn;
+uniform float uGlow; uniform float uStars; uniform vec3 uCloudTint;
 varying vec3 vDir;
 void main(){
   vec3 d = normalize(vDir);
   float h = d.y;
-  vec3 col = mix(uHor, uTop, pow(smoothstep(-0.02, 0.4, h), 0.7));
+  vec3 col = mix(uHor, uTop, pow(smoothstep(-0.02, 0.45, h), 0.75));
   col = mix(col, uLow, smoothstep(0.0, -0.25, h));
   float s = max(dot(d, uSun), 0.0);
-  col += uSunCol * (pow(s, 900.0) * 6.0 + pow(s, 12.0) * 0.22 + pow(s, 3.0) * 0.06);
-  if (h > 0.0 && uCloudOn > 0.5) {
+  col += uSunCol * (smoothstep(0.9993, 0.9997, s) * 7.0 + (pow(s, 14.0) * 0.28 + pow(s, 4.0) * 0.1 + pow(s, 120.0) * 0.6) * uGlow);
+  if (uStars > 0.0 && h > 0.0) {
+    vec3 sd = d * 230.0; vec3 id = floor(sd);
+    float hs = fract(sin(dot(id, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+    float st = step(0.9965, hs) * smoothstep(0.42, 0.0, length(fract(sd) - 0.5));
+    col += vec3(0.9, 0.95, 1.0) * st * uStars * (0.55 + 0.45 * sin(uT * 3000.0 * hs + hs * 50.0)) * smoothstep(0.02, 0.2, h) * 1.6;
+  }
+  if (h > 0.0 && uCloudOn > 0.0) {
     float u = atan(d.x, -d.z) / 6.28318 + 0.5 + uT;
     vec4 c = texture2D(uClouds, vec2(u * 2.0, clamp(h * 2.6, 0.0, 1.0)));
-    vec3 cc = mix(vec3(0.78, 0.82, 0.9), vec3(1.08, 1.04, 1.0), c.r) + uSunCol * pow(s, 4.0) * 0.3;
-    col = mix(col, cc, c.a * smoothstep(0.0, 0.06, h));
+    vec3 cc = mix(uHor * 0.85, vec3(1.08, 1.04, 1.0), c.r) * uCloudTint + uSunCol * pow(s, 4.0) * 0.45 * uGlow;
+    col = mix(col, cc, c.a * smoothstep(0.0, 0.06, h) * uCloudOn);
   }
   gl_FragColor = vec4(col, 1.0);
   #include <tonemapping_fragment>
@@ -301,123 +308,37 @@ function cloudTexture() {
   }, false);
 }
 
+// base world: sky dome, light rig and bomb flash. Themes (themes.js) recolour it and own ground/backdrop.
 export function buildWorld(renderer, scene) {
-  const SUN = new THREE.Vector3(0.45, 0.62, 0.64).normalize();
-  const TOP = C(0x1f6fd0), HOR = C(0xeedcc4), LOW = C(0xa9b897);
   const clouds = cloudTexture();
   clouds.wrapS = THREE.RepeatWrapping;
   const skyMat = new THREE.ShaderMaterial({
-    uniforms: { uTop: { value: TOP }, uHor: { value: HOR }, uLow: { value: LOW }, uSun: { value: SUN }, uSunCol: { value: C(0xfff0d6) }, uClouds: { value: clouds }, uT: { value: 0 }, uCloudOn: { value: 1 } },
+    uniforms: { uTop: { value: C(0x2a7fe6) }, uHor: { value: C(0xd6e9f6) }, uLow: { value: C(0x9fbf8a) }, uSun: { value: new THREE.Vector3(0.45, 0.7, 0.55).normalize() }, uSunCol: { value: C(0xfff0d6) },
+      uClouds: { value: clouds }, uT: { value: 0 }, uCloudOn: { value: 1 }, uGlow: { value: 1 }, uStars: { value: 0 }, uCloudTint: { value: C(0xffffff) } },
     vertexShader: SKY_VS, fragmentShader: SKY_FS, side: THREE.BackSide, depthWrite: false, fog: false,
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(100, 32, 16), skyMat);
   sky.renderOrder = -10;
   sky.frustumCulled = false;
   scene.add(sky);
-  scene.fog = new THREE.Fog(0xe9e4da, 28, 110);
-
-  // environment for reflections: same sky (no clouds) + bright sun disc + soft boxes
-  {
-    const pm = new THREE.PMREMGenerator(renderer);
-    const env = new THREE.Scene();
-    const m2 = skyMat.clone(); m2.uniforms.uCloudOn = { value: 0 };
-    env.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), m2));
-    const sb = (w, h, p, i, c = 0xffffff) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: C(c).multiplyScalar(i), side: THREE.DoubleSide })); m.position.copy(p); m.lookAt(0, 0, 0); env.add(m); };
-    sb(2.2, 2.2, SUN.clone().multiplyScalar(8), 14, 0xfff0d6);
-    sb(7, 2.5, new THREE.Vector3(-6, 3, 5), 2.2);
-    sb(5, 1.6, new THREE.Vector3(6, 2.5, -5), 1.6, 0xd8e8ff);
-    sb(30, 30, new THREE.Vector3(0, -6, 0), 0.35, 0x8a9a70);
-    scene.environment = pm.fromScene(env, 0.03).texture;
-    scene.environmentIntensity = 0.55;
-    pm.dispose();
-  }
-
-  // lights: warm key with soft shadows, cool sky fill, cool rim from behind
-  scene.add(new THREE.HemisphereLight(0xc4dcff, 0x8a7a62, 0.4));
+  scene.fog = new THREE.Fog(0xcfe2ef, 30, 130);
+  const hemi = new THREE.HemisphereLight(0xc4dcff, 0x8a7a62, 0.4);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffe2c0, 3.0);
-  sun.position.copy(SUN).multiplyScalar(12);
+  sun.position.set(0.45, 0.7, 0.55).normalize().multiplyScalar(12);
   sun.target.position.set(0, 0.8, 0);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4.2, bottom: -3.2, near: 3, far: 26 });
+  Object.assign(sun.shadow.camera, { left: -4.2, right: 4.2, top: 4.4, bottom: -3.4, near: 2, far: 28 });
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.025;
-  sun.shadow.radius = 3;
   scene.add(sun, sun.target);
   const rim = new THREE.DirectionalLight(0xa8ccff, 0.9);
   rim.position.set(-5, 4, -7);
   scene.add(rim);
-
-  // ground: tiled grass + concrete pad under the action
-  const grass = maps(256, 256, (x, y, o) => {
-    const n = fbm(x / 32, y / 32, 8, 4, 5), b = hash(x, y, 9), bl = fbm(x / 3, y / 9, 85, 2, 13);
-    const v = 0.3 + n * 0.3 + bl * 0.16 + (b > 0.97 ? 0.1 : 0);
-    o.r = v * 0.62; o.g = v * 0.9; o.b = v * 0.4; o.h = bl * 0.6 + n * 0.2; o.ro = 0.95;
-  }, { normal: 1.5, repeat: true });
-  for (const k in grass) { grass[k].repeat.set(70, 70); }
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshStandardMaterial({ ...grass, roughness: 1, color: 0xc8dcb0 }));
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  scene.add(ground);
-  const concrete = maps(256, 256, (x, y, o) => {
-    const n = fbm(x / 32, y / 32, 8, 4, 71), f = fbm(x / 3, y / 3, 85, 2, 72), st = fbm(x / 64, y / 64, 4, 3, 73);
-    const joint = (x % 128 < 1.5 || y % 128 < 1.5) ? 1 : 0;
-    const crack = Math.abs(fbm(x / 20, y / 20, 13, 3, 74) - 0.5) < 0.008 && n > 0.5 ? 1 : 0;
-    let v = 0.5 + n * 0.14 + f * 0.07 - st * 0.1;
-    if (joint) v *= 0.55;
-    if (crack) v *= 0.7;
-    o.r = v; o.g = v * 0.98; o.b = v * 0.94;
-    o.h = f * 0.3 + n * 0.2 - joint * 0.6 - crack * 0.4; o.ro = 0.86 + f * 0.1 - st * 0.1;
-  }, { normal: 2, repeat: true });
-  for (const k in concrete) concrete[k].repeat.set(4, 4);
-  const pad = new THREE.Mesh(new THREE.PlaneGeometry(7, 8), new THREE.MeshStandardMaterial({ ...concrete, roughness: 1 }));
-  pad.rotation.x = -Math.PI / 2;
-  pad.position.set(0, 0.004, 0.6);
-  pad.receiveShadow = true;
-  scene.add(pad);
-  const curb = new THREE.Mesh(new THREE.BoxGeometry(7.3, 0.08, 8.3), new THREE.MeshStandardMaterial({ color: 0xbdb6aa, roughness: 0.9 }));
-  curb.position.set(0, -0.035, 0.6);
-  curb.receiveShadow = true;
-  scene.add(curb);
-
-  // backdrop: three layers of hills tinted by distance + instanced low-poly trees
-  const hillLayer = (z, amp, base, col, seed) => {
-    const W = 260, n = 90, pos = [], idx = [];
-    for (let i = 0; i <= n; i++) {
-      const x = -W / 2 + (W * i) / n;
-      const y = base + amp * (fbm(i / 9, seed, 1000, 3, seed) * 1.2 + Math.sin(i / 7 + seed) * 0.25);
-      pos.push(x, -2, z, x, y, z);
-      if (i < n) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setIndex(idx);
-    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, fog: true }));
-    m.renderOrder = -5;
-    scene.add(m);
-  };
-  hillLayer(-95, 16, 3, 0xa9c6c4, 3);
-  hillLayer(-70, 11, 1, 0x8fb898, 7);
-  hillLayer(-48, 6, 0, 0x7aaa6e, 11);
-  const treeN = 46, folGeo = new THREE.ConeGeometry(1, 2.6, 7), trunkGeo = new THREE.CylinderGeometry(0.12, 0.16, 0.8, 6);
-  folGeo.translate(0, 2.0, 0); trunkGeo.translate(0, 0.4, 0);
-  const fol = new THREE.InstancedMesh(folGeo, new THREE.MeshStandardMaterial({ color: 0x4f8f4a, roughness: 0.9, flatShading: true }), treeN);
-  const trunk = new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({ color: 0x6b4a32, roughness: 1 }), treeN);
-  const mm = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), cc = new THREE.Color();
-  for (let i = 0; i < treeN; i++) {
-    const z = -13 - Math.random() * 30, side = i % 2 ? 1 : -1, x = side * (4.5 + Math.random() * 26) * (z < -24 ? 0.5 + Math.random() : 1);
-    const sc = 0.7 + Math.random() * 0.8;
-    p.set(x, 0, z); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * 6); s.set(sc, sc * (0.9 + Math.random() * 0.4), sc);
-    mm.compose(p, q, s);
-    fol.setMatrixAt(i, mm); trunk.setMatrixAt(i, mm);
-    fol.setColorAt(i, cc.setHSL(0.27 + Math.random() * 0.06, 0.4, 0.3 + Math.random() * 0.12));
-  }
-  scene.add(fol, trunk);
-
-  // bomb flash light (always present, intensity animated: no shader recompiles)
   const flash = new THREE.PointLight(0xffa860, 0, 12, 2);
   scene.add(flash);
-  return { sky, skyMat, sun, flash, ground, pad };
+  return { sky, skyMat, sun, hemi, rim, flash };
 }
 
 // ---------------------------------------------------------------- post: HDR -> bloom -> ACES + grade
