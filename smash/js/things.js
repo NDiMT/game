@@ -26,7 +26,7 @@ export const PAINT = [0xd8392f, 0x2a73d6, 0xf0ad1f, 0x2fa462, 0xe8722a, 0x7d55cf
 
 // projectile definitions. budget = how many bricks one throw may crumble directly
 export const PROJ = {
-  ball: { mass: 6, speed: 1, r: 0.2, budget: 3 },
+  ball: { mass: 5, speed: 1, r: 0.2, budget: 2 },
   brick: { mass: 2.5, speed: 1, budget: 1 },
   bowling: { mass: 9, speed: 0.92, r: 0.22, budget: 4 },
   anvil: { mass: 22, speed: 0.75, budget: 5 },
@@ -57,15 +57,14 @@ export function setupThings(G) {
   const TPL = {
     barrel: new THREE.CylinderGeometry(BARREL_R, BARREL_R, BARREL_H, 24, 8),
     can: new THREE.CylinderGeometry(CAN_R, CAN_R, CAN_H, 16, 4),
-    fridge: new THREE.BoxGeometry(0.64, 1.5, 0.6, 5, 10, 5),
   };
-  const sheetTpl = new Map(), pipeTpl = new Map();
+  const pipeTpl = new Map();
 
   // ------------------------------------------------------------ physics bodies
   function mkBody(mass, shape, x, y, z, q, mat = G.pm.gen, group = GR.TARGET) {
     const b = new CANNON.Body({
       mass, material: mat, collisionFilterGroup: group, collisionFilterMask: ALL,
-      allowSleep: true, sleepSpeedLimit: 0.3, sleepTimeLimit: 0.4, linearDamping: 0.04, angularDamping: 0.12,
+      allowSleep: true, sleepSpeedLimit: G.tune.sleepLimit, sleepTimeLimit: 0.3, linearDamping: 0.04, angularDamping: 0.12,
     });
     if (shape) b.addShape(shape);
     b.position.set(x, y, z);
@@ -86,11 +85,18 @@ export function setupThings(G) {
     it.origin = new THREE.Vector3(b.position.x, b.position.y, b.position.z);
     it.dead = false; it.counted = false; it.pending = false; it.lastSnd = -1; it.lastDent = -1; it.dentSum = 0; it.yo = 0;
     G.items.push(it);
-    G.totalW += it.w;
-    G.newItems.push(it);
+    if (G.liveSpawn) {
+      // spilled contents (bottles from a fridge, cans from a vending machine): live, loose, bonus value
+      it.w = 0; it.anchored = false;
+      world.addBody(b);
+    } else {
+      G.totalW += it.w;
+      G.newItems.push(it);
+    }
     if (it.mesh) { G.metals.push(it); scene.add(it.mesh); }
     return it;
   }
+  K.mkBody = mkBody; K.addItem = addItem;
   const qY = (a) => new THREE.Quaternion().setFromAxisAngle(UP, a);
   const tint = (c, j = 0.06) => new THREE.Color(c).multiplyScalar(1 - j + Math.random() * 2 * j);
 
@@ -135,7 +141,7 @@ export function setupThings(G) {
     const col = tint(0xffffff, 0.08);
     const h = Gp.plank.add({ scale: new THREE.Vector3(len, thick, depth), color: col, yo: 0 });
     if (!h) return null;
-    const b = mkBody(Math.max(1, len * 1.6), new CANNON.Box(new CANNON.Vec3(len / 2, thick / 2, depth / 2)), x, y + thick / 2, z, rotY ? qY(rotY) : null);
+    const b = mkBody(Math.max(2, len * 5), new CANNON.Box(new CANNON.Vec3(len / 2, thick / 2, depth / 2)), x, y + thick / 2, z, rotY ? qY(rotY) : null);
     h.body = b;
     return addItem({ type: 'board', mat: 'wood', w: 1, body: b, h, color: col, size: new THREE.Vector3(len, thick, depth) });
   };
@@ -148,12 +154,6 @@ export function setupThings(G) {
   }
   K.barrel = (x, y, z, col = pick(PAINT)) => metalItem('barrel', 2, 3, 12, new CANNON.Cylinder(BARREL_R, BARREL_R, BARREL_H, 12), TPL.barrel.clone(), M.paint('barrel', col), x, y + BARREL_H / 2, z, qY(Math.random() * 6), 0.24, 0.11);
   K.can = (x, y, z, col = pick(PAINT)) => metalItem('can', 0, 1, 0.3, new CANNON.Cylinder(CAN_R, CAN_R, CAN_H, 8), TPL.can.clone(), M.paint('can', col), x, y + CAN_H / 2, z, qY(Math.random() * 6), 0.09, 0.035);
-  K.sheet = (x, y, z, w, hgt, col = pick(PAINT), rotY = 0) => {
-    const key = w + ',' + hgt;
-    if (!sheetTpl.has(key)) sheetTpl.set(key, new THREE.BoxGeometry(w, hgt, 0.05, 14, 10, 1));
-    return metalItem('sheet', 1, 3, 9, new CANNON.Box(new CANNON.Vec3(w / 2, hgt / 2, 0.025)), sheetTpl.get(key).clone(), M.paint('sheet', col), x, y + hgt / 2, z, rotY ? qY(rotY) : null, 0.28, 0.14);
-  };
-  K.fridge = (x, y, z, rotY = 0) => metalItem('fridge', 2, 4, 18, new CANNON.Box(new CANNON.Vec3(0.32, 0.75, 0.3)), TPL.fridge.clone(), M.fridgeMats, x, y + 0.75, z, rotY ? qY(rotY) : null, 0.3, 0.13);
   K.pipe = (x, yCenter, z, len = 1.1, rotY = 0) => {
     if (!pipeTpl.has(len)) pipeTpl.set(len, new THREE.CylinderGeometry(0.08, 0.08, len, 14, 6).rotateZ(Math.PI / 2));
     const b = mkBody(5, null, x, yCenter, z, rotY ? qY(rotY) : null, G.pm.metal);
@@ -165,11 +165,43 @@ export function setupThings(G) {
   };
 
   // ------------------------------------------------------------ removal, waking
+  // anchored = asleep with allowSleep off: behaves like a glued, static part of the structure until
+  // it is hit (release) or loses its support. Keeps structures standing; only what you hit comes down.
+  function release(it) {
+    if (!it.anchored || it.dead) return;
+    it.anchored = false;
+    const b = it.body;
+    b.allowSleep = true;
+    if (b.world) b.wakeUp();
+  }
+  K.release = release;
+  K.anchor = (it) => {
+    const b = it.body;
+    b.updateAABB();
+    const l = b.aabb.lowerBound, u = b.aabb.upperBound;
+    it.box = { lx: l.x, ly: l.y, lz: l.z, ux: u.x, uy: u.y, uz: u.z };
+    b.sleep();
+    b.allowSleep = false;
+    it.anchored = true;
+    it.supportFreed = false;
+  };
+  function freeAbove(it) {
+    if (it.supportFreed || !it.box) return;
+    it.supportFreed = true;
+    const a = it.box, I = G.items;
+    for (let i = 0; i < I.length; i++) {
+      const o = I[i];
+      if (o.dead || !o.anchored || o === it) continue;
+      const c = o.box;
+      if (c.ly > a.uy - 0.06 && c.ly < a.uy + 0.06 && c.lx < a.ux - 0.01 && c.ux > a.lx + 0.01 && c.lz < a.uz - 0.01 && c.uz > a.lz + 0.01) release(o);
+    }
+  }
+  K.freeAbove = freeAbove;
   function wakeNear(x, y, z, r) {
     const r2 = r * r, I = G.items;
     for (let i = 0; i < I.length; i++) {
       const it = I[i];
-      if (it.dead) continue;
+      if (it.dead || it.anchored) continue;
       const b = it.body;
       if (b.sleepState === CANNON.Body.SLEEPING && b.world) {
         const dx = b.position.x - x, dy = b.position.y - y, dz = b.position.z - z;
@@ -183,11 +215,14 @@ export function setupThings(G) {
     const b = it.body;
     if (b.world) world.removeBody(b);
     if (it.h) it.h.g.remove(it.h);
-    if (it.mesh) { scene.remove(it.mesh); it.mesh.geometry.dispose(); }
+    if (it.mesh) { scene.remove(it.mesh); (it.shell || it.mesh).geometry.dispose(); }
+    it.anchored = false;
+    freeAbove(it);
     wakeNear(b.position.x, b.position.y, b.position.z, wakeR);
     if (!it.counted) G.smash(it);
   }
   K.removeItem = removeItem;
+  K.wakeNear = wakeNear;
 
   // ------------------------------------------------------------ debris: pooled bodies keyed by box size
   const dpool = new Map();
@@ -197,7 +232,7 @@ export function setupThings(G) {
     if (!arr) dpool.set(key, (arr = []));
     if (arr.length) return arr.pop();
     const b = mkBody(mass, new CANNON.Box(new CANNON.Vec3(hx, hy, hz)), 0, -50, 0, null, G.pm.debris || G.pm.gen, GR.DEBRIS);
-    b.sleepSpeedLimit = 0.5;
+    b.sleepSpeedLimit = 0.9;
     b.linearDamping = 0.08;
     b.angularDamping = 0.25;
     const d = { body: b, key, h: { body: b, scale: new THREE.Vector3(), color: new THREE.Color(), yo: 0, k: 1, i: -1 }, life: 0, kind: '', lastSnd: -1, gone: true };
@@ -243,7 +278,42 @@ export function setupThings(G) {
     b.wakeUp();
     if (!d.inList) { d.inList = true; G.debris.push(d); }
   }
-  G.releaseDebris = (d) => { const arr = dpool.get(d.key); if (arr && arr.length < 60) arr.push(d); };
+  G.releaseDebris = (d) => {
+    if (d.mesh) { scene.remove(d.mesh); d.mesh = null; }
+    const arr = dpool.get(d.key);
+    if (arr && arr.length < 60) arr.push(d);
+  };
+  // detached appliance parts: pooled bodies keyed by part, the part's own mesh as visual; capped at 36
+  K.spawnPart = (key, hx, hy, hz, mass, mesh, pos, quat, vx, vy, vz, life, kind = 'part') => {
+    let live = 0, oldest = null;
+    for (const d of G.debris) if (!d.gone && d.mesh) { live++; if (!oldest) oldest = d; }
+    if (live >= 36 && oldest) G.killDebris(oldest, true);
+    const d = getDebris('m' + key, hx, hy, hz, mass);
+    d.h = null;
+    const b = d.body;
+    b.position.set(pos.x, pos.y, pos.z);
+    b.quaternion.set(quat.x, quat.y, quat.z, quat.w);
+    syncInterp(b);
+    b.velocity.set(vx, vy, vz);
+    b.angularVelocity.set(rnd(-7, 7), rnd(-7, 7), rnd(-7, 7));
+    b.force.setZero(); b.torque.setZero();
+    // ignore the parent object (and other parts) for a moment: parts spawn touching the body they left
+    b.collisionFilterMask = GR.GROUND | GR.PROJ;
+    d.maskT = 0.3;
+    b.material = G.pm.metal;
+    d.mesh = mesh;
+    d.s0 = d.s0 || new THREE.Vector3();
+    d.s0.copy(mesh.scale);
+    mesh.position.copy(pos); mesh.quaternion.copy(quat);
+    scene.add(mesh);
+    d.life = life; d.kind = kind; d.gone = false; d.lastSnd = -1;
+    world.addBody(b);
+    b.wakeUp();
+    if (!d.inList) { d.inList = true; G.debris.push(d); }
+    return d;
+  };
+  K.dent = (...a) => dent(...a);
+  K.sparks = (...a) => sparks(...a);
 
   // ------------------------------------------------------------ particle helpers
   const dust = (x, y, z, n, r, g, b, size = 0.35, spread = 1) => {
@@ -280,16 +350,14 @@ export function setupThings(G) {
     s.color.copy(color);
     s.life = rnd(2.4, 4);
   }
-  function shatterPane(it, px, py, pz, dx, dy, dz, power) {
-    const b = it.body, w = it.size.x, hh = it.size.y, t = it.size.z;
-    const bq = _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
-    const bp = _v3.set(b.position.x, b.position.y, b.position.z);
+  // shatter any glass rectangle (w x hh x t, centred at bp with rotation bq) into triangular shards
+  function shatterRect(bp, bq, w, hh, t, bv, color, px, py, pz, dx, dy, dz, power) {
     const lp = _v.set(px, py, pz).sub(bp).applyQuaternion(_q2.copy(bq).invert());
     const ix = clamp(lp.x, -w * 0.45, w * 0.45), iy = clamp(lp.y, -hh * 0.45, hh * 0.45);
     let n = 0;
     ANG[n++] = Math.atan2(hh / 2 - iy, w / 2 - ix); ANG[n++] = Math.atan2(hh / 2 - iy, -w / 2 - ix);
     ANG[n++] = Math.atan2(-hh / 2 - iy, -w / 2 - ix); ANG[n++] = Math.atan2(-hh / 2 - iy, w / 2 - ix);
-    const nr = 5 + ((Math.random() * 4) | 0), base = Math.random() * 6.283;
+    const nr = (w * hh < 0.08 ? 3 : 5) + ((Math.random() * 4) | 0), base = Math.random() * 6.283;
     for (let k = 0; k < nr; k++) ANG[n++] = base + (k * 6.283) / nr + rnd(-0.25, 0.25);
     for (let i = 0; i < n; i++) ANG[i] = ((ANG[i] % 6.2832) + 6.2832) % 6.2832;
     const A = ANG.subarray(0, n).sort();
@@ -304,10 +372,10 @@ export function setupThings(G) {
       PX[i * 3 + 1] = ix + cx * D * f1; PY[i * 3 + 1] = iy + cy * D * f1;
       PX[i * 3 + 2] = ix + cx * D; PY[i * 3 + 2] = iy + cy * D;
     }
-    const bv = b.velocity, pw = Math.min(power, 30), dl = Math.hypot(dx, dy, dz) || 1;
+    const pw = Math.min(power, 30), dl = Math.hypot(dx, dy, dz) || 1;
     const tri = (ax, ay, bx, by, cx, cy) => {
       const gx = (ax + bx + cx) / 3, gy = (ay + by + cy) / 3;
-      shard(gx, gy, ax - gx, ay - gy, bx - gx, by - gy, cx - gx, cy - gy, t, bq, bp, bv, ix, iy, dx, dy, dz, dl, pw, it.color);
+      shard(gx, gy, ax - gx, ay - gy, bx - gx, by - gy, cx - gx, cy - gy, t, bq, bp, bv, ix, iy, dx, dy, dz, dl, pw, color);
     };
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
@@ -319,11 +387,19 @@ export function setupThings(G) {
       }
     }
     const ip = _v.set(ix, iy, 0).applyQuaternion(bq).add(bp);
-    glints(ip.x, ip.y, ip.z, 14, 0.12);
-    glints(bp.x, bp.y, bp.z, 8, Math.max(w, hh) * 0.4);
-    dust(ip.x, ip.y, ip.z, 3, 0.92, 0.97, 1, 0.25, 0.8);
+    glints(ip.x, ip.y, ip.z, 12, 0.1);
+    glints(bp.x, bp.y, bp.z, 6, Math.max(w, hh) * 0.4);
+    dust(ip.x, ip.y, ip.z, 2, 0.92, 0.97, 1, 0.22, 0.8);
     sfx.glassBreak(power);
-    removeItem(it, Math.max(w, hh) * 0.6 + 0.3);
+  }
+  K.shatterRect = shatterRect;
+  const _bp = new THREE.Vector3(), _bq = new THREE.Quaternion();
+  function shatterPane(it, px, py, pz, dx, dy, dz, power) {
+    const b = it.body;
+    _bq.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
+    _bp.set(b.position.x, b.position.y, b.position.z);
+    shatterRect(_bp, _bq, it.size.x, it.size.y, it.size.z, b.velocity, it.color, px, py, pz, dx, dy, dz, power);
+    removeItem(it, Math.max(it.size.x, it.size.y) * 0.6 + 0.3);
   }
   function shatterBottle(it, px, py, pz, dx, dy, dz, power) {
     const b = it.body, bq = _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
@@ -460,6 +536,7 @@ export function setupThings(G) {
       b.updateMassProperties();
     }
     const dl = Math.hypot(dx, dy, dz) || 1, pw = Math.min(power, 30) * 0.15;
+    release(it);
     b.wakeUp();
     b.velocity.x += (dx / dl) * pw; b.velocity.y += 1.5 + Math.random() * 2; b.velocity.z += (dz / dl) * pw;
     b.angularVelocity.set(rnd(-15, 15), rnd(-15, 15), rnd(-15, 15));
@@ -477,6 +554,11 @@ export function setupThings(G) {
     const v = Math.abs(c.getImpactVelocityAlongNormal());
     if (!(v >= 0.7) || v > 200 || G.hitN >= HMAX) return;
     const isI = c.bi === self, r = isI ? c.ri : c.rj, s = isI ? -1 : 1;
+    const si = self.item;
+    if (si && si.anchored && (other.proj || (v > 2.5 && other.type !== CANNON.Body.STATIC && other.sleepState !== CANNON.Body.SLEEPING))) {
+      // released inside the narrowphase: the solver of this very step already treats it as dynamic
+      si.anchored = false; self.allowSleep = true; self.wakeUpAfterNarrowphase = true;
+    }
     if (self.proj && other.item && other.item.mat === 'glass') self.proj.pass = true;
     const h = G.hitBuf[G.hitN++];
     h.body = self; h.other = other; h.v = v;
@@ -526,6 +608,7 @@ export function setupThings(G) {
         else if (snd && h.v > 1.2) { it.lastSnd = G.time; sfx.wood(h.v); }
         return;
     }
+    if (it.type === 'appliance') { G.applianceHit(it, h, force, p, snd); return; }
     if (it.mat === 'metal') {
       if (snd && h.v > 1) { it.lastSnd = G.time; sfx.metal(h.v * (om > 0 ? 1 : 0.7), it.sizeClass); }
       if (it.type === 'can' && force > 7) { crumpleCan(it, force, -h.nx, -h.ny, -h.nz); return; }
@@ -540,7 +623,7 @@ export function setupThings(G) {
   function debHit(d, h) {
     if (d.gone || h.v < 2.2 || G.time - d.lastSnd < 0.1) return;
     d.lastSnd = G.time;
-    if (d.kind === 'chunk') sfx.brick(h.v * 0.45); else sfx.wood(h.v * 0.5);
+    if (d.kind === 'chunk') sfx.brick(h.v * 0.45); else if (d.kind === 'part') sfx.metal(h.v * 0.6, 0); else sfx.wood(h.v * 0.5);
   }
   function projHit(p, h) {
     if (p.dead) return;
@@ -622,7 +705,7 @@ export function setupThings(G) {
     } else if (kind === 'brick') b.addShape(new CANNON.Box(new CANNON.Vec3(BL / 2, BH / 2, BD / 2)));
     else b.addShape(new CANNON.Sphere(D.r));
     b.linearDamping = 0.01;
-    b.sleepSpeedLimit = 0.4;
+    b.sleepSpeedLimit = 0.3;
     const mesh = K.projMesh(kind);
     const p = { kind, body: b, mesh, mass: D.mass, age: 0, life: 0, hit: false, lastSnd: -1, dead: true, pre: new CANNON.Vec3(), pass: false, budget: 0, s0: mesh.scale.clone() };
     b.proj = p;
@@ -673,6 +756,7 @@ export function setupThings(G) {
       if (!(d <= R)) continue;
       const f = 1 - d / R, inv = 1 / Math.max(d, 0.05);
       const dv = 8.5 * f * Math.min(1, Math.sqrt(6 / b.mass));
+      release(it);
       b.wakeUp();
       b.velocity.x += dx * inv * dv; b.velocity.y += dy * inv * dv + 2.5 * f; b.velocity.z += dz * inv * dv * (dz > 0 ? 0.3 : 1);
       b.angularVelocity.x += rnd(-6, 6) * f; b.angularVelocity.y += rnd(-6, 6) * f; b.angularVelocity.z += rnd(-6, 6) * f;
@@ -681,6 +765,7 @@ export function setupThings(G) {
       else if (it.type === 'brick' && d < 0.8 && brk < 6) { brk++; queueBreak(it, hx, hy, hz, nx, ny, nz, 25 * f + 8); }
       else if (it.type === 'crate' && d < 0.95) queueBreak(it, hx, hy, hz, nx, ny, nz, 25);
       else if (it.type === 'can' && d < 1.0) crumpleCan(it, 20, nx, ny, nz);
+      else if (it.type === 'appliance') G.applianceBlast(it, f, x, y, z);
       else if (it.mat === 'metal' && it.mesh) {
         const r0 = it.type === 'barrel' ? BARREL_R : 0.3;
         dent(it, b.position.x - nx * r0, b.position.y - ny * r0, b.position.z - nz * r0, nx, ny, nz, it.dentMax * f * 1.3);

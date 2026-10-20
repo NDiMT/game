@@ -10,7 +10,7 @@ while (G.state === 'intro') G.update(1 / 60, { fixed: true });
 // settle check: run 3 s with no throws
 for (let i = 0; i < 180; i++) G.update(1 / 60, { fixed: true });
 console.log('idle 3s prog', G.progress.toFixed(2), 'count', G.count);
-for (let t = 0; t < 6 && G.state === 'play'; t++) {
+for (let t = 0; t < 12 && G.state === 'play'; t++) {
   const live = G.items.filter((it) => !it.dead && !it.counted);
   const tg = live[(Math.random() * live.length) | 0].body.position;
   const from = new THREE.Vector3(0, 1.6, 6.5), aim = new THREE.Vector3(tg.x, tg.y, tg.z);
@@ -20,5 +20,6 @@ for (let t = 0; t < 6 && G.state === 'play'; t++) {
   let awake = 0;
   for (let i = 0; i < 75; i++) G.update(1 / 60, { fixed: true });
   for (const it of G.items) if (!it.dead && it.body.sleepState === 0) awake++;
-  console.log('throw', t, 'at', tg.x.toFixed(2), tg.y.toFixed(2), 'prog', G.progress.toFixed(2), '+', G.count - c0, 'awake', awake, 'state', G.state);
+  const ap = G.items.filter(i=>i.type==='appliance').map(i=>i.kind+':'+i.hp.toFixed(0)+(i.counted?'C':'')).join(' ');
+  console.log(ap, 'throw', t, 'at', tg.x.toFixed(2), tg.y.toFixed(2), 'prog', G.progress.toFixed(2), '+', G.count - c0, 'awake', awake, 'state', G.state);
 }

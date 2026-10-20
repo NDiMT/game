@@ -4,11 +4,12 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { Shards, Sprites } from './fx.js';
 import { setupThings, GR, PROJ } from './things.js';
+import { setupAppliances } from './appliances.js';
 import { SCENES, SCENE_NAMES } from './scenes.js';
 
 export const AMMO_START = { brick: 6, bowling: 3, anvil: 1, bomb: 1 };
 export const AMMO_CAP = { brick: 12, bowling: 6, anvil: 3, bomb: 3 };
-export const CLEAR_AT = 0.8;
+export const CLEAR_AT = 0.85;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
 const NOOP = () => {};
@@ -52,6 +53,7 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     hitstopT: 0, slowT: 0, slowDur: 1, lastSlow: -10,
     combo: 0, lastSmashT: -10, comboAward: 0, smashSinceBowl: 0, smashSinceBrick: 0,
     prof: { phys: 0, steps: 0 },
+    tune: { sleepLimit: 0.7 },
   };
   const S = sprites || {};
   G.dust = S.dust || { emit: NOOP, update: NOOP };
@@ -67,6 +69,7 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     H.impact(k, x, y, z, bomb);
   };
   const K = setupThings(G);
+  setupAppliances(G, K);
   G.K = K;
   G.shards.onGlint = (x, y, z) => G.glintAt(x, y, z);
 
@@ -110,20 +113,20 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     if (d.gone) return;
     d.gone = true;
     if (d.body.world) world.removeBody(d.body);
-    if (instant) { d.h.g.remove(d.h); G.releaseDebris(d); }
-    else G.dying.push({ h: d.h, mesh: null, t: 0.35, deb: d, proj: null, own: false });
+    if (instant) { if (d.h) d.h.g.remove(d.h); G.releaseDebris(d); }
+    else G.dying.push({ h: d.h, mesh: d.mesh, t: 0.35, deb: d, proj: null, geo: null, s0: d.mesh ? d.s0 : null });
   };
   G.killProj = (p, instant) => {
     if (p.dead) return;
     p.dead = true;
     if (p.body.world) world.removeBody(p.body);
     if (instant) G.releaseProj(p);
-    else G.dying.push({ h: null, mesh: p.mesh, t: 0.35, deb: null, proj: p, own: false, s0: p.s0 });
+    else G.dying.push({ h: null, mesh: p.mesh, t: 0.35, deb: null, proj: p, geo: null, s0: p.s0 });
   };
   function killItemFade(it) {
     it.dead = true;
     if (it.body.world) world.removeBody(it.body);
-    G.dying.push({ h: it.h || null, mesh: it.mesh || null, t: 0.35, deb: null, proj: null, own: true, s0: null });
+    G.dying.push({ h: it.h || null, mesh: it.mesh || null, t: 0.35, deb: null, proj: null, geo: it.shell ? it.shell.geometry : it.mesh ? it.mesh.geometry : null, s0: null });
   }
 
   // ---------------------------------------------------------------- scenes: plan now, build over frames
@@ -189,7 +192,7 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     if (landed > G.landed + 8) { sfx.land(); G.landed = landed; }
     if (planI >= plan.length && G.stateT >= maxEnd) {
       for (const it of G.items) setYo(it, 0);
-      for (const it of G.newItems) { world.addBody(it.body); it.body.sleep(); }
+      for (const it of G.newItems) { world.addBody(it.body); K.anchor(it); }
       G.newItems = [];
       G.state = 'play'; G.stateT = 0;
     }
@@ -210,6 +213,7 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     for (let i = 0; i < B.length; i++) {
       const b = B[i], q = b.position, v = b.velocity, w = b.angularVelocity;
       if (!Number.isFinite(q.x + q.y + q.z + v.x + v.y + v.z + w.x + w.y + w.z + b.quaternion.w)) {
+        if (G.onNaN) G.onNaN(b);
         q.set(0, -10, 0); v.set(0, 0, 0); w.set(0, 0, 0); b.quaternion.set(0, 0, 0, 1); b.collisionFilterMask = 0;
         b.previousPosition.copy(q); b.interpolatedPosition.copy(q); b.previousQuaternion.set(0, 0, 0, 1); b.interpolatedQuaternion.set(0, 0, 0, 1);
       }
@@ -251,13 +255,14 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
           if (b.world) world.removeBody(b);
           it.dead = true;
           if (it.h) it.h.g.remove(it.h);
-          if (it.mesh) { scene.remove(it.mesh); it.mesh.geometry.dispose(); }
+          if (it.mesh) { scene.remove(it.mesh); (it.shell || it.mesh).geometry.dispose(); }
           if (!it.counted) G.smash(it);
           alive--;
           continue;
         }
-        if (it.counted) continue;
         const dx = p.x - o.x, dy = p.y - o.y, dz = p.z - o.z;
+        if (!it.anchored && !it.supportFreed && dx * dx + dy * dy + dz * dz > 0.006) K.freeAbove(it);
+        if (it.counted || it.noKnock) continue;
         let knocked = dx * dx + dz * dz > 0.2 || dy < -0.25;
         if (!knocked && it.upright) { const q = b.quaternion; knocked = 1 - 2 * (q.x * q.x + q.z * q.z) < 0.7; }
         if (knocked) G.smash(it);
@@ -270,6 +275,7 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
     for (const d of G.debris) {
       if (d.gone) continue;
       d.life -= dt;
+      if (d.maskT > 0) { d.maskT -= dt; if (d.maskT <= 0) d.body.collisionFilterMask = 15; }
       const p = d.body.position;
       if (d.life <= 0 || !Number.isFinite(p.x + p.y) || p.y < -3 || p.z > 5) G.killDebris(d, false);
     }
@@ -300,12 +306,13 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
       if (d.t <= 0) {
         if (d.h) d.h.g.remove(d.h);
         if (d.deb) G.releaseDebris(d.deb);
-        if (d.proj) G.releaseProj(d.proj);
-        else if (d.mesh) { scene.remove(d.mesh); if (d.own) d.mesh.geometry.dispose(); }
+        else if (d.proj) G.releaseProj(d.proj);
+        else if (d.mesh) { scene.remove(d.mesh); if (d.geo) d.geo.dispose(); }
         G.dying[i] = G.dying[G.dying.length - 1];
         G.dying.pop();
       }
     }
+    G.updateAppliances(dt);
     G.dust.update(dt); G.spark.update(dt); G.glint.update(dt); G.fire.update(dt);
     G.shards.update(dt);
 
@@ -331,6 +338,12 @@ export function createCore({ scene, mats, sfx, hooks = {}, sprites = null }) {
       const ip = p.body.interpolatedPosition, iq = p.body.interpolatedQuaternion;
       p.mesh.position.set(ip.x, ip.y, ip.z);
       p.mesh.quaternion.set(iq.x, iq.y, iq.z, iq.w);
+    }
+    for (const d of G.debris) {
+      if (d.gone || !d.mesh) continue;
+      const ip = d.body.interpolatedPosition, iq = d.body.interpolatedQuaternion;
+      d.mesh.position.set(ip.x, ip.y, ip.z);
+      d.mesh.quaternion.set(iq.x, iq.y, iq.z, iq.w);
     }
     for (const k in G.groups) G.groups[k].update();
   };
