@@ -167,6 +167,8 @@ button { font-family: inherit; color: inherit; border: 0; padding: 0; cursor: po
 #rScore small { display: block; font-size: 11px; letter-spacing: 2px; opacity: .7; }
 #tut ol { margin: 0 0 8px; padding: 0 0 0 20px; text-align: left; font-size: 14px; line-height: 1.45; font-weight: 600; }
 #tut li { margin-bottom: 6px; }
+#tut .kbd { display: none; font-size: 12px; opacity: .75; }
+@media (hover: hover) and (pointer: fine) { #tut .kbd { display: block; } }
 #tut em { font-style: normal; font-weight: 900; } .c1 { color: var(--c1); } .c2 { color: var(--c2); } .c3 { color: var(--c3); }
 
 /* ---------------- splash */

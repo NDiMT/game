@@ -190,6 +190,7 @@ export class Keeper {
     this.diveMax = 4.6 + 2.8 * d;         // m/s dive
     this.noise = 1.15 - 0.85 * d;         // read error (m) on the crossing point
     this.rollRate = 3.6 + 3.0 * d;
+    this.guess = 0.24 - 0.2 * d;          // chance to commit the wrong way on an angled shot
   }
   reset() {
     this.x = 0; this.y = 0; this.vx = 0; this.vy = 0; this.roll = 0; this.pose = 0; this.mode = 0; this.t = 0;
@@ -417,6 +418,8 @@ export class World {
     const hl = Math.sqrt(hx * hx + hy * hy + hz * hz) || 1; hx /= hl; hy /= hl; hz /= hl;
     const bonus = Math.min(14, -vn * 0.3);
     b.vx += hx * bonus; b.vy += hy * bonus + Math.max(0, -vn) * 0.04; b.vz += hz * bonus;
+    // air chip: hitting it while airborne (nose up) scoops the ball for a lofted shot
+    if (!car.onGround) b.vy += 1.5 + Math.max(0, -vn) * 0.2;
     car.vx -= j * nx / mc; car.vz -= j * nz / mc; if (!car.onGround) car.vy -= j * ny / mc;
     if (b.y < R) { b.y = R; if (b.vy < 0) b.vy = -b.vy * 0.6; } // never shove it into the ground
     const pow = -vn;
@@ -500,6 +503,7 @@ export class World {
     k.predX = x; k.predY = y; k.predT = t;
     k.wide = Math.abs(x) > GX + R * 0.6 || y > GY + R * 0.7;
     if (k.wide) { k.mode = 1; k.tx = clamp(x, -2.5, 2.5) * 0.5; return; }
+    if (Math.abs(x) > 1.6 && this.rand() < k.guess) { x = -x * 0.7; k.predX = x; } // wrong-footed
     const dx = x - k.x;
     if (Math.abs(dx) < 1.05 && y < 2.7) { k.mode = 1; k.tx = x; return; }
     // dive
