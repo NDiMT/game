@@ -1,4 +1,4 @@
-// Scripted drivers. They write into an input object {steer, throttle, brake, drift, jump}.
+// Scripted drivers. They write into an input object {steer, throttle, brake, drift}.
 // Used by the headless tuning sim, the in-game AI rival and the ?bot test hook.
 import { GX, GY, World, RES } from './physics.js';
 
@@ -6,7 +6,6 @@ const wrap = (a) => (a > Math.PI ? a - Math.PI * 2 : a < -Math.PI ? a + Math.PI 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 // heading error to a point (positive = target is to the left)
 function headErr(car, tx, tz) { return wrap(Math.atan2(tx - car.x, tz - car.z) - car.yaw); }
-function idle(inp) { inp.steer = 0; inp.throttle = 0; inp.brake = 0; inp.drift = false; inp.jump = false; }
 
 // Drive straight at the ball centre at part throttle, no drift (the "slow straight shot").
 export class StraightBot {
@@ -15,17 +14,17 @@ export class StraightBot {
   drive(w, inp) {
     const c = w.car, b = w.ball;
     inp.steer = clamp(-headErr(c, b.x, b.z) * 3, -1, 1);
-    inp.throttle = this.thr; inp.brake = 0; inp.drift = false; inp.jump = false;
+    inp.throttle = this.thr; inp.brake = 0; inp.drift = false;
   }
 }
 
-// Random approach: wandering steer, random drift taps / jumps, loosely towards the ball.
+// Random approach: wandering steer, random drift taps, loosely towards the ball.
 export class RandomBot {
   constructor(rand) { this.rand = rand; }
   reset() {
     const r = this.rand;
     this.ph = r() * 6; this.f = 0.6 + r() * 1.8; this.amp = r() * 1.2; this.bias = (r() - 0.5) * 6;
-    this.dOn = 1 + r() * 3.5; this.dLen = r() * 1.6; this.jAt = r() < 0.2 ? 1 + r() * 3 : -1; this.home = 0.6 + r() * 2;
+    this.dOn = 1 + r() * 3.5; this.dLen = r() * 1.6; this.home = 0.6 + r() * 2;
     this.thr = 0.65 + r() * 0.35;
   }
   drive(w, inp) {
@@ -34,7 +33,6 @@ export class RandomBot {
     inp.steer = clamp(toward + Math.sin(t * this.f * 3 + this.ph) * this.amp, -1, 1);
     inp.throttle = this.thr; inp.brake = 0;
     inp.drift = t > this.dOn && t < this.dOn + this.dLen;
-    inp.jump = this.jAt > 0 && t > this.jAt && t < this.jAt + 0.1;
   }
 }
 
@@ -53,7 +51,7 @@ export class PlanBot {
     this.samples = opts.samples || 140;
     this.txRange = opts.txRange || 0; // aim anywhere in [-txRange, txRange] instead of a corner
     this.p = new Float32Array(NP); this.best = new Float32Array(NP); this.q = new Float32Array(NP);
-    this.inp = { steer: 0, throttle: 0, brake: 0, drift: false, jump: false };
+    this.inp = { steer: 0, throttle: 0, brake: 0, drift: false };
     this.score = 0; this.phase = 0; this.phaseT = 0;
   }
   setCar(def) { this.sim.car.def = def; }
@@ -111,7 +109,7 @@ export class PlanBot {
   // closed-loop controller for plan p; phase state lives on the bot (one world at a time)
   control(w, p, inp) {
     const c = w.car, b = w.ball;
-    inp.jump = false; inp.brake = 0; inp.throttle = 1;
+    inp.brake = 0; inp.throttle = 1;
     if (this.phase === 0) {
       const wx = b.x + p[0] * 11, wz = b.z + 8 + p[1] * 14;
       const dx = wx - c.x, dz = wz - c.z;

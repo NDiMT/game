@@ -83,47 +83,39 @@ button { font-family: inherit; color: inherit; border: 0; padding: 0; cursor: po
 #steer.on #knob { background: radial-gradient(circle at 35% 30%, #fff, var(--gold)); }
 #steer span { display: block; margin-top: 6px; font-size: 10px; font-weight: 900; letter-spacing: 2px; opacity: .65; }
 
-/* right-thumb cluster: GAS biggest + lowest-right, DRIFT beside it (slide between), BRAKE above GAS, JUMP above DRIFT.
-   The pads are visual only; ui.js hit-tests every right-side touch against their rects (multi-touch, analogue). */
-#pads { position: absolute; right: 0; bottom: 0; width: 0; height: 0; }
-.pad { position: absolute; pointer-events: none; display: grid; place-items: center; color: #fff; font-weight: 900; letter-spacing: 1px;
-  background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 var(--glass-hi), 0 8px 22px rgba(5,10,25,.3);
-  transition: transform .08s, background .12s; }
-.pad.round { border-radius: 50%; }
-.pad.pedal { border-radius: 22px; overflow: hidden; align-content: end; padding-bottom: 14px; gap: 2px; }
-.pad.pedal em { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transform-origin: 50% 100%; transform: scaleY(var(--amt, 0)); will-change: transform; }
-.pad.pedal::before { content: ''; position: absolute; inset: 8px; border-radius: 15px; background: repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 6px, transparent 6px 14px); }
-.pad span, .pad svg, .pad small { position: relative; }
-#bGas { right: calc(var(--sar) + 14px); bottom: calc(var(--sab) + 18px); width: 96px; height: 160px; }
-#bGas em { background: linear-gradient(180deg, rgba(61,220,151,.95), rgba(25,160,100,.75)); }
-#bGas svg { width: 34px; height: 34px; fill: none; stroke: #fff; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; opacity: .9; margin-bottom: 18px; }
-#bGas span { font-size: 18px; font-style: italic; }
-#bGas.held { transform: scale(.96); }
-#bBrake { right: calc(var(--sar) + 24px); bottom: calc(var(--sab) + 192px); width: 76px; height: 86px; padding-bottom: 10px; }
-#bBrake em { background: linear-gradient(180deg, rgba(255,90,90,.95), rgba(190,30,40,.75)); }
-#bBrake span { font-size: 12px; } #bBrake small { font-size: 8px; letter-spacing: 2px; opacity: .7; }
-#bBrake.held { transform: scale(.95); }
-#bDrift { right: calc(var(--sar) + 122px); bottom: calc(var(--sab) + 22px); width: 108px; height: 108px;
-  background: radial-gradient(circle at 40% 32%, rgba(255,255,255,.28), rgba(12,18,38,.55) 70%); box-shadow: inset 0 1px 0 var(--glass-hi), 0 10px 26px rgba(5,10,25,.35); }
-#bDrift svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-#bDrift circle { fill: none; stroke-width: 8; }
-#bDrift .bg { stroke: rgba(255,255,255,.14); }
-#bDrift .fg { stroke: #fff; stroke-linecap: round; stroke-dasharray: 339.3; stroke-dashoffset: 339.3; filter: drop-shadow(0 0 6px currentColor); }
-#bDrift span { font-size: 18px; font-style: italic; margin-top: -8px; }
-#bDrift small { position: absolute; bottom: 27px; font-size: 9px; letter-spacing: 2px; opacity: .7; }
-#bDrift.held { transform: scale(.94); background: radial-gradient(circle at 40% 32%, rgba(255,255,255,.4), rgba(40,50,90,.7) 70%); }
-#bDrift.l1 .fg { stroke: var(--c1); color: var(--c1); } #bDrift.l2 .fg { stroke: var(--c2); color: var(--c2); } #bDrift.l3 .fg { stroke: var(--c3); color: var(--c3); }
-#bDrift.l1 { box-shadow: 0 0 22px var(--c1), inset 0 1px 0 var(--glass-hi); } #bDrift.l2 { box-shadow: 0 0 26px var(--c2), inset 0 1px 0 var(--glass-hi); } #bDrift.l3 { box-shadow: 0 0 32px var(--c3), inset 0 1px 0 var(--glass-hi); }
-#bDrift.pop { animation: pop .25s cubic-bezier(.2,1.8,.4,1); }
-@keyframes pop { 0% { transform: scale(1.15); } }
-#bJump { right: calc(var(--sar) + 144px); bottom: calc(var(--sab) + 146px); width: 62px; height: 62px; font-size: 11px; }
-#bJump.held { transform: scale(.92); background: rgba(255,210,63,.45); }
+/* one-thumb gesture pedal: press = gas, slide up = drift, slide down = brake/reverse.
+   Visual only (pointer-events: none); ui.js reads every right-side touch relative to where it landed. */
+#pedal { position: absolute; right: calc(var(--sar) + 12px); bottom: calc(var(--sab) + 16px); width: min(40vw, 168px); height: min(46vh, 330px); pointer-events: none; }
+#ptrack { position: absolute; inset: 0; border-radius: 30px; overflow: hidden; display: grid; grid-template-rows: 1fr 1.15fr 1fr;
+  background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 var(--glass-hi), 0 10px 26px rgba(5,10,25,.35); }
+.pz { position: relative; display: grid; place-content: center; text-align: center; gap: 2px; font-weight: 900; letter-spacing: 1px; transition: background .12s; }
+.pz + .pz { border-top: 1px dashed rgba(255,255,255,.18); }
+.pz span { position: relative; font-size: 15px; font-style: italic; } .pz small { position: relative; font-size: 8.5px; letter-spacing: 2px; opacity: .6; }
+.pz i { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transform-origin: 50% 100%; transform: scaleY(0); will-change: transform; }
+.pz.gas i { background: linear-gradient(180deg, rgba(61,220,151,.75), rgba(25,160,100,.55)); }
+.pz.brake i { background: linear-gradient(0deg, rgba(255,90,90,.85), rgba(190,30,40,.55)); transform-origin: 50% 0; top: 0; }
+.pz.drift i { background: linear-gradient(0deg, rgba(255,154,31,.85), rgba(255,154,31,.35)); }
+#pedal.l1 .pz.drift i { background: linear-gradient(0deg, rgba(70,180,255,.9), rgba(70,180,255,.35)); }
+#pedal.l2 .pz.drift i { background: linear-gradient(0deg, rgba(255,154,31,.95), rgba(255,154,31,.4)); }
+#pedal.l3 .pz.drift i { background: linear-gradient(0deg, rgba(195,91,255,.95), rgba(195,91,255,.45)); }
+#pedal.zg .pz.gas { background: rgba(61,220,151,.18); }
+#pedal.zd .pz.drift { background: rgba(255,154,31,.22); } #pedal.zd.l1 .pz.drift { background: rgba(70,180,255,.22); } #pedal.zd.l3 .pz.drift { background: rgba(195,91,255,.25); }
+#pedal.zb .pz.brake { background: rgba(255,77,77,.25); }
+#pedal.zd #ptrack { box-shadow: 0 0 24px rgba(255,154,31,.7), inset 0 1px 0 var(--glass-hi); }
+#pedal.zd.l1 #ptrack { box-shadow: 0 0 24px var(--c1), inset 0 1px 0 var(--glass-hi); } #pedal.zd.l3 #ptrack { box-shadow: 0 0 30px var(--c3), inset 0 1px 0 var(--glass-hi); }
+#pknob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #cfd8e6);
+  box-shadow: 0 4px 14px rgba(0,0,0,.4); opacity: .55; will-change: transform; transition: opacity .12s; }
+#pedal.on #pknob { opacity: 1; } #pedal.zg #pknob { background: radial-gradient(circle at 35% 30%, #fff, #3ddc97); }
+#pedal.zd #pknob { background: radial-gradient(circle at 35% 30%, #fff, #ff9a1f); } #pedal.zd.l1 #pknob { background: radial-gradient(circle at 35% 30%, #fff, var(--c1)); }
+#pedal.zd.l3 #pknob { background: radial-gradient(circle at 35% 30%, #fff, var(--c3)); } #pedal.zb #pknob { background: radial-gradient(circle at 35% 30%, #fff, #ff4d4d); }
+#pedal.pop #ptrack { animation: pop .25s cubic-bezier(.2,1.8,.4,1); }
+@keyframes pop { 0% { transform: scale(1.06); } }
 #keys { position: absolute; left: 50%; bottom: calc(var(--sab) + 8px); transform: translateX(-50%); font-size: 11px; font-weight: 700; opacity: .6; white-space: nowrap; display: none; }
 .kb #keys { display: block; }
-.kb #pads, .kb #steer { opacity: .35; }
+.kb #pedal, .kb #steer { opacity: .35; }
 
-#hud.watch #steer, #hud.watch #pads, #hud.watch #keys, #hud.watch #speed, #hud.watch #timer { opacity: 0; pointer-events: none; }
-#steer, #pads, #speed, #timer { transition: opacity .25s; }
+#hud.watch #steer, #hud.watch #pedal, #hud.watch #keys, #hud.watch #speed, #hud.watch #timer { opacity: 0; pointer-events: none; }
+#steer, #pedal, #speed, #timer { transition: opacity .25s; }
 
 /* speed lines live in the post shader; this is a cheap DOM fallback for the low tier */
 #lines { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: repeating-conic-gradient(from 0deg at 50% 46%, rgba(255,255,255,.0) 0deg 5deg, rgba(255,255,255,.22) 5.4deg, rgba(255,255,255,0) 6deg 11deg);
@@ -237,25 +229,29 @@ button { font-family: inherit; color: inherit; border: 0; padding: 0; cursor: po
   #toast { top: calc(var(--sat) + 70px); }
 }
 @media (max-width: 360px) {
-  #bGas { width: 86px; height: 148px; } #bDrift { right: calc(var(--sar) + 108px); width: 96px; height: 96px; }
-  #bJump { right: calc(var(--sar) + 124px); bottom: calc(var(--sab) + 130px); width: 56px; height: 56px; }
-  #bBrake { bottom: calc(var(--sab) + 176px); width: 70px; height: 78px; }
   #steer { width: 132px; }
   #board { gap: 6px; padding: 6px 8px; } .dots i { width: 8px; height: 8px; }
 }
 @media (orientation: landscape) and (max-height: 520px) {
-  #bGas { right: calc(var(--sar) + 22px); width: 90px; height: 138px; }
-  #bBrake { right: calc(var(--sar) + 30px); bottom: calc(var(--sab) + 168px); width: 74px; height: 76px; }
-  #bDrift { right: calc(var(--sar) + 126px); bottom: calc(var(--sab) + 18px); width: 102px; height: 102px; }
-  #bJump { right: calc(var(--sar) + 146px); bottom: calc(var(--sab) + 134px); width: 58px; height: 58px; }
+  #pedal { width: 150px; height: calc(100vh - 100px); max-height: 290px; }
   #speed { left: calc(var(--sal) + 186px); bottom: calc(var(--sab) + 26px); }
   #steer { left: calc(var(--sal) + 20px); }
 }
 
-/* tutorial pad diagram */
-.tutpad { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 4px; }
-.tp { flex: 1; border-radius: 14px; padding: 8px 6px; background: rgba(255,255,255,.07); display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; text-align: left; }
-.tp i { grid-row: span 2; width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #cfd8e6); }
-.tp i.g { border-radius: 8px; height: 34px; width: 22px; background: linear-gradient(180deg, #3ddc97, #19a064); }
-.tp i.d { background: radial-gradient(circle at 40% 32%, #9fd8ff, #3d6bff); }
-.tp b { font-size: 12px; letter-spacing: 1px; } .tp small { font-size: 10px; opacity: .7; line-height: 1.2; }
+/* tutorial gesture diagram (animated) */
+.tutgest { display: flex; gap: 10px; margin: 0 0 4px; align-items: stretch; }
+.tg-steer { flex: 0 0 34%; border-radius: 14px; padding: 8px 6px; background: rgba(255,255,255,.07); display: grid; align-content: center; gap: 4px; text-align: center; }
+.tg-track { position: relative; height: 26px; border-radius: 13px; background: rgba(255,255,255,.12); }
+.tg-knob { position: absolute; top: 3px; left: 50%; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: #fff; animation: tgSteer 2.4s ease-in-out infinite; }
+@keyframes tgSteer { 0%, 100% { transform: translateX(-24px); } 50% { transform: translateX(24px); } }
+.tg-steer b, .tg-cap b { font-size: 11px; letter-spacing: 1px; } .tg-steer small { font-size: 10px; opacity: .7; }
+.tg-pedal { flex: 1; display: flex; gap: 8px; border-radius: 14px; padding: 8px; background: rgba(255,255,255,.07); }
+.tg-col { position: relative; width: 56px; height: 108px; border-radius: 16px; overflow: hidden; display: grid; grid-template-rows: 1fr 1.15fr 1fr; background: rgba(0,0,0,.25); font-size: 8px; font-weight: 900; }
+.tg-col span { display: grid; place-items: center; animation: tgZone 4s infinite; }
+.tg-col .d { color: #ffb45c; animation-name: tgD; } .tg-col .g { color: #7ff0bf; animation-name: tgG; } .tg-col .b { color: #ff9a9a; animation-name: tgB; }
+.tg-thumb { position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 50%; background: rgba(255,255,255,.95); box-shadow: 0 0 0 4px rgba(255,255,255,.25); animation: tgThumb 4s ease-in-out infinite; }
+@keyframes tgThumb { 0%, 12% { transform: translateY(0); opacity: 0; } 16%, 30% { transform: translateY(0); opacity: 1; } 40%, 58% { transform: translateY(-36px); opacity: 1; } 66%, 74% { transform: translateY(0); opacity: 1; } 82%, 94% { transform: translateY(36px); opacity: 1; } 100% { transform: translateY(36px); opacity: 0; } }
+@keyframes tgG { 16%, 30%, 66%, 74% { background: rgba(61,220,151,.35); } 0%, 12%, 40%, 58%, 82%, 100% { background: transparent; } }
+@keyframes tgD { 40%, 58% { background: rgba(255,154,31,.45); } 0%, 32%, 64%, 100% { background: transparent; } }
+@keyframes tgB { 82%, 94% { background: rgba(255,77,77,.45); } 0%, 76%, 100% { background: transparent; } }
+.tg-cap { display: grid; align-content: center; gap: 3px; text-align: left; } .tg-cap small { font-size: 10px; line-height: 1.35; opacity: .8; }

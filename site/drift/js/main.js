@@ -96,9 +96,9 @@ const G = {
   fov: 60, boostFov: 0, menuCar: save.car, celebrate: false, fw: new Float32Array(10), fwN: 0, lastRes: 0, firstLv: false, lastSlow: false,
   botOn: AUTOBOT, force: null, celebA: 0, planning: false, paused: false, prevState: '', replayT: 0, replayA: 0, replayB: 0, recDiv: 0, flash: 0, gasHint: 0,
 };
-const inpBot = { steer: 0, throttle: 0, brake: 0, drift: false, jump: false };
-const inpIdle = { steer: 0, throttle: 0, brake: 0.7, drift: false, jump: false, hold: true };
-const inpPark = { steer: 0, throttle: 0, brake: 0, drift: false, jump: false };
+const inpBot = { steer: 0, throttle: 0, brake: 0, drift: false };
+const inpIdle = { steer: 0, throttle: 0, brake: 0.7, drift: false, hold: true };
+const inpPark = { steer: 0, throttle: 0, brake: 0, drift: false };
 
 // ------------------------------------------------------------------ replay recording (60 Hz)
 const RF = 32, RN = 1600;
@@ -414,8 +414,7 @@ function handleEvents() {
         if (G.state === 'play') ui.flash();
         break;
       }
-      case EV.LEVEL: audio.level(a); if (a === 1 && !G.firstLv && G.kicker === 'you') { G.firstLv = true; ui.toast('LET GO OF DRIFT TO BOOST!', false, 1800); } break;
-      case EV.JUMP: audio.jump(); break;
+      case EV.LEVEL: audio.level(a); if (a === 1 && !G.firstLv && G.kicker === 'you') { G.firstLv = true; ui.toast(isTouch ? 'SLIDE BACK DOWN TO BOOST!' : 'LET GO OF SPACE TO BOOST!', false, 1800); } break;
       case EV.LAND: if (a > 3) audio.land(a); break;
       case EV.WALL: if (a > 3) audio.wall(a); break;
       case EV.DRIFT: G.hop = 1; break;
@@ -665,7 +664,7 @@ function frame(dt, draw = true) {
     viewLive(G.alpha);
     slowMoCheck();
     // nudge if the player has not touched the gas yet
-    if (!world.touched && world.car.speed < 0.5 && G.t > 2.2 && !G.gasHint) { G.gasHint = 1; ui.toast('HOLD GAS TO DRIVE!', false, 1800); }
+    if (!world.touched && world.car.speed < 0.5 && G.t > 2.2 && !G.gasHint) { G.gasHint = 1; ui.toast(isTouch ? 'HOLD THE PEDAL FOR GAS!' : 'HOLD W FOR GAS!', false, 1800); }
     if (world.result) onPlayerResult();
   } else if (s === 'after') {
     G.t += dt;
@@ -820,7 +819,7 @@ window.__drift = {
   render() { frame(0, true); },
   start: startGame, toMenu, setTheme: (t) => { save.theme = t; applyTheme(); },
   skipTut() { save.tut2 = true; ui.overlay('tut', false); if (G.state === 'tut') beginIntro(); },
-  drive(steer, drift, jump, throttle = 1, brake = 0) { G.botOn = false; G.force = steer === null ? null : { steer, throttle, brake, drift: !!drift, jump: !!jump }; },
+  drive(steer, drift, throttle = 1, brake = 0) { G.botOn = false; G.force = steer === null ? null : { steer, throttle, brake, drift: !!drift }; },
   bot(on) { G.botOn = on; if (on) { helpBot.setCar(CARS[save.car]); helpBot.reset(world); } },
-  info() { return { state: G.state, t: G.t, res: world.result, drifting: world.car.drifting, level: world.car.level, boost: world.car.boostT, touched: world.touched, carZ: world.car.z, speed: world.car.speed, ballZ: world.ball.z, q: Q.level, post: post.enabled, calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; },
+  info() { return { thr: +world.car.throttle.toFixed(2), brk: +world.car.brake.toFixed(2), rev: world.car.reverse, zone: document.getElementById('pedal').className, state: G.state, t: G.t, res: world.result, drifting: world.car.drifting, level: world.car.level, boost: world.car.boostT, touched: world.touched, carZ: world.car.z, speed: world.car.speed, ballZ: world.ball.z, q: Q.level, post: post.enabled, calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; },
 };
