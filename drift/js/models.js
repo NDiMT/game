@@ -1,7 +1,7 @@
 // Procedural toy models: sculpted cars with sprung, steering wheels; the football; the big goalie.
 import * as THREE from 'three';
-import { R } from './physics.js';
-import { mergeByMaterial } from './util.js';
+import { R } from './physics.js?v=2.2';
+import { mergeByMaterial } from './util.js?v=2.2';
 
 // ---------------------------------------------------------------- cars
 // Body = a finely segmented box sculpted vertex by vertex: side profile (hood / deck heights), plan-view

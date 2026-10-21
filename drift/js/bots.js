@@ -1,6 +1,6 @@
 // Scripted drivers. They write into an input object {steer, throttle, brake, drift}.
 // Used by the headless tuning sim, the in-game AI rival and the ?bot test hook.
-import { GX, GY, World, RES } from './physics.js';
+import { GX, GY, World, RES } from './physics.js?v=2.2';
 
 const wrap = (a) => (a > Math.PI ? a - Math.PI * 2 : a < -Math.PI ? a + Math.PI * 2 : a);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);

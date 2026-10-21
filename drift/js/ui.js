@@ -1,6 +1,6 @@
 // DOM HUD, menus and input (touch steering slider, one-thumb gesture pedal, keyboard).
-import { CARS } from './cars.js';
-import { LEVEL_T, SHOT_TIME } from './physics.js';
+import { CARS } from './cars.js?v=2.2';
+import { LEVEL_T, SHOT_TIME } from './physics.js?v=2.2';
 
 const $ = (id) => document.getElementById(id);
 
@@ -213,7 +213,7 @@ export function createUI(hooks) {
     el.cLock.textContent = locked ? `🔒 SCORE ${c.unlock} GOALS (${goals}/${c.unlock})` : `${i + 1} / ${CARS.length}`;
     el.bPlay.disabled = locked; el.bStreak.disabled = locked;
   };
-  U.menuStats = (goals, best) => { el.mStats.textContent = `GOALS SCORED ${goals} · BEST STREAK ${best}`; };
+  U.menuStats = (goals, best) => { el.mStats.textContent = `GOALS SCORED ${goals} · BEST STREAK ${best} · v2.2`; };
   U.theme = (name) => { el.bTheme.textContent = name === 'day' ? 'DAY' : 'NIGHT'; };
   U.sound = (muted) => { el.bSnd.textContent = 'SOUND ' + (muted ? 'OFF' : 'ON'); el.bMute.classList.toggle('muted', muted); };
   U.overlay = (name, on) => el[name].classList.toggle('on', on);
