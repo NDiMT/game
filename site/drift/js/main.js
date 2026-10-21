@@ -1,15 +1,15 @@
 // DRIFT KICK! v2 main: boot, game flow (shootout / streak), fixed 120 Hz step with interpolation,
 // chase camera, post (bloom, flares, speed lines), effects, slow-mo + replay, audio and auto quality tiers.
 import * as THREE from 'three';
-import { World, DT, RES, EV, R, KZ, SPOT, GX, GY, GD, AX, AZ0, AZ1, SHOT_TIME, attemptStart, rng, keeperPose } from './physics.js';
-import { CARS, AI_CAR } from './cars.js';
-import { PlanBot } from './bots.js';
-import { createStage } from './stage.js';
-import { createPost } from './post.js';
-import { buildCar, buildBall, buildKeeper, makeMats } from './models.js';
-import { Particles, Skids, Trail, Confetti, Flame, Blast } from './fx.js';
-import { createAudio } from './audio.js';
-import { createUI } from './ui.js';
+import { World, DT, RES, EV, R, KZ, SPOT, GX, GY, GD, AX, AZ0, AZ1, SHOT_TIME, attemptStart, rng, keeperPose } from './physics.js?v=2.2';
+import { CARS, AI_CAR } from './cars.js?v=2.2';
+import { PlanBot } from './bots.js?v=2.2';
+import { createStage } from './stage.js?v=2.2';
+import { createPost } from './post.js?v=2.2';
+import { buildCar, buildBall, buildKeeper, makeMats } from './models.js?v=2.2';
+import { Particles, Skids, Trail, Confetti, Flame, Blast } from './fx.js?v=2.2';
+import { createAudio } from './audio.js?v=2.2';
+import { createUI } from './ui.js?v=2.2';
 
 const params = new URLSearchParams(location.search);
 const MANUAL = params.has('manual');      // test hook: frames are advanced by __drift.tick()

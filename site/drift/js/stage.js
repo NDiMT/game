@@ -2,8 +2,8 @@
 // rippling net, LED ad boards, roofed stands with an animated instanced crowd, floodlight towers,
 // procedural sky (clouds + sun by day, stars by night), PMREM environments, a shadow frustum that follows play.
 import * as THREE from 'three';
-import { GX, GY, GD, PR, AX, AZ0, AZ1, SPOT } from './physics.js';
-import { mergeByMaterial } from './util.js';
+import { GX, GY, GD, PR, AX, AZ0, AZ1, SPOT } from './physics.js?v=2.2';
+import { mergeByMaterial } from './util.js?v=2.2';
 
 export const THEMES = {
   day: {
