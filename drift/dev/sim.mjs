@@ -42,7 +42,7 @@ function run(bot, diff, label, opts = {}) {
   let spd = 0, hits = 0, lv = 0, boosted = 0, cross = 0, planSc = 0, spin = 0, hitT = 0;
   const rand = rng(1234);
   const w = new World(car, 99);
-  const inp = { steer: 0, throttle: 0, brake: 0, drift: false, jump: false };
+  const inp = { steer: 0, throttle: 0, brake: 0, drift: false };
   const prev = { x: 0, y: 0, z: 0 };
   for (let i = 0; i < N; i++) {
     const [x, z, yaw] = startPos(rand);

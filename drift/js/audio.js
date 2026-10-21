@@ -115,7 +115,6 @@ export function createAudio() {
   A.groan = () => { if (!ctx) return; burst(1.3, 'bandpass', 500, 260, 3, 0.35); burst(1.1, 'bandpass', 900, 420, 4, 0.12, 0.05); };
   A.firework = () => { if (!ctx) return; burst(0.5, 'lowpass', 3000, 200, 0.7, 0.3); tone('sine', 90, 40, 0.4, 0.2); };
   A.click = () => { if (!ctx) return; tone('triangle', 900, 1300, 0.05, 0.07); };
-  A.jump = () => { if (!ctx) return; tone('sine', 220, 520, 0.14, 0.12); };
   A.land = (v) => { if (!ctx) return; tone('sine', 90, 40, 0.12, Math.min(0.3, v * 0.03)); };
   A.wall = (v) => { if (!ctx) return; burst(0.12, 'lowpass', 900, 200, 1, Math.min(0.35, v * 0.03)); };
   A.tick = () => { if (!ctx) return; tone('square', 1200, 1200, 0.04, 0.05); };

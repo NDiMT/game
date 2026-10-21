@@ -26,7 +26,7 @@ const CONTACT_E = 0.55, CONTACT_MU = 0.45;
 const HIT_ASSIST = 0.2, HIT_ASSIST_MAX = 12, CURL_ASSIST = 2.2;
 
 export const RES = { NONE: 0, GOAL: 1, SAVE: 2, MISS: 3, TIME: 4 };
-export const EV = { HIT: 1, POST: 2, NET: 3, SAVE: 4, BOUNCE: 5, BOOST: 6, LEVEL: 7, JUMP: 8, WALL: 9, LAND: 10, DIVE: 11, DRIFT: 12, CROSS: 13 };
+export const EV = { HIT: 1, POST: 2, NET: 3, SAVE: 4, BOUNCE: 5, BOOST: 6, LEVEL: 7, WALL: 9, LAND: 10, DIVE: 11, DRIFT: 12, CROSS: 13 };
 export const LEVEL_T = [0, 0.4, 0.85, 1.35];   // drift charge to reach blue / orange / purple
 const BOOST_T = [0, 0.6, 0.95, 1.3];
 const BOOST_KICK = [0, 2.5, 4, 5.5];
@@ -111,7 +111,7 @@ export class Car {
     this.drifting = false; this.driftDir = 0; this.driftT = 0; this.charge = 0; this.level = 0; this.gripRec = 1;
     this.boostT = 0; this.boostLv = 0; this.slip = 0; this.speed = speed; this.vF = speed; this.steer = 0; this.steerAngle = 0;
     this.throttle = 0; this.brake = 0; this.reverse = false; this.rpm = 0;
-    this.jumpHeld = false; this.driftHeld = false; this.lastLevel = 0;
+    this.driftHeld = false; this.lastLevel = 0;
     for (let i = 0; i < 4; i++) { this.comp[i] = this.sc; this.load[i] = this.m * CAR_G / 4; this.contact[i] = 1; this.omega[i] = speed / this.wr; this.slipA[i] = 0; this.slipK[i] = 0; }
     this.savePrev();
   }
@@ -152,12 +152,6 @@ export class Car {
     if (this.drifting) this.driftT += dt;
     if (this.gripRec < 1) this.gripRec = Math.min(1, this.gripRec + dt / 0.35);
 
-    // ---- jump
-    if (inp.jump && !this.jumpHeld && grounded) {
-      this.vy += d.jump; this.air = 0; ev.push(EV.JUMP, 0);
-      this.pitchRate += 0.6;
-    }
-    this.jumpHeld = !!inp.jump;
 
     // ---- steering angle (speed sensitive) with a little auto-countersteer
     const lock = this.maxSteer / (1 + Math.max(0, vf) / 14) * (this.drifting ? 1.3 : 1);
@@ -388,7 +382,7 @@ export class World {
     this.keeper = new Keeper();
     this.ev = new Events();
     this.rand = rng(seed);
-    this.inp = { steer: 0, throttle: 0, brake: 0, drift: false, jump: false };
+    this.inp = { steer: 0, throttle: 0, brake: 0, drift: false };
     this.cb = { nx: 0, ny: 0, nz: 0 };
     this.setup(0, 50, Math.PI, 0.3);
   }

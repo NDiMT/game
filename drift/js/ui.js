@@ -1,4 +1,4 @@
-// DOM HUD, menus and input (touch steering slider, analogue GAS/BRAKE pedals, DRIFT/JUMP, keyboard).
+// DOM HUD, menus and input (touch steering slider, one-thumb gesture pedal, keyboard).
 import { CARS } from './cars.js';
 import { LEVEL_T, SHOT_TIME } from './physics.js';
 
@@ -6,8 +6,7 @@ const $ = (id) => document.getElementById(id);
 
 export function createUI(hooks) {
   const el = {
-    hud: $('hud'), knob: $('knob'), steer: $('steer'), drift: $('bDrift'), jump: $('bJump'), gas: $('bGas'), brake: $('bBrake'), pads: $('pads'),
-    cRing: $('cRing'), dLbl: $('dLbl'), dSub: $('dSub'), gear: $('gear'), rpm: document.querySelector('#rpm u'), lines: $('lines'),
+    hud: $('hud'), knob: $('knob'), steer: $('steer'), pedal: $('pedal'), ptrack: $('ptrack'), pknob: $('pknob'), pAmt: $('pAmt'), pBrk: $('pBrk'), pChg: $('pChg'), dSub: $('dSub'), bSub: $('bSub'), gear: $('gear'), rpm: document.querySelector('#rpm u'), lines: $('lines'),
     spd: $('spd'), speed: $('speed'), tRing: $('tRing'), tNum: $('tNum'), timer: $('timer'), round: $('round'),
     sYou: $('sYou'), sAi: $('sAi'), dYou: $('dYou'), dAi: $('dAi'), stN: $('stN'), stB: $('stB'),
     banner: $('banner'), bT: $('bT'), bS: $('bS'), toast: $('toast'), tag: $('tag'), skip: $('skip'), flash: $('flash'),
@@ -15,31 +14,21 @@ export function createUI(hooks) {
     bPlay: $('bPlay'), bStreak: $('bStreak'), bTheme: $('bTheme'), bSnd: $('bSnd'), bMute: $('bMute'), bHow: $('bHow'),
     pause: $('pause'), result: $('result'), rT: $('rT'), rScore: $('rScore'), rS: $('rS'), tut: $('tut'), splash: $('splash'),
   };
-  const input = { steer: 0, throttle: 0, brake: 0, drift: false, jump: false };
-  const keys = { l: false, r: false, gas: false, brake: false, drift: false, jump: false };
+  const input = { steer: 0, throttle: 0, brake: 0, drift: false };
+  const keys = { l: false, r: false, gas: false, brake: false, drift: false };
   let touchSteer = 0, steerId = -1, steerX0 = 0;
   const RANGE = 58;
   let usingKeys = false;
 
   // ---- touch / pointer
-  // Left part of the screen = steering slider (relative drag). Right part = the pad cluster. The pads are
-  // visual only: every right-side pointer is hit-tested against cached pad rects each frame, so a thumb can
-  // slide from GAS onto DRIFT (or rest on the seam and press both), and GAS + DRIFT work as two touches.
-  // Pedals are analogue: the higher the thumb sits on the pedal, the more gas/brake (bottom 25% = 40%).
-  const ptr = new Map(); // pointerId -> { x, y }
-  const rects = { gas: null, brake: null, drift: null, jump: null };
-  let rectsOk = false;
-  function cacheRects() {
-    for (const k of ['gas', 'brake', 'drift', 'jump']) {
-      const r = el[k].getBoundingClientRect();
-      rects[k] = { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height, cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2 };
-    }
-    rectsOk = rects.gas.w > 0;
-  }
-  window.addEventListener('resize', () => { rectsOk = false; });
-  function inRect(q, x, y, m) { return x >= q.l - m && x <= q.r + m && y >= q.t - m && y <= q.b + m; }
-  function inCircle(q, x, y, m) { const dx = x - q.cx, dy = y - q.cy, r = q.w / 2 + m; return dx * dx + dy * dy <= r * r; }
-  function splitX() { return window.innerWidth * (window.innerWidth > window.innerHeight ? 0.45 : 0.4); }
+  // Left part of the screen = steering slider (relative drag). Right part = the one-thumb pedal, read
+  // relative to where the thumb landed: hold = gas, slide up past ~40 px = drift (still on gas),
+  // back to neutral or lift = release the drift (boost), slide down past ~40 px = brake, then reverse.
+  // Lifting entirely = coast. Hysteresis (enter 40 px, leave 28 px) stops zone flicker.
+  const ENTER = 40, LEAVE = 28;
+  const ped = { id: -1, y0: 0, dy: 0, zone: '' }; // zone: '' none, 'g' gas, 'd' drift, 'b' brake
+  function splitX() { return window.innerWidth * (window.innerWidth > window.innerHeight ? 0.5 : 0.45); }
+  function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (_) { /* unsupported */ } }
 
   function onDown(e) {
     hooks.unlock();
@@ -48,15 +37,26 @@ export function createUI(hooks) {
     if (hooks.tapToSkip()) return;
     if (e.clientX < splitX()) {
       if (steerId < 0) { steerId = e.pointerId; steerX0 = e.clientX; touchSteer = 0; el.steer.classList.add('on'); }
-    } else {
-      ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    } else if (ped.id < 0) {
+      ped.id = e.pointerId; ped.y0 = e.clientY; ped.dy = 0; setZone('g');
     }
     try { wrap.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
     e.preventDefault();
   }
+  function setZone(z) {
+    if (z === ped.zone) return;
+    if (z) buzz(z === 'd' ? [6, 30, 6] : z === 'b' ? 14 : 8);
+    ped.zone = z;
+  }
   function onMove(e) {
-    const p = ptr.get(e.pointerId);
-    if (p) { p.x = e.clientX; p.y = e.clientY; return; }
+    if (e.pointerId === ped.id) {
+      const dy = ped.y0 - e.clientY; ped.dy = dy;
+      const z = ped.zone;
+      if (z === 'g') { if (dy > ENTER) setZone('d'); else if (dy < -ENTER) setZone('b'); }
+      else if (z === 'd') { if (dy < -ENTER) setZone('b'); else if (dy < LEAVE) setZone('g'); }
+      else if (z === 'b') { if (dy > ENTER) setZone('d'); else if (dy > -LEAVE) setZone('g'); }
+      return;
+    }
     if (e.pointerId !== steerId) return;
     let dx = e.clientX - steerX0;
     if (dx > RANGE) { steerX0 = e.clientX - RANGE; dx = RANGE; }
@@ -65,7 +65,7 @@ export function createUI(hooks) {
   }
   function onUp(e) {
     if (e.pointerId === steerId) { steerId = -1; touchSteer = 0; el.steer.classList.remove('on'); }
-    ptr.delete(e.pointerId);
+    if (e.pointerId === ped.id) { ped.id = -1; ped.dy = 0; ped.zone = ''; }
   }
   const wrap = $('wrap');
   wrap.addEventListener('pointerdown', onDown);
@@ -74,27 +74,8 @@ export function createUI(hooks) {
   window.addEventListener('pointercancel', onUp);
   window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  // pedal amount from the vertical position on the pedal
-  const pedalAmt = (q, y) => Math.min(1, Math.max(0.4, 0.4 + (q.b - y) / q.h * 1.6));
-  const touch = { gas: 0, brake: 0, drift: false, jump: false };
-  function readTouch() {
-    touch.gas = 0; touch.brake = 0; touch.drift = false; touch.jump = false;
-    if (!ptr.size) return;
-    if (!rectsOk) cacheRects();
-    for (const p of ptr.values()) {
-      const { x, y } = p;
-      const onGas = inRect(rects.gas, x, y, 10), onDrift = inCircle(rects.drift, x, y, 12);
-      if (onGas) touch.gas = Math.max(touch.gas, pedalAmt(rects.gas, y));
-      if (onDrift) touch.drift = true;
-      // the seam between DRIFT and GAS presses both (rocking thumb)
-      if (!onGas && !onDrift && y > rects.gas.t && x > rects.drift.cx && x < rects.gas.l + 4) { touch.drift = true; touch.gas = Math.max(touch.gas, 0.85); }
-      if (inRect(rects.brake, x, y, 10)) touch.brake = Math.max(touch.brake, pedalAmt(rects.brake, y));
-      else if (inCircle(rects.jump, x, y, 12)) touch.jump = true;
-    }
-  }
-
   // ---- keyboard
-  const map = { ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r', KeyW: 'gas', ArrowUp: 'gas', KeyS: 'brake', ArrowDown: 'brake', Space: 'drift', ShiftLeft: 'jump', ShiftRight: 'jump', KeyJ: 'jump' };
+  const map = { ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r', KeyW: 'gas', ArrowUp: 'gas', KeyS: 'brake', ArrowDown: 'brake', Space: 'drift' };
   window.addEventListener('keydown', (e) => {
     hooks.unlock();
     const k = map[e.code];
@@ -108,29 +89,45 @@ export function createUI(hooks) {
     }
   });
   window.addEventListener('keyup', (e) => { const k = map[e.code]; if (k) keys[k] = false; });
-  window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; ptr.clear(); steerId = -1; touchSteer = 0; });
+  window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; ped.id = -1; ped.zone = ''; steerId = -1; touchSteer = 0; });
 
   const U = { el, input };
-  const held = { gas: -1, brake: -1, drift: -1, jump: -1 };
-  function setHeld(k, on) { if (held[k] !== +on) { held[k] = +on; el[k].classList.toggle('held', on); } }
-  const amt = { gas: -1, brake: -1 };
-  function setAmt(k, v) { const r = Math.round(v * 20); if (amt[k] !== r) { amt[k] = r; el[k].style.setProperty('--amt', (r / 20).toFixed(2)); } }
+  // pedal visuals: zone highlight, fills, knob (only touch the DOM on change)
+  const pv = { zone: '?', on: -1, kn: 1e9, thr: -1, brk: -1 };
+  function paint(zone, on, thr, brk, dy) {
+    if (zone !== pv.zone) { el.pedal.classList.remove('zg', 'zd', 'zb'); if (zone) el.pedal.classList.add('z' + zone); pv.zone = zone; }
+    if (+on !== pv.on) { pv.on = +on; el.pedal.classList.toggle('on', on); }
+    const h = el.ptrack.clientHeight || 300, lim = h / 2 - 32;
+    const kn = Math.round(Math.max(-lim, Math.min(lim, -dy * 1.5)));
+    if (kn !== pv.kn) { pv.kn = kn; el.pknob.style.transform = `translateY(${kn}px)`; }
+    const t = zone === 'g' ? Math.round(thr * 20) : 0, b = Math.round(brk * 20);
+    if (t !== pv.thr) { pv.thr = t; el.pAmt.style.transform = `scaleY(${(t / 20).toFixed(2)})`; }
+    if (b !== pv.brk) { pv.brk = b; el.pBrk.style.transform = `scaleY(${(b / 20).toFixed(2)})`; }
+  }
   U.readInput = () => {
-    readTouch();
     const ks = (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
     input.steer = ks !== 0 ? ks : touchSteer;
-    input.throttle = keys.gas ? 1 : touch.gas;
-    input.brake = keys.brake ? 1 : touch.brake;
-    input.drift = keys.drift || touch.drift;
-    input.jump = keys.jump || touch.jump;
-    setHeld('gas', input.throttle > 0); setHeld('brake', input.brake > 0); setHeld('drift', input.drift); setHeld('jump', input.jump);
-    setAmt('gas', input.throttle); setAmt('brake', input.brake);
+    let thr = 0, brk = 0, dr = false;
+    const z = ped.zone, dy = ped.dy;
+    // analogue: how far into the gas / brake zone the thumb sits scales the pedal
+    if (z === 'g') thr = 0.7 + 0.3 * Math.max(0, Math.min(1, (dy + LEAVE) / (2 * LEAVE)));
+    else if (z === 'd') { thr = 1; dr = true; }
+    else if (z === 'b') brk = Math.max(0.45, Math.min(1, 0.45 + (-dy - ENTER) / 70));
+    input.throttle = keys.gas ? 1 : thr;
+    input.brake = keys.brake ? 1 : brk;
+    input.drift = keys.drift || dr;
+    if (ped.id >= 0) paint(z, true, thr, brk, dy);
+    else U.reflect(input);
     return input;
   };
-  // show scripted / bot input on the pads (test hooks, demo)
-  U.reflect = (inp) => { setHeld('gas', inp.throttle > 0); setHeld('brake', inp.brake > 0); setHeld('drift', !!inp.drift); setHeld('jump', !!inp.jump); setAmt('gas', inp.throttle || 0); setAmt('brake', inp.brake || 0); input.steer = inp.steer; };
-  U.resetInput = () => { ptr.clear(); rectsOk = false; for (const k in held) setHeld(k, false); setAmt('gas', 0); setAmt('brake', 0); };
-  U.relayout = () => { rectsOk = false; };
+  // show keyboard / scripted / bot input on the pedal
+  U.reflect = (inp) => {
+    const zone = inp.drift ? 'd' : inp.brake > 0 ? 'b' : inp.throttle > 0 ? 'g' : '';
+    paint(zone, !!zone, inp.throttle || 0, inp.brake || 0, zone === 'd' ? 60 : zone === 'b' ? -60 : 0);
+    if (inp !== input) input.steer = inp.steer;
+  };
+  U.resetInput = () => { ped.id = -1; ped.zone = ''; ped.dy = 0; paint('', false, 0, 0, 0); };
+  U.relayout = () => { pv.kn = 1e9; };
 
   // ---- HUD values (only touch the DOM on change)
   const last = { knob: 99, spd: -1, t: -1, lv: -1, ring: -1, boost: -1, low: -1, rpm: -1, rev: -1, lines: -1 };
@@ -155,19 +152,20 @@ export function createUI(hooks) {
       el.tNum.textContent = Math.ceil(t);
       const low = t < 3 ? 1 : 0; if (low !== last.low) { last.low = low; el.timer.classList.toggle('low', !!low); }
     }
-    // drift ring: progress towards the next level
+    // drift charge: fills the DRIFT zone, colour = level
     let p = 0;
-    if (level >= 3) p = 1; else p = Math.min(1, (charge - LEVEL_T[level]) / (LEVEL_T[level + 1] - LEVEL_T[level])) * 0.33 + level * 0.333;
-    const pr = Math.round(p * 100);
-    if (pr !== last.ring) { last.ring = pr; el.cRing.style.strokeDashoffset = (339.3 * (1 - p)).toFixed(1); }
+    if (level >= 3) p = 1; else p = Math.min(1, Math.max(0, (charge - LEVEL_T[level]) / (LEVEL_T[level + 1] - LEVEL_T[level]))) * 0.33 + level * 0.333;
+    const pr = Math.round(p * 50);
+    if (pr !== last.ring) { last.ring = pr; el.pChg.style.transform = `scaleY(${(pr / 50).toFixed(2)})`; }
     if (level !== last.lv) {
-      el.drift.classList.remove('l1', 'l2', 'l3');
-      if (level > 0) { el.drift.classList.add('l' + level); el.drift.classList.remove('pop'); void el.drift.offsetWidth; el.drift.classList.add('pop'); }
-      el.dSub.textContent = level > 0 ? 'RELEASE!' : 'HOLD';
+      el.pedal.classList.remove('l1', 'l2', 'l3');
+      if (level > 0) { el.pedal.classList.add('l' + level); el.pedal.classList.remove('pop'); void el.pedal.offsetWidth; el.pedal.classList.add('pop'); }
+      el.dSub.textContent = level > 0 ? 'BACK DOWN = BOOST' : 'SLIDE UP';
       last.lv = level;
     }
+    if (rv !== last.rv2) { last.rv2 = rv; el.bSub.textContent = rv ? 'REVERSING' : 'REVERSE'; }
   };
-  U.showHud = (on, streak) => { el.hud.classList.toggle('on', on); el.hud.classList.toggle('streak', !!streak); rectsOk = false; };
+  U.showHud = (on, streak) => { el.hud.classList.toggle('on', on); el.hud.classList.toggle('streak', !!streak); pv.kn = 1e9; };
   U.dots = (you, ai, sudden) => {
     const fill = (node, arr, isNow) => {
       const n = Math.max(5, arr.length + (isNow ? 1 : 0));
@@ -209,7 +207,7 @@ export function createUI(hooks) {
     const c = CARS[i];
     el.cName.textContent = c.name;
     const bar = (lbl, v) => `<span>${lbl}</span><u>${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= v ? 'on' : ''}"></i>`).join('')}</u>`;
-    el.cStats.innerHTML = bar('SPEED', c.bars.speed) + bar('POWER', c.bars.power) + bar('DRIFT', c.bars.drift) + bar('JUMP', c.bars.jump);
+    el.cStats.innerHTML = bar('SPEED', c.bars.speed) + bar('POWER', c.bars.power) + bar('DRIFT', c.bars.drift);
     const locked = goals < c.unlock;
     el.cInfo.classList.toggle('locked', locked);
     el.cLock.textContent = locked ? `🔒 SCORE ${c.unlock} GOALS (${goals}/${c.unlock})` : `${i + 1} / ${CARS.length}`;
