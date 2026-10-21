@@ -255,3 +255,11 @@ button { font-family: inherit; color: inherit; border: 0; padding: 0; cursor: po
 @keyframes tgD { 40%, 58% { background: rgba(255,154,31,.45); } 0%, 32%, 64%, 100% { background: transparent; } }
 @keyframes tgB { 82%, 94% { background: rgba(255,77,77,.45); } 0%, 76%, 100% { background: transparent; } }
 .tg-cap { display: grid; align-content: center; gap: 3px; text-align: left; } .tg-cap small { font-size: 10px; line-height: 1.35; opacity: .8; }
+
+/* v2.2: slim, translucent pedal so it doesn't hide the view (the whole right side still reads the gesture) */
+#pedal { width: 62px; height: min(30vh, 210px); right: calc(var(--sar) + 10px); bottom: calc(var(--sab) + 18px); opacity: .55; transition: opacity .2s; }
+#pedal.on { opacity: .9; }
+#ptrack { border-radius: 31px; backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(15,25,45,.28); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.22); }
+.pz span { font-size: 9.5px; letter-spacing: .5px; } .pz small { display: none; }
+#pknob { width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+@media (orientation: landscape) and (max-height: 520px) { #pedal { width: 58px; height: min(52vh, 190px); } }
