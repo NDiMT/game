@@ -64,12 +64,18 @@ button { font-family: inherit; color: inherit; border: 0; padding: 0; cursor: po
 #timer.low .fg { stroke: #ff4d4d; }
 #timer b { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 900; font-size: 17px; }
 #round { padding: 6px 12px; border-radius: 12px; font-size: 11px; font-weight: 900; letter-spacing: 2px; }
-#speed { position: absolute; left: 50%; bottom: calc(var(--sab) + 18px); transform: translateX(-50%); text-align: center; text-shadow: 0 2px 10px rgba(0,0,0,.5); }
-#speed b { display: block; font-size: 30px; font-weight: 900; font-style: italic; line-height: 1; font-variant-numeric: tabular-nums; }
-#speed span { font-size: 10px; font-weight: 800; letter-spacing: 2px; opacity: .8; }
+/* speed + rev meter: above the steering slider (bottom right belongs to the pedals) */
+#speed { position: absolute; left: calc(var(--sal) + 20px); bottom: calc(var(--sab) + 112px); display: grid; grid-template-columns: auto auto; align-items: end; column-gap: 6px; text-shadow: 0 2px 10px rgba(0,0,0,.5); }
+#speed b { font-size: 34px; font-weight: 900; font-style: italic; line-height: .9; font-variant-numeric: tabular-nums; grid-row: 1; grid-column: 2; }
+#speed span { grid-row: 2; grid-column: 2; font-size: 10px; font-weight: 800; letter-spacing: 2px; opacity: .8; }
+#gear { grid-row: 1 / 3; grid-column: 1; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-weight: 900; font-size: 15px; background: var(--glass); box-shadow: inset 0 1px 0 var(--glass-hi); }
+#gear.r { background: rgba(255,77,77,.75); }
+#rpm { grid-row: 3; grid-column: 1 / 3; display: block; margin-top: 5px; width: 118px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.16); overflow: hidden; }
+#rpm u { display: block; height: 100%; width: 100%; transform-origin: 0 50%; transform: scaleX(0); background: linear-gradient(90deg, #3ddc97, #ffd23f 70%, #ff4d4d); will-change: transform; }
 #speed.boost b { color: var(--gold); text-shadow: 0 0 16px rgba(255,180,40,.9); }
+#speed.boost #rpm u { background: linear-gradient(90deg, #ffd23f, #ff7a1f); }
 
-#steer { position: absolute; left: calc(var(--sal) + 18px); bottom: calc(var(--sab) + 26px); width: 168px; text-align: center; }
+#steer { position: absolute; left: calc(var(--sal) + 14px); bottom: calc(var(--sab) + 24px); width: 150px; text-align: center; }
 #track { position: relative; height: 56px; border-radius: 28px; background: var(--glass); box-shadow: inset 0 1px 0 var(--glass-hi), 0 8px 24px rgba(5,10,25,.25); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 #track i { position: absolute; top: 50%; width: 0; height: 0; border: 7px solid transparent; transform: translateY(-50%); opacity: .5; }
 #track i:first-child { left: 10px; border-right-color: #fff; } #track i:nth-child(2) { right: 10px; border-left-color: #fff; }
@@ -77,29 +83,51 @@ button { font-family: inherit; color: inherit; border: 0; padding: 0; cursor: po
 #steer.on #knob { background: radial-gradient(circle at 35% 30%, #fff, var(--gold)); }
 #steer span { display: block; margin-top: 6px; font-size: 10px; font-weight: 900; letter-spacing: 2px; opacity: .65; }
 
-#bDrift { position: absolute; right: calc(var(--sar) + 16px); bottom: calc(var(--sab) + 18px); width: 118px; height: 118px; border-radius: 50%; pointer-events: auto;
-  background: radial-gradient(circle at 40% 32%, rgba(255,255,255,.28), rgba(12,18,38,.55) 70%); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  box-shadow: inset 0 1px 0 var(--glass-hi), 0 10px 26px rgba(5,10,25,.35); display: grid; place-items: center; }
+/* right-thumb cluster: GAS biggest + lowest-right, DRIFT beside it (slide between), BRAKE above GAS, JUMP above DRIFT.
+   The pads are visual only; ui.js hit-tests every right-side touch against their rects (multi-touch, analogue). */
+#pads { position: absolute; right: 0; bottom: 0; width: 0; height: 0; }
+.pad { position: absolute; pointer-events: none; display: grid; place-items: center; color: #fff; font-weight: 900; letter-spacing: 1px;
+  background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 var(--glass-hi), 0 8px 22px rgba(5,10,25,.3);
+  transition: transform .08s, background .12s; }
+.pad.round { border-radius: 50%; }
+.pad.pedal { border-radius: 22px; overflow: hidden; align-content: end; padding-bottom: 14px; gap: 2px; }
+.pad.pedal em { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transform-origin: 50% 100%; transform: scaleY(var(--amt, 0)); will-change: transform; }
+.pad.pedal::before { content: ''; position: absolute; inset: 8px; border-radius: 15px; background: repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 6px, transparent 6px 14px); }
+.pad span, .pad svg, .pad small { position: relative; }
+#bGas { right: calc(var(--sar) + 14px); bottom: calc(var(--sab) + 18px); width: 96px; height: 160px; }
+#bGas em { background: linear-gradient(180deg, rgba(61,220,151,.95), rgba(25,160,100,.75)); }
+#bGas svg { width: 34px; height: 34px; fill: none; stroke: #fff; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; opacity: .9; margin-bottom: 18px; }
+#bGas span { font-size: 18px; font-style: italic; }
+#bGas.held { transform: scale(.96); }
+#bBrake { right: calc(var(--sar) + 24px); bottom: calc(var(--sab) + 192px); width: 76px; height: 86px; padding-bottom: 10px; }
+#bBrake em { background: linear-gradient(180deg, rgba(255,90,90,.95), rgba(190,30,40,.75)); }
+#bBrake span { font-size: 12px; } #bBrake small { font-size: 8px; letter-spacing: 2px; opacity: .7; }
+#bBrake.held { transform: scale(.95); }
+#bDrift { right: calc(var(--sar) + 122px); bottom: calc(var(--sab) + 22px); width: 108px; height: 108px;
+  background: radial-gradient(circle at 40% 32%, rgba(255,255,255,.28), rgba(12,18,38,.55) 70%); box-shadow: inset 0 1px 0 var(--glass-hi), 0 10px 26px rgba(5,10,25,.35); }
 #bDrift svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 #bDrift circle { fill: none; stroke-width: 8; }
 #bDrift .bg { stroke: rgba(255,255,255,.14); }
 #bDrift .fg { stroke: #fff; stroke-linecap: round; stroke-dasharray: 339.3; stroke-dashoffset: 339.3; filter: drop-shadow(0 0 6px currentColor); }
-#bDrift span { font-weight: 900; font-size: 19px; font-style: italic; letter-spacing: 1px; margin-top: -8px; }
-#bDrift small { position: absolute; bottom: 30px; font-size: 9px; font-weight: 900; letter-spacing: 2px; opacity: .7; }
+#bDrift span { font-size: 18px; font-style: italic; margin-top: -8px; }
+#bDrift small { position: absolute; bottom: 27px; font-size: 9px; letter-spacing: 2px; opacity: .7; }
 #bDrift.held { transform: scale(.94); background: radial-gradient(circle at 40% 32%, rgba(255,255,255,.4), rgba(40,50,90,.7) 70%); }
 #bDrift.l1 .fg { stroke: var(--c1); color: var(--c1); } #bDrift.l2 .fg { stroke: var(--c2); color: var(--c2); } #bDrift.l3 .fg { stroke: var(--c3); color: var(--c3); }
 #bDrift.l1 { box-shadow: 0 0 22px var(--c1), inset 0 1px 0 var(--glass-hi); } #bDrift.l2 { box-shadow: 0 0 26px var(--c2), inset 0 1px 0 var(--glass-hi); } #bDrift.l3 { box-shadow: 0 0 32px var(--c3), inset 0 1px 0 var(--glass-hi); }
 #bDrift.pop { animation: pop .25s cubic-bezier(.2,1.8,.4,1); }
 @keyframes pop { 0% { transform: scale(1.15); } }
-#bJump { position: absolute; right: calc(var(--sar) + 30px); bottom: calc(var(--sab) + 150px); width: 64px; height: 64px; border-radius: 50%; pointer-events: auto;
-  background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 var(--glass-hi), 0 8px 22px rgba(5,10,25,.3);
-  font-weight: 900; font-size: 12px; letter-spacing: 1px; }
+#bJump { right: calc(var(--sar) + 144px); bottom: calc(var(--sab) + 146px); width: 62px; height: 62px; font-size: 11px; }
 #bJump.held { transform: scale(.92); background: rgba(255,210,63,.45); }
-#keys { position: absolute; left: 50%; bottom: calc(var(--sab) + 70px); transform: translateX(-50%); font-size: 11px; font-weight: 700; opacity: .6; white-space: nowrap; display: none; }
+#keys { position: absolute; left: 50%; bottom: calc(var(--sab) + 8px); transform: translateX(-50%); font-size: 11px; font-weight: 700; opacity: .6; white-space: nowrap; display: none; }
 .kb #keys { display: block; }
+.kb #pads, .kb #steer { opacity: .35; }
 
-#hud.watch #steer, #hud.watch #bDrift, #hud.watch #bJump, #hud.watch #keys, #hud.watch #speed, #hud.watch #timer { opacity: 0; pointer-events: none; }
-#steer, #bDrift, #bJump, #speed, #timer { transition: opacity .25s; }
+#hud.watch #steer, #hud.watch #pads, #hud.watch #keys, #hud.watch #speed, #hud.watch #timer { opacity: 0; pointer-events: none; }
+#steer, #pads, #speed, #timer { transition: opacity .25s; }
+
+/* speed lines live in the post shader; this is a cheap DOM fallback for the low tier */
+#lines { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: repeating-conic-gradient(from 0deg at 50% 46%, rgba(255,255,255,.0) 0deg 5deg, rgba(255,255,255,.22) 5.4deg, rgba(255,255,255,0) 6deg 11deg);
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 46%, transparent 55%, #000 100%); mask-image: radial-gradient(ellipse 60% 55% at 50% 46%, transparent 55%, #000 100%); }
 
 /* ---------------- banners / toast */
 #banner { position: absolute; left: 0; right: 0; top: 34%; text-align: center; pointer-events: none; opacity: 0; }
@@ -153,7 +181,16 @@ button { font-family: inherit; color: inherit; border: 0; padding: 0; cursor: po
 .cta.alt { background: linear-gradient(180deg, #5aa8ff, #2f6fe0); box-shadow: 0 5px 0 #173c8a, 0 12px 28px rgba(50,110,255,.3); }
 .cta:disabled { filter: grayscale(.8); opacity: .6; }
 .row { display: flex; gap: 10px; }
-.pill { flex: 1; height: 40px; border-radius: 14px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; }
+.pill { flex: 1; height: 40px; border-radius: 14px; font-size: 10.5px; font-weight: 900; letter-spacing: 1.2px; transition: transform .1s; }
+.pill:active { transform: scale(.96); }
+.logo .v2 { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: 6px; border-radius: 6px; font-style: normal; letter-spacing: 0; font-size: 12px; color: #2a1600;
+  background: linear-gradient(180deg, #ffe27a, #ff9a1f); box-shadow: 0 2px 0 #a8380a; vertical-align: 1px; }
+.logo h1 { animation: logoIn .8s cubic-bezier(.2,1.5,.35,1) both; }
+@keyframes logoIn { 0% { opacity: 0; transform: rotate(-4deg) scale(1.6); } 100% { opacity: 1; transform: rotate(-4deg) scale(1); } }
+.mbtns .cta { position: relative; overflow: hidden; }
+.mbtns .cta::after { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent); animation: shine 3.2s ease-in-out infinite; }
+.mbtns .cta.alt::after { animation-delay: 1.6s; }
+@keyframes shine { 0%, 60% { left: -60%; } 100% { left: 130%; } }
 #mStats { text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; opacity: .8; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
 
 /* ---------------- overlays */
@@ -165,7 +202,8 @@ button { font-family: inherit; color: inherit; border: 0; padding: 0; cursor: po
 .card p { margin: 0 0 6px; font-size: 13px; font-weight: 700; opacity: .85; }
 #rScore { font-size: 44px; font-weight: 900; font-variant-numeric: tabular-nums; }
 #rScore small { display: block; font-size: 11px; letter-spacing: 2px; opacity: .7; }
-#tut ol { margin: 0 0 8px; padding: 0 0 0 20px; text-align: left; font-size: 14px; line-height: 1.45; font-weight: 600; }
+#tut ol { margin: 0 0 6px; padding: 0 0 0 20px; text-align: left; font-size: 13.5px; line-height: 1.4; font-weight: 600; }
+#tut .card { max-height: calc(100% - 20px); overflow: auto; }
 #tut li { margin-bottom: 6px; }
 #tut .kbd { display: none; font-size: 12px; opacity: .75; }
 @media (hover: hover) and (pointer: fine) { #tut .kbd { display: block; } }
@@ -199,7 +237,25 @@ button { font-family: inherit; color: inherit; border: 0; padding: 0; cursor: po
   #toast { top: calc(var(--sat) + 70px); }
 }
 @media (max-width: 360px) {
-  #bDrift { width: 104px; height: 104px; } #bJump { bottom: calc(var(--sab) + 134px); width: 58px; height: 58px; }
-  #steer { width: 150px; }
+  #bGas { width: 86px; height: 148px; } #bDrift { right: calc(var(--sar) + 108px); width: 96px; height: 96px; }
+  #bJump { right: calc(var(--sar) + 124px); bottom: calc(var(--sab) + 130px); width: 56px; height: 56px; }
+  #bBrake { bottom: calc(var(--sab) + 176px); width: 70px; height: 78px; }
+  #steer { width: 132px; }
   #board { gap: 6px; padding: 6px 8px; } .dots i { width: 8px; height: 8px; }
 }
+@media (orientation: landscape) and (max-height: 520px) {
+  #bGas { right: calc(var(--sar) + 22px); width: 90px; height: 138px; }
+  #bBrake { right: calc(var(--sar) + 30px); bottom: calc(var(--sab) + 168px); width: 74px; height: 76px; }
+  #bDrift { right: calc(var(--sar) + 126px); bottom: calc(var(--sab) + 18px); width: 102px; height: 102px; }
+  #bJump { right: calc(var(--sar) + 146px); bottom: calc(var(--sab) + 134px); width: 58px; height: 58px; }
+  #speed { left: calc(var(--sal) + 186px); bottom: calc(var(--sab) + 26px); }
+  #steer { left: calc(var(--sal) + 20px); }
+}
+
+/* tutorial pad diagram */
+.tutpad { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 4px; }
+.tp { flex: 1; border-radius: 14px; padding: 8px 6px; background: rgba(255,255,255,.07); display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; text-align: left; }
+.tp i { grid-row: span 2; width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #cfd8e6); }
+.tp i.g { border-radius: 8px; height: 34px; width: 22px; background: linear-gradient(180deg, #3ddc97, #19a064); }
+.tp i.d { background: radial-gradient(circle at 40% 32%, #9fd8ff, #3d6bff); }
+.tp b { font-size: 12px; letter-spacing: 1px; } .tp small { font-size: 10px; opacity: .7; line-height: 1.2; }
