@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".3" r=".9"><stop offset="0" stop-color="#2d5bb8"/><stop offset="1" stop-color="#0d1631"/></radialGradient>
+    <linearGradient id="car" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a5c"/><stop offset="1" stop-color="#d9261a"/></linearGradient>
+    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c35bff" stop-opacity="0"/><stop offset=".5" stop-color="#ff9a1f"/><stop offset="1" stop-color="#46b4ff"/></linearGradient>
+    <radialGradient id="ball" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c9d3e0"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="40" y="356" width="432" height="18" rx="9" fill="#3fa54a" opacity=".55"/>
+  <path d="M70 330 Q170 300 230 330" stroke="url(#spark)" stroke-width="16" stroke-linecap="round" fill="none"/>
+  <circle cx="92" cy="300" r="7" fill="#c35bff"/><circle cx="128" cy="286" r="6" fill="#ff9a1f"/><circle cx="66" cy="318" r="5" fill="#46b4ff"/>
+  <g transform="translate(118 196) rotate(-8)">
+    <path d="M10 112 L218 112 Q232 112 232 98 L226 70 Q222 60 210 58 L162 52 L132 20 Q124 12 112 12 L70 12 Q58 12 52 22 L34 54 L16 60 Q6 64 6 76 L4 100 Q4 112 10 112Z" fill="url(#car)"/>
+    <path d="M62 54 L76 24 L108 24 L134 54Z" fill="#132033"/>
+    <rect x="40" y="10" width="78" height="10" rx="5" fill="#fff1e0"/>
+    <circle cx="56" cy="116" r="30" fill="#1a1b1f"/><circle cx="56" cy="116" r="14" fill="#d8dde6"/>
+    <circle cx="186" cy="116" r="30" fill="#1a1b1f"/><circle cx="186" cy="116" r="14" fill="#d8dde6"/>
+  </g>
+  <circle cx="384" cy="250" r="78" fill="url(#ball)"/>
+  <path d="M384 214 l26 19 -10 31 -32 0 -10 -31z" fill="#1b1f2e"/>
+  <path d="M330 222 l18 -8 M438 222 l-18 -8 M352 304 l10 -14 M416 304 l-10 -14" stroke="#1b1f2e" stroke-width="8" stroke-linecap="round"/>
+  <path d="M300 160 l-26 -22 M330 140 l-10 -30 M270 196 l-34 -6" stroke="#ffd23f" stroke-width="10" stroke-linecap="round"/>
+</svg>

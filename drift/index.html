@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0d1631">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Drift Kick">
+<meta name="description" content="Toy-car penalty shootout. Drift, charge a mini-turbo, and blast the ball past the keeper.">
+<title>DRIFT KICK! - toy car penalties</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="vig"></div>
+  <div id="flash"></div>
+
+  <!-- in-game HUD -->
+  <div id="hud">
+    <div id="top">
+      <button id="bPause" class="glass ib" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button>
+      <div id="board" class="glass">
+        <div class="team you"><span class="tn">YOU</span><span class="dots" id="dYou"></span></div>
+        <div id="score"><b id="sYou">0</b><i>:</i><b id="sAi">0</b></div>
+        <div class="team ai"><span class="dots" id="dAi"></span><span class="tn">RIVAL</span></div>
+      </div>
+      <div id="streak" class="glass"><span>STREAK</span><b id="stN">0</b><small>BEST <i id="stB">0</i></small></div>
+      <button id="bMute" class="glass ib" aria-label="Sound on or off"><svg viewBox="0 0 24 24"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg></button>
+    </div>
+    <div id="sub">
+      <div id="timer"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="bg"/><circle cx="22" cy="22" r="19" class="fg" id="tRing"/></svg><b id="tNum">6</b></div>
+      <div id="round" class="glass">ROUND 1</div>
+    </div>
+    <div id="speed"><b id="spd">0</b><span>km/h</span></div>
+    <div id="steer" aria-hidden="true"><div id="track"><i></i><i></i><div id="knob"></div></div><span>STEER</span></div>
+    <button id="bJump" aria-label="Jump"><span>JUMP</span></button>
+    <button id="bDrift" aria-label="Drift (hold) - release to boost">
+      <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" class="bg"/><circle cx="60" cy="60" r="54" class="fg" id="cRing"/></svg>
+      <span id="dLbl">DRIFT</span><small id="dSub">HOLD</small>
+    </button>
+    <div id="keys">← → steer · SPACE drift · SHIFT jump · ↓ brake</div>
+  </div>
+
+  <div id="banner"><span id="bT">GOAL!</span><small id="bS"></small></div>
+  <div id="toast"></div>
+  <div id="tag"><i></i>REPLAY</div>
+  <div id="skip">tap to skip</div>
+
+  <!-- title -->
+  <div id="menu">
+    <div class="logo"><h1><span class="l1">DRIFT</span><span class="l2">KICK!</span></h1><p>toy-car penalty shootout</p></div>
+    <div class="spacer"></div>
+    <div id="carsel">
+      <button id="cPrev" class="glass ib" aria-label="Previous car"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div id="cInfo" class="glass">
+        <b id="cName">Pebble</b>
+        <div id="cStats"></div>
+        <small id="cLock"></small>
+      </div>
+      <button id="cNext" class="glass ib" aria-label="Next car"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="mbtns">
+      <button id="bPlay" class="cta">PENALTY SHOOTOUT</button>
+      <button id="bStreak" class="cta alt">STREAK MODE</button>
+      <div class="row">
+        <button id="bTheme" class="glass pill">STADIUM: DAY</button>
+        <button id="bSnd" class="glass pill">SOUND: ON</button>
+      </div>
+      <div id="mStats"></div>
+    </div>
+  </div>
+
+  <!-- pause -->
+  <div id="pause" class="overlay">
+    <div class="card glass">
+      <h2>PAUSED</h2>
+      <button id="bResume" class="cta">RESUME</button>
+      <button id="bQuit" class="cta alt">QUIT TO MENU</button>
+    </div>
+  </div>
+
+  <!-- results -->
+  <div id="result" class="overlay">
+    <div class="card glass">
+      <h2 id="rT">YOU WIN!</h2>
+      <div id="rScore"></div>
+      <p id="rS"></p>
+      <button id="bAgain" class="cta">PLAY AGAIN</button>
+      <button id="bMenu" class="cta alt">MENU</button>
+    </div>
+  </div>
+
+  <!-- first-play tutorial -->
+  <div id="tut" class="overlay">
+    <div class="card glass">
+      <h2>HOW TO SCORE</h2>
+      <ol>
+        <li><b>Steer</b> with your left thumb. The car drives itself.</li>
+        <li><b>Hold DRIFT</b> while turning. Sparks go <em class="c1">blue</em> → <em class="c2">orange</em> → <em class="c3">purple</em>.</li>
+        <li><b>Let go</b> for a turbo BOOST. Faster hit = harder shot.</li>
+        <li>Curl in and hit the ball <b>off-centre</b> to aim for a corner. You have 6 seconds.</li>
+      </ol>
+      <button id="bTut" class="cta">GOT IT!</button>
+    </div>
+  </div>
+
+  <div id="splash"><div class="logo"><h1><span class="l1">DRIFT</span><span class="l2">KICK!</span></h1><p>warming up the tyres…</p></div><i class="load"></i></div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

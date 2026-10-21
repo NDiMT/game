@@ -198,20 +198,20 @@ export class Keeper {
     this.update();
   }
   savePrev() { this.px = this.x; this.py = this.y; this.proll = this.roll; this.ppose = this.pose; }
-  // compute collider endpoints from x, y, roll, pose
-  update() {
-    const piv = 1.1 - 0.45 * Math.abs(Math.sin(this.roll));
-    const c = Math.cos(-this.roll), s = Math.sin(-this.roll);
-    const ox = this.x, oy = this.y + piv;
-    const P = this.pose;
-    // body
-    let lx = 0, ly = 0.6 - 1.1; this.b0x = ox + lx * c - ly * s; this.b0y = oy + lx * s + ly * c;
-    ly = 1.95 - 1.1; this.b1x = ox + lx * c - ly * s; this.b1y = oy + lx * s + ly * c;
-    // gloves: spread at the shoulders when standing, overhead when diving
-    const ax = 1.0 * (1 - P) + 0.25 * P, ay0 = 1.85 * (1 - P) + 2.15 * P, ay1 = 1.85 * (1 - P) + 2.8 * P;
-    lx = -ax * (1 - P); ly = ay0 - 1.1; this.a0x = ox + lx * c - ly * s; this.a0y = oy + lx * s + ly * c;
-    lx = ax * (1 - P); ly = ay1 - 1.1; this.a1x = ox + lx * c - ly * s; this.a1y = oy + lx * s + ly * c;
-  }
+  update() { keeperPose(this.x, this.y, this.roll, this.pose, this); }
+}
+
+// collider endpoints of the keeper (body capsule b0-b1, glove bar a0-a1) for a given pose, written into out
+export function keeperPose(x, y, roll, P, out) {
+  const piv = 1.1 - 0.45 * Math.abs(Math.sin(roll));
+  const c = Math.cos(-roll), s = Math.sin(-roll);
+  const ox = x, oy = y + piv;
+  let lx = 0, ly = 0.6 - 1.1; out.b0x = ox + lx * c - ly * s; out.b0y = oy + lx * s + ly * c;
+  ly = 1.95 - 1.1; out.b1x = ox + lx * c - ly * s; out.b1y = oy + lx * s + ly * c;
+  // gloves: spread at the shoulders when standing, overhead when diving
+  const ax = 1.0 * (1 - P) + 0.25 * P, ay0 = 1.85 * (1 - P) + 2.15 * P, ay1 = 1.85 * (1 - P) + 2.8 * P;
+  lx = -ax * (1 - P); ly = ay0 - 1.1; out.a0x = ox + lx * c - ly * s; out.a0y = oy + lx * s + ly * c;
+  lx = ax * (1 - P); ly = ay1 - 1.1; out.a1x = ox + lx * c - ly * s; out.a1y = oy + lx * s + ly * c;
 }
 
 // ---------------------------------------------------------------- world

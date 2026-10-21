@@ -50,49 +50,65 @@ export class PlanBot {
     this.drift = opts.drift !== false;
     this.noise = opts.noise || 0;
     this.samples = opts.samples || 140;
+    this.txRange = opts.txRange || 0; // aim anywhere in [-txRange, txRange] instead of a corner
     this.p = new Float32Array(NP); this.best = new Float32Array(NP); this.q = new Float32Array(NP);
     this.inp = { steer: 0, drift: false, jump: false, brake: false };
     this.score = 0;
   }
   setCar(def) { this.sim.car.def = def; }
-  // plan from the freshly set-up world w
-  reset(w, opts = {}) {
+  // plan from the freshly set-up world w (all at once)
+  reset(w, opts = {}) { this.begin(w, opts); while (!this.work(1000)) { /* plan */ } }
+  // incremental planning: begin(), then work(n) each frame until it returns true
+  begin(w, opts = {}) {
     const r = this.rand;
+    this.w = w;
     this.side = opts.side || (w.car.x > 1 ? -1 : w.car.x < -1 ? 1 : (r() < 0.5 ? -1 : 1));
     if (opts.anySide && r() < 0.35) this.side = -this.side;
     this.tx = this.side * (GX - 1.35 - r() * 0.7);
+    if (this.txRange) this.tx = (r() * 2 - 1) * this.txRange;
     this.sim.car.def = w.car.def;
-    let bestS = -1e9;
-    const p = this.p, q = this.q, best = this.best;
-    for (let i = 0; i < this.samples; i++) {
-      this.sample(p);
-      const sc = this.evaluate(w, p);
-      if (sc > bestS) { bestS = sc; best.set(p); }
+    this.bestS = -1e9; this.it = 0; this.done = false;
+    this.refine = opts.refine != null ? opts.refine : 70;
+  }
+  work(n) {
+    if (this.done) return true;
+    const r = this.rand, p = this.p, q = this.q, best = this.best, w = this.w;
+    const total = this.samples + this.refine;
+    for (let k = 0; k < n && this.it < total; k++, this.it++) {
+      if (this.it < this.samples) {
+        this.sample(p);
+        const sc = this.evaluate(w, p);
+        if (sc > this.bestS) { this.bestS = sc; best.set(p); }
+      } else {
+        const i = this.it - this.samples;
+        const kk = 0.25 * (1 - i / (this.refine + 10));
+        for (let j = 0; j < NP; j++) q[j] = best[j] + (r() - 0.5) * kk * (j === 2 ? 1.5 : 1);
+        this.fix(q);
+        const sc = this.evaluate(w, q);
+        if (sc > this.bestS) { this.bestS = sc; best.set(q); }
+      }
     }
-    // local refinement
-    for (let i = 0; i < 70; i++) {
-      const k = 0.25 * (1 - i / 80);
-      for (let j = 0; j < NP; j++) q[j] = best[j] + (r() - 0.5) * k * (j === 2 ? 1.5 : 1);
-      this.fix(q);
-      const sc = this.evaluate(w, q);
-      if (sc > bestS) { bestS = sc; best.set(q); }
-    }
-    this.score = bestS;
+    if (this.it < total) return false;
+    this.score = this.bestS;
     if (this.noise > 0) { for (let j = 0; j < NP; j++) best[j] += (r() - 0.5) * this.noise * (j === 5 ? 1.6 : 0.5); this.fix(best); }
+    this.done = true;
+    return true;
   }
   sample(p) {
     const r = this.rand;
-    p[0] = r() * 0.7;                       // swing duration
-    p[1] = (r() * 2 - 1);                   // swing steer
-    p[2] = this.drift ? 0.5 + r() * 1.2 : 0; // drift duration
-    p[3] = r() < 0.5 ? -1 : 1;              // drift direction
-    p[4] = r() * 2 - 1;                     // drift steer (tight/wide)
-    p[5] = (r() * 2 - 1) * 1.1;             // strike aim offset
+    // structured: swing one way, then (usually) drift back the other way
+    const sg = r() < 0.5 ? -1 : 1;
+    p[0] = r() * 0.6;                                   // swing duration
+    p[1] = sg * (0.25 + r() * 0.75);                    // swing steer
+    p[2] = this.drift && r() > 0.12 ? 0.5 + r() * 1.1 : 0; // drift duration (0 = no drift)
+    p[3] = r() < 0.8 ? -sg : sg;                        // drift direction
+    p[4] = r() * 2 - 1;                                 // drift steer (tight / wide)
+    p[5] = (r() * 2 - 1) * 1.1;                         // strike aim offset
     this.fix(p);
   }
   fix(p) {
     p[0] = Math.min(0.9, Math.max(0, p[0])); p[1] = Math.min(1, Math.max(-1, p[1]));
-    p[2] = this.drift ? Math.min(1.9, Math.max(0.35, p[2])) : 0;
+    p[2] = this.drift && p[2] >= 0.3 ? Math.min(1.9, p[2]) : 0;
     p[3] = p[3] < 0 ? -1 : 1; p[4] = Math.min(1, Math.max(-1, p[4])); p[5] = Math.min(1.4, Math.max(-1.4, p[5]));
   }
   control(w, p, inp) {

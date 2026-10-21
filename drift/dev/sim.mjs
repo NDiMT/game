@@ -78,7 +78,9 @@ for (const d of DIFFS) {
   run(new PlanBot(car, rng(11)), d, 'drift-boost corner');
   run(new PlanBot(car, rng(12), { drift: false }), d, 'no-drift corner');
   run(new PlanBot(car, rng(13), { noise: 0.25 }), d, 'drift (sloppy)');
-  run(new RandomBot(r), d, 'random');
+  run(new PlanBot(car, rng(15), { drift: false, txRange: 5, noise: 0.15 }), d, 'random aim, no drift');
+  run(new PlanBot(car, rng(16), { txRange: 5, noise: 0.15 }), d, 'random aim + drift');
+  run(new RandomBot(r), d, 'random wander');
   run(new PlanBot(car, rng(14), { noise: 0.12, samples: 90, anySide: true }), d, 'AI kicker');
   console.log('');
 }

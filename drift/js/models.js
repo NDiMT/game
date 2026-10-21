@@ -60,25 +60,20 @@ export function buildCar(def, M) {
   // roof cap in paint
   const roofY = Math.max(...spec.cab.map((p) => p[1]));
   const cabZ = spec.cab.filter((p) => p[1] > roofY - 0.05).map((p) => p[0] * L);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(W * 0.8, 0.07, Math.abs(cabZ[0] - cabZ[1]) + 0.1), paint);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(W * 0.8, 0.07, Math.abs(cabZ[0] - cabZ[1]) + 0.1), def.shape === 'van' ? paint : accent);
   roof.position.set(0, roofY + 0.01, (cabZ[0] + cabZ[1]) / 2);
   const shell = new THREE.Group(); shell.add(body, cab, roof);
-  // racing stripe
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.02, L * 1.6), accent);
-  const hood = spec.body[3] || spec.body[2];
-  stripe.position.set(0, Math.max(hood[1], spec.body[spec.body.length - 1][1]) + 0.005, 0);
-  stripe.scale.y = 1; stripe.visible = def.shape !== 'van';
-  if (def.shape === 'van') { const band = new THREE.Mesh(new THREE.BoxGeometry(W + 0.02, 0.12, L * 1.7), accent); band.position.y = 0.55; shell.add(band); }
-  shell.add(stripe);
+  if (def.shape === 'van') { const band = new THREE.Mesh(new THREE.BoxGeometry(W + 0.2, 0.12, L * 1.7), accent); band.position.y = 0.55; shell.add(band); }
   // lights
-  const fz = spec.body[1][0] * L + 0.05, fy = (spec.body[1][1] + spec.body[2][1]) / 2 + 0.04;
+  const zMax = Math.max(...spec.body.map((p) => p[0])) * L + 0.07, zMin = Math.min(...spec.body.map((p) => p[0])) * L - 0.07;
+  const fz = zMax, fy = (spec.body[1][1] + spec.body[2][1]) / 2 + 0.04;
   for (const s of [-1, 1]) {
     const h = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.09, 0.06), M.head); h.position.set(s * (W / 2 - 0.2), fy, fz); shell.add(h);
-    const t = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.05), M.tail); t.position.set(s * (W / 2 - 0.2), fy + 0.08, -L - 0.03); shell.add(t);
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.05), M.tail); t.position.set(s * (W / 2 - 0.2), fy + 0.08, zMin); shell.add(t);
   }
   // bumpers
-  const bump = new THREE.Mesh(new THREE.BoxGeometry(W * 0.92, 0.1, 0.12), M.dark); bump.position.set(0, spec.body[0][1] + 0.06, L + 0.02); shell.add(bump);
-  const bump2 = bump.clone(); bump2.position.z = -L - 0.02; shell.add(bump2);
+  const bump = new THREE.Mesh(new THREE.BoxGeometry(W * 0.92, 0.1, 0.12), M.dark); bump.position.set(0, spec.body[0][1] + 0.02, zMax - 0.03); shell.add(bump);
+  const bump2 = bump.clone(); bump2.position.z = zMin + 0.03; shell.add(bump2);
   if (spec.wing) {
     const wing = new THREE.Mesh(new THREE.BoxGeometry(W * 0.95, 0.05, 0.3), accent);
     wing.position.set(0, spec.body[spec.body.length - 1][1] + 0.26, -L * 0.88);
@@ -96,7 +91,7 @@ export function buildCar(def, M) {
   const rg = new THREE.CylinderGeometry(wr * 0.62, wr * 0.62, ww + 0.02, 14); rg.rotateZ(Math.PI / 2);
   const hg = new THREE.CylinderGeometry(wr * 0.2, wr * 0.2, ww + 0.05, 8); hg.rotateZ(Math.PI / 2);
   const wheels = [];
-  const wz = L * 0.66, wx = W / 2 - ww * 0.32 + (def.shape === 'monster' ? 0.12 : 0);
+  const wz = L * 0.64, wx = W / 2 + 0.03 + (def.shape === 'monster' ? 0.1 : 0);
   for (const [x, z] of [[-wx, wz], [wx, wz], [-wx, -wz], [wx, -wz]]) {
     const steer = new THREE.Group(); steer.position.set(x, wr, z);
     const spin = new THREE.Group();
@@ -117,7 +112,7 @@ export function buildCar(def, M) {
 
 // soccer-style ball: per-face colours on a subdivided icosahedron (12 pentagons)
 export function buildBall() {
-  const geo = new THREE.IcosahedronGeometry(R, 7).toNonIndexed();
+  const geo = new THREE.IcosahedronGeometry(R, 7);
   const pos = geo.attributes.position;
   const cols = new Float32Array(pos.count * 3);
   const phi = (1 + Math.sqrt(5)) / 2;
@@ -132,8 +127,8 @@ export function buildBall() {
     for (const c of centers) best = Math.max(best, A.x * c[0] + A.y * c[1] + A.z * c[2]);
     // pentagon patches + a thin seam ring around them
     let r = 0.96, gg = 0.97, bb = 0.95;
-    if (best > 0.93) { r = 0.09; gg = 0.1; bb = 0.14; }
-    else if (best > 0.905) { r = 0.55; gg = 0.6; bb = 0.66; }
+    if (best > 0.958) { r = 0.09; gg = 0.1; bb = 0.14; }
+    else if (best > 0.948) { r = 0.6; gg = 0.64; bb = 0.7; }
     for (let k = 0; k < 3; k++) { cols[(i + k) * 3] = r; cols[(i + k) * 3 + 1] = gg; cols[(i + k) * 3 + 2] = bb; }
   }
   geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));

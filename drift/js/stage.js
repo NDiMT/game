@@ -122,6 +122,23 @@ export function createStage(renderer, quality) {
   sky.frustumCulled = false; sky.renderOrder = -10;
   scene.add(sky);
 
+  // ---- clouds (day only)
+  const cloudTex = canvasTex(256, 128, (g, w, h) => {
+    for (let i = 0; i < 14; i++) {
+      const x = 40 + Math.random() * 176, y = 50 + Math.random() * 40, r = 22 + Math.random() * 30;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    }
+  });
+  const clouds = [];
+  for (let i = 0; i < 9; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, depthWrite: false, fog: false, opacity: 0.85 }));
+    const a = -Math.PI / 2 + (i / 9 - 0.5) * 3.4 + Math.random() * 0.2, d = 260 + Math.random() * 60;
+    sp.position.set(Math.cos(a) * d, 55 + Math.random() * 70, 15 + Math.sin(a) * d);
+    sp.scale.set(120 + Math.random() * 80, 50 + Math.random() * 30, 1);
+    sp.renderOrder = -9; scene.add(sp); clouds.push(sp);
+  }
+
   // ---- ground
   const outer = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x3f8a33, roughness: 1 }));
   outer.rotation.x = -Math.PI / 2; outer.position.y = -0.02; outer.receiveShadow = true;
@@ -168,16 +185,7 @@ export function createStage(renderer, quality) {
   addStand(-AX - 1.4, 17, Math.PI, AZ1 - AZ0 + 2);             // left side, rising to -x
   addStand(AX + 1.4, 17, 0, AZ1 - AZ0 + 2);                    // right side
   addStand(0, AZ1 + 1.4, -Math.PI / 2, AX * 2 + 6);             // far end
-  // roofs
-  const roofMat = new THREE.MeshStandardMaterial({ color: 0x8a96a8, roughness: 0.6, metalness: 0.4, side: THREE.DoubleSide });
-  S.roofMat = roofMat;
-  for (const st of stands) {
-    const grp = new THREE.Group(); grp.position.set(st.cx, 0, st.cz); grp.rotation.y = st.rotY;
-    const r = new THREE.Mesh(new THREE.PlaneGeometry(ROWS * STEP + 4, st.len), roofMat);
-    r.rotation.set(-Math.PI / 2, 0.14, 0, 'XYZ');
-    r.position.set(ROWS * STEP / 2 + 1.5, ROWS * RISE + 7, 0);
-    grp.add(r); scene.add(grp);
-  }
+
 
   // ---- crowd (instanced capsules that bounce in the vertex shader)
   const crowdG = new THREE.CapsuleGeometry(0.24, 0.42, 2, 6);
@@ -380,9 +388,10 @@ export function createStage(renderer, quality) {
     renderer.toneMappingExposure = th.exposure;
     for (const g of glows) g.material.opacity = th.glow * 0.95;
     for (const g of glows) g.visible = th.glow > 0;
+    for (const c of clouds) c.visible = th.glow === 0;
     lampMat.emissiveIntensity = th.glow > 0 ? 3.2 : 0.5;
     boardMat.emissiveIntensity = th.boardE * 0.6;
-    standMat.color.setHex(th.standC); roofMat.color.setHex(th.roofC);
+    standMat.color.setHex(th.standC);
   };
 
   S.setCrowdFraction = (f) => { crowd.count = Math.max(200, Math.floor(total * f)); };
