@@ -19,6 +19,7 @@
 <body>
 <div id="wrap">
   <canvas id="c"></canvas>
+  <div id="lines"></div>
   <div id="vig"></div>
   <div id="flash"></div>
 
@@ -35,17 +36,21 @@
       <button id="bMute" class="glass ib" aria-label="Sound on or off"><svg viewBox="0 0 24 24"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg></button>
     </div>
     <div id="sub">
-      <div id="timer"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="bg"/><circle cx="22" cy="22" r="19" class="fg" id="tRing"/></svg><b id="tNum">6</b></div>
+      <div id="timer"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="bg"/><circle cx="22" cy="22" r="19" class="fg" id="tRing"/></svg><b id="tNum">9</b></div>
       <div id="round" class="glass">ROUND 1</div>
     </div>
-    <div id="speed"><b id="spd">0</b><span>km/h</span></div>
+    <div id="speed"><div id="gear">D</div><b id="spd">0</b><span>km/h</span><i id="rpm"><u></u></i></div>
     <div id="steer" aria-hidden="true"><div id="track"><i></i><i></i><div id="knob"></div></div><span>STEER</span></div>
-    <button id="bJump" aria-label="Jump"><span>JUMP</span></button>
-    <button id="bDrift" aria-label="Drift (hold) - release to boost">
-      <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" class="bg"/><circle cx="60" cy="60" r="54" class="fg" id="cRing"/></svg>
-      <span id="dLbl">DRIFT</span><small id="dSub">HOLD</small>
-    </button>
-    <div id="keys">← → steer · SPACE drift · SHIFT jump · ↓ brake</div>
+    <div id="pads" aria-hidden="true">
+      <div id="bJump" class="pad round"><span>JUMP</span></div>
+      <div id="bBrake" class="pad pedal small"><em></em><span>BRAKE</span><small>REV</small></div>
+      <div id="bDrift" class="pad round big">
+        <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" class="bg"/><circle cx="60" cy="60" r="54" class="fg" id="cRing"/></svg>
+        <span id="dLbl">DRIFT</span><small id="dSub">HOLD</small>
+      </div>
+      <div id="bGas" class="pad pedal"><em></em><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/><path d="M6 20l6-6 6 6"/></svg><span>GAS</span></div>
+    </div>
+    <div id="keys">W/↑ gas · S/↓ brake/reverse · ← → steer · SPACE drift · SHIFT jump</div>
   </div>
 
   <div id="banner"><span id="bT">GOAL!</span><small id="bS"></small></div>
@@ -55,7 +60,7 @@
 
   <!-- title -->
   <div id="menu">
-    <div class="logo"><h1><span class="l1">DRIFT</span><span class="l2">KICK!</span></h1><p>toy-car penalty shootout</p></div>
+    <div class="logo"><h1><span class="l1">DRIFT</span><span class="l2">KICK!</span></h1><p>toy-car penalty shootout <i class="v2">2</i></p></div>
     <div class="spacer"></div>
     <div id="carsel">
       <button id="cPrev" class="glass ib" aria-label="Previous car"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -72,6 +77,7 @@
       <div class="row">
         <button id="bTheme" class="glass pill">STADIUM: DAY</button>
         <button id="bSnd" class="glass pill">SOUND: ON</button>
+        <button id="bHow" class="glass pill">HOW TO PLAY</button>
       </div>
       <div id="mStats"></div>
     </div>
@@ -101,13 +107,17 @@
   <div id="tut" class="overlay">
     <div class="card glass">
       <h2>HOW TO SCORE</h2>
+      <div class="tutpad">
+        <div class="tp l"><i></i><b>STEER</b><small>left thumb, slide</small></div>
+        <div class="tp r"><i class="g"></i><b>GAS</b><small>hold · higher = more</small><i class="d"></i><b>DRIFT</b><small>slide thumb across</small></div>
+      </div>
       <ol>
-        <li><b>Steer</b> with your left thumb. The car drives itself.</li>
-        <li><b>Hold DRIFT</b> while turning. Sparks go <em class="c1">blue</em> → <em class="c2">orange</em> → <em class="c3">purple</em>.</li>
-        <li><b>Let go</b> for a turbo BOOST. Faster hit = harder shot.</li>
-        <li>Curl in and hit the ball <b>off-centre</b> to aim for a corner. You have 6 seconds.</li>
+        <li>You start <b>standing still</b>. Hold <b>GAS</b> to go, <b>BRAKE</b> to slow down or reverse.</li>
+        <li>While turning, hold <b>DRIFT</b> together with GAS. Sparks go <em class="c1">blue</em> → <em class="c2">orange</em> → <em class="c3">purple</em>.</li>
+        <li><b>Let go of DRIFT</b> for a turbo BOOST. A faster hit is a harder shot.</li>
+        <li>Hit the ball while sliding or <b>off-centre</b> to curl it into a corner. You have <b>9 seconds</b>.</li>
       </ol>
-      <p class="kbd">Keyboard: ← → steer · SPACE drift · SHIFT jump · ↓ brake · P pause</p>
+      <p class="kbd">Keyboard: W/↑ gas · S/↓ brake/reverse · ← → steer · SPACE drift · SHIFT jump · P pause</p>
       <button id="bTut" class="cta">GOT IT!</button>
     </div>
   </div>
