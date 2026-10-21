@@ -62,11 +62,11 @@ export function createAudio() {
   A.drive = (speed, throttle, slip, boost, active) => {
     if (!ctx) return;
     const t = ctx.currentTime;
-    const s = Math.min(1, speed / 30);
-    const f = 55 + s * 150 + boost * 35;
+    const s = Math.min(1, speed / 30), th = throttle || 0;
+    const f = 55 + s * 150 + boost * 35 + th * 18;
     eng.o1.frequency.setTargetAtTime(f, t, 0.05); eng.o2.frequency.setTargetAtTime(f * 1.01, t, 0.05);
-    eng.f.frequency.setTargetAtTime(380 + s * 1400 + boost * 900, t, 0.06);
-    eng.g.gain.setTargetAtTime(active ? 0.045 + s * 0.05 + boost * 0.03 : 0, t, 0.08);
+    eng.f.frequency.setTargetAtTime(330 + s * 1300 + th * 520 + boost * 900, t, 0.06);
+    eng.g.gain.setTargetAtTime(active ? 0.03 + s * 0.045 + th * 0.03 + boost * 0.03 : 0, t, 0.08);
     const sk = active ? Math.min(1, Math.max(0, (Math.abs(slip) - 0.12) * 2.4)) * Math.min(1, speed / 10) : 0;
     screech.g.gain.setTargetAtTime(sk * 0.07, t, 0.04);
     screech.f.frequency.setTargetAtTime(1500 + sk * 900 + Math.sin(t * 37) * 120, t, 0.03);
