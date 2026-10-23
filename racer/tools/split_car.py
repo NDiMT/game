@@ -92,10 +92,30 @@ def write_mesh(name, tris, centre=np.zeros(3)):
 
 used = np.zeros(len(I), bool)
 for t in wheels.values(): used[t] = True
+
+# roof launcher: everything sitting on the roof rack between the tubes (so it can recoil on its own)
+launcher = []
+tubes = []
+for c in np.unique(tri_comp):
+    t = np.where(tri_comp == c)[0]
+    v = P[I[t].ravel()]
+    mn, mx = v.min(0), v.max(0)
+    if mn[1] >= 0.465 and abs((mn[0] + mx[0]) / 2) < 0.14 and mn[2] > -0.34 and mx[2] < 0.04:
+        launcher.extend(t.tolist())
+        if len(t) > 200:
+            front = v[v[:, 2] > mx[2] - 0.03]   # mouth = centre of the front-most slice of the tube
+            tubes.append([float((front[:, 0].min() + front[:, 0].max()) / 2), float((front[:, 1].min() + front[:, 1].max()) / 2), float(mx[2])])
+launcher = np.array(launcher)
+used[launcher] = True
+lv = P[I[launcher].ravel()]
+pivot = np.array([0.0, lv[:, 1].min(), (lv[:, 2].min() + lv[:, 2].max()) / 2])
+muzzles = sorted(tubes)
+print('launcher', len(launcher), 'tris pivot', pivot.round(3), 'muzzles', np.round(muzzles, 3))
+write_mesh(NAME + '_launcher', launcher, pivot)
 write_mesh(NAME + '_body', np.where(~used)[0])
 write_mesh(NAME + '_wheel_front', wheels['FL'], np.array(anchors['FL']))
 write_mesh(NAME + '_wheel_rear', wheels['RL'], np.array(anchors['RL']))
-json.dump({'anchors': anchors, 'radius_front': radius['FL'], 'radius_rear': radius['RL'],
+json.dump({'launcher_pivot': pivot.tolist(), 'muzzles': muzzles, 'anchors': anchors, 'radius_front': radius['FL'], 'radius_rear': radius['RL'],
            'bounds_min': P.min(0).tolist(), 'bounds_max': P.max(0).tolist()},
           open(os.path.join(OUT, NAME + '_meta.json'), 'w'), indent=1)
 

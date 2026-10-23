@@ -8,7 +8,7 @@ func _init() -> void:
 	var src: String = args[0]
 	var car: String = args[1] if args.size() > 1 else "car1"
 	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cars/%s_meta.json" % car))
-	for part in ["body", "wheel_front", "wheel_rear"]:
+	for part in ["body", "wheel_front", "wheel_rear", "launcher"]:
 		var n := "%s_%s" % [car, part]
 		var f := FileAccess.open(src.path_join(n + ".bin"), FileAccess.READ)
 		if f == null:
@@ -39,6 +39,11 @@ func _init() -> void:
 			mesh.set_meta("radius_front", float(meta["radius_front"]))
 			mesh.set_meta("radius_rear", float(meta["radius_rear"]))
 			mesh.set_meta("wheel_source_side", -1)       # kept wheels are the x<0 ones
+			var lp: Array = meta["launcher_pivot"]
+			mesh.set_meta("launcher_pivot", Vector3(lp[0], lp[1], lp[2]))
+			var mz := PackedVector3Array()
+			for m: Array in meta["muzzles"]: mz.append(Vector3(m[0], m[1], m[2]))
+			mesh.set_meta("muzzles", mz)                 # launcher tube mouths (model units)
 		var out := "res://assets/cars/%s.res" % n
 		var err := ResourceSaver.save(mesh, out, ResourceSaver.FLAG_COMPRESS)
 		print(n, ": ", nv, " verts ", ni / 3, " tris -> ", out, " err=", err)
