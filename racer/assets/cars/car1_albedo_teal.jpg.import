@@ -2,28 +2,28 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://crde38gjumxo"
-path="res://.godot/imported/05-nitro.png-d8d417876bb681212f8f3c6dd8c73b0a.ctex"
+uid="uid://da4bl73ynxp2o"
+path="res://.godot/imported/car1_albedo_teal.jpg-1f8ade366771fcb38dce461930435b00.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://dev/shots/05-nitro.png"
-dest_files=["res://.godot/imported/05-nitro.png-d8d417876bb681212f8f3c6dd8c73b0a.ctex"]
+source_file="res://assets/cars/car1_albedo_teal.jpg"
+dest_files=["res://.godot/imported/car1_albedo_teal.jpg-1f8ade366771fcb38dce461930435b00.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.7
+compress/lossy_quality=0.82
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

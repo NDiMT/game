@@ -12,7 +12,7 @@ static var skip_title := false     # set by Restart
 static var autotest := false       # headless test: every car (player too) on autopilot
 
 const RIVALS := [
-	{"name": "RAZOR", "colour": "red", "skill": {"grip_use": 0.97, "line_bias": -0.6, "wander": 0.4, "nitro_eager": 0.9, "aggression": 0.8, "reaction": 0.08}},
+	{"name": "RAZOR", "colour": "purple", "skill": {"grip_use": 0.97, "line_bias": -0.6, "wander": 0.4, "nitro_eager": 0.9, "aggression": 0.8, "reaction": 0.08}},
 	{"name": "BLUE MAX", "colour": "blue", "skill": {"grip_use": 0.9, "line_bias": 0.8, "wander": 0.8, "nitro_eager": 0.7, "aggression": 0.55, "reaction": 0.11}},
 	{"name": "VIPER", "colour": "teal", "skill": {"grip_use": 0.83, "line_bias": 0.0, "wander": 1.3, "nitro_eager": 0.45, "aggression": 0.35, "reaction": 0.16}},
 ]
@@ -83,7 +83,7 @@ func _spawn_cars() -> void:
 		var c := _make_car(r.colour, r.name, false, slot)
 		ais[c] = AIDriver.new(c, track, self, r.skill)
 		slot += 1
-	player = _make_car("original", "YOU", true, slot)
+	player = _make_car("yellow", "YOU", true, slot)
 	ais[player] = AIDriver.new(player, track, self, PLAYER_AUTOPILOT)
 
 func _make_car(colour: String, nm: String, is_player: bool, slot: int) -> Car:
@@ -232,7 +232,8 @@ func _track_car(c: Car, dt: float) -> void:
 			hud.flash("FINAL LAP" if c.lap == LAPS else "LAP %d" % c.lap, Color(1, 0.9, 0.7))
 	# fell off the world / left the track
 	var below := c.global_position.y < track.pos[idx].y - 12.0
-	var outside := absf(lat) > Track.HALF + 6.0 and c.global_position.y < track.pos[idx].y + 3.0
+	# beyond the barrier line (knocked over it, or flew off the jump) -> respawn
+	var outside := absf(lat) > Track.BARRIER_OFF + 0.3 and c.global_position.y < track.pos[idx].y + 3.0
 	if outside or below: _outside_t[c] += dt
 	else: _outside_t[c] = 0.0
 	if below or _outside_t[c] > 1.5:

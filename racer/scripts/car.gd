@@ -7,7 +7,8 @@ extends RigidBody3D
 signal wrecked(car: Car, by: Car)
 
 const BODY_MESH := preload("res://assets/cars/car1_body.res")
-const WHEEL_MESH := preload("res://assets/cars/car1_wheel.res")
+const WHEEL_FRONT := preload("res://assets/cars/car1_wheel_front.res")
+const WHEEL_REAR := preload("res://assets/cars/car1_wheel_rear.res")
 const SCALE := 4.0              # model is 1 unit long -> 4 m
 
 # --- tuning (SI units)
@@ -31,7 +32,7 @@ const NITRO_USE := 0.28         # per second
 const NITRO_REFILL := 0.045
 
 var driver_name := "CAR"
-var colour := "original"
+var colour := "yellow"
 var is_player := false
 var game: Node                  # main game (spawns weapons / fx)
 
@@ -77,7 +78,8 @@ var stat_rockets := 0
 var stat_mines := 0
 
 var _anchors: Array[Vector3] = []
-var _radius := 0.475
+var _radius := 0.5
+var _radii: Array[float] = []
 var _pre := 0.0
 var _comp := [0.0, 0.0, 0.0, 0.0]
 var _contact := [false, false, false, false]
@@ -151,17 +153,20 @@ func _build_visual() -> void:
 	body.material_override = mat
 	body.scale = Vector3.ONE * SCALE
 	_model.add_child(body)
-	var anchors: PackedVector3Array = WHEEL_MESH.get_meta("anchors")
-	_radius = float(WHEEL_MESH.get_meta("radius")) * SCALE
-	var src_side: int = WHEEL_MESH.get_meta("source_side")
+	var anchors: PackedVector3Array = BODY_MESH.get_meta("anchors")
+	var src_side: int = BODY_MESH.get_meta("wheel_source_side")
+	var rf := float(BODY_MESH.get_meta("radius_front")) * SCALE
+	var rr := float(BODY_MESH.get_meta("radius_rear")) * SCALE
+	_radius = (rf + rr) * 0.5
 	for i in 4:
 		var a := anchors[i] * SCALE
 		_anchors.append(a)
+		_radii.append(rf if a.z > 0.0 else rr)
 		var pivot := Node3D.new(); pivot.position = a
 		var steer := Node3D.new()
 		var spin := Node3D.new()
 		var w := MeshInstance3D.new()
-		w.mesh = WHEEL_MESH
+		w.mesh = WHEEL_FRONT if a.z > 0.0 else WHEEL_REAR
 		w.material_override = mat
 		w.scale = Vector3.ONE * SCALE
 		if signf(a.x) != signf(src_side): w.rotation.y = PI # mirror side: rotate, keeps the hub facing out
@@ -386,7 +391,7 @@ func _process(dt: float) -> void:
 		var p := _wheel_nodes[w].position
 		p.y = lerpf(p.y, target_y, minf(1.0, dt * 25.0))
 		_wheel_nodes[w].position = p
-		_spin[w] = fmod(_spin[w] + speed / _radius * dt, TAU)
+		_spin[w] = fmod(_spin[w] + speed / _radii[w] * dt, TAU)
 		_spin_nodes[w].rotation.x = _spin[w]
 		if a.z > 0.0:
 			_steer_nodes[w].rotation.y = -steer_s * lerpf(0.5, 0.18, clampf(absf(speed) / 40.0, 0.0, 1.0))

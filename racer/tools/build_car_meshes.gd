@@ -6,7 +6,7 @@ extends SceneTree
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var src: String = args[0]
-	var car: String = args[1] if args.size() > 1 else "car1v2"
+	var car: String = args[1] if args.size() > 1 else "car1"
 	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cars/%s_meta.json" % car))
 	for part in ["body", "wheel_front", "wheel_rear"]:
 		var n := "%s_%s" % [car, part]

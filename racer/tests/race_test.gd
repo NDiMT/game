@@ -16,6 +16,7 @@ var drift_t := {}
 var nitro_t := {}
 var air_t := {}
 var air_max := {}
+var slow_t := {}
 
 func _ready() -> void:
 	Game.autotest = true
@@ -43,6 +44,17 @@ func _physics_process(dt: float) -> void:
 		if c.lap != _last_lap[n]:
 			_last_lap[n] = c.lap
 			lap_times[n].append(snappedf(c.last_lap, 0.01))
+	for c: Car in game.cars:
+		var nm := c.driver_name
+		slow_t[nm] = slow_t.get(nm, 0.0) + dt if (absf(c.speed) < 6.0 and game.state == "race") else 0.0
+		if slow_t[nm] > 3.0 and int(t * 60) % 120 == 0:
+			var i := c.track_idx
+			print("STALL %s t=%.0f idx=%d pos=%s v=%.1f lat=%.1f grounded=%d up=%.2f alive=%s safe=%d thr=%.1f brk=%.1f steer=%.2f frozen=%s layer=%d" % [nm, t, i, str(c.global_position.snapped(Vector3.ONE * 0.1)), c.speed, game.track.lateral_of(c.global_position, i), c.grounded, c.global_basis.y.y, c.alive, c.safe_idx, c.in_throttle, c.in_brake, c.in_steer, c.freeze, c.collision_layer])
+	if OS.get_environment("TRACE") != "" and int(t * 60) % 60 == 0:
+		for c: Car in game.cars:
+			if c.driver_name == OS.get_environment("TRACE"):
+				var i := c.track_idx
+				print("TRACE t=%.0f idx=%d prog=%.0f pos=%s v=%.1f lat=%.1f grounded=%d up=%.2f alive=%s safe=%d thr=%.1f brk=%.1f steer=%.2f" % [t, i, c.progress, str(c.global_position.snapped(Vector3.ONE * 0.1)), c.speed, game.track.lateral_of(c.global_position, i), c.grounded, c.global_basis.y.y, c.alive, c.safe_idx, c.in_throttle, c.in_brake, c.in_steer])
 	if int(t * 60) % 600 == 0:
 		var s := "t=%5.1f " % t
 		for c: Car in game.cars:
