@@ -1,13 +1,17 @@
-# Split the Tripo Car1 GLB into body + one wheel mesh (centred on its axle) + anchor positions,
-# and export 1024px textures (albedo per colour, shared normal + ORM).
-# Output: raw float/int buffers (.bin) + car_meta.json, converted to Godot .res by tools/build_car_meshes.gd
-import json, struct, sys, io, os
+# Split a Tripo car GLB (single mesh, wheels = separate connected components) into:
+#   <name>_body.bin, <name>_wheel_front.bin, <name>_wheel_rear.bin  (raw buffers -> tools/build_car_meshes.gd -> .res)
+#   <name>_meta.json  (wheel anchors = axle centres, radius)
+#   <name>_albedo_<colour>.jpg (1024) per colour variant, shared <name>_normal.jpg + <name>_orm.jpg
+# Wheels are centred on their axle (tread centre, so hub/axle stubs don't skew it). The kept
+# front/rear wheels are the x<0 ones; the x>0 side reuses them rotated 180 deg about Y.
+#
+# python3 split_car.py <src.glb> <variants_dir> <variant_prefix> <out_assets_dir> <bin_dir> <name>
+import json, struct, sys, io, os, glob
 import numpy as np
 from PIL import Image
 
-REF = sys.argv[1]
-OUT = sys.argv[2]
-os.makedirs(OUT, exist_ok=True)
+SRC, VAR_DIR, VAR_PREFIX, OUT, BIN, NAME = sys.argv[1:7]
+os.makedirs(OUT, exist_ok=True); os.makedirs(BIN, exist_ok=True)
 
 def load_glb(path):
     d = open(path, 'rb').read()
@@ -15,8 +19,7 @@ def load_glb(path):
     j = json.loads(d[20:20 + jl])
     off = 20 + jl
     bl = struct.unpack('<I', d[off:off + 4])[0]
-    b = d[off + 8: off + 8 + bl]
-    return j, b
+    return j, d[off + 8: off + 8 + bl]
 
 def acc(j, b, i):
     a = j['accessors'][i]; bv = j['bufferViews'][a['bufferView']]
@@ -32,17 +35,16 @@ def image(j, b, tex_index):
     o = bv.get('byteOffset', 0)
     return Image.open(io.BytesIO(b[o:o + bv['byteLength']]))
 
-j, b = load_glb(os.path.join(REF, 'Car1_pbr.glb'))
+j, b = load_glb(SRC)
 p = j['meshes'][0]['primitives'][0]
 P = acc(j, b, p['attributes']['POSITION']).astype(np.float64)
 N = acc(j, b, p['attributes']['NORMAL']).astype(np.float64)
 UV = acc(j, b, p['attributes']['TEXCOORD_0']).astype(np.float64)
 I = acc(j, b, p['indices']).astype(np.int64).reshape(-1, 3)
-print('verts', len(P), 'tris', len(I))
+print('verts', len(P), 'tris', len(I), 'bounds', P.min(0).round(3), P.max(0).round(3))
 
-# --- connected components over welded positions (UV seams duplicate vertices)
-key = np.round(P * 2000).astype(np.int64)
-_, weld = np.unique(key, axis=0, return_inverse=True)
+# connected components over welded positions (UV seams duplicate vertices)
+_, weld = np.unique(np.round(P * 2000).astype(np.int64), axis=0, return_inverse=True)
 weld = weld.ravel()
 parent = np.arange(weld.max() + 1)
 def find(x):
@@ -51,71 +53,62 @@ def find(x):
     while parent[x] != r: parent[x], x = r, parent[x]
     return r
 for a_, b_, c_ in weld[I]:
-    ra, rb, rc = find(a_), find(b_), find(c_)
-    parent[rb] = ra; parent[find(rc)] = ra
+    ra = find(a_); parent[find(b_)] = ra; parent[find(c_)] = ra
 root = np.array([find(x) for x in range(len(parent))])
 tri_comp = root[weld[I[:, 0]]]
-comps = np.unique(tri_comp)
-print('components', len(comps))
 
-BOXES = {  # wheel boxes (model units), slightly padded
-    'FL': ((-0.33, -0.18), (0.17, 0.43)),
-    'FR': ((0.18, 0.33), (0.17, 0.43)),
-    'RL': ((-0.33, -0.18), (-0.39, -0.14)),
-    'RR': ((0.18, 0.33), (-0.39, -0.14)),
-}
-wheel_tris = {k: [] for k in BOXES}
-for c in comps:
+# wheels: big components touching the ground (min y ~ 0), one per quadrant
+wheels = {}
+for c in np.unique(tri_comp):
     t = np.where(tri_comp == c)[0]
     v = P[I[t].ravel()]
     mn, mx = v.min(0), v.max(0)
-    if mx[1] > 0.26: continue
-    for k, ((x0, x1), (z0, z1)) in BOXES.items():
-        if mn[0] >= x0 and mx[0] <= x1 and mn[2] >= z0 and mx[2] <= z1:
-            wheel_tris[k].extend(t.tolist())
-for k in BOXES: print(k, 'tris', len(wheel_tris[k]))
-assert all(len(v) > 300 for v in wheel_tris.values()), 'wheel split failed'
+    if len(t) < 300 or mn[1] > 0.02 or mx[1] > 0.3: continue
+    key = ('F' if (mn[2] + mx[2]) > 0 else 'R') + ('L' if (mn[0] + mx[0]) < 0 else 'R')
+    if key not in wheels or len(t) > len(wheels[key]): wheels[key] = t
+assert sorted(wheels) == ['FL', 'FR', 'RL', 'RR'], wheels.keys()
 
-used = np.zeros(len(I), bool)
-anchors = {}
-for k, t in wheel_tris.items():
-    used[t] = True
-    v = P[I[t].ravel()]
-    mn, mx = v.min(0), v.max(0)
-    anchors[k] = [float((mn[0] + mx[0]) / 2), float((mn[1] + mx[1]) / 2), float((mn[2] + mx[2]) / 2)]
-    anchors[k + '_size'] = [float(x) for x in (mx - mn)]
-print(json.dumps(anchors, indent=1))
+anchors, radius = {}, {}
+for k, t in wheels.items():
+    v = P[np.unique(I[t].ravel())]
+    cy = (v[:, 1].min() + v[:, 1].max()) / 2; cz = (v[:, 2].min() + v[:, 2].max()) / 2
+    r = max(v[:, 1].max() - v[:, 1].min(), v[:, 2].max() - v[:, 2].min()) / 2
+    tread = v[np.hypot(v[:, 1] - cy, v[:, 2] - cz) > r * 0.85]   # outer ring = tyre tread
+    cx = (tread[:, 0].min() + tread[:, 0].max()) / 2
+    anchors[k] = [float(cx), float(cy), float(cz)]
+    radius[k] = float(r)
+    print(k, len(t), 'tris anchor', np.round(anchors[k], 4), 'r', round(r, 4), 'tread width', round(float(np.ptp(tread[:, 0])), 3))
 
 def write_mesh(name, tris, centre=np.zeros(3)):
     sub = I[tris]
     vids, inv = np.unique(sub.ravel(), return_inverse=True)
-    pos = (P[vids] - centre).astype(np.float32)
-    nrm = N[vids].astype(np.float32)
-    uv = UV[vids].astype(np.float32)
-    idx = inv.reshape(-1, 3).astype(np.int32)
-    with open(os.path.join(OUT, name + '.bin'), 'wb') as f:
-        f.write(struct.pack('<ii', len(vids), len(idx) * 3))
-        f.write(pos.tobytes()); f.write(nrm.tobytes()); f.write(uv.tobytes()); f.write(idx.tobytes())
-    print(name, len(vids), 'verts', len(idx), 'tris')
+    with open(os.path.join(BIN, name + '.bin'), 'wb') as f:
+        f.write(struct.pack('<ii', len(vids), len(sub) * 3))
+        f.write((P[vids] - centre).astype(np.float32).tobytes())
+        f.write(N[vids].astype(np.float32).tobytes())
+        f.write(UV[vids].astype(np.float32).tobytes())
+        f.write(inv.reshape(-1).astype(np.int32).tobytes())
+    print(name, len(vids), 'verts', len(sub), 'tris')
 
-write_mesh('car1_body', np.where(~used)[0])
-# one wheel: the front-left one, centred on its axle (axle = X axis). Right side reuses it rotated 180deg about Y.
-c = np.array(anchors['FL'])
-write_mesh('car1_wheel', np.array(wheel_tris['FL']), c)
-r = max(anchors['FL_size'][1], anchors['FL_size'][2]) / 2
-meta = {'anchors': {k: anchors[k] for k in BOXES}, 'wheel_radius': r, 'wheel_width': anchors['FL_size'][0],
-        'bounds_min': P.min(0).tolist(), 'bounds_max': P.max(0).tolist()}
-json.dump(meta, open(os.path.join(OUT, 'car1_meta.json'), 'w'), indent=1)
+used = np.zeros(len(I), bool)
+for t in wheels.values(): used[t] = True
+write_mesh(NAME + '_body', np.where(~used)[0])
+write_mesh(NAME + '_wheel_front', wheels['FL'], np.array(anchors['FL']))
+write_mesh(NAME + '_wheel_rear', wheels['RL'], np.array(anchors['RL']))
+json.dump({'anchors': anchors, 'radius_front': radius['FL'], 'radius_rear': radius['RL'],
+           'bounds_min': P.min(0).tolist(), 'bounds_max': P.max(0).tolist()},
+          open(os.path.join(OUT, NAME + '_meta.json'), 'w'), indent=1)
 
-# --- textures (1024): albedo per colour, normal shared, ORM (R=AO 1, G=rough, B=metal) shared
 S = 1024
-image(j, b, j['materials'][0]['normalTexture']['index']).convert('RGB').resize((S, S), Image.LANCZOS).save(os.path.join(OUT, 'car1_normal.jpg'), quality=90)
-mr = np.array(image(j, b, j['materials'][0]['pbrMetallicRoughness']['metallicRoughnessTexture']['index']).convert('RGB').resize((S, S), Image.LANCZOS))
-mr[:, :, 0] = 255
-Image.fromarray(mr).save(os.path.join(OUT, 'car1_orm.jpg'), quality=90)
-for col, fn in [('original', 'Car1_pbr.glb'), ('orange', 'Car1_orange.glb'), ('red', 'Car1_red.glb'), ('blue', 'Car1_blue.glb'), ('teal', 'Car1_teal.glb'),
-                ('purple', 'Car1_purple.glb'), ('white', 'Car1_white.glb'), ('black', 'Car1_black.glb'), ('green', 'Car1_green.glb')]:
-    jj, bb = load_glb(os.path.join(REF, fn))
+mat = j['materials'][0]
+image(j, b, mat['normalTexture']['index']).convert('RGB').resize((S, S), Image.LANCZOS).save(os.path.join(OUT, NAME + '_normal.jpg'), quality=90)
+mr = np.array(image(j, b, mat['pbrMetallicRoughness']['metallicRoughnessTexture']['index']).convert('RGB').resize((S, S), Image.LANCZOS))
+mr[:, :, 0] = 255  # ORM: R = AO (none), G = roughness, B = metallic
+Image.fromarray(mr).save(os.path.join(OUT, NAME + '_orm.jpg'), quality=90)
+for fn in sorted(glob.glob(os.path.join(VAR_DIR, VAR_PREFIX + '*.glb'))):
+    col = os.path.basename(fn)[len(VAR_PREFIX):-4]
+    jj, bb = load_glb(fn)
+    assert jj['accessors'][0]['count'] == len(P), 'variant mesh differs: ' + fn
     im = image(jj, bb, jj['materials'][0]['pbrMetallicRoughness']['baseColorTexture']['index']).convert('RGB')
-    im.resize((S, S), Image.LANCZOS).save(os.path.join(OUT, 'car1_albedo_%s.jpg' % col), quality=88)
-    print('albedo', col, im.size)
+    im.resize((S, S), Image.LANCZOS).save(os.path.join(OUT, '%s_albedo_%s.jpg' % (NAME, col)), quality=88)
+    print('albedo', col)
