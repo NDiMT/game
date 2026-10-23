@@ -12,15 +12,12 @@ var line_bias := 0.0       # personal lateral offset from the racing line (m)
 var wander := 0.8          # amplitude of slow line wander (m)
 var steer_gain := 1.15
 var nitro_eager := 0.7     # 0..1
-var aggression := 0.5      # weapon use
 var reaction := 0.12       # s, steering smoothing
 
 var _avoid := 0.0
 var _phase := 0.0
 var _stuck_t := 0.0
 var _reverse_t := 0.0
-var _fire_cd := 6.0
-var _mine_cd := 3.0
 var _steer := 0.0
 var _rng := RandomNumberGenerator.new()
 
@@ -105,21 +102,3 @@ func update(dt: float) -> void:
 	car.in_throttle = thr
 	car.in_brake = brk
 	car.in_nitro = nit
-
-	# --- weapons
-	_fire_cd -= dt; _mine_cd -= dt
-	if car.controls_enabled and not car.finished:
-		if car.lock_target and _fire_cd <= 0.0 and car.rockets > 0:
-			if _rng.randf() < aggression * dt * 0.5:
-				car.fire_front()
-				_fire_cd = 5.0 / maxf(aggression, 0.1)
-		if _mine_cd <= 0.0 and car.mines > 0:
-			for o: Car in game.cars:
-				if o == car or not o.alive: continue
-				var rel := o.global_position - pos
-				var behind := -rel.dot(fwd)
-				if behind > 6.0 and behind < 28.0 and absf(rel.dot(car.global_basis.x)) < 4.0:
-					if _rng.randf() < aggression * 0.5:
-						car.drop_rear()
-					_mine_cd = 5.0
-					break

@@ -32,6 +32,7 @@ var jump_idx := 0
 var pickup_spots: Array[Vector3] = []
 var noise_tex: ImageTexture
 var sun: DirectionalLight3D
+var env: Environment
 
 var _terrain_noise := FastNoiseLite.new()
 var _th := PackedFloat32Array()
@@ -368,6 +369,54 @@ void sky() {
 }
 """
 
+## Occluder cutaway: fragments inside a capsule between the camera and the car are dithered
+## away (screen-door), so rocks / the gate never hide the player. Uniforms set by the camera.
+const CUTAWAY_UNIFORMS := """
+uniform vec3 cut_cam;
+uniform vec3 cut_target;
+uniform float cut_on = 0.0;
+varying vec3 cut_wpos;
+"""
+const CUTAWAY_FRAGMENT := """
+	if (cut_on > 0.5) {
+		vec3 ab = cut_target - cut_cam;
+		float t = clamp(dot(cut_wpos - cut_cam, ab) / dot(ab, ab), 0.0, 1.0);
+		float d = length(cut_wpos - (cut_cam + ab * t));
+		float k = (1.0 - smoothstep(3.0, 5.5, d)) * step(t, 0.96);
+		ivec2 fc = ivec2(FRAGCOORD.xy) % 4;
+		int bi = fc.x + fc.y * 4;
+		float bayer[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+		if (k * 0.8 > (bayer[bi] + 0.5) / 16.0) discard;
+	}
+"""
+var cutaway_mats: Array[ShaderMaterial] = []
+
+## lit material with the cutaway (vertex colour optional)
+func _cut_mat(albedo: Color, rough: float, metal: float, use_vcol: bool) -> ShaderMaterial:
+	var code := "shader_type spatial;\n" + CUTAWAY_UNIFORMS + """
+uniform vec4 albedo : source_color;
+uniform float rough = 0.9;
+uniform float metal = 0.0;
+uniform float use_vcol = 0.0;
+void vertex() { cut_wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+""" + CUTAWAY_FRAGMENT + """
+	ALBEDO = albedo.rgb * mix(vec3(1.0), COLOR.rgb, use_vcol);
+	ROUGHNESS = rough;
+	METALLIC = metal;
+}
+"""
+	var sh := Shader.new()
+	sh.code = code
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("albedo", albedo)
+	m.set_shader_parameter("rough", rough)
+	m.set_shader_parameter("metal", metal)
+	m.set_shader_parameter("use_vcol", 1.0 if use_vcol else 0.0)
+	cutaway_mats.append(m)
+	return m
+
 # ------------------------------------------------------------------ environment
 func _build_environment() -> void:
 	var env := Environment.new()
@@ -400,6 +449,7 @@ func _build_environment() -> void:
 	env.adjustment_contrast = 1.06
 	var we := WorldEnvironment.new()
 	we.environment = env
+	self.env = env
 	add_child(we)
 	sun = DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.86, 0.68)
@@ -656,9 +706,7 @@ func _rock_mesh(seed_: int) -> ArrayMesh:
 	return st.commit()
 
 func _build_rocks() -> void:
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 0.95
+	var mat := _cut_mat(Color.WHITE, 0.95, 0.0, true)
 	var rng := RandomNumberGenerator.new(); rng.seed = 42
 	var meshes: Array[ArrayMesh] = []
 	for s in 3: meshes.append(_rock_mesh(11 + s * 7))
@@ -722,8 +770,7 @@ func _build_gate() -> void:
 	gate.name = "StartGate"
 	gate.transform = frame(0)
 	add_child(gate)
-	var metal := StandardMaterial3D.new()
-	metal.albedo_color = Color(0.32, 0.26, 0.22); metal.metallic = 0.6; metal.roughness = 0.55
+	var metal := _cut_mat(Color(0.32, 0.26, 0.22), 0.55, 0.6, false)
 	var hz := _shader_mat(BARRIER_SHADER)
 	for side: int in [-1, 1]:
 		var col := MeshInstance3D.new()
@@ -747,10 +794,11 @@ func _build_gate() -> void:
 	var beam := MeshInstance3D.new()
 	var bb := BoxMesh.new(); bb.size = Vector3(WIDTH + 6.2, 1.8, 0.8)
 	beam.mesh = bb
-	var cm := _shader_mat("""
-shader_type spatial;
+	var cm := _shader_mat("shader_type spatial;\n" + CUTAWAY_UNIFORMS + """
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
+void vertex() { cut_wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
+""" + CUTAWAY_FRAGMENT + """
 	vec2 g = floor(UV * vec2(36.0, 4.0));
 	float ck = mod(g.x + g.y, 2.0);
 	ALBEDO = mix(vec3(0.06), vec3(0.92), ck);
@@ -758,6 +806,7 @@ void fragment() {
 }
 """)
 	beam.material_override = cm
+	cutaway_mats.append(cm)
 	beam.position = Vector3(0, 8.2, 0)
 	gate.add_child(beam)
 	for face: int in [-1, 1]:

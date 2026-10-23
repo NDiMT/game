@@ -29,11 +29,11 @@ const BARRAGE := {
 	"id": "barrage", "name": "ROCKET BARRAGE", "slot": "ultimate", "kind": "barrage",
 	"count": 6, "interval": 0.09, "targets": "ahead", "max_targets": 3, "range": 140.0,
 	"projectile": {"speed": 66.0, "launch_speed": 30.0, "rise_time": 0.4, "turn": 4.0, "life": 3.5,
-		"damage": 13.0, "radius": 4.5, "size": 0.62, "fuse": 1.8},
+		"damage": 11.0, "radius": 4.5, "size": 0.62, "fuse": 1.8, "charges_ult": false},
 }
 
 ## how the ULT meter charges (fraction of a full meter)
-const ULT_GAIN := {"hit": 0.16, "wreck": 0.35, "near_miss": 0.08, "drift_per_s": 0.05}
+const ULT_GAIN := {"hit": 0.1, "wreck": 0.25, "near_miss": 0.08, "drift_per_s": 0.03}
 
 static func default_loadout() -> Dictionary:
 	return {"front": ROCKET.duplicate(true), "rear": MINE.duplicate(true), "ultimate": BARRAGE.duplicate(true)}

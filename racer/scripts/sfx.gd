@@ -37,6 +37,8 @@ func _ready() -> void:
 		return st.lp * 1.6 * minf(1.0, t * 12.0) * exp(-t * 3.0))
 	streams["mine"] = _make(0.25, func(t: float, _st: Dictionary) -> float:
 		return sin(TAU * (180.0 - t * 300.0) * t) * 0.5 * exp(-t * 10.0))
+	streams["warn"] = _make(0.16, func(t: float, _st: Dictionary) -> float:
+		return signf(sin(TAU * (1480.0 if t < 0.07 else 1180.0) * t)) * 0.16 * minf(1.0, (0.16 - t) * 60.0))
 	for i in 8:
 		var p := AudioStreamPlayer.new()
 		add_child(p)

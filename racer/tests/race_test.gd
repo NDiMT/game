@@ -55,6 +55,8 @@ func _physics_process(dt: float) -> void:
 			if c.driver_name == OS.get_environment("TRACE"):
 				var i := c.track_idx
 				print("TRACE t=%.0f idx=%d prog=%.0f pos=%s v=%.1f lat=%.1f grounded=%d up=%.2f alive=%s safe=%d thr=%.1f brk=%.1f steer=%.2f" % [t, i, c.progress, str(c.global_position.snapped(Vector3.ONE * 0.1)), c.speed, game.track.lateral_of(c.global_position, i), c.grounded, c.global_basis.y.y, c.alive, c.safe_idx, c.in_throttle, c.in_brake, c.in_steer])
+	if int(t * 60) % 1200 == 600:
+		game._cycle_cam()
 	if int(t * 60) % 600 == 0:
 		var s := "t=%5.1f " % t
 		for c: Car in game.cars:
@@ -74,8 +76,8 @@ func _report() -> void:
 		var n := c.driver_name
 		var fell: bool = c.falls > 0 or min_y[n] < -30.0
 		if not c.finished or fell: ok = false
-		lines.append("%-9s place %d finished=%s time=%s best_lap=%.2f laps=%s respawns=%d falls=%d min_y=%.1f vmax=%d km/h kills=%d money=%d hp=%d drift=%.1fs nitro=%.1fs max_air=%.2fs rockets=%d mines=%d" % [
-			n, c.place, c.finished, Hud._fmt_time(c.finish_time), c.best_lap, str(lap_times[n]), c.respawns, c.falls, min_y[n], int(max_speed[n] * 3.6), c.kills, c.money, int(c.hp), drift_t[n], nitro_t[n], air_max[n], c.stat_rockets, c.stat_mines])
+		lines.append("%-9s place %d finished=%s time=%s best_lap=%.2f laps=%s respawns=%d falls=%d min_y=%.1f vmax=%d km/h kills=%d money=%d hp=%d drift=%.1fs nitro=%.1fs max_air=%.2fs rockets=%d mines=%d ults=%d hits=%d wrecks=%d near_miss=%d" % [
+			n, c.place, c.finished, Hud._fmt_time(c.finish_time), c.best_lap, str(lap_times[n]), c.respawns, c.falls, min_y[n], int(max_speed[n] * 3.6), c.kills, c.money, int(c.hp), drift_t[n], nitro_t[n], air_max[n], c.weapons.stats.rockets, c.weapons.stats.mines, c.weapons.stats.ults, c.weapons.stats.hits, c.weapons.stats.wrecks, c.weapons.stats.near_miss])
 	print("==== RACE TEST REPORT (sim %.1f s, track %.0f m) ====" % [t, game.track.length])
 	for l in lines: print(l)
 	print("RESULT: ", "PASS" if ok else "FAIL")

@@ -9,6 +9,8 @@ signal wrecked(car: Car, by: Car)
 const BODY_MESH := preload("res://assets/cars/car1_body.res")
 const WHEEL_FRONT := preload("res://assets/cars/car1_wheel_front.res")
 const WHEEL_REAR := preload("res://assets/cars/car1_wheel_rear.res")
+const LAUNCHER_MESH := preload("res://assets/cars/car1_launcher.res")
+const LAUNCH_TILT := 0.2        # rad: the roof tubes point slightly up
 const SCALE := 4.0              # model is 1 unit long -> 4 m
 
 # --- tuning (SI units)
@@ -46,8 +48,7 @@ var controls_enabled := false
 # state
 var hp := 100.0
 var nitro := 0.6
-var rockets := 6
-var mines := 3
+var weapons: WeaponSystem      # loadout, ammo, lock-on, ULT meter (see weapon_system.gd)
 var alive := true
 var kills := 0
 var money := 0
@@ -56,7 +57,6 @@ var grounded := 0
 var on_road := true
 var drifting := false
 var nitro_on := false
-var lock_target: Car
 var last_hit_by: Car
 var steer_s := 0.0
 var rpm := 0.0
@@ -74,8 +74,6 @@ var place := 1
 var safe_idx := 0
 var respawns := 0
 var falls := 0
-var stat_rockets := 0
-var stat_mines := 0
 
 var _anchors: Array[Vector3] = []
 var _radius := 0.5
@@ -93,8 +91,9 @@ var _pending_xf := false
 var _respawn_xf := Transform3D()
 var _respawn_vel := Vector3.ZERO
 var _hits: Array = []
-var _cool_front := 0.0
-var _cool_rear := 0.0
+var _launcher: Node3D
+var _launcher_rest := Vector3.ZERO
+var _muzzles: Array[Vector3] = []
 var _flames: Array[Node3D] = []
 var _flame_p: CPUParticles3D
 var _dust: CPUParticles3D
@@ -172,6 +171,19 @@ func _build_visual() -> void:
 		if signf(a.x) != signf(src_side): w.rotation.y = PI # mirror side: rotate, keeps the hub facing out
 		_model.add_child(pivot); pivot.add_child(steer); steer.add_child(spin); spin.add_child(w)
 		_wheel_nodes.append(pivot); _steer_nodes.append(steer); _spin_nodes.append(spin)
+	# roof launcher: separate mesh so it can recoil; muzzles relative to its pivot
+	var lp: Vector3 = BODY_MESH.get_meta("launcher_pivot")
+	_launcher = Node3D.new()
+	_launcher.position = lp * SCALE
+	_launcher_rest = _launcher.position
+	_model.add_child(_launcher)
+	var lm := MeshInstance3D.new()
+	lm.mesh = LAUNCHER_MESH
+	lm.material_override = mat
+	lm.scale = Vector3.ONE * SCALE
+	_launcher.add_child(lm)
+	for m: Vector3 in BODY_MESH.get_meta("muzzles"):
+		_muzzles.append((m - lp) * SCALE + Vector3(0, 0, 0.1))
 
 func _build_fx() -> void:
 	var fmat := StandardMaterial3D.new()
@@ -356,8 +368,6 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 			_hits.append([state.get_contact_collider_object(i), state.get_contact_collider_position(i), state.get_contact_local_normal(i), imp])
 
 func _physics_process(dt: float) -> void:
-	_cool_front = maxf(0.0, _cool_front - dt)
-	_cool_rear = maxf(0.0, _cool_rear - dt)
 	_hit_cool = maxf(0.0, _hit_cool - dt)
 	if not alive:
 		_wreck_t -= dt
@@ -412,21 +422,23 @@ func _process(dt: float) -> void:
 		_engine.pitch_scale = 0.55 + rpm * 0.65 + gear * 0.06 + (0.15 if nitro_on else 0.0)
 
 # ------------------------------------------------------------------ actions
-func fire_front() -> bool:
-	if not alive or not controls_enabled or rockets <= 0 or _cool_front > 0.0: return false
-	rockets -= 1
-	stat_rockets += 1
-	_cool_front = 0.45
-	if game: game.spawn_rocket(self, lock_target)
-	return true
+## world transform of a launcher tube mouth (+Z = firing direction, tilted up like the tubes)
+func muzzle_xf(i: int) -> Transform3D:
+	var local := Transform3D(Basis(Vector3.RIGHT, -LAUNCH_TILT), _muzzles[i % _muzzles.size()])
+	return _launcher.global_transform * local
 
-func drop_rear() -> bool:
-	if not alive or not controls_enabled or mines <= 0 or _cool_rear > 0.0: return false
-	mines -= 1
-	stat_mines += 1
-	_cool_rear = 0.6
-	if game: game.spawn_mine(self)
-	return true
+## small recoil kick of the roof launcher
+func kick_launcher() -> void:
+	var tw := create_tween()
+	_launcher.position = _launcher_rest + Vector3(0, 0.02, -0.28)
+	_launcher.rotation.x = -0.09
+	tw.set_parallel(true)
+	tw.tween_property(_launcher, "position", _launcher_rest, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_launcher, "rotation:x", 0.0, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+## where mines leave the car (rear bumper)
+func rear_drop_point() -> Vector3:
+	return global_transform * Vector3(0, 0.9, -2.25)
 
 func damage(amount: float, by: Car) -> void:
 	if not alive or finished: return
