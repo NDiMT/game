@@ -113,7 +113,7 @@ image(j, b, j['materials'][0]['normalTexture']['index']).convert('RGB').resize((
 mr = np.array(image(j, b, j['materials'][0]['pbrMetallicRoughness']['metallicRoughnessTexture']['index']).convert('RGB').resize((S, S), Image.LANCZOS))
 mr[:, :, 0] = 255
 Image.fromarray(mr).save(os.path.join(OUT, 'car1_orm.jpg'), quality=90)
-for col, fn in [('original', 'Car1_pbr.glb'), ('yellow', 'Car1_yellow.glb'), ('red', 'Car1_red.glb'), ('blue', 'Car1_blue.glb'), ('teal', 'Car1_teal.glb'),
+for col, fn in [('original', 'Car1_pbr.glb'), ('orange', 'Car1_orange.glb'), ('red', 'Car1_red.glb'), ('blue', 'Car1_blue.glb'), ('teal', 'Car1_teal.glb'),
                 ('purple', 'Car1_purple.glb'), ('white', 'Car1_white.glb'), ('black', 'Car1_black.glb'), ('green', 'Car1_green.glb')]:
     jj, bb = load_glb(os.path.join(REF, fn))
     im = image(jj, bb, jj['materials'][0]['pbrMetallicRoughness']['baseColorTexture']['index']).convert('RGB')

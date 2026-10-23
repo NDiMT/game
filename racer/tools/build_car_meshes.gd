@@ -26,6 +26,16 @@ func _init() -> void:
 			st.add_index(idx[t]); st.add_index(idx[t + 2]); st.add_index(idx[t + 1])
 		st.generate_tangents()
 		var mesh := st.commit()
+		if n == "car1_wheel":
+			# wheel anchors (axle centres, model units, front = +Z) + radius travel with the wheel mesh
+			var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cars/car1_meta.json"))
+			var anchors := PackedVector3Array()
+			for k in ["FL", "FR", "RL", "RR"]:
+				var a: Array = meta["anchors"][k]
+				anchors.append(Vector3(a[0], a[1], a[2]))
+			mesh.set_meta("anchors", anchors)
+			mesh.set_meta("radius", float(meta["wheel_radius"]))
+			mesh.set_meta("source_side", -1) # the kept wheel is the x<0 one
 		var out := "res://assets/cars/%s.res" % n
 		var err := ResourceSaver.save(mesh, out, ResourceSaver.FLAG_COMPRESS)
 		print(n, ": ", nv, " verts ", ni / 3, " tris -> ", out, " err=", err)

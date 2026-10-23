@@ -2,28 +2,28 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n73i7y4hrkci"
-path="res://.godot/imported/car1_albedo_yellow.jpg-13d079888e35e89099c2035c0459cef6.ctex"
+uid="uid://cob25v4h6irjf"
+path="res://.godot/imported/02-start-grid.png-802bc40bbc93cfb80f94c4d0a4cea5f5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cars/car1_albedo_yellow.jpg"
-dest_files=["res://.godot/imported/car1_albedo_yellow.jpg-13d079888e35e89099c2035c0459cef6.ctex"]
+source_file="res://dev/shots/02-start-grid.png"
+dest_files=["res://.godot/imported/02-start-grid.png-802bc40bbc93cfb80f94c4d0a4cea5f5.ctex"]
 
 [params]
 
-compress/mode=1
+compress/mode=0
 compress/high_quality=false
-compress/lossy_quality=0.82
+compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
