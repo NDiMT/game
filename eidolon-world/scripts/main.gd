@@ -67,7 +67,10 @@ func _ready() -> void:
 	player.teleport(Level.WAKE_POS, 0.0)
 	player.crouch = 1.0
 	player.step(0.016)
-	world.rig.position = Vector3(0.0, 0.8, 0.5)
+	world.rig.position = Level.WAKE_POS + Vector3(-0.6, 0.6, 0.4)
+	world.cam.size = 8.0
+	world.fog_hole = Vector2(1.6, 5.2)
+	world.fog_hole_target = world.fog_hole
 	mode = "title"
 	ui.set_continue(not save_data.is_empty())
 	ui.fade_to(0.0, 1.8)
@@ -126,6 +129,7 @@ func _continue_from_save() -> void:
 
 func _settle_camera(yaw_i: int, at: Vector3) -> void:
 	world.follow = null
+	create_tween().tween_property(world.cam, "size", World.CAM_SIZE, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var cur := world.rig.rotation.y
 	var target := -PI * 0.25 + yaw_i * PI * 0.5
 	# turn the short way from wherever the title orbit left us
@@ -198,6 +202,10 @@ func _process(dt: float) -> void:
 	if mode == "play": _update_focus()
 	else: controls.show_interact("")
 	_update_hum()
+	if mode != "title":
+		var p := player.position
+		var wide := p.x > 20.5 and p.z < -18.5     # the eidolon ledge and the shrine: see across the gap
+		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(4.6, 11.0)
 	level.beyond.visible = world.awaken > 0.01
 	if ui.text_source != Vector3.INF and player.position.distance_to(ui.text_source) > 3.2: ui.hide_text()
 	if mode == "play":
@@ -410,7 +418,8 @@ func state_dict() -> Dictionary:
 		"refl": refl, "gaze": puzzles.hall_mirror.gaze_head, "glimpses": glimpses, "awaken": world.awaken,
 		"fps": Engine.get_frames_per_second(), "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "speed": player.speed01,
-		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled}
+		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
+		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal}
 
 func _setup_js() -> void:
 	if not OS.has_feature("web"): return

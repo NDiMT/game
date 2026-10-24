@@ -56,11 +56,11 @@ func _input(e: InputEvent) -> void:
 	if not enabled: return
 	# desktop: the mouse drives the same code as a finger (touch emulation is off so a real touch
 	# is never seen twice)
-	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and e.device != InputEvent.DEVICE_ID_EMULATION:
 		var t := InputEventScreenTouch.new()
 		t.index = MOUSE_ID; t.position = e.position; t.pressed = e.pressed
 		e = t
-	elif e is InputEventMouseMotion and _touches.has(MOUSE_ID):
+	elif e is InputEventMouseMotion and _touches.has(MOUSE_ID) and e.device != InputEvent.DEVICE_ID_EMULATION:
 		var dr := InputEventScreenDrag.new()
 		dr.index = MOUSE_ID; dr.position = e.position
 		e = dr

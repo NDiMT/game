@@ -26,6 +26,9 @@ var fog_nodes: Array[MeshInstance3D] = []
 var cam_back := Vector3(-0.572, 0.588, 0.572)
 var follow: Node3D
 var look_offset := Vector3.ZERO
+## the clear bubble in the fog veil (inner, outer radius); eased toward fog_hole_target
+var fog_hole := Vector2(4.6, 11.0)
+var fog_hole_target := Vector2(4.6, 11.0)
 var awaken := 0.0
 var shaft_mats: Array[ShaderMaterial] = []
 
@@ -241,6 +244,9 @@ func _process(dt: float) -> void:
 	else:
 		cam.h_offset = 0.0
 		cam.v_offset = base_v_offset
+	fog_hole = fog_hole.lerp(fog_hole_target, 1.0 - exp(-dt * 1.2))
+	fog_mats[2].set_shader_parameter("hole_inner", fog_hole.x)
+	fog_mats[2].set_shader_parameter("hole_outer", fog_hole.y)
 	cam_back = cam.global_transform.basis.z.normalized()
 	RenderingServer.global_shader_parameter_set("cam_back", cam_back)
 	var p := follow.global_position if follow else rig.position - Vector3(0, 0.6, 0)
