@@ -1,0 +1,108 @@
+class_name Player
+extends Node3D
+## The hooded wanderer: smooth acceleration, turning with a lean into the turn, walk bob, cloak sway
+## and flare (a damped spring so the cloak overshoots when you stop), idle breathing, footsteps.
+## Movement is resolved by Level.move() (walkable regions + obstacles): you cannot fall into the void.
+
+signal footstep(kind: String, strength: float)
+
+const SPEED := 2.7
+const ACCEL := 9.0
+const DECEL := 12.0
+const RADIUS := 0.27
+
+var level: Level
+var fig: Figure
+var vel := Vector3.ZERO
+var yaw := 0.0
+var input_dir := Vector2.ZERO     # desired world xz direction, length 0..1
+var locked := false
+var crouch := 0.0
+var turn_rate := 0.0
+var speed01 := 0.0
+var t := 0.0
+var _phase := 0.0
+var _last_s := 0.0
+var _step_n := 0
+var _sway := Vector2.ZERO
+var _sway_v := Vector2.ZERO
+var _flare := 0.0
+var _flare_v := 0.0
+var _idle_look := 0.0
+var still_time := 0.0
+
+func _init() -> void:
+	fig = Figure.new()
+	add_child(fig)
+
+func teleport(p: Vector3, face_yaw := INF) -> void:
+	var q := Vector2(p.x, p.z)
+	position = Vector3(q.x, level.height_at(q), q.y)
+	vel = Vector3.ZERO
+	if face_yaw != INF: yaw = face_yaw
+	fig.rotation.y = yaw
+
+func step(dt: float) -> void:
+	t += dt
+	var want := Vector3(input_dir.x, 0.0, input_dir.y)
+	if locked: want = Vector3.ZERO
+	if want.length() > 1.0: want = want.normalized()
+	var target := want * SPEED
+	var rate := ACCEL if target.length() > vel.length() else DECEL
+	vel = vel.move_toward(target, rate * dt)
+	if vel.length() < 0.01 and target == Vector3.ZERO: vel = Vector3.ZERO
+	var real := Vector3.ZERO
+	if vel != Vector3.ZERO:
+		var np := level.move(position, vel * dt, RADIUS)
+		real = (np - position) / maxf(dt, 0.0001)
+		real.y = 0.0
+		# blocked: bleed velocity so we do not "push" against invisible walls at full speed
+		if real.length() < vel.length() * 0.5: vel = vel.lerp(real, 0.5)
+		position = np
+	# animation speed follows the ACTUAL displacement (no moonwalking against a wall)
+	speed01 = lerpf(speed01, clampf(real.length() / SPEED, 0.0, 1.0), 1.0 - exp(-dt * 14.0))
+	if speed01 < 0.002: speed01 = 0.0
+	still_time = still_time + dt if speed01 < 0.05 else 0.0
+	# facing: turn toward the movement direction, measure the turn rate for the lean
+	var prev := yaw
+	if want.length() > 0.1:
+		var ty := atan2(-want.x, -want.z)
+		yaw = lerp_angle(yaw, ty, 1.0 - exp(-dt * 9.0))
+	var dy := wrapf(yaw - prev, -PI, PI) / maxf(dt, 0.0001)
+	turn_rate = lerpf(turn_rate, dy, 1.0 - exp(-dt * 8.0))
+	fig.rotation.y = yaw
+	_animate(dt)
+
+func _animate(dt: float) -> void:
+	var walk := smoothstep(0.0, 0.6, speed01)
+	_phase += dt * (1.5 + 6.2 * speed01) * (1.0 if speed01 > 0.03 else 0.0)
+	var p := Figure.Pose.new()
+	var s := sin(_phase)
+	p.body_y = absf(s) * 0.035 * walk + sin(t * 1.7) * 0.004 * (1.0 - walk)
+	p.lean_x = -0.11 * walk
+	p.lean_z = clampf(turn_rate * 0.05, -0.22, 0.22) * walk
+	# cloak spring: trails opposite the local velocity, swings with the stride, overshoots on stopping
+	var lv := fig.basis.inverse() * vel
+	var target := -Vector2(lv.x, lv.z) * 0.032 + Vector2(s * 0.022 * walk, 0.0)
+	_sway_v += ((target - _sway) * 70.0 - _sway_v * 7.5) * dt
+	_sway += _sway_v * dt
+	var ft := walk * 0.32
+	_flare_v += ((ft - _flare) * 55.0 - _flare_v * 6.0) * dt
+	_flare += _flare_v * dt
+	p.sway = _sway
+	p.flare = maxf(_flare, -0.05)
+	p.ripple = walk
+	p.phase = _phase
+	p.breath = sin(t * 1.65) * (1.0 - walk)
+	# idle: the hood drifts to look around, slowly
+	_idle_look = lerpf(_idle_look, sin(t * 0.37) * 0.35 * smoothstep(2.0, 5.0, still_time), 1.0 - exp(-dt * 1.5))
+	p.head_yaw = _idle_look
+	p.head_pitch = -0.04 * walk
+	p.crouch = crouch
+	fig.apply_pose(p)
+	# footsteps on each half stride
+	if speed01 > 0.12 and signf(s) != signf(_last_s) and _last_s != 0.0:
+		_step_n += 1
+		footstep.emit("step", speed01)
+		if _step_n % 2 == 0: footstep.emit("cloth", speed01)
+	_last_s = s
