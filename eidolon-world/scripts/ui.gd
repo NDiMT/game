@@ -336,7 +336,7 @@ class CardDisc extends Control:
 		for i in 10:
 			var k := float(i) / 10.0
 			draw_circle(c, r * (1.0 - k * 0.5), Color(0.06, 0.07, 0.08, 0.07 + k * 0.03))
-		draw_arc(c, r * 0.97, 0, TAU, 64, Color(0.6, 0.95, 1.0, 0.35), 1.0, true)
+		draw_arc(c, r * 0.97, 0, TAU, 64, Color(Palette.ACCENT, 0.6), 1.0, true)
 
 
 class Silhouette extends Control:
@@ -366,15 +366,15 @@ class Silhouette extends Control:
 			var pts := PackedVector2Array()
 			var c := Vector2(cx, top + s * 0.8)
 			for p in base: pts.append(c + (p - c) * k)
-			draw_colored_polygon(pts, Color(0.75, 0.95, 1.0, 0.05 * a))
+			draw_colored_polygon(pts, Color(Palette.CORE, 0.06 * a))
 		draw_colored_polygon(base, Color(0.86, 0.96, 1.0, 0.22 * a))
 		var outline := base.duplicate()
 		outline.append(base[0])
-		draw_polyline(outline, Color(0.55, 0.95, 1.0, 0.55 * a), 1.2, true)
+		draw_polyline(outline, Color(Palette.CORE, 0.6 * a), 1.2, true)
 		# a faint vertical fold or two, and the face pressing through the veil
-		draw_line(Vector2(cx - s * 0.12, top + s * 0.7), Vector2(cx - s * 0.2, top + s * 1.55), Color(0.6, 0.95, 1.0, 0.25 * a), 1.0, true)
-		draw_line(Vector2(cx + s * 0.16, top + s * 0.68), Vector2(cx + s * 0.28, top + s * 1.58), Color(0.6, 0.95, 1.0, 0.22 * a), 1.0, true)
-		draw_arc(Vector2(cx, top + s * 0.19), s * 0.13, PI * 0.15, PI * 0.85, 16, Color(0.6, 0.95, 1.0, 0.3 * a), 1.0, true)
+		draw_line(Vector2(cx - s * 0.12, top + s * 0.7), Vector2(cx - s * 0.2, top + s * 1.55), Color(Palette.CORE, 0.25 * a), 1.0, true)
+		draw_line(Vector2(cx + s * 0.16, top + s * 0.68), Vector2(cx + s * 0.28, top + s * 1.58), Color(Palette.CORE, 0.22 * a), 1.0, true)
+		draw_arc(Vector2(cx, top + s * 0.19), s * 0.13, PI * 0.15, PI * 0.85, 16, Color(Palette.CORE, 0.3 * a), 1.0, true)
 
 class TitleWord extends Control:
 	## "EIDOLON" drawn as geometry: thin roman capitals with hairline serifs, widely spaced.
@@ -624,7 +624,7 @@ class DoorOverlay extends Control:
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.04, 0.045, 0.05, 0.78))
-		var cy := Color(0.45, 0.93, 1.0)
+		var cy := Palette.CORE
 		# the active slot: its card ringed, a thread of light up to the big card
 		for i in 3:
 			var c := slots[i]
@@ -648,7 +648,7 @@ class DoorOverlay extends Control:
 			var name: String = NAMES[d] if d >= 0 else "EMPTY"
 			var fs2 := 22
 			var w2 := caps.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x
-			draw_string(caps, Vector2(size.x * 0.5 - w2 * 0.5, _name_y), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, Color(0.88, 0.97, 1.0, 1.0))
+			draw_string(caps, Vector2(size.x * 0.5 - w2 * 0.5, _name_y), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, Palette.CORE)
 			var sub: String = "SLOT  " + ["I", "II", "III"][selected]
 			var w3 := caps.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
 			draw_string(caps, Vector2(size.x * 0.5 - w3 * 0.5, _name_y + 22.0), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.7, 0.8, 0.85, 0.75))

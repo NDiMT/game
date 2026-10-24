@@ -40,6 +40,13 @@ var gaze_count := 0
 var glimpsed := false
 var _hist: Array = []              # [time, Transform3D, Pose]
 var _t := 0.0
+var surface_col := Vector3(0.5, 0.5, 0.5)
+var surface_mix := 0.0
+var _tilt_t := 10.0
+var _tilt := 0.0
+var _skip_at := 10.0
+var _active_t := 0.0
+var skipped := false
 
 static var ghost_shader: Shader
 
@@ -59,9 +66,14 @@ func setup() -> void:
 	puppet.set_param("clip_v", clip_v)
 	puppet.set_param("clip_h", clip_h)
 	puppet.set_param("ghost", ghost)
-	puppet.set_param("alpha", 0.0)
-	# the reflection draws over the (translucent) water / glass surface it lives in
-	for m in puppet.mats(): m.render_priority = 1
+	puppet.set_param("vis", 0.0)
+	puppet.set_param("surface_col", surface_col)
+	puppet.set_param("surface_mix", surface_mix)
+	puppet.set_param("ripple_amt", 1.0 if kind == "pool" else 0.0)
+	puppet.set_param("shimmer", 1.0 if kind == "eidolon" else 0.0)
+	if lag <= 0.0: lag = 0.035          # a micro-lag (about two frames): barely there
+	_tilt_t = randf_range(6.0, 14.0)
+	_skip_at = randf_range(6.0, 20.0)
 
 func reflect_point(p: Vector3) -> Vector3:
 	return refl_xf * p
@@ -122,11 +134,31 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 		var r := _gaze(dt, player, src_xf, src_pose, seen_in_glass(player.global_position + Vector3(0, 0.7, 0), cam_back))
 		src_xf = r[0]
 		src_pose = r[1]
-	if puppet.hem != player.fig.hem: puppet.set_hem(player.fig.hem)
+	# small signs that it is not quite a reflection: its hem a touch brighter, its breathing out of
+	# phase with yours, now and then its head tilts a few degrees differently, and very rarely (once
+	# per surface) a single frame where it stands slightly off, like a skip
+	if puppet.hem != player.fig.hem * 1.25: puppet.set_hem(player.fig.hem * 1.25)
 	if puppet.runes_awake != player.fig.runes_awake: puppet.set_runes(player.fig.runes_awake)
+	src_pose = src_pose.copy()
+	var still := clampf(1.0 - player.speed01 * 3.0, 0.0, 1.0)
+	src_pose.breath = sin(_t * 1.58 + 2.2) * still
+	_tilt_t -= dt
+	if _tilt_t <= 0.0:
+		_tilt_t = randf_range(9.0, 18.0)
+		var tw := create_tween()
+		tw.tween_property(self, "_tilt", randf_range(0.05, 0.08) * (1.0 if randf() < 0.5 else -1.0), 0.8).set_trans(Tween.TRANS_SINE)
+		tw.tween_interval(1.4)
+		tw.tween_property(self, "_tilt", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
+	src_pose.head_roll += _tilt
+	_active_t += dt
+	var sk := Vector2.ZERO
+	if not skipped and _active_t > _skip_at and kind != "floor":
+		skipped = true
+		sk = Vector2(clip_u.x, clip_u.z) * 0.07
+	puppet.set_param("skip", sk)
 	puppet.global_transform = refl_xf * src_xf
 	puppet.apply_pose(src_pose)
-	puppet.set_param("alpha", alpha * vis)
+	puppet.set_param("vis", vis)
 
 func _gaze(dt: float, player: Player, xf: Transform3D, pose: Figure.Pose, seen: bool) -> Array:
 	var still := player.still_time

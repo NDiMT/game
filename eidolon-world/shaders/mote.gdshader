@@ -2,6 +2,8 @@ shader_type spatial;
 // Floating dust (pale, glinting) and ash (dark flecks, slowly falling): one MultiMesh each, every
 // instance drifts and wraps inside a box around the player. Mixed (not added) so it reads on marble.
 render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_disabled, fog_disabled;
+global uniform vec4 accent;
+global uniform vec4 accent_core;
 global uniform vec3 player_pos;
 global uniform float awaken;
 uniform vec3 box = vec3(16.0, 7.0, 16.0);
@@ -34,7 +36,7 @@ void fragment() {
 	}
 	float d = length(q) * 2.0;
 	float g = pow(1.0 - clamp(d, 0.0, 1.0), ash > 0.5 ? 0.6 : 2.2);
-	vec3 col = ash > 0.5 ? vec3(0.30, 0.30, 0.31) : mix(vec3(1.0, 0.98, 0.92), vec3(0.6, 0.95, 1.0), awaken * 0.6);
+	vec3 col = ash > 0.5 ? vec3(0.30, 0.30, 0.31) : mix(vec3(1.0, 0.98, 0.92), accent_core.rgb, awaken * 0.6);
 	ALBEDO = col;
 	ALPHA = clamp(g * fade * intensity, 0.0, 1.0);
 }

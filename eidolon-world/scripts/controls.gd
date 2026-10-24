@@ -158,7 +158,7 @@ func show_interact(name: String) -> void:
 class Pad extends Control:
 	var ctl: Controls
 	const INK := Color(0.97, 0.96, 0.92)
-	const CY := Color(0.45, 0.93, 1.0)
+	const CY := Palette.CORE
 
 	func _draw() -> void:
 		if ctl == null: return

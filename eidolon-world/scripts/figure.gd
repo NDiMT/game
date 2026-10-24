@@ -9,7 +9,7 @@ extends Node3D
 
 const CLOAK := Color(0.105, 0.11, 0.122, 0.0)     # charcoal, almost black, cool
 const HOOD := Color(0.118, 0.123, 0.135, 0.0)
-const STRIPE := Color(0.30, 0.62, 0.68, 0.5)       # faded cyan, emissive (alpha = emission)
+const STRIPE := Color(0.16, 0.42, 0.45, 0.5)       # faded petrol, emissive (alpha = emission)
 const MARBLE := Color(0.84, 0.83, 0.80, 0.0)
 const VEIL := Color(0.50, 0.505, 0.50, 0.0)
 const NECK_Y := 0.80

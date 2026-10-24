@@ -157,9 +157,9 @@ func crystal_mesh(r: float, h: float) -> ArrayMesh:
 
 func crystal(pos: Vector3, r: float, h: float, lit: bool) -> Array:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.20, 0.24, 0.26) if not lit else Color(0.75, 0.97, 1.0)
+	mat.albedo_color = Color(0.20, 0.24, 0.26) if not lit else Palette.CORE
 	mat.emission_enabled = true
-	mat.emission = Color(0.35, 0.92, 1.0)
+	mat.emission = Palette.ACCENT
 	mat.emission_energy_multiplier = 1.8 if lit else 0.0
 	mat.roughness = 0.15
 	mat.metallic_specular = 0.9
@@ -171,7 +171,7 @@ func crystal(pos: Vector3, r: float, h: float, lit: bool) -> Array:
 	return [mi, mat]
 
 func set_crystal_lit(mat: StandardMaterial3D, k: float) -> void:
-	mat.albedo_color = Color(0.20, 0.24, 0.26).lerp(Color(0.75, 0.97, 1.0), k)
+	mat.albedo_color = Color(0.20, 0.24, 0.26).lerp(Palette.CORE, k)
 	mat.emission_energy_multiplier = 1.8 * k
 
 # ------------------------------------------------------------------ veiled gate pool
@@ -327,11 +327,11 @@ func _light_court() -> void:
 	marble_instance(pm.commit(), self)
 	var sc := crystal(Vector3(8.2, y + 1.0 + 0.45, -24.5), 0.17, 0.32, true)
 	source_crystal = sc[0]
-	glow_quad(self, Vector3(8.2, y + 1.45, -24.5), 2.2, Color(0.4, 0.92, 1.0), 0.55)
+	glow_quad(self, Vector3(8.2, y + 1.45, -24.5), 2.2, Palette.ACCENT, 0.55)
 	var tc := crystal(Vector3(16.3, y + 1.0 + 0.45, -24.2), 0.17, 0.32, false)
 	target_crystal = tc[0]
 	target_mat = tc[1]
-	target_halo = glow_quad(self, Vector3(16.3, y + 1.45, -24.2), 2.6, Color(0.4, 0.92, 1.0), 0.0)
+	target_halo = glow_quad(self, Vector3(16.3, y + 1.45, -24.2), 2.6, Palette.ACCENT, 0.0)
 	# the three mirror stands (frame + double-sided glass), rotating about Y
 	var gsh := preload("res://shaders/glass.gdshader")
 	for i in 3:
@@ -387,7 +387,7 @@ func _light_court() -> void:
 		gl.mesh = gq
 		var hm := ShaderMaterial.new()
 		hm.shader = preload("res://shaders/halo.gdshader")
-		hm.set_shader_parameter("color", Color(0.25, 0.85, 1.0))
+		hm.set_shader_parameter("color", Palette.ACCENT)
 		hm.set_shader_parameter("intensity", 1.2)
 		gl.material_override = hm
 		gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -601,7 +601,7 @@ func _eidolon_glass() -> void:
 	add_child(rmi)
 	plate_pillar = _pillar(self, PLATE_POS + Vector3(0, 0.1, 0), 1.1, 13.0)
 	plate_pillar.set_shader_parameter("fade", 0.7)
-	plate_halo = glow_quad(self, PLATE_POS + Vector3(0, 0.6, 0), 2.6, Color(0.3, 0.9, 1.0), 0.5)
+	plate_halo = glow_quad(self, PLATE_POS + Vector3(0, 0.6, 0), 2.6, Palette.ACCENT, 0.5)
 	for i in 7:
 		var mq := QuadMesh.new()
 		mq.size = Vector2(0.16, 0.16)
@@ -609,7 +609,7 @@ func _eidolon_glass() -> void:
 		mm.mesh = mq
 		var hm := ShaderMaterial.new()
 		hm.shader = preload("res://shaders/halo.gdshader")
-		hm.set_shader_parameter("color", Color(0.5, 0.95, 1.0))
+		hm.set_shader_parameter("color", Palette.CORE)
 		hm.set_shader_parameter("intensity", 1.4)
 		mm.material_override = hm
 		mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -746,7 +746,7 @@ func _shrine() -> void:
 	var sc := crystal(c + Vector3(0, 1.75, 0.35), 0.2, 0.38, false)
 	shrine_crystal = sc[0]
 	shrine_crystal_mat = sc[1]
-	shrine_halo = glow_quad(self, c + Vector3(0, 1.75, 0.35), 4.0, Color(0.45, 0.93, 1.0), 0.0)
+	shrine_halo = glow_quad(self, c + Vector3(0, 1.75, 0.35), 4.0, Palette.ACCENT, 0.0)
 	shrine_ring = ShaderMaterial.new()
 	shrine_ring.shader = preload("res://shaders/ring.gdshader")
 	var q := PlaneMesh.new()
@@ -759,7 +759,7 @@ func _shrine() -> void:
 	add_child(mi)
 	shrine_light = OmniLight3D.new()
 	shrine_light.position = c + Vector3(0, 2.2, 0.4)
-	shrine_light.light_color = Color(0.55, 0.92, 1.0)
+	shrine_light.light_color = Palette.CORE
 	shrine_light.light_energy = 0.0
 	shrine_light.omni_range = 9.0
 	shrine_light.shadow_enabled = false
@@ -771,7 +771,7 @@ func _shrine() -> void:
 	var c2 := Level.SECOND_SHRINE
 	var sc2 := crystal(c2 + Vector3(0, 1.2, 0), 0.16, 0.3, true)
 	(sc2[0] as Node3D).reparent(level.beyond)
-	glow_quad(level.beyond, c2 + Vector3(0, 1.2, 0), 3.0, Color(0.45, 0.93, 1.0), 0.45)
+	glow_quad(level.beyond, c2 + Vector3(0, 1.2, 0), 3.0, Palette.ACCENT, 0.45)
 	far_pillar = _pillar(level.beyond, c2 + Vector3(0, 3.5, 0), 0.9, 22.0)
 	far_pillar.set_shader_parameter("fade", 0.35)
 	level.add_interact("sealed", Vector3(28.0, 2.0, -38.3), "locked", func() -> void: event.emit("sealed", null), 1.0)
@@ -781,7 +781,7 @@ func _shrine() -> void:
 func _pillar(parent: Node3D, base: Vector3, width: float, height: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/beam.gdshader")
-	m.set_shader_parameter("color", Color(0.55, 0.93, 1.0))
+	m.set_shader_parameter("color", Palette.CORE)
 	m.set_shader_parameter("lit", 1.0)
 	var q := QuadMesh.new()
 	q.size = Vector2(width, height)
@@ -813,6 +813,7 @@ func _reflectors() -> void:
 	# 1. the first pool (glimpse 1: it lags, and something is slightly wrong)
 	var r := Reflector.new()
 	r.kind = "pool"; r.plane_n = Vector3.UP; r.plane_d = -0.03
+	r.surface_col = Vector3(0.45, 0.5, 0.53); r.surface_mix = 0.12
 	r.clip_c = Vector3(-2.4, -0.03, 1.7); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(1.8, 1.9)
 	r.region = Level.R(-5, -5, 5, 5); r.near_rect = Level.R(-4.2, -0.2, -0.6, 3.6); r.near = 3.2
 	r.lag = 0.42; r.wrong = 1.0; r.alpha = 0.88
@@ -820,6 +821,7 @@ func _reflectors() -> void:
 	# 2. the polished floor of the hall (faint)
 	r = Reflector.new()
 	r.kind = "floor"; r.plane_n = Vector3.UP; r.plane_d = 1.0
+	r.surface_col = Vector3(0.08, 0.085, 0.095); r.surface_mix = 0.62
 	r.clip_c = Vector3(0, 1.0, -15.8); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(4.6, 4.8)
 	r.region = Level.R(-4.6, -20.6, 4.6, -11); r.alpha = 0.26
 	_add_refl(r)

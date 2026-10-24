@@ -1,10 +1,11 @@
 shader_type spatial;
 // Rune ring set into the floor around a shrine: six runes in a circle, dark until `lit`.
 render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_back;
+global uniform vec4 accent;
+global uniform vec4 accent_core;
 #include "res://shaders/glyphs.gdshaderinc"
 uniform float lit = 0.0;
 uniform float sweep = 0.0;     // 0..1 the ignition travelling around the ring
-uniform vec3 color : source_color = vec3(0.30, 0.92, 1.0);
 
 void fragment() {
 	vec2 p = (UV - 0.5) * 2.0;           // -1..1
@@ -26,9 +27,9 @@ void fragment() {
 	on = clamp(on, 0.0, 1.0);
 	float m = max(ring_l, rm.x);
 	vec3 carved = vec3(0.17, 0.17, 0.18);
-	vec3 hot = mix(color, vec3(0.92, 1.0, 1.0), 0.5);
+	vec3 hot = mix(accent.rgb, accent_core.rgb, 0.5);
 	vec3 col = mix(carved, hot, on);
 	float halo = rm.y * on * 0.9 + (1.0 - smoothstep(0.0, 0.08, abs(r - 0.92))) * on * 0.25;
-	ALBEDO = mix(col, color, halo);
+	ALBEDO = mix(col, accent.rgb, halo);
 	ALPHA = clamp(m * mix(0.55, 1.0, on) + halo, 0.0, 1.0);
 }

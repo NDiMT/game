@@ -7,7 +7,8 @@ uniform float design = 0.0;
 uniform float numeral = 0.0;
 uniform float alpha = 1.0;
 uniform float glow = 0.6;
-uniform vec4 color : source_color = vec4(0.30, 0.92, 1.0, 1.0);
+global uniform vec4 accent;
+global uniform vec4 accent_core;
 void fragment() {
 	vec2 p = (UV - vec2(0.5, 0.42)) * vec2(2.3, 2.75);
 	vec2 rp = vec2(p.x, -p.y);
@@ -20,9 +21,9 @@ void fragment() {
 		d = min(d, g_seg(rp, vec2(x, -1.12), vec2(x, -1.42)));
 	}
 	vec2 rm = rune_mask(d);
-	vec3 hot = mix(color.rgb, vec3(0.95, 1.0, 1.0), 0.6);
+	vec3 hot = mix(accent_core.rgb, vec3(1.0), 0.15);
 	float halo = (1.0 - smoothstep(0.0, 1.25, length(rp))) * 0.22 * glow * (1.0 - empty);
-	vec3 c = mix(color.rgb, hot, rm.x);
+	vec3 c = mix(accent.rgb, hot, rm.x);
 	float a = rm.x * mix(1.0, 0.35, empty) + rm.y * (0.45 + 0.6 * glow) * (1.0 - empty * 0.7) + halo;
 	COLOR = vec4(c, clamp(a, 0.0, 1.0) * alpha);
 }

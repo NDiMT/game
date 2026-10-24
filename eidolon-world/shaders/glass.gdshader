@@ -1,6 +1,8 @@
 shader_type spatial;
 // Mirror pane: faint tinted glass, bright frame lines and a slow sheen. Its reflection is the puppet.
 render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
+global uniform vec4 accent;
+global uniform vec4 accent_core;
 
 uniform vec3 tint : source_color = vec3(0.42, 0.58, 0.64);
 uniform vec2 size = vec2(2.0, 3.0);
@@ -19,7 +21,7 @@ void fragment() {
 	float low = smoothstep(0.0, 0.6, uv.y);
 	float a = base_alpha + frame * 0.75 + inner * 0.4 + sheen * 0.12 + pulse * 0.25;
 	vec3 c = mix(tint * mix(0.85, 1.05, low), vec3(0.93, 0.98, 1.0), frame * 0.7 + sheen * 0.5 + inner * 0.4);
-	c = mix(c, vec3(0.5, 0.95, 1.0), pulse * 0.6);
+	c = mix(c, accent_core.rgb, pulse * 0.6);
 	if (crack > 0.0) {
 		vec2 q = (uv - vec2(0.62, 0.35)) * size;
 		float an = atan(q.y, q.x);

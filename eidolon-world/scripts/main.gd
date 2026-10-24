@@ -38,6 +38,7 @@ var _finale_t := -1.0
 
 func _ready() -> void:
 	if "--autotest" in OS.get_cmdline_user_args(): autotest = true
+	Palette.push()
 	world = World.new()
 	add_child(world)
 	level = Level.new(world.noise_tex)
