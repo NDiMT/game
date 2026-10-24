@@ -206,6 +206,13 @@ func _process(dt: float) -> void:
 		var p := player.position
 		var wide := p.x > 20.5 and p.z < -18.5     # the eidolon ledge and the shrine: see across the gap
 		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(4.6, 11.0)
+		if mode == "play":
+			# on the eidolon ledge, frame the player AND the plate across the gap
+			var off := Vector3.ZERO
+			if p.x > 20.8 and p.z > -25.2 and p.z < -18.8 and not puzzles.state["plate"]:
+				off = (Puzzles.PLATE_POS - p) * 0.5
+				off.y = 0.0
+			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
 	if ui.text_source != Vector3.INF and player.position.distance_to(ui.text_source) > 3.2: ui.hide_text()
 	if mode == "play":
@@ -397,6 +404,8 @@ func cmd(c: String) -> Variant:
 		"reset_save": _delete_save(); save_data = {}
 		"save": _save()
 		"finale": start_finale()
+		"fogd": world.fog_mats[int(a[1])].set_shader_parameter("density", float(a[2]))
+		"envfog": world.env.fog_enabled = a[1] == "1"
 		"rp": puzzles.reflectors[int(a[1])].puppet.set_param(a[2], float(a[3]))
 		"rpv": puzzles.reflectors[int(a[1])].puppet.set_param(a[2], Vector2(float(a[3]), float(a[4])))
 		"refl":
