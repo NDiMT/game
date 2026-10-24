@@ -1,9 +1,12 @@
 shader_type spatial;
-// Engraved lines of the unknown script on a stele, wall or floor slab: dark grooves with a faint petrol
-// glow inside them that brightens as the wanderer comes near (`near`).
+// Engraved lines of the unknown script on a stele, wall or floor slab, CARVED GLOW: light comes from
+// inside the grooves (a bright core along each stroke), blooms softly onto the stone around them, and
+// the groove walls keep a thin bevel (a highlight on one side, a quiet tint on the other) so it still
+// reads as cut stone. It brightens as the wanderer comes near (`near`). Never a dark fill.
 render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_back;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
+global uniform vec4 accent_tint;
 #include "res://shaders/glyphs.gdshaderinc"
 #include "res://shaders/script.gdshaderinc"
 uniform float seed = 1.0;
@@ -12,20 +15,18 @@ uniform float cols = 7.0;
 uniform float aspect = 1.0;
 uniform float near = 0.0;
 void fragment() {
-	vec2 uv = (UV - 0.5) * 1.12 + 0.5;
+	vec2 uv = (UV - 0.5) * 1.1 + 0.5;
 	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) discard;
 	float d = script_dist(uv, seed, rows, cols, aspect);
-	float aa = max(fwidth(d), 0.002);
-	float w = 0.03;
-	float core = 1.0 - smoothstep(w - aa, w + aa, d);
-	float halo = exp(-max(d - w, 0.0) * 22.0) * (1.0 - core);
-	// the groove: dark stone, its far lip catching the light
-	float lip = (1.0 - smoothstep(w, w + aa * 2.0 + 0.01, abs(d - w * 1.6))) * (1.0 - core);
-	float pulse = 0.85 + 0.15 * sin(TIME * 1.3 + seed);
-	float glow = mix(0.35, 1.0, near) * pulse;
-	vec3 groove = mix(vec3(0.22, 0.22, 0.23), accent.rgb, glow * 0.75);
-	groove = mix(groove, accent_core.rgb, glow * near * 0.45);
-	vec3 c = mix(vec3(0.95, 0.94, 0.9), groove, core);
-	ALBEDO = mix(c, accent.rgb, halo * glow * 0.5);
-	ALPHA = clamp(core * 0.95 + lip * 0.25 + halo * glow * 0.35, 0.0, 1.0);
+	float w = 0.034;
+	vec4 m = script_glow(d, w);
+	float pulse = 0.9 + 0.1 * sin(TIME * 1.3 + seed);
+	float glow = mix(0.6, 1.0, near) * pulse;
+	float inner = 1.0 - clamp(d / w, 0.0, 1.0);
+	vec3 core_col = mix(accent.rgb, accent_core.rgb, smoothstep(0.1, 0.75, inner) * glow);
+	core_col = mix(core_col, vec3(0.93, 1.0, 0.98), m.z * 0.7);        // the lit wall of the groove
+	core_col = mix(core_col, accent_tint.rgb, m.w * 0.55);             // the other wall, in its own light
+	vec3 c = mix(accent.rgb, core_col, m.x);
+	ALBEDO = c * (1.0 + 0.15 * near);
+	ALPHA = clamp(m.x * (0.82 + 0.18 * glow) + m.y * glow * 0.55, 0.0, 1.0);
 }

@@ -53,11 +53,15 @@ cam_back={
 }
 accent={
 "type": "color",
-"value": Color(0.164706, 0.498039, 0.52549, 1)
+"value": Color(0.298039, 0.752941, 0.729412, 1)
+}
+accent_tint={
+"type": "color",
+"value": Color(0.180392, 0.560784, 0.572549, 1)
 }
 accent_core={
 "type": "color",
-"value": Color(0.560784, 0.827451, 0.839216, 1)
+"value": Color(0.658824, 0.964706, 0.933333, 1)
 }
 awaken={
 "type": "float",
