@@ -495,7 +495,7 @@ func _veiled_gate() -> void:
 	box(z, Vector3(3.05, 0.62, 2.5), Vector3(0.95, 1.24, 0.24), 0.25, false, Basis(Vector3.UP, -0.5))
 	box(z, Vector3(3.05, 1.28, 2.5), Vector3(1.05, 0.08, 0.3), 0.25, false, Basis(Vector3.UP, -0.5))
 	ob_rect(R(2.62, 2.25, 3.48, 2.75))
-	inscription("t_stele", Vector3(2.6, 0, 2.0), "Each morning I changed her face again.\nNone of them was hers.", 1.3,
+	inscription("t_stele", Vector3(2.6, 0, 2.0), "Her face is not yours to carve.\nI broke the vow. Every face I gave her was wrong.", 1.3,
 		Transform3D(Basis(Vector3.UP, -0.5), Vector3(3.05, 0.64, 2.5) + Basis(Vector3.UP, -0.5) * Vector3(0, 0, 0.125)), Vector2(0.84, 1.08))
 	inscription("t_pool", Vector3(-0.1, 0, -0.5), "Still water keeps a likeness. Be still,\nand it will show the steps I hid.", 1.1,
 		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-0.1, 0.012, -0.62)), Vector2(1.15, 0.78))
@@ -589,7 +589,7 @@ func _garden() -> void:
 	balustrade(z, Vector2(16.95, -14.8), Vector2(16.95, -13.2), 1.0)
 	balustrade(z, Vector2(16.95, -10.4), Vector2(16.95, -5.2), 1.0)
 	balustrade(z, Vector2(9.7, -4.95), Vector2(16.8, -4.95), 1.0)
-	inscription("g_stele", Vector3(11.0, 1.0, -6.4), "Ivory first. Then marble. Then glass.", 1.2,
+	inscription("g_stele", Vector3(11.0, 1.0, -6.4), "White marble first. Then a thousand faces. Then glass.", 1.2,
 		Transform3D(Basis(), Vector3(11.0, 1.62, -5.635)), Vector2(1.0, 0.9))
 	box(z, Vector3(11.0, 1.55, -5.75), Vector3(1.15, 1.1, 0.22), 0.25)
 	box(z, Vector3(11.0, 2.14, -5.75), Vector3(1.25, 0.08, 0.28), 0.25)

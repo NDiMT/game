@@ -742,7 +742,7 @@ func _build_mural() -> void:
 	mural_mat = _smat("res://shaders/mural.gdshader", {"noise_tex": level.noise_tex, "size": Vector2(5.2, 3.4), "lit": 0.0, "complete": 0.0,
 		"head": Vector2((MURAL_HEAD.x - 9.4) / 5.2, (MURAL_HEAD.y - 2.1) / 3.4)})
 	_mi(_quad(Vector2(5.2, 3.4)), mural_mat, Transform3D(Basis(), Vector3(12.0, 3.8, MURAL_Z)))
-	level.inscription("l_mural", Vector3(9.0, 2.0, -25.6), "The sea gave the goddess. The sea took her back.\nThe light remembers where her head was bowed.", 1.0,
+	level.inscription("l_mural", Vector3(9.0, 2.0, -25.6), "The sea took her on a still day.\nThe light remembers where her head was bowed.", 1.0,
 		Transform3D(Basis(), Vector3(9.0, 2.62, -26.9)), Vector2(0.7, 0.7))
 
 ## where the lit crystal throws your veil's shadow on the mural wall (INF: no shadow)
