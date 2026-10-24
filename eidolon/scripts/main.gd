@@ -34,6 +34,7 @@ var _title_spin := true
 var solved_count := 0
 var swipes := 0
 var board_gone := false
+var music_on := true
 
 func _ready() -> void:
 	if "--autotest" in OS.get_cmdline_user_args(): autotest = true
@@ -48,6 +49,9 @@ func _ready() -> void:
 	ui.begin_pressed.connect(_on_begin)
 	ui.level_chosen.connect(_on_level_chosen)
 	ui.action.connect(_on_action)
+	sfx.set_music(music_on)
+	sfx.start_music()           # fades in on the title (on web: as soon as the page may play audio)
+	ui.set_music_icon(music_on)
 	_setup_js()
 	# title: level I rises out of the fog behind the word
 	_load_level(0, false)
@@ -124,6 +128,8 @@ func _load_level(i: int, frame_anim: bool) -> void:
 	board.turn_finished.connect(_on_turn_finished)
 	board.mirror_moved.connect(_on_mirror_moved)
 	board.cube_landed.connect(func(_p: Vector3) -> void: sfx.play("thud", -3.0, randf_range(0.9, 1.08)))
+	board.goal_locked.connect(_on_goal_locked)
+	board.eidolon_glitched.connect(func() -> void: sfx.play("glitch", -9.0, randf_range(0.9, 1.1)))
 	world.frame_board(rules.w, rules.h, not frame_anim)
 	ui.set_level(rules, 0)
 
@@ -133,6 +139,11 @@ func _on_action(name: String) -> void:
 		"restart": restart()
 		"rotl": rotate_view(-1)
 		"rotr": rotate_view(1)
+		"music":
+			music_on = not music_on
+			sfx.set_music(music_on)
+			ui.set_music_icon(music_on)
+			_save()
 		"menu":
 			if mode == "play":
 				board.hide_preview()
@@ -150,7 +161,6 @@ func try_move(d: Vector2i) -> bool:
 		sfx.play("thud", -16.0, 1.5)
 		return false
 	ui.fade_hint()
-	var before := rules.lit(state)
 	history.append(Rules.copy_state(state))
 	state = ev["state"]
 	moves += 1
@@ -161,11 +171,11 @@ func try_move(d: Vector2i) -> bool:
 	if eid_moved:
 		sfx.play("chime", -15.0, [1.0, 1.122, 1.335, 1.498][moves % 4])
 	board.play_turn(ev, d)
-	var after := rules.lit(state)
-	for k in after.size():
-		if after[k] and not before[k]:
-			get_tree().create_timer(0.3).timeout.connect(func() -> void: sfx.play("piano", -13.0, pow(2.0, [7, 11, 14][k % 3] / 12.0)))
 	return true
+
+func _on_goal_locked(kind: int) -> void:
+	sfx.play("chime", -11.0, 0.75 if kind == 0 else 1.0)
+	sfx.play("piano", -14.0, pow(2.0, (7.0 if kind == 0 else 14.0) / 12.0))
 
 func _on_mirror_moved(strength: float) -> void:
 	sfx.play("grind", -4.0, randf_range(0.92, 1.05))
@@ -212,6 +222,7 @@ func _solved() -> void:
 	_save()
 	ui.show_par(moves, rules.par)
 	board.pulse_win()
+	sfx.duck()
 	sfx.chord([-3, 4, 7, 11, 16], -5.0, 0.11)
 	await get_tree().create_timer(1.0).timeout
 	ui.show_story(rules.line, 2.6)
@@ -338,10 +349,11 @@ func _load_save() -> void:
 	if not FileAccess.file_exists(SAVE_PATH): return
 	var d = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
 	if d is Dictionary and d.has("best"): best = d["best"]
+	if d is Dictionary and d.has("music"): music_on = bool(d["music"])
 
 func _save() -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if f: f.store_string(JSON.stringify({"best": best, "version": 1}))
+	if f: f.store_string(JSON.stringify({"best": best, "music": music_on, "version": 2}))
 
 # ------------------------------------------------------------------ test hooks (web)
 ## window.eidolonCmd('begin'|'play:N'|'move:R'|'solve_step'|'preview:R'|'rotate:1'|'undo'|'reset_save');
@@ -362,9 +374,16 @@ func _on_js_cmd(args: Array) -> void:
 		"preview": board.show_preview(rules.step(state, Rules.DNAME[parts[1]]))
 		"rotate": rotate_view(int(parts[1]))
 		"slowmo": Engine.time_scale = float(parts[1])
+		"closeup":
+			world.rig.position = board.cube.global_position
+			world.cam.size = float(parts[1]) if parts.size() > 1 else 3.0
+		"closeup_off":
+			world.rig.position = Vector3.ZERO
+			world.frame_board(rules.w, rules.h, true)
 		"undo": undo()
 		"restart": restart()
 		"menu": _on_action("menu")
+		"music": _on_action("music")
 		"solve_step":
 			var path := str(rules.solve(500000, state)["path"])
 			if path.length() > 0: try_move(Rules.DNAME[path[0]])
@@ -383,5 +402,5 @@ func _js_state(dt: float) -> void:
 	_js_t = 0.2
 	var st := {"mode": mode, "level": rules.id if rules else 0, "moves": moves, "busy": board.busy if board else false,
 		"won": rules.won(state) if rules else false, "fps": Engine.get_frames_per_second(), "yaw": world.yaw_index,
-		"solved": solved_count, "swipes": swipes, "gesture": _gesture, "best_count": best.size(), "dissolved": board_gone, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)}
+		"solved": solved_count, "swipes": swipes, "gesture": _gesture, "best_count": best.size(), "music": music_on, "dissolved": board_gone, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)}
 	JavaScriptBridge.eval("window.eidolonState = " + JSON.stringify(st) + ";", true)

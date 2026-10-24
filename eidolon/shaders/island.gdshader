@@ -16,11 +16,15 @@ varying vec3 wp;
 varying float mat_id;
 varying float rnd;
 varying float dis;
+varying float crack;
+varying vec3 wn;
 
 void vertex() {
 	wp = VERTEX;
 	rnd = COLOR.r;
 	mat_id = COLOR.g;
+	crack = COLOR.b;
+	wn = NORMAL;
 	float delay = rnd * 0.45;
 	float r = clamp((rise - delay) / 0.55, 0.0, 1.0);
 	r = 1.0 - pow(1.0 - r, 3.0);
@@ -42,14 +46,31 @@ void fragment() {
 	vec3 col;
 	float rough;
 	if (mat_id < 0.25) {
-		float v = marble(wp, 2.2, 0.10) * 0.8 + marble(wp * 2.7 + 3.1, 2.0, 0.05) * 0.35;
-		col = mix(cream * (0.93 + 0.12 * n), cream_vein, clamp(v, 0.0, 1.0) * 0.55);
-		// grout / chipped tile edge
+		// polished cream marble slab: veins, per-tile tint, chamfered + worn edges, optional crack
+		float v = marble(wp + rnd * 7.0, 2.2, 0.10) * 0.8 + marble(wp * 2.7 + 3.1, 2.0, 0.05) * 0.35;
+		float fine = marble(wp * 6.0 + rnd * 3.0, 3.0, 0.03) * 0.25;
+		vec3 tint = cream * vec3(1.0 + (rnd - 0.5) * 0.05, 1.0, 1.0 - (rnd - 0.5) * 0.07) * (0.95 + 0.08 * rnd);
+		col = mix(tint * (0.94 + 0.10 * n), cream_vein, clamp(v + fine, 0.0, 1.0) * 0.5);
 		vec2 e = min(UV, 1.0 - UV);
-		float edge = smoothstep(0.0, 0.06, min(e.x, e.y));
-		col *= mix(0.62, 1.0, edge);
-		col *= 0.94 + 0.12 * rnd;
-		rough = 0.32 + n * 0.2;
+		float ed = min(e.x, e.y);
+		float wear = texture(noise_tex, wp.xz * 1.7 + rnd).r;
+		col *= mix(0.80, 1.0, smoothstep(0.0, 0.07 + wear * 0.05, ed));   // worn rim
+		float chamfer = 1.0 - smoothstep(0.80, 0.98, wn.y);
+		col *= 1.0 - chamfer * 0.12;
+		if (crack > 0.5) {
+			vec2 c2 = UV - 0.5;
+			float an = rnd * 6.283;
+			vec2 dir = vec2(cos(an), sin(an));
+			float jag = (texture(noise_tex, UV * 0.9 + rnd * 5.0).r - 0.5) * 0.22;
+			float cl = abs(dot(c2, vec2(-dir.y, dir.x)) + jag);
+			float along = abs(dot(c2, dir));
+			float crk = (1.0 - smoothstep(0.004, 0.012, cl)) * step(along, 0.42 + rnd * 0.1);
+			col = mix(col, vec3(0.22, 0.21, 0.2), crk * 0.85);
+		}
+		rough = 0.28 + n * 0.2 + chamfer * 0.2;
+	} else if (mat_id < 0.42) {
+		col = vec3(0.10, 0.10, 0.105) * (0.8 + 0.4 * n);   // grout
+		rough = 1.0;
 	} else if (mat_id < 0.75) {
 		float depth = clamp(-wp.y / 2.5, 0.0, 1.0);
 		float strata = 0.9 + 0.1 * sin(wp.y * 23.0 + n * 6.0);

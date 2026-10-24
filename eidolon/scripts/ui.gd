@@ -27,6 +27,7 @@ var story: Label
 var hint: Label
 var fade: ColorRect
 var buttons := {}
+var music_btn: IconButton
 var medallions: Array[Medallion] = []
 var progress_label: Label
 var _t := 0.0
@@ -57,6 +58,15 @@ func _ready() -> void:
 	story.add_theme_constant_override("shadow_outline_size", 10)
 	story.modulate.a = 0.0
 	root.add_child(story)
+	music_btn = IconButton.new()
+	music_btn.icon_name = "music"
+	music_btn.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	music_btn.offset_left = -19; music_btn.offset_right = 19; music_btn.offset_top = 24; music_btn.offset_bottom = 62
+	music_btn.focus_mode = Control.FOCUS_NONE
+	music_btn.visible = false
+	music_btn.pressed.connect(func() -> void: action.emit("music"))
+	root.add_child(music_btn)
+	buttons["music"] = music_btn
 	fade = ColorRect.new()
 	fade.color = Color(0.07, 0.07, 0.075, 1.0)
 	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -130,11 +140,11 @@ func _build_select() -> void:
 	var head := _label(caps, 15, CREAM, HORIZONTAL_ALIGNMENT_CENTER)
 	head.text = "E I D O L O N"
 	head.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	head.offset_left = -150; head.offset_right = 150; head.offset_top = 56; head.offset_bottom = 80
+	head.offset_left = -150; head.offset_right = 150; head.offset_top = 74; head.offset_bottom = 98
 	select_screen.add_child(head)
 	progress_label = _label(italic, 16, Color(0.85, 0.84, 0.8), HORIZONTAL_ALIGNMENT_CENTER)
 	progress_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	progress_label.offset_left = -150; progress_label.offset_right = 150; progress_label.offset_top = 82; progress_label.offset_bottom = 106
+	progress_label.offset_left = -150; progress_label.offset_right = 150; progress_label.offset_top = 100; progress_label.offset_bottom = 124
 	select_screen.add_child(progress_label)
 	var chapters := [["I", "THE STILL GLASS", 0.30], ["II", "THE MOVING GLASS", 0.58]]
 	var idx := 0
@@ -244,6 +254,10 @@ func _build_hud() -> void:
 		hud.add_child(b)
 		buttons[nm] = b
 
+func set_music_icon(on: bool) -> void:
+	music_btn.off = not on
+	music_btn.queue_redraw()
+
 func is_over_button(p: Vector2) -> bool:
 	if not hud.visible: return false
 	for b: Control in buttons.values():
@@ -290,6 +304,7 @@ func set_screen(name: String) -> void:
 	title_screen.visible = name == "title"
 	select_screen.visible = name == "select"
 	hud.visible = name == "play"
+	music_btn.visible = name != "title"
 
 func fade_to(a: float, dur: float) -> Tween:
 	var tw := create_tween()
@@ -402,6 +417,7 @@ class TitleWord extends Control:
 class IconButton extends BaseButton:
 	## Thin-line icon on a soft disc: menu, undo, rotl, rotr, restart.
 	var icon_name := "undo"
+	var off := false
 	var _press := 0.0
 
 	func _ready() -> void:
@@ -416,6 +432,13 @@ class IconButton extends BaseButton:
 		var col := Color(0.97, 0.95, 0.9, 0.95)
 		var s := r * 0.42
 		match icon_name:
+			"music":
+				var hx := c + Vector2(s * 0.35, -s * 0.75)
+				draw_line(hx, hx + Vector2(0, s * 1.25), col, 1.4, true)
+				draw_line(hx, hx + Vector2(s * 0.45, s * 0.25), col, 1.4, true)
+				draw_circle(c + Vector2(s * 0.05, s * 0.55), s * 0.32, col)
+				if off:
+					draw_line(c + Vector2(-s, -s), c + Vector2(s, s), Color(0.95, 0.5, 0.45, 0.95), 1.6, true)
 			"menu":
 				for k in 3:
 					var y := c.y + (k - 1) * s * 0.6

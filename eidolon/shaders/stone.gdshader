@@ -1,6 +1,7 @@
 shader_type spatial;
 // Marble in object space (the pattern tumbles with the cube), with carved bevel darkening on edges.
 render_mode cull_back;
+#include "res://shaders/glyphs.gdshaderinc"
 
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform float black = 0.0;
@@ -8,6 +9,10 @@ uniform float half_size = 0.45;
 uniform float pulse = 0.0;
 uniform float bevel = 1.0;
 uniform float alpha_cut = 0.0;
+uniform float glyphs = 0.0;          // 1 on the player cube: engraved cyan line designs
+uniform float glyph_seed = 0.0;
+uniform float roll_glow = 0.0;
+uniform vec3 glyph_col : source_color = vec3(0.25, 0.92, 1.0);
 uniform vec3 cream : source_color = vec3(0.90, 0.875, 0.82);
 uniform vec3 vein : source_color = vec3(0.38, 0.37, 0.36);
 
@@ -35,5 +40,12 @@ void fragment() {
 	ALBEDO = col;
 	ROUGHNESS = mix(0.3, 0.6, edge);
 	SPECULAR = 0.5;
-	EMISSION = vec3(0.95, 0.85, 0.6) * pulse * 0.6;
+	EMISSION = vec3(0.95, 0.85, 0.6) * pulse * 0.6 * (1.0 - glyphs);
+	if (glyphs > 0.5) {
+		vec2 gl = glyph_lines(op, half_size, glyph_seed);
+		float breathe = 0.55 + 0.25 * sin(TIME * 1.1 + glyph_seed);
+		float k = breathe + roll_glow * 0.9 + pulse * 1.6;
+		ALBEDO = mix(ALBEDO, glyph_col * 0.35, gl.x * 0.8);
+		EMISSION += glyph_col * (gl.x * 1.6 + gl.y * 0.35) * k;
+	}
 }
