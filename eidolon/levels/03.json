@@ -1,0 +1,20 @@
+{
+ "id": 3,
+ "chapter": 1,
+ "title": "Two Stones",
+ "line": "Not you. Only the shape you left upon the light.",
+ "map": [
+  ".G....",
+  ".#....",
+  "P..a.A",
+  "....#."
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 3
+  }
+ ],
+ "par": 6,
+ "solution": "URURDD"
+}

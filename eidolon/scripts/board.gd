@@ -1,0 +1,621 @@
+class_name Board
+extends Node3D
+## Visual diorama for one level: island mesh, sigils, mirrors, rails, cube, Eidolons, previews.
+## All animation lives here; the rules live in Rules.
+
+signal turn_finished
+signal mirror_moved(strength: float)
+signal cube_landed(pos: Vector3)
+signal body_bumped
+
+const CUBE := 0.9
+const H := CUBE * 0.5
+const ROLL_T := 0.26
+const SLIDE_T := 0.34
+
+var rules: Rules
+var state: Dictionary
+var noise_tex: Texture2D
+var island_mat: ShaderMaterial
+var stone_mat: ShaderMaterial
+var black_mat: ShaderMaterial
+var cube: Node3D
+var cube_mat: ShaderMaterial
+var eids: Array[Node3D] = []
+var eid_mats: Array[ShaderMaterial] = []
+var eid_glows: Array[MeshInstance3D] = []
+var mirror_roots: Array[Node3D] = []
+var mirror_mats: Array[ShaderMaterial] = []
+var sigil_mats: Array[ShaderMaterial] = []
+var preview_nodes: Array[MeshInstance3D] = []
+var dust: CPUParticles3D
+var busy := false
+var center := Vector2.ZERO
+
+func setup(r: Rules, s: Dictionary, ntex: Texture2D) -> void:
+	rules = r
+	noise_tex = ntex
+	center = Vector2((r.w - 1) * 0.5, (r.h - 1) * 0.5)
+	island_mat = ShaderMaterial.new()
+	island_mat.shader = preload("res://shaders/island.gdshader")
+	island_mat.set_shader_parameter("noise_tex", ntex)
+	stone_mat = _stone(false)
+	black_mat = _stone(true)
+	_build_island()
+	_build_sigils()
+	_build_mirrors()
+	_build_bodies()
+	_build_previews()
+	_build_dust()
+	set_state(s)
+
+func _stone(is_black: bool) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/stone.gdshader")
+	m.set_shader_parameter("noise_tex", noise_tex)
+	m.set_shader_parameter("black", 1.0 if is_black else 0.0)
+	m.set_shader_parameter("bevel", 0.0 if is_black else 1.0)
+	return m
+
+func tile_pos(p: Vector2i, y := 0.0) -> Vector3:
+	return Vector3(p.x - center.x, y, p.y - center.y)
+
+func extent() -> float:
+	return float(rules.w + rules.h)
+
+# ------------------------------------------------------------------ island
+func _build_island() -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = rules.id * 7919 + 13
+	var tiles: Array = rules.floor_tiles.keys() + rules.walls.keys()
+	var occupied := {}
+	for p: Vector2i in tiles: occupied[p] = true
+	for p: Vector2i in tiles:
+		var rnd := rng.randf()
+		var is_wall := rules.walls.has(p)
+		var c := tile_pos(p)
+		var top_id := 1.0 if is_wall else 0.0
+		var col_side := Color(rnd, 0.5, 0.0)
+		# polished slab with a thin grout gap
+		_quad_top(st, c, 0.475, Color(rnd, top_id, 0.0))
+		_quad_top(st, c + Vector3(0, -0.09, 0), 0.5, col_side)
+		_box_sides(st, c, 0.475, 0.475, 0.0, -0.09, col_side, false)
+		# continuous island body: only the outer faces are emitted
+		var nb := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+		for k in 4:
+			if occupied.has(p + nb[k]): continue
+			_side_face(st, c, k, 0.5, -0.09, -0.62, col_side)
+		# eroded underside: tapering rock that sinks into the fog
+		var depth := rng.randf_range(0.6, 3.2)
+		var mid := rng.randf_range(0.30, 0.46)
+		_box_sides(st, c, 0.5, mid, -0.62, -0.62 - depth * 0.4, col_side, false)
+		_box_sides(st, c, mid, rng.randf_range(0.05, 0.2), -0.62 - depth * 0.4, -0.62 - depth, col_side, true)
+		if is_wall:
+			_column(st, c, rng, Color(rnd, 1.0, 0.0))
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = island_mat
+	mi.name = "Island"
+	add_child(mi)
+
+func _quad_top(st: SurfaceTool, c: Vector3, r: float, col: Color) -> void:
+	var a := c + Vector3(-r, 0, -r); var b := c + Vector3(r, 0, -r)
+	var d := c + Vector3(r, 0, r); var e := c + Vector3(-r, 0, r)
+	st.set_color(col)
+	st.set_uv(Vector2(0, 0)); st.add_vertex(a)
+	st.set_uv(Vector2(1, 0)); st.add_vertex(b)
+	st.set_uv(Vector2(1, 1)); st.add_vertex(d)
+	st.set_uv(Vector2(0, 0)); st.add_vertex(a)
+	st.set_uv(Vector2(1, 1)); st.add_vertex(d)
+	st.set_uv(Vector2(0, 1)); st.add_vertex(e)
+
+## Four sides of a (possibly tapering) square frustum from y0 (half size r0) down to y1 (half size r1).
+func _side_face(st: SurfaceTool, c: Vector3, k: int, r: float, y0: float, y1: float, col: Color) -> void:
+	var corners := [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]
+	var p: Vector2 = corners[k]; var q: Vector2 = corners[(k + 1) % 4]
+	var a := c + Vector3(p.x * r, y0, p.y * r)
+	var b := c + Vector3(q.x * r, y0, q.y * r)
+	var a2 := c + Vector3(p.x * r, y1, p.y * r)
+	var b2 := c + Vector3(q.x * r, y1, q.y * r)
+	st.set_color(col)
+	st.set_uv(Vector2(0.5, 0.5))
+	st.add_vertex(a); st.add_vertex(a2); st.add_vertex(b)
+	st.add_vertex(b); st.add_vertex(a2); st.add_vertex(b2)
+
+func _box_sides(st: SurfaceTool, c: Vector3, r0: float, r1: float, y0: float, y1: float, col: Color, cap := true) -> void:
+	var corners := [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]
+	st.set_color(col)
+	for i in 4:
+		var p: Vector2 = corners[i]; var q: Vector2 = corners[(i + 1) % 4]
+		var a := c + Vector3(p.x * r0, y0, p.y * r0)
+		var b := c + Vector3(q.x * r0, y0, q.y * r0)
+		var a2 := c + Vector3(p.x * r1, y1, p.y * r1)
+		var b2 := c + Vector3(q.x * r1, y1, q.y * r1)
+		st.set_uv(Vector2(0.5, 0.5))
+		st.add_vertex(a); st.add_vertex(a2); st.add_vertex(b)
+		st.add_vertex(b); st.add_vertex(a2); st.add_vertex(b2)
+	if not cap: return
+	var b0 := c + Vector3(-r1, y1, -r1); var b1 := c + Vector3(r1, y1, -r1)
+	var b2_ := c + Vector3(r1, y1, r1); var b3 := c + Vector3(-r1, y1, r1)
+	st.add_vertex(b0); st.add_vertex(b2_); st.add_vertex(b1)
+	st.add_vertex(b0); st.add_vertex(b3); st.add_vertex(b2_)
+
+## Broken fluted column on a plinth (black marble).
+func _column(st: SurfaceTool, c: Vector3, rng: RandomNumberGenerator, col: Color) -> void:
+	_box_sides(st, c + Vector3(0, 0.16, 0), 0.40, 0.40, 0.0, -0.16, col, false)
+	_quad_top(st, c + Vector3(0, 0.16, 0), 0.40, col)
+	var seg := 24
+	var r := 0.30
+	var h := rng.randf_range(0.95, 1.75)
+	var tilt_dir := rng.randf() * TAU
+	var tilt := rng.randf_range(0.10, 0.32)
+	st.set_color(col)
+	st.set_uv(Vector2(0.5, 0.5))
+	var top_pts: Array[Vector3] = []
+	for i in seg + 1:
+		var a := TAU * i / seg
+		var rr := r * (1.0 - 0.06 * (i % 2))
+		var dx := cos(a); var dz := sin(a)
+		top_pts.append(c + Vector3(dx * rr * 0.97, h + tilt * cos(a - tilt_dir) + 0.04 * sin(a * 5.0), dz * rr * 0.97))
+	for i in seg:
+		var a0 := TAU * i / seg; var a1 := TAU * (i + 1) / seg
+		var r0 := r * (1.0 - 0.06 * (i % 2)); var r1 := r * (1.0 - 0.06 * ((i + 1) % 2))
+		var p0 := c + Vector3(cos(a0) * r0, 0.16, sin(a0) * r0)
+		var p1 := c + Vector3(cos(a1) * r1, 0.16, sin(a1) * r1)
+		var t0 := top_pts[i]; var t1 := top_pts[i + 1]
+		st.add_vertex(p0); st.add_vertex(t0); st.add_vertex(p1)
+		st.add_vertex(p1); st.add_vertex(t0); st.add_vertex(t1)
+		# broken top: fan to a raised jagged centre
+		var ctr := c + Vector3(0, h + 0.03, 0)
+		st.add_vertex(t0); st.add_vertex(ctr); st.add_vertex(t1)
+
+# ------------------------------------------------------------------ sigils
+func _build_sigils() -> void:
+	var spots: Array = [[rules.goal, 0, Color(0.86, 0.52, 0.12)]]
+	for i in rules.egoals.size():
+		spots.append([rules.egoals[i], 1, Color(0.08, 0.72, 0.92)])
+	for s in spots:
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/sigil.gdshader")
+		m.set_shader_parameter("kind", float(s[1]))
+		m.set_shader_parameter("glyph_scale", 1.36 / 0.86)
+		m.set_shader_parameter("color", s[2])
+		var mi := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = Vector2(1.36, 1.36)
+		q.orientation = PlaneMesh.FACE_Y
+		mi.mesh = q
+		mi.material_override = m
+		mi.position = tile_pos(s[0], 0.012)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		sigil_mats.append(m)
+		# glow halo for lit state
+		var g := _glow(s[2], 2.2, 0.0)
+		g.position = tile_pos(s[0], 0.02)
+		mi.set_meta("glow", g)
+		add_child(g)
+	sigil_nodes_cache.clear()
+
+var sigil_nodes_cache := []
+
+func _glow(col: Color, size: float, intensity: float) -> MeshInstance3D:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/glow.gdshader")
+	m.set_shader_parameter("color", col)
+	m.set_shader_parameter("intensity", intensity)
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size)
+	q.orientation = PlaneMesh.FACE_Y
+	mi.mesh = q
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+# ------------------------------------------------------------------ mirrors
+func _mirror_world(i: int, pos: int) -> Vector3:
+	var m: Dictionary = rules.mirrors[i]
+	if m["axis"] == "x":
+		return Vector3(pos - 0.5 - center.x, 0, 0)
+	return Vector3(0, 0, pos - 0.5 - center.y)
+
+func _build_mirrors() -> void:
+	for i in rules.mirrors.size():
+		var m: Dictionary = rules.mirrors[i]
+		var span := float(rules.h if m["axis"] == "x" else rules.w)
+		var root := Node3D.new()
+		root.name = "Mirror%d" % i
+		if m["axis"] == "z": root.rotation.y = PI * 0.5
+		add_child(root)
+		var gm := ShaderMaterial.new()
+		gm.shader = preload("res://shaders/glass.gdshader")
+		gm.set_shader_parameter("counter", 1.0 if m["rail"] != null else 0.0)
+		var pane := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = Vector2(span + 0.1, 1.55)
+		pane.mesh = q
+		pane.rotation.y = PI * 0.5
+		pane.position = Vector3(0, 0.80, 0)
+		pane.material_override = gm
+		pane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(pane)
+		# floor line where glass meets stone
+		var line := _glow(Color(0.6, 0.95, 1.0), 1.0, 0.35)
+		(line.mesh as QuadMesh).size = Vector2(0.16, span + 0.1)
+		root.add_child(line)
+		line.position.y = 0.015
+		# posts + caps + lintel (black marble), merged into one mesh per mirror
+		var parts := []
+		for sgn in [-1.0, 1.0]:
+			var pb := BoxMesh.new()
+			pb.size = Vector3(0.14, 1.8, 0.14)
+			parts.append([pb, Vector3(0, 0.85, sgn * (span * 0.5 + 0.12))])
+			var cb := BoxMesh.new()
+			cb.size = Vector3(0.24, 0.08, 0.24)
+			parts.append([cb, Vector3(0, 1.82, sgn * (span * 0.5 + 0.12))])
+		var lb := BoxMesh.new()
+		lb.size = Vector3(0.07, 0.05, span + 0.3)
+		parts.append([lb, Vector3(0, 1.6, 0)])
+		root.add_child(_merged(parts, black_mat))
+		mirror_roots.append(root)
+		mirror_mats.append(gm)
+		if m["rail"] != null: _build_rails(i, span)
+
+func _build_rails(i: int, span: float) -> void:
+	var m: Dictionary = rules.mirrors[i]
+	var rail: Vector2i = m["rail"]
+	var a := _mirror_world(i, rail.x)
+	var b := _mirror_world(i, rail.y)
+	var along_axis := Vector3(1, 0, 0) if m["axis"] == "x" else Vector3(0, 0, 1)
+	var side_axis := Vector3(0, 0, 1) if m["axis"] == "x" else Vector3(1, 0, 0)
+	var length := (b - a).length() + 0.5
+	var mid := (a + b) * 0.5
+	var black_parts := []
+	var cream_parts := []
+	for sgn in [-1.0, 1.0]:
+		var off: Vector3 = side_axis * sgn * (span * 0.5 + 0.12)
+		var bm := BoxMesh.new()
+		bm.size = Vector3(length, 0.12, 0.2) if m["axis"] == "x" else Vector3(0.2, 0.12, length)
+		black_parts.append([bm, mid + off + Vector3(0, -0.07, 0)])
+		# stops at both rail ends + studs at each stop position
+		for p in range(rail.x, rail.y + 1):
+			var sm := BoxMesh.new()
+			var is_end := p == rail.x or p == rail.y
+			sm.size = Vector3(0.1, 0.1, 0.24) if not is_end else Vector3(0.12, 0.34, 0.3)
+			if m["axis"] == "z": sm.size = Vector3(sm.size.z, sm.size.y, sm.size.x)
+			var w := _mirror_world(i, p)
+			var along := along_axis * (0.0 if not is_end else (-0.22 if p == rail.x else 0.22))
+			var at: Vector3 = w * along_axis.abs() + off + along + Vector3(0, 0.0 if not is_end else 0.1, 0)
+			(black_parts if is_end else cream_parts).append([sm, at])
+	add_child(_merged(black_parts, black_mat))
+	add_child(_merged(cream_parts, stone_mat))
+
+func _merged(parts: Array, mat: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	for pr in parts:
+		st.append_from(pr[0], 0, Transform3D(Basis(), pr[1]))
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = mat
+	return mi
+
+# ------------------------------------------------------------------ bodies
+func _build_bodies() -> void:
+	cube = Node3D.new()
+	cube.name = "Cube"
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3.ONE * CUBE
+	mi.mesh = bm
+	cube_mat = black_mat.duplicate()
+	cube_mat.set_shader_parameter("bevel", 1.0)
+	mi.material_override = cube_mat
+	cube.add_child(mi)
+	add_child(cube)
+	for i in rules.mirrors.size():
+		var e := Node3D.new()
+		e.name = "Eidolon%d" % i
+		var em := ShaderMaterial.new()
+		em.shader = preload("res://shaders/eidolon.gdshader")
+		var outer := MeshInstance3D.new()
+		var ob := BoxMesh.new()
+		ob.size = Vector3.ONE * CUBE
+		outer.mesh = ob
+		outer.material_override = em
+		outer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		e.add_child(outer)
+		var core := MeshInstance3D.new()
+		var cb := BoxMesh.new()
+		cb.size = Vector3.ONE * 0.3
+		core.mesh = cb
+		var cm := em.duplicate() as ShaderMaterial
+		cm.set_shader_parameter("half_size", 0.15)
+		cm.set_shader_parameter("strength", 1.3)
+		core.material_override = cm
+		core.rotation = Vector3(0.6155, 0.7854, 0.0)
+		core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		core.name = "Core"
+		e.add_child(core)
+		add_child(e)
+		var g := _glow(Color(0.3, 0.85, 1.0), 2.2, 0.22)
+		add_child(g)
+		eids.append(e)
+		eid_mats.append(em)
+		eid_mats.append(cm)
+		eid_glows.append(g)
+
+func _build_previews() -> void:
+	var cols := [Color(0.12, 0.12, 0.13)]
+	for i in rules.mirrors.size(): cols.append(Color(0.05, 0.68, 0.9))
+	for c in cols:
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/sigil.gdshader")
+		m.set_shader_parameter("kind", 2.0)
+		m.set_shader_parameter("lit", 1.0)
+		m.set_shader_parameter("color", c)
+		m.set_shader_parameter("alpha_mul", 0.9)
+		var mi := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = Vector2(0.96, 0.96)
+		q.orientation = PlaneMesh.FACE_Y
+		mi.mesh = q
+		mi.material_override = m
+		mi.visible = false
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		preview_nodes.append(mi)
+
+func _build_dust() -> void:
+	dust = CPUParticles3D.new()
+	dust.emitting = false
+	dust.one_shot = true
+	dust.amount = 14
+	dust.lifetime = 0.9
+	dust.explosiveness = 0.95
+	dust.direction = Vector3(0, 1, 0)
+	dust.spread = 80.0
+	dust.initial_velocity_min = 0.4
+	dust.initial_velocity_max = 1.1
+	dust.gravity = Vector3(0, -0.4, 0)
+	dust.damping_min = 1.5
+	dust.damping_max = 2.5
+	dust.scale_amount_min = 0.25
+	dust.scale_amount_max = 0.55
+	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	dust.emission_box_extents = Vector3(0.45, 0.02, 0.45)
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 0.4)); curve.add_point(Vector2(0.3, 1.0)); curve.add_point(Vector2(1, 1.3))
+	dust.scale_amount_curve = curve
+	var grad := Gradient.new()
+	grad.set_color(0, Color(0.85, 0.82, 0.76, 0.55))
+	grad.set_color(1, Color(0.85, 0.82, 0.76, 0.0))
+	dust.color_ramp = grad
+	var q := QuadMesh.new()
+	q.size = Vector2(0.5, 0.5)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	var gt := GradientTexture2D.new()
+	var g2 := Gradient.new()
+	g2.set_color(0, Color(1, 1, 1, 1)); g2.set_color(1, Color(1, 1, 1, 0))
+	gt.gradient = g2
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5); gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 64; gt.height = 64
+	mat.albedo_texture = gt
+	q.material = mat
+	dust.mesh = q
+	dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(dust)
+
+# ------------------------------------------------------------------ state
+func set_state(s: Dictionary) -> void:
+	state = Rules.copy_state(s)
+	cube.transform = Transform3D(cube.transform.basis.orthonormalized() if cube.transform.basis.determinant() > 0.5 else Basis(), tile_pos(state["cube"], H))
+	for i in eids.size():
+		eids[i].transform = Transform3D(Basis(), tile_pos(state["eids"][i], H))
+		eid_glows[i].position = tile_pos(state["eids"][i], 0.03)
+	for i in mirror_roots.size():
+		mirror_roots[i].position = _mirror_world(i, state["mpos"][i])
+	update_lit(true)
+
+func update_lit(instant := false) -> void:
+	var lit := rules.lit(state)
+	for i in sigil_mats.size():
+		var target := 1.0 if lit[i] else 0.0
+		var m := sigil_mats[i]
+		if instant:
+			m.set_shader_parameter("lit", target)
+		else:
+			var tw := create_tween()
+			tw.tween_method(func(v: float) -> void: m.set_shader_parameter("lit", v), float(m.get_shader_parameter("lit")), target, 0.35)
+	var k := 0
+	for c in get_children():
+		if c is MeshInstance3D and c.has_meta("glow"):
+			var g: MeshInstance3D = c.get_meta("glow")
+			(g.material_override as ShaderMaterial).set_shader_parameter("intensity", 0.22 if lit[k] else 0.0)
+			k += 1
+
+func show_preview(ev: Dictionary) -> void:
+	if ev.is_empty() or not ev["changed"]:
+		hide_preview(); return
+	var ns: Dictionary = ev["state"]
+	preview_nodes[0].visible = ev["cube_moved"]
+	preview_nodes[0].position = tile_pos(ns["cube"], 0.02)
+	for i in eids.size():
+		var moved: bool = ns["eids"][i] != state["eids"][i]
+		preview_nodes[i + 1].visible = moved
+		preview_nodes[i + 1].position = tile_pos(ns["eids"][i], 0.022)
+
+func hide_preview() -> void:
+	for p in preview_nodes: p.visible = false
+
+# ------------------------------------------------------------------ turn animation
+func play_turn(ev: Dictionary, d: Vector2i) -> void:
+	busy = true
+	hide_preview()
+	var ns: Dictionary = ev["state"]
+	var any_slide := false
+	for v in ev["slid"]: if v != 0: any_slide = true
+	# phase 1: cube rolls (or bumps), Eidolons roll their mirrored step (or bump)
+	if ev["cube_moved"]:
+		_roll(cube, d, ROLL_T, true)
+	else:
+		_bump(cube, d)
+	for i in eids.size():
+		var dd: Vector2i = ev["eid_dir"][i]
+		if ev["eid_step"][i]:
+			_roll(eids[i], dd, ROLL_T, false)
+		elif ev["eid_carry"][i].is_empty():
+			_bump(eids[i], dd)
+	if not ev["cube_moved"]:
+		body_bumped.emit()
+	await get_tree().create_timer(ROLL_T + 0.02).timeout
+	state = Rules.copy_state(ns)
+	_snap_bodies()
+	# phase 2: counter-mirrors grind against the swipe, carrying their Eidolons
+	if any_slide:
+		var strength := 0.0
+		for i in mirror_roots.size():
+			if ev["slid"][i] == 0: continue
+			strength += 1.0
+			var tw := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+			tw.tween_property(mirror_roots[i], "position", _mirror_world(i, ns["mpos"][i]), SLIDE_T)
+			var gm := mirror_mats[i]
+			var rt := create_tween()
+			rt.tween_method(func(v: float) -> void: gm.set_shader_parameter("ripple", v), 1.0, 0.0, SLIDE_T + 0.3)
+			var path: Array = ev["eid_carry"][i]
+			if not path.is_empty():
+				var e := eids[i]
+				var target := tile_pos(path[path.size() - 1], H)
+				var et := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+				et.tween_property(e, "position", target, SLIDE_T)
+				et.parallel().tween_property(eid_glows[i], "position", Vector3(target.x, 0.03, target.z), SLIDE_T)
+				_shimmer(i, SLIDE_T + 0.15)
+			else:
+				var v: int = ev["slid"][i]
+				var k := rules.axis_k(i)
+				var dd := Vector2i(v, 0) if k == 0 else Vector2i(0, v)
+				_bump(eids[i], dd)
+		mirror_moved.emit(strength)
+		await get_tree().create_timer(SLIDE_T + 0.02).timeout
+	_snap_bodies()
+	for i in mirror_roots.size():
+		mirror_roots[i].position = _mirror_world(i, state["mpos"][i])
+	update_lit()
+	busy = false
+	turn_finished.emit()
+
+func _snap_bodies() -> void:
+	var b := cube.transform.basis
+	# snap basis to exact right angles so the marble keeps its tumble but no drift accumulates
+	var cols := [b.x, b.y, b.z]
+	for k in 3:
+		var v: Vector3 = cols[k]
+		var a := v.abs()
+		if a.x >= a.y and a.x >= a.z: cols[k] = Vector3(signf(v.x), 0, 0)
+		elif a.y >= a.z: cols[k] = Vector3(0, signf(v.y), 0)
+		else: cols[k] = Vector3(0, 0, signf(v.z))
+	cube.transform = Transform3D(Basis(cols[0], cols[1], cols[2]), tile_pos(state["cube"], H))
+	for i in eids.size():
+		eids[i].transform = Transform3D(Basis(), tile_pos(state["eids"][i], H))
+		eid_glows[i].position = tile_pos(state["eids"][i], 0.03)
+
+func _roll(node: Node3D, d: Vector2i, dur: float, is_cube: bool) -> void:
+	var dir := Vector3(d.x, 0, d.y)
+	var start := node.transform
+	var pivot := start.origin + dir * H - Vector3(0, H, 0)
+	var axis := Vector3.UP.cross(dir).normalized()
+	var extra := dir * (1.0 - CUBE)
+	var glow: MeshInstance3D = null
+	if not is_cube: glow = eid_glows[eids.find(node)]
+	var landed := [false]
+	var f := func(t: float) -> void:
+		var e := t * t * (3.0 - 2.0 * t)
+		e = e * e * (3.0 - 2.0 * e) * 0.35 + e * 0.65
+		var rot := Transform3D(Basis(axis, e * PI * 0.5), Vector3.ZERO)
+		var tr := Transform3D(Basis(), pivot) * rot * Transform3D(Basis(), -pivot) * start
+		tr.origin += extra * e
+		node.transform = tr
+		if glow: glow.position = Vector3(tr.origin.x, 0.03, tr.origin.z)
+		if is_cube and t >= 0.999 and not landed[0]:
+			landed[0] = true
+	var tw := create_tween()
+	tw.tween_method(f, 0.0, 1.0, dur)
+	if is_cube:
+		tw.tween_callback(func() -> void:
+			var at := start.origin + dir
+			dust.position = Vector3(at.x, 0.02, at.z)
+			dust.restart()
+			cube_landed.emit(at))
+
+func _bump(node: Node3D, d: Vector2i) -> void:
+	var dir := Vector3(d.x, 0, d.y)
+	var start := node.transform
+	var pivot := start.origin + dir * H - Vector3(0, H, 0)
+	var axis := Vector3.UP.cross(dir).normalized()
+	var f := func(t: float) -> void:
+		var a := sin(t * PI) * 0.13
+		node.transform = Transform3D(Basis(), pivot) * Transform3D(Basis(axis, a), Vector3.ZERO) * Transform3D(Basis(), -pivot) * start
+	var tw := create_tween()
+	tw.tween_method(f, 0.0, 1.0, 0.2)
+	tw.tween_callback(func() -> void: node.transform = start)
+
+func _shimmer(i: int, dur: float) -> void:
+	for m in [eid_mats[i * 2], eid_mats[i * 2 + 1]]:
+		var mm: ShaderMaterial = m
+		var tw := create_tween()
+		tw.tween_method(func(v: float) -> void: mm.set_shader_parameter("shimmer", v), 1.0, 0.0, dur)
+
+# ------------------------------------------------------------------ level transitions
+func set_rise(v: float) -> void:
+	island_mat.set_shader_parameter("rise", v)
+	var off := (1.0 - _ease_out(clampf((v - 0.35) / 0.65, 0.0, 1.0))) * 16.0
+	for c in get_children():
+		if c is Node3D and c.name != "Island":
+			c.set_meta("rise_off", off)
+	_apply_offsets(off)
+	_fade_extras(clampf((v - 0.55) / 0.45, 0.0, 1.0))
+
+func set_dissolve(v: float) -> void:
+	island_mat.set_shader_parameter("dissolve", v)
+	_apply_offsets(v * v * 5.0)
+	_fade_extras(1.0 - clampf(v * 1.6, 0.0, 1.0))
+
+var _base_y := {}
+func _apply_offsets(off: float) -> void:
+	for c in get_children():
+		if c.name == "Island" or not (c is Node3D) or c == dust: continue
+		if not _base_y.has(c): _base_y[c] = c.position.y
+		c.position.y = _base_y[c] - off
+
+func _fade_extras(a: float) -> void:
+	for i in eid_mats.size():
+		eid_mats[i].set_shader_parameter("strength", a * (1.3 if i % 2 == 1 else 1.0))
+	for m in mirror_mats:
+		m.set_shader_parameter("ripple", (1.0 - a) * 0.0)
+	for g in eid_glows:
+		(g.material_override as ShaderMaterial).set_shader_parameter("intensity", 0.22 * a)
+
+func _ease_out(t: float) -> float:
+	return 1.0 - pow(1.0 - t, 3.0)
+
+func pulse_win() -> void:
+	var tw := create_tween()
+	tw.tween_method(func(v: float) -> void:
+		var p := sin(v * PI)
+		cube_mat.set_shader_parameter("pulse", p)
+		for m in eid_mats: m.set_shader_parameter("pulse", p)
+		cube.scale = Vector3.ONE * (1.0 + 0.06 * p)
+		, 0.0, 1.0, 0.9)
+	tw.tween_method(func(v: float) -> void:
+		var p := sin(v * PI) * 0.6
+		cube_mat.set_shader_parameter("pulse", p)
+		for m in eid_mats: m.set_shader_parameter("pulse", p)
+		, 0.0, 1.0, 0.9)

@@ -1,0 +1,37 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="Eidolon"
+config/description="Atmospheric mirror puzzle - first playable"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.5", "GL Compatibility")
+config/icon="res://icon.svg"
+boot_splash/bg_color=Color(0.07, 0.07, 0.075, 1)
+boot_splash/show_image=false
+
+[display]
+
+window/size/viewport_width=400
+window/size/viewport_height=860
+window/size/window_width_override=420
+window/size/window_height_override=880
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+window/dpi/allow_hidpi=true
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=false
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+anti_aliasing/quality/msaa_3d=1
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=2
+environment/defaults/default_clear_color=Color(0.07, 0.07, 0.075, 1)

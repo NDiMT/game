@@ -1,0 +1,23 @@
+{
+ "id": 6,
+ "chapter": 2,
+ "title": "The Rail",
+ "line": "I set the glass on marble rails, so it could come to meet me.",
+ "map": [
+  "~.G....~",
+  ".P..a.A.",
+  "~.....#~"
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 4,
+   "rail": [
+    3,
+    5
+   ]
+  }
+ ],
+ "par": 5,
+ "solution": "DLUUR"
+}

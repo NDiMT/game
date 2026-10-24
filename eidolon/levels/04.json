@@ -1,0 +1,21 @@
+{
+ "id": 4,
+ "chapter": 1,
+ "title": "Hollow",
+ "line": "I learned to walk as you walk now: toward me, and away.",
+ "map": [
+  "~....~",
+  "...#a.",
+  "P~...A",
+  "G...~.",
+  "~#...~"
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 3
+  }
+ ],
+ "par": 8,
+ "solution": "RDLRUULD"
+}

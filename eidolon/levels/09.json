@@ -1,0 +1,30 @@
+{
+ "id": 9,
+ "chapter": 2,
+ "title": "Crossing",
+ "line": "The temple fell quietly, one column at a time, while I watched the glass.",
+ "map": [
+  "~......~",
+  "#P...~Aa",
+  ".G......",
+  "~..b..~~",
+  "#B....~~",
+  "~##...~~"
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 4,
+   "rail": [
+    3,
+    6
+   ]
+  },
+  {
+   "axis": "z",
+   "pos": 3
+  }
+ ],
+ "par": 12,
+ "solution": "LRRULLRDLDRL"
+}

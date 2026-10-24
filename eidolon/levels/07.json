@@ -1,0 +1,25 @@
+{
+ "id": 7,
+ "chapter": 2,
+ "title": "Leap",
+ "line": "Each time I stepped closer, you leapt three steps nearer.",
+ "map": [
+  "~.......",
+  "..~G~...",
+  "#P...aA#",
+  "........",
+  "~#.....~"
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 4,
+   "rail": [
+    3,
+    6
+   ]
+  }
+ ],
+ "par": 7,
+ "solution": "LRRULLR"
+}

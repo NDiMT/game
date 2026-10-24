@@ -1,0 +1,26 @@
+{
+ "id": 5,
+ "chapter": 1,
+ "title": "Two Panes",
+ "line": "Two panes of glass. Two of you. Neither one turns to look.",
+ "map": [
+  "P...aA",
+  ".G.#..",
+  "#.....",
+  "b..~~~",
+  ".~.~~~",
+  "B..~~~"
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 3
+  },
+  {
+   "axis": "z",
+   "pos": 3
+  }
+ ],
+ "par": 10,
+ "solution": "DDRULURRDL"
+}

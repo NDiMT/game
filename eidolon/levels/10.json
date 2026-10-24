@@ -1,0 +1,34 @@
+{
+ "id": 10,
+ "chapter": 2,
+ "title": "Eidolon",
+ "line": "I set down the chisel. Let the fog keep the stone. I will keep the light.",
+ "map": [
+  "~.....#~",
+  ".P~...A.",
+  "G.....a~",
+  "......~~",
+  "#B.b..~~",
+  "~##...~~"
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 4,
+   "rail": [
+    3,
+    6
+   ]
+  },
+  {
+   "axis": "z",
+   "pos": 3,
+   "rail": [
+    2,
+    4
+   ]
+  }
+ ],
+ "par": 15,
+ "solution": "LRRULRDLDRLURDL"
+}

@@ -1,0 +1,26 @@
+{
+ "id": 8,
+ "chapter": 2,
+ "title": "Weight",
+ "line": "Some nights the rails held. Some nights I held them, with my own weight.",
+ "map": [
+  "~G#....~",
+  "..~.....",
+  ".P....A.",
+  "#.....~.",
+  ".#..a...",
+  "~#....~~"
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 4,
+   "rail": [
+    3,
+    6
+   ]
+  }
+ ],
+ "par": 10,
+ "solution": "LDDRRLUULR"
+}

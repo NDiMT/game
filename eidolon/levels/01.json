@@ -1,0 +1,19 @@
+{
+ "id": 1,
+ "chapter": 1,
+ "title": "Threshold",
+ "line": "I carved you from the white stone, and the stone would not wake.",
+ "map": [
+  "..Ga..",
+  "P....A",
+  "......"
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 3
+  }
+ ],
+ "par": 3,
+ "solution": "RRU"
+}

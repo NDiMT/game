@@ -1,0 +1,19 @@
+{
+ "id": 2,
+ "chapter": 1,
+ "title": "The Column",
+ "line": "In the black water of the cistern, something moved when I moved.",
+ "map": [
+  ".G.a#.",
+  "P....A",
+  "......"
+ ],
+ "mirrors": [
+  {
+   "axis": "x",
+   "pos": 3
+  }
+ ],
+ "par": 4,
+ "solution": "RRUL"
+}
