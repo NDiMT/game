@@ -646,8 +646,10 @@ class TitleWord extends Control:
 class DoorOverlay extends Control:
 	## The rune door, close up. A big glowing card (like reading a statue) shows the rune in the ACTIVE
 	## slot with its name; below, the three slots as large cards in a row (the active one ringed).
-	## Tap the big card or the right arrow to turn the rune forward, the left arrow to turn it back,
-	## tap a slot card to make it active. Keyboard: left/right choose the slot, E turns, Q/Esc closes.
+	## v0.4: tapping ANY rune turns it: a slot card turns that slot (and makes it active), the big card
+	## turns the active slot; the arrows turn the active slot forward / back. Cards keep the rune's true
+	## proportions at any width. The close button consumes its tap; the world ignores input briefly.
+	## Keyboard: left/right choose the slot, E turns, Q/Esc closes.
 	signal slot_pressed(i: int)          # turn slot i forward
 	signal slot_back(i: int)             # turn slot i back
 	signal closed
@@ -666,6 +668,8 @@ class DoorOverlay extends Control:
 	var _left_r := Rect2()
 	var _right_r := Rect2()
 	var _name_y := 0.0
+	var _closing := false
+	var _tweens: Array[Tween] = []
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
@@ -705,21 +709,31 @@ class DoorOverlay extends Control:
 		big.size = Vector2(bw, bh)
 		big.position = Vector2((W - bw) * 0.5, size.y * 0.30 - bh * 0.5)
 		big.pivot_offset = big.size * 0.5
+		big_mat.set_shader_parameter("aspect", (bh - 16.0) / (bw - 20.0))
 		_name_y = big.position.y + bh + 26.0
 		_left_r = Rect2(big.position.x - 64.0, big.position.y + bh * 0.5 - 30.0, 56.0, 60.0)
 		_right_r = Rect2(big.position.x + bw + 8.0, big.position.y + bh * 0.5 - 30.0, 56.0, 60.0)
-		var sw := minf(120.0, (W - 48.0) / 3.0)
-		var sh := sw * 1.3
+		# three evenly spaced cards, each at least 100 px wide at 360-430 px screens, true proportions
+		var sw := clampf((W - 64.0) / 3.0, 100.0, 118.0)
+		var sh := sw * 1.25
 		var gap := (W - 3.0 * sw) / 4.0
 		for i in 3:
 			var c := slots[i]
 			c.size = Vector2(sw, sh)
 			c.position = Vector2(gap + i * (sw + gap), size.y * 0.70 - sh * 0.5)
 			c.pivot_offset = c.size * 0.5
-		_close_r = Rect2(W - 58.0, 26.0, 40.0, 40.0)
+			c.scale = Vector2.ONE
+			mats[i].set_shader_parameter("aspect", (sh - 16.0) / (sw - 20.0))
+		_close_r = Rect2(18.0, 26.0, 40.0, 40.0)      # top LEFT: never over the rotate buttons
 		queue_redraw()
 
 	func open(state: Array, sel: int) -> void:
+		_kill_tweens()
+		_closing = false
+		_flare = 0.0
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		big.scale = Vector2.ONE
+		for c in slots: c.scale = Vector2.ONE
 		designs = state.duplicate()
 		selected = sel
 		for i in 3: _apply(i)
@@ -730,15 +744,37 @@ class DoorOverlay extends Control:
 		_layout()
 
 	func close() -> void:
+		if _closing or not visible: return
+		_closing = true
+		# stop every running flip / select tween so nothing is left half-turned or overlapping, and
+		# stop taking input at once (the fade-out is visual only)
+		_kill_tweens()
+		big.scale = Vector2.ONE
+		for c in slots: c.scale = Vector2.ONE
+		_apply_big()
+		for i in 3: _apply(i)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var tw := create_tween()
-		tw.tween_property(self, "modulate:a", 0.0, 0.3)
-		tw.tween_callback(func() -> void: visible = false)
+		tw.tween_property(self, "modulate:a", 0.0, 0.25)
+		tw.tween_callback(func() -> void:
+			visible = false
+			_closing = false)
 		closed.emit()
+
+	func _tw() -> Tween:
+		var t := create_tween()
+		_tweens.append(t)
+		return t
+
+	func _kill_tweens() -> void:
+		for t in _tweens:
+			if t and t.is_valid(): t.kill()
+		_tweens.clear()
 
 	func select(i: int) -> void:
 		if i == selected: return
 		selected = i
-		var tw := create_tween()
+		var tw := _tw()
 		tw.tween_property(big, "scale", Vector2(0.92, 0.92), 0.08)
 		tw.tween_callback(_apply_big)
 		tw.tween_property(big, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -759,7 +795,7 @@ class DoorOverlay extends Control:
 		designs[i] = new_design
 		for c in [slots[i], big]:
 			var cc: Control = c
-			var tw := create_tween()
+			var tw := _tw()
 			tw.tween_property(cc, "scale:x", 0.0, 0.11).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 			tw.tween_callback(func() -> void:
 				_apply(i)
@@ -767,11 +803,10 @@ class DoorOverlay extends Control:
 			tw.tween_property(cc, "scale:x", 1.0, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	func flare() -> void:
-		var tw := create_tween()
+		var tw := _tw()
 		tw.tween_property(self, "_flare", 1.0, 0.5)
 		tw.tween_interval(0.8)
-		tw.tween_callback(close)
-		tw.tween_property(self, "_flare", 0.0, 0.3)
+		tw.tween_callback(func() -> void: close.call_deferred())
 
 	func big_center() -> Vector2:
 		return big.position + big.size * 0.5
@@ -779,7 +814,7 @@ class DoorOverlay extends Control:
 	func _gui_input(e: InputEvent) -> void:
 		var p := Vector2.INF
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT: p = e.position
-		if p == Vector2.INF: return
+		if p == Vector2.INF or _closing: return
 		accept_event()
 		if _close_r.grow(10.0).has_point(p):
 			close()
@@ -792,7 +827,7 @@ class DoorOverlay extends Control:
 			return
 		for i in 3:
 			if Rect2(slots[i].position, slots[i].size).grow(8.0).has_point(p):
-				select(i)
+				slot_pressed.emit(i)          # tapping a slot's rune turns it
 				return
 
 	func _process(dt: float) -> void:
@@ -831,7 +866,7 @@ class DoorOverlay extends Control:
 			var w3 := caps.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
 			draw_string(caps, Vector2(size.x * 0.5 - w3 * 0.5, _name_y + 22.0), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.7, 0.8, 0.85, 0.75))
 		if italic:
-			var line := "tap the rune to turn it  ·  as the veiled ones are numbered"
+			var line := "tap a rune to turn it  ·  as the veiled ones are numbered"
 			var w4 := italic.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 			draw_string(italic, Vector2(size.x * 0.5 - w4 * 0.5, size.y * 0.70 + slots[0].size.y * 0.5 + 54.0), line, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.75, 0.8, 0.82, 0.8))
 		# arrows

@@ -524,17 +524,17 @@ func _hall() -> void:
 	walk(R(-4.6, -20.6, 4.6, -11), 1.0, NAN, -1, "H")
 	walk(R(4.6, -14, 5, -12), 1.0)
 	# far walls: north (with the great mirror) and east (with the doorway)
-	wall(z, R(-5, -21, 5, -20.6), 1.0, 6.2)
+	wall("Hn", R(-5, -21, 5, -20.6), 1.0, 6.2)
 	wall(z, R(4.6, -21, 5, -14), 1.0, 4.6)
 	wall(z, R(4.6, -12, 5, -11), 1.0, 4.6)
 	box(z, Vector3(4.8, 4.0, -13.0), Vector3(0.4, 1.2, 2.0), 0.25, true)
 	# mirror frame (dark bronze) around the great glass x[-2.6,2.6] y[1.15,5.6]
 	for fb in [[Vector3(0, 1.1, -20.52), Vector3(5.5, 0.14, 0.12)], [Vector3(0, 5.66, -20.52), Vector3(5.5, 0.14, 0.12)],
 			[Vector3(-2.68, 3.38, -20.52), Vector3(0.14, 4.6, 0.12)], [Vector3(2.68, 3.38, -20.52), Vector3(0.14, 4.6, 0.12)]]:
-		box(z, fb[0], fb[1], 1.0, true)
+		box("Hn", fb[0], fb[1], 1.0, true)
 	# pilasters on the north wall
 	for x in [-4.0, 4.0]:
-		box(z, Vector3(x, 3.6, -20.45), Vector3(0.6, 5.2, 0.3), 0.25, true)
+		box("Hn", Vector3(x, 3.6, -20.45), Vector3(0.6, 5.2, 0.3), 0.25, true)
 	# colonnade on the open sides (west + south)
 	for zz in [-12.2, -14.8, -17.4, -19.9]:
 		column(Vector3(-4.5, 1.0, zz), 4.2)
@@ -832,6 +832,7 @@ func _commit() -> void:
 		mi.name = "Zone_" + k
 		mi.mesh = m.commit()
 		mi.material_override = marble_mat
+		if k == "Hn": mi.layers = PlanarMirror.LAYER_BEHIND      # the great mirror's own wall
 		add_child(mi)
 	_markers()
 	_decor()
@@ -975,6 +976,7 @@ func _godrays() -> void:
 		var x := y.cross(Vector3.UP).normalized()
 		mi.transform = Transform3D(Basis(x, y, x.cross(y).normalized()), top)
 		add_child(mi)
+		mi.layers = PlanarMirror.LAYER_MAIN_FX
 		mi.add_to_group("f_godrays")
 		i += 1
 

@@ -52,9 +52,23 @@ func set_icon(name: String) -> void:
 	if name != "": icon = name
 
 const MOUSE_ID := 99
+var block_t := 0.0
+
+## ignore taps and gestures for a moment (after an overlay closes: its tap must not reach the world)
+func block(ms: int) -> void:
+	block_t = ms / 1000.0
+	_touches.clear()
+	_end_joy()
+	_twist_on = false
+
+func blocked() -> bool:
+	return block_t > 0.0
 
 func _input(e: InputEvent) -> void:
 	if not enabled: return
+	if blocked():
+		if e is InputEventScreenTouch and not e.pressed: _touches.erase(e.index)
+		return
 	# desktop: the mouse drives the same code as a finger (touch emulation is off so a real touch
 	# is never seen twice)
 	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and e.device != InputEvent.DEVICE_ID_EMULATION:
@@ -143,6 +157,7 @@ func reset() -> void:
 	_twist_on = false
 
 func _process(dt: float) -> void:
+	block_t = maxf(0.0, block_t - dt)
 	_t += dt
 	joy_alpha = move_toward(joy_alpha, 1.0 if joy_index >= 0 else 0.0, dt * (6.0 if joy_index >= 0 else 3.0))
 	icon_alpha = move_toward(icon_alpha, 1.0 if (enabled and _want_icon) else 0.0, dt * 4.0)

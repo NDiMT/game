@@ -36,6 +36,7 @@ var _js_t := 0.0
 var _title_t := 0.0
 var _keys := {}
 var _finale_t := -1.0
+var _world_block_t := 0.0
 
 func _ready() -> void:
 	if "--autotest" in OS.get_cmdline_user_args(): autotest = true
@@ -172,7 +173,7 @@ func _continue_from_save() -> void:
 
 func _settle_camera(yaw_i: int, at: Vector3) -> void:
 	world.follow = null
-	world.cam_size_target = World.ZOOMS[world.zoom_i]
+	world.cam_size_target = world.zoom
 	var cur := world.rig.rotation.y
 	var target := -PI * 0.25 + yaw_i * PI * 0.5
 	# turn the short way from wherever the title orbit left us
@@ -183,14 +184,16 @@ func _settle_camera(yaw_i: int, at: Vector3) -> void:
 	tw.parallel().tween_property(world.rig, "position", at + Vector3(0, 0.6, 0), 2.0)
 	tw.tween_callback(func() -> void: world.follow = player)
 
-## two zoom levels: close (default) and wide
+## zoom one step: 1 = closer, 0 = farther (pinch / wheel / +-), saved with the settings
 func zoom_view(level: int) -> void:
-	if mode != "play" or level == world.zoom_i: return
-	world.set_zoom_level(level)
-	sfx.play("whoosh", -28.0, 1.8 if level == 0 else 1.3)
+	if mode != "play": return
+	if world.zoom_step(level == 1):
+		sfx.play("whoosh", -30.0, 1.8 if level == 0 else 1.3)
+		_save_settings()
 
 func rotate_view(dir: int) -> void:
 	if mode != "play" and mode != "wake": return
+	if _world_block_t > 0.0: return
 	world.rotate_view(dir)
 	sfx.play("whoosh", -26.0, 1.5)
 
@@ -214,6 +217,7 @@ func _input(e: InputEvent) -> void:
 				KEY_E, KEY_SPACE, KEY_ENTER: door_cycle(ov.selected)
 				KEY_ESCAPE, KEY_Q: ov.close()
 		return
+	if _world_block_t > 0.0 and not (e is InputEventKey and not e.pressed): return
 	if e is InputEventKey and not e.echo:
 		_keys[e.keycode] = e.pressed
 		if e.pressed:
@@ -221,7 +225,9 @@ func _input(e: InputEvent) -> void:
 				KEY_E, KEY_SPACE, KEY_ENTER: try_interact()
 				KEY_Q: rotate_view(-1)
 				KEY_R: rotate_view(1)
-				KEY_Z: zoom_view(1 - world.zoom_i)
+				KEY_Z:
+					world.zoom = World.ZOOM_DEFAULT
+					_save_settings()
 				KEY_EQUAL, KEY_KP_ADD: zoom_view(1)
 				KEY_MINUS, KEY_KP_SUBTRACT: zoom_view(0)
 	if e is InputEventMouseButton and e.pressed:
@@ -260,15 +266,18 @@ func _door_overlay_closed() -> void:
 	if mode == "door":
 		mode = "play"
 		controls.enabled = true
+		controls.block(250)              # the closing tap (and anything right after) never reaches the world
+		_world_block_t = 0.25
 
 func try_interact() -> bool:
-	if mode != "play" or focus == null: return false
+	if mode != "play" or focus == null or _world_block_t > 0.0: return false
 	interactions += 1
 	focus.action.call()
 	return true
 
 # ------------------------------------------------------------------ frame
 func _process(dt: float) -> void:
+	_world_block_t = maxf(0.0, _world_block_t - dt)
 	if mode == "title":
 		_title_t += dt
 		world.rig.rotation.y += dt * 0.045
@@ -296,7 +305,7 @@ func _process(dt: float) -> void:
 	if mode != "title":
 		var p := player.position
 		var wide := p.x > 20.5 and p.z < -18.5     # the eidolon ledge and the shrine: see across the gap
-		var cs: float = World.ZOOMS[world.zoom_i]
+		var cs: float = world.zoom
 		var on_ledge := p.x > 20.8 and p.z > -25.2 and p.z < -18.8
 		if on_ledge: cs = maxf(cs, 9.6)              # see your reflection AND the plate
 		if mode != "finale": world.cam_size_target = cs
@@ -490,7 +499,7 @@ func start_finale() -> void:
 	t3.tween_property(world.cam, "size", 12.5, 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t3.parallel().tween_property(world, "look_offset", Level.BEYOND_FWD * 9.0 + Vector3(0, 2.0, 0), 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t3.tween_interval(9.0)
-	t3.tween_property(world.cam, "size", World.ZOOMS[world.zoom_i], 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t3.tween_property(world.cam, "size", world.zoom, 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t3.parallel().tween_property(world, "look_offset", Vector3.ZERO, 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t3.tween_callback(func() -> void: world.cam_lock = false)
 	var t4 := create_tween()
@@ -521,11 +530,18 @@ func set_quality(t: Variant, save := false) -> void:
 	_apply_tier_extras()
 	ui.set_quality_label(tier)
 	_aq_t = 0.0; _aq_frames = 0; _aq_time = 0.0
-	if save:
-		var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
-		if f: f.store_string(JSON.stringify({"quality": tier}))
+	if save: _save_settings()
+
+## settings file v2 (v0.4): quality tier + zoom. Older files keep their quality but the zoom resets
+## to the new default once.
+const SETTINGS_V := 2
+func _save_settings() -> void:
+	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
+	if f: f.store_string(JSON.stringify({"v": SETTINGS_V, "quality": world.tier, "zoom": snappedf(world.zoom, 0.01)}))
 
 func _apply_tier_extras() -> void:
+	for r in puzzles.reflectors:
+		if r.planar: r.planar.enabled = world.quality_high
 	level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
 
 func _load_settings() -> void:
@@ -535,6 +551,8 @@ func _load_settings() -> void:
 		if d is Dictionary:
 			if d.has("quality"): tier = str(d["quality"])
 			elif d.has("quality_high") and not bool(d["quality_high"]): tier = "low"
+			if int(d.get("v", 1)) >= SETTINGS_V and d.has("zoom"):
+				world.zoom = clampf(float(d["zoom"]), World.ZOOM_MIN, World.ZOOM_MAX)
 	if not tier in ["auto", "high", "low"]: tier = "auto"
 	set_quality(tier)
 
@@ -615,16 +633,16 @@ func cmd(c: String) -> Variant:
 		"veil": player.fig.veil.visible = a[1] == "1"
 		"runes": player.fig.set_runes(int(a[1]))
 		"credits": ui.show_credits(a[1] == "1")
+		"hint":
+			# show a reflection hint now (screenshots): clasp = hands at the chest
+			var r: Reflector = puzzles.hall_mirror
+			if a[1] == "clasp": r._clasp = 1.0; r._clasp_t = 60.0
 		"perf": _perf_hud(a[1] == "1")
 		"feat": set_feature(a[1], a[2] == "1")
 		"newgame_ui":
 			# the title's New Game -> confirmation -> Yes, through the real buttons
 			ui.anew_btn.pressed.emit()
 			if a.size() > 1 and a[1] == "yes": ui.confirm_yes.pressed.emit()
-		"figp":
-			var v := []
-			for k in range(2, a.size()): v.append(float(a[k]))
-			player.fig.tune(a[1], v)
 		"fogd": world.fog_mats[int(a[1])].set_shader_parameter("density", float(a[2]))
 		"envfog": world.env.fog_enabled = a[1] == "1"
 		"rp": puzzles.reflectors[int(a[1])].puppet.set_param(a[2], float(a[3]))
@@ -671,7 +689,7 @@ func state_dict() -> Dictionary:
 		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "music": sfx._music_cur, "speed": player.speed01,
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
 		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text, "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
-		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
+		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "yaw_index": world.yaw_index, "zoom": snappedf(world.zoom, 0.01), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
 		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01)}
 
 func _door_slot_centers() -> Array:

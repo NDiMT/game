@@ -40,6 +40,8 @@ var mirrors: Array[Node3D] = []
 var mirror_angles: Array[float] = [0.0, 0.0, 0.0]
 var beam_segs: Array[MeshInstance3D] = []
 var beam_glows: Array[MeshInstance3D] = []
+var beam_floor: Array[MeshInstance3D] = []     # v0.4: glow strips on the floor under each segment
+var beam_pools: Array[MeshInstance3D] = []     # ...and pools of light where it strikes
 var beam_lit := false
 var beam_points: Array[Vector3] = []
 var drawbridge: Node3D
@@ -83,7 +85,7 @@ func _init(lv: Level, g: Node) -> void:
 	reset_state()
 
 func reset_state() -> void:
-	state = {"door": [-1, -1, -1], "door_open": false, "mirrors": [3, 2, 0], "bridge": false,
+	state = {"door": [0, 0, 0], "door_open": false, "mirrors": [3, 2, 0], "bridge": false,
 		"plate": false, "shrine": false, "shortcut": false, "tablet": false}
 
 func build() -> void:
@@ -379,6 +381,25 @@ func _light_court() -> void:
 		level.add_interact("mirror%d" % (i + 1), p, "turn", func() -> void: turn_mirror(idx), 1.15,
 			func() -> bool: return not state["bridge"])
 	_apply_mirrors(true)
+	# the beam lights the floor: a strip under each segment, a pool at every strike
+	var fsh := preload("res://shaders/beam_floor.gdshader")
+	for i in 7:
+		for kind in [0.0, 1.0]:
+			var fm := ShaderMaterial.new()
+			fm.shader = fsh
+			fm.set_shader_parameter("kind", kind)
+			fm.set_shader_parameter("phase", i * 1.3 + kind)
+			var fq := PlaneMesh.new()
+			fq.size = Vector2(1, 1)
+			fq.center_offset = Vector3(0.5, 0, 0) if kind < 0.5 else Vector3.ZERO
+			var f := MeshInstance3D.new()
+			f.mesh = fq
+			f.material_override = fm
+			f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			f.visible = false
+			add_child(f)
+			if kind < 0.5: beam_floor.append(f)
+			else: beam_pools.append(f)
 	# beam ribbons + bounce glows
 	var rsh := preload("res://shaders/ray.gdshader")
 	for i in 7:
@@ -542,8 +563,40 @@ func _update_beam() -> void:
 			s.visible = false
 			g.visible = i == pts.size() - 1 and i > 0
 			if g.visible: g.position = pts[i]
+	_update_beam_floor(pts)
 	if beam_lit and _turning == 0 and not state["bridge"]:
 		_lower_bridge(false)
+
+## the floor glow follows the beam path (and so every mirror turn)
+func _update_beam_floor(pts: Array[Vector3]) -> void:
+	var along := 0.0
+	for i in beam_floor.size():
+		var f := beam_floor[i]
+		var pl := beam_pools[i]
+		if i < pts.size() - 1:
+			var a := pts[i]
+			var b := pts[i + 1]
+			var v := Vector2(b.x - a.x, b.z - a.z)
+			var L := v.length()
+			var fy := level.height_at(Vector2(a.x, a.z)) + 0.016
+			if L > 0.05:
+				var dir := Vector3(v.x, 0.0, v.y) / L
+				f.transform = Transform3D(Basis(dir * L, Vector3.UP, dir.cross(Vector3.UP) * 2.6), Vector3(a.x, fy, a.z))
+				var m: ShaderMaterial = f.material_override
+				m.set_shader_parameter("length_m", L)
+				m.set_shader_parameter("offset_m", along)
+				f.visible = true
+			else:
+				f.visible = false
+			along += L
+		else:
+			f.visible = false
+		if i < pts.size():
+			var p := pts[i]
+			pl.transform = Transform3D(Basis().scaled(Vector3(3.2, 1.0, 3.2)), Vector3(p.x, level.height_at(Vector2(p.x, p.z)) + 0.02, p.z))
+			pl.visible = true
+		else:
+			pl.visible = false
 
 func _lower_bridge(instant: bool) -> void:
 	state["bridge"] = true
@@ -845,8 +898,12 @@ func _reflectors() -> void:
 	r.clip_c = Vector3(0, 3.38, -20.56); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.UP; r.clip_h = Vector2(2.58, 2.2)
 	r.region = Level.R(-4.6, -20.6, 4.6, -14.5); r.alpha = 0.78
 	r.gaze_target = TABLET_POS
+	var hm := _mirror_quad(Vector3(0, 3.38, -20.575), Basis(), Vector2(5.2, 4.45))
+	var pm := PlanarMirror.new()
+	add_child(pm)
+	pm.setup(Vector3.BACK, -20.575, hm, game.world.env)
+	r.planar = pm
 	_add_refl(r); hall_mirror = r
-	_mirror_quad(Vector3(0, 3.38, -20.575), Basis(), Vector2(5.2, 4.45))
 	_pane(Vector3(-2.4, 1.0, -15.6), 0.0, Vector2(1.6, 2.6), false)
 	_pane(Vector3(2.2, 1.0, -14.6), -PI * 0.5, Vector2(1.6, 2.6), true)
 	# 4. the great Eidolon glass: the reflection steps out of the frame and walks the other world
@@ -859,7 +916,7 @@ func _reflectors() -> void:
 const HALL_COLS := [Vector4(-4.5, -12.2, 0.3, 4.2), Vector4(-4.5, -14.8, 0.3, 4.2), Vector4(-4.5, -17.4, 0.3, 4.2),
 	Vector4(-4.5, -19.9, 0.3, 4.2), Vector4(-3.3, -11.3, 0.3, 4.2), Vector4(3.3, -11.3, 0.3, 4.2), Vector4(3.9, -18.2, 0.3, 0.9)]
 
-func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false) -> void:
+func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/mirror.gdshader")
 	m.set_shader_parameter("noise_tex", level.noise_tex)
@@ -887,6 +944,7 @@ func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false
 	o.transform = Transform3D(basis, center + basis * Vector3(0, 0, 0.045))
 	o.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(o)
+	return m
 
 func _add_refl(r: Reflector) -> void:
 	add_child(r)

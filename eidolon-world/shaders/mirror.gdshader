@@ -13,6 +13,11 @@ uniform vec4 cols[8];
 uniform int ncols = 0;
 uniform float crack = 0.0;
 uniform float wall_mounted = 0.0;   // its back is inside a wall: only ever seen through the cut-away
+// v0.4: a real planar reflection (PlanarMirror): the half-resolution view of the mirrored camera,
+// sampled through that camera's view-projection; the ray-traced room model below is the fallback
+uniform float planar = 0.0;
+uniform sampler2D refl_tex : source_color, filter_linear, repeat_disable;
+uniform mat4 refl_vp;
 varying vec3 wp;
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 
@@ -26,7 +31,13 @@ void fragment() {
 		vec3 fog = mix(vec3(0.60, 0.63, 0.66), vec3(0.80, 0.80, 0.79), smoothstep(-0.4, 0.5, r.y));
 		vec3 c = fog;
 		float best = 1e5;
-		if (r.y < -0.01) {
+		if (planar > 0.5) {
+			vec4 cl = refl_vp * vec4(wp, 1.0);
+			vec2 ndc = cl.xy / cl.w;
+			c = texture(refl_tex, vec2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5)).rgb;
+			best = -1.0;
+		}
+		if (best > 0.0 && r.y < -0.01) {
 			float t = (floor_y - wp.y) / r.y;
 			vec3 h = wp + r * t;
 			vec2 g = h.xz * 0.5;
@@ -43,7 +54,7 @@ void fragment() {
 		float hs = max(length(rd), 1e-4);
 		rd /= hs;
 		for (int i = 0; i < 8; i++) {
-			if (i >= ncols) break;
+			if (i >= ncols || best < 0.0) break;
 			vec4 cl = cols[i];
 			vec2 o = wp.xz - cl.xy;
 			float b = dot(o, rd);

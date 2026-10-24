@@ -66,6 +66,7 @@ func interact_n(n: int, gap := 0.25) -> void:
 			if not r: ok("interact available (%s)" % _focus(), false))
 		step_wait(gap)
 
+var _yaw0 := 0
 func _focus() -> String:
 	return game.focus.id if game.focus else "none"
 
@@ -173,9 +174,33 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("closed door blocks", P().z > -14.9, str(P())))
+	step_do(func() -> void: ok("the door's slots start on the first rune (not empty)", game.puzzles.state["door"] == [0, 0, 0], str(game.puzzles.state["door"])))
+	# the close (x) consumes its tap: the camera does not turn, the overlay closes cleanly
+	step_do(func() -> void: tp(Puzzles.DIAL_X0, Puzzles.DIAL_Z + 0.65, 0.0))
+	step_wait(0.2)
+	step_do(func() -> void:
+		game.try_interact()
+		_yaw0 = game.world.yaw_index
+		var ov: Control = game.ui.door_overlay
+		var p: Vector2 = ov.get_global_transform_with_canvas() * ov._close_r.get_center()
+		# the web order: the emulated mouse press first, then the touch itself, then the releases
+		var mb := InputEventMouseButton.new(); mb.button_index = MOUSE_BUTTON_LEFT; mb.pressed = true; mb.position = p; mb.global_position = p; mb.device = InputEvent.DEVICE_ID_EMULATION
+		game.get_viewport().push_input(mb, true)
+		var tch := InputEventScreenTouch.new(); tch.index = 0; tch.pressed = true; tch.position = p
+		game.get_viewport().push_input(tch, true)
+		var mr := mb.duplicate(); mr.pressed = false
+		game.get_viewport().push_input(mr, true)
+		var tr := tch.duplicate(); tr.pressed = false
+		game.get_viewport().push_input(tr, true))
+	step_wait(0.5)
+	step_do(func() -> void:
+		var ov = game.ui.door_overlay
+		ok("tapping x closes the door close-up", not ov.visible and game.mode == "play")
+		ok("tapping x does not turn the camera", game.world.yaw_index == _yaw0, "yaw %d -> %d" % [_yaw0, game.world.yaw_index])
+		ok("closed cleanly: no card left mid-flip, rotate buttons back", ov.big.scale == Vector2.ONE and ov.slots[0].scale == Vector2.ONE and game.controls.enabled and not game.controls.blocked()))
 	for i in 3:
 		var x := Puzzles.DIAL_X0 + i * Puzzles.DIAL_DX
-		var presses: int = Puzzles.DOOR_SOLUTION[i] + 1
+		var presses: int = Puzzles.DOOR_SOLUTION[i]
 		step_do(func() -> void: tp(x, Puzzles.DIAL_Z + 0.65, 0.0))
 		step_wait(0.2)
 		step_do(func() -> void:
@@ -324,7 +349,7 @@ func _plan() -> void:
 	step_until("new game -> play", func() -> bool: return game.mode == "play", 12.0)
 	step_do(func() -> void:
 		var st: Dictionary = game.puzzles.state
-		ok("new game: puzzles reset", not st["door_open"] and not st["bridge"] and not st["plate"] and not st["shrine"] and not st["shortcut"] and st["door"] == [-1, -1, -1], str(st))
+		ok("new game: puzzles reset", not st["door_open"] and not st["bridge"] and not st["plate"] and not st["shrine"] and not st["shortcut"] and st["door"] == [0, 0, 0], str(st))
 		ok("new game: regions reset", not game.level.named["LB"].enabled and game.level.named["door"].enabled)
 		ok("new game: world asleep, runes dormant", game.world.awaken == 0.0 and game.player.fig.runes_awake == 0)
 		ok("new game: woke at the gate", P().distance_to(Level.WAKE_POS) < 0.3, str(P()))

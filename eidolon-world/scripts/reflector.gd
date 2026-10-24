@@ -48,6 +48,17 @@ var _skip_at := 10.0
 var _active_t := 0.0
 var skipped := false
 
+var planar: PlanarMirror          # the great mirror: a real planar reflection (null = projected puppet)
+var planar_on := false
+var _settle := 0.0                 # the reflection settles a fraction after you stop
+var _was_moving := false
+var _clasp := 0.0
+var _clasp_t := 30.0
+var _feet: Array[MeshInstance3D] = []
+var _foot_i := 0
+var _foot_side := 1.0
+var _last_s := 0.0
+static var foot_shader: Shader
 static var ghost_shader: Shader
 static var enabled := true          # perf bench: all reflections off
 
@@ -56,7 +67,7 @@ func setup() -> void:
 	var n := plane_n.normalized()
 	var b := Basis(Vector3(1, 0, 0) - 2.0 * n.x * n, Vector3(0, 1, 0) - 2.0 * n.y * n, Vector3(0, 0, 1) - 2.0 * n.z * n)
 	refl_xf = Transform3D(b, 2.0 * plane_d * n)
-	puppet = Figure.new(true)
+	puppet = Figure.new(ghost_shader)
 	puppet.visible = false
 	add_child(puppet)
 	puppet.set_param("project", 1.0 if project else 0.0)
@@ -73,6 +84,32 @@ func setup() -> void:
 	puppet.set_param("ripple_amt", 1.0 if kind == "pool" else 0.0)
 	puppet.set_param("shimmer", 1.0 if kind == "eidolon" else 0.0)
 	if lag <= 0.0: lag = 0.035          # a micro-lag (about two frames): barely there
+	# v0.4 hints that it is not you: slimmer (a woman's narrower shoulders), the veil out of step,
+	# the hood-rim rune already faintly lit
+	puppet.slim = 0.045
+	puppet.veil_contrary = true
+	puppet.set_layers(PlanarMirror.LAYER_MAIN_FX)
+	_clasp_t = randf_range(18.0, 40.0)
+	if kind != "pool" and kind != "floor" and kind != "eidolon":
+		if foot_shader == null: foot_shader = preload("res://shaders/footprint.gdshader")
+		var q := QuadMesh.new()
+		q.size = Vector2(0.10, 0.17)
+		q.orientation = PlaneMesh.FACE_Y
+		for i in 6:
+			var m := ShaderMaterial.new()
+			m.shader = foot_shader
+			for k in ["plane_n", "plane_d", "clip_c", "clip_u", "clip_v", "clip_h"]: m.set_shader_parameter(k, get(k))
+			m.set_shader_parameter("plane_n", n)
+			m.set_shader_parameter("project", 1.0 if project else 0.0)
+			m.set_shader_parameter("life", 1.0)
+			var mi := MeshInstance3D.new()
+			mi.mesh = q
+			mi.material_override = m
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mi.layers = PlanarMirror.LAYER_MAIN_FX
+			mi.visible = false
+			add_child(mi)
+			_feet.append(mi)
 	_tilt_t = randf_range(6.0, 14.0)
 	_skip_at = randf_range(6.0, 20.0)
 
@@ -119,7 +156,29 @@ func _wants(player: Player, cam_back: Vector3) -> bool:
 
 func update(dt: float, player: Player, cam_back: Vector3) -> void:
 	_t += dt
-	var want := enabled and _wants(player, cam_back) and _on_screen()
+	var on_screen := _on_screen()
+	var want := enabled and _wants(player, cam_back) and on_screen
+	# the great mirror: the planar reflection renders while its glass is on screen and you are in the hall
+	if planar:
+		var pp := player.global_position
+		planar.update(get_viewport().get_camera_3d(), enabled and on_screen and region.has_point(Vector2(pp.x, pp.z)), player.speed01 > 0.05)
+		if planar.active != planar_on:
+			planar_on = planar.active
+			puppet.set_layers(PlanarMirror.LAYER_DOUBLE if planar_on else PlanarMirror.LAYER_MAIN_FX)
+			puppet.set_param("project", 0.0 if planar_on else 1.0)
+			puppet.set_param("graded", 0.0 if planar_on else 1.0)
+			for f in _feet:
+				f.layers = PlanarMirror.LAYER_DOUBLE if planar_on else PlanarMirror.LAYER_MAIN_FX
+				(f.material_override as ShaderMaterial).set_shader_parameter("project", 0.0 if planar_on else 1.0)
+	# settling: when you stop, it comes to rest a fraction later, with one small extra sway
+	var moving := player.speed01 > 0.3
+	if _was_moving and player.speed01 < 0.06:
+		_settle = 1.0
+		_was_moving = false
+	elif moving:
+		_was_moving = true
+	_settle = maxf(0.0, _settle - dt / 1.3)
+	var lag_now := lag + 0.10 * _settle
 	vis = move_toward(vis, 1.0 if want else 0.0, dt * (1.6 if want else 3.0))
 	if want and not active and lag > 0.0 and not glimpsed:
 		glimpsed = true
@@ -130,12 +189,15 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 	var src_pose: Figure.Pose = player.fig.pose
 	if lag > 0.0:
 		_hist.append([_t, src_xf, src_pose.copy()])
-		while _hist.size() > 2 and _hist[1][0] <= _t - lag: _hist.pop_front()
+		while _hist.size() > 2 and _hist[1][0] <= _t - lag - 0.14: _hist.pop_front()
 		if not active: return
-		var a: Array = _hist[0]
-		if _hist.size() > 1 and a[0] < _t - lag:
-			var b: Array = _hist[1]
-			var k := clampf((_t - lag - a[0]) / maxf(b[0] - a[0], 0.0001), 0.0, 1.0)
+		var tt := _t - lag_now
+		var j := 0
+		while j < _hist.size() - 2 and _hist[j + 1][0] <= tt: j += 1
+		var a: Array = _hist[j]
+		if _hist.size() > j + 1 and a[0] < tt:
+			var b: Array = _hist[j + 1]
+			var k := clampf((tt - a[0]) / maxf(b[0] - a[0], 0.0001), 0.0, 1.0)
 			src_xf = (a[1] as Transform3D).interpolate_with(b[1], k)
 			src_pose = (a[2] as Figure.Pose).blend(b[2], k)
 		else:
@@ -154,8 +216,18 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 	# phase with yours, now and then its head tilts a few degrees differently, and very rarely (once
 	# per surface) a single frame where it stands slightly off, like a skip
 	if puppet.hem != player.fig.hem * 1.25: puppet.set_hem(player.fig.hem * 1.25)
-	if puppet.runes_awake != player.fig.runes_awake: puppet.set_runes(player.fig.runes_awake)
+	if puppet.runes_awake != maxi(player.fig.runes_awake, 1): puppet.set_runes(maxi(player.fig.runes_awake, 1))
 	src_pose = src_pose.copy()
+	src_pose.sway += Vector2(0.0, 0.028 * sin((1.0 - _settle) * 11.0)) * _settle
+	# now and then its hands are clasped at the chest, like the veiled statues, while yours hang
+	_clasp_t -= dt
+	if _clasp_t <= 0.0:
+		_clasp_t = randf_range(25.0, 50.0)
+		var tc := create_tween()
+		tc.tween_property(self, "_clasp", 1.0, 1.4).set_trans(Tween.TRANS_SINE)
+		tc.tween_interval(randf_range(3.0, 5.0))
+		tc.tween_property(self, "_clasp", 0.0, 1.4).set_trans(Tween.TRANS_SINE)
+	src_pose.clasp = _clasp
 	var still := clampf(1.0 - player.speed01 * 3.0, 0.0, 1.0)
 	src_pose.breath = sin(_t * 1.58 + 2.2) * still
 	_tilt_t -= dt
@@ -172,9 +244,31 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 		skipped = true
 		sk = Vector2(clip_u.x, clip_u.z) * 0.07
 	puppet.set_param("skip", sk)
-	puppet.global_transform = refl_xf * src_xf
+	var mirrored := refl_xf * src_xf
+	# planar: the double stands in the real world (un-reflected) and the mirror camera sees it
+	puppet.global_transform = refl_xf * mirrored if planar_on else mirrored
 	puppet.apply_pose(src_pose)
 	puppet.set_param("vis", vis)
+	_footprints(src_pose)
+
+## faint petrol footprints where IT steps, fading in 1.5 s (yours leave none)
+func _footprints(pose: Figure.Pose) -> void:
+	if _feet.is_empty(): return
+	var s := sin(pose.phase)
+	if pose.ripple > 0.3 and signf(s) != signf(_last_s) and _last_s != 0.0:
+		_foot_side = -_foot_side
+		var f := _feet[_foot_i]
+		_foot_i = (_foot_i + 1) % _feet.size()
+		var xf := puppet.global_transform
+		var at := xf * Vector3(_foot_side * 0.075, 0.0, -0.02)
+		f.global_transform = Transform3D(Basis(Vector3.UP, atan2(xf.basis.z.x, xf.basis.z.z)), at + Vector3(0, 0.014, 0))
+		f.visible = true
+		var m: ShaderMaterial = f.material_override
+		m.set_shader_parameter("life", 0.0)
+		var tw := f.create_tween()
+		tw.tween_method(func(v: float) -> void: m.set_shader_parameter("life", v), 0.0, 1.0, 1.5)
+		tw.tween_callback(func() -> void: f.visible = false)
+	_last_s = s
 
 func _gaze(dt: float, player: Player, xf: Transform3D, pose: Figure.Pose, seen: bool) -> Array:
 	var still := player.still_time

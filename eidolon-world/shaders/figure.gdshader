@@ -11,15 +11,18 @@ global uniform vec4 accent_core;
 uniform float glint = 1.0;          // hem stripe brightness (rises with each shrine)
 varying vec3 lp;
 varying vec2 vuv;
+varying vec3 rest;
 
 
 void vertex() {
+	rest = VERTEX;
 	VERTEX = cloak_deform(VERTEX, UV);
 	lp = VERTEX;
 	vuv = UV;
 }
 
 void fragment() {
+	vec2 hm = vuv.x < 0.5 ? cloak_holes(rest) : vec2(0.0);
 	float fres = pow(1.0 - abs(dot(NORMAL, VIEW)), 3.0);
 	// simple wrap lighting baked in (the figure does not receive shadows: no acne on the folds)
 	vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -32,10 +35,14 @@ void fragment() {
 	// dormant thread: thin, a little lighter than the cloth; awake runes glow faint cyan
 	ALBEDO = mix(ALBEDO, vec3(0.30, 0.31, 0.33), emb.x * 0.55 * (1.0 - emb.z));
 	ALBEDO = mix(ALBEDO, accent_core.rgb, emb.x * emb.z * 0.6);
+	ALBEDO *= 1.0 - 0.45 * hm.y;
+
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.15;
 	EMISSION = accent_core.rgb * (COLOR.a * glint * 2.4 + (emb.x * 1.4 + emb.y * 0.35) * emb.z);
 	// a cool rim of fog light round the silhouette
 	float rim = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.6);
 	EMISSION += vec3(0.42, 0.50, 0.60) * rim * 0.55 * (1.0 - step(0.5, vuv.x) * step(vuv.x, 1.5));
+	// a torn hole: the dark inside of the cloak shows through
+	if (hm.x > 0.5) { ALBEDO = vec3(0.012, 0.012, 0.014); EMISSION = vec3(0.0); ROUGHNESS = 1.0; SPECULAR = 0.0; }
 }

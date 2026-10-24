@@ -58,6 +58,25 @@ func _process(dt: float) -> void:
 			_bench_last = Time.get_ticks_usec()
 			_bench_skip = 10
 			return
+		elif s.begins_with("vpshot:"):
+			var pm: PlanarMirror = game.puzzles.hall_mirror.planar
+			pm.vp.get_texture().get_image().save_png("res://dev/shots/" + s.substr(7) + ".png")
+		elif s == "vpdbg":
+			var pm: PlanarMirror = game.puzzles.hall_mirror.planar
+			var P := game.player.global_position + Vector3(0, 0.6, 0)
+			var vpm: Projection = Projection(pm.cam.get_camera_projection()) * Projection(pm.cam.global_transform.affine_inverse())
+			var c := vpm * Vector4(P.x, P.y, P.z, 1.0)
+			print("double ndc ", Vector2(c.x, c.y) / c.w, " unproject ", pm.cam.unproject_position(P) / Vector2(pm.vp.size))
+			var Pp := Vector3(P.x, P.y, -41.15 - P.z)
+			var cb := game.world.cam_back
+			var t := (-20.575 - Pp.z) / cb.z
+			var M := Pp + cb * t
+			var c2 := vpm * Vector4(M.x, M.y, M.z, 1.0)
+			print("mirror pt ", M, " ndc ", Vector2(c2.x, c2.y) / c2.w, " unproject ", pm.cam.unproject_position(M) / Vector2(pm.vp.size))
+		elif s == "beamdbg":
+			var pz = game.puzzles
+			print("pts ", pz.beam_points)
+			for i in pz.beam_floor.size(): print(i, " floor vis=", pz.beam_floor[i].visible, " at ", pz.beam_floor[i].global_position, " pool vis=", pz.beam_pools[i].visible, " at ", pz.beam_pools[i].global_position)
 		elif s == "quit":
 			get_tree().quit()
 			return

@@ -36,6 +36,7 @@ var _glow_k := -1.0
 func _init() -> void:
 	fig = Figure.new()
 	add_child(fig)
+	fig.set_layers(PlanarMirror.LAYER_PLAYER)
 	# soft contact shadow
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(0.95, 0.95)
@@ -123,7 +124,6 @@ func _animate(dt: float) -> void:
 	p.sway = _sway
 	p.flare = maxf(_flare, -0.05)
 	p.ripple = walk
-	p.walk = walk
 	p.phase = _phase
 	p.breath = sin(t * 1.65) * (1.0 - walk)
 	# idle: the hood drifts to look around, slowly

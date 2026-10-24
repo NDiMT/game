@@ -7,10 +7,11 @@ uniform float design = 0.0;
 uniform float numeral = 0.0;
 uniform float alpha = 1.0;
 uniform float glow = 0.6;
+uniform float aspect = 1.196;          // rect height / width: the rune keeps its true proportions
 global uniform vec4 accent;
 global uniform vec4 accent_core;
 void fragment() {
-	vec2 p = (UV - vec2(0.5, 0.42)) * vec2(2.3, 2.75);
+	vec2 p = (UV - vec2(0.5, 0.42)) * vec2(2.3, 2.3 * aspect);
 	vec2 rp = vec2(p.x, -p.y);
 	float empty = step(design, -0.5);
 	float d = empty > 0.5 ? rune_frame(rp) : rune_dist(rp, int(design + 0.5));

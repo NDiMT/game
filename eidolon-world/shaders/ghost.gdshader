@@ -21,6 +21,7 @@ uniform vec3 clip_u = vec3(1.0, 0.0, 0.0);
 uniform vec3 clip_v = vec3(0.0, 1.0, 0.0);
 uniform vec2 clip_h = vec2(1.0, 1.0);
 uniform float vis = 1.0;
+uniform float graded = 1.0;            // 0 in the planar mirror view (the glass grades it itself)
 uniform float ghost = 0.0;
 uniform float glint = 1.0;
 uniform float shimmer = 1.0;
@@ -34,8 +35,10 @@ varying vec3 wpos;
 varying vec4 vcol;
 varying vec2 vuv;
 varying vec3 lpos;
+varying vec3 rest;
 
 void vertex() {
+	rest = VERTEX;
 	vec3 v = cloak_deform(VERTEX, UV);
 	vcol = COLOR;
 	vuv = UV;
@@ -71,11 +74,12 @@ void fragment() {
 		if (abs(uv.x) > 1.0 || abs(uv.y) > 1.0) discard;
 	}
 	if (vis < 0.999 && bayer4(FRAGCOORD.xy) > vis) discard;
+	vec2 hm = vuv.x < 0.5 ? cloak_holes(rest) : vec2(0.0);
 	vec3 base = vcol.rgb;
 	if (vuv.x > 0.5 && vuv.x < 1.5) base *= face_shade(lpos - vec3(0.0, 0.14, -0.022));
 	// a reflection: a touch cooler and flatter than the real thing
 	float lum = dot(base, vec3(0.3, 0.55, 0.15));
-	vec3 refl = mix(base, vec3(lum), 0.18) * vec3(0.90, 0.97, 1.04) + vec3(0.03, 0.04, 0.05);
+	vec3 refl = mix(base, mix(base, vec3(lum), 0.18) * vec3(0.90, 0.97, 1.04) + vec3(0.03, 0.04, 0.05), graded);
 	float fres = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.0);
 	float band = smoothstep(0.92, 1.0, sin(wpos.y * 3.0 - TIME * 1.3)) * shimmer;
 	vec3 eid = mix(base * 0.6 + accent.rgb * 0.45, accent_core.rgb, clamp(fres * 0.6 + band * 0.5, 0.0, 1.0));
@@ -86,4 +90,5 @@ void fragment() {
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.15;
 	EMISSION = accent_core.rgb * (vcol.a * glint * 2.2 + emb.x * emb.z * 1.3) * (1.0 - surface_mix * 0.6) + accent.rgb * fres * 0.25 * ghost;
+	if (hm.x > 0.5) { ALBEDO = vec3(0.02, 0.022, 0.026); EMISSION = vec3(0.0); }
 }

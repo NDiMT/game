@@ -7,8 +7,12 @@ extends Node3D
 
 const PITCH := deg_to_rad(36.0)
 const DIST := 40.0
-const CAM_SIZE := 10.5             # the default (far) view, as in v0.1
-const ZOOMS := [10.5, 7.0]          # 0 = default far view, 1 = optional closer view (pinch / wheel / +-)
+const CAM_SIZE := 10.5             # reference width for the vertical framing offset
+## v0.4: a little closer by default (8.8 m wide); pinch / wheel / +- zoom smoothly both ways, 6-11 m
+const ZOOM_MIN := 6.0
+const ZOOM_MAX := 11.0
+const ZOOM_DEFAULT := 8.8
+const ZOOM_STEP := 1.18
 const SHAFT_BASE := [0.20, 0.16, 0.14]
 const VEIL := 1                    # fog_mats index of the veil sheet with the clear bubble
 
@@ -33,7 +37,7 @@ var fog_hole := Vector2(4.6, 11.0)
 var fog_hole_target := Vector2(4.6, 11.0)
 var awaken := 0.0
 var shaft_mats: Array[ShaderMaterial] = []
-var zoom_i := 0
+var zoom := ZOOM_DEFAULT
 var backdrop_mat: ShaderMaterial
 var cam_size_target := CAM_SIZE
 var cam_lock := false
@@ -130,6 +134,7 @@ func _build_camera() -> void:
 	cam.v_offset = base_v_offset
 	pitch_node.add_child(cam)
 	cam.current = true
+	cam.cull_mask = PlanarMirror.MAIN_MASK
 
 func _build_light() -> void:
 	sun = DirectionalLight3D.new()
@@ -163,6 +168,7 @@ func _fog_sheet(y: float, density: float, hole_in: float, hole_out: float, drift
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.extra_cull_margin = 20.0
 	add_child(mi)
+	mi.layers = PlanarMirror.LAYER_MAIN_FX
 	mi.add_to_group("f_fog")
 	fog_mats.append(m)
 	fog_nodes.append(mi)
@@ -190,6 +196,7 @@ func _build_shafts() -> void:
 	sq.position = Vector3(0.0, 7.0, -8.0)
 	sq.extra_cull_margin = 20.0
 	pitch_node.add_child(sq)
+	sq.layers = PlanarMirror.LAYER_MAIN_FX
 	sq.add_to_group("f_shafts")
 	shaft_mats.append(sm)
 
@@ -219,6 +226,7 @@ func _mote_cloud(count: int, size: float, ash: float, intensity: float) -> Multi
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.custom_aabb = AABB(Vector3(-200, -50, -200), Vector3(400, 100, 400))
 	add_child(mi)
+	mi.layers = PlanarMirror.LAYER_MAIN_FX
 	mi.add_to_group("f_motes")
 	return mi
 
@@ -328,8 +336,12 @@ func screen_frac(n: GeometryInstance3D) -> float:
 func tier_name() -> String:
 	return tier.to_upper() + (" step %d" % auto_step if tier == "auto" and auto_step > 0 else "")
 
-func set_zoom_level(i: int) -> void:
-	zoom_i = clampi(i, 0, ZOOMS.size() - 1)
+## one zoom step: 1 = closer, 0 = farther
+func zoom_step(closer: bool) -> bool:
+	var z := clampf(zoom / ZOOM_STEP if closer else zoom * ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
+	if absf(z - zoom) < 0.01: return false
+	zoom = z
+	return true
 
 func _build_overlays() -> void:
 	var back := CanvasLayer.new()
