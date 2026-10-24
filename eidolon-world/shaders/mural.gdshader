@@ -19,9 +19,9 @@ float robe(vec2 p) {
 	q.x *= size.x / size.y;
 	float H = head.y - 0.075;
 	float y = clamp(q.y / H, 0.0, 1.0);
-	float w = mix(0.22, 0.10, smoothstep(0.0, 1.0, y)) + 0.012 * sin(y * 30.0) * (1.0 - y);
+	float w = mix(0.30, 0.12, smoothstep(0.0, 1.0, y)) + 0.012 * sin(y * 30.0) * (1.0 - y);
 	float body = max(abs(q.x) - w, max(q.y - H, -q.y));
-	float shoulders = length((q - vec2(0.0, H)) * vec2(1.0, 2.4)) - 0.12;
+	float shoulders = length((q - vec2(0.0, H)) * vec2(1.0, 2.2)) - 0.15;
 	return min(body, shoulders);
 }
 
@@ -34,13 +34,13 @@ void fragment() {
 	float fill = 1.0 - smoothstep(-0.004, 0.006, d);
 	float outline = exp(-abs(d) * 160.0);
 	float erased = smoothstep(0.45, 0.62, n * 0.7 + n2 * 0.4);
-	vec3 paint = mix(vec3(0.34, 0.42, 0.44), accent.rgb, 0.45);
+	vec3 paint = mix(vec3(0.16, 0.24, 0.27), accent.rgb, 0.3);
 	vec2 hq = (p - head) * vec2(size.x / size.y, 1.0);
 	float hd = length(hq * vec2(1.0, 0.82)) - 0.06;
 	// painted around her: a halo arch and the sea she was lost to
-	float halo = exp(-abs(length(hq) - 0.17) * 90.0) * 0.35;
-	float sea = exp(-abs(p.y - 0.06 - 0.015 * sin(p.x * 40.0)) * 120.0) * 0.4 * (1.0 - smoothstep(0.25, 0.5, abs(p.x - 0.5)));
-	float a = (fill * 0.42 * (1.0 - erased * 0.7) + outline * 0.55 + (halo + sea) * (1.0 - erased * 0.5)) * (0.55 + 0.45 * lit);
+	float halo = exp(-abs(length(hq) - 0.2) * 70.0) * 0.5;
+	float sea = (exp(-abs(p.y - 0.06 - 0.015 * sin(p.x * 40.0)) * 120.0) + exp(-abs(p.y - 0.11 - 0.012 * sin(p.x * 31.0 + 1.3)) * 140.0) * 0.6) * 0.55 * (1.0 - smoothstep(0.3, 0.5, abs(p.x - 0.5)));
+	float a = (fill * 0.62 * (1.0 - erased * 0.6) + outline * 0.8 + (halo + sea) * (1.0 - erased * 0.5)) * (0.55 + 0.45 * lit);
 	// the missing head: a pale scar in the plaster
 	float scar = (1.0 - smoothstep(0.0, 0.02, hd)) * (1.0 - complete);
 	vec3 c = paint;

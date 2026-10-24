@@ -254,7 +254,8 @@ static func _scales(lv: Level) -> void:
 	lv.column(Vector3(26.5, 2.0, -51.5), 4.4)
 	lv.column(Vector3(32.9, 2.0, -51.5), 4.4)
 	# the beam of the balance (a stone arm over a pivot) is a puzzle object; its pivot post:
-	lv.box(z, Vector3(30.0, 2.9, -48.2), Vector3(0.6, 1.8, 0.6), 0.25, true)
+	lv.box(z, Vector3(30.0, 4.15, -48.2), Vector3(0.6, 4.3, 0.6), 0.25, true)
+	lv.box(z, Vector3(30.0, 2.2, -48.2), Vector3(1.0, 0.4, 1.0), 0.25, true)
 	lv.ob_rect(R(29.7, -48.5, 30.3, -47.9))
 	# the lift (pan A) and the high walkway it rises to
 	lv.walk(R(30.4, -46.6, 32.4, -44.6), 2.0, NAN, -1, "lift")

@@ -685,11 +685,11 @@ func _shrine_platform() -> void:
 	m.cyl(c + Vector3(0, 5.85, 0), 3.05, 3.05, 0.5, C(0.25, true), 32)
 	m.cyl(c + Vector3(0, 6.35, 0), 2.7, 3.0, 0.5, C(0.25, true), 32)
 	m.sphere(c + Vector3(0, 6.6, 0), Vector3(2.6, 1.2, 2.6), C(0.25, true), 24, 8)
-	statue(z, c + Vector3(0, 0, -1.3), PI, 1.0, 0.5)
-	# v0.5: a small round pool under the crystal, where her hand meets yours
-	m.cyl(c + Vector3(0, 0.07, 0.35), 0.86, 0.9, 0.14, C(0.25), 28)
-	m.cyl(c + Vector3(0, 0.02, 0.35), 0.74, 0.74, 0.06, C(0.5), 28)
-	ob_circle(Vector2(c.x, c.z + 0.35), 0.86)
+	statue(z, c + Vector3(0, 0, -1.8), PI, 0.95, 0.5)
+	# v0.5: a round pool under the crystal, where her hand meets yours
+	m.cyl(c + Vector3(0, 0.07, 0.2), 1.3, 1.34, 0.14, C(0.25), 36)
+	m.cyl(c + Vector3(0, 0.02, 0.2), 1.18, 1.18, 0.06, C(0.5), 36)
+	ob_circle(Vector2(c.x, c.z + 0.2), 1.3)
 	rubble(Vector3(21.2, 2.0, -34.8), 0.6, 5)
 	stump(Vector3(21.0, 2.0, -29.0), 0.9)
 

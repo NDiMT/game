@@ -40,7 +40,7 @@ const TURN_FACES := [[[6, 0.0], [6, 1.0], [3, 0.0], [5, 0.0]], [[7, 1.0], [7, 0.
 const TURN_SOLUTION := [0, 1, 0]                       # orientation that puts the true rune toward the glass
 const TURN_START := [2, 3, 1]
 const TURN_X := [10.6, 12.0, 13.4]
-const TURN_Z := -12.6
+const TURN_Z := -13.5
 const SCALES_MIRROR := Vector3(29.0, 2.0, -46.6)
 const PAN_A := Vector3(31.4, 2.0, -45.6)
 const PAN_B := Vector3(27.8, 2.0, -50.6)
@@ -108,6 +108,8 @@ var scale_gaze: ShaderMaterial
 var pan_a_mat: ShaderMaterial
 var pan_b_mat: ShaderMaterial
 var lift_h := 0.0
+var arm_half := 3.0
+var rods: Array[MeshInstance3D] = []
 var _groan_cd := 0.0
 # ledge footprints
 var ledge_feet: Array[MeshInstance3D] = []
@@ -506,9 +508,19 @@ func _build_garden() -> void:
 		level.add_interact("turn%d" % (i + 1), Vector3(TURN_X[i], 1.0, TURN_Z + 1.05), "turn", func() -> void: turn_statue(idx), 0.7,
 			func() -> bool: return not state["turned_done"])
 	# her message: a small glass on the gallery wall's garden face
-	# her message: on the great glass itself, low in its west corner
-	_breath_glass("garden", Vector3(9.75, 2.05, -14.93), Basis(), Vector2(0.95, 1.6), Vector3(6, 7, 8), true, false)
-	level.add_interact("breathe_garden", Vector3(9.75, 1.0, -14.05), "breathe", func() -> void: breathe("garden"), 0.95)
+	# her message: a small glass beside the great one
+	# (a small glass of its own beside the great one: no statue stands between it and you)
+	var wm := MB.new()
+	var fc := Color(0.5, 1.0, 0.0)
+	wm.box(Vector3(16.0, 1.25, -15.0), Vector3(1.2, 0.5, 0.5), Color(0.5, 0.25, 0.0))
+	wm.box(Vector3(15.42, 2.3, -15.0), Vector3(0.1, 2.1, 0.12), fc)
+	wm.box(Vector3(16.58, 2.3, -15.0), Vector3(0.1, 2.1, 0.12), fc)
+	wm.box(Vector3(16.0, 3.38, -15.0), Vector3(1.26, 0.12, 0.14), fc)
+	wm.box(Vector3(16.0, 2.3, -15.12), Vector3(1.1, 2.1, 0.1), Color(0.5, 0.25, 0.0))
+	puzzles.marble_instance(wm.commit(), self)
+	level.ob_rect(Level.R(15.35, -15.3, 16.65, -14.72))
+	_breath_glass("garden", Vector3(16.0, 2.35, -14.93), Basis(), Vector2(1.05, 1.95), Vector3(6, 7, 8), true, true)
+	level.add_interact("breathe_garden", Vector3(16.0, 1.0, -14.1), "breathe", func() -> void: breathe("garden"), 0.95)
 	# the door east: its leaves in your world, and their twins only the mirror sees
 	for twin in [false, true]:
 		for s in [-1.0, 1.0]:
@@ -818,16 +830,17 @@ func _build_maze() -> void:
 		var dir := (b - a).normalized()
 		var perp := dir.cross(Vector3.UP)
 		for j in n:
-			var c := a + dir * (L * (j + 0.5) / n) + perp * side * 0.11
+			var c := a + dir * (L * (j + 0.5) / n) + perp * side * 0.17
 			side = -side
 			var m := ShaderMaterial.new()
 			m.shader = fsh
 			m.set_shader_parameter("project", 0.0)
 			m.set_shader_parameter("life", 1.0)
+			m.set_shader_parameter("dark", 1.0)
 			var q := QuadMesh.new()
-			q.size = Vector2(0.15, 0.26)
+			q.size = Vector2(0.28, 0.46)
 			q.orientation = PlaneMesh.FACE_Y
-			var mi := _mi(q, m, Transform3D(Basis(Vector3.UP, atan2(-dir.x, -dir.z)), Vector3(c.x, 1.99, c.z)))
+			var mi := _mi(q, m, Transform3D(Basis(Vector3.UP, atan2(-dir.x, -dir.z)), Vector3(c.x, c.y, c.z)))
 			mi.visible = false
 			maze_feet.append(mi)
 			maze_feet_t.append(0.0)
@@ -843,14 +856,14 @@ func _update_maze(dt: float) -> void:
 	var inside := _in_maze()
 	# her steps through the pool: one after another, then a pause, again
 	var n := maze_feet.size()
-	var period := n * 0.42 + 3.0
+	var period := n * 0.42 + 6.0
 	if inside: _maze_loop = fmod(_maze_loop + dt, period)
 	for i in n:
 		var appear := i * 0.42
 		var age := _maze_loop - appear
 		var on := inside and age >= 0.0
 		maze_feet[i].visible = on
-		if on: (maze_feet[i].material_override as ShaderMaterial).set_shader_parameter("life", clampf(age / 5.5, 0.0, 1.0))
+		if on: (maze_feet[i].material_override as ShaderMaterial).set_shader_parameter("life", pow(clampf(age / 9.0, 0.0, 1.0), 2.0))
 	# bumping into an invisible wall: it shimmers where you touched it
 	_bump_cd = maxf(0.0, _bump_cd - dt)
 	for s in shimmers:
@@ -949,8 +962,7 @@ func _build_scales() -> void:
 	var lm := MB.new()
 	lm.box(Vector3(0, -0.15, 0), Vector3(2.0, 0.3, 2.0), Color(0.5, 0.0, 0.0))
 	lm.box(Vector3(0, -0.9, 0), Vector3(0.4, 1.4, 0.4), Color(0.5, 1.0, 0.0))
-	for s in [Vector3(-0.9, 0.9, -0.9), Vector3(0.9, 0.9, -0.9), Vector3(-0.9, 0.9, 0.9), Vector3(0.9, 0.9, 0.9)]:
-		lm.cyl(Vector3(s.x, 1.6, s.z), 0.025, 0.025, 3.2, Color(0.5, 1.0, 0.0), 5)
+	lm.cyl(Vector3(0, 0.08, 0), 0.12, 0.16, 0.16, Color(0.5, 1.0, 0.0), 8)
 	puzzles.marble_instance(lm.commit(), lift_node)
 	pan_a_mat = puzzles.rune_quad(lift_node, Vector3(0, 0.012, 0), Vector2(1.2, 1.2), Basis(Vector3.RIGHT, -PI * 0.5), 2.0, 0.25)
 	panb_node = Node3D.new()
@@ -960,14 +972,13 @@ func _build_scales() -> void:
 	bm.box(Vector3(0, -0.15, 0), Vector3(2.0, 0.3, 2.0), Color(0.5, 0.0, 0.0))
 	bm.sphere(Vector3(0, 0.45, 0), Vector3(0.5, 0.45, 0.45), Color(0.5, 0.5, 0.0), 10, 6)
 	bm.box(Vector3(0.1, 0.12, 0.2), Vector3(0.7, 0.24, 0.5), Color(0.5, 0.5, 0.0), Basis(Vector3.UP, 0.4))
-	for s in [Vector3(-0.9, 0.9, -0.9), Vector3(0.9, 0.9, -0.9), Vector3(-0.9, 0.9, 0.9), Vector3(0.9, 0.9, 0.9)]:
-		bm.cyl(Vector3(s.x, 1.6, s.z), 0.025, 0.025, 3.2, Color(0.5, 1.0, 0.0), 5)
+	bm.cyl(Vector3(0, 0.95, 0), 0.12, 0.16, 0.16, Color(0.5, 1.0, 0.0), 8)
 	puzzles.marble_instance(bm.commit(), panb_node)
 	pan_b_mat = puzzles.rune_quad(panb_node, Vector3(0, 0.012, 0.75), Vector2(0.5, 0.5), Basis(Vector3.RIGHT, -PI * 0.5), 2.0, 0.25)
 	level.ob_rect(Level.R(26.8, -51.6, 28.8, -49.6))
 	# the balance arm over its pivot
 	arm_node = Node3D.new()
-	arm_node.position = Vector3(30.0, 3.95, -48.2)
+	arm_node.position = Vector3(30.0, 6.45, -48.2)
 	add_child(arm_node)
 	var am := MB.new()
 	var d := (Vector2(PAN_A.x, PAN_A.z) - Vector2(PAN_B.x, PAN_B.z))
@@ -976,6 +987,16 @@ func _build_scales() -> void:
 	am.cyl(Vector3(0, 0, 0), 0.22, 0.22, 0.5, Color(0.5, 1.0, 0.0), 10, Basis(Vector3.RIGHT, PI * 0.5))
 	puzzles.marble_instance(am.commit(), arm_node)
 	arm_node.rotation.y = -atan2(d.y, d.x)
+	arm_half = d.length() * 0.5
+	# a rod from each end of the beam down to its pan (they follow the beam as it tips)
+	for k in 2:
+		var rod := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.035; cm.bottom_radius = 0.035; cm.height = 1.0; cm.radial_segments = 6
+		rod.mesh = cm
+		rod.material_override = level.marble_mat
+		add_child(rod)
+		rods.append(rod)
 	# the glass that decides what the scale sees: a stand that turns in quarter steps
 	scale_mirror = Node3D.new()
 	scale_mirror.position = SCALES_MIRROR + Vector3(0, 1.0, 0)
@@ -1058,6 +1079,13 @@ func _update_scales(dt: float) -> void:
 		arm_node.rotation.z = (0.5 - lift_h) * 0.0
 		arm_node.rotation = Vector3(0.0, arm_node.rotation.y, 0.0)
 		arm_node.rotate_object_local(Vector3.BACK, (lift_h - 0.5) * 0.36)
+		for k in 2:
+			var top: Vector3 = arm_node.global_transform * Vector3(arm_half * (1.0 if k == 0 else -1.0), 0, 0)
+			var bot: Vector3 = (lift_node.global_position + Vector3(0, 0.16, 0)) if k == 0 else (panb_node.global_position + Vector3(0, 1.03, 0))
+			var v := top - bot
+			var yb := v.normalized()
+			var xb := yb.cross(Vector3.BACK).normalized() if absf(yb.z) < 0.9 else yb.cross(Vector3.RIGHT).normalized()
+			rods[k].global_transform = Transform3D(Basis(xb, yb * v.length(), xb.cross(yb)), (top + bot) * 0.5)
 		var g: Level.Region = level.named["lift"]
 		g.y0 = y; g.y1 = y
 		if on and lift_h != prev: game.player.position.y = y
@@ -1081,8 +1109,9 @@ func _build_ledge_feet() -> void:
 			m.shader = fsh
 			m.set_shader_parameter("project", 0.0)
 			m.set_shader_parameter("life", 1.0)
+			m.set_shader_parameter("dark", 1.0)
 			var q := QuadMesh.new()
-			q.size = Vector2(0.15, 0.26)
+			q.size = Vector2(0.28, 0.46)
 			q.orientation = PlaneMesh.FACE_Y
 			var mi := _mi(q, m, Transform3D(Basis(Vector3.UP, atan2(-dir.x, -dir.z)), c))
 			mi.visible = false
@@ -1099,7 +1128,7 @@ func _update_ledge(dt: float) -> void:
 		var age := _ledge_loop - i * 0.5
 		var vis: bool = on and age >= 0.0
 		ledge_feet[i].visible = vis
-		if vis: (ledge_feet[i].material_override as ShaderMaterial).set_shader_parameter("life", clampf(age / 4.0, 0.0, 1.0))
+		if vis: (ledge_feet[i].material_override as ShaderMaterial).set_shader_parameter("life", pow(clampf(age / 6.0, 0.0, 1.0), 2.0))
 
 # ------------------------------------------------------------------ 12. gate of the four veiled
 func four_pos(i: int) -> Vector3:
@@ -1196,12 +1225,13 @@ func open_four(instant: bool) -> void:
 
 # ------------------------------------------------------------------ 13. the shrine's pool
 func _build_shrine_pool() -> void:
-	var c := Puzzles.SHRINE_C + Vector3(0, 0, 0.35)
+	var c := Vector3(POOL_C.x, Puzzles.SHRINE_C.y, POOL_C.z)
+	var d := POOL_R * 2.0 + 0.02
 	shrine_water = _smat("res://shaders/water.gdshader", {"noise_tex": level.noise_tex, "disc": 1.0})
-	_mi(_plane(Vector2(1.5, 1.5)), shrine_water, Transform3D(Basis(), c + Vector3(0, 0.035, 0)))
+	_mi(_plane(Vector2(d, d)), shrine_water, Transform3D(Basis(), c + Vector3(0, 0.15, 0)))
 	shrine_over = _smat("res://shaders/water_over.gdshader", {"noise_tex": level.noise_tex, "disc": 1.0,
-		"area": Vector4(c.x - 0.6, c.z - 0.6, c.x + 0.6, c.z + 0.6), "calm": 0.6})
-	_mi(_plane(Vector2(1.5, 1.5)), shrine_over, Transform3D(Basis(), c + Vector3(0, 0.06, 0)))
+		"area": Vector4(c.x - POOL_R, c.z - POOL_R, c.x + POOL_R, c.z + POOL_R), "calm": 0.6})
+	_mi(_plane(Vector2(d, d)), shrine_over, Transform3D(Basis(), c + Vector3(0, 0.165, 0)))
 
 # ------------------------------------------------------------------ hints
 func _build_wisp() -> void:
@@ -1225,7 +1255,7 @@ func hint_target(area: String) -> Vector3:
 		"shard_gallery": return Vector3(6.6, 2.0, -8.5) if not state["gallery"] else Vector3.INF
 		"garden_veiled":
 			if state["turned_done"]: return Vector3.INF
-			if not state["garden_breath"]: return Vector3(9.75, 2.0, -14.6)
+			if not state["garden_breath"]: return Vector3(16.0, 2.2, -14.6)
 			var ok := turned_correct()
 			for i in 3:
 				if not ok[i]: return Vector3(TURN_X[i], 2.3, TURN_Z)
@@ -1248,7 +1278,7 @@ func hint_target(area: String) -> Vector3:
 			if game.player.position.y > 3.0: return Vector3(29.8, 3.0, -22.4)
 			return puzzles.foot_spot + Vector3(0, 0.6, 0)
 		"gate_four": return four_pos(3) + Vector3(0, 0.9, 0) if not state["four"] else Vector3.INF
-		"first_shrine": return Puzzles.SHRINE_C + Vector3(0, 1.0, 1.25) if not puzzles.state["shrine"] else Vector3.INF
+		"first_shrine": return Puzzles.SHRINE_C + Vector3(0, 1.0, 1.85) if not puzzles.state["shrine"] else Vector3.INF
 	return Vector3.INF
 
 ## after a few minutes without progress in a space, a faint petrol wisp drifts from you toward what
@@ -1352,8 +1382,10 @@ func apply_state() -> void:
 	set_lens(false)
 
 # ================================================================== 13. "The Hand in the Water"
-const POOL_C := Vector3(25.0, 2.04, -32.25)
-const STAND := Vector3(25.0, 2.0, -31.08)
+const POOL_C := Vector3(25.0, 2.155, -32.4)
+const POOL_R := 1.18
+const STAND := Vector3(25.0, 2.0, -30.8)
+const TOUCH := Vector3(25.0, 2.17, -31.35)
 var her: Figure                 # her shadow, in the water
 var mine: Figure                # your plain reflection (only at the very end)
 var touch_glow: ShaderMaterial
@@ -1372,7 +1404,7 @@ func _pool_puppet(slim: float) -> Figure:
 	f.set_param("clip_c", POOL_C)
 	f.set_param("clip_u", Vector3.RIGHT)
 	f.set_param("clip_v", Vector3.BACK)
-	f.set_param("clip_h", Vector2(0.74, 0.74))
+	f.set_param("clip_h", Vector2(POOL_R, POOL_R))
 	f.set_param("clip_disc", 1.0)
 	f.set_param("ghost", 0.0)
 	f.set_param("vis", 0.0)
@@ -1399,8 +1431,8 @@ func hand_in_the_water(c: Cinematic) -> void:
 		her = _pool_puppet(0.045)
 		her.veil_contrary = true
 		mine = _pool_puppet(0.0)
-		touch_glow = puzzles.glow_quad(self, POOL_C + Vector3(0, 0.05, 0.3), 1.2, Palette.ACCENT, 0.0)
-		whisper_glow = puzzles.glow_quad(self, POOL_C + Vector3(0, 0.03, -0.25), 0.7, Palette.CORE, 0.0)
+		touch_glow = puzzles.glow_quad(self, TOUCH, 2.2, Palette.ACCENT, 0.0)
+		whisper_glow = puzzles.glow_quad(self, POOL_C + Vector3(0, 0.03, 0.05), 0.7, Palette.CORE, 0.0)
 	var pl := game.player
 	var w := game.world
 	var g := game
@@ -1411,7 +1443,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 	her_xf = Transform3D(Basis(Vector3.UP, yaw_n), STAND)
 	her_pose = Figure.Pose.new()
 	var hp := her_pose
-	var look := POOL_C + Vector3(0, 0.25, 0.45)
+	var look := POOL_C + Vector3(0, 0.3, 0.55)
 	var cam_yaw := PI                                      # from beyond the pool, looking back at you
 	# -- prelude: the shrine wakes; you step to the water's edge
 	c.at(0.0, func() -> void:
@@ -1434,13 +1466,21 @@ func hand_in_the_water(c: Cinematic) -> void:
 	# -- 0 (P): the music begins in near silence; the letterbox closes, the camera comes round
 	c.audio(P, "cinematic_hand")
 	c.anim(P - 0.5, 1.8, func(k: float) -> void: g.ui.set_letterbox(k))
-	c.cam(P, 4.5, look, cam_yaw, -deg_to_rad(60.0), 3.6)
+	c.cam(P, 4.5, look, cam_yaw, -deg_to_rad(50.0), 3.8)
+	# close shots: everything nearer the camera than the pool's far rim is cut away (the dome, the
+	# columns), and the crystal rises out of the frame
+	c.anim(P - 0.6, 0.6, func(k: float) -> void: w.cam.near = lerpf(1.0, World.DIST - 1.6, k), 0)
+	c.anim(P - 0.5, 3.5, func(k: float) -> void:
+		puzzles.crystal_lift = 2.4 * k
+		puzzles.shrine_halo.set_shader_parameter("intensity", lerpf(0.8, 0.12, k))
+		puzzles.shrine_pillar.set_shader_parameter("fade", lerpf(0.8, 0.15, k))
+		puzzles.shrine_light.light_energy = lerpf(2.2, 0.7, k))
 	c.anim(P, 7.0, func(_k: float) -> void:
 		her_xf = Transform3D(Basis(Vector3.UP, pl.yaw), pl.position)
 		var p2 := pl.fig.pose.copy()
 		her_pose = p2
 		_place(her, her_xf, p2), 0)
-	c.anim(P + 0.5, 2.5, func(k: float) -> void: her.set_param("vis", k * 0.85))
+	c.anim(P + 0.5, 2.5, func(k: float) -> void: her.set_param("vis", k))
 	c.anim(P + 2.5, 2.0, func(k: float) -> void: pl.head_pitch_add = 0.32 * k)
 	# -- 7: she stops mimicking you: you glance aside; she does not
 	c.audio(P + 6.6, "glimpse")
@@ -1483,7 +1523,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 	# -- 16.5: touch: a ring spreads through the water; Katoptron lights on you both
 	c.anim(P + 16.5, 5.0, func(k: float) -> void:
 		puzzles_ring(k * 5.0)
-		touch_glow.set_shader_parameter("intensity", sin(minf(k * 3.0, 1.0) * PI * 0.5) * (1.0 - k) * 1.2), 0)
+		touch_glow.set_shader_parameter("intensity", sin(minf(k * 3.0, 1.0) * PI * 0.5) * (1.0 - k) * 2.0), 0)
 	c.at(P + 16.7, func() -> void:
 		pl.fig.set_runes(1)
 		her.set_runes(1))
@@ -1492,7 +1532,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 		pl.fig.set_param("glint", Game.HEM_PER_SHRINE[1] * f)
 		her.set_param("glint", Game.HEM_PER_SHRINE[1] * 1.25 * f))
 	# -- 23-30: her voice sings the motif; the camera draws in, slowly
-	c.cam(P + 22.0, 7.5, POOL_C + Vector3(0, 0.1, 0.05), cam_yaw, -deg_to_rad(64.0), 2.4)
+	c.cam(P + 22.0, 7.5, POOL_C + Vector3(0, 0.2, 0.45), cam_yaw, -deg_to_rad(54.0), 2.7)
 	# -- 30-37.6: her veil lifts: under it, the same unfinished marble face as yours
 	c.anim(P + 30.0, 3.2, func(k: float) -> void: her.set_veil_lift(k))
 	# -- 37.6: the whisper: her lips, that are not there, say something; the music stops
@@ -1522,15 +1562,16 @@ func hand_in_the_water(c: Cinematic) -> void:
 		p8.lean_x = -0.08
 		her_xf = Transform3D(Basis(Vector3.UP, yaw_n + PI), her_to.lerp(her_to + Vector3(0, 0, 2.6), k))
 		_place(her, her_xf, p8)
-		her.set_param("vis", 0.85 * (1.0 - smoothstep(0.35, 1.0, k))), 0)
+		her.set_param("vis", 1.0 - smoothstep(0.35, 1.0, k)), 0)
 	# the pool goes quiet and shows only you
 	c.at(P + 48.4, func() -> void:
 		her.visible = false
 		mine.visible = true
 		mine.set_hem(pl.fig.hem)
 		mine.set_runes(1))
-	c.anim(P + 48.4, 8.0, func(k: float) -> void:
-		mine.set_param("vis", minf(k * 3.0, 1.0) * 0.8)
+	c.at(P + 51.1, func() -> void: mine.visible = false)
+	c.anim(P + 48.4, 2.6, func(k: float) -> void:
+		mine.set_param("vis", minf(k * 2.5, 1.0) * (1.0 - smoothstep(0.75, 1.0, k)) * 0.8)
 		_place(mine, Transform3D(Basis(Vector3.UP, pl.yaw), pl.position), pl.fig.pose), 0)
 	c.anim(P + 48.0, 2.5, func(k: float) -> void:
 		pl.crouch = 0.55 * (1.0 - k)
@@ -1538,10 +1579,16 @@ func hand_in_the_water(c: Cinematic) -> void:
 	c.anim(P + 48.0, 3.0, func(k: float) -> void: shrine_over.set_shader_parameter("calm", lerpf(0.6, 1.0, k)))
 	# the fog draws back; far away the second shrine glows; the memory; I / VII
 	c.cam(P + 49.0, 5.5, Level.SECOND_SHRINE.lerp(STAND, 0.62) + Vector3(0, 1.0, 0), -PI * 0.25, -World.PITCH, 13.0)
+	c.anim(P + 49.0, 0.8, func(k: float) -> void: w.cam.near = lerpf(World.DIST - 1.6, 1.0, k), 0)
+	c.anim(P + 49.0, 4.0, func(k: float) -> void:
+		puzzles.crystal_lift = 2.4 * (1.0 - k)
+		puzzles.shrine_halo.set_shader_parameter("intensity", lerpf(0.12, 0.8, k))
+		puzzles.shrine_pillar.set_shader_parameter("fade", lerpf(0.15, 0.8, k))
+		puzzles.shrine_light.light_energy = lerpf(0.7, 2.2, k))
 	c.anim(P + 49.0, 7.0, func(k: float) -> void: w.set_awaken(k))
-	c.anim(P + 50.0, 4.0, func(k: float) -> void: puzzles.far_pillar.set_shader_parameter("fade", lerpf(0.35, 0.9, k)))
-	c.at(P + 50.5, func() -> void: g.ui.show_memory(Game.MEMORY_LINE, 3.6), false)
-	c.at(P + 55.5, func() -> void:
+	c.anim(P + 50.0, 4.0, func(k: float) -> void: puzzles.far_pillar.set_shader_parameter("fade", lerpf(0.35, 0.6, k)))
+	c.at(P + 49.5, func() -> void: g.ui.show_memory(Game.MEMORY_LINE, 3.0), false)
+	c.at(P + 57.0, func() -> void:
 		g.ui.show_milestone(1, Game.SHRINES_TOTAL, 3.5)
 		g.sfx.play("bell_far", -12.0, 1.0))
 	# back to you as the last chord fades
@@ -1564,8 +1611,10 @@ func hand_in_the_water(c: Cinematic) -> void:
 		pl.head_yaw_add = 0.0
 		pl.crouch = 0.0
 		w.set_awaken(1.0)
+		w.cam.near = 1.0
+		puzzles.crystal_lift = 0.0
 		puzzles.set_shrine_awake(1.0, 1.0))
 
 func puzzles_ring(sec: float) -> void:
-	shrine_over.set_shader_parameter("ring_c", POOL_C + Vector3(0, 0, 0.3))
+	shrine_over.set_shader_parameter("ring_c", TOUCH)
 	shrine_over.set_shader_parameter("ring_t", sec if sec < 4.99 else -1.0)

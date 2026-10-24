@@ -12,6 +12,8 @@ uniform vec3 clip_u = vec3(1.0, 0.0, 0.0);
 uniform vec3 clip_v = vec3(0.0, 1.0, 0.0);
 uniform vec2 clip_h = vec2(1.0, 1.0);
 uniform float life = 1.0;
+uniform float dark = 0.0;        // v0.5: her steps in still water: deep petrol, stronger
+global uniform vec4 accent;
 varying vec3 pp;
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -23,6 +25,9 @@ void vertex() {
 		vec3 p = w + cb * ((plane_d - dot(plane_n, w)) / den);
 		pp = p;
 		POSITION = PROJECTION_MATRIX * VIEW_MATRIX * vec4(p + cb * 0.035, 1.0);
+	} else {
+		// (writing POSITION anywhere turns off the default transform: do it ourselves)
+		POSITION = PROJECTION_MATRIX * VIEW_MATRIX * vec4(w, 1.0);
 	}
 }
 void fragment() {
@@ -35,8 +40,8 @@ void fragment() {
 	float sole = length(vec2(q.x * 1.6, (q.y - 0.18) * 1.15)) - 0.62;
 	float heel = length(vec2(q.x * 1.5, (q.y + 0.55) * 1.6)) - 0.42;
 	float s = 1.0 - smoothstep(-0.12, 0.05, min(sole, heel));
-	float a = s * pow(1.0 - life, 1.5) * 0.55;
+	float a = s * pow(1.0 - life, 1.5) * mix(0.55, 0.9, dark);
 	if (a < 0.003) discard;
-	ALBEDO = accent_core.rgb;
+	ALBEDO = mix(accent_core.rgb, accent.rgb * 0.55, dark);
 	ALPHA = a;
 }

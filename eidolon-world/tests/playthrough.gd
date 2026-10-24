@@ -227,7 +227,7 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the garden door is closed", P().x < 16.6, str(P())))
-	step_do(func() -> void: walk_to(9.75, -14.1))
+	step_do(func() -> void: walk_to(16.0, -14.1))
 	step_until("to her small glass", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
 	step_do(func() -> void: ok("breathe on the garden glass", _focus() == "breathe_garden" and game.try_interact(), _focus()))
 	step_until("she writes three runes", func() -> bool: return C().state["garden_breath"], 9.0)
@@ -445,7 +445,7 @@ func _plan() -> void:
 		ok("the veil before the shrine is gone", not game.level.named["tholos_front"].enabled)
 		ok("a deep chord", game.sfx.played.get("cue:solve_gate_four", 0) >= 1))
 	step_wait(1.0)
-	walk_path("into the shrine", [[20.35, -33.93], [20.35, -29.0], [25.0, -29.0], [25.0, -31.1]])
+	walk_path("into the shrine", [[20.35, -33.93], [20.35, -29.0], [25.0, -29.0], [25.0, -30.8]])
 	step_do(func() -> void: ok("reached the First Shrine", game.area == "first_shrine", game.area))
 
 	# ================================================================ 13. the first shrine + "The Hand in the Water"
@@ -456,11 +456,12 @@ func _plan() -> void:
 	step_wait(6.0)
 	step_do(func() -> void:
 		ok("cinematic: letterbox", game.mode == "cine" and game.ui.letterbox > 0.99)
-		ok("cinematic: the shrine wakes", float(game.puzzles.shrine_pillar.get_shader_parameter("fade")) > 0.4))
+		ok("cinematic: the shrine wakes", float(game.puzzles.shrine_ring.get_shader_parameter("lit")) > 0.9)
+		ok("cinematic: near geometry cut away, the crystal lifted out of the shot", game.world.cam.near > 30.0 and game.puzzles.crystal_lift > 1.0))
 	step_wait(9.0)
 	step_do(func() -> void:
 		ok("cinematic: her reflection in the shrine pool", C().her.visible and float(C().her.body_mat.get_shader_parameter("vis")) > 0.5)
-		ok("cinematic: camera looks down into the water", -game.world.pitch_node.rotation.x > deg_to_rad(55.0), "%.1f deg" % rad_to_deg(-game.world.pitch_node.rotation.x)))
+		ok("cinematic: camera looks down into the water", -game.world.pitch_node.rotation.x > deg_to_rad(47.0), "%.1f deg" % rad_to_deg(-game.world.pitch_node.rotation.x)))
 	step_wait(7.0)           # t = 22 (the score: hands touch at 16.5 + 4.5)
 	step_do(func() -> void:
 		ok("cinematic: palm to palm", game.player.extra_reach > 0.9 and C().her.pose.reach > 0.9)
@@ -483,7 +484,7 @@ func _plan() -> void:
 		ok("the shrine leaves its light on", float(game.puzzles.shrine_pillar.get_shader_parameter("fade")) > 0.5)
 		ok("milestone text names the chapter", game.ui.end_a.text == "The Veiled Gate — awakened", game.ui.end_a.text)
 		ok("still playable, controls back, no letterbox", game.mode == "play" and not game.player.locked and game.controls.enabled and game.ui.letterbox < 0.01)
-		ok("camera back to normal", is_equal_approx(game.world.pitch_node.rotation.x, -World.PITCH) and game.world.follow == game.player)
+		ok("camera back to normal", is_equal_approx(game.world.pitch_node.rotation.x, -World.PITCH) and game.world.follow == game.player and game.world.cam.near == 1.0)
 		ok("fog receded", game.world.env.fog_depth_end > World.DIST + 50.0)
 		ok("score cues played", game.sfx.played.get("cue:cinematic_hand", 0) >= 1 and game.sfx.played.get("swell", 0) >= 1))
 

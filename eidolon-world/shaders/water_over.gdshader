@@ -33,7 +33,7 @@ void fragment() {
 	if (ring_t >= 0.0) {
 		float rr = length(p - ring_c.xz);
 		float fr = ring_t * 0.55;
-		rings += sin((rr - fr) * 20.0) * exp(-pow((rr - fr) * 5.0, 2.0)) * exp(-ring_t * 0.35) * 2.2;
+		rings += sin((rr - fr) * 18.0) * exp(-pow((rr - fr) * 3.5, 2.0)) * exp(-ring_t * 0.3) * 3.6;
 	}
 	float a1 = texture(noise_tex, p * 0.09 + TIME * vec2(0.004, 0.002)).r;
 	float a2 = texture(noise_tex, p * 0.21 - TIME * vec2(0.003, 0.006)).r;

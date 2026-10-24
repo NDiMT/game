@@ -77,6 +77,7 @@ var pool_refl: Reflector
 var water_mat: ShaderMaterial
 var water_over_mat: ShaderMaterial
 var busy := false
+var crystal_lift := 0.0          # v0.5: the cinematic lifts the crystal out of the shot
 var _t := 0.0
 
 func _init(lv: Level, g: Node) -> void:
@@ -854,7 +855,7 @@ func _shrine() -> void:
 	far_pillar = _pillar(level.beyond, c2 + Vector3(0, 3.5, 0), 0.9, 22.0)
 	far_pillar.set_shader_parameter("fade", 0.35)
 	level.add_interact("sealed", Vector3(28.0, 2.0, -38.3), "locked", func() -> void: event.emit("sealed", null), 1.0)
-	level.add_interact("shrine", c + Vector3(0, 0, 1.25), "wake", func() -> void: event.emit("shrine", null), 1.2,
+	level.add_interact("shrine", c + Vector3(0, 0, 1.85), "wake", func() -> void: event.emit("shrine", null), 1.2,
 		func() -> bool: return not state["shrine"])
 
 func _pillar(parent: Node3D, base: Vector3, width: float, height: float) -> ShaderMaterial:
@@ -1003,7 +1004,7 @@ func update(dt: float) -> void:
 	source_crystal.rotation.y += dt * 0.6
 	target_crystal.rotation.y += dt * (0.6 if state["bridge"] else 0.1)
 	shrine_crystal.rotation.y += dt * 0.4
-	shrine_crystal.position.y = SHRINE_C.y + 1.75 + sin(_t * 0.8) * 0.05
+	shrine_crystal.position.y = SHRINE_C.y + 1.75 + crystal_lift + sin(_t * 0.8) * 0.05
 	if eidolon_refl:
 		ghost_path_mat.set_shader_parameter("visible", eidolon_refl.vis)
 		ghost_path_mat.set_shader_parameter("near_pos", eidolon_refl.reflect_point(game.player.global_position))

@@ -362,7 +362,7 @@ func _process(dt: float) -> void:
 			elif area == "mist_maze" and p.z < -28.5 and p.x > 8.5:
 				off = Vector3((4.6 - p.x) * 0.42, 0.0, (-34.0 - p.z) * 0.3)     # her steps in the pool
 			elif area == "garden_veiled" and p.z < -9.0 and p.x > 8.5 and p.x < 15.5:
-				off = Vector3(0.0, 0.0, (-13.6 - p.z) * 0.5)                   # the turned ones and their glass
+				off = Vector3(0.0, 0.0, (-14.0 - p.z) * 0.5)                   # the turned ones and their glass
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
 	if mode == "play": _auto_quality(dt)
@@ -556,6 +556,7 @@ func _end_cinematic() -> void:
 	world.rig.rotation.y = -PI * 0.25
 	world.pitch_node.rotation.x = -World.PITCH
 	world.cam_lock = false
+	world.cam.near = 1.0
 	world.look_offset = Vector3.ZERO
 	world.cam_size_target = world.zoom
 	world.follow = player
@@ -621,11 +622,13 @@ const ROOM_ENTRY := {
 	"shard_gallery": Vector3(5.8, 1.0, -17.0), "garden_veiled": Vector3(8.2, 1.0, -8.6), "hollow_walk": Vector3(17.9, 1.0, -11.8),
 	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -26.4), "echo_corridor": Vector3(10.0, 2.0, -40.0),
 	"scales": Vector3(26.6, 2.0, -45.5), "eidolon_ledge": Vector3(24.0, 2.0, -22.0), "gate_four": Vector3(27.6, 2.0, -27.0),
-	"first_shrine": Vector3(25.0, 2.0, -31.1),
+	"first_shrine": Vector3(25.0, 2.0, -30.8),
 }
 func jump(room: String) -> void:
 	var idx := Names.ORDER.find(room)
 	if idx < 0: return
+	auto_target = Vector3.INF
+	key_vec = Vector2.ZERO
 	puzzles.reset_state()
 	chapter.reset_state()
 	var cs := chapter.state
@@ -760,6 +763,7 @@ func cmd(c: String) -> Variant:
 		"tp":
 			var y := float(a[3]) if a.size() > 3 else player.yaw
 			player.teleport(Vector3(float(a[1]), 0, float(a[2])), y)
+			auto_target = Vector3.INF
 			world.snap_to(player.position)
 		"walk": auto_target = Vector3(float(a[1]), 0, float(a[2]))
 		"face": player.yaw = float(a[1]); player.fig.rotation.y = player.yaw
