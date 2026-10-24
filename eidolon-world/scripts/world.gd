@@ -25,6 +25,7 @@ var fog_mats: Array[ShaderMaterial] = []
 var fog_nodes: Array[MeshInstance3D] = []
 var cam_back := Vector3(-0.572, 0.588, 0.572)
 var follow: Node3D
+var look_offset := Vector3.ZERO
 var awaken := 0.0
 var shaft_mats: Array[ShaderMaterial] = []
 
@@ -216,8 +217,8 @@ func ground_axes() -> Array:
 
 func set_awaken(k: float) -> void:
 	awaken = k
-	env.fog_depth_begin = DIST + lerpf(-1.0, 14.0, k)
-	env.fog_depth_end = DIST + lerpf(20.0, 90.0, k)
+	env.fog_depth_begin = DIST + lerpf(-1.0, 8.0, k)
+	env.fog_depth_end = DIST + lerpf(20.0, 58.0, k)
 	env.fog_light_color = Color(0.74, 0.74, 0.725).lerp(Color(0.80, 0.82, 0.83), k)
 	env.fog_height_density = lerpf(0.40, 0.22, k)
 	env.ambient_light_energy = lerpf(0.52, 0.72, k)
@@ -231,7 +232,7 @@ func set_awaken(k: float) -> void:
 func _process(dt: float) -> void:
 	_t += dt
 	if follow:
-		var target := follow.global_position + Vector3(0, 0.6, 0)
+		var target := follow.global_position + Vector3(0, 0.6, 0) + look_offset
 		rig.position = rig.position.lerp(target, 1.0 - exp(-dt * 4.0))
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - dt * 0.6)

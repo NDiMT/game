@@ -86,7 +86,7 @@ func _ready() -> void:
 	memory.add_child(silhouette)
 	memory_line = _label(italic, 21, Color(0.10, 0.10, 0.11), HORIZONTAL_ALIGNMENT_CENTER)
 	memory_line.set_anchors_preset(Control.PRESET_CENTER)
-	memory_line.anchor_top = 0.70; memory_line.anchor_bottom = 0.70
+	memory_line.anchor_top = 0.80; memory_line.anchor_bottom = 0.80
 	memory_line.offset_left = -175; memory_line.offset_right = 175; memory_line.offset_top = -60; memory_line.offset_bottom = 60
 	memory_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	memory_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -96,15 +96,15 @@ func _ready() -> void:
 	end_a.set_anchors_preset(Control.PRESET_CENTER)
 	end_a.anchor_top = 0.42; end_a.anchor_bottom = 0.42
 	end_a.offset_left = -190; end_a.offset_right = 190; end_a.offset_top = -14; end_a.offset_bottom = 14
-	end_a.text = "THE THRESHOLD, AWAKENED"
+	end_a.text = "THE THRESHOLD  ·  AWAKENED"
 	_halo(end_a, Color(0.95, 0.95, 0.93, 0.9))
 	end_a.modulate.a = 0.0
 	root.add_child(end_a)
-	end_b = _label(italic, 19, Color(0.14, 0.14, 0.15), HORIZONTAL_ALIGNMENT_CENTER)
-	end_b.set_anchors_preset(Control.PRESET_CENTER)
-	end_b.anchor_top = 0.42; end_b.anchor_bottom = 0.42
-	end_b.offset_left = -190; end_b.offset_right = 190; end_b.offset_top = 22; end_b.offset_bottom = 52
-	end_b.text = "To be continued"
+	# shrine counter: a quiet corner mark, "I / VII", that fades after a few seconds
+	end_b = _label(caps, 15, Color(0.10, 0.10, 0.11), HORIZONTAL_ALIGNMENT_LEFT)
+	end_b.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	end_b.offset_left = 22; end_b.offset_right = 200; end_b.offset_top = 30; end_b.offset_bottom = 54
+	end_b.text = "I  /  VII"
 	_halo(end_b, Color(0.95, 0.95, 0.93, 0.9))
 	end_b.modulate.a = 0.0
 	root.add_child(end_b)
@@ -223,13 +223,26 @@ func show_memory(line: String, hold: float) -> void:
 	tw.tween_interval(hold)
 	tw.tween_property(memory, "modulate:a", 0.0, 2.4).set_trans(Tween.TRANS_SINE)
 
-func show_end(hold: float) -> void:
+## a milestone, not an ending: the space's name, and the shrine count in the corner
+func show_milestone(woken: int, total: int, hold: float) -> void:
+	end_b.text = "%s  /  %s" % [_roman(woken), _roman(total)]
 	var tw := create_tween()
 	tw.tween_property(end_a, "modulate:a", 1.0, 2.0)
-	tw.tween_property(end_b, "modulate:a", 1.0, 1.6)
 	tw.tween_interval(hold)
 	tw.tween_property(end_a, "modulate:a", 0.0, 2.0)
-	tw.parallel().tween_property(end_b, "modulate:a", 0.0, 2.0)
+	var tc := create_tween()
+	tc.tween_interval(1.2)
+	tc.tween_property(end_b, "modulate:a", 1.0, 1.6)
+	tc.tween_interval(hold + 2.5)
+	tc.tween_property(end_b, "modulate:a", 0.0, 2.5)
+
+static func _roman(n: int) -> String:
+	var vals := [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]]
+	var r := ""
+	for v in vals:
+		while n >= v[0]:
+			r += v[1]; n -= v[0]
+	return r
 
 func fade_to(a: float, dur: float) -> Tween:
 	var tw := create_tween()

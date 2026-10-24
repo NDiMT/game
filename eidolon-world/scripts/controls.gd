@@ -50,8 +50,20 @@ func rot_center(dir: int) -> Vector2:
 func set_icon(name: String) -> void:
 	if name != "": icon = name
 
+const MOUSE_ID := 99
+
 func _input(e: InputEvent) -> void:
 	if not enabled: return
+	# desktop: the mouse drives the same code as a finger (touch emulation is off so a real touch
+	# is never seen twice)
+	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+		var t := InputEventScreenTouch.new()
+		t.index = MOUSE_ID; t.position = e.position; t.pressed = e.pressed
+		e = t
+	elif e is InputEventMouseMotion and _touches.has(MOUSE_ID):
+		var dr := InputEventScreenDrag.new()
+		dr.index = MOUSE_ID; dr.position = e.position
+		e = dr
 	if e is InputEventScreenTouch:
 		var p: Vector2 = canvas.get_global_transform_with_canvas().affine_inverse() * e.position
 		if e.pressed:

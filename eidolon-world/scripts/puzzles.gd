@@ -53,6 +53,8 @@ var shrine_crystal_mat: StandardMaterial3D
 var shrine_halo: ShaderMaterial
 var shrine_ring: ShaderMaterial
 var shrine_light: OmniLight3D
+var shrine_pillar: ShaderMaterial
+var far_pillar: ShaderMaterial
 var tablet_mat: ShaderMaterial
 var reflectors: Array[Reflector] = []
 var eidolon_refl: Reflector
@@ -637,10 +639,38 @@ func _shrine() -> void:
 	shrine_light.omni_range = 9.0
 	shrine_light.shadow_enabled = false
 	add_child(shrine_light)
+	# the light the shrine leaves on: a pillar of light through its dome
+	shrine_pillar = _pillar(self, c + Vector3(0, 7.0, 0.0), 1.3, 26.0)
+	shrine_pillar.set_shader_parameter("fade", 0.0)
+	# the second shrine, far away beyond the fog: faintly glowing, still asleep
+	var c2 := Level.SECOND_SHRINE
+	var sc2 := crystal(c2 + Vector3(0, 1.2, 0), 0.16, 0.3, true)
+	(sc2[0] as Node3D).reparent(level.beyond)
+	glow_quad(level.beyond, c2 + Vector3(0, 1.2, 0), 3.0, Color(0.45, 0.93, 1.0), 0.45)
+	far_pillar = _pillar(level.beyond, c2 + Vector3(0, 3.5, 0), 0.9, 22.0)
+	far_pillar.set_shader_parameter("fade", 0.35)
+	level.add_interact("sealed", Vector3(28.0, 2.0, -38.3), "locked", func() -> void: event.emit("sealed", null), 1.0)
 	level.add_interact("shrine", c + Vector3(0, 0, 1.25), "wake", func() -> void: event.emit("shrine", null), 1.2,
 		func() -> bool: return not state["shrine"])
 
+func _pillar(parent: Node3D, base: Vector3, width: float, height: float) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/beam.gdshader")
+	m.set_shader_parameter("color", Color(0.55, 0.93, 1.0))
+	m.set_shader_parameter("lit", 1.0)
+	var q := QuadMesh.new()
+	q.size = Vector2(width, height)
+	var mi := MeshInstance3D.new()
+	mi.mesh = q
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position = base + Vector3(0, height * 0.5, 0)
+	mi.extra_cull_margin = 10.0
+	parent.add_child(mi)
+	return m
+
 func set_shrine_awake(k: float, sweep: float) -> void:
+	shrine_pillar.set_shader_parameter("fade", k * 0.8)
 	set_crystal_lit(shrine_crystal_mat, k)
 	shrine_halo.set_shader_parameter("intensity", k * 0.8)
 	shrine_ring.set_shader_parameter("lit", minf(1.0, k * 3.0))

@@ -196,7 +196,7 @@ func _plan() -> void:
 		ok("raised drawbridge: cannot leave the court", P().x < 16.8, str(P())))
 	var mstand := [Vector2(11.25, -24.5), Vector2(11.25, -19.5), Vector2(15.55, -19.5)]
 	for i in 3:
-		var presses := (Puzzles.MIRROR_SOLUTION[i] - [3, 2, 0][i] + 4) % 4
+		var presses: int = (int(Puzzles.MIRROR_SOLUTION[i]) - int([3, 2, 0][i]) + 4) % 4
 		step_do(func() -> void: tp(mstand[i].x, mstand[i].y))
 		step_wait(0.2)
 		step_do(func() -> void: ok("mirror %d in reach" % (i + 1), _focus() == "mirror%d" % (i + 1), _focus()))
@@ -240,13 +240,20 @@ func _plan() -> void:
 		ok("wake the shrine", _focus() == "shrine" and game.try_interact(), _focus()))
 	step_wait(5.0)
 	step_do(func() -> void: ok("memory fragment shows", game.ui.memory.modulate.a > 0.3))
+	step_until("shrine counter I / VII shows", func() -> bool: return game.ui.end_b.modulate.a > 0.5 and game.ui.end_b.text == "I  /  VII", 20.0)
 	step_until("the shrine wakes, fog recedes", func() -> bool: return game.mode == "play" and game.world.awaken >= 0.999, 30.0)
 	step_do(func() -> void:
-		ok("fog density animated down", game.world.env.fog_depth_end > World.DIST + 80.0)
+		ok("the world beyond is revealed", game.level.beyond.visible)
+		ok("the shrine leaves its light on", float(game.puzzles.shrine_pillar.get_shader_parameter("fade")) > 0.5)
+		ok("milestone, not an ending: still playable", game.mode == "play" and not game.player.locked)
+		ok("fog density animated down", game.world.env.fog_depth_end > World.DIST + 50.0 and game.world.fog_mats[2].get_shader_parameter("clear") > 0.99)
 		ok("music swelled", game.sfx.played.get("swell", 0) >= 1))
 
 	# ---- cannot fall: random walks in every space (doors, bridges open now) + edge pushes
-	for zone in [[0.0, 0.0], [0.0, -8.0], [0.0, -16.0], [12.0, -10.0], [8.5, -3.0], [12.0, -22.0], [19.0, -22.0], [25.0, -22.0], [25.0, -32.0], [27.7, -26.5], [0.0, 6.5]]:
+	walk_path("to the sealed way", [[25.0, -29.3], [28.0, -29.3], [28.0, -36.5], [28.0, -38.6]])
+	step_do(func() -> void:
+		ok("the way on is sealed", P().z > -38.9 and _focus() == "sealed" and game.try_interact(), str(P())))
+	for zone in [[28.0, -37.5], [0.0, 0.0], [0.0, -8.0], [0.0, -16.0], [12.0, -10.0], [8.5, -3.0], [12.0, -22.0], [19.0, -22.0], [25.0, -22.0], [25.0, -32.0], [27.7, -26.5], [0.0, 6.5]]:
 		step_do(func() -> void: tp(zone[0], zone[1]))
 		step_walk(16.0)
 	step_do(func() -> void:
@@ -273,8 +280,12 @@ func _plan() -> void:
 		ok("restored position", absf(P().x - walk_change) < 0.6, str(P())))
 	step_do(func() -> void: _finish())
 
+var _next_report := 0.0
 func _process(dt: float) -> void:
 	t += dt
+	if t > _next_report:
+		_next_report += 20.0
+		print("  .. sim %.0fs  real %.0fs  step %d/%d" % [t, Time.get_ticks_msec() / 1000.0, si, steps.size()])
 	if t > 900.0:
 		print("TIMEOUT at step ", si)
 		get_tree().quit(2)

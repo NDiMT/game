@@ -3,6 +3,7 @@ extends Node
 ## EIDOLON: The Threshold. Title -> wake -> free exploration -> shrine finale. Input, interaction,
 ## events -> sound / text, checkpoint saving to user://, and test hooks (web: window.ewCmd / ewState).
 
+const SHRINES_TOTAL := 7
 const SAVE_PATH := "user://eidolon_world.json"
 const MEMORY_LINE := "He carved her a thousand times.\nNone of them would breathe."
 
@@ -142,6 +143,7 @@ func _input(e: InputEvent) -> void:
 	if mode == "title":
 		var tap := false
 		if e is InputEventScreenTouch and e.pressed and not ui.over_anew(e.position): tap = true
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not ui.over_anew(e.position): tap = true
 		if e is InputEventKey and e.pressed and not e.echo and e.keycode in [KEY_SPACE, KEY_ENTER, KEY_E]: tap = true
 		if tap: begin()
 		return
@@ -193,6 +195,7 @@ func _process(dt: float) -> void:
 	if mode == "play": _update_focus()
 	else: controls.show_interact("")
 	_update_hum()
+	level.beyond.visible = world.awaken > 0.01
 	if ui.text_source != Vector3.INF and player.position.distance_to(ui.text_source) > 3.2: ui.hide_text()
 	if mode == "play":
 		_save_t += dt
@@ -298,6 +301,9 @@ func _on_event(name: String, data: Variant) -> void:
 			_save()
 		"shrine":
 			start_finale()
+		"sealed":
+			sfx.play("rattle", -14.0, 0.6)
+			ui.show_text("The way on is sealed.\nAnother shrine still sleeps beyond the fog." if awake else "The way on is sealed.", player.position, 3.0)
 
 # ------------------------------------------------------------------ the finale
 func start_finale() -> void:
@@ -307,6 +313,8 @@ func start_finale() -> void:
 	player.locked = true
 	controls.show_interact("")
 	_finale_t = 0.0
+	if world.yaw_index % 4 != 0:
+		world.rotate_view(-world.yaw_index)
 	sfx.swell()
 	sfx.play("whoosh", -6.0, 0.5)
 	var tw := create_tween()
@@ -316,17 +324,19 @@ func start_finale() -> void:
 	t2.tween_method(world.set_awaken, 0.0, 1.0, 8.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var t3 := create_tween()
 	t3.tween_interval(1.0)
-	t3.tween_property(world.cam, "size", World.CAM_SIZE * 1.45, 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	t3.tween_interval(10.0)
-	t3.tween_property(world.cam, "size", World.CAM_SIZE, 3.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t3.tween_property(world.cam, "size", World.CAM_SIZE * 1.6, 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t3.parallel().tween_property(world, "look_offset", Level.BEYOND_FWD * 9.0 + Vector3(0, 2.0, 0), 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t3.tween_interval(9.0)
+	t3.tween_property(world.cam, "size", World.CAM_SIZE, 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t3.parallel().tween_property(world, "look_offset", Vector3.ZERO, 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var t4 := create_tween()
 	t4.tween_interval(3.2)
 	t4.tween_callback(func() -> void: ui.show_memory(MEMORY_LINE, 4.5))
 	t4.tween_interval(10.5)
 	t4.tween_callback(func() -> void:
-		ui.show_end(4.0)
+		ui.show_milestone(1, SHRINES_TOTAL, 3.5)
 		sfx.play("bell", -12.0, 0.5))
-	t4.tween_interval(7.5)
+	t4.tween_interval(5.5)
 	t4.tween_callback(func() -> void:
 		awake = true
 		player.locked = false

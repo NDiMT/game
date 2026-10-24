@@ -67,6 +67,13 @@ var markers: Array = []
 var named := {}          # name -> Region / Obstacle for puzzles to toggle
 
 const WAKE_POS := Vector3(1.4, 0.0, 2.3)
+const SHRINE_C := Vector3(25.0, 2.0, -32.6)
+## "up the screen" at the default view: where the journey goes on
+const BEYOND_FWD := Vector3(0.7071, 0.0, -0.7071)
+const BEYOND_RIGHT := Vector3(0.7071, 0.0, 0.7071)
+const SECOND_SHRINE := Vector3(45.5, 2.5, -54.5)
+
+var beyond: Node3D
 
 static func yaw_to(from: Vector3, to: Vector3) -> float:
 	return atan2(-(to.x - from.x), -(to.z - from.z))
@@ -92,6 +99,8 @@ func build() -> void:
 	_ledge()
 	_shrine_platform()
 	_far_ruins()
+	_sealed_way()
+	_beyond()
 
 ## called after the puzzles have added their pieces
 func commit() -> void:
@@ -557,7 +566,8 @@ func _shrine_platform() -> void:
 	var z := "S"
 	slab(z, R(20, -36, 30, -28), 2.0, 0.9, 0.0)
 	walk(R(20, -36, 30, -28), 2.0, NAN, -1, "S")
-	balustrade(z, Vector2(20.1, -35.95), Vector2(29.9, -35.95), 2.0)
+	balustrade(z, Vector2(20.1, -35.95), Vector2(26.8, -35.95), 2.0)
+	balustrade(z, Vector2(29.2, -35.95), Vector2(29.9, -35.95), 2.0)
 	balustrade(z, Vector2(29.95, -35.8), Vector2(29.95, -28.2), 2.0)
 	balustrade(z, Vector2(20.05, -35.8), Vector2(20.05, -28.2), 2.0)
 	# the tholos: a ring of columns, entablature and a shallow dome
@@ -575,6 +585,109 @@ func _shrine_platform() -> void:
 	ob_rect(R(24.5, -32.65, 25.5, -31.85))
 	rubble(Vector3(21.2, 2.0, -34.8), 0.6, 5)
 	stump(Vector3(21.0, 2.0, -29.0), 0.9)
+
+## the way on: a bridge from the shrine platform toward the next shrine, sealed by a dark rune door,
+## its far spans broken and drowned in fog
+func _sealed_way() -> void:
+	var z := "S"
+	slab(z, R(27, -39.4, 29, -36), 2.0, 0.6, 0.0)
+	walk(R(27, -39.0, 29, -36), 2.0, NAN, -1, "sealed_way")
+	balustrade(z, Vector2(26.95, -36.1), Vector2(26.95, -38.8), 2.0)
+	balustrade(z, Vector2(29.05, -36.1), Vector2(29.05, -38.8), 2.0)
+	box(z, Vector3(26.7, 3.8, -39.2), Vector3(0.6, 3.6, 0.7), 0.25, true)
+	box(z, Vector3(29.3, 3.8, -39.2), Vector3(0.6, 3.6, 0.7), 0.25, true)
+	box(z, Vector3(28.0, 5.85, -39.2), Vector3(3.4, 0.55, 0.85), 0.25, true)
+	box(z, Vector3(28.0, 3.5, -39.25), Vector3(2.0, 3.0, 0.3), 0.25, true)
+	ob_rect(R(26.4, -39.6, 29.6, -38.85), "sealed_gate")
+	var st := Vector3(28.0, 2.0, -40.3)
+	var dir := (SECOND_SHRINE - st)
+	dir.y = 0.0
+	var L := dir.length()
+	dir = dir.normalized()
+	var B := Basis(Vector3.UP, atan2(-dir.x, -dir.z))
+	var k := 0.0
+	while k < L - 4.0:
+		var seg := 1.6
+		if fmod(k, 7.0) > 4.5: k += 1.4      # gaps where the spans fell
+		var p := st + dir * (k + seg * 0.5)
+		var sink := clampf((k - 5.0) * 0.05, 0.0, 0.8)
+		var tilt := Basis(Vector3.RIGHT, rng.randf_range(-0.05, 0.05)) * Basis(Vector3.BACK, rng.randf_range(-0.08, 0.08))
+		mb(z).box(p + Vector3(0, -0.3 - sink, 0), Vector3(1.9, 0.5, seg), C(0.0), B * tilt)
+		if rng.randf() < 0.5: mb(z).box(p + B * Vector3(-0.9, 0.05 - sink, 0), Vector3(0.18, 0.5, seg), C(0.25), B * tilt)
+		k += seg + 0.05
+
+func _island(m: MB, c: Vector3, size: Vector2) -> void:
+	m.box(c + Vector3(0, -0.4, 0), Vector3(size.x, 0.8, size.y), C(0.0))
+	var r := R(c.x - size.x * 0.5, c.z - size.y * 0.5, c.x + size.x * 0.5, c.z + size.y * 0.5)
+	var area := r.size.x * r.size.y
+	for i in clampi(int(area / 6.0), 2, 7):
+		var q := Vector2(rng.randf_range(r.position.x + 0.8, r.end.x - 0.8), rng.randf_range(r.position.y + 0.8, r.end.y - 0.8))
+		var rt := minf(size.x, size.y) * rng.randf_range(0.25, 0.42)
+		var h := rng.randf_range(2.5, 6.0)
+		m.cyl(Vector3(q.x, c.y - 0.8 - h * 0.5, q.y), rt, rt * 0.1, h, C(0.5), 7)
+
+func _col(m: MB, base: Vector3, h: float, r := 0.28, broken := false) -> void:
+	m.cyl(base + Vector3(0, 0.1, 0), r * 1.3, r * 1.4, 0.2, C(0.25), 10)
+	m.cyl(base + Vector3(0, h * 0.5, 0), r * 0.9, r, h, C(0.25), 10)
+	if not broken: m.box(base + Vector3(0, h + 0.08, 0), Vector3(r * 2.8, 0.16, r * 2.8), C(0.25))
+
+## islands and temples beyond the Threshold, hidden in fog until the shrine wakes
+func _beyond() -> void:
+	beyond = Node3D.new()
+	beyond.name = "Beyond"
+	beyond.visible = false
+	add_child(beyond)
+	var m := MB.new()
+	var at := func(f: float, l: float, y: float) -> Vector3: return Vector3(SHRINE_C.x, y, SHRINE_C.z) + BEYOND_FWD * f + BEYOND_RIGHT * l
+	# the second shrine: a small tholos on its own island (its light is added by Puzzles)
+	var c2: Vector3 = SECOND_SHRINE
+	_island(m, c2, Vector2(6.0, 6.0))
+	for i in 6:
+		var a := TAU * i / 6.0
+		_col(m, c2 + Vector3(cos(a) * 1.7, 0, sin(a) * 1.7), 2.8, 0.22)
+	m.cyl(c2 + Vector3(0, 3.05, 0), 2.1, 2.1, 0.3, C(0.25), 20)
+	m.sphere(c2 + Vector3(0, 3.2, 0), Vector3(1.8, 0.9, 1.8), C(0.25), 16, 6)
+	# a long temple on a higher island to the left
+	var c3: Vector3 = at.call(24.0, -6.5, 4.0)
+	_island(m, c3, Vector2(8.0, 6.0))
+	for i in 5:
+		for side in [-1.0, 1.0]:
+			_col(m, c3 + BEYOND_FWD * (i * 1.4 - 2.8) + BEYOND_RIGHT * side * 1.8, 3.2, 0.24, i == 4 and side > 0.0)
+	var B3 := Basis(Vector3.UP, atan2(-BEYOND_FWD.x, -BEYOND_FWD.z))
+	m.box(c3 + Vector3(0, 3.45, 0) + BEYOND_FWD * -0.7, Vector3(4.4, 0.4, 5.4), C(0.25), B3)
+	m.cyl(c3 + Vector3(0, 4.05, 0) + BEYOND_FWD * -0.7, 0.05, 2.4, 0.8, C(0.25), 4, B3 * Basis(Vector3.UP, PI * 0.25))
+	# a rock with broken columns to the right, low in the fog
+	var c4: Vector3 = at.call(15.0, 9.5, 0.6)
+	_island(m, c4, Vector2(4.5, 4.0))
+	_col(m, c4 + Vector3(-1.0, 0, 0.6), 1.4, 0.26, true)
+	_col(m, c4 + Vector3(0.9, 0, -0.8), 2.6, 0.26)
+	# a high islet with a lone arch
+	var c5: Vector3 = at.call(32.0, 11.0, 6.0)
+	_island(m, c5, Vector2(4.0, 3.5))
+	_col(m, c5 + BEYOND_RIGHT * -1.0, 3.0, 0.24)
+	_col(m, c5 + BEYOND_RIGHT * 1.0, 3.0, 0.24)
+	m.box(c5 + Vector3(0, 3.3, 0), Vector3(2.9, 0.4, 0.7), C(0.25), Basis(Vector3.UP, atan2(-BEYOND_RIGHT.x, -BEYOND_RIGHT.z) + PI * 0.5))
+	# far away, a colossal veiled statue rising out of the cloud
+	var mi := MeshInstance3D.new()
+	mi.mesh = m.commit()
+	mi.material_override = marble_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	beyond.add_child(mi)
+	var cm := MB.new()
+	var cc: Vector3 = at.call(40.0, 3.0, -6.0)
+	var s := 5.0
+	cm.cyl(cc + Vector3(0, 0.62 * s, 0), 0.25 * s, 0.36 * s, 1.24 * s, Color(0, 0, 0), 14)
+	cm.cyl(cc + Vector3(0, 1.5 * s, 0), 0.27 * s, 0.23 * s, 0.56 * s, Color(0, 0, 0), 14)
+	cm.cyl(cc + Vector3(0, 1.94 * s, 0), 0.14 * s, 0.25 * s, 0.34 * s, Color(0, 0, 0), 14)
+	cm.sphere(cc + Vector3(0, 2.15 * s, 0), Vector3(0.165, 0.2, 0.17) * s, Color(0, 0, 0), 14, 7)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.62, 0.63, 0.64)
+	var cmi := MeshInstance3D.new()
+	cmi.mesh = cm.commit()
+	cmi.material_override = mat
+	cmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	beyond.add_child(cmi)
 
 func _far_ruins() -> void:
 	# huge drowned columns and statues around the complex, unlit and swallowed by the fog
@@ -596,7 +709,7 @@ func _far_ruins() -> void:
 		st.cyl(Vector3(p.x, -6.0 + 2.3 * s, p.y), 0.15 * s, 0.75 * s, 1.4 * s, Color(0, 0, 0), 12)
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.56, 0.56, 0.57)
+	mat.albedo_color = Color(0.64, 0.64, 0.645)
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = mat
