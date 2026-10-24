@@ -30,6 +30,9 @@ var end_b: Label
 var area_label: Label
 var area_rule: Control
 var quality_btn: Button
+var credits_btn: Button
+var credits_panel: Control
+var _cr_press := Vector2.INF
 var door_overlay: DoorOverlay
 var _area_tw: Tween
 var fade: ColorRect
@@ -233,13 +236,62 @@ func _build_title() -> void:
 	quality_btn.offset_left = -150; quality_btn.offset_right = -10; quality_btn.offset_top = 16; quality_btn.offset_bottom = 40
 	quality_btn.pressed.connect(func() -> void: quality_pressed.emit())
 	title_screen.add_child(quality_btn)
+	credits_btn = quality_btn.duplicate() as Button
+	credits_btn.text = "CREDITS"
+	credits_btn.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	credits_btn.offset_left = 10; credits_btn.offset_right = 110; credits_btn.offset_top = 16; credits_btn.offset_bottom = 40
+	credits_btn.pressed.connect(func() -> void: show_credits(true))
+	title_screen.add_child(credits_btn)
+	_build_credits()
+
+func _build_credits() -> void:
+	credits_panel = ColorRect.new()
+	(credits_panel as ColorRect).color = Color(0.93, 0.92, 0.89, 0.97)
+	credits_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	credits_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	credits_panel.visible = false
+	root.add_child(credits_panel)
+	var sc := ScrollContainer.new()
+	sc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sc.offset_left = 28; sc.offset_right = -28; sc.offset_top = 70; sc.offset_bottom = -70
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	credits_panel.add_child(sc)
+	var l := _label(italic, 14, Color(0.16, 0.16, 0.17), HORIZONTAL_ALIGNMENT_CENTER)
+	l.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.text = Credits.TEXT
+	sc.add_child(l)
+	var head := _label(caps, 13, Color(0.14, 0.14, 0.15), HORIZONTAL_ALIGNMENT_CENTER)
+	head.text = "CREDITS"
+	head.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	head.offset_top = 30; head.offset_bottom = 54
+	credits_panel.add_child(head)
+	var close := _label(caps, 11, Color(0.22, 0.22, 0.23, 0.8), HORIZONTAL_ALIGNMENT_CENTER)
+	close.text = "TOUCH TO RETURN"
+	close.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	close.offset_top = -50; close.offset_bottom = -26
+	credits_panel.add_child(close)
+	# a tap (not a scroll drag) returns to the title
+	credits_panel.gui_input.connect(func(e: InputEvent) -> void:
+		var press: bool = (e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT) or e is InputEventScreenTouch
+		if not press: return
+		if e.pressed: _cr_press = e.position
+		elif e.position.distance_to(_cr_press) < 12.0: show_credits(false))
+	l.mouse_filter = Control.MOUSE_FILTER_PASS
+	sc.mouse_filter = Control.MOUSE_FILTER_PASS
+
+func show_credits(on: bool) -> void:
+	credits_panel.visible = on
+	credits_panel.modulate.a = 0.0 if on else 1.0
+	if on: create_tween().tween_property(credits_panel, "modulate:a", 1.0, 0.35)
 
 func set_continue(has_save: bool) -> void:
 	tap_label.text = "TOUCH TO CONTINUE" if has_save else "TOUCH TO BEGIN"
 	anew_btn.visible = has_save
 
 func over_anew(p: Vector2) -> bool:
-	return (anew_btn.visible and anew_btn.get_global_rect().grow(8).has_point(p)) or quality_btn.get_global_rect().grow(6).has_point(p)
+	return (anew_btn.visible and anew_btn.get_global_rect().grow(8).has_point(p)) or quality_btn.get_global_rect().grow(6).has_point(p) \
+		or credits_btn.get_global_rect().grow(6).has_point(p) or credits_panel.visible
 
 func set_quality_label(high: bool) -> void:
 	quality_btn.text = "QUALITY · " + ("HIGH" if high else "LOW")

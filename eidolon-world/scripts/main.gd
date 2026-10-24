@@ -564,6 +564,7 @@ func cmd(c: String) -> Variant:
 		"door_close": ui.door_overlay.close()
 		"veil": player.fig.veil.visible = a[1] == "1"
 		"runes": player.fig.set_runes(int(a[1]))
+		"credits": ui.show_credits(a[1] == "1")
 		"figp":
 			var v := []
 			for k in range(2, a.size()): v.append(float(a[k]))

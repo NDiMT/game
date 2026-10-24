@@ -50,8 +50,8 @@ class Pose:
 
 ## tunables of the rest pose (model space: the model faces +z, its left is +x)
 static var ARM_DIR := Vector3(0.20, -0.93, 0.22)     # upper arm: down, a little out and forward
-static var FORE_DIR := Vector3(-0.30, -0.22, 0.93)   # forearm: forward and in, toward the waist
-static var ARM_TWIST := 0.0
+static var FORE_DIR := Vector3(-0.15, -0.72, 0.66)   # forearm: forward, in and down toward the waist
+static var ARM_TWIST := -1.4                       # turns the sleeve drapes outward-back
 static var CLAV_DROP := 0.10
 
 static var veil_mesh: ArrayMesh
@@ -129,7 +129,8 @@ func _init(ghost := false) -> void:
 	veil.material_override = veil_mat
 	var head_rest := sk.get_bone_global_rest(bone["Head"])
 	# the procedural veil was made for a face centred at (0, 0.14, -0.022), facing -z
-	var vx := Transform3D(Basis(Vector3.UP, PI).scaled(Vector3.ONE * 0.5), FACE - Basis(Vector3.UP, PI) * Vector3(0, 0.14, -0.022) * 0.5 + Vector3(0, 0, 0.026))
+	var vb := Basis(Vector3.UP, PI) * Basis.from_scale(Vector3(0.40, 0.46, 0.36))
+	var vx := Transform3D(vb, FACE - vb * Vector3(0, 0.14, -0.022) + Vector3(0, -0.004, 0.012))
 	veil.transform = head_rest.affine_inverse() * vx
 	att.add_child(veil)
 	if ghost:

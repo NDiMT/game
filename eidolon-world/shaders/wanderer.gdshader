@@ -25,12 +25,12 @@ void fragment() {
 	alb = mix(alb, vec3(0.27, 0.28, 0.30), emb.x * 0.6 * (1.0 - emb.z));
 	alb = mix(alb, accent_core.rgb, emb.x * emb.z * 0.6);
 	float hs = hem_stripe(vcol.r);
-	alb = mix(alb, accent.rgb * 0.8, hs * 0.7);
+	alb = mix(alb, accent.rgb, hs * 0.85);
 	ALBEDO = alb;
 	NORMAL_MAP = texture(normal_tex, UV).rgb;
 	ROUGHNESS = mix(0.88, 0.55, face);
 	SPECULAR = mix(0.18, 0.35, face);
 	float rim = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.6);
-	EMISSION = accent_core.rgb * (hs * glint * 1.5 + (emb.x * 1.4 + emb.y * 0.35) * emb.z)
+	EMISSION = accent_core.rgb * (hs * glint * 0.55 + (emb.x * 1.4 + emb.y * 0.35) * emb.z)
 		+ vec3(0.42, 0.50, 0.60) * rim * 0.5 * (1.0 - face);
 }

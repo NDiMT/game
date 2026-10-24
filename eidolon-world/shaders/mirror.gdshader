@@ -12,10 +12,12 @@ uniform vec2 size = vec2(2.0, 3.0);
 uniform vec4 cols[8];
 uniform int ncols = 0;
 uniform float crack = 0.0;
+uniform float wall_mounted = 0.0;   // its back is inside a wall: only ever seen through the cut-away
 varying vec3 wp;
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 
 void fragment() {
+	if (!FRONT_FACING && wall_mounted > 0.5) discard;
 	if (!FRONT_FACING) {
 		ALBEDO = vec3(0.16, 0.16, 0.17);
 	} else {

@@ -867,6 +867,7 @@ func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false
 	m.set_shader_parameter("cols", HALL_COLS)
 	m.set_shader_parameter("ncols", HALL_COLS.size())
 	m.set_shader_parameter("crack", 1.0 if cracked else 0.0)
+	m.set_shader_parameter("wall_mounted", 1.0 if absf(center.z + 20.575) < 0.01 else 0.0)
 	var q := QuadMesh.new()
 	q.size = size
 	var g := MeshInstance3D.new()

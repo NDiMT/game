@@ -95,6 +95,29 @@ func _init() -> void:
 		if v.x < -0.10 and v.z < 0.02 and v.y < 0.70 and v.y > 0.1:
 			sc_n += 1; sc_arm += arm_w[1][i]
 	print("scarf-ish verts ", sc_n, " mean right-arm weight ", sc_arm / maxf(sc_n, 1))
+	# re-skin the scarf: it was weighted to the right arm (it followed the sleeve when the arm was
+	# lowered); blend it onto Spine02 so it hangs from the chest and is animated in the shader
+	var sp_bind := bind_bone.find(sk.find_bone("Spine02"))
+	var moved := 0
+	for i in V.size():
+		var v := V[i]
+		var k := smoothstep(0.03, -0.05, v.z) * smoothstep(-0.06, -0.14, v.x) * smoothstep(0.74, 0.66, v.y) * smoothstep(0.08, 0.14, v.y)
+		if k <= 0.0: continue
+		moved += 1
+		var lo := 0
+		for j in per:
+			if B[i * per + j] == sp_bind: lo = j; break
+			if W[i * per + j] < W[i * per + lo]: lo = j
+		var tot := 0.0
+		for j in per:
+			if j != lo:
+				W[i * per + j] *= 1.0 - k
+				tot += W[i * per + j]
+		B[i * per + lo] = sp_bind
+		W[i * per + lo] = 1.0 - tot
+	a[Mesh.ARRAY_BONES] = B
+	a[Mesh.ARRAY_WEIGHTS] = W
+	print("scarf re-skinned verts ", moved, " spine02 bind ", sp_bind)
 	print("rim verts ", rim_n, " cuffs ", cuff_n)
 	a[Mesh.ARRAY_COLOR] = col
 	a[Mesh.ARRAY_TEX_UV2] = uv2

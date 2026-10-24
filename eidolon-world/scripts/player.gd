@@ -30,6 +30,8 @@ var _flare := 0.0
 var _flare_v := 0.0
 var _idle_look := 0.0
 var still_time := 0.0
+var hem_glow: MeshInstance3D
+var _glow_k := -1.0
 
 func _init() -> void:
 	fig = Figure.new()
@@ -46,6 +48,19 @@ func _init() -> void:
 	b.position.y = 0.015
 	b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(b)
+	# a gentle petrol glow from the hem stripe on the ground round the wanderer
+	var gm := ShaderMaterial.new()
+	gm.shader = preload("res://shaders/blob.gdshader")
+	gm.set_shader_parameter("tint", Palette.CORE)
+	gm.set_shader_parameter("strength", 0.0)
+	hem_glow = MeshInstance3D.new()
+	var gp := PlaneMesh.new()
+	gp.size = Vector2(0.8, 0.8)
+	hem_glow.mesh = gp
+	hem_glow.material_override = gm
+	hem_glow.position.y = 0.02
+	hem_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(hem_glow)
 
 func teleport(p: Vector3, face_yaw := INF) -> void:
 	var q := Vector2(p.x, p.z)
@@ -83,6 +98,10 @@ func step(dt: float) -> void:
 	var dy := wrapf(yaw - prev, -PI, PI) / maxf(dt, 0.0001)
 	turn_rate = lerpf(turn_rate, dy, 1.0 - exp(-dt * 8.0))
 	fig.rotation.y = yaw
+	var gk := clampf(fig.hem, 0.0, 3.0)
+	if gk != _glow_k:
+		_glow_k = gk
+		(hem_glow.material_override as ShaderMaterial).set_shader_parameter("strength", 0.07 + 0.05 * gk)
 	_animate(dt)
 
 func _animate(dt: float) -> void:

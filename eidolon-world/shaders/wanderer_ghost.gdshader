@@ -85,5 +85,5 @@ void fragment() {
 	NORMAL_MAP = texture(normal_tex, UV).rgb;
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.15;
-	EMISSION = accent_core.rgb * (hs * glint * 1.5 + emb.x * emb.z * 1.3) * (1.0 - surface_mix * 0.6) + accent.rgb * fres * 0.25 * ghost;
+	EMISSION = accent_core.rgb * (hs * glint * 0.55 + emb.x * emb.z * 1.3) * (1.0 - surface_mix * 0.6) + accent.rgb * fres * 0.25 * ghost;
 }

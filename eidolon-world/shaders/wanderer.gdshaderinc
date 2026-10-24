@@ -45,11 +45,11 @@ vec3 wanderer_albedo(vec2 uv, float face) {
 	vec3 a = texture(albedo_tex, uv).rgb;
 	float lum = dot(a, vec3(0.3, 0.59, 0.11));
 	float m = face * smoothstep(0.30, 0.55, lum);
-	vec3 cloth = a * 0.58 * vec3(0.93, 0.97, 1.04);
+	vec3 cloth = a * 0.74 * vec3(0.93, 0.97, 1.04);
 	return mix(cloth, a * vec3(0.86, 0.85, 0.82), m);
 }
 
 // the faded petrol hem stripe: a thin band at a fixed rest height, so it runs through the tatters
 float hem_stripe(float h) {
-	return smoothstep(0.050, 0.056, h) * (1.0 - smoothstep(0.066, 0.072, h));
+	return smoothstep(0.052, 0.057, h) * (1.0 - smoothstep(0.064, 0.069, h));
 }
