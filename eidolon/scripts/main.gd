@@ -35,6 +35,7 @@ var solved_count := 0
 var swipes := 0
 var board_gone := false
 var music_on := true
+var rail_hint_seen := false
 
 func _ready() -> void:
 	if "--autotest" in OS.get_cmdline_user_args(): autotest = true
@@ -49,6 +50,7 @@ func _ready() -> void:
 	ui.begin_pressed.connect(_on_begin)
 	ui.level_chosen.connect(_on_level_chosen)
 	ui.action.connect(_on_action)
+	ui.hint_dismissed.connect(_dismiss_hint)
 	sfx.set_music(music_on)
 	ui.set_music_icon(music_on)
 	_setup_js()
@@ -110,6 +112,10 @@ func _transition_to(i: int) -> void:
 	await tr.finished
 	mode = "play"
 	ui.show_hint(HINTS.get(rules.id, ""))
+	var has_rail := false
+	for m in rules.mirrors: if m["rail"] != null: has_rail = true
+	if has_rail and not rail_hint_seen and not autotest:
+		ui.show_rail_hint()
 
 func _load_level(i: int, frame_anim: bool) -> void:
 	level_index = i
@@ -128,6 +134,7 @@ func _load_level(i: int, frame_anim: bool) -> void:
 	board.mirror_moved.connect(_on_mirror_moved)
 	board.cube_landed.connect(func(_p: Vector3) -> void: sfx.play("thud", -3.0, randf_range(0.9, 1.08)))
 	board.goal_locked.connect(_on_goal_locked)
+	board.mirror_locked.connect(func() -> void: sfx.play("thud", -10.0, 0.62))
 	board.eidolon_glitched.connect(func() -> void: sfx.play("glitch", -9.0, randf_range(0.9, 1.1)))
 	world.frame_board(rules.w, rules.h, not frame_anim)
 	ui.set_level(rules, 0)
@@ -270,7 +277,18 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventMouseMotion and e.device != InputEvent.DEVICE_ID_EMULATION:
 		if _touches.has(99): _drag(99, (e as InputEventMouseMotion).position)
 
+func _dismiss_hint() -> void:
+	if not ui.rail_hint.visible: return
+	ui.hide_rail_hint()
+	rail_hint_seen = true
+	_save()
+
 func _press(index: int, pos: Vector2) -> void:
+	if ui.rail_hint.visible:
+		_dismiss_hint()
+		_gesture = "ignored"
+		_touches[index] = {"start": pos, "pos": pos}
+		return
 	_touches[index] = {"start": pos, "pos": pos}
 	if _touches.size() == 1:
 		_gesture = "ignored" if (ui.is_over_button(pos) or mode != "play") else "single"
@@ -304,7 +322,7 @@ func _drag(index: int, pos: Vector2) -> void:
 			var d := world.grid_dir_for_screen(delta)
 			if d != _swipe_dir:
 				_swipe_dir = d
-				board.show_preview(rules.step(state, d))
+				board.show_preview(rules.step(state, d), d)
 		else:
 			_swipe_dir = Vector2i.ZERO
 			board.hide_preview()
@@ -332,6 +350,9 @@ func _key(e: InputEventKey) -> void:
 				if not ui.medallions[k].locked: i = k
 			_on_level_chosen(i)
 		return
+	if ui.rail_hint.visible:
+		_dismiss_hint()
+		return
 	# screen-relative: Up = up-left, Right = up-right, Down = down-right, Left = down-left (iso diagonals)
 	var sv := Vector2.ZERO
 	match e.keycode:
@@ -358,10 +379,11 @@ func _load_save() -> void:
 	var d = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
 	if d is Dictionary and d.has("best"): best = d["best"]
 	if d is Dictionary and d.has("music"): music_on = bool(d["music"])
+	if d is Dictionary and d.has("rail_hint"): rail_hint_seen = bool(d["rail_hint"])
 
 func _save() -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if f: f.store_string(JSON.stringify({"best": best, "music": music_on, "version": 2}))
+	if f: f.store_string(JSON.stringify({"best": best, "music": music_on, "rail_hint": rail_hint_seen, "version": 3}))
 
 # ------------------------------------------------------------------ test hooks (web)
 ## window.eidolonCmd('begin'|'play:N'|'move:R'|'solve_step'|'preview:R'|'rotate:1'|'undo'|'reset_save');
@@ -379,7 +401,7 @@ func _on_js_cmd(args: Array) -> void:
 		"begin": _on_begin()
 		"play": _on_level_chosen(int(parts[1]) - 1)
 		"move": try_move(Rules.DNAME[parts[1]])
-		"preview": board.show_preview(rules.step(state, Rules.DNAME[parts[1]]))
+		"preview": board.show_preview(rules.step(state, Rules.DNAME[parts[1]]), Rules.DNAME[parts[1]])
 		"rotate": rotate_view(int(parts[1]))
 		"slowmo": Engine.time_scale = float(parts[1])
 		"snd":
@@ -395,6 +417,7 @@ func _on_js_cmd(args: Array) -> void:
 			if tgt == "eid": at = board.eids[0].global_position
 			elif tgt == "goal": at = board.tile_pos(rules.goal, 0.3)
 			elif tgt == "egoal": at = board.tile_pos(rules.egoals[0], 0.3)
+			elif tgt == "board": at = Vector3(0, 0.3, 0)
 			world.rig.position = at
 			world.cam.size = float(parts[1]) if parts.size() > 1 else 3.0
 		"closeup_off":
@@ -411,8 +434,10 @@ func _on_js_cmd(args: Array) -> void:
 			for r: Rules in levels:
 				if not best.has(str(r.id)): best[str(r.id)] = r.par + (r.id % 3)
 			ui.refresh_select(levels, best)
+		"rail_hint": ui.show_rail_hint()
 		"reset_save":
 			best = {}
+			rail_hint_seen = false
 			_save()
 
 func _audio_dbg() -> Dictionary:
@@ -428,5 +453,5 @@ func _js_state(dt: float) -> void:
 	_js_t = 0.2
 	var st := {"mode": mode, "level": rules.id if rules else 0, "moves": moves, "busy": board.busy if board else false,
 		"won": rules.won(state) if rules else false, "fps": Engine.get_frames_per_second(), "yaw": world.yaw_index,
-		"solved": solved_count, "swipes": swipes, "gesture": _gesture, "best_count": best.size(), "music": music_on, "audio": _audio_dbg(), "dissolved": board_gone, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)}
+		"solved": solved_count, "swipes": swipes, "gesture": _gesture, "best_count": best.size(), "music": music_on, "audio": _audio_dbg(), "hint": ui.rail_hint.visible, "dissolved": board_gone, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)}
 	JavaScriptBridge.eval("window.eidolonState = " + JSON.stringify(st) + ";", true)

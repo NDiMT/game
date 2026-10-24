@@ -28,6 +28,8 @@ var hint: Label
 var fade: ColorRect
 var buttons := {}
 var music_btn: IconButton
+var rail_hint: RailHint
+signal hint_dismissed
 var medallions: Array[Medallion] = []
 var progress_label: Label
 var _t := 0.0
@@ -58,6 +60,13 @@ func _ready() -> void:
 	story.add_theme_constant_override("shadow_outline_size", 10)
 	story.modulate.a = 0.0
 	root.add_child(story)
+	rail_hint = RailHint.new()
+	rail_hint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rail_hint.caption_font = italic
+	rail_hint.small_font = caps
+	rail_hint.visible = false
+	rail_hint.dismissed.connect(func() -> void: hint_dismissed.emit())
+	root.add_child(rail_hint)
 	music_btn = IconButton.new()
 	music_btn.icon_name = "music"
 	music_btn.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -253,6 +262,17 @@ func _build_hud() -> void:
 		b.pressed.connect(func() -> void: action.emit(nm))
 		hud.add_child(b)
 		buttons[nm] = b
+
+func show_rail_hint() -> void:
+	rail_hint.t = 0.0
+	rail_hint.modulate.a = 0.0
+	rail_hint.visible = true
+	create_tween().tween_property(rail_hint, "modulate:a", 1.0, 0.6)
+
+func hide_rail_hint() -> void:
+	var tw := create_tween()
+	tw.tween_property(rail_hint, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(func() -> void: rail_hint.visible = false)
 
 func set_music_icon(on: bool) -> void:
 	music_btn.off = not on
@@ -514,3 +534,96 @@ class ChapterBar extends Control:
 		draw_line(Vector2(0, y), Vector2(size.x, y), Color(0.95, 0.93, 0.88, 0.25), 1.0, true)
 		if value > 0.0:
 			draw_line(Vector2(0, y), Vector2(size.x * value, y), Color(0.45, 0.92, 1.0, 0.9), 2.0, true)
+
+
+class RailHint extends Control:
+	## Wordless-ish lesson for counter-mirrors, looping in the fog: you move ->, the glass recoils <-,
+	## the reflection is pulled along (with afterimages and a tether). Tap to dismiss.
+	signal dismissed
+	var t := 0.0
+	var caption_font: Font
+	var small_font: Font
+	const CYCLE := 3.4
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+
+	func _gui_input(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed):
+			accept_event()
+			dismissed.emit()
+
+	func _process(dt: float) -> void:
+		if visible:
+			t += dt
+			queue_redraw()
+
+	static func _ease(x: float) -> float:
+		x = clampf(x, 0.0, 1.0)
+		return x * x * (3.0 - 2.0 * x)
+
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		draw_rect(Rect2(0, 0, w, h), Color(0.80, 0.80, 0.78, 0.78))
+		var cy := h * 0.40
+		var cell := 38.0
+		var n := 8
+		var x0 := w * 0.5 - cell * n * 0.5
+		var ink := Color(0.12, 0.12, 0.13)
+		var cyan := Color(0.05, 0.62, 0.82)
+		var gold := Color(0.85, 0.5, 0.1)
+		# floor strip
+		for i in n:
+			draw_rect(Rect2(x0 + i * cell + 2, cy - cell * 0.5 + 2, cell - 4, cell - 4), Color(0.95, 0.94, 0.9, 0.95))
+			draw_rect(Rect2(x0 + i * cell + 2, cy - cell * 0.5 + 2, cell - 4, cell - 4), Color(0.4, 0.4, 0.4, 0.5), false, 1.0)
+		# rail under the strip with ticks
+		var ry := cy + cell * 0.5 + 14.0
+		draw_line(Vector2(x0 + 2.0 * cell - 8, ry), Vector2(x0 + 4.0 * cell + 8, ry), ink, 3.0)
+		for k in 3:
+			draw_line(Vector2(x0 + (2 + k) * cell, ry - 5), Vector2(x0 + (2 + k) * cell, ry + 5), ink, 1.5)
+		var p := fmod(t, CYCLE)
+		var a_cube := _ease(p / 0.5)                    # 0.0-0.5  the cube rolls one tile
+		var a_mir := _ease(p / 1.4)                     # 0.0-1.4  the glass recoils along the rail
+		var a_step := _ease((p - 0.15) / 0.4)           # 0.15-0.55 the reflection's own step
+		var a_carry := _ease((p - 0.6) / 0.8)           # 0.6-1.4  ... then it is pulled two more
+		var fade := 1.0 - clampf((p - 2.9) / 0.5, 0.0, 1.0)
+		# the mirror: plane at 3.5 -> 2.5 (cell units)
+		var mx := x0 + (4.0 - a_mir) * cell
+		draw_line(Vector2(mx, cy - cell * 0.95), Vector2(mx, cy + cell * 0.6), Color(0.3, 0.85, 1.0, fade), 3.0, true)
+		draw_line(Vector2(mx, ry - 7), Vector2(mx, ry + 7), Color(0.3, 0.85, 1.0, fade), 4.0, true)
+		if p < 1.6:
+			_arrow(Vector2(mx + 12, cy - cell * 1.15), -1.0, Color(0.05, 0.55, 0.75, fade))
+		# cube 1 -> 2
+		var cx := x0 + (1.5 + a_cube) * cell
+		draw_rect(Rect2(cx - cell * 0.38, cy - cell * 0.38, cell * 0.76, cell * 0.76), Color(ink, fade))
+		draw_rect(Rect2(cx - cell * 0.2, cy - cell * 0.2, cell * 0.4, cell * 0.4), Color(0.3, 0.9, 1.0, fade), false, 1.2)
+		if p < 1.0:
+			_arrow(Vector2(cx - 8, cy - cell * 0.75), 1.0, Color(ink, fade))
+		# the reflection: 6 -> 5 (own step) -> 3 (carried), with afterimages and a tether
+		var ex := x0 + (6.5 - a_step - 2.0 * a_carry) * cell
+		if a_carry > 0.0:
+			for k in 3:
+				var gx := x0 + (5.5 - k) * cell
+				if gx >= ex - 1.0:
+					draw_rect(Rect2(gx - cell * 0.38, cy - cell * 0.38, cell * 0.76, cell * 0.76), Color(cyan, 0.22 * fade), false, 1.5)
+			if a_carry < 1.0:
+				draw_dashed_line(Vector2(mx, cy), Vector2(ex, cy), Color(0.3, 0.9, 1.0, 0.9 * fade), 2.0, 5.0)
+		draw_rect(Rect2(ex - cell * 0.38, cy - cell * 0.38, cell * 0.76, cell * 0.76), Color(cyan, 0.55 * fade))
+		draw_rect(Rect2(ex - cell * 0.38, cy - cell * 0.38, cell * 0.76, cell * 0.76), Color(0.6, 1.0, 1.0, fade), false, 1.6)
+		# caption
+		var cap := "The glass recoils. Your reflection is pulled with it."
+		var fs := 18
+		var cw := caption_font.get_string_size(cap, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		if cw > w - 32.0: fs = 16
+		cw = caption_font.get_string_size(cap, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(caption_font, Vector2(w * 0.5 - cw * 0.5, cy + cell * 2.2), cap, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
+		var sub := "TOUCH TO CONTINUE"
+		var sw := small_font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+		draw_string(small_font, Vector2(w * 0.5 - sw * 0.5, cy + cell * 3.3), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(ink, 0.45 + 0.35 * sin(t * 2.0)))
+
+	func _arrow(at: Vector2, dir: float, col: Color) -> void:
+		var tip := at + Vector2(dir * 16.0, 0)
+		draw_line(at, tip, col, 2.0, true)
+		draw_line(tip, tip + Vector2(-dir * 6.0, -5.0), col, 2.0, true)
+		draw_line(tip, tip + Vector2(-dir * 6.0, 5.0), col, 2.0, true)

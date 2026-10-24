@@ -29,6 +29,16 @@ var mirror_mats: Array[ShaderMaterial] = []
 var sigil_mats: Array[ShaderMaterial] = []
 var preview_nodes: Array[MeshInstance3D] = []
 var halo_mats: Array[ShaderMaterial] = []
+var rail_mats := {}            # mirror index -> rail overlay material
+var sparks := {}               # mirror index -> [CPUParticles3D, CPUParticles3D]
+var mirror_ghosts: Array[MeshInstance3D] = []
+var path_dots: Array[MeshInstance3D] = []
+var tethers: Array[MeshInstance3D] = []
+var tether_mats: Array[ShaderMaterial] = []
+var afterimages: Array[MeshInstance3D] = []
+var _after_i := 0
+const CARRY_T := 0.34
+signal mirror_locked
 var dust: CPUParticles3D
 var busy := false
 var center := Vector2.ZERO
@@ -48,7 +58,94 @@ func setup(r: Rules, s: Dictionary, ntex: Texture2D) -> void:
 	_build_bodies()
 	_build_previews()
 	_build_dust()
+	_build_carry_fx()
 	set_state(s)
+
+func _make_sparks() -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.emitting = false
+	p.one_shot = true
+	p.amount = 18
+	p.lifetime = 0.55
+	p.explosiveness = 0.35
+	p.direction = Vector3(0, 1, 0)
+	p.spread = 70.0
+	p.initial_velocity_min = 0.8
+	p.initial_velocity_max = 2.2
+	p.gravity = Vector3(0, -6.0, 0)
+	p.scale_amount_min = 0.25
+	p.scale_amount_max = 0.6
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1.0, 0.95, 0.75, 1.0))
+	grad.add_point(0.4, Color(0.55, 0.95, 1.0, 0.9))
+	grad.set_color(grad.get_point_count() - 1, Color(0.8, 0.78, 0.72, 0.0))
+	p.color_ramp = grad
+	var q := QuadMesh.new()
+	q.size = Vector2(0.07, 0.07)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	q.material = mat
+	p.mesh = q
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return p
+
+func _build_carry_fx() -> void:
+	for i in eids.size():
+		var tm := ShaderMaterial.new()
+		tm.shader = preload("res://shaders/tether.gdshader")
+		var t := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.orientation = PlaneMesh.FACE_Y
+		q.size = Vector2(1, 0.2)
+		t.mesh = q
+		t.material_override = tm
+		t.visible = false
+		t.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(t)
+		tethers.append(t)
+		tether_mats.append(tm)
+	for k in 6:
+		var a := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3.ONE * CUBE
+		a.mesh = bm
+		var am := ShaderMaterial.new()
+		am.shader = preload("res://shaders/eidolon.gdshader")
+		am.set_shader_parameter("strength", 0.0)
+		am.set_shader_parameter("glyph_seed", glyph_seed())
+		a.material_override = am
+		a.visible = false
+		a.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(a)
+		afterimages.append(a)
+	for k in 8:
+		var dmi := _glow(Color(0.05, 0.7, 1.0), 0.46, 1.4)
+		dmi.visible = false
+		add_child(dmi)
+		path_dots.append(dmi)
+
+func _afterimage(at: Vector3, basis: Basis, axis_m: Vector3) -> void:
+	var a := afterimages[_after_i]
+	_after_i = (_after_i + 1) % afterimages.size()
+	a.transform = Transform3D(basis, at)
+	a.visible = true
+	var am := a.material_override as ShaderMaterial
+	am.set_shader_parameter("mirror_axis", axis_m)
+	var tw := create_tween()
+	tw.tween_method(func(v: float) -> void: am.set_shader_parameter("strength", v), 0.8, 0.0, 0.75)
+	tw.tween_callback(func() -> void: a.visible = false)
+
+func _set_tether(i: int, on: bool, from: Vector3 = Vector3.ZERO, to: Vector3 = Vector3.ZERO) -> void:
+	var t := tethers[i]
+	t.visible = on
+	if not on: return
+	var mid := (from + to) * 0.5
+	var v := to - from
+	var l := maxf(v.length(), 0.01)
+	t.transform = Transform3D(Basis(Vector3.UP, atan2(-v.z, v.x)) * Basis.from_scale(Vector3(l, 1, 1)), mid)
 
 func _stone(is_black: bool) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
@@ -391,6 +488,7 @@ var motes: MultiMeshInstance3D
 var _lit_state: Array = []
 var _mote_t := 0.0
 var _extras_alpha := 1.0
+var _sunk: Array = []
 
 func _process(dt: float) -> void:
 	_mote_t += dt
@@ -476,6 +574,19 @@ func _build_mirrors() -> void:
 		root.add_child(_merged(parts, black_mat))
 		mirror_roots.append(root)
 		mirror_mats.append(gm)
+		# swipe-preview ghost of where this mirror will stand
+		var gp := MeshInstance3D.new()
+		var gq := QuadMesh.new()
+		gq.size = Vector2(span + 0.1, 1.55)
+		gp.mesh = gq
+		var gpm := ShaderMaterial.new()
+		gpm.shader = preload("res://shaders/ghostpane.gdshader")
+		gp.material_override = gpm
+		gp.rotation.y = PI * 0.5 + (PI * 0.5 if m["axis"] == "z" else 0.0)
+		gp.visible = false
+		gp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(gp)
+		mirror_ghosts.append(gp)
 		if m["rail"] != null: _build_rails(i, span)
 
 func _build_rails(i: int, span: float) -> void:
@@ -506,6 +617,33 @@ func _build_rails(i: int, span: float) -> void:
 			(black_parts if is_end else cream_parts).append([sm, at])
 	add_child(_merged(black_parts, black_mat))
 	add_child(_merged(cream_parts, stone_mat))
+	# readable overlay on both rails (ticks, stops, counter-motion motif, slide glow, arrow, lock)
+	var om := ShaderMaterial.new()
+	om.shader = preload("res://shaders/rail.gdshader")
+	om.set_shader_parameter("n_stops", float(rail.y - rail.x + 1))
+	om.set_shader_parameter("pos", float(m["pos"] - rail.x))
+	for sgn in [-1.0, 1.0]:
+		var off: Vector3 = side_axis * sgn * (span * 0.5 + 0.12)
+		var ov := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.orientation = PlaneMesh.FACE_Y
+		q.size = Vector2(length, 0.2)
+		ov.mesh = q
+		ov.material_override = om
+		ov.position = mid + off + Vector3(0, 0.004, 0)
+		if m["axis"] == "z": ov.rotation.y = -PI * 0.5
+		ov.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(ov)
+	rail_mats[i] = om
+	# sparks where the glass grinds on each rail (children of the moving mirror; emitted in world space)
+	var root := mirror_roots[i]
+	var em: Array = []
+	for sgn in [-1.0, 1.0]:
+		var sp := _make_sparks()
+		sp.position = Vector3(0, 0.05, sgn * (span * 0.5 + 0.12))
+		root.add_child(sp)
+		em.append(sp)
+	sparks[i] = em
 
 func _merged(parts: Array, mat: Material) -> MeshInstance3D:
 	var st := SurfaceTool.new()
@@ -654,6 +792,8 @@ func set_state(s: Dictionary) -> void:
 		eid_glows[i].position = tile_pos(state["eids"][i], 0.03)
 	for i in mirror_roots.size():
 		mirror_roots[i].position = _mirror_world(i, state["mpos"][i])
+	for i in rail_mats:
+		rail_mats[i].set_shader_parameter("pos", float(state["mpos"][i] - rules.mirrors[i]["rail"].x))
 	update_lit(true)
 
 signal goal_locked(kind: int)
@@ -686,7 +826,8 @@ func update_lit(instant := false) -> void:
 				tw.tween_method(func(v: float) -> void: m.set_shader_parameter("snap", v), 1.0, 0.0, 0.3)
 	_lit_state = lit
 
-func show_preview(ev: Dictionary) -> void:
+func show_preview(ev: Dictionary, d := Vector2i.ZERO) -> void:
+	preview_dir = d
 	if ev.is_empty() or not ev["changed"]:
 		hide_preview(); return
 	var ns: Dictionary = ev["state"]
@@ -696,18 +837,69 @@ func show_preview(ev: Dictionary) -> void:
 		var moved: bool = ns["eids"][i] != state["eids"][i]
 		preview_nodes[i + 1].visible = moved
 		preview_nodes[i + 1].position = tile_pos(ns["eids"][i], 0.022)
+	# dotted carry path (every tile the reflection will be dragged across)
+	var di := 0
+	for i in eids.size():
+		for t in ev["eid_carry"][i]:
+			if di < path_dots.size():
+				path_dots[di].position = tile_pos(t, 0.03)
+				path_dots[di].visible = true
+				di += 1
+	for k in range(di, path_dots.size()): path_dots[k].visible = false
+	# mirror ghosts at their destination, arrow on the rail, or a lock if a body pins the glass
+	var lk := _locked_mirrors(ev, preview_dir)
+	for i in mirror_roots.size():
+		var sl: int = ev["slid"][i]
+		mirror_ghosts[i].visible = sl != 0
+		if sl != 0: mirror_ghosts[i].position = _mirror_world(i, ns["mpos"][i]) + Vector3(0, 0.8, 0)
+		if rail_mats.has(i):
+			rail_mats[i].set_shader_parameter("arrow_dir", float(sl))
+			rail_mats[i].set_shader_parameter("locked", 1.0 if lk.has(i) else 0.0)
+
+var preview_dir := Vector2i.ZERO
 
 func hide_preview() -> void:
 	for p in preview_nodes: p.visible = false
+	for p in path_dots: p.visible = false
+	for g in mirror_ghosts: g.visible = false
+	for i in rail_mats:
+		rail_mats[i].set_shader_parameter("arrow_dir", 0.0)
+		rail_mats[i].set_shader_parameter("locked", 0.0)
+
+## Counter-mirrors that WOULD slide this swipe (rail continues) but are pinned by a body or column.
+## Presentation only: derived from the rules' result, the rules themselves are untouched.
+func _locked_mirrors(ev: Dictionary, d: Vector2i) -> Array:
+	var out := []
+	if d == Vector2i.ZERO: return out
+	var mp: Array = ev.get("mpos_from", state["mpos"])
+	for i in rules.mirrors.size():
+		var rail = rules.mirrors[i]["rail"]
+		if rail == null or ev["slid"][i] != 0: continue
+		var k := rules.axis_k(i)
+		if d[k] == 0: continue
+		var np: int = int(mp[i]) - d[k]
+		if np >= rail.x and np <= rail.y: out.append(i)
+	return out
 
 # ------------------------------------------------------------------ turn animation
+## Choreography (rules untouched):
+##   t=0      the cube rolls; every sliding counter-mirror starts recoiling along its rail (grind, sparks,
+##            glowing rail segment) and keeps moving for the whole turn; each Eidolon rolls its own
+##            mirrored step (or bumps / glitches if blocked).
+##   t=ROLL_T the carry: an Eidolon whose mirror slid GLIDES tile by tile in the slide direction, with
+##            an afterimage on every tile it crosses and a tether from the glass pulling it.
+## Normal moves end after the roll; a carry move takes ROLL_T + CARRY_T (about 0.6 s).
 func play_turn(ev: Dictionary, d: Vector2i) -> void:
 	busy = true
 	hide_preview()
 	var ns: Dictionary = ev["state"]
+	var from_m: Array = state["mpos"].duplicate()
 	var any_slide := false
+	var any_carry := false
 	for v in ev["slid"]: if v != 0: any_slide = true
-	# phase 1: cube rolls (or bumps), Eidolons roll their mirrored step (or bump)
+	for c in ev["eid_carry"]: if not c.is_empty(): any_carry = true
+	var total := ROLL_T + (CARRY_T if any_carry else 0.12)
+	# --- t = 0: cube + own mirrored steps
 	if ev["cube_moved"]:
 		_roll(cube, d, ROLL_T, true)
 		var rg := create_tween()
@@ -720,41 +912,94 @@ func play_turn(ev: Dictionary, d: Vector2i) -> void:
 			_roll(eids[i], dd, ROLL_T, false)
 		elif ev["eid_carry"][i].is_empty():
 			_bump(eids[i], dd)
-			if ev["cube_moved"]: _glitch(i)
+			if ev["cube_moved"] and ev["slid"][i] == 0: _glitch(i)
 	if not ev["cube_moved"]:
 		body_bumped.emit()
-	await get_tree().create_timer(ROLL_T + 0.02).timeout
-	state = Rules.copy_state(ns)
-	_snap_bodies()
-	# phase 2: counter-mirrors grind against the swipe, carrying their Eidolons
+	# --- t = 0: mirrors recoil against the swipe for the whole turn
 	if any_slide:
 		var strength := 0.0
 		for i in mirror_roots.size():
-			if ev["slid"][i] == 0: continue
+			var sl: int = ev["slid"][i]
+			if sl == 0: continue
 			strength += 1.0
-			var tw := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-			tw.tween_property(mirror_roots[i], "position", _mirror_world(i, ns["mpos"][i]), SLIDE_T)
+			var tw := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			tw.tween_property(mirror_roots[i], "position", _mirror_world(i, ns["mpos"][i]), total)
 			var gm := mirror_mats[i]
-			var rt := create_tween()
-			rt.tween_method(func(v: float) -> void: gm.set_shader_parameter("ripple", v), 1.0, 0.0, SLIDE_T + 0.3)
-			var path: Array = ev["eid_carry"][i]
-			if not path.is_empty():
-				var e := eids[i]
-				var target := tile_pos(path[path.size() - 1], H)
-				var et := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-				et.tween_property(e, "position", target, SLIDE_T)
-				et.parallel().tween_property(eid_glows[i], "position", Vector3(target.x, 0.03, target.z), SLIDE_T)
-				_shimmer(i, SLIDE_T + 0.15)
-			else:
-				var v: int = ev["slid"][i]
-				var k := rules.axis_k(i)
-				var dd := Vector2i(v, 0) if k == 0 else Vector2i(0, v)
-				_bump(eids[i], dd)
+			create_tween().tween_method(func(v: float) -> void: gm.set_shader_parameter("ripple", v), 1.0, 0.0, total + 0.3)
+			if rail_mats.has(i):
+				var rm: ShaderMaterial = rail_mats[i]
+				var lo: int = rules.mirrors[i]["rail"].x
+				var p0 := float(from_m[i] - lo); var p1 := float(ns["mpos"][i] - lo)
+				rm.set_shader_parameter("seg_a", p0)
+				rm.set_shader_parameter("seg_b", p1)
+				var rt := create_tween()
+				rt.tween_method(func(v: float) -> void: rm.set_shader_parameter("pos", v), p0, p1, total)
+				rt.parallel().tween_method(func(v: float) -> void: rm.set_shader_parameter("active", v), 1.0, 1.0, total)
+				rt.tween_method(func(v: float) -> void: rm.set_shader_parameter("active", v), 1.0, 0.0, 0.45)
+			for sp in sparks.get(i, []):
+				(sp as CPUParticles3D).restart()
 		mirror_moved.emit(strength)
-		await get_tree().create_timer(SLIDE_T + 0.02).timeout
+	var lk := _locked_mirrors(ev, d)
+	for i in lk:
+		var rm2: ShaderMaterial = rail_mats[i]
+		create_tween().tween_method(func(v: float) -> void: rm2.set_shader_parameter("locked", v), 1.0, 0.0, 0.7)
+	if not lk.is_empty(): mirror_locked.emit()
+	await get_tree().create_timer(ROLL_T + 0.02).timeout
+	# --- after the roll: bodies at their OWN-step tiles (not yet carried)
+	var stepped: Array = []
+	for i in eids.size():
+		var e0: Vector2i = ev["eid_from"][i]
+		stepped.append(e0 + ev["eid_dir"][i] if ev["eid_step"][i] else e0)
+	cube.transform = Transform3D(_right_angles(cube.transform.basis), tile_pos(ns["cube"], H))
+	for i in eids.size():
+		eids[i].transform = Transform3D(_right_angles(eids[i].transform.basis), tile_pos(stepped[i], H))
+		eid_glows[i].position = tile_pos(stepped[i], 0.03)
+	# --- the carry: continuous glide across every tile, afterimages + tether
+	if any_carry:
+		for i in eids.size():
+			var path: Array = ev["eid_carry"][i]
+			if path.is_empty():
+				if ev["slid"][i] != 0:
+					var v: int = ev["slid"][i]
+					_bump(eids[i], Vector2i(v, 0) if rules.axis_k(i) == 0 else Vector2i(0, v))
+				continue
+			var pts: Array[Vector3] = [tile_pos(stepped[i], H)]
+			for t in path: pts.append(tile_pos(t, H))
+			var e := eids[i]
+			var g := eid_glows[i]
+			var basis := e.transform.basis
+			var axis_m := Vector3(-1, 1, 1) if rules.mirrors[i]["axis"] == "x" else Vector3(1, 1, -1)
+			var mi := i
+			var tm := tether_mats[i]
+			var passed := [0]
+			_afterimage(pts[0], basis, axis_m)
+			_shimmer(i, CARRY_T + 0.15)
+			var f := func(t: float) -> void:
+				var u := t * t * (3.0 - 2.0 * t) * float(pts.size() - 1)
+				var k := mini(int(u), pts.size() - 2)
+				var pos := pts[k].lerp(pts[k + 1], u - k)
+				e.position = pos
+				g.position = Vector3(pos.x, 0.03, pos.z)
+				while passed[0] < int(u) and passed[0] < pts.size() - 1:
+					passed[0] += 1
+					_afterimage(pts[passed[0]], basis, axis_m)
+				# tether from the glass (same row/column as the Eidolon) to the Eidolon
+				var mw := mirror_roots[mi].position
+				var anchor := Vector3(mw.x, 0.05, pos.z) if rules.mirrors[mi]["axis"] == "x" else Vector3(pos.x, 0.05, mw.z)
+				_set_tether(mi, true, anchor, Vector3(pos.x, 0.05, pos.z))
+				tm.set_shader_parameter("intensity", sin(t * PI) * 0.9 + 0.1)
+			var ct := create_tween()
+			ct.tween_method(f, 0.0, 1.0, CARRY_T)
+			ct.tween_callback(func() -> void: _set_tether(mi, false))
+		await get_tree().create_timer(CARRY_T + 0.02).timeout
+	elif any_slide:
+		await get_tree().create_timer(0.12).timeout
+	state = Rules.copy_state(ns)
 	_snap_bodies()
 	for i in mirror_roots.size():
 		mirror_roots[i].position = _mirror_world(i, state["mpos"][i])
+	for i in rail_mats:
+		rail_mats[i].set_shader_parameter("pos", float(state["mpos"][i] - rules.mirrors[i]["rail"].x))
 	update_lit()
 	busy = false
 	turn_finished.emit()
@@ -865,10 +1110,16 @@ func _fade_extras(a: float) -> void:
 	for b in beam_mats: b.set_shader_parameter("fade", a)
 	_extras_alpha = a
 	for m in sigil_mats: m.set_shader_parameter("alpha_mul", a)
-	# fully sunk into the fog: hide everything but the (discarded) island so nothing lingers on menus
-	for c in get_children():
-		if c.name == "Island" or c == dust or (c is MeshInstance3D and preview_nodes.has(c)): continue
-		(c as Node3D).visible = a > 0.01
+	# fully sunk into the fog: hide everything but the (discarded) island so nothing lingers on menus;
+	# restore exactly what was visible when it rises again
+	if a <= 0.01 and _sunk.is_empty():
+		for c in get_children():
+			if c.name == "Island" or c == dust or not (c as Node3D).visible: continue
+			_sunk.append(c)
+			(c as Node3D).visible = false
+	elif a > 0.01 and not _sunk.is_empty():
+		for c in _sunk: (c as Node3D).visible = true
+		_sunk.clear()
 
 func _ease_out(t: float) -> float:
 	return 1.0 - pow(1.0 - t, 3.0)

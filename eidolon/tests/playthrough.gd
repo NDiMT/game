@@ -11,6 +11,9 @@ var expect_level := 1
 var results := []
 var errors := 0
 var extra_done := false
+var _last_pos := {}
+var _last_board: Node = null
+var max_step := 0.0
 
 func _ready() -> void:
 	Game.autotest = true
@@ -19,6 +22,17 @@ func _ready() -> void:
 
 func _process(dt: float) -> void:
 	t += dt
+	# continuity: while a turn animates, no body may jump (the v0.3 carry "teleport")
+	if game and game.board and game.mode == "play":
+		if game.board != _last_board: _last_pos.clear(); _last_board = game.board
+		var bodies: Array = [game.board.cube] + game.board.eids
+		for bi in bodies.size():
+			var p: Vector3 = bodies[bi].position
+			if game.board.busy and _last_pos.has(bi):
+				var dd: float = (p - _last_pos[bi]).length()
+				max_step = maxf(max_step, dd)
+				if dd > 0.45: print("ERROR body %d jumped %.2f tiles in one frame (level %d)" % [bi, dd, game.rules.id]); errors += 1
+			_last_pos[bi] = p
 	if t > 900.0:
 		print("TIMEOUT in phase ", phase); get_tree().quit(2); return
 	match phase:
@@ -91,6 +105,7 @@ func _process(dt: float) -> void:
 			if game.mode == "select":
 				for r in results: print(r)
 				print("best saved: ", game.best)
+				print("max per-frame body displacement during turns: %.3f tiles" % max_step)
 				print("PLAYTHROUGH %s  levels=%d  errors=%d  sim_time=%.1fs" % ["OK" if errors == 0 else "FAILED", results.size(), errors, t])
 				get_tree().quit(0 if errors == 0 else 1)
 
