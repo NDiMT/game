@@ -187,6 +187,17 @@ func _pool() -> void:
 	mi.position = Vector3(-2.4, -0.03, 1.7)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
+	var om := ShaderMaterial.new()
+	om.shader = preload("res://shaders/water_over.gdshader")
+	om.set_shader_parameter("noise_tex", level.noise_tex)
+	var oq := PlaneMesh.new()
+	oq.size = Vector2(3.6, 3.8)
+	var omi := MeshInstance3D.new()
+	omi.mesh = oq
+	omi.material_override = om
+	omi.position = Vector3(-2.4, -0.005, 1.7)
+	omi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(omi)
 
 # ------------------------------------------------------------------ a) rune door
 func _rune_statues() -> void:
@@ -804,9 +815,10 @@ func set_shrine_awake(k: float, sweep: float) -> void:
 
 # ------------------------------------------------------------------ hidden tablet (glimpse 2 target)
 func _tablet() -> void:
-	tablet_mat = rune_quad(self, Vector3(4.16, 1.45, -19.9), Vector2(0.4, 0.5), Basis(Vector3.UP, -PI * 0.5), 0.0, 0.0)
+	tablet_mat = ShaderMaterial.new()      # (v0.3: the tablet carries engraved script instead)
 	level.ob_rect(Level.R(4.15, -20.4, 4.6, -19.4))
-	level.inscription("h_tablet", Vector3(3.85, 1.0, -19.9), "Read the veiled ones by their numbers,\nnot by where they stand.", 0.95)
+	level.inscription("h_tablet", Vector3(3.85, 1.0, -19.9), "Read the veiled ones by their numbers,\nnot by where they stand.", 0.95,
+		Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(4.165, 1.38, -19.9)), Vector2(0.8, 0.56))
 
 # ------------------------------------------------------------------ reflectors
 func _reflectors() -> void:
@@ -832,6 +844,7 @@ func _reflectors() -> void:
 	r.region = Level.R(-4.6, -20.6, 4.6, -14.5); r.alpha = 0.78
 	r.gaze_target = TABLET_POS
 	_add_refl(r); hall_mirror = r
+	_mirror_quad(Vector3(0, 3.38, -20.575), Basis(), Vector2(5.2, 4.45))
 	_pane(Vector3(-2.4, 1.0, -15.6), 0.0, Vector2(1.6, 2.6), false)
 	_pane(Vector3(2.2, 1.0, -14.6), -PI * 0.5, Vector2(1.6, 2.6), true)
 	# 4. the great Eidolon glass: the reflection steps out of the frame and walks the other world
@@ -840,6 +853,37 @@ func _reflectors() -> void:
 	r.project = false; r.ghost = 1.0; r.alpha = 0.62
 	r.region = Level.R(21, -25, 29, -19)
 	_add_refl(r); eidolon_refl = r
+
+const HALL_COLS := [Vector4(-4.5, -12.2, 0.3, 4.2), Vector4(-4.5, -14.8, 0.3, 4.2), Vector4(-4.5, -17.4, 0.3, 4.2),
+	Vector4(-4.5, -19.9, 0.3, 4.2), Vector4(-3.3, -11.3, 0.3, 4.2), Vector4(3.3, -11.3, 0.3, 4.2), Vector4(3.9, -18.2, 0.3, 0.9)]
+
+func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false) -> void:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/mirror.gdshader")
+	m.set_shader_parameter("noise_tex", level.noise_tex)
+	m.set_shader_parameter("n", basis * Vector3.BACK)
+	m.set_shader_parameter("floor_y", 1.0)
+	m.set_shader_parameter("size", size)
+	m.set_shader_parameter("cols", HALL_COLS)
+	m.set_shader_parameter("ncols", HALL_COLS.size())
+	m.set_shader_parameter("crack", 1.0 if cracked else 0.0)
+	var q := QuadMesh.new()
+	q.size = size
+	var g := MeshInstance3D.new()
+	g.mesh = q
+	g.material_override = m
+	g.transform = Transform3D(basis, center)
+	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(g)
+	var om := ShaderMaterial.new()
+	om.shader = preload("res://shaders/mirror_over.gdshader")
+	om.set_shader_parameter("size", size)
+	var o := MeshInstance3D.new()
+	o.mesh = q
+	o.material_override = om
+	o.transform = Transform3D(basis, center + basis * Vector3(0, 0, 0.045))
+	o.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(o)
 
 func _add_refl(r: Reflector) -> void:
 	add_child(r)
@@ -850,18 +894,7 @@ func _pane(base: Vector3, yaw: float, size: Vector2, cracked: bool) -> void:
 	## a free-standing mirror pane on a stone foot; reflective on its front (+z rotated by yaw)
 	var B := Basis(Vector3.UP, yaw)
 	var c := base + Vector3(0, 0.22 + size.y * 0.5, 0)
-	var gm := ShaderMaterial.new()
-	gm.shader = preload("res://shaders/glass.gdshader")
-	gm.set_shader_parameter("size", size)
-	gm.set_shader_parameter("crack", 1.0 if cracked else 0.0)
-	var q := QuadMesh.new()
-	q.size = size
-	var g := MeshInstance3D.new()
-	g.mesh = q
-	g.material_override = gm
-	g.transform = Transform3D(B, c)
-	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(g)
+	_mirror_quad(c, B, size, cracked)
 	var fm := MB.new()
 	var fc := Color(0.5, 1.0, 1.0)
 	fm.box(base + Vector3(0, 0.11, 0), (B * Vector3(size.x + 0.5, 0.22, 0.6)).abs(), Color(0.5, 0.25, 0.0))

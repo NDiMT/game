@@ -37,6 +37,11 @@ var _t := 0.0
 var _text_tw: Tween
 var _card_tw: Tween
 var text_source := Vector3.INF
+var inscr_panel: Control
+var inscr_rect: ColorRect
+var _inscr_tw: Tween
+var text_is_inscription := false
+var text_is_inscription_call := false
 
 func _ready() -> void:
 	layer = 5
@@ -60,6 +65,21 @@ func _ready() -> void:
 	_halo(text, Color(0.93, 0.92, 0.89, 0.85))
 	text.modulate.a = 0.0
 	root.add_child(text)
+	# the reading panel for inscriptions (pale stone, the unknown script large)
+	inscr_panel = StonePanel.new()
+	inscr_panel.set_anchors_preset(Control.PRESET_CENTER)
+	inscr_panel.anchor_top = 0.30; inscr_panel.anchor_bottom = 0.30
+	inscr_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inscr_panel.modulate.a = 0.0
+	root.add_child(inscr_panel)
+	inscr_rect = ColorRect.new()
+	inscr_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	inscr_rect.offset_left = 18; inscr_rect.offset_right = -18; inscr_rect.offset_top = 18; inscr_rect.offset_bottom = -18
+	inscr_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var im := ShaderMaterial.new()
+	im.shader = preload("res://shaders/inscription_ui.gdshader")
+	inscr_rect.material = im
+	inscr_panel.add_child(inscr_rect)
 	# rune card
 	card = Control.new()
 	card.set_anchors_preset(Control.PRESET_CENTER)
@@ -230,6 +250,11 @@ func hide_title() -> void:
 	tw.tween_callback(func() -> void: title_screen.visible = false)
 
 func show_text(s: String, source := Vector3.INF, hold := 5.0) -> void:
+	if not text_is_inscription_call:
+		# a plain line (not an inscription): the usual place, lower on the screen
+		text.anchor_top = 0.66; text.anchor_bottom = 0.66
+		text.offset_top = -60; text.offset_bottom = 60
+		text.add_theme_font_size_override("font_size", 19)
 	text.text = s
 	text_source = source
 	if _text_tw: _text_tw.kill()
@@ -238,7 +263,37 @@ func show_text(s: String, source := Vector3.INF, hold := 5.0) -> void:
 	_text_tw.tween_interval(hold)
 	_text_tw.tween_property(text, "modulate:a", 0.0, 1.6).set_trans(Tween.TRANS_SINE)
 
+## reading an inscription: the unknown script large on a stone panel, the wanderer's understanding
+## of it beneath in small italic English
+func show_inscription(s: String, script: Array, source: Vector3) -> void:
+	var m: ShaderMaterial = inscr_rect.material
+	m.set_shader_parameter("seed", script[0])
+	m.set_shader_parameter("rows", script[1])
+	m.set_shader_parameter("cols", script[2])
+	m.set_shader_parameter("aspect", script[3])
+	var w := minf(330.0, root.size.x - 50.0)
+	var h := clampf(w / float(script[4]), 160.0, 330.0)
+	w = minf(w, h * float(script[4]))
+	inscr_panel.offset_left = -w * 0.5 - 18.0; inscr_panel.offset_right = w * 0.5 + 18.0
+	inscr_panel.offset_top = -h * 0.5 - 18.0; inscr_panel.offset_bottom = h * 0.5 + 18.0
+	text.anchor_top = 0.30; text.anchor_bottom = 0.30
+	text.offset_top = h * 0.5 + 28.0; text.offset_bottom = h * 0.5 + 118.0
+	text.add_theme_font_size_override("font_size", 17)
+	if _inscr_tw: _inscr_tw.kill()
+	_inscr_tw = create_tween()
+	_inscr_tw.tween_property(inscr_panel, "modulate:a", 1.0, 0.8).set_trans(Tween.TRANS_SINE)
+	_inscr_tw.tween_interval(6.0)
+	_inscr_tw.tween_property(inscr_panel, "modulate:a", 0.0, 1.6).set_trans(Tween.TRANS_SINE)
+	text_is_inscription_call = true
+	show_text(s, source, 6.0)
+	text_is_inscription_call = false
+	text_is_inscription = true
+
 func hide_text() -> void:
+	if inscr_panel and inscr_panel.modulate.a > 0.0:
+		if _inscr_tw: _inscr_tw.kill()
+		_inscr_tw = create_tween()
+		_inscr_tw.tween_property(inscr_panel, "modulate:a", 0.0, 0.8)
 	if text.modulate.a <= 0.0: return
 	if _text_tw: _text_tw.kill()
 	_text_tw = create_tween()
@@ -325,6 +380,18 @@ class Rules extends Control:
 		draw_line(Vector2(cx + gap, cy), Vector2(cx + gap + 46.0, cy), col, 1.0, true)
 		draw_circle(Vector2(cx - gap - 50.0, cy), 1.4, col)
 		draw_circle(Vector2(cx + gap + 50.0, cy), 1.4, col)
+
+class StonePanel extends Control:
+	## a slab of pale stone with a carved border
+	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		draw_rect(r.grow(3.0), Color(0.12, 0.12, 0.13, 0.55))
+		draw_rect(r, Color(0.80, 0.79, 0.76, 0.96))
+		for k in 9:
+			var y := r.size.y * (0.05 + 0.11 * k)
+			draw_line(Vector2(6.0, y + sin(k * 2.3) * 4.0), Vector2(r.size.x - 6.0, y + 7.0 + cos(k * 1.3) * 5.0), Color(0.68, 0.67, 0.64, 0.4), 1.0, true)
+		draw_rect(r.grow(-7.0), Color(0.45, 0.45, 0.45, 0.8), false, 1.2)
+		draw_rect(r.grow(-11.0), Color(Palette.ACCENT, 0.35), false, 1.0)
 
 class CardDisc extends Control:
 	## soft dark disc behind a rune card

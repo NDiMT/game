@@ -18,7 +18,7 @@ extends Node3D
 ##   EB risen bridge       x[26.8,28.6] z[-28,-25] y 2
 ##   S  The Shrine         x[20,30]  z[-36,-28]  y 2
 
-signal read(text: String)
+signal read(text: String, script: Array)
 
 class Region:
 	var r: Rect2
@@ -68,6 +68,7 @@ var cloths: Array[Transform3D] = []       # cloth veils hung on statues
 var rays: Array = []                      # god rays: [position, length]
 var rng := RandomNumberGenerator.new()
 var markers: Array = []
+var inscr_mats: Array = []
 var named := {}          # name -> Region / Obstacle for puzzles to toggle
 
 const WAKE_POS := Vector3(1.4, 0.0, 2.3)
@@ -214,26 +215,44 @@ func add_interact(id: String, pos: Vector3, icon: String, action: Callable, radi
 	interacts.append(it)
 	return it
 
-func inscription(id: String, pos: Vector3, text: String, radius := 1.3, marker := Transform3D(), design := 0.0) -> Interact:
-	if marker != Transform3D(): markers.append([marker, design])
-	return add_interact(id, pos, "read", func() -> void: read.emit(text), radius)
+## a readable inscription: lines of the sculptor's unknown script engraved on `marker` (a quad of
+## `size` metres); reading it shows the same text large, with its translation
+func inscription(id: String, pos: Vector3, text: String, radius := 1.3, marker := Transform3D(), size := Vector2(0.62, 0.8)) -> Interact:
+	var seed := float(absi(id.hash()) % 997) + 1.0
+	var cols := maxf(4.0, roundf(size.x / 0.115))
+	var rows := maxf(3.0, roundf(size.y / 0.17))
+	var aspect := (size.x / cols) / (size.y / rows)
+	var info := [seed, rows, cols, aspect, size.x / size.y]
+	if marker != Transform3D(): markers.append([marker, size, info, pos])
+	return add_interact(id, pos, "read", func() -> void: read.emit(text, info), radius)
 
-## a small glowing rune marks every readable inscription
 func _markers() -> void:
-	var sh := preload("res://shaders/rune_face.gdshader")
+	var sh := preload("res://shaders/inscription.gdshader")
 	for mk in markers:
+		var info: Array = mk[2]
 		var m := ShaderMaterial.new()
 		m.shader = sh
-		m.set_shader_parameter("design", mk[1])
-		m.set_shader_parameter("lit", 0.45)
+		m.set_shader_parameter("seed", info[0])
+		m.set_shader_parameter("rows", info[1])
+		m.set_shader_parameter("cols", info[2])
+		m.set_shader_parameter("aspect", info[3])
 		var q := QuadMesh.new()
-		q.size = Vector2(0.34, 0.42)
+		q.size = mk[1]
 		var mi := MeshInstance3D.new()
 		mi.mesh = q
 		mi.material_override = m
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.transform = mk[0]
 		add_child(mi)
+		inscr_mats.append([m, mk[3]])
+
+## the grooves glow brighter as the wanderer comes near
+func update_inscriptions(p: Vector3) -> void:
+	for e in inscr_mats:
+		var m: ShaderMaterial = e[0]
+		var at: Vector3 = e[1]
+		var d := Vector2(at.x - p.x, at.z - p.z).length()
+		m.set_shader_parameter("near", (1.0 - smoothstep(1.2, 4.5, d)) * (1.0 if absf(at.y - p.y) < 1.5 else 0.0))
 
 # ================================================================== geometry helpers
 func mb(zone: String) -> MB:
@@ -424,12 +443,13 @@ func _veiled_gate() -> void:
 	stump(Vector3(1.9, 0, -4.4), 1.7, true, 0.05)
 	rubble(Vector3(-4.0, 0, -1.0), 0.6, 5)
 	# inscriptions
-	box(z, Vector3(3.05, 0.48, 2.5), Vector3(0.7, 0.95, 0.22), 0.25, false, Basis(Vector3.UP, -0.5))
+	box(z, Vector3(3.05, 0.62, 2.5), Vector3(0.95, 1.24, 0.24), 0.25, false, Basis(Vector3.UP, -0.5))
+	box(z, Vector3(3.05, 1.28, 2.5), Vector3(1.05, 0.08, 0.3), 0.25, false, Basis(Vector3.UP, -0.5))
 	ob_rect(R(2.62, 2.25, 3.48, 2.75))
 	inscription("t_stele", Vector3(2.6, 0, 2.0), "Every face here is the same face.\nHe could not stop carving it.", 1.3,
-		Transform3D(Basis(Vector3.UP, -0.5 + PI) * Basis(Vector3.UP, PI), Vector3(3.05, 0.62, 2.5) + Basis(Vector3.UP, -0.5) * Vector3(0, 0, 0.12)), 0.0)
+		Transform3D(Basis(Vector3.UP, -0.5), Vector3(3.05, 0.64, 2.5) + Basis(Vector3.UP, -0.5) * Vector3(0, 0, 0.125)), Vector2(0.84, 1.08))
 	inscription("t_pool", Vector3(-0.1, 0, -0.5), "Still water keeps what passes over it.\nSometimes it keeps it a little longer.", 1.1,
-		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-0.1, 0.012, -0.55)), 3.0)
+		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-0.1, 0.012, -0.62)), Vector2(1.15, 0.78))
 	# exits: the arch to the north bridge, columns flanking
 	column(Vector3(-1.6, 0, -5.0), 3.6, true)
 	column(Vector3(1.6, 0, -5.0), 3.6, true)
@@ -483,7 +503,7 @@ func _hall() -> void:
 	rubble(Vector3(-3.5, 1.0, -19.6), 0.7, 6)
 	rubble(Vector3(2.6, 1.0, -12.3), 0.5, 4)
 	inscription("h_hall", Vector3(-3.4, 1.0, -12.6), "Glass does not lie.\nIt only answers late.", 1.2,
-		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-3.4, 1.012, -12.9)), 2.0)
+		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-3.4, 1.012, -12.95)), Vector2(1.15, 0.78))
 
 func _garden() -> void:
 	var z := "G"
@@ -519,8 +539,9 @@ func _garden() -> void:
 	balustrade(z, Vector2(9.7, -4.95), Vector2(16.8, -4.95), 1.0)
 	balustrade(z, Vector2(7.05, -11.8), Vector2(7.05, -5.2), 1.0)
 	inscription("g_stele", Vector3(11.0, 1.0, -6.4), "Nothing grows here but likeness.", 1.2,
-		Transform3D(Basis(), Vector3(11.0, 1.55, -5.64)), 5.0)
-	box(z, Vector3(11.0, 1.4, -5.75), Vector3(0.9, 0.8, 0.2), 0.25)
+		Transform3D(Basis(), Vector3(11.0, 1.62, -5.635)), Vector2(1.0, 0.9))
+	box(z, Vector3(11.0, 1.55, -5.75), Vector3(1.15, 1.1, 0.22), 0.25)
+	box(z, Vector3(11.0, 2.14, -5.75), Vector3(1.25, 0.08, 0.28), 0.25)
 	ob_rect(R(10.5, -5.9, 11.5, -5.5))
 
 func _shortcut() -> void:
@@ -563,8 +584,8 @@ func _court() -> void:
 	rubble(Vector3(8.6, 2.0, -18.4), 0.6, 5)
 	statue(z, Vector3(12.8, 2.0, -26.2), PI, 1.0)
 	inscription("l_stele", Vector3(8.3, 2.0, -21.4), "Turn the glass.\nThe light remembers the way.", 1.2,
-		Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(7.66, 2.6, -21.4)), 4.0)
-	box(z, Vector3(7.55, 2.45, -21.4), Vector3(0.2, 0.9, 0.8), 0.25)
+		Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(7.665, 2.62, -21.4)), Vector2(0.95, 1.0))
+	box(z, Vector3(7.55, 2.6, -21.4), Vector3(0.22, 1.2, 1.1), 0.25)
 
 func _ledge() -> void:
 	var z := "E"
@@ -583,9 +604,9 @@ func _ledge() -> void:
 	column(Vector3(28.4, 2.0, -19.5), 4.0)
 	stump(Vector3(21.6, 2.0, -19.6), 1.2)
 	inscription("e_stele", Vector3(27.6, 2.0, -20.4), "Beyond the glass the other one walks\nwhere you cannot.", 1.2,
-		Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(28.34, 2.6, -20.9)), 2.0)
-	box(z, Vector3(28.45, 2.45, -20.9), Vector3(0.2, 0.9, 0.8), 0.25)
-	ob_rect(R(28.3, -21.35, 28.6, -20.45))
+		Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(28.335, 2.62, -20.9)), Vector2(0.95, 1.0))
+	box(z, Vector3(28.45, 2.6, -20.9), Vector3(0.22, 1.2, 1.1), 0.25)
+	ob_rect(R(28.3, -21.5, 28.6, -20.3))
 
 func _shrine_platform() -> void:
 	var z := "S"

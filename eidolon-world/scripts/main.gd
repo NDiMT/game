@@ -282,6 +282,7 @@ func _process(dt: float) -> void:
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
 	if mode == "play": _auto_quality(dt)
+	level.update_inscriptions(player.position)
 	if mode == "play" or mode == "finale":
 		_update_area()
 		_update_air()
@@ -355,8 +356,8 @@ func _update_hum() -> void:
 	sfx.set_hum(clampf(1.0 - (bd - 1.0) / 7.0, 0.0, 1.0) * (1.0 if puzzles.beam_lit else 0.6))
 
 # ------------------------------------------------------------------ events
-func _on_read(text: String) -> void:
-	ui.show_text(text, player.position)
+func _on_read(text: String, script: Array) -> void:
+	ui.show_inscription(text, script, player.position)
 	sfx.play("chime_hall" if area == "hall" else "chime", -23.0, 0.5)
 	if focus and focus.id == "h_tablet":
 		puzzles.state["tablet"] = true
