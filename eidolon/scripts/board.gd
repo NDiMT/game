@@ -58,6 +58,57 @@ func _stone(is_black: bool) -> ShaderMaterial:
 	m.set_shader_parameter("bevel", 0.0 if is_black else 1.0)
 	return m
 
+const FACE_NORMALS := [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, -1, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]
+
+func _face_of(n: Vector3) -> int:
+	var best := 0
+	for i in 6:
+		if n.dot(FACE_NORMALS[i]) > n.dot(FACE_NORMALS[best]): best = i
+	return best
+
+func _roll_basis(d: Vector2i) -> Basis:
+	return Basis(Vector3.UP.cross(Vector3(d.x, 0, d.y)).normalized(), PI * 0.5)
+
+## The rune each goal shows = the rune facing UP on its body when it arrives along the stored solution
+## (same rolls as the animation: the cube rolls when it moves, an Eidolon rolls on its own step and
+## glides when carried). Visual only: not a rule (yet).
+func goal_runes() -> Array:
+	var seed := int(floor(glyph_seed()))
+	var cb := Basis()
+	var eb: Array[Basis] = []
+	for i in rules.mirrors.size(): eb.append(Basis())
+	var s := Rules.copy_state(rules.start)
+	for ch in rules.solution:
+		var d: Vector2i = Rules.DNAME[ch]
+		var ev := rules.step(s, d)
+		if ev["cube_moved"]: cb = _roll_basis(d) * cb
+		for i in eb.size():
+			if ev["eid_step"][i]: eb[i] = _roll_basis(ev["eid_dir"][i]) * eb[i]
+		s = ev["state"]
+	var out := [(_face_of(cb.inverse() * Vector3.UP) + seed) % 6]
+	for i in eb.size():
+		var m := Vector3(-1, 1, 1) if rules.mirrors[i]["axis"] == "x" else Vector3(1, 1, -1)
+		out.append((_face_of((eb[i].inverse() * Vector3.UP) * m) + seed) % 6)
+	return out
+
+## Body orientations follow undo/restart so the runes stay meaningful.
+var _orient_stack: Array = []
+func push_orient() -> void:
+	var o := [cube.transform.basis]
+	for e in eids: o.append(e.transform.basis)
+	_orient_stack.append(o)
+
+func pop_orient() -> void:
+	if _orient_stack.is_empty(): return
+	var o: Array = _orient_stack.pop_back()
+	cube.transform.basis = o[0]
+	for i in eids.size(): eids[i].transform.basis = o[i + 1]
+
+func reset_orient() -> void:
+	_orient_stack.clear()
+	cube.transform.basis = Basis()
+	for e in eids: e.transform.basis = Basis()
+
 ## The engraved cube designs vary per level (and shift family between chapters): "discovered".
 func glyph_seed() -> float:
 	return float(rules.id * 5 + (3 if rules.chapter == 2 else 0)) + (0.5 if rules.chapter == 2 else 0.0)
@@ -274,6 +325,7 @@ func _build_sigils() -> void:
 	goal_spots = [[rules.goal, 0, Color(0.86, 0.55, 0.14), Color(0.98, 0.52, 0.08)]]
 	for i in rules.egoals.size():
 		goal_spots.append([rules.egoals[i], 1, Color(0.04, 0.70, 0.92), Color(0.1, 0.78, 1.0)])
+	var runes := goal_runes()
 	var k := 0
 	for s in goal_spots:
 		var m := ShaderMaterial.new()
@@ -281,6 +333,8 @@ func _build_sigils() -> void:
 		m.set_shader_parameter("kind", float(s[1]))
 		m.set_shader_parameter("glyph_scale", 1.6 / 0.86)
 		m.set_shader_parameter("color", s[2])
+		m.set_shader_parameter("design", float(runes[k]))
+		m.set_shader_parameter("mirror", 1.0 if k > 0 else 0.0)
 		var mi := MeshInstance3D.new()
 		var q := QuadMesh.new()
 		q.size = Vector2(1.6, 1.6)
@@ -301,6 +355,7 @@ func _build_sigils() -> void:
 		bm.shader = preload("res://shaders/beam.gdshader")
 		bm.set_shader_parameter("color", s[3])
 		bm.set_shader_parameter("phase", k * 2.1)
+		bm.set_shader_parameter("boost", 1.35 if k == 0 else 1.0)
 		var beam := MeshInstance3D.new()
 		var bq := QuadMesh.new()
 		bq.size = Vector2(1.15, 4.6)
@@ -593,7 +648,7 @@ func _build_dust() -> void:
 # ------------------------------------------------------------------ state
 func set_state(s: Dictionary) -> void:
 	state = Rules.copy_state(s)
-	cube.transform = Transform3D(cube.transform.basis.orthonormalized() if cube.transform.basis.determinant() > 0.5 else Basis(), tile_pos(state["cube"], H))
+	cube.transform = Transform3D(_right_angles(cube.transform.basis), tile_pos(state["cube"], H))
 	for i in eids.size():
 		eids[i].transform = Transform3D(_right_angles(eids[i].transform.basis), tile_pos(state["eids"][i], H))
 		eid_glows[i].position = tile_pos(state["eids"][i], 0.03)

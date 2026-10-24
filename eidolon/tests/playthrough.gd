@@ -65,7 +65,17 @@ func _process(dt: float) -> void:
 		"moving":
 			if game.mode == "solved" or game.mode == "transition":
 				var ok: bool = game.moves == game.rules.par
-				results.append("%2d %-10s moves=%2d par=%2d %s" % [game.rules.id, game.rules.title, game.moves, game.rules.par, "ok" if ok else "MISMATCH"])
+				# the rune facing up on each body must be the one engraved on its goal sigil
+				var b: Board = game.board
+				var want: Array = b.goal_runes()
+				var seed := int(floor(b.glyph_seed()))
+				var got := [(b._face_of(b._right_angles(b.cube.transform.basis).inverse() * Vector3.UP) + seed) % 6]
+				for i in b.eids.size():
+					var m := Vector3(-1, 1, 1) if game.rules.mirrors[i]["axis"] == "x" else Vector3(1, 1, -1)
+					got.append((b._face_of((b._right_angles(b.eids[i].transform.basis).inverse() * Vector3.UP) * m) + seed) % 6)
+				if got != want:
+					print("ERROR rune mismatch level ", game.rules.id, " got ", got, " want ", want); errors += 1
+				results.append("%2d %-10s moves=%2d par=%2d runes=%s %s" % [game.rules.id, game.rules.title, game.moves, game.rules.par, game.board.goal_runes(), "ok" if ok else "MISMATCH"])
 				if not ok: errors += 1
 				expect_level += 1
 				phase = "wait_play" if expect_level <= game.levels.size() else "wait_end"

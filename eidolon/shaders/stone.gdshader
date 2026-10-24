@@ -43,9 +43,10 @@ void fragment() {
 	EMISSION = vec3(0.95, 0.85, 0.6) * pulse * 0.6 * (1.0 - glyphs);
 	if (glyphs > 0.5) {
 		vec2 gl = glyph_lines(op, half_size, glyph_seed);
-		float breathe = 0.55 + 0.25 * sin(TIME * 1.1 + glyph_seed);
-		float k = breathe + roll_glow * 0.9 + pulse * 1.6;
-		ALBEDO = mix(ALBEDO, glyph_col * 0.35, gl.x * 0.8);
-		EMISSION += glyph_col * (gl.x * 1.6 + gl.y * 0.35) * k;
+		float breathe = 0.8 + 0.2 * sin(TIME * 1.1 + glyph_seed);
+		float k = breathe + roll_glow * 0.8 + pulse * 1.5;
+		vec3 hot = mix(glyph_col, vec3(0.85, 1.0, 1.0), 0.55);      // near-white core
+		ALBEDO = mix(ALBEDO, vec3(0.0), gl.x * 0.9);
+		EMISSION += (hot * gl.x * 2.2 + glyph_col * gl.y * 1.1) * k;
 	}
 }

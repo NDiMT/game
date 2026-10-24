@@ -42,9 +42,10 @@ void fragment() {
 	float band = smoothstep(0.9, 1.0, sin(wp.y * 3.0 - TIME * 1.6)) * 0.25;
 	float flick = 0.94 + 0.06 * sin(TIME * 21.0 + sin(TIME * 6.3) * 3.0);
 	vec2 gl = core > 0.5 ? vec2(0.0) : glyph_lines(op * mirror_axis, half_size, glyph_seed);
-	float al = 0.56 + fres * 0.30 + edge * 0.9 + gl.x * 0.6 + gl.y * 0.25 + band;
+	float al = 0.56 + fres * 0.30 + edge * 0.9 + gl.x * 0.9 + gl.y * 0.45 + band;
 	al = clamp((al * scan * flick) * strength + pulse * 0.3 + shimmer * 0.2 + glitch * 0.4, 0.0, 0.97);
-	vec3 c = mix(tint, hi, clamp(edge * 0.85 + fres * 0.35 + gl.x * 0.9 + gl.y * 0.4 + band + pulse * 0.5 + glitch * 0.7, 0.0, 1.0));
+	vec3 c = mix(tint, hi, clamp(edge * 0.85 + fres * 0.35 + gl.y * 0.8 + band + pulse * 0.5 + glitch * 0.7, 0.0, 1.0));
+	c = mix(c, vec3(0.92, 1.0, 1.0), gl.x);
 	if (core > 0.5) { c = hi; al = (0.75 + 0.25 * sin(TIME * 2.3)) * strength; }
 	ALBEDO = c * (1.0 + pulse * 0.6);
 	ALPHA = al;

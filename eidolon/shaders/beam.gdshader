@@ -5,6 +5,7 @@ uniform vec3 color : source_color = vec3(1.0, 0.85, 0.5);
 uniform float lit = 0.0;
 uniform float phase = 0.0;
 uniform float fade = 1.0;
+uniform float boost = 1.0;
 
 void vertex() {
 	vec3 up = vec3(0.0, 1.0, 0.0);
@@ -23,7 +24,7 @@ void fragment() {
 	float core = 1.0 - smoothstep(0.0, mix(0.10, 0.18, lit), x);
 	float vfade = smoothstep(0.0, 0.05, h) * pow(1.0 - h, 0.85);
 	float motes = smoothstep(0.92, 1.0, sin(h * 40.0 - TIME * 2.5 + x * 3.0)) * 0.3;
-	float a = (body * mix(0.42, 0.62, lit) + core * mix(0.5, 0.8, lit) + motes * body) * vfade * k * fade;
+	float a = (body * mix(0.42, 0.62, lit) + core * mix(0.5, 0.8, lit) + motes * body) * vfade * k * fade * boost;
 	ALBEDO = mix(color, vec3(1.0), core * 0.35 * lit);
 	ALPHA = clamp(a, 0.0, 0.9);
 }

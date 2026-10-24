@@ -50,7 +50,6 @@ func _ready() -> void:
 	ui.level_chosen.connect(_on_level_chosen)
 	ui.action.connect(_on_action)
 	sfx.set_music(music_on)
-	sfx.start_music()           # fades in on the title (on web: as soon as the page may play audio)
 	ui.set_music_icon(music_on)
 	_setup_js()
 	# title: level I rises out of the fog behind the word
@@ -170,6 +169,7 @@ func try_move(d: Vector2i) -> bool:
 		if ev["state"]["eids"][i] != ev["eid_from"][i]: eid_moved = true
 	if eid_moved:
 		sfx.play("chime", -15.0, [1.0, 1.122, 1.335, 1.498][moves % 4])
+	board.push_orient()
 	board.play_turn(ev, d)
 	return true
 
@@ -196,6 +196,7 @@ func undo() -> void:
 	state = history.pop_back()
 	moves -= 1
 	ui.set_moves(moves)
+	board.pop_orient()
 	board.set_state(state)
 	sfx.play("chime", -18.0, 0.6)
 
@@ -205,6 +206,7 @@ func restart() -> void:
 	state = Rules.copy_state(rules.start)
 	moves = 0
 	ui.set_moves(0)
+	board.reset_orient()
 	board.set_state(state)
 	sfx.play("whoosh", -14.0, 1.6)
 
@@ -240,6 +242,12 @@ func _solved() -> void:
 		_show_select()
 
 # ------------------------------------------------------------------ input
+## Music starts on the first user gesture (which is also what unlocks the browser's AudioContext),
+## so nothing is ever scheduled into a suspended context.
+func _input(e: InputEvent) -> void:
+	if not sfx._music_started and ((e is InputEventScreenTouch and e.pressed) or (e is InputEventMouseButton and e.pressed) or (e is InputEventKey and e.pressed)):
+		sfx.start_music()
+
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventKey and e.pressed and not e.echo:
 		_key(e)
@@ -374,8 +382,20 @@ func _on_js_cmd(args: Array) -> void:
 		"preview": board.show_preview(rules.step(state, Rules.DNAME[parts[1]]))
 		"rotate": rotate_view(int(parts[1]))
 		"slowmo": Engine.time_scale = float(parts[1])
+		"snd":
+			# debug: play a synthesised stream on a given bus with a fresh player
+			var pl := AudioStreamPlayer.new()
+			pl.bus = parts[2] if parts.size() > 2 else "Master"
+			pl.stream = sfx.streams.get(parts[1])
+			add_child(pl)
+			pl.play()
 		"closeup":
-			world.rig.position = board.cube.global_position
+			var tgt := parts[2] if parts.size() > 2 else "cube"
+			var at := board.cube.global_position
+			if tgt == "eid": at = board.eids[0].global_position
+			elif tgt == "goal": at = board.tile_pos(rules.goal, 0.3)
+			elif tgt == "egoal": at = board.tile_pos(rules.egoals[0], 0.3)
+			world.rig.position = at
 			world.cam.size = float(parts[1]) if parts.size() > 1 else 3.0
 		"closeup_off":
 			world.rig.position = Vector3.ZERO
@@ -395,6 +415,12 @@ func _on_js_cmd(args: Array) -> void:
 			best = {}
 			_save()
 
+func _audio_dbg() -> Dictionary:
+	var buses := []
+	for b in AudioServer.bus_count:
+		buses.append("%s:%.0fdB%s peak=%.0f" % [AudioServer.get_bus_name(b), AudioServer.get_bus_volume_db(b), " MUTED" if AudioServer.is_bus_mute(b) else "", AudioServer.get_bus_peak_volume_left_db(b, 0)])
+	return {"buses": buses, "ready": sfx.ready_ok, "drone": sfx.drone.playing}
+
 func _js_state(dt: float) -> void:
 	if _js_cb == null: return
 	_js_t -= dt
@@ -402,5 +428,5 @@ func _js_state(dt: float) -> void:
 	_js_t = 0.2
 	var st := {"mode": mode, "level": rules.id if rules else 0, "moves": moves, "busy": board.busy if board else false,
 		"won": rules.won(state) if rules else false, "fps": Engine.get_frames_per_second(), "yaw": world.yaw_index,
-		"solved": solved_count, "swipes": swipes, "gesture": _gesture, "best_count": best.size(), "music": music_on, "dissolved": board_gone, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)}
+		"solved": solved_count, "swipes": swipes, "gesture": _gesture, "best_count": best.size(), "music": music_on, "audio": _audio_dbg(), "dissolved": board_gone, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)}
 	JavaScriptBridge.eval("window.eidolonState = " + JSON.stringify(st) + ";", true)

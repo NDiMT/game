@@ -36,19 +36,15 @@ const SCALE := [-3, -1, 0, 2, 4, 5, 7, 9, 11, 12, 14, 16]
 
 func _ready() -> void:
 	_rng.randomize()
-	music_bus = _bus("Music", -40.0)
-	sfx_bus = _bus("SFX", 0.0)
-	var rv := AudioEffectReverb.new()
-	rv.room_size = 0.9
-	rv.damping = 0.45
-	rv.spread = 0.8
-	rv.wet = 0.42
-	rv.dry = 0.85
-	rv.predelay_msec = 60.0
-	AudioServer.add_bus_effect(music_bus, rv)
-	var lim := AudioEffectHardLimiter.new()
-	lim.ceiling_db = -0.8
-	AudioServer.add_bus_effect(0, lim)
+	# Buses come from res://default_bus_layout.tres. They must NOT be created at runtime: on the web
+	# (Sample playback) Godot mirrors buses into Web Audio, and AudioServer.add_bus() at the end of the
+	# list re-orders that mirror (Bus.move splice off-by-one) so Master stops being index 0; the next
+	# set_bus_send(..., "Master") then wires Master's output back into the new bus -> a feedback cycle,
+	# which Web Audio renders as total silence. Web Sample playback also ignores bus effects, so the
+	# music's reverb is baked into the samples instead (see _reverb()).
+	music_bus = AudioServer.get_bus_index("Music")
+	sfx_bus = AudioServer.get_bus_index("SFX")
+	AudioServer.set_bus_volume_db(music_bus, -40.0)
 	for i in 8:
 		var p := AudioStreamPlayer.new()
 		p.bus = "SFX"
@@ -70,16 +66,6 @@ func _ready() -> void:
 		add_child(mp)
 		motif_players.append(mp)
 
-func _bus(name: String, vol: float) -> int:
-	var idx := AudioServer.get_bus_index(name)
-	if idx < 0:
-		idx = AudioServer.bus_count
-		AudioServer.add_bus(idx)
-		AudioServer.set_bus_name(idx, name)
-		AudioServer.set_bus_send(idx, "Master")
-	AudioServer.set_bus_volume_db(idx, vol)
-	return idx
-
 var _build_step := 0
 var _build_ms := 0
 var _pad_buf := PackedFloat32Array()
@@ -91,12 +77,12 @@ func build_step() -> bool:
 	var t0 := Time.get_ticks_msec()
 	match _build_step:
 		0: streams["thud"] = _wav(_thud(0.42))
-		1: streams["chime"] = _wav(_chime(1318.5, 1.6))
-		2: streams["piano"] = _wav(_piano(261.63, 2.6))
+		1: streams["chime"] = _wav(_reverb(_chime(1318.5, 1.6), 0.8, 0.30))
+		2: streams["piano"] = _wav(_reverb(_piano(261.63, 2.6), 1.4, 0.32))
 		3: streams["grind"] = _wav(_grind(0.62))
 		4: streams["whoosh"] = _wav(_whoosh(2.4))
 		5: streams["glitch"] = _wav(_glitch_snd(0.32))
-		6: streams["bell"] = _wav(_bell(523.25, 3.2))
+		6: streams["bell"] = _wav(_reverb(_bell(523.25, 3.2), 1.6, 0.38))
 		7:
 			var dr := _wav(_drone(8.0))
 			dr.loop_mode = AudioStreamWAV.LOOP_FORWARD
@@ -129,7 +115,7 @@ func start_music() -> void:
 	if not ready_ok: return
 	if not drone.playing:
 		drone.stream = streams["drone"]
-		drone.volume_db = -15.0
+		drone.volume_db = -12.0
 		drone.play()
 	if _chord < 0: _next_chord(true)
 	var tw := create_tween()
@@ -173,7 +159,7 @@ func _next_chord(first: bool) -> void:
 		p.pitch_scale = pow(2.0, float(notes[k]) / 12.0) * (1.0 + _rng.randf_range(-0.002, 0.002))
 		p.volume_db = -60.0
 		p.play(_rng.randf_range(0.0, PAD_LEN - 0.1))
-		var target := -13.0 - k * 1.5
+		var target := -10.0 - k * 1.5
 		create_tween().tween_property(p, "volume_db", target, 0.5 if first else 4.5).set_trans(Tween.TRANS_SINE)
 	if not first:
 		for k in 4:
@@ -197,7 +183,7 @@ func _motif() -> void:
 	for i in count:
 		var semi: int = tones[_rng.randi_range(0, tones.size() - 1)] if _rng.randf() < 0.65 else SCALE[_rng.randi_range(0, SCALE.size() - 1)]
 		if _rng.randf() < 0.3: semi += 12
-		var vol := _rng.randf_range(-19.0, -14.0)
+		var vol := _rng.randf_range(-16.0, -11.0)
 		_note_later(t, inst, semi, vol)
 		_note_later(t + 0.43, inst, semi, vol - 10.0)   # faked echo
 		t += _rng.randf_range(0.45, 1.1)
@@ -411,3 +397,43 @@ func _glitch_snd(dur: float) -> PackedFloat32Array:
 
 func step_f(edge: float, x: float) -> float:
 	return 1.0 if x >= edge else 0.0
+
+## Baked Schroeder reverb (4 combs + 2 allpasses), appended as a tail: works in Web Sample playback,
+## where bus effects are not applied.
+func _reverb(dry: PackedFloat32Array, tail: float, wet: float) -> PackedFloat32Array:
+	var n := dry.size() + int(tail * RATE)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var combs := [1116, 1188, 1277, 1356]
+	var bufs := []
+	var idx := [0, 0, 0, 0]
+	for c in combs:
+		var b := PackedFloat32Array()
+		b.resize(int(c * RATE / 44100.0))
+		bufs.append(b)
+	var ap_len := [int(556 * RATE / 44100.0), int(441 * RATE / 44100.0)]
+	var ap := [PackedFloat32Array(), PackedFloat32Array()]
+	ap[0].resize(ap_len[0]); ap[1].resize(ap_len[1])
+	var api := [0, 0]
+	var fb := 0.80
+	for i in n:
+		var x := dry[i] if i < dry.size() else 0.0
+		var acc := 0.0
+		for k in 4:
+			var b: PackedFloat32Array = bufs[k]
+			var j: int = idx[k]
+			var y := b[j]
+			b[j] = x + y * fb
+			idx[k] = (j + 1) % b.size()
+			acc += y
+		acc *= 0.25
+		for k in 2:
+			var b2: PackedFloat32Array = ap[k]
+			var j2: int = api[k]
+			var bv := b2[j2]
+			var y2 := -acc + bv
+			b2[j2] = acc + bv * 0.5
+			api[k] = (j2 + 1) % b2.size()
+			acc = y2
+		out[i] = x + acc * wet
+	return out
