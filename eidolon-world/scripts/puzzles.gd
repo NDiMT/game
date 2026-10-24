@@ -238,10 +238,10 @@ func _door() -> void:
 	marble_instance(dm.commit(), self)
 	level.ob_rect(Level.R(10.9, -15.28, 13.1, -14.86), "door")
 
-func turn_dial(i: int) -> void:
+func turn_dial(i: int, dir := 1) -> void:
 	if state["door_open"] or busy: return
 	var s: Array = state["door"]
-	s[i] = (int(s[i]) + 1) % 6
+	s[i] = posmod(int(s[i]) + dir, 6) if int(s[i]) >= 0 or dir > 0 else 5
 	_apply_door_runes()
 	event.emit("dial", i)
 	if s == DOOR_SOLUTION:

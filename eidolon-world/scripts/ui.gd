@@ -466,60 +466,86 @@ class TitleWord extends Control:
 
 
 class DoorOverlay extends Control:
-	## Close-up of the rune door, drawn in the rune language: three big slots. Tap a slot to turn its
-	## rune (flip + soft stone click); keyboard: left/right choose, E turns, Esc/Q closes.
-	signal slot_pressed(i: int)
+	## The rune door, close up. A big glowing card (like reading a statue) shows the rune in the ACTIVE
+	## slot with its name; below, the three slots as large cards in a row (the active one ringed).
+	## Tap the big card or the right arrow to turn the rune forward, the left arrow to turn it back,
+	## tap a slot card to make it active. Keyboard: left/right choose the slot, E turns, Q/Esc closes.
+	signal slot_pressed(i: int)          # turn slot i forward
+	signal slot_back(i: int)             # turn slot i back
 	signal closed
+	const NAMES := ["EIDOS", "MEANDROS", "KATOPTRON", "KYKLOS", "TRIGONON", "TETRAKTYS"]
 	var caps: Font
 	var italic: Font
 	var slots: Array[Control] = []
 	var mats: Array[ShaderMaterial] = []
+	var big: Control
+	var big_mat: ShaderMaterial
 	var designs := [-1, -1, -1]
 	var selected := 0
-	var panel := Rect2()
 	var _flare := 0.0
 	var _t := 0.0
 	var _close_r := Rect2()
+	var _left_r := Rect2()
+	var _right_r := Rect2()
+	var _name_y := 0.0
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
-		for i in 3:
-			var c := Control.new()
-			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			add_child(c)
-			var r := ColorRect.new()
-			r.set_anchors_preset(Control.PRESET_FULL_RECT)
-			r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var m := ShaderMaterial.new()
-			m.shader = preload("res://shaders/rune_ui.gdshader")
-			m.set_shader_parameter("numeral", float(i + 1))
-			m.set_shader_parameter("design", -1.0)
-			r.material = m
-			c.add_child(r)
-			slots.append(c)
-			mats.append(m)
+		big = _card(true)
+		for i in 3: _card(false, i)
 		resized.connect(_layout)
 		_layout()
 
+	func _card(is_big: bool, i := 0) -> Control:
+		var c := Control.new()
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(c)
+		var disc := CardDisc.new()
+		disc.set_anchors_preset(Control.PRESET_FULL_RECT)
+		c.add_child(disc)
+		var r := ColorRect.new()
+		r.set_anchors_preset(Control.PRESET_FULL_RECT)
+		r.offset_left = 10; r.offset_right = -10; r.offset_top = 8; r.offset_bottom = -8
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/rune_ui.gdshader")
+		m.set_shader_parameter("design", -1.0)
+		r.material = m
+		c.add_child(r)
+		if is_big:
+			big_mat = m
+		else:
+			m.set_shader_parameter("numeral", float(i + 1))
+			slots.append(c)
+			mats.append(m)
+		return c
+
 	func _layout() -> void:
-		var w := minf(size.x - 32.0, 360.0)
-		var h := w * 1.25
-		panel = Rect2((size.x - w) * 0.5, size.y * 0.42 - h * 0.5, w, h)
-		var sw := w * 0.235
-		var sh := sw * 1.38
+		var W := size.x
+		var bw := minf(220.0, W * 0.56)
+		var bh := bw * 1.22
+		big.size = Vector2(bw, bh)
+		big.position = Vector2((W - bw) * 0.5, size.y * 0.30 - bh * 0.5)
+		big.pivot_offset = big.size * 0.5
+		_name_y = big.position.y + bh + 26.0
+		_left_r = Rect2(big.position.x - 64.0, big.position.y + bh * 0.5 - 30.0, 56.0, 60.0)
+		_right_r = Rect2(big.position.x + bw + 8.0, big.position.y + bh * 0.5 - 30.0, 56.0, 60.0)
+		var sw := minf(120.0, (W - 48.0) / 3.0)
+		var sh := sw * 1.3
+		var gap := (W - 3.0 * sw) / 4.0
 		for i in 3:
-			var cx := panel.position.x + w * (0.2 + 0.3 * i)
 			var c := slots[i]
 			c.size = Vector2(sw, sh)
-			c.position = Vector2(cx - sw * 0.5, panel.position.y + h * 0.40 - sh * 0.5)
+			c.position = Vector2(gap + i * (sw + gap), size.y * 0.70 - sh * 0.5)
 			c.pivot_offset = c.size * 0.5
-		_close_r = Rect2(panel.end.x - 46.0, panel.position.y + 8.0, 38.0, 38.0)
+		_close_r = Rect2(W - 58.0, 26.0, 40.0, 40.0)
 		queue_redraw()
 
 	func open(state: Array, sel: int) -> void:
 		designs = state.duplicate()
 		selected = sel
 		for i in 3: _apply(i)
+		_apply_big()
 		visible = true
 		modulate.a = 0.0
 		create_tween().tween_property(self, "modulate:a", 1.0, 0.35)
@@ -531,38 +557,64 @@ class DoorOverlay extends Control:
 		tw.tween_callback(func() -> void: visible = false)
 		closed.emit()
 
+	func select(i: int) -> void:
+		if i == selected: return
+		selected = i
+		var tw := create_tween()
+		tw.tween_property(big, "scale", Vector2(0.92, 0.92), 0.08)
+		tw.tween_callback(_apply_big)
+		tw.tween_property(big, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
 	func _apply(i: int) -> void:
 		mats[i].set_shader_parameter("design", float(designs[i]))
 		mats[i].set_shader_parameter("glow", 0.0 if designs[i] < 0 else 1.0)
 
-	## the slot turns over to show its new rune
+	func _apply_big() -> void:
+		var d: int = designs[selected]
+		big_mat.set_shader_parameter("design", float(d))
+		big_mat.set_shader_parameter("numeral", float(selected + 1))
+		big_mat.set_shader_parameter("glow", 0.0 if d < 0 else 1.3)
+		queue_redraw()
+
+	## the active rune turns over: the big card and its slot card flip together
 	func flip(i: int, new_design: int) -> void:
 		designs[i] = new_design
-		var c := slots[i]
-		var tw := create_tween()
-		tw.tween_property(c, "scale:x", 0.0, 0.11).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		tw.tween_callback(func() -> void: _apply(i))
-		tw.tween_property(c, "scale:x", 1.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		for c in [slots[i], big]:
+			var cc: Control = c
+			var tw := create_tween()
+			tw.tween_property(cc, "scale:x", 0.0, 0.11).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			tw.tween_callback(func() -> void:
+				_apply(i)
+				if i == selected: _apply_big())
+			tw.tween_property(cc, "scale:x", 1.0, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	func flare() -> void:
 		var tw := create_tween()
 		tw.tween_property(self, "_flare", 1.0, 0.5)
-		tw.tween_interval(0.7)
+		tw.tween_interval(0.8)
 		tw.tween_callback(close)
 		tw.tween_property(self, "_flare", 0.0, 0.3)
+
+	func big_center() -> Vector2:
+		return big.position + big.size * 0.5
 
 	func _gui_input(e: InputEvent) -> void:
 		var p := Vector2.INF
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT: p = e.position
 		if p == Vector2.INF: return
 		accept_event()
-		if _close_r.grow(10.0).has_point(p) or not panel.has_point(p):
+		if _close_r.grow(10.0).has_point(p):
 			close()
 			return
+		if _left_r.grow(6.0).has_point(p):
+			slot_back.emit(selected)
+			return
+		if _right_r.grow(6.0).has_point(p) or Rect2(big.position, big.size).has_point(p):
+			slot_pressed.emit(selected)
+			return
 		for i in 3:
-			if Rect2(slots[i].position, slots[i].size).grow(12.0).has_point(p):
-				selected = i
-				slot_pressed.emit(i)
+			if Rect2(slots[i].position, slots[i].size).grow(8.0).has_point(p):
+				select(i)
 				return
 
 	func _process(dt: float) -> void:
@@ -571,38 +623,51 @@ class DoorOverlay extends Control:
 		queue_redraw()
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.055, 0.06, 0.62))
-		var r := panel
-		# the door: pale marble slab, a carved inner border, a lintel line
-		draw_rect(r.grow(10.0), Color(0.22, 0.22, 0.23, 0.9))
-		draw_rect(r, Color(0.80, 0.79, 0.76))
-		for k in 7:
-			var y := r.position.y + r.size.y * (0.08 + 0.13 * k)
-			draw_line(Vector2(r.position.x + 10.0, y + sin(k * 3.1) * 5.0), Vector2(r.end.x - 10.0, y + 9.0 + cos(k * 1.7) * 6.0), Color(0.66, 0.65, 0.62, 0.35), 1.0, true)
-		draw_rect(r.grow(-14.0), Color(0.42, 0.42, 0.42, 0.9), false, 1.4)
-		draw_rect(r.grow(-20.0), Color(0.55, 0.55, 0.54, 0.6), false, 1.0)
-		# a recessed socket under each slot, the selected one ringed
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.04, 0.045, 0.05, 0.78))
+		var cy := Color(0.45, 0.93, 1.0)
+		# the active slot: its card ringed, a thread of light up to the big card
 		for i in 3:
 			var c := slots[i]
-			var sr := Rect2(c.position, c.size).grow(6.0)
-			draw_rect(sr, Color(0.14, 0.15, 0.16, 0.92))
-			draw_rect(sr, Color(0.55, 0.9, 1.0, 0.35 + 0.65 * _flare), false, 1.0)
-			if i == selected:
-				var pulse := 0.5 + 0.5 * sin(_t * 4.0)
-				draw_rect(sr.grow(5.0), Color(0.55, 0.95, 1.0, 0.45 + 0.35 * pulse), false, 1.5)
+			var r := Rect2(c.position, c.size)
+			var on := i == selected
+			var pulse := 0.5 + 0.5 * sin(_t * 3.5)
+			draw_rect(r.grow(4.0), Color(cy, (0.85 + 0.15 * pulse) if on else 0.22), false, 2.0 if on else 1.0)
+			if on:
+				var a := Vector2(r.get_center().x, r.position.y - 6.0)
+				var b := Vector2(big.position.x + big.size.x * 0.5, big.position.y + big.size.y + 44.0)
+				draw_line(a, b, Color(cy, 0.35), 1.0, true)
+			if caps:
+				var t: String = NAMES[designs[i]] if designs[i] >= 0 else "—"
+				var fs := 10
+				var w := caps.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+				draw_string(caps, Vector2(r.get_center().x - w * 0.5, r.end.y + 20.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.85, 0.9, 0.92, 0.9 if on else 0.55))
+		draw_rect(Rect2(big.position, big.size).grow(6.0), Color(cy, 0.25 + 0.5 * _flare), false, 1.0)
+		# the rune's name under the big card
 		if caps:
-			var hint := "TAP A RUNE TO TURN IT"
-			var fs := 11
-			var tw := caps.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-			draw_string(caps, Vector2(r.get_center().x - tw * 0.5, r.position.y + r.size.y * 0.78), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.25, 0.25, 0.26, 0.9))
+			var d: int = designs[selected]
+			var name := NAMES[d] if d >= 0 else "EMPTY"
+			var fs2 := 22
+			var w2 := caps.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x
+			draw_string(caps, Vector2(size.x * 0.5 - w2 * 0.5, _name_y), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, Color(0.88, 0.97, 1.0, 1.0))
+			var sub := "SLOT  " + ["I", "II", "III"][selected]
+			var w3 := caps.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+			draw_string(caps, Vector2(size.x * 0.5 - w3 * 0.5, _name_y + 22.0), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.7, 0.8, 0.85, 0.75))
 		if italic:
-			var line := "as the veiled ones are numbered"
-			var fs2 := 15
-			var w2 := italic.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x
-			draw_string(italic, Vector2(r.get_center().x - w2 * 0.5, r.position.y + r.size.y * 0.86), line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, Color(0.2, 0.2, 0.21, 0.9))
-		# close control
+			var line := "tap the rune to turn it  ·  as the veiled ones are numbered"
+			var w4 := italic.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+			draw_string(italic, Vector2(size.x * 0.5 - w4 * 0.5, size.y * 0.70 + slots[0].size.y * 0.5 + 54.0), line, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.75, 0.8, 0.82, 0.8))
+		# arrows
+		for sd in [-1, 1]:
+			var rr := _left_r if sd < 0 else _right_r
+			var c2 := rr.get_center()
+			draw_circle(c2, 22.0, Color(0.1, 0.12, 0.13, 0.8))
+			draw_arc(c2, 22.0, 0, TAU, 40, Color(cy, 0.7), 1.3, true)
+			var tip := c2 + Vector2(7.0 * sd, 0)
+			draw_line(tip, tip + Vector2(-11.0 * sd, -10.0), Color(0.95, 1, 1), 2.0, true)
+			draw_line(tip, tip + Vector2(-11.0 * sd, 10.0), Color(0.95, 1, 1), 2.0, true)
+		# close
 		var cc := _close_r.get_center()
-		draw_circle(cc, 16.0, Color(0.1, 0.1, 0.11, 0.85))
-		draw_arc(cc, 16.0, 0, TAU, 32, Color(0.9, 0.9, 0.88, 0.7), 1.0, true)
-		draw_line(cc + Vector2(-6, -6), cc + Vector2(6, 6), Color(0.95, 0.95, 0.92), 1.6, true)
-		draw_line(cc + Vector2(6, -6), cc + Vector2(-6, 6), Color(0.95, 0.95, 0.92), 1.6, true)
+		draw_circle(cc, 18.0, Color(0.1, 0.1, 0.11, 0.9))
+		draw_arc(cc, 18.0, 0, TAU, 32, Color(0.9, 0.9, 0.88, 0.75), 1.0, true)
+		draw_line(cc + Vector2(-6, -6), cc + Vector2(6, 6), Color(0.95, 0.95, 0.92), 1.8, true)
+		draw_line(cc + Vector2(6, -6), cc + Vector2(-6, 6), Color(0.95, 0.95, 0.92), 1.8, true)

@@ -71,6 +71,7 @@ func _ready() -> void:
 	world.add_moths(Puzzles.PLATE_POS + Vector3(0, 0.8, 0), 2)
 	world.add_moths(Vector3(-2.4, 0.6, 1.7), 1)
 	ui.door_overlay.slot_pressed.connect(door_cycle)
+	ui.door_overlay.slot_back.connect(func(i: int) -> void: door_cycle(i, -1))
 	ui.door_overlay.closed.connect(_door_overlay_closed)
 	_setup_js()
 	_load_save()
@@ -177,8 +178,10 @@ func _input(e: InputEvent) -> void:
 		if e is InputEventKey and e.pressed and not e.echo:
 			var ov := ui.door_overlay
 			match e.keycode:
-				KEY_LEFT, KEY_A: ov.selected = (ov.selected + 2) % 3
-				KEY_RIGHT, KEY_D: ov.selected = (ov.selected + 1) % 3
+				KEY_LEFT, KEY_A: ov.select((ov.selected + 2) % 3)
+				KEY_RIGHT, KEY_D: ov.select((ov.selected + 1) % 3)
+				KEY_UP, KEY_W: door_cycle(ov.selected)
+				KEY_DOWN, KEY_S: door_cycle(ov.selected, -1)
 				KEY_E, KEY_SPACE, KEY_ENTER: door_cycle(ov.selected)
 				KEY_ESCAPE, KEY_Q: ov.close()
 		return
@@ -214,13 +217,13 @@ func open_door_overlay(sel: int) -> void:
 	controls.reset()
 	controls.show_interact("")
 	ui.door_overlay.open(puzzles.state["door"], sel)
-	sfx.play("click", -16.0, 0.8)
+	sfx.play("page", -14.0, 0.9)
 
 ## a slot tapped (or E on the selected slot): the rune turns over
-func door_cycle(i: int) -> void:
+func door_cycle(i: int, dir := 1) -> void:
 	if mode != "door": return
-	ui.door_overlay.selected = i
-	puzzles.turn_dial(i)
+	ui.door_overlay.select(i)
+	puzzles.turn_dial(i, dir)
 	ui.door_overlay.flip(i, puzzles.state["door"][i])
 	if puzzles.state["door_open"]: ui.door_overlay.flare()
 
@@ -382,12 +385,12 @@ func _on_event(name: String, data: Variant) -> void:
 			ui.show_rune(data[0], data[1])
 			sfx.play("glass", -17.0, 0.5 * pow(2.0, [0, 4, 7][data[1] - 1] / 12.0))
 		"dial":
-			sfx.play("click", -12.0, 0.95 + data * 0.05)
-			sfx.play("grind", -24.0, 1.4)
+			sfx.play("flip", -13.0, 0.95 + data * 0.05)
+			sfx.play("grind", -20.0, 1.6)
 		"door_solved":
 			sfx.resolve(0)
 		"door_grind":
-			sfx.play("door", -6.0, 1.0)
+			sfx.play("door", 0.0, 0.9)
 			world.shake(0.45)
 		"door_open":
 			_save()
@@ -400,7 +403,7 @@ func _on_event(name: String, data: Variant) -> void:
 			sfx.resolve(-2)
 			_save()
 		"mirror_turn":
-			sfx.play("turn", -11.0, 1.0)
+			sfx.play("turn", -6.0, 1.25)
 		"beam_lit":
 			sfx.resolve(4)
 			sfx.play("bell", -16.0, 1.0)
@@ -417,7 +420,7 @@ func _on_event(name: String, data: Variant) -> void:
 			sfx.resolve(-3)
 			sfx.play("bell", -12.0, 0.75)
 		"bridge_rise":
-			sfx.play("door", -7.0, 0.85)
+			sfx.play("door", -1.0, 0.8)
 			world.shake(0.35)
 		"plate_open":
 			_save()
@@ -575,7 +578,7 @@ func state_dict() -> Dictionary:
 		"puzzles": puzzles.state, "beam_lit": puzzles.beam_lit, "busy": puzzles.busy, "auto": auto_target != Vector3.INF,
 		"refl": refl, "gaze": puzzles.hall_mirror.gaze_head, "glimpses": glimpses, "awaken": world.awaken,
 		"fps": Engine.get_frames_per_second(), "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
-		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "speed": player.speed01,
+		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "music": sfx._music_cur, "speed": player.speed01,
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
 		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text, "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
 		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
@@ -588,6 +591,8 @@ func _door_slot_centers() -> Array:
 	for c in ui.door_overlay.slots:
 		var p: Vector2 = xf * (c.position + c.size * 0.5)
 		out.append([snappedf(p.x, 0.1), snappedf(p.y, 0.1)])
+	var b: Vector2 = xf * ui.door_overlay.big_center()
+	out.append([snappedf(b.x, 0.1), snappedf(b.y, 0.1)])     # [3] = the big card
 	return out
 
 func _setup_js() -> void:
