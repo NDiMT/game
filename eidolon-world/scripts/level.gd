@@ -264,7 +264,10 @@ func _markers() -> void:
 		mi.mesh = q
 		mi.material_override = m
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.transform = mk[0]
+		# v0.5b: never coplanar with the stone it is carved in (z-fighting on phones): 6 mm proud
+		var xf: Transform3D = mk[0]
+		mi.transform = Transform3D(xf.basis, xf.origin + xf.basis.z.normalized() * 0.006)
+		m.render_priority = 1
 		add_child(mi)
 		inscr_mats.append([m, mk[3]])
 

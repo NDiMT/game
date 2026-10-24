@@ -71,6 +71,11 @@ func _ready() -> void:
 	chapter.post_commit()
 	_drawbridge_lever()
 	chapter.event.connect(_on_chapter_event)
+	var gt := ui.glass_talk
+	gt.solved.connect(func(id: String) -> void: chapter.glass_answered(id))
+	gt.closed.connect(func(_id: String) -> void: _glass_closed())
+	gt.solved.connect(func(_id: String) -> void: get_tree().create_timer(3.4).timeout.connect(_glass_closed))
+	gt.sound.connect(_glass_sound)
 	controls.shard.connect(func() -> void: if mode == "play": chapter.toggle_lens())
 	level.read.connect(_on_read)
 	puzzles.event.connect(_on_event)
@@ -240,6 +245,9 @@ func _input(e: InputEvent) -> void:
 				KEY_DOWN, KEY_S: door_cycle(ov.selected, -1)
 				KEY_E, KEY_SPACE, KEY_ENTER: door_cycle(ov.selected)
 				KEY_ESCAPE, KEY_Q: ov.close()
+		return
+	if mode == "glass":
+		if e is InputEventKey and e.pressed and not e.echo and e.keycode in [KEY_ESCAPE, KEY_Q]: ui.glass_talk.close()
 		return
 	if mode == "cine":
 		if e is InputEventScreenTouch or (e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT): _skip_hold = e.pressed
@@ -587,6 +595,33 @@ func _drawbridge_lever() -> void:
 	level.add_interact("drawbridge", Vector3(21.55, 2.0, -22.9), "lever", func() -> void: puzzles.lower_drawbridge(false), 1.0,
 		func() -> bool: return not puzzles.state.get("drawbridge", false) and player.position.x > 21.0)
 
+# ------------------------------------------------------------------ v0.5b: a conversation through the glass
+func open_glass(id: String) -> void:
+	if mode != "play": return
+	mode = "glass"
+	player.input_dir = Vector2.ZERO
+	auto_target = Vector3.INF
+	key_vec = Vector2.ZERO
+	controls.enabled = false
+	controls.reset()
+	controls.show_interact("")
+	ui.hide_text()
+	ui.glass_talk.open({"id": id, "first": "follow", "question": "together_half"})
+
+func _glass_sound(n: String) -> void:
+	match n:
+		"breath": sfx.cue("breath")
+		"writing": sfx.play("glass_tink", -24.0, 0.8)
+		"chime": sfx.play("chime", -10.0, 1.0)
+		"wrong": sfx.play("glass_tink", -16.0, 0.53)        # a low, slightly sour glass tone
+
+func _glass_closed() -> void:
+	if mode != "glass": return
+	mode = "play"
+	controls.enabled = true
+	controls.block(250)                # the closing tap never reaches the world (as the door panel)
+	_world_block_t = 0.25
+
 # ------------------------------------------------------------------ v0.5 chapter events
 func _on_chapter_event(name: String, data: Variant) -> void:
 	match name:
@@ -707,7 +742,11 @@ func _save_settings() -> void:
 
 func _apply_tier_extras() -> void:
 	for r in puzzles.reflectors:
-		if r.planar: r.planar.enabled = world.quality_high
+		if r.planar:
+			r.planar.enabled = true
+			# the low tier keeps a half-resolution reflection; high / auto a full one, antialiased
+			r.planar.scale = 1.0 if world.quality_high else 0.5
+			r.planar.vp.msaa_3d = Viewport.MSAA_2X if world.quality_high and world.auto_step < 2 else Viewport.MSAA_DISABLED
 	level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
 
 func _load_settings() -> void:
@@ -788,6 +827,36 @@ func cmd(c: String) -> Variant:
 		"save": _save()
 		"finale": start_finale()
 		"jump": jump(a[1])
+		"glass_answer":
+			# glass_answer:x,y;x,y;... (panel units) -> the recogniser (tests)
+			var pts := PackedVector2Array()
+			for pair in c.substr(13).split(";"):
+				var xy := pair.split(",")
+				if xy.size() == 2: pts.append(Vector2(float(xy[0]), float(xy[1])))
+			return ui.glass_talk.answer(pts)
+		"glass_close": ui.glass_talk.close()
+		"glass_try":
+			# synthetic strokes (tests): right = her half mirrored (the answer), right_rev = the same drawn
+			# backwards with a shaky hand, left = her half copied, line = a straight stroke
+			var gt := ui.glass_talk
+			var st := PackedVector2Array()
+			match a[1]:
+				"right": st = gt.target[0]
+				"right_rev":
+					var tt: PackedVector2Array = gt.target[0]
+					for i in range(tt.size() - 1, -1, -1): st.append(tt[i] + Vector2(sin(i * 1.7) * 0.04, cos(i * 2.3) * 0.04) + Vector2(0.05, -0.03))
+				"left": st = gt.her_half[0]
+				"line": st = PackedVector2Array([Vector2(0.4, 0.3), Vector2(0.4, -0.9)])
+			return gt.answer(GlassTalk.resample(st, 24))
+		"glass_preview":
+			# show part of the answer as your stroke, mid-draw (screenshots)
+			var gt2 := ui.glass_talk
+			var pts: PackedVector2Array = GlassTalk.resample(gt2.target[0], 40)
+			var part := PackedVector2Array()
+			for i in int(40 * float(a[1])): part.append(pts[i])
+			gt2.ink.mine = [[gt2._px(part), 1.0]]
+			gt2.phase = "drawing"
+			gt2.ink.queue_redraw()
 		"skip":
 			if cine:
 				sfx.stop_cue("cinematic_hand", 1.2)
@@ -887,7 +956,7 @@ func state_dict() -> Dictionary:
 		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "yaw_index": world.yaw_index, "zoom": snappedf(world.zoom, 0.01), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
 		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01),
 		"chapter": chapter.state, "lens": chapter.lens_on, "calm": snappedf(chapter.calm, 0.01), "cine_t": snappedf(cine.t, 0.1) if cine else -1.0,
-		"letterbox": snappedf(ui.letterbox, 0.01), "hint_t": snappedf(chapter.hint_t, 0.1), "lift": snappedf(chapter.lift_h, 0.01)}
+		"letterbox": snappedf(ui.letterbox, 0.01), "glass": ui.glass_talk.phase, "glass_tries": ui.glass_talk.tries, "glass_score": ui.glass_talk.last_score, "hint_t": snappedf(chapter.hint_t, 0.1), "lift": snappedf(chapter.lift_h, 0.01)}
 
 func _door_slot_centers() -> Array:
 	var out := []

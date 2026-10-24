@@ -13,5 +13,5 @@ void fragment() {
 	float band2 = smoothstep(0.03, 0.0, abs(fract(uv.x * 0.55 - uv.y * 0.35 + shift + 0.08 + TIME * 0.01) - 0.5));
 	float vig = smoothstep(0.45, 0.0, em);
 	ALBEDO = mix(vec3(0.92, 0.96, 1.0), vec3(0.55, 0.6, 0.66), vig);
-	ALPHA = clamp(band * 0.10 + band2 * 0.12 + vig * 0.28, 0.0, 0.6);
+	ALPHA = clamp(band * 0.06 + band2 * 0.08 + vig * 0.24, 0.0, 0.6);
 }

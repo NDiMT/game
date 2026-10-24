@@ -31,6 +31,8 @@ var _flare_v := 0.0
 var _idle_look := 0.0
 var still_time := 0.0
 var hem_glow: MeshInstance3D
+var blob_node: MeshInstance3D
+var _blob_lift := 0.0
 var _glow_k := -1.0
 var extra_reach := 0.0          # v0.5: 0..1 the right hand reaches out (touching the glass, the water)
 var veil_lift := 0.0            # v0.5: cinematic: the veil lifts back
@@ -51,6 +53,7 @@ func _init() -> void:
 	b.mesh = pm
 	b.material_override = m
 	b.position.y = 0.015
+	blob_node = b
 	b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(b)
 	# a gentle petrol glow from the hem stripe on the ground round the wanderer
@@ -76,6 +79,7 @@ func teleport(p: Vector3, face_yaw := INF) -> void:
 
 func step(dt: float) -> void:
 	t += dt
+	_lift_contact_shadow()
 	var want := Vector3(input_dir.x, 0.0, input_dir.y)
 	if locked: want = Vector3.ZERO
 	if want.length() > 1.0: want = want.normalized()
@@ -145,3 +149,17 @@ func _animate(dt: float) -> void:
 		footstep.emit("step", speed01)
 		if _step_n % 2 == 0: footstep.emit("cloth", speed01)
 	_last_s = s
+
+## v0.5b: on a stair the walk region is a smooth ramp but the stone is stepped: the contact shadow
+## (a flat disc) would slice in and out of the step tops and flicker. Lift it just above the steps.
+func _lift_contact_shadow() -> void:
+	var g := level.region_at(Vector2(position.x, position.z))
+	var lift := 0.0
+	if g and g.axis >= 0 and absf(g.y1 - g.y0) > 0.001:
+		var L := g.r.size.x if g.axis == 0 else g.r.size.y
+		var n := maxi(2, int(round(L / 0.32)))
+		lift = absf(g.y1 - g.y0) / n * 0.8 + 0.01        # (steps(): a step's top rises 0.75 of its height)
+	if lift != _blob_lift:
+		_blob_lift = lift
+		blob_node.position.y = 0.015 + lift
+		hem_glow.position.y = 0.02 + lift

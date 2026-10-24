@@ -57,6 +57,7 @@ var letterbox := 0.0
 var cine_line: Label
 var skip_ring: SkipRing
 var _cine_tw: Tween
+var glass_talk: GlassTalk
 
 func _ready() -> void:
 	layer = 5
@@ -950,6 +951,10 @@ func _build_v05() -> void:
 	skip_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	skip_ring.caps = caps
 	root.add_child(skip_ring)
+	# the close-up of a small pane: a conversation through the glass (GlassTalk)
+	glass_talk = GlassTalk.new()
+	glass_talk.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(glass_talk)
 
 func set_inventory(has: bool, on: bool) -> void:
 	if controls:

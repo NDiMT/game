@@ -272,10 +272,11 @@ func _breath_glass(id: String, center: Vector3, basis: Basis, size: Vector2, gly
 		"size": size, "vertical": 1.0 if vertical else 0.0})
 	var mi := _mi(_quad(size), bm, Transform3D(basis, center + basis * Vector3(0, 0, 0.06)))
 	mi.layers = PlanarMirror.LAYER_MAIN_FX
+	bm.render_priority = 2                 # always over the glass's own sheen (no sort flicker)
 	breath_mats[id] = bm
 
 func _build_stair() -> void:
-	_breath_glass("stair", Vector3(-10.23, 1.75, -5.3), Basis(Vector3.UP, -PI * 0.5), Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
+	_breath_glass("stair", Vector3(-10.345, 1.75, -5.3), Basis(Vector3.UP, -PI * 0.5), Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
 	level.add_interact("breathe_stair", Vector3(-11.1, 0.5, -5.3), "breathe", func() -> void: breathe("stair"), 1.25)
 	stair_veil = _smat("res://shaders/mist_veil.gdshader", {"noise_tex": level.noise_tex, "density": 1.0, "glow": 0.35})
 	_mi(_quad(Vector2(1.9, 3.2)), stair_veil, Transform3D(Basis(), Vector3(-11.3, 0.5 + 1.6, -6.8)))
@@ -283,6 +284,11 @@ func _build_stair() -> void:
 ## breathe on a small glass; from the other side she writes in the fog
 func breathe(id: String) -> void:
 	if _breathing != "": return
+	if id == "stair" and not state["breath"]:
+		# v0.5b: "An Answer on the Glass": the close-up of the pane, her question, your finger
+		event.emit("breath", id)
+		game.open_glass("stair")
+		return
 	_breathing = id
 	var m: ShaderMaterial = breath_mats[id]
 	game.player.locked = true
@@ -299,6 +305,18 @@ func breathe(id: String) -> void:
 	tw.tween_interval(9.0)
 	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("fog", v), 1.0, 0.0, 5.0)
 	tw.tween_callback(func() -> void: m.set_shader_parameter("write", 0.0))
+
+## the conversation through the glass ended well: the pane in the world keeps her writing a while
+func glass_answered(id: String) -> void:
+	if id != "stair": return
+	var m: ShaderMaterial = breath_mats["stair"]
+	m.set_shader_parameter("fog", 1.0)
+	m.set_shader_parameter("write", 1.0)
+	var tw := create_tween()
+	tw.tween_interval(8.0)
+	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("fog", v), 1.0, 0.0, 5.0)
+	tw.tween_callback(func() -> void: m.set_shader_parameter("write", 0.0))
+	if not state["breath"]: _open_stair(false)
 
 func _breath_done(id: String) -> void:
 	if id == "stair" and not state["breath"]:
@@ -503,7 +521,7 @@ func _build_garden() -> void:
 		var sm := MB.new()
 		sm.box(Vector3(TURN_X[i], 1.05, TURN_Z + 0.75), Vector3(0.9, 0.1, 0.42), Color(0.5, 0.25, 0.0))
 		puzzles.marble_instance(sm.commit(), self)
-		puzzles.rune_quad(self, Vector3(TURN_X[i], 1.105, TURN_Z + 0.75), Vector2(0.36, 0.36), Basis(Vector3.RIGHT, -PI * 0.5), -1.0, 0.45, float(i + 1))
+		puzzles.rune_quad(self, Vector3(TURN_X[i], 1.115, TURN_Z + 0.75), Vector2(0.36, 0.36), Basis(Vector3.RIGHT, -PI * 0.5), -1.0, 0.45, float(i + 1))
 		var idx := i
 		level.add_interact("turn%d" % (i + 1), Vector3(TURN_X[i], 1.0, TURN_Z + 1.05), "turn", func() -> void: turn_statue(idx), 0.7,
 			func() -> bool: return not state["turned_done"])
@@ -600,7 +618,7 @@ func _open_garden_door(instant: bool) -> void:
 # ------------------------------------------------------------------ 6. hollow walk
 func _build_hollow() -> void:
 	for c in Ch1Geo.HW_PLATES:
-		var m := puzzles.rune_quad(self, Ch1Geo.hw_cell(c) + Vector3(0, 0.025, 0), Vector2(0.92, 0.92), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.3)
+		var m := puzzles.rune_quad(self, Ch1Geo.hw_cell(c) + Vector3(0, 0.045, 0), Vector2(0.92, 0.92), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.3)
 		plate_mats.append(m)
 		var pm := MB.new()
 		pm.cyl(Ch1Geo.hw_cell(c) + Vector3(0, 0.01, 0), 0.5, 0.52, 0.03, Color(0.5, 1.0, 0.0), 20)

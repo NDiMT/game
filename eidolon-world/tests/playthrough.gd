@@ -151,12 +151,56 @@ func _plan() -> void:
 		ok("hint wisp drifts toward the small glass", C().wisp.visible and game.ui.text.modulate.a < 0.05)
 		walk_to(-11.3, -5.3))
 	step_until("back to the glass", func() -> bool: return game.auto_target == Vector3.INF, 5.0)
+	# "An Answer on the Glass": the close-up of the pane; she writes, then waits for your answer
 	step_do(func() -> void: ok("breathe on the glass", _focus() == "breathe_stair" and game.try_interact(), _focus()))
-	step_until("she writes from the other side; the veil dissolves", func() -> bool: return C().state["breath"], 8.0)
+	step_wait(0.5)
+	step_do(func() -> void:
+		var gt: GlassTalk = game.ui.glass_talk
+		ok("the close-up of the pane opens", game.mode == "glass" and gt.visible and gt.size.x > 100.0, str(gt.size))
+		ok("nothing to answer while she writes", not game.cmd("glass_try:right")))
+	# the x closes it, consuming the tap (the camera does not turn), nothing solved
+	step_do(func() -> void:
+		_yaw0 = game.world.yaw_index
+		var gt: GlassTalk = game.ui.glass_talk
+		var p: Vector2 = gt.get_global_transform_with_canvas() * gt.close_r.get_center()
+		var mb := InputEventMouseButton.new(); mb.button_index = MOUSE_BUTTON_LEFT; mb.pressed = true; mb.position = p; mb.global_position = p; mb.device = InputEvent.DEVICE_ID_EMULATION
+		game.get_viewport().push_input(mb, true)
+		var tch := InputEventScreenTouch.new(); tch.index = 0; tch.pressed = true; tch.position = p
+		game.get_viewport().push_input(tch, true)
+		var mr := mb.duplicate(); mr.pressed = false
+		game.get_viewport().push_input(mr, true)
+		var tr := tch.duplicate(); tr.pressed = false
+		game.get_viewport().push_input(tr, true))
+	step_wait(0.8)
+	step_do(func() -> void:
+		ok("x closes the pane", game.mode == "play" and not game.ui.glass_talk.visible and not C().state["breath"])
+		ok("the closing tap does not turn the camera", game.world.yaw_index == _yaw0))
+	step_wait(0.5)
+	step_do(func() -> void: ok("breathe again", _focus() == "breathe_stair" and game.try_interact(), _focus()))
+	step_until("she writes her rune, then half of a second, and waits", func() -> bool: return game.ui.glass_talk.phase == "waiting", 12.0)
+	step_do(func() -> void:
+		var gt: GlassTalk = game.ui.glass_talk
+		ok("her writing is mirrored for you (her half on the left, the answer on the right)", gt.her_half[0][2].x < 0.0 and gt.target[0][2].x > 0.0)
+		ok("recogniser: her half copied is wrong", not game.cmd("glass_try:left") and gt.tries == 1))
+	step_wait(1.0)
+	step_do(func() -> void:
+		var gt: GlassTalk = game.ui.glass_talk
+		ok("recogniser: a straight stroke is wrong", not game.cmd("glass_try:line") and gt.tries == 2))
+	step_wait(5.5)
+	step_do(func() -> void:
+		var gt: GlassTalk = game.ui.glass_talk
+		ok("after two wrong tries she traces the missing part, faintly", gt.ink.hint.size() > 0)
+		ok("the fog crept back over your strokes", float(gt.ink.mine[0][1]) < 0.05))
+	step_wait(5.0)
+	step_do(func() -> void:
+		ok("recogniser: the mirrored stroke, drawn backwards with a shaky hand, is right", game.cmd("glass_try:right_rev")))
+	step_until("her palm, the glow; the veil dissolves", func() -> bool: return C().state["breath"], 4.0)
+	step_until("the close-up fades back to the stair", func() -> bool: return game.mode == "play" and not game.ui.glass_talk.visible, 8.0)
 	step_do(func() -> void:
 		var m: ShaderMaterial = C().breath_mats["stair"]
-		ok("her writing is on the fogged glass", float(m.get_shader_parameter("write")) > 0.99 and float(m.get_shader_parameter("fog")) > 0.9)
-		ok("breath cue played", game.sfx.played.get("cue:breath", 0) >= 1))
+		ok("her writing stays on the fogged glass", float(m.get_shader_parameter("write")) > 0.99 and float(m.get_shader_parameter("fog")) > 0.9)
+		ok("breath cue played", game.sfx.played.get("cue:breath", 0) >= 1)
+		ok("recogniser unit: resample keeps 32 points", GlassTalk.resample(PackedVector2Array([Vector2.ZERO, Vector2(1, 0)])).size() == GlassTalk.N))
 	walk_path("up the second flight", [[-11.3, -9.0], [-11.3, -13.5], [-6.0, -13.5], [-2.0, -13.5]])
 	step_do(func() -> void:
 		ok("reached the Hall of Glass by the corridor", absf(P().y - 1.0) < 0.01 and game.area == "hall_glass", str(P()) + " " + game.area)

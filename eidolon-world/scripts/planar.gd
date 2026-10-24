@@ -25,7 +25,8 @@ var plane_d := 0.0
 var mat: ShaderMaterial          # the mirror quad's material
 var enabled := true              # false on the LOW tier
 var active := false
-var scale := 0.65
+var scale := 1.0                 # v0.5b: x the REAL 3D render resolution (window pixels x render scale)
+const MAX_H := 1400
 var _frame := 0
 var _H := Basis()
 ## v0.5: two planar mirrors (the Hall, the Garden): only one renders at a time; the active one also
@@ -63,8 +64,16 @@ func setup(n: Vector3, d: float, mirror_mat: ShaderMaterial, env: Environment) -
 	mat.set_shader_parameter("refl_tex", vp.get_texture())
 
 ## called every frame by the reflector: on = the glass is on screen, near, and planar is allowed
+var _off_t := 0.0
 func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 	var want := on and enabled
+	# v0.5b hysteresis: once on, stay on 0.4 s after it stops being wanted (no planar / fallback
+	# flicker at a region edge or the screen border)
+	if active and not want and enabled:
+		_off_t += main_cam.get_process_delta_time()
+		if _off_t < 0.4: want = true
+	else:
+		_off_t = 0.0
 	if want and current != null and current != self and current.active: want = false
 	if want != active:
 		active = want
@@ -80,8 +89,10 @@ func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 	if not active: return
 	_frame += 1
 	var main_vp := main_cam.get_viewport()
-	var sz := Vector2(main_vp.get_visible_rect().size) * main_vp.scaling_3d_scale
-	var want_sz := Vector2i(maxi(64, int(sz.x * scale)), maxi(64, int(sz.y * scale)))
+	# (v0.5b: the logical canvas size is not the pixel size: at DPR 3 that made the glass ~130 px wide)
+	var sz := Vector2(main_vp.size) * main_vp.scaling_3d_scale * scale
+	if sz.y > MAX_H: sz *= MAX_H / sz.y
+	var want_sz := Vector2i(maxi(64, int(sz.x)), maxi(64, int(sz.y)))
 	if vp.size != want_sz: vp.size = want_sz
 	# reflect the main camera (its h/v offsets folded into the position: an orthographic view)
 	var mx := main_cam.global_transform

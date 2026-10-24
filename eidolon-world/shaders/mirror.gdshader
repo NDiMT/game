@@ -79,7 +79,7 @@ void fragment() {
 		vec2 uv = UV;
 		vec2 m = vec2(min(uv.x, 1.0 - uv.x) * size.x, min(uv.y, 1.0 - uv.y) * size.y);
 		float em = min(m.x, m.y);
-		c += vec3(0.05, 0.055, 0.06) * smoothstep(1.0, 0.0, uv.y);
+		c += vec3(0.025, 0.027, 0.03) * smoothstep(1.0, 0.0, uv.y);
 		float streak = texture(noise_tex, vec2(uv.x * 3.0, uv.y * 0.15)).r;
 		c *= 0.97 + 0.06 * smoothstep(0.45, 0.75, streak);
 		float fox = smoothstep(0.42, 0.0, em) * smoothstep(0.58, 0.72, texture(noise_tex, uv * size * 0.9 + 3.1).r);

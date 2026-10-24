@@ -951,6 +951,7 @@ func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false
 	add_child(g)
 	var om := ShaderMaterial.new()
 	om.shader = preload("res://shaders/mirror_over.gdshader")
+	om.render_priority = 1                 # the sheen always draws over the glass, under breath / runes
 	om.set_shader_parameter("size", size)
 	var o := MeshInstance3D.new()
 	o.mesh = q

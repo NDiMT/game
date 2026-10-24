@@ -380,6 +380,22 @@ func set_yaw_index(i: int) -> void:
 
 func snap_to(p: Vector3) -> void:
 	rig.position = p + Vector3(0, 0.6, 0)
+	_rig_smooth = rig.position
+
+## v0.5b: the follow camera moves in whole RENDER pixels (in the camera's own right / up axes): an
+## orthographic view whose static stone shifts by exact pixels never crawls or shimmers on thin edges
+## (balusters, steps) while you walk. The smooth position is kept separately, so motion stays fluid.
+var _rig_smooth := Vector3.INF
+var _was_following := false
+func _pixel_snap(p: Vector3) -> Vector3:
+	var vp := get_viewport()
+	var w := float(vp.size.x) * vp.scaling_3d_scale
+	if w < 8.0: return p
+	var texel := cam.size / w                          # KEEP_WIDTH: world units per render pixel
+	var b := cam.global_transform.basis
+	var x := roundf(p.dot(b.x) / texel) * texel
+	var y := roundf(p.dot(b.y) / texel) * texel
+	return b.x * x + b.y * y + b.z * p.dot(b.z)
 
 func shake(amount: float) -> void:
 	_shake = maxf(_shake, amount)
@@ -422,7 +438,10 @@ func _process(dt: float) -> void:
 		node.position = c + Vector3(cos(tt) * r2 + sin(tt * 3.1) * 0.12, sin(tt * 2.3) * 0.25 + sin(tt * 7.0) * 0.05, sin(tt * 0.9) * r2)
 	if follow:
 		var target := follow.global_position + Vector3(0, 0.6, 0) + look_offset
-		rig.position = rig.position.lerp(target, 1.0 - exp(-dt * 4.0))
+		if _rig_smooth == Vector3.INF or not _was_following: _rig_smooth = rig.position
+		_rig_smooth = _rig_smooth.lerp(target, 1.0 - exp(-dt * 4.0))
+		rig.position = _pixel_snap(_rig_smooth)
+	_was_following = follow != null
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - dt * 0.6)
 		cam.h_offset = sin(_t * 91.0) * _shake * 0.3
