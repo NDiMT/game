@@ -30,6 +30,7 @@ var door_mat: ShaderMaterial
 var slot_mats: Array[ShaderMaterial] = []
 var dial_mats: Array[ShaderMaterial] = []
 var statue_mats: Array[ShaderMaterial] = []
+var statue_pos: Array[Vector3] = []
 var gate_bars: Node3D
 var source_crystal: MeshInstance3D
 var target_crystal: MeshInstance3D
@@ -46,6 +47,17 @@ var eid_glass_mat: ShaderMaterial
 var ghost_path_mat: ShaderMaterial
 var plate_mat: ShaderMaterial
 var plate_charge := 0.0
+var plate_ring: ShaderMaterial
+var plate_pillar: ShaderMaterial
+var plate_halo: ShaderMaterial
+var plate_motes: Array[MeshInstance3D] = []
+var foot_spot := Vector3.ZERO
+var foot_mat: ShaderMaterial
+var near_mat: ShaderMaterial
+var guide: MeshInstance3D
+var guide_mat: ShaderMaterial
+var ledge_time := 0.0
+var foot_spot_dist := 99.0
 var risen_bridge: MeshInstance3D
 var risen_mat: ShaderMaterial
 var shrine_crystal: MeshInstance3D
@@ -188,8 +200,9 @@ func _rune_statues() -> void:
 		level.statue("G", p, yaw, 1.0, 1.0)
 		var B := Basis(Vector3.UP, yaw)
 		var front := B * Vector3(0, 0, -0.505)
-		var m := rune_quad(self, p + Vector3(0, 0.52, 0) + front, Vector2(0.56, 0.72), B * Basis(Vector3.UP, PI), float(d[2]), 0.55, float(d[1]))
+		var m := rune_quad(self, p + Vector3(0, 0.52, 0) + front * 1.004, Vector2(0.80, 1.0), B * Basis(Vector3.UP, PI), float(d[2]), 0.7, float(d[1]))
 		statue_mats.append(m)
+		statue_pos.append(p)
 		var num: int = d[1]
 		var des: int = d[2]
 		level.add_interact("statue%d" % num, p + front * 2.0, "read", func() -> void: event.emit("statue", [des, num]), 1.25)
@@ -207,7 +220,7 @@ func _door() -> void:
 	door_mat = mi.material_override
 	for i in 3:
 		var x := -0.68 + i * 0.68
-		slot_mats.append(rune_quad(door, Vector3(x, 2.35, 0.175), Vector2(0.58, 0.75), Basis(), -1.0, 0.0, float(i + 1)))
+		slot_mats.append(rune_quad(door, Vector3(x, 2.3, 0.176), Vector2(0.64, 0.82), Basis(), -1.0, 0.0, float(i + 1)))
 	# three dials before the door
 	var dm := MB.new()
 	for i in 3:
@@ -218,8 +231,10 @@ func _door() -> void:
 		var tilt := Basis(Vector3.RIGHT, -PI * 0.5 + 0.35)
 		dial_mats.append(rune_quad(self, Vector3(x, 2.0, DIAL_Z + 0.02), Vector2(0.44, 0.52), tilt, -1.0, 0.35))
 		var idx := i
-		level.add_interact("dial%d" % (i + 1), Vector3(x, 1.0, DIAL_Z + 0.65), "rune", func() -> void: turn_dial(idx), 0.75,
+		level.add_interact("dial%d" % (i + 1), Vector3(x, 1.0, DIAL_Z + 0.65), "rune", func() -> void: game.open_door_overlay(idx), 0.75,
 			func() -> bool: return not state["door_open"])
+	level.add_interact("door", Vector3(12.0, 1.0, -14.3), "rune", func() -> void: game.open_door_overlay(1), 0.9,
+		func() -> bool: return not state["door_open"])
 	marble_instance(dm.commit(), self)
 	level.ob_rect(Level.R(10.9, -15.28, 13.1, -14.86), "door")
 
@@ -236,7 +251,8 @@ func _apply_door_runes() -> void:
 	var s: Array = state["door"]
 	for i in 3:
 		slot_mats[i].set_shader_parameter("design", float(s[i]))
-		slot_mats[i].set_shader_parameter("lit", 0.0 if s[i] < 0 else 0.6)
+		slot_mats[i].set_shader_parameter("lit", 0.0 if s[i] < 0 else 1.0)
+		slot_mats[i].set_shader_parameter("flare", 0.0 if s[i] < 0 else 0.35)
 		dial_mats[i].set_shader_parameter("design", float(s[i]))
 		dial_mats[i].set_shader_parameter("lit", 0.35 if s[i] < 0 else 0.8)
 
@@ -569,7 +585,56 @@ func _eidolon_glass() -> void:
 	pm.cyl(PLATE_POS + Vector3(0, 0.03, 0), 0.62, 0.66, 0.06, Color(0.5, 1.0, 0.0), 24)
 	pm.cyl(PLATE_POS + Vector3(0, 0.05, 0), 0.52, 0.52, 0.06, Color(0.5, 0.25, 0.0), 24)
 	marble_instance(pm.commit(), self)
-	plate_mat = rune_quad(self, PLATE_POS + Vector3(0, 0.085, 0), Vector2(0.86, 0.86), Basis(Vector3.RIGHT, -PI * 0.5), 2.0, 0.15)
+	plate_mat = rune_quad(self, PLATE_POS + Vector3(0, 0.085, 0), Vector2(0.86, 0.86), Basis(Vector3.RIGHT, -PI * 0.5), 2.0, 0.6)
+	# the target, unmistakable: a rune sigil ring, a pillar of light, motes circling it
+	plate_ring = ShaderMaterial.new()
+	plate_ring.shader = preload("res://shaders/ring.gdshader")
+	plate_ring.set_shader_parameter("lit", 1.0)
+	plate_ring.set_shader_parameter("sweep", 1.0)
+	var rq := PlaneMesh.new()
+	rq.size = Vector2(2.3, 2.3)
+	var rmi := MeshInstance3D.new()
+	rmi.mesh = rq
+	rmi.material_override = plate_ring
+	rmi.position = PLATE_POS + Vector3(0, 0.03, 0)
+	rmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(rmi)
+	plate_pillar = _pillar(self, PLATE_POS + Vector3(0, 0.1, 0), 1.1, 13.0)
+	plate_pillar.set_shader_parameter("fade", 0.7)
+	plate_halo = glow_quad(self, PLATE_POS + Vector3(0, 0.6, 0), 2.6, Color(0.3, 0.9, 1.0), 0.5)
+	for i in 7:
+		var mq := QuadMesh.new()
+		mq.size = Vector2(0.16, 0.16)
+		var mm := MeshInstance3D.new()
+		mm.mesh = mq
+		var hm := ShaderMaterial.new()
+		hm.shader = preload("res://shaders/halo.gdshader")
+		hm.set_shader_parameter("color", Color(0.5, 0.95, 1.0))
+		hm.set_shader_parameter("intensity", 1.4)
+		mm.material_override = hm
+		mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mm)
+		plate_motes.append(mm)
+	# your side of the glass: where you must stand (footprints), and the closeness ring around the plate
+	foot_spot = Vector3(PLATE_POS.x, 2.0, 2.0 * GLASS_Z - PLATE_POS.z)
+	foot_mat = _decal(foot_spot + Vector3(0, 0.025, 0), 1.6)
+	foot_mat.set_shader_parameter("feet", 1.0)
+	foot_mat.set_shader_parameter("radius", 0.42)
+	foot_mat.set_shader_parameter("intensity", 0.0)
+	near_mat = _decal(PLATE_POS + Vector3(0, 0.035, 0), 11.0)
+	near_mat.set_shader_parameter("intensity", 0.0)
+	guide = MeshInstance3D.new()
+	var gq := QuadMesh.new()
+	gq.size = Vector2(1, 1)
+	guide.mesh = gq
+	guide_mat = ShaderMaterial.new()
+	guide_mat.shader = preload("res://shaders/ray.gdshader")
+	guide_mat.set_shader_parameter("width", 0.07)
+	guide_mat.set_shader_parameter("intensity", 0.0)
+	guide.material_override = guide_mat
+	guide.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	guide.extra_cull_margin = 8.0
+	add_child(guide)
 	# the bridge that rises when the plate is pressed
 	risen_bridge = MeshInstance3D.new()
 	var rb := MB.new()
@@ -584,7 +649,56 @@ func _eidolon_glass() -> void:
 	add_child(risen_bridge)
 	level.walk(Level.R(26.8, -28, 28.6, -25), 2.0, NAN, -1, "EB", false)
 
+func _decal(pos: Vector3, size: float) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/target.gdshader")
+	m.set_shader_parameter("size", size)
+	var q := PlaneMesh.new()
+	q.size = Vector2(size, size)
+	var mi := MeshInstance3D.new()
+	mi.mesh = q
+	mi.material_override = m
+	mi.position = pos
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	return m
+
+func _update_plate_fx(dt: float) -> void:
+	# motes spiral up the plate's pillar
+	for i in plate_motes.size():
+		var a := _t * (0.9 + i * 0.07) + i * TAU / plate_motes.size()
+		var h := fmod(_t * 0.35 + i * 0.37, 1.0)
+		plate_motes[i].position = PLATE_POS + Vector3(cos(a) * (0.55 - h * 0.25), 0.15 + h * 2.4, sin(a) * (0.55 - h * 0.25))
+		plate_motes[i].scale = Vector3.ONE * (1.0 - h * 0.6)
+	plate_halo.set_shader_parameter("intensity", 0.45 + 0.15 * sin(_t * 2.2) + plate_charge * 0.6)
+	var on_ledge: bool = eidolon_refl != null and eidolon_refl.active and not state["plate"]
+	ledge_time = ledge_time + dt if on_ledge else 0.0
+	var rp := eidolon_refl.reflect_point(game.player.global_position) if eidolon_refl else Vector3.ZERO
+	var dist := Vector2(rp.x - PLATE_POS.x, rp.z - PLATE_POS.z).length()
+	# where to stand: a faint hint at once, clearer after a few seconds by the glass
+	var fk := 0.0
+	if on_ledge: fk = 0.30 + 0.55 * smoothstep(3.0, 6.0, ledge_time)
+	foot_mat.set_shader_parameter("intensity", move_toward(float(foot_mat.get_shader_parameter("intensity")), fk, dt * 0.8))
+	# closeness: a ring round the plate tightens and brightens as your reflection comes near
+	var nk := 0.0
+	if on_ledge: nk = clampf(1.0 - (dist - 0.5) / 6.0, 0.15, 1.0)
+	near_mat.set_shader_parameter("radius", clampf(dist, 0.45, 5.2))
+	near_mat.set_shader_parameter("intensity", move_toward(float(near_mat.get_shader_parameter("intensity")), nk, dt * 2.0))
+	# a faint thread of light from the reflection's feet to the plate
+	if on_ledge and dist > 0.6:
+		var a3 := Vector3(rp.x, 2.06, rp.z)
+		var b3 := Vector3(PLATE_POS.x, 2.06, PLATE_POS.z)
+		var v := b3 - a3
+		guide.transform = Transform3D(Basis(v, Vector3.UP, v.normalized().cross(Vector3.UP)), a3)
+		guide_mat.set_shader_parameter("length_m", v.length())
+		guide_mat.set_shader_parameter("intensity", 0.35 * eidolon_refl.vis)
+		guide.visible = true
+	else:
+		guide.visible = false
+	foot_spot_dist = Vector2(game.player.position.x - foot_spot.x, game.player.position.z - foot_spot.z).length()
+
 func _update_plate(dt: float) -> void:
+	_update_plate_fx(dt)
 	if state["plate"] or eidolon_refl == null: return
 	var on := false
 	if eidolon_refl.active and eidolon_refl.vis > 0.6:
@@ -613,6 +727,9 @@ func _press_plate(instant: bool) -> void:
 		return
 	busy = true
 	event.emit("plate_glow", null)
+	var tf := create_tween()
+	tf.tween_method(func(v: float) -> void: plate_pillar.set_shader_parameter("fade", v), 0.7, 2.2, 0.35)
+	tf.tween_method(func(v: float) -> void: plate_pillar.set_shader_parameter("fade", v), 2.2, 0.9, 2.5)
 	var tw := create_tween()
 	tw.tween_method(func(v: float) -> void: plate_mat.set_shader_parameter("flare", v), 0.4, 1.0, 0.6)
 	tw.tween_callback(func() -> void: event.emit("bridge_rise", null))
@@ -768,6 +885,12 @@ func update(dt: float) -> void:
 	for r in reflectors: r.update(dt, game.player, game.world.cam_back)
 	_update_beam()
 	_update_plate(dt)
+	# the numbered statues' runes brighten and pulse as you come near
+	for i in statue_mats.size():
+		var dd := Vector2(statue_pos[i].x - game.player.position.x, statue_pos[i].z - game.player.position.z).length()
+		var near := 1.0 - smoothstep(1.5, 4.5, dd)
+		statue_mats[i].set_shader_parameter("lit", 0.7 + 0.3 * near)
+		statue_mats[i].set_shader_parameter("flare", near * (0.35 + 0.3 * sin(_t * 2.6 + i)))
 	source_crystal.rotation.y += dt * 0.6
 	target_crystal.rotation.y += dt * (0.6 if state["bridge"] else 0.1)
 	shrine_crystal.rotation.y += dt * 0.4

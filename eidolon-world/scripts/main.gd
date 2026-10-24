@@ -62,7 +62,16 @@ func _ready() -> void:
 	for r in puzzles.reflectors: r.glimpse.connect(_on_glimpse)
 	controls.interact.connect(try_interact)
 	controls.rotate.connect(rotate_view)
+	controls.zoom.connect(zoom_view)
 	ui.anew_pressed.connect(_on_anew)
+	ui.quality_pressed.connect(func() -> void: set_quality(not world.quality_high, true))
+	_load_settings()
+	world.add_moths(Vector3(8.2, 3.45, -24.5), 2)
+	world.add_moths(Vector3(25.0, 3.75, -32.25), 3)
+	world.add_moths(Puzzles.PLATE_POS + Vector3(0, 0.8, 0), 2)
+	world.add_moths(Vector3(-2.4, 0.6, 1.7), 1)
+	ui.door_overlay.slot_pressed.connect(door_cycle)
+	ui.door_overlay.closed.connect(_door_overlay_closed)
 	_setup_js()
 	_load_save()
 	# title: the wanderer lies curled beneath the broken gate, the camera drifts round the Veiled Gate
@@ -70,7 +79,8 @@ func _ready() -> void:
 	player.crouch = 1.0
 	player.step(0.016)
 	world.rig.position = Level.WAKE_POS + Vector3(-0.6, 0.6, 0.4)
-	world.cam.size = 8.0
+	world.cam.size = 6.2
+	world.cam_size_target = 6.2
 	world.fog_hole = Vector2(1.6, 5.2)
 	world.fog_hole_target = world.fog_hole
 	mode = "title"
@@ -106,8 +116,8 @@ func _start_wake() -> void:
 	player.crouch = 1.0
 	player.locked = true
 	_settle_camera(0, Level.WAKE_POS)
-	sfx.play("whoosh", -10.0, 0.7)
-	sfx.chord([-3, 4, 11], -15.0, 0.3)
+	sfx.play("whoosh", -14.0, 0.7)
+	sfx.chord([-3, 4, 11], -18.0, 0.3)
 	var tw := create_tween()
 	tw.tween_interval(1.2)
 	tw.tween_property(player, "crouch", 0.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -132,7 +142,7 @@ func _continue_from_save() -> void:
 
 func _settle_camera(yaw_i: int, at: Vector3) -> void:
 	world.follow = null
-	create_tween().tween_property(world.cam, "size", World.CAM_SIZE, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	world.cam_size_target = World.ZOOMS[world.zoom_i]
 	var cur := world.rig.rotation.y
 	var target := -PI * 0.25 + yaw_i * PI * 0.5
 	# turn the short way from wherever the title orbit left us
@@ -143,10 +153,16 @@ func _settle_camera(yaw_i: int, at: Vector3) -> void:
 	tw.parallel().tween_property(world.rig, "position", at + Vector3(0, 0.6, 0), 2.0)
 	tw.tween_callback(func() -> void: world.follow = player)
 
+## two zoom levels: close (default) and wide
+func zoom_view(level: int) -> void:
+	if mode != "play" or level == world.zoom_i: return
+	world.set_zoom_level(level)
+	sfx.play("whoosh", -28.0, 1.8 if level == 0 else 1.3)
+
 func rotate_view(dir: int) -> void:
 	if mode != "play" and mode != "wake": return
 	world.rotate_view(dir)
-	sfx.play("whoosh", -22.0, 1.6)
+	sfx.play("whoosh", -26.0, 1.5)
 
 # ------------------------------------------------------------------ input
 func _input(e: InputEvent) -> void:
@@ -157,6 +173,15 @@ func _input(e: InputEvent) -> void:
 		if e is InputEventKey and e.pressed and not e.echo and e.keycode in [KEY_SPACE, KEY_ENTER, KEY_E]: tap = true
 		if tap: begin()
 		return
+	if mode == "door":
+		if e is InputEventKey and e.pressed and not e.echo:
+			var ov := ui.door_overlay
+			match e.keycode:
+				KEY_LEFT, KEY_A: ov.selected = (ov.selected + 2) % 3
+				KEY_RIGHT, KEY_D: ov.selected = (ov.selected + 1) % 3
+				KEY_E, KEY_SPACE, KEY_ENTER: door_cycle(ov.selected)
+				KEY_ESCAPE, KEY_Q: ov.close()
+		return
 	if e is InputEventKey and not e.echo:
 		_keys[e.keycode] = e.pressed
 		if e.pressed:
@@ -164,6 +189,12 @@ func _input(e: InputEvent) -> void:
 				KEY_E, KEY_SPACE, KEY_ENTER: try_interact()
 				KEY_Q: rotate_view(-1)
 				KEY_R: rotate_view(1)
+				KEY_Z: zoom_view(1 - world.zoom_i)
+				KEY_EQUAL, KEY_KP_ADD: zoom_view(0)
+				KEY_MINUS, KEY_KP_SUBTRACT: zoom_view(1)
+	if e is InputEventMouseButton and e.pressed:
+		if e.button_index == MOUSE_BUTTON_WHEEL_UP: zoom_view(0)
+		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN: zoom_view(1)
 
 func _key_vector() -> Vector2:
 	var v := Vector2.ZERO
@@ -172,6 +203,31 @@ func _key_vector() -> Vector2:
 	if _keys.get(KEY_A, false) or _keys.get(KEY_LEFT, false): v.x -= 1.0
 	if _keys.get(KEY_D, false) or _keys.get(KEY_RIGHT, false): v.x += 1.0
 	return v.normalized()
+
+# ------------------------------------------------------------------ the rune door close-up
+func open_door_overlay(sel: int) -> void:
+	if puzzles.state["door_open"] or mode != "play": return
+	mode = "door"
+	player.input_dir = Vector2.ZERO
+	auto_target = Vector3.INF
+	controls.enabled = false
+	controls.reset()
+	controls.show_interact("")
+	ui.door_overlay.open(puzzles.state["door"], sel)
+	sfx.play("click", -16.0, 0.8)
+
+## a slot tapped (or E on the selected slot): the rune turns over
+func door_cycle(i: int) -> void:
+	if mode != "door": return
+	ui.door_overlay.selected = i
+	puzzles.turn_dial(i)
+	ui.door_overlay.flip(i, puzzles.state["door"][i])
+	if puzzles.state["door_open"]: ui.door_overlay.flare()
+
+func _door_overlay_closed() -> void:
+	if mode == "door":
+		mode = "play"
+		controls.enabled = true
 
 func try_interact() -> bool:
 	if mode != "play" or focus == null: return false
@@ -208,7 +264,11 @@ func _process(dt: float) -> void:
 	if mode != "title":
 		var p := player.position
 		var wide := p.x > 20.5 and p.z < -18.5     # the eidolon ledge and the shrine: see across the gap
-		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(4.6, 11.0)
+		var cs: float = World.ZOOMS[world.zoom_i]
+		var on_ledge := p.x > 20.8 and p.z > -25.2 and p.z < -18.8
+		if on_ledge: cs = maxf(cs, 9.6)              # see your reflection AND the plate
+		if mode != "finale": world.cam_size_target = cs
+		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs
 		if mode == "play":
 			# on the eidolon ledge, frame the player AND the plate across the gap
 			var off := Vector3.ZERO
@@ -217,7 +277,10 @@ func _process(dt: float) -> void:
 				off.y = 0.0
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
-	if mode == "play": _update_area()
+	if mode == "play": _auto_quality(dt)
+	if mode == "play" or mode == "finale":
+		_update_area()
+		_update_air()
 	if ui.text_source != Vector3.INF and player.position.distance_to(ui.text_source) > 3.2: ui.hide_text()
 	if mode == "play":
 		_save_t += dt
@@ -241,12 +304,34 @@ func _update_focus() -> void:
 	focus = best
 	controls.show_interact(best.icon if best else "")
 
+const EXPOSED := ["stub", "b1", "HG", "LB", "E", "EB", "sealed_way"]
+const AREA_WIND := {"gate": 0.35, "hall": 0.12, "garden": 0.3, "court": 0.4, "shrine": 0.6}
+
+func _surface() -> String:
+	var q := Vector2(player.position.x, player.position.z)
+	var g := level.region_at(q)
+	if g and g.name == "LB": return "wood"
+	if Level.R(-4.6, -0.6, -0.2, 4.0).has_point(q): return "water"
+	if area == "hall": return "hall"
+	return "stone"
+
+func _update_air() -> void:
+	var q := Vector2(player.position.x, player.position.z)
+	var g := level.region_at(q)
+	var w: float = AREA_WIND.get(area, 0.35)
+	if g and g.name in EXPOSED: w = 0.95
+	sfx.set_wind(w * (0.7 if awake else 1.0))
+	var pool := Level.R(-4.2, -0.2, -0.6, 3.6)
+	var cq := Vector2(clampf(q.x, pool.position.x, pool.end.x), clampf(q.y, pool.position.y, pool.end.y))
+	sfx.set_water(clampf(1.0 - cq.distance_to(q) / 6.0, 0.0, 1.0))
+
 func _update_area() -> void:
 	var g := level.region_at(Vector2(player.position.x, player.position.z))
 	if g == null or not Names.REGION_AREA.has(g.name): return
 	var key: String = Names.REGION_AREA[g.name]
 	if key == area: return
 	area = key
+	sfx.set_area(key)
 	if not visited.has(key):
 		visited[key] = true
 		ui.show_area(Names.area(key))
@@ -268,73 +353,78 @@ func _update_hum() -> void:
 # ------------------------------------------------------------------ events
 func _on_read(text: String) -> void:
 	ui.show_text(text, player.position)
-	sfx.play("chime", -20.0, 0.5)
+	sfx.play("chime_hall" if area == "hall" else "chime", -23.0, 0.5)
 	if focus and focus.id == "h_tablet":
 		puzzles.state["tablet"] = true
 		_save()
 
 func _on_footstep(kind: String, strength: float) -> void:
 	if kind == "step":
-		sfx.play("step", -13.0 + strength * 4.0, randf_range(0.88, 1.08))
+		sfx.footstep(_surface(), strength)
+		player_dust()
 	else:
-		sfx.play("cloth", -21.0 + strength * 3.0, randf_range(0.85, 1.15))
+		sfx.play("cloth", -31.0 + strength * 3.0, randf_range(0.85, 1.15))
+
+## a small puff of dust where the foot lands
+func player_dust() -> void:
+	if world: world.dust_puff(player.position + player.fig.basis * Vector3(0.09 * (1 if randf() < 0.5 else -1), 0.02, -0.12))
 
 func _on_glimpse(kind: String) -> void:
 	glimpses[kind] = glimpses.get(kind, 0) + 1
 	if kind == "gaze":
 		# a faint glass chime as the reflection turns away from you
-		sfx.play("chime", -21.0, 0.62)
-		get_tree().create_timer(0.9).timeout.connect(func() -> void: sfx.play("chime", -26.0, 0.47))
+		sfx.play("chime_hall", -22.0, 0.62)
+		get_tree().create_timer(0.9).timeout.connect(func() -> void: sfx.play("chime_hall", -27.0, 0.47))
 
 func _on_event(name: String, data: Variant) -> void:
 	match name:
 		"statue":
 			ui.show_rune(data[0], data[1])
-			sfx.play("chime", -16.0, 0.75 + data[1] * 0.08)
+			sfx.play("glass", -17.0, 0.5 * pow(2.0, [0, 4, 7][data[1] - 1] / 12.0))
 		"dial":
-			sfx.play("grind", -14.0, 1.5)
-			sfx.play("chime", -22.0, 1.0 + data * 0.12)
+			sfx.play("click", -12.0, 0.95 + data * 0.05)
+			sfx.play("grind", -24.0, 1.4)
 		"door_solved":
-			sfx.chord([0, 4, 7, 11], -9.0, 0.12)
-			sfx.play("chime", -8.0, 1.0)
+			sfx.resolve(0)
 		"door_grind":
-			sfx.play("door", -3.0, 1.0)
+			sfx.play("door", -6.0, 1.0)
 			world.shake(0.45)
 		"door_open":
 			_save()
 		"gate_locked":
-			sfx.play("rattle", -9.0, 1.0)
+			sfx.play("rattle", -16.0, 1.0)
 			ui.show_text("It will not open from this side.", player.position, 2.5)
 		"gate_open":
-			sfx.play("rattle", -6.0, 0.8)
-			sfx.play("grind", -8.0, 0.7)
+			sfx.play("rattle", -14.0, 0.8)
+			sfx.play("grind", -10.0, 0.7)
+			sfx.resolve(-2)
 			_save()
 		"mirror_turn":
-			sfx.play("grind", -15.0, 1.9)
-			sfx.play("chime", -24.0, 1.6)
+			sfx.play("turn", -11.0, 1.0)
 		"beam_lit":
-			sfx.play("chime", -8.0, 1.0)
-			sfx.play("bell", -10.0, 1.0)
+			sfx.resolve(4)
+			sfx.play("bell", -16.0, 1.0)
 		"bridge_fall":
-			sfx.play("whoosh", -8.0, 0.6)
+			sfx.play("whoosh", -14.0, 0.6)
 			get_tree().create_timer(0.85).timeout.connect(func() -> void:
-				sfx.play("thud", -2.0, 0.6)
+				sfx.play("thud", -5.0, 0.8)
 				world.shake(0.4))
 		"bridge_down":
 			_save()
 		"plate_touch":
-			sfx.play("chime", -18.0, 0.9)
+			sfx.play("chime_hall", -20.0, 0.75)
 		"plate_glow":
-			sfx.chord([-3, 4, 9, 16], -9.0, 0.14)
+			sfx.resolve(-3)
+			sfx.play("bell", -12.0, 0.75)
 		"bridge_rise":
-			sfx.play("door", -5.0, 0.8)
+			sfx.play("door", -7.0, 0.85)
 			world.shake(0.35)
 		"plate_open":
 			_save()
 		"shrine":
 			start_finale()
 		"sealed":
-			sfx.play("rattle", -14.0, 0.6)
+			sfx.play("rattle", -20.0, 0.6)
 			ui.show_text("The way on is sealed.\nAnother shrine still sleeps beyond the fog." if awake else "The way on is sealed.", player.position, 3.0)
 
 # ------------------------------------------------------------------ the finale
@@ -348,7 +438,7 @@ func start_finale() -> void:
 	if world.yaw_index % 4 != 0:
 		world.rotate_view(-world.yaw_index)
 	sfx.swell()
-	sfx.play("whoosh", -6.0, 0.5)
+	sfx.play("whoosh", -12.0, 0.5)
 	var tw := create_tween()
 	tw.tween_method(func(v: float) -> void: puzzles.set_shrine_awake(v, v), 0.0, 1.0, 3.0).set_trans(Tween.TRANS_SINE)
 	tw.parallel().tween_method(player.fig.set_hem, HEM_PER_SHRINE[0], HEM_PER_SHRINE[1], 4.0)
@@ -358,24 +448,56 @@ func start_finale() -> void:
 	t2.tween_method(world.set_awaken, 0.0, 1.0, 8.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var t3 := create_tween()
 	t3.tween_interval(1.0)
-	t3.tween_property(world.cam, "size", World.CAM_SIZE * 1.6, 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	world.cam_lock = true
+	t3.tween_property(world.cam, "size", 12.5, 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t3.parallel().tween_property(world, "look_offset", Level.BEYOND_FWD * 9.0 + Vector3(0, 2.0, 0), 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t3.tween_interval(9.0)
-	t3.tween_property(world.cam, "size", World.CAM_SIZE, 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t3.tween_property(world.cam, "size", World.ZOOMS[world.zoom_i], 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t3.parallel().tween_property(world, "look_offset", Vector3.ZERO, 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t3.tween_callback(func() -> void: world.cam_lock = false)
 	var t4 := create_tween()
 	t4.tween_interval(3.2)
 	t4.tween_callback(func() -> void: ui.show_memory(MEMORY_LINE, 4.5))
 	t4.tween_interval(10.5)
 	t4.tween_callback(func() -> void:
 		ui.show_milestone(1, SHRINES_TOTAL, 3.5)
-		sfx.play("bell", -12.0, 0.5))
+		sfx.play("bell_far", -12.0, 1.0))
 	t4.tween_interval(5.5)
 	t4.tween_callback(func() -> void:
 		awake = true
 		player.locked = false
 		mode = "play"
 		_save())
+
+# ------------------------------------------------------------------ quality
+const SETTINGS_PATH := "user://eidolon_settings.json"
+var _fps_low_t := 0.0
+var quality_auto_dropped := false
+
+func set_quality(high: bool, save := false) -> void:
+	world.set_quality(high)
+	level.grass_mmi.multimesh.visible_instance_count = -1 if high else level.grass_mmi.multimesh.instance_count / 2
+	ui.set_quality_label(high)
+	if save:
+		var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
+		if f: f.store_string(JSON.stringify({"quality_high": high}))
+
+func _load_settings() -> void:
+	var high := true
+	if FileAccess.file_exists(SETTINGS_PATH):
+		var d = JSON.parse_string(FileAccess.get_file_as_string(SETTINGS_PATH))
+		if d is Dictionary: high = bool(d.get("quality_high", true))
+	set_quality(high)
+
+## frames too slow for a few seconds: drop to low quality once (bloom off, fewer particles)
+func _auto_quality(dt: float) -> void:
+	if quality_auto_dropped or not world.quality_high or autotest: return
+	var fps := Engine.get_frames_per_second()
+	_fps_low_t = _fps_low_t + dt if fps < 38 else maxf(0.0, _fps_low_t - dt * 0.5)
+	if _fps_low_t > 5.0:
+		quality_auto_dropped = true
+		set_quality(false)
+		print("[quality] auto-dropped to low (fps %d)" % fps)
 
 # ------------------------------------------------------------------ save
 func _load_save() -> void:
@@ -413,12 +535,22 @@ func cmd(c: String) -> Variant:
 		"interact": return try_interact()
 		"rotate": rotate_view(int(a[1]))
 		"yaw": world.set_yaw_index(int(a[1]))
-		"zoom": world.cam.size = float(a[1])
+		"zoom":
+			world.cam.size = float(a[1])
+			world.cam_size_target = float(a[1])
+		"zoomlvl": zoom_view(int(a[1]))
 		"slowmo": Engine.time_scale = float(a[1])
 		"snd": sfx.play(a[1], float(a[2]) if a.size() > 2 else 0.0)
 		"reset_save": _delete_save(); save_data = {}
 		"save": _save()
 		"finale": start_finale()
+		"noauto": quality_auto_dropped = true
+		"quality": set_quality(a[1] == "1")
+		"closeup":
+			world.cam_lock = float(a[1]) > 0.0
+			if world.cam_lock: world.cam.size = float(a[1])
+		"door_tap": ui.door_overlay.slot_pressed.emit(int(a[1]))
+		"door_close": ui.door_overlay.close()
 		"veil": player.fig.veil.visible = a[1] == "1"
 		"runes": player.fig.set_runes(int(a[1]))
 		"fogd": world.fog_mats[int(a[1])].set_shader_parameter("density", float(a[2]))
@@ -445,7 +577,18 @@ func state_dict() -> Dictionary:
 		"fps": Engine.get_frames_per_second(), "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "speed": player.speed01,
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
-		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text, "card": snappedf(ui.card.modulate.a, 0.01)}
+		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text, "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
+		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
+		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01)}
+
+func _door_slot_centers() -> Array:
+	var out := []
+	if not ui.door_overlay.visible: return out
+	var xf := ui.door_overlay.get_global_transform_with_canvas()
+	for c in ui.door_overlay.slots:
+		var p: Vector2 = xf * (c.position + c.size * 0.5)
+		out.append([snappedf(p.x, 0.1), snappedf(p.y, 0.1)])
+	return out
 
 func _setup_js() -> void:
 	if not OS.has_feature("web"): return

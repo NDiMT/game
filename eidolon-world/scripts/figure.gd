@@ -196,9 +196,32 @@ static func _build_cloak() -> ArrayMesh:
 			var r := lerpf(0.042, 0.066, h) * grow
 			return A + d * h + (e1 * cos(an) + e2 * sin(an)) * r
 		_lathe(st, [0.0, 0.3, 0.6, 0.86, 1.0], 12, func(h: float, an: float) -> Array:
-			return [sl.call(h, an, 1.0), CLOAK * (0.95 + 0.1 * h)])
+			return [sl.call(h, an, 1.0), CLOAK * (0.95 + 0.1 * h)], 6.0 if side < 0.0 else 7.0)
 		_lathe(st, [0.86, 0.93, 1.0], 24, func(h: float, an: float) -> Array:
 			return [sl.call(h, an, 1.025), CLOAK, Vector2(band + (h - 0.86) / 0.1401, an / TAU)])
+	# torn strips trailing from the back of the cloak (they flutter more than the cloth: UV.x = 8)
+	for k in 3:
+		var an := PI * 0.5 + (k - 1) * 0.42 + 0.05
+		var h0 := 0.42 - k * 0.06
+		var segs := 7
+		var wdt := 0.034 - k * 0.004
+		var prev_l := Vector3.ZERO
+		var prev_r := Vector3.ZERO
+		for j in segs + 1:
+			var f := float(j) / segs
+			var h := lerpf(h0, 0.02, f)
+			var c := _cloak_point(h, an, 1.035 + f * 0.05)
+			var tang := Vector3(-sin(an), 0, cos(an))
+			var l := c - tang * wdt * (1.0 - f * 0.4) + Vector3(0, 0, 0)
+			var r := c + tang * wdt * (1.0 - f * 0.6)
+			if j > 0:
+				var u0 := Vector2(8.0 + k * 0.1, f - 1.0 / segs)
+				var u1 := Vector2(8.0 + k * 0.1, f)
+				var col := CLOAK * 1.05
+				_tri(st, [prev_l, col, u0], [l, col, u1], [r, col, u1])
+				_tri(st, [prev_l, col, u0], [r, col, u1], [prev_r, col, u0])
+			prev_l = l
+			prev_r = r
 	st.generate_normals()
 	return st.commit()
 

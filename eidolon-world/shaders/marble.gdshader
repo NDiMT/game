@@ -4,6 +4,7 @@ shader_type spatial;
 //   g = material: 0.00 cream floor (1 m tile grid + grout), 0.25 cream carved marble (walls, columns,
 //       statues), 0.50 rough island stone (cliffs under the slabs), 0.75 black polished marble floor,
 //       1.00 charcoal (dead wood, iron, bronze)
+//   a = 1 on boxes: their BoxMesh face UVs give worn, bevelled edges (fake chamfer)
 //   b = 1 if the piece may OCCLUDE the player (walls, columns, roofs, arches): those fragments are
 //       dithered out in a soft cylinder between the player and the camera.
 render_mode cull_back, depth_draw_opaque;
@@ -14,19 +15,21 @@ global uniform float awaken;
 
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform vec3 cream : source_color = vec3(0.80, 0.79, 0.76);
-uniform vec3 vein : source_color = vec3(0.40, 0.40, 0.40);
+uniform vec3 vein : source_color = vec3(0.34, 0.345, 0.36);
 uniform vec3 side_col : source_color = vec3(0.36, 0.355, 0.35);
 uniform vec3 black_base : source_color = vec3(0.07, 0.07, 0.078);
 uniform vec3 black_vein : source_color = vec3(0.55, 0.56, 0.58);
 uniform vec3 char_col : source_color = vec3(0.13, 0.13, 0.14);
 uniform float occlusion = 1.0;
-uniform float fade_y = -99.0;      // optional: dissolve everything below this height (rising bridges)
+uniform float fade_y = -99.0;
+uniform vec4 moss_rect = vec4(6.8, -15.4, 17.2, -4.8);     // the Garden of the Veiled (x0, z0, x1, z1)      // optional: dissolve everything below this height (rising bridges)
 
 varying vec3 wp;
 varying vec3 wn;
 varying float rnd;
 varying float mat_id;
 varying float occ;
+varying float boxy;
 
 void vertex() {
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -34,6 +37,7 @@ void vertex() {
 	rnd = COLOR.r;
 	mat_id = COLOR.g;
 	occ = COLOR.b;
+	boxy = COLOR.a;
 }
 
 float marble(vec3 p, float scale, float sharp) {
@@ -115,6 +119,9 @@ void fragment() {
 		col = mix(col, vec3(0.32, 0.33, 0.35), seam * 0.5);
 		float side = 1.0 - smoothstep(0.55, 0.85, wn.y);
 		col = mix(col, side_col * 0.6, side * 0.7);
+		// polished: soft reflections of the pale sky drift across the floor
+		float streak = smoothstep(0.55, 1.0, sin((wp.x + wp.z) * 0.55 + n * 3.0)) * (1.0 - side);
+		col += vec3(0.07, 0.075, 0.085) * streak + vec3(0.025, 0.03, 0.035);
 		rough = mix(0.06, 0.5, side);
 		spec = 0.9;
 	} else {
@@ -122,6 +129,29 @@ void fragment() {
 		rough = 0.8;
 		spec = 0.3;
 	}
+	// worn, chamfered edges on blocks: a pale bevel catching the light, a soft shadow just inside
+	if (boxy > 0.5 && mat_id < 0.87) {
+		vec2 fuv = fract(UV * vec2(3.0, 2.0));
+		float mpu = length(fwidth(wp)) / max(length(fwidth(fuv)), 1e-5);
+		vec2 em = min(fuv, 1.0 - fuv) * mpu;
+		float ed = min(em.x, em.y);
+		float chip = texture(noise_tex, wp.xz * 1.9 + wp.y * 1.3).r;
+		float bevel = 1.0 - smoothstep(0.012, 0.05 + chip * 0.03, ed);
+		float inner = smoothstep(0.03, 0.06, ed) * (1.0 - smoothstep(0.06, 0.13, ed));
+		col = mix(col, col * 1.18 + vec3(0.03, 0.025, 0.015), bevel * (0.55 + 0.45 * max(wn.y, 0.0)));
+		col *= 1.0 - inner * 0.06;
+	}
+	// moss and lichen in the garden: on upward faces near the ground and in sheltered corners
+	if (wp.x > moss_rect.x && wp.x < moss_rect.z && wp.z > moss_rect.y && wp.z < moss_rect.w && mat_id < 0.62) {
+		float mn = texture(noise_tex, wp.xz * 0.35 + 3.7).r * 0.7 + texture(noise_tex, wp.xz * 1.7 + wp.y).r * 0.3;
+		float low = 1.0 - smoothstep(1.0, 2.2, wp.y);
+		float moss = smoothstep(0.60, 0.74, mn) * low * (0.3 + 0.7 * max(wn.y, 0.0));
+		col = mix(col, vec3(0.52, 0.55, 0.45) * (0.88 + 0.24 * n), moss * 0.5);
+		float li = step(0.86, texture(noise_tex, wp.xz * 6.0 + wp.yy * 5.0).r) * (1.0 - abs(wn.y));
+		col = mix(col, vec3(0.76, 0.74, 0.62), li * 0.35);
+	}
+	// a hint of warmth in the pale stone (light seems to sink into the marble)
+	if (mat_id < 0.37) col += vec3(0.022, 0.012, 0.0) * smoothstep(0.4, 0.9, dot(col, vec3(0.33)));
 	if (wp.y < fade_y) discard;
 	ALBEDO = col;
 	ROUGHNESS = rough;

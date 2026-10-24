@@ -12,7 +12,7 @@ varying vec2 vuv;
 uniform vec3 glow_col : source_color = vec3(0.35, 0.95, 1.0);
 
 void vertex() {
-	VERTEX = cloak_deform(VERTEX);
+	VERTEX = cloak_deform(VERTEX, UV);
 	lp = VERTEX;
 	vuv = UV;
 }
@@ -33,4 +33,7 @@ void fragment() {
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.15;
 	EMISSION = glow_col * (COLOR.a * glint * 2.4 + (emb.x * 1.4 + emb.y * 0.35) * emb.z);
+	// a cool rim of fog light round the silhouette
+	float rim = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.6);
+	EMISSION += vec3(0.42, 0.50, 0.60) * rim * 0.55 * (1.0 - step(0.5, vuv.x) * step(vuv.x, 1.5));
 }

@@ -34,6 +34,18 @@ var still_time := 0.0
 func _init() -> void:
 	fig = Figure.new()
 	add_child(fig)
+	# soft contact shadow
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(0.95, 0.95)
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/blob.gdshader")
+	m.set_shader_parameter("strength", 0.5)
+	var b := MeshInstance3D.new()
+	b.mesh = pm
+	b.material_override = m
+	b.position.y = 0.015
+	b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(b)
 
 func teleport(p: Vector3, face_yaw := INF) -> void:
 	var q := Vector2(p.x, p.z)

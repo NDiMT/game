@@ -5,6 +5,7 @@ extends CanvasLayer
 
 signal begin_pressed
 signal anew_pressed
+signal quality_pressed
 
 const CREAM := Color(0.95, 0.93, 0.88)
 const INK := Color(0.10, 0.10, 0.11)
@@ -27,6 +28,9 @@ var silhouette: Silhouette
 var end_a: Label
 var end_b: Label
 var area_label: Label
+var area_rule: Control
+var quality_btn: Button
+var door_overlay: DoorOverlay
 var _area_tw: Tween
 var fade: ColorRect
 var _t := 0.0
@@ -60,7 +64,7 @@ func _ready() -> void:
 	card = Control.new()
 	card.set_anchors_preset(Control.PRESET_CENTER)
 	card.anchor_top = 0.30; card.anchor_bottom = 0.30
-	card.offset_left = -80; card.offset_right = 80; card.offset_top = -100; card.offset_bottom = 100
+	card.offset_left = -105; card.offset_right = 105; card.offset_top = -130; card.offset_bottom = 130
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.modulate.a = 0.0
 	root.add_child(card)
@@ -94,12 +98,13 @@ func _ready() -> void:
 	memory_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_halo(memory_line, Color(0.95, 0.95, 0.93, 0.9))
 	memory.add_child(memory_line)
-	end_a = _label(italic, 22, Color(0.10, 0.10, 0.11), HORIZONTAL_ALIGNMENT_CENTER)
+	end_a = _label(italic, 24, Color(0.07, 0.07, 0.08), HORIZONTAL_ALIGNMENT_CENTER)
 	end_a.set_anchors_preset(Control.PRESET_CENTER)
 	end_a.anchor_top = 0.42; end_a.anchor_bottom = 0.42
 	end_a.offset_left = -190; end_a.offset_right = 190; end_a.offset_top = -14; end_a.offset_bottom = 14
 	end_a.text = Names.awakened(Names.FIRST)
-	_halo(end_a, Color(0.95, 0.95, 0.93, 0.9))
+	_halo(end_a, Color(0.97, 0.97, 0.95, 1.0))
+	end_a.add_theme_constant_override("shadow_outline_size", 22)
 	end_a.modulate.a = 0.0
 	root.add_child(end_a)
 	# shrine counter: a quiet corner mark, "I / VII", that fades after a few seconds
@@ -117,6 +122,17 @@ func _ready() -> void:
 	_halo(area_label, Color(0.95, 0.95, 0.93, 0.8))
 	area_label.modulate.a = 0.0
 	root.add_child(area_label)
+	# thin rules either side of the name
+	area_rule = Rules.new()
+	area_rule.label = area_label
+	area_rule.set_anchors_preset(Control.PRESET_FULL_RECT)
+	area_label.add_child(area_rule)
+	door_overlay = DoorOverlay.new()
+	door_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	door_overlay.visible = false
+	door_overlay.caps = caps
+	door_overlay.italic = italic
+	root.add_child(door_overlay)
 	fade = ColorRect.new()
 	fade.color = Color(0.07, 0.07, 0.075, 1.0)
 	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -184,13 +200,29 @@ func _build_title() -> void:
 	anew_btn.visible = false
 	anew_btn.pressed.connect(func() -> void: anew_pressed.emit())
 	title_screen.add_child(anew_btn)
+	quality_btn = Button.new()
+	quality_btn.flat = true
+	quality_btn.focus_mode = Control.FOCUS_NONE
+	quality_btn.add_theme_font_override("font", caps)
+	quality_btn.add_theme_font_size_override("font_size", 10)
+	quality_btn.add_theme_color_override("font_color", Color(0.22, 0.22, 0.23, 0.75))
+	quality_btn.add_theme_color_override("font_hover_color", Color(0.1, 0.1, 0.11))
+	quality_btn.add_theme_color_override("font_pressed_color", Color(0.1, 0.1, 0.11))
+	for st in ["normal", "hover", "pressed", "focus"]: quality_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	quality_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	quality_btn.offset_left = -150; quality_btn.offset_right = -10; quality_btn.offset_top = 16; quality_btn.offset_bottom = 40
+	quality_btn.pressed.connect(func() -> void: quality_pressed.emit())
+	title_screen.add_child(quality_btn)
 
 func set_continue(has_save: bool) -> void:
 	tap_label.text = "TOUCH TO CONTINUE" if has_save else "TOUCH TO BEGIN"
 	anew_btn.visible = has_save
 
 func over_anew(p: Vector2) -> bool:
-	return anew_btn.visible and anew_btn.get_global_rect().grow(8).has_point(p)
+	return (anew_btn.visible and anew_btn.get_global_rect().grow(8).has_point(p)) or quality_btn.get_global_rect().grow(6).has_point(p)
+
+func set_quality_label(high: bool) -> void:
+	quality_btn.text = "QUALITY · " + ("HIGH" if high else "LOW")
 
 func hide_title() -> void:
 	var tw := create_tween()
@@ -216,6 +248,7 @@ func hide_text() -> void:
 func show_rune(design: int, numeral: int) -> void:
 	card_mat.set_shader_parameter("design", float(design))
 	card_mat.set_shader_parameter("numeral", float(numeral))
+	card_mat.set_shader_parameter("glow", 1.0)
 	if _card_tw: _card_tw.kill()
 	_card_tw = create_tween()
 	_card_tw.tween_property(card, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE)
@@ -255,6 +288,7 @@ static func _roman(n: int) -> String:
 
 func show_area(title: String) -> void:
 	area_label.text = title.to_upper()
+	area_rule.queue_redraw()
 	if _area_tw: _area_tw.kill()
 	_area_tw = create_tween()
 	_area_tw.tween_property(area_label, "modulate:a", 0.85, 1.6).set_trans(Tween.TRANS_SINE)
@@ -273,6 +307,24 @@ func _process(dt: float) -> void:
 	silhouette.t = _t
 	if memory.modulate.a > 0.0: silhouette.queue_redraw()
 
+
+class Rules extends Control:
+	var label: Label
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _draw() -> void:
+		if label == null: return
+		var f := label.get_theme_font("font")
+		var fs := label.get_theme_font_size("font_size")
+		var w := f.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var cy := size.y * 0.5 + 1.0
+		var cx := size.x * 0.5
+		var gap := w * 0.5 + 14.0
+		var col := Color(0.12, 0.12, 0.13, 0.55)
+		draw_line(Vector2(cx - gap - 46.0, cy), Vector2(cx - gap, cy), col, 1.0, true)
+		draw_line(Vector2(cx + gap, cy), Vector2(cx + gap + 46.0, cy), col, 1.0, true)
+		draw_circle(Vector2(cx - gap - 50.0, cy), 1.4, col)
+		draw_circle(Vector2(cx + gap + 50.0, cy), 1.4, col)
 
 class CardDisc extends Control:
 	## soft dark disc behind a rune card
@@ -411,3 +463,146 @@ class TitleWord extends Control:
 				_serif_h(o, s * 0.6, col); _serif_h(o + Vector2(0, h), s * 0.6, col)
 				_serif_h(o + Vector2(0.74 * h, 0), s * 0.6, col)
 
+
+
+class DoorOverlay extends Control:
+	## Close-up of the rune door, drawn in the rune language: three big slots. Tap a slot to turn its
+	## rune (flip + soft stone click); keyboard: left/right choose, E turns, Esc/Q closes.
+	signal slot_pressed(i: int)
+	signal closed
+	var caps: Font
+	var italic: Font
+	var slots: Array[Control] = []
+	var mats: Array[ShaderMaterial] = []
+	var designs := [-1, -1, -1]
+	var selected := 0
+	var panel := Rect2()
+	var _flare := 0.0
+	var _t := 0.0
+	var _close_r := Rect2()
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		for i in 3:
+			var c := Control.new()
+			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			add_child(c)
+			var r := ColorRect.new()
+			r.set_anchors_preset(Control.PRESET_FULL_RECT)
+			r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var m := ShaderMaterial.new()
+			m.shader = preload("res://shaders/rune_ui.gdshader")
+			m.set_shader_parameter("numeral", float(i + 1))
+			m.set_shader_parameter("design", -1.0)
+			r.material = m
+			c.add_child(r)
+			slots.append(c)
+			mats.append(m)
+		resized.connect(_layout)
+		_layout()
+
+	func _layout() -> void:
+		var w := minf(size.x - 32.0, 360.0)
+		var h := w * 1.25
+		panel = Rect2((size.x - w) * 0.5, size.y * 0.42 - h * 0.5, w, h)
+		var sw := w * 0.235
+		var sh := sw * 1.38
+		for i in 3:
+			var cx := panel.position.x + w * (0.2 + 0.3 * i)
+			var c := slots[i]
+			c.size = Vector2(sw, sh)
+			c.position = Vector2(cx - sw * 0.5, panel.position.y + h * 0.40 - sh * 0.5)
+			c.pivot_offset = c.size * 0.5
+		_close_r = Rect2(panel.end.x - 46.0, panel.position.y + 8.0, 38.0, 38.0)
+		queue_redraw()
+
+	func open(state: Array, sel: int) -> void:
+		designs = state.duplicate()
+		selected = sel
+		for i in 3: _apply(i)
+		visible = true
+		modulate.a = 0.0
+		create_tween().tween_property(self, "modulate:a", 1.0, 0.35)
+		_layout()
+
+	func close() -> void:
+		var tw := create_tween()
+		tw.tween_property(self, "modulate:a", 0.0, 0.3)
+		tw.tween_callback(func() -> void: visible = false)
+		closed.emit()
+
+	func _apply(i: int) -> void:
+		mats[i].set_shader_parameter("design", float(designs[i]))
+		mats[i].set_shader_parameter("glow", 0.0 if designs[i] < 0 else 1.0)
+
+	## the slot turns over to show its new rune
+	func flip(i: int, new_design: int) -> void:
+		designs[i] = new_design
+		var c := slots[i]
+		var tw := create_tween()
+		tw.tween_property(c, "scale:x", 0.0, 0.11).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_callback(func() -> void: _apply(i))
+		tw.tween_property(c, "scale:x", 1.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	func flare() -> void:
+		var tw := create_tween()
+		tw.tween_property(self, "_flare", 1.0, 0.5)
+		tw.tween_interval(0.7)
+		tw.tween_callback(close)
+		tw.tween_property(self, "_flare", 0.0, 0.3)
+
+	func _gui_input(e: InputEvent) -> void:
+		var p := Vector2.INF
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT: p = e.position
+		if p == Vector2.INF: return
+		accept_event()
+		if _close_r.grow(10.0).has_point(p) or not panel.has_point(p):
+			close()
+			return
+		for i in 3:
+			if Rect2(slots[i].position, slots[i].size).grow(12.0).has_point(p):
+				selected = i
+				slot_pressed.emit(i)
+				return
+
+	func _process(dt: float) -> void:
+		if not visible: return
+		_t += dt
+		queue_redraw()
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.055, 0.06, 0.62))
+		var r := panel
+		# the door: pale marble slab, a carved inner border, a lintel line
+		draw_rect(r.grow(10.0), Color(0.22, 0.22, 0.23, 0.9))
+		draw_rect(r, Color(0.80, 0.79, 0.76))
+		for k in 7:
+			var y := r.position.y + r.size.y * (0.08 + 0.13 * k)
+			draw_line(Vector2(r.position.x + 10.0, y + sin(k * 3.1) * 5.0), Vector2(r.end.x - 10.0, y + 9.0 + cos(k * 1.7) * 6.0), Color(0.66, 0.65, 0.62, 0.35), 1.0, true)
+		draw_rect(r.grow(-14.0), Color(0.42, 0.42, 0.42, 0.9), false, 1.4)
+		draw_rect(r.grow(-20.0), Color(0.55, 0.55, 0.54, 0.6), false, 1.0)
+		# a recessed socket under each slot, the selected one ringed
+		for i in 3:
+			var c := slots[i]
+			var sr := Rect2(c.position, c.size).grow(6.0)
+			draw_rect(sr, Color(0.14, 0.15, 0.16, 0.92))
+			draw_rect(sr, Color(0.55, 0.9, 1.0, 0.35 + 0.65 * _flare), false, 1.0)
+			if i == selected:
+				var pulse := 0.5 + 0.5 * sin(_t * 4.0)
+				draw_rect(sr.grow(5.0), Color(0.55, 0.95, 1.0, 0.45 + 0.35 * pulse), false, 1.5)
+		if caps:
+			var hint := "TAP A RUNE TO TURN IT"
+			var fs := 11
+			var tw := caps.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			draw_string(caps, Vector2(r.get_center().x - tw * 0.5, r.position.y + r.size.y * 0.78), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.25, 0.25, 0.26, 0.9))
+		if italic:
+			var line := "as the veiled ones are numbered"
+			var fs2 := 15
+			var w2 := italic.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x
+			draw_string(italic, Vector2(r.get_center().x - w2 * 0.5, r.position.y + r.size.y * 0.86), line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, Color(0.2, 0.2, 0.21, 0.9))
+		# close control
+		var cc := _close_r.get_center()
+		draw_circle(cc, 16.0, Color(0.1, 0.1, 0.11, 0.85))
+		draw_arc(cc, 16.0, 0, TAU, 32, Color(0.9, 0.9, 0.88, 0.7), 1.0, true)
+		draw_line(cc + Vector2(-6, -6), cc + Vector2(6, 6), Color(0.95, 0.95, 0.92), 1.6, true)
+		draw_line(cc + Vector2(6, -6), cc + Vector2(-6, 6), Color(0.95, 0.95, 0.92), 1.6, true)

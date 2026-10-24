@@ -28,7 +28,7 @@ varying vec4 vcol;
 varying vec2 vuv;
 
 void vertex() {
-	vec3 v = cloak_deform(VERTEX);
+	vec3 v = cloak_deform(VERTEX, UV);
 	vcol = COLOR;
 	vuv = UV;
 	vec3 w = (MODEL_MATRIX * vec4(v, 1.0)).xyz;

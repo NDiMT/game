@@ -9,6 +9,7 @@ extends CanvasLayer
 
 signal interact
 signal rotate(dir: int)
+signal zoom(level: int)
 
 const JOY_R := 54.0
 const BTN_R := 36.0
@@ -95,8 +96,14 @@ func _input(e: InputEvent) -> void:
 		if _twist_on and _touches.size() >= 2:
 			var a := _pair_angle()
 			var d := wrapf(a - _twist_a, -PI, PI)
+			var ratio := _pair_dist() / maxf(_pinch_d, 1.0)
 			if absf(d) > 0.55:
 				rotate.emit(1 if d > 0.0 else -1)
+				_twist_a = a
+				_pinch_d = _pair_dist()
+			elif ratio > 1.3 or ratio < 0.77:
+				zoom.emit(0 if ratio > 1.0 else 1)        # spread = closer, pinch = wider
+				_pinch_d = _pair_dist()
 				_twist_a = a
 			return
 		if e.index == joy_index:
@@ -109,9 +116,16 @@ func _input(e: InputEvent) -> void:
 			vec = off / JOY_R
 			if vec.length() < 0.12: vec = Vector2.ZERO
 
+var _pinch_d := 1.0
+
 func _begin_twist() -> void:
 	_twist_on = true
 	_twist_a = _pair_angle()
+	_pinch_d = _pair_dist()
+
+func _pair_dist() -> float:
+	var ks := _touches.keys()
+	return (_touches[ks[0]] as Vector2).distance_to(_touches[ks[1]])
 
 func _pair_angle() -> float:
 	var ks := _touches.keys()
@@ -152,8 +166,11 @@ class Pad extends Control:
 		# rotate buttons
 		for d in [-1, 1]:
 			var c := ctl.rot_center(d)
-			draw_circle(c, 18.0, Color(0.08, 0.08, 0.09, 0.30 * e))
+			draw_circle(c, 18.0, Color(0.08, 0.08, 0.09, 0.26 * e))
 			draw_arc(c, 18.0, 0, TAU, 40, Color(INK, 0.45 * e), 1.0, true)
+			for k in 4:
+				var dv2 := Vector2(cos(PI * 0.5 * k), sin(PI * 0.5 * k))
+				draw_line(c + dv2 * 18.5, c + dv2 * 21.5, Color(INK, 0.4 * e), 1.0, true)
 			var a0 := -PI * 0.85 if d > 0 else -PI * 0.15
 			var a1 := a0 + (PI * 1.3 if d > 0 else -PI * 1.3)
 			draw_arc(c, 8.0, minf(a0, a1), maxf(a0, a1), 20, Color(INK, 0.85 * e), 1.4, true)
@@ -184,9 +201,13 @@ class Pad extends Control:
 			var r := Controls.BTN_R * (1.0 + ctl._press * 0.08)
 			for i in 6:
 				draw_circle(c2, r + 4.0 + i * 3.0, Color(CY, (0.035 + 0.02 * breathe) * a2 * (1.0 - i / 6.0)))
-			draw_circle(c2, r, Color(0.06, 0.07, 0.08, 0.42 * a2))
+			draw_circle(c2, r, Color(0.06, 0.07, 0.08, 0.40 * a2))
+			# the rune frame: a ring with four cardinal ticks, as every rune of the sculptor has
 			draw_arc(c2, r, 0, TAU, 64, Color(CY, (0.55 + 0.35 * breathe) * a2), 1.5, true)
-			draw_arc(c2, r - 5.0, 0, TAU, 64, Color(INK, 0.18 * a2), 1.0, true)
+			draw_arc(c2, r - 5.0, 0, TAU, 64, Color(INK, 0.16 * a2), 1.0, true)
+			for k in 4:
+				var dv := Vector2(cos(PI * 0.5 * k), sin(PI * 0.5 * k))
+				draw_line(c2 + dv * (r + 2.0), c2 + dv * (r + 8.0), Color(CY, (0.6 + 0.3 * breathe) * a2), 1.4, true)
 			_icon(ctl.icon, c2, 13.0, Color(INK, 0.95 * a2), Color(CY, a2))
 
 	func _icon(name: String, c: Vector2, s: float, col: Color, cy: Color) -> void:

@@ -12,9 +12,9 @@ const AREAS := {
 
 ## walk-region name (Level) -> area key
 const REGION_AREA := {
-	"T": "gate", "stub": "gate", "b1_stair": "gate",
+	"T": "gate", "stub": "gate", "b1": "gate", "b1_stair": "gate",
 	"H": "hall",
-	"G": "garden", "shortcut_ramp": "garden",
+	"G": "garden", "HG": "garden", "shortcut_ramp": "garden",
 	"passage": "court", "L": "court", "LB": "court",
 	"E": "shrine", "EB": "shrine", "S": "shrine", "sealed_way": "shrine",
 }

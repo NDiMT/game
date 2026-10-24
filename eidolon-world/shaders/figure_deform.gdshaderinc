@@ -17,8 +17,22 @@ vec3 veil_deform(vec3 v) {
 	return v;
 }
 
-vec3 cloak_deform(vec3 v) {
+vec3 cloak_deform(vec3 v, vec2 uv) {
 	if (veil > 0.5) return veil_deform(v);
+	float flag = floor(uv.x + 0.0005);
+	if (flag > 5.5 && flag < 7.5) {
+		// sleeves swing a little with the stride (opposite to each other)
+		float side = flag < 6.5 ? -1.0 : 1.0;
+		float k = clamp((0.67 - v.y) / 0.3, 0.0, 1.0);
+		v.z += sin(phase) * side * 0.045 * k * ripple * deform;
+	}
+	if (flag > 7.5) {
+		// torn strips: trail and flutter more than the cloak
+		float k = uv.y * uv.y;
+		v.xz += sway * 2.4 * k * deform;
+		v.x += sin(TIME * 3.3 + uv.x * 17.0 + v.y * 9.0) * 0.012 * k * (0.4 + ripple);
+		v.z += cos(TIME * 2.7 + uv.x * 11.0) * 0.01 * k + flare * 0.06 * k;
+	}
 	float h = clamp(v.y / 0.82, 0.0, 1.0);
 	float w = (1.0 - h) * (1.0 - h) * deform;
 	float an = atan(v.z, v.x);

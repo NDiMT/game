@@ -43,9 +43,12 @@ static func prim_arrays(key: String, make: Callable) -> Array:
 		_cache[key] = m.get_mesh_arrays()
 	return _cache[key]
 
+## boxes carry COLOR.a = 1: the shader reads their face UVs to wear and bevel the edges
 func box(center: Vector3, size: Vector3, color: Color, basis := Basis()) -> void:
 	var a := prim_arrays("box", func() -> PrimitiveMesh: return BoxMesh.new())
-	add_arrays(a, Transform3D(basis * Basis.from_scale(size), center), color)
+	var c := color
+	c.a = 1.0
+	add_arrays(a, Transform3D(basis * Basis.from_scale(size), center), c)
 
 func cyl(center: Vector3, r_top: float, r_bot: float, h: float, color: Color, segs := 12, basis := Basis()) -> void:
 	var R := maxf(maxf(r_top, r_bot), 0.001)
@@ -57,14 +60,18 @@ func cyl(center: Vector3, r_top: float, r_bot: float, h: float, color: Color, se
 		m.top_radius = tt; m.bottom_radius = bb; m.height = 1.0
 		m.radial_segments = segs; m.rings = 1
 		return m)
-	add_arrays(a, Transform3D(basis * Basis.from_scale(Vector3(R, h, R)), center), color)
+	var c := color
+	c.a = 0.0
+	add_arrays(a, Transform3D(basis * Basis.from_scale(Vector3(R, h, R)), center), c)
 
 func sphere(center: Vector3, radii: Vector3, color: Color, segs := 12, rings := 6, basis := Basis()) -> void:
 	var a := prim_arrays("sph%d_%d" % [segs, rings], func() -> PrimitiveMesh:
 		var m := SphereMesh.new()
 		m.radius = 1.0; m.height = 2.0; m.radial_segments = segs; m.rings = rings
 		return m)
-	add_arrays(a, Transform3D(basis * Basis.from_scale(radii), center), color)
+	var c := color
+	c.a = 0.0
+	add_arrays(a, Transform3D(basis * Basis.from_scale(radii), center), c)
 
 ## Quad lying in a plane (for flat details). size in local x/y, faces local +z.
 func quad(center: Vector3, size: Vector2, color: Color, basis := Basis()) -> void:

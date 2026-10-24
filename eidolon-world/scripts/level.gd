@@ -62,6 +62,10 @@ var noise_tex: ImageTexture
 var col_full: Array[Transform3D] = []
 var col_stump: Array[Transform3D] = []
 var debris: Array[Transform3D] = []
+var blobs: Array[Transform3D] = []        # contact shadows (round)
+var strips: Array[Transform3D] = []       # ambient occlusion along wall bases
+var cloths: Array[Transform3D] = []       # cloth veils hung on statues
+var rays: Array = []                      # god rays: [position, length]
 var rng := RandomNumberGenerator.new()
 var markers: Array = []
 var named := {}          # name -> Region / Obstacle for puzzles to toggle
@@ -74,6 +78,7 @@ const BEYOND_RIGHT := Vector3(0.7071, 0.0, 0.7071)
 const SECOND_SHRINE := Vector3(45.5, 2.5, -54.5)
 
 var beyond: Node3D
+var grass_mmi: MultiMeshInstance3D
 
 static func yaw_to(from: Vector3, to: Vector3) -> float:
 	return atan2(-(to.x - from.x), -(to.z - from.z))
@@ -259,16 +264,30 @@ func box(zone: String, center: Vector3, size: Vector3, mat := 0.25, occ := false
 	mb(zone).box(center, size, C(mat, occ), basis)
 
 func wall(zone: String, r: Rect2, y0: float, y1: float, occ := true) -> void:
+	# ambient occlusion along both long faces at the floor
+	var long_x := r.size.x >= r.size.y
+	var L := maxf(r.size.x, r.size.y)
+	for sgn in [-1.0, 1.0]:
+		var c := Vector3(r.get_center().x, y0 + 0.013, r.get_center().y)
+		if long_x: c.z += sgn * (r.size.y * 0.5 + 0.3)
+		else: c.x += sgn * (r.size.x * 0.5 + 0.3)
+		var b := Basis.from_scale(Vector3(L + 0.6, 1.0, 0.75)) if long_x else Basis(Vector3.UP, PI * 0.5) * Basis.from_scale(Vector3(L + 0.6, 1.0, 0.75))
+		strips.append(Transform3D(b, c))
 	box(zone, Vector3(r.get_center().x, (y0 + y1) * 0.5, r.get_center().y), Vector3(r.size.x, y1 - y0, r.size.y), 0.25, occ)
 	# a moulded coping along the top
 	box(zone, Vector3(r.get_center().x, y1 + 0.06, r.get_center().y), Vector3(r.size.x + 0.12, 0.12, r.size.y + 0.12), 0.25, occ)
 
+func blob(at: Vector3, size: float) -> void:
+	blobs.append(Transform3D(Basis().scaled(Vector3(size, 1.0, size)), at + Vector3(0, 0.012, 0)))
+
 func column(base: Vector3, h := 3.8, ob := true) -> void:
+	blob(base, 1.7)
 	var s := h / 3.8
 	col_full.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(1.0, s, 1.0)), base))
 	if ob: ob_circle(Vector2(base.x, base.z), 0.38)
 
 func stump(base: Vector3, h := 1.0, ob := true, tilt := 0.0) -> void:
+	blob(base, 1.5)
 	var b := Basis(Vector3.UP, rng.randf() * TAU) * Basis(Vector3.RIGHT, tilt)
 	col_stump.append(Transform3D(b.scaled(Vector3(1.0, h, 1.0)), base))
 	if ob: ob_circle(Vector2(base.x, base.z), 0.38)
@@ -287,6 +306,10 @@ func statue(zone: String, base: Vector3, yaw: float, sc := 1.0, plinth := 0.6, o
 	var col := C(0.25, true)
 	var pc := Color(col.r, 0.25, 1.0)
 	var o := base
+	blob(base, 1.9 * sc)
+	# a real cloth veil hangs down the statue's back from the crown
+	var top := o + Vector3(0, plinth + 0.08 + 2.22 * sc, 0) + B * Vector3(0, 0, 0.12 * sc)
+	cloths.append(Transform3D(B * Basis(Vector3.RIGHT, 0.10) * Basis.from_scale(Vector3(0.30 * sc, 1.3 * sc, 1.0)), top))
 	m.box(o + Vector3(0, plinth * 0.5, 0), Vector3(0.95 * sc, plinth, 0.95 * sc), pc, B)
 	m.box(o + Vector3(0, plinth + 0.04, 0), Vector3(1.08 * sc, 0.08, 1.08 * sc), pc, B)
 	var y := o.y + plinth + 0.08
@@ -312,6 +335,7 @@ func tree(zone: String, base: Vector3, seed: int) -> void:
 	var m := mb(zone)
 	var r := RandomNumberGenerator.new()
 	r.seed = seed
+	blob(base, 1.9)
 	# square stone planter
 	box(zone, base + Vector3(0, 0.12, 0), Vector3(1.3, 0.24, 1.3), 0.25)
 	box(zone, base + Vector3(0, 0.2, 0), Vector3(1.05, 0.2, 1.05), 1.0)
@@ -419,7 +443,7 @@ func _veiled_gate() -> void:
 func _bridge_b1() -> void:
 	var z := "B1"
 	slab(z, R(-1.2, -6.5, 1.2, -5), 0.0, 0.6, 0.0)
-	walk(R(-1.2, -6.5, 1.2, -5), 0.0)
+	walk(R(-1.2, -6.5, 1.2, -5), 0.0, NAN, -1, "b1")
 	steps(z, R(-1.2, -9.5, 1.2, -6.5), 1, 0.0, 1.0, false)
 	walk(R(-1.2, -9.5, 1.2, -6.5), 1.0, 0.0, 1, "b1_stair")
 	slab(z, R(-1.2, -11, 1.2, -9.5), 1.0, 0.6, 0.0)
@@ -464,7 +488,7 @@ func _hall() -> void:
 func _garden() -> void:
 	var z := "G"
 	slab(z, R(5, -14, 7, -12), 1.0, 0.6, 0.0)
-	walk(R(5, -14, 7, -12), 1.0)
+	walk(R(5, -14, 7, -12), 1.0, NAN, -1, "HG")
 	balustrade(z, Vector2(5.1, -14.1), Vector2(6.9, -14.1), 1.0)
 	balustrade(z, Vector2(5.1, -11.9), Vector2(6.9, -11.9), 1.0)
 	slab(z, R(7, -15, 17, -5), 1.0, 0.8, 0.0)
@@ -729,12 +753,121 @@ func _commit() -> void:
 		mi.material_override = marble_mat
 		add_child(mi)
 	_markers()
+	_decor()
+	_decal_mm("Blobs", blobs, 0.0, 0.42)
+	_decal_mm("WallAO", strips, 1.0, 0.30)
+	_cloth_mm()
+	_godrays()
 	_multimesh("Columns", _column_mesh(), col_full)
 	_multimesh("Stumps", _stump_mesh(), col_stump)
 	_multimesh("Debris", _debris_mesh(), debris)
 
-func _multimesh(nm: String, mesh: Mesh, xfs: Array[Transform3D]) -> void:
-	if xfs.is_empty(): return
+func _decal_mm(nm: String, xfs: Array[Transform3D], edge: float, strength: float) -> void:
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(1, 1)
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/blob.gdshader")
+	m.set_shader_parameter("edge", edge)
+	m.set_shader_parameter("strength", strength)
+	var mmi := _multimesh(nm, pm, xfs)
+	mmi.material_override = m
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+func _cloth_mm() -> void:
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(1, 1)
+	pm.subdivide_depth = 6
+	pm.orientation = PlaneMesh.FACE_Z
+	pm.center_offset = Vector3(0, -0.5, 0)
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/cloth.gdshader")
+	var mmi := _multimesh("StatueCloth", pm, cloths)
+	mmi.material_override = m
+
+## pale dead grass and fallen leaves, gathered where stone meets stone (edges, plinths, trees)
+func _decor() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 4040
+	var tufts: Array[Transform3D] = []
+	var leaves: Array[Transform3D] = []
+	var zones_w := [["G", 170, 150], ["T", 45, 25], ["L", 30, 10], ["E", 15, 6], ["S", 25, 12], ["H", 0, 6]]
+	for zw in zones_w:
+		var g: Region = named[zw[0]]
+		var want_t: int = zw[1]
+		var want_l: int = zw[2]
+		var tries := 0
+		while (want_t > 0 or want_l > 0) and tries < 4000:
+			tries += 1
+			var p := Vector2(r.randf_range(g.r.position.x, g.r.end.x), r.randf_range(g.r.position.y, g.r.end.y))
+			if blocked(p, 0.08): continue
+			var edge := minf(minf(p.x - g.r.position.x, g.r.end.x - p.x), minf(p.y - g.r.position.y, g.r.end.y - p.y))
+			var near := 99.0
+			for o in obstacles:
+				if o.circle: near = minf(near, p.distance_to(o.c) - o.rad)
+			var shelter := edge < 0.7 or near < 0.9
+			if not shelter and r.randf() > 0.12: continue
+			var y := g.height(p)
+			if want_t > 0 and r.randf() < 0.6:
+				var sc := r.randf_range(0.65, 1.35)
+				tufts.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3(sc, sc * r.randf_range(0.8, 1.2), sc)), Vector3(p.x, y, p.y)))
+				want_t -= 1
+			elif want_l > 0:
+				var b := Basis(Vector3.UP, r.randf() * TAU) * Basis(Vector3.RIGHT, r.randf_range(-0.15, 0.15))
+				leaves.append(Transform3D(b.scaled(Vector3.ONE * r.randf_range(0.7, 1.3)), Vector3(p.x, y + 0.012, p.y)))
+				want_l -= 1
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in 3:
+		var b2 := Basis(Vector3.UP, k * PI / 3.0)
+		var corners := [Vector3(-0.21, 0, 0), Vector3(0.21, 0, 0), Vector3(0.21, 0.34, 0), Vector3(-0.21, 0.34, 0)]
+		var uvs := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for idx in [0, 1, 2, 0, 2, 3]:
+			st.set_uv(uvs[idx])
+			st.set_normal(Vector3.UP)
+			st.add_vertex(b2 * corners[idx])
+	var tmi := _multimesh("Grass", st.commit(), tufts)
+	var gm := ShaderMaterial.new()
+	gm.shader = preload("res://shaders/grass.gdshader")
+	tmi.material_override = gm
+	tmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	grass_mmi = tmi
+	var lp := PlaneMesh.new()
+	lp.size = Vector2(0.13, 0.085)
+	var lmi := _multimesh("Leaves", lp, leaves)
+	var lm := ShaderMaterial.new()
+	lm.shader = preload("res://shaders/leaf.gdshader")
+	lmi.material_override = lm
+	lmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## light falling through the arches and doorways
+func _godrays() -> void:
+	var sun := Basis.from_euler(Vector3(deg_to_rad(-55.0), deg_to_rad(-32.0), 0.0))
+	var dir := -(sun * Vector3.BACK)          # direction the light travels
+	var spots := [[Vector3(0, 0.0, 4.6), 9.0], [Vector3(0, 0.0, -5.0), 9.0], [Vector3(4.8, 1.0, -13.0), 8.0],
+		[Vector3(12.0, 1.0, -15.1), 9.0], [Vector3(-4.5, 1.0, -16.0), 8.0], [Vector3(28.0, 2.0, -39.2), 9.0], [Vector3(25.0, 2.0, -32.6), 7.0]]
+	var i := 0
+	for sp in spots:
+		var floor_p: Vector3 = sp[0]
+		var L: float = sp[1]
+		var top := floor_p - dir * L
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/godray.gdshader")
+		m.set_shader_parameter("phase", i * 1.7)
+		var q := QuadMesh.new()
+		q.size = Vector2(1, 1)
+		q.center_offset = Vector3(0, 0.5, 0)
+		var mi := MeshInstance3D.new()
+		mi.mesh = q
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.extra_cull_margin = 12.0
+		var y := dir * L
+		var x := y.cross(Vector3.UP).normalized()
+		mi.transform = Transform3D(Basis(x, y, x.cross(y).normalized()), top)
+		add_child(mi)
+		i += 1
+
+func _multimesh(nm: String, mesh: Mesh, xfs: Array[Transform3D]) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = mesh
@@ -745,6 +878,7 @@ func _multimesh(nm: String, mesh: Mesh, xfs: Array[Transform3D]) -> void:
 	mmi.multimesh = mm
 	mmi.material_override = marble_mat
 	add_child(mmi)
+	return mmi
 
 func _column_mesh() -> ArrayMesh:
 	var m := MB.new()

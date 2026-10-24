@@ -9,7 +9,7 @@ uniform float runes_awake = 0.0;
 // returns (thread core, thread bloom, glowing 0/1); all zero off the bands
 vec3 embroidery(vec2 uv) {
 	float band = floor(uv.x + 0.0005);
-	if (band < 1.5) return vec3(0.0);
+	if (band < 1.5 || band > 5.5) return vec3(0.0);
 	float v = clamp(uv.x - band, 0.0, 1.0);
 	float N; float front; float aspect;
 	if (band < 2.5) { N = 14.0; front = 0.75; aspect = 3.0; }

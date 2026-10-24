@@ -120,7 +120,7 @@ func _plan() -> void:
 		var want := (r.reflect_point(Puzzles.TABLET_POS) - r.puppet.global_position)
 		want.y = 0.0
 		ok("glimpse 2: reflection faces the mirrored tablet", Vector2(fwd.x, fwd.z).normalized().dot(Vector2(want.x, want.z).normalized()) > 0.8)
-		ok("glimpse 2 chime", game.glimpses.get("gaze", 0) >= 1 and game.sfx.played.get("chime", 0) >= 1))
+		ok("glimpse 2 chime", game.glimpses.get("gaze", 0) >= 1 and game.sfx.played.get("chime_hall", 0) >= 1))
 	step_do(func() -> void: game.cmd("input:1:0"))
 	step_wait(0.5)
 	step_do(func() -> void:
@@ -178,10 +178,19 @@ func _plan() -> void:
 		var presses: int = Puzzles.DOOR_SOLUTION[i] + 1
 		step_do(func() -> void: tp(x, Puzzles.DIAL_Z + 0.65, 0.0))
 		step_wait(0.2)
-		step_do(func() -> void: ok("dial %d in reach" % (i + 1), _focus() == "dial%d" % (i + 1), _focus()))
-		interact_n(presses)
+		step_do(func() -> void:
+			ok("dial %d in reach" % (i + 1), _focus() == "dial%d" % (i + 1), _focus())
+			ok("dial %d opens the door close-up" % (i + 1), game.try_interact() and game.mode == "door" and game.ui.door_overlay.visible and game.ui.door_overlay.selected == i))
+		for k in presses:
+			step_do(func() -> void: game.ui.door_overlay.slot_pressed.emit(i))   # the overlay's tap path
+			step_wait(0.25)
+		step_do(func() -> void:
+			ok("slot %d shows its rune in the close-up" % (i + 1), int(game.ui.door_overlay.designs[i]) == int(game.puzzles.state["door"][i]))
+			if not game.puzzles.state["door_open"]: game.ui.door_overlay.close())
+		step_wait(0.4)
 	step_do(func() -> void: ok("door runes match the statues", game.puzzles.state["door"] == Puzzles.DOOR_SOLUTION, str(game.puzzles.state["door"])))
 	step_until("door grinds open", func() -> bool: return game.puzzles.state["door_open"] and not game.puzzles.busy, 10.0)
+	step_do(func() -> void: ok("close-up closes itself after the solve", game.mode == "play" and not game.ui.door_overlay.visible))
 	walk_path("through the door", [[12.7, -12.3], [12.7, -14.0], [12.0, -15.4], [12.0, -18.5]])
 	step_do(func() -> void: ok("reached the Court of Light through the door", absf(P().y - 2.0) < 0.01 and P().z < -17.5, str(P())))
 
@@ -223,7 +232,18 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the gap cannot be crossed before the plate", P().z > -25.01, str(P())))
+	step_do(func() -> void: walk_to(25.5, -21.6))
+	step_until("wait by the glass", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
+	step_wait(6.5)
+	step_do(func() -> void:
+		var fm: float = game.puzzles.foot_mat.get_shader_parameter("intensity")
+		ok("footprint marker shows where to stand", fm > 0.6 and Vector2(game.puzzles.foot_spot.x - 23.6, game.puzzles.foot_spot.z + 20.34).length() < 0.05, "intensity %.2f" % fm)
+		walk_change = float(game.puzzles.near_mat.get_shader_parameter("radius")))
 	step_do(func() -> void: walk_to(23.6, -20.3))
+	step_wait(0.6)
+	step_do(func() -> void:
+		var r: float = game.puzzles.near_mat.get_shader_parameter("radius")
+		ok("closeness ring tightens as the reflection nears the plate", r < walk_change, "%.2f -> %.2f" % [walk_change, r]))
 	step_until("stand where the reflection stands on the plate", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
 	step_until("plate pressed by the reflection", func() -> bool: return game.puzzles.state["plate"], 4.0)
 	step_do(func() -> void:

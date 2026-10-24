@@ -7,7 +7,8 @@ extends Node3D
 
 const PITCH := deg_to_rad(36.0)
 const DIST := 40.0
-const CAM_SIZE := 10.5
+const CAM_SIZE := 7.0              # v0.2: ~1.5x closer than v0.1 (10.5)
+const ZOOMS := [7.0, 10.0]          # pinch / wheel / Z between two levels
 const SHAFT_BASE := [0.20, 0.16, 0.14]
 
 var noise_tex: ImageTexture
@@ -20,7 +21,7 @@ var yaw_index := 0
 var _yaw_tw: Tween
 var _shake := 0.0
 var _t := 0.0
-var base_v_offset := 1.6
+var base_v_offset := 1.05
 var fog_mats: Array[ShaderMaterial] = []
 var fog_nodes: Array[MeshInstance3D] = []
 var cam_back := Vector3(-0.572, 0.588, 0.572)
@@ -31,6 +32,16 @@ var fog_hole := Vector2(4.6, 11.0)
 var fog_hole_target := Vector2(4.6, 11.0)
 var awaken := 0.0
 var shaft_mats: Array[ShaderMaterial] = []
+var zoom_i := 0
+var cam_size_target := CAM_SIZE
+var cam_lock := false
+var quality_high := true
+var dust_mm: MultiMeshInstance3D
+var ash_mm: MultiMeshInstance3D
+var puffs: Array[MeshInstance3D] = []
+var _puff_i := 0
+var birds: Array[MeshInstance3D] = []
+var moths: Array = []                # [node, center, phase]
 
 func _ready() -> void:
 	var fn := FastNoiseLite.new()
@@ -47,6 +58,7 @@ func _ready() -> void:
 	_build_fog()
 	_build_shafts()
 	_build_motes()
+	_build_sprites()
 	_build_overlays()
 	set_awaken(0.0)
 
@@ -54,7 +66,7 @@ func _build_env() -> void:
 	env = Environment.new()
 	env.background_mode = Environment.BG_CANVAS
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.78, 0.79, 0.81)
+	env.ambient_light_color = Color(0.70, 0.76, 0.86)     # cool fog ambient
 	env.ambient_light_energy = 0.6
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
@@ -65,6 +77,26 @@ func _build_env() -> void:
 	env.fog_height_density = 0.40
 	env.fog_sky_affect = 0.0
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	# post: soft bloom on the glowing runes, a gentle grade (cool shadows, warm highlights)
+	env.glow_enabled = true
+	env.glow_intensity = 0.55
+	env.glow_strength = 1.0
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 0.95
+	env.glow_hdr_scale = 1.6
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	for i in 7: env.set_glow_level(i, 1.0 if i in [1, 2, 3] else 0.0)
+	env.adjustment_enabled = true
+	env.adjustment_contrast = 1.06
+	env.adjustment_saturation = 0.94
+	var grad := Gradient.new()
+	grad.set_color(0, Color(0.0, 0.015, 0.045))
+	grad.set_color(1, Color(1.0, 0.985, 0.95))
+	grad.add_point(0.5, Color(0.495, 0.5, 0.51))
+	var gt := GradientTexture1D.new()
+	gt.gradient = grad
+	gt.width = 256
+	env.adjustment_color_correction = gt
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -91,10 +123,10 @@ func _build_camera() -> void:
 func _build_light() -> void:
 	sun = DirectionalLight3D.new()
 	sun.rotation = Vector3(deg_to_rad(-55.0), deg_to_rad(-32.0), 0.0)
-	sun.light_color = Color(1.0, 0.965, 0.9)
+	sun.light_color = Color(1.0, 0.925, 0.80)            # warm key
 	sun.light_energy = 1.0
 	sun.shadow_enabled = true
-	sun.shadow_blur = 1.5
+	sun.shadow_blur = 2.2
 	sun.shadow_bias = 0.04
 	sun.shadow_normal_bias = 1.0
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
@@ -151,26 +183,88 @@ func _build_shafts() -> void:
 		shaft_mats.append(sm)
 
 func _build_motes() -> void:
+	dust_mm = _mote_cloud(130, 0.06, 0.0, 0.7)
+	ash_mm = _mote_cloud(70, 0.07, 1.0, 0.55)
+
+func _mote_cloud(count: int, size: float, ash: float, intensity: float) -> MultiMeshInstance3D:
 	var q := QuadMesh.new()
-	q.size = Vector2(0.07, 0.07)
+	q.size = Vector2(size, size)
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = q
-	mm.instance_count = 160
+	mm.instance_count = count
 	var r := RandomNumberGenerator.new()
-	r.seed = 5
-	for i in mm.instance_count:
-		var s := r.randf_range(0.6, 1.6)
-		mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(s, s, s)), Vector3(r.randf_range(-11, 11), r.randf_range(-3.5, 3.5), r.randf_range(-11, 11))))
+	r.seed = 5 + int(ash * 7)
+	for i in count:
+		var sc := r.randf_range(0.6, 1.6)
+		mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(r.randf_range(-8, 8), r.randf_range(-3.5, 3.5), r.randf_range(-8, 8))))
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/mote.gdshader")
+	m.set_shader_parameter("ash", ash)
+	m.set_shader_parameter("intensity", intensity)
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.extra_cull_margin = 200.0
 	mi.custom_aabb = AABB(Vector3(-200, -50, -200), Vector3(400, 100, 400))
 	add_child(mi)
+	return mi
+
+func _sprite(kind: float, size: float) -> MeshInstance3D:
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size)
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/sprite.gdshader")
+	m.set_shader_parameter("kind", kind)
+	m.set_shader_parameter("phase", randf() * TAU)
+	var mi := MeshInstance3D.new()
+	mi.mesh = q
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	return mi
+
+func _build_sprites() -> void:
+	for i in 8:
+		var p := _sprite(0.0, 0.5)
+		p.visible = false
+		puffs.append(p)
+	for i in 3:
+		birds.append(_sprite(1.0, 0.7))
+
+## a soft puff of dust where a foot lands
+func dust_puff(at: Vector3) -> void:
+	if not quality_high and randf() < 0.5: return
+	var p := puffs[_puff_i]
+	_puff_i = (_puff_i + 1) % puffs.size()
+	p.position = at + Vector3(0, 0.06, 0)
+	p.visible = true
+	p.scale = Vector3.ONE * 0.4
+	var m: ShaderMaterial = p.material_override
+	var tw := p.create_tween()
+	tw.tween_method(func(v: float) -> void:
+		m.set_shader_parameter("life", v)
+		p.scale = Vector3.ONE * (0.4 + v * 0.9)
+		p.position.y = at.y + 0.06 + v * 0.12, 0.0, 1.0, 0.7)
+	tw.tween_callback(func() -> void: p.visible = false)
+
+## moths circling a light
+func add_moths(center: Vector3, n: int) -> void:
+	for i in n:
+		var mo := _sprite(2.0, 0.09)
+		moths.append([mo, center, randf() * TAU, randf_range(0.35, 0.8)])
+
+func set_quality(high: bool) -> void:
+	quality_high = high
+	env.glow_enabled = high
+	sun.shadow_enabled = true
+	sun.shadow_blur = 2.2 if high else 1.0
+	dust_mm.multimesh.visible_instance_count = -1 if high else 50
+	ash_mm.multimesh.visible_instance_count = -1 if high else 25
+	get_viewport().msaa_3d = Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED
+
+func set_zoom_level(i: int) -> void:
+	zoom_i = clampi(i, 0, ZOOMS.size() - 1)
 
 func _build_overlays() -> void:
 	var back := CanvasLayer.new()
@@ -224,8 +318,8 @@ func set_awaken(k: float) -> void:
 	env.fog_depth_end = DIST + lerpf(20.0, 58.0, k)
 	env.fog_light_color = Color(0.74, 0.74, 0.725).lerp(Color(0.80, 0.82, 0.83), k)
 	env.fog_height_density = lerpf(0.40, 0.22, k)
-	env.ambient_light_energy = lerpf(0.52, 0.72, k)
-	sun.light_energy = lerpf(0.92, 1.18, k)
+	env.ambient_light_energy = lerpf(0.55, 0.72, k)
+	sun.light_energy = lerpf(1.0, 1.2, k)
 	for i in fog_mats.size():
 		fog_mats[i].set_shader_parameter("clear", k * (1.0 if i == 2 else 0.45))
 	for i in shaft_mats.size():
@@ -234,6 +328,20 @@ func set_awaken(k: float) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	if not cam_lock:
+		cam.size = lerpf(cam.size, cam_size_target, 1.0 - exp(-dt * 2.5))
+	var pc := follow.global_position if follow else rig.position
+	for i in birds.size():
+		var a := _t * (0.12 + i * 0.03) + i * 2.1
+		var rr := 15.0 + i * 3.0
+		birds[i].position = pc + Vector3(cos(a) * rr, 8.0 + i * 1.5 + sin(_t * 0.5 + i) * 0.8, sin(a) * rr)
+	for mo in moths:
+		var node: MeshInstance3D = mo[0]
+		var c: Vector3 = mo[1]
+		var ph: float = mo[2]
+		var r2: float = mo[3]
+		var tt := _t * 1.3 + ph
+		node.position = c + Vector3(cos(tt) * r2 + sin(tt * 3.1) * 0.12, sin(tt * 2.3) * 0.25 + sin(tt * 7.0) * 0.05, sin(tt * 0.9) * r2)
 	if follow:
 		var target := follow.global_position + Vector3(0, 0.6, 0) + look_offset
 		rig.position = rig.position.lerp(target, 1.0 - exp(-dt * 4.0))
