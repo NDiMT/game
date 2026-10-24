@@ -204,7 +204,7 @@ static func _build_cloak() -> ArrayMesh:
 
 static func _hood_point(s: float, an: float, grow: float) -> Vector3:
 	var r: float
-	if s < 0.35: r = lerpf(0.015, 0.15, sqrt(s / 0.35))
+	if s < 0.35: r = lerpf(0.0, 0.15, sqrt(s / 0.35))
 	elif s < 0.8: r = lerpf(0.15, 0.162, (s - 0.35) / 0.45)
 	else: r = lerpf(0.162, 0.135, (s - 0.8) / 0.2)
 	r *= grow

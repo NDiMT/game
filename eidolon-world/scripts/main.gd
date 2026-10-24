@@ -212,7 +212,7 @@ func _process(dt: float) -> void:
 		if mode == "play":
 			# on the eidolon ledge, frame the player AND the plate across the gap
 			var off := Vector3.ZERO
-			if p.x > 20.8 and p.z > -25.2 and p.z < -18.8 and not puzzles.state["plate"]:
+			if p.x > 20.8 and p.z > -25.2 and p.z < -18.8:
 				off = (Puzzles.PLATE_POS - p) * 0.5
 				off.y = 0.0
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
@@ -445,7 +445,7 @@ func state_dict() -> Dictionary:
 		"fps": Engine.get_frames_per_second(), "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "speed": player.speed01,
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
-		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text}
+		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text, "card": snappedf(ui.card.modulate.a, 0.01)}
 
 func _setup_js() -> void:
 	if not OS.has_feature("web"): return

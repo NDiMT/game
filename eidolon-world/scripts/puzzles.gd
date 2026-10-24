@@ -367,12 +367,12 @@ func _light_court() -> void:
 		beam_segs.append(s)
 		var gl := MeshInstance3D.new()
 		var gq := QuadMesh.new()
-		gq.size = Vector2(0.9, 0.9)
+		gq.size = Vector2(1.4, 1.4)
 		gl.mesh = gq
 		var hm := ShaderMaterial.new()
 		hm.shader = preload("res://shaders/halo.gdshader")
-		hm.set_shader_parameter("color", Color(0.5, 0.95, 1.0))
-		hm.set_shader_parameter("intensity", 0.9)
+		hm.set_shader_parameter("color", Color(0.25, 0.85, 1.0))
+		hm.set_shader_parameter("intensity", 1.2)
 		gl.material_override = hm
 		gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		gl.visible = false

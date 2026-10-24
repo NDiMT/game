@@ -89,7 +89,7 @@ func _init(tex: ImageTexture) -> void:
 	marble_mat.set_shader_parameter("noise_tex", noise_tex)
 
 func build() -> void:
-	_veiled gate()
+	_veiled_gate()
 	_bridge_b1()
 	_hall()
 	_garden()
@@ -370,7 +370,7 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 	underside(zone, r, y_lo - 0.8)
 
 # ================================================================== the spaces
-func _veiled gate() -> void:
+func _veiled_gate() -> void:
 	var z := "T"
 	# floor around the pool (the pool is a sunken basin)
 	for r in [R(-5, -5, 5, -0.2), R(-5, 3.6, 5, 5), R(-5, -0.2, -4.2, 3.6), R(-0.6, -0.2, 5, 3.6)]:
