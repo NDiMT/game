@@ -49,6 +49,7 @@ var _active_t := 0.0
 var skipped := false
 
 static var ghost_shader: Shader
+static var enabled := true          # perf bench: all reflections off
 
 func setup() -> void:
 	if ghost_shader == null: ghost_shader = preload("res://shaders/ghost.gdshader")
@@ -88,6 +89,21 @@ func seen_in_glass(q: Vector3, cam_back: Vector3) -> bool:
 	var d := p - clip_c
 	return absf(d.dot(clip_u)) < clip_h.x * 0.85 and absf(d.dot(clip_v)) < clip_h.y * 0.85
 
+## v0.3 perf: the puppet is only posed and drawn while its glass / pool is on screen
+func _on_screen() -> bool:
+	if not project: return true
+	var cam := get_viewport().get_camera_3d()
+	if cam == null: return true
+	var vs := get_viewport().get_visible_rect().size
+	var lo := Vector2(INF, INF); var hi := -lo
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			var w: Vector3 = clip_c + clip_u * clip_h.x * sx + clip_v * clip_h.y * sy
+			if cam.is_position_behind(w): continue
+			var p := cam.unproject_position(w)
+			lo = lo.min(p); hi = hi.max(p)
+	return hi.x > 0.0 and hi.y > 0.0 and lo.x < vs.x and lo.y < vs.y
+
 func puppet_pos() -> Vector3:
 	return puppet.global_position
 
@@ -103,7 +119,7 @@ func _wants(player: Player, cam_back: Vector3) -> bool:
 
 func update(dt: float, player: Player, cam_back: Vector3) -> void:
 	_t += dt
-	var want := _wants(player, cam_back)
+	var want := enabled and _wants(player, cam_back) and _on_screen()
 	vis = move_toward(vis, 1.0 if want else 0.0, dt * (1.6 if want else 3.0))
 	if want and not active and lag > 0.0 and not glimpsed:
 		glimpsed = true

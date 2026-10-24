@@ -187,6 +187,7 @@ func _pool() -> void:
 	mi.position = Vector3(-2.4, -0.03, 1.7)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
+	mi.add_to_group("f_water")
 	var om := ShaderMaterial.new()
 	om.shader = preload("res://shaders/water_over.gdshader")
 	om.set_shader_parameter("noise_tex", level.noise_tex)
@@ -198,6 +199,7 @@ func _pool() -> void:
 	omi.position = Vector3(-2.4, -0.005, 1.7)
 	omi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(omi)
+	omi.add_to_group("f_water")
 
 # ------------------------------------------------------------------ a) rune door
 func _rune_statues() -> void:

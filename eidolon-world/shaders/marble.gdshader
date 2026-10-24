@@ -21,6 +21,7 @@ uniform vec3 black_base : source_color = vec3(0.07, 0.07, 0.078);
 uniform vec3 black_vein : source_color = vec3(0.55, 0.56, 0.58);
 uniform vec3 char_col : source_color = vec3(0.13, 0.13, 0.14);
 uniform float occlusion = 1.0;
+uniform float dbg_cheap = 0.0;
 uniform float fade_y = -99.0;
 uniform vec4 moss_rect = vec4(6.8, -15.4, 17.2, -4.8);     // the Garden of the Veiled (x0, z0, x1, z1)      // optional: dissolve everything below this height (rising bridges)
 
@@ -47,12 +48,9 @@ float marble(vec3 p, float scale, float sharp) {
 	return 1.0 - smoothstep(0.0, sharp, abs(v));
 }
 
-float bayer4(vec2 fc) {
-	ivec2 p = ivec2(mod(fc, 4.0));
-	int i = p.x + p.y * 4;
-	float m[16] = float[](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
-	return (m[i] + 0.5) / 16.0;
-}
+// 4x4 ordered dither, arithmetic (no local array: cheaper on mobile GPUs)
+float bayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75))); }
+float bayer4(vec2 fc) { return bayer2(0.5 * fc) * 0.25 + bayer2(fc) + 0.5 / 16.0; }
 
 void fragment() {
 	// --- occluder cut-away: soft dithered cylinder from the player toward the camera
@@ -66,6 +64,7 @@ void fragment() {
 		if (f > 0.96 || (f > 0.0 && bayer4(FRAGCOORD.xy) < f)) discard;
 	}
 	float n = texture(noise_tex, wp.xz * 0.23 + wp.y * 0.13).r;
+	if (dbg_cheap > 0.5) { ALBEDO = cream * (0.9 + 0.1 * n); ROUGHNESS = 0.6; SPECULAR = 0.4; } else {
 	vec3 col;
 	float rough = 0.6;
 	float spec = 0.45;
@@ -164,4 +163,5 @@ void fragment() {
 	ALBEDO = col;
 	ROUGHNESS = rough;
 	SPECULAR = spec;
+	}
 }

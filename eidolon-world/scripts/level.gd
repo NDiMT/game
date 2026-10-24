@@ -79,7 +79,29 @@ const BEYOND_RIGHT := Vector3(0.7071, 0.0, 0.7071)
 const SECOND_SHRINE := Vector3(45.5, 2.5, -54.5)
 
 var beyond: Node3D
-var grass_mmi: MultiMeshInstance3D
+var grass_mmi: MMGroup
+
+## A MultiMesh split into spatial cells (v0.3 perf): each cell is its own MultiMeshInstance3D with a
+## tight AABB, so the cells off screen (and out of the shadow frustum) are culled instead of the whole
+## world's columns / grass / decals being drawn every frame. Forwards the GeometryInstance3D settings.
+class MMGroup extends Node3D:
+	const CELL := 20.0
+	var parts: Array[MultiMeshInstance3D] = []
+	var material_override: Material:
+		set(v):
+			material_override = v
+			for p in parts: p.material_override = v
+	var cast_shadow := GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+		set(v):
+			cast_shadow = v
+			for p in parts: p.cast_shadow = v
+	## keep a fraction of the instances in every cell (low quality)
+	func set_fraction(f: float) -> void:
+		for p in parts: p.multimesh.visible_instance_count = -1 if f >= 1.0 else int(p.multimesh.instance_count * f)
+	func instance_count() -> int:
+		var n := 0
+		for p in parts: n += p.multimesh.instance_count
+		return n
 
 static func yaw_to(from: Vector3, to: Vector3) -> float:
 	return atan2(-(to.x - from.x), -(to.z - from.z))
@@ -818,9 +840,9 @@ func _commit() -> void:
 	_cloth_mm()
 	_vines()
 	_godrays()
-	_multimesh("Columns", _column_mesh(), col_full)
-	_multimesh("Stumps", _stump_mesh(), col_stump)
-	_multimesh("Debris", _debris_mesh(), debris)
+	_multimesh("Columns", _column_mesh(), col_full, true)
+	_multimesh("Stumps", _stump_mesh(), col_stump, true)
+	_multimesh("Debris", _debris_mesh(), debris, true)
 
 func _decal_mm(nm: String, xfs: Array[Transform3D], edge: float, strength: float) -> void:
 	var pm := PlaneMesh.new()
@@ -891,6 +913,7 @@ func _decor() -> void:
 	tmi.material_override = gm
 	tmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	grass_mmi = tmi
+	tmi.add_to_group("f_grass")
 	var lp := PlaneMesh.new()
 	lp.size = Vector2(0.13, 0.085)
 	var lmi := _multimesh("Leaves", lp, leaves)
@@ -898,6 +921,7 @@ func _decor() -> void:
 	lm.shader = preload("res://shaders/leaf.gdshader")
 	lmi.material_override = lm
 	lmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	lmi.add_to_group("f_grass")
 
 ## dead vines creeping on walls and columns (garden, gate, hall)
 func _vines() -> void:
@@ -951,20 +975,34 @@ func _godrays() -> void:
 		var x := y.cross(Vector3.UP).normalized()
 		mi.transform = Transform3D(Basis(x, y, x.cross(y).normalized()), top)
 		add_child(mi)
+		mi.add_to_group("f_godrays")
 		i += 1
 
-func _multimesh(nm: String, mesh: Mesh, xfs: Array[Transform3D]) -> MultiMeshInstance3D:
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = mesh
-	mm.instance_count = xfs.size()
-	for i in xfs.size(): mm.set_instance_transform(i, xfs[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.name = nm
-	mmi.multimesh = mm
-	mmi.material_override = marble_mat
-	add_child(mmi)
-	return mmi
+## chunk: split into cells (only worth it for heavy, shadow-casting meshes: columns, stumps, debris;
+## the cheap decals / grass / leaves stay one draw call each)
+func _multimesh(nm: String, mesh: Mesh, xfs: Array[Transform3D], chunk := false) -> MMGroup:
+	var g := MMGroup.new()
+	g.name = nm
+	add_child(g)
+	var cells := {}
+	for x in xfs:
+		var k := Vector2i(floori(x.origin.x / MMGroup.CELL), floori(x.origin.z / MMGroup.CELL)) if chunk else Vector2i.ZERO
+		if not cells.has(k): cells[k] = []
+		cells[k].append(x)
+	for k in cells:
+		var arr: Array = cells[k]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		mm.instance_count = arr.size()
+		for i in arr.size(): mm.set_instance_transform(i, arr[i])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "%s_%d_%d" % [nm, k.x, k.y]
+		mmi.multimesh = mm
+		g.add_child(mmi)
+		g.parts.append(mmi)
+	g.material_override = marble_mat
+	return g
 
 func _column_mesh() -> ArrayMesh:
 	var m := MB.new()

@@ -18,6 +18,9 @@ var title_screen: Control
 var title_word: TitleWord
 var tap_label: Label
 var anew_btn: Button
+var confirm: Control
+var confirm_yes: Button
+var confirm_no: Button
 var text: Label
 var card: Control
 var card_rune: ColorRect
@@ -210,9 +213,9 @@ func _build_title() -> void:
 	anew_btn = Button.new()
 	anew_btn.flat = true
 	anew_btn.focus_mode = Control.FOCUS_NONE
-	anew_btn.text = "begin anew"
-	anew_btn.add_theme_font_override("font", italic)
-	anew_btn.add_theme_font_size_override("font_size", 15)
+	anew_btn.text = "NEW GAME"
+	anew_btn.add_theme_font_override("font", caps)
+	anew_btn.add_theme_font_size_override("font_size", 12)
 	anew_btn.add_theme_color_override("font_color", Color(0.2, 0.2, 0.21, 0.8))
 	anew_btn.add_theme_color_override("font_hover_color", Color(0.1, 0.1, 0.11))
 	anew_btn.add_theme_color_override("font_pressed_color", Color(0.1, 0.1, 0.11))
@@ -221,8 +224,9 @@ func _build_title() -> void:
 	anew_btn.anchor_top = 0.92; anew_btn.anchor_bottom = 0.92
 	anew_btn.offset_left = -70; anew_btn.offset_right = 70; anew_btn.offset_top = -16; anew_btn.offset_bottom = 16
 	anew_btn.visible = false
-	anew_btn.pressed.connect(func() -> void: anew_pressed.emit())
+	anew_btn.pressed.connect(func() -> void: show_confirm(true))
 	title_screen.add_child(anew_btn)
+	_build_confirm()
 	quality_btn = Button.new()
 	quality_btn.flat = true
 	quality_btn.focus_mode = Control.FOCUS_NONE
@@ -286,15 +290,70 @@ func show_credits(on: bool) -> void:
 	if on: create_tween().tween_property(credits_panel, "modulate:a", 1.0, 0.35)
 
 func set_continue(has_save: bool) -> void:
-	tap_label.text = "TOUCH TO CONTINUE" if has_save else "TOUCH TO BEGIN"
+	tap_label.text = "CONTINUE" if has_save else "TOUCH TO BEGIN"
 	anew_btn.visible = has_save
+
+## "Begin anew? Your progress will be forgotten."  Yes / No
+func _build_confirm() -> void:
+	confirm = ColorRect.new()
+	(confirm as ColorRect).color = Color(0.93, 0.92, 0.89, 0.9)
+	confirm.set_anchors_preset(Control.PRESET_FULL_RECT)
+	confirm.mouse_filter = Control.MOUSE_FILTER_STOP
+	confirm.visible = false
+	title_screen.add_child(confirm)
+	var q := _label(italic, 24, Color(0.14, 0.14, 0.15), HORIZONTAL_ALIGNMENT_CENTER)
+	q.text = "Begin anew?"
+	q.set_anchors_preset(Control.PRESET_CENTER)
+	q.offset_left = -170; q.offset_right = 170; q.offset_top = -70; q.offset_bottom = -36
+	confirm.add_child(q)
+	var sub := _label(italic, 15, Color(0.22, 0.22, 0.23), HORIZONTAL_ALIGNMENT_CENTER)
+	sub.text = "Your progress will be forgotten."
+	sub.set_anchors_preset(Control.PRESET_CENTER)
+	sub.offset_left = -170; sub.offset_right = 170; sub.offset_top = -30; sub.offset_bottom = -6
+	confirm.add_child(sub)
+	var rule := ColorRect.new()
+	rule.color = Color(0.2, 0.2, 0.21, 0.35)
+	rule.set_anchors_preset(Control.PRESET_CENTER)
+	rule.offset_left = -40; rule.offset_right = 40; rule.offset_top = 8; rule.offset_bottom = 9
+	confirm.add_child(rule)
+	confirm_yes = _flat_button("YES", 13)
+	confirm_yes.set_anchors_preset(Control.PRESET_CENTER)
+	confirm_yes.offset_left = -120; confirm_yes.offset_right = -20; confirm_yes.offset_top = 24; confirm_yes.offset_bottom = 60
+	confirm_yes.pressed.connect(func() -> void:
+		show_confirm(false)
+		anew_pressed.emit())
+	confirm.add_child(confirm_yes)
+	confirm_no = _flat_button("NO", 13)
+	confirm_no.set_anchors_preset(Control.PRESET_CENTER)
+	confirm_no.offset_left = 20; confirm_no.offset_right = 120; confirm_no.offset_top = 24; confirm_no.offset_bottom = 60
+	confirm_no.pressed.connect(func() -> void: show_confirm(false))
+	confirm.add_child(confirm_no)
+
+func _flat_button(t: String, size: int) -> Button:
+	var b := Button.new()
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.text = t
+	b.add_theme_font_override("font", caps)
+	b.add_theme_font_size_override("font_size", size)
+	b.add_theme_color_override("font_color", Color(0.16, 0.16, 0.17))
+	b.add_theme_color_override("font_hover_color", Color(0.05, 0.05, 0.06))
+	b.add_theme_color_override("font_pressed_color", Color(0.05, 0.05, 0.06))
+	for st in ["normal", "hover", "pressed", "focus"]: b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	return b
+
+func show_confirm(on: bool) -> void:
+	confirm.visible = on
+	if on:
+		confirm.modulate.a = 0.0
+		create_tween().tween_property(confirm, "modulate:a", 1.0, 0.3)
 
 func over_anew(p: Vector2) -> bool:
 	return (anew_btn.visible and anew_btn.get_global_rect().grow(8).has_point(p)) or quality_btn.get_global_rect().grow(6).has_point(p) \
-		or credits_btn.get_global_rect().grow(6).has_point(p) or credits_panel.visible
+		or credits_btn.get_global_rect().grow(6).has_point(p) or credits_panel.visible or confirm.visible
 
-func set_quality_label(high: bool) -> void:
-	quality_btn.text = "QUALITY · " + ("HIGH" if high else "LOW")
+func set_quality_label(tier: String) -> void:
+	quality_btn.text = "QUALITY · " + tier.to_upper()
 
 func hide_title() -> void:
 	var tw := create_tween()

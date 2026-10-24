@@ -305,6 +305,33 @@ func _plan() -> void:
 		ok("restored awakened world", game.world.awaken == 1.0)
 		ok("restored runes_awake", game.player.fig.runes_awake == 1)
 		ok("restored position", absf(P().x - walk_change) < 0.6, str(P())))
+	# ---- New Game from the title: confirm, everything forgotten, settings kept
+	step_do(func() -> void:
+		game.cmd("save")
+		game.set_quality("low", true)
+		game.queue_free()
+		game = load("res://scenes/main.tscn").instantiate()
+		add_child(game))
+	step_until("title again", func() -> bool: return game.mode == "title", 10.0)
+	step_do(func() -> void:
+		ok("title offers Continue + New Game", game.ui.tap_label.text == "CONTINUE" and game.ui.anew_btn.visible)
+		game.ui.anew_btn.pressed.emit()
+		ok("New Game asks to confirm", game.ui.confirm.visible and game.mode == "title")
+		game.ui.confirm_no.pressed.emit()
+		ok("No keeps the title and the save", not game.ui.confirm.visible and game.mode == "title" and FileAccess.file_exists(Game.SAVE_PATH))
+		game.cmd("newgame_ui:yes")
+		ok("new game: glimpses + areas forgotten", game.glimpses["lag"] == 0 and game.glimpses["gaze"] == 0 and game.visited.is_empty(), str(game.visited)))
+	step_until("new game -> play", func() -> bool: return game.mode == "play", 12.0)
+	step_do(func() -> void:
+		var st: Dictionary = game.puzzles.state
+		ok("new game: puzzles reset", not st["door_open"] and not st["bridge"] and not st["plate"] and not st["shrine"] and not st["shortcut"] and st["door"] == [-1, -1, -1], str(st))
+		ok("new game: regions reset", not game.level.named["LB"].enabled and game.level.named["door"].enabled)
+		ok("new game: world asleep, runes dormant", game.world.awaken == 0.0 and game.player.fig.runes_awake == 0)
+		ok("new game: woke at the gate", P().distance_to(Level.WAKE_POS) < 0.3, str(P()))
+		var d = JSON.parse_string(FileAccess.get_file_as_string(Game.SAVE_PATH))
+		ok("new game: save rewritten fresh", d is Dictionary and not d["puzzles"]["shrine"] and int(d["runes_awake"]) == 0)
+		ok("new game: settings kept (quality)", game.world.tier == "low")
+		game.set_quality("auto", true))
 	step_do(func() -> void: _finish())
 
 var _next_report := 0.0

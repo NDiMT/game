@@ -66,8 +66,15 @@ func _ready() -> void:
 	controls.rotate.connect(rotate_view)
 	controls.zoom.connect(zoom_view)
 	ui.anew_pressed.connect(_on_anew)
-	ui.quality_pressed.connect(func() -> void: set_quality(not world.quality_high, true))
+	ui.quality_pressed.connect(func() -> void: set_quality({"auto": "high", "high": "low", "low": "auto"}[world.tier], true))
 	_load_settings()
+	if OS.has_feature("web"):
+		var r = JavaScriptBridge.eval("window.devicePixelRatio || 1")
+		if r is float or r is int:
+			world.dpr = float(r)
+			world.set_tier(world.tier, world.auto_step)
+		var q = JavaScriptBridge.eval("String(location.search)")
+		if q is String and "perf" in q: _perf_hud(true)
 	world.add_moths(Vector3(8.2, 3.45, -24.5), 2)
 	world.add_moths(Vector3(25.0, 3.75, -32.25), 3)
 	world.add_moths(Puzzles.PLATE_POS + Vector3(0, 0.8, 0), 2)
@@ -106,10 +113,27 @@ func begin(fresh := false) -> void:
 	else:
 		_continue_from_save()
 
+## New Game (confirmed on the title): forget all progress, keep the settings (music, quality, zoom
+## live in their own file / in memory) and start again at the waking scene.
 func _on_anew() -> void:
 	save_data = {}
 	_delete_save()
+	reset_progress()
 	begin(true)
+
+func reset_progress() -> void:
+	puzzles.reset_state()
+	puzzles.apply_state(puzzles.state)
+	visited = {}
+	area = ""
+	glimpses = {"lag": 0, "gaze": 0}
+	interactions = 0
+	awake = false
+	world.set_awaken(0.0)
+	player.fig.set_hem(HEM_PER_SHRINE[0])
+	player.fig.set_runes(0)
+	for r in puzzles.reflectors:
+		r.glimpsed = false; r.gazed = false; r.gaze_count = 0; r.skipped = false; r.active = false; r.vis = 0.0; r._hist.clear()
 
 func _start_wake() -> void:
 	mode = "wake"
@@ -139,6 +163,9 @@ func _continue_from_save() -> void:
 	world.set_awaken(1.0 if awake else 0.0)
 	player.fig.set_hem(HEM_PER_SHRINE[1 if awake else 0])
 	player.fig.set_runes(int(save_data.get("runes_awake", 1 if awake else 0)))
+	var g: Dictionary = save_data.get("glimpses", {})
+	for k in g: glimpses[k] = int(g[k])
+	for k in save_data.get("visited", []): visited[k] = true
 	_settle_camera(int(save_data.get("cam", 0)), player.position)
 	mode = "play"
 	controls.enabled = true
@@ -174,7 +201,7 @@ func _input(e: InputEvent) -> void:
 		if e is InputEventScreenTouch and e.pressed and not ui.over_anew(e.position): tap = true
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not ui.over_anew(e.position): tap = true
 		if e is InputEventKey and e.pressed and not e.echo and e.keycode in [KEY_SPACE, KEY_ENTER, KEY_E]: tap = true
-		if tap: begin()
+		if tap and not (ui.confirm.visible or ui.credits_panel.visible): begin()
 		return
 	if mode == "door":
 		if e is InputEventKey and e.pressed and not e.echo:
@@ -482,33 +509,53 @@ func start_finale() -> void:
 
 # ------------------------------------------------------------------ quality
 const SETTINGS_PATH := "user://eidolon_settings.json"
-var _fps_low_t := 0.0
-var quality_auto_dropped := false
+var quality_auto_dropped := false     # tests / harness: freeze the auto tier where it is
+var _aq_t := 0.0
+var _aq_frames := 0
+var _aq_time := 0.0
 
-func set_quality(high: bool, save := false) -> void:
-	world.set_quality(high)
-	level.grass_mmi.multimesh.visible_instance_count = -1 if high else level.grass_mmi.multimesh.instance_count / 2
-	ui.set_quality_label(high)
+## tier: "high" | "auto" | "low" (a bool is accepted: true = high, false = low)
+func set_quality(t: Variant, save := false) -> void:
+	var tier: String = t if t is String else ("high" if t else "low")
+	world.set_tier(tier)
+	_apply_tier_extras()
+	ui.set_quality_label(tier)
+	_aq_t = 0.0; _aq_frames = 0; _aq_time = 0.0
 	if save:
 		var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
-		if f: f.store_string(JSON.stringify({"quality_high": high}))
+		if f: f.store_string(JSON.stringify({"quality": tier}))
+
+func _apply_tier_extras() -> void:
+	level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
 
 func _load_settings() -> void:
-	var high := true
+	var tier := "auto"
 	if FileAccess.file_exists(SETTINGS_PATH):
 		var d = JSON.parse_string(FileAccess.get_file_as_string(SETTINGS_PATH))
-		if d is Dictionary: high = bool(d.get("quality_high", true))
-	set_quality(high)
+		if d is Dictionary:
+			if d.has("quality"): tier = str(d["quality"])
+			elif d.has("quality_high") and not bool(d["quality_high"]): tier = "low"
+	if not tier in ["auto", "high", "low"]: tier = "auto"
+	set_quality(tier)
 
-## frames too slow for a few seconds: drop to low quality once (bloom off, fewer particles)
+## AUTO: judge the first seconds of play from real frame times (4 s windows after a 2 s settle);
+## a slow window steps the tier down one gentle notch (1.25x render cap -> no MSAA -> low set), at most
+## three times, never further; a window at or above 45 fps ends the judging.
 func _auto_quality(dt: float) -> void:
-	if quality_auto_dropped or not world.quality_high or autotest: return
-	var fps := Engine.get_frames_per_second()
-	_fps_low_t = _fps_low_t + dt if fps < 38 else maxf(0.0, _fps_low_t - dt * 0.5)
-	if _fps_low_t > 5.0:
-		quality_auto_dropped = true
-		set_quality(false)
-		print("[quality] auto-dropped to low (fps %d)" % fps)
+	if quality_auto_dropped or world.tier != "auto" or autotest or world.auto_step >= 3: return
+	_aq_t += dt
+	if _aq_t < 2.0: return
+	_aq_frames += 1
+	_aq_time += dt
+	if _aq_time < 4.0: return
+	var fps := _aq_frames / _aq_time
+	_aq_t = 0.0; _aq_frames = 0; _aq_time = 0.0
+	if fps >= 45.0:
+		quality_auto_dropped = true          # good enough: stay here
+		return
+	world.set_tier("auto", world.auto_step + 1)
+	_apply_tier_extras()
+	print("[quality] auto step %d (%.0f fps)" % [world.auto_step, fps])
 
 # ------------------------------------------------------------------ save
 func _load_save() -> void:
@@ -521,7 +568,7 @@ func _save() -> void:
 	var p := player.position
 	_last_saved_pos = p
 	save_data = {"v": 1, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
-		"puzzles": puzzles.state.duplicate(true), "glimpses": glimpses, "runes_awake": player.fig.runes_awake}
+		"puzzles": puzzles.state.duplicate(true), "glimpses": glimpses, "runes_awake": player.fig.runes_awake, "visited": visited.keys()}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify(save_data))
 
@@ -556,7 +603,10 @@ func cmd(c: String) -> Variant:
 		"save": _save()
 		"finale": start_finale()
 		"noauto": quality_auto_dropped = true
-		"quality": set_quality(a[1] == "1")
+		"quality": set_quality({"1": "high", "0": "low"}.get(a[1], a[1]))
+		"dpr":
+			world.dpr = float(a[1])
+			world.set_tier(world.tier, world.auto_step)
 		"closeup":
 			world.cam_lock = float(a[1]) > 0.0
 			if world.cam_lock: world.cam.size = float(a[1])
@@ -565,6 +615,12 @@ func cmd(c: String) -> Variant:
 		"veil": player.fig.veil.visible = a[1] == "1"
 		"runes": player.fig.set_runes(int(a[1]))
 		"credits": ui.show_credits(a[1] == "1")
+		"perf": _perf_hud(a[1] == "1")
+		"feat": set_feature(a[1], a[2] == "1")
+		"newgame_ui":
+			# the title's New Game -> confirmation -> Yes, through the real buttons
+			ui.anew_btn.pressed.emit()
+			if a.size() > 1 and a[1] == "yes": ui.confirm_yes.pressed.emit()
 		"figp":
 			var v := []
 			for k in range(2, a.size()): v.append(float(a[k]))
@@ -578,6 +634,27 @@ func cmd(c: String) -> Variant:
 				print(r.kind, " clip_c=", r.puppet.body_mat.get_shader_parameter("clip_c"), " clip_h=", r.puppet.body_mat.get_shader_parameter("clip_h"), " u=", r.puppet.body_mat.get_shader_parameter("clip_u"), " v=", r.puppet.body_mat.get_shader_parameter("clip_v"), " n=", r.puppet.body_mat.get_shader_parameter("plane_n"), " d=", r.puppet.body_mat.get_shader_parameter("plane_d"))
 				print(r.kind, " active=", r.active, " vis=", snappedf(r.vis, 0.01), " puppet=", r.puppet.global_position, " vis_node=", r.puppet.is_visible_in_tree(), " basis_det=", r.puppet.global_transform.basis.determinant())
 	return true
+
+var perf_hud: PerfHud
+func _perf_hud(on: bool) -> void:
+	if on and perf_hud == null:
+		perf_hud = PerfHud.new()
+		perf_hud.world = world
+		add_child(perf_hud)
+	if perf_hud: perf_hud.visible = on
+
+## perf bench: switch one feature off / on
+func set_feature(f: String, on: bool) -> void:
+	match f:
+		"bloom": world.env.glow_enabled = on
+		"shadows": world.sun.shadow_enabled = on
+		"grade": world.env.adjustment_enabled = on
+		"msaa": get_viewport().msaa_3d = Viewport.MSAA_2X if on else Viewport.MSAA_DISABLED
+		"refl": Reflector.enabled = on
+		"envfog": world.env.fog_enabled = on
+		"marble": level.marble_mat.set_shader_parameter("dbg_cheap", 0.0 if on else 1.0)
+		_:
+			for n in get_tree().get_nodes_in_group("f_" + f): n.visible = on
 
 func state_dict() -> Dictionary:
 	var p := player.position
@@ -594,7 +671,7 @@ func state_dict() -> Dictionary:
 		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "music": sfx._music_cur, "speed": player.speed01,
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
 		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text, "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
-		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
+		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
 		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01)}
 
 func _door_slot_centers() -> Array:

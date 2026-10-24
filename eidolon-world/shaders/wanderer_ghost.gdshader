@@ -56,12 +56,9 @@ void vertex() {
 	}
 }
 
-float bayer4(vec2 fc) {
-	ivec2 p = ivec2(mod(fc, 4.0));
-	int i = p.x + p.y * 4;
-	float m[16] = float[](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
-	return (m[i] + 0.5) / 16.0;
-}
+// 4x4 ordered dither, arithmetic (no local array: cheaper on mobile GPUs)
+float bayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75))); }
+float bayer4(vec2 fc) { return bayer2(0.5 * fc) * 0.25 + bayer2(fc) + 0.5 / 16.0; }
 
 void fragment() {
 	if (project > 0.5) {

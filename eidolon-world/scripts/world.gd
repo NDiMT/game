@@ -10,6 +10,7 @@ const DIST := 40.0
 const CAM_SIZE := 10.5             # the default (far) view, as in v0.1
 const ZOOMS := [10.5, 7.0]          # 0 = default far view, 1 = optional closer view (pinch / wheel / +-)
 const SHAFT_BASE := [0.20, 0.16, 0.14]
+const VEIL := 1                    # fog_mats index of the veil sheet with the clear bubble
 
 var noise_tex: ImageTexture
 var env: Environment
@@ -36,7 +37,10 @@ var zoom_i := 0
 var backdrop_mat: ShaderMaterial
 var cam_size_target := CAM_SIZE
 var cam_lock := false
-var quality_high := true
+var quality_high := true           # false = the low feature set (bloom off, fewer motes, ...)
+var tier := "auto"                 # high | auto | low
+var auto_step := 0                 # auto: 0 = as high (cheaper), 1 = 1.25x render cap, 2 = no MSAA, 3 = low set
+var dpr := 1.0                     # device pixel ratio (web)
 var dust_mm: MultiMeshInstance3D
 var ash_mm: MultiMeshInstance3D
 var puffs: Array[MeshInstance3D] = []
@@ -137,7 +141,7 @@ func _build_light() -> void:
 	sun.shadow_bias = 0.04
 	sun.shadow_normal_bias = 1.0
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 64.0
+	sun.directional_shadow_max_distance = 56.0
 	add_child(sun)
 
 func _fog_sheet(y: float, density: float, hole_in: float, hole_out: float, drift: Vector2, scale: float, col: Color) -> void:
@@ -159,35 +163,35 @@ func _fog_sheet(y: float, density: float, hole_in: float, hole_out: float, drift
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.extra_cull_margin = 20.0
 	add_child(mi)
+	mi.add_to_group("f_fog")
 	fog_mats.append(m)
 	fog_nodes.append(mi)
 
 func _build_fog() -> void:
-	# three sheets only (overdraw): the deep void, a cloud floor under the islands, and a veil above
-	# the walkways with a clear bubble around the wanderer
-	_fog_sheet(-7.0, 0.95, 0.0, 0.0, Vector2(0.006, 0.003), 0.03, Color(0.70, 0.70, 0.69))
+	# three fog layers in two passes (overdraw): the cloud floor under the islands carries the deep
+	# void below it in the same pass (layer2), and a veil above the walkways with a clear bubble
 	_fog_sheet(-2.4, 0.80, 0.0, 0.0, Vector2(-0.009, 0.005), 0.045, Color(0.76, 0.76, 0.745))
+	fog_mats[0].set_shader_parameter("layer2", 1.0)
+	fog_mats[0].set_shader_parameter("l2_depth", 4.6)
 	_fog_sheet(6.5, 0.86, 4.6, 11.0, Vector2(0.012, -0.004), 0.05, Color(0.82, 0.815, 0.79))
 
 func _build_shafts() -> void:
-	for k in 3:
-		var sdef: Array = [[-3.4, 0.30, 3.2, 0.0], [1.6, 0.26, 2.2, 2.0], [5.2, 0.34, 3.8, 4.0]][k]
-		sdef.append(SHAFT_BASE[k])
-		var sm := ShaderMaterial.new()
-		sm.shader = preload("res://shaders/shaft.gdshader")
-		sm.set_shader_parameter("phase", sdef[3])
-		sm.set_shader_parameter("intensity", sdef[4])
-		var q := QuadMesh.new()
-		q.size = Vector2(sdef[2], 30.0)
-		var sq := MeshInstance3D.new()
-		sq.mesh = q
-		sq.material_override = sm
-		sq.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		sq.position = Vector3(sdef[0], 7.0, -8.0)
-		sq.rotation.z = sdef[1]
-		sq.extra_cull_margin = 20.0
-		pitch_node.add_child(sq)
-		shaft_mats.append(sm)
+	# one quad covering what the three shaft quads covered (x -9..9, y -8..22 in the pitch plane)
+	var sm := ShaderMaterial.new()
+	sm.shader = preload("res://shaders/shafts.gdshader")
+	sm.set_shader_parameter("intensity", Vector3(SHAFT_BASE[0], SHAFT_BASE[1], SHAFT_BASE[2]))
+	sm.set_shader_parameter("offset", Vector2(0.0, 7.0))
+	var q := QuadMesh.new()
+	q.size = Vector2(18.0, 30.0)
+	var sq := MeshInstance3D.new()
+	sq.mesh = q
+	sq.material_override = sm
+	sq.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sq.position = Vector3(0.0, 7.0, -8.0)
+	sq.extra_cull_margin = 20.0
+	pitch_node.add_child(sq)
+	sq.add_to_group("f_shafts")
+	shaft_mats.append(sm)
 
 func _build_motes() -> void:
 	dust_mm = _mote_cloud(130, 0.06, 0.0, 0.7)
@@ -215,6 +219,7 @@ func _mote_cloud(count: int, size: float, ash: float, intensity: float) -> Multi
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.custom_aabb = AABB(Vector3(-200, -50, -200), Vector3(400, 100, 400))
 	add_child(mi)
+	mi.add_to_group("f_motes")
 	return mi
 
 func _sprite(kind: float, size: float) -> MeshInstance3D:
@@ -261,14 +266,67 @@ func add_moths(center: Vector3, n: int) -> void:
 		var mo := _sprite(2.0, 0.09)
 		moths.append([mo, center, randf() * TAU, randf_range(0.35, 0.8)])
 
-func set_quality(high: bool) -> void:
-	quality_high = high
-	env.glow_enabled = high
+## Quality tiers. HIGH = the full look at the device's native resolution. AUTO (default) = the same
+## look, cheaper: the 3D view renders at most 1.5x the CSS pixel size (a 3x phone renders at 1.5x, the
+## UI stays sharp), bloom from the quarter / eighth resolution levels only; if frames stay slow it steps
+## down gently (1.25x cap, then no MSAA, then the low set) and never further. LOW = 1x CSS, no MSAA,
+## no bloom, fewer motes and grass.
+func set_tier(t: String, step := 0) -> void:
+	tier = t
+	auto_step = step if t == "auto" else 0
+	var high := t == "high"
+	var low := t == "low" or auto_step >= 3
+	quality_high = not low
+	var cap := 99.0 if high else (1.0 if low else (1.5 if auto_step == 0 else 1.25))
+	var vp := get_viewport()
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	vp.scaling_3d_scale = clampf(cap / maxf(dpr, 1.0), 0.34, 1.0)
+	vp.msaa_3d = Viewport.MSAA_DISABLED if (low or auto_step >= 2) else Viewport.MSAA_2X
+	env.glow_enabled = not low
+	if high:
+		env.glow_intensity = 0.55
+		for i in 7: env.set_glow_level(i, 1.0 if i in [1, 2, 3] else 0.0)
+	else:
+		# the half-resolution level is the costly one: drop it, lift the others to the same look
+		env.glow_intensity = 0.62
+		for i in 7: env.set_glow_level(i, [0.0, 0.0, 1.25, 1.1, 0.0, 0.0, 0.0][i])
 	sun.shadow_enabled = true
-	sun.shadow_blur = 2.2 if high else 1.0
-	dust_mm.multimesh.visible_instance_count = -1 if high else 50
-	ash_mm.multimesh.visible_instance_count = -1 if high else 25
-	get_viewport().msaa_3d = Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED
+	sun.shadow_blur = 1.0 if low else 2.2
+	dust_mm.multimesh.visible_instance_count = 50 if low else -1
+	ash_mm.multimesh.visible_instance_count = 25 if low else -1
+
+func set_quality(high: bool) -> void:
+	set_tier("high" if high else "low")
+
+## Approximate fill cost: how many screens' worth of pixels are shaded per frame (backdrop, the opaque
+## scene incl. MSAA, every visible blended layer by its on-screen area, bloom passes, post, grain).
+func fill_estimate() -> float:
+	var f := 1.0                                           # backdrop (canvas)
+	f += 1.0 * (2.0 if get_viewport().msaa_3d != Viewport.MSAA_DISABLED else 1.0) * pow(get_viewport().scaling_3d_scale, 2.0)
+	for g in ["f_fog", "f_shafts", "f_godrays", "f_water", "f_overlay"]:
+		for n in get_tree().get_nodes_in_group(g):
+			if n is GeometryInstance3D and n.is_visible_in_tree(): f += screen_frac(n) * pow(get_viewport().scaling_3d_scale, 2.0)
+	if env.glow_enabled:
+		for i in 7:
+			if env.get_glow_level(i) > 0.0: f += 3.0 * pow(0.25, i)   # downsample + 2 blur passes
+	f += 1.0                                               # tonemap / grade post pass
+	for n in get_tree().get_nodes_in_group("f_grain"):
+		if n.visible: f += 1.0
+	return f
+
+## fraction of the viewport covered by a node's projected bounding box
+func screen_frac(n: GeometryInstance3D) -> float:
+	var ab := n.global_transform * n.get_aabb()
+	var vs := get_viewport().get_visible_rect().size
+	var lo := Vector2(INF, INF); var hi := -lo
+	for i in 8:
+		var p := cam.unproject_position(ab.get_endpoint(i))
+		lo = lo.min(p); hi = hi.max(p)
+	lo = lo.clamp(Vector2.ZERO, vs); hi = hi.clamp(Vector2.ZERO, vs)
+	return maxf(hi.x - lo.x, 0.0) * maxf(hi.y - lo.y, 0.0) / (vs.x * vs.y)
+
+func tier_name() -> String:
+	return tier.to_upper() + (" step %d" % auto_step if tier == "auto" and auto_step > 0 else "")
 
 func set_zoom_level(i: int) -> void:
 	zoom_i = clampi(i, 0, ZOOMS.size() - 1)
@@ -295,6 +353,7 @@ func _build_overlays() -> void:
 	gm.shader = preload("res://shaders/grain.gdshader")
 	gr.material = gm
 	front.add_child(gr)
+	gr.add_to_group("f_grain")
 
 # ------------------------------------------------------------------ camera
 func rotate_view(dir: int) -> void:
@@ -329,9 +388,8 @@ func set_awaken(k: float) -> void:
 	env.ambient_light_energy = lerpf(0.55, 0.72, k)
 	sun.light_energy = lerpf(0.85, 1.0, k)
 	for i in fog_mats.size():
-		fog_mats[i].set_shader_parameter("clear", k * (1.0 if i == 2 else 0.45))
-	for i in shaft_mats.size():
-		shaft_mats[i].set_shader_parameter("intensity", SHAFT_BASE[i] * (1.0 + k * 1.3))
+		fog_mats[i].set_shader_parameter("clear", k * (1.0 if i == VEIL else 0.45))
+	shaft_mats[0].set_shader_parameter("intensity", Vector3(SHAFT_BASE[0], SHAFT_BASE[1], SHAFT_BASE[2]) * (1.0 + k * 1.3))
 	RenderingServer.global_shader_parameter_set("awaken", k)
 
 func _process(dt: float) -> void:
@@ -361,8 +419,8 @@ func _process(dt: float) -> void:
 		cam.h_offset = 0.0
 		cam.v_offset = base_v_offset * cam.size / CAM_SIZE
 	fog_hole = fog_hole.lerp(fog_hole_target, 1.0 - exp(-dt * 1.2))
-	fog_mats[2].set_shader_parameter("hole_inner", fog_hole.x)
-	fog_mats[2].set_shader_parameter("hole_outer", fog_hole.y)
+	fog_mats[VEIL].set_shader_parameter("hole_inner", fog_hole.x)
+	fog_mats[VEIL].set_shader_parameter("hole_outer", fog_hole.y)
 	cam_back = cam.global_transform.basis.z.normalized()
 	if backdrop_mat:
 		var sd := Basis.from_euler(Vector3(deg_to_rad(-55.0), deg_to_rad(-32.0), 0.0)) * Vector3.BACK
