@@ -32,6 +32,10 @@ var _idle_look := 0.0
 var still_time := 0.0
 var hem_glow: MeshInstance3D
 var _glow_k := -1.0
+var extra_reach := 0.0          # v0.5: 0..1 the right hand reaches out (touching the glass, the water)
+var veil_lift := 0.0            # v0.5: cinematic: the veil lifts back
+var head_pitch_add := 0.0       # v0.5: cinematic: looking down into the water
+var head_yaw_add := 0.0
 
 func _init() -> void:
 	fig = Figure.new()
@@ -131,6 +135,9 @@ func _animate(dt: float) -> void:
 	p.head_yaw = _idle_look
 	p.head_pitch = -0.04 * walk
 	p.crouch = crouch
+	p.reach = extra_reach
+	p.head_pitch += head_pitch_add
+	p.head_yaw += head_yaw_add
 	fig.apply_pose(p)
 	# footsteps on each half stride
 	if speed01 > 0.12 and signf(s) != signf(_last_s) and _last_s != 0.0:

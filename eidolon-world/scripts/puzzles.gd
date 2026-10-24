@@ -75,6 +75,7 @@ var eidolon_refl: Reflector
 var hall_mirror: Reflector
 var pool_refl: Reflector
 var water_mat: ShaderMaterial
+var water_over_mat: ShaderMaterial
 var busy := false
 var _t := 0.0
 
@@ -86,12 +87,11 @@ func _init(lv: Level, g: Node) -> void:
 
 func reset_state() -> void:
 	state = {"door": [0, 0, 0], "door_open": false, "mirrors": [3, 2, 0], "bridge": false,
-		"plate": false, "shrine": false, "shortcut": false, "tablet": false}
+		"plate": false, "shrine": false, "shortcut": false, "tablet": false, "drawbridge": false}
 
 func build() -> void:
 	_pool()
-	_rune_statues()
-	_door()
+
 	_gate()
 	_light_court()
 	_eidolon_glass()
@@ -181,24 +181,27 @@ func _pool() -> void:
 	water_mat = ShaderMaterial.new()
 	water_mat.shader = preload("res://shaders/water.gdshader")
 	water_mat.set_shader_parameter("noise_tex", level.noise_tex)
+	# v0.5: the Waking Pool runs west off the island as an aqueduct basin
 	var q := PlaneMesh.new()
-	q.size = Vector2(3.6, 3.8)
+	q.size = Vector2(8.95, 3.75)
 	var mi := MeshInstance3D.new()
 	mi.mesh = q
 	mi.material_override = water_mat
-	mi.position = Vector3(-2.4, -0.03, 1.7)
+	mi.position = Vector3(-5.125, -0.03, 1.7)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 	mi.add_to_group("f_water")
 	var om := ShaderMaterial.new()
 	om.shader = preload("res://shaders/water_over.gdshader")
 	om.set_shader_parameter("noise_tex", level.noise_tex)
+	om.set_shader_parameter("area", Vector4(-9.4, -0.1, -0.8, 3.4))
+	water_over_mat = om
 	var oq := PlaneMesh.new()
-	oq.size = Vector2(3.6, 3.8)
+	oq.size = Vector2(8.95, 3.75)
 	var omi := MeshInstance3D.new()
 	omi.mesh = oq
 	omi.material_override = om
-	omi.position = Vector3(-2.4, -0.005, 1.7)
+	omi.position = Vector3(-5.125, -0.005, 1.7)
 	omi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(omi)
 	omi.add_to_group("f_water")
@@ -598,11 +601,11 @@ func _update_beam_floor(pts: Array[Vector3]) -> void:
 		else:
 			pl.visible = false
 
+## v0.5: the completed beam lights the target crystal, which pours its light across the Court onto
+## her mural (chapter.gd); the drawbridge only comes down at the very end (a way back from the ledge)
 func _lower_bridge(instant: bool) -> void:
 	state["bridge"] = true
 	if instant:
-		drawbridge.rotation.z = 0.0
-		level.set_enabled("LB", true)
 		set_crystal_lit(target_mat, 1.0)
 		target_halo.set_shader_parameter("intensity", 0.7)
 		return
@@ -612,11 +615,21 @@ func _lower_bridge(instant: bool) -> void:
 	tw.tween_method(func(v: float) -> void:
 		set_crystal_lit(target_mat, v)
 		target_halo.set_shader_parameter("intensity", v * 0.7), 0.0, 1.0, 1.2)
-	tw.tween_callback(func() -> void: event.emit("bridge_fall", null))
+	tw.tween_callback(func() -> void:
+		busy = false
+		event.emit("beam_done", null))
+
+func lower_drawbridge(instant: bool) -> void:
+	state["drawbridge"] = true
+	if instant:
+		drawbridge.rotation.z = 0.0
+		level.set_enabled("LB", true)
+		return
+	event.emit("bridge_fall", null)
+	var tw := create_tween()
 	tw.tween_property(drawbridge, "rotation:z", 0.0, 2.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func() -> void:
 		level.set_enabled("LB", true)
-		busy = false
 		event.emit("bridge_down", null))
 
 # ------------------------------------------------------------------ c) the eidolon glass and plate
@@ -872,7 +885,7 @@ func set_shrine_awake(k: float, sweep: float) -> void:
 func _tablet() -> void:
 	tablet_mat = ShaderMaterial.new()      # (v0.3: the tablet carries engraved script instead)
 	level.ob_rect(Level.R(4.15, -20.4, 4.6, -19.4))
-	level.inscription("h_tablet", Vector3(3.85, 1.0, -19.9), "Read the veiled ones by their numbers,\nnot by where they stand.", 0.95,
+	level.inscription("h_tablet", Vector3(3.85, 1.0, -19.9), "Her hand writes on her side of the glass.\nRead it as she does.", 0.95,
 		Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(4.165, 1.38, -19.9)), Vector2(0.8, 0.56))
 
 # ------------------------------------------------------------------ reflectors
@@ -881,8 +894,8 @@ func _reflectors() -> void:
 	var r := Reflector.new()
 	r.kind = "pool"; r.plane_n = Vector3.UP; r.plane_d = -0.03
 	r.surface_col = Vector3(0.45, 0.5, 0.53); r.surface_mix = 0.12
-	r.clip_c = Vector3(-2.4, -0.03, 1.7); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(1.8, 1.9)
-	r.region = Level.R(-5, -5, 5, 5); r.near_rect = Level.R(-4.2, -0.2, -0.6, 3.6); r.near = 3.2
+	r.clip_c = Vector3(-5.125, -0.03, 1.7); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(4.47, 1.86)
+	r.region = Level.R(-13, -5, 5, 5); r.near_rect = Level.R(-9.6, -0.2, -0.6, 3.6); r.near = 3.2
 	r.lag = 0.42; r.wrong = 1.0; r.alpha = 0.88
 	_add_refl(r); pool_refl = r
 	# 2. the polished floor of the hall (faint)
@@ -914,9 +927,9 @@ func _reflectors() -> void:
 	_add_refl(r); eidolon_refl = r
 
 const HALL_COLS := [Vector4(-4.5, -12.2, 0.3, 4.2), Vector4(-4.5, -14.8, 0.3, 4.2), Vector4(-4.5, -17.4, 0.3, 4.2),
-	Vector4(-4.5, -19.9, 0.3, 4.2), Vector4(-3.3, -11.3, 0.3, 4.2), Vector4(3.3, -11.3, 0.3, 4.2), Vector4(3.9, -18.2, 0.3, 0.9)]
+	Vector4(-4.5, -19.9, 0.3, 4.2), Vector4(-3.3, -11.3, 0.3, 4.2), Vector4(3.3, -11.3, 0.3, 4.2), Vector4(3.0, -18.7, 0.3, 0.9)]
 
-func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false) -> ShaderMaterial:
+func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false, wall_mounted := -1.0) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/mirror.gdshader")
 	m.set_shader_parameter("noise_tex", level.noise_tex)
@@ -926,7 +939,7 @@ func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false
 	m.set_shader_parameter("cols", HALL_COLS)
 	m.set_shader_parameter("ncols", HALL_COLS.size())
 	m.set_shader_parameter("crack", 1.0 if cracked else 0.0)
-	m.set_shader_parameter("wall_mounted", 1.0 if absf(center.z + 20.575) < 0.01 else 0.0)
+	m.set_shader_parameter("wall_mounted", wall_mounted if wall_mounted >= 0.0 else (1.0 if absf(center.z + 20.575) < 0.01 else 0.0))
 	var q := QuadMesh.new()
 	q.size = size
 	var g := MeshInstance3D.new()
@@ -1003,10 +1016,9 @@ func update(dt: float) -> void:
 func apply_state(s: Dictionary) -> void:
 	for k in s.keys():
 		if state.has(k): state[k] = s[k]
-	_apply_door_runes()
-	if state["door_open"]: _open_door(true)
 	if state["shortcut"]: open_gate(true)
 	_apply_mirrors(true)
 	if state["bridge"]: _lower_bridge(true)
+	if state.get("drawbridge", false): lower_drawbridge(true)
 	if state["plate"]: _press_plate(true)
 	if state["shrine"]: set_shrine_awake(1.0, 1.0)

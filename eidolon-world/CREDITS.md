@@ -54,6 +54,63 @@ echoes baked in, made into seamless loops with ffmpeg + numpy). CC-BY works are 
 `amb/glass_hum.ogg` is made offline from the pwl bell and Kenney glass recordings above (pitched down,
 overlapped and smeared with long echoes). `amb/ev_stone.ogg` is a filtered excerpt of bonebrah — Stone Door.
 
+## Music and sound v5 (`assets/audio/v5/`)
+
+**The music is original, composed for this project.** Every room bed, event, puzzle-solve cue, `shrine_awaken`
+and the cinematic `cinematic_hand` ("The Hand in the Water", built on Ione's leitmotif A4–D5–E5–F5–E5) were written
+as code and rendered offline: the instrument recordings below were sliced, pitch-shifted, granularly sustained
+and sequenced, and the singer's sustained vowels were resynthesised (TD-PSOLA) into Ione's voice and a small
+choir. The reverb impulse responses are generated algorithmically. Nothing from a finished piece of music is
+used as music. The SFX are recorded sounds, layered and processed for phone speakers.
+
+Instrument recordings:
+
+- **University of Iowa Electronic Music Studios — Musical Instrument Samples (MIS)**, by Lawrence Fritts et al.
+  https://theremin.music.uiowa.edu/MIS.html. Terms: "freely available … may be downloaded and used for any
+  projects, without restrictions". Files used (all under https://theremin.music.uiowa.edu/sound%20files/MIS/):
+  - Piano, mf, single notes A2–C7 (`Piano_Other/piano/Piano.mf.<note>.aiff`): piano in beds, events, cues
+  - Vibraphone, bowed (`Percussion/Vibraphone/Vibraphone.bow.C3B3.aif`, `.C4B4`, `.C5B5`, `.C6F6`): the
+    "glass harmonica" and bowed-glass tones, beam hum, glass hum
+  - Crotales, pp, C6–A7 (`Percussion/crotales/crotale.<note>.pp.aif`): bells (also pitched down as the large
+    temple bell), glints and ticks
+  - Cello, viola, violin, arco pp chromatic runs (`Strings/cello/Cello.arco.pp.*.aiff`,
+    `Strings/viola/Viola.arco.*.pp.*.aiff`, `Strings/violin/Violin.arco.pp.*.aiff`): the strings
+  - Tam-tam / wind gong, bowed (`Percussion/gongs%20&%20tamtams/22tamtam.bow.aif`): shard_gallery shimmer
+  - Soundmined found objects (`Soundmined/Fabric.aif`, `Soundmined/Broken-Glass.aif`): cloth, footsteps,
+    shard pickup
+- **FreePats — Glass (glasses of water)** — https://freepats.zenvoid.org/ChromaticPercussion/glass.html
+  (file: https://freepats.zenvoid.org/ChromaticPercussion/Glass/Glass-SFZ+FLAC-20191227.7z). Licence: CC0 1.0.
+  Used for: glass chimes, rune_flip / glass_tap tones.
+- **FreePats — Concert Harp** (samples from the Versilian Community Sample Library, Versilian Studios) —
+  https://freepats.zenvoid.org/OrchestralStrings/harp.html
+  (file: https://freepats.zenvoid.org/OrchestralStrings/ConcertHarp/ConcertHarp-SFZ+FLAC-20200702.tar.gz).
+  Licence: CC0 1.0. Used for: harp in `scales`, events and cues.
+- **ceninan / Magdalen Kadel — Breves dies hominis** (solo voice) — https://opengameart.org/content/breves-dies-hominis
+  Licence: CC0 1.0. Only its steady sung vowels are used, resynthesised (PSOLA) as Ione's voice and the choir.
+- **AuraVoice (uploaded by Nocturnal_Vanguard) — Ghostly Humming** — https://opengameart.org/content/ghostly-humming
+  Licence: CC0 1.0. Frozen steady fragments retuned as the humming drone in `stair_breath`.
+
+Sound-effect recordings:
+
+- **qubodup — Ghost breath** — https://opengameart.org/content/ghost-breath — CC0 1.0. Used in `cues/breath.ogg`
+  and the whisper in `cues/cinematic_hand.ogg`.
+- **AntumDeluge — Scrapes** — https://opengameart.org/content/scrapes — CC0 1.0. Stone grinds (`statue_turn`,
+  `door_stone`), `hollow_scrape`, `rune_flip`.
+- **bonebrah — Stone Door** — https://opengameart.org/content/stone-door — CC0 1.0. Stone grinds,
+  `events/ev_stone_creak_1.ogg`.
+- **qubodup — Door Open, Door Close Set** — https://opengameart.org/content/door-open-door-close-set — CC0 1.0.
+  `gate`.
+- **rubberduck — 40 CC0 water / splash / slime SFX** — https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  — CC0 1.0. `beds/water_lap.ogg`, `footsteps_water`.
+- **rubberduck — 100 CC0 SFX #2** — https://opengameart.org/content/100-cc0-sfx-2 — CC0 1.0. `footsteps_stone`
+  (grit), `footsteps_water`, `beds/water_lap.ogg`.
+- **Kenney — Impact Sounds** — https://kenney.nl/assets/impact-sounds — CC0 1.0. Footsteps (carpet, snow, wood),
+  stone settle thuds, glass taps, UI clicks, hollow knocks.
+- **Kenney — RPG Audio** — https://kenney.nl/assets/rpg-audio — CC0 1.0. Cloth, wood footstep layer, creaks
+  (`scale_creak`, `gate`, `events/ev_stone_creak_2.ogg`), metal latch and small chain/metal clinks, page flips
+  (`rune_flip`).
+- **Kenney — Interface Sounds** — https://kenney.nl/assets/interface-sounds — CC0 1.0. `ui_click`.
+
 ## Unused in the build (kept in the repo)
 
 - **The Wanderer (Tripo model)** — supplied by the project owner, `assets/models/wanderer.glb`; the game uses the procedural figure.

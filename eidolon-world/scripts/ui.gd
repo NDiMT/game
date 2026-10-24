@@ -48,6 +48,15 @@ var inscr_rect: ColorRect
 var _inscr_tw: Tween
 var text_is_inscription := false
 var text_is_inscription_call := false
+# v0.5
+var controls: Controls
+var lens_rect: ColorRect
+var lens_mat: ShaderMaterial
+var bars: Array[ColorRect] = []
+var letterbox := 0.0
+var cine_line: Label
+var skip_ring: SkipRing
+var _cine_tw: Tween
 
 func _ready() -> void:
 	layer = 5
@@ -159,6 +168,7 @@ func _ready() -> void:
 	door_overlay.caps = caps
 	door_overlay.italic = italic
 	root.add_child(door_overlay)
+	_build_v05()
 	fade = ColorRect.new()
 	fade.color = Color(0.07, 0.07, 0.075, 1.0)
 	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -198,7 +208,7 @@ func _build_title() -> void:
 	sub.offset_left = -150; sub.offset_right = 150; sub.offset_top = 46; sub.offset_bottom = 80
 	title_screen.add_child(sub)
 	var gloss := _label(caps, 11, Color(0.22, 0.22, 0.23), HORIZONTAL_ALIGNMENT_CENTER)
-	gloss.text = "I  ·  " + Names.area(Names.FIRST).to_upper()
+	gloss.text = "I  ·  " + Names.CHAPTER.to_upper()
 	gloss.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	gloss.anchor_top = 0.2; gloss.anchor_bottom = 0.2
 	gloss.offset_left = -180; gloss.offset_right = 180; gloss.offset_top = 82; gloss.offset_bottom = 100
@@ -884,3 +894,109 @@ class DoorOverlay extends Control:
 		draw_arc(cc, 18.0, 0, TAU, 32, Color(0.9, 0.9, 0.88, 0.75), 1.0, true)
 		draw_line(cc + Vector2(-6, -6), cc + Vector2(6, 6), Color(0.95, 0.95, 0.92), 1.8, true)
 		draw_line(cc + Vector2(6, -6), cc + Vector2(-6, 6), Color(0.95, 0.95, 0.92), 1.8, true)
+
+
+# ================================================================== v0.5: shard, lens, cinematic
+const LENS_SHADER := """
+shader_type canvas_item;
+uniform vec2 center = vec2(200.0, 400.0);
+uniform float radius = 140.0;
+uniform float on = 0.0;
+uniform vec2 vp = vec2(400.0, 860.0);
+void fragment() {
+	vec2 p = UV * vp;
+	float d = length(p - center);
+	float outside = smoothstep(radius - 3.0, radius + 22.0, d);
+	float rim = exp(-pow((d - radius) / 2.2, 2.0)) * 0.55 + exp(-pow((d - radius - 6.0) / 7.0, 2.0)) * 0.12;
+	vec3 tint = vec3(0.10, 0.20, 0.22);
+	COLOR = vec4(mix(vec3(0.72, 0.95, 1.0), tint, outside), (outside * 0.38 + rim) * on);
+}
+"""
+
+func _build_v05() -> void:
+	lens_rect = ColorRect.new()
+	lens_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lens_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = LENS_SHADER
+	lens_mat = ShaderMaterial.new()
+	lens_mat.shader = sh
+	lens_rect.material = lens_mat
+	lens_rect.visible = false
+	root.add_child(lens_rect)
+	root.move_child(lens_rect, 0)
+	for i in 2:
+		var b := ColorRect.new()
+		b.color = Color(0.035, 0.035, 0.04, 1.0)
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.set_anchors_preset(Control.PRESET_TOP_WIDE if i == 0 else Control.PRESET_BOTTOM_WIDE)
+		b.offset_top = 0; b.offset_bottom = 0
+		root.add_child(b)
+		bars.append(b)
+	cine_line = _label(italic, 20, Color(0.93, 0.92, 0.88), HORIZONTAL_ALIGNMENT_CENTER)
+	cine_line.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	cine_line.offset_left = 24; cine_line.offset_right = -24; cine_line.offset_top = -96; cine_line.offset_bottom = -30
+	cine_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cine_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cine_line.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	cine_line.add_theme_constant_override("shadow_outline_size", 8)
+	cine_line.modulate.a = 0.0
+	root.add_child(cine_line)
+	skip_ring = SkipRing.new()
+	skip_ring.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	skip_ring.offset_left = -64; skip_ring.offset_right = -16; skip_ring.offset_top = 16; skip_ring.offset_bottom = 64
+	skip_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	skip_ring.caps = caps
+	root.add_child(skip_ring)
+
+func set_inventory(has: bool, on: bool) -> void:
+	if controls:
+		controls.inv_has = has
+		controls.inv_on = on
+
+## the shard raised: everything outside its circle dims to petrol (sp: screen position, r: radius)
+func set_lens(on: bool, sp: Vector2, r: float) -> void:
+	lens_rect.visible = on
+	if not on: return
+	lens_mat.set_shader_parameter("vp", root.size)
+	lens_mat.set_shader_parameter("center", sp)
+	lens_mat.set_shader_parameter("radius", r)
+	lens_mat.set_shader_parameter("on", 1.0)
+
+## the cinematic's black bars (0..1 = up to 11 % of the height each)
+func set_letterbox(k: float) -> void:
+	letterbox = k
+	var h := root.size.y * 0.11 * k
+	bars[0].offset_bottom = h
+	bars[1].offset_top = -h
+
+func show_cine_line(s: String, hold: float) -> void:
+	cine_line.text = s
+	if _cine_tw: _cine_tw.kill()
+	_cine_tw = create_tween()
+	_cine_tw.tween_property(cine_line, "modulate:a", 1.0, 1.8).set_trans(Tween.TRANS_SINE)
+	_cine_tw.tween_interval(hold)
+	_cine_tw.tween_property(cine_line, "modulate:a", 0.0, 1.8).set_trans(Tween.TRANS_SINE)
+
+func hide_cine_line() -> void:
+	if _cine_tw: _cine_tw.kill()
+	cine_line.modulate.a = 0.0
+
+## hold to skip: a thin ring fills in the corner
+func set_skip(k: float, show: bool) -> void:
+	skip_ring.k = k
+	skip_ring.show_k = move_toward(skip_ring.show_k, 1.0 if show else 0.0, 0.08)
+	skip_ring.queue_redraw()
+
+class SkipRing extends Control:
+	var k := 0.0
+	var show_k := 0.0
+	var caps: Font
+	func _draw() -> void:
+		if show_k <= 0.01: return
+		var c := size * 0.5
+		draw_arc(c, 15.0, 0, TAU, 40, Color(0.93, 0.92, 0.88, 0.25 * show_k), 1.0, true)
+		if k > 0.0:
+			draw_arc(c, 15.0, -PI * 0.5, -PI * 0.5 + TAU * k, 40, Color(Palette.CORE, 0.9 * show_k), 2.0, true)
+		if caps:
+			draw_string(caps, Vector2(-40, c.y + 4), "HOLD", HORIZONTAL_ALIGNMENT_RIGHT, 36, 9, Color(0.93, 0.92, 0.88, 0.55 * show_k))

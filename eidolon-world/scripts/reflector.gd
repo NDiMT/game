@@ -58,6 +58,7 @@ var _feet: Array[MeshInstance3D] = []
 var _foot_i := 0
 var _foot_side := 1.0
 var _last_s := 0.0
+var reach_override := -1.0      # v0.5: >= 0 the double's hand reaches out by this much (touch the glass)
 static var foot_shader: Shader
 static var ghost_shader: Shader
 static var enabled := true          # perf bench: all reflections off
@@ -247,6 +248,7 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 	var mirrored := refl_xf * src_xf
 	# planar: the double stands in the real world (un-reflected) and the mirror camera sees it
 	puppet.global_transform = refl_xf * mirrored if planar_on else mirrored
+	if reach_override >= 0.0: src_pose.reach = reach_override
 	puppet.apply_pose(src_pose)
 	puppet.set_param("vis", vis)
 	_footprints(src_pose)

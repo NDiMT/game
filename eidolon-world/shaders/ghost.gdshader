@@ -29,6 +29,7 @@ uniform float ripple_amt = 0.0;        // pools: a tiny watery wobble
 uniform vec3 surface_col = vec3(0.5);  // the surface the reflection lives in
 uniform float surface_mix = 0.0;       // polished floor: mostly the floor's own colour
 uniform vec2 skip = vec2(0.0);         // a one-frame offset (the rare "skip")
+uniform float clip_disc = 0.0;         // 1: a round pool (clip to the inscribed circle)
 
 varying vec3 pp;
 varying vec3 wpos;
@@ -72,6 +73,7 @@ void fragment() {
 		vec3 d = pp - clip_c;
 		vec2 uv = vec2(dot(d, clip_u), dot(d, clip_v)) / clip_h;
 		if (abs(uv.x) > 1.0 || abs(uv.y) > 1.0) discard;
+		if (clip_disc > 0.5 && length(uv) > 1.0) discard;
 	}
 	if (vis < 0.999 && bayer4(FRAGCOORD.xy) > vis) discard;
 	vec2 hm = vuv.x < 0.5 ? cloak_holes(rest) : vec2(0.0);

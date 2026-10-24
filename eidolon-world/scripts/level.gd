@@ -122,12 +122,12 @@ func build() -> void:
 	_hall()
 	_garden()
 	_shortcut()
-	_passage()
 	_court()
 	_ledge()
 	_shrine_platform()
 	_far_ruins()
 	_sealed_way()
+	Ch1Geo.build(self)
 	_beyond()
 
 ## called after the puzzles have added their pieces
@@ -461,12 +461,14 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 func _veiled_gate() -> void:
 	var z := "T"
 	# floor around the pool (the pool is a sunken basin)
-	for r in [R(-5, -5, 5, -0.2), R(-5, 3.6, 5, 5), R(-5, -0.2, -4.2, 3.6), R(-0.6, -0.2, 5, 3.6)]:
+	for r in [R(-5, -5, 5, -0.2), R(-5, 3.6, 5, 5), R(-0.6, -0.2, 5, 3.6)]:
 		slab(z, r, 0.0, 0.7, 0.0, false)
 	underside(z, R(-5, -5, 5, 5), -0.7)
-	box(z, Vector3(-2.4, -0.55, 1.7), Vector3(3.6, 0.3, 3.8), 0.5)            # basin floor (flush pool)
-	walk(R(-5, -5, 5, 5), 0.0, NAN, -1, "T")
-	ob_rect(R(-4.15, -0.15, -0.65, 3.55), "pool")
+	box(z, Vector3(-2.82, -0.55, 1.7), Vector3(4.44, 0.3, 3.8), 0.5)          # basin floor (flush pool)
+	# v0.5: the pool is the Waking Pool: water from the island's middle out over the west edge
+	walk(R(-5, -5, 5, -0.15), 0.0, NAN, -1, "T")
+	walk(R(-5, 3.55, 5, 5), 0.0, NAN, -1, "T")
+	walk(R(-0.65, -0.15, 5, 3.55), 0.0, NAN, -1, "T")
 	# the broken stub of a bridge you came by, ending in the fog
 	slab(z, R(-1, 5, 1, 7.6), 0.0, 0.5, 0.0)
 	walk(R(-1, 5, 1, 7.3), 0.0, NAN, -1, "stub")
@@ -485,6 +487,8 @@ func _veiled_gate() -> void:
 		statue(z, sp[0], yaw_to(sp[0], pc), sp[1])
 	stump(Vector3(4.3, 0, -1.4), 1.3)
 	stump(Vector3(-4.4, 0, -1.6), 0.7)
+	for zz in [-0.45, 3.85]:
+		box(z, Vector3(-4.95, 0.08, zz), Vector3(0.3, 0.16, 0.34), 0.25)
 	stump(Vector3(1.9, 0, -4.4), 1.7, true, 0.05)
 	rubble(Vector3(-4.0, 0, -1.0), 0.6, 5)
 	# inscriptions
@@ -506,27 +510,31 @@ func _veiled_gate() -> void:
 	balustrade(z, Vector2(4.95, -0.5), Vector2(4.95, 4.8), 0.0)
 
 func _bridge_b1() -> void:
+	## v0.5: the old way north has fallen: a stub, a gap, the top of the stair hanging from the hall
 	var z := "B1"
-	slab(z, R(-1.2, -6.5, 1.2, -5), 0.0, 0.6, 0.0)
-	walk(R(-1.2, -6.5, 1.2, -5), 0.0, NAN, -1, "b1")
-	steps(z, R(-1.2, -9.5, 1.2, -6.5), 1, 0.0, 1.0, false)
-	walk(R(-1.2, -9.5, 1.2, -6.5), 1.0, 0.0, 1, "b1_stair")
+	slab(z, R(-1.2, -6.3, 1.2, -5), 0.0, 0.6, 0.0)
+	walk(R(-1.2, -6.3, 1.2, -5), 0.0, NAN, -1, "b1")
+	rubble(Vector3(0, -0.5, -6.8), 0.7, 5)
+	steps(z, R(-1.2, -9.5, 1.2, -8.2), 1, 0.4, 1.0, false)
 	slab(z, R(-1.2, -11, 1.2, -9.5), 1.0, 0.6, 0.0)
 	walk(R(-1.2, -11, 1.2, -9.5), 1.0)
 	for x in [-1.3, 1.3]:
-		balustrade(z, Vector2(x, -5.3), Vector2(x, -6.4), 0.0)
+		balustrade(z, Vector2(x, -5.3), Vector2(x, -6.2), 0.0)
 		balustrade(z, Vector2(x, -9.6), Vector2(x, -10.8), 1.0)
-		box(z, Vector3(x, 0.55, -8.0), Vector3(0.2, 0.12, 3.1), 0.25, false, Basis(Vector3.RIGHT, -atan2(1.0, 3.0)))
+	balustrade(z, Vector2(-1.1, -9.45), Vector2(1.1, -9.45), 1.0)
 
 func _hall() -> void:
 	var z := "H"
 	slab(z, R(-5, -21, 5, -11), 1.0, 0.8, 0.75)
 	walk(R(-4.6, -20.6, 4.6, -11), 1.0, NAN, -1, "H")
-	walk(R(4.6, -14, 5, -12), 1.0)
 	# far walls: north (with the great mirror) and east (with the doorway)
 	wall("Hn", R(-5, -21, 5, -20.6), 1.0, 6.2)
-	wall(z, R(4.6, -21, 5, -14), 1.0, 4.6)
-	wall(z, R(4.6, -12, 5, -11), 1.0, 4.6)
+	wall(z, R(4.6, -21, 5, -18.4), 1.0, 4.6)
+	wall(z, R(4.6, -16.6, 5, -11), 1.0, 4.6)
+	# v0.5: the remembered doorway: a wall today (its own mesh: hidden from the mirror, it opens)
+	wall("Hdoor", R(4.6, -18.4, 5, -16.6), 1.0, 3.7)
+	box(z, Vector3(4.8, 4.15, -17.5), Vector3(0.4, 0.9, 1.8), 0.25, true)
+	walk(R(4.6, -18.2, 5.05, -16.8), 1.0, NAN, -1, "hdoor", false)
 	box(z, Vector3(4.8, 4.0, -13.0), Vector3(0.4, 1.2, 2.0), 0.25, true)
 	# mirror frame (dark bronze) around the great glass x[-2.6,2.6] y[1.15,5.6]
 	for fb in [[Vector3(0, 1.1, -20.52), Vector3(5.5, 0.14, 0.12)], [Vector3(0, 5.66, -20.52), Vector3(5.5, 0.14, 0.12)],
@@ -541,9 +549,9 @@ func _hall() -> void:
 	column(Vector3(-3.3, 1.0, -11.3), 4.2)
 	column(Vector3(3.3, 1.0, -11.3), 4.2)
 	# a fallen column across the north-east corner hides the low tablet
-	stump(Vector3(3.9, 1.0, -18.2), 0.9, true, 0.0)
-	box(z, Vector3(3.2, 1.3, -17.3), Vector3(0.62, 0.62, 1.9), 0.25, false, Basis(Vector3.UP, 0.9))
-	ob_rect(R(2.5, -18.1, 3.9, -16.5))
+	stump(Vector3(3.0, 1.0, -18.7), 0.9, true, 0.0)
+	box(z, Vector3(2.7, 1.3, -19.9), Vector3(0.62, 0.62, 1.9), 0.25, false, Basis(Vector3.UP, 1.2))
+	ob_rect(R(1.95, -20.4, 3.4, -19.4))
 	box(z, Vector3(4.35, 1.35, -19.9), Vector3(0.36, 0.7, 0.9), 0.25, false)
 	rubble(Vector3(-3.5, 1.0, -19.6), 0.7, 6)
 	rubble(Vector3(2.6, 1.0, -12.3), 0.5, 4)
@@ -552,37 +560,35 @@ func _hall() -> void:
 
 func _garden() -> void:
 	var z := "G"
-	slab(z, R(5, -14, 7, -12), 1.0, 0.6, 0.0)
-	walk(R(5, -14, 7, -12), 1.0, NAN, -1, "HG")
-	balustrade(z, Vector2(5.1, -14.1), Vector2(6.9, -14.1), 1.0)
-	balustrade(z, Vector2(5.1, -11.9), Vector2(6.9, -11.9), 1.0)
 	slab(z, R(7, -15, 17, -5), 1.0, 0.8, 0.0)
 	walk(R(7, -15, 17, -5), 1.0, NAN, -1, "G")
-	# rune door frame (the door slab itself is a puzzle object)
-	box(z, Vector3(10.55, 3.0, -15.1), Vector3(0.7, 4.0, 0.8), 0.25, true)
-	box(z, Vector3(13.45, 3.0, -15.1), Vector3(0.7, 4.0, 0.8), 0.25, true)
-	box(z, Vector3(12.0, 5.25, -15.1), Vector3(3.8, 0.6, 0.95), 0.25, true)
-	box(z, Vector3(12.0, 5.65, -15.1), Vector3(2.4, 0.3, 0.7), 0.25, true)
-	ob_rect(R(10.15, -15.5, 10.95, -14.7))
-	ob_rect(R(13.05, -15.5, 13.85, -14.7))
-	# low walls on the north edge either side of the door
-	wall(z, R(7, -15.3, 10.2, -14.95), 1.0, 2.0, true)
-	wall(z, R(13.8, -15.3, 17, -14.95), 1.0, 2.0, true)
+	# v0.5: the Turned Ones' great mirror stands on the north edge (the glass is a puzzle object)
+	wall("Gn", R(8.7, -15.6, 15.3, -15.05), 1.0, 5.9, false)
+	box(z, Vector3(8.85, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
+	box(z, Vector3(15.15, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
+	box(z, Vector3(12.0, 5.6, -14.95), Vector3(6.6, 0.3, 0.34), 1.0, true)
+	box(z, Vector3(12.0, 1.06, -14.95), Vector3(6.3, 0.12, 0.3), 1.0, false)
+	ob_rect(R(8.6, -15.3, 15.4, -14.75))
+	wall(z, R(7, -15.3, 8.7, -14.95), 1.0, 2.0, true)
+	wall(z, R(15.3, -15.3, 17, -14.95), 1.0, 2.0, true)
+	# the door east, to the Hollow Walk (its leaves are puzzle objects)
+	box(z, Vector3(16.95, 2.75, -12.85), Vector3(0.5, 3.5, 0.5), 0.25, true)
+	box(z, Vector3(16.95, 2.75, -10.75), Vector3(0.5, 3.5, 0.5), 0.25, true)
+	box(z, Vector3(16.95, 4.7, -11.8), Vector3(0.6, 0.45, 2.7), 0.25, true)
 	# dead trees
 	tree(z, Vector3(10.2, 1.0, -8.0), 11)
-	tree(z, Vector3(13.6, 1.0, -10.4), 23)
+	tree(z, Vector3(14.4, 1.0, -9.6), 23)
 	tree(z, Vector3(8.6, 1.0, -13.8), 37)
 	tree(z, Vector3(16.1, 1.0, -9.3), 41)
 	# veiled statues without runes (the rune statues are placed by the puzzle)
 	statue(z, Vector3(8.2, 1.0, -6.0), PI * 0.75, 0.9)
 	statue(z, Vector3(12.2, 1.0, -5.7), PI, 0.85)
 	stump(Vector3(16.3, 1.0, -5.6), 1.1)
-	stump(Vector3(7.6, 1.0, -8.3), 0.6, true, 0.08)
-	rubble(Vector3(14.6, 1.0, -7.4), 0.6, 5)
+	rubble(Vector3(15.2, 1.0, -6.6), 0.6, 5)
 	rubble(Vector3(9.4, 1.0, -11.2), 0.5, 4)
-	balustrade(z, Vector2(16.95, -14.8), Vector2(16.95, -5.2), 1.0)
+	balustrade(z, Vector2(16.95, -14.8), Vector2(16.95, -13.2), 1.0)
+	balustrade(z, Vector2(16.95, -10.4), Vector2(16.95, -5.2), 1.0)
 	balustrade(z, Vector2(9.7, -4.95), Vector2(16.8, -4.95), 1.0)
-	balustrade(z, Vector2(7.05, -11.8), Vector2(7.05, -5.2), 1.0)
 	inscription("g_stele", Vector3(11.0, 1.0, -6.4), "Nothing grows here but likeness.", 1.2,
 		Transform3D(Basis(), Vector3(11.0, 1.62, -5.635)), Vector2(1.0, 0.9))
 	box(z, Vector3(11.0, 1.55, -5.75), Vector3(1.15, 1.1, 0.22), 0.25)
@@ -615,19 +621,26 @@ func _court() -> void:
 	slab(z, R(7, -27, 17, -17), 2.0, 0.9, 0.0)
 	walk(R(7, -27, 17, -17), 2.0, NAN, -1, "L")
 	# a low parapet round the court (the light stops there)
-	balustrade(z, Vector2(7.1, -26.95), Vector2(16.9, -26.95), 2.0)
+	balustrade(z, Vector2(7.1, -26.95), Vector2(9.3, -26.95), 2.0)
+	balustrade(z, Vector2(14.7, -26.95), Vector2(16.9, -26.95), 2.0)
 	balustrade(z, Vector2(7.05, -26.8), Vector2(7.05, -17.2), 2.0)
-	balustrade(z, Vector2(7.2, -17.05), Vector2(10.6, -17.05), 2.0)
-	balustrade(z, Vector2(13.4, -17.05), Vector2(16.8, -17.05), 2.0)
+	balustrade(z, Vector2(7.2, -17.05), Vector2(15.2, -17.05), 2.0)
 	balustrade(z, Vector2(16.95, -26.8), Vector2(16.95, -23.3), 2.0)
-	balustrade(z, Vector2(16.95, -20.7), Vector2(16.95, -17.2), 2.0)
+	balustrade(z, Vector2(16.95, -20.7), Vector2(16.95, -18.6), 2.0)
+	# v0.5: the mural wall (her half-erased portrait; its middle is a door) and the Mist Maze beyond
+	wall(z, R(9.3, -27.3, 10.9, -26.95), 2.0, 5.6, true)
+	wall(z, R(13.1, -27.3, 14.7, -26.95), 2.0, 5.6, true)
+	wall("Mural", R(10.9, -27.3, 13.1, -26.95), 2.0, 5.2, true)
+	box(z, Vector3(12.0, 5.45, -27.12), Vector3(2.4, 0.5, 0.42), 0.25, true)
+	ob_rect(R(9.3, -27.35, 10.9, -26.9))
+	ob_rect(R(13.1, -27.35, 14.7, -26.9))
+	ob_rect(R(10.9, -27.35, 13.1, -26.9), "mural_door")
 	# great columns at the corners, one broken
 	column(Vector3(7.6, 2.0, -26.4), 4.6)
 	column(Vector3(16.4, 2.0, -26.4), 4.6)
 	stump(Vector3(7.6, 2.0, -17.6), 1.6)
-	column(Vector3(16.4, 2.0, -17.6), 4.6)
+	column(Vector3(16.4, 2.0, -19.4), 4.6)
 	rubble(Vector3(8.6, 2.0, -18.4), 0.6, 5)
-	statue(z, Vector3(12.8, 2.0, -26.2), PI, 1.0)
 	inscription("l_stele", Vector3(8.3, 2.0, -21.4), "Turn the glass.\nThe light remembers the way.", 1.2,
 		Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(7.665, 2.62, -21.4)), Vector2(0.95, 1.0))
 	box(z, Vector3(7.55, 2.6, -21.4), Vector3(0.22, 1.2, 1.1), 0.25)
@@ -643,7 +656,8 @@ func _ledge() -> void:
 	box(z, Vector3(23.6, 2.08, -24.95), Vector3(4.6, 0.16, 0.3), 1.0, false)
 	ob_rect(R(21.2, -25.15, 26.0, -24.75))
 	balustrade(z, Vector2(21.1, -18.95), Vector2(28.9, -18.95), 2.0)
-	balustrade(z, Vector2(28.95, -19.1), Vector2(28.95, -24.9), 2.0)
+	balustrade(z, Vector2(28.95, -19.1), Vector2(28.95, -21.3), 2.0)
+	balustrade(z, Vector2(28.95, -23.5), Vector2(28.95, -24.9), 2.0)
 	balustrade(z, Vector2(21.05, -19.1), Vector2(21.05, -20.8), 2.0)
 	balustrade(z, Vector2(21.05, -23.2), Vector2(21.05, -24.9), 2.0)
 	column(Vector3(28.4, 2.0, -19.5), 4.0)
@@ -672,8 +686,10 @@ func _shrine_platform() -> void:
 	m.cyl(c + Vector3(0, 6.35, 0), 2.7, 3.0, 0.5, C(0.25, true), 32)
 	m.sphere(c + Vector3(0, 6.6, 0), Vector3(2.6, 1.2, 2.6), C(0.25, true), 24, 8)
 	statue(z, c + Vector3(0, 0, -1.3), PI, 1.0, 0.5)
-	box(z, c + Vector3(0, 0.5, 0.35), Vector3(0.9, 1.0, 0.7), 0.25)
-	ob_rect(R(24.5, -32.65, 25.5, -31.85))
+	# v0.5: a small round pool under the crystal, where her hand meets yours
+	m.cyl(c + Vector3(0, 0.07, 0.35), 0.86, 0.9, 0.14, C(0.25), 28)
+	m.cyl(c + Vector3(0, 0.02, 0.35), 0.74, 0.74, 0.06, C(0.5), 28)
+	ob_circle(Vector2(c.x, c.z + 0.35), 0.86)
 	rubble(Vector3(21.2, 2.0, -34.8), 0.6, 5)
 	stump(Vector3(21.0, 2.0, -29.0), 0.9)
 

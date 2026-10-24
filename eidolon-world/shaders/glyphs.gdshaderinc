@@ -7,6 +7,7 @@
 //   3 KYKLOS - two rings around a seed
 //   4 TRIGONON - an inscribed triangle around a seed
 //   5 TETRAKTYS - a lozenge around a square
+//   6 HOOK, 7 WING, 8 STEP - v0.5: three ASYMMETRIC runes (the Turned Ones: a mirror reverses them)
 // Shared by the stone cube, the Eidolon (mirrored) and the floor sigils.
 
 const float RUNE_W = 0.055;      // half stroke width, in rune units (rune spans -1..1)
@@ -67,6 +68,22 @@ float rune_core(vec2 p, int design) {
 		vec2 a = vec2(0.0, 0.58), b = vec2(-0.5023, -0.29), c = vec2(0.5023, -0.29);
 		d = min(min(g_seg(p, a, b), g_seg(p, b, c)), g_seg(p, c, a));
 		d = min(d, g_ring(p, 0.14));
+	} else if (design == 6) {
+		d = g_seg(p, vec2(-0.18, -0.6), vec2(-0.18, 0.46));
+		d = min(d, g_seg(p, vec2(-0.18, 0.46), vec2(0.34, 0.46)));
+		d = min(d, g_seg(p, vec2(0.34, 0.46), vec2(0.34, 0.14)));
+		d = min(d, g_dot(p - vec2(0.28, -0.42), 0.075));
+	} else if (design == 7) {
+		d = g_ring(p - vec2(-0.16, -0.14), 0.27);
+		d = min(d, g_seg(p, vec2(0.03, 0.06), vec2(0.46, 0.5)));
+		d = min(d, g_seg(p, vec2(0.46, 0.5), vec2(0.46, 0.18)));
+	} else if (design == 8) {
+		d = g_seg(p, vec2(-0.5, -0.52), vec2(-0.5, -0.12));
+		d = min(d, g_seg(p, vec2(-0.5, -0.12), vec2(-0.1, -0.12)));
+		d = min(d, g_seg(p, vec2(-0.1, -0.12), vec2(-0.1, 0.28)));
+		d = min(d, g_seg(p, vec2(-0.1, 0.28), vec2(0.3, 0.28)));
+		d = min(d, g_seg(p, vec2(0.3, 0.28), vec2(0.3, 0.6)));
+		d = min(d, g_dot(p - vec2(0.38, -0.4), 0.075));
 	} else {
 		d = abs(q.x + q.y - 0.58) * 0.7071;
 		d = max(d, max(q.x, q.y) - 0.58);

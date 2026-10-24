@@ -14,6 +14,11 @@ static var autotest := false
 var world: World
 var level: Level
 var puzzles: Puzzles
+var chapter: Chapter
+var cine: Cinematic
+var _skip_hold := false
+var _skip_t := 0.0
+const HINT_AFTER := 180.0        # seconds without progress in a space before a gentle hint
 var player: Player
 var sfx: Sfx
 var ui: GameUI
@@ -52,6 +57,9 @@ func _ready() -> void:
 	puzzles = Puzzles.new(level, self)
 	add_child(puzzles)
 	puzzles.build()
+	chapter = Chapter.new(self)
+	add_child(chapter)
+	chapter.build()
 	level.commit()
 	sfx = Sfx.new()
 	add_child(sfx)
@@ -59,6 +67,11 @@ func _ready() -> void:
 	add_child(ui)
 	controls = Controls.new()
 	add_child(controls)
+	ui.controls = controls
+	chapter.post_commit()
+	_drawbridge_lever()
+	chapter.event.connect(_on_chapter_event)
+	controls.shard.connect(func() -> void: if mode == "play": chapter.toggle_lens())
 	level.read.connect(_on_read)
 	puzzles.event.connect(_on_event)
 	player.footstep.connect(_on_footstep)
@@ -125,6 +138,8 @@ func _on_anew() -> void:
 func reset_progress() -> void:
 	puzzles.reset_state()
 	puzzles.apply_state(puzzles.state)
+	chapter.reset_state()
+	chapter.apply_state()
 	visited = {}
 	area = ""
 	glimpses = {"lag": 0, "gaze": 0}
@@ -140,6 +155,8 @@ func _start_wake() -> void:
 	mode = "wake"
 	puzzles.reset_state()
 	puzzles.apply_state(puzzles.state)
+	chapter.reset_state()
+	chapter.apply_state()
 	player.teleport(Level.WAKE_POS, 0.0)
 	player.crouch = 1.0
 	player.locked = true
@@ -157,6 +174,11 @@ func _start_wake() -> void:
 
 func _continue_from_save() -> void:
 	puzzles.apply_state(save_data.get("puzzles", {}))
+	var cs: Dictionary = save_data.get("chapter", {})
+	chapter.reset_state()
+	for k in cs:
+		if chapter.state.has(k): chapter.state[k] = cs[k]
+	chapter.apply_state()
 	var p: Array = save_data.get("pos", [Level.WAKE_POS.x, 0.0, Level.WAKE_POS.z])
 	player.teleport(Vector3(p[0], p[1], p[2]), float(save_data.get("yaw", 0.0)))
 	player.crouch = 0.0
@@ -217,12 +239,17 @@ func _input(e: InputEvent) -> void:
 				KEY_E, KEY_SPACE, KEY_ENTER: door_cycle(ov.selected)
 				KEY_ESCAPE, KEY_Q: ov.close()
 		return
+	if mode == "cine":
+		if e is InputEventScreenTouch or (e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT): _skip_hold = e.pressed
+		if e is InputEventKey and not e.echo and e.keycode in [KEY_SPACE, KEY_ENTER, KEY_E, KEY_ESCAPE]: _skip_hold = e.pressed
+		return
 	if _world_block_t > 0.0 and not (e is InputEventKey and not e.pressed): return
 	if e is InputEventKey and not e.echo:
 		_keys[e.keycode] = e.pressed
 		if e.pressed:
 			match e.keycode:
 				KEY_E, KEY_SPACE, KEY_ENTER: try_interact()
+				KEY_F: if mode == "play": chapter.toggle_lens()
 				KEY_Q: rotate_view(-1)
 				KEY_R: rotate_view(1)
 				KEY_Z:
@@ -299,6 +326,14 @@ func _process(dt: float) -> void:
 		player.input_dir = Vector2(dir.x, dir.z) if mode == "play" else Vector2.ZERO
 	player.step(dt)
 	puzzles.update(dt)
+	if mode != "title": chapter.update(dt)
+	if mode == "cine":
+		_skip_t = _skip_t + dt if _skip_hold else maxf(0.0, _skip_t - dt * 3.0)
+		ui.set_skip(clampf(_skip_t / 1.1, 0.0, 1.0), _skip_hold or _skip_t > 0.0)
+		if _skip_t >= 1.1 and cine:
+			_skip_t = 0.0
+			_skip_hold = false
+			cine.skip()
 	if mode == "play": _update_focus()
 	else: controls.show_interact("")
 	_update_hum()
@@ -308,7 +343,9 @@ func _process(dt: float) -> void:
 		var cs: float = world.zoom
 		var on_ledge := p.x > 20.8 and p.z > -25.2 and p.z < -18.8
 		if on_ledge: cs = maxf(cs, 9.6)              # see your reflection AND the plate
-		if mode != "finale": world.cam_size_target = cs
+		if area == "mist_maze" and p.z < -28.5: cs = maxf(cs, 10.6)          # the maze and her pool
+		if area == "scales": cs = maxf(cs, 9.8)
+		if mode != "finale" and mode != "cine": world.cam_size_target = cs
 		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs
 		if mode == "play":
 			# on the eidolon ledge, frame the player AND the plate across the gap
@@ -317,14 +354,18 @@ func _process(dt: float) -> void:
 				bridge_focus -= dt
 				off = (Vector3(27.7, 2.0, -26.5) - p) * 0.7         # watch the bridge rise
 				off.y = 0.0
-			elif p.x > 20.8 and p.z > -25.2 and p.z < -18.8:
+			elif p.x > 20.8 and p.z > -25.2 and p.z < -18.8 and p.y < 3.0:
 				off = (Puzzles.PLATE_POS - p) * 0.5
 				off.y = 0.0
+			elif area == "mist_maze" and p.z < -28.5 and p.x > 8.5:
+				off = Vector3((4.6 - p.x) * 0.42, 0.0, (-34.0 - p.z) * 0.3)     # her steps in the pool
+			elif area == "garden_veiled" and p.z < -9.0 and p.x > 8.5 and p.x < 15.5:
+				off = Vector3(0.0, 0.0, (-13.6 - p.z) * 0.5)                   # the turned ones and their glass
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
 	if mode == "play": _auto_quality(dt)
 	level.update_inscriptions(player.position)
-	if mode == "play" or mode == "finale":
+	if mode == "play" or mode == "finale" or mode == "cine":
 		_update_area()
 		_update_air()
 	if ui.text_source != Vector3.INF and player.position.distance_to(ui.text_source) > 3.2: ui.hide_text()
@@ -357,17 +398,18 @@ func _surface() -> String:
 	var q := Vector2(player.position.x, player.position.z)
 	var g := level.region_at(q)
 	if g and g.name == "LB": return "wood"
-	if Level.R(-4.6, -0.6, -0.2, 4.0).has_point(q): return "water"
-	if area == "hall": return "hall"
+	if g and g.name.begins_with("stone"): return "water"
+	if area in ["hall_glass", "shard_gallery", "echo_corridor"]: return "hall"
 	return "stone"
 
 func _update_air() -> void:
 	var q := Vector2(player.position.x, player.position.z)
 	var g := level.region_at(q)
-	var w: float = AREA_WIND.get(area, 0.35)
+	var w: float = AREA_WIND.get(Sfx.FALLBACK_ROOM.get(area, area), 0.35)
+	if area in ["mist_maze", "echo_corridor", "shard_gallery"]: w = 0.15
 	if g and g.name in EXPOSED: w = 0.95
 	sfx.set_wind(w * (0.7 if awake else 1.0))
-	var pool := Level.R(-4.2, -0.2, -0.6, 3.6)
+	var pool := Level.R(-9.6, -0.2, -0.6, 3.6)
 	var cq := Vector2(clampf(q.x, pool.position.x, pool.end.x), clampf(q.y, pool.position.y, pool.end.y))
 	sfx.set_water(clampf(1.0 - cq.distance_to(q) / 6.0, 0.0, 1.0))
 
@@ -375,9 +417,12 @@ func _update_area() -> void:
 	var g := level.region_at(Vector2(player.position.x, player.position.z))
 	if g == null or not Names.REGION_AREA.has(g.name): return
 	var key: String = Names.REGION_AREA[g.name]
+	if key == "gate_four" and Vector2(player.position.x - Puzzles.SHRINE_C.x, player.position.z - Puzzles.SHRINE_C.z).length() < 2.4:
+		key = "first_shrine"
 	if key == area: return
 	area = key
 	sfx.set_area(key)
+	if mode == "play" and area != "": _save()        # a checkpoint in every space
 	if not visited.has(key):
 		visited[key] = true
 		ui.show_area(Names.area(key))
@@ -400,6 +445,7 @@ func _update_hum() -> void:
 func _on_read(text: String, script: Array) -> void:
 	ui.show_inscription(text, script, player.position)
 	sfx.play("chime_hall" if area == "hall" else "chime", -23.0, 0.5)
+	chapter.progress()
 	if focus and focus.id == "h_tablet":
 		puzzles.state["tablet"] = true
 		_save()
@@ -408,6 +454,7 @@ func _on_footstep(kind: String, strength: float) -> void:
 	if kind == "step":
 		sfx.footstep(_surface(), strength)
 		player_dust()
+		chapter.on_footstep()
 	else:
 		sfx.play("cloth", -31.0 + strength * 3.0, randf_range(0.85, 1.15))
 
@@ -478,43 +525,155 @@ func _on_event(name: String, data: Variant) -> void:
 func start_finale() -> void:
 	if puzzles.state["shrine"]: return
 	puzzles.state["shrine"] = true
-	mode = "finale"
+	mode = "cine"
 	player.locked = true
+	player.input_dir = Vector2.ZERO
+	auto_target = Vector3.INF
+	key_vec = Vector2.ZERO
 	controls.show_interact("")
-	_finale_t = 0.0
-	if world.yaw_index % 4 != 0:
-		world.rotate_view(-world.yaw_index)
+	controls.enabled = false
+	controls.reset()
+	chapter.set_lens(false)
+	ui.hide_text()
+	_skip_t = 0.0
+	_skip_hold = false
 	sfx.swell()
-	sfx.play("whoosh", -12.0, 0.5)
-	var tw := create_tween()
-	tw.tween_method(func(v: float) -> void: puzzles.set_shrine_awake(v, v), 0.0, 1.0, 3.0).set_trans(Tween.TRANS_SINE)
-	tw.parallel().tween_method(player.fig.set_hem, HEM_PER_SHRINE[0], HEM_PER_SHRINE[1], 4.0)
-	tw.tween_callback(func() -> void: player.fig.set_runes(1))
-	var t2 := create_tween()
-	t2.tween_interval(1.2)
-	t2.tween_method(world.set_awaken, 0.0, 1.0, 8.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	var t3 := create_tween()
-	t3.tween_interval(1.0)
-	world.cam_lock = true
-	t3.tween_property(world.cam, "size", 12.5, 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	t3.parallel().tween_property(world, "look_offset", Level.BEYOND_FWD * 9.0 + Vector3(0, 2.0, 0), 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	t3.tween_interval(9.0)
-	t3.tween_property(world.cam, "size", world.zoom, 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	t3.parallel().tween_property(world, "look_offset", Vector3.ZERO, 3.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	t3.tween_callback(func() -> void: world.cam_lock = false)
-	var t4 := create_tween()
-	t4.tween_interval(3.2)
-	t4.tween_callback(func() -> void: ui.show_memory(MEMORY_LINE, 4.5))
-	t4.tween_interval(10.5)
-	t4.tween_callback(func() -> void:
-		ui.show_milestone(1, SHRINES_TOTAL, 3.5)
-		sfx.play("bell_far", -12.0, 1.0))
-	t4.tween_interval(5.5)
-	t4.tween_callback(func() -> void:
-		awake = true
-		player.locked = false
-		mode = "play"
-		_save())
+	cine = Cinematic.new(self)
+	add_child(cine)
+	cine.cue.connect(func(n: String) -> void: sfx.cue(n))
+	chapter.hand_in_the_water(cine)
+	cine.finished.connect(_end_cinematic)
+	cine.start()
+
+func _end_cinematic() -> void:
+	awake = true
+	world.set_awaken(1.0)
+	puzzles.set_shrine_awake(1.0, 1.0)
+	player.fig.set_runes(1)
+	player.fig.set_hem(HEM_PER_SHRINE[1])
+	player.locked = false
+	player.crouch = 0.0
+	world.yaw_index = 0
+	world.rig.rotation.y = -PI * 0.25
+	world.pitch_node.rotation.x = -World.PITCH
+	world.cam_lock = false
+	world.look_offset = Vector3.ZERO
+	world.cam_size_target = world.zoom
+	world.follow = player
+	ui.set_letterbox(0.0)
+	ui.set_skip(0.0, false)
+	ui.skip_ring.show_k = 0.0
+	mode = "play"
+	controls.enabled = true
+	controls.block(300)
+	_world_block_t = 0.3
+	if cine:
+		cine.queue_free()
+		cine = null
+	_save()
+
+## the drawbridge from the Court to the ledge stays up until you reach the ledge the long way; a lever
+## there lowers it (a way back)
+func _drawbridge_lever() -> void:
+	var m := MB.new()
+	m.box(Vector3(21.55, 2.3, -22.9), Vector3(0.3, 0.6, 0.3), Color(0.5, 0.25, 0.0))
+	m.cyl(Vector3(21.55, 2.85, -22.9), 0.03, 0.03, 0.7, Color(0.5, 1.0, 0.0), 6, Basis(Vector3.BACK, 0.5))
+	puzzles.marble_instance(m.commit(), chapter)
+	level.ob_circle(Vector2(21.55, -22.9), 0.25)
+	level.add_interact("drawbridge", Vector3(21.55, 2.0, -22.9), "lever", func() -> void: puzzles.lower_drawbridge(false), 1.0,
+		func() -> bool: return not puzzles.state.get("drawbridge", false) and player.position.x > 21.0)
+
+# ------------------------------------------------------------------ v0.5 chapter events
+func _on_chapter_event(name: String, data: Variant) -> void:
+	match name:
+		"solve":
+			chapter.progress()
+			sfx.cue("solve_" + str(data))
+			if data == "gate_four": sfx.chord([0, 7, 12], -8.0)
+			_save()
+		"breath": sfx.cue("breath")
+		"writing": sfx.play("glass_tink", -24.0, 0.8)
+		"touch_glass": sfx.cue("touch_glass")
+		"shard":
+			sfx.play("glass", -14.0, 1.3)
+			_save()
+		"lens": sfx.play("glass_tink", -20.0, 1.25 if data else 0.85)
+		"statue_turn": sfx.cue("statue_turn")
+		"door_reflection": sfx.play("chime_hall", -16.0, 0.7)
+		"door_real":
+			sfx.play("door", -3.0, 0.9)
+			world.shake(0.3)
+		"hollow_step": sfx.play("grind", -21.0, 0.62)
+		"hollow_lock":
+			sfx.play("thud", -10.0, 0.7)
+			chapter.progress()
+		"maze_bump": sfx.play("glass_tink", -21.0, 0.7)
+		"memory":
+			ui.show_memory(Chapter.MEMORY_1, 4.0)
+			sfx.cue("glimpse")
+			_save()
+		"scale_groan": sfx.play("rattle", -22.0, 0.55)
+		"hint": sfx.play("glass_tink", -30.0, 1.4)
+
+# ------------------------------------------------------------------ jump (tests, screenshots)
+## put the world in the state it has when you first enter `room` (everything before it solved) and
+## stand at its entrance
+const ROOM_ENTRY := {
+	"waking_pool": Vector3(1.4, 0.0, 2.3), "stair_breath": Vector3(-11.0, 0.0, 1.6), "hall_glass": Vector3(-2.0, 1.0, -13.5),
+	"shard_gallery": Vector3(5.8, 1.0, -17.0), "garden_veiled": Vector3(8.2, 1.0, -8.6), "hollow_walk": Vector3(17.9, 1.0, -11.8),
+	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -26.4), "echo_corridor": Vector3(10.0, 2.0, -40.0),
+	"scales": Vector3(26.6, 2.0, -45.5), "eidolon_ledge": Vector3(24.0, 2.0, -22.0), "gate_four": Vector3(27.6, 2.0, -27.0),
+	"first_shrine": Vector3(25.0, 2.0, -31.1),
+}
+func jump(room: String) -> void:
+	var idx := Names.ORDER.find(room)
+	if idx < 0: return
+	puzzles.reset_state()
+	chapter.reset_state()
+	var cs := chapter.state
+	var ps := puzzles.state
+	for i in idx:
+		match Names.ORDER[i]:
+			"waking_pool": cs["stones"] = true
+			"stair_breath": cs["breath"] = true
+			"hall_glass":
+				cs["shard"] = true; cs["hall_door"] = true
+			"shard_gallery": cs["gallery"] = true
+			"garden_veiled":
+				cs["turned"] = Chapter.TURN_SOLUTION.duplicate(); cs["turned_done"] = true; cs["garden_breath"] = true
+			"hollow_walk":
+				cs["hollows"] = [[Ch1Geo.HW_PLATES[0].x, Ch1Geo.HW_PLATES[0].y], [Ch1Geo.HW_PLATES[1].x, Ch1Geo.HW_PLATES[1].y]]
+				cs["hollow_lock"] = [true, true]; cs["hollow_done"] = true
+			"court_light":
+				ps["mirrors"] = Puzzles.MIRROR_SOLUTION.duplicate(); ps["bridge"] = true; cs["mural"] = true
+			"mist_maze": cs["maze"] = true
+			"echo_corridor": cs["echo_room"] = true
+			"scales":
+				cs["scales"] = true; cs["scales_mirror"] = 2
+			"eidolon_ledge": ps["plate"] = true
+			"gate_four": cs["four"] = true
+	puzzles.apply_state(ps)
+	chapter.apply_state()
+	awake = bool(ps["shrine"])
+	world.set_awaken(1.0 if awake else 0.0)
+	puzzles.set_shrine_awake(1.0 if awake else 0.0, 1.0 if awake else 0.0)
+	player.fig.set_hem(HEM_PER_SHRINE[1 if awake else 0])
+	player.fig.set_runes(1 if awake else 0)
+	var p: Vector3 = ROOM_ENTRY[room]
+	player.teleport(p, player.yaw)
+	world.snap_to(player.position)
+	if mode == "title":
+		sfx.start_music()
+		ui.hide_title()
+	ui.fade_to(0.0, 0.01)
+	world.follow = player
+	world.cam_size_target = world.zoom
+	mode = "play"
+	controls.enabled = true
+	player.locked = false
+	player.crouch = 0.0
+	visited[room] = true
+	chapter.hint_t = 0.0
 
 # ------------------------------------------------------------------ quality
 const SETTINGS_PATH := "user://eidolon_settings.json"
@@ -585,8 +744,8 @@ func _save() -> void:
 	if mode == "title": return
 	var p := player.position
 	_last_saved_pos = p
-	save_data = {"v": 1, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
-		"puzzles": puzzles.state.duplicate(true), "glimpses": glimpses, "runes_awake": player.fig.runes_awake, "visited": visited.keys()}
+	save_data = {"v": 2, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
+		"puzzles": puzzles.state.duplicate(true), "chapter": chapter.state.duplicate(true), "area": area, "glimpses": glimpses, "runes_awake": player.fig.runes_awake, "visited": visited.keys()}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify(save_data))
 
@@ -620,6 +779,31 @@ func cmd(c: String) -> Variant:
 		"reset_save": _delete_save(); save_data = {}
 		"save": _save()
 		"finale": start_finale()
+		"jump": jump(a[1])
+		"skip": if cine: cine.skip()
+		"lens": chapter.set_lens(a[1] == "1")
+		"hintnow":
+			var tg := chapter.hint_target(area)
+			if tg != Vector3.INF: chapter.show_hint(tg)
+		"cs":
+			# set one chapter state key from JSON (cs:key:json)
+			chapter.state[a[1]] = JSON.parse_string(c.substr(c.find(":", 3) + 1))
+			chapter.apply_state()
+		"ps":
+			puzzles.state[a[1]] = JSON.parse_string(c.substr(c.find(":", 3) + 1))
+			puzzles.apply_state(puzzles.state)
+		"call":
+			# call a chapter method with int args (tests): call:turn_statue:0
+			var args := []
+			for k in range(2, a.size()): args.append(int(a[k]))
+			return chapter.callv(a[1], args)
+		"pitch": world.pitch_node.rotation.x = -deg_to_rad(float(a[1]))
+		"camyaw": world.rig.rotation.y = float(a[1])
+		"freecam":
+			world.follow = null
+			world.cam_lock = true
+			world.rig.position = Vector3(float(a[1]), float(a[2]), float(a[3]))
+			if a.size() > 4: world.cam.size = float(a[4])
 		"noauto": quality_auto_dropped = true
 		"quality": set_quality({"1": "high", "0": "low"}.get(a[1], a[1]))
 		"dpr":
@@ -690,7 +874,9 @@ func state_dict() -> Dictionary:
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
 		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text, "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
 		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "yaw_index": world.yaw_index, "zoom": snappedf(world.zoom, 0.01), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
-		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01)}
+		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01),
+		"chapter": chapter.state, "lens": chapter.lens_on, "calm": snappedf(chapter.calm, 0.01), "cine_t": snappedf(cine.t, 0.1) if cine else -1.0,
+		"letterbox": snappedf(ui.letterbox, 0.01), "hint_t": snappedf(chapter.hint_t, 0.1), "lift": snappedf(chapter.lift_h, 0.01)}
 
 func _door_slot_centers() -> Array:
 	var out := []

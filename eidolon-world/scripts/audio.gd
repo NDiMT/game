@@ -45,6 +45,22 @@ const EVENTS := {
 	"shrine": [["bell_far", -14.0, 0.7], ["ev_chime", -18.0, 0.75], ["bell", -22.0, 0.6]],
 }
 const XFADE := 3.0
+## v0.5: the composed score (assets/audio/v5/manifest.json, dev/ROOMS.md). Absent or incomplete: each
+## Chapter I room falls back to the v0.4 room it grew out of.
+const MANIFEST := "res://assets/audio/v5/manifest.json"
+const V5 := "res://assets/audio/v5/"
+const FALLBACK_ROOM := {
+	"waking_pool": "gate", "stair_breath": "gate", "hall_glass": "hall", "shard_gallery": "hall",
+	"garden_veiled": "garden", "hollow_walk": "garden", "court_light": "court", "mist_maze": "garden",
+	"echo_corridor": "hall", "scales": "court", "eidolon_ledge": "court", "gate_four": "shrine", "first_shrine": "shrine",
+}
+## v0.4 sounds for the v0.5 cues when the manifest has none: [sound, dB, pitch]
+const FALLBACK_CUE := {
+	"shrine_awaken": ["bell_far", -8.0, 0.8], "cinematic_hand": ["bell", -10.0, 0.6], "glimpse": ["glass", -18.0, 0.62],
+	"glimpse_far": ["bell_far", -14.0, 0.7], "breath": ["whoosh", -22.0, 1.6], "touch_glass": ["glass", -14.0, 0.8],
+	"statue_turn": ["stone_turn", -9.0, 1.1], "cloth": ["cloth", -24.0, 1.0], "footsteps_water": ["step_wet", -20.0, 0.9],
+	"footsteps_stone": ["step_stone", -17.0, 1.0],
+}
 
 const SFX := {
 	"step_stone": 10, "step_hall": 5, "step_wood": 4, "step_wet": 3, "cloth": 4,
@@ -81,6 +97,11 @@ var _last_event := ""
 var _tinkle_t := 5.0
 var _rng := RandomNumberGenerator.new()
 var played := {}
+var manifest := {}           # v0.5: parsed manifest.json (empty = fall back)
+var layers := LAYERS.duplicate(true)
+var rooms := ROOMS.duplicate(true)
+var events := EVENTS.duplicate(true)
+var room_events := {}        # v0.5 room -> [[stream key, dB, min_s, max_s]]
 
 func _ready() -> void:
 	_rng.randomize()
@@ -102,7 +123,80 @@ func _ready() -> void:
 	for k in ["water_loop", "hum_loop", "wind_gust"]:
 		var s: AudioStreamOggVorbis = streams[k][0]
 		s.loop = true
+	_load_manifest()
 	ready_ok = true
+
+## v0.5: read the composed score's manifest; every file is checked, a missing one is skipped
+func _load_manifest() -> void:
+	if not FileAccess.file_exists(MANIFEST): return
+	var d = JSON.parse_string(FileAccess.get_file_as_string(MANIFEST))
+	if not d is Dictionary: return
+	manifest = d
+	var rs: Dictionary = d.get("rooms", {})
+	for room in rs:
+		var r: Dictionary = rs[room]
+		var mix := {}
+		for L in r.get("layers", []):
+			var f := str(L.get("file", ""))
+			if not ResourceLoader.exists(V5 + f): continue
+			var key := "v5:" + f
+			layers[key] = ["v5/" + f, float(L.get("gain_db", 0.0))]
+			mix[key] = 0.0
+		if not mix.is_empty(): rooms[room] = mix
+		var evs := []
+		for e in r.get("events", []):
+			var f2 := str(e.get("file", ""))
+			if not _v5_stream("v5:" + f2, f2): continue
+			evs.append(["v5:" + f2, float(e.get("gain_db", -6.0)), float(e.get("min_s", 20.0)), float(e.get("max_s", 60.0))])
+		if not evs.is_empty(): room_events[room] = evs
+	var cues: Dictionary = d.get("cues", {})
+	for k in cues:
+		var arr: Array = cues[k] if cues[k] is Array else [cues[k]]
+		var ok: Array = []
+		for f3 in arr:
+			var st = _v5_load(str(f3))
+			if st: ok.append(st)
+		if not ok.is_empty(): streams["cue:" + k] = ok
+	for k in ["footsteps_stone", "footsteps_water"]:
+		if streams.has("cue:" + k): streams[{"footsteps_stone": "step_stone", "footsteps_water": "step_wet"}[k]] = streams["cue:" + k]
+	if streams.has("cue:cloth"): streams["cloth"] = streams["cue:cloth"]
+	print("[audio] v5 manifest: %d rooms, %d cues" % [rooms.size() - ROOMS.size(), cues.size()])
+
+func _v5_load(f: String) -> AudioStream:
+	if f == "" or not ResourceLoader.exists(V5 + f): return null
+	return load(V5 + f)
+
+func _v5_stream(key: String, f: String) -> bool:
+	if streams.has(key): return true
+	var st := _v5_load(f)
+	if st == null: return false
+	streams[key] = [st]
+	return true
+
+## the room whose layers play: a v0.5 room id, or the v0.4 room it falls back to
+func _room(key: String) -> String:
+	if rooms.has(key): return key
+	return FALLBACK_ROOM.get(key, key)
+
+## a named cue from the score (statue_turn, breath, touch_glass, solve_<room>, ...); falls back to a
+## v0.4 sound. Returns false when there was nothing to play.
+func cue(name: String, vol_db := 0.0) -> bool:
+	if not ready_ok: return false
+	played["cue:" + name] = played.get("cue:" + name, 0) + 1
+	if streams.has("cue:" + name):
+		play("cue:" + name, vol_db, 1.0)
+		return true
+	if name.begins_with("solve_"):
+		resolve(0)
+		return true
+	if FALLBACK_CUE.has(name):
+		var f: Array = FALLBACK_CUE[name]
+		play(f[0], f[1] + vol_db, f[2] * _rng.randf_range(0.96, 1.04))
+		return true
+	return false
+
+func play_later(name: String, delay: float, vol_db := 0.0, pitch := 1.0) -> void:
+	get_tree().create_timer(delay).timeout.connect(func() -> void: play(name, vol_db, pitch))
 
 func _player(bus: String, vol := -80.0) -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
@@ -120,8 +214,13 @@ func build() -> void:
 # ------------------------------------------------------------------ ambient layers
 func _layer(name: String) -> AudioStreamPlayer:
 	if not layer_p.has(name):
-		var st: AudioStreamOggVorbis = load("res://assets/audio/" + LAYERS[name][0])
-		st.loop = true
+		var st: AudioStream = load("res://assets/audio/" + layers[name][0])
+		if st is AudioStreamOggVorbis: (st as AudioStreamOggVorbis).loop = true
+		elif st is AudioStreamWAV:
+			var wv := st as AudioStreamWAV
+			if wv.loop_mode == AudioStreamWAV.LOOP_DISABLED:
+				wv.loop_mode = AudioStreamWAV.LOOP_FORWARD
+				wv.loop_end = int(wv.get_length() * wv.mix_rate)
 		var p := _player("Music")
 		p.stream = st
 		layer_p[name] = p
@@ -131,11 +230,12 @@ func _layer(name: String) -> AudioStreamPlayer:
 	return layer_p[name]
 
 func _target(name: String) -> float:
-	var room: Dictionary = ROOMS.get(area, {})
+	var rk := _room(area)
+	var room: Dictionary = rooms.get(rk, {})
 	if not room.has(name): return -60.0
-	var db: float = LAYERS[name][1] + room[name]
+	var db: float = layers[name][1] + room[name]
 	if name == "choir": db += swell_boost
-	if name.begins_with("bed") and area in ["shrine", "court"]: db += swell_boost * 0.4
+	if (name.begins_with("bed") or name.begins_with("v5:")) and rk in ["shrine", "court", "first_shrine", "gate_four"]: db += swell_boost * 0.4
 	return db
 
 func start_music() -> void:
@@ -151,11 +251,12 @@ func start_music() -> void:
 
 func _enter(key: String) -> void:
 	_music_cur = key
-	for n in ROOMS.get(key, {}): _layer(n)
-	var room: Dictionary = ROOMS.get(key, {})
+	var rk := _room(key)
+	var room: Dictionary = rooms.get(rk, {})
+	for n in room: _layer(n)
 	var bed := ""
 	for n in room:
-		if n.begins_with("bed") and room[n] == 0.0: bed = n
+		if (n.begins_with("bed") or n.begins_with("v5:")) and room[n] == 0.0 and bed == "": bed = n
 	if bed != "": drone = layer_p[bed]
 	_event_t = _rng.randf_range(10.0, 25.0)
 
@@ -165,7 +266,7 @@ func set_music(on: bool) -> void:
 
 func set_area(key: String) -> void:
 	area = key
-	if _started and ROOMS.has(key): _enter(key)
+	if _started and rooms.has(_room(key)): _enter(key)
 
 ## exposed bridges and ledges: the gusts rise (0..1)
 func set_wind(k: float) -> void:
@@ -189,14 +290,21 @@ func _process(dt: float) -> void:
 	_event_t -= dt
 	if _event_t <= 0.0:
 		_event_t = _rng.randf_range(20.0, 60.0)
-		var evs: Array = EVENTS.get(area, [])
+		var evs: Array = events.get(_room(area), [])
+		if room_events.has(area):
+			var re: Array = room_events[area]
+			var e5: Array = re[_rng.randi_range(0, re.size() - 1)]
+			play(e5[0], e5[1] + _rng.randf_range(-2.0, 0.5), 1.0)
+			played["event"] = played.get("event", 0) + 1
+			_event_t = _rng.randf_range(e5[2], maxf(e5[2], e5[3]))
+			evs = []
 		if evs.size() > 0:
 			var e: Array = evs[_rng.randi_range(0, evs.size() - 1)]
 			if e[0] == _last_event and evs.size() > 1: e = evs[(evs.find(e) + 1) % evs.size()]
 			_last_event = e[0]
 			play(e[0], e[1] + _rng.randf_range(-3.0, 1.0), e[2] * _rng.randf_range(0.94, 1.06))
 			played["event"] = played.get("event", 0) + 1
-	if area == "hall":
+	if _room(area) == "hall":
 		_tinkle_t -= dt
 		if _tinkle_t <= 0.0:
 			_tinkle_t = _rng.randf_range(5.0, 11.0)

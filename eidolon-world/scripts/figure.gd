@@ -33,12 +33,13 @@ class Pose:
 	var head_roll := 0.0
 	var crouch := 0.0
 	var clasp := 0.0           # 0..1: the sleeves drawn up, hands clasped at the chest (reflection only)
+	var reach := 0.0           # 0..1: the right hand reaches out (to the glass, to the water)
 
 	func copy() -> Pose:
 		var p := Pose.new()
 		p.body_y = body_y; p.lean_x = lean_x; p.lean_z = lean_z; p.sway = sway; p.flare = flare
 		p.ripple = ripple; p.phase = phase; p.breath = breath; p.head_yaw = head_yaw
-		p.head_pitch = head_pitch; p.head_roll = head_roll; p.crouch = crouch; p.clasp = clasp
+		p.head_pitch = head_pitch; p.head_roll = head_roll; p.crouch = crouch; p.clasp = clasp; p.reach = reach
 		return p
 
 	func blend(o: Pose, t: float) -> Pose:
@@ -47,7 +48,7 @@ class Pose:
 		p.sway = sway.lerp(o.sway, t); p.flare = lerpf(flare, o.flare, t); p.ripple = lerpf(ripple, o.ripple, t)
 		p.phase = lerpf(phase, o.phase, t); p.breath = lerpf(breath, o.breath, t)
 		p.head_yaw = lerp_angle(head_yaw, o.head_yaw, t); p.head_pitch = lerpf(head_pitch, o.head_pitch, t)
-		p.head_roll = lerpf(head_roll, o.head_roll, t); p.crouch = lerpf(crouch, o.crouch, t); p.clasp = lerpf(clasp, o.clasp, t)
+		p.head_roll = lerpf(head_roll, o.head_roll, t); p.crouch = lerpf(crouch, o.crouch, t); p.clasp = lerpf(clasp, o.clasp, t); p.reach = lerpf(reach, o.reach, t)
 		return p
 
 static var cloak_mesh: ArrayMesh
@@ -105,6 +106,12 @@ func _init(ghost_shader: Shader = null) -> void:
 	if ghost_shader:
 		for mi in [cloak_mi, hood_mi, veil]: mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
+## the veil lifts (0..1): it swings up about its top edge, showing the unfinished marble face
+func set_veil_lift(k: float) -> void:
+	var piv := Vector3(0.0, 0.25, -0.13)
+	var R := Basis(Vector3.RIGHT, -k * 1.9)
+	veil.transform = Transform3D(R, piv - R * piv)
+
 func set_layers(mask: int) -> void:
 	for mi in [cloak_mi, hood_mi, veil]: mi.layers = mask
 
@@ -138,6 +145,7 @@ func apply_pose(p: Pose) -> void:
 	body_mat.set_shader_parameter("breath", p.breath)
 	body_mat.set_shader_parameter("turn", p.lean_z)
 	body_mat.set_shader_parameter("clasp", p.clasp)
+	body_mat.set_shader_parameter("reach", p.reach)
 	# the veil streams back a little with the walk and lifts with the stride
 	var vs := p.sway * 1.6 + Vector2(0.0, p.ripple * 0.035)
 	if veil_contrary: vs = Vector2(-vs.x, vs.y * 0.6 - 0.012)

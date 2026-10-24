@@ -10,6 +10,7 @@ uniform float veil_off = 0.0;    // wind phase offset of the veil (the reflectio
 uniform float turn = 0.0;        // the lean into a turn: tatters swing out and lag behind it
 uniform float clasp = 0.0;       // 0..1 sleeves drawn up to the chest, hands clasped (reflection hint)
 uniform float holes = 0.0;       // 1 on the cloak: a few torn holes (fragment discard)
+uniform float reach = 0.0;       // 0..1: the right sleeve reaches forward and down (a palm to the water)
 
 // a few torn holes in the cloak, in rest-pose coordinates (angle round the body, height):
 // returns x = inside the hole (discard), y = the dark frayed rim around it
@@ -55,6 +56,17 @@ vec3 cloak_deform(vec3 v, vec2 uv) {
 			vec3 q = v - A;
 			q = q * cos(ang) + cross(ax, q) * sin(ang) + ax * dot(ax, q) * (1.0 - cos(ang));
 			v = A + q;
+		}
+		if (reach > 0.001 && sl > 0.0) {
+			// the right hand reaches out, forward and a little down
+			vec3 A2 = vec3(0.150, 0.67, -0.012);
+			vec3 a2 = normalize(vec3(0.212, 0.37, -0.078) - A2);
+			vec3 b2 = normalize(vec3(0.10, 0.50, -0.42) - A2);
+			vec3 ax2 = normalize(cross(a2, b2));
+			float ang2 = acos(clamp(dot(a2, b2), -1.0, 1.0)) * reach;
+			vec3 q2 = v - A2;
+			q2 = q2 * cos(ang2) + cross(ax2, q2) * sin(ang2) + ax2 * dot(ax2, q2) * (1.0 - cos(ang2));
+			v = A2 + q2;
 		}
 		// sleeves swing a little with the stride (opposite to each other)
 		float k = clamp((0.67 - v.y) / 0.3, 0.0, 1.0);

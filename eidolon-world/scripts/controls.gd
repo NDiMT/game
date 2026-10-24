@@ -10,6 +10,7 @@ extends CanvasLayer
 signal interact
 signal rotate(dir: int)
 signal zoom(level: int)
+signal shard                       # v0.5: the inventory slot tapped (raise / lower the mirror shard)
 
 const JOY_R := 54.0
 const BTN_R := 36.0
@@ -28,6 +29,10 @@ var _twist_a := 0.0
 var _twist_on := false
 var _t := 0.0
 var canvas: Pad
+var inv_has := false               # v0.5: the mirror shard is carried
+var inv_on := false                # ...and raised
+var inv_alpha := 0.0
+var _inv_press := 0.0
 
 func _ready() -> void:
 	layer = 6
@@ -47,6 +52,10 @@ func btn_center() -> Vector2:
 func rot_center(dir: int) -> Vector2:
 	var s := vp_size()
 	return Vector2(s.x - (34.0 if dir > 0 else 80.0), 44.0)
+
+## the inventory slot, top left under the shrine counter
+func inv_center() -> Vector2:
+	return Vector2(44.0, 98.0)
 
 func set_icon(name: String) -> void:
 	if name != "": icon = name
@@ -83,6 +92,10 @@ func _input(e: InputEvent) -> void:
 		var p: Vector2 = canvas.get_global_transform_with_canvas().affine_inverse() * e.position
 		if e.pressed:
 			_touches[e.index] = p
+			if inv_has and inv_alpha > 0.3 and p.distance_to(inv_center()) < 34.0:
+				_inv_press = 1.0
+				shard.emit()
+				return
 			if icon_alpha > 0.3 and p.distance_to(btn_center()) < BTN_R + 14.0:
 				_press = 1.0
 				interact.emit()
@@ -162,6 +175,8 @@ func _process(dt: float) -> void:
 	joy_alpha = move_toward(joy_alpha, 1.0 if joy_index >= 0 else 0.0, dt * (6.0 if joy_index >= 0 else 3.0))
 	icon_alpha = move_toward(icon_alpha, 1.0 if (enabled and _want_icon) else 0.0, dt * 4.0)
 	_press = move_toward(_press, 0.0, dt * 4.0)
+	_inv_press = move_toward(_inv_press, 0.0, dt * 4.0)
+	inv_alpha = move_toward(inv_alpha, 1.0 if (enabled and inv_has) else 0.0, dt * 2.0)
 	canvas.queue_redraw()
 
 var _want_icon := false
@@ -193,6 +208,19 @@ class Pad extends Control:
 			var tang := Vector2(-sin(a1), cos(a1)) * float(d)
 			draw_line(tip, tip - tang * 4.5 + Vector2(cos(a1), sin(a1)) * 3.0, Color(INK, 0.85 * e), 1.4, true)
 			draw_line(tip, tip - tang * 4.5 - Vector2(cos(a1), sin(a1)) * 3.0, Color(INK, 0.85 * e), 1.4, true)
+		# the inventory: one round slot, the shard inside (lit while raised)
+		if ctl.inv_alpha > 0.0:
+			var ia := ctl.inv_alpha
+			var ic := ctl.inv_center()
+			var ir := 22.0 * (1.0 + ctl._inv_press * 0.1)
+			if ctl.inv_on:
+				for i in 5: draw_circle(ic, ir + 3.0 + i * 3.0, Color(CY, 0.05 * ia * (1.0 - i / 5.0)))
+			draw_circle(ic, ir, Color(0.06, 0.07, 0.08, 0.34 * ia))
+			draw_arc(ic, ir, 0, TAU, 48, Color(CY if ctl.inv_on else INK, (0.85 if ctl.inv_on else 0.5) * ia), 1.3, true)
+			for k in 4:
+				var dv3 := Vector2(cos(PI * 0.5 * k + PI * 0.25), sin(PI * 0.5 * k + PI * 0.25))
+				draw_line(ic + dv3 * (ir - 1.0), ic + dv3 * (ir + 3.5), Color(INK, 0.35 * ia), 1.0, true)
+			_icon("shard", ic, 11.0, Color(INK, 0.95 * ia), Color(CY, ia))
 		# floating joystick
 		if ctl.joy_alpha > 0.0:
 			var a := ctl.joy_alpha
@@ -259,5 +287,36 @@ class Pad extends Control:
 				for k in 8:
 					var dir := Vector2(cos(TAU * k / 8.0), sin(TAU * k / 8.0))
 					draw_line(c + dir * s * 0.55, c + dir * s * (0.95 if k % 2 == 0 else 0.8), col, 1.3, true)
+			"breathe":
+				# three soft curls of breath toward a small pane
+				draw_rect(Rect2(c + Vector2(s * 0.35, -s * 0.9), Vector2(s * 0.55, s * 1.8)), col, false, 1.3)
+				for k in 3:
+					var y := -s * 0.5 + k * s * 0.5
+					draw_arc(c + Vector2(-s * 0.45, y), s * 0.32, -PI * 0.5, PI * 0.5, 12, cy if k == 1 else col, 1.3, true)
+			"touch":
+				# an open hand against a pane: palm and four fingers
+				draw_line(c + Vector2(s * 0.75, -s), c + Vector2(s * 0.75, s), cy, 1.4, true)
+				draw_arc(c + Vector2(-s * 0.05, s * 0.35), s * 0.42, 0, TAU, 20, col, 1.3, true)
+				for k in 4:
+					var x := -s * 0.38 + k * s * 0.24
+					draw_line(Vector2(c.x + x, c.y), Vector2(c.x + x + s * 0.03, c.y - s * (0.7 + (0.18 if k in [1, 2] else 0.0))), col, 1.3, true)
+			"shard":
+				# a sliver of mirror
+				var pts := PackedVector2Array([c + Vector2(-s * 0.15, -s * 1.05), c + Vector2(s * 0.62, s * 0.55), c + Vector2(-s * 0.55, s * 0.85)])
+				draw_colored_polygon(pts, Color(cy, cy.a * 0.25))
+				pts.append(pts[0])
+				draw_polyline(pts, col, 1.4, true)
+				draw_line(c + Vector2(-s * 0.1, -s * 0.5), c + Vector2(s * 0.12, s * 0.1), cy, 1.2, true)
+			"wait":
+				# a figure standing still between two vertical marks
+				draw_circle(c + Vector2(0, -s * 0.62), s * 0.22, col)
+				draw_line(c + Vector2(0, -s * 0.35), c + Vector2(0, s * 0.85), col, 1.6, true)
+				draw_line(c + Vector2(-s * 0.85, -s * 0.8), c + Vector2(-s * 0.85, s * 0.85), cy, 1.2, true)
+				draw_line(c + Vector2(s * 0.85, -s * 0.8), c + Vector2(s * 0.85, s * 0.85), cy, 1.2, true)
+			"memory":
+				# a small flame of light over a stone
+				draw_line(c + Vector2(-s * 0.8, s * 0.8), c + Vector2(s * 0.8, s * 0.8), col, 1.4, true)
+				draw_arc(c + Vector2(0, s * 0.05), s * 0.45, 0, TAU, 24, cy, 1.4, true)
+				draw_circle(c + Vector2(0, s * 0.05), 2.0, cy)
 			_:
 				draw_circle(c, s * 0.3, col)

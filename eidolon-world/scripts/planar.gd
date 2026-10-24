@@ -28,6 +28,9 @@ var active := false
 var scale := 0.65
 var _frame := 0
 var _H := Basis()
+## v0.5: two planar mirrors (the Hall, the Garden): only one renders at a time; the active one also
+## tells every marble surface which side of its plane to drop (global `refl_clip`)
+static var current: PlanarMirror
 
 func setup(n: Vector3, d: float, mirror_mat: ShaderMaterial, env: Environment) -> void:
 	plane_n = n.normalized()
@@ -62,10 +65,18 @@ func setup(n: Vector3, d: float, mirror_mat: ShaderMaterial, env: Environment) -
 ## called every frame by the reflector: on = the glass is on screen, near, and planar is allowed
 func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 	var want := on and enabled
+	if want and current != null and current != self and current.active: want = false
 	if want != active:
 		active = want
 		mat.set_shader_parameter("planar", 1.0 if active else 0.0)
-		if not active: vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		if active:
+			current = self
+			RenderingServer.global_shader_parameter_set("refl_clip", Vector4(plane_n.x, plane_n.y, plane_n.z, plane_d))
+		else:
+			vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+			if current == self:
+				current = null
+				RenderingServer.global_shader_parameter_set("refl_clip", Vector4.ZERO)
 	if not active: return
 	_frame += 1
 	var main_vp := main_cam.get_viewport()

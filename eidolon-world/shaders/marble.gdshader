@@ -12,6 +12,9 @@ render_mode cull_back, depth_draw_opaque;
 global uniform vec3 player_pos;
 global uniform vec3 cam_back;
 global uniform float awaken;
+global uniform vec4 refl_clip;        // v0.5: the active planar mirror (n.xyz, d); n = 0: none
+global uniform vec4 shard_lens;             // v0.5: the raised shard's lens (x, y, radius px, on)
+uniform float lens_hide = 0.0;        // 1: an illusion: this stone is not there inside the lens
 
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform vec3 cream : source_color = vec3(0.745, 0.735, 0.705);
@@ -53,6 +56,10 @@ float bayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75)))
 float bayer4(vec2 fc) { return bayer2(0.5 * fc) * 0.25 + bayer2(fc) + 0.5 / 16.0; }
 
 void fragment() {
+	// --- seen from behind a planar mirror (its reflection camera): nothing behind the glass exists
+	if (dot(refl_clip.xyz, refl_clip.xyz) > 0.25 && dot(CAMERA_POSITION_WORLD, refl_clip.xyz) < refl_clip.w - 0.5
+			&& dot(wp, refl_clip.xyz) < refl_clip.w - 0.03) discard;
+	if (lens_hide > 0.5 && shard_lens.w > 0.5 && length(FRAGCOORD.xy - shard_lens.xy) < shard_lens.z) discard;
 	// --- occluder cut-away: soft dithered cylinder from the player toward the camera
 	if (occ > 0.5 && occlusion > 0.0) {
 		vec3 c = player_pos + vec3(0.0, 0.65, 0.0);
