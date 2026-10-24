@@ -293,8 +293,11 @@ func wall(zone: String, r: Rect2, y0: float, y1: float, occ := true) -> void:
 		var b := Basis.from_scale(Vector3(L + 0.6, 1.0, 0.75)) if long_x else Basis(Vector3.UP, PI * 0.5) * Basis.from_scale(Vector3(L + 0.6, 1.0, 0.75))
 		strips.append(Transform3D(b, c))
 	box(zone, Vector3(r.get_center().x, (y0 + y1) * 0.5, r.get_center().y), Vector3(r.size.x, y1 - y0, r.size.y), 0.25, occ)
-	# a moulded coping along the top
+	# a moulded coping along the top, and a thinner cornice line beneath it
 	box(zone, Vector3(r.get_center().x, y1 + 0.06, r.get_center().y), Vector3(r.size.x + 0.12, 0.12, r.size.y + 0.12), 0.25, occ)
+	box(zone, Vector3(r.get_center().x, y1 - 0.28, r.get_center().y), Vector3(r.size.x + 0.07, 0.07, r.size.y + 0.07), 0.25, occ)
+	if y1 - y0 > 1.5:
+		box(zone, Vector3(r.get_center().x, y0 + 0.12, r.get_center().y), Vector3(r.size.x + 0.08, 0.24, r.size.y + 0.08), 0.25, occ)
 
 func blob(at: Vector3, size: float) -> void:
 	blobs.append(Transform3D(Basis().scaled(Vector3(size, 1.0, size)), at + Vector3(0, 0.012, 0)))
@@ -381,13 +384,33 @@ func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
 	var d := b - a
 	var L := d.length()
 	var B := Basis(Vector3.UP, -atan2(d.y, d.x))
-	var mid := (a + b) * 0.5
-	box(zone, Vector3(mid.x, y + 0.5, mid.y), Vector3(L, 0.1, 0.22), 0.25, false, B)
-	box(zone, Vector3(mid.x, y + 0.06, mid.y), Vector3(L, 0.12, 0.2), 0.25, false, B)
+	# some balustrades are broken: a gap in the rail, posts missing, a fallen piece below
+	var g0 := 2.0
+	var g1 := 2.0
+	if L > 2.2 and rng.randf() < 0.3:
+		g0 = rng.randf_range(0.25, 0.55)
+		g1 = g0 + rng.randf_range(0.15, 0.3)
+	var segs := [[0.0, minf(g0, 1.0)], [minf(g1, 1.0), 1.0]] if g0 < 1.0 else [[0.0, 1.0]]
+	for sg in segs:
+		var s0: float = sg[0]; var s1: float = sg[1]
+		if s1 - s0 < 0.02: continue
+		var mid := a + d * ((s0 + s1) * 0.5)
+		var sl := L * (s1 - s0)
+		box(zone, Vector3(mid.x, y + 0.5, mid.y), Vector3(sl, 0.1, 0.22), 0.25, false, B)
+		box(zone, Vector3(mid.x, y + 0.56, mid.y), Vector3(sl, 0.03, 0.26), 0.25, false, B)
+	var mid2 := (a + b) * 0.5
+	box(zone, Vector3(mid2.x, y + 0.06, mid2.y), Vector3(L, 0.12, 0.2), 0.25, false, B)
 	var posts := maxi(1, int(L / 0.42))
 	for i in posts + 1:
-		var q := a + d * (float(i) / posts)
+		var k := float(i) / posts
+		if k > g0 + 0.03 and k < g1 - 0.03: continue
+		var q := a + d * k
 		mb(zone).cyl(Vector3(q.x, y + 0.27, q.y), 0.055, 0.075, 0.42, C(0.25), 6)
+	if g0 < 1.0:
+		var fp := a + d * ((g0 + g1) * 0.5)
+		var side := Vector2(-d.y, d.x).normalized() * 0.35
+		box(zone, Vector3(fp.x + side.x, y + 0.05, fp.y + side.y), Vector3(L * (g1 - g0) * 0.8, 0.1, 0.2), 0.25, false, B * Basis(Vector3.UP, rng.randf_range(-0.4, 0.4)))
+		rubble(Vector3(fp.x + side.x, y, fp.y + side.y), 0.25, 3)
 
 func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_max: bool) -> void:
 	## visual stairs over a ramp region (the walk region is the ramp itself)
@@ -753,14 +776,29 @@ func _far_ruins() -> void:
 		st.cyl(Vector3(p.x, -6.0, p.y), 0.55 * s, 0.95 * s, 4.2 * s, Color(0, 0, 0), 12)
 		st.sphere(Vector3(p.x, -6.0 + 2.6 * s, p.y), Vector3(0.42, 0.52, 0.42) * s, Color(0, 0, 0), 10, 5)
 		st.cyl(Vector3(p.x, -6.0 + 2.3 * s, p.y), 0.15 * s, 0.75 * s, 1.4 * s, Color(0, 0, 0), 12)
+	_silhouette_layer(st, Color(0.60, 0.605, 0.615), "FarRuins")
+	# a second, paler layer much further out: drowned towers and rocks in the cloud
+	var far := MB.new()
+	for i in 22:
+		var a := TAU * i / 22.0 + r.randf_range(-0.1, 0.1)
+		var rr := r.randf_range(48.0, 64.0)
+		var c := Vector3(12.0, 0, -16.0) + Vector3(cos(a) * rr, 0, sin(a) * rr)
+		var hgt := r.randf_range(6.0, 22.0)
+		if r.randf() < 0.6:
+			far.cyl(c + Vector3(0, hgt * 0.5 - 12.0, 0), r.randf_range(1.0, 2.2), r.randf_range(1.4, 2.6), hgt + 12.0, Color(0, 0, 0), 10)
+		else:
+			far.cyl(c + Vector3(0, r.randf_range(-2.0, 6.0), 0), r.randf_range(3.0, 6.0), r.randf_range(0.5, 1.5), r.randf_range(5.0, 9.0), Color(0, 0, 0), 7)
+	_silhouette_layer(far, Color(0.70, 0.705, 0.71), "FarestRuins")
+
+func _silhouette_layer(m: MB, col: Color, nm: String) -> void:
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.64, 0.64, 0.645)
+	mat.albedo_color = col
 	var mi := MeshInstance3D.new()
-	mi.mesh = st.commit()
+	mi.mesh = m.commit()
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.name = "FarRuins"
+	mi.name = nm
 	add_child(mi)
 
 # ================================================================== commit
@@ -778,6 +816,7 @@ func _commit() -> void:
 	_decal_mm("Blobs", blobs, 0.0, 0.42)
 	_decal_mm("WallAO", strips, 1.0, 0.30)
 	_cloth_mm()
+	_vines()
 	_godrays()
 	_multimesh("Columns", _column_mesh(), col_full)
 	_multimesh("Stumps", _stump_mesh(), col_stump)
@@ -859,6 +898,32 @@ func _decor() -> void:
 	lm.shader = preload("res://shaders/leaf.gdshader")
 	lmi.material_override = lm
 	lmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## dead vines creeping on walls and columns (garden, gate, hall)
+func _vines() -> void:
+	var xfs: Array[Transform3D] = []
+	var r := RandomNumberGenerator.new()
+	r.seed = 515
+	var spots := [
+		[Vector3(-3.6, 1.0, -20.56), 0.0, 1.6, 2.6], [Vector3(3.2, 1.0, -20.56), 0.0, 1.4, 2.2],
+		[Vector3(8.4, 1.0, -14.93), 0.0, 1.4, 1.1], [Vector3(15.6, 1.0, -14.93), 0.0, 1.6, 1.1],
+		[Vector3(10.2, 1.0, -14.68), 0.0, 0.8, 3.2], [Vector3(13.8, 1.0, -14.68), 0.0, 0.8, 3.0],
+		[Vector3(4.58, 1.0, -16.5), -PI * 0.5, 1.6, 2.4], [Vector3(-1.6, 0.0, -4.62), 0.0, 0.7, 2.6],
+		[Vector3(1.6, 0.0, -4.62), 0.0, 0.7, 1.8], [Vector3(-1.5, 0.0, 4.98), 0.0, 0.7, 2.4],
+		[Vector3(10.32, 1.0, -16.2), PI * 0.5, 1.4, 1.8], [Vector3(13.08, 1.0, -16.2), -PI * 0.5, 1.4, 1.6],
+		[Vector3(7.6, 2.0, -26.0), 0.0, 0.7, 3.0], [Vector3(16.4, 2.0, -17.22), 0.0, 0.7, 2.6]]
+	for sp in spots:
+		var at: Vector3 = sp[0]
+		var b := Basis(Vector3.UP, sp[1]).scaled(Vector3(sp[2], sp[3], 1.0))
+		xfs.append(Transform3D(b, at + Basis(Vector3.UP, sp[1]) * Vector3(0, 0, 0.012)))
+	var pm := QuadMesh.new()
+	pm.size = Vector2(1, 1)
+	pm.center_offset = Vector3(0, 0.5, 0)
+	var mmi := _multimesh("Vines", pm, xfs)
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/vine.gdshader")
+	mmi.material_override = m
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 ## light falling through the arches and doorways
 func _godrays() -> void:

@@ -24,6 +24,7 @@ var auto_target := Vector3.INF
 var key_vec := Vector2.ZERO
 var save_data := {}
 var awake := false
+var bridge_focus := 0.0
 var area := ""
 var visited := {}
 var glimpses := {"lag": 0, "gaze": 0}
@@ -81,8 +82,8 @@ func _ready() -> void:
 	player.crouch = 1.0
 	player.step(0.016)
 	world.rig.position = Level.WAKE_POS + Vector3(-0.6, 0.6, 0.4)
-	world.cam.size = 6.2
-	world.cam_size_target = 6.2
+	world.cam.size = 8.0
+	world.cam_size_target = 8.0
 	world.fog_hole = Vector2(1.6, 5.2)
 	world.fog_hole_target = world.fog_hole
 	mode = "title"
@@ -194,11 +195,11 @@ func _input(e: InputEvent) -> void:
 				KEY_Q: rotate_view(-1)
 				KEY_R: rotate_view(1)
 				KEY_Z: zoom_view(1 - world.zoom_i)
-				KEY_EQUAL, KEY_KP_ADD: zoom_view(0)
-				KEY_MINUS, KEY_KP_SUBTRACT: zoom_view(1)
+				KEY_EQUAL, KEY_KP_ADD: zoom_view(1)
+				KEY_MINUS, KEY_KP_SUBTRACT: zoom_view(0)
 	if e is InputEventMouseButton and e.pressed:
-		if e.button_index == MOUSE_BUTTON_WHEEL_UP: zoom_view(0)
-		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN: zoom_view(1)
+		if e.button_index == MOUSE_BUTTON_WHEEL_UP: zoom_view(1)
+		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN: zoom_view(0)
 
 func _key_vector() -> Vector2:
 	var v := Vector2.ZERO
@@ -276,7 +277,11 @@ func _process(dt: float) -> void:
 		if mode == "play":
 			# on the eidolon ledge, frame the player AND the plate across the gap
 			var off := Vector3.ZERO
-			if p.x > 20.8 and p.z > -25.2 and p.z < -18.8:
+			if bridge_focus > 0.0:
+				bridge_focus -= dt
+				off = (Vector3(27.7, 2.0, -26.5) - p) * 0.7         # watch the bridge rise
+				off.y = 0.0
+			elif p.x > 20.8 and p.z > -25.2 and p.z < -18.8:
 				off = (Puzzles.PLATE_POS - p) * 0.5
 				off.y = 0.0
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
@@ -422,6 +427,7 @@ func _on_event(name: String, data: Variant) -> void:
 			sfx.resolve(-3)
 			sfx.play("bell", -12.0, 0.75)
 		"bridge_rise":
+			bridge_focus = 5.0
 			sfx.play("door", -1.0, 0.8)
 			world.shake(0.35)
 		"plate_open":

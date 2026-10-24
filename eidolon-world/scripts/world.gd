@@ -7,8 +7,8 @@ extends Node3D
 
 const PITCH := deg_to_rad(36.0)
 const DIST := 40.0
-const CAM_SIZE := 7.0              # v0.2: ~1.5x closer than v0.1 (10.5)
-const ZOOMS := [7.0, 10.0]          # pinch / wheel / Z between two levels
+const CAM_SIZE := 10.5             # the default (far) view, as in v0.1
+const ZOOMS := [10.5, 7.0]          # 0 = default far view, 1 = optional closer view (pinch / wheel / +-)
 const SHAFT_BASE := [0.20, 0.16, 0.14]
 
 var noise_tex: ImageTexture
@@ -21,7 +21,7 @@ var yaw_index := 0
 var _yaw_tw: Tween
 var _shake := 0.0
 var _t := 0.0
-var base_v_offset := 1.05
+var base_v_offset := 1.6
 var fog_mats: Array[ShaderMaterial] = []
 var fog_nodes: Array[MeshInstance3D] = []
 var cam_back := Vector3(-0.572, 0.588, 0.572)
@@ -33,6 +33,7 @@ var fog_hole_target := Vector2(4.6, 11.0)
 var awaken := 0.0
 var shaft_mats: Array[ShaderMaterial] = []
 var zoom_i := 0
+var backdrop_mat: ShaderMaterial
 var cam_size_target := CAM_SIZE
 var cam_lock := false
 var quality_high := true
@@ -70,13 +71,16 @@ func _build_env() -> void:
 	env.ambient_light_energy = 0.6
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
-	env.fog_light_color = Color(0.74, 0.74, 0.725)
+	env.fog_light_color = Color(0.78, 0.78, 0.765)
 	env.fog_light_energy = 1.0
 	env.fog_depth_curve = 1.3
 	env.fog_height = -1.2
 	env.fog_height_density = 0.40
 	env.fog_sky_affect = 0.0
-	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	# v0.3: filmic, a little less exposure: the marble no longer burns
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 0.98
+	env.tonemap_white = 4.0
 	# post: soft bloom on the glowing runes, a gentle grade (cool shadows, warm highlights)
 	env.glow_enabled = true
 	env.glow_intensity = 0.55
@@ -87,12 +91,15 @@ func _build_env() -> void:
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	for i in 7: env.set_glow_level(i, 1.0 if i in [1, 2, 3] else 0.0)
 	env.adjustment_enabled = true
-	env.adjustment_contrast = 1.06
-	env.adjustment_saturation = 0.94
+	env.adjustment_contrast = 1.04
+	env.adjustment_saturation = 0.95
 	var grad := Gradient.new()
+	# a gentle midtone S-curve: cool shadows, warm highlights that never reach pure white
 	grad.set_color(0, Color(0.0, 0.015, 0.045))
-	grad.set_color(1, Color(1.0, 0.985, 0.95))
-	grad.add_point(0.5, Color(0.495, 0.5, 0.51))
+	grad.set_color(1, Color(0.955, 0.94, 0.905))
+	grad.add_point(0.25, Color(0.19, 0.20, 0.225))
+	grad.add_point(0.5, Color(0.49, 0.495, 0.50))
+	grad.add_point(0.75, Color(0.775, 0.77, 0.755))
 	var gt := GradientTexture1D.new()
 	gt.gradient = grad
 	gt.width = 256
@@ -124,7 +131,7 @@ func _build_light() -> void:
 	sun = DirectionalLight3D.new()
 	sun.rotation = Vector3(deg_to_rad(-55.0), deg_to_rad(-32.0), 0.0)
 	sun.light_color = Color(1.0, 0.925, 0.80)            # warm key
-	sun.light_energy = 1.0
+	sun.light_energy = 0.85
 	sun.shadow_enabled = true
 	sun.shadow_blur = 2.2
 	sun.shadow_bias = 0.04
@@ -275,6 +282,7 @@ func _build_overlays() -> void:
 	br.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bm := ShaderMaterial.new()
 	bm.shader = preload("res://shaders/backdrop.gdshader")
+	backdrop_mat = bm
 	br.material = bm
 	back.add_child(br)
 	var front := CanvasLayer.new()
@@ -316,10 +324,10 @@ func set_awaken(k: float) -> void:
 	awaken = k
 	env.fog_depth_begin = DIST + lerpf(-1.0, 8.0, k)
 	env.fog_depth_end = DIST + lerpf(20.0, 58.0, k)
-	env.fog_light_color = Color(0.74, 0.74, 0.725).lerp(Color(0.80, 0.82, 0.83), k)
+	env.fog_light_color = Color(0.78, 0.78, 0.765).lerp(Color(0.82, 0.84, 0.85), k)
 	env.fog_height_density = lerpf(0.40, 0.22, k)
 	env.ambient_light_energy = lerpf(0.55, 0.72, k)
-	sun.light_energy = lerpf(1.0, 1.2, k)
+	sun.light_energy = lerpf(0.85, 1.0, k)
 	for i in fog_mats.size():
 		fog_mats[i].set_shader_parameter("clear", k * (1.0 if i == 2 else 0.45))
 	for i in shaft_mats.size():
@@ -356,6 +364,11 @@ func _process(dt: float) -> void:
 	fog_mats[2].set_shader_parameter("hole_inner", fog_hole.x)
 	fog_mats[2].set_shader_parameter("hole_outer", fog_hole.y)
 	cam_back = cam.global_transform.basis.z.normalized()
+	if backdrop_mat:
+		var sd := Basis.from_euler(Vector3(deg_to_rad(-55.0), deg_to_rad(-32.0), 0.0)) * Vector3.BACK
+		var sp := cam.unproject_position(rig.position + sd * 60.0 + Vector3(0, 25, 0))
+		var vs := get_viewport().get_visible_rect().size
+		backdrop_mat.set_shader_parameter("sun_uv", Vector2(clampf(sp.x / vs.x, 0.1, 0.9), clampf(sp.y / vs.y, 0.04, 0.3)))
 	RenderingServer.global_shader_parameter_set("cam_back", cam_back)
 	var p := follow.global_position if follow else rig.position - Vector3(0, 0.6, 0)
 	if true:

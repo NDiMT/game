@@ -14,7 +14,7 @@ global uniform vec3 cam_back;
 global uniform float awaken;
 
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
-uniform vec3 cream : source_color = vec3(0.80, 0.79, 0.76);
+uniform vec3 cream : source_color = vec3(0.745, 0.735, 0.705);
 uniform vec3 vein : source_color = vec3(0.34, 0.345, 0.36);
 uniform vec3 side_col : source_color = vec3(0.36, 0.355, 0.35);
 uniform vec3 black_base : source_color = vec3(0.07, 0.07, 0.078);
@@ -61,8 +61,9 @@ void fragment() {
 		vec3 v = wp - c;
 		float along = dot(v, cam_back);
 		float perp = length(v - cam_back * along);
-		float f = smoothstep(0.3, 1.2, along) * (1.0 - smoothstep(0.8, 1.6, perp)) * occlusion;
-		if (f > 0.0 && bayer4(FRAGCOORD.xy) < f * 0.92) discard;
+		// a fully clear window round the wanderer, dithered only at its rim (never dots over them)
+		float f = smoothstep(0.1, 0.8, along) * (1.0 - smoothstep(1.05, 1.9, perp)) * occlusion;
+		if (f > 0.96 || (f > 0.0 && bayer4(FRAGCOORD.xy) < f)) discard;
 	}
 	float n = texture(noise_tex, wp.xz * 0.23 + wp.y * 0.13).r;
 	vec3 col;
@@ -150,6 +151,13 @@ void fragment() {
 		float li = step(0.86, texture(noise_tex, wp.xz * 6.0 + wp.yy * 5.0).r) * (1.0 - abs(wn.y));
 		col = mix(col, vec3(0.76, 0.74, 0.62), li * 0.35);
 	}
+	// each space has its own stone: cooler in the Hall of Glass, warmer in the Court, golden at the Shrine
+	float hall = (1.0 - smoothstep(0.0, 1.5, max(max(-5.5 - wp.x, wp.x - 5.5), max(-21.5 - wp.z, wp.z + 10.5))));
+	float court = (1.0 - smoothstep(0.0, 2.0, max(max(6.5 - wp.x, wp.x - 17.5), max(-27.5 - wp.z, wp.z + 16.5))));
+	float shrine = (1.0 - smoothstep(0.0, 2.0, max(max(19.5 - wp.x, wp.x - 30.5), max(-40.0 - wp.z, wp.z + 27.5))));
+	col *= mix(vec3(1.0), vec3(0.95, 0.985, 1.05), hall);
+	col *= mix(vec3(1.0), vec3(1.05, 1.0, 0.92), court);
+	col *= mix(vec3(1.0), vec3(1.04, 1.01, 0.94), shrine);
 	// a hint of warmth in the pale stone (light seems to sink into the marble)
 	if (mat_id < 0.37) col += vec3(0.022, 0.012, 0.0) * smoothstep(0.4, 0.9, dot(col, vec3(0.33)));
 	if (wp.y < fade_y) discard;

@@ -102,7 +102,7 @@ func _input(e: InputEvent) -> void:
 				_twist_a = a
 				_pinch_d = _pair_dist()
 			elif ratio > 1.3 or ratio < 0.77:
-				zoom.emit(0 if ratio > 1.0 else 1)        # spread = closer, pinch = wider
+				zoom.emit(1 if ratio > 1.0 else 0)        # spread = closer (1), pinch = the default far view (0)
 				_pinch_d = _pair_dist()
 				_twist_a = a
 			return
