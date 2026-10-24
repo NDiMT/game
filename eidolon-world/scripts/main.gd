@@ -7,7 +7,7 @@ const SHRINES_TOTAL := 7
 ## hem stripe brightness by number of shrines woken
 const HEM_PER_SHRINE := [1.0, 1.8, 2.4, 2.9, 3.3, 3.6, 3.9, 4.2]
 const SAVE_PATH := "user://eidolon_world.json"
-const MEMORY_LINE := "He sang her a thousand times.\nNone of them would breathe."
+const MEMORY_LINE := "He carved her a thousand times.\nNone of them would breathe."
 
 static var autotest := false
 
@@ -672,6 +672,8 @@ func jump(room: String) -> void:
 		ui.hide_title()
 	ui.fade_to(0.0, 0.01)
 	world.follow = player
+	world.cam_lock = false
+	world.cam.near = 1.0
 	world.cam_size_target = world.zoom
 	mode = "play"
 	controls.enabled = true

@@ -31,19 +31,19 @@ float s_letter(vec2 p, int id) {
 	vec2 bc = vec2(0.25, 0.25);            // the bowl's centre
 	float br = 0.22;
 	if (id == 0) {          // a: bowl + right stem
-		d = min(g_ring(p - bc, br), s_seg(p, 0.47, 0.0, 0.47, 0.5));
+		d = min(g_ring(p - bc, br), min(s_seg(p, 0.47, 0.0, 0.47, 0.62), s_seg(p, 0.47, 0.62, 0.3, 0.62)));
 	} else if (id == 1) {   // b: tall stem + bowl
-		d = min(s_seg(p, 0.03, 0.0, 0.03, 0.85), g_ring(p - bc, br));
+		d = min(min(s_seg(p, 0.03, 0.0, 0.03, 0.85), s_seg(p, 0.03, 0.0, 0.47, 0.0)), min(s_seg(p, 0.47, 0.0, 0.47, 0.45), s_seg(p, 0.47, 0.45, 0.2, 0.45)));
 	} else if (id == 2) {   // c: open bowl
-		d = s_arc(p, bc, br, 0.75, 2.0 * PI_S - 0.75);
+		d = min(s_arc(p, bc, br, 0.75, 2.0 * PI_S - 0.75), g_dot(p - bc, 0.04));
 	} else if (id == 3) {   // d: bowl + tall right stem
-		d = min(g_ring(p - bc, br), s_seg(p, 0.47, 0.0, 0.47, 0.85));
+		d = min(g_ring(p - bc, 0.17), min(s_seg(p, 0.47, -0.1, 0.47, 0.85), s_seg(p, 0.47, 0.85, 0.32, 0.85)));
 	} else if (id == 4) {   // key: a Greek-key hook on a stem
 		d = min(min(s_seg(p, 0.03, 0.0, 0.03, 0.5), s_seg(p, 0.03, 0.5, 0.47, 0.5)), min(s_seg(p, 0.47, 0.5, 0.47, 0.2), s_seg(p, 0.47, 0.2, 0.24, 0.2)));
 	} else if (id == 5) {   // i: a stem with its dot
 		d = min(s_seg(p, 0.25, 0.0, 0.25, 0.5), g_dot(p - vec2(0.25, 0.72), 0.04));
 	} else if (id == 6) {   // n: stem + arch
-		d = min(min(s_seg(p, 0.03, 0.0, 0.03, 0.5), s_arc(p, vec2(0.25, 0.28), 0.22, 0.0, PI_S)), s_seg(p, 0.47, 0.0, 0.47, 0.28));
+		d = min(min(s_seg(p, 0.03, 0.0, 0.03, 0.28), s_arc(p, vec2(0.25, 0.28), 0.22, 0.0, PI_S)), min(s_seg(p, 0.47, 0.0, 0.47, 0.28), g_dot(p - vec2(0.25, 0.2), 0.04)));
 	} else if (id == 7) {   // u: cup + right stem
 		d = min(min(s_seg(p, 0.03, 0.5, 0.03, 0.22), s_arc(p, vec2(0.25, 0.22), 0.22, PI_S, 2.0 * PI_S)), s_seg(p, 0.47, 0.0, 0.47, 0.5));
 	} else if (id == 8) {   // lozenge with a seed
@@ -55,7 +55,7 @@ float s_letter(vec2 p, int id) {
 	} else if (id == 11) {  // meander: a running key along the baseline
 		d = min(min(s_seg(p, 0.0, 0.0, 0.0, 0.42), s_seg(p, 0.0, 0.42, 0.25, 0.42)), min(min(s_seg(p, 0.25, 0.42, 0.25, 0.1), s_seg(p, 0.25, 0.1, 0.5, 0.1)), s_seg(p, 0.5, 0.1, 0.5, 0.5)));
 	} else if (id == 12) {  // q: bowl + descending stem
-		d = min(g_ring(p - bc, br), s_seg(p, 0.47, 0.5, 0.47, -0.3));
+		d = min(g_ring(p - bc, br), min(s_seg(p, 0.47, 0.5, 0.47, -0.3), s_seg(p, 0.47, -0.3, 0.3, -0.3)));
 	} else if (id == 13) {  // z: bar, diagonal, bar
 		d = min(min(s_seg(p, 0.03, 0.5, 0.47, 0.5), s_seg(p, 0.47, 0.5, 0.03, 0.0)), s_seg(p, 0.03, 0.0, 0.47, 0.0));
 	} else if (id == 14) {  // t: tall stem, crossbar, a foot that turns
@@ -64,15 +64,15 @@ float s_letter(vec2 p, int id) {
 		d = min(s_arc(p, vec2(0.25, 0.3), 0.21, -0.35 * PI_S, 1.35 * PI_S), min(s_seg(p, 0.0, 0.0, 0.13, 0.0), s_seg(p, 0.37, 0.0, 0.5, 0.0)));
 		d = min(d, min(s_seg(p, 0.13, 0.0, 0.14, 0.12), s_seg(p, 0.37, 0.0, 0.36, 0.12)));
 	} else if (id == 16) {  // e: open bowl with a bar
-		d = min(s_arc(p, bc, br, 0.0, 1.8 * PI_S), s_seg(p, 0.03, 0.25, 0.47, 0.25));
+		d = min(s_arc(p, bc, br, 0.35 * PI_S, 1.95 * PI_S), min(s_seg(p, 0.25, 0.25, 0.47, 0.25), g_dot(p - vec2(0.25, 0.62), 0.04)));
 	} else if (id == 17) {  // a stem under two dots
 		d = min(s_seg(p, 0.25, 0.0, 0.25, 0.5), min(g_dot(p - vec2(0.1, 0.7), 0.04), g_dot(p - vec2(0.4, 0.7), 0.04)));
 	} else if (id == 18) {  // h: tall stem + arch
-		d = min(min(s_seg(p, 0.03, 0.0, 0.03, 0.85), s_arc(p, vec2(0.25, 0.28), 0.22, 0.0, PI_S)), s_seg(p, 0.47, 0.0, 0.47, 0.28));
+		d = min(min(s_seg(p, 0.03, 0.0, 0.03, 0.85), s_seg(p, 0.03, 0.5, 0.47, 0.5)), min(s_seg(p, 0.47, 0.5, 0.47, 0.0), s_seg(p, 0.47, 0.0, 0.3, 0.0)));
 	} else if (id == 19) {  // p: descending stem + bowl
-		d = min(s_seg(p, 0.03, -0.3, 0.03, 0.5), g_ring(p - bc, br));
+		d = min(min(s_seg(p, 0.03, -0.3, 0.03, 0.5), g_ring(p - bc, br)), g_dot(p - bc, 0.04));
 	} else if (id == 20) {  // y: two arms, one descends
-		d = min(s_seg(p, 0.03, 0.5, 0.25, 0.16), s_seg(p, 0.47, 0.5, 0.12, -0.3));
+		d = min(min(s_seg(p, 0.03, 0.5, 0.25, 0.16), s_seg(p, 0.47, 0.5, 0.25, 0.16)), min(s_seg(p, 0.25, 0.16, 0.25, -0.3), s_seg(p, 0.25, -0.3, 0.42, -0.3)));
 	} else if (id == 21) {  // a spiral: bowl turning in to a bar
 		d = min(s_arc(p, bc, br, 0.0, 1.5 * PI_S), s_seg(p, 0.25, 0.03, 0.25, 0.25));
 	} else if (id == 22) {  // f: tall stem with a hooked top and a bar

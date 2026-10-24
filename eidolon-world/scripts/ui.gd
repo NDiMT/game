@@ -376,6 +376,7 @@ func show_text(s: String, source := Vector3.INF, hold := 5.0) -> void:
 		text.anchor_top = 0.66; text.anchor_bottom = 0.66
 		text.offset_top = -60; text.offset_bottom = 60
 		text.add_theme_font_size_override("font_size", 19)
+		text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text.text = s
 	text_source = source
 	if _text_tw: _text_tw.kill()
@@ -407,6 +408,7 @@ func show_inscription(s: String, script: Array, source: Vector3) -> void:
 	_inscr_tw.tween_property(inscr_panel, "modulate:a", 0.0, 1.6).set_trans(Tween.TRANS_SINE)
 	text_is_inscription_call = true
 	show_text(s, source, 6.0)
+	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	text_is_inscription_call = false
 	text_is_inscription = true
 

@@ -13,10 +13,10 @@ uniform float cols = 7.0;
 uniform float aspect = 1.0;
 uniform float alpha = 1.0;
 void fragment() {
-	float d = script_dist(UV, seed, rows, cols, aspect);
+	float d = script_dist(vec2(1.0 - UV.x, UV.y), seed, rows, cols, aspect);   // as carved: mirrored
 	float w = 0.03;
 	vec4 m = script_glow(d, w);
-	float aa = max(fwidth(d), 0.001);
+	float aa = clamp(fwidth(d), 0.001, w * 0.6);
 	float rim = (1.0 - smoothstep(w + aa, w + aa * 2.0 + 0.008, d)) * (1.0 - m.x);
 	float inner = 1.0 - clamp(d / w, 0.0, 1.0);
 	vec3 core_col = mix(accent.rgb, accent_core.rgb, smoothstep(0.05, 0.7, inner));

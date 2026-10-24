@@ -115,7 +115,7 @@ vec2 glyph_lines(vec3 o, float hs, float seed) {
 // distance d. The light lives inside the groove; one wall catches a highlight (light from above-left
 // on screen), the other keeps a quiet tint.
 vec4 carved_glow(float d, float w) {
-	float aa = max(fwidth(d), 0.0015);
+	float aa = clamp(fwidth(d), 0.0015, w * 0.6);     // (clamped: the field jumps between letter cells)
 	float core = 1.0 - smoothstep(w - aa, w + aa, d);
 	float bloom = exp(-max(d - w, 0.0) * 30.0 / max(w * 18.0, 0.3)) * 0.6 + exp(-max(d - w, 0.0) * 90.0 / max(w * 18.0, 0.3)) * 0.4;
 	float band = smoothstep(w * 0.35, w * 0.8, d) * core;
