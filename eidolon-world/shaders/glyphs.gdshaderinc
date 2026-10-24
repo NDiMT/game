@@ -110,3 +110,16 @@ vec2 glyph_lines(vec3 o, float hs, float seed) {
 	vec2 uv = face_uv(o, hs, face) * 1.08;
 	return rune_mask(rune_dist(uv, rune_for_face(face, seed)));
 }
+
+// v0.5 CARVED GLOW: (core, bloom, bevel highlight, bevel shade) for a stroke of half width w at
+// distance d. The light lives inside the groove; one wall catches a highlight (light from above-left
+// on screen), the other keeps a quiet tint.
+vec4 carved_glow(float d, float w) {
+	float aa = max(fwidth(d), 0.0015);
+	float core = 1.0 - smoothstep(w - aa, w + aa, d);
+	float bloom = exp(-max(d - w, 0.0) * 30.0 / max(w * 18.0, 0.3)) * 0.6 + exp(-max(d - w, 0.0) * 90.0 / max(w * 18.0, 0.3)) * 0.4;
+	float band = smoothstep(w * 0.35, w * 0.8, d) * core;
+	vec2 gn = vec2(dFdx(d), dFdy(d));
+	float side = dot(normalize(gn + vec2(1e-6)), normalize(vec2(-1.0, -1.0)));
+	return vec4(core, bloom * (1.0 - core), band * max(-side, 0.0), band * max(side, 0.0));
+}

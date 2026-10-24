@@ -12,7 +12,7 @@ uniform vec3 clip_u = vec3(1.0, 0.0, 0.0);
 uniform vec3 clip_v = vec3(0.0, 1.0, 0.0);
 uniform vec2 clip_h = vec2(1.0, 1.0);
 uniform float life = 1.0;
-uniform float dark = 0.0;        // v0.5: her steps in still water: deep petrol, stronger
+uniform float dark = 0.0;        // v0.5: her steps in still water: the outer glow, stronger
 global uniform vec4 accent;
 varying vec3 pp;
 void vertex() {
@@ -42,6 +42,6 @@ void fragment() {
 	float s = 1.0 - smoothstep(-0.12, 0.05, min(sole, heel));
 	float a = s * pow(1.0 - life, 1.5) * mix(0.55, 0.9, dark);
 	if (a < 0.003) discard;
-	ALBEDO = mix(accent_core.rgb, accent.rgb * 0.55, dark);
+	ALBEDO = mix(accent_core.rgb, accent.rgb, dark);
 	ALPHA = a;
 }

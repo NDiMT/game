@@ -109,14 +109,5 @@ float script_dist(vec2 uv, float seed, float rows, float cols, float aspect) {
 	return s_letter(lp, id) * S_SCALE;
 }
 
-// the carved-glow look shared by the engraving and the card: (core, bloom, bevel highlight, bevel shade)
-vec4 script_glow(float d, float w) {
-	float aa = max(fwidth(d), 0.0015);
-	float core = 1.0 - smoothstep(w - aa, w + aa, d);
-	float bloom = exp(-max(d - w, 0.0) * 30.0) * 0.6 + exp(-max(d - w, 0.0) * 90.0) * 0.4;
-	// the groove's walls: a thin band just inside its edge, lit on one side (light from above-left)
-	float band = smoothstep(w * 0.35, w * 0.8, d) * core;
-	vec2 gn = vec2(dFdx(d), dFdy(d));
-	float side = dot(normalize(gn + vec2(1e-6)), normalize(vec2(-1.0, -1.0)));
-	return vec4(core, bloom * (1.0 - core), band * max(-side, 0.0), band * max(side, 0.0));
-}
+// the carved-glow look shared by the engraving and the card (glyphs.gdshaderinc)
+vec4 script_glow(float d, float w) { return carved_glow(d, w); }
