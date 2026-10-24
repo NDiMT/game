@@ -47,6 +47,8 @@ func step_until(label: String, f: Callable, timeout: float) -> void: steps.appen
 func step_walk(seconds: float) -> void: steps.append(["walk", seconds])
 
 func tp(x: float, z: float, yaw := 0.0) -> void:
+	if game.level.blocked(Vector2(x, z), Player.RADIUS) or not game.level.circle_ok(Vector2(x, z), Player.RADIUS):
+		ok("test teleport lands on free ground (%.2f, %.2f)" % [x, z], false)
 	game.cmd("tp:%f:%f:%f" % [x, z, yaw])
 
 func walk_to(x: float, z: float) -> void:
@@ -133,7 +135,7 @@ func _plan() -> void:
 	step_do(func() -> void: ok("reached the Garden of Statues", P().x > 7.5 and absf(P().y - 1.0) < 0.01, str(P())))
 
 	# ---- the shortcut: locked from the threshold, opened from the far side
-	step_do(func() -> void: tp(4.4, -2.0, -PI * 0.5))
+	step_do(func() -> void: tp(4.5, -2.4, -PI * 0.5))
 	step_wait(0.3)
 	step_do(func() -> void: ok("gate is locked from the threshold side", _focus() == "gate_locked" and game.try_interact() and not game.puzzles.state["shortcut"]))
 	step_do(func() -> void: walk_to(6.5, -2.0))
@@ -141,7 +143,7 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the closed gate blocks the way", P().x < 4.95, str(P())))
-	step_do(func() -> void: tp(8.5, -6.0, PI))
+	step_do(func() -> void: tp(8.5, -4.2, PI))
 	step_do(func() -> void: walk_to(8.5, -2.0))
 	step_until("down the shortcut", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
 	step_do(func() -> void: walk_to(5.9, -2.0))
@@ -253,7 +255,7 @@ func _plan() -> void:
 	walk_path("to the sealed way", [[25.0, -29.3], [28.0, -29.3], [28.0, -36.5], [28.0, -38.6]])
 	step_do(func() -> void:
 		ok("the way on is sealed", P().z > -38.9 and _focus() == "sealed" and game.try_interact(), str(P())))
-	for zone in [[28.0, -37.5], [0.0, 0.0], [0.0, -8.0], [0.0, -16.0], [12.0, -10.0], [8.5, -3.0], [12.0, -22.0], [19.0, -22.0], [25.0, -22.0], [25.0, -32.0], [27.7, -26.5], [0.0, 6.5]]:
+	for zone in [[28.0, -37.5], [0.0, 0.0], [0.0, -8.0], [0.0, -16.0], [12.0, -10.0], [8.5, -3.0], [12.0, -22.0], [19.0, -22.0], [25.0, -22.0], [25.0, -30.4], [27.7, -26.5], [0.0, 6.5]]:
 		step_do(func() -> void: tp(zone[0], zone[1]))
 		step_walk(16.0)
 	step_do(func() -> void:
@@ -349,7 +351,7 @@ func _check_ground() -> void:
 	_last = p
 	if bad != "":
 		walk_violations += 1
-		if walk_violations < 6: print("  violation: ", bad, " at ", p)
+		if walk_violations < 12: print("  violation: ", bad, " at ", p, " step ", si)
 
 func _finish() -> void:
 	print("PLAYTHROUGH %s  checks=%d  failed=%d  sim_time=%.1fs  ground_samples=%d" % ["OK" if errors == 0 else "FAILED", checks, errors, t, walk_samples])

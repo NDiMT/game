@@ -195,9 +195,10 @@ func push_out(p: Vector2, rad: float) -> Vector2:
 func move(pos: Vector3, d: Vector3, rad: float) -> Vector3:
 	var p := Vector2(pos.x, pos.z)
 	var dd := Vector2(d.x, d.z)
+	var stuck := blocked(p, rad)      # recover gracefully if we ever start inside something
 	for cand in [p + dd, p + Vector2(dd.x, 0.0), p + Vector2(0.0, dd.y)]:
 		var q := push_out(cand, rad)
-		if q.distance_to(p) > dd.length() + 0.05: continue
+		if not stuck and q.distance_to(p) > dd.length() + 0.05: continue
 		if circle_ok(q, rad) and not blocked(q, rad) and absf(height_at(q) - pos.y) < 0.3:
 			return Vector3(q.x, height_at(q), q.y)
 	return Vector3(p.x, height_at(p), p.y)
