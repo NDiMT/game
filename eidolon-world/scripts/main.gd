@@ -7,7 +7,7 @@ const SHRINES_TOTAL := 7
 ## hem stripe brightness by number of shrines woken
 const HEM_PER_SHRINE := [1.0, 1.8, 2.4, 2.9, 3.3, 3.6, 3.9, 4.2]
 const SAVE_PATH := "user://eidolon_world.json"
-const MEMORY_LINE := "He carved her a thousand times.\nNone of them would breathe."
+const MEMORY_LINE := "He sang her a thousand times.\nNone of them would breathe."
 
 static var autotest := false
 
@@ -140,6 +140,7 @@ func reset_progress() -> void:
 	puzzles.apply_state(puzzles.state)
 	chapter.reset_state()
 	chapter.apply_state()
+	sfx.far_voice = false
 	visited = {}
 	area = ""
 	glimpses = {"lag": 0, "gaze": 0}
@@ -184,6 +185,7 @@ func _continue_from_save() -> void:
 	player.crouch = 0.0
 	awake = bool(puzzles.state["shrine"])
 	world.set_awaken(1.0 if awake else 0.0)
+	sfx.far_voice = awake
 	player.fig.set_hem(HEM_PER_SHRINE[1 if awake else 0])
 	player.fig.set_runes(int(save_data.get("runes_awake", 1 if awake else 0)))
 	var g: Dictionary = save_data.get("glimpses", {})
@@ -546,6 +548,8 @@ func start_finale() -> void:
 
 func _end_cinematic() -> void:
 	awake = true
+	sfx.far_voice = true
+	sfx._voice_t = 12.0
 	world.set_awaken(1.0)
 	puzzles.set_shrine_awake(1.0, 1.0)
 	player.fig.set_runes(1)

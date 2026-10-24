@@ -886,7 +886,7 @@ func set_shrine_awake(k: float, sweep: float) -> void:
 func _tablet() -> void:
 	tablet_mat = ShaderMaterial.new()      # (v0.3: the tablet carries engraved script instead)
 	level.ob_rect(Level.R(4.15, -20.4, 4.6, -19.4))
-	level.inscription("h_tablet", Vector3(3.85, 1.0, -19.9), "Her hand writes on her side of the glass.\nRead it as she does.", 0.95,
+	level.inscription("h_tablet", Vector3(3.85, 1.0, -19.9), "She writes from the far side of the glass.\nRead her as she reads.", 0.95,
 		Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(4.165, 1.38, -19.9)), Vector2(0.8, 0.56))
 
 # ------------------------------------------------------------------ reflectors

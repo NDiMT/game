@@ -495,9 +495,9 @@ func _veiled_gate() -> void:
 	box(z, Vector3(3.05, 0.62, 2.5), Vector3(0.95, 1.24, 0.24), 0.25, false, Basis(Vector3.UP, -0.5))
 	box(z, Vector3(3.05, 1.28, 2.5), Vector3(1.05, 0.08, 0.3), 0.25, false, Basis(Vector3.UP, -0.5))
 	ob_rect(R(2.62, 2.25, 3.48, 2.75))
-	inscription("t_stele", Vector3(2.6, 0, 2.0), "Every face here is the same face.\nHe could not stop carving it.", 1.3,
+	inscription("t_stele", Vector3(2.6, 0, 2.0), "The stones learned her shape from his singing.\nEvery face here is the same face.", 1.3,
 		Transform3D(Basis(Vector3.UP, -0.5), Vector3(3.05, 0.64, 2.5) + Basis(Vector3.UP, -0.5) * Vector3(0, 0, 0.125)), Vector2(0.84, 1.08))
-	inscription("t_pool", Vector3(-0.1, 0, -0.5), "Still water keeps what passes over it.\nSometimes it keeps it a little longer.", 1.1,
+	inscription("t_pool", Vector3(-0.1, 0, -0.5), "Still water remembers. Be still,\nand the drowned steps rise to meet you.", 1.1,
 		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-0.1, 0.012, -0.62)), Vector2(1.15, 0.78))
 	# exits: the arch to the north bridge, columns flanking
 	column(Vector3(-1.6, 0, -5.0), 3.6, true)
@@ -555,7 +555,7 @@ func _hall() -> void:
 	box(z, Vector3(4.35, 1.35, -19.9), Vector3(0.36, 0.7, 0.9), 0.25, false)
 	rubble(Vector3(-3.5, 1.0, -19.6), 0.7, 6)
 	rubble(Vector3(2.6, 1.0, -12.3), 0.5, 4)
-	inscription("h_hall", Vector3(-3.4, 1.0, -12.6), "Glass does not lie.\nIt only answers late.", 1.2,
+	inscription("h_hall", Vector3(-3.4, 1.0, -12.6), "The glass is a door that has forgotten.\nAsk it with an open hand.", 1.2,
 		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-3.4, 1.012, -12.95)), Vector2(1.15, 0.78))
 
 func _garden() -> void:
@@ -589,7 +589,7 @@ func _garden() -> void:
 	balustrade(z, Vector2(16.95, -14.8), Vector2(16.95, -13.2), 1.0)
 	balustrade(z, Vector2(16.95, -10.4), Vector2(16.95, -5.2), 1.0)
 	balustrade(z, Vector2(9.7, -4.95), Vector2(16.8, -4.95), 1.0)
-	inscription("g_stele", Vector3(11.0, 1.0, -6.4), "Nothing grows here but likeness.", 1.2,
+	inscription("g_stele", Vector3(11.0, 1.0, -6.4), "A meadow. A serpent. A still afternoon.", 1.2,
 		Transform3D(Basis(), Vector3(11.0, 1.62, -5.635)), Vector2(1.0, 0.9))
 	box(z, Vector3(11.0, 1.55, -5.75), Vector3(1.15, 1.1, 0.22), 0.25)
 	box(z, Vector3(11.0, 2.14, -5.75), Vector3(1.25, 0.08, 0.28), 0.25)
@@ -641,7 +641,7 @@ func _court() -> void:
 	stump(Vector3(7.6, 2.0, -17.6), 1.6)
 	column(Vector3(16.4, 2.0, -19.4), 4.6)
 	rubble(Vector3(8.6, 2.0, -18.4), 0.6, 5)
-	inscription("l_stele", Vector3(8.3, 2.0, -21.4), "Turn the glass.\nThe light remembers the way.", 1.2,
+	inscription("l_stele", Vector3(8.3, 2.0, -21.4), "Turn the glass, and the light goes down,\nas he went down, singing.", 1.2,
 		Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(7.665, 2.62, -21.4)), Vector2(0.95, 1.0))
 	box(z, Vector3(7.55, 2.6, -21.4), Vector3(0.22, 1.2, 1.1), 0.25)
 
@@ -662,7 +662,7 @@ func _ledge() -> void:
 	balustrade(z, Vector2(21.05, -23.2), Vector2(21.05, -24.9), 2.0)
 	column(Vector3(28.4, 2.0, -19.5), 4.0)
 	stump(Vector3(21.6, 2.0, -19.6), 1.2)
-	inscription("e_stele", Vector3(27.6, 2.0, -20.4), "Beyond the glass the other one walks\nwhere you cannot.", 1.2,
+	inscription("e_stele", Vector3(27.6, 2.0, -20.4), "Do not look back. The light is near.\nShe walks where you cannot look.", 1.2,
 		Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(28.335, 2.62, -20.9)), Vector2(0.95, 1.0))
 	box(z, Vector3(28.45, 2.6, -20.9), Vector3(0.22, 1.2, 1.1), 0.25)
 	ob_rect(R(28.3, -21.5, 28.6, -20.3))

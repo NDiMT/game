@@ -5,7 +5,7 @@ Each room is one continuous space. Crossfades between rooms take about 3 s.
 
 | # | room_id | Space | Mood (one line) |
 |---|---|---|---|
-| 1 | `waking_pool` | The Waking Pool | First breath after a long sleep: still water, a pale void, the faintest pulse of the Ione motif under the surface. |
+| 1 | `waking_pool` | The Waking Pool | First breath after a long sleep: still water, a pale void, the faintest pulse of Eurydice's motif under the surface. |
 | 2 | `stair_breath` | The Stair of Breath | A narrow exposed stair: wind on stone, a held breath; a small glass that fogs, an intimate whisper of the motif. |
 | 3 | `hall_glass` | The Hall of Glass | Cold, resonant, crystalline; tall glass hum and slow tinkles; something on the other side remembers. |
 | 4 | `shard_gallery` | The Shard Gallery | A corridor of broken mirror panes: shimmering, fractured, close; secrets just out of sight. |

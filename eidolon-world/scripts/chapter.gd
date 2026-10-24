@@ -5,7 +5,7 @@ extends Node3D
 ##
 ##  1 Waking Pool     ripples: only standing still calms the pool, and the still water shows
 ##                    stepping stones that exist only in the reflection; once seen, they hold you
-##  2 Stair of Breath breathe on a small glass: from the other side she writes "follow me"; the veil
+##  2 Stair of Breath breathe on a small glass: from the other side she writes one rune, "follow, do not turn"; the veil
 ##                    of mist over the stair dissolves
 ##  3 Hall of Glass   the great mirror remembers a doorway where there is a wall; touch the glass and
 ##                    she gives you the MIRROR SHARD, and the doorway is real again
@@ -46,7 +46,7 @@ const PAN_A := Vector3(31.4, 2.0, -45.6)
 const PAN_B := Vector3(27.8, 2.0, -50.6)
 const FOUR_R := 3.9
 const FOUR_ANGLES := [20.0, 160.0, -20.0, -160.0]      # degrees round the tholos; the last is empty
-const MEMORY_1 := "She sang to the boats coming home.\nHe carved the song into the quay, so the stone would remember it."
+const MEMORY_1 := "I will go down for you, past the river and the dog,\nand sing until the dark itself is weeping."
 
 var game: Game
 var level: Level
@@ -742,7 +742,7 @@ func _build_mural() -> void:
 	mural_mat = _smat("res://shaders/mural.gdshader", {"noise_tex": level.noise_tex, "size": Vector2(5.2, 3.4), "lit": 0.0, "complete": 0.0,
 		"head": Vector2((MURAL_HEAD.x - 9.4) / 5.2, (MURAL_HEAD.y - 2.1) / 3.4)})
 	_mi(_quad(Vector2(5.2, 3.4)), mural_mat, Transform3D(Basis(), Vector3(12.0, 3.8, MURAL_Z)))
-	level.inscription("l_mural", Vector3(9.0, 2.0, -25.6), "She knelt here every evening, facing the sea.\nThe light remembers where her head was bowed.", 1.0,
+	level.inscription("l_mural", Vector3(9.0, 2.0, -25.6), "She knelt in the meadow and did not rise.\nThe light remembers where her head was bowed.", 1.0,
 		Transform3D(Basis(), Vector3(9.0, 2.62, -26.9)), Vector2(0.7, 0.7))
 
 ## where the lit crystal throws your veil's shadow on the mural wall (INF: no shadow)
@@ -1022,7 +1022,7 @@ func _build_scales() -> void:
 	(gz.mesh as PlaneMesh).center_offset = Vector3(0.5, 0, 0)
 	level.add_interact("scale_mirror", SCALES_MIRROR + Vector3(0, 0, 0.85), "turn", turn_scale_mirror, 0.9,
 		func() -> bool: return not state["scales"])
-	level.inscription("sc_stele", Vector3(27.0, 2.0, -46.0), "The scale weighs only what the glass shows.\nIn the glass, she weighs nothing.", 1.1,
+	level.inscription("sc_stele", Vector3(27.0, 2.0, -46.0), "The scale weighs only what the glass shows.\nThe dead weigh nothing, not even a song.", 1.1,
 		Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(26.15, 2.62, -46.9)), Vector2(0.8, 0.75))
 	var sm := MB.new()
 	sm.box(Vector3(26.05, 2.6, -46.9), Vector3(0.2, 1.2, 1.0), Color(0.5, 0.25, 0.0))
@@ -1171,7 +1171,7 @@ func _build_four() -> void:
 	_mi(_plane(Vector2(1.5, 1.5)), four_ring, Transform3D(Basis(), four_pos(3) + Vector3(0, 0.262, 0)))
 	level.add_interact("four_wait", four_pos(3) + Vector3(0, 0.25, 0), "wait", wait_still, 0.55,
 		func() -> bool: return not state["four"])
-	level.inscription("s_four", Vector3(21.5, 2.0, -29.2), "Three of us wait for the fourth.\nStand where she stood. Be still, as we are still.", 1.0,
+	level.inscription("s_four", Vector3(21.5, 2.0, -29.2), "Three wait at the threshold for the fourth.\nStand among us. Be still, as the dead are still.", 1.0,
 		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(21.5, 2.012, -29.6)), Vector2(1.0, 0.7))
 
 func on_four_plinth() -> bool:

@@ -59,6 +59,9 @@ var _event_t := 14.0
 var _last_event := ""
 var _rng := RandomNumberGenerator.new()
 var played := {}
+var far_voice := false       # the shrine is awake: now and then a voice sings far off in the fog
+var _voice_t := 25.0
+const FAR_VOICE := "res://assets/audio/v5/events/ev_voice_sigh.ogg"
 
 func _ready() -> void:
 	_rng.randomize()
@@ -191,6 +194,13 @@ func _process(dt: float) -> void:
 		p.volume_db = layer_db[f]
 	var gk := clampf((wind_target - 0.5) / 0.45, 0.0, 1.0)
 	gust_player.volume_db = move_toward(gust_player.volume_db, linear_to_db(maxf(gk, 0.0001)) - 9.0, dt * 12.0)
+	if far_voice and duck > -1.0:
+		_voice_t -= dt
+		if _voice_t <= 0.0:
+			_voice_t = _rng.randf_range(70.0, 140.0)
+			if ResourceLoader.exists(FAR_VOICE):
+				_play_stream(_file_stream(FAR_VOICE), -15.0 + _rng.randf_range(-2.0, 1.0), _rng.randf_range(0.97, 1.02), true)
+				played["far_voice"] = played.get("far_voice", 0) + 1
 	_event_t -= dt
 	if _event_t <= 0.0:
 		var evs: Array = room_events.get(area, [])
