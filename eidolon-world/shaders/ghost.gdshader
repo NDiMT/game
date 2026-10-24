@@ -5,6 +5,8 @@ shader_type spatial;
 // glass / pool rectangle are clipped. `ghost` blends from a tinted reflection to the cyan eidolon.
 render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled;
 #include "res://shaders/figure_deform.gdshaderinc"
+#include "res://shaders/glyphs.gdshaderinc"
+#include "res://shaders/figure_detail.gdshaderinc"
 
 uniform float project = 1.0;
 uniform vec3 plane_n = vec3(0.0, 0.0, 1.0);
@@ -23,10 +25,12 @@ uniform vec3 hi : source_color = vec3(0.55, 0.95, 1.0);
 varying vec3 pp;
 varying vec3 wpos;
 varying vec4 vcol;
+varying vec2 vuv;
 
 void vertex() {
 	vec3 v = cloak_deform(VERTEX);
 	vcol = COLOR;
+	vuv = UV;
 	vec3 w = (MODEL_MATRIX * vec4(v, 1.0)).xyz;
 	w.x += sin(w.y * 13.0 + TIME * 2.7) * 0.008 * shimmer;
 	w.z += cos(w.y * 11.0 - TIME * 2.1) * 0.006 * shimmer;
@@ -62,7 +66,9 @@ void fragment() {
 	vec3 c = mix(refl, eid, ghost);
 	c = mix(c, hi, fres * mix(0.25, 0.45, ghost) + band * 0.5);
 	c = mix(c, vec3(0.85, 1.0, 1.0), clamp(vcol.a * glint, 0.0, 1.0));
-	float a = alpha * mix(0.82, 1.0, fres) * scan + band * 0.2 + vcol.a * glint * 0.5;
+	vec3 emb = embroidery(vuv);
+	c = mix(c, vec3(0.85, 1.0, 1.0), emb.x * emb.z * 0.8);
+	float a = alpha * mix(0.82, 1.0, fres) * scan + band * 0.2 + vcol.a * glint * 0.5 + emb.x * emb.z * 0.3;
 	ALBEDO = c;
 	ALPHA = clamp(a * edge, 0.0, 0.95);
 }
