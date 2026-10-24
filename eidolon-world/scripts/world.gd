@@ -240,10 +240,10 @@ func _process(dt: float) -> void:
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - dt * 0.6)
 		cam.h_offset = sin(_t * 91.0) * _shake * 0.3
-		cam.v_offset = base_v_offset + cos(_t * 77.0) * _shake * 0.3
+		cam.v_offset = base_v_offset * cam.size / CAM_SIZE + cos(_t * 77.0) * _shake * 0.3
 	else:
 		cam.h_offset = 0.0
-		cam.v_offset = base_v_offset
+		cam.v_offset = base_v_offset * cam.size / CAM_SIZE
 	fog_hole = fog_hole.lerp(fog_hole_target, 1.0 - exp(-dt * 1.2))
 	fog_mats[2].set_shader_parameter("hole_inner", fog_hole.x)
 	fog_mats[2].set_shader_parameter("hole_outer", fog_hole.y)

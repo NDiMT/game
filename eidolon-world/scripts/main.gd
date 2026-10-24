@@ -1,6 +1,6 @@
 class_name Game
 extends Node
-## EIDOLON: The Threshold. Title -> wake -> free exploration -> shrine finale. Input, interaction,
+## EIDOLON, first slice (area names: scripts/names.gd). Title -> wake -> free exploration -> shrine finale. Input, interaction,
 ## events -> sound / text, checkpoint saving to user://, and test hooks (web: window.ewCmd / ewState).
 
 const SHRINES_TOTAL := 7
@@ -24,6 +24,8 @@ var auto_target := Vector3.INF
 var key_vec := Vector2.ZERO
 var save_data := {}
 var awake := false
+var area := ""
+var visited := {}
 var glimpses := {"lag": 0, "gaze": 0}
 var interactions := 0
 var _save_t := 0.0
@@ -63,7 +65,7 @@ func _ready() -> void:
 	ui.anew_pressed.connect(_on_anew)
 	_setup_js()
 	_load_save()
-	# title: the wanderer lies curled beneath the broken gate, the camera drifts round the Threshold
+	# title: the wanderer lies curled beneath the broken gate, the camera drifts round the Veiled Gate
 	player.teleport(Level.WAKE_POS, 0.0)
 	player.crouch = 1.0
 	player.step(0.016)
@@ -123,6 +125,7 @@ func _continue_from_save() -> void:
 	awake = bool(puzzles.state["shrine"])
 	world.set_awaken(1.0 if awake else 0.0)
 	player.fig.set_hem(HEM_PER_SHRINE[1 if awake else 0])
+	player.fig.set_runes(int(save_data.get("runes_awake", 1 if awake else 0)))
 	_settle_camera(int(save_data.get("cam", 0)), player.position)
 	mode = "play"
 	controls.enabled = true
@@ -214,6 +217,7 @@ func _process(dt: float) -> void:
 				off.y = 0.0
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
+	if mode == "play": _update_area()
 	if ui.text_source != Vector3.INF and player.position.distance_to(ui.text_source) > 3.2: ui.hide_text()
 	if mode == "play":
 		_save_t += dt
@@ -236,6 +240,16 @@ func _update_focus() -> void:
 	if puzzles.busy: best = null
 	focus = best
 	controls.show_interact(best.icon if best else "")
+
+func _update_area() -> void:
+	var g := level.region_at(Vector2(player.position.x, player.position.z))
+	if g == null or not Names.REGION_AREA.has(g.name): return
+	var key: String = Names.REGION_AREA[g.name]
+	if key == area: return
+	area = key
+	if not visited.has(key):
+		visited[key] = true
+		ui.show_area(Names.area(key))
 
 func _update_hum() -> void:
 	var pts := puzzles.beam_points
@@ -338,6 +352,7 @@ func start_finale() -> void:
 	var tw := create_tween()
 	tw.tween_method(func(v: float) -> void: puzzles.set_shrine_awake(v, v), 0.0, 1.0, 3.0).set_trans(Tween.TRANS_SINE)
 	tw.parallel().tween_method(player.fig.set_hem, HEM_PER_SHRINE[0], HEM_PER_SHRINE[1], 4.0)
+	tw.tween_callback(func() -> void: player.fig.set_runes(1))
 	var t2 := create_tween()
 	t2.tween_interval(1.2)
 	t2.tween_method(world.set_awaken, 0.0, 1.0, 8.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -373,7 +388,7 @@ func _save() -> void:
 	var p := player.position
 	_last_saved_pos = p
 	save_data = {"v": 1, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
-		"puzzles": puzzles.state.duplicate(true), "glimpses": glimpses}
+		"puzzles": puzzles.state.duplicate(true), "glimpses": glimpses, "runes_awake": player.fig.runes_awake}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify(save_data))
 
@@ -404,6 +419,8 @@ func cmd(c: String) -> Variant:
 		"reset_save": _delete_save(); save_data = {}
 		"save": _save()
 		"finale": start_finale()
+		"veil": player.fig.veil.visible = a[1] == "1"
+		"runes": player.fig.set_runes(int(a[1]))
 		"fogd": world.fog_mats[int(a[1])].set_shader_parameter("density", float(a[2]))
 		"envfog": world.env.fog_enabled = a[1] == "1"
 		"rp": puzzles.reflectors[int(a[1])].puppet.set_param(a[2], float(a[3]))
@@ -428,7 +445,7 @@ func state_dict() -> Dictionary:
 		"fps": Engine.get_frames_per_second(), "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "speed": player.speed01,
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
-		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal}
+		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text}
 
 func _setup_js() -> void:
 	if not OS.has_feature("web"): return

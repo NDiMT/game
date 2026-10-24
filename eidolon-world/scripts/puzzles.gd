@@ -162,7 +162,7 @@ func set_crystal_lit(mat: StandardMaterial3D, k: float) -> void:
 	mat.albedo_color = Color(0.20, 0.24, 0.26).lerp(Color(0.75, 0.97, 1.0), k)
 	mat.emission_energy_multiplier = 1.8 * k
 
-# ------------------------------------------------------------------ threshold pool
+# ------------------------------------------------------------------ veiled gate pool
 func _pool() -> void:
 	water_mat = ShaderMaterial.new()
 	water_mat.shader = preload("res://shaders/water.gdshader")

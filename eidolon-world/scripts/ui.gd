@@ -26,6 +26,8 @@ var memory_line: Label
 var silhouette: Silhouette
 var end_a: Label
 var end_b: Label
+var area_label: Label
+var _area_tw: Tween
 var fade: ColorRect
 var _t := 0.0
 var _text_tw: Tween
@@ -92,11 +94,11 @@ func _ready() -> void:
 	memory_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_halo(memory_line, Color(0.95, 0.95, 0.93, 0.9))
 	memory.add_child(memory_line)
-	end_a = _label(caps, 15, Color(0.10, 0.10, 0.11), HORIZONTAL_ALIGNMENT_CENTER)
+	end_a = _label(italic, 22, Color(0.10, 0.10, 0.11), HORIZONTAL_ALIGNMENT_CENTER)
 	end_a.set_anchors_preset(Control.PRESET_CENTER)
 	end_a.anchor_top = 0.42; end_a.anchor_bottom = 0.42
 	end_a.offset_left = -190; end_a.offset_right = 190; end_a.offset_top = -14; end_a.offset_bottom = 14
-	end_a.text = "THE THRESHOLD  ·  AWAKENED"
+	end_a.text = Names.awakened(Names.FIRST)
 	_halo(end_a, Color(0.95, 0.95, 0.93, 0.9))
 	end_a.modulate.a = 0.0
 	root.add_child(end_a)
@@ -108,6 +110,13 @@ func _ready() -> void:
 	_halo(end_b, Color(0.95, 0.95, 0.93, 0.9))
 	end_b.modulate.a = 0.0
 	root.add_child(end_b)
+	# the name of a space, the first time you enter it
+	area_label = _label(caps, 13, Color(0.12, 0.12, 0.13), HORIZONTAL_ALIGNMENT_CENTER)
+	area_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	area_label.offset_left = -180; area_label.offset_right = 180; area_label.offset_top = 84; area_label.offset_bottom = 104
+	_halo(area_label, Color(0.95, 0.95, 0.93, 0.8))
+	area_label.modulate.a = 0.0
+	root.add_child(area_label)
 	fade = ColorRect.new()
 	fade.color = Color(0.07, 0.07, 0.075, 1.0)
 	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -147,7 +156,7 @@ func _build_title() -> void:
 	sub.offset_left = -150; sub.offset_right = 150; sub.offset_top = 46; sub.offset_bottom = 80
 	title_screen.add_child(sub)
 	var gloss := _label(caps, 11, Color(0.22, 0.22, 0.23), HORIZONTAL_ALIGNMENT_CENTER)
-	gloss.text = "I  ·  THE THRESHOLD"
+	gloss.text = "I  ·  " + Names.area(Names.FIRST).to_upper()
 	gloss.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	gloss.anchor_top = 0.2; gloss.anchor_bottom = 0.2
 	gloss.offset_left = -180; gloss.offset_right = 180; gloss.offset_top = 82; gloss.offset_bottom = 100
@@ -243,6 +252,14 @@ static func _roman(n: int) -> String:
 		while n >= v[0]:
 			r += v[1]; n -= v[0]
 	return r
+
+func show_area(title: String) -> void:
+	area_label.text = title.to_upper()
+	if _area_tw: _area_tw.kill()
+	_area_tw = create_tween()
+	_area_tw.tween_property(area_label, "modulate:a", 0.85, 1.6).set_trans(Tween.TRANS_SINE)
+	_area_tw.tween_interval(2.6)
+	_area_tw.tween_property(area_label, "modulate:a", 0.0, 2.0).set_trans(Tween.TRANS_SINE)
 
 func fade_to(a: float, dur: float) -> Tween:
 	var tw := create_tween()

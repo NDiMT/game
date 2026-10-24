@@ -5,14 +5,14 @@ extends Node3D
 ## MultiMeshes. Walking is resolved against axis-aligned WALK REGIONS (flat or ramps) and obstacles
 ## (circles / rects): the borders of the walkable union act as invisible walls, so you never fall.
 ##
-##   T  The Threshold      x[-5,5]   z[-5,5]     y 0   (wake, reflecting pool, veiled statues)
+##   T  The Veiled Gate      x[-5,5]   z[-5,5]     y 0   (wake, reflecting pool, veiled statues)
 ##   B1 bridge + stair     x[-1.2,1.2] z[-11,-5] y 0->1
 ##   H  The Hall of Glass  x[-5,5]   z[-21,-11]  y 1   (mirrors, polished black floor)
 ##   HG bridge             x[5,7]    z[-14,-12]  y 1
-##   G  Garden of Statues  x[7,17]   z[-15,-5]   y 1   (dead trees, rune statues, rune door)
-##   A/B shortcut          x[5,9.5]  z[-5,-1]    y 1->0 (gate back into the Threshold)
+##   G  Garden of the Veiled  x[7,17]   z[-15,-5]   y 1   (dead trees, rune statues, rune door)
+##   A/B shortcut          x[5,9.5]  z[-5,-1]    y 1->0 (gate back into the Veiled Gate)
 ##   P  stair passage      x[11,13]  z[-17,-15]  y 1->2 (behind the rune door)
-##   L  The Light Court    x[7,17]   z[-27,-17]  y 2   (beam + three mirror stands)
+##   L  Court of Light    x[7,17]   z[-27,-17]  y 2   (beam + three mirror stands)
 ##   LB drawbridge         x[17,21]  z[-23,-21]  y 2
 ##   E  The Eidolon ledge  x[21,29]  z[-25,-19]  y 2   (the great glass)
 ##   EB risen bridge       x[26.8,28.6] z[-28,-25] y 2
@@ -89,7 +89,7 @@ func _init(tex: ImageTexture) -> void:
 	marble_mat.set_shader_parameter("noise_tex", noise_tex)
 
 func build() -> void:
-	_threshold()
+	_veiled gate()
 	_bridge_b1()
 	_hall()
 	_garden()
@@ -370,7 +370,7 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 	underside(zone, r, y_lo - 0.8)
 
 # ================================================================== the spaces
-func _threshold() -> void:
+func _veiled gate() -> void:
 	var z := "T"
 	# floor around the pool (the pool is a sunken basin)
 	for r in [R(-5, -5, 5, -0.2), R(-5, 3.6, 5, 5), R(-5, -0.2, -4.2, 3.6), R(-0.6, -0.2, 5, 3.6)]:
@@ -508,7 +508,7 @@ func _shortcut() -> void:
 	balustrade(z, Vector2(9.55, -4.9), Vector2(9.55, -1.1), 1.0)
 	balustrade(z, Vector2(7.6, -0.95), Vector2(9.4, -0.95), 1.0)
 	balustrade(z, Vector2(7.45, -4.9), Vector2(7.45, -3.1), 1.0)
-	# gate posts at the Threshold's east edge (the bars are a puzzle object)
+	# gate posts at the Veiled Gate's east edge (the bars are a puzzle object)
 	column(Vector3(5.15, 0, -3.35), 2.9, true)
 	column(Vector3(5.15, 0, -0.65), 2.9, true)
 	box(z, Vector3(5.15, 3.0, -2.0), Vector3(0.7, 0.5, 3.4), 0.25, true)
@@ -632,7 +632,7 @@ func _col(m: MB, base: Vector3, h: float, r := 0.28, broken := false) -> void:
 	m.cyl(base + Vector3(0, h * 0.5, 0), r * 0.9, r, h, C(0.25), 10)
 	if not broken: m.box(base + Vector3(0, h + 0.08, 0), Vector3(r * 2.8, 0.16, r * 2.8), C(0.25))
 
-## islands and temples beyond the Threshold, hidden in fog until the shrine wakes
+## islands and temples beyond the Veiled Gate, hidden in fog until the shrine wakes
 func _beyond() -> void:
 	beyond = Node3D.new()
 	beyond.name = "Beyond"

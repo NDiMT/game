@@ -1,5 +1,5 @@
 extends Node
-## Headless scripted playthrough of "The Threshold" through the REAL game code (movement, interaction,
+## Headless scripted playthrough of "The Veiled Gate" through the REAL game code (movement, interaction,
 ## puzzles, reflections, finale, save):
 ##   godot --headless --fixed-fps 60 --path eidolon-world res://tests/playthrough.tscn
 ## Exits 0 when every check passes. Prints one line per check.
@@ -73,7 +73,7 @@ func _plan() -> void:
 	step_until("title", func() -> bool: return game.mode == "title" and game.sfx.ready_ok, 20.0)
 	step_do(func() -> void: game.cmd("reset_save"); game.cmd("anew"))
 	step_until("wake -> play", func() -> bool: return game.mode == "play", 12.0)
-	step_do(func() -> void: ok("woke at the threshold", P().distance_to(Level.WAKE_POS) < 0.2, str(P())))
+	step_do(func() -> void: ok("woke at the veiled gate", P().distance_to(Level.WAKE_POS) < 0.2, str(P())))
 
 	# ---- glimpse 1: the pool reflection lags
 	step_do(func() -> void: tp(-0.3, 1.9, PI * 0.5))
@@ -104,6 +104,7 @@ func _plan() -> void:
 	step_until("walk to the north bridge", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
 	step_do(func() -> void: walk_to(0.0, -12.0))
 	step_until("climb the stair into the Hall", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
+	step_do(func() -> void: ok("area name shown on entering the hall", game.area == "hall" and game.ui.area_label.text == Names.area("hall").to_upper(), game.ui.area_label.text))
 	step_do(func() -> void: ok("reached the Hall of Glass by the stair", absf(P().y - 1.0) < 0.01 and P().z < -11.5, str(P())))
 
 	# ---- glimpse 2: the reflection looks toward the hidden tablet
@@ -132,12 +133,12 @@ func _plan() -> void:
 
 	# ---- into the garden
 	walk_path("hall to garden", [[2.0, -19.5], [1.2, -16.5], [1.2, -13.0], [6.0, -13.0], [9.5, -12.0], [11.5, -11.0]])
-	step_do(func() -> void: ok("reached the Garden of Statues", P().x > 7.5 and absf(P().y - 1.0) < 0.01, str(P())))
+	step_do(func() -> void: ok("reached the Garden of the Veiled", P().x > 7.5 and absf(P().y - 1.0) < 0.01, str(P())))
 
-	# ---- the shortcut: locked from the threshold, opened from the far side
+	# ---- the shortcut: locked from the veiled gate, opened from the far side
 	step_do(func() -> void: tp(4.5, -2.4, -PI * 0.5))
 	step_wait(0.3)
-	step_do(func() -> void: ok("gate is locked from the threshold side", _focus() == "gate_locked" and game.try_interact() and not game.puzzles.state["shortcut"]))
+	step_do(func() -> void: ok("gate is locked from the veiled gate side", _focus() == "gate_locked" and game.try_interact() and not game.puzzles.state["shortcut"]))
 	step_do(func() -> void: walk_to(6.5, -2.0))
 	step_until("blocked by the gate", func() -> bool: return game.player.speed01 < 0.01 and game.player.still_time > 0.3, 6.0)
 	step_do(func() -> void:
@@ -152,7 +153,7 @@ func _plan() -> void:
 	step_wait(2.5)
 	step_do(func() -> void: walk_to(2.5, -2.0))
 	step_until("through the shortcut", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
-	step_do(func() -> void: ok("shortcut leads back to the threshold", P().x < 3.0 and absf(P().y) < 0.01, str(P())))
+	step_do(func() -> void: ok("shortcut leads back to the veiled gate", P().x < 3.0 and absf(P().y) < 0.01, str(P())))
 
 	# ---- a) rune door
 	for k in 3:
@@ -182,7 +183,7 @@ func _plan() -> void:
 	step_do(func() -> void: ok("door runes match the statues", game.puzzles.state["door"] == Puzzles.DOOR_SOLUTION, str(game.puzzles.state["door"])))
 	step_until("door grinds open", func() -> bool: return game.puzzles.state["door_open"] and not game.puzzles.busy, 10.0)
 	walk_path("through the door", [[12.7, -12.3], [12.7, -14.0], [12.0, -15.4], [12.0, -18.5]])
-	step_do(func() -> void: ok("reached the Light Court through the door", absf(P().y - 2.0) < 0.01 and P().z < -17.5, str(P())))
+	step_do(func() -> void: ok("reached the Court of Light through the door", absf(P().y - 2.0) < 0.01 and P().z < -17.5, str(P())))
 
 	# ---- b) mirrors and light
 	step_do(func() -> void: ok("beam not lit at start", not game.puzzles.beam_lit))
@@ -246,7 +247,10 @@ func _plan() -> void:
 	step_until("the shrine wakes, fog recedes", func() -> bool: return game.mode == "play" and game.world.awaken >= 0.999, 30.0)
 	step_do(func() -> void:
 		ok("the world beyond is revealed", game.level.beyond.visible)
+		ok("first shrine lights one cloak rune and brightens the hem", game.player.fig.runes_awake == 1 and game.player.fig.hem > 1.5)
+		ok("the reflection copies the awakened rune", game.puzzles.reflectors[0].puppet.runes_awake == 1 or not game.puzzles.reflectors[0].active)
 		ok("the shrine leaves its light on", float(game.puzzles.shrine_pillar.get_shader_parameter("fade")) > 0.5)
+		ok("milestone text names the space", game.ui.end_a.text == "The Veiled Gate — awakened", game.ui.end_a.text)
 		ok("milestone, not an ending: still playable", game.mode == "play" and not game.player.locked)
 		ok("fog density animated down", game.world.env.fog_depth_end > World.DIST + 50.0 and game.world.fog_mats[2].get_shader_parameter("clear") > 0.99)
 		ok("music swelled", game.sfx.played.get("swell", 0) >= 1))
@@ -279,6 +283,7 @@ func _plan() -> void:
 		ok("restored puzzles", game.puzzles.state["door_open"] and game.puzzles.state["bridge"] and game.puzzles.state["plate"] and game.puzzles.state["shrine"])
 		ok("restored regions", game.level.named["LB"].enabled and game.level.named["EB"].enabled and not game.level.named["door"].enabled and not game.level.named["gate"].enabled)
 		ok("restored awakened world", game.world.awaken == 1.0)
+		ok("restored runes_awake", game.player.fig.runes_awake == 1)
 		ok("restored position", absf(P().x - walk_change) < 0.6, str(P())))
 	step_do(func() -> void: _finish())
 

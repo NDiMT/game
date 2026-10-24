@@ -123,6 +123,7 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 		src_xf = r[0]
 		src_pose = r[1]
 	if puppet.hem != player.fig.hem: puppet.set_hem(player.fig.hem)
+	if puppet.runes_awake != player.fig.runes_awake: puppet.set_runes(player.fig.runes_awake)
 	puppet.global_transform = refl_xf * src_xf
 	puppet.apply_pose(src_pose)
 	puppet.set_param("alpha", alpha * vis)
