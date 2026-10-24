@@ -183,7 +183,7 @@ func footstep(surface: String, strength: float) -> void:
 		"hall": key = "step_hall"
 		"wood": key = "step_wood"
 		"water": key = "step_wet"
-	var base := {"step_stone": -17.0, "step_hall": -12.0, "step_wood": -19.0, "step_wet": -17.0}[key]
+	var base: float = {"step_stone": -17.0, "step_hall": -12.0, "step_wood": -19.0, "step_wet": -17.0}[key]
 	play(key, base + strength * 2.0 + _rng.randf_range(-2.0, 1.0), _rng.randf_range(0.95, 1.05))
 	played["step"] = played.get("step", 0) + 1
 

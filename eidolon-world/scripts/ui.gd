@@ -645,11 +645,11 @@ class DoorOverlay extends Control:
 		# the rune's name under the big card
 		if caps:
 			var d: int = designs[selected]
-			var name := NAMES[d] if d >= 0 else "EMPTY"
+			var name: String = NAMES[d] if d >= 0 else "EMPTY"
 			var fs2 := 22
 			var w2 := caps.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x
 			draw_string(caps, Vector2(size.x * 0.5 - w2 * 0.5, _name_y), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, Color(0.88, 0.97, 1.0, 1.0))
-			var sub := "SLOT  " + ["I", "II", "III"][selected]
+			var sub: String = "SLOT  " + ["I", "II", "III"][selected]
 			var w3 := caps.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
 			draw_string(caps, Vector2(size.x * 0.5 - w3 * 0.5, _name_y + 22.0), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.7, 0.8, 0.85, 0.75))
 		if italic:
