@@ -61,8 +61,7 @@ func setup() -> void:
 	puppet.set_param("ghost", ghost)
 	puppet.set_param("alpha", 0.0)
 	# the reflection draws over the (translucent) water / glass surface it lives in
-	puppet.body_mat.render_priority = 1
-	puppet.head_mat.render_priority = 1
+	for m in puppet.mats(): m.render_priority = 1
 
 func reflect_point(p: Vector3) -> Vector3:
 	return refl_xf * p
@@ -123,6 +122,7 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 		var r := _gaze(dt, player, src_xf, src_pose, seen_in_glass(player.global_position + Vector3(0, 0.7, 0), cam_back))
 		src_xf = r[0]
 		src_pose = r[1]
+	if puppet.hem != player.fig.hem: puppet.set_hem(player.fig.hem)
 	puppet.global_transform = refl_xf * src_xf
 	puppet.apply_pose(src_pose)
 	puppet.set_param("alpha", alpha * vis)

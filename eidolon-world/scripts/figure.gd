@@ -1,15 +1,17 @@
 class_name Figure
 extends Node3D
 ## The small hooded, cloaked figure, built procedurally (low-poly lathes, vertex coloured).
-## Two meshes: the cloak (deformed in the vertex shader: sway, flare, fold ripple, breathing) and the
-## hood (rigid; a void face with two faint cyan eye glints). All animation is driven by a Pose, so a
-## reflection puppet can copy (or delay, or bend) the player's pose exactly.
+## Three meshes: the cloak (deformed in the vertex shader: sway, flare, fold ripple, breathing) with a
+## thin faded cyan hem stripe (emissive, brightens as shrines wake: `hem`), the hood with a smooth,
+## featureless pale MARBLE face inside it, and a SEPARATE pale grey cloth VEIL node hanging over the
+## face (sways with walking and wind; a node of its own so it can later lift or fall away).
+## All animation is driven by a Pose, so a reflection puppet copies (or delays, or bends) it exactly.
 
-const CLOAK := Color(0.215, 0.21, 0.215)
-const TRIM := Color(0.20, 0.55, 0.62)
-const HOOD := Color(0.235, 0.23, 0.235)
-const VOID := Color(0.0, 0.0, 0.0, 0.0)
-const EYE := Color(0.55, 0.97, 1.0)
+const CLOAK := Color(0.105, 0.11, 0.122, 0.0)     # charcoal, almost black, cool
+const HOOD := Color(0.118, 0.123, 0.135, 0.0)
+const STRIPE := Color(0.30, 0.62, 0.68, 0.5)       # faded cyan, emissive (alpha = emission)
+const MARBLE := Color(0.84, 0.83, 0.80, 0.0)
+const VEIL := Color(0.50, 0.505, 0.50, 0.0)
 const NECK_Y := 0.80
 
 class Pose:
@@ -44,19 +46,24 @@ class Pose:
 
 static var cloak_mesh: ArrayMesh
 static var hood_mesh: ArrayMesh
+static var veil_mesh: ArrayMesh
 
 var body: Node3D
 var head: Node3D
+var veil: MeshInstance3D
 var cloak_mi: MeshInstance3D
 var hood_mi: MeshInstance3D
 var body_mat: ShaderMaterial
 var head_mat: ShaderMaterial
+var veil_mat: ShaderMaterial
 var pose := Pose.new()
+var hem := 1.0
 
 func _init(ghost_shader: Shader = null) -> void:
 	if cloak_mesh == null:
 		cloak_mesh = _build_cloak()
 		hood_mesh = _build_hood()
+		veil_mesh = _build_veil()
 	body = Node3D.new()
 	add_child(body)
 	head = Node3D.new()
@@ -68,6 +75,10 @@ func _init(ghost_shader: Shader = null) -> void:
 	head_mat = ShaderMaterial.new()
 	head_mat.shader = sh
 	head_mat.set_shader_parameter("deform", 0.0)
+	veil_mat = ShaderMaterial.new()
+	veil_mat.shader = sh
+	veil_mat.set_shader_parameter("deform", 0.0)
+	veil_mat.set_shader_parameter("veil", 1.0)
 	cloak_mi = MeshInstance3D.new()
 	cloak_mi.mesh = cloak_mesh
 	cloak_mi.material_override = body_mat
@@ -76,13 +87,24 @@ func _init(ghost_shader: Shader = null) -> void:
 	hood_mi.mesh = hood_mesh
 	hood_mi.material_override = head_mat
 	head.add_child(hood_mi)
+	veil = MeshInstance3D.new()
+	veil.name = "Veil"
+	veil.mesh = veil_mesh
+	veil.material_override = veil_mat
+	head.add_child(veil)
 	if ghost_shader:
-		cloak_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		hood_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for mi in [cloak_mi, hood_mi, veil]: mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+func mats() -> Array[ShaderMaterial]:
+	return [body_mat, head_mat, veil_mat]
 
 func set_param(n: String, val: Variant) -> void:
-	body_mat.set_shader_parameter(n, val)
-	head_mat.set_shader_parameter(n, val)
+	for m in mats(): m.set_shader_parameter(n, val)
+
+## the hem stripe brightens as shrines are woken
+func set_hem(k: float) -> void:
+	hem = k
+	set_param("glint", k)
 
 func apply_pose(p: Pose) -> void:
 	pose = p
@@ -96,10 +118,14 @@ func apply_pose(p: Pose) -> void:
 	body_mat.set_shader_parameter("ripple", p.ripple)
 	body_mat.set_shader_parameter("phase", p.phase)
 	body_mat.set_shader_parameter("breath", p.breath)
+	# the veil streams back a little with the walk and lifts with the stride
+	veil_mat.set_shader_parameter("sway", p.sway * 1.6 + Vector2(0.0, p.ripple * 0.035))
+	veil_mat.set_shader_parameter("phase", p.phase)
+	veil_mat.set_shader_parameter("ripple", p.ripple)
 
 # ------------------------------------------------------------------ meshes
-static func _lathe(st: SurfaceTool, rings: Array, segs: int, profile: Callable) -> void:
-	## rings: Array of h in 0..1; profile(h, angle) -> [Vector3 pos, Color col]
+## SurfaceTool vertices carry COLOR (rgb albedo, a = emission) and UV.x = material (0 cloth, 1 marble).
+static func _lathe(st: SurfaceTool, rings: Array, segs: int, profile: Callable, mat := 0.0) -> void:
 	var grid := []
 	for h in rings:
 		var row := []
@@ -111,38 +137,43 @@ static func _lathe(st: SurfaceTool, rings: Array, segs: int, profile: Callable) 
 		for s in segs:
 			var a: Array = grid[j][s]; var b: Array = grid[j][s + 1]
 			var cc: Array = grid[j + 1][s + 1]; var d: Array = grid[j + 1][s]
-			_tri(st, a, cc, b)
-			_tri(st, a, d, cc)
+			_tri(st, a, cc, b, mat)
+			_tri(st, a, d, cc, mat)
 
-static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
+static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array, mat := 0.0) -> void:
 	for p in [a, b, c]:
 		st.set_color(p[1])
+		st.set_uv(Vector2(mat, 0.0))
 		st.add_vertex(p[0])
+
+static func _cloak_point(h: float, an: float, grow := 1.0) -> Vector3:
+	# profile: wide soft hem, narrowing body, rounded shoulders, closed neck
+	var r: float
+	if h < 0.62: r = lerpf(0.33, 0.21, pow(h / 0.62, 0.8))
+	elif h < 0.86: r = lerpf(0.21, 0.185, (h - 0.62) / 0.24)
+	elif h < 0.98: r = lerpf(0.185, 0.10, pow((h - 0.86) / 0.12, 1.5))
+	else: r = lerpf(0.10, 0.06, (h - 0.98) / 0.02)
+	var fold := (sin(an * 6.0 + 0.4) * 0.075 + sin(an * 11.0 + 1.3) * 0.03) * pow(1.0 - h, 1.3)
+	r *= (1.0 + fold) * grow
+	var back := cos(an - PI * 0.5)    # +z is the back (figure faces -z)
+	var y := h * 0.82
+	if h < 0.01: y += 0.035 - back * 0.02
+	elif h < 0.08: y += (0.035 - back * 0.02) * (1.0 - h / 0.08)
+	return Vector3(cos(an) * r * (1.0 + back * 0.04), y, sin(an) * r * (1.0 + 0.06 * back))
 
 static func _build_cloak() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rings := [0.0, 0.03, 0.07, 0.16, 0.30, 0.46, 0.62, 0.76, 0.86, 0.93, 0.98, 1.0]
+	var rings := [0.0, 0.07, 0.16, 0.30, 0.46, 0.62, 0.76, 0.86, 0.93, 0.98, 1.0]
 	_lathe(st, rings, 22, func(h: float, an: float) -> Array:
-		# profile: wide soft hem, narrowing body, rounded shoulders, closed neck
-		var r: float
-		if h < 0.62: r = lerpf(0.33, 0.21, pow(h / 0.62, 0.8))
-		elif h < 0.86: r = lerpf(0.21, 0.185, (h - 0.62) / 0.24)
-		elif h < 0.98: r = lerpf(0.185, 0.10, pow((h - 0.86) / 0.12, 1.5))
-		else: r = lerpf(0.10, 0.06, (h - 0.98) / 0.02)
-		var fold := (sin(an * 6.0 + 0.4) * 0.075 + sin(an * 11.0 + 1.3) * 0.03) * pow(1.0 - h, 1.3)
-		r *= 1.0 + fold
-		# the back of the cloak hangs a little lower and wider; the front is cut a touch higher
-		var back := cos(an - PI * 0.5)    # +z is the back (figure faces -z)
-		var y := h * 0.82
-		if h < 0.01: y += 0.035 - back * 0.02
-		var pos := Vector3(cos(an) * r * (1.0 + back * 0.04), y, sin(an) * r * (1.0 + 0.06 * back))
 		var col := CLOAK * (0.9 + 0.2 * h)
 		col.a = 0.0
-		if h <= 0.035:
-			col = TRIM
-			col.a = 0.55
-		return [pos, col])
+		return [_cloak_point(h, an), col])
+	# the hem stripe: a thin band just proud of the cloth, softly glowing
+	_lathe(st, [0.024, 0.036, 0.048], 22, func(h: float, an: float) -> Array:
+		var c := STRIPE
+		if h < 0.03 or h > 0.045: c.a = 0.15
+		return [_cloak_point(h, an, 1.012), c])
 	st.generate_normals()
 	return st.commit()
 
@@ -162,28 +193,43 @@ static func _build_hood() -> ArrayMesh:
 		var ry := r * (1.12 + 0.25 * lower * smoothstep(0.3, 0.9, s))   # drapes down onto the shoulders
 		var x := cos(an) * r * 1.0
 		var y := cy + sin(an) * ry
-		# the opening's rim is pulled forward a little at the top (the overhang)
-		if s > 0.9 and sin(an) > 0.3: z -= 0.02
+		if s > 0.9 and sin(an) > 0.3: z -= 0.02                # the overhang
 		var col := HOOD * (0.85 + 0.25 * (1.0 - s))
 		col.a = 0.0
 		return [Vector3(x, y, z), col])
-	# the void inside: a dark disc set back in the opening
-	var c0 := Vector3(0.0, 0.135, -0.075)
-	var segs := 16
-	for i in segs:
-		var a0 := TAU * i / segs
-		var a1 := TAU * (i + 1) / segs
-		var p0 := c0 + Vector3(cos(a0) * 0.135, sin(a0) * 0.16, 0.0)
-		var p1 := c0 + Vector3(cos(a1) * 0.135, sin(a1) * 0.16, 0.0)
-		_tri(st, [c0, VOID], [p1, VOID], [p0, VOID])
-	# two faint eye glints
-	for sx in [-1.0, 1.0]:
-		var e := Vector3(sx * 0.042, 0.145, -0.085)
-		var ec := EYE
-		ec.a = 1.0
-		for i in 8:
-			var a0 := TAU * i / 8.0
-			var a1 := TAU * (i + 1) / 8.0
-			_tri(st, [e, ec], [e + Vector3(cos(a1) * 0.016, sin(a1) * 0.011, -0.001), ec], [e + Vector3(cos(a0) * 0.016, sin(a0) * 0.011, -0.001), ec])
+	# the face: smooth, featureless pale marble (chisel marks in the shader), set back in the hood
+	_lathe(st, [0.0, 0.12, 0.28, 0.45, 0.62, 0.78, 0.9, 1.0], 14, func(h: float, an: float) -> Array:
+		var el := PI * (h - 0.5)
+		var p := Vector3(cos(an) * cos(el) * 0.082, sin(el) * 0.108, sin(an) * cos(el) * 0.072)
+		p.z -= 0.018 * maxf(0.0, -sin(an)) * cos(el)       # a gentle brow-to-chin fullness at the front
+		return [p + Vector3(0.0, 0.14, -0.022), MARBLE], 1.0)
+	st.generate_normals()
+	return st.commit()
+
+static func _build_veil() -> ArrayMesh:
+	## a separate cloth sheet over the whole face, hung from inside the hood's rim
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cols := 9
+	var rows := 7
+	var grid := []
+	for j in rows:
+		var v := float(j) / (rows - 1)            # 0 top (attached), 1 hem of the veil
+		var row := []
+		for i in cols:
+			var u := float(i) / (cols - 1) * 2.0 - 1.0
+			var w := lerpf(0.100, 0.122, v)
+			var x := u * w
+			var y := lerpf(0.25, 0.005, v) - (1.0 - u * u) * 0.010 * v + sin(u * 9.0) * 0.005 * v
+			var fold := sin(u * PI * 3.0 + 0.6) * 0.007 * v
+			var z := -0.128 + u * u * 0.06 * (1.0 - v * 0.35) - v * 0.028 + fold
+			var c := VEIL * (0.86 + 0.16 * (1.0 - v)) * (0.94 + 0.06 * sin(u * PI * 3.0 + 0.6))
+			c.a = 0.0
+			row.append([Vector3(x, y, z), c])
+		grid.append(row)
+	for j in rows - 1:
+		for i in cols - 1:
+			_tri(st, grid[j][i], grid[j + 1][i + 1], grid[j][i + 1])
+			_tri(st, grid[j][i], grid[j + 1][i], grid[j + 1][i + 1])
 	st.generate_normals()
 	return st.commit()

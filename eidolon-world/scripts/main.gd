@@ -4,6 +4,8 @@ extends Node
 ## events -> sound / text, checkpoint saving to user://, and test hooks (web: window.ewCmd / ewState).
 
 const SHRINES_TOTAL := 7
+## hem stripe brightness by number of shrines woken
+const HEM_PER_SHRINE := [1.0, 1.8, 2.4, 2.9, 3.3, 3.6, 3.9, 4.2]
 const SAVE_PATH := "user://eidolon_world.json"
 const MEMORY_LINE := "He carved her a thousand times.\nNone of them would breathe."
 
@@ -117,6 +119,7 @@ func _continue_from_save() -> void:
 	player.crouch = 0.0
 	awake = bool(puzzles.state["shrine"])
 	world.set_awaken(1.0 if awake else 0.0)
+	player.fig.set_hem(HEM_PER_SHRINE[1 if awake else 0])
 	_settle_camera(int(save_data.get("cam", 0)), player.position)
 	mode = "play"
 	controls.enabled = true
@@ -319,6 +322,7 @@ func start_finale() -> void:
 	sfx.play("whoosh", -6.0, 0.5)
 	var tw := create_tween()
 	tw.tween_method(func(v: float) -> void: puzzles.set_shrine_awake(v, v), 0.0, 1.0, 3.0).set_trans(Tween.TRANS_SINE)
+	tw.parallel().tween_method(player.fig.set_hem, HEM_PER_SHRINE[0], HEM_PER_SHRINE[1], 4.0)
 	var t2 := create_tween()
 	t2.tween_interval(1.2)
 	t2.tween_method(world.set_awaken, 0.0, 1.0, 8.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -405,7 +409,8 @@ func state_dict() -> Dictionary:
 		"puzzles": puzzles.state, "beam_lit": puzzles.beam_lit, "busy": puzzles.busy, "auto": auto_target != Vector3.INF,
 		"refl": refl, "gaze": puzzles.hall_mirror.gaze_head, "glimpses": glimpses, "awaken": world.awaken,
 		"fps": Engine.get_frames_per_second(), "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
-		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "speed": player.speed01}
+		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "speed": player.speed01,
+		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled}
 
 func _setup_js() -> void:
 	if not OS.has_feature("web"): return

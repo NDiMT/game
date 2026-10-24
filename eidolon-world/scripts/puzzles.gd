@@ -396,21 +396,29 @@ func turn_mirror(i: int) -> void:
 	var s: Array = state["mirrors"]
 	s[i] = (int(s[i]) + 1) % 4
 	event.emit("mirror_turn", i)
-	var target := mirror_angles[i] + PI * 0.25
-	_turning += 1
+	mirror_goal[i] += PI * 0.25
+	var target := mirror_goal[i]
+	if mirror_tw[i]: mirror_tw[i].kill()
+	else: _turning += 1
 	var tw := create_tween()
+	mirror_tw[i] = tw
 	tw.tween_method(func(v: float) -> void:
 		mirror_angles[i] = v
 		_apply_mirrors(false), mirror_angles[i], target, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func() -> void:
 		_turning -= 1
-		mirror_angles[i] = fmod(target, TAU))
+		mirror_tw[i] = null
+		mirror_angles[i] = target)
 
 var _turning := 0
+var mirror_goal: Array[float] = [0.0, 0.0, 0.0]
+var mirror_tw: Array = [null, null, null]
 
 func _apply_mirrors(snap: bool) -> void:
 	for i in mirrors.size():
-		if snap: mirror_angles[i] = float(state["mirrors"][i]) * PI * 0.25
+		if snap:
+			mirror_angles[i] = float(state["mirrors"][i]) * PI * 0.25
+			mirror_goal[i] = mirror_angles[i]
 		mirrors[i].rotation.y = -mirror_angles[i]
 
 func _trace() -> Array[Vector3]:

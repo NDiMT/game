@@ -5,8 +5,20 @@ uniform float ripple = 0.0;      // fold ripple amplitude while walking
 uniform float phase = 0.0;       // walk phase
 uniform float breath = 0.0;      // -1..1 idle breathing
 uniform float deform = 1.0;      // 0 for rigid parts (the hood)
+uniform float veil = 0.0;        // 1 on the veil: hangs from its top edge, sways with stride + wind
+
+vec3 veil_deform(vec3 v) {
+	float k = clamp((0.25 - v.y) / 0.25, 0.0, 1.0);
+	k = k * k;
+	float wind = sin(TIME * 1.3 + v.x * 7.0) * 0.006 + sin(TIME * 2.9 + v.x * 13.0 + v.y * 5.0) * 0.003;
+	v.z += (sway.y + wind) * k;
+	v.x += sway.x * 0.6 * k + sin(phase * 2.0 + v.y * 6.0) * 0.004 * ripple * k;
+	v.y += abs(sway.y) * 0.25 * k;
+	return v;
+}
 
 vec3 cloak_deform(vec3 v) {
+	if (veil > 0.5) return veil_deform(v);
 	float h = clamp(v.y / 0.82, 0.0, 1.0);
 	float w = (1.0 - h) * (1.0 - h) * deform;
 	float an = atan(v.z, v.x);
