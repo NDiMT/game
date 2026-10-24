@@ -89,6 +89,12 @@ func _init() -> void:
 					band = Vector2(4.0 + s + (sx - 0.300) / 0.03501, u)
 					cuff_n[s] += 1
 		uv2[i] = band
+	var sc_n := 0; var sc_arm := 0.0
+	for i in V.size():
+		var v := V[i]
+		if v.x < -0.10 and v.z < 0.02 and v.y < 0.70 and v.y > 0.1:
+			sc_n += 1; sc_arm += arm_w[1][i]
+	print("scarf-ish verts ", sc_n, " mean right-arm weight ", sc_arm / maxf(sc_n, 1))
 	print("rim verts ", rim_n, " cuffs ", cuff_n)
 	a[Mesh.ARRAY_COLOR] = col
 	a[Mesh.ARRAY_TEX_UV2] = uv2

@@ -564,6 +564,10 @@ func cmd(c: String) -> Variant:
 		"door_close": ui.door_overlay.close()
 		"veil": player.fig.veil.visible = a[1] == "1"
 		"runes": player.fig.set_runes(int(a[1]))
+		"figp":
+			var v := []
+			for k in range(2, a.size()): v.append(float(a[k]))
+			player.fig.tune(a[1], v)
 		"fogd": world.fog_mats[int(a[1])].set_shader_parameter("density", float(a[2]))
 		"envfog": world.env.fog_enabled = a[1] == "1"
 		"rp": puzzles.reflectors[int(a[1])].puppet.set_param(a[2], float(a[3]))

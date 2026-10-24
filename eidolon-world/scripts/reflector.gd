@@ -55,7 +55,7 @@ func setup() -> void:
 	var n := plane_n.normalized()
 	var b := Basis(Vector3(1, 0, 0) - 2.0 * n.x * n, Vector3(0, 1, 0) - 2.0 * n.y * n, Vector3(0, 0, 1) - 2.0 * n.z * n)
 	refl_xf = Transform3D(b, 2.0 * plane_d * n)
-	puppet = Figure.new(ghost_shader)
+	puppet = Figure.new(true)
 	puppet.visible = false
 	add_child(puppet)
 	puppet.set_param("project", 1.0 if project else 0.0)

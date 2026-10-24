@@ -104,6 +104,7 @@ func _animate(dt: float) -> void:
 	p.sway = _sway
 	p.flare = maxf(_flare, -0.05)
 	p.ripple = walk
+	p.walk = walk
 	p.phase = _phase
 	p.breath = sin(t * 1.65) * (1.0 - walk)
 	# idle: the hood drifts to look around, slowly

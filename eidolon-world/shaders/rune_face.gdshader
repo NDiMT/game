@@ -12,7 +12,7 @@ uniform float lit : hint_range(0.0, 1.0) = 0.0;
 uniform float flare = 0.0;
 uniform float numeral = 0.0;
 uniform float mirror = 0.0;
-uniform vec3 carve : source_accent.rgb = vec3(0.16, 0.17, 0.18);
+uniform vec3 carve : source_color = vec3(0.16, 0.17, 0.18);
 
 void fragment() {
 	// quad: x spans the ring, y has extra room below for the numeral

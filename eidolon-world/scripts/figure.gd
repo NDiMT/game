@@ -1,18 +1,21 @@
 class_name Figure
 extends Node3D
-## The small hooded, cloaked figure, built procedurally (low-poly lathes, vertex coloured).
-## Three meshes: the cloak (deformed in the vertex shader: sway, flare, fold ripple, breathing) with a
-## thin faded cyan hem stripe (emissive, brightens as shrines wake: `hem`), the hood with a smooth,
-## featureless pale MARBLE face inside it, and a SEPARATE pale grey cloth VEIL node hanging over the
-## face (sways with walking and wind; a node of its own so it can later lift or fall away).
-## All animation is driven by a Pose, so a reflection puppet copies (or delays, or bends) it exactly.
+## The wanderer (v0.3): the owner's Tripo model (assets/models/wanderer.glb, skinned, ~11k tris),
+## posed and animated procedurally from a Pose, so a reflection puppet copies (or delays, or bends) it.
+##  * rest pose: clavicles and upper arms lowered from the T-pose, forearms bent so the hands rest near
+##    the waist; the forearms are turned about the vertical only, so the big sleeve drapes still hang.
+##  * walk: hip bob and twist, thigh / calf swing, spine counter-rotation, arm sway, the head held
+##    steady; idle: breathing through Spine02 and the clavicles, a slow look around; a lean into turns.
+##  * cloak / scarf secondary motion in the vertex shader (post-skinning; see wanderer.gdshaderinc).
+##  * a petrol hem stripe (rest-height band), dormant rune embroidery at the hood rim and the cuffs.
+##  * a SEPARATE pale cloth VEIL over the marble face, on a BoneAttachment3D of the Head bone.
+## One skinned draw call plus the veil.
+## Bone rotations are specified as GLOBAL deltas in model space (D); each bone's local pose is
+## rest * conj(D_parent^-1 * D), so e.g. the head stays steady whatever the spine does.
 
-const CLOAK := Color(0.105, 0.11, 0.122, 0.0)     # charcoal, almost black, cool
-const HOOD := Color(0.118, 0.123, 0.135, 0.0)
-const STRIPE := Color(0.16, 0.42, 0.45, 0.5)       # faded petrol, emissive (alpha = emission)
-const MARBLE := Color(0.84, 0.83, 0.80, 0.0)
 const VEIL := Color(0.50, 0.505, 0.50, 0.0)
-const NECK_Y := 0.80
+const HEIGHT := 1.12                     # model units (0..1) -> metres
+const FACE := Vector3(-0.004, 0.875, 0.15)
 
 class Pose:
 	var body_y := 0.0
@@ -27,12 +30,13 @@ class Pose:
 	var head_pitch := 0.0
 	var head_roll := 0.0
 	var crouch := 0.0
+	var walk := 0.0
 
 	func copy() -> Pose:
 		var p := Pose.new()
 		p.body_y = body_y; p.lean_x = lean_x; p.lean_z = lean_z; p.sway = sway; p.flare = flare
 		p.ripple = ripple; p.phase = phase; p.breath = breath; p.head_yaw = head_yaw
-		p.head_pitch = head_pitch; p.head_roll = head_roll; p.crouch = crouch
+		p.head_pitch = head_pitch; p.head_roll = head_roll; p.crouch = crouch; p.walk = walk
 		return p
 
 	func blend(o: Pose, t: float) -> Pose:
@@ -41,63 +45,131 @@ class Pose:
 		p.sway = sway.lerp(o.sway, t); p.flare = lerpf(flare, o.flare, t); p.ripple = lerpf(ripple, o.ripple, t)
 		p.phase = lerpf(phase, o.phase, t); p.breath = lerpf(breath, o.breath, t)
 		p.head_yaw = lerp_angle(head_yaw, o.head_yaw, t); p.head_pitch = lerpf(head_pitch, o.head_pitch, t)
-		p.head_roll = lerpf(head_roll, o.head_roll, t); p.crouch = lerpf(crouch, o.crouch, t)
+		p.head_roll = lerpf(head_roll, o.head_roll, t); p.crouch = lerpf(crouch, o.crouch, t); p.walk = lerpf(walk, o.walk, t)
 		return p
 
-static var cloak_mesh: ArrayMesh
-static var hood_mesh: ArrayMesh
+## tunables of the rest pose (model space: the model faces +z, its left is +x)
+static var ARM_DIR := Vector3(0.20, -0.93, 0.22)     # upper arm: down, a little out and forward
+static var FORE_DIR := Vector3(-0.30, -0.22, 0.93)   # forearm: forward and in, toward the waist
+static var ARM_TWIST := 0.0
+static var CLAV_DROP := 0.10
+
 static var veil_mesh: ArrayMesh
+static var body_mesh: ArrayMesh
+static var model: PackedScene
+static var _albedo: Texture2D
+static var _normal: Texture2D
 
 var body: Node3D
-var head: Node3D
+var rig: Node3D
+var sk: Skeleton3D
+var mesh_mi: MeshInstance3D
 var veil: MeshInstance3D
-var cloak_mi: MeshInstance3D
-var hood_mi: MeshInstance3D
 var body_mat: ShaderMaterial
-var head_mat: ShaderMaterial
 var veil_mat: ShaderMaterial
 var pose := Pose.new()
 var hem := 1.0
 var runes_awake := 0
+var bone := {}            # name -> index
+var _rest_l := {}         # index -> Quaternion (local rest)
+var _par_b := {}          # index -> Basis (parent global rest, orthonormal)
+var _drv_par := {}        # driven bone -> nearest driven ancestor (or -1)
+var _arm_q := {}          # side -> [upper arm delta, forearm delta]
+var _tpose := false
+var D := {}               # driven bone index -> global delta Quaternion (this frame)
 
-func _init(ghost_shader: Shader = null) -> void:
-	if cloak_mesh == null:
-		cloak_mesh = _build_cloak()
-		hood_mesh = _build_hood()
+const DRIVEN := ["Hip", "Waist", "Spine01", "Spine02", "Head", "L_Clavicle", "R_Clavicle", "L_Upperarm", "R_Upperarm",
+	"L_Forearm", "R_Forearm", "L_Thigh", "R_Thigh", "L_Calf", "R_Calf", "L_Foot", "R_Foot"]
+
+func _init(ghost := false) -> void:
+	if model == null:
+		model = load("res://assets/models/wanderer.glb")
+		body_mesh = load("res://assets/models/wanderer_mesh.res")
 		veil_mesh = _build_veil()
 	body = Node3D.new()
 	add_child(body)
-	head = Node3D.new()
-	head.position.y = NECK_Y
-	body.add_child(head)
-	var sh: Shader = ghost_shader if ghost_shader else preload("res://shaders/figure.gdshader")
+	rig = model.instantiate()
+	rig.rotation.y = PI
+	rig.scale = Vector3.ONE * HEIGHT
+	body.add_child(rig)
+	sk = rig.find_children("*", "Skeleton3D", true, false)[0]
+	mesh_mi = rig.find_children("*", "MeshInstance3D", true, false)[0]
+	if _albedo == null:
+		var sm := mesh_mi.mesh.surface_get_material(0) as BaseMaterial3D
+		_albedo = sm.albedo_texture
+		_normal = sm.normal_texture
+	mesh_mi.mesh = body_mesh
 	body_mat = ShaderMaterial.new()
-	body_mat.shader = sh
-	head_mat = ShaderMaterial.new()
-	head_mat.shader = sh
-	head_mat.set_shader_parameter("deform", 0.0)
+	body_mat.shader = preload("res://shaders/wanderer_ghost.gdshader") if ghost else preload("res://shaders/wanderer.gdshader")
+	body_mat.set_shader_parameter("albedo_tex", _albedo)
+	body_mat.set_shader_parameter("normal_tex", _normal)
+	mesh_mi.material_override = body_mat
+	for i in sk.get_bone_count():
+		bone[sk.get_bone_name(i)] = i
+		_rest_l[i] = sk.get_bone_rest(i).basis.get_rotation_quaternion()
+		var p := sk.get_bone_parent(i)
+		_par_b[i] = sk.get_bone_global_rest(p).basis.orthonormalized() if p >= 0 else Basis()
+	for nm in DRIVEN:
+		var i: int = bone[nm]
+		var p := sk.get_bone_parent(i)
+		while p >= 0 and not DRIVEN.has(sk.get_bone_name(p)): p = sk.get_bone_parent(p)
+		_drv_par[i] = p
+	_build_arm_rest()
+	# the veil hangs over the marble face, carried by the head bone
+	var att := BoneAttachment3D.new()
+	sk.add_child(att)
+	att.bone_name = "Head"
 	veil_mat = ShaderMaterial.new()
-	veil_mat.shader = sh
+	veil_mat.shader = preload("res://shaders/ghost.gdshader") if ghost else preload("res://shaders/figure.gdshader")
 	veil_mat.set_shader_parameter("deform", 0.0)
 	veil_mat.set_shader_parameter("veil", 1.0)
-	cloak_mi = MeshInstance3D.new()
-	cloak_mi.mesh = cloak_mesh
-	cloak_mi.material_override = body_mat
-	body.add_child(cloak_mi)
-	hood_mi = MeshInstance3D.new()
-	hood_mi.mesh = hood_mesh
-	hood_mi.material_override = head_mat
-	head.add_child(hood_mi)
 	veil = MeshInstance3D.new()
 	veil.name = "Veil"
 	veil.mesh = veil_mesh
 	veil.material_override = veil_mat
-	head.add_child(veil)
-	if ghost_shader:
-		for mi in [cloak_mi, hood_mi, veil]: mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var head_rest := sk.get_bone_global_rest(bone["Head"])
+	# the procedural veil was made for a face centred at (0, 0.14, -0.022), facing -z
+	var vx := Transform3D(Basis(Vector3.UP, PI).scaled(Vector3.ONE * 0.5), FACE - Basis(Vector3.UP, PI) * Vector3(0, 0.14, -0.022) * 0.5 + Vector3(0, 0, 0.026))
+	veil.transform = head_rest.affine_inverse() * vx
+	att.add_child(veil)
+	if ghost:
+		mesh_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		veil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	apply_pose(pose)
+
+func _gpos(nm: String) -> Vector3:
+	return sk.get_bone_global_rest(bone[nm]).origin
+
+func _build_arm_rest() -> void:
+	for s in ["L", "R"]:
+		var m := Vector3(1, 1, 1) if s == "L" else Vector3(-1, 1, 1)
+		var d0 := (_gpos(s + "_Forearm") - _gpos(s + "_Upperarm")).normalized()
+		var d1 := (_gpos(s + "_Hand") - _gpos(s + "_Forearm")).normalized()
+		var t0 := (ARM_DIR * m).normalized()
+		var t1 := (FORE_DIR * m).normalized()
+		var qa := _arc(d0, t0)
+		qa = Quaternion(t0, ARM_TWIST * m.x) * qa
+		var qf := _arc(d1, t1)
+		_arm_q[s] = [qa, qf]
+
+## dev: retune the rest pose live ("figp:ARM_DIR:x:y:z" etc. from the test hooks)
+func tune(nm: String, v: Array) -> void:
+	match nm:
+		"ARM_DIR": ARM_DIR = Vector3(v[0], v[1], v[2])
+		"FORE_DIR": FORE_DIR = Vector3(v[0], v[1], v[2])
+		"ARM_TWIST": ARM_TWIST = v[0]
+		"CLAV_DROP": CLAV_DROP = v[0]
+		"tpose": _tpose = v[0] > 0.5
+	_build_arm_rest()
+	apply_pose(pose)
+
+static func _arc(a: Vector3, b: Vector3) -> Quaternion:
+	var ax := a.cross(b)
+	if ax.length() < 1e-5: return Quaternion()
+	return Quaternion(ax.normalized(), a.angle_to(b))
 
 func mats() -> Array[ShaderMaterial]:
-	return [body_mat, head_mat, veil_mat]
+	return [body_mat, veil_mat]
 
 func set_param(n: String, val: Variant) -> void:
 	for m in mats(): m.set_shader_parameter(n, val)
@@ -112,152 +184,66 @@ func set_runes(n: int) -> void:
 	runes_awake = n
 	set_param("runes_awake", float(n))
 
+static func _rx(a: float) -> Quaternion: return Quaternion(Vector3.RIGHT, a)
+static func _ry(a: float) -> Quaternion: return Quaternion(Vector3.UP, a)
+static func _rz(a: float) -> Quaternion: return Quaternion(Vector3.BACK, a)
+
 func apply_pose(p: Pose) -> void:
 	pose = p
 	var c := p.crouch
-	body.position.y = p.body_y - 0.16 * c
-	body.rotation = Vector3(p.lean_x - 0.42 * c, 0.0, p.lean_z)
-	body.scale = Vector3(1.0 + 0.10 * c, 1.0 - 0.22 * c, 1.0 + 0.10 * c)
-	head.rotation = Vector3(p.head_pitch - 0.55 * c, p.head_yaw, p.head_roll)
+	var w := p.walk
+	var s := sin(p.phase)
+	var s2 := cos(p.phase)
+	body.position.y = p.body_y - 0.10 * c
+	body.rotation = Vector3(p.lean_x - 0.30 * c, 0.0, p.lean_z)
+	# model space: forward +z; a forward pitch of an upward bone is +x rotation, of a hanging bone -x
+	var hip := _ry(0.10 * s * w) * _rz(0.035 * s2 * w)
+	D[bone["Hip"]] = hip
+	var brth := p.breath
+	D[bone["Waist"]] = _ry(-0.04 * s * w) * _rx(0.05 * w + 0.25 * c)
+	D[bone["Spine01"]] = _ry(-0.10 * s * w) * _rx(0.06 * w + 0.3 * c)
+	D[bone["Spine02"]] = _ry(-0.17 * s * w) * _rx(0.05 * w + 0.35 * c - 0.025 * brth) * _rz(-0.02 * s2 * w)
+	# the head held steady (global), looking around / tilting from the pose
+	D[bone["Head"]] = _ry(p.head_yaw) * _rx(-p.head_pitch + 0.10 * c + 0.06 * w) * _rz(-p.head_roll)
+	var sp := D[bone["Spine02"]] as Quaternion
+	for side in ["L", "R"]:
+		var sg := 1.0 if side == "L" else -1.0
+		var leg := s * sg          # L leg forward when s > 0
+		D[bone[side + "_Clavicle"]] = sp * _rz(-sg * (CLAV_DROP - 0.03 * brth))
+		var arm_swing := -leg * 0.22 * w            # arms opposite the legs
+		var q: Array = _arm_q[side]
+		D[bone[side + "_Upperarm"]] = sp * _rx(-arm_swing) * (q[0] as Quaternion)
+		D[bone[side + "_Forearm"]] = sp * _rx(-arm_swing * 0.6) * _ry(0.0) * (q[1] as Quaternion)
+		var thigh := 0.36 * leg * w
+		var knee := maxf(0.0, -sg * s2) * 0.55 * w + 0.12 * w
+		D[bone[side + "_Thigh"]] = hip * _rx(-thigh - 0.5 * c)
+		D[bone[side + "_Calf"]] = hip * _rx(-thigh + knee + 0.8 * c)
+		D[bone[side + "_Foot"]] = hip * _rx(-thigh * 0.4)
+	if _tpose:
+		for nm in DRIVEN: D[bone[nm]] = Quaternion()
+	for nm in DRIVEN:
+		var i: int = bone[nm]
+		var pi: int = _drv_par[i]
+		var dp: Quaternion = D[pi] if pi >= 0 else Quaternion()
+		var rel: Quaternion = dp.inverse() * (D[i] as Quaternion)
+		var pb: Basis = _par_b[i]
+		var loc := Quaternion(pb.inverse() * Basis(rel) * pb) * (_rest_l[i] as Quaternion)
+		sk.set_bone_pose_rotation(i, loc)
 	body_mat.set_shader_parameter("sway", p.sway)
 	body_mat.set_shader_parameter("flare", p.flare)
 	body_mat.set_shader_parameter("ripple", p.ripple)
 	body_mat.set_shader_parameter("phase", p.phase)
-	body_mat.set_shader_parameter("breath", p.breath)
 	# the veil streams back a little with the walk and lifts with the stride
 	veil_mat.set_shader_parameter("sway", p.sway * 1.6 + Vector2(0.0, p.ripple * 0.035))
 	veil_mat.set_shader_parameter("phase", p.phase)
 	veil_mat.set_shader_parameter("ripple", p.ripple)
 
-# ------------------------------------------------------------------ meshes
-## SurfaceTool vertices carry COLOR (rgb albedo, a = emission) and UV.x = material (0 cloth, 1 marble).
-static func _lathe(st: SurfaceTool, rings: Array, segs: int, profile: Callable, mat := 0.0) -> void:
-	var grid := []
-	for h in rings:
-		var row := []
-		for s in segs + 1:
-			var an := TAU * float(s) / segs
-			row.append(profile.call(float(h), an))
-		grid.append(row)
-	for j in rings.size() - 1:
-		for s in segs:
-			var a: Array = grid[j][s]; var b: Array = grid[j][s + 1]
-			var cc: Array = grid[j + 1][s + 1]; var d: Array = grid[j + 1][s]
-			_tri(st, a, cc, b, mat)
-			_tri(st, a, d, cc, mat)
-
+# ------------------------------------------------------------------ the veil
 static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array, mat := 0.0) -> void:
 	for p in [a, b, c]:
 		st.set_color(p[1])
 		st.set_uv(p[2] if p.size() > 2 else Vector2(mat, 0.0))
 		st.add_vertex(p[0])
-
-static func _cloak_point(h: float, an: float, grow := 1.0) -> Vector3:
-	# profile: wide soft hem, narrowing body, rounded shoulders, closed neck
-	var r: float
-	if h < 0.62: r = lerpf(0.33, 0.21, pow(h / 0.62, 0.8))
-	elif h < 0.86: r = lerpf(0.21, 0.185, (h - 0.62) / 0.24)
-	elif h < 0.98: r = lerpf(0.185, 0.10, pow((h - 0.86) / 0.12, 1.5))
-	else: r = lerpf(0.10, 0.06, (h - 0.98) / 0.02)
-	var fold := (sin(an * 6.0 + 0.4) * 0.075 + sin(an * 11.0 + 1.3) * 0.03) * pow(1.0 - h, 1.3)
-	r *= (1.0 + fold) * grow
-	var back := cos(an - PI * 0.5)    # +z is the back (figure faces -z)
-	var y := h * 0.82
-	if h < 0.01: y += 0.035 - back * 0.02
-	elif h < 0.08: y += (0.035 - back * 0.02) * (1.0 - h / 0.08)
-	return Vector3(cos(an) * r * (1.0 + back * 0.04), y, sin(an) * r * (1.0 + 0.06 * back))
-
-static func _build_cloak() -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rings := [0.0, 0.07, 0.16, 0.30, 0.46, 0.62, 0.76, 0.86, 0.93, 0.98, 1.0]
-	_lathe(st, rings, 22, func(h: float, an: float) -> Array:
-		var col := CLOAK * (0.9 + 0.2 * h)
-		col.a = 0.0
-		return [_cloak_point(h, an), col])
-	# the hem stripe: a thin band just proud of the cloth, softly glowing
-	_lathe(st, [0.024, 0.036, 0.048], 22, func(h: float, an: float) -> Array:
-		var c := STRIPE
-		if h < 0.03 or h > 0.045: c.a = 0.15
-		return [_cloak_point(h, an, 1.012), c])
-	# dormant rune embroidery just above the stripe (band 2)
-	_lathe(st, [0.055, 0.0825, 0.11], 44, func(h: float, an: float) -> Array:
-		return [_cloak_point(h, an, 1.008), CLOAK, Vector2(2.0 + (h - 0.055) / 0.0551, an / TAU)])
-	# sleeves hanging at the sides, open cuffs embroidered (bands 4 and 5)
-	for side in [-1.0, 1.0]:
-		var band := 4.0 if side < 0.0 else 5.0
-		var sl := func(h: float, an: float, grow: float) -> Vector3:
-			var A := Vector3(side * 0.150, 0.67, -0.012)
-			var B := Vector3(side * 0.212, 0.37, -0.078)
-			var d := B - A
-			var e1 := d.cross(Vector3.BACK).normalized()
-			var e2 := d.cross(e1).normalized()
-			if e2.z < 0.0: e2 = -e2
-			var r := lerpf(0.042, 0.066, h) * grow
-			return A + d * h + (e1 * cos(an) + e2 * sin(an)) * r
-		_lathe(st, [0.0, 0.3, 0.6, 0.86, 1.0], 12, func(h: float, an: float) -> Array:
-			return [sl.call(h, an, 1.0), CLOAK * (0.95 + 0.1 * h)], 6.0 if side < 0.0 else 7.0)
-		_lathe(st, [0.86, 0.93, 1.0], 24, func(h: float, an: float) -> Array:
-			return [sl.call(h, an, 1.025), CLOAK, Vector2(band + (h - 0.86) / 0.1401, an / TAU)])
-	# torn strips trailing from the back of the cloak (they flutter more than the cloth: UV.x = 8)
-	for k in 3:
-		var an := PI * 0.5 + (k - 1) * 0.42 + 0.05
-		var h0 := 0.42 - k * 0.06
-		var segs := 7
-		var wdt := 0.034 - k * 0.004
-		var prev_l := Vector3.ZERO
-		var prev_r := Vector3.ZERO
-		for j in segs + 1:
-			var f := float(j) / segs
-			var h := lerpf(h0, 0.02, f)
-			var c := _cloak_point(h, an, 1.035 + f * 0.05)
-			var tang := Vector3(-sin(an), 0, cos(an))
-			var l := c - tang * wdt * (1.0 - f * 0.4) + Vector3(0, 0, 0)
-			var r := c + tang * wdt * (1.0 - f * 0.6)
-			if j > 0:
-				var u0 := Vector2(8.0 + k * 0.1, f - 1.0 / segs)
-				var u1 := Vector2(8.0 + k * 0.1, f)
-				var col := CLOAK * 1.05
-				_tri(st, [prev_l, col, u0], [l, col, u1], [r, col, u1])
-				_tri(st, [prev_l, col, u0], [r, col, u1], [prev_r, col, u0])
-			prev_l = l
-			prev_r = r
-	st.generate_normals()
-	return st.commit()
-
-static func _hood_point(s: float, an: float, grow: float) -> Vector3:
-	var r: float
-	if s < 0.35: r = lerpf(0.0, 0.15, sqrt(s / 0.35))
-	elif s < 0.8: r = lerpf(0.15, 0.162, (s - 0.35) / 0.45)
-	else: r = lerpf(0.162, 0.135, (s - 0.8) / 0.2)
-	r *= grow
-	var z := 0.20 - s * 0.36
-	var cy := 0.15 + pow(1.0 - s, 2.0) * 0.12           # the peak rises behind
-	var lower := 1.0 if sin(an) < 0.0 else 0.0
-	var ry := r * (1.12 + 0.25 * lower * smoothstep(0.3, 0.9, s))   # drapes down onto the shoulders
-	var y := cy + sin(an) * ry
-	if s > 0.9 and sin(an) > 0.3: z -= 0.02 * clampf((s - 0.9) / 0.07, 0.0, 1.0)   # the overhang
-	return Vector3(cos(an) * r, y, z)
-
-static func _build_hood() -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# hood shell: a lathe along -z (s = 0 at the peak behind the head, 1 at the face opening)
-	var rings := [0.0, 0.08, 0.2, 0.35, 0.52, 0.68, 0.82, 0.86, 0.93, 0.97, 1.0]
-	_lathe(st, rings, 18, func(s: float, an: float) -> Array:
-		var col := HOOD * (0.85 + 0.25 * (1.0 - s))
-		col.a = 0.0
-		return [_hood_point(s, an, 1.0), col])
-	_lathe(st, [0.86, 0.915, 0.97], 40, func(s: float, an: float) -> Array:
-		return [_hood_point(s, an, 1.014), HOOD * 0.95, Vector2(3.0 + (s - 0.86) / 0.1101, an / TAU)])
-	# the face: smooth, featureless pale marble (chisel marks in the shader), set back in the hood
-	_lathe(st, [0.0, 0.12, 0.28, 0.45, 0.62, 0.78, 0.9, 1.0], 14, func(h: float, an: float) -> Array:
-		var el := PI * (h - 0.5)
-		var p := Vector3(cos(an) * cos(el) * 0.082, sin(el) * 0.108, sin(an) * cos(el) * 0.072)
-		p.z -= 0.018 * maxf(0.0, -sin(an)) * cos(el)       # a gentle brow-to-chin fullness at the front
-		return [p + Vector3(0.0, 0.14, -0.022), MARBLE], 1.0)
-	st.generate_normals()
-	return st.commit()
 
 static func _build_veil() -> ArrayMesh:
 	## a separate cloth sheet over the whole face, hung from inside the hood's rim
