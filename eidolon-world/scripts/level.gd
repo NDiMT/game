@@ -840,9 +840,9 @@ func _commit() -> void:
 	_cloth_mm()
 	_vines()
 	_godrays()
-	_multimesh("Columns", _column_mesh(), col_full, true)
-	_multimesh("Stumps", _stump_mesh(), col_stump, true)
-	_multimesh("Debris", _debris_mesh(), debris, true)
+	_multimesh("Columns", _column_mesh(), col_full)
+	_multimesh("Stumps", _stump_mesh(), col_stump)
+	_multimesh("Debris", _debris_mesh(), debris)
 
 func _decal_mm(nm: String, xfs: Array[Transform3D], edge: float, strength: float) -> void:
 	var pm := PlaneMesh.new()

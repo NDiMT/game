@@ -272,7 +272,7 @@ func _plan() -> void:
 		ok("the shrine leaves its light on", float(game.puzzles.shrine_pillar.get_shader_parameter("fade")) > 0.5)
 		ok("milestone text names the space", game.ui.end_a.text == "The Veiled Gate — awakened", game.ui.end_a.text)
 		ok("milestone, not an ending: still playable", game.mode == "play" and not game.player.locked)
-		ok("fog density animated down", game.world.env.fog_depth_end > World.DIST + 50.0 and game.world.fog_mats[2].get_shader_parameter("clear") > 0.99)
+		ok("fog density animated down", game.world.env.fog_depth_end > World.DIST + 50.0 and game.world.fog_mats[World.VEIL].get_shader_parameter("clear") > 0.99)
 		ok("music swelled", game.sfx.played.get("swell", 0) >= 1))
 
 	# ---- cannot fall: random walks in every space (doors, bridges open now) + edge pushes
