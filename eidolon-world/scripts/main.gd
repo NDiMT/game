@@ -333,6 +333,8 @@ func _process(dt: float) -> void:
 		if _skip_t >= 1.1 and cine:
 			_skip_t = 0.0
 			_skip_hold = false
+			sfx.stop_cue("cinematic_hand", 1.2)
+			sfx.stop_cue("shrine_awaken", 1.2)
 			cine.skip()
 	if mode == "play": _update_focus()
 	else: controls.show_interact("")
@@ -392,7 +394,9 @@ func _update_focus() -> void:
 	controls.show_interact(best.icon if best else "")
 
 const EXPOSED := ["stub", "b1", "HG", "LB", "E", "EB", "sealed_way"]
-const AREA_WIND := {"gate": 0.35, "hall": 0.12, "garden": 0.3, "court": 0.4, "shrine": 0.6}
+const AREA_WIND := {"waking_pool": 0.35, "stair_breath": 0.6, "hall_glass": 0.12, "shard_gallery": 0.1, "garden_veiled": 0.3,
+	"hollow_walk": 0.25, "court_light": 0.4, "mist_maze": 0.15, "echo_corridor": 0.1, "scales": 0.45, "eidolon_ledge": 0.6,
+	"gate_four": 0.5, "first_shrine": 0.4}
 
 func _surface() -> String:
 	var q := Vector2(player.position.x, player.position.z)
@@ -405,13 +409,9 @@ func _surface() -> String:
 func _update_air() -> void:
 	var q := Vector2(player.position.x, player.position.z)
 	var g := level.region_at(q)
-	var w: float = AREA_WIND.get(Sfx.FALLBACK_ROOM.get(area, area), 0.35)
-	if area in ["mist_maze", "echo_corridor", "shard_gallery"]: w = 0.15
-	if g and g.name in EXPOSED: w = 0.95
+	var w: float = AREA_WIND.get(area, 0.35)
+	if g and (g.name in EXPOSED or g.name.begins_with("stone") or g.name == "WK"): w = 0.95
 	sfx.set_wind(w * (0.7 if awake else 1.0))
-	var pool := Level.R(-9.6, -0.2, -0.6, 3.6)
-	var cq := Vector2(clampf(q.x, pool.position.x, pool.end.x), clampf(q.y, pool.position.y, pool.end.y))
-	sfx.set_water(clampf(1.0 - cq.distance_to(q) / 6.0, 0.0, 1.0))
 
 func _update_area() -> void:
 	var g := level.region_at(Vector2(player.position.x, player.position.z))
@@ -507,8 +507,7 @@ func _on_event(name: String, data: Variant) -> void:
 		"plate_touch":
 			sfx.play("chime_hall", -20.0, 0.75)
 		"plate_glow":
-			sfx.resolve(-3)
-			sfx.play("bell", -12.0, 0.75)
+			sfx.cue("solve_eidolon_ledge")
 		"bridge_rise":
 			bridge_focus = 5.0
 			sfx.play("door", -1.0, 0.8)
@@ -589,13 +588,12 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 		"solve":
 			chapter.progress()
 			sfx.cue("solve_" + str(data))
-			if data == "gate_four": sfx.chord([0, 7, 12], -8.0)
 			_save()
 		"breath": sfx.cue("breath")
 		"writing": sfx.play("glass_tink", -24.0, 0.8)
 		"touch_glass": sfx.cue("touch_glass")
 		"shard":
-			sfx.play("glass", -14.0, 1.3)
+			sfx.play("shard", 0.0, 1.0)
 			_save()
 		"lens": sfx.play("glass_tink", -20.0, 1.25 if data else 0.85)
 		"statue_turn": sfx.cue("statue_turn")
@@ -603,7 +601,7 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 		"door_real":
 			sfx.play("door", -3.0, 0.9)
 			world.shake(0.3)
-		"hollow_step": sfx.play("grind", -21.0, 0.62)
+		"hollow_step": sfx.play("hollow", 0.0, 1.0)
 		"hollow_lock":
 			sfx.play("thud", -10.0, 0.7)
 			chapter.progress()
@@ -612,7 +610,7 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 			ui.show_memory(Chapter.MEMORY_1, 4.0)
 			sfx.cue("glimpse")
 			_save()
-		"scale_groan": sfx.play("rattle", -22.0, 0.55)
+		"scale_groan": sfx.play("creak", 0.0, 1.0)
 		"hint": sfx.play("glass_tink", -30.0, 1.4)
 
 # ------------------------------------------------------------------ jump (tests, screenshots)
@@ -780,7 +778,10 @@ func cmd(c: String) -> Variant:
 		"save": _save()
 		"finale": start_finale()
 		"jump": jump(a[1])
-		"skip": if cine: cine.skip()
+		"skip":
+			if cine:
+				sfx.stop_cue("cinematic_hand", 1.2)
+				cine.skip()
 		"lens": chapter.set_lens(a[1] == "1")
 		"hintnow":
 			var tg := chapter.hint_target(area)

@@ -1388,7 +1388,11 @@ func _place(f: Figure, xf: Transform3D, p: Figure.Pose) -> void:
 	f.global_transform = _refl_pool * xf
 	f.apply_pose(p)
 
-## build the scene on a fresh Cinematic (main.gd plays it after the shrine wakes)
+## build the scene on a fresh Cinematic (main.gd plays it after the shrine wakes). Timed to the score
+## (manifest doc, cinematic_hand, 59 s, started at P): 0-8 near silence; 8-16 strings as she steps
+## closer; 16.5 the hands touch; 23-30 her voice; 30-37.6 the veil lifts (swell); 37.6 the whisper =
+## silence; 41-59 she walks into the fog, unresolved. Before it, P s of awakening (shrine_awaken).
+const CINE_P := 4.5
 func hand_in_the_water(c: Cinematic) -> void:
 	_refl_pool = Transform3D(Basis(Vector3.RIGHT, Vector3.DOWN, Vector3.BACK), Vector3(0, 2.0 * POOL_C.y, 0))
 	if her == null:
@@ -1400,6 +1404,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 	var pl := game.player
 	var w := game.world
 	var g := game
+	var P := CINE_P
 	var start_pos := pl.position
 	var start_yaw := pl.yaw
 	var yaw_n := 0.0                                      # facing the pool (north)
@@ -1408,45 +1413,48 @@ func hand_in_the_water(c: Cinematic) -> void:
 	var hp := her_pose
 	var look := POOL_C + Vector3(0, 0.25, 0.45)
 	var cam_yaw := PI                                      # from beyond the pool, looking back at you
-	# -- 0  the shrine wakes; you step to the water's edge
+	# -- prelude: the shrine wakes; you step to the water's edge
 	c.at(0.0, func() -> void:
 		her.visible = true
 		her.set_hem(pl.fig.hem * 1.25)
 		her.set_runes(0)
 		her.set_veil_lift(0.0)
+		her.set_param("vis", 0.0)
 		mine.visible = false
 		g.ui.hide_text())
-	c.anim(0.0, 1.6, func(k: float) -> void: g.ui.set_letterbox(k))
+	c.audio(0.0, "shrine_awaken")
+	c.anim(0.0, 2.0, func(k: float) -> void: g.sfx.set_duck(k))
 	c.anim(0.0, 1.8, func(k: float) -> void:
 		pl.position = start_pos.lerp(STAND, k)
 		pl.yaw = lerp_angle(start_yaw, yaw_n, k)
 		pl.fig.rotation.y = pl.yaw)
-	c.audio(0.2, "shrine_awaken")
-	c.anim(0.4, 3.2, func(k: float) -> void: puzzles.set_shrine_awake(k, k))
-	c.anim(0.4, 4.0, func(k: float) -> void: pl.fig.set_hem(lerpf(Game.HEM_PER_SHRINE[0], Game.HEM_PER_SHRINE[1], k)))
-	c.cam(0.3, 4.5, POOL_C + Vector3(0, 1.0, 0.6), -PI * 0.25, -deg_to_rad(40.0), 6.2)
-	# -- 5  the camera comes round behind the pool and looks down into it: she mimics you
-	c.cam(5.0, 5.0, look, cam_yaw, -deg_to_rad(60.0), 3.6)
-	c.anim(4.0, 6.5, func(_k: float) -> void:
+	c.anim(0.3, 3.4, func(k: float) -> void: puzzles.set_shrine_awake(k, k))
+	c.anim(0.3, 4.0, func(k: float) -> void: pl.fig.set_hem(lerpf(Game.HEM_PER_SHRINE[0], Game.HEM_PER_SHRINE[1], k)))
+	c.cam(0.3, 4.2, POOL_C + Vector3(0, 1.0, 0.6), -PI * 0.25, -deg_to_rad(40.0), 6.2)
+	# -- 0 (P): the music begins in near silence; the letterbox closes, the camera comes round
+	c.audio(P, "cinematic_hand")
+	c.anim(P - 0.5, 1.8, func(k: float) -> void: g.ui.set_letterbox(k))
+	c.cam(P, 4.5, look, cam_yaw, -deg_to_rad(60.0), 3.6)
+	c.anim(P, 7.0, func(_k: float) -> void:
 		her_xf = Transform3D(Basis(Vector3.UP, pl.yaw), pl.position)
 		var p2 := pl.fig.pose.copy()
 		her_pose = p2
 		_place(her, her_xf, p2), 0)
-	c.anim(4.0, 2.0, func(k: float) -> void: her.set_param("vis", k * 0.85))
-	c.anim(7.5, 2.0, func(k: float) -> void: pl.head_pitch_add = 0.32 * k)
-	# -- 11  she stops mimicking you: you turn your head; she does not
-	c.audio(10.8, "glimpse")
-	c.anim(10.5, 1.4, func(k: float) -> void:
+	c.anim(P + 0.5, 2.5, func(k: float) -> void: her.set_param("vis", k * 0.85))
+	c.anim(P + 2.5, 2.0, func(k: float) -> void: pl.head_pitch_add = 0.32 * k)
+	# -- 7: she stops mimicking you: you glance aside; she does not
+	c.audio(P + 6.6, "glimpse")
+	c.anim(P + 6.5, 1.4, func(k: float) -> void: pl.head_yaw_add = 0.3 * k)
+	c.anim(P + 7.0, 1.0, func(k: float) -> void:
 		var p3 := pl.fig.pose.copy()
-		p3.head_yaw -= 0.3 * k                             # (you looked aside; her head stays on you)
+		p3.head_yaw -= 0.3                                 # her head stays on you
 		her_pose = p3
 		_place(her, her_xf, p3))
-	c.anim(10.5, 1.4, func(k: float) -> void: pl.head_yaw_add = 0.3 * k)
-	c.anim(14.0, 1.6, func(k: float) -> void: pl.head_yaw_add = 0.3 * (1.0 - k))
-	# -- 12.5  she steps closer, kneels, and lays her palm on the water from below
+	c.anim(P + 9.0, 1.4, func(k: float) -> void: pl.head_yaw_add = 0.3 * (1.0 - k))
+	# -- 8-16: the strings: she steps closer, kneels, lays her palm on the water from below
 	var her_from := STAND
 	var her_to := STAND + Vector3(0.0, 0.0, -0.42)
-	c.anim(12.5, 2.6, func(k: float) -> void:
+	c.anim(P + 8.0, 2.6, func(k: float) -> void:
 		var p4 := her_pose.copy()
 		p4.head_yaw = lerpf(p4.head_yaw, 0.0, k)
 		p4.phase = k * TAU
@@ -1455,8 +1463,8 @@ func hand_in_the_water(c: Cinematic) -> void:
 		her_pose = p4
 		her_xf = Transform3D(Basis(Vector3.UP, yaw_n), her_from.lerp(her_to, k))
 		_place(her, her_xf, p4))
-	c.audio(12.6, "cloth")
-	c.anim(15.2, 2.2, func(k: float) -> void:
+	c.audio(P + 8.1, "cloth")
+	c.anim(P + 10.8, 2.4, func(k: float) -> void:
 		var p5 := her_pose.copy()
 		p5.crouch = 0.55 * k
 		p5.lean_x = -0.25 * k
@@ -1465,50 +1473,48 @@ func hand_in_the_water(c: Cinematic) -> void:
 		p5.breath = 0.0
 		_place(her, her_xf, p5)
 		hp.crouch = p5.crouch; hp.lean_x = p5.lean_x; hp.head_pitch = p5.head_pitch; hp.reach = p5.reach)
-	c.at(15.2, func() -> void: her_pose = hp)
-	# -- 18  you hesitate... then answer: your palm to hers
-	c.anim(17.8, 2.4, func(k: float) -> void:
+	c.at(P + 10.8, func() -> void: her_pose = hp)
+	# you hesitate... then answer: your palm to hers
+	c.anim(P + 12.0, 2.2, func(k: float) -> void:
 		pl.crouch = 0.55 * k
 		pl.head_pitch_add = lerpf(0.32, 0.45, k))
-	c.anim(20.4, 1.0, func(k: float) -> void: pl.extra_reach = 0.45 * k)
-	c.anim(22.2, 1.3, func(k: float) -> void: pl.extra_reach = lerpf(0.45, 1.0, k))
-	# -- 23.5  touch: a ring spreads; Katoptron lights on you both
-	c.audio(23.5, "cinematic_hand")
-	c.anim(23.5, 5.0, func(k: float) -> void:
+	c.anim(P + 14.2, 0.8, func(k: float) -> void: pl.extra_reach = 0.45 * k)
+	c.anim(P + 15.4, 1.1, func(k: float) -> void: pl.extra_reach = lerpf(0.45, 1.0, k))
+	# -- 16.5: touch: a ring spreads through the water; Katoptron lights on you both
+	c.anim(P + 16.5, 5.0, func(k: float) -> void:
 		puzzles_ring(k * 5.0)
 		touch_glow.set_shader_parameter("intensity", sin(minf(k * 3.0, 1.0) * PI * 0.5) * (1.0 - k) * 1.2), 0)
-	c.at(23.7, func() -> void:
+	c.at(P + 16.7, func() -> void:
 		pl.fig.set_runes(1)
 		her.set_runes(1))
-	c.anim(23.7, 2.5, func(k: float) -> void:
+	c.anim(P + 16.7, 2.5, func(k: float) -> void:
 		var f := 1.0 + sin(k * PI) * 2.5
 		pl.fig.set_param("glint", Game.HEM_PER_SHRINE[1] * f)
 		her.set_param("glint", Game.HEM_PER_SHRINE[1] * 1.25 * f))
-	# -- 27  her veil lifts: under it, the same unfinished marble face as yours
-	c.cam(26.0, 4.0, POOL_C + Vector3(0, 0.1, 0.05), cam_yaw, -deg_to_rad(64.0), 2.4)
-	c.anim(27.0, 2.6, func(k: float) -> void: her.set_veil_lift(k))
-	c.audio(27.0, "breath")
-	# -- 30.5  her lips, that are not there, whisper something, without a sound
-	c.anim(30.5, 2.6, func(k: float) -> void:
+	# -- 23-30: her voice sings the motif; the camera draws in, slowly
+	c.cam(P + 22.0, 7.5, POOL_C + Vector3(0, 0.1, 0.05), cam_yaw, -deg_to_rad(64.0), 2.4)
+	# -- 30-37.6: her veil lifts: under it, the same unfinished marble face as yours
+	c.anim(P + 30.0, 3.2, func(k: float) -> void: her.set_veil_lift(k))
+	# -- 37.6: the whisper: her lips, that are not there, say something; the music stops
+	c.anim(P + 37.6, 2.8, func(k: float) -> void:
 		whisper_glow.set_shader_parameter("intensity", sin(k * PI) * (0.35 + 0.15 * sin(k * TAU * 3.0))))
-	c.anim(33.6, 1.5, func(k: float) -> void: her.set_veil_lift(1.0 - k))
-	# -- 35  she rises, turns, and walks away into the world of reflections
-	c.anim(35.0, 1.8, func(k: float) -> void:
+	c.anim(P + 40.0, 1.4, func(k: float) -> void: her.set_veil_lift(1.0 - k))
+	# -- 41-59: she rises, turns, and walks away into the world of reflections
+	c.anim(P + 41.0, 1.8, func(k: float) -> void:
 		var p6 := hp.copy()
 		p6.crouch = 0.55 * (1.0 - k)
 		p6.lean_x = -0.25 * (1.0 - k)
 		p6.reach = 1.0 - k
 		p6.head_pitch = 0.3 * (1.0 - k)
 		_place(her, her_xf, p6))
-	c.anim(35.4, 1.6, func(k: float) -> void:
+	c.anim(P + 41.2, 1.6, func(k: float) -> void:
 		pl.extra_reach = 1.0 - k
 		pl.head_pitch_add = lerpf(0.45, 0.25, k))
-	c.anim(36.8, 1.2, func(k: float) -> void:
+	c.anim(P + 42.8, 1.2, func(k: float) -> void:
 		var p7 := Figure.Pose.new()
 		her_xf = Transform3D(Basis(Vector3.UP, yaw_n + PI * k), her_to)
 		_place(her, her_xf, p7))
-	c.audio(37.0, "footsteps_water")
-	c.anim(38.0, 5.0, func(k: float) -> void:
+	c.anim(P + 44.0, 5.0, func(k: float) -> void:
 		var p8 := Figure.Pose.new()
 		p8.phase = k * 5.0 * 6.0
 		p8.ripple = 0.8
@@ -1517,32 +1523,36 @@ func hand_in_the_water(c: Cinematic) -> void:
 		her_xf = Transform3D(Basis(Vector3.UP, yaw_n + PI), her_to.lerp(her_to + Vector3(0, 0, 2.6), k))
 		_place(her, her_xf, p8)
 		her.set_param("vis", 0.85 * (1.0 - smoothstep(0.35, 1.0, k))), 0)
-	# -- 42  the pool goes quiet and shows only you
-	c.at(42.2, func() -> void:
+	# the pool goes quiet and shows only you
+	c.at(P + 48.4, func() -> void:
 		her.visible = false
 		mine.visible = true
 		mine.set_hem(pl.fig.hem)
 		mine.set_runes(1))
-	c.anim(42.2, 9.0, func(k: float) -> void:
+	c.anim(P + 48.4, 8.0, func(k: float) -> void:
 		mine.set_param("vis", minf(k * 3.0, 1.0) * 0.8)
 		_place(mine, Transform3D(Basis(Vector3.UP, pl.yaw), pl.position), pl.fig.pose), 0)
-	c.anim(42.0, 2.5, func(k: float) -> void:
+	c.anim(P + 48.0, 2.5, func(k: float) -> void:
 		pl.crouch = 0.55 * (1.0 - k)
 		pl.head_pitch_add = 0.25 * (1.0 - k))
-	c.anim(42.0, 3.0, func(k: float) -> void: shrine_over.set_shader_parameter("calm", lerpf(0.6, 1.0, k)))
-	# -- 44  the fog draws back; far away the second shrine glows
-	c.cam(44.0, 6.5, Level.SECOND_SHRINE.lerp(STAND, 0.62) + Vector3(0, 1.0, 0), -PI * 0.25, -World.PITCH, 13.0)
-	c.anim(44.0, 8.0, func(k: float) -> void: w.set_awaken(k))
-	c.anim(46.0, 4.0, func(k: float) -> void: puzzles.far_pillar.set_shader_parameter("fade", lerpf(0.35, 0.9, k)))
-	c.audio(46.0, "glimpse_far")
-	c.at(47.5, func() -> void: g.ui.show_memory(Game.MEMORY_LINE, 4.5), false)
-	c.at(56.5, func() -> void:
+	c.anim(P + 48.0, 3.0, func(k: float) -> void: shrine_over.set_shader_parameter("calm", lerpf(0.6, 1.0, k)))
+	# the fog draws back; far away the second shrine glows; the memory; I / VII
+	c.cam(P + 49.0, 5.5, Level.SECOND_SHRINE.lerp(STAND, 0.62) + Vector3(0, 1.0, 0), -PI * 0.25, -World.PITCH, 13.0)
+	c.anim(P + 49.0, 7.0, func(k: float) -> void: w.set_awaken(k))
+	c.anim(P + 50.0, 4.0, func(k: float) -> void: puzzles.far_pillar.set_shader_parameter("fade", lerpf(0.35, 0.9, k)))
+	c.at(P + 50.5, func() -> void: g.ui.show_memory(Game.MEMORY_LINE, 3.6), false)
+	c.at(P + 55.5, func() -> void:
 		g.ui.show_milestone(1, Game.SHRINES_TOTAL, 3.5)
 		g.sfx.play("bell_far", -12.0, 1.0))
-	# -- 57  back to you
-	c.cam(56.0, 3.5, STAND + Vector3(0, 0.6, 0), -PI * 0.25, -World.PITCH, w.zoom)
-	c.anim(57.5, 2.0, func(k: float) -> void: g.ui.set_letterbox(1.0 - k))
-	c.at(59.6, func() -> void:
+	# back to you as the last chord fades
+	c.cam(P + 56.0, 3.2, STAND + Vector3(0, 0.6, 0), -PI * 0.25, -World.PITCH, w.zoom)
+	c.anim(P + 57.2, 2.0, func(k: float) -> void:
+		g.ui.set_letterbox(1.0 - k)
+		g.sfx.set_duck(1.0 - k))
+	c.at(P + 59.3, func() -> void:
+		g.sfx.set_duck(0.0)
+		g.sfx.stop_cue("cinematic_hand", 1.5)
+		g.sfx.stop_cue("shrine_awaken", 0.5)
 		mine.visible = false
 		her.visible = false
 		touch_glow.set_shader_parameter("intensity", 0.0)
@@ -1551,6 +1561,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 		pl.fig.set_hem(Game.HEM_PER_SHRINE[1])
 		pl.extra_reach = 0.0
 		pl.head_pitch_add = 0.0
+		pl.head_yaw_add = 0.0
 		pl.crouch = 0.0
 		w.set_awaken(1.0)
 		puzzles.set_shrine_awake(1.0, 1.0))

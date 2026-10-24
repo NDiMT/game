@@ -227,7 +227,7 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the garden door is closed", P().x < 16.6, str(P())))
-	step_do(func() -> void: walk_to(7.9, -11.4))
+	step_do(func() -> void: walk_to(9.75, -14.1))
 	step_until("to her small glass", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
 	step_do(func() -> void: ok("breathe on the garden glass", _focus() == "breathe_garden" and game.try_interact(), _focus()))
 	step_until("she writes three runes", func() -> bool: return C().state["garden_breath"], 9.0)
@@ -387,7 +387,7 @@ func _plan() -> void:
 	step_wait(3.0)
 	step_do(func() -> void:
 		ok("your weight does not lift the platform while the glass looks away", C().lift_h < 0.01 and absf(P().y - 2.0) < 0.01, "lift %.2f" % C().lift_h)
-		ok("the scale groans under you", game.sfx.played.get("rattle", 0) > 0))
+		ok("the scale groans under you", game.sfx.played.get("creak", 0) > 0))
 	step_do(func() -> void: walk_to(29.0, -45.7))
 	step_until("to the glass", func() -> bool: return game.auto_target == Vector3.INF, 5.0)
 	interact_n(1, 0.8)
@@ -451,8 +451,9 @@ func _plan() -> void:
 	# ================================================================ 13. the first shrine + "The Hand in the Water"
 	step_do(func() -> void:
 		ok("shrine is dark", game.world.awaken == 0.0)
-		ok("wake the shrine", _focus() == "shrine" and game.try_interact(), _focus()))
-	step_wait(3.0)
+		ok("wake the shrine", _focus() == "shrine" and game.try_interact(), _focus())
+		_mark = int(t * 10.0))
+	step_wait(6.0)
 	step_do(func() -> void:
 		ok("cinematic: letterbox", game.mode == "cine" and game.ui.letterbox > 0.99)
 		ok("cinematic: the shrine wakes", float(game.puzzles.shrine_pillar.get_shader_parameter("fade")) > 0.4))
@@ -460,20 +461,23 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("cinematic: her reflection in the shrine pool", C().her.visible and float(C().her.body_mat.get_shader_parameter("vis")) > 0.5)
 		ok("cinematic: camera looks down into the water", -game.world.pitch_node.rotation.x > deg_to_rad(55.0), "%.1f deg" % rad_to_deg(-game.world.pitch_node.rotation.x)))
-	step_wait(12.5)          # t = 24.5
+	step_wait(7.0)           # t = 22 (the score: hands touch at 16.5 + 4.5)
 	step_do(func() -> void:
 		ok("cinematic: palm to palm", game.player.extra_reach > 0.9 and C().her.pose.reach > 0.9)
 		ok("cinematic: Katoptron lights on you both", game.player.fig.runes_awake == 1 and C().her.runes_awake == 1))
-	step_wait(6.5)           # t = 31
+	step_wait(16.0)          # t = 38 (veil lift swell)
 	step_do(func() -> void: ok("cinematic: her veil lifts", C().her.veil.rotation.x < -1.5, "%.2f" % C().her.veil.rotation.x))
-	step_wait(16.0)          # t = 44.5
+	step_wait(16.0)          # t = 54
 	step_do(func() -> void: ok("cinematic: she is gone; the pool shows only you", not C().her.visible and C().mine.visible))
-	step_wait(4.0)
+	step_wait(3.0)
 	step_do(func() -> void: ok("memory fragment shows", game.ui.memory.modulate.a > 0.3 and game.ui.memory_line.text == Game.MEMORY_LINE))
 	step_until("shrine counter I / VII shows", func() -> bool: return game.ui.end_b.modulate.a > 0.5 and game.ui.end_b.text == "I  /  VII", 12.0)
 	step_until("the cinematic ends", func() -> bool: return game.mode == "play", 10.0)
 	step_do(func() -> void:
-		ok("cinematic length 40-60 s", game.chapter != null and t > 0.0)
+		var secs := t - _mark / 10.0
+		ok("cinematic: ~4.5 s awakening + the 59 s score", secs > 62.0 and secs < 66.0, "%.1f s" % secs)
+		ok("music cues: shrine_awaken, then cinematic_hand", game.sfx.played.get("cue:shrine_awaken", 0) >= 1 and game.sfx.played.get("cue:cinematic_hand", 0) >= 1)
+		ok("the room beds come back after the scene", game.sfx.duck == 0.0)
 		ok("the world beyond is revealed", game.level.beyond.visible and game.world.awaken >= 0.999)
 		ok("first shrine lights one cloak rune and brightens the hem", game.player.fig.runes_awake == 1 and game.player.fig.hem > 1.5)
 		ok("the shrine leaves its light on", float(game.puzzles.shrine_pillar.get_shader_parameter("fade")) > 0.5)

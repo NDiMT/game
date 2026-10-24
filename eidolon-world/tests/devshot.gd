@@ -59,7 +59,8 @@ func _process(dt: float) -> void:
 			_bench_skip = 10
 			return
 		elif s.begins_with("vpshot:"):
-			var pm: PlanarMirror = game.puzzles.hall_mirror.planar
+			var pm: PlanarMirror = PlanarMirror.current if PlanarMirror.current else game.puzzles.hall_mirror.planar
+			print("planar current ", PlanarMirror.current, " active ", pm.active)
 			pm.vp.get_texture().get_image().save_png("res://dev/shots/" + s.substr(7) + ".png")
 		elif s == "vpdbg":
 			var pm: PlanarMirror = game.puzzles.hall_mirror.planar
