@@ -191,15 +191,15 @@ var _pw_reg: Array = []        # streams to register as web samples
 var _pw_keep := {}             # file -> stream (held, so a later load() is instant)
 var _pw_t := 0
 func _pw_fill() -> void:
-	for room in rooms:
-		for f in rooms[room]:
-			if not _pw.has(f): _pw.append(f)
+	for f in _wanted_beds(area):
+		if not _pw.has(f): _pw.append(f)
 	for room in room_events:
 		for e in room_events[room]:
 			if not _pw.has(e[0]): _pw.append(e[0])
 
 func _pw_step() -> void:
 	_pw_t += 1
+	if _pw_t % 40 == 0: _bed_step()
 	if _pw_t % 2 != 0: return
 	if not _pw.is_empty():
 		var f: String = _pw.pop_front()
@@ -218,6 +218,54 @@ func _pw_step() -> void:
 	elif not OS.has_feature("web"):
 		_pw_reg.clear()
 
+## (v0.8.5) web memory. On the web every played stream becomes a stereo float32 sample at the context
+## rate (32 kHz: 256 KB a second; a 45 s bed is ~11 MB). Only this room's bed, its neighbours' and the
+## water are kept: a bed that has faded out and is no longer near is stopped and let go (its player
+## freed, its stream dropped), and the neighbours' beds are loaded and registered ahead of time, one at
+## a time, so walking into a room never decodes on the spot.
+func _wanted_beds(key: String) -> Dictionary:
+	var out := {}
+	var i := Names.ORDER.find(key)
+	for j in [i, i + 1, i - 1]:
+		if j < 0 or j >= Names.ORDER.size(): continue
+		for f in rooms.get(Names.ORDER[j], {}): out[f] = true
+	return out
+
+var _bed_q: Array = []
+var _bed_reg := {}
+func _bed_plan() -> void:
+	var want := _wanted_beds(area)
+	for f in layer_p.keys():
+		if want.has(f) or (f as String).ends_with("water_lap.ogg"): continue
+		if layer_db.get(f, -60.0) > -59.5 or _target(f) > -59.5: continue
+		var p: AudioStreamPlayer = layer_p[f]
+		p.stop()
+		p.stream = null
+		p.queue_free()
+		layer_p.erase(f)
+		layer_db.erase(f)
+		_pw_keep.erase(f)
+		_bed_reg.erase(f)
+		played["bed_release"] = played.get("bed_release", 0) + 1
+	for f in want:
+		if layer_p.has(f): _bed_reg[f] = true          # (playing: registered by its play)
+		elif not _bed_reg.has(f) and not _bed_q.has(f): _bed_q.append(f)
+
+func _bed_step() -> void:
+	if _bed_q.is_empty(): return
+	var f: String = _bed_q.pop_front()
+	if layer_p.has(f) or _bed_reg.has(f): return
+	var st: AudioStream = _pw_keep[f] if _pw_keep.has(f) else load(f)
+	if st == null: return
+	if st is AudioStreamOggVorbis: (st as AudioStreamOggVorbis).loop = true
+	_pw_keep[f] = st
+	if not _started:
+		_bed_q.append(f)                 # (loaded; it becomes a web sample once the audio context runs)
+		return
+	if OS.has_feature("web") and not AudioServer.is_stream_registered_as_sample(st): AudioServer.register_stream_as_sample(st)
+	_bed_reg[f] = true
+	played["bed_prewarm"] = played.get("bed_prewarm", 0) + 1
+
 ## (tests / web probe) every bed player: [target dB, current dB, playing, stream length]
 func bed_debug() -> Dictionary:
 	var d := {}
@@ -234,6 +282,7 @@ func set_music(on: bool) -> void:
 
 func set_area(key: String) -> void:
 	area = key
+	_bed_plan()
 	if _started and rooms.has(key): _enter(key)
 
 ## exposed bridges and ledges: the gusts rise (0..1)
@@ -250,6 +299,7 @@ func _process(dt: float) -> void:
 	_bed_check -= dt
 	if _bed_check <= 0.0:
 		_bed_check = 1.0
+		_bed_plan()
 		for f in layer_p:
 			var bp: AudioStreamPlayer = layer_p[f]
 			if not bp.playing and _target(f) > -40.0 and bp.stream:

@@ -760,7 +760,7 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 const ROOM_ENTRY := {
 	"waking_pool": Vector3(1.4, 0.0, 2.3), "stair_breath": Vector3(-11.0, 0.0, 1.6), "hall_glass": Vector3(-2.0, 1.0, -13.5),
 	"shard_gallery": Vector3(5.8, 1.0, -17.0), "garden_veiled": Vector3(8.2, 1.0, -8.6), "hollow_walk": Vector3(17.9, 1.0, -11.8),
-	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -26.4), "echo_corridor": Vector3(10.0, 2.0, -40.0),
+	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -28.0), "echo_corridor": Vector3(10.0, 2.0, -40.0),
 	"scales": Vector3(26.6, 2.0, -45.5), "eidolon_ledge": Vector3(24.0, 2.0, -22.0), "gate_four": Vector3(27.6, 2.0, -27.0),
 	"first_shrine": Vector3(25.0, 2.0, -30.8),
 }
