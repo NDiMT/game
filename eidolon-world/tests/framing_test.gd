@@ -32,9 +32,13 @@ func _ready() -> void:
 		var ok := bad.is_empty()
 		if not ok: fails += 1
 		print("ROOM %-15s %-26s needs width %5.2f m (fixed %.1f)  %s" % [k, Names.area(k), worst, size, "OK" if ok else "CUT (%d)" % bad.size()])
-		var shown := 0
-		for l in bad:
-			if shown < 4 and l.find("follow") < 0 and l.find("360x780") >= 0:
-				print("    " + l); shown += 1
+		if not ok:
+			var what := {}
+			for l in bad:
+				if l.find("follow") >= 0: continue
+				var nm: String = l.split(" at ")[0].replace(" (top)", "").replace(" (head)", "")
+				if nm.begins_with("floor"): nm = "walkable floor edge"
+				what[nm] = true
+			print("    cut: " + ", ".join(what.keys()))
 	print("FRAMING %s (%d of %d rooms cut)" % ["PASS" if fails == 0 else "FAIL", fails, Framing.ROOMS.size()])
 	get_tree().quit()

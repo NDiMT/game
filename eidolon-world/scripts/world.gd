@@ -11,7 +11,7 @@ const DIST := 24.0                 # v0.8 (was 40): an orthographic camera sees 
 const CAM_SIZE := 10.5             # reference width for the vertical framing offset
 ## v0.9: ONE fixed view. No rotation, no zoom: one iso yaw and one width (metres seen across a portrait
 ## phone), tuned with tests/framing_test so every puzzle room fits whole (see Framing)
-const FIXED_SIZE := 14.6
+const FIXED_SIZE := 13.0
 const V_OFFSET := 1.6              # the vertical framing offset at CAM_SIZE (scaled with the size)
 ## in a framed room the camera holds the room's anchor and follows you only this much (fraction of your
 ## offset from the anchor, at most FOLLOW_MAX metres each way in the screen plane)
