@@ -17,6 +17,7 @@ var props: Props
 var highlight: Highlight
 var puzzles: Puzzles
 var chapter: Chapter
+var wonders: Wonders              # v0.9 the wonder spaces between the puzzles
 var cine: Cinematic
 var _skip_hold := false
 var _skip_t := 0.0
@@ -72,6 +73,9 @@ func _ready() -> void:
 	ui.controls = controls
 	chapter.post_commit()
 	_drawbridge_lever()
+	wonders = Wonders.new()
+	add_child(wonders)
+	wonders.setup(self)
 	# v0.8: the owner's props, set into the chapter (their footprints join the obstacles before the audit)
 	props = Props.new()
 	level.add_child(props)
@@ -329,6 +333,7 @@ func _process(dt: float) -> void:
 	puzzles.update(dt)
 	if prof_on: _t0 = _pm("puzzles", _t0)
 	if mode != "title": chapter.update(dt)
+	if mode != "title": wonders.update(dt)
 	if prof_on: _t0 = _pm("chapter", _t0)
 	if mode == "cine":
 		_skip_t = _skip_t + dt if _skip_hold else maxf(0.0, _skip_t - dt * 3.0)
@@ -363,6 +368,8 @@ func _process(dt: float) -> void:
 				bridge_focus -= dt
 				off = (Vector3(27.7, 2.0, -26.5) - p) * 0.7         # watch the bridge rise
 				off.y = 0.0
+			else:
+				off = wonders.lean(p)                              # (v0.9) a wonder space: lean toward it
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
 	if mode == "play": _auto_quality(dt)
@@ -713,8 +720,8 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 ## stand at its entrance
 const ROOM_ENTRY := {
 	"waking_pool": Vector3(1.4, 0.0, 2.3), "stair_breath": Vector3(-11.0, 0.0, 1.6), "hall_glass": Vector3(-2.0, 1.0, -13.5),
-	"shard_gallery": Vector3(5.8, 1.0, -17.0), "garden_veiled": Vector3(8.2, 1.0, -8.6), "hollow_walk": Vector3(17.9, 1.0, -11.8),
-	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -28.0), "echo_corridor": Vector3(10.0, 2.0, -40.0),
+	"shard_gallery": Vector3(5.8, 1.0, -17.0), "garden_veiled": Vector3(15.5, 1.0, -6.3), "hollow_walk": Vector3(17.9, 1.0, -11.8),
+	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -29.6), "echo_corridor": Vector3(10.0, 2.0, -40.0),
 	"scales": Vector3(26.6, 2.0, -45.5), "eidolon_ledge": Vector3(24.0, 2.0, -22.0), "gate_four": Vector3(27.6, 2.0, -27.0),
 	"first_shrine": Vector3(25.0, 2.0, -30.8),
 }

@@ -1040,7 +1040,7 @@ func _open_hall_door(instant: bool) -> void:
 ## outline), and the shard in your hand glints until you first raise it here.
 const SH_STATUE := Vector3(7.5, 1.0, -13.2)
 const SH_BRAZ := [Vector3(7.5, 1.0, -15.9), Vector3(9.6, 1.0, -13.8), Vector3(8.8, 1.0, -16.1), Vector3(5.8, 1.0, -13.9),
-	Vector3(8.6, 1.0, -10.6)]
+	Vector3(9.3, 1.0, -11.0)]
 ## her shadows fall south, west and north-west: all on the floor in front of her (nothing hides behind her
 ## from the fixed view; no brazier stands where she would hide it)
 const SH_SOLUTION := [0, 1, 4]
@@ -1077,9 +1077,8 @@ func _build_gallery() -> void:
 		m.set_shader_parameter("kind", kind)
 		m.set_shader_parameter("design", design)
 		return m
-	var west := Basis(Vector3.UP, -PI * 0.5)
-	# the true arch: the wall in it is not there (seen through the shard)
-	_mi(_quad(Vector2(1.4, 1.1)), mk.call(2.0, 0.0), Transform3D(west, Vector3(9.97, 1.55, -11.0)))
+	# the true gate: the parapet in it is not there (seen through the shard)
+	_mi(_quad(Vector2(1.4, 1.1)), mk.call(2.0, 0.0), Transform3D(Basis(), Vector3(8.1, 1.55, -9.63)))      # (v0.9: the south gate)
 	# her statue: Theron's Ione, veiled, on a plinth, facing the Hall door
 	var st := Node3D.new()
 	st.position = SH_STATUE

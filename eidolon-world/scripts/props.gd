@@ -22,7 +22,7 @@ const PLACE := [
 	# the Garden of the Veiled: a ruined corner, a low broken wall line, a collapse heap
 	["statue_veiled_broken", Vector3(13.9, 1.0, -6.9), 30.0, 1.0, "garden"],
 	["wall_ruin_low", Vector3(12.6, 1.0, -5.55), 0.0, 1.0, "garden"],
-	["rubble_pile", Vector3(15.8, 1.0, -6.1), 20.0, 0.8, "garden"],
+	["rubble_pile", Vector3(16.55, 1.0, -7.9), 20.0, 0.8, "garden"],      # (v0.9: off the way up from the colossus)
 	# the Court of Light: a collapse heap in the far corner
 	["rubble_pile", Vector3(7.9, 2.0, -17.9), -30.0, 0.8, "court"],
 	# the Scales: a praying figure watches the balance; a broken column

@@ -638,10 +638,14 @@ func stump(base: Vector3, h := 1.0, ob := true, tilt := 0.0) -> void:
 	if ob: ob_circle(Vector2(base.x, base.z), 0.38)
 
 func rubble(c: Vector3, spread: float, count: int) -> void:
+	# (v0.9: its own generator, seeded by where it lies: rubble no longer moves when other geometry is added
+	# or removed before it; it is solid, so where it lies matters)
+	var rr := RandomNumberGenerator.new()
+	rr.seed = hash(Vector3i(roundi(c.x * 100.0), roundi(c.y * 100.0), roundi(c.z * 100.0))) + count
 	for i in count:
-		var p := c + Vector3(rng.randf_range(-spread, spread), 0.0, rng.randf_range(-spread, spread))
-		var s := rng.randf_range(0.12, 0.38)
-		var b := Basis.from_euler(Vector3(rng.randf() * 0.6, rng.randf() * TAU, rng.randf() * 0.6)).scaled(Vector3(s * rng.randf_range(0.8, 1.6), s, s * rng.randf_range(0.8, 1.4)))
+		var p := c + Vector3(rr.randf_range(-spread, spread), 0.0, rr.randf_range(-spread, spread))
+		var s := rr.randf_range(0.12, 0.38)
+		var b := Basis.from_euler(Vector3(rr.randf() * 0.6, rr.randf() * TAU, rr.randf() * 0.6)).scaled(Vector3(s * rr.randf_range(0.8, 1.6), s, s * rr.randf_range(0.8, 1.4)))
 		debris.append(Transform3D(b, p + Vector3(0, s * 0.3, 0)))
 
 func statue(zone: String, base: Vector3, yaw: float, sc := 1.0, plinth := 0.6, ob := true) -> void:
@@ -688,12 +692,12 @@ func tree(zone: String, base: Vector3, seed: int) -> void:
 	_branch(m, r, base + Vector3(0, 0.2, 0), Vector3(r.randf_range(-0.1, 0.1), 1.0, r.randf_range(-0.1, 0.1)).normalized(), 1.5, 0.13, 4)
 	ob_circle(Vector2(base.x, base.z), 0.72)
 
-func _branch(m: MB, r: RandomNumberGenerator, p: Vector3, dir: Vector3, L: float, rad: float, depth: int) -> void:
+func _branch(m: MB, r: RandomNumberGenerator, p: Vector3, dir: Vector3, L: float, rad: float, depth: int, mat := 1.0) -> void:
 	var up := dir.normalized()
 	var side := up.cross(Vector3.FORWARD if absf(up.z) < 0.9 else Vector3.RIGHT).normalized()
 	var b := Basis(side, up, side.cross(up)).orthonormalized()
 	var b2 := Basis(b.x, b.y, b.z)
-	m.cyl(p + up * L * 0.5, rad * 0.62, rad, L, C(1.0, true), 6, b2)
+	m.cyl(p + up * L * 0.5, rad * 0.62, rad, L, C(mat, true) if mat == 1.0 else Color(r.randf(), mat, 0.0, 1.0), 6, b2)
 	var tip := p + up * L
 	if depth <= 0: return
 	var n := r.randi_range(2, 3)
@@ -702,7 +706,7 @@ func _branch(m: MB, r: RandomNumberGenerator, p: Vector3, dir: Vector3, L: float
 		var spread := r.randf_range(0.45, 0.9)
 		var nd := (up * cos(spread) + (side.rotated(up, a)) * sin(spread)).normalized()
 		nd.y = maxf(nd.y, -0.1)
-		_branch(m, r, tip - up * 0.02, nd, L * r.randf_range(0.55, 0.75), rad * 0.62, depth - 1)
+		_branch(m, r, tip - up * 0.02, nd, L * r.randf_range(0.55, 0.75), rad * 0.62, depth - 1, mat)
 
 func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
 	var d := b - a
@@ -796,7 +800,7 @@ func _veiled_gate() -> void:
 	for zz in [-0.45, 3.85]:
 		box(z, Vector3(-4.95, 0.08, zz), Vector3(0.3, 0.16, 0.34), 0.25)
 	stump(Vector3(1.9, 0, -4.4), 1.7, true, 0.05)
-	rubble(Vector3(-4.0, 0, -1.0), 0.6, 5)
+	rubble(Vector3(-4.4, 0, -1.8), 0.5, 5)
 	# inscriptions
 	box(z, Vector3(3.05, 0.62, 2.5), Vector3(0.95, 1.24, 0.24), 0.25, false, Basis(Vector3.UP, -0.5))
 	box(z, Vector3(3.05, 1.28, 2.5), Vector3(1.05, 0.08, 0.3), 0.25, false, Basis(Vector3.UP, -0.5))
@@ -873,7 +877,7 @@ func _garden() -> void:
 	slab(z, R(10.3, -15, 17, -5), 1.0, 0.8, 0.0)
 	slab(z, R(7, -9.3, 10.3, -5), 1.0, 0.8, 0.0)
 	walk(R(10.3, -15, 17, -5), 1.0, NAN, -1, "G")
-	walk(R(7, -9.3, 10.3, -5), 1.0, NAN, -1, "G")
+	walk(R(7, -9.3, 10.3, -5), 1.0, NAN, -1, "CO_w")         # (v0.9: the way down to the colossus)
 	# v0.5: the Turned Ones' great mirror stands on the north edge (the glass is a puzzle object)
 	wall("Gn", R(10.3, -15.6, 15.3, -15.05), 1.0, 5.9, false)
 	box(z, Vector3(10.45, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
@@ -887,18 +891,24 @@ func _garden() -> void:
 	box(z, Vector3(16.95, 2.75, -10.75), Vector3(0.5, 3.5, 0.5), 0.25, true)
 	box(z, Vector3(16.95, 4.7, -11.8), Vector3(0.6, 0.45, 2.7), 0.25, true)
 	# dead trees
-	tree(z, Vector3(10.2, 1.0, -8.0), 11)
+	tree(z, Vector3(11.4, 1.0, -8.1), 11)
+	# v0.9: the west court (from the shadow chamber's south gate) is the way down to the Sunken Colossus: a
+	# parapet parts it from the garden, which you enter from the colossus' stones (south-east)
+	wall(z, R(10.3, -9.3, 10.6, -5.0), 1.0, 1.75, true)
+	ob_rect(R(10.25, -9.3, 10.65, -4.95))
 	tree(z, Vector3(14.4, 1.0, -9.6), 23)
 	tree(z, Vector3(16.1, 1.0, -9.3), 41)
 	# veiled statues without runes (the rune statues are placed by the puzzle)
 	statue(z, Vector3(7.9, 1.0, -6.0), PI * 0.75, 0.9)
 	statue(z, Vector3(12.2, 1.0, -5.7), PI, 0.85)
-	stump(Vector3(16.3, 1.0, -5.6), 1.1)
-	rubble(Vector3(15.2, 1.0, -6.6), 0.6, 5)
-	rubble(Vector3(16.5, 1.0, -5.6), 0.4, 4)
+	# (v0.9: the south-east corner is the way up from the colossus' stones: its stump stands drowned in the
+	# water beside them now, its rubble along the east rail)
+	stump(Vector3(17.0, Ch1Geo.CO_WATER_Y, -3.9), 1.1, false)
+	rubble(Vector3(16.6, 1.0, -6.0), 0.25, 5)
+	rubble(Vector3(11.0, 1.0, -9.0), 0.3, 4)
 	balustrade(z, Vector2(16.95, -14.8), Vector2(16.95, -13.2), 1.0)
 	balustrade(z, Vector2(16.95, -10.4), Vector2(16.95, -5.2), 1.0)
-	balustrade(z, Vector2(9.7, -4.95), Vector2(16.8, -4.95), 1.0)
+	balustrade(z, Vector2(9.7, -4.95), Vector2(14.7, -4.95), 1.0)          # (v0.9: the way up from the stones east of it)
 	balustrade(z, Vector2(7.05, -9.2), Vector2(7.05, -5.1), 1.0)       # (v0.8.1: the garden's new west edge)
 	inscription("g_stele", Vector3(11.0, 1.0, -6.4), "White marble first. Then a thousand faces. Then glass.", 1.2,
 		Transform3D(Basis(), Vector3(11.0, 1.62, -5.635)), Vector2(1.0, 0.9))
@@ -909,11 +919,13 @@ func _garden() -> void:
 func _shortcut() -> void:
 	var z := "A"
 	slab(z, R(7.5, -5, 9.5, -1), 1.0, 0.7, 0.0)
-	walk(R(7.5, -5, 9.5, -1), 1.0)
+	walk(R(7.5, -5, 9.5, -1), 1.0, NAN, -1, "CO_w")
 	steps(z, R(5, -3, 7.5, -1), 0, 0.0, 1.0, true)
 	walk(R(5, -3, 7.5, -1), 0.0, 1.0, 0, "shortcut_ramp")
 	balustrade(z, Vector2(9.55, -4.9), Vector2(9.55, -1.1), 1.0)
-	balustrade(z, Vector2(7.6, -0.95), Vector2(9.4, -0.95), 1.0)
+	# (v0.9: the south edge opens onto the colossus' stones, between two posts)
+	for px in [7.72, 9.28]:
+		box(z, Vector3(px, 1.55, -0.98), Vector3(0.28, 1.1, 0.28), 0.25, true)
 	balustrade(z, Vector2(7.45, -4.9), Vector2(7.45, -3.1), 1.0)
 	# gate posts at the Veiled Gate's east edge (the bars are a puzzle object)
 	column(Vector3(5.15, 0, -3.35), 2.9, true)
@@ -945,8 +957,9 @@ func _court() -> void:
 	ob_rect(R(16.8, -26.85, 17.2, -21.25))
 	balustrade(z, Vector2(16.95, -19.25), Vector2(16.95, -18.6), 2.0)
 	# v0.5: the mural wall (her half-erased portrait; its middle is a door) and the Mist Maze beyond
-	wall(z, R(9.3, -27.3, 10.9, -26.95), 2.0, 5.6, true)
-	wall(z, R(13.1, -27.3, 14.7, -26.95), 2.0, 5.6, true)
+	# (v0.9: the mural's flanking walls low, so the way on and the Tree of Shards beyond them show)
+	wall(z, R(9.3, -27.3, 10.9, -26.95), 2.0, 3.4, true)
+	wall(z, R(13.1, -27.3, 14.7, -26.95), 2.0, 3.4, true)
 	wall("Mural", R(10.9, -27.3, 13.1, -26.95), 2.0, 5.2, true)
 	box(z, Vector3(12.0, 5.45, -27.12), Vector3(2.4, 0.5, 0.42), 0.25, true)
 	ob_rect(R(9.3, -27.35, 10.9, -26.9))
@@ -1222,7 +1235,7 @@ func _decor() -> void:
 	r.seed = 4040
 	var tufts: Array[Transform3D] = []
 	var leaves: Array[Transform3D] = []
-	var zones_w := [["G", 170, 150], ["T", 45, 25], ["L", 30, 10], ["E", 15, 6], ["S", 25, 12], ["H", 0, 6]]
+	var zones_w := [["CO_w", 170, 150], ["T", 45, 25], ["L", 30, 10], ["E", 15, 6], ["S", 25, 12], ["H", 0, 6]]
 	for zw in zones_w:
 		var g: Region = named[zw[0]]
 		var want_t: int = zw[1]

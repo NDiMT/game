@@ -104,6 +104,9 @@ static func build(lv: Level) -> void:
 	_maze(lv)
 	_echo(lv)
 	_scales(lv)
+	_colossus(lv)
+	_tree_nook(lv)
+	_spring_balcony(lv)
 
 # ------------------------------------------------------------------ 1. the waking pool's aqueduct
 static func _aqueduct(lv: Level) -> void:
@@ -177,24 +180,75 @@ static func _gallery(lv: Level) -> void:
 	lv.wall(z, R(4.6, -18.7, 7.0, -18.4), 1.0, 4.4, true)
 	lv.ob_rect(R(4.6, -18.75, 7.05, -18.4))
 	# the near walls: low parapets (east and south), so the floor and her shadows read
-	lv.wall(z, R(10.0, -16.9, 10.3, -11.7), 1.0, 2.05, true)
-	lv.wall(z, R(10.0, -10.3, 10.3, -9.3), 1.0, 2.05, true)
-	lv.wall(z, R(5.0, -9.6, 10.3, -9.3), 1.0, 2.05, true)
-	lv.ob_rect(R(10.0, -16.9, 10.35, -11.7))
-	lv.ob_rect(R(10.0, -10.3, 10.35, -9.3))
-	lv.ob_rect(R(4.6, -9.6, 10.35, -9.25))
-	# the true way on: a gate in the east parapet between two newel posts, a stretch of parapet in it that is
-	# not there (seen through the shard). (v0.9: no arch: from the one fixed view its posts and its tall
-	# false wall hid the garden's turned statues)
-	lv.box(z, Vector3(10.15, 1.7, -11.85), Vector3(0.36, 1.4, 0.36), 0.25, true)
-	lv.box(z, Vector3(10.15, 1.7, -10.15), Vector3(0.36, 1.4, 0.36), 0.25, true)
-	lv.box(z, Vector3(10.15, 2.46, -11.85), Vector3(0.46, 0.12, 0.46), 0.25, true)
-	lv.box(z, Vector3(10.15, 2.46, -10.15), Vector3(0.46, 0.12, 0.46), 0.25, true)
-	lv.wall("GLs", R(10.0, -11.7, 10.3, -10.3), 1.0, 2.05, true)
-	lv.ob_rect(R(10.0, -11.7, 10.35, -10.3), "gallery_secret")
-	# the threshold out to the Garden
-	lv.slab(z, R(10.0, -11.7, 10.4, -10.3), 1.0, 0.7, 0.0)
-	lv.walk(R(9.9, -11.6, 10.45, -10.4), 1.0, NAN, -1, "GL")
+	lv.wall(z, R(10.0, -16.9, 10.3, -9.3), 1.0, 2.05, true)
+	lv.ob_rect(R(10.0, -16.9, 10.35, -9.3))
+	lv.wall(z, R(5.0, -9.6, 7.4, -9.3), 1.0, 2.05, true)
+	lv.wall(z, R(8.8, -9.6, 10.3, -9.3), 1.0, 2.05, true)
+	lv.ob_rect(R(4.6, -9.6, 7.4, -9.25))
+	lv.ob_rect(R(8.8, -9.6, 10.35, -9.25))
+	# the true way on (v0.9: south, toward the Sunken Colossus): a gate in the south parapet between two
+	# newel posts, a stretch of parapet in it that is not there (seen through the shard)
+	for gx in [7.3, 8.9]:
+		lv.box(z, Vector3(gx, 1.7, -9.45), Vector3(0.36, 1.4, 0.36), 0.25, true)
+		lv.box(z, Vector3(gx, 2.46, -9.45), Vector3(0.46, 0.12, 0.46), 0.25, true)
+	lv.wall("GLs", R(7.4, -9.6, 8.8, -9.3), 1.0, 2.05, true)
+	lv.ob_rect(R(7.4, -9.65, 8.8, -9.25), "gallery_secret")
+	# the threshold out
+	lv.slab(z, R(7.4, -9.7, 8.8, -9.2), 1.0, 0.7, 0.0)
+	lv.walk(R(7.45, -9.7, 8.75, -9.2), 1.0, NAN, -1, "GL")
+
+# ------------------------------------------------------------------ v0.9 the wonder spaces (no puzzles)
+## the Sunken Colossus: from the shadow chamber's south gate, down the garden's west court and out over
+## still black water on stepping stones that run along the cheek of a giant veiled head, up into the
+## Garden of the Veiled from the south
+const CO_HEAD := Vector3(19.3, 0.0, 0.0)          # the head's centre at the water line
+const CO_WATER_Y := 0.15
+## (the head stands EAST of the whole way: from the one fixed view it never hides the stones)
+const CO_STONES := [Vector2(8.5, -0.9), Vector2(8.7, 0.2), Vector2(9.0, 1.3), Vector2(9.6, 2.3), Vector2(10.5, 3.0),
+	Vector2(11.6, 3.4), Vector2(12.7, 3.3), Vector2(13.6, 2.7), Vector2(14.4, 1.9), Vector2(14.95, 1.0), Vector2(15.3, 0.0),
+	Vector2(15.5, -1.0), Vector2(15.55, -2.0), Vector2(15.55, -3.0), Vector2(15.55, -3.7)]
+static func _colossus(lv: Level) -> void:
+	var z := "CO"
+	for i in CO_STONES.size():
+		var c: Vector2 = CO_STONES[i]
+		lv.walk(Rect2(c - Vector2(0.62, 0.62), Vector2(1.24, 1.24)), 1.0, NAN, -1, "CO")
+		if i + 1 < CO_STONES.size():
+			var mid: Vector2 = (c + CO_STONES[i + 1]) * 0.5
+			lv.walk(Rect2(mid - Vector2(0.55, 0.55), Vector2(1.1, 1.1)), 1.0, NAN, -1, "CO")
+	# the stones themselves: low drums of marble standing out of the water
+	var m := lv.mb(z)
+	for i in CO_STONES.size():
+		var c: Vector2 = CO_STONES[i]
+		var rr := 0.44 + 0.05 * sin(i * 2.3)
+		m.cyl(Vector3(c.x, 0.55, c.y), rr, rr + 0.1, 0.9, lv.C(0.25), 9, Basis(Vector3.UP, i * 0.7))
+	# the landing up into the garden
+	lv.slab(z, R(14.8, -5.0, 16.3, -3.3), 1.0, 0.9, 0.0)
+	lv.walk(R(14.85, -5.05, 16.25, -3.3), 1.0, NAN, -1, "CO")
+
+## the Tree of Shards: in a nook beside the way from the Court of Light into the Mist Maze
+const TS_TREE := Vector3(15.9, 2.0, -28.15)
+static func _tree_nook(lv: Level) -> void:
+	var z := "TS"
+	lv.slab(z, R(13.1, -28.9, 16.95, -27.3), 2.0, 0.8, 0.0)
+	lv.walk(R(13.1, -28.85, 16.9, -27.32), 2.0, NAN, -1, "TS")
+	lv.balustrade(z, Vector2(16.95, -28.8), Vector2(16.95, -27.4), 2.0)
+	lv.ob_rect(R(16.85, -28.9, 17.1, -27.3))
+	lv.box(z, TS_TREE + Vector3(0, 0.12, 0), Vector3(1.5, 0.24, 1.5), 0.25)
+	lv.box(z, TS_TREE + Vector3(0, 0.22, 0), Vector3(1.2, 0.2, 1.2), 1.0)
+	lv.ob_circle(Vector2(TS_TREE.x, TS_TREE.z), 0.7)
+
+## the Upward Spring: a balcony off the high walkway, over the void where a fountain falls upward
+const SP_BASIN := Vector3(37.2, 0.6, -32.0)
+static func _spring_balcony(lv: Level) -> void:
+	var z := "WK"
+	lv.slab(z, R(32.4, -33.4, 34.4, -30.6), 4.0, 0.5, 0.0, false)
+	lv.walk(R(32.35, -33.35, 34.35, -30.65), 4.0, NAN, -1, "SPB")
+	lv.balustrade(z, Vector2(34.4, -33.3), Vector2(34.4, -30.7), 4.0)
+	lv.balustrade(z, Vector2(32.5, -33.4), Vector2(34.3, -33.4), 4.0)
+	lv.balustrade(z, Vector2(32.5, -30.6), Vector2(34.3, -30.6), 4.0)
+	lv.ob_rect(R(34.35, -33.5, 34.6, -30.5))
+	lv.ob_rect(R(32.4, -33.55, 34.5, -33.3))
+	lv.ob_rect(R(32.4, -30.7, 34.5, -30.45))
 
 # ------------------------------------------------------------------ 6. the hollow walk
 static func _hollow_walk(lv: Level) -> void:
@@ -317,7 +371,8 @@ static func _scales(lv: Level) -> void:
 	lv.walk(R(30.4, -46.6, 32.4, -44.6), 2.0, NAN, -1, "lift")
 	lv.slab("WK", R(30.4, -44.6, 32.4, -21.2), 4.0, 0.5, 0.0, false)
 	lv.walk(R(30.4, -44.6, 32.4, -21.2), 4.0, NAN, -1, "WK")
-	lv.balustrade("WK", Vector2(32.45, -44.4), Vector2(32.45, -21.3), 4.0)
+	lv.balustrade("WK", Vector2(32.45, -44.4), Vector2(32.45, -33.45), 4.0)
+	lv.balustrade("WK", Vector2(32.45, -30.55), Vector2(32.45, -21.3), 4.0)       # (v0.9: the spring's balcony between)
 	lv.balustrade("WK", Vector2(30.35, -44.4), Vector2(30.35, -23.5), 4.0)
 	lv.balustrade("WK", Vector2(30.45, -21.15), Vector2(32.4, -21.15), 4.0)
 	for zz in [-41.0, -33.0, -26.0]:

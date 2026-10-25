@@ -575,12 +575,12 @@ func _plan() -> void:
 	walk_path("into the chamber", [[6.5, -15.2], [6.6, -11.7], [8.4, -11.7]])
 	step_do(func() -> void:
 		ok("walking about the chamber", game.area == "shard_gallery", str(P()) + " " + game.area)
-		walk_to(10.6, -11.0))
+		walk_to(8.1, -8.4))
 	step_wait(0.7)
 	step_until("the wall", func() -> bool: return game.player.still_time > 0.3 or game.auto_target == Vector3.INF, 4.0)
 	step_do(func() -> void:
 		game.cmd("stop")
-		ok("the arch is a wall in your world", P().x < 10.0, str(P()))
+		ok("the gate is a wall in your world", P().z < -9.55, str(P()))
 		tp(7.5, -11.7, PI))
 	step_do(func() -> void:
 		game.controls.shard.emit()           # the inventory slot tapped
@@ -636,7 +636,16 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("her shadows darken; her veil stirs", float(C().sh_shadows[0].get_shader_parameter("dark")) > 0.85 and float(C().sh_veil.get_shader_parameter("intensity")) > 0.3))
 	step_wait(1.0)
-	walk_path("through the true arch", [[6.4, -12.2], [7.4, -11.5], [9.4, -11.0], [11.2, -11.0], [11.5, -9.0]])
+	walk_path("through the true gate", [[6.6, -11.4], [8.1, -10.2], [8.1, -8.4], [8.5, -3.0]])
+	step_do(func() -> void:
+		ok("(v0.9) the gate opens onto the way down, not the garden", game.area == "shard_gallery" and game.wonders.here == "", str(P()) + " " + game.area))
+	var co_path := []
+	for c in Ch1Geo.CO_STONES: co_path.append([c.x, c.y])
+	walk_path("along the colossus' cheek", co_path)
+	step_do(func() -> void:
+		ok("(v0.9) the Sunken Colossus: named on arrival, the music swells", game.visited.has("w:CO") and game.sfx.played.get("swell", 0) >= 1 and game.ui.area_label.text == "THE SUNKEN COLOSSUS", game.ui.area_label.text)
+		ok("(v0.9) the camera leans toward the head (a pan, never a zoom)", game.world.look_offset.length() > 0.5 and is_equal_approx(game.world.cam_size_target, World.FIXED_SIZE)))
+	walk_path("up into the garden", [[15.5, -4.4], [15.5, -6.4], [14.8, -7.9], [13.0, -8.3], [12.8, -10.0]])
 	step_do(func() -> void:
 		ok("reached the Garden of the Veiled", game.area == "garden_veiled" and P().x > 10.3, str(P()) + " " + game.area)
 		ok("the shard is lowered outside the chamber", not C().lens_on))
@@ -796,7 +805,12 @@ func _plan() -> void:
 	step_wait(2.8)
 
 	# ================================================================ 8. the mist maze
-	walk_path("through the mural door", [[12.0, -26.4], [12.0, -28.2], [12.0, -30.0]])
+	walk_path("through the mural door", [[12.0, -26.4], [12.0, -28.2]])
+	step_wait(0.6)
+	step_do(func() -> void:
+		ok("(v0.9) beyond the mural door: the Tree of Shards, named, the music swells; the camera leans to it", game.visited.has("w:TS") and game.world.look_offset.length() > 0.3, str(game.world.look_offset))
+		ok("(v0.9) the Tree of Shards: hundreds of shards, one multimesh", game.wonders.shard_mm.multimesh.instance_count >= 200))
+	walk_path("into the maze", [[12.0, -30.0]])
 	step_do(func() -> void:
 		ok("in the Mist Maze", game.area == "mist_maze", game.area)
 		var n0 := 0
@@ -920,7 +934,10 @@ func _plan() -> void:
 	walk_path("onto the lift", [[29.2, -45.9], [31.4, -45.6]])
 	step_until("the lift carries you up", func() -> bool: return C().lift_h > 0.99, 10.0)
 	step_do(func() -> void: ok("risen to the high walkway", absf(P().y - 4.0) < 0.02, str(P())))
-	walk_path("along the high walkway", [[31.4, -43.5], [31.4, -22.4], [29.6, -22.4], [27.8, -22.4]])
+	walk_path("along the high walkway", [[31.4, -43.5], [31.4, -32.0]])
+	step_wait(0.6)
+	step_do(func() -> void: ok("(v0.9) on the walkway: the Upward Spring, named, the camera leans up toward the temple", game.visited.has("w:SP") and game.world.look_offset.y > 1.0, str(game.world.look_offset)))
+	walk_path("on along the high walkway", [[31.4, -22.4], [29.6, -22.4], [27.8, -22.4]])
 	step_do(func() -> void: ok("down onto the Eidolon Ledge", game.area == "eidolon_ledge" and absf(P().y - 2.0) < 0.01, str(P()) + " " + game.area))
 
 	# ================================================================ 11. the eidolon ledge

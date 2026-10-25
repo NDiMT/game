@@ -34,12 +34,16 @@ const REGION_AREA := {
 	"G": "garden_veiled", "shortcut_ramp": "garden_veiled",
 	"g_door": "hollow_walk", "HW": "hollow_walk",
 	"HW_ramp": "court_light", "L_ramp": "court_light", "L": "court_light", "LB": "court_light",
-	"MZ_door": "mist_maze", "MZ": "mist_maze",
+	"MZ_door": "court_light", "MZ": "mist_maze",       # (v0.9: the door's landing is the court's: the Tree of Shards is named there)
 	"EC_a": "echo_corridor", "EC": "echo_corridor", "EC_room_door": "echo_corridor", "EC_room": "echo_corridor",
 	"SC": "scales", "lift": "scales",
 	"WK": "eidolon_ledge", "WK_down": "eidolon_ledge", "E": "eidolon_ledge",
 	"EB": "gate_four", "S": "gate_four", "four_plinth": "gate_four", "sealed_way": "first_shrine",
+	# v0.9 the wonder spaces (no puzzles: they keep the music of the space they open from)
+	"CO_w": "shard_gallery", "CO": "shard_gallery", "TS": "court_light", "SPB": "eidolon_ledge",
 }
+## v0.9 the wonder spaces between the puzzles: walk-region name -> its name (shown once, on arrival)
+const WONDERS := {"CO": "The Sunken Colossus", "TS": "The Tree of Shards", "SPB": "The Upward Spring"}
 
 ## the first awakened space (the slice's milestone)
 const FIRST := "first_shrine"

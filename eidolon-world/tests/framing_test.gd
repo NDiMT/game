@@ -51,6 +51,18 @@ func _ready() -> void:
 			hid.append("%s <- %s (hit at %.1f, %.1f, %.1f)" % [e[0], nm, r.position.x, r.position.y, r.position.z])
 		if not hid.is_empty(): fails += 1
 		print("ROOM %-15s %-26s %s" % [k, Names.area(k), "clear" if hid.is_empty() else "HIDDEN: " + "; ".join(hid)])
+	# (v0.9) the wonder spaces: the way through each must stay in sight too (you walk it)
+	var ways := []
+	for c in Ch1Geo.CO_STONES: ways.append(["colossus stone", Vector3(c.x, 1.0, c.y)])
+	ways.append_array([["tree nook", Vector3(15.0, 2.0, -28.5)], ["spring balcony", Vector3(33.4, 4.0, -32.0)]])
+	var hidw: Array = []
+	for e in ways:
+		total += 1
+		var p: Vector3 = e[1] + Vector3(0, LIFT, 0)
+		var r := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + back * OWN, p + back * REACH))
+		if not r.is_empty(): hidw.append("%s %s <- %s at %s" % [e[0], e[1], names.get(r["shape"], "?"), r.position])
+	if not hidw.is_empty(): fails += 1
+	print("WONDERS %s" % ("clear" if hidw.is_empty() else "HIDDEN: " + "; ".join(hidw)))
 	print("OCCLUSION %s (%d of %d rooms with a hidden piece; %d pieces, %d meshes)" % ["PASS" if fails == 0 else "FAIL", fails, Framing.ROOMS.size(), total, nshapes[0]])
 	get_tree().quit()
 
