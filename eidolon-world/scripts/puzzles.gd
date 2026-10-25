@@ -442,7 +442,7 @@ func _light_court() -> void:
 		base.cyl(Vector3(0, -0.75, 0), 0.30, 0.38, 0.5, Color(0.3, 0.25, 0.0), 12)
 		var bmi := marble_instance(base.commit(), pv)
 		bmi.layers = PlanarMirror.LAYER_DOUBLE
-		var hg := glow_quad(pv, Vector3(0, 0.0, 0), 1.8, Palette.ACCENT, 0.0)
+		var hg := glow_quad(pv, Vector3(0, 0.0, 0), 1.8, Palette.HER, 0.0)          # (her world: rose)
 		(pv.get_child(pv.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_DOUBLE
 		her_glows.append(hg)
 		her_stands.append(pv)
@@ -833,11 +833,13 @@ func _eidolon_glass() -> void:
 	pm.cyl(PLATE_POS + Vector3(0, 0.05, 0), 0.52, 0.52, 0.06, Color(0.5, 0.25, 0.0), 24)
 	marble_instance(pm.commit(), self)
 	plate_mat = rune_quad(self, PLATE_POS + Vector3(0, 0.085, 0), Vector2(0.86, 0.86), Basis(Vector3.RIGHT, -PI * 0.5), 2.0, 0.6)
+	plate_mat.set_shader_parameter("hers", 1.0)          # (the Eidolon plate: her side, rose)
 	# the target, unmistakable: a rune sigil ring, a pillar of light, motes circling it
 	plate_ring = ShaderMaterial.new()
 	plate_ring.shader = preload("res://shaders/ring.gdshader")
 	plate_ring.set_shader_parameter("lit", 1.0)
 	plate_ring.set_shader_parameter("sweep", 1.0)
+	plate_ring.set_shader_parameter("hers", 1.0)
 	var rq := PlaneMesh.new()
 	rq.size = Vector2(2.3, 2.3)
 	var rmi := MeshInstance3D.new()
@@ -848,6 +850,7 @@ func _eidolon_glass() -> void:
 	add_child(rmi)
 	plate_pillar = _pillar(self, PLATE_POS + Vector3(0, 0.1, 0), 1.1, 13.0)
 	plate_pillar.set_shader_parameter("fade", 0.7)
+	plate_pillar.set_shader_parameter("color", Palette.HER_CORE)
 	plate_halo = glow_quad(self, PLATE_POS + Vector3(0, 0.6, 0), 2.6, Palette.ACCENT, 0.5)
 	for i in 7:
 		var mq := QuadMesh.new()

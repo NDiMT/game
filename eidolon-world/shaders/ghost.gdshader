@@ -12,6 +12,13 @@ global uniform vec4 accent_core;
 #include "res://shaders/figure_deform.gdshaderinc"
 #include "res://shaders/glyphs.gdshaderinc"
 #include "res://shaders/figure_detail.gdshaderinc"
+// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+global uniform vec4 her;
+global uniform vec4 her_core;
+global uniform vec4 her_tint;
+uniform float hers = 1.0;
+vec3 _ha() { return mix(accent.rgb, her.rgb, hers); }
+vec3 _hc() { return mix(accent_core.rgb, her_core.rgb, hers); }
 
 uniform float project = 1.0;
 uniform vec3 plane_n = vec3(0.0, 0.0, 1.0);
@@ -84,13 +91,13 @@ void fragment() {
 	vec3 refl = mix(base, mix(base, vec3(lum), 0.18) * vec3(0.90, 0.97, 1.04) + vec3(0.03, 0.04, 0.05), graded);
 	float fres = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.0);
 	float band = smoothstep(0.92, 1.0, sin(wpos.y * 3.0 - TIME * 1.3)) * shimmer;
-	vec3 eid = mix(base * 0.6 + accent.rgb * 0.45, accent_core.rgb, clamp(fres * 0.6 + band * 0.5, 0.0, 1.0));
+	vec3 eid = mix(base * 0.6 + _ha() * 0.45, _hc(), clamp(fres * 0.6 + band * 0.5, 0.0, 1.0));
 	vec3 c = mix(refl, eid, ghost);
 	c = mix(c, surface_col, surface_mix);
 	vec3 emb = embroidery(vuv);
 	ALBEDO = c;
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.15;
-	EMISSION = accent_core.rgb * (vcol.a * glint * 2.2 + emb.x * emb.z * 1.3) * (1.0 - surface_mix * 0.6) + accent.rgb * fres * 0.25 * ghost;
+	EMISSION = _hc() * (vcol.a * glint * 2.2 + emb.x * emb.z * 1.3) * (1.0 - surface_mix * 0.6) + _ha() * fres * 0.25 * ghost;
 	if (hm.x > 0.5) { ALBEDO = vec3(0.02, 0.022, 0.026); EMISSION = vec3(0.0); }
 }

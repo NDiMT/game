@@ -58,6 +58,7 @@ var obstacles: Array[Obstacle] = []
 var interacts: Array[Interact] = []
 var zones := {}
 var marble_mat: ShaderMaterial
+var marble_occ_mat: ShaderMaterial          # v0.8: occluders fade (alpha) in the see-through
 var noise_tex: ImageTexture
 var col_full: Array[Transform3D] = []
 var col_stump: Array[Transform3D] = []
@@ -123,6 +124,9 @@ func _init(tex: ImageTexture) -> void:
 	marble_mat = ShaderMaterial.new()
 	marble_mat.shader = preload("res://shaders/marble.gdshader")
 	marble_mat.set_shader_parameter("noise_tex", noise_tex)
+	marble_occ_mat = ShaderMaterial.new()
+	marble_occ_mat.shader = preload("res://shaders/marble_occ.gdshader")
+	marble_occ_mat.set_shader_parameter("noise_tex", noise_tex)
 
 func build() -> void:
 	_veiled_gate()
@@ -1021,8 +1025,9 @@ func _commit() -> void:
 		if m.is_empty(): continue
 		var mi := MeshInstance3D.new()
 		mi.name = "Zone_" + k
-		mi.mesh = m.commit()
-		mi.material_override = marble_mat
+		mi.mesh = m.commit_split()
+		for si in mi.mesh.get_surface_count():
+			mi.set_surface_override_material(si, marble_occ_mat if mi.mesh.surface_get_name(si) == "occ" else marble_mat)
 		if k == "Hn": mi.layers = PlanarMirror.LAYER_BEHIND      # the great mirror's own wall
 		add_child(mi)
 	_markers()
@@ -1032,7 +1037,7 @@ func _commit() -> void:
 	_cloth_mm()
 	_vines()
 	_godrays()
-	_multimesh("Columns", _column_mesh(), col_full)
+	_multimesh("Columns", _column_mesh(), col_full).material_override = marble_occ_mat      # (columns fade in the see-through)
 	_multimesh("Stumps", _stump_mesh(), col_stump)
 	_multimesh("Debris", _debris_mesh(), debris)
 

@@ -5,6 +5,15 @@ render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_back;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
 #include "res://shaders/glyphs.gdshaderinc"
+// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+global uniform vec4 her;
+global uniform vec4 her_core;
+global uniform vec4 her_tint;
+uniform float hers = 0.0;
+vec3 _ha() { return mix(accent.rgb, her.rgb, hers); }
+global uniform vec4 accent_tint;
+vec3 _ht() { return mix(accent_tint.rgb, her_tint.rgb, hers); }
+vec3 _hc() { return mix(accent_core.rgb, her_core.rgb, hers); }
 uniform float kind = 0.0;
 uniform float intensity = 0.0;
 uniform float sweep = 0.0;
@@ -40,7 +49,7 @@ void fragment() {
 		d = min(d, g_seg(p, vec2(0.0), vec2(-sin(a1), cos(a1)) * 0.9));
 	}
 	vec4 g = carved_glow(d, wid);
-	// (a petrol inlay, darker at its core: it reads on pale stone and on the dark hall floor alike)
-	ALBEDO = mix(accent.rgb, accent.rgb * 0.55, g.x) + accent_core.rgb * g.y * 0.15;
+	// (v0.8: a luminous inlay: a core past white that the bloom catches, an aqua halo, a quiet tint edge)
+	ALBEDO = mix(mix(_ht(), _ha(), 0.6), _hc() * 1.45, g.x);
 	ALPHA = clamp((g.x * amul * 0.95 + g.y * 0.6) * intensity + body * 0.35, 0.0, 1.0);
 }

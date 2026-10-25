@@ -94,6 +94,32 @@ func quad(center: Vector3, size: Vector2, color: Color, basis := Basis()) -> voi
 func is_empty() -> bool:
 	return v.is_empty()
 
+## v0.8: two surfaces: 0 the stone that never hides the wanderer, 1 the possible occluders (COLOR.b = 1),
+## which take the see-through's alpha-faded marble (surface 1 is absent when there are none)
+func commit_split() -> ArrayMesh:
+	var i0 := PackedInt32Array()
+	var i1 := PackedInt32Array()
+	for k in range(0, idx.size(), 3):
+		var o := c[idx[k]].b > 0.5
+		var dst := i1 if o else i0
+		dst.append(idx[k]); dst.append(idx[k + 1]); dst.append(idx[k + 2])
+		if o: i1 = dst
+		else: i0 = dst
+	var m := ArrayMesh.new()
+	for ii in [i0, i1]:
+		if ii.is_empty(): continue
+		var arr := []
+		arr.resize(Mesh.ARRAY_MAX)
+		arr[Mesh.ARRAY_VERTEX] = v
+		arr[Mesh.ARRAY_NORMAL] = n
+		arr[Mesh.ARRAY_COLOR] = c
+		arr[Mesh.ARRAY_TEX_UV] = uv
+		arr[Mesh.ARRAY_INDEX] = ii
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		m.surface_set_name(m.get_surface_count() - 1, "occ" if ii == i1 and not i1.is_empty() else "stone")
+	m.set_meta("parts", parts)
+	return m
+
 func commit() -> ArrayMesh:
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)

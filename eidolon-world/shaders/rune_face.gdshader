@@ -8,6 +8,14 @@ global uniform vec4 accent;
 global uniform vec4 accent_core;
 global uniform vec4 accent_tint;
 #include "res://shaders/glyphs.gdshaderinc"
+// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+global uniform vec4 her;
+global uniform vec4 her_core;
+global uniform vec4 her_tint;
+uniform float hers = 0.0;
+vec3 _ha() { return mix(accent.rgb, her.rgb, hers); }
+vec3 _hc() { return mix(accent_core.rgb, her_core.rgb, hers); }
+vec3 _ht() { return mix(accent_tint.rgb, her_tint.rgb, hers); }
 
 uniform float design = -1.0;
 uniform float lit : hint_range(0.0, 1.0) = 0.0;
@@ -35,12 +43,12 @@ void fragment() {
 	float k = clamp(lit + flare, 0.0, 1.0);
 	float inner = 1.0 - clamp(d / RUNE_W, 0.0, 1.0);
 	// asleep: the groove holds a faint tinted light; awake: a bright core
-	vec3 asleep = mix(accent_tint.rgb, accent.rgb, 0.35);
-	vec3 awake = mix(accent.rgb, accent_core.rgb, smoothstep(0.1, 0.8, inner));
+	vec3 asleep = mix(_ht(), _ha(), 0.35);
+	vec3 awake = mix(_ha(), _hc(), smoothstep(0.1, 0.8, inner));
 	vec3 c = mix(asleep, awake, k);
 	c = mix(c, vec3(0.94, 1.0, 0.98), m.z * (0.35 + 0.5 * k));
-	c = mix(c, accent_tint.rgb, m.w * 0.45);
-	vec3 bloom_c = accent.rgb;
+	c = mix(c, _ht(), m.w * 0.45);
+	vec3 bloom_c = _ha();
 	float halo = (1.0 - smoothstep(0.0, 1.3, length(rp))) * (k * 0.08 + flare * 0.45);
 	vec3 col = mix(bloom_c, c, m.x);
 	ALBEDO = col * (1.0 + flare * 0.6);

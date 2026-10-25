@@ -8,6 +8,9 @@ global uniform vec4 accent;
 global uniform vec4 accent_core;
 global uniform vec4 accent_tint;
 uniform sampler2D mask : filter_linear, repeat_disable;
+uniform sampler2D mask_mine : filter_linear, repeat_disable;    // v0.8: your strokes (aqua); the rest is hers (rose)
+global uniform vec4 her;
+global uniform vec4 her_core;
 uniform float fog = 1.0;
 uniform float glow = 0.0;
 uniform float t = 0.0;
@@ -65,7 +68,13 @@ void fragment() {
 	m += texture(mask, uv - vec2(px.x * 1.5, 0.0)) * 0.15;
 	m += texture(mask, uv + vec2(0.0, px.y * 1.5)) * 0.15;
 	m += texture(mask, uv - vec2(0.0, px.y * 1.5)) * 0.15;
-	float wipe = clamp(m.r, 0.0, 1.0);
+	float mm = texture(mask_mine, uv).r * 0.4;
+	mm += texture(mask_mine, uv + vec2(px.x * 1.5, 0.0)).r * 0.15;
+	mm += texture(mask_mine, uv - vec2(px.x * 1.5, 0.0)).r * 0.15;
+	mm += texture(mask_mine, uv + vec2(0.0, px.y * 1.5)).r * 0.15;
+	mm += texture(mask_mine, uv - vec2(0.0, px.y * 1.5)).r * 0.15;
+	float yours = clamp(mm, 0.0, 1.0) / max(clamp(m.r, 0.0, 1.0) + clamp(mm, 0.0, 1.0), 0.001);
+	float wipe = clamp(max(m.r, mm), 0.0, 1.0);
 	float hint = clamp(m.g, 0.0, 1.0);
 	float palm = clamp(m.b, 0.0, 1.0);
 	// --- the fog: your breath, uneven, thinning (dissipating) at the edges of the pane
@@ -100,14 +109,17 @@ void fragment() {
 	c = mix(c, vec3(0.97, 0.99, 1.0), rim * bead * fog * 0.8);
 	// her fingertip and her palm, pressed against the glass from her side: pale, softly lit
 	c = mix(c, vec3(0.78, 0.86, 0.87), palm * 0.55);
-	c += accent.rgb * palm * glow * 0.25;
+	c += her.rgb * palm * glow * 0.25;
 	// the finished glyph glows in the carved-glow colours, blooming a little into the fog
 	float core = smoothstep(0.55, 0.95, wipe);
 	float bloom = smoothstep(0.02, 0.5, wipe) * (1.0 - core);
 	// (v0.6: every wiped line keeps a faint carved glow; the answered glyph lights fully)
 	float gk = max(glow, 0.5);
-	c = mix(c, mix(accent.rgb, accent_core.rgb, core * 0.85), (core * 0.9 + bloom * 0.45) * gk);
-	c += accent_core.rgb * core * 0.12 * gk;
+	// (her lines glow rose, yours aqua; where they meet, the two blend)
+	vec3 lc = mix(her.rgb, accent.rgb, yours);
+	vec3 lcc = mix(her_core.rgb, accent_core.rgb, yours);
+	c = mix(c, mix(lc, lcc, core * 0.85), (core * 0.9 + bloom * 0.45) * gk);
+	c += lcc * core * 0.12 * gk;
 	// a faint sheen across the glass, and the bronze frame
 	c += vec3(0.05) * smoothstep(0.035, 0.0, abs(uv.x * 0.7 - uv.y * 0.45 + 0.1));
 	float frame = 1.0 - smoothstep(0.0, 0.025, em);

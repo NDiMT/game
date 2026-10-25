@@ -14,6 +14,13 @@ uniform vec2 clip_h = vec2(1.0, 1.0);
 uniform float life = 1.0;
 uniform float dark = 0.0;        // v0.5: her steps in still water: the outer glow, stronger
 global uniform vec4 accent;
+// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+global uniform vec4 her;
+global uniform vec4 her_core;
+global uniform vec4 her_tint;
+uniform float hers = 1.0;
+vec3 _ha() { return mix(accent.rgb, her.rgb, hers); }
+vec3 _hc() { return mix(accent_core.rgb, her_core.rgb, hers); }
 varying vec3 pp;
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -42,6 +49,6 @@ void fragment() {
 	float s = 1.0 - smoothstep(-0.12, 0.05, min(sole, heel));
 	float a = s * pow(1.0 - life, 1.5) * mix(0.55, 0.9, dark);
 	if (a < 0.003) discard;
-	ALBEDO = mix(accent_core.rgb, accent.rgb, dark);
+	ALBEDO = mix(_hc(), _ha(), dark);
 	ALPHA = a;
 }

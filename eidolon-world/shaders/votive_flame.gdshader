@@ -1,9 +1,11 @@
 shader_type spatial;
-// v0.7 a votive flame: teal / petrol, a white-cyan core, flickering. A camera-facing quad (its bottom at
+// v0.7 a votive flame (v0.8: aqua, brighter and taller: a near-white core that blooms, an aqua body, a soft
+// aqua halo), flickering. A camera-facing quad (its bottom at
 // the wick). `intensity` 0 = out; `gutter` 0..1 shrinks it, sputtering, to nothing.
 render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_disabled, fog_disabled;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
+global uniform vec4 accent_tint;
 uniform float intensity = 0.0;
 uniform float gutter = 0.0;
 uniform float seed = 0.0;
@@ -36,12 +38,12 @@ void fragment() {
 	core *= smoothstep(0.02, 0.1, uv.y) * (1.0 - smoothstep(0.2, 0.55, y));
 	// the blue root at the wick
 	float root = (1.0 - smoothstep(0.0, 0.14, uv.y)) * (1.0 - smoothstep(0.0, 0.12, abs(x)));
-	float halo = exp(-length(vec2(x * 1.6, (uv.y - 0.28) * 1.1)) * 6.0) * 0.35;
-	vec3 petrol = vec3(0.10, 0.42, 0.46);
-	// (mixed, not added: a teal flame must read as teal against pale marble and fog)
-	vec3 col = mix(petrol, accent.rgb * 1.05, clamp(body * 1.2, 0.0, 1.0));
-	col = mix(col, accent_core.rgb * 1.15, core);
-	col = mix(col, vec3(0.2, 0.45, 0.75), root * 0.5);
+	float halo = exp(-length(vec2(x * 1.4, (uv.y - 0.3) * 1.0)) * 4.5) * 0.55;
+	// (mixed, not added: an aqua flame must read as aqua against pale marble and fog; the core goes past
+	// white so the bloom catches it)
+	vec3 col = mix(accent_tint.rgb, accent.rgb * 1.25, clamp(body * 1.3, 0.0, 1.0));
+	col = mix(col, accent_core.rgb * 1.6, core);
+	col = mix(col, accent_tint.rgb * 1.2, root * 0.5);
 	ALBEDO = col;
-	ALPHA = clamp(max(body * 0.95, halo * 1.2) + core, 0.0, 1.0) * clamp(intensity, 0.0, 1.0);
+	ALPHA = clamp(max(body, halo * 1.3) + core, 0.0, 1.0) * clamp(intensity, 0.0, 1.0);
 }

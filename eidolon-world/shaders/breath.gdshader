@@ -6,6 +6,13 @@ render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_back, 
 global uniform vec4 accent;
 global uniform vec4 accent_core;
 #include "res://shaders/glyphs.gdshaderinc"
+// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+global uniform vec4 her;
+global uniform vec4 her_core;
+global uniform vec4 her_tint;
+uniform float hers = 1.0;
+vec3 _ha() { return mix(accent.rgb, her.rgb, hers); }
+vec3 _hc() { return mix(accent_core.rgb, her_core.rgb, hers); }
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform float fog = 0.0;
 uniform float write = 0.0;
@@ -53,7 +60,7 @@ void fragment() {
 	float line = 1.0 - smoothstep(0.018, 0.034, d);
 	float wipe = 1.0 - smoothstep(0.03, 0.07, d);
 	vec3 fogc = vec3(0.86, 0.88, 0.9);
-	vec3 c = mix(fogc, accent_core.rgb, line * 0.55);
+	vec3 c = mix(fogc, _hc(), line * 0.55);
 	float a = cond * (1.0 - wipe * 0.85) + line * fog * 0.55;
 	ALBEDO = c;
 	ALPHA = clamp(a, 0.0, 0.92);

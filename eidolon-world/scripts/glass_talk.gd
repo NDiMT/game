@@ -36,6 +36,7 @@ var panel: Control
 var glass: ColorRect
 var glass_mat: ShaderMaterial
 var mask_vp: SubViewport
+var mine_vp: SubViewport
 var ink: Ink
 var close_r := Rect2()
 var her_first: Array = []         # strokes on screen (panel units) she writes first
@@ -60,9 +61,14 @@ class Ink extends Node2D:
 	var palm := Vector2(-99, -99)
 	var palm_k := 0.0
 	var width := 21.0
+	var only_mine := false        # v0.8: your strokes go to a second mask (yours glow aqua, hers rose)
+	var twin: Ink
 	func _draw() -> void:
+		if only_mine:
+			for m in mine: _poly(m[0], 1.0, Color(m[1], 0, 0), width * 1.15)
+			return
+		if twin: twin.queue_redraw()
 		for h in her: _poly(h[0], h[1], Color(1, 0, 0), width)
-		for m in mine: _poly(m[0], 1.0, Color(m[1], 0, 0), width * 1.15)
 		for h in hint:
 			if h.size() > 3 and h[3]: _dots(h[0], h[1], Color(0, h[2], 0), width * 0.32)
 			else: _poly(h[0], h[1], Color(0, h[2], 0), width * 0.8)
@@ -160,12 +166,27 @@ func _ready() -> void:
 	cm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	ink.material = cm
 	mask_vp.add_child(ink)
+	# your strokes, in a mask of their own (the same strokes array)
+	mine_vp = SubViewport.new()
+	mine_vp.size = MASK
+	mine_vp.transparent_bg = true
+	mine_vp.disable_3d = true
+	mine_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(mine_vp)
+	var im := Ink.new()
+	im.host = self
+	im.only_mine = true
+	im.mine = ink.mine
+	im.material = cm
+	mine_vp.add_child(im)
+	ink.twin = im
 	glass = ColorRect.new()
 	glass.set_anchors_preset(Control.PRESET_FULL_RECT)
 	glass.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	glass_mat = ShaderMaterial.new()
 	glass_mat.shader = preload("res://shaders/glass_closeup.gdshader")
 	glass_mat.set_shader_parameter("mask", mask_vp.get_texture())
+	glass_mat.set_shader_parameter("mask_mine", mine_vp.get_texture())
 	glass.material = glass_mat
 	panel.add_child(glass)
 	resized.connect(_layout)

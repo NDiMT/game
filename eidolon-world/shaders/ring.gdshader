@@ -4,6 +4,13 @@ render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_back;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
 #include "res://shaders/glyphs.gdshaderinc"
+// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+global uniform vec4 her;
+global uniform vec4 her_core;
+global uniform vec4 her_tint;
+uniform float hers = 0.0;
+vec3 _ha() { return mix(accent.rgb, her.rgb, hers); }
+vec3 _hc() { return mix(accent_core.rgb, her_core.rgb, hers); }
 uniform float lit = 0.0;
 uniform float sweep = 0.0;     // 0..1 the ignition travelling around the ring
 
@@ -27,9 +34,9 @@ void fragment() {
 	on = clamp(on, 0.0, 1.0);
 	float m = max(ring_l, rm.x);
 	vec3 carved = vec3(0.17, 0.17, 0.18);
-	vec3 hot = mix(accent.rgb, accent_core.rgb, 0.5);
+	vec3 hot = mix(_ha(), _hc(), 0.5);
 	vec3 col = mix(carved, hot, on);
 	float halo = rm.y * on * 0.9 + (1.0 - smoothstep(0.0, 0.08, abs(r - 0.92))) * on * 0.25;
-	ALBEDO = mix(col, accent.rgb, halo);
+	ALBEDO = mix(col, _ha(), halo);
 	ALPHA = clamp(m * mix(0.55, 1.0, on) + halo, 0.0, 1.0);
 }

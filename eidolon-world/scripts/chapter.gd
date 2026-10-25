@@ -996,13 +996,13 @@ func _build_gallery() -> void:
 		fm.set_shader_parameter("seed", float(i) * 0.37)
 		fm.set_shader_parameter("intensity", 0.0)
 		var fq := QuadMesh.new()
-		fq.size = Vector2(0.46, 0.66)
-		fq.center_offset = Vector3(0, 0.33, 0)
+		fq.size = Vector2(0.62, 0.98)              # (v0.8: taller, brighter)
+		fq.center_offset = Vector3(0, 0.49, 0)
 		var fmi := _mi(fq, fm, Transform3D(Basis(), Vector3(0, 1.15, -0.2)), n)
 		fmi.extra_cull_margin = 0.6
 		gl_flames.append(fm)
 		# its glow on the stone, its little pool of light on the floor, and real light on the face above
-		var halo := puzzles.glow_quad(n, Vector3(0, 1.35, -0.22), 1.1, Palette.ACCENT, 0.0)
+		var halo := puzzles.glow_quad(n, Vector3(0, 1.42, -0.22), 1.5, Palette.ACCENT, 0.0)
 		var pm := _smat("res://shaders/light_pool.gdshader", {"intensity": 0.0})
 		_mi(_plane(Vector2(1.6, 1.6)), pm, Transform3D(Basis(), Vector3(0, 0.012, -0.45)), n)
 		var L := OmniLight3D.new()
@@ -1041,11 +1041,11 @@ func _update_gallery(_dt: float) -> void:
 		var g: float = gl_flames[i].get_shader_parameter("gutter") if gl_flames[i].get_shader_parameter("gutter") != null else 0.0
 		var k := f * (1.0 - g)
 		var lp: Dictionary = gl_lamps[i]
-		(lp["halo"] as ShaderMaterial).set_shader_parameter("intensity", k * 0.5)
+		(lp["halo"] as ShaderMaterial).set_shader_parameter("intensity", k * 0.95)
 		(lp["pool"] as ShaderMaterial).set_shader_parameter("intensity", k)
 		var L: OmniLight3D = lp["light"]
 		L.visible = k > 0.01
-		L.light_energy = k * (0.9 + 0.18 * sin(Time.get_ticks_msec() * 0.013 + i) * sin(Time.get_ticks_msec() * 0.0047))
+		L.light_energy = k * (1.25 + 0.2 * sin(Time.get_ticks_msec() * 0.013 + i) * sin(Time.get_ticks_msec() * 0.0047))
 
 ## light a lamp: the third one lit decides; a wrong order gutters them all
 func light_lamp(i: int) -> void:
@@ -2480,6 +2480,7 @@ var her: Figure                 # her shadow, in the water
 var mine: Figure                # your plain reflection (only at the very end)
 var touch_glow: ShaderMaterial
 var whisper_glow: ShaderMaterial
+var touch_her: ShaderMaterial             # v0.8: her light at the touch (rose), meeting yours (aqua)
 var her_xf := Transform3D()
 var her_pose := Figure.Pose.new()
 var _refl_pool := Transform3D()
@@ -2521,9 +2522,11 @@ func hand_in_the_water(c: Cinematic) -> void:
 		her = _pool_puppet(0.045)
 		her.veil_contrary = true
 		mine = _pool_puppet(0.0)
-		mine.set_cloth("copy", game.player.fig)          # (your reflection wears your cloth; hers rests: she is only a reflection)
-		touch_glow = puzzles.glow_quad(self, TOUCH, 2.2, Palette.ACCENT, 0.0)
-		whisper_glow = puzzles.glow_quad(self, POOL_C + Vector3(0, 0.03, 0.05), 0.7, Palette.CORE, 0.0)
+		mine.set_cloth("copy", game.player.fig)
+		mine.set_param("hers", 0.0)                       # (your reflection keeps your aqua)          # (your reflection wears your cloth; hers rests: she is only a reflection)
+		touch_glow = puzzles.glow_quad(self, TOUCH + Vector3(0, 0.0, 0.12), 2.0, Palette.ACCENT, 0.0)
+		touch_her = puzzles.glow_quad(self, TOUCH + Vector3(0, -0.01, -0.12), 2.0, Palette.HER, 0.0)
+		whisper_glow = puzzles.glow_quad(self, POOL_C + Vector3(0, 0.03, 0.05), 0.7, Palette.HER_CORE, 0.0)
 	var pl := game.player
 	var w := game.world
 	var g := game
@@ -2614,7 +2617,8 @@ func hand_in_the_water(c: Cinematic) -> void:
 	# -- 16.5: touch: a ring spreads through the water; Katoptron lights on you both
 	c.anim(P + 16.5, 5.0, func(k: float) -> void:
 		puzzles_ring(k * 5.0)
-		touch_glow.set_shader_parameter("intensity", sin(minf(k * 3.0, 1.0) * PI * 0.5) * (1.0 - k) * 2.0), 0)
+		touch_glow.set_shader_parameter("intensity", sin(minf(k * 3.0, 1.0) * PI * 0.5) * (1.0 - k) * 2.0)
+		touch_her.set_shader_parameter("intensity", sin(minf(k * 2.6, 1.0) * PI * 0.5) * (1.0 - k) * 1.9), 0)
 	c.at(P + 16.7, func() -> void:
 		pl.fig.set_runes(1)
 		her.set_runes(1))
@@ -2694,6 +2698,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 		mine.visible = false
 		her.visible = false
 		touch_glow.set_shader_parameter("intensity", 0.0)
+		touch_her.set_shader_parameter("intensity", 0.0)
 		whisper_glow.set_shader_parameter("intensity", 0.0)
 		pl.fig.set_param("glint", Game.HEM_PER_SHRINE[1])
 		pl.fig.set_hem(Game.HEM_PER_SHRINE[1])

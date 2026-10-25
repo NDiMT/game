@@ -3,6 +3,13 @@ shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, shadows_disabled, cull_disabled, fog_disabled;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
+// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+global uniform vec4 her;
+global uniform vec4 her_core;
+global uniform vec4 her_tint;
+uniform float hers = 1.0;
+vec3 _ha() { return mix(accent.rgb, her.rgb, hers); }
+vec3 _hc() { return mix(accent_core.rgb, her_core.rgb, hers); }
 uniform vec3 near_pos = vec3(0.0, -100.0, 0.0);
 uniform float visible = 0.0;
 uniform float solid = 0.0;
@@ -18,5 +25,5 @@ void fragment() {
 	float near = 1.0 - smoothstep(0.5, 2.6, length(wp.xz - near_pos.xz));
 	float wave = 0.7 + 0.3 * sin(TIME * 1.7 + wp.x * 1.3 + wp.z * 0.9);
 	float a = (line * 0.8 + fill) * (0.25 + near * 0.9) * wave * visible * (1.0 - solid);
-	ALBEDO = accent_core.rgb * a;
+	ALBEDO = _hc() * a;
 }
