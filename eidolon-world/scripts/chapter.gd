@@ -1111,7 +1111,8 @@ func _build_gallery() -> void:
 		sh_flames.append(fl)
 		level.ob_circle(Vector2(SH_BRAZ[i].x, SH_BRAZ[i].z), 0.32)
 		var sm := _smat("res://shaders/statue_shadow.gdshader", {"k": 0.0, "dark": 0.72, "mode": 0.0, "seed": float(i)})
-		_mi(_plane(Vector2(1.0, 1.0)), sm, _shadow_xf(i, 1.012 + 0.001 * i)).layers = PlanarMirror.LAYER_MAIN_FX
+		sm.render_priority = 1                  # (v0.9: a cast shadow lies OVER her outline: it fills it, its rim around)
+		_mi(_plane(Vector2(1.0, 1.0)), sm, _shadow_xf(i, 1.026 + 0.001 * i)).layers = PlanarMirror.LAYER_MAIN_FX
 		sh_shadows.append(sm)
 		var idx := i
 		level.add_interact("brazier%d" % i, SH_BRAZ[i], "light", func() -> void: toggle_brazier(idx), 0.95,
