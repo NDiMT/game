@@ -127,7 +127,7 @@ static func _stair_of_breath(lv: Level) -> void:
 	lv.balustrade(z, Vector2(-12.75, 3.4), Vector2(-12.75, 0.0), 0.0)
 	lv.statue(z, Vector3(-12.0, 0.0, 2.9), PI * 0.75, 0.85)
 	# first flight up to the breath landing
-	lv.steps(z, R(-12.4, -4.0, -10.2, -0.2), 1, 0.0, 0.5, true)
+	lv.steps(z, R(-12.4, -4.0, -10.2, -0.2), 1, 0.0, 0.5, false)     # (v0.7: high at the landing end, as you walk it)
 	lv.walk(R(-12.4, -4.0, -10.2, -0.2), 0.5, 0.0, 1, "W_stair1")
 	lv.slab(z, R(-12.4, -6.6, -10.2, -4.0), 0.5, 0.7, 0.0)
 	lv.walk(R(-12.4, -6.6, -10.2, -4.0), 0.5, NAN, -1, "W_breath")
@@ -157,7 +157,7 @@ static func _stair_of_breath(lv: Level) -> void:
 	lv.walk(R(-10.2, -14.2, -4.6, -12.8), 1.0, NAN, -1, "W_corr")
 	lv.balustrade(z, Vector2(-10.1, -14.25), Vector2(-5.2, -14.25), 1.0)
 	lv.balustrade(z, Vector2(-10.1, -12.75), Vector2(-5.2, -12.75), 1.0)
-	lv.rubble(Vector3(-11.6, 1.0, -13.6), 0.4, 3)
+	lv.rubble(Vector3(-12.1, 1.0, -14.1), 0.3, 3)
 
 # ------------------------------------------------------------------ 4. the shard gallery
 static func _gallery(lv: Level) -> void:
@@ -192,7 +192,7 @@ static func _hollow_walk(lv: Level) -> void:
 	lv.walk(R(17.5, -15.0, 25.5, -6.0), 1.0, NAN, -1, "HW")
 	# low walls round the walk; the entrance from the garden is on the west, the exit south-west
 	lv.wall(z, R(25.5, -15.1, 25.8, -5.9), 1.0, 2.2, true)
-	lv.wall(z, R(17.3, -6.2, 25.6, -5.9), 1.0, 2.2, true)
+	lv.wall(z, R(17.3, -6.12, 25.6, -5.82), 1.0, 2.2, true)     # (v0.7: clear of the last row of cells, now that walls are solid)
 	lv.wall(z, R(17.3, -10.9, 17.55, -6.0), 1.0, 2.2, true)
 	lv.wall(z, R(17.3, -15.0, 17.55, -12.7), 1.0, 2.2, true)
 	lv.wall(z, R(19.6, -15.25, 25.6, -15.0), 1.0, 2.2, true)

@@ -57,7 +57,7 @@ func box(center: Vector3, size: Vector3, color: Color, basis := Basis()) -> void
 	c.a = 1.0
 	var xf := Transform3D(basis * Basis.from_scale(size), center)
 	add_arrays(a, xf, c)
-	parts.append([xf * _UNIT_BOX, tag, false])
+	parts.append([xf * _UNIT_BOX, tag, false, xf])      # (the transform: a turned box's true footprint)
 
 func cyl(center: Vector3, r_top: float, r_bot: float, h: float, color: Color, segs := 12, basis := Basis()) -> void:
 	var R := maxf(maxf(r_top, r_bot), 0.001)

@@ -53,6 +53,7 @@ var _moved := false
 const POOL_SHORE := Vector3(-0.3, 0.0, 1.7)
 var breath_mats := {}              # id -> ShaderMaterial
 var stair_veil: ShaderMaterial
+var stair_rune: MeshInstance3D          # v0.7: the whole rune, carved large beside the stair (her half + yours)
 var _breathing := ""
 # hall / gallery
 var shard_node: Node3D
@@ -323,7 +324,7 @@ func _on_pool_piece(ri: int) -> bool:
 	var c: Vector2i = Ch1Geo.POOL_REALS[ri][0]
 	var q := Vector2(game.player.position.x, game.player.position.z)
 	for g in pool_pieces[c]["regions"]:
-		if (g as Level.Region).enabled and (g as Level.Region).r.grow(0.3).has_point(q): return true
+		if (g as Level.Region).enabled and (g as Level.Region).r.grow(Player.RADIUS).has_point(q): return true
 	return false
 
 func turn_pool(ri: int) -> void:
@@ -418,7 +419,7 @@ func _build_stair() -> void:
 	var gp := PackedVector2Array()
 	for q in GlassTalk.smooth(PackedVector2Array(half), 3): gp.append(q * 0.85 + Vector2(0.0, 0.05))
 	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.75})
-	_mi(_quad(Vector2(1.3, 1.3)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(-10.19, 1.75, -2.6)))
+	stair_rune = _mi(_quad(Vector2(1.3, 1.3)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(-10.19, 1.75, -2.6)))
 	stair_veil = _smat("res://shaders/mist_veil.gdshader", {"noise_tex": level.noise_tex, "density": 1.0, "glow": 0.35})
 	_mi(_quad(Vector2(1.9, 3.2)), stair_veil, Transform3D(Basis(), Vector3(-11.3, 0.5 + 1.6, -6.8)))
 
@@ -720,9 +721,11 @@ func push_drum() -> void:
 			var tw := create_tween()
 			tw.tween_interval(1.6)
 			tw.tween_callback(func() -> void:
+				if hs["drum"] != [c.x, c.y] or _locked(0) or _drum_movable(): return
 				hs["drum"] = [DRUM_START.x, DRUM_START.y]
 				(hall_obs[0] as Level.Obstacle).c = Vector2(DRUM_START)
-				event.emit("hall_push", null))
+				drum_node.position = _cell_v3(DRUM_START)
+				event.emit("hall_reset", null))
 			tw.tween_property(drum_node, "position", _cell_v3(DRUM_START), 1.4).set_trans(Tween.TRANS_SINE))
 
 ## can the drum still be pushed some way (with room to stand behind it)?
@@ -730,7 +733,7 @@ func _drum_movable() -> bool:
 	var hs := _hall_state()
 	var c := Vector2i(int(hs["drum"][0]), int(hs["drum"][1]))
 	for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		var stand := Vector2(c.x - dir.x * 0.75, c.y - dir.y * 0.75)
+		var stand := Vector2(c.x - dir.x * 0.85, c.y - dir.y * 0.85)     # (clear of the drum's own footprint)
 		if hall_free(c + dir, 0.42, 0) and level.on_ground(stand) and not level.blocked(stand, Player.RADIUS): return true
 	return false
 
@@ -832,7 +835,7 @@ func _update_hall(dt: float) -> void:
 		gm.set_shader_parameter("intensity", move_toward(float(gm.get_shader_parameter("intensity")), 0.9 if m3[k] else 0.0, dt * 2.0))
 		gm.set_shader_parameter("fill", 1.0 if m3[k] else 0.0)
 		var mg: ShaderMaterial = match_glows[k]
-		mg.set_shader_parameter("intensity", maxf(0.0, float(mg.get_shader_parameter("intensity")) - dt * 0.8))
+		mg.set_shader_parameter("intensity", maxf(0.0, float(mg.get_shader_parameter("intensity")) - dt * 0.45))
 	var it_push: Level.Interact = level.interact_by_id("hall_push")
 	it_push.pos = Vector3(hs["drum"][0], 1.0, hs["drum"][1])
 	level.interact_by_id("hall_take").pos = Vector3(hs["brazier"][0], 1.0, hs["brazier"][1])
@@ -870,6 +873,11 @@ func _apply_hall() -> void:
 func reset_hall() -> void:
 	if state["hall_door"] or carrying: return
 	var hs := _hall_state()
+	# (not onto you: if you stand where a thing would return, nothing moves)
+	var me := Vector2(game.player.position.x, game.player.position.z)
+	if me.distance_to(Vector2(DRUM_START)) < 0.8 or me.distance_to(Vector2(BRAZ_START)) < 0.6:
+		event.emit("hall_nope", null)
+		return
 	if not hs["locks"][0]:
 		hs["drum"] = [DRUM_START.x, DRUM_START.y]
 	if not hs["locks"][1]:
@@ -916,7 +924,8 @@ func _open_hall_door(instant: bool) -> void:
 ## way round and light the three lamps in order: each teal flame lights its bust's face from below; the
 ## third, if right, wakes the veils and the true arch opens. A wrong order and the flames gutter out;
 ## after two such tries the mural's arch and doorway (the clues) shine brighter.
-const GL_BUST := [Vector3(5.18, 1.0, -15.0), Vector3(6.67, 1.0, -15.0), Vector3(5.18, 1.0, -12.0), Vector3(6.67, 1.0, -12.0)]
+## (staggered down the narrow gallery, so you always stand before one lamp and not between two)
+const GL_BUST := [Vector3(5.18, 1.0, -15.4), Vector3(6.67, 1.0, -14.6), Vector3(5.18, 1.0, -12.4), Vector3(6.67, 1.0, -11.85)]
 const GL_ORDER := [3, 0, 1]             # B3 (east, south pair), B0 (west, north), B1 (east, north)
 var gl_flames: Array[ShaderMaterial] = []
 var gl_lamps: Array = []                # per lamp: {"light": OmniLight3D, "halo", "pool", "veil", "face"}
@@ -987,8 +996,8 @@ func _build_gallery() -> void:
 		fm.set_shader_parameter("seed", float(i) * 0.37)
 		fm.set_shader_parameter("intensity", 0.0)
 		var fq := QuadMesh.new()
-		fq.size = Vector2(0.34, 0.5)
-		fq.center_offset = Vector3(0, 0.25, 0)
+		fq.size = Vector2(0.46, 0.66)
+		fq.center_offset = Vector3(0, 0.33, 0)
 		var fmi := _mi(fq, fm, Transform3D(Basis(), Vector3(0, 1.15, -0.2)), n)
 		fmi.extra_cull_margin = 0.6
 		gl_flames.append(fm)
@@ -998,8 +1007,8 @@ func _build_gallery() -> void:
 		_mi(_plane(Vector2(1.6, 1.6)), pm, Transform3D(Basis(), Vector3(0, 0.012, -0.45)), n)
 		var L := OmniLight3D.new()
 		L.light_color = Color(0.45, 0.95, 0.9)
-		L.omni_range = 1.7
-		L.omni_attenuation = 1.4
+		L.omni_range = 1.5
+		L.omni_attenuation = 1.6
 		L.light_energy = 0.0
 		L.shadow_enabled = false
 		L.position = Vector3(0, 1.3, -0.32)
@@ -1036,7 +1045,7 @@ func _update_gallery(_dt: float) -> void:
 		(lp["pool"] as ShaderMaterial).set_shader_parameter("intensity", k)
 		var L: OmniLight3D = lp["light"]
 		L.visible = k > 0.01
-		L.light_energy = k * (1.5 + 0.25 * sin(Time.get_ticks_msec() * 0.013 + i) * sin(Time.get_ticks_msec() * 0.0047))
+		L.light_energy = k * (0.9 + 0.18 * sin(Time.get_ticks_msec() * 0.013 + i) * sin(Time.get_ticks_msec() * 0.0047))
 
 ## light a lamp: the third one lit decides; a wrong order gutters them all
 func light_lamp(i: int) -> void:
@@ -1148,13 +1157,13 @@ func _build_garden() -> void:
 		pivot.position = Vector3(TURN_X[i], 1.0, TURN_Z)
 		add_child(pivot)
 		var mi := MeshInstance3D.new()
-		mi.mesh = _statue_mesh(0.9, 0.62)
+		mi.mesh = _statue_mesh(0.9, 0.9)
 		mi.material_override = level.marble_mat
 		pivot.add_child(mi)
 		var mats: Array[ShaderMaterial] = []
 		for k in 4:
 			var f: Array = TURN_FACES[i][k]
-			var m := puzzles.rune_quad(pivot, Vector3(0, 0.31, 0) + dirs[k] * 0.478, Vector2(0.62, 0.62), normals[k], float(f[0]), 0.25)
+			var m := puzzles.rune_quad(pivot, Vector3(0, 0.45, 0) + dirs[k] * 0.44, Vector2(0.8, 0.8), normals[k], float(f[0]), 0.55)   # (v0.7: larger, brighter)
 			m.set_shader_parameter("mirror", f[1])
 			mats.append(m)
 		turn_face_mats.append(mats)
@@ -1222,7 +1231,7 @@ func _apply_turned(snap := false) -> void:
 		for k in 4:
 			var m: ShaderMaterial = turn_face_mats[i][k]
 			var good: bool = k == north and north == TURN_SOLUTION[i]
-			m.set_shader_parameter("lit", 1.0 if good or state["turned_done"] and k == TURN_SOLUTION[i] else 0.25)
+			m.set_shader_parameter("lit", 1.0 if good or state["turned_done"] and k == TURN_SOLUTION[i] else 0.55)
 			m.set_shader_parameter("flare", 0.4 if good else 0.0)
 
 func turned_correct() -> Array:
@@ -1559,7 +1568,7 @@ func _build_maze() -> void:
 			m.set_shader_parameter("life", 1.0)
 			m.set_shader_parameter("dark", 1.0)
 			var q := QuadMesh.new()
-			q.size = Vector2(0.36, 0.6)
+			q.size = Vector2(0.5, 0.82)                # (v0.7: larger)
 			q.orientation = PlaneMesh.FACE_Y
 			var mi := _mi(q, m, Transform3D(Basis(Vector3.UP, atan2(-dir.x, -dir.z)), Vector3(c.x, c.y, c.z)))
 			mi.visible = false

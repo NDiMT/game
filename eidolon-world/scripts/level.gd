@@ -272,7 +272,13 @@ func auto_solids(roots: Array) -> Dictionary:
 		[col_stump, AABB(Vector3(-0.43, 0.0, -0.43), Vector3(0.86, 1.1, 0.86)), "stump"],
 		[debris, AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE), "rubble"]]
 	for e in mm:
-		for xf in e[0]: parts.append([(xf as Transform3D) * (e[1] as AABB), true, false, e[2]])
+		for xf: Transform3D in e[0]:
+			var bb: AABB = xf * (e[1] as AABB)
+			if e[2] != "rubble":
+				# (a drum of stone turned about its axis is no wider: its round footprint, not the turned bounds)
+				var r := 0.4 * Vector2(xf.basis.x.x, xf.basis.x.z).length()
+				bb = AABB(Vector3(xf.origin.x - r, bb.position.y, xf.origin.z - r), Vector3(r * 2.0, bb.size.y, r * 2.0))
+			parts.append([bb, true, false, e[2]])
 	var solids := []
 	var added := 0
 	for pa in parts:
@@ -292,23 +298,35 @@ func auto_solids(roots: Array) -> Dictionary:
 		if top_here >= bb.end.y - 0.18: continue            # you stand ON it (a plinth with its own floor, a lift)
 		if bb.end.y <= h + 0.18 or bb.position.y >= h + 1.7: continue
 		var round: bool = pa[1]
-		solids.append([fr, round, bb.position.y, bb.end.y, pa[2], pa[3]])
+		solids.append([fr, round, bb.position.y, bb.end.y, pa[2], pa[3], _turned_footprint(pa[4]) if pa.size() > 4 else []])
 		if pa[2]: continue                                  # moving things carry their own obstacles
 		if _covered(fr, round): continue
-		var o := Obstacle.new()
-		if round:
-			o.circle = true; o.c = c; o.rad = (fr.size.x + fr.size.y) * 0.25
+		var obs: Array[Obstacle] = []
+		var turned := _turned_footprint(pa[4]) if pa.size() > 4 else []
+		if not turned.is_empty():
+			# a turned box: its axis-aligned bounds are much larger than it is; a chain of circles instead
+			for cc in turned:
+				var oc := Obstacle.new()
+				oc.circle = true; oc.c = Vector2(cc.x, cc.y); oc.rad = cc.z
+				obs.append(oc)
 		else:
-			o.circle = false; o.r = fr
-		o.name = "solid:" + str(pa[3])
-		solid_obs.append(o)
-		var g0 := Vector2i(floori(fr.position.x / GRID), floori(fr.position.y / GRID))
-		var g1 := Vector2i(floori(fr.end.x / GRID), floori(fr.end.y / GRID))
-		for gx in range(g0.x, g1.x + 1):
-			for gz in range(g0.y, g1.y + 1):
-				var k := Vector2i(gx, gz)
-				if not _grid.has(k): _grid[k] = []
-				_grid[k].append(o)
+			var o := Obstacle.new()
+			if round:
+				o.circle = true; o.c = c; o.rad = (fr.size.x + fr.size.y) * 0.25
+			else:
+				o.circle = false; o.r = fr
+			obs.append(o)
+		for o in obs:
+			o.name = "solid:" + str(pa[3])
+			solid_obs.append(o)
+			var orr := Rect2(o.c - Vector2(o.rad, o.rad), Vector2(o.rad, o.rad) * 2.0) if o.circle else o.r
+			var g0 := Vector2i(floori(orr.position.x / GRID), floori(orr.position.y / GRID))
+			var g1 := Vector2i(floori(orr.end.x / GRID), floori(orr.end.y / GRID))
+			for gx in range(g0.x, g1.x + 1):
+				for gz in range(g0.y, g1.y + 1):
+					var k := Vector2i(gx, gz)
+					if not _grid.has(k): _grid[k] = []
+					_grid[k].append(o)
 		added += 1
 	audit = {"parts": parts.size(), "solids": solids, "added": added, "ms": Time.get_ticks_msec() - t0}
 	return audit
@@ -321,10 +339,34 @@ func _collect_parts(n: Node, root: Node, out: Array) -> void:
 				var dyn := n != root
 				var what := str(mi.name) if n == root else str(n.name)
 				for pt in mi.mesh.get_meta("parts"):
-					if pt[1] == "floor": continue
-					out.append([mi.global_transform * (pt[0] as AABB), pt[2], dyn, what])
+					# (floors are audited too: a slab or a step you cannot stand on is a block in your way)
+					var e := [mi.global_transform * (pt[0] as AABB), pt[2], dyn, what + (":floor" if pt[1] == "floor" else "")]
+					if pt.size() > 3: e.append(mi.global_transform * (pt[3] as Transform3D))
+					out.append(e)
 		if ch is Node3D and not (ch is MeshInstance3D) and (ch as Node3D).visible and not ch is Level:
 			_collect_parts(ch, root, out)
+
+## a box turned about the vertical (not square to the world): its footprint as a chain of circles
+## [Vector3(x, z, radius)], or [] when it is square enough that its bounds are its footprint
+static func _turned_footprint(xf: Transform3D) -> Array:
+	var a := Vector2(xf.basis.x.x, xf.basis.x.z) * 0.5
+	var b := Vector2(xf.basis.z.x, xf.basis.z.z) * 0.5
+	var la := a.length()
+	var lb := b.length()
+	if la < 0.001 or lb < 0.001: return []
+	if absf(a.normalized().x * a.normalized().y) < 0.06: return []        # within ~3.5 degrees of square
+	var L := a if la >= lb else b
+	var w := minf(la, lb)
+	var Ln := L.length()
+	var n := clampi(ceili(Ln / maxf(w, 0.08)), 1, 14)
+	var r := maxf(w, Ln / n) * 1.05
+	var c := Vector2(xf.origin.x, xf.origin.z)
+	var out := []
+	for i in n:
+		var t := (float(i) + 0.5) / n * 2.0 - 1.0
+		var q := c + L * t
+		out.append(Vector3(q.x, q.y, r))
+	return out
 
 ## is this footprint already inside one obstacle?
 func _covered(fr: Rect2, round: bool) -> bool:
@@ -607,9 +649,9 @@ func _veiled_gate() -> void:
 	rubble(Vector3(0, -0.6, 7.9), 0.8, 6)
 	balustrade(z, Vector2(-1.05, 5.1), Vector2(-1.05, 7.0), 0.0)
 	# the broken gateway you wake beneath
-	column(Vector3(-1.5, 0, 4.6), 3.6)
-	column(Vector3(1.5, 0, 4.6), 3.6)
-	box(z, Vector3(-0.75, 3.85, 4.6), Vector3(2.1, 0.5, 0.7), 0.25, true, Basis(Vector3.BACK, 0.06))
+	column(Vector3(-1.5, 0, 5.0), 3.6)          # (v0.7: back, so the south rim is a way round to the pool)
+	column(Vector3(1.5, 0, 5.0), 3.6)
+	box(z, Vector3(-0.75, 3.85, 5.0), Vector3(2.1, 0.5, 0.7), 0.25, true, Basis(Vector3.BACK, 0.06))
 	box(z, Vector3(2.75, 0.24, 3.45), Vector3(1.7, 0.48, 0.66), 0.25, false, Basis(Vector3.UP, 0.55))
 	ob_rect(R(2.0, 2.95, 3.5, 3.95))
 	rubble(Vector3(2.0, 0, 3.9), 0.7, 5)
@@ -629,7 +671,7 @@ func _veiled_gate() -> void:
 	ob_rect(R(2.62, 2.25, 3.48, 2.75))
 	inscription("t_stele", Vector3(2.6, 0, 2.0), "Her face is not yours to carve.\nI broke the vow. Every face I gave her was wrong.", 1.3,
 		Transform3D(Basis(Vector3.UP, -0.5), Vector3(3.05, 0.64, 2.5) + Basis(Vector3.UP, -0.5) * Vector3(0, 0, 0.125)), Vector2(0.84, 1.08))
-	inscription("t_pool", Vector3(-0.1, 0, -0.5), "Still water keeps a likeness. Be still,\nand it will show the steps I hid.", 1.1,
+	inscription("t_pool", Vector3(-0.1, 0, -0.5), "The water keeps my half of the way.\nTurn yours, until it shows the path whole.", 1.1,
 		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-0.1, 0.012, -0.62)), Vector2(1.15, 0.78))
 	# exits: the arch to the north bridge, columns flanking
 	column(Vector3(-1.6, 0, -5.0), 3.6, true)
@@ -686,7 +728,7 @@ func _hall() -> void:
 	ob_rect(R(1.95, -20.4, 3.4, -19.4))
 	box(z, Vector3(4.35, 1.35, -19.9), Vector3(0.36, 0.7, 0.9), 0.25, false)
 	rubble(Vector3(-3.5, 1.0, -19.6), 0.7, 6)
-	rubble(Vector3(2.6, 1.0, -12.3), 0.5, 4)
+	rubble(Vector3(4.05, 1.0, -11.95), 0.3, 4)       # (v0.7: into the corner, off the hall's cells)
 
 
 func _garden() -> void:
@@ -824,7 +866,7 @@ func _shrine_platform() -> void:
 	m.cyl(c + Vector3(0, 0.02, 0.2), 1.18, 1.18, 0.06, C(0.5), 36)
 	ob_circle(Vector2(c.x, c.z + 0.2), 1.3)
 	rubble(Vector3(21.2, 2.0, -34.8), 0.6, 5)
-	stump(Vector3(21.0, 2.0, -29.0), 0.9)
+	stump(Vector3(22.0, 2.0, -30.0), 0.9)          # (v0.7: off the way round the platform's edge)
 
 ## the way on: a bridge from the shrine platform toward the next shrine, sealed by a dark rune door,
 ## its far spans broken and drowned in fog

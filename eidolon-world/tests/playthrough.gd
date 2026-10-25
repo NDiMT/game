@@ -48,7 +48,15 @@ func step_walk(seconds: float) -> void: steps.append(["walk", seconds])
 
 func tp(x: float, z: float, yaw := 0.0) -> void:
 	if game.level.blocked(Vector2(x, z), Player.RADIUS) or not game.level.circle_ok(Vector2(x, z), Player.RADIUS):
-		ok("test teleport lands on free ground (%.2f, %.2f)" % [x, z], false)
+		var why := ""
+		var pt := Vector2(x, z)
+		for o in game.level.obstacles + game.level.solid_obs:
+			var ob: Level.Obstacle = o
+			if not ob.enabled: continue
+			var hit := pt.distance_to(ob.c) < ob.rad + Player.RADIUS if ob.circle else pt.distance_to(Vector2(clampf(pt.x, ob.r.position.x, ob.r.end.x), clampf(pt.y, ob.r.position.y, ob.r.end.y))) < Player.RADIUS
+			if hit: why += " " + ob.name + " " + ((str(ob.c) + " r" + str(ob.rad)) if ob.circle else str(ob.r))
+		if not game.level.circle_ok(pt, Player.RADIUS): why += " not circle_ok"
+		ok("test teleport lands on free ground (%.2f, %.2f)" % [x, z], false, why)
 	game.cmd("tp:%f:%f:%f" % [x, z, yaw])
 
 func walk_to(x: float, z: float) -> void:
@@ -77,28 +85,11 @@ var _feet_seen := false
 func C() -> Chapter:
 	return game.chapter
 
-## solver checks (v0.6)
-func _pool_path_ok() -> bool:
-	# BFS over real stones (4-neighbours on the 7 x 2 grid) from column 0 to column 6
-	var real: Array = Ch1Geo.POOL_REAL
-	var seen := {}
-	var q := []
-	for k in real:
-		if k / 2 == 0: q.append(k); seen[k] = true
-	var reach_end := false
-	while not q.is_empty():
-		var k: int = q.pop_front()
-		if k / 2 == Ch1Geo.POOL_COLS - 1: reach_end = true
-		for nb in [k - 2, k + 2, k ^ 1]:
-			if nb >= 0 and nb < Ch1Geo.POOL_COLS * 2 and nb in real and not seen.has(nb):
-				seen[nb] = true
-				q.append(nb)
-	var lane_n := true
-	var lane_s := true
-	for c in Ch1Geo.POOL_COLS:
-		lane_n = lane_n and (c * 2) in real
-		lane_s = lane_s and (c * 2 + 1) in real
-	return reach_end and not lane_n and not lane_s
+## v0.7 the Pool of Halves: one press of interact on real slab ri
+func _pool_press(ri: int, label: String) -> void:
+	step_do(func() -> void: ok(label, _focus() == "pool_turn%d" % ri and game.try_interact(), _focus()))
+	step_until(label + " (turned)", func() -> bool: return not C()._pool_tw.has(ri), 3.0)
+	step_wait(0.15)
 
 ## the gallery map: slot (top-left, top-right, bottom-left, bottom-right) -> brazier, read two ways
 func _gallery_read(mirrored: bool) -> Array:
@@ -115,6 +106,78 @@ func _gallery_read(mirrored: bool) -> Array:
 	return order
 func _gallery_naive() -> Array: return _gallery_read(false)
 func _gallery_mirrored() -> Array: return _gallery_read(true)
+
+## ---- v0.7 collision audit helpers
+var _sgrid := {}
+func _solid_grid() -> Dictionary:
+	if _sgrid.is_empty():
+		for sd in game.level.audit["solids"]:
+			if sd[4]: continue                       # moving things: their own obstacles move with them
+			var r: Rect2 = sd[0]
+			for gx in range(floori(r.position.x / 3.0), floori(r.end.x / 3.0) + 1):
+				for gz in range(floori(r.position.y / 3.0), floori(r.end.y / 3.0) + 1):
+					var k := Vector2i(gx, gz)
+					if not _sgrid.has(k): _sgrid[k] = []
+					_sgrid[k].append(sd)
+	return _sgrid
+
+## does a body at p (feet at height y) overlap this solid's footprint (inset by `tol`)?
+static func _overlaps_solid(sd: Array, p: Vector2, y: float, rad: float, tol := 0.03) -> bool:
+	if float(sd[3]) <= y + 0.18 or float(sd[2]) >= y + 1.7: return false
+	var r: Rect2 = sd[0]
+	if sd.size() > 6 and not (sd[6] as Array).is_empty():
+		for cc: Vector3 in sd[6]:
+			if p.distance_to(Vector2(cc.x, cc.y)) < cc.z + rad - tol: return true
+		return false
+	if sd[1]:
+		return p.distance_to(r.get_center()) < (r.size.x + r.size.y) * 0.25 + rad - tol
+	var q := Vector2(clampf(p.x, r.position.x, r.end.x), clampf(p.y, r.position.y, r.end.y))
+	return p.distance_to(q) < rad - tol
+
+func _solid_hit(p: Vector3) -> String:
+	var g := _solid_grid()
+	var k := Vector2i(floori(p.x / 3.0), floori(p.z / 3.0))
+	for dx in [-1, 0, 1]:
+		for dz in [-1, 0, 1]:
+			for sd in g.get(k + Vector2i(dx, dz), []):
+				if _overlaps_solid(sd, Vector2(p.x, p.z), p.y, Player.RADIUS): return str(sd[5]) + " " + str(sd[0])
+	return ""
+
+## walk into every solid (and every obstacle) from 4 sides through the real movement code
+func _collision_audit() -> Dictionary:
+	var lv: Level = game.level
+	var rad := Player.RADIUS
+	var targets := []
+	for sd in lv.audit["solids"]:
+		if not sd[4]: targets.append(sd)
+	for o in lv.obstacles:
+		var ob: Level.Obstacle = o
+		if not ob.enabled: continue
+		var r := Rect2(ob.c - Vector2(ob.rad, ob.rad), Vector2(ob.rad, ob.rad) * 2.0) if ob.circle else ob.r
+		targets.append([r, ob.circle, -INF, INF, false, "obstacle:" + ob.name])
+	var approaches := 0
+	var bad := []
+	var dirs := [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
+	for sd in targets:
+		var r: Rect2 = sd[0]
+		var c := r.get_center()
+		for d: Vector2 in dirs:
+			var ext := (r.size.x if d.x != 0.0 else r.size.y) * 0.5
+			var st := c + d * (ext + rad + 0.45)
+			if not lv.on_ground(st) or not lv.circle_ok(st, rad) or lv.blocked(st, rad): continue
+			var h := lv.height_at(st)
+			var band: Array = (sd as Array).duplicate()
+			if is_inf(float(sd[2])):
+				band[2] = h; band[3] = h + 1.0             # (an obstacle: solid at whatever floor you are on)
+			if float(band[3]) <= h + 0.18 or float(band[2]) >= h + 1.7: continue
+			approaches += 1
+			var pos := Vector3(st.x, h, st.y)
+			for k in 30:
+				pos = lv.move(pos, Vector3(-d.x, 0, -d.y) * 0.04, rad)
+				if _overlaps_solid(band, Vector2(pos.x, pos.z), pos.y, rad):
+					bad.append("%s %s from %s at %s" % [sd[5], r, d, pos])
+					break
+	return {"targets": targets.size(), "approaches": approaches, "bad": bad}
 
 func hw_key() -> String:
 	return str(C().state["hollows"]) + str(C().state["hollow_lock"])
@@ -145,52 +208,78 @@ func _plan() -> void:
 		ok("pool reflection visible", _lag_samples.size() > 5, "samples=%d" % _lag_samples.size())
 		ok("glimpse 1: reflection lags (~0.42 s at walking speed)", lag > 0.8 and lag < 1.4, "lag distance %.2f m" % lag)
 		ok("glimpse 1 signalled", game.glimpses.get("lag", 0) >= 1))
-	# v0.6 "Trust the Water": stones stand in the water; only the real ones are reflected, near you, in still water
+	# v0.7 "The Pool of Halves": a broken path of slabs; some exist only in the reflection (hers), four are
+	# real and turn on pivots. Turn yours until real and reflected make one unbroken path: hers become stone.
 	step_do(func() -> void:
-		var real_ok := true
-		var arr: PackedVector4Array = C().pool_mat.get_shader_parameter("stones")
-		for k in arr.size(): real_ok = real_ok and ((arr[k].w > 0.5) == (k in Ch1Geo.POOL_REAL))
-		ok("the pool reflects only the real stones", real_ok and arr.size() == 14)
-		ok("solver: a safe path of real stones crosses the pool, and no straight lane is safe", _pool_path_ok())
+		# (a straight slab turned twice is the same slab: settings are compared by the shapes they make)
+		var shapes := {}
+		var best := 99
+		for sol in Chapter.pool_solutions():
+			var key := ""
+			var presses := 0
+			for i in 4:
+				var cs: String = Ch1Geo.rot_conn(Ch1Geo.POOL_REALS[i][1], int(sol[i]))
+				var arr := cs.split("")
+				arr.sort()
+				key += "".join(arr) + "|"
+				presses += posmod(int(sol[i]) - int(Ch1Geo.POOL_START[i]), 4)
+			shapes[key] = true
+			best = mini(best, presses)
+		ok("solver: exactly one arrangement of the four slabs makes the path whole", shapes.size() == 1, str(shapes.keys()))
+		ok("solver: the pool starts broken", not Ch1Geo.pool_path(Ch1Geo.POOL_START))
+		ok("solver: it takes more than one turn (at least %d presses)" % best, best > 1)
+		var single := false
+		for i in 4:
+			var tt: Array = Ch1Geo.POOL_START.duplicate()
+			tt[i] = (int(tt[i]) + 1) % 4
+			single = single or Ch1Geo.pool_path(tt)
+		ok("solver: no single turn makes it whole (no trivial path)", not single)
+		var info: PackedVector4Array = C().pool_mat.get_shader_parameter("arm_info")
+		var hers := 0
+		for v in info: hers += 1 if v.z > 0.5 else 0
+		ok("the water shows her slabs (reflection only) beside yours", int(C().pool_mat.get_shader_parameter("count")) == info.size() and hers == Ch1Geo.POOL_GHOSTS.size() * 2, "%d arms, %d hers" % [info.size(), hers])
+		var seams := true
+		for c in C().pool_pieces: seams = seams and (C().pool_pieces[c]["seams"] as Array).size() == (C().pool_pieces[c]["base"] as String).length()
+		ok("every slab carries glowing connector inlays", seams)
+		ok("her slabs are not in your world (no ground there)", not game.level.on_ground(Ch1Geo.cell_pos(Vector2i(4, 2))) and not (C().pool_pieces[Vector2i(4, 2)]["node"] as Node3D).visible)
+		ok("no waiting mechanic: the water is always still", C().calm > 0.8)
 		walk_to(-0.35, 1.7))
 	step_until("to the water's edge", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
+	_pool_press(0, "turn the first slab from the shore")
 	step_do(func() -> void:
-		ok("stepping stones stand in the water (all look the same)", game.level.on_ground(Vector2(-1.3, 1.05)) and game.level.on_ground(Vector2(-1.3, 2.35)))
-		game.cmd("input:1:0"))
-	step_wait(0.5)
+		var ry: float = (C().pool_pieces[Vector2i(0, 1)]["node"] as Node3D).rotation.y
+		ok("a turn is a quarter, snapped", C().state["pool_turns"][0] == 1 and absf(ry + PI * 0.5) < 0.01, "%.3f" % ry)
+		ok("turning grinds", game.sfx.played.get("grind", 0) > 0)
+		walk_to(-1.6, 1.7))
+	step_until("out onto your slab", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
+	step_do(func() -> void: ok("standing on your slab over the water", P().x < -1.5 and absf(P().y) < 0.01, str(P())))
+	for k in 3: _pool_press(1, "turn the second slab from the first (%d)" % (k + 1))
+	walk_path("back ashore and round to the north rim", [[-0.35, 1.7], [-0.25, -0.5], [-3.75, -0.5], [-3.75, -0.4]])
+	_pool_press(2, "turn the third slab from the north rim")
+	walk_path("round to the south rim", [[-0.25, -0.5], [-0.25, 3.75], [-0.5, 4.05], [-4.5, 4.05]])
+	step_do(func() -> void: ok("still broken: hers are not stone yet", not C().state["stones"]))
+	for k in 3: _pool_press(3, "turn the fourth slab from the south rim (%d)" % (k + 1))
+	step_until("the path is whole: her slabs rise as stone", func() -> bool: return C().state["stones"], 2.0)
+	step_wait(2.6)
 	step_do(func() -> void:
-		game.cmd("stop")
-		ok("moving keeps the water stirred (no reflections)", C().calm < 0.6 and float(C().pool_mat.get_shader_parameter("calm_r")) < 2.0, "calm %.2f" % C().calm)
-		walk_to(-0.35, 1.7))
-	step_until("back at the edge", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
-	step_wait(3.5)
+		ok("her slabs are solid now", game.level.on_ground(Ch1Geo.cell_pos(Vector2i(4, 2))) and (C().pool_pieces[Vector2i(4, 2)]["node"] as Node3D).visible)
+		var info: PackedVector4Array = C().pool_mat.get_shader_parameter("arm_info")
+		var hers := 0
+		for v in info: hers += 1 if v.z > 0.5 else 0
+		ok("...and the reflection no longer marks any as hers", hers == 0)
+		ok("solving plays its cue", game.sfx.played.get("cue:solve_waking_pool", 0) >= 1))
+	walk_path("across the pool on the whole path", [[-0.5, 4.05], [-0.25, 3.75], [-0.35, 1.7], [-1.275, 1.7], [-2.525, 1.7], [-2.525, 0.5],
+		[-3.775, 0.5], [-5.025, 0.5], [-5.025, 2.9], [-8.775, 2.9], [-10.4, 2.4]])
 	step_do(func() -> void:
-		ok("standing still calms the water round you: the near reflections show", C().calm > 0.9 and float(C().pool_mat.get_shader_parameter("calm_r")) > 3.0, "calm %.2f r %.2f" % [C().calm, float(C().pool_mat.get_shader_parameter("calm_r"))])
-		ok("...only near you", float(C().pool_mat.get_shader_parameter("calm_r")) < 4.0)
-		_mark = C().pool_falls
-		walk_to(-1.3, 1.05))                  # stone 0: an illusion
-	step_until("an illusion gives way", func() -> bool: return C().pool_falls > _mark, 6.0)
-	step_until("the pool gives you back to the shore", func() -> bool: return not game.player.locked and not C()._sinking, 8.0)
-	step_do(func() -> void:
-		ok("a soft fall: back on the shore, nothing lost", P().distance_to(Chapter.POOL_SHORE) < 0.3 and not C().state["stones"], str(P()))
-		ok("the sinking sounds", game.sfx.played.get("step_wet", 0) > 0))
-	for k in Ch1Geo.POOL_REAL:
-		var c: Vector2 = Ch1Geo.stone_pos(k)
-		step_do(func() -> void: walk_to(c.x, c.y))
-		step_until("onto real stone %d" % k, func() -> bool: return game.auto_target == Vector3.INF or C()._sinking, 8.0)
-		step_wait(1.6)                         # be still: the water shows the next stones
-	step_do(func() -> void:
-		ok("the real path holds (no fall on it)", C().pool_falls == _mark + 1, "falls %d" % C().pool_falls)
-		walk_to(-10.6, 1.7))
-	step_until("ashore on the far side", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
-	step_do(func() -> void:
-		ok("crossed the pool on the true stones", C().state["stones"] and P().x < -9.5 and absf(P().y) < 0.01, str(P()))
-		ok("the illusions sink for good", not game.level.named["stone0"].enabled and game.level.named["stone1"].enabled)
-		ok("solving plays its cue", game.sfx.played.get("cue:solve_waking_pool", 0) >= 1)
-		ok("footsteps on the stones splash", game.sfx.played.get("step_wet", 0) > 0)
+		ok("crossed the pool", C().state["stones"] and P().x < -9.5 and absf(P().y) < 0.01, str(P()))
+		ok("footsteps on the slabs splash", game.sfx.played.get("step_wet", 0) > 0)
 		ok("reached the Stair of Breath", game.area == "stair_breath", game.area))
 
 	# ================================================================ 2. the stair of breath
+	step_do(func() -> void:
+		var rw := C().stair_rune
+		var rm := rw.material_override as ShaderMaterial
+		ok("the whole rune is carved large beside the stair, glowing faintly", rw.visible and (rw.mesh as QuadMesh).size.x >= 1.2 and int(rm.get_shader_parameter("count")) > 8 and float(rm.get_shader_parameter("lit")) > 0.3))
 	walk_path("up the first flight", [[-11.3, 0.6], [-11.3, -3.0], [-11.3, -5.3]])
 	step_do(func() -> void:
 		ok("on the breath landing", absf(P().y - 0.5) < 0.01, str(P()))
@@ -241,6 +330,11 @@ func _plan() -> void:
 		ok("her writing is mirrored for you (her half on the left, the answer on the right)", gt.her_half[0][2].x < 0.0 and gt.target[0][2].x > 0.0)
 		ok("recogniser: her half copied is wrong", not game.cmd("glass_try:left") and gt.tries == 1))
 	step_wait(1.0)
+	step_do(func() -> void:
+		var gt: GlassTalk = game.ui.glass_talk
+		var dotted := gt.ink.hint.size() > 0
+		for h in gt.ink.hint: dotted = dotted and h.size() > 3 and h[3]
+		ok("after one wrong try: a faint dotted ghost of the missing stroke", dotted, str(gt.ink.hint.size())))
 	step_do(func() -> void:
 		var gt: GlassTalk = game.ui.glass_talk
 		ok("recogniser: a straight stroke is wrong", not game.cmd("glass_try:line") and gt.tries == 2))
@@ -294,19 +388,40 @@ func _plan() -> void:
 	step_do(func() -> void: ok("the veiled bust turns", _focus() == "hall_turn" and game.try_interact(), _focus()))
 	step_wait(0.9)
 	step_do(func() -> void: ok("a quarter turn is not as the glass remembers", not C()._locked(2)))
-	interact_n(1, 0.9)
-	step_wait(1.6)
+	step_do(func() -> void:
+		_mark = game.sfx.played.get("chime_hall", 0)
+		ok("turn it again", game.try_interact()))
+	step_wait(0.25)
+	step_do(func() -> void: ok("a visible arc sweeps the quarter turn on the floor", float(C().bust_arc_mat.get_shader_parameter("sweep")) > 0.2 and float(C().bust_arc_mat.get_shader_parameter("intensity")) > 0.3))
+	step_wait(2.4)
 	step_do(func() -> void:
 		ok("facing the glass (its face in the glass): set right", C()._locked(2) and not C().twins[2].visible)
+		ok("matched: a chime and a glow", game.sfx.played.get("chime_hall", 0) > _mark and float((C().match_glows[2] as ShaderMaterial).get_shader_parameter("intensity")) > 0.2)
+		ok("matched: its floor cell lights", float((C().goal_mats[2] as ShaderMaterial).get_shader_parameter("intensity")) > 0.2)
 		ok("set right, it appears in the glass", (C().bust_pivot.get_child(0) as MeshInstance3D).layers & 1 == 1))
 	# the drum: one push east, six north (the glass shows it one step from the glass, left of the bust)
-	var drum_pushes := [[-1.75, -13.0], [0.0, -12.25], [0.0, -13.25], [0.0, -14.25], [0.0, -15.25], [0.0, -16.25], [0.0, -17.25]]
+	step_do(func() -> void: tp(-1.8, -13.0, PI * 0.5))
+	step_wait(0.3)
+	step_do(func() -> void:
+		ok("standing square to the drum: an arrow shows which way it will slide", float(C().push_arrow_mat.get_shader_parameter("intensity")) > 0.5 and C()._push_dir() == Vector2i(1, 0)))
+	step_do(func() -> void: ok("push the drum once", _focus() == "hall_push" and game.try_interact(), _focus()))
+	step_wait(0.3)
+	step_do(func() -> void: ok("it slides (never rolls or turns)", is_zero_approx(C().drum_node.rotation.y) and is_zero_approx(C().drum_node.rotation.x) and is_zero_approx(C().drum_node.rotation.z)))
+	step_wait(0.6)
+	step_do(func() -> void: ok("one cell per push, snapped to the grid", C().state["hall"]["drum"] == [0, -13] and C().drum_node.position.is_equal_approx(Vector3(0, 1, -13)), str(C().drum_node.position)))
+	# the reset altar: what is not yet set right goes back (the bust, set right, stays)
+	step_do(func() -> void: tp(-3.9, -16.65, 0.0))
+	step_wait(0.3)
+	step_do(func() -> void: ok("the reset altar", _focus() == "hall_reset" and game.try_interact(), _focus()))
+	step_wait(0.3)
+	step_do(func() -> void: ok("reset: the drum is back where it was found, the bust stays set", C().state["hall"]["drum"] == [Chapter.DRUM_START.x, Chapter.DRUM_START.y] and C()._locked(2), str(C().state["hall"])))
+	var drum_pushes := [[-1.8, -13.0], [0.0, -12.2], [0.0, -13.2], [0.0, -14.2], [0.0, -15.2], [0.0, -16.2], [0.0, -17.2]]
 	for i in drum_pushes.size():
 		var sp: Array = drum_pushes[i]
 		step_do(func() -> void: tp(sp[0], sp[1], 0.0))
 		step_wait(0.25)
 		step_do(func() -> void: ok("push the drum (%d)" % (i + 1), _focus() == "hall_push" and game.try_interact(), _focus()))
-		step_wait(0.75)
+		step_wait(0.8)
 		if i == 4:
 			step_do(func() -> void: ok("a cell short of where it was: not yet", not C()._locked(0), str(C().state["hall"]["drum"])))
 	step_do(func() -> void: ok("the drum lies where the glass remembers it", C()._locked(0), str(C().state["hall"]["drum"])))
@@ -359,15 +474,29 @@ func _plan() -> void:
 		ok("the lens follows you on screen; her map shows in it", L.w > 0.5 and L.z > 10.0 and game.ui.lens_rect.visible, str(L))
 		ok("her map is drawn from her side: the true arch and the way in at the wrong ends", C().gl_map.get_shader_parameter("marks") == Vector4(1, 3, 0, 2))
 		ok("solver: read as drawn (not mirrored) the map gives a different, wrong order", _gallery_naive() != Chapter.GL_ORDER and _gallery_mirrored() == Chapter.GL_ORDER, "%s vs %s" % [_gallery_naive(), _gallery_mirrored()]))
-	var spots := {0: [5.75, -14.6], 1: [6.1, -14.6], 2: [5.75, -12.6], 3: [6.1, -12.6]}
+	step_do(func() -> void:
+		var vis := true
+		for i in 4: vis = vis and float(C().gl_flames[i].get_shader_parameter("intensity")) == 0.0
+		ok("four veiled busts, their votive lamps cold", C().gl_lamps.size() == 4 and vis))
+	var spots := {}
+	for i in 4:
+		var bw: Vector3 = Chapter.gl_bowl(i)
+		spots[i] = [5.92 if bw.x < 6.0 else 5.93, bw.z]
 	for attempt in [[1, 2, 3], [0, 1, 2]]:
 		for bi in attempt:
 			var sp2: Array = spots[bi]
 			step_do(func() -> void: tp(sp2[0], sp2[1], PI))
 			step_wait(0.25)
-			step_do(func() -> void: ok("light brazier %d" % bi, _focus() == "light%d" % bi and game.try_interact(), _focus()))
-			step_wait(0.4)
-		step_until("a wrong order gutters out", func() -> bool: return (C().state["gallery_lit"] as Array).is_empty() and not C()._gl_busy, 5.0)
+			step_do(func() -> void: ok("light lamp %d" % bi, _focus() == "light%d" % bi and game.try_interact(), _focus()))
+			step_wait(0.6)
+			step_do(func() -> void:
+				var lp: Dictionary = C().gl_lamps[bi]
+				ok("a teal flame burns in its bowl, lighting the face from below", float(C().gl_flames[bi].get_shader_parameter("intensity")) > 0.5 and (lp["light"] as OmniLight3D).visible and (lp["light"] as OmniLight3D).light_energy > 0.3))
+		step_until("a wrong order: the flames gutter out", func() -> bool: return (C().state["gallery_lit"] as Array).is_empty() and not C()._gl_busy, 5.0)
+		step_do(func() -> void:
+			var out := true
+			for i in 4: out = out and not (C().gl_lamps[i]["light"] as OmniLight3D).visible
+			ok("guttered: every lamp out", out))
 	step_do(func() -> void:
 		ok("still shut after wrong orders", not C().state["gallery"] and C().gl_fails == 2)
 		ok("hint after two wrong orders: the map's clues shine", float(C().gl_map.get_shader_parameter("pulse")) > 0.5))
@@ -375,9 +504,14 @@ func _plan() -> void:
 		var sp3: Array = spots[bi]
 		step_do(func() -> void: tp(sp3[0], sp3[1], PI))
 		step_wait(0.25)
-		step_do(func() -> void: ok("light brazier %d (her order, read from your side)" % bi, _focus() == "light%d" % bi and game.try_interact(), _focus()))
+		step_do(func() -> void: ok("light lamp %d (her order, read from your side)" % bi, _focus() == "light%d" % bi and game.try_interact(), _focus()))
 		step_wait(0.4)
 	step_until("the true arch opens", func() -> bool: return C().state["gallery"] and not game.level.named["gallery_secret"].enabled, 4.0)
+	step_wait(1.9)
+	step_do(func() -> void:
+		var veils := true
+		for i in 4: veils = veils and (float((C().gl_lamps[i]["veil"] as ShaderMaterial).get_shader_parameter("intensity")) > 0.5) == (i in Chapter.GL_ORDER)
+		ok("her busts' veils glow", veils))
 	step_wait(2.6)
 	walk_path("to the arch", [[5.95, -11.0], [5.95, -9.0]])
 	walk_path("through the passage", [[8.4, -8.5], [9.0, -10.0]])
@@ -493,7 +627,7 @@ func _plan() -> void:
 			if dsum <= 1: one = true
 		ok("solver: no single turn from the start lights anything", not one)
 		ok("her glass is a real reflection here", game.puzzles.court_refl.planar != null))
-	var mstand := [Vector2(8.95, -22.6), Vector2(8.95, -24.1), Vector2(14.95, -24.1), Vector2(14.95, -22.6)]
+	var mstand := [Vector2(10.62, -22.6), Vector2(10.62, -24.1), Vector2(14.75, -24.1), Vector2(14.75, -22.6)]   # (v0.7: the stands sweep wider; stand clear of them)
 	var to_decoy := [2, 3, 1, 0]
 	for i in 4:
 		var presses: int = to_decoy[i]
@@ -779,7 +913,35 @@ func _plan() -> void:
 		step_do(func() -> void: tp(zone[0], zone[1]))
 		step_walk(14.0)
 	step_do(func() -> void:
-		ok("random walk: always on walkable ground", walk_violations == 0, "%d samples, %d violations, max step dy %.3f" % [walk_samples, walk_violations, max_dy]))
+		ok("random walk: always on walkable ground", walk_violations == 0, "%d samples, %d violations, max step dy %.3f" % [walk_samples, walk_violations, max_dy])
+		ok("random walk: never inside a solid prop's footprint", solid_hits == 0, "%d samples, %d hits" % [walk_samples, solid_hits]))
+	# ---- v0.7 collisions: every prop and piece of architecture is solid
+	step_do(func() -> void:
+		var au: Dictionary = game.level.audit
+		var n_static := 0
+		for sd in au["solids"]: n_static += 0 if sd[4] else 1
+		ok("collision audit: every primitive classified", au["parts"] > 1000 and au["solids"].size() > 500, "%d primitives, %d solid footprints (%d static), %d obstacles added" % [au["parts"], au["solids"].size(), n_static, au["added"]])
+		var res := _collision_audit()
+		for b in (res["bad"] as Array).slice(0, 12): print("  overlap: ", b)
+		notes.append("collision audit: %d primitives, %d solid footprints, %d obstacles added; %d targets walked into from 4 sides (%d approaches), %d overlaps" % [au["parts"], au["solids"].size(), au["added"], res["targets"], res["approaches"], (res["bad"] as Array).size()])
+		print("  ", notes[-1])
+		ok("collision: walking into every solid prop and obstacle from 4 sides never overlaps it", (res["bad"] as Array).is_empty() and res["approaches"] > 1000, "%d targets, %d approaches, %d overlaps" % [res["targets"], res["approaches"], (res["bad"] as Array).size()])
+		tp(-11.3, -1.0, 0.0))
+	step_do(func() -> void: game.cmd("input:-1:0"))
+	step_wait(1.5)
+	step_do(func() -> void:
+		game.cmd("stop")
+		ok("the first flight: its open side's balustrade stops you", P().x > -12.35 + 0.2, str(P()))
+		var lo := game.level.height_at(Vector2(-11.3, -0.5))
+		var hi := game.level.height_at(Vector2(-11.3, -3.8))
+		ok("the first flight rises the way its steps are drawn (no walking through raised steps)", hi > lo + 0.4 and not str(game.level.audit["solids"]).contains(":floor"), "%.2f -> %.2f" % [lo, hi])
+		tp(1.0, -16.6, PI))
+	step_do(func() -> void: game.cmd("input:0:-1"))
+	step_wait(1.5)
+	step_do(func() -> void:
+		game.cmd("stop")
+		var hit := _solid_hit(P())
+		ok("walking at the hall's bust and the mirror: never inside them", hit == "" and not game.level.blocked(Vector2(P().x, P().z), Player.RADIUS - 0.02), hit + " " + str(P())))
 
 	# ---- save / restore
 	step_do(func() -> void:
@@ -798,7 +960,7 @@ func _plan() -> void:
 	step_until("continue", func() -> bool: return game.mode == "play", 5.0)
 	step_do(func() -> void:
 		ok("restored chapter", C().state["four"] and C().state["scales"] and "m1" in C().state["memories"] and C().state["shard"])
-		ok("restored regions", game.level.named["stone1"].enabled and not game.level.named["stone0"].enabled and not game.level.named["breath_gate"].enabled and game.level.named["hdoor"].enabled
+		ok("restored regions", game.level.named["pool4_2_0"].enabled and not game.level.named["breath_gate"].enabled and game.level.named["hdoor"].enabled
 			and game.level.named["g_door"].enabled and not game.level.named["hw_gate"].enabled and game.level.named["MZ_door"].enabled
 			and game.level.named["EC_room"].enabled and not game.level.named["tholos_front"].enabled and game.level.named["EB"].enabled)
 		ok("restored inventory", game.controls.inv_has)
@@ -827,7 +989,7 @@ func _plan() -> void:
 		ok("new game: puzzles reset", not st["bridge"] and not st["plate"] and not st["shrine"] and not st.get("drawbridge", false), str(st))
 		var cs: Dictionary = C().state
 		ok("new game: chapter reset", not cs["stones"] and not cs["shard"] and not cs["turned_done"] and cs["turned"] == Chapter.TURN_START and not cs["four"] and cs["memories"].is_empty(), str(cs))
-		ok("new game: regions reset", game.level.named["stone0"].enabled and not cs["stones"] and game.level.named["breath_gate"].enabled and not game.level.named["hdoor"].enabled
+		ok("new game: regions reset", not game.level.named["pool4_2_0"].enabled and not cs["stones"] and cs["pool_turns"] == Ch1Geo.POOL_START and game.level.named["breath_gate"].enabled and not game.level.named["hdoor"].enabled
 			and game.level.named["hw_gate"].enabled and not game.level.named["MZ_door"].enabled and game.level.named["tholos_front"].enabled and not game.level.named["LB"].enabled)
 		ok("new game: no shard", not game.controls.inv_has and not C().lens_on)
 		ok("new game: lift down", C().lift_h == 0.0)
@@ -861,6 +1023,7 @@ func _plan() -> void:
 	step_do(func() -> void: _finish())
 
 var _next_report := 0.0
+var solid_hits := 0
 func _process(dt: float) -> void:
 	t += dt
 	if t > _next_report:
@@ -870,7 +1033,7 @@ func _process(dt: float) -> void:
 		print("TIMEOUT at step ", si)
 		get_tree().quit(2)
 		return
-	if game and game.player and game.mode == "play" and not game.chapter._sinking:
+	if game and game.player and game.mode == "play":
 		_check_ground()
 	if walk_mode:
 		walk_t += dt
@@ -927,6 +1090,11 @@ func _check_ground() -> void:
 	elif absf(p.y - lv.height_at(q)) > 0.001: bad = "floating"
 	if _last != Vector3.INF and p.distance_to(_last) < 0.5: max_dy = maxf(max_dy, absf(p.y - _last.y))
 	_last = p
+	if bad == "":
+		var hit := _solid_hit(p)
+		if hit != "":
+			solid_hits += 1
+			if solid_hits < 12: print("  solid overlap: ", hit, " at ", p, " step ", si)
 	if bad != "":
 		walk_violations += 1
 		if walk_violations < 12: print("  violation: ", bad, " at ", p, " step ", si)

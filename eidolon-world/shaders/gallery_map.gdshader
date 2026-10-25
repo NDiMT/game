@@ -42,7 +42,7 @@ void fragment() {
 	d = min(d, stat);
 	// the four veiled busts against the long walls (v0.7): a head and shoulders over a small flame-bowl;
 	// tallies beside the ones that were hers
-	vec2 slots[4] = vec2[](vec2(-0.3, 0.33), vec2(0.3, 0.33), vec2(-0.3, -0.33), vec2(0.3, -0.33));
+	vec2 slots[4] = vec2[](vec2(-0.36, 0.33), vec2(0.25, 0.33), vec2(-0.26, -0.33), vec2(0.36, -0.33));
 	float m[4] = float[](marks.x, marks.y, marks.z, marks.w);
 	float tal = 9.0;
 	for (int i = 0; i < 4; i++) {
