@@ -12,7 +12,7 @@ extends Node3D
 ## toward it (a pan, never a zoom). Cheap: a few meshes and one multimesh each, hidden when you are far.
 
 const LINES := {
-	"CO": "He carved her face so large\nthe sea itself could not forget it.\nThe sea forgot.",
+	"CO": "He carved her face so large\nthe sea itself could not forget it.\nIt was still the wrong face.",
 	"TS": "Every face he broke, he hung here,\nso that each would catch the light\nonce more.",
 	"SP": "Up there, they say, the rain falls upward\nand the dead look down into the water\nto see the living.",
 }
@@ -141,7 +141,7 @@ func _model_head(root: Node3D, c: Vector3, wy: float) -> bool:
 	var B := Basis(Vector3.UP, -1.04) * Basis(Vector3.RIGHT, -0.3) * Basis.from_scale(Vector3.ONE * k)
 	var mid := bb.get_center()
 	# half-sunk: its centre a little above the water
-	var o := Vector3(c.x, wy + 0.9, c.z) - B * mid
+	var o := Vector3(c.x, wy + 0.35, c.z) - B * mid        # (half-sunk: the chin at the water)
 	var head := MeshInstance3D.new()
 	head.name = "ColossusHead"
 	head.mesh = mesh

@@ -1,11 +1,11 @@
-[1.0s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+[0.9s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
 [1.4s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
 [1.8s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
-[4.3s log] [audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
-[4.8s log] [props] 11 placed
-[4.9s log] [solids] 2072 primitives, 1082 solid footprints, 327 obstacles added (150 ms)
-[5.0s log] [warm-up] 431 mesh/material pairs (of 992 geometry nodes), 11 canvas materials
-[34.6s warning] [.WebGL-0x34b402af3800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[38.1s warning] [.WebGL-0x34b402af3800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[42.2s warning] [.WebGL-0x34b402af3800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[47.4s warning] [.WebGL-0x34b402af3800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+[4.5s log] [audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
+[5.0s log] [props] 11 placed
+[5.2s log] [solids] 2072 primitives, 1082 solid footprints, 327 obstacles added (170 ms)
+[5.3s log] [warm-up] 431 mesh/material pairs (of 993 geometry nodes), 11 canvas materials
+[37.7s warning] [.WebGL-0x1cc0245f800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[41.8s warning] [.WebGL-0x1cc0245f800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[45.5s warning] [.WebGL-0x1cc0245f800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[50.2s warning] [.WebGL-0x1cc0245f800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
