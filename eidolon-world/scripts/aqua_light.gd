@@ -18,7 +18,8 @@ var follow: ShaderMaterial
 var follow_param := ""
 var follow_scale := 1.0
 var strength := 1.0
-var _allowed := true
+var _allowed := false
+var _fade := 0.0
 
 ## light at `at` (world), range `range_m`; pool: a floor disc of `pool_size` metres at `pool_at` (INF: none)
 func _init(range_m := 2.4, e := 0.35, pool_at := Vector3.INF, pool_size := 1.6) -> void:
@@ -34,6 +35,7 @@ func _init(range_m := 2.4, e := 0.35, pool_at := Vector3.INF, pool_size := 1.6) 
 	if pool_at != Vector3.INF:
 		pool_mat = ShaderMaterial.new()
 		pool_mat.shader = preload("res://shaders/light_pool.gdshader")
+		pool_mat.render_priority = -2           # (v0.8.3: always UNDER the carved writing / rings on the same floor: no sort flicker)
 		var q := PlaneMesh.new()
 		q.size = Vector2(pool_size, pool_size)
 		pool = MeshInstance3D.new()
@@ -45,7 +47,7 @@ func _init(range_m := 2.4, e := 0.35, pool_at := Vector3.INF, pool_size := 1.6) 
 	all.append(self)
 
 func _ready() -> void:
-	if pool: pool.global_position = pool.get_meta("pool_at")
+	if pool: pool.global_position = pool.get_meta("pool_at") - Vector3(0, 0.006, 0)      # (a hair above the stone, below any marks)
 
 func _exit_tree() -> void:
 	all.erase(self)
@@ -57,23 +59,10 @@ func level() -> float:
 		k *= clampf((float(v) if v != null else 0.0) * follow_scale, 0.0, 1.0)
 	return k
 
-func _process(_dt: float) -> void:
+func _process(dt: float) -> void:
 	var k := level()
 	if pool_mat: pool_mat.set_shader_parameter("k", k)
-	var on := k > 0.02 and _allowed and is_visible_in_tree()
-	light.visible = on
-	if on: light.light_energy = energy * k
-
-## only the nearest lit aqua lights are live (High 3, Low 1)
-static func cull(p: Vector3) -> void:
-	var lit: Array = []
-	for a in all:
-		if a.level() > 0.02 and a.is_visible_in_tree():
-			var d: float = a.global_position.distance_to(p)
-			if d < LIGHT_DIST: lit.append([d, a])
-			else: a._allowed = false
-		else:
-			a._allowed = true
-	lit.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
-	var n := 3 if high else 1
-	for i in lit.size(): (lit[i][1] as AquaLight)._allowed = i < n
+	# (v0.8.3: the shared budget (Flame.cull) gives or takes the light; it fades, never pops)
+	_fade = move_toward(_fade, 1.0 if (k > 0.02 and _allowed and is_visible_in_tree()) else 0.0, dt * 3.0)
+	light.visible = _fade > 0.005
+	if light.visible: light.light_energy = energy * k * _fade

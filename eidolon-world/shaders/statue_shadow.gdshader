@@ -38,10 +38,10 @@ void fragment() {
 	} else {
 		float lens = 0.0;
 		if (shard_lens.w > 0.5) lens = 1.0 - smoothstep(shard_lens.z * 0.85, shard_lens.z, length(FRAGCOORD.xy - shard_lens.xy));
-		float line = 1.0 - smoothstep(0.012, 0.03, abs(d));
-		float bloom = exp(-abs(d) * 30.0) * 0.4;
-		float show = max(lens, hint * (0.25 + 0.15 * sin(TIME * 2.0)));
-		ALBEDO = mix(accent.rgb, accent_core.rgb * 1.3, line);
+		float line = 1.0 - smoothstep(0.018, 0.04, abs(d));            // (v0.8.3: thicker, brighter, a slow pulse)
+		float bloom = exp(-abs(d) * 24.0) * 0.5;
+		float show = max(lens * (0.88 + 0.12 * sin(TIME * 1.6)), hint * (0.25 + 0.15 * sin(TIME * 2.0)));
+		ALBEDO = mix(accent.rgb, accent_core.rgb * 1.55, line);
 		ALPHA = clamp(line + bloom, 0.0, 1.0) * show;
 	}
 }

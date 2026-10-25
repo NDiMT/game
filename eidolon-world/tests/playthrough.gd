@@ -353,12 +353,10 @@ func _plan() -> void:
 		var rm := rw.material_override as ShaderMaterial
 		ok("the whole rune is carved large beside the stair, glowing faintly", rw.visible and (rw.mesh as QuadMesh).size.x >= 1.2 and int(rm.get_shader_parameter("count")) > 8 and float(rm.get_shader_parameter("lit")) > 0.3))
 	step_do(func() -> void:
-		var it: Level.Interact = game.level.interact_by_id("breathe_stair")
 		var m: ShaderMaterial = C().breath_mats["stair"]
 		var sz: Vector2 = m.get_shader_parameter("size")
 		var gs := minf(sz.x, sz.y) * 0.42              # (the shader's glyph scale; the glyph spans +-0.55 of it)
-		ok("the breath glass stands early, free on the landing (not in the stair wall)", it != null and it.pos.z > 0.0 and absf(it.pos.y) < 0.01 and game.level.on_ground(Vector2(Chapter.STAIR_GLASS.x + 0.9, Chapter.STAIR_GLASS.z)), str(it.pos if it else null))
-		ok("it faces the camera's general direction (yaw 0 looks from -x +z)", (Basis(Vector3.UP, Chapter.STAIR_GLASS_YAW) * Vector3.BACK).dot(Vector3(-1, 0, 1).normalized()) > 0.9)
+		ok("the breath glass is back in the stair wall (v0.8)", game.level.interact_by_id("breathe_stair").pos.is_equal_approx(Vector3(-11.1, 0.5, -5.3)))
 		ok("the whole glyph fits on the pane with a margin", gs * 0.6 < sz.x * 0.5 - 0.1 and gs * 0.6 < sz.y * 0.5 - 0.1, str(gs)))
 	walk_path("up the first flight", [[-11.3, 0.6], [-11.3, -3.0], [-11.3, -5.3]])
 	step_do(func() -> void:
@@ -376,12 +374,7 @@ func _plan() -> void:
 	step_wait(1.0)
 	step_do(func() -> void:
 		ok("hint wisp drifts toward the small glass", C().wisp.visible and game.ui.text.modulate.a < 0.05)
-		walk_to(-11.3, -1.0))
-	step_until("down the first flight", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
-	walk_path("round to the front of the glass", [[-10.9, 1.0], [-11.3, 2.2]])
-	step_do(func() -> void:
-		var it: Level.Interact = game.level.interact_by_id("breathe_stair")
-		walk_to(it.pos.x, it.pos.z))
+		walk_to(-11.3, -5.3))
 	step_until("back to the glass", func() -> bool: return game.auto_target == Vector3.INF, 5.0)
 	# "An Answer on the Glass": the close-up of the pane; she writes, then waits for your answer
 	step_do(func() -> void: ok("breathe on the glass", _focus() == "breathe_stair" and game.try_interact(), _focus()))
@@ -440,7 +433,7 @@ func _plan() -> void:
 		ok("her answer rings her song (the motif A-D-E-F-E)", game.sfx.played.get("motif", 0) >= 1 and game.sfx.played.get("note_E", 0) >= 2)
 		ok("her 'follow' rune is a letter of the script, one calligraphic stroke", GlassTalk.TEMPLATES["follow"].size() == 1 and GlassTalk.TEMPLATES["follow"][0].size() >= 8)
 		ok("recogniser unit: resample keeps 32 points", GlassTalk.resample(PackedVector2Array([Vector2.ZERO, Vector2(1, 0)])).size() == GlassTalk.N))
-	walk_path("up the second flight", [[-11.3, 0.6], [-11.3, -3.0], [-11.3, -5.3], [-11.3, -9.0], [-11.3, -13.5], [-6.0, -13.5], [-2.0, -13.5]])
+	walk_path("up the second flight", [[-11.3, -9.0], [-11.3, -13.5], [-6.0, -13.5], [-2.0, -13.5]])
 	step_do(func() -> void:
 		ok("reached the Hall of Glass by the corridor", absf(P().y - 1.0) < 0.01 and game.area == "hall_glass", str(P()) + " " + game.area)
 		ok("area name shown on entering the hall", game.ui.area_label.text == Names.area("hall_glass").to_upper(), game.ui.area_label.text))

@@ -134,7 +134,9 @@ static func _stair_of_breath(lv: Level) -> void:
 	# the cliff wall on the east (between the stair and the water), the small glass set into it facing
 	# west; the open side of the stair is the west, over the void
 	lv.wall(z, R(-10.2, -12.6, -9.7, -0.2), -0.6, 3.9, true)
-	# (v0.8.1: the breath glass left this wall: it stands free on the landing below, see Chapter._build_stair)
+	# bronze frame: proud of the wall by 12 cm (its back is buried in the wall: no coplanar faces)
+	lv.box(z, Vector3(-10.22, 1.75, -5.3), Vector3(0.2, 1.75, 1.35), 1.0)
+	lv.box(z, Vector3(-10.36, 0.93, -5.3), Vector3(0.36, 0.12, 1.3), 0.25)
 	# second flight to the top (sealed by a veil of mist until she answers)
 	lv.steps(z, R(-12.4, -10.6, -10.2, -6.6), 1, 0.5, 1.0, false)
 	lv.walk(R(-12.4, -10.6, -10.2, -6.6), 1.0, 0.5, 1, "W_stair2")

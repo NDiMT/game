@@ -1,12 +1,13 @@
 shader_type spatial;
 // v0.8.1: a real-looking flame (a layered, noise-driven fire). Camera-facing about the vertical; two
 // layers (the body with its licking tongues, and the hot inner core) give it depth. Additive, soft edges.
-// `style` 0: natural warm fire (white-yellow core, orange body, red-brown tips); 1: a votive flame: the
-// same warm fire, its outer tongues and rim cooled to the ritual aqua. `intensity` 0 = out, `gutter`
+// (v0.8.3: every flame burns in the game's aqua: a near-white heart, a pale aqua core, the aqua body,
+// teal tongues; `style` is kept for compatibility.) `intensity` 0 = out, `gutter`
 // 0..1 shrinks it sputtering to nothing.
 render_mode unshaded, blend_add, depth_draw_never, shadows_disabled, cull_disabled, fog_disabled;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
+global uniform vec4 accent_tint;
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform float intensity = 0.0;
 uniform float gutter = 0.0;
@@ -37,18 +38,16 @@ void fragment() {
 	shape -= (n3 - 0.45) * 0.10 * smoothstep(0.25, 0.9, y);
 	float body = smoothstep(-0.03, 0.06, shape) * smoothstep(0.0, 0.05, uv.y) * (1.0 - smoothstep(0.75, 1.0, y));
 	float heat = clamp(shape / max(w, 0.02), 0.0, 1.0) * (1.0 - y * 0.85);   // hotter inside and low
-	// colour by heat: deep red-brown at the torn edges, orange, yellow, a white core
-	vec3 c = mix(vec3(0.55, 0.12, 0.02), vec3(1.0, 0.42, 0.08), smoothstep(0.0, 0.35, heat));
-	c = mix(c, vec3(1.0, 0.78, 0.35), smoothstep(0.3, 0.7, heat));
-	c = mix(c, vec3(1.0, 0.97, 0.88), smoothstep(0.65, 0.95, heat));
-	// the votive: the outer tongues and the rim cooled to aqua (ritual fire), the core stays warm and white
-	vec3 aq = mix(accent.rgb, accent_core.rgb, smoothstep(0.2, 0.6, heat));
-	c = mix(c, aq * 1.1, style * (1.0 - smoothstep(0.25, 0.75, heat)) * 0.85);
-	// the blue root at the wick
+	// (v0.8.3, the owner: OUR fire is aqua) colour by heat: a deep teal at the torn edges, the aqua body,
+	// the pale aqua core, a near-white heart
+	vec3 c = mix(accent_tint.rgb * 0.75, accent.rgb, smoothstep(0.0, 0.35, heat));
+	c = mix(c, accent_core.rgb, smoothstep(0.3, 0.7, heat));
+	c = mix(c, vec3(0.93, 1.0, 0.98), smoothstep(0.65, 0.95, heat));
+	// a deeper blue root at the wick
 	float root = (1.0 - smoothstep(0.0, 0.12, uv.y)) * (1.0 - smoothstep(0.0, 0.1, abs(x)));
-	c = mix(c, vec3(0.25, 0.45, 1.0), root * 0.45);
+	c = mix(c, vec3(0.2, 0.5, 0.95), root * 0.4);
 	// a soft glow round the flame (no hard edge)
 	float glow = exp(-length(vec2(x * 1.4, (uv.y - 0.3 * h) * 1.1)) * 5.5) * 0.25 * (1.0 - core_layer);
-	vec3 gcol = mix(vec3(1.0, 0.55, 0.2), accent.rgb, style * 0.7);
+	vec3 gcol = accent.rgb;
 	ALBEDO = (c * body * mix(0.85, 1.3, core_layer) + gcol * glow) * intensity * flick;
 }

@@ -20,6 +20,7 @@ vec3 _ht() { return mix(accent_tint.rgb, her_tint.rgb, hers); }
 uniform float design = -1.0;
 uniform float lit : hint_range(0.0, 1.0) = 0.0;
 uniform float flare = 0.0;
+uniform float on_floor = 0.0;            // v0.8.3: a rune lying on the floor (stronger, pulsing)
 uniform float numeral = 0.0;
 uniform float mirror = 0.0;
 uniform vec3 carve : source_color = vec3(0.16, 0.17, 0.18);
@@ -39,7 +40,7 @@ void fragment() {
 			d = min(d, g_seg(rp, vec2(x, -1.12), vec2(x, -1.42)));
 		}
 	}
-	vec4 m = carved_glow(d, RUNE_W);
+	vec4 m = carved_glow(d - RUNE_W * 0.35 * on_floor, RUNE_W);          // (v0.8.3: floor runes a little thicker)
 	float breathe = 0.88 + 0.12 * sin(TIME * 1.4 + design);
 	float k = clamp(lit + flare, 0.0, 1.0);
 	float inner = 1.0 - clamp(d / RUNE_W, 0.0, 1.0);
@@ -52,6 +53,7 @@ void fragment() {
 	vec3 bloom_c = _ha();
 	float halo = (1.0 - smoothstep(0.0, 1.3, length(rp))) * (k * 0.2 + flare * 0.45);
 	vec3 col = mix(bloom_c, c, m.x);
-	ALBEDO = col * (1.0 + flare * 0.6);
-	ALPHA = clamp(m.x * mix(0.7, 1.0, k) + m.y * (0.12 + k * 0.7 * breathe + flare * 0.5) + halo, 0.0, 1.0);
+	float fp = mix(1.0, 1.25 * (0.86 + 0.14 * sin(TIME * 1.6 + design)), on_floor);
+	ALBEDO = col * (1.0 + flare * 0.6) * fp;
+	ALPHA = clamp((m.x * mix(0.7, 1.0, k) + m.y * (0.12 + k * 0.7 * breathe + flare * 0.5) + halo) * mix(1.0, 1.25, on_floor), 0.0, 1.0);
 }

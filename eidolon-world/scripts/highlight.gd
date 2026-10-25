@@ -26,6 +26,7 @@ func setup(r: Array, mats: Array) -> void:
 	_in.shader = sh
 	_out.shader = sh
 	_ring_mat.shader = preload("res://shaders/highlight_ring.gdshader")
+	_ring_mat.render_priority = 3          # (v0.8.3: a fixed order over floor marks: no sort flicker)
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(1.3, 1.3)
 	_ring = MeshInstance3D.new()

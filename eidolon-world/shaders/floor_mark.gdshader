@@ -77,11 +77,13 @@ void fragment() {
 		d = (an >= 0.0 && an <= a1) ? abs(r - 0.8) : 9.0;
 		d = min(d, g_seg(p, vec2(0.0), vec2(-sin(a1), cos(a1)) * 0.9));
 	}
-	vec4 g = carved_glow(d, wid);
+	// (v0.8.3: floor runes must catch the eye: a thicker line, a brighter core, a slow gentle pulse)
+	float fpulse = 0.86 + 0.14 * sin(TIME * 1.6);
+	vec4 g = carved_glow(d, wid * 1.35);
 	// (v0.8: a luminous inlay: a core past white that the bloom catches, an aqua halo, a quiet tint edge)
 	if (carved) { ALBEDO = c_alb; ALPHA = c_a * intensity; }
 	else {
-	ALBEDO = mix(mix(_ht(), _ha(), 0.6), _hc() * 1.45, g.x);
-	ALPHA = clamp((g.x * amul * 0.95 + g.y * 0.6) * intensity + body * 0.35, 0.0, 1.0);
+	ALBEDO = mix(mix(_ht(), _ha(), 0.7), _hc() * 1.6, g.x) * fpulse;
+	ALPHA = clamp((g.x * amul * 1.15 + g.y * 0.8) * intensity * (0.9 + 0.1 * fpulse) + body * 0.35, 0.0, 1.0);
 	}
 }

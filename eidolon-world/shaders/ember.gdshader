@@ -9,6 +9,6 @@ void vertex() {
 void fragment() {
 	float r = length(UV - 0.5) * 2.0;
 	float a = 1.0 - smoothstep(0.0, 1.0, r);
-	vec3 c = mix(vec3(1.0, 0.62, 0.25), accent_core.rgb, style * 0.6);
+	vec3 c = accent_core.rgb;                 // (v0.8.3: aqua sparks)
 	ALBEDO = c * a * 1.4 * COLOR.a;
 }

@@ -19,7 +19,8 @@ var energy := 1.6
 var range_m := 4.0
 var _t := 0.0
 var _seed := 0.0
-var _allowed := true
+var _allowed := false
+var _fade := 0.0
 var _ly := 0.27
 
 func _init(style := 0.0, size := 0.6, light_col := Color(1.0, 0.68, 0.38), noise: Texture2D = null) -> void:
@@ -99,25 +100,41 @@ func _process(dt: float) -> void:
 	core.set_shader_parameter("intensity", mat.get_shader_parameter("intensity"))
 	core.set_shader_parameter("gutter", mat.get_shader_parameter("gutter"))
 	embers.emitting = high and k > 0.4 and is_visible_in_tree()
-	var on := k > 0.01 and _allowed and is_visible_in_tree()
-	light.visible = on
-	if on:
+	# (v0.8.3) the light fades in and out when the budget gives or takes it: it never pops
+	_fade = move_toward(_fade, 1.0 if (k > 0.01 and _allowed and is_visible_in_tree()) else 0.0, dt * 3.0)
+	light.visible = _fade > 0.005
+	if light.visible:
 		# noise-driven flicker: two incommensurate sines and a little random breath
 		var f := 0.86 + 0.08 * sin(_t * 9.1 + _seed) * sin(_t * 3.7) + 0.06 * sin(_t * 17.3 + _seed * 2.0)
-		light.light_energy = k * energy * f
+		light.light_energy = k * energy * f * _fade
 		light.omni_range = range_m * (1.0 if high else 0.75)
 		light.position = Vector3(sin(_t * 7.3 + _seed) * 0.012, _ly + sin(_t * 5.1) * 0.01, cos(_t * 6.1 + _seed) * 0.012)
-		light.shadow_enabled = key and high
+		light.shadow_enabled = key and shadows
 
-## only the nearest lit flames carry a live light
-static func cull(p: Vector3) -> void:
-	var lit: Array = []
+## v0.8.3: ONE light budget for every dynamic light (the flames and the aqua lights together): the nearest
+## few within reach are live (`budget`: 3 on High, 2 on Auto, 1 on Low), chosen 4 times a second with a
+## margin for the ones already on (no flip-flopping between two at the same distance); key flames first.
+static var budget := 2
+static var shadows := false
+static var _cull_t := 0.0
+static var _cand: Array = []
+static func cull(p: Vector3, dt := 0.016) -> void:
+	_cull_t -= dt
+	if _cull_t > 0.0: return
+	_cull_t = 0.25
+	_cand.clear()
 	for f in all:
 		if f.level() > 0.01 and f.is_visible_in_tree():
-			var d := f.global_position.distance_to(p)
-			if d < LIGHT_DIST: lit.append([d, f])
-			else: f._allowed = false
-		else:
-			f._allowed = true
-	lit.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-	for i in lit.size(): (lit[i][1] as Flame)._allowed = i < MAX_LIGHTS
+			var d := f.global_position.distance_to(p) - (2.0 if f.key else 0.0)
+			if d < LIGHT_DIST: _cand.append([d - (1.5 if f._allowed else 0.0), f])
+		f._allowed = false
+	for a in AquaLight.all:
+		if a.level() > 0.02 and a.is_visible_in_tree():
+			var d: float = a.global_position.distance_to(p) + 1.0
+			if d < AquaLight.LIGHT_DIST: _cand.append([d - (1.5 if a._allowed else 0.0), a])
+		a._allowed = false
+	_cand.sort_custom(_by_first)
+	for i in mini(_cand.size(), budget): _cand[i][1]._allowed = true
+
+static func _by_first(x: Array, y: Array) -> bool:
+	return x[0] < y[0]

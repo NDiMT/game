@@ -47,8 +47,8 @@ void fragment() {
 	float sole = length(vec2(q.x * 1.6, (q.y - 0.18) * 1.15)) - 0.62;
 	float heel = length(vec2(q.x * 1.5, (q.y + 0.55) * 1.6)) - 0.42;
 	float s = 1.0 - smoothstep(-0.12, 0.05, min(sole, heel));
-	float a = s * pow(1.0 - life, 1.5) * mix(0.55, 0.9, dark);
+	float a = s * pow(1.0 - life, 1.5) * mix(0.72, 1.0, dark) * (0.88 + 0.12 * sin(TIME * 1.6));     // (v0.8.3: brighter, a slow pulse)
 	if (a < 0.003) discard;
-	ALBEDO = mix(_hc(), _ha(), dark);
+	ALBEDO = mix(_hc() * 1.25, _ha(), dark);
 	ALPHA = a;
 }

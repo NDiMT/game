@@ -61,6 +61,7 @@ var _rng := RandomNumberGenerator.new()
 var played := {}
 var far_voice := false       # the shrine is awake: now and then a voice sings far off in the fog
 var _voice_t := 25.0
+var _bed_check := 1.0
 const FAR_VOICE := "res://assets/audio/v5/events/ev_voice_sigh.ogg"
 
 func _ready() -> void:
@@ -176,6 +177,16 @@ func _enter(key: String) -> void:
 		first = false
 	_event_t = _rng.randf_range(10.0, 25.0)
 
+## (tests / web probe) every bed player: [target dB, current dB, playing, stream length]
+func bed_debug() -> Dictionary:
+	var d := {}
+	for f in layer_p:
+		var p: AudioStreamPlayer = layer_p[f]
+		d[f.get_file()] = [snappedf(_target(f), 0.1), snappedf(layer_db[f], 0.1), p.playing, snappedf(p.stream.get_length() if p.stream else -1.0, 0.1)]
+	d["duck"] = duck
+	d["jingle_duck"] = snappedf(jingle_duck, 0.1)
+	return d
+
 func set_music(on: bool) -> void:
 	music_on = on
 	AudioServer.set_bus_mute(music_bus, not on)
@@ -191,6 +202,17 @@ func set_wind(k: float) -> void:
 func _process(dt: float) -> void:
 	if not _started: return
 	var step := dt * 60.0 / XFADE              # dB per second so a full fade takes ~XFADE s
+	jingle_duck = _jingle_duck_now()
+	# (v0.8.3) a bed that should be heard but is not playing (on the web a play() can be dropped while
+	# the stream's sample is still being decoded) is started again, once a second at most
+	_bed_check -= dt
+	if _bed_check <= 0.0:
+		_bed_check = 1.0
+		for f in layer_p:
+			var bp: AudioStreamPlayer = layer_p[f]
+			if not bp.playing and _target(f) > -40.0 and bp.stream:
+				bp.play(_rng.randf_range(0.0, bp.stream.get_length() * 0.8))
+				played["bed_restart"] = played.get("bed_restart", 0) + 1
 	for f in layer_p:
 		var p: AudioStreamPlayer = layer_p[f]
 		var t := _target(f)
@@ -334,17 +356,20 @@ func resolve(_root := 0) -> void:
 ## v0.8.1: the ONE "puzzle solved" jingle (cues/solve_jingle.ogg: the same motif every time). It replaces
 ## the per-room solve_<room> cues (two musical phrases at once would clash); the room beds step back
 ## 6 dB for ~2 s under it (a mix gain on the bed players: the bus layout stays static for the web).
+## (v0.8.3: the duck is a pure function of the time since the jingle: it can never stick, whatever pauses)
 var jingle_duck := 0.0
-var _jingle_tw: Tween
+var _jingle_at := -100.0
 func solve_jingle() -> void:
 	if not ready_ok: return
 	played["jingle"] = played.get("jingle", 0) + 1
 	cue("solve_jingle", 0.0)
-	if _jingle_tw: _jingle_tw.kill()
-	jingle_duck = -6.0
-	_jingle_tw = create_tween()
-	_jingle_tw.tween_interval(1.7)
-	_jingle_tw.tween_property(self, "jingle_duck", 0.0, 1.2).set_trans(Tween.TRANS_SINE)
+	_jingle_at = Time.get_ticks_msec() / 1000.0
+
+func _jingle_duck_now() -> float:
+	var e := Time.get_ticks_msec() / 1000.0 - _jingle_at
+	if e < 0.0 or e > 2.9: return 0.0
+	if e < 1.7: return -6.0
+	return -6.0 * (0.5 + 0.5 * cos((e - 1.7) / 1.2 * PI))
 
 ## the shrine wakes: the shrine rooms' beds rise a little (the cinematic carries the music)
 func swell() -> void:

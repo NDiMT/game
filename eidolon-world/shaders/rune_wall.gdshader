@@ -20,9 +20,9 @@ void fragment() {
 		d = min(d, g_seg(p, pts[i] * vec2(-1.0, 1.0), pts[i + 1] * vec2(-1.0, 1.0)));
 	}
 	d = min(d, rune_frame(p * 0.62) / 0.62);
-	vec4 g = carved_glow(d, 0.045);
+	vec4 g = carved_glow(d, 0.06);                 // (v0.8.3: thicker, brighter, a slow pulse)
 	float k = lit * (0.85 + 0.15 * sin(TIME * 0.9));
 	// (v0.8: a luminous groove: a core past white that the bloom catches, an aqua halo, a quiet tint edge)
 	ALBEDO = mix(mix(accent_tint.rgb, accent.rgb, 0.6), accent_core.rgb * 1.45, g.x);
-	ALPHA = clamp(g.x * 0.95 + g.y * 0.75 + g.z * 0.3, 0.0, 1.0) * k;
+	ALPHA = clamp(g.x * 1.1 + g.y * 0.9 + g.z * 0.3, 0.0, 1.0) * k * (0.86 + 0.14 * sin(TIME * 1.6));
 }

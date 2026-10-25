@@ -107,6 +107,7 @@ func rune_quad(parent: Node3D, pos: Vector3, size: Vector2, basis: Basis, design
 	m.set_shader_parameter("design", design)
 	m.set_shader_parameter("lit", lit)
 	m.set_shader_parameter("numeral", numeral)
+	m.set_shader_parameter("on_floor", 1.0 if (basis * Vector3.BACK).y > 0.7 else 0.0)      # (v0.8.3)
 	var q := QuadMesh.new()
 	q.size = size
 	var mi := MeshInstance3D.new()

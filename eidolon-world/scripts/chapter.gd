@@ -500,12 +500,10 @@ func _pool_joints(instant := false) -> int:
 	return n
 
 # ------------------------------------------------------------------ 2. stair of breath
-const STAIR_GLASS := Vector3(-11.95, 0.0, 1.3)
-const STAIR_GLASS_YAW := -PI / 8.0          # v0.8.1: the free-standing breath glass on the landing
 ## a small glass to breathe on (own_glass false: a patch of a larger mirror that is already there)
 func _breath_glass(id: String, center: Vector3, basis: Basis, size: Vector2, glyphs: Vector3, vertical: bool, own_glass := true) -> void:
 	if own_glass:
-		var mm := puzzles._mirror_quad(center, basis, size, false, 0.0)       # (v0.8.1: free-standing)
+		var mm := puzzles._mirror_quad(center, basis, size, false, 1.0)
 		mm.set_shader_parameter("floor_y", center.y - 1.2)
 		mm.set_shader_parameter("ncols", 0)
 	var bm := _smat("res://shaders/breath.gdshader", {"noise_tex": level.noise_tex, "glyphs": glyphs, "flip": 1.0,
@@ -516,27 +514,9 @@ func _breath_glass(id: String, center: Vector3, basis: Basis, size: Vector2, gly
 	breath_mats[id] = bm
 
 func _build_stair() -> void:
-	# v0.8.1: the first glass stands EARLY, free on the landing where the stones come ashore: a framed pane
-	# on a stone stand in open space, turned toward the way you come (and the camera), the whole glyph in it
-	var gb := Basis(Vector3.UP, STAIR_GLASS_YAW)          # (turned toward the default camera, which looks from -x +z)
-	var stand := MB.new()
-	var stone := Color(0.5, 0.25, 0.0)
-	var bronze := Color(0.5, 1.0, 0.0)
-	stand.box(Vector3(0, 0.05, 0), Vector3(0.95, 0.1, 0.62), stone)
-	stand.box(Vector3(0, 0.45, 0), Vector3(0.7, 0.7, 0.38), stone)
-	stand.box(Vector3(0, 0.84, 0), Vector3(1.22, 0.1, 0.3), stone)
-	# the bronze frame round the pane (the pane is 1.0 x 1.25, its centre 1.55 above the floor)
-	stand.box(Vector3(-0.56, 1.55, -0.02), Vector3(0.1, 1.42, 0.1), bronze)
-	stand.box(Vector3(0.56, 1.55, -0.02), Vector3(0.1, 1.42, 0.1), bronze)
-	stand.box(Vector3(0, 2.22, -0.02), Vector3(1.22, 0.1, 0.1), bronze)
-	stand.box(Vector3(0, 0.91, -0.02), Vector3(1.22, 0.06, 0.1), bronze)
-	var sn := Node3D.new()
-	sn.transform = Transform3D(gb, STAIR_GLASS)
-	add_child(sn)
-	puzzles.marble_instance(stand.commit(), sn)
-	level.ob_circle(Vector2(STAIR_GLASS.x, STAIR_GLASS.z), 0.45)
-	_breath_glass("stair", STAIR_GLASS + Vector3(0, 1.55, 0) + gb * Vector3(0, 0, 0.02), gb, Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
-	level.add_interact("breathe_stair", STAIR_GLASS + gb * Vector3(0, 0, 0.95), "breathe", func() -> void: breathe("stair"), 1.25)
+	# (v0.8.3, the owner: the glass is back in the stair wall, as in v0.8)
+	_breath_glass("stair", Vector3(-10.345, 1.75, -5.3), Basis(Vector3.UP, -PI * 0.5), Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
+	level.add_interact("breathe_stair", Vector3(-11.1, 0.5, -5.3), "breathe", func() -> void: breathe("stair"), 1.25)
 	# v0.7: before the glass, the whole rune she will ask about, carved large in the cliff wall: her half and
 	# its mirror, the half you must give her. (QA P1-11: "together" is mirror-symmetric, so carved as your
 	# world carves all writing, mirrored, it reads the same: it never contradicts the mirror rule)
@@ -710,7 +690,7 @@ func _build_hall() -> void:
 	bust_pivot = _hall_thing(umesh, false)
 	bust_pivot.position = BUST_POS
 	# (v0.8.1) the brazier burns with a natural warm fire, and lights the hall round it
-	var flame := Flame.new(0.0, 0.62, Color(1.0, 0.66, 0.36), level.noise_tex)
+	var flame := Flame.new(0.0, 0.62, Palette.FIRE_LIGHT, level.noise_tex)
 	flame.position = Vector3(0, 1.0, 0)
 	flame.energy = 1.9
 	flame.range_m = 4.5
@@ -1116,7 +1096,7 @@ func _build_gallery() -> void:
 		n.position = SH_BRAZ[i]
 		add_child(n)
 		puzzles.marble_instance(bm, n)
-		var fl := Flame.new(0.0, 0.7, Color(1.0, 0.68, 0.40), level.noise_tex)
+		var fl := Flame.new(0.0, 0.7, Palette.FIRE_LIGHT, level.noise_tex)
 		fl.position = Vector3(0, 1.1, 0)
 		fl.energy = 1.5
 		fl.range_m = 4.0
@@ -2426,7 +2406,7 @@ func _build_wisp() -> void:
 func hint_target(area: String) -> Vector3:
 	match area:
 		"waking_pool": return Vector3(-4.2, 0.6, 1.7) if not state["stones"] else Vector3.INF
-		"stair_breath": return STAIR_GLASS + Vector3(0, 1.6, 0) if not state["breath"] else Vector3.INF
+		"stair_breath": return Vector3(-10.5, 1.6, -5.3) if not state["breath"] else Vector3.INF
 		"hall_glass":
 			if not state["hall_door"]: return Vector3(0.0, 2.6, -20.3)        # the glass, never the answer
 			return SHARD_SPOT + Vector3(0, 0.8, 0) if not state["shard"] else Vector3.INF

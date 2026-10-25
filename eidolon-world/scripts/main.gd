@@ -80,6 +80,7 @@ func _ready() -> void:
 	highlight = Highlight.new()
 	add_child(highlight)
 	highlight.setup([puzzles, chapter, props], [level.marble_mat, level.marble_occ_mat])
+	_warm_up_shaders.call_deferred()
 	# v0.7: every prop and piece of architecture is solid (see Level.auto_solids)
 	var au := level.auto_solids([puzzles, chapter])
 	print("[solids] %d primitives, %d solid footprints, %d obstacles added (%d ms)" % [au["parts"], au["solids"].size(), au["added"], au["ms"]])
@@ -371,8 +372,7 @@ func _process(dt: float) -> void:
 			focus = null
 			highlight.set_target(null)
 	if highlight: highlight.update(dt)
-	Flame.cull(player.position)
-	AquaLight.cull(player.position)
+	Flame.cull(player.position, dt)          # (v0.8.3: one budget for the flames and the aqua lights)
 	_update_hum()
 	if mode != "title":
 		var p := player.position
@@ -816,6 +816,37 @@ func _save_settings() -> void:
 	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify({"v": SETTINGS_V, "quality": world.tier, "zoom": snappedf(world.zoom, 0.01)}))
 
+## v0.8.3: draw every new v0.8.x material once, a few pixels in front of the camera, for a few frames at
+## start-up, so no shader is compiled (a hitch) the first time a flame is lit, a glow lands or a print shows
+func _warm_up_shaders() -> void:
+	var holder := Node3D.new()
+	world.cam.add_child(holder)
+	holder.position = Vector3(0, 0, -(world.cam.near + 0.5))
+	holder.scale = Vector3.ONE * 0.004
+	var mats: Array[Material] = [highlight._in, highlight._ring_mat, level.marble_mat, level.marble_occ_mat]
+	for path in ["res://shaders/light_pool.gdshader", "res://shaders/statue_shadow.gdshader", "res://shaders/ember.gdshader",
+			"res://shaders/flame.gdshader", "res://shaders/lens_only.gdshader", "res://shaders/veil_glow.gdshader", "res://shaders/halo.gdshader"]:
+		var m := ShaderMaterial.new()
+		m.shader = load(path)
+		mats.append(m)
+	for i in mats.size():
+		var mi := MeshInstance3D.new()
+		var q := BoxMesh.new()
+		q.size = Vector3.ONE
+		mi.mesh = q
+		mi.material_override = mats[i]
+		mi.position = Vector3(i * 1.2, 0, 0)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(mi)
+	# a lit flame with its light (the lit-surface variants of the stone compile too)
+	var f := Flame.new(0.0, 0.5, Palette.FIRE_LIGHT, level.noise_tex)
+	f.mat.set_shader_parameter("intensity", 1.0)
+	f.energy = 0.02
+	holder.add_child(f)
+	f._allowed = true
+	await get_tree().create_timer(0.6).timeout
+	holder.queue_free()
+
 func _apply_tier_extras() -> void:
 	for r in puzzles.reflectors:
 		if r.planar:
@@ -828,6 +859,8 @@ func _apply_tier_extras() -> void:
 	if props: props.set_quality(world.quality_high)
 	Flame.high = world.quality_high
 	AquaLight.high = world.quality_high
+	Flame.budget = 3 if world.tier == "high" else (2 if world.quality_high else 1)
+	Flame.shadows = world.tier == "high"             # (no dynamic-light shadows on Auto / Low)
 
 func _load_settings() -> void:
 	var tier := "auto"
@@ -966,6 +999,13 @@ func cmd(c: String) -> Variant:
 			if a.size() > 4: world.cam.size = float(a[4])
 		"noauto": quality_auto_dropped = true
 		"quality": set_quality({"1": "high", "0": "low"}.get(a[1], a[1]))
+		"jingle": sfx.solve_jingle()             # dev / probe: the solve jingle and its duck
+		"duck":                                  # dev / probe: [the jingle duck now, the current bed's applied dB]
+			var dk := [snappedf(sfx._jingle_duck_now(), 0.01), sfx.drone.volume_db if sfx.drone else null]
+			if OS.has_feature("web"): JavaScriptBridge.eval("window.ewDuck = %s;" % JSON.stringify(dk))
+			return dk
+		"lights":                                # dev / bench: lights:<budget>:<shadows 0|1>
+			Flame.budget = int(a[1]); Flame.shadows = a.size() > 2 and a[2] == "1"
 		"near": world.cam.near = float(a[1])      # dev: a near cut (shots inside narrow rooms)
 		"clasp":
 			# dev: the reflections' clasped hands (0..1), now
@@ -1042,7 +1082,7 @@ func state_dict() -> Dictionary:
 		"puzzles": puzzles.state, "beam_lit": puzzles.beam_lit, "busy": puzzles.busy, "auto": auto_target != Vector3.INF,
 		"refl": refl, "gaze": puzzles.hall_mirror.gaze_head, "glimpses": glimpses, "awaken": world.awaken,
 		"fps": Engine.get_frames_per_second(), "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
-		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "drone": sfx.drone.playing, "music": sfx._music_cur, "speed": player.speed01,
+		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "beds": sfx.bed_debug(), "drone": sfx.drone.playing, "music": sfx._music_cur, "speed": player.speed01,
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
 		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text, "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
 		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "yaw_index": world.yaw_index, "zoom": snappedf(world.zoom, 0.01), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),

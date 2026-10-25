@@ -16,6 +16,7 @@ const CORE := Color("B6FFF6")          # aqua: the light inside a carved line
 const ACCENT := Color("46E6D8")        # aqua: the glow, bloom, rings, UI accents
 const TINT := Color("1FA9A0")          # aqua: the quiet edge of a glow, never a fill
 const ACCENT_DEEP := TINT
+const FIRE_LIGHT := Color(0.52, 0.93, 0.9)   # v0.8.3: the light our (aqua) fire throws on the stone
 # (v0.8.1, the owner: ONE light. Hers is the same aqua as yours: where her strokes must be told from
 # yours, timing and brightness do it (hers appear first, softer, then brighten), never a second hue)
 const HER_CORE := CORE

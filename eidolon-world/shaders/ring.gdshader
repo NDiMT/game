@@ -33,8 +33,8 @@ void fragment() {
 	float on = lit * (1.0 - smoothstep(sweep - 0.02, sweep, ang01)) + lit * step(0.999, sweep);
 	on = clamp(on, 0.0, 1.0);
 	float m = max(ring_l, rm.x);
-	vec3 carved = vec3(0.17, 0.17, 0.18);
-	vec3 hot = mix(_ha(), _hc(), 0.5);
+	vec3 carved = mix(vec3(0.17, 0.17, 0.18), _ha() * 0.35, 0.35 + 0.1 * sin(TIME * 1.6));   // (v0.8.3: even asleep, the groove holds a little light)
+	vec3 hot = mix(_ha(), _hc(), 0.6) * (1.1 + 0.15 * sin(TIME * 1.6));      // (v0.8.3: brighter, a slow pulse)
 	vec3 col = mix(carved, hot, on);
 	float halo = rm.y * on * 0.9 + (1.0 - smoothstep(0.0, 0.08, abs(r - 0.92))) * on * 0.25;
 	ALBEDO = mix(col, _ha(), halo);
