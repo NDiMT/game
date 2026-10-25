@@ -18,7 +18,29 @@ var _bench: Array = []
 var _bench_last := 0
 var _bench_skip := 0
 
+var _prof: Array = []
 func _process(dt: float) -> void:
+	if not _prof.is_empty():
+		_prof[2] += 1
+		_prof[3] += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+		_prof[4] += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+		var nv := 0
+		for v in _prof[6]:
+			if is_instance_valid(v) and (v as SubViewport).render_target_update_mode != SubViewport.UPDATE_DISABLED: nv += 1
+		_prof[5] += nv
+		_prof[7] += dt
+		_prof[1] -= dt
+		if _prof[1] <= 0.0 and _prof[2] > 5:
+			var n := float(_prof[2])
+			var secs := []
+			for k in game.prof: secs.append([game.prof[k] / n / 1000.0, k])
+			secs.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+			var top := ""
+			for e in secs.slice(0, 5): top += "%s %.3f  " % [e[1], e[0]]
+			print("PROF %-14s process %.2f ms  frame %.1f ms  dc %.0f  vps %.2f/%d  | %s" % [_prof[0], _prof[3] / n, _prof[7] / n * 1000.0, _prof[4] / n, _prof[5] / n, (_prof[6] as Array).size(), top])
+			game.prof_on = false
+			_prof = []
+		return
 	if not _bench.is_empty():
 		var now := Time.get_ticks_usec()
 		var d := (now - _bench_last) / 1000.0
@@ -57,6 +79,14 @@ func _process(dt: float) -> void:
 			_bench = [parts[1], float(parts[2]) if parts.size() > 2 else 4.0, []]
 			_bench_last = Time.get_ticks_usec()
 			_bench_skip = 10
+			return
+		elif s.begins_with("prof:"):
+			# prof:LABEL:SECONDS  script ms per frame (total _process, and main's sections), draw calls,
+			# active SubViewports (render target not disabled), over real frames
+			var parts := s.split(":")
+			_prof = [parts[1], float(parts[2]) if parts.size() > 2 else 4.0, 0, 0.0, 0.0, 0.0, game.find_children("*", "SubViewport", true, false), 0.0]
+			game.prof.clear()
+			game.prof_on = true
 			return
 		elif s.begins_with("vpshot:"):
 			var pm: PlanarMirror = PlanarMirror.current if PlanarMirror.current else game.puzzles.hall_mirror.planar

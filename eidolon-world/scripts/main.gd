@@ -350,12 +350,17 @@ func _process(dt: float) -> void:
 		player.input_dir = Vector2(dir.x, dir.z) if mode == "play" else Vector2.ZERO
 		# (QA P1-6) only a light touch of the stick turns in place; keys and the auto-walk always step
 		player.stick_turn = auto_target == Vector3.INF and kv == Vector2.ZERO and key_vec == Vector2.ZERO
+	var _t0 := Time.get_ticks_usec() if prof_on else 0
 	player.step(dt)
+	if prof_on: _t0 = _pm("player", _t0)
 	world.update_reveal(level.occluders, player.position, dt)
 	level.set_fade(player.position, world.reveal_k > 0.001)
 	if mode != "cine" and mode != "finale": level.cull_far(player.position, dt)
+	if prof_on: _t0 = _pm("reveal+fade+cull", _t0)
 	puzzles.update(dt)
+	if prof_on: _t0 = _pm("puzzles", _t0)
 	if mode != "title": chapter.update(dt)
+	if prof_on: _t0 = _pm("chapter", _t0)
 	if mode == "cine":
 		_skip_t = _skip_t + dt if _skip_hold else maxf(0.0, _skip_t - dt * 3.0)
 		ui.set_skip(clampf(_skip_t / 1.1, 0.0, 1.0), _skip_hold or _skip_t > 0.0)
@@ -372,8 +377,10 @@ func _process(dt: float) -> void:
 			focus = null
 			highlight.set_target(null)
 	if highlight: highlight.update(dt)
+	if prof_on: _t0 = _pm("focus+highlight", _t0)
 	Flame.cull(player.position, dt)          # (v0.8.3: one budget for the flames and the aqua lights)
 	_update_hum()
+	if prof_on: _t0 = _pm("lights+hum", _t0)
 	if mode != "title":
 		var p := player.position
 		var wide := p.x > 20.5 and p.z < -18.5     # the eidolon ledge and the shrine: see across the gap
@@ -405,10 +412,12 @@ func _process(dt: float) -> void:
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
 	if mode == "play": _auto_quality(dt)
+	if prof_on: _t0 = _pm("camera rules", _t0)
 	level.update_inscriptions(player.position)
 	if mode == "play" or mode == "finale" or mode == "cine":
 		_update_area()
 		_update_air()
+	if prof_on: _t0 = _pm("inscr+area+air", _t0)
 	if ui.text_source != Vector3.INF and player.position.distance_to(ui.text_source) > 3.2: ui.hide_text()
 	if mode == "play":
 		_save_t += dt
@@ -416,6 +425,15 @@ func _process(dt: float) -> void:
 			_save_t = 0.0
 			if _last_saved_pos == Vector3.INF or player.position.distance_to(_last_saved_pos) > 0.5: _save()
 	_js_state(dt)
+	if prof_on: _t0 = _pm("save+js", _t0)
+
+## (v0.8.5, tests) per-section script time in main._process, microseconds accumulated while prof_on
+var prof_on := false
+var prof := {}
+func _pm(label: String, t0: int) -> int:
+	var now := Time.get_ticks_usec()
+	prof[label] = prof.get(label, 0) + (now - t0)
+	return now
 
 func _update_focus() -> void:
 	var best: Level.Interact = null
