@@ -423,6 +423,13 @@ func _process(dt: float) -> void:
 		_save_t += dt
 		# (v0.8.5) the periodic position save waits for a still moment: a save is a few ms of JSON and a
 		# file write, never during a walk (solves and checkpoints still save at once)
+		if _save_pending:
+			_save_wait += dt
+			if (player.speed01 < 0.05 and auto_target == Vector3.INF) or _save_wait > 8.0:
+				_save_pending = false
+				_save_wait = 0.0
+				_save_t = 0.0
+				_save()
 		if _save_t > 6.0 and player.speed01 < 0.05 and auto_target == Vector3.INF:
 			_save_t = 0.0
 			if _last_saved_pos == Vector3.INF or player.position.distance_to(_last_saved_pos) > 0.5: _save()
@@ -431,6 +438,8 @@ func _process(dt: float) -> void:
 
 ## (v0.8.5, tests) per-section script time in main._process, microseconds accumulated while prof_on
 var prof_on := false
+var _save_pending := false
+var _save_wait := 0.0
 var prof := {}
 func _pm(label: String, t0: int) -> int:
 	var now := Time.get_ticks_usec()
@@ -483,7 +492,7 @@ func _update_area() -> void:
 	if key == area: return
 	area = key
 	sfx.set_area(key)
-	if mode == "play" and area != "": _save()        # a checkpoint in every space
+	if mode == "play" and area != "": _save_pending = true        # a checkpoint in every space (v0.8.5: written at the next still moment)
 	if not visited.has(key):
 		visited[key] = true
 		ui.show_area(Names.area(key))

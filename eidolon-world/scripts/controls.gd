@@ -177,9 +177,23 @@ func _process(dt: float) -> void:
 	_press = move_toward(_press, 0.0, dt * 4.0)
 	_inv_press = move_toward(_inv_press, 0.0, dt * 4.0)
 	inv_alpha = move_toward(inv_alpha, 1.0 if (enabled and inv_has) else 0.0, dt * 2.0)
-	canvas.queue_redraw()
+	# (v0.8.5) redraw only when something on it moves: the breathing button, the stick, a fade, a press
+	var sig := Vector4(joy_alpha + icon_alpha * 3.0, inv_alpha + _press * 5.0 + _inv_press * 7.0, joy_knob.x + joy_base.x * 0.37, joy_knob.y + joy_base.y * 0.41)
+	var vs := vp_size()
+	if icon_alpha > 0.0 or joy_alpha > 0.0 or sig != _last_sig or enabled != _last_en or icon != _last_icon or inv_on != _last_inv or vs != _last_vs:
+		_last_sig = sig
+		_last_en = enabled
+		_last_icon = icon
+		_last_inv = inv_on
+		_last_vs = vs
+		canvas.queue_redraw()
 
 var _want_icon := false
+var _last_sig := Vector4(-1, -1, -1, -1)
+var _last_en := false
+var _last_icon := ""
+var _last_inv := false
+var _last_vs := Vector2.ZERO
 func show_interact(name: String) -> void:
 	_want_icon = name != ""
 	set_icon(name)

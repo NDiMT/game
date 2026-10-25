@@ -997,7 +997,7 @@ func hide_cine_line() -> void:
 ## hold to skip: a thin ring fills in the corner
 func set_skip(k: float, show: bool) -> void:
 	skip_ring.k = k
-	skip_ring.show_k = move_toward(skip_ring.show_k, 1.0 if show else 0.0, 0.08)
+	skip_ring.show_k = move_toward(skip_ring.show_k, 1.0 if show else 0.0, get_process_delta_time() * 4.8)      # (v0.8.5: the same at any refresh rate)
 	skip_ring.queue_redraw()
 
 class SkipRing extends Control:
