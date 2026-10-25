@@ -153,7 +153,7 @@ func _layer(f: String) -> AudioStreamPlayer:
 func _target(f: String) -> float:
 	var room: Dictionary = rooms.get(area, {})
 	if not room.has(f): return -60.0
-	var db: float = room[f] + duck
+	var db: float = room[f] + duck + jingle_duck
 	if area in ["first_shrine", "gate_four", "court_light"]: db += swell_boost * 0.5
 	return db
 
@@ -194,7 +194,7 @@ func _process(dt: float) -> void:
 	for f in layer_p:
 		var p: AudioStreamPlayer = layer_p[f]
 		var t := _target(f)
-		layer_db[f] = move_toward(layer_db[f], t, step * (1.6 if t > layer_db[f] else 1.0))
+		layer_db[f] = move_toward(layer_db[f], t, step * (1.6 if t > layer_db[f] else (4.0 if jingle_duck < -0.5 else 1.0)))
 		p.volume_db = layer_db[f]
 	var gk := clampf((wind_target - 0.5) / 0.45, 0.0, 1.0)
 	gust_player.volume_db = move_toward(gust_player.volume_db, linear_to_db(maxf(gk, 0.0001)) - 9.0, dt * 12.0)
@@ -329,7 +329,22 @@ func set_hum(level: float) -> void:
 ## a smaller success (not a whole space): a glass answer
 func resolve(_root := 0) -> void:
 	played["resolve"] = played.get("resolve", 0) + 1
-	play("glass", -15.0, 1.0)
+	solve_jingle()
+
+## v0.8.1: the ONE "puzzle solved" jingle (cues/solve_jingle.ogg: the same motif every time). It replaces
+## the per-room solve_<room> cues (two musical phrases at once would clash); the room beds step back
+## 6 dB for ~2 s under it (a mix gain on the bed players: the bus layout stays static for the web).
+var jingle_duck := 0.0
+var _jingle_tw: Tween
+func solve_jingle() -> void:
+	if not ready_ok: return
+	played["jingle"] = played.get("jingle", 0) + 1
+	cue("solve_jingle", 0.0)
+	if _jingle_tw: _jingle_tw.kill()
+	jingle_duck = -6.0
+	_jingle_tw = create_tween()
+	_jingle_tw.tween_interval(1.7)
+	_jingle_tw.tween_property(self, "jingle_duck", 0.0, 1.2).set_trans(Tween.TRANS_SINE)
 
 ## the shrine wakes: the shrine rooms' beds rise a little (the cinematic carries the music)
 func swell() -> void:

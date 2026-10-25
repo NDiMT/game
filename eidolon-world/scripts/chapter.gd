@@ -463,7 +463,7 @@ func _joint_ok(c: Vector2i, d: String) -> bool:
 	return opp in _piece_conn(n)
 
 ## v0.8 per-joint feedback: every answered joint lights at once (a thin aqua seam in its notch, a soft
-## chime when it first lights); the reflection lights hers in rose. Returns the number of answered joints.
+## chime when it first lights); the reflection lights hers (aqua). Returns the number of answered joints.
 var pool_joints_lit := {}                 # "cx,cy,d" -> true
 func _pool_joints(instant := false) -> int:
 	var n := 0
@@ -500,10 +500,12 @@ func _pool_joints(instant := false) -> int:
 	return n
 
 # ------------------------------------------------------------------ 2. stair of breath
+const STAIR_GLASS := Vector3(-11.95, 0.0, 1.3)
+const STAIR_GLASS_YAW := -PI / 8.0          # v0.8.1: the free-standing breath glass on the landing
 ## a small glass to breathe on (own_glass false: a patch of a larger mirror that is already there)
 func _breath_glass(id: String, center: Vector3, basis: Basis, size: Vector2, glyphs: Vector3, vertical: bool, own_glass := true) -> void:
 	if own_glass:
-		var mm := puzzles._mirror_quad(center, basis, size, false, 1.0)
+		var mm := puzzles._mirror_quad(center, basis, size, false, 0.0)       # (v0.8.1: free-standing)
 		mm.set_shader_parameter("floor_y", center.y - 1.2)
 		mm.set_shader_parameter("ncols", 0)
 	var bm := _smat("res://shaders/breath.gdshader", {"noise_tex": level.noise_tex, "glyphs": glyphs, "flip": 1.0,
@@ -514,8 +516,27 @@ func _breath_glass(id: String, center: Vector3, basis: Basis, size: Vector2, gly
 	breath_mats[id] = bm
 
 func _build_stair() -> void:
-	_breath_glass("stair", Vector3(-10.345, 1.75, -5.3), Basis(Vector3.UP, -PI * 0.5), Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
-	level.add_interact("breathe_stair", Vector3(-11.1, 0.5, -5.3), "breathe", func() -> void: breathe("stair"), 1.25)
+	# v0.8.1: the first glass stands EARLY, free on the landing where the stones come ashore: a framed pane
+	# on a stone stand in open space, turned toward the way you come (and the camera), the whole glyph in it
+	var gb := Basis(Vector3.UP, STAIR_GLASS_YAW)          # (turned toward the default camera, which looks from -x +z)
+	var stand := MB.new()
+	var stone := Color(0.5, 0.25, 0.0)
+	var bronze := Color(0.5, 1.0, 0.0)
+	stand.box(Vector3(0, 0.05, 0), Vector3(0.95, 0.1, 0.62), stone)
+	stand.box(Vector3(0, 0.45, 0), Vector3(0.7, 0.7, 0.38), stone)
+	stand.box(Vector3(0, 0.84, 0), Vector3(1.22, 0.1, 0.3), stone)
+	# the bronze frame round the pane (the pane is 1.0 x 1.25, its centre 1.55 above the floor)
+	stand.box(Vector3(-0.56, 1.55, -0.02), Vector3(0.1, 1.42, 0.1), bronze)
+	stand.box(Vector3(0.56, 1.55, -0.02), Vector3(0.1, 1.42, 0.1), bronze)
+	stand.box(Vector3(0, 2.22, -0.02), Vector3(1.22, 0.1, 0.1), bronze)
+	stand.box(Vector3(0, 0.91, -0.02), Vector3(1.22, 0.06, 0.1), bronze)
+	var sn := Node3D.new()
+	sn.transform = Transform3D(gb, STAIR_GLASS)
+	add_child(sn)
+	puzzles.marble_instance(stand.commit(), sn)
+	level.ob_circle(Vector2(STAIR_GLASS.x, STAIR_GLASS.z), 0.45)
+	_breath_glass("stair", STAIR_GLASS + Vector3(0, 1.55, 0) + gb * Vector3(0, 0, 0.02), gb, Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
+	level.add_interact("breathe_stair", STAIR_GLASS + gb * Vector3(0, 0, 0.95), "breathe", func() -> void: breathe("stair"), 1.25)
 	# v0.7: before the glass, the whole rune she will ask about, carved large in the cliff wall: her half and
 	# its mirror, the half you must give her. (QA P1-11: "together" is mirror-symmetric, so carved as your
 	# world carves all writing, mirrored, it reads the same: it never contradicts the mirror rule)
@@ -524,6 +545,11 @@ func _build_stair() -> void:
 	for q in GlassTalk.smooth(PackedVector2Array(half), 3): gp.append(q * 1.3 + Vector2(0.0, 0.04))
 	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.9})
 	stair_rune = _mi(_quad(Vector2(1.6, 1.6)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(-10.215, 1.75, -2.6)))     # (proud of the wall face at x -10.2)
+	# v0.8.1: the carved rune lights the stair beside it (a small culled light, no shadows)
+	var sl := AquaLight.new(2.8, 0.45)
+	sl.position = Vector3(-10.75, 1.75, -2.6)
+	sl.follow = rw; sl.follow_param = "lit"; sl.follow_scale = 1.1
+	add_child(sl)
 	stair_veil = _smat("res://shaders/mist_veil.gdshader", {"noise_tex": level.noise_tex, "density": 1.0, "glow": 0.35})
 	_mi(_quad(Vector2(1.9, 3.2)), stair_veil, Transform3D(Basis(), Vector3(-11.3, 0.5 + 1.6, -6.8)))
 
@@ -946,9 +972,9 @@ func _update_hall(dt: float) -> void:
 	it_push.pos = Vector3(hs["drum"][0], 1.0, hs["drum"][1])
 	level.interact_by_id("hall_take").pos = Vector3(hs["brazier"][0], 1.0, hs["brazier"][1])
 	level.interact_by_id("hall_place").pos = pl.position
-	# a hint after many moves without anything set right: the memories in the glass pulse
+	# the hint (after 110 s without the whole set): the memories in the glass pulse
 	if not state["hall_door"]:
-		var pulse := smoothstep(14.0, 18.0, float(hall_moves)) * (0.5 + 0.5 * sin(_t * 2.2))
+		var pulse := smoothstep(Game.HINT_AFTER, Game.HINT_AFTER + 3.0, hint_t) * (0.4 + 0.6 * (0.5 + 0.5 * sin(_t * 2.2)))      # (v0.8.1: the 110 s hint)
 		for k in 3:
 			if not hs["locks"][k]:
 				var gi: float = (0.9 if k == 1 else 0.0) + pulse * 0.9
@@ -1030,10 +1056,10 @@ func _open_hall_door(instant: bool) -> void:
 ## shadow): the shadows darken into them, her veil stirs, and the true arch (seen through the shard) is
 ## real. No feedback brazier by brazier: only the whole set answers.
 const SH_STATUE := Vector3(7.5, 1.0, -14.0)
-const SH_BRAZ := [Vector3(6.2, 1.0, -16.3), Vector3(9.25, 1.0, -16.9), Vector3(9.3, 1.0, -12.7), Vector3(5.8, 1.0, -11.2),
-	Vector3(7.6, 1.0, -17.7), Vector3(5.6, 1.0, -13.7)]
+const SH_BRAZ := [Vector3(6.4, 1.0, -16.0), Vector3(9.4, 1.0, -15.9), Vector3(9.3, 1.0, -12.7), Vector3(5.8, 1.0, -11.2),
+	Vector3(8.4, 1.0, -16.2), Vector3(5.6, 1.0, -13.7)]
 const SH_SOLUTION := [0, 2, 3]
-const SH_LORE := "On Milos, in the evening, he moved the lamps\nuntil her shadow lay where he wanted her to stand."
+const SH_LORE := "On Milos, in the evening,\nhe moved the lamps until her shadow lay\nwhere he wanted her to stand."
 var sh_flames: Array[Flame] = []
 var sh_shadows: Array[ShaderMaterial] = []
 var sh_outlines: Array[ShaderMaterial] = []
@@ -1074,13 +1100,13 @@ func _build_gallery() -> void:
 	st.rotation.y = -PI * 0.5
 	add_child(st)
 	var mi := MeshInstance3D.new()
-	mi.mesh = _statue_mesh(1.0, 0.45)
+	mi.mesh = _statue_mesh(1.15, 0.5)
 	mi.material_override = level.marble_mat
 	st.add_child(mi)
 	level.ob_circle(Vector2(SH_STATUE.x, SH_STATUE.z), 0.55)
 	# her veil stirs when she is answered (a sheen over the head)
 	var veil := MB.new()
-	veil.sphere(Vector3(0, 0.45 + 0.08 + 1.86, 0.0), Vector3(0.17, 0.21, 0.18), Color(0.5, 0.25, 0.0), 12, 6)
+	veil.sphere(Vector3(0, 0.5 + 0.08 + 2.15 * 1.15, 0.0), Vector3(0.21, 0.25, 0.22), Color(0.5, 0.25, 0.0), 12, 6)
 	sh_veil = _smat("res://shaders/veil_glow.gdshader", {"intensity": 0.0})
 	_mi(veil.commit(), sh_veil, Transform3D(), st)
 	# the braziers (tripods with a bowl) and the shadows they throw; the outlines (the shard shows them)
@@ -1091,14 +1117,14 @@ func _build_gallery() -> void:
 		add_child(n)
 		puzzles.marble_instance(bm, n)
 		var fl := Flame.new(0.0, 0.7, Color(1.0, 0.68, 0.40), level.noise_tex)
-		fl.position = Vector3(0, 1.0, 0)
+		fl.position = Vector3(0, 1.1, 0)
 		fl.energy = 1.5
 		fl.range_m = 4.0
 		fl.key = i == 0
 		n.add_child(fl)
 		sh_flames.append(fl)
 		level.ob_circle(Vector2(SH_BRAZ[i].x, SH_BRAZ[i].z), 0.32)
-		var sm := _smat("res://shaders/statue_shadow.gdshader", {"k": 0.0, "dark": 0.55, "mode": 0.0, "seed": float(i)})
+		var sm := _smat("res://shaders/statue_shadow.gdshader", {"k": 0.0, "dark": 0.72, "mode": 0.0, "seed": float(i)})
 		_mi(_plane(Vector2(1.0, 1.0)), sm, _shadow_xf(i, 1.012 + 0.001 * i)).layers = PlanarMirror.LAYER_MAIN_FX
 		sh_shadows.append(sm)
 		var idx := i
@@ -1142,7 +1168,7 @@ func _update_gallery(_dt: float) -> void:
 
 func _in_gallery() -> bool:
 	var p := game.player.position
-	return p.x > 4.9 and p.x < 10.1 and p.z > -18.5 and p.z < -9.5
+	return p.x > 4.9 and p.x < 10.1 and p.z > -18.5 and p.z < -9.5 and (p.x < 7.0 or p.z > -17.0)
 
 func set_lens(on: bool) -> void:
 	if on and not state["shard"]: return
@@ -1182,8 +1208,8 @@ func open_gallery(instant := false) -> void:
 	for i in sh_flames.size(): sh_flames[i].mat.set_shader_parameter("intensity", 1.0 if i in SH_SOLUTION else 0.0)
 	# her shadows darken into the outlines; her veil stirs
 	for s2 in sh_shadows:
-		if instant: s2.set_shader_parameter("dark", 0.8)
-		else: create_tween().tween_method(func(v: float) -> void: s2.set_shader_parameter("dark", v), 0.55, 0.8, 1.5)
+		if instant: s2.set_shader_parameter("dark", 0.92)
+		else: create_tween().tween_method(func(v: float) -> void: s2.set_shader_parameter("dark", v), 0.72, 0.92, 1.5)
 	if instant: sh_veil.set_shader_parameter("intensity", 0.5)
 	else:
 		var vt := create_tween()
@@ -1242,6 +1268,10 @@ func _build_garden() -> void:
 		turn_face_mats.append(mats)
 		turn_pivots.append(pivot)
 		level.ob_circle(Vector2(TURN_X[i], TURN_Z), 0.55)
+		# v0.8.1: its runes give light: a pool of aqua on the flags before it (the light itself is culled)
+		var al := AquaLight.new(2.0, 0.28, Vector3(TURN_X[i], 1.012, TURN_Z + 0.95), 1.5)
+		al.position = Vector3(TURN_X[i], 1.5, TURN_Z + 0.7)
+		add_child(al)
 		# a fixed stone step before each, with its numeral (I, II, III)
 		var sm := MB.new()
 		sm.box(Vector3(TURN_X[i], 1.05, TURN_Z + 0.75), Vector3(0.9, 0.1, 0.42), Color(0.5, 0.25, 0.0))
@@ -2396,7 +2426,7 @@ func _build_wisp() -> void:
 func hint_target(area: String) -> Vector3:
 	match area:
 		"waking_pool": return Vector3(-4.2, 0.6, 1.7) if not state["stones"] else Vector3.INF
-		"stair_breath": return Vector3(-10.5, 1.6, -5.3) if not state["breath"] else Vector3.INF
+		"stair_breath": return STAIR_GLASS + Vector3(0, 1.6, 0) if not state["breath"] else Vector3.INF
 		"hall_glass":
 			if not state["hall_door"]: return Vector3(0.0, 2.6, -20.3)        # the glass, never the answer
 			return SHARD_SPOT + Vector3(0, 0.8, 0) if not state["shard"] else Vector3.INF
@@ -2503,7 +2533,7 @@ func apply_state() -> void:
 		level.set_enabled("gallery_secret", true)
 		if gls: gls.visible = true; gls.position.y = 0.0
 		for k in sh_flames.size(): sh_flames[k].mat.set_shader_parameter("intensity", 1.0 if k in state["gallery_lit"] else 0.0)
-		for s2 in sh_shadows: s2.set_shader_parameter("dark", 0.55)
+		for s2 in sh_shadows: s2.set_shader_parameter("dark", 0.72)
 		sh_veil.set_shader_parameter("intensity", 0.0)
 	maze_prog = -1
 	_apply_turned(true)
@@ -2561,7 +2591,7 @@ var her: Figure                 # her shadow, in the water
 var mine: Figure                # your plain reflection (only at the very end)
 var touch_glow: ShaderMaterial
 var whisper_glow: ShaderMaterial
-var touch_her: ShaderMaterial             # v0.8: her light at the touch (rose), meeting yours (aqua)
+var touch_her: ShaderMaterial             # v0.8: her light at the touch (v0.8.1: the same aqua: it comes first, softer)
 var her_xf := Transform3D()
 var her_pose := Figure.Pose.new()
 var _refl_pool := Transform3D()
@@ -2699,7 +2729,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 	c.anim(P + 16.5, 5.0, func(k: float) -> void:
 		puzzles_ring(k * 5.0)
 		touch_glow.set_shader_parameter("intensity", sin(minf(k * 3.0, 1.0) * PI * 0.5) * (1.0 - k) * 2.0)
-		touch_her.set_shader_parameter("intensity", sin(minf(k * 2.6, 1.0) * PI * 0.5) * (1.0 - k) * 1.9), 0)
+		touch_her.set_shader_parameter("intensity", sin(minf(k * 5.0, 1.0) * PI * 0.5) * (1.0 - k) * 1.2), 0)
 	c.at(P + 16.7, func() -> void:
 		pl.fig.set_runes(1)
 		her.set_runes(1))

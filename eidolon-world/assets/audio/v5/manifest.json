@@ -4,57 +4,57 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/waking_pool.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     },
     {
      "file": "res://assets/audio/v5/beds/water_lap.ogg",
-     "gain_db": -7.0,
+     "gain_db": -12.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_piano_a4.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -8
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -11
     },
     {
      "file": "res://assets/audio/v5/events/ev_piano_e5.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -8
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -11
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_e6.ogg",
-     "min_s": 20,
-     "max_s": 60,
-     "gain_db": -10
+     "min_s": 28,
+     "max_s": 84,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_hum_e5.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -9
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_d.ogg",
-     "min_s": 45,
-     "max_s": 110,
-     "gain_db": -10
+     "min_s": 63,
+     "max_s": 154,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_harp_d5.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -10
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_lyre_tetrachord.ogg",
-     "min_s": 40,
-     "max_s": 100,
-     "gain_db": -10
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -13
     }
    ]
   },
@@ -62,52 +62,52 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/stair_breath.ogg",
-     "gain_db": -1.0,
+     "gain_db": -5.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_voice_sigh.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -8
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -11
     },
     {
      "file": "res://assets/audio/v5/events/ev_choir_breath_dm.ogg",
-     "min_s": 40,
-     "max_s": 100,
-     "gain_db": -10
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_piano_d5.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -10
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_a5.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -12
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_stone_creak_2.ogg",
-     "min_s": 45,
-     "max_s": 120,
-     "gain_db": -12
+     "min_s": 63,
+     "max_s": 168,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_a.ogg",
-     "min_s": 50,
-     "max_s": 120,
-     "gain_db": -12
+     "min_s": 70,
+     "max_s": 168,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_aulos_far.ogg",
-     "min_s": 50,
-     "max_s": 130,
-     "gain_db": -12
+     "min_s": 70,
+     "max_s": 182,
+     "gain_db": -15
     }
    ]
   },
@@ -115,58 +115,58 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/hall_glass.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_glass_e6.ogg",
-     "min_s": 15,
-     "max_s": 45,
-     "gain_db": -9
+     "min_s": 21,
+     "max_s": 63,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_a5.ogg",
-     "min_s": 15,
-     "max_s": 45,
-     "gain_db": -9
+     "min_s": 21,
+     "max_s": 63,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_crotale_shimmer.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -10
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_hum_e5.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -9
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_d.ogg",
-     "min_s": 40,
-     "max_s": 100,
-     "gain_db": -10
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_piano_f5.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -11
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_harp_a4.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -11
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_lyre_tetrachord.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -11
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -14
     }
    ]
   },
@@ -174,52 +174,52 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/shard_gallery.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_crotale_shimmer.ogg",
-     "min_s": 20,
-     "max_s": 55,
-     "gain_db": -9
+     "min_s": 28,
+     "max_s": 77,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_e6.ogg",
-     "min_s": 18,
-     "max_s": 50,
-     "gain_db": -10
+     "min_s": 25,
+     "max_s": 70,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_ticks.ogg",
-     "min_s": 20,
-     "max_s": 60,
-     "gain_db": -12
+     "min_s": 28,
+     "max_s": 84,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_hum_e5.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -10
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_stone_creak_1.ogg",
-     "min_s": 40,
-     "max_s": 100,
-     "gain_db": -13
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -16
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_a.ogg",
-     "min_s": 50,
-     "max_s": 120,
-     "gain_db": -12
+     "min_s": 70,
+     "max_s": 168,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_krotala.ogg",
-     "min_s": 45,
-     "max_s": 120,
-     "gain_db": -13
+     "min_s": 63,
+     "max_s": 168,
+     "gain_db": -16
     }
    ]
   },
@@ -227,58 +227,58 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/garden_veiled.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_piano_a4.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -9
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_piano_d5.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -9
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_stone_creak_2.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -11
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_harp_d5.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -11
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_d.ogg",
-     "min_s": 50,
-     "max_s": 120,
-     "gain_db": -11
+     "min_s": 70,
+     "max_s": 168,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_choir_breath_dm.ogg",
-     "min_s": 50,
-     "max_s": 120,
-     "gain_db": -12
+     "min_s": 70,
+     "max_s": 168,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_a5.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -12
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_lyre_tetrachord.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -10
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -13
     }
    ]
   },
@@ -286,52 +286,52 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/hollow_walk.ogg",
-     "gain_db": -2.0,
+     "gain_db": -5.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_ticks.ogg",
-     "min_s": 12,
-     "max_s": 35,
-     "gain_db": -10
+     "min_s": 17,
+     "max_s": 49,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_stone_creak_1.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -10
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_stone_creak_2.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -11
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_piano_a4.ogg",
-     "min_s": 40,
-     "max_s": 100,
-     "gain_db": -12
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_hum_e5.ogg",
-     "min_s": 40,
-     "max_s": 100,
-     "gain_db": -12
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_a.ogg",
-     "min_s": 60,
-     "max_s": 140,
-     "gain_db": -13
+     "min_s": 84,
+     "max_s": 196,
+     "gain_db": -16
     },
     {
      "file": "res://assets/audio/v5/events/ev_aulos_far.ogg",
-     "min_s": 50,
-     "max_s": 130,
-     "gain_db": -13
+     "min_s": 70,
+     "max_s": 182,
+     "gain_db": -16
     }
    ]
   },
@@ -339,52 +339,52 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/court_light.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_choir_breath_f.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -9
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_choir_breath_dm.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -9
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_a5.ogg",
-     "min_s": 20,
-     "max_s": 60,
-     "gain_db": -11
+     "min_s": 28,
+     "max_s": 84,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_harp_a4.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -11
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_piano_f5.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -11
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_d.ogg",
-     "min_s": 45,
-     "max_s": 110,
-     "gain_db": -11
+     "min_s": 63,
+     "max_s": 154,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_lyre_tetrachord.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -10
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -13
     }
    ]
   },
@@ -392,57 +392,57 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/mist_maze.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     },
     {
      "file": "res://assets/audio/v5/beds/water_lap.ogg",
-     "gain_db": -12.0,
+     "gain_db": -17.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_piano_e5.ogg",
-     "min_s": 20,
-     "max_s": 60,
-     "gain_db": -10
+     "min_s": 28,
+     "max_s": 84,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_piano_a4.ogg",
-     "min_s": 20,
-     "max_s": 60,
-     "gain_db": -10
+     "min_s": 28,
+     "max_s": 84,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_echo_a4.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -11
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_voice_sigh.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -11
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_crotale_shimmer.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -12
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_a.ogg",
-     "min_s": 50,
-     "max_s": 120,
-     "gain_db": -12
+     "min_s": 70,
+     "max_s": 168,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_aulos_far.ogg",
-     "min_s": 35,
-     "max_s": 100,
-     "gain_db": -12
+     "min_s": 49,
+     "max_s": 140,
+     "gain_db": -15
     }
    ]
   },
@@ -450,52 +450,52 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/echo_corridor.ogg",
-     "gain_db": -3.0,
+     "gain_db": -5.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_echo_a4.ogg",
-     "min_s": 18,
-     "max_s": 50,
-     "gain_db": -9
+     "min_s": 25,
+     "max_s": 70,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_echo_e5.ogg",
-     "min_s": 18,
-     "max_s": 50,
-     "gain_db": -9
+     "min_s": 25,
+     "max_s": 70,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_stone_creak_2.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -12
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_ticks.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -13
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -16
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_d.ogg",
-     "min_s": 50,
-     "max_s": 120,
-     "gain_db": -12
+     "min_s": 70,
+     "max_s": 168,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_a5.ogg",
-     "min_s": 40,
-     "max_s": 100,
-     "gain_db": -13
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -16
     },
     {
      "file": "res://assets/audio/v5/events/ev_seikilos_lyre.ogg",
-     "min_s": 150,
-     "max_s": 360,
-     "gain_db": -9
+     "min_s": 210,
+     "max_s": 504,
+     "gain_db": -12
     }
    ]
   },
@@ -503,57 +503,57 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/scales.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     },
     {
      "file": "res://assets/audio/v5/beds/water_lap.ogg",
-     "gain_db": -15.0,
+     "gain_db": -20.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_harp_d5.ogg",
-     "min_s": 15,
-     "max_s": 45,
-     "gain_db": -9
+     "min_s": 21,
+     "max_s": 63,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_harp_a4.ogg",
-     "min_s": 15,
-     "max_s": 45,
-     "gain_db": -9
+     "min_s": 21,
+     "max_s": 63,
+     "gain_db": -12
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_e6.ogg",
-     "min_s": 20,
-     "max_s": 55,
-     "gain_db": -11
+     "min_s": 28,
+     "max_s": 77,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_a5.ogg",
-     "min_s": 20,
-     "max_s": 55,
-     "gain_db": -11
+     "min_s": 28,
+     "max_s": 77,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_stone_creak_2.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -12
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_crotale_shimmer.ogg",
-     "min_s": 40,
-     "max_s": 100,
-     "gain_db": -12
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_lyre_tetrachord.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -10
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -13
     }
    ]
   },
@@ -561,52 +561,52 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/eidolon_ledge.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_crotale_shimmer.ogg",
-     "min_s": 20,
-     "max_s": 60,
-     "gain_db": -10
+     "min_s": 28,
+     "max_s": 84,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_e6.ogg",
-     "min_s": 20,
-     "max_s": 55,
-     "gain_db": -10
+     "min_s": 28,
+     "max_s": 77,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_choir_breath_dm.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -11
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_piano_d5.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -11
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_d.ogg",
-     "min_s": 50,
-     "max_s": 120,
-     "gain_db": -11
+     "min_s": 70,
+     "max_s": 168,
+     "gain_db": -14
     },
     {
      "file": "res://assets/audio/v5/events/ev_harp_d5.ogg",
-     "min_s": 35,
-     "max_s": 90,
-     "gain_db": -12
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_aulos_far.ogg",
-     "min_s": 45,
-     "max_s": 120,
-     "gain_db": -12
+     "min_s": 63,
+     "max_s": 168,
+     "gain_db": -15
     }
    ]
   },
@@ -614,52 +614,52 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/gate_four.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_d.ogg",
-     "min_s": 25,
-     "max_s": 60,
-     "gain_db": -8
-    },
-    {
-     "file": "res://assets/audio/v5/events/ev_bell_far_a.ogg",
-     "min_s": 25,
-     "max_s": 60,
-     "gain_db": -9
-    },
-    {
-     "file": "res://assets/audio/v5/events/ev_choir_breath_dm.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -10
-    },
-    {
-     "file": "res://assets/audio/v5/events/ev_stone_creak_1.ogg",
      "min_s": 35,
-     "max_s": 90,
+     "max_s": 84,
      "gain_db": -11
     },
     {
-     "file": "res://assets/audio/v5/events/ev_piano_d5.ogg",
-     "min_s": 40,
-     "max_s": 100,
+     "file": "res://assets/audio/v5/events/ev_bell_far_a.ogg",
+     "min_s": 35,
+     "max_s": 84,
      "gain_db": -12
+    },
+    {
+     "file": "res://assets/audio/v5/events/ev_choir_breath_dm.ogg",
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -13
+    },
+    {
+     "file": "res://assets/audio/v5/events/ev_stone_creak_1.ogg",
+     "min_s": 49,
+     "max_s": 126,
+     "gain_db": -14
+    },
+    {
+     "file": "res://assets/audio/v5/events/ev_piano_d5.ogg",
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_glass_hum_e5.ogg",
-     "min_s": 40,
-     "max_s": 100,
-     "gain_db": -12
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -15
     },
     {
      "file": "res://assets/audio/v5/events/ev_seikilos_aulos.ogg",
-     "min_s": 150,
-     "max_s": 360,
-     "gain_db": -10
+     "min_s": 210,
+     "max_s": 504,
+     "gain_db": -13
     }
    ]
   },
@@ -667,63 +667,63 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/first_shrine.ogg",
-     "gain_db": 0.0,
+     "gain_db": -5.5,
      "loop": true
     },
     {
      "file": "res://assets/audio/v5/beds/water_lap.ogg",
-     "gain_db": -13.0,
+     "gain_db": -18.5,
      "loop": true
     }
    ],
    "events": [
     {
      "file": "res://assets/audio/v5/events/ev_bell_far_d.ogg",
-     "min_s": 20,
-     "max_s": 55,
-     "gain_db": -8
+     "min_s": 28,
+     "max_s": 77,
+     "gain_db": -11
     },
     {
      "file": "res://assets/audio/v5/events/ev_choir_breath_dm.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -9
-    },
-    {
-     "file": "res://assets/audio/v5/events/ev_choir_breath_f.ogg",
-     "min_s": 25,
-     "max_s": 70,
-     "gain_db": -9
-    },
-    {
-     "file": "res://assets/audio/v5/events/ev_crotale_shimmer.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -11
-    },
-    {
-     "file": "res://assets/audio/v5/events/ev_glass_e6.ogg",
-     "min_s": 30,
-     "max_s": 80,
-     "gain_db": -11
-    },
-    {
-     "file": "res://assets/audio/v5/events/ev_harp_d5.ogg",
-     "min_s": 40,
-     "max_s": 100,
+     "min_s": 35,
+     "max_s": 98,
      "gain_db": -12
     },
     {
+     "file": "res://assets/audio/v5/events/ev_choir_breath_f.ogg",
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -12
+    },
+    {
+     "file": "res://assets/audio/v5/events/ev_crotale_shimmer.ogg",
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -14
+    },
+    {
+     "file": "res://assets/audio/v5/events/ev_glass_e6.ogg",
+     "min_s": 42,
+     "max_s": 112,
+     "gain_db": -14
+    },
+    {
+     "file": "res://assets/audio/v5/events/ev_harp_d5.ogg",
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -15
+    },
+    {
      "file": "res://assets/audio/v5/events/ev_seikilos_aulos.ogg",
-     "min_s": 120,
-     "max_s": 300,
-     "gain_db": -10
+     "min_s": 168,
+     "max_s": 420,
+     "gain_db": -13
     },
     {
      "file": "res://assets/audio/v5/events/ev_krotala.ogg",
-     "min_s": 50,
-     "max_s": 140,
-     "gain_db": -13
+     "min_s": 70,
+     "max_s": 196,
+     "gain_db": -16
     }
    ]
   }
@@ -834,13 +834,14 @@
    "res://assets/audio/v5/sfx/rune_flip_1.ogg",
    "res://assets/audio/v5/sfx/rune_flip_2.ogg",
    "res://assets/audio/v5/sfx/rune_flip_3.ogg"
-  ]
+  ],
+  "solve_jingle": "res://assets/audio/v5/cues/solve_jingle.ogg"
  },
  "doc": {
   "about": "EIDOLON v5 score + SFX. Original music composed and rendered offline for this project from real instrument samples (see CREDITS.md). Files under res://assets/audio/v5/. _demo.ogg is a listening demo only (not referenced here).",
   "key": "Everything sits in one pitch family: D dorian (D E F G A B C), with Bb only in the darker D-aeolian rooms (stair_breath, garden_veiled, gate_four). Any bed can crossfade into any other.",
   "leitmotif": "Ione's motif A4-D5-E5-F5-E5 (ends unresolved on E). Every room quotes it, varied; solve_* cues finally resolve it (E->D or the room's equivalent); cinematic_hand ends without resolving.",
-  "loudness": "Beds and water_lap: -18 LUFS integrated, seamless loops (set AudioStreamOggVorbis.loop = true). Events: -20 LUFS, play at the listed gain_db. solve_*: -17 LUFS. shrine_awaken: -16 LUFS. cinematic_hand: -18 LUFS (dynamic: whispers to swell). glimpse -19, touch_glass -20, breath -21. SFX: mono, normalised per family by short-clip LUFS (footsteps -27, cloth -29, statue_turn / door_stone -20, gate / hollow_scrape -21, scale_creak / shard_pickup -24, rune_flip -25, glass_tap -26, glass_hum -25, ui_click -31), peaks <= -2.5 dBFS; beam_hum loop -24 dBFS RMS.",
+  "loudness": "Beds and water_lap: -18 LUFS integrated, seamless loops (set AudioStreamOggVorbis.loop = true). Events: -20 LUFS, play at the listed gain_db. solve_*: -17 LUFS. shrine_awaken: -16 LUFS. cinematic_hand: -18 LUFS (dynamic: whispers to swell). glimpse -19, touch_glass -20, breath -21. SFX: mono, normalised per family by short-clip LUFS (footsteps -27, cloth -29, statue_turn / door_stone -20, gate / hollow_scrape -21, scale_creak / shard_pickup -24, rune_flip -25, glass_tap -26, glass_hum -25, ui_click -31), peaks <= -2.5 dBFS; beam_hum loop -24 dBFS RMS. v0.8.1: beds re-rendered softer (per-bed high shelf at 3 kHz -2.5..-11 dB toward a common brightness, 8 kHz low-pass, a slow circular gain ride on swells; loops kept seamless, still -18 LUFS) and played 5.5 dB lower (layer gain_db -5.5, every room the same: the old 0/-1/-2/-3 trims removed); events 3 dB lower and 1.4x sparser.",
   "phone": "All files are high-passed (beds/music: 4th-order 165 Hz) and voiced for phone speakers: fundamentals 180 Hz - 6 kHz, lows carried by harmonics; < 0.5 % energy below 150 Hz.",
   "rooms.layers": "layer 0 = the room bed (loop). Some rooms add the shared water_lap loop as layer 1.",
   "rooms.events": "sparse musical one-shots; pick one at random every min_s..max_s seconds, never the same twice in a row. Each has its own reverb tail baked in.",
@@ -861,6 +862,7 @@
    "footsteps_stone": "soft stone, wrapped feet (6 variants; randomise pitch +-4 %, level +-2 dB)",
    "footsteps_water": "water's edge (5 variants)",
    "cloth": "cloak / veil swish (5 variants)"
-  }
+  },
+  "cues.solve_jingle": "v0.8.1: the one \"puzzle solved\" jingle, the same motif on every solve (2.3 s, -16 LUFS, reverb baked): a rising plucked-lyre arpeggio D4 F4 A4 D5 E5 F5 A5 that settles on D (krotala/bell shimmer, a soft tympanon and pad swell under it). The music bed ducks -6 dB for ~2 s under it. Original; synthesised offline (tools: scratchpad render_jingle.py, see CREDITS.md)."
  }
 }

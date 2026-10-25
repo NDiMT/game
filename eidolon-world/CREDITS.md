@@ -63,6 +63,12 @@ and sequenced, and the singer's sustained vowels were resynthesised (TD-PSOLA) i
 choir. The reverb impulse responses are generated algorithmically. Nothing from a finished piece of music is
 used as music. The SFX are recorded sounds, layered and processed for phone speakers.
 
+v0.8.1: `cues/solve_jingle.ogg`, the one "puzzle solved" jingle (a rising plucked-lyre arpeggio settling on an
+open D chord, krotala shimmer, a soft tympanon and a pad swell), is an original motif synthesised entirely in
+code (additive plucked-string, inharmonic bell and membrane models, an algorithmic stereo reverb); no samples.
+The room beds were re-rendered from the v5 files themselves: a gentle per-bed high shelf and low-pass, a slow
+gain ride on swells, loops kept seamless, then re-normalised (-18 LUFS).
+
 Instrument recordings:
 
 - **University of Iowa Electronic Music Studios — Musical Instrument Samples (MIS)**, by Lawrence Fritts et al.

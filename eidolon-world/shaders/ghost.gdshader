@@ -12,7 +12,7 @@ global uniform vec4 accent_core;
 #include "res://shaders/figure_deform.gdshaderinc"
 #include "res://shaders/glyphs.gdshaderinc"
 #include "res://shaders/figure_detail.gdshaderinc"
-// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+// v0.8 the two lights, `hers` 0..1 (v0.8.1: both are aqua: palette.gd)
 global uniform vec4 her;
 global uniform vec4 her_core;
 global uniform vec4 her_tint;

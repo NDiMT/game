@@ -475,6 +475,12 @@ func _markers() -> void:
 		m.render_priority = 1
 		add_child(mi)
 		inscr_mats.append([m, mk[3]])
+		# v0.8.1: the carved writing gives light: a soft aqua pool on the stone before it, a small culled light
+		var ip: Vector3 = mk[3]
+		var al := AquaLight.new(1.9, 0.22, Vector3(ip.x, ip.y + 0.012, ip.z), 1.3)
+		al.position = mi.transform.origin + xf.basis.z.normalized() * 0.4
+		al.strength = 0.7
+		add_child(al)
 
 ## the grooves glow brighter as the wanderer comes near
 func update_inscriptions(p: Vector3) -> void:
@@ -782,10 +788,10 @@ func _hall() -> void:
 func _garden() -> void:
 	var z := "G"
 	# (v0.8.1: the shadow chamber takes the garden's north-west corner, x 5..10.3, z -18.4..-9.3)
-	slab(z, R(10.3, -15, 6.7, 10), 1.0, 0.8, 0.0)
-	slab(z, R(7, -9.3, 3.3, 4.3), 1.0, 0.8, 0.0)
-	walk(R(10.3, -15, 6.7, 10), 1.0, NAN, -1, "G")
-	walk(R(7, -9.3, 3.3, 4.3), 1.0, NAN, -1, "G")
+	slab(z, R(10.3, -15, 17, -5), 1.0, 0.8, 0.0)
+	slab(z, R(7, -9.3, 10.3, -5), 1.0, 0.8, 0.0)
+	walk(R(10.3, -15, 17, -5), 1.0, NAN, -1, "G")
+	walk(R(7, -9.3, 10.3, -5), 1.0, NAN, -1, "G")
 	# v0.5: the Turned Ones' great mirror stands on the north edge (the glass is a puzzle object)
 	wall("Gn", R(10.3, -15.6, 15.3, -15.05), 1.0, 5.9, false)
 	box(z, Vector3(10.45, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
@@ -807,7 +813,7 @@ func _garden() -> void:
 	statue(z, Vector3(12.2, 1.0, -5.7), PI, 0.85)
 	stump(Vector3(16.3, 1.0, -5.6), 1.1)
 	rubble(Vector3(15.2, 1.0, -6.6), 0.6, 5)
-	rubble(Vector3(16.2, 1.0, -14.2), 0.4, 4)
+	rubble(Vector3(16.5, 1.0, -5.6), 0.4, 4)
 	balustrade(z, Vector2(16.95, -14.8), Vector2(16.95, -13.2), 1.0)
 	balustrade(z, Vector2(16.95, -10.4), Vector2(16.95, -5.2), 1.0)
 	balustrade(z, Vector2(9.7, -4.95), Vector2(16.8, -4.95), 1.0)

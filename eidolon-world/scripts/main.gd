@@ -372,6 +372,7 @@ func _process(dt: float) -> void:
 			highlight.set_target(null)
 	if highlight: highlight.update(dt)
 	Flame.cull(player.position)
+	AquaLight.cull(player.position)
 	_update_hum()
 	if mode != "title":
 		var p := player.position
@@ -381,7 +382,7 @@ func _process(dt: float) -> void:
 		if on_ledge: cs = maxf(cs, 9.6)              # see your reflection AND the plate
 		if area == "mist_maze" and p.z < -28.5: cs = maxf(cs, 10.6)          # the maze and her pool
 		if area == "scales": cs = maxf(cs, 9.8)
-		if area == "shard_gallery" and chapter.lens_on: cs = minf(cs, 5.4)      # v0.6: read her map up close
+		if area == "shard_gallery" and chapter.lens_on: cs = minf(cs, 6.4)      # v0.8.1: the floor round her statue, through the shard
 		if area == "waking_pool" and p.x < 0.6 and p.z > -0.6 and p.z < 4.2 and absf(p.y) < 0.4: cs = minf(cs, 6.6)   # v0.6: the stones in the water
 		if mode != "finale" and mode != "cine": world.cam_size_target = cs
 		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs
@@ -396,7 +397,7 @@ func _process(dt: float) -> void:
 				off = (Puzzles.PLATE_POS - p) * 0.5
 				off.y = 0.0
 			elif area == "shard_gallery" and chapter.lens_on:
-				off = Vector3((6.8 - p.x) * 0.45, 0.0, (-10.5 - p.z) * 0.45)          # v0.6: her map
+				off = Vector3((Chapter.SH_STATUE.x - p.x) * 0.45, 0.0, (Chapter.SH_STATUE.z - p.z) * 0.45)          # v0.8.1: her statue and its shadows
 			elif area == "mist_maze" and p.z < -28.5 and p.x > 8.5:
 				off = Vector3((4.6 - p.x) * 0.42, 0.0, (-34.0 - p.z) * 0.3)     # her steps in the pool
 			elif area == "garden_veiled" and p.z < -9.0 and p.x > 8.5 and p.x < 15.5:
@@ -549,7 +550,7 @@ func _on_event(name: String, data: Variant) -> void:
 		"plate_half":
 			sfx.play("glass_tink", -21.0, 0.6)          # (hers stirs, but yours is empty)
 		"plate_glow":
-			sfx.cue("solve_eidolon_ledge")
+			sfx.solve_jingle()
 		"bridge_rise":
 			bridge_focus = 5.0
 			sfx.play("door", -1.0, 0.8)
@@ -661,7 +662,7 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 	match name:
 		"solve":
 			chapter.progress()
-			sfx.cue("solve_" + str(data))
+			sfx.solve_jingle()             # (v0.8.1: one jingle on every solve; solve_<room> cues retired)
 			_save()
 		"breath": sfx.cue("breath")
 		"writing": sfx.play("glass_tink", -24.0, 0.8)
@@ -710,6 +711,7 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 			sfx.play("chime_hall", -16.0, 1.0)
 			chapter.progress()
 		"brazier": sfx.play("whoosh", -17.0, 1.7)
+		"brazier_out": sfx.play("whoosh", -21.0, 0.6)
 		"gutter":
 			sfx.play("whoosh", -15.0, 0.55)
 			sfx.sour(-20.0)
@@ -825,6 +827,7 @@ func _apply_tier_extras() -> void:
 	Reflector.cloth_bones = world.quality_high          # (v0.8: the Low tier's reflections: cloth at rest)
 	if props: props.set_quality(world.quality_high)
 	Flame.high = world.quality_high
+	AquaLight.high = world.quality_high
 
 func _load_settings() -> void:
 	var tier := "auto"

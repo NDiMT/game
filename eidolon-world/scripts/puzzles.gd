@@ -132,6 +132,14 @@ func glow_quad(parent: Node3D, pos: Vector3, size: float, col: Color, intensity:
 	parent.add_child(mi)
 	return m
 
+## v0.8.1: a small culled aqua light that follows a glow's intensity (and its pool on the floor, if given)
+func aqua_light(parent: Node3D, pos: Vector3, glow: ShaderMaterial, range_m := 2.6, e := 0.4, pool_at := Vector3.INF, pool_size := 1.8) -> AquaLight:
+	var al := AquaLight.new(range_m, e, pool_at, pool_size)
+	al.position = pos
+	al.follow = glow; al.follow_param = "intensity"; al.follow_scale = 1.4
+	parent.add_child(al)
+	return al
+
 func marble_instance(mesh: Mesh, parent: Node3D, fade_y := -99.0) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
@@ -406,13 +414,15 @@ func _light_court() -> void:
 	marble_instance(pm.commit(), self)
 	var sc := crystal(Vector3(SRC.x, y + 1.45, SRC.y), 0.17, 0.32, true)
 	source_crystal = sc[0]
-	glow_quad(self, Vector3(SRC.x, y + 1.45, SRC.y), 2.2, Palette.ACCENT, 0.55)
+	var src_halo := glow_quad(self, Vector3(SRC.x, y + 1.45, SRC.y), 2.2, Palette.ACCENT, 0.55)
+	aqua_light(self, Vector3(SRC.x, y + 1.6, SRC.y), src_halo, 3.0, 0.45, Vector3(SRC.x, y + 0.012, SRC.y), 2.2)      # (v0.8.1: aqua gives light)
 	var tc := crystal(Vector3(TGT.x, y + 1.45, TGT.y), 0.17, 0.32, false)
 	target_crystal = tc[0]
 	target_mat = tc[1]
 	target_halo = glow_quad(self, Vector3(TGT.x, y + 1.45, TGT.y), 2.6, Palette.ACCENT, 0.0)
 	target_crystal.layers = PlanarMirror.LAYER_MAIN_FX
 	(get_child(get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
+	aqua_light(self, Vector3(TGT.x, y + 1.6, TGT.y), target_halo, 3.2, 0.5, Vector3(TGT.x, y + 0.012, TGT.y), 2.4)      # (v0.8.1)
 	# the four mirror stands (frame + double-sided glass), rotating about Y
 	var smesh := _stand_mesh()
 	for i in STAND_POS.size():
@@ -445,7 +455,7 @@ func _light_court() -> void:
 		base.cyl(Vector3(0, -0.75, 0), 0.30, 0.38, 0.5, Color(0.3, 0.25, 0.0), 12)
 		var bmi := marble_instance(base.commit(), pv)
 		bmi.layers = PlanarMirror.LAYER_DOUBLE
-		var hg := glow_quad(pv, Vector3(0, 0.0, 0), 1.8, Palette.HER, 0.0)          # (her world: rose)
+		var hg := glow_quad(pv, Vector3(0, 0.0, 0), 1.8, Palette.HER, 0.0)          # (her world: aqua since v0.8.1)
 		(pv.get_child(pv.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_DOUBLE
 		her_glows.append(hg)
 		her_stands.append(pv)
@@ -836,7 +846,7 @@ func _eidolon_glass() -> void:
 	pm.cyl(PLATE_POS + Vector3(0, 0.05, 0), 0.52, 0.52, 0.06, Color(0.5, 0.25, 0.0), 24)
 	marble_instance(pm.commit(), self)
 	plate_mat = rune_quad(self, PLATE_POS + Vector3(0, 0.085, 0), Vector2(0.86, 0.86), Basis(Vector3.RIGHT, -PI * 0.5), 2.0, 0.6)
-	plate_mat.set_shader_parameter("hers", 1.0)          # (the Eidolon plate: her side, rose)
+	plate_mat.set_shader_parameter("hers", 1.0)          # (the Eidolon plate: her side; aqua since v0.8.1)
 	# the target, unmistakable: a rune sigil ring, a pillar of light, motes circling it
 	plate_ring = ShaderMaterial.new()
 	plate_ring.shader = preload("res://shaders/ring.gdshader")
@@ -855,6 +865,7 @@ func _eidolon_glass() -> void:
 	plate_pillar.set_shader_parameter("fade", 0.7)
 	plate_pillar.set_shader_parameter("color", Palette.HER_CORE)
 	plate_halo = glow_quad(self, PLATE_POS + Vector3(0, 0.6, 0), 2.6, Palette.ACCENT, 0.5)
+	aqua_light(self, PLATE_POS + Vector3(0, 0.9, 0), plate_halo, 3.0, 0.4)
 	for i in 7:
 		var mq := QuadMesh.new()
 		mq.size = Vector2(0.16, 0.16)
@@ -1008,6 +1019,7 @@ func _shrine() -> void:
 	shrine_crystal = sc[0]
 	shrine_crystal_mat = sc[1]
 	shrine_halo = glow_quad(self, c + Vector3(0, 1.75, 0.35), 4.0, Palette.ACCENT, 0.0)
+	aqua_light(self, c + Vector3(0, 1.9, 0.8), shrine_halo, 4.5, 0.6)
 	shrine_ring = ShaderMaterial.new()
 	shrine_ring.shader = preload("res://shaders/ring.gdshader")
 	var q := PlaneMesh.new()

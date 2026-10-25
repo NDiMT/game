@@ -3,7 +3,7 @@ shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, shadows_disabled, cull_disabled, fog_disabled;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
-// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+// v0.8 the two lights, `hers` 0..1 (v0.8.1: both are aqua: palette.gd)
 global uniform vec4 her;
 global uniform vec4 her_core;
 global uniform vec4 her_tint;

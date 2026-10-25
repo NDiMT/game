@@ -4,7 +4,7 @@ render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_back;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
 #include "res://shaders/glyphs.gdshaderinc"
-// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+// v0.8 the two lights, `hers` 0..1 (v0.8.1: both are aqua: palette.gd)
 global uniform vec4 her;
 global uniform vec4 her_core;
 global uniform vec4 her_tint;

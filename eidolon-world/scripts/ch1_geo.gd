@@ -134,9 +134,7 @@ static func _stair_of_breath(lv: Level) -> void:
 	# the cliff wall on the east (between the stair and the water), the small glass set into it facing
 	# west; the open side of the stair is the west, over the void
 	lv.wall(z, R(-10.2, -12.6, -9.7, -0.2), -0.6, 3.9, true)
-	# bronze frame: proud of the wall by 12 cm (its back is buried in the wall: no coplanar faces)
-	lv.box(z, Vector3(-10.22, 1.75, -5.3), Vector3(0.2, 1.75, 1.35), 1.0)
-	lv.box(z, Vector3(-10.36, 0.93, -5.3), Vector3(0.36, 0.12, 1.3), 0.25)
+	# (v0.8.1: the breath glass left this wall: it stands free on the landing below, see Chapter._build_stair)
 	# second flight to the top (sealed by a veil of mist until she answers)
 	lv.steps(z, R(-12.4, -10.6, -10.2, -6.6), 1, 0.5, 1.0, false)
 	lv.walk(R(-12.4, -10.6, -10.2, -6.6), 1.0, 0.5, 1, "W_stair2")
@@ -163,19 +161,25 @@ static func _stair_of_breath(lv: Level) -> void:
 ## The old narrow Shard Gallery is a readable chamber now: "Where Her Shadow Fell". It opens off the Hall's
 ## east door; the true arch on its east side (seen through the shard) leads into the Garden. The walls
 ## toward the camera (east and south) are low parapets, so the whole floor reads from the iso view.
-const SC_ROOM := Rect2(5.0, -18.4, 5.0, 8.8)          # x 5..10, z -18.4..-9.6
+const SC_ROOM := Rect2(5.0, -16.9, 5.0, 7.3)          # x 5..10, z -16.9..-9.6 (+ the way in from the Hall, x 5..7 to z -18.4)
 static func _gallery(lv: Level) -> void:
 	var z := "GL"
-	lv.slab(z, R(5.0, -18.4, 10.0, -9.6), 1.0, 0.7, 0.0)
-	lv.walk(R(5.0, -18.4, 10.0, -9.6), 1.0, NAN, -1, "GL")
-	# the far walls (north, and the Hall's side): tall, the backdrop
-	lv.wall(z, R(4.6, -18.7, 10.3, -18.4), 1.0, 4.4, true)
-	lv.ob_rect(R(4.6, -18.75, 10.35, -18.4))
+	# (the Court of Light stands above to the north-east, its floor at 2 m from z -17: the chamber keeps
+	# south of it; only the way in from the Hall's door runs on under the court's west edge)
+	lv.slab(z, R(5.0, -16.9, 10.0, -9.6), 1.0, 0.7, 0.0)
+	lv.walk(R(5.0, -16.9, 10.0, -9.6), 1.0, NAN, -1, "GL")
+	lv.slab(z, R(5.0, -18.4, 7.0, -16.9), 1.0, 0.7, 0.0)
+	lv.walk(R(5.0, -18.4, 6.9, -16.85), 1.0, NAN, -1, "GL")
+	# the far walls: the court's foundation (north-east) and the way in's end wall
+	lv.wall(z, R(7.0, -18.4, 10.3, -16.9), 1.0, 1.0, true)
+	lv.ob_rect(R(6.95, -18.45, 10.35, -16.9))
+	lv.wall(z, R(4.6, -18.7, 7.0, -18.4), 1.0, 4.4, true)
+	lv.ob_rect(R(4.6, -18.75, 7.05, -18.4))
 	# the near walls: low parapets (east and south), so the floor and her shadows read
-	lv.wall(z, R(10.0, -18.4, 10.3, -11.7), 1.0, 2.05, true)
+	lv.wall(z, R(10.0, -16.9, 10.3, -11.7), 1.0, 2.05, true)
 	lv.wall(z, R(10.0, -10.3, 10.3, -9.3), 1.0, 2.05, true)
 	lv.wall(z, R(5.0, -9.6, 10.3, -9.3), 1.0, 2.05, true)
-	lv.ob_rect(R(10.0, -18.4, 10.35, -11.7))
+	lv.ob_rect(R(10.0, -16.9, 10.35, -11.7))
 	lv.ob_rect(R(10.0, -10.3, 10.35, -9.3))
 	lv.ob_rect(R(4.6, -9.6, 10.35, -9.25))
 	# the true way on: an arch in the east parapet, a wall in it that is not there (seen through the shard)

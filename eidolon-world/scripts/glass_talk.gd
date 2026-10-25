@@ -65,7 +65,7 @@ class Ink extends Node2D:
 	var palm := Vector2(-99, -99)
 	var palm_k := 0.0
 	var width := 21.0
-	var only_mine := false        # v0.8: your strokes go to a second mask (yours glow aqua, hers rose)
+	var only_mine := false        # v0.8: your strokes go to a second mask (v0.8.1: both aqua; hers softer)
 	var twin: Ink
 	func _draw() -> void:
 		if only_mine:

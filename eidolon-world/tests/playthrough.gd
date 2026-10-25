@@ -85,27 +85,54 @@ var _feet_seen := false
 func C() -> Chapter:
 	return game.chapter
 
+## v0.8.1 "Where Her Shadow Fell": every lit set whose shadows are exactly the outlined ones
+func _shadow_solutions() -> Array:
+	var out := []
+	for mask in range(1, 64):
+		var lit := []
+		for i in 6:
+			if mask & (1 << i): lit.append(i)
+		if lit == Chapter.SH_SOLUTION: out.append(lit)
+	# (the game's own rule: sorted lit set == the outlined set; also check no two braziers cast the same shadow)
+	var seen := {}
+	for i in 6:
+		var sh: Array = Chapter.shadow_of(i)
+		var key := "%.2f,%.2f,%.2f" % [sh[1].x, sh[1].y, sh[2]]
+		if seen.has(key): out.append([-1])
+		seen[key] = true
+	return out
+func _shadow_geometry_ok() -> bool:
+	var ok2 := true
+	for i in 6:
+		var b: Vector3 = Chapter.SH_BRAZ[i]
+		var sh: Array = Chapter.shadow_of(i)
+		var away := Vector2(Chapter.SH_STATUE.x - b.x, Chapter.SH_STATUE.z - b.z)
+		ok2 = ok2 and (sh[1] as Vector2).dot(away.normalized()) > 0.999
+		for j in 6:
+			var b2: Vector3 = Chapter.SH_BRAZ[j]
+			var d1 := away.length()
+			var d2 := Vector2(Chapter.SH_STATUE.x - b2.x, Chapter.SH_STATUE.z - b2.z).length()
+			if d1 < d2 - 0.3: ok2 = ok2 and float(sh[2]) >= float(Chapter.shadow_of(j)[2])
+	return ok2
+func _shadow_hint_ok() -> bool:
+	var was_g: bool = C().state["gallery"]
+	var was_a := game.area
+	C().state["gallery"] = false
+	game.area = "shard_gallery"
+	C().hint_t = Game.HINT_AFTER + 1.0
+	C()._update_gallery(0.016)
+	var h := float(C().sh_outlines[0].get_shader_parameter("hint"))
+	C().state["gallery"] = was_g
+	game.area = was_a
+	C().hint_t = 0.0
+	C()._update_gallery(0.016)
+	return h > 0.5
+
 ## v0.7 the Pool of Halves: one press of interact on real slab ri
 func _pool_press(ri: int, label: String) -> void:
 	step_do(func() -> void: ok(label, _focus() == "pool_turn%d" % ri and game.try_interact(), _focus()))
 	step_until(label + " (turned)", func() -> bool: return not C()._pool_tw.has(ri), 3.0)
 	step_wait(0.15)
-
-## the gallery map: slot (top-left, top-right, bottom-left, bottom-right) -> brazier, read two ways
-func _gallery_read(mirrored: bool) -> Array:
-	var marks: Vector4 = C().gl_map.get_shader_parameter("marks")
-	var m := [marks.x, marks.y, marks.z, marks.w]
-	var order := [-1, -1, -1]
-	for slot in 4:
-		var top := slot < 2                  # top = east
-		var left := slot % 2 == 0            # left = north as drawn; from her side, south
-		var north := left != mirrored
-		var b := (1 if top else 0) + (0 if north else 2)
-		var n := int(m[slot])
-		if n > 0: order[n - 1] = b
-	return order
-func _gallery_naive() -> Array: return _gallery_read(false)
-func _gallery_mirrored() -> Array: return _gallery_read(true)
 
 ## ---- v0.7 collision audit helpers
 var _sgrid := {}
@@ -311,7 +338,8 @@ func _plan() -> void:
 		var hers := 0
 		for v in info: hers += 1 if v.z > 0.5 else 0
 		ok("...and the reflection no longer marks any as hers", hers == 0)
-		ok("solving plays its cue", game.sfx.played.get("cue:solve_waking_pool", 0) >= 1))
+		ok("solving plays the solve jingle (one motif for every solve)", game.sfx.played.get("cue:solve_jingle", 0) >= 1 and game.sfx.played.get("cue:solve_waking_pool", 0) == 0)
+		ok("the music bed steps back under the jingle, then returns", game.sfx.jingle_duck > -6.01 and ResourceLoader.exists("res://assets/audio/v5/cues/solve_jingle.ogg")))
 	walk_path("across the pool on the whole path", [[-0.5, 4.05], [-0.25, 3.75], [-0.35, 1.7], [-1.275, 1.7], [-2.525, 1.7], [-2.525, 0.5],
 		[-3.775, 0.5], [-5.025, 0.5], [-5.025, 2.9], [-8.775, 2.9], [-10.4, 2.4]])
 	step_do(func() -> void:
@@ -324,6 +352,14 @@ func _plan() -> void:
 		var rw := C().stair_rune
 		var rm := rw.material_override as ShaderMaterial
 		ok("the whole rune is carved large beside the stair, glowing faintly", rw.visible and (rw.mesh as QuadMesh).size.x >= 1.2 and int(rm.get_shader_parameter("count")) > 8 and float(rm.get_shader_parameter("lit")) > 0.3))
+	step_do(func() -> void:
+		var it: Level.Interact = game.level.interact_by_id("breathe_stair")
+		var m: ShaderMaterial = C().breath_mats["stair"]
+		var sz: Vector2 = m.get_shader_parameter("size")
+		var gs := minf(sz.x, sz.y) * 0.42              # (the shader's glyph scale; the glyph spans +-0.55 of it)
+		ok("the breath glass stands early, free on the landing (not in the stair wall)", it != null and it.pos.z > 0.0 and absf(it.pos.y) < 0.01 and game.level.on_ground(Vector2(Chapter.STAIR_GLASS.x + 0.9, Chapter.STAIR_GLASS.z)), str(it.pos if it else null))
+		ok("it faces the camera's general direction (yaw 0 looks from -x +z)", (Basis(Vector3.UP, Chapter.STAIR_GLASS_YAW) * Vector3.BACK).dot(Vector3(-1, 0, 1).normalized()) > 0.9)
+		ok("the whole glyph fits on the pane with a margin", gs * 0.6 < sz.x * 0.5 - 0.1 and gs * 0.6 < sz.y * 0.5 - 0.1, str(gs)))
 	walk_path("up the first flight", [[-11.3, 0.6], [-11.3, -3.0], [-11.3, -5.3]])
 	step_do(func() -> void:
 		ok("on the breath landing", absf(P().y - 0.5) < 0.01, str(P()))
@@ -340,7 +376,12 @@ func _plan() -> void:
 	step_wait(1.0)
 	step_do(func() -> void:
 		ok("hint wisp drifts toward the small glass", C().wisp.visible and game.ui.text.modulate.a < 0.05)
-		walk_to(-11.3, -5.3))
+		walk_to(-11.3, -1.0))
+	step_until("down the first flight", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
+	walk_path("round to the front of the glass", [[-10.9, 1.0], [-11.3, 2.2]])
+	step_do(func() -> void:
+		var it: Level.Interact = game.level.interact_by_id("breathe_stair")
+		walk_to(it.pos.x, it.pos.z))
 	step_until("back to the glass", func() -> bool: return game.auto_target == Vector3.INF, 5.0)
 	# "An Answer on the Glass": the close-up of the pane; she writes, then waits for your answer
 	step_do(func() -> void: ok("breathe on the glass", _focus() == "breathe_stair" and game.try_interact(), _focus()))
@@ -399,7 +440,7 @@ func _plan() -> void:
 		ok("her answer rings her song (the motif A-D-E-F-E)", game.sfx.played.get("motif", 0) >= 1 and game.sfx.played.get("note_E", 0) >= 2)
 		ok("her 'follow' rune is a letter of the script, one calligraphic stroke", GlassTalk.TEMPLATES["follow"].size() == 1 and GlassTalk.TEMPLATES["follow"][0].size() >= 8)
 		ok("recogniser unit: resample keeps 32 points", GlassTalk.resample(PackedVector2Array([Vector2.ZERO, Vector2(1, 0)])).size() == GlassTalk.N))
-	walk_path("up the second flight", [[-11.3, -9.0], [-11.3, -13.5], [-6.0, -13.5], [-2.0, -13.5]])
+	walk_path("up the second flight", [[-11.3, 0.6], [-11.3, -3.0], [-11.3, -5.3], [-11.3, -9.0], [-11.3, -13.5], [-6.0, -13.5], [-2.0, -13.5]])
 	step_do(func() -> void:
 		ok("reached the Hall of Glass by the corridor", absf(P().y - 1.0) < 0.01 and game.area == "hall_glass", str(P()) + " " + game.area)
 		ok("area name shown on entering the hall", game.ui.area_label.text == Names.area("hall_glass").to_upper(), game.ui.area_label.text))
@@ -431,7 +472,7 @@ func _plan() -> void:
 	step_wait(0.3)
 	step_do(func() -> void: ok("the veiled bust turns", _focus() == "hall_turn" and game.try_interact(), _focus()))
 	step_wait(0.9)
-	step_do(func() -> void: ok("a quarter turn is not as the glass remembers", not C()._locked(2)))
+	step_do(func() -> void: ok("a quarter turn is not as the glass remembers", not C().hall_matches()[2]))
 	step_do(func() -> void:
 		_mark = game.sfx.played.get("chime_hall", 0)
 		ok("turn it again", game.try_interact()))
@@ -439,10 +480,9 @@ func _plan() -> void:
 	step_do(func() -> void: ok("a visible arc sweeps the quarter turn on the floor", float(C().bust_arc_mat.get_shader_parameter("sweep")) > 0.2 and float(C().bust_arc_mat.get_shader_parameter("intensity")) > 0.3))
 	step_wait(2.4)
 	step_do(func() -> void:
-		ok("facing the glass (its face in the glass): set right", C()._locked(2) and not C().twins[2].visible)
-		ok("matched: a chime and a glow", game.sfx.played.get("chime_hall", 0) > _mark and float((C().match_glows[2] as ShaderMaterial).get_shader_parameter("intensity")) > 0.2)
-		ok("matched: its floor cell lights", float((C().goal_mats[2] as ShaderMaterial).get_shader_parameter("intensity")) > 0.2)
-		ok("set right, it appears in the glass", (C().bust_pivot.get_child(0) as MeshInstance3D).layers & 1 == 1))
+		ok("facing the glass: right (the solver sees it)", C().hall_matches()[2])
+		ok("but nothing tells you so: no chime, no glow, no lock, it stays out of the glass", game.sfx.played.get("chime_hall", 0) == _mark and not C()._locked(2) and C().twins[2].visible and (C().bust_pivot.get_child(0) as MeshInstance3D).layers & 1 == 0)
+		ok("no target outlines or markers on the floor", C().goal_mats.is_empty() and C().match_glows.is_empty()))
 	# the drum: one push east, six north (the glass shows it one step from the glass, left of the bust)
 	step_do(func() -> void: tp(-1.8, -13.0, PI * 0.5))
 	step_wait(0.3)
@@ -458,7 +498,14 @@ func _plan() -> void:
 	step_wait(0.3)
 	step_do(func() -> void: ok("the reset altar", _focus() == "hall_reset" and game.try_interact(), _focus()))
 	step_wait(0.3)
-	step_do(func() -> void: ok("reset: the drum is back where it was found, the bust stays set", C().state["hall"]["drum"] == [Chapter.DRUM_START.x, Chapter.DRUM_START.y] and C()._locked(2), str(C().state["hall"])))
+	step_do(func() -> void: ok("reset: everything goes back where it was found (nothing is locked before the whole set)", C().state["hall"]["drum"] == [Chapter.DRUM_START.x, Chapter.DRUM_START.y] and int(C().state["hall"]["bust"]) == Chapter.BUST_START, str(C().state["hall"])))
+	# the bust again (reset turned it back)
+	step_do(func() -> void: tp(1.0, -17.3, PI))
+	step_wait(0.3)
+	for i in 2:
+		step_do(func() -> void: ok("turn the bust back to the glass (%d)" % (i + 1), _focus() == "hall_turn" and game.try_interact(), _focus()))
+		step_wait(1.6)
+	step_do(func() -> void: ok("the bust faces the glass again", C().hall_matches()[2], str(C().state["hall"])))
 	var drum_pushes := [[-1.8, -13.0], [0.0, -12.2], [0.0, -13.2], [0.0, -14.2], [0.0, -15.2], [0.0, -16.2], [0.0, -17.2]]
 	for i in drum_pushes.size():
 		var sp: Array = drum_pushes[i]
@@ -467,8 +514,18 @@ func _plan() -> void:
 		step_do(func() -> void: ok("push the drum (%d)" % (i + 1), _focus() == "hall_push" and game.try_interact(), _focus()))
 		step_wait(0.8)
 		if i == 4:
-			step_do(func() -> void: ok("a cell short of where it was: not yet", not C()._locked(0), str(C().state["hall"]["drum"])))
-	step_do(func() -> void: ok("the drum lies where the glass remembers it", C()._locked(0), str(C().state["hall"]["drum"])))
+			step_do(func() -> void: ok("a cell short of where it was: not yet", not C().hall_matches()[0], str(C().state["hall"]["drum"])))
+	step_do(func() -> void:
+		ok("the drum lies where the glass remembers it", C().hall_matches()[0], str(C().state["hall"]["drum"]))
+		ok("two of three right: still nothing, still movable", not C().state["hall_door"] and not C()._locked(0) and not C()._locked(2)))
+	# (v0.8.1) the 110 s hint: the remembered things pulse in the glass
+	step_do(func() -> void: C().hint_t = Game.HINT_AFTER + 3.5)
+	step_wait(0.6)
+	step_do(func() -> void:
+		var gi := 0.0
+		for k in [0, 2]: gi = maxf(gi, float((C().twin_mats[k] as ShaderMaterial).get_shader_parameter("intensity")))
+		ok("hint after 110 s: the memories pulse in the glass", gi > 0.05, str(gi))
+		C().hint_t = 0.0)
 	# the brazier: carry it; set it down in the wrong place first, then where the glass shows it
 	step_do(func() -> void: tp(3.0, -12.3, PI))
 	step_wait(0.3)
@@ -485,7 +542,7 @@ func _plan() -> void:
 	step_wait(0.4)
 	step_do(func() -> void: ok("set it down", _focus() == "hall_place" and game.try_interact() and not C().carrying, _focus()))
 	step_wait(0.6)
-	step_do(func() -> void: ok("a brazier in the wrong place stays unremembered", not C()._locked(1)))
+	step_do(func() -> void: ok("a brazier in the wrong place: nothing happens", not C().hall_matches()[1] and not C().state["hall_door"]))
 	step_do(func() -> void: tp(2.0, -16.3, 0.0))
 	step_wait(0.3)
 	step_do(func() -> void: ok("take it again", _focus() == "hall_take" and game.try_interact(), _focus()))
@@ -495,6 +552,7 @@ func _plan() -> void:
 	step_until("all three as the glass remembers: the doorway opens", func() -> bool: return C().state["hall_door"] and game.level.named["hdoor"].enabled, 4.0)
 	step_do(func() -> void:
 		ok("solver: each goal cell is free, and the drum starts away from it", C().hall_free(Chapter.DRUM_GOAL, 0.42, 0) or C()._locked(0))
+		ok("only the whole set answers: all three locked at once, one chime", C()._locked(0) and C()._locked(1) and C()._locked(2))
 		ok("the Mirror Shard lies on the threshold", C().shard_node.visible and not C().state["shard"])
 		walk_to(4.0, -17.5))
 	step_until("to the threshold", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
@@ -503,73 +561,83 @@ func _plan() -> void:
 	step_do(func() -> void: ok("the shard is in the inventory", C().state["shard"] and game.controls.inv_has and not game.controls.inv_on))
 	walk_path("walk to the tablet", [[2.0, -18.0], [3.85, -18.2], [3.85, -19.15]])
 	step_do(func() -> void: ok("tablet readable", game.try_interact() and game.puzzles.state["tablet"], _focus()))
-	walk_path("through the remembered door", [[3.6, -17.5], [5.6, -17.5], [6.0, -16.0]])
+	walk_path("through the remembered door", [[3.6, -17.5], [5.6, -17.5], [5.7, -15.2]])
 	step_do(func() -> void: ok("reached the Shard Gallery", game.area == "shard_gallery" and P().x > 5.0, str(P()) + " " + game.area))
 
-	# ================================================================ 4. the shard gallery: "The Other Side's Map"
-	walk_path("down the gallery", [[6.0, -12.0], [6.0, -8.6]])
+	# ================================================================ 4. "Where Her Shadow Fell" (v0.8.1)
 	step_do(func() -> void:
+		ok("the chamber is named for it", Names.area("shard_gallery") == "Where Her Shadow Fell")
 		ok("no way on: the wall is whole", game.level.named["gallery_secret"].enabled)
-		walk_to(7.8, -8.5))
+		var cold := true
+		for f in C().sh_flames: cold = cold and f.level() < 0.01
+		ok("her veiled statue in the middle, six cold braziers round her", C().sh_flames.size() == 6 and cold and C().sh_shadows.size() == 6)
+		ok("solver: exactly one set of braziers casts her shadow into the outlines", _shadow_solutions().size() == 1 and _shadow_solutions()[0] == Chapter.SH_SOLUTION, str(_shadow_solutions()))
+		ok("solver: each brazier throws her shadow straight away from it, longer when nearer", _shadow_geometry_ok()))
+	walk_path("into the chamber", [[6.4, -15.0], [6.6, -12.4], [8.4, -12.4]])
+	step_do(func() -> void:
+		ok("walking about the chamber", game.area == "shard_gallery", str(P()) + " " + game.area)
+		walk_to(10.6, -11.0))
 	step_wait(0.7)
 	step_until("the wall", func() -> bool: return game.player.still_time > 0.3 or game.auto_target == Vector3.INF, 4.0)
 	step_do(func() -> void:
 		game.cmd("stop")
-		ok("the wall is solid", P().x < 6.6, str(P()))
-		tp(5.95, -10.6, PI * 0.5))
+		ok("the arch is a wall in your world", P().x < 10.0, str(P()))
+		tp(7.5, -12.4, PI))
 	step_do(func() -> void:
 		game.controls.shard.emit()           # the inventory slot tapped
 		ok("raise the shard from the inventory", C().lens_on and game.controls.inv_on))
 	step_wait(0.4)
 	step_do(func() -> void:
 		var L: Vector4 = C().lens_px
-		ok("the lens follows you on screen; her map shows in it", L.w > 0.5 and L.z > 10.0 and game.ui.lens_rect.visible, str(L))
-		ok("her map is drawn from her side: the true arch and the way in at the wrong ends", C().gl_map.get_shader_parameter("marks") == Vector4(1, 3, 0, 2))
-		ok("solver: read as drawn (not mirrored) the map gives a different, wrong order", _gallery_naive() != Chapter.GL_ORDER and _gallery_mirrored() == Chapter.GL_ORDER, "%s vs %s" % [_gallery_naive(), _gallery_mirrored()]))
-	step_do(func() -> void:
-		var vis := true
-		for i in 4: vis = vis and float(C().gl_flames[i].get_shader_parameter("intensity")) == 0.0
-		ok("four veiled busts, their votive lamps cold", C().gl_lamps.size() == 4 and vis))
-	var spots := {}
-	for i in 4:
-		var bw: Vector3 = Chapter.gl_bowl(i)
-		spots[i] = [5.92 if bw.x < 6.0 else 5.93, bw.z]
-	for attempt in [[1, 2, 3], [0, 1, 2]]:
-		for bi in attempt:
-			var sp2: Array = spots[bi]
-			step_do(func() -> void: tp(sp2[0], sp2[1], PI))
-			step_wait(0.25)
-			step_do(func() -> void: ok("light lamp %d" % bi, _focus() == "light%d" % bi and game.try_interact(), _focus()))
-			step_wait(0.6)
-			step_do(func() -> void:
-				var lp: Dictionary = C().gl_lamps[bi]
-				ok("a teal flame burns in its bowl, lighting the face from below", float(C().gl_flames[bi].get_shader_parameter("intensity")) > 0.5 and (lp["light"] as OmniLight3D).visible and (lp["light"] as OmniLight3D).light_energy > 0.3))
-		step_until("a wrong order: the flames gutter out", func() -> bool: return (C().state["gallery_lit"] as Array).is_empty() and not C()._gl_busy, 5.0)
-		step_do(func() -> void:
-			var out := true
-			for i in 4: out = out and not (C().gl_lamps[i]["light"] as OmniLight3D).visible
-			ok("guttered: every lamp out", out))
-	step_do(func() -> void:
-		ok("still shut after wrong orders", not C().state["gallery"] and C().gl_fails == 2)
-		ok("hint after two wrong orders: the map's clues shine", float(C().gl_map.get_shader_parameter("pulse")) > 0.5))
-	for bi in Chapter.GL_ORDER:
-		var sp3: Array = spots[bi]
-		step_do(func() -> void: tp(sp3[0], sp3[1], PI))
+		ok("through the shard: the outlines of where her shadow fell, and the true arch", L.w > 0.5 and L.z > 10.0 and game.ui.lens_rect.visible and C().sh_outlines.size() == Chapter.SH_SOLUTION.size(), str(L)))
+	# lighting EVERY brazier is not the answer (and nothing answers brazier by brazier)
+	var bspots := []
+	for i in 6:
+		var b: Vector3 = Chapter.SH_BRAZ[i]
+		var away := Vector2(b.x - Chapter.SH_STATUE.x, b.z - Chapter.SH_STATUE.z).normalized()
+		bspots.append([b.x - away.x * 0.75, b.z - away.y * 0.75])
+	for i in 6:
+		var sp: Array = bspots[i]
+		var bi: int = i
+		step_do(func() -> void: tp(sp[0], sp[1], 0.0))
 		step_wait(0.25)
-		step_do(func() -> void: ok("light lamp %d (her order, read from your side)" % bi, _focus() == "light%d" % bi and game.try_interact(), _focus()))
-		step_wait(0.4)
-	step_until("the true arch opens", func() -> bool: return C().state["gallery"] and not game.level.named["gallery_secret"].enabled, 4.0)
-	step_wait(1.9)
+		step_do(func() -> void:
+			_mark = game.sfx.played.get("chime", 0) + game.sfx.played.get("chime_hall", 0)
+			ok("light brazier %d" % bi, _focus() == "brazier%d" % bi and game.try_interact(), _focus()))
+		step_wait(0.7)
+		step_do(func() -> void:
+			var f: Flame = C().sh_flames[bi]
+			ok("brazier %d: real fire and light; her shadow falls away from it" % bi, f.level() > 0.5 and float(C().sh_shadows[bi].get_shader_parameter("k")) > 0.5)
+			ok("no answer brazier by brazier", game.sfx.played.get("chime", 0) + game.sfx.played.get("chime_hall", 0) == _mark))
+	step_wait(1.2)
+	step_do(func() -> void: ok("all six lit: NOT the answer", not C().state["gallery"] and game.level.named["gallery_secret"].enabled))
+	# put out the three that are not hers (each a toggle)
+	for i in [1, 4, 5]:
+		var sp: Array = bspots[i]
+		var bi: int = i
+		step_do(func() -> void: tp(sp[0], sp[1], 0.0))
+		step_wait(0.25)
+		step_do(func() -> void: ok("put out brazier %d" % bi, _focus() == "brazier%d" % bi and game.try_interact(), _focus()))
+		step_wait(0.9)
+		if i == 1:
+			step_do(func() -> void:
+				ok("put out: its fire dies, its shadow goes", C().sh_flames[1].level() < 0.05 and float(C().sh_shadows[1].get_shader_parameter("k")) < 0.05)
+				ok("still shut with the wrong set", not C().state["gallery"]))
+	step_until("only her shadows: the true arch opens", func() -> bool: return C().state["gallery"] and not game.level.named["gallery_secret"].enabled, 4.0)
 	step_do(func() -> void:
-		var veils := true
-		for i in 4: veils = veils and (float((C().gl_lamps[i]["veil"] as ShaderMaterial).get_shader_parameter("intensity")) > 0.5) == (i in Chapter.GL_ORDER)
-		ok("her busts' veils glow", veils))
-	step_wait(2.6)
-	walk_path("to the arch", [[5.95, -11.0], [5.95, -9.0]])
-	walk_path("through the passage", [[8.4, -8.5], [9.0, -10.0]])
+		ok("the lore line, in the third person", game.ui.text.text.begins_with("On Milos, in the evening,") and game.ui.text.text.contains("he moved the lamps"), game.ui.text.text)
+		ok("the solve jingle", game.sfx.played.get("cue:solve_jingle", 0) >= 3))
+	step_wait(1.8)
 	step_do(func() -> void:
-		ok("reached the Garden of the Veiled", game.area == "garden_veiled" and P().x > 7.5, str(P()) + " " + game.area)
-		ok("the shard is lowered outside the gallery", not C().lens_on))
+		ok("her shadows darken; her veil stirs", float(C().sh_shadows[0].get_shader_parameter("dark")) > 0.85 and float(C().sh_veil.get_shader_parameter("intensity")) > 0.3))
+	step_wait(1.0)
+	walk_path("through the true arch", [[9.4, -11.0], [11.2, -11.0], [11.5, -9.0]])
+	step_do(func() -> void:
+		ok("reached the Garden of the Veiled", game.area == "garden_veiled" and P().x > 10.3, str(P()) + " " + game.area)
+		ok("the shard is lowered outside the chamber", not C().lens_on))
+	step_do(func() -> void:
+		# the hint at 110 s: the outlines glow faintly even without the shard (checked on a fresh state)
+		ok("hint (110 s): the outlines pulse faintly without the shard", _shadow_hint_ok()))
 
 	# ================================================================ 5. garden: the turned ones
 	step_do(func() -> void:
@@ -914,7 +982,7 @@ func _plan() -> void:
 	step_until("the gate counts you as the fourth", func() -> bool: return C().state["four"], 4.0)
 	step_do(func() -> void:
 		ok("the veil before the shrine is gone", not game.level.named["tholos_front"].enabled)
-		ok("a deep chord", game.sfx.played.get("cue:solve_gate_four", 0) >= 1))
+		ok("the solve jingle again", game.sfx.played.get("jingle", 0) >= 8))
 	step_wait(1.0)
 	walk_path("into the shrine", [[20.35, -33.93], [20.35, -29.0], [25.0, -29.0], [25.0, -30.8]])
 	step_do(func() -> void: ok("reached the First Shrine", game.area == "first_shrine", game.area))
@@ -984,7 +1052,7 @@ func _plan() -> void:
 			var c: Vector2 = (e[2] as Rect2).get_center()
 			solid = solid and game.level.blocked(c, 0.05)
 		ok("props: each one is solid (its centre blocked)", solid)
-		var goals := [[-10.6, 1.7], [-11.3, -13.5], [0.0, -16.0], [3.85, -19.15], [6.0, -9.0], [12.0, -10.0], [16.0, -14.1], [21.0, -10.0],
+		var goals := [[-10.6, 1.7], [-11.3, -13.5], [0.0, -16.0], [3.85, -19.15], [8.4, -13.0], [8.6, -7.0], [12.0, -10.0], [16.0, -14.1], [21.0, -10.0],
 			[12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [29.0, -49.0], [25.5, -21.6], [21.34, -33.93], [28.0, -38.6], [25.0, -30.8]]
 		var miss := _reach(goals)
 		ok("props: every key place still reachable on foot from the gate", miss.is_empty(), str(miss)))

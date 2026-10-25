@@ -3,7 +3,7 @@ shader_type canvas_item;
 // carved-glow language (v0.8): an inner core past white (the 2D glow cannot bloom it in the Compatibility
 // renderer, so the bloom is drawn here: an SDF falloff), a wide soft halo bleeding onto the stone, a thin
 // tinted rim so the letters stay legible on the light stone, a little variation from stroke to stroke and
-// a slow pulse. Aqua; rose when the writing is hers (`hers`). The text block sits inside a margin wide
+// a slow pulse. Aqua (hers too, since v0.8.1). The text block sits inside a margin wide
 // enough for the capital rune's halo, so nothing is cut at the card's edge.
 global uniform vec4 accent;
 global uniform vec4 accent_core;

@@ -14,7 +14,7 @@ uniform vec2 clip_h = vec2(1.0, 1.0);
 uniform float life = 1.0;
 uniform float dark = 0.0;        // v0.5: her steps in still water: the outer glow, stronger
 global uniform vec4 accent;
-// v0.8 the two lights: aqua (yours) or rose (hers): `hers` 0..1
+// v0.8 the two lights, `hers` 0..1 (v0.8.1: both are aqua: palette.gd)
 global uniform vec4 her;
 global uniform vec4 her_core;
 global uniform vec4 her_tint;
