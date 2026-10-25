@@ -22,8 +22,8 @@ const LEGACY := "res://assets/models/heroine_rigged.glb"
 
 ## per chain kind: [stiffness, drag, gravity, joint radius, stiffness at tip (x root), drag at tip (x root)]
 const SPRING := {
-	"Hem": [3.2, 0.5, 0.45, 0.028, 0.55, 0.8],
-	"Veil": [2.0, 0.45, 0.4, 0.025, 0.5, 0.8],
+	"Hem": [4.5, 0.6, 1.2, 0.028, 0.6, 0.85],
+	"Veil": [3.0, 0.7, 2.5, 0.02, 0.6, 0.85],
 }
 
 @export var legacy := false
@@ -121,7 +121,7 @@ func _build_springs() -> void:
 	sk.add_child(sim)
 	# colliders follow bones; sizes in model units (the skeleton node is scaled by HEIGHT)
 	sim.add_child(_capsule("Pelvis", 0.14, 0.42, Vector3(0, -0.12, 0)))     # the skirt's inner cone (metres)
-	sim.add_child(_capsule("Spine01", 0.095, 0.40, Vector3(0, 0.10, -0.01)))  # torso, under the veil panel
+	sim.add_child(_capsule("Spine01", 0.08, 0.40, Vector3(0, 0.10, 0.0)))  # torso, under the veil panel
 	for s in ["L", "R"]:
 		sim.add_child(_capsule(s + "_Thigh", 0.085, 0.40, Vector3.ZERO, true))
 		sim.add_child(_capsule(s + "_Calf", 0.065, 0.38, Vector3.ZERO, true))

@@ -4,12 +4,12 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/waking_pool.ogg",
-     "gain_db": -2.5,
+     "gain_db": -3.0,
      "loop": true
     },
     {
      "file": "res://assets/audio/v5/beds/water_lap.ogg",
-     "gain_db": -12.5,
+     "gain_db": -13.0,
      "loop": true
     }
    ],
@@ -62,7 +62,7 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/stair_breath.ogg",
-     "gain_db": -2.5,
+     "gain_db": -3.0,
      "loop": true
     }
    ],
@@ -115,7 +115,7 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/hall_glass.ogg",
-     "gain_db": -2.5,
+     "gain_db": -3.0,
      "loop": true
     }
    ],
@@ -174,7 +174,7 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/shard_gallery.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     }
    ],
@@ -227,7 +227,7 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/garden_veiled.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     }
    ],
@@ -286,7 +286,7 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/hollow_walk.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     }
    ],
@@ -339,7 +339,7 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/court_light.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     }
    ],
@@ -392,12 +392,12 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/mist_maze.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     },
     {
      "file": "res://assets/audio/v5/beds/water_lap.ogg",
-     "gain_db": -17.5,
+     "gain_db": -19.5,
      "loop": true
     }
    ],
@@ -450,7 +450,7 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/echo_corridor.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     }
    ],
@@ -503,12 +503,12 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/scales.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     },
     {
      "file": "res://assets/audio/v5/beds/water_lap.ogg",
-     "gain_db": -20.5,
+     "gain_db": -22.5,
      "loop": true
     }
    ],
@@ -561,7 +561,7 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/eidolon_ledge.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     }
    ],
@@ -614,7 +614,7 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/gate_four.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     }
    ],
@@ -667,12 +667,12 @@
    "layers": [
     {
      "file": "res://assets/audio/v5/beds/first_shrine.ogg",
-     "gain_db": -2.5,
+     "gain_db": -4.5,
      "loop": true
     },
     {
      "file": "res://assets/audio/v5/beds/water_lap.ogg",
-     "gain_db": -18.5,
+     "gain_db": -20.5,
      "loop": true
     }
    ],

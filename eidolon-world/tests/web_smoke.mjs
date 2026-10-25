@@ -26,9 +26,8 @@ const BUDGET = +arg('--budget', 430) * 1000;        // the room loop stops here 
 const W = 390, H = 844;
 const ROOMS = ['waking_pool', 'stair_breath', 'hall_glass', 'shard_gallery', 'garden_veiled', 'hollow_walk', 'court_light',
   'mist_maze', 'echo_corridor', 'scales', 'eidolon_ledge', 'gate_four', 'first_shrine'];
-// known: main.gd ROOM_ENTRY.mist_maze (12.0, -26.4) lies on the Court of Light side of the maze doorway (the
-// MZ_door region spans z -29.2..-26.9), so jump:mist_maze reports area court_light; step through the door
-const ENTRY_NUDGE = { mist_maze: [12.0, -28.0] };
+// (v0.8.5: main.gd ROOM_ENTRY.mist_maze now lands inside the maze doorway at (12.0, -28.0): no nudge needed)
+const ENTRY_NUDGE = {};
 fs.mkdirSync(OUT, { recursive: true });
 
 const T0 = Date.now();

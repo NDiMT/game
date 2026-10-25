@@ -527,7 +527,7 @@ func _on_footstep(kind: String, strength: float) -> void:
 		player_dust()
 		chapter.on_footstep()
 	else:
-		sfx.play("cloth", -31.0 + strength * 3.0, randf_range(0.85, 1.15))
+		sfx.play("cloth", -34.0 + strength * 3.0, randf_range(0.85, 1.15))         # (v0.8.5: quieter, with the steps)
 
 ## a small puff of dust where the foot lands
 func player_dust() -> void:

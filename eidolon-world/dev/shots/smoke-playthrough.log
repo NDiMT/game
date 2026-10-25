@@ -5,8 +5,8 @@ ERROR: Condition "det == 0" is true.
    GDScript backtrace (most recent call first):
        [0] add_arrays (res://scripts/mesh_builder.gd:29)
        [1] box (res://scripts/mesh_builder.gd:59)
-       [2] box (res://scripts/level.gd:523)
-       [3] wall (res://scripts/level.gd:539)
+       [2] box (res://scripts/level.gd:601)
+       [3] wall (res://scripts/level.gd:617)
        [4] _gallery (res://scripts/ch1_geo.gd:176)
        [5] build (res://scripts/ch1_geo.gd:102)
        [6] build (res://scripts/level.gd:142)
@@ -14,7 +14,8 @@ ERROR: Condition "det == 0" is true.
        [8] _ready (res://tests/playthrough.gd:33)
 [audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
 [props] 11 placed
-[solids] 2016 primitives, 1046 solid footprints, 303 obstacles added (93 ms)
+[solids] 2016 primitives, 1046 solid footprints, 303 obstacles added (81 ms)
+[warm-up] 429 mesh/material pairs (of 982 geometry nodes), 11 canvas materials
   .. sim 0s  real 2s  step 0/760
 PASS  woke at the veiled gate (1.4, 0.0, 2.3)
 PASS  chapter title on the title screen 
@@ -38,7 +39,7 @@ PASS  turn the second slab from the first (1) pool_turn1
 PASS  turn the second slab from the first (2) pool_turn1
 PASS  turn the second slab from the first (3) pool_turn1
 PASS  turn the third slab from the north rim pool_turn2
-  .. sim 20s  real 5s  step 45/760
+  .. sim 20s  real 4s  step 45/760
 PASS  still broken: hers are not stone yet 
 PASS  turn the fourth slab from the south rim (1) pool_turn3
 PASS  turn the fourth slab from the south rim (2) pool_turn3
@@ -57,7 +58,7 @@ PASS  the whole rune is carved large beside the stair, glowing faintly
 PASS  the breath glass is back in the stair wall (v0.8) 
 PASS  the whole glyph fits on the pane with a margin 0.42
 PASS  on the breath landing (-11.3, 0.5, -5.232956)
-  .. sim 40s  real 7s  step 92/760
+  .. sim 40s  real 6s  step 92/760
 PASS  the mist veil blocks the stair (-11.3, 0.5, -6.38)
 PASS  hint wisp drifts toward the small glass 
 PASS  breathe on the glass breathe_stair
@@ -72,7 +73,7 @@ PASS  after one wrong try: a faint dotted ghost of the missing stroke 1
 PASS  recogniser: a straight stroke is wrong 
 PASS  after two wrong tries she traces the missing part, faintly 
 PASS  the fog crept back over your strokes 
-  .. sim 60s  real 10s  step 114/760
+  .. sim 60s  real 8s  step 114/760
 PASS  recogniser: the mirrored stroke, drawn backwards with a shaky hand, is right 
 PASS  her writing stays on the fogged glass 
 PASS  breath cue played 
@@ -81,7 +82,7 @@ PASS  her 'follow' rune is a letter of the script, one calligraphic stroke
 PASS  recogniser unit: resample keeps 32 points 
 PASS  reached the Hall of Glass by the corridor (-2.06584, 1.0, -13.5) hall_glass
 PASS  area name shown on entering the hall HALL OF GLASS
-  .. sim 80s  real 13s  step 131/760
+  .. sim 80s  real 10s  step 131/760
 PASS  great mirror reflection seen in the glass 
 PASS  glimpse 2: reflection turns its head toward the tablet head=1.00 body=1.00
 PASS  glimpse 2: snaps back when you move 
@@ -117,7 +118,7 @@ PASS  the drum lies where the glass remembers it [0, -19]
 PASS  two of three right: still nothing, still movable 
 PASS  hint after 110 s: the memories pulse in the glass 0.38679837365766
 PASS  take the brazier hall_take
-  .. sim 100s  real 15s  step 204/760
+  .. sim 100s  real 13s  step 204/760
 PASS  the brazier does not leave the Hall: it returns none
 PASS  take the brazier again hall_take
 PASS  set it down hall_place
@@ -128,21 +129,279 @@ PASS  solver: each goal cell is free, and the drum starts away from it
 PASS  only the whole set answers: all three locked at once, one chime 
 PASS  the Mirror Shard lies on the threshold 
 PASS  take the shard take_shard
-ERROR: Caller thread can't call this function in this node (/root). Use call_deferred() or call_thread_group() instead.
-   at: propagate_notification (scene/main/node.cpp:2552)
-
-================================================================
-handle_crash: Program crashed with signal 11
-Engine version: Godot Engine v4.5.1.stable.official (f62fdbde15035c5576dad93e586201f4d41ef0cb)
-Dumping the backtrace. Please include this when reporting the bug on: https://github.com/godotengine/godot/issues
-[1] /lib/x86_64-linux-gnu/libc.so.6(+0x45330) [0x7fe7c9445330] (??:0)
-[2] /opt/godot/godot() [0x47ea6c8] (??:0)
-[3] /opt/godot/godot() [0x38ff0a8] (??:0)
-[4] /opt/godot/godot() [0x4c5abf9] (??:0)
-[5] /opt/godot/godot() [0x3b11c07] (??:0)
-[6] /opt/godot/godot() [0x4332c55] (??:0)
-[7] /opt/godot/godot() [0x50db243] (??:0)
-[8] /lib/x86_64-linux-gnu/libc.so.6(+0x9cb84) [0x7fe7c949cb84] (??:0)
-[9] /lib/x86_64-linux-gnu/libc.so.6(+0x129ecc) [0x7fe7c9529ecc] (??:0)
--- END OF C++ BACKTRACE --
-================================================================
+PASS  the shard is in the inventory 
+PASS  tablet readable h_tablet
+PASS  reached the Shard Gallery (5.696583, 1.0, -15.26598) shard_gallery
+PASS  the chamber is named for it 
+PASS  no way on: the wall is whole 
+PASS  her veiled statue in the middle, six cold braziers round her 
+PASS  solver: exactly one set of braziers casts her shadow into the outlines [[0, 2, 3]]
+PASS  solver: each brazier throws her shadow straight away from it, longer when nearer 
+PASS  walking about the chamber (8.33311, 1.0, -12.40092) shard_gallery
+PASS  the arch is a wall in your world (9.73, 1.0, -10.9608)
+PASS  raise the shard from the inventory 
+PASS  through the shard: the outlines of where her shadow fell, and the true arch (26.40667, 39.23721, 30.08, 1.0)
+PASS  light brazier 0 brazier0
+PASS  brazier 0: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 1 brazier1
+PASS  brazier 1: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 2 brazier2
+PASS  brazier 2: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 3 brazier3
+PASS  brazier 3: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+  .. sim 120s  real 14s  step 274/760
+PASS  light brazier 4 brazier4
+PASS  brazier 4: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 5 brazier5
+PASS  brazier 5: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  all six lit: NOT the answer 
+PASS  put out brazier 1 brazier1
+PASS  put out: its fire dies, its shadow goes 
+PASS  still shut with the wrong set 
+PASS  put out brazier 4 brazier4
+PASS  put out brazier 5 brazier5
+PASS  the lore line, in the third person On Milos, in the evening,
+he moved the lamps until her shadow lay
+where he wanted her to stand.
+PASS  the solve jingle 
+PASS  her shadows darken; her veil stirs 
+PASS  reached the Garden of the Veiled (11.48923, 1.0, -9.066161) garden_veiled
+PASS  the shard is lowered outside the chamber 
+PASS  hint (110 s): the outlines pulse faintly without the shard 
+PASS  the old rune door panel is gone 
+PASS  the garden door is closed (16.33957, 1.0, -11.77144)
+PASS  breathe on the garden glass breathe_garden
+  .. sim 140s  real 16s  step 318/760
+PASS  her message: three asymmetric runes, written from her side (mirrored for you) 
+PASS  statue 1 in reach turn1
+PASS  statue 2 in reach turn2
+PASS  statue 3 in reach turn3
+PASS  each statue turns her rune to the mirror (reversed in the glass = as she wrote it) [0, 1, 0]
+PASS  the door opens in the reflection first refl -1.31 real 0.00
+PASS  the reflection's door is only in the glass 
+PASS  reached the Hollow Walk (18.13292, 1.0, -11.8003) hollow_walk
+PASS  the hollow walk's gate is closed (18.51699, 1.0, -14.73)
+  .. sim 160s  real 18s  step 358/760
+PASS  the hollows do not move while you walk [[5, 2], [1, 1]][false, false]
+PASS  a hollow you are looking at holds still [[5, 2], [0, 1]][false, false]
+PASS  the one you do not look at steps toward you [[5, 2], [0, 1]][false, false]
+PASS  solver: the hollows' paths interfere: no single spot solves it, the shortest plan is long { "min_steps": 13, "one_spot": 0, "states": 3086 }
+PASS  both plates held by hollows [[6, 0], [1, 6]][true, true]
+  .. sim 180s  real 29s  step 380/760
+PASS  reached the Court of Light (15.06459, 2.0, -18.38462) court_light
+PASS  beam not lit at start 
+PASS  solver: exactly one setting lights the mural, through her world [[3, 3, 1, 1]]
+PASS  solver: the near way lights the crystal the wrong way (a decoy) 4 decoys
+PASS  solver: no single turn from the start lights anything 
+PASS  her glass is a real reflection here 
+PASS  mirror 1 in reach mirror1
+PASS  mirror 2 in reach mirror2
+PASS  mirror 3 in reach mirror3
+PASS  the near way: the crystal lights... 
+PASS  ...but its light runs away from the mural 
+PASS  hint: her own glasses shimmer in the great glass 
+PASS  mirror 3 in reach mirror3
+PASS  mirror 4 in reach mirror4
+PASS  part of the beam runs in her world (seen only in the glass) 
+PASS  the stands are set as the solver says [3, 3, 1, 1]
+PASS  the drawbridge stays up (the way on is the mural) 
+  .. sim 200s  real 31s  step 436/760
+PASS  your veil's shadow falls on the mural 
+PASS  standing anywhere does not complete it 
+PASS  the shadow of your veil fills the missing head (11.87841, 3.305535, -26.93)
+PASS  in the Mist Maze mist_maze
+PASS  walking: no footprints 0
+PASS  standing still: her petrol footprints show the next stretch of her path, mirrored in the pool 6 visible
+PASS  the mist hides a wall (11.99151, 2.0, -30.65)
+PASS  bumping into it, it shimmers 
+  .. sim 220s  real 34s  step 471/760
+PASS  out of the maze (10.0, 2.0, -40.13438) echo_corridor
+PASS  footsteps echo in the corridor 18
+PASS  the corridor remembers her song, faintly 
+PASS  the see-through: the corridor's near wall opens round you 1.00
+PASS  solver: four stones, five notes: the song returns to a stone 
+PASS  strike the A stone song1
+PASS  strike the E stone song0
+PASS  strike the D stone song3
+PASS  wrong notes sour and the song starts over 2 []
+PASS  after two soured songs it is remembered once more 
+PASS  sing A song1
+PASS  sing D song3
+PASS  sing E song0
+PASS  sing F song2
+PASS  sing E song0
+  .. sim 240s  real 36s  step 522/760
+PASS  the hidden memory memory1
+PASS  hidden memory #1 kept 
+PASS  its line shows 
+PASS  the memory is saved 
+PASS  reached the Scales scales
+PASS  solver: several ways to level it, and every one needs her 14
+PASS  left: the urn, 15 
+PASS  the lift does not move: the balance is not won lift 0.00
+PASS  take weight 3 weight2
+PASS  hang it (pan 5) pan5
+PASS  take weight 2 weight1
+  .. sim 260s  real 38s  step 556/760
+PASS  hang it (pan 4) pan4
+PASS  take weight 1 weight0
+PASS  hang it (pan 3) pan3
+PASS  all three on the right: 14 against 15, still tipped (15, 14)
+PASS  on her tile, her weight counts on the RIGHT: 16, tipped the other way (15, 16)
+PASS  hint after a while: the tiles shine 
+PASS  take the 1 back pan3
+PASS  put it on the bench weight0
+PASS  the balance is level (15, 15)
+PASS  risen to the high walkway (31.33656, 4.0, -45.60938)
+  .. sim 280s  real 39s  step 590/760
+PASS  down onto the Eidolon Ledge (27.86709, 2.0, -22.40001) eidolon_ledge
+PASS  eidolon reflection walks beyond the glass 
+PASS  her footprints lead toward the plate 6
+PASS  footprint marker shows where to stand intensity 0.85
+PASS  hers alone is not enough: your plate is empty 
+PASS  standing on yours, your reflection is far from hers 
+PASS  push the statue (1) ledge_push
+PASS  push the statue (2) ledge_push
+PASS  push the statue (3) ledge_push
+  .. sim 300s  real 41s  step 618/760
+PASS  the statue holds your plate 
+PASS  the drawbridge lever (a way back) drawbridge
+PASS  reached the Gate of the Four Veiled gate_four
+PASS  the tholos is closed by veils (25.03823, 2.0, -29.33095)
+  .. sim 320s  real 43s  step 642/760
+PASS  standing on the empty plinth (21.27417, 2.25, -33.92999)
+PASS  wait four_wait
+PASS  the plinths light one by one 
+PASS  the veil before the shrine is gone 
+PASS  the solve jingle again 
+PASS  reached the First Shrine first_shrine
+PASS  shrine is dark 
+PASS  wake the shrine shrine
+PASS  cinematic: letterbox 
+PASS  cinematic: the shrine wakes 
+PASS  cinematic: near geometry cut away, the crystal lifted out of the shot 
+  .. sim 340s  real 45s  step 665/760
+PASS  cinematic: her reflection in the shrine pool 
+PASS  cinematic: camera looks down into the water 50.0 deg
+PASS  cinematic: palm to palm 
+PASS  cinematic: Katoptron lights on you both 
+  .. sim 360s  real 46s  step 669/760
+PASS  cinematic: her veil lifts 1.00
+  .. sim 380s  real 47s  step 671/760
+PASS  cinematic: she is gone; the pool shows only you 
+PASS  memory fragment shows 
+PASS  cinematic: ~4.5 s awakening + the 59 s score 63.9 s
+PASS  music cues: shrine_awaken, then cinematic_hand 
+PASS  the room beds come back after the scene 
+PASS  the world beyond is revealed 
+PASS  first shrine lights one cloak rune and brightens the hem 
+PASS  the shrine leaves its light on 
+PASS  milestone text names the chapter The Veiled Gate — awakened
+PASS  still playable, controls back, no letterbox 
+PASS  camera back to normal 
+PASS  fog receded 
+PASS  score cues played 
+  .. sim 400s  real 48s  step 681/760
+PASS  the way on is sealed (28.00062, 2.0, -38.53448)
+  .. sim 420s  real 50s  step 692/760
+  .. sim 440s  real 52s  step 694/760
+  .. sim 460s  real 54s  step 696/760
+  .. sim 480s  real 56s  step 700/760
+  .. sim 500s  real 58s  step 702/760
+  .. sim 520s  real 60s  step 706/760
+  .. sim 540s  real 62s  step 708/760
+  .. sim 560s  real 64s  step 712/760
+  .. sim 580s  real 66s  step 714/760
+  .. sim 600s  real 68s  step 716/760
+  .. sim 620s  real 70s  step 720/760
+  .. sim 640s  real 72s  step 722/760
+  .. sim 660s  real 74s  step 726/760
+  .. sim 680s  real 75s  step 728/760
+PASS  random walk: always on walkable ground 35705 samples, 0 violations, max step dy 0.250
+PASS  random walk: never inside a solid prop's footprint 35705 samples, 0 hits
+PASS  interaction highlight: always on the target the button resolves to 35705 frames, 7034 with a target, 0 mismatches
+PASS  interaction highlight: something visibly lit for every target (a mesh glow, or the floor ring) 0
+PASS  props: every placement loaded, on the marble 11 placed
+PASS  props: each one is solid (its centre blocked) 
+PASS  props: every key place still reachable on foot from the gate []
+PASS  collision audit: every primitive classified 2016 primitives, 1046 solid footprints (891 static), 303 obstacles added
+  collision audit: 2016 primitives, 1046 solid footprints, 303 obstacles added; 1032 targets walked into from 4 sides (1183 approaches), 0 overlaps
+PASS  collision: walking into every solid prop and obstacle from 4 sides never overlaps it 1032 targets, 1183 approaches, 0 overlaps
+PASS  the first flight: its open side's balustrade stops you (-11.95, 0.454862, -3.656955)
+PASS  the first flight rises the way its steps are drawn (no walking through raised steps) 0.04 -> 0.47
+PASS  walking at the hall's bust and the mirror: never inside them  (3.697899, 1.0, -19.14868)
+PASS  checkpoint saved (chapter) { "breath": true, "echo_room": true, "four": true, "gallery": true, "gallery_lit": [0.0, 2.0, 3.0], "garden_breath": true, "hall": { "brazier": [2.0, -19.0], "bust": 0.0, "drum": [0.0, -19.0], "locks": [true, true, true] }, "hall_door": true, "hollow_done": true, "hollow_lock": [true, true], "hollows": [[6.0, 0.0], [1.0, 6.0]], "ledge_statue": [26.0, -23.0], "maze": true, "memories": ["m1"], "mural": true, "pool_turns": [1.0, 3.0, 1.0, 3.0], "scale_w": [-1.0, 4.0, 5.0], "scales": true, "shard": true, "stones": true, "turned": [0.0, 1.0, 0.0], "turned_done": true }
+PASS  checkpoint saved (puzzles) 
+ERROR: Condition "det == 0" is true.
+   at: invert (core/math/basis.cpp:47)
+   GDScript backtrace (most recent call first):
+       [0] add_arrays (res://scripts/mesh_builder.gd:29)
+       [1] box (res://scripts/mesh_builder.gd:59)
+       [2] box (res://scripts/level.gd:601)
+       [3] wall (res://scripts/level.gd:617)
+       [4] _gallery (res://scripts/ch1_geo.gd:176)
+       [5] build (res://scripts/ch1_geo.gd:102)
+       [6] build (res://scripts/level.gd:142)
+       [7] _ready (res://scripts/main.gd:55)
+       [8] <anonymous lambda> (res://tests/playthrough.gd:1090)
+       [9] _process (res://tests/playthrough.gd:1211)
+[audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
+[props] 11 placed
+[solids] 2016 primitives, 1046 solid footprints, 303 obstacles added (85 ms)
+[warm-up] 429 mesh/material pairs (of 982 geometry nodes), 11 canvas materials
+PASS  restored chapter 
+PASS  restored regions 
+PASS  restored inventory 
+PASS  restored the won balance 
+PASS  restored awakened world 
+PASS  restored position (3.697899, 1.0, -19.14868)
+ERROR: Condition "det == 0" is true.
+   at: invert (core/math/basis.cpp:47)
+   GDScript backtrace (most recent call first):
+       [0] add_arrays (res://scripts/mesh_builder.gd:29)
+       [1] box (res://scripts/mesh_builder.gd:59)
+       [2] box (res://scripts/level.gd:601)
+       [3] wall (res://scripts/level.gd:617)
+       [4] _gallery (res://scripts/ch1_geo.gd:176)
+       [5] build (res://scripts/ch1_geo.gd:102)
+       [6] build (res://scripts/level.gd:142)
+       [7] _ready (res://scripts/main.gd:55)
+       [8] <anonymous lambda> (res://tests/playthrough.gd:1110)
+       [9] _process (res://tests/playthrough.gd:1211)
+[audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
+[props] 11 placed
+[solids] 2016 primitives, 1046 solid footprints, 303 obstacles added (107 ms)
+[warm-up] 429 mesh/material pairs (of 982 geometry nodes), 11 canvas materials
+PASS  title offers Continue + New Game 
+PASS  New Game asks to confirm 
+PASS  No keeps the title and the save 
+PASS  new game: glimpses + areas forgotten {  }
+PASS  new game: puzzles reset { "door": [0, 0, 0], "door_open": false, "mirrors": [1, 0, 2, 2], "bridge": false, "plate": false, "shrine": false, "shortcut": false, "tablet": false, "drawbridge": false }
+PASS  new game: chapter reset { "stones": false, "pool_turns": [0, 0, 0, 0], "breath": false, "shard": false, "hall_door": false, "gallery": false, "gallery_lit": [], "hall": { "drum": [-1, -13], "brazier": [3, -13], "bust": 2, "locks": [false, false, false] }, "turned": [2, 3, 1], "turned_done": false, "garden_breath": false, "hollows": [[5, 2], [1, 1]], "hollow_lock": [false, false], "hollow_done": false, "mural": false, "maze": false, "echo_room": false, "memories": [], "scale_w": [-1, -1, -1], "scales": false, "four": false, "ledge_statue": [25, -21] }
+PASS  new game: regions reset 
+PASS  new game: no shard 
+PASS  new game: lift down 
+PASS  new game: world asleep, runes dormant 
+PASS  new game: woke at the gate (1.4, 0.0, 2.3)
+PASS  new game: save rewritten fresh 
+PASS  new game: settings kept (quality) 
+PASS  jump to the shrine (everything before it solved) 
+PASS  wake the shrine again shrine
+PASS  a short press does not skip 
+PASS  a long press skips the cinematic 
+PASS  skipped: the end state is reached anyway 
+PASS  skipped: the shrine counter still shows 
+PLAYTHROUGH OK  checks=309  failed=0  sim_time=699.2s  ground_samples=35973
+ERROR: 1 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 11 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 11 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2514)
+ERROR: 13 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)

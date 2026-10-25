@@ -494,7 +494,7 @@ func sour(vol_db := -15.0) -> void:
 func play_later(name: String, delay: float, vol_db := 0.0, pitch := 1.0) -> void:
 	get_tree().create_timer(delay).timeout.connect(func() -> void: play(name, vol_db, pitch))
 
-## soft footsteps: the score's recorded variants, random pitch +-4 %, level +-2 dB
+## soft footsteps: the score's recorded variants, random pitch +-4 %, level +-1.5 dB
 func footstep(surface: String, strength: float) -> void:
 	var key := "step_stone"
 	match surface:
@@ -505,7 +505,9 @@ func footstep(surface: String, strength: float) -> void:
 	if not streams.has(a[0]): return
 	played[key] = played.get(key, 0) + 1
 	played["step"] = played.get("step", 0) + 1
-	var db: float = a[1] - 2.0 + strength * 2.0 + _rng.randf_range(-2.0, 1.0) - (1.5 if surface == "hall" else 0.0)
+	# (v0.8.5, the owner: barely-there texture, noticed only in silence: 9.5 dB down, +-1.5 dB, the files
+	# themselves low-passed at 3.5 kHz so the heel's click is gone)
+	var db: float = a[1] - 11.5 + strength * 2.0 + _rng.randf_range(-1.5, 1.5) - (1.5 if surface == "hall" else 0.0)
 	_play_stream(streams[a[0]], db, _rng.randf_range(0.96, 1.04) * (0.94 if surface == "hall" else 1.0))
 
 ## the beam's hum (Court of Light)

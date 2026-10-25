@@ -148,7 +148,7 @@ func _step(dt: float) -> void:
 	var turn: float = sc[1] * walk
 	yaw += turn * dt
 	who.rotation.y = yaw
-	who.position += -who.basis.z * SPEED * walk01 * dt * 0.55 * 1.5
+	who.position += -who.basis.z * SPEED * walk01 * dt * 0.55
 	phase += dt * (1.5 + 6.2 * walk01) * (1.0 if walk01 > 0.03 else 0.0)
 	var s := sin(phase)
 	who.set("walk", walk)
