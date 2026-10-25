@@ -10,6 +10,13 @@ var uv := PackedVector2Array()
 var idx := PackedInt32Array()
 
 static var _cache := {}
+## v0.7: every primitive's bounds are kept (the collision audit): [AABB, tag, round]. `tag` "floor" marks
+## what you walk on (slabs, steps, undersides); the rest stands in the way unless it hangs overhead.
+var tag := ""
+var parts: Array = []
+const _UNIT_BOX := AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE)
+const _UNIT_CYL := AABB(Vector3(-1.0, -0.5, -1.0), Vector3(2.0, 1.0, 2.0))
+const _UNIT_SPH := AABB(Vector3(-1.0, -1.0, -1.0), Vector3(2.0, 2.0, 2.0))
 
 static func col(mat: float, occ := false, rnd := -1.0) -> Color:
 	return Color(randf() if rnd < 0.0 else rnd, mat, 1.0 if occ else 0.0, 1.0)
@@ -48,7 +55,9 @@ func box(center: Vector3, size: Vector3, color: Color, basis := Basis()) -> void
 	var a := prim_arrays("box", func() -> PrimitiveMesh: return BoxMesh.new())
 	var c := color
 	c.a = 1.0
-	add_arrays(a, Transform3D(basis * Basis.from_scale(size), center), c)
+	var xf := Transform3D(basis * Basis.from_scale(size), center)
+	add_arrays(a, xf, c)
+	parts.append([xf * _UNIT_BOX, tag, false])
 
 func cyl(center: Vector3, r_top: float, r_bot: float, h: float, color: Color, segs := 12, basis := Basis()) -> void:
 	var R := maxf(maxf(r_top, r_bot), 0.001)
@@ -62,7 +71,9 @@ func cyl(center: Vector3, r_top: float, r_bot: float, h: float, color: Color, se
 		return m)
 	var c := color
 	c.a = 0.0
-	add_arrays(a, Transform3D(basis * Basis.from_scale(Vector3(R, h, R)), center), c)
+	var xf := Transform3D(basis * Basis.from_scale(Vector3(R, h, R)), center)
+	add_arrays(a, xf, c)
+	parts.append([xf * _UNIT_CYL, tag, true])
 
 func sphere(center: Vector3, radii: Vector3, color: Color, segs := 12, rings := 6, basis := Basis()) -> void:
 	var a := prim_arrays("sph%d_%d" % [segs, rings], func() -> PrimitiveMesh:
@@ -71,7 +82,9 @@ func sphere(center: Vector3, radii: Vector3, color: Color, segs := 12, rings := 
 		return m)
 	var c := color
 	c.a = 0.0
-	add_arrays(a, Transform3D(basis * Basis.from_scale(radii), center), c)
+	var xf := Transform3D(basis * Basis.from_scale(radii), center)
+	add_arrays(a, xf, c)
+	parts.append([xf * _UNIT_SPH, tag, true])
 
 ## Quad lying in a plane (for flat details). size in local x/y, faces local +z.
 func quad(center: Vector3, size: Vector2, color: Color, basis := Basis()) -> void:
@@ -91,4 +104,5 @@ func commit() -> ArrayMesh:
 	arr[Mesh.ARRAY_INDEX] = idx
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	m.set_meta("parts", parts)
 	return m

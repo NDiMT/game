@@ -71,6 +71,13 @@ var markers: Array = []
 var inscr_mats: Array = []
 var named := {}          # name -> Region / Obstacle for puzzles to toggle
 var occluders: Array[AABB] = []    # v0.6: boxes that may hide the wanderer (the see-through reveal)
+## v0.7 SOLIDS: every prop and piece of architecture that stands in your way gets a footprint obstacle.
+## auto_solids() audits each primitive's bounds against the walk regions and adds what is missing;
+## those obstacles live in a coarse grid (they never move), the hand-made ones in `obstacles`.
+var solid_obs: Array[Obstacle] = []
+var _grid := {}
+const GRID := 3.0
+var audit := {}
 
 const WAKE_POS := Vector3(1.4, 0.0, 2.3)
 const SHRINE_C := Vector3(25.0, 2.0, -32.6)
@@ -181,7 +188,24 @@ func circle_ok(p: Vector2, rad: float) -> bool:
 		if not on_ground(p + Vector2(cos(a), sin(a)) * rad): return false
 	return true
 
+func _near_solids(p: Vector2, rad: float) -> Array:
+	var out := []
+	var c0 := Vector2i(floori((p.x - rad - 0.6) / GRID), floori((p.y - rad - 0.6) / GRID))
+	var c1 := Vector2i(floori((p.x + rad + 0.6) / GRID), floori((p.y + rad + 0.6) / GRID))
+	for gx in range(c0.x, c1.x + 1):
+		for gz in range(c0.y, c1.y + 1):
+			var k := Vector2i(gx, gz)
+			if _grid.has(k): out.append_array(_grid[k])
+	return out
+
+func _overlaps(o: Obstacle, p: Vector2, rad: float) -> bool:
+	if o.circle: return p.distance_to(o.c) < o.rad + rad - 0.001
+	var q := Vector2(clampf(p.x, o.r.position.x, o.r.end.x), clampf(p.y, o.r.position.y, o.r.end.y))
+	return p.distance_to(q) < rad - 0.001
+
 func blocked(p: Vector2, rad: float) -> bool:
+	for o in _near_solids(p, rad):
+		if _overlaps(o, p, rad): return true
 	for o in obstacles:
 		if not o.enabled: continue
 		if o.circle:
@@ -192,8 +216,9 @@ func blocked(p: Vector2, rad: float) -> bool:
 	return false
 
 func push_out(p: Vector2, rad: float) -> Vector2:
+	var near := _near_solids(p, rad + 0.5)
 	for it in 3:
-		for o in obstacles:
+		for o in obstacles + near:
 			if not o.enabled: continue
 			if o.circle:
 				var d := p - o.c
@@ -231,6 +256,93 @@ func move(pos: Vector3, d: Vector3, rad: float) -> Vector3:
 		if circle_ok(q, rad) and not blocked(q, rad) and absf(height_at(q) - pos.y) < 0.3:
 			return Vector3(q.x, height_at(q), q.y)
 	return Vector3(p.x, height_at(p), p.y)
+
+## v0.7: the collision audit. `roots`: the nodes whose static props (meshes built by MB that are direct
+## children) are audited besides the level's own zones, columns, stumps and rubble. A primitive is SOLID
+## where it rises more than 0.18 m above a walk region it stands over and starts below 1.7 m (overhead
+## arches, lintels and pans are not); if no existing obstacle already covers its footprint, one is added.
+## Returns (and keeps in `audit`) the list of solids for the tests: [Rect2 footprint, round, y0, y1, dynamic, what].
+const SKIP_ZONES := ["Zone_Hdoor", "Zone_GLs", "Zone_ECs", "Zone_Mural"]
+func auto_solids(roots: Array) -> Dictionary:
+	var t0 := Time.get_ticks_msec()
+	var parts := []                 # [AABB world, round, dynamic, what]
+	for root in [self] + roots:
+		_collect_parts(root, root, parts)
+	var mm := [[col_full, AABB(Vector3(-0.43, 0.0, -0.43), Vector3(0.86, 3.8, 0.86)), "column"],
+		[col_stump, AABB(Vector3(-0.43, 0.0, -0.43), Vector3(0.86, 1.1, 0.86)), "stump"],
+		[debris, AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE), "rubble"]]
+	for e in mm:
+		for xf in e[0]: parts.append([(xf as Transform3D) * (e[1] as AABB), true, false, e[2]])
+	var solids := []
+	var added := 0
+	for pa in parts:
+		var bb: AABB = pa[0]
+		var fr := Rect2(bb.position.x, bb.position.z, bb.size.x, bb.size.z)
+		if fr.size.x < 0.04 or fr.size.y < 0.04: continue
+		var c := fr.get_center()
+		# the floor under it: the highest region over its centre, or over any of it
+		var h := -INF
+		var top_here := -INF
+		for g in regions:
+			if g.r.has_point(c): top_here = maxf(top_here, g.height(c))
+			if g.r.intersects(fr):
+				var q := Vector2(clampf(c.x, g.r.position.x, g.r.end.x), clampf(c.y, g.r.position.y, g.r.end.y))
+				h = maxf(h, g.height(q))
+		if h == -INF: continue
+		if top_here >= bb.end.y - 0.18: continue            # you stand ON it (a plinth with its own floor, a lift)
+		if bb.end.y <= h + 0.18 or bb.position.y >= h + 1.7: continue
+		var round: bool = pa[1]
+		solids.append([fr, round, bb.position.y, bb.end.y, pa[2], pa[3]])
+		if pa[2]: continue                                  # moving things carry their own obstacles
+		if _covered(fr, round): continue
+		var o := Obstacle.new()
+		if round:
+			o.circle = true; o.c = c; o.rad = (fr.size.x + fr.size.y) * 0.25
+		else:
+			o.circle = false; o.r = fr
+		o.name = "solid:" + str(pa[3])
+		solid_obs.append(o)
+		var g0 := Vector2i(floori(fr.position.x / GRID), floori(fr.position.y / GRID))
+		var g1 := Vector2i(floori(fr.end.x / GRID), floori(fr.end.y / GRID))
+		for gx in range(g0.x, g1.x + 1):
+			for gz in range(g0.y, g1.y + 1):
+				var k := Vector2i(gx, gz)
+				if not _grid.has(k): _grid[k] = []
+				_grid[k].append(o)
+		added += 1
+	audit = {"parts": parts.size(), "solids": solids, "added": added, "ms": Time.get_ticks_msec() - t0}
+	return audit
+
+func _collect_parts(n: Node, root: Node, out: Array) -> void:
+	for ch in n.get_children():
+		if ch is MeshInstance3D:
+			var mi := ch as MeshInstance3D
+			if mi.mesh and mi.mesh.has_meta("parts") and mi.layers != PlanarMirror.LAYER_DOUBLE and not (mi.name in SKIP_ZONES) and mi.visible:
+				var dyn := n != root
+				var what := str(mi.name) if n == root else str(n.name)
+				for pt in mi.mesh.get_meta("parts"):
+					if pt[1] == "floor": continue
+					out.append([mi.global_transform * (pt[0] as AABB), pt[2], dyn, what])
+		if ch is Node3D and not (ch is MeshInstance3D) and (ch as Node3D).visible and not ch is Level:
+			_collect_parts(ch, root, out)
+
+## is this footprint already inside one obstacle?
+func _covered(fr: Rect2, round: bool) -> bool:
+	var corners := [fr.position, Vector2(fr.end.x, fr.position.y), fr.end, Vector2(fr.position.x, fr.end.y)]
+	if round:
+		var c := fr.get_center()
+		var rr := (fr.size.x + fr.size.y) * 0.25
+		corners = [c + Vector2(rr, 0) * 0.85, c - Vector2(rr, 0) * 0.85, c + Vector2(0, rr) * 0.85, c - Vector2(0, rr) * 0.85]
+	for o in obstacles + _near_solids(fr.get_center(), maxf(fr.size.x, fr.size.y)):
+		if not o.enabled: continue
+		var all_in := true
+		for q in corners:
+			if o.circle:
+				if q.distance_to(o.c) > o.rad + 0.02: all_in = false
+			elif not o.r.grow(0.02).has_point(q): all_in = false
+			if not all_in: break
+		if all_in: return true
+	return false
 
 func interact_by_id(id: String) -> Interact:
 	for it in interacts:
@@ -295,11 +407,14 @@ func C(mat: float, occ := false) -> Color:
 
 func slab(zone: String, r: Rect2, top: float, thick := 0.7, mat := 0.0, under := true) -> void:
 	var m := mb(zone)
+	m.tag = "floor"
 	m.box(Vector3(r.get_center().x, top - thick * 0.5, r.get_center().y), Vector3(r.size.x, thick, r.size.y), C(mat))
+	m.tag = ""
 	if under: underside(zone, r, top - thick)
 
 func underside(zone: String, r: Rect2, y: float) -> void:
 	var m := mb(zone)
+	m.tag = "floor"
 	var area := r.size.x * r.size.y
 	var inset := Rect2(r.position + r.size * 0.12, r.size * 0.76)
 	m.box(Vector3(r.get_center().x, y - 0.35, r.get_center().y), Vector3(r.size.x * 0.9, 0.7, r.size.y * 0.9), C(0.5))
@@ -309,6 +424,7 @@ func underside(zone: String, r: Rect2, y: float) -> void:
 		var rt := minf(r.size.x, r.size.y) * rng.randf_range(0.22, 0.42)
 		var h := rng.randf_range(1.8, 4.8) * clampf(rt, 0.6, 2.0)
 		m.cyl(Vector3(c.x, y - 0.6 - h * 0.5, c.y), rt, rt * 0.12, h, C(0.5), 7, Basis(Vector3.UP, rng.randf() * TAU))
+	m.tag = ""
 
 func box(zone: String, center: Vector3, size: Vector3, mat := 0.25, occ := false, basis := Basis()) -> void:
 	mb(zone).box(center, size, C(mat, occ), basis)
@@ -468,7 +584,9 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 			var z0 := r.position.y + k0 * L; var z1 := r.position.y + k1 * L
 			c = Vector3(r.get_center().x, (top + y_lo - 0.8) * 0.5, (z0 + z1) * 0.5)
 			s = Vector3(r.size.x, top - y_lo + 0.8, z1 - z0 + 0.01)
+		mb(zone).tag = "floor"
 		box(zone, c, s, 0.0)
+		mb(zone).tag = ""
 	underside(zone, r, y_lo - 0.8)
 
 # ================================================================== the spaces
