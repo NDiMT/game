@@ -13,6 +13,7 @@ static var autotest := false
 
 var world: World
 var level: Level
+var props: Props
 var puzzles: Puzzles
 var chapter: Chapter
 var cine: Cinematic
@@ -70,6 +71,11 @@ func _ready() -> void:
 	ui.controls = controls
 	chapter.post_commit()
 	_drawbridge_lever()
+	# v0.8: the owner's props, set into the chapter (their footprints join the obstacles before the audit)
+	props = Props.new()
+	level.add_child(props)
+	props.build(level)
+	print("[props] %d placed" % props.placed.size())
 	# v0.7: every prop and piece of architecture is solid (see Level.auto_solids)
 	var au := level.auto_solids([puzzles, chapter])
 	print("[solids] %d primitives, %d solid footprints, %d obstacles added (%d ms)" % [au["parts"], au["solids"].size(), au["added"], au["ms"]])
@@ -802,6 +808,7 @@ func _apply_tier_extras() -> void:
 			r.planar.vp.msaa_3d = Viewport.MSAA_2X if world.quality_high and world.auto_step < 2 else Viewport.MSAA_DISABLED
 	level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
 	Reflector.cloth_bones = world.quality_high          # (v0.8: the Low tier's reflections: cloth at rest)
+	if props: props.set_quality(world.quality_high)
 
 func _load_settings() -> void:
 	var tier := "auto"

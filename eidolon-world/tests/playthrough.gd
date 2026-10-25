@@ -179,6 +179,39 @@ func _collision_audit() -> Dictionary:
 					break
 	return {"targets": targets.size(), "approaches": approaches, "bad": bad}
 
+## v0.8: every key place still reachable on foot from the gate (props must not close a path)
+func _reach(goals: Array) -> Array:
+	var lv: Level = game.level
+	var st := 0.25
+	var org := Vector2(-14.0, -54.0)
+	var nx := int(50.0 / st)
+	var nz := int(63.0 / st)
+	var seen := {}
+	var start := Vector2i(int((Level.WAKE_POS.x - org.x) / st), int((Level.WAKE_POS.z - org.y) / st))
+	var q := [start]
+	seen[start] = lv.height_at(Vector2(Level.WAKE_POS.x, Level.WAKE_POS.z))
+	while not q.is_empty():
+		var c: Vector2i = q.pop_back()
+		var h: float = seen[c]
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + d
+			if seen.has(n) or n.x < 0 or n.y < 0 or n.x >= nx or n.y >= nz: continue
+			var p := org + Vector2(n) * st
+			if not lv.circle_ok(p, Player.RADIUS - 0.02) or lv.blocked(p, Player.RADIUS - 0.02): continue
+			var hn := lv.height_at(p)
+			if absf(hn - h) > 0.3: continue
+			seen[n] = hn
+			q.append(n)
+	var missing := []
+	for g in goals:
+		var gp := Vector2i(int(round((g[0] - org.x) / st)), int(round((g[1] - org.y) / st)))
+		var ok2 := false
+		for dx in range(-2, 3):
+			for dz in range(-2, 3):
+				if seen.has(gp + Vector2i(dx, dz)): ok2 = true
+		if not ok2: missing.append(g)
+	return missing
+
 func hw_key() -> String:
 	return str(C().state["hollows"]) + str(C().state["hollow_lock"])
 
@@ -926,6 +959,21 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("random walk: always on walkable ground", walk_violations == 0, "%d samples, %d violations, max step dy %.3f" % [walk_samples, walk_violations, max_dy])
 		ok("random walk: never inside a solid prop's footprint", solid_hits == 0, "%d samples, %d hits" % [walk_samples, solid_hits]))
+	# ---- v0.8 props: loaded, solid, and no required path closed
+	step_do(func() -> void:
+		var pr: Props = game.props
+		var ok_load := pr.placed.size() == Props.PLACE.size()
+		for e in pr.placed: ok_load = ok_load and (e[1] as MeshInstance3D).mesh != null and (e[1] as MeshInstance3D).mesh.get_surface_count() > 0
+		ok("props: every placement loaded, on the marble", ok_load, "%d placed" % pr.placed.size())
+		var solid := true
+		for e in pr.placed:
+			var c: Vector2 = (e[2] as Rect2).get_center()
+			solid = solid and game.level.blocked(c, 0.05)
+		ok("props: each one is solid (its centre blocked)", solid)
+		var goals := [[-10.6, 1.7], [-11.3, -13.5], [0.0, -16.0], [3.85, -19.15], [6.0, -9.0], [12.0, -10.0], [16.0, -14.1], [21.0, -10.0],
+			[12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [29.0, -49.0], [31.4, -32.0], [25.5, -21.6], [21.34, -33.93], [28.0, -38.6], [25.0, -30.8]]
+		var miss := _reach(goals)
+		ok("props: every key place still reachable on foot from the gate", miss.is_empty(), str(miss)))
 	# ---- v0.7 collisions: every prop and piece of architecture is solid
 	step_do(func() -> void:
 		var au: Dictionary = game.level.audit
