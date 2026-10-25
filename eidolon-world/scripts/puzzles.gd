@@ -12,7 +12,7 @@ signal event(name: String, data: Variant)
 
 const RUNE_NAMES := ["EIDOS", "MEANDROS", "KATOPTRON", "KYKLOS", "TRIGONON", "TETRAKTYS"]
 const DOOR_SOLUTION := [3, 0, 4]
-const MIRROR_SOLUTION := [1, 1, 3]
+const MIRROR_SOLUTION := [3, 3, 1, 1]
 const DIAL_X0 := 10.6
 const DIAL_DX := 1.4
 const DIAL_Z := -12.9
@@ -37,7 +37,7 @@ var target_crystal: MeshInstance3D
 var target_mat: StandardMaterial3D
 var target_halo: ShaderMaterial
 var mirrors: Array[Node3D] = []
-var mirror_angles: Array[float] = [0.0, 0.0, 0.0]
+var mirror_angles: Array[float] = []
 var beam_segs: Array[MeshInstance3D] = []
 var beam_glows: Array[MeshInstance3D] = []
 var beam_floor: Array[MeshInstance3D] = []     # v0.4: glow strips on the floor under each segment
@@ -87,7 +87,7 @@ func _init(lv: Level, g: Node) -> void:
 	reset_state()
 
 func reset_state() -> void:
-	state = {"door": [0, 0, 0], "door_open": false, "mirrors": [3, 2, 0], "bridge": false,
+	state = {"door": [0, 0, 0], "door_open": false, "mirrors": MIRROR_START.duplicate(), "bridge": false,
 		"plate": false, "shrine": false, "shortcut": false, "tablet": false, "drawbridge": false}
 
 func build() -> void:
@@ -188,7 +188,7 @@ func _pool() -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = q
 	mi.material_override = water_mat
-	mi.position = Vector3(-5.125, -0.03, 1.7)
+	mi.position = Vector3(-5.125, Ch1Geo.WATER_Y, 1.7)        # v0.6: the water lies 30 cm below the rim
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 	mi.add_to_group("f_water")
@@ -202,7 +202,7 @@ func _pool() -> void:
 	var omi := MeshInstance3D.new()
 	omi.mesh = oq
 	omi.material_override = om
-	omi.position = Vector3(-5.125, -0.005, 1.7)
+	omi.position = Vector3(-5.125, Ch1Geo.WATER_Y + 0.025, 1.7)
 	omi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(omi)
 	omi.add_to_group("f_water")
@@ -329,65 +329,144 @@ func open_gate(instant := false) -> void:
 	var tw := create_tween()
 	tw.tween_property(gate_bars, "position:y", 2.75, 2.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 
-# ------------------------------------------------------------------ b) light court
+# ------------------------------------------------------------------ b) light court: "Two Worlds of Light"
+## v0.6. A crystal throws a beam east; four mirror stands turn in 45 degree steps. The court's east edge
+## is HER great glass: a beam that strikes it does not come back, it goes ON, into her world (we trace
+## it there FOLDED back across the glass, so her world shares our coordinates). In her world stand
+## your stands' twins (their reflections, turned as mirrors turn) and two glasses of her own (seen only
+## in the glass). Out of her world again, the light can reach the dark crystal by the glass.
+## The crystal passes the light on the way it came: only light that arrives heading toward her mural
+## (within LIGHT_CONE of it) lights the mural; the beam through her world does, the near way does not.
+## Exactly one setting of the four stands does it (court.c / the playthrough's solver check).
+const COURT_GX := 16.85                     # the great glass (plane x), facing west
+const COURT_G := Vector2(-26.5, -21.6)      # its span in z
+const SRC := Vector2(8.2, -22.6)            # the source crystal (shines east)
+const TGT := Vector2(15.7, -25.6)           # the dark crystal by the glass
+const STAND_POS := [Vector2(9.7, -22.6), Vector2(9.7, -24.1), Vector2(15.7, -24.1), Vector2(15.7, -22.6)]
+const MIRROR_START := [1, 0, 2, 2]
+const HER_POS := [Vector2(14.6, -24.1), Vector2(14.6, -25.6)]   # her own glasses (folded positions)
+const HER_K := [1, 3]
+const LIGHT_CONE := 40.0
+const COURT_BOUNDS := Rect2(7.15, -26.85, 9.7, 9.7)
+var her_stands: Array[Node3D] = []
+var her_glows: Array[ShaderMaterial] = []
+var court_refl: Reflector
+var beam_world: Array[int] = []             # per beam point: 0 ours, 1 hers (the segment that starts there)
+var beam_good := false                      # lit, and from the mural's side
+var beam_dir := Vector2.ZERO                # the direction the light arrived in
+var decoy_t := 0.0                          # seconds the crystal has burned the wrong way (a hint)
+var t_fan: MeshInstance3D                   # the light the crystal passes on, on the floor
+var t_fan_mat: ShaderMaterial
+const SEGS := 14
+
+func _stand_mesh() -> ArrayMesh:
+	var fm := MB.new()
+	var fc := Color(0.5, 1.0, 0.0)
+	fm.box(Vector3(-0.56, 0.0, 0), Vector3(0.07, 1.3, 0.07), fc)
+	fm.box(Vector3(0.56, 0.0, 0), Vector3(0.07, 1.3, 0.07), fc)
+	fm.box(Vector3(0, 0.66, 0), Vector3(1.2, 0.07, 0.07), fc)
+	fm.box(Vector3(0, -0.6, 0), Vector3(1.2, 0.07, 0.07), fc)
+	fm.cyl(Vector3(0, -0.55, 0), 0.05, 0.05, 0.3, fc, 6)
+	return fm.commit()
+
+func _stand_glass() -> MeshInstance3D:
+	var gm := ShaderMaterial.new()
+	gm.shader = preload("res://shaders/glass.gdshader")
+	gm.set_shader_parameter("size", Vector2(1.05, 1.2))
+	gm.set_shader_parameter("base_alpha", 0.35)
+	gm.set_shader_parameter("tint", Color(0.55, 0.75, 0.82))
+	var q := QuadMesh.new()
+	q.size = Vector2(1.05, 1.2)
+	var g := MeshInstance3D.new()
+	g.mesh = q
+	g.material_override = gm
+	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	g.position.y = 0.03
+	return g
+
 func _light_court() -> void:
 	var y := 2.0
-	# source: a crystal over a carved pedestal
 	var pm := MB.new()
-	for p in [Vector3(8.2, y, -24.5), Vector3(16.3, y, -24.2)]:
-		pm.cyl(p + Vector3(0, 0.45, 0), 0.24, 0.34, 0.9, Color(0.3, 0.25, 0.0), 12)
-		pm.cyl(p + Vector3(0, 0.95, 0), 0.34, 0.24, 0.12, Color(0.3, 0.25, 0.0), 12)
+	var tpm := MB.new()
+	for p in [Vector3(SRC.x, y, SRC.y), Vector3(TGT.x, y, TGT.y)]:
+		var m: MB = pm if p.x < 12.0 else tpm
+		m.cyl(p + Vector3(0, 0.45, 0), 0.24, 0.34, 0.9, Color(0.3, 0.25, 0.0), 12)
+		m.cyl(p + Vector3(0, 0.95, 0), 0.34, 0.24, 0.12, Color(0.3, 0.25, 0.0), 12)
 		level.ob_circle(Vector2(p.x, p.z), 0.42)
-	for i in 3:
-		var p: Vector3 = [Vector3(10.5, y, -24.5), Vector3(10.5, y, -19.5), Vector3(16.3, y, -19.5)][i]
+	# (her world has no crystal: the dark crystal, its pedestal and its halo are not in the glass)
+	marble_instance(tpm.commit(), self).layers = PlanarMirror.LAYER_MAIN_FX
+	for i in STAND_POS.size():
+		var p := Vector3(STAND_POS[i].x, y, STAND_POS[i].y)
 		pm.cyl(p + Vector3(0, 0.25, 0), 0.30, 0.38, 0.5, Color(0.3, 0.25, 0.0), 12)
 		pm.cyl(p + Vector3(0, 0.55, 0), 0.07, 0.07, 0.3, Color(0.5, 1.0, 0.0), 8)
 		level.ob_circle(Vector2(p.x, p.z), 0.44)
 	marble_instance(pm.commit(), self)
-	var sc := crystal(Vector3(8.2, y + 1.0 + 0.45, -24.5), 0.17, 0.32, true)
+	var sc := crystal(Vector3(SRC.x, y + 1.45, SRC.y), 0.17, 0.32, true)
 	source_crystal = sc[0]
-	glow_quad(self, Vector3(8.2, y + 1.45, -24.5), 2.2, Palette.ACCENT, 0.55)
-	var tc := crystal(Vector3(16.3, y + 1.0 + 0.45, -24.2), 0.17, 0.32, false)
+	glow_quad(self, Vector3(SRC.x, y + 1.45, SRC.y), 2.2, Palette.ACCENT, 0.55)
+	var tc := crystal(Vector3(TGT.x, y + 1.45, TGT.y), 0.17, 0.32, false)
 	target_crystal = tc[0]
 	target_mat = tc[1]
-	target_halo = glow_quad(self, Vector3(16.3, y + 1.45, -24.2), 2.6, Palette.ACCENT, 0.0)
-	# the three mirror stands (frame + double-sided glass), rotating about Y
-	var gsh := preload("res://shaders/glass.gdshader")
-	for i in 3:
-		var p: Vector3 = [Vector3(10.5, y, -24.5), Vector3(10.5, y, -19.5), Vector3(16.3, y, -19.5)][i]
+	target_halo = glow_quad(self, Vector3(TGT.x, y + 1.45, TGT.y), 2.6, Palette.ACCENT, 0.0)
+	target_crystal.layers = PlanarMirror.LAYER_MAIN_FX
+	(get_child(get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
+	# the four mirror stands (frame + double-sided glass), rotating about Y
+	var smesh := _stand_mesh()
+	for i in STAND_POS.size():
+		var p := Vector3(STAND_POS[i].x, y, STAND_POS[i].y)
 		var pivot := Node3D.new()
 		pivot.position = p + Vector3(0, 1.0, 0)
 		add_child(pivot)
-		var fm := MB.new()
-		var fc := Color(0.5, 1.0, 0.0)
-		fm.box(Vector3(-0.56, 0.0, 0), Vector3(0.07, 1.3, 0.07), fc)
-		fm.box(Vector3(0.56, 0.0, 0), Vector3(0.07, 1.3, 0.07), fc)
-		fm.box(Vector3(0, 0.66, 0), Vector3(1.2, 0.07, 0.07), fc)
-		fm.box(Vector3(0, -0.6, 0), Vector3(1.2, 0.07, 0.07), fc)
-		fm.cyl(Vector3(0, -0.55, 0), 0.05, 0.05, 0.3, fc, 6)
-		marble_instance(fm.commit(), pivot)
-		var gm := ShaderMaterial.new()
-		gm.shader = gsh
-		gm.set_shader_parameter("size", Vector2(1.05, 1.2))
-		gm.set_shader_parameter("base_alpha", 0.35)
-		gm.set_shader_parameter("tint", Color(0.55, 0.75, 0.82))
-		var q := QuadMesh.new()
-		q.size = Vector2(1.05, 1.2)
-		var g := MeshInstance3D.new()
-		g.mesh = q
-		g.material_override = gm
-		g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		g.position.y = 0.03
-		pivot.add_child(g)
+		marble_instance(smesh, pivot)
+		pivot.add_child(_stand_glass())
 		mirrors.append(pivot)
-		mirror_angles[i] = float(state["mirrors"][i]) * PI * 0.25
 		var idx := i
 		level.add_interact("mirror%d" % (i + 1), p, "turn", func() -> void: turn_mirror(idx), 1.15,
 			func() -> bool: return not state["bridge"])
+	mirror_angles.resize(STAND_POS.size())
+	mirror_goal.resize(STAND_POS.size())
+	mirror_tw.resize(STAND_POS.size())
 	_apply_mirrors(true)
+	# her own glasses: only in her world (the reflection's camera alone renders them)
+	for i in HER_POS.size():
+		var pv := Node3D.new()
+		pv.position = Vector3(HER_POS[i].x, y + 1.0, HER_POS[i].y)
+		pv.rotation.y = -float(HER_K[i]) * PI * 0.25
+		add_child(pv)
+		var mi := marble_instance(smesh, pv)
+		mi.layers = PlanarMirror.LAYER_DOUBLE
+		var g := _stand_glass()
+		g.layers = PlanarMirror.LAYER_DOUBLE
+		pv.add_child(g)
+		var base := MB.new()
+		base.cyl(Vector3(0, -0.75, 0), 0.30, 0.38, 0.5, Color(0.3, 0.25, 0.0), 12)
+		var bmi := marble_instance(base.commit(), pv)
+		bmi.layers = PlanarMirror.LAYER_DOUBLE
+		var hg := glow_quad(pv, Vector3(0, 0.0, 0), 1.8, Palette.ACCENT, 0.0)
+		(pv.get_child(pv.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_DOUBLE
+		her_glows.append(hg)
+		her_stands.append(pv)
+	# her great glass on the court's east edge: a real planar reflection
+	var gc := Vector3(COURT_GX - 0.01, 4.1, (COURT_G.x + COURT_G.y) * 0.5)
+	var gsize := Vector2(COURT_G.y - COURT_G.x, 4.3)
+	var west := Basis(Vector3.UP, -PI * 0.5)
+	var mm := _mirror_quad(gc, west, gsize, false, 1.0)
+	mm.set_shader_parameter("ncols", 0)
+	mm.set_shader_parameter("floor_y", 2.0)
+	var pmr := PlanarMirror.new()
+	add_child(pmr)
+	pmr.setup(Vector3.LEFT, -COURT_GX + 0.01, mm, game.world.env)
+	pmr.cam.far = 46.0            # (v0.6 perf: her world needs only the court, not the far islands)
+	pmr.res_k = 0.8
+	var r := Reflector.new()
+	r.kind = "mirror"; r.plane_n = Vector3.LEFT; r.plane_d = -COURT_GX + 0.02
+	r.clip_c = gc; r.clip_u = Vector3.BACK; r.clip_v = Vector3.UP; r.clip_h = gsize * 0.5
+	r.region = Level.R(7.0, -27.0, 17.0, -17.0)
+	r.planar = pmr
+	court_refl = r
 	# the beam lights the floor: a strip under each segment, a pool at every strike
 	var fsh := preload("res://shaders/beam_floor.gdshader")
-	for i in 7:
+	for i in SEGS:
 		for kind in [0.0, 1.0]:
 			var fm := ShaderMaterial.new()
 			fm.shader = fsh
@@ -404,21 +483,36 @@ func _light_court() -> void:
 			add_child(f)
 			if kind < 0.5: beam_floor.append(f)
 			else: beam_pools.append(f)
+	# the light the crystal passes on (a fan on the floor, the way the beam arrived)
+	t_fan_mat = ShaderMaterial.new()
+	t_fan_mat.shader = fsh
+	t_fan_mat.set_shader_parameter("kind", 0.0)
+	t_fan_mat.set_shader_parameter("intensity", 0.0)
+	var tq := PlaneMesh.new()
+	tq.size = Vector2(1, 1)
+	tq.center_offset = Vector3(0.5, 0, 0)
+	t_fan = MeshInstance3D.new()
+	t_fan.mesh = tq
+	t_fan.material_override = t_fan_mat
+	t_fan.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	t_fan.visible = false
+	t_fan.layers = PlanarMirror.LAYER_MAIN_FX
+	add_child(t_fan)
 	# beam ribbons + bounce glows
 	var rsh := preload("res://shaders/ray.gdshader")
-	for i in 7:
+	for i in SEGS:
 		var rm := ShaderMaterial.new()
 		rm.shader = rsh
 		var q := QuadMesh.new()
 		q.size = Vector2(1, 1)
-		var s := MeshInstance3D.new()
-		s.mesh = q
-		s.material_override = rm
-		s.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		s.extra_cull_margin = 4.0
-		s.visible = false
-		add_child(s)
-		beam_segs.append(s)
+		var sg := MeshInstance3D.new()
+		sg.mesh = q
+		sg.material_override = rm
+		sg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		sg.extra_cull_margin = 4.0
+		sg.visible = false
+		add_child(sg)
+		beam_segs.append(sg)
 		var gl := MeshInstance3D.new()
 		var gq := QuadMesh.new()
 		gq.size = Vector2(1.4, 1.4)
@@ -434,7 +528,7 @@ func _light_court() -> void:
 		beam_glows.append(gl)
 	# the drawbridge: hinged at the Eidolon ledge, standing upright until the light arrives
 	drawbridge = Node3D.new()
-	drawbridge.position = Vector3(21.0, 2.0, -22.0)
+	drawbridge.position = Vector3(21.0, 2.0, -20.4)
 	drawbridge.rotation.z = -PI * 0.5
 	add_child(drawbridge)
 	var bm := MB.new()
@@ -443,7 +537,7 @@ func _light_court() -> void:
 		bm.box(Vector3(-2.0, 0.3, zz), Vector3(3.9, 0.1, 0.14), Color(0.5, 0.25, 0.0))
 		for k in 6: bm.cyl(Vector3(-0.2 - k * 0.72, 0.15, zz), 0.045, 0.06, 0.3, Color(0.5, 0.25, 0.0), 6)
 	marble_instance(bm.commit(), drawbridge)
-	level.walk(Level.R(17, -23, 21, -21), 2.0, NAN, -1, "LB", false)
+	level.walk(Level.R(17, -21.4, 21, -19.4), 2.0, NAN, -1, "LB", false)
 
 func turn_mirror(i: int) -> void:
 	if state["bridge"]: return
@@ -465,64 +559,110 @@ func turn_mirror(i: int) -> void:
 		mirror_angles[i] = target)
 
 var _turning := 0
-var mirror_goal: Array[float] = [0.0, 0.0, 0.0]
-var mirror_tw: Array = [null, null, null]
+var mirror_goal: Array[float] = []
+var mirror_tw: Array = []
 
 func _apply_mirrors(snap: bool) -> void:
 	for i in mirrors.size():
 		if snap:
 			mirror_angles[i] = float(state["mirrors"][i]) * PI * 0.25
 			mirror_goal[i] = mirror_angles[i]
+			if mirror_tw[i]:
+				(mirror_tw[i] as Tween).kill()
+				mirror_tw[i] = null
 		mirrors[i].rotation.y = -mirror_angles[i]
+	if snap: _turning = 0
 
-func _trace() -> Array[Vector3]:
+## the beam (also a pure function for the solver check: angles in quarter-PI steps, or live angles)
+## -> {pts: Array[Vector3], world: Array[int] (per point), lit: bool, dir: Vector2, good: bool}
+func trace_beam(angles: Array) -> Dictionary:
 	var y := 3.0
 	var pts: Array[Vector3] = []
-	var p := Vector2(8.2, -24.5)
+	var worlds: Array[int] = []
+	var p := SRC
 	var d := Vector2(1, 0)
+	var w := 0
 	pts.append(Vector3(p.x + 0.2, y, p.y))
-	var bounds := Level.R(7.15, -26.85, 16.85, -17.15)
-	var mpos := [Vector2(10.5, -24.5), Vector2(10.5, -19.5), Vector2(16.3, -19.5)]
-	var last_m := -1
-	var hit_target := false
-	for bounce in 7:
-		# nearest event along the ray: a mirror, the target, a blocker or the court's edge
+	worlds.append(0)
+	var last := ""
+	var lit := false
+	for bounce in SEGS - 1:
 		var best_t := INF
 		var best := ""
 		var best_i := -1
-		for i in 3:
-			if i == last_m: continue
-			var r: float = _ray_circle(p, d, mpos[i], 0.32)
+		for i in STAND_POS.size():
+			if last == "m%d" % i: continue
+			var r := _ray_circle(p, d, STAND_POS[i], 0.32)
 			if r < best_t: best_t = r; best = "m"; best_i = i
-		var rt := _ray_circle(p, d, Vector2(16.3, -24.2), 0.3)
-		if rt < best_t: best_t = rt; best = "t"
+		if w == 1:
+			for i in HER_POS.size():
+				if last == "h%d" % i: continue
+				var r2 := _ray_circle(p, d, HER_POS[i], 0.32)
+				if r2 < best_t: best_t = r2; best = "h"; best_i = i
+		else:
+			var rt := _ray_circle(p, d, TGT, 0.3)
+			if rt < best_t: best_t = rt; best = "t"
+		# the great glass
+		if d.x > 0.0001:
+			var tg := (COURT_GX - p.x) / d.x
+			var zg := p.y + d.y * tg
+			if tg > 0.05 and zg >= COURT_G.x and zg <= COURT_G.y and tg < best_t: best_t = tg; best = "g"
 		for o in level.obstacles:
 			if not o.circle or not o.enabled: continue
-			if not bounds.grow(1.0).has_point(o.c): continue
-			var skip := false
-			for mp in mpos:
-				if o.c.distance_to(mp) < 0.05: skip = true
-			if o.c.distance_to(Vector2(8.2, -24.5)) < 0.05 or o.c.distance_to(Vector2(16.3, -24.2)) < 0.05: skip = true
+			if not COURT_BOUNDS.grow(1.0).has_point(o.c): continue
+			var skip := o.c.distance_to(SRC) < 0.05 or o.c.distance_to(TGT) < 0.05
+			for sp in STAND_POS:
+				if o.c.distance_to(sp) < 0.05: skip = true
 			if skip: continue
 			var ot := _ray_circle(p, d, o.c, o.rad * 0.8)
 			if ot < best_t: best_t = ot; best = "o"
-		var et := _ray_exit(p, d, bounds)
+		var et := _ray_exit(p, d, COURT_BOUNDS)
 		if et < best_t: best_t = et; best = "e"
 		var hp := p + d * best_t
-		pts.append(Vector3(hp.x, y, hp.y))
-		if best == "m":
-			var a := mirror_angles[best_i]
+		if best == "m" or best == "h":
+			var a: float = float(angles[best_i]) if best == "m" else float(HER_K[best_i]) * PI * 0.25
 			var n := Vector2(-sin(a), cos(a))
+			var c: Vector2 = STAND_POS[best_i] if best == "m" else HER_POS[best_i]
+			pts.append(Vector3(c.x, y, c.y))
+			worlds.append(w)
 			if absf(d.dot(n)) < 0.25: break       # grazing: the frame swallows the light
 			d = (d - 2.0 * d.dot(n) * n).normalized()
-			p = mpos[best_i]
-			pts[pts.size() - 1] = Vector3(p.x, y, p.y)
-			last_m = best_i
+			p = c
+			last = best + str(best_i)
+		elif best == "g":
+			pts.append(Vector3(hp.x, y, hp.y))
+			w = 1 - w
+			worlds.append(w)
+			d = Vector2(-d.x, d.y)
+			p = hp
+			last = "g"
 		else:
-			if best == "t": hit_target = true
+			pts.append(Vector3(hp.x, y, hp.y))
+			worlds.append(w)
+			if best == "t": lit = true
 			break
-	beam_lit = hit_target
-	return pts
+	var want := Vector2(Chapter.MURAL_HEAD.x - TGT.x, Chapter.MURAL_Z - TGT.y)
+	var good := lit and rad_to_deg(absf(d.angle_to(want))) < LIGHT_CONE
+	return {"pts": pts, "world": worlds, "lit": lit, "dir": d, "good": good}
+
+func _trace() -> Array[Vector3]:
+	var r := trace_beam(mirror_angles)
+	beam_world = r["world"]
+	beam_lit = r["lit"]
+	beam_good = r["good"]
+	beam_dir = r["dir"]
+	return r["pts"]
+
+## (tests) every setting of the stands: [state, lit, good]
+func solve_court() -> Array:
+	var out := []
+	for s in 256:
+		var st := [s & 3, (s >> 2) & 3, (s >> 4) & 3, (s >> 6) & 3]
+		var ang := []
+		for k in st: ang.append(float(k) * PI * 0.25)
+		var r := trace_beam(ang)
+		if r["lit"]: out.append([st, true, r["good"]])
+	return out
 
 static func _ray_circle(p: Vector2, d: Vector2, c: Vector2, r: float) -> float:
 	var t := (c - p).dot(d)
@@ -539,44 +679,69 @@ static func _ray_exit(p: Vector2, d: Vector2, b: Rect2) -> float:
 	if d.y < -0.0001: t = minf(t, (b.position.y - p.y) / d.y)
 	return maxf(t, 0.0)
 
-func _update_beam() -> void:
+func _update_beam(dt := 0.0) -> void:
 	var pts := _trace()
 	beam_points = pts
 	for i in beam_segs.size():
-		var s := beam_segs[i]
+		var sg := beam_segs[i]
 		var g := beam_glows[i]
+		var wl: int = beam_world[i] if i < beam_world.size() else 0
+		var lay := PlanarMirror.LAYER_DOUBLE if wl == 1 else PlanarMirror.LAYER_MAIN_FX
 		if i < pts.size() - 1:
 			var a := pts[i]
 			var b := pts[i + 1]
 			var v := b - a
 			var L := v.length()
 			if L < 0.01:
-				s.visible = false
+				sg.visible = false
 			else:
-				var x := v
-				var yv := Vector3.UP
-				var z := x.normalized().cross(yv)
-				s.transform = Transform3D(Basis(x, yv, z), a)
-				var m: ShaderMaterial = s.material_override
+				var z := v.normalized().cross(Vector3.UP)
+				sg.transform = Transform3D(Basis(v, Vector3.UP, z), a)
+				var m: ShaderMaterial = sg.material_override
 				m.set_shader_parameter("length_m", L)
 				m.set_shader_parameter("intensity", 1.0)
-				s.visible = true
+				sg.layers = lay
+				sg.visible = true
 			g.visible = i > 0
 			g.position = a
+			g.layers = lay
 		else:
-			s.visible = false
+			sg.visible = false
 			g.visible = i == pts.size() - 1 and i > 0
-			if g.visible: g.position = pts[i]
+			if g.visible:
+				g.position = pts[i]
+				g.layers = PlanarMirror.LAYER_DOUBLE if (beam_world[i - 1] if i - 1 < beam_world.size() else 0) == 1 else PlanarMirror.LAYER_MAIN_FX
 	_update_beam_floor(pts)
-	if beam_lit and _turning == 0 and not state["bridge"]:
+	# the crystal: lit from any side it glows; it passes the light on the way it came
+	var tk: float = target_halo.get_shader_parameter("intensity")
+	if not state["bridge"]:
+		set_crystal_lit(target_mat, 1.0 if beam_lit else 0.0)
+		target_halo.set_shader_parameter("intensity", move_toward(tk, 0.7 if beam_lit else 0.0, dt * 2.0))
+	t_fan.visible = beam_lit or state["bridge"]
+	if t_fan.visible:
+		var fd := beam_dir if beam_lit else Vector2(Chapter.MURAL_HEAD.x - TGT.x, Chapter.MURAL_Z - TGT.y).normalized()
+		var L2 := clampf(_ray_exit(TGT, fd, COURT_BOUNDS) + 0.1, 0.5, 3.4)
+		var dir3 := Vector3(fd.x, 0.0, fd.y)
+		t_fan.transform = Transform3D(Basis(dir3 * L2, Vector3.UP, dir3.cross(Vector3.UP) * 3.2), Vector3(TGT.x, 2.018, TGT.y))
+		t_fan_mat.set_shader_parameter("length_m", L2)
+		t_fan_mat.set_shader_parameter("intensity", 0.8)
+	# the wrong way for a while: her own glasses shimmer in the glass (a hint)
+	decoy_t = decoy_t + dt if (beam_lit and not beam_good and not state["bridge"]) else maxf(0.0, decoy_t - dt * 0.2)
+	var hk := smoothstep(10.0, 14.0, decoy_t) * (0.45 + 0.35 * sin(_t * 2.4))
+	for i in her_glows.size():
+		her_glows[i].set_shader_parameter("intensity", 0.0 if state["bridge"] else hk)
+		her_stands[i].get_child(her_stands[i].get_child_count() - 1).visible = hk > 0.01 and not state["bridge"]
+	if beam_good and _turning == 0 and not state["bridge"]:
 		_lower_bridge(false)
 
-## the floor glow follows the beam path (and so every mirror turn)
+## the floor glow follows the beam path (and so every mirror turn); her world's half only in the glass
 func _update_beam_floor(pts: Array[Vector3]) -> void:
 	var along := 0.0
 	for i in beam_floor.size():
 		var f := beam_floor[i]
 		var pl := beam_pools[i]
+		var wl: int = beam_world[i] if i < beam_world.size() else 0
+		var lay := PlanarMirror.LAYER_DOUBLE if wl == 1 else PlanarMirror.LAYER_MAIN_FX
 		if i < pts.size() - 1:
 			var a := pts[i]
 			var b := pts[i + 1]
@@ -589,15 +754,17 @@ func _update_beam_floor(pts: Array[Vector3]) -> void:
 				var m: ShaderMaterial = f.material_override
 				m.set_shader_parameter("length_m", L)
 				m.set_shader_parameter("offset_m", along)
+				f.layers = lay
 				f.visible = true
 			else:
 				f.visible = false
 			along += L
 		else:
 			f.visible = false
-		if i < pts.size():
+		if i < pts.size() and wl == 0:
 			var p := pts[i]
 			pl.transform = Transform3D(Basis().scaled(Vector3(3.2, 1.0, 3.2)), Vector3(p.x, level.height_at(Vector2(p.x, p.z)) + 0.02, p.z))
+			pl.layers = lay
 			pl.visible = true
 		else:
 			pl.visible = false
@@ -614,8 +781,8 @@ func _lower_bridge(instant: bool) -> void:
 	event.emit("beam_lit", null)
 	var tw := create_tween()
 	tw.tween_method(func(v: float) -> void:
-		set_crystal_lit(target_mat, v)
-		target_halo.set_shader_parameter("intensity", v * 0.7), 0.0, 1.0, 1.2)
+		set_crystal_lit(target_mat, maxf(v, 0.7))
+		target_halo.set_shader_parameter("intensity", 0.7 + v * 0.5), 0.0, 1.0, 1.2)
 	tw.tween_callback(func() -> void:
 		busy = false
 		event.emit("beam_done", null))
@@ -781,9 +948,16 @@ func _update_plate(dt: float) -> void:
 	_update_plate_fx(dt)
 	if state["plate"] or eidolon_refl == null: return
 	var on := false
+	var refl_on := false
 	if eidolon_refl.active and eidolon_refl.vis > 0.6:
 		var rp := eidolon_refl.reflect_point(game.player.global_position)
-		on = Vector2(rp.x - PLATE_POS.x, rp.z - PLATE_POS.z).length() < 0.55
+		refl_on = Vector2(rp.x - PLATE_POS.x, rp.z - PLATE_POS.z).length() < 0.55
+	# v0.6 "Two Plates": hers answers only while yours (on the ledge) is held down at the same time
+	on = refl_on and game.chapter.plate_a_down()
+	if refl_on and not on and not _plate_half:
+		_plate_half = true
+		event.emit("plate_half", null)
+	if not refl_on: _plate_half = false
 	plate_charge = move_toward(plate_charge, 1.0 if on else 0.0, dt / (0.9 if on else 0.5))
 	plate_mat.set_shader_parameter("lit", 0.15 + plate_charge * 0.85)
 	plate_mat.set_shader_parameter("flare", plate_charge * 0.4)
@@ -795,6 +969,7 @@ func _update_plate(dt: float) -> void:
 		_press_plate(false)
 
 var _plate_touch := false
+var _plate_half := false
 
 func _press_plate(instant: bool) -> void:
 	state["plate"] = true
@@ -893,9 +1068,9 @@ func _tablet() -> void:
 func _reflectors() -> void:
 	# 1. the first pool (glimpse 1: it lags, and something is slightly wrong)
 	var r := Reflector.new()
-	r.kind = "pool"; r.plane_n = Vector3.UP; r.plane_d = -0.03
+	r.kind = "pool"; r.plane_n = Vector3.UP; r.plane_d = Ch1Geo.WATER_Y
 	r.surface_col = Vector3(0.45, 0.5, 0.53); r.surface_mix = 0.12
-	r.clip_c = Vector3(-5.125, -0.03, 1.7); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(4.47, 1.86)
+	r.clip_c = Vector3(-5.125, Ch1Geo.WATER_Y, 1.7); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(4.47, 1.86)
 	r.region = Level.R(-13, -5, 5, 5); r.near_rect = Level.R(-9.6, -0.2, -0.6, 3.6); r.near = 3.2
 	r.lag = 0.42; r.wrong = 1.0; r.alpha = 0.88
 	_add_refl(r); pool_refl = r
@@ -926,9 +1101,11 @@ func _reflectors() -> void:
 	r.project = false; r.ghost = 1.0; r.alpha = 0.62
 	r.region = Level.R(21, -25, 29, -19)
 	_add_refl(r); eidolon_refl = r
+	# 5. v0.6: her great glass in the Court of Light
+	_add_refl(court_refl)
 
 const HALL_COLS := [Vector4(-4.5, -12.2, 0.3, 4.2), Vector4(-4.5, -14.8, 0.3, 4.2), Vector4(-4.5, -17.4, 0.3, 4.2),
-	Vector4(-4.5, -19.9, 0.3, 4.2), Vector4(-3.3, -11.3, 0.3, 4.2), Vector4(3.3, -11.3, 0.3, 4.2), Vector4(3.0, -18.7, 0.3, 0.9)]
+	Vector4(-4.5, -19.9, 0.3, 4.2), Vector4(-3.3, -11.3, 0.3, 4.2), Vector4(3.3, -11.3, 0.3, 4.2)]
 
 func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false, wall_mounted := -1.0) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
@@ -994,7 +1171,7 @@ func _pane(base: Vector3, yaw: float, size: Vector2, cracked: bool) -> void:
 func update(dt: float) -> void:
 	_t += dt
 	for r in reflectors: r.update(dt, game.player, game.world.cam_back)
-	_update_beam()
+	_update_beam(dt)
 	_update_plate(dt)
 	# the numbered statues' runes brighten and pulse as you come near
 	for i in statue_mats.size():
@@ -1018,6 +1195,8 @@ func update(dt: float) -> void:
 func apply_state(s: Dictionary) -> void:
 	for k in s.keys():
 		if state.has(k): state[k] = s[k]
+	if (state["mirrors"] as Array).size() != STAND_POS.size(): state["mirrors"] = MIRROR_START.duplicate()      # (a v0.5 save)
+	decoy_t = 0.0
 	if state["shortcut"]: open_gate(true)
 	_apply_mirrors(true)
 	if state["bridge"]: _lower_bridge(true)

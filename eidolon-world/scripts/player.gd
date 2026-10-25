@@ -43,6 +43,7 @@ func _init() -> void:
 	fig = Figure.new()
 	add_child(fig)
 	fig.set_layers(PlanarMirror.LAYER_PLAYER)
+	fig.enable_xray()
 	# soft contact shadow
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(0.95, 0.95)

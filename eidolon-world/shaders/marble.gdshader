@@ -5,8 +5,9 @@ shader_type spatial;
 //       statues), 0.50 rough island stone (cliffs under the slabs), 0.75 black polished marble floor,
 //       1.00 charcoal (dead wood, iron, bronze)
 //   a = 1 on boxes: their BoxMesh face UVs give worn, bevelled edges (fake chamfer)
-//   b = 1 if the piece may OCCLUDE the player (walls, columns, roofs, arches): those fragments are
-//       dithered out in a soft cylinder between the player and the camera.
+//   b = 1 if the piece may OCCLUDE the player (walls, columns, roofs, arches): v0.6, where they stand
+//       between the camera and the player they open in a soft screen-space circle (`reveal`): a clean
+//       radial cut, a hazy feathered band round it and a thin petrol rim on the cut edge (no dither).
 render_mode cull_back, depth_draw_opaque;
 
 global uniform vec3 player_pos;
@@ -14,6 +15,8 @@ global uniform vec3 cam_back;
 global uniform float awaken;
 global uniform vec4 refl_clip;        // v0.5: the active planar mirror (n.xyz, d); n = 0: none
 global uniform vec4 shard_lens;             // v0.5: the raised shard's lens (x, y, radius px, on)
+global uniform vec4 reveal;                 // v0.6: see-through (centre x, y px, radius px, strength 0..1)
+global uniform vec4 accent;
 uniform float lens_hide = 0.0;        // 1: an illusion: this stone is not there inside the lens
 
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
@@ -51,24 +54,25 @@ float marble(vec3 p, float scale, float sharp) {
 	return 1.0 - smoothstep(0.0, sharp, abs(v));
 }
 
-// 4x4 ordered dither, arithmetic (no local array: cheaper on mobile GPUs)
-float bayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75))); }
-float bayer4(vec2 fc) { return bayer2(0.5 * fc) * 0.25 + bayer2(fc) + 0.5 / 16.0; }
 
 void fragment() {
 	// --- seen from behind a planar mirror (its reflection camera): nothing behind the glass exists
-	if (dot(refl_clip.xyz, refl_clip.xyz) > 0.25 && dot(CAMERA_POSITION_WORLD, refl_clip.xyz) < refl_clip.w - 0.5
-			&& dot(wp, refl_clip.xyz) < refl_clip.w - 0.03) discard;
+	bool mirror_cam = dot(refl_clip.xyz, refl_clip.xyz) > 0.25 && dot(CAMERA_POSITION_WORLD, refl_clip.xyz) < refl_clip.w - 0.5;
+	if (mirror_cam && dot(wp, refl_clip.xyz) < refl_clip.w - 0.03) discard;
 	if (lens_hide > 0.5 && shard_lens.w > 0.5 && length(FRAGCOORD.xy - shard_lens.xy) < shard_lens.z) discard;
-	// --- occluder cut-away: soft dithered cylinder from the player toward the camera
-	if (occ > 0.5 && occlusion > 0.0) {
-		vec3 c = player_pos + vec3(0.0, 0.65, 0.0);
-		vec3 v = wp - c;
-		float along = dot(v, cam_back);
-		float perp = length(v - cam_back * along);
-		// a fully clear window round the wanderer, dithered only at its rim (never dots over them)
-		float f = smoothstep(0.1, 0.8, along) * (1.0 - smoothstep(1.05, 1.9, perp)) * occlusion;
-		if (f > 0.96 || (f > 0.0 && bayer4(FRAGCOORD.xy) < f)) discard;
+	// --- v0.6 see-through: a soft circle opens in what stands between the camera and the wanderer
+	float cut_haze = 0.0;
+	float cut_rim = 0.0;
+	if (occ > 0.5 && occlusion > 0.0 && reveal.w > 0.001 && !mirror_cam) {
+		float along = dot(wp - (player_pos + vec3(0.0, 0.9, 0.0)), cam_back);
+		float r = reveal.z * reveal.w * smoothstep(0.15, 0.9, along) * occlusion;
+		float d = length(FRAGCOORD.xy - reveal.xy);
+		float inner = r * 0.8;
+		if (d < inner) discard;
+		float band = max(r - inner, 1.0);
+		float t = clamp((d - inner) / band, 0.0, 1.0);
+		cut_haze = (1.0 - smoothstep(0.0, 1.0, t)) * smoothstep(2.0, 12.0, r);
+		cut_rim = exp(-(d - inner) / 2.2) * smoothstep(2.0, 10.0, r);
 	}
 	float n = texture(noise_tex, wp.xz * 0.23 + wp.y * 0.13).r;
 	if (dbg_cheap > 0.5) { ALBEDO = cream * (0.9 + 0.1 * n); ROUGHNESS = 0.6; SPECULAR = 0.4; } else {
@@ -167,7 +171,10 @@ void fragment() {
 	// a hint of warmth in the pale stone (light seems to sink into the marble)
 	if (mat_id < 0.37) col += vec3(0.022, 0.012, 0.0) * smoothstep(0.4, 0.9, dot(col, vec3(0.33)));
 	if (wp.y < fade_y) discard;
+	// the see-through's edge: the stone thins into pale haze toward the cut, a petrol line on it
+	col = mix(col, vec3(0.80, 0.82, 0.82), cut_haze * 0.55);
 	ALBEDO = col;
+	EMISSION = accent.rgb * cut_rim * 0.75;
 	ROUGHNESS = rough;
 	SPECULAR = spec;
 	}

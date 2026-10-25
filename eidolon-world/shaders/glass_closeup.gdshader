@@ -57,7 +57,10 @@ void fragment() {
 	// the finished glyph glows in the carved-glow colours, blooming a little into the fog
 	float core = smoothstep(0.55, 0.95, wipe);
 	float bloom = smoothstep(0.02, 0.5, wipe) * (1.0 - core);
-	c = mix(c, mix(accent.rgb, accent_core.rgb, core), (core * 0.9 + bloom * 0.35) * glow);
+	// (v0.6: every wiped line keeps a faint carved glow; the answered glyph lights fully)
+	float gk = max(glow, 0.5);
+	c = mix(c, mix(accent.rgb, accent_core.rgb, core * 0.85), (core * 0.9 + bloom * 0.45) * gk);
+	c += accent_core.rgb * core * 0.12 * gk;
 	// a faint sheen across the glass, and the bronze frame
 	c += vec3(0.05) * smoothstep(0.035, 0.0, abs(uv.x * 0.7 - uv.y * 0.45 + 0.1));
 	float frame = 1.0 - smoothstep(0.0, 0.025, em);

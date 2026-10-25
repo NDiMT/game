@@ -318,5 +318,36 @@ class Pad extends Control:
 				draw_line(c + Vector2(-s * 0.8, s * 0.8), c + Vector2(s * 0.8, s * 0.8), col, 1.4, true)
 				draw_arc(c + Vector2(0, s * 0.05), s * 0.45, 0, TAU, 24, cy, 1.4, true)
 				draw_circle(c + Vector2(0, s * 0.05), 2.0, cy)
+			"push":
+				# a hand's edge against a block, the block about to move on
+				draw_rect(Rect2(c + Vector2(-s * 0.15, -s * 0.6), Vector2(s * 1.0, s * 1.2)), col, false, 1.4)
+				draw_line(c + Vector2(-s * 0.95, 0), c + Vector2(-s * 0.35, 0), cy, 1.5, true)
+				draw_line(c + Vector2(-s * 0.35, 0), c + Vector2(-s * 0.6, -s * 0.25), cy, 1.5, true)
+				draw_line(c + Vector2(-s * 0.35, 0), c + Vector2(-s * 0.6, s * 0.25), cy, 1.5, true)
+			"take", "place":
+				# a bowl on its foot, lifted (or set down)
+				draw_arc(c + Vector2(0, -s * 0.05), s * 0.6, 0, PI, 16, col, 1.4, true)
+				draw_line(c + Vector2(-s * 0.6, -s * 0.05), c + Vector2(s * 0.6, -s * 0.05), col, 1.4, true)
+				draw_line(c + Vector2(0, s * 0.55), c + Vector2(0, s * 0.85), col, 1.4, true)
+				var up := -1.0 if name == "take" else 1.0
+				draw_line(c + Vector2(0, -s * 0.35), c + Vector2(0, -s * 0.35 + up * s * 0.6), cy, 1.4, true)
+				draw_line(c + Vector2(0, -s * 0.35 + up * s * 0.6), c + Vector2(-s * 0.2, -s * 0.35 + up * s * 0.4), cy, 1.4, true)
+				draw_line(c + Vector2(0, -s * 0.35 + up * s * 0.6), c + Vector2(s * 0.2, -s * 0.35 + up * s * 0.4), cy, 1.4, true)
+			"light":
+				# a small flame over a bowl
+				draw_arc(c + Vector2(0, s * 0.35), s * 0.55, 0, PI, 14, col, 1.4, true)
+				var fl := PackedVector2Array([c + Vector2(0, -s * 0.95), c + Vector2(s * 0.3, -s * 0.2), c + Vector2(0, s * 0.25), c + Vector2(-s * 0.3, -s * 0.2), c + Vector2(0, -s * 0.95)])
+				draw_polyline(fl, cy, 1.4, true)
+			"ring":
+				# a struck stone sings: a slab and two arcs of sound
+				draw_rect(Rect2(c + Vector2(-s * 0.9, -s * 0.8), Vector2(s * 0.5, s * 1.6)), col, false, 1.4)
+				draw_arc(c + Vector2(-s * 0.4, 0), s * 0.55, -PI * 0.3, PI * 0.3, 10, cy, 1.4, true)
+				draw_arc(c + Vector2(-s * 0.4, 0), s * 0.95, -PI * 0.3, PI * 0.3, 12, cy, 1.2, true)
+			"hang":
+				# a weight on a hook
+				draw_arc(c + Vector2(0, -s * 0.65), s * 0.22, PI * 0.2, PI * 1.6, 10, col, 1.4, true)
+				draw_line(c + Vector2(0, -s * 0.45), c + Vector2(0, -s * 0.05), col, 1.4, true)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.3, -s * 0.05), c + Vector2(s * 0.3, -s * 0.05), c + Vector2(s * 0.5, s * 0.85), c + Vector2(-s * 0.5, s * 0.85)]), Color(cy, cy.a * 0.35))
+				draw_polyline(PackedVector2Array([c + Vector2(-s * 0.3, -s * 0.05), c + Vector2(s * 0.3, -s * 0.05), c + Vector2(s * 0.5, s * 0.85), c + Vector2(-s * 0.5, s * 0.85), c + Vector2(-s * 0.3, -s * 0.05)]), col, 1.3, true)
 			_:
 				draw_circle(c, s * 0.3, col)

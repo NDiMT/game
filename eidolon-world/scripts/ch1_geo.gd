@@ -12,9 +12,18 @@ extends RefCounted
 ##   The Scales       x[26,33.4]     z[-52,-44.6]  y 2   (the lift rises to the high walkway, y 4)
 ##   High walkway     x[30.4,32.4]   z[-44.6,-23.4] y 4, stair down to the Eidolon Ledge
 
-const STONES := [Vector2(-1.25, 1.7), Vector2(-2.35, 2.0), Vector2(-3.45, 1.55), Vector2(-4.55, 1.95),
-	Vector2(-5.65, 1.5), Vector2(-6.75, 1.9), Vector2(-7.85, 1.6), Vector2(-8.95, 1.75)]
-const STONE := 1.3
+# v0.6 "Trust the Water": 7 columns x 2 lanes of stepping stones across the pool (stone k = col * 2 + lane,
+# lane 0 north z 1.05, lane 1 south z 2.35). Only POOL_REAL exist; the rest are illusions (they sink).
+const POOL_X0 := -1.3
+const POOL_DX := -1.25
+const POOL_LANES := [1.05, 2.35]
+const POOL_COLS := 7
+const POOL_REAL := [1, 3, 2, 4, 6, 7, 9, 11, 13]         # the safe path, in walking order
+const STONE := 0.8                                       # the visible stone (its walk cell is 1.25 x 1.3)
+const WATER_Y := -0.42
+
+static func stone_pos(k: int) -> Vector2:
+	return Vector2(POOL_X0 + POOL_DX * (k / 2), POOL_LANES[k % 2])
 
 # hollow walk grid (cell (i, j) centre = (17.5 + i + 0.5, -15 + j + 0.5))
 const HW_ORIGIN := Vector2(17.5, -15.0)
@@ -59,8 +68,8 @@ static func build(lv: Level) -> void:
 static func _aqueduct(lv: Level) -> void:
 	var z := "T"
 	# the basin continues west off the island as a wide stone channel full of still water
-	lv.box(z, Vector3(-7.3, -0.55, 1.7), Vector3(4.7, 0.3, 3.75), 0.5)
-	lv.box(z, Vector3(-7.3, -0.95, 1.7), Vector3(4.7, 0.6, 4.4), 0.0)
+	lv.box(z, Vector3(-7.3, -0.75, 1.7), Vector3(4.7, 0.3, 3.75), 0.5)
+	lv.box(z, Vector3(-7.3, -1.15, 1.7), Vector3(4.7, 0.6, 4.4), 0.0)
 	lv.underside(z, R(-9.6, -0.45, -5.0, 3.85), -1.25)
 	for zz in [-0.3, 3.7]:
 		lv.box(z, Vector3(-7.3, -0.2, zz), Vector3(4.7, 0.5, 0.32), 0.25)
@@ -126,14 +135,13 @@ static func _gallery(lv: Level) -> void:
 	lv.wall(z, R(4.6, -11.0, 5.0, -5.4), 1.0, 4.0, true)
 	lv.wall(z, R(5.0, -5.9, 6.85, -5.5), 1.0, 4.0, true)
 	# arches overhead every few metres, cracked mirror panes on the walls (the panes are puzzle objects)
-	for zz in [-17.0, -14.2, -11.4, -8.5, -6.4]:
+	for zz in [-17.0, -14.2, -12.0, -6.4]:
 		lv.box(z, Vector3(6.0, 4.15, zz), Vector3(2.4, 0.3, 0.4), 0.25, true)
 	# two false doorways painted in relief on the east wall (only the shard shows which way is real)
 	for zz in [-15.6, -12.6]:
 		lv.box(z, Vector3(6.82, 2.4, zz - 0.75), Vector3(0.08, 2.8, 0.16), 0.25)
 		lv.box(z, Vector3(6.82, 2.4, zz + 0.75), Vector3(0.08, 2.8, 0.16), 0.25)
 		lv.box(z, Vector3(6.82, 3.85, zz), Vector3(0.08, 0.18, 1.66), 0.25)
-	lv.rubble(Vector3(5.6, 1.0, -10.4), 0.4, 4)
 	lv.statue(z, Vector3(5.55, 1.0, -6.4), PI * 0.5, 0.75, 0.5)
 
 # ------------------------------------------------------------------ 6. the hollow walk
@@ -254,10 +262,7 @@ static func _scales(lv: Level) -> void:
 	lv.balustrade(z, Vector2(26.2, -44.45), Vector2(30.3, -44.45), 2.0)
 	lv.column(Vector3(26.5, 2.0, -51.5), 4.4)
 	lv.column(Vector3(32.9, 2.0, -51.5), 4.4)
-	# the beam of the balance (a stone arm over a pivot) is a puzzle object; its pivot post:
-	lv.box(z, Vector3(30.0, 4.15, -48.2), Vector3(0.6, 4.3, 0.6), 0.25, true)
-	lv.box(z, Vector3(30.0, 2.2, -48.2), Vector3(1.0, 0.4, 1.0), 0.25, true)
-	lv.ob_rect(R(29.7, -48.5, 30.3, -47.9))
+	# (v0.6: the balance, its pivot glass and its pans are puzzle objects: chapter.gd)
 	# the lift (pan A) and the high walkway it rises to
 	lv.walk(R(30.4, -46.6, 32.4, -44.6), 2.0, NAN, -1, "lift")
 	lv.slab("WK", R(30.4, -44.6, 32.4, -21.2), 4.0, 0.5, 0.0, false)

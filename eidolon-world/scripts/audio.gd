@@ -266,6 +266,36 @@ func stop_cue(name: String, fade := 1.0) -> void:
 	tw.tween_property(p, "volume_db", -60.0, fade)
 	tw.tween_callback(p.stop)
 
+## v0.6: Ione's leitmotif (manifest doc: A4-D5-E5-F5-E5, here an octave up on the composer's glass
+## note, retuned): single notes for the singing walls, the whole motif for the stair glass's chime
+const NOTE_GLASS := "res://assets/audio/v5/events/ev_glass_a5.ogg"
+const NOTE_STONE := "res://assets/audio/v5/events/ev_echo_a4.ogg"
+const NOTES := {"A": 1.0, "D": 1.33484, "E": 1.49831, "F": 1.58740}
+const MOTIF := ["A", "D", "E", "F", "E"]
+func note(n: String, vol_db := -9.0, stone := false) -> void:
+	if not ready_ok: return
+	var r: float = NOTES.get(n, 1.0)
+	played["note"] = played.get("note", 0) + 1
+	played["note_" + n] = played.get("note_" + n, 0) + 1
+	_play_stream(_file_stream(NOTE_GLASS), vol_db, r)
+	if stone: _play_stream(_file_stream(NOTE_STONE), vol_db - 6.0, r * 2.0)
+
+## the five notes, unhurried; the last E held a little apart (unresolved)
+func motif(vol_db := -11.0, gap := 0.48, stone := false) -> void:
+	played["motif"] = played.get("motif", 0) + 1
+	for i in MOTIF.size():
+		var n: String = MOTIF[i]
+		var at := i * gap + (0.18 if i == MOTIF.size() - 1 else 0.0)
+		if at <= 0.0: note(n, vol_db, stone)
+		else: get_tree().create_timer(at).timeout.connect(func() -> void: note(n, vol_db, stone))
+
+## a wrong note: two glass tones a semitone apart, low and soft
+func sour(vol_db := -15.0) -> void:
+	if not ready_ok: return
+	played["sour"] = played.get("sour", 0) + 1
+	_play_stream(_file_stream(NOTE_GLASS), vol_db, 0.749)
+	_play_stream(_file_stream(NOTE_GLASS), vol_db - 2.0, 0.794)
+
 func play_later(name: String, delay: float, vol_db := 0.0, pitch := 1.0) -> void:
 	get_tree().create_timer(delay).timeout.connect(func() -> void: play(name, vol_db, pitch))
 

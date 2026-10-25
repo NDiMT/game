@@ -77,6 +77,45 @@ var _feet_seen := false
 func C() -> Chapter:
 	return game.chapter
 
+## solver checks (v0.6)
+func _pool_path_ok() -> bool:
+	# BFS over real stones (4-neighbours on the 7 x 2 grid) from column 0 to column 6
+	var real: Array = Ch1Geo.POOL_REAL
+	var seen := {}
+	var q := []
+	for k in real:
+		if k / 2 == 0: q.append(k); seen[k] = true
+	var reach_end := false
+	while not q.is_empty():
+		var k: int = q.pop_front()
+		if k / 2 == Ch1Geo.POOL_COLS - 1: reach_end = true
+		for nb in [k - 2, k + 2, k ^ 1]:
+			if nb >= 0 and nb < Ch1Geo.POOL_COLS * 2 and nb in real and not seen.has(nb):
+				seen[nb] = true
+				q.append(nb)
+	var lane_n := true
+	var lane_s := true
+	for c in Ch1Geo.POOL_COLS:
+		lane_n = lane_n and (c * 2) in real
+		lane_s = lane_s and (c * 2 + 1) in real
+	return reach_end and not lane_n and not lane_s
+
+## the gallery map: slot (top-left, top-right, bottom-left, bottom-right) -> brazier, read two ways
+func _gallery_read(mirrored: bool) -> Array:
+	var marks: Vector4 = C().gl_map.get_shader_parameter("marks")
+	var m := [marks.x, marks.y, marks.z, marks.w]
+	var order := [-1, -1, -1]
+	for slot in 4:
+		var top := slot < 2                  # top = east
+		var left := slot % 2 == 0            # left = north as drawn; from her side, south
+		var north := left != mirrored
+		var b := (1 if top else 0) + (0 if north else 2)
+		var n := int(m[slot])
+		if n > 0: order[n - 1] = b
+	return order
+func _gallery_naive() -> Array: return _gallery_read(false)
+func _gallery_mirrored() -> Array: return _gallery_read(true)
+
 func hw_key() -> String:
 	return str(C().state["hollows"]) + str(C().state["hollow_lock"])
 
@@ -106,29 +145,48 @@ func _plan() -> void:
 		ok("pool reflection visible", _lag_samples.size() > 5, "samples=%d" % _lag_samples.size())
 		ok("glimpse 1: reflection lags (~0.42 s at walking speed)", lag > 0.8 and lag < 1.4, "lag distance %.2f m" % lag)
 		ok("glimpse 1 signalled", game.glimpses.get("lag", 0) >= 1))
-	# ripples: walking stirs the water; the stones are not there
-	step_do(func() -> void: walk_to(-0.35, 1.7))
+	# v0.6 "Trust the Water": stones stand in the water; only the real ones are reflected, near you, in still water
+	step_do(func() -> void:
+		var real_ok := true
+		var arr: PackedVector4Array = C().pool_mat.get_shader_parameter("stones")
+		for k in arr.size(): real_ok = real_ok and ((arr[k].w > 0.5) == (k in Ch1Geo.POOL_REAL))
+		ok("the pool reflects only the real stones", real_ok and arr.size() == 14)
+		ok("solver: a safe path of real stones crosses the pool, and no straight lane is safe", _pool_path_ok())
+		walk_to(-0.35, 1.7))
 	step_until("to the water's edge", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
 	step_do(func() -> void:
-		ok("no way across the pool at first", not game.level.on_ground(Vector2(-1.25, 1.7)))
-		game.cmd("input:-1:0"))
-	step_wait(0.8)
+		ok("stepping stones stand in the water (all look the same)", game.level.on_ground(Vector2(-1.3, 1.05)) and game.level.on_ground(Vector2(-1.3, 2.35)))
+		game.cmd("input:1:0"))
+	step_wait(0.5)
 	step_do(func() -> void:
 		game.cmd("stop")
-		ok("cannot walk into the pool", P().x > -0.66, str(P()))
-		ok("moving keeps the water stirred", C().calm < 0.6, "calm %.2f" % C().calm))
-	step_wait(1.5)
-	step_do(func() -> void: ok("standing still calms the pool", C().calm > 0.3 and not C().state["stones"], "calm %.2f" % C().calm))
-	step_until("the still water shows the stepping stones", func() -> bool: return C().state["stones"], 6.0)
+		ok("moving keeps the water stirred (no reflections)", C().calm < 0.6 and float(C().pool_mat.get_shader_parameter("calm_r")) < 2.0, "calm %.2f" % C().calm)
+		walk_to(-0.35, 1.7))
+	step_until("back at the edge", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
+	step_wait(3.5)
 	step_do(func() -> void:
-		ok("stones are walkable now", game.level.on_ground(Vector2(-1.25, 1.7)) and game.level.on_ground(Vector2(-8.95, 1.75)))
-		ok("solving plays its cue", game.sfx.played.get("cue:solve_waking_pool", 0) >= 1))
-	var stones: Array = []
-	for c in Ch1Geo.STONES: stones.append([c.x, c.y])
-	stones.append([-10.6, 1.7])
-	walk_path("over the stones", stones)
+		ok("standing still calms the water round you: the near reflections show", C().calm > 0.9 and float(C().pool_mat.get_shader_parameter("calm_r")) > 3.0, "calm %.2f r %.2f" % [C().calm, float(C().pool_mat.get_shader_parameter("calm_r"))])
+		ok("...only near you", float(C().pool_mat.get_shader_parameter("calm_r")) < 4.0)
+		_mark = C().pool_falls
+		walk_to(-1.3, 1.05))                  # stone 0: an illusion
+	step_until("an illusion gives way", func() -> bool: return C().pool_falls > _mark, 6.0)
+	step_until("the pool gives you back to the shore", func() -> bool: return not game.player.locked and not C()._sinking, 8.0)
 	step_do(func() -> void:
-		ok("crossed the pool on the stones", P().x < -9.5 and absf(P().y) < 0.01, str(P()))
+		ok("a soft fall: back on the shore, nothing lost", P().distance_to(Chapter.POOL_SHORE) < 0.3 and not C().state["stones"], str(P()))
+		ok("the sinking sounds", game.sfx.played.get("step_wet", 0) > 0))
+	for k in Ch1Geo.POOL_REAL:
+		var c: Vector2 = Ch1Geo.stone_pos(k)
+		step_do(func() -> void: walk_to(c.x, c.y))
+		step_until("onto real stone %d" % k, func() -> bool: return game.auto_target == Vector3.INF or C()._sinking, 8.0)
+		step_wait(1.6)                         # be still: the water shows the next stones
+	step_do(func() -> void:
+		ok("the real path holds (no fall on it)", C().pool_falls == _mark + 1, "falls %d" % C().pool_falls)
+		walk_to(-10.6, 1.7))
+	step_until("ashore on the far side", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
+	step_do(func() -> void:
+		ok("crossed the pool on the true stones", C().state["stones"] and P().x < -9.5 and absf(P().y) < 0.01, str(P()))
+		ok("the illusions sink for good", not game.level.named["stone0"].enabled and game.level.named["stone1"].enabled)
+		ok("solving plays its cue", game.sfx.played.get("cue:solve_waking_pool", 0) >= 1)
 		ok("footsteps on the stones splash", game.sfx.played.get("step_wet", 0) > 0)
 		ok("reached the Stair of Breath", game.area == "stair_breath", game.area))
 
@@ -200,13 +258,15 @@ func _plan() -> void:
 		var m: ShaderMaterial = C().breath_mats["stair"]
 		ok("her writing stays on the fogged glass", float(m.get_shader_parameter("write")) > 0.99 and float(m.get_shader_parameter("fog")) > 0.9)
 		ok("breath cue played", game.sfx.played.get("cue:breath", 0) >= 1)
+		ok("her answer rings her song (the motif A-D-E-F-E)", game.sfx.played.get("motif", 0) >= 1 and game.sfx.played.get("note_E", 0) >= 2)
+		ok("her 'follow' rune is a letter of the script, one calligraphic stroke", GlassTalk.TEMPLATES["follow"].size() == 1 and GlassTalk.TEMPLATES["follow"][0].size() >= 8)
 		ok("recogniser unit: resample keeps 32 points", GlassTalk.resample(PackedVector2Array([Vector2.ZERO, Vector2(1, 0)])).size() == GlassTalk.N))
 	walk_path("up the second flight", [[-11.3, -9.0], [-11.3, -13.5], [-6.0, -13.5], [-2.0, -13.5]])
 	step_do(func() -> void:
 		ok("reached the Hall of Glass by the corridor", absf(P().y - 1.0) < 0.01 and game.area == "hall_glass", str(P()) + " " + game.area)
 		ok("area name shown on entering the hall", game.ui.area_label.text == Names.area("hall_glass").to_upper(), game.ui.area_label.text))
 
-	# ================================================================ 3. hall of glass
+	# ================================================================ 3. hall of glass: "What the Glass Remembers"
 	step_do(func() -> void: walk_to(0.6, -19.4))
 	step_until("walk to the great mirror", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
 	step_do(func() -> void: game.cmd("face:0"))
@@ -223,40 +283,103 @@ func _plan() -> void:
 	step_do(func() -> void:
 		var hd := game.level.get_node("Zone_Hdoor") as MeshInstance3D
 		ok("the remembered door: a wall in your world, an opening in the glass", hd.visible and hd.layers == PlanarMirror.LAYER_MAIN_FX and not game.level.named["hdoor"].enabled)
-		walk_to(0.0, -19.6))
-	step_until("to the glass", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
-	step_do(func() -> void: ok("touch the glass", _focus() == "touch_glass" and game.try_interact(), _focus()))
-	step_wait(1.0)
+		var twin_ok := true
+		for t in C().twins: twin_ok = twin_ok and t.visible and (t.get_child(0) as MeshInstance3D).layers == PlanarMirror.LAYER_DOUBLE
+		ok("the glass remembers a drum, a brazier and a bust where they were (only in the glass)", twin_ok and C().twins.size() == 3)
+		ok("today's hall is not in the glass", (C().drum_node.get_child(0) as MeshInstance3D).layers == PlanarMirror.LAYER_MAIN_FX)
+		ok("no touching the glass any more", game.level.interact_by_id("touch_glass") == null))
+	# the bust: it faces you; the glass shows its face, so the bust must face the glass
+	step_do(func() -> void: tp(1.0, -17.3, PI))
+	step_wait(0.3)
+	step_do(func() -> void: ok("the veiled bust turns", _focus() == "hall_turn" and game.try_interact(), _focus()))
+	step_wait(0.9)
+	step_do(func() -> void: ok("a quarter turn is not as the glass remembers", not C()._locked(2)))
+	interact_n(1, 0.9)
+	step_wait(1.6)
 	step_do(func() -> void:
-		ok("you reach for the glass, and so does she", game.player.extra_reach > 0.9 and game.puzzles.hall_mirror.reach_override > 0.9, "%.2f %.2f" % [game.player.extra_reach, game.puzzles.hall_mirror.reach_override]))
-	step_until("she gives you the mirror shard", func() -> bool: return C().state["shard"], 5.0)
-	step_do(func() -> void: ok("the shard is in the inventory", game.controls.inv_has and not game.controls.inv_on))
-	step_until("the remembered door opens", func() -> bool: return C().state["hall_door"] and game.level.named["hdoor"].enabled and not game.player.locked, 5.0)
+		ok("facing the glass (its face in the glass): set right", C()._locked(2) and not C().twins[2].visible)
+		ok("set right, it appears in the glass", (C().bust_pivot.get_child(0) as MeshInstance3D).layers & 1 == 1))
+	# the drum: one push east, six north (the glass shows it one step from the glass, left of the bust)
+	var drum_pushes := [[-1.75, -13.0], [0.0, -12.25], [0.0, -13.25], [0.0, -14.25], [0.0, -15.25], [0.0, -16.25], [0.0, -17.25]]
+	for i in drum_pushes.size():
+		var sp: Array = drum_pushes[i]
+		step_do(func() -> void: tp(sp[0], sp[1], 0.0))
+		step_wait(0.25)
+		step_do(func() -> void: ok("push the drum (%d)" % (i + 1), _focus() == "hall_push" and game.try_interact(), _focus()))
+		step_wait(0.75)
+		if i == 4:
+			step_do(func() -> void: ok("a cell short of where it was: not yet", not C()._locked(0), str(C().state["hall"]["drum"])))
+	step_do(func() -> void: ok("the drum lies where the glass remembers it", C()._locked(0), str(C().state["hall"]["drum"])))
+	# the brazier: carry it; set it down in the wrong place first, then where the glass shows it
+	step_do(func() -> void: tp(3.0, -12.3, PI))
+	step_wait(0.3)
+	step_do(func() -> void: ok("take the brazier", _focus() == "hall_take" and game.try_interact(), _focus()))
+	step_do(func() -> void: tp(2.0, -16.05, 0.0))
+	step_wait(0.4)
+	step_do(func() -> void: ok("set it down", _focus() == "hall_place" and game.try_interact() and not C().carrying, _focus()))
+	step_wait(0.6)
+	step_do(func() -> void: ok("a brazier in the wrong place stays unremembered", not C()._locked(1)))
+	step_do(func() -> void: tp(2.0, -16.3, 0.0))
+	step_wait(0.3)
+	step_do(func() -> void: ok("take it again", _focus() == "hall_take" and game.try_interact(), _focus()))
+	step_do(func() -> void: tp(2.0, -18.05, 0.0))
+	step_wait(0.4)
+	step_do(func() -> void: ok("set it down where it stood", game.try_interact() and not C().carrying, _focus()))
+	step_until("all three as the glass remembers: the doorway opens", func() -> bool: return C().state["hall_door"] and game.level.named["hdoor"].enabled, 4.0)
+	step_do(func() -> void:
+		ok("solver: each goal cell is free, and the drum starts away from it", C().hall_free(Chapter.DRUM_GOAL, 0.42, 0) or C()._locked(0))
+		ok("the Mirror Shard lies on the threshold", C().shard_node.visible and not C().state["shard"])
+		walk_to(4.0, -17.5))
+	step_until("to the threshold", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
+	step_do(func() -> void: ok("take the shard", _focus() == "take_shard" and game.try_interact(), _focus()))
+	step_wait(1.0)
+	step_do(func() -> void: ok("the shard is in the inventory", C().state["shard"] and game.controls.inv_has and not game.controls.inv_on))
 	walk_path("walk to the tablet", [[2.0, -18.0], [3.85, -18.2], [3.85, -19.15]])
 	step_do(func() -> void: ok("tablet readable", game.try_interact() and game.puzzles.state["tablet"], _focus()))
 	walk_path("through the remembered door", [[3.6, -17.5], [5.6, -17.5], [6.0, -16.0]])
 	step_do(func() -> void: ok("reached the Shard Gallery", game.area == "shard_gallery" and P().x > 5.0, str(P()) + " " + game.area))
 
-	# ================================================================ 4. the shard gallery
-	walk_path("down the gallery", [[6.0, -12.0], [6.3, -8.5]])
+	# ================================================================ 4. the shard gallery: "The Other Side's Map"
+	walk_path("down the gallery", [[6.0, -12.0], [6.0, -8.6]])
 	step_do(func() -> void:
-		ok("the hidden passage is shut without the shard", _focus() != "gallery_secret", _focus())
+		ok("no way on: the wall is whole", game.level.named["gallery_secret"].enabled)
 		walk_to(7.8, -8.5))
 	step_wait(0.7)
 	step_until("the wall", func() -> bool: return game.player.still_time > 0.3 or game.auto_target == Vector3.INF, 4.0)
 	step_do(func() -> void:
 		game.cmd("stop")
-		ok("the wall is solid", P().x < 6.6, str(P())))
+		ok("the wall is solid", P().x < 6.6, str(P()))
+		tp(5.95, -10.6, PI * 0.5))
 	step_do(func() -> void:
 		game.controls.shard.emit()           # the inventory slot tapped
 		ok("raise the shard from the inventory", C().lens_on and game.controls.inv_on))
-	step_wait(0.3)
+	step_wait(0.4)
 	step_do(func() -> void:
 		var L: Vector4 = C().lens_px
-		ok("the lens follows you on screen", L.w > 0.5 and L.z > 10.0 and game.ui.lens_rect.visible, str(L))
-		ok("through the shard: touch the true passage", _focus() == "gallery_secret" and game.try_interact(), _focus()))
-	step_until("the passage opens", func() -> bool: return C().state["gallery"] and not game.level.named["gallery_secret"].enabled, 3.0)
+		ok("the lens follows you on screen; her map shows in it", L.w > 0.5 and L.z > 10.0 and game.ui.lens_rect.visible, str(L))
+		ok("her map is drawn from her side: the true arch and the way in at the wrong ends", C().gl_map.get_shader_parameter("marks") == Vector4(1, 3, 0, 2))
+		ok("solver: read as drawn (not mirrored) the map gives a different, wrong order", _gallery_naive() != Chapter.GL_ORDER and _gallery_mirrored() == Chapter.GL_ORDER, "%s vs %s" % [_gallery_naive(), _gallery_mirrored()]))
+	var spots := {0: [5.75, -14.6], 1: [6.1, -14.6], 2: [5.75, -12.6], 3: [6.1, -12.6]}
+	for attempt in [[1, 2, 3], [0, 1, 2]]:
+		for bi in attempt:
+			var sp2: Array = spots[bi]
+			step_do(func() -> void: tp(sp2[0], sp2[1], PI))
+			step_wait(0.25)
+			step_do(func() -> void: ok("light brazier %d" % bi, _focus() == "light%d" % bi and game.try_interact(), _focus()))
+			step_wait(0.4)
+		step_until("a wrong order gutters out", func() -> bool: return (C().state["gallery_lit"] as Array).is_empty() and not C()._gl_busy, 5.0)
+	step_do(func() -> void:
+		ok("still shut after wrong orders", not C().state["gallery"] and C().gl_fails == 2)
+		ok("hint after two wrong orders: the map's clues shine", float(C().gl_map.get_shader_parameter("pulse")) > 0.5))
+	for bi in Chapter.GL_ORDER:
+		var sp3: Array = spots[bi]
+		step_do(func() -> void: tp(sp3[0], sp3[1], PI))
+		step_wait(0.25)
+		step_do(func() -> void: ok("light brazier %d (her order, read from your side)" % bi, _focus() == "light%d" % bi and game.try_interact(), _focus()))
+		step_wait(0.4)
+	step_until("the true arch opens", func() -> bool: return C().state["gallery"] and not game.level.named["gallery_secret"].enabled, 4.0)
 	step_wait(2.6)
+	walk_path("to the arch", [[5.95, -11.0], [5.95, -9.0]])
 	walk_path("through the passage", [[8.4, -8.5], [9.0, -10.0]])
 	step_do(func() -> void:
 		ok("reached the Garden of the Veiled", game.area == "garden_veiled" and P().x > 7.5, str(P()) + " " + game.area)
@@ -328,6 +451,9 @@ func _plan() -> void:
 		C().state["hollows"] = [[5, 2], [1, 1]]
 		C().state["hollow_lock"] = [false, false]
 		C()._place_hollows())
+	step_do(func() -> void:
+		var sv: Dictionary = Chapter.solve_hollows()
+		ok("solver: the hollows' paths interfere: no single spot solves it, the shortest plan is long", sv["one_spot"] == 0 and sv["min_steps"] >= 10, str(sv)))
 	# the solution (BFS-verified, 13 ticks): stand on a cell, face a way, be still for one step
 	var plan := [[7, 7, "N"], [7, 5, "N"], [5, 1, "E"], [5, 0, "E"], [0, 0, "N"], [0, 8, "N"]]
 	var yaw_of := {"N": PI, "E": -PI * 0.5, "S": 0.0, "W": PI * 0.5}
@@ -349,18 +475,51 @@ func _plan() -> void:
 	walk_path("up the ramp to the court", [[18.5, -13.0], [18.5, -16.2], [17.6, -17.8], [15.0, -18.4]])
 	step_do(func() -> void: ok("reached the Court of Light", game.area == "court_light" and absf(P().y - 2.0) < 0.01, str(P()) + " " + game.area))
 
-	# ================================================================ 7. court of light: beam + the veil's shadow
-	step_do(func() -> void: ok("beam not lit at start", not game.puzzles.beam_lit))
-	var mstand := [Vector2(11.25, -24.5), Vector2(11.25, -19.5), Vector2(15.55, -19.5)]
-	for i in 3:
-		var presses: int = (int(Puzzles.MIRROR_SOLUTION[i]) - int([3, 2, 0][i]) + 4) % 4
-		step_do(func() -> void: tp(mstand[i].x, mstand[i].y))
+	# ================================================================ 7. court of light: "Two Worlds of Light"
+	step_do(func() -> void:
+		ok("beam not lit at start", not game.puzzles.beam_lit)
+		var sol: Array = game.puzzles.solve_court()
+		var goods := []
+		var bads := 0
+		for e in sol:
+			if e[2]: goods.append(e[0])
+			else: bads += 1
+		ok("solver: exactly one setting lights the mural, through her world", goods.size() == 1 and goods[0] == Puzzles.MIRROR_SOLUTION, str(goods))
+		ok("solver: the near way lights the crystal the wrong way (a decoy)", bads >= 1, "%d decoys" % bads)
+		var one := false
+		for e in sol:
+			var dsum := 0
+			for i in 4: dsum += posmod(int(e[0][i]) - int(Puzzles.MIRROR_START[i]), 4)
+			if dsum <= 1: one = true
+		ok("solver: no single turn from the start lights anything", not one)
+		ok("her glass is a real reflection here", game.puzzles.court_refl.planar != null))
+	var mstand := [Vector2(8.95, -22.6), Vector2(8.95, -24.1), Vector2(14.95, -24.1), Vector2(14.95, -22.6)]
+	var to_decoy := [2, 3, 1, 0]
+	for i in 4:
+		var presses: int = to_decoy[i]
+		if presses == 0: continue
+		step_do(func() -> void: tp(mstand[i].x, mstand[i].y, -PI * 0.5))
 		step_wait(0.2)
 		step_do(func() -> void: ok("mirror %d in reach" % (i + 1), _focus() == "mirror%d" % (i + 1), _focus()))
 		interact_n(presses, 0.7)
-	step_until("beam reaches the crystal", func() -> bool: return game.puzzles.beam_lit, 3.0)
+	step_wait(0.6)
 	step_do(func() -> void:
-		ok("beam bounces off three mirrors", game.puzzles.beam_points.size() == 5)
+		ok("the near way: the crystal lights...", game.puzzles.beam_lit and not game.puzzles.beam_good)
+		ok("...but its light runs away from the mural", not game.puzzles.state["bridge"] and float(C().mural_mat.get_shader_parameter("lit")) < 0.05)
+		game.puzzles.decoy_t = 13.0)
+	step_wait(0.5)
+	step_do(func() -> void: ok("hint: her own glasses shimmer in the great glass", float(game.puzzles.her_glows[0].get_shader_parameter("intensity")) > 0.05))
+	for i in [2, 3]:
+		var presses2: int = [0, 0, 2, 3][i]
+		step_do(func() -> void: tp(mstand[i].x, mstand[i].y, -PI * 0.5))
+		step_wait(0.2)
+		step_do(func() -> void: ok("mirror %d in reach" % (i + 1), _focus() == "mirror%d" % (i + 1), _focus()))
+		interact_n(presses2, 0.7)
+	step_until("the beam goes into her world and out again to the crystal", func() -> bool: return game.puzzles.beam_good, 3.0)
+	step_do(func() -> void:
+		var w: Array = game.puzzles.beam_world
+		ok("part of the beam runs in her world (seen only in the glass)", 1 in w and game.puzzles.beam_segs[w.find(1)].layers == PlanarMirror.LAYER_DOUBLE)
+		ok("the stands are set as the solver says", game.puzzles.state["mirrors"] == Puzzles.MIRROR_SOLUTION, str(game.puzzles.state["mirrors"]))
 		ok("the drawbridge stays up (the way on is the mural)", not game.level.named["LB"].enabled))
 	step_until("the crystal lights the mural", func() -> bool: return game.puzzles.state["bridge"] and not game.puzzles.busy, 5.0)
 	step_do(func() -> void: walk_to(12.0, -26.4))
@@ -379,12 +538,20 @@ func _plan() -> void:
 
 	# ================================================================ 8. the mist maze
 	walk_path("through the mural door", [[12.0, -26.4], [12.0, -28.2], [12.0, -30.0]])
-	step_do(func() -> void: ok("in the Mist Maze", game.area == "mist_maze", game.area))
-	step_wait(2.0)
+	step_do(func() -> void:
+		ok("in the Mist Maze", game.area == "mist_maze", game.area)
+		var n0 := 0
+		for f in C().maze_feet: if f.visible: n0 += 1
+		ok("walking: no footprints", n0 == 0, "%d" % n0))
+	step_wait(2.5)
 	step_do(func() -> void:
 		var n := 0
-		for f in C().maze_feet: if f.visible: n += 1
-		ok("her petrol footprints walk the mirrored path in the pool", n > 0 and C().maze_feet[0].global_position.x < 8.8, "%d visible" % n)
+		var far := 0
+		for i in C().maze_feet.size():
+			if C().maze_feet[i].visible:
+				n += 1
+				if C().maze_feet_seg[i] > C().maze_prog + 3: far += 1
+		ok("standing still: her petrol footprints show the next stretch of her path, mirrored in the pool", n > 0 and far == 0 and C().maze_feet[0].global_position.x < 8.8, "%d visible" % n)
 		_mark = game.sfx.played.get("glass_tink", 0)
 		walk_to(12.0, -32.5))
 	step_wait(0.7)
@@ -402,18 +569,35 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("out of the maze", C().state["maze"] and game.area == "echo_corridor", str(P()) + " " + game.area))
 
-	# ================================================================ 9. the echo corridor
+	# ================================================================ 9. the echo corridor: "Her Song"
 	step_do(func() -> void: _mark = game.sfx.played.get("step_hall", 0))
 	walk_path("down the corridor", [[10.0, -45.4], [14.0, -45.4]])
+	step_wait(3.0)
 	step_do(func() -> void:
 		ok("footsteps echo in the corridor", game.sfx.played.get("step_hall", 0) > _mark + 4, "%d" % (game.sfx.played.get("step_hall", 0) - _mark))
-		ok("no hollow echo yet", C().echo_heard == 0))
-	walk_path("past the hollow wall", [[20.0, -45.4], [16.8, -45.4], [19.8, -45.4]])
-	step_do(func() -> void: ok("the echo comes back hollow by one wall", C().echo_heard >= 2, "%d" % C().echo_heard))
-	step_do(func() -> void: walk_to(18.3, -45.6))
-	step_until("to the hollow wall", func() -> bool: return game.auto_target == Vector3.INF, 5.0)
-	step_do(func() -> void: ok("touch the hollow wall", _focus() == "echo_wall" and game.try_interact(), _focus()))
-	step_until("the wall gives way", func() -> bool: return C().state["echo_room"], 2.0)
+		ok("the corridor remembers her song, faintly", game.sfx.played.get("motif", 0) >= 2)
+		ok("the see-through: the corridor's near wall opens round you", game.world.reveal_k > 0.9, "%.2f" % game.world.reveal_k)
+		ok("solver: four stones, five notes: the song returns to a stone", Sfx.MOTIF.size() == 5 and Sfx.MOTIF.count("E") == 2 and Chapter.SONG_NOTES.size() == 4))
+	var song_x := {}
+	for i in 4: song_x[Chapter.SONG_NOTES[i]] = Chapter.SONG_X[i]
+	for seq in [["A", "E"], ["D"]]:
+		for nt in seq:
+			var x: float = song_x[nt]
+			step_do(func() -> void: tp(x, -45.6, PI))
+			step_wait(0.25)
+			step_do(func() -> void: ok("strike the %s stone" % nt, _focus().begins_with("song") and game.try_interact(), _focus()))
+			step_wait(0.5)
+	step_wait(2.0)
+	step_do(func() -> void:
+		ok("wrong notes sour and the song starts over", C().song_fails == 2 and C().song_buf.is_empty() and not C().state["echo_room"], "%d %s" % [C().song_fails, str(C().song_buf)])
+		ok("after two soured songs it is remembered once more", game.sfx.played.get("motif", 0) >= 3))
+	for nt2 in Sfx.MOTIF:
+		var x2: float = song_x[nt2]
+		step_do(func() -> void: tp(x2, -45.6, PI))
+		step_wait(0.25)
+		step_do(func() -> void: ok("sing %s" % nt2, _focus().begins_with("song") and game.try_interact(), _focus()))
+		step_wait(0.45)
+	step_until("her song, sung back: the hollow wall gives way", func() -> bool: return C().state["echo_room"], 3.0)
 	step_wait(2.2)
 	walk_path("into the hidden room", [[18.3, -47.4], [18.3, -49.1]])
 	step_do(func() -> void: ok("the hidden memory", _focus() == "memory1" and game.try_interact(), _focus()))
@@ -426,20 +610,56 @@ func _plan() -> void:
 	walk_path("on to the scales", [[18.3, -45.4], [26.8, -45.4], [27.6, -46.0]])
 	step_do(func() -> void: ok("reached the Scales", game.area == "scales", game.area))
 
-	# ================================================================ 10. the scales
-	walk_path("onto the lift", [[29.8, -45.4], [31.4, -45.6]])
-	step_wait(3.0)
+	# ================================================================ 10. the scales: "Weight of a Reflection"
 	step_do(func() -> void:
-		ok("your weight does not lift the platform while the glass looks away", C().lift_h < 0.01 and absf(P().y - 2.0) < 0.01, "lift %.2f" % C().lift_h)
-		ok("the scale groans under you", game.sfx.played.get("creak", 0) > 0))
-	step_do(func() -> void: walk_to(29.0, -45.7))
-	step_until("to the glass", func() -> bool: return game.auto_target == Vector3.INF, 5.0)
-	interact_n(1, 0.8)
-	step_do(func() -> void: ok("the glass now sees the stone's pan", C().glass_sees() == "B"))
-	interact_n(1, 0.8)
-	step_do(func() -> void: ok("the glass sees the lift", C().glass_sees() == "A"))
-	walk_path("back onto the lift", [[30.4, -45.6], [31.4, -45.6]])
-	step_until("in the glass you weigh nothing: the stone lifts you", func() -> bool: return C().state["scales"], 8.0)
+		var sols: Array = Chapter.solve_scales()
+		var need_her := true
+		for e in sols: need_her = need_her and int(e[1]) > 0
+		ok("solver: several ways to level it, and every one needs her", sols.size() >= 3 and need_her, "%d" % sols.size())
+		ok("left: the urn, 15", C().scale_torque(0) == Vector2i(15, 0)))
+	walk_path("onto the lift", [[29.2, -45.9], [31.4, -45.6]])
+	step_wait(2.0)
+	step_do(func() -> void: ok("the lift does not move: the balance is not won", C().lift_h < 0.01 and absf(P().y - 2.0) < 0.01, "lift %.2f" % C().lift_h))
+	var hang := [[2, 5, 3], [1, 4, 3], [0, 3, 3]]       # weight 3 -> R3, weight 2 -> R2, weight 1 -> R1
+	for h in hang:
+		var wi: int = h[0]
+		var pk: int = h[1]
+		step_do(func() -> void: tp(Chapter.SC_RACK[wi].x, Chapter.SC_RACK[wi].z - 0.6, PI))
+		step_wait(0.25)
+		step_do(func() -> void: ok("take weight %d" % (wi + 1), _focus() == "weight%d" % wi and game.try_interact(), _focus()))
+		step_do(func() -> void:
+			var pp := Chapter.pan_pos(pk)
+			tp(pp.x, pp.z + 0.05, 0.0))
+		step_wait(0.3)
+		step_do(func() -> void: ok("hang it (pan %d)" % pk, _focus() == "pan%d" % pk and game.try_interact(), _focus()))
+		step_wait(0.3)
+	step_do(func() -> void:
+		var tq: Vector2i = C().scale_torque(0)
+		ok("all three on the right: 14 against 15, still tipped", tq == Vector2i(15, 14) and not C().state["scales"], str(tq)))
+	step_do(func() -> void:
+		C().sc_tries = 30.0
+		var tp1 := Vector3(Chapter.SC_X - Chapter.SC_UNIT, 2.0, Chapter.SC_TILE_Z)
+		tp(tp1.x, tp1.z, 0.0))
+	step_wait(0.5)
+	step_do(func() -> void:
+		ok("on her tile, her weight counts on the RIGHT: 16, tipped the other way", C().scale_torque() == Vector2i(15, 16) and C().scale_tile() == 1, str(C().scale_torque()))
+		ok("hint after a while: the tiles shine", C().sc_hint > 0.9))
+	# take the 1 off (back to the bench): 13 + her 2 = 15
+	step_do(func() -> void:
+		var pp := Chapter.pan_pos(3)
+		tp(pp.x, pp.z + 0.05, 0.0))
+	step_wait(0.3)
+	step_do(func() -> void: ok("take the 1 back", _focus() == "pan3" and game.try_interact() and C().sc_carry == 0, _focus()))
+	step_do(func() -> void: tp(Chapter.SC_RACK[0].x, Chapter.SC_RACK[0].z - 0.6, PI))
+	step_wait(0.3)
+	step_do(func() -> void: ok("put it on the bench", _focus() == "weight0" and game.try_interact() and C().sc_carry == -1, _focus()))
+	step_do(func() -> void:
+		var tp2 := Vector3(Chapter.SC_X - Chapter.SC_UNIT, 2.0, Chapter.SC_TILE_Z)
+		tp(tp2.x, tp2.z, 0.0))
+	step_until("level: 15 = 13 + her 2; it locks", func() -> bool: return C().state["scales"], 8.0)
+	step_do(func() -> void: ok("the balance is level", C().scale_torque() == Vector2i(15, 15) and absf(C().sc_angle) < 0.02, str(C().scale_torque())))
+	walk_path("onto the lift", [[29.2, -45.9], [31.4, -45.6]])
+	step_until("the lift carries you up", func() -> bool: return C().lift_h > 0.99, 10.0)
 	step_do(func() -> void: ok("risen to the high walkway", absf(P().y - 4.0) < 0.02, str(P())))
 	walk_path("along the high walkway", [[31.4, -43.5], [31.4, -22.4], [29.6, -22.4], [27.8, -22.4]])
 	step_do(func() -> void: ok("down onto the Eidolon Ledge", game.area == "eidolon_ledge" and absf(P().y - 2.0) < 0.01, str(P()) + " " + game.area))
@@ -458,14 +678,33 @@ func _plan() -> void:
 		var fm: float = game.puzzles.foot_mat.get_shader_parameter("intensity")
 		ok("footprint marker shows where to stand", fm > 0.6, "intensity %.2f" % fm))
 	step_do(func() -> void: walk_to(23.6, -20.3))
-	step_until("stand where the reflection stands on the plate", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
-	step_until("plate pressed by the reflection", func() -> bool: return game.puzzles.state["plate"], 4.0)
+	step_until("stand where the reflection stands on her plate", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
+	step_wait(3.0)
+	step_do(func() -> void:
+		ok("hers alone is not enough: your plate is empty", not game.puzzles.state["plate"] and game.puzzles.plate_charge < 0.05)
+		var pc := Chapter.lcell(Chapter.LEDGE_PLATE)
+		tp(pc.x, pc.z, PI))
+	step_wait(2.0)
+	step_do(func() -> void:
+		ok("standing on yours, your reflection is far from hers", C().plate_a_down() and not game.puzzles.state["plate"]))
+	var pushes := [[24.75, -20.5, -PI * 0.5], [26.5, -19.75, 0.0], [26.5, -20.75, 0.0]]
+	for pi in pushes.size():
+		var ps2: Array = pushes[pi]
+		step_do(func() -> void: tp(ps2[0], ps2[1], ps2[2]))
+		step_wait(0.25)
+		step_do(func() -> void: ok("push the statue (%d)" % (pi + 1), _focus() == "ledge_push" and game.try_interact(), _focus()))
+		step_wait(0.9)
+	step_do(func() -> void:
+		ok("the statue holds your plate", C()._statue_cell() == Chapter.LEDGE_PLATE and C().plate_a_down())
+		walk_to(23.6, -20.3))
+	step_until("back where your reflection stands on hers", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
+	step_until("both plates held at once: hers answers", func() -> bool: return game.puzzles.state["plate"], 4.0)
 	step_until("the bridge rises", func() -> bool: return not game.puzzles.busy, 8.0)
-	step_do(func() -> void: walk_to(22.2, -22.9))
+	step_do(func() -> void: walk_to(22.2, -22.2))
 	step_until("to the lever", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
 	step_do(func() -> void: ok("the drawbridge lever (a way back)", _focus() == "drawbridge" and game.try_interact(), _focus()))
 	step_until("the drawbridge falls", func() -> bool: return game.level.named["LB"].enabled, 4.0)
-	walk_path("to the risen bridge", [[27.7, -24.4], [27.7, -28.6]])
+	walk_path("to the risen bridge", [[27.7, -21.3], [27.7, -24.4], [27.7, -28.6]])
 
 	# ================================================================ 12. gate of the four veiled
 	step_do(func() -> void:
@@ -536,7 +775,7 @@ func _plan() -> void:
 	walk_path("to the sealed way", [[25.0, -29.3], [29.6, -29.3], [29.6, -35.6], [28.0, -36.6], [28.0, -38.6]])
 	step_do(func() -> void: ok("the way on is sealed", P().z > -38.9 and _focus() == "sealed" and game.try_interact(), str(P())))
 	for zone in [[28.0, -37.5], [0.0, 0.0], [-5.0, 1.7], [-11.3, -2.0], [-11.3, -9.0], [-7.0, -13.5], [0.0, -16.0], [6.0, -12.0], [12.0, -10.0],
-			[21.0, -10.0], [12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [18.3, -48.5], [29.0, -49.0], [31.4, -32.0], [19.0, -22.0], [25.0, -22.0], [22.0, -29.0], [0.0, 6.5]]:
+			[21.0, -10.0], [12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [18.3, -48.5], [29.0, -49.0], [31.4, -32.0], [19.0, -20.4], [25.0, -22.0], [22.0, -29.0], [0.0, 6.5]]:
 		step_do(func() -> void: tp(zone[0], zone[1]))
 		step_walk(14.0)
 	step_do(func() -> void:
@@ -559,11 +798,11 @@ func _plan() -> void:
 	step_until("continue", func() -> bool: return game.mode == "play", 5.0)
 	step_do(func() -> void:
 		ok("restored chapter", C().state["four"] and C().state["scales"] and "m1" in C().state["memories"] and C().state["shard"])
-		ok("restored regions", game.level.named["stone0"].enabled and not game.level.named["breath_gate"].enabled and game.level.named["hdoor"].enabled
+		ok("restored regions", game.level.named["stone1"].enabled and not game.level.named["stone0"].enabled and not game.level.named["breath_gate"].enabled and game.level.named["hdoor"].enabled
 			and game.level.named["g_door"].enabled and not game.level.named["hw_gate"].enabled and game.level.named["MZ_door"].enabled
 			and game.level.named["EC_room"].enabled and not game.level.named["tholos_front"].enabled and game.level.named["EB"].enabled)
 		ok("restored inventory", game.controls.inv_has)
-		ok("restored the raised lift", C().lift_h >= 1.0)
+		ok("restored the won balance", C().state["scales"] and C().state["hall"]["locks"] == [true, true, true])
 		ok("restored awakened world", game.world.awaken == 1.0 and game.player.fig.runes_awake == 1)
 		ok("restored position", absf(P().x - walk_change) < 0.6, str(P())))
 	# ---- New Game from the title: confirm, everything forgotten, settings kept
@@ -588,7 +827,7 @@ func _plan() -> void:
 		ok("new game: puzzles reset", not st["bridge"] and not st["plate"] and not st["shrine"] and not st.get("drawbridge", false), str(st))
 		var cs: Dictionary = C().state
 		ok("new game: chapter reset", not cs["stones"] and not cs["shard"] and not cs["turned_done"] and cs["turned"] == Chapter.TURN_START and not cs["four"] and cs["memories"].is_empty(), str(cs))
-		ok("new game: regions reset", not game.level.named["stone0"].enabled and game.level.named["breath_gate"].enabled and not game.level.named["hdoor"].enabled
+		ok("new game: regions reset", game.level.named["stone0"].enabled and not cs["stones"] and game.level.named["breath_gate"].enabled and not game.level.named["hdoor"].enabled
 			and game.level.named["hw_gate"].enabled and not game.level.named["MZ_door"].enabled and game.level.named["tholos_front"].enabled and not game.level.named["LB"].enabled)
 		ok("new game: no shard", not game.controls.inv_has and not C().lens_on)
 		ok("new game: lift down", C().lift_h == 0.0)
@@ -631,7 +870,7 @@ func _process(dt: float) -> void:
 		print("TIMEOUT at step ", si)
 		get_tree().quit(2)
 		return
-	if game and game.player and game.mode == "play":
+	if game and game.player and game.mode == "play" and not game.chapter._sinking:
 		_check_ground()
 	if walk_mode:
 		walk_t += dt

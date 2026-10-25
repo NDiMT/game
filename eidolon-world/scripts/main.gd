@@ -335,6 +335,7 @@ func _process(dt: float) -> void:
 				dir = d.normalized() * clampf(d.length() * 2.5, 0.25, 1.0)
 		player.input_dir = Vector2(dir.x, dir.z) if mode == "play" else Vector2.ZERO
 	player.step(dt)
+	world.update_reveal(level.occluders, player.position, dt)
 	puzzles.update(dt)
 	if mode != "title": chapter.update(dt)
 	if mode == "cine":
@@ -357,6 +358,8 @@ func _process(dt: float) -> void:
 		if on_ledge: cs = maxf(cs, 9.6)              # see your reflection AND the plate
 		if area == "mist_maze" and p.z < -28.5: cs = maxf(cs, 10.6)          # the maze and her pool
 		if area == "scales": cs = maxf(cs, 9.8)
+		if area == "shard_gallery" and chapter.lens_on: cs = minf(cs, 5.4)      # v0.6: read her map up close
+		if area == "waking_pool" and p.x < 0.6 and p.z > -0.6 and p.z < 4.2 and absf(p.y) < 0.4: cs = minf(cs, 6.6)   # v0.6: the stones in the water
 		if mode != "finale" and mode != "cine": world.cam_size_target = cs
 		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs
 		if mode == "play":
@@ -369,6 +372,8 @@ func _process(dt: float) -> void:
 			elif p.x > 20.8 and p.z > -25.2 and p.z < -18.8 and p.y < 3.0:
 				off = (Puzzles.PLATE_POS - p) * 0.5
 				off.y = 0.0
+			elif area == "shard_gallery" and chapter.lens_on:
+				off = Vector3((6.8 - p.x) * 0.45, 0.0, (-10.5 - p.z) * 0.45)          # v0.6: her map
 			elif area == "mist_maze" and p.z < -28.5 and p.x > 8.5:
 				off = Vector3((4.6 - p.x) * 0.42, 0.0, (-34.0 - p.z) * 0.3)     # her steps in the pool
 			elif area == "garden_veiled" and p.z < -9.0 and p.x > 8.5 and p.x < 15.5:
@@ -516,6 +521,8 @@ func _on_event(name: String, data: Variant) -> void:
 			_save()
 		"plate_touch":
 			sfx.play("chime_hall", -20.0, 0.75)
+		"plate_half":
+			sfx.play("glass_tink", -21.0, 0.6)          # (hers stirs, but yours is empty)
 		"plate_glow":
 			sfx.cue("solve_eidolon_ledge")
 		"bridge_rise":
@@ -588,11 +595,11 @@ func _end_cinematic() -> void:
 ## there lowers it (a way back)
 func _drawbridge_lever() -> void:
 	var m := MB.new()
-	m.box(Vector3(21.55, 2.3, -22.9), Vector3(0.3, 0.6, 0.3), Color(0.5, 0.25, 0.0))
-	m.cyl(Vector3(21.55, 2.85, -22.9), 0.03, 0.03, 0.7, Color(0.5, 1.0, 0.0), 6, Basis(Vector3.BACK, 0.5))
+	m.box(Vector3(21.55, 2.3, -22.2), Vector3(0.3, 0.6, 0.3), Color(0.5, 0.25, 0.0))
+	m.cyl(Vector3(21.55, 2.85, -22.2), 0.03, 0.03, 0.7, Color(0.5, 1.0, 0.0), 6, Basis(Vector3.BACK, 0.5))
 	puzzles.marble_instance(m.commit(), chapter)
-	level.ob_circle(Vector2(21.55, -22.9), 0.25)
-	level.add_interact("drawbridge", Vector3(21.55, 2.0, -22.9), "lever", func() -> void: puzzles.lower_drawbridge(false), 1.0,
+	level.ob_circle(Vector2(21.55, -22.2), 0.25)
+	level.add_interact("drawbridge", Vector3(21.55, 2.0, -22.2), "lever", func() -> void: puzzles.lower_drawbridge(false), 1.0,
 		func() -> bool: return not puzzles.state.get("drawbridge", false) and player.position.x > 21.0)
 
 # ------------------------------------------------------------------ v0.5b: a conversation through the glass
@@ -612,7 +619,9 @@ func _glass_sound(n: String) -> void:
 	match n:
 		"breath": sfx.cue("breath")
 		"writing": sfx.play("glass_tink", -24.0, 0.8)
-		"chime": sfx.play("chime", -10.0, 1.0)
+		"chime":
+			sfx.play("chime", -14.0, 1.0)
+			sfx.motif(-10.0)                 # v0.6: her answer rings with her song (heard again in the Echo Corridor)
 		"wrong": sfx.play("glass_tink", -16.0, 0.53)        # a low, slightly sour glass tone
 
 func _glass_closed() -> void:
@@ -650,8 +659,32 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 			ui.show_memory(Chapter.MEMORY_1, 4.0)
 			sfx.cue("glimpse")
 			_save()
-		"scale_groan": sfx.play("creak", 0.0, 1.0)
+		"scale_groan": sfx.play("creak", -4.0, 1.0 + clampf(float(data) * 0.02, -0.2, 0.2))
 		"hint": sfx.play("glass_tink", -30.0, 1.4)
+		# v0.6
+		"sink":
+			sfx.play("step_wet", -4.0, 0.62)
+			sfx.play("whoosh", -18.0, 0.5)
+		"hall_push": sfx.play("grind", -8.0, 0.9)
+		"hall_take": sfx.play("cloth", -16.0, 1.1)
+		"hall_place": sfx.play("grind", -14.0, 1.4)
+		"hall_nope": sfx.play("glass_tink", -22.0, 0.5)
+		"hall_lock":
+			sfx.note(["A", "D", "E"][int(data) % 3], -11.0)
+			chapter.progress()
+		"brazier": sfx.play("whoosh", -17.0, 1.7)
+		"gutter":
+			sfx.play("whoosh", -15.0, 0.55)
+			sfx.sour(-20.0)
+		"song_note": sfx.note(str(data), -5.0, true)
+		"song_sour": sfx.sour(-11.0)
+		"song_remember": sfx.motif(-21.0, 0.55, true)
+		"weight_take": sfx.play("grind", -18.0, 1.6)
+		"weight_hang": sfx.play("creak", -8.0, 1.2)
+		"lift":
+			sfx.play("door", -6.0, 1.1)
+			world.shake(0.15)
+		"plate_a": sfx.play("thud", -12.0, 0.9)
 
 # ------------------------------------------------------------------ jump (tests, screenshots)
 ## put the world in the state it has when you first enter `room` (everything before it solved) and
@@ -678,6 +711,8 @@ func jump(room: String) -> void:
 			"stair_breath": cs["breath"] = true
 			"hall_glass":
 				cs["shard"] = true; cs["hall_door"] = true
+				cs["hall"] = {"drum": [Chapter.DRUM_GOAL.x, Chapter.DRUM_GOAL.y], "brazier": [Chapter.BRAZ_GOAL.x, Chapter.BRAZ_GOAL.y],
+					"bust": Chapter.BUST_GOAL, "locks": [true, true, true]}
 			"shard_gallery": cs["gallery"] = true
 			"garden_veiled":
 				cs["turned"] = Chapter.TURN_SOLUTION.duplicate(); cs["turned_done"] = true; cs["garden_breath"] = true
@@ -689,8 +724,9 @@ func jump(room: String) -> void:
 			"mist_maze": cs["maze"] = true
 			"echo_corridor": cs["echo_room"] = true
 			"scales":
-				cs["scales"] = true; cs["scales_mirror"] = 2
-			"eidolon_ledge": ps["plate"] = true
+				cs["scales"] = true; cs["scale_w"] = [-1, -1, 5]
+			"eidolon_ledge":
+				ps["plate"] = true; cs["ledge_statue"] = [Chapter.LEDGE_PLATE.x, Chapter.LEDGE_PLATE.y]
 			"gate_four": cs["four"] = true
 	puzzles.apply_state(ps)
 	chapter.apply_state()
@@ -956,7 +992,9 @@ func state_dict() -> Dictionary:
 		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "yaw_index": world.yaw_index, "zoom": snappedf(world.zoom, 0.01), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
 		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01),
 		"chapter": chapter.state, "lens": chapter.lens_on, "calm": snappedf(chapter.calm, 0.01), "cine_t": snappedf(cine.t, 0.1) if cine else -1.0,
-		"letterbox": snappedf(ui.letterbox, 0.01), "glass": ui.glass_talk.phase, "glass_tries": ui.glass_talk.tries, "glass_score": ui.glass_talk.last_score, "hint_t": snappedf(chapter.hint_t, 0.1), "lift": snappedf(chapter.lift_h, 0.01)}
+		"letterbox": snappedf(ui.letterbox, 0.01), "glass": ui.glass_talk.phase, "glass_tries": ui.glass_talk.tries, "glass_score": ui.glass_talk.last_score, "hint_t": snappedf(chapter.hint_t, 0.1), "lift": snappedf(chapter.lift_h, 0.01),
+		"beam_good": puzzles.beam_good, "carry": chapter.carrying, "sc_carry": chapter.sc_carry, "torque": [chapter.scale_torque().x, chapter.scale_torque().y],
+		"reveal": snappedf(world.reveal_k, 0.01), "falls": chapter.pool_falls, "feet": chapter.maze_feet.filter(func(f: MeshInstance3D) -> bool: return f.visible).size()}
 
 func _door_slot_centers() -> Array:
 	var out := []

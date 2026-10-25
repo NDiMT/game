@@ -70,6 +70,7 @@ var rng := RandomNumberGenerator.new()
 var markers: Array = []
 var inscr_mats: Array = []
 var named := {}          # name -> Region / Obstacle for puzzles to toggle
+var occluders: Array[AABB] = []    # v0.6: boxes that may hide the wanderer (the see-through reveal)
 
 const WAKE_POS := Vector3(1.4, 0.0, 2.3)
 const SHRINE_C := Vector3(25.0, 2.0, -32.6)
@@ -231,6 +232,11 @@ func move(pos: Vector3, d: Vector3, rad: float) -> Vector3:
 			return Vector3(q.x, height_at(q), q.y)
 	return Vector3(p.x, height_at(p), p.y)
 
+func interact_by_id(id: String) -> Interact:
+	for it in interacts:
+		if it.id == id: return it
+	return null
+
 func add_interact(id: String, pos: Vector3, icon: String, action: Callable, radius := 1.25, cond := Callable()) -> Interact:
 	var it := Interact.new()
 	it.id = id; it.pos = pos; it.icon = icon; it.action = action; it.radius = radius; it.cond = cond
@@ -306,6 +312,10 @@ func underside(zone: String, r: Rect2, y: float) -> void:
 
 func box(zone: String, center: Vector3, size: Vector3, mat := 0.25, occ := false, basis := Basis()) -> void:
 	mb(zone).box(center, size, C(mat, occ), basis)
+	if occ:
+		var e := Vector3.ZERO
+		for k in 3: e += (basis[k] * size[k] * 0.5).abs()
+		occluders.append(AABB(center - e, e * 2.0))
 
 func wall(zone: String, r: Rect2, y0: float, y1: float, occ := true) -> void:
 	# ambient occlusion along both long faces at the floor
@@ -331,6 +341,7 @@ func column(base: Vector3, h := 3.8, ob := true) -> void:
 	blob(base, 1.7)
 	var s := h / 3.8
 	col_full.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(1.0, s, 1.0)), base))
+	occluders.append(AABB(base - Vector3(0.42, 0.0, 0.42), Vector3(0.84, h, 0.84)))
 	if ob: ob_circle(Vector2(base.x, base.z), 0.38)
 
 func stump(base: Vector3, h := 1.0, ob := true, tilt := 0.0) -> void:
@@ -467,7 +478,7 @@ func _veiled_gate() -> void:
 	for r in [R(-5, -5, 5, -0.2), R(-5, 3.6, 5, 5), R(-0.6, -0.2, 5, 3.6)]:
 		slab(z, r, 0.0, 0.7, 0.0, false)
 	underside(z, R(-5, -5, 5, 5), -0.7)
-	box(z, Vector3(-2.82, -0.55, 1.7), Vector3(4.44, 0.3, 3.8), 0.5)          # basin floor (flush pool)
+	box(z, Vector3(-2.82, -0.75, 1.7), Vector3(4.44, 0.3, 3.8), 0.5)          # basin floor (v0.6: deeper)
 	# v0.5: the pool is the Waking Pool: water from the island's middle out over the west edge
 	walk(R(-5, -5, 5, -0.15), 0.0, NAN, -1, "T")
 	walk(R(-5, 3.55, 5, 5), 0.0, NAN, -1, "T")
@@ -486,7 +497,7 @@ func _veiled_gate() -> void:
 	rubble(Vector3(2.0, 0, 3.9), 0.7, 5)
 	# veiled statues, all with the same face, all turned toward the pool
 	var pc := Vector3(-2.4, 0, 1.7)
-	for sp in [[Vector3(-3.8, 0, -3.8), 1.0], [Vector3(3.8, 0, -3.9), 1.0], [Vector3(4.0, 0, 1.2), 0.95], [Vector3(-4.4, 0, 4.35), 0.9]]:
+	for sp in [[Vector3(-3.8, 0, -3.8), 1.0], [Vector3(3.8, 0, -3.9), 1.0], [Vector3(4.0, 0, 1.2), 0.95], [Vector3(3.9, 0, 4.4), 0.9]]:
 		statue(z, sp[0], yaw_to(sp[0], pc), sp[1])
 	stump(Vector3(4.3, 0, -1.4), 1.3)
 	stump(Vector3(-4.4, 0, -1.6), 0.7)
@@ -552,14 +563,13 @@ func _hall() -> void:
 	column(Vector3(-3.3, 1.0, -11.3), 4.2)
 	column(Vector3(3.3, 1.0, -11.3), 4.2)
 	# a fallen column across the north-east corner hides the low tablet
-	stump(Vector3(3.0, 1.0, -18.7), 0.9, true, 0.0)
+	# (v0.6: the old stump here is gone: the hall keeps only its fallen block and the things the glass remembers)
 	box(z, Vector3(2.7, 1.3, -19.9), Vector3(0.62, 0.62, 1.9), 0.25, false, Basis(Vector3.UP, 1.2))
 	ob_rect(R(1.95, -20.4, 3.4, -19.4))
 	box(z, Vector3(4.35, 1.35, -19.9), Vector3(0.36, 0.7, 0.9), 0.25, false)
 	rubble(Vector3(-3.5, 1.0, -19.6), 0.7, 6)
 	rubble(Vector3(2.6, 1.0, -12.3), 0.5, 4)
-	inscription("h_hall", Vector3(-3.4, 1.0, -12.6), "The glass remembers the door I walled up.\nGive it your hand.", 1.2,
-		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-3.4, 1.012, -12.95)), Vector2(1.15, 0.78))
+
 
 func _garden() -> void:
 	var z := "G"
@@ -628,8 +638,14 @@ func _court() -> void:
 	balustrade(z, Vector2(14.7, -26.95), Vector2(16.9, -26.95), 2.0)
 	balustrade(z, Vector2(7.05, -26.8), Vector2(7.05, -17.2), 2.0)
 	balustrade(z, Vector2(7.2, -17.05), Vector2(15.2, -17.05), 2.0)
-	balustrade(z, Vector2(16.95, -26.8), Vector2(16.95, -23.3), 2.0)
-	balustrade(z, Vector2(16.95, -20.7), Vector2(16.95, -18.6), 2.0)
+	# v0.6: the east edge is her GREAT GLASS (z -26.6..-21.5, the pane is a puzzle object) and, south of
+	# it, the drawbridge's gap (z -21.4..-19.4)
+	box(z, Vector3(16.98, 4.15, -26.68), Vector3(0.3, 4.3, 0.3), 1.0, true)
+	box(z, Vector3(16.98, 4.15, -21.42), Vector3(0.3, 4.3, 0.3), 1.0, true)
+	box(z, Vector3(16.98, 6.42, -24.05), Vector3(0.34, 0.3, 5.62), 1.0, true)
+	box(z, Vector3(16.98, 2.06, -24.05), Vector3(0.3, 0.12, 5.4), 1.0, false)
+	ob_rect(R(16.8, -26.85, 17.2, -21.25))
+	balustrade(z, Vector2(16.95, -19.25), Vector2(16.95, -18.6), 2.0)
 	# v0.5: the mural wall (her half-erased portrait; its middle is a door) and the Mist Maze beyond
 	wall(z, R(9.3, -27.3, 10.9, -26.95), 2.0, 5.6, true)
 	wall(z, R(13.1, -27.3, 14.7, -26.95), 2.0, 5.6, true)
@@ -640,11 +656,9 @@ func _court() -> void:
 	ob_rect(R(10.9, -27.35, 13.1, -26.9), "mural_door")
 	# great columns at the corners, one broken
 	column(Vector3(7.6, 2.0, -26.4), 4.6)
-	column(Vector3(16.4, 2.0, -26.4), 4.6)
 	stump(Vector3(7.6, 2.0, -17.6), 1.6)
-	column(Vector3(16.4, 2.0, -19.4), 4.6)
 	rubble(Vector3(8.6, 2.0, -18.4), 0.6, 5)
-	inscription("l_stele", Vector3(8.3, 2.0, -21.4), "Turn the glass as she turned her mirror,\nand the light will find the way.", 1.2,
+	inscription("l_stele", Vector3(8.3, 2.0, -21.4), "Where our light ends, hers goes on.\nShe set her own glasses there, and waited.", 1.2,
 		Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(7.665, 2.62, -21.4)), Vector2(0.95, 1.0))
 	box(z, Vector3(7.55, 2.6, -21.4), Vector3(0.22, 1.2, 1.1), 0.25)
 
@@ -661,10 +675,8 @@ func _ledge() -> void:
 	balustrade(z, Vector2(21.1, -18.95), Vector2(28.9, -18.95), 2.0)
 	balustrade(z, Vector2(28.95, -19.1), Vector2(28.95, -21.3), 2.0)
 	balustrade(z, Vector2(28.95, -23.5), Vector2(28.95, -24.9), 2.0)
-	balustrade(z, Vector2(21.05, -19.1), Vector2(21.05, -20.8), 2.0)
-	balustrade(z, Vector2(21.05, -23.2), Vector2(21.05, -24.9), 2.0)
+	balustrade(z, Vector2(21.05, -21.6), Vector2(21.05, -24.9), 2.0)
 	column(Vector3(28.4, 2.0, -19.5), 4.0)
-	stump(Vector3(21.6, 2.0, -19.6), 1.2)
 	inscription("e_stele", Vector3(27.6, 2.0, -20.4), "I asked the goddess once.\nBeyond the glass the other one walks where you cannot.", 1.2,
 		Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(28.335, 2.62, -20.9)), Vector2(0.95, 1.0))
 	box(z, Vector3(28.45, 2.6, -20.9), Vector3(0.22, 1.2, 1.1), 0.25)

@@ -26,6 +26,7 @@ var mat: ShaderMaterial          # the mirror quad's material
 var enabled := true              # false on the LOW tier
 var active := false
 var scale := 1.0                 # v0.5b: x the REAL 3D render resolution (window pixels x render scale)
+var res_k := 1.0                 # v0.6: per glass (a smaller glass needs fewer pixels)
 const MAX_H := 1400
 var _frame := 0
 var _H := Basis()
@@ -90,7 +91,7 @@ func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 	_frame += 1
 	var main_vp := main_cam.get_viewport()
 	# (v0.5b: the logical canvas size is not the pixel size: at DPR 3 that made the glass ~130 px wide)
-	var sz := Vector2(main_vp.size) * main_vp.scaling_3d_scale * scale
+	var sz := Vector2(main_vp.size) * main_vp.scaling_3d_scale * scale * res_k
 	if sz.y > MAX_H: sz *= MAX_H / sz.y
 	var want_sz := Vector2i(maxi(64, int(sz.x)), maxi(64, int(sz.y)))
 	if vp.size != want_sz: vp.size = want_sz

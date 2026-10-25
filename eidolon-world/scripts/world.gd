@@ -397,6 +397,46 @@ func _pixel_snap(p: Vector3) -> Vector3:
 	var y := roundf(p.dot(b.y) / texel) * texel
 	return b.x * x + b.y * y + b.z * p.dot(b.z)
 
+## v0.6: SEE-THROUGH. When something stands between the camera and the wanderer, the occluding stone
+## opens in a soft screen-space circle round them (marble.gdshader: radial cut, a hazy feathered edge,
+## a thin petrol rim on the cut). `occ` = the level's occluder boxes; the reveal eases in and out over
+## ~0.25 s, and only fragments nearer the camera than the wanderer are cut.
+var reveal_k := 0.0
+var reveal_px := Vector4.ZERO
+const REVEAL_R := 1.4            # metres round the wanderer
+var _near_occ: Array[AABB] = []
+var _near_t := 0.0
+var _near_at := Vector3.INF
+func update_reveal(occ: Array[AABB], p: Vector3, dt: float) -> void:
+	# (perf: only boxes near you can hide you; nothing taller than ~7 m stands more than ~12 m off)
+	_near_t -= dt
+	if _near_t <= 0.0 or _near_at.distance_to(p) > 3.0:
+		_near_t = 0.5
+		_near_at = p
+		_near_occ.clear()
+		var around := AABB(p - Vector3(16, 6, 16), Vector3(32, 18, 32))
+		for bx in occ:
+			if around.intersects(bx): _near_occ.append(bx)
+	var hidden := false
+	var back := cam.global_transform.basis.z.normalized()
+	for h in [0.25, 0.9, 1.55]:
+		var a := p + Vector3(0, h, 0) + back * 0.3
+		var b := a + back * 16.0
+		for bx in _near_occ:
+			if bx.intersects_segment(a, b):
+				hidden = true
+				break
+		if hidden: break
+	reveal_k = move_toward(reveal_k, 1.0 if hidden else 0.0, dt / 0.25)
+	var vp := get_viewport()
+	var vis := vp.get_visible_rect().size
+	var sp := cam.unproject_position(p + Vector3(0, 0.85, 0))
+	var k := Vector2(vp.size) * vp.scaling_3d_scale / vis
+	var r := REVEAL_R / maxf(cam.size, 0.1) * vis.x
+	var e := smoothstep(0.0, 1.0, reveal_k)
+	reveal_px = Vector4(sp.x * k.x, sp.y * k.y, r * k.x, e)
+	RenderingServer.global_shader_parameter_set("reveal", reveal_px)
+
 func shake(amount: float) -> void:
 	_shake = maxf(_shake, amount)
 

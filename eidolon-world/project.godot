@@ -75,3 +75,7 @@ shard_lens={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
+reveal={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}

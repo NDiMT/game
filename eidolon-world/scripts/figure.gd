@@ -119,7 +119,26 @@ func mats() -> Array[ShaderMaterial]:
 	return [body_mat, head_mat, veil_mat]
 
 func set_param(n: String, val: Variant) -> void:
-	for m in mats(): m.set_shader_parameter(n, val)
+	for m in mats():
+		m.set_shader_parameter(n, val)
+		if m.next_pass: (m.next_pass as ShaderMaterial).set_shader_parameter(n, val)
+
+## v0.6: a soft x-ray outline in light petrol wherever something stands between you and the camera
+## (a next pass with an inverted depth test, deformed exactly like the cloth it outlines)
+func enable_xray() -> void:
+	var sh := preload("res://shaders/figure_xray.gdshader")
+	for m in mats():
+		var x := ShaderMaterial.new()
+		x.shader = sh
+		x.render_priority = 2
+		for k in ["deform", "veil", "holes"]:
+			var v = m.get_shader_parameter(k)
+			if v != null: x.set_shader_parameter(k, v)
+		m.next_pass = x
+
+func _pp(m: ShaderMaterial, n: String, v: Variant) -> void:
+	m.set_shader_parameter(n, v)
+	if m.next_pass: (m.next_pass as ShaderMaterial).set_shader_parameter(n, v)
 
 ## the hem stripe brightens as shrines are woken
 func set_hem(k: float) -> void:
@@ -138,21 +157,21 @@ func apply_pose(p: Pose) -> void:
 	body.rotation = Vector3(p.lean_x - 0.42 * c, 0.0, p.lean_z)
 	body.scale = Vector3((1.0 + 0.10 * c) * (1.0 - slim), 1.0 - 0.22 * c, (1.0 + 0.10 * c) * (1.0 - slim * 0.5))
 	head.rotation = Vector3(p.head_pitch - 0.55 * c, p.head_yaw, p.head_roll)
-	body_mat.set_shader_parameter("sway", p.sway)
-	body_mat.set_shader_parameter("flare", p.flare)
-	body_mat.set_shader_parameter("ripple", p.ripple)
-	body_mat.set_shader_parameter("phase", p.phase)
-	body_mat.set_shader_parameter("breath", p.breath)
-	body_mat.set_shader_parameter("turn", p.lean_z)
-	body_mat.set_shader_parameter("clasp", p.clasp)
-	body_mat.set_shader_parameter("reach", p.reach)
+	_pp(body_mat, "sway", p.sway)
+	_pp(body_mat, "flare", p.flare)
+	_pp(body_mat, "ripple", p.ripple)
+	_pp(body_mat, "phase", p.phase)
+	_pp(body_mat, "breath", p.breath)
+	_pp(body_mat, "turn", p.lean_z)
+	_pp(body_mat, "clasp", p.clasp)
+	_pp(body_mat, "reach", p.reach)
 	# the veil streams back a little with the walk and lifts with the stride
 	var vs := p.sway * 1.6 + Vector2(0.0, p.ripple * 0.035)
 	if veil_contrary: vs = Vector2(-vs.x, vs.y * 0.6 - 0.012)
-	veil_mat.set_shader_parameter("sway", vs)
-	veil_mat.set_shader_parameter("veil_off", PI if veil_contrary else 0.0)
-	veil_mat.set_shader_parameter("phase", p.phase)
-	veil_mat.set_shader_parameter("ripple", p.ripple)
+	_pp(veil_mat, "sway", vs)
+	_pp(veil_mat, "veil_off", PI if veil_contrary else 0.0)
+	_pp(veil_mat, "phase", p.phase)
+	_pp(veil_mat, "ripple", p.ripple)
 
 # ------------------------------------------------------------------ meshes
 ## SurfaceTool vertices carry COLOR (rgb albedo, a = emission) and UV.x = material (0 cloth, 1 marble).

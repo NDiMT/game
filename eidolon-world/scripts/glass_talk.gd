@@ -17,16 +17,17 @@ signal sound(name: String)
 
 ## the stroke library, as SHE writes (her side). On your side x is reversed.
 const TEMPLATES := {
-	# "follow": a hooked arrow climbing up and to the right (as she writes it)
-	"follow": [[Vector2(-0.45, -0.55), Vector2(-0.45, 0.25), Vector2(0.35, 0.25)],
-		[Vector2(0.35, 0.25), Vector2(0.12, 0.5)], [Vector2(0.35, 0.25), Vector2(0.12, 0.0)]],
+	# "follow": v0.6, a letter of the sculptor's script (letter 4, the Greek-key hook on a stem: a stem
+	# rising, a bar, a hook turning back in), written in one stroke as she writes it
+	"follow": [[Vector2(-0.44, -0.5), Vector2(-0.44, 0.38), Vector2(-0.4, 0.47), Vector2(-0.3, 0.5), Vector2(0.34, 0.5),
+		Vector2(0.42, 0.46), Vector2(0.44, 0.38), Vector2(0.44, -0.02), Vector2(0.4, -0.09), Vector2(0.32, -0.1), Vector2(-0.02, -0.1)]],
 	# "together": two arcs facing each other, each ending in an inward hook; she draws one, you the other
 	"together_half": [[Vector2(0.0, 0.62), Vector2(0.24, 0.55), Vector2(0.38, 0.32), Vector2(0.42, 0.0),
 		Vector2(0.38, -0.32), Vector2(0.24, -0.55), Vector2(0.06, -0.6), Vector2(0.1, -0.42)]],
 }
 const N := 32                     # resample points
 const MATCH := 0.24               # mean distance (panel units) still accepted
-const MASK := Vector2i(300, 400)  # wipe-mask resolution (3:4, the pane's aspect)
+const MASK := Vector2i(420, 560)  # wipe-mask resolution (3:4, the pane's aspect)
 
 var id := ""
 var phase := "closed"             # closed, writing, waiting, drawing, success
@@ -57,7 +58,7 @@ class Ink extends Node2D:
 	var finger_k := 0.0
 	var palm := Vector2(-99, -99)
 	var palm_k := 0.0
-	var width := 13.0
+	var width := 21.0
 	func _draw() -> void:
 		for h in her: _poly(h[0], h[1], Color(1, 0, 0), width)
 		for m in mine: _poly(m[0], 1.0, Color(m[1], 0, 0), width * 1.15)
@@ -73,22 +74,46 @@ class Ink extends Node2D:
 				draw_line(Vector2(x * 0.9, -14), Vector2(x * 1.1, -50 - (6.0 if k in [1, 2] else 0.0)), c, 11.0, true)
 			draw_line(Vector2(26, 12), Vector2(46, -6), c, 11.0, true)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	## v0.6: a calligraphic brush, not a felt pen: a broad nib held at an angle (thick down-strokes,
+	## fine hairlines across), pressed in at the start and lifted off in a long taper. Drawn as ONE strip
+	## of quads with shared (mitred) edges, so nothing is painted twice into the additive mask.
+	const NIB := -0.6                # the nib's angle (radians)
 	func _poly(pts: PackedVector2Array, prog: float, col: Color, w: float) -> void:
 		if pts.size() < 2 or prog <= 0.0: return
 		var L := 0.0
 		for i in pts.size() - 1: L += pts[i].distance_to(pts[i + 1])
-		var want := L * clampf(prog, 0.0, 1.0)
-		var out := PackedVector2Array([pts[0]])
+		if L < 0.5: return
+		var n := clampi(int(L / 2.0), 2, 400)
+		var want := clampf(prog, 0.0, 1.0)
+		var sp := PackedVector2Array()
+		var ss := PackedFloat32Array()
 		var acc := 0.0
-		for i in pts.size() - 1:
-			var seg := pts[i].distance_to(pts[i + 1])
-			if acc + seg >= want:
-				out.append(pts[i].lerp(pts[i + 1], (want - acc) / maxf(seg, 0.0001)))
-				break
-			out.append(pts[i + 1])
-			acc += seg
-		if out.size() >= 2: draw_polyline(out, col, w, true)
-		for p in [out[0], out[out.size() - 1]]: draw_circle(p, w * 0.5, col)
+		var i := 0
+		for k in n + 1:
+			var d := L * float(k) / n
+			if d > L * want + 0.001: break
+			while i < pts.size() - 2 and acc + pts[i].distance_to(pts[i + 1]) < d:
+				acc += pts[i].distance_to(pts[i + 1])
+				i += 1
+			var seg := maxf(pts[i].distance_to(pts[i + 1]), 0.0001)
+			sp.append(pts[i].lerp(pts[i + 1], clampf((d - acc) / seg, 0.0, 1.0)))
+			ss.append(d / L)
+		if sp.size() < 2: return
+		var left := PackedVector2Array()
+		var right := PackedVector2Array()
+		for k in sp.size():
+			var t := (sp[mini(k + 1, sp.size() - 1)] - sp[maxi(k - 1, 0)])
+			t = t.normalized() if t.length() > 0.0001 else Vector2.RIGHT
+			var s := ss[k]
+			var press := (smoothstep(0.0, 0.05, s) * 0.45 + 0.55) * (1.0 - smoothstep(0.7, 1.0, s) * 0.85)
+			var nib := 0.4 + 0.6 * absf(sin(t.angle() - NIB))
+			var r := maxf(w * 0.5 * press * nib, 0.7)
+			var nn := Vector2(-t.y, t.x) * r
+			left.append(sp[k] + nn)
+			right.append(sp[k] - nn)
+		var cs := PackedColorArray([col, col, col, col])
+		for k in sp.size() - 1:
+			draw_primitive(PackedVector2Array([left[k], left[k + 1], right[k + 1], right[k]]), cs, PackedVector2Array())
 	func _ellipse(c: Vector2, r: Vector2, col: Color) -> void:
 		var pts := PackedVector2Array()
 		for i in 24: pts.append(c + Vector2(cos(TAU * i / 24.0) * r.x, sin(TAU * i / 24.0) * r.y))
@@ -164,7 +189,24 @@ static func place(strokes: Array, mirror: bool, scale: float, at: Vector2) -> Ar
 	for s in strokes:
 		var o := PackedVector2Array()
 		for p in s: o.append(Vector2(-p.x if mirror else p.x, p.y) * scale + at)
-		out.append(o)
+		out.append(smooth(o))
+	return out
+
+## v0.6: a written line flows: Catmull-Rom through the template's points (4 steps per span)
+static func smooth(pts: PackedVector2Array, steps := 4) -> PackedVector2Array:
+	if pts.size() < 3: return pts
+	var out := PackedVector2Array()
+	for i in pts.size() - 1:
+		var p0 := pts[maxi(i - 1, 0)]
+		var p1 := pts[i]
+		var p2 := pts[i + 1]
+		var p3 := pts[mini(i + 2, pts.size() - 1)]
+		for k in steps:
+			var t := float(k) / steps
+			var t2 := t * t
+			var t3 := t2 * t
+			out.append(0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3))
+	out.append(pts[pts.size() - 1])
 	return out
 
 func _px(stroke: PackedVector2Array) -> PackedVector2Array:
