@@ -969,6 +969,10 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("random walk: always on walkable ground", walk_violations == 0, "%d samples, %d violations, max step dy %.3f" % [walk_samples, walk_violations, max_dy])
 		ok("random walk: never inside a solid prop's footprint", solid_hits == 0, "%d samples, %d hits" % [walk_samples, solid_hits]))
+	# ---- v0.8.1 the interaction highlight follows the prompt's target, every frame of the chapter
+	step_do(func() -> void:
+		ok("interaction highlight: always on the target the button resolves to", hl_bad == 0 and hl_frames > 1000 and hl_on > 200, "%d frames, %d with a target, %d mismatches" % [hl_frames, hl_on, hl_bad])
+		ok("interaction highlight: something visibly lit for every target (a mesh glow, or the floor ring)", hl_empty < 5, "%d" % hl_empty))
 	# ---- v0.8 props: loaded, solid, and no required path closed
 	step_do(func() -> void:
 		var pr: Props = game.props
@@ -1093,8 +1097,20 @@ func _plan() -> void:
 
 var _next_report := 0.0
 var solid_hits := 0
+var hl_frames := 0
+var hl_bad := 0
+var hl_on := 0
+var hl_empty := 0
 func _process(dt: float) -> void:
 	t += dt
+	# v0.8.1: the highlight is always on the prompt's own target (both are set together, last frame)
+	if game and game.highlight and game.mode == "play":
+		hl_frames += 1
+		var fid: String = game.focus.id if game.focus else ""
+		if game.highlight.id != fid: hl_bad += 1
+		elif fid != "":
+			hl_on += 1
+			if game.highlight.meshes.is_empty() and not game.highlight._ring.visible and float(game.highlight._ring_mat.get_shader_parameter("k")) <= 0.0: hl_empty += 1
 	if t > _next_report:
 		_next_report += 20.0
 		print("  .. sim %.0fs  real %.0fs  step %d/%d" % [t, Time.get_ticks_msec() / 1000.0, si, steps.size()])

@@ -285,13 +285,6 @@ func _build_pool() -> void:
 		var regs := []
 		for k in 2: regs.append(level.walk(Rect2(), 0.0, NAN, -1, "pool%d_%d_%d" % [c.x, c.y, k], false))
 		pool_pieces[c] = {"node": node, "base": base, "real": ri, "regions": regs, "seams": seams, "dirs": dirs}
-	# (QA P0-1d) the rim spots you turn the far slabs from: a worn bronze footplate, a mark toward its pin
-	for sp in [[Vector3(-3.75, 0.0, -0.4), PI], [Vector3(-4.5, 0.0, 4.05), 0.0]]:
-		var fm := MB.new()
-		fm.cyl(sp[0] + Vector3(0, 0.008, 0), 0.32, 0.34, 0.016, Color(0.5, 1.0, 0.0), 18)
-		puzzles.marble_instance(fm.commit(), self)
-		var am := _smat("res://shaders/floor_mark.gdshader", {"kind": 0.0, "intensity": 0.75})
-		_mi(_plane(Vector2(0.36, 0.36)), am, Transform3D(Basis(Vector3.UP, sp[1]), sp[0] + Vector3(0, 0.02, 0)))
 	# the reflections, on the water
 	pool_mat = _smat("res://shaders/pool_stones.gdshader", {"noise_tex": level.noise_tex, "water_y": Ch1Geo.WATER_Y, "top_y": 0.0, "pulse": 0.0})
 	pool_mat.render_priority = -1            # (under the sheen: a fixed order, never a sort flicker)

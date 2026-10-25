@@ -14,6 +14,7 @@ static var autotest := false
 var world: World
 var level: Level
 var props: Props
+var highlight: Highlight
 var puzzles: Puzzles
 var chapter: Chapter
 var cine: Cinematic
@@ -76,6 +77,9 @@ func _ready() -> void:
 	level.add_child(props)
 	props.build(level)
 	print("[props] %d placed" % props.placed.size())
+	highlight = Highlight.new()
+	add_child(highlight)
+	highlight.setup([puzzles, chapter, props], [level.marble_mat, level.marble_occ_mat])
 	# v0.7: every prop and piece of architecture is solid (see Level.auto_solids)
 	var au := level.auto_solids([puzzles, chapter])
 	print("[solids] %d primitives, %d solid footprints, %d obstacles added (%d ms)" % [au["parts"], au["solids"].size(), au["added"], au["ms"]])
@@ -361,6 +365,10 @@ func _process(dt: float) -> void:
 			sfx.stop_cue("shrine_awaken", 1.2)
 			cine.skip()
 	if mode == "play": _update_focus()
+	elif highlight and highlight.id != "":
+		focus = null
+		highlight.set_target(null)
+	if highlight: highlight.update(dt)
 	else: controls.show_interact("")
 	_update_hum()
 	if mode != "title":
@@ -420,6 +428,8 @@ func _update_focus() -> void:
 	if puzzles.busy: best = null
 	focus = best
 	controls.show_interact(best.icon if best else "")
+	# v0.8.1: what the button will act on glows (chosen here, with the prompt)
+	if highlight: highlight.set_target(best)
 
 const EXPOSED := ["stub", "b1", "HG", "LB", "E", "EB", "sealed_way"]
 const AREA_WIND := {"waking_pool": 0.35, "stair_breath": 0.6, "hall_glass": 0.12, "shard_gallery": 0.1, "garden_veiled": 0.3,
