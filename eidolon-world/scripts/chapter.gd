@@ -1079,7 +1079,7 @@ func _build_gallery() -> void:
 		return m
 	var west := Basis(Vector3.UP, -PI * 0.5)
 	# the true arch: the wall in it is not there (seen through the shard)
-	_mi(_quad(Vector2(1.4, 3.0)), mk.call(2.0, 0.0), Transform3D(west, Vector3(9.97, 2.5, -11.0)))
+	_mi(_quad(Vector2(1.4, 1.1)), mk.call(2.0, 0.0), Transform3D(west, Vector3(9.97, 1.55, -11.0)))
 	# her statue: Theron's Ione, veiled, on a plinth, facing the Hall door
 	var st := Node3D.new()
 	st.position = SH_STATUE
@@ -1893,6 +1893,7 @@ func collect_memory(id: String) -> void:
 ## Several settings level it (solve_scales); none without her.
 const SC_X := 29.7                          # the pivot glass (plane x), facing west
 const SC_ARM := Vector3(29.7, 7.75, -49.0)  # the pivot
+const SC_GLASS_H := 1.25                    # v0.9: the glass's height over the floor (she stands 1.1 m)
 const SC_UNIT := 0.95                       # metres per hook step
 const SC_PAN_Y := 4.05                      # (overhead: you walk beneath the pans)
 const SC_TILE_Z := -50.2
@@ -1932,15 +1933,18 @@ func _build_scales() -> void:
 	lm.box(Vector3(0, -0.9, 0), Vector3(0.4, 1.4, 0.4), Color(0.5, 1.0, 0.0))
 	puzzles.marble_instance(lm.commit(), lift_node)
 	puzzles.rune_quad(lift_node, Vector3(0, 0.012, 0), Vector2(1.2, 1.2), Basis(Vector3.RIGHT, -PI * 0.5), 2.0, 0.25)
-	# the pivot glass: a tall standing pane, its back stone; the pivot block on top with the pointer
+	# the pivot glass: a low standing pane (v0.9: it was 5.5 m tall and hid the right-hand pans from the one
+	# fixed view; she still shows whole in it), its back stone; a slender post up to the pivot block
 	var gm := MB.new()
-	gm.box(Vector3(SC_X + 0.12, 4.75, -48.95), Vector3(0.2, 5.5, 3.9), Color(0.5, 0.25, 0.0))
+	gm.box(Vector3(SC_X + 0.12, 2.0 + SC_GLASS_H * 0.5 + 0.05, -48.95), Vector3(0.2, SC_GLASS_H + 0.1, 3.9), Color(0.5, 0.25, 0.0))
+	gm.box(Vector3(SC_X + 0.12, 2.0 + SC_GLASS_H + 0.16, -48.95), Vector3(0.3, 0.12, 4.0), Color(0.5, 0.25, 0.0))
+	gm.box(Vector3(SC_X + 0.12, (2.0 + SC_GLASS_H + 7.4) * 0.5, -48.95), Vector3(0.18, 7.4 - 2.0 - SC_GLASS_H, 0.18), Color(0.5, 0.25, 0.0))
 	gm.box(Vector3(SC_X, 7.62, SC_ARM.z), Vector3(0.6, 0.5, 0.6), Color(0.5, 1.0, 0.0))
 	gm.box(Vector3(SC_X, 2.1, -48.95), Vector3(0.5, 0.2, 4.0), Color(0.5, 0.25, 0.0))
 	puzzles.marble_instance(gm.commit(), self)
 	level.ob_rect(Level.R(SC_X - 0.2, -50.95, SC_X + 0.25, -46.95))
-	var gsize := Vector2(3.8, 5.3)
-	var gc := Vector3(SC_X, 4.75, -48.95)
+	var gsize := Vector2(3.8, SC_GLASS_H - 0.05)
+	var gc := Vector3(SC_X, 2.0 + SC_GLASS_H * 0.5 + 0.05, -48.95)
 	var mm := puzzles._mirror_quad(gc, Basis(Vector3.UP, -PI * 0.5), gsize, false, 1.0)
 	mm.set_shader_parameter("ncols", 0)
 	mm.set_shader_parameter("floor_y", 2.0)
@@ -2019,10 +2023,12 @@ func _build_scales() -> void:
 	for k in 3:
 		var tp := Vector3(SC_X - (k + 1) * SC_UNIT, 2.012, SC_TILE_Z)
 		sc_tile_mats.append(puzzles.rune_quad(self, tp, Vector2(0.72, 0.72), Basis(Vector3.RIGHT, -PI * 0.5), 2.0, 0.22, float(k + 1)))
-	level.inscription("sc_stele", Vector3(27.0, 2.0, -46.3), "The scale weighs what stands before it, as the glass sees it.\nShe was never as heavy as stone.", 1.1,
-		Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(26.15, 2.62, -46.9)), Vector2(0.8, 0.75))
+	# (v0.9: on the far, north side, its face toward you)
+	level.inscription("sc_stele", Vector3(31.6, 2.0, -50.95), "The scale weighs what stands before it, as the glass sees it.\nShe was never as heavy as stone.", 1.1,
+		Transform3D(Basis(), Vector3(31.6, 2.62, -51.5)), Vector2(0.8, 0.75))
+	level.ob_rect(Level.R(31.1, -51.75, 32.1, -51.4))
 	var sm := MB.new()
-	sm.box(Vector3(26.05, 2.6, -46.9), Vector3(0.2, 1.2, 1.0), Color(0.5, 0.25, 0.0))
+	sm.box(Vector3(31.6, 2.6, -51.6), Vector3(1.0, 1.2, 0.2), Color(0.5, 0.25, 0.0))
 	puzzles.marble_instance(sm.commit(), self)
 
 func _pan_free(k: int) -> bool:
@@ -2349,8 +2355,8 @@ func _build_four() -> void:
 	_mi(_plane(Vector2(1.5, 1.5)), four_ring, Transform3D(Basis(), four_pos(3) + Vector3(0, 0.262, 0)))
 	level.add_interact("four_wait", four_pos(3) + Vector3(0, 0.25, 0), "wait", wait_still, 0.55,
 		func() -> bool: return not state["four"])
-	level.inscription("s_four", Vector3(21.5, 2.0, -29.2), "A thousand of her wait for the one who breathes.\nStand where she stood. Be still, as we are still.", 1.0,
-		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(21.5, 2.012, -29.6)), Vector2(1.0, 0.7))
+	level.inscription("s_four", Vector3(22.2, 2.0, -29.2), "A thousand of her wait for the one who breathes.\nStand where she stood. Be still, as we are still.", 1.0,
+		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(22.2, 2.012, -29.6)), Vector2(1.0, 0.7))      # (v0.9: east of the court glass's line)
 
 func on_four_plinth() -> bool:
 	var p := game.player.position
@@ -2451,7 +2457,7 @@ func hint_target(area: String) -> Vector3:
 		"echo_corridor": return Vector3(18.3, 3.6, -46.2) if not state["echo_room"] else Vector3.INF
 		"scales":
 			if state["scales"]: return LIFT_C + Vector3(0, 0.8, 0) if lift_h < 0.5 else Vector3.INF
-			return Vector3(SC_X - 0.2, 4.5, -48.95)          # the glass of the balance
+			return Vector3(SC_X - 0.2, 2.7, -48.95)          # the glass of the balance
 		"eidolon_ledge":
 			if puzzles.state["plate"]: return Vector3.INF
 			if game.player.position.y > 3.0: return Vector3(29.8, 3.0, -22.4)

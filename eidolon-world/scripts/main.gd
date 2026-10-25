@@ -220,28 +220,6 @@ func _settle_camera(yaw_i: int, at: Vector3) -> void:
 	tw.tween_property(world.rig, "position", at + Vector3(0, 0.6, 0), 2.0)
 	tw.tween_callback(func() -> void: world.follow = player)
 
-# ------------------------------------------------------------------ framing (v0.9)
-var _frame_key := ""
-var _frame_vs := Vector2.ZERO
-var _frame_rig := Vector3.INF
-var _frame_slack := Vector2.ZERO
-
-## the framed room you are in: the camera holds its anchor (solved for this screen's shape)
-func _update_framing() -> void:
-	var k := Framing.room_at(player.position) if (mode == "play" or mode == "wake") else ""
-	var vs := get_viewport().get_visible_rect().size
-	if k != _frame_key or vs != _frame_vs:
-		_frame_key = k
-		_frame_vs = vs
-		_frame_rig = Vector3.INF
-		if k != "":
-			var vo := World.V_OFFSET * world.zoom / World.CAM_SIZE
-			var sol := Framing.solve(k, level, vs.x, vs.y, world.zoom, vo)
-			_frame_rig = sol["rig"]
-			_frame_slack = sol["slack"]
-	world.frame_anchor = _frame_rig
-	world.frame_slack = _frame_slack
-
 # ------------------------------------------------------------------ input
 func _input(e: InputEvent) -> void:
 	if mode == "title":
@@ -378,15 +356,13 @@ func _process(dt: float) -> void:
 		var wide := p.x > 20.5 and p.z < -18.5     # the eidolon ledge and the shrine: see across the gap
 		var cs: float = world.zoom                 # v0.9: one fixed view; no per-area zoom
 		if mode != "finale" and mode != "cine": world.cam_size_target = cs
-		_update_framing()
-		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs * (1.25 if _frame_key != "" else 1.0)
+		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs
 		if mode == "play":
 			var off := Vector3.ZERO
 			if bridge_focus > 0.0:
 				bridge_focus -= dt
 				off = (Vector3(27.7, 2.0, -26.5) - p) * 0.7         # watch the bridge rise
 				off.y = 0.0
-				world.frame_anchor = Vector3.INF
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
 	if mode == "play": _auto_quality(dt)
@@ -628,11 +604,11 @@ func _end_cinematic() -> void:
 ## there lowers it (a way back)
 func _drawbridge_lever() -> void:
 	var m := MB.new()
-	m.box(Vector3(21.55, 2.3, -22.2), Vector3(0.3, 0.6, 0.3), Color(0.5, 0.25, 0.0))
-	m.cyl(Vector3(21.55, 2.85, -22.2), 0.03, 0.03, 0.7, Color(0.5, 1.0, 0.0), 6, Basis(Vector3.BACK, 0.5))
+	m.box(Vector3(21.55, 2.3, -23.2), Vector3(0.3, 0.6, 0.3), Color(0.5, 0.25, 0.0))
+	m.cyl(Vector3(21.55, 2.85, -23.2), 0.03, 0.03, 0.7, Color(0.5, 1.0, 0.0), 6, Basis(Vector3.BACK, 0.5))
 	puzzles.marble_instance(m.commit(), chapter)
-	level.ob_circle(Vector2(21.55, -22.2), 0.25)
-	level.add_interact("drawbridge", Vector3(21.55, 2.0, -22.2), "lever", func() -> void: puzzles.lower_drawbridge(false), 1.0,
+	level.ob_circle(Vector2(21.55, -23.2), 0.25)
+	level.add_interact("drawbridge", Vector3(21.55, 2.0, -23.2), "lever", func() -> void: puzzles.lower_drawbridge(false), 1.0,
 		func() -> bool: return not puzzles.state.get("drawbridge", false) and player.position.x > 21.0)
 
 # ------------------------------------------------------------------ v0.5b: a conversation through the glass
@@ -1015,11 +991,10 @@ func cmd(c: String) -> Variant:
 		"interact": return try_interact()
 		"yaw": world.set_yaw_index(int(a[1]))
 		"zoom":
-			# (dev only: the fixed width, for tuning; the framing re-solves)
+			# (dev only: another width, for screenshots)
 			world.zoom = float(a[1])
 			world.cam.size = float(a[1])
 			world.cam_size_target = float(a[1])
-			_frame_key = "?"
 		"slowmo": Engine.time_scale = float(a[1])
 		"snd": sfx.play(a[1], float(a[2]) if a.size() > 2 else 0.0)
 		"reset_save": _delete_save(); save_data = {}

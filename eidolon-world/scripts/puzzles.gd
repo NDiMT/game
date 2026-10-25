@@ -1124,7 +1124,7 @@ func _reflectors() -> void:
 	r.planar = pm
 	_add_refl(r); hall_mirror = r
 	_pane(Vector3(-2.4, 1.0, -15.6), 0.0, Vector2(1.6, 2.6), false)
-	_pane(Vector3(2.2, 1.0, -14.6), -PI * 0.5, Vector2(1.6, 2.6), true)
+	_pane(Vector3(2.2, 1.0, -14.6), -PI * 0.5, Vector2(1.6, 2.2), true)      # (v0.9: lower, so the shard by the door shows over it)
 	# 4. the great Eidolon glass: the reflection steps out of the frame and walks the other world
 	r = Reflector.new()
 	r.kind = "eidolon"; r.plane_n = Vector3.BACK; r.plane_d = GLASS_Z

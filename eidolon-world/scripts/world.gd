@@ -1,6 +1,6 @@
 class_name World
 extends Node3D
-## Environment, light, the orthographic isometric camera (v0.9: one fixed view, framed rooms), fog sheets
+## Environment, light, the orthographic isometric follow camera (v0.9: one fixed view: no rotation, no zoom), fog sheets
 ## that follow the player (with a clear bubble projected along the view ray so the bubble is centred on
 ## the player on screen), light shafts, floating dust, backdrop and the film-grain overlay.
 ## `awaken` (0..1) drives the shrine finale: fog recedes, light returns.
@@ -9,14 +9,11 @@ const PITCH := deg_to_rad(36.0)
 const DIST := 24.0                 # v0.8 (was 40): an orthographic camera sees the same at any distance;
                                    # closer, the directional shadow covers no empty air in front of the scene
 const CAM_SIZE := 10.5             # reference width for the vertical framing offset
-## v0.9: ONE fixed view. No rotation, no zoom: one iso yaw and one width (metres seen across a portrait
-## phone), tuned with tests/framing_test so every puzzle room fits whole (see Framing)
-const FIXED_SIZE := 13.0
+## v0.9: ONE fixed view. No rotation, no zoom: one iso yaw and the old default width (8.8 m across), the
+## camera following you as before; the rooms are laid out so nothing stands between it and a puzzle piece
+## (tests/framing_test: the occlusion test)
+const FIXED_SIZE := 8.8
 const V_OFFSET := 1.6              # the vertical framing offset at CAM_SIZE (scaled with the size)
-## in a framed room the camera holds the room's anchor and follows you only this much (fraction of your
-## offset from the anchor, at most FOLLOW_MAX metres each way in the screen plane)
-const FOLLOW_K := 0.15
-const FOLLOW_MAX := 0.45
 const SHAFT_BASE := [0.20, 0.16, 0.14]
 const VEIL := 1                    # fog_mats index of the veil sheet with the clear bubble
 
@@ -43,9 +40,6 @@ var shaft_mats: Array[ShaderMaterial] = []
 var zoom := FIXED_SIZE            # (kept for the cinematics, which read it; never changes)
 var backdrop_mat: ShaderMaterial
 var cam_size_target := FIXED_SIZE
-## the framed room's rig anchor (Vector3.INF in corridors: plain follow)
-var frame_anchor := Vector3.INF
-var frame_slack := Vector2.ZERO    # how far the follow may move from it (right, up) without cutting the room
 var cam_lock := false
 var quality_high := true           # false = the low feature set (bloom off, fewer motes, ...)
 var tier := "high"                 # high | auto | low
@@ -483,19 +477,9 @@ func _process(dt: float) -> void:
 		var tt := _t * 1.3 + ph
 		node.position = c + Vector3(cos(tt) * r2 + sin(tt * 3.1) * 0.12, sin(tt * 2.3) * 0.25 + sin(tt * 7.0) * 0.05, sin(tt * 0.9) * r2)
 	if follow:
-		var fp := follow.global_position + Vector3(0, 0.6, 0)
-		var target := fp + look_offset
-		var rate := 4.0
-		if frame_anchor != Vector3.INF:
-			# v0.9: the room's framing, with a little of you in it; eases in over about 0.6 s
-			var b := Framing.basis()
-			var d := fp - frame_anchor
-			var mx := minf(FOLLOW_MAX, frame_slack.x)
-			var my := minf(FOLLOW_MAX, frame_slack.y)
-			target = frame_anchor + look_offset + b.x * clampf(d.dot(b.x) * FOLLOW_K, -mx, mx) + b.y * clampf(d.dot(b.y) * FOLLOW_K, -my, my)
-			rate = 5.0
+		var target := follow.global_position + Vector3(0, 0.6, 0) + look_offset
 		if _rig_smooth == Vector3.INF or not _was_following: _rig_smooth = rig.position
-		_rig_smooth = _rig_smooth.lerp(target, 1.0 - exp(-dt * rate))
+		_rig_smooth = _rig_smooth.lerp(target, 1.0 - exp(-dt * 4.0))
 		rig.position = _pixel_snap(_rig_smooth)
 	_was_following = follow != null
 	if _shake > 0.0:

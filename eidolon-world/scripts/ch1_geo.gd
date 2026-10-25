@@ -183,11 +183,14 @@ static func _gallery(lv: Level) -> void:
 	lv.ob_rect(R(10.0, -16.9, 10.35, -11.7))
 	lv.ob_rect(R(10.0, -10.3, 10.35, -9.3))
 	lv.ob_rect(R(4.6, -9.6, 10.35, -9.25))
-	# the true way on: an arch in the east parapet, a wall in it that is not there (seen through the shard)
-	lv.box(z, Vector3(10.15, 2.6, -11.85), Vector3(0.36, 3.2, 0.36), 0.25, true)
-	lv.box(z, Vector3(10.15, 2.6, -10.15), Vector3(0.36, 3.2, 0.36), 0.25, true)
-	lv.box(z, Vector3(10.15, 4.35, -11.0), Vector3(0.5, 0.4, 2.1), 0.25, true)
-	lv.wall("GLs", R(10.0, -11.7, 10.3, -10.3), 1.0, 4.15, true)
+	# the true way on: a gate in the east parapet between two newel posts, a stretch of parapet in it that is
+	# not there (seen through the shard). (v0.9: no arch: from the one fixed view its posts and its tall
+	# false wall hid the garden's turned statues)
+	lv.box(z, Vector3(10.15, 1.7, -11.85), Vector3(0.36, 1.4, 0.36), 0.25, true)
+	lv.box(z, Vector3(10.15, 1.7, -10.15), Vector3(0.36, 1.4, 0.36), 0.25, true)
+	lv.box(z, Vector3(10.15, 2.46, -11.85), Vector3(0.46, 0.12, 0.46), 0.25, true)
+	lv.box(z, Vector3(10.15, 2.46, -10.15), Vector3(0.46, 0.12, 0.46), 0.25, true)
+	lv.wall("GLs", R(10.0, -11.7, 10.3, -10.3), 1.0, 2.05, true)
 	lv.ob_rect(R(10.0, -11.7, 10.35, -10.3), "gallery_secret")
 	# the threshold out to the Garden
 	lv.slab(z, R(10.0, -11.7, 10.4, -10.3), 1.0, 0.7, 0.0)
@@ -290,9 +293,6 @@ static func _echo(lv: Level) -> void:
 	lv.wall(z, R(19.2, -46.7, 26.2, -46.4), 2.0, 3.2, true)
 	lv.wall("ECs", R(17.4, -46.7, 19.2, -46.4), 2.0, 3.2, true)
 	lv.ob_rect(R(17.4, -46.8, 19.2, -46.3), "echo_secret")
-	# (v0.9) a veiled watcher fills the corridor's far west corner: the corridor fits the fixed view
-	lv.statue(z, Vector3(9.5, 2.0, -45.9), PI * 0.75, 0.75, 0.45)
-	lv.ob_rect(R(9.0, -46.4, 10.0, -45.4))
 	# the hidden room (a memory of the sea is kept there)
 	lv.slab(z, R(16.4, -50.2, 20.2, -46.4), 2.0, 0.7, 0.0)
 	lv.walk(R(17.5, -50.2, 19.1, -46.3), 2.0, NAN, -1, "EC_room_door", false)

@@ -959,7 +959,7 @@ func _plan() -> void:
 	step_until("back where your reflection stands on hers", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
 	step_until("both plates held at once: hers answers", func() -> bool: return game.puzzles.state["plate"], 4.0)
 	step_until("the bridge rises", func() -> bool: return not game.puzzles.busy, 8.0)
-	step_do(func() -> void: walk_to(22.2, -22.2))
+	step_do(func() -> void: walk_to(22.2, -23.2))
 	step_until("to the lever", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
 	step_do(func() -> void: ok("the drawbridge lever (a way back)", _focus() == "drawbridge" and game.try_interact(), _focus()))
 	step_until("the drawbridge falls", func() -> bool: return game.level.named["LB"].enabled, 4.0)

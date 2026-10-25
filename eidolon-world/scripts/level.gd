@@ -954,14 +954,13 @@ func _court() -> void:
 	ob_rect(R(10.9, -27.35, 13.1, -26.9), "mural_door")
 	# great columns at the corners, one broken
 	column(Vector3(7.6, 2.0, -26.4), 4.6)
-	# (v0.9) its square plinth fills the far corner: the court fits the one fixed view
-	box(z, Vector3(7.8, 2.2, -26.2), Vector3(1.6, 0.4, 1.6), 0.25)
-	ob_rect(R(7.0, -27.0, 8.6, -25.4))
 	stump(Vector3(7.6, 2.0, -17.6), 1.6)
 	rubble(Vector3(8.6, 2.0, -18.4), 0.6, 5)
-	inscription("l_stele", Vector3(8.3, 2.0, -21.4), "Where our light ends, hers goes on.\nShe set her own glasses there, and waited.", 1.2,
-		Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(7.665, 2.62, -21.4)), Vector2(0.95, 1.0))
-	box(z, Vector3(7.55, 2.6, -21.4), Vector3(0.22, 1.2, 1.1), 0.25)
+	# (v0.9: on the far, north side, its face toward you: from the one fixed view a stele on the west edge
+	# showed only its back)
+	inscription("l_stele", Vector3(15.6, 2.0, -25.9), "Where our light ends, hers goes on.\nShe set her own glasses there, and waited.", 1.2,
+		Transform3D(Basis(), Vector3(15.6, 2.62, -26.465)), Vector2(0.95, 1.0))
+	box(z, Vector3(15.6, 2.6, -26.58), Vector3(1.1, 1.2, 0.22), 0.25)
 
 func _ledge() -> void:
 	var z := "E"

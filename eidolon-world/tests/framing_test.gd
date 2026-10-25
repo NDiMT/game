@@ -1,8 +1,13 @@
 extends Node
-## v0.9 framing test (headless): for every framed room, at the fixed camera (one yaw, one size), solve the
-## room's anchor for each phone screen and check that every interactable, exit and key piece lands in the safe
-## rect, also with the gentle follow pushed to its limits. Prints FRAMING PASS / FRAMING FAIL and the list.
-const SCREENS := [Vector2(360, 780), Vector2(390, 844), Vector2(430, 932)]
+## v0.9 OCCLUSION test (headless): from the one fixed camera (orthographic: only its direction matters),
+## every puzzle piece and interactable must be in clear sight: no wall, column or prop between it and the
+## camera. Builds a ray-test copy of every visible solid mesh in the world (meshes and multimeshes: walls,
+## columns, props, puzzle objects) and casts from each piece (half a metre above its foot) back toward the
+## camera, as far as the near plane. Prints OCCLUSION PASS / OCCLUSION FAIL and what hides what.
+const LIFT := 0.5            # the piece's body, not its foot
+const OWN := 0.5             # hits this close are the piece's own body
+const REACH := 22.0          # (the camera stands 24 m back, near plane 1 m)
+var lv_ref: Level
 
 func _ready() -> void:
 	Game.autotest = true
@@ -11,67 +16,80 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var lv: Level = game.level
-	var size: float = World.FIXED_SIZE
+	var body := StaticBody3D.new()
+	add_child(body)
+	var names := {}
+	var nshapes := [0]
+	lv_ref = lv
+	_collect(game, game.player, body, names, nshapes)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var space := body.get_world_3d().direct_space_state
+	var back := Framing.basis().z.normalized()
 	var fails := 0
+	var total := 0
 	for k in Framing.ROOMS:
-		var worst := 0.0
-		var bad: Array = []
-		for s: Vector2 in SCREENS:
-			var vo: float = World.V_OFFSET * size / World.CAM_SIZE
-			var sol := Framing.solve(k, lv, s.x, s.y, size, vo)
-			worst = maxf(worst, sol["need"])
-			for d in [Vector2.ZERO, Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
-				var b := Framing.basis()
-				var sl: Vector2 = sol["slack"]
-				var rig: Vector3 = sol["rig"] + b.x * d.x * minf(World.FOLLOW_MAX, sl.x) + b.y * d.y * minf(World.FOLLOW_MAX, sl.y)
-				for e in Framing.points(k, lv):
-					var px := Framing.project(e[1], rig, s.x, s.y, size, vo)
-					if px.x < Framing.SAFE_SIDE - 0.5 or px.x > s.x - Framing.SAFE_SIDE + 0.5 or px.y < Framing.SAFE_TOP - 0.5 or px.y > s.y - Framing.SAFE_BOTTOM + 0.5:
-						var line := "%s at %dx%d%s -> (%d, %d)" % [e[0], s.x, s.y, "" if d == Vector2.ZERO else " follow %s" % d, px.x, px.y]
-						if not bad.has(line): bad.append(line)
-		var ok := bad.is_empty()
-		if not ok: fails += 1
-		print("ROOM %-15s %-26s needs width %5.2f m (fixed %.1f)  %s" % [k, Names.area(k), worst, size, "OK" if ok else "CUT (%d)" % bad.size()])
-		if not ok:
-			var what := {}
-			for l in bad:
-				if l.find("follow") >= 0: continue
-				var nm: String = l.split(" at ")[0].replace(" (top)", "").replace(" (head)", "")
-				if nm.begins_with("floor"): nm = "walkable floor edge"
-				what[nm] = true
-			print("    cut: " + ", ".join(what.keys()))
-	# (v0.9) what stands between the camera and a room's pieces: walls to lower or remove (warnings)
-	var boxes: Array = []
-	for pa in lv.audit.get("boxes", []):
-		var bb0: AABB = pa[0]
-		if str(pa[3]).ends_with(":floor") or bb0.size.y < 0.25: continue
-		boxes.append(pa)
-	var bz := Framing.basis().z
-	for k in Framing.ROOMS:
-		var seen := {}          # name -> true once any of its points (feet, top) is in clear view
-		var by := {}            # name -> what hid it
-		for e in Framing.points(k, lv):
-			var p: Vector3 = e[1]
-			var raw: String = e[0]
-			# a piece is seen when its foot is (0.4 m up: the stone or stand itself, not the air above it);
-			# you are seen when your head is
-			if raw.ends_with("(top)"): continue
-			if raw.begins_with("you") and not raw.ends_with("(head)"): continue
-			if not raw.begins_with("you"): p += Vector3(0, 0.4, 0)
-			var nm: String = raw.replace(" (head)", "")
-			if not seen.has(nm): seen[nm] = false
-			var hit := ""
-			for pa in boxes:
-				var bb: AABB = pa[0]
-				if Rect2(bb.position.x, bb.position.z, bb.size.x, bb.size.z).grow(0.35).has_point(Vector2(p.x, p.z)): continue        # its own body
-				if bb.intersects_segment(p + bz * 0.05, p + bz * 30.0):
-					hit = "%s (%.1f m tall, top y %.1f, at %.1f, %.1f)" % [pa[3], bb.size.y, bb.end.y, bb.get_center().x, bb.get_center().z]
-					break
-			if hit == "": seen[nm] = true
-			else: by[nm] = hit
 		var hid: Array = []
-		for nm in seen:
-			if not seen[nm]: hid.append(nm + " <- " + by[nm])
-		print("OCCLUDED %-15s %s" % [k, "none" if hid.is_empty() else "; ".join(hid)])
-	print("FRAMING %s (%d of %d rooms cut)" % ["PASS" if fails == 0 else "FAIL", fails, Framing.ROOMS.size()])
+		for e in Framing.points(k, lv):
+			total += 1
+			var p: Vector3 = e[1] + Vector3(0, LIFT, 0)
+			if (e[0] as String).begins_with("interact pan"): p.y = Chapter.SC_PAN_Y + 0.1     # (the pan hangs overhead: it is the piece)
+			var own := OWN
+			# an inscription: its carved face is the piece (it must face the camera, and be in clear sight)
+			for mk in lv.markers:
+				if (mk[3] as Vector3) == e[1]:
+					var mx: Transform3D = mk[0]
+					var nrm := mx.basis.z.normalized()
+					p = mx.origin + nrm * 0.03
+					own = 0.05
+					if nrm.dot(back) < 0.05:
+						hid.append("%s faces away from the camera" % e[0])
+			var q := PhysicsRayQueryParameters3D.create(p + back * own, p + back * REACH)
+			var r := space.intersect_ray(q)
+			if r.is_empty(): continue
+			var nm: String = names.get(r["shape"], "?")
+			hid.append("%s <- %s (hit at %.1f, %.1f, %.1f)" % [e[0], nm, r.position.x, r.position.y, r.position.z])
+		if not hid.is_empty(): fails += 1
+		print("ROOM %-15s %-26s %s" % [k, Names.area(k), "clear" if hid.is_empty() else "HIDDEN: " + "; ".join(hid)])
+	print("OCCLUSION %s (%d of %d rooms with a hidden piece; %d pieces, %d meshes)" % ["PASS" if fails == 0 else "FAIL", fails, Framing.ROOMS.size(), total, nshapes[0]])
 	get_tree().quit()
+
+## every visible, solid mesh the main camera sees (not the player, not flat sheets: fog, water, shadows,
+## light, glass writing)
+func _collect(n: Node, skip: Node, body: StaticBody3D, names: Dictionary, count: Array) -> void:
+	if n == skip: return
+	if n is Node3D and not (n as Node3D).visible: return
+	if n is CanvasItem or n is CanvasLayer: return
+	if n is GeometryInstance3D and ((n as VisualInstance3D).layers & PlanarMirror.MAIN_MASK) != 0:
+		var xfs: Array = []
+		var mesh: Mesh = null
+		if n is MeshInstance3D:
+			mesh = (n as MeshInstance3D).mesh
+			xfs = [(n as MeshInstance3D).global_transform]
+		elif n is MultiMeshInstance3D and (n as MultiMeshInstance3D).multimesh:
+			# (headless, the rendering server keeps no instance transforms: take them from the level's lists;
+			# only the solid stone ones: columns, stumps, rubble)
+			var mm := (n as MultiMeshInstance3D).multimesh
+			var src: Array = {"Columns": lv_ref.col_full, "Stumps": lv_ref.col_stump, "Debris": lv_ref.debris}.get(str(n.get_parent().name), [])
+			if not src.is_empty():
+				mesh = mm.mesh
+				for x: Transform3D in src: xfs.append((n.get_parent() as Node3D).global_transform * x)
+		if mesh and not (mesh is PlaneMesh or mesh is QuadMesh):
+			var ab := mesh.get_aabb()
+			var thin := minf(ab.size.x, minf(ab.size.y, ab.size.z)) < 0.03
+			var faces := mesh.get_faces() if not thin else PackedVector3Array()
+			if faces.size() >= 3:
+				for xf: Transform3D in xfs:
+					var sh := ConcavePolygonShape3D.new()
+					var tf := PackedVector3Array()
+					tf.resize(faces.size())
+					for i in faces.size(): tf[i] = xf * faces[i]
+					sh.set_faces(tf)
+					var cs := CollisionShape3D.new()
+					cs.shape = sh
+					body.add_child(cs)
+					var mat = (n as GeometryInstance3D).material_override
+					if mat == null and n is MeshInstance3D and mesh.get_surface_count() > 0: mat = mesh.surface_get_material(0)
+					names[count[0]] = "%s in %s [aabb %s, %s]" % [n.name, n.get_parent().name if n.get_parent() else "-", str(xf * ab), (mat.shader.resource_path.get_file() if mat is ShaderMaterial and mat.shader else str(mat))]
+					count[0] += 1
+	for c in n.get_children(): _collect(c, skip, body, names, count)
