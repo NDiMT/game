@@ -1,34 +1,7 @@
-[0.2s] goto http://127.0.0.1:36239/eidolon-world/build/web/index.html
-PASS  load: title screen reached  in 27.3s (limit 240s)
+[0.3s] goto http://127.0.0.1:55907/eidolon-world/build/web/index.html
+PASS  load: title screen reached  in 26.1s (limit 240s)
 PASS  quality: default tier is HIGH on a fresh profile  tier=HIGH quality_high=true
 PASS  start: a tap on the title starts the game  mode=wake music=waking_pool
-[48.3s] walk-through tier LOW
-PASS  shot waking_pool  area=waking_pool mean=167.4 sd=35.3 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-waking_pool.png
-[66.5s] room waking_pool: music=waking_pool rms=-45.2 dBFS peak=-34.6 ctx=running fps=1 tier=LOW
-PASS  shot stair_breath  area=stair_breath mean=163.1 sd=32.4 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-stair_breath.png
-[81.7s] room stair_breath: music=stair_breath rms=-43.2 dBFS peak=-31.2 ctx=running fps=1 tier=LOW
-PASS  shot hall_glass  area=hall_glass mean=137.8 sd=54.6 black=0.003 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-hall_glass.png
-[100.3s] room hall_glass: music=hall_glass rms=-39.3 dBFS peak=-27.5 ctx=running fps=1 tier=LOW
-PASS  shot shard_gallery  area=shard_gallery mean=147 sd=57.6 black=0.002 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-shard_gallery.png
-[119.9s] room shard_gallery: music=shard_gallery rms=-36.8 dBFS peak=-23.7 ctx=running fps=1 tier=LOW
-PASS  shot garden_veiled  area=garden_veiled mean=161.5 sd=40.7 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-garden_veiled.png
-[133.0s] room garden_veiled: music=garden_veiled rms=-39.4 dBFS peak=-25.9 ctx=running fps=1 tier=LOW
-PASS  shot hollow_walk  area=hollow_walk mean=163.8 sd=44.8 black=0.001 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-hollow_walk.png
-[146.3s] room hollow_walk: music=hollow_walk rms=-33.1 dBFS peak=-8.6 ctx=running fps=1 tier=LOW
-PASS  shot court_light  area=court_light mean=149.7 sd=50.2 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-court_light.png
-[159.1s] room court_light: music=court_light rms=-34.6 dBFS peak=-21.9 ctx=running fps=2 tier=LOW
-PASS  shot mist_maze  area=mist_maze mean=168.2 sd=36.7 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-mist_maze.png
-[174.2s] room mist_maze: music=mist_maze rms=-27.7 dBFS peak=-15.1 ctx=running fps=1 tier=LOW
-PASS  shot echo_corridor  area=echo_corridor mean=163.2 sd=32.6 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-echo_corridor.png
-[182.9s] room echo_corridor: music=echo_corridor rms=-33 dBFS peak=-22.4 ctx=running fps=2 tier=LOW
-PASS  shot scales  area=scales mean=157.5 sd=40.3 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-scales.png
-[193.0s] room scales: music=scales rms=-34.1 dBFS peak=-24 ctx=running fps=1 tier=LOW
-PASS  shot eidolon_ledge  area=eidolon_ledge mean=144.9 sd=56.4 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-eidolon_ledge.png
-[211.5s] room eidolon_ledge: music=eidolon_ledge rms=-30.1 dBFS peak=-17.5 ctx=running fps=1 tier=LOW
-PASS  shot gate_four  area=gate_four mean=151.6 sd=51.9 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-gate_four.png
-[225.7s] room gate_four: music=gate_four rms=-31.8 dBFS peak=-19.8 ctx=running fps=1 tier=LOW
-PASS  shot first_shrine  area=first_shrine mean=145.4 sd=55.3 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-first_shrine.png
-[250.3s] room first_shrine: music=first_shrine rms=-22.9 dBFS peak=-9.7 ctx=running fps=1 tier=LOW
-PASS  audio: music RMS > -40 dBFS in >= 3 rooms  11/13 rooms: hall_glass, shard_gallery, garden_veiled, hollow_walk, court_light, mist_maze, echo_corridor, scales, eidolon_ledge, gate_four, first_shrine
-PASS  audio: state dump (sfx ready, music set, an audible bed playing)  sfx_ready=true music=first_shrine drone=true beds=14 audible+playing=first_shrine.ogg,water_lap.ogg jingle_duck=0 bed_restart=0
-[251.9s] solve: jump to the shadow chamber
+[45.8s] walk-through tier LOW
+PASS  shot waking_pool  area=waking_pool mean=166.9 sd=35.7 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-waking_pool.png
+[59.3s] room waking_pool: music=waking_pool rms=-38.7 dBFS peak=-27.5 ctx=running fps=1 tier=LOW

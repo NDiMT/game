@@ -63,7 +63,10 @@ if [ "$RUN_PT" = 1 ]; then
       [ -d "$REPO/.godot" ] && cp -r "$REPO/.godot" "$PROJECT/.godot"
     fi
     pt_once() {   # $1 = log file; prints the result: ok | failed | crash | timeout
-      timeout "$PT_TIMEOUT" "$GODOT" --headless --fixed-fps 60 --path "$PROJECT" res://tests/playthrough.tscn > "$1" 2>&1
+      # a private user:// per attempt (XDG_DATA_HOME): other Godot runs of this project (devshots, other sessions)
+      # share ~/.local/share/godot/app_userdata/Eidolon and would overwrite the save the playthrough checks
+      local ud; ud="$(mktemp -d "$WORK/userdata.XXXX")"
+      XDG_DATA_HOME="$ud" timeout "$PT_TIMEOUT" "$GODOT" --headless --fixed-fps 60 --path "$PROJECT" res://tests/playthrough.tscn > "$1" 2>&1
       local rc=$?
       if grep -q "^PLAYTHROUGH OK" "$1"; then echo ok
       elif grep -q "^PLAYTHROUGH FAILED" "$1"; then echo failed
