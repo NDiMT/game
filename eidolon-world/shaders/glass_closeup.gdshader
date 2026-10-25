@@ -128,10 +128,11 @@ void fragment() {
 	float bloom = smoothstep(0.02, 0.5, wipe) * (1.0 - core);
 	// (v0.6: every wiped line keeps a faint carved glow; the answered glyph lights fully)
 	float gk = max(glow, 0.5);
-	// (her lines glow rose, yours aqua; where they meet, the two blend)
+	// (her lines and yours: the same aqua; hers fainter)
 	vec3 lc = mix(her.rgb, accent.rgb, yours);
 	vec3 lcc = mix(her_core.rgb, accent_core.rgb, yours);
-	c = mix(c, mix(lc, lcc, core * 0.85), (core * 0.9 + bloom * 0.45) * gk);
+	float hk = mix(0.72, 1.0, yours);       // (v0.8.1: one aqua; her lines a little fainter than yours)
+	c = mix(c, mix(lc, lcc, core * 0.85), (core * 0.9 + bloom * 0.45) * gk * hk);
 	c += lcc * core * 0.12 * gk;
 	// a faint sheen across the glass, and the bronze frame
 	c += vec3(0.05) * smoothstep(0.035, 0.0, abs(uv.x * 0.7 - uv.y * 0.45 + 0.1));

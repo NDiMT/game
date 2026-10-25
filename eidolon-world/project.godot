@@ -65,15 +65,15 @@ accent_core={
 }
 her={
 "type": "color",
-"value": Color(0.866667, 0.901961, 0.933333, 1)
+"value": Color(0.27451, 0.901961, 0.847059, 1)
 }
 her_core={
 "type": "color",
-"value": Color(0.968627, 0.980392, 0.988235, 1)
+"value": Color(0.713725, 1, 0.964706, 1)
 }
 her_tint={
 "type": "color",
-"value": Color(0.639216, 0.694118, 0.745098, 1)
+"value": Color(0.121569, 0.662745, 0.627451, 1)
 }
 awaken={
 "type": "float",

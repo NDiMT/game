@@ -4,7 +4,7 @@ extends RefCounted
 ##  AQUA, "your world": runes and inscriptions, your hem stripe and cloak runes, your goal sigils and
 ##    light pillars, the beam and its floor light, the votive flames, UI accents, the see-through rim,
 ##    the wisp hints.
-##  SILVER-WHITE (v0.8.1; was rose), "her, the other side": her writing on the glass, her footprints, her reflection's hem
+##  (v0.8.1: hers is the same aqua) "her, the other side": her writing on the glass, her footprints, her reflection's hem
 ##    stripe and hood rune, the path stones in the pool's reflection (plain stone), her
 ##    glass's plates and her world's stands, the Eidolon plate on her side, her lines in the cinematic.
 ## Both GLOW: a bright core, a soft bloom halo, a quiet tint at the edge (never a fill). On pale marble
@@ -16,11 +16,11 @@ const CORE := Color("B6FFF6")          # aqua: the light inside a carved line
 const ACCENT := Color("46E6D8")        # aqua: the glow, bloom, rings, UI accents
 const TINT := Color("1FA9A0")          # aqua: the quiet edge of a glow, never a fill
 const ACCENT_DEEP := TINT
-# (v0.8.1, the owner: no rose. Her light is a pale, cool silver-white, moonlit glass: told from your aqua
-# by value and saturation, not by hue; where the two meet they blend into a brighter white-aqua)
-const HER_CORE := Color("F7FAFC")      # silver: the light inside her lines
-const HER := Color("DDE6EE")           # silver-white: her glow
-const HER_TINT := Color("A3B1BE")      # silver: the quiet edge of her glow
+# (v0.8.1, the owner: ONE light. Hers is the same aqua as yours: where her strokes must be told from
+# yours, timing and brightness do it (hers appear first and fainter), never a second hue)
+const HER_CORE := CORE
+const HER := ACCENT
+const HER_TINT := TINT
 
 static var swapped := false
 
