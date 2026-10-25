@@ -343,6 +343,8 @@ func _process(dt: float) -> void:
 			else:
 				dir = d.normalized() * clampf(d.length() * 2.5, 0.25, 1.0)
 		player.input_dir = Vector2(dir.x, dir.z) if mode == "play" else Vector2.ZERO
+		# (QA P1-6) only a light touch of the stick turns in place; keys and the auto-walk always step
+		player.stick_turn = auto_target == Vector3.INF and kv == Vector2.ZERO and key_vec == Vector2.ZERO
 	player.step(dt)
 	world.update_reveal(level.occluders, player.position, dt)
 	level.set_fade(player.position, world.reveal_k > 0.001)

@@ -650,6 +650,8 @@ func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
 	if g0 < 1.0:
 		var fp := a + d * ((g0 + g1) * 0.5)
 		var side := Vector2(-d.y, d.x).normalized() * 0.35
+		# (v0.8) the broken piece falls OUTSIDE the walkway, never across it
+		if on_ground(fp + side * 1.4) and not on_ground(fp - side * 1.4): side = -side
 		box(zone, Vector3(fp.x + side.x, y + 0.05, fp.y + side.y), Vector3(L * (g1 - g0) * 0.8, 0.1, 0.2), 0.25, false, B * Basis(Vector3.UP, rng.randf_range(-0.4, 0.4)))
 		rubble(Vector3(fp.x + side.x, y, fp.y + side.y), 0.25, 3)
 

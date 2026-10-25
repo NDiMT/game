@@ -34,6 +34,7 @@ var hem_glow: MeshInstance3D
 var blob_node: MeshInstance3D
 var _blob_lift := 0.0
 var _glow_k := -1.0
+var stick_turn := false        # v0.8: input from the touch stick (a light touch turns in place)
 var extra_reach := 0.0          # v0.5: 0..1 the right hand reaches out (touching the glass, the water)
 var veil_lift := 0.0            # v0.5: cinematic: the veil lifts back
 var head_pitch_add := 0.0       # v0.5: cinematic: looking down into the water
@@ -85,7 +86,7 @@ func step(dt: float) -> void:
 	var want := Vector3(input_dir.x, 0.0, input_dir.y)
 	if locked: want = Vector3.ZERO
 	# (QA P1-6) a light touch on the stick turns you in place (watching without stepping)
-	if want.length() > 0.02 and want.length() < 0.35:
+	if stick_turn and want.length() > 0.02 and want.length() < 0.35:
 		yaw = lerp_angle(yaw, atan2(-want.x, -want.z), 1.0 - exp(-dt * 9.0))
 		want = Vector3.ZERO
 	if want.length() > 1.0: want = want.normalized()

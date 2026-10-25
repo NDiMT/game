@@ -473,6 +473,14 @@ func _plan() -> void:
 	step_do(func() -> void: tp(3.0, -12.3, PI))
 	step_wait(0.3)
 	step_do(func() -> void: ok("take the brazier", _focus() == "hall_take" and game.try_interact(), _focus()))
+	# (QA P1-1) carried out of the Hall, it goes back; the place prompt never follows you out
+	step_do(func() -> void: tp(-6.0, -13.5, 0.0))
+	step_wait(0.8)
+	step_do(func() -> void:
+		ok("the brazier does not leave the Hall: it returns", not C().carrying and _focus() != "hall_place", _focus())
+		tp(3.0, -12.3, PI))
+	step_wait(0.6)
+	step_do(func() -> void: ok("take the brazier again", _focus() == "hall_take" and game.try_interact(), _focus()))
 	step_do(func() -> void: tp(2.0, -16.05, 0.0))
 	step_wait(0.4)
 	step_do(func() -> void: ok("set it down", _focus() == "hall_place" and game.try_interact() and not C().carrying, _focus()))
