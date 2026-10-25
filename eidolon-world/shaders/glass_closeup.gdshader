@@ -114,13 +114,13 @@ float hand_d(vec2 h, float pose, out float con, out float rid, out float rv, out
 	float fingers = min(min(fi, fm), min(fr, fl));
 	d = smin(d, fingers, 0.045);
 	// how hard it presses: a soft whole-hand print, the fingertip pads and the heel the clearest
-	float inside = smoothstep(0.0, 0.03, -d);
-	float c = 0.55;
+	float inside = smoothstep(0.0, 0.018, -d);
+	float c = 0.6;
 	c -= 0.22 * g2(h, vec2(0.0, 0.27), vec2(0.085, 0.08));                    // the hollow of the palm (only a little)
 	c = max(c, 0.95 * g2(h, vec2(0.0, 0.11), vec2(0.13, 0.075)));             // the heel
 	c = max(c, 0.82 * g2(h, vec2(0.11, 0.2), vec2(0.06, 0.09)));             // the thumb's mound
-	c = max(c, 0.72 * g2(h, vec2(0.0, 0.39), vec2(0.15, 0.04)));             // along the knuckles
-	c = max(c, 0.66 * smoothstep(0.0, 0.02, -fingers));                       // the fingers
+	c = max(c, 0.7 * g2(h, vec2(0.0, 0.4), vec2(0.16, 0.05)));               // along the knuckles
+	c = max(c, 0.64 * smoothstep(0.0, 0.018, -fingers) * smoothstep(0.38, 0.46, h.y));   // the fingers (above the knuckles: no stripes into the palm)
 	float pads = 0.0;
 	pads = max(pads, g2(h, ti, vec2(0.045)));
 	pads = max(pads, g2(h, tm, vec2(0.047)) * (1.0 - co));
@@ -231,7 +231,7 @@ void fragment() {
 		arm_m = am;
 		hdist = min(hdist, dd);
 		// the print: contact sharpened, a fine frost of micro-droplets in it, the fingertip whorls
-		float pr = smoothstep(0.12, 0.9, con) * press;
+		float pr = smoothstep(0.18, 0.78, con) * press;
 		pr *= mix(0.55 + 0.45 * vnoise(uv * vec2(300.0, 400.0)), 1.0, smoothstep(0.3, 0.8, con));    // a frost of micro-droplets where it barely touched
 		float rvis = 1.0 - smoothstep(0.35, 0.9, fwidth(rv));
 		pr *= 1.0 - 0.08 * rid * (0.5 + 0.5 * rv) * rvis;
