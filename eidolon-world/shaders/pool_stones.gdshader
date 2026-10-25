@@ -15,7 +15,8 @@ uniform vec4 arm_info[40];          // end direction x, z (the connector face), 
 uniform int count = 0;
 uniform float water_y = -0.42;
 uniform float top_y = 0.0;
-uniform float pulse = 0.0;          // hint: the connectors shine
+uniform float pulse = 0.0;
+uniform float flash = 0.0;          // v0.8.1: a joint just answered: a brief light on the seams, then plain stone          // hint: the connectors shine
 varying vec3 wp;
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 
@@ -54,19 +55,21 @@ void fragment() {
 		vec4 b = arm_box[hi];
 		vec4 inf = arm_info[hi];
 		float st = texture(noise_tex, pt.xz * 1.3).r;
-		float rim = 1.0 - smoothstep(0.0, 0.06, -hd);
-		vec3 c = mix(vec3(0.60, 0.53, 0.58), vec3(0.74, 0.66, 0.71), st) + her.rgb * 0.10;
-		c = mix(c, mix(her.rgb, her_core.rgb, 0.5), rim * 0.8);
+		// (v0.8.1, the owner: plain stone, the same marble as yours, seen in the water: no rose, no glow)
+		float rim = 1.0 - smoothstep(0.0, 0.05, -hd);
+		vec3 c = mix(vec3(0.66, 0.655, 0.635), vec3(0.76, 0.75, 0.725), st);
+		c = mix(c, c * 0.8, rim * 0.6);                    // (a worn chamfer at its edge)
+		c = mix(c, vec3(0.42, 0.47, 0.5), 0.18);          // (seen through a skin of water)
 		// the carved channel down its middle, and the joint seam at its end when answered
 		vec2 ed = inf.xy;
 		float across = abs(ed.x) > 0.5 ? abs(pt.z - 0.5 * (b.y + b.w)) : abs(pt.x - 0.5 * (b.x + b.z));
-		c = mix(c, c * 0.72, (1.0 - smoothstep(0.07, 0.1, across)) * 0.8);
+		c = mix(c, c * 0.5, (1.0 - smoothstep(0.07, 0.1, across)) * 0.9);   // the engraved channel: a darker line
 		float endc = ed.x > 0.5 ? b.z : (ed.x < -0.5 ? b.x : (ed.y > 0.5 ? b.w : b.y));
 		float along = abs(ed.x) > 0.5 ? pt.x : pt.z;
 		float seam = (1.0 - smoothstep(0.0, 0.06, abs(along - endc))) * inf.w;
-		c = mix(c, her_core.rgb * 1.35, seam * (0.85 + 0.15 * pulse * sin(TIME * 4.0)));
+		c = mix(c, accent_core.rgb * 1.3, seam * flash);
 		ALBEDO = c;
-		ALPHA = 0.72 + 0.2 * rim + 0.08 * seam;
+		ALPHA = 0.86 + 0.1 * rim;
 	} else {
 	float best = 1e9;
 	int bi = -1;
@@ -78,8 +81,7 @@ void fragment() {
 		float t = box_hit(o, rd, vec3(b.x, water_y, b.y), vec3(b.z, top_y, b.w));
 		if (t >= 0.0 && t < best) { best = t; bi = i; hp = o + rd * t; }
 	}
-	// a soft rose glow in the water round her slabs
-	float halo = (hi >= 0) ? exp(-max(hd, 0.0) / 0.12) : 0.0;
+	float halo = 0.0;
 	if (bi < 0 && halo < 0.02) discard;
 	vec3 c = her.rgb;
 	float a = halo * 0.45;
@@ -95,8 +97,7 @@ void fragment() {
 		float endc = ed.x > 0.5 ? b.z : (ed.x < -0.5 ? b.x : (ed.y > 0.5 ? b.w : b.y));
 		float along = abs(ed.x) > 0.5 ? hp.x : hp.z;
 		float seam = 1.0 - smoothstep(0.0, 0.07, abs(along - endc));
-		c = mix(c, accent_core.rgb * 1.3, seam * inf.w * 0.9);
-		c = mix(c, her.rgb, halo * 0.4);
+		c = mix(c, accent_core.rgb * 1.3, seam * inf.w * flash);
 		a = 0.9;
 	}
 	ALBEDO = c;

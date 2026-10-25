@@ -369,6 +369,7 @@ func _process(dt: float) -> void:
 		focus = null
 		highlight.set_target(null)
 	if highlight: highlight.update(dt)
+	Flame.cull(player.position)
 	else: controls.show_interact("")
 	_update_hum()
 	if mode != "title":
@@ -822,6 +823,7 @@ func _apply_tier_extras() -> void:
 	level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
 	Reflector.cloth_bones = world.quality_high          # (v0.8: the Low tier's reflections: cloth at rest)
 	if props: props.set_quality(world.quality_high)
+	Flame.high = world.quality_high
 
 func _load_settings() -> void:
 	var tier := "auto"

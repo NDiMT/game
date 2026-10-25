@@ -478,22 +478,24 @@ func _pool_joints(instant := false) -> int:
 			if pc["real"] >= 0: d = Ch1Geo.rot_conn(d, int(state["pool_turns"][pc["real"]]))
 			var ok := _joint_ok(c, d)
 			var sm: ShaderMaterial = (pc["seams"][k] as MeshInstance3D).material_override
-			if instant: sm.set_shader_parameter("joint", 1.0 if ok else 0.0)
+			if instant: sm.set_shader_parameter("joint", 0.35 if ok else 0.0)       # (v0.8.1: at rest a faint seam)
 			else:
 				var from: float = sm.get_shader_parameter("joint")
 				var jt := create_tween()
 				if ok and from < 0.5:
 					# (a joint just answered: both halves pulse, then settle lit)
 					jt.tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), from, 2.2, 0.15)
-					jt.tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), 2.2, 1.0, 0.4)
+					jt.tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), 2.2, 0.35, 0.6)
 				else:
-					jt.tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), from, 1.0 if ok else 0.0, 0.35)
+					jt.tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), from, 0.35 if ok else 0.0, 0.35)
 			if ok:
 				n += 1
 				var key := "%d,%d,%s" % [c.x, c.y, d]
 				now[key] = true
 				if not pool_joints_lit.has(key) and pc["real"] >= 0: fresh += 1
-	if fresh > 0 and not instant: event.emit("pool_joint", fresh)
+	if fresh > 0 and not instant:
+		event.emit("pool_joint", fresh)
+		create_tween().tween_method(func(v: float) -> void: pool_mat.set_shader_parameter("flash", v), 1.0, 0.0, 0.8)
 	pool_joints_lit = now
 	return n
 
@@ -681,8 +683,14 @@ func _build_hall() -> void:
 	braz_node = _hall_thing(bmesh, false)
 	bust_pivot = _hall_thing(umesh, false)
 	bust_pivot.position = BUST_POS
-	var flame := puzzles.glow_quad(braz_node, Vector3(0, 1.32, 0), 1.0, Palette.CORE, 0.9)
-	(braz_node.get_child(braz_node.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
+	# (v0.8.1) the brazier burns with a natural warm fire, and lights the hall round it
+	var flame := Flame.new(0.0, 0.62, Color(1.0, 0.66, 0.36), level.noise_tex)
+	flame.position = Vector3(0, 1.0, 0)
+	flame.energy = 1.9
+	flame.range_m = 4.5
+	flame.key = true
+	braz_node.add_child(flame)
+	flame.mat.set_shader_parameter("intensity", 1.0)
 	var eye := puzzles.rune_quad(bust_pivot, Vector3(0, 1.86, -0.2), Vector2(0.2, 0.2), Basis(Vector3.UP, PI), 0.0, 0.7)
 	(bust_pivot.get_child(bust_pivot.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
 	puzzles.rune_quad(bust_pivot, Vector3(0, 1.38, -0.31), Vector2(0.4, 0.4), Basis(Vector3.UP, PI), 0.0, 1.0)
@@ -719,15 +727,7 @@ func _build_hall() -> void:
 	bust_arc_mat = _smat("res://shaders/floor_mark.gdshader", {"kind": 2.0, "intensity": 0.0, "sweep": 0.0})
 	bust_arc = _mi(_plane(Vector2(1.5, 1.5)), bust_arc_mat, Transform3D(Basis(), BUST_POS + Vector3(0, 0.014, 0)))
 	bust_arc.layers = PlanarMirror.LAYER_MAIN_FX
-	var goals := [Vector3(DRUM_GOAL.x, 1.0, DRUM_GOAL.y), Vector3(BRAZ_GOAL.x, 1.0, BRAZ_GOAL.y), BUST_POS]
-	for k in 3:
-		var om := _smat("res://shaders/floor_mark.gdshader", {"kind": 1.0, "intensity": 0.7})
-		var o := _mi(_plane(Vector2(1.0, 1.0)), om, Transform3D(Basis(), goals[k] + Vector3(0, 0.01, 0)))
-		o.layers = PlanarMirror.LAYER_DOUBLE                 # the remembered places: only in the glass
-		var lm := _smat("res://shaders/floor_mark.gdshader", {"kind": 1.0, "intensity": 0.0, "fill": 0.0})
-		_mi(_plane(Vector2(1.0, 1.0)), lm, Transform3D(Basis(), goals[k] + Vector3(0, 0.011, 0))).layers = 1 | PlanarMirror.LAYER_MAIN_FX
-		goal_mats.append(lm)
-		match_glows.append(puzzles.glow_quad(self, goals[k] + Vector3(0, 1.2, 0), 2.2, Palette.ACCENT, 0.0))
+	# (v0.8.1, the owner: no marks of where things go: the glass alone tells it)
 	# the reset altar by the way in: everything not yet set right goes back to where it was found
 	var am := MB.new()
 	am.box(Vector3(-3.9, 1.35, -15.8), Vector3(0.55, 0.7, 0.55), Color(0.5, 0.25, 0.0))
@@ -890,18 +890,18 @@ func hall_matches() -> Array:
 		not carrying and Vector2i(int(hs["brazier"][0]), int(hs["brazier"][1])) == BRAZ_GOAL,
 		int(hs["bust"]) % 4 == BUST_GOAL]
 
+## (v0.8.1, the owner) nothing tells you one thing is right: only when ALL three stand as the glass
+## remembers them, at once, do they appear in the glass and the doorway opens
 func _check_hall() -> void:
 	var m := hall_matches()
 	var hs := _hall_state()
+	if m != [true, true, true] or state["hall_door"]: return
 	for k in 3:
-		if m[k] and not hs["locks"][k]:
-			hs["locks"][k] = true
-			hall_moves = 0
-			_lock_thing(k, false)
-			(match_glows[k] as ShaderMaterial).set_shader_parameter("intensity", 1.6)
-			event.emit("hall_lock", k)
-	if hs["locks"] == [true, true, true] and not state["hall_door"]:
-		_open_hall_door(false)
+		hs["locks"][k] = true
+		_lock_thing(k, false)
+	hall_moves = 0
+	event.emit("hall_lock", 0)
+	_open_hall_door(false)
 
 ## set right: the thing appears in the glass, its memory fades out of it
 func _lock_thing(k: int, instant: bool) -> void:
@@ -942,13 +942,6 @@ func _update_hall(dt: float) -> void:
 		push_arrow.transform = Transform3D(Basis(Vector3.UP, atan2(-dp.x, -dp.z)), Vector3(hs["drum"][0], 1.75, hs["drum"][1]))
 	bust_arc_mat.set_shader_parameter("intensity", 0.0 if _locked(2) else 0.55)
 	if not (_bust_tw and _bust_tw.is_running()): bust_arc.rotation.y = bust_pivot.rotation.y
-	var m3 := hall_matches()
-	for k in 3:
-		var gm: ShaderMaterial = goal_mats[k]
-		gm.set_shader_parameter("intensity", move_toward(float(gm.get_shader_parameter("intensity")), 0.9 if m3[k] else 0.0, dt * 2.0))
-		gm.set_shader_parameter("fill", 1.0 if m3[k] else 0.0)
-		var mg: ShaderMaterial = match_glows[k]
-		mg.set_shader_parameter("intensity", maxf(0.0, float(mg.get_shader_parameter("intensity")) - dt * 0.45))
 	var it_push: Level.Interact = level.interact_by_id("hall_push")
 	it_push.pos = Vector3(hs["drum"][0], 1.0, hs["drum"][1])
 	level.interact_by_id("hall_take").pos = Vector3(hs["brazier"][0], 1.0, hs["brazier"][1])
@@ -1103,30 +1096,19 @@ func _build_gallery() -> void:
 		n.rotation.y = -PI * 0.5 if b.x < 6.0 else PI * 0.5        # its front toward the middle
 		add_child(n)
 		puzzles.marble_instance(vm, n)
-		var fm := ShaderMaterial.new()
-		fm.shader = fsh
-		fm.set_shader_parameter("noise_tex", level.noise_tex)
-		fm.set_shader_parameter("seed", float(i) * 0.37)
-		fm.set_shader_parameter("intensity", 0.0)
-		var fq := QuadMesh.new()
-		fq.size = Vector2(0.62, 0.98)              # (v0.8: taller, brighter)
-		fq.center_offset = Vector3(0, 0.49, 0)
-		var fmi := _mi(fq, fm, Transform3D(Basis(), Vector3(0, 1.15, -0.2)), n)
-		fmi.extra_cull_margin = 0.6
-		gl_flames.append(fm)
+		# (v0.8.1) a real votive flame: warm fire with an aqua rim, and a real light on the stone round it
+		var fl := Flame.new(1.0, 0.5, Color(0.86, 0.92, 0.82), level.noise_tex)
+		fl.position = Vector3(0, 1.15, -0.2)
+		fl.energy = 1.5
+		fl.range_m = 3.6
+		fl.key = i == 3
+		n.add_child(fl)
+		gl_flames.append(fl.mat)
 		# its glow on the stone, its little pool of light on the floor, and real light on the face above
 		var halo := puzzles.glow_quad(n, Vector3(0, 1.42, -0.22), 1.5, Palette.ACCENT, 0.0)
 		var pm := _smat("res://shaders/light_pool.gdshader", {"intensity": 0.0})
 		_mi(_plane(Vector2(1.6, 1.6)), pm, Transform3D(Basis(), Vector3(0, 0.012, -0.45)), n)
-		var L := OmniLight3D.new()
-		L.light_color = Color(0.45, 0.95, 0.9)
-		L.omni_range = 1.5
-		L.omni_attenuation = 1.6
-		L.light_energy = 0.0
-		L.shadow_enabled = false
-		L.position = Vector3(0, 1.3, -0.32)
-		L.visible = false
-		n.add_child(L)
+		var L: OmniLight3D = fl.light
 		# the veil: a sheen that wakes when she is answered
 		var veil := MB.new()
 		veil.sphere(Vector3(0, 1.82, 0.02), Vector3(0.155, 0.19, 0.165), Color(0.5, 0.25, 0.0), 12, 6, Basis(Vector3.RIGHT, 0.18))
@@ -1156,9 +1138,6 @@ func _update_gallery(_dt: float) -> void:
 		var lp: Dictionary = gl_lamps[i]
 		(lp["halo"] as ShaderMaterial).set_shader_parameter("intensity", k * 0.95)
 		(lp["pool"] as ShaderMaterial).set_shader_parameter("intensity", k)
-		var L: OmniLight3D = lp["light"]
-		L.visible = k > 0.01
-		L.light_energy = k * (1.25 + 0.2 * sin(Time.get_ticks_msec() * 0.013 + i) * sin(Time.get_ticks_msec() * 0.0047))
 
 ## light a lamp: the third one lit decides; a wrong order gutters them all
 func light_lamp(i: int) -> void:
