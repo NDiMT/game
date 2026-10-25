@@ -4,12 +4,10 @@ extends CanvasLayer
 ##   - a floating joystick on the left half: it appears where the thumb lands
 ##   - an interact button bottom-right that only appears (and breathes) when something is in reach,
 ##     with a contextual icon: read, rune, turn, lever, locked, wake
-##   - two small rotate buttons (top right), and a two-finger twist anywhere
+##   (v0.9: no rotate buttons, no twist or pinch: the camera is fixed)
 ## Mouse input arrives as emulated touch (project setting), so desktop clicks drive the same code.
 
 signal interact
-signal rotate(dir: int)
-signal zoom(level: int)
 signal shard                       # v0.5: the inventory slot tapped (raise / lower the mirror shard)
 
 const JOY_R := 54.0
@@ -25,8 +23,6 @@ var icon := ""
 var icon_alpha := 0.0
 var _press := 0.0
 var _touches := {}
-var _twist_a := 0.0
-var _twist_on := false
 var _t := 0.0
 var canvas: Pad
 var inv_has := false               # v0.5: the mirror shard is carried
@@ -49,10 +45,6 @@ func btn_center() -> Vector2:
 	var s := vp_size()
 	return Vector2(s.x - 66.0, s.y - 118.0)
 
-func rot_center(dir: int) -> Vector2:
-	var s := vp_size()
-	return Vector2(s.x - (34.0 if dir > 0 else 80.0), 44.0)
-
 ## the inventory slot, top left under the shrine counter
 func inv_center() -> Vector2:
 	return Vector2(44.0, 98.0)
@@ -68,7 +60,6 @@ func block(ms: int) -> void:
 	block_t = ms / 1000.0
 	_touches.clear()
 	_end_joy()
-	_twist_on = false
 
 func blocked() -> bool:
 	return block_t > 0.0
@@ -100,14 +91,8 @@ func _input(e: InputEvent) -> void:
 				_press = 1.0
 				interact.emit()
 				return
-			for d in [-1, 1]:
-				if p.distance_to(rot_center(d)) < 24.0:
-					rotate.emit(d)
-					return
-			if _touches.size() >= 2:
-				_begin_twist()
-				_end_joy()
-				return
+			if _touches.size() >= 2 and joy_index >= 0 and e.index != joy_index:
+				return                        # a second finger: the stick keeps its own
 			if joy_index < 0 and p.x < vp_size().x * 0.6:
 				joy_index = e.index
 				joy_base = p
@@ -116,23 +101,9 @@ func _input(e: InputEvent) -> void:
 		else:
 			_touches.erase(e.index)
 			if e.index == joy_index: _end_joy()
-			if _touches.size() < 2: _twist_on = false
 	elif e is InputEventScreenDrag:
 		var p2: Vector2 = canvas.get_global_transform_with_canvas().affine_inverse() * e.position
 		if _touches.has(e.index): _touches[e.index] = p2
-		if _twist_on and _touches.size() >= 2:
-			var a := _pair_angle()
-			var d := wrapf(a - _twist_a, -PI, PI)
-			var ratio := _pair_dist() / maxf(_pinch_d, 1.0)
-			if absf(d) > 0.55:
-				rotate.emit(1 if d > 0.0 else -1)
-				_twist_a = a
-				_pinch_d = _pair_dist()
-			elif ratio > 1.3 or ratio < 0.77:
-				zoom.emit(1 if ratio > 1.0 else 0)        # spread = closer (1), pinch = the default far view (0)
-				_pinch_d = _pair_dist()
-				_twist_a = a
-			return
 		if e.index == joy_index:
 			var off := p2 - joy_base
 			if off.length() > JOY_R:
@@ -143,23 +114,6 @@ func _input(e: InputEvent) -> void:
 			vec = off / JOY_R
 			if vec.length() < 0.12: vec = Vector2.ZERO
 
-var _pinch_d := 1.0
-
-func _begin_twist() -> void:
-	_twist_on = true
-	_twist_a = _pair_angle()
-	_pinch_d = _pair_dist()
-
-func _pair_dist() -> float:
-	var ks := _touches.keys()
-	return (_touches[ks[0]] as Vector2).distance_to(_touches[ks[1]])
-
-func _pair_angle() -> float:
-	var ks := _touches.keys()
-	var a: Vector2 = _touches[ks[0]]
-	var b: Vector2 = _touches[ks[1]]
-	return (b - a).angle()
-
 func _end_joy() -> void:
 	joy_index = -1
 	vec = Vector2.ZERO
@@ -167,7 +121,6 @@ func _end_joy() -> void:
 func reset() -> void:
 	_touches.clear()
 	_end_joy()
-	_twist_on = false
 
 func _process(dt: float) -> void:
 	block_t = maxf(0.0, block_t - dt)
@@ -207,21 +160,6 @@ class Pad extends Control:
 	func _draw() -> void:
 		if ctl == null: return
 		var e := 1.0 if ctl.enabled else 0.0
-		# rotate buttons
-		for d in [-1, 1]:
-			var c := ctl.rot_center(d)
-			draw_circle(c, 18.0, Color(0.08, 0.08, 0.09, 0.26 * e))
-			draw_arc(c, 18.0, 0, TAU, 40, Color(INK, 0.45 * e), 1.0, true)
-			for k in 4:
-				var dv2 := Vector2(cos(PI * 0.5 * k), sin(PI * 0.5 * k))
-				draw_line(c + dv2 * 18.5, c + dv2 * 21.5, Color(INK, 0.4 * e), 1.0, true)
-			var a0 := -PI * 0.85 if d > 0 else -PI * 0.15
-			var a1 := a0 + (PI * 1.3 if d > 0 else -PI * 1.3)
-			draw_arc(c, 8.0, minf(a0, a1), maxf(a0, a1), 20, Color(INK, 0.85 * e), 1.4, true)
-			var tip := c + Vector2(cos(a1), sin(a1)) * 8.0
-			var tang := Vector2(-sin(a1), cos(a1)) * float(d)
-			draw_line(tip, tip - tang * 4.5 + Vector2(cos(a1), sin(a1)) * 3.0, Color(INK, 0.85 * e), 1.4, true)
-			draw_line(tip, tip - tang * 4.5 - Vector2(cos(a1), sin(a1)) * 3.0, Color(INK, 0.85 * e), 1.4, true)
 		# the inventory: one round slot, the shard inside (lit while raised)
 		if ctl.inv_alpha > 0.0:
 			var ia := ctl.inv_alpha

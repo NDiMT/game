@@ -96,8 +96,6 @@ func _ready() -> void:
 	player.footstep.connect(_on_footstep)
 	for r in puzzles.reflectors: r.glimpse.connect(_on_glimpse)
 	controls.interact.connect(try_interact)
-	controls.rotate.connect(rotate_view)
-	controls.zoom.connect(zoom_view)
 	ui.anew_pressed.connect(_on_anew)
 	ui.quality_pressed.connect(func() -> void: set_quality({"auto": "high", "high": "low", "low": "auto"}[world.tier], true))
 	_load_settings()
@@ -210,35 +208,39 @@ func _continue_from_save() -> void:
 	var g: Dictionary = save_data.get("glimpses", {})
 	for k in g: glimpses[k] = int(g[k])
 	for k in save_data.get("visited", []): visited[k] = true
-	_settle_camera(int(save_data.get("cam", 0)), player.position)
+	_settle_camera(0, player.position)        # (v0.9: the one view; old saves' camera turn is ignored)
 	mode = "play"
 	controls.enabled = true
 
 func _settle_camera(yaw_i: int, at: Vector3) -> void:
 	world.follow = null
 	world.cam_size_target = world.zoom
-	var cur := world.rig.rotation.y
-	var target := -PI * 0.25 + yaw_i * PI * 0.5
-	# turn the short way from wherever the title orbit left us
-	target = cur + wrapf(target - cur, -PI, PI)
-	world.yaw_index = yaw_i
+	world.set_yaw_index(yaw_i)
 	var tw := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(world.rig, "rotation:y", target, 2.0)
-	tw.parallel().tween_property(world.rig, "position", at + Vector3(0, 0.6, 0), 2.0)
+	tw.tween_property(world.rig, "position", at + Vector3(0, 0.6, 0), 2.0)
 	tw.tween_callback(func() -> void: world.follow = player)
 
-## zoom one step: 1 = closer, 0 = farther (pinch / wheel / +-), saved with the settings
-func zoom_view(level: int) -> void:
-	if mode != "play": return
-	if world.zoom_step(level == 1):
-		sfx.play("whoosh", -30.0, 1.8 if level == 0 else 1.3)
-		_save_settings()
+# ------------------------------------------------------------------ framing (v0.9)
+var _frame_key := ""
+var _frame_vs := Vector2.ZERO
+var _frame_rig := Vector3.INF
+var _frame_slack := Vector2.ZERO
 
-func rotate_view(dir: int) -> void:
-	if mode != "play" and mode != "wake": return
-	if _world_block_t > 0.0: return
-	world.rotate_view(dir)
-	sfx.play("whoosh", -26.0, 1.5)
+## the framed room you are in: the camera holds its anchor (solved for this screen's shape)
+func _update_framing() -> void:
+	var k := Framing.room_at(player.position) if (mode == "play" or mode == "wake") else ""
+	var vs := get_viewport().get_visible_rect().size
+	if k != _frame_key or vs != _frame_vs:
+		_frame_key = k
+		_frame_vs = vs
+		_frame_rig = Vector3.INF
+		if k != "":
+			var vo := World.V_OFFSET * world.zoom / World.CAM_SIZE
+			var sol := Framing.solve(k, level, vs.x, vs.y, world.zoom, vo)
+			_frame_rig = sol["rig"]
+			_frame_slack = sol["slack"]
+	world.frame_anchor = _frame_rig
+	world.frame_slack = _frame_slack
 
 # ------------------------------------------------------------------ input
 func _input(e: InputEvent) -> void:
@@ -274,16 +276,6 @@ func _input(e: InputEvent) -> void:
 			match e.keycode:
 				KEY_E, KEY_SPACE, KEY_ENTER: try_interact()
 				KEY_F: if mode == "play": chapter.toggle_lens()
-				KEY_Q: rotate_view(-1)
-				KEY_R: rotate_view(1)
-				KEY_Z:
-					world.zoom = World.ZOOM_DEFAULT
-					_save_settings()
-				KEY_EQUAL, KEY_KP_ADD: zoom_view(1)
-				KEY_MINUS, KEY_KP_SUBTRACT: zoom_view(0)
-	if e is InputEventMouseButton and e.pressed:
-		if e.button_index == MOUSE_BUTTON_WHEEL_UP: zoom_view(1)
-		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN: zoom_view(0)
 
 func _key_vector() -> Vector2:
 	var v := Vector2.ZERO
@@ -331,7 +323,6 @@ func _process(dt: float) -> void:
 	_world_block_t = maxf(0.0, _world_block_t - dt)
 	if mode == "title":
 		_title_t += dt
-		world.rig.rotation.y += dt * 0.045
 	if mode == "play" or mode == "wake" or mode == "finale":
 		var sv := controls.vec
 		var kv := _key_vector()
@@ -385,31 +376,17 @@ func _process(dt: float) -> void:
 	if mode != "title":
 		var p := player.position
 		var wide := p.x > 20.5 and p.z < -18.5     # the eidolon ledge and the shrine: see across the gap
-		var cs: float = world.zoom
-		var on_ledge := p.x > 20.8 and p.z > -25.2 and p.z < -18.8
-		if on_ledge: cs = maxf(cs, 9.6)              # see your reflection AND the plate
-		if area == "mist_maze" and p.z < -28.5: cs = maxf(cs, 10.6)          # the maze and her pool
-		if area == "scales": cs = maxf(cs, 9.8)
-		if area == "shard_gallery" and chapter.lens_on: cs = minf(cs, 6.4)      # v0.8.1: the floor round her statue, through the shard
-		if area == "waking_pool" and p.x < 0.6 and p.z > -0.6 and p.z < 4.2 and absf(p.y) < 0.4: cs = minf(cs, 6.6)   # v0.6: the stones in the water
+		var cs: float = world.zoom                 # v0.9: one fixed view; no per-area zoom
 		if mode != "finale" and mode != "cine": world.cam_size_target = cs
-		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs
+		_update_framing()
+		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs * (1.25 if _frame_key != "" else 1.0)
 		if mode == "play":
-			# on the eidolon ledge, frame the player AND the plate across the gap
 			var off := Vector3.ZERO
 			if bridge_focus > 0.0:
 				bridge_focus -= dt
 				off = (Vector3(27.7, 2.0, -26.5) - p) * 0.7         # watch the bridge rise
 				off.y = 0.0
-			elif p.x > 20.8 and p.z > -25.2 and p.z < -18.8 and p.y < 3.0:
-				off = (Puzzles.PLATE_POS - p) * 0.5
-				off.y = 0.0
-			elif area == "shard_gallery" and chapter.lens_on:
-				off = Vector3((Chapter.SH_STATUE.x - p.x) * 0.45, 0.0, (Chapter.SH_STATUE.z - p.z) * 0.45)          # v0.8.1: her statue and its shadows
-			elif area == "mist_maze" and p.z < -28.5 and p.x > 8.5:
-				off = Vector3((4.6 - p.x) * 0.42, 0.0, (-34.0 - p.z) * 0.3)     # her steps in the pool
-			elif area == "garden_veiled" and p.z < -9.0 and p.x > 8.5 and p.x < 15.5:
-				off = Vector3(0.0, 0.0, (-14.0 - p.z) * 0.5)                   # the turned ones and their glass
+				world.frame_anchor = Vector3.INF
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
 	if mode == "play": _auto_quality(dt)
@@ -844,7 +821,7 @@ func set_quality(t: Variant, save := false) -> void:
 const SETTINGS_V := 3
 func _save_settings() -> void:
 	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
-	if f: f.store_string(JSON.stringify({"v": SETTINGS_V, "quality": world.tier, "zoom": snappedf(world.zoom, 0.01)}))
+	if f: f.store_string(JSON.stringify({"v": SETTINGS_V, "quality": world.tier}))
 
 ## v0.8.3: draw every new v0.8.x material once, a few pixels in front of the camera, for a few frames at
 ## start-up, so no shader is compiled (a hitch) the first time a flame is lit, a glow lands or a print shows
@@ -979,8 +956,6 @@ func _load_settings() -> void:
 			if d.has("quality"): tier = str(d["quality"])
 			elif d.has("quality_high") and not bool(d["quality_high"]): tier = "low"
 			if int(d.get("v", 1)) < 3 and tier == "auto": tier = "high"
-			if int(d.get("v", 1)) >= 2 and d.has("zoom"):
-				world.zoom = clampf(float(d["zoom"]), World.ZOOM_MIN, World.ZOOM_MAX)
 	if not tier in ["auto", "high", "low"]: tier = "high"
 	set_quality(tier)
 
@@ -1038,12 +1013,13 @@ func cmd(c: String) -> Variant:
 		"input": key_vec = Vector2(float(a[1]), float(a[2]))
 		"stop": key_vec = Vector2.ZERO; auto_target = Vector3.INF
 		"interact": return try_interact()
-		"rotate": rotate_view(int(a[1]))
 		"yaw": world.set_yaw_index(int(a[1]))
 		"zoom":
+			# (dev only: the fixed width, for tuning; the framing re-solves)
+			world.zoom = float(a[1])
 			world.cam.size = float(a[1])
 			world.cam_size_target = float(a[1])
-		"zoomlvl": zoom_view(int(a[1]))
+			_frame_key = "?"
 		"slowmo": Engine.time_scale = float(a[1])
 		"snd": sfx.play(a[1], float(a[2]) if a.size() > 2 else 0.0)
 		"reset_save": _delete_save(); save_data = {}
