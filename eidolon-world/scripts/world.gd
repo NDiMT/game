@@ -290,7 +290,7 @@ func set_tier(t: String, step := 0) -> void:
 	var high := t == "high"
 	var low := t == "low" or auto_step >= 3
 	quality_high = not low
-	var cap := 99.0 if high else (1.0 if low else (1.5 if auto_step == 0 else 1.25))
+	var cap := 2.0 if high else (1.0 if low else (1.5 if auto_step == 0 else 1.25))      # (v0.8.5: High caps at 2x CSS px)
 	var vp := get_viewport()
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	vp.scaling_3d_scale = clampf(cap / maxf(dpr, 1.0), 0.34, 1.0)

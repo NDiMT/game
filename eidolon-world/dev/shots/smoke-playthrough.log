@@ -1,0 +1,192 @@
+Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+
+ERROR: Condition "det == 0" is true.
+   at: invert (core/math/basis.cpp:47)
+   GDScript backtrace (most recent call first):
+       [0] add_arrays (res://scripts/mesh_builder.gd:29)
+       [1] box (res://scripts/mesh_builder.gd:59)
+       [2] box (res://scripts/level.gd:523)
+       [3] wall (res://scripts/level.gd:539)
+       [4] _gallery (res://scripts/ch1_geo.gd:176)
+       [5] build (res://scripts/ch1_geo.gd:102)
+       [6] build (res://scripts/level.gd:142)
+       [7] _ready (res://scripts/main.gd:55)
+       [8] _ready (res://tests/playthrough.gd:33)
+[audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
+[props] 11 placed
+[solids] 2016 primitives, 1046 solid footprints, 303 obstacles added (81 ms)
+  .. sim 0s  real 2s  step 0/760
+PASS  woke at the veiled gate (1.4, 0.0, 2.3)
+PASS  chapter title on the title screen 
+PASS  pool reflection visible samples=63
+PASS  glimpse 1: reflection lags (~0.42 s at walking speed) lag distance 1.13 m
+PASS  glimpse 1 signalled 
+PASS  solver: exactly one arrangement of the four slabs makes the path whole ["EW|EN|EW|NW|"]
+PASS  solver: the pool starts broken 
+PASS  solver: it takes more than one turn (at least 8 presses) 
+PASS  solver: no single turn makes it whole (no trivial path) 
+PASS  the water shows her slabs (reflection only) beside yours 22 arms, 14 hers
+PASS  every slab carries glowing connector inlays 
+PASS  her slabs are not in your world (no ground there) 
+PASS  no waiting mechanic: the water is always still 
+PASS  turn the first slab from the shore pool_turn0
+PASS  a turn is a quarter, snapped -1.571
+PASS  turning grinds 
+PASS  the first turn answers the shore: its joint lights at once ["3,0,S", "3,1,N", "3,1,S", "4,2,W", "5,2,E", "5,2,W", "6,2,E", "6,2,W", "1,2,N", "0,1,E", "0,1,W", "1,1,E", "1,1,S", "3,2,N"]
+PASS  standing on your slab over the water (-1.53301, 0.0, 1.696616)
+PASS  turn the second slab from the first (1) pool_turn1
+PASS  turn the second slab from the first (2) pool_turn1
+PASS  turn the second slab from the first (3) pool_turn1
+PASS  turn the third slab from the north rim pool_turn2
+  .. sim 20s  real 4s  step 45/760
+PASS  still broken: hers are not stone yet 
+PASS  turn the fourth slab from the south rim (1) pool_turn3
+PASS  turn the fourth slab from the south rim (2) pool_turn3
+PASS  turn the fourth slab from the south rim (3) pool_turn3
+PASS  every joint of the whole path is answered (its seam lit) 20
+PASS  a joint lighting chimes 
+PASS  her stones break the surface: spray and a deep rumble 
+PASS  her slabs are solid now 
+PASS  ...and the reflection no longer marks any as hers 
+PASS  solving plays the solve jingle (one motif for every solve) 
+PASS  the music bed steps back under the jingle, then returns 
+PASS  crossed the pool (-10.33678, 0.0, 2.422294)
+PASS  footsteps on the slabs splash 
+PASS  reached the Stair of Breath stair_breath
+PASS  the whole rune is carved large beside the stair, glowing faintly 
+PASS  the breath glass is back in the stair wall (v0.8) 
+PASS  the whole glyph fits on the pane with a margin 0.42
+PASS  on the breath landing (-11.3, 0.5, -5.232956)
+  .. sim 40s  real 7s  step 92/760
+PASS  the mist veil blocks the stair (-11.3, 0.5, -6.38)
+PASS  hint wisp drifts toward the small glass 
+PASS  breathe on the glass breathe_stair
+PASS  the close-up of the pane opens (860.0, 860.0)
+PASS  nothing to answer while she writes 
+PASS  x closes the pane 
+PASS  the closing tap does not turn the camera 
+PASS  breathe again breathe_stair
+PASS  her writing is mirrored for you (her half on the left, the answer on the right) 
+PASS  recogniser: her half copied is wrong 
+PASS  after one wrong try: a faint dotted ghost of the missing stroke 1
+PASS  recogniser: a straight stroke is wrong 
+PASS  after two wrong tries she traces the missing part, faintly 
+PASS  the fog crept back over your strokes 
+  .. sim 60s  real 10s  step 114/760
+PASS  recogniser: the mirrored stroke, drawn backwards with a shaky hand, is right 
+PASS  her writing stays on the fogged glass 
+PASS  breath cue played 
+PASS  her answer rings her song (the motif A-D-E-F-E) 
+PASS  her 'follow' rune is a letter of the script, one calligraphic stroke 
+PASS  recogniser unit: resample keeps 32 points 
+PASS  reached the Hall of Glass by the corridor (-2.06584, 1.0, -13.5) hall_glass
+PASS  area name shown on entering the hall HALL OF GLASS
+  .. sim 80s  real 13s  step 131/760
+PASS  great mirror reflection seen in the glass 
+PASS  glimpse 2: reflection turns its head toward the tablet head=1.00 body=1.00
+PASS  glimpse 2: snaps back when you move 
+PASS  the remembered door: a wall in your world, an opening in the glass 
+PASS  the glass remembers a drum, a brazier and a bust where they were (only in the glass) 
+PASS  today's hall is not in the glass 
+PASS  no touching the glass any more 
+PASS  the veiled bust turns hall_turn
+PASS  a quarter turn is not as the glass remembers 
+PASS  turn it again 
+PASS  a visible arc sweeps the quarter turn on the floor 
+PASS  facing the glass: right (the solver sees it) 
+PASS  but nothing tells you so: no chime, no glow, no lock, it stays out of the glass 
+PASS  no target outlines or markers on the floor 
+PASS  standing square to the drum: an arrow shows which way it will slide 
+PASS  push the drum once hall_push
+PASS  it slides (never rolls or turns) 
+PASS  one cell per push, snapped to the grid (0.0, 1.0, -13.0)
+PASS  the reset altar hall_reset
+PASS  reset: everything goes back where it was found (nothing is locked before the whole set) { "drum": [-1, -13], "brazier": [3, -13], "bust": 2, "locks": [false, false, false] }
+PASS  turn the bust back to the glass (1) hall_turn
+PASS  turn the bust back to the glass (2) hall_turn
+PASS  the bust faces the glass again { "drum": [-1, -13], "brazier": [3, -13], "bust": 0, "locks": [false, false, false] }
+PASS  push the drum (1) hall_push
+PASS  push the drum (2) hall_push
+PASS  push the drum (3) hall_push
+PASS  push the drum (4) hall_push
+PASS  push the drum (5) hall_push
+PASS  a cell short of where it was: not yet [0, -17]
+PASS  push the drum (6) hall_push
+PASS  push the drum (7) hall_push
+PASS  the drum lies where the glass remembers it [0, -19]
+PASS  two of three right: still nothing, still movable 
+PASS  hint after 110 s: the memories pulse in the glass 0.38679837365766
+PASS  take the brazier hall_take
+  .. sim 100s  real 16s  step 204/760
+PASS  the brazier does not leave the Hall: it returns none
+PASS  take the brazier again hall_take
+PASS  set it down hall_place
+PASS  a brazier in the wrong place: nothing happens 
+PASS  take it again hall_take
+PASS  set it down where it stood hall_place
+PASS  solver: each goal cell is free, and the drum starts away from it 
+PASS  only the whole set answers: all three locked at once, one chime 
+PASS  the Mirror Shard lies on the threshold 
+PASS  take the shard take_shard
+PASS  the shard is in the inventory 
+PASS  tablet readable h_tablet
+PASS  reached the Shard Gallery (5.696583, 1.0, -15.26598) shard_gallery
+PASS  the chamber is named for it 
+PASS  no way on: the wall is whole 
+PASS  her veiled statue in the middle, six cold braziers round her 
+PASS  solver: exactly one set of braziers casts her shadow into the outlines [[0, 2, 3]]
+PASS  solver: each brazier throws her shadow straight away from it, longer when nearer 
+PASS  walking about the chamber (8.33311, 1.0, -12.40092) shard_gallery
+PASS  the arch is a wall in your world (9.73, 1.0, -10.9608)
+PASS  raise the shard from the inventory 
+PASS  through the shard: the outlines of where her shadow fell, and the true arch (25.5645, 39.27667, 30.08, 1.0)
+PASS  light brazier 0 brazier0
+PASS  brazier 0: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 1 brazier1
+PASS  brazier 1: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 2 brazier2
+PASS  brazier 2: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 3 brazier3
+PASS  brazier 3: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+  .. sim 120s  real 18s  step 274/760
+PASS  light brazier 4 brazier4
+PASS  brazier 4: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 5 brazier5
+PASS  brazier 5: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  all six lit: NOT the answer 
+PASS  put out brazier 1 brazier1
+PASS  put out: its fire dies, its shadow goes 
+PASS  still shut with the wrong set 
+PASS  put out brazier 4 brazier4
+PASS  put out brazier 5 brazier5
+PASS  the lore line, in the third person On Milos, in the evening,
+he moved the lamps until her shadow lay
+where he wanted her to stand.
+PASS  the solve jingle 
+PASS  her shadows darken; her veil stirs 
+PASS  reached the Garden of the Veiled (11.48923, 1.0, -9.066161) garden_veiled
+PASS  the shard is lowered outside the chamber 
+PASS  hint (110 s): the outlines pulse faintly without the shard 
+PASS  the old rune door panel is gone 
+PASS  the garden door is closed (16.33957, 1.0, -11.77144)
+PASS  breathe on the garden glass breathe_garden
+  .. sim 140s  real 21s  step 318/760
+PASS  her message: three asymmetric runes, written from her side (mirrored for you) 
+PASS  statue 1 in reach turn1
+PASS  statue 2 in reach turn2
+PASS  statue 3 in reach turn3
+PASS  each statue turns her rune to the mirror (reversed in the glass = as she wrote it) [0, 1, 0]
+PASS  the door opens in the reflection first refl -1.31 real 0.00
+PASS  the reflection's door is only in the glass 
+PASS  reached the Hollow Walk (18.13292, 1.0, -11.8003) hollow_walk
+PASS  the hollow walk's gate is closed (18.51699, 1.0, -14.73)
+  .. sim 160s  real 24s  step 358/760
+PASS  the hollows do not move while you walk [[5, 2], [1, 1]][false, false]
+PASS  a hollow you are looking at holds still [[5, 2], [0, 1]][false, false]
+PASS  the one you do not look at steps toward you [[5, 2], [0, 1]][false, false]

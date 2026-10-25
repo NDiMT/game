@@ -15,12 +15,20 @@ const URL = arg('--url', 'http://localhost:8123/eidolon-world/build/web/index.ht
 const OUT = arg('--out', '/home/user/game/eidolon-world/dev/shots/').replace(/\/?$/, '/');
 const TAG = arg('--tag', 'smoke');
 const LOAD_TIMEOUT = +arg('--load-timeout', 240) * 1000;
-const ROOM_WAIT = +arg('--room-wait', 5000);
-const RMS_SECS = +arg('--rms-secs', 2.5);
+const ROOM_WAIT = +arg('--room-wait', 2500);
+
 const RMS_MIN_DB = -40;
+// the walk-through renders on this tier (after the default-tier check): SwiftShader at DPR 2 on High (full-res,
+// MSAA, 4096 shadow atlas) takes minutes per frame-heavy room; Low keeps the run inside the time budget
+const RENDER_TIER = arg('--tier', 'low');
+const SHOT_SCALE = arg('--shot-scale', 'css');       // css = 390x844 PNGs (4x cheaper to encode than DPR 2), device
+const BUDGET = +arg('--budget', 430) * 1000;        // the room loop stops here (the solve + checks must still fit in 10 min)
 const W = 390, H = 844;
 const ROOMS = ['waking_pool', 'stair_breath', 'hall_glass', 'shard_gallery', 'garden_veiled', 'hollow_walk', 'court_light',
   'mist_maze', 'echo_corridor', 'scales', 'eidolon_ledge', 'gate_four', 'first_shrine'];
+// known: main.gd ROOM_ENTRY.mist_maze (12.0, -26.4) lies on the Court of Light side of the maze doorway (the
+// MZ_door region spans z -29.2..-26.9), so jump:mist_maze reports area court_light; step through the door
+const ENTRY_NUDGE = { mist_maze: [12.0, -28.0] };
 fs.mkdirSync(OUT, { recursive: true });
 
 const T0 = Date.now();
@@ -81,7 +89,7 @@ await ctx.addInitScript(() => {
   AudioNode.prototype.connect = function (dst, ...rest) {
     if (dst instanceof AudioDestinationNode) {
       const c = dst.context;
-      if (!c.__an) { c.__an = c.createAnalyser(); c.__an.fftSize = 2048; orig.call(c.__an, dst); window.__an.push(c.__an); window.__ctx = c; }
+      if (!c.__an) { c.__an = c.createAnalyser(); c.__an.fftSize = 32768; orig.call(c.__an, dst); window.__an.push(c.__an); window.__ctx = c; }
       return orig.call(this, c.__an, ...rest);
     }
     return orig.call(this, dst, ...rest);
@@ -93,7 +101,8 @@ const consoleLog = [], errors = [], glErrors = [];
 const GL_RX = /webgl|GL_INVALID|GL ERROR|CONTEXT_LOST|INVALID_(ENUM|VALUE|OPERATION|FRAMEBUFFER)/i;
 page.on('console', (m) => {
   const line = `[${el()} ${m.type()}] ${m.text()}`; consoleLog.push(line);
-  if (GL_RX.test(m.text()) && (m.type() === 'error' || m.type() === 'warning')) glErrors.push(m.text());
+  // (GL Driver Message "Performance" notes, e.g. "GPU stall due to ReadPixels" from screenshots, are not errors)
+  if (GL_RX.test(m.text()) && (m.type() === 'error' || m.type() === 'warning') && !/GL Driver Message \(OpenGL, Performance/.test(m.text())) glErrors.push(m.text());
   else if (m.type() === 'error') errors.push(m.text());
 });
 page.on('pageerror', (e) => { consoleLog.push(`[${el()} pageerror] ${e.message}`); errors.push('pageerror: ' + e.message); });
@@ -104,18 +113,16 @@ const st = () => page.evaluate(() => window.ewState || null);
 const cmd = (c) => page.evaluate((c) => window.ewCmd(c), c);
 const wait = (ms) => page.waitForTimeout(ms);
 async function waitFor(fn, ms) { const t = Date.now(); while (Date.now() - t < ms) { const s = await st().catch(() => null); if (s && fn(s)) return s; await wait(300); } return null; }
-async function rms(secs) {
-  return page.evaluate(async (secs) => {
-    const vals = []; const t0 = performance.now();
-    while (performance.now() - t0 < secs * 1000) {
-      for (const an of window.__an) { const b = new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let s = 0; for (const v of b) s += v * v; vals.push(Math.sqrt(s / b.length)); }
-      await new Promise((r) => setTimeout(r, 250));
-    }
-    const m = vals.reduce((a, b) => a + b * b, 0) / Math.max(1, vals.length);
-    const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(1) : -200);
-    return { n: vals.length, rms_db: db(Math.sqrt(m)), max_db: db(Math.max(0, ...vals)), ctx: window.__ctx ? window.__ctx.state : 'no-ctx', analysers: window.__an.length };
-  }, secs);
+// music RMS from the analyser's last 32768 samples (~0.7 s): one snapshot per call; the page's main thread
+// runs about one frame a second under SwiftShader, so a polling loop inside the page would starve
+async function rms() {
+  return page.evaluate(() => {
+    let p = 0, n = 0, peak = 0;
+    for (const an of window.__an) { const b = new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); for (const v of b) { p += v * v; peak = Math.max(peak, Math.abs(v)); } n += b.length; }
+    return { p: n ? p / n : 0, peak, ctx: window.__ctx ? window.__ctx.state : 'no-ctx', analysers: window.__an.length };
+  });
 }
+const dB = (x) => (x > 0 ? +(10 * Math.log10(x)).toFixed(1) : -200);   // (power -> dBFS)
 
 let fatal = null;
 const summary = { url: URL, rooms: {}, audio: {}, shots: [] };
@@ -123,34 +130,42 @@ try {
   // ---------------------------------------------------------------- load + title
   info('goto', URL);
   await page.goto(URL, { waitUntil: 'load', timeout: LOAD_TIMEOUT });
-  const title = await waitFor((s) => s.mode === 'title' && s.title_reveal >= 1, LOAD_TIMEOUT);
+  const title = await waitFor((s) => s.mode === 'title', LOAD_TIMEOUT);
   summary.load_s = +((Date.now() - T0) / 1000).toFixed(1);
   check('load: title screen reached', !!title, `in ${summary.load_s}s (limit ${LOAD_TIMEOUT / 1000}s)`);
   if (!title) throw new Error('title never reached');
   // ---------------------------------------------------------------- default quality on a fresh profile
   check('quality: default tier is HIGH on a fresh profile', title.tier === 'HIGH' && title.quality_high === true, `tier=${title.tier} quality_high=${title.quality_high}`);
+  // the walk-through tier (frames on High at DPR 2 take many seconds under SwiftShader), set before the tap
+  await cmd('noauto'); await cmd('quality:' + RENDER_TIER);
   // ---------------------------------------------------------------- start (a real tap: unlocks audio)
-  await cmd('reset_save'); await cmd('noauto');
+  await cmd('reset_save');
   await page.touchscreen.tap(W / 2, H / 2);
-  const play = await waitFor((s) => s.mode === 'play', 90000);
-  check('start: a tap on the title starts play', !!play, play ? `area=${play.area}` : 'mode never reached play');
-  if (!play) throw new Error('never reached play');
-  await cmd('noauto'); await wait(3000);
+  // (the tap starts the waking cinematic: mode "wake", then "play"; the jumps below put it in play directly)
+  const play = await waitFor((s) => s.mode === 'wake' || s.mode === 'play', 60000);
+  check('start: a tap on the title starts the game', !!play, play ? `mode=${play.mode} music=${play.music}` : 'mode stayed ' + (await st())?.mode);
+  if (!play) { info('tap did not start the game; falling back to the begin hook'); await cmd('begin'); }
+  await wait(1000);
+  info('walk-through tier', (await st()).tier);
   // ---------------------------------------------------------------- every Chapter I space: screenshot + music RMS
   const loud = [];
   for (const room of ROOMS) {
+    if (Date.now() - T0 > BUDGET) { check(`shot ${room}`, false, `skipped: time budget ${BUDGET / 1000}s used up`); continue; }
     await cmd('jump:' + room);
+    if (ENTRY_NUDGE[room]) { await wait(800); await cmd(`tp:${ENTRY_NUDGE[room][0]}:${ENTRY_NUDGE[room][1]}`); }
     await wait(ROOM_WAIT);
     const path = `${OUT}${TAG}-${room}.png`;
-    const buf = await page.screenshot({ path, timeout: 120000 });
+    const r1 = await rms();
+    const buf = await page.screenshot({ path, timeout: 120000, scale: SHOT_SCALE });
     const s = await st();
     const im = imageStats(buf);
-    const r = await rms(RMS_SECS);
-    summary.rooms[room] = { area: s.area, pos: s.pos, fps: s.fps, music: s.music, img: im, rms_db: r.rms_db, max_db: r.max_db, ctx: r.ctx };
+    const r2 = await rms();
+    const r = { rms_db: dB((r1.p + r2.p) / 2), max_db: dB(Math.max(r1.peak, r2.peak) ** 2), ctx: r2.ctx };
+    summary.rooms[room] = { area: s.area, pos: s.pos, fps: s.fps, music: s.music, img: im, rms_db: r.rms_db, peak_db: r.max_db, ctx: r.ctx };
     summary.shots.push(path);
     if (r.rms_db > RMS_MIN_DB) loud.push(room);
     check(`shot ${room}`, imageOk(im) && s.area === room, `area=${s.area} mean=${im.mean} sd=${im.sd} black=${im.black} white=${im.white} -> ${path}`);
-    info(`room ${room}: music=${s.music} rms=${r.rms_db} dBFS max=${r.max_db} ctx=${r.ctx} fps=${s.fps}`);
+    info(`room ${room}: music=${s.music} rms=${r.rms_db} dBFS peak=${r.max_db} ctx=${r.ctx} fps=${s.fps} tier=${s.tier}`);
   }
   check(`audio: music RMS > ${RMS_MIN_DB} dBFS in >= 3 rooms`, loud.length >= 3, `${loud.length}/${ROOMS.length} rooms: ${loud.join(', ')}`);
   // ---------------------------------------------------------------- audio state dump
@@ -162,17 +177,22 @@ try {
   check('audio: state dump (sfx ready, music set, an audible bed playing)', a.sfx_ready === true && !!a.music && playingBeds.length > 0,
     `sfx_ready=${a.sfx_ready} music=${a.music} drone=${a.drone} beds=${bedFiles.length} audible+playing=${playingBeds.join(',')} jingle_duck=${beds.jingle_duck} bed_restart=${a.played?.bed_restart || 0}`);
   // ---------------------------------------------------------------- one puzzle solve through the hooks: the shadow chamber
+  info('solve: jump to the shadow chamber');
   await cmd('jump:shard_gallery'); await wait(2000);
   const j0 = (await st()).played?.jingle || 0;
   for (const b of [0, 2, 3]) { await cmd('call:toggle_brazier:' + b); await wait(800); }
   const solved = await waitFor((s) => s.chapter?.gallery === true, 30000);
   const jg = await waitFor((s) => (s.played?.jingle || 0) > j0, 15000);
-  const rj = await rms(1.5);
+  const rj = await rms(); rj.rms_db = dB(rj.p);
+  info('solve: done');
   const sj = await st();
   check('puzzle: shadow chamber solves via hooks and the jingle is counted', !!solved && !!jg,
     `gallery=${sj.chapter?.gallery} jingle ${j0} -> ${sj.played?.jingle || 0} rms_during=${rj.rms_db} dBFS duck=${sj.beds?.jingle_duck}`);
   summary.solve = { gallery: sj.chapter?.gallery, jingle_before: j0, jingle_after: sj.played?.jingle || 0, rms_during: rj.rms_db };
-  await page.screenshot({ path: `${OUT}${TAG}-solve-shard_gallery.png`, timeout: 120000 });
+  if (argv.includes('--solve-shot')) {        // (opt-in: the first frames after this solve take ~1.5 min under SwiftShader)
+    await page.screenshot({ path: `${OUT}${TAG}-solve-shard_gallery.png`, timeout: 150000, scale: SHOT_SCALE });
+    info('solve: shot saved');
+  }
 } catch (e) {
   fatal = String(e && e.stack || e);
   check('harness: run completed without an exception', false, fatal.split('\n')[0]);

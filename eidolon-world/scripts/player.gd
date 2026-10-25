@@ -101,7 +101,7 @@ func step(dt: float) -> void:
 		real = (np - position) / maxf(dt, 0.0001)
 		real.y = 0.0
 		# blocked: bleed velocity so we do not "push" against invisible walls at full speed
-		if real.length() < vel.length() * 0.5: vel = vel.lerp(real, 0.5)
+		if real.length() < vel.length() * 0.5: vel = vel.lerp(real, 1.0 - exp(-dt * 41.6))      # (0.5 at 60 Hz, the same at any refresh)
 		position = np
 	# animation speed follows the ACTUAL displacement (no moonwalking against a wall)
 	speed01 = lerpf(speed01, clampf(real.length() / SPEED, 0.0, 1.0), 1.0 - exp(-dt * 14.0))

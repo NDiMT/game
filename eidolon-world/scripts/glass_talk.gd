@@ -154,7 +154,7 @@ func _ready() -> void:
 	mask_vp.size = MASK
 	mask_vp.transparent_bg = true
 	mask_vp.disable_3d = true
-	mask_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	mask_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED      # (v0.8.5: only while the pane is open)
 	add_child(mask_vp)
 	ink = Ink.new()
 	ink.host = self
@@ -167,7 +167,7 @@ func _ready() -> void:
 	mine_vp.size = MASK
 	mine_vp.transparent_bg = true
 	mine_vp.disable_3d = true
-	mine_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	mine_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(mine_vp)
 	var im := Ink.new()
 	im.host = self
@@ -506,6 +506,11 @@ func _process(dt: float) -> void:
 		her_fig.apply_pose(p)
 	elif her_vp and her_vp.render_target_update_mode != SubViewport.UPDATE_DISABLED:
 		her_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	# (v0.8.5) the wipe masks render only while the pane can be seen (and once more as it closes)
+	var mm := SubViewport.UPDATE_ALWAYS if (visible or modulate.a > 0.0) else SubViewport.UPDATE_DISABLED
+	if mask_vp.render_target_update_mode != mm:
+		mask_vp.render_target_update_mode = mm
+		mine_vp.render_target_update_mode = mm
 
 func _gui_input(e: InputEvent) -> void:
 	if not visible: return

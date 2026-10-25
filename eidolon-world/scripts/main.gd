@@ -421,7 +421,9 @@ func _process(dt: float) -> void:
 	if ui.text_source != Vector3.INF and player.position.distance_to(ui.text_source) > 3.2: ui.hide_text()
 	if mode == "play":
 		_save_t += dt
-		if _save_t > 6.0:
+		# (v0.8.5) the periodic position save waits for a still moment: a save is a few ms of JSON and a
+		# file write, never during a walk (solves and checkpoints still save at once)
+		if _save_t > 6.0 and player.speed01 < 0.05 and auto_target == Vector3.INF:
 			_save_t = 0.0
 			if _last_saved_pos == Vector3.INF or player.position.distance_to(_last_saved_pos) > 0.5: _save()
 	_js_state(dt)
@@ -840,30 +842,109 @@ func _warm_up_shaders() -> void:
 	var holder := Node3D.new()
 	world.cam.add_child(holder)
 	holder.position = Vector3(0, 0, -(world.cam.near + 0.5))
-	holder.scale = Vector3.ONE * 0.004
+	holder.scale = Vector3.ONE * 0.0003            # (sub-pixel: drawn, never seen)
 	var mats: Array[Material] = [highlight._in, highlight._ring_mat, level.marble_mat, level.marble_occ_mat]
 	for path in ["res://shaders/light_pool.gdshader", "res://shaders/statue_shadow.gdshader", "res://shaders/ember.gdshader",
 			"res://shaders/flame.gdshader", "res://shaders/lens_only.gdshader", "res://shaders/veil_glow.gdshader", "res://shaders/halo.gdshader"]:
 		var m := ShaderMaterial.new()
 		m.shader = load(path)
 		mats.append(m)
+	var n := 0
 	for i in mats.size():
 		var mi := MeshInstance3D.new()
 		var q := BoxMesh.new()
 		q.size = Vector3.ONE
 		mi.mesh = q
 		mi.material_override = mats[i]
-		mi.position = Vector3(i * 1.2, 0, 0)
+		mi.position = Vector3(n * 1.2, 0, 0)
+		n += 1
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		holder.add_child(mi)
+	# v0.8.5: EVERY mesh + material pair in the chapter (hidden ones too: the cinematic, the solved states,
+	# the props), drawn once, tiny, in front of the camera: no shader is compiled the first time it is seen
+	var seen := {}
+	for g in find_children("*", "GeometryInstance3D", true, false):
+		if g.is_ancestor_of(holder) or holder.is_ancestor_of(g): continue
+		var mesh: Mesh = null
+		var multi := false
+		if g is MeshInstance3D:
+			if (g as MeshInstance3D).skin != null: continue     # (skinned: the hero is always on screen)
+			mesh = (g as MeshInstance3D).mesh
+		elif g is MultiMeshInstance3D and (g as MultiMeshInstance3D).multimesh:
+			mesh = (g as MultiMeshInstance3D).multimesh.mesh
+			multi = true
+		elif g is CPUParticles3D:
+			mesh = (g as CPUParticles3D).mesh
+		if mesh == null: continue
+		var gi := g as GeometryInstance3D
+		for si in mesh.get_surface_count():
+			var mat: Material = gi.material_override
+			if mat == null and g is MeshInstance3D: mat = (g as MeshInstance3D).get_active_material(si)
+			if mat == null: mat = mesh.surface_get_material(si)
+			if mat == null: continue
+			var fmt := (mesh as ArrayMesh).surface_get_format(si) if mesh is ArrayMesh else -1
+			var key := "%d/%d/%s/%d/%s" % [mat.get_instance_id(), fmt, mesh.get_class(), si, multi]
+			if seen.has(key): continue
+			seen[key] = true
+			var w: GeometryInstance3D
+			if multi:
+				var mm := MultiMesh.new()
+				mm.transform_format = (g as MultiMeshInstance3D).multimesh.transform_format
+				mm.use_colors = (g as MultiMeshInstance3D).multimesh.use_colors
+				mm.use_custom_data = (g as MultiMeshInstance3D).multimesh.use_custom_data
+				mm.mesh = mesh
+				mm.instance_count = 1
+				var mmi := MultiMeshInstance3D.new()
+				mmi.multimesh = mm
+				w = mmi
+			else:
+				var mi2 := MeshInstance3D.new()
+				mi2.mesh = mesh
+				w = mi2
+			w.material_override = mat
+			w.extra_cull_margin = 16384.0
+			w.position = Vector3((n % 40) * 1.2, (n / 40) * 1.2, 0)
+			w.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			w.layers = 0xFFFFF
+			n += 1
+			holder.add_child(w)
+	# the 2D materials (the glass close-up, the lens, the UI runes and cards): one tiny quad each
+	var cl := CanvasLayer.new()
+	cl.layer = -100
+	add_child(cl)
+	var cseen := {}
+	for c in find_children("*", "CanvasItem", true, false):
+		var cm: Material = (c as CanvasItem).material
+		if cm == null or cseen.has(cm.get_instance_id()): continue
+		cseen[cm.get_instance_id()] = true
+		var r := ColorRect.new()
+		r.material = cm
+		r.size = Vector2(2, 2)
+		r.position = Vector2(2 * (cseen.size() % 50), 0)
+		r.modulate.a = 0.02
+		cl.add_child(r)
 	# a lit flame with its light (the lit-surface variants of the stone compile too)
 	var f := Flame.new(0.0, 0.5, Palette.FIRE_LIGHT, level.noise_tex)
 	f.mat.set_shader_parameter("intensity", 1.0)
 	f.energy = 0.02
 	holder.add_child(f)
 	f._allowed = true
-	await get_tree().create_timer(0.6).timeout
+	# the planar mirrors' and the glass close-up's own render passes, once each
+	for r in puzzles.reflectors:
+		if r.planar and r.planar.vp.render_target_update_mode == SubViewport.UPDATE_DISABLED:
+			r.planar.vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var gtk := ui.glass_talk
+	for v in [gtk.her_vp, gtk.mask_vp, gtk.mine_vp]:
+		if v and v.render_target_update_mode == SubViewport.UPDATE_DISABLED: v.render_target_update_mode = SubViewport.UPDATE_ONCE
+	print("[warm-up] %d mesh/material pairs (of %d geometry nodes), %d canvas materials" % [n, find_children("*", "GeometryInstance3D", true, false).size(), cseen.size()])
+	for k in 4: await get_tree().process_frame
+	await get_tree().create_timer(0.4).timeout
 	holder.queue_free()
+	cl.queue_free()
+	# (the one-off renders above are done: nothing is left asking to render)
+	for r in puzzles.reflectors:
+		if r.planar and not r.planar.active: r.planar.vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	if gtk.her_vp and not gtk.visible: gtk.her_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 func _apply_tier_extras() -> void:
 	for r in puzzles.reflectors:

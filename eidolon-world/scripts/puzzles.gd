@@ -693,39 +693,50 @@ static func _ray_exit(p: Vector2, d: Vector2, b: Rect2) -> float:
 	if d.y < -0.0001: t = minf(t, (b.position.y - p.y) / d.y)
 	return maxf(t, 0.0)
 
+## (v0.8.5) the beam is traced again only when a mirror's angle changed (a turn, a new state); the glow
+## and the hints below still animate every frame
+var _beam_angles: Array = []
 func _update_beam(dt := 0.0) -> void:
-	var pts := _trace()
-	beam_points = pts
-	for i in beam_segs.size():
-		var sg := beam_segs[i]
-		var g := beam_glows[i]
-		var wl: int = beam_world[i] if i < beam_world.size() else 0
-		var lay := PlanarMirror.LAYER_DOUBLE if wl == 1 else PlanarMirror.LAYER_MAIN_FX
-		if i < pts.size() - 1:
-			var a := pts[i]
-			var b := pts[i + 1]
-			var v := b - a
-			var L := v.length()
-			if L < 0.01:
-				sg.visible = false
+	var same := _beam_angles.size() == mirror_angles.size() and not beam_points.is_empty()
+	if same:
+		for k in mirror_angles.size():
+			if not is_equal_approx(float(_beam_angles[k]), float(mirror_angles[k])):
+				same = false
+				break
+	if not same:
+		_beam_angles = mirror_angles.duplicate()
+		var pts := _trace()
+		beam_points = pts
+		for i in beam_segs.size():
+			var sg := beam_segs[i]
+			var g := beam_glows[i]
+			var wl: int = beam_world[i] if i < beam_world.size() else 0
+			var lay := PlanarMirror.LAYER_DOUBLE if wl == 1 else PlanarMirror.LAYER_MAIN_FX
+			if i < pts.size() - 1:
+				var a := pts[i]
+				var b := pts[i + 1]
+				var v := b - a
+				var L := v.length()
+				if L < 0.01:
+					sg.visible = false
+				else:
+					var z := v.normalized().cross(Vector3.UP)
+					sg.transform = Transform3D(Basis(v, Vector3.UP, z), a)
+					var m: ShaderMaterial = sg.material_override
+					m.set_shader_parameter("length_m", L)
+					m.set_shader_parameter("intensity", 1.0)
+					sg.layers = lay
+					sg.visible = true
+				g.visible = i > 0
+				g.position = a
+				g.layers = lay
 			else:
-				var z := v.normalized().cross(Vector3.UP)
-				sg.transform = Transform3D(Basis(v, Vector3.UP, z), a)
-				var m: ShaderMaterial = sg.material_override
-				m.set_shader_parameter("length_m", L)
-				m.set_shader_parameter("intensity", 1.0)
-				sg.layers = lay
-				sg.visible = true
-			g.visible = i > 0
-			g.position = a
-			g.layers = lay
-		else:
-			sg.visible = false
-			g.visible = i == pts.size() - 1 and i > 0
-			if g.visible:
-				g.position = pts[i]
-				g.layers = PlanarMirror.LAYER_DOUBLE if (beam_world[i - 1] if i - 1 < beam_world.size() else 0) == 1 else PlanarMirror.LAYER_MAIN_FX
-	_update_beam_floor(pts)
+				sg.visible = false
+				g.visible = i == pts.size() - 1 and i > 0
+				if g.visible:
+					g.position = pts[i]
+					g.layers = PlanarMirror.LAYER_DOUBLE if (beam_world[i - 1] if i - 1 < beam_world.size() else 0) == 1 else PlanarMirror.LAYER_MAIN_FX
+		_update_beam_floor(pts)
 	# the crystal: lit from any side it glows; it passes the light on the way it came
 	var tk: float = target_halo.get_shader_parameter("intensity")
 	if not state["bridge"]:
@@ -1191,11 +1202,26 @@ func _pane(base: Vector3, yaw: float, size: Vector2, cracked: bool) -> void:
 	_add_refl(r)
 
 # ------------------------------------------------------------------ per frame / save
+var _beam_once := false
 func update(dt: float) -> void:
 	_t += dt
-	for r in reflectors: r.update(dt, game.player, game.world.cam_back)
-	_update_beam(dt)
+	if game.prof_on:
+		for r in reflectors:
+			var t0 := Time.get_ticks_usec()
+			r.update(dt, game.player, game.world.cam_back)
+			game._pm("refl:" + r.kind + ("*" if r.active else ""), t0)
+	else:
+		for r in reflectors: r.update(dt, game.player, game.world.cam_back)
+	var tp := Time.get_ticks_usec() if game.prof_on else 0
+	# (v0.8.5) the beam only changes in the court (its mirrors turn there): far from it, the beam drawn
+	# last stays as it is and is not traced again every frame
+	var pc: Vector3 = game.player.position
+	if not _beam_once or Vector2(pc.x - 12.0, pc.z + 22.0).length() < 18.0 or busy:
+		_beam_once = true
+		_update_beam(dt)
+	if game.prof_on: tp = game._pm("pz:beam", tp)
 	_update_plate(dt)
+	if game.prof_on: tp = game._pm("pz:plate", tp)
 	# the numbered statues' runes brighten and pulse as you come near
 	for i in statue_mats.size():
 		var dd := Vector2(statue_pos[i].x - game.player.position.x, statue_pos[i].z - game.player.position.z).length()
@@ -1216,6 +1242,8 @@ func update(dt: float) -> void:
 		tablet_mat.set_shader_parameter("lit", k)
 
 func apply_state(s: Dictionary) -> void:
+	_beam_once = false              # (v0.8.5: the beam is traced again for the new state)
+	_beam_angles = []
 	for k in s.keys():
 		if state.has(k): state[k] = s[k]
 	if (state["mirrors"] as Array).size() != STAND_POS.size(): state["mirrors"] = MIRROR_START.duplicate()      # (a v0.5 save)

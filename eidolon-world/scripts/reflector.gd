@@ -191,6 +191,10 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 	var src_xf := player.fig.global_transform
 	var src_pose: Figure.Pose = player.fig.pose
 	if lag > 0.0:
+		# (v0.8.5) its memory of your poses is kept only while it can be seen (no per-frame copies otherwise)
+		if not want and not active:
+			_hist.clear()
+			return
 		_hist.append([_t, src_xf, src_pose.copy()])
 		while _hist.size() > 2 and _hist[1][0] <= _t - lag - 0.14: _hist.pop_front()
 		if not active: return

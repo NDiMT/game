@@ -251,16 +251,94 @@ func push_out(p: Vector2, rad: float) -> Vector2:
 
 ## Resolve one movement step. Never leaves the walkable union, never enters an obstacle, never
 ## climbs or drops more than a stair step.
+## (v0.8.5) a broadphase: the obstacles and walk regions that can matter for this step (everything a
+## step's candidate could touch: within the radius + the step + a margin) are gathered ONCE, and the
+## candidates are tested against those only, with no per-iteration array building. Same results.
+var _mo: Array = []
+var _mr: Array = []
 func move(pos: Vector3, d: Vector3, rad: float) -> Vector3:
 	var p := Vector2(pos.x, pos.z)
 	var dd := Vector2(d.x, d.z)
 	var stuck := blocked(p, rad)      # recover gracefully if we ever start inside something
+	if stuck: return _move_full(pos, p, dd, rad)
+	var R := rad + dd.length() + 0.6
+	_mo.clear()
+	for o in obstacles:
+		if not o.enabled: continue
+		if o.circle:
+			if p.distance_to(o.c) < o.rad + R: _mo.append(o)
+		else:
+			var q0 := Vector2(clampf(p.x, o.r.position.x, o.r.end.x), clampf(p.y, o.r.position.y, o.r.end.y))
+			if p.distance_to(q0) < R: _mo.append(o)
+	_mo.append_array(_near_solids(p, R))
+	_mr.clear()
+	for g in regions:
+		if g.enabled and g.r.grow(R).has_point(p): _mr.append(g)
+	for k in 3:
+		var cand := p + dd if k == 0 else (p + Vector2(dd.x, 0.0) if k == 1 else p + Vector2(0.0, dd.y))
+		var q := _push_out_in(cand, rad)
+		if q.distance_to(p) > dd.length() + 0.05: continue
+		var h := _height_in(q)
+		if _circle_ok_in(q, rad) and not _blocked_in(q, rad) and absf(h - pos.y) < 0.3:
+			return Vector3(q.x, h, q.y)
+	return Vector3(p.x, _height_in(p), p.y)
+
+func _move_full(pos: Vector3, p: Vector2, dd: Vector2, rad: float) -> Vector3:
 	for cand in [p + dd, p + Vector2(dd.x, 0.0), p + Vector2(0.0, dd.y)]:
 		var q := push_out(cand, rad)
-		if not stuck and q.distance_to(p) > dd.length() + 0.05: continue
 		if circle_ok(q, rad) and not blocked(q, rad) and absf(height_at(q) - pos.y) < 0.3:
 			return Vector3(q.x, height_at(q), q.y)
 	return Vector3(p.x, height_at(p), p.y)
+
+func _region_in(p: Vector2) -> Region:
+	var best: Region = null
+	for g: Region in _mr:
+		if g.has(p):
+			if best == null or g.height(p) > best.height(p): best = g
+	return best
+
+func _height_in(p: Vector2) -> float:
+	var g := _region_in(p)
+	return g.height(p) if g else 0.0
+
+func _circle_ok_in(p: Vector2, rad: float) -> bool:
+	if _region_in(p) == null: return false
+	for k in 8:
+		var a := TAU * k / 8.0
+		if _region_in(p + Vector2(cos(a), sin(a)) * rad) == null: return false
+	return true
+
+func _blocked_in(p: Vector2, rad: float) -> bool:
+	for o: Obstacle in _mo:
+		if o.enabled and _overlaps(o, p, rad): return true
+	return false
+
+func _push_out_in(p: Vector2, rad: float) -> Vector2:
+	for it in 3:
+		for o: Obstacle in _mo:
+			if not o.enabled: continue
+			if o.circle:
+				var d := p - o.c
+				var L := d.length()
+				var need := o.rad + rad
+				if L < need:
+					p = o.c + (d / L if L > 0.0001 else Vector2.RIGHT) * need
+			else:
+				var q := Vector2(clampf(p.x, o.r.position.x, o.r.end.x), clampf(p.y, o.r.position.y, o.r.end.y))
+				var d2 := p - q
+				var L2 := d2.length()
+				if L2 < rad:
+					if L2 > 0.0001:
+						p = q + d2 / L2 * rad
+					else:
+						var dl := p.x - o.r.position.x; var dr := o.r.end.x - p.x
+						var dt := p.y - o.r.position.y; var db := o.r.end.y - p.y
+						var m := minf(minf(dl, dr), minf(dt, db))
+						if m == dl: p.x = o.r.position.x - rad
+						elif m == dr: p.x = o.r.end.x + rad
+						elif m == dt: p.y = o.r.position.y - rad
+						else: p.y = o.r.end.y + rad
+	return p
 
 ## v0.8 (QA P1-8): per-area visibility: the merged zone meshes far from the wanderer are not drawn.
 ## Zones the chapter shows / hides itself (doors that open) are left alone.

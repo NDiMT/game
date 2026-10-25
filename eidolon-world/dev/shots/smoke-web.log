@@ -1,0 +1,3 @@
+[0.2s] goto http://127.0.0.1:36239/eidolon-world/build/web/index.html
+PASS  load: title screen reached  in 27.3s (limit 240s)
+PASS  quality: default tier is HIGH on a fresh profile  tier=HIGH quality_high=true

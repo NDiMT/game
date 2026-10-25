@@ -97,8 +97,9 @@ func _init(ghost := false) -> void:
 		_rest_l[i] = sk.get_bone_rest(i).basis.get_rotation_quaternion()
 		var p := sk.get_bone_parent(i)
 		_par_b[i] = sk.get_bone_global_rest(p).basis.orthonormalized() if p >= 0 else Basis()
-	for nm in DRIVEN:
-		var i: int = bone[nm]
+	if _drv_idx.is_empty():
+		for nm in DRIVEN: _drv_idx.append(bone[nm])
+	for i in _drv_idx:
 		var p := sk.get_bone_parent(i)
 		while p >= 0 and not DRIVEN.has(sk.get_bone_name(p)): p = sk.get_bone_parent(p)
 		_drv_par[i] = p
@@ -254,6 +255,9 @@ func set_veil_lift(k: float) -> void:
 	var R := Basis(Vector3.RIGHT, -k * 1.9)
 	veil.transform = veil_base * Transform3D(R, piv - R * piv)
 
+const SIDES := ["L", "R"]
+var _sb: Array = []                 # (v0.8.5) per side: clavicle, upper arm, forearm, thigh, calf, foot bone indices
+var _drv_idx: PackedInt32Array = PackedInt32Array()                 # (v0.8.5) the driven bones' indices
 func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 	var c := p.crouch
 	var w := clampf(p.ripple, 0.0, 1.0)            # the walk (0 idle .. 1 full stride)
@@ -273,10 +277,14 @@ func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 	# the head held steady (global): it looks around, leads into a turn, bows to the water
 	D[bone["Head"]] = _ry(p.head_yaw + turn * 1.6) * _rx(-p.head_pitch + 0.06 * w + 0.01 * brth + 0.35 * c) * _rz(-p.head_roll)
 	var sp := D[bone["Spine02"]] as Quaternion
-	for side in ["L", "R"]:
-		var sg := 1.0 if side == "L" else -1.0
+	if _sb.is_empty():
+		for sd in SIDES: _sb.append([bone[sd + "_Clavicle"], bone[sd + "_Upperarm"], bone[sd + "_Forearm"], bone[sd + "_Thigh"], bone[sd + "_Calf"], bone[sd + "_Foot"]])
+	for si in 2:
+		var side: String = SIDES[si]
+		var bi: Array = _sb[si]
+		var sg := 1.0 if si == 0 else -1.0
 		var leg := s * sg
-		D[bone[side + "_Clavicle"]] = sp * _rz(sg * 0.03 * brth)
+		D[bi[0]] = sp * _rz(sg * 0.03 * brth)
 		var arm_swing := -leg * 0.20 * w
 		var q: Dictionary = _q[side]
 		var r: Array = q["rest"]
@@ -290,15 +298,16 @@ func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 			arm = arm.slerp(q["reach"][0], p.reach)
 			fore = fore.slerp(q["reach"][1], p.reach)
 			arm_swing *= 1.0 - p.reach
-		D[bone[side + "_Upperarm"]] = sp * _rx(-arm_swing) * _rz(-sg * 0.02 * brth) * arm
-		D[bone[side + "_Forearm"]] = sp * _rx(-arm_swing * 1.3 - 0.04 * w) * fore
+		D[bi[1]] = sp * _rx(-arm_swing) * _rz(-sg * 0.02 * brth) * arm
+		D[bi[2]] = sp * _rx(-arm_swing * 1.3 - 0.04 * w) * fore
 		var thigh := 0.36 * leg * w
 		var knee := maxf(0.0, -sg * s2) * 0.55 * w + 0.12 * w
-		D[bone[side + "_Thigh"]] = hip * _rx(-thigh - 0.55 * c)
-		D[bone[side + "_Calf"]] = hip * _rx(-thigh + knee + 1.0 * c)
-		D[bone[side + "_Foot"]] = hip * _rx(-thigh * 0.4 - 0.2 * c)
-	for nm in DRIVEN:
-		var i: int = bone[nm]
+		D[bi[3]] = hip * _rx(-thigh - 0.55 * c)
+		D[bi[4]] = hip * _rx(-thigh + knee + 1.0 * c)
+		D[bi[5]] = hip * _rx(-thigh * 0.4 - 0.2 * c)
+	if _drv_idx.is_empty():
+		for nm in DRIVEN: _drv_idx.append(bone[nm])
+	for i in _drv_idx:
 		var pi: int = _drv_par[i]
 		var dp: Quaternion = D[pi] if pi >= 0 else Quaternion()
 		var rel: Quaternion = dp.inverse() * (D[i] as Quaternion)
@@ -309,7 +318,7 @@ func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 		for k in cloth_bones.size(): sk.set_bone_pose_rotation(cloth_bones[k], src[k])
 	elif cloth_mode == "sim" and sim:
 		# a gentle, uneven breath of wind through the cloth
-		_wind_t += 1.0 / 60.0
+		_wind_t = Time.get_ticks_msec() / 1000.0          # (v0.8.5: real time, any refresh rate)
 		var g := 0.035 + 0.025 * sin(_wind_t * 0.7) * sin(_wind_t * 0.23 + 1.0)
 		sim.external_force = Vector3(0.6, 0.0, 0.8).normalized() * g
 	_bp("sway", p.sway)

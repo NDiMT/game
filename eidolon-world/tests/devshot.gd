@@ -13,16 +13,30 @@ func _ready() -> void:
 	steps = (args[0] if args.size() > 0 else "w:3;shot:dev;quit").split(";")
 	game = load("res://scenes/main.tscn").instantiate()
 	add_child(game)
+	var b1 := Bracket.new(); b1.host = self; b1.first = true; b1.process_priority = -100000; add_child(b1)
+	var b2 := Bracket.new(); b2.host = self; b2.first = false; b2.process_priority = 100000; add_child(b2)
 
 var _bench: Array = []
 var _bench_last := 0
 var _bench_skip := 0
 
 var _prof: Array = []
+## (v0.8.5) total script time of every node's _process in a frame: a first and a last node bracket it
+class Bracket extends Node:
+	var first := true
+	var host
+	func _process(_dt: float) -> void:
+		if first: host._fr_t0 = Time.get_ticks_usec()
+		else: host._fr_script = Time.get_ticks_usec() - host._fr_t0
+var _fr_t0 := 0
+var _fr_script := 0
+var _scr_acc := 0.0
+var _scr_max := 0.0
 func _process(dt: float) -> void:
 	if not _prof.is_empty():
 		_prof[2] += 1
-		_prof[3] += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+		_prof[3] += _fr_script / 1000.0
+		_scr_max = maxf(_scr_max, _fr_script / 1000.0)
 		_prof[4] += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 		var nv := 0
 		for v in _prof[6]:
@@ -37,7 +51,8 @@ func _process(dt: float) -> void:
 			secs.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
 			var top := ""
 			for e in secs.slice(0, 5): top += "%s %.3f  " % [e[1], e[0]]
-			print("PROF %-14s process %.2f ms  frame %.1f ms  dc %.0f  vps %.2f/%d  | %s" % [_prof[0], _prof[3] / n, _prof[7] / n * 1000.0, _prof[4] / n, _prof[5] / n, (_prof[6] as Array).size(), top])
+			print("PROF %-14s script %.2f ms (max %.1f)  dc %.0f  vps %.2f/%d  | %s" % [_prof[0], _prof[3] / n, _scr_max, _prof[4] / n, _prof[5] / n, (_prof[6] as Array).size(), top])
+			_scr_max = 0.0
 			game.prof_on = false
 			_prof = []
 		return

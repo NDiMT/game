@@ -126,6 +126,7 @@ func _load_manifest() -> void:
 	for room in rs: n_ev_listed += (rs[room] as Dictionary).get("events", []).size()
 	for room in room_events: n_ev += (room_events[room] as Array).size()
 	print("[audio] v5 manifest: %d rooms, %d cues, %d/%d room events" % [rooms.size(), cues.size(), n_ev, n_ev_listed])
+	_pw_fill()
 
 ## an event file (also the bells), loaded on first use
 func _file_stream(f: String) -> Array:
@@ -161,6 +162,11 @@ func _target(f: String) -> float:
 func start_music() -> void:
 	if _started: return
 	_started = true
+	# (v0.8.5) at the first gesture (the web audio context exists now): the short streams (events and
+	# cues) become web samples ahead of their first play, one per frame
+	for f in _pw_keep: _pw_reg.append(_pw_keep[f])
+	for k in streams:
+		for st in streams[k]: _pw_reg.append(st)
 	gust_player.stream = streams["wind_gust"][0]
 	gust_player.play(_rng.randf_range(0.0, 30.0))
 	_enter(area)
@@ -176,6 +182,41 @@ func _enter(key: String) -> void:
 		if first: drone = layer_p[f]
 		first = false
 	_event_t = _rng.randf_range(10.0, 25.0)
+
+## (v0.8.5) pre-warm: every bed and event file is LOADED while the title screen shows (one every other
+## frame), so no stream is read from the pack mid-walk; on the web, the short ones are also registered as
+## samples after the first gesture (the long beds stay on demand: decoded, they are large)
+var _pw: Array = []            # files to load
+var _pw_reg: Array = []        # streams to register as web samples
+var _pw_keep := {}             # file -> stream (held, so a later load() is instant)
+var _pw_t := 0
+func _pw_fill() -> void:
+	for room in rooms:
+		for f in rooms[room]:
+			if not _pw.has(f): _pw.append(f)
+	for room in room_events:
+		for e in room_events[room]:
+			if not _pw.has(e[0]): _pw.append(e[0])
+
+func _pw_step() -> void:
+	_pw_t += 1
+	if _pw_t % 2 != 0: return
+	if not _pw.is_empty():
+		var f: String = _pw.pop_front()
+		var st: AudioStream = load(f)
+		if st == null: return
+		if st is AudioStreamOggVorbis and (f.contains("/beds/")): (st as AudioStreamOggVorbis).loop = true
+		_pw_keep[f] = st
+		if not f.contains("/beds/") and not streams.has(f): streams[f] = [st]
+		played["prewarm"] = played.get("prewarm", 0) + 1
+		if _started and not f.contains("/beds/"): _pw_reg.append(st)
+		return
+	if _started and not _pw_reg.is_empty() and OS.has_feature("web"):
+		var st2: AudioStream = _pw_reg.pop_front()
+		if st2 and st2.get_length() <= 12.0 and not AudioServer.is_stream_registered_as_sample(st2):
+			AudioServer.register_stream_as_sample(st2)
+	elif not OS.has_feature("web"):
+		_pw_reg.clear()
 
 ## (tests / web probe) every bed player: [target dB, current dB, playing, stream length]
 func bed_debug() -> Dictionary:
@@ -200,6 +241,7 @@ func set_wind(k: float) -> void:
 	wind_target = k
 
 func _process(dt: float) -> void:
+	_pw_step()
 	if not _started: return
 	var step := dt * 60.0 / XFADE              # dB per second so a full fade takes ~XFADE s
 	jingle_duck = _jingle_duck_now()

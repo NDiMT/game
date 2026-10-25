@@ -66,6 +66,7 @@ func setup(n: Vector3, d: float, mirror_mat: ShaderMaterial, env: Environment) -
 
 ## called every frame by the reflector: on = the glass is on screen, near, and planar is allowed
 var _off_t := 0.0
+var _last_cam := Transform3D()
 func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 	var want := on and enabled
 	# v0.5b hysteresis: once on, stay on 0.4 s after it stops being wanted (no planar / fallback
@@ -106,5 +107,8 @@ func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 	var view := cam.global_transform.affine_inverse()
 	var proj := cam.get_camera_projection()
 	mat.set_shader_parameter("refl_vp", Projection(proj) * Projection(view))
-	# full rate while moving, every other frame while still
-	vp.render_target_update_mode = SubViewport.UPDATE_ONCE if (moving or _frame % 2 == 0) else SubViewport.UPDATE_DISABLED
+	# full rate while you or the camera move (v0.8.5: the camera's ease too, so the reflection never lags
+	# the view), every other frame while everything is still
+	var cam_moved := not mx.is_equal_approx(_last_cam)
+	_last_cam = mx
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE if (moving or cam_moved or _frame % 2 == 0) else SubViewport.UPDATE_DISABLED
