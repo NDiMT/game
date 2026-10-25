@@ -40,5 +40,38 @@ func _ready() -> void:
 				if nm.begins_with("floor"): nm = "walkable floor edge"
 				what[nm] = true
 			print("    cut: " + ", ".join(what.keys()))
+	# (v0.9) what stands between the camera and a room's pieces: walls to lower or remove (warnings)
+	var boxes: Array = []
+	for pa in lv.audit.get("boxes", []):
+		var bb0: AABB = pa[0]
+		if str(pa[3]).ends_with(":floor") or bb0.size.y < 0.25: continue
+		boxes.append(pa)
+	var bz := Framing.basis().z
+	for k in Framing.ROOMS:
+		var seen := {}          # name -> true once any of its points (feet, top) is in clear view
+		var by := {}            # name -> what hid it
+		for e in Framing.points(k, lv):
+			var p: Vector3 = e[1]
+			var raw: String = e[0]
+			# a piece is seen when its foot is (0.4 m up: the stone or stand itself, not the air above it);
+			# you are seen when your head is
+			if raw.ends_with("(top)"): continue
+			if raw.begins_with("you") and not raw.ends_with("(head)"): continue
+			if not raw.begins_with("you"): p += Vector3(0, 0.4, 0)
+			var nm: String = raw.replace(" (head)", "")
+			if not seen.has(nm): seen[nm] = false
+			var hit := ""
+			for pa in boxes:
+				var bb: AABB = pa[0]
+				if Rect2(bb.position.x, bb.position.z, bb.size.x, bb.size.z).grow(0.35).has_point(Vector2(p.x, p.z)): continue        # its own body
+				if bb.intersects_segment(p + bz * 0.05, p + bz * 30.0):
+					hit = "%s (%.1f m tall, top y %.1f, at %.1f, %.1f)" % [pa[3], bb.size.y, bb.end.y, bb.get_center().x, bb.get_center().z]
+					break
+			if hit == "": seen[nm] = true
+			else: by[nm] = hit
+		var hid: Array = []
+		for nm in seen:
+			if not seen[nm]: hid.append(nm + " <- " + by[nm])
+		print("OCCLUDED %-15s %s" % [k, "none" if hid.is_empty() else "; ".join(hid)])
 	print("FRAMING %s (%d of %d rooms cut)" % ["PASS" if fails == 0 else "FAIL", fails, Framing.ROOMS.size()])
 	get_tree().quit()

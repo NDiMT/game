@@ -451,7 +451,7 @@ func auto_solids(roots: Array) -> Dictionary:
 					if not _grid.has(k): _grid[k] = []
 					_grid[k].append(o)
 		added += 1
-	audit = {"parts": parts.size(), "solids": solids, "added": added, "ms": Time.get_ticks_msec() - t0}
+	audit = {"parts": parts.size(), "solids": solids, "added": added, "ms": Time.get_ticks_msec() - t0, "boxes": parts}
 	return audit
 
 func _collect_parts(n: Node, root: Node, out: Array) -> void:

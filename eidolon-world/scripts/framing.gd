@@ -79,24 +79,54 @@ static func points(k: String, level: Level) -> Array:
 	for it: Level.Interact in level.interacts:
 		var p := it.pos
 		if it.id in DYNAMIC or p == Vector3.ZERO: continue
-		if zr.has_point(Vector2(p.x, p.z)) and absf(p.y - fy) < 1.4:
+		var rg := level.region_at(Vector2(p.x, p.z))
+		var ra: String = Names.REGION_AREA.get(rg.name, "") if rg else ""
+		if ra != k and not (ra == "" and zr.has_point(Vector2(p.x, p.z))): continue
+		if absf(p.y - fy) < 1.4:
 			pts.append(["interact " + it.id, p])
 			pts.append(["interact " + it.id + " (top)", p + Vector3(0, 1.8, 0)])
 	for e in r["exits"]:
 		pts.append(["exit", e])
 		pts.append(["exit (top)", e + Vector3(0, 2.2, 0)])
 	for e in r["extra"]: pts.append(["piece", e])
-	for g: Level.Region in level.regions:
-		var gy := (g.y0 + g.y1) * 0.5
-		if absf(gy - fy) >= 1.4 or not g.r.intersects(zr): continue
-		var c := g.r.intersection(zr)
-		if c.size.x < 0.3 or c.size.y < 0.3: continue
-		for q in [c.position, Vector2(c.end.x, c.position.y), c.end, Vector2(c.position.x, c.end.y)]:
-			# a little inside the edge: where your feet can be
-			var qq: Vector2 = q.move_toward(c.get_center(), 0.3)
-			pts.append(["floor " + g.name, Vector3(qq.x, gy, qq.y)])
-			pts.append(["floor " + g.name + " (head)", Vector3(qq.x, gy + 1.7, qq.y)])
+	for e in reach(k, level): pts.append(e)
 	return pts
+
+## where you can stand in room k (its own walk regions, feet clear of every solid), reduced to the extremes on
+## screen: the leftmost, rightmost, nearest and farthest spots (feet, and the head 1.7 m up)
+static var _reach := {}
+static func reach(k: String, level: Level) -> Array:
+	if _reach.has(k): return _reach[k]
+	var r: Dictionary = ROOMS[k]
+	var z: Array = r["zone"]
+	var zr := Rect2(z[0], z[1], z[2] - z[0], z[3] - z[1])
+	var fy := float(r["y"])
+	var cand: Array = []
+	for g: Level.Region in level.regions:
+		if not g.enabled: continue
+		var ga: String = Names.REGION_AREA.get(g.name, "")
+		if ga != k and not (ga == "" and zr.has_point(g.r.get_center())): continue
+		if absf((g.y0 + g.y1) * 0.5 - fy) >= 1.4 or not g.r.intersects(zr): continue
+		var c := g.r.intersection(zr)
+		var nx := maxi(1, int(c.size.x / 0.2)); var nz := maxi(1, int(c.size.y / 0.2))
+		for i in nx + 1:
+			for j in nz + 1:
+				var q := c.position + Vector2(c.size.x * i / nx, c.size.y * j / nz)
+				cand.append(Vector3(q.x, g.height(q), q.y))
+	var out: Array = []
+	var b := basis()
+	for dir in [["left", -b.x, 0.0], ["right", b.x, 0.0], ["near", -b.y, 0.0], ["far", b.y, 1.7]]:
+		var dv: Vector3 = dir[1]
+		var lift: float = dir[2]
+		cand.sort_custom(func(p: Vector3, q: Vector3) -> bool: return (p + Vector3(0, lift, 0)).dot(dv) > (q + Vector3(0, lift, 0)).dot(dv))
+		for p: Vector3 in cand:
+			var p2 := Vector2(p.x, p.z)
+			if level.circle_ok(p2, 0.25) and not level.blocked(p2, 0.25):
+				out.append(["you, " + dir[0] + "most", p])
+				out.append(["you, " + dir[0] + "most (head)", p + Vector3(0, 1.7, 0)])
+				break
+	_reach[k] = out
+	return out
 
 ## screen-plane coordinates (metres: right, up) of p for the fixed view (the camera's own origin)
 static func plane(p: Vector3) -> Vector2:
