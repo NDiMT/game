@@ -365,12 +365,13 @@ func _process(dt: float) -> void:
 			sfx.stop_cue("shrine_awaken", 1.2)
 			cine.skip()
 	if mode == "play": _update_focus()
-	elif highlight and highlight.id != "":
-		focus = null
-		highlight.set_target(null)
+	else:
+		controls.show_interact("")
+		if highlight and highlight.id != "":
+			focus = null
+			highlight.set_target(null)
 	if highlight: highlight.update(dt)
 	Flame.cull(player.position)
-	else: controls.show_interact("")
 	_update_hum()
 	if mode != "title":
 		var p := player.position
