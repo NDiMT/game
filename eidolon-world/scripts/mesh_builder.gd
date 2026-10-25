@@ -120,6 +120,34 @@ func commit_split() -> ArrayMesh:
 	m.set_meta("parts", parts)
 	return m
 
+## v0.8: an already committed single-surface mesh, split the same way (or returned as it is when it
+## holds no occluders)
+static func split_occ(mesh: Mesh) -> Mesh:
+	if not (mesh is ArrayMesh) or mesh.get_surface_count() != 1: return mesh
+	var a := mesh.surface_get_arrays(0)
+	var col = a[Mesh.ARRAY_COLOR]
+	var ix = a[Mesh.ARRAY_INDEX]
+	if col == null or ix == null: return mesh
+	var cc: PackedColorArray = col
+	var ii: PackedInt32Array = ix
+	var i0 := PackedInt32Array()
+	var i1 := PackedInt32Array()
+	for k in range(0, ii.size(), 3):
+		if cc[ii[k]].b > 0.5:
+			i1.append(ii[k]); i1.append(ii[k + 1]); i1.append(ii[k + 2])
+		else:
+			i0.append(ii[k]); i0.append(ii[k + 1]); i0.append(ii[k + 2])
+	if i1.is_empty(): return mesh
+	var m := ArrayMesh.new()
+	for pair in [[i0, "stone"], [i1, "occ"]]:
+		if (pair[0] as PackedInt32Array).is_empty(): continue
+		var b := a.duplicate()
+		b[Mesh.ARRAY_INDEX] = pair[0]
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, b)
+		m.surface_set_name(m.get_surface_count() - 1, pair[1])
+	if mesh.has_meta("parts"): m.set_meta("parts", mesh.get_meta("parts"))
+	return m
+
 func commit() -> ArrayMesh:
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)

@@ -140,7 +140,10 @@ func marble_instance(mesh: Mesh, parent: Node3D, fade_y := -99.0) -> MeshInstanc
 		m.set_shader_parameter("fade_y", fade_y)
 		mi.material_override = m
 	else:
-		mi.material_override = level.marble_mat
+		# (v0.8: the parts that may hide the wanderer fade in the see-through rather than being cut)
+		mi.mesh = MB.split_occ(mesh)
+		for si in mi.mesh.get_surface_count():
+			mi.set_surface_override_material(si, level.marble_occ_mat if mi.mesh.surface_get_name(si) == "occ" else level.marble_mat)
 	parent.add_child(mi)
 	return mi
 
