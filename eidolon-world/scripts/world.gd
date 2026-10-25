@@ -43,7 +43,7 @@ var backdrop_mat: ShaderMaterial
 var cam_size_target := CAM_SIZE
 var cam_lock := false
 var quality_high := true           # false = the low feature set (bloom off, fewer motes, ...)
-var tier := "auto"                 # high | auto | low
+var tier := "high"                 # high | auto | low
 var auto_step := 0                 # auto: 0 = as high (cheaper), 1 = 1.25x render cap, 2 = no MSAA, 3 = low set
 var dpr := 1.0                     # device pixel ratio (web)
 var dust_mm: MultiMeshInstance3D
@@ -279,7 +279,7 @@ func add_moths(center: Vector3, n: int) -> void:
 		var mo := _sprite(2.0, 0.09)
 		moths.append([mo, center, randf() * TAU, randf_range(0.35, 0.8)])
 
-## Quality tiers. HIGH = the full look at the device's native resolution. AUTO (default) = the same
+## Quality tiers. HIGH (default since v0.8.4) = the full look at the device's native resolution. AUTO = the same
 ## look, cheaper: the 3D view renders at most 1.5x the CSS pixel size (a 3x phone renders at 1.5x, the
 ## UI stays sharp), bloom from the quarter / eighth resolution levels only; if frames stay slow it steps
 ## down gently (1.25x cap, then no MSAA, then the low set) and never further. LOW = 1x CSS, no MSAA,

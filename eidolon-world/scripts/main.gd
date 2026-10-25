@@ -810,8 +810,8 @@ func set_quality(t: Variant, save := false) -> void:
 	if save: _save_settings()
 
 ## settings file v2 (v0.4): quality tier + zoom. Older files keep their quality but the zoom resets
-## to the new default once.
-const SETTINGS_V := 2
+## to the new default once. v3 (v0.8.4): High is the default tier; a saved "auto" from before moves to High once.
+const SETTINGS_V := 3
 func _save_settings() -> void:
 	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify({"v": SETTINGS_V, "quality": world.tier, "zoom": snappedf(world.zoom, 0.01)}))
@@ -863,15 +863,16 @@ func _apply_tier_extras() -> void:
 	Flame.shadows = world.tier == "high"             # (no dynamic-light shadows on Auto / Low)
 
 func _load_settings() -> void:
-	var tier := "auto"
+	var tier := "high"
 	if FileAccess.file_exists(SETTINGS_PATH):
 		var d = JSON.parse_string(FileAccess.get_file_as_string(SETTINGS_PATH))
 		if d is Dictionary:
 			if d.has("quality"): tier = str(d["quality"])
 			elif d.has("quality_high") and not bool(d["quality_high"]): tier = "low"
-			if int(d.get("v", 1)) >= SETTINGS_V and d.has("zoom"):
+			if int(d.get("v", 1)) < 3 and tier == "auto": tier = "high"
+			if int(d.get("v", 1)) >= 2 and d.has("zoom"):
 				world.zoom = clampf(float(d["zoom"]), World.ZOOM_MIN, World.ZOOM_MAX)
-	if not tier in ["auto", "high", "low"]: tier = "auto"
+	if not tier in ["auto", "high", "low"]: tier = "high"
 	set_quality(tier)
 
 ## AUTO: judge the first seconds of play from real frame times (4 s windows after a 2 s settle);
