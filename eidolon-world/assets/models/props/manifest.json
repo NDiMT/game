@@ -13,7 +13,8 @@
       "tris": 7391,
       "textured": true,
       "use": "Garden of the Veiled: centrepiece statue on the main path; also a Turned Ones plinth figure (rotate to face away)",
-      "tripo_task": "b6dc9d0a-f2b6-4fd4-94b4-88f50604d00a"
+      "tripo_task": "b6dc9d0a-f2b6-4fd4-94b4-88f50604d00a",
+      "notes": "Smart low-poly + standard texture."
     },
     {
       "file": "statue_veiled_kneeling.glb",
@@ -26,49 +27,50 @@
       "tris": 8085,
       "textured": true,
       "use": "Garden of the Veiled: kneeling figure reaching toward the pool or a shrine; good for a 'reach toward' sightline",
-      "tripo_task": "084d5b04-98de-4172-a8ba-dcf9c1054ca8"
+      "tripo_task": "084d5b04-98de-4172-a8ba-dcf9c1054ca8",
+      "notes": "Smart low-poly + standard texture; tiny loose debris removed."
     },
     {
       "file": "statue_veiled_mourning.glb",
       "category": "statue",
       "size_m": {
-        "x": 0.68,
+        "x": 0.76,
         "y": 1.9,
-        "z": 0.63
+        "z": 0.68
       },
-      "tris": 11718,
+      "tris": 8155,
       "textured": true,
       "use": "Turned Ones plinths along the Hall approach (head-bowed mourner); Gate of the Four Veiled guardian",
-      "notes": "Not smart low-poly: first-pass v3.1 textured model (11.7k tris) kept because the smart low-poly retry showed a bare face. Sheer veil, facial contour faintly visible; head only slightly bowed.",
-      "tripo_task": "ada60bca-429d-4bdc-a21e-39d7a706768f"
+      "notes": "Round 3 (smart low-poly): heavy opaque veil, no facial features; head only gently bowed.",
+      "tripo_task": "465e7f5b-1e06-4cf2-9f51-d3b781dfc611"
     },
     {
       "file": "statue_veiled_broken.glb",
       "category": "statue",
       "size_m": {
-        "x": 0.93,
+        "x": 1.18,
         "y": 1.25,
-        "z": 0.83
+        "z": 0.97
       },
-      "tris": 7934,
+      "tris": 7563,
       "textured": true,
-      "use": "Garden of the Veiled ruin corner: a veiled figure standing over a fallen figure on a tomb slab",
-      "notes": "Deviation: reads as a standing veiled figure plus a toppled reclining figure on a slab, not literally the same statue snapped at the waist.",
-      "tripo_task": "a5e35f40-41b9-49da-a17d-3834d643dc74"
+      "use": "Garden of the Veiled ruin corner: veiled statue snapped at the waist, legs on the pedestal, toppled upper half on the ground beside it",
+      "notes": "Round 3: one statue in two fragments as briefed. Bounding box includes the fallen half lying on the ground.",
+      "tripo_task": "e951161b-bec8-4aa3-b641-e9ddb356a652"
     },
     {
       "file": "statue_veiled_unfinished.glb",
       "category": "statue",
       "size_m": {
-        "x": 0.65,
+        "x": 1.34,
         "y": 2.0,
-        "z": 0.54
+        "z": 1.14
       },
-      "tris": 7884,
+      "tris": 7424,
       "textured": true,
-      "use": "Gate of the Four Veiled (one of four guardians) or a Turned Ones plinth; dark face texture reads as a void under the veil",
-      "notes": "Deviation: generated as a finished standing veiled figure (no rough block); the texture has a black void where the face is. Untextured use in the game marble shader hides the void.",
-      "tripo_task": "9e4ca4b0-b166-4c2f-a3d1-d1de41fa26ff"
+      "use": "Sculptor's corner of the Garden / Gate of the Four Veiled: veiled half-figure emerging from a raw chiselled block",
+      "notes": "Round 3: non-finito upper body rising out of a rough block; the face is a smooth veiled form with only a faint relief (no hole/void).",
+      "tripo_task": "58541c16-83e8-4c6b-bb82-c3fdc464691d"
     },
     {
       "file": "statue_veiled_bust.glb",
@@ -81,8 +83,8 @@
       "tris": 7771,
       "textured": true,
       "use": "Hall side niches / plinth tops; votive bust beside the shrine",
-      "notes": "Pedestal is short (bust dominates); stand it on a column_stump or in-engine pedestal for a taller read.",
-      "tripo_task": "97cc714b-1123-484d-9f8f-aa1fd139871c"
+      "notes": "Round 3: re-textured with texture v3.5 (cleaner, less grime); same geometry. Pedestal is short: stand it on column_stump for a taller read.",
+      "tripo_task": "f84f46fd-2c50-49c4-b82c-a16328e178d7"
     },
     {
       "file": "column_doric.glb",
@@ -117,14 +119,14 @@
       "category": "architecture",
       "size_m": {
         "x": 3.6,
-        "y": 1.09,
-        "z": 1.11
+        "y": 1.05,
+        "z": 3.52
       },
-      "tris": 2964,
+      "tris": 3602,
       "textured": false,
-      "use": "Garden of the Veiled ground clutter; blocking a side path in the Hall",
-      "notes": "Deviation: one long cracked column, not three separate drums.",
-      "tripo_task": "bda8d804-cae1-45c3-b4b9-f42624cd3f2f"
+      "use": "Garden of the Veiled ground clutter; collapse beside a Hall column gap",
+      "notes": "Round 3: scattered fluted drums plus a fallen capital (more than three drums). Forms are soft and rounded.",
+      "tripo_task": "b5b27b9e-2d26-41cc-a930-1dd19c581695"
     },
     {
       "file": "archway_ruined.glb",
@@ -138,6 +140,34 @@
       "textured": false,
       "use": "Gate of the Four Veiled (main gate), or a garden entrance arch",
       "tripo_task": "744eb779-6859-450f-bb86-9eb73b5e8f98"
+    },
+    {
+      "file": "wall_ashlar_window.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 6.55,
+        "y": 3.0,
+        "z": 1.99
+      },
+      "tris": 2940,
+      "textured": false,
+      "use": "Hall outer wall run with a through window (light shafts into the Hall); Gate of the Four Veiled side wall",
+      "notes": "Round 3: a long ashlar wall with a window cut right through, scaled to 3 m high, so it is 6.55 m long and about 2 m thick. To meet the 0.6 m brief, scale Z by about 0.3 in-engine; the world-space marble survives non-uniform scale.",
+      "tripo_task": "75a97975-9331-43fc-a50f-ec790f2fc51c"
+    },
+    {
+      "file": "wall_ruin_low.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 4.0,
+        "y": 0.85,
+        "z": 1.46
+      },
+      "tris": 3307,
+      "textured": false,
+      "use": "Low ruined wall line in the Garden of the Veiled; terrace edges, half-buried foundations",
+      "notes": "Round 3: the straight 3 m wall attempts came out as a low rubble wall (0.85 m high) or a 10 m pier; the pier was rejected. Build full-height straight walls in-engine from boxes.",
+      "tripo_task": "517089ed-34a3-4597-bfa3-079712d0716e"
     },
     {
       "file": "pylon_ashlar.glb",

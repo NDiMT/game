@@ -2492,6 +2492,8 @@ func update(dt: float) -> void:
 	_update_hints(dt, game.area)
 
 func apply_state() -> void:
+	# (from JSON, numbers come back as floats: the lit lamps are compared as ints)
+	state["gallery_lit"] = (state["gallery_lit"] as Array).map(func(v: Variant) -> int: return int(v))
 	# (a v0.5 save: the hall was won by touching the glass; set its things back as the glass remembers)
 	if state["hall_door"] and state["hall"]["locks"] != [true, true, true]:
 		state["hall"] = {"drum": [DRUM_GOAL.x, DRUM_GOAL.y], "brazier": [BRAZ_GOAL.x, BRAZ_GOAL.y], "bust": BUST_GOAL, "locks": [true, true, true]}

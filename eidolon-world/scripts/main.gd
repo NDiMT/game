@@ -940,6 +940,7 @@ func cmd(c: String) -> Variant:
 			if a.size() > 4: world.cam.size = float(a[4])
 		"noauto": quality_auto_dropped = true
 		"quality": set_quality({"1": "high", "0": "low"}.get(a[1], a[1]))
+		"near": world.cam.near = float(a[1])      # dev: a near cut (shots inside narrow rooms)
 		"clasp":
 			# dev: the reflections' clasped hands (0..1), now
 			for r in puzzles.reflectors:
