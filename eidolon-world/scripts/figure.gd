@@ -1,5 +1,10 @@
 class_name Figure
 extends Node3D
+## v0.8: the hero (and every reflection, ghost and cinematic puppet of her) is the owner's RE-RIGGED model
+## (WandererRig: scripts/wanderer_rig.gd) when RIGGED is on. The procedural figure below is kept, unused:
+## set RIGGED = false to bring it back. Either way this class is the one the game talks to (Pose,
+## apply_pose, set_hem / set_runes / set_param / set_layers, the veil, the x-ray).
+const RIGGED := true
 ## The small hooded, cloaked figure, built procedurally (low-poly lathes, vertex coloured).
 ## v0.4: back to the procedural wanderer (the owner preferred it to the Tripo model, which stays in the
 ## repo unused: wanderer_glb.gd), now TATTERED like the concept: a jagged hem with long uneven
@@ -66,10 +71,20 @@ var veil_mat: ShaderMaterial
 var pose := Pose.new()
 var hem := 1.0
 var runes_awake := 0
+var rig: WandererRig            # v0.8 (RIGGED): the skinned model, its cloth and its veil
 var slim := 0.0                 # reflection hint: a slightly slimmer, narrower-shouldered silhouette
 var veil_contrary := false      # reflection hint: its veil sways against yours
 
 func _init(ghost_shader: Shader = null) -> void:
+	if RIGGED:
+		rig = WandererRig.new(ghost_shader != null)
+		add_child(rig)
+		body = rig.body
+		veil = rig.veil
+		body_mat = rig.body_mat
+		veil_mat = rig.veil_mat
+		rig.set_cloth("off" if ghost_shader else "sim")
+		return
 	if cloak_mesh == null:
 		cloak_mesh = _build_cloak()
 		hood_mesh = _build_hood()
@@ -108,15 +123,31 @@ func _init(ghost_shader: Shader = null) -> void:
 
 ## the veil lifts (0..1): it swings up about its top edge, showing the unfinished marble face
 func set_veil_lift(k: float) -> void:
+	if rig:
+		rig.set_veil_lift(k)
+		return
 	var piv := Vector3(0.0, 0.25, -0.13)
 	var R := Basis(Vector3.RIGHT, -k * 1.9)
 	veil.transform = Transform3D(R, piv - R * piv)
 
 func set_layers(mask: int) -> void:
+	if rig:
+		rig.mesh_mi.layers = mask
+		veil.layers = mask
+		return
 	for mi in [cloak_mi, hood_mi, veil]: mi.layers = mask
 
 func mats() -> Array[ShaderMaterial]:
+	if rig: return [body_mat, veil_mat]
 	return [body_mat, head_mat, veil_mat]
+
+## v0.8 (RIGGED): the cloth: "sim" (own spring bones), "copy" (wear `src`'s simulated cloth: reflections),
+## "off" (cloth bones at rest, the shader's light cloth motion only: the Low tier's reflections)
+func set_cloth(mode: String, src: Figure = null) -> void:
+	if rig: rig.set_cloth(mode, src.rig if src else null)
+
+func reset_cloth() -> void:
+	if rig: rig.reset_cloth()
 
 func set_param(n: String, val: Variant) -> void:
 	for m in mats():
@@ -129,9 +160,9 @@ func enable_xray() -> void:
 	var sh := preload("res://shaders/figure_xray.gdshader")
 	for m in mats():
 		var x := ShaderMaterial.new()
-		x.shader = sh
+		x.shader = preload("res://shaders/wanderer_xray.gdshader") if (rig and m == body_mat) else sh
 		x.render_priority = 2
-		for k in ["deform", "veil", "holes"]:
+		for k in ["deform", "veil", "holes", "bone_cloth"]:
 			var v = m.get_shader_parameter(k)
 			if v != null: x.set_shader_parameter(k, v)
 		m.next_pass = x
@@ -152,6 +183,9 @@ func set_runes(n: int) -> void:
 
 func apply_pose(p: Pose) -> void:
 	pose = p
+	if rig:
+		rig.apply_pose(p, slim, veil_contrary)
+		return
 	var c := p.crouch
 	body.position.y = p.body_y - 0.16 * c
 	body.rotation = Vector3(p.lean_x - 0.42 * c, 0.0, p.lean_z)

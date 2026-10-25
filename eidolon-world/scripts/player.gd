@@ -77,6 +77,7 @@ func teleport(p: Vector3, face_yaw := INF) -> void:
 	vel = Vector3.ZERO
 	if face_yaw != INF: yaw = face_yaw
 	fig.rotation.y = yaw
+	fig.reset_cloth()                # (no cloth streaming across a teleport)
 
 func step(dt: float) -> void:
 	t += dt

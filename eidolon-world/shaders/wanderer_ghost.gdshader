@@ -26,6 +26,8 @@ uniform float ripple_amt = 0.0;
 uniform vec3 surface_col = vec3(0.5);
 uniform float surface_mix = 0.0;
 uniform vec2 skip = vec2(0.0);
+uniform float graded = 1.0;            // 0 in the planar mirror view (the glass grades it itself)
+uniform float clip_disc = 0.0;         // 1: a round pool (clip to the inscribed circle)
 
 varying vec3 pp;
 varying vec3 wpos;
@@ -65,11 +67,12 @@ void fragment() {
 		vec3 d = pp - clip_c;
 		vec2 uv = vec2(dot(d, clip_u), dot(d, clip_v)) / clip_h;
 		if (abs(uv.x) > 1.0 || abs(uv.y) > 1.0) discard;
+		if (clip_disc > 0.5 && length(uv) > 1.0) discard;
 	}
 	if (vis < 0.999 && bayer4(FRAGCOORD.xy) > vis) discard;
 	vec3 base = wanderer_albedo(UV, vcol.b);
 	float lum = dot(base, vec3(0.3, 0.55, 0.15));
-	vec3 refl = mix(base, vec3(lum), 0.18) * vec3(0.90, 0.97, 1.04) + vec3(0.03, 0.04, 0.05);
+	vec3 refl = mix(base, mix(base, vec3(lum), 0.18) * vec3(0.90, 0.97, 1.04) + vec3(0.03, 0.04, 0.05), graded);
 	float fres = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.0);
 	float band = smoothstep(0.92, 1.0, sin(wpos.y * 3.0 - TIME * 1.3)) * shimmer;
 	vec3 eid = mix(base * 0.6 + accent.rgb * 0.45, accent_core.rgb, clamp(fres * 0.6 + band * 0.5, 0.0, 1.0));

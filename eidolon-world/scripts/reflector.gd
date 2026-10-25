@@ -62,6 +62,8 @@ var reach_override := -1.0      # v0.5: >= 0 the double's hand reaches out by th
 static var foot_shader: Shader
 static var ghost_shader: Shader
 static var enabled := true          # perf bench: all reflections off
+static var cloth_bones := true      # v0.8: reflections wear your spring-bone cloth (off on the Low tier)
+var _cloth_mode := ""
 
 func setup() -> void:
 	if ghost_shader == null: ghost_shader = preload("res://shaders/ghost.gdshader")
@@ -216,6 +218,12 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 	# small signs that it is not quite a reflection: its hem a touch brighter, its breathing out of
 	# phase with yours, now and then its head tilts a few degrees differently, and very rarely (once
 	# per surface) a single frame where it stands slightly off, like a skip
+	# v0.8: it wears your simulated cloth (copied bone poses: cheaper than its own springs); on the Low
+	# tier its cloth stays at rest and the shader's light cloth motion carries it
+	var cm := "copy" if cloth_bones else "off"
+	if cm != _cloth_mode:
+		_cloth_mode = cm
+		puppet.set_cloth(cm, player.fig)
 	if puppet.hem != player.fig.hem * 1.25: puppet.set_hem(player.fig.hem * 1.25)
 	if puppet.runes_awake != maxi(player.fig.runes_awake, 1): puppet.set_runes(maxi(player.fig.runes_awake, 1))
 	src_pose = src_pose.copy()

@@ -12,6 +12,7 @@ uniform float flare = 0.0;
 uniform float ripple = 0.0;      // walking: 0..1
 uniform float phase = 0.0;
 uniform float glint = 1.0;       // hem stripe brightness (rises with each shrine)
+uniform float bone_cloth = 0.0;  // v0.8: 1 when spring bones carry the cloth: the shader keeps only a light breath
 
 vec3 wanderer_deform(vec3 v, vec4 c) {
 	float h = c.r;
@@ -20,19 +21,20 @@ vec3 wanderer_deform(vec3 v, vec4 c) {
 	float low = 1.0 - smoothstep(0.0, 0.62, h);
 	low *= low;
 	// the skirt trails behind the motion, swings and opens a little with the stride
-	float w = low * (0.6 + 0.4 * smoothstep(0.1, 0.5, rad));
+	float w = low * (0.6 + 0.4 * smoothstep(0.1, 0.5, rad)) * mix(1.0, 0.3, bone_cloth);
 	vec2 sw = -sway;                         // model space is the figure turned 180 degrees
 	vec2 ax = v.xz - vec2(0.0, 0.085);
 	float an = atan(ax.y, ax.x);
 	float rip = sin(an * 5.0 + phase * 2.0) * ripple * 0.06 * low;
-	v.xz += ax * (flare * low * 0.28 + rip);
+	v.xz += ax * (flare * low * 0.28 + rip) * mix(1.0, 0.45, bone_cloth);
 	v.y += flare * low * 0.02;
 	v.xz += sw * w;
 	// the scarf and the sleeve tatters: weighted by distance from the body axis and by height,
 	// they trail further and flutter (more when moving)
 	float k = fl * (0.35 + 0.65 * smoothstep(0.08, 0.45, rad)) * (0.5 + 0.5 * (1.0 - h));
-	v.xz += sw * 1.6 * k;
-	v.y += length(sway) * 0.5 * k;
+	v.xz += sw * 1.6 * k * (1.0 - bone_cloth);
+	v.y += length(sway) * 0.5 * k * (1.0 - bone_cloth);
+	k *= mix(1.0, 0.3, bone_cloth);          // (the wind's breath stays, subtle)
 	float sp = 0.35 + ripple;
 	v.x += (sin(TIME * 3.1 + v.y * 13.0 + v.z * 7.0) * 0.007 + sin(TIME * 5.3 + v.y * 23.0) * 0.003) * k * sp;
 	v.z += (cos(TIME * 2.6 + v.y * 11.0 + v.x * 5.0) * 0.008) * k * sp;

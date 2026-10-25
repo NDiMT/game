@@ -795,6 +795,7 @@ func _apply_tier_extras() -> void:
 			r.planar.scale = 1.0 if world.quality_high else 0.5
 			r.planar.vp.msaa_3d = Viewport.MSAA_2X if world.quality_high and world.auto_step < 2 else Viewport.MSAA_DISABLED
 	level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
+	Reflector.cloth_bones = world.quality_high          # (v0.8: the Low tier's reflections: cloth at rest)
 
 func _load_settings() -> void:
 	var tier := "auto"

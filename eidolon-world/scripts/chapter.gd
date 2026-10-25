@@ -2521,6 +2521,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 		her = _pool_puppet(0.045)
 		her.veil_contrary = true
 		mine = _pool_puppet(0.0)
+		mine.set_cloth("copy", game.player.fig)          # (your reflection wears your cloth; hers rests: she is only a reflection)
 		touch_glow = puzzles.glow_quad(self, TOUCH, 2.2, Palette.ACCENT, 0.0)
 		whisper_glow = puzzles.glow_quad(self, POOL_C + Vector3(0, 0.03, 0.05), 0.7, Palette.CORE, 0.0)
 	var pl := game.player
