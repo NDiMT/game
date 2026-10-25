@@ -1,10 +1,10 @@
 [1.0s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
-[1.4s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
-[1.8s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
-[4.8s log] [audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
-[5.4s log] [props] 11 placed
-[5.6s log] [solids] 2016 primitives, 1046 solid footprints, 303 obstacles added (179 ms)
-[27.3s warning] [.WebGL-0xdac01b70400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[30.9s warning] [.WebGL-0xdac01b70400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[36.2s warning] [.WebGL-0xdac01b70400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[40.6s warning] [.WebGL-0xdac01b70400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+[1.5s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+[2.0s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
+[5.0s log] [audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
+[5.5s log] [props] 11 placed
+[5.7s log] [solids] 2016 primitives, 1046 solid footprints, 303 obstacles added (192 ms)
+[26.1s warning] [.WebGL-0xf400e2b800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[29.3s warning] [.WebGL-0xf400e2b800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[32.5s warning] [.WebGL-0xf400e2b800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[36.3s warning] [.WebGL-0xf400e2b800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
