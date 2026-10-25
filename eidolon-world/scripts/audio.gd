@@ -120,7 +120,11 @@ func _load_manifest() -> void:
 		if not ok.is_empty(): streams[k] = ok
 	if streams.has("beam_hum") and streams["beam_hum"][0] is AudioStreamOggVorbis:
 		(streams["beam_hum"][0] as AudioStreamOggVorbis).loop = true
-	print("[audio] v5 manifest: %d rooms, %d cues" % [rooms.size(), cues.size()])
+	var n_ev := 0
+	var n_ev_listed := 0
+	for room in rs: n_ev_listed += (rs[room] as Dictionary).get("events", []).size()
+	for room in room_events: n_ev += (room_events[room] as Array).size()
+	print("[audio] v5 manifest: %d rooms, %d cues, %d/%d room events" % [rooms.size(), cues.size(), n_ev, n_ev_listed])
 
 ## an event file (also the bells), loaded on first use
 func _file_stream(f: String) -> Array:

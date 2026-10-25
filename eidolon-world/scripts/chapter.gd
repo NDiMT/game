@@ -907,19 +907,49 @@ func _open_hall_door(instant: bool) -> void:
 	tw.tween_callback(func() -> void: hd.visible = false)
 	event.emit("solve", "hall_glass")
 
-# ------------------------------------------------------------------ 4. shard gallery: "The Other Side's Map"
-## Four cold braziers stand in two pairs down the gallery. A mural on the east wall, readable only
-## through the raised shard, is a plan of the gallery with three of the braziers numbered I, II, III:
-## the order to light them. But it is drawn as SHE sees the room, from her side of the glass: left and
-## right swapped (her way in from the Hall sits at the wrong end, and so does the true arch). Read it
-## the right way round, light the three in order, and the true arch opens. Three lit in a wrong order
-## gutter out softly; after two such tries the mural's arch and doorway (the clues) shine brighter.
-const GL_BRAZ := [Vector3(5.3, 1.0, -15.0), Vector3(6.55, 1.0, -15.0), Vector3(5.3, 1.0, -12.0), Vector3(6.55, 1.0, -12.0)]
+# ------------------------------------------------------------------ 4. shard gallery
+## v0.7 "Her Lamps": four veiled busts stand on plinths against the gallery walls, a votive bowl set in
+## each plinth's front, cold. A mural on the east wall, readable only through the raised shard, is a
+## plan of the gallery with three of the busts marked I, II, III: the ones that were hers, and the order
+## to light their lamps. But it is drawn as SHE sees the room, from her side of the glass: left and right
+## swapped (her way in from the Hall sits at the wrong end, and so does the true arch). Read it the right
+## way round and light the three lamps in order: each teal flame lights its bust's face from below; the
+## third, if right, wakes the veils and the true arch opens. A wrong order and the flames gutter out;
+## after two such tries the mural's arch and doorway (the clues) shine brighter.
+const GL_BUST := [Vector3(5.18, 1.0, -15.0), Vector3(6.67, 1.0, -15.0), Vector3(5.18, 1.0, -12.0), Vector3(6.67, 1.0, -12.0)]
 const GL_ORDER := [3, 0, 1]             # B3 (east, south pair), B0 (west, north), B1 (east, north)
 var gl_flames: Array[ShaderMaterial] = []
+var gl_lamps: Array = []                # per lamp: {"light": OmniLight3D, "halo", "pool", "veil", "face"}
 var gl_map: ShaderMaterial
 var gl_fails := 0
 var _gl_busy := false
+
+## the bowl of lamp i (where its flame stands): in front of the plinth, toward the gallery's middle
+static func gl_bowl(i: int) -> Vector3:
+	var b: Vector3 = GL_BUST[i]
+	return b + Vector3(0.2 if b.x < 6.0 else -0.2, 0.0, 0.0)
+
+func _votive_mesh() -> ArrayMesh:
+	# local -z is the front (toward the gallery's middle)
+	var m := MB.new()
+	var c := Color(0.5, 0.25, 0.0)
+	var br := Color(0.5, 1.0, 0.0)
+	m.box(Vector3(0, 0.03, 0.0), Vector3(0.6, 0.06, 0.4), c)
+	m.box(Vector3(0, 0.55, 0.02), Vector3(0.5, 1.0, 0.34), c)
+	m.box(Vector3(0, 1.08, 0.0), Vector3(0.58, 0.06, 0.4), c)
+	# the bowl, set into the plinth's front at its top (a bronze cup on a short bracket)
+	m.box(Vector3(0, 0.96, -0.16), Vector3(0.1, 0.14, 0.08), br)
+	m.cyl(Vector3(0, 1.1, -0.2), 0.13, 0.07, 0.1, br, 14)
+	m.cyl(Vector3(0, 1.155, -0.2), 0.14, 0.135, 0.02, br, 14)
+	# the bust: shoulders, a full chest, the veiled head bowed a little toward the bowl
+	m.cyl(Vector3(0, 1.32, 0.04), 0.17, 0.21, 0.42, c, 14)
+	m.sphere(Vector3(0, 1.53, 0.04), Vector3(0.26, 0.08, 0.15), c, 12, 5)
+	m.cyl(Vector3(0, 1.64, 0.05), 0.12, 0.2, 0.24, c, 12)
+	var hb := Basis(Vector3.RIGHT, 0.18)
+	m.sphere(Vector3(0, 1.8, 0.03), Vector3(0.13, 0.16, 0.14), c, 12, 6, hb)
+	m.sphere(Vector3(0, 1.79, -0.06), Vector3(0.09, 0.12, 0.09), c, 10, 5, hb)
+	m.sphere(Vector3(0, 1.86, 0.05), Vector3(0.14, 0.12, 0.14), c, 12, 6, hb)
+	return m.commit()
 
 func _build_gallery() -> void:
 	var lsh := preload("res://shaders/lens_only.gdshader")
@@ -941,33 +971,82 @@ func _build_gallery() -> void:
 	# her map, on the east wall between the false doors and the arch (only the shard shows it)
 	gl_map = _smat("res://shaders/gallery_map.gdshader", {"size": Vector2(2.4, 1.6), "pulse": 0.0, "marks": Vector4(1, 3, 0, 2)})
 	_mi(_quad(Vector2(2.4, 1.6)), gl_map, Transform3D(west, Vector3(6.835, 3.15, -10.5)))
-	# the four braziers (cold)
-	var bm := _brazier_mesh()
+	# the four veiled busts and their lamps (cold)
+	var vm := _votive_mesh()
+	var fsh := preload("res://shaders/votive_flame.gdshader")
 	for i in 4:
+		var b: Vector3 = GL_BUST[i]
 		var n := Node3D.new()
-		n.position = GL_BRAZ[i]
+		n.position = b
+		n.rotation.y = -PI * 0.5 if b.x < 6.0 else PI * 0.5        # its front toward the middle
 		add_child(n)
-		puzzles.marble_instance(bm, n)
-		gl_flames.append(puzzles.glow_quad(n, Vector3(0, 1.32, 0), 1.0, Palette.CORE, 0.0))
-		level.ob_circle(Vector2(GL_BRAZ[i].x, GL_BRAZ[i].z), 0.24)
+		puzzles.marble_instance(vm, n)
+		var fm := ShaderMaterial.new()
+		fm.shader = fsh
+		fm.set_shader_parameter("noise_tex", level.noise_tex)
+		fm.set_shader_parameter("seed", float(i) * 0.37)
+		fm.set_shader_parameter("intensity", 0.0)
+		var fq := QuadMesh.new()
+		fq.size = Vector2(0.34, 0.5)
+		fq.center_offset = Vector3(0, 0.25, 0)
+		var fmi := _mi(fq, fm, Transform3D(Basis(), Vector3(0, 1.15, -0.2)), n)
+		fmi.extra_cull_margin = 0.6
+		gl_flames.append(fm)
+		# its glow on the stone, its little pool of light on the floor, and real light on the face above
+		var halo := puzzles.glow_quad(n, Vector3(0, 1.35, -0.22), 1.1, Palette.ACCENT, 0.0)
+		var pm := _smat("res://shaders/light_pool.gdshader", {"intensity": 0.0})
+		_mi(_plane(Vector2(1.6, 1.6)), pm, Transform3D(Basis(), Vector3(0, 0.012, -0.45)), n)
+		var L := OmniLight3D.new()
+		L.light_color = Color(0.45, 0.95, 0.9)
+		L.omni_range = 1.7
+		L.omni_attenuation = 1.4
+		L.light_energy = 0.0
+		L.shadow_enabled = false
+		L.position = Vector3(0, 1.3, -0.32)
+		L.visible = false
+		n.add_child(L)
+		# the veil: a sheen that wakes when she is answered
+		var veil := MB.new()
+		veil.sphere(Vector3(0, 1.82, 0.02), Vector3(0.155, 0.19, 0.165), Color(0.5, 0.25, 0.0), 12, 6, Basis(Vector3.RIGHT, 0.18))
+		veil.cyl(Vector3(0, 1.62, 0.05), 0.14, 0.23, 0.3, Color(0.5, 0.25, 0.0), 12)
+		var vgm := _smat("res://shaders/veil_glow.gdshader", {"intensity": 0.0})
+		_mi(veil.commit(), vgm, Transform3D(), n)
+		gl_lamps.append({"light": L, "halo": halo, "pool": pm, "veil": vgm})
+		# (solid: the plinth and its bowl)
+		var x0 := b.x - 0.2 if b.x < 6.0 else b.x - 0.4
+		level.ob_rect(Level.R(x0, b.z - 0.3, x0 + 0.6, b.z + 0.3), "gl_lamp%d" % i)
 		var idx := i
-		level.add_interact("light%d" % i, GL_BRAZ[i], "light", func() -> void: light_brazier(idx), 0.8,
+		level.add_interact("light%d" % i, gl_bowl(i), "light", func() -> void: light_lamp(idx), 0.95,
 			func() -> bool: return not state["gallery"] and not _gl_busy and not (idx in state["gallery_lit"]))
 	# a cracked mirror pane or two on the west wall (they glint)
 	for zz in [-16.4, -13.8, -11.0, -7.4]:
-		var pm := puzzles._mirror_quad(Vector3(5.03, 2.5, zz), east, Vector2(0.9, 1.9), true, 1.0)
-		pm.set_shader_parameter("ncols", 0)
+		var pm2 := puzzles._mirror_quad(Vector3(5.03, 2.5, zz), east, Vector2(0.9, 1.9), true, 1.0)
+		pm2.set_shader_parameter("ncols", 0)
 	level.add_interact("raise_shard", Vector3(6.0, 1.0, -10.45), "shard", func() -> void: set_lens(true), 2.2,
 		func() -> bool: return state["shard"] and not lens_on and not state["gallery"] and _in_gallery())
 
-## light a brazier: the third one lit decides; a wrong order gutters them all, softly
-func light_brazier(i: int) -> void:
+## the lamps follow their flames: the glow on the stone, the floor's pool, the light on the face
+func _update_gallery(_dt: float) -> void:
+	for i in 4:
+		var f: float = gl_flames[i].get_shader_parameter("intensity")
+		var g: float = gl_flames[i].get_shader_parameter("gutter") if gl_flames[i].get_shader_parameter("gutter") != null else 0.0
+		var k := f * (1.0 - g)
+		var lp: Dictionary = gl_lamps[i]
+		(lp["halo"] as ShaderMaterial).set_shader_parameter("intensity", k * 0.5)
+		(lp["pool"] as ShaderMaterial).set_shader_parameter("intensity", k)
+		var L: OmniLight3D = lp["light"]
+		L.visible = k > 0.01
+		L.light_energy = k * (1.5 + 0.25 * sin(Time.get_ticks_msec() * 0.013 + i) * sin(Time.get_ticks_msec() * 0.0047))
+
+## light a lamp: the third one lit decides; a wrong order gutters them all
+func light_lamp(i: int) -> void:
 	if state["gallery"] or _gl_busy or i in state["gallery_lit"]: return
 	var lit: Array = state["gallery_lit"]
 	lit.append(i)
 	event.emit("brazier", i)
 	var m := gl_flames[i]
-	create_tween().tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), 0.0, 0.9, 0.6)
+	m.set_shader_parameter("gutter", 0.0)
+	create_tween().tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), 0.0, 1.0, 0.5)
 	if lit.size() < 3: return
 	_gl_busy = true
 	var tw := create_tween()
@@ -980,9 +1059,14 @@ func light_brazier(i: int) -> void:
 	tw.tween_callback(func() -> void:
 		gl_fails += 1
 		event.emit("gutter", gl_fails))
+	# (they gutter: sputter low, then out, a breath of smoke from each bowl)
 	tw.tween_method(func(v: float) -> void:
-		for k in lit: gl_flames[k].set_shader_parameter("intensity", v), 0.9, 0.0, 1.4).set_trans(Tween.TRANS_SINE)
+		for k in lit: gl_flames[k].set_shader_parameter("gutter", v), 0.0, 1.0, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void:
+		for k in lit:
+			gl_flames[k].set_shader_parameter("intensity", 0.0)
+			gl_flames[k].set_shader_parameter("gutter", 0.0)
+			game.world.dust_puff(gl_bowl(k) + Vector3(0, 0.2, 0))
 		lit.clear()
 		_gl_busy = false
 		if gl_fails >= 2: gl_map.set_shader_parameter("pulse", 1.0))
@@ -1022,7 +1106,13 @@ func open_gallery(instant := false) -> void:
 	state["gallery"] = true
 	level.set_enabled("gallery_secret", false)
 	state["gallery_lit"] = GL_ORDER.duplicate()
-	for k in 4: gl_flames[k].set_shader_parameter("intensity", 0.9 if k in GL_ORDER else 0.0)
+	for k in 4:
+		gl_flames[k].set_shader_parameter("intensity", 1.0 if k in GL_ORDER else 0.0)
+		gl_flames[k].set_shader_parameter("gutter", 0.0)
+		var vg: ShaderMaterial = gl_lamps[k]["veil"]
+		var goal := 0.85 if k in GL_ORDER else 0.0
+		if instant: vg.set_shader_parameter("intensity", goal)
+		else: create_tween().tween_method(func(v: float) -> void: vg.set_shader_parameter("intensity", v), 0.0, goal, 1.8)
 	gl_map.set_shader_parameter("pulse", 0.0)
 	var gls := level.get_node_or_null("Zone_GLs") as MeshInstance3D
 	if gls == null: return
@@ -2286,6 +2376,7 @@ func update(dt: float) -> void:
 	if game.player.speed01 > 0.1: _moved = true
 	_update_pool(dt)
 	_update_hall(dt)
+	_update_gallery(dt)
 	if lens_on and game.area != "shard_gallery" and game.area != "": set_lens(false)
 	_update_lens()
 	_update_hollow(dt)
@@ -2320,7 +2411,10 @@ func apply_state() -> void:
 		if gls: gls.visible = true; gls.position.y = 0.0
 		_gl_busy = false
 		gl_map.set_shader_parameter("pulse", 0.0)
-		for k in 4: gl_flames[k].set_shader_parameter("intensity", 0.9 if k in state["gallery_lit"] else 0.0)
+		for k in 4:
+			gl_flames[k].set_shader_parameter("intensity", 1.0 if k in state["gallery_lit"] else 0.0)
+			gl_flames[k].set_shader_parameter("gutter", 0.0)
+			(gl_lamps[k]["veil"] as ShaderMaterial).set_shader_parameter("intensity", 0.0)
 	maze_prog = -1
 	_apply_turned(true)
 	if state["turned_done"]: _open_garden_door(true)

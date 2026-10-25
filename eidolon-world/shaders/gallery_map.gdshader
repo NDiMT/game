@@ -2,9 +2,9 @@ shader_type spatial;
 // v0.6 "The Other Side's Map": a mural on the Shard Gallery's east wall, readable only through the raised
 // shard (global shard_lens). A plan of the gallery for a viewer facing the wall (up = east, left =
 // north), drawn as SHE sees it from the other side of the glass: left and right swapped. Its marks:
-// the way in from the Hall, the true arch, the veiled statue at the dead end, and the four braziers,
+// the way in from the Hall, the true arch, the veiled statue at the dead end, and the four veiled busts (v0.7),
 // three of them carrying tally strokes I, II, III (the order to light them). `marks` = the tally count
-// of the braziers drawn at map slots (top-left, top-right, bottom-left, bottom-right).
+// of the busts drawn at map slots (top-left, top-right, bottom-left, bottom-right).
 render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_back, fog_disabled;
 global uniform vec4 shard_lens;
 global uniform vec4 accent;
@@ -40,19 +40,26 @@ void fragment() {
 	float stat = min(abs(length(sp - vec2(0.0, 0.07)) - 0.045), g_seg(sp, vec2(-0.05, -0.1), vec2(0.0, 0.03)));
 	stat = min(stat, g_seg(sp, vec2(0.05, -0.1), vec2(0.0, 0.03)));
 	d = min(d, stat);
-	// the four braziers: a bowl ring on a short stem; tallies beneath the ones she lit
-	vec2 slots[4] = vec2[](vec2(-0.3, 0.2), vec2(0.3, 0.2), vec2(-0.3, -0.2), vec2(0.3, -0.2));
+	// the four veiled busts against the long walls (v0.7): a head and shoulders over a small flame-bowl;
+	// tallies beside the ones that were hers
+	vec2 slots[4] = vec2[](vec2(-0.3, 0.33), vec2(0.3, 0.33), vec2(-0.3, -0.33), vec2(0.3, -0.33));
 	float m[4] = float[](marks.x, marks.y, marks.z, marks.w);
 	float tal = 9.0;
 	for (int i = 0; i < 4; i++) {
 		vec2 q = p - slots[i];
-		d = min(d, abs(length(q) - 0.1));
-		d = min(d, g_seg(q, vec2(-0.055, 0.02), vec2(0.055, 0.02)));
+		q.y *= sign(slots[i].y);                 // (their bowls toward the room's middle)
+		d = min(d, abs(length(q - vec2(0.0, 0.03)) - 0.045));
+		vec2 sh = q - vec2(0.0, -0.075);
+		d = min(d, sh.y > 0.0 ? abs(length(sh) - 0.075) : 9.0);
+		d = min(d, g_seg(q, vec2(-0.075, -0.075), vec2(0.075, -0.075)));
+		// the bowl and its little flame
+		d = min(d, g_seg(q, vec2(-0.04, -0.125), vec2(0.04, -0.125)));
+		d = min(d, g_seg(q, vec2(0.0, -0.125), vec2(0.0, -0.1)));
 		int n = int(m[i] + 0.5);
 		for (int k = 0; k < 3; k++) {
 			if (k >= n) break;
-			float x = (float(k) - float(n - 1) * 0.5) * 0.065;
-			tal = min(tal, g_seg(q, vec2(x, -0.14), vec2(x, -0.26)));
+			float x = 0.14 + float(k) * 0.05;
+			tal = min(tal, g_seg(q, vec2(x, -0.08), vec2(x, 0.06)));
 		}
 	}
 	d = min(d, tal);
