@@ -417,9 +417,9 @@ func _build_stair() -> void:
 	# normally (her half on the left as she will write it, the half you must give her on the right)
 	var half: Array = GlassTalk.TEMPLATES["together_half"][0]
 	var gp := PackedVector2Array()
-	for q in GlassTalk.smooth(PackedVector2Array(half), 3): gp.append(q * 0.85 + Vector2(0.0, 0.05))
-	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.75})
-	stair_rune = _mi(_quad(Vector2(1.3, 1.3)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(-10.19, 1.75, -2.6)))
+	for q in GlassTalk.smooth(PackedVector2Array(half), 3): gp.append(q * 1.3 + Vector2(0.0, 0.04))
+	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.9})
+	stair_rune = _mi(_quad(Vector2(1.6, 1.6)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(-10.215, 1.75, -2.6)))     # (proud of the wall face at x -10.2)
 	stair_veil = _smat("res://shaders/mist_veil.gdshader", {"noise_tex": level.noise_tex, "density": 1.0, "glow": 0.35})
 	_mi(_quad(Vector2(1.9, 3.2)), stair_veil, Transform3D(Basis(), Vector3(-11.3, 0.5 + 1.6, -6.8)))
 
