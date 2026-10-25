@@ -399,7 +399,7 @@ func _light_court() -> void:
 		var p := Vector3(STAND_POS[i].x, y, STAND_POS[i].y)
 		pm.cyl(p + Vector3(0, 0.25, 0), 0.30, 0.38, 0.5, Color(0.3, 0.25, 0.0), 12)
 		pm.cyl(p + Vector3(0, 0.55, 0), 0.07, 0.07, 0.3, Color(0.5, 1.0, 0.0), 8)
-		level.ob_circle(Vector2(p.x, p.z), 0.44)
+		level.ob_circle(Vector2(p.x, p.z), 0.62)            # (v0.7: the turning frame's full sweep)
 	marble_instance(pm.commit(), self)
 	var sc := crystal(Vector3(SRC.x, y + 1.45, SRC.y), 0.17, 0.32, true)
 	source_crystal = sc[0]

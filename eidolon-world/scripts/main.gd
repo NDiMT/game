@@ -70,6 +70,9 @@ func _ready() -> void:
 	ui.controls = controls
 	chapter.post_commit()
 	_drawbridge_lever()
+	# v0.7: every prop and piece of architecture is solid (see Level.auto_solids)
+	var au := level.auto_solids([puzzles, chapter])
+	print("[solids] %d primitives, %d solid footprints, %d obstacles added (%d ms)" % [au["parts"], au["solids"].size(), au["added"], au["ms"]])
 	chapter.event.connect(_on_chapter_event)
 	var gt := ui.glass_talk
 	gt.solved.connect(func(id: String) -> void: chapter.glass_answered(id))

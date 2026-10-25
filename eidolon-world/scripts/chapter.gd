@@ -501,7 +501,7 @@ func _build_hall() -> void:
 	twins[1].position = Vector3(BRAZ_GOAL.x, 1.0, BRAZ_GOAL.y)
 	twins[2].position = BUST_POS
 	twins[2].rotation.y = BUST_GOAL * PI * 0.5
-	hall_obs.append(level.ob_circle(Vector2.ZERO, 0.42, "hall_drum"))
+	hall_obs.append(level.ob_circle(Vector2.ZERO, 0.5, "hall_drum"))
 	hall_obs.append(level.ob_circle(Vector2.ZERO, 0.3, "hall_brazier"))
 	hall_obs.append(level.ob_circle(Vector2(BUST_POS.x, BUST_POS.z), 0.4, "hall_bust"))
 	level.add_interact("hall_push", Vector3.ZERO, "push", push_drum, 1.05, func() -> bool: return _push_dir() != Vector2i.ZERO)

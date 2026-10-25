@@ -204,7 +204,7 @@ func _overlaps(o: Obstacle, p: Vector2, rad: float) -> bool:
 	return p.distance_to(q) < rad - 0.001
 
 func blocked(p: Vector2, rad: float) -> bool:
-	for o in _near_solids(p, rad):
+	for o: Obstacle in _near_solids(p, rad):
 		if _overlaps(o, p, rad): return true
 	for o in obstacles:
 		if not o.enabled: continue
@@ -218,7 +218,7 @@ func blocked(p: Vector2, rad: float) -> bool:
 func push_out(p: Vector2, rad: float) -> Vector2:
 	var near := _near_solids(p, rad + 0.5)
 	for it in 3:
-		for o in obstacles + near:
+		for o: Obstacle in obstacles + near:
 			if not o.enabled: continue
 			if o.circle:
 				var d := p - o.c
@@ -333,7 +333,7 @@ func _covered(fr: Rect2, round: bool) -> bool:
 		var c := fr.get_center()
 		var rr := (fr.size.x + fr.size.y) * 0.25
 		corners = [c + Vector2(rr, 0) * 0.85, c - Vector2(rr, 0) * 0.85, c + Vector2(0, rr) * 0.85, c - Vector2(0, rr) * 0.85]
-	for o in obstacles + _near_solids(fr.get_center(), maxf(fr.size.x, fr.size.y)):
+	for o: Obstacle in obstacles + _near_solids(fr.get_center(), maxf(fr.size.x, fr.size.y)):
 		if not o.enabled: continue
 		var all_in := true
 		for q in corners:
