@@ -48,12 +48,14 @@ float her_sd(vec2 uv, float tt) {
 	float d = smin(min(head, veil), sh, 0.08);
 	return d;
 }
-// ---- v0.8.1: HER HAND. A slender hand, sculpted rather than drawn: a tapered capsule for every phalanx
-// joined by smooth unions, a rounded palm with its thenar and hypothenar mounds, a wrist and forearm.
-// Authored in the hand's own frame (heel at 0, middle fingertip near 1, thumb toward +x, y up) and
-// placed on the pane as her LEFT hand seen palm-on. Besides its distance it returns `con`, how hard
-// each part presses the glass (the fingertip pads, the heel, the pads under the knuckles; little in the
-// hollow of the palm; none in the creases), and `rid` / `rv`, the whorls of the fingertip pads.
+// ---- v0.8.2: HER HAND, ONE soft shape. A palm pressed on steamy glass, seen from the other side: no bones,
+// no joints, no separate mounds. The palm is one rounded shape (a little fuller on the thumb side); each
+// finger is ONE smoothly tapering, gently curving stroke, and fingers and thumb flow into the palm through
+// wide smooth unions (the webs between them); the fingers stay apart from each other. Authored in the
+// hand's frame (heel at 0, middle fingertip near 0.89: middle finger = 0.9 x the palm's length; thumb
+// toward +x, y up) and placed as her LEFT hand, palm-on. Besides its distance it gives `con`, how hard
+// the skin presses: the five fingertip pads and the heel most, the fingers and the knuckle line well,
+// the middle of the palm a little less; never a line or a gap. `rid` / `rv`: a whisper of the whorls.
 uniform float press_t = 0.0;            // seconds since her palm touched the glass (the droplets run)
 float sd_tcap(vec2 p, vec2 a, vec2 b, float ra, float rb, out float tq) {
 	vec2 pa = p - a, ba = b - a;
@@ -61,56 +63,9 @@ float sd_tcap(vec2 p, vec2 a, vec2 b, float ra, float rb, out float tq) {
 	return length(pa - ba * tq) - mix(ra, rb, tq);
 }
 vec2 dir_of(float an) { return vec2(sin(an), cos(an)); }
-float sd_rell(vec2 p, vec2 c, vec2 r, float an) {
-	float cs = cos(an), sn = sin(an);
-	vec2 q = p - c;
-	q = vec2(cs * q.x + sn * q.y, -sn * q.x + cs * q.y);
-	return sd_ell(q, r);
-}
-// a skin pad on a phalanx (a, b): how hard it presses. Soft toward the sides of the finger (the skin
-// rolls away), a thin flexion crease `g` short of each joint, round at the fingertip (tip = 1)
-float pad_k(vec2 h, vec2 a, vec2 b, float rw, float rw2, float g, float tip) {
-	vec2 ab = b - a;
-	float L = max(length(ab), 0.0001);
-	vec2 dn = ab / L;
-	vec2 q = h - a;
-	float u = dot(q, dn);
-	float tl = clamp(u / L, 0.0, 1.0);
-	// the pad swells in the middle of the phalanx and narrows into the crease
-	float wdt = mix(rw, rw2, tl) * (0.78 + 0.22 * sin(3.14159 * tl));
-	float d = abs(dot(q, vec2(-dn.y, dn.x))) - wdt;
-	if (u > L) d = tip > 0.5 ? length(h - b) - rw2 * 0.78 : 1.0;
-	float k = smoothstep(0.0, 0.5 * wdt, -d);
-	k *= smoothstep(g, g + 0.14 * rw, u);
-	if (tip < 0.5) k *= smoothstep(g, g + 0.14 * rw, L - u);
-	return k;
-}
-// one finger: its root, angle, length, radius, bend (the gentle curve toward the middle finger) and
-// curl (0 flat on the glass .. 1 folded away from it)
-float digit(vec2 h, vec2 base, float an, float len, float r, float bend, float curl, inout float con, inout float rid, inout float rv) {
-	vec2 j1 = base + dir_of(an) * len * 0.46 * (1.0 - curl * 0.35);
-	vec2 j2 = j1 + dir_of(an + bend) * len * 0.29 * (1.0 - curl * 0.8);
-	vec2 j3 = j2 + dir_of(an + bend * 2.0) * max(len * 0.25 * (1.0 - curl) - r * 0.8, 0.002);
-	float t1, t2, t3;
-	float d1 = sd_tcap(h, base, j1, r, r * 0.88, t1);
-	float d2 = sd_tcap(h, j1, j2, r * 0.9, r * 0.8, t2);
-	float d3 = sd_tcap(h, j2, j3, r * 0.82, r * 0.72, t3);
-	float d = smin(smin(d1, d2, 0.006), d3, 0.006);
-	// pressed: the pads between the joints touch, the flexion creases at the joints do not
-	// pressed: an oval pad on every phalanx (the fingertip's fullest), thin creases between them
-	// (each pad presses hardest along the middle of the finger; the fingertip's pad the most)
-	float k1 = 0.8 * pad_k(h, base + (j1 - base) * 0.2, j1, r * 1.0, r * 0.9, r * 0.06, 0.0);
-	float k2 = 0.9 * pad_k(h, j1, j2, r * 0.95, r * 0.86, r * 0.06, 0.0);
-	float k3 = pad_k(h, j2, j3 + dir_of(an + bend * 2.0) * r * 0.12, r * 0.95, r * 0.86, r * 0.06, 1.0);
-	con = max(con, max(max(k1, k2), k3) * (1.0 - curl));
-	vec2 pc = mix(j2, j3, 0.8);
-	float pm = k3 * (1.0 - smoothstep(r * 0.3, r * 1.05, length(h - pc))) * (1.0 - curl);
-	pm *= smoothstep(r * 0.12, r * 0.35, length(h - pc));
-	if (pm > rid) { rid = pm; rv = sin(length((h - pc) * vec2(1.0, 0.8)) * 6.2832 / 0.0115); }
-	return d;
-}
+float g2(vec2 h, vec2 c, vec2 r) { vec2 q = (h - c) / r; return exp(-dot(q, q)); }
 float sd_palm(vec2 p) {
-	vec2 v[5] = vec2[5](vec2(0.07, 0.08), vec2(0.135, 0.42), vec2(0.03, 0.465), vec2(-0.125, 0.4), vec2(-0.08, 0.09));
+	vec2 v[5] = vec2[5](vec2(0.075, 0.07), vec2(0.13, 0.4), vec2(0.03, 0.43), vec2(-0.12, 0.38), vec2(-0.085, 0.08));
 	float d = dot(p - v[0], p - v[0]);
 	float s = 1.0;
 	for (int i = 0; i < 5; i++) {
@@ -124,54 +79,64 @@ float sd_palm(vec2 p) {
 	}
 	return s * sqrt(d);
 }
-float crease(vec2 h, vec2 a, vec2 b) { float tq; return sd_tcap(h, a, b, 0.0022, 0.0012, tq); }
-// the whole hand: pose 0 = the palm pressed flat, 1 = pointing (the index finger writing, the others
-// folded, the thumb tucked). Returns the distance (hand units) and the arm's distance in `arm`.
-float hand_d(vec2 h, float pose, out float con, out float rid, out float rv, out float arm) {
-	con = 0.0; rid = 0.0; rv = 0.0;
+// one finger: a single tapering stroke from its root, bending gently (two spans, the same radius where
+// they meet, so no joint shows); curl 0 lies flat on the glass, 1 folds away (shorter, out of the print).
+// Returns its distance; `tip` = the centre of its fingertip pad.
+float finger_sd(vec2 h, vec2 base, float an, float len, float r, float bend, float curl, out vec2 tip) {
+	float L = len * (1.0 - 0.62 * curl);
+	vec2 m = base + dir_of(an) * L * 0.55;
+	vec2 e = m + dir_of(an + bend) * (L * 0.45 - r * 0.72);
 	float tq;
-	float dp = sd_palm(h) - 0.065;
-	float dth = sd_rell(h, vec2(0.125, 0.2), vec2(0.085, 0.14), -0.4);
-	float dhy = sd_rell(h, vec2(-0.1, 0.19), vec2(0.07, 0.15), 0.1);
-	float dwr = sd_tcap(h, vec2(0.0, 0.1), vec2(0.0, -0.3), 0.105, 0.097, tq);
-	float d = smin(smin(smin(dp, dth, 0.04), dhy, 0.04), dwr, 0.05);
-	arm = sd_tcap(h, vec2(0.0, -0.22), vec2(0.0, -1.6), 0.1, 0.15, tq);
-	// the palm's contact: the heel's two mounds, the pads under the knuckles, a little in the hollow
-	vec2 hc = h - vec2(0.0, 0.29);
-	float con_p = 0.5 * smoothstep(0.0, 0.05, -dp) * (1.0 - 0.75 * exp(-dot(hc * vec2(1.0, 1.3), hc * vec2(1.0, 1.3)) / 0.008));
-	con_p = max(con_p, 0.95 * smoothstep(0.0, 0.05, -dth));
-	con_p = max(con_p, 0.9 * smoothstep(0.0, 0.045, -dhy));
-	// the pads under the knuckles, one under each finger
-	con_p = max(con_p, 0.86 * smoothstep(0.0, 0.03, -sd_rell(h, vec2(0.118, 0.405), vec2(0.066, 0.056), 0.15)));
-	con_p = max(con_p, 0.9 * smoothstep(0.0, 0.03, -sd_rell(h, vec2(0.03, 0.43), vec2(0.068, 0.058), 0.0)));
-	con_p = max(con_p, 0.86 * smoothstep(0.0, 0.03, -sd_rell(h, vec2(-0.06, 0.41), vec2(0.064, 0.055), -0.1)));
-	con_p = max(con_p, 0.8 * smoothstep(0.0, 0.03, -sd_rell(h, vec2(-0.13, 0.37), vec2(0.054, 0.05), -0.25)));
-	// the palm's lines (heart, head, life): fine creases where the skin does not touch
-	float cl = min(crease(h, vec2(-0.165, 0.31), vec2(-0.02, 0.335)), crease(h, vec2(-0.02, 0.335), vec2(0.1, 0.37)));
-	cl = min(cl, min(crease(h, vec2(0.15, 0.31), vec2(0.02, 0.275)), crease(h, vec2(0.02, 0.275), vec2(-0.15, 0.23))));
-	cl = min(cl, min(crease(h, vec2(0.15, 0.33), vec2(0.07, 0.25)), min(crease(h, vec2(0.07, 0.25), vec2(0.045, 0.13)), crease(h, vec2(0.045, 0.13), vec2(0.06, 0.04)))));
-	con_p *= 0.62 + 0.38 * smoothstep(0.0, 0.005, cl);
-	con = con_p;
-	// the thumb (its metacarpal hides in the thenar mound)
-	vec2 t0 = vec2(0.12, 0.13);
-	vec2 t1 = mix(vec2(0.255, 0.285), vec2(0.2, 0.27), pose);
-	vec2 t2 = mix(vec2(0.335, 0.385), vec2(0.17, 0.36), pose);
-	vec2 t3 = mix(vec2(0.375, 0.455), vec2(0.12, 0.39), pose);
-	float ta, tb, tc;
-	float da = sd_tcap(h, t0, t1, 0.058, 0.046, ta);
-	float db = sd_tcap(h, t1, t2, 0.045, 0.04, tb);
-	float dc = sd_tcap(h, t2, t3, 0.04, 0.034, tc);
-	float dT = smin(smin(da, db, 0.008), dc, 0.006);
-	con = max(con, (1.0 - pose) * max(0.5 * pow(sin(3.14159 * tb), 0.8) * smoothstep(0.0, 0.02, -db), smoothstep(0.1, 0.5, tc) * smoothstep(0.0, 0.02, -dc)));
-	d = smin(d, dT, 0.02);
-	// the four fingers, slender and slightly converging; pointing, the three outer ones fold away
+	float d = min(sd_tcap(h, base, m, r, r * 0.86, tq), sd_tcap(h, m, e, r * 0.86, r * 0.72, tq));
+	tip = e - dir_of(an + bend) * r * 0.15;
+	return d;
+}
+float hand_d(vec2 h, float pose, out float con, out float rid, out float rv, out float arm) {
+	arm = 9.0;                                    // (no forearm: the wrist simply fades below the heel)
+	rid = 0.0; rv = 0.0;
+	float tq;
+	float d = sd_palm(h) - 0.065;
+	d = smin(d, length((h - vec2(0.105, 0.19)) / vec2(1.0, 1.35)) - 0.105, 0.05);      // the thumb's fullness (no separate mound: one shape)
+	d = smin(d, sd_tcap(h, vec2(0.0, 0.1), vec2(0.0, -0.22), 0.1, 0.092, tq), 0.06);                              // the wrist
+	// the thumb, angled out from the base of the palm
+	vec2 t0 = vec2(0.1, 0.13);
+	vec2 t1 = mix(vec2(0.225, 0.255), vec2(0.18, 0.25), pose);
+	vec2 t2 = mix(vec2(0.315, 0.37), vec2(0.13, 0.33), pose);
+	float dT = min(sd_tcap(h, t0, t1, 0.056, 0.046, tq), sd_tcap(h, t1, t2, 0.046, 0.035, tq));
+	d = smin(d, dT, 0.055);
+	// the four fingers, slender, slightly spread; their roots melt into the palm (wide unions: the webs)
 	float co = pose * 0.85;
-	d = smin(d, digit(h, vec2(0.13, 0.45), mix(0.13, 0.03, pose), 0.45, 0.047, -0.035, 0.0, con, rid, rv), 0.022);
-	d = smin(d, digit(h, vec2(0.035, 0.475), mix(0.02, -0.02, pose), 0.53, 0.049, -0.015, co, con, rid, rv), 0.022);
-	d = smin(d, digit(h, vec2(-0.062, 0.46), mix(-0.1, -0.04, pose), 0.49, 0.046, 0.03, co, con, rid, rv), 0.022);
-	d = smin(d, digit(h, vec2(-0.145, 0.415), mix(-0.26, -0.1, pose), 0.38, 0.039, 0.07, co, con, rid, rv), 0.02);
-	con *= smoothstep(-0.03, 0.07, h.y);          // the wrist does not touch
-	con *= smoothstep(0.0, 0.012, -d);            // the skin rolls away from the glass at its outline
+	vec2 ti, tm, tr, tl;
+	float fi = finger_sd(h, vec2(0.115, 0.4), mix(0.15, 0.05, pose), 0.37, 0.041, -0.04, 0.0, ti);
+	float fm = finger_sd(h, vec2(0.03, 0.42), mix(0.03, 0.0, pose), 0.42, 0.043, -0.015, co, tm);
+	float fr = finger_sd(h, vec2(-0.055, 0.405), mix(-0.1, -0.04, pose), 0.39, 0.04, 0.025, co, tr);
+	float fl = finger_sd(h, vec2(-0.13, 0.37), mix(-0.27, -0.1, pose), 0.3, 0.034, 0.06, co, tl);
+	float fingers = min(min(fi, fm), min(fr, fl));
+	d = smin(d, fingers, 0.045);
+	// how hard it presses: a soft whole-hand print, the fingertip pads and the heel the clearest
+	float inside = smoothstep(0.0, 0.03, -d);
+	float c = 0.55;
+	c -= 0.22 * g2(h, vec2(0.0, 0.27), vec2(0.085, 0.08));                    // the hollow of the palm (only a little)
+	c = max(c, 0.95 * g2(h, vec2(0.0, 0.11), vec2(0.13, 0.075)));             // the heel
+	c = max(c, 0.82 * g2(h, vec2(0.11, 0.2), vec2(0.06, 0.09)));             // the thumb's mound
+	c = max(c, 0.72 * g2(h, vec2(0.0, 0.39), vec2(0.15, 0.04)));             // along the knuckles
+	c = max(c, 0.66 * smoothstep(0.0, 0.02, -fingers));                       // the fingers
+	float pads = 0.0;
+	pads = max(pads, g2(h, ti, vec2(0.045)));
+	pads = max(pads, g2(h, tm, vec2(0.047)) * (1.0 - co));
+	pads = max(pads, g2(h, tr, vec2(0.044)) * (1.0 - co));
+	pads = max(pads, g2(h, tl, vec2(0.038)) * (1.0 - co));
+	pads = max(pads, g2(h, t2, vec2(0.05)) * (1.0 - pose));
+	c = max(c, pads);
+	con = c * inside * (1.0 - pose) * smoothstep(-0.04, 0.06, h.y);
+	// a whisper of the whorls on the fingertip pads (faded out where they would alias)
+	vec2 pc = ti;
+	float best = length(h - ti);
+	if (length(h - tm) < best) { pc = tm; best = length(h - tm); }
+	if (length(h - tr) < best) { pc = tr; best = length(h - tr); }
+	if (length(h - tl) < best) { pc = tl; best = length(h - tl); }
+	rid = pads * smoothstep(0.004, 0.012, best) * (1.0 - pose);
+	rv = sin(length((h - pc) * vec2(1.0, 0.8)) * 6.2832 / 0.0115);
 	return d;
 }
 // the pane (aspect-corrected units) into the hand's frame: hand point `lp` lies at `at`, tilted by
@@ -244,7 +209,7 @@ void fragment() {
 		vec2 tip = finger * A;
 		vec2 D = normalize(tip - vec2(0.72, 0.83) * A + vec2(0.0001));
 		float th = atan(D.x, -D.y);
-		vec2 h = to_hand(P, tip, vec2(0.155, 0.89), th, HAND_L);
+		vec2 h = to_hand(P, tip, vec2(0.14, 0.79), th, HAND_L);
 		float dd = hand_d(h, 1.0, con, rid, rv, armd) * HAND_L;
 		float wp = w * 0.25 + 0.01;            // (close behind the glass: softened by the fog, still a hand)
 		hand_m = max(1.0 - smoothstep(-wp, wp, dd), (1.0 - smoothstep(-w - 0.03, w + 0.03, armd * HAND_L)) * 0.85) * finger_k;
@@ -258,26 +223,26 @@ void fragment() {
 		float dd = hand_d(h, 0.0, con, rid, rv, armd) * L;
 		float aa = max(fwidth(dd), 0.0005);
 		// (sharp where the hand meets the glass; the wrist and forearm lean away, softer and softer)
-		float wb = mix(w + 0.05, mix(aa + 0.002 + w * 0.03, 0.02 + w * 0.3, smoothstep(0.12, -0.25, h.y)), press);
-		float hm = (1.0 - smoothstep(-wb, wb, dd)) * nearer * mix(0.4, 1.0, smoothstep(-0.22, 0.06, h.y));   // (the wrist leans back into the dark)
+		float wb = mix(w + 0.05, mix(aa + 0.004 + w * 0.05, 0.03 + w * 0.3, smoothstep(0.1, -0.2, h.y)), press);
+		float hm = (1.0 - smoothstep(-wb, wb, dd)) * nearer * smoothstep(-0.2, 0.05, h.y);   // (v0.8.2: no forearm: the wrist fades into the fog)
 		float am = (1.0 - smoothstep(-w - 0.07, w + 0.07, armd * L)) * nearer * 0.7;
 		inner = 1.0 - smoothstep(-aa, aa, dd);
 		hand_m = max(hand_m, hm);
 		arm_m = am;
 		hdist = min(hdist, dd);
 		// the print: contact sharpened, a fine frost of micro-droplets in it, the fingertip whorls
-		float pr = smoothstep(0.06, 0.75, con) * inner * press;
+		float pr = smoothstep(0.12, 0.9, con) * press;
 		pr *= mix(0.55 + 0.45 * vnoise(uv * vec2(300.0, 400.0)), 1.0, smoothstep(0.3, 0.8, con));    // a frost of micro-droplets where it barely touched
 		float rvis = 1.0 - smoothstep(0.35, 0.9, fwidth(rv));
-		pr *= 1.0 - 0.2 * rid * (0.5 + 0.5 * rv) * rvis;
+		pr *= 1.0 - 0.08 * rid * (0.5 + 0.5 * rv) * rvis;
 		prnt = pr;
 		soft = inner * press * (1.0 - pr);
-		halo = (1.0 - inner) * exp(-max(dd, 0.0) / 0.014) * press;
+		halo = (1.0 - inner) * exp(-max(dd, 0.0) / 0.018) * press * smoothstep(-0.2, 0.05, h.y);
 	}
 	// droplets: from the heel, the thumb and the little finger, slow at first, then running
 	float drop_c = 0.0, bead_m = 0.0, bead_hl = 0.0, bead_rim = 0.0;
 	if (press_t > 0.0 && palm_k > 0.5) {
-		vec2 srcs[5] = vec2[5](vec2(-0.085, 0.06), vec2(0.005, 0.03), vec2(0.08, 0.05), vec2(0.405, 0.43), vec2(-0.245, 0.69));
+		vec2 srcs[5] = vec2[5](vec2(-0.085, 0.05), vec2(0.005, 0.02), vec2(0.08, 0.04), vec2(0.37, 0.36), vec2(-0.255, 0.64));
 		float dl[5] = float[5](0.7, 1.4, 2.0, 1.0, 2.6);
 		float sp[5] = float[5](0.03, 0.04, 0.026, 0.034, 0.022);
 		float aa2 = max(fwidth(P.x), 0.0005);
@@ -304,7 +269,7 @@ void fragment() {
 	}
 	float glowd = max(her_cov(uv, w * 2.5 + 0.05), exp(-max(hdist, 0.0) / (0.04 + 0.16 * dens)) * max(finger_k, smoothstep(0.0, 0.55, palm_k)));     // the fog scatters her shadow
 	vec3 shade = vec3(0.07, 0.08, 0.09);
-	vec3 skin_far = mix(vec3(0.33, 0.345, 0.36), vec3(0.4, 0.415, 0.43), press);      // (nearer the glass than she is: a little lighter)     // her hand nearing the glass catches your light
+	vec3 skin_far = mix(vec3(0.33, 0.345, 0.36), vec3(0.52, 0.535, 0.545), press);      // (nearer the glass than she is: lighter; pressed, it catches your light)
 	back = mix(back, shade, max(sil, arm_m) * 0.9);
 	back = mix(back, skin_far + vec3(0.07) * smoothstep(0.0, 0.5, con) * press, hand_m * 0.92);
 	float her_m = mix(max(sil, arm_m), 0.3, hand_m);      // (her hand, nearer the glass, is not darkened like her body)
