@@ -79,9 +79,13 @@ func _init(ghost := false) -> void:
 	sk = rig.find_children("*", "Skeleton3D", true, false)[0]
 	mesh_mi = rig.find_children("*", "MeshInstance3D", true, false)[0]
 	if _albedo == null:
-		var sm := mesh_mi.mesh.surface_get_material(0) as BaseMaterial3D
-		_albedo = sm.albedo_texture
-		_normal = sm.normal_texture
+		# (same UVs as the Tripo model: its imported JPEG maps; the GLB's own embedded copies are discarded
+		# at import, they would be Basis Universal, which the Compatibility renderer here cannot upload)
+		for f in DirAccess.get_files_at("res://assets/models"):
+			if f.ends_with(".jpg.import") or f.ends_with(".jpg"):
+				var fn := f.trim_suffix(".import")
+				if "_rgb_" in fn: _albedo = load("res://assets/models/" + fn)
+				elif "_normal_" in fn: _normal = load("res://assets/models/" + fn)
 	mesh_mi.mesh = body_mesh
 	body_mat = ShaderMaterial.new()
 	body_mat.shader = preload("res://shaders/wanderer_ghost.gdshader") if ghost else preload("res://shaders/wanderer.gdshader")
