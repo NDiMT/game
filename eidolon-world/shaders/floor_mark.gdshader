@@ -28,7 +28,7 @@ void fragment() {
 	float amul = 1.0;
 	// kind 4 (v0.8): an ENGRAVED channel along the quad (no glow), flaring into a notch at the far (+y) edge;
 	// `joint` lights a thin aqua seam across the notch
-	bool carved = kind > 3.5;
+	bool carved = kind > 3.5 && kind < 4.5;
 	vec3 c_alb = vec3(0.0);
 	float c_a = 0.0;
 	if (carved) {
@@ -42,6 +42,17 @@ void fragment() {
 		c_alb = mix(vec3(0.26, 0.26, 0.255), vec3(0.93, 0.92, 0.89), lip * (1.0 - groove));
 		c_alb = mix(c_alb, _hc() * 1.45, clamp(seam + sg * 0.7, 0.0, 1.0));
 		c_a = clamp(shade + lip * 0.25 + seam + sg * 0.6, 0.0, 1.0);
+	}
+	// kind 5 (v0.8, QA P1-6): your watch cone on the floor (a soft 100 deg wedge, faint fill, lit edges)
+	bool cone = kind > 4.5;
+	if (cone) {
+		float r = length(p);
+		float an = abs(atan(p.x, p.y));
+		float inside = (1.0 - smoothstep(0.85, 1.0, r)) * (1.0 - smoothstep(0.86, 0.88, an));
+		float edge = (1.0 - smoothstep(0.0, 0.025, abs(an - 0.8727) * r)) * (1.0 - smoothstep(0.85, 1.0, r)) * smoothstep(0.05, 0.15, r);
+		c_alb = mix(_ha(), _hc(), edge);
+		c_a = clamp(inside * 0.10 * (1.0 - r * 0.6) + edge * 0.55, 0.0, 1.0);
+		carved = true;
 	}
 	if (kind > 2.5 && kind < 3.5) {
 		// an inlaid path: a line along the quad, widening into a notch at the far (+y) end

@@ -23,7 +23,7 @@ const POOL_DZ := 1.2
 const POOL_COLS := 7
 const POOL_ROWS := 3
 const POOL_GHOSTS := {Vector2i(1, 0): "SW", Vector2i(3, 0): "ES", Vector2i(3, 1): "NS", Vector2i(4, 2): "EW", Vector2i(5, 2): "EW",
-	Vector2i(6, 2): "EW", Vector2i(1, 2): "NW", Vector2i(2, 2): "EW"}
+	Vector2i(6, 2): "EW", Vector2i(1, 2): "NW"}       # (v0.8 QA P0-1: no (2,2): the south row visibly stops short)
 const POOL_REALS := [[Vector2i(0, 1), "NS"], [Vector2i(1, 1), "ES"], [Vector2i(2, 0), "NS"], [Vector2i(3, 2), "NE"]]   # base shapes
 const POOL_START := [0, 0, 0, 0]            # quarter turns from the base shape
 const POOL_IN := Vector2i(0, 1)             # entered from its E edge (the island)
@@ -276,7 +276,7 @@ static func _echo(lv: Level) -> void:
 	# tall walls: the corridor rings with every step
 	lv.wall(z, R(8.7, -46.7, 9.0, -39.0), 2.0, 5.2, true)
 	lv.wall(z, R(11.0, -44.1, 11.3, -39.0), 2.0, 5.2, true)
-	lv.wall(z, R(11.0, -44.4, 26.2, -44.1), 2.0, 5.2, true)
+	lv.wall(z, R(11.0, -44.4, 26.2, -44.1), 2.0, 3.2, true)      # (v0.8 QA P1-2: the near wall a parapet: the singing stones show)
 	lv.wall(z, R(8.7, -46.7, 17.4, -46.4), 2.0, 5.2, true)
 	lv.wall(z, R(19.2, -46.7, 26.2, -46.4), 2.0, 5.2, true)
 	lv.wall("ECs", R(17.4, -46.7, 19.2, -46.4), 2.0, 5.2, true)

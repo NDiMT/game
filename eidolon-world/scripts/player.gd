@@ -84,6 +84,10 @@ func step(dt: float) -> void:
 	_lift_contact_shadow()
 	var want := Vector3(input_dir.x, 0.0, input_dir.y)
 	if locked: want = Vector3.ZERO
+	# (QA P1-6) a light touch on the stick turns you in place (watching without stepping)
+	if want.length() > 0.02 and want.length() < 0.35:
+		yaw = lerp_angle(yaw, atan2(-want.x, -want.z), 1.0 - exp(-dt * 9.0))
+		want = Vector3.ZERO
 	if want.length() > 1.0: want = want.normalized()
 	var target := want * SPEED
 	var rate := ACCEL if target.length() > vel.length() else DECEL

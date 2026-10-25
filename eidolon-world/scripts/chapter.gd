@@ -37,7 +37,8 @@ const TURN_X := [10.6, 12.0, 13.4]
 const TURN_Z := -13.5
 const FOUR_R := 3.9
 const FOUR_ANGLES := [20.0, 160.0, -20.0, -160.0]      # degrees round the tholos; the last is empty
-const MEMORY_1 := "I took the goddess's mirror from her shrine.\nShe did not stop me. She only watched."
+# (QA P1-10: memories speak of him in the third person; the inscriptions are his own voice)
+const MEMORY_1 := "He took the goddess's mirror from her shrine at Milos.\nShe did not stop him. She only watched."
 
 var game: Game
 var level: Level
@@ -284,6 +285,13 @@ func _build_pool() -> void:
 		var regs := []
 		for k in 2: regs.append(level.walk(Rect2(), 0.0, NAN, -1, "pool%d_%d_%d" % [c.x, c.y, k], false))
 		pool_pieces[c] = {"node": node, "base": base, "real": ri, "regions": regs, "seams": seams, "dirs": dirs}
+	# (QA P0-1d) the rim spots you turn the far slabs from: a worn bronze footplate, a mark toward its pin
+	for sp in [[Vector3(-3.75, 0.0, -0.4), PI], [Vector3(-4.5, 0.0, 4.05), 0.0]]:
+		var fm := MB.new()
+		fm.cyl(sp[0] + Vector3(0, 0.008, 0), 0.32, 0.34, 0.016, Color(0.5, 1.0, 0.0), 18)
+		puzzles.marble_instance(fm.commit(), self)
+		var am := _smat("res://shaders/floor_mark.gdshader", {"kind": 0.0, "intensity": 0.75})
+		_mi(_plane(Vector2(0.36, 0.36)), am, Transform3D(Basis(Vector3.UP, sp[1]), sp[0] + Vector3(0, 0.02, 0)))
 	# the reflections, on the water
 	pool_mat = _smat("res://shaders/pool_stones.gdshader", {"noise_tex": level.noise_tex, "water_y": Ch1Geo.WATER_Y, "top_y": 0.0, "pulse": 0.0})
 	pool_mat.render_priority = -1            # (under the sheen: a fixed order, never a sort flicker)
@@ -480,7 +488,13 @@ func _pool_joints(instant := false) -> int:
 			if instant: sm.set_shader_parameter("joint", 1.0 if ok else 0.0)
 			else:
 				var from: float = sm.get_shader_parameter("joint")
-				create_tween().tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), from, 1.0 if ok else 0.0, 0.35)
+				var jt := create_tween()
+				if ok and from < 0.5:
+					# (a joint just answered: both halves pulse, then settle lit)
+					jt.tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), from, 2.2, 0.15)
+					jt.tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), 2.2, 1.0, 0.4)
+				else:
+					jt.tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), from, 1.0 if ok else 0.0, 0.35)
 			if ok:
 				n += 1
 				var key := "%d,%d,%s" % [c.x, c.y, d]
@@ -507,8 +521,9 @@ func _breath_glass(id: String, center: Vector3, basis: Basis, size: Vector2, gly
 func _build_stair() -> void:
 	_breath_glass("stair", Vector3(-10.345, 1.75, -5.3), Basis(Vector3.UP, -PI * 0.5), Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
 	level.add_interact("breathe_stair", Vector3(-11.1, 0.5, -5.3), "breathe", func() -> void: breathe("stair"), 1.25)
-	# v0.7: before the glass, the whole rune she will ask about, carved large in the cliff wall, written
-	# normally (her half on the left as she will write it, the half you must give her on the right)
+	# v0.7: before the glass, the whole rune she will ask about, carved large in the cliff wall: her half and
+	# its mirror, the half you must give her. (QA P1-11: "together" is mirror-symmetric, so carved as your
+	# world carves all writing, mirrored, it reads the same: it never contradicts the mirror rule)
 	var half: Array = GlassTalk.TEMPLATES["together_half"][0]
 	var gp := PackedVector2Array()
 	for q in GlassTalk.smooth(PackedVector2Array(half), 3): gp.append(q * 1.3 + Vector2(0.0, 0.04))
@@ -699,7 +714,7 @@ func _build_hall() -> void:
 	hall_obs.append(level.ob_circle(Vector2(BUST_POS.x, BUST_POS.z), 0.4, "hall_bust"))
 	level.add_interact("hall_push", Vector3.ZERO, "push", push_drum, 1.05, func() -> bool: return _push_dir() != Vector2i.ZERO)
 	level.add_interact("hall_take", Vector3.ZERO, "take", take_brazier, 0.95, func() -> bool: return not carrying and not _locked(1))
-	level.add_interact("hall_place", Vector3.ZERO, "place", place_brazier, 0.6, func() -> bool: return carrying)
+	level.add_interact("hall_place", Vector3.ZERO, "place", place_brazier, 0.6, func() -> bool: return carrying and _in_hall())
 	level.add_interact("hall_turn", BUST_POS + Vector3(0, 0, 0.7), "turn", turn_bust, 0.95, func() -> bool: return not _locked(2) and not carrying)
 	shard_take = level.add_interact("take_shard", SHARD_SPOT, "shard", take_shard, 1.0, func() -> bool: return state["hall_door"] and not state["shard"])
 	# v0.7: marks. The push arrow (shown when you stand square to the drum); the bust's facing pointer and
@@ -727,7 +742,7 @@ func _build_hall() -> void:
 	puzzles.marble_instance(am.commit(), self)
 	puzzles.rune_quad(self, Vector3(-3.9, 1.765, -15.8), Vector2(0.5, 0.5), Basis(Vector3.RIGHT, -PI * 0.5), 1.0, 0.5)
 	level.ob_rect(Level.R(-4.2, -16.1, -3.6, -15.5))
-	level.add_interact("hall_reset", Vector3(-3.9, 1.0, -15.8), "turn", reset_hall, 0.95, func() -> bool: return not state["hall_door"] and not carrying)
+	level.add_interact("hall_reset", Vector3(-3.9, 1.0, -15.8), "reset", reset_hall, 0.95, func() -> bool: return not state["hall_door"] and not carrying)
 	level.inscription("h_hall", Vector3(-3.4, 1.0, -12.6), "I moved what she loved in this hall, and walled up her door.\nThe glass kept all of it, as it was.", 1.2,
 		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-3.4, 1.012, -12.95)), Vector2(1.15, 0.78))
 	# the shard: a sliver of mirror, glowing (it lies on the threshold once the door is back)
@@ -908,9 +923,20 @@ func _lock_thing(k: int, instant: bool) -> void:
 	tw.tween_method(func(v: float) -> void: g.set_shader_parameter("intensity", v), 1.6, 0.0, 1.4)
 	tw.tween_callback(func() -> void: twins[k].visible = false)
 
+func _in_hall() -> bool:
+	return Level.R(-4.6, -20.6, 4.6, -11.0).has_point(Vector2(game.player.position.x, game.player.position.z))
+
 func _update_hall(dt: float) -> void:
 	var hs := _hall_state()
 	var pl := game.player
+	# (QA P1-1) the brazier does not leave the Hall: carried out, it goes back to where it last stood
+	if carrying and not _in_hall():
+		carrying = false
+		(hall_obs[1] as Level.Obstacle).enabled = true
+		var back := _cell_v3(Vector2i(int(hs["brazier"][0]), int(hs["brazier"][1])))
+		create_tween().tween_property(braz_node, "position", back, 0.5).set_trans(Tween.TRANS_SINE)
+		braz_node.rotation.y = 0.0
+		event.emit("hall_reset", null)
 	if carrying:
 		var fwd := Vector3(-sin(pl.yaw), 0, -cos(pl.yaw))
 		braz_node.position = braz_node.position.lerp(pl.position + fwd * 0.55 + Vector3(0, 0.25, 0), 1.0 - exp(-dt * 14.0))
@@ -1199,6 +1225,10 @@ func _update_lens() -> void:
 	var sp := cam.unproject_position(game.player.position + Vector3(0, 1.5, 0))
 	var vis := vp.get_visible_rect().size
 	var r := vis.x * 0.42
+	# (QA P2-17) near her map, the lens leans toward it so the plan sits inside the circle
+	var mp := cam.unproject_position(Vector3(6.8, 3.15, -10.5))
+	var near_map := 1.0 - smoothstep(2.5, 6.0, Vector2(game.player.position.x - 6.8, game.player.position.z + 10.5).length())
+	sp = sp.lerp(mp, 0.6 * near_map)
 	# 3D shaders see FRAGCOORD in render-target pixels (window size x the 3D render scale)
 	var k := Vector2(vp.size) * vp.scaling_3d_scale / vis
 	lens_px = Vector4(sp.x * k.x, sp.y * k.y, r * k.x, 1.0)
@@ -1252,6 +1282,7 @@ func _build_garden() -> void:
 		add_child(pivot)
 		var mi := MeshInstance3D.new()
 		mi.mesh = _statue_mesh(0.9, 0.9)
+		level.occluders.append(AABB(Vector3(TURN_X[i] - 0.5, 1.0, TURN_Z - 0.5), Vector3(1.0, 2.6, 1.0)))     # (QA P1-4)
 		mi.material_override = level.marble_mat
 		pivot.add_child(mi)
 		var mats: Array[ShaderMaterial] = []
@@ -1429,11 +1460,22 @@ func hw_watched(k: int) -> bool:
 	var fwd := Vector2(-sin(game.player.yaw), -cos(game.player.yaw))
 	return fwd.dot(d.normalized()) > cos(deg_to_rad(50.0))
 
+var hw_cone: MeshInstance3D
 func _update_hollow(dt: float) -> void:
-	if state["hollow_done"]: return
 	var p := game.player.position
 	var inside := p.x > 17.4 and p.x < 25.6 and p.z > -15.0 and p.z < -6.0 and absf(p.y - 1.0) < 0.2
 	var still := game.player.speed01 < 0.04 and game.mode == "play"
+	# (QA P1-6) what you watch: your 50-degree cone on the floor while you stand still in the Walk
+	if hw_cone == null:
+		hw_cone = _mi(_plane(Vector2(13.0, 13.0)), _smat("res://shaders/floor_mark.gdshader", {"kind": 5.0, "intensity": 0.0}), Transform3D())
+		hw_cone.layers = PlanarMirror.LAYER_MAIN_FX
+	var cm: ShaderMaterial = hw_cone.material_override
+	var ck: float = cm.get_shader_parameter("intensity")
+	ck = move_toward(ck, 1.0 if (inside and still and not state["hollow_done"]) else 0.0, dt * 2.5)
+	cm.set_shader_parameter("intensity", ck)
+	hw_cone.visible = ck > 0.001
+	if hw_cone.visible: hw_cone.transform = Transform3D(Basis(Vector3.UP, game.player.yaw), Vector3(p.x, p.y + 0.02, p.z))
+	if state["hollow_done"]: return
 	_still = _still + dt if (still and inside) else 0.0
 	for k in 2:
 		var w: bool = inside and still and hw_watched(k) and not state["hollow_lock"][k]
@@ -1660,9 +1702,9 @@ func _build_maze() -> void:
 			m.shader = fsh
 			m.set_shader_parameter("project", 0.0)
 			m.set_shader_parameter("life", 1.0)
-			m.set_shader_parameter("dark", 1.0)
+			m.set_shader_parameter("dark", 0.6)
 			var q := QuadMesh.new()
-			q.size = Vector2(0.5, 0.82)                # (v0.7: larger)
+			q.size = Vector2(0.7, 1.1)                 # (v0.8 QA P2-8: larger)
 			q.orientation = PlaneMesh.FACE_Y
 			var mi := _mi(q, m, Transform3D(Basis(Vector3.UP, atan2(-dir.x, -dir.z)), Vector3(c.x, c.y, c.z)))
 			mi.visible = false
@@ -1961,7 +2003,7 @@ func _build_scales() -> void:
 		add_child(rod)
 		sc_rods.append(rod)
 		var idx := k
-		level.add_interact("pan%d" % k, Vector3(pan_pos(k).x, 2.0, pan_pos(k).z), "hang", func() -> void: pan_action(idx), 0.45,
+		level.add_interact("pan%d" % k, Vector3(pan_pos(k).x, 2.0, pan_pos(k).z), "hang", func() -> void: pan_action(idx), 0.7,
 			func() -> bool: return _pan_can(idx))
 	# the urn on L3 (heavy: 5)
 	var um := MB.new()
@@ -1993,7 +2035,7 @@ func _build_scales() -> void:
 		puzzles.rune_quad(w, Vector3(0, sz * 0.5, sz * 0.5 + 0.004), Vector2(sz * 0.9, sz * 0.9), Basis(), -1.0, 0.45, float(i + 1))
 		sc_wnodes.append(w)
 		var wi := i
-		level.add_interact("weight%d" % i, SC_RACK[i] + Vector3(0, 0, -0.6), "take", func() -> void: take_weight(wi), 0.45,
+		level.add_interact("weight%d" % i, SC_RACK[i] + Vector3(0, 0, -0.6), "take", func() -> void: take_weight(wi), 0.7,
 			func() -> bool: return ((sc_carry < 0 and int(state["scale_w"][wi]) == -1) or sc_carry == wi) and not state["scales"])
 	# the three tiles where your reflection stands on the other side
 	for k in 3:
@@ -2346,9 +2388,7 @@ func facing_shrine() -> bool:
 ## "wait": turn to face the shrine as the others do, and hold still
 func wait_still() -> void:
 	if not on_four_plinth(): return
-	var p := game.player.position
-	game.player.yaw = atan2(-(Puzzles.SHRINE_C.x - p.x), -(Puzzles.SHRINE_C.z - p.z))
-	game.player.fig.rotation.y = game.player.yaw
+	# (QA P2-15) no auto-facing: you must turn toward the shrine yourself, as the stele says
 	waiting = 5.0
 	game.player.locked = true
 
@@ -2455,7 +2495,7 @@ func _update_hints(dt: float, area: String) -> void:
 	if hint_t < Game.HINT_AFTER or _hint_cd > 0.0: return
 	var tgt := hint_target(area)
 	if tgt == Vector3.INF: return
-	_hint_cd = 22.0
+	_hint_cd = 45.0
 	show_hint(tgt)
 
 func show_hint(tgt: Vector3) -> void:
@@ -2778,7 +2818,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 		puzzles.shrine_light.light_energy = lerpf(0.7, 2.2, k))
 	c.anim(P + 49.0, 7.0, func(k: float) -> void: w.set_awaken(k))
 	c.anim(P + 50.0, 4.0, func(k: float) -> void: puzzles.far_pillar.set_shader_parameter("fade", lerpf(0.35, 0.6, k)))
-	c.at(P + 49.5, func() -> void: g.ui.show_memory(Game.MEMORY_LINE, 3.0), false)
+	c.at(P + 49.5, func() -> void: g.ui.show_memory(Game.MEMORY_LINE, 3.0), true)      # (QA P1-9: kept on a skip)
 	c.at(P + 57.0, func() -> void:
 		g.ui.show_milestone(1, Game.SHRINES_TOTAL, 3.5)
 		g.sfx.play("bell_far", -12.0, 1.0))

@@ -19,7 +19,7 @@ var chapter: Chapter
 var cine: Cinematic
 var _skip_hold := false
 var _skip_t := 0.0
-const HINT_AFTER := 180.0        # seconds without progress in a space before a gentle hint
+const HINT_AFTER := 110.0        # seconds without progress in a space before a gentle hint
 var player: Player
 var sfx: Sfx
 var ui: GameUI
@@ -346,6 +346,7 @@ func _process(dt: float) -> void:
 	player.step(dt)
 	world.update_reveal(level.occluders, player.position, dt)
 	level.set_fade(player.position, world.reveal_k > 0.001)
+	if mode != "cine" and mode != "finale": level.cull_far(player.position, dt)
 	puzzles.update(dt)
 	if mode != "title": chapter.update(dt)
 	if mode == "cine":

@@ -138,9 +138,9 @@ func build() -> void:
 	_court()
 	_ledge()
 	_shrine_platform()
-	_far_ruins()
 	_sealed_way()
 	Ch1Geo.build(self)
+	_far_ruins()                 # (after every walk region exists: it keeps clear of them)
 	_beyond()
 
 ## called after the puzzles have added their pieces
@@ -261,6 +261,27 @@ func move(pos: Vector3, d: Vector3, rad: float) -> Vector3:
 		if circle_ok(q, rad) and not blocked(q, rad) and absf(height_at(q) - pos.y) < 0.3:
 			return Vector3(q.x, height_at(q), q.y)
 	return Vector3(p.x, height_at(p), p.y)
+
+## v0.8 (QA P1-8): per-area visibility: the merged zone meshes far from the wanderer are not drawn.
+## Zones the chapter shows / hides itself (doors that open) are left alone.
+const CULL_SKIP := ["Zone_Hdoor", "Zone_GLs", "Zone_ECs", "Zone_Mural"]
+const CULL_DIST := 26.0
+var _cull := []                     # [mesh instance, footprint Rect2]
+var _cull_t := 0.0
+func cull_far(p: Vector3, dt: float) -> void:
+	_cull_t -= dt
+	if _cull_t > 0.0: return
+	_cull_t = 0.3
+	if _cull.is_empty():
+		for ch in get_children():
+			if ch is MeshInstance3D and str(ch.name).begins_with("Zone_") and not (str(ch.name) in CULL_SKIP):
+				var bb := (ch as MeshInstance3D).get_aabb()
+				_cull.append([ch, Rect2(bb.position.x, bb.position.z, bb.size.x, bb.size.z)])
+	var q := Vector2(p.x, p.z)
+	for e in _cull:
+		var r: Rect2 = e[1]
+		var c := Vector2(clampf(q.x, r.position.x, r.end.x), clampf(q.y, r.position.y, r.end.y))
+		(e[0] as MeshInstance3D).visible = c.distance_to(q) < CULL_DIST
 
 ## v0.8: while the see-through is open, the zones round the wanderer wear their split meshes (occluders
 ## fade with an alpha edge); otherwise every zone is one opaque draw as before
@@ -540,6 +561,8 @@ func rubble(c: Vector3, spread: float, count: int) -> void:
 		debris.append(Transform3D(b, p + Vector3(0, s * 0.3, 0)))
 
 func statue(zone: String, base: Vector3, yaw: float, sc := 1.0, plinth := 0.6, ob := true) -> void:
+	# (QA P1-4) a statue may hide the wanderer: the see-through opens for it
+	occluders.append(AABB(base - Vector3(0.5, 0.0, 0.5) * sc, Vector3(1.0 * sc, plinth + 2.3 * sc, 1.0 * sc)))
 	## A veiled woman on a plinth, hands folded. Every statue has the same veiled face.
 	var m := mb(zone)
 	var B := Basis(Vector3.UP, yaw)
@@ -889,7 +912,7 @@ func _shrine_platform() -> void:
 	m.cyl(c + Vector3(0, 0.07, 0.2), 1.3, 1.34, 0.14, C(0.25), 36)
 	m.cyl(c + Vector3(0, 0.02, 0.2), 1.18, 1.18, 0.06, C(0.5), 36)
 	ob_circle(Vector2(c.x, c.z + 0.2), 1.3)
-	rubble(Vector3(21.2, 2.0, -34.8), 0.6, 5)
+	rubble(Vector3(23.4, 2.0, -35.5), 0.3, 3)      # (v0.8: the unfinished veiled one stands in this corner now)
 	stump(Vector3(22.0, 2.0, -30.0), 0.9)          # (v0.7: off the way round the platform's edge)
 
 ## the way on: a bridge from the shrine platform toward the next shrine, sealed by a dark rune door,
@@ -1002,14 +1025,15 @@ func _far_ruins() -> void:
 	r.seed = 77
 	var pts := [Vector2(-14, 4), Vector2(-16, -14), Vector2(-12, -30), Vector2(2, -40), Vector2(16, -44), Vector2(36, -38),
 		Vector2(40, -22), Vector2(36, -6), Vector2(22, 6), Vector2(8, 14), Vector2(-6, 16), Vector2(-20, -22), Vector2(30, 12), Vector2(44, -30)]
-	for p in pts:
+	for p0 in pts:
+		var p := _far_from_walks(p0, 9.0)
 		var rad := r.randf_range(0.9, 1.6)
-		var top := r.randf_range(-2.0, 9.0)
+		var top := r.randf_range(-3.0, 5.0)
 		st.cyl(Vector3(p.x, top - 15.0, p.y), rad * 0.92, rad, 30.0, Color(0, 0, 0), 12, Basis(Vector3.BACK, r.randf_range(-0.06, 0.06)))
 		if r.randf() < 0.4:
 			st.box(Vector3(p.x, top + 0.3, p.y), Vector3(rad * 2.6, 0.6, rad * 2.6), Color(0, 0, 0))
 	for sdef in [[Vector2(-15, -6), 2.2], [Vector2(38, -14), 2.6], [Vector2(10, -48), 3.0]]:
-		var p: Vector2 = sdef[0]; var s: float = sdef[1]
+		var p: Vector2 = _far_from_walks(sdef[0], 10.0); var s: float = sdef[1]
 		st.cyl(Vector3(p.x, -6.0, p.y), 0.55 * s, 0.95 * s, 4.2 * s, Color(0, 0, 0), 12)
 		st.sphere(Vector3(p.x, -6.0 + 2.6 * s, p.y), Vector3(0.42, 0.52, 0.42) * s, Color(0, 0, 0), 10, 5)
 		st.cyl(Vector3(p.x, -6.0 + 2.3 * s, p.y), 0.15 * s, 0.75 * s, 1.4 * s, Color(0, 0, 0), 12)
@@ -1026,6 +1050,19 @@ func _far_ruins() -> void:
 		else:
 			far.cyl(c + Vector3(0, r.randf_range(-2.0, 6.0), 0), r.randf_range(3.0, 6.0), r.randf_range(0.5, 1.5), r.randf_range(5.0, 9.0), Color(0, 0, 0), 7)
 	_silhouette_layer(far, Color(0.70, 0.705, 0.71), "FarestRuins")
+
+## (QA P1-3) a far ruin stands at least `d` metres from every walk region: pushed out from the complex
+func _far_from_walks(p: Vector2, d: float) -> Vector2:
+	var c := Vector2(10.0, -20.0)
+	var dir := (p - c).normalized() if p.distance_to(c) > 0.1 else Vector2.RIGHT
+	for k in 60:
+		var near := INF
+		for g in regions:
+			var q := Vector2(clampf(p.x, g.r.position.x, g.r.end.x), clampf(p.y, g.r.position.y, g.r.end.y))
+			near = minf(near, q.distance_to(p))
+		if near >= d: break
+		p += dir
+	return p
 
 func _silhouette_layer(m: MB, col: Color, nm: String) -> void:
 	var mat := StandardMaterial3D.new()

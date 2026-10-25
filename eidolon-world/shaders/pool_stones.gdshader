@@ -30,41 +30,76 @@ float box_hit(vec3 o, vec3 d, vec3 bmin, vec3 bmax) {
 	return (tf >= max(tn, 0.0)) ? max(tn, 0.0) : -1.0;
 }
 
+// v0.8 (QA P0-1): HER slabs are drawn at their TRUE top height, as a glowing ghost standing in the water
+// (no reflection parallax: her arm ends meet yours on screen); YOUR slabs keep their reflection.
+float rbox(vec2 p, vec4 b) { vec2 c = 0.5 * (b.xy + b.zw); vec2 h = 0.5 * (b.zw - b.xy); vec2 d = abs(p - c) - h; return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0); }
+
 void fragment() {
 	vec3 vd = normalize(-(INV_VIEW_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
 	vec3 rd = vec3(vd.x, -vd.y, vd.z);
-	// the faintest stir of the water (the reflection stays readable)
 	float n1 = texture(noise_tex, wp.xz * 0.9 + TIME * vec2(0.03, 0.02)).r - 0.5;
 	float n2 = texture(noise_tex, wp.xz * 1.7 - TIME * vec2(0.02, 0.03)).r - 0.5;
 	vec3 o = vec3(wp.x + n1 * 0.03, water_y + 0.001, wp.z + n2 * 0.03);
+	// her top faces: back along the view ray to the plane of the slab tops
+	vec3 pt = o - vd * ((top_y - water_y) / max(-vd.y, 0.05));
+	float hd = 9.0;
+	int hi = -1;
+	for (int i = 0; i < 40; i++) {
+		if (i >= count) break;
+		if (arm_info[i].z < 0.5) continue;
+		float d = rbox(pt.xz, arm_box[i]);
+		if (d < hd) { hd = d; hi = i; }
+	}
+	if (hi >= 0 && hd < 0.0) {
+		vec4 b = arm_box[hi];
+		vec4 inf = arm_info[hi];
+		float st = texture(noise_tex, pt.xz * 1.3).r;
+		float rim = 1.0 - smoothstep(0.0, 0.06, -hd);
+		vec3 c = mix(vec3(0.60, 0.53, 0.58), vec3(0.74, 0.66, 0.71), st) + her.rgb * 0.10;
+		c = mix(c, mix(her.rgb, her_core.rgb, 0.5), rim * 0.8);
+		// the carved channel down its middle, and the joint seam at its end when answered
+		vec2 ed = inf.xy;
+		float across = abs(ed.x) > 0.5 ? abs(pt.z - 0.5 * (b.y + b.w)) : abs(pt.x - 0.5 * (b.x + b.z));
+		c = mix(c, c * 0.72, (1.0 - smoothstep(0.07, 0.1, across)) * 0.8);
+		float endc = ed.x > 0.5 ? b.z : (ed.x < -0.5 ? b.x : (ed.y > 0.5 ? b.w : b.y));
+		float along = abs(ed.x) > 0.5 ? pt.x : pt.z;
+		float seam = (1.0 - smoothstep(0.0, 0.06, abs(along - endc))) * inf.w;
+		c = mix(c, her_core.rgb * 1.35, seam * (0.85 + 0.15 * pulse * sin(TIME * 4.0)));
+		ALBEDO = c;
+		ALPHA = 0.72 + 0.2 * rim + 0.08 * seam;
+	} else {
 	float best = 1e9;
 	int bi = -1;
 	vec3 hp = vec3(0.0);
 	for (int i = 0; i < 40; i++) {
 		if (i >= count) break;
+		if (arm_info[i].z > 0.5) continue;
 		vec4 b = arm_box[i];
 		float t = box_hit(o, rd, vec3(b.x, water_y, b.y), vec3(b.z, top_y, b.w));
 		if (t >= 0.0 && t < best) { best = t; bi = i; hp = o + rd * t; }
 	}
-	if (bi < 0) discard;
-	vec4 b = arm_box[bi];
-	vec4 inf = arm_info[bi];
-	float up = clamp((hp.y - water_y) / (top_y - water_y), 0.0, 1.0);
-	float st = texture(noise_tex, vec2(hp.x + hp.z, hp.y) * vec2(1.3, 6.0)).r;
-	vec3 c = mix(vec3(0.13, 0.15, 0.17), vec3(0.44, 0.46, 0.47), up * up) * (0.9 + 0.2 * st);
-	// v0.8: hers glow rose in the water (her side of the glass); yours are plain carved stone
-	c = mix(c, mix(c, vec3(0.62, 0.55, 0.6), 0.55) + her.rgb * 0.12, inf.z);
-	float edge = smoothstep(0.66, 0.95, up);
-	c = mix(c, mix(her.rgb, her_core.rgb, 0.55), edge * 0.75 * inf.z);
-	c = mix(c, vec3(0.62, 0.62, 0.6), edge * 0.35 * (1.0 - inf.z));
-	// the joint seam at the arm's end: lit only when the stone across answers (rose for hers, aqua yours)
-	vec2 ed = inf.xy;
-	float endc = ed.x > 0.5 ? b.z : (ed.x < -0.5 ? b.x : (ed.y > 0.5 ? b.w : b.y));
-	float along = abs(ed.x) > 0.5 ? hp.x : hp.z;
-	float seam = 1.0 - smoothstep(0.0, 0.07, abs(along - endc));
-	vec3 sc = mix(accent_core.rgb, her_core.rgb, inf.z);
-	c = mix(c, sc * 1.3, seam * (0.15 + 0.85 * inf.w) * (0.8 + 0.2 * pulse * (0.5 + 0.5 * sin(TIME * 4.0))));
+	// a soft rose glow in the water round her slabs
+	float halo = (hi >= 0) ? exp(-max(hd, 0.0) / 0.12) : 0.0;
+	if (bi < 0 && halo < 0.02) discard;
+	vec3 c = her.rgb;
+	float a = halo * 0.45;
+	if (bi >= 0) {
+		vec4 b = arm_box[bi];
+		vec4 inf = arm_info[bi];
+		float up = clamp((hp.y - water_y) / (top_y - water_y), 0.0, 1.0);
+		float st = texture(noise_tex, vec2(hp.x + hp.z, hp.y) * vec2(1.3, 6.0)).r;
+		c = mix(vec3(0.13, 0.15, 0.17), vec3(0.44, 0.46, 0.47), up * up) * (0.9 + 0.2 * st);
+		float edge = smoothstep(0.66, 0.95, up);
+		c = mix(c, vec3(0.62, 0.62, 0.6), edge * 0.35);
+		vec2 ed = inf.xy;
+		float endc = ed.x > 0.5 ? b.z : (ed.x < -0.5 ? b.x : (ed.y > 0.5 ? b.w : b.y));
+		float along = abs(ed.x) > 0.5 ? hp.x : hp.z;
+		float seam = 1.0 - smoothstep(0.0, 0.07, abs(along - endc));
+		c = mix(c, accent_core.rgb * 1.3, seam * inf.w * 0.9);
+		c = mix(c, her.rgb, halo * 0.4);
+		a = 0.9;
+	}
 	ALBEDO = c;
-	ALPHA = 0.9 + 0.1 * edge;
-
+	ALPHA = a;
+	}
 }

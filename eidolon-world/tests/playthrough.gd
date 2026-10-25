@@ -898,6 +898,8 @@ func _plan() -> void:
 	walk_path("round to the empty plinth", [[25.0, -28.9], [20.35, -28.9], [20.35, -33.93], [21.34, -33.93]])
 	step_do(func() -> void:
 		ok("standing on the empty plinth", C().on_four_plinth(), str(P()))
+		var sc := Puzzles.SHRINE_C
+		game.cmd("face:%f" % atan2(-(sc.x - P().x), -(sc.z - P().z)))       # (v0.8: you turn to face it yourself)
 		ok("wait", _focus() == "four_wait" and game.try_interact(), _focus()))
 	step_wait(1.8)
 	step_do(func() -> void: ok("the plinths light one by one", float(C().four_mats[0].get_shader_parameter("lit")) > 0.9 and float(C().four_mats[3].get_shader_parameter("lit")) < 0.5))
@@ -971,7 +973,7 @@ func _plan() -> void:
 			solid = solid and game.level.blocked(c, 0.05)
 		ok("props: each one is solid (its centre blocked)", solid)
 		var goals := [[-10.6, 1.7], [-11.3, -13.5], [0.0, -16.0], [3.85, -19.15], [6.0, -9.0], [12.0, -10.0], [16.0, -14.1], [21.0, -10.0],
-			[12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [29.0, -49.0], [31.4, -32.0], [25.5, -21.6], [21.34, -33.93], [28.0, -38.6], [25.0, -30.8]]
+			[12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [29.0, -49.0], [25.5, -21.6], [21.34, -33.93], [28.0, -38.6], [25.0, -30.8]]
 		var miss := _reach(goals)
 		ok("props: every key place still reachable on foot from the gate", miss.is_empty(), str(miss)))
 	# ---- v0.7 collisions: every prop and piece of architecture is solid

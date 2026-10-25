@@ -1131,6 +1131,9 @@ func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false
 	g.material_override = m
 	g.transform = Transform3D(basis, center)
 	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# (QA P1-5) no glass is ever drawn by a reflection camera: a mirror must never render into the very
+	# viewport it samples (the WebGL feedback loop)
+	g.layers = PlanarMirror.LAYER_MAIN_FX
 	add_child(g)
 	var om := ShaderMaterial.new()
 	om.shader = preload("res://shaders/mirror_over.gdshader")
@@ -1141,6 +1144,7 @@ func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false
 	o.material_override = om
 	o.transform = Transform3D(basis, center + basis * Vector3(0, 0, 0.045))
 	o.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	o.layers = PlanarMirror.LAYER_MAIN_FX
 	add_child(o)
 	return m
 

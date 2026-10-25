@@ -136,7 +136,7 @@ func _ready() -> void:
 	memory.add_child(memory_line)
 	end_a = _label(italic, 24, Color(0.07, 0.07, 0.08), HORIZONTAL_ALIGNMENT_CENTER)
 	end_a.set_anchors_preset(Control.PRESET_CENTER)
-	end_a.anchor_top = 0.42; end_a.anchor_bottom = 0.42
+	end_a.anchor_top = 0.7; end_a.anchor_bottom = 0.7         # (QA P2-16: below the tholos)
 	end_a.offset_left = -190; end_a.offset_right = 190; end_a.offset_top = -14; end_a.offset_bottom = 14
 	end_a.text = Names.awakened(Names.FIRST)
 	_halo(end_a, Color(0.97, 0.97, 0.95, 1.0))
@@ -213,13 +213,14 @@ func _build_title() -> void:
 	gloss.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	gloss.anchor_top = 0.2; gloss.anchor_bottom = 0.2
 	gloss.offset_left = -180; gloss.offset_right = 180; gloss.offset_top = 82; gloss.offset_bottom = 100
+	_halo(gloss, Color(0.95, 0.94, 0.91, 0.85))          # (QA P2-4: legible over the gate bars)
 	title_screen.add_child(gloss)
-	tap_label = _label(caps, 13, Color(0.14, 0.14, 0.15), HORIZONTAL_ALIGNMENT_CENTER)
+	tap_label = _label(caps, 14, Color(0.08, 0.08, 0.09), HORIZONTAL_ALIGNMENT_CENTER)
 	tap_label.text = "TOUCH TO BEGIN"
 	tap_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	tap_label.anchor_top = 0.86; tap_label.anchor_bottom = 0.86
 	tap_label.offset_left = -150; tap_label.offset_right = 150; tap_label.offset_top = -12; tap_label.offset_bottom = 12
-	_halo(tap_label, Color(0.93, 0.92, 0.89, 0.6))
+	_halo(tap_label, Color(0.96, 0.95, 0.92, 0.9))
 	title_screen.add_child(tap_label)
 	anew_btn = Button.new()
 	anew_btn.flat = true
@@ -272,7 +273,7 @@ func _build_credits() -> void:
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	credits_panel.add_child(sc)
 	var l := _label(italic, 14, Color(0.16, 0.16, 0.17), HORIZONTAL_ALIGNMENT_CENTER)
-	l.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.text = Credits.TEXT
 	sc.add_child(l)
@@ -482,9 +483,11 @@ func fade_to(a: float, dur: float) -> Tween:
 func _process(dt: float) -> void:
 	_t += dt
 	if title_screen.visible:
-		tap_label.modulate.a = 0.45 + 0.4 * sin(_t * 2.0)
+		tap_label.modulate.a = 0.78 + 0.22 * sin(_t * 2.0)
 	silhouette.t = _t
 	if memory.modulate.a > 0.0: silhouette.queue_redraw()
+	# (QA P2-5) the area title never shows through the reading panel
+	area_label.visible = inscr_panel.modulate.a < 0.05
 
 
 class Rules extends Control:
@@ -500,10 +503,12 @@ class Rules extends Control:
 		var cx := size.x * 0.5
 		var gap := w * 0.5 + 14.0
 		var col := Color(0.12, 0.12, 0.13, 0.55)
-		draw_line(Vector2(cx - gap - 46.0, cy), Vector2(cx - gap, cy), col, 1.0, true)
-		draw_line(Vector2(cx + gap, cy), Vector2(cx + gap + 46.0, cy), col, 1.0, true)
-		draw_circle(Vector2(cx - gap - 50.0, cy), 1.4, col)
-		draw_circle(Vector2(cx + gap + 50.0, cy), 1.4, col)
+		# (QA P2-1: the rules stop short of the screen-edge slots: at most 150 px either side of the centre)
+		var L := clampf(150.0 - gap, 10.0, 46.0)
+		draw_line(Vector2(cx - gap - L, cy), Vector2(cx - gap, cy), col, 1.0, true)
+		draw_line(Vector2(cx + gap, cy), Vector2(cx + gap + L, cy), col, 1.0, true)
+		draw_circle(Vector2(cx - gap - L - 4.0, cy), 1.4, col)
+		draw_circle(Vector2(cx + gap + L + 4.0, cy), 1.4, col)
 
 class StonePanel extends Control:
 	## a slab of pale stone with a carved border

@@ -310,6 +310,8 @@ func set_tier(t: String, step := 0) -> void:
 	# and railings almost away, so the soft-very-low kernel with a little blur is kept on every tier)
 	RenderingServer.directional_shadow_atlas_set_size(2048 if low else 4096, true)
 	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW)
+	# (QA P1-8) less full-screen overdraw below High: the light-shaft sheet is a High-tier luxury
+	for n in get_tree().get_nodes_in_group("f_shafts"): (n as Node3D).visible = high
 	dust_mm.multimesh.visible_instance_count = 50 if low else -1
 	ash_mm.multimesh.visible_instance_count = 25 if low else -1
 

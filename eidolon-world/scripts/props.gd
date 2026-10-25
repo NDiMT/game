@@ -30,7 +30,7 @@ const PLACE := [
 	["column_stump", Vector3(32.7, 2.0, -51.3), 0.0, 1.0, "scales"],
 	# the Gate of the Four Veiled: the unfinished one, half out of her block, beside the tholos where the
 	# eidolon is half-carved too
-	["statue_veiled_unfinished", Vector3(29.2, 2.0, -30.0), -90.0, 1.0, "shrine"],
+	["statue_veiled_unfinished", Vector3(20.9, 2.0, -35.2), 40.0, 1.0, "shrine"],
 ]
 const OCCLUDE := ["column_doric", "column_stump", "archway_ruined", "pylon_ashlar", "pylon_ashlar_niche", "wall_ashlar_window",
 	"statue_veiled_mourning", "statue_veiled_praying", "statue_veiled_unfinished", "statue_veiled_bust"]

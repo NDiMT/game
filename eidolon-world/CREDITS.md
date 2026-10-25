@@ -120,9 +120,15 @@ Sound-effect recordings:
   (`rune_flip`).
 - **Kenney — Interface Sounds** — https://kenney.nl/assets/interface-sounds — CC0 1.0. `ui_click`.
 
+## Models
+
+- **The Wanderer (Tripo model, re-rigged)** — supplied by the project owner: `assets/models/wanderer_rigged.glb`
+  (v0.8: the hero, her reflections and the glass silhouette). The original auto-rig `wanderer.glb` is kept for tools.
+- **Veiled statues and ruin kit (Tripo)** — supplied by the project owner: `assets/models/props/` (v0.8 set dressing).
+
 ## Unused in the build (kept in the repo)
 
-- **The Wanderer (Tripo model)** — supplied by the project owner, `assets/models/wanderer.glb`; the game uses the procedural figure.
+- The procedural figure (`scripts/figure.gd`, `Figure.RIGGED = false` brings it back).
 
 ## Fonts
 

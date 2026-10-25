@@ -270,11 +270,18 @@ class Pad extends Control:
 				draw_arc(c, s * 0.35, 0, TAU, 20, cy, 1.4, true)
 				draw_circle(c, 1.8, cy)
 			"turn":
-				draw_arc(c, s * 0.85, -PI * 0.9, PI * 0.55, 28, col, 1.5, true)
-				var tip := c + Vector2(cos(PI * 0.55), sin(PI * 0.55)) * s * 0.85
-				draw_line(tip, tip + Vector2(s * 0.45, -s * 0.05), col, 1.5, true)
-				draw_line(tip, tip + Vector2(0.05 * s, -s * 0.45), col, 1.5, true)
-				draw_line(c - Vector2(0, s * 0.5), c + Vector2(0, s * 0.5), cy, 1.4, true)
+				# (QA P2-2) a circular arrow round a pivot: almost a full turn, a clear arrowhead
+				draw_arc(c, s * 0.82, -PI * 0.95, PI * 0.6, 32, col, 2.2, true)
+				var tip := c + Vector2(cos(PI * 0.6), sin(PI * 0.6)) * s * 0.82
+				var tg := Vector2(-sin(PI * 0.6), cos(PI * 0.6))
+				draw_colored_polygon(PackedVector2Array([tip + tg * s * 0.42, tip - tg.orthogonal() * s * 0.3 - tg * s * 0.05, tip + tg.orthogonal() * s * 0.3 - tg * s * 0.05]), col)
+				draw_circle(c, s * 0.16, cy)
+			"reset":
+				# (QA P2-3) return: an arrow curling back to its start
+				draw_arc(c, s * 0.7, PI * 0.15, PI * 1.6, 28, col, 2.0, true)
+				var t0 := c + Vector2(cos(PI * 0.15), sin(PI * 0.15)) * s * 0.7
+				draw_colored_polygon(PackedVector2Array([t0 + Vector2(s * 0.38, -s * 0.05), t0 + Vector2(-s * 0.25, -s * 0.35), t0 + Vector2(-s * 0.05, s * 0.32)]), col)
+				draw_line(c - Vector2(s * 0.25, 0), c + Vector2(s * 0.25, 0), cy, 1.6, true)
 			"lever":
 				draw_line(c + Vector2(-s, s * 0.7), c + Vector2(s, s * 0.7), col, 1.4, true)
 				draw_line(c + Vector2(0, s * 0.7), c + Vector2(s * 0.5, -s * 0.7), col, 1.6, true)
@@ -288,11 +295,12 @@ class Pad extends Control:
 					var dir := Vector2(cos(TAU * k / 8.0), sin(TAU * k / 8.0))
 					draw_line(c + dir * s * 0.55, c + dir * s * (0.95 if k % 2 == 0 else 0.8), col, 1.3, true)
 			"breathe":
-				# three soft curls of breath toward a small pane
-				draw_rect(Rect2(c + Vector2(s * 0.35, -s * 0.9), Vector2(s * 0.55, s * 1.8)), col, false, 1.3)
+				# (QA P2-2) a puff of breath (three thick widening waves) toward a pane
+				draw_rect(Rect2(c + Vector2(s * 0.45, -s * 0.95), Vector2(s * 0.5, s * 1.9)), col, false, 2.0)
 				for k in 3:
-					var y := -s * 0.5 + k * s * 0.5
-					draw_arc(c + Vector2(-s * 0.45, y), s * 0.32, -PI * 0.5, PI * 0.5, 12, cy if k == 1 else col, 1.3, true)
+					var x := -s * 0.85 + k * s * 0.38
+					var h := s * (0.3 + 0.18 * k)
+					draw_arc(c + Vector2(x - h * 0.6, 0), h, -PI * 0.38, PI * 0.38, 12, cy if k == 2 else col, 2.0, true)
 			"touch":
 				# an open hand against a pane: palm and four fingers
 				draw_line(c + Vector2(s * 0.75, -s), c + Vector2(s * 0.75, s), cy, 1.4, true)

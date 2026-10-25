@@ -1,7 +1,51 @@
 class_name Credits
 extends RefCounted
 ## The in-game credits (mirrors CREDITS.md).
-const TEXT := """SOUNDSCAPES
+const TEXT := """EIDOLON
+
+Design, code, world and shaders: made for this project
+
+MUSIC
+
+The score is original, composed for this project and rendered from instrument recordings:
+
+University of Iowa Electronic Music Studios — Musical Instrument Samples (Lawrence Fritts et al.)
+https://theremin.music.uiowa.edu/MIS.html
+free for any use
+
+FreePats — Glass; Concert Harp (Versilian Studios)
+https://freepats.zenvoid.org
+CC0 1.0
+
+ceninan / Magdalen Kadel — Breves dies hominis (voice)
+https://opengameart.org/content/breves-dies-hominis
+CC0 1.0
+
+AuraVoice — Ghostly Humming
+https://opengameart.org/content/ghostly-humming
+CC0 1.0
+
+The Seikilos epitaph (1st century CE) — public domain
+
+SOUND (score and effects)
+
+qubodup — Ghost breath; Door Open, Door Close Set
+https://opengameart.org/users/qubodup
+CC0 1.0
+
+AntumDeluge — Scrapes; Tree Creaking
+https://opengameart.org/users/antumdeluge
+CC0 1.0
+
+rubberduck — 40 CC0 water / splash SFX; 100 CC0 SFX #2; 30 CC0 SFX loops
+https://opengameart.org/users/rubberduck
+CC0 1.0
+
+MODELS
+
+The wanderer and the veiled statues and ruins: supplied by the project owner (made with Tripo)
+
+SOUNDSCAPES
 
 Tsorthan Grove — Dark Zen
 https://opengameart.org/content/dark-zen
