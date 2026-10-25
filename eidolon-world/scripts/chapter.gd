@@ -264,7 +264,7 @@ func _build_pool() -> void:
 			var v := _dir3(d)
 			var L := absf(Ch1Geo.POOL_DX) * 0.5 if absf(v.x) > 0.5 else Ch1Geo.POOL_DZ * 0.5
 			var sm := _smat("res://shaders/floor_mark.gdshader", {"kind": 3.0, "intensity": 1.0})
-			seams.append(_mi(_plane(Vector2(0.4, L)), sm, Transform3D(Basis(Vector3.UP, atan2(-v.x, -v.z)), v * (L * 0.5 - 0.02) + Vector3(0, 0.012, 0)), node))
+			seams.append(_mi(_plane(Vector2(0.5, L)), sm, Transform3D(Basis(Vector3.UP, atan2(-v.x, -v.z)), v * (L * 0.5 - 0.02) + Vector3(0, 0.012, 0)), node))
 		if ri >= 0:
 			# a pivot boss: it turns
 			var bm := MB.new()
@@ -510,14 +510,16 @@ var goal_mats: Array[ShaderMaterial] = []
 var match_glows: Array[ShaderMaterial] = []
 
 func _drum_mesh() -> ArrayMesh:
-	# a fluted column drum lying on its side (its axis along x), a chip broken from one face
+	# a fluted column drum standing on its bed face: it slides, it never rolls (v0.7); a chip broken from its rim
 	var m := MB.new()
 	var c := Color(0.5, 0.25, 0.0)
-	var lay := Basis(Vector3.BACK, PI * 0.5)
-	m.cyl(Vector3(0, 0.42, 0), 0.41, 0.42, 0.72, c, 18, lay)
-	m.cyl(Vector3(0.38, 0.42, 0), 0.37, 0.4, 0.05, c, 18, lay)
-	m.cyl(Vector3(-0.38, 0.42, 0), 0.4, 0.37, 0.05, c, 18, lay)
-	m.box(Vector3(0.36, 0.62, 0.12), Vector3(0.1, 0.2, 0.22), c, Basis(Vector3.RIGHT, 0.5))
+	m.cyl(Vector3(0, 0.36, 0), 0.43, 0.43, 0.66, c, 20)
+	m.cyl(Vector3(0, 0.71, 0), 0.4, 0.43, 0.05, c, 20)
+	m.cyl(Vector3(0, 0.025, 0), 0.43, 0.41, 0.05, c, 20)
+	for k in 10:
+		var a := TAU * k / 10.0
+		m.box(Vector3(cos(a) * 0.43, 0.36, sin(a) * 0.43), Vector3(0.05, 0.6, 0.05), Color(0.42, 0.25, 0.0), Basis(Vector3.UP, -a))
+	m.box(Vector3(0.3, 0.7, 0.18), Vector3(0.16, 0.12, 0.2), c, Basis(Vector3.UP, 0.6))
 	return m.commit()
 
 func _brazier_mesh() -> ArrayMesh:
@@ -609,7 +611,7 @@ func _build_hall() -> void:
 	# its turning arc; the remembered places as faint outlines (in the glass only), and on your floor a
 	# cell that lights when the thing on it is where the glass remembers it
 	push_arrow_mat = _smat("res://shaders/floor_mark.gdshader", {"kind": 0.0, "intensity": 0.0})
-	push_arrow = _mi(_plane(Vector2(0.6, 0.6)), push_arrow_mat, Transform3D(Basis(), Vector3(0, 1.012, 0)))
+	push_arrow = _mi(_plane(Vector2(0.62, 0.62)), push_arrow_mat, Transform3D(Basis(), Vector3(0, 1.012, 0)))
 	push_arrow.layers = PlanarMirror.LAYER_MAIN_FX
 	bust_arc_mat = _smat("res://shaders/floor_mark.gdshader", {"kind": 2.0, "intensity": 0.0, "sweep": 0.0})
 	bust_arc = _mi(_plane(Vector2(1.5, 1.5)), bust_arc_mat, Transform3D(Basis(), BUST_POS + Vector3(0, 0.014, 0)))
@@ -821,7 +823,7 @@ func _update_hall(dt: float) -> void:
 	push_arrow_mat.set_shader_parameter("intensity", move_toward(ak, 0.9 if pd != Vector2i.ZERO else 0.0, dt * 4.0))
 	if pd != Vector2i.ZERO:
 		var dp := Vector3(pd.x, 0, pd.y)
-		push_arrow.transform = Transform3D(Basis(Vector3.UP, atan2(-dp.x, -dp.z)), Vector3(hs["drum"][0], 1.012, hs["drum"][1]) - dp * 0.62)
+		push_arrow.transform = Transform3D(Basis(Vector3.UP, atan2(-dp.x, -dp.z)), Vector3(hs["drum"][0], 1.75, hs["drum"][1]))
 	bust_arc_mat.set_shader_parameter("intensity", 0.0 if _locked(2) else 0.55)
 	if not (_bust_tw and _bust_tw.is_running()): bust_arc.rotation.y = bust_pivot.rotation.y
 	var m3 := hall_matches()
