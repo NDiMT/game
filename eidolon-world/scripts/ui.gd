@@ -916,8 +916,8 @@ void fragment() {
 	float d = length(p - center);
 	float outside = smoothstep(radius - 3.0, radius + 22.0, d);
 	float rim = exp(-pow((d - radius) / 2.2, 2.0)) * 0.55 + exp(-pow((d - radius - 6.0) / 7.0, 2.0)) * 0.12;
-	vec3 tint = vec3(0.10, 0.20, 0.22);
-	COLOR = vec4(mix(vec3(0.72, 0.95, 1.0), tint, outside), (outside * 0.38 + rim) * on);
+	vec3 tint = vec3(0.16, 0.08, 0.09);                      // (v0.9: a deep wine dusk outside the shard)
+	COLOR = vec4(mix(vec3(1.0, 0.74, 0.70), tint, outside), (outside * 0.38 + rim) * on);
 }
 """
 

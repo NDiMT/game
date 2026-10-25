@@ -1,7 +1,7 @@
 class_name Figure
 extends Node3D
 ## v0.8: the hero (and every reflection, ghost and cinematic puppet of her) is the owner's RE-RIGGED model
-## (WandererRig: scripts/wanderer_rig.gd) when RIGGED is on. The procedural figure below is kept, unused:
+## (HeroineRig: scripts/heroine_rig.gd; v0.8's WandererRig is kept, unused) when RIGGED is on. The procedural figure below is kept, unused:
 ## set RIGGED = false to bring it back. Either way this class is the one the game talks to (Pose,
 ## apply_pose, set_hem / set_runes / set_param / set_layers, the veil, the x-ray).
 const RIGGED := true
@@ -71,14 +71,16 @@ var veil_mat: ShaderMaterial
 var pose := Pose.new()
 var hem := 1.0
 var runes_awake := 0
-var rig: WandererRig            # v0.8 (RIGGED): the skinned model, its cloth and its veil
+var rig: HeroineRig             # v0.9: the heroine (v0.8's WandererRig kept, unused): the skinned model, its cloth
 var slim := 0.0                 # reflection hint: a slightly slimmer, narrower-shouldered silhouette
 var veil_contrary := false      # reflection hint: its veil sways against yours
 
 func _init(ghost_shader: Shader = null) -> void:
 	if RIGGED:
-		rig = WandererRig.new(ghost_shader != null)
+		rig = HeroineRig.new(ghost_shader != null)
 		add_child(rig)
+		# (v0.9, the owner: her reflections wear the same dress in deep crimson)
+		if ghost_shader: rig.body_mat.set_shader_parameter("red", 1.0)
 		body = rig.body
 		veil = rig.veil
 		body_mat = rig.body_mat
@@ -164,7 +166,7 @@ func enable_xray() -> void:
 		var x := ShaderMaterial.new()
 		x.shader = preload("res://shaders/wanderer_xray.gdshader") if (rig and m == body_mat) else sh
 		x.render_priority = 2
-		for k in ["deform", "veil", "holes", "bone_cloth"]:
+		for k in ["deform", "veil", "holes", "bone_cloth", "unit", "axis_z", "dress", "red"]:
 			var v = m.get_shader_parameter(k)
 			if v != null: x.set_shader_parameter(k, v)
 		m.next_pass = x

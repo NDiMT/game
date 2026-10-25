@@ -277,6 +277,34 @@
       "textured": false,
       "use": "Shrine of awakening (round dais with basin and 4 short pillars), Garden centre",
       "tripo_task": "0f1fd50b-c63d-4e66-b08d-9fd5c92b1ea4"
+    },
+    {
+      "file": "colossus_head_veiled.glb",
+      "category": "landmark",
+      "size_m": {
+        "x": 0.61,
+        "y": 1.0,
+        "z": 0.7
+      },
+      "tris": 15650,
+      "textured": true,
+      "use": "The Sunken Colossus: scale about 8x (to ~8 m), tilt and half-sink in the water; the veiled brow, nose and chin should face up toward the camera",
+      "notes": "Normalised to 1 m tall (head and neck, cut at the neck base, no plinth); pale marble PBR texture at 1024 px. Image-to-model from a Tripo concept image after two text-to-model attempts came out with a bare face. The veil wraps the head and lies over the face, but at this polycount the face relief (eye hollows, nose, lips) reads quite strongly: it reads as a weathered veiled head rather than a fully shrouded one.",
+      "tripo_task": "60352233-82b1-47c1-8934-25f0e0eaaf66"
+    },
+    {
+      "file": "temple_small.glb",
+      "category": "landmark",
+      "size_m": {
+        "x": 5.57,
+        "y": 6.0,
+        "z": 5.58
+      },
+      "tris": 8341,
+      "textured": false,
+      "use": "The Upward Spring: hang upside down in the sky (rotate 180 deg about X); the doorway faces +Z",
+      "notes": "Complete tholos: 3-step round platform, 8 columns, entablature, dome with finial and a small cella with a doorway. 6 m tall, about 5.6 m across. Untextured placeholder material; the game's marble shader applies.",
+      "tripo_task": "5eacd6d3-61d8-4e1b-983c-24585faed0df"
     }
   ]
 }

@@ -53,27 +53,31 @@ cam_back={
 }
 accent={
 "type": "color",
-"value": Color(0.27451, 0.901961, 0.847059, 1)
+"value": Color(0.847059, 0.14902, 0.247059, 1)
 }
 accent_tint={
 "type": "color",
-"value": Color(0.121569, 0.662745, 0.627451, 1)
+"value": Color(0.556863, 0.0627451, 0.14902, 1)
 }
 accent_core={
 "type": "color",
-"value": Color(0.713725, 1, 0.964706, 1)
+"value": Color(1, 0.701961, 0.658824, 1)
 }
 her={
 "type": "color",
-"value": Color(0.27451, 0.901961, 0.847059, 1)
+"value": Color(0.847059, 0.14902, 0.247059, 1)
 }
 her_core={
 "type": "color",
-"value": Color(0.713725, 1, 0.964706, 1)
+"value": Color(1, 0.701961, 0.658824, 1)
 }
 her_tint={
 "type": "color",
-"value": Color(0.121569, 0.662745, 0.627451, 1)
+"value": Color(0.556863, 0.0627451, 0.14902, 1)
+}
+red_dress={
+"type": "color",
+"value": Color(0.494118, 0.054902, 0.117647, 1)
 }
 awaken={
 "type": "float",

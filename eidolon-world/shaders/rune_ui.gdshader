@@ -27,7 +27,7 @@ void fragment() {
 	float rim = (1.0 - smoothstep(RUNE_W + aa, RUNE_W + aa * 2.0 + 0.012, d)) * (1.0 - m.x) * (1.0 - empty);
 	float inner = 1.0 - clamp(d / RUNE_W, 0.0, 1.0);
 	vec3 core_col = mix(accent.rgb, accent_core.rgb, smoothstep(0.05, 0.75, inner));
-	core_col = mix(core_col, vec3(0.95, 1.0, 0.99), m.z * 0.55);
+	core_col = mix(core_col, vec3(1.0, 0.96, 0.94), m.z * 0.55);
 	core_col = mix(core_col, accent_tint.rgb, m.w * 0.45);
 	float halo = (1.0 - smoothstep(0.0, 1.25, length(rp))) * 0.2 * glow * (1.0 - empty);
 	vec3 c = mix(accent.rgb, core_col, m.x);

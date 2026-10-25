@@ -74,25 +74,27 @@ func _build_colossus() -> void:
 	# the face turned west-south-west, toward the stones and toward you; tipped back, as if looking up
 	var B := Basis(Vector3.UP, PI * 0.667) * Basis(Vector3.RIGHT, 0.32) * Basis(Vector3.BACK, 0.1)
 	var M := Basis(Vector3.RIGHT, Vector3(0, -1, 0), Vector3.BACK)          # the water's mirror
+	var model := _model_head(root, c, wy)
 	var hm := MB.new()
 	var rm := MB.new()
-	for p in _head_parts():
+	for p in ([] if model else _head_parts()):
 		var cen: Vector3 = B * (p[0] as Vector3)
 		var pb: Basis = B * (p[2] as Basis)
 		hm.sphere(cen, p[1], C(0.25), 24, 12, pb)
 		# its reflection: the same shapes mirrored under the water line (a proper rotation: M B M)
 		rm.sphere(M * cen, p[1], C(0.25), 16, 8, M * pb * M)
-	var head := MeshInstance3D.new()
-	head.mesh = hm.commit()
-	head.material_override = level.marble_mat
-	head.position = Vector3(c.x, wy, c.z)
-	root.add_child(head)
-	var refl := MeshInstance3D.new()
-	refl.mesh = rm.commit()
-	refl.material_override = level.marble_mat
-	refl.position = Vector3(c.x, wy - 0.02, c.z)
-	refl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(refl)
+	if not model:
+		var head := MeshInstance3D.new()
+		head.mesh = hm.commit()
+		head.material_override = level.marble_mat
+		head.position = Vector3(c.x, wy, c.z)
+		root.add_child(head)
+		var refl := MeshInstance3D.new()
+		refl.mesh = rm.commit()
+		refl.material_override = level.marble_mat
+		refl.position = Vector3(c.x, wy - 0.02, c.z)
+		refl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(refl)
 	# the still black water over the reflection
 	var area := Vector4(6.8, -4.9, 22.4, 7.6)
 	var wm := ShaderMaterial.new()
@@ -122,6 +124,39 @@ func _build_colossus() -> void:
 		mi.position = Vector3(c.x + (i - 1) * 1.6, wy + 0.35 + i * 0.45, c.z + 1.0 - i * 0.8)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(mi)
+
+## the owner's Tripo head (assets/models/props/colossus_head_veiled.glb, normalised to 1 m) when it is
+## there: about 8 m, tipped back as if looking up, half-sunk, its face toward the stones; the game's
+## marble (Props' re-bake); its reflection = the same mesh mirrored in the water line
+const CO_MODEL := "colossus_head_veiled"
+const CO_SIZE := 8.0
+func _model_head(root: Node3D, c: Vector3, wy: float) -> bool:
+	if not ResourceLoader.exists(Props.DIR + CO_MODEL + ".glb"): return false
+	var pm := Props._mesh(CO_MODEL)
+	if pm.is_empty(): return false
+	var mesh: ArrayMesh = pm[0]
+	var bb: AABB = pm[1]
+	var k := CO_SIZE / maxf(bb.size.y, 0.001)
+	# (the props face +z: turned to the west-south-west, tipped back 0.3 rad)
+	var B := Basis(Vector3.UP, -1.04) * Basis(Vector3.RIGHT, -0.3) * Basis.from_scale(Vector3.ONE * k)
+	var mid := bb.get_center()
+	# half-sunk: its centre a little above the water
+	var o := Vector3(c.x, wy + 0.9, c.z) - B * mid
+	var head := MeshInstance3D.new()
+	head.name = "ColossusHead"
+	head.mesh = mesh
+	head.material_override = level.marble_mat
+	head.transform = Transform3D(B, o)
+	root.add_child(head)
+	var M := Transform3D(Basis.from_scale(Vector3(1, -1, 1)), Vector3(0, 2.0 * wy - 0.04, 0))
+	var refl := MeshInstance3D.new()
+	refl.name = "ColossusReflection"
+	refl.mesh = mesh
+	refl.material_override = level.marble_mat
+	refl.transform = M * head.transform
+	refl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(refl)
+	return true
 
 # ------------------------------------------------------------------ the Tree of Shards
 const TS_SHARDS := 300
@@ -202,17 +237,20 @@ func _build_spring() -> void:
 	m.cyl(b + Vector3(0, 0.25, 0), 1.9, 2.0, 0.5, C(0.25), 20)
 	m.cyl(b + Vector3(0, 0.52, 0), 1.55, 1.55, 0.06, C(0.0), 20)
 	# the temple above, upside down: its floor high in the fog, columns hanging, the pediment pointing down
+	# (the owner's Tripo temple when it is there: assets/models/props/temple_small.glb, turned over)
 	var top := b.y + 19.0
-	m.box(Vector3(b.x, top, b.z), Vector3(6.4, 0.7, 4.6), C(0.25))
-	m.box(Vector3(b.x, top - 0.45, b.z), Vector3(5.8, 0.2, 4.0), C(0.25))
-	for ix in 4:
-		for side in [-1.0, 1.0]:
-			var cx := b.x - 2.4 + ix * 1.6
-			m.cyl(Vector3(cx, top - 2.3, b.z + side * 1.55), 0.24, 0.27, 3.5, C(0.25), 10)
-	m.box(Vector3(b.x, top - 4.25, b.z), Vector3(6.0, 0.45, 3.9), C(0.25))
-	for k in 4:
-		var w := 6.0 - k * 1.45
-		m.box(Vector3(b.x, top - 4.6 - k * 0.32, b.z), Vector3(maxf(w, 0.4), 0.32, 3.6), C(0.25))
+	var tmodel := _model_temple(root, Vector3(b.x, top, b.z))
+	if not tmodel:
+		m.box(Vector3(b.x, top, b.z), Vector3(6.4, 0.7, 4.6), C(0.25))
+		m.box(Vector3(b.x, top - 0.45, b.z), Vector3(5.8, 0.2, 4.0), C(0.25))
+		for ix in 4:
+			for side in [-1.0, 1.0]:
+				var cx := b.x - 2.4 + ix * 1.6
+				m.cyl(Vector3(cx, top - 2.3, b.z + side * 1.55), 0.24, 0.27, 3.5, C(0.25), 10)
+		m.box(Vector3(b.x, top - 4.25, b.z), Vector3(6.0, 0.45, 3.9), C(0.25))
+		for k in 4:
+			var w := 6.0 - k * 1.45
+			m.box(Vector3(b.x, top - 4.6 - k * 0.32, b.z), Vector3(maxf(w, 0.4), 0.32, 3.6), C(0.25))
 	var mi := MeshInstance3D.new()
 	mi.mesh = m.commit()
 	mi.material_override = level.marble_mat
@@ -236,6 +274,27 @@ func _build_spring() -> void:
 	col.position = Vector3(b.x, b.y + 0.55 + h * 0.5, b.z)
 	col.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(col)
+
+const TEMPLE_MODEL := "temple_small"
+const TEMPLE_W := 6.4
+## the Tripo temple turned upside down, its floor at `top` (about 6.4 m across, about 5.6 m tall)
+func _model_temple(root: Node3D, top: Vector3) -> bool:
+	if not ResourceLoader.exists(Props.DIR + TEMPLE_MODEL + ".glb"): return false
+	var pm := Props._mesh(TEMPLE_MODEL)
+	if pm.is_empty(): return false
+	var mesh: ArrayMesh = pm[0]
+	var bb: AABB = pm[1]
+	var k := TEMPLE_W / maxf(maxf(bb.size.x, bb.size.z), 0.001)
+	var B := Basis(Vector3.RIGHT, PI) * Basis.from_scale(Vector3.ONE * k)       # turned over
+	# its floor (the AABB's bottom, now on top) at `top`
+	var o := top - B * Vector3(bb.get_center().x, bb.position.y, bb.get_center().z)
+	var mi := MeshInstance3D.new()
+	mi.name = "Temple"
+	mi.mesh = mesh
+	mi.material_override = level.marble_mat
+	mi.transform = Transform3D(B, o)
+	root.add_child(mi)
+	return true
 
 # ------------------------------------------------------------------ per frame
 ## the wonder you stand in (by the floor's name)

@@ -48,7 +48,7 @@ void fragment() {
 	vec3 asleep = mix(_ht(), _ha(), 0.35);
 	vec3 awake = mix(_ha(), _hc(), smoothstep(0.1, 0.8, inner));
 	vec3 c = mix(asleep, awake, k);
-	c = mix(c, vec3(0.94, 1.0, 0.98), m.z * (0.35 + 0.5 * k));
+	c = mix(c, vec3(1.0, 0.95, 0.93), m.z * (0.35 + 0.5 * k));
 	c = mix(c, _ht(), m.w * 0.45);
 	vec3 bloom_c = _ha();
 	float halo = (1.0 - smoothstep(0.0, 1.3, length(rp))) * (k * 0.2 + flare * 0.45);

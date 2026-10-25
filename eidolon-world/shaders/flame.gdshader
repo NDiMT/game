@@ -42,10 +42,10 @@ void fragment() {
 	// the pale aqua core, a near-white heart
 	vec3 c = mix(accent_tint.rgb * 0.75, accent.rgb, smoothstep(0.0, 0.35, heat));
 	c = mix(c, accent_core.rgb, smoothstep(0.3, 0.7, heat));
-	c = mix(c, vec3(0.93, 1.0, 0.98), smoothstep(0.65, 0.95, heat));
-	// a deeper blue root at the wick
+	c = mix(c, vec3(1.0, 0.94, 0.92), smoothstep(0.65, 0.95, heat));
+	// a deeper root at the wick (v0.9: crimson, darker)
 	float root = (1.0 - smoothstep(0.0, 0.12, uv.y)) * (1.0 - smoothstep(0.0, 0.1, abs(x)));
-	c = mix(c, vec3(0.2, 0.5, 0.95), root * 0.4);
+	c = mix(c, accent_tint.rgb * 0.8, root * 0.4);
 	// a soft glow round the flame (no hard edge)
 	float glow = exp(-length(vec2(x * 1.4, (uv.y - 0.3 * h) * 1.1)) * 5.5) * 0.25 * (1.0 - core_layer);
 	vec3 gcol = accent.rgb;

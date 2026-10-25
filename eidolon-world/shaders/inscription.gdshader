@@ -26,7 +26,7 @@ void fragment() {
 	float glow = mix(0.6, 1.0, near) * pulse;
 	float inner = 1.0 - clamp(d / w, 0.0, 1.0);
 	vec3 core_col = mix(accent.rgb, accent_core.rgb, smoothstep(0.1, 0.75, inner) * glow);
-	core_col = mix(core_col, vec3(0.93, 1.0, 0.98), m.z * 0.7);        // the lit wall of the groove
+	core_col = mix(core_col, vec3(1.0, 0.95, 0.93), m.z * 0.7);        // the lit wall of the groove
 	core_col = mix(core_col, accent_tint.rgb, m.w * 0.55);             // the other wall, in its own light
 	vec3 c = mix(accent.rgb, core_col, m.x);
 	ALBEDO = c * (1.0 + 0.15 * near);
