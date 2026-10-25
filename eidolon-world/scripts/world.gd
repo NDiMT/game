@@ -9,10 +9,10 @@ const PITCH := deg_to_rad(36.0)
 const DIST := 24.0                 # v0.8 (was 40): an orthographic camera sees the same at any distance;
                                    # closer, the directional shadow covers no empty air in front of the scene
 const CAM_SIZE := 10.5             # reference width for the vertical framing offset
-## v0.9: ONE fixed view. No rotation, no zoom: one iso yaw and the old default width (8.8 m across), the
+## v0.9: ONE fixed view. No rotation, no zoom: one iso yaw and one width (7.5 m across since v0.9.1), the
 ## camera following you as before; the rooms are laid out so nothing stands between it and a puzzle piece
 ## (tests/framing_test: the occlusion test)
-const FIXED_SIZE := 8.8
+const FIXED_SIZE := 7.5               # (v0.9.1: a little closer, the owner)
 const V_OFFSET := 1.6              # the vertical framing offset at CAM_SIZE (scaled with the size)
 const SHAFT_BASE := [0.20, 0.16, 0.14]
 const VEIL := 1                    # fog_mats index of the veil sheet with the clear bubble

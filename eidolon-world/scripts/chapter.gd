@@ -33,7 +33,8 @@ const TURN_FACES := [[[6, 0.0], [6, 1.0], [3, 0.0], [5, 0.0]], [[7, 1.0], [7, 0.
 	[[8, 0.0], [3, 0.0], [8, 1.0], [5, 0.0]]]        # per statue: faces N, E, S, W at rest: [design, flip]
 const TURN_SOLUTION := [0, 1, 0]                       # orientation that puts the true rune toward the glass
 const TURN_START := [2, 3, 1]
-const TURN_X := [11.4, 12.8, 14.2]          # (v0.8.1: the garden starts at x 10.3 now; before its narrowed glass)
+const TURN_X := [12.0, 13.4, 14.8]          # (v0.9.1: 0.6 m east: from the fixed view, the left one's mirror face fell off
+                                            # the glass's left edge; all three now show whole in it: garden_mirror_view)
 const TURN_Z := -13.5
 const FOUR_R := 3.9
 const FOUR_ANGLES := [20.0, 160.0, -20.0, -160.0]      # degrees round the tholos; the last is empty
@@ -1226,6 +1227,38 @@ func open_gallery(instant := false) -> void:
 	tw.tween_callback(func() -> void: gls.visible = false)
 
 # ------------------------------------------------------------------ 5. garden: the turned ones
+const GARDEN_GLASS_Z := -14.93
+const GARDEN_GLASS_C := Vector2(12.8, 3.3)        # (x, y) of the glass's centre
+const GARDEN_GLASS_H := Vector2(2.2, 2.15)        # half size of its reflecting rect (the Reflector's clip)
+
+## (v0.9.1, tests) the north face of turned one i (the face toward the glass): its rune quad's 4 corners
+static func turn_north_corners(i: int) -> Array:
+	var c := Vector3(TURN_X[i], 1.44, TURN_Z - 0.455)
+	return [c + Vector3(-0.31, -0.31, 0), c + Vector3(0.31, -0.31, 0), c + Vector3(0.31, 0.31, 0), c + Vector3(-0.31, 0.31, 0)]
+
+## where on the glass the fixed camera sees point p's reflection (on the glass plane)
+static func garden_glass_point(p: Vector3) -> Vector3:
+	var back := Framing.basis().z
+	var r := Vector3(p.x, p.y, 2.0 * GARDEN_GLASS_Z - p.z)
+	return r + back * ((GARDEN_GLASS_Z - r.z) / back.z)
+
+## (v0.9.1, tests) from a player standing at `stand`: every turned one's north rune quad shows whole in the
+## great glass (inside its reflecting rect) and the glass spot is on a w x h screen; [] when all is well
+static func garden_mirror_view(stand: Vector3, size: float, w := 390.0, h := 844.0) -> Array:
+	var b := Framing.basis()
+	var vo := World.V_OFFSET * size / World.CAM_SIZE
+	var rig := stand + Vector3(0, 0.6, 0)
+	var bad := []
+	for i in 3:
+		for p: Vector3 in turn_north_corners(i):
+			var g := garden_glass_point(p)
+			if absf(g.x - GARDEN_GLASS_C.x) > GARDEN_GLASS_H.x or absf(g.y - GARDEN_GLASS_C.y) > GARDEN_GLASS_H.y:
+				bad.append("statue %d corner off the glass at (%.2f, %.2f)" % [i, g.x, g.y])
+			var q := g - rig
+			if absf(q.dot(b.x)) > size * 0.5 or absf(q.dot(b.y) - vo) > size * h / w * 0.5:
+				bad.append("statue %d reflection off screen from %s" % [i, stand])
+	return bad
+
 func _build_garden() -> void:
 	# the great glass on the garden's north edge, a real planar reflection (shared with the Hall)
 	var mm := puzzles._mirror_quad(Vector3(12.8, 3.3, -14.93), Basis(), Vector2(4.5, 4.4), false, 1.0)

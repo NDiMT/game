@@ -54,15 +54,24 @@ vec3 wanderer_deform(vec3 v0, vec4 c) {
 vec3 wanderer_albedo(vec2 uv, float face) {
 	vec3 a = texture(albedo_tex, uv).rgb;
 	if (dress > 0.5) {
-		// the heroine: grey cloth (low saturation in her texture), bare skin (warm) kept warm but muted
+		// the heroine: a STATUE come to life. Grey cloth (low saturation in her texture); her bare arms,
+		// hands and feet (the warm, saturated texels) are white marble: pale, a little warm, a faint grain
+		// and vein. Both branches are hue-free or marble, so no flesh tone survives, even at the edges.
 		float lum0 = dot(a, vec3(0.3, 0.59, 0.11));
 		float sat = max(a.r, max(a.g, a.b)) - min(a.r, min(a.g, a.b));
-		float skin = smoothstep(0.10, 0.22, sat);
+		float warm = step(a.b + 0.02, a.r);                       // (flesh is warm: red over blue)
+		float skin = smoothstep(0.06, 0.13, sat) * warm;
 		vec3 cloth = vec3(lum0) * vec3(0.95, 0.97, 1.0) * 0.62;          // (a mid grey: she reads against the pale marble)
 		// her reflection wears the same dress in deep crimson (the veil a darker red)
 		vec3 crim = red_dress.rgb * (0.85 + lum0 * 1.7);
 		cloth = mix(cloth, crim, red);
-		return mix(cloth, a * vec3(0.92, 0.88, 0.86), skin);
+		// marble: the texture's own shading (its luminance) kept soft, a fine grain, a thin wandering vein
+		float g = fract(sin(dot(floor(uv * 512.0), vec2(12.9898, 78.233))) * 43758.5453);
+		float vn = abs(sin(uv.x * 41.0 + uv.y * 27.0 + sin(uv.y * 63.0 + uv.x * 17.0) * 1.6));
+		float vein = 1.0 - smoothstep(0.0, 0.06, vn);
+		vec3 marble = vec3(0.90, 0.88, 0.84) * (0.80 + 0.32 * clamp(lum0 * 1.6, 0.0, 1.0)) * (0.97 + 0.03 * g);
+		marble = mix(marble, vec3(0.62, 0.62, 0.64), vein * 0.35);
+		return mix(cloth, marble, skin);
 	}
 	float lum = dot(a, vec3(0.3, 0.59, 0.11));
 	float m = face * smoothstep(0.30, 0.55, lum);

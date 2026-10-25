@@ -655,6 +655,10 @@ func _plan() -> void:
 
 	# ================================================================ 5. garden: the turned ones
 	step_do(func() -> void:
+		var bad := []
+		for k in 3: bad.append_array(Chapter.garden_mirror_view(Vector3(Chapter.TURN_X[k], 1.0, Chapter.TURN_Z + 1.05), World.FIXED_SIZE))
+		ok("(v0.9.1) the great glass shows all three turned ones' north faces whole, from every step", bad.is_empty(), str(bad)))
+	step_do(func() -> void:
 		ok("the old rune door panel is gone", game.ui.door_overlay.visible == false and game.puzzles.door == null)
 		walk_to(16.4, -11.8))
 	step_wait(0.7)
