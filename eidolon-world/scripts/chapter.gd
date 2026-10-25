@@ -123,7 +123,7 @@ func _init(g: Game) -> void:
 
 func reset_state() -> void:
 	state = {"stones": false, "pool_turns": Ch1Geo.POOL_START.duplicate(), "breath": false, "shard": false, "hall_door": false, "gallery": false,
-		"gallery_lit": [],
+		"gallery_lit": [SH_PRELIT], "lens_used": false,
 		"hall": {"drum": [DRUM_START.x, DRUM_START.y], "brazier": [BRAZ_START.x, BRAZ_START.y], "bust": BUST_START, "locks": [false, false, false]},
 		"turned": TURN_START.duplicate(), "turned_done": false, "garden_breath": false,
 		"hollows": [[5, 2], [1, 1]], "hollow_lock": [false, false], "hollow_done": false,
@@ -1028,17 +1028,23 @@ func _open_hall_door(instant: bool) -> void:
 	event.emit("solve", "hall_glass")
 
 # ------------------------------------------------------------------ 4. "Where Her Shadow Fell" (v0.8.1)
-## The chamber after the Hall. In its middle stands Theron's Ione, veiled, on a plinth; six tripod braziers
+## The chamber after the Hall. In its middle stands Theron's Ione, veiled, on a plinth; five tripod braziers
 ## stand round her at different angles and distances, each lit or put out with a touch (real fire, real
 ## light). Every lit brazier throws her shadow across the floor directly away from it, longer the closer
-## it burns. Through the raised shard the floor shows three carved outlines: where her shadow fell the
+## it burns. Through the raised shard the floor shows three outlines of her veiled shadow: where it fell the
 ## evening he carved her. Light exactly the braziers whose shadows lie in those outlines (no other
 ## shadow): the shadows darken into them, her veil stirs, and the true arch (seen through the shard) is
 ## real. No feedback brazier by brazier: only the whole set answers.
-const SH_STATUE := Vector3(7.5, 1.0, -14.0)
-const SH_BRAZ := [Vector3(6.4, 1.0, -16.0), Vector3(9.4, 1.0, -15.9), Vector3(9.3, 1.0, -12.7), Vector3(5.8, 1.0, -11.2),
-	Vector3(8.4, 1.0, -16.2), Vector3(5.6, 1.0, -13.7)]
-const SH_SOLUTION := [0, 2, 3]
+## v0.9: rebuilt as a framed room (all of it in view at once). The rules teach themselves: ONE brazier
+## already burns as you come in (not one of hers: its shadow is the first thing you see, and lies in no
+## outline), and the shard in your hand glints until you first raise it here.
+const SH_STATUE := Vector3(7.5, 1.0, -13.2)
+const SH_BRAZ := [Vector3(7.5, 1.0, -15.9), Vector3(9.6, 1.0, -13.8), Vector3(8.8, 1.0, -16.1), Vector3(5.8, 1.0, -13.9),
+	Vector3(8.6, 1.0, -10.6)]
+## her shadows fall south, west and north-west: all on the floor in front of her (nothing hides behind her
+## from the fixed view; no brazier stands where she would hide it)
+const SH_SOLUTION := [0, 1, 4]
+const SH_PRELIT := 3                    # burning when you arrive (its shadow falls east, into no outline)
 const SH_LORE := "On Milos, in the evening,\nhe moved the lamps until her shadow lay\nwhere he wanted her to stand."
 var sh_flames: Array[Flame] = []
 var sh_shadows: Array[ShaderMaterial] = []
@@ -1051,16 +1057,16 @@ static func shadow_of(i: int) -> Array:
 	var b: Vector3 = SH_BRAZ[i]
 	var d := Vector2(SH_STATUE.x - b.x, SH_STATUE.z - b.z)
 	var dist := d.length()
-	var L := clampf(5.6 / maxf(dist, 0.8), 1.3, 3.2)
+	var L := clampf(4.6 / maxf(dist, 0.8), 1.3, 2.1)        # (v0.9: shorter, so every shadow stays on the floor)
 	return [Vector2(SH_STATUE.x, SH_STATUE.z), d.normalized(), L]
 
 func _shadow_xf(i: int, y: float) -> Transform3D:
 	var s := shadow_of(i)
 	var o: Vector2 = s[0]; var d: Vector2 = s[1]; var L: float = s[2]
-	# a quad on the floor: its +y (toward the head) along d, 1.15 m wide, L long, from her feet
+	# a quad on the floor: its +y (toward the head) along d, 1.45 m wide (v0.9: was 1.15), L long, from her feet
 	var c := o + d * (L * 0.5 + 0.15)
 	var yaw := atan2(-d.x, -d.y)
-	return Transform3D(Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(1.15, 1.0, L)), Vector3(c.x, y, c.y))
+	return Transform3D(Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(1.45, 1.0, L)), Vector3(c.x, y, c.y))
 
 func _build_gallery() -> void:
 	var lsh := preload("res://shaders/lens_only.gdshader")
@@ -1140,9 +1146,21 @@ func toggle_brazier(i: int) -> void:
 			if now == SH_SOLUTION and not state["gallery"]: open_gallery(false))
 
 ## each lit brazier's shadow follows its flame
-func _update_gallery(_dt: float) -> void:
+var _glint_t := 1.2
+func _update_gallery(dt: float) -> void:
 	for i in sh_flames.size():
 		sh_shadows[i].set_shader_parameter("k", sh_flames[i].level())
+	# (v0.9) the shard is the key: in the chamber, until you first raise it here, its slot pulses and it glints
+	var pulse: bool = state["shard"] and not state["gallery"] and not state["lens_used"] and not lens_on \
+		and game.area == "shard_gallery" and game.mode == "play" and _in_gallery()
+	if game.controls: game.controls.inv_pulse = pulse
+	if pulse:
+		_glint_t -= dt
+		if _glint_t <= 0.0:
+			_glint_t = 3.6
+			game.sfx.play("glass_tink", -9.0, 1.7)
+	else:
+		_glint_t = 1.2
 	var hint := 1.0 if (not state["gallery"] and state["shard"] and hint_t > Game.HINT_AFTER and game.area == "shard_gallery") else 0.0
 	for om in sh_outlines: om.set_shader_parameter("hint", hint)
 
@@ -1154,6 +1172,7 @@ func set_lens(on: bool) -> void:
 	if on and not state["shard"]: return
 	if on == lens_on: return
 	lens_on = on
+	if on and _in_gallery(): state["lens_used"] = true
 	event.emit("lens", on)
 	game.ui.set_inventory(state["shard"], on)
 	if not on:
@@ -2491,7 +2510,7 @@ func update(dt: float) -> void:
 
 func apply_state() -> void:
 	# (from JSON, numbers come back as floats: the lit lamps are compared as ints)
-	state["gallery_lit"] = (state["gallery_lit"] as Array).map(func(v: Variant) -> int: return int(v))
+	state["gallery_lit"] = (state["gallery_lit"] as Array).map(func(v: Variant) -> int: return int(v)).filter(func(v: int) -> bool: return v >= 0 and v < SH_BRAZ.size())
 	# (a v0.5 save: the hall was won by touching the glass; set its things back as the glass remembers)
 	if state["hall_door"] and state["hall"]["locks"] != [true, true, true]:
 		state["hall"] = {"drum": [DRUM_GOAL.x, DRUM_GOAL.y], "brazier": [BRAZ_GOAL.x, BRAZ_GOAL.y], "bust": BUST_GOAL, "locks": [true, true, true]}

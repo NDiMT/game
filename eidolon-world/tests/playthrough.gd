@@ -88,14 +88,15 @@ func C() -> Chapter:
 ## v0.8.1 "Where Her Shadow Fell": every lit set whose shadows are exactly the outlined ones
 func _shadow_solutions() -> Array:
 	var out := []
-	for mask in range(1, 64):
+	var nb: int = Chapter.SH_BRAZ.size()
+	for mask in range(1, 1 << nb):
 		var lit := []
-		for i in 6:
+		for i in nb:
 			if mask & (1 << i): lit.append(i)
 		if lit == Chapter.SH_SOLUTION: out.append(lit)
 	# (the game's own rule: sorted lit set == the outlined set; also check no two braziers cast the same shadow)
 	var seen := {}
-	for i in 6:
+	for i in nb:
 		var sh: Array = Chapter.shadow_of(i)
 		var key := "%.2f,%.2f,%.2f" % [sh[1].x, sh[1].y, sh[2]]
 		if seen.has(key): out.append([-1])
@@ -103,12 +104,13 @@ func _shadow_solutions() -> Array:
 	return out
 func _shadow_geometry_ok() -> bool:
 	var ok2 := true
-	for i in 6:
+	var nb: int = Chapter.SH_BRAZ.size()
+	for i in nb:
 		var b: Vector3 = Chapter.SH_BRAZ[i]
 		var sh: Array = Chapter.shadow_of(i)
 		var away := Vector2(Chapter.SH_STATUE.x - b.x, Chapter.SH_STATUE.z - b.z)
 		ok2 = ok2 and (sh[1] as Vector2).dot(away.normalized()) > 0.999
-		for j in 6:
+		for j in nb:
 			var b2: Vector3 = Chapter.SH_BRAZ[j]
 			var d1 := away.length()
 			var d2 := Vector2(Chapter.SH_STATUE.x - b2.x, Chapter.SH_STATUE.z - b2.z).length()
@@ -562,11 +564,15 @@ func _plan() -> void:
 		ok("the chamber is named for it", Names.area("shard_gallery") == "Where Her Shadow Fell")
 		ok("no way on: the wall is whole", game.level.named["gallery_secret"].enabled)
 		var cold := true
-		for f in C().sh_flames: cold = cold and f.level() < 0.01
-		ok("her veiled statue in the middle, six cold braziers round her", C().sh_flames.size() == 6 and cold and C().sh_shadows.size() == 6)
+		for i in C().sh_flames.size():
+			if i != Chapter.SH_PRELIT: cold = cold and C().sh_flames[i].level() < 0.01
+		ok("her veiled statue in the middle, five braziers round her", C().sh_flames.size() == 5 and cold and C().sh_shadows.size() == 5)
+		ok("(v0.9) one already burns as you come in, and it is not one of hers", C().sh_flames[Chapter.SH_PRELIT].level() > 0.5 and float(C().sh_shadows[Chapter.SH_PRELIT].get_shader_parameter("k")) > 0.5 and not (Chapter.SH_PRELIT in Chapter.SH_SOLUTION))
+		ok("(v0.9) the shard is the key: its slot pulses in the chamber", game.controls.inv_pulse and not C().state["lens_used"])
+		ok("(v0.9) a solution of 2-3 among 4-5 braziers", Chapter.SH_SOLUTION.size() >= 2 and Chapter.SH_SOLUTION.size() <= 3 and Chapter.SH_BRAZ.size() >= 4 and Chapter.SH_BRAZ.size() <= 5)
 		ok("solver: exactly one set of braziers casts her shadow into the outlines", _shadow_solutions().size() == 1 and _shadow_solutions()[0] == Chapter.SH_SOLUTION, str(_shadow_solutions()))
 		ok("solver: each brazier throws her shadow straight away from it, longer when nearer", _shadow_geometry_ok()))
-	walk_path("into the chamber", [[6.4, -15.0], [6.6, -12.4], [8.4, -12.4]])
+	walk_path("into the chamber", [[6.5, -15.2], [6.6, -11.7], [8.4, -11.7]])
 	step_do(func() -> void:
 		ok("walking about the chamber", game.area == "shard_gallery", str(P()) + " " + game.area)
 		walk_to(10.6, -11.0))
@@ -575,21 +581,24 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the arch is a wall in your world", P().x < 10.0, str(P()))
-		tp(7.5, -12.4, PI))
+		tp(7.5, -11.7, PI))
 	step_do(func() -> void:
 		game.controls.shard.emit()           # the inventory slot tapped
-		ok("raise the shard from the inventory", C().lens_on and game.controls.inv_on))
+		ok("raise the shard from the inventory", C().lens_on and game.controls.inv_on)
+		ok("(v0.9) raised once here: the slot stops calling", C().state["lens_used"]))
 	step_wait(0.4)
 	step_do(func() -> void:
 		var L: Vector4 = C().lens_px
 		ok("through the shard: the outlines of where her shadow fell, and the true arch", L.w > 0.5 and L.z > 10.0 and game.ui.lens_rect.visible and C().sh_outlines.size() == Chapter.SH_SOLUTION.size(), str(L)))
 	# lighting EVERY brazier is not the answer (and nothing answers brazier by brazier)
 	var bspots := []
-	for i in 6:
+	var nbz: int = Chapter.SH_BRAZ.size()
+	for i in nbz:
 		var b: Vector3 = Chapter.SH_BRAZ[i]
 		var away := Vector2(b.x - Chapter.SH_STATUE.x, b.z - Chapter.SH_STATUE.z).normalized()
 		bspots.append([b.x - away.x * 0.75, b.z - away.y * 0.75])
-	for i in 6:
+	for i in nbz:
+		if i == Chapter.SH_PRELIT: continue          # (already burning)
 		var sp: Array = bspots[i]
 		var bi: int = i
 		step_do(func() -> void: tp(sp[0], sp[1], 0.0))
@@ -603,18 +612,21 @@ func _plan() -> void:
 			ok("brazier %d: real fire and light; her shadow falls away from it" % bi, f.level() > 0.5 and float(C().sh_shadows[bi].get_shader_parameter("k")) > 0.5)
 			ok("no answer brazier by brazier", game.sfx.played.get("chime", 0) + game.sfx.played.get("chime_hall", 0) == _mark))
 	step_wait(1.2)
-	step_do(func() -> void: ok("all six lit: NOT the answer", not C().state["gallery"] and game.level.named["gallery_secret"].enabled))
+	step_do(func() -> void: ok("all five lit: NOT the answer", not C().state["gallery"] and game.level.named["gallery_secret"].enabled))
 	# put out the three that are not hers (each a toggle)
-	for i in [1, 4, 5]:
+	var others := []
+	for i in nbz:
+		if not (i in Chapter.SH_SOLUTION): others.append(i)
+	for i in others:
 		var sp: Array = bspots[i]
 		var bi: int = i
 		step_do(func() -> void: tp(sp[0], sp[1], 0.0))
 		step_wait(0.25)
 		step_do(func() -> void: ok("put out brazier %d" % bi, _focus() == "brazier%d" % bi and game.try_interact(), _focus()))
 		step_wait(0.9)
-		if i == 1:
+		if i == others[0]:
 			step_do(func() -> void:
-				ok("put out: its fire dies, its shadow goes", C().sh_flames[1].level() < 0.05 and float(C().sh_shadows[1].get_shader_parameter("k")) < 0.05)
+				ok("put out: its fire dies, its shadow goes", C().sh_flames[bi].level() < 0.05 and float(C().sh_shadows[bi].get_shader_parameter("k")) < 0.05)
 				ok("still shut with the wrong set", not C().state["gallery"]))
 	step_until("only her shadows: the true arch opens", func() -> bool: return C().state["gallery"] and not game.level.named["gallery_secret"].enabled, 4.0)
 	step_do(func() -> void:
@@ -624,7 +636,7 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("her shadows darken; her veil stirs", float(C().sh_shadows[0].get_shader_parameter("dark")) > 0.85 and float(C().sh_veil.get_shader_parameter("intensity")) > 0.3))
 	step_wait(1.0)
-	walk_path("through the true arch", [[9.4, -11.0], [11.2, -11.0], [11.5, -9.0]])
+	walk_path("through the true arch", [[6.4, -12.2], [7.4, -11.5], [9.4, -11.0], [11.2, -11.0], [11.5, -9.0]])
 	step_do(func() -> void:
 		ok("reached the Garden of the Veiled", game.area == "garden_veiled" and P().x > 10.3, str(P()) + " " + game.area)
 		ok("the shard is lowered outside the chamber", not C().lens_on))
@@ -818,7 +830,7 @@ func _plan() -> void:
 
 	# ================================================================ 9. the echo corridor: "Her Song"
 	step_do(func() -> void: _mark = game.sfx.played.get("step_hall", 0))
-	walk_path("down the corridor", [[10.0, -45.4], [14.0, -45.4]])
+	walk_path("down the corridor", [[10.4, -44.9], [14.0, -45.4]])
 	step_wait(3.0)
 	step_do(func() -> void:
 		ok("footsteps echo in the corridor", game.sfx.played.get("step_hall", 0) > _mark + 4, "%d" % (game.sfx.played.get("step_hall", 0) - _mark))

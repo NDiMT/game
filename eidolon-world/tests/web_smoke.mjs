@@ -179,7 +179,7 @@ try {
   info('solve: jump to the shadow chamber');
   await cmd('jump:shard_gallery'); await wait(2000);
   const j0 = (await st()).played?.jingle || 0;
-  for (const b of [0, 2, 3]) { await cmd('call:toggle_brazier:' + b); await wait(800); }
+  for (const b of [3, 0, 1, 4]) { await cmd('call:toggle_brazier:' + b); await wait(800); }
   const solved = await waitFor((s) => s.chapter?.gallery === true, 30000);
   const jg = await waitFor((s) => (s.played?.jingle || 0) > j0, 15000);
   const rj = await rms(); rj.rms_db = dB(rj.p);

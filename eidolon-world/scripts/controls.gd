@@ -27,6 +27,7 @@ var _t := 0.0
 var canvas: Pad
 var inv_has := false               # v0.5: the mirror shard is carried
 var inv_on := false                # ...and raised
+var inv_pulse := false             # v0.9: the shard is the key here: its slot pulses until you first raise it
 var inv_alpha := 0.0
 var _inv_press := 0.0
 
@@ -133,7 +134,7 @@ func _process(dt: float) -> void:
 	# (v0.8.5) redraw only when something on it moves: the breathing button, the stick, a fade, a press
 	var sig := Vector4(joy_alpha + icon_alpha * 3.0, inv_alpha + _press * 5.0 + _inv_press * 7.0, joy_knob.x + joy_base.x * 0.37, joy_knob.y + joy_base.y * 0.41)
 	var vs := vp_size()
-	if icon_alpha > 0.0 or joy_alpha > 0.0 or sig != _last_sig or enabled != _last_en or icon != _last_icon or inv_on != _last_inv or vs != _last_vs:
+	if icon_alpha > 0.0 or joy_alpha > 0.0 or (inv_pulse and inv_alpha > 0.0) or sig != _last_sig or enabled != _last_en or icon != _last_icon or inv_on != _last_inv or vs != _last_vs:
 		_last_sig = sig
 		_last_en = enabled
 		_last_icon = icon
@@ -165,6 +166,14 @@ class Pad extends Control:
 			var ia := ctl.inv_alpha
 			var ic := ctl.inv_center()
 			var ir := 22.0 * (1.0 + ctl._inv_press * 0.1)
+			if ctl.inv_pulse and not ctl.inv_on:
+				# a gentle call: rings breathing out from the slot, and a glint running round its rim
+				for j in 2:
+					var f := fmod(ctl._t * 0.55 + j * 0.5, 1.0)
+					draw_arc(ic, ir + 3.0 + f * 16.0, 0, TAU, 48, Color(CY, 0.55 * (1.0 - f) * ia), 1.6, true)
+				var ga := ctl._t * 1.7
+				draw_arc(ic, ir, ga, ga + 0.9, 12, Color(Color.WHITE, 0.8 * ia), 2.2, true)
+				draw_circle(ic, ir - 1.0, Color(CY, (0.10 + 0.08 * sin(ctl._t * 3.4)) * ia))
 			if ctl.inv_on:
 				for i in 5: draw_circle(ic, ir + 3.0 + i * 3.0, Color(CY, 0.05 * ia * (1.0 - i / 5.0)))
 			draw_circle(ic, ir, Color(0.06, 0.07, 0.08, 0.34 * ia))

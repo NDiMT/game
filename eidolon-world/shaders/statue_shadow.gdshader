@@ -8,6 +8,7 @@ render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_disabl
 global uniform vec4 shard_lens;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
+global uniform vec4 accent_tint;
 uniform float k = 0.0;              // the flame's strength (0 = no shadow)
 uniform float dark = 0.55;
 uniform float mode = 0.0;
@@ -38,10 +39,17 @@ void fragment() {
 	} else {
 		float lens = 0.0;
 		if (shard_lens.w > 0.5) lens = 1.0 - smoothstep(shard_lens.z * 0.85, shard_lens.z, length(FRAGCOORD.xy - shard_lens.xy));
-		float line = 1.0 - smoothstep(0.018, 0.04, abs(d));            // (v0.8.3: thicker, brighter, a slow pulse)
-		float bloom = exp(-abs(d) * 24.0) * 0.5;
-		float show = max(lens * (0.88 + 0.12 * sin(TIME * 1.6)), hint * (0.25 + 0.15 * sin(TIME * 2.0)));
-		ALBEDO = mix(accent.rgb, accent_core.rgb * 1.55, line);
-		ALPHA = clamp(line + bloom, 0.0, 1.0) * show;
+		// (v0.9) unmistakably HER shadow: a bold rim on exactly the silhouette a lit brazier casts (the same
+		// her_sd, the same quad), and the whole figure washed in faintly, so the shape reads at a glance; a
+		// shadow that falls here simply fills it (no extra glow)
+		// a deep-coloured carved band (it reads on white marble), a bright line in its middle, the figure washed in
+		float band = 1.0 - smoothstep(0.08, 0.12, abs(d));
+		float core = 1.0 - smoothstep(0.015, 0.04, abs(d));
+		float fill = (1.0 - smoothstep(-0.03, 0.0, d)) * smoothstep(0.0, 0.06, q.y) * 0.38;
+		float show = max(lens * (0.92 + 0.08 * sin(TIME * 1.6)), hint * (0.25 + 0.15 * sin(TIME * 2.0)));
+		vec3 col = mix(accent_tint.rgb * 0.8, accent.rgb, fill * 0.5);
+		col = mix(col, accent_core.rgb * 1.6, core);
+		ALBEDO = col;
+		ALPHA = clamp(max(band, fill), 0.0, 1.0) * show;
 	}
 }

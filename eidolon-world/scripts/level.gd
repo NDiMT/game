@@ -836,12 +836,13 @@ func _hall() -> void:
 	# far walls: north (with the great mirror) and east (with the doorway)
 	wall("Hn", R(-5, -21, 5, -20.6), 1.0, 6.2)
 	wall(z, R(4.6, -21, 5, -18.4), 1.0, 4.6)
-	wall(z, R(4.6, -16.6, 5, -11), 1.0, 4.6)
+	# v0.9: the east wall south of the door is a parapet: from the one fixed view a full wall here hid half of
+	# the shadow chamber beyond it
+	wall(z, R(4.6, -16.6, 5, -11), 1.0, 2.05)
 	# v0.5: the remembered doorway: a wall today (its own mesh: hidden from the mirror, it opens)
 	wall("Hdoor", R(4.6, -18.4, 5, -16.6), 1.0, 3.7)
 	box(z, Vector3(4.8, 4.15, -17.5), Vector3(0.4, 0.9, 1.8), 0.25, true)
 	walk(R(4.6, -18.2, 5.05, -16.8), 1.0, NAN, -1, "hdoor", false)
-	box(z, Vector3(4.8, 4.0, -13.0), Vector3(0.4, 1.2, 2.0), 0.25, true)
 	# mirror frame (dark bronze) around the great glass x[-2.6,2.6] y[1.15,5.6]
 	for fb in [[Vector3(0, 1.1, -20.52), Vector3(5.5, 0.14, 0.12)], [Vector3(0, 5.66, -20.52), Vector3(5.5, 0.14, 0.12)],
 			[Vector3(-2.68, 3.38, -20.52), Vector3(0.14, 4.6, 0.12)], [Vector3(2.68, 3.38, -20.52), Vector3(0.14, 4.6, 0.12)]]:
@@ -850,10 +851,13 @@ func _hall() -> void:
 	for x in [-4.0, 4.0]:
 		box("Hn", Vector3(x, 3.6, -20.45), Vector3(0.6, 5.2, 0.3), 0.25, true)
 	# colonnade on the open sides (west + south)
-	for zz in [-12.2, -14.8, -17.4, -19.9]:
+	# (v0.9: the near columns broken low, so the floor behind them shows from the fixed view)
+	for zz in [-17.4, -19.9]:
 		column(Vector3(-4.5, 1.0, zz), 4.2)
+	stump(Vector3(-4.5, 1.0, -14.8), 0.75)
+	stump(Vector3(-4.5, 1.0, -12.2), 0.6, true, 0.08)
 	column(Vector3(-3.3, 1.0, -11.3), 4.2)
-	column(Vector3(3.3, 1.0, -11.3), 4.2)
+	stump(Vector3(3.3, 1.0, -11.3), 0.9)
 	# a fallen column across the north-east corner hides the low tablet
 	# (v0.6: the old stump here is gone: the hall keeps only its fallen block and the things the glass remembers)
 	box(z, Vector3(2.7, 1.3, -19.9), Vector3(0.62, 0.62, 1.9), 0.25, false, Basis(Vector3.UP, 1.2))
@@ -950,6 +954,9 @@ func _court() -> void:
 	ob_rect(R(10.9, -27.35, 13.1, -26.9), "mural_door")
 	# great columns at the corners, one broken
 	column(Vector3(7.6, 2.0, -26.4), 4.6)
+	# (v0.9) its square plinth fills the far corner: the court fits the one fixed view
+	box(z, Vector3(7.8, 2.2, -26.2), Vector3(1.6, 0.4, 1.6), 0.25)
+	ob_rect(R(7.0, -27.0, 8.6, -25.4))
 	stump(Vector3(7.6, 2.0, -17.6), 1.6)
 	rubble(Vector3(8.6, 2.0, -18.4), 0.6, 5)
 	inscription("l_stele", Vector3(8.3, 2.0, -21.4), "Where our light ends, hers goes on.\nShe set her own glasses there, and waited.", 1.2,
