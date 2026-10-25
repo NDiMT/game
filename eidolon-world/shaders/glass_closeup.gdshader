@@ -88,9 +88,9 @@ float digit(vec2 h, vec2 base, float an, float len, float r, float bend, float c
 	float d = smin(smin(d1, d2, 0.006), d3, 0.006);
 	// pressed: the pads between the joints touch, the flexion creases at the joints do not
 	// pressed: an oval pad on every phalanx (the fingertip's fullest), thin creases between them
-	float k1 = 0.72 * smoothstep(0.0, 0.7 * r, -pad_sd(h, base + (j1 - base) * 0.2, j1, r * 0.95, 0.5, r * 0.02));
-	float k2 = 0.85 * smoothstep(0.0, 0.65 * r, -pad_sd(h, j1, j2, r * 0.95, 0.5, r * 0.06));
-	float k3 = smoothstep(0.0, 0.6 * r, -pad_sd(h, j2, j3, r * 0.92, 0.6, r * 0.62));
+	float k1 = 0.74 * smoothstep(0.0, 0.32 * r, -pad_sd(h, base + (j1 - base) * 0.15, j1, r * 0.97, 0.5, r * 0.05));
+	float k2 = 0.86 * smoothstep(0.0, 0.3 * r, -pad_sd(h, j1, j2, r * 0.97, 0.5, r * 0.12));
+	float k3 = smoothstep(0.0, 0.3 * r, -pad_sd(h, j2, j3, r * 0.95, 0.6, r * 0.7));
 	con = max(con, max(max(k1, k2), k3) * (1.0 - curl));
 	vec2 pc = mix(j2, j3, 0.8);
 	float pm = k3 * (1.0 - smoothstep(r * 0.3, r * 1.05, length(h - pc))) * (1.0 - curl);

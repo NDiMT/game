@@ -82,16 +82,16 @@ void fragment() {
 	vec3 refl = mix(base, mix(base, vec3(lum), 0.18) * vec3(0.90, 0.97, 1.04) + vec3(0.03, 0.04, 0.05), graded);
 	float fres = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.0);
 	float band = smoothstep(0.92, 1.0, sin(wpos.y * 3.0 - TIME * 1.3)) * shimmer;
-	vec3 eid = mix(base * 0.6 + _ha() * 0.45, _hc(), clamp(fres * 0.6 + band * 0.5, 0.0, 1.0));
+	// (v0.8.1: the eidolon beyond the great glass is the hero's reflection too: plain dark, its shimmer a
+	// colourless pale sheen, no aqua, no rose)
+	vec3 eid = mix(base * 0.6, vec3(0.62, 0.64, 0.66), clamp(fres * 0.45 + band * 0.35, 0.0, 1.0));
 	vec3 c = mix(refl, eid, ghost);
 	c = mix(c, surface_col, surface_mix);
-	vec3 emb = embroidery(vuv2);
-	float hs = hem_stripe(vcol.r);
-	c = mix(c, _ha() * 0.8, hs * 0.7 * (1.0 - surface_mix));
-	if (!FRONT_FACING) { c *= 0.32; hs = 0.0; emb = vec3(0.0); }     // (opaque: the inside is dark cloth)
+	// (v0.8.1: every reflection of the hero is plain dark too: no hem stripe, no runes, no aqua or rose)
+	if (!FRONT_FACING) { c *= 0.32; }     // (opaque: the inside is dark cloth)
 	ALBEDO = c;
 	NORMAL_MAP = texture(normal_tex, UV).rgb;
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.15;
-	EMISSION = _hc() * (hs * glint * 0.55 + emb.x * emb.z * 1.3) * (1.0 - surface_mix * 0.6) + _ha() * fres * 0.25 * ghost;
+	EMISSION = vec3(0.5, 0.52, 0.54) * fres * 0.12 * ghost;
 }

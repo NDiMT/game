@@ -71,6 +71,7 @@ func _init() -> void:
 	hem_glow.position.y = 0.02
 	hem_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(hem_glow)
+	hem_glow.visible = false            # (v0.8.1, the owner: the hero wears no colour: no hem glow on the ground)
 
 func teleport(p: Vector3, face_yaw := INF) -> void:
 	var q := Vector2(p.x, p.z)
@@ -117,7 +118,7 @@ func step(dt: float) -> void:
 	var gk := clampf(fig.hem, 0.0, 3.0)
 	if gk != _glow_k:
 		_glow_k = gk
-		(hem_glow.material_override as ShaderMaterial).set_shader_parameter("strength", 0.07 + 0.05 * gk)
+		(hem_glow.material_override as ShaderMaterial).set_shader_parameter("strength", 0.0)
 	_animate(dt)
 
 func _animate(dt: float) -> void:

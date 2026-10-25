@@ -1,7 +1,6 @@
 shader_type spatial;
-// The wanderer: textured, normal-mapped charcoal cloak, cracked marble face, a petrol hem stripe,
-// dormant rune embroidery at the hood rim and cuffs (lit one by one as shrines wake), a cool rim of
-// fog light round the silhouette.
+// The wanderer: textured, normal-mapped charcoal cloak, cracked marble face, a cool rim of fog light
+// round the silhouette. (v0.8.1: the hem stripe and the rune embroidery are gone: the hero is plain dark.)
 render_mode cull_disabled, shadows_disabled;
 // v0.8: the hero marks its visible pixels, so its x-ray never draws over the model itself
 stencil_mode write, compare_always, 1;
@@ -23,18 +22,14 @@ void vertex() {
 void fragment() {
 	vec3 alb = wanderer_albedo(UV, vcol.b);
 	float face = vcol.b;
-	vec3 emb = embroidery(vuv2);
-	alb = mix(alb, vec3(0.27, 0.28, 0.30), emb.x * 0.6 * (1.0 - emb.z));
-	alb = mix(alb, accent_core.rgb, emb.x * emb.z * 0.6);
-	float hs = hem_stripe(vcol.r);
-	alb = mix(alb, accent.rgb, hs * 0.85);
+	// (v0.8.1, the owner: the hero wears NO colour: no hem stripe, no lit runes at the hood rim or the
+	// cuffs, no aqua emission; only the dark cloth and the marble face)
 	// v0.8: opaque, double-sided cloth: the inside of the hood and the cloak is dark cloth, never see-through
-	if (!FRONT_FACING) { alb *= 0.32; hs = 0.0; emb = vec3(0.0); }
+	if (!FRONT_FACING) { alb *= 0.32; }
 	ALBEDO = alb;
 	NORMAL_MAP = texture(normal_tex, UV).rgb;
 	ROUGHNESS = mix(0.88, 0.55, face);
 	SPECULAR = mix(0.18, 0.35, face);
 	float rim = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.6);
-	EMISSION = (accent_core.rgb * (hs * glint * 0.55 + (emb.x * 1.4 + emb.y * 0.35) * emb.z)
-		+ vec3(0.42, 0.50, 0.60) * rim * 0.5 * (1.0 - face)) * (FRONT_FACING ? 1.0 : 0.0);
+	EMISSION = vec3(0.42, 0.50, 0.60) * rim * 0.5 * (1.0 - face) * (FRONT_FACING ? 1.0 : 0.0);    // (the fog's cool rim light)
 }
