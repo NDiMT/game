@@ -229,11 +229,39 @@ func _hook_ok() -> bool:
 	if _hook < 0: _hook = 1 if JavaScriptBridge.eval("typeof window.__eidRelease === 'function' && !!window.__eidSamples") else 0
 	return _hook == 1
 
-## free a registered stream's decoded web sample (its id is the stream's instance id)
+## free a registered stream's decoded web sample (its id is the stream's instance id). Deferred: the
+## engine lets go of a stopped player's playback a little later, and must not find its sample gone; if
+## the stream is in use again by then (you walked back), it is kept.
+var _rel: Array = []             # [stream, release time]
 func _web_release(st: AudioStream) -> void:
 	if st == null or not AudioServer.is_stream_registered_as_sample(st): return
-	var r = JavaScriptBridge.eval("window.__eidRelease('%s')" % str(st.get_instance_id()))
-	if int(r) == 1: played["web_release"] = played.get("web_release", 0) + 1
+	_rel.append([st, Time.get_ticks_msec() / 1000.0 + 1.5])
+
+func _rel_step() -> void:
+	if _rel.is_empty(): return
+	var now := Time.get_ticks_msec() / 1000.0
+	var keep: Array = []
+	for e in _rel:
+		if now < e[1]:
+			keep.append(e)
+			continue
+		var st: AudioStream = e[0]
+		if _in_use(st): continue                       # (back in use: keep its sample)
+		var r = JavaScriptBridge.eval("window.__eidRelease('%s')" % str(st.get_instance_id()))
+		if int(r) == 1: played["web_release"] = played.get("web_release", 0) + 1
+	_rel = keep
+
+func _in_use(st: AudioStream) -> bool:
+	for p in cue_players + players:
+		if p.stream == st: return true
+	for f in layer_p:
+		if (layer_p[f] as AudioStreamPlayer).stream == st: return true
+	for f in _pw_keep:
+		if _pw_keep[f] == st: return true
+	for k in streams:
+		for x in streams[k]:
+			if x == st: return true
+	return false
 
 func _playing_stream(st: AudioStream) -> bool:
 	for p in cue_players:
@@ -273,8 +301,7 @@ func _bed_plan() -> void:
 			_bed_reg.erase(f)
 			_web_release(st)
 		var ev_want := {}
-		for room in [area] + _neighbours(area):
-			for e in room_events.get(room, []): ev_want[e[0]] = true
+		for e in room_events.get(area, []): ev_want[e[0]] = true          # (events: this room's only)
 		for f in streams.keys():
 			if not (f as String).begins_with("res://") or ev_want.has(f) or f == FAR_VOICE: continue
 			var est: AudioStream = streams[f][0]
@@ -282,13 +309,16 @@ func _bed_plan() -> void:
 			streams.erase(f)
 			_pw_keep.erase(f)
 			_bed_reg.erase(f)
+			# no player may keep it either: a stream still held would be handed back by load() as "already
+			# registered", with its decoded sample gone
+			for cp in cue_players:
+				if cp.stream == est: cp.stream = null
 			_web_release(est)
 	for f in want:
 		if layer_p.has(f): _bed_reg[f] = true          # (playing: registered by its play)
 		elif not _bed_reg.has(f) and not _bed_q.has(f): _bed_q.append(f)
-	for room in [area] + _neighbours(area):
-		for e in room_events.get(room, []):
-			if not _bed_reg.has(e[0]) and not _bed_q.has(e[0]): _bed_q.append(e[0])
+	for e in room_events.get(area, []):
+		if not _bed_reg.has(e[0]) and not _bed_q.has(e[0]): _bed_q.append(e[0])
 
 func _bed_step() -> void:
 	if _bed_q.is_empty(): return
@@ -346,6 +376,7 @@ func _process(dt: float) -> void:
 	if _bed_check <= 0.0:
 		_bed_check = 1.0
 		_bed_plan()
+		_rel_step()
 		for f in layer_p:
 			var bp: AudioStreamPlayer = layer_p[f]
 			if not bp.playing and _target(f) > -40.0 and bp.stream:
