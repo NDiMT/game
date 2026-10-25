@@ -14,7 +14,7 @@ boot_splash/show_image=false
 [audio]
 
 buses/default_bus_layout="res://default_bus_layout.tres"
-driver/mix_rate=32000
+driver/output_latency.web=100
 general/default_playback_type.web=1
 
 [display]

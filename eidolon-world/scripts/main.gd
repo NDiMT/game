@@ -379,6 +379,7 @@ func _process(dt: float) -> void:
 	if highlight: highlight.update(dt)
 	if prof_on: _t0 = _pm("focus+highlight", _t0)
 	Flame.cull(player.position, dt)          # (v0.8.3: one budget for the flames and the aqua lights)
+	sfx.calm = mode != "play" or (player.speed01 < 0.05 and auto_target == Vector3.INF)
 	_update_hum()
 	if prof_on: _t0 = _pm("lights+hum", _t0)
 	if mode != "title":

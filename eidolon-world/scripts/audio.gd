@@ -164,8 +164,8 @@ func start_music() -> void:
 	_started = true
 	# (v0.8.5) at the first gesture (the web audio context exists now): the short streams (events and
 	# cues) become web samples ahead of their first play, one per frame
-	for f in _pw_keep: _pw_reg.append(_pw_keep[f])
 	for k in streams:
+		if (k as String).begins_with("res://"): continue      # (events: per room, see _bed_plan)
 		for st in streams[k]: _pw_reg.append(st)
 	gust_player.stream = streams["wind_gust"][0]
 	gust_player.play(_rng.randf_range(0.0, 30.0))
@@ -193,9 +193,7 @@ var _pw_t := 0
 func _pw_fill() -> void:
 	for f in _wanted_beds(area):
 		if not _pw.has(f): _pw.append(f)
-	for room in room_events:
-		for e in room_events[room]:
-			if not _pw.has(e[0]): _pw.append(e[0])
+
 
 func _pw_step() -> void:
 	_pw_t += 1
@@ -209,7 +207,6 @@ func _pw_step() -> void:
 		_pw_keep[f] = st
 		if not f.contains("/beds/") and not streams.has(f): streams[f] = [st]
 		played["prewarm"] = played.get("prewarm", 0) + 1
-		if _started and not f.contains("/beds/"): _pw_reg.append(st)
 		return
 	if _started and not _pw_reg.is_empty() and OS.has_feature("web"):
 		var st2: AudioStream = _pw_reg.pop_front()
@@ -218,11 +215,31 @@ func _pw_step() -> void:
 	elif not OS.has_feature("web"):
 		_pw_reg.clear()
 
-## (v0.8.5) web memory. On the web every played stream becomes a stereo float32 sample at the context
-## rate (32 kHz: 256 KB a second; a 45 s bed is ~11 MB). Only this room's bed, its neighbours' and the
-## water are kept: a bed that has faded out and is no longer near is stopped and let go (its player
-## freed, its stream dropped), and the neighbours' beds are loaded and registered ahead of time, one at
-## a time, so walking into a room never decodes on the spot.
+## (v0.8.5) the beds of this room and its neighbours are loaded (and held) ahead of time, one at a time,
+## so walking into a room never reads its bed from the pack on the spot (the music streams: see _player)
+func _neighbours(key: String) -> Array:
+	var i := Names.ORDER.find(key)
+	var out := []
+	for j in [i + 1, i - 1]:
+		if j >= 0 and j < Names.ORDER.size(): out.append(Names.ORDER[j])
+	return out
+
+var _hook := -1
+func _hook_ok() -> bool:
+	if _hook < 0: _hook = 1 if JavaScriptBridge.eval("typeof window.__eidRelease === 'function' && !!window.__eidSamples") else 0
+	return _hook == 1
+
+## free a registered stream's decoded web sample (its id is the stream's instance id)
+func _web_release(st: AudioStream) -> void:
+	if st == null or not AudioServer.is_stream_registered_as_sample(st): return
+	var r = JavaScriptBridge.eval("window.__eidRelease('%s')" % str(st.get_instance_id()))
+	if int(r) == 1: played["web_release"] = played.get("web_release", 0) + 1
+
+func _playing_stream(st: AudioStream) -> bool:
+	for p in cue_players:
+		if p.playing and p.stream == st: return true
+	return false
+
 func _wanted_beds(key: String) -> Dictionary:
 	var out := {}
 	var i := Names.ORDER.find(key)
@@ -232,37 +249,66 @@ func _wanted_beds(key: String) -> Dictionary:
 	return out
 
 var _bed_q: Array = []
+var calm := true                 # (main: the wanderer stands still / no walking: a good moment to decode ahead)
 var _bed_reg := {}
 func _bed_plan() -> void:
 	var want := _wanted_beds(area)
-	for f in layer_p.keys():
-		if want.has(f) or (f as String).ends_with("water_lap.ogg"): continue
-		if layer_db.get(f, -60.0) > -59.5 or _target(f) > -59.5: continue
-		var p: AudioStreamPlayer = layer_p[f]
-		p.stop()
-		p.stream = null
-		p.queue_free()
-		layer_p.erase(f)
-		layer_db.erase(f)
-		_pw_keep.erase(f)
-		_bed_reg.erase(f)
-		played["bed_release"] = played.get("bed_release", 0) + 1
+	# (v0.8.5, web memory) a web sample is stereo float32 at the context rate (~350 KB a second) and
+	# Godot never frees it; a whole play-through would keep ~350 MB of decoded music. A bed or an event
+	# far from here (not this room's, not a neighbour's), silent now, is let go: its decoded buffer is
+	# freed through the page's hook (export head_include: window.__eidRelease) and its stream dropped.
+	# Without the hook nothing is let go (a dropped stream would only come back as a second copy).
+	if OS.has_feature("web") and _hook_ok():
+		for f in layer_p.keys():
+			if want.has(f) or (f as String).ends_with("water_lap.ogg"): continue
+			if layer_db.get(f, -60.0) > -59.5 or _target(f) > -59.5: continue
+			var p: AudioStreamPlayer = layer_p[f]
+			var st: AudioStream = p.stream
+			p.stop()
+			p.stream = null
+			p.queue_free()
+			layer_p.erase(f)
+			layer_db.erase(f)
+			_pw_keep.erase(f)
+			_bed_reg.erase(f)
+			_web_release(st)
+		var ev_want := {}
+		for room in [area] + _neighbours(area):
+			for e in room_events.get(room, []): ev_want[e[0]] = true
+		for f in streams.keys():
+			if not (f as String).begins_with("res://") or ev_want.has(f) or f == FAR_VOICE: continue
+			var est: AudioStream = streams[f][0]
+			if _playing_stream(est): continue
+			streams.erase(f)
+			_pw_keep.erase(f)
+			_bed_reg.erase(f)
+			_web_release(est)
 	for f in want:
 		if layer_p.has(f): _bed_reg[f] = true          # (playing: registered by its play)
 		elif not _bed_reg.has(f) and not _bed_q.has(f): _bed_q.append(f)
+	for room in [area] + _neighbours(area):
+		for e in room_events.get(room, []):
+			if not _bed_reg.has(e[0]) and not _bed_q.has(e[0]): _bed_q.append(e[0])
 
 func _bed_step() -> void:
 	if _bed_q.is_empty(): return
 	var f: String = _bed_q.pop_front()
 	if layer_p.has(f) or _bed_reg.has(f): return
-	var st: AudioStream = _pw_keep[f] if _pw_keep.has(f) else load(f)
+	var bed := f.contains("/beds/")
+	var st: AudioStream = _pw_keep[f] if _pw_keep.has(f) else (streams[f][0] if streams.has(f) else load(f))
 	if st == null: return
-	if st is AudioStreamOggVorbis: (st as AudioStreamOggVorbis).loop = true
+	if bed and st is AudioStreamOggVorbis: (st as AudioStreamOggVorbis).loop = true     # (before it becomes a sample)
 	_pw_keep[f] = st
+	if not bed and not streams.has(f): streams[f] = [st]
 	if not _started:
 		_bed_q.append(f)                 # (loaded; it becomes a web sample once the audio context runs)
 		return
-	if OS.has_feature("web") and not AudioServer.is_stream_registered_as_sample(st): AudioServer.register_stream_as_sample(st)
+	# decoded ahead (a web sample) while you are still in the room next door: entering never decodes
+	if OS.has_feature("web") and not AudioServer.is_stream_registered_as_sample(st):
+		if not calm:
+			_bed_q.push_front(f)          # (a decode is a short stall: only while you stand still)
+			return
+		AudioServer.register_stream_as_sample(st)
 	_bed_reg[f] = true
 	played["bed_prewarm"] = played.get("bed_prewarm", 0) + 1
 
