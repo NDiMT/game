@@ -32,8 +32,8 @@ const PLACE := [
 	# eidolon is half-carved too
 	["statue_veiled_unfinished", Vector3(20.9, 2.0, -35.2), 40.0, 1.0, "shrine"],
 ]
-const OCCLUDE := ["column_doric", "column_stump", "archway_ruined", "pylon_ashlar", "pylon_ashlar_niche", "wall_ashlar_window",
-	"statue_veiled_mourning", "statue_veiled_praying", "statue_veiled_unfinished", "statue_veiled_bust"]
+## (v0.8.1: walls and architecture only: statues are never cut by the see-through)
+const OCCLUDE := ["column_doric", "archway_ruined", "pylon_ashlar", "pylon_ashlar_niche", "wall_ashlar_window"]
 const SMALL := ["rubble_pile", "pediment_fragment", "column_fallen"]       # (dropped on the Low tier)
 
 static var meshes := {}           # asset -> [ArrayMesh, AABB]

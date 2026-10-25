@@ -1275,13 +1275,18 @@ func _build_garden() -> void:
 		add_child(pivot)
 		var mi := MeshInstance3D.new()
 		mi.mesh = _statue_mesh(0.9, 0.9)
-		level.occluders.append(AABB(Vector3(TURN_X[i] - 0.5, 1.0, TURN_Z - 0.5), Vector3(1.0, 2.6, 1.0)))     # (QA P1-4)
 		mi.material_override = level.marble_mat
 		pivot.add_child(mi)
 		var mats: Array[ShaderMaterial] = []
+		# (v0.8.1) each face carries a flat carved tablet, its rune centred on it below the plinth's cap
+		var tab := MB.new()
+		for k in 4:
+			var dv: Vector3 = dirs[k]
+			tab.box(Vector3(0, 0.44, 0) + dv * 0.437, Vector3(0.68 if absf(dv.x) < 0.5 else 0.03, 0.68, 0.68 if absf(dv.x) > 0.5 else 0.03), Color(0.5, 0.25, 0.0))
+		puzzles.marble_instance(tab.commit(), pivot)
 		for k in 4:
 			var f: Array = TURN_FACES[i][k]
-			var m := puzzles.rune_quad(pivot, Vector3(0, 0.45, 0) + dirs[k] * 0.44, Vector2(0.8, 0.8), normals[k], float(f[0]), 0.55)   # (v0.7: larger, brighter)
+			var m := puzzles.rune_quad(pivot, Vector3(0, 0.44, 0) + dirs[k] * 0.455, Vector2(0.62, 0.62), normals[k], float(f[0]), 0.8)   # (v0.8.1: true aspect, brighter)
 			m.set_shader_parameter("mirror", f[1])
 			mats.append(m)
 		turn_face_mats.append(mats)
@@ -1349,7 +1354,7 @@ func _apply_turned(snap := false) -> void:
 		for k in 4:
 			var m: ShaderMaterial = turn_face_mats[i][k]
 			var good: bool = k == north and north == TURN_SOLUTION[i]
-			m.set_shader_parameter("lit", 1.0 if good or state["turned_done"] and k == TURN_SOLUTION[i] else 0.55)
+			m.set_shader_parameter("lit", 1.0 if good or state["turned_done"] and k == TURN_SOLUTION[i] else 0.8)
 			m.set_shader_parameter("flare", 0.4 if good else 0.0)
 
 func turned_correct() -> Array:

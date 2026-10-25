@@ -26,7 +26,8 @@ uniform vec3 carve : source_color = vec3(0.16, 0.17, 0.18);
 
 void fragment() {
 	// quad: x spans the ring, y has extra room below for the numeral
-	vec2 p = (UV - vec2(0.5, 0.40)) * vec2(2.3, 2.9);
+	// (v0.8.1: the same scale on both axes: a rune is never squashed; a numeral below needs the extra room)
+	vec2 p = (numeral > 0.5) ? (UV - vec2(0.5, 0.40)) * 2.9 : (UV - vec2(0.5)) * 2.45;
 	if (mirror > 0.5) p.x = -p.x;
 	vec2 rp = vec2(p.x, -p.y);
 	float d = design < -0.5 ? rune_frame(rp) : rune_dist(rp, int(design + 0.5));
@@ -49,7 +50,7 @@ void fragment() {
 	c = mix(c, vec3(0.94, 1.0, 0.98), m.z * (0.35 + 0.5 * k));
 	c = mix(c, _ht(), m.w * 0.45);
 	vec3 bloom_c = _ha();
-	float halo = (1.0 - smoothstep(0.0, 1.3, length(rp))) * (k * 0.08 + flare * 0.45);
+	float halo = (1.0 - smoothstep(0.0, 1.3, length(rp))) * (k * 0.2 + flare * 0.45);
 	vec3 col = mix(bloom_c, c, m.x);
 	ALBEDO = col * (1.0 + flare * 0.6);
 	ALPHA = clamp(m.x * mix(0.7, 1.0, k) + m.y * (0.12 + k * 0.7 * breathe + flare * 0.5) + halo, 0.0, 1.0);

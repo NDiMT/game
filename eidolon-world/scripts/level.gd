@@ -561,13 +561,12 @@ func rubble(c: Vector3, spread: float, count: int) -> void:
 		debris.append(Transform3D(b, p + Vector3(0, s * 0.3, 0)))
 
 func statue(zone: String, base: Vector3, yaw: float, sc := 1.0, plinth := 0.6, ob := true) -> void:
-	# (QA P1-4) a statue may hide the wanderer: the see-through opens for it
-	occluders.append(AABB(base - Vector3(0.5, 0.0, 0.5) * sc, Vector3(1.0 * sc, plinth + 2.3 * sc, 1.0 * sc)))
 	## A veiled woman on a plinth, hands folded. Every statue has the same veiled face.
 	var m := mb(zone)
 	var B := Basis(Vector3.UP, yaw)
-	var col := C(0.25, true)
-	var pc := Color(col.r, 0.25, 1.0)
+	# (v0.8.1, the owner: statues are never cut by the see-through; the hero's x-ray shows you behind one)
+	var col := C(0.25, false)
+	var pc := Color(col.r, 0.25, 0.0)
 	var o := base
 	blob(base, 1.9 * sc)
 	# a real cloth veil hangs down the statue's back from the crown
