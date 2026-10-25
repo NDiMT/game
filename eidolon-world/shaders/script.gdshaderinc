@@ -92,21 +92,24 @@ float script_dist(vec2 uv, float seed, float rows, float cols, float aspect) {
 	vec2 cell = floor(g);
 	vec2 f = fract(g) - 0.5;
 	f.x *= aspect;                                    // cell space in row units
-	// the capital: one of the six named runes, two rows tall, opening the text
-	if (cell.x < 2.0 && cell.y < 2.0) {
+	// the capital: one of the six named runes, two rows tall, opening the text. (v0.8: its distance is
+	// also measured from the cells round it, so its glow is never cut at the edge of its 2 x 2 cells)
+	float dc = 9.0;
+	if (cell.x < 3.0 && cell.y < 3.0) {
 		vec2 cp = (g - vec2(1.0, 1.0));
 		cp.x *= aspect;
-		return rune_dist(vec2(cp.x, -cp.y) * 1.12, int(mod(seed, 6.0))) / 1.12 * 0.62;
+		dc = rune_dist(vec2(cp.x, -cp.y) * 1.12, int(mod(seed, 6.0))) / 1.12 * 0.62;
+		if (cell.x < 2.0 && cell.y < 2.0) return dc;
 	}
 	float row_len = cols - floor(s_hash(vec3(seed, cell.y, 7.0)) * 3.0) - (cell.y == rows - 1.0 ? 3.0 : 0.0);
-	if (cell.x >= row_len) return 9.0;
+	if (cell.x >= row_len) return dc;
 	float h = s_hash(vec3(seed, cell.y, cell.x));
-	if (h < 0.17 && cell.x > 2.0) return 9.0;          // word gap
+	if (h < 0.17 && cell.x > 2.0) return dc;           // word gap
 	int id = int(floor(s_hash(vec3(cell.x * 1.7, cell.y * 3.1, seed)) * 24.0));
 	// a letter, centred in its cell on the row's baseline
 	vec2 lp = vec2(f.x / S_SCALE + 0.25, (-f.y + S_BASE) / S_SCALE);
 	// (only the cells next door could reach into this one: letters are narrower than a cell)
-	return s_letter(lp, id) * S_SCALE;
+	return min(s_letter(lp, id) * S_SCALE, dc);
 }
 
 // the carved-glow look shared by the engraving and the card (glyphs.gdshaderinc)

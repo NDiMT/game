@@ -394,7 +394,7 @@ func show_inscription(s: String, script: Array, source: Vector3) -> void:
 	m.set_shader_parameter("rows", script[1])
 	m.set_shader_parameter("cols", script[2])
 	m.set_shader_parameter("aspect", script[3])
-	var w := minf(330.0, root.size.x - 50.0)
+	var w := minf(330.0, root.size.x - 64.0)          # (v0.8: the panel keeps 14 px clear of the screen edge)
 	var h := clampf(w / float(script[4]), 160.0, 330.0)
 	w = minf(w, h * float(script[4]))
 	inscr_panel.offset_left = -w * 0.5 - 18.0; inscr_panel.offset_right = w * 0.5 + 18.0

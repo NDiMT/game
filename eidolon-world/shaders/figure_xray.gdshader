@@ -22,5 +22,5 @@ void fragment() {
 	if (dot(refl_clip.xyz, refl_clip.xyz) > 0.25 && dot(CAMERA_POSITION_WORLD, refl_clip.xyz) < refl_clip.w - 0.5) discard;
 	float rim = pow(1.0 - abs(dot(NORMAL, VIEW)), 1.8);
 	vec3 col = mix(accent.rgb, accent_core.rgb, 0.55);
-	ALBEDO = col * (0.07 + rim * 0.42);
+	ALBEDO = col * (0.05 + rim * 0.32);
 }

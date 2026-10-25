@@ -122,7 +122,9 @@ func _init(ghost_shader: Shader = null) -> void:
 		for mi in [cloak_mi, hood_mi, veil]: mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 ## the veil lifts (0..1): it swings up about its top edge, showing the unfinished marble face
+var veil_lift := 0.0             # (0..1: how far the veil is lifted)
 func set_veil_lift(k: float) -> void:
+	veil_lift = k
 	if rig:
 		rig.set_veil_lift(k)
 		return

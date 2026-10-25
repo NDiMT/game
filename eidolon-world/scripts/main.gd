@@ -339,6 +339,7 @@ func _process(dt: float) -> void:
 		player.input_dir = Vector2(dir.x, dir.z) if mode == "play" else Vector2.ZERO
 	player.step(dt)
 	world.update_reveal(level.occluders, player.position, dt)
+	level.set_fade(player.position, world.reveal_k > 0.001)
 	puzzles.update(dt)
 	if mode != "title": chapter.update(dt)
 	if mode == "cine":
@@ -939,6 +940,17 @@ func cmd(c: String) -> Variant:
 			if a.size() > 4: world.cam.size = float(a[4])
 		"noauto": quality_auto_dropped = true
 		"quality": set_quality({"1": "high", "0": "low"}.get(a[1], a[1]))
+		"clasp":
+			# dev: the reflections' clasped hands (0..1), now
+			for r in puzzles.reflectors:
+				r.set("_clasp", float(a[1]))
+				r.set("_clasp_t", 999.0)
+		"shadow":
+			# dev: shadow:atlas:filter(0..5):blur:max_distance
+			RenderingServer.directional_shadow_atlas_set_size(int(a[1]), true)
+			RenderingServer.directional_soft_shadow_filter_set_quality(int(a[2]))
+			world.sun.shadow_blur = float(a[3])
+			world.sun.directional_shadow_max_distance = float(a[4])
 		"dpr":
 			world.dpr = float(a[1])
 			world.set_tier(world.tier, world.auto_step)

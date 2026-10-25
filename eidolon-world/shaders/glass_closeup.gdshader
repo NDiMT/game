@@ -19,6 +19,18 @@ uniform vec2 finger = vec2(-9.0);
 uniform float finger_k = 0.0;
 uniform vec2 palm_at = vec2(-9.0);
 uniform float palm_k = 0.0;
+uniform sampler2D her_tex : filter_linear, repeat_disable;    // v0.8: her (the model) rendered behind the pane
+// her coverage seen through fog: a disc of taps whose radius grows with the fog's density
+float her_cov(vec2 uv, float r) {
+	float c = texture(her_tex, uv).a * 0.2;
+	for (int i = 0; i < 8; i++) {
+		float a = float(i) * 0.785398 + 0.3;
+		vec2 o = vec2(cos(a), sin(a) * 0.75);
+		c += texture(her_tex, uv + o * r * 0.45).a * 0.04;
+		c += texture(her_tex, uv + o * r).a * 0.06;
+	}
+	return clamp(c, 0.0, 1.0);
+}
 
 float sd_ell(vec2 p, vec2 r) { return (length(p / r) - 1.0) * min(r.x, r.y); }
 float sd_cap(vec2 p, vec2 a, vec2 b, float r) { vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h) - r; }
@@ -88,12 +100,13 @@ void fragment() {
 	// density), sharp where a stroke has cleared the glass; her palm sharpens where it touches
 	float dens = clamp(cond * 1.35, 0.0, 1.0);
 	float w = mix(0.006, 0.12, dens);
-	float sd = her_sd(uv, t);
 	float hd = hand_sd(uv, finger, finger_k, palm_at, palm_k);
-	float sil = 1.0 - smoothstep(-w, w, sd);
+	float cov = her_cov(uv, w);
+	float sil = smoothstep(0.08, 0.92, cov);
+	float sd = (0.5 - cov) * w * 2.0;                      // (a signed distance from her coverage)
 	float wh = mix(w, 0.004, palm_k * (1.0 - smoothstep(0.0, 0.08, hd + 0.02)));
 	float hand = 1.0 - smoothstep(-wh, wh, hd);
-	float glowd = exp(-max(min(sd, hd), 0.0) / (0.04 + 0.16 * dens));     // the fog scatters her shadow
+	float glowd = max(her_cov(uv, w * 2.5 + 0.05), exp(-max(hd, 0.0) / (0.04 + 0.16 * dens)));     // the fog scatters her shadow
 	vec3 shade = vec3(0.07, 0.08, 0.09);
 	back = mix(back, shade, max(sil, hand) * 0.9);
 	back = mix(back, back * 0.82, glowd * 0.35 * (1.0 - max(sil, hand)));

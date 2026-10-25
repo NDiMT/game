@@ -15,7 +15,7 @@ uniform float cols = 7.0;
 uniform float aspect = 1.0;
 uniform float near = 0.0;
 void fragment() {
-	vec2 uv = (UV - 0.5) * 1.1 + 0.5;
+	vec2 uv = (UV - 0.5) * 1.16 + 0.5;      // (v0.8: a margin, so the capital's glow is never cut)
 	uv.x = 1.0 - uv.x;          // carved MIRRORED: letters reversed, lines running right to left
 	                            // (only a mirror shows them the way they were written)
 	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) discard;

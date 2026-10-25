@@ -37,6 +37,9 @@ var glass: ColorRect
 var glass_mat: ShaderMaterial
 var mask_vp: SubViewport
 var mine_vp: SubViewport
+var her_vp: SubViewport           # v0.8: HER, the re-rigged model, close behind the pane (head and shoulders)
+var her_fig: Figure
+var her_pose := Figure.Pose.new()
 var ink: Ink
 var close_r := Rect2()
 var her_first: Array = []         # strokes on screen (panel units) she writes first
@@ -187,6 +190,26 @@ func _ready() -> void:
 	glass_mat.shader = preload("res://shaders/glass_closeup.gdshader")
 	glass_mat.set_shader_parameter("mask", mask_vp.get_texture())
 	glass_mat.set_shader_parameter("mask_mine", mine_vp.get_texture())
+	# v0.8: her silhouette is the model itself (rendered small into its own little world; the pane blurs
+	# it by the fog's density)
+	her_vp = SubViewport.new()
+	her_vp.size = Vector2i(150, 200)
+	her_vp.transparent_bg = true
+	her_vp.own_world_3d = true
+	her_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(her_vp)
+	var hc := Camera3D.new()
+	hc.projection = Camera3D.PROJECTION_ORTHOGONAL
+	hc.keep_aspect = Camera3D.KEEP_WIDTH
+	hc.size = 0.62
+	hc.position = Vector3(0.0, 0.84, 2.0)
+	her_vp.add_child(hc)
+	her_fig = Figure.new(preload("res://shaders/ghost.gdshader"))
+	her_fig.set_param("project", 0.0)
+	her_fig.set_param("vis", 1.0)
+	her_fig.rotation.y = PI                   # facing you, through the glass
+	her_vp.add_child(her_fig)
+	glass_mat.set_shader_parameter("her_tex", her_vp.get_texture())
 	glass.material = glass_mat
 	panel.add_child(glass)
 	resized.connect(_layout)
@@ -476,6 +499,17 @@ func _process(dt: float) -> void:
 		glass_mat.set_shader_parameter("finger_k", _fk)
 		glass_mat.set_shader_parameter("palm_at", ink.palm / Vector2(MASK))
 		glass_mat.set_shader_parameter("palm_k", ink.palm_k)
+		# she sways and breathes; her hand rises to the glass as she writes
+		her_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		var p := her_pose
+		p.breath = sin(_t * 1.65)
+		p.head_yaw = 0.06 * sin(_t * 0.37)
+		p.head_roll = 0.03 * sin(_t * 0.53)
+		p.lean_z = 0.02 * sin(_t * 0.53)
+		p.reach = _fk * 0.8 + ink.palm_k * 0.9
+		her_fig.apply_pose(p)
+	elif her_vp and her_vp.render_target_update_mode != SubViewport.UPDATE_DISABLED:
+		her_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 func _gui_input(e: InputEvent) -> void:
 	if not visible: return

@@ -250,6 +250,7 @@ func _plan() -> void:
 		var ry: float = (C().pool_pieces[Vector2i(0, 1)]["node"] as Node3D).rotation.y
 		ok("a turn is a quarter, snapped", C().state["pool_turns"][0] == 1 and absf(ry + PI * 0.5) < 0.01, "%.3f" % ry)
 		ok("turning grinds", game.sfx.played.get("grind", 0) > 0)
+		ok("the first turn answers the shore: its joint lights at once", C().pool_joints_lit.has("0,1,E") and C().pool_joints_lit.size() >= 1, str(C().pool_joints_lit.keys()))
 		walk_to(-1.6, 1.7))
 	step_until("out onto your slab", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
 	step_do(func() -> void: ok("standing on your slab over the water", P().x < -1.5 and absf(P().y) < 0.01, str(P())))
@@ -260,6 +261,16 @@ func _plan() -> void:
 	step_do(func() -> void: ok("still broken: hers are not stone yet", not C().state["stones"]))
 	for k in 3: _pool_press(3, "turn the fourth slab from the south rim (%d)" % (k + 1))
 	step_until("the path is whole: her slabs rise as stone", func() -> bool: return C().state["stones"], 2.0)
+	step_do(func() -> void:
+		var all_lit := true
+		for c in C().pool_pieces:
+			var pc: Dictionary = C().pool_pieces[c]
+			if pc["real"] < 0: continue
+			for k in (pc["seams"] as Array).size():
+				all_lit = all_lit and C()._joint_ok(c, Ch1Geo.rot_conn(pc["dirs"][k], int(C().state["pool_turns"][pc["real"]])))
+		ok("every joint of the whole path is answered (its seam lit)", all_lit and C().pool_joints_lit.size() >= 14, str(C().pool_joints_lit.size()))
+		ok("a joint lighting chimes", game.sfx.played.get("chime", 0) > 0)
+		ok("her stones break the surface: spray and a deep rumble", game.sfx.played.get("grind", 0) > 4))
 	step_wait(2.6)
 	step_do(func() -> void:
 		ok("her slabs are solid now", game.level.on_ground(Ch1Geo.cell_pos(Vector2i(4, 2))) and (C().pool_pieces[Vector2i(4, 2)]["node"] as Node3D).visible)
@@ -874,7 +885,7 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("cinematic: letterbox", game.mode == "cine" and game.ui.letterbox > 0.99)
 		ok("cinematic: the shrine wakes", float(game.puzzles.shrine_ring.get_shader_parameter("lit")) > 0.9)
-		ok("cinematic: near geometry cut away, the crystal lifted out of the shot", game.world.cam.near > 30.0 and game.puzzles.crystal_lift > 1.0))
+		ok("cinematic: near geometry cut away, the crystal lifted out of the shot", game.world.cam.near > World.DIST - 10.0 and game.puzzles.crystal_lift > 1.0))
 	step_wait(9.0)
 	step_do(func() -> void:
 		ok("cinematic: her reflection in the shrine pool", C().her.visible and float(C().her.body_mat.get_shader_parameter("vis")) > 0.5)
@@ -884,7 +895,7 @@ func _plan() -> void:
 		ok("cinematic: palm to palm", game.player.extra_reach > 0.9 and C().her.pose.reach > 0.9)
 		ok("cinematic: Katoptron lights on you both", game.player.fig.runes_awake == 1 and C().her.runes_awake == 1))
 	step_wait(16.0)          # t = 38 (veil lift swell)
-	step_do(func() -> void: ok("cinematic: her veil lifts", C().her.veil.rotation.x < -1.5, "%.2f" % C().her.veil.rotation.x))
+	step_do(func() -> void: ok("cinematic: her veil lifts", C().her.veil_lift > 0.8 and C().her.veil.transform != C().her.rig.veil_base, "%.2f" % C().her.veil_lift))
 	step_wait(16.0)          # t = 54
 	step_do(func() -> void: ok("cinematic: she is gone; the pool shows only you", not C().her.visible and C().mine.visible))
 	step_wait(3.0)

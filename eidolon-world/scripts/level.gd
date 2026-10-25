@@ -59,6 +59,7 @@ var interacts: Array[Interact] = []
 var zones := {}
 var marble_mat: ShaderMaterial
 var marble_occ_mat: ShaderMaterial          # v0.8: occluders fade (alpha) in the see-through
+var fade_zones: Array = []                  # [mesh instance, single mesh, split mesh, aabb, split now]
 var noise_tex: ImageTexture
 var col_full: Array[Transform3D] = []
 var col_stump: Array[Transform3D] = []
@@ -260,6 +261,25 @@ func move(pos: Vector3, d: Vector3, rad: float) -> Vector3:
 		if circle_ok(q, rad) and not blocked(q, rad) and absf(height_at(q) - pos.y) < 0.3:
 			return Vector3(q.x, height_at(q), q.y)
 	return Vector3(p.x, height_at(p), p.y)
+
+## v0.8: while the see-through is open, the zones round the wanderer wear their split meshes (occluders
+## fade with an alpha edge); otherwise every zone is one opaque draw as before
+func set_fade(p: Vector3, on: bool) -> void:
+	for z in fade_zones:
+		var mi: MeshInstance3D = z[0]
+		if mi.material_override != null and mi.material_override != marble_mat and not z[4]: continue   # (a zone with its own material)
+		var bb: AABB = z[3]
+		var want := on and bb.grow(9.0).has_point(p)
+		if want == z[4]: continue
+		z[4] = want
+		if want:
+			mi.mesh = z[2]
+			mi.material_override = null
+			for si in mi.mesh.get_surface_count():
+				mi.set_surface_override_material(si, marble_occ_mat if mi.mesh.surface_get_name(si) == "occ" else marble_mat)
+		else:
+			mi.mesh = z[1]
+			mi.material_override = marble_mat
 
 ## v0.7: the collision audit. `roots`: the nodes whose static props (meshes built by MB that are direct
 ## children) are audited besides the level's own zones, columns, stumps and rubble. A primitive is SOLID
@@ -1025,9 +1045,12 @@ func _commit() -> void:
 		if m.is_empty(): continue
 		var mi := MeshInstance3D.new()
 		mi.name = "Zone_" + k
-		mi.mesh = m.commit_split()
-		for si in mi.mesh.get_surface_count():
-			mi.set_surface_override_material(si, marble_occ_mat if mi.mesh.surface_get_name(si) == "occ" else marble_mat)
+		mi.mesh = m.commit()
+		mi.material_override = marble_mat
+		# v0.8: a second version of it with its possible occluders as a surface of their own (they FADE in
+		# the see-through); swapped in only near the wanderer while the see-through is open (draw calls)
+		var split := MB.split_occ(mi.mesh)
+		if split != mi.mesh: fade_zones.append([mi, mi.mesh, split, mi.mesh.get_aabb(), false])
 		if k == "Hn": mi.layers = PlanarMirror.LAYER_BEHIND      # the great mirror's own wall
 		add_child(mi)
 	_markers()

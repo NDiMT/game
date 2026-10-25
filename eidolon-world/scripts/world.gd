@@ -146,7 +146,7 @@ func _build_light() -> void:
 	# v0.8 smoother shadows: the shadow box is fitted to what the iso camera sees (the camera sits DIST
 	# away, the visible ground spans about DIST +- 13 m), a larger atlas on High / Auto, PCF soft
 	# filtering, biases retuned for the smaller texels (Godot keeps the directional shadow texel-snapped)
-	sun.shadow_blur = 1.6
+	sun.shadow_blur = 1.4
 	sun.shadow_bias = 0.03
 	sun.shadow_normal_bias = 0.8
 	sun.light_angular_distance = 0.8
@@ -304,10 +304,12 @@ func set_tier(t: String, step := 0) -> void:
 		env.glow_intensity = 0.62
 		for i in 7: env.set_glow_level(i, [0.0, 0.0, 1.25, 1.1, 0.0, 0.0, 0.0][i])
 	sun.shadow_enabled = true
-	sun.shadow_blur = 1.2 if low else 1.6
-	# (v0.8: High: a 4096 atlas, soft-high PCF; Auto: 4096, soft-low; Low: 2048, soft-low)
+	sun.shadow_blur = 1.2 if low else 1.4
+	# (v0.8: a 4096 atlas on High / Auto (texels about 4x smaller with the fitted shadow box), 2048 on Low;
+	# PCF soft filtering. The Compatibility renderer's higher PCF levels blur the thin shadows of branches
+	# and railings almost away, so the soft-very-low kernel with a little blur is kept on every tier)
 	RenderingServer.directional_shadow_atlas_set_size(2048 if low else 4096, true)
-	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if high else RenderingServer.SHADOW_QUALITY_SOFT_LOW)
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW)
 	dust_mm.multimesh.visible_instance_count = 50 if low else -1
 	ash_mm.multimesh.visible_instance_count = 25 if low else -1
 
