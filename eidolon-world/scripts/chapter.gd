@@ -33,7 +33,7 @@ const TURN_FACES := [[[6, 0.0], [6, 1.0], [3, 0.0], [5, 0.0]], [[7, 1.0], [7, 0.
 	[[8, 0.0], [3, 0.0], [8, 1.0], [5, 0.0]]]        # per statue: faces N, E, S, W at rest: [design, flip]
 const TURN_SOLUTION := [0, 1, 0]                       # orientation that puts the true rune toward the glass
 const TURN_START := [2, 3, 1]
-const TURN_X := [10.6, 12.0, 13.4]
+const TURN_X := [11.4, 12.8, 14.2]          # (v0.8.1: the garden starts at x 10.3 now; before its narrowed glass)
 const TURN_Z := -13.5
 const FOUR_R := 3.9
 const FOUR_ANGLES := [20.0, 160.0, -20.0, -160.0]      # degrees round the tholos; the last is empty
@@ -1232,15 +1232,15 @@ func open_gallery(instant := false) -> void:
 # ------------------------------------------------------------------ 5. garden: the turned ones
 func _build_garden() -> void:
 	# the great glass on the garden's north edge, a real planar reflection (shared with the Hall)
-	var mm := puzzles._mirror_quad(Vector3(12.0, 3.3, -14.93), Basis(), Vector2(5.9, 4.4), false, 1.0)
+	var mm := puzzles._mirror_quad(Vector3(12.8, 3.3, -14.93), Basis(), Vector2(4.5, 4.4), false, 1.0)
 	mm.set_shader_parameter("ncols", 0)
 	var pm := PlanarMirror.new()
 	add_child(pm)
 	pm.setup(Vector3.BACK, -14.93, mm, game.world.env)
 	var r := Reflector.new()
 	r.kind = "mirror"; r.plane_n = Vector3.BACK; r.plane_d = -14.92
-	r.clip_c = Vector3(12.0, 3.3, -14.92); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.UP; r.clip_h = Vector2(2.9, 2.15)
-	r.region = Level.R(7, -15, 17, -5)
+	r.clip_c = Vector3(12.8, 3.3, -14.92); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.UP; r.clip_h = Vector2(2.2, 2.15)
+	r.region = Level.R(10.3, -15, 17, -5)
 	r.planar = pm
 	puzzles._add_refl(r)
 	garden_refl = r

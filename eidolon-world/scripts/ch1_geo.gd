@@ -159,31 +159,34 @@ static func _stair_of_breath(lv: Level) -> void:
 	lv.balustrade(z, Vector2(-10.1, -12.75), Vector2(-5.2, -12.75), 1.0)
 	lv.rubble(Vector3(-12.1, 1.0, -14.1), 0.3, 3)
 
-# ------------------------------------------------------------------ 4. the shard gallery
+# ------------------------------------------------------------------ 4. the shadow chamber (v0.8.1)
+## The old narrow Shard Gallery is a readable chamber now: "Where Her Shadow Fell". It opens off the Hall's
+## east door; the true arch on its east side (seen through the shard) leads into the Garden. The walls
+## toward the camera (east and south) are low parapets, so the whole floor reads from the iso view.
+const SC_ROOM := Rect2(5.0, -18.4, 5.0, 8.8)          # x 5..10, z -18.4..-9.6
 static func _gallery(lv: Level) -> void:
 	var z := "GL"
-	lv.slab(z, R(5.0, -18.4, 7.0, -5.6), 1.0, 0.7, 0.0)
-	lv.walk(R(5.0, -18.4, 7.0, -5.6), 1.0, NAN, -1, "GL")
-	# east wall (garden side) with the hidden passage; the illusory stretch is a separate zone
-	lv.wall(z, R(6.85, -18.6, 7.2, -9.2), 1.0, 4.0, true)
-	lv.wall(z, R(6.85, -7.8, 7.2, -5.4), 1.0, 4.0, true)
-	lv.wall("GLs", R(6.85, -9.2, 7.2, -7.8), 1.0, 4.0, true)
-	lv.box(z, Vector3(7.02, 4.3, -8.5), Vector3(0.4, 0.5, 1.8), 0.25, true)
-	lv.ob_rect(R(6.85, -18.6, 7.25, -9.2))
-	lv.ob_rect(R(6.85, -7.8, 7.25, -5.4))
-	lv.ob_rect(R(6.85, -9.2, 7.25, -7.8), "gallery_secret")
-	# west wall where the hall ends, and the dead end to the south
-	lv.wall(z, R(4.6, -11.0, 5.0, -5.4), 1.0, 4.0, true)
-	lv.wall(z, R(5.0, -5.9, 6.85, -5.5), 1.0, 4.0, true)
-	# arches overhead every few metres, cracked mirror panes on the walls (the panes are puzzle objects)
-	for zz in [-17.0, -14.2, -12.0, -6.4]:
-		lv.box(z, Vector3(6.0, 4.15, zz), Vector3(2.4, 0.3, 0.4), 0.25, true)
-	# two false doorways painted in relief on the east wall (only the shard shows which way is real)
-	for zz in [-15.6, -12.6]:
-		lv.box(z, Vector3(6.82, 2.4, zz - 0.75), Vector3(0.08, 2.8, 0.16), 0.25)
-		lv.box(z, Vector3(6.82, 2.4, zz + 0.75), Vector3(0.08, 2.8, 0.16), 0.25)
-		lv.box(z, Vector3(6.82, 3.85, zz), Vector3(0.08, 0.18, 1.66), 0.25)
-	lv.statue(z, Vector3(5.55, 1.0, -6.4), PI * 0.5, 0.75, 0.5)
+	lv.slab(z, R(5.0, -18.4, 10.0, -9.6), 1.0, 0.7, 0.0)
+	lv.walk(R(5.0, -18.4, 10.0, -9.6), 1.0, NAN, -1, "GL")
+	# the far walls (north, and the Hall's side): tall, the backdrop
+	lv.wall(z, R(4.6, -18.7, 10.3, -18.4), 1.0, 4.4, true)
+	lv.ob_rect(R(4.6, -18.75, 10.35, -18.4))
+	# the near walls: low parapets (east and south), so the floor and her shadows read
+	lv.wall(z, R(10.0, -18.4, 10.3, -11.7), 1.0, 2.05, true)
+	lv.wall(z, R(10.0, -10.3, 10.3, -9.3), 1.0, 2.05, true)
+	lv.wall(z, R(5.0, -9.6, 10.3, -9.3), 1.0, 2.05, true)
+	lv.ob_rect(R(10.0, -18.4, 10.35, -11.7))
+	lv.ob_rect(R(10.0, -10.3, 10.35, -9.3))
+	lv.ob_rect(R(4.6, -9.6, 10.35, -9.25))
+	# the true way on: an arch in the east parapet, a wall in it that is not there (seen through the shard)
+	lv.box(z, Vector3(10.15, 2.6, -11.85), Vector3(0.36, 3.2, 0.36), 0.25, true)
+	lv.box(z, Vector3(10.15, 2.6, -10.15), Vector3(0.36, 3.2, 0.36), 0.25, true)
+	lv.box(z, Vector3(10.15, 4.35, -11.0), Vector3(0.5, 0.4, 2.1), 0.25, true)
+	lv.wall("GLs", R(10.0, -11.7, 10.3, -10.3), 1.0, 4.15, true)
+	lv.ob_rect(R(10.0, -11.7, 10.35, -10.3), "gallery_secret")
+	# the threshold out to the Garden
+	lv.slab(z, R(10.0, -11.7, 10.4, -10.3), 1.0, 0.7, 0.0)
+	lv.walk(R(9.9, -11.6, 10.45, -10.4), 1.0, NAN, -1, "GL")
 
 # ------------------------------------------------------------------ 6. the hollow walk
 static func _hollow_walk(lv: Level) -> void:
