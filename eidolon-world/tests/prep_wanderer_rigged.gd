@@ -102,7 +102,7 @@ func _init() -> void:
 	var am := ArrayMesh.new()
 	var fmt: int = mi1.mesh.surface_get_format(0) & ~Mesh.ARRAY_FLAG_COMPRESS_ATTRIBUTES
 	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a, [], {}, fmt | Mesh.ARRAY_FORMAT_COLOR | Mesh.ARRAY_FORMAT_TEX_UV2)
-	am.surface_set_material(0, mi1.mesh.surface_get_material(0))
+	# (no material: the game sets its own; the GLB's textures are not imported)
 	print(ResourceSaver.save(am, "res://assets/models/wanderer_rigged_mesh.res", ResourceSaver.FLAG_COMPRESS))
 	n0.free(); n1.free()
 	quit()
