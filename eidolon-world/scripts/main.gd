@@ -428,7 +428,7 @@ func _update_air() -> void:
 	var q := Vector2(player.position.x, player.position.z)
 	var g := level.region_at(q)
 	var w: float = AREA_WIND.get(area, 0.35)
-	if g and (g.name in EXPOSED or g.name.begins_with("stone") or g.name == "WK"): w = 0.95
+	if g and (g.name in EXPOSED or g.name.begins_with("pool") or g.name == "WK"): w = 0.95
 	sfx.set_wind(w * (0.7 if awake else 1.0))
 
 func _update_area() -> void:
@@ -665,15 +665,22 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 		"scale_groan": sfx.play("creak", -4.0, 1.0 + clampf(float(data) * 0.02, -0.2, 0.2))
 		"hint": sfx.play("glass_tink", -30.0, 1.4)
 		# v0.6
-		"sink":
-			sfx.play("step_wet", -4.0, 0.62)
-			sfx.play("whoosh", -18.0, 0.5)
+		"pool_turn":
+			sfx.play("grind", -9.0, 1.15)
+			sfx.play("step_wet", -12.0, 0.8)
+		"pool_whole":
+			sfx.play("chime", -14.0, 0.8)
+			sfx.play("step_wet", -6.0, 0.55)
 		"hall_push": sfx.play("grind", -8.0, 0.9)
 		"hall_take": sfx.play("cloth", -16.0, 1.1)
 		"hall_place": sfx.play("grind", -14.0, 1.4)
 		"hall_nope": sfx.play("glass_tink", -22.0, 0.5)
+		"hall_reset":
+			sfx.play("grind", -10.0, 0.7)
+			sfx.play("chime_hall", -20.0, 0.6)
 		"hall_lock":
 			sfx.note(["A", "D", "E"][int(data) % 3], -11.0)
+			sfx.play("chime_hall", -16.0, 1.0)
 			chapter.progress()
 		"brazier": sfx.play("whoosh", -17.0, 1.7)
 		"gutter":
@@ -710,7 +717,8 @@ func jump(room: String) -> void:
 	var ps := puzzles.state
 	for i in idx:
 		match Names.ORDER[i]:
-			"waking_pool": cs["stones"] = true
+			"waking_pool":
+				cs["stones"] = true; cs["pool_turns"] = Chapter._pool_solution()
 			"stair_breath": cs["breath"] = true
 			"hall_glass":
 				cs["shard"] = true; cs["hall_door"] = true
@@ -997,7 +1005,7 @@ func state_dict() -> Dictionary:
 		"chapter": chapter.state, "lens": chapter.lens_on, "calm": snappedf(chapter.calm, 0.01), "cine_t": snappedf(cine.t, 0.1) if cine else -1.0,
 		"letterbox": snappedf(ui.letterbox, 0.01), "glass": ui.glass_talk.phase, "glass_tries": ui.glass_talk.tries, "glass_score": ui.glass_talk.last_score, "hint_t": snappedf(chapter.hint_t, 0.1), "lift": snappedf(chapter.lift_h, 0.01),
 		"beam_good": puzzles.beam_good, "carry": chapter.carrying, "sc_carry": chapter.sc_carry, "torque": [chapter.scale_torque().x, chapter.scale_torque().y],
-		"reveal": snappedf(world.reveal_k, 0.01), "falls": chapter.pool_falls, "feet": chapter.maze_feet.filter(func(f: MeshInstance3D) -> bool: return f.visible).size()}
+		"reveal": snappedf(world.reveal_k, 0.01), "feet": chapter.maze_feet.filter(func(f: MeshInstance3D) -> bool: return f.visible).size()}
 
 func _door_slot_centers() -> Array:
 	var out := []

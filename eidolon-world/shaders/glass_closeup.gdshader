@@ -14,7 +14,7 @@ uniform float t = 0.0;
 // v0.7: her hand behind the glass (mask uv): the fingertip while she writes, the palm she presses flat
 uniform vec2 finger = vec2(-9.0);
 uniform float finger_k = 0.0;
-uniform vec2 palm = vec2(-9.0);
+uniform vec2 palm_at = vec2(-9.0);
 uniform float palm_k = 0.0;
 
 float sd_ell(vec2 p, vec2 r) { return (length(p / r) - 1.0) * min(r.x, r.y); }
@@ -80,7 +80,7 @@ void fragment() {
 	float dens = clamp(cond * 1.35, 0.0, 1.0);
 	float w = mix(0.006, 0.12, dens);
 	float sd = her_sd(uv, t);
-	float hd = hand_sd(uv, finger, finger_k, palm, palm_k);
+	float hd = hand_sd(uv, finger, finger_k, palm_at, palm_k);
 	float sil = 1.0 - smoothstep(-w, w, sd);
 	float wh = mix(w, 0.004, palm_k * (1.0 - smoothstep(0.0, 0.08, hd + 0.02)));
 	float hand = 1.0 - smoothstep(-wh, wh, hd);
@@ -90,8 +90,9 @@ void fragment() {
 	back = mix(back, back * 0.82, glowd * 0.35 * (1.0 - max(sil, hand)));
 	back += vec3(0.42, 0.5, 0.56) * 0.08 * (1.0 - smoothstep(0.0, w + 0.01, abs(sd))) * (1.0 - dens);    // a cold rim where she is clear
 	vec3 fogc = vec3(0.82, 0.85, 0.87);
-	vec3 c = mix(back, fogc, cond * 0.86);
-	c *= 1.0 - max(sil, hand) * 0.22 * cond;              // seen through the fog, a darker shape
+	float her_m = max(sil, hand);
+	vec3 c = mix(back, fogc, cond * 0.86 * (1.0 - 0.3 * her_m));
+	c *= 1.0 - her_m * 0.42 * cond;                       // seen through the fog, a darker, diffuse shape
 	c = mix(c, vec3(0.80, 0.84, 0.85), palm_k * (1.0 - smoothstep(-0.004, 0.006, hd)) * 0.5);   // the pressed palm, pale
 	// droplets at the edges of a wiped line: tiny bright beads
 	float rim = smoothstep(0.08, 0.3, wipe) * (1.0 - smoothstep(0.35, 0.7, wipe));

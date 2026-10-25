@@ -78,6 +78,15 @@ Instrument recordings:
   - Tam-tam / wind gong, bowed (`Percussion/gongs%20&%20tamtams/22tamtam.bow.aif`): shard_gallery shimmer
   - Soundmined found objects (`Soundmined/Fabric.aif`, `Soundmined/Broken-Glass.aif`): cloth, footsteps,
     shard pickup
+  - Oboe, pp (`Woodwinds/oboe/Oboe.pp.Bb3B3.aiff`, `.C4B4`, `.C5B5`) and B♭ clarinet, pp
+    (`Woodwinds/Bbclarinet/BbClar.pp.D3B3.aiff`, `.C4B4`): the aulos (melody pipe and drone pipe)
+  - Castanets, pp (`Percussion/hand%20percussion/castanets/castanet1.pp.aif`, `castanet2.pp.aif`): krotala;
+    tambourines, pp (`Percussion/tambourines/tambourine1–3.normal.pp.aif`): the tympanon (frame drum) heartbeat
+
+Ancient Greek colour: the lyre/kithara is built from the Concert Harp samples (damped, body resonances, string
+buzz, doubled strings); finger cymbals (kymbala) from the crotales. The **Seikilos epitaph** (1st century CE,
+public domain) is quoted in `events/ev_seikilos_lyre.ogg` and `events/ev_seikilos_aulos.ogg`. The pitches follow the
+modern transcription on Wikipedia (https://en.wikipedia.org/wiki/Seikilos_epitaph), transposed down a whole tone.
 - **FreePats — Glass (glasses of water)** — https://freepats.zenvoid.org/ChromaticPercussion/glass.html
   (file: https://freepats.zenvoid.org/ChromaticPercussion/Glass/Glass-SFZ+FLAC-20191227.7z). Licence: CC0 1.0.
   Used for: glass chimes, rune_flip / glass_tap tones.

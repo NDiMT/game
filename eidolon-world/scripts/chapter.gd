@@ -51,10 +51,6 @@ var _moved := false
 
 # pool / stair
 const POOL_SHORE := Vector3(-0.3, 0.0, 1.7)
-var stone_nodes := {}               # illusion stone index -> its node (it sinks)
-var pool_mat: ShaderMaterial
-var pool_falls := 0
-var _sinking := false
 var breath_mats := {}              # id -> ShaderMaterial
 var stair_veil: ShaderMaterial
 var _breathing := ""
@@ -124,7 +120,7 @@ func _init(g: Game) -> void:
 	reset_state()
 
 func reset_state() -> void:
-	state = {"stones": false, "breath": false, "shard": false, "hall_door": false, "gallery": false,
+	state = {"stones": false, "pool_turns": Ch1Geo.POOL_START.duplicate(), "breath": false, "shard": false, "hall_door": false, "gallery": false,
 		"gallery_lit": [],
 		"hall": {"drum": [DRUM_START.x, DRUM_START.y], "brazier": [BRAZ_START.x, BRAZ_START.y], "bust": BUST_START, "locks": [false, false, false]},
 		"turned": TURN_START.duplicate(), "turned_done": false, "garden_breath": false,
@@ -211,112 +207,193 @@ func _statue_mesh(sc: float, plinth: float, mat_id := 0.25) -> ArrayMesh:
 	m.sphere(at.call(0, 2.19, 0.03), Vector3(0.165, 0.15, 0.17) * sc, col, 12, 6, hb)
 	return m.commit()
 
-# ------------------------------------------------------------------ 1. waking pool: "Trust the Water"
-## Stepping stones stand in the water, two lanes of seven; some are illusions. Still water (stand still)
-## reflects ONLY the real stones, and only near you; every step ripples it again. An illusion sinks
-## softly under you and the pool gives you back to the shore.
+# ------------------------------------------------------------------ 1. waking pool: "The Pool of Halves"
+## A broken path of stone beams crosses the pool. Some beams are YOURS: they stand in the water on
+## pivots (straights and Ls) and turn a quarter at a touch, from the shore or from a beam you stand on.
+## The others exist only in the reflection (HERS): you see them in the still water, nothing stands there.
+## Turn yours until yours and hers, together, make one unbroken path in the water: then the truth in the
+## reflection becomes real, her beams rise into your world as solid stone, and you walk across.
+## Every beam end that meets a neighbour carries a glowing seam (in the water, and on your stones).
+var pool_pieces := {}               # cell -> {"node", "conn", "real" index or -1, "regions": [Region, Region], "seams": [...]}
+var pool_mat: ShaderMaterial
+var pool_turns_made := 0
+var _pool_tw := {}
+
+func _arm_rect(p: Vector2, d: String) -> Rect2:
+	var hx := absf(Ch1Geo.POOL_DX) * 0.5
+	var hz := Ch1Geo.POOL_DZ * 0.5
+	var w := Ch1Geo.BEAM_W * 0.5
+	match d:
+		"E": return Level.R(p.x - w, p.y - w, p.x + hx, p.y + w)
+		"W": return Level.R(p.x - hx, p.y - w, p.x + w, p.y + w)
+		"N": return Level.R(p.x - w, p.y - hz, p.x + w, p.y + w)
+		_: return Level.R(p.x - w, p.y - w, p.x + w, p.y + hz)
+
+static func _dir3(d: String) -> Vector3:
+	return {"E": Vector3(1, 0, 0), "W": Vector3(-1, 0, 0), "N": Vector3(0, 0, -1), "S": Vector3(0, 0, 1)}[d]
+
+func _pool_piece_mesh(conn: String) -> ArrayMesh:
+	var m := MB.new()
+	var hx := absf(Ch1Geo.POOL_DX) * 0.5
+	var hz := Ch1Geo.POOL_DZ * 0.5
+	var w := Ch1Geo.BEAM_W
+	for d in conn:
+		var v := _dir3(d)
+		var L := (hx if absf(v.x) > 0.5 else hz) + w * 0.5 - 0.03
+		var c := v * (L * 0.5 - w * 0.5)
+		var size := Vector3(L if absf(v.x) > 0.5 else w, 0.9, w if absf(v.x) > 0.5 else L)
+		m.box(Vector3(c.x, -0.45, c.z), size, Color(0.5, 0.25, 0.0))
+	return m.commit()
+
 func _build_pool() -> void:
-	var real_m := MB.new()
-	for k in Ch1Geo.POOL_COLS * 2:
-		var c := Ch1Geo.stone_pos(k)
-		var real := k in Ch1Geo.POOL_REAL
-		var m := real_m if real else MB.new()
-		var o := Vector3(c.x, 0.0, c.y) if real else Vector3.ZERO
-		var tw := 0.08 * sin(k * 2.3)
-		m.box(o + Vector3(0, -0.45, 0), Vector3(Ch1Geo.STONE, 0.9, Ch1Geo.STONE), Color(0.5, 0.5, 0.0, 1.0), Basis(Vector3.UP, tw))
-		m.box(o + Vector3(0, -0.02, 0), Vector3(Ch1Geo.STONE - 0.08, 0.06, Ch1Geo.STONE - 0.08), Color(0.6, 0.25, 0.0, 1.0), Basis(Vector3.UP, tw))
-		if not real:
-			var mi := puzzles.marble_instance(m.commit(), self)
-			mi.position = Vector3(c.x, 0.0, c.y)
-			stone_nodes[k] = mi
-		var h := Vector2(0.625, 0.65)
-		var r := Level.R(c.x - h.x, c.y - h.y, c.x + h.x, c.y + h.y)
-		if k / 2 == 0: r = Level.R(c.x - h.x, c.y - h.y, -0.55, c.y + h.y)      # (reaches the island's edge)
-		level.walk(r, 0.0, NAN, -1, "stone%d" % k)
-	puzzles.marble_instance(real_m.commit(), self)
-	# the reflections of the real stones, on the water
-	pool_mat = _smat("res://shaders/pool_stones.gdshader", {"noise_tex": level.noise_tex, "count": Ch1Geo.POOL_COLS * 2,
-		"water_y": Ch1Geo.WATER_Y, "top_y": 0.0, "calm": 0.0, "calm_r": 0.0})
-	var arr := PackedVector4Array()
-	for k in Ch1Geo.POOL_COLS * 2:
-		var c := Ch1Geo.stone_pos(k)
-		arr.append(Vector4(c.x, c.y, Ch1Geo.STONE * 0.5, 1.0 if k in Ch1Geo.POOL_REAL else 0.0))
-	pool_mat.set_shader_parameter("stones", arr)
+	var pieces := {}
+	for c in Ch1Geo.POOL_GHOSTS: pieces[c] = [Ch1Geo.POOL_GHOSTS[c], -1]
+	for i in Ch1Geo.POOL_REALS.size(): pieces[Ch1Geo.POOL_REALS[i][0]] = [Ch1Geo.POOL_REALS[i][1], i]
+	for c in pieces:
+		var base: String = pieces[c][0]
+		var ri: int = pieces[c][1]
+		var p := Ch1Geo.cell_pos(c)
+		var node := Node3D.new()
+		node.position = Vector3(p.x, 0.0, p.y)
+		add_child(node)
+		puzzles.marble_instance(_pool_piece_mesh(base), node)
+		# the path carved into its top: a glowing inlay from the centre out along each arm, opening into a
+		# wide notch where it meets the next stone (they turn with it)
+		var seams := []
+		for d in base:
+			var v := _dir3(d)
+			var L := absf(Ch1Geo.POOL_DX) * 0.5 if absf(v.x) > 0.5 else Ch1Geo.POOL_DZ * 0.5
+			var sm := _smat("res://shaders/floor_mark.gdshader", {"kind": 3.0, "intensity": 1.0})
+			seams.append(_mi(_plane(Vector2(0.4, L)), sm, Transform3D(Basis(Vector3.UP, atan2(-v.x, -v.z)), v * (L * 0.5 - 0.02) + Vector3(0, 0.012, 0)), node))
+		if ri >= 0:
+			# a pivot boss: it turns
+			var bm := MB.new()
+			bm.cyl(Vector3(0, 0.02, 0), 0.2, 0.22, 0.05, Color(0.5, 1.0, 0.0), 16)
+			puzzles.marble_instance(bm.commit(), node)
+			puzzles.rune_quad(node, Vector3(0, 0.05, 0), Vector2(0.42, 0.42), Basis(Vector3.RIGHT, -PI * 0.5), -1.0, 0.6)
+			var idx := ri
+			level.add_interact("pool_turn%d" % ri, Vector3(p.x, 0.0, p.y), "turn", func() -> void: turn_pool(idx), 1.3,
+				func() -> bool: return not state["stones"] and not _on_pool_piece(idx) and not _pool_tw.has(idx))
+		var regs := []
+		for k in 2: regs.append(level.walk(Rect2(), 0.0, NAN, -1, "pool%d_%d_%d" % [c.x, c.y, k], false))
+		pool_pieces[c] = {"node": node, "base": base, "real": ri, "regions": regs, "seams": seams}
+	# the reflections, on the water
+	pool_mat = _smat("res://shaders/pool_stones.gdshader", {"noise_tex": level.noise_tex, "water_y": Ch1Geo.WATER_Y, "top_y": 0.0, "pulse": 0.0})
 	pool_mat.render_priority = -1            # (under the sheen: a fixed order, never a sort flicker)
 	var pm := _mi(_plane(Vector2(9.0, 3.8)), pool_mat, Transform3D(Basis(), Vector3(-5.1, Ch1Geo.WATER_Y + 0.012, 1.7)))
 	pm.layers = PlanarMirror.LAYER_MAIN_FX
 
-func _update_pool(dt: float) -> void:
-	var p := game.player.position
-	var q := Vector2(p.x, p.z)
-	var pool := Level.R(-9.6, -0.2, -0.6, 3.6)
-	var cq := Vector2(clampf(q.x, pool.position.x, pool.end.x), clampf(q.y, pool.position.y, pool.end.y))
-	var near := cq.distance_to(q) < 1.8 and absf(p.y) < 0.4
-	var still := game.player.speed01 < 0.04 and game.mode == "play" and _moved and not _sinking
-	var target := 0.0
-	if near: target = 1.0 if still else 0.0
-	else: target = 0.4
-	calm = move_toward(calm, target, dt * (0.42 if target > calm else 1.6))
-	puzzles.water_over_mat.set_shader_parameter("calm", calm)
-	if puzzles.pool_refl: puzzles.pool_refl.puppet.set_param("ripple_amt", 1.0 - calm)
-	# the still circle round you grows while you wait (a hint after two falls: a little wider, brighter)
-	var reach := 3.0 if pool_falls < 2 else 3.8
-	pool_mat.set_shader_parameter("calm", 1.0 if state["stones"] else calm)
-	pool_mat.set_shader_parameter("calm_c", q)
-	pool_mat.set_shader_parameter("calm_r", 40.0 if state["stones"] else 0.6 + reach * smoothstep(0.15, 1.0, calm))
-	pool_mat.set_shader_parameter("glint", 1.0 if pool_falls >= 2 else 0.0)
-	if _sinking or game.mode != "play": return
-	var g := level.region_at(q)
-	if g and g.name.begins_with("stone") and absf(p.y) < 0.05:
-		var k := int(g.name.substr(5))
-		if not (k in Ch1Geo.POOL_REAL) and not state["stones"]:
-			var c := Ch1Geo.stone_pos(k)
-			# (the stone is under you, not just its walk cell's edge)
-			if absf(q.x - c.x) < Ch1Geo.STONE * 0.5 + 0.05 and absf(q.y - c.y) < Ch1Geo.STONE * 0.5 + 0.05:
-				_sink(k)
-	if not state["stones"] and p.x < -9.45 and absf(p.y) < 0.05:
-		_reveal_stones(false)
+func _piece_conn(c: Vector2i) -> String:
+	var pc: Dictionary = pool_pieces[c]
+	if pc["real"] < 0: return pc["base"]
+	return Ch1Geo.rot_conn(pc["base"], int(state["pool_turns"][pc["real"]]))
 
-## an illusion gives way: it sinks softly with you, and the pool returns you to the shore
-func _sink(k: int) -> void:
-	_sinking = true
-	pool_falls += 1
-	var pl := game.player
-	pl.locked = true
-	game.auto_target = Vector3.INF
-	event.emit("sink", k)
-	var st: Node3D = stone_nodes[k]
-	var y0 := pl.position.y
+## yours: walkable (and turned); hers: walkable only once the path is whole
+func _pool_apply(c: Vector2i) -> void:
+	var pc: Dictionary = pool_pieces[c]
+	var conn := _piece_conn(c)
+	var p := Ch1Geo.cell_pos(c)
+	var solid: bool = pc["real"] >= 0 or state["stones"]
+	for k in 2:
+		var g: Level.Region = pc["regions"][k]
+		g.r = _arm_rect(p, conn[mini(k, conn.length() - 1)])
+		g.enabled = solid
+	if pc["real"] >= 0: (pc["node"] as Node3D).rotation.y = -float(state["pool_turns"][pc["real"]]) * PI * 0.5
+	else:
+		(pc["node"] as Node3D).visible = state["stones"]
+		(pc["node"] as Node3D).position.y = 0.0
+
+func _pool_reflect() -> void:
+	var boxes := PackedVector4Array()
+	var infos := PackedVector4Array()
+	for c in pool_pieces:
+		var pc: Dictionary = pool_pieces[c]
+		var p := Ch1Geo.cell_pos(c)
+		var hers := 1.0 if pc["real"] < 0 and not state["stones"] else 0.0
+		for d in _piece_conn(c):
+			var r := _arm_rect(p, d)
+			boxes.append(Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
+			var v := _dir3(d)
+			infos.append(Vector4(v.x, v.z, hers, 1.0))
+	pool_mat.set_shader_parameter("arm_box", boxes)
+	pool_mat.set_shader_parameter("arm_info", infos)
+	pool_mat.set_shader_parameter("count", boxes.size())
+
+func _on_pool_piece(ri: int) -> bool:
+	var c: Vector2i = Ch1Geo.POOL_REALS[ri][0]
+	var q := Vector2(game.player.position.x, game.player.position.z)
+	for g in pool_pieces[c]["regions"]:
+		if (g as Level.Region).enabled and (g as Level.Region).r.grow(0.3).has_point(q): return true
+	return false
+
+func turn_pool(ri: int) -> void:
+	if state["stones"] or _pool_tw.has(ri): return
+	var c: Vector2i = Ch1Geo.POOL_REALS[ri][0]
+	var turns: Array = state["pool_turns"]
+	turns[ri] = (int(turns[ri]) + 1) % 4
+	pool_turns_made += 1
+	event.emit("pool_turn", ri)
+	var node: Node3D = pool_pieces[c]["node"]
+	# (its walk regions go while it turns, and come back in the new shape)
+	for g in pool_pieces[c]["regions"]: (g as Level.Region).enabled = false
 	var tw := create_tween()
-	tw.tween_method(func(v: float) -> void:
-		st.position.y = -0.55 * v
-		pl.position.y = y0 - 0.5 * v, 0.0, 1.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tw.parallel().tween_callback(func() -> void: game.ui.fade_to(1.0, 0.5)).set_delay(0.6)
-	tw.tween_interval(0.45)
+	_pool_tw[ri] = tw
+	var goal := node.rotation.y - PI * 0.5
+	tw.tween_property(node, "rotation:y", goal, 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func() -> void:
-		pl.teleport(POOL_SHORE, PI * 0.5)
-		game.world.snap_to(pl.position)
-		calm = 0.0)
-	tw.tween_method(func(v: float) -> void: st.position.y = -0.55 * (1.0 - v), 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE)
-	tw.parallel().tween_callback(func() -> void: game.ui.fade_to(0.0, 0.7))
-	tw.tween_callback(func() -> void:
-		pl.locked = false
-		_sinking = false)
+		_pool_tw.erase(ri)
+		_pool_apply(c)
+		_pool_reflect()
+		if Ch1Geo.pool_path(state["pool_turns"]): _complete_pool(false))
 
-## the far bank reached: the pool keeps its secret no longer; the illusions sink for good
-func _reveal_stones(instant: bool) -> void:
+## the reflection is whole: her beams rise into your world, solid
+func _complete_pool(instant: bool) -> void:
 	state["stones"] = true
-	for k in Ch1Geo.POOL_COLS * 2:
-		if k in Ch1Geo.POOL_REAL: continue
-		level.set_enabled("stone%d" % k, false)
-		var st: Node3D = stone_nodes[k]
+	for c in pool_pieces:
+		var pc: Dictionary = pool_pieces[c]
+		if pc["real"] >= 0: continue
+		var node: Node3D = pc["node"]
+		node.visible = true
 		if instant:
-			st.visible = false
+			node.position.y = 0.0
 		else:
+			node.position.y = -0.95
 			var tw := create_tween()
-			tw.tween_property(st, "position:y", -0.8, 2.4).set_trans(Tween.TRANS_SINE).set_delay(0.3 * (k / 2))
-			tw.tween_callback(func() -> void: st.visible = false)
-	if not instant: event.emit("solve", "waking_pool")
+			tw.tween_interval(0.25 * (c.x + c.y * 0.3))
+			tw.tween_property(node, "position:y", 0.0, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	for c in pool_pieces: _pool_apply(c)
+	_pool_reflect()
+	if not instant:
+		event.emit("pool_whole", null)
+		event.emit("solve", "waking_pool")
+
+func _update_pool(_dt: float) -> void:
+	# the pool is still now (no waiting: what it shows is always there to read)
+	calm = 0.85
+	puzzles.water_over_mat.set_shader_parameter("calm", calm)
+	if puzzles.pool_refl: puzzles.pool_refl.puppet.set_param("ripple_amt", 0.15)
+	pool_mat.set_shader_parameter("pulse", smoothstep(12.0, 16.0, float(pool_turns_made)) if not state["stones"] else 0.0)
+
+## (tests) every setting of your beams that makes the path whole
+static func pool_solutions() -> Array:
+	var out := []
+	for a in 4:
+		for b in 4:
+			for c in 4:
+				for d in 4:
+					if Ch1Geo.pool_path([a, b, c, d]): out.append([a, b, c, d])
+	return out
+
+static func _pool_solution() -> Array:
+	var s := pool_solutions()
+	return s[0] if s.size() > 0 else Ch1Geo.POOL_START.duplicate()
+
+func _apply_pool() -> void:
+	for ri in _pool_tw.keys(): (_pool_tw[ri] as Tween).kill()
+	_pool_tw.clear()
+	pool_turns_made = 0
+	for c in pool_pieces: _pool_apply(c)
+	_pool_reflect()
 
 # ------------------------------------------------------------------ 2. stair of breath
 ## a small glass to breathe on (own_glass false: a patch of a larger mirror that is already there)
@@ -335,6 +412,13 @@ func _breath_glass(id: String, center: Vector3, basis: Basis, size: Vector2, gly
 func _build_stair() -> void:
 	_breath_glass("stair", Vector3(-10.345, 1.75, -5.3), Basis(Vector3.UP, -PI * 0.5), Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
 	level.add_interact("breathe_stair", Vector3(-11.1, 0.5, -5.3), "breathe", func() -> void: breathe("stair"), 1.25)
+	# v0.7: before the glass, the whole rune she will ask about, carved large in the cliff wall, written
+	# normally (her half on the left as she will write it, the half you must give her on the right)
+	var half: Array = GlassTalk.TEMPLATES["together_half"][0]
+	var gp := PackedVector2Array()
+	for q in GlassTalk.smooth(PackedVector2Array(half), 3): gp.append(q * 0.85 + Vector2(0.0, 0.05))
+	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.75})
+	_mi(_quad(Vector2(1.3, 1.3)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(-10.19, 1.75, -2.6)))
 	stair_veil = _smat("res://shaders/mist_veil.gdshader", {"noise_tex": level.noise_tex, "density": 1.0, "glow": 0.35})
 	_mi(_quad(Vector2(1.9, 3.2)), stair_veil, Transform3D(Basis(), Vector3(-11.3, 0.5 + 1.6, -6.8)))
 
@@ -418,6 +502,12 @@ var hall_moves := 0                     # moves since the last thing set right (
 var _drum_tw: Tween
 var _bust_tw: Tween
 var shard_take: Level.Interact
+var push_arrow: MeshInstance3D
+var push_arrow_mat: ShaderMaterial
+var bust_arc: MeshInstance3D
+var bust_arc_mat: ShaderMaterial
+var goal_mats: Array[ShaderMaterial] = []
+var match_glows: Array[ShaderMaterial] = []
 
 func _drum_mesh() -> ArrayMesh:
 	# a fluted column drum lying on its side (its axis along x), a chip broken from one face
@@ -453,11 +543,13 @@ func _bust_mesh() -> ArrayMesh:
 	m.box(Vector3(0, 0.5, 0), Vector3(0.55, 1.0, 0.55), c)
 	m.box(Vector3(0, 1.03, 0), Vector3(0.66, 0.06, 0.66), c)
 	m.cyl(Vector3(0, 1.3, 0), 0.24, 0.3, 0.5, c, 14)
+	m.box(Vector3(0, 1.36, -0.2), Vector3(0.42, 0.4, 0.2), c)
 	m.sphere(Vector3(0, 1.55, 0.01), Vector3(0.3, 0.1, 0.19), c, 14, 5)
 	m.cyl(Vector3(0, 1.69, 0.02), 0.14, 0.25, 0.3, c, 14)
 	var hb := Basis(Vector3.RIGHT, -0.2)
 	m.sphere(Vector3(0, 1.86, 0.0), Vector3(0.155, 0.19, 0.17), c, 14, 7, hb)
-	m.sphere(Vector3(0, 1.85, -0.075), Vector3(0.1, 0.13, 0.09), c, 10, 5, hb)
+	m.sphere(Vector3(0, 1.85, -0.1), Vector3(0.11, 0.14, 0.11), c, 10, 5, hb)
+	m.sphere(Vector3(0, 1.83, -0.17), Vector3(0.05, 0.07, 0.05), c, 8, 4, hb)
 	m.sphere(Vector3(0, 1.93, 0.03), Vector3(0.165, 0.15, 0.17), c, 12, 6, hb)
 	return m.commit()
 
@@ -488,6 +580,8 @@ func _build_hall() -> void:
 	(braz_node.get_child(braz_node.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
 	var eye := puzzles.rune_quad(bust_pivot, Vector3(0, 1.86, -0.2), Vector2(0.2, 0.2), Basis(Vector3.UP, PI), 0.0, 0.7)
 	(bust_pivot.get_child(bust_pivot.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
+	puzzles.rune_quad(bust_pivot, Vector3(0, 1.38, -0.31), Vector2(0.4, 0.4), Basis(Vector3.UP, PI), 0.0, 1.0)
+	(bust_pivot.get_child(bust_pivot.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
 	for k in 3:
 		var t := _hall_thing([dmesh, bmesh, umesh][k], true)
 		twins.append(t)
@@ -496,6 +590,8 @@ func _build_hall() -> void:
 		twin_mats.append(g)
 		if k == 2:
 			var e2 := puzzles.rune_quad(t, Vector3(0, 1.86, -0.2), Vector2(0.2, 0.2), Basis(Vector3.UP, PI), 0.0, 0.8)
+			(t.get_child(t.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_DOUBLE
+			puzzles.rune_quad(t, Vector3(0, 1.38, -0.31), Vector2(0.4, 0.4), Basis(Vector3.UP, PI), 0.0, 1.0)
 			(t.get_child(t.get_child_count() - 1) as MeshInstance3D).layers = PlanarMirror.LAYER_DOUBLE
 	twins[0].position = Vector3(DRUM_GOAL.x, 1.0, DRUM_GOAL.y)
 	twins[1].position = Vector3(BRAZ_GOAL.x, 1.0, BRAZ_GOAL.y)
@@ -509,6 +605,32 @@ func _build_hall() -> void:
 	level.add_interact("hall_place", Vector3.ZERO, "place", place_brazier, 0.6, func() -> bool: return carrying)
 	level.add_interact("hall_turn", BUST_POS + Vector3(0, 0, 0.7), "turn", turn_bust, 0.95, func() -> bool: return not _locked(2) and not carrying)
 	shard_take = level.add_interact("take_shard", SHARD_SPOT, "shard", take_shard, 1.0, func() -> bool: return state["hall_door"] and not state["shard"])
+	# v0.7: marks. The push arrow (shown when you stand square to the drum); the bust's facing pointer and
+	# its turning arc; the remembered places as faint outlines (in the glass only), and on your floor a
+	# cell that lights when the thing on it is where the glass remembers it
+	push_arrow_mat = _smat("res://shaders/floor_mark.gdshader", {"kind": 0.0, "intensity": 0.0})
+	push_arrow = _mi(_plane(Vector2(0.6, 0.6)), push_arrow_mat, Transform3D(Basis(), Vector3(0, 1.012, 0)))
+	push_arrow.layers = PlanarMirror.LAYER_MAIN_FX
+	bust_arc_mat = _smat("res://shaders/floor_mark.gdshader", {"kind": 2.0, "intensity": 0.0, "sweep": 0.0})
+	bust_arc = _mi(_plane(Vector2(1.5, 1.5)), bust_arc_mat, Transform3D(Basis(), BUST_POS + Vector3(0, 0.014, 0)))
+	bust_arc.layers = PlanarMirror.LAYER_MAIN_FX
+	var goals := [Vector3(DRUM_GOAL.x, 1.0, DRUM_GOAL.y), Vector3(BRAZ_GOAL.x, 1.0, BRAZ_GOAL.y), BUST_POS]
+	for k in 3:
+		var om := _smat("res://shaders/floor_mark.gdshader", {"kind": 1.0, "intensity": 0.7})
+		var o := _mi(_plane(Vector2(1.0, 1.0)), om, Transform3D(Basis(), goals[k] + Vector3(0, 0.01, 0)))
+		o.layers = PlanarMirror.LAYER_DOUBLE                 # the remembered places: only in the glass
+		var lm := _smat("res://shaders/floor_mark.gdshader", {"kind": 1.0, "intensity": 0.0, "fill": 0.0})
+		_mi(_plane(Vector2(1.0, 1.0)), lm, Transform3D(Basis(), goals[k] + Vector3(0, 0.011, 0))).layers = 1 | PlanarMirror.LAYER_MAIN_FX
+		goal_mats.append(lm)
+		match_glows.append(puzzles.glow_quad(self, goals[k] + Vector3(0, 1.2, 0), 2.2, Palette.ACCENT, 0.0))
+	# the reset altar by the way in: everything not yet set right goes back to where it was found
+	var am := MB.new()
+	am.box(Vector3(-3.9, 1.35, -15.8), Vector3(0.55, 0.7, 0.55), Color(0.5, 0.25, 0.0))
+	am.box(Vector3(-3.9, 1.73, -15.8), Vector3(0.66, 0.06, 0.66), Color(0.5, 0.25, 0.0))
+	puzzles.marble_instance(am.commit(), self)
+	puzzles.rune_quad(self, Vector3(-3.9, 1.765, -15.8), Vector2(0.5, 0.5), Basis(Vector3.RIGHT, -PI * 0.5), 1.0, 0.5)
+	level.ob_rect(Level.R(-4.2, -16.1, -3.6, -15.5))
+	level.add_interact("hall_reset", Vector3(-3.9, 1.0, -15.8), "turn", reset_hall, 0.95, func() -> bool: return not state["hall_door"] and not carrying)
 	level.inscription("h_hall", Vector3(-3.4, 1.0, -12.6), "I moved what she loved in this hall, and walled up her door.\nThe glass kept all of it, as it was.", 1.2,
 		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-3.4, 1.012, -12.95)), Vector2(1.15, 0.78))
 	# the shard: a sliver of mirror, glowing (it lies on the threshold once the door is back)
@@ -582,9 +704,13 @@ func push_drum() -> void:
 	hall_moves += 1
 	event.emit("hall_push", null)
 	(hall_obs[0] as Level.Obstacle).c = Vector2(c.x, c.y)
+	if _drum_tw: _drum_tw.kill()
 	_drum_tw = create_tween()
-	_drum_tw.tween_property(drum_node, "position", _cell_v3(c), 0.55).set_trans(Tween.TRANS_SINE)
-	_drum_tw.parallel().tween_property(drum_node, "rotation:y", drum_node.rotation.y + 0.25 * (1 if dir.x + dir.y > 0 else -1), 0.55)
+	var from := drum_node.position
+	_drum_tw.tween_method(func(v: float) -> void:
+		drum_node.position = from.lerp(_cell_v3(c), v)
+		if fmod(v * 6.0, 1.0) < 0.12: game.world.dust_puff(drum_node.position + Vector3(randf_range(-0.3, 0.3), 0.0, randf_range(-0.3, 0.3))),
+		0.0, 1.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_drum_tw.tween_callback(func() -> void:
 		_check_hall()
 		if not _locked(0) and not _drum_movable():
@@ -641,6 +767,13 @@ func turn_bust() -> void:
 	var goal := roundf((bust_pivot.rotation.y + PI * 0.5) / (PI * 0.5)) * PI * 0.5
 	_bust_tw = create_tween()
 	_bust_tw.tween_property(bust_pivot, "rotation:y", goal, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# the arc: a quarter swept on the floor from where it looked to where it looks now
+	bust_arc.rotation.y = goal - PI * 0.5
+	_bust_tw.parallel().tween_method(func(v: float) -> void: bust_arc_mat.set_shader_parameter("sweep", v), 0.0, 1.0, 0.45).set_trans(Tween.TRANS_SINE)
+	_bust_tw.tween_interval(0.3)
+	_bust_tw.tween_callback(func() -> void:
+		bust_arc_mat.set_shader_parameter("sweep", 0.0)
+		bust_arc.rotation.y = goal)
 	_bust_tw.tween_callback(_check_hall)
 
 ## is each thing where (and as) the glass remembers it?
@@ -658,6 +791,7 @@ func _check_hall() -> void:
 			hs["locks"][k] = true
 			hall_moves = 0
 			_lock_thing(k, false)
+			(match_glows[k] as ShaderMaterial).set_shader_parameter("intensity", 1.6)
 			event.emit("hall_lock", k)
 	if hs["locks"] == [true, true, true] and not state["hall_door"]:
 		_open_hall_door(false)
@@ -682,6 +816,21 @@ func _update_hall(dt: float) -> void:
 		var fwd := Vector3(-sin(pl.yaw), 0, -cos(pl.yaw))
 		braz_node.position = braz_node.position.lerp(pl.position + fwd * 0.55 + Vector3(0, 0.25, 0), 1.0 - exp(-dt * 14.0))
 		braz_node.rotation.y = pl.yaw
+	var pd := _push_dir() if not state["hall_door"] else Vector2i.ZERO
+	var ak: float = push_arrow_mat.get_shader_parameter("intensity")
+	push_arrow_mat.set_shader_parameter("intensity", move_toward(ak, 0.9 if pd != Vector2i.ZERO else 0.0, dt * 4.0))
+	if pd != Vector2i.ZERO:
+		var dp := Vector3(pd.x, 0, pd.y)
+		push_arrow.transform = Transform3D(Basis(Vector3.UP, atan2(-dp.x, -dp.z)), Vector3(hs["drum"][0], 1.012, hs["drum"][1]) - dp * 0.62)
+	bust_arc_mat.set_shader_parameter("intensity", 0.0 if _locked(2) else 0.55)
+	if not (_bust_tw and _bust_tw.is_running()): bust_arc.rotation.y = bust_pivot.rotation.y
+	var m3 := hall_matches()
+	for k in 3:
+		var gm: ShaderMaterial = goal_mats[k]
+		gm.set_shader_parameter("intensity", move_toward(float(gm.get_shader_parameter("intensity")), 0.9 if m3[k] else 0.0, dt * 2.0))
+		gm.set_shader_parameter("fill", 1.0 if m3[k] else 0.0)
+		var mg: ShaderMaterial = match_glows[k]
+		mg.set_shader_parameter("intensity", maxf(0.0, float(mg.get_shader_parameter("intensity")) - dt * 0.8))
 	var it_push: Level.Interact = level.interact_by_id("hall_push")
 	it_push.pos = Vector3(hs["drum"][0], 1.0, hs["drum"][1])
 	level.interact_by_id("hall_take").pos = Vector3(hs["brazier"][0], 1.0, hs["brazier"][1])
@@ -714,6 +863,20 @@ func _apply_hall() -> void:
 		(twin_mats[k] as ShaderMaterial).set_shader_parameter("intensity", 0.9 if k == 1 else 0.0)
 	shard_node.visible = state["hall_door"] and not state["shard"]
 	shard_node.position = SHARD_SPOT + Vector3(0, 0.55, 0)
+
+## the altar by the way in: what is not yet set right goes back to where it was found
+func reset_hall() -> void:
+	if state["hall_door"] or carrying: return
+	var hs := _hall_state()
+	if not hs["locks"][0]:
+		hs["drum"] = [DRUM_START.x, DRUM_START.y]
+	if not hs["locks"][1]:
+		hs["brazier"] = [BRAZ_START.x, BRAZ_START.y]
+	if not hs["locks"][2]:
+		hs["bust"] = BUST_START
+	hall_moves = 0
+	event.emit("hall_reset", null)
+	_apply_hall()
 
 func take_shard() -> void:
 	if state["shard"]: return
@@ -2049,13 +2212,7 @@ func _build_wisp() -> void:
 ## where the gentle hint should drift (INF: nothing to hint in this space)
 func hint_target(area: String) -> Vector3:
 	match area:
-		"waking_pool":
-			if state["stones"]: return Vector3.INF
-			# the next real stone beyond you
-			for k in Ch1Geo.POOL_REAL:
-				var c := Ch1Geo.stone_pos(k)
-				if c.x < game.player.position.x - 0.7: return Vector3(c.x, 0.5, c.y)
-			return Vector3.INF
+		"waking_pool": return Vector3(-4.2, 0.6, 1.7) if not state["stones"] else Vector3.INF
 		"stair_breath": return Vector3(-10.5, 1.6, -5.3) if not state["breath"] else Vector3.INF
 		"hall_glass":
 			if not state["hall_door"]: return Vector3(0.0, 2.6, -20.3)        # the glass, never the answer
@@ -2142,13 +2299,8 @@ func apply_state() -> void:
 	# (a v0.5 save: the hall was won by touching the glass; set its things back as the glass remembers)
 	if state["hall_door"] and state["hall"]["locks"] != [true, true, true]:
 		state["hall"] = {"drum": [DRUM_GOAL.x, DRUM_GOAL.y], "brazier": [BRAZ_GOAL.x, BRAZ_GOAL.y], "bust": BUST_GOAL, "locks": [true, true, true]}
-	if state["stones"]: _reveal_stones(true)
-	else:
-		for k in Ch1Geo.POOL_COLS * 2:
-			level.set_enabled("stone%d" % k, true)
-			if stone_nodes.has(k):
-				stone_nodes[k].visible = true
-				stone_nodes[k].position.y = 0.0
+	if state["stones"]: state["pool_turns"] = _pool_solution()
+	_apply_pool()
 	if state["breath"]: _open_stair(true)
 	else:
 		level.set_enabled("breath_gate", true)

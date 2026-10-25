@@ -12,18 +12,59 @@ extends RefCounted
 ##   The Scales       x[26,33.4]     z[-52,-44.6]  y 2   (the lift rises to the high walkway, y 4)
 ##   High walkway     x[30.4,32.4]   z[-44.6,-23.4] y 4, stair down to the Eidolon Ledge
 
-# v0.6 "Trust the Water": 7 columns x 2 lanes of stepping stones across the pool (stone k = col * 2 + lane,
-# lane 0 north z 1.05, lane 1 south z 2.35). Only POOL_REAL exist; the rest are illusions (they sink).
-const POOL_X0 := -1.3
+# v0.7 "The Pool of Halves": a broken path of stone beams across the pool, a 7 x 3 grid of cells (col
+# grows WEST from the island, row grows south). Some pieces stand in YOUR world and turn on pivots (L and
+# straight); the others exist only in the reflection (hers) until the path is whole.
+# Connectors: N (row - 1), S (row + 1), E (col - 1), W (col + 1).
+const POOL_X0 := -1.275
 const POOL_DX := -1.25
-const POOL_LANES := [1.05, 2.35]
+const POOL_Z0 := 0.5
+const POOL_DZ := 1.2
 const POOL_COLS := 7
-const POOL_REAL := [1, 3, 2, 4, 6, 7, 9, 11, 13]         # the safe path, in walking order
-const STONE := 0.8                                       # the visible stone (its walk cell is 1.25 x 1.3)
+const POOL_ROWS := 3
+const POOL_GHOSTS := {Vector2i(1, 0): "SW", Vector2i(3, 0): "ES", Vector2i(3, 1): "NS", Vector2i(4, 2): "EW", Vector2i(5, 2): "EW",
+	Vector2i(6, 2): "EW", Vector2i(1, 2): "NW", Vector2i(2, 2): "EW"}
+const POOL_REALS := [[Vector2i(0, 1), "NS"], [Vector2i(1, 1), "ES"], [Vector2i(2, 0), "NS"], [Vector2i(3, 2), "NE"]]   # base shapes
+const POOL_START := [0, 0, 0, 0]            # quarter turns from the base shape
+const POOL_IN := Vector2i(0, 1)             # entered from its E edge (the island)
+const POOL_OUT := Vector2i(6, 2)            # left by its W edge (the far landing)
+const BEAM_W := 0.82                        # a beam's width
 const WATER_Y := -0.42
 
-static func stone_pos(k: int) -> Vector2:
-	return Vector2(POOL_X0 + POOL_DX * (k / 2), POOL_LANES[k % 2])
+static func cell_pos(c: Vector2i) -> Vector2:
+	return Vector2(POOL_X0 + POOL_DX * c.x, POOL_Z0 + POOL_DZ * c.y)
+
+## a quarter turn (clockwise seen from above): N -> E -> S -> W
+static func rot_conn(conn: String, k: int) -> String:
+	var m := {"N": "E", "E": "S", "S": "W", "W": "N"}
+	var out := conn
+	for i in posmod(k, 4):
+		var t := ""
+		for ch in out: t += m[ch]
+		out = t
+	return out
+
+static func dir_v(d: String) -> Vector2i:
+	return {"N": Vector2i(0, -1), "S": Vector2i(0, 1), "E": Vector2i(-1, 0), "W": Vector2i(1, 0)}[d]
+
+## is there one unbroken path from the island to the far landing, given the real pieces' turns?
+static func pool_path(turns: Array) -> bool:
+	var pieces := {}
+	for c in POOL_GHOSTS: pieces[c] = POOL_GHOSTS[c]
+	for i in POOL_REALS.size(): pieces[POOL_REALS[i][0]] = rot_conn(POOL_REALS[i][1], int(turns[i]))
+	if not pieces.has(POOL_IN) or not ("E" in pieces[POOL_IN]): return false
+	var opp := {"N": "S", "S": "N", "E": "W", "W": "E"}
+	var seen := {POOL_IN: true}
+	var stack: Array = [POOL_IN]
+	while not stack.is_empty():
+		var c: Vector2i = stack.pop_back()
+		for d in pieces[c]:
+			if c == POOL_OUT and d == "W": return true
+			var n: Vector2i = c + dir_v(d)
+			if pieces.has(n) and opp[d] in pieces[n] and not seen.has(n):
+				seen[n] = true
+				stack.append(n)
+	return false
 
 # hollow walk grid (cell (i, j) centre = (17.5 + i + 0.5, -15 + j + 0.5))
 const HW_ORIGIN := Vector2(17.5, -15.0)

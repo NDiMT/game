@@ -63,7 +63,9 @@ class Ink extends Node2D:
 	func _draw() -> void:
 		for h in her: _poly(h[0], h[1], Color(1, 0, 0), width)
 		for m in mine: _poly(m[0], 1.0, Color(m[1], 0, 0), width * 1.15)
-		for h in hint: _poly(h[0], h[1], Color(0, h[2], 0), width * 0.8)
+		for h in hint:
+			if h.size() > 3 and h[3]: _dots(h[0], h[1], Color(0, h[2], 0), width * 0.32)
+			else: _poly(h[0], h[1], Color(0, h[2], 0), width * 0.8)
 		if finger_k > 0.0:
 			for i in 4: draw_circle(finger, 9.0 - i * 2.0, Color(0, 0, 0.25 * finger_k))
 		if palm_k > 0.0:
@@ -115,6 +117,19 @@ class Ink extends Node2D:
 		var cs := PackedColorArray([col, col, col, col])
 		for k in sp.size() - 1:
 			draw_primitive(PackedVector2Array([left[k], left[k + 1], right[k + 1], right[k]]), cs, PackedVector2Array())
+	## v0.7: a dotted ghost of a stroke (a hint after a wrong try)
+	func _dots(pts: PackedVector2Array, prog: float, col: Color, r: float) -> void:
+		var L := 0.0
+		for i in pts.size() - 1: L += pts[i].distance_to(pts[i + 1])
+		var acc := 0.0
+		var next := 0.0
+		for i in pts.size() - 1:
+			var seg := pts[i].distance_to(pts[i + 1])
+			while next <= acc + seg and next <= L * prog:
+				draw_circle(pts[i].lerp(pts[i + 1], (next - acc) / maxf(seg, 0.0001)), r, col)
+				next += 15.0
+			acc += seg
+
 	func _ellipse(c: Vector2, r: Vector2, col: Color) -> void:
 		var pts := PackedVector2Array()
 		for i in 24: pts.append(c + Vector2(cos(TAU * i / 24.0) * r.x, sin(TAU * i / 24.0) * r.y))
@@ -384,6 +399,17 @@ func _wrong() -> void:
 		if k < ink.mine.size():
 			ink.mine[k][1] = v
 			ink.queue_redraw(), 1.0, 0.0, 2.6).set_trans(Tween.TRANS_SINE)
+	if tries == 1:
+		# v0.7: a faint dotted ghost of the missing stroke, for two seconds
+		tw.parallel().tween_callback(func() -> void:
+			ink.hint.clear()
+			for tg in target: ink.hint.append([_px(tg), 1.0, 0.0, true]))
+		tw.parallel().tween_method(func(v: float) -> void:
+			for h in ink.hint: h[2] = 0.55 * sin(v * PI)
+			ink.queue_redraw(), 0.0, 1.0, 2.0)
+		tw.tween_callback(func() -> void:
+			ink.hint.clear()
+			ink.queue_redraw())
 	if tries == 2:
 		# she draws her half again, slowly, then traces the missing part once, faintly
 		tw.tween_callback(func() -> void:
@@ -427,7 +453,7 @@ func _process(dt: float) -> void:
 		glass_mat.set_shader_parameter("finger", ink.finger / Vector2(MASK))
 		_fk = move_toward(_fk, ink.finger_k, dt * 1.6)
 		glass_mat.set_shader_parameter("finger_k", _fk)
-		glass_mat.set_shader_parameter("palm", ink.palm / Vector2(MASK))
+		glass_mat.set_shader_parameter("palm_at", ink.palm / Vector2(MASK))
 		glass_mat.set_shader_parameter("palm_k", ink.palm_k)
 
 func _gui_input(e: InputEvent) -> void:
