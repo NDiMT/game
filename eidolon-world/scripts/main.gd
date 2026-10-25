@@ -368,6 +368,8 @@ func _process(dt: float) -> void:
 				bridge_focus -= dt
 				off = (Vector3(27.7, 2.0, -26.5) - p) * 0.7         # watch the bridge rise
 				off.y = 0.0
+			elif area == "garden_veiled" and not chapter.state["turned_done"] and Chapter.garden_lean(p) != Vector3.ZERO:
+				off = Chapter.garden_lean(p)                       # (v0.9.1) before the turned ones: lean toward the glass
 			else:
 				off = wonders.lean(p)                              # (v0.9) a wonder space: lean toward it
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))

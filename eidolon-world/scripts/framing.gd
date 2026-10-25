@@ -23,6 +23,11 @@ const ROOMS := {
 	"gate_four": {"y": 2.0, "extra": [Vector3(25.0, 3.0, -30.75)]},
 	"first_shrine": {"y": 2.0, "extra": []},
 }
+## an interact whose piece is not where you stand to use it: the piece itself (its centre, 0.5 m below: the
+## test samples half a metre up), and its corners
+const PIECE_OF := {"breathe_garden": [Vector3(16.0, 1.85, -14.86), Vector3(15.55, 0.95, -14.86), Vector3(16.45, 0.95, -14.86),
+	Vector3(15.55, 2.75, -14.86), Vector3(16.45, 2.75, -14.86)]}
+
 ## (moved at runtime: never part of a room's list)
 const DYNAMIC := ["hall_push", "hall_take", "hall_place", "ledge_push"]
 
@@ -47,6 +52,13 @@ static func points(k: String, level: Level) -> Array:
 				var q := Vector2(clampf(p.x, g.r.position.x, g.r.end.x), clampf(p.z, g.r.position.y, g.r.end.y))
 				var dd := q.distance_to(Vector2(p.x, p.z))
 				if dd < best: best = dd; ra = a
-		if ra == k: pts.append(["interact " + it.id, p])
+		if ra == k:
+			if PIECE_OF.has(it.id):
+				var n := 0
+				for q in PIECE_OF[it.id]:
+					pts.append(["interact " + it.id + (" glass" if n == 0 else " glass corner %d" % n), q])
+					n += 1
+			else:
+				pts.append(["interact " + it.id, p])
 	for e in ROOMS[k]["extra"]: pts.append(["piece", e])
 	return pts

@@ -33,8 +33,9 @@ const TURN_FACES := [[[6, 0.0], [6, 1.0], [3, 0.0], [5, 0.0]], [[7, 1.0], [7, 0.
 	[[8, 0.0], [3, 0.0], [8, 1.0], [5, 0.0]]]        # per statue: faces N, E, S, W at rest: [design, flip]
 const TURN_SOLUTION := [0, 1, 0]                       # orientation that puts the true rune toward the glass
 const TURN_START := [2, 3, 1]
-const TURN_X := [12.0, 13.4, 14.8]          # (v0.9.1: 0.6 m east: from the fixed view, the left one's mirror face fell off
-                                            # the glass's left edge; all three now show whole in it: garden_mirror_view)
+const TURN_X := [12.25, 13.8, 15.35]        # (v0.9.1: east and a little wider apart: from the fixed view the left one's mirror
+                                            # face fell off the glass's left edge, and one statue hid another's rune in it;
+                                            # now all three runes show whole in it: garden_mirror_view, tests/framing_test)
 const TURN_Z := -13.5
 const FOUR_R := 3.9
 const FOUR_ANGLES := [20.0, 160.0, -20.0, -160.0]      # degrees round the tholos; the last is empty
@@ -1242,12 +1243,20 @@ static func garden_glass_point(p: Vector3) -> Vector3:
 	var r := Vector3(p.x, p.y, 2.0 * GARDEN_GLASS_Z - p.z)
 	return r + back * ((GARDEN_GLASS_Z - r.z) / back.z)
 
+## (v0.9.1) standing before the turned ones, the camera leans toward the glass so all three runes in it show
+## from any of the three steps (a pan of the follow target, never a zoom)
+static func garden_lean(p: Vector3) -> Vector3:
+	if p.x < 11.3 or p.x > 16.3 or p.z < -13.3 or p.z > -11.4 or absf(p.y - 1.0) > 0.3: return Vector3.ZERO
+	var off := (Vector3(13.3, p.y, -13.6) - p) * 0.75
+	off.y = 0.0
+	return off
+
 ## (v0.9.1, tests) from a player standing at `stand`: every turned one's north rune quad shows whole in the
 ## great glass (inside its reflecting rect) and the glass spot is on a w x h screen; [] when all is well
 static func garden_mirror_view(stand: Vector3, size: float, w := 390.0, h := 844.0) -> Array:
 	var b := Framing.basis()
 	var vo := World.V_OFFSET * size / World.CAM_SIZE
-	var rig := stand + Vector3(0, 0.6, 0)
+	var rig := stand + Vector3(0, 0.6, 0) + garden_lean(stand)
 	var bad := []
 	for i in 3:
 		for p: Vector3 in turn_north_corners(i):
