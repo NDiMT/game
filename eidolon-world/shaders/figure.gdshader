@@ -2,6 +2,8 @@ shader_type spatial;
 // The hooded figure: vertex-coloured low-poly cloth (COLOR.a = emissive: the hem stripe), UV.x = 1 on
 // the featureless marble face (faint chisel marks).
 render_mode cull_disabled, shadows_disabled;
+// v0.8: the hero marks its visible pixels, so its x-ray never draws over the model itself
+stencil_mode write, compare_always, 1;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
 #include "res://shaders/figure_deform.gdshaderinc"

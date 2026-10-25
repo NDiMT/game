@@ -17,7 +17,8 @@ vec3 _hc() { return mix(accent_core.rgb, her_core.rgb, hers); }
 uniform float kind = 0.0;
 uniform float intensity = 0.0;
 uniform float sweep = 0.0;
-uniform float fill = 0.0;           // a lit cell: the whole square glows faintly
+uniform float fill = 0.0;
+uniform float joint = 0.0;          // kind 4: the notch's seam lit (the stone across the joint answers)           // a lit cell: the whole square glows faintly
 void fragment() {
 	vec2 p = (UV - 0.5) * 2.0;
 	p.y = -p.y;
@@ -25,7 +26,24 @@ void fragment() {
 	float body = 0.0;
 	float wid = 0.05;
 	float amul = 1.0;
-	if (kind > 2.5) {
+	// kind 4 (v0.8): an ENGRAVED channel along the quad (no glow), flaring into a notch at the far (+y) edge;
+	// `joint` lights a thin aqua seam across the notch
+	bool carved = kind > 3.5;
+	vec3 c_alb = vec3(0.0);
+	float c_a = 0.0;
+	if (carved) {
+		float hw = p.y > 0.66 ? mix(0.2, 0.62, smoothstep(0.66, 0.97, p.y)) : 0.2;
+		float gd = abs(p.x) - hw;
+		float groove = (1.0 - smoothstep(-0.03, 0.03, gd)) * smoothstep(-1.0, -0.86, p.y);
+		float lip = (1.0 - smoothstep(0.0, 0.07, abs(gd - 0.05))) * smoothstep(-1.0, -0.86, p.y);
+		float shade = groove * (0.62 - 0.22 * smoothstep(-0.25, 0.0, gd));
+		float seam = joint * (1.0 - smoothstep(0.02, 0.07, abs(p.y - 0.94))) * (1.0 - smoothstep(hw - 0.04, hw + 0.04, abs(p.x)));
+		float sg = joint * groove * exp(-max(0.0, 0.94 - p.y) * 7.0);
+		c_alb = mix(vec3(0.26, 0.26, 0.255), vec3(0.93, 0.92, 0.89), lip * (1.0 - groove));
+		c_alb = mix(c_alb, _hc() * 1.45, clamp(seam + sg * 0.7, 0.0, 1.0));
+		c_a = clamp(shade + lip * 0.25 + seam + sg * 0.6, 0.0, 1.0);
+	}
+	if (kind > 2.5 && kind < 3.5) {
 		// an inlaid path: a line along the quad, widening into a notch at the far (+y) end
 		d = abs(p.x);
 		wid = p.y > 0.78 ? 0.8 : 0.26;
@@ -50,6 +68,9 @@ void fragment() {
 	}
 	vec4 g = carved_glow(d, wid);
 	// (v0.8: a luminous inlay: a core past white that the bloom catches, an aqua halo, a quiet tint edge)
+	if (carved) { ALBEDO = c_alb; ALPHA = c_a * intensity; }
+	else {
 	ALBEDO = mix(mix(_ht(), _ha(), 0.6), _hc() * 1.45, g.x);
 	ALPHA = clamp((g.x * amul * 0.95 + g.y * 0.6) * intensity + body * 0.35, 0.0, 1.0);
+	}
 }

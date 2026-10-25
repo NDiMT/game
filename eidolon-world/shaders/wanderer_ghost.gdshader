@@ -88,6 +88,7 @@ void fragment() {
 	vec3 emb = embroidery(vuv2);
 	float hs = hem_stripe(vcol.r);
 	c = mix(c, _ha() * 0.8, hs * 0.7 * (1.0 - surface_mix));
+	if (!FRONT_FACING) { c *= 0.32; hs = 0.0; emb = vec3(0.0); }     // (opaque: the inside is dark cloth)
 	ALBEDO = c;
 	NORMAL_MAP = texture(normal_tex, UV).rgb;
 	ROUGHNESS = 0.9;

@@ -6,7 +6,8 @@ extends Node3D
 ## `awaken` (0..1) drives the shrine finale: fog recedes, light returns.
 
 const PITCH := deg_to_rad(36.0)
-const DIST := 40.0
+const DIST := 24.0                 # v0.8 (was 40): an orthographic camera sees the same at any distance;
+                                   # closer, the directional shadow covers no empty air in front of the scene
 const CAM_SIZE := 10.5             # reference width for the vertical framing offset
 ## v0.4: a little closer by default (8.8 m wide); pinch / wheel / +- zoom smoothly both ways, 6-11 m
 const ZOOM_MIN := 6.0
@@ -142,11 +143,15 @@ func _build_light() -> void:
 	sun.light_color = Color(1.0, 0.925, 0.80)            # warm key
 	sun.light_energy = 0.85
 	sun.shadow_enabled = true
-	sun.shadow_blur = 2.2
-	sun.shadow_bias = 0.04
-	sun.shadow_normal_bias = 1.0
+	# v0.8 smoother shadows: the shadow box is fitted to what the iso camera sees (the camera sits DIST
+	# away, the visible ground spans about DIST +- 13 m), a larger atlas on High / Auto, PCF soft
+	# filtering, biases retuned for the smaller texels (Godot keeps the directional shadow texel-snapped)
+	sun.shadow_blur = 1.6
+	sun.shadow_bias = 0.03
+	sun.shadow_normal_bias = 0.8
+	sun.light_angular_distance = 0.8
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 56.0
+	sun.directional_shadow_max_distance = DIST + 16.0
 	add_child(sun)
 
 func _fog_sheet(y: float, density: float, hole_in: float, hole_out: float, drift: Vector2, scale: float, col: Color) -> void:
@@ -299,7 +304,10 @@ func set_tier(t: String, step := 0) -> void:
 		env.glow_intensity = 0.62
 		for i in 7: env.set_glow_level(i, [0.0, 0.0, 1.25, 1.1, 0.0, 0.0, 0.0][i])
 	sun.shadow_enabled = true
-	sun.shadow_blur = 1.0 if low else 2.2
+	sun.shadow_blur = 1.2 if low else 1.6
+	# (v0.8: High: a 4096 atlas, soft-high PCF; Auto: 4096, soft-low; Low: 2048, soft-low)
+	RenderingServer.directional_shadow_atlas_set_size(2048 if low else 4096, true)
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if high else RenderingServer.SHADOW_QUALITY_SOFT_LOW)
 	dust_mm.multimesh.visible_instance_count = 50 if low else -1
 	ash_mm.multimesh.visible_instance_count = 25 if low else -1
 

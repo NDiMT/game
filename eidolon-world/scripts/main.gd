@@ -668,6 +668,11 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 		"pool_turn":
 			sfx.play("grind", -9.0, 1.15)
 			sfx.play("step_wet", -12.0, 0.8)
+		"pool_joint": sfx.play("chime", -21.0, 1.25 + 0.05 * float(data))
+		"pool_rise":
+			sfx.play("grind", -6.0, 0.55)
+			sfx.play("step_wet", -4.0, 0.7)
+			sfx.play("whoosh", -16.0, 0.6)
 		"pool_whole":
 			sfx.play("chime", -14.0, 0.8)
 			sfx.play("step_wet", -6.0, 0.55)

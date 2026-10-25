@@ -1,0 +1,252 @@
+{
+  "generator": "Tripo API v3.1 (tripo-cli 0.7), smart_low_poly=true unless noted",
+  "conventions": "glTF Y-up, metres, base at y=0, centred on XZ, front faces +Z. Untextured files carry a placeholder material 'marble_placeholder' (pale cream, roughness 0.8) meant to be overridden; textured statues carry Tripo PBR (baseColor + metallicRoughness JPEG, normal PNG) at 1024 px.",
+  "assets": [
+    {
+      "file": "statue_veiled_praying.glb",
+      "category": "statue",
+      "size_m": {
+        "x": 0.62,
+        "y": 1.9,
+        "z": 0.58
+      },
+      "tris": 7391,
+      "textured": true,
+      "use": "Garden of the Veiled: centrepiece statue on the main path; also a Turned Ones plinth figure (rotate to face away)",
+      "tripo_task": "b6dc9d0a-f2b6-4fd4-94b4-88f50604d00a"
+    },
+    {
+      "file": "statue_veiled_kneeling.glb",
+      "category": "statue",
+      "size_m": {
+        "x": 1.12,
+        "y": 1.35,
+        "z": 0.76
+      },
+      "tris": 8085,
+      "textured": true,
+      "use": "Garden of the Veiled: kneeling figure reaching toward the pool or a shrine; good for a 'reach toward' sightline",
+      "tripo_task": "084d5b04-98de-4172-a8ba-dcf9c1054ca8"
+    },
+    {
+      "file": "statue_veiled_mourning.glb",
+      "category": "statue",
+      "size_m": {
+        "x": 0.68,
+        "y": 1.9,
+        "z": 0.63
+      },
+      "tris": 11718,
+      "textured": true,
+      "use": "Turned Ones plinths along the Hall approach (head-bowed mourner); Gate of the Four Veiled guardian",
+      "notes": "Not smart low-poly: first-pass v3.1 textured model (11.7k tris) kept because the smart low-poly retry showed a bare face. Sheer veil, facial contour faintly visible; head only slightly bowed.",
+      "tripo_task": "ada60bca-429d-4bdc-a21e-39d7a706768f"
+    },
+    {
+      "file": "statue_veiled_broken.glb",
+      "category": "statue",
+      "size_m": {
+        "x": 0.93,
+        "y": 1.25,
+        "z": 0.83
+      },
+      "tris": 7934,
+      "textured": true,
+      "use": "Garden of the Veiled ruin corner: a veiled figure standing over a fallen figure on a tomb slab",
+      "notes": "Deviation: reads as a standing veiled figure plus a toppled reclining figure on a slab, not literally the same statue snapped at the waist.",
+      "tripo_task": "a5e35f40-41b9-49da-a17d-3834d643dc74"
+    },
+    {
+      "file": "statue_veiled_unfinished.glb",
+      "category": "statue",
+      "size_m": {
+        "x": 0.65,
+        "y": 2.0,
+        "z": 0.54
+      },
+      "tris": 7884,
+      "textured": true,
+      "use": "Gate of the Four Veiled (one of four guardians) or a Turned Ones plinth; dark face texture reads as a void under the veil",
+      "notes": "Deviation: generated as a finished standing veiled figure (no rough block); the texture has a black void where the face is. Untextured use in the game marble shader hides the void.",
+      "tripo_task": "9e4ca4b0-b166-4c2f-a3d1-d1de41fa26ff"
+    },
+    {
+      "file": "statue_veiled_bust.glb",
+      "category": "statue",
+      "size_m": {
+        "x": 0.95,
+        "y": 1.6,
+        "z": 0.67
+      },
+      "tris": 7771,
+      "textured": true,
+      "use": "Hall side niches / plinth tops; votive bust beside the shrine",
+      "notes": "Pedestal is short (bust dominates); stand it on a column_stump or in-engine pedestal for a taller read.",
+      "tripo_task": "97cc714b-1123-484d-9f8f-aa1fd139871c"
+    },
+    {
+      "file": "column_doric.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 1.03,
+        "y": 4.0,
+        "z": 1.04
+      },
+      "tris": 3326,
+      "textured": false,
+      "use": "Hall columns (colonnade rows, ~4 m bays)",
+      "notes": "Capital reads slightly Ionic (small volutes).",
+      "tripo_task": "a1a2cd7b-73c1-48dd-a370-34fea9d4dc2c"
+    },
+    {
+      "file": "column_stump.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 0.68,
+        "y": 1.3,
+        "z": 0.68
+      },
+      "tris": 3000,
+      "textured": false,
+      "use": "Garden ruins and Hall broken colonnade; also a low pedestal for the bust",
+      "notes": "Not smart low-poly (first-pass model kept), locally decimated to 3k tris; UVs dropped.",
+      "tripo_task": "0cf490d9-a056-4f69-9a7b-6cc84ad810b5"
+    },
+    {
+      "file": "column_fallen.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 3.6,
+        "y": 1.09,
+        "z": 1.11
+      },
+      "tris": 2964,
+      "textured": false,
+      "use": "Garden of the Veiled ground clutter; blocking a side path in the Hall",
+      "notes": "Deviation: one long cracked column, not three separate drums.",
+      "tripo_task": "bda8d804-cae1-45c3-b4b9-f42624cd3f2f"
+    },
+    {
+      "file": "archway_ruined.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 3.25,
+        "y": 4.5,
+        "z": 1.1
+      },
+      "tris": 3006,
+      "textured": false,
+      "use": "Gate of the Four Veiled (main gate), or a garden entrance arch",
+      "tripo_task": "744eb779-6859-450f-bb86-9eb73b5e8f98"
+    },
+    {
+      "file": "pylon_ashlar.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 1.44,
+        "y": 4.0,
+        "z": 1.31
+      },
+      "tris": 2519,
+      "textured": false,
+      "use": "Gate of the Four Veiled flanking pylons; Hall wall piers between in-engine wall boxes",
+      "notes": "Replaces 'wall_cornice': Tripo produced a tall pier instead of a long wall in both passes.",
+      "tripo_task": "0897e292-23d8-4ee4-a2b2-bf6597c9aea4"
+    },
+    {
+      "file": "pylon_ashlar_niche.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 1.57,
+        "y": 4.0,
+        "z": 0.71
+      },
+      "tris": 3040,
+      "textured": false,
+      "use": "Hall wall pier with a tall recessed niche (window slot does not pierce through)",
+      "notes": "Replaces 'wall_window': tall pier with a narrow recessed slot instead of a long wall with a through-window.",
+      "tripo_task": "5f5141e2-348c-48ae-b648-9a66498c05dc"
+    },
+    {
+      "file": "stairs_wide.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 1.89,
+        "y": 1.6,
+        "z": 1.95
+      },
+      "tris": 2128,
+      "textured": false,
+      "use": "Steps up to the Hall or the shrine dais (front = bottom step facing +Z)",
+      "notes": "Scale it on X if a wider flight is needed (about 1.9 m wide as is).",
+      "tripo_task": "45df19c1-7a17-4fc4-a799-e4f60e119e4b"
+    },
+    {
+      "file": "balustrade.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 2.0,
+        "y": 0.45,
+        "z": 0.4
+      },
+      "tris": 3571,
+      "textured": false,
+      "use": "Garden terraces, pool edge, Hall balcony; tile along X (2 m module)",
+      "tripo_task": "539a2adb-2441-4b65-bcbf-663a81304d3d"
+    },
+    {
+      "file": "pediment_fragment.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 3.0,
+        "y": 1.32,
+        "z": 0.95
+      },
+      "tris": 2855,
+      "textured": false,
+      "use": "Fallen gable piece in the Garden or Hall forecourt",
+      "tripo_task": "80f6ca3f-67d9-4b1f-8509-11f55dd15f57"
+    },
+    {
+      "file": "rubble_pile.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 2.5,
+        "y": 1.18,
+        "z": 2.37
+      },
+      "tris": 3000,
+      "textured": false,
+      "use": "Collapse heaps at the base of walls and columns; hides seams",
+      "notes": "Not smart low-poly (first-pass model kept), locally decimated to 3k tris; UVs dropped.",
+      "tripo_task": "0dfa88b8-ebba-40b7-ada9-ebba6cbf6936"
+    },
+    {
+      "file": "mirror_frame.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 0.96,
+        "y": 2.4,
+        "z": 0.44
+      },
+      "tris": 2623,
+      "textured": false,
+      "use": "The standing mirror: add the glass/mirror shader quad inside the empty opening in-engine",
+      "notes": "Opening is empty (no glass). Inner opening about 0.6 x 1.9 m; measure in-engine before fitting the quad.",
+      "tripo_task": "239e6731-c221-4a00-8b3d-b9ae63664f3c"
+    },
+    {
+      "file": "altar_shrine.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 3.0,
+        "y": 1.05,
+        "z": 2.99
+      },
+      "tris": 3037,
+      "textured": false,
+      "use": "Shrine of awakening (round dais with basin and 4 short pillars), Garden centre",
+      "tripo_task": "0f1fd50b-c63d-4e66-b08d-9fd5c92b1ea4"
+    }
+  ]
+}

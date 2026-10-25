@@ -234,16 +234,20 @@ static func _dir3(d: String) -> Vector3:
 	return {"E": Vector3(1, 0, 0), "W": Vector3(-1, 0, 0), "N": Vector3(0, 0, -1), "S": Vector3(0, 0, 1)}[d]
 
 func _pool_piece_mesh(conn: String) -> ArrayMesh:
+	# v0.8: clean carved slabs: a body and a slightly inset top course, so every edge reads chamfered
 	var m := MB.new()
 	var hx := absf(Ch1Geo.POOL_DX) * 0.5
 	var hz := Ch1Geo.POOL_DZ * 0.5
 	var w := Ch1Geo.BEAM_W
+	var col := Color(0.5, 0.25, 0.0)
 	for d in conn:
 		var v := _dir3(d)
 		var L := (hx if absf(v.x) > 0.5 else hz) + w * 0.5 - 0.03
 		var c := v * (L * 0.5 - w * 0.5)
-		var size := Vector3(L if absf(v.x) > 0.5 else w, 0.9, w if absf(v.x) > 0.5 else L)
-		m.box(Vector3(c.x, -0.45, c.z), size, Color(0.5, 0.25, 0.0))
+		var size := Vector3(L if absf(v.x) > 0.5 else w, 0.86, w if absf(v.x) > 0.5 else L)
+		m.box(Vector3(c.x, -0.47, c.z), size, col)
+		var top := Vector3(size.x - (0.06 if absf(v.x) < 0.5 else 0.0), 0.05, size.z - (0.06 if absf(v.x) > 0.5 else 0.0))
+		m.box(Vector3(c.x, -0.025, c.z), top, col)
 	return m.commit()
 
 func _build_pool() -> void:
@@ -258,26 +262,28 @@ func _build_pool() -> void:
 		node.position = Vector3(p.x, 0.0, p.y)
 		add_child(node)
 		puzzles.marble_instance(_pool_piece_mesh(base), node)
-		# the path carved into its top: a glowing inlay from the centre out along each arm, opening into a
-		# wide notch where it meets the next stone (they turn with it)
+		# v0.8: the path ENGRAVED into its top: a carved channel from the centre out along each arm, ending
+		# in a notch at the edge that meets the next stone (they turn with it). A notch lights (a thin aqua
+		# seam) only when the stone across the joint answers it.
 		var seams := []
+		var dirs := []
 		for d in base:
 			var v := _dir3(d)
 			var L := absf(Ch1Geo.POOL_DX) * 0.5 if absf(v.x) > 0.5 else Ch1Geo.POOL_DZ * 0.5
-			var sm := _smat("res://shaders/floor_mark.gdshader", {"kind": 3.0, "intensity": 1.0})
-			seams.append(_mi(_plane(Vector2(0.5, L)), sm, Transform3D(Basis(Vector3.UP, atan2(-v.x, -v.z)), v * (L * 0.5 - 0.02) + Vector3(0, 0.012, 0)), node))
+			var sm := _smat("res://shaders/floor_mark.gdshader", {"kind": 4.0, "intensity": 1.0, "joint": 0.0})
+			seams.append(_mi(_plane(Vector2(0.46, L)), sm, Transform3D(Basis(Vector3.UP, atan2(-v.x, -v.z)), v * (L * 0.5 - 0.01) + Vector3(0, 0.003, 0)), node))
+			dirs.append(d)
 		if ri >= 0:
-			# a pivot boss: it turns
+			# a small worn bronze pin: it turns about it
 			var bm := MB.new()
-			bm.cyl(Vector3(0, 0.02, 0), 0.2, 0.22, 0.05, Color(0.5, 1.0, 0.0), 16)
+			bm.cyl(Vector3(0, 0.012, 0), 0.035, 0.045, 0.03, Color(0.5, 1.0, 0.0), 10)
 			puzzles.marble_instance(bm.commit(), node)
-			puzzles.rune_quad(node, Vector3(0, 0.05, 0), Vector2(0.42, 0.42), Basis(Vector3.RIGHT, -PI * 0.5), -1.0, 0.6)
 			var idx := ri
-			level.add_interact("pool_turn%d" % ri, Vector3(p.x, 0.0, p.y), "turn", func() -> void: turn_pool(idx), 1.3,
+			level.add_interact("pool_turn%d" % ri, Vector3(p.x, 0.0, p.y), "turn", func() -> void: turn_pool(idx), 1.6,
 				func() -> bool: return not state["stones"] and not _on_pool_piece(idx) and not _pool_tw.has(idx))
 		var regs := []
 		for k in 2: regs.append(level.walk(Rect2(), 0.0, NAN, -1, "pool%d_%d_%d" % [c.x, c.y, k], false))
-		pool_pieces[c] = {"node": node, "base": base, "real": ri, "regions": regs, "seams": seams}
+		pool_pieces[c] = {"node": node, "base": base, "real": ri, "regions": regs, "seams": seams, "dirs": dirs}
 	# the reflections, on the water
 	pool_mat = _smat("res://shaders/pool_stones.gdshader", {"noise_tex": level.noise_tex, "water_y": Ch1Geo.WATER_Y, "top_y": 0.0, "pulse": 0.0})
 	pool_mat.render_priority = -1            # (under the sheen: a fixed order, never a sort flicker)
@@ -315,7 +321,7 @@ func _pool_reflect() -> void:
 			var r := _arm_rect(p, d)
 			boxes.append(Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
 			var v := _dir3(d)
-			infos.append(Vector4(v.x, v.z, hers, 1.0))
+			infos.append(Vector4(v.x, v.z, hers, 1.0 if _joint_ok(c, d) else 0.0))
 	pool_mat.set_shader_parameter("arm_box", boxes)
 	pool_mat.set_shader_parameter("arm_info", infos)
 	pool_mat.set_shader_parameter("count", boxes.size())
@@ -345,6 +351,7 @@ func turn_pool(ri: int) -> void:
 		_pool_tw.erase(ri)
 		_pool_apply(c)
 		_pool_reflect()
+		_pool_joints()
 		if Ch1Geo.pool_path(state["pool_turns"]): _complete_pool(false))
 
 ## the reflection is whole: her beams rise into your world, solid
@@ -358,15 +365,62 @@ func _complete_pool(instant: bool) -> void:
 		if instant:
 			node.position.y = 0.0
 		else:
+			# v0.8: her stones RISE out of the water one after another: a burst of spray and droplets, a
+			# ring spreading on the still water, a deep stone rumble and a splash
 			node.position.y = -0.95
 			var tw := create_tween()
-			tw.tween_interval(0.25 * (c.x + c.y * 0.3))
-			tw.tween_property(node, "position:y", 0.0, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			var dl: float = 0.35 * (c.x + c.y * 0.3)
+			tw.tween_interval(dl)
+			var at := Vector3(node.position.x, Ch1Geo.WATER_Y, node.position.z)
+			tw.tween_callback(func() -> void:
+				_water_burst(at)
+				event.emit("pool_rise", null))
+			tw.tween_property(node, "position:y", 0.06, 1.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw.tween_property(node, "position:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
 	for c in pool_pieces: _pool_apply(c)
 	_pool_reflect()
 	if not instant:
 		event.emit("pool_whole", null)
 		event.emit("solve", "waking_pool")
+
+## spray, droplets and a spreading ring where a stone breaks the surface
+func _water_burst(at: Vector3) -> void:
+	var p := CPUParticles3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(0.07, 0.07)
+	p.mesh = q
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/spray.gdshader")
+	p.material_override = m
+	p.amount = 70
+	p.one_shot = true
+	p.explosiveness = 0.85
+	p.lifetime = 1.3
+	p.direction = Vector3.UP
+	p.spread = 38.0
+	p.initial_velocity_min = 1.6
+	p.initial_velocity_max = 3.6
+	p.gravity = Vector3(0, -9.0, 0)
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.6
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(0.5, 0.02, 0.5)
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1, 1, 1, 1))
+	ramp.set_color(1, Color(1, 1, 1, 0))
+	p.color_ramp = ramp
+	p.position = at + Vector3(0, 0.03, 0)
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(p)
+	p.emitting = true
+	var rm := _smat("res://shaders/water_ring.gdshader", {"t": 0.0})
+	var ring := _mi(_plane(Vector2(3.2, 3.2)), rm, Transform3D(Basis(), at + Vector3(0, 0.02, 0)))
+	var tw := create_tween()
+	tw.tween_method(func(v: float) -> void: rm.set_shader_parameter("t", v), 0.0, 1.0, 1.8).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tw.tween_interval(0.6)
+	tw.tween_callback(func() -> void:
+		ring.queue_free()
+		p.queue_free())
 
 func _update_pool(_dt: float) -> void:
 	# the pool is still now (no waiting: what it shows is always there to read)
@@ -395,6 +449,46 @@ func _apply_pool() -> void:
 	pool_turns_made = 0
 	for c in pool_pieces: _pool_apply(c)
 	_pool_reflect()
+	_pool_joints(true)
+
+## is the joint on side d of cell c answered (a stone across it with the opposite connector, or the shore)?
+func _joint_ok(c: Vector2i, d: String) -> bool:
+	if c == Ch1Geo.POOL_IN and d == "E": return true
+	if c == Ch1Geo.POOL_OUT and d == "W": return true
+	var dv := Ch1Geo.dir_v(d)
+	var n := c + dv
+	if not pool_pieces.has(n): return false
+	var opp := {"N": "S", "S": "N", "E": "W", "W": "E"}[d] as String
+	return opp in _piece_conn(n)
+
+## v0.8 per-joint feedback: every answered joint lights at once (a thin aqua seam in its notch, a soft
+## chime when it first lights); the reflection lights hers in rose. Returns the number of answered joints.
+var pool_joints_lit := {}                 # "cx,cy,d" -> true
+func _pool_joints(instant := false) -> int:
+	var n := 0
+	var fresh := 0
+	var now := {}
+	for c in pool_pieces:
+		var pc: Dictionary = pool_pieces[c]
+		var real_dirs: Array = pc["dirs"]
+		for k in real_dirs.size():
+			# the seam quads were laid along the BASE connectors; the node's turn carries them round
+			var d: String = real_dirs[k]
+			if pc["real"] >= 0: d = Ch1Geo.rot_conn(d, int(state["pool_turns"][pc["real"]]))
+			var ok := _joint_ok(c, d)
+			var sm: ShaderMaterial = (pc["seams"][k] as MeshInstance3D).material_override
+			if instant: sm.set_shader_parameter("joint", 1.0 if ok else 0.0)
+			else:
+				var from: float = sm.get_shader_parameter("joint")
+				create_tween().tween_method(func(v: float) -> void: sm.set_shader_parameter("joint", v), from, 1.0 if ok else 0.0, 0.35)
+			if ok:
+				n += 1
+				var key := "%d,%d,%s" % [c.x, c.y, d]
+				now[key] = true
+				if not pool_joints_lit.has(key) and pc["real"] >= 0: fresh += 1
+	if fresh > 0 and not instant: event.emit("pool_joint", fresh)
+	pool_joints_lit = now
+	return n
 
 # ------------------------------------------------------------------ 2. stair of breath
 ## a small glass to breathe on (own_glass false: a patch of a larger mirror that is already there)

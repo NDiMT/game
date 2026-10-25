@@ -7,6 +7,8 @@ shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_back, fog_disabled;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
+global uniform vec4 her;
+global uniform vec4 her_core;
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform vec4 arm_box[40];           // x0, z0, x1, z1
 uniform vec4 arm_info[40];          // end direction x, z (the connector face), hers (1) / yours (0), lit
@@ -50,16 +52,19 @@ void fragment() {
 	float up = clamp((hp.y - water_y) / (top_y - water_y), 0.0, 1.0);
 	float st = texture(noise_tex, vec2(hp.x + hp.z, hp.y) * vec2(1.3, 6.0)).r;
 	vec3 c = mix(vec3(0.13, 0.15, 0.17), vec3(0.44, 0.46, 0.47), up * up) * (0.9 + 0.2 * st);
-	// hers: a cooler stone, faintly lit from within
-	c = mix(c, c * vec3(0.85, 1.0, 1.05) + accent.rgb * 0.06, inf.z);
+	// v0.8: hers glow rose in the water (her side of the glass); yours are plain carved stone
+	c = mix(c, mix(c, vec3(0.62, 0.55, 0.6), 0.55) + her.rgb * 0.12, inf.z);
 	float edge = smoothstep(0.66, 0.95, up);
-	c = mix(c, mix(accent.rgb, accent_core.rgb, 0.6), edge * 0.7);
-	// the connector seam: the arm's end face (toward its neighbour)
+	c = mix(c, mix(her.rgb, her_core.rgb, 0.55), edge * 0.75 * inf.z);
+	c = mix(c, vec3(0.62, 0.62, 0.6), edge * 0.35 * (1.0 - inf.z));
+	// the joint seam at the arm's end: lit only when the stone across answers (rose for hers, aqua yours)
 	vec2 ed = inf.xy;
 	float endc = ed.x > 0.5 ? b.z : (ed.x < -0.5 ? b.x : (ed.y > 0.5 ? b.w : b.y));
 	float along = abs(ed.x) > 0.5 ? hp.x : hp.z;
-	float seam = 1.0 - smoothstep(0.0, 0.09, abs(along - endc));
-	c = mix(c, accent_core.rgb, seam * (0.75 + 0.25 * pulse * (0.5 + 0.5 * sin(TIME * 4.0))));
+	float seam = 1.0 - smoothstep(0.0, 0.07, abs(along - endc));
+	vec3 sc = mix(accent_core.rgb, her_core.rgb, inf.z);
+	c = mix(c, sc * 1.3, seam * (0.15 + 0.85 * inf.w) * (0.8 + 0.2 * pulse * (0.5 + 0.5 * sin(TIME * 4.0))));
 	ALBEDO = c;
 	ALPHA = 0.9 + 0.1 * edge;
+
 }
