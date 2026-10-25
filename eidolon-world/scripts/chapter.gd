@@ -2561,7 +2561,7 @@ var her: Figure                 # her shadow, in the water
 var mine: Figure                # your plain reflection (only at the very end)
 var touch_glow: ShaderMaterial
 var whisper_glow: ShaderMaterial
-var touch_her: ShaderMaterial             # v0.8: her light at the touch (the same aqua: it comes first, fainter)
+var touch_her: ShaderMaterial             # v0.8: her light at the touch (rose), meeting yours (aqua)
 var her_xf := Transform3D()
 var her_pose := Figure.Pose.new()
 var _refl_pool := Transform3D()
@@ -2699,7 +2699,7 @@ func hand_in_the_water(c: Cinematic) -> void:
 	c.anim(P + 16.5, 5.0, func(k: float) -> void:
 		puzzles_ring(k * 5.0)
 		touch_glow.set_shader_parameter("intensity", sin(minf(k * 3.0, 1.0) * PI * 0.5) * (1.0 - k) * 2.0)
-		touch_her.set_shader_parameter("intensity", sin(minf(k * 5.0, 1.0) * PI * 0.5) * (1.0 - k) * 1.2), 0)
+		touch_her.set_shader_parameter("intensity", sin(minf(k * 2.6, 1.0) * PI * 0.5) * (1.0 - k) * 1.9), 0)
 	c.at(P + 16.7, func() -> void:
 		pl.fig.set_runes(1)
 		her.set_runes(1))

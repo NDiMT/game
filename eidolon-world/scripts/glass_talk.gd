@@ -51,6 +51,7 @@ var _drawing := false
 var _cur: PackedVector2Array = PackedVector2Array()
 var _block := 0.0
 var _fk := 0.0                    # her hand, rising to the glass (smoothed)
+var _press_t := 0.0               # v0.8.1: seconds her palm has been pressed (the droplets run)
 var last_score := []              # (tests / tuning) the last answer: [distance, turning, target turning, points, start, end]
 
 class Ink extends Node2D:
@@ -77,15 +78,7 @@ class Ink extends Node2D:
 			else: _poly(h[0], h[1], Color(0, h[2], 0), width * 0.8)
 		if finger_k > 0.0:
 			for i in 4: draw_circle(finger, 9.0 - i * 2.0, Color(0, 0, 0.25 * finger_k))
-		if palm_k > 0.0:
-			var c := Color(0, 0, palm_k)
-			draw_set_transform(palm, 0.0, Vector2.ONE)
-			_ellipse(Vector2(0, 10), Vector2(30, 34), c)
-			for k in 4:
-				var x := -21.0 + k * 14.0
-				draw_line(Vector2(x * 0.9, -14), Vector2(x * 1.1, -50 - (6.0 if k in [1, 2] else 0.0)), c, 11.0, true)
-			draw_line(Vector2(26, 12), Vector2(46, -6), c, 11.0, true)
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# (v0.8.1: her pressed hand is no longer painted here: the shader sculpts it, see hand_d)
 	## v0.6: a calligraphic brush, not a felt pen: a broad nib held at an angle (thick down-strokes,
 	## fine hairlines across), pressed in at the start and lifted off in a long taper. Drawn as ONE strip
 	## of quads with shared (mitred) edges, so nothing is painted twice into the additive mask.
@@ -420,9 +413,10 @@ func _success(end: Vector2) -> void:
 	sound.emit("chime")
 	if _tw: _tw.kill()
 	_tw = create_tween()
+	# v0.8.1: her hand comes out of the fog (0 .. 0.55), then presses flat (the print sharpens), then lingers
 	_tw.tween_method(func(v: float) -> void:
 		ink.palm_k = v
-		ink.queue_redraw(), 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE)
+		ink.queue_redraw(), 0.0, 1.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_tw.parallel().tween_method(func(v: float) -> void: glass_mat.set_shader_parameter("glow", v), 0.0, 1.0, 1.2)
 	_tw.tween_callback(func() -> void: solved.emit(id))
 	_tw.tween_interval(2.2)
@@ -499,6 +493,8 @@ func _process(dt: float) -> void:
 		glass_mat.set_shader_parameter("finger_k", _fk)
 		glass_mat.set_shader_parameter("palm_at", ink.palm / Vector2(MASK))
 		glass_mat.set_shader_parameter("palm_k", ink.palm_k)
+		_press_t = _press_t + dt if ink.palm_k > 0.9 else 0.0
+		glass_mat.set_shader_parameter("press_t", _press_t)
 		# she sways and breathes; her hand rises to the glass as she writes
 		her_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 		var p := her_pose
