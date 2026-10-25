@@ -46,6 +46,7 @@ var _tw: Tween
 var _drawing := false
 var _cur: PackedVector2Array = PackedVector2Array()
 var _block := 0.0
+var _fk := 0.0                    # her hand, rising to the glass (smoothed)
 var last_score := []              # (tests / tuning) the last answer: [distance, turning, target turning, points, start, end]
 
 class Ink extends Node2D:
@@ -422,6 +423,12 @@ func _process(dt: float) -> void:
 	if visible:
 		_t += dt
 		glass_mat.set_shader_parameter("t", _t)
+		# v0.7: her hand behind the glass follows her fingertip, and presses flat at the end
+		glass_mat.set_shader_parameter("finger", ink.finger / Vector2(MASK))
+		_fk = move_toward(_fk, ink.finger_k, dt * 1.6)
+		glass_mat.set_shader_parameter("finger_k", _fk)
+		glass_mat.set_shader_parameter("palm", ink.palm / Vector2(MASK))
+		glass_mat.set_shader_parameter("palm_k", ink.palm_k)
 
 func _gui_input(e: InputEvent) -> void:
 	if not visible: return

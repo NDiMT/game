@@ -403,7 +403,7 @@ func _pixel_snap(p: Vector3) -> Vector3:
 ## ~0.25 s, and only fragments nearer the camera than the wanderer are cut.
 var reveal_k := 0.0
 var reveal_px := Vector4.ZERO
-const REVEAL_R := 1.4            # metres round the wanderer
+const REVEAL_R := 2.4            # metres round the wanderer
 var _near_occ: Array[AABB] = []
 var _near_t := 0.0
 var _near_at := Vector3.INF

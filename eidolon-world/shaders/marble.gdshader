@@ -67,12 +67,14 @@ void fragment() {
 		float along = dot(wp - (player_pos + vec3(0.0, 0.9, 0.0)), cam_back);
 		float r = reveal.z * reveal.w * smoothstep(0.15, 0.9, along) * occlusion;
 		float d = length(FRAGCOORD.xy - reveal.xy);
-		float inner = r * 0.8;
+		// v0.7: a wide, soft edge: the inner 62 % is open, the outer 38 % a long smooth feather of haze
+		float inner = r * 0.62;
 		if (d < inner) discard;
 		float band = max(r - inner, 1.0);
 		float t = clamp((d - inner) / band, 0.0, 1.0);
-		cut_haze = (1.0 - smoothstep(0.0, 1.0, t)) * smoothstep(2.0, 12.0, r);
-		cut_rim = exp(-(d - inner) / 2.2) * smoothstep(2.0, 10.0, r);
+		float k = smoothstep(2.0, 12.0, r);
+		cut_haze = (1.0 - smoothstep(0.0, 1.0, t)) * k;
+		cut_rim = (1.0 - smoothstep(0.0, 0.45, t)) * 0.35 * k;
 	}
 	float n = texture(noise_tex, wp.xz * 0.23 + wp.y * 0.13).r;
 	if (dbg_cheap > 0.5) { ALBEDO = cream * (0.9 + 0.1 * n); ROUGHNESS = 0.6; SPECULAR = 0.4; } else {
@@ -172,7 +174,7 @@ void fragment() {
 	if (mat_id < 0.37) col += vec3(0.022, 0.012, 0.0) * smoothstep(0.4, 0.9, dot(col, vec3(0.33)));
 	if (wp.y < fade_y) discard;
 	// the see-through's edge: the stone thins into pale haze toward the cut, a petrol line on it
-	col = mix(col, vec3(0.80, 0.82, 0.82), cut_haze * 0.55);
+	col = mix(col, vec3(0.80, 0.82, 0.82), cut_haze * 0.8);
 	ALBEDO = col;
 	EMISSION = accent.rgb * cut_rim * 0.75;
 	ROUGHNESS = rough;
