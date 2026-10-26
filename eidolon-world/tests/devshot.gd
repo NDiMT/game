@@ -17,6 +17,54 @@ func _ready() -> void:
 	var b2 := Bracket.new(); b2.host = self; b2.first = false; b2.process_priority = 100000; add_child(b2)
 
 var _bench: Array = []
+var _fd: Array = []          # [label, frames left, previous image, per-frame hot counts, worst count, worst image, worst mask]
+
+## the state that could toggle: which planar mirror renders, which zones wear their faded copy, how many
+## zones are culled, how many lights burn, the see-through's opening
+func _fd_state() -> String:
+	var lv: Level = game.level
+	var fz := 0
+	for z in lv.fade_zones: if z[4]: fz += 1
+	var vis := 0
+	for ch in lv.get_children(): if ch is MeshInstance3D and str(ch.name).begins_with("Zone_") and (ch as MeshInstance3D).visible: vis += 1
+	var lights := 0
+	for l in game.find_children("*", "OmniLight3D", true, false): if (l as Light3D).visible and (l as Light3D).light_energy > 0.001: lights += 1
+	return "planar=%s fade=%d zones=%d lights=%d reveal=%.3f" % [str(PlanarMirror.current.name) if PlanarMirror.current else "-", fz, vis, lights, game.world.reveal_k]
+
+func _fdiff_frame() -> void:
+	var img := get_viewport().get_texture().get_image()
+	img.convert(Image.FORMAT_RGB8)
+	var st := _fd_state()
+	if _fd[2] != null:
+		var a: Image = _fd[2]
+		var w := img.get_width(); var h := img.get_height()
+		var da := img.get_data(); var db := a.get_data()
+		var hot := 0
+		var mask := Image.create(w, h, false, Image.FORMAT_L8)
+		var lo := Vector2i(w, h); var hi := Vector2i(-1, -1)
+		for y in range(0, h, 2):
+			for x in range(0, w, 2):
+				var o := (y * w + x) * 3
+				var d := maxi(absi(da[o] - db[o]), maxi(absi(da[o + 1] - db[o + 1]), absi(da[o + 2] - db[o + 2])))
+				if d > 48:
+					hot += 1
+					mask.set_pixel(x, y, Color.WHITE)
+					lo = Vector2i(mini(lo.x, x), mini(lo.y, y)); hi = Vector2i(maxi(hi.x, x), maxi(hi.y, y))
+		(_fd[3] as Array).append(hot)
+		print("FDIFF %s frame %d hot %d box %s..%s  %s" % [_fd[0], (_fd[3] as Array).size(), hot, lo, hi, st])
+		if hot > _fd[4]:
+			_fd[4] = hot; _fd[5] = img.duplicate(); _fd[6] = mask
+	_fd[2] = img
+	_fd[1] -= 1
+	if _fd[1] <= 0:
+		var hs: Array = _fd[3]
+		var tot := 0
+		for v in hs: tot += v
+		print("FDIFF %s DONE frames %d  worst %d  mean %.1f" % [_fd[0], hs.size(), _fd[4], float(tot) / maxf(hs.size(), 1)])
+		if _fd[5] != null:
+			(_fd[5] as Image).save_png("res://dev/shots/fdiff-%s-worst.png" % _fd[0])
+			(_fd[6] as Image).save_png("res://dev/shots/fdiff-%s-mask.png" % _fd[0])
+		_fd = []
 var _bench_last := 0
 var _bench_skip := 0
 
@@ -75,6 +123,9 @@ func _process(dt: float) -> void:
 				Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), game.world.fill_estimate()])
 			_bench = []
 		return
+	if not _fd.is_empty():
+		_fdiff_frame()
+		return
 	if wait > 0.0:
 		wait -= dt
 		return
@@ -123,6 +174,15 @@ func _process(dt: float) -> void:
 			var pz = game.puzzles
 			print("pts ", pz.beam_points)
 			for i in pz.beam_floor.size(): print(i, " floor vis=", pz.beam_floor[i].visible, " at ", pz.beam_floor[i].global_position, " pool vis=", pz.beam_pools[i].visible, " at ", pz.beam_pools[i].global_position)
+		elif s.begins_with("fdiff:"):
+			# fdiff:LABEL:N  N consecutive frames standing still: per frame, the pixels that changed a lot from
+			# the frame before (max channel diff > 48 / 255) and where; the frame with the most is saved with
+			# its diff mask (v0.9.1: the flicker hunt; grain off with "nograin")
+			var parts := s.split(":")
+			_fd = [parts[1], int(parts[2]) if parts.size() > 2 else 60, null, [], 0, null, null]
+			return
+		elif s == "nograin":
+			for n in get_tree().get_nodes_in_group("f_grain"): (n as CanvasItem).visible = false
 		elif s == "quit":
 			get_tree().quit()
 			return

@@ -22,7 +22,13 @@ void fragment() {
 	d = min(d, rune_frame(p * 0.62) / 0.62);
 	vec4 g = carved_glow(d, 0.06);                 // (v0.8.3: thicker, brighter, a slow pulse)
 	float k = lit * (0.85 + 0.15 * sin(TIME * 0.9));
-	// (v0.8: a luminous groove: a core past white that the bloom catches, an aqua halo, a quiet tint edge)
-	ALBEDO = mix(mix(accent_tint.rgb, accent.rgb, 0.6), accent_core.rgb * 1.45, g.x);
-	ALPHA = clamp(g.x * 1.1 + g.y * 0.9 + g.z * 0.3, 0.0, 1.0) * k * (0.86 + 0.14 * sin(TIME * 1.6));
+	// (v0.8: a luminous groove: a core past white that the bloom catches, a halo, a quiet tint edge)
+	vec3 glow = mix(mix(accent_tint.rgb, accent.rgb, 0.6), accent_core.rgb * 1.45, g.x);
+	float glow_a = clamp(g.x * 1.1 + g.y * 0.9 + g.z * 0.3, 0.0, 1.0) * k * (0.86 + 0.14 * sin(TIME * 1.6));
+	// (v0.9.1) unlit, it is a plain carved groove in the stone: dark, still readable as a carving
+	float kl = clamp(lit / 0.9, 0.0, 1.0);
+	vec3 groove = vec3(0.36, 0.35, 0.34);
+	float groove_a = clamp(g.x * 0.62 + g.y * 0.12, 0.0, 1.0);
+	ALBEDO = mix(groove, glow, kl);
+	ALPHA = mix(groove_a, glow_a, kl);
 }

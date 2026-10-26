@@ -525,7 +525,7 @@ func _build_stair() -> void:
 	var half: Array = GlassTalk.TEMPLATES["together_half"][0]
 	var gp := PackedVector2Array()
 	for q in GlassTalk.smooth(PackedVector2Array(half), 3): gp.append(q * 1.3 + Vector2(0.0, 0.04))
-	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.9})
+	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.0})     # (v0.9.1: dark until you pass)
 	stair_rune = _mi(_quad(Vector2(1.6, 1.6)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(-10.215, 1.75, -2.6)))     # (proud of the wall face at x -10.2)
 	# v0.8.1: the carved rune lights the stair beside it (a small culled light, no shadows)
 	var sl := AquaLight.new(2.8, 0.45)
@@ -1147,6 +1147,18 @@ func toggle_brazier(i: int) -> void:
 			now.sort()
 			if now == SH_SOLUTION and not state["gallery"]: open_gallery(false))
 
+## (v0.9.1, the owner) the stair's carved rune is dark until you pass in front of it (within 2.5 m, before
+## its face): it lights in 0.6 s, and goes dark again 1.5 s after you leave (its little light follows)
+const STAIR_RUNE := Vector3(-10.215, 1.75, -2.6)
+var stair_rune_lit := 0.0
+func _update_stair_rune(dt: float) -> void:
+	if stair_rune == null: return
+	var p := game.player.position
+	var d := Vector2(p.x - STAIR_RUNE.x, p.z - STAIR_RUNE.z)
+	var near := d.length() < 2.5 and d.x < -0.2 and absf(d.y) < 1.9
+	stair_rune_lit = move_toward(stair_rune_lit, 0.9 if near else 0.0, dt * (0.9 / 0.6 if near else 0.9 / 1.5))
+	(stair_rune.material_override as ShaderMaterial).set_shader_parameter("lit", stair_rune_lit)
+
 ## each lit brazier's shadow follows its flame
 var _glint_t := 1.2
 func _update_gallery(dt: float) -> void:
@@ -1231,6 +1243,7 @@ func open_gallery(instant := false) -> void:
 const GARDEN_GLASS_Z := -14.93
 const GARDEN_GLASS_C := Vector2(12.8, 3.3)        # (x, y) of the glass's centre
 const GARDEN_GLASS_H := Vector2(2.2, 2.15)        # half size of its reflecting rect (the Reflector's clip)
+const GARDEN_SMALL := Vector3(16.88, 1.0, -13.95)  # (v0.9.1) her small glass, on the east rail, facing west
 
 ## (v0.9.1, tests) the north face of turned one i (the face toward the glass): its rune quad's 4 corners
 static func turn_north_corners(i: int) -> Array:
@@ -1324,17 +1337,20 @@ func _build_garden() -> void:
 	# her message: a small glass on the gallery wall's garden face
 	# her message: a small glass beside the great one
 	# (a small glass of its own beside the great one: no statue stands between it and you)
+	# (v0.9.1: on the east rail, facing west, so the third turned one never stands between it and you)
 	var wm := MB.new()
 	var fc := Color(0.5, 1.0, 0.0)
-	wm.box(Vector3(16.0, 1.25, -15.0), Vector3(1.2, 0.5, 0.5), Color(0.5, 0.25, 0.0))
-	wm.box(Vector3(15.42, 2.3, -15.0), Vector3(0.1, 2.1, 0.12), fc)
-	wm.box(Vector3(16.58, 2.3, -15.0), Vector3(0.1, 2.1, 0.12), fc)
-	wm.box(Vector3(16.0, 3.38, -15.0), Vector3(1.26, 0.12, 0.14), fc)
-	wm.box(Vector3(16.0, 2.3, -15.12), Vector3(1.1, 2.1, 0.1), Color(0.5, 0.25, 0.0))
+	var gx := GARDEN_SMALL.x
+	var gz := GARDEN_SMALL.z
+	wm.box(Vector3(gx - 0.12, 1.25, gz), Vector3(0.5, 0.5, 1.2), Color(0.5, 0.25, 0.0))
+	wm.box(Vector3(gx, 2.3, gz - 0.58), Vector3(0.12, 2.1, 0.1), fc)
+	wm.box(Vector3(gx, 2.3, gz + 0.58), Vector3(0.12, 2.1, 0.1), fc)
+	wm.box(Vector3(gx, 3.38, gz), Vector3(0.14, 0.12, 1.26), fc)
+	wm.box(Vector3(gx + 0.12, 2.3, gz), Vector3(0.1, 2.1, 1.1), Color(0.5, 0.25, 0.0))
 	puzzles.marble_instance(wm.commit(), self)
-	level.ob_rect(Level.R(15.35, -15.3, 16.65, -14.72))
-	_breath_glass("garden", Vector3(16.0, 2.35, -14.93), Basis(), Vector2(1.05, 1.95), Vector3(6, 7, 8), true, true)
-	level.add_interact("breathe_garden", Vector3(16.0, 1.0, -14.1), "breathe", func() -> void: breathe("garden"), 0.95)
+	level.ob_rect(Level.R(gx - 0.4, gz - 0.65, gx + 0.25, gz + 0.65))
+	_breath_glass("garden", Vector3(gx - 0.02, 2.35, gz), Basis(Vector3.UP, -PI * 0.5), Vector2(1.05, 1.95), Vector3(6, 7, 8), true, true)
+	level.add_interact("breathe_garden", Vector3(GARDEN_SMALL.x - 0.68, 1.0, GARDEN_SMALL.z), "breathe", func() -> void: breathe("garden"), 0.95)
 	# the door east: its leaves in your world, and their twins only the mirror sees
 	for twin in [false, true]:
 		for s in [-1.0, 1.0]:
@@ -2482,7 +2498,7 @@ func hint_target(area: String) -> Vector3:
 			return SH_STATUE + Vector3(0, 2.4, 0)
 		"garden_veiled":
 			if state["turned_done"]: return Vector3.INF
-			if not state["garden_breath"]: return Vector3(16.0, 2.2, -14.6)
+			if not state["garden_breath"]: return Vector3(GARDEN_SMALL.x - 0.1, 2.2, GARDEN_SMALL.z)
 			var ok := turned_correct()
 			for i in 3:
 				if not ok[i]: return Vector3(TURN_X[i], 2.3, TURN_Z)
@@ -2545,6 +2561,7 @@ func update(dt: float) -> void:
 	_update_pool(dt)
 	_update_hall(dt)
 	_update_gallery(dt)
+	_update_stair_rune(dt)
 	if lens_on and game.area != "shard_gallery" and game.area != "": set_lens(false)
 	_update_lens()
 	_update_hollow(dt)

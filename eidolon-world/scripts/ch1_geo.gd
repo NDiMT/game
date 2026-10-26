@@ -156,7 +156,7 @@ static func _stair_of_breath(lv: Level) -> void:
 		lv.balustrade(z, Vector2(x, -10.7), Vector2(x, -14.3), 1.0)
 	lv.balustrade(z, Vector2(-12.35, -14.35), Vector2(-10.3, -14.35), 1.0)
 	# the corridor east into the Hall of Glass, between its west columns
-	lv.slab(z, R(-10.2, -14.2, -4.6, -12.8), 1.0, 0.6, 0.0)
+	lv.slab(z, R(-10.2, -14.2, -5.0, -12.8), 1.0, 0.6, 0.0)          # (v0.9.1: ends where the Hall's floor begins: it overlapped it, coplanar: the flicker at the Hall's door)
 	lv.walk(R(-10.2, -14.2, -4.6, -12.8), 1.0, NAN, -1, "W_corr")
 	lv.balustrade(z, Vector2(-10.1, -14.25), Vector2(-5.2, -14.25), 1.0)
 	lv.balustrade(z, Vector2(-10.1, -12.75), Vector2(-5.2, -12.75), 1.0)

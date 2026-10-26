@@ -725,7 +725,7 @@ func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
 		var mid := a + d * ((s0 + s1) * 0.5)
 		var sl := L * (s1 - s0)
 		box(zone, Vector3(mid.x, y + 0.5, mid.y), Vector3(sl, 0.1, 0.22), 0.25, false, B)
-		box(zone, Vector3(mid.x, y + 0.56, mid.y), Vector3(sl, 0.03, 0.26), 0.25, false, B)
+		box(zone, Vector3(mid.x, y + 0.565, mid.y), Vector3(sl, 0.03, 0.26), 0.25, false, B)      # (v0.9.1: ON the rail, not 5 mm into it: their ends were coplanar slivers)
 	var mid2 := (a + b) * 0.5
 	box(zone, Vector3(mid2.x, y + 0.06, mid2.y), Vector3(L, 0.12, 0.2), 0.25, false, B)
 	var posts := maxi(1, int(L / 0.42))
@@ -754,14 +754,17 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 		var k1 := t1 if hi_at_max else 1.0 - t0
 		var c: Vector3
 		var s: Vector3
+		# (v0.9.1: every other step 4 mm narrower each side: the 1 cm overlap between steps left their side
+		# faces coplanar, a flickering seam down the side of every stair)
+		var inset := 0.008 if i % 2 == 1 else 0.0
 		if axis == 0:
 			var x0 := r.position.x + k0 * L; var x1 := r.position.x + k1 * L
 			c = Vector3((x0 + x1) * 0.5, (top + y_lo - 0.8) * 0.5, r.get_center().y)
-			s = Vector3(x1 - x0 + 0.01, top - y_lo + 0.8, r.size.y)
+			s = Vector3(x1 - x0 + 0.01, top - y_lo + 0.8, r.size.y - inset)
 		else:
 			var z0 := r.position.y + k0 * L; var z1 := r.position.y + k1 * L
 			c = Vector3(r.get_center().x, (top + y_lo - 0.8) * 0.5, (z0 + z1) * 0.5)
-			s = Vector3(r.size.x, top - y_lo + 0.8, z1 - z0 + 0.01)
+			s = Vector3(r.size.x - inset, top - y_lo + 0.8, z1 - z0 + 0.01)
 		mb(zone).tag = "floor"
 		box(zone, c, s, 0.0)
 		mb(zone).tag = ""
@@ -906,7 +909,7 @@ func _garden() -> void:
 	stump(Vector3(17.0, Ch1Geo.CO_WATER_Y, -3.9), 1.1, false)
 	rubble(Vector3(16.6, 1.0, -6.0), 0.25, 5)
 	rubble(Vector3(11.0, 1.0, -9.0), 0.3, 4)
-	balustrade(z, Vector2(16.95, -14.8), Vector2(16.95, -13.2), 1.0)
+	# (v0.9.1: her small glass stands on this stretch of the east rail now: chapter.gd GARDEN_SMALL)
 	balustrade(z, Vector2(16.95, -10.4), Vector2(16.95, -5.2), 1.0)
 	balustrade(z, Vector2(9.7, -4.95), Vector2(14.7, -4.95), 1.0)          # (v0.9: the way up from the stones east of it)
 	balustrade(z, Vector2(7.05, -9.2), Vector2(7.05, -5.1), 1.0)       # (v0.8.1: the garden's new west edge)

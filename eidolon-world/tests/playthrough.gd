@@ -666,7 +666,7 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the garden door is closed", P().x < 16.6, str(P())))
-	step_do(func() -> void: walk_to(16.0, -14.1))
+	step_do(func() -> void: walk_to(Chapter.GARDEN_SMALL.x - 0.68, Chapter.GARDEN_SMALL.z))
 	step_until("to her small glass", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
 	step_do(func() -> void: ok("breathe on the garden glass", _focus() == "breathe_garden" and game.try_interact(), _focus()))
 	step_until("she writes three runes", func() -> bool: return C().state["garden_breath"], 9.0)
@@ -1078,7 +1078,7 @@ func _plan() -> void:
 			var c: Vector2 = (e[2] as Rect2).get_center()
 			solid = solid and game.level.blocked(c, 0.05)
 		ok("props: each one is solid (its centre blocked)", solid)
-		var goals := [[-10.6, 1.7], [-11.3, -13.5], [0.0, -16.0], [3.85, -19.15], [8.4, -13.0], [8.6, -7.0], [12.0, -10.0], [16.0, -14.1], [21.0, -10.0],
+		var goals := [[-10.6, 1.7], [-11.3, -13.5], [0.0, -16.0], [3.85, -19.15], [8.4, -13.0], [8.6, -7.0], [12.0, -10.0], [16.2, -13.95], [21.0, -10.0],
 			[12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [29.0, -49.0], [25.5, -21.6], [21.34, -33.93], [28.0, -38.6], [25.0, -30.8]]
 		var miss := _reach(goals)
 		ok("props: every key place still reachable on foot from the gate", miss.is_empty(), str(miss)))
