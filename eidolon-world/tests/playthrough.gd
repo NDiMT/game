@@ -349,7 +349,7 @@ func _plan() -> void:
 	step_do(func() -> void:
 		var rw := C().stair_rune
 		var rm := rw.material_override as ShaderMaterial
-		ok("the whole rune is carved large beside the stair, dark until you pass it (v0.9.1)", rw.visible and (rw.mesh as QuadMesh).size.x >= 1.2 and int(rm.get_shader_parameter("count")) > 8 and float(rm.get_shader_parameter("lit")) < 0.05, str(P()))
+		ok("the whole rune is carved large beside the stair, invisible until you pass it (v0.9.4)", rw.visible and (rw.mesh as QuadMesh).size.x >= 1.2 and int(rm.get_shader_parameter("count")) > 8 and float(rm.get_shader_parameter("lit")) < 0.05, str(P()))
 		_mark = int(P().z * 100.0))
 	walk_path("past the carved rune", [[-11.3, -1.0], [-11.2, -2.6]])
 	step_wait(0.8)
@@ -360,7 +360,7 @@ func _plan() -> void:
 	step_wait(2.0)
 	step_do(func() -> void:
 		var rm := C().stair_rune.material_override as ShaderMaterial
-		ok("(v0.9.1) left behind, it goes dark again", float(rm.get_shader_parameter("lit")) < 0.05, str(rm.get_shader_parameter("lit"))))
+		ok("(v0.9.1) left behind, it fades away again", float(rm.get_shader_parameter("lit")) < 0.05, str(rm.get_shader_parameter("lit"))))
 	step_do(func() -> void:
 		var m: ShaderMaterial = C().breath_mats["stair"]
 		var sz: Vector2 = m.get_shader_parameter("size")
@@ -675,19 +675,20 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the garden door is closed", P().x < 16.6, str(P())))
-	walk_path("to the great glass", [[13.0, -11.6], [Chapter.GARDEN_BREATHE.x, -12.2], [Chapter.GARDEN_BREATHE.x, Chapter.GARDEN_BREATHE.z]])
+	step_do(func() -> void: walk_to(Chapter.GARDEN_SMALL.x - 0.68, Chapter.GARDEN_SMALL.z))
+	step_until("to her small glass", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
 	step_do(func() -> void:
 		var m: ShaderMaterial = C().breath_mats["garden"]
-		ok("(v0.9.2) the great glass is fogged, milky: the turned ones cannot be seen in it yet", float(m.get_shader_parameter("fog")) > 0.95)
-		ok("breathe on the great glass", _focus() == "breathe_garden" and game.try_interact(), _focus()))
-	step_do(func() -> void: ok("(v0.9.2) the close-up opens, as on the stair", game.mode == "glass" and game.ui.glass_talk.write_only))
-	step_until("she writes her three runes, large", func() -> bool: return C().state["garden_breath"], 14.0)
+		ok("(v0.9.4) her small glass is clear at rest", float(m.get_shader_parameter("fog")) < 0.05)
+		ok("breathe on her small glass", _focus() == "breathe_garden" and game.try_interact(), _focus()))
+	step_do(func() -> void: ok("(v0.9.4) the close-up opens, as on the stair", game.mode == "glass" and game.ui.glass_talk.write_only))
+	step_until("her hand writes her three runes in the close-up", func() -> bool: return C().state["garden_breath"], 14.0)
 	step_until("the close-up ends by itself", func() -> bool: return game.mode == "play", 8.0)
-	step_wait(4.5)
+	step_wait(2.0)
 	step_do(func() -> void:
 		var m: ShaderMaterial = C().breath_mats["garden"]
 		ok("her message: three asymmetric runes, written from her side (mirrored for you)", m.get_shader_parameter("glyphs") == Vector3(6, 7, 8) and float(m.get_shader_parameter("flip")) == 1.0)
-		ok("(v0.9.2) the glass stays clear, her runes glowing softly on it", float(m.get_shader_parameter("fog")) < 0.05 and float(m.get_shader_parameter("ghost")) > 0.4 and float(m.get_shader_parameter("ghost")) < 0.8))
+		ok("(v0.9.4) her small glass keeps her writing a while", float(m.get_shader_parameter("fog")) > 0.5 and float(m.get_shader_parameter("write")) > 0.99))
 	for i in 3:
 		var presses: int = (int(Chapter.TURN_SOLUTION[i]) - int(Chapter.TURN_START[i]) + 4) % 4
 		step_do(func() -> void: tp(Chapter.TURN_X[i], Chapter.TURN_Z + 1.05, 0.0))

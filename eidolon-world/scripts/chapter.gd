@@ -522,7 +522,7 @@ func _build_stair() -> void:
 	var half: Array = GlassTalk.TEMPLATES["together_half"][0]
 	var gp := PackedVector2Array()
 	for q in GlassTalk.smooth(PackedVector2Array(half), 3): gp.append(q * 1.3 + Vector2(0.0, 0.04))
-	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.0})     # (v0.9.1: dark until you pass)
+	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.0})     # (v0.9.4: invisible until you pass)
 	stair_rune = _mi(_quad(Vector2(1.6, 1.6)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(-10.215, 1.75, -2.6)))     # (proud of the wall face at x -10.2)
 	# v0.8.1: the carved rune lights the stair beside it (a small culled light, no shadows)
 	var sl := AquaLight.new(2.8, 0.45)
@@ -540,8 +540,9 @@ func breathe(id: String) -> void:
 		event.emit("breath", id)
 		game.open_glass("stair")
 		return
-	if id == "garden" and not state["garden_breath"]:
-		# v0.9.2: the same breath and close-up: the fog clears and she writes her three runes
+	if id == "garden":
+		# v0.9.4 (the owner): her SMALL glass by the great one: the same breath and close-up as the stair's;
+		# in the close-up her hand writes her three runes (her message: the code)
 		event.emit("breath", id)
 		game.open_glass("garden")
 		return
@@ -564,34 +565,16 @@ func breathe(id: String) -> void:
 
 ## the conversation through the glass ended well: the pane in the world keeps her writing a while
 func glass_answered(id: String) -> void:
-	if id == "garden":
-		_clear_garden_glass(false)
-		return
-	if id != "stair": return
-	var m: ShaderMaterial = breath_mats["stair"]
+	if id != "stair" and id != "garden": return
+	if id == "garden": state["garden_breath"] = true
+	var m: ShaderMaterial = breath_mats[id]
 	m.set_shader_parameter("fog", 1.0)
 	m.set_shader_parameter("write", 1.0)
 	var tw := create_tween()
 	tw.tween_interval(8.0)
 	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("fog", v), 1.0, 0.0, 5.0)
 	tw.tween_callback(func() -> void: m.set_shader_parameter("write", 0.0))
-	if not state["breath"]: _open_stair(false)
-
-## (v0.9.2) the great glass after she wrote: clear (the turned ones show in it), her runes written on it,
-## bright, then a soft glow
-func _clear_garden_glass(instant: bool) -> void:
-	state["garden_breath"] = true
-	var m: ShaderMaterial = breath_mats["garden"]
-	m.set_shader_parameter("write", 1.0)
-	if instant:
-		m.set_shader_parameter("fog", 0.0)
-		m.set_shader_parameter("ghost", 0.6)
-		return
-	var tw := create_tween()
-	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("fog", v), 1.0, 0.0, 1.6)
-	tw.parallel().tween_method(func(v: float) -> void: m.set_shader_parameter("ghost", v), 0.0, 1.0, 0.8)
-	tw.tween_interval(1.5)
-	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("ghost", v), 1.0, 0.6, 2.5)
+	if id == "stair" and not state["breath"]: _open_stair(false)
 
 func _breath_done(id: String) -> void:
 	if id == "stair" and not state["breath"]:
@@ -1295,7 +1278,7 @@ func open_gallery(instant := false) -> void:
 const GARDEN_GLASS_Z := -14.93
 const GARDEN_GLASS_C := Vector2(12.8, 3.3)        # (x, y) of the glass's centre
 const GARDEN_GLASS_H := Vector2(2.2, 2.15)        # half size of its reflecting rect (the Reflector's clip)
-const GARDEN_BREATHE := Vector3(11.15, 1.0, -14.3)  # (v0.9.2) where you breathe on the great glass (left of the turned ones)
+const GARDEN_SMALL := Vector3(16.88, 1.0, -13.95)  # (v0.9.1, back in v0.9.4) her small glass, on the east rail, facing west
 
 ## (v0.9.1, tests) the north face of turned one i (the face toward the glass): its rune quad's 4 corners
 static func turn_north_corners(i: int) -> Array:
@@ -1386,15 +1369,21 @@ func _build_garden() -> void:
 		var idx := i
 		level.add_interact("turn%d" % (i + 1), Vector3(TURN_X[i], 1.0, TURN_Z + 1.05), "turn", func() -> void: turn_statue(idx), 0.7,
 			func() -> bool: return not state["turned_done"])
-	# v0.9.2: her message is on the GREAT glass now: fogged, milky, until you breathe on it (the close-up:
-	# she writes her three runes large across it); then it stays clear, her runes faint on it, and the
-	# turned ones' faces show in it
-	_breath_glass("garden", Vector3(GARDEN_GLASS_C.x, GARDEN_GLASS_C.y, GARDEN_GLASS_Z + 0.01), Basis(), Vector2(4.4, 4.3), Vector3(6, 7, 8), false, false)
-	var gb: ShaderMaterial = breath_mats["garden"]
-	gb.set_shader_parameter("row_off", Vector2(0.0, -1.1))         # (above the turned ones' reflected faces: q.y grows downward)
-	gb.set_shader_parameter("fog", 1.0)
-	level.add_interact("breathe_garden", GARDEN_BREATHE, "breathe", func() -> void: breathe("garden"), 1.0,
-		func() -> bool: return not state["garden_breath"])
+	# her message: a small glass beside the great one (v0.9.4: the great glass is clear, as in v0.9.1)
+	# (v0.9.1: on the east rail, facing west, so the third turned one never stands between it and you)
+	var wm := MB.new()
+	var fc := Color(0.5, 1.0, 0.0)
+	var gx := GARDEN_SMALL.x
+	var gz := GARDEN_SMALL.z
+	wm.box(Vector3(gx - 0.12, 1.25, gz), Vector3(0.5, 0.5, 1.2), Color(0.5, 0.25, 0.0))
+	wm.box(Vector3(gx, 2.3, gz - 0.58), Vector3(0.12, 2.1, 0.1), fc)
+	wm.box(Vector3(gx, 2.3, gz + 0.58), Vector3(0.12, 2.1, 0.1), fc)
+	wm.box(Vector3(gx, 3.38, gz), Vector3(0.14, 0.12, 1.26), fc)
+	wm.box(Vector3(gx + 0.12, 2.3, gz), Vector3(0.1, 2.1, 1.1), Color(0.5, 0.25, 0.0))
+	puzzles.marble_instance(wm.commit(), self)
+	level.ob_rect(Level.R(gx - 0.4, gz - 0.65, gx + 0.25, gz + 0.65))
+	_breath_glass("garden", Vector3(gx - 0.02, 2.35, gz), Basis(Vector3.UP, -PI * 0.5), Vector2(1.05, 1.95), Vector3(6, 7, 8), true, true)
+	level.add_interact("breathe_garden", Vector3(GARDEN_SMALL.x - 0.68, 1.0, GARDEN_SMALL.z), "breathe", func() -> void: breathe("garden"), 0.95)
 	# the door east: its leaves in your world, and their twins only the mirror sees
 	for twin in [false, true]:
 		for s in [-1.0, 1.0]:
@@ -2369,7 +2358,7 @@ func hint_target(area: String) -> Vector3:
 			return SH_STATUE + Vector3(0, 2.4, 0)
 		"garden_veiled":
 			if state["turned_done"]: return Vector3.INF
-			if not state["garden_breath"]: return Vector3(GARDEN_BREATHE.x, 2.6, GARDEN_GLASS_Z)
+			if not state["garden_breath"]: return Vector3(GARDEN_SMALL.x - 0.1, 2.2, GARDEN_SMALL.z)
 			var ok := turned_correct()
 			for i in 3:
 				if not ok[i]: return Vector3(TURN_X[i], 2.3, TURN_Z)
@@ -2471,10 +2460,8 @@ func apply_state() -> void:
 		sh_veil.set_shader_parameter("intensity", 0.0)
 	maze_prog = -1
 	_apply_turned(true)
-	if state["garden_breath"]: _clear_garden_glass(true)
-	else:
-		var gm: ShaderMaterial = breath_mats["garden"]
-		gm.set_shader_parameter("fog", 1.0); gm.set_shader_parameter("ghost", 0.0); gm.set_shader_parameter("write", 0.0)
+	var gm: ShaderMaterial = breath_mats["garden"]
+	gm.set_shader_parameter("fog", 0.0); gm.set_shader_parameter("write", 0.0)        # (her small glass: clear at rest)
 	if state["turned_done"]: _open_garden_door(true)
 	else:
 		level.set_enabled("g_door_ob", true)

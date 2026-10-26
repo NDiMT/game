@@ -2,9 +2,9 @@ Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
 
 [audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
 [props] 11 placed
-[solids] 2128 primitives, 1099 solid footprints, 357 obstacles added (139 ms)
-[warm-up] 438 mesh/material pairs (of 1005 geometry nodes), 11 canvas materials
-  .. sim 0s  real 2s  step 0/848
+[solids] 2133 primitives, 1103 solid footprints, 357 obstacles added (198 ms)
+[warm-up] 440 mesh/material pairs (of 1010 geometry nodes), 11 canvas materials
+  .. sim 0s  real 2s  step 0/844
 PASS  woke at the veiled gate (1.4, 0.0, 2.3)
 PASS  chapter title on the title screen 
 PASS  pool reflection visible samples=63
@@ -27,7 +27,7 @@ PASS  turn the second slab from the first (1) pool_turn1
 PASS  turn the second slab from the first (2) pool_turn1
 PASS  turn the second slab from the first (3) pool_turn1
 PASS  turn the third slab from the north rim pool_turn2
-  .. sim 20s  real 4s  step 45/848
+  .. sim 20s  real 4s  step 45/844
 PASS  still broken: hers are not stone yet 
 PASS  turn the fourth slab from the south rim (1) pool_turn3
 PASS  turn the fourth slab from the south rim (2) pool_turn3
@@ -42,10 +42,10 @@ PASS  the music bed steps back under the jingle, then returns
 PASS  crossed the pool (-10.33678, 0.0, 2.422294)
 PASS  footsteps on the slabs splash 
 PASS  reached the Stair of Breath stair_breath
-PASS  the whole rune is carved large beside the stair, dark until you pass it (v0.9.1) (-10.33678, 0.0, 2.422294)
+PASS  the whole rune is carved large beside the stair, invisible until you pass it (v0.9.4) (-10.33678, 0.0, 2.422294)
 PASS  (v0.9.1) passing before it, the rune lights 0.9
-  .. sim 40s  real 6s  step 91/848
-PASS  (v0.9.1) left behind, it goes dark again 0.0
+  .. sim 40s  real 7s  step 91/844
+PASS  (v0.9.1) left behind, it fades away again 0.0
 PASS  the breath glass is back in the stair wall (v0.8) 
 PASS  the whole glyph fits on the pane with a margin 0.42
 PASS  on the breath landing (-11.3, 0.5, -5.232944)
@@ -61,7 +61,7 @@ PASS  her writing is mirrored for you (her half on the left, the answer on the r
 PASS  recogniser: her half copied is wrong 
 PASS  after one wrong try: a faint dotted ghost of the missing stroke 1
 PASS  recogniser: a straight stroke is wrong 
-  .. sim 60s  real 8s  step 122/848
+  .. sim 60s  real 9s  step 122/844
 PASS  after two wrong tries she traces the missing part, faintly 
 PASS  the fog crept back over your strokes 
 PASS  recogniser: the mirrored stroke, drawn backwards with a shaky hand, is right 
@@ -70,7 +70,7 @@ PASS  breath cue played
 PASS  her answer rings her song (the motif A-D-E-F-E) 
 PASS  her 'follow' rune is a letter of the script, one calligraphic stroke 
 PASS  recogniser unit: resample keeps 32 points 
-  .. sim 80s  real 10s  step 136/848
+  .. sim 80s  real 11s  step 136/844
 PASS  reached the Hall of Glass by the corridor (-2.06584, 1.0, -13.5) hall_glass
 PASS  area name shown on entering the hall HALL OF GLASS
 PASS  great mirror reflection seen in the glass 
@@ -98,7 +98,7 @@ PASS  turn the bust back to the glass (2) hall_turn
 PASS  the bust faces the glass again { "drum": [-1, -13], "brazier": [3, -13], "bust": 0, "locks": [false, false, false] }
 PASS  push the drum (1) hall_push
 PASS  push the drum (2) hall_push
-  .. sim 100s  real 12s  step 184/848
+  .. sim 100s  real 14s  step 184/844
 PASS  push the drum (3) hall_push
 PASS  push the drum (4) hall_push
 PASS  push the drum (5) hall_push
@@ -132,7 +132,7 @@ PASS  (v0.9.2) each eye-pair sits exactly at one shadow's head, and at no other'
 PASS  (v0.9) a solution of 2-3 among 4-5 braziers 
 PASS  solver: exactly one set of braziers casts her shadow into the outlines [[0, 1, 4]]
 PASS  solver: each brazier throws her shadow straight away from it, longer when nearer 
-  .. sim 120s  real 15s  step 253/848
+  .. sim 120s  real 16s  step 253/844
 PASS  walking about the chamber (8.333182, 1.0, -10.60085) shard_gallery
 PASS  the gate is a wall in your world (8.093781, 1.0, -9.92)
 PASS  (v0.9.2) the lit one that is not hers casts a shadow without eyes 
@@ -159,7 +159,7 @@ where he wanted her to stand.
 PASS  the solve jingle 
 PASS  her shadows darken; her veil stirs 
 PASS  (v0.9) the gate opens onto the way down, not the garden (8.504437, 1.0, -3.062872) shard_gallery
-  .. sim 140s  real 18s  step 307/848
+  .. sim 140s  real 18s  step 307/844
 PASS  (v0.9) the Sunken Colossus: named on arrival, the music swells THE SUNKEN COLOSSUS
 PASS  (v0.9) the camera leans toward the head (a pan, never a zoom) 
 PASS  reached the Garden of the Veiled (12.80877, 1.0, -9.933567) garden_veiled
@@ -168,19 +168,19 @@ PASS  hint (110 s): the eyes on the floor pulse
 PASS  (v0.9.1) the great glass shows all three turned ones' north faces whole, from every step []
 PASS  the old rune door panel is gone 
 PASS  the garden door is closed (16.34661, 1.0, -11.77479)
-PASS  (v0.9.2) the great glass is fogged, milky: the turned ones cannot be seen in it yet 
-PASS  breathe on the great glass breathe_garden
-PASS  (v0.9.2) the close-up opens, as on the stair 
-  .. sim 160s  real 20s  step 362/848
+PASS  (v0.9.4) her small glass is clear at rest 
+PASS  breathe on her small glass breathe_garden
+PASS  (v0.9.4) the close-up opens, as on the stair 
+  .. sim 160s  real 21s  step 358/844
 PASS  her message: three asymmetric runes, written from her side (mirrored for you) 
-PASS  (v0.9.2) the glass stays clear, her runes glowing softly on it 
+PASS  (v0.9.4) her small glass keeps her writing a while 
 PASS  statue 1 in reach turn1
 PASS  statue 2 in reach turn2
 PASS  statue 3 in reach turn3
-  .. sim 180s  real 22s  step 384/848
 PASS  each statue turns her rune to the mirror (reversed in the glass = as she wrote it) [0, 1, 0]
 PASS  the door opens in the reflection first refl -1.31 real 0.00
 PASS  the reflection's door is only in the glass 
+  .. sim 180s  real 23s  step 389/844
 PASS  reached the Hollow Walk (18.13293, 1.0, -11.80055) hollow_walk
 PASS  the hollow walk's gate is closed (18.51622, 1.0, -14.73)
 PASS  solver: one shortest way onto both plates, 8..14 steps len 12 ways 1 states 199
@@ -193,16 +193,15 @@ PASS  her reflection stands in her room (30.98198, 1.0, -15.88198)
 PASS  you stand on your slab (25.42048, 1.0, -10.3205)
 PASS  your stone blocks the step (and her) 
 PASS  back to the entry slab 
-  .. sim 200s  real 25s  step 414/848
 PASS  off the floor where you came on 
 PASS  off: you are on the landing, she is back at your mirror (23.77597, 1.0, -8.675971) (30.98198, 1.0, -15.88198)
 PASS  no teaching the second time (2, 0)
 PASS  the reset is offered on the floor steps_reset
 PASS  reset: both of you back at the entry 
+  .. sim 200s  real 27s  step 426/844
 PASS  mid-way you and she have drifted apart p (4, 1) h (3, 0)
 PASS  solved on the BFS path 
 PASS  both plates lit 
-  .. sim 220s  real 27s  step 464/848
 PASS  reached the Court of Light (15.06459, 2.0, -18.38462) court_light
 PASS  beam not lit at start 
 PASS  solver: exactly one setting lights the mural, through her world [[3, 3, 1, 1]]
@@ -210,6 +209,7 @@ PASS  solver: the near way lights the crystal the wrong way (a decoy) 4 decoys
 PASS  solver: no single turn from the start lights anything 
 PASS  her glass is a real reflection here 
 PASS  mirror 1 in reach mirror1
+  .. sim 220s  real 29s  step 473/844
 PASS  mirror 2 in reach mirror2
 PASS  mirror 3 in reach mirror3
 PASS  the near way: the crystal lights... 
@@ -223,16 +223,16 @@ PASS  the drawbridge stays up (the way on is the mural)
 PASS  your veil's shadow falls on the mural 
 PASS  standing anywhere does not complete it 
 PASS  the shadow of your veil fills the missing head (11.87841, 3.305535, -26.93)
-  .. sim 240s  real 30s  step 523/848
 PASS  (v0.9) beyond the mural door: the Tree of Shards, named, the music swells; the camera leans to it (1.610237, 1.487207, -0.048273)
 PASS  (v0.9) the Tree of Shards: hundreds of shards, one multimesh 
+  .. sim 240s  real 32s  step 527/844
 PASS  in the Mist Maze mist_maze
 PASS  walking: no footprints 0
 PASS  standing still: her petrol footprints show the next stretch of her path, mirrored in the pool 6 visible
 PASS  the mist hides a wall (11.99207, 2.0, -30.65)
 PASS  bumping into it, it shimmers 
-  .. sim 260s  real 32s  step 561/848
 PASS  out of the maze (10.0, 2.0, -40.13438) echo_corridor
+  .. sim 260s  real 34s  step 565/844
 PASS  footsteps echo in the corridor 17
 PASS  the corridor remembers her song, faintly 
 PASS  the see-through: the corridor's near wall opens round you 1.00
@@ -247,8 +247,8 @@ PASS  sing D song3
 PASS  sing E song0
 PASS  sing F song2
 PASS  sing E song0
-  .. sim 280s  real 34s  step 609/848
 PASS  the hidden memory memory1
+  .. sim 280s  real 36s  step 609/844
 PASS  hidden memory #1 kept 
 PASS  its line shows 
 PASS  the memory is saved 
@@ -267,14 +267,14 @@ PASS  on her tile, her weight counts on the RIGHT: 16, tipped the other way (15,
 PASS  hint after a while: the tiles shine 
 PASS  take the 1 back pan3
 PASS  put it on the bench weight0
-  .. sim 300s  real 36s  step 661/848
 PASS  the balance is level (15, 15)
+  .. sim 300s  real 38s  step 663/844
 PASS  risen to the high walkway (31.33656, 4.0, -45.60938)
 PASS  (v0.9) on the walkway: the Upward Spring, named, the camera leans up toward the temple (3.031196, 2.926656, 0.221333)
 PASS  down onto the Eidolon Ledge (27.86709, 2.0, -22.40001) eidolon_ledge
 PASS  eidolon reflection walks beyond the glass 
-  .. sim 320s  real 38s  step 683/848
 PASS  her footprints lead toward the plate 6
+  .. sim 320s  real 41s  step 683/844
 PASS  footprint marker shows where to stand intensity 0.85
 PASS  hers alone is not enough: your plate is empty 
 PASS  standing on yours, your reflection is far from hers 
@@ -282,30 +282,30 @@ PASS  push the statue (1) ledge_push
 PASS  push the statue (2) ledge_push
 PASS  push the statue (3) ledge_push
 PASS  the statue holds your plate 
-  .. sim 340s  real 40s  step 709/848
+  .. sim 340s  real 44s  step 708/844
 PASS  the drawbridge lever (a way back) drawbridge
 PASS  reached the Gate of the Four Veiled gate_four
 PASS  the tholos is closed by veils (25.03823, 2.0, -29.33095)
-  .. sim 360s  real 42s  step 732/848
 PASS  standing on the empty plinth (21.27417, 2.25, -33.92999)
 PASS  wait four_wait
 PASS  the plinths light one by one 
 PASS  the veil before the shrine is gone 
 PASS  the solve jingle again 
+  .. sim 360s  real 46s  step 736/844
 PASS  reached the First Shrine first_shrine
 PASS  shrine is dark 
 PASS  wake the shrine shrine
 PASS  cinematic: letterbox 
 PASS  cinematic: the shrine wakes 
 PASS  cinematic: near geometry cut away, the crystal lifted out of the shot 
-  .. sim 380s  real 44s  step 753/848
+  .. sim 380s  real 48s  step 749/844
 PASS  cinematic: her reflection in the shrine pool 
 PASS  cinematic: camera looks down into the water 50.0 deg
 PASS  cinematic: palm to palm 
 PASS  cinematic: Katoptron lights on you both 
-  .. sim 400s  real 46s  step 757/848
+  .. sim 400s  real 49s  step 753/844
 PASS  cinematic: her veil lifts 1.00
-  .. sim 420s  real 47s  step 759/848
+  .. sim 420s  real 51s  step 755/844
 PASS  cinematic: she is gone; the pool shows only you 
 PASS  memory fragment shows 
 PASS  cinematic: ~4.5 s awakening + the 59 s score 63.9 s
@@ -319,41 +319,41 @@ PASS  still playable, controls back, no letterbox
 PASS  camera back to normal 
 PASS  fog receded 
 PASS  score cues played 
-  .. sim 440s  real 49s  step 771/848
 PASS  the way on is sealed (28.00062, 2.0, -38.53448)
-  .. sim 460s  real 52s  step 780/848
-  .. sim 480s  real 55s  step 782/848
-  .. sim 500s  real 58s  step 786/848
-  .. sim 520s  real 61s  step 788/848
-  .. sim 540s  real 63s  step 790/848
-  .. sim 560s  real 66s  step 794/848
-  .. sim 580s  real 68s  step 796/848
-  .. sim 600s  real 71s  step 800/848
-  .. sim 620s  real 74s  step 802/848
-  .. sim 640s  real 77s  step 806/848
-  .. sim 660s  real 79s  step 808/848
-  .. sim 680s  real 82s  step 810/848
-  .. sim 700s  real 84s  step 814/848
-  .. sim 720s  real 87s  step 816/848
-PASS  random walk: always on walkable ground 37233 samples, 0 violations, max step dy 0.250
-PASS  random walk: never inside a solid prop's footprint 37233 samples, 0 hits
-PASS  interaction highlight: always on the target the button resolves to 37233 frames, 6257 with a target, 0 mismatches
+  .. sim 440s  real 53s  step 774/844
+  .. sim 460s  real 56s  step 776/844
+  .. sim 480s  real 60s  step 780/844
+  .. sim 500s  real 62s  step 782/844
+  .. sim 520s  real 65s  step 784/844
+  .. sim 540s  real 68s  step 788/844
+  .. sim 560s  real 71s  step 790/844
+  .. sim 580s  real 74s  step 794/844
+  .. sim 600s  real 76s  step 796/844
+  .. sim 620s  real 79s  step 798/844
+  .. sim 640s  real 81s  step 802/844
+  .. sim 660s  real 84s  step 804/844
+  .. sim 680s  real 86s  step 808/844
+  .. sim 700s  real 89s  step 810/844
+PASS  random walk: always on walkable ground 36937 samples, 0 violations, max step dy 0.250
+PASS  random walk: never inside a solid prop's footprint 36937 samples, 0 hits
+PASS  interaction highlight: always on the target the button resolves to 36937 frames, 6360 with a target, 0 mismatches
 PASS  interaction highlight: something visibly lit for every target (a mesh glow, or the floor ring) 0
 PASS  props: every placement loaded, on the marble 11 placed
 PASS  props: each one is solid (its centre blocked) 
 PASS  props: every key place still reachable on foot from the gate []
-PASS  collision audit: every primitive classified 2128 primitives, 1099 solid footprints (969 static), 357 obstacles added
-  collision audit: 2128 primitives, 1099 solid footprints, 357 obstacles added; 1203 targets walked into from 4 sides (1689 approaches), 0 overlaps
-PASS  collision: walking into every solid prop and obstacle from 4 sides never overlaps it 1203 targets, 1689 approaches, 0 overlaps
+PASS  collision audit: every primitive classified 2133 primitives, 1103 solid footprints (973 static), 357 obstacles added
+  collision audit: 2133 primitives, 1103 solid footprints, 357 obstacles added; 1208 targets walked into from 4 sides (1691 approaches), 0 overlaps
+PASS  collision: walking into every solid prop and obstacle from 4 sides never overlaps it 1208 targets, 1691 approaches, 0 overlaps
 PASS  the first flight: its open side's balustrade stops you (-11.95, 0.454862, -3.656955)
 PASS  the first flight rises the way its steps are drawn (no walking through raised steps) 0.04 -> 0.47
+  .. sim 720s  real 115s  step 821/844
 PASS  walking at the hall's bust and the mirror: never inside them  (3.697899, 1.0, -19.14868)
 PASS  checkpoint saved (chapter) { "breath": true, "echo_room": true, "four": true, "gallery": true, "gallery_lit": [0.0, 1.0, 4.0], "garden_breath": true, "hall": { "brazier": [2.0, -19.0], "bust": 0.0, "drum": [0.0, -19.0], "locks": [true, true, true] }, "hall_door": true, "hollow_done": true, "ledge_statue": [26.0, -23.0], "lens_used": false, "maze": true, "memories": ["m1"], "mural": true, "pool_turns": [1.0, 3.0, 1.0, 3.0], "scale_w": [-1.0, 4.0, 5.0], "scales": true, "shard": true, "stones": true, "turned": [0.0, 1.0, 0.0], "turned_done": true }
 PASS  checkpoint saved (puzzles) 
 [audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
 [props] 11 placed
-[solids] 2128 primitives, 1099 solid footprints, 357 obstacles added (215 ms)
-[warm-up] 438 mesh/material pairs (of 1005 geometry nodes), 11 canvas materials
+[solids] 2133 primitives, 1103 solid footprints, 357 obstacles added (132 ms)
+[warm-up] 440 mesh/material pairs (of 1010 geometry nodes), 11 canvas materials
 PASS  restored chapter 
 PASS  restored regions 
 PASS  restored inventory 
@@ -362,8 +362,8 @@ PASS  restored awakened world
 PASS  restored position (3.697899, 1.0, -19.14868)
 [audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
 [props] 11 placed
-[solids] 2128 primitives, 1099 solid footprints, 357 obstacles added (149 ms)
-[warm-up] 438 mesh/material pairs (of 1005 geometry nodes), 11 canvas materials
+[solids] 2133 primitives, 1103 solid footprints, 357 obstacles added (226 ms)
+[warm-up] 440 mesh/material pairs (of 1010 geometry nodes), 11 canvas materials
 PASS  title offers Continue + New Game 
 PASS  New Game asks to confirm 
 PASS  No keeps the title and the save 
@@ -383,11 +383,11 @@ PASS  a short press does not skip
 PASS  a long press skips the cinematic 
 PASS  skipped: the end state is reached anyway 
 PASS  skipped: the shrine counter still shows 
-PLAYTHROUGH OK  checks=331  failed=0  sim_time=737.1s  ground_samples=37501
+PLAYTHROUGH OK  checks=331  failed=0  sim_time=732.2s  ground_samples=37205
 ERROR: 1 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
 ERROR: 11 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
 ERROR: 11 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
 WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
      at: cleanup (core/object/object.cpp:2514)
-ERROR: 13 resources still in use at exit (run with --verbose for details).
+ERROR: 33 resources still in use at exit (run with --verbose for details).
    at: clear (core/io/resource.cpp:795)

@@ -26,7 +26,8 @@ const ROOMS := {
 }
 ## an interact whose piece is not where you stand to use it: the piece itself (its centre, 0.5 m below: the
 ## test samples half a metre up), and its corners
-const PIECE_OF := {"breathe_garden": [Vector3(11.15, 2.3, -14.88)]}      # (v0.9.2: the great glass where you breathe)
+const PIECE_OF := {"breathe_garden": [Vector3(16.84, 1.85, -13.95), Vector3(16.84, 0.95, -14.45), Vector3(16.84, 0.95, -13.45),
+	Vector3(16.84, 2.75, -14.45), Vector3(16.84, 2.75, -13.45)]}      # (her small glass, back in v0.9.4)
 
 ## (moved at runtime: never part of a room's list)
 const DYNAMIC := ["hall_push", "hall_take", "hall_place", "ledge_push"]
