@@ -14,7 +14,8 @@ extends Node3D
 ##  4 Shadow Chamber  "Where Her Shadow Fell" (v0.8.1): light the braziers whose shadows of her statue lie
 ##                    in the outlines only the shard shows
 ##  5 Garden          THE TURNED ONES (kept): asymmetric runes; her pane gives them as she sees them
-##  6 Hollow Walk     two hollows with interfering paths step toward you while you stand unwatching
+##  6 Our Steps       (v0.9.2) you and your reflection on two floors either side of a glass: her stones
+##                    hold her while you step on; stand on your plate while she stands on hers
 ##  7 Court of Light  "Two Worlds of Light": the beam must go INTO her great glass, off her own glasses
 ##                    and your stands' twins, and out again; only that route lights her mural
 ##  8 Mist Maze       her footprints, mirrored, show the next stretch while you stand still
@@ -70,14 +71,10 @@ var turn_tw: Array = [null, null, null]
 var door_real: Array[Node3D] = []
 var door_refl: Array[Node3D] = []
 # hollow walk
-var hollow_nodes: Array[Node3D] = []
-var hollow_glints: Array[ShaderMaterial] = []
-var hollow_obs: Array = []
-var plate_mats: Array[ShaderMaterial] = []
+var steps: OurSteps                     # v0.9.2: "Our Steps" (the Hollow Walk's room)
 var hw_gate: Node3D
 var _still := 0.0
 var _tick := 0.0
-var hollow_moving := false
 # court mural
 var mural_mat: ShaderMaterial
 var mural_hold := 0.0
@@ -128,7 +125,7 @@ func reset_state() -> void:
 		"gallery_lit": [SH_PRELIT], "lens_used": false,
 		"hall": {"drum": [DRUM_START.x, DRUM_START.y], "brazier": [BRAZ_START.x, BRAZ_START.y], "bust": BUST_START, "locks": [false, false, false]},
 		"turned": TURN_START.duplicate(), "turned_done": false, "garden_breath": false,
-		"hollows": [[5, 2], [1, 1]], "hollow_lock": [false, false], "hollow_done": false,
+		"hollow_done": false,          # (v0.9.2: "Our Steps" solved; the old key kept for saves)
 		"mural": false, "maze": false, "echo_room": false, "memories": [], "scale_w": [-1, -1, -1], "scales": false,
 		"four": false, "ledge_statue": [LEDGE_STATUE.x, LEDGE_STATUE.y]}
 
@@ -543,6 +540,11 @@ func breathe(id: String) -> void:
 		event.emit("breath", id)
 		game.open_glass("stair")
 		return
+	if id == "garden" and not state["garden_breath"]:
+		# v0.9.2: the same breath and close-up: the fog clears and she writes her three runes
+		event.emit("breath", id)
+		game.open_glass("garden")
+		return
 	_breathing = id
 	var m: ShaderMaterial = breath_mats[id]
 	game.player.locked = true
@@ -562,6 +564,9 @@ func breathe(id: String) -> void:
 
 ## the conversation through the glass ended well: the pane in the world keeps her writing a while
 func glass_answered(id: String) -> void:
+	if id == "garden":
+		_clear_garden_glass(false)
+		return
 	if id != "stair": return
 	var m: ShaderMaterial = breath_mats["stair"]
 	m.set_shader_parameter("fog", 1.0)
@@ -571,6 +576,22 @@ func glass_answered(id: String) -> void:
 	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("fog", v), 1.0, 0.0, 5.0)
 	tw.tween_callback(func() -> void: m.set_shader_parameter("write", 0.0))
 	if not state["breath"]: _open_stair(false)
+
+## (v0.9.2) the great glass after she wrote: clear (the turned ones show in it), her runes written on it,
+## bright, then a soft glow
+func _clear_garden_glass(instant: bool) -> void:
+	state["garden_breath"] = true
+	var m: ShaderMaterial = breath_mats["garden"]
+	m.set_shader_parameter("write", 1.0)
+	if instant:
+		m.set_shader_parameter("fog", 0.0)
+		m.set_shader_parameter("ghost", 0.6)
+		return
+	var tw := create_tween()
+	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("fog", v), 1.0, 0.0, 1.6)
+	tw.parallel().tween_method(func(v: float) -> void: m.set_shader_parameter("ghost", v), 0.0, 1.0, 0.8)
+	tw.tween_interval(1.5)
+	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("ghost", v), 1.0, 0.6, 2.5)
 
 func _breath_done(id: String) -> void:
 	if id == "stair" and not state["breath"]:
@@ -1041,12 +1062,14 @@ func _open_hall_door(instant: bool) -> void:
 ## already burns as you come in (not one of hers: its shadow is the first thing you see, and lies in no
 ## outline), and the shard in your hand glints until you first raise it here.
 const SH_STATUE := Vector3(7.5, 1.0, -13.2)
-const SH_BRAZ := [Vector3(7.5, 1.0, -15.9), Vector3(9.6, 1.0, -13.8), Vector3(8.8, 1.0, -16.1), Vector3(5.8, 1.0, -13.9),
+## (v0.9.2: brazier 1 stands north of her now and the lit one south-west: from the fixed view the west parapet
+## hid the eyes of a shadow thrown west, and the old lit brazier stood before another pair)
+const SH_BRAZ := [Vector3(7.5, 1.0, -15.9), Vector3(7.9, 1.0, -11.6), Vector3(8.8, 1.0, -16.1), Vector3(5.8, 1.0, -14.5),
 	Vector3(9.3, 1.0, -11.0)]
 ## her shadows fall south, west and north-west: all on the floor in front of her (nothing hides behind her
 ## from the fixed view; no brazier stands where she would hide it)
 const SH_SOLUTION := [0, 1, 4]
-const SH_PRELIT := 3                    # burning when you arrive (its shadow falls east, into no outline)
+const SH_PRELIT := 3                    # burning when you arrive (its shadow falls north-east, onto no eyes)
 const SH_LORE := "On Milos, in the evening,\nhe moved the lamps until her shadow lay\nwhere he wanted her to stand."
 var sh_flames: Array[Flame] = []
 var sh_shadows: Array[ShaderMaterial] = []
@@ -1056,7 +1079,7 @@ var sh_eye_mats: Array[ShaderMaterial] = []
 ## (v0.9.2) where brazier i's shadow has its eyes (side -1 / +1): the head of the silhouette (statue_shadow's
 ## q (+-0.048, 0.86)), on the floor, exactly where the shader draws them
 func eye_pos(i: int, side: float) -> Vector3:
-	return _shadow_xf(i, 1.0) * Vector3(side * 0.024, 0.0, 0.5 - 0.86)
+	return _shadow_xf(i, 1.0) * Vector3(side * 0.0276, 0.0, 0.5 - 0.86)      # (8 cm apart: the shadow is 1.45 m wide)
 var sh_veil: ShaderMaterial
 var gl_fails := 0                       # (kept for the hint system)
 
@@ -1106,7 +1129,7 @@ func _build_gallery() -> void:
 	for sx in [-1.0, 1.0]:
 		var em := _smat("res://shaders/eyes.gdshader", {"k": 0.9})
 		em.render_priority = 3
-		_mi(_quad(Vector2(0.09, 0.09)), em, Transform3D(Basis(), Vector3(sx * 0.0575, 0.5 + 0.08 + 2.16 * 1.15, -0.24)), st)
+		_mi(_quad(Vector2(0.26, 0.26)), em, Transform3D(Basis(), Vector3(sx * 0.0575, 0.5 + 0.08 + 2.16 * 1.15, -0.24)), st)
 	# the braziers (tripods with a bowl) and the shadows they throw; the outlines (the shard shows them)
 	var bm := _brazier_mesh()
 	for i in SH_BRAZ.size():
@@ -1136,7 +1159,7 @@ func _build_gallery() -> void:
 		for side in [-1.0, 1.0]:
 			var em := _smat("res://shaders/eyes.gdshader", {"k": 1.0})
 			em.render_priority = 3
-			var e := _mi(_quad(Vector2(0.11, 0.11)), em, Transform3D(Basis(), eye_pos(i, side) + Vector3(0, 0.03, 0)))
+			var e := _mi(_quad(Vector2(0.4, 0.4)), em, Transform3D(Basis(), eye_pos(i, side) + Vector3(0, 0.03, 0)))
 			e.layers = PlanarMirror.LAYER_MAIN_FX
 			sh_eye_mats.append(em)
 
@@ -1253,7 +1276,7 @@ func open_gallery(instant := false) -> void:
 const GARDEN_GLASS_Z := -14.93
 const GARDEN_GLASS_C := Vector2(12.8, 3.3)        # (x, y) of the glass's centre
 const GARDEN_GLASS_H := Vector2(2.2, 2.15)        # half size of its reflecting rect (the Reflector's clip)
-const GARDEN_SMALL := Vector3(16.88, 1.0, -13.95)  # (v0.9.1) her small glass, on the east rail, facing west
+const GARDEN_BREATHE := Vector3(11.15, 1.0, -14.3)  # (v0.9.2) where you breathe on the great glass (left of the turned ones)
 
 ## (v0.9.1, tests) the north face of turned one i (the face toward the glass): its rune quad's 4 corners
 static func turn_north_corners(i: int) -> Array:
@@ -1344,23 +1367,15 @@ func _build_garden() -> void:
 		var idx := i
 		level.add_interact("turn%d" % (i + 1), Vector3(TURN_X[i], 1.0, TURN_Z + 1.05), "turn", func() -> void: turn_statue(idx), 0.7,
 			func() -> bool: return not state["turned_done"])
-	# her message: a small glass on the gallery wall's garden face
-	# her message: a small glass beside the great one
-	# (a small glass of its own beside the great one: no statue stands between it and you)
-	# (v0.9.1: on the east rail, facing west, so the third turned one never stands between it and you)
-	var wm := MB.new()
-	var fc := Color(0.5, 1.0, 0.0)
-	var gx := GARDEN_SMALL.x
-	var gz := GARDEN_SMALL.z
-	wm.box(Vector3(gx - 0.12, 1.25, gz), Vector3(0.5, 0.5, 1.2), Color(0.5, 0.25, 0.0))
-	wm.box(Vector3(gx, 2.3, gz - 0.58), Vector3(0.12, 2.1, 0.1), fc)
-	wm.box(Vector3(gx, 2.3, gz + 0.58), Vector3(0.12, 2.1, 0.1), fc)
-	wm.box(Vector3(gx, 3.38, gz), Vector3(0.14, 0.12, 1.26), fc)
-	wm.box(Vector3(gx + 0.12, 2.3, gz), Vector3(0.1, 2.1, 1.1), Color(0.5, 0.25, 0.0))
-	puzzles.marble_instance(wm.commit(), self)
-	level.ob_rect(Level.R(gx - 0.4, gz - 0.65, gx + 0.25, gz + 0.65))
-	_breath_glass("garden", Vector3(gx - 0.02, 2.35, gz), Basis(Vector3.UP, -PI * 0.5), Vector2(1.05, 1.95), Vector3(6, 7, 8), true, true)
-	level.add_interact("breathe_garden", Vector3(GARDEN_SMALL.x - 0.68, 1.0, GARDEN_SMALL.z), "breathe", func() -> void: breathe("garden"), 0.95)
+	# v0.9.2: her message is on the GREAT glass now: fogged, milky, until you breathe on it (the close-up:
+	# she writes her three runes large across it); then it stays clear, her runes faint on it, and the
+	# turned ones' faces show in it
+	_breath_glass("garden", Vector3(GARDEN_GLASS_C.x, GARDEN_GLASS_C.y, GARDEN_GLASS_Z + 0.01), Basis(), Vector2(4.4, 4.3), Vector3(6, 7, 8), false, false)
+	var gb: ShaderMaterial = breath_mats["garden"]
+	gb.set_shader_parameter("row_off", Vector2(0.0, -1.1))         # (above the turned ones' reflected faces: q.y grows downward)
+	gb.set_shader_parameter("fog", 1.0)
+	level.add_interact("breathe_garden", GARDEN_BREATHE, "breathe", func() -> void: breathe("garden"), 1.0,
+		func() -> bool: return not state["garden_breath"])
 	# the door east: its leaves in your world, and their twins only the mirror sees
 	for twin in [false, true]:
 		for s in [-1.0, 1.0]:
@@ -1439,23 +1454,12 @@ func _open_garden_door(instant: bool) -> void:
 
 # ------------------------------------------------------------------ 6. hollow walk
 func _build_hollow() -> void:
-	for c in Ch1Geo.HW_PLATES:
-		var m := puzzles.rune_quad(self, Ch1Geo.hw_cell(c) + Vector3(0, 0.045, 0), Vector2(0.92, 0.92), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.3)
-		plate_mats.append(m)
-		var pm := MB.new()
-		pm.cyl(Ch1Geo.hw_cell(c) + Vector3(0, 0.01, 0), 0.5, 0.52, 0.03, Color(0.5, 1.0, 0.0), 20)
-		puzzles.marble_instance(pm.commit(), self)
-	var mesh := _statue_mesh(0.82, 0.16, 0.5)
-	for k in 2:
-		var pv := Node3D.new()
-		add_child(pv)
-		var mi := MeshInstance3D.new()
-		mi.mesh = mesh
-		mi.material_override = level.marble_mat
-		pv.add_child(mi)
-		hollow_glints.append(puzzles.glow_quad(pv, Vector3(0, 2.1, 0), 0.9, Palette.ACCENT, 0.0))
-		hollow_nodes.append(pv)
-		hollow_obs.append(level.ob_circle(Vector2.ZERO, 0.42, "hollow%d" % k))
+	# v0.9.2 "Our Steps": the floor before the glass, her room behind it
+	steps = OurSteps.new()
+	add_child(steps)
+	steps.setup(game, self)
+	level.add_interact("steps_reset", Vector3(0, -99, 0), "lever", func() -> void: steps.reset(), 0.6,
+		func() -> bool: return steps.active and not steps.moving and steps.p != OurSteps.ENTRY)
 	# the gate at the top of the ramp
 	hw_gate = Node3D.new()
 	hw_gate.position = Vector3(18.5, 1.0, -15.15)
@@ -1469,173 +1473,11 @@ func _build_hollow() -> void:
 	gm.box(Vector3(0, 2.2, 0), Vector3(2.0, 0.08, 0.08), Color(0.5, 1.0, 0.0))
 	puzzles.marble_instance(gm.commit(), hw_gate)
 
-func _place_hollows() -> void:
-	var hs: Array = state["hollows"]
-	for k in 2:
-		var c := Vector2i(int(hs[k][0]), int(hs[k][1]))
-		var p := Ch1Geo.hw_cell(c)
-		hollow_nodes[k].position = p
-		hollow_nodes[k].rotation.y = PI * 0.75
-		(hollow_obs[k] as Level.Obstacle).c = Vector2(p.x, p.z)
-	for i in 2:
-		var lk: bool = state["hollow_lock"][i]
-		plate_mats[i].set_shader_parameter("lit", 1.0 if _plate_taken(i) else 0.3)
-
-func _plate_taken(i: int) -> bool:
-	var hs: Array = state["hollows"]
-	for k in 2:
-		if Vector2i(int(hs[k][0]), int(hs[k][1])) == Ch1Geo.HW_PLATES[i]: return true
-	return false
-
-func hw_player_cell() -> Vector2i:
-	var p := game.player.position
-	return Vector2i(floori(p.x - Ch1Geo.HW_ORIGIN.x), floori(p.z - Ch1Geo.HW_ORIGIN.y))
-
-func _hw_free(c: Vector2i, other: Vector2i, pc: Vector2i) -> bool:
-	if c.x < 0 or c.x > 7 or c.y < 0 or c.y > 8: return false
-	if c in Ch1Geo.HW_PILLARS: return false
-	return c != other and c != pc
-
-## does the wanderer look at this hollow? (it holds still while watched)
-func hw_watched(k: int) -> bool:
-	var p := game.player.position
-	var h := hollow_nodes[k].position
-	var d := Vector2(h.x - p.x, h.z - p.z)
-	if d.length() < 0.01 or d.length() > 6.5: return false
-	var fwd := Vector2(-sin(game.player.yaw), -cos(game.player.yaw))
-	return fwd.dot(d.normalized()) > cos(deg_to_rad(50.0))
-
-var hw_cone: MeshInstance3D
-func _update_hollow(dt: float) -> void:
-	var p := game.player.position
-	var inside := p.x > 17.4 and p.x < 25.6 and p.z > -15.0 and p.z < -6.0 and absf(p.y - 1.0) < 0.2
-	var still := game.player.speed01 < 0.04 and game.mode == "play"
-	# (QA P1-6) what you watch: your 50-degree cone on the floor while you stand still in the Walk
-	if hw_cone == null:
-		hw_cone = _mi(_plane(Vector2(13.0, 13.0)), _smat("res://shaders/floor_mark.gdshader", {"kind": 5.0, "intensity": 0.0}), Transform3D())
-		hw_cone.layers = PlanarMirror.LAYER_MAIN_FX
-	var cm: ShaderMaterial = hw_cone.material_override
-	var ck: float = cm.get_shader_parameter("intensity")
-	ck = move_toward(ck, 1.0 if (inside and still and not state["hollow_done"]) else 0.0, dt * 2.5)
-	cm.set_shader_parameter("intensity", ck)
-	hw_cone.visible = ck > 0.001
-	if hw_cone.visible: hw_cone.transform = Transform3D(Basis(Vector3.UP, game.player.yaw), Vector3(p.x, p.y + 0.02, p.z))
-	if state["hollow_done"]: return
-	_still = _still + dt if (still and inside) else 0.0
-	for k in 2:
-		var w: bool = inside and still and hw_watched(k) and not state["hollow_lock"][k]
-		var g: float = hollow_glints[k].get_shader_parameter("intensity")
-		hollow_glints[k].set_shader_parameter("intensity", move_toward(g, 0.55 if w else 0.0, dt * 2.0))
-	if _still < 0.5 or hollow_moving: return
-	_tick += dt
-	if _tick < 0.75: return
-	_tick = 0.0
-	hollow_tick()
-
-## one step: every hollow you are not watching moves one cell toward you (the longer axis first)
-func hollow_tick() -> bool:
-	var pp := Vector2(game.player.position.x, game.player.position.z)
-	var r := hollow_step(state["hollows"], state["hollow_lock"], pp, game.player.yaw)
-	var hs: Array = state["hollows"]
-	var lk: Array = state["hollow_lock"]
-	var moved := false
-	for k in 2:
-		if r["hs"][k] != hs[k]:
-			hs[k] = r["hs"][k]
-			moved = true
-			_slide_hollow(k, Vector2i(int(hs[k][0]), int(hs[k][1])))
-		if r["lk"][k] and not lk[k]:
-			lk[k] = true
-			event.emit("hollow_lock", k)
-	if moved: event.emit("hollow_step", null)
-	if lk[0] and lk[1] and not state["hollow_done"]:
-		_open_hollow_gate(false)
-	return moved
-
-## (pure: the game and the solver check share it) a hollow is watched when it stands within 6.5 m and
-## within 50 degrees of where you face
-static func hw_sees(h: Vector3, pp: Vector2, yaw: float) -> bool:
-	var d := Vector2(h.x - pp.x, h.z - pp.y)
-	if d.length() < 0.01 or d.length() > 6.5: return false
-	var fwd := Vector2(-sin(yaw), -cos(yaw))
-	return fwd.dot(d.normalized()) > cos(deg_to_rad(50.0))
-
-static func hollow_step(hs_in: Array, lk_in: Array, pp: Vector2, yaw: float) -> Dictionary:
-	var hs := [[int(hs_in[0][0]), int(hs_in[0][1])], [int(hs_in[1][0]), int(hs_in[1][1])]]
-	var lk := [bool(lk_in[0]), bool(lk_in[1])]
-	var pc := Vector2i(floori(pp.x - Ch1Geo.HW_ORIGIN.x), floori(pp.y - Ch1Geo.HW_ORIGIN.y))
-	for k in 2:
-		var h := Vector2i(hs[k][0], hs[k][1])
-		if lk[k] or hw_sees(Ch1Geo.hw_cell(h), pp, yaw): continue
-		var o := Vector2i(hs[1 - k][0], hs[1 - k][1])
-		var dx := pc.x - h.x
-		var dz := pc.y - h.y
-		if dx == 0 and dz == 0: continue
-		var axes: Array[Vector2i] = []
-		if absi(dx) >= absi(dz):
-			axes.append(Vector2i(signi(dx), 0))
-			if dz != 0: axes.append(Vector2i(0, signi(dz)))
-		else:
-			axes.append(Vector2i(0, signi(dz)))
-			if dx != 0: axes.append(Vector2i(signi(dx), 0))
-		for a2 in axes:
-			var n := h + a2
-			if n.x < 0 or n.x > 7 or n.y < 0 or n.y > 8 or n in Ch1Geo.HW_PILLARS or n == o or n == pc: continue
-			hs[k] = [n.x, n.y]
-			if n in Ch1Geo.HW_PLATES: lk[k] = true
-			break
-	return {"hs": hs, "lk": lk}
-
-## (tests) breadth-first over (where you stand, which way you face) per step: the fewest steps to put
-## both hollows on their plates, and whether any single spot does it alone
-static func solve_hollows() -> Dictionary:
-	var acts := []
-	for x in 8:
-		for z in 9:
-			var c := Vector2i(x, z)
-			if c in Ch1Geo.HW_PILLARS: continue
-			for yaw in [PI, -PI * 0.5, 0.0, PI * 0.5]:
-				var cp := Ch1Geo.hw_cell(c)
-				acts.append([c, Vector2(cp.x, cp.z), yaw])
-	var start := {"hs": [[Ch1Geo.HW_HOLLOWS[0].x, Ch1Geo.HW_HOLLOWS[0].y], [Ch1Geo.HW_HOLLOWS[1].x, Ch1Geo.HW_HOLLOWS[1].y]], "lk": [false, false]}
-	var seen := {str(start): 0}
-	var frontier := [start]
-	var depth := 0
-	var best := -1
-	while not frontier.is_empty() and depth < 40 and best < 0:
-		depth += 1
-		var nxt := []
-		for st in frontier:
-			for a in acts:
-				var c: Vector2i = a[0]
-				if c == Vector2i(st["hs"][0][0], st["hs"][0][1]) or c == Vector2i(st["hs"][1][0], st["hs"][1][1]): continue
-				var r := hollow_step(st["hs"], st["lk"], a[1], a[2])
-				var key := str(r)
-				if seen.has(key): continue
-				seen[key] = depth
-				if r["lk"][0] and r["lk"][1]: best = depth
-				nxt.append(r)
-		frontier = nxt
-	var one_spot := 0
-	for a in acts:
-		var st2: Dictionary = start
-		for i in 40:
-			if a[0] == Vector2i(st2["hs"][0][0], st2["hs"][0][1]) or a[0] == Vector2i(st2["hs"][1][0], st2["hs"][1][1]): break
-			st2 = hollow_step(st2["hs"], st2["lk"], a[1], a[2])
-			if st2["lk"][0] and st2["lk"][1]:
-				one_spot += 1
-				break
-	return {"min_steps": best, "one_spot": one_spot, "states": seen.size()}
-
-func _slide_hollow(k: int, c: Vector2i) -> void:
-	var p := Ch1Geo.hw_cell(c)
-	(hollow_obs[k] as Level.Obstacle).c = Vector2(p.x, p.z)
-	hollow_moving = true
-	var tw := create_tween()
-	tw.tween_property(hollow_nodes[k], "position", p, 0.5).set_trans(Tween.TRANS_SINE)
-	tw.tween_callback(func() -> void:
-		hollow_moving = false
-		for i in 2: plate_mats[i].set_shader_parameter("lit", 1.0 if _plate_taken(i) else 0.3))
+## v0.9.2: "Our Steps" (scripts/our_steps.gd) replaced the Hollow Walk's moving statues; the gate stays
+func steps_solved() -> void:
+	steps.active = false
+	_open_hollow_gate(false)
+	steps._lights()
 
 func _open_hollow_gate(instant: bool) -> void:
 	state["hollow_done"] = true
@@ -2508,14 +2350,13 @@ func hint_target(area: String) -> Vector3:
 			return SH_STATUE + Vector3(0, 2.4, 0)
 		"garden_veiled":
 			if state["turned_done"]: return Vector3.INF
-			if not state["garden_breath"]: return Vector3(GARDEN_SMALL.x - 0.1, 2.2, GARDEN_SMALL.z)
+			if not state["garden_breath"]: return Vector3(GARDEN_BREATHE.x, 2.6, GARDEN_GLASS_Z)
 			var ok := turned_correct()
 			for i in 3:
 				if not ok[i]: return Vector3(TURN_X[i], 2.3, TURN_Z)
 		"hollow_walk":
 			if state["hollow_done"]: return Vector3.INF
-			for i in 2:
-				if not _plate_taken(i): return Ch1Geo.hw_cell(Ch1Geo.HW_PLATES[i]) + Vector3(0, 0.6, 0)
+			return OurSteps.her_tile(OurSteps.H_PLATE) + Vector3(0, 0.6, 0)        # (her plate, in the glass)
 		"court_light":
 			# (toward her glass, never to the answer)
 			if not puzzles.state["bridge"]: return Vector3(16.5, 3.6, -24.0)
@@ -2574,7 +2415,7 @@ func update(dt: float) -> void:
 	_update_stair_rune(dt)
 	if lens_on and game.area != "shard_gallery" and game.area != "": set_lens(false)
 	_update_lens()
-	_update_hollow(dt)
+	steps.update(dt)
 	_update_mural(dt)
 	_update_maze(dt)
 	_update_echo(dt)
@@ -2611,6 +2452,10 @@ func apply_state() -> void:
 		sh_veil.set_shader_parameter("intensity", 0.0)
 	maze_prog = -1
 	_apply_turned(true)
+	if state["garden_breath"]: _clear_garden_glass(true)
+	else:
+		var gm: ShaderMaterial = breath_mats["garden"]
+		gm.set_shader_parameter("fog", 1.0); gm.set_shader_parameter("ghost", 0.0); gm.set_shader_parameter("write", 0.0)
 	if state["turned_done"]: _open_garden_door(true)
 	else:
 		level.set_enabled("g_door_ob", true)
@@ -2618,11 +2463,12 @@ func apply_state() -> void:
 		for k in 2:
 			door_refl[k].rotation.y = 0.0
 			door_real[k].rotation.y = 0.0
-	_place_hollows()
+	steps.level_reset()
 	if state["hollow_done"]: _open_hollow_gate(true)
 	else:
 		level.set_enabled("hw_gate", true)
 		hw_gate.position.y = 1.0
+	steps._lights()
 	var mw := level.get_node_or_null("Zone_Mural") as MeshInstance3D
 	if state["mural"]: complete_mural(true)
 	else:

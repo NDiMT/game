@@ -14,7 +14,7 @@ uniform float dark = 0.55;
 uniform float mode = 0.0;
 uniform float hint = 0.0;
 uniform float seed = 0.0;
-// v0.9.2: the shadow's EYES: two crimson points in its veiled head (q (+-0.048, 0.86)), lit when this shadow
+// v0.9.2: the shadow's EYES: two crimson points in its veiled head (q (+-0.055, 0.86)), lit when this shadow
 // wears one of the floor's eye-pairs (`eyes` 0..1); `len` / `wid` the quad's metres (the eyes stay round)
 uniform float eyes = 0.0;
 uniform float len = 2.0;
@@ -44,7 +44,7 @@ void fragment() {
 		if (eyes > 0.001) {
 			float e = 0.0;
 			for (int s = -1; s <= 1; s += 2) {
-				vec2 dw = vec2((q.x - float(s) * 0.048) * wid * 0.5, (q.y - 0.86) * len);
+				vec2 dw = vec2((q.x - float(s) * 0.055) * wid * 0.5, (q.y - 0.86) * len);
 				e = max(e, 1.0 - smoothstep(0.012, 0.03, length(dw)));
 			}
 			e *= eyes * k;

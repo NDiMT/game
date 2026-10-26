@@ -78,7 +78,6 @@ var _yaw0 := 0
 func _focus() -> String:
 	return game.focus.id if game.focus else "none"
 
-var _hw_prev := ""
 var _mark := 0
 var _feet_seen := false
 
@@ -123,7 +122,7 @@ func _shadow_hint_ok() -> bool:
 	game.area = "shard_gallery"
 	C().hint_t = Game.HINT_AFTER + 1.0
 	C()._update_gallery(0.016)
-	var h := float(C().sh_outlines[0].get_shader_parameter("hint"))
+	var h := float(C().sh_eye_mats[0].get_shader_parameter("pulse"))
 	C().state["gallery"] = was_g
 	game.area = was_a
 	C().hint_t = 0.0
@@ -240,9 +239,6 @@ func _reach(goals: Array) -> Array:
 				if seen.has(gp + Vector2i(dx, dz)): ok2 = true
 		if not ok2: missing.append(g)
 	return missing
-
-func hw_key() -> String:
-	return str(C().state["hollows"]) + str(C().state["hollow_lock"])
 
 ## v0.5: Chapter I, all thirteen spaces, in order, through the real game code
 func _plan() -> void:
@@ -579,11 +575,19 @@ func _plan() -> void:
 			if i != Chapter.SH_PRELIT: cold = cold and C().sh_flames[i].level() < 0.01
 		ok("her veiled statue in the middle, five braziers round her", C().sh_flames.size() == 5 and cold and C().sh_shadows.size() == 5)
 		ok("(v0.9) one already burns as you come in, and it is not one of hers", C().sh_flames[Chapter.SH_PRELIT].level() > 0.5 and float(C().sh_shadows[Chapter.SH_PRELIT].get_shader_parameter("k")) > 0.5 and not (Chapter.SH_PRELIT in Chapter.SH_SOLUTION))
-		ok("(v0.9) the shard is the key: its slot pulses in the chamber", game.controls.inv_pulse and not C().state["lens_used"])
+		ok("(v0.9.2) no shard here: its slot does not call", not game.controls.inv_pulse)
+		ok("(v0.9.2) on the floor before her, pairs of glowing eyes, one pair per shadow of hers", C().sh_eye_mats.size() == Chapter.SH_SOLUTION.size() * 2)
+		var good := true
+		for i in Chapter.SH_BRAZ.size():
+			for j in Chapter.SH_SOLUTION:
+				# a pair is worn only by its own brazier's shadow: no other shadow's head lies on it
+				var dd: float = C().eye_pos(i, 1.0).distance_to(C().eye_pos(j, 1.0))
+				if i != j and dd < 0.25: good = false
+		ok("(v0.9.2) each eye-pair sits exactly at one shadow's head, and at no other's", good)
 		ok("(v0.9) a solution of 2-3 among 4-5 braziers", Chapter.SH_SOLUTION.size() >= 2 and Chapter.SH_SOLUTION.size() <= 3 and Chapter.SH_BRAZ.size() >= 4 and Chapter.SH_BRAZ.size() <= 5)
 		ok("solver: exactly one set of braziers casts her shadow into the outlines", _shadow_solutions().size() == 1 and _shadow_solutions()[0] == Chapter.SH_SOLUTION, str(_shadow_solutions()))
 		ok("solver: each brazier throws her shadow straight away from it, longer when nearer", _shadow_geometry_ok()))
-	walk_path("into the chamber", [[6.5, -15.2], [6.6, -11.7], [8.4, -11.7]])
+	walk_path("into the chamber", [[6.5, -15.2], [6.6, -10.6], [8.4, -10.6]])
 	step_do(func() -> void:
 		ok("walking about the chamber", game.area == "shard_gallery", str(P()) + " " + game.area)
 		walk_to(8.1, -8.4))
@@ -592,15 +596,9 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the gate is a wall in your world", P().z < -9.55, str(P()))
-		tp(7.5, -11.7, PI))
+		tp(6.8, -11.2, PI))
 	step_do(func() -> void:
-		game.controls.shard.emit()           # the inventory slot tapped
-		ok("raise the shard from the inventory", C().lens_on and game.controls.inv_on)
-		ok("(v0.9) raised once here: the slot stops calling", C().state["lens_used"]))
-	step_wait(0.4)
-	step_do(func() -> void:
-		var L: Vector4 = C().lens_px
-		ok("through the shard: the outlines of where her shadow fell, and the true arch", L.w > 0.5 and L.z > 10.0 and game.ui.lens_rect.visible and C().sh_outlines.size() == Chapter.SH_SOLUTION.size(), str(L)))
+		ok("(v0.9.2) the lit one that is not hers casts a shadow without eyes", float(C().sh_shadows[Chapter.SH_PRELIT].get_shader_parameter("eyes")) < 0.01 and C().sh_flames[Chapter.SH_PRELIT].level() > 0.5))
 	# lighting EVERY brazier is not the answer (and nothing answers brazier by brazier)
 	var bspots := []
 	var nbz: int = Chapter.SH_BRAZ.size()
@@ -659,10 +657,10 @@ func _plan() -> void:
 	walk_path("up into the garden", [[15.5, -4.4], [15.5, -6.4], [14.8, -7.9], [13.0, -8.3], [12.8, -10.0]])
 	step_do(func() -> void:
 		ok("reached the Garden of the Veiled", game.area == "garden_veiled" and P().x > 10.3, str(P()) + " " + game.area)
-		ok("the shard is lowered outside the chamber", not C().lens_on))
+		ok("the shard stays lowered", not C().lens_on))
 	step_do(func() -> void:
 		# the hint at 110 s: the outlines glow faintly even without the shard (checked on a fresh state)
-		ok("hint (110 s): the outlines pulse faintly without the shard", _shadow_hint_ok()))
+		ok("hint (110 s): the eyes on the floor pulse", _shadow_hint_ok()))
 
 	# ================================================================ 5. garden: the turned ones
 	step_do(func() -> void:
@@ -677,13 +675,19 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the garden door is closed", P().x < 16.6, str(P())))
-	step_do(func() -> void: walk_to(Chapter.GARDEN_SMALL.x - 0.68, Chapter.GARDEN_SMALL.z))
-	step_until("to her small glass", func() -> bool: return game.auto_target == Vector3.INF, 10.0)
-	step_do(func() -> void: ok("breathe on the garden glass", _focus() == "breathe_garden" and game.try_interact(), _focus()))
-	step_until("she writes three runes", func() -> bool: return C().state["garden_breath"], 9.0)
+	walk_path("to the great glass", [[13.0, -11.6], [Chapter.GARDEN_BREATHE.x, -12.2], [Chapter.GARDEN_BREATHE.x, Chapter.GARDEN_BREATHE.z]])
 	step_do(func() -> void:
 		var m: ShaderMaterial = C().breath_mats["garden"]
-		ok("her message: three asymmetric runes, written from her side (mirrored for you)", m.get_shader_parameter("glyphs") == Vector3(6, 7, 8) and float(m.get_shader_parameter("flip")) == 1.0))
+		ok("(v0.9.2) the great glass is fogged, milky: the turned ones cannot be seen in it yet", float(m.get_shader_parameter("fog")) > 0.95)
+		ok("breathe on the great glass", _focus() == "breathe_garden" and game.try_interact(), _focus()))
+	step_do(func() -> void: ok("(v0.9.2) the close-up opens, as on the stair", game.mode == "glass" and game.ui.glass_talk.write_only))
+	step_until("she writes her three runes, large", func() -> bool: return C().state["garden_breath"], 14.0)
+	step_until("the close-up ends by itself", func() -> bool: return game.mode == "play", 8.0)
+	step_wait(4.5)
+	step_do(func() -> void:
+		var m: ShaderMaterial = C().breath_mats["garden"]
+		ok("her message: three asymmetric runes, written from her side (mirrored for you)", m.get_shader_parameter("glyphs") == Vector3(6, 7, 8) and float(m.get_shader_parameter("flip")) == 1.0)
+		ok("(v0.9.2) the glass stays clear, her runes glowing softly on it", float(m.get_shader_parameter("fog")) < 0.05 and float(m.get_shader_parameter("ghost")) > 0.4 and float(m.get_shader_parameter("ghost")) < 0.8))
 	for i in 3:
 		var presses: int = (int(Chapter.TURN_SOLUTION[i]) - int(Chapter.TURN_START[i]) + 4) % 4
 		step_do(func() -> void: tp(Chapter.TURN_X[i], Chapter.TURN_Z + 1.05, 0.0))
@@ -718,44 +722,76 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the hollow walk's gate is closed", P().z > -15.05, str(P())))
-	# moving: they never move
-	step_do(func() -> void: _hw_prev = hw_key(); tp(24.0, -6.5, PI); game.cmd("walk:19.5:-6.5"))
-	step_until("walk across", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
-	step_do(func() -> void: ok("the hollows do not move while you walk", hw_key() == _hw_prev, hw_key()))
-	# watched: they hold still
+	# v0.9.2 "Our Steps": the floor before the glass; her room behind it
 	step_do(func() -> void:
-		tp(18.0, -12.5, -PI * 0.5 - 0.35)      # looking east toward the first hollow
-		_hw_prev = hw_key())
-	step_wait(2.5)
+		var sv: Dictionary = OurSteps.solve()
+		ok("solver: one shortest way onto both plates, 8..14 steps", int(sv["length"]) >= 8 and int(sv["length"]) <= 14 and int(sv["ways"]) == 1,
+			"len %d ways %d states %d" % [sv["length"], sv["ways"], sv["states"]])
+		ok("solver: no softlock: every reachable state can still leave the floor", int(sv["trapped"]) == 0, str(sv["trapped"]))
+		ok("the plates are not mirror and mirror (her stones must part you)", OurSteps.Y_PLATE != OurSteps.H_PLATE)
+		ok("the teaching column stands one step before her entry", Vector2i(2, 1) in OurSteps.H_OBS and OurSteps.ENTRY + Vector2i(0, 1) == Vector2i(2, 1))
+		ok("the floor starts unsolved and off", not C().steps.active and not C().state["hollow_done"]))
+	# on: the teaching moment (you step forward, she is held by her column)
+	var near_e := OurSteps.at(0.0, OurSteps.EDGE_V - 0.9)
+	var on_e := OurSteps.at(0.0, OurSteps.EDGE_V + 0.25)
+	walk_path("to the landing", [[18.2, -10.5], [near_e.x, near_e.z]])
+	step_do(func() -> void: walk_to(on_e.x, on_e.z))
+	step_until("onto the floor", func() -> bool: return C().steps.active, 8.0)
+	step_until("the teaching moment plays", func() -> bool: return C().steps.taught and not C().steps.moving, 8.0)
 	step_do(func() -> void:
-		ok("a hollow you are looking at holds still", str(C().state["hollows"][0]) == str([5, 2]), hw_key())
-		ok("the one you do not look at steps toward you", str(C().state["hollows"][1]) != str([1, 1]), hw_key()))
+		ok("teach: you stepped forward, she was held by the column", C().steps.p == Vector2i(2, 1) and C().steps.h == OurSteps.ENTRY,
+			"p %s h %s" % [C().steps.p, C().steps.h])
+		ok("her reflection stands in her room", C().steps.her_node.visible and C().steps.her_pos.distance_to(OurSteps.her_tile(OurSteps.ENTRY)) < 0.05, str(C().steps.her_pos))
+		ok("you stand on your slab", Vector2(P().x, P().z).distance_to(Vector2(OurSteps.tile(Vector2i(2, 1)).x, OurSteps.tile(Vector2i(2, 1)).z)) < 0.3, str(P())))
+	# blocked: your own stone (none adjacent here: walk into the rail instead: off the floor sideways is refused)
 	step_do(func() -> void:
-		C().state["hollows"] = [[5, 2], [1, 1]]
-		C().state["hollow_lock"] = [false, false]
-		C()._place_hollows())
+		var r: bool = C().steps.try_step(Vector2i(1, 0))      # (2,1) -> (3,1): your stone
+		ok("your stone blocks the step (and her)", not r and C().steps.p == Vector2i(2, 1)))
+	# off: back to the entry and off the edge; she comes back to your mirror
+	step_do(func() -> void: ok("back to the entry slab", C().steps.try_step(Vector2i(0, -1))))
+	step_until("step back", func() -> bool: return not C().steps.moving, 4.0)
+	step_do(func() -> void: ok("off the floor where you came on", C().steps.try_step(Vector2i(0, -1)) and not C().steps.active))
+	step_until("stepped off", func() -> bool: return not C().steps._leaving and game.auto_target == Vector3.INF, 5.0)
+	step_wait(0.7)
 	step_do(func() -> void:
-		var sv: Dictionary = Chapter.solve_hollows()
-		ok("solver: the hollows' paths interfere: no single spot solves it, the shortest plan is long", sv["one_spot"] == 0 and sv["min_steps"] >= 10, str(sv)))
-	# the solution (BFS-verified, 13 ticks): stand on a cell, face a way, be still for one step
-	var plan := [[7, 7, "N"], [7, 5, "N"], [5, 1, "E"], [5, 0, "E"], [0, 0, "N"], [0, 8, "N"]]
-	var yaw_of := {"N": PI, "E": -PI * 0.5, "S": 0.0, "W": PI * 0.5}
-	for st in plan:
+		ok("off: you are on the landing, she is back at your mirror", OurSteps.local(P()).y < OurSteps.EDGE_V and C().steps.h == OurSteps.ENTRY and not C().steps.active,
+			str(P()) + " " + str(C().steps.her_pos)))
+	# on again, and the reset stone
+	step_do(func() -> void: walk_to(on_e.x, on_e.z))
+	step_until("onto the floor again", func() -> bool: return C().steps.active and not C().steps.moving, 8.0)
+	step_do(func() -> void: ok("no teaching the second time", C().steps.p == OurSteps.ENTRY, str(C().steps.p)); C().steps.try_step(Vector2i(0, 1)))
+	step_until("a step", func() -> bool: return not C().steps.moving, 4.0)
+	step_do(func() -> void:
+		ok("the reset is offered on the floor", _focus() == "steps_reset", _focus())
+		C().steps.reset()
+		ok("reset: both of you back at the entry", C().steps.p == OurSteps.ENTRY and C().steps.h == OurSteps.ENTRY and C().steps.active))
+	step_wait(0.4)
+	# the solution (BFS-verified)
+	var path: Array = OurSteps.solve()["path"]
+	for i in path.size():
+		var d: Vector2i = path[i]
 		step_do(func() -> void:
-			_hw_prev = hw_key()
-			var p := Ch1Geo.hw_cell(Vector2i(st[0], st[1]))
-			tp(p.x, p.z, yaw_of[st[2]]))
-		if st[0] == 0 and st[1] == 8:
-			step_until("the last hollow comes to you, onto its plate", func() -> bool: return C().state["hollow_done"], 20.0)
-		else:
-			step_until("one step at (%d,%d) %s" % [st[0], st[1], st[2]], func() -> bool: return hw_key() != _hw_prev, 4.0)
-		if st[0] == 0 and st[1] == 0:
-			step_until("hollow on the first plate", func() -> bool: return C().state["hollow_lock"][0], 3.0)
+			var r: bool = C().steps.try_step(d)
+			if not r: ok("solution step %d %s taken" % [i, d], false, "p %s h %s" % [C().steps.p, C().steps.h]))
+		step_until("step %d" % i, func() -> bool: return not C().steps.moving, 4.0)
+		if i == 4:
+			step_do(func() -> void:
+				var my := OurSteps.tile(C().steps.p)
+				var hm := OurSteps.her_tile(C().steps.h)
+				var a := OurSteps.local(my)
+				var b := OurSteps.local(hm)
+				ok("mid-way you and she have drifted apart", absf(a.x - b.x) > 0.5 or absf(a.y + b.y) > 0.5, "p %s h %s" % [C().steps.p, C().steps.h]))
+	step_until("both plates lit: solved", func() -> bool: return C().state["hollow_done"], 4.0)
 	step_do(func() -> void:
-		ok("both plates held by hollows", C().state["hollow_lock"] == [true, true] and C()._plate_taken(0) and C()._plate_taken(1), hw_key()))
+		ok("solved on the BFS path", C().steps.p == OurSteps.Y_PLATE and C().steps.h == OurSteps.H_PLATE and not C().steps.active)
+		ok("both plates lit", float(C().steps.plate_y.get_shader_parameter("lit")) > 0.9 and float(C().steps.plate_h.get_shader_parameter("lit")) > 0.9))
+	step_wait(0.5)
+	var t10 := OurSteps.tile(Vector2i(1, 0))
+	var t20 := OurSteps.tile(OurSteps.ENTRY)
+	walk_path("off the floor (free now)", [[t10.x, t10.z], [t20.x, t20.z], [near_e.x, near_e.z], [18.3, -10.5]])
 	step_until("the gate rises", func() -> bool: return not game.level.named["hw_gate"].enabled, 3.0)
 	step_wait(2.0)
-	walk_path("up the ramp to the court", [[18.5, -13.0], [18.5, -16.2], [17.6, -17.8], [15.0, -18.4]])
+	walk_path("up the ramp to the court", [[18.3, -13.0], [18.5, -16.2], [17.6, -17.8], [15.0, -18.4]])
 	step_do(func() -> void: ok("reached the Court of Light", game.area == "court_light" and absf(P().y - 2.0) < 0.01, str(P()) + " " + game.area))
 
 	# ================================================================ 7. court of light: "Two Worlds of Light"
@@ -1089,7 +1125,7 @@ func _plan() -> void:
 			var c: Vector2 = (e[2] as Rect2).get_center()
 			solid = solid and game.level.blocked(c, 0.05)
 		ok("props: each one is solid (its centre blocked)", solid)
-		var goals := [[-10.6, 1.7], [-11.3, -13.5], [0.0, -16.0], [3.85, -19.15], [8.4, -13.0], [8.6, -7.0], [12.0, -10.0], [16.2, -13.95], [21.0, -10.0],
+		var goals := [[-10.6, 1.7], [-11.3, -13.5], [0.0, -16.0], [3.85, -19.15], [8.4, -13.0], [8.6, -7.0], [12.0, -10.0], [11.15, -14.3], [21.0, -10.0],
 			[12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [29.0, -49.0], [25.5, -21.6], [21.34, -33.93], [28.0, -38.6], [25.0, -30.8]]
 		var miss := _reach(goals)
 		ok("props: every key place still reachable on foot from the gate", miss.is_empty(), str(miss)))

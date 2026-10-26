@@ -66,12 +66,6 @@ static func pool_path(turns: Array) -> bool:
 				stack.append(n)
 	return false
 
-# hollow walk grid (cell (i, j) centre = (17.5 + i + 0.5, -15 + j + 0.5))
-const HW_ORIGIN := Vector2(17.5, -15.0)
-const HW_PILLARS := [Vector2i(2, 7), Vector2i(2, 6), Vector2i(5, 6), Vector2i(2, 5), Vector2i(5, 5), Vector2i(3, 3), Vector2i(4, 3)]
-const HW_PLATES := [Vector2i(1, 6), Vector2i(6, 0)]
-const HW_HOLLOWS := [Vector2i(5, 2), Vector2i(1, 1)]
-
 # the mist maze: 4 columns x 5 rows of 2 m cells; open passages between cells (row, col)
 const MZ_ORIGIN := Vector2(9.0, -29.0)      # x of column 0's west edge, z of row 0's north edge
 const MZ_OPEN := [
@@ -86,9 +80,6 @@ const MZ_OPEN := [
 const MZ_PATH := [Vector2i(0, 1), Vector2i(0, 2), Vector2i(1, 2), Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3),
 	Vector2i(3, 2), Vector2i(3, 1), Vector2i(2, 1), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)]
 const MZ_MIRROR_X := 8.8                    # her pool is the maze mirrored across this line
-
-static func hw_cell(c: Vector2i) -> Vector3:
-	return Vector3(HW_ORIGIN.x + c.x + 0.5, 1.0, HW_ORIGIN.y + c.y + 0.5)
 
 static func mz_cell(rc: Vector2i) -> Vector3:
 	return Vector3(MZ_ORIGIN.x + rc.y * 2.0 + 1.0, 2.0, MZ_ORIGIN.y - rc.x * 2.0 - 1.0)
@@ -254,21 +245,73 @@ static func _spring_balcony(lv: Level) -> void:
 static func _hollow_walk(lv: Level) -> void:
 	var z := "HW"
 	lv.slab(z, R(17.4, -15.0, 25.6, -6.0), 1.0, 0.8, 0.0)
-	lv.walk(R(17.5, -15.0, 25.5, -6.0), 1.0, NAN, -1, "HW")
-	# low walls round the walk; the entrance from the garden is on the west, the exit south-west
-	lv.wall(z, R(25.5, -15.1, 25.8, -5.9), 1.0, 2.2, true)
-	lv.wall(z, R(17.3, -6.12, 25.6, -5.82), 1.0, 2.2, true)     # (v0.7: clear of the last row of cells, now that walls are solid)
-	lv.wall(z, R(17.3, -10.9, 17.55, -6.0), 1.0, 2.2, true)
-	lv.wall(z, R(17.3, -15.0, 17.55, -12.7), 1.0, 2.2, true)
-	lv.wall(z, R(19.6, -15.25, 25.6, -15.0), 1.0, 2.2, true)
+	lv.walk(R(17.5, -15.0, 25.45, -6.0), 1.0, NAN, -1, "HW")
+	# v0.9.2 "Our Steps": the floor of 5 x 4 slabs lies on the view's diagonal (OurSteps.U / V), its glass
+	# straight across the screen, her room beyond it; the rest of the room is the landing round it
+	lv.wall(z, R(17.3, -6.12, 25.5, -5.82), 1.0, 1.9, true)
+	lv.wall(z, R(19.6, -15.25, 25.5, -15.0), 1.0, 2.2, true)
 	# the doorway from the garden (its door is a puzzle object in the garden)
 	lv.slab(z, R(16.8, -12.6, 17.6, -11.0), 1.0, 0.6, 0.0)
 	lv.walk(R(16.8, -12.5, 17.6, -11.1), 1.0, NAN, -1, "g_door", false)
-	# broken pillars on the grid (obstacles fill their cells)
-	for c in HW_PILLARS:
-		var p := hw_cell(c)
-		lv.stump(p, 1.4 + 0.5 * fmod(float(c.x * 7 + c.y * 3), 3.0) / 3.0, false)
-		lv.ob_circle(Vector2(p.x, p.z), 0.46)
+	var B := Basis(Vector3.UP, -PI * 0.25)          # (local x along the glass, local z away from it)
+	var T := OurSteps.TILE
+	var ev := OurSteps.EDGE_V
+	var gh := OurSteps.GLASS_HALF
+	# your floor beyond the landing's own (east of x 25.6): the walk region, and stone beneath the slabs
+	lv.walk(R(25.4, -15.2, 30.4, -6.6), 1.0, NAN, -1, "HW")
+	lv.box(z, OurSteps.at(0.0, ev * 0.5) + Vector3(0, -0.27, 0), Vector3(2.0 * gh, 0.5, -ev + 0.1), 0.25, false, B)
+	# the slabs (proud of the floor, a seam between them); yours, then hers (but for her gap)
+	for c in OurSteps.C:
+		for r in OurSteps.R:
+			var cc := Vector2i(c, r)
+			lv.mb(z).tag = "floor"
+			lv.box(z, OurSteps.tile(cc) + Vector3(0, 0.016 - 0.2, 0), Vector3(T - 0.06, 0.4, T - 0.06), 0.25, false, B)
+			lv.mb(z).tag = ""
+			if cc in OurSteps.H_GAP:
+				# her missing slab: a dark well where it should be
+				lv.box("HR", OurSteps.her_tile(cc) + Vector3(0, -0.36, 0), Vector3(T + 0.04, 0.1, T + 0.04), 1.0, false, B)
+				continue
+			lv.mb("HR").tag = "floor"
+			lv.box("HR", OurSteps.her_tile(cc) + Vector3(0, 0.016 - 0.125, 0), Vector3(T - 0.06, 0.25, T - 0.06), 0.25, false, B)   # (thin: through her gap you see down into the dark)
+			lv.mb("HR").tag = ""
+	# rails round your floor: its near edge (but at the entry slab) and both ends
+	var rail := func(a: Vector2, b: Vector2) -> void:
+		var pa := OurSteps.at(a.x, a.y)
+		var pb := OurSteps.at(b.x, b.y)
+		var ns := int(ceil(pa.distance_to(pb) / 2.0))        # (short runs: a rail here is never broken: no false way out)
+		for k in ns:
+			var qa := pa.lerp(pb, float(k) / ns)
+			var qb := pa.lerp(pb, float(k + 1) / ns)
+			lv.balustrade(z, Vector2(qa.x, qa.z), Vector2(qb.x, qb.z), 1.0)
+		var n := int(ceil(pa.distance_to(pb) / 0.25))
+		for i in n + 1:
+			var q := pa.lerp(pb, float(i) / float(n))
+			lv.ob_circle(Vector2(q.x, q.z), 0.14)
+	var rv := ev - 0.12
+	rail.call(Vector2(-gh, rv), Vector2(-T * 0.5 - 0.06, rv))
+	rail.call(Vector2(T * 0.5 + 0.06, rv), Vector2(gh, rv))
+	rail.call(Vector2(-gh, rv), Vector2(-gh, -0.2))
+	rail.call(Vector2(gh, rv), Vector2(gh, -0.2))
+	# your stones: broken drums (low: they never hide her room)
+	for c in OurSteps.Y_OBS:
+		var t := OurSteps.tile(c)
+		lv.stump(t + Vector3(0, 0.016, 0), 0.6, false, 0.05)
+		lv.ob_circle(Vector2(t.x, t.z), 0.55)
+	# the glass (its pane is a chapter object: our_steps.gd): posts, sill and lintel; nothing passes it
+	# (no lintel: from the fixed view a beam across the top of the glass would cut across her room)
+	for u in [-gh - 0.12, gh + 0.12]:
+		lv.box(z, OurSteps.at(u, 0.0) + Vector3(0, 1.9, 0), Vector3(0.26, 3.8, 0.26), 0.25, false, B)
+	lv.box(z, OurSteps.at(0.0, 0.0) + Vector3(0, 1.05, 0), Vector3(2.0 * gh + 0.1, 0.1, 0.2), 0.25, false, B)
+	for i in 29:
+		var q := OurSteps.at(lerpf(-gh, gh, i / 28.0), 0.0)
+		lv.ob_circle(Vector2(q.x, q.z), 0.16)
+	# HER room: the same floor, mirrored, with her stones (and her gap: no slab, only the dark under it)
+	for c in OurSteps.H_OBS:
+		var t := OurSteps.her_tile(c)
+		if c == Vector2i(2, 1):
+			lv.stump(t + Vector3(0, 0.016, 0), 0.5, false)              # (the teaching column: a broken drum, low: she shows over it)
+		else:
+			lv.box("HR", t + Vector3(0, 0.36, 0), Vector3(1.0, 0.7, 0.55), 0.25, false, B * Basis(Vector3.UP, 0.35 * float(c.x - c.y)))
 	# the exit: a gated ramp up to the Court of Light
 	lv.steps(z, R(17.5, -17.2, 19.5, -15.0), 1, 1.0, 2.0, false)
 	lv.walk(R(17.5, -17.2, 19.5, -15.0), 2.0, 1.0, 1, "HW_ramp")
@@ -279,8 +322,6 @@ static func _hollow_walk(lv: Level) -> void:
 	lv.walk(R(15.4, -18.4, 19.5, -17.2), 2.0, NAN, -1, "L_ramp")
 	lv.balustrade(z, Vector2(19.55, -15.3), Vector2(19.55, -17.1), 1.0)
 	lv.balustrade("L", Vector2(19.45, -17.3), Vector2(19.45, -18.3), 2.0)
-	lv.statue(z, Vector3(24.8, 1.0, -6.7), PI * 0.75, 0.8, 0.5)
-	lv.rubble(Vector3(24.6, 1.0, -14.3), 0.5, 4)
 
 # ------------------------------------------------------------------ 8. the mist maze (+ her pool)
 static func _maze(lv: Level) -> void:

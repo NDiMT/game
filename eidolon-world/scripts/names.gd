@@ -12,7 +12,7 @@ const AREAS := {
 	"hall_glass": "Hall of Glass",
 	"shard_gallery": "Where Her Shadow Fell",          # (v0.8.1: the Shard Gallery is gone)
 	"garden_veiled": "Garden of the Veiled",
-	"hollow_walk": "The Hollow Walk",
+	"hollow_walk": "Our Steps",                 # (v0.9.2: the Hollow Walk's room, a new puzzle)
 	"court_light": "Court of Light",
 	"mist_maze": "The Mist Maze",
 	"echo_corridor": "The Echo Corridor",

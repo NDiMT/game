@@ -24,6 +24,11 @@ const TEMPLATES := {
 	# "together": two arcs facing each other, each ending in an inward hook; she draws one, you the other
 	"together_half": [[Vector2(0.0, 0.62), Vector2(0.24, 0.55), Vector2(0.38, 0.32), Vector2(0.42, 0.0),
 		Vector2(0.38, -0.32), Vector2(0.24, -0.55), Vector2(0.06, -0.6), Vector2(0.1, -0.42)]],
+	# v0.9.2: the Turned Ones' three runes (HOOK, WING, STEP: glyphs.gdshaderinc 6, 7, 8), as she writes them
+	# large across the garden's great glass (rune units: -1..1)
+	"hook": [[Vector2(-0.18, -0.6), Vector2(-0.18, 0.46), Vector2(0.34, 0.46), Vector2(0.34, 0.14)], [Vector2(0.280, -0.345), Vector2(0.227, -0.367), Vector2(0.205, -0.420), Vector2(0.227, -0.473), Vector2(0.280, -0.495), Vector2(0.333, -0.473), Vector2(0.355, -0.420), Vector2(0.333, -0.367), Vector2(0.280, -0.345)]],
+	"wing": [[Vector2(-0.160, 0.130), Vector2(-0.263, 0.109), Vector2(-0.351, 0.051), Vector2(-0.409, -0.037), Vector2(-0.430, -0.140), Vector2(-0.409, -0.243), Vector2(-0.351, -0.331), Vector2(-0.263, -0.389), Vector2(-0.160, -0.410), Vector2(-0.057, -0.389), Vector2(0.031, -0.331), Vector2(0.089, -0.243), Vector2(0.110, -0.140), Vector2(0.089, -0.037), Vector2(0.031, 0.051), Vector2(-0.057, 0.109), Vector2(-0.160, 0.130)], [Vector2(0.03, 0.06), Vector2(0.46, 0.5), Vector2(0.46, 0.18)]],
+	"step": [[Vector2(-0.5, -0.52), Vector2(-0.5, -0.12), Vector2(-0.1, -0.12), Vector2(-0.1, 0.28), Vector2(0.3, 0.28), Vector2(0.3, 0.6)], [Vector2(0.380, -0.325), Vector2(0.327, -0.347), Vector2(0.305, -0.400), Vector2(0.327, -0.453), Vector2(0.380, -0.475), Vector2(0.433, -0.453), Vector2(0.455, -0.400), Vector2(0.433, -0.347), Vector2(0.380, -0.325)]],
 }
 const N := 32                     # resample points
 const MATCH := 0.24               # mean distance (panel units) still accepted
@@ -309,16 +314,28 @@ static func stroke_distance(drawn: PackedVector2Array, tmpl: PackedVector2Array)
 
 # ------------------------------------------------------------------ the conversation
 ## spec: {"id", "first": template, "question": template (her half), "at_first": Vector2, "at_q": Vector2}
+var write_only := false          # v0.9.2: she only writes (the garden's great glass): no question, no answer
 func open(spec: Dictionary) -> void:
 	id = spec.get("id", "glass")
 	tries = 0
-	var first: Array = TEMPLATES[spec.get("first", "follow")]
-	var half: Array = TEMPLATES[spec.get("question", "together_half")]
-	# she writes on HER side: you see it mirrored. Her half of the question sits on the LEFT for you;
-	# the answer, its mirror, on the right.
-	her_first = place(first, true, 0.42, spec.get("at_first", Vector2(0.0, 0.5)))
-	her_half = place(half, true, 0.75, spec.get("at_q", Vector2(0.0, -0.32)))
-	target = place(half, false, 0.75, spec.get("at_q", Vector2(0.0, -0.32)))
+	write_only = spec.has("write")
+	if write_only:
+		# her runes in a row, large, written on HER side (you see them reversed, as on the glass in the world)
+		var names: Array = spec["write"]
+		her_first = []
+		for k in names.size():
+			var x := (float(k) - (names.size() - 1) * 0.5) * 0.62
+			her_first.append_array(place(TEMPLATES[names[k]], true, 0.36, Vector2(x, 0.05)))      # (left to right as the statues stand)
+		her_half = []
+		target = []
+	else:
+		var first: Array = TEMPLATES[spec.get("first", "follow")]
+		var half: Array = TEMPLATES[spec.get("question", "together_half")]
+		# she writes on HER side: you see it mirrored. Her half of the question sits on the LEFT for you;
+		# the answer, its mirror, on the right.
+		her_first = place(first, true, 0.42, spec.get("at_first", Vector2(0.0, 0.5)))
+		her_half = place(half, true, 0.75, spec.get("at_q", Vector2(0.0, -0.32)))
+		target = place(half, false, 0.75, spec.get("at_q", Vector2(0.0, -0.32)))
 	ink.her.clear(); ink.mine.clear(); ink.hint.clear()
 	ink.palm_k = 0.0; ink.finger_k = 0.0
 	glass_mat.set_shader_parameter("glow", 0.0)
@@ -357,8 +374,28 @@ func _her_writes(slow: float) -> void:
 			ink.finger_k = 1.0
 			ink.queue_redraw(), 0.0, 1.0, times[k]).set_trans(Tween.TRANS_SINE)
 	tw.tween_callback(func() -> void:
-		phase = "waiting"
-		emit_signal("sound", "writing"))
+		emit_signal("sound", "writing")
+		if write_only: _written()
+		else: phase = "waiting")
+
+## (v0.9.2) she has written: her palm on the glass a moment, it glows, the close-up ends by itself
+func _written() -> void:
+	phase = "success"
+	ink.finger_k = 0.0
+	ink.palm = to_px(Vector2(0.0, -0.45))
+	sound.emit("chime")
+	if _tw: _tw.kill()
+	_tw = create_tween()
+	_tw.tween_method(func(v: float) -> void:
+		ink.palm_k = v
+		ink.queue_redraw(), 0.0, 1.0, 1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_tw.parallel().tween_method(func(v: float) -> void: glass_mat.set_shader_parameter("glow", v), 0.0, 1.0, 1.2)
+	_tw.tween_callback(func() -> void: solved.emit(id))
+	_tw.tween_interval(2.0)
+	_tw.tween_property(self, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
+	_tw.tween_callback(func() -> void:
+		visible = false
+		phase = "closed")
 
 func _point_on(pts: PackedVector2Array, v: float) -> Vector2:
 	var L := 0.0

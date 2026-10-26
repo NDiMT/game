@@ -12,9 +12,10 @@ const ROOMS := {
 	"waking_pool": {"y": 0.0, "extra": []},
 	"stair_breath": {"y": 0.5, "extra": []},
 	"hall_glass": {"y": 1.0, "extra": [Vector3(0.0, 3.0, -20.5)]},
-	"shard_gallery": {"y": 1.0, "extra": [Vector3(7.5, 2.5, -13.2)]},
+	"shard_gallery": {"y": 1.0, "extra": [Vector3(7.5, 2.5, -13.2), Vector3(7.5, 0.53, -11.585), Vector3(7.026, 0.53, -15.098), Vector3(6.524, 0.53, -14.393)]},   # (v0.9.2: and her shadows' eye-pairs on the floor: Chapter.eye_pos)
 	"garden_veiled": {"y": 1.0, "extra": []},
-	"hollow_walk": {"y": 1.0, "extra": []},
+	"hollow_walk": {"y": 1.0, "extra": [Vector3(24.62, 0.55, -9.52), Vector3(26.32, 0.55, -12.91), Vector3(25.47, 0.55, -10.37),
+		Vector3(30.98, 0.55, -12.49), Vector3(30.98, 0.55, -15.88), Vector3(29.28, 0.55, -17.58), Vector3(32.68, 0.55, -14.18)]},   # (v0.9.2 Our Steps: your entry, your plate, the teach slab; her plate, her entry, her far corners (the teach column is its own piece) (OurSteps.tile / her_tile))
 	"court_light": {"y": 2.0, "extra": [Vector3(16.98, 4.0, -24.05)]},
 	"mist_maze": {"y": 2.0, "extra": []},
 	"echo_corridor": {"y": 2.0, "extra": []},
@@ -25,8 +26,7 @@ const ROOMS := {
 }
 ## an interact whose piece is not where you stand to use it: the piece itself (its centre, 0.5 m below: the
 ## test samples half a metre up), and its corners
-const PIECE_OF := {"breathe_garden": [Vector3(16.84, 1.85, -13.95), Vector3(16.84, 0.95, -14.45), Vector3(16.84, 0.95, -13.45),
-	Vector3(16.84, 2.75, -14.45), Vector3(16.84, 2.75, -13.45)]}
+const PIECE_OF := {"breathe_garden": [Vector3(11.15, 2.3, -14.88)]}      # (v0.9.2: the great glass where you breathe)
 
 ## (moved at runtime: never part of a room's list)
 const DYNAMIC := ["hall_push", "hall_take", "hall_place", "ledge_push"]

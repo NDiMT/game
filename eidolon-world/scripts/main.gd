@@ -314,6 +314,10 @@ func _process(dt: float) -> void:
 		if key_vec != Vector2.ZERO: sv = key_vec
 		var axes := world.ground_axes()
 		var dir: Vector3 = axes[0] * sv.x + axes[1] * (-sv.y)
+		# (v0.9.2) on the Our Steps floor the stick steps you slab to slab (the floor walks you there)
+		if chapter.steps and chapter.steps.active and mode == "play":
+			if auto_target == Vector3.INF: chapter.steps.input(dir)
+			dir = Vector3.ZERO
 		if auto_target != Vector3.INF:
 			var d := auto_target - player.position
 			d.y = 0.0
@@ -369,6 +373,7 @@ func _process(dt: float) -> void:
 	if mode != "title":
 		var p := player.position
 		var wide := p.x > 20.5 and p.z < -18.5     # the eidolon ledge and the shrine: see across the gap
+		if area == "hollow_walk" and OurSteps.lean(p) != Vector3.ZERO: wide = true     # (v0.9.2: her room, clear behind the glass)
 		var cs: float = world.zoom                 # v0.9: one fixed view; no per-area zoom
 		if mode != "finale" and mode != "cine": world.cam_size_target = cs
 		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs
@@ -378,6 +383,8 @@ func _process(dt: float) -> void:
 				bridge_focus -= dt
 				off = (Vector3(27.7, 2.0, -26.5) - p) * 0.7         # watch the bridge rise
 				off.y = 0.0
+			elif area == "hollow_walk" and not chapter.state["hollow_done"] and OurSteps.lean(p) != Vector3.ZERO:
+				off = OurSteps.lean(p)                             # (v0.9.2) Our Steps: both rooms whole on the screen
 			elif area == "garden_veiled" and not chapter.state["turned_done"] and Chapter.garden_lean(p) != Vector3.ZERO:
 				off = Chapter.garden_lean(p)                       # (v0.9.1) before the turned ones: lean toward the glass
 			else:
@@ -641,7 +648,10 @@ func open_glass(id: String) -> void:
 	controls.reset()
 	controls.show_interact("")
 	ui.hide_text()
-	ui.glass_talk.open({"id": id, "first": "follow", "question": "together_half"})
+	if id == "garden":
+		ui.glass_talk.open({"id": id, "write": ["hook", "wing", "step"]})     # (v0.9.2: she writes her three runes)
+	else:
+		ui.glass_talk.open({"id": id, "first": "follow", "question": "together_half"})
 
 func _glass_sound(n: String) -> void:
 	match n:
@@ -678,10 +688,13 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 		"door_real":
 			sfx.play("door", -3.0, 0.9)
 			world.shake(0.3)
-		"hollow_step": sfx.play("hollow", 0.0, 1.0)
-		"hollow_lock":
-			sfx.play("thud", -10.0, 0.7)
-			chapter.progress()
+		# v0.9.2 "Our Steps"
+		"steps_step":
+			sfx.play("hollow", -6.0, 1.15)
+			if data: sfx.play("glass_tink", -16.0, 0.75)       # (she was held by a stone of hers)
+		"steps_blocked": sfx.play("glass_tink", -20.0, 0.55)
+		"steps_on": sfx.play("glass", -14.0, 0.9)
+		"steps_reset", "steps_exit": sfx.play("whoosh", -20.0, 1.2)
 		"maze_bump": sfx.play("glass_tink", -21.0, 0.7)
 		"memory":
 			ui.show_memory(Chapter.MEMORY_1, 4.0)
@@ -759,8 +772,7 @@ func jump(room: String) -> void:
 			"garden_veiled":
 				cs["turned"] = Chapter.TURN_SOLUTION.duplicate(); cs["turned_done"] = true; cs["garden_breath"] = true
 			"hollow_walk":
-				cs["hollows"] = [[Ch1Geo.HW_PLATES[0].x, Ch1Geo.HW_PLATES[0].y], [Ch1Geo.HW_PLATES[1].x, Ch1Geo.HW_PLATES[1].y]]
-				cs["hollow_lock"] = [true, true]; cs["hollow_done"] = true
+				cs["hollow_done"] = true
 			"court_light":
 				ps["mirrors"] = Puzzles.MIRROR_SOLUTION.duplicate(); ps["bridge"] = true; cs["mural"] = true
 			"mist_maze": cs["maze"] = true
@@ -1007,6 +1019,7 @@ func cmd(c: String) -> Variant:
 		"face": player.yaw = float(a[1]); player.fig.rotation.y = player.yaw
 		"input": key_vec = Vector2(float(a[1]), float(a[2]))
 		"stop": key_vec = Vector2.ZERO; auto_target = Vector3.INF
+		"steps": return chapter.steps.try_step(Vector2i(int(a[1]), int(a[2])))      # (dev / tests: one Our Steps step, (dc, dr))
 		"interact": return try_interact()
 		"yaw": world.set_yaw_index(int(a[1]))
 		"zoom":

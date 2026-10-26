@@ -20,6 +20,8 @@ uniform vec3 glyphs = vec3(-1.0);
 uniform float flip = 1.0;
 uniform vec2 size = vec2(1.0, 1.3);
 uniform float vertical = 0.0;        // 1: runes stacked top to bottom, 0: in a row
+uniform vec2 row_off = vec2(0.0);    // v0.9.2: where the row of runes sits (metres from the pane's centre)
+uniform float ghost = 0.0;           // v0.9.2: her writing stays on the clear glass, glowing faintly
 
 float stroke(vec2 p, int id, float prog) {
 	if (id < 0) return 10.0;
@@ -51,7 +53,9 @@ void fragment() {
 		if (gid < -0.5) continue;
 		float fc = float(count);
 		vec2 c = vertical > 0.5 ? vec2(0.0, (float(i) - (fc - 1.0) * 0.5) * -size.y / fc) : vec2((float(i) - (fc - 1.0) * 0.5) * size.x / fc, 0.0);
+		c += row_off;
 		float s = vertical > 0.5 ? size.y / fc * 0.42 : min(size.x / fc, size.y) * 0.42;
+		if (ghost > 0.0 || length(row_off) > 0.0) s = min(s, 0.62);
 		vec2 p = (q - c) / s;
 		if (flip > 0.5) p.x = -p.x;
 		float prog = clamp(write * fc - float(i), 0.0, 1.0);
@@ -62,6 +66,11 @@ void fragment() {
 	vec3 fogc = vec3(0.86, 0.88, 0.9);
 	vec3 c = mix(fogc, _hc(), line * 0.55);
 	float a = cond * (1.0 - wipe * 0.85) + line * fog * 0.55;
+	// (v0.9.2) her writing stays on the clear glass: a crimson line with a soft glow
+	float glow = exp(-max(d - 0.02, 0.0) * 40.0) * 0.5;
+	// (crimson whatever its strength: `ghost` fades it, never greys it)
+	c = mix(c, _hc(), clamp(step(0.001, ghost) * (line + glow * 1.5) * (1.0 - fog), 0.0, 1.0));
+	a = max(a, ghost * (line * 0.95 + glow * 0.7) * (1.0 - fog * 0.5));
 	ALBEDO = c;
 	ALPHA = clamp(a, 0.0, 0.92);
 }

@@ -744,8 +744,12 @@ func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
 		var side := Vector2(-d.y, d.x).normalized() * 0.35
 		# (v0.8) the broken piece falls OUTSIDE the walkway, never across it
 		if on_ground(fp + side * 1.4) and not on_ground(fp - side * 1.4): side = -side
-		box(zone, Vector3(fp.x + side.x, y + 0.05, fp.y + side.y), Vector3(L * (g1 - g0) * 0.8, 0.1, 0.2), 0.25, false, B * Basis(Vector3.UP, rng.randf_range(-0.4, 0.4)))
-		rubble(Vector3(fp.x + side.x, y, fp.y + side.y), 0.25, 3)
+		var fall_b := B * Basis(Vector3.UP, rng.randf_range(-0.4, 0.4))
+		# (v0.9.2) a floor on both sides (a raised walk over a lower one): the piece would lie, afloat, across
+		# the lower floor's way: it is not dropped at all (the generator is drawn the same, so nothing else moves)
+		if not on_ground(fp + side * 1.4):
+			box(zone, Vector3(fp.x + side.x, y + 0.05, fp.y + side.y), Vector3(L * (g1 - g0) * 0.8, 0.1, 0.2), 0.25, false, fall_b)
+			rubble(Vector3(fp.x + side.x, y, fp.y + side.y), 0.25, 3)
 
 func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_max: bool) -> void:
 	## visual stairs over a ramp region (the walk region is the ramp itself)
@@ -917,7 +921,7 @@ func _garden() -> void:
 	stump(Vector3(17.0, Ch1Geo.CO_WATER_Y, -3.9), 1.1, false)
 	rubble(Vector3(16.6, 1.0, -6.0), 0.25, 5)
 	rubble(Vector3(11.0, 1.0, -9.0), 0.3, 4)
-	# (v0.9.1: her small glass stands on this stretch of the east rail now: chapter.gd GARDEN_SMALL)
+	balustrade(z, Vector2(16.95, -14.8), Vector2(16.95, -13.2), 1.0)
 	balustrade(z, Vector2(16.95, -10.4), Vector2(16.95, -5.2), 1.0)
 	balustrade(z, Vector2(9.7, -4.95), Vector2(14.7, -4.95), 1.0)          # (v0.9: the way up from the stones east of it)
 	balustrade(z, Vector2(7.05, -9.2), Vector2(7.05, -5.1), 1.0)       # (v0.8.1: the garden's new west edge)
