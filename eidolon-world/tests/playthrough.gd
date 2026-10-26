@@ -353,7 +353,18 @@ func _plan() -> void:
 	step_do(func() -> void:
 		var rw := C().stair_rune
 		var rm := rw.material_override as ShaderMaterial
-		ok("the whole rune is carved large beside the stair, glowing faintly", rw.visible and (rw.mesh as QuadMesh).size.x >= 1.2 and int(rm.get_shader_parameter("count")) > 8 and float(rm.get_shader_parameter("lit")) > 0.3))
+		ok("the whole rune is carved large beside the stair, dark until you pass it (v0.9.1)", rw.visible and (rw.mesh as QuadMesh).size.x >= 1.2 and int(rm.get_shader_parameter("count")) > 8 and float(rm.get_shader_parameter("lit")) < 0.05, str(P()))
+		_mark = int(P().z * 100.0))
+	walk_path("past the carved rune", [[-11.3, -1.0], [-11.2, -2.6]])
+	step_wait(0.8)
+	step_do(func() -> void:
+		var rm := C().stair_rune.material_override as ShaderMaterial
+		ok("(v0.9.1) passing before it, the rune lights", float(rm.get_shader_parameter("lit")) > 0.7, str(rm.get_shader_parameter("lit"))))
+	walk_path("on up the stair", [[-11.2, -4.6]])
+	step_wait(2.0)
+	step_do(func() -> void:
+		var rm := C().stair_rune.material_override as ShaderMaterial
+		ok("(v0.9.1) left behind, it goes dark again", float(rm.get_shader_parameter("lit")) < 0.05, str(rm.get_shader_parameter("lit"))))
 	step_do(func() -> void:
 		var m: ShaderMaterial = C().breath_mats["stair"]
 		var sz: Vector2 = m.get_shader_parameter("size")

@@ -407,6 +407,7 @@ const REVEAL_R := REVEAL_DIAMETER * 0.5
 var _near_occ: Array[AABB] = []
 var _near_t := 0.0
 var _near_at := Vector3.INF
+var _hid_hold := 0.0
 func update_reveal(occ: Array[AABB], p: Vector3, dt: float) -> void:
 	# (perf: only boxes near you can hide you; nothing taller than ~7 m stands more than ~12 m off)
 	_near_t -= dt
@@ -427,7 +428,11 @@ func update_reveal(occ: Array[AABB], p: Vector3, dt: float) -> void:
 				hidden = true
 				break
 		if hidden: break
-	reveal_k = move_toward(reveal_k, 1.0 if hidden else 0.0, dt / 0.25)
+	# (v0.9.1, the flicker hunt: hysteresis: once hidden, stay "hidden" 0.35 s, so a ray grazing the edge of
+	# an occluder as you walk past it cannot flip the see-through on and off every frame)
+	if hidden: _hid_hold = 0.35
+	else: _hid_hold -= dt
+	reveal_k = move_toward(reveal_k, 1.0 if _hid_hold > 0.0 else 0.0, dt / 0.25)
 	var vp := get_viewport()
 	var vis := vp.get_visible_rect().size
 	var sp := cam.unproject_position(p + Vector3(0, 0.85, 0))

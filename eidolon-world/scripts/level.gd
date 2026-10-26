@@ -368,7 +368,7 @@ func set_fade(p: Vector3, on: bool) -> void:
 		var mi: MeshInstance3D = z[0]
 		if mi.material_override != null and mi.material_override != marble_mat and not z[4]: continue   # (a zone with its own material)
 		var bb: AABB = z[3]
-		var want := on and bb.grow(9.0).has_point(p)
+		var want := on and bb.grow(10.0 if z[4] else 9.0).has_point(p)        # (v0.9.1: a metre of hysteresis)
 		if want == z[4]: continue
 		z[4] = want
 		if want:
@@ -604,6 +604,7 @@ func box(zone: String, center: Vector3, size: Vector3, mat := 0.25, occ := false
 		for k in 3: e += (basis[k] * size[k] * 0.5).abs()
 		occluders.append(AABB(center - e, e * 2.0))
 
+var _wall_n := 0
 func wall(zone: String, r: Rect2, y0: float, y1: float, occ := true) -> void:
 	# ambient occlusion along both long faces at the floor
 	var long_x := r.size.x >= r.size.y
@@ -615,11 +616,15 @@ func wall(zone: String, r: Rect2, y0: float, y1: float, occ := true) -> void:
 		var b := Basis.from_scale(Vector3(L + 0.6, 1.0, 0.75)) if long_x else Basis(Vector3.UP, PI * 0.5) * Basis.from_scale(Vector3(L + 0.6, 1.0, 0.75))
 		strips.append(Transform3D(b, c))
 	box(zone, Vector3(r.get_center().x, (y0 + y1) * 0.5, r.get_center().y), Vector3(r.size.x, y1 - y0, r.size.y), 0.25, occ)
+	# (v0.9.1, the flicker hunt: walls meeting at a corner had their mouldings at exactly the same heights:
+	# coplanar tops and faces fighting. Each wall's mouldings sit a hair (0..4 mm) apart from its neighbour's)
+	_wall_n += 1
+	var jit := float(_wall_n % 7) * 0.002
 	# a moulded coping along the top, and a thinner cornice line beneath it
-	box(zone, Vector3(r.get_center().x, y1 + 0.06, r.get_center().y), Vector3(r.size.x + 0.12, 0.12, r.size.y + 0.12), 0.25, occ)
-	box(zone, Vector3(r.get_center().x, y1 - 0.28, r.get_center().y), Vector3(r.size.x + 0.07, 0.07, r.size.y + 0.07), 0.25, occ)
+	box(zone, Vector3(r.get_center().x, y1 + 0.06 + jit, r.get_center().y), Vector3(r.size.x + 0.12 + jit, 0.12, r.size.y + 0.12 + jit), 0.25, occ)
+	box(zone, Vector3(r.get_center().x, y1 - 0.28 + jit, r.get_center().y), Vector3(r.size.x + 0.07 + jit, 0.07, r.size.y + 0.07 + jit), 0.25, occ)
 	if y1 - y0 > 1.5:
-		box(zone, Vector3(r.get_center().x, y0 + 0.12, r.get_center().y), Vector3(r.size.x + 0.08, 0.24, r.size.y + 0.08), 0.25, occ)
+		box(zone, Vector3(r.get_center().x, y0 + 0.12 + jit * 0.5, r.get_center().y), Vector3(r.size.x + 0.08 + jit, 0.24 + jit, r.size.y + 0.08 + jit), 0.25, occ)
 
 func blob(at: Vector3, size: float) -> void:
 	blobs.append(Transform3D(Basis().scaled(Vector3(size, 1.0, size)), at + Vector3(0, 0.012, 0)))
@@ -851,8 +856,9 @@ func _hall() -> void:
 	box(z, Vector3(4.8, 4.15, -17.5), Vector3(0.4, 0.9, 1.8), 0.25, true)
 	walk(R(4.6, -18.2, 5.05, -16.8), 1.0, NAN, -1, "hdoor", false)
 	# mirror frame (dark bronze) around the great glass x[-2.6,2.6] y[1.15,5.6]
+	# (v0.9.1: the side bars 6 mm prouder than the rails: their front faces were coplanar at the corners)
 	for fb in [[Vector3(0, 1.1, -20.52), Vector3(5.5, 0.14, 0.12)], [Vector3(0, 5.66, -20.52), Vector3(5.5, 0.14, 0.12)],
-			[Vector3(-2.68, 3.38, -20.52), Vector3(0.14, 4.6, 0.12)], [Vector3(2.68, 3.38, -20.52), Vector3(0.14, 4.6, 0.12)]]:
+			[Vector3(-2.68, 3.38, -20.517), Vector3(0.14, 4.6, 0.126)], [Vector3(2.68, 3.38, -20.517), Vector3(0.14, 4.6, 0.126)]]:
 		box("Hn", fb[0], fb[1], 1.0, true)
 	# pilasters on the north wall
 	for x in [-4.0, 4.0]:
@@ -883,10 +889,12 @@ func _garden() -> void:
 	walk(R(7, -9.3, 10.3, -5), 1.0, NAN, -1, "CO_w")         # (v0.9: the way down to the colossus)
 	# v0.5: the Turned Ones' great mirror stands on the north edge (the glass is a puzzle object)
 	wall("Gn", R(10.3, -15.6, 15.3, -15.05), 1.0, 5.9, false)
-	box(z, Vector3(10.45, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
-	box(z, Vector3(15.15, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
-	box(z, Vector3(12.8, 5.6, -14.95), Vector3(5.0, 0.3, 0.34), 1.0, true)
-	box(z, Vector3(12.8, 1.06, -14.95), Vector3(4.7, 0.12, 0.3), 1.0, false)
+	# (v0.9.1: the frame is its own mesh, seen by the main camera only: its rails, proud of the glass,
+	# showed in the planar reflection as a dark bar across the reflected runes)
+	box("Gframe", Vector3(10.45, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
+	box("Gframe", Vector3(15.15, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
+	box("Gframe", Vector3(12.8, 5.6, -14.95), Vector3(5.0, 0.3, 0.34), 1.0, true)
+	box("Gframe", Vector3(12.8, 1.06, -14.95), Vector3(4.7, 0.12, 0.3), 1.0, false)
 	ob_rect(R(10.3, -15.3, 15.4, -14.75))
 	wall(z, R(15.3, -15.3, 17, -14.95), 1.0, 2.0, true)
 	# the door east, to the Hollow Walk (its leaves are puzzle objects)
@@ -1198,6 +1206,7 @@ func _commit() -> void:
 		var split := MB.split_occ(mi.mesh)
 		if split != mi.mesh: fade_zones.append([mi, mi.mesh, split, mi.mesh.get_aabb(), false])
 		if k == "Hn": mi.layers = PlanarMirror.LAYER_BEHIND      # the great mirror's own wall
+		if k == "Gframe": mi.layers = PlanarMirror.LAYER_MAIN_FX    # (v0.9.1) the garden glass's frame: never in a reflection
 		add_child(mi)
 	_markers()
 	_decor()

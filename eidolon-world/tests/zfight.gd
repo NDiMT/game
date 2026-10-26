@@ -56,7 +56,7 @@ func _collect(n: Node, skip: Node, c: Vector3, r: float, lv: Level) -> void:
 				mat = (n as MeshInstance3D).get_surface_override_material(0)
 				if mat == null: mat = mesh.surface_get_material(0)
 			var tr := _is_transparent(mat)
-			var mname := (mat.shader.resource_path.get_file() if mat is ShaderMaterial and (mat as ShaderMaterial).shader else str(mat))
+			var mname: String = (mat.shader.resource_path.get_file() if mat is ShaderMaterial and (mat as ShaderMaterial).shader else str(mat))
 			var faces := mesh.get_faces()
 			var owner := "%s/%s" % [n.get_parent().name, n.name]
 			for xf: Transform3D in xfs:
@@ -65,7 +65,7 @@ func _collect(n: Node, skip: Node, c: Vector3, r: float, lv: Level) -> void:
 					var a: Vector3 = xf * faces[i]; var b: Vector3 = xf * faces[i + 1]; var cc: Vector3 = xf * faces[i + 2]
 					var ctr := (a + b + cc) / 3.0
 					if ctr.distance_to(c) > r: continue
-					var nn := (b - a).cross(cc - a)
+					var nn := (cc - a).cross(b - a)        # (Godot: clockwise front faces)
 					if nn.length() < 1e-8: continue
 					nn = nn.normalized()
 					tris.append([a, b, cc, nn, nn.dot(a), owner, tr, mname])
@@ -89,18 +89,34 @@ func _pairs() -> void:
 		var cand: Array = []
 		for dx in [-1, 0, 1]:
 			var k2 := Vector4i(key.x, key.y, key.z, key.w + dx)
-			if buckets.has(k2): cand.append_array(buckets[k2])
-		var mine: Array = buckets[key]
-		for e1 in mine:
-			for e2 in cand:
-				if e2[0] <= e1[0]: continue
+			if buckets.has(k2):
+				for e in buckets[k2]: if dx >= 0 or true: cand.append(e)
+		# (a sweep along one in-plane axis: only boxes that overlap there are tested)
+		var n0: Vector3 = (cand[0][1] as Vector3)
+		var u := n0.cross(Vector3.UP if absf(n0.y) < 0.9 else Vector3.RIGHT).normalized()
+		var own := {}
+		for e in buckets[key]: own[e[0]] = true
+		var iv: Array = []
+		for e in cand:
+			var t: Array = tris[e[0]]
+			var a0 := minf((t[0] as Vector3).dot(u), minf((t[1] as Vector3).dot(u), (t[2] as Vector3).dot(u)))
+			var a1 := maxf((t[0] as Vector3).dot(u), maxf((t[1] as Vector3).dot(u), (t[2] as Vector3).dot(u)))
+			iv.append([a0, a1, e])
+		iv.sort_custom(func(p: Array, q: Array) -> bool: return p[0] < q[0])
+		for ia in iv.size():
+			var A: Array = iv[ia]
+			var e1: Array = A[2]
+			for ib in range(ia + 1, iv.size()):
+				var Bv: Array = iv[ib]
+				if Bv[0] >= A[1]: break
+				var e2: Array = Bv[2]
+				if not (own.has(e1[0]) or own.has(e2[0])): continue
+				if not own.has(e1[0]) and own.has(e2[0]) and false: continue
 				var n1: Vector3 = e1[1]; var n2: Vector3 = e2[1]
 				var t1: Array = tris[e1[0]]; var t2: Array = tris[e2[0]]
 				var tol := 0.01 if (t1[6] or t2[6]) else EPS
 				if n1.dot(n2) < 0.9995 or absf(float(e1[2]) - float(e2[2])) > tol: continue
-				# (two opaque faces back to back: one of them is culled, they do not fight)
 				if not (t1[6] or t2[6]) and (t1[3] as Vector3).dot(t2[3]) < 0.0: continue
-				# (faces turned away from the one fixed camera are never seen)
 				if (t1[3] as Vector3).dot(BACK) < 0.02 and (t2[3] as Vector3).dot(BACK) < 0.02: continue
 				if not _overlap(t1, t2, n1): continue
 				var tag := "%s | %s" % [t1[5], t2[5]]

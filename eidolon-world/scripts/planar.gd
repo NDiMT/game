@@ -79,7 +79,10 @@ func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 	if want and current != null and current != self and current.active: want = false
 	if want != active:
 		active = want
-		mat.set_shader_parameter("planar", 1.0 if active else 0.0)
+		# (v0.9.1, the flicker hunt: switched on, the glass keeps its fallback until its reflection has been
+		# rendered once: never one frame of the stale image from the last time it was on)
+		_frame = 0
+		if not active: mat.set_shader_parameter("planar", 0.0)
 		if active:
 			current = self
 			RenderingServer.global_shader_parameter_set("refl_clip", Vector4(plane_n.x, plane_n.y, plane_n.z, plane_d))
@@ -90,6 +93,7 @@ func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 				RenderingServer.global_shader_parameter_set("refl_clip", Vector4.ZERO)
 	if not active: return
 	_frame += 1
+	if _frame == 3: mat.set_shader_parameter("planar", 1.0)
 	var main_vp := main_cam.get_viewport()
 	# (v0.5b: the logical canvas size is not the pixel size: at DPR 3 that made the glass ~130 px wide)
 	var sz := Vector2(main_vp.size) * main_vp.scaling_3d_scale * scale * res_k
@@ -111,4 +115,4 @@ func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 	# the view), every other frame while everything is still
 	var cam_moved := not mx.is_equal_approx(_last_cam)
 	_last_cam = mx
-	vp.render_target_update_mode = SubViewport.UPDATE_ONCE if (moving or cam_moved or _frame % 2 == 0) else SubViewport.UPDATE_DISABLED
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE if (moving or cam_moved or _frame <= 2 or _frame % 2 == 0) else SubViewport.UPDATE_DISABLED

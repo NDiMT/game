@@ -104,7 +104,7 @@ func _collect(n: Node, skip: Node, body: StaticBody3D, names: Dictionary, count:
 				for x: Transform3D in src: xfs.append((n.get_parent() as Node3D).global_transform * x)
 		if mesh and not (mesh is PlaneMesh or mesh is QuadMesh):
 			var ab := mesh.get_aabb()
-			var thin := minf(ab.size.x, minf(ab.size.y, ab.size.z)) < 0.03
+			var thin := minf(ab.size.x, minf(ab.size.y, ab.size.z)) < 0.003
 			var faces := mesh.get_faces() if not thin else PackedVector3Array()
 			if faces.size() >= 3:
 				for xf: Transform3D in xfs:

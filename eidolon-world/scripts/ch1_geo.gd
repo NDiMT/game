@@ -177,7 +177,7 @@ static func _gallery(lv: Level) -> void:
 	lv.walk(R(5.0, -18.4, 6.9, -16.85), 1.0, NAN, -1, "GL")
 	# the far walls: the court's foundation (north-east) and the way in's end wall
 	lv.ob_rect(R(6.95, -18.45, 10.35, -16.9))
-	lv.wall(z, R(4.6, -18.7, 7.0, -18.4), 1.0, 4.4, true)
+	lv.wall(z, R(5.0, -18.7, 7.0, -18.4), 1.0, 4.4, true)          # (v0.9.1: from the Hall's wall, not into it: their faces were coplanar at the Hall's east door)
 	lv.ob_rect(R(4.6, -18.75, 7.05, -18.4))
 	# the near walls: low parapets (east and south), so the floor and her shadows read
 	lv.wall(z, R(10.0, -16.9, 10.3, -9.3), 1.0, 2.05, true)

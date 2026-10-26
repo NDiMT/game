@@ -18,6 +18,8 @@ var highlight: Highlight
 var puzzles: Puzzles
 var chapter: Chapter
 var wonders: Wonders              # v0.9 the wonder spaces between the puzzles
+var _fade_on := false
+var _fade_off_t := 0.0
 var cine: Cinematic
 var _skip_hold := false
 var _skip_t := 0.0
@@ -327,7 +329,15 @@ func _process(dt: float) -> void:
 	player.step(dt)
 	if prof_on: _t0 = _pm("player", _t0)
 	world.update_reveal(level.occluders, player.position, dt)
-	level.set_fade(player.position, world.reveal_k > 0.001)
+	# (v0.9.1, the flicker hunt: the zones' faded copies swap in once the see-through opens and swap back
+	# only after it has been fully closed for 0.6 s, never flickering between the two at the threshold)
+	if world.reveal_k > 0.02:
+		_fade_on = true
+		_fade_off_t = 0.6
+	elif world.reveal_k <= 0.001:
+		_fade_off_t -= dt
+		if _fade_off_t <= 0.0: _fade_on = false
+	level.set_fade(player.position, _fade_on)
 	if mode != "cine" and mode != "finale": level.cull_far(player.position, dt)
 	if prof_on: _t0 = _pm("reveal+fade+cull", _t0)
 	puzzles.update(dt)
