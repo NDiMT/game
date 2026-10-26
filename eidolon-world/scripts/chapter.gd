@@ -1050,7 +1050,13 @@ const SH_PRELIT := 3                    # burning when you arrive (its shadow fa
 const SH_LORE := "On Milos, in the evening,\nhe moved the lamps until her shadow lay\nwhere he wanted her to stand."
 var sh_flames: Array[Flame] = []
 var sh_shadows: Array[ShaderMaterial] = []
-var sh_outlines: Array[ShaderMaterial] = []
+var sh_outlines: Array[ShaderMaterial] = []      # (v0.9.2: none: the eyes replace them)
+var sh_eye_mats: Array[ShaderMaterial] = []
+
+## (v0.9.2) where brazier i's shadow has its eyes (side -1 / +1): the head of the silhouette (statue_shadow's
+## q (+-0.048, 0.86)), on the floor, exactly where the shader draws them
+func eye_pos(i: int, side: float) -> Vector3:
+	return _shadow_xf(i, 1.0) * Vector3(side * 0.024, 0.0, 0.5 - 0.86)
 var sh_veil: ShaderMaterial
 var gl_fails := 0                       # (kept for the hint system)
 
@@ -1084,7 +1090,7 @@ func _build_gallery() -> void:
 	# her statue: Theron's Ione, veiled, on a plinth, facing the Hall door
 	var st := Node3D.new()
 	st.position = SH_STATUE
-	st.rotation.y = -PI * 0.5
+	st.rotation.y = PI * 0.75              # (v0.9.2: her veiled face toward you, so her eyes show)
 	add_child(st)
 	var mi := MeshInstance3D.new()
 	mi.mesh = _statue_mesh(1.15, 0.5)
@@ -1096,6 +1102,11 @@ func _build_gallery() -> void:
 	veil.sphere(Vector3(0, 0.5 + 0.08 + 2.15 * 1.15, 0.0), Vector3(0.21, 0.25, 0.22), Color(0.5, 0.25, 0.0), 12, 6)
 	sh_veil = _smat("res://shaders/veil_glow.gdshader", {"intensity": 0.0})
 	_mi(veil.commit(), sh_veil, Transform3D(), st)
+	# v0.9.2: her eyes glow crimson behind the veil
+	for sx in [-1.0, 1.0]:
+		var em := _smat("res://shaders/eyes.gdshader", {"k": 0.9})
+		em.render_priority = 3
+		_mi(_quad(Vector2(0.09, 0.09)), em, Transform3D(Basis(), Vector3(sx * 0.0575, 0.5 + 0.08 + 2.16 * 1.15, -0.24)), st)
 	# the braziers (tripods with a bowl) and the shadows they throw; the outlines (the shard shows them)
 	var bm := _brazier_mesh()
 	for i in SH_BRAZ.size():
@@ -1111,19 +1122,23 @@ func _build_gallery() -> void:
 		n.add_child(fl)
 		sh_flames.append(fl)
 		level.ob_circle(Vector2(SH_BRAZ[i].x, SH_BRAZ[i].z), 0.32)
-		var sm := _smat("res://shaders/statue_shadow.gdshader", {"k": 0.0, "dark": 0.72, "mode": 0.0, "seed": float(i)})
+		var sm := _smat("res://shaders/statue_shadow.gdshader", {"k": 0.0, "dark": 0.72, "mode": 0.0, "seed": float(i),
+			"eyes": 1.0 if i in SH_SOLUTION else 0.0, "len": float(shadow_of(i)[2]), "wid": 1.45})
 		sm.render_priority = 1                  # (v0.9: a cast shadow lies OVER her outline: it fills it, its rim around)
 		_mi(_plane(Vector2(1.0, 1.0)), sm, _shadow_xf(i, 1.026 + 0.001 * i)).layers = PlanarMirror.LAYER_MAIN_FX
 		sh_shadows.append(sm)
 		var idx := i
 		level.add_interact("brazier%d" % i, SH_BRAZ[i], "light", func() -> void: toggle_brazier(idx), 0.95,
 			func() -> bool: return not state["gallery"])
+	# v0.9.2 (the owner: no shard, no outlines): on the floor before her, pairs of glowing crimson EYES, always
+	# in sight; a shadow whose head falls on a pair wears them as its own eyes
 	for i in SH_SOLUTION:
-		var om := _smat("res://shaders/statue_shadow.gdshader", {"mode": 1.0, "hint": 0.0})
-		_mi(_plane(Vector2(1.0, 1.0)), om, _shadow_xf(i, 1.02)).layers = PlanarMirror.LAYER_MAIN_FX
-		sh_outlines.append(om)
-	level.add_interact("raise_shard", SH_STATUE + Vector3(0, 0, 1.4), "shard", func() -> void: set_lens(true), 3.6,
-		func() -> bool: return state["shard"] and not lens_on and not state["gallery"] and _in_gallery())
+		for side in [-1.0, 1.0]:
+			var em := _smat("res://shaders/eyes.gdshader", {"k": 1.0})
+			em.render_priority = 3
+			var e := _mi(_quad(Vector2(0.11, 0.11)), em, Transform3D(Basis(), eye_pos(i, side) + Vector3(0, 0.03, 0)))
+			e.layers = PlanarMirror.LAYER_MAIN_FX
+			sh_eye_mats.append(em)
 
 ## light a brazier, or put it out (no answer brazier by brazier: only the whole set solves it)
 func toggle_brazier(i: int) -> void:
@@ -1164,19 +1179,14 @@ var _glint_t := 1.2
 func _update_gallery(dt: float) -> void:
 	for i in sh_flames.size():
 		sh_shadows[i].set_shader_parameter("k", sh_flames[i].level())
-	# (v0.9) the shard is the key: in the chamber, until you first raise it here, its slot pulses and it glints
-	var pulse: bool = state["shard"] and not state["gallery"] and not state["lens_used"] and not lens_on \
-		and game.area == "shard_gallery" and game.mode == "play" and _in_gallery()
-	if game.controls: game.controls.inv_pulse = pulse
-	if pulse:
-		_glint_t -= dt
-		if _glint_t <= 0.0:
-			_glint_t = 3.6
-			game.sfx.play("glass_tink", -9.0, 1.7)
-	else:
-		_glint_t = 1.2
-	var hint := 1.0 if (not state["gallery"] and state["shard"] and hint_t > Game.HINT_AFTER and game.area == "shard_gallery") else 0.0
-	for om in sh_outlines: om.set_shader_parameter("hint", hint)
+	# (v0.9.2: the shard is no longer the key here; its slot never calls)
+	if game.controls: game.controls.inv_pulse = false
+	var hint := 1.0 if (not state["gallery"] and hint_t > Game.HINT_AFTER and game.area == "shard_gallery") else 0.0
+	for em in sh_eye_mats: em.set_shader_parameter("pulse", hint)
+	# each lit shadow that wears a pair: those floor eyes brighten (they are its eyes now)
+	for k in SH_SOLUTION.size():
+		var w := sh_flames[SH_SOLUTION[k]].level()
+		for sd in 2: sh_eye_mats[k * 2 + sd].set_shader_parameter("worn", w)
 
 func _in_gallery() -> bool:
 	var p := game.player.position
