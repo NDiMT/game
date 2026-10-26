@@ -1078,9 +1078,9 @@ var sh_eye_mats: Array[ShaderMaterial] = []
 
 ## (v0.9.2) where brazier i's shadow has its eyes (side -1 / +1): the head of the silhouette (statue_shadow's
 ## q (+-0.048, 0.86)), on the floor, exactly where the shader draws them
-## (v0.9.3) a pair of eyes: 15 cm apart, side by side as you see them (along the view's right), centred in the
+## (v0.9.3) a pair of eyes: 22 cm apart, side by side as you see them (along the view's right), centred in the
 ## head of the shadow that wears them
-const EYE_HALF := 0.075
+const EYE_HALF := 0.11
 static func eye_right() -> Vector3:
 	var r := Framing.basis().x
 	r.y = 0.0
@@ -1137,12 +1137,12 @@ func _build_gallery() -> void:
 	sh_veil = _smat("res://shaders/veil_glow.gdshader", {"intensity": 0.0})
 	_mi(veil.commit(), sh_veil, Transform3D(), st)
 	# v0.9.2: her eyes glow crimson behind the veil
-	# (v0.9.3: the same eyes as the floor's, side by side as you see them, 15 cm apart)
+	# (v0.9.3: the same eyes as the floor's, side by side as you see them, 22 cm apart)
 	for sx in [-1.0, 1.0]:
-		var em := _smat("res://shaders/eyes.gdshader", {"k": 0.95, "qsize": 0.24, "phase": 7.0})
+		var em := _smat("res://shaders/eyes.gdshader", {"k": 0.95, "qsize": 0.32, "phase": 7.0})
 		em.render_priority = 3
 		var lp: Vector3 = Vector3(0.0, 0.5 + 0.08 + 2.16 * 1.15, -0.24) + st.basis.inverse() * (eye_right() * sx * EYE_HALF)
-		_mi(_quad(Vector2(0.24, 0.24)), em, Transform3D(Basis(), lp), st)
+		_mi(_quad(Vector2(0.32, 0.32)), em, Transform3D(Basis(), lp), st)
 	# the braziers (tripods with a bowl) and the shadows they throw; the outlines (the shard shows them)
 	var bm := _brazier_mesh()
 	for i in SH_BRAZ.size():
@@ -1170,9 +1170,9 @@ func _build_gallery() -> void:
 	# in sight; a shadow whose head falls on a pair wears them as its own eyes
 	for i in SH_SOLUTION:
 		for side in [-1.0, 1.0]:
-			var em := _smat("res://shaders/eyes.gdshader", {"k": 1.0, "qsize": 0.24, "phase": float(i) * 1.7})
+			var em := _smat("res://shaders/eyes.gdshader", {"k": 1.0, "qsize": 0.32, "phase": float(i) * 1.7})
 			em.render_priority = 3
-			var e := _mi(_quad(Vector2(0.24, 0.24)), em, Transform3D(Basis(), eye_pos(i, side) + Vector3(0, 0.04, 0)))
+			var e := _mi(_quad(Vector2(0.32, 0.32)), em, Transform3D(Basis(), eye_pos(i, side) + Vector3(0, 0.04, 0)))
 			e.layers = PlanarMirror.LAYER_MAIN_FX
 			sh_eye_mats.append(em)
 		# (and the shadow's decal wears them at exactly those points: its quad's own coordinates)

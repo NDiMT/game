@@ -18,7 +18,7 @@ uniform float seed = 0.0;
 // wears one of the floor's eye-pairs (`eyes` 0..1); `len` / `wid` the quad's metres (the eyes stay round)
 uniform float eyes = 0.0;
 uniform vec2 eye_a = vec2(-0.1, 0.86);     // (v0.9.3) the two eyes in the quad's q space (set from Chapter.eye_pos:
-uniform vec2 eye_b = vec2(0.1, 0.86);      // 15 cm apart, side by side as you see them)
+uniform vec2 eye_b = vec2(0.1, 0.86);      // 22 cm apart, side by side as you see them)
 uniform float len = 2.0;
 uniform float wid = 1.45;
 
@@ -30,7 +30,7 @@ float her_sd(vec2 q) {
 	float body = sd_ell(q - vec2(0.0, 0.40), vec2(0.40, 0.40));
 	float hips = sd_ell(q - vec2(0.0, 0.12), vec2(0.30, 0.14));
 	float sh = sd_ell(q - vec2(0.0, 0.70), vec2(0.46, 0.10));
-	float head = sd_ell(q - vec2(0.0, 0.86), vec2(0.27, 0.13));     // (v0.9.3: wide enough for eyes 15 cm apart)
+	float head = sd_ell(q - vec2(0.0, 0.86), vec2(0.36, 0.15));     // (v0.9.3: wide enough for eyes 22 cm apart)
 	return smin(smin(min(body, hips), sh, 0.08), head, 0.06);
 }
 
@@ -48,7 +48,7 @@ void fragment() {
 			for (int s = 0; s < 2; s++) {
 				vec2 ec = s == 0 ? eye_a : eye_b;
 				vec2 dw = vec2((q.x - ec.x) * wid * 0.5, (q.y - ec.y) * len);
-				e = max(e, 1.0 - smoothstep(0.02, 0.045, length(dw)));
+				e = max(e, 1.0 - smoothstep(0.03, 0.065, length(dw)));
 			}
 			e *= eyes * k;
 			col = mix(col, accent_core.rgb * 1.7, e);
