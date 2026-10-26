@@ -14,9 +14,11 @@ uniform float dark = 0.55;
 uniform float mode = 0.0;
 uniform float hint = 0.0;
 uniform float seed = 0.0;
-// v0.9.2: the shadow's EYES: two crimson points in its veiled head (q (+-0.055, 0.86)), lit when this shadow
+// v0.9.2: the shadow's EYES: two crimson points in its veiled head (`eye_a` / `eye_b`), lit when this shadow
 // wears one of the floor's eye-pairs (`eyes` 0..1); `len` / `wid` the quad's metres (the eyes stay round)
 uniform float eyes = 0.0;
+uniform vec2 eye_a = vec2(-0.1, 0.86);     // (v0.9.3) the two eyes in the quad's q space (set from Chapter.eye_pos:
+uniform vec2 eye_b = vec2(0.1, 0.86);      // 15 cm apart, side by side as you see them)
 uniform float len = 2.0;
 uniform float wid = 1.45;
 
@@ -28,7 +30,7 @@ float her_sd(vec2 q) {
 	float body = sd_ell(q - vec2(0.0, 0.40), vec2(0.40, 0.40));
 	float hips = sd_ell(q - vec2(0.0, 0.12), vec2(0.30, 0.14));
 	float sh = sd_ell(q - vec2(0.0, 0.70), vec2(0.46, 0.10));
-	float head = sd_ell(q - vec2(0.0, 0.86), vec2(0.20, 0.12));
+	float head = sd_ell(q - vec2(0.0, 0.86), vec2(0.27, 0.13));     // (v0.9.3: wide enough for eyes 15 cm apart)
 	return smin(smin(min(body, hips), sh, 0.08), head, 0.06);
 }
 
@@ -43,9 +45,10 @@ void fragment() {
 		float al = a * dark * k * flick;
 		if (eyes > 0.001) {
 			float e = 0.0;
-			for (int s = -1; s <= 1; s += 2) {
-				vec2 dw = vec2((q.x - float(s) * 0.055) * wid * 0.5, (q.y - 0.86) * len);
-				e = max(e, 1.0 - smoothstep(0.012, 0.03, length(dw)));
+			for (int s = 0; s < 2; s++) {
+				vec2 ec = s == 0 ? eye_a : eye_b;
+				vec2 dw = vec2((q.x - ec.x) * wid * 0.5, (q.y - ec.y) * len);
+				e = max(e, 1.0 - smoothstep(0.02, 0.045, length(dw)));
 			}
 			e *= eyes * k;
 			col = mix(col, accent_core.rgb * 1.7, e);

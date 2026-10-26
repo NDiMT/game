@@ -1078,8 +1078,19 @@ var sh_eye_mats: Array[ShaderMaterial] = []
 
 ## (v0.9.2) where brazier i's shadow has its eyes (side -1 / +1): the head of the silhouette (statue_shadow's
 ## q (+-0.048, 0.86)), on the floor, exactly where the shader draws them
+## (v0.9.3) a pair of eyes: 15 cm apart, side by side as you see them (along the view's right), centred in the
+## head of the shadow that wears them
+const EYE_HALF := 0.075
+static func eye_right() -> Vector3:
+	var r := Framing.basis().x
+	r.y = 0.0
+	return r.normalized()
+
+func eye_head(i: int) -> Vector3:
+	return _shadow_xf(i, 1.0) * Vector3(0.0, 0.0, 0.5 - 0.86)
+
 func eye_pos(i: int, side: float) -> Vector3:
-	return _shadow_xf(i, 1.0) * Vector3(side * 0.0276, 0.0, 0.5 - 0.86)      # (8 cm apart: the shadow is 1.45 m wide)
+	return eye_head(i) + eye_right() * side * EYE_HALF
 var sh_veil: ShaderMaterial
 var gl_fails := 0                       # (kept for the hint system)
 
@@ -1126,10 +1137,12 @@ func _build_gallery() -> void:
 	sh_veil = _smat("res://shaders/veil_glow.gdshader", {"intensity": 0.0})
 	_mi(veil.commit(), sh_veil, Transform3D(), st)
 	# v0.9.2: her eyes glow crimson behind the veil
+	# (v0.9.3: the same eyes as the floor's, side by side as you see them, 15 cm apart)
 	for sx in [-1.0, 1.0]:
-		var em := _smat("res://shaders/eyes.gdshader", {"k": 0.9})
+		var em := _smat("res://shaders/eyes.gdshader", {"k": 0.95, "qsize": 0.24, "phase": 7.0})
 		em.render_priority = 3
-		_mi(_quad(Vector2(0.26, 0.26)), em, Transform3D(Basis(), Vector3(sx * 0.0575, 0.5 + 0.08 + 2.16 * 1.15, -0.24)), st)
+		var lp: Vector3 = Vector3(0.0, 0.5 + 0.08 + 2.16 * 1.15, -0.24) + st.basis.inverse() * (eye_right() * sx * EYE_HALF)
+		_mi(_quad(Vector2(0.24, 0.24)), em, Transform3D(Basis(), lp), st)
 	# the braziers (tripods with a bowl) and the shadows they throw; the outlines (the shard shows them)
 	var bm := _brazier_mesh()
 	for i in SH_BRAZ.size():
@@ -1157,11 +1170,17 @@ func _build_gallery() -> void:
 	# in sight; a shadow whose head falls on a pair wears them as its own eyes
 	for i in SH_SOLUTION:
 		for side in [-1.0, 1.0]:
-			var em := _smat("res://shaders/eyes.gdshader", {"k": 1.0})
+			var em := _smat("res://shaders/eyes.gdshader", {"k": 1.0, "qsize": 0.24, "phase": float(i) * 1.7})
 			em.render_priority = 3
-			var e := _mi(_quad(Vector2(0.4, 0.4)), em, Transform3D(Basis(), eye_pos(i, side) + Vector3(0, 0.03, 0)))
+			var e := _mi(_quad(Vector2(0.24, 0.24)), em, Transform3D(Basis(), eye_pos(i, side) + Vector3(0, 0.04, 0)))
 			e.layers = PlanarMirror.LAYER_MAIN_FX
 			sh_eye_mats.append(em)
+		# (and the shadow's decal wears them at exactly those points: its quad's own coordinates)
+		var inv := _shadow_xf(i, 1.0).affine_inverse()
+		var qa := inv * eye_pos(i, -1.0)
+		var qb := inv * eye_pos(i, 1.0)
+		sh_shadows[i].set_shader_parameter("eye_a", Vector2(qa.x * 2.0, 0.5 - qa.z))
+		sh_shadows[i].set_shader_parameter("eye_b", Vector2(qb.x * 2.0, 0.5 - qb.z))
 
 ## light a brazier, or put it out (no answer brazier by brazier: only the whole set solves it)
 func toggle_brazier(i: int) -> void:
