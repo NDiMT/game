@@ -15,19 +15,19 @@ const DIR := "res://assets/models/props/"
 const PLACE := [
 	# the Waking Pool: a kneeling veiled figure reaching toward the water; a fallen gable in the far corner
 	["statue_veiled_kneeling", Vector3(-3.8, 0.0, -3.7), 0.0, 1.0, "pool"],
-	["pediment_fragment", Vector3(3.9, 0.0, -4.3), 15.0, 1.0, "pool"],
+	["pediment_fragment", Vector3(3.45, 0.0, -3.95), 15.0, 1.0, "pool"],      # (v1.0: clear of the rail)
 	# the Hall of Glass: two mourners keep the far corners ("a thousand faces, all wrong")
-	["statue_veiled_mourning", Vector3(-4.05, 1.0, -20.05), 45.0, 1.0, "hall"],
+	["statue_veiled_mourning", Vector3(-3.55, 1.0, -19.95), 45.0, 1.0, "hall"],      # (v1.0: clear of the column and the wall)
 	["statue_veiled_mourning", Vector3(4.05, 1.0, -11.6), -135.0, 1.0, "hall"],
 	# the Garden of the Veiled: a ruined corner, a low broken wall line, a collapse heap
 	["statue_veiled_broken", Vector3(13.9, 1.0, -6.9), 30.0, 1.0, "garden"],
-	["wall_ruin_low", Vector3(12.6, 1.0, -5.55), 0.0, 1.0, "garden"],
-	["rubble_pile", Vector3(16.55, 1.0, -7.9), 20.0, 0.8, "garden"],      # (v0.9: off the way up from the colossus)
+	# (v1.0, the overlap audit: the low wall ruin ran through a statue and the rail; the rubble heap into the
+	# rail and a tree: both gone)
 	# the Court of Light: a collapse heap in the far corner
-	["rubble_pile", Vector3(7.9, 2.0, -17.9), -30.0, 0.8, "court"],
+	# (v1.0: its heap of rubble lay over a stump and into the rail: gone)
 	# the Scales: a praying figure watches the balance; a broken column
-	["statue_veiled_praying", Vector3(26.7, 2.0, -51.3), 45.0, 1.0, "scales"],
-	["column_stump", Vector3(32.7, 2.0, -51.3), 0.0, 1.0, "scales"],
+	["statue_veiled_praying", Vector3(27.45, 2.0, -51.35), 45.0, 1.0, "scales"],      # (v1.0: beside the column, not in it)
+	["column_stump", Vector3(30.3, 2.0, -51.55), 0.0, 1.0, "scales"],      # (v1.0: clear of the weights' shelf)
 	# the Gate of the Four Veiled: the unfinished one, half out of her block, beside the tholos where the
 	# eidolon is half-carved too
 	["statue_veiled_unfinished", Vector3(20.9, 2.0, -35.2), 40.0, 1.0, "shrine"],

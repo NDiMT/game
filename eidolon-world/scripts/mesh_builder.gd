@@ -14,6 +14,10 @@ static var _cache := {}
 ## what you walk on (slabs, steps, undersides); the rest stands in the way unless it hangs overhead.
 var tag := ""
 var parts: Array = []
+## v1.0 (the overlap audit): which placed THING each primitive belongs to ("wall:12", "statue:3", "rail:7"...;
+## "" = plain architecture), parallel to `parts`, kept on the mesh as meta "groups"
+var group := ""
+var groups: Array = []
 const _UNIT_BOX := AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE)
 const _UNIT_CYL := AABB(Vector3(-1.0, -0.5, -1.0), Vector3(2.0, 1.0, 2.0))
 const _UNIT_SPH := AABB(Vector3(-1.0, -1.0, -1.0), Vector3(2.0, 2.0, 2.0))
@@ -58,6 +62,7 @@ func box(center: Vector3, size: Vector3, color: Color, basis := Basis()) -> void
 	var xf := Transform3D(basis * Basis.from_scale(size), center)
 	add_arrays(a, xf, c)
 	parts.append([xf * _UNIT_BOX, tag, false, xf])      # (the transform: a turned box's true footprint)
+	groups.append(group)
 
 func cyl(center: Vector3, r_top: float, r_bot: float, h: float, color: Color, segs := 12, basis := Basis()) -> void:
 	var R := maxf(maxf(r_top, r_bot), 0.001)
@@ -74,6 +79,7 @@ func cyl(center: Vector3, r_top: float, r_bot: float, h: float, color: Color, se
 	var xf := Transform3D(basis * Basis.from_scale(Vector3(R, h, R)), center)
 	add_arrays(a, xf, c)
 	parts.append([xf * _UNIT_CYL, tag, true])
+	groups.append(group)
 
 func sphere(center: Vector3, radii: Vector3, color: Color, segs := 12, rings := 6, basis := Basis()) -> void:
 	var a := prim_arrays("sph%d_%d" % [segs, rings], func() -> PrimitiveMesh:
@@ -85,6 +91,7 @@ func sphere(center: Vector3, radii: Vector3, color: Color, segs := 12, rings := 
 	var xf := Transform3D(basis * Basis.from_scale(radii), center)
 	add_arrays(a, xf, c)
 	parts.append([xf * _UNIT_SPH, tag, true])
+	groups.append(group)
 
 ## Quad lying in a plane (for flat details). size in local x/y, faces local +z.
 func quad(center: Vector3, size: Vector2, color: Color, basis := Basis()) -> void:
@@ -118,6 +125,7 @@ func commit_split() -> ArrayMesh:
 		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 		m.surface_set_name(m.get_surface_count() - 1, "occ" if ii == i1 and not i1.is_empty() else "stone")
 	m.set_meta("parts", parts)
+	m.set_meta("groups", groups)
 	return m
 
 ## v0.8: an already committed single-surface mesh, split the same way (or returned as it is when it
@@ -146,6 +154,7 @@ static func split_occ(mesh: Mesh) -> Mesh:
 		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, b)
 		m.surface_set_name(m.get_surface_count() - 1, pair[1])
 	if mesh.has_meta("parts"): m.set_meta("parts", mesh.get_meta("parts"))
+	if mesh.has_meta("groups"): m.set_meta("groups", mesh.get_meta("groups"))
 	return m
 
 func commit() -> ArrayMesh:
@@ -159,4 +168,5 @@ func commit() -> ArrayMesh:
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	m.set_meta("parts", parts)
+	m.set_meta("groups", groups)
 	return m

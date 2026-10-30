@@ -14,8 +14,8 @@ const ROOMS := {
 	"hall_glass": {"y": 1.0, "extra": [Vector3(0.0, 3.0, -20.5)]},
 	"shard_gallery": {"y": 1.0, "extra": [Vector3(7.5, 2.5, -13.2), Vector3(7.5, 0.53, -11.585), Vector3(7.026, 0.53, -15.098), Vector3(6.524, 0.53, -14.393)]},   # (v0.9.2: and her shadows' eye-pairs on the floor: Chapter.eye_pos)
 	"garden_veiled": {"y": 1.0, "extra": []},
-	"hollow_walk": {"y": 1.0, "extra": [Vector3(24.62, 0.55, -9.52), Vector3(26.32, 0.55, -12.91), Vector3(25.47, 0.55, -10.37),
-		Vector3(30.98, 0.55, -12.49), Vector3(30.98, 0.55, -15.88), Vector3(29.28, 0.55, -17.58), Vector3(32.68, 0.55, -14.18)]},   # (v0.9.2 Our Steps: your entry, your plate, the teach slab; her plate, her entry, her far corners (the teach column is its own piece) (OurSteps.tile / her_tile))
+	"hollow_walk": {"y": 1.0, "extra": [Vector3(20.855, 0.55, -9.355), Vector3(22.48, 0.55, -7.73), Vector3(21.67, 0.55, -10.17),
+		Vector3(22.99, 1.8, -11.49), Vector3(21.155, 1.0, -13.332), Vector3(24.832, 1.0, -9.655), Vector3(21.155, 3.4, -13.332), Vector3(24.832, 3.4, -9.655)]},   # (v1.0 Our Steps: your entry, your plate, the teach slab; the mirror's centre and corners, a hair before the glass)
 	"court_light": {"y": 2.0, "extra": [Vector3(16.98, 4.0, -24.05)]},
 	"mist_maze": {"y": 2.0, "extra": []},
 	"echo_corridor": {"y": 2.0, "extra": []},

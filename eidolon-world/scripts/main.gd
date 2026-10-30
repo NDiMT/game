@@ -18,6 +18,7 @@ var highlight: Highlight
 var puzzles: Puzzles
 var chapter: Chapter
 var wonders: Wonders              # v0.9 the wonder spaces between the puzzles
+var juice: Juice                  # v1.0 M1: the physical little moments (dust, grit, sparks, wet stone)
 var _fade_on := false
 var _fade_off_t := 0.0
 var cine: Cinematic
@@ -91,6 +92,9 @@ func _ready() -> void:
 	var au := level.auto_solids([puzzles, chapter])
 	print("[solids] %d primitives, %d solid footprints, %d obstacles added (%d ms)" % [au["parts"], au["solids"].size(), au["added"], au["ms"]])
 	chapter.event.connect(_on_chapter_event)
+	juice = Juice.new()
+	add_child(juice)
+	juice.setup(self)
 	var gt := ui.glass_talk
 	gt.solved.connect(func(id: String) -> void: chapter.glass_answered(id))
 	gt.closed.connect(func(_id: String) -> void: _glass_closed())
@@ -299,6 +303,7 @@ func _door_overlay_closed() -> void:
 func try_interact() -> bool:
 	if mode != "play" or focus == null or _world_block_t > 0.0: return false
 	interactions += 1
+	player.interact_pulse()
 	focus.action.call()
 	return true
 
@@ -361,6 +366,7 @@ func _process(dt: float) -> void:
 	if mode == "play": _update_focus()
 	else:
 		controls.show_interact("")
+		if player: player.anticipate = 0.0
 		if highlight and highlight.id != "":
 			focus = null
 			highlight.set_target(null)
@@ -439,6 +445,7 @@ func _update_focus() -> void:
 			bd = d; best = it
 	if puzzles.busy: best = null
 	focus = best
+	player.anticipate = 1.0 if (best and best.id != "steps_reset") else 0.0       # (v1.0 juice: she leans toward it)
 	controls.show_interact(best.icon if best else "")
 	# v0.8.1: what the button will act on glows (chosen here, with the prompt)
 	if highlight: highlight.set_target(best)
@@ -502,8 +509,14 @@ func _on_read(text: String, script: Array) -> void:
 
 func _on_footstep(kind: String, strength: float) -> void:
 	if kind == "step":
-		sfx.footstep(_surface(), strength)
-		player_dust()
+		var surf := _surface()
+		sfx.footstep(surf, strength)
+		if surf == "water" and juice:
+			# (v1.0 juice) wet stepping stones: a small ring on the water by her foot
+			var fp := player.position + player.fig.basis * Vector3(0.12 * (1 if randf() < 0.5 else -1), 0.0, -0.1)
+			juice.ring(Vector3(fp.x, minf(fp.y - 0.02, Ch1Geo.CO_WATER_Y + 0.01), fp.z), 0.9, 0.9)
+		else:
+			player_dust()
 		chapter.on_footstep()
 	else:
 		sfx.play("cloth", -34.0 + strength * 3.0, randf_range(0.85, 1.15))         # (v0.8.5: quieter, with the steps)

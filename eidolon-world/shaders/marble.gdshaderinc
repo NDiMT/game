@@ -7,6 +7,12 @@ global uniform vec4 shard_lens;             // v0.5: the raised shard's lens (x,
 global uniform vec4 reveal;                 // v0.6: see-through (centre x, y px, radius px, strength 0..1)
 global uniform vec4 accent;
 uniform float lens_hide = 0.0;        // 1: an illusion: this stone is not there inside the lens
+// v1.0 (Agent A): per INSTANCE wetness (a slab just risen out of the pool: set_instance_shader_parameter
+// ("wet", 1) then tween it to 0 over ~3 s; see scripts/fx/water_fx.gd). Wet stone is darker and glossy; while
+// it is very wet, water sheets down its sides in streaks; it dries in patches (the edges and the top first).
+instance uniform float wet = 0.0;
+// the water line the instance stood in (world y): below it the stone stays darker longest
+instance uniform float wet_line = -99.0;
 
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform vec3 cream : source_color = vec3(0.745, 0.735, 0.705);
@@ -171,6 +177,21 @@ void fragment() {
 	col *= mix(vec3(1.0), vec3(1.04, 1.01, 0.94), shrine);
 	// a hint of warmth in the pale stone (light seems to sink into the marble)
 	if (mat_id < 0.37) col += vec3(0.022, 0.012, 0.0) * smoothstep(0.4, 0.9, dot(col, vec3(0.33)));
+	if (wet > 0.001) {
+		float dn = texture(noise_tex, wp.xz * 0.55 + wp.y * 0.4).r;
+		// drying: patchy, the top faces and the edges first, the part that stood in the water last
+		float hold = 0.25 * (1.0 - max(wn.y, 0.0)) + 0.35 * (1.0 - smoothstep(wet_line, wet_line + 0.25, wp.y));
+		float wk = smoothstep(0.0, 0.5, wet * 1.25 + hold * wet + (dn - 0.5) * 0.5 * min(wet * 4.0, 1.0));
+		col *= mix(1.0, 0.58, wk);
+		rough = mix(rough, 0.12, wk);
+		spec = mix(spec, 0.8, wk);
+		// sheeting: streaks running down the vertical faces while it is very wet
+		float vert = 1.0 - smoothstep(0.35, 0.75, abs(wn.y));
+		float sv = texture(noise_tex, vec2(dot(wp.xz, vec2(0.7, 0.7)) * 2.6, wp.y * 0.35 + TIME * 0.55)).r;
+		float sheet = smoothstep(0.55, 0.8, sv) * vert * smoothstep(0.45, 0.95, wet);
+		col = mix(col, col * 0.75 + vec3(0.05, 0.055, 0.06), sheet * 0.6);
+		col += vec3(0.06) * sheet * smoothstep(0.75, 0.9, sv);
+	}
 	if (wp.y < fade_y) discard;
 	// the see-through's edge: the stone thins into pale haze toward the cut, a faint aqua light on it
 	col = mix(col, vec3(0.80, 0.82, 0.82), cut_haze * 0.8);

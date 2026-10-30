@@ -569,6 +569,12 @@ func update_inscriptions(p: Vector3) -> void:
 		m.set_shader_parameter("near", (1.0 - smoothstep(1.2, 4.5, d)) * (1.0 if absf(at.y - p.y) < 1.5 else 0.0))
 
 # ================================================================== geometry helpers
+## (v1.0, the overlap audit) the primitives that follow belong to one placed thing
+var _grp_n := 0
+func _grp(zone: String, kind: String) -> void:
+	_grp_n += 1
+	mb(zone).group = "%s:%d" % [kind, _grp_n]
+
 func mb(zone: String) -> MB:
 	if not zones.has(zone): zones[zone] = MB.new()
 	return zones[zone]
@@ -577,11 +583,13 @@ func C(mat: float, occ := false) -> Color:
 	return Color(rng.randf(), mat, 1.0 if occ else 0.0, 1.0)
 
 func slab(zone: String, r: Rect2, top: float, thick := 0.7, mat := 0.0, under := true) -> void:
+	_grp(zone, "slab")
 	var m := mb(zone)
 	m.tag = "floor"
 	m.box(Vector3(r.get_center().x, top - thick * 0.5, r.get_center().y), Vector3(r.size.x, thick, r.size.y), C(mat))
 	m.tag = ""
 	if under: underside(zone, r, top - thick)
+	mb(zone).group = ""
 
 func underside(zone: String, r: Rect2, y: float) -> void:
 	var m := mb(zone)
@@ -606,6 +614,7 @@ func box(zone: String, center: Vector3, size: Vector3, mat := 0.25, occ := false
 
 var _wall_n := 0
 func wall(zone: String, r: Rect2, y0: float, y1: float, occ := true) -> void:
+	_grp(zone, "wall")
 	# ambient occlusion along both long faces at the floor
 	var long_x := r.size.x >= r.size.y
 	var L := maxf(r.size.x, r.size.y)
@@ -625,6 +634,7 @@ func wall(zone: String, r: Rect2, y0: float, y1: float, occ := true) -> void:
 	box(zone, Vector3(r.get_center().x, y1 - 0.28 + jit, r.get_center().y), Vector3(r.size.x + 0.07 + jit, 0.07, r.size.y + 0.07 + jit), 0.25, occ)
 	if y1 - y0 > 1.5:
 		box(zone, Vector3(r.get_center().x, y0 + 0.12 + jit * 0.5, r.get_center().y), Vector3(r.size.x + 0.08 + jit, 0.24 + jit, r.size.y + 0.08 + jit), 0.25, occ)
+	mb(zone).group = ""
 
 func blob(at: Vector3, size: float) -> void:
 	blobs.append(Transform3D(Basis().scaled(Vector3(size, 1.0, size)), at + Vector3(0, 0.012, 0)))
@@ -654,6 +664,7 @@ func rubble(c: Vector3, spread: float, count: int) -> void:
 		debris.append(Transform3D(b, p + Vector3(0, s * 0.3, 0)))
 
 func statue(zone: String, base: Vector3, yaw: float, sc := 1.0, plinth := 0.6, ob := true) -> void:
+	_grp(zone, "statue")
 	## A veiled woman on a plinth, hands folded. Every statue has the same veiled face.
 	var m := mb(zone)
 	var B := Basis(Vector3.UP, yaw)
@@ -685,8 +696,10 @@ func statue(zone: String, base: Vector3, yaw: float, sc := 1.0, plinth := 0.6, o
 	m.sphere(at.call(0, 2.11, -0.075), Vector3(0.10, 0.13, 0.09) * sc, pc, 10, 5, hb)
 	m.sphere(at.call(0, 2.19, 0.03), Vector3(0.165, 0.15, 0.17) * sc, pc, 12, 6, hb)
 	if ob: ob_circle(Vector2(o.x, o.z), 0.6 * sc)
+	mb(zone).group = ""
 
 func tree(zone: String, base: Vector3, seed: int) -> void:
+	_grp(zone, "tree")
 	var m := mb(zone)
 	var r := RandomNumberGenerator.new()
 	r.seed = seed
@@ -696,6 +709,7 @@ func tree(zone: String, base: Vector3, seed: int) -> void:
 	box(zone, base + Vector3(0, 0.2, 0), Vector3(1.05, 0.2, 1.05), 1.0)
 	_branch(m, r, base + Vector3(0, 0.2, 0), Vector3(r.randf_range(-0.1, 0.1), 1.0, r.randf_range(-0.1, 0.1)).normalized(), 1.5, 0.13, 4)
 	ob_circle(Vector2(base.x, base.z), 0.72)
+	mb(zone).group = ""
 
 func _branch(m: MB, r: RandomNumberGenerator, p: Vector3, dir: Vector3, L: float, rad: float, depth: int, mat := 1.0) -> void:
 	var up := dir.normalized()
@@ -714,6 +728,7 @@ func _branch(m: MB, r: RandomNumberGenerator, p: Vector3, dir: Vector3, L: float
 		_branch(m, r, tip - up * 0.02, nd, L * r.randf_range(0.55, 0.75), rad * 0.62, depth - 1, mat)
 
 func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
+	_grp(zone, "rail")
 	var d := b - a
 	var L := d.length()
 	var B := Basis(Vector3.UP, -atan2(d.y, d.x))
@@ -750,8 +765,10 @@ func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
 		if not on_ground(fp + side * 1.4):
 			box(zone, Vector3(fp.x + side.x, y + 0.05, fp.y + side.y), Vector3(L * (g1 - g0) * 0.8, 0.1, 0.2), 0.25, false, fall_b)
 			rubble(Vector3(fp.x + side.x, y, fp.y + side.y), 0.25, 3)
+	mb(zone).group = ""
 
 func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_max: bool) -> void:
+	_grp(zone, "steps")
 	## visual stairs over a ramp region (the walk region is the ramp itself)
 	var L := r.size.x if axis == 0 else r.size.y
 	var n := maxi(2, int(round(L / 0.32)))
@@ -780,6 +797,8 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 	underside(zone, r, y_lo - 0.8)
 
 # ================================================================== the spaces
+	mb(zone).group = ""
+
 func _veiled_gate() -> void:
 	var z := "T"
 	# floor around the pool (the pool is a sunken basin)
@@ -800,12 +819,14 @@ func _veiled_gate() -> void:
 	column(Vector3(-1.5, 0, 5.0), 3.6)          # (v0.7: back, so the south rim is a way round to the pool)
 	column(Vector3(1.5, 0, 5.0), 3.6)
 	box(z, Vector3(-0.75, 3.85, 5.0), Vector3(2.1, 0.5, 0.7), 0.25, true, Basis(Vector3.BACK, 0.06))
-	box(z, Vector3(2.75, 0.24, 3.45), Vector3(1.7, 0.48, 0.66), 0.25, false, Basis(Vector3.UP, 0.55))
-	ob_rect(R(2.0, 2.95, 3.5, 3.95))
-	rubble(Vector3(2.0, 0, 3.9), 0.7, 5)
+	box(z, Vector3(2.75, 0.24, 3.25), Vector3(1.7, 0.48, 0.66), 0.25, false, Basis(Vector3.UP, 0.55))      # (v1.0: off the south rim's way)
+	ob_rect(R(2.0, 2.75, 3.5, 3.75))
+	rubble(Vector3(2.35, 0, 2.95), 0.45, 5)
 	# veiled statues, all with the same face, all turned toward the pool
 	var pc := Vector3(-2.4, 0, 1.7)
-	for sp in [[Vector3(-3.8, 0, -3.8), 1.0], [Vector3(3.8, 0, -3.9), 1.0], [Vector3(4.0, 0, 1.2), 0.95], [Vector3(3.9, 0, 4.4), 0.9]]:
+	# (v1.0, the overlap audit: two of the four stood inside the kneeling figure and the fallen gable that
+	# took their places in v0.8; the fourth stood on the south rim's way round)
+	for sp in [[Vector3(4.0, 0, 1.2), 0.95]]:
 		statue(z, sp[0], yaw_to(sp[0], pc), sp[1])
 	stump(Vector3(4.3, 0, -1.4), 1.3)
 	stump(Vector3(-4.4, 0, -1.6), 0.7)
@@ -912,7 +933,8 @@ func _garden() -> void:
 	wall(z, R(10.3, -9.3, 10.6, -5.0), 1.0, 1.75, true)
 	ob_rect(R(10.25, -9.3, 10.65, -4.95))
 	tree(z, Vector3(14.4, 1.0, -9.6), 23)
-	tree(z, Vector3(16.1, 1.0, -9.3), 41)
+	# (v1.0, the overlap audit: a third dead tree here grew into the door's post and leaves; nowhere near
+	# could take it without standing in the way up from the colossus: two keep the garden)
 	# veiled statues without runes (the rune statues are placed by the puzzle)
 	statue(z, Vector3(7.9, 1.0, -6.0), PI * 0.75, 0.9)
 	statue(z, Vector3(12.2, 1.0, -5.7), PI, 0.85)
@@ -921,7 +943,7 @@ func _garden() -> void:
 	stump(Vector3(17.0, Ch1Geo.CO_WATER_Y, -3.9), 1.1, false)
 	rubble(Vector3(16.6, 1.0, -6.0), 0.25, 5)
 	rubble(Vector3(11.0, 1.0, -9.0), 0.3, 4)
-	balustrade(z, Vector2(16.95, -14.8), Vector2(16.95, -13.2), 1.0)
+	# (v1.0: her small glass stands here, on the rail's line: it is the rail here)
 	balustrade(z, Vector2(16.95, -10.4), Vector2(16.95, -5.2), 1.0)
 	balustrade(z, Vector2(9.7, -4.95), Vector2(14.7, -4.95), 1.0)          # (v0.9: the way up from the stones east of it)
 	balustrade(z, Vector2(7.05, -9.2), Vector2(7.05, -5.1), 1.0)       # (v0.8.1: the garden's new west edge)
@@ -945,6 +967,11 @@ func _shortcut() -> void:
 	# gate posts at the Veiled Gate's east edge (the bars are a puzzle object)
 	column(Vector3(5.15, 0, -3.35), 2.9, true)
 	column(Vector3(5.15, 0, -0.65), 2.9, true)
+	# (v1.0, the overlap audit: the north post stood over the gap past the ramp's edge: a footing under it,
+	# within its own base, so no new face meets the floors beside it)
+	mb(z).tag = "floor"
+	box(z, Vector3(5.2, -0.3, -0.65), Vector3(0.4, 0.6, 0.4), 0.25)
+	mb(z).tag = ""
 	box(z, Vector3(5.15, 3.0, -2.0), Vector3(0.7, 0.5, 3.4), 0.25, true)
 
 func _passage() -> void:

@@ -119,7 +119,7 @@ static func _stair_of_breath(lv: Level) -> void:
 	lv.walk(R(-12.8, -0.2, -9.4, 3.6), 0.0, NAN, -1, "W_land")
 	lv.balustrade(z, Vector2(-12.75, 3.55), Vector2(-9.5, 3.55), 0.0)
 	lv.balustrade(z, Vector2(-12.75, 3.4), Vector2(-12.75, 0.0), 0.0)
-	lv.statue(z, Vector3(-12.0, 0.0, 2.9), PI * 0.75, 0.85)
+	lv.statue(z, Vector3(-11.9, 0.0, 2.8), PI * 0.75, 0.85)      # (v1.0: clear of the rail)
 	# first flight up to the breath landing
 	lv.steps(z, R(-12.4, -4.0, -10.2, -0.2), 1, 0.0, 0.5, false)     # (v0.7: high at the landing end, as you walk it)
 	lv.walk(R(-12.4, -4.0, -10.2, -0.2), 0.5, 0.0, 1, "W_stair1")
@@ -138,7 +138,7 @@ static func _stair_of_breath(lv: Level) -> void:
 	lv.walk(R(-12.4, -14.4, -10.2, -10.6), 1.0, NAN, -1, "W_top")
 	lv.ob_rect(R(-12.4, -6.95, -10.2, -6.65), "breath_gate")
 	lv.column(Vector3(-12.15, 0.5, -6.8), 3.4)
-	lv.column(Vector3(-10.45, 0.5, -6.8), 3.4)
+	lv.column(Vector3(-10.64, 0.5, -6.8), 3.4)      # (v1.0: clear of the wall)
 	lv.box(z, Vector3(-11.3, 4.05, -6.8), Vector3(2.2, 0.4, 0.6), 0.25, true)
 	for x in [-12.35]:
 		lv.balustrade(z, Vector2(x, -0.3), Vector2(x, -3.9), 0.25)
@@ -246,72 +246,70 @@ static func _hollow_walk(lv: Level) -> void:
 	var z := "HW"
 	lv.slab(z, R(17.4, -15.0, 25.6, -6.0), 1.0, 0.8, 0.0)
 	lv.walk(R(17.5, -15.0, 25.45, -6.0), 1.0, NAN, -1, "HW")
-	# v0.9.2 "Our Steps": the floor of 5 x 4 slabs lies on the view's diagonal (OurSteps.U / V), its glass
-	# straight across the screen, her room beyond it; the rest of the room is the landing round it
+	# "Our Steps" (v0.9.2; v1.0): a floor of 5 x 3 slabs on the view's diagonal (OurSteps.U / V) before a tall
+	# planar MIRROR straight across the screen; her room is only in the glass (our_steps.gd builds the glass
+	# and her twins); the rest of the room is the landing round the floor
 	lv.wall(z, R(17.3, -6.12, 25.5, -5.82), 1.0, 1.9, true)
 	lv.wall(z, R(19.6, -15.25, 25.5, -15.0), 1.0, 2.2, true)
+	lv.wall(z, R(25.5, -15.25, 25.8, -5.82), 1.0, 2.2, true)
 	# the doorway from the garden (its door is a puzzle object in the garden)
-	lv.slab(z, R(16.8, -12.6, 17.6, -11.0), 1.0, 0.6, 0.0)
+	lv.slab(z, R(16.8, -12.6, 17.4, -11.0), 1.0, 0.6, 0.0)      # (v1.0: up to the room's floor, not over it: their tops were coplanar)
 	lv.walk(R(16.8, -12.5, 17.6, -11.1), 1.0, NAN, -1, "g_door", false)
 	var B := Basis(Vector3.UP, -PI * 0.25)          # (local x along the glass, local z away from it)
 	var T := OurSteps.TILE
 	var ev := OurSteps.EDGE_V
 	var gh := OurSteps.GLASS_HALF
-	# your floor beyond the landing's own (east of x 25.6): the walk region, and stone beneath the slabs
-	lv.walk(R(25.4, -15.2, 30.4, -6.6), 1.0, NAN, -1, "HW")
-	lv.box(z, OurSteps.at(0.0, ev * 0.5) + Vector3(0, -0.27, 0), Vector3(2.0 * gh, 0.5, -ev + 0.1), 0.25, false, B)
-	# the slabs (proud of the floor, a seam between them); yours, then hers (but for her gap)
+	var hw := T * OurSteps.C * 0.5 + 0.12          # (the rails' half width along the glass)
+	# the slabs (proud of the floor, a seam between them)
 	for c in OurSteps.C:
 		for r in OurSteps.R:
-			var cc := Vector2i(c, r)
 			lv.mb(z).tag = "floor"
-			lv.box(z, OurSteps.tile(cc) + Vector3(0, 0.016 - 0.2, 0), Vector3(T - 0.06, 0.4, T - 0.06), 0.25, false, B)
+			lv.box(z, OurSteps.tile(Vector2i(c, r)) + Vector3(0, 0.016 - 0.2, 0), Vector3(T - 0.06, 0.4, T - 0.06), 0.25, false, B)
 			lv.mb(z).tag = ""
-			if cc in OurSteps.H_GAP:
-				# her missing slab: a dark well where it should be
-				lv.box("HR", OurSteps.her_tile(cc) + Vector3(0, -0.36, 0), Vector3(T + 0.04, 0.1, T + 0.04), 1.0, false, B)
-				continue
-			lv.mb("HR").tag = "floor"
-			lv.box("HR", OurSteps.her_tile(cc) + Vector3(0, 0.016 - 0.125, 0), Vector3(T - 0.06, 0.25, T - 0.06), 0.25, false, B)   # (thin: through her gap you see down into the dark)
-			lv.mb("HR").tag = ""
-	# rails round your floor: its near edge (but at the entry slab) and both ends
-	var rail := func(a: Vector2, b: Vector2) -> void:
+	# rails round your floor: its near edge (but at the entry slab) and both ends, up to the glass
+	var rail := func(a: Vector2, b: Vector2, low := false) -> void:
 		var pa := OurSteps.at(a.x, a.y)
 		var pb := OurSteps.at(b.x, b.y)
-		var ns := int(ceil(pa.distance_to(pb) / 2.0))        # (short runs: a rail here is never broken: no false way out)
-		for k in ns:
-			var qa := pa.lerp(pb, float(k) / ns)
-			var qb := pa.lerp(pb, float(k + 1) / ns)
-			lv.balustrade(z, Vector2(qa.x, qa.z), Vector2(qb.x, qb.z), 1.0)
+		if low:
+			# (v1.0) the near edge, toward the camera: a low kerb, so it never hides the slabs behind it
+			var mc := (pa + pb) * 0.5
+			lv.box(z, Vector3(mc.x, 1.11, mc.z), Vector3(pa.distance_to(pb), 0.22, 0.24), 0.25, false, B)
+		else:
+			var ns := int(ceil(pa.distance_to(pb) / 2.0))        # (short runs: a rail here is never broken: no false way out)
+			for k in ns:
+				var qa := pa.lerp(pb, float(k) / ns)
+				var qb := pa.lerp(pb, float(k + 1) / ns)
+				lv.balustrade(z, Vector2(qa.x, qa.z), Vector2(qb.x, qb.z), 1.0)
 		var n := int(ceil(pa.distance_to(pb) / 0.25))
 		for i in n + 1:
 			var q := pa.lerp(pb, float(i) / float(n))
 			lv.ob_circle(Vector2(q.x, q.z), 0.14)
 	var rv := ev - 0.12
-	rail.call(Vector2(-gh, rv), Vector2(-T * 0.5 - 0.06, rv))
-	rail.call(Vector2(T * 0.5 + 0.06, rv), Vector2(gh, rv))
-	rail.call(Vector2(-gh, rv), Vector2(-gh, -0.2))
-	rail.call(Vector2(gh, rv), Vector2(gh, -0.2))
-	# your stones: broken drums (low: they never hide her room)
+	rail.call(Vector2(-hw, rv), Vector2(-T * 0.5 - 0.06, rv), true)
+	rail.call(Vector2(T * 0.5 + 0.06, rv), Vector2(hw, rv), true)
+	rail.call(Vector2(-hw, rv), Vector2(-hw, -0.25))
+	rail.call(Vector2(hw, rv), Vector2(hw, -0.25))
+	# your stone: a broken drum (low: it never hides the glass); the glass shows it in her room too
 	for c in OurSteps.Y_OBS:
 		var t := OurSteps.tile(c)
-		lv.stump(t + Vector3(0, 0.016, 0), 0.6, false, 0.05)
-		lv.ob_circle(Vector2(t.x, t.z), 0.55)
-	# the glass (its pane is a chapter object: our_steps.gd): posts, sill and lintel; nothing passes it
-	# (no lintel: from the fixed view a beam across the top of the glass would cut across her room)
-	for u in [-gh - 0.12, gh + 0.12]:
-		lv.box(z, OurSteps.at(u, 0.0) + Vector3(0, 1.9, 0), Vector3(0.26, 3.8, 0.26), 0.25, false, B)
-	lv.box(z, OurSteps.at(0.0, 0.0) + Vector3(0, 1.05, 0), Vector3(2.0 * gh + 0.1, 0.1, 0.2), 0.25, false, B)
-	for i in 29:
-		var q := OurSteps.at(lerpf(-gh, gh, i / 28.0), 0.0)
-		lv.ob_circle(Vector2(q.x, q.z), 0.16)
-	# HER room: the same floor, mirrored, with her stones (and her gap: no slab, only the dark under it)
-	for c in OurSteps.H_OBS:
-		var t := OurSteps.her_tile(c)
-		if c == Vector2i(2, 1):
-			lv.stump(t + Vector3(0, 0.016, 0), 0.5, false)              # (the teaching column: a broken drum, low: she shows over it)
-		else:
-			lv.box("HR", t + Vector3(0, 0.36, 0), Vector3(1.0, 0.7, 0.55), 0.25, false, B * Basis(Vector3.UP, 0.35 * float(c.x - c.y)))
+		lv.stump(t + Vector3(0, 0.016, 0), 0.55, false, 0.05)
+		lv.ob_circle(Vector2(t.x, t.z), 0.5)
+	# the mirror's frame (the glass itself is a chapter object: our_steps.gd): two posts, a sill and a
+	# cornice; nothing passes it, and a short wall seals its west end to the room's south wall
+	for u in [-gh - 0.14, gh + 0.14]:
+		lv.box(z, OurSteps.at(u, 0.0) + Vector3(0, (OurSteps.GLASS_H + 0.1) * 0.5, 0), Vector3(0.26, OurSteps.GLASS_H + 0.1, 0.3), 0.25, true, B)
+	lv.box(z, OurSteps.at(0.0, 0.0) + Vector3(0, 0.05, 0), Vector3(2.0 * gh + 0.02, 0.1, 0.24), 0.25, false, B)
+	lv.box(z, OurSteps.at(0.0, 0.0) + Vector3(0, OurSteps.GLASS_H + 0.2, 0), Vector3(2.0 * gh + 0.56, 0.2, 0.34), 0.25, true, B)
+	for i in 27:
+		var q := OurSteps.at(lerpf(-gh - 0.1, gh + 0.1, i / 26.0), 0.05)
+		lv.ob_circle(Vector2(q.x, q.z), 0.18)
+	var w0 := OurSteps.at(-gh - 0.28, 0.0)
+	var w1 := Vector3(w0.x - (-15.0 - w0.z) * -1.0, 1.0, -15.0)          # (along -U down to the south wall)
+	var mid := (w0 + w1) * 0.5
+	lv.box(z, Vector3(mid.x, 1.0 + 1.1, mid.z), Vector3(0.24, 2.2, w0.distance_to(w1) - 0.12), 0.25, true, Basis(Vector3.UP, PI * 0.25))
+	for i in 6:
+		var q := w0.lerp(w1, i / 5.0)
+		lv.ob_circle(Vector2(q.x, q.z), 0.2)
 	# the exit: a gated ramp up to the Court of Light
 	lv.steps(z, R(17.5, -17.2, 19.5, -15.0), 1, 1.0, 2.0, false)
 	lv.walk(R(17.5, -17.2, 19.5, -15.0), 2.0, 1.0, 1, "HW_ramp")

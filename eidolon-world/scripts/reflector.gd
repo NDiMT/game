@@ -59,6 +59,11 @@ var _foot_i := 0
 var _foot_side := 1.0
 var _last_s := 0.0
 var reach_override := -1.0      # v0.5: >= 0 the double's hand reaches out by this much (touch the glass)
+## (v1.0) a DRIVEN double: it does not follow you; the puzzle sets where it stands. `hold_xf` is the transform
+## it has in YOUR world (the glass shows it reflected), `hold_pose` its pose (null: your own)
+var hold := false
+var hold_xf := Transform3D()
+var hold_pose: Figure.Pose = null
 static var foot_shader: Shader
 static var ghost_shader: Shader
 static var enabled := true          # perf bench: all reflections off
@@ -215,6 +220,9 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 			src_pose.head_roll += wrong * (0.10 + 0.04 * sin(_t * 0.7)) * smoothstep(0.5, 2.5, player.still_time)
 			src_pose.head_yaw += wrong * 0.06 * sin(_t * 0.43)
 	if not active: return
+	if hold:
+		src_xf = hold_xf
+		if hold_pose != null: src_pose = hold_pose
 	if gaze_target != Vector3.INF:
 		var r := _gaze(dt, player, src_xf, src_pose, seen_in_glass(player.global_position + Vector3(0, 0.7, 0), cam_back))
 		src_xf = r[0]

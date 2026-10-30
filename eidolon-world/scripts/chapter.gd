@@ -369,14 +369,19 @@ func _complete_pool(instant: bool) -> void:
 			# ring spreading on the still water, a deep stone rumble and a splash
 			node.position.y = -0.95
 			var tw := create_tween()
-			var dl: float = 0.35 * (c.x + c.y * 0.3)
+			var dl: float = 0.35 * (c.x + c.y * 0.3) + 0.35
 			tw.tween_interval(dl)
 			var at := Vector3(node.position.x, Ch1Geo.WATER_Y, node.position.z)
+			# (v1.0 juice: a bulge and a ring first; it breaks the surface heavily, water sheeting off its
+			# edges, a slight list that rights itself; then its wet stone dries)
+			if game.juice: game.juice.stone_rises(node, Ch1Geo.WATER_Y, 1.5, dl)
+			node.rotation.z = 0.05 * (1.0 if (c.x + c.y) % 2 == 0 else -1.0)
 			tw.tween_callback(func() -> void:
 				_water_burst(at)
 				event.emit("pool_rise", null))
-			tw.tween_property(node, "position:y", 0.06, 1.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			tw.tween_property(node, "position:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
+			tw.tween_property(node, "position:y", 0.06, 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tw.parallel().tween_property(node, "rotation:z", 0.0, 1.9).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+			tw.tween_property(node, "position:y", 0.0, 0.6).set_trans(Tween.TRANS_SINE)
 	for c in pool_pieces: _pool_apply(c)
 	_pool_reflect()
 	if not instant:
@@ -1175,7 +1180,13 @@ func toggle_brazier(i: int) -> void:
 	else: lit.erase(i)
 	event.emit("brazier" if on else "brazier_out", i)
 	var from: float = m.get_shader_parameter("intensity")
-	create_tween().tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), from, 1.0 if on else 0.0, 0.5 if on else 0.7)
+	var ftw := create_tween()
+	if on:
+		# (v1.0 juice) catching: a flare, then it settles
+		ftw.tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), from, 1.45, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		ftw.tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), 1.45, 1.0, 0.55).set_trans(Tween.TRANS_SINE)
+	else:
+		ftw.tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), from, 0.0, 0.7)
 	if not on: game.world.dust_puff(SH_BRAZ[i] + Vector3(0, 1.05, 0))
 	var sorted := lit.duplicate()
 	sorted.sort()
@@ -1705,7 +1716,7 @@ func _build_echo() -> void:
 	# the four singing stones: a slab proud of the wall, its channel and notch
 	var sm := MB.new()
 	for i in 4:
-		sm.box(Vector3(SONG_X[i], 3.3, -46.32), Vector3(1.1, 2.7, 0.16), Color(0.5, 0.25, 0.0))
+		sm.box(Vector3(SONG_X[i], 3.35, -46.32), Vector3(1.1, 2.7, 0.16), Color(0.5, 0.25, 0.0))      # (v1.0: ON the floor, not 5 cm into it)
 		sm.box(Vector3(SONG_X[i], 4.72, -46.3), Vector3(1.24, 0.14, 0.22), Color(0.5, 0.25, 0.0))
 		level.ob_rect(Level.R(SONG_X[i] - 0.56, -46.5, SONG_X[i] + 0.56, -46.22))
 		var m := _smat("res://shaders/sing_panel.gdshader", {"pitch": SONG_PITCH[SONG_NOTES[i]], "flash": 0.0, "lit": 0.25, "size": Vector2(1.0, 2.6)})

@@ -314,6 +314,9 @@ static func stroke_distance(drawn: PackedVector2Array, tmpl: PackedVector2Array)
 
 # ------------------------------------------------------------------ the conversation
 ## spec: {"id", "first": template, "question": template (her half), "at_first": Vector2, "at_q": Vector2}
+## (v1.0 M1) frames the pane stays invisible after opening while its masks render clean
+const FRESH_FRAMES := 3
+var fresh := 0
 var write_only := false          # v0.9.2: she only writes (the garden's great glass): no question, no answer
 func open(spec: Dictionary) -> void:
 	id = spec.get("id", "glass")
@@ -336,16 +339,30 @@ func open(spec: Dictionary) -> void:
 		her_first = place(first, true, 0.42, spec.get("at_first", Vector2(0.0, 0.5)))
 		her_half = place(half, true, 0.75, spec.get("at_q", Vector2(0.0, -0.32)))
 		target = place(half, false, 0.75, spec.get("at_q", Vector2(0.0, -0.32)))
+	# (v1.0 M1, the stale-fog bug) everything the last pane left behind is reset BEFORE anything shows: the
+	# wipe masks are redrawn empty (their viewports only render while a pane is up, so they still held the
+	# previous glass's strokes), every uniform the shader reads goes back to rest, and the pane stays fully
+	# transparent until the masks have rendered clean (`fresh` frames)
+	if _tw: _tw.kill()
 	ink.her.clear(); ink.mine.clear(); ink.hint.clear()
 	ink.palm_k = 0.0; ink.finger_k = 0.0
-	glass_mat.set_shader_parameter("glow", 0.0)
-	glass_mat.set_shader_parameter("fog", 0.0)
+	ink.finger = Vector2(-99, -99); ink.palm = Vector2(-99, -99)
+	_fk = 0.0; _press_t = 0.0; _t = 0.0; _drawing = false; _cur = PackedVector2Array()
+	for k in ["glow", "fog", "finger_k", "palm_k", "press_t", "t"]: glass_mat.set_shader_parameter(k, 0.0)
+	glass_mat.set_shader_parameter("finger", Vector2(-9, -9))
+	glass_mat.set_shader_parameter("palm_at", Vector2(-9, -9))
+	for vp in [mask_vp, mine_vp]:
+		vp.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
+		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	ink.queue_redraw(); ink.twin.queue_redraw()
+	modulate.a = 0.0
+	fresh = FRESH_FRAMES
 	visible = true
 	if size.x < 2.0: size = get_parent_area_size()
 	_layout()
 	_block = 0.3
-	if _tw: _tw.kill()
 	_tw = create_tween()
+	_tw.tween_interval(0.06)                     # (the masks' clean frames: see `fresh`)
 	_tw.tween_property(self, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE)
 	_tw.parallel().tween_method(func(v: float) -> void: glass_mat.set_shader_parameter("fog", v), 0.0, 1.0, 1.2)
 	_tw.tween_callback(func() -> void: sound.emit("breath"))
@@ -521,6 +538,10 @@ func close() -> void:
 # ------------------------------------------------------------------ input: your finger on the glass
 func _process(dt: float) -> void:
 	_block = maxf(0.0, _block - dt)
+	if fresh > 0:
+		# (the pane holds its fade-in until its masks have rendered clean)
+		fresh -= 1
+		modulate.a = 0.0
 	if visible:
 		_t += dt
 		glass_mat.set_shader_parameter("t", _t)

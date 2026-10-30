@@ -39,6 +39,10 @@ var extra_reach := 0.0          # v0.5: 0..1 the right hand reaches out (touchin
 var veil_lift := 0.0            # v0.5: cinematic: the veil lifts back
 var head_pitch_add := 0.0       # v0.5: cinematic: looking down into the water
 var head_yaw_add := 0.0
+var anticipate := 0.0           # v1.0 juice: 0..1 something to touch is in reach (set by the game): she leans to it
+var _antic := 0.0
+var _press_k := 0.0             # v1.0 juice: the reach of an interaction just made
+var _was_moving := false
 
 func _init() -> void:
 	fig = Figure.new()
@@ -72,6 +76,10 @@ func _init() -> void:
 	hem_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(hem_glow)
 	hem_glow.visible = false            # (v0.8.1, the owner: the hero wears no colour: no hem glow on the ground)
+
+## (v1.0 juice) an interaction was made: the reach
+func interact_pulse() -> void:
+	_press_k = 1.0
 
 func teleport(p: Vector3, face_yaw := INF) -> void:
 	var q := Vector2(p.x, p.z)
@@ -132,6 +140,13 @@ func _animate(dt: float) -> void:
 	# cloak spring: trails opposite the local velocity, swings with the stride, overshoots on stopping
 	var lv := fig.basis.inverse() * vel
 	var target := -Vector2(lv.x, lv.z) * 0.032 + Vector2(s * 0.022 * walk, 0.0)
+	# (v1.0 juice) the cloth answers starting and stopping: a tug back as she sets off, a swing forward as
+	# she halts
+	var mv := speed01 > 0.15
+	if mv != _was_moving:
+		_was_moving = mv
+		_sway_v += Vector2(0.0, 0.55 if mv else -0.75)
+		_flare_v += 0.6 if not mv else 0.2
 	_sway_v += ((target - _sway) * 70.0 - _sway_v * 7.5) * dt
 	_sway += _sway_v * dt
 	var ft := walk * 0.32
@@ -147,7 +162,14 @@ func _animate(dt: float) -> void:
 	p.head_yaw = _idle_look
 	p.head_pitch = -0.04 * walk
 	p.crouch = crouch
-	p.reach = extra_reach
+	# (v1.0 juice) anticipation: within reach of something to touch she leans in a little and her hand lifts;
+	# pressing it, the hand reaches
+	_antic = lerpf(_antic, anticipate * (1.0 - walk), 1.0 - exp(-dt * 5.0))
+	_press_k = maxf(0.0, _press_k - dt * 2.4)
+	var pk := sin(clampf(_press_k, 0.0, 1.0) * PI)
+	p.reach = maxf(extra_reach, _antic * 0.22 + pk * 0.65)
+	p.lean_x += -0.06 * _antic - 0.05 * pk
+	p.head_pitch += -0.07 * _antic
 	p.head_pitch += head_pitch_add
 	p.head_yaw += head_yaw_add
 	fig.apply_pose(p)
