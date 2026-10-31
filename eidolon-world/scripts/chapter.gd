@@ -71,7 +71,8 @@ var turn_tw: Array = [null, null, null]
 var door_real: Array[Node3D] = []
 var door_refl: Array[Node3D] = []
 # hollow walk
-var steps: OurSteps                     # v0.9.2: "Our Steps" (the Hollow Walk's room)
+var steps: OurSteps
+var shrine_fx: WaterFX                   # (v1.0 M1-A) the shrine pool's water events                     # v0.9.2: "Our Steps" (the Hollow Walk's room)
 var hw_gate: Node3D
 var _still := 0.0
 var _tick := 0.0
@@ -1588,6 +1589,9 @@ func _build_maze() -> void:
 	_mi(_plane(Vector2(8.0, 10.0)), wm, Transform3D(Basis(), Vector3(4.6, 1.95, -34.0)))
 	var om := _smat("res://shaders/water_over.gdshader", {"noise_tex": level.noise_tex, "area": Vector4(1.0, -38.6, 8.2, -29.4), "calm": 0.5})
 	_mi(_plane(Vector2(8.0, 10.0)), om, Transform3D(Basis(), Vector3(4.6, 1.975, -34.0)))
+	var mfx := WaterFX.new()                 # (v1.0 M1-A: her pool's water answers splashes)
+	mfx.mats = [wm, om]
+	add_child(mfx)
 	var fsh := preload("res://shaders/footprint.gdshader")
 	var pts: Array[Vector3] = []
 	pts.append(_mirror_maze(Vector3(12.0, 2.0, -27.6)))
@@ -2342,6 +2346,9 @@ func _build_shrine_pool() -> void:
 	shrine_over = _smat("res://shaders/water_over.gdshader", {"noise_tex": level.noise_tex, "disc": 1.0,
 		"area": Vector4(c.x - POOL_R, c.z - POOL_R, c.x + POOL_R, c.z + POOL_R), "calm": 0.6})
 	_mi(_plane(Vector2(d, d)), shrine_over, Transform3D(Basis(), c + Vector3(0, 0.165, 0)))
+	shrine_fx = WaterFX.new()
+	shrine_fx.mats = [shrine_water, shrine_over]
+	add_child(shrine_fx)
 
 # ------------------------------------------------------------------ hints
 func _build_wisp() -> void:

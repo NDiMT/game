@@ -161,7 +161,7 @@ func _ready() -> void:
 	mask_vp.disable_3d = true
 	mask_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED      # (v0.8.5: only while the pane is open)
 	add_child(mask_vp)
-	ink = Ink.new()
+	ink = FogInk.new()          # (v1.0 M1-A: a human finger on condensation)
 	ink.host = self
 	var cm := CanvasItemMaterial.new()
 	cm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
@@ -174,7 +174,7 @@ func _ready() -> void:
 	mine_vp.disable_3d = true
 	mine_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(mine_vp)
-	var im := Ink.new()
+	var im := FogInk.new()
 	im.host = self
 	im.only_mine = true
 	im.mine = ink.mine
@@ -345,6 +345,7 @@ func open(spec: Dictionary) -> void:
 	# transparent until the masks have rendered clean (`fresh` frames)
 	if _tw: _tw.kill()
 	ink.her.clear(); ink.mine.clear(); ink.hint.clear()
+	if ink is FogInk: (ink as FogInk).reset_state()
 	ink.palm_k = 0.0; ink.finger_k = 0.0
 	ink.finger = Vector2(-99, -99); ink.palm = Vector2(-99, -99)
 	_fk = 0.0; _press_t = 0.0; _t = 0.0; _drawing = false; _cur = PackedVector2Array()

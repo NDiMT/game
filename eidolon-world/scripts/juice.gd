@@ -237,12 +237,22 @@ func stone_rises(node: Node3D, water_y: float, rise_t: float, delay: float) -> v
 		ring(at, 1.8, 1.0)
 		burst(at, "bubbles", 10, Vector3(half.x * 0.6, 0.01, half.y * 0.6), Vector3.UP, 15.0, Vector2(0.2, 0.5), Vector2(0.02, 0.05), Color(0.9, 0.95, 1.0, 0.7), 0.5, Vector3(0, -1.0, 0)))
 	tw.tween_interval(0.35)
+	var fx: WaterFX = game.puzzles.pool_fx if game.puzzles else null
 	tw.tween_callback(func() -> void:
 		ring(at, 3.4, 2.2)
 		sheet(node, half, 0.0, rise_t * 0.9)
+		# (A's water: a foam collar, a sheeting band and rings off its edges, on the water itself)
+		if fx:
+			fx.rise(Rect2(at.x - half.x, at.z - half.y, half.x * 2.0, half.y * 2.0), rise_t + 0.6)
+			fx.splash(at, 1.0)
 		shake(0.12))
 	tw.tween_interval(rise_t)
-	tw.tween_callback(func() -> void: if mi: wet_mesh(node, mi.mesh, 3.0))
+	tw.tween_callback(func() -> void:
+		# (wet stone that dries in patches: the marble's own per-instance `wet`, A's; the film where it is absent)
+		if fx and mi:
+			fx.wet_dry(mi, 3.0, water_y)
+			_count("wet")
+		elif mi: wet_mesh(node, mi.mesh, 3.0))
 
 func shake(a: float) -> void:
 	if game.world: game.world.shake(a)

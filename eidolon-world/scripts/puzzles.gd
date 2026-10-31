@@ -76,6 +76,7 @@ var hall_mirror: Reflector
 var pool_refl: Reflector
 var water_mat: ShaderMaterial
 var water_over_mat: ShaderMaterial
+var pool_fx: WaterFX                 # (v1.0 M1-A) splash / rising-body events on the pool's water
 var busy := false
 var crystal_lift := 0.0          # v0.5: the cinematic lifts the crystal out of the shot
 var _t := 0.0
@@ -209,6 +210,9 @@ func _pool() -> void:
 	om.set_shader_parameter("noise_tex", level.noise_tex)
 	om.set_shader_parameter("area", Vector4(-9.4, -0.1, -0.8, 3.4))
 	water_over_mat = om
+	pool_fx = WaterFX.new()
+	pool_fx.mats = [water_mat, om]
+	add_child(pool_fx)
 	var oq := PlaneMesh.new()
 	oq.size = Vector2(8.95, 3.75)
 	var omi := MeshInstance3D.new()

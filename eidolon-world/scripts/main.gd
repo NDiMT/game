@@ -427,9 +427,11 @@ var prof_on := false
 var _save_pending := false
 var _save_wait := 0.0
 var prof := {}
+var prof_max := {}                 # (v1.0) the worst single frame per section (us)
 func _pm(label: String, t0: int) -> int:
 	var now := Time.get_ticks_usec()
 	prof[label] = prof.get(label, 0) + (now - t0)
+	prof_max[label] = maxi(int(prof_max.get(label, 0)), now - t0)
 	return now
 
 func _update_focus() -> void:
@@ -962,6 +964,7 @@ func _apply_tier_extras() -> void:
 			r.planar.vp.msaa_3d = Viewport.MSAA_2X if world.quality_high and world.auto_step < 2 else Viewport.MSAA_DISABLED
 	level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
 	Reflector.cloth_bones = world.quality_high          # (v0.8: the Low tier's reflections: cloth at rest)
+	ui.glass_talk.glass_mat.set_shader_parameter("drops_q", 1.0 if world.quality_high else 0.0)      # (v1.0 M1-A: no running drops on Low)
 	if props: props.set_quality(world.quality_high)
 	Flame.high = world.quality_high
 	AquaLight.high = world.quality_high

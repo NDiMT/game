@@ -100,6 +100,13 @@ func _process(dt: float) -> void:
 			var top := ""
 			for e in secs.slice(0, 5): top += "%s %.3f  " % [e[1], e[0]]
 			print("PROF %-14s script %.2f ms (max %.1f)  dc %.0f  vps %.2f/%d  | %s" % [_prof[0], _prof[3] / n, _scr_max, _prof[4] / n, _prof[5] / n, (_prof[6] as Array).size(), top])
+			var mx := []
+			for k in game.prof_max: mx.append([game.prof_max[k] / 1000.0, k])
+			mx.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+			var tm := ""
+			for e in mx.slice(0, 6): tm += "%s %.2f  " % [e[1], e[0]]
+			print("PROFMAX %-11s worst frame per section (ms): %s" % [_prof[0], tm])
+			game.prof_max.clear()
 			_scr_max = 0.0
 			game.prof_on = false
 			_prof = []
@@ -152,6 +159,7 @@ func _process(dt: float) -> void:
 			var parts := s.split(":")
 			_prof = [parts[1], float(parts[2]) if parts.size() > 2 else 4.0, 0, 0.0, 0.0, 0.0, game.find_children("*", "SubViewport", true, false), 0.0]
 			game.prof.clear()
+			game.prof_max.clear()
 			game.prof_on = true
 			return
 		elif s.begins_with("vpshot:"):

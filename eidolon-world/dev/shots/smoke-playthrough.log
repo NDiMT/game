@@ -2,7 +2,7 @@ Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
 
 [audio] v5 manifest: 13 rooms, 34 cues, 94/94 room events
 [props] 8 placed
-[solids] 1944 primitives, 1047 solid footprints, 336 obstacles added (122 ms)
+[solids] 1944 primitives, 1047 solid footprints, 336 obstacles added (111 ms)
 [warm-up] 447 mesh/material pairs (of 1021 geometry nodes), 11 canvas materials
   .. sim 0s  real 2s  step 0/888
 PASS  woke at the veiled gate (1.4, 0.0, 2.3)
@@ -27,7 +27,7 @@ PASS  turn the second slab from the first (1) pool_turn1
 PASS  turn the second slab from the first (2) pool_turn1
 PASS  turn the second slab from the first (3) pool_turn1
 PASS  turn the third slab from the north rim pool_turn2
-  .. sim 20s  real 4s  step 45/888
+  .. sim 20s  real 3s  step 45/888
 PASS  still broken: hers are not stone yet 
 PASS  turn the fourth slab from the south rim (1) pool_turn3
 PASS  turn the fourth slab from the south rim (2) pool_turn3
@@ -71,7 +71,7 @@ PASS  breath cue played
 PASS  her answer rings her song (the motif A-D-E-F-E) 
 PASS  her 'follow' rune is a letter of the script, one calligraphic stroke 
 PASS  recogniser unit: resample keeps 32 points 
-  .. sim 80s  real 9s  step 134/888
+  .. sim 80s  real 10s  step 134/888
 PASS  reached the Hall of Glass by the corridor (-2.06584, 1.0, -13.5) hall_glass
 PASS  area name shown on entering the hall HALL OF GLASS
 PASS  great mirror reflection seen in the glass 
@@ -212,7 +212,7 @@ PASS  solver: the near way lights the crystal the wrong way (a decoy) 4 decoys
 PASS  solver: no single turn from the start lights anything 
 PASS  her glass is a real reflection here 
 PASS  mirror 1 in reach mirror1
-  .. sim 220s  real 24s  step 518/888
+  .. sim 220s  real 25s  step 518/888
 PASS  mirror 2 in reach mirror2
 PASS  mirror 3 in reach mirror3
 PASS  the near way: the crystal lights... 
@@ -271,8 +271,67 @@ PASS  hint after a while: the tiles shine
 PASS  take the 1 back pan3
 PASS  put it on the bench weight0
 PASS  the balance is level (15, 15)
-  .. sim 300s  real 32s  step 706/888
+  .. sim 300s  real 33s  step 706/888
 PASS  risen to the high walkway (31.33656, 4.0, -45.60938)
+PASS  (v0.9) on the walkway: the Upward Spring, named, the camera leans up toward the temple (3.031196, 2.926656, 0.221333)
+PASS  down onto the Eidolon Ledge (27.86709, 2.0, -22.40001) eidolon_ledge
+PASS  eidolon reflection walks beyond the glass 
+PASS  her footprints lead toward the plate 6
+  .. sim 320s  real 36s  step 726/888
+PASS  footprint marker shows where to stand intensity 0.85
+PASS  hers alone is not enough: your plate is empty 
+PASS  standing on yours, your reflection is far from hers 
+PASS  push the statue (1) ledge_push
+PASS  push the statue (2) ledge_push
+PASS  push the statue (3) ledge_push
+PASS  the statue holds your plate 
+PASS  the drawbridge lever (a way back) drawbridge
+  .. sim 340s  real 38s  step 753/888
+PASS  reached the Gate of the Four Veiled gate_four
+PASS  the tholos is closed by veils (25.03823, 2.0, -29.33095)
+PASS  standing on the empty plinth (21.27417, 2.25, -33.92999)
+PASS  wait four_wait
+PASS  the plinths light one by one 
+PASS  the veil before the shrine is gone 
+PASS  the solve jingle again 
+  .. sim 360s  real 40s  step 779/888
+PASS  reached the First Shrine first_shrine
+PASS  shrine is dark 
+PASS  wake the shrine shrine
+PASS  cinematic: letterbox 
+PASS  cinematic: the shrine wakes 
+PASS  cinematic: near geometry cut away, the crystal lifted out of the shot 
+  .. sim 380s  real 41s  step 792/888
+PASS  cinematic: her reflection in the shrine pool 
+PASS  cinematic: camera looks down into the water 50.0 deg
+PASS  cinematic: palm to palm 
+PASS  cinematic: Katoptron lights on you both 
+  .. sim 400s  real 43s  step 796/888
+PASS  cinematic: her veil lifts 1.00
+  .. sim 420s  real 44s  step 798/888
+PASS  cinematic: she is gone; the pool shows only you 
+PASS  memory fragment shows 
+PASS  cinematic: ~4.5 s awakening + the 59 s score 63.9 s
+PASS  music cues: shrine_awaken, then cinematic_hand 
+PASS  the room beds come back after the scene 
+PASS  the world beyond is revealed 
+PASS  first shrine lights one cloak rune and brightens the hem 
+PASS  the shrine leaves its light on 
+PASS  milestone text names the chapter The Veiled Gate — awakened
+PASS  still playable, controls back, no letterbox 
+PASS  camera back to normal 
+PASS  fog receded 
+PASS  score cues played 
+PASS  (v1.0 juice) the chapter's physical moments all played (dust, grit, sparks, rings, wet stone, glints...) ["ring", "bubbles", "sheet", "wet", "grit", "dust", "glint", "sparks", "dust_fall"]
+PASS  (v1.0 juice) no burst is left alive for long 0
+PASS  the way on is sealed (28.00062, 2.0, -38.53448)
+  .. sim 440s  real 45s  step 818/888
+  .. sim 460s  real 48s  step 820/888
+  .. sim 480s  real 50s  step 824/888
+  .. sim 500s  real 52s  step 826/888
+  .. sim 520s  real 54s  step 828/888
+  .. sim 540s  real 56s  step 832/888
+  .. sim 560s  real 59s  step 834/888
 ERROR: Caller thread can't call this function in this node (/root). Use call_deferred() or call_thread_group() instead.
    at: propagate_notification (scene/main/node.cpp:2552)
 
@@ -280,14 +339,14 @@ ERROR: Caller thread can't call this function in this node (/root). Use call_def
 handle_crash: Program crashed with signal 11
 Engine version: Godot Engine v4.5.1.stable.official (f62fdbde15035c5576dad93e586201f4d41ef0cb)
 Dumping the backtrace. Please include this when reporting the bug on: https://github.com/godotengine/godot/issues
-[1] /lib/x86_64-linux-gnu/libc.so.6(+0x45330) [0x7f6e7b645330] (??:0)
+[1] /lib/x86_64-linux-gnu/libc.so.6(+0x45330) [0x7f2339845330] (??:0)
 [2] /opt/godot/godot() [0x47ea6c8] (??:0)
 [3] /opt/godot/godot() [0x38ff0a8] (??:0)
 [4] /opt/godot/godot() [0x4c5abf9] (??:0)
 [5] /opt/godot/godot() [0x3b11c07] (??:0)
 [6] /opt/godot/godot() [0x4332c55] (??:0)
 [7] /opt/godot/godot() [0x50db243] (??:0)
-[8] /lib/x86_64-linux-gnu/libc.so.6(+0x9cb84) [0x7f6e7b69cb84] (??:0)
-[9] /lib/x86_64-linux-gnu/libc.so.6(+0x129ecc) [0x7f6e7b729ecc] (??:0)
+[8] /lib/x86_64-linux-gnu/libc.so.6(+0x9cb84) [0x7f233989cb84] (??:0)
+[9] /lib/x86_64-linux-gnu/libc.so.6(+0x129ecc) [0x7f2339929ecc] (??:0)
 -- END OF C++ BACKTRACE --
 ================================================================
