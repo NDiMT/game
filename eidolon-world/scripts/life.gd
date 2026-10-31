@@ -61,14 +61,11 @@ func _build_ambient() -> void:
 	add_child(AmbientLife.petals(AABB(Vector3(10.3, 1.0, -15.0), Vector3(6.7, 3.2, 10.0)), 50))
 	add_child(AmbientLife.petals(AABB(Vector3(26.45, 2.0, -18.95), Vector3(3.15, 3.0, 31.5)), 70, Vector3(-0.3, 0.0, -1.2), 0.1))
 	# torn veils streaming from a bar across each Balcony pole's top (A's veils), the wind across the view
-	var bars := MB.new()
 	for pz in [6.0, -2.0, -10.0]:
-		var top := Vector3(28.95, WorldGeo.BAL_Y + 2.4, pz)
-		bars.box(top + Vector3(0, 0.03, 0), Vector3(0.06, 0.06, 1.0), Color(0.5, 1.0, 0.0))
-		var v := AmbientLife.veils(top + Vector3(0, 0.0, 0), 3, 1.9, Vector3(0.7, 0.0, 0.7), null, NAN, 0.9, PI * 0.5)      # (QA P1-8: long enough to read)
+		var top := Vector3(28.95, WorldGeo.BAL_Y + 2.45, pz)          # (A's awning post's cross-arm, Props)
+		var v := AmbientLife.veils(top, 2, 1.5, Vector3(0.7, 0.0, 0.7), null, NAN, 0.9, PI * 0.5)
 		add_child(v)
 		veils.append(v)
-	game.puzzles.marble_instance(bars.commit(), self)
 	var uc := AmbientLife.drips([Vector3(15.6, WorldGeo.A_Y + 0.01, 11.0), Vector3(18.3, WorldGeo.A_Y + 0.01, 11.9), Vector3(20.9, WorldGeo.A_Y + 0.01, 11.2), Vector3(22.8, WorldGeo.A_Y + 0.01, 11.6)], 2.35)
 	add_child(uc)
 	var st := AmbientLife.drips([Vector3(-12.1, 0.51, -5.6), Vector3(-10.5, 0.51, -5.0)], 2.6, 2.2, 4.0)

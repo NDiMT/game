@@ -64,14 +64,9 @@ static func _atrium(lv: Level) -> void:
 	lv.ob_rect(R(13.9, 12.85, 14.4, 23.0))
 	lv.ob_rect(R(13.9, 9.6, 14.4, 10.0))
 	# the dry fountain: a round basin, its broken figure
-	var m := lv.mb(z)
-	m.group = "fountain:1"
-	m.cyl(FOUNTAIN + Vector3(0, 0.25, 0), 1.8, 1.85, 0.5, lv.C(0.25), 28)
-	m.cyl(FOUNTAIN + Vector3(0, 0.52, 0), 1.6, 1.6, 0.04, lv.C(0.0), 28)          # (the dry, stained bed: stone, not a black hole: QA P1-8)
-	m.cyl(FOUNTAIN + Vector3(0, 0.9, 0), 0.35, 0.45, 0.8, lv.C(0.25), 12)
-	m.group = ""
-	lv.ob_circle(Vector2(FOUNTAIN.x, FOUNTAIN.z), 1.9)
-	lv.stump(FOUNTAIN + Vector3(0, 1.3, 0), 0.6, false, 0.08)
+	# (v1.0 M4: A's kit_fountain, Props; the same draws from the level's rng as the old basin and stump)
+	lv.C(0.25); lv.C(0.0); lv.C(0.25)
+	lv.rng.randf()
 	# the half-carved faces: rows of busts on plinths (Theron's thousand attempts), aisles between
 	for p in [Vector2(2.6, 11.4), Vector2(4.6, 11.4), Vector2(6.6, 11.4), Vector2(8.6, 11.4),
 			Vector2(-2.6, 14.0), Vector2(-2.6, 16.4), Vector2(-2.6, 18.8),
@@ -104,12 +99,15 @@ static func _atrium(lv: Level) -> void:
 ## a half-carved face: a plinth, a rough block, the face emerging on one side
 ## (v1.0 M3c: TURNED's head is its own node, chapter Life: now and then it has turned when you come back)
 const TURNED := Vector2(2.6, 11.4)
+## (v1.0 M4: these plinths carry A's kit faces, Props; their old block heads are not built)
+const KIT_FACES := [Vector2(4.6, 11.4), Vector2(8.6, 11.4), Vector2(-2.6, 14.0), Vector2(-2.6, 18.8), Vector2(2.4, 13.6),
+	Vector2(7.6, 13.6), Vector2(2.4, 18.4), Vector2(7.6, 18.4)]
 static func _bust(lv: Level, z: String, base: Vector3, yaw: float) -> void:
 	var B := Basis(Vector3.UP, yaw)
 	var m := lv.mb(z)
 	m.group = "bust:%d" % int(base.x * 100 + base.z)
 	m.box(base + Vector3(0, 0.45, 0), Vector3(0.6, 0.9, 0.6), lv.C(0.25), B)
-	if Vector2(base.x, base.z).distance_to(TURNED) < 0.01:
+	if Vector2(base.x, base.z).distance_to(TURNED) < 0.01 or Vector2(base.x, base.z) in KIT_FACES:
 		lv.C(0.25); lv.C(0.25)                     # (the same draws from the level's rng: nothing else moves)
 	else:
 		m.box(base + Vector3(0, 1.1, 0) + B * Vector3(0, 0, -0.04), Vector3(0.46, 0.42, 0.4), lv.C(0.25), B)
@@ -182,5 +180,6 @@ static func _balcony(lv: Level) -> void:
 	lv.ob_rect(R(26.45, 12.45, 29.6, 12.8))
 	lv.ob_rect(R(26.25, -19.0, 26.55, 10.15))
 	# poles with torn veils (the veils are chapter objects: they stream in the gusts)
+	# (v1.0 M4: A's kit awning posts carry the torn veils now, Props; the same rng draw per old pole)
 	for pz in [6.0, -2.0, -10.0]:
-		lv.column(Vector3(28.95, BAL_Y, pz), 2.4, true)
+		lv.rng.randf()

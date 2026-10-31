@@ -31,10 +31,36 @@ const PLACE := [
 	# the Gate of the Four Veiled: the unfinished one, half out of her block, beside the tholos where the
 	# eidolon is half-carved too
 	["statue_veiled_unfinished", Vector3(20.9, 2.0, -35.2), 40.0, 1.0, "shrine"],
+	# (v1.0 M4, QA P1-8: A's kit dresses the Atrium, the scaffold, the bridge, the Balcony)
+	# the thousand faces on their plinths (WorldGeo.KIT_FACES), turned toward the fountain; two left plain blocks
+	["kit_face1", Vector3(4.60, 1.4, 11.40), -3.8, 1.0, "atrium"],
+	["kit_face2", Vector3(8.60, 1.4, 11.40), -55.5, 1.0, "atrium"],
+	["kit_face3", Vector3(-2.60, 1.4, 14.00), 82.8, 1.0, "atrium"],
+	["kit_face4", Vector3(-2.60, 1.4, 18.80), 88.8, 1.0, "atrium"],
+	["kit_face5", Vector3(2.40, 1.4, 13.60), 49.1, 1.0, "atrium"],
+	["kit_face6", Vector3(7.60, 1.4, 13.60), -54.0, 1.0, "atrium"],
+	["kit_face1", Vector3(2.40, 1.4, 18.40), 110.6, 1.0, "atrium"],
+	["kit_face4", Vector3(7.60, 1.4, 18.40), -132.3, 1.0, "atrium"],
+	["kit_fountain", Vector3(5.0, 0.5, 16.0), 0.0, 1.0, "atrium"],
+	# Theron's workshop: his ladder by the crane arm (the scaffold towers cannot stand under his gallery:
+	# a footprint is 2D, it would wall off the gallery's own floor above them)
+	["kit_ladder", Vector3(-0.5, 0.5, 19.7), 0.0, 0.85, "atrium"],
+	# the Crumbling Bridge: a broken walkway end beside it, fallen from the old span
+	["kit_bridge_end", Vector3(2.15, 0.0, 8.2), 0.0, 1.0, "atrium"],
+	# the Balcony: urns on the outer edge, awning posts with their torn cloth (the veils: chapter Life)
+	["kit_urns", Vector3(28.95, 2.0, 9.0), 90.0, 1.0, "balcony"],
+	["kit_urns", Vector3(28.95, 2.0, 2.0), 80.0, 1.0, "balcony"],
+	["kit_urns", Vector3(28.95, 2.0, -6.0), 100.0, 1.0, "balcony"],
+	["kit_urns", Vector3(28.95, 2.0, -13.6), 90.0, 1.0, "balcony"],
+	["kit_awning_post", Vector3(28.95, 2.0, 6.0), 90.0, 1.0, "balcony"],
+	["kit_awning_post", Vector3(28.95, 2.0, -2.0), 90.0, 1.0, "balcony"],
+	["kit_awning_post", Vector3(28.95, 2.0, -10.0), 90.0, 1.0, "balcony"],
 ]
 ## (v0.8.1: walls and architecture only: statues are never cut by the see-through)
 const OCCLUDE := ["column_doric", "archway_ruined", "pylon_ashlar", "pylon_ashlar_niche", "wall_ashlar_window"]
 const SMALL := ["rubble_pile", "pediment_fragment", "column_fallen"]       # (dropped on the Low tier)
+## (v1.0: the kit's timber pieces wear A's wood, not the carved marble)
+const MAT := {"kit_scaffold": 0.97, "kit_ladder": 0.97, "kit_awning_post": 0.97}
 
 static var meshes := {}           # asset -> [ArrayMesh, AABB]
 var level: Level
@@ -139,7 +165,7 @@ static func _mesh(asset: String) -> Array:
 			for i in pv.size():
 				v.append(xf * pv[i])
 				n.append((nb * (pn[i] if pn != null else Vector3.UP)).normalized())
-				c.append(Color(tint, 0.25, 1.0 if occ else 0.0, 0.0))
+				c.append(Color(tint, MAT.get(asset, 0.25), 1.0 if occ else 0.0, 0.0))
 				uv.append(pu[i] if pu != null else Vector2.ZERO)
 			if pi == null:
 				for i in pv.size(): idx.append(base + i)
