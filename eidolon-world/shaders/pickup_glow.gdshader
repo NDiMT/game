@@ -7,7 +7,7 @@ global uniform vec4 accent;
 uniform float part = 0.0;
 uniform float k = 1.0;                 // 0..1 (fade it out when taken)
 uniform float height = 1.6;            // the pillar (m)
-uniform float width = 0.5;
+uniform float width = 0.7;
 uniform vec3 core_col : source_color = vec3(1.0, 0.95, 0.88);
 void vertex() {
 	if (part < 0.5) {

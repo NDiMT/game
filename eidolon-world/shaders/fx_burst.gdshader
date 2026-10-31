@@ -27,6 +27,7 @@ uniform float ground_y = -1000.0;   // the floor / water height under the burst 
 uniform float near_fade = 0.0;      // fade within this many metres of the camera (0 = off)
 uniform vec3 light_dir = vec3(0.304, -0.819, -0.486);
 uniform vec3 wind = vec3(0.0);
+uniform float boost = 0.0;          // v1.1c: a brief swell (embers right after ignition; FxBurst decays it)
 
 varying float age_k;
 varying vec2 qv;
@@ -55,7 +56,7 @@ void vertex() {
 		v = wind + v0 * 0.15;
 		p = origin + v * tt + vec3(sin(tt * 0.7 + c.r * 6.0), 0.0, cos(tt * 0.5 + c.g * 6.0)) * 0.25;
 	} else if (kind == 4) {                // ember: rises, sways, flickers out
-		v = vec3(0.0, 0.55 + 0.4 * c.b, 0.0) + wind + r * 0.12;
+		v = (vec3(0.0, 0.55 + 0.4 * c.b, 0.0) + r * 0.12) * (1.0 + boost * 0.8) + wind;
 		p = origin + v * tt + vec3(sin(tt * 3.1 + c.r * 9.0), 0.0, cos(tt * 2.7 + c.g * 9.0)) * 0.06 * tt;
 	} else if (kind == 3) {                // glint: stays, twinkles
 		v = vec3(0.0);
@@ -66,6 +67,7 @@ void vertex() {
 		p = origin + v0 * k + vec3(0.0, -0.5 * gravity, 0.0) * tt * tt + wind * tt;
 	}
 	float s = mix(size0, size1, age_k) * (0.7 + 0.6 * c.r) * alive;
+	s *= 1.0 + boost * 0.5;
 	if (kind == 1) s *= 0.6 + 0.8 * smoothstep(0.0, 0.35, age_k);          // dust swells, then thins
 	if (kind == 3) s *= 0.4 + 0.6 * abs(sin(tt * 4.0 + c.g * 20.0));     // a twinkle
 	// camera-facing quad; stretched along the screen-space motion for fast droplets / sparks
@@ -84,6 +86,7 @@ void vertex() {
 	VERTEX = vw.xyz;
 	NORMAL = vec3(0.0, 0.0, 1.0);
 	vcol = mix(col0, col1, age_k);
+	vcol.a = min(vcol.a * (1.0 + boost), 1.0);
 	if (kind == 4) vcol.rgb *= 0.75 + 0.25 * sin(tt * 23.0 + c.r * 40.0);
 	if (kind == 5 || kind == 3) vcol.a = col0.a * sin(3.14159 * age_k);         // wisps and twinkles fade in and out
 	if (kind == 2) vcol.rgb = mix(col0.rgb, col1.rgb, smoothstep(0.0, 0.6, age_k));
