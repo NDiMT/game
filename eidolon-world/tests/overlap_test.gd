@@ -51,6 +51,7 @@ func _ready() -> void:
 	_check_pairs()
 	_check_support()
 	_check_centrelines()
+	_check_eyes()
 	var seen := {}
 	var uniq: Array[String] = []
 	for h in hits:
@@ -334,3 +335,40 @@ func _check_centrelines() -> void:
 			var bq := Vector2(clampf(cen.x, band.position.x, band.end.x), clampf(cen.z, band.position.y, band.end.y))
 			var hit := depth(s.xf, Transform3D(Basis.from_scale(Vector3(band.size.x, 1.6, band.size.y)), Vector3(band.get_center().x, h + 0.8, band.get_center().y))) > TOL
 			if hit: hits.append("ON THE WAY %s on %s's centreline at %s" % [_short(s.owner), g.name, _v(Vector3(bq.x, h, bq.y))])
+
+# ------------------------------------------------------------------ 5 (v1.1d, the owner): the Shadow Chamber's floor eyes
+## no brazier, statue or prop on a pair: every solid's footprint 30 cm or more clear of each pair (the two
+## 40 x 20 cm eyes, 60 cm apart: a 1.0 x 0.2 m strip across the shadow's head)
+func _check_eyes() -> void:
+	var ch: Chapter = game.chapter
+	for j in Chapter.SH_SOLUTION:
+		var so: Array = Chapter.shadow_of(j)
+		var dn: Vector2 = so[1]
+		var pts: Array[Vector3] = []
+		for s in [-1.0, -0.5, 0.0, 0.5, 1.0]:
+			for t in [-0.1, 0.0, 0.1]:
+				pts.append(ch.eye_head(j) + ch.eye_axis(j) * s * 0.5 + Vector3(dn.x, 0, dn.y) * t)
+		for b: Vector3 in Chapter.SH_BRAZ:
+			for e in pts:
+				if Vector2(e.x - b.x, e.z - b.z).length() < 0.36 + 0.3:
+					hits.append("EYES pair %d within 30 cm of the brazier at %s" % [j, _v(b)])
+					break
+		for e in pts:
+			if Vector2(e.x - Chapter.SH_STATUE.x, e.z - Chapter.SH_STATUE.z).length() < 0.55 + 0.3:
+				hits.append("EYES pair %d within 30 cm of her plinth" % j)
+				break
+		# any other solid standing on the strip (props, rubble, walls), its true bounds grown by 30 cm
+		for sd in solids:
+			if sd.cat == "floor": continue
+			if sd.hi.y <= 1.0 + 0.05 or sd.lo.y > 1.0 + 1.5: continue
+			# (her statue and the braziers: their true round footprints are checked above, not their boxes)
+			var oc := Vector2((sd.lo.x + sd.hi.x) * 0.5, (sd.lo.z + sd.hi.z) * 0.5)
+			var round_one := oc.distance_to(Vector2(Chapter.SH_STATUE.x, Chapter.SH_STATUE.z)) < 0.9
+			for b: Vector3 in Chapter.SH_BRAZ: round_one = round_one or oc.distance_to(Vector2(b.x, b.z)) < 0.2
+			if round_one: continue
+			var fr := Rect2(sd.lo.x - 0.3, sd.lo.z - 0.3, sd.hi.x - sd.lo.x + 0.6, sd.hi.z - sd.lo.z + 0.6)
+			for e in pts:
+				if fr.has_point(Vector2(e.x, e.z)):
+					hits.append("EYES pair %d under %s at %s" % [j, _short(sd.owner), _v(sd.xf.origin)])
+					break
+

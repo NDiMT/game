@@ -1,0 +1,11 @@
+[0.7s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+[1.0s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+[1.3s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
+[4.1s log] [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[4.5s log] [props] 35 placed
+[4.9s log] [solids] 2471 primitives, 1341 solid footprints, 375 obstacles added (330 ms)
+[5.1s log] [warm-up] 562 mesh/material pairs (of 794 geometry nodes), 12 canvas materials
+[32.4s warning] [.WebGL-0x282c0286d000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[35.9s warning] [.WebGL-0x282c0286d000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[40.2s warning] [.WebGL-0x282c0286d000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[44.0s warning] [.WebGL-0x282c0286d000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)

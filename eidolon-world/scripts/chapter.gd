@@ -1105,12 +1105,17 @@ func _open_hall_door(instant: bool) -> void:
 const SH_STATUE := Vector3(7.5, 1.0, -13.2)
 ## (v0.9.2: brazier 1 stands north of her now and the lit one south-west: from the fixed view the west parapet
 ## hid the eyes of a shadow thrown west, and the old lit brazier stood before another pair)
-const SH_BRAZ := [Vector3(7.5, 1.0, -15.9), Vector3(7.9, 1.0, -11.6), Vector3(8.8, 1.0, -16.1), Vector3(5.8, 1.0, -14.5),
-	Vector3(9.3, 1.0, -11.0)]
-## her shadows fall south, west and north-west: all on the floor in front of her (nothing hides behind her
+## (v1.1d, the owner: the bold eyes, 40 x 20 cm, 60 cm apart: a tripod stood ON a pair.) The braziers re-placed
+## by a search over the floor (dev/HANDOFF 2026-10-31 W), the shadow rules unchanged: every pair 30 cm or more
+## clear of every brazier and of her plinth, in full sight from the fixed view (no brazier bowl, statue or
+## parapet between a pair and the camera), each pair clear of every other shadow's head (its 1.04 m disc).
+## The burning decoy's shadow falls in plain sight onto no eyes.
+const SH_BRAZ := [Vector3(9.21, 1.0, -10.64), Vector3(8.13, 1.0, -15.71), Vector3(9.45, 1.0, -13.4), Vector3(6.1, 1.0, -12.64),
+	Vector3(5.86, 1.0, -14.87)]
+## her shadows fall on the floor where the camera sees them (nothing hides behind her
 ## from the fixed view; no brazier stands where she would hide it)
 const SH_SOLUTION := [0, 1, 4]
-const SH_PRELIT := 3                    # burning when you arrive (its shadow falls north-east, onto no eyes)
+const SH_PRELIT := 3                    # burning when you arrive (its shadow falls east, onto no eyes)
 const SH_LORE := "On Milos, in the evening,\nhe moved the lamps until her shadow lay\nwhere he wanted her to stand."
 var sh_flames: Array[Flame] = []
 var sh_shadows: Array[ShaderMaterial] = []
@@ -1122,14 +1127,14 @@ var statue_eyes: Material
 ## q (+-0.048, 0.86)), on the floor, exactly where the shader draws them
 ## (v0.9.3) a pair of eyes: 22 cm apart, side by side as you see them (along the view's right), centred in the
 ## head of the shadow that wears them
-const EYE_HALF := 0.11
+const EYE_HALF := 0.30                  # (v1.1d A: the bold pair, 60 cm between centres)
 static func eye_right() -> Vector3:
 	var r := Framing.basis().x
 	r.y = 0.0
 	return r.normalized()
 
 func eye_head(i: int) -> Vector3:
-	return _shadow_xf(i, 1.0) * Vector3(0.0, 0.0, 0.5 - 0.86)
+	return _shadow_xf(i, 1.0) * Vector3(0.0, 0.0, 0.5 - 0.71)          # (v1.1d A: the bigger head's centre, q.y 0.71)
 
 ## (v1.1) the pair lies across the shadow's head as its own eyes do: along the shadow's width (square to the
 ## way the brazier throws it), not along the screen
@@ -1214,7 +1219,7 @@ func _build_gallery() -> void:
 		sh_flames.append(fl)
 		level.ob_circle(Vector2(SH_BRAZ[i].x, SH_BRAZ[i].z), 0.32)
 		var sm := _smat("res://shaders/statue_shadow.gdshader", {"k": 0.0, "dark": 0.72, "mode": 0.0, "seed": float(i),
-			"eyes": 1.0 if i in SH_SOLUTION else 0.0, "len": float(shadow_of(i)[2]), "wid": 1.45})
+			"eyes": 1.0 if i in SH_SOLUTION else 0.0, "len": float(shadow_of(i)[2]), "wid": 1.45, "head_k": 2.0})
 		sm.render_priority = 1                  # (v0.9: a cast shadow lies OVER her outline: it fills it, its rim around)
 		_mi(_plane(Vector2(1.0, 1.0)), sm, _shadow_xf(i, 1.026 + 0.001 * i)).layers = PlanarMirror.LAYER_MAIN_FX
 		sh_shadows.append(sm)

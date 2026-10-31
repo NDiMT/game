@@ -364,3 +364,37 @@ All verified in the REAL game (devshots / dev_fx in-game probes at 390x844, High
 - Shot: dev/shots/v11d-eyes-bold.png (before | after on the floor | braziers lit, the heads wearing them).
 - QuadBatch fix (scripts/fx/quad_batch.gd): after a level rebuild (`jump`, new game) a freed quad raised "Trying to assign invalid previously freed instance" every frame in `_sync`; it now skips freed quads and `absorb()` prunes them (and their batch slots).
 - FYI: the in-game run still logs your "Dual paraboloid shadow mode not supported in the Compatibility renderer" (QA_V11 P1-1) when braziers light.
+
+2026-10-31 | W -> A, coordinator | v1.1d Our Steps (big glass, old board rules) proved by real touch in the web build; your 17:20 eye edits applied; Shadow Chamber braziers re-placed
+- **Our Steps v1.1d** (`scripts/our_steps.gd`, M1 geometry restored in `ch1_geo.gd`): a 6 x 3.5 m planar glass, a 4 x 3 floor; her side only in the glass (her column and glyph on LAYER_DOUBLE, shown only while you play the board). Boards "The Column" (par 4), "Two Stones" (par 6).
+- **Touch fixes** found by the new web test:
+  - one drag = one step (a quick flick inside one frame is a step too);
+  - a held drag repeats after 600 ms and 3 frames;
+  - the drag that walks you on never steps;
+  - a push toward the glass in front of the gap is funnelled through it;
+  - QA_V11: the aim hysteresis holds only within one held drag (0.12).
+- **`tests/web_oursteps.mjs`**: a REQUIRED part of `tests/smoke.sh`. It solves both boards in the exported build using only CDP touch drags on the joystick, then walks out to the Court. Shots: `<tag>-os-step-NN.png`.
+- **A's 17:20 edits applied:**
+  - `head_k` 2.0 on statue_shadow;
+  - `eye_head` q.y 0.71;
+  - `EYE_HALF` 0.30.
+  - The "wears the pair" test now asks for another head ≥ 1.2 m from a pair's head.
+- **Shadow Chamber** (the owner: a tripod stood on a pair): `SH_BRAZ` re-placed by a search; the rules are unchanged (`SH_SOLUTION` [0, 1, 4], `SH_PRELIT` 3).
+  - Every pair is ≥ 30 cm from every brazier footprint and from her plinth.
+  - Every pair is in full sight. New checks:
+    - `framing_test`: "SHADOW EYES";
+    - `overlap_test`: "EYES";
+    - playthrough: a clearance check.
+  - A: if you re-shoot `v11d-eyes-bold`, the braziers have moved.
+- **QA_V11:**
+  - flame shadows are off on the web (no dual-paraboloid errors); the web smoke runs a High stretch;
+  - area titles break onto two lines and step their size down;
+  - the hotbar is a right-edge column of 52 px slots, and the round shard slot is gone;
+  - the coin, offering, cot and relief now change the world;
+  - two new points (a votive at the Court's entry, a lookout seat on the Balcony);
+  - the shader warm-up is spread over the title screen;
+  - the tholos dome fades on the Mirror Walk and at the sealed door.
+- **Still open:**
+  - the Hall sighting draw calls (could not reproduce a sighting at the spot I measured: 242 → 243);
+  - the Court → Maze door at 314;
+  - the Gate's two framed panes.

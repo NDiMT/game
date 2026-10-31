@@ -79,6 +79,21 @@ func _ready() -> void:
 	total += 12
 	if not hidm.is_empty(): fails += 1
 	print("GARDEN GLASS %s" % ("all three north faces whole in it" if hidm.is_empty() else "HIDDEN: " + "; ".join(hidm)))
+	# (v1.1d, the owner) the Shadow Chamber's floor eyes: every pair whole in sight (both eyes, end to end:
+	# nothing, no brazier, no statue, no prop, between them and the camera)
+	var ch: Chapter = game.chapter
+	var hide_e: Array = []
+	for j in Chapter.SH_SOLUTION:
+		var so: Array = Chapter.shadow_of(j)
+		var dn: Vector2 = so[1]
+		for s in [-1.0, -0.6, -0.2, 0.2, 0.6, 1.0]:
+			for t in [-0.08, 0.08]:
+				total += 1
+				var e: Vector3 = ch.eye_head(j) + ch.eye_axis(j) * s * 0.5 + Vector3(dn.x, 0, dn.y) * t + Vector3(0, 0.03, 0)
+				var r := space.intersect_ray(PhysicsRayQueryParameters3D.create(e + back * 0.02, e + back * REACH))
+				if not r.is_empty(): hide_e.append("pair %d at %s <- %s" % [j, e, names.get(r["shape"], "?")])
+	if not hide_e.is_empty(): fails += 1
+	print("SHADOW EYES %s" % ("every pair in full sight" if hide_e.is_empty() else "HIDDEN: " + "; ".join(hide_e.slice(0, 6))))
 	print("OCCLUSION %s (%d of %d rooms with a hidden piece; %d pieces, %d meshes)" % ["PASS" if fails == 0 else "FAIL", fails, Framing.ROOMS.size(), total, nshapes[0]])
 	get_tree().quit()
 

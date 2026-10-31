@@ -1,0 +1,50 @@
+[0.2s] rules from our_steps.gd: {"C":4,"R":3,"TILE":1.15,"GAP":0.3,"GC":[23.1,1,-11.6],"ENTRY_COLS":[1,2],"boards":["The Column","Two Stones"]}
+PASS  rules: board 1 'The Column' solvable in par 4 (JS BFS)  [[0,1],[0,1],[-1,0],[0,-1]]
+PASS  rules: board 2 'Two Stones' solvable in par 6 (JS BFS)  [[-1,0],[0,1],[-1,0],[0,1],[1,0],[1,0]]
+PASS  load: title screen reached  32.4s
+PASS  jump: in Our Steps (hollow_walk), unsolved  {"active":false,"between":0,"bi":0,"blocked":0,"boards_done":0,"done":false,"gate_open":false,"h":[1,0],"hold":false,"leaving":false,"moves":0,"moving":false,"p":[1,0]}
+PASS  touch: walked to the floor's gap  pos 20.13,1,-8.22
+PASS  before stepping on: the glass is a plain mirror (her figure not in it)  {"active":false,"between":0,"bi":0,"blocked":0,"boards_done":0,"done":false,"gate_open":false,"h":[1,0],"hold":false,"leaving":false,"moves":0,"moving":false,"p":[1,0]}
+[110.1s] shot smoke-os-step-00.png before: the glass, only a mirror
+PASS  touch: onto the floor by the stick  
+PASS  on the floor: you on your start, she in the glass on hers  {"active":true,"between":0,"bi":0,"blocked":0,"boards_done":0,"done":false,"gate_open":false,"h":[1,0],"hold":true,"leaving":false,"moves":0,"moving":false,"p":[1,0]}
+[130.7s] shot smoke-os-step-01.png on: she appears in the glass
+PASS  board 1 move 1/4: drag [0,1] (+9 deg): you 1,1 / her 1,1  game: p 1,1 h 1,1 moves 1 blocked 0
+[149.8s] shot smoke-os-step-02.png board 1 move 1
+PASS  board 1 move 2/4: drag [0,1] (-13 deg): you 1,2 / her 1,2  game: p 1,2 h 1,2 moves 2 blocked 0
+[168.7s] shot smoke-os-step-03.png board 1 move 2
+PASS  board 1 move 3/4: drag [-1,0] (+4 deg): you 0,2 / her 0,2  game: p 0,2 h 0,2 moves 3 blocked 0
+[188.0s] shot smoke-os-step-04.png board 1 move 3
+PASS  board 1 move 4/4: drag [0,-1] (-7 deg): you 0,1 / her 0,2  game: p 2,0 h 2,0 moves 0 blocked 0
+[218.3s] shot smoke-os-step-05.png board 1 move 4: answered, the next board rises
+PASS  board 1 answered: board 2 'Two Stones' up, both at its start  {"active":true,"between":-0.08,"bi":1,"blocked":0,"boards_done":1,"done":false,"gate_open":false,"h":[2,0],"hold":true,"leaving":false,"moves":0,"moving":false,"p":[2,0]}
+PASS  board 2 move 1/6: drag [-1,0] (+12 deg): you 1,0 / her 1,0  game: p 1,0 h 1,0 moves 1 blocked 0
+[235.9s] shot smoke-os-step-06.png board 2 move 1
+PASS  board 2 move 2/6: drag [0,1] (-3 deg): you 1,0 / her 1,1  game: p 1,0 h 1,1 moves 2 blocked 0
+[248.5s] shot smoke-os-step-07.png board 2 move 2
+PASS  board 2 move 3/6: drag [-1,0] (+9 deg): you 0,0 / her 0,1  game: p 0,0 h 0,1 moves 3 blocked 0
+[266.6s] shot smoke-os-step-08.png board 2 move 3
+PASS  board 2 move 4/6: drag [0,1] (-13 deg): you 0,1 / her 0,2  game: p 0,1 h 0,2 moves 4 blocked 0
+[282.4s] shot smoke-os-step-09.png board 2 move 4
+PASS  board 2 move 5/6: drag [1,0] (+4 deg): you 0,1 / her 1,2  game: p 0,1 h 1,2 moves 5 blocked 0
+[295.3s] shot smoke-os-step-10.png board 2 move 5
+PASS  board 2 move 6/6: drag [1,0] (-7 deg): you 0,1 / her 2,2  game: p 0,1 h 2,2 moves 6 blocked 0
+[310.8s] shot smoke-os-step-11.png board 2 move 6: SOLVED
+PASS  SOLVED: both boards answered by touch (hollow_done)  {"active":false,"between":-0.08,"bi":1,"blocked":0,"boards_done":2,"done":true,"gate_open":true,"h":[2,2],"hold":false,"leaving":false,"moves":6,"moving":false,"p":[0,1]}
+PASS  solved: the glass clears (a plain mirror again)  
+PASS  walk out (touch): off the floor  pos 20.44,1,-9.48
+[341.8s] shot smoke-os-step-12.png walk out: off the floor
+PASS  walk out (touch): the gap  pos 19.5,1,-7.72
+[369.3s] shot smoke-os-step-13.png walk out: the gap
+PASS  walk out (touch): the walk  pos 17.86,1,-10.28
+[402.1s] shot smoke-os-step-14.png walk out: the walk
+PASS  walk out (touch): by the gate  pos 17.01,1,-11.89
+[446.5s] shot smoke-os-step-15.png walk out: by the gate
+PASS  the exit opens (the gate rises)  
+[454.9s] shot smoke-os-step-16.png the gate open
+[505.8s] shot smoke-os-step-17.png walk out: up the ramp
+[553.0s] shot smoke-os-step-18.png walk out: the Court
+PASS  reached the next area (Court of Light) on foot, by touch  area court_light
+PASS  console: 0 errors  
+WEB OURSTEPS OK  checks=28  failed=0  shots=19  wall=555.8s
+OS_JSON {"url":"http://127.0.0.1:36435/eidolon-world/build/web/index.html","boards":[{"title":"The Column","par":4,"moves":[{"d":[0,1],"err":9,"p":[1,1],"h":[1,1]},{"d":[0,1],"err":-13,"p":[1,2],"h":[1,2]},{"d":[-1,0],"err":4,"p":[0,2],"h":[0,2]},{"d":[0,-1],"err":-7,"p":[0,1],"h":[0,2]}]},{"title":"Two Stones","par":6,"moves":[{"d":[-1,0],"err":12,"p":[1,0],"h":[1,0]},{"d":[0,1],"err":-3,"p":[1,0],"h":[1,1]},{"d":[-1,0],"err":9,"p":[0,0],"h":[0,1]},{"d":[0,1],"err":-13,"p":[0,1],"h":[0,2]},{"d":[1,0],"err":4,"p":[0,1],"h":[1,2]},{"d":[1,0],"err":-7,"p":[0,1],"h":[2,2]}]}],"shots":[{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-00.png","label":"before: the glass, only a mirror"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-01.png","label":"on: she appears in the glass"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-02.png","label":"board 1 move 1"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-03.png","label":"board 1 move 2"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-04.png","label":"board 1 move 3"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-05.png","label":"board 1 move 4: answered, the next board rises"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-06.png","label":"board 2 move 1"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-07.png","label":"board 2 move 2"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-08.png","label":"board 2 move 3"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-09.png","label":"board 2 move 4"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-10.png","label":"board 2 move 5"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-11.png","label":"board 2 move 6: SOLVED"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-12.png","label":"walk out: off the floor"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-13.png","label":"walk out: the gap"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-14.png","label":"walk out: the walk"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-15.png","label":"walk out: by the gate"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-16.png","label":"the gate open"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-17.png","label":"walk out: up the ramp"},{"file":"/home/user/game/eidolon-world/dev/shots/smoke-os-step-18.png","label":"walk out: the Court"}],"checks":28,"failed":0,"wall_s":555.8}

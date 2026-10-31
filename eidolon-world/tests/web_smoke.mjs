@@ -195,6 +195,9 @@ try {
   if (HIGH_ROOMS.length) {
     await cmd('quality:high');
     // (after the solve: the chamber's braziers are lit, so the shadowed key flame renders)
+    // (the first High frames take many seconds under SwiftShader: wait for the state to report the tier, then
+    // let a few frames render on it)
+    await waitFor((s) => s.tier === 'HIGH', 90000);
     for (const room of HIGH_ROOMS) { if (room !== 'shard_gallery') await cmd('jump:' + room); await wait(HIGH_WAIT); }
     const sh = await st();
     check('quality: a High-tier stretch ran (flames, shadows) for the console checks', sh.tier === 'HIGH', `tier=${sh.tier} rooms=${HIGH_ROOMS.join(',')} fps=${sh.fps}`);

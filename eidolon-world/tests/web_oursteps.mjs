@@ -136,8 +136,12 @@ async function shot(label) {
 // coast past the point is walked back)
 async function walkTo(x, z, tol = 0.35, ms = 90000) {
   const t = Date.now();
+  let last = null, movedT = Date.now(), side = 1;
   while (Date.now() - t < ms) {
     const s = await st(); const dx = x - s.pos[0], dz = z - s.pos[2], d = Math.hypot(dx, dz);
+    // (caught on a corner: a few frames with no headway, so the thumb slides off sideways for a moment)
+    if (!last || Math.hypot(s.pos[0] - last[0], s.pos[2] - last[2]) > 0.05 || d < tol) { movedT = Date.now(); last = s.pos; }
+    if (thumb && Date.now() - movedT > 6000) { await thumbTo(rot(screenDir(dx, dz), 75 * side), 1.0); await wait(2500); side = -side; movedT = Date.now(); last = null; continue; }
     if (d < tol) {
       await thumbUp();
       const q = await waitFor((q) => q.speed < 0.05, 8000);
@@ -171,6 +175,9 @@ try {
   check('jump: in Our Steps (hollow_walk), unsolved', s && s.steps && s.steps.done === false && s.steps.active === false, JSON.stringify(s?.steps));
   // ---------------------------------------------------------------- to the gap, by touch
   const nearE = at(0, EDGE_V - 0.9);
+  // (round the floor's near-left corner, not past it: a slow frame can carry her onto its balustrade's end)
+  const wayIn = at(-1.5, EDGE_V - 1.6);
+  await walkTo(wayIn[0], wayIn[1], 0.7);
   const ok0 = await walkTo(nearE[0], nearE[1], 0.6);     // (near enough: a push toward the glass is funnelled through the gap)
   s = await st();
   check('touch: walked to the floor\'s gap', ok0, `pos ${s.pos}`);

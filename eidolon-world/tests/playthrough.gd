@@ -735,7 +735,7 @@ func _plan() -> void:
 	step_do(func() -> void: ok("(v1.0 M3c) you turn: he is gone", not C().warden.ghost_fig.visible))
 	walk_path("walk to the tablet", [[2.0, -18.0], [3.85, -18.2], [3.85, -19.15]])
 	step_do(func() -> void: ok("tablet readable", game.try_interact() and game.puzzles.state["tablet"], _focus()))
-	walk_path("through the remembered door", [[3.6, -17.5], [5.6, -17.5], [5.7, -15.2]])
+	walk_path("through the remembered door", [[3.6, -17.5], [5.6, -17.5], [6.3, -16.1]])
 	step_do(func() -> void: ok("reached the Shard Gallery", game.area == "shard_gallery" and P().x > 5.0, str(P()) + " " + game.area))
 
 	# ================================================================ 4. "Where Her Shadow Fell" (v0.8.1)
@@ -753,13 +753,28 @@ func _plan() -> void:
 		for i in Chapter.SH_BRAZ.size():
 			for j in Chapter.SH_SOLUTION:
 				# a pair is worn only by its own brazier's shadow: no other shadow's head lies on it
-				var dd: float = C().eye_pos(i, 1.0).distance_to(C().eye_pos(j, 1.0))
-				if i != j and dd < 0.25: good = false
+				# (v1.1d: the bold pair is ~1 m across and the head 1.04 m wide: a head within ~0.3 m covers both
+				# eyes, so another shadow's head must stay 1.2 m or more from a pair's centre)
+				var dd: float = C().eye_head(i).distance_to(C().eye_head(j))
+				if i != j and dd < 1.2: good = false
 		ok("(v0.9.2) each eye-pair sits exactly at one shadow's head, and at no other's", good)
+		# (v1.1d, the owner) no brazier, statue or prop stands on a pair: 30 cm clear of every footprint
+		var clear := true
+		var worst := 99.0
+		for j in Chapter.SH_SOLUTION:
+			for s in [-1.0, -0.5, 0.0, 0.5, 1.0]:
+				for t in [-0.1, 0.0, 0.1]:
+					var so: Array = Chapter.shadow_of(j)
+					var dn: Vector2 = so[1]
+					var e: Vector3 = C().eye_head(j) + C().eye_axis(j) * s * 0.5 + Vector3(dn.x, 0, dn.y) * t
+					for b: Vector3 in Chapter.SH_BRAZ: worst = minf(worst, Vector2(e.x - b.x, e.z - b.z).length() - 0.36)
+					worst = minf(worst, Vector2(e.x - Chapter.SH_STATUE.x, e.z - Chapter.SH_STATUE.z).length() - 0.55)
+		clear = worst >= 0.3
+		ok("(v1.1d) every eye pair (40 x 20 cm eyes, 60 cm apart) is 30 cm or more clear of every brazier and her plinth", clear, "closest %.2f m" % worst)
 		ok("(v0.9) a solution of 2-3 among 4-5 braziers", Chapter.SH_SOLUTION.size() >= 2 and Chapter.SH_SOLUTION.size() <= 3 and Chapter.SH_BRAZ.size() >= 4 and Chapter.SH_BRAZ.size() <= 5)
 		ok("solver: exactly one set of braziers casts her shadow into the outlines", _shadow_solutions().size() == 1 and _shadow_solutions()[0] == Chapter.SH_SOLUTION, str(_shadow_solutions()))
 		ok("solver: each brazier throws her shadow straight away from it, longer when nearer", _shadow_geometry_ok()))
-	walk_path("into the chamber", [[6.5, -15.2], [6.6, -10.6], [8.4, -10.6]])
+	walk_path("into the chamber", [[7.0, -14.6], [8.6, -13.6], [8.4, -11.6], [8.1, -10.6]])     # (v1.1d: round the re-placed braziers)
 	step_do(func() -> void:
 		ok("walking about the chamber", game.area == "shard_gallery", str(P()) + " " + game.area)
 		walk_to(8.1, -8.4))
@@ -777,7 +792,9 @@ func _plan() -> void:
 	for i in nbz:
 		var b: Vector3 = Chapter.SH_BRAZ[i]
 		var away := Vector2(b.x - Chapter.SH_STATUE.x, b.z - Chapter.SH_STATUE.z).normalized()
-		bspots.append([b.x - away.x * 0.75, b.z - away.y * 0.75])
+		var sp0 := Vector2(b.x - away.x * 0.75, b.z - away.y * 0.75)
+		if sp0.distance_to(Vector2(Chapter.SH_STATUE.x, Chapter.SH_STATUE.z)) < 1.0: sp0 = Vector2(b.x, b.z) + Vector2(-away.y, away.x) * 0.75     # (not into her plinth)
+		bspots.append([sp0.x, sp0.y])
 	for i in nbz:
 		if i == Chapter.SH_PRELIT: continue          # (already burning)
 		var sp: Array = bspots[i]

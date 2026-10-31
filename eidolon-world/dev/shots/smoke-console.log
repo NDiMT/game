@@ -1,11 +1,11 @@
-[0.8s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
-[1.1s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
-[1.5s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
-[4.3s log] [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
-[4.9s log] [props] 35 placed
-[5.1s log] [solids] 2445 primitives, 1310 solid footprints, 360 obstacles added (286 ms)
-[5.3s log] [warm-up] 544 mesh/material pairs (of 1290 geometry nodes), 12 canvas materials
-[42.1s warning] [.WebGL-0xb8c07cff800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[47.0s warning] [.WebGL-0xb8c07cff800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[51.6s warning] [.WebGL-0xb8c07cff800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[57.4s warning] [.WebGL-0xb8c07cff800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+[0.7s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+[1.0s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+[1.3s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
+[4.1s log] [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[4.6s log] [props] 35 placed
+[4.9s log] [solids] 2471 primitives, 1341 solid footprints, 375 obstacles added (260 ms)
+[5.0s log] [warm-up] 562 mesh/material pairs (of 794 geometry nodes), 12 canvas materials
+[36.6s warning] [.WebGL-0x64402060400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[41.1s warning] [.WebGL-0x64402060400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[46.4s warning] [.WebGL-0x64402060400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[50.7s warning] [.WebGL-0x64402060400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
