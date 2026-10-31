@@ -58,6 +58,7 @@ var cine_line: Label
 var skip_ring: SkipRing
 var _cine_tw: Tween
 var glass_talk: GlassTalk
+var satchel: Satchel
 
 func _ready() -> void:
 	layer = 5
@@ -960,6 +961,10 @@ func _build_v05() -> void:
 	glass_talk = GlassTalk.new()
 	glass_talk.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(glass_talk)
+
+## v1.0 M3b: something new in the satchel
+func show_item(k: String, extra := "") -> void:
+	if satchel: satchel.show_item(k, extra)
 
 func set_inventory(has: bool, on: bool) -> void:
 	if controls:

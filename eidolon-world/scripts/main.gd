@@ -17,7 +17,8 @@ var props: Props
 var highlight: Highlight
 var puzzles: Puzzles
 var chapter: Chapter
-var wonders: Wonders              # v0.9 the wonder spaces between the puzzles
+var wonders: Wonders
+var satchel: Satchel              # v0.9 the wonder spaces between the puzzles
 var juice: Juice                  # v1.0 M1: the physical little moments (dust, grit, sparks, wet stone)
 var _fade_on := false
 var _fade_off_t := 0.0
@@ -101,6 +102,11 @@ func _ready() -> void:
 	gt.solved.connect(func(_id: String) -> void: get_tree().create_timer(3.4).timeout.connect(_glass_closed))
 	gt.sound.connect(_glass_sound)
 	controls.shard.connect(func() -> void: if mode == "play": chapter.toggle_lens())
+	satchel = Satchel.new()                 # (v1.0 M3b: the satchel)
+	ui.root.add_child(satchel)
+	satchel.build(self, ui.serif, ui.italic, ui.root)
+	ui.satchel = satchel
+	controls.satchel.connect(func() -> void: if mode == "play" and not satchel.is_open: satchel.open())
 	level.read.connect(_on_read)
 	puzzles.event.connect(_on_event)
 	player.footstep.connect(_on_footstep)
@@ -207,6 +213,11 @@ func _continue_from_save() -> void:
 	chapter.reset_state()
 	for k in cs:
 		if chapter.state.has(k): chapter.state[k] = cs[k]
+	for k in Items.fresh_inv():                 # (a v2 or early-v3 save: the keys it lacks)
+		if not (chapter.state["inv"] as Dictionary).has(k): chapter.state["inv"][k] = Items.fresh_inv()[k]
+	for k in Items.fresh_hub():
+		if not (chapter.state["hub"] as Dictionary).has(k): chapter.state["hub"][k] = Items.fresh_hub()[k]
+	if int(save_data.get("v", 2)) < 3: chapter.items.migrate_v2()        # (v1.0 M3b: v2 saves load into the hub)
 	chapter.apply_state()
 	var p: Array = save_data.get("pos", [Level.WAKE_POS.x, 0.0, Level.WAKE_POS.z])
 	player.teleport(Vector3(p[0], p[1], p[2]), float(save_data.get("yaw", 0.0)))
@@ -748,6 +759,27 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 		"item":
 			sfx.play("chime", -14.0, 0.9)
 			_save()
+		# v1.0 M3b: the items at work
+		"relic_seen": sfx.play("glass_tink", -16.0, 0.7)
+		"relic_break":
+			sfx.play("thud", -10.0, 0.9)
+			sfx.play("grind", -14.0, 1.3)
+			_save()
+		"amph_fill": sfx.play("step_wet", -12.0, 0.7); _save()
+		"pour":
+			sfx.play("step_wet", -9.0, 0.6)
+			get_tree().create_timer(0.9).timeout.connect(func() -> void: sfx.play("chime", -16.0, 0.75))
+			_save()
+		"pin_ring":
+			sfx.play("chime_hall", -10.0, 1.5)
+			get_tree().create_timer(0.5).timeout.connect(func() -> void: sfx.play("grind", -12.0, 0.7))
+			_save()
+		"secret":
+			sfx.play("chime", -15.0, 1.2)
+			_save()
+		"mem_shard":
+			sfx.play("bell", -16.0, 1.3)
+			_save()
 		"seal_rises":
 			sfx.play("grind", -12.0, 0.6)
 			sfx.play("bell", -18.0, 0.8)
@@ -1060,7 +1092,7 @@ func _save() -> void:
 	if mode == "title": return
 	var p := player.position
 	_last_saved_pos = p
-	save_data = {"v": 2, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
+	save_data = {"v": 3, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
 		"puzzles": puzzles.state.duplicate(true), "chapter": chapter.state.duplicate(true), "area": area, "glimpses": glimpses, "runes_awake": player.fig.runes_awake, "visited": visited.keys()}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify(save_data))

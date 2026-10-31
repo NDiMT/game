@@ -9,6 +9,7 @@ extends CanvasLayer
 
 signal interact
 signal shard                       # v0.5: the inventory slot tapped (raise / lower the mirror shard)
+signal satchel                     # v1.0 M3b: the satchel slot tapped
 
 const JOY_R := 54.0
 const BTN_R := 36.0
@@ -29,6 +30,9 @@ var inv_has := false               # v0.5: the mirror shard is carried
 var inv_on := false                # ...and raised
 var inv_pulse := false             # v0.9: the shard is the key here: its slot pulses until you first raise it
 var inv_alpha := 0.0
+var bag_has := false               # v1.0 M3b: anything in the satchel
+var bag_alpha := 0.0
+var _bag_press := 0.0
 var _inv_press := 0.0
 
 func _ready() -> void:
@@ -49,6 +53,9 @@ func btn_center() -> Vector2:
 ## the inventory slot, top left under the shrine counter
 func inv_center() -> Vector2:
 	return Vector2(44.0, 98.0)
+
+func bag_center() -> Vector2:
+	return Vector2(44.0, 152.0)
 
 func set_icon(name: String) -> void:
 	if name != "": icon = name
@@ -87,6 +94,10 @@ func _input(e: InputEvent) -> void:
 			if inv_has and inv_alpha > 0.3 and p.distance_to(inv_center()) < 34.0:
 				_inv_press = 1.0
 				shard.emit()
+				return
+			if bag_has and bag_alpha > 0.3 and p.distance_to(bag_center()) < 30.0:
+				_bag_press = 1.0
+				satchel.emit()
 				return
 			if icon_alpha > 0.3 and p.distance_to(btn_center()) < BTN_R + 14.0:
 				_press = 1.0
@@ -131,6 +142,8 @@ func _process(dt: float) -> void:
 	_press = move_toward(_press, 0.0, dt * 4.0)
 	_inv_press = move_toward(_inv_press, 0.0, dt * 4.0)
 	inv_alpha = move_toward(inv_alpha, 1.0 if (enabled and inv_has) else 0.0, dt * 2.0)
+	bag_alpha = move_toward(bag_alpha, 1.0 if (enabled and bag_has) else 0.0, dt * 2.0)
+	_bag_press = move_toward(_bag_press, 0.0, dt * 4.0)
 	# (v0.8.5) redraw only when something on it moves: the breathing button, the stick, a fade, a press
 	var sig := Vector4(joy_alpha + icon_alpha * 3.0, inv_alpha + _press * 5.0 + _inv_press * 7.0, joy_knob.x + joy_base.x * 0.37, joy_knob.y + joy_base.y * 0.41)
 	var vs := vp_size()
@@ -182,6 +195,17 @@ class Pad extends Control:
 				var dv3 := Vector2(cos(PI * 0.5 * k + PI * 0.25), sin(PI * 0.5 * k + PI * 0.25))
 				draw_line(ic + dv3 * (ir - 1.0), ic + dv3 * (ir + 3.5), Color(INK, 0.35 * ia), 1.0, true)
 			_icon("shard", ic, 11.0, Color(INK, 0.95 * ia), Color(CY, ia))
+		# the satchel: a round slot under the shard's, a small bag drawn in it
+		if ctl.bag_alpha > 0.0:
+			var ba := ctl.bag_alpha
+			var bc := ctl.bag_center()
+			var br := 19.0 * (1.0 + ctl._bag_press * 0.1)
+			draw_circle(bc, br, Color(0.06, 0.07, 0.08, 0.34 * ba))
+			draw_arc(bc, br, 0, TAU, 40, Color(INK, 0.5 * ba), 1.3, true)
+			var bag := PackedVector2Array([bc + Vector2(-8, -3), bc + Vector2(8, -3), bc + Vector2(9, 8), bc + Vector2(-9, 8), bc + Vector2(-8, -3)])
+			draw_polyline(bag, Color(INK, 0.9 * ba), 1.4, true)
+			draw_arc(bc + Vector2(0, -4), 5.0, PI, TAU, 12, Color(INK, 0.9 * ba), 1.4, true)
+			draw_line(bc + Vector2(-8, 1), bc + Vector2(8, 1), Color(INK, 0.6 * ba), 1.0, true)
 		# floating joystick
 		if ctl.joy_alpha > 0.0:
 			var a := ctl.joy_alpha
