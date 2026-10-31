@@ -81,7 +81,8 @@ static func fresh_inv() -> Dictionary:
 	return {"items": [], "seals": [], "socketed": [], "tablets": [], "mem": [], "amph_full": false}
 
 static func fresh_hub() -> Dictionary:
-	return {"ec_open": false, "w_seen": false, "w_broken": false, "n_poured": false, "e_open": false, "secrets": []}
+	return {"ec_open": false, "w_seen": false, "w_broken": false, "n_poured": false, "e_open": false, "secrets": [],
+		"wk_crossed": false, "warden_seen": 0, "map": []}        # (v1.0 M3c: the Warden's Walk, the map's seen regions)
 
 func setup(g: Game, ch: Chapter, h: Hub) -> void:
 	game = g

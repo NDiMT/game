@@ -102,13 +102,18 @@ static func _atrium(lv: Level) -> void:
 	lv.ob_rect(R(12.95, 14.35, 13.85, 15.85))
 
 ## a half-carved face: a plinth, a rough block, the face emerging on one side
+## (v1.0 M3c: TURNED's head is its own node, chapter Life: now and then it has turned when you come back)
+const TURNED := Vector2(2.6, 11.4)
 static func _bust(lv: Level, z: String, base: Vector3, yaw: float) -> void:
 	var B := Basis(Vector3.UP, yaw)
 	var m := lv.mb(z)
 	m.group = "bust:%d" % int(base.x * 100 + base.z)
 	m.box(base + Vector3(0, 0.45, 0), Vector3(0.6, 0.9, 0.6), lv.C(0.25), B)
-	m.box(base + Vector3(0, 1.1, 0) + B * Vector3(0, 0, -0.04), Vector3(0.46, 0.42, 0.4), lv.C(0.25), B)
-	m.sphere(base + Vector3(0, 1.15, 0) + B * Vector3(0, 0, 0.12), Vector3(0.16, 0.2, 0.12), lv.C(0.25), 10, 6, B)
+	if Vector2(base.x, base.z).distance_to(TURNED) < 0.01:
+		lv.C(0.25); lv.C(0.25)                     # (the same draws from the level's rng: nothing else moves)
+	else:
+		m.box(base + Vector3(0, 1.1, 0) + B * Vector3(0, 0, -0.04), Vector3(0.46, 0.42, 0.4), lv.C(0.25), B)
+		m.sphere(base + Vector3(0, 1.15, 0) + B * Vector3(0, 0, 0.12), Vector3(0.16, 0.2, 0.12), lv.C(0.25), 10, 6, B)
 	m.group = ""
 	lv.ob_circle(Vector2(base.x, base.z), 0.45)
 

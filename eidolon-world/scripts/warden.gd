@@ -217,7 +217,7 @@ func _catch() -> void:
 	tw.tween_interval(0.75)
 	tw.tween_callback(func() -> void:
 		game.auto_target = Vector3.INF
-		game.player.teleport(Vector3(31.4, WALK_Y, START_Z), PI)
+		game.player.teleport(Vector3(31.4, WALK_Y, START_Z), 0.0)          # (facing north, up the Walk again)
 		game.world.snap_to(game.player.position)
 		game.ui.fade_to(0.0, 0.8)
 		game.ui.show_text("He saw you in the glass.", game.player.position, 2.5))
@@ -249,10 +249,10 @@ func _update_sightings(dt: float) -> void:
 		_sight_wait += dt
 		if _sight_wait < 1.6: return
 		_sight_wait = 0.0
-		var at: Vector3 = pl2.position + r.plane_n * 2.0
-		if not game.level.region_at(Vector2(at.x, at.z)): at = pl2.position + r.plane_n * 1.2
+		# right behind your back, between you and the glass: the camera never draws him, the glass does
+		var at: Vector3 = pl2.position - r.plane_n * minf(1.0, d * 0.45)
 		ghost_fig.position = at
-		ghost_fig.rotation.y = atan2(-r.plane_n.x, -r.plane_n.z)
+		ghost_fig.rotation.y = atan2(r.plane_n.x, r.plane_n.z)          # (looking at you)
 		ghost_fig.visible = true
 		_play(ghost_anim, "idle")
 		sight_on = true

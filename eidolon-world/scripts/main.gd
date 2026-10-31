@@ -491,6 +491,7 @@ var _area_defer := ""
 
 func _update_area() -> void:
 	var g := level.region_at(Vector2(player.position.x, player.position.z))
+	if g and satchel and mode == "play": satchel.see_region(g.name)        # (v1.0 M3c: the map fills in)
 	if g and Names.TRAVERSE.has(g.name) and not visited.has("t:" + g.name) and mode == "play":
 		visited["t:" + g.name] = true                # (v1.0 M3: a traversal section, named once)
 		ui.show_area(Names.TRAVERSE[g.name])
@@ -767,6 +768,13 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 			sfx.play("grind", -14.0, 1.3)
 			_save()
 		"amph_fill": sfx.play("step_wet", -12.0, 0.7); _save()
+		"warden_seen":
+			sfx.play("chime_hall", -8.0, 0.45)
+			get_tree().create_timer(0.4).timeout.connect(func() -> void: sfx.play("whoosh", -16.0, 0.6))
+		"warden_glimpse":
+			sfx.play("glass", -14.0, 0.42)
+			sfx.play("glass_tink", -18.0, 0.5)
+		"her_rune": sfx.play("chime", -22.0, 1.35)
 		"pour":
 			sfx.play("step_wet", -9.0, 0.6)
 			get_tree().create_timer(0.9).timeout.connect(func() -> void: sfx.play("chime", -16.0, 0.75))
@@ -870,7 +878,7 @@ func jump(room: String) -> void:
 				cs["hollow_done"] = true
 			"court_light":
 				(cs["inv"]["items"] as Array).append("pin")             # (v1.0 M3b: from the Balcony's stele)
-				cs["hub"]["e_open"] = true
+				cs["hub"]["e_open"] = true; cs["hub"]["wk_crossed"] = true
 				ps["mirrors"] = Puzzles.MIRROR_SOLUTION.duplicate(); ps["bridge"] = true; cs["mural"] = true
 			"mist_maze":
 				cs["maze"] = true; cs["hub"]["n_poured"] = true
@@ -1177,6 +1185,8 @@ func cmd(c: String) -> Variant:
 			if a.size() > 1 and a[1] == "0": satchel.close()
 			else: satchel.open()
 		"give": chapter.hub.give(a[1]); ui.show_item(a[1])
+		"map": satchel.open_map()
+		"ghost": chapter.warden._sight_cool = 0.0          # (dev / shots: the next chance at a sighting)
 		"hintnow":
 			var tg := chapter.hint_target(area)
 			if tg != Vector3.INF: chapter.show_hint(tg)

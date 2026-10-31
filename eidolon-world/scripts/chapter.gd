@@ -51,6 +51,8 @@ var calm := 0.0
 var lens_on := false
 const LENS_AREAS := ["shard_gallery", "atrium", "eidolon_ledge"]       # (v1.0 M3b: the lens is back where it shows something)
 var items: Items
+var warden: Warden
+var life: Life
 var lens_px := Vector4.ZERO
 var _t := 0.0
 var _moved := false
@@ -156,11 +158,17 @@ func build() -> void:
 	add_child(items)
 	items.setup(game, self, hub)
 	hub.items = items
+	warden = Warden.new()            # (v1.0 M3c: the Glass Warden, the Mirror Walk's patrol)
+	add_child(warden)
+	warden.setup(game, self)
 	_build_shrine_pool()
 	_build_wisp()
 
 ## after level.commit: the zone meshes exist now
 func post_commit() -> void:
+	life = Life.new()                # (v1.0 M3c: her presence, ambient life; after every flame and glass exists)
+	add_child(life)
+	life.setup(game, self)
 	var hd := level.get_node_or_null("Zone_Hdoor") as MeshInstance3D
 	if hd: hd.layers = PlanarMirror.LAYER_MAIN_FX            # the mirror remembers no wall there
 	var gn := level.get_node_or_null("Zone_Gn") as MeshInstance3D
@@ -2464,6 +2472,8 @@ func update(dt: float) -> void:
 	_update_four(dt)
 	hub.update(dt)
 	items.update(dt)
+	warden.update(dt)
+	if life: life.update(dt)
 	_update_hints(dt, game.area)
 
 func apply_state() -> void:
@@ -2543,6 +2553,9 @@ func apply_state() -> void:
 	set_lens(false)
 	hub.apply_state()
 	items.apply_state()
+	warden.apply_state()
+	if life: life.apply_state()
+	if game.satchel: game.satchel.load_map()
 
 # ================================================================== 13. "The Hand in the Water"
 const POOL_C := Vector3(25.0, 2.155, -32.4)

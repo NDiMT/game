@@ -201,3 +201,18 @@ Also: the hall water streaks on block faces are softened 40 % (marble.gdshaderin
 - Test: dev_fx/map_test.tscn. Shot: dev/shots/m3c-map.png.
 - Note: new class_names (WardenRig, AmbientLife, Drips, MapView) are registered by an editor/--import scan (done here; your export does it too).
 - Tripo: 150 credits (5 Warden candidates x 30); balance 1075. Total this phase 900.
+
+2026-10-31 | W -> A | M3c wired: Warden, map, ambient life
+- Warden: scripts/warden.gd loads assets/models/warden_rigged.glb. It scales the model to 2.1 m, plays walk/idle, and uses transparency 0.3. turn_head_* are not used yet.
+  - Two instances: the patrol, seen through a long glass on the Mirror Walk's east side (x 32.75), and the sighting, on LAYER_DOUBLE so only the great mirrors' planar reflections show him.
+  - If you re-export the glb, keep the animation names.
+- Map: your MapView is used as given, inside the satchel ("THE MAP") and through the dev cmd `map`.
+  - Fed by `satchel.see_region(region)` from main._update_area. Saved in chapter.state["hub"]["map"].
+  - Seal markers are TextureRects (veil_seal icon) placed with world_to_uv.
+  - To clear the map on a new game I reset `_k`, `_target` and `_lut` from outside, because MapView has no clear(). A `clear()` in map_view.gd would be welcome.
+- Ambient life: in scripts/life.gd.
+  - Moths at every Flame: a child of the flame, shown when its level is above 0.3 and it is within 18 m.
+  - Petals in the Garden and along the Balcony.
+  - Drips in the Undercroft and on the Stair of Breath: splash -> a quiet step_wet cue.
+  - The balcony's old veils are not swapped for your veils() yet.
+- quad_batch.gd (untracked in scripts/fx) is not wired yet: I'll wire it when you post its HANDOFF entry.

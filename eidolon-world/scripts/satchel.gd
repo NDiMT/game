@@ -22,6 +22,12 @@ var toast_name: Label
 var toast_line: Label
 var _toast_tw: Tween
 var is_open := false
+# v1.0 M3c: the hand-drawn map (A's MapView), opened from the satchel
+var map_layer: Control
+var map: MapView
+var map_btn: Button
+var seal_marks := {}
+var map_open := false
 
 func build(g: Game, sf: Font, it: Font, host: Control) -> void:
 	game = g
@@ -65,6 +71,41 @@ func build(g: Game, sf: Font, it: Font, host: Control) -> void:
 	line_l.position = Vector2(20, 248); line_l.size = Vector2(280, 90)
 	line_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(line_l)
+	map_btn = Button.new()
+	map_btn.text = "THE MAP"
+	map_btn.flat = true
+	map_btn.add_theme_font_override("font", serif)
+	map_btn.add_theme_font_size_override("font_size", 15)
+	map_btn.add_theme_color_override("font_color", Color(INK, 0.8))
+	map_btn.position = Vector2(110, 322); map_btn.size = Vector2(100, 30)
+	map_btn.pressed.connect(open_map)
+	card.add_child(map_btn)
+	map_layer = Control.new()
+	map_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	map_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	map_layer.visible = false
+	host.add_child(map_layer)
+	var mdim := ColorRect.new()
+	mdim.color = Color(0.03, 0.03, 0.035, 0.7)
+	mdim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mdim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_layer.add_child(mdim)
+	map = MapView.new()
+	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	map.offset_left = 12; map.offset_right = -12; map.offset_top = 24; map.offset_bottom = -24
+	map.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_layer.add_child(map)
+	for k in Hub.SEAL_POS:
+		var tr := TextureRect.new()
+		tr.texture = load("res://assets/textures/icons/veil_seal.png") if ResourceLoader.exists("res://assets/textures/icons/veil_seal.png") else null
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size = Vector2(26, 26)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map_layer.add_child(tr)
+		seal_marks[k] = tr
+	map_layer.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed): close_map())
 	# the toast
 	toast = PanelContainer.new()
 	var tsb := StyleBoxFlat.new()
@@ -192,6 +233,49 @@ func _gui_input(e: InputEvent) -> void:
 		var p: Vector2 = e.position
 		if not card.get_global_rect().has_point(p + global_position): close()
 		accept_event()
+
+## the map: the regions you have walked, you, and the three seals (faint until taken)
+func open_map() -> void:
+	if is_open:
+		is_open = false
+		visible = false
+	map_open = true
+	map_layer.visible = true
+	game.controls.enabled = false
+	map.set_player(game.player.position)
+	await get_tree().process_frame
+	var r := map.get_global_rect()
+	var tex := Vector2(1024, 1536)
+	var sc := minf(r.size.x / tex.x, r.size.y / tex.y)
+	var drawn := tex * sc
+	var o := r.position + (r.size - drawn) * 0.5
+	var inv: Dictionary = game.chapter.state["inv"]
+	for k in seal_marks:
+		var tr: TextureRect = seal_marks[k]
+		var uv := map.world_to_uv(Hub.SEAL_POS[k])
+		tr.position = o + uv * drawn - tr.size * 0.5 - map_layer.global_position
+		tr.modulate = Color(1, 1, 1, 1.0 if k in (inv["seals"] as Array) else 0.3)
+	game.sfx.play("page", -14.0, 1.0)
+
+func close_map() -> void:
+	map_open = false
+	map_layer.visible = false
+	game.controls.enabled = game.mode == "play"
+	game.controls.block(250)
+
+## a walk region seen for the first time (main, from the region you stand in)
+func see_region(n: String) -> void:
+	var seen: Array = game.chapter.state["hub"]["map"]
+	if n in seen: return
+	seen.append(n)
+	map.reveal_region(n, not map_open)
+
+func load_map() -> void:
+	map._k.clear()
+	map._target.clear()
+	map._lut.fill(Color(0, 0, 0))
+	map._lut_tex.update(map._lut)
+	map.set_revealed(game.chapter.state["hub"].get("map", []))
 
 func show_item(k: String, extra := "") -> void:
 	toast_icon.texture = game.chapter.items.icons.get(k, null)

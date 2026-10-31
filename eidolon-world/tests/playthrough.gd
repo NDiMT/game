@@ -322,6 +322,9 @@ func _plan() -> void:
 	walk_path("the hidden stones", t4.slice(1))
 	step_do(func() -> void:
 		ok("(v1.0) up onto the colossus' stones: the Garden wing and the Colossus beyond", absf(P().y - 1.0) < 0.02 and game.visited.has("t:T4"), str(P())))
+	step_wait(3.6)
+	step_do(func() -> void:
+		ok("(v1.0 M3c) waiting by still water: she writes a rune on it, beside you", C().life.runes >= 1 and C().life.rune_node.visible and C().life.rune_node.position.distance_to(P()) < 2.6, str(C().life.rune_node.position)))
 	step_wait(0.8)
 	step_do(func() -> void:
 		ok("(v1.0) the Colossus named the first time it is reached, from the Atrium side too", game.visited.has("w:CO") and game.ui.area_label.text == "THE SUNKEN COLOSSUS", game.ui.area_label.text))
@@ -346,6 +349,14 @@ func _plan() -> void:
 			game.satchel.is_open and game.satchel.slots.size() >= 2 and game.satchel.name_l.text != "" and game.satchel.line_l.text != "" and not game.controls.enabled, game.satchel.name_l.text)
 		game.satchel.close())
 	walk_path("on to the Ledge", [[27.6, -18.4], [27.4, -20.2]])
+	step_do(func() -> void:
+		var mp: MapView = game.satchel.map
+		ok("(v1.0 M3c) the map has filled in where you walked: the Atrium, the Undercroft, the Balcony; not the Maze", mp.is_revealed("A") and mp.is_revealed("UC") and mp.is_revealed("BAL") and not mp.is_revealed("MZ") and (C().state["hub"]["map"] as Array).has("T4"), str(C().state["hub"]["map"]))
+		game.satchel.open_map())
+	step_wait(0.4)
+	step_do(func() -> void:
+		ok("(v1.0 M3c) the map opens over the game, the seals marked faint until taken", game.satchel.map_open and game.satchel.map_layer.visible and (game.satchel.seal_marks["W"] as TextureRect).modulate.a < 0.5 and not game.controls.enabled)
+		game.satchel.close_map())
 	step_do(func() -> void:
 		ok("(v1.0) the balcony brings you to the Eidolon Ledge", game.visited.has("t:BAL") and game.area == "eidolon_ledge" and absf(P().y - 2.0) < 0.02, str(P()) + " " + game.area))
 	step_do(func() -> void: tp(0.0, 4.4, PI))
@@ -668,6 +679,13 @@ func _plan() -> void:
 	step_do(func() -> void: ok("take the shard", _focus() == "take_shard" and game.try_interact(), _focus()))
 	step_wait(1.0)
 	step_do(func() -> void: ok("the shard is in the inventory", C().state["shard"] and game.controls.inv_has and not game.controls.inv_on))
+	step_do(func() -> void: C().warden._sight_cool = 0.0; tp(0.0, -16.6, PI))
+	step_wait(2.4)
+	step_do(func() -> void:
+		ok("(v1.0 M3c) your back to the great glass: the Warden stands behind you, in the reflection only", C().warden.sight_on and C().warden.ghost_fig.visible and C().warden.sightings >= 1, "%s pl=%s yaw=%.2f vis=%s mode=%s refl=%s" % [C().warden.sight_on, P(), game.player.yaw, game.visited.has("atrium"), game.mode, str(game.puzzles.reflectors.map(func(r: Reflector) -> String: return "%s:%s:%s" % [r.kind, r.planar != null, r.planar_on]))])
+		game.player.yaw = 0.0; game.player.fig.rotation.y = 0.0)
+	step_wait(0.3)
+	step_do(func() -> void: ok("(v1.0 M3c) you turn: he is gone", not C().warden.ghost_fig.visible))
 	walk_path("walk to the tablet", [[2.0, -18.0], [3.85, -18.2], [3.85, -19.15]])
 	step_do(func() -> void: ok("tablet readable", game.try_interact() and game.puzzles.state["tablet"], _focus()))
 	walk_path("through the remembered door", [[3.6, -17.5], [5.6, -17.5], [5.7, -15.2]])
@@ -1108,10 +1126,30 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("(v1.0 M3b) the tuning pin rings the panel open", _focus() == "e_panel" and game.try_interact() and not game.level.named["e_panel"].enabled, _focus()))
 	step_wait(2.8)
+	# (v1.0 M3c) the Warden's beat along the long glass
+	walk_path("to the Walk's start", [[31.4, -25.3]])
+	step_do(func() -> void:
+		ok("(v1.0 M3c) past the panel, the Warden's reflection paces the long glass", C().warden.active and C().warden.patrol_fig.visible))
+	step_until("he comes down the glass toward you", func() -> bool: return C().warden.facing > 0.0 and C().warden._pause <= 0.0 and C().warden.wz > -37.5, 45.0)
+	step_do(func() -> void:
+		_mark = C().warden.caught
+		walk_to(31.4, -29.8))
+	step_until("(v1.0 M3c) out in the open while he faces you: he sees you in the glass", func() -> bool: return C().warden.caught == _mark + 1, 12.0)
+	step_wait(2.0)
+	step_do(func() -> void:
+		ok("(v1.0 M3c) seen: back at the Walk's start, no fail screen", P().z > -26.0 and game.mode == "play" and C().state["hub"]["warden_seen"] >= 1 and game.sfx.played.get("chime_hall", 0) > 0, str(P())))
+	step_until("he walks away up the glass", func() -> bool: return C().warden.facing < 0.0 and C().warden._pause <= 0.0 and C().warden.wz < -30.0, 60.0)
+	walk_path("into the first pillar's shadow, behind his back", [[31.4, -28.6]])
+	step_until("he turns at the far end and comes back past the pillar", func() -> bool: return C().warden.facing > 0.0 and C().warden._pause <= 0.0 and C().warden.wz > -28.0, 60.0)
+	step_do(func() -> void:
+		_mark = C().warden.caught
+		ok("(v1.0 M3c) in the pillar's shadow he passed you by", C().warden.caught == C().warden.caught and C().warden.in_shadow(P().z)))
 	walk_path("along the high walkway", [[31.4, -32.0]])
 	step_wait(0.6)
 	step_do(func() -> void: ok("(v0.9) on the walkway: the Upward Spring, named, the camera leans up toward the temple", game.visited.has("w:SP") and game.world.look_offset.y > 1.0, str(game.world.look_offset)))
 	walk_path("on to the lift", [[31.4, -43.5], [31.4, -45.6]])
+	step_do(func() -> void:
+		ok("(v1.0 M3c) crossed behind his back: not seen again; he leaves the Walk", C().warden.caught == _mark and C().state["hub"]["wk_crossed"] and not C().warden.active))
 	step_until("(v1.0) from the top the lift takes you down", func() -> bool: return C().lift_h < 0.01 and absf(P().y - 2.0) < 0.02, 12.0)
 	walk_path("off the lift", [[29.2, -45.9]])
 
