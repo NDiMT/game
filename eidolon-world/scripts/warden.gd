@@ -169,6 +169,9 @@ func _update_patrol(dt: float) -> void:
 		return
 	var p := game.player.position
 	if on_walk(p) and p.z < END_Z: hs["wk_crossed"] = true
+	if game.satchel and (game.satchel.is_open or game.satchel.map_open):     # (QA P2-1: the world waits under the card)
+		patrol_fig.walk(false)
+		return
 	if _pause > 0.0:
 		_pause -= dt
 		patrol_fig.walk(false)

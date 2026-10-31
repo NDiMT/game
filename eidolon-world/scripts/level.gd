@@ -1461,3 +1461,10 @@ func set_pbr_quality(high: bool) -> void:
 ## (Flame.bounce_list, see HANDOFF); cheap: one uniform array, no lights.
 func set_flames(fl: PackedVector4Array) -> void:
 	for m in [marble_mat, marble_occ_mat]: m.set_shader_parameter("flames", fl)
+
+## (Agent A, rendering) v1.0 QA P1-4: per-area darkness on the stone (0..1); the carried lamp at `lamp` shows a warm
+## circle of `radius` m (Vector3.INF: no lamp: all dark). Pair with world.set_darkness(k).
+func set_darkness(k: float, lamp := Vector3.INF, radius := 3.4) -> void:
+	for m in [marble_mat, marble_occ_mat]:
+		m.set_shader_parameter("dark_k", k)
+		m.set_shader_parameter("dark_lamp", Vector4(lamp.x, lamp.y, lamp.z, radius) if lamp != Vector3.INF else Vector4(0, -999, 0, 0))

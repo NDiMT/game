@@ -18,6 +18,7 @@ const WALK_T := 2.4                     # the walk clip: two steps
 const STRIDE := 0.52                    # one step at rig scale (metres)
 
 @export var height := 1.65              # in the game's metres (the hero is 1.12): very tall, gaunt
+@export var reflection := false        # dark + crimson rim (seen only in mirrors); set_reflection()
 var anim: AnimationPlayer
 var skel: Skeleton3D
 var model: Node3D
@@ -42,11 +43,27 @@ func _ready() -> void:
 		for n in ["NeckTwist01", "NeckTwist02", "Head"]: _neck.append(skel.find_bone(n))
 		add_to_group("q_warden")
 		set_shadow(high)
+	if reflection: set_reflection(true)
 
 func set_shadow(on: bool) -> void:
 	if model == null: return
 	for mi in model.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## (QA P1-3) the look for a figure that is only ever seen IN a mirror: dark, with a subtle crimson rim
+func set_reflection(on: bool) -> void:
+	reflection = on
+	if model == null: return
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if not on:
+			m.material_override = null
+			continue
+		var src := m.get_active_material(0) as BaseMaterial3D
+		var sm := ShaderMaterial.new()
+		sm.shader = preload("res://shaders/warden_reflection.gdshader")
+		if src and src.albedo_texture: sm.set_shader_parameter("albedo_tex", src.albedo_texture)
+		m.material_override = sm
 
 ## the heavy walk on/off (blended)
 func walk(on: bool) -> void:

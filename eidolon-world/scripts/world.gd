@@ -458,15 +458,33 @@ func ground_axes() -> Array:
 	var fwd := Vector3(-sin(y), 0, -cos(y))
 	return [right, fwd]
 
+## v1.0 QA P1-4 (Agent A) per-area DARKNESS (0..1), e.g. the Undercroft: the ambient and the sun fall away and the
+## fog turns near-black and closes in, so only the carried lamp shows the space. Pair it with
+## level.set_darkness(k, lamp_pos) (the stone itself) and tween k (see HANDOFF).
+var dark := 0.0
+func set_darkness(k: float) -> void:
+	dark = clampf(k, 0.0, 1.0)
+	_apply_light()
+
+func _apply_light() -> void:
+	var k := awaken
+	env.fog_depth_begin = DIST + lerpf(-1.0, 8.0, k) - 6.0 * dark
+	env.fog_depth_end = DIST + lerpf(20.0, 58.0, k) - 10.0 * dark
+	env.fog_light_color = Color(0.78, 0.78, 0.765).lerp(Color(0.82, 0.84, 0.85), k).lerp(Color(0.05, 0.05, 0.06), dark * 0.92)
+	env.fog_height_density = lerpf(0.40, 0.22, k)
+	env.ambient_light_energy = lerpf(0.55, 0.72, k) * (1.0 - 0.85 * dark)
+	sun.light_energy = lerpf(0.85, 1.0, k) * (1.0 - 0.9 * dark)
+	if backdrop_mat: backdrop_mat.set_shader_parameter("dark", dark)
+	# the fog sheets go dark with it (their own colour, remembered on first use)
+	for m in fog_mats:
+		if not m.has_meta("base_col"): m.set_meta("base_col", m.get_shader_parameter("color"))
+		var bc: Color = m.get_meta("base_col") if m.get_meta("base_col") is Color else Color(0.8, 0.79, 0.76)
+		m.set_shader_parameter("color", bc.lerp(Color(0.04, 0.04, 0.05), dark * 0.9))
+
 func set_awaken(k: float) -> void:
 	if OS.get_environment("EIDOLON_DEV_AWAKE") == "1": k = 1.0     # (dev only: clear-air material shots)
 	awaken = k
-	env.fog_depth_begin = DIST + lerpf(-1.0, 8.0, k)
-	env.fog_depth_end = DIST + lerpf(20.0, 58.0, k)
-	env.fog_light_color = Color(0.78, 0.78, 0.765).lerp(Color(0.82, 0.84, 0.85), k)
-	env.fog_height_density = lerpf(0.40, 0.22, k)
-	env.ambient_light_energy = lerpf(0.55, 0.72, k)
-	sun.light_energy = lerpf(0.85, 1.0, k)
+	_apply_light()
 	for i in fog_mats.size():
 		fog_mats[i].set_shader_parameter("clear", k * (1.0 if i == VEIL else 0.45))
 	shaft_mats[0].set_shader_parameter("intensity", Vector3(SHAFT_BASE[0], SHAFT_BASE[1], SHAFT_BASE[2]) * (1.0 + k * 1.3))

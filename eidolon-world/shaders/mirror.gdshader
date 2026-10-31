@@ -24,7 +24,17 @@ void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	if (!FRONT_FACING && wall_mounted > 0.5) discard;
 	if (!FRONT_FACING) {
-		ALBEDO = vec3(0.16, 0.16, 0.17);
+		// (v1.0 QA P1-9) the BACK of a free-standing glass: a pale marble backing panel with a darker inset
+		// border and soft veining (never the reflection, never a slate placeholder)
+		vec2 m0 = vec2(min(UV.x, 1.0 - UV.x) * size.x, min(UV.y, 1.0 - UV.y) * size.y);
+		float e0 = min(m0.x, m0.y);
+		float vn = texture(noise_tex, wp.xz * 0.35 + wp.y * vec2(0.21, 0.13)).r;
+		float vein = 1.0 - smoothstep(0.0, 0.035, abs(vn - 0.52));
+		vec3 bk = vec3(0.66, 0.65, 0.62) * (0.92 + 0.12 * texture(noise_tex, UV * size * 0.6).r);
+		bk = mix(bk, vec3(0.45, 0.45, 0.46), vein * 0.35);
+		bk *= 1.0 - 0.18 * (1.0 - smoothstep(0.05, 0.09, e0)) * smoothstep(0.0, 0.03, e0);     // the inset border
+		bk *= 0.9 + 0.14 * (1.0 - UV.y);                                  // a little lighter toward the top
+		ALBEDO = bk;
 	} else {
 		vec3 d = -normalize(cam_back);
 		vec3 r = d - 2.0 * dot(d, n) * n;
@@ -45,7 +55,11 @@ void fragment() {
 			float e = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
 			float seam = 1.0 - smoothstep(0.004, 0.02, e);
 			float v = texture(noise_tex, h.xz * 0.13).r;
-			vec3 fl = vec3(0.075, 0.078, 0.085) * (0.85 + 0.4 * v) + vec3(0.20) * seam;
+			// (v1.0 QA P1-9) the black polished floor only in the Hall of Glass; elsewhere the reflected floor is
+			// the pale marble around it with faint joints (the dark grid read as a placeholder "X" from afar)
+			float hall = step(abs(wp.x), 6.0) * step(-22.0, wp.z) * step(wp.z, -10.0);
+			vec3 fl = hall > 0.5 ? vec3(0.075, 0.078, 0.085) * (0.85 + 0.4 * v) + vec3(0.20) * seam
+				: vec3(0.63, 0.62, 0.59) * (0.9 + 0.15 * v) - vec3(0.018) * seam;
 			fl += vec3(0.06) * smoothstep(0.55, 1.0, sin((h.x + h.z) * 0.55 + v * 3.0));
 			c = mix(fl, fog, 1.0 - exp(-t * 0.07));
 			best = t;
@@ -76,6 +90,10 @@ void fragment() {
 		}
 		// silvering
 		c = c * vec3(0.84, 0.89, 0.94) + vec3(0.03, 0.04, 0.05);
+		// (v1.0) a visible glass surface: a soft broad sheen that slides with the view, and a faint dust film
+		float sh_ = smoothstep(0.22, 0.0, abs(fract(UV.x * 0.5 - UV.y * 0.3 + (cam_back.x - cam_back.z) * 0.35) - 0.5));
+		c += vec3(0.07, 0.075, 0.08) * sh_;
+		c = mix(c, vec3(0.70, 0.71, 0.70), 0.06 * smoothstep(0.4, 0.8, texture(noise_tex, UV * size * 0.35 + 7.0).r));
 		vec2 uv = UV;
 		vec2 m = vec2(min(uv.x, 1.0 - uv.x) * size.x, min(uv.y, 1.0 - uv.y) * size.y);
 		float em = min(m.x, m.y);

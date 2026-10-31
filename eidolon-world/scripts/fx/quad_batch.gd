@@ -29,6 +29,10 @@ const LAYOUT := {
 }
 
 var sync_every := 1
+## > 0: re-scan the absorbed root every `rescan_s` seconds for quads built later (cheap: a tree walk)
+var rescan_s := 0.0
+var _root: Node
+var _rescan_t := 0.0
 ## Low tier (set by World.set_tier): the batch syncs every 2nd frame (the quads' animation is in the shader anyway)
 static var high := true
 var _batches := {}           # "kind@layers" -> MultiMeshInstance3D
@@ -37,6 +41,7 @@ var _seen := {}
 var _frame := 0
 
 func absorb(root: Node) -> Dictionary:
+	_root = root
 	var found := {}
 	_walk(root, found)
 	for key in found:
@@ -114,8 +119,13 @@ func _resize(kind: String) -> void:
 	var mm := (_batches[kind] as MultiMeshInstance3D).multimesh
 	mm.instance_count = (_items[kind] as Array).size()
 
-func _process(_dt: float) -> void:
+func _process(dt: float) -> void:
 	_frame += 1
+	if rescan_s > 0.0 and _root and is_instance_valid(_root):
+		_rescan_t += dt
+		if _rescan_t >= rescan_s:
+			_rescan_t = 0.0
+			absorb(_root)
 	if _frame % maxi(sync_every if high else maxi(sync_every, 2), 1) == 0: _sync(false)
 
 func _sync(_all: bool) -> void:

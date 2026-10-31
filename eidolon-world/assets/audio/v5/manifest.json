@@ -726,6 +726,42 @@
      "gain_db": -16
     }
    ]
+  },
+  "atrium": {
+   "layers": [
+    {
+     "file": "res://assets/audio/v5/beds/atrium.ogg",
+     "gain_db": -4.5,
+     "loop": true
+    }
+   ],
+   "events": [
+    {
+     "file": "res://assets/audio/v5/events/ev_piano_a4.ogg",
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -11
+    },
+    {
+     "file": "res://assets/audio/v5/events/ev_piano_e5.ogg",
+     "min_s": 35,
+     "max_s": 98,
+     "gain_db": -11
+    },
+    {
+     "file": "res://assets/audio/v5/events/ev_bell_far_d.ogg",
+     "min_s": 63,
+     "max_s": 154,
+     "gain_db": -13
+    },
+    {
+     "file": "res://assets/audio/v5/events/ev_lyre_tetrachord.ogg",
+     "min_s": 56,
+     "max_s": 140,
+     "gain_db": -13
+    }
+   ],
+   "note": "v1.0 A: Theron's workshop (dev_rig/tools/render_bed_atrium.py): D dorian pads, Ione's motif on lyre, far chisel taps; -18 LUFS like the others"
   }
  },
  "cues": {

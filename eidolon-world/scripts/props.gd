@@ -59,6 +59,7 @@ func build(lv: Level) -> void:
 		mi.name = "Prop_%s_%d" % [asset, placed.size()]
 		mi.mesh = mesh
 		mi.transform = Transform3D(b, e[1])
+		mi.layers = PlanarMirror.LAYER_MAIN_FX          # (QA P1-15: the mirrors' cameras skip the props)
 		for si in mesh.get_surface_count():
 			mi.set_surface_override_material(si, lv.marble_occ_mat if mesh.surface_get_name(si) == "occ" else lv.marble_mat)
 		add_child(mi)
@@ -96,6 +97,7 @@ func build(lv: Level) -> void:
 		mmi.name = "PropBlobs"
 		mmi.multimesh = mm
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mmi.layers = PlanarMirror.LAYER_MAIN_FX
 		add_child(mmi)
 
 ## the Low tier leaves the small dressing out

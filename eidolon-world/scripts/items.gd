@@ -35,6 +35,7 @@ const RELIC_POS := Vector3(9.55, 1.0, -8.95)                # the reliquary, wes
 const AMPH_POS := Vector3(16.35, 1.0, -9.6)                 # the Garden's east rail, by the door
 const FILL_POS := Vector3(9.35, 2.0, -36.0)                 # her pool's edge, beside the Mist Maze
 const POUR_POS := Vector3(9.6, 2.0, -39.62)                 # the dry ring at the maze's end
+const PUDDLE_REGION := Rect2(6.6, -42.6, 6.0, 6.0)
 const STELE_POS := Vector3(29.12, 2.0, -16.0)               # the stele at the Balcony's end (the pin)
 const PANEL_Z := -24.6                                      # the sealed panel across the Mirror Walk
 const PANEL_X := Vector2(30.4, 32.4)
@@ -44,7 +45,7 @@ const TABLETS := [
 	["t1", Vector3(-3.2, 0.5, 20.9), "A thousand faces, and none of them hers. The stone does not lie; my hands do."],
 	["t2", Vector3(13.6, 3.1, 16.85), "She laughed when I asked her to stand still. 'Then carve me moving,' she said."],
 	["t3", Vector3(9.5, 1.0, -13.5), "I moved the lamps until her shadow fell where I wanted. Even her shadow argued."],
-	["t4", Vector3(7.6, 1.0, -8.0), "Glass first, then marble, I told the guild. They thought it a riddle."],
+	["t4", Vector3(7.6, 1.0, -8.0), "Marble first, then a thousand faces, then glass, I told the guild. They thought it a boast."],
 	["t5", Vector3(12.0, 1.0, -9.6), "The garden was hers. I let it die so it would keep her shape."],
 	["t6", Vector3(14.8, 2.0, -28.55), "In the maze she walked ahead of me in the water, and I followed the wrong one."],
 	["t7", Vector3(32.85, 2.0, -47.2), "Balance: what I took from her against what I gave. The pans never settle."],
@@ -74,6 +75,9 @@ var pour_disc: MeshInstance3D
 var _glint_t := 0.0
 var puddle: MeshInstance3D
 var puddle_rune: ShaderMaterial
+var puddle_glass: ShaderMaterial
+var puddle_planar: PlanarMirror
+var puddle_refl: Reflector
 var panel: Node3D
 var tablet_nodes := {}
 var secret_nodes := {}                # id -> [Node3D lock, Node3D shard]
@@ -101,6 +105,7 @@ func setup(g: Game, ch: Chapter, h: Hub) -> void:
 	_build_panel()
 	_build_tablets()
 	_build_secrets()
+	_build_pin_uses()
 
 func inv() -> Dictionary: return chapter.state["inv"]
 func hs() -> Dictionary: return chapter.state["hub"]
@@ -274,8 +279,33 @@ func _build_pour() -> void:
 	puddle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	puddle.visible = false
 	add_child(puddle)
-	var B := Basis(Vector3.RIGHT, -PI * 0.5)
-	puddle_rune = game.puzzles.rune_quad(puddle, Vector3(0, 0.012, 0), Vector2(0.5, 0.5), B, 7.0, 0.0)
+	# (QA P1-13: the puddle is a REAL mirror: a small planar reflection in it, and the sign it shows is carved
+	# overhead, where the camera never looks: on LAYER_DOUBLE, seen only in the water)
+	var pc := POUR_POS + Vector3(0, 0.012, 0)
+	puddle_glass = game.puzzles._mirror_quad(pc, Basis(Vector3.RIGHT, -PI * 0.5), Vector2(0.56, 0.56), false, 0.0)
+	puddle_glass.set_shader_parameter("ncols", 0)
+	puddle_glass.set_shader_parameter("floor_y", POUR_POS.y)
+	puddle_planar = PlanarMirror.new()
+	add_child(puddle_planar)
+	puddle_planar.setup(Vector3.UP, pc.y, puddle_glass, game.world.env)
+	puddle_planar.cam.far = 20.0
+	puddle_planar.res_k = 0.5
+	var r := Reflector.new()
+	r.kind = "pool"; r.plane_n = Vector3.UP; r.plane_d = pc.y + 0.001
+	r.clip_c = pc; r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(0.28, 0.28)
+	r.region = Rect2()                       # (no water yet: set when poured)
+	r.planar = puddle_planar
+	game.puzzles._add_refl(r)
+	puddle_refl = r
+	# the sign overhead: placed so its reflection lands in the puddle from the one view
+	var cb := game.world.cam.global_transform.basis.z if game.world.cam else Vector3(-0.572, 0.588, 0.572)
+	var h := 2.0
+	var sxz := Vector2(pc.x, pc.z) - Vector2(cb.x, cb.z) * (h / maxf(cb.y, 0.1))
+	var sign_n := Node3D.new()
+	sign_n.position = Vector3(sxz.x, pc.y + h, sxz.y)
+	add_child(sign_n)
+	puddle_rune = game.puzzles.rune_quad(sign_n, Vector3.ZERO, Vector2(0.5, 0.5), Basis(Vector3.RIGHT, PI * 0.5), 7.0, 0.0)
+	for c in sign_n.find_children("*", "GeometryInstance3D", true, false): (c as GeometryInstance3D).layers = PlanarMirror.LAYER_DOUBLE
 	game.level.add_interact("pour", POUR_POS, "touch", pour, 0.9,
 		func() -> bool: return not hs()["n_poured"])
 
@@ -291,6 +321,7 @@ func pour() -> void:
 	if game.satchel and game.satchel._toast_tw: game.satchel._toast_tw.kill(); game.satchel.toast.modulate.a = 0.0
 	chapter.event.emit("pour", null)
 	puddle.visible = true
+	puddle_refl.region = PUDDLE_REGION
 	puddle.scale = Vector3(0.1, 1.0, 0.1)
 	var tw := puddle.create_tween()
 	tw.tween_property(puddle, "scale", Vector3.ONE, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -353,6 +384,35 @@ func open_panel(instant: bool) -> void:
 	if game.juice:
 		game.juice.dust_floor(panel.position, 1.0, 14)
 		game.juice.shake(0.1)
+
+# ------------------------------------------------------------------ the pin's other uses (QA P1-13)
+## struck in the Echo Corridor it replays her song, the stones lighting in order (the song taught in any wing
+## order); struck on the Upward Spring's balcony, the falling water answers with the same notes
+const PIN_SONG := Vector3(13.0, 2.0, -45.0)
+const PIN_SPRING := Vector3(33.0, 4.0, -31.2)
+var pin_rings := 0
+func _build_pin_uses() -> void:
+	game.level.add_interact("pin_song", PIN_SONG, "ring", ring_song, 0.9,
+		func() -> bool: return has("pin") and not chapter.state["echo_room"])
+	game.level.add_interact("pin_spring", PIN_SPRING, "ring", ring_spring, 0.9,
+		func() -> bool: return has("pin"))
+
+func ring_song() -> void:
+	pin_rings += 1
+	chapter.event.emit("pin_ring_song", null)
+	game.sfx.motif(-11.0, 0.62, true)
+	var motif: Array = Sfx.MOTIF
+	for k in motif.size():
+		var idx: int = Chapter.SONG_NOTES.find(motif[k])
+		if idx < 0: continue
+		get_tree().create_timer(k * 0.62 + 0.05).timeout.connect(func() -> void: chapter.song_flash[idx] = 1.0)
+
+func ring_spring() -> void:
+	pin_rings += 1
+	chapter.event.emit("pin_ring_spring", null)
+	game.sfx.note(Sfx.MOTIF[0], -12.0, true)
+	get_tree().create_timer(1.1).timeout.connect(func() -> void: game.sfx.motif(-17.0, 0.7))       # (the water, answering)
+	if game.juice: game.juice.ring(Ch1Geo.SP_BASIN + Vector3(0, 0.3, 0), 2.2, 2.4)
 
 # ------------------------------------------------------------------ optional: tablets and memory shards
 func _build_tablets() -> void:
@@ -487,6 +547,7 @@ func apply_state() -> void:
 	pour_ring.visible = not hs()["n_poured"]
 	pour_disc.visible = not hs()["n_poured"]
 	puddle.visible = hs()["n_poured"]
+	puddle_refl.region = PUDDLE_REGION if hs()["n_poured"] else Rect2()
 	puddle.scale = Vector3.ONE
 	puddle_rune.set_shader_parameter("lit", 1.0 if hs()["n_poured"] else 0.0)
 	pin_node.visible = not has("pin")

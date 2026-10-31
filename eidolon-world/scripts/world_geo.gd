@@ -154,7 +154,7 @@ static func _undercroft(lv: Level) -> void:
 	for px in [15.4, 17.8, 20.2, 22.6]:
 		lv.box(z, Vector3(px, A_Y + 1.2, 12.72), Vector3(0.36, 2.4, 0.24), 0.25, true)
 		lv.ob_rect(R(px - 0.2, 12.6, px + 0.2, 12.85))
-	lv.box(z, Vector3(18.8, A_Y + 2.55, 11.4), Vector3(9.6, 0.3, 3.0), 0.25, true)
+	lv.C(0.25, true)          # (QA P1-4: the vault's roof is the hub's own node, lifted away while you are under it; the same rng draw)
 	lv.ob_rect(R(14.0, 12.6, 23.6, 12.85))
 	# fallen blocks to weave through (the lamp shows them)
 	# (off the way's centreline: north, south, north)

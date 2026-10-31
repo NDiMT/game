@@ -84,6 +84,7 @@ func _init(style := 0.0, size := 0.6, light_col := Color(1.0, 0.68, 0.38), noise
 	_ly = size * 0.45
 	light.position = Vector3(0, _ly, 0)
 	light.visible = false
+	light.omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID      # (QA P1-15: 2 shadow passes, not 6)
 	add_child(light)
 	all.append(self)
 
@@ -110,13 +111,14 @@ func _process(dt: float) -> void:
 		light.light_energy = k * energy * f * _fade
 		light.omni_range = range_m * (1.0 if high else 0.75)
 		light.position = Vector3(sin(_t * 7.3 + _seed) * 0.012, _ly + sin(_t * 5.1) * 0.01, cos(_t * 6.1 + _seed) * 0.012)
-		light.shadow_enabled = key and shadows
+		light.shadow_enabled = key and shadows and self == _shadow_f       # (QA P1-15: one shadowed flame at a time)
 
 ## v0.8.3: ONE light budget for every dynamic light (the flames and the aqua lights together): the nearest
 ## few within reach are live (`budget`: 3 on High, 2 on Auto, 1 on Low), chosen 4 times a second with a
 ## margin for the ones already on (no flip-flopping between two at the same distance); key flames first.
 static var budget := 2
 static var shadows := false
+static var _shadow_f: Flame = null      # the one live key flame that casts (the nearest)
 static var _cull_t := 0.0
 static var _cand: Array = []
 static func cull(p: Vector3, dt := 0.016) -> void:
@@ -136,6 +138,11 @@ static func cull(p: Vector3, dt := 0.016) -> void:
 		a._allowed = false
 	_cand.sort_custom(_by_first)
 	for i in mini(_cand.size(), budget): _cand[i][1]._allowed = true
+	_shadow_f = null
+	for i in mini(_cand.size(), budget):
+		if _cand[i][1] is Flame and (_cand[i][1] as Flame).key:
+			_shadow_f = _cand[i][1]
+			break
 
 static func _by_first(x: Array, y: Array) -> bool:
 	return x[0] < y[0]

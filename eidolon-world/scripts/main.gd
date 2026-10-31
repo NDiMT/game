@@ -18,7 +18,8 @@ var highlight: Highlight
 var puzzles: Puzzles
 var chapter: Chapter
 var wonders: Wonders
-var satchel: Satchel              # v0.9 the wonder spaces between the puzzles
+var satchel: Satchel
+var quad_batch: QuadBatch              # v0.9 the wonder spaces between the puzzles
 var juice: Juice                  # v1.0 M1: the physical little moments (dust, grit, sparks, wet stone)
 var _fade_on := false
 var _fade_off_t := 0.0
@@ -115,6 +116,11 @@ func _ready() -> void:
 	controls.interact.connect(try_interact)
 	ui.anew_pressed.connect(_on_anew)
 	ui.quality_pressed.connect(func() -> void: set_quality({"auto": "high", "high": "low", "low": "auto"}[world.tier], true))
+	# (v1.0 M4, QA P1-15: A's QuadBatch folds the repeated glowing quads into one MultiMesh per shader and layer)
+	if OS.get_environment("EIDOLON_NOBATCH") != "1":
+		quad_batch = QuadBatch.new()
+		add_child(quad_batch)
+		quad_batch.absorb(self)
 	_load_settings()
 	if OS.has_feature("web"):
 		var r = JavaScriptBridge.eval("window.devicePixelRatio || 1")
@@ -1296,7 +1302,7 @@ func state_dict() -> Dictionary:
 		buses.append("%s:%.0fdB" % [AudioServer.get_bus_name(b), AudioServer.get_bus_volume_db(b)])
 	var refl := []
 	for r in puzzles.reflectors:
-		if r.active: refl.append(r.kind)
+		if r.active: refl.append(r.kind + ("*" if r.planar_on else ""))
 	return {"mode": mode, "pos": [snappedf(p.x, 0.01), snappedf(p.y, 0.01), snappedf(p.z, 0.01)], "focus": focus.id if focus else "",
 		"puzzles": puzzles.state, "beam_lit": puzzles.beam_lit, "busy": puzzles.busy, "auto": auto_target != Vector3.INF,
 		"refl": refl, "gaze": puzzles.hall_mirror.gaze_head, "glimpses": glimpses, "awaken": world.awaken,

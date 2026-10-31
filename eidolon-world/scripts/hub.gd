@@ -48,6 +48,7 @@ func setup(g: Game, ch: Chapter) -> void:
 	_build_bridge()
 	_build_lamp()
 	_build_undercroft()
+	_build_uc_roof()
 	_build_colonnade()
 	_build_seals()
 	_build_bars()
@@ -193,6 +194,14 @@ func _build_undercroft() -> void:
 		game.ui.show_text("Too dark to see your feet.\nA light would part it.", game.player.position, 3.0), 0.9,
 		func() -> bool: return not has_item("lamp"))
 
+var uc_roof: Node3D
+func _build_uc_roof() -> void:
+	uc_roof = Node3D.new()
+	add_child(uc_roof)
+	var m := MB.new()
+	m.box(Vector3(18.975, WorldGeo.A_Y + 2.63, 11.55), Vector3(9.25, 0.3, 2.7), Color(0.5, 0.25, 0.0))       # (between the walls, on the piers)
+	game.puzzles.marble_instance(m.commit(), uc_roof)
+
 func _update_undercroft() -> void:
 	var lamp := has_item("lamp")
 	if lamp and not _uc_open:
@@ -206,6 +215,7 @@ func _update_undercroft() -> void:
 	var inside := pp.x > 14.0 and pp.x < 23.6 and pp.z > 10.0 and pp.z < 12.8
 	lamp_light.light_energy = move_toward(lamp_light.light_energy, 1.5 if inside else 0.6, get_process_delta_time() * 1.5)
 	lamp_light.omni_range = 5.5 if inside else 4.5
+	uc_roof.visible = not (pp.x > 13.6 and pp.x < 24.0 and pp.z > 9.6 and pp.z < 13.2 and pp.y < 1.5)       # (never over you)
 
 # ------------------------------------------------------------------ T4: her reflection walks the hidden stones
 func _build_colonnade() -> void:
@@ -260,7 +270,7 @@ func _update_colonnade(dt: float) -> void:
 	var mine := _t4_arc(pp) if pp.z < 9.8 else 0.0
 	var goal := minf(mine + 1.9, _t4_total())
 	var moving := t4_s < goal - 0.05
-	t4_s = move_toward(t4_s, goal, dt * 0.95)
+	t4_s = move_toward(t4_s, goal, dt * 2.4)          # (QA P2-7: she keeps ahead of you)
 	var e := _t4_point(t4_s)
 	var dir: Vector3 = e[1]
 	var yaw := atan2(-dir.x, -dir.z) if moving else lerp_angle(atan2(-dir.x, -dir.z), atan2(pp.x - (e[0] as Vector3).x, pp.z - (e[0] as Vector3).z), 0.6)

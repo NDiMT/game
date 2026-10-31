@@ -261,7 +261,10 @@ func open_map() -> void:
 		var tr: TextureRect = seal_marks[k]
 		var uv := map.world_to_uv(Hub.SEAL_POS[k])
 		tr.position = o + uv * drawn - tr.size * 0.5 - map_layer.global_position
-		tr.modulate = Color(1, 1, 1, 1.0 if k in (inv["seals"] as Array) else 0.3)
+		# (QA P2-2/3: a crimson ring until taken, and only where the map already shows the place)
+		var reg := game.level.region_at(Vector2((Hub.SEAL_POS[k] as Vector3).x, (Hub.SEAL_POS[k] as Vector3).z))
+		tr.visible = reg != null and map.is_revealed(reg.name)
+		tr.modulate = Color(1, 1, 1, 1.0) if k in (inv["seals"] as Array) else Color(0.75, 0.15, 0.15, 0.8)
 	game.sfx.play("page", -14.0, 1.0)
 
 func close_map() -> void:

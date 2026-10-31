@@ -44,6 +44,10 @@ func setup(g: Game, ch: Chapter) -> void:
 	rune_node.visible = false
 	_build_ambient()
 	_build_head()
+	# (QA P1-15: ambient life is for the camera only: the mirrors' cameras skip it)
+	for c in find_children("*", "GeometryInstance3D", true, false):
+		if c != head and not head.is_ancestor_of(c): (c as GeometryInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
+	for f in moths: (moths[f] as GeometryInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
 
 func _build_ambient() -> void:
 	for f in Flame.all:

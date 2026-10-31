@@ -75,6 +75,39 @@ func interact_n(n: int, gap := 0.25) -> void:
 		step_wait(gap)
 
 var _yaw0 := 0
+## the interact `id` would be offered with the player at `at`
+func _cond_at(id: String, at: Vector3) -> bool:
+	var keep := game.player.position
+	game.player.position = at
+	var ok := false
+	for it in game.level.interacts:
+		if it.id == id: ok = it.cond.is_null() or it.cond.call()
+	game.player.position = keep
+	return ok
+
+const WING_PUZZLES := {"W": ["stones", "breath", "shard", "hall_door", "gallery"],
+	"N": ["turned_done", "garden_breath", "hollow_done", "mural", "maze"], "E": ["scales", "echo_room"]}
+func _wing_order(order: Array) -> void:
+	game.cmd("jump:atrium")
+	var st: Dictionary = C().state
+	var hs: Dictionary = st["hub"]
+	var it: Array = st["inv"]["items"]
+	var tag := "-".join(order)
+	for w in order:
+		# its item gate done, its puzzles not: no seal
+		match w:
+			"W": it.append_array(["shard", "chisel"]); hs["w_seen"] = true; hs["w_broken"] = true
+			"N": it.append("amphora"); hs["n_poured"] = true
+			"E": it.append("pin"); hs["e_open"] = true
+		ok("(QA order %s) %s: its item alone does not raise its seal" % [tag, w], not C().hub.seal_ready(w))
+		# the other wings' shortcuts never open into this one before it is walked
+		if w == "N":
+			ok("(QA order %s) N not walked: the Ledge's drawbridge lever is held" % tag, not _cond_at("drawbridge", Vector3(22.2, 2.0, -23.0)) and _cond_at("drawbridge_held", Vector3(22.2, 2.0, -23.0)))
+			if st["echo_room"]: ok("(QA order %s) N not walked: the Echo bars stay bolted" % tag, not _cond_at("ec_unbolt", Vector3(10.0, 2.0, -41.7)))
+		for k in WING_PUZZLES[w]: st[k] = true
+		ok("(QA order %s) %s walked: its seal can rise" % [tag, w], C().hub.seal_ready(w))
+		if w == "E" and st["maze"]: ok("(QA order %s) both walked: the Echo bars unbolt" % tag, _cond_at("ec_unbolt", Vector3(10.0, 2.0, -41.7)))
+
 func _focus() -> String:
 	return game.focus.id if game.focus else "none"
 
@@ -355,7 +388,7 @@ func _plan() -> void:
 		game.satchel.open_map())
 	step_wait(0.4)
 	step_do(func() -> void:
-		ok("(v1.0 M3c) the map opens over the game, the seals marked faint until taken", game.satchel.map_open and game.satchel.map_layer.visible and (game.satchel.seal_marks["W"] as TextureRect).modulate.a < 0.5 and not game.controls.enabled)
+		ok("(v1.0 M3c) the map opens over the game, the seals marked faint until taken", game.satchel.map_open and game.satchel.map_layer.visible and not (game.satchel.seal_marks["W"] as TextureRect).visible and not game.controls.enabled)        # (QA P2-3: no marker on unrevealed fog)
 		game.satchel.close_map())
 	step_do(func() -> void:
 		ok("(v1.0) the balcony brings you to the Eidolon Ledge", game.visited.has("t:BAL") and game.area == "eidolon_ledge" and absf(P().y - 2.0) < 0.02, str(P()) + " " + game.area))
@@ -1477,6 +1510,10 @@ func _plan() -> void:
 		C().state["inv"]["socketed"] = [0.0, 1.0]
 		C().hub.apply_state()
 		ok("(QA P1-5) sockets restored from JSON floats stay set: no socket asks twice", not C().hub.can_socket(0) and not C().hub.can_socket(1) and C().hub.can_socket(2), str(C().state["inv"]["socketed"])))
+	# ---- (v1.0 QA P1-1) every wing order: no wing's seal without its own puzzles, no shortcut into a wing not yet walked
+	for order in [["W", "N", "E"], ["E", "N", "W"], ["N", "E", "W"], ["E", "W", "N"]]:
+		var ord: Array = order
+		step_do(func() -> void: _wing_order(ord))
 	# ---- (v1.0 M3b) a v2 save (before the hub) loads into the hub: its progress implies the items and seals
 	step_do(func() -> void:
 		var ch2 := {}

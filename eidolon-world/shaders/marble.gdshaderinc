@@ -31,6 +31,10 @@ uniform float pbr_normal_k = 0.55;
 uniform vec4 flames[8];
 uniform vec3 flame_col : source_color = vec3(0.95, 0.32, 0.22);
 uniform float flame_k = 1.0;
+// v1.0 QA P1-4 (Agent A) per-area DARKNESS (the Undercroft): `dark_k` 0..1 (Level.set_darkness tweens it), the
+// stone falls to near-black except within `dark_lamp.w` m of the carried lamp (xyz), which shows it warm
+uniform float dark_k = 0.0;
+uniform vec4 dark_lamp = vec4(0.0, -999.0, 0.0, 0.0);
 uniform vec3 cream : source_color = vec3(0.745, 0.735, 0.705);
 uniform vec3 vein : source_color = vec3(0.34, 0.345, 0.36);
 uniform vec3 side_col : source_color = vec3(0.36, 0.355, 0.35);
@@ -334,6 +338,12 @@ void fragment() {
 	if (wp.y < fade_y) discard;
 	// the see-through's edge: the stone thins into pale haze toward the cut, a faint aqua light on it
 	col = mix(col, vec3(0.80, 0.82, 0.82), cut_haze * 0.8);
+	if (dark_k > 0.001) {
+		float lr = length(wp - dark_lamp.xyz);
+		float seen = dark_lamp.w > 0.0 ? 1.0 - smoothstep(dark_lamp.w * 0.3, dark_lamp.w, lr) : 0.0;
+		col *= mix(1.0, mix(0.05, 1.0, seen * seen), dark_k);
+		col *= mix(vec3(1.0), vec3(1.1, 0.95, 0.78), seen * dark_k * 0.7);      // the lamp's warm cast
+	}
 	ALBEDO = col;
 	vec3 fb = vec3(0.0);
 	if (flame_k > 0.0) {

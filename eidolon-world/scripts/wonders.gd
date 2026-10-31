@@ -124,6 +124,7 @@ func _build_colossus() -> void:
 		mi.material_override = mm
 		mi.position = Vector3(c.x + (i - 1) * 1.6, wy + 0.35 + i * 0.45, c.z + 1.0 - i * 0.8)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.layers = PlanarMirror.LAYER_MAIN_FX
 		root.add_child(mi)
 	# (v1.0 M3: a thin breath of it over the Flooded Colonnade too, by the Atrium's edge)
 	var tm := ShaderMaterial.new()
@@ -138,6 +139,7 @@ func _build_colossus() -> void:
 	tmi.material_override = tm
 	tmi.position = Vector3(11.0, wy + 0.3, 6.0)
 	tmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	tmi.layers = PlanarMirror.LAYER_MAIN_FX
 	root.add_child(tmi)
 
 ## the owner's Tripo head (assets/models/props/colossus_head_veiled.glb, normalised to 1 m) when it is

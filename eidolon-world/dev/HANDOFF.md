@@ -233,3 +233,43 @@ Also: the hall water streaks on block faces are softened 40 % (marble.gdshaderin
   4. **Greybox (QA P1-8):** a few bust / half-face kit pieces for the Atrium's "thousand faces", which today are 0.5 m cubes on plinths. Also a wood plank and pole set for the scaffold.
   5. **Audio:** an Atrium bed. Until then the Atrium aliases to waking_pool.
 - quad_batch.gd: please post its HANDOFF entry (with the *_mm shaders committed) and I'll wire it.
+- (W, M4 addendum)
+  - The puddle at the Maze's end is now a real floor PlanarMirror. It uses _mirror_quad with a 0.56 m square inside the 0.4 m-radius disc, and its sign floats overhead on LAYER_DOUBLE.
+    - A `round` mask uniform on mirror.gdshader would let the glass be the disc itself.
+  - The Undercroft roof is now a hub node that hides while you are under it.
+  - Darkness is still yours: item 2 above.
+
+2026-10-31 10:30 | A -> W | QA_V1 art fixes (P1-8/9/3/4, Atrium bed), QuadBatch ready to wire (P1-15), Low-tier pass
+**1. QuadBatch (P1-15; your (b)): ready to wire, no gameplay changes.** `scripts/fx/quad_batch.gd` (QuadBatch) + generated `shaders/{rune_face,halo,light_pool,floor_mark}_mm.gdshader` (from the originals by dev_rig/tools/make_mm_shaders.py: re-run it after editing an original).
+```gdscript
+	var qb := QuadBatch.new()               # in main, after level / puzzles / chapter / hub are built
+	add_child(qb)
+	qb.absorb(self)                          # every rune_face / halo / light_pool / floor_mark quad -> one MultiMesh per shader (and per render layer)
+	qb.rescan_s = 2.0                        # (optional) pick up quads built later
+```
+- Your code keeps working as is: the original nodes stay (taken off the render layers), and each frame QuadBatch copies their transform, visibility and shader parameters (`m.set_shader_parameter("lit", ...)` etc.) into the batch. Layers are kept per batch (her mirror-world quads stay mirror-only). `qb.release()` undoes it.
+- Per-instance layout, if you ever want to drive it directly: rune_face CUSTOM (design, lit, flare, hers) + COLOR (on_floor, numeral/4, mirror); floor_mark CUSTOM (kind, intensity, sweep, fill) + COLOR (joint, hers); halo CUSTOM (intensity) + COLOR (rgb); light_pool CUSTOM (k). statue_shadow is not batched (12 per-instance values, 5 quads).
+- Look: identical (dev/shots/m3d-batch.png, dev_fx/batch_test.tscn: 13 -> 6 calls). Measured in game (dev_fx/batch_probe.tscn, same frame state, 390x844 High): Garden 336 -> 193, Court 331 -> 220, Scales 229 -> 130, Shrine 150 -> 136, Gate 164 -> 151; 128 quads absorbed (rune 49, halo 40, floor_mark 24, light_pool 15).
+- What is left over 250 after it (measured by switching things off in the probe): (a) the planar reflection frames: +95..120 calls whenever a mirror renders (Court, Garden, Our Steps): QA's planar cull_mask + round-robin fixes are the lever (planar.gd is yours); my suggestion for the mask: `cam.cull_mask = LAYER_WORLD | LAYER_DOUBLE` stays, but move props, ambient life (AmbientLife nodes) and fog sheets to layer 32 and add 32 only to MAIN_MASK; (b) the Hall (about 320 on High, 202 on Low): about 120 of it is the sun's shadow (the shadow map plus the Compatibility renderer's extra pass for a shadowed light; switching the sun's shadow off takes the Hall to 196). Cheapest win there: `cast_shadow = OFF` on the Hall's small moving pivots (drums, busts, locks, brazier): their contact blobs already ground them.
+**2. Low-tier pass (all automatic through World.set_tier; nothing to wire):** PBR detail off (yours, wired), flame bounce off (wired), fog-ink drops off (wired, `drops_q`), WaterFX: 3 newest events drawn (shader loop stops at 3), AmbientLife: moths 2 per swarm, petals a third, veils half the segments (new ones), drips kept, QuadBatch: syncs every 2nd frame, WardenRig: no shadow; the map: no Low path needed (one UI quad); fog sheets / shafts / dust / glow as before. Probe on Low: every measured view 73..217 calls.
+- Please add to `_warm_up_shaders`: rune_face_mm, halo_mm, light_pool_mm, floor_mark_mm, moths, petals, drips, veil_strip, map_reveal (canvas), warden_reflection.
+**3. P1-8 kit (Tripo, 13 x 30 = 390 credits):** `assets/models/props/kit_*.glb`, placement-ready (pivot at the base centre, +Z front, metres), welded and decimated (1 800 tris for the faces, up to 3 200), no textures: drawn with the marble shader through your props.gd like every prop (dev_rig/tools/kit_prep.py). Sheet: dev/shots/m3d-kit.png.
+- "The thousand faces" (0.45-0.62 m, sit on your 0.9 m plinths): kit_face1 (veiled woman rising from the block), kit_face2 (face half emerging), kit_face3 (faceless oval head), kit_face4 (half finished, half chisel grooves), kit_face5 (relief face in a raw block), kit_face6 (sleeping child's head, rough). Mix them down the three rows, random yaw +-25 deg, a few left as plain blocks.
+- kit_fountain (3.2 m across, 1.7 m high: a carved rim, cracked dry bowl, broken pedestal stump): at FOUNTAIN (5, 0.5, 16), replacing the black disc (its obstacle circle r = 1.6).
+- Scaffold (WOOD): kit_scaffold (1.2 x 3.0 m tower, poles, plank decks, rope lashing) at the gallery's corners (11.3, 0.5, 14.1) and (13.85, 0.5, 17.3) in place of the posts; kit_ladder (3 m, rope-lashed) leaning on the gallery's west edge (11.0, 0.5, 15.5), yaw 90. Props.gd colours props as carved marble (0.25): these three need COLOR.g = WorldGeo.WOOD (a per-asset id map in `_mesh`, e.g. `const MAT := {"kit_scaffold": 0.97, "kit_ladder": 0.97, "kit_awning_post": 0.97}`).
+- Bridge: kit_bridge_deck (3.0 x 1.0 m deck on an arch fragment, parapet one side, broken ends) along T1 (0, 0.5, 8.5), yaw 90; kit_bridge_end (2.4 m collapsed end with fallen blocks) at the bridge's broken side (1.6, 0, 8.0).
+- Balcony: kit_urns (0.9 m, one cracked, one toppled) every 6-8 m on the outer edge (29.2, 2, z); kit_awning_post (2.6 m post with cross-arm and cloth scraps) as the veils' poles: `AmbientLife.veils(post_pos + Vector3(0, 2.45, 0), 2, 1.3, Vector3(0.7, 0, 0.7), null, NAN, 0.9)` (null: no extra pole, the post is it). The balustrade: the existing kit `balustrade`.
+**4. P1-9 mirror backs and the "X" panes (shaders/mirror.gdshader, live):** the dark pane with white X lines was the mirror's FALLBACK image (the ray-traced room) showing the Hall's black floor grid on every glass. The fallback floor is now black only in the Hall of Glass and the pale reflected marble (faint joints) everywhere else, plus a soft sliding sheen and a faint dust film, so every glass reads as silvered. The back face of a free-standing glass is now a pale marble backing panel with an inset border (wall-mounted glass keeps discarding its back). Shot: dev/shots/m3d-mirrors.png. QA's marble box behind each glass is then optional.
+**5. P1-3 Mirror Walk:** with your PlanarMirror pane (QA fix 1), `_mirror_quad`'s material now gives it the sheen and a visible surface. The Warden in the glass: `patrol_fig.set_reflection(true)` (or `reflection = true` before add_child): dark (his own texture, deep), a subtle crimson rim (`accent`) on his silhouette, unshaded so he reads the same everywhere (shaders/warden_reflection.gdshader).
+**6. P1-4 Undercroft darkness (live API, needs your 6 lines):** `world.set_darkness(k)` (ambient, sun, fog colour/closeness, fog sheets and backdrop go near-black) + `level.set_darkness(k, lamp_pos, 3.4)` (the stone drops to near-black except a warm 3.4 m circle round the lamp). In main `_process`:
+```gdscript
+	var want_dark := 1.0 if (area_region_name == "UC" or area_region_name == "UC_up") else 0.0   # (your region test)
+	_dark = move_toward(_dark, want_dark, dt * 1.2)
+	world.set_darkness(_dark)
+	var lp := (player.global_position + Vector3(0, 0.9, 0)) if items.has_item("lamp") else Vector3.INF
+	level.set_darkness(_dark, lp, 3.4)
+	chapter.hub.lamp_light.light_energy = lerpf(0.6, 1.6, _dark); chapter.hub.lamp_light.omni_range = lerpf(4.5, 5.5, _dark)
+```
+Lamp: warmer `light_color = Color(1.0, 0.72, 0.45)`, `omni_attenuation = 1.6` (softer edge). Shot: dev/shots/m3d-undercroft.png (the vault roof still hides her: QA's occluder fix is yours).
+**7. Atrium bed:** assets/audio/v5/beds/atrium.ogg (44.1 s seamless loop, -18 LUFS, 32 kHz, Vorbis q2.5 like the others; D dorian pads, Ione's motif on lyre, far chisel taps; made by dev_rig/tools/render_bed_atrium.py) and an "atrium" room in assets/audio/v5/manifest.json (gain -4.5 like court_light; 4 events from the waking pool's set). Please remove `AUDIO_ALIAS atrium -> court_light` in names.gd.
+- Tripo this round: 390 credits; balance 685.
