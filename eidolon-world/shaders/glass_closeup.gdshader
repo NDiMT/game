@@ -458,6 +458,7 @@ void fragment() {
 		rb = rb * 1.1 + 0.07;                                              // (water lenses brighten what they show)
 		vec3 lensc = rb * (1.0 - mix(0.45, 0.2, tiny) * smoothstep(0.6, 1.0, lo));        // the darker refracted ring
 		lensc += vec3(0.13, 0.135, 0.14) * (1.0 - smoothstep(0.0, 0.7, lo));               // a lighter centre
+		lensc = mix(lensc, fogc * 0.85, 0.3 * fog);                                        // (a water bead on fogged glass is a little milky)
 		lensc += vec3(0.16, 0.17, 0.18) * smoothstep(0.35, 0.9, o.y) * (1.0 - smoothstep(0.9, 1.0, lo));   // light gathered low in it
 		c = mix(c, lensc, wb_m);
 		vec2 hp = o - vec2(-0.38, -0.44);
