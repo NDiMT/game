@@ -15,6 +15,17 @@ instance uniform float wet = 0.0;
 instance uniform float wet_line = -99.0;
 
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
+// v1.0 (Agent A): CC0 PBR detail (ambientCG, see CREDITS.md and assets/textures/pbr/layers.json), two 10-layer
+// texture arrays, 512 px, VRAM-compressed (S3TC desktop / ETC2 mobile web). Albedo layers are normalised to a
+// mean luminance of 0.5 so they MULTIPLY the painterly procedural colour (x2 = mean 1): the palette stays, the
+// stone gains grain, veins, pits and wear. nra = normal x, normal y (GL), roughness. Box-mapped in world space
+// (the game is built from axis-aligned boxes: one fetch per array, no triplanar blend). pbr_k 0 = off (LOW).
+// Layers: 0 floor marble, 1 white veined marble, 2 plain white marble, 3 cracked plaster, 4 grey rock,
+// 5 dark water-stained stone, 6 black veined marble, 7 old wood, 8 moss, 9 worn bronze.
+uniform sampler2DArray pbr_albedo : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2DArray pbr_nra : filter_linear_mipmap, repeat_enable;
+uniform float pbr_k = 1.0;
+uniform float pbr_normal_k = 0.55;
 uniform vec3 cream : source_color = vec3(0.745, 0.735, 0.705);
 uniform vec3 vein : source_color = vec3(0.34, 0.345, 0.36);
 uniform vec3 side_col : source_color = vec3(0.36, 0.355, 0.35);
@@ -40,6 +51,25 @@ void vertex() {
 	mat_id = COLOR.g;
 	occ = COLOR.b;
 	boxy = COLOR.a;
+}
+
+// box-mapped uv (metres / tile) and its tangent frame, from the world normal
+vec2 pbr_uv(vec3 p, vec3 n, float tile, out vec3 T, out vec3 B) {
+	vec3 an = abs(n);
+	if (an.y >= an.x && an.y >= an.z) { T = vec3(1.0, 0.0, 0.0); B = vec3(0.0, 0.0, 1.0); return p.xz / tile; }
+	if (an.x >= an.z) { T = vec3(0.0, 0.0, -sign(n.x)); B = vec3(0.0, -1.0, 0.0); return vec2(-p.z * sign(n.x), -p.y) / tile; }
+	T = vec3(sign(n.z), 0.0, 0.0); B = vec3(0.0, -1.0, 0.0); return vec2(p.x * sign(n.z), -p.y) / tile;
+}
+// the detail of one layer: albedo multiplier (mean 1), roughness, the perturbed world normal
+vec3 pbr_layer(float layer, float tile, vec3 p, vec3 n, out float r, inout vec3 nn, float nk) {
+	vec3 T, B;
+	vec2 uv = pbr_uv(p, n, tile, T, B);
+	vec3 a = texture(pbr_albedo, vec3(uv, layer)).rgb * 2.0;
+	vec3 t = texture(pbr_nra, vec3(uv, layer)).rgb;
+	r = t.b;
+	vec2 d = (t.rg * 2.0 - 1.0) * nk;
+	nn = normalize(nn + T * d.x + B * d.y);
+	return a;
 }
 
 float marble(vec3 p, float scale, float sharp) {
@@ -86,6 +116,9 @@ void fragment() {
 	vec3 col;
 	float rough = 0.6;
 	float spec = 0.45;
+	vec3 pbr_n = wn;          // (v1.0) the normal-mapped world normal
+	float pbr_r = 0.5;        // the texture's roughness, blended in by pbr_w
+	float pbr_w = 0.0;
 	if (mat_id < 0.12) {
 		// cream floor: large slabs (1.5 m, running bond) in world space, per-slab tint, soft worn joints
 		vec2 g = wp.xz / 1.5;
@@ -96,6 +129,12 @@ void fragment() {
 		float v = marble(wp + tr * 7.0, 2.2, 0.10) * 0.8 + marble(wp * 2.7 + 3.1, 2.0, 0.05) * 0.35;
 		vec3 tint = cream * (0.92 + 0.10 * tr) * vec3(1.0 + (tr - 0.5) * 0.03, 1.0, 1.0 - (tr - 0.5) * 0.05);
 		col = mix(tint * (0.93 + 0.12 * n), vein, clamp(v, 0.0, 1.0) * 0.42);
+		if (pbr_k > 0.0) {
+			float pr;
+			vec3 det = pbr_layer(0.0, 1.5, wp + vec3(tr * 17.0, 0.0, tr * 9.0), wn, pr, pbr_n, pbr_normal_k * 0.6);
+			col *= mix(vec3(1.0), det, 0.55 * pbr_k);
+			pbr_r = pr; pbr_w = 0.5 * pbr_k;
+		}
 		vec2 e = min(f, 1.0 - f) * 1.5;
 		float ed = min(e.x, e.y);
 		float aa = fwidth(wp.x) * 1.2;
@@ -115,6 +154,18 @@ void fragment() {
 		vec3 p = wp + rnd * 11.0;
 		float v = marble(p, 2.4, 0.09) * 0.8 + marble(p * 2.3 + 1.7, 2.0, 0.05) * 0.3;
 		col = mix(cream * (0.88 + 0.12 * rnd) * (0.92 + 0.12 * n), vein, clamp(v, 0.0, 1.0) * 0.45);
+		if (pbr_k > 0.0) {
+			// two marbles per piece (veined / plain), weathered toward cracked plaster in patches and low down
+			float pr, pr2;
+			vec3 nn2 = pbr_n;
+			vec3 det = pbr_layer(rnd > 0.5 ? 1.0 : 2.0, 2.2, wp + rnd * 13.0, wn, pr, pbr_n, pbr_normal_k);
+			vec3 pl = pbr_layer(3.0, 1.8, wp + rnd * 7.0, wn, pr2, nn2, pbr_normal_k);
+			float weather = smoothstep(0.55, 0.8, texture(noise_tex, wp.xz * 0.09 + wp.y * 0.11 + rnd).r) * 0.7 + (1.0 - smoothstep(0.0, 1.4, wp.y - 0.0)) * 0.2;
+			det = mix(det, pl, clamp(weather, 0.0, 0.85));
+			pbr_n = normalize(mix(pbr_n, nn2, clamp(weather, 0.0, 0.85)));
+			col *= mix(vec3(1.0), det, 0.6 * pbr_k);
+			pbr_r = mix(pr, pr2, weather); pbr_w = 0.55 * pbr_k;
+		}
 		// weathering: darker toward the ground and in crevices
 		col *= mix(0.78, 1.0, smoothstep(-0.2, 1.2, wn.y + 0.6));
 		rough = 0.45;
@@ -122,6 +173,18 @@ void fragment() {
 		float depth = clamp((1.5 - wp.y) / 6.0, 0.0, 1.0);
 		float strata = 0.88 + 0.12 * sin(wp.y * 19.0 + n * 6.0);
 		col = side_col * (0.72 + 0.42 * n) * strata * mix(1.0, 0.55, depth);
+		if (pbr_k > 0.0) {
+			// grey rock; dark water-stained stone low down (toward the water and the void)
+			float pr, pr2;
+			vec3 nn2 = pbr_n;
+			vec3 det = pbr_layer(4.0, 3.0, wp, wn, pr, pbr_n, pbr_normal_k * 1.2);
+			vec3 dk = pbr_layer(5.0, 2.5, wp + 3.0, wn, pr2, nn2, pbr_normal_k * 1.2);
+			float wet_low = 1.0 - smoothstep(-1.2, 0.6, wp.y + (n - 0.5) * 0.8);
+			det = mix(det, dk, wet_low);
+			pbr_n = normalize(mix(pbr_n, nn2, wet_low));
+			col *= mix(vec3(1.0), det, 0.75 * pbr_k);
+			pbr_r = mix(pr, pr2, wet_low); pbr_w = 0.6 * pbr_k;
+		}
 		rough = 0.95;
 		spec = 0.2;
 	} else if (mat_id < 0.87) {
@@ -131,6 +194,11 @@ void fragment() {
 		float tr = fract(sin(dot(cell, vec2(41.3, 17.7))) * 9431.7);
 		float v = marble(wp * 1.3 + tr * 5.0, 2.6, 0.05);
 		col = mix(black_base * (0.9 + 0.3 * n), black_vein, v * 0.38);
+		if (pbr_k > 0.0) {
+			float pr;
+			vec3 det = pbr_layer(6.0, 2.0, wp + tr * 11.0, wn, pr, pbr_n, pbr_normal_k * 0.4);
+			col *= mix(vec3(1.0), det, 0.5 * pbr_k);
+		}
 		vec2 e = min(f, 1.0 - f);
 		float aa = fwidth(g.x) * 1.5;
 		float seam = 1.0 - smoothstep(0.006, 0.006 + aa, min(e.x, e.y));
@@ -144,6 +212,12 @@ void fragment() {
 		spec = 0.9;
 	} else {
 		col = char_col * (0.8 + 0.4 * n) * (0.9 + 0.2 * rnd);
+		if (pbr_k > 0.0) {
+			float pr;
+			vec3 det = pbr_layer(7.0, 1.2, wp + rnd * 5.0, wn, pr, pbr_n, pbr_normal_k);
+			col *= mix(vec3(1.0), det, 0.7 * pbr_k);
+			pbr_r = pr; pbr_w = 0.5 * pbr_k;
+		}
 		rough = 0.8;
 		spec = 0.3;
 	}
@@ -158,13 +232,25 @@ void fragment() {
 		float inner = smoothstep(0.03, 0.06, ed) * (1.0 - smoothstep(0.06, 0.13, ed));
 		col = mix(col, col * 1.18 + vec3(0.03, 0.025, 0.015), bevel * (0.55 + 0.45 * max(wn.y, 0.0)));
 		col *= 1.0 - inner * 0.06;
+		// v1.0 (A): contact AO: a block's sides darken softly toward their bottom edge, where they meet the
+		// ground or the block below (a cheap stand-in for SSAO, which the Compatibility renderer lacks)
+		if (abs(wn.y) < 0.5) {
+			float dbot = (1.0 - fuv.y) * mpu;
+			col *= mix(0.74, 1.0, smoothstep(0.0, 0.42, dbot + chip * 0.05));
+		}
 	}
 	// moss and lichen in the garden: on upward faces near the ground and in sheltered corners
 	if (wp.x > moss_rect.x && wp.x < moss_rect.z && wp.z > moss_rect.y && wp.z < moss_rect.w && mat_id < 0.62) {
 		float mn = texture(noise_tex, wp.xz * 0.35 + 3.7).r * 0.7 + texture(noise_tex, wp.xz * 1.7 + wp.y).r * 0.3;
 		float low = 1.0 - smoothstep(1.0, 2.2, wp.y);
 		float moss = smoothstep(0.60, 0.74, mn) * low * (0.3 + 0.7 * max(wn.y, 0.0));
-		col = mix(col, vec3(0.52, 0.55, 0.45) * (0.88 + 0.24 * n), moss * 0.5);
+		vec3 mcol = vec3(0.52, 0.55, 0.45) * (0.88 + 0.24 * n);
+		if (pbr_k > 0.0) {
+			float pr;
+			vec3 nm_ = pbr_n;
+			mcol *= mix(vec3(1.0), pbr_layer(8.0, 1.0, wp, wn, pr, nm_, 0.0), 0.6 * pbr_k);
+		}
+		col = mix(col, mcol, moss * 0.5);
 		float li = step(0.86, texture(noise_tex, wp.xz * 6.0 + wp.yy * 5.0).r) * (1.0 - abs(wn.y));
 		col = mix(col, vec3(0.76, 0.74, 0.62), li * 0.35);
 	}
@@ -200,7 +286,8 @@ void fragment() {
 #ifdef OCC_ALPHA
 	ALPHA = cut_alpha;
 #endif
-	ROUGHNESS = rough;
+	ROUGHNESS = mix(rough, pbr_r, pbr_w);
 	SPECULAR = spec;
+	if (pbr_k > 0.0) NORMAL = normalize((VIEW_MATRIX * vec4(pbr_n, 0.0)).xyz);
 	}
 }

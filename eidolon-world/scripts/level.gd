@@ -128,6 +128,7 @@ func _init(tex: ImageTexture) -> void:
 	marble_occ_mat = ShaderMaterial.new()
 	marble_occ_mat.shader = preload("res://shaders/marble_occ.gdshader")
 	marble_occ_mat.set_shader_parameter("noise_tex", noise_tex)
+	_pbr_textures()          # (v1.0, Agent A: rendering)
 
 func build() -> void:
 	_veiled_gate()
@@ -1437,3 +1438,18 @@ func _debris_mesh() -> ArrayMesh:
 	m.box(Vector3.ZERO, Vector3(1, 1, 1), c)
 	m.box(Vector3(0.25, 0.3, 0.1), Vector3(0.6, 0.5, 0.7), c, Basis(Vector3(1, 1, 0).normalized(), 0.6))
 	return m.commit()
+
+# ------------------------------------------------------------------ (Agent A, rendering) v1.0 PBR detail
+## CC0 PBR detail for the world marble (assets/textures/pbr: two 10-layer arrays, VRAM-compressed; see
+## shaders/marble.gdshaderinc for the layers). Owned by Agent A; W only calls set_pbr_quality().
+func _pbr_textures() -> void:
+	var al: TextureLayered = load("res://assets/textures/pbr/pbr_albedo.jpg")
+	var nr: TextureLayered = load("res://assets/textures/pbr/pbr_nra.jpg")
+	for m in [marble_mat, marble_occ_mat]:
+		m.set_shader_parameter("pbr_albedo", al)
+		m.set_shader_parameter("pbr_nra", nr)
+	if OS.get_environment("EIDOLON_PBR") == "0": set_pbr_quality(false)     # (dev: before/after shots)
+
+## the Low tier skips the texture detail (two fewer fetches per marble pixel)
+func set_pbr_quality(high: bool) -> void:
+	for m in [marble_mat, marble_occ_mat]: m.set_shader_parameter("pbr_k", 1.0 if high else 0.0)

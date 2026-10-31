@@ -322,6 +322,8 @@ func _plan() -> void:
 	walk_path("the hidden stones", t4.slice(1))
 	step_do(func() -> void:
 		ok("(v1.0) up onto the colossus' stones: the Garden wing and the Colossus beyond", absf(P().y - 1.0) < 0.02 and game.visited.has("t:T4"), str(P())))
+	step_do(func() -> void:
+		ok("(v1.0) the Colossus named the first time it is reached, from the Atrium side too", game.visited.has("w:CO") and game.ui.area_label.text == "THE SUNKEN COLOSSUS", game.ui.area_label.text))
 	var back: Array = t4.duplicate()
 	back.reverse()
 	walk_path("back over the hidden stones", back.slice(1) + [[11.5, 10.2]])
@@ -747,7 +749,7 @@ func _plan() -> void:
 	for c in Ch1Geo.CO_STONES: co_path.append([c.x, c.y])
 	walk_path("along the colossus' cheek", co_path)
 	step_do(func() -> void:
-		ok("(v0.9) the Sunken Colossus: named on arrival, the music swells", game.visited.has("w:CO") and game.sfx.played.get("swell", 0) >= 1 and game.ui.area_label.text == "THE SUNKEN COLOSSUS", game.ui.area_label.text)
+		ok("(v0.9) the Sunken Colossus: named on arrival, the music swells", game.visited.has("w:CO") and game.sfx.played.get("swell", 0) >= 1, game.ui.area_label.text)      # (v1.0: named once, already from the Atrium side)
 		ok("(v0.9) the camera leans toward the head (a pan, never a zoom)", game.world.look_offset.length() > 0.5 and is_equal_approx(game.world.cam_size_target, World.FIXED_SIZE)))
 	walk_path("up into the garden", [[15.5, -4.4], [15.5, -6.4], [14.8, -7.9], [13.0, -8.3], [12.8, -10.0]])
 	step_do(func() -> void:
@@ -1003,6 +1005,7 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("out of the maze", C().state["maze"] and game.area == "echo_corridor", str(P()) + " " + game.area))
 	step_until("(v1.0) the Garden wing's Veil Seal rises", func() -> bool: return C().hub._seal_up["N"] and C().hub.seal_nodes["N"].position.y > 1.99, 4.0)
+	walk_path("to the seal", [[10.3, -39.7]])
 	step_do(func() -> void:
 		ok("(v1.0) take the Seal of the Garden wing", _focus() == "seal_N" and game.try_interact(), _focus()))
 	step_do(func() -> void:
@@ -1183,6 +1186,11 @@ func _plan() -> void:
 			var fp: Vector3 = C().four_pos(sk)
 			var away := Vector3(fp.x - Puzzles.SHRINE_C.x, 0.0, fp.z - Puzzles.SHRINE_C.z).normalized()
 			var at := fp + away * 1.0
+			var tang := Vector3(-away.z, 0.0, away.x)
+			for cand in [fp + away * 1.0, fp + away * 0.8, fp + tang * 0.9, fp - tang * 0.9, fp + (away + tang).normalized() * 0.9, fp + (away - tang).normalized() * 0.9]:
+				if not game.level.blocked(Vector2(cand.x, cand.z), Player.RADIUS) and game.level.circle_ok(Vector2(cand.x, cand.z), Player.RADIUS):
+					at = cand
+					break
 			tp(at.x, at.z, atan2(away.x, away.z)))
 		step_wait(0.25)
 		step_do(func() -> void: ok("(v1.0) set a seal in the %s statue's socket" % ["first", "second", "third"][sk], _focus() == "socket%d" % sk and game.try_interact(), _focus()))
@@ -1356,7 +1364,7 @@ func _plan() -> void:
 		ok("new game: regions reset", not game.level.named["pool4_2_0"].enabled and not cs["stones"] and cs["pool_turns"] == Ch1Geo.POOL_START and game.level.named["breath_gate"].enabled and not game.level.named["hdoor"].enabled
 			and game.level.named["hw_gate"].enabled and not game.level.named["MZ_door"].enabled and game.level.named["tholos_front"].enabled and not game.level.named["LB"].enabled)
 		ok("new game: no shard", not game.controls.inv_has and not C().lens_on)
-		ok("new game: lift down", C().lift_h == 0.0)
+		ok("new game: the lift waits at the top (v1.0: you first meet it from the Ledge)", C().lift_h == 1.0)
 		ok("new game: world asleep, runes dormant", game.world.awaken == 0.0 and game.player.fig.runes_awake == 0)
 		ok("new game: woke at the gate", P().distance_to(Level.WAKE_POS) < 0.3, str(P()))
 		var d = JSON.parse_string(FileAccess.get_file_as_string(Game.SAVE_PATH))

@@ -1,0 +1,62 @@
+[
+ {
+  "layer": 0,
+  "ambientCG": "Marble014",
+  "use": "floor slabs (cream veined marble)",
+  "mean_lum_before": 0.774
+ },
+ {
+  "layer": 1,
+  "ambientCG": "Marble012",
+  "use": "weathered white marble, grey veins",
+  "mean_lum_before": 0.683
+ },
+ {
+  "layer": 2,
+  "ambientCG": "Marble021",
+  "use": "plain white marble",
+  "mean_lum_before": 0.951
+ },
+ {
+  "layer": 3,
+  "ambientCG": "Plaster007",
+  "use": "cracked plaster",
+  "mean_lum_before": 0.718
+ },
+ {
+  "layer": 4,
+  "ambientCG": "Rock060",
+  "use": "grey rock",
+  "mean_lum_before": 0.346
+ },
+ {
+  "layer": 5,
+  "ambientCG": "Rock035",
+  "use": "dark water-stained stone",
+  "mean_lum_before": 0.085
+ },
+ {
+  "layer": 6,
+  "ambientCG": "Marble016",
+  "use": "black veined marble",
+  "mean_lum_before": 0.244
+ },
+ {
+  "layer": 7,
+  "ambientCG": "Wood051",
+  "use": "old dark wood",
+  "mean_lum_before": 0.217
+ },
+ {
+  "layer": 8,
+  "ambientCG": "Ground037",
+  "use": "moss and lichen",
+  "mean_lum_before": 0.548
+ },
+ {
+  "layer": 9,
+  "ambientCG": "Metal013",
+  "use": "worn bronze/metal",
+  "mean_lum_before": 0.419
+ }
+]

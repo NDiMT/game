@@ -76,7 +76,7 @@ static func _atrium(lv: Level) -> void:
 		_bust(lv, z, Vector3(p.x, A_Y, p.y), lv.yaw_to(Vector3(p.x, 0, p.y), FOUNTAIN))
 	# two blocks waiting to be carved, a fallen crane arm
 	lv.box(z, Vector3(9.9, A_Y + 0.45, 20.6), Vector3(1.0, 0.9, 0.8), 0.25, false, Basis(Vector3.UP, 0.3))
-	lv.ob_rect(R(9.3, 20.05, 10.5, 21.15))
+	lv.ob_rect(R(9.24, 20.0, 10.56, 21.2))
 	lv.box(z, Vector3(-1.0, A_Y + 0.12, 21.6), Vector3(3.2, 0.24, 0.3), 1.0, false, Basis(Vector3.UP, 0.12))
 	lv.ob_rect(R(-2.65, 21.3, 0.65, 21.95))
 	# T2: Theron's scaffold up the east wall: a plank stair, a gallery with his workbench
@@ -128,6 +128,7 @@ static func _colonnade(lv: Level) -> void:
 			lv.walk(Rect2(mid - Vector2(0.4, 0.4), Vector2(0.8, 0.8)), T4_Y, NAN, -1, "T4")
 	# up out of the water onto the colossus stones' southern apex
 	lv.walk(R(11.75, 3.95, 12.55, 5.05), Ch1Geo.CO_WATER_Y + 0.85, T4_Y, 1, "T4")
+	lv.walk(R(11.75, 3.55, 12.55, 3.97), Ch1Geo.CO_WATER_Y + 0.85, NAN, -1, "T4")       # (onto the stones: no seam between)
 	lv.steps(z, R(11.75, 3.95, 12.55, 5.05), 1, T4_Y, Ch1Geo.CO_WATER_Y + 0.85, false)
 	# the drowned colonnade: broken shafts standing out of the water (they look like stepping stones:
 	# they are not)
@@ -165,7 +166,7 @@ static func _balcony(lv: Level) -> void:
 	var z := "BAL"
 	var r := R(26.45, -18.95, 29.6, 12.6)
 	lv.slab(z, r, BAL_Y, 0.5, 0.0)
-	lv.walk(r, BAL_Y, NAN, -1, "BAL")
+	lv.walk(r.grow_individual(0.0, 0.15, 0.0, 0.0), BAL_Y, NAN, -1, "BAL")      # (into the Ledge's floor: no seam)
 	lv.balustrade(z, Vector2(29.55, 12.5), Vector2(29.55, -18.9), BAL_Y)
 	lv.balustrade(z, Vector2(26.55, 12.55), Vector2(29.45, 12.55), BAL_Y)
 	lv.balustrade(z, Vector2(26.5, 10.1), Vector2(26.5, -18.9), BAL_Y)

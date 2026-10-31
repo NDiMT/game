@@ -335,8 +335,8 @@ func _build_bars() -> void:
 	game.level.ob_rect(Level.R(9.0, -41.15, 11.0, -40.85), "ec_bars")
 	game.level.add_interact("ec_unbolt", Vector3(10.0, 2.0, -41.6), "lever", unbolt_ec, 1.0,
 		func() -> bool: return chapter.state["echo_room"] and game.level.named["ec_bars"].enabled and game.player.position.z < -41.2)
-	game.level.add_interact("ec_bolted", Vector3(10.0, 2.0, -40.4), "locked", func() -> void:
-		game.ui.show_text("Bolted, from the other side.", game.player.position, 2.5), 0.9,
+	game.level.add_interact("ec_bolted", Vector3(9.7, 2.0, -40.75), "locked", func() -> void:
+		game.ui.show_text("Bolted, from the other side.", game.player.position, 2.5), 0.6,
 		func() -> bool: return game.level.named["ec_bars"].enabled and game.player.position.z > -40.85)
 	sc_bars = _bars(Vector3(26.1, 2.0, -45.5), 1.9, true)
 	game.level.ob_rect(Level.R(25.95, -46.45, 26.25, -44.55), "sc_bars")

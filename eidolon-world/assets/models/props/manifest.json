@@ -305,6 +305,45 @@
       "use": "The Upward Spring: hang upside down in the sky (rotate 180 deg about X); the doorway faces +Z",
       "notes": "Complete tholos: 3-step round platform, 8 columns, entablature, dome with finial and a small cella with a doorway. 6 m tall, about 5.6 m across. Untextured placeholder material; the game's marble shader applies.",
       "tripo_task": "5eacd6d3-61d8-4e1b-983c-24585faed0df"
+    },
+    {
+      "file": "brazier.glb",
+      "category": "prop",
+      "size_m": {
+        "x": 1.02,
+        "y": 0.9,
+        "z": 1.01
+      },
+      "tris": 8074,
+      "textured": true,
+      "use": "v1.0: textured bronze brazier on three lion-paw legs (0.9 m): replace the procedural braziers; flame at the bowl centre, ~0.85 m",
+      "tripo_task": "56c77381-6575-4ed7-8a9d-92826dd7a0db"
+    },
+    {
+      "file": "door_temple.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 2.17,
+        "y": 3.0,
+        "z": 0.99
+      },
+      "tris": 7614,
+      "textured": true,
+      "use": "v1.0: textured bronze-clad temple double door in a marble frame (3 m): wing doors; the leaves are one mesh with the frame",
+      "tripo_task": "9df63232-d3c4-4a34-af9d-0db710013891"
+    },
+    {
+      "file": "gate_veiled.glb",
+      "category": "architecture",
+      "size_m": {
+        "x": 3.69,
+        "y": 4.0,
+        "z": 1.24
+      },
+      "tris": 8276,
+      "textured": true,
+      "use": "v1.0: textured Gate of the Four Veiled (4 m): marble pillars, lintel, bronze bars with a four-faced medallion",
+      "tripo_task": "ac522feb-ec84-458c-9111-cc435381bfee"
     }
   ]
 }

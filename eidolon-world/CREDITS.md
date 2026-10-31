@@ -132,6 +132,15 @@ Sound-effect recordings:
   (v0.8: the hero, her reflections and the glass silhouette). The original auto-rig `wanderer.glb` is kept for tools.
 - **Veiled statues and ruin kit (Tripo)** — supplied by the project owner: `assets/models/props/` (v0.8 set dressing).
 
+## Textures (v1.0)
+
+- **ambientCG** — https://ambientcg.com — all **CC0 1.0** (public domain). Packed at 512 px into
+  `assets/textures/pbr/pbr_albedo.jpg` and `pbr_nra.jpg` (10-layer arrays, see `layers.json`):
+  Marble014 (floor slabs), Marble012 (weathered veined marble), Marble021 (plain white marble), Plaster007
+  (cracked plaster), Rock060 (grey rock), Rock035 (dark water-stained stone), Marble016 (black veined marble),
+  Wood051 (old wood), Ground037 (moss), Metal013 (worn bronze).
+- **v1.0 heroine** — Tripo (text to model, task af708ae1), generated for the project: `assets/models/heroine_v1_rigged.glb`.
+
 ## Unused in the build (kept in the repo)
 
 - The procedural figure (`scripts/figure.gd`, `Figure.RIGGED = false` brings it back).
