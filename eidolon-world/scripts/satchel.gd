@@ -72,6 +72,15 @@ func build(g: Game, sf: Font, it: Font, host: Control) -> void:
 	line_l.position = Vector2(20, 248); line_l.size = Vector2(280, 90)
 	line_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(line_l)
+	var xb := Button.new()                 # (QA P2-4: a close mark)
+	xb.text = "×"
+	xb.flat = true
+	xb.add_theme_font_override("font", serif)
+	xb.add_theme_font_size_override("font_size", 22)
+	xb.add_theme_color_override("font_color", Color(INK, 0.7))
+	xb.position = Vector2(282, 6); xb.size = Vector2(32, 32)
+	xb.pressed.connect(close)
+	card.add_child(xb)
 	map_btn = Button.new()
 	map_btn.text = "THE MAP"
 	map_btn.flat = true
@@ -207,7 +216,17 @@ func _has_slot(k: String) -> bool:
 	for s in slots: if s[0] == k: return true
 	return false
 
+var _tab_i := -1
 func select(k: String) -> void:
+	# (QA P2-5: the tablets slot, tapped again, pages back through every note read)
+	if k == "tablet" and sel == "tablet":
+		var t: Array = game.chapter.state["inv"]["tablets"]
+		_tab_i = (_tab_i - 1 + t.size()) % t.size() if _tab_i >= 0 else t.size() - 2
+		if t.size() > 0:
+			var id: String = t[clampi(_tab_i, 0, t.size() - 1)]
+			for e in Items.TABLETS: if e[0] == id: line_l.text = "%d of %d. \"%s\"" % [clampi(_tab_i, 0, t.size() - 1) + 1, t.size(), e[2]]
+		return
+	_tab_i = -1
 	sel = k
 	name_l.text = Items.NAME.get(k, k)
 	line_l.text = describe(k)

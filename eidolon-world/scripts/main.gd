@@ -19,7 +19,8 @@ var puzzles: Puzzles
 var chapter: Chapter
 var wonders: Wonders
 var satchel: Satchel
-var quad_batch: QuadBatch              # v0.9 the wonder spaces between the puzzles
+var quad_batch: QuadBatch
+var _dark := 0.0              # v0.9 the wonder spaces between the puzzles
 var juice: Juice                  # v1.0 M1: the physical little moments (dust, grit, sparks, wet stone)
 var _fade_on := false
 var _fade_off_t := 0.0
@@ -78,6 +79,10 @@ func _ready() -> void:
 	ui.controls = controls
 	chapter.post_commit()
 	_drawbridge_lever()
+	# (QA P1-11: the upright drawbridge leaf and the Eidolon glass's frame hide her at the Ledge and the Gate:
+	# they open in the see-through like any wall)
+	level.occluders.append(AABB(Vector3(20.55, 2.0, -21.6), Vector3(0.9, 4.4, 2.4)))
+	level.occluders.append(AABB(Vector3(21.3, 2.0, -25.3), Vector3(4.6, 4.0, 0.7)))
 	wonders = Wonders.new()
 	add_child(wonders)
 	wonders.setup(self)
@@ -121,6 +126,15 @@ func _ready() -> void:
 		quad_batch = QuadBatch.new()
 		add_child(quad_batch)
 		quad_batch.absorb(self)
+		quad_batch.rescan_s = 2.0                   # (picks up quads built later)
+	# (QA P1-15 / A: small moving pieces cast no shadow: each caster costs a call in every shadow pass, and
+	# their contact blobs already ground them)
+	for root in [puzzles, chapter]:
+		for c in root.find_children("*", "MeshInstance3D", true, false):
+			var mi := c as MeshInstance3D
+			if mi.mesh == null or mi.skin != null: continue
+			var sz := mi.mesh.get_aabb().size * mi.global_transform.basis.get_scale()
+			if maxf(sz.x, maxf(sz.y, sz.z)) < 1.3: mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_load_settings()
 	if OS.has_feature("web"):
 		var r = JavaScriptBridge.eval("window.devicePixelRatio || 1")
@@ -394,6 +408,14 @@ func _process(dt: float) -> void:
 	if Engine.get_process_frames() % 2 == 0:
 		level.set_flames(Flame.bounce_list(player.position))   # (v1.0 A) crimson bounce on nearby stone
 	if satchel and Engine.get_process_frames() % 10 == 0: controls.bag_has = not satchel.contents().is_empty()
+	# (v1.0 A, QA P1-4: the Undercroft is truly dark; the lamp's warm circle is what you see by)
+	var rg := level.region_at(Vector2(player.position.x, player.position.z))
+	var want_dark := 1.0 if (rg and (rg.name == "UC" or rg.name == "UC_up") and mode == "play") else 0.0
+	_dark = move_toward(_dark, want_dark, dt * 1.2)
+	world.set_darkness(_dark)
+	var lp := (player.global_position + Vector3(0, 0.9, 0)) if chapter.hub.has_item("lamp") else Vector3.INF
+	level.set_darkness(_dark, lp, 3.4)
+	chapter.hub.lamp_light.light_energy = lerpf(0.6, 1.6, _dark); chapter.hub.lamp_light.omni_range = lerpf(4.5, 5.5, _dark)
 	sfx.calm = mode != "play" or (player.speed01 < 0.05 and auto_target == Vector3.INF)
 	_update_hum()
 	if prof_on: _t0 = _pm("lights+hum", _t0)
@@ -962,7 +984,11 @@ func _warm_up_shaders() -> void:
 	holder.scale = Vector3.ONE * 0.0003            # (sub-pixel: drawn, never seen)
 	var mats: Array[Material] = [highlight._in, highlight._ring_mat, level.marble_mat, level.marble_occ_mat]
 	for path in ["res://shaders/light_pool.gdshader", "res://shaders/statue_shadow.gdshader", "res://shaders/ember.gdshader",
-			"res://shaders/flame.gdshader", "res://shaders/lens_only.gdshader", "res://shaders/veil_glow.gdshader", "res://shaders/halo.gdshader"]:
+			"res://shaders/flame.gdshader", "res://shaders/lens_only.gdshader", "res://shaders/veil_glow.gdshader", "res://shaders/halo.gdshader",
+			# (v1.0 A: the batches, ambient life, the Warden in glass)
+			"res://shaders/rune_face_mm.gdshader", "res://shaders/halo_mm.gdshader", "res://shaders/light_pool_mm.gdshader", "res://shaders/floor_mark_mm.gdshader",
+			"res://shaders/moths.gdshader", "res://shaders/petals.gdshader", "res://shaders/drips.gdshader", "res://shaders/veil_strip.gdshader",
+			"res://shaders/warden_reflection.gdshader"]:
 		var m := ShaderMaterial.new()
 		m.shader = load(path)
 		mats.append(m)

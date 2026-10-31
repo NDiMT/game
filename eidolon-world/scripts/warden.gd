@@ -61,6 +61,7 @@ func setup(g: Game, ch: Chapter) -> void:
 ## on LAYER_DOUBLE: the planar reflections see him, the camera never does
 func _figure() -> WardenRig:
 	var w := WardenRig.new()
+	w.reflection = true                       # (A: dark, a faint crimson rim, unshaded: he reads the same in every glass)
 	w.visible = false                         # (QA P1-2: never at the title, never outside a glass)
 	add_child(w)
 	for c in w.find_children("*", "MeshInstance3D", true, false):

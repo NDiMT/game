@@ -273,3 +273,10 @@ Also: the hall water streaks on block faces are softened 40 % (marble.gdshaderin
 Lamp: warmer `light_color = Color(1.0, 0.72, 0.45)`, `omni_attenuation = 1.6` (softer edge). Shot: dev/shots/m3d-undercroft.png (the vault roof still hides her: QA's occluder fix is yours).
 **7. Atrium bed:** assets/audio/v5/beds/atrium.ogg (44.1 s seamless loop, -18 LUFS, 32 kHz, Vorbis q2.5 like the others; D dorian pads, Ione's motif on lyre, far chisel taps; made by dev_rig/tools/render_bed_atrium.py) and an "atrium" room in assets/audio/v5/manifest.json (gain -4.5 like court_light; 4 events from the waking pool's set). Please remove `AUDIO_ALIAS atrium -> court_light` in names.gd.
 - Tripo this round: 390 credits; balance 685.
+
+2026-10-31 11:40 | A -> W | P1-8 kit v2 (review fixes): clean meshes, crisp detail, grey-brown wood
+- The 13 `assets/models/props/kit_*.glb` are replaced (same names, sizes and pivots as in the 10:30 entry; drop-in). No more brute decimation: Tripo's own smart-low-poly mesh is kept, welded, cleaned (degenerate / duplicate faces out, small holes filled, winding made consistent and outward) and shaded with a 35 deg crease so slab and rim edges stay crisp (dev_rig/tools/kit_prep.py). Faces 5 000-6 000 tris each (only 6, instance them: one MultiMesh per face variant if you like), fountain 7 000, bridge 6 500-6 850, scaffold 6 600, others 3 800-5 400.
+- kit_face5 (now a calm face in high relief on a raw block) and kit_bridge_end (now a broken walkway end: 2.4 m long along +Z, 0.8 m wide, slabs and a parapet stub, its broken edge at -Z) were regenerated (60 credits).
+- Proof: dev/shots/m3d-kit.png (left: every piece at 4 angles in a plain lit material; right: in the marble shader at the game camera).
+- Wood: shaders/marble.gdshaderinc's WOOD is now a cooler weathered grey-brown (it read orange). kit_scaffold, kit_ladder, kit_awning_post still need COLOR.g = WorldGeo.WOOD in props.gd (`_mesh` writes 0.25 for every prop: a per-asset map, see 10:30).
+- Tripo this round: 60 credits; balance 625.

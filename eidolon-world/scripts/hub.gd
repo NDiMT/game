@@ -33,6 +33,7 @@ var _t4_phase := 0.0
 # the seals
 const SEAL_POS := {"W": Vector3(9.55, 1.24, -8.95), "N": Vector3(10.62, 2.0, -40.1), "E": Vector3(17.15, 2.0, -49.45)}
 const SEAL_DONE := {"W": "gallery", "N": "maze", "E": "echo_room"}
+const SEAL_RUNE := {"W": 2, "N": 7, "E": 3}
 var seal_nodes := {}
 var _seal_up := {}
 # the bars
@@ -133,9 +134,9 @@ func _build_lamp() -> void:
 	lamp_flame.bounce = false
 	lamp_held.add_child(lamp_flame)
 	lamp_light = OmniLight3D.new()
-	lamp_light.light_color = Color(1.0, 0.84, 0.66)
+	lamp_light.light_color = Color(1.0, 0.72, 0.45)          # (A: warmer, a softer edge)
 	lamp_light.omni_range = 4.5
-	lamp_light.omni_attenuation = 1.4
+	lamp_light.omni_attenuation = 1.6
 	lamp_light.light_energy = 0.6                # (v1.0 M3 polish: a warm glow round her, not a red wash)
 	lamp_light.shadow_enabled = false
 	lamp_light.position = Vector3(0, 0.3, 0)
@@ -210,11 +211,7 @@ func _update_undercroft() -> void:
 		tw.tween_method(func(v: float) -> void: uc_veil.set_shader_parameter("density", v), float(uc_veil.get_shader_parameter("density")), 0.0, 1.6)
 	# (without the lamp you never go INTO the dark from the Atrium; from inside, the way out is always open)
 	uc_ob.enabled = not lamp and game.player.position.x < 14.25
-	# (QA P1-4: under the vault the lamp is the only light: it reads warm on the walls)
-	var pp := game.player.position
-	var inside := pp.x > 14.0 and pp.x < 23.6 and pp.z > 10.0 and pp.z < 12.8
-	lamp_light.light_energy = move_toward(lamp_light.light_energy, 1.5 if inside else 0.6, get_process_delta_time() * 1.5)
-	lamp_light.omni_range = 5.5 if inside else 4.5
+	var pp := game.player.position          # (the lamp's strength in the dark: main, with A's darkness)
 	uc_roof.visible = not (pp.x > 13.6 and pp.x < 24.0 and pp.z > 9.6 and pp.z < 13.2 and pp.y < 1.5)       # (never over you)
 
 # ------------------------------------------------------------------ T4: her reflection walks the hidden stones
@@ -298,7 +295,7 @@ func _build_seals() -> void:
 		var B := Basis(Vector3.UP, Framing.YAW)          # (the seal's face toward the camera)
 		m.cyl(Vector3(0, 0.98, 0), 0.2, 0.2, 0.05, Color(0.5, 1.0, 0.0), 18, B * Basis(Vector3.RIGHT, PI * 0.5))
 		game.puzzles.marble_instance(m.commit(), n)
-		game.puzzles.rune_quad(n, Vector3(0, 0.98, 0) + B * Vector3(0, 0, 0.03), Vector2(0.3, 0.3), B, 2.0, 1.0)
+		game.puzzles.rune_quad(n, Vector3(0, 0.98, 0) + B * Vector3(0, 0, 0.03), Vector2(0.3, 0.3), B, float(SEAL_RUNE[k]), 1.0)      # (QA P2-13: its wing's own sign)
 		n.visible = false
 		seal_nodes[k] = n
 		_seal_up[k] = false

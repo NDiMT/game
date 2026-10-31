@@ -505,6 +505,8 @@ func open_secret(id: String, need: String, text: String) -> void:
 	(nodes[1] as Node3D).visible = false
 	chapter.event.emit("mem_shard", id)
 	game.ui.show_memory(text, 5.0)
+	if (inv()["mem"] as Array).size() == SECRETS.size():         # (QA P2-6: all seven: the Face remembers)
+		get_tree().create_timer(5.5).timeout.connect(func() -> void: game.ui.show_text("Seven moments of her, kept.\nThe Face remembers.", game.player.position, 4.0))
 
 # ------------------------------------------------------------------ frame, state
 func update(dt: float) -> void:
