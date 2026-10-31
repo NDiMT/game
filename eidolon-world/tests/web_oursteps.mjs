@@ -109,6 +109,18 @@ async function thumbTo(sd, k = 1) {
   await touch('touchMove', x, y);
 }
 async function thumbUp() { if (thumb) { await touch('touchEnd'); thumb = false; } }
+// one board move: a real drag, thumb down, out along the way (a little off-axis) and up again, sent as a
+// thumb flicks it (~0.1 s). Under SwiftShader a frame takes ~1 s and each CDP touch call waits for the page,
+// so the four events are queued back to back (in order) rather than awaited one by one: the game sees one
+// short drag, as from a phone, and must make exactly ONE step of it
+async function flick(sd) {
+  await Promise.all([
+    touch('touchStart', BASE[0], BASE[1]),
+    touch('touchMove', BASE[0] + sd[0] * REACH * 0.4, BASE[1] + sd[1] * REACH * 0.4),
+    touch('touchMove', BASE[0] + sd[0] * REACH, BASE[1] + sd[1] * REACH),
+    touch('touchEnd'),
+  ]);
+}
 const rot = (sd, deg) => { const a = deg * Math.PI / 180; return [sd[0] * Math.cos(a) - sd[1] * Math.sin(a), sd[0] * Math.sin(a) + sd[1] * Math.cos(a)]; };
 
 let shotN = 0;
@@ -120,13 +132,20 @@ async function shot(label) {
   info('shot', path.basename(f), label);
 }
 // walk (by the stick) to a world point; re-aims as it goes, eases off near it
+// (at ~1 fps a frame moves her a long way: near the point the thumb eases off, and once she has stopped, a
+// coast past the point is walked back)
 async function walkTo(x, z, tol = 0.35, ms = 90000) {
   const t = Date.now();
   while (Date.now() - t < ms) {
     const s = await st(); const dx = x - s.pos[0], dz = z - s.pos[2], d = Math.hypot(dx, dz);
-    if (d < tol) { await thumbUp(); await waitFor((q) => q.speed < 0.05, 8000); return true; }
-    await thumbTo(screenDir(dx, dz), d < 1.2 ? 0.55 : 1.0);
-    await wait(250);
+    if (d < tol) {
+      await thumbUp();
+      const q = await waitFor((q) => q.speed < 0.05, 8000);
+      if (q && Math.hypot(x - q.pos[0], z - q.pos[2]) < tol * 1.6) return true;
+      continue;
+    }
+    await thumbTo(screenDir(dx, dz), d < 0.8 ? 0.45 : d < 1.6 ? 0.6 : 1.0);
+    await wait(200);
   }
   await thumbUp();
   return false;
@@ -152,16 +171,23 @@ try {
   check('jump: in Our Steps (hollow_walk), unsolved', s && s.steps && s.steps.done === false && s.steps.active === false, JSON.stringify(s?.steps));
   // ---------------------------------------------------------------- to the gap, by touch
   const nearE = at(0, EDGE_V - 0.9);
-  const ok0 = await walkTo(nearE[0], nearE[1], 0.3);
+  const ok0 = await walkTo(nearE[0], nearE[1], 0.6);     // (near enough: a push toward the glass is funnelled through the gap)
   s = await st();
   check('touch: walked to the floor\'s gap', ok0, `pos ${s.pos}`);
   await wait(600);
   check('before stepping on: the glass is a plain mirror (her figure not in it)', s.steps.hold === false && s.steps.active === false, JSON.stringify(s.steps));
   await shot('before: the glass, only a mirror');
   // ---------------------------------------------------------------- onto the floor (one drag toward the glass)
-  await thumbTo(rot(screenDir(V[0], V[2]), 7));
-  s = await waitFor((q) => q.steps.active, 30000);
+  // (the thumb aims through the middle of the gap, a little off-axis, re-aimed as she goes)
+  const gapIn = at(0, EDGE_V + 0.6);
+  for (let k = 0, t1 = Date.now(); Date.now() - t1 < 40000; k++) {
+    const q = await st();
+    if (q.steps.active) { s = q; break; }
+    await thumbTo(rot(screenDir(gapIn[0] - q.pos[0], gapIn[1] - q.pos[2]), 7));
+    await wait(250);
+  }
   await thumbUp();
+  s = await waitFor((q) => q.steps.active, 5000);
   check('touch: onto the floor by the stick', !!s, '');
   s = await waitFor((q) => q.steps.active && !q.steps.moving, 20000);
   const b0 = board(0);
@@ -181,9 +207,8 @@ try {
       const s0 = await st();
       const m0 = s0.steps.moves;
       const err = ERR[n++ % ERR.length];
-      await thumbTo(rot(screenDir(U[0] * d[0] + V[0] * d[1], U[2] * d[0] + V[2] * d[1]), err));
+      await flick(rot(screenDir(U[0] * d[0] + V[0] * d[1], U[2] * d[0] + V[2] * d[1]), err));
       const s1 = await waitFor((q) => q.steps.moves > m0 || q.steps.bi !== bi || q.steps.done || !q.steps.active, 30000);
-      await thumbUp();
       const last = i === plans[bi].length - 1;
       const s2 = await waitFor((q) => last ? (q.steps.done || (q.steps.bi === bi + 1 && q.steps.between <= 0 && !q.steps.moving)) : (!q.steps.moving), 40000);
       const good = !!s1 && !!s2 && (last ? true : eq(s2.steps.p, np) && eq(s2.steps.h, nh) && s2.steps.moves === m0 + 1);
@@ -210,7 +235,7 @@ try {
   const t10 = tile([1, 0]);
   const route = [[t10, 'off the floor'], [nearE, 'the gap'], [[17.85, -10.3], 'the walk'], [[17.85, -11.8], 'by the gate']];
   for (const [pt, label] of route) {
-    const ok = await walkTo(pt[0], pt[1], 0.4);
+    const ok = await walkTo(pt[0], pt[1], 0.6);
     check(`walk out (touch): ${label}`, ok, `pos ${(await st()).pos}`);
     if (!ok) throw new Error('walk out stuck at ' + label);
     await shot(`walk out: ${label}`);
@@ -220,7 +245,7 @@ try {
   await wait(1500);
   await shot('the gate open');
   for (const [pt, label] of [[[18.3, -13.0], 'through the gate'], [[18.5, -16.2], 'up the ramp'], [[17.6, -17.8], 'the top'], [[15.0, -18.4], 'the Court']]) {
-    const ok = await walkTo(pt[0], pt[1], 0.45);
+    const ok = await walkTo(pt[0], pt[1], 0.7);
     if (!ok) { check(`walk out (touch): ${label}`, false, `pos ${(await st()).pos}`); throw new Error('walk stuck at ' + label); }
     if (label === 'the Court' || label === 'up the ramp') await shot(`walk out: ${label}`);
   }

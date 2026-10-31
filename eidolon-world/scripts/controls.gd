@@ -19,6 +19,10 @@ var vec := Vector2.ZERO            # joystick output, screen space (x right, y d
 var enabled := false
 var joy_index := -1
 var joy_serial := 0                 # (v1.1d) +1 per thumb-down on the stick: Our Steps tells a new drag from a held one
+var drag_peak := Vector2.ZERO       # (v1.1d) the drag's furthest push (screen space)
+var flick := Vector2.ZERO           # (v1.1d) a drag just let go: its furthest push (Our Steps: a quick flick is a step too)
+var flick_serial := -1
+var flick_ms := 0
 var joy_base := Vector2.ZERO
 var joy_knob := Vector2.ZERO
 var joy_alpha := 0.0
@@ -145,12 +149,18 @@ func _input(e: InputEvent) -> void:
 			if joy_index < 0 and p.x < vp_size().x * 0.6:
 				joy_index = e.index
 				joy_serial += 1
+				drag_peak = Vector2.ZERO
 				joy_base = p
 				joy_knob = p
 				vec = Vector2.ZERO
 		else:
 			_touches.erase(e.index)
-			if e.index == joy_index: _end_joy()
+			if e.index == joy_index:
+				if drag_peak.length() > 0.35:
+					flick = drag_peak
+					flick_serial = joy_serial
+					flick_ms = Time.get_ticks_msec()
+				_end_joy()
 	elif e is InputEventScreenDrag:
 		var p2: Vector2 = canvas.get_global_transform_with_canvas().affine_inverse() * e.position
 		if _touches.has(e.index): _touches[e.index] = p2
@@ -163,6 +173,7 @@ func _input(e: InputEvent) -> void:
 			joy_knob = p2
 			vec = off / JOY_R
 			if vec.length() < 0.12: vec = Vector2.ZERO
+			if vec.length() > drag_peak.length(): drag_peak = vec
 
 func _end_joy() -> void:
 	joy_index = -1

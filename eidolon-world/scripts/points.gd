@@ -36,8 +36,8 @@ const POINTS := [
 	["bench", Vector3(26.85, 2.0, -4.5), "bench", "wait", "From here the drowned head looks up at the sky, as if listening."],
 	# (QA_V11 pacing: the East wing's long Balcony walk gets a stop in its first third, a seat facing up the shore)
 	["lookout", Vector3(29.05, 2.0, 4.0), "bench", "wait", "Far up the shore, under its dome, a light keeps watch. The way runs there."],
-	# (QA_V11 pacing: a pause between Our Steps and the Court, by the gate at the foot of the ramp)
-	["votive_n", Vector3(17.8, 1.0, -14.5), "votive", "light", "Another of her small flames, by the gate. Behind you, the glass keeps the floor you crossed together."],
+	# (QA_V11 pacing: a pause between Our Steps and the Court, where the ramp comes up into the Court)
+	["votive_n", Vector3(16.4, 2.0, -19.7), "votive", "light", "Another of her small flames, at the head of the ramp. Below, the glass keeps the floor you crossed together."],
 ]
 ## the relief along the Echo Corridor's north wall: its panels speak as you walk past
 const RELIEF := [
@@ -131,7 +131,7 @@ func _build(p: Array) -> void:
 			game.level.ob_rect(Level.R(at.x - 0.25, at.z - 0.72, at.x + 0.25, at.z + 0.72))
 	if kind != "coin": game.puzzles.marble_instance(m.commit(), self)
 	var line: String = p[4]
-	game.level.add_interact("pt_" + id, at + ({"lookout": Vector3(-0.6, 0, 0), "votive_n": Vector3(0.45, 0, 0.3)}.get(id, _approach(kind)) as Vector3), p[3], func() -> void: _use(id, kind, line), 1.5 if kind == "coin" else 0.9,
+	game.level.add_interact("pt_" + id, at + ({"lookout": Vector3(-0.6, 0, 0), "votive_n": Vector3(-0.45, 0, 0.3)}.get(id, _approach(kind)) as Vector3), p[3], func() -> void: _use(id, kind, line), 1.5 if kind == "coin" else 0.9,
 		func() -> bool: return kind == "bell" or kind == "bench" or not done(id))
 
 func _approach(kind: String) -> Vector3:

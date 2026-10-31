@@ -152,6 +152,12 @@ var _between := 0.0
 var _bump := Vector3.INF
 var _last_dir := Vector2i.ZERO
 var _drag_serial := -1
+var _step_serial := -1               # the drag that made the last step (a repeat waits a beat)
+var _stepped_serial := -1            # the last stick drag that made a step (its release is no flick)
+var _active_serial := -1             # the drag under way when you stepped on (it walked you on: it makes no step)
+var _done_ms := 0
+var _done_frame := 0
+const REPEAT_MS := 600
 var plate_y: Array[ShaderMaterial] = []
 var plate_h: Array[ShaderMaterial] = []
 var pieces: Array[Node3D] = []       # per board: its columns and glyphs
@@ -281,7 +287,16 @@ func _lights() -> void:
 ## last stepped); held, it repeats one step at a time
 func input(world_dir: Vector3) -> void:
 	if not active or moving or _cool > 0.0 or _between > 0.0: return
-	if world_dir.length() < 0.35: return
+	if world_dir.length() < 0.35:
+		_step_serial = -1                      # (let go: the next push is a new step at once)
+		return
+	# ONE drag = ONE step; held, it repeats, but only after a beat (REPEAT_MS of real time AND a few frames:
+	# a slow device must not turn one drag into two because a step where only she moves ends in one frame).
+	# The keys (no stick down) count as one long "drag" (serial -2) until they are let go.
+	var stick: bool = game.controls.joy_index >= 0
+	var serial: int = game.controls.joy_serial if stick else -2
+	if stick and serial <= _active_serial: return     # (the drag that walked you on never steps on the board: lift and push again)
+	if serial == _step_serial and (Time.get_ticks_msec() - _done_ms < REPEAT_MS or Engine.get_process_frames() - _done_frame < 3): return
 	var wd := world_dir.normalized()
 	var best := Vector2i.ZERO
 	var bd := -2.0
@@ -289,11 +304,38 @@ func input(world_dir: Vector3) -> void:
 		var k: float = dir_world(d).dot(wd)
 		if k > bd: bd = k; best = d
 	# (QA_V11) the hysteresis only holds a HELD drag steady (its repeats); a new drag steps the way THAT drag points
-	var serial: int = game.controls.joy_serial
 	if serial != _drag_serial:
 		_drag_serial = serial
 		_last_dir = Vector2i.ZERO
 	if _last_dir != Vector2i.ZERO and best != _last_dir and dir_world(_last_dir).dot(wd) > bd - 0.12: best = _last_dir
+	_step_serial = serial
+	if stick: _stepped_serial = serial
+	try_step(best)
+
+## (v1.1d touch) a drag let go before any step was taken (a quick flick, shorter than a frame on a slow
+## device) still makes its ONE step, the way it pointed
+func _take_flick() -> void:
+	var ctl: Controls = game.controls
+	if ctl.flick == Vector2.ZERO: return
+	if Time.get_ticks_msec() - ctl.flick_ms > 1500 or not active or _leaving or _between > 0.0:
+		ctl.flick = Vector2.ZERO               # (stale, or the board is changing: it does not carry over)
+		return
+	if moving or _cool > 0.0 or game.auto_target != Vector3.INF: return     # (it waits for the step under way)
+	var sv := ctl.flick
+	var serial := ctl.flick_serial
+	ctl.flick = Vector2.ZERO
+	if serial == _stepped_serial or serial <= _active_serial: return          # (that drag already stepped, or walked you on)
+	var axes: Array = game.world.ground_axes()
+	var wd: Vector3 = (axes[0] * sv.x + axes[1] * (-sv.y)).normalized()
+	var best := Vector2i.ZERO
+	var bd := -2.0
+	for d in DIRS:
+		var k: float = dir_world(d).dot(wd)
+		if k > bd: bd = k; best = d
+	_drag_serial = serial
+	_step_serial = serial
+	_stepped_serial = serial
+	_last_dir = Vector2i.ZERO
 	try_step(best)
 
 func try_step(d: Vector2i) -> bool:
@@ -372,7 +414,17 @@ func update(dt: float) -> void:
 		refl.hold = true
 		game.auto_target = tile(p)
 		moving = true
+		_active_serial = game.controls.joy_serial
+		game.controls.flick = Vector2.ZERO
 		chapter.event.emit("steps_on", null)
+	# (v1.1d touch) the way on is a gap one slab wide: a push toward the glass from in front of it (a thumb is
+	# never quite on line) is funnelled through its middle instead of stopping on the kerb
+	if not active and not _leaving and not solved() and game.mode == "play" and game.auto_target == Vector3.INF:
+		var lp := local(pp)
+		var iv := Vector3(pl.input_dir.x, 0.0, pl.input_dir.y)
+		if absf(lp.x) < 1.4 and lp.y > EDGE_V - 1.2 and lp.y < EDGE_V + 0.05 and iv.length() > 0.3 and iv.normalized().dot(V) > 0.6 and absf(pp.y - FLOOR_Y) < 0.2:
+			var tgt := at(0.0, EDGE_V + 0.6)
+			game.auto_target = Vector3(tgt.x, pp.y, tgt.z)
 	if _leaving and (game.auto_target == Vector3.INF or local(pp).y < EDGE_V - 0.3):
 		_leaving = false
 		moving = false
@@ -382,6 +434,8 @@ func update(dt: float) -> void:
 			_bump = Vector3.INF
 		else:
 			moving = false
+			_done_ms = Time.get_ticks_msec()
+			_done_frame = Engine.get_process_frames()
 			_lights()
 			if p == b["G"] and h == b["a"] and not solved() and _between <= 0.0:
 				boards_done = bi + 1
@@ -394,6 +448,7 @@ func update(dt: float) -> void:
 					active = false
 					refl.hold = false
 					chapter.steps_solved()
+	_take_flick()
 	if _between > 0.0:
 		_between -= dt
 		if _between <= 0.0:

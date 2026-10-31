@@ -1285,6 +1285,7 @@ func cmd(c: String) -> Variant:
 		"ps":
 			puzzles.state[a[1]] = JSON.parse_string(c.substr(c.find(":", 3) + 1))
 			puzzles.apply_state(puzzles.state)
+		"title": ui.show_area(Names.area(a[1]))          # (dev / shots: show a space's name, title:atrium)
 		"call":
 			# call a chapter method with int args (tests): call:turn_statue:0
 			var args := []

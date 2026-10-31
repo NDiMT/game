@@ -956,6 +956,17 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("(QA_V11) a fresh drag 38 deg off toward the last way still steps its own way", C().steps.p == Vector2i(2, 1), "p %s" % C().steps.p))
 	_stick_step(Vector2i(-1, 0), 30.0)
+	# (v1.1d touch) a flick: the thumb down, out and up again inside one frame still makes its one step
+	step_do(func() -> void:
+		_mark = C().steps.moves
+		_stick_grid(Vector2i(1, 0), 6.0)
+		_stick_up())
+	step_until("the flick's step", func() -> bool: return C().steps.moves > _mark, 3.0)
+	step_until("the flick's step ends", func() -> bool: return not C().steps.moving, 4.0)
+	step_wait(1.2)
+	step_do(func() -> void:
+		ok("(v1.1d) a one-frame flick makes exactly one step, its own way", C().steps.p == Vector2i(2, 1) and C().steps.moves == _mark + 1, "p %s moves %d" % [C().steps.p, C().steps.moves - _mark]))
+	_stick_step(Vector2i(-1, 0), -4.0)
 	_stick_step(Vector2i(0, -1), 8.0)
 	_stick_step(Vector2i(0, -1), -6.0)
 	step_until("stepped off where you came on", func() -> bool: return not C().steps.active, 3.0)
