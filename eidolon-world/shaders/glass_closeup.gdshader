@@ -186,16 +186,19 @@ float age_at(vec2 uv, out float seed) {
 }
 // how much a finger wiped here (both masks, unblurred: for droplet sites)
 float wipe_at(vec2 uv) { return max(texture(mask, uv).r, texture(mask_mine, uv).r); }
-// a water bead (lens): coverage, its highlight and its lit lower rim, at pane point P (aspect units)
-void bead(vec2 P, vec2 c, float r, float aa, inout float m, inout float hl, inout float rimb) {
-	vec2 d = (P - c) * vec2(1.0, 0.86);
-	float db = length(d) - r;
-	float bm = 1.0 - smoothstep(-aa, aa, db);
-	if (bm <= 0.0) return;
-	m = max(m, bm);
-	vec2 hd = P - c + vec2(0.32, 0.38) * r;
-	hl = max(hl, bm * exp(-dot(hd, hd) / max(r * r * 0.09, 1e-7)));
-	rimb = max(rimb, bm * smoothstep(0.15, 0.95, d.y / max(r, 1e-5)) * 0.7);
+// a water bead / drop is a little LENS: remember the strongest one covering this pixel (centre, radius)
+void bead(vec2 P, vec2 c, float r, float aa, inout float m, inout vec3 L) {
+	vec2 d = (P - c) * vec2(1.0, 0.9);
+	float bm = 1.0 - smoothstep(-aa, aa, length(d) - r);
+	if (bm > m) { m = bm; L = vec3(c, r); }
+}
+// what is behind the glass at pane point uv, seen through CLEAN glass (sharp): the dim room, her shape
+vec3 behind(vec2 uv) {
+	vec3 b = mix(vec3(0.24, 0.27, 0.29), vec3(0.42, 0.45, 0.47), smoothstep(1.0, 0.0, uv.y));
+	vec2 q = clamp(uv, 0.0, 1.0);
+	float h = texture(her_tex, q).a * 0.4 + (texture(her_tex, q + vec2(0.006, 0.0)).a + texture(her_tex, q - vec2(0.006, 0.0)).a
+		+ texture(her_tex, q + vec2(0.0, 0.006)).a + texture(her_tex, q - vec2(0.0, 0.006)).a) * 0.15;     // (her small render, smoothed)
+	return mix(b, vec3(0.07, 0.08, 0.09), h * 0.9);
 }
 
 void fragment() {
@@ -223,6 +226,7 @@ void fragment() {
 	float em = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
 	float edge = smoothstep(0.0, 0.16 + 0.04 * sin(t * 0.4), em + n * 0.05);
 	float cond = fog * edge * (0.56 + 0.3 * n);          // (thin enough to show her, dimly)
+	cond *= 0.86 + 0.24 * smoothstep(0.25, 1.0, uv.y);    // (v1.0: breath fog settles denser low on the pane)
 	// v1.0: the finger's wipe. Ragged at the edge (fine noise moves the threshold there), clean in the
 	// middle, a thin streaky film between, the water gathered in a rim just outside; old strokes slowly
 	// fog over again.
@@ -244,13 +248,13 @@ void fragment() {
 		vec2 nrm = length(gr) > 1e-4 ? normalize(gr) : vec2(1.0, 0.0);
 		vec2 tng = vec2(-nrm.y, nrm.x);
 		vec2 Q = vec2(dot(uv * vec2(1.0, 1.333), nrm), dot(uv * vec2(1.0, 1.333), tng));
-		drag = smoothstep(0.55, 0.9, vnoise(vec2(Q.x * 520.0, Q.y * 14.0) + seed0 * 13.0)) * 0.55
-			+ smoothstep(0.6, 0.95, vnoise(vec2(Q.x * 1300.0, Q.y * 30.0) + seed0 * 5.0)) * 0.35;
+		drag = smoothstep(0.55, 0.95, vnoise(vec2(Q.x * 260.0, Q.y * 9.0) + seed0 * 13.0)) * 0.4
+			+ smoothstep(0.62, 0.95, vnoise(vec2(Q.x * 700.0, Q.y * 22.0) + seed0 * 5.0)) * 0.2;
 	}
 	float streaky = 0.75 + 0.25 * vnoise(uv * vec2(40.0, 600.0) + seed0 * 3.0);     // the film's drag lines
 	float wiped = (clear * (0.97 - 0.3 * drag) + film * 0.6 * streaky * (1.0 - 0.4 * drag)) * (1.0 - rc);
 	cond *= 1.0 - wiped;
-	cond = mix(cond, min(cond * 1.4 + 0.1, 1.0), ridge * fog * (1.0 - rc * 0.7));
+	cond = mix(cond, min(cond * 1.18 + 0.04, 1.0), ridge * fog * (1.0 - rc * 0.7));
 	cond *= 1.0 - hint * 0.45;
 	// the fingertip's print in the landing pad of each stroke: a faint whorl of fog lines, fading
 	float fpf = 0.0;
@@ -264,13 +268,13 @@ void fragment() {
 		float pa = mod(t - pr.z + AGE_MOD * 4.0, AGE_MOD);
 		float wv = vnoise(dq * 1.7 + pr.xy * 61.0);
 		float rg = 0.5 + 0.5 * sin((rr + 0.22 * wv) * 6.2832 * 4.6 + dq.x * 0.6);
-		fpf = max(fpf, ins * smoothstep(0.5, 0.95, rg) * 0.42 * pr.w * (1.0 - smoothstep(18.0, 50.0, pa)));
+		fpf = max(fpf, ins * smoothstep(0.5, 0.95, rg) * 0.18 * pr.w * (1.0 - smoothstep(18.0, 50.0, pa)));
 	}
 	cond = max(cond, fog * edge * fpf);
 	// v0.7: SHE is there, close behind the pane: frosted by the fog (a wide, soft blur that grows with its
 	// density), sharp where a stroke has cleared the glass; her palm sharpens where it touches
 	float dens = clamp(cond * 1.35, 0.0, 1.0);
-	float w = mix(0.006, 0.12, dens);
+	float w = mix(0.011, 0.12, dens);          // (v1.0: never sharper than her small render allows)
 	vec2 A = vec2(1.0, 1.33);
 	vec2 P = uv * A;
 	float cov = her_cov(uv, w);
@@ -348,7 +352,8 @@ void fragment() {
 	// finger passed and slowly swell; (b) drops: larger ones form along the edges, grow for a few seconds,
 	// then some let go and run down (stick-slip, a slight wobble), leaving a clear streak that fogs over again
 	float aa1 = max(fwidth(P.x), 0.0006);
-	float wb_m = 0.0, wb_hl = 0.0, wb_rim = 0.0, streak = 0.0;
+	float wb_m = 0.0, streak = 0.0;
+	vec3 lensL = vec3(-9.0, -9.0, 0.0);
 	if (fog > 0.05) {
 		vec2 G1 = vec2(105.0, 140.0);
 		vec2 cid = floor(uv * G1);
@@ -361,10 +366,10 @@ void fragment() {
 		float site = ca >= 0.0 ? (1.0 - smoothstep(0.25, 0.45, w0)) * mix(0.25, 1.0, smoothstep(0.005, 0.04, w0)) : 0.0;
 		site *= smoothstep(0.3, 0.7, vnoise(uv * vec2(16.0, 21.0) + sd0 * 7.0));      // (they gather in clumps)
 		float h3 = h21(cid + 41.7);
-		if (site > 0.1 && h3 > 0.42) {
+		if (site > 0.1 && h3 > 0.3) {
 			float gr = smoothstep(0.3 + h3 * 1.6, 3.5 + h3 * 6.0, ca);
-			float rb = (0.08 + 0.36 * (h3 - 0.42) / 0.58) * gr / G1.x * (1.0 - rc * 0.5) * (0.6 + 0.4 * site);
-			if (rb > 0.0) bead(P, ctr * A, rb, aa1, wb_m, wb_hl, wb_rim);
+			float rb = mix(0.05, 0.34, pow((h3 - 0.3) / 0.7, 2.6)) * gr / G1.x * (1.0 - rc * 0.5) * (0.6 + 0.4 * site);
+			if (rb > 0.0) bead(P, ctr * A, rb, aa1, wb_m, lensL);
 		}
 	}
 	if (fog > 0.05 && drops_q > 0.0) {
@@ -374,7 +379,7 @@ void fragment() {
 			vec2 cc = cell - vec2(0.0, float(j));
 			if (cc.y < 0.0) break;
 			float ha = h21(cc + 3.1), hb = h21(cc + 7.7), hd = h21(cc + 13.9), he = h21(cc + 23.3);
-			if (ha > 0.5) continue;
+			if (ha > 0.3) continue;
 			vec2 o = (cc + vec2(0.3 + 0.4 * hb, 0.35 + 0.3 * hd)) / G2;
 			float w0 = wipe_at(o);
 			if (w0 > 0.45) continue;                                  // drops sit in the wet halo of a stroke
@@ -382,7 +387,7 @@ void fragment() {
 			float ca = age_at(o, sd1);
 			if (ca < 0.0) continue;
 			float d0 = 0.8 + he * 3.0;
-			float R = (0.07 + 0.22 * hb * hb) / G2.x;
+			float R = (0.1 + 0.2 * hb * hb) / G2.x;
 			float r = R * smoothstep(d0, d0 + 5.0 + ha * 4.0, ca);
 			if (r <= 0.0) continue;
 			vec2 O = o * A;
@@ -399,7 +404,7 @@ void fragment() {
 			float dy = P.y - O.y;
 			float wob = 0.0035 * sin(dy * 48.0 + he * 9.0) + 0.0015 * sin(dy * 117.0 + hb * 5.0);
 			vec2 H = O + vec2(0.0035 * sin(yo * 48.0 + he * 9.0) + 0.0015 * sin(yo * 117.0 + hb * 5.0), yo);
-			if (j < 2 || yo > 0.0) bead(P, H, r, aa1, wb_m, wb_hl, wb_rim);
+			if (j < 2 || yo > 0.0) bead(P, H, r, aa1, wb_m, lensL);
 			if (yo > 0.0 && dy > 0.0 && dy < yo) {
 				// the clear streak behind it: its age is the time since the head passed this height
 				float sw = r * 0.85 * (0.75 + 0.25 * sin(dy * 31.0 + hb * 4.0));
@@ -424,6 +429,10 @@ void fragment() {
 	cond *= 1.0 - 0.85 * max(drop_c, bead_m);
 	cond = mix(cond, min(cond * 1.3 + 0.06, 1.0), halo * fog);
 	vec3 fogc = vec3(0.82, 0.85, 0.87);
+	// (v1.0) through CLEAN glass the room is sharper, darker and higher in contrast than through the fog
+	float clr = clamp(1.0 - cond / max(fog * 0.55, 0.02), 0.0, 1.0) * fog;
+	vec3 backc = max((back - 0.34) * 1.32 + 0.3, vec3(0.0));
+	back = mix(back, backc, clr);
 	vec3 c = mix(back, fogc, cond * 0.86 * (1.0 - 0.3 * her_m));
 	c *= 1.0 - her_m * 0.42 * cond;                       // seen through the fog, a darker, diffuse shape
 	// her skin where it touches: pale as marble, a little shadow where it presses less
@@ -434,26 +443,46 @@ void fragment() {
 	c = mix(c, back * 0.9 + vec3(0.1), bead_m * 0.35);
 	c += vec3(0.95) * bead_hl * 0.85 * bead_m;
 	c += vec3(0.5) * bead_rim;
-	// v1.0: the water on the glass: beads and drops are little lenses (a darker body that shows the dim
-	// room upside down, a bright point, a lit lower rim); the streaks are clear glass
-	c = mix(c, back * 0.85 + vec3(0.1), wb_m * 0.4);
-	c += vec3(0.95) * wb_hl * 0.8;
-	c += vec3(0.55, 0.6, 0.62) * wb_rim * 0.5;
-	c += vec3(0.08) * ridge * fog * (1.0 - rc) * (0.6 + 0.4 * nf2);        // the rim of gathered water catches light
+	// v1.0: the water on the glass. Beads and drops are LENSES: each shows the room behind, inverted and
+	// a little magnified, sharp, with a darker refracted ring at its edge and a small sharp highlight top-left
+	if (wb_m > 0.0) {
+		vec2 lc = lensL.xy;
+		float lr = max(lensL.z, 1e-5);
+		vec2 o = (P - lc) / lr;                              // -1..1 across the lens (y down)
+		vec2 ruv = (lc - (P - lc) * 0.55) / A;               // inverted
+		vec3 rb = max((behind(ruv) - 0.34) * 1.35 + 0.3, vec3(0.0));
+		float lo = length(o);
+		float tiny = 1.0 - smoothstep(0.002, 0.006, lr);
+		vec3 lensc = rb * (1.0 - mix(0.6, 0.25, tiny) * smoothstep(0.55, 1.0, lo));        // the dark refracted ring
+		lensc += vec3(0.16, 0.17, 0.18) * smoothstep(0.35, 0.9, o.y) * (1.0 - smoothstep(0.9, 1.0, lo));   // light gathered low in it
+		c = mix(c, lensc, wb_m);
+		vec2 hp = o - vec2(-0.38, -0.44);
+		float hs = max(0.13, 0.0017 / lr);                                // (at least a pixel or so, even on the tiniest bead)
+		c += vec3(1.0) * exp(-dot(hp, hp) / (hs * hs)) * wb_m * 0.95;    // the specular point
+	}
+	// the rim where the finger pushed the water: thin, slightly irregular, glinting with tiny highlights
+	float rimthin = ridge * (1.0 - smoothstep(0.08, 0.2, wn)) * fog * (1.0 - rc);
+	float glints = smoothstep(0.62, 0.9, vnoise(uv * vec2(420.0, 560.0) + seed0 * 3.0));
+	c += vec3(0.72, 0.76, 0.78) * rimthin * (0.18 + 0.6 * glints);
+	// the fog's micro-droplet grain: a faint, sparse sparkle
+	float gh = h21(floor(uv * vec2(640.0, 853.0)));
+	c += vec3(0.07) * step(0.982, gh) * (0.6 + 0.4 * sin(t * 0.8 + gh * 60.0)) * cond;
 	// her fingertip, pressed against the glass from her side: pale, softly lit
 	c = mix(c, vec3(0.78, 0.86, 0.87), palm * 0.55);
 	c += her.rgb * palm * glow * 0.25;
 	// the finished glyph glows in the carved-glow colours, blooming a little into the fog
 	float core = smoothstep(0.55, 0.95, wipe);
 	float bloom = smoothstep(0.02, 0.5, wipe) * (1.0 - core);
-	// (v0.6: every wiped line keeps a faint carved glow; the answered glyph lights fully)
-	float gk = max(glow, 0.24);          // (v1.0: at rest only a faint glow: the wipe should read as clear glass)
-	// (v0.8.1: her lines and yours are the same aqua; hers softer)
+	// (v1.0: the wipe stays CLEAR GLASS. Her colour is only a faint warm tint inside it (<= 15 %, when the
+	// glyph is answered) and a thin rim light along its edge; the answered glyph blooms a little into the fog)
 	vec3 lc = mix(her.rgb, accent.rgb, yours);
 	vec3 lcc = mix(her_core.rgb, accent_core.rgb, yours);
-	float hk = mix(0.72, 1.0, yours);       // (v0.8.1: one aqua; her lines softer than yours)
-	c = mix(c, mix(lc, lcc, core * 0.85), (core * 0.9 + bloom * 0.45) * gk * hk);
-	c += lcc * core * 0.12 * gk;
+	float hk = mix(0.72, 1.0, yours);
+	float gk = mix(0.3, 1.0, glow);
+	float rimw = smoothstep(0.1, 0.28, wipe) * (1.0 - smoothstep(0.32, 0.55, wipe));
+	c = mix(c, c * lc * 2.2, core * 0.15 * glow * hk);
+	c += lcc * rimw * 0.2 * gk * hk;
+	c += lc * bloom * 0.08 * glow * hk;
 	// a faint sheen across the glass, and the bronze frame
 	c += vec3(0.05) * smoothstep(0.035, 0.0, abs(uv.x * 0.7 - uv.y * 0.45 + 0.1));
 	float frame = 1.0 - smoothstep(0.0, 0.025, em);

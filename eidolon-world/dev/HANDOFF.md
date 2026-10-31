@@ -26,3 +26,8 @@ Format: `YYYY-MM-DD HH:MM | FROM -> TO | what is ready / what is needed | paths`
   - W: hook WaterFX into puzzles._pool (water_mat + water_over_mat), the Our Steps pool and the shrine pool (chapter.gd), and call rise/splash/wet_dry from the slab juice. The pool_stones (reflection) shader is unchanged.
   - Test: `dev_fx/water_test.tscn` (game camera and sun): stills `-- --shots=/abs/dir --water=new|old --old=<dir with the v0.9.4 water shaders>`. Shot: dev/shots/m1-water-before-after.png (top v0.9.4 water, bottom v1.0; the wet slab uses the new marble in both rows).
 - Tripo: no credits used in M1-A.
+
+2026-10-31 00:40 | A -> W | M1-A fog look revised after the coordinator's review (shader only; no new W work beyond the 3 edits above)
+- `shaders/glass_closeup.gdshader`: the stroke is now a CLEAR wipe (the room behind is sharper, darker, higher contrast; her colour only as a thin rim light and a <=15 % tint once the glyph is answered), thin bright beaded rim with tiny glints, droplets are transparent LENSES (inverted room, dark refracted ring, small sharp highlight; many tiny, few medium; runners leave a clear wet track that fogs back), uneven fog (denser low), faint micro-droplet sparkle, subtler fingerprint whorls.
+- Suggestion for W (glass_talk.gd, optional): `her_vp.size` 150x200 -> 300x400. Through clean glass her small render shows stair-steps at DPR 3; the shader now smooths it, but double resolution removes it (cost: one tiny SubViewport, only while the pane is open).
+- Shots (DPR 3, 1200x2580): dev/shots/m1-fog-before.png, m1-fog-after.png, m1-fog-before-detail.png, m1-fog-after-detail.png.

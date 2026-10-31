@@ -5,6 +5,7 @@ extends Node
 ##   godot --path . res://dev_fx/fog_test.tscn                         (interactive: draw with the mouse)
 ##   godot --path . --rendering-driver opengl3 --fixed-fps 30 res://dev_fx/fog_test.tscn -- --shots=/abs/dir --ink=new|old
 ## `--ink=old` keeps GlassTalk's brush Ink (the "before"); `new` swaps in FogInk (the "after").
+## `--shader_file=/abs/old.gdshader` renders the pane with another shader (the v0.9.4 one, for the before shots).
 
 const MOMENTS := {"a_writing": 2.4, "b_writing2": 4.6, "c_waiting": 8.5, "d_drops": 15.0, "e_late": 23.0, "f_yours": 25.3, "g_palm": 28.0}
 const YOU_AT := 23.3
@@ -31,6 +32,10 @@ func _ready() -> void:
 	gt = GlassTalk.new()
 	layer.add_child(gt)
 	if args.get("ink", "new") == "new": _swap_ink()
+	if args.has("shader_file"):
+		var sh := Shader.new()
+		sh.code = FileAccess.get_file_as_string(args["shader_file"])
+		gt.glass_mat.shader = sh
 	gt.size = get_viewport().get_visible_rect().size
 	gt.open({"id": "test", "first": "follow", "question": "together_half"})
 	if shots != "":
