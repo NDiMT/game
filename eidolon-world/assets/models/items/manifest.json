@@ -1,109 +1,113 @@
 {
-  "conventions": "glTF Y-up, metres, base at y = 0, centred on XZ, front +Z; textured (Tripo PBR, 1024 px). Icons: assets/textures/icons/<name>.png, 128 px, transparent.",
-  "items": [
-    {
-      "file": "item_shard.glb",
-      "name": "The Shard",
-      "icon": "res://assets/textures/icons/shard.png",
-      "size_m": [
-        0.22,
-        0.13,
-        0.05
-      ],
-      "tris": 3650,
-      "use": "the lens; held up it reveals hidden inscriptions",
-      "tripo_task": "3a2f3d38-a304-4f6f-8133-5059a981a770"
-    },
-    {
-      "file": "item_chisel.glb",
-      "name": "Theron's Chisel",
-      "icon": "res://assets/textures/icons/chisel.png",
-      "size_m": [
-        0.06,
-        0.26,
-        0.06
-      ],
-      "tris": 2896,
-      "use": "breaks cracked marble",
-      "tripo_task": "67a7f7a3-3b0c-4e46-b5ff-210703c7c619"
-    },
-    {
-      "file": "item_oil_lamp.glb",
-      "name": "The Oil Lamp",
-      "icon": "res://assets/textures/icons/oil_lamp.png",
-      "size_m": [
-        0.17,
-        0.16,
-        0.16
-      ],
-      "tris": 4656,
-      "use": "carries fire; its real light shapes the undercroft",
-      "tripo_task": "a8e6841e-66c8-4d65-a763-4c47c1e25376"
-    },
-    {
-      "file": "item_amphora.glb",
-      "name": "The Amphora",
-      "icon": "res://assets/textures/icons/amphora.png",
-      "size_m": [
-        0.18,
-        0.4,
-        0.18
-      ],
-      "tris": 3700,
-      "use": "fill at water, pour a puddle mirror",
-      "tripo_task": "70f36181-fadc-408f-b1ae-34a19cc382df"
-    },
-    {
-      "file": "item_tuning_pin.glb",
-      "name": "The Bronze Tuning Pin",
-      "icon": "res://assets/textures/icons/tuning_pin.png",
-      "size_m": [
-        0.03,
-        0.3,
-        0.05
-      ],
-      "tris": 3006,
-      "use": "strike near singing stones and glass",
-      "tripo_task": "855734a6-7f8a-4f8f-91c4-c152705086f8"
-    },
-    {
-      "file": "item_wax_tablet.glb",
-      "name": "Wax Tablet",
-      "icon": "res://assets/textures/icons/wax_tablet.png",
-      "size_m": [
-        0.24,
-        0.18,
-        0.12
-      ],
-      "tris": 4866,
-      "use": "Theron's notes (collectible)",
-      "tripo_task": "7b3e4792-275a-4a79-954f-d3ceade60b0d"
-    },
-    {
-      "file": "item_memory_shard.glb",
-      "name": "Memory Shard",
-      "icon": "res://assets/textures/icons/memory_shard.png",
-      "size_m": [
-        0.05,
-        0.09,
-        0.05
-      ],
-      "tris": 3198,
-      "use": "collectible (7); a faint crimson light inside",
-      "tripo_task": "00076ddc-29bb-407d-9f28-445f4b73110b"
-    },
-    {
-      "file": "item_veil_seal.glb",
-      "name": "Veil Seal",
-      "icon": "res://assets/textures/icons/veil_seal.png",
-      "size_m": [
-        0.09,
-        0.11,
-        0.04
-      ],
-      "tris": 4891,
-      "use": "wing reward; three open the Gate of the Four Veiled",
-      "tripo_task": "a897c019-51db-47fe-ad8c-476d81163694"
-    }
-  ]
+ "conventions": "glTF Y-up, metres, base at y = 0, centred on XZ, front +Z; textured (Tripo PBR, 1024 px). Icons: assets/textures/icons/<name>.png, 128 px, transparent.",
+ "items": [
+  {
+   "file": "item_shard.glb",
+   "name": "The Shard",
+   "icon": "res://assets/textures/icons/shard.png",
+   "size_m": [
+    0.17,
+    0.185,
+    0.08
+   ],
+   "tris": 116,
+   "use": "the lens; held up it reveals hidden inscriptions",
+   "tripo_task": null,
+   "source": "procedural: dev_rig/tools/make_shard.py (jagged triangular mirror fragment, silvered back with chips, glass edge); Tripo try 85c7ab4c-5962-4188-88c9-1f8d23e5a0af rejected as too regular",
+   "surfaces": 3
+  },
+  {
+   "file": "item_chisel.glb",
+   "name": "Theron's Chisel",
+   "icon": "res://assets/textures/icons/chisel.png",
+   "size_m": [
+    0.06,
+    0.26,
+    0.06
+   ],
+   "tris": 2896,
+   "use": "breaks cracked marble",
+   "tripo_task": "67a7f7a3-3b0c-4e46-b5ff-210703c7c619"
+  },
+  {
+   "file": "item_oil_lamp.glb",
+   "name": "The Oil Lamp",
+   "icon": "res://assets/textures/icons/oil_lamp.png",
+   "size_m": [
+    0.17,
+    0.113,
+    0.153
+   ],
+   "tris": 3516,
+   "use": "carries fire; its real light shapes the undercroft",
+   "tripo_task": "b38c8b1f-53f3-423a-ac2d-aa64452683f8",
+   "note": "flat round clay lychnos: nozzle, filling hole, ring handle"
+  },
+  {
+   "file": "item_amphora.glb",
+   "name": "The Amphora",
+   "icon": "res://assets/textures/icons/amphora.png",
+   "size_m": [
+    0.236,
+    0.4,
+    0.235
+   ],
+   "tris": 3992,
+   "use": "fill at water, pour a puddle mirror",
+   "tripo_task": "ab2301ac-2259-499b-81ab-c1cef3be8bbf",
+   "note": "meander bands, no figures"
+  },
+  {
+   "file": "item_tuning_pin.glb",
+   "name": "The Bronze Tuning Pin",
+   "icon": "res://assets/textures/icons/tuning_pin.png",
+   "size_m": [
+    0.03,
+    0.3,
+    0.05
+   ],
+   "tris": 3006,
+   "use": "strike near singing stones and glass",
+   "tripo_task": "855734a6-7f8a-4f8f-91c4-c152705086f8"
+  },
+  {
+   "file": "item_wax_tablet.glb",
+   "name": "Wax Tablet",
+   "icon": "res://assets/textures/icons/wax_tablet.png",
+   "size_m": [
+    0.24,
+    0.18,
+    0.12
+   ],
+   "tris": 4866,
+   "use": "Theron's notes (collectible)",
+   "tripo_task": "7b3e4792-275a-4a79-954f-d3ceade60b0d"
+  },
+  {
+   "file": "item_memory_shard.glb",
+   "name": "Memory Shard",
+   "icon": "res://assets/textures/icons/memory_shard.png",
+   "size_m": [
+    0.05,
+    0.09,
+    0.05
+   ],
+   "tris": 3198,
+   "use": "collectible (7); a faint crimson light inside",
+   "tripo_task": "00076ddc-29bb-407d-9f28-445f4b73110b"
+  },
+  {
+   "file": "item_veil_seal.glb",
+   "name": "Veil Seal",
+   "icon": "res://assets/textures/icons/veil_seal.png",
+   "size_m": [
+    0.09,
+    0.11,
+    0.04
+   ],
+   "tris": 4891,
+   "use": "wing reward; three open the Gate of the Four Veiled",
+   "tripo_task": "a897c019-51db-47fe-ad8c-476d81163694"
+  }
+ ]
 }

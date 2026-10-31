@@ -212,7 +212,7 @@ func _build_colonnade() -> void:
 	r.hold = true
 	game.puzzles._add_refl(r)
 	t4_refl = r
-	r.glimpse.connect(game._on_glimpse)
+	if not r.glimpse.is_connected(game._on_glimpse): r.glimpse.connect(game._on_glimpse)
 
 ## how far along the hidden path a point is (its nearest place on the path, in metres)
 func _t4_arc(p: Vector3) -> float:

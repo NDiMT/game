@@ -322,6 +322,7 @@ func _plan() -> void:
 	walk_path("the hidden stones", t4.slice(1))
 	step_do(func() -> void:
 		ok("(v1.0) up onto the colossus' stones: the Garden wing and the Colossus beyond", absf(P().y - 1.0) < 0.02 and game.visited.has("t:T4"), str(P())))
+	step_wait(0.8)
 	step_do(func() -> void:
 		ok("(v1.0) the Colossus named the first time it is reached, from the Atrium side too", game.visited.has("w:CO") and game.ui.area_label.text == "THE SUNKEN COLOSSUS", game.ui.area_label.text))
 	var back: Array = t4.duplicate()

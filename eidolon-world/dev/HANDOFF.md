@@ -69,3 +69,82 @@ Format: `YYYY-MM-DD HH:MM | FROM -> TO | what is ready / what is needed | paths`
 - M2.4 kit (assets/models/props, manifest updated): brazier.glb (bronze, lion-paw legs, 0.9 m, flame at ~0.85 m), door_temple.glb (3 m, bronze-clad double door in a marble frame; one mesh), gate_veiled.glb (4 m, the Gate of the Four Veiled). Sheet: dev/shots/v1-kit.png. W: placement + collisions; the door is one mesh (frame + leaves): if you want opening leaves I can split it.
 - M2.5 probe (dev_fx/perf_probe.tscn, opengl3, 600x1000): before (v0.9, no PBR): 157-270 draw calls per view (start, pool, garden, shrine at ~270: OVER the 250 budget), texture memory 59.9 MB, video memory 82.6 MB (under 120 MB). The PBR arrays add ~3.5 MB VRAM, 0 draw calls; the v1 heroine is one skinned draw call like before. The "after" run did not leave the title (constant numbers), so I am not quoting it; to get under 250 the remaining work is merging/culling (W's geometry: the garden/pool views carry ~360 objects).
 - Tripo this phase: heroine candidates 330 + items/kit 330 = 660 credits; balance 1315.
+
+2026-10-31 05:30 | A -> W | Review round: richer stone (live), items regenerated, PASTE-READY hooks for flame bounce + prop contact shadows, draw-call plan
+**1. Richer materials (shaders/marble.gdshaderinc, live, no W action):** floors have visible slab joints and darker wandering grout, per-slab tone and roughness, worn bright edges, chipped corners, grime beside joints and broad dirt patches, and moss in the joints outdoors only (the hall box stays clean). Walls and blocks have stronger bevels, edge bites, vertical water streaks under top edges, plaster flake lips and veining readable at 7.5 m. The black hall floor has stronger white veins and a cloudy fake reflection that drifts with the camera. Wood and bronze are now separate materials (see 1b). Shot: dev/shots/v1-textures-before-after2.png (same fresh save state both sides).
+**1b. Bronze flag (W, optional):** the charcoal material id now splits by vertex COLOR.g: < 0.87 charcoal (unchanged), 0.87-0.97 BRONZE (Metal013 + verdigris, roughness 0.45), >= 0.97 WOOD (Wood051, brown). To make a piece bronze, give its vertices COLOR.g = 0.93 (wood: 1.0). Nothing changes until you do.
+**2. Items:** assets/models/items/item_shard.glb is now a jagged triangular MIRROR fragment (procedural: dev_rig/tools/make_shard.py; 116 tris, 3 surfaces: mirror face, chipped silvered back, glass edge; stands on its long edge, front toward +Z). item_oil_lamp.glb = flat round clay lychnos (nozzle, filling hole, ring handle), item_amphora.glb = meander bands, no figures. Icons shard / oil_lamp / amphora re-rendered (assets/textures/icons, 128 px). manifest.json updated. Sheet: dev/shots/v1-items2.png. Godot will re-import the three glbs; the stale item_shard_0/1/2 texture files can be deleted after the re-import.
+
+**3a. HOOK: crimson flame bounce on the stone (shader side is live and waiting; level.gd has `set_flames()`, marked A).**
+Paste into scripts/flame.gd (next to `cull`):
+```gdscript
+## (v1.0 A) the 8 nearest lit flames as (x, y, z, strength): fed to the marble for a crimson bounce
+static func bounce_list(p: Vector3) -> PackedVector4Array:
+	var c: Array = []
+	for f in all:
+		var k := f.level()
+		if k > 0.01 and f.is_visible_in_tree():
+			c.append([f.global_position.distance_squared_to(p), f, k])
+	c.sort_custom(_by_first)
+	var out := PackedVector4Array()
+	for i in 8:
+		if i < c.size():
+			var f: Flame = c[i][1]
+			var fl := 0.86 + 0.08 * sin(f._t * 9.1 + f._seed) * sin(f._t * 3.7)
+			var q := f.global_position + Vector3(0, f._ly, 0)
+			out.append(Vector4(q.x, q.y, q.z, float(c[i][2]) * fl))
+		else:
+			out.append(Vector4(0, -999, 0, 0))
+	return out
+```
+Paste into scripts/main.gd right after `Flame.cull(player.position, dt)` (line ~375):
+```gdscript
+	if Engine.get_process_frames() % 2 == 0:
+		level.set_flames(Flame.bounce_list(player.position))   # (v1.0 A) crimson bounce on nearby stone
+```
+Cost: one 8-entry loop per marble fragment (range 5 m, falls off with distance, lambert-weighted); about 0.1 ms CPU every other frame. Tuning (both in marble.gdshaderinc, A): `flame_col` (0.95, 0.32, 0.22), `flame_k` 1.0. Set `flame_k` 0 on the Low tier if you want: `level.marble_mat.set_shader_parameter("flame_k", 0.0)` (and marble_occ_mat).
+
+**3b. HOOK: soft contact shadows under props (scripts/props.gd, uses the existing shaders/blob.gdshader; 1 draw call for all props).**
+In `build()`, before `for e in PLACE:` add `var blob_x: Array[Transform3D] = []`; inside the loop right after `var fr := Rect2(...)` add:
+```gdscript
+		blob_x.append(Transform3D(Basis(Vector3.UP, deg_to_rad(float(e[2]))) * Basis.from_scale(Vector3(wb.size.x * 1.15, 1.0, wb.size.z * 1.15)),
+			Vector3(fr.get_center().x, e[1].y + 0.012, fr.get_center().y)))
+```
+(For turned long pieces `wb` is the world AABB, so the blob is a little generous; that reads fine as soft AO. For an exact fit use `bb.size * sc` instead of `wb.size`.)
+After the loop:
+```gdscript
+	if not blob_x.is_empty():                       # (v1.0 A) soft contact shadows under every prop, one draw call
+		var pm := PlaneMesh.new()
+		pm.size = Vector2.ONE
+		var bm := ShaderMaterial.new()
+		bm.shader = preload("res://shaders/blob.gdshader")
+		bm.set_shader_parameter("strength", 0.45)
+		pm.material = bm
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = pm
+		mm.instance_count = blob_x.size()
+		for i in blob_x.size(): mm.set_instance_transform(i, blob_x[i])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "PropBlobs"
+		mmi.multimesh = mm
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mmi)
+```
+Props on stairs or ledges: the blob is a flat quad at the prop's base height, so it is only right on flat ground (all current PLACE entries are).
+
+**4. Draw calls: concrete plan for the ~270-call views (from dev_fx/node_census.gd: 375 visible surfaces in the worst views; the multimeshes are already single draws).** Ordered by calls saved per effort:
+- (a) Marble: ~91 standalone static marble MeshInstances (64 under Level + 27 elsewhere) besides the 25 Zone meshes. Merge each into its zone's ArrayMesh at build time (same material, same vertex format: append arrays, transform the vertices). Save about 60-80 calls; risk: anything that moves or hides on its own (doors, reveal pieces) must stay separate. Keep a `static` flag list.
+- (b) rune_face (22 + 16 = 38), halo (14 + 6 = 20), light_pool (15), floor_mark (8), statue_shadow (5): each is a quad with one shader. One MultiMesh per kind, with per-instance state in INSTANCE_CUSTOM (colour or phase in .rgb, lit level in .a) in place of per-node shader params. Save about 70 calls. The lit or unlit state can be written with `multimesh.set_instance_custom_data(i, Color(...))`.
+- (c) Flames: 14 flame quads + cores. Same MultiMesh trick (phase = seed in INSTANCE_CUSTOM.r, level in .a). Save about 20.
+- (d) Distance cull: set `visibility_range_end` = 20 m (plus `visibility_range_end_margin` 2 m) on sprites (11), inscriptions (10), mist veils (10), godrays (7), eyes (6) and CPUParticles (7). At the 7.5 m camera, about half are off-screen or far in the worst views. Zero code risk. Save about 20-30.
+- (e) Mirrors: mirror + mirror_over (9 + 9) are drawn even when the mirror is off-screen. Hide both when the mirror's AABB is outside the camera frustum (`camera.is_position_in_frustum` on the 4 corners, every 4th frame), or `visibility_range_end` 16 m. Save up to 12-16 in the hall.
+- (f) Props: 8 placed props each use 1-2 surfaces; leave them (or merge them per zone with the marble in (a), same material).
+Expected: (a) + (b) + (d) alone bring the 270-call views to about 130-150, well under the 250 budget. I can do (b)/(c) shader-side (INSTANCE_CUSTOM reads) if you want; tell me which shaders.
+- Tripo this round: 90 credits (3 items x 30; the Tripo shard was rejected and replaced by the procedural one). Balance 1225. Total this phase 750.
+
+2026-10-31 06:10 | A -> W | Corrections to the 05:30 entry (read with it)
+- 1b, the material-id ranges are now: COLOR.g 0.87-0.95 = BRONZE, 0.95-0.995 = brown WOOD, 1.0 = charcoal exactly as before (dead trees, iron gates, black frames keep their near-black look). So nothing in the game changes colour until you flag a piece: bronze braziers/stools -> g = 0.91, wooden pieces -> g = 0.97.
+- Note on the earlier first before/after attempt: a shader swap during my "before" render dropped the rich edits for a while, so a web export made between about 01:15 and 01:40 may carry the plainer marble. The current shaders/marble.gdshaderinc (rich + flame bounce) compiles cleanly (devshot run, no SHADER/SCRIPT errors). If you exported in that window, a re-export picks it up.
+- scripts/world.gd (A): `set_awaken()` honours a dev-only env var EIDOLON_DEV_AWAKE=1 (forces clear air for material shots). Off unless set; no effect in the web build.
+- Shots: dev/shots/v1-textures-before-after2.png (4 places, phone 390x844, same fresh save, clear air) + dev/shots/v1-textures-detail2.png (detail crops). In normal fog (awaken 0) the difference is smaller but visible.

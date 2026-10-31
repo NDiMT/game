@@ -104,7 +104,8 @@ func _ready() -> void:
 	level.read.connect(_on_read)
 	puzzles.event.connect(_on_event)
 	player.footstep.connect(_on_footstep)
-	for r in puzzles.reflectors: r.glimpse.connect(_on_glimpse)
+	for r in puzzles.reflectors:
+		if not r.glimpse.is_connected(_on_glimpse): r.glimpse.connect(_on_glimpse)
 	controls.interact.connect(try_interact)
 	ui.anew_pressed.connect(_on_anew)
 	ui.quality_pressed.connect(func() -> void: set_quality({"auto": "high", "high": "low", "low": "auto"}[world.tier], true))
@@ -472,11 +473,18 @@ func _update_air() -> void:
 	if g and (g.name in EXPOSED or g.name.begins_with("pool") or g.name == "WK"): w = 0.95
 	sfx.set_wind(w * (0.7 if awake else 1.0))
 
+var _area_defer := ""
+
 func _update_area() -> void:
 	var g := level.region_at(Vector2(player.position.x, player.position.z))
 	if g and Names.TRAVERSE.has(g.name) and not visited.has("t:" + g.name) and mode == "play":
 		visited["t:" + g.name] = true                # (v1.0 M3: a traversal section, named once)
 		ui.show_area(Names.TRAVERSE[g.name])
+	if _area_defer != "" and _area_defer == area and wonders.here == "" and mode == "play":
+		_area_defer = ""                              # (v1.0 M3: the space's own name, once you step off the wonder)
+		if not visited.has(area):
+			visited[area] = true
+			ui.show_area(Names.area(area))
 	if g == null or not Names.REGION_AREA.has(g.name): return
 	var key: String = Names.REGION_AREA[g.name]
 	if key == "gate_four" and Vector2(player.position.x - Puzzles.SHRINE_C.x, player.position.z - Puzzles.SHRINE_C.z).length() < 2.4:
@@ -485,7 +493,11 @@ func _update_area() -> void:
 	area = key
 	sfx.set_area(Names.AUDIO_ALIAS.get(key, key))
 	if mode == "play" and area != "": _save_pending = true        # a checkpoint in every space (v0.8.5: written at the next still moment)
+	_area_defer = ""
 	if not visited.has(key):
+		if wonders.here != "" or wonders.key_at(player.position) != "":
+			_area_defer = key                         # (reached by way of a wonder: the wonder is named first)
+			return
 		visited[key] = true
 		ui.show_area(Names.area(key))
 

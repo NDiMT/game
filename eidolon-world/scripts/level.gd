@@ -1453,3 +1453,8 @@ func _pbr_textures() -> void:
 ## the Low tier skips the texture detail (two fewer fetches per marble pixel)
 func set_pbr_quality(high: bool) -> void:
 	for m in [marble_mat, marble_occ_mat]: m.set_shader_parameter("pbr_k", 1.0 if high else 0.0)
+
+## (Agent A, rendering) v1.0: the flames' crimson bounce on the marble. `fl`: up to 8 Vector4(x, y, z, level)
+## (Flame.bounce_list, see HANDOFF); cheap: one uniform array, no lights.
+func set_flames(fl: PackedVector4Array) -> void:
+	for m in [marble_mat, marble_occ_mat]: m.set_shader_parameter("flames", fl)

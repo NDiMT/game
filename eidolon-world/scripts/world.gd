@@ -453,6 +453,7 @@ func ground_axes() -> Array:
 	return [right, fwd]
 
 func set_awaken(k: float) -> void:
+	if OS.get_environment("EIDOLON_DEV_AWAKE") == "1": k = 1.0     # (dev only: clear-air material shots)
 	awaken = k
 	env.fog_depth_begin = DIST + lerpf(-1.0, 8.0, k)
 	env.fog_depth_end = DIST + lerpf(20.0, 58.0, k)

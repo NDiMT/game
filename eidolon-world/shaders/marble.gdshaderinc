@@ -26,6 +26,11 @@ uniform sampler2DArray pbr_albedo : source_color, filter_linear_mipmap, repeat_e
 uniform sampler2DArray pbr_nra : filter_linear_mipmap, repeat_enable;
 uniform float pbr_k = 1.0;
 uniform float pbr_normal_k = 0.55;
+// v1.0 (A): the flames' crimson BOUNCE on the stone (no light cost): up to 8 lit flames (xyz, level x flicker),
+// pushed by Level.set_flames() (W wires Flame.bounce_list(); see HANDOFF). w <= 0: none.
+uniform vec4 flames[8];
+uniform vec3 flame_col : source_color = vec3(0.95, 0.32, 0.22);
+uniform float flame_k = 1.0;
 uniform vec3 cream : source_color = vec3(0.745, 0.735, 0.705);
 uniform vec3 vein : source_color = vec3(0.34, 0.345, 0.36);
 uniform vec3 side_col : source_color = vec3(0.36, 0.355, 0.35);
@@ -127,20 +132,41 @@ void fragment() {
 		vec2 f = fract(g);
 		float tr = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 		float v = marble(wp + tr * 7.0, 2.2, 0.10) * 0.8 + marble(wp * 2.7 + 3.1, 2.0, 0.05) * 0.35;
-		vec3 tint = cream * (0.92 + 0.10 * tr) * vec3(1.0 + (tr - 0.5) * 0.03, 1.0, 1.0 - (tr - 0.5) * 0.05);
-		col = mix(tint * (0.93 + 0.12 * n), vein, clamp(v, 0.0, 1.0) * 0.42);
+		// (v1.0 rich) every slab its own tone (+-12 %) and polish
+		float tr2 = fract(tr * 7.31 + 0.17);
+		vec3 tint = cream * (0.86 + 0.24 * tr) * vec3(1.0 + (tr2 - 0.5) * 0.05, 1.0, 1.0 - (tr2 - 0.5) * 0.07);
+		col = mix(tint * (0.92 + 0.14 * n), vein, clamp(v, 0.0, 1.0) * 0.5);
+		float slab_r = 0.22 + 0.36 * tr2;
 		if (pbr_k > 0.0) {
 			float pr;
-			vec3 det = pbr_layer(0.0, 1.5, wp + vec3(tr * 17.0, 0.0, tr * 9.0), wn, pr, pbr_n, pbr_normal_k * 0.6);
-			col *= mix(vec3(1.0), det, 0.55 * pbr_k);
-			pbr_r = pr; pbr_w = 0.5 * pbr_k;
+			vec3 det = pbr_layer(0.0, 1.5, wp + vec3(tr * 17.0, 0.0, tr * 9.0), wn, pr, pbr_n, pbr_normal_k);
+			col *= mix(vec3(1.0), det, 0.9 * pbr_k);
+			pbr_r = mix(pr, slab_r, 0.5); pbr_w = 0.7 * pbr_k;
 		}
 		vec2 e = min(f, 1.0 - f) * 1.5;
 		float ed = min(e.x, e.y);
 		float aa = fwidth(wp.x) * 1.2;
-		float grout = 1.0 - smoothstep(0.006, 0.006 + aa, ed);
-		col *= mix(0.90, 1.0, smoothstep(0.0, 0.10, ed));
-		col = mix(col, vec3(0.42, 0.42, 0.41), grout * 0.55);
+		// the joints: a visible grout line (its width wanders), grime gathered beside it, worn rounded
+		// edges catching the light, chipped corners
+		float gw = 0.011 + 0.006 * texture(noise_tex, wp.xz * 1.7).r;
+		float grout = 1.0 - smoothstep(gw, gw + aa, ed);
+		col *= mix(0.8, 1.0, smoothstep(0.0, 0.09, ed));                        // grime beside the joints
+		col = mix(col, col * 1.07 + vec3(0.015), (1.0 - smoothstep(gw + aa, gw + 0.035, ed)) * (1.0 - grout) * 0.6);   // the worn edge
+		vec2 cc = min(f, 1.0 - f) * 1.5;
+		float corner = length(cc);
+		float chipn = texture(noise_tex, wp.xz * 3.1 + tr).r;
+		float chipped = (1.0 - smoothstep(0.05, 0.13, corner + (chipn - 0.5) * 0.08)) * step(0.45, tr2);
+		col = mix(col, vec3(0.5, 0.49, 0.47), chipped * 0.55);
+		vec3 gcol = vec3(0.34, 0.335, 0.32);
+		// outdoors (not the hall), moss and lichen grow in the joints
+		float indoor = 1.0 - smoothstep(0.0, 1.5, max(max(-5.5 - wp.x, wp.x - 5.5), max(-21.5 - wp.z, wp.z + 10.5)));
+		float jm = smoothstep(0.56, 0.76, texture(noise_tex, wp.xz * 0.6 + 2.3).r) * (1.0 - indoor);
+		gcol = mix(gcol, vec3(0.37, 0.39, 0.30), jm * 0.8);
+		col = mix(col, gcol, grout * 0.85);
+		col = mix(col, mix(col, vec3(0.46, 0.48, 0.38), 0.5), jm * (1.0 - smoothstep(gw, gw + 0.05, ed)) * 0.5);
+		// dirt: broad faint patches, heavier toward the edges of a space (where feet seldom go)
+		float dirt = smoothstep(0.45, 0.8, texture(noise_tex, wp.xz * 0.07 + 7.1).r);
+		col *= 1.0 - dirt * 0.12;
 		// sparse cracks and stains
 		float ck = texture(noise_tex, wp.xz * 0.21 + 0.5).r;
 		float crack = (1.0 - smoothstep(0.0, 0.010, abs(ck - 0.5))) * step(0.62, tr);
@@ -149,11 +175,11 @@ void fragment() {
 		col *= 1.0 - stain * 0.10;
 		float side = 1.0 - smoothstep(0.55, 0.85, wn.y);
 		col = mix(col, side_col * (0.85 + 0.3 * n), side * 0.65);
-		rough = 0.32 + n * 0.2;
+		rough = slab_r + n * 0.15;
 	} else if (mat_id < 0.37) {
 		vec3 p = wp + rnd * 11.0;
-		float v = marble(p, 2.4, 0.09) * 0.8 + marble(p * 2.3 + 1.7, 2.0, 0.05) * 0.3;
-		col = mix(cream * (0.88 + 0.12 * rnd) * (0.92 + 0.12 * n), vein, clamp(v, 0.0, 1.0) * 0.45);
+		float v = marble(p, 2.4, 0.11) * 0.85 + marble(p * 2.3 + 1.7, 2.0, 0.06) * 0.35;
+		col = mix(cream * (0.86 + 0.16 * rnd) * (0.92 + 0.12 * n), vein, clamp(v, 0.0, 1.0) * 0.55);
 		if (pbr_k > 0.0) {
 			// two marbles per piece (veined / plain), weathered toward cracked plaster in patches and low down
 			float pr, pr2;
@@ -163,8 +189,11 @@ void fragment() {
 			float weather = smoothstep(0.55, 0.8, texture(noise_tex, wp.xz * 0.09 + wp.y * 0.11 + rnd).r) * 0.7 + (1.0 - smoothstep(0.0, 1.4, wp.y - 0.0)) * 0.2;
 			det = mix(det, pl, clamp(weather, 0.0, 0.85));
 			pbr_n = normalize(mix(pbr_n, nn2, clamp(weather, 0.0, 0.85)));
-			col *= mix(vec3(1.0), det, 0.6 * pbr_k);
-			pbr_r = mix(pr, pr2, weather); pbr_w = 0.55 * pbr_k;
+			col *= mix(vec3(1.0), det, 0.9 * pbr_k);
+			// the plaster flakes: a dark lip where the skin of plaster has broken off
+			float lip = smoothstep(0.2, 0.32, weather) * (1.0 - smoothstep(0.32, 0.45, weather));
+			col *= 1.0 - lip * 0.28;
+			pbr_r = mix(pr, pr2, weather); pbr_w = 0.6 * pbr_k;
 		}
 		// weathering: darker toward the ground and in crevices
 		col *= mix(0.78, 1.0, smoothstep(-0.2, 1.2, wn.y + 0.6));
@@ -193,12 +222,16 @@ void fragment() {
 		vec2 cell = floor(g);
 		float tr = fract(sin(dot(cell, vec2(41.3, 17.7))) * 9431.7);
 		float v = marble(wp * 1.3 + tr * 5.0, 2.6, 0.05);
-		col = mix(black_base * (0.9 + 0.3 * n), black_vein, v * 0.38);
+		col = mix(black_base * (0.9 + 0.3 * n), black_vein, v * 0.6);
 		if (pbr_k > 0.0) {
 			float pr;
 			vec3 det = pbr_layer(6.0, 2.0, wp + tr * 11.0, wn, pr, pbr_n, pbr_normal_k * 0.4);
-			col *= mix(vec3(1.0), det, 0.5 * pbr_k);
+			col = col * mix(vec3(1.0), det, 0.8 * pbr_k) + vec3(0.06, 0.065, 0.075) * smoothstep(1.2, 2.0, det.r) * pbr_k;    // its white veins
 		}
+		// (v1.0 rich) polished: a soft mirrored glow of the fog and the lights drifting across it (the view
+		// is fixed: a broad cloudy pattern in world space that slides with the camera's height)
+		float refl = smoothstep(0.35, 0.85, texture(noise_tex, wp.xz * 0.06 + CAMERA_POSITION_WORLD.xz * 0.004).r);
+		col += vec3(0.07, 0.075, 0.085) * refl;
 		vec2 e = min(f, 1.0 - f);
 		float aa = fwidth(g.x) * 1.5;
 		float seam = 1.0 - smoothstep(0.006, 0.006 + aa, min(e.x, e.y));
@@ -211,15 +244,24 @@ void fragment() {
 		rough = mix(0.06, 0.5, side);
 		spec = 0.9;
 	} else {
-		col = char_col * (0.8 + 0.4 * n) * (0.9 + 0.2 * rnd);
+		// v1.0: COLOR.g 0.87..0.95 = patinated BRONZE (layer 9, verdigris in the hollows), 0.95..0.995 = old brown WOOD,
+		// 1.0 = charcoal as before (dead trees, iron: near-black with a wood grain)
+		bool bronze = mat_id < 0.95;
+		bool wood = !bronze && mat_id < 0.995;
+		col = bronze ? vec3(0.30, 0.22, 0.13) * (0.8 + 0.4 * n)
+			: (wood ? vec3(0.26, 0.18, 0.115) : char_col) * (0.8 + 0.4 * n) * (0.9 + 0.2 * rnd);
 		if (pbr_k > 0.0) {
 			float pr;
-			vec3 det = pbr_layer(7.0, 1.2, wp + rnd * 5.0, wn, pr, pbr_n, pbr_normal_k);
-			col *= mix(vec3(1.0), det, 0.7 * pbr_k);
-			pbr_r = pr; pbr_w = 0.5 * pbr_k;
+			vec3 det = pbr_layer(bronze ? 9.0 : 7.0, bronze ? 0.8 : 1.2, wp + rnd * 5.0, wn, pr, pbr_n, pbr_normal_k * (bronze || wood ? 1.2 : 1.0));
+			col *= mix(vec3(1.0), det, (bronze || wood ? 0.95 : 0.7) * pbr_k);
+			pbr_r = pr; pbr_w = (bronze || wood ? 0.6 : 0.5) * pbr_k;
 		}
-		rough = 0.8;
-		spec = 0.3;
+		if (bronze) {
+			float vg = smoothstep(0.5, 0.75, texture(noise_tex, wp.xz * 2.3 + wp.y * 1.7).r);
+			col = mix(col, vec3(0.25, 0.42, 0.36), vg * 0.6);                 // verdigris
+		}
+		rough = bronze ? 0.45 : 0.8;
+		spec = bronze ? 0.7 : 0.3;
 	}
 	// worn, chamfered edges on blocks: a pale bevel catching the light, a soft shadow just inside
 	if (boxy > 0.5 && mat_id < 0.87) {
@@ -230,8 +272,18 @@ void fragment() {
 		float chip = texture(noise_tex, wp.xz * 1.9 + wp.y * 1.3).r;
 		float bevel = 1.0 - smoothstep(0.012, 0.05 + chip * 0.03, ed);
 		float inner = smoothstep(0.03, 0.06, ed) * (1.0 - smoothstep(0.06, 0.13, ed));
-		col = mix(col, col * 1.18 + vec3(0.03, 0.025, 0.015), bevel * (0.55 + 0.45 * max(wn.y, 0.0)));
-		col *= 1.0 - inner * 0.06;
+		col = mix(col, col * 1.26 + vec3(0.04, 0.035, 0.02), bevel * (0.55 + 0.45 * max(wn.y, 0.0)));
+		col *= 1.0 - inner * 0.08;
+		// (v1.0 rich) chips knocked out of the edges: small darker bites along the bevel
+		float bite = (1.0 - smoothstep(0.0, 0.035, ed)) * smoothstep(0.62, 0.72, chip);
+		col = mix(col, col * 0.62, bite);
+		// water staining: streaks running down the faces from the top edge (under ledges and cornices)
+		if (abs(wn.y) < 0.5) {
+			float hz = dot(wp.xz, vec2(abs(wn.z), abs(wn.x)));
+			float st = texture(noise_tex, vec2(hz * 1.9, wp.y * 0.12)).r;
+			float stain = smoothstep(0.52, 0.78, st) * (1.0 - smoothstep(0.0, 0.85, fuv.y + (st - 0.5) * 0.4));
+			col *= 1.0 - stain * 0.3 * vec3(1.0, 1.04, 1.1);
+		}
 		// v1.0 (A): contact AO: a block's sides darken softly toward their bottom edge, where they meet the
 		// ground or the block below (a cheap stand-in for SSAO, which the Compatibility renderer lacks)
 		if (abs(wn.y) < 0.5) {
@@ -282,7 +334,20 @@ void fragment() {
 	// the see-through's edge: the stone thins into pale haze toward the cut, a faint aqua light on it
 	col = mix(col, vec3(0.80, 0.82, 0.82), cut_haze * 0.8);
 	ALBEDO = col;
-	EMISSION = accent.rgb * cut_rim * 0.75;
+	vec3 fb = vec3(0.0);
+	if (flame_k > 0.0) {
+		for (int i = 0; i < 8; i++) {
+			vec4 fl = flames[i];
+			if (fl.w <= 0.0) continue;
+			vec3 d = fl.xyz - wp;
+			float r = length(d);
+			if (r > 5.0) continue;
+			float fall = fl.w / (1.0 + r * r * 0.9) * (1.0 - smoothstep(3.0, 5.0, r));
+			float lam = 0.35 + 0.65 * max(dot(wn, d / max(r, 1e-3)), 0.0);
+			fb += flame_col * fall * lam;
+		}
+	}
+	EMISSION = accent.rgb * cut_rim * 0.75 + col * fb * 0.55 * flame_k;
 #ifdef OCC_ALPHA
 	ALPHA = cut_alpha;
 #endif
