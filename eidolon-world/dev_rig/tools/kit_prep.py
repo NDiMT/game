@@ -1,7 +1,7 @@
 """EIDOLON v1.0 QA P1-8 (Agent A): Tripo kit models -> placement-ready, web-slim prop GLBs (assets/models/props/kit_*).
 Each model: transforms baked, turned to face +Z (Tripo's front is +X), base at y = 0, centred on XZ (pivot at the
 base), scaled to its size in metres, base colour only (256 or 512 px; metallic/roughness folded into factors, no
-normal/AO maps; welded and decimated to 1 800 - 3 200 tris; textures dropped: props.gd draws props with the marble
+normal/AO maps; welded and cleaned, Tripo's own low-poly kept (faces trimmed to <= 6 000 tris); textures dropped: props.gd draws props with the marble
 shader, like the rest of the kit). usage: kit_prep.py <tripo_out_dir> <dest_dir>  (names and sizes in SPEC below)
 """
 import sys, os, glob, json, math
@@ -17,25 +17,24 @@ SPEC = {
  "awning_post": ("h", 2.6, 256),
 }
 out = {}
-TRIS = {"face": 1800, "urns": 2200, "awning_post": 1800, "ladder": 2500}
+# (v2, review) NO brute decimation: Tripo's own smart-low-poly mesh is kept; it is welded, cleaned (degenerate and
+# duplicate faces removed, small holes filled, winding made consistent and outward) and shaded with a 35 deg crease
+# (hard edges stay crisp). Only the two heaviest faces are trimmed to 6 000 tris (quadric, on the welded surface).
+MAXT = {"face": 6000}
 import fast_simplification as fsimp
-def decimate(m, target):
-    # Tripo meshes are split at every UV seam: weld by position first (else the islands shrink apart into holes),
-    # decimate the welded surface, then give each kept vertex the UV of an original vertex merged into it
-    if len(m.faces) <= target: return m
-    uv = np.asarray(m.visual.uv)
-    key = np.round(np.asarray(m.vertices) / 1e-5).astype(np.int64)
-    _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
-    inv = inv.ravel()
-    Pw = np.asarray(m.vertices)[first]; Fw = inv[np.asarray(m.faces)]
-    Fw = Fw[(Fw[:, 0] != Fw[:, 1]) & (Fw[:, 1] != Fw[:, 2]) & (Fw[:, 0] != Fw[:, 2])]
-    P, F, coll = fsimp.simplify(Pw.astype(np.float64), Fw.astype(np.int64), target_reduction=1.0 - target / len(Fw), return_collapses=True)
-    P2, F2, mp = fsimp.replay_simplification(Pw.astype(np.float64), Fw.astype(np.int64), coll)
-    uvw = uv[first]
-    uv2 = np.zeros((len(P2), 2)); seen = np.zeros(len(P2), bool)
-    for i, j in enumerate(mp):
-        if 0 <= j < len(P2) and not seen[j]: uv2[j] = uvw[i]; seen[j] = True
-    return trimesh.Trimesh(P2, F2, visual=trimesh.visual.TextureVisuals(uv=uv2, material=m.visual.material), process=False)
+def clean(m, cap):
+    w = trimesh.Trimesh(np.asarray(m.vertices), np.asarray(m.faces), process=False)
+    w.merge_vertices(merge_tex=True, merge_norm=True)
+    w.update_faces(w.nondegenerate_faces()); w.update_faces(w.unique_faces())
+    w.remove_unreferenced_vertices()
+    if cap and len(w.faces) > cap:
+        P, F = fsimp.simplify(np.asarray(w.vertices, np.float64), np.asarray(w.faces, np.int64), target_reduction=1.0 - cap / len(w.faces))
+        w = trimesh.Trimesh(P, F, process=False)
+        w.update_faces(w.nondegenerate_faces()); w.update_faces(w.unique_faces()); w.remove_unreferenced_vertices()
+    trimesh.repair.fill_holes(w)
+    trimesh.repair.fix_winding(w)
+    trimesh.repair.fix_inversion(w, multibody=True)
+    return trimesh.graph.smooth_shade(w, angle=np.radians(35))
 for name, (fit, size, px) in SPEC.items():
     f = glob.glob(os.path.join(SRC, name, "**", "*.glb"), recursive=True)
     if not f: print("missing", name); continue
@@ -50,21 +49,13 @@ for name, (fit, size, px) in SPEC.items():
     e = m.extents
     k = size / (e[1] if fit == "h" else max(e[0], e[2]))
     m.apply_scale(k)
-    tgt = next((v for k_, v in TRIS.items() if name.startswith(k_)), 3200)
-    m = decimate(m, tgt)
-    mat = m.visual.material
-    if not isinstance(mat, trimesh.visual.material.PBRMaterial): mat = mat.to_pbr()
-    mf = 1.0 if mat.metallicFactor is None else float(mat.metallicFactor)
-    rf = 1.0 if mat.roughnessFactor is None else float(mat.roughnessFactor)
-    if mat.metallicRoughnessTexture is not None:
-        a = np.asarray(mat.metallicRoughnessTexture.convert("RGB"), np.float32) / 255
-        rf *= float(a[..., 1].mean()); mf *= float(a[..., 2].mean())
+    m = clean(m, next((v for k_, v in MAXT.items() if name.startswith(k_)), 0))
     # (drawn by the game's marble shader through props.gd, like every other prop: no textures shipped; the
     # placeholder colour only shows in other viewers. Wood pieces are flagged WOOD in props.gd, see HANDOFF)
     wood = name in ("scaffold", "ladder", "awning_post")
     nm = trimesh.visual.material.PBRMaterial(name="wood_placeholder" if wood else "marble_placeholder",
         baseColorFactor=[0.45, 0.38, 0.30, 1.0] if wood else [0.886, 0.863, 0.816, 1.0], metallicFactor=0.0, roughnessFactor=0.8)
-    m.visual = trimesh.visual.TextureVisuals(uv=m.visual.uv, material=nm)
+    m.visual = trimesh.visual.TextureVisuals(material=nm)
     sc = trimesh.Scene(); sc.add_geometry(m, node_name=name)
     data = trimesh.exchange.gltf.export_glb(sc, include_normals=True)
     open(os.path.join(DST, "kit_" + name + ".glb"), "wb").write(data)

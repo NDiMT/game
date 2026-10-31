@@ -253,11 +253,11 @@ void fragment() {
 		bool bronze = mat_id < 0.95;
 		bool wood = !bronze && mat_id < 0.995;
 		col = bronze ? vec3(0.30, 0.22, 0.13) * (0.8 + 0.4 * n)
-			: (wood ? vec3(0.30, 0.26, 0.21) : char_col) * (0.8 + 0.4 * n) * (0.9 + 0.2 * rnd);   // (M3c: a weathered grey-umber, not red-orange)
+			: (wood ? vec3(0.285, 0.27, 0.25) : char_col) * (0.8 + 0.4 * n) * (0.9 + 0.2 * rnd);   // (M3c: a weathered grey-umber, not red-orange)
 		if (pbr_k > 0.0) {
 			float pr;
 			vec3 det = pbr_layer(bronze ? 9.0 : 7.0, bronze ? 0.8 : 1.2, wp + rnd * 5.0, wn, pr, pbr_n, pbr_normal_k * (bronze || wood ? 1.2 : 1.0));
-			if (wood) det = mix(vec3(dot(det, vec3(0.333))), det, 0.3);     // (the photo wood is orange: keep its grain, not its hue)
+			if (wood) det = mix(vec3(dot(det, vec3(0.333))), det, 0.12);     // (the photo wood is orange: keep its grain, not its hue)
 			col *= mix(vec3(1.0), det, (bronze || wood ? 0.95 : 0.7) * pbr_k);
 			pbr_r = pr; pbr_w = (bronze || wood ? 0.6 : 0.5) * pbr_k;
 		}
