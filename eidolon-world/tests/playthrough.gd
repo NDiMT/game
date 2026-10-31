@@ -1520,7 +1520,7 @@ func _plan() -> void:
 		C().points._use("coin", "coin", "x")
 		C().points.update(0.1)
 		ok("(QA_V11) the offering lights its little flame", float(C().points.offer_flame.mat.get_shader_parameter("intensity")) > 0.5)
-		ok("(QA_V11) the cot: its cloth shifts and a wax tablet shows", C().points.tablet.visible and C().points.blanket.rotation.y != 0.0 or C().points.tablet.visible)
+		ok("(QA_V11) the cot: its cloth shifts and a wax tablet shows", C().points.tablet.visible)
 		ok("(QA_V11) the coin drops into the dry basin", C().points.coin.visible)
 		ok("(QA_V11) a pause point on the landing between Our Steps and the Court", Points.POINTS.any(func(p: Array) -> bool: return p[0] == "votive_n")))
 	step_wait(1.0)

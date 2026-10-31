@@ -34,10 +34,10 @@ const POINTS := [
 	["coin", Vector3(5.0, 0.5, 14.25), "coin", "touch", "The coin rang on the dry stone. Once, here, it would have splashed."],
 	["cot", Vector3(19.6, 0.5, 10.6), "cot", "read", "His cot, under the floor of his workshop. He slept beside her faces."],
 	["bench", Vector3(26.85, 2.0, -4.5), "bench", "wait", "From here the drowned head looks up at the sky, as if listening."],
-	# (QA_V11 pacing: a pause between Our Steps and the Court, on the landing at the ramp's head)
 	# (QA_V11 pacing: the East wing's long Balcony walk gets a stop in its first third, a seat facing up the shore)
 	["lookout", Vector3(29.05, 2.0, 4.0), "bench", "wait", "Far up the shore, under its dome, a light keeps watch. The way runs there."],
-	["votive_n", Vector3(19.1, 2.0, -18.08), "votive", "light", "Another of her small flames. Below, the glass keeps the floor you crossed together."],
+	# (QA_V11 pacing: a pause between Our Steps and the Court, by the gate at the foot of the ramp)
+	["votive_n", Vector3(17.8, 1.0, -14.5), "votive", "light", "Another of her small flames, by the gate. Behind you, the glass keeps the floor you crossed together."],
 ]
 ## the relief along the Echo Corridor's north wall: its panels speak as you walk past
 const RELIEF := [
@@ -104,7 +104,7 @@ func _build(p: Array) -> void:
 			bm2.box(Vector3.ZERO, Vector3(1.5, 0.06, 0.6), Color(0.5, 0.25, 0.0))      # (a folded cloth)
 			game.puzzles.marble_instance(bm2.commit(), blanket)
 			tablet = Node3D.new()
-			tablet.position = at + Vector3(0.45, 0.245, 0.05)                         # (under the cloth's foot end)
+			tablet.position = at + Vector3(-0.5, 0.006, 0.55)                         # (on the floor by the cot, once it slides out)
 			add_child(tablet)
 			var tm := MB.new()
 			tm.box(Vector3.ZERO, Vector3(0.26, 0.012, 0.18), Color(0.5, WorldGeo.WOOD, 0.0))
@@ -116,7 +116,7 @@ func _build(p: Array) -> void:
 			cot_flame.position = at + Vector3(1.1, 0.53, -0.3)
 			cot_flame.bounce = false
 			add_child(cot_flame)
-			m.box(at + Vector3(-0.75, 0.3, 0), Vector3(0.25, 0.08, 0.4), Color(0.5, 0.25, 0.0))     # (a stone pillow)
+			m.box(at + Vector3(-0.78, 0.3, 0), Vector3(0.25, 0.08, 0.4), Color(0.5, 0.25, 0.0))     # (a stone pillow)
 			game.level.ob_rect(Level.R(at.x - 0.95, at.z - 0.4, at.x + 1.2, at.z + 0.4))
 		"coin":
 			coin = Node3D.new()
@@ -172,9 +172,11 @@ func _use(id: String, kind: String, line: String) -> void:
 			# the cloth shifts as you sit on its edge, the lamp gutters, and a wax tablet shows from under it
 			game.sfx.play("chime", -20.0, 1.2)
 			var tw := blanket.create_tween()
-			tw.tween_property(blanket, "position:x", blanket.position.x - 0.28, 0.6).set_trans(Tween.TRANS_SINE)
-			tw.parallel().tween_property(blanket, "rotation:y", 0.08, 0.6).set_trans(Tween.TRANS_SINE)
+			tw.tween_property(blanket, "position", blanket.position + Vector3(0.04, 0, 0.05), 0.6).set_trans(Tween.TRANS_SINE)
 			tablet.visible = true
+			var tz := tablet.position.z
+			tablet.position.z = tz - 0.22
+			tablet.create_tween().tween_property(tablet, "position:z", tz, 0.7).set_delay(0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 			if game.juice: game.juice.glint(tablet.global_position + Vector3(0, 0.1, 0))
 			_cot_flick = 1.6
 		"bench":
@@ -265,6 +267,6 @@ func apply_state() -> void:
 		coin.rotation = Vector3.ZERO
 	if blanket:
 		var cp: Vector3 = POINTS[4][1]
-		blanket.position = cp + Vector3(0.1 - (0.28 if done("cot") else 0.0), 0.27, 0)
-		blanket.rotation.y = 0.08 if done("cot") else 0.0
+		blanket.position = cp + Vector3(0.1, 0.27, 0) + (Vector3(0.04, 0, 0.05) if done("cot") else Vector3.ZERO)
 		tablet.visible = done("cot")
+		tablet.position = cp + Vector3(-0.5, 0.006, 0.55)
