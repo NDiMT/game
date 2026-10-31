@@ -19,6 +19,15 @@ extends Node3D
 ##  * a SEPARATE pale cloth VEIL over the marble face on a BoneAttachment3D of the Head bone.
 ## One skinned draw call plus the veil.
 
+## v1.0 (Agent A): two heroines. VARIANT "v0.9" (the grey dress and veil, default until W switches) and "v1" (the
+## porcelain statue-woman: a blank mirror-oval face, cracked marble arms, a dark veil to the floor, a grey gauze
+## gown; dev_rig/tools/heroine_v1_rig.py). Set HeroineRig.VARIANT = "v1" BEFORE the first HeroineRig is made.
+## v1 also turns on the "oddness" layer (odd = 1): a slow unnatural head tilt, the hands twitching now and then,
+## and a hovering glide in the walk (less bob, softer knees, a slight float).
+static var VARIANT := "v0.9"
+const V1 := {"model": "res://assets/models/heroine_v1_rigged.glb", "mesh": "res://assets/models/heroine_v1_mesh.res",
+	"albedo": "res://assets/models/heroine_v1_basecolor.jpg", "normal": "res://assets/models/heroine_v1_normal.jpg",
+	"axis_z": 0.0171, "face": Vector3(0.0, 1.6, 0.08), "skin_lum": 0.5, "cloth_k": 1.0, "odd": 1.0}
 const MODEL := "res://assets/models/heroine_rigged.glb"
 const MESH := "res://assets/models/heroine_mesh.res"          # (tests/prep_heroine.gd: the shader's vertex data)
 const ALBEDO := "res://assets/models/heroine_basecolor.jpg"
@@ -75,9 +84,10 @@ var D := {}
 var _wind_t := 0.0
 
 func _init(ghost := false) -> void:
+	var v1 := VARIANT == "v1"
 	if model == null:
-		model = load(MODEL)
-		body_mesh = load(MESH)
+		model = load(V1["model"] if v1 else MODEL)
+		body_mesh = load(V1["mesh"] if v1 else MESH)
 		veil_mesh = Figure._build_veil()
 	body = Node3D.new()
 	add_child(body)
@@ -90,15 +100,19 @@ func _init(ghost := false) -> void:
 	if _albedo == null:
 		# (her JPEG maps, taken out of the GLB: its embedded copies would be Basis Universal, which the
 		# Compatibility renderer here cannot upload; the GLB import keeps none)
-		_albedo = load(ALBEDO)
-		_normal = load(NORMAL)
+		_albedo = load(V1["albedo"] if v1 else ALBEDO)
+		_normal = load(V1["normal"] if v1 else NORMAL)
 	mesh_mi.mesh = body_mesh
 	body_mat = ShaderMaterial.new()
 	body_mat.shader = preload("res://shaders/wanderer_ghost.gdshader") if ghost else preload("res://shaders/wanderer.gdshader")
 	body_mat.set_shader_parameter("albedo_tex", _albedo)
 	body_mat.set_shader_parameter("normal_tex", _normal)
 	body_mat.set_shader_parameter("unit", UNIT)
-	body_mat.set_shader_parameter("axis_z", AXIS_Z)
+	body_mat.set_shader_parameter("axis_z", V1["axis_z"] if v1 else AXIS_Z)
+	if v1:
+		body_mat.set_shader_parameter("skin_lum", V1["skin_lum"])      # (her pale porcelain skin: the baked mask x brightness)
+		body_mat.set_shader_parameter("cloth_k", V1["cloth_k"])        # (a readable mid grey gown)
+		odd = V1["odd"]
 	body_mat.set_shader_parameter("dress", 1.0)
 	mesh_mi.material_override = body_mat
 	for i in sk.get_bone_count():
@@ -134,7 +148,8 @@ func _init(ghost := false) -> void:
 	var head_rest := sk.get_bone_global_rest(bone["Head"])
 	# the procedural veil was made for a face centred at (0, 0.14, -0.022), facing -z
 	var vb := Basis(Vector3.UP, PI) * Basis.from_scale(Vector3(0.40, 0.46, 0.36))
-	var vx := Transform3D(vb, FACE - vb * Vector3(0, 0.14, -0.022) + Vector3(0, -0.004, 0.012))
+	var face: Vector3 = V1["face"] if v1 else FACE
+	var vx := Transform3D(vb, face - vb * Vector3(0, 0.14, -0.022) + Vector3(0, -0.004, 0.012))
 	veil_base = head_rest.affine_inverse() * vx
 	veil.transform = veil_base
 	att.add_child(veil)
@@ -271,12 +286,27 @@ func set_veil_lift(k: float) -> void:
 const SIDES := ["L", "R"]
 var _sb: Array = []                 # (v0.8.5) per side: clavicle, upper arm, forearm, thigh, calf, foot bone indices
 var _drv_idx: PackedInt32Array = PackedInt32Array()                 # (v0.8.5) the driven bones' indices
+## v1.0 (Agent A): the "oddness" layer, 0..1 (1 on the v1 heroine). Unnatural and slow, never busy.
+var odd := 0.0
+var _odd_seed := randf() * 100.0
+func _odd_t() -> float: return Time.get_ticks_msec() / 1000.0 + _odd_seed
+## a twitch now and then: 0 most of the time, a quick 0..1..0 pulse every few seconds (irregular)
+static func _twitch(t: float, period: float, k: float) -> float:
+	var cyc := floorf(t / period)
+	var hv := sin(cyc * 12.9898 + k * 78.233) * 43758.5453
+	var h := hv - floorf(hv)
+	if h < 0.45: return 0.0
+	var u := (t - cyc * period - h * period * 0.5) / 0.18
+	return maxf(0.0, 1.0 - absf(u * 2.0 - 1.0)) if u > 0.0 and u < 1.0 else 0.0
+
 func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 	var c := p.crouch
 	var w := clampf(p.ripple, 0.0, 1.0)            # the walk (0 idle .. 1 full stride)
 	var s := sin(p.phase)
 	var s2 := cos(p.phase)
-	body.position.y = p.body_y - 0.06 * c
+	var ot := _odd_t()
+	# the glide: less of the stride's bob, a faint float that breathes
+	body.position.y = p.body_y * (1.0 - 0.75 * odd) + odd * (0.012 + 0.006 * sin(ot * 0.9)) - 0.06 * c
 	body.rotation = Vector3(p.lean_x, 0.0, p.lean_z)
 	body.scale = Vector3(1.0 - slim, 1.0, 1.0 - slim * 0.5)
 	var brth := p.breath
@@ -288,7 +318,10 @@ func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 	D[bone["Spine01"]] = _ry(-0.10 * s * w + turn * 0.8) * _rx(0.06 * w + 0.012 * brth + 0.38 * c)
 	D[bone["Spine02"]] = _ry(-0.17 * s * w + turn * 1.0) * _rx(0.05 * w - 0.025 * brth + 0.30 * c) * _rz(-0.02 * s2 * w)
 	# the head held steady (global): it looks around, leads into a turn, bows to the water
-	D[bone["Head"]] = _ry(p.head_yaw + turn * 1.6) * _rx(-p.head_pitch + 0.06 * w + 0.01 * brth + 0.35 * c) * _rz(-p.head_roll)
+	# (oddness: a slow, unnatural tilt that lingers, and now and then a small sudden turn of the head)
+	var otilt := odd * (0.16 * sin(ot * 0.23) * smoothstep(0.2, 0.8, 0.5 + 0.5 * sin(ot * 0.071 + 1.3)) + 0.05 * _twitch(ot, 6.3, 1.0))
+	var oyaw := odd * 0.07 * _twitch(ot + 2.1, 8.7, 2.0) * (1.0 - w)
+	D[bone["Head"]] = _ry(p.head_yaw + turn * 1.6 + oyaw) * _rx(-p.head_pitch + 0.06 * w + 0.01 * brth + 0.35 * c) * _rz(-p.head_roll + otilt)
 	var sp := D[bone["Spine02"]] as Quaternion
 	if _sb.is_empty():
 		for sd in SIDES: _sb.append([bone[sd + "_Clavicle"], bone[sd + "_Upperarm"], bone[sd + "_Forearm"], bone[sd + "_Thigh"], bone[sd + "_Calf"], bone[sd + "_Foot"]])
@@ -313,8 +346,8 @@ func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 			arm_swing *= 1.0 - p.reach
 		D[bi[1]] = sp * _rx(-arm_swing) * _rz(-sg * 0.02 * brth) * arm
 		D[bi[2]] = sp * _rx(-arm_swing * 1.3 - 0.04 * w) * fore
-		var thigh := 0.36 * leg * w
-		var knee := maxf(0.0, -sg * s2) * 0.55 * w + 0.12 * w
+		var thigh := 0.36 * leg * w * (1.0 - 0.35 * odd)
+		var knee := (maxf(0.0, -sg * s2) * 0.55 * w + 0.12 * w) * (1.0 - 0.6 * odd)      # (the glide: soft knees, short steps)
 		D[bi[3]] = hip * _rx(-thigh - 0.55 * c)
 		D[bi[4]] = hip * _rx(-thigh + knee + 1.0 * c)
 		D[bi[5]] = hip * _rx(-thigh * 0.4 - 0.2 * c)
@@ -326,6 +359,12 @@ func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 		var rel: Quaternion = dp.inverse() * (D[i] as Quaternion)
 		var pb: Basis = _par_b[i]
 		sk.set_bone_pose_rotation(i, Quaternion(pb.inverse() * Basis(rel) * pb) * (_rest_l[i] as Quaternion))
+	if odd > 0.0:
+		# her fingers (the hands: there are no finger bones) twitch now and then, each hand on its own clock
+		for side in SIDES:
+			var hb: int = bone[side + "_Hand"]
+			var tw := _twitch(ot + (0.0 if side == "L" else 3.3), 4.1 if side == "L" else 5.3, 3.0 if side == "L" else 4.0)
+			sk.set_bone_pose_rotation(hb, (_rest_l[hb] as Quaternion) * _rx(0.22 * tw * odd) * _rz(0.12 * tw * odd))
 	if cloth_mode == "copy" and cloth_src:
 		var src := cloth_src.cloth_pose
 		for k in cloth_bones.size(): sk.set_bone_pose_rotation(cloth_bones[k], src[k])

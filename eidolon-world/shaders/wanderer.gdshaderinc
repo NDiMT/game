@@ -19,6 +19,8 @@ uniform float unit = 1.0;
 uniform float axis_z = 0.085;
 uniform float dress = 0.0;
 uniform float red = 0.0;
+uniform float cloth_k = 0.62;       // v1.0 (A): the grey of her cloth (texture luminance x this)
+uniform float skin_lum = 0.0;       // v1.0 (A): > 0: her skin is told by BRIGHTNESS (the v1 heroine's pale porcelain), not by warmth
 global uniform vec4 red_dress;
 
 vec3 wanderer_deform(vec3 v0, vec4 c) {
@@ -61,7 +63,8 @@ vec3 wanderer_albedo(vec2 uv, float face) {
 		float sat = max(a.r, max(a.g, a.b)) - min(a.r, min(a.g, a.b));
 		float warm = step(a.b + 0.02, a.r);                       // (flesh is warm: red over blue)
 		float skin = smoothstep(0.06, 0.13, sat) * warm;
-		vec3 cloth = vec3(lum0) * vec3(0.95, 0.97, 1.0) * 0.62;          // (a mid grey: she reads against the pale marble)
+		if (skin_lum > 0.0) skin = clamp(face, 0.0, 1.0) * smoothstep(skin_lum - 0.07, skin_lum + 0.05, lum0);     // (v1: the baked skin mask, bright texels only)
+		vec3 cloth = vec3(lum0) * vec3(0.95, 0.97, 1.0) * cloth_k;          // (a mid grey: she reads against the pale marble)
 		// her reflection wears the same dress in deep crimson (the veil a darker red)
 		vec3 crim = red_dress.rgb * (0.85 + lum0 * 1.7);
 		cloth = mix(cloth, crim, red);

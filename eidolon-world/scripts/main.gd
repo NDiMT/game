@@ -474,13 +474,16 @@ func _update_air() -> void:
 
 func _update_area() -> void:
 	var g := level.region_at(Vector2(player.position.x, player.position.z))
+	if g and Names.TRAVERSE.has(g.name) and not visited.has("t:" + g.name) and mode == "play":
+		visited["t:" + g.name] = true                # (v1.0 M3: a traversal section, named once)
+		ui.show_area(Names.TRAVERSE[g.name])
 	if g == null or not Names.REGION_AREA.has(g.name): return
 	var key: String = Names.REGION_AREA[g.name]
 	if key == "gate_four" and Vector2(player.position.x - Puzzles.SHRINE_C.x, player.position.z - Puzzles.SHRINE_C.z).length() < 2.4:
 		key = "first_shrine"
 	if key == area: return
 	area = key
-	sfx.set_area(key)
+	sfx.set_area(Names.AUDIO_ALIAS.get(key, key))
 	if mode == "play" and area != "": _save_pending = true        # a checkpoint in every space (v0.8.5: written at the next still moment)
 	if not visited.has(key):
 		visited[key] = true
@@ -722,6 +725,30 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 			sfx.play("grind", -9.0, 1.15)
 			sfx.play("step_wet", -12.0, 0.8)
 		"pool_joint": sfx.play("chime", -21.0, 1.25 + 0.05 * float(data))
+		# v1.0 M3: the hub
+		"bridge_settle":
+			sfx.play("grind", -22.0, 1.4 + data * 0.1)
+		"bridge_crumble":
+			sfx.play("grind", -14.0, 1.1)
+			get_tree().create_timer(1.3).timeout.connect(func() -> void: sfx.play("thud", -20.0, 0.7))
+		"item":
+			sfx.play("chime", -14.0, 0.9)
+			_save()
+		"seal_rises":
+			sfx.play("grind", -12.0, 0.6)
+			sfx.play("bell", -18.0, 0.8)
+		"seal":
+			sfx.play("bell", -12.0, 1.0)
+			sfx.resolve(2)
+			_save()
+		"socket":
+			sfx.play("chime_hall", -12.0, 0.6 + data * 0.1)
+			sfx.play("grind", -18.0, 0.9)
+			_save()
+		"ec_unbolt":
+			sfx.play("rattle", -12.0, 0.8)
+			sfx.play("grind", -12.0, 0.7)
+			_save()
 		"pool_rise":
 			sfx.play("grind", -6.0, 0.55)
 			sfx.play("step_wet", -4.0, 0.7)
@@ -760,7 +787,7 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 ## stand at its entrance
 const ROOM_ENTRY := {
 	"waking_pool": Vector3(1.4, 0.0, 2.3), "stair_breath": Vector3(-11.0, 0.0, 1.6), "hall_glass": Vector3(-2.0, 1.0, -13.5),
-	"shard_gallery": Vector3(5.8, 1.0, -17.0), "garden_veiled": Vector3(15.5, 1.0, -6.3), "hollow_walk": Vector3(17.9, 1.0, -11.8),
+	"atrium": Vector3(0.0, WorldGeo.A_Y, 11.0), "shard_gallery": Vector3(5.8, 1.0, -17.0), "garden_veiled": Vector3(15.5, 1.0, -6.3), "hollow_walk": Vector3(17.9, 1.0, -11.8),
 	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -29.6), "echo_corridor": Vector3(10.0, 2.0, -40.0),
 	"scales": Vector3(26.6, 2.0, -45.5), "eidolon_ledge": Vector3(24.0, 2.0, -22.0), "gate_four": Vector3(27.6, 2.0, -27.0),
 	"first_shrine": Vector3(25.0, 2.0, -30.8),
@@ -779,6 +806,8 @@ func jump(room: String) -> void:
 			"waking_pool":
 				cs["stones"] = true; cs["pool_turns"] = Chapter._pool_solution()
 			"stair_breath": cs["breath"] = true
+			"atrium":
+				(cs["inv"]["items"] as Array).append("lamp")
 			"hall_glass":
 				cs["shard"] = true; cs["hall_door"] = true
 				cs["hall"] = {"drum": [Chapter.DRUM_GOAL.x, Chapter.DRUM_GOAL.y], "brazier": [Chapter.BRAZ_GOAL.x, Chapter.BRAZ_GOAL.y],
@@ -796,7 +825,11 @@ func jump(room: String) -> void:
 				cs["scales"] = true; cs["scale_w"] = [-1, -1, 5]
 			"eidolon_ledge":
 				ps["plate"] = true; cs["ledge_statue"] = [Chapter.LEDGE_PLATE.x, Chapter.LEDGE_PLATE.y]
-			"gate_four": cs["four"] = true
+				# (v1.0 M3: by the Gate, the three wings are done: their seals are in hand, then in the sockets)
+				cs["inv"]["seals"] = ["W", "N", "E"]
+				cs["hub"]["ec_open"] = true
+			"gate_four":
+				cs["four"] = true; cs["inv"]["socketed"] = [0, 1, 2]
 	puzzles.apply_state(ps)
 	chapter.apply_state()
 	awake = bool(ps["shrine"])

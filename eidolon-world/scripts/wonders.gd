@@ -96,7 +96,7 @@ func _build_colossus() -> void:
 		refl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(refl)
 	# the still black water over the reflection
-	var area := Vector4(6.8, -4.9, 22.4, 7.6)
+	var area := Vector4(6.8, -4.9, 22.4, WorldGeo.LAKE_Z1)      # (v1.0: the lake reaches the Atrium's edge)
 	var wm := ShaderMaterial.new()
 	wm.shader = preload("res://shaders/still_water.gdshader")
 	wm.set_shader_parameter("noise_tex", level.noise_tex)

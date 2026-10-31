@@ -20,6 +20,7 @@ const DESIGNED := [
 	[AABB(Vector3(17.2, 0.8, -15.45), Vector3(2.6, 3.6, 0.6)), "the Our Steps gate: its bars run in grooves in the two posts and a slot in the floor"],
 	[AABB(Vector3(9.2, 2.0, -25.0), Vector3(7.0, 1.0, 3.0)), "the Court's mirror stands turn in sockets in their plinths"],
 	[AABB(Vector3(13.0, 1.9, -29.2), Vector3(4.0, 4.0, 2.0)), "the Tree of Shards: its shards hang from the branches; it IS the nook's goal"],
+	[AABB(Vector3(8.9, 1.9, -41.3), Vector3(2.2, 3.5, 0.6)), "(v1.0) the bolted bars between the Echo Corridor and the Maze: a door, shut until unbolted"],
 ]
 const NOT_SOLID := ["veil", "glow", "halo", "beam", "mist", "fog", "ray", "shaft", "water", "pool_mat", "rune", "mark"]
 

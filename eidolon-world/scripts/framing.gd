@@ -10,6 +10,7 @@ const PITCH := deg_to_rad(36.0)
 ## key -> floor y, extra pieces (key things without an interact)
 const ROOMS := {
 	"waking_pool": {"y": 0.0, "extra": []},
+	"atrium": {"y": 0.5, "extra": [Vector3(5.0, 0.5, 16.0), Vector3(13.25, 3.1, 15.1), Vector3(14.15, 0.5, 11.4), Vector3(11.5, 0.1, 8.15)]},   # (v1.0: the fountain, the lamp on the bench, the undercroft's mouth, the first hidden stone)
 	"stair_breath": {"y": 0.5, "extra": []},
 	"hall_glass": {"y": 1.0, "extra": [Vector3(0.0, 3.0, -20.5)]},
 	"shard_gallery": {"y": 1.0, "extra": [Vector3(7.5, 2.5, -13.2), Vector3(7.5, 0.53, -11.585), Vector3(7.026, 0.53, -15.098), Vector3(6.524, 0.53, -14.393)]},   # (v0.9.2: and her shadows' eye-pairs on the floor: Chapter.eye_pos)

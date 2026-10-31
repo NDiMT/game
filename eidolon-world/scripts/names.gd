@@ -8,6 +8,7 @@ const CHAPTER := "The Veiled Gate"
 
 const AREAS := {
 	"waking_pool": "The Waking Pool",
+	"atrium": "The Atrium of a Thousand Faces",    # (v1.0 M3: the hub)
 	"stair_breath": "The Stair of Breath",
 	"hall_glass": "Hall of Glass",
 	"shard_gallery": "Where Her Shadow Fell",          # (v0.8.1: the Shard Gallery is gone)
@@ -21,12 +22,15 @@ const AREAS := {
 	"gate_four": "Gate of the Four Veiled",
 	"first_shrine": "The First Shrine",
 }
-const ORDER := ["waking_pool", "stair_breath", "hall_glass", "shard_gallery", "garden_veiled", "hollow_walk",
+const ORDER := ["waking_pool", "atrium", "stair_breath", "hall_glass", "shard_gallery", "garden_veiled", "hollow_walk",
 	"court_light", "mist_maze", "echo_corridor", "scales", "eidolon_ledge", "gate_four", "first_shrine"]
 
 ## walk-region name (Level) -> area key
 const REGION_AREA := {
 	"T": "waking_pool", "stub": "waking_pool", "b1": "waking_pool",
+	# v1.0 M3: the hub and the traversal sections that join it to the wings
+	"T1": "atrium", "A": "atrium", "A_gal": "atrium", "A_scaf": "atrium", "T4": "atrium", "UC": "atrium", "UC_up": "atrium",
+	"BAL": "eidolon_ledge",
 	"W_land": "stair_breath", "W_stair1": "stair_breath", "W_breath": "stair_breath", "W_stair2": "stair_breath",
 	"W_top": "stair_breath", "W_corr": "stair_breath",
 	"H": "hall_glass", "hdoor": "hall_glass",
@@ -44,6 +48,15 @@ const REGION_AREA := {
 }
 ## v0.9 the wonder spaces between the puzzles: walk-region name -> its name (shown once, on arrival)
 const WONDERS := {"CO": "The Sunken Colossus", "TS": "The Tree of Shards", "SPB": "The Upward Spring"}
+
+## v1.0 M3 the traversal sections: walk-region name -> its name (shown once, on arrival)
+const TRAVERSE := {"T1": "The Crumbling Bridge", "A_scaf": "Theron's Scaffold", "T4": "The Flooded Colonnade",
+	"UC": "The Undercroft", "BAL": "The Wind-swept Balcony"}
+## the wings (dev/V1_WORLD.md): their spaces, and the space whose puzzle completes the wing
+const WINGS := {"W": ["stair_breath", "hall_glass", "shard_gallery"], "N": ["garden_veiled", "hollow_walk", "court_light", "mist_maze"],
+	"E": ["eidolon_ledge", "scales", "echo_corridor"]}
+## the audio rooms the new spaces borrow until they have their own beds (assets are Agent A's)
+const AUDIO_ALIAS := {"atrium": "court_light"}
 
 ## the first awakened space (the slice's milestone)
 const FIRST := "first_shrine"

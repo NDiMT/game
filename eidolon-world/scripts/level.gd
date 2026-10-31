@@ -140,6 +140,7 @@ func build() -> void:
 	_shrine_platform()
 	_sealed_way()
 	Ch1Geo.build(self)
+	WorldGeo.build(self)          # (v1.0 M3: the Atrium hub and the traversal sections)
 	_far_ruins()                 # (after every walk region exists: it keeps clear of them)
 	_beyond()
 
@@ -811,7 +812,7 @@ func _veiled_gate() -> void:
 	walk(R(-5, 3.55, 5, 5), 0.0, NAN, -1, "T")
 	walk(R(-0.65, -0.15, 5, 3.55), 0.0, NAN, -1, "T")
 	# the broken stub of a bridge you came by, ending in the fog
-	slab(z, R(-1, 5, 1, 7.6), 0.0, 0.5, 0.0)
+	slab(z, R(-1, 5, 1, 7.3), 0.0, 0.5, 0.0)          # (v1.0: it meets the Crumbling Bridge to the Atrium)
 	walk(R(-1, 5, 1, 7.3), 0.0, NAN, -1, "stub")
 	rubble(Vector3(0, -0.6, 7.9), 0.8, 6)
 	balustrade(z, Vector2(-1.05, 5.1), Vector2(-1.05, 7.0), 0.0)
@@ -1027,7 +1028,7 @@ func _ledge() -> void:
 	box(z, Vector3(23.6, 5.6, -24.95), Vector3(4.7, 0.28, 0.32), 1.0, true)
 	box(z, Vector3(23.6, 2.08, -24.95), Vector3(4.6, 0.16, 0.3), 1.0, false)
 	ob_rect(R(21.2, -25.15, 26.0, -24.75))
-	balustrade(z, Vector2(21.1, -18.95), Vector2(28.9, -18.95), 2.0)
+	balustrade(z, Vector2(21.1, -18.95), Vector2(26.3, -18.95), 2.0)      # (v1.0: the balcony from the Atrium joins east of it)
 	balustrade(z, Vector2(28.95, -19.1), Vector2(28.95, -21.3), 2.0)
 	balustrade(z, Vector2(28.95, -23.5), Vector2(28.95, -24.9), 2.0)
 	balustrade(z, Vector2(21.05, -21.6), Vector2(21.05, -24.9), 2.0)

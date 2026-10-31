@@ -72,6 +72,7 @@ var door_real: Array[Node3D] = []
 var door_refl: Array[Node3D] = []
 # hollow walk
 var steps: OurSteps
+var hub: Hub                             # v1.0 M3: the hub's living parts (hub.gd)
 var shrine_fx: WaterFX                   # (v1.0 M1-A) the shrine pool's water events                     # v0.9.2: "Our Steps" (the Hollow Walk's room)
 var hw_gate: Node3D
 var _still := 0.0
@@ -128,7 +129,8 @@ func reset_state() -> void:
 		"turned": TURN_START.duplicate(), "turned_done": false, "garden_breath": false,
 		"hollow_done": false,          # (v0.9.2: "Our Steps" solved; the old key kept for saves)
 		"mural": false, "maze": false, "echo_room": false, "memories": [], "scale_w": [-1, -1, -1], "scales": false,
-		"four": false, "ledge_statue": [LEDGE_STATUE.x, LEDGE_STATUE.y]}
+		"four": false, "ledge_statue": [LEDGE_STATUE.x, LEDGE_STATUE.y],
+		"inv": Hub.fresh_state(), "hub": {"ec_open": false}}            # (v1.0 M3: the satchel, the hub's doors)
 
 # ================================================================== build (before level.commit)
 func build() -> void:
@@ -145,6 +147,9 @@ func build() -> void:
 	_build_ledge_feet()
 	_build_ledge_plate()
 	_build_four()
+	hub = Hub.new()                  # (v1.0 M3: after the gate: its sockets are the gate's statues)
+	add_child(hub)
+	hub.setup(game, self)
 	_build_shrine_pool()
 	_build_wisp()
 
@@ -2102,7 +2107,9 @@ func _update_scales(dt: float) -> void:
 			event.emit("solve", "scales")
 	# the lift: once the balance is won, stand on it a moment and it carries you to the other level
 	var on := on_lift() and absf(pl.position.y - (2.0 + lift_h * 2.0)) < 0.3
-	if state["scales"] and on and pl.speed01 < 0.05 and absf(lift_h - _lift_goal) < 0.001:
+	# (v1.0 M3: the High Wing is entered from the top: from up there the lift always takes you down; up
+	# again only once the balance is won)
+	if (state["scales"] or _lift_goal > 0.5) and on and pl.speed01 < 0.05 and absf(lift_h - _lift_goal) < 0.001:
 		_lift_still += dt
 		if _lift_still > 0.8:
 			_lift_still = 0.0
@@ -2286,7 +2293,7 @@ func _build_four() -> void:
 	four_ring = _smat("res://shaders/ring.gdshader", {"lit": 0.0, "sweep": 0.0})
 	_mi(_plane(Vector2(1.5, 1.5)), four_ring, Transform3D(Basis(), four_pos(3) + Vector3(0, 0.262, 0)))
 	level.add_interact("four_wait", four_pos(3) + Vector3(0, 0.25, 0), "wait", wait_still, 0.55,
-		func() -> bool: return not state["four"])
+		func() -> bool: return not state["four"] and hub != null and hub.sockets_full())
 	level.inscription("s_four", Vector3(22.2, 2.0, -29.2), "A thousand of her wait for the one who breathes.\nStand where she stood. Be still, as we are still.", 1.0,
 		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(22.2, 2.012, -29.6)), Vector2(1.0, 0.7))      # (v0.9: east of the court glass's line)
 
@@ -2315,12 +2322,13 @@ func _update_four(dt: float) -> void:
 			waiting = 0.0
 			if game.mode == "play": game.player.locked = false
 	if state["four"]: return
+	if hub and not hub.sockets_full(): return              # (v1.0 M3: three seals in the three sockets first)
 	var ok := on_four_plinth() and game.player.speed01 < 0.04 and facing_shrine()
 	four_hold = four_hold + dt if ok else maxf(0.0, four_hold - dt * 2.5)
 	four_ring.set_shader_parameter("lit", minf(1.0, four_hold / 3.6) if ok or four_hold > 0.0 else 0.0)
 	four_ring.set_shader_parameter("sweep", clampf(four_hold / 3.6, 0.0, 1.0))
 	for i in 4:
-		var on := four_hold > (i + 1) * 0.9
+		var on := four_hold > (i + 1) * 0.9 or (i < 3 and hub != null and i in (state["inv"]["socketed"] as Array))
 		four_mats[i].set_shader_parameter("lit", 1.0 if on else 0.15)
 	if four_hold >= 3.6: open_four(false)
 
@@ -2448,6 +2456,7 @@ func update(dt: float) -> void:
 	_update_scales(dt)
 	_update_ledge(dt)
 	_update_four(dt)
+	hub.update(dt)
 	_update_hints(dt, game.area)
 
 func apply_state() -> void:
@@ -2517,14 +2526,15 @@ func apply_state() -> void:
 	for i in 3:
 		var k := int(state["scale_w"][i])
 		sc_wnodes[i].position = (sc_pans[k].position + Vector3(0, 0.06, 0)) if k >= 0 else SC_RACK[i] + Vector3(0, 0.3, 0)
-	lift_h = 0.0
-	_lift_goal = 0.0
+	lift_h = 0.0 if state["scales"] else 1.0          # (v1.0 M3: it waits at the top until the balance is won)
+	_lift_goal = lift_h
 	if state["four"]: open_four(true)
 	else:
 		level.set_enabled("tholos_front", true)
 		front_veil.set_shader_parameter("density", 0.75)
 	game.ui.set_inventory(state["shard"], false)
 	set_lens(false)
+	hub.apply_state()
 
 # ================================================================== 13. "The Hand in the Water"
 const POOL_C := Vector3(25.0, 2.155, -32.4)
