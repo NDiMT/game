@@ -191,7 +191,7 @@ func _ready() -> void:
 	# v0.8: her silhouette is the model itself (rendered small into its own little world; the pane blurs
 	# it by the fog's density)
 	her_vp = SubViewport.new()
-	her_vp.size = Vector2i(150, 200)
+	her_vp.size = Vector2i(300, 400)        # (v1.0, A: doubled: no stair-steps behind clean glass at DPR 3)
 	her_vp.transparent_bg = true
 	her_vp.own_world_3d = true
 	her_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED

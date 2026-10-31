@@ -274,7 +274,7 @@ void fragment() {
 	// v0.7: SHE is there, close behind the pane: frosted by the fog (a wide, soft blur that grows with its
 	// density), sharp where a stroke has cleared the glass; her palm sharpens where it touches
 	float dens = clamp(cond * 1.35, 0.0, 1.0);
-	float w = mix(0.011, 0.12, dens);          // (v1.0: never sharper than her small render allows)
+	float w = mix(0.008, 0.12, dens);          // (v1.0: never sharper than her render allows)
 	vec2 A = vec2(1.0, 1.33);
 	vec2 P = uv * A;
 	float cov = her_cov(uv, w);
@@ -363,7 +363,9 @@ void fragment() {
 		float sd0;
 		float ca = age_at(ctr, sd0);
 		// a site: in the wet halo round a stroke (aged, not wiped) or on its rim, never in the clear core
-		float site = ca >= 0.0 ? (1.0 - smoothstep(0.25, 0.45, w0)) * mix(0.25, 1.0, smoothstep(0.005, 0.04, w0)) : 0.0;
+		float site = ca >= 0.0 ? (1.0 - smoothstep(0.18, 0.32, w0)) * mix(0.25, 1.0, smoothstep(0.005, 0.04, w0)) : 0.0;
+		// inside the wipe itself only a rare tiny bead, late (the glass was just wiped clean)
+		if (w0 > 0.32 && ca > 12.0 && h21(cid + 5.3) > 0.985) site = 0.6;
 		site *= smoothstep(0.3, 0.7, vnoise(uv * vec2(16.0, 21.0) + sd0 * 7.0));      // (they gather in clumps)
 		float h3 = h21(cid + 41.7);
 		if (site > 0.1 && h3 > 0.3) {
@@ -382,7 +384,7 @@ void fragment() {
 			if (ha > 0.3) continue;
 			vec2 o = (cc + vec2(0.3 + 0.4 * hb, 0.35 + 0.3 * hd)) / G2;
 			float w0 = wipe_at(o);
-			if (w0 > 0.45) continue;                                  // drops sit in the wet halo of a stroke
+			if (w0 > 0.3) continue;                                   // drops sit on the rims and in the wet halo, never in a fresh wipe
 			float sd1;
 			float ca = age_at(o, sd1);
 			if (ca < 0.0) continue;
@@ -453,7 +455,9 @@ void fragment() {
 		vec3 rb = max((behind(ruv) - 0.34) * 1.35 + 0.3, vec3(0.0));
 		float lo = length(o);
 		float tiny = 1.0 - smoothstep(0.002, 0.006, lr);
-		vec3 lensc = rb * (1.0 - mix(0.6, 0.25, tiny) * smoothstep(0.55, 1.0, lo));        // the dark refracted ring
+		rb = rb * 1.1 + 0.07;                                              // (water lenses brighten what they show)
+		vec3 lensc = rb * (1.0 - mix(0.45, 0.2, tiny) * smoothstep(0.6, 1.0, lo));        // the darker refracted ring
+		lensc += vec3(0.13, 0.135, 0.14) * (1.0 - smoothstep(0.0, 0.7, lo));               // a lighter centre
 		lensc += vec3(0.16, 0.17, 0.18) * smoothstep(0.35, 0.9, o.y) * (1.0 - smoothstep(0.9, 1.0, lo));   // light gathered low in it
 		c = mix(c, lensc, wb_m);
 		vec2 hp = o - vec2(-0.38, -0.44);
