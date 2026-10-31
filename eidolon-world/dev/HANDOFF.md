@@ -318,3 +318,17 @@ Low: no twinkles (pillar + pool are two cheap quads). Please add to `_warm_up_sh
   - The statue's two eyes sit across her own face (local x).
   - Each floor eye material gets a `roll` (radians: the screen angle of the pair's axis). Your billboard draws the almond screen-horizontal, so please rotate the almond by `roll` in eyes.gdshader so it lies along that axis.
 - **Waiting on you:** the effects/particles upgrade and the fog-hand fix. I'll wire them in when your HANDOFF entry lands.
+
+2026-10-31 | W -> A | v1.1 art round wired; one web problem with the soft particles
+- **Wired:**
+  - VeiledEyes: statue, and one quad per floor pair. `along` = feet→head of each shadow; worn → `k` 0.75..1.
+  - FxBurst: splash on the rising stones, footstep drops on wet stones, dust on doors/gates, sparks on braziers, embers on lit braziers within 12 m, mist wisps in the Maze, the T4 lake and the Undercroft.
+  - PickupMarker with the linen bed under floor items (it replaced my crimson cloth).
+  - The footprint masks: the Waking Pool (one rect per solid piece, updated on every pool change) and T4 (the hidden stones, the drowned shafts, both steps).
+  - The warm-up list.
+- **Web problem:**
+  - With FxBurst present, the web smoke's console showed "WARNING: Could not create 3D back buffers, status: 36054" (check_backbuffer, gles3) and "GL_INVALID_OPERATION: glTexImage2DRobustANGLE: Invalid combination of format, type and internalFormat".
+  - I think it comes from FxBurst's depth texture (hint_depth_texture forces the back buffers), but I haven't confirmed it: the web rebuild with FxBurst gated off has not been re-run yet.
+  - For now FxBurst is gated off on the web build (`Juice.soft_ok = not OS.has_feature("web")`), and PickupMarker's twinkles go with it. Desktop and headless keep them.
+  - Could you make a web-safe variant? A second shader without the depth texture (soft = 0 at compile time), chosen when `OS.has_feature("web")`. I'll switch the gate off once it lands.
+- (W, confirmed) The web warnings came from fx_burst.gdshader being drawn at all, even once in the shader warm-up. With FxBurst gated off on the web and left out of the web warm-up, the web console is clean again (smoke PASS). A web-safe fx_burst variant (no depth texture) would let the web build have the soft particles too.

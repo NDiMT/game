@@ -109,8 +109,9 @@ func setup(g: Game, ch: Chapter, h: Hub) -> void:
 	_build_secrets()
 	_build_pin_uses()
 	# (v1.1: every thing to take reads from 8 m: a cloth under it, a soft pillar of light, a slow bob and turn)
-	beacons = [[chisel_node, _beacon(CHISEL_POS, true)], [amph_node, _beacon(AMPH_POS, true)],
-		[pin_node, _beacon(STELE_POS + Vector3(-0.22, 0.87, 0), false)], [hub.lamp_bench, _beacon(WorldGeo.LAMP_POS + Vector3(0, 0.44, 0), false)]]
+	for e in [[chisel_node, CHISEL_POS, true], [amph_node, AMPH_POS, true], [pin_node, STELE_POS + Vector3(-0.22, 0.87, 0), false],
+			[hub.lamp_bench, WorldGeo.LAMP_POS + Vector3(0, 0.44, 0), false]]:
+		beacons.append([e[0], _beacon(e[1], e[2]), e[1], e[2]])
 
 func inv() -> Dictionary: return chapter.state["inv"]
 func hs() -> Dictionary: return chapter.state["hub"]
@@ -155,51 +156,18 @@ func _lens_rune(parent: Node3D, xf: Transform3D, size: Vector2, design: float) -
 	parent.add_child(mi)
 	return m
 
-## a pickup's beacon: a crimson cloth on the floor (for things lying there), a soft warm pillar of light
-## and a glow round it
+## a pickup's beacon (v1.1: A's PickupMarker): a soft light pillar, a pool of light, twinkles, and for
+## things lying on the floor an old linen cloth under them
 func _beacon(at: Vector3, cloth: bool) -> Node3D:
-	var n := Node3D.new()
-	n.position = at
-	add_child(n)
-	if cloth:
-		var cm := StandardMaterial3D.new()
-		cm.albedo_color = Color(0.42, 0.07, 0.08)
-		cm.roughness = 0.95
-		var cy := CylinderMesh.new()
-		cy.top_radius = 0.34; cy.bottom_radius = 0.36; cy.height = 0.02; cy.radial_segments = 20
-		var ci := MeshInstance3D.new()
-		ci.mesh = cy
-		ci.material_override = cm
-		ci.position.y = 0.012
-		ci.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		n.add_child(ci)
-	var g := Gradient.new()
-	g.set_color(0, Color(1, 1, 1, 0.0))
-	g.set_color(1, Color(1, 1, 1, 0.42))
-	var gt := GradientTexture2D.new()
-	gt.gradient = g
-	gt.fill_from = Vector2(0, 0); gt.fill_to = Vector2(0, 1)
-	gt.width = 4; gt.height = 64
-	var bm := StandardMaterial3D.new()
-	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	bm.cull_mode = BaseMaterial3D.CULL_DISABLED
-	bm.no_depth_test = false
-	bm.albedo_texture = gt
-	bm.albedo_color = Color(1.0, 0.86, 0.66)
-	var beam := CylinderMesh.new()
-	beam.top_radius = 0.16; beam.bottom_radius = 0.26; beam.height = 2.4; beam.radial_segments = 14
-	beam.cap_top = false; beam.cap_bottom = false
-	var bi := MeshInstance3D.new()
-	bi.mesh = beam
-	bi.material_override = bm
-	bi.position.y = 1.2
-	bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	bi.layers = PlanarMirror.LAYER_MAIN_FX
-	n.add_child(bi)
-	game.puzzles.glow_quad(n, Vector3(0, 0.35, 0), 0.8, Color(1.0, 0.85, 0.6), 0.55)
-	return n
+	var pm := PickupMarker.new()
+	pm.bed = "cloth" if cloth else ""
+	pm.bed_mat = game.level.marble_mat
+	var keep := PickupMarker.high
+	if not Juice.soft_ok: PickupMarker.high = false          # (web: its twinkles are soft particles: see Juice.soft_ok)
+	add_child(pm)
+	PickupMarker.high = keep
+	pm.position = at
+	return pm
 
 func _toast(k: String, extra := "") -> void:
 	if game.ui.has_method("show_item"): game.ui.show_item(k, extra)
@@ -576,8 +544,11 @@ func update(dt: float) -> void:
 	_bob_t += dt
 	for e in beacons:
 		var thing: Node3D = e[0]
-		var bc: Node3D = e[1]
-		bc.visible = thing.visible
+		var bc = e[1]
+		if is_instance_valid(bc) and not thing.visible and not (bc as PickupMarker)._taking:
+			(bc as PickupMarker).take()                # (taken: the marker fades out and frees itself)
+		elif thing.visible and (not is_instance_valid(bc) or (bc as PickupMarker)._taking):
+			e[1] = _beacon(e[2], e[3])                 # (there again: a new game)
 		if thing.visible and thing.get_child_count() > 0 and thing != hub.lamp_bench:
 			var mdl := thing.get_child(0) as Node3D
 			mdl.position.y = 0.05 + sin(_bob_t * 1.8) * 0.04

@@ -56,7 +56,7 @@ func targets(it: Level.Interact) -> Array[MeshInstance3D]:
 	var bd := 0.75
 	var q := Vector2(it.pos.x, it.pos.z)
 	for mi in cands:
-		if not mi.is_visible_in_tree(): continue
+		if not is_instance_valid(mi) or not mi.is_visible_in_tree(): continue      # (a freed pickup marker's bed)
 		var bb := mi.global_transform * mi.get_aabb()
 		if bb.size.x > 4.6 or bb.size.z > 4.6 or bb.size.y > 6.0: continue
 		if bb.end.y < it.pos.y - 0.6 or bb.position.y > it.pos.y + 2.6: continue

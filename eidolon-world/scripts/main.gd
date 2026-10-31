@@ -607,7 +607,10 @@ func _on_footstep(kind: String, strength: float) -> void:
 		if surf == "water" and juice:
 			# (v1.0 juice) wet stepping stones: a small ring on the water by her foot
 			var fp := player.position + player.fig.basis * Vector3(0.12 * (1 if randf() < 0.5 else -1), 0.0, -0.1)
-			juice.ring(Vector3(fp.x, minf(fp.y - 0.02, Ch1Geo.CO_WATER_Y + 0.01), fp.z), 0.9, 0.9)
+			var wy := minf(fp.y - 0.02, Ch1Geo.CO_WATER_Y + 0.01)
+			juice.ring(Vector3(fp.x, wy, fp.z), 0.9, 0.9)
+			# (v1.1 A: a few soft drops kicked up, and A's ring on the pool's own water where there is one)
+			if Juice.soft_ok: FxBurst.footstep(juice, Vector3(fp.x, wy, fp.z), puzzles.pool_fx if fp.x < 1.0 and fp.z < 6.0 else null)
 		else:
 			player_dust()
 		chapter.on_footstep()
@@ -1017,7 +1020,8 @@ func _warm_up_shaders() -> void:
 			# (v1.0 A: the batches, ambient life, the Warden in glass)
 			"res://shaders/rune_face_mm.gdshader", "res://shaders/halo_mm.gdshader", "res://shaders/light_pool_mm.gdshader", "res://shaders/floor_mark_mm.gdshader",
 			"res://shaders/moths.gdshader", "res://shaders/petals.gdshader", "res://shaders/drips.gdshader", "res://shaders/veil_strip.gdshader",
-			"res://shaders/warden_reflection.gdshader"]:
+			"res://shaders/warden_reflection.gdshader",
+			"res://shaders/veiled_eyes.gdshader", "res://shaders/pickup_glow.gdshader"] + (["res://shaders/fx_burst.gdshader"] if Juice.soft_ok else []):      # (fx_burst's depth texture: not on the web, see Juice.soft_ok)
 		var m := ShaderMaterial.new()
 		m.shader = load(path)
 		mats.append(m)
@@ -1254,6 +1258,7 @@ func cmd(c: String) -> Variant:
 			else: satchel.open()
 		"give": chapter.hub.give(a[1]); ui.show_item(a[1])
 		"map": satchel.open_map()
+		"poolrise": chapter._complete_pool(false)          # (dev / shots: the pool's real completion, its stones rising)
 		"ghost": chapter.warden._sight_cool = 0.0; visited["atrium"] = true          # (dev / shots: the next chance at a sighting)
 		"hintnow":
 			var tg := chapter.hint_target(area)

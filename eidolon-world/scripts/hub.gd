@@ -228,6 +228,24 @@ func _build_colonnade() -> void:
 	r.hold = true
 	game.puzzles._add_refl(r)
 	t4_refl = r
+	# (v1.1, A's footprint mask) her reflection on the colonnade's water is never drawn over a stone in it:
+	# the hidden stones, the drowned shafts, the steps down and up
+	var wm := PackedVector4Array()
+	var wy := PackedFloat32Array()
+	for i in WorldGeo.T4_STONES.size():
+		var c: Vector2 = WorldGeo.T4_STONES[i]
+		wm.append(Vector4(c.x, c.y, 0.47, 0.47)); wy.append(0.2 * i)
+	for c in WorldGeo.T4_DECOYS:
+		wm.append(Vector4(c.x, c.y, 0.5, 0.5)); wy.append(0.0)
+	wm.append(Vector4(11.5, 9.12, 0.52, 0.5)); wy.append(0.0)
+	wm.append(Vector4(12.15, 4.5, 0.42, 0.57)); wy.append(0.0)
+	for c in Ch1Geo.CO_STONES:
+		if wm.size() >= 16: break
+		if absf(c.x - 11.4) < 3.2 and absf(c.y - 6.9) < 3.2:
+			wm.append(Vector4(c.x, c.y, 0.56, 0.56)); wy.append(0.0)
+	r.puppet.set_param("wmask", wm)
+	r.puppet.set_param("wmask_yaw", wy)
+	r.puppet.set_param("n_wmask", wm.size())
 	if not r.glimpse.is_connected(game._on_glimpse): r.glimpse.connect(game._on_glimpse)
 
 ## how far along the hidden path a point is (its nearest place on the path, in metres)

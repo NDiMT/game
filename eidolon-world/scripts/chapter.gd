@@ -349,6 +349,33 @@ func _pool_reflect() -> void:
 	pool_mat.set_shader_parameter("arm_box", boxes)
 	pool_mat.set_shader_parameter("arm_info", infos)
 	pool_mat.set_shader_parameter("count", boxes.size())
+	_pool_wmask()
+
+## (v1.1, A's footprint mask) her reflections in the Waking Pool are drawn on open water only: never over a
+## stone standing in it (yours, and hers once they have risen); one rect per piece (its arms' union)
+func _pool_wmask() -> void:
+	var wm := PackedVector4Array()
+	var wy := PackedFloat32Array()
+	for c in pool_pieces:
+		var pc: Dictionary = pool_pieces[c]
+		if not (pc["real"] >= 0 or state["stones"]): continue
+		var u := Rect2()
+		var first := true
+		for d in _piece_conn(c):
+			var r := _arm_rect(Ch1Geo.cell_pos(c), d)
+			u = r if first else u.merge(r)
+			first = false
+		if first or wm.size() >= 16: continue
+		var cc := u.get_center()
+		wm.append(Vector4(cc.x, cc.y, u.size.x * 0.5 + 0.04, u.size.y * 0.5 + 0.04))
+		wy.append(0.0)
+	var figs: Array = []
+	for r in puzzles.reflectors:
+		if r.kind == "pool" and absf(r.plane_d - Ch1Geo.WATER_Y) < 0.05 and r.puppet: figs.append(r.puppet)
+	for f in figs:
+		(f as Figure).set_param("wmask", wm)
+		(f as Figure).set_param("wmask_yaw", wy)
+		(f as Figure).set_param("n_wmask", wm.size())
 
 func _on_pool_piece(ri: int) -> bool:
 	var c: Vector2i = Ch1Geo.POOL_REALS[ri][0]
@@ -1089,6 +1116,7 @@ var sh_flames: Array[Flame] = []
 var sh_shadows: Array[ShaderMaterial] = []
 var sh_outlines: Array[ShaderMaterial] = []      # (v0.9.2: none: the eyes replace them)
 var sh_eye_mats: Array[ShaderMaterial] = []
+var statue_eyes: Material
 
 ## (v0.9.2) where brazier i's shadow has its eyes (side -1 / +1): the head of the silhouette (statue_shadow's
 ## q (+-0.048, 0.86)), on the floor, exactly where the shader draws them
@@ -1165,11 +1193,11 @@ func _build_gallery() -> void:
 	_mi(veil.commit(), sh_veil, Transform3D(), st)
 	# v0.9.2: her eyes glow crimson behind the veil
 	# (v0.9.3: the same eyes as the floor's, side by side as you see them, 22 cm apart)
-	for sx in [-1.0, 1.0]:
-		var em := _smat("res://shaders/eyes.gdshader", {"k": 0.95, "qsize": 0.32, "phase": 7.0})
-		em.render_priority = 3
-		var lp: Vector3 = Vector3(sx * EYE_HALF, 0.5 + 0.08 + 2.16 * 1.15, -0.24)       # (v1.1: across her own face)
-		_mi(_quad(Vector2(0.32, 0.32)), em, Transform3D(Basis(), lp), st)
+	# (v1.1: A's veiled eyes, one quad for the pair, lying on her face, square to its forward)
+	var smid := st.transform * Vector3(0.0, 0.5 + 0.08 + 2.16 * 1.15, -0.24)
+	var sve := VeiledEyes.for_statue(smid, st.basis * Vector3(0, 0, -1), Vector3.UP, 0.95, 7.0)
+	add_child(sve)
+	statue_eyes = sve.material_override
 	# the braziers (tripods with a bowl) and the shadows they throw; the outlines (the shard shows them)
 	var bm := _brazier_mesh()
 	for i in SH_BRAZ.size():
@@ -1196,12 +1224,13 @@ func _build_gallery() -> void:
 	# v0.9.2 (the owner: no shard, no outlines): on the floor before her, pairs of glowing crimson EYES, always
 	# in sight; a shadow whose head falls on a pair wears them as its own eyes
 	for i in SH_SOLUTION:
-		for side in [-1.0, 1.0]:
-			var em := _smat("res://shaders/eyes.gdshader", {"k": 1.0, "qsize": 0.32, "phase": float(i) * 1.7, "roll": eye_roll(i)})
-			em.render_priority = 3
-			var e := _mi(_quad(Vector2(0.32, 0.32)), em, Transform3D(Basis(), eye_pos(i, side) + Vector3(0, 0.04, 0)))
-			e.layers = PlanarMirror.LAYER_MAIN_FX
-			sh_eye_mats.append(em)
+		# (v1.1: A's veiled eyes, ONE quad per pair, flat on the floor across the shadow's head, along its throw)
+		var so: Array = shadow_of(i)
+		var dd: Vector2 = so[1]
+		var ve := VeiledEyes.for_shadow(eye_head(i), Vector3(dd.x, 0.0, dd.y), 1.0, float(i) * 1.7, 1.5)
+		ve.layers = PlanarMirror.LAYER_MAIN_FX
+		add_child(ve)
+		sh_eye_mats.append(ve.material_override as ShaderMaterial)
 		# (and the shadow's decal wears them at exactly those points: its quad's own coordinates)
 		var inv := _shadow_xf(i, 1.0).affine_inverse()
 		var qa := inv * eye_pos(i, -1.0)
@@ -1261,7 +1290,7 @@ func _update_gallery(dt: float) -> void:
 	# each lit shadow that wears a pair: those floor eyes brighten (they are its eyes now)
 	for k in SH_SOLUTION.size():
 		var w := sh_flames[SH_SOLUTION[k]].level()
-		for sd in 2: sh_eye_mats[k * 2 + sd].set_shader_parameter("worn", w)
+		sh_eye_mats[k].set_shader_parameter("k", 0.75 + 0.25 * w)          # (worn by its shadow: brighter)
 
 func _in_gallery() -> bool:
 	var p := game.player.position

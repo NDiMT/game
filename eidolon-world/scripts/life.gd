@@ -148,7 +148,33 @@ func _update_rune(dt: float) -> void:
 		return
 
 # ------------------------------------------------------------------ ambient
+## (v1.1 A) embers rising off every lit brazier near you; low mist wisps in the Maze, over the lake by the
+## Colonnade and in the Undercroft
+var embers := {}                     # Flame -> FxBurst
+var wisps: Array = []
+const WISPS := [[Vector3(13.0, 2.05, -34.0), 3.0], [Vector3(11.0, 0.2, 6.5), 2.5], [Vector3(19.0, 0.55, 11.4), 2.0]]
+func _update_embers() -> void:
+	var p := game.player.position
+	if not Juice.soft_ok: return
+	if wisps.is_empty():
+		for w in WISPS:
+			var m := FxBurst.mist(self, w[0], w[1])
+			m.layers = PlanarMirror.LAYER_MAIN_FX
+			wisps.append(m)
+	for f in Flame.all:
+		if not is_instance_valid(f) or not game.is_ancestor_of(f): continue
+		if f._ly < 0.2: continue                      # (the hand lamp and the votive: no embers)
+		var want: bool = f.level() > 0.3 and f.global_position.distance_to(p) < 12.0
+		if want and not embers.has(f):
+			var e := FxBurst.embers(self, f.global_position + Vector3(0, 0.3, 0))
+			e.layers = PlanarMirror.LAYER_MAIN_FX
+			embers[f] = e
+		elif not want and embers.has(f):
+			if is_instance_valid(embers[f]): (embers[f] as FxBurst).stop()
+			embers.erase(f)
+
 func _update_ambient(dt: float) -> void:
+	if Engine.get_process_frames() % 20 == 0: _update_embers()
 	if Engine.get_process_frames() % 15 == 0:
 		var p := game.player.position
 		for f in moths.keys():

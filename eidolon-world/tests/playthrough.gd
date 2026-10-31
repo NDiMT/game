@@ -748,7 +748,7 @@ func _plan() -> void:
 		ok("her veiled statue in the middle, five braziers round her", C().sh_flames.size() == 5 and cold and C().sh_shadows.size() == 5)
 		ok("(v0.9) one already burns as you come in, and it is not one of hers", C().sh_flames[Chapter.SH_PRELIT].level() > 0.5 and float(C().sh_shadows[Chapter.SH_PRELIT].get_shader_parameter("k")) > 0.5 and not (Chapter.SH_PRELIT in Chapter.SH_SOLUTION))
 		ok("(v0.9.2) no shard here: its slot does not call", not game.controls.inv_pulse)
-		ok("(v0.9.2) on the floor before her, pairs of glowing eyes, one pair per shadow of hers", C().sh_eye_mats.size() == Chapter.SH_SOLUTION.size() * 2)
+		ok("(v0.9.2) on the floor before her, pairs of glowing eyes, one pair per shadow of hers", C().sh_eye_mats.size() == Chapter.SH_SOLUTION.size())       # (v1.1: one veiled pair per quad)
 		var good := true
 		for i in Chapter.SH_BRAZ.size():
 			for j in Chapter.SH_SOLUTION:
@@ -970,6 +970,7 @@ func _plan() -> void:
 				ok("(v1.1) board 2 'Two Stones': you both at its start", C().steps.p == C().steps.b["P"] and C().steps.h == C().steps.b["A"] and C().steps.boards_done == 1, "p %s h %s" % [C().steps.p, C().steps.h]))
 	step_until("(v1.1) both boards answered through the stick: the gate's way", func() -> bool: return C().state["hollow_done"], 5.0)
 	step_do(func() -> void:
+		ok("(v1.1) Our Steps SOLVED: both boards answered (hollow_done)", C().state["hollow_done"] and C().steps.boards_done == OurSteps.BOARDS.size(), "%s %d" % [C().state["hollow_done"], C().steps.boards_done])
 		ok("(v1.1) both glyphs lit", float(C().steps.plate_y[1].get_shader_parameter("lit")) > 0.9 and float(C().steps.plate_h[1].get_shader_parameter("lit")) > 0.9))
 	step_wait(0.5)
 	walk_path("off the board (free now)", [[OurSteps.cell(Vector2i(0, 0), 4).x, OurSteps.cell(Vector2i(0, 0), 4).z], [OurSteps.cell(Vector2i(0, 3), 4).x, OurSteps.cell(Vector2i(0, 3), 4).z], [near_e.x, near_e.z], [17.85, -10.3], [17.85, -11.8]])

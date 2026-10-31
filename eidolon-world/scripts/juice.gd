@@ -1,5 +1,8 @@
 class_name Juice
 extends Node3D
+## (v1.1) A's soft particles sample the depth texture: the web build's WebGL2 could not make the back
+## buffers for it ("Could not create 3D back buffers"), so on the web the classic bursts stay alone
+static var soft_ok := not OS.has_feature("web")
 ## v1.0 M1 "juice": small physical moments that make the world feel heavy and alive. One-shot particle
 ## bursts (CPU particles, a soft round sprite, freed when done), wet-stone sheens that dry, a tiny
 ## translation-only camera shake (World.shake), and the event hooks that place them: the pool's rising
@@ -241,6 +244,7 @@ func stone_rises(node: Node3D, water_y: float, rise_t: float, delay: float) -> v
 	tw.tween_callback(func() -> void:
 		ring(at, 3.4, 2.2)
 		sheet(node, half, 0.0, rise_t * 0.9)
+		if Juice.soft_ok: FxBurst.splash(self, at, 1.0)                    # (v1.1 A: soft spray as it breaks the surface)
 		# (A's water: a foam collar, a sheeting band and rings off its edges, on the water itself)
 		if fx:
 			fx.rise(Rect2(at.x - half.x, at.z - half.y, half.x * 2.0, half.y * 2.0), rise_t + 0.6)
@@ -266,8 +270,10 @@ func _on_chapter(name: String, data: Variant) -> void:
 				grit(Vector3(Chapter.TURN_X[data], 1.05, Chapter.TURN_Z), 0.45)
 		"brazier":
 			sparks(Chapter.SH_BRAZ[data] + Vector3(0, 1.15, 0))
+			if Juice.soft_ok: FxBurst.sparks(self, Chapter.SH_BRAZ[data] + Vector3(0, 1.15, 0))          # (v1.1 A: soft sparks)
 		"door_real":
 			dust_fall(Vector3(16.95, 4.4, -11.8), Vector3(0, 0, 0.9))
+			if Juice.soft_ok: FxBurst.dust(self, Vector3(16.95, 1.2, -11.8), 1.4)
 			shake(0.25)
 		"steps_step":
 			if ch.steps: dust_floor(ch.steps.tile(ch.steps.p), 0.25, 8)
@@ -287,11 +293,13 @@ func _on_chapter(name: String, data: Variant) -> void:
 				"hollow_walk":
 					# the gate grinds up its posts
 					get_tree().create_timer(0.6).timeout.connect(func() -> void:
+						if Juice.soft_ok: FxBurst.dust(self, Vector3(18.5, 1.3, -15.15), 1.4)
 						dust_fall(Vector3(18.5, 3.9, -15.15), Vector3(1.0, 0, 0))
 						dust_floor(Vector3(18.5, 1.0, -15.15), 0.9, 18)
 						shake(0.22))
 				"shard_gallery":
 					dust_fall(Vector3(8.1, 3.4, -9.45), Vector3(0.7, 0, 0))
+					if Juice.soft_ok: FxBurst.dust(self, Vector3(8.1, 1.3, -9.45), 1.2)
 					shake(0.2)
 				"court_light":
 					dust_fall(Vector3(12.0, 5.6, Chapter.MURAL_Z + 0.2), Vector3(2.4, 0, 0), 40)
@@ -305,9 +313,11 @@ func _on_puzzles(name: String, data: Variant) -> void:
 				var dp: Vector3 = pz.door.global_position
 				dust_fall(dp + Vector3(0, 3.9, 0), Vector3(1.0, 0, 0.2), 36)
 				dust_floor(dp + Vector3(0, 0.0, 0), 1.0, 20)
+				if Juice.soft_ok: FxBurst.dust(self, dp + Vector3(0, 0.6, 0), 1.6)
 		"gate_open":
 			if pz.gate_bars:
 				dust_fall(pz.gate_bars.global_position + Vector3(0, 2.9, 0), Vector3(0, 0, 1.0))
+				if Juice.soft_ok: FxBurst.dust(self, pz.gate_bars.global_position + Vector3(0, 0.5, 0), 1.2)
 				shake(0.15)
 		"bridge_fall":
 			get_tree().create_timer(0.85).timeout.connect(func() -> void:
