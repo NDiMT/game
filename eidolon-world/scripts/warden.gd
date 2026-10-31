@@ -252,7 +252,7 @@ func _update_sightings(dt: float) -> void:
 		var at: Vector3 = pl2.position + r.plane_n * 2.0
 		if not game.level.region_at(Vector2(at.x, at.z)): at = pl2.position + r.plane_n * 1.2
 		ghost_fig.position = at
-		ghost_fig.rotation.y = atan2(-r.plane_n.x, -r.plane_n.z) + PI
+		ghost_fig.rotation.y = atan2(-r.plane_n.x, -r.plane_n.z)
 		ghost_fig.visible = true
 		_play(ghost_anim, "idle")
 		sight_on = true
