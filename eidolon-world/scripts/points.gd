@@ -15,7 +15,7 @@ var lean := Vector3.ZERO
 
 ## [id, where, kind, icon, line]
 const POINTS := [
-	["bell", Vector3(-12.4, 0.0, 2.95), "bell", "ring", "Its note went out over the water and came back from very far."],
+	["bell", Vector3(-12.45, 0.0, 1.3), "bell", "ring", "Its note went out over the water and came back from very far."],
 	["votive", Vector3(-10.45, 1.0, -12.0), "votive", "light", "A small flame, for her. Someone kept lighting these."],
 	["offering", Vector3(6.6, 1.0, -18.1), "offering", "touch", "Grapes turned to stone, a comb, a hair ribbon. Gifts no one took."],
 	["coin", Vector3(5.0, 0.5, 14.25), "coin", "touch", "The coin rang on the dry stone. Once, here, it would have splashed."],

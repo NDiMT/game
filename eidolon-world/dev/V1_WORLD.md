@@ -134,3 +134,32 @@ the wing order: pool, atrium, then W, N, E, gate, shrine.
    puddle mirrors, the tuning pin, tablets and memory shards, the save v3 and the v2 migration.
 3. M3c, the life: the Warden (reflections, the Mirror Walk patrol), her presence, ambient life, the map.
 4. A's M2 assets (heroine, textures, item models) integrated as they land in HANDOFF.
+
+## 8. Pacing: the in-between points (v1.1)
+
+Rule: no two puzzle rooms are adjacent without a space between them where nothing is asked of you.
+
+**Route audit.** Puzzles are in **bold**. Between them, *in-between points* (all optional, each says one thing once; `scripts/points.gd`), wonders, and traversals.
+
+| From | Between (what is there) | To |
+|---|---|---|
+| **The Waking Pool** | the landing (W_land): *a hanging bell* to ring; the far bells answer | **The Stair of Breath** |
+| **The Stair of Breath** | the stair top (W_top): *a votive* to light (it stays lit) | **The Hall of Glass** |
+| **The Hall of Glass** | the way in (x 5..7): *an offering* of stone grapes, a comb, a ribbon | **Where Her Shadow Fell** |
+| **Where Her Shadow Fell** (+ the reliquary) | the west court, then the Sunken Colossus (a wonder) | **Garden of the Veiled** |
+| **Garden of the Veiled** | the doorway and the landing round the board | **Our Steps** (two boards) |
+| **Our Steps** | the ramp up to the Court | **Court of Light** |
+| **Court of Light** | the mural door and the Tree of Shards (a wonder) | **The Mist Maze** |
+| **The Mist Maze** | its end: the dry ring and the amphora's puddle mirror (an item point), the North seal | **The Echo Corridor** |
+| **The Echo Corridor** | the corridor's carved relief: three panels that speak as you walk past | **The Scales** |
+| **The Scales** | the lift up to the Mirror Walk (the Warden's beat), the Upward Spring (a wonder) | **The Eidolon Ledge** |
+| **The Eidolon Ledge** | the Gate's sockets (the seals) | **The First Shrine** |
+
+**The hub.**
+- The Atrium: *a coin for the dry fountain* (it rings on dry stone), the thousand faces, Theron's ladder.
+- The Undercroft: *Theron's cot*, under his workshop; you find it by lamplight.
+- The Wind-swept Balcony: *a bench with a view*. Sitting turns the view toward the drowned head below. Also urns, veils, and the pin's stele.
+
+**Seven in-between points** (`Points.POINTS` plus `Points.RELIEF`): bell, votive, offering, coin, cot, bench, relief.
+- The memory shards and tablets (Items) are collectible spots on top of these.
+- The shortcuts (the drawbridge, the Echo bars, the Walk) count as the wing returns.

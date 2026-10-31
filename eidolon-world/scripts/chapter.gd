@@ -1103,8 +1103,21 @@ static func eye_right() -> Vector3:
 func eye_head(i: int) -> Vector3:
 	return _shadow_xf(i, 1.0) * Vector3(0.0, 0.0, 0.5 - 0.86)
 
+## (v1.1) the pair lies across the shadow's head as its own eyes do: along the shadow's width (square to the
+## way the brazier throws it), not along the screen
+func eye_axis(i: int) -> Vector3:
+	var x := _shadow_xf(i, 1.0).basis.x
+	x.y = 0.0
+	return x.normalized()
+
 func eye_pos(i: int, side: float) -> Vector3:
-	return eye_head(i) + eye_right() * side * EYE_HALF
+	return eye_head(i) + eye_axis(i) * side * EYE_HALF
+
+## (v1.1) the screen angle of that axis (for the eyes' almonds: A's shader turns them by it)
+func eye_roll(i: int) -> float:
+	var b := Framing.basis()
+	var a := eye_axis(i)
+	return atan2(a.dot(b.y), a.dot(b.x))
 var sh_veil: ShaderMaterial
 var gl_fails := 0                       # (kept for the hint system)
 
@@ -1155,7 +1168,7 @@ func _build_gallery() -> void:
 	for sx in [-1.0, 1.0]:
 		var em := _smat("res://shaders/eyes.gdshader", {"k": 0.95, "qsize": 0.32, "phase": 7.0})
 		em.render_priority = 3
-		var lp: Vector3 = Vector3(0.0, 0.5 + 0.08 + 2.16 * 1.15, -0.24) + st.basis.inverse() * (eye_right() * sx * EYE_HALF)
+		var lp: Vector3 = Vector3(sx * EYE_HALF, 0.5 + 0.08 + 2.16 * 1.15, -0.24)       # (v1.1: across her own face)
 		_mi(_quad(Vector2(0.32, 0.32)), em, Transform3D(Basis(), lp), st)
 	# the braziers (tripods with a bowl) and the shadows they throw; the outlines (the shard shows them)
 	var bm := _brazier_mesh()
@@ -1184,7 +1197,7 @@ func _build_gallery() -> void:
 	# in sight; a shadow whose head falls on a pair wears them as its own eyes
 	for i in SH_SOLUTION:
 		for side in [-1.0, 1.0]:
-			var em := _smat("res://shaders/eyes.gdshader", {"k": 1.0, "qsize": 0.32, "phase": float(i) * 1.7})
+			var em := _smat("res://shaders/eyes.gdshader", {"k": 1.0, "qsize": 0.32, "phase": float(i) * 1.7, "roll": eye_roll(i)})
 			em.render_priority = 3
 			var e := _mi(_quad(Vector2(0.32, 0.32)), em, Transform3D(Basis(), eye_pos(i, side) + Vector3(0, 0.04, 0)))
 			e.layers = PlanarMirror.LAYER_MAIN_FX

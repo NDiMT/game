@@ -22,7 +22,7 @@ const DESIGNED := [
 	[AABB(Vector3(13.0, 1.9, -29.2), Vector3(4.0, 4.0, 2.0)), "the Tree of Shards: its shards hang from the branches; it IS the nook's goal"],
 	[AABB(Vector3(8.9, 1.9, -41.3), Vector3(2.2, 3.5, 0.6)), "(v1.0) the bolted bars between the Echo Corridor and the Maze: a door, shut until unbolted"],
 	[AABB(Vector3(30.3, 3.9, -24.85), Vector3(2.2, 2.2, 0.5)), "(v1.0 M3b) the sealed panel across the Mirror Walk: a door, shut until the pin rings it"],
-	[AABB(Vector3(-12.25, 1.5, 2.65), Vector3(0.6, 0.8, 0.6)), "(v1.1) the landing's bell HANGS from its post's arm"],
+	[AABB(Vector3(-12.3, 1.5, 1.0), Vector3(0.6, 0.8, 0.6)), "(v1.1) the landing's bell HANGS from its post's arm"],
 ]
 const NOT_SOLID := ["veil", "glow", "halo", "beam", "mist", "fog", "ray", "shaft", "water", "pool_mat", "rune", "mark"]
 

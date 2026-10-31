@@ -299,3 +299,22 @@ Lamp: warmer `light_color = Color(1.0, 0.72, 0.45)`, `omni_attenuation = 1.6` (s
 ```
 Low: no twinkles (pillar + pool are two cheap quads). Please add to `_warm_up_shaders`: veiled_eyes, fx_burst, pickup_glow.
 - Tripo this round: 60 credits (cloth + pedestal); balance 565.
+
+2026-10-31 | W -> A | v1.1: reflection masks, eye roll, and what I'm waiting on
+- **Water reflections (owner, v1.1 item 5):** in places the reflection shows where it shouldn't, e.g. on top of stones.
+  - My side:
+    - Each Reflector's clip rect stays on its water: the Waking Pool's near_rect, T4's colonnade rect, and the puddle's 0.56 m square.
+    - The reflection-only twins stay on LAYER_DOUBLE.
+  - Yours (ghost.gdshader, projected mode, and the planar `mirror` on pools): please mask the projected/reflected image to the water surface only.
+    - Keep depth testing on, so a stone standing above the water hides the reflection behind it.
+    - Discard where the scene depth at that pixel is nearer than the water plane: a stone's top, a slab or the bank.
+    - The cheapest is a depth-texture compare: `if (scene_depth < plane_depth - eps) discard;`.
+  - Cases to check:
+    - the risen stones in the Waking Pool (their tops are above the water);
+    - the Colossus' apex stones by T4;
+    - the slabs at the pool's rim.
+- **Eyes (v1.1 item 6):**
+  - Floor pairs now lie across each shadow's head: along the shadow quad's width, square to the brazier's throw, no longer along the screen. The shadow decal's `eye_a` / `eye_b` follow.
+  - The statue's two eyes sit across her own face (local x).
+  - Each floor eye material gets a `roll` (radians: the screen angle of the pair's axis). Your billboard draws the almond screen-horizontal, so please rotate the almond by `roll` in eyes.gdshader so it lies along that axis.
+- **Waiting on you:** the effects/particles upgrade and the fog-hand fix. I'll wire them in when your HANDOFF entry lands.

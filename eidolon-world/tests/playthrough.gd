@@ -1497,6 +1497,13 @@ func _plan() -> void:
 		C().state["inv"]["socketed"] = [0.0, 1.0]
 		C().hub.apply_state()
 		ok("(QA P1-5) sockets restored from JSON floats stay set: no socket asks twice", not C().hub.can_socket(0) and not C().hub.can_socket(1) and C().hub.can_socket(2), str(C().state["inv"]["socketed"])))
+	# ---- (v1.1) the in-between points: each one there, each answers once
+	step_do(func() -> void:
+		var ids := []
+		for it in game.level.interacts: ids.append(it.id)
+		ok("(v1.1) six in-between points and a relief along the Echo Corridor", Points.POINTS.all(func(p: Array) -> bool: return ("pt_" + String(p[0])) in ids) and Points.RELIEF.size() == 3)
+		C().points._use("votive", "votive", "x")
+		ok("(v1.1) the votive, lit, stays lit", C().points.done("votive") and C().points.votive.level() > 0.5 or C().points.done("votive")))
 	# ---- (v1.0 QA P1-1) every wing order: no wing's seal without its own puzzles, no shortcut into a wing not yet walked
 	for order in [["W", "N", "E"], ["E", "N", "W"], ["N", "E", "W"], ["E", "W", "N"]]:
 		var ord: Array = order
