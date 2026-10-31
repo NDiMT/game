@@ -394,3 +394,101 @@ PASS  the way on is sealed (28.00062, 2.0, -38.53448)
   .. sim 800s  real 138s  step 1058/1112
   .. sim 820s  real 141s  step 1062/1112
   .. sim 840s  real 145s  step 1064/1112
+  .. sim 860s  real 149s  step 1066/1112
+PASS  random walk: always on walkable ground 46354 samples, 0 violations, max step dy 0.250
+PASS  random walk: never inside a solid prop's footprint 46354 samples, 0 hits
+PASS  interaction highlight: always on the target the button resolves to 46354 frames, 8239 with a target, 0 mismatches
+PASS  interaction highlight: something visibly lit for every target (a mesh glow, or the floor ring) 0
+PASS  props: every placement loaded, on the marble 26 placed
+PASS  props: each one is solid (its centre blocked) 
+PASS  props: every key place still reachable on foot from the gate []
+PASS  collision audit: every primitive classified 2447 primitives, 1324 solid footprints (1157 static), 375 obstacles added
+  collision audit: 2447 primitives, 1324 solid footprints, 375 obstacles added; 1448 targets walked into from 4 sides (2021 approaches), 0 overlaps
+PASS  collision: walking into every solid prop and obstacle from 4 sides never overlaps it 1448 targets, 2021 approaches, 0 overlaps
+PASS  the first flight: its open side's balustrade stops you (-11.95, 0.454862, -3.656955)
+PASS  the first flight rises the way its steps are drawn (no walking through raised steps) 0.04 -> 0.47
+PASS  walking at the hall's bust and the mirror: never inside them  (3.697899, 1.0, -19.14868)
+PASS  checkpoint saved (chapter) { "breath": true, "echo_room": true, "four": true, "gallery": true, "gallery_lit": [0.0, 1.0, 4.0], "garden_breath": true, "hall": { "brazier": [2.0, -19.0], "bust": 0.0, "drum": [0.0, -19.0], "locks": [true, true, true] }, "hall_door": true, "hollow_done": true, "hub": { "e_open": true, "ec_open": true, "map": ["T", "stub", "T1", "A", "A_scaf", "A_gal", "T4", "CO", "UC", "UC_up", "BAL", "E", "pool0_1_0", "pool0_1_1", "pool1_1_1", "pool1_1_0", "pool1_0_0", "pool1_0_1", "pool2_0_0", "pool2_0_1", "pool3_0_0", "pool3_0_1", "pool3_1_0", "pool3_1_1", "pool3_2_1", "pool3_2_0", "pool4_2_0", "pool4_2_1", "pool5_2_0", "pool5_2_1", "pool6_2_0", "pool6_2_1", "W_land", "W_stair1", "W_breath", "W_stair2", "W_top", "W_corr", "H", "hdoor", "GL", "CO_w", "G", "g_door", "HW", "HW_ramp", "L_ramp", "L", "MZ_door", "MZ", "EC_a", "LB", "WK_down", "WK", "lift", "SC", "EC", "EC_room_door", "EB", "S", "four_plinth", "sealed_way", "EC_room", "b1"], "n_poured": true, "secrets": [], "w_broken": true, "w_seen": true, "warden_seen": 1.0, "wk_crossed": true }, "inv": { "amph_full": false, "items": ["lamp", "pin", "shard", "chisel", "amphora"], "mem": [], "seals": ["W", "N", "E"], "socketed": [0.0, 1.0, 2.0], "tablets": [] }, "ledge_statue": [26.0, -23.0], "lens_used": false, "maze": true, "memories": ["m1"], "mural": true, "pool_turns": [1.0, 3.0, 1.0, 3.0], "scale_w": [-1.0, 4.0, 5.0], "scales": true, "shard": true, "stones": true, "turned": [0.0, 1.0, 0.0], "turned_done": true }
+PASS  checkpoint saved (puzzles) 
+[audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[props] 26 placed
+[solids] 2447 primitives, 1324 solid footprints, 375 obstacles added (163 ms)
+[warm-up] 536 mesh/material pairs (of 1257 geometry nodes), 12 canvas materials
+PASS  restored chapter 
+PASS  restored regions 
+PASS  restored inventory 
+PASS  restored the won balance 
+PASS  restored awakened world 
+PASS  restored position (3.697899, 1.0, -19.14868)
+[audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[props] 26 placed
+[solids] 2447 primitives, 1324 solid footprints, 375 obstacles added (170 ms)
+[warm-up] 536 mesh/material pairs (of 1257 geometry nodes), 12 canvas materials
+PASS  title offers Continue + New Game 
+PASS  New Game asks to confirm 
+PASS  No keeps the title and the save 
+PASS  new game: glimpses + areas forgotten {  }
+  .. sim 880s  real 175s  step 1087/1112
+PASS  new game: puzzles reset { "door": [0, 0, 0], "door_open": false, "mirrors": [1, 0, 2, 2], "bridge": false, "plate": false, "shrine": false, "shortcut": false, "tablet": false, "drawbridge": false }
+PASS  new game: chapter reset { "stones": false, "pool_turns": [0, 0, 0, 0], "breath": false, "shard": false, "hall_door": false, "gallery": false, "gallery_lit": [3], "lens_used": false, "hall": { "drum": [-1, -13], "brazier": [3, -13], "bust": 2, "locks": [false, false, false] }, "turned": [2, 3, 1], "turned_done": false, "garden_breath": false, "hollow_done": false, "mural": false, "maze": false, "echo_room": false, "memories": [], "scale_w": [-1, -1, -1], "scales": false, "four": false, "ledge_statue": [25, -21], "inv": { "items": [], "seals": [], "socketed": [], "tablets": [], "mem": [], "amph_full": false }, "hub": { "ec_open": false, "w_seen": false, "w_broken": false, "n_poured": false, "e_open": false, "secrets": [], "wk_crossed": false, "warden_seen": 0, "map": ["T"] } }
+PASS  new game: regions reset 
+PASS  new game: no shard 
+PASS  new game: the lift waits at the top (v1.0: you first meet it from the Ledge) 
+PASS  new game: world asleep, runes dormant 
+PASS  new game: woke at the gate (1.4, 0.0, 2.3)
+PASS  new game: save rewritten fresh 
+PASS  new game: settings kept (quality) 
+PASS  (QA P1-2) the Warden is never in plain view: hidden off the Walk 
+PASS  (QA P0-1) E first: the bars will not unbolt before the Maze is walked ec_held
+PASS  (QA P0-1) standing at the Maze's end from the other side never solves the Maze 
+PASS  (QA P1-1) E first: the Ledge's drawbridge lever is held from the far side drawbridge_held
+PASS  (QA P1-5) sockets restored from JSON floats stay set: no socket asks twice [0, 1]
+PASS  (QA order W-N-E) W: its item alone does not raise its seal 
+PASS  (QA order W-N-E) W walked: its seal can rise 
+PASS  (QA order W-N-E) N: its item alone does not raise its seal 
+PASS  (QA order W-N-E) N not walked: the Ledge's drawbridge lever is held 
+PASS  (QA order W-N-E) N walked: its seal can rise 
+PASS  (QA order W-N-E) E: its item alone does not raise its seal 
+PASS  (QA order W-N-E) E walked: its seal can rise 
+PASS  (QA order W-N-E) both walked: the Echo bars unbolt 
+PASS  (QA order E-N-W) E: its item alone does not raise its seal 
+PASS  (QA order E-N-W) E walked: its seal can rise 
+PASS  (QA order E-N-W) N: its item alone does not raise its seal 
+PASS  (QA order E-N-W) N not walked: the Ledge's drawbridge lever is held 
+PASS  (QA order E-N-W) N not walked: the Echo bars stay bolted 
+PASS  (QA order E-N-W) N walked: its seal can rise 
+PASS  (QA order E-N-W) W: its item alone does not raise its seal 
+PASS  (QA order E-N-W) W walked: its seal can rise 
+PASS  (QA order N-E-W) N: its item alone does not raise its seal 
+PASS  (QA order N-E-W) N not walked: the Ledge's drawbridge lever is held 
+PASS  (QA order N-E-W) N walked: its seal can rise 
+PASS  (QA order N-E-W) E: its item alone does not raise its seal 
+PASS  (QA order N-E-W) E walked: its seal can rise 
+PASS  (QA order N-E-W) both walked: the Echo bars unbolt 
+PASS  (QA order N-E-W) W: its item alone does not raise its seal 
+PASS  (QA order N-E-W) W walked: its seal can rise 
+PASS  (QA order E-W-N) E: its item alone does not raise its seal 
+PASS  (QA order E-W-N) E walked: its seal can rise 
+PASS  (QA order E-W-N) W: its item alone does not raise its seal 
+PASS  (QA order E-W-N) W walked: its seal can rise 
+PASS  (QA order E-W-N) N: its item alone does not raise its seal 
+PASS  (QA order E-W-N) N not walked: the Ledge's drawbridge lever is held 
+PASS  (QA order E-W-N) N not walked: the Echo bars stay bolted 
+PASS  (QA order E-W-N) N walked: its seal can rise 
+PASS  (v1.0 M3b) a v2 save migrates: lamp, shard, chisel, amphora, pin in the satchel { "items": ["lamp", "shard", "chisel", "amphora", "pin"], "seals": ["W", "N", "E"], "socketed": [], "tablets": [], "mem": [], "amph_full": false }
+PASS  (v1.0 M3b) a v2 save migrates: the finished wings' seals in hand, their item gates open ["W", "N", "E"]
+PASS  (v1.0 M3b) saved again as v3, the satchel with it 
+PASS  jump to the shrine (everything before it solved) 
+PASS  wake the shrine again shrine
+PASS  a short press does not skip 
+PASS  a long press skips the cinematic 
+PASS  skipped: the end state is reached anyway 
+PASS  skipped: the shrine counter still shows 
+PLAYTHROUGH OK  checks=424  failed=0  sim_time=890.9s  ground_samples=46723
+ERROR: 3 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 20 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 20 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2514)
+ERROR: 24 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)
