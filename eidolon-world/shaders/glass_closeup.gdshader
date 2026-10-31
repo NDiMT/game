@@ -153,14 +153,18 @@ float hand_d(vec2 h, float pose, out float con, out float rid, out float rv, out
 }
 // the pane (aspect-corrected units) into the hand's frame: hand point `lp` lies at `at`, tilted by
 // `th`, scaled by L (pane widths per hand length); a left hand, palm-on (the authored image mirrored)
+// v1.1: `hand_flip` 1 mirrors it: her RIGHT palm pressed from HER side, the palm toward us (the owner's read)
+uniform float hand_flip = 1.0;
 vec2 to_hand(vec2 P, vec2 at, vec2 lp, float th, float L) {
 	vec2 v = (P - at) / L;
 	float c = cos(th), s = sin(th);
 	v = vec2(c * v.x + s * v.y, -s * v.x + c * v.y);
+	if (hand_flip > 0.5) v.x = -v.x;
 	return lp - v;
 }
 vec2 from_hand(vec2 h, vec2 at, vec2 lp, float th, float L) {
 	vec2 v = (lp - h) * L;
+	if (hand_flip > 0.5) v.x = -v.x;
 	float c = cos(th), s = sin(th);
 	return at + vec2(c * v.x - s * v.y, s * v.x + c * v.y);
 }
@@ -292,7 +296,7 @@ void fragment() {
 		float th = atan(D.x, -D.y);
 		vec2 h = to_hand(P, tip, vec2(0.14, 0.79), th, HAND_L);
 		float dd = hand_d(h, 1.0, con, rid, rv, armd) * HAND_L;
-		float wp = w * 0.25 + 0.01;            // (close behind the glass: softened by the fog, still a hand)
+		float wp = w * 0.5 + 0.018;            // (v1.1: BEHIND the fogged glass: softened and blurred by it, still a hand)
 		hand_m = max(1.0 - smoothstep(-wp, wp, dd), (1.0 - smoothstep(-w - 0.03, w + 0.03, armd * HAND_L)) * 0.85) * finger_k;
 		hdist = dd;
 	}
@@ -304,7 +308,7 @@ void fragment() {
 		float dd = hand_d(h, 0.0, con, rid, rv, armd) * L;
 		float aa = max(fwidth(dd), 0.0005);
 		// (sharp where the hand meets the glass; the wrist and forearm lean away, softer and softer)
-		float wb = mix(w + 0.05, mix(aa + 0.004 + w * 0.05, 0.03 + w * 0.3, smoothstep(0.1, -0.2, h.y)), press);
+		float wb = mix(w + 0.06, mix(aa + 0.009 + w * 0.14, 0.04 + w * 0.35, smoothstep(0.1, -0.2, h.y)), press);    // (v1.1: softer: seen through the glass)
 		float hm = (1.0 - smoothstep(-wb, wb, dd)) * nearer * smoothstep(-0.2, 0.05, h.y);   // (v0.8.2: no forearm: the wrist fades into the fog)
 		float am = (1.0 - smoothstep(-w - 0.07, w + 0.07, armd * L)) * nearer * 0.7;
 		inner = 1.0 - smoothstep(-aa, aa, dd);
@@ -420,13 +424,15 @@ void fragment() {
 	cond *= 1.0 - 0.92 * max(streak, wb_m * 0.9);
 	float glowd = max(her_cov(uv, w * 2.5 + 0.05), exp(-max(hdist, 0.0) / (0.04 + 0.16 * dens)) * max(finger_k, smoothstep(0.0, 0.55, palm_k)));     // the fog scatters her shadow
 	vec3 shade = vec3(0.07, 0.08, 0.09);
-	vec3 skin_far = mix(vec3(0.33, 0.345, 0.36), vec3(0.52, 0.535, 0.545), press);      // (nearer the glass than she is: lighter; pressed, it catches your light)
+	// (v1.1) her hand is on the FAR side: a darker, cooler shape behind the glass, porcelain where it presses,
+	// with a faint crimson cast (her light through the porcelain)
+	vec3 skin_far = mix(vec3(0.20, 0.215, 0.24), vec3(0.42, 0.445, 0.47), press) + accent.rgb * 0.035;
 	back = mix(back, shade, max(sil, arm_m) * 0.9);
 	back = mix(back, skin_far + vec3(0.07) * smoothstep(0.0, 0.5, con) * press, hand_m * 0.92);
 	float her_m = mix(max(sil, arm_m), 0.3, hand_m);      // (her hand, nearer the glass, is not darkened like her body)
 	back = mix(back, back * 0.82, glowd * 0.35 * (1.0 - max(sil, hand_m)));
 	back += vec3(0.42, 0.5, 0.56) * 0.08 * (1.0 - smoothstep(0.0, w + 0.01, abs(sd))) * (1.0 - dens);    // a cold rim where she is clear
-	cond *= 1.0 - prnt * 0.97;
+	cond *= 1.0 - prnt * 0.32;                               // (v1.1: her warmth thins OUR fog over the print, it does not wipe it)
 	cond *= 1.0 - 0.15 * soft;
 	cond *= 1.0 - 0.85 * max(drop_c, bead_m);
 	cond = mix(cond, min(cond * 1.3 + 0.06, 1.0), halo * fog);
@@ -438,8 +444,9 @@ void fragment() {
 	vec3 c = mix(back, fogc, cond * 0.86 * (1.0 - 0.3 * her_m));
 	c *= 1.0 - her_m * 0.42 * cond;                       // seen through the fog, a darker, diffuse shape
 	// her skin where it touches: pale as marble, a little shadow where it presses less
-	vec3 skin = vec3(0.83, 0.85, 0.855) * (0.78 + 0.22 * smoothstep(0.1, 0.95, con));
-	c = mix(c, skin, prnt * 0.88);
+	vec3 skin = vec3(0.60, 0.635, 0.67) * (0.8 + 0.2 * smoothstep(0.1, 0.95, con));      // porcelain, cool (the v1 heroine), dimmed by the glass
+	c = mix(c, skin, prnt * 0.42);
+	c += accent.rgb * (prnt * 0.03 + halo * 0.02);          // a faint crimson flush where it presses
 	c += her.rgb * prnt * glow * 0.1;
 	// the droplets: clear trails, beads with a dark lensing body and a bright point
 	c = mix(c, back * 0.9 + vec3(0.1), bead_m * 0.35);
@@ -473,7 +480,7 @@ void fragment() {
 	float gh = h21(floor(uv * vec2(640.0, 853.0)));
 	c += vec3(0.07) * step(0.982, gh) * (0.6 + 0.4 * sin(t * 0.8 + gh * 60.0)) * cond;
 	// her fingertip, pressed against the glass from her side: pale, softly lit
-	c = mix(c, vec3(0.78, 0.86, 0.87), palm * 0.55);
+	c = mix(c, vec3(0.66, 0.70, 0.74), palm * 0.4);        // (v1.1: her fingertip from her side: cooler, behind the fog)
 	c += her.rgb * palm * glow * 0.25;
 	// the finished glyph glows in the carved-glow colours, blooming a little into the fog
 	float core = smoothstep(0.55, 0.95, wipe);

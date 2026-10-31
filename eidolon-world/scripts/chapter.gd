@@ -53,6 +53,7 @@ const LENS_AREAS := ["shard_gallery", "atrium", "eidolon_ledge"]       # (v1.0 M
 var items: Items
 var warden: Warden
 var life: Life
+var points: Points
 var lens_px := Vector4.ZERO
 var _t := 0.0
 var _moved := false
@@ -169,6 +170,9 @@ func post_commit() -> void:
 	life = Life.new()                # (v1.0 M3c: her presence, ambient life; after every flame and glass exists)
 	add_child(life)
 	life.setup(game, self)
+	points = Points.new()            # (v1.1: the in-between points)
+	add_child(points)
+	points.setup(game, self)
 	var hd := level.get_node_or_null("Zone_Hdoor") as MeshInstance3D
 	if hd: hd.layers = PlanarMirror.LAYER_MAIN_FX            # the mirror remembers no wall there
 	var gn := level.get_node_or_null("Zone_Gn") as MeshInstance3D
@@ -316,7 +320,7 @@ func _piece_conn(c: Vector2i) -> String:
 	return Ch1Geo.rot_conn(pc["base"], int(state["pool_turns"][pc["real"]]))
 
 ## yours: walkable (and turned); hers: walkable only once the path is whole
-func _pool_apply(c: Vector2i) -> void:
+func _pool_apply(c: Vector2i, keep_y := false) -> void:
 	var pc: Dictionary = pool_pieces[c]
 	var conn := _piece_conn(c)
 	var p := Ch1Geo.cell_pos(c)
@@ -328,7 +332,7 @@ func _pool_apply(c: Vector2i) -> void:
 	if pc["real"] >= 0: (pc["node"] as Node3D).rotation.y = -float(state["pool_turns"][pc["real"]]) * PI * 0.5
 	else:
 		(pc["node"] as Node3D).visible = state["stones"]
-		(pc["node"] as Node3D).position.y = 0.0
+		if not keep_y: (pc["node"] as Node3D).position.y = 0.0
 
 func _pool_reflect() -> void:
 	var boxes := PackedVector4Array()
@@ -402,7 +406,9 @@ func _complete_pool(instant: bool) -> void:
 			tw.tween_property(node, "position:y", 0.06, 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 			tw.parallel().tween_property(node, "rotation:z", 0.0, 1.9).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 			tw.tween_property(node, "position:y", 0.0, 0.6).set_trans(Tween.TRANS_SINE)
-	for c in pool_pieces: _pool_apply(c)
+	# (v1.1: the regions and turns only: a rising stone keeps its height under water until its tween lifts it;
+	# this line used to set them all to 0 at once, so the stones simply appeared)
+	for c in pool_pieces: _pool_apply(c, not instant)
 	_pool_reflect()
 	if not instant:
 		event.emit("pool_whole", null)
@@ -1498,7 +1504,7 @@ func _build_hollow() -> void:
 	add_child(steps)
 	steps.setup(game, self)
 	level.add_interact("steps_reset", Vector3(0, -99, 0), "lever", func() -> void: steps.reset(), 0.6,
-		func() -> bool: return steps.active and not steps.moving and steps.p != OurSteps.ENTRY)
+		func() -> bool: return steps.active and not steps.moving and steps.p != steps.b["P"])
 	# the gate at the top of the ramp
 	hw_gate = Node3D.new()
 	hw_gate.position = Vector3(18.5, 1.0, -15.15)
@@ -2426,7 +2432,7 @@ func hint_target(area: String) -> Vector3:
 				if not ok[i]: return Vector3(TURN_X[i], 2.3, TURN_Z)
 		"hollow_walk":
 			if state["hollow_done"]: return Vector3.INF
-			return OurSteps.her_tile(OurSteps.H_PLATE) + Vector3(0, 0.6, 0)        # (her plate, in the glass)
+			return steps.goal_her_world() + Vector3(0, 0.6, 0)        # (her glyph)
 		"court_light":
 			# (toward her glass, never to the answer)
 			if not puzzles.state["bridge"]: return Vector3(16.5, 3.6, -24.0)
@@ -2496,6 +2502,7 @@ func update(dt: float) -> void:
 	items.update(dt)
 	warden.update(dt)
 	if life: life.update(dt)
+	if points: points.update(dt)
 	_update_hints(dt, game.area)
 
 func apply_state() -> void:
@@ -2577,6 +2584,7 @@ func apply_state() -> void:
 	items.apply_state()
 	warden.apply_state()
 	if life: life.apply_state()
+	if points: points.apply_state()
 	if game.satchel: game.satchel.load_map()
 
 # ================================================================== 13. "The Hand in the Water"

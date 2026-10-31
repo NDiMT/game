@@ -316,6 +316,8 @@ func set_tier(t: String, step := 0) -> void:
 	# (v1.0 A) the newer effects' Low paths: ambient life, water events, the Warden's shadow, the quad batching
 	AmbientLife.apply_tier(get_tree(), not low)
 	WaterFX.high = not low
+	FxBurst.high = not low
+	PickupMarker.high = not low
 	QuadBatch.high = not low
 	WardenRig.high = not low
 	for w in get_tree().get_nodes_in_group("q_warden"): (w as WardenRig).set_shadow(not low)

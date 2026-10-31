@@ -13,6 +13,8 @@ uniform float gust = 0.0;                     // 0..1: script-driven extra push 
 uniform vec3 petal : source_color = vec3(0.88, 0.86, 0.82);
 uniform vec3 rose : source_color = vec3(0.86, 0.62, 0.62);   // a few faintly rose ones
 uniform float rose_share = 0.2;
+uniform float leaf_share = 0.0;                 // v1.1: a share of small dry leaves among them
+uniform vec3 leaf : source_color = vec3(0.47, 0.46, 0.36);
 uniform float clock = -1.0;
 
 varying float kind;
@@ -47,12 +49,22 @@ void vertex() {
 
 void fragment() {
 	vec2 q = (UV - 0.5) * 2.0;
-	// a petal: an oval with a notch at its tip
-	float d = length(vec2(q.x * 1.2, q.y));
-	float notch = step(0.75, q.y) * step(abs(q.x), 0.12);
-	if (d > 1.0 || notch > 0.5) discard;
-	vec3 col = kind < rose_share ? rose : petal;
-	ALBEDO = col * (0.92 + 0.08 * (1.0 - d));
+	if (kind > 1.0 - leaf_share) {
+		// a small dry leaf: a pointed oval with a midrib and a stalk
+		float w = 0.42 * (1.0 - q.y * q.y) * (1.0 - 0.35 * q.y);
+		float stalk = step(-1.0, q.y) * step(q.y, -0.82) * step(abs(q.x), 0.05);
+		if (abs(q.x) > w && stalk < 0.5) discard;
+		float rib = 1.0 - smoothstep(0.0, 0.04, abs(q.x));
+		vec3 lc = leaf * (0.85 + 0.3 * fract(kind * 17.0));
+		ALBEDO = mix(lc, lc * 0.7, rib);
+	} else {
+		// a petal: an oval with a notch at its tip
+		float d = length(vec2(q.x * 1.2, q.y));
+		float notch = step(0.75, q.y) * step(abs(q.x), 0.12);
+		if (d > 1.0 || notch > 0.5) discard;
+		vec3 col = kind < rose_share ? rose : petal;
+		ALBEDO = col * (0.92 + 0.08 * (1.0 - d));
+	}
 	ROUGHNESS = 0.9;
 	BACKLIGHT = vec3(0.35);
 }

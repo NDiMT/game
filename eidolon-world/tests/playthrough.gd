@@ -465,6 +465,20 @@ func _plan() -> void:
 	step_do(func() -> void: ok("still broken: hers are not stone yet", not C().state["stones"]))
 	for k in 3: _pool_press(3, "turn the fourth slab from the south rim (%d)" % (k + 1))
 	step_until("the path is whole: her slabs rise as stone", func() -> bool: return C().state["stones"], 2.0)
+	step_wait(0.2)
+	step_do(func() -> void:
+		var low := 0
+		for c in C().pool_pieces:
+			var pc: Dictionary = C().pool_pieces[c]
+			if pc["real"] < 0 and (pc["node"] as Node3D).position.y < -0.5: low += 1
+		ok("(v1.1) her stones start UNDER the water and rise (they never just appear)", low >= 2, "%d under" % low))
+	step_wait(4.5)
+	step_do(func() -> void:
+		var up := true
+		for c in C().pool_pieces:
+			var pc: Dictionary = C().pool_pieces[c]
+			if pc["real"] < 0 and absf((pc["node"] as Node3D).position.y) > 0.01: up = false
+		ok("(v1.1) ...and stand risen, level with yours", up))
 	step_wait(3.5)
 	step_do(func() -> void:
 		var f: Dictionary = game.juice.fired
@@ -913,79 +927,52 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the hollow walk's gate is closed", P().z > -15.05, str(P())))
-	# "Our Steps" (v1.0): the floor before a true mirror; played through the REAL input path (a thumb on the
-	# touch stick, never quite straight), not the dev command
+	# "Our Steps" (v1.1): rebuilt on the earlier game's rules (two boards: "The Column", "Two Stones"); played
+	# through the REAL input path (a thumb on the touch stick, never quite straight), not the dev command
 	step_do(func() -> void:
-		var sv: Dictionary = OurSteps.solve()
-		ok("solver: one shortest way onto both plates, 8..14 steps", int(sv["length"]) >= 8 and int(sv["length"]) <= 14 and int(sv["ways"]) == 1,
-			"len %d ways %d states %d" % [sv["length"], sv["ways"], sv["states"]])
-		ok("solver: no softlock: every reachable state can still leave the floor", int(sv["trapped"]) == 0, str(sv["trapped"]))
-		ok("the plates are not mirror and mirror (her stones must part you)", OurSteps.Y_PLATE != OurSteps.H_PLATE)
-		ok("the teaching drum stands one step before her entry, and the first step of the answer is that step",
-			Vector2i(2, 1) in OurSteps.H_OBS and sv["path"][0] == Vector2i(0, 1))
-		ok("(v1.0) a 5 x 3 floor along a tall planar mirror; her room only in the glass", OurSteps.C == 5 and OurSteps.R == 3 and C().steps.refl.planar != null and C().steps.refl.hold)
-		ok("the floor starts unsolved and off", not C().steps.active and not C().state["hollow_done"]))
-	var near_e := OurSteps.at(0.0, OurSteps.EDGE_V - 0.9)
-	walk_path("to the landing", [[18.2, -10.5], [near_e.x, near_e.z]])
-	# on (the stick pushed up): the teaching moment: you step forward, she is held by her drum
+		for bi in OurSteps.BOARDS.size():
+			var sv: Dictionary = OurSteps.solve(bi)
+			ok("(v1.1) Our Steps board %d '%s': solvable in its par, by BFS" % [bi + 1, OurSteps.BOARDS[bi]["title"]], sv["length"] == int(OurSteps.BOARDS[bi]["par"]), str(sv))
+			ok("(v1.1) board %d: at most two columns" % (bi + 1), (OurSteps.board(bi)["cols"] as Array).size() <= 2)
+		ok("(v1.1) the old tall-glass version is gone: one board, a glass line down its middle", OurSteps.W == 6 and OurSteps.MIRROR_X == 3)
+		ok("the board starts unsolved and off; she is not there before you step on", not C().steps.active and not C().state["hollow_done"] and not C().steps.her.visible))
+	var near_e := OurSteps.at(-(OurSteps.W - 1) * 0.5 * OurSteps.TILE, OurSteps.EDGE_V - 0.9)
+	walk_path("to the board's gap", [[near_e.x, near_e.z]])
 	step_do(func() -> void: _stick_dir(OurSteps.V, 0.0))
-	step_until("onto the floor (by the stick)", func() -> bool: return C().steps.active, 6.0)
+	step_until("onto the board (by the stick)", func() -> bool: return C().steps.active, 6.0)
 	step_do(func() -> void: _stick_up())
-	step_until("the teaching moment plays", func() -> bool: return C().steps.taught and not C().steps.moving, 6.0)
+	step_until("to the first board's start", func() -> bool: return not C().steps.moving, 6.0)
+	step_wait(0.8)
 	step_do(func() -> void:
-		ok("teach: you stepped forward, she was held by the drum", C().steps.p == Vector2i(2, 1) and C().steps.h == OurSteps.ENTRY,
-			"p %s h %s" % [C().steps.p, C().steps.h])
-		ok("(v1.0) she stands, for the glass, on her entry slab", C().steps.refl.hold_xf.origin.distance_to(OurSteps.tile(OurSteps.ENTRY)) < 0.1, str(C().steps.refl.hold_xf.origin))
-		ok("you stand on your slab", Vector2(P().x, P().z).distance_to(Vector2(OurSteps.tile(Vector2i(2, 1)).x, OurSteps.tile(Vector2i(2, 1)).z)) < 0.3, str(P())))
-	# refused: your stone; a nudge out and back, and you are where you were
+		ok("(v1.1) on the board: she appears on her half, on her start", C().steps.her.visible and C().steps.h == C().steps.b["A"] and C().steps.p == C().steps.b["P"], "p %s h %s" % [C().steps.p, C().steps.h]))
+	# a step into a column: one moves, the other is held (board 1: you go up, ... )
+	_stick_step(Vector2i(0, 1), 10.0)
 	step_do(func() -> void:
-		_mark = C().steps.blocked_n
-		_stick_grid(Vector2i(-1, 0), 18.0))
-	step_until("the stone refuses", func() -> bool: return C().steps.blocked_n > _mark, 3.0)
-	step_do(func() -> void: _stick_up())
-	step_until("the nudge settles", func() -> bool: return not C().steps.moving and C().steps._cool <= 0.0, 3.0)
-	step_do(func() -> void:
-		ok("your stone refuses the step (no move, a nudge, back on your slab)", C().steps.p == Vector2i(2, 1) and C().steps.h == OurSteps.ENTRY and
-			Vector2(P().x, P().z).distance_to(Vector2(OurSteps.tile(Vector2i(2, 1)).x, OurSteps.tile(Vector2i(2, 1)).z)) < 0.12, str(P())))
-	# off: back to the entry and off the edge (the stick, down twice); she comes back to your mirror
-	_stick_step(Vector2i(0, -1), -15.0)
-	step_do(func() -> void: ok("back on the entry slab", C().steps.p == OurSteps.ENTRY and C().steps.active, str(C().steps.p)))
-	step_do(func() -> void: _stick_grid(Vector2i(0, -1), 10.0))
-	step_until("stepped off", func() -> bool: return not C().steps.active, 3.0)
-	step_do(func() -> void: _stick_up())
+		ok("(v1.1) a step along the glass is the same for both", C().steps.p == Vector2i(0, 2) and C().steps.h == Vector2i(5, 2), "p %s h %s" % [C().steps.p, C().steps.h]))
+	_stick_step(Vector2i(0, 1), 8.0)
+	step_until("stepped off where you came on", func() -> bool: return not C().steps.active, 3.0)
 	step_until("off and still", func() -> bool: return not C().steps._leaving and game.auto_target == Vector3.INF, 5.0)
-	step_wait(0.5)
+	step_wait(1.0)
 	step_do(func() -> void:
-		ok("off: you are on the landing, she is back at your mirror", OurSteps.local(P()).y < OurSteps.EDGE_V and C().steps.h == OurSteps.ENTRY and not C().steps.active,
-			str(P()) + " " + str(C().steps.her_pos)))
-	# on again (no teaching now), one step, and the reset stone
+		ok("(v1.1) off the board: she is gone", not C().steps.active and not C().steps.her.visible))
 	step_do(func() -> void: _stick_dir(OurSteps.V, 12.0))
-	step_until("onto the floor again", func() -> bool: return C().steps.active, 6.0)
+	step_until("onto the board again", func() -> bool: return C().steps.active, 6.0)
 	step_do(func() -> void: _stick_up())
-	step_until("settled on the entry", func() -> bool: return not C().steps.moving, 4.0)
-	step_do(func() -> void: ok("no teaching the second time", C().steps.p == OurSteps.ENTRY and C().steps.taught, str(C().steps.p)))
-	_stick_step(Vector2i(0, 1), 0.0)
-	step_do(func() -> void:
-		ok("the reset is offered on the floor", _focus() == "steps_reset", _focus())
-		ok("reset (the interact button)", game.try_interact())
-		ok("reset: both of you back at the entry", C().steps.p == OurSteps.ENTRY and C().steps.h == OurSteps.ENTRY and C().steps.active))
-	step_wait(0.4)
-	# the whole answer by the stick, each push a little off true (a thumb), the BFS path
-	var path: Array = OurSteps.solve()["path"]
-	var noise := [17.0, -22.0, 9.0, -14.0, 24.0, -6.0, 19.0, -25.0, 3.0, -18.0, 12.0, -9.0, 21.0, -3.0]
-	for i in path.size():
-		_stick_step(path[i], noise[i % noise.size()])
-		if i == 4:
+	step_until("settled at the start", func() -> bool: return not C().steps.moving, 6.0)
+	for bi in OurSteps.BOARDS.size():
+		var path: Array = OurSteps.solve(bi)["path"]
+		var bidx: int = bi
+		for i in path.size():
+			_stick_step(path[i], [8.0, -14.0, 3.0, -6.0, 11.0, 0.0][i % 6])
+		if bidx == 0:
+			step_until("(v1.1) the first board answered: the second rises", func() -> bool: return C().steps.bi == 1 and C().steps._between <= 0.0 and not C().steps.moving, 6.0)
 			step_do(func() -> void:
-				ok("mid-way you and she have drifted apart", C().steps.p != C().steps.h, "p %s h %s" % [C().steps.p, C().steps.h]))
-	step_until("both plates lit: solved", func() -> bool: return C().state["hollow_done"], 4.0)
+				ok("(v1.1) board 2 'Two Stones': you both at its start", C().steps.p == C().steps.b["P"] and C().steps.h == C().steps.b["A"] and C().steps.boards_done == 1, "p %s h %s" % [C().steps.p, C().steps.h]))
+	step_until("(v1.1) both boards answered through the stick: the gate's way", func() -> bool: return C().state["hollow_done"], 5.0)
 	step_do(func() -> void:
-		ok("(v1.0) solved through the stick, on the BFS path", C().steps.p == OurSteps.Y_PLATE and C().steps.h == OurSteps.H_PLATE and not C().steps.active, "p %s h %s" % [C().steps.p, C().steps.h])
-		ok("both plates lit", float(C().steps.plate_y.get_shader_parameter("lit")) > 0.9 and float(C().steps.plate_h.get_shader_parameter("lit")) > 0.9))
+		ok("(v1.1) both glyphs lit", float(C().steps.plate_y[1].get_shader_parameter("lit")) > 0.9 and float(C().steps.plate_h[1].get_shader_parameter("lit")) > 0.9))
 	step_wait(0.5)
-	var t40 := OurSteps.tile(OurSteps.Y_PLATE)
-	var t20 := OurSteps.tile(OurSteps.ENTRY)
-	walk_path("off the floor (free now)", [[t40.x, t40.z], [t20.x, t20.z], [near_e.x, near_e.z], [17.85, -10.3], [17.85, -11.8]])
+	walk_path("off the board (free now)", [[OurSteps.cell(Vector2i(0, 0), 4).x, OurSteps.cell(Vector2i(0, 0), 4).z], [OurSteps.cell(Vector2i(0, 3), 4).x, OurSteps.cell(Vector2i(0, 3), 4).z], [near_e.x, near_e.z], [17.85, -10.3], [17.85, -11.8]])
 	step_until("the gate rises", func() -> bool: return not game.level.named["hw_gate"].enabled, 3.0)
 	step_wait(2.0)
 	walk_path("up the ramp to the court", [[18.3, -13.0], [18.5, -16.2], [17.6, -17.8], [15.0, -18.4]])

@@ -15,6 +15,7 @@ SPEC = {
  "face5": ("h", 0.55, 256), "face6": ("h", 0.45, 256), "fountain": ("w", 3.2, 512), "scaffold": ("h", 3.0, 512),
  "ladder": ("h", 3.0, 256), "bridge_deck": ("w", 3.0, 512), "bridge_end": ("w", 2.4, 512), "urns": ("h", 0.9, 256),
  "awning_post": ("h", 2.6, 256),
+ "pickup_cloth": ("w", 0.55, 256), "pickup_plinth": ("h", 0.45, 256),
 }
 out = {}
 # (v2, review) NO brute decimation: Tripo's own smart-low-poly mesh is kept; it is welded, cleaned (degenerate and
@@ -49,6 +50,7 @@ for name, (fit, size, px) in SPEC.items():
     e = m.extents
     k = size / (e[1] if fit == "h" else max(e[0], e[2]))
     m.apply_scale(k)
+    if name == "pickup_cloth": m.apply_scale([1.0, 0.33, 1.0])      # (laid flatter: a cloth on the floor, not a tent)
     m = clean(m, next((v for k_, v in MAXT.items() if name.startswith(k_)), 0))
     # (drawn by the game's marble shader through props.gd, like every other prop: no textures shipped; the
     # placeholder colour only shows in other viewers. Wood pieces are flagged WOOD in props.gd, see HANDOFF)

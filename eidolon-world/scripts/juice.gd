@@ -270,9 +270,9 @@ func _on_chapter(name: String, data: Variant) -> void:
 			dust_fall(Vector3(16.95, 4.4, -11.8), Vector3(0, 0, 0.9))
 			shake(0.25)
 		"steps_step":
-			if ch.steps: dust_floor(OurSteps.tile(ch.steps.p), 0.25, 8)
+			if ch.steps: dust_floor(ch.steps.tile(ch.steps.p), 0.25, 8)
 		"steps_blocked":
-			if ch.steps: grit(OurSteps.tile(ch.steps.p) + Vector3(0, 0.3, 0), 0.2)
+			if ch.steps: grit(ch.steps.tile(ch.steps.p) + Vector3(0, 0.3, 0), 0.2)
 		"weight_hang":
 			shake(0.18)
 			dust_floor(game.player.position, 0.5, 12)

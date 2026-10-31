@@ -20,6 +20,23 @@ var chapter: Chapter
 var wonders: Wonders
 var satchel: Satchel
 var quad_batch: QuadBatch
+const HOT_ORDER := ["lamp", "shard", "chisel", "amphora", "pin"]
+## which interacts each carried thing works on (the hotbar uses it there)
+const HOT_USES := {"chisel": ["relic_w", "sec_m1", "sec_m2"], "amphora": ["amph_fill", "pour", "sec_m3"],
+	"pin": ["e_panel", "pin_song", "pin_spring", "sec_m4", "sec_m7"]}
+
+## v1.1: a hotbar slot tapped: the shard raises / lowers the lens; a tool is chosen and, where it works
+## (the place you stand at), used; anywhere else it tells you what it is
+func _on_hot(k: String) -> void:
+	if mode != "play": return
+	controls.hot_sel = k
+	if k == "shard":
+		chapter.toggle_lens()
+		return
+	if focus and focus.id in (HOT_USES.get(k, []) as Array):
+		try_interact()
+		return
+	ui.show_item(k, "full" if (k == "amphora" and chapter.state["inv"].get("amph_full", false)) else "")
 var _dark := 0.0              # v0.9 the wonder spaces between the puzzles
 var juice: Juice                  # v1.0 M1: the physical little moments (dust, grit, sparks, wet stone)
 var _fade_on := false
@@ -114,6 +131,7 @@ func _ready() -> void:
 	satchel.build(self, ui.serif, ui.italic, ui.root)
 	ui.satchel = satchel
 	controls.satchel.connect(func() -> void: if mode == "play" and not satchel.is_open: satchel.open())
+	controls.hot.connect(_on_hot)
 	level.read.connect(_on_read)
 	puzzles.event.connect(_on_event)
 	player.footstep.connect(_on_footstep)
@@ -408,7 +426,15 @@ func _process(dt: float) -> void:
 	Flame.cull(player.position, dt)          # (v0.8.3: one budget for the flames and the aqua lights)
 	if Engine.get_process_frames() % 2 == 0:
 		level.set_flames(Flame.bounce_list(player.position))   # (v1.0 A) crimson bounce on nearby stone
-	if satchel and Engine.get_process_frames() % 10 == 0: controls.bag_has = not satchel.contents().is_empty()
+	if satchel and Engine.get_process_frames() % 10 == 0:
+		controls.bag_has = not satchel.contents().is_empty()
+		# (v1.1: the hotbar shows what you carry; the satchel keeps the tablets, memories and the map)
+		var hot: Array[String] = []
+		for k in HOT_ORDER: if chapter.hub.has_item(k): hot.append(k)
+		controls.hot_items = hot
+		if controls.hot_icons.is_empty(): controls.hot_icons = chapter.items.icons
+		if chapter.lens_on: controls.hot_sel = "shard"
+		elif controls.hot_sel == "shard": controls.hot_sel = ""
 	# (v1.0 A, QA P1-4: the Undercroft is truly dark; the lamp's warm circle is what you see by)
 	var rg := level.region_at(Vector2(player.position.x, player.position.z))
 	var want_dark := 1.0 if (rg and (rg.name == "UC" or rg.name == "UC_up") and mode == "play") else 0.0
@@ -435,6 +461,8 @@ func _process(dt: float) -> void:
 				off.y = 0.0
 			elif area == "hollow_walk" and not chapter.state["hollow_done"] and OurSteps.lean(p) != Vector3.ZERO:
 				off = OurSteps.lean(p)                             # (v0.9.2) Our Steps: both rooms whole on the screen
+			elif chapter.points and chapter.points.lean != Vector3.ZERO:
+				off = chapter.points.lean                          # (v1.1) a bench with a view: the camera leans toward it
 			elif area == "garden_veiled" and not chapter.state["turned_done"] and Chapter.garden_lean(p) != Vector3.ZERO:
 				off = Chapter.garden_lean(p)                       # (v0.9.1) before the turned ones: lean toward the glass
 			else:

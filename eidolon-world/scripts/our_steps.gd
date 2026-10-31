@@ -1,96 +1,75 @@
 class_name OurSteps
 extends Node3D
-## "Our Steps" (v0.9.2; v1.0: a true mirror). A floor of 5 x 3 slabs before a tall planar MIRROR, a real
-## reflection like every other glass in the game: in it, her room is the mirror image of yours, but not
-## the same: her stones and her missing slab exist only in the glass (twin geometry on the reflection-only
-## layer), and the figure in it is HER, in crimson, standing where the floor's logic puts her. You step slab
-## to slab (the stick snaps to the grid, which lies square to the screen: along the glass is left / right,
-## toward it is up). Your reflection steps as a reflection must: along the glass the same way, toward the
-## glass toward you.
-##  * her room has stones yours has not: where her next slab is taken she STAYS while you step on: the two
-##    of you drift apart.
-##  * your room's stones are in hers too (they are reflected): there neither of you steps.
-##  * her room has a gap (a missing slab): she will not step into it, so neither do you. No falling, no fail.
-## Your crimson plate is on your floor, hers in the glass, and not where mirror and mirror meet: use her
-## stones to shift the two of you until you stand on yours while she stands on hers. The gate opens.
-## Stepping off the floor where you came on always works (she comes back to your mirror); the stone by
-## you resets you both. The first time you step on, the floor shows its rule: you step forward, she is held.
-## Grid: column c along the glass, row r toward it; c 0..4, r 0..2; you enter at (2, 0).
+## "Our Steps" (v1.1): rebuilt on the rules of the earlier EIDOLON puzzle game (/home/user/game/eidolon,
+## scripts/rules.gd, levels/02.json and 03.json). One flat board of slabs, fully visible, a line of glass
+## standing down its middle: you on the left half, your Eidolon (her, in crimson) on the right.
+##  * a step along the glass line (up / down on the screen) is the same step for her; a step across it
+##    (left / right) is mirrored for her: you go right, she goes left.
+##  * columns (#) stop only the body that walks into them: you step, she is held (or the other way), and the
+##    two of you drift apart. Neither of you crosses the glass. A step that moves neither of you is no step.
+##  * the goal: you on your glyph and her on hers. Two boards in a row ("The Column", then "Two Stones");
+##    the second opens when the first is answered, and the gate when the second is.
+## She is not there until you step onto the board (through the gap in the kerb at its near left corner);
+## stepping off where you came on always works, and the stone by you resets the board.
+## Grid: x 0..W-1 along the screen's right (U), row z 0..H-1 from the far edge down toward the camera (-V).
 
-const C := 5
-const R := 3
-const ENTRY := Vector2i(2, 0)
-const Y_OBS := [Vector2i(1, 1)]                                       # your stone (in both rooms)
-const H_OBS := [Vector2i(2, 1), Vector2i(3, 1), Vector2i(4, 1)]       # hers ((2, 1): the teaching drum)
-const H_GAP := [Vector2i(2, 2)]                                       # her missing slab
-const Y_PLATE := Vector2i(4, 0)
-const H_PLATE := Vector2i(0, 0)
-const TILE := 1.15
-const GAP := 0.3                     # from the glass to the nearest row's edge
-const GC := Vector3(23.1, 1.0, -11.6)                     # the glass's foot, mid-way
-const U := Vector3(0.70710678, 0.0, 0.70710678)           # along the glass (screen right)
-const V := Vector3(0.70710678, 0.0, -0.70710678)          # toward the glass, from your side (screen up)
-const EDGE_V := -(GAP + R * TILE)    # your floor's near edge (where you step on and off)
-const GLASS_HALF := 3.0
-const GLASS_H := 3.5
+const BOARDS := [
+	{"title": "The Column", "par": 4, "map": [".G.a#.", "P....A", "......"]},
+	{"title": "Two Stones", "par": 6, "map": [".G....", ".#....", "P..a.A", "....#."]},
+]
+const MIRROR_X := 3                  # the glass stands between columns 2 and 3
+const W := 6
+const TILE := 0.86
+const GC := Vector3(23.1, 1.0, -11.6)                     # the board's frame origin (the old glass foot)
+const U := Vector3(0.70710678, 0.0, 0.70710678)           # screen right
+const V := Vector3(0.70710678, 0.0, -0.70710678)          # screen up (away from the camera)
+const EDGE_V := -3.74                # the board's near edge (toward the camera)
+const FAR_V := -0.3                  # its far edge
 const FLOOR_Y := 1.0
 const DIRS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+const GLASS_H := 1.35
 
-## (u along the glass, v toward it) of your slab c
-static func uv(c: Vector2i) -> Vector2:
-	return Vector2((c.x - 2) * TILE, -(GAP + TILE * 0.5 + (R - 1 - c.y) * TILE))
+# ------------------------------------------------------------------ the rules (pure, static)
+## a board parsed: {w, h, floor: {Vector2i: true}, cols: [Vector2i], P, G, A, a}
+static func board(i: int) -> Dictionary:
+	var rows: Array = BOARDS[i]["map"]
+	var b := {"w": W, "h": rows.size(), "floor": {}, "cols": [], "title": BOARDS[i]["title"], "par": BOARDS[i]["par"]}
+	for z in rows.size():
+		var row: String = rows[z]
+		for x in row.length():
+			var c := Vector2i(x, z)
+			var ch := row[x]
+			if ch == "#":
+				(b["cols"] as Array).append(c)
+				continue
+			b["floor"][c] = true
+			if ch in ["P", "G", "A", "a"]: b[ch] = c
+	return b
 
-static func at(u: float, v: float) -> Vector3:
-	return GC + U * u + V * v
+static func her_dir(d: Vector2i) -> Vector2i:
+	return Vector2i(-d.x, d.y)
 
-static func tile(c: Vector2i) -> Vector3:
-	var q := uv(c)
-	return at(q.x, q.y)
+static func _free(b: Dictionary, a: Vector2i, t: Vector2i) -> bool:
+	if not (b["floor"] as Dictionary).has(t): return false
+	return (a.x < MIRROR_X) == (t.x < MIRROR_X)           # (never across the glass)
 
-## her slab c, where the glass shows it (the mirror image of yours, behind the glass)
-static func her_tile(c: Vector2i) -> Vector3:
-	var q := uv(c)
-	return at(q.x, -q.y)
-
-## the glass plane (normal toward you)
-static func plane_n() -> Vector3:
-	return -V
-
-static func plane_d() -> float:
-	return plane_n().dot(GC)
-
-## a point in the floor's frame: (u, v)
-static func local(p: Vector3) -> Vector2:
-	return Vector2((p - GC).dot(U), (p - GC).dot(V))
-
-## the camera's lean on and before the floor: the floor and the glass whole on the screen
-static func lean(p: Vector3) -> Vector3:
-	var l := local(p)
-	if l.y < -7.5 or l.y > 0.5 or absf(l.x) > 5.0 or absf(p.y - FLOOR_Y) > 0.3: return Vector3.ZERO
-	var k := clampf((l.y + 7.5) / 2.5, 0.0, 1.0)
-	var off := (at(0.0, -1.3) - p) * k
-	off.y = 0.0
-	return off
-
-static func inb(c: Vector2i) -> bool:
-	return c.x >= 0 and c.x < C and c.y >= 0 and c.y < R
-
-## one step d from (you, her): the new [you, her], "exit" (off the floor where you came on), or [] (blocked)
-static func step(p: Vector2i, h: Vector2i, d: Vector2i) -> Variant:
-	var np := p + d
-	if not inb(np):
-		if d == Vector2i(0, -1) and p == ENTRY: return "exit"
-		return []
-	if np in Y_OBS: return []
-	var nh := h + d
-	if inb(nh) and nh in H_GAP: return []
-	if not inb(nh) or nh in H_OBS or nh in Y_OBS: return [np, h]      # (your stone is in her room too)
+## one step d from (you, her): the new [you, her], "exit", or [] (nothing moves: no step)
+static func step(b: Dictionary, p: Vector2i, h: Vector2i, d: Vector2i) -> Variant:
+	if d == Vector2i(0, 1) and p == entry(b): return "exit"
+	var np := p + d if _free(b, p, p + d) else p
+	var nh := h + her_dir(d) if _free(b, h, h + her_dir(d)) else h
+	if np == p and nh == h: return []
 	return [np, nh]
 
-## (tests) BFS from the entry: the shortest solution, how many shortest ones, and whether every reachable
-## state can still leave the floor
-static func solve() -> Dictionary:
-	var start := [ENTRY, ENTRY]
+## where you step on and off: the near-left corner slab
+static func entry(b: Dictionary) -> Vector2i:
+	return Vector2i(0, int(b["h"]) - 1)
+
+## (tests) BFS from the board's start: the shortest solution, how many shortest ones, states, and whether
+## every reachable state can still leave the board
+static func solve(i := 0) -> Dictionary:
+	var b := board(i)
+	var start := [b["P"], b["A"]]
 	var key := func(s: Array) -> String: return "%s|%s" % [s[0], s[1]]
 	var dist := {key.call(start): 0}
 	var ways := {key.call(start): 1}
@@ -102,154 +81,213 @@ static func solve() -> Dictionary:
 		var s: Array = q[qi]; qi += 1
 		var ks: String = key.call(s)
 		for d in DIRS:
-			var t = step(s[0], s[1], d)
+			var t = step(b, s[0], s[1], d)
 			if t is String or (t as Array).is_empty(): continue
 			var kt: String = key.call(t)
 			if not dist.has(kt):
 				dist[kt] = dist[ks] + 1; ways[kt] = ways[ks]; par[kt] = [ks, d]; states[kt] = t; q.append(t)
 			elif dist[kt] == dist[ks] + 1:
 				ways[kt] += ways[ks]
-	var goal: String = key.call([Y_PLATE, H_PLATE])
+	var goal: String = key.call([b["G"], b["a"]])
 	var path := []
 	if dist.has(goal):
 		var k := goal
 		while par.has(k):
 			path.push_front(par[k][1])
 			k = par[k][0]
-	var trapped := 0
-	for ks in states:
-		var seen := {ks: true}
-		var stack := [states[ks]]
-		var out := false
-		while not stack.is_empty() and not out:
-			var x: Array = stack.pop_back()
-			for d in DIRS:
-				var t = step(x[0], x[1], d)
-				if t is String: out = true; break
-				if (t as Array).is_empty(): continue
-				var kt: String = key.call(t)
-				if seen.has(kt): continue
-				seen[kt] = true
-				stack.append(t)
-		if not out: trapped += 1
-	return {"length": dist.get(goal, -1), "ways": ways.get(goal, 0), "path": path, "states": states.size(), "trapped": trapped}
+	return {"length": dist.get(goal, -1), "ways": ways.get(goal, 0), "path": path, "states": states.size()}
 
-## the world direction of grid step d
+# ------------------------------------------------------------------ the frame
+static func at(u: float, v: float) -> Vector3:
+	return GC + U * u + V * v
+
+## slab c of a board with h rows (rows anchored at the near edge)
+static func cell(c: Vector2i, h: int) -> Vector3:
+	return at((float(c.x) - (W - 1) * 0.5) * TILE, EDGE_V + TILE * (float(h - c.y) - 0.5))
+
+static func local(p: Vector3) -> Vector2:
+	return Vector2((p - GC).dot(U), (p - GC).dot(V))
+
 static func dir_world(d: Vector2i) -> Vector3:
-	return U * float(d.x) + V * float(d.y)
+	return U * float(d.x) - V * float(d.y)
+
+## the camera's lean on and before the board: the whole board on the screen
+static func lean(p: Vector3) -> Vector3:
+	var l := local(p)
+	if l.y < -7.5 or l.y > 0.5 or absf(l.x) > 5.0 or absf(p.y - FLOOR_Y) > 0.3: return Vector3.ZERO
+	var k := clampf((l.y + 7.5) / 2.5, 0.0, 1.0)
+	var off := (at(0.0, -2.2) - p) * k
+	off.y = 0.0
+	return off
 
 # ------------------------------------------------------------------ in the world
 var game: Game
 var chapter: Chapter
-var active := false                  # you are on the floor
-var p := ENTRY
-var h := ENTRY
-var refl: Reflector                  # the glass (a real planar mirror) and HER, its driven double
-var her_pos := Vector3.ZERO          # where she stands, in YOUR world (the glass shows it reflected)
+var bi := 0                          # the board in play (0, then 1)
+var b: Dictionary
+var active := false
+var p := Vector2i.ZERO
+var h := Vector2i.ZERO
+var her: Figure
+var her_pos := Vector3.ZERO
 var _her_from := Vector3.ZERO
 var _her_to := Vector3.ZERO
 var _her_t := 1.0
+var _her_vis := 0.0
 var moving := false
 var _cool := 0.0
-var _teach := 0.0                    # > 0: the teaching moment plays (the stick waits)
-var taught := false
-var _teach_stepped := false
 var _leaving := false
-var _bump := Vector3.INF             # a refused step: the nudge out and back
+var _between := 0.0                  # > 0: the first board answered, the second rising
+var _bump := Vector3.INF
 var _last_dir := Vector2i.ZERO
-var plate_y: ShaderMaterial
-var plate_h: ShaderMaterial
-var col_glints: Array[ShaderMaterial] = []   # her stones' glints (in the glass)
+var plate_y: Array[ShaderMaterial] = []
+var plate_h: Array[ShaderMaterial] = []
+var cols: Array[Node3D] = []         # per board: its columns
+var glyphs: Array[Node3D] = []       # per board: its two glyphs
 var _pose := Figure.Pose.new()
 var _phase := 0.0
-var moves := 0                       # (tests) steps taken this time on the floor
+var moves := 0                       # (tests) steps taken on this board
 var blocked_n := 0                   # (tests) refused steps
+var boards_done := 0
+
+func tile(c: Vector2i) -> Vector3:
+	return cell(c, int(b["h"]))
+
+func goal_her_world() -> Vector3:
+	return tile(b["a"])
 
 func setup(g: Game, ch: Chapter) -> void:
 	game = g
 	chapter = ch
-	var B := Basis(Vector3.UP, -PI * 0.25)          # (local x along the glass, local +z toward you)
-	# the mirror: a tall planar glass, a real reflection
-	var center := at(0.0, 0.0) + Vector3(0, GLASS_H * 0.5 + 0.05, 0)
-	var mm := game.puzzles._mirror_quad(center, B, Vector2(GLASS_HALF * 2.0, GLASS_H), false, 1.0)
-	mm.set_shader_parameter("ncols", 0)
-	mm.set_shader_parameter("floor_y", FLOOR_Y)
-	var pm := PlanarMirror.new()
-	add_child(pm)
-	pm.setup(plane_n(), plane_d(), mm, game.world.env)
-	refl = Reflector.new()
-	refl.kind = "mirror"; refl.plane_n = plane_n(); refl.plane_d = plane_d() + 0.01
-	refl.clip_c = center; refl.clip_u = U; refl.clip_v = Vector3.UP; refl.clip_h = Vector2(GLASS_HALF, GLASS_H * 0.5)
-	refl.region = Level.R(17.5, -15.0, 25.5, -6.0)
-	refl.planar = pm
-	refl.hold = true
-	game.puzzles._add_refl(refl)
-	# your plate: on your floor only (main view: it is not in her room)
-	plate_y = game.puzzles.rune_quad(self, tile(Y_PLATE) + Vector3(0, 0.03, 0), Vector2(0.9, 0.9), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.3)
-	_last_child().layers = PlanarMirror.LAYER_MAIN_FX
-	# her plate, her stones, her gap: only in the glass (twins on the reflection-only layer, standing where
-	# the glass shows them from: your side)
-	plate_h = game.puzzles.rune_quad(self, tile(H_PLATE) + Vector3(0, 0.03, 0), Vector2(0.9, 0.9), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.3)
-	_last_child().layers = PlanarMirror.LAYER_DOUBLE
-	var stones := MB.new()
-	for c in H_OBS:
-		var t := tile(c)
-		if c == Vector2i(2, 1):
-			# the teaching drum: a broken column drum, low (she shows over it)
-			stones.cyl(t + Vector3(0, 0.016 + 0.3, 0), 0.38, 0.4, 0.6, Color(0.5, 0.25, 0.0), 12)
-		else:
-			stones.box(t + Vector3(0, 0.016 + 0.33, 0), Vector3(0.95, 0.66, 0.55), Color(0.5, 0.25, 0.0), B * Basis(Vector3.UP, 0.35 * float(c.x - c.y)))
-	var smi := game.puzzles.marble_instance(stones.commit(), self)
-	smi.layers = PlanarMirror.LAYER_DOUBLE
-	for c in H_GAP:
-		var gm := StandardMaterial3D.new()
-		gm.albedo_color = Color(0.035, 0.037, 0.042)
-		gm.roughness = 1.0
-		var bm := BoxMesh.new()
-		bm.size = Vector3(TILE - 0.04, 0.03, TILE - 0.04)
-		var gi := MeshInstance3D.new()
-		gi.mesh = bm
-		gi.material_override = gm
-		gi.transform = Transform3D(B, tile(c) + Vector3(0, 0.022, 0))
-		gi.layers = PlanarMirror.LAYER_DOUBLE
-		gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(gi)
-	for c in H_OBS:
-		col_glints.append(game.puzzles.glow_quad(self, tile(c) + Vector3(0, 0.95, 0), 1.1, Palette.ACCENT, 0.0))
-		_last_child().layers = PlanarMirror.LAYER_DOUBLE
-	her_pos = tile(ENTRY)
-	_her_to = her_pos
+	b = board(0)
+	_build_board()
+	for i in BOARDS.size(): _build_pieces(i)
+	her = Figure.new(preload("res://shaders/ghost.gdshader"))
+	her.set_param("project", 0.0)
+	her.set_param("vis", 0.0)
+	her.visible = false
+	add_child(her)
 	level_reset()
 
-func _last_child() -> MeshInstance3D:
-	return get_child(get_child_count() - 1) as MeshInstance3D
+## the slabs (the larger board's 6 x 4), the kerb round them with its gap, the glass line down the middle
+func _build_board() -> void:
+	var B := Basis(Vector3.UP, -PI * 0.25)
+	var m := MB.new()
+	m.tag = "floor"
+	for x in W:
+		for z in 4:
+			m.box(cell(Vector2i(x, z), 4) + Vector3(0, 0.016 - 0.2, 0), Vector3(TILE - 0.05, 0.4, TILE - 0.05), Color(0.5, 0.25, 0.0), B)
+	m.tag = ""
+	var hw := TILE * W * 0.5 + 0.1
+	var kerb := func(a: Vector2, c: Vector2) -> void:
+		var pa := at(a.x, a.y)
+		var pc := at(c.x, c.y)
+		var mc := (pa + pc) * 0.5
+		m.box(Vector3(mc.x, FLOOR_Y + 0.11, mc.z), Vector3(maxf(pa.distance_to(pc), 0.2), 0.22, 0.2), Color(0.5, 0.25, 0.0), B if absf((c - a).y) < 0.01 else B * Basis(Vector3.UP, PI * 0.5))
+		var n := int(ceil(pa.distance_to(pc) / 0.25))
+		for i in n + 1:
+			var q := pa.lerp(pc, float(i) / float(maxi(n, 1)))
+			game.level.ob_circle(Vector2(q.x, q.z), 0.13)
+	var ev := EDGE_V - 0.1
+	var fv := FAR_V + 0.1
+	kerb.call(Vector2(-hw + TILE + 0.22, ev), Vector2(hw, ev))     # (the near edge, but the gap at the entry: wide enough to pass)
+	kerb.call(Vector2(-hw, fv), Vector2(hw, fv))
+	kerb.call(Vector2(-hw, ev), Vector2(-hw, fv))
+	kerb.call(Vector2(hw, ev), Vector2(hw, fv))
+	# the glass line's sill and cap (marble), its posts at both ends
+	var gl := (FAR_V - EDGE_V)
+	var gmid := at(0.0, (EDGE_V + FAR_V) * 0.5)
+	m.box(gmid + Vector3(0, 0.035, 0), Vector3(0.1, 0.07, gl), Color(0.5, 0.25, 0.0), B)
+	m.box(gmid + Vector3(0, GLASS_H + 0.05, 0), Vector3(0.12, 0.1, gl + 0.1), Color(0.5, 0.25, 0.0), B)
+	for v in [EDGE_V + 0.05, FAR_V - 0.05]:
+		m.box(at(0.0, v) + Vector3(0, GLASS_H * 0.5 + 0.03, 0), Vector3(0.12, GLASS_H, 0.12), Color(0.5, 0.25, 0.0), B)
+	game.puzzles.marble_instance(m.commit(), self)
+	# the glass itself: clear, a faint silver sheen
+	var gm := StandardMaterial3D.new()
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gm.albedo_color = Color(0.72, 0.78, 0.82, 0.16)
+	gm.metallic = 0.6
+	gm.roughness = 0.08
+	gm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var q := QuadMesh.new()
+	q.size = Vector2(gl - 0.14, GLASS_H - 0.06)
+	var gi := MeshInstance3D.new()
+	gi.mesh = q
+	gi.material_override = gm
+	gi.transform = Transform3D(B * Basis(Vector3.UP, PI * 0.5), gmid + Vector3(0, GLASS_H * 0.5 + 0.04, 0))
+	gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	gi.layers = PlanarMirror.LAYER_MAIN_FX
+	add_child(gi)
+
+## a board's columns (broken drums) and its two glyphs (yours, hers)
+func _build_pieces(i: int) -> void:
+	var bd := board(i)
+	var hh: int = bd["h"]
+	var cn := Node3D.new()
+	add_child(cn)
+	var m := MB.new()
+	for c in bd["cols"]:
+		var t := cell(c, hh)
+		m.cyl(t + Vector3(0, 0.016 + 0.45, 0), 0.3, 0.33, 0.9, Color(0.5, 0.25, 0.0), 12, Basis(Vector3.UP, 0.4 * float(c.x + c.y)))
+	game.puzzles.marble_instance(m.commit(), cn)
+	cols.append(cn)
+	var gn := Node3D.new()
+	add_child(gn)
+	plate_y.append(game.puzzles.rune_quad(gn, cell(bd["G"], hh) + Vector3(0, 0.03, 0), Vector2(0.72, 0.72), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.3))
+	plate_h.append(game.puzzles.rune_quad(gn, cell(bd["a"], hh) + Vector3(0, 0.03, 0), Vector2(0.72, 0.72), Basis(Vector3.RIGHT, -PI * 0.5), 7.0, 0.3))
+	glyphs.append(gn)
+
+func _show_board(i: int, instant := true) -> void:
+	bi = i
+	b = board(i)
+	for k in cols.size():
+		var on := k == i
+		if instant:
+			cols[k].visible = on
+			cols[k].position.y = 0.0
+			glyphs[k].visible = on
+		else:
+			glyphs[k].visible = on
+			if on:
+				cols[k].visible = true
+				cols[k].position.y = -1.0
+				cols[k].create_tween().tween_property(cols[k], "position:y", 0.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			elif cols[k].visible:
+				var cn := cols[k]
+				var tw := cn.create_tween()
+				tw.tween_property(cn, "position:y", -1.0, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+				tw.tween_callback(func() -> void: cn.visible = false)
 
 func level_reset() -> void:
 	active = false
 	moving = false
 	_leaving = false
 	_bump = Vector3.INF
-	p = ENTRY
-	h = ENTRY
-	her_pos = tile(ENTRY)
+	_between = 0.0
+	_show_board(0 if not solved() else BOARDS.size() - 1)
+	boards_done = BOARDS.size() if solved() else 0
+	p = b["P"]
+	h = b["A"]
+	her_pos = tile(h)
 	_her_to = her_pos
 	_her_t = 1.0
+	_her_vis = 0.0
+	her.visible = false
 	_lights()
 
 func solved() -> bool:
 	return bool(chapter.state["hollow_done"])
 
 func _lights() -> void:
-	var on_y := active and p == Y_PLATE
-	var on_h := active and h == H_PLATE
-	plate_y.set_shader_parameter("lit", 1.0 if (on_y or solved()) else 0.3)
-	plate_h.set_shader_parameter("lit", 1.0 if (on_h or solved()) else 0.3)
+	for k in plate_y.size():
+		var mine := k == bi
+		plate_y[k].set_shader_parameter("lit", 1.0 if (solved() or (mine and active and p == b["G"])) else 0.3)
+		plate_h[k].set_shader_parameter("lit", 1.0 if (solved() or (mine and active and h == b["a"])) else 0.3)
 
-## the stick, as a direction on the ground (world xz): one step along the nearest grid direction. The grid
-## is square to the screen, so up / down / left / right are its four ways; a diagonal push keeps the way you
-## last stepped if that is one of the two nearest (no flicker between two ways)
+## the stick, as a direction on the ground (world xz): one step along the nearest grid direction (the grid
+## lies square to the screen); a diagonal push keeps the way you last stepped (no flicker between two ways)
 func input(world_dir: Vector3) -> void:
-	if not active or moving or _teach > 0.0 or _cool > 0.0: return
+	if not active or moving or _cool > 0.0 or _between > 0.0: return
 	if world_dir.length() < 0.45: return
 	var wd := world_dir.normalized()
 	var best := Vector2i.ZERO
@@ -261,39 +299,33 @@ func input(world_dir: Vector3) -> void:
 	try_step(best)
 
 func try_step(d: Vector2i) -> bool:
-	var t = step(p, h, d)
+	if not active: return false
+	var t = step(b, p, h, d)
 	_last_dir = d
 	if t is String:
-		# off the floor where you came on: she comes back to your mirror
+		# off the board where you came on: she fades; the board waits as it was left
 		active = false
 		_leaving = true
 		moving = true
-		game.auto_target = tile(ENTRY) - V * 1.15
-		_her_slide(tile(ENTRY))
-		h = ENTRY
-		p = ENTRY
+		game.auto_target = tile(entry(b)) - V * 1.0
 		chapter.event.emit("steps_exit", null)
 		_lights()
 		return true
 	if (t as Array).is_empty():
-		# refused: a small nudge toward it and back, and the stone's dull knock
 		blocked_n += 1
 		_cool = 0.3
 		moving = true
 		_bump = tile(p)
-		game.auto_target = tile(p) + dir_world(d) * 0.16
+		game.auto_target = tile(p) + dir_world(d) * 0.14
 		chapter.event.emit("steps_blocked", null)
 		return false
-	var held: bool = (t[1] as Vector2i) == h
+	var held: bool = (t[1] as Vector2i) == h or (t[0] as Vector2i) == p
 	p = t[0]
 	h = t[1]
 	moves += 1
 	moving = true
 	game.auto_target = tile(p)
 	_her_slide(tile(h))
-	if held:
-		var gi := H_OBS.find(h + d)
-		if gi >= 0: _glint(gi)
 	chapter.event.emit("steps_step", held)
 	return true
 
@@ -302,20 +334,14 @@ func _her_slide(to: Vector3) -> void:
 	_her_to = to
 	_her_t = 0.0 if not _her_from.is_equal_approx(to) else 1.0
 
-func _glint(i: int) -> void:
-	var m := col_glints[i]
-	var tw := create_tween()
-	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), 0.0, 0.9, 0.25)
-	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), 0.9, 0.0, 1.1)
-
-## the stone by you: both of you back where you came on
+## the stone by you: both of you back where this board starts
 func reset() -> void:
 	if not active: return
-	p = ENTRY
-	h = ENTRY
-	game.player.teleport(tile(ENTRY), game.player.yaw)
+	p = b["P"]
+	h = b["A"]
+	game.player.teleport(tile(p), game.player.yaw)
 	game.auto_target = Vector3.INF
-	her_pos = tile(ENTRY)
+	her_pos = tile(h)
 	_her_to = her_pos
 	_her_t = 1.0
 	moving = false
@@ -324,65 +350,82 @@ func reset() -> void:
 	chapter.event.emit("steps_reset", null)
 	_lights()
 
+func _on_board(pp: Vector3) -> bool:
+	var l := local(pp)
+	return l.y > EDGE_V and l.y < FAR_V and absf(l.x) < TILE * W * 0.5 and absf(pp.y - FLOOR_Y) < 0.2
+
 func update(dt: float) -> void:
 	_cool = maxf(0.0, _cool - dt)
 	var pl := game.player
 	var pp := pl.position
-	# on: stepping onto the entry slab from the landing
-	if not active and not _leaving and not solved() and game.mode == "play":
-		var l := local(pp)
-		if l.y > EDGE_V + 0.05 and absf(l.x) < TILE * 0.5 and absf(pp.y - FLOOR_Y) < 0.2:
-			active = true
-			p = ENTRY
-			h = ENTRY
-			moves = 0
-			_last_dir = Vector2i.ZERO
-			game.auto_target = tile(ENTRY)
-			moving = true
-			if not taught:
-				_teach = 1.6
-				_teach_stepped = false
-			chapter.event.emit("steps_on", null)
+	# on: through the gap onto the entry slab; then to this board's start
+	if not active and not _leaving and not solved() and game.mode == "play" and _on_board(pp):
+		active = true
+		p = b["P"]
+		h = b["A"]
+		moves = 0
+		_last_dir = Vector2i.ZERO
+		her_pos = tile(h)
+		_her_to = her_pos
+		_her_t = 1.0
+		game.auto_target = tile(p)
+		moving = true
+		chapter.event.emit("steps_on", null)
 	if _leaving and (game.auto_target == Vector3.INF or local(pp).y < EDGE_V - 0.3):
 		_leaving = false
 		moving = false
 	if moving and active and game.auto_target == Vector3.INF:
 		if _bump != Vector3.INF:
-			# (the refused step's nudge reached its farthest: back onto the slab)
 			game.auto_target = _bump
 			_bump = Vector3.INF
 		else:
 			moving = false
 			_lights()
-			if p == Y_PLATE and h == H_PLATE and not solved():
-				chapter.steps_solved()
-	# the teaching moment (the first time only): a beat, then you step forward and she is held by her drum;
-	# the stick is yours again the moment that step ends
-	if _teach > 0.0:
-		_teach -= dt
-		if not _teach_stepped and _teach <= 1.1 and not moving:
-			_teach_stepped = true
-			try_step(Vector2i(0, 1))
-		if _teach_stepped and not moving:
-			_teach = 0.0
-		if _teach <= 0.0:
-			_teach = 0.0
-			taught = true
-	# her, sliding to her slab (with your pace)
+			if p == b["G"] and h == b["a"] and not solved() and _between <= 0.0:
+				boards_done = bi + 1
+				if bi + 1 < BOARDS.size():
+					# the first board answered: its columns sink, the next one's rise; you and she go to its start
+					chapter.event.emit("steps_board", bi)
+					_between = 1.6
+				else:
+					active = false
+					chapter.steps_solved()
+	if _between > 0.0:
+		_between -= dt
+		if _between <= 0.0:
+			_show_board(bi + 1, false)
+			p = b["P"]
+			h = b["A"]
+			moves = 0
+			game.player.teleport(tile(p), game.player.yaw)        # (both of you at the new board's start)
+			game.auto_target = Vector3.INF
+			moving = false
+			her_pos = tile(h)
+			_her_to = her_pos
+			_her_t = 1.0
+			_lights()
+	# her, sliding to her slab (with your pace); she is there only while you are on the board
 	if _her_t < 1.0:
 		_her_t = minf(1.0, _her_t + dt / 0.55)
 		her_pos = _her_from.lerp(_her_to, smoothstep(0.0, 1.0, _her_t))
-	# the glass shows her: your own turn and pose, standing on her slab
-	var walking := _her_t < 1.0
-	_phase += dt * (1.5 + 6.2 * (0.8 if walking else 0.0))
-	var ps: Figure.Pose = pl.fig.pose
-	_pose.breath = ps.breath
-	_pose.head_yaw = ps.head_yaw
-	_pose.ripple = 0.75 if walking else ps.ripple * 0.5
-	_pose.phase = _phase if walking else ps.phase
-	_pose.body_y = absf(sin(_phase)) * 0.03 if walking else ps.body_y
-	refl.hold_pose = _pose
-	refl.hold_xf = Transform3D(pl.fig.global_transform.basis, her_pos + Vector3(0, pl.fig.global_position.y - pp.y, 0))
-	# the reset stone's interact follows you on the floor
+	_her_vis = move_toward(_her_vis, 1.0 if (active or _between > 0.0) else 0.0, dt * 1.5)
+	her.visible = _her_vis > 0.01
+	if her.visible:
+		her.set_param("vis", _her_vis)
+		var walking := _her_t < 1.0
+		_phase += dt * (1.5 + 6.2 * (0.8 if walking else 0.0))
+		var ps: Figure.Pose = pl.fig.pose
+		_pose.breath = ps.breath
+		_pose.head_yaw = -ps.head_yaw
+		_pose.ripple = 0.75 if walking else ps.ripple * 0.5
+		_pose.phase = _phase if walking else ps.phase
+		_pose.body_y = absf(sin(_phase)) * 0.03 if walking else ps.body_y
+		her.apply_pose(_pose)
+		# she faces as your mirror image across the glass line
+		var f := -pl.fig.global_transform.basis.z
+		f = f - 2.0 * f.dot(U) * U
+		her.global_position = her_pos + Vector3(0, pl.fig.global_position.y - pp.y, 0)
+		her.rotation.y = atan2(-f.x, -f.z)
+	# the reset stone's interact follows you on the board
 	var ri := game.level.interact_by_id("steps_reset")
 	if ri: ri.pos = pp if active else Vector3(0, -99, 0)

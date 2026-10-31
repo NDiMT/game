@@ -10,6 +10,7 @@ extends CanvasLayer
 signal interact
 signal shard                       # v0.5: the inventory slot tapped (raise / lower the mirror shard)
 signal satchel                     # v1.0 M3b: the satchel slot tapped
+signal hot(k: String)              # v1.1: a hotbar slot tapped (its item)
 
 const JOY_R := 54.0
 const BTN_R := 36.0
@@ -31,6 +32,13 @@ var inv_on := false                # ...and raised
 var inv_pulse := false             # v0.9: the shard is the key here: its slot pulses until you first raise it
 var inv_alpha := 0.0
 var bag_has := false               # v1.0 M3b: anything in the satchel
+## v1.1: the HOTBAR: the carried things, a row of slots at the bottom (clear of the stick's thumb and the button)
+var hot_items: Array[String] = []
+var hot_icons := {}
+var hot_sel := ""
+var _hot_press := {}
+const HOT_S := 46.0
+const HOT_GAP := 8.0
 var bag_alpha := 0.0
 var _bag_press := 0.0
 var _inv_press := 0.0
@@ -53,6 +61,17 @@ func btn_center() -> Vector2:
 ## the inventory slot, top left under the shrine counter
 func inv_center() -> Vector2:
 	return Vector2(44.0, 98.0)
+
+func hot_rects() -> Array[Rect2]:
+	var s := vp_size()
+	var n := hot_items.size()
+	var out: Array[Rect2] = []
+	if n == 0: return out
+	var wbar := n * HOT_S + (n - 1) * HOT_GAP
+	var cx := (12.0 + (s.x - 124.0)) * 0.5                  # (centred left of the interact button)
+	var x0 := maxf(12.0, cx - wbar * 0.5)
+	for i in n: out.append(Rect2(x0 + i * (HOT_S + HOT_GAP), s.y - 26.0 - HOT_S, HOT_S, HOT_S))
+	return out
 
 func bag_center() -> Vector2:
 	return Vector2(44.0, 152.0)
@@ -95,6 +114,12 @@ func _input(e: InputEvent) -> void:
 				_inv_press = 1.0
 				shard.emit()
 				return
+			var hr := hot_rects()
+			for i in hr.size():
+				if hr[i].grow(4.0).has_point(p):
+					_hot_press[hot_items[i]] = 1.0
+					hot.emit(hot_items[i])
+					return
 			if bag_has and bag_alpha > 0.3 and p.distance_to(bag_center()) < 30.0:
 				_bag_press = 1.0
 				satchel.emit()
@@ -141,6 +166,7 @@ func _process(dt: float) -> void:
 	icon_alpha = move_toward(icon_alpha, 1.0 if (enabled and _want_icon) else 0.0, dt * 4.0)
 	_press = move_toward(_press, 0.0, dt * 4.0)
 	_inv_press = move_toward(_inv_press, 0.0, dt * 4.0)
+	for k in _hot_press.keys(): _hot_press[k] = move_toward(_hot_press[k], 0.0, dt * 4.0)
 	inv_alpha = move_toward(inv_alpha, 1.0 if (enabled and inv_has) else 0.0, dt * 2.0)
 	bag_alpha = move_toward(bag_alpha, 1.0 if (enabled and bag_has) else 0.0, dt * 2.0)
 	_bag_press = move_toward(_bag_press, 0.0, dt * 4.0)
@@ -195,6 +221,19 @@ class Pad extends Control:
 				var dv3 := Vector2(cos(PI * 0.5 * k + PI * 0.25), sin(PI * 0.5 * k + PI * 0.25))
 				draw_line(ic + dv3 * (ir - 1.0), ic + dv3 * (ir + 3.5), Color(INK, 0.35 * ia), 1.0, true)
 			_icon("shard", ic, 11.0, Color(INK, 0.95 * ia), Color(CY, ia))
+		# the hotbar: a box per carried thing, the chosen one ringed in crimson
+		if ctl.enabled:
+			var hr := ctl.hot_rects()
+			for i in hr.size():
+				var k: String = ctl.hot_items[i]
+				var r: Rect2 = hr[i]
+				var pr: float = ctl._hot_press.get(k, 0.0)
+				var rr := r.grow(pr * 2.0)
+				draw_rect(rr, Color(0.06, 0.07, 0.08, 0.42), true)
+				var sel := k == ctl.hot_sel
+				draw_rect(rr, Color(CY, 0.95) if sel else Color(INK, 0.55), false, 2.0 if sel else 1.2)
+				var tex: Texture2D = ctl.hot_icons.get(k, null)
+				if tex: draw_texture_rect(tex, rr.grow(-5.0), false)
 		# the satchel: a round slot under the shard's, a small bag drawn in it
 		if ctl.bag_alpha > 0.0:
 			var ba := ctl.bag_alpha

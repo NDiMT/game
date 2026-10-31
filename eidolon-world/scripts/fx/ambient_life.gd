@@ -44,7 +44,7 @@ static func moths(centre: Vector3, count := 5, radius := 0.38, seed := 0) -> Mul
 	return mi
 
 ## petals drifting through `box` (world space) on `wind` (m/s); `rose_share` of them faintly rose
-static func petals(box: AABB, count := 60, wind := Vector3(1.1, 0.0, -0.45), rose_share := 0.2, size := 0.06) -> MultiMeshInstance3D:
+static func petals(box: AABB, count := 60, wind := Vector3(1.1, 0.0, -0.45), rose_share := 0.2, size := 0.06, leaf_share := 0.3) -> MultiMeshInstance3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(box.position)
 	var mm := MultiMesh.new()
@@ -64,6 +64,7 @@ static func petals(box: AABB, count := 60, wind := Vector3(1.1, 0.0, -0.45), ros
 	m.set_shader_parameter("wind", wind)
 	m.set_shader_parameter("rose_share", rose_share)
 	m.set_shader_parameter("size", size)
+	m.set_shader_parameter("leaf_share", leaf_share)
 	var mi := MultiMeshInstance3D.new()
 	mi.name = "Petals"
 	mi.multimesh = mm
