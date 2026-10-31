@@ -8,7 +8,7 @@ global uniform vec4 accent;
 uniform float part = 0.0;
 uniform float k = 1.0;                 // 0..1 (fade it out when taken)
 uniform float height = 1.6;            // the pillar (m)
-uniform float width = 0.7;
+uniform float width = 0.9;
 uniform vec3 core_col : source_color = vec3(1.0, 0.95, 0.88);
 void vertex() {
 	if (part < 0.5) {
@@ -26,18 +26,21 @@ void fragment() {
 	if (part < 0.5) {
 		float x = abs(UV.x - 0.5) * 2.0;
 		float y = 1.0 - UV.y;                                   // 0 at the base, 1 at the top
-		float core = exp(-x * x * 22.0);
-		float body = exp(-x * x * 5.0);
+		float core = exp(-x * x * 12.0);
+		float body = exp(-x * x * 3.5);
 		float v = pow(1.0 - y, 1.4) * smoothstep(0.0, 0.05, y);
 		float sh = 0.85 + 0.15 * sin(y * 14.0 - TIME * 2.2 + x * 3.0);
-		c = mix(accent.rgb, core_col, core * 0.75);
-		a = (core * 0.85 + body * 0.32) * v * sh;
+		c = mix(accent.rgb, core_col, core * 0.3);                  // (crimson-pink: a white core is lost on cream marble)
+		// v1.1c (QA P2-7): stronger, and a slow bright streak climbing the core (readable on a phone, in fog, on marble)
+		float streak = exp(-pow((fract(y * 0.8 - TIME * 0.35) - 0.5) * 6.0, 2.0)) * core;
+		a = (core * 1.0 + body * 0.55) * v * sh * 1.6 + streak * 0.6 * (1.0 - y);
+		c = mix(c, core_col, streak * 0.6);
 	} else {
 		float r = length(UV - 0.5) * 2.0;
 		float g = pow(max(1.0 - r, 0.0), 1.6);
 		float ring = exp(-pow((r - 0.55 - 0.1 * fract(TIME * 0.4)) * 9.0, 2.0)) * (1.0 - fract(TIME * 0.4));
-		c = mix(accent.rgb, core_col, g * 0.5);
-		a = g * 0.38 + ring * 0.35;
+		c = mix(accent.rgb, core_col, g * 0.25);
+		a = g * 0.7 + ring * 0.6;
 	}
 	ALBEDO = c;
 	ALPHA = clamp(a * br, 0.0, 1.0);

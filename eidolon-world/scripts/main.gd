@@ -469,6 +469,7 @@ func _process(dt: float) -> void:
 				off = wonders.lean(p)                              # (v0.9) a wonder space: lean toward it
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
+	_update_dome(dt)
 	if mode == "play": _auto_quality(dt)
 	if prof_on: _t0 = _pm("camera rules", _t0)
 	level.update_inscriptions(player.position)
@@ -1009,6 +1010,8 @@ func _save_settings() -> void:
 
 ## v0.8.3: draw every new v0.8.x material once, a few pixels in front of the camera, for a few frames at
 ## start-up, so no shader is compiled (a hitch) the first time a flame is lit, a glow lands or a print shows
+const WARM_CHUNK := 48
+var warm_done := false              # (tests) the warm-up has drawn every pair
 func _warm_up_shaders() -> void:
 	var holder := Node3D.new()
 	world.cam.add_child(holder)
@@ -1039,6 +1042,7 @@ func _warm_up_shaders() -> void:
 	# v0.8.5: EVERY mesh + material pair in the chapter (hidden ones too: the cinematic, the solved states,
 	# the props), drawn once, tiny, in front of the camera: no shader is compiled the first time it is seen
 	var seen := {}
+	var pending: Array[GeometryInstance3D] = []
 	for g in find_children("*", "GeometryInstance3D", true, false):
 		if g.is_ancestor_of(holder) or holder.is_ancestor_of(g): continue
 		var mesh: Mesh = null
@@ -1083,7 +1087,7 @@ func _warm_up_shaders() -> void:
 			w.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			w.layers = 0xFFFFF
 			n += 1
-			holder.add_child(w)
+			pending.append(w)
 	# the 2D materials (the glass close-up, the lens, the UI runes and cards): one tiny quad each
 	var cl := CanvasLayer.new()
 	cl.layer = -100
@@ -1114,8 +1118,19 @@ func _warm_up_shaders() -> void:
 		if v and v.render_target_update_mode == SubViewport.UPDATE_DISABLED: v.render_target_update_mode = SubViewport.UPDATE_ONCE
 	print("[warm-up] %d mesh/material pairs (of %d geometry nodes), %d canvas materials" % [n, find_children("*", "GeometryInstance3D", true, false).size(), cseen.size()])
 	for k in 4: await get_tree().process_frame
+	# (QA_V11 P1-8: the load got slow: every pair compiled in ONE frame before the title could show. Now the
+	# title draws first, then the pairs go in a few dozen a frame while it is up; each batch is dropped after
+	# it has been drawn twice)
+	for i in range(0, pending.size(), WARM_CHUNK):
+		if not is_instance_valid(holder): return
+		var batch := pending.slice(i, i + WARM_CHUNK)
+		for w in batch: holder.add_child(w)
+		for k in 2: await get_tree().process_frame
+		for w in batch: w.queue_free()
+	warm_done = true
 	await get_tree().create_timer(0.4).timeout
 	holder.queue_free()
+	cl.queue_free()
 	cl.queue_free()
 	# (the one-off renders above are done: nothing is left asking to render)
 	for r in puzzles.reflectors:
@@ -1369,7 +1384,7 @@ func state_dict() -> Dictionary:
 		"fps": Engine.get_frames_per_second(), "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "beds": sfx.bed_debug(), "drone": sfx.drone.playing, "music": sfx._music_cur, "speed": player.speed01,
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
-		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text, "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
+		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text.replace("\n", " "), "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
 		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "yaw_index": world.yaw_index, "zoom": snappedf(world.zoom, 0.01), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
 		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01),
 		"chapter": chapter.state, "lens": chapter.lens_on, "calm": snappedf(chapter.calm, 0.01), "cine_t": snappedf(cine.t, 0.1) if cine else -1.0,
@@ -1377,6 +1392,20 @@ func state_dict() -> Dictionary:
 		"beam_good": puzzles.beam_good, "carry": chapter.carrying, "sc_carry": chapter.sc_carry, "torque": [chapter.scale_torque().x, chapter.scale_torque().y],
 		"reveal": snappedf(world.reveal_k, 0.01), "feet": chapter.maze_feet.filter(func(f: MeshInstance3D) -> bool: return f.visible).size(),
 		"steps": _steps_state()}
+
+## (QA_V11 P1-9) up on the Mirror Walk the tholos's entablature and dome sit over the lower half of the view: they
+## fade out while you are up there (and back when you come down)
+var _dome: GeometryInstance3D
+var _dome_k := 0.0
+func _update_dome(dt: float) -> void:
+	if _dome == null:
+		_dome = level.get_node_or_null("Zone_Sdome") as GeometryInstance3D
+		if _dome == null: return
+	var p := player.position
+	var on_walk := mode == "play" and p.x > 29.6 and p.x < 33.2 and p.z > -46.0 and p.z < -23.0 and p.y > 3.4
+	_dome_k = move_toward(_dome_k, 1.0 if on_walk else 0.0, dt / 0.6)
+	_dome.transparency = _dome_k
+	_dome.visible = _dome_k < 0.99
 
 ## (v1.1d, the web touch test) the Our Steps floor, as the test reads it (it plays by the touch stick only)
 func _steps_state() -> Dictionary:

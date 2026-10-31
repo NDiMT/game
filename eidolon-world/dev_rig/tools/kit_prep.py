@@ -16,6 +16,7 @@ SPEC = {
  "ladder": ("h", 3.0, 256), "bridge_deck": ("w", 3.0, 512), "bridge_end": ("w", 2.4, 512), "urns": ("h", 0.9, 256),
  "awning_post": ("h", 2.6, 256),
  "pickup_cloth": ("w", 0.55, 256), "pickup_plinth": ("h", 0.45, 256),
+ "gallery": ("w", 3.0, 512), "dead_plant": ("h", 0.6, 256),
 }
 out = {}
 # (v2, review) NO brute decimation: Tripo's own smart-low-poly mesh is kept; it is welded, cleaned (degenerate and
@@ -54,7 +55,7 @@ for name, (fit, size, px) in SPEC.items():
     m = clean(m, next((v for k_, v in MAXT.items() if name.startswith(k_)), 0))
     # (drawn by the game's marble shader through props.gd, like every other prop: no textures shipped; the
     # placeholder colour only shows in other viewers. Wood pieces are flagged WOOD in props.gd, see HANDOFF)
-    wood = name in ("scaffold", "ladder", "awning_post")
+    wood = name in ("scaffold", "ladder", "awning_post", "gallery")
     nm = trimesh.visual.material.PBRMaterial(name="wood_placeholder" if wood else "marble_placeholder",
         baseColorFactor=[0.45, 0.38, 0.30, 1.0] if wood else [0.886, 0.863, 0.816, 1.0], metallicFactor=0.0, roughnessFactor=0.8)
     m.visual = trimesh.visual.TextureVisuals(material=nm)

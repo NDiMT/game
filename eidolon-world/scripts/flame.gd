@@ -91,6 +91,8 @@ func _init(style := 0.0, size := 0.6, light_col := Color(1.0, 0.68, 0.38), noise
 func _exit_tree() -> void:
 	all.erase(self)
 
+static var _WEB := OS.has_feature("web")
+
 func level() -> float:
 	var f: float = mat.get_shader_parameter("intensity")
 	var g = mat.get_shader_parameter("gutter")
@@ -111,7 +113,9 @@ func _process(dt: float) -> void:
 		light.light_energy = k * energy * f * _fade
 		light.omni_range = range_m * (1.0 if high else 0.75)
 		light.position = Vector3(sin(_t * 7.3 + _seed) * 0.012, _ly + sin(_t * 5.1) * 0.01, cos(_t * 6.1 + _seed) * 0.012)
-		light.shadow_enabled = key and shadows and self == _shadow_f       # (QA P1-15: one shadowed flame at a time)
+		# (QA P1-15: one shadowed flame at a time; QA_V11 P1-1: none on the web, whose Compatibility renderer has no
+		# dual-paraboloid omni shadows (it logged an error per pass and drew nothing); cube there would cost 6 passes)
+		light.shadow_enabled = key and shadows and self == _shadow_f and not _WEB
 
 ## v0.8.3: ONE light budget for every dynamic light (the flames and the aqua lights together): the nearest
 ## few within reach are live (`budget`: 3 on High, 2 on Auto, 1 on Low), chosen 4 times a second with a

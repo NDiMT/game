@@ -35,6 +35,10 @@ uniform float flame_k = 1.0;
 // stone falls to near-black except within `dark_lamp.w` m of the carried lamp (xyz), which shows it warm
 uniform float dark_k = 0.0;
 uniform vec4 dark_lamp = vec4(0.0, -999.0, 0.0, 0.0);
+// v1.1c (QA_V11 P1-2): stone standing in still water inside `sub_rect` (x0, z0, x1, z1) below `sub_y` + 3 cm reads
+// wet, dark and mossy (the same for every stone in it: the true path and the decoys look alike)
+uniform vec4 sub_rect = vec4(9.2, 4.5, 13.6, 9.5);      // (the Flooded Colonnade)
+uniform float sub_y = 0.15;                              // (Ch1Geo.CO_WATER_Y)
 uniform vec3 cream : source_color = vec3(0.745, 0.735, 0.705);
 uniform vec3 vein : source_color = vec3(0.34, 0.345, 0.36);
 uniform vec3 side_col : source_color = vec3(0.36, 0.355, 0.35);
@@ -338,6 +342,10 @@ void fragment() {
 	if (wp.y < fade_y) discard;
 	// the see-through's edge: the stone thins into pale haze toward the cut, a faint aqua light on it
 	col = mix(col, vec3(0.80, 0.82, 0.82), cut_haze * 0.8);
+	if (sub_rect.z > sub_rect.x && wp.x > sub_rect.x && wp.x < sub_rect.z && wp.z > sub_rect.y && wp.z < sub_rect.w && wp.y < sub_y + 0.03) {
+		float mz = smoothstep(0.35, 0.7, texture(noise_tex, wp.xz * 1.3 + wp.y).r);
+		col = mix(col * vec3(0.5, 0.55, 0.52), vec3(0.26, 0.31, 0.24), mz * 0.55);
+	}
 	if (dark_k > 0.001) {
 		float lr = length(wp - dark_lamp.xyz);
 		float seen = dark_lamp.w > 0.0 ? 1.0 - smoothstep(dark_lamp.w * 0.3, dark_lamp.w, lr) : 0.0;

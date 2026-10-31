@@ -18,6 +18,7 @@ const BTN_R := 36.0
 var vec := Vector2.ZERO            # joystick output, screen space (x right, y down), length <= 1
 var enabled := false
 var joy_index := -1
+var joy_serial := 0                 # (v1.1d) +1 per thumb-down on the stick: Our Steps tells a new drag from a held one
 var joy_base := Vector2.ZERO
 var joy_knob := Vector2.ZERO
 var joy_alpha := 0.0
@@ -32,12 +33,13 @@ var inv_on := false                # ...and raised
 var inv_pulse := false             # v0.9: the shard is the key here: its slot pulses until you first raise it
 var inv_alpha := 0.0
 var bag_has := false               # v1.0 M3b: anything in the satchel
-## v1.1: the HOTBAR: the carried things, a row of slots at the bottom (clear of the stick's thumb and the button)
+## v1.1: the HOTBAR: the carried things. (QA_V11 P1: a COLUMN up the right edge, above the interact button: out
+## of the stick's thumb zone, 52 px slots; the shard lives here, not in a second round slot)
 var hot_items: Array[String] = []
 var hot_icons := {}
 var hot_sel := ""
 var _hot_press := {}
-const HOT_S := 46.0
+const HOT_S := 52.0
 const HOT_GAP := 8.0
 var bag_alpha := 0.0
 var _bag_press := 0.0
@@ -67,11 +69,20 @@ func hot_rects() -> Array[Rect2]:
 	var n := hot_items.size()
 	var out: Array[Rect2] = []
 	if n == 0: return out
-	var wbar := n * HOT_S + (n - 1) * HOT_GAP
-	var cx := (12.0 + (s.x - 124.0)) * 0.5                  # (centred left of the interact button)
-	var x0 := maxf(12.0, cx - wbar * 0.5)
-	for i in n: out.append(Rect2(x0 + i * (HOT_S + HOT_GAP), s.y - 26.0 - HOT_S, HOT_S, HOT_S))
+	var b := btn_center()
+	var x0 := minf(b.x - HOT_S * 0.5, s.x - 10.0 - HOT_S)
+	var y0 := b.y - BTN_R - 22.0 - HOT_S                    # the first slot just above the button, the rest stacked up
+	for i in n: out.append(Rect2(x0, y0 - i * (HOT_S + HOT_GAP), HOT_S, HOT_S))
 	return out
+
+## the round shard slot only while the shard is not on the hotbar (QA_V11: no second shard slot)
+func inv_round() -> bool:
+	return inv_has and not hot_items.has("shard")
+
+## the stick's thumb zone (the lower left): inside it the stick always wins
+func in_stick_zone(p: Vector2) -> bool:
+	var s := vp_size()
+	return p.x < s.x * 0.6 and p.y > s.y * 0.38
 
 func bag_center() -> Vector2:
 	return Vector2(44.0, 152.0)
@@ -110,11 +121,12 @@ func _input(e: InputEvent) -> void:
 		var p: Vector2 = canvas.get_global_transform_with_canvas().affine_inverse() * e.position
 		if e.pressed:
 			_touches[e.index] = p
-			if inv_has and inv_alpha > 0.3 and p.distance_to(inv_center()) < 34.0:
+			if inv_round() and inv_alpha > 0.3 and p.distance_to(inv_center()) < 34.0:
 				_inv_press = 1.0
 				shard.emit()
 				return
-			var hr := hot_rects()
+			var hr: Array[Rect2] = []
+			if not in_stick_zone(p): hr = hot_rects()
 			for i in hr.size():
 				if hr[i].grow(4.0).has_point(p):
 					_hot_press[hot_items[i]] = 1.0
@@ -132,6 +144,7 @@ func _input(e: InputEvent) -> void:
 				return                        # a second finger: the stick keeps its own
 			if joy_index < 0 and p.x < vp_size().x * 0.6:
 				joy_index = e.index
+				joy_serial += 1
 				joy_base = p
 				joy_knob = p
 				vec = Vector2.ZERO
@@ -167,13 +180,13 @@ func _process(dt: float) -> void:
 	_press = move_toward(_press, 0.0, dt * 4.0)
 	_inv_press = move_toward(_inv_press, 0.0, dt * 4.0)
 	for k in _hot_press.keys(): _hot_press[k] = move_toward(_hot_press[k], 0.0, dt * 4.0)
-	inv_alpha = move_toward(inv_alpha, 1.0 if (enabled and inv_has) else 0.0, dt * 2.0)
+	inv_alpha = move_toward(inv_alpha, 1.0 if (enabled and inv_round()) else 0.0, dt * 2.0)
 	bag_alpha = move_toward(bag_alpha, 1.0 if (enabled and bag_has) else 0.0, dt * 2.0)
 	_bag_press = move_toward(_bag_press, 0.0, dt * 4.0)
 	# (v0.8.5) redraw only when something on it moves: the breathing button, the stick, a fade, a press
 	var sig := Vector4(joy_alpha + icon_alpha * 3.0, inv_alpha + _press * 5.0 + _inv_press * 7.0, joy_knob.x + joy_base.x * 0.37, joy_knob.y + joy_base.y * 0.41)
 	var vs := vp_size()
-	if icon_alpha > 0.0 or joy_alpha > 0.0 or (inv_pulse and inv_alpha > 0.0) or sig != _last_sig or enabled != _last_en or icon != _last_icon or inv_on != _last_inv or vs != _last_vs:
+	if icon_alpha > 0.0 or joy_alpha > 0.0 or (inv_pulse and inv_has) or _hot_press.values().any(func(v: float) -> bool: return v > 0.0) or sig != _last_sig or enabled != _last_en or icon != _last_icon or inv_on != _last_inv or vs != _last_vs:
 		_last_sig = sig
 		_last_en = enabled
 		_last_icon = icon
@@ -201,7 +214,7 @@ class Pad extends Control:
 		if ctl == null: return
 		var e := 1.0 if ctl.enabled else 0.0
 		# the inventory: one round slot, the shard inside (lit while raised)
-		if ctl.inv_alpha > 0.0:
+		if ctl.inv_alpha > 0.0 and ctl.inv_round():
 			var ia := ctl.inv_alpha
 			var ic := ctl.inv_center()
 			var ir := 22.0 * (1.0 + ctl._inv_press * 0.1)
@@ -234,6 +247,13 @@ class Pad extends Control:
 				draw_rect(rr, Color(CY, 0.95) if sel else Color(INK, 0.55), false, 2.0 if sel else 1.2)
 				var tex: Texture2D = ctl.hot_icons.get(k, null)
 				if tex: draw_texture_rect(tex, rr.grow(-5.0), false)
+				if k == "shard" and ctl.inv_pulse and not ctl.inv_on:
+					# (moved from the old round slot) a gentle call until it is first raised: frames breathing out
+					for j in 2:
+						var f := fmod(ctl._t * 0.55 + j * 0.5, 1.0)
+						draw_rect(rr.grow(3.0 + f * 12.0), Color(CY, 0.55 * (1.0 - f)), false, 1.6)
+				if k == "shard" and ctl.inv_on:
+					for j in 4: draw_rect(rr.grow(3.0 + j * 3.0), Color(CY, 0.08 * (1.0 - j / 4.0)), false, 2.0)
 		# the satchel: a round slot under the shard's, a small bag drawn in it
 		if ctl.bag_alpha > 0.0:
 			var ba := ctl.bag_alpha

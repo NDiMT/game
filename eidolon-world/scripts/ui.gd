@@ -468,18 +468,40 @@ static func _roman(n: int) -> String:
 	return r
 
 func show_area(title: String) -> void:
-	area_label.text = title.to_upper()
-	# (v1.0 QA P1-12: never under the HUD slots: the title keeps between them, on two lines if it must)
+	# (v1.0 QA P1-12, QA_V11 P1-4: never under the HUD slots and never cut off: the title keeps between the slots;
+	# too long for one line, it breaks at the most even word gap onto two, and steps its size down until both fit)
 	var half := clampf((root.size.x - 2.0 * 82.0) * 0.5, 100.0, 180.0)
+	var aw := half * 2.0 - 6.0
+	var t := title.to_upper()
+	var f := area_label.get_theme_font("font")
+	var lines := [t]
+	var fs := 13
+	if f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > aw:
+		var words := t.split(" ", false)
+		var best := 1e9
+		for k in range(1, words.size()):
+			var a := " ".join(words.slice(0, k))
+			var b := " ".join(words.slice(k))
+			var m := maxf(f.get_string_size(a, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, f.get_string_size(b, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+			if m < best: best = m; lines = [a, b]
+		while fs > 9 and _widest(f, lines, fs) > aw: fs -= 1
+	area_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	area_label.clip_text = false
+	area_label.add_theme_font_size_override("font_size", fs)
+	area_label.text = "\n".join(lines)
 	area_label.offset_left = -half; area_label.offset_right = half
-	area_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	area_label.offset_bottom = area_label.offset_top + (20.0 if area_label.get_theme_font("font").get_string_size(area_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x < half * 2.0 - 8.0 else 40.0)
+	area_label.offset_bottom = area_label.offset_top + (20.0 if lines.size() == 1 else 38.0)
 	area_rule.queue_redraw()
 	if _area_tw: _area_tw.kill()
 	_area_tw = create_tween()
 	_area_tw.tween_property(area_label, "modulate:a", 0.85, 1.6).set_trans(Tween.TRANS_SINE)
 	_area_tw.tween_interval(2.6)
 	_area_tw.tween_property(area_label, "modulate:a", 0.0, 2.0).set_trans(Tween.TRANS_SINE)
+
+func _widest(f: Font, lines: Array, fs: int) -> float:
+	var w := 0.0
+	for l in lines: w = maxf(w, f.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+	return w
 
 func fade_to(a: float, dur: float) -> Tween:
 	var tw := create_tween()
@@ -504,7 +526,8 @@ class Rules extends Control:
 		if label == null: return
 		var f := label.get_theme_font("font")
 		var fs := label.get_theme_font_size("font_size")
-		var w := f.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var w := 0.0
+		for l in label.text.split("\n"): w = maxf(w, f.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
 		var cy := size.y * 0.5 + 1.0
 		var cx := size.x * 0.5
 		var gap := w * 0.5 + 14.0

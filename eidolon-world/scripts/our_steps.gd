@@ -151,6 +151,7 @@ var _leaving := false
 var _between := 0.0
 var _bump := Vector3.INF
 var _last_dir := Vector2i.ZERO
+var _drag_serial := -1
 var plate_y: Array[ShaderMaterial] = []
 var plate_h: Array[ShaderMaterial] = []
 var pieces: Array[Node3D] = []       # per board: its columns and glyphs
@@ -283,7 +284,12 @@ func input(world_dir: Vector3) -> void:
 	for d in DIRS:
 		var k: float = dir_world(d).dot(wd)
 		if k > bd: bd = k; best = d
-	if _last_dir != Vector2i.ZERO and best != _last_dir and dir_world(_last_dir).dot(wd) > bd - 0.25: best = _last_dir
+	# (QA_V11) the hysteresis only holds a HELD drag steady (its repeats); a new drag steps the way THAT drag points
+	var serial: int = game.controls.joy_serial
+	if serial != _drag_serial:
+		_drag_serial = serial
+		_last_dir = Vector2i.ZERO
+	if _last_dir != Vector2i.ZERO and best != _last_dir and dir_world(_last_dir).dot(wd) > bd - 0.12: best = _last_dir
 	try_step(best)
 
 func try_step(d: Vector2i) -> bool:

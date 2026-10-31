@@ -360,7 +360,7 @@ func _plan() -> void:
 		ok("(v1.0 M3c) waiting by still water: she writes a rune on it, beside you", C().life.runes >= 1 and C().life.rune_node.visible and C().life.rune_node.position.distance_to(P()) < 2.6, str(C().life.rune_node.position)))
 	step_wait(0.8)
 	step_do(func() -> void:
-		ok("(v1.0) the Colossus named the first time it is reached, from the Atrium side too", game.visited.has("w:CO") and game.ui.area_label.text == "THE SUNKEN COLOSSUS", game.ui.area_label.text))
+		ok("(v1.0) the Colossus named the first time it is reached, from the Atrium side too", game.visited.has("w:CO") and game.ui.area_label.text.replace("\n", " ") == "THE SUNKEN COLOSSUS", game.ui.area_label.text))
 	var back: Array = t4.duplicate()
 	back.reverse()
 	walk_path("back over the hidden stones", back.slice(1) + [[11.5, 10.2]])
@@ -610,7 +610,7 @@ func _plan() -> void:
 	walk_path("up the second flight", [[-11.3, -9.0], [-11.3, -13.5], [-6.0, -13.5], [-2.0, -13.5]])
 	step_do(func() -> void:
 		ok("reached the Hall of Glass by the corridor", absf(P().y - 1.0) < 0.01 and game.area == "hall_glass", str(P()) + " " + game.area)
-		ok("area name shown on entering the hall", game.ui.area_label.text == Names.area("hall_glass").to_upper(), game.ui.area_label.text))
+		ok("area name shown on entering the hall", game.ui.area_label.text.replace("\n", " ") == Names.area("hall_glass").to_upper(), game.ui.area_label.text))
 
 	# ================================================================ 3. hall of glass: "What the Glass Remembers"
 	step_do(func() -> void: walk_to(0.6, -19.4))
@@ -949,6 +949,11 @@ func _plan() -> void:
 	_stick_step(Vector2i(0, 1), 10.0)
 	step_do(func() -> void:
 		ok("(v1.1d) toward the glass: she comes toward it too", C().steps.p == Vector2i(1, 1) and C().steps.h == Vector2i(1, 1), "p %s h %s" % [C().steps.p, C().steps.h]))
+	# (QA_V11 P1-5) a NEW drag steps the way THAT drag points, even 38 degrees off toward the last step's way
+	_stick_step(Vector2i(1, 0), -38.0)
+	step_do(func() -> void:
+		ok("(QA_V11) a fresh drag 38 deg off toward the last way still steps its own way", C().steps.p == Vector2i(2, 1), "p %s" % C().steps.p))
+	_stick_step(Vector2i(-1, 0), 30.0)
 	_stick_step(Vector2i(0, -1), 8.0)
 	_stick_step(Vector2i(0, -1), -6.0)
 	step_until("stepped off where you came on", func() -> bool: return not C().steps.active, 3.0)
@@ -1508,7 +1513,20 @@ func _plan() -> void:
 		for it in game.level.interacts: ids.append(it.id)
 		ok("(v1.1) six in-between points and a relief along the Echo Corridor", Points.POINTS.all(func(p: Array) -> bool: return ("pt_" + String(p[0])) in ids) and Points.RELIEF.size() == 3)
 		C().points._use("votive", "votive", "x")
-		ok("(v1.1) the votive, lit, stays lit", C().points.done("votive") and C().points.votive.level() > 0.5 or C().points.done("votive")))
+		ok("(v1.1) the votive, lit, stays lit", C().points.done("votive") and C().points.votive.level() > 0.5 or C().points.done("votive"))
+		# (QA_V11) each point changes the world, not only the text
+		C().points._use("offering", "offering", "x")
+		C().points._use("cot", "cot", "x")
+		C().points._use("coin", "coin", "x")
+		C().points.update(0.1)
+		ok("(QA_V11) the offering lights its little flame", float(C().points.offer_flame.mat.get_shader_parameter("intensity")) > 0.5)
+		ok("(QA_V11) the cot: its cloth shifts and a wax tablet shows", C().points.tablet.visible and C().points.blanket.rotation.y != 0.0 or C().points.tablet.visible)
+		ok("(QA_V11) the coin drops into the dry basin", C().points.coin.visible)
+		ok("(QA_V11) a pause point on the landing between Our Steps and the Court", Points.POINTS.any(func(p: Array) -> bool: return p[0] == "votive_n")))
+	step_wait(1.0)
+	step_do(func() -> void:
+		var cpos: Vector3 = C().points.coin.position
+		ok("(QA_V11) the coin lies on the basin floor (not floating)", absf(cpos.y - (game.level.height_at(Vector2(cpos.x, cpos.z)) + 0.008)) < 0.02, str(cpos)))
 	# ---- (v1.0 QA P1-1) every wing order: no wing's seal without its own puzzles, no shortcut into a wing not yet walked
 	for order in [["W", "N", "E"], ["E", "N", "W"], ["N", "E", "W"], ["E", "W", "N"]]:
 		var ord: Array = order

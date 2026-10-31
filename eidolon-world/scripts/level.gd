@@ -1054,9 +1054,12 @@ func _shrine_platform() -> void:
 		column(c + Vector3(cos(a) * 2.5, 0, sin(a) * 2.5), 3.6)
 	var m := mb(z)
 	m.cyl(c + Vector3(0, 0.06, 0), 3.05, 3.15, 0.12, C(0.25), 32)
-	m.cyl(c + Vector3(0, 5.85, 0), 3.05, 3.05, 0.5, C(0.25, true), 32)
-	m.cyl(c + Vector3(0, 6.35, 0), 2.7, 3.0, 0.5, C(0.25, true), 32)
-	m.sphere(c + Vector3(0, 6.6, 0), Vector3(2.6, 1.2, 2.6), C(0.25, true), 24, 8)
+	# (QA_V11 P1-9: the entablature and dome are a zone of their own, "Sdome": seen from the Mirror Walk they sit
+	# over the lower half of the view, so main.gd fades them out while you are up there)
+	var dm := mb("Sdome")
+	dm.cyl(c + Vector3(0, 5.85, 0), 3.05, 3.05, 0.5, C(0.25, true), 32)
+	dm.cyl(c + Vector3(0, 6.35, 0), 2.7, 3.0, 0.5, C(0.25, true), 32)
+	dm.sphere(c + Vector3(0, 6.6, 0), Vector3(2.6, 1.2, 2.6), C(0.25, true), 24, 8)
 	occluders.append(AABB(c + Vector3(-3.15, 5.6, -3.15), Vector3(6.3, 2.3, 6.3)))     # (v1.0 QA P1-11: it fades over the Mirror Walk)
 	statue(z, c + Vector3(0, 0, -1.8), PI, 0.95, 0.5)
 	# v0.5: a round pool under the crystal, where her hand meets yours

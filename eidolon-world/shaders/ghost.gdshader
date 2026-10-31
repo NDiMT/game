@@ -96,6 +96,15 @@ void fragment() {
 			if (abs(q.x) < wmask[i].z && abs(q.y) < wmask[i].w) discard;
 		}
 	}
+	// v1.1c (A, QA_V11 P1-2): a reflection ON WATER (a pool puppet, ripple_amt > 0.5) is broken into wavering
+	// horizontal bands by the ripples (dithered gaps that drift), so it reads as on the surface, not painted on stone
+	float wbreak = 0.0;
+	if (project > 0.5 && ripple_amt > 0.5) {
+		float bnd = sin(pp.z * 21.0 + pp.x * 4.0 + TIME * 1.6 + sin(pp.x * 6.0 - TIME * 1.1) * 1.4);
+		float n2 = sin(pp.x * 13.0 - pp.z * 9.0 + TIME * 2.3);
+		wbreak = smoothstep(0.55, 0.95, bnd * 0.75 + n2 * 0.25);
+		if (bayer4(FRAGCOORD.xy) < wbreak * 0.85) discard;
+	}
 	if (vis < 0.999 && bayer4(FRAGCOORD.xy) > vis) discard;
 	vec2 hm = vuv.x < 0.5 ? cloak_holes(rest) : vec2(0.0);
 	vec3 base = vcol.rgb;
@@ -109,9 +118,11 @@ void fragment() {
 	vec3 c = mix(refl, eid, ghost);
 	c = mix(c, surface_col, surface_mix);
 	vec3 emb = embroidery(vuv);
+	if (project > 0.5 && ripple_amt > 0.5) c = mix(c * 0.62, surface_col * 0.7, 0.18) * (1.0 - 0.25 * wbreak);     // (in water: darker, sunk into it)
 	ALBEDO = c;
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.15;
 	EMISSION = _hc() * (vcol.a * glint * 2.2 + emb.x * emb.z * 1.3) * (1.0 - surface_mix * 0.6) + _ha() * fres * 0.25 * ghost;
+	if (project > 0.5 && ripple_amt > 0.5) EMISSION *= 0.6;
 	if (hm.x > 0.5) { ALBEDO = vec3(0.02, 0.022, 0.026); EMISSION = vec3(0.0); }
 }

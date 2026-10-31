@@ -24,6 +24,8 @@ const RENDER_TIER = arg('--tier', 'low');
 const SHOT_SCALE = arg('--shot-scale', 'css');       // css = 390x844 PNGs (4x cheaper to encode than DPR 2), device
 const BUDGET = +arg('--budget', 430) * 1000;        // the room loop stops here (the solve + checks must still fit in 10 min)
 const W = 390, H = 844;
+const HIGH_ROOMS = arg('--high-rooms', 'hall_glass,shard_gallery').split(',').filter(Boolean);
+const HIGH_WAIT = +arg('--high-wait', 6000);
 const ROOMS = ['waking_pool', 'stair_breath', 'hall_glass', 'shard_gallery', 'garden_veiled', 'hollow_walk', 'court_light',
   'mist_maze', 'echo_corridor', 'scales', 'eidolon_ledge', 'gate_four', 'first_shrine'];
 // (v0.8.5: main.gd ROOM_ENTRY.mist_maze now lands inside the maze doorway at (12.0, -28.0): no nudge needed)
@@ -175,6 +177,15 @@ try {
   summary.audio = { sfx_ready: a.sfx_ready, music: a.music, drone: a.drone, buses: a.buses, beds, played: a.played };
   check('audio: state dump (sfx ready, music set, an audible bed playing)', a.sfx_ready === true && !!a.music && playingBeds.length > 0,
     `sfx_ready=${a.sfx_ready} music=${a.music} drone=${a.drone} beds=${bedFiles.length} audible+playing=${playingBeds.join(',')} jingle_duck=${beds.jingle_duck} bed_restart=${a.played?.bed_restart || 0}`);
+  // ---------------------------------------------------------------- (QA_V11 P1-1) a stretch on HIGH: the console check must see
+  // the High-tier passes too (the flame shadows flooded it there and nowhere else); no shots (frames are slow on High)
+  if (HIGH_ROOMS.length) {
+    await cmd('quality:high');
+    for (const room of HIGH_ROOMS) { await cmd('jump:' + room); await wait(HIGH_WAIT); }
+    const sh = await st();
+    check('quality: a High-tier stretch ran (flames, shadows) for the console checks', sh.tier === 'HIGH', `tier=${sh.tier} rooms=${HIGH_ROOMS.join(',')} fps=${sh.fps}`);
+    await cmd('quality:' + RENDER_TIER);
+  }
   // ---------------------------------------------------------------- one puzzle solve through the hooks: the shadow chamber
   info('solve: jump to the shadow chamber');
   await cmd('jump:shard_gallery'); await wait(2000);
