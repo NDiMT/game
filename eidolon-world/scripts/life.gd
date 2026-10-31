@@ -155,7 +155,6 @@ var wisps: Array = []
 const WISPS := [[Vector3(13.0, 2.05, -34.0), 3.0], [Vector3(11.0, 0.2, 6.5), 2.5], [Vector3(19.0, 0.55, 11.4), 2.0]]
 func _update_embers() -> void:
 	var p := game.player.position
-	if not Juice.soft_ok: return
 	if wisps.is_empty():
 		for w in WISPS:
 			var m := FxBurst.mist(self, w[0], w[1])

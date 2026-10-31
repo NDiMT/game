@@ -162,10 +162,7 @@ func _beacon(at: Vector3, cloth: bool) -> Node3D:
 	var pm := PickupMarker.new()
 	pm.bed = "cloth" if cloth else ""
 	pm.bed_mat = game.level.marble_mat
-	var keep := PickupMarker.high
-	if not Juice.soft_ok: PickupMarker.high = false          # (web: its twinkles are soft particles: see Juice.soft_ok)
 	add_child(pm)
-	PickupMarker.high = keep
 	pm.position = at
 	return pm
 
