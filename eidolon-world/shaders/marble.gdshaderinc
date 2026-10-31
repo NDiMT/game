@@ -282,7 +282,7 @@ void fragment() {
 			float hz = dot(wp.xz, vec2(abs(wn.z), abs(wn.x)));
 			float st = texture(noise_tex, vec2(hz * 1.9, wp.y * 0.12)).r;
 			float stain = smoothstep(0.52, 0.78, st) * (1.0 - smoothstep(0.0, 0.85, fuv.y + (st - 0.5) * 0.4));
-			col *= 1.0 - stain * 0.3 * vec3(1.0, 1.04, 1.1);
+			col *= 1.0 - stain * 0.18 * vec3(1.0, 1.04, 1.1);   // (softened 40 %)
 		}
 		// v1.0 (A): contact AO: a block's sides darken softly toward their bottom edge, where they meet the
 		// ground or the block below (a cheap stand-in for SSAO, which the Compatibility renderer lacks)
