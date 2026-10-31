@@ -927,36 +927,37 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("stop")
 		ok("the hollow walk's gate is closed", P().z > -15.05, str(P())))
-	# "Our Steps" (v1.1): rebuilt on the earlier game's rules (two boards: "The Column", "Two Stones"); played
-	# through the REAL input path (a thumb on the touch stick, never quite straight), not the dev command
+	# "Our Steps" (v1.1d): the v1.0 mirror's LOOK, the old boards' RULES; played through the REAL input path (a thumb
+	# on the touch stick, never quite straight), not the dev command
 	step_do(func() -> void:
 		for bi in OurSteps.BOARDS.size():
 			var sv: Dictionary = OurSteps.solve(bi)
-			ok("(v1.1) Our Steps board %d '%s': solvable in its par, by BFS" % [bi + 1, OurSteps.BOARDS[bi]["title"]], sv["length"] == int(OurSteps.BOARDS[bi]["par"]), str(sv))
-			ok("(v1.1) board %d: at most two columns" % (bi + 1), (OurSteps.board(bi)["cols"] as Array).size() <= 2)
-		ok("(v1.1) the old tall-glass version is gone: one board, a glass line down its middle", OurSteps.W == 6 and OurSteps.MIRROR_X == 3)
-		ok("the board starts unsolved and off; she is not there before you step on", not C().steps.active and not C().state["hollow_done"] and not C().steps.her.visible))
-	var near_e := OurSteps.at(-(OurSteps.W - 1) * 0.5 * OurSteps.TILE, OurSteps.EDGE_V - 0.9)
-	walk_path("to the board's gap", [[near_e.x, near_e.z]])
+			ok("(v1.1d) Our Steps board %d '%s': solvable in its par, by BFS" % [bi + 1, OurSteps.BOARDS[bi]["title"]], sv["length"] == int(OurSteps.BOARDS[bi]["par"]), str(sv))
+			var bd := OurSteps.board(bi)
+			ok("(v1.1d) board %d: at most two columns in all" % (bi + 1), (bd["you_cols"] as Array).size() + (bd["her_cols"] as Array).size() <= 2)
+		ok("(v1.1d) a big real planar mirror (6 x 3.5 m), a 4 x 3 floor before it", C().steps.refl.planar != null and OurSteps.GLASS_HALF * 2.0 >= 6.0 and OurSteps.C == 4 and OurSteps.R == 3)
+		ok("the floor starts unsolved and off; the glass only a mirror (no her) before you step on", not C().steps.active and not C().state["hollow_done"] and not C().steps.refl.hold))
+	var near_e := OurSteps.at(0.0, OurSteps.EDGE_V - 0.9)
+	walk_path("to the floor's gap", [[near_e.x, near_e.z]])
 	step_do(func() -> void: _stick_dir(OurSteps.V, 0.0))
-	step_until("onto the board (by the stick)", func() -> bool: return C().steps.active, 6.0)
+	step_until("onto the floor (by the stick)", func() -> bool: return C().steps.active, 6.0)
 	step_do(func() -> void: _stick_up())
 	step_until("to the first board's start", func() -> bool: return not C().steps.moving, 6.0)
 	step_wait(0.8)
 	step_do(func() -> void:
-		ok("(v1.1) on the board: she appears on her half, on her start", C().steps.her.visible and C().steps.h == C().steps.b["A"] and C().steps.p == C().steps.b["P"], "p %s h %s" % [C().steps.p, C().steps.h]))
-	# a step into a column: one moves, the other is held (board 1: you go up, ... )
+		ok("(v1.1d) on the floor: she stands in the glass, on her start", C().steps.refl.hold and C().steps.h == C().steps.b["A"] and C().steps.p == C().steps.b["P"], "p %s h %s" % [C().steps.p, C().steps.h]))
 	_stick_step(Vector2i(0, 1), 10.0)
 	step_do(func() -> void:
-		ok("(v1.1) a step along the glass is the same for both", C().steps.p == Vector2i(0, 2) and C().steps.h == Vector2i(5, 2), "p %s h %s" % [C().steps.p, C().steps.h]))
-	_stick_step(Vector2i(0, 1), 8.0)
+		ok("(v1.1d) toward the glass: she comes toward it too", C().steps.p == Vector2i(1, 1) and C().steps.h == Vector2i(1, 1), "p %s h %s" % [C().steps.p, C().steps.h]))
+	_stick_step(Vector2i(0, -1), 8.0)
+	_stick_step(Vector2i(0, -1), -6.0)
 	step_until("stepped off where you came on", func() -> bool: return not C().steps.active, 3.0)
 	step_until("off and still", func() -> bool: return not C().steps._leaving and game.auto_target == Vector3.INF, 5.0)
 	step_wait(1.0)
 	step_do(func() -> void:
-		ok("(v1.1) off the board: she is gone", not C().steps.active and not C().steps.her.visible))
+		ok("(v1.1d) off the floor: the glass is only a mirror again", not C().steps.active and not C().steps.refl.hold))
 	step_do(func() -> void: _stick_dir(OurSteps.V, 12.0))
-	step_until("onto the board again", func() -> bool: return C().steps.active, 6.0)
+	step_until("onto the floor again", func() -> bool: return C().steps.active, 6.0)
 	step_do(func() -> void: _stick_up())
 	step_until("settled at the start", func() -> bool: return not C().steps.moving, 6.0)
 	for bi in OurSteps.BOARDS.size():
@@ -965,15 +966,18 @@ func _plan() -> void:
 		for i in path.size():
 			_stick_step(path[i], [8.0, -14.0, 3.0, -6.0, 11.0, 0.0][i % 6])
 		if bidx == 0:
-			step_until("(v1.1) the first board answered: the second rises", func() -> bool: return C().steps.bi == 1 and C().steps._between <= 0.0 and not C().steps.moving, 6.0)
+			step_until("(v1.1d) the first board answered: the second rises", func() -> bool: return C().steps.bi == 1 and C().steps._between <= 0.0 and not C().steps.moving, 6.0)
 			step_do(func() -> void:
-				ok("(v1.1) board 2 'Two Stones': you both at its start", C().steps.p == C().steps.b["P"] and C().steps.h == C().steps.b["A"] and C().steps.boards_done == 1, "p %s h %s" % [C().steps.p, C().steps.h]))
-	step_until("(v1.1) both boards answered through the stick: the gate's way", func() -> bool: return C().state["hollow_done"], 5.0)
+				ok("(v1.1d) board 2 'Two Stones': you both at its start", C().steps.p == C().steps.b["P"] and C().steps.h == C().steps.b["A"] and C().steps.boards_done == 1, "p %s h %s" % [C().steps.p, C().steps.h]))
+	step_until("(v1.1d) both boards answered through the stick", func() -> bool: return C().state["hollow_done"], 5.0)
 	step_do(func() -> void:
 		ok("(v1.1) Our Steps SOLVED: both boards answered (hollow_done)", C().state["hollow_done"] and C().steps.boards_done == OurSteps.BOARDS.size(), "%s %d" % [C().state["hollow_done"], C().steps.boards_done])
-		ok("(v1.1) both glyphs lit", float(C().steps.plate_y[1].get_shader_parameter("lit")) > 0.9 and float(C().steps.plate_h[1].get_shader_parameter("lit")) > 0.9))
+		ok("(v1.1d) solved: both glyphs lit, the glass a plain mirror again", float(C().steps.plate_y[1].get_shader_parameter("lit")) > 0.9 and float(C().steps.plate_h[1].get_shader_parameter("lit")) > 0.9 and not C().steps.refl.hold))
 	step_wait(0.5)
-	walk_path("off the board (free now)", [[OurSteps.cell(Vector2i(0, 0), 4).x, OurSteps.cell(Vector2i(0, 0), 4).z], [OurSteps.cell(Vector2i(0, 3), 4).x, OurSteps.cell(Vector2i(0, 3), 4).z], [near_e.x, near_e.z], [17.85, -10.3], [17.85, -11.8]])
+	var gx := OurSteps.board(1)["G"] as Vector2i
+	var tg := OurSteps.tile(gx)
+	var t10 := OurSteps.tile(Vector2i(1, 0))
+	walk_path("off the floor (free now)", [[t10.x, t10.z], [near_e.x, near_e.z], [17.85, -10.3], [17.85, -11.8]])
 	step_until("the gate rises", func() -> bool: return not game.level.named["hw_gate"].enabled, 3.0)
 	step_wait(2.0)
 	walk_path("up the ramp to the court", [[18.3, -13.0], [18.5, -16.2], [17.6, -17.8], [15.0, -18.4]])

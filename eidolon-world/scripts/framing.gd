@@ -15,7 +15,7 @@ const ROOMS := {
 	"hall_glass": {"y": 1.0, "extra": [Vector3(0.0, 3.0, -20.5)]},
 	"shard_gallery": {"y": 1.0, "extra": [Vector3(7.5, 2.5, -13.2), Vector3(7.5, 0.53, -11.585), Vector3(7.026, 0.53, -15.098), Vector3(6.524, 0.53, -14.393)]},   # (v0.9.2: and her shadows' eye-pairs on the floor: Chapter.eye_pos)
 	"garden_veiled": {"y": 1.0, "extra": []},
-	"hollow_walk": {"y": 1.0, "extra": [Vector3(19.239, 1.05, -10.780), Vector3(21.064, 1.05, -11.388), Vector3(22.280, 1.05, -10.172), Vector3(21.672, 1.05, -11.996), Vector3(21.672, 1.05, -9.564), Vector3(21.672, 2.2, -10.172)]},   # (v1.1 Our Steps: the entry slab, both boards' glyphs, the glass line's top)
+	"hollow_walk": {"y": 1.0, "extra": [Vector3(20.802, 0.55, -9.302), Vector3(20.448, 0.55, -11.388), Vector3(22.888, 0.55, -8.948), Vector3(22.99, 1.8, -11.49), Vector3(21.155, 1.0, -13.332), Vector3(24.832, 1.0, -9.655), Vector3(21.155, 3.4, -13.332), Vector3(24.832, 3.4, -9.655)]},   # (v1.1d Our Steps: the entry gap, two slabs; the mirror's centre and corners)
 	"court_light": {"y": 2.0, "extra": [Vector3(16.98, 4.0, -24.05)]},
 	"mist_maze": {"y": 2.0, "extra": []},
 	"echo_corridor": {"y": 2.0, "extra": []},

@@ -1375,7 +1375,17 @@ func state_dict() -> Dictionary:
 		"chapter": chapter.state, "lens": chapter.lens_on, "calm": snappedf(chapter.calm, 0.01), "cine_t": snappedf(cine.t, 0.1) if cine else -1.0,
 		"letterbox": snappedf(ui.letterbox, 0.01), "glass": ui.glass_talk.phase, "glass_tries": ui.glass_talk.tries, "glass_score": ui.glass_talk.last_score, "hint_t": snappedf(chapter.hint_t, 0.1), "lift": snappedf(chapter.lift_h, 0.01),
 		"beam_good": puzzles.beam_good, "carry": chapter.carrying, "sc_carry": chapter.sc_carry, "torque": [chapter.scale_torque().x, chapter.scale_torque().y],
-		"reveal": snappedf(world.reveal_k, 0.01), "feet": chapter.maze_feet.filter(func(f: MeshInstance3D) -> bool: return f.visible).size()}
+		"reveal": snappedf(world.reveal_k, 0.01), "feet": chapter.maze_feet.filter(func(f: MeshInstance3D) -> bool: return f.visible).size(),
+		"steps": _steps_state()}
+
+## (v1.1d, the web touch test) the Our Steps floor, as the test reads it (it plays by the touch stick only)
+func _steps_state() -> Dictionary:
+	var s: OurSteps = chapter.steps
+	if s == null: return {}
+	return {"active": s.active, "p": [s.p.x, s.p.y], "h": [s.h.x, s.h.y], "bi": s.bi, "moves": s.moves, "blocked": s.blocked_n,
+		"boards_done": s.boards_done, "moving": s.moving, "between": snappedf(s._between, 0.01), "leaving": s._leaving,
+		"hold": s.refl.hold if s.refl else false, "done": s.solved(),
+		"gate_open": not level.named["hw_gate"].enabled if level.named.has("hw_gate") else false}
 
 func _door_slot_centers() -> Array:
 	var out := []

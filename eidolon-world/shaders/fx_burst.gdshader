@@ -112,6 +112,7 @@ void fragment() {
 		vec3 lv = normalize((VIEW_MATRIX * vec4(-light_dir, 0.0)).xyz);
 		col *= 0.78 + 0.32 * max(dot(nrm, lv), 0.0);
 	}
+	if (kind == 3) col = mix(col, vec3(1.0, 0.95, 0.93), 1.0 - smoothstep(0.0, 0.3, r));         // a white-hot core in the crimson star
 	if (kind == 0) col += vec3(0.3) * (1.0 - smoothstep(0.0, 0.4, length(qv - vec2(-0.25, 0.3))));   // a glint in the drop
 	float fade = 1.0;
 	if (soft > 0.0) fade = clamp(vheight / soft, 0.0, 1.0);

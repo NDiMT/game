@@ -4,9 +4,12 @@
 #      (known flake: "Caller thread can't call this function" / signal 11) and reported as a flake if the retry passes
 #   2. the web smoke (tests/web_smoke.mjs: Playwright + SwiftShader, mobile 390x844 DPR 2) on the local export
 #      build/web served by python3 -m http.server from /home/user/game, or on the live site with --live
+#   3. (v1.1d, REQUIRED) Our Steps played by touch in the web build (tests/web_oursteps.mjs): both boards solved with
+#      synthetic touch drags on the on-screen joystick (off-axis), then the walk out to the Court; a shot per move
+#      (dev/shots/<tag>-os-step-NN.png). Skip only with --no-oursteps (never for a release).
 # Prints a PASS/FAIL summary; exit 0 only when everything passes.
 #
-# Usage:  tests/smoke.sh [--live] [--web-only | --headless-only] [--ref <git-ref>] [--project <dir>] [--tier low|high] [--shot-scale css|device]
+# Usage:  tests/smoke.sh [--live] [--web-only | --headless-only] [--ref <git-ref>] [--project <dir>] [--tier low|high] [--shot-scale css|device] [--no-oursteps]
 #   --live           web smoke against https://ndimt.github.io/game/eidolon-world/ (shots tagged smoke-live-*)
 #   --ref <git-ref>  headless playthrough on a clean snapshot of that commit (git archive + the .godot import
 #                    cache, in a temp dir), e.g. --ref 460853e (v0.8.4) or --ref HEAD, instead of the working tree
@@ -25,17 +28,18 @@ LIVE_URL="https://ndimt.github.io/game/eidolon-world/index.html"
 SHOTS="$REPO/dev/shots"
 PT_TIMEOUT="${PT_TIMEOUT:-280}"                      # per headless attempt (a clean run takes ~170-200 s)
 
-LIVE=0; RUN_PT=1; RUN_WEB=1; REF=""; PROJECT="$REPO"; TIER=low; SHOT_SCALE=css
+LIVE=0; RUN_PT=1; RUN_WEB=1; RUN_OS=1; REF=""; PROJECT="$REPO"; TIER=low; SHOT_SCALE=css
 while [ $# -gt 0 ]; do
   case "$1" in
     --live) LIVE=1 ;;
     --web-only) RUN_PT=0 ;;
-    --headless-only) RUN_WEB=0 ;;
+    --headless-only) RUN_WEB=0; RUN_OS=0 ;;
+    --no-oursteps) RUN_OS=0 ;;
     --ref) REF="$2"; shift ;;
     --project) PROJECT="$2"; shift ;;
     --tier) TIER="$2"; shift ;;
     --shot-scale) SHOT_SCALE="$2"; shift ;;
-    -h|--help) sed -n 2,18p "$0"; exit 0 ;;
+    -h|--help) sed -n 2,21p "$0"; exit 0 ;;
     *) echo "unknown option: $1"; exit 2 ;;
   esac
   shift
@@ -106,6 +110,19 @@ if [ "$RUN_WEB" = 1 ]; then
   WEB_RC=$?
   echo "$(ts) web: done (exit $WEB_RC)"
 fi
+# ------------------------------------------------------------------ 3. Our Steps by touch (foreground, REQUIRED)
+OS_RC=0
+if [ "$RUN_OS" = 1 ]; then
+  if [ "$RUN_WEB" != 1 ]; then OS_RC=2; echo "$(ts) oursteps: needs the web part (no URL)";
+  else
+    rm -f "$SHOTS/$TAG-os-step-"*.png
+    echo "$(ts) oursteps: $URL"
+    flock "$LOCK" timeout 900 "$NODE" "$HERE/web_oursteps.mjs" --url "$URL" --out "$SHOTS" --tag "$TAG-os" --tier "$TIER" \
+      > "$SHOTS/$TAG-os-web.log" 2>&1
+    OS_RC=$?
+    echo "$(ts) oursteps: done (exit $OS_RC)"
+  fi
+fi
 [ "$RUN_PT" = 1 ] && wait "$PT_PID"
 
 # ------------------------------------------------------------------ summary
@@ -131,6 +148,15 @@ if [ "$RUN_WEB" = 1 ]; then
   grep -E "^WEB SMOKE" "$SHOTS/$TAG-web.log" || echo "web smoke: no summary line (exit $WEB_RC), see $SHOTS/$TAG-web.log"
   [ "$WEB_RC" = 0 ] || FAILS=$((FAILS+1))
   echo "      shots: $SHOTS/$TAG-<room>.png   console: $SHOTS/$TAG-console.log   web log: $SHOTS/$TAG-web.log"
+fi
+if [ "$RUN_OS" = 1 ]; then
+  if grep -qE "^(PASS|FAIL)  " "$SHOTS/$TAG-os-web.log" 2>/dev/null; then
+    grep -E "^FAIL  " "$SHOTS/$TAG-os-web.log" | sed 's/^/oursteps /' | cut -c1-260
+    echo "oursteps PASS-count $(grep -cE '^PASS  ' "$SHOTS/$TAG-os-web.log")"
+  fi
+  grep -E "^WEB OURSTEPS" "$SHOTS/$TAG-os-web.log" 2>/dev/null || echo "oursteps: no summary line (exit $OS_RC), see $SHOTS/$TAG-os-web.log"
+  [ "$OS_RC" = 0 ] || FAILS=$((FAILS+1))
+  echo "      shots: $SHOTS/$TAG-os-step-NN.png   log: $SHOTS/$TAG-os-web.log"
 fi
 echo "--------------------------------------------------------------"
 WALL=$(( $(date +%s) - T0 ))

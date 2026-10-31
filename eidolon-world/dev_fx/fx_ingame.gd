@@ -10,7 +10,7 @@ const STEPS := [
 	["brazier-ignite", Vector2(7.2, -13.6), "ignite", 0.3],
 	["brazier-calm", Vector2(7.2, -13.6), "none", 3.5],
 	["maze-mist", Vector2(12.6, -32.6), "none", 2.0],
-	["atrium-pickup", Vector2(11.8, 15.8), "none", 1.5],
+	["atrium-lamp", Vector2(12.4, 16.2), "none", 1.5],
 ]
 var game: Node
 var shots := ""
@@ -18,6 +18,7 @@ var i := -1
 var t := 0.0
 var fired := false
 var embers: FxBurst
+var _tp := -1
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -37,8 +38,9 @@ func _process(dt: float) -> void:
 	if i >= STEPS.size():
 		get_tree().quit(); return
 	var s: Array = STEPS[i]
-	if t < 0.02 and not fired:
-		game.cmd("tp:%f:%f" % [s[1].x, s[1].y])
+	if _tp != i:          # (once per step, by flag: a frame can be longer than any time window here)
+		_tp = i
+		if not (s[0] == "brazier-calm"): game.cmd("tp:%f:%f" % [s[1].x, s[1].y])
 	if t > 2.2 and not fired:
 		fired = true; t = 2.2
 		var j: Node = game.juice
@@ -49,7 +51,7 @@ func _process(dt: float) -> void:
 				for k in 3: FxBurst.footstep(j, Vector3(pp.x - 0.6 + k * 0.45, Ch1Geo.WATER_Y + 0.01, pp.z + 0.6 - k * 0.2), game.puzzles.pool_fx)
 			"dust": FxBurst.dust(j, Vector3(16.95, 4.2, -11.8), 1.4, 1.0)
 			"ignite":
-				var b: Vector3 = Chapter.SH_BRAZ[1]
+				var b: Vector3 = Chapter.SH_BRAZ[3]
 				FxBurst.sparks(j, b + Vector3(0, 1.15, 0))
 				embers = FxBurst.embers(j, b + Vector3(0, 1.3, 0))
 	if fired and t > 2.2 + float(s[3]):
