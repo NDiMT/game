@@ -387,6 +387,7 @@ func _process(dt: float) -> void:
 	Flame.cull(player.position, dt)          # (v0.8.3: one budget for the flames and the aqua lights)
 	if Engine.get_process_frames() % 2 == 0:
 		level.set_flames(Flame.bounce_list(player.position))   # (v1.0 A) crimson bounce on nearby stone
+	if satchel and Engine.get_process_frames() % 10 == 0: controls.bag_has = not satchel.contents().is_empty()
 	sfx.calm = mode != "play" or (player.speed01 < 0.05 and auto_target == Vector3.INF)
 	_update_hum()
 	if prof_on: _t0 = _pm("lights+hum", _t0)
@@ -858,14 +859,21 @@ func jump(room: String) -> void:
 				cs["shard"] = true; cs["hall_door"] = true
 				cs["hall"] = {"drum": [Chapter.DRUM_GOAL.x, Chapter.DRUM_GOAL.y], "brazier": [Chapter.BRAZ_GOAL.x, Chapter.BRAZ_GOAL.y],
 					"bust": Chapter.BUST_GOAL, "locks": [true, true, true]}
-			"shard_gallery": cs["gallery"] = true
+			"shard_gallery":
+				cs["gallery"] = true
+				(cs["inv"]["items"] as Array).append("chisel")
+				cs["hub"]["w_seen"] = true; cs["hub"]["w_broken"] = true
 			"garden_veiled":
+				(cs["inv"]["items"] as Array).append("amphora")
 				cs["turned"] = Chapter.TURN_SOLUTION.duplicate(); cs["turned_done"] = true; cs["garden_breath"] = true
 			"hollow_walk":
 				cs["hollow_done"] = true
 			"court_light":
+				(cs["inv"]["items"] as Array).append("pin")             # (v1.0 M3b: from the Balcony's stele)
+				cs["hub"]["e_open"] = true
 				ps["mirrors"] = Puzzles.MIRROR_SOLUTION.duplicate(); ps["bridge"] = true; cs["mural"] = true
-			"mist_maze": cs["maze"] = true
+			"mist_maze":
+				cs["maze"] = true; cs["hub"]["n_poured"] = true
 			"echo_corridor": cs["echo_room"] = true
 			"scales":
 				cs["scales"] = true; cs["scale_w"] = [-1, -1, 5]
@@ -1165,6 +1173,10 @@ func cmd(c: String) -> Variant:
 				sfx.stop_cue("cinematic_hand", 1.2)
 				cine.skip()
 		"lens": chapter.set_lens(a[1] == "1")
+		"satchel":                                  # (dev / shots)
+			if a.size() > 1 and a[1] == "0": satchel.close()
+			else: satchel.open()
+		"give": chapter.hub.give(a[1]); ui.show_item(a[1])
 		"hintnow":
 			var tg := chapter.hint_target(area)
 			if tg != Vector3.INF: chapter.show_hint(tg)

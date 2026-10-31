@@ -332,7 +332,20 @@ func _plan() -> void:
 	walk_path("into the undercroft, lamp in hand", [[13.5, 11.4], [15.2, 11.4], [17.6, 11.4], [20.2, 11.4], [23.0, 11.4]])
 	step_do(func() -> void:
 		ok("(v1.0) the lamp parts the Undercroft's dark", game.visited.has("t:UC") and P().x > 22.0 and float(C().hub.uc_veil.get_shader_parameter("density")) < 0.05, str(P())))
-	walk_path("up to the Wind-swept Balcony", [[26.9, 11.4], [28.0, 10.6], [28.0, 0.0], [27.6, -12.0], [27.6, -18.4], [27.4, -20.2]])
+	walk_path("up to the Wind-swept Balcony", [[26.9, 11.4], [28.0, 10.6], [28.0, 0.0], [27.6, -12.0], [28.3, -16.0]])
+	step_do(func() -> void:
+		ok("(v1.0 M3b) the Bronze Tuning Pin on the stele at the Balcony's end", _focus() == "pin_take" and game.try_interact() and C().hub.has_item("pin"), _focus()))
+	step_wait(0.4)
+	step_do(func() -> void:
+		ok("(v1.0 M3b) the satchel: its slot shows, it opens with the lamp and the pin in it, a toast named the pin",
+			game.controls.bag_has and game.satchel.toast_name.text == Items.NAME["pin"] and game.satchel.contents().size() >= 2, str(game.satchel.contents()))
+		game.satchel.open())
+	step_wait(0.3)
+	step_do(func() -> void:
+		ok("(v1.0 M3b) the satchel open: slots with icons, the chosen one's name and line; play paused under it",
+			game.satchel.is_open and game.satchel.slots.size() >= 2 and game.satchel.name_l.text != "" and game.satchel.line_l.text != "" and not game.controls.enabled, game.satchel.name_l.text)
+		game.satchel.close())
+	walk_path("on to the Ledge", [[27.6, -18.4], [27.4, -20.2]])
 	step_do(func() -> void:
 		ok("(v1.0) the balcony brings you to the Eidolon Ledge", game.visited.has("t:BAL") and game.area == "eidolon_ledge" and absf(P().y - 2.0) < 0.02, str(P()) + " " + game.area))
 	step_do(func() -> void: tp(0.0, 4.4, PI))
@@ -739,9 +752,25 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("her shadows darken; her veil stirs", float(C().sh_shadows[0].get_shader_parameter("dark")) > 0.85 and float(C().sh_veil.get_shader_parameter("intensity")) > 0.3))
 	step_wait(1.0)
-	walk_path("through the true gate", [[6.6, -11.4], [8.1, -10.2], [8.1, -8.4], [8.85, -8.6]])
+	walk_path("to Theron's chisel by her statue", [[6.6, -12.3], [8.55, -12.3]])
 	step_do(func() -> void:
-		ok("(v1.0) the West wing's Veil Seal has risen beyond the arch", C().hub._seal_up["W"] and _focus() == "seal_W" and game.try_interact(), _focus()))
+		ok("(v1.0 M3b) Theron's Chisel, left by her statue once the chamber is answered", _focus() == "chisel_take" and game.try_interact() and C().hub.has_item("chisel"), _focus()))
+	walk_path("back toward the gate", [[6.6, -12.3], [6.6, -11.4]])
+	walk_path("through the true gate", [[8.1, -10.2], [8.1, -8.4], [9.5, -8.15]])
+	step_do(func() -> void:
+		ok("(v1.0 M3b) the West seal does not rise by itself: it is inside the reliquary", not C().hub._seal_up["W"] and C().items.relic_top.visible)
+		ok("(v1.0 M3b) plain stone to the eye: striking it only tells you to look closer", _focus() == "relic_w" and game.try_interact() and not C().state["hub"]["w_broken"], _focus())
+		C().set_lens(true))
+	step_wait(0.5)
+	step_do(func() -> void:
+		ok("(v1.0 M3b) through the raised shard, the sign in the stone", C().state["hub"]["w_seen"])
+		C().set_lens(false))
+	step_wait(0.3)
+	step_do(func() -> void:
+		ok("(v1.0 M3b) the chisel breaks the reliquary", _focus() == "relic_w" and game.try_interact() and C().state["hub"]["w_broken"], _focus()))
+	step_until("(v1.0) the West wing's Veil Seal rises out of it", func() -> bool: return C().hub._seal_up["W"] and C().hub.seal_nodes["W"].position.y > Hub.SEAL_POS["W"].y - 0.01, 4.0)
+	step_do(func() -> void:
+		ok("(v1.0) the West wing's Veil Seal, taken", _focus() == "seal_W" and game.try_interact(), _focus()))
 	step_do(func() -> void: ok("(v1.0) the Seal of the Glass Wing, in the satchel", "W" in C().state["inv"]["seals"]))
 	walk_path("on, down toward the colossus", [[8.5, -3.0]])
 	step_do(func() -> void:
@@ -818,6 +847,10 @@ func _plan() -> void:
 			"refl %.2f real %.2f" % [C().door_refl[0].rotation.y, C().door_real[0].rotation.y])
 		ok("the reflection's door is only in the glass", (C().door_refl[0].get_child(0) as MeshInstance3D).layers == PlanarMirror.LAYER_DOUBLE))
 	step_until("then in your world", func() -> bool: return game.level.named["g_door"].enabled and absf(C().door_real[0].rotation.y) > 1.5, 6.0)
+	walk_path("to the garden's east rail", [[15.85, -9.3]])
+	step_do(func() -> void:
+		ok("(v1.0 M3b) the Amphora, by the Garden's east rail", _focus() == "amph_take" and game.try_interact() and C().hub.has_item("amphora"), _focus()))
+	walk_path("back to the door", [[15.85, -11.8]])
 	walk_path("through the garden door", [[16.4, -11.8], [18.2, -11.8]])
 	step_do(func() -> void: ok("reached the Hollow Walk", game.area == "hollow_walk", str(P()) + " " + game.area))
 
@@ -1005,6 +1038,14 @@ func _plan() -> void:
 	walk_path("follow her steps", mpath)
 	step_do(func() -> void:
 		ok("out of the maze", C().state["maze"] and game.area == "echo_corridor", str(P()) + " " + game.area))
+	step_wait(4.0)
+	step_do(func() -> void: ok("(v1.0 M3b) the maze walked: no seal yet, the floor here is dry", not C().hub._seal_up["N"]))
+	walk_path("back to her pool's edge", [[10.0, -38.0], [10.0, -36.0]])
+	step_do(func() -> void:
+		ok("(v1.0 M3b) fill the amphora at her pool", _focus() == "amph_fill" and game.try_interact() and C().state["inv"]["amph_full"], _focus()))
+	walk_path("to the dry ring", [[10.0, -38.6], [9.75, -39.2]])
+	step_do(func() -> void:
+		ok("(v1.0 M3b) pour: a puddle mirror, a sign carved overhead shows in it", _focus() == "pour" and game.try_interact() and C().state["hub"]["n_poured"] and C().items.puddle.visible, _focus()))
 	step_until("(v1.0) the Garden wing's Veil Seal rises", func() -> bool: return C().hub._seal_up["N"] and C().hub.seal_nodes["N"].position.y > 1.99, 4.0)
 	walk_path("to the seal", [[10.3, -39.7]])
 	step_do(func() -> void:
@@ -1062,6 +1103,11 @@ func _plan() -> void:
 	step_until("the bridge rises", func() -> bool: return not game.puzzles.busy, 8.0)
 	walk_path("up onto the high walkway", [[27.8, -22.4], [29.6, -22.4], [31.4, -22.4]])
 	step_do(func() -> void: ok("(v1.0) up on the Mirror Walk", absf(P().y - 4.0) < 0.02, str(P())))
+	step_do(func() -> void: ok("(v1.0 M3b) a sealed panel across the Mirror Walk", game.level.named["e_panel"].enabled and C().items.panel.visible))
+	walk_path("to the sealed panel", [[31.4, -23.9]])
+	step_do(func() -> void:
+		ok("(v1.0 M3b) the tuning pin rings the panel open", _focus() == "e_panel" and game.try_interact() and not game.level.named["e_panel"].enabled, _focus()))
+	step_wait(2.8)
 	walk_path("along the high walkway", [[31.4, -32.0]])
 	step_wait(0.6)
 	step_do(func() -> void: ok("(v0.9) on the walkway: the Upward Spring, named, the camera leans up toward the temple", game.visited.has("w:SP") and game.world.look_offset.y > 1.0, str(game.world.look_offset)))
@@ -1372,6 +1418,18 @@ func _plan() -> void:
 		ok("new game: save rewritten fresh", d is Dictionary and not d["puzzles"]["shrine"] and not d["chapter"]["stones"])
 		ok("new game: settings kept (quality)", game.world.tier == "low")
 		game.set_quality("auto", true))
+	# ---- (v1.0 M3b) a v2 save (before the hub) loads into the hub: its progress implies the items and seals
+	step_do(func() -> void:
+		var ch2 := {}
+		for k in ["stones", "breath", "shard", "hall_door", "gallery", "turned_done", "hollow_done", "mural", "maze", "echo_room"]: ch2[k] = true
+		game.save_data = {"v": 2, "pos": [10.0, 2.0, -40.0], "yaw": 0.0, "puzzles": game.puzzles.state.duplicate(true), "chapter": ch2, "visited": []}
+		game._continue_from_save()
+		var inv: Dictionary = C().state["inv"]
+		ok("(v1.0 M3b) a v2 save migrates: lamp, shard, chisel, amphora, pin in the satchel", ["lamp", "shard", "chisel", "amphora", "pin"].all(func(k: String) -> bool: return k in (inv["items"] as Array)), str(inv))
+		ok("(v1.0 M3b) a v2 save migrates: the finished wings' seals in hand, their item gates open", (inv["seals"] as Array).size() == 3 and C().state["hub"]["w_broken"] and C().state["hub"]["n_poured"] and C().state["hub"]["e_open"] and not C().items.panel.visible, str(inv["seals"]))
+		game._save()
+		var d3 = JSON.parse_string(FileAccess.get_file_as_string(Game.SAVE_PATH))
+		ok("(v1.0 M3b) saved again as v3, the satchel with it", d3 is Dictionary and int(d3["v"]) == 3 and (d3["chapter"]["inv"]["items"] as Array).has("chisel")))
 	# ---- the cinematic can be skipped with a long press
 	step_do(func() -> void:
 		game.cmd("jump:first_shrine")

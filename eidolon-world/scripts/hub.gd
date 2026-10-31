@@ -31,7 +31,7 @@ var t4_s := 0.0                       # (tests) how far along the hidden path sh
 var _t4_pose := Figure.Pose.new()
 var _t4_phase := 0.0
 # the seals
-const SEAL_POS := {"W": Vector3(9.55, 1.24, -8.98), "N": Vector3(10.62, 2.0, -40.1), "E": Vector3(17.15, 2.0, -49.45)}
+const SEAL_POS := {"W": Vector3(9.55, 1.24, -8.95), "N": Vector3(10.62, 2.0, -40.1), "E": Vector3(17.15, 2.0, -49.45)}
 const SEAL_DONE := {"W": "gallery", "N": "maze", "E": "echo_room"}
 var seal_nodes := {}
 var _seal_up := {}

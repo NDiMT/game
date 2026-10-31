@@ -199,7 +199,7 @@ func show_item(k: String, extra := "") -> void:
 	toast_line.text = Items.LINE["amphora_full"] if extra == "full" else Items.LINE.get(k, "")
 	var vs := get_viewport_rect().size
 	toast.reset_size()
-	toast.position = Vector2((vs.x - 300.0) * 0.5, 64.0)
+	toast.position = Vector2(maxf(80.0, (vs.x - 300.0) * 0.5), 64.0)      # (clear of the shard's and the satchel's slots)
 	toast.size = Vector2(300, 0)
 	if _toast_tw: _toast_tw.kill()
 	_toast_tw = toast.create_tween()

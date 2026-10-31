@@ -4,7 +4,7 @@ extends Node3D
 ## its critical path, found earlier in that same wing, so no wing order can lock you out:
 ##   West   the Shard's lens shows the sign on the reliquary in the west court; Theron's Chisel (left by her
 ##          statue when the Shadow Chamber is solved) breaks it: the Glass Wing's seal is inside.
-##   North  the Amphora (the Garden's north-east corner), filled at her pool beside the Mist Maze, poured on
+##   North  the Amphora (by the Garden's east rail), filled at her pool beside the Mist Maze, poured on
 ##          the dry ring at the maze's end: the puddle mirrors a sign carved overhead; the Veil Seal rises.
 ##   East   the Bronze Tuning Pin (on the stele at the Balcony's end, by the Ledge) rings the sealed panel
 ##          across the Mirror Walk open, before the lift down to the Scales.
@@ -30,10 +30,10 @@ const ICON := {"lamp": "oil_lamp", "shard": "shard", "chisel": "chisel", "amphor
 const ORDER := ["lamp", "shard", "chisel", "amphora", "pin", "tablet", "mem", "seal"]
 
 # the places
-const CHISEL_POS := Vector3(8.35, 1.0, -12.25)              # by her statue, in the Shadow Chamber
-const RELIC_POS := Vector3(9.55, 1.0, -8.98)                # the reliquary, west court (the W seal inside)
-const AMPH_POS := Vector3(16.3, 1.0, -14.5)                 # the Garden's north-east corner
-const FILL_POS := Vector3(9.35, 2.0, -32.0)                 # her pool's edge, beside the Mist Maze
+const CHISEL_POS := Vector3(8.9, 1.0, -12.7)              # by her statue, in the Shadow Chamber
+const RELIC_POS := Vector3(9.55, 1.0, -8.95)                # the reliquary, west court (the W seal inside)
+const AMPH_POS := Vector3(16.35, 1.0, -9.6)                 # the Garden's east rail, by the door
+const FILL_POS := Vector3(9.35, 2.0, -36.0)                 # her pool's edge, beside the Mist Maze
 const POUR_POS := Vector3(9.6, 2.0, -39.62)                 # the dry ring at the maze's end
 const STELE_POS := Vector3(29.12, 2.0, -16.0)               # the stele at the Balcony's end (the pin)
 const PANEL_Z := -24.6                                      # the sealed panel across the Mirror Walk
@@ -43,22 +43,22 @@ const PANEL_X := Vector2(30.4, 32.4)
 const TABLETS := [
 	["t1", Vector3(-3.2, 0.5, 20.9), "A thousand faces, and none of them hers. The stone does not lie; my hands do."],
 	["t2", Vector3(13.6, 3.1, 16.85), "She laughed when I asked her to stand still. 'Then carve me moving,' she said."],
-	["t3", Vector3(5.6, 1.0, -16.4), "I moved the lamps until her shadow fell where I wanted. Even her shadow argued."],
+	["t3", Vector3(9.5, 1.0, -13.5), "I moved the lamps until her shadow fell where I wanted. Even her shadow argued."],
 	["t4", Vector3(7.6, 1.0, -8.0), "Glass first, then marble, I told the guild. They thought it a riddle."],
-	["t5", Vector3(13.4, 1.0, -7.0), "The garden was hers. I let it die so it would keep her shape."],
-	["t6", Vector3(13.6, 2.0, -28.4), "In the maze she walked ahead of me in the water, and I followed the wrong one."],
+	["t5", Vector3(12.0, 1.0, -9.6), "The garden was hers. I let it die so it would keep her shape."],
+	["t6", Vector3(14.8, 2.0, -28.55), "In the maze she walked ahead of me in the water, and I followed the wrong one."],
 	["t7", Vector3(32.85, 2.0, -47.2), "Balance: what I took from her against what I gave. The pans never settle."],
 	["t8", Vector3(31.9, 4.0, -40.2), "If the glass holds her, the glass must be kept. I will keep it. I will keep it."]]
 
 ## memory shards: [id, where, need ("chisel" / "amphora" / "pin" / "lens"), text]
 const SECRETS := [
 	["m1", Vector3(-2.4, 0.5, 11.2), "chisel", "Milos, the harbour. She bought him a chisel with her first wages and would not say why."],
-	["m2", Vector3(12.95, 1.0, -12.9), "chisel", "The garden in flower. She tucked a petal behind the ear of every statue."],
-	["m3", Vector3(5.6, 1.0, -10.3), "amphora", "From above, the chamber floor: her shadow and his, the same length at last."],
+	["m2", Vector3(15.6, 1.0, -7.3), "chisel", "The garden in flower. She tucked a petal behind the ear of every statue."],
+	["m3", Vector3(9.4, 1.0, -12.4), "amphora", "From above, the chamber floor: her shadow and his, the same length at last."],
 	["m4", Vector3(33.4, 4.0, -32.0), "pin", "The spring sang back the note. She used to hum it while he worked."],
 	["m5", Vector3(2.0, 0.5, 15.5), "lens", "Under the fountain's lip, in her hand: 'Look at me, not at the marble.'"],
-	["m6", Vector3(22.2, 2.0, -21.4), "lens", "On the Ledge she stood at the edge and leaned on the wind, laughing at his fear."],
-	["m7", Vector3(18.6, 0.5, 10.55), "pin", "Under the Atrium the stone rang back one word of hers. It was his name."]]
+	["m6", Vector3(27.5, 2.0, -24.5), "lens", "On the Ledge she stood at the edge and leaned on the wind, laughing at his fear."],
+	["m7", Vector3(27.15, 2.0, 2.0), "pin", "On the balcony the stone rang back one word of hers. It was his name."]]
 
 var game: Game
 var chapter: Chapter
@@ -167,7 +167,7 @@ func _build_relic() -> void:
 	relic_top = _anchor(RELIC_POS)
 	var t := MB.new()
 	t.box(Vector3(0, 0.24 + 0.5, 0), Vector3(0.7, 1.0, 0.56), Color(0.5, 0.25, 0.0))
-	t.box(Vector3(0, 0.24 + 1.04, 0), Vector3(0.8, 0.08, 0.64), Color(0.5, 0.25, 0.0))
+	t.box(Vector3(0, 0.24 + 1.04, 0), Vector3(0.8, 0.08, 0.6), Color(0.5, 0.25, 0.0))
 	game.puzzles.marble_instance(t.commit(), relic_top)
 	# the sign only the shard shows: on its face toward you (south)
 	relic_rune = _lens_rune(relic_top, Transform3D(Basis(), Vector3(0, 0.78, 0.285)), Vector2(0.5, 0.5), 5.0)
@@ -195,7 +195,7 @@ func break_relic(instant: bool) -> void:
 	tw.tween_property(relic_top, "scale", Vector3(1.0, 0.02, 1.0), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void: relic_top.visible = false; relic_top.scale = Vector3.ONE)
 	if game.juice:
-		game.juice.burst(RELIC_POS + Vector3(0, 0.8, 0))
+		game.juice.dust_fall(RELIC_POS + Vector3(0, 1.1, 0.25), Vector3(0.35, 0, 0), 30)
 		game.juice.dust_floor(RELIC_POS, 0.7, 16)
 		game.juice.grit(RELIC_POS + Vector3(0, 0.6, 0.3), 0.5)
 		game.juice.shake(0.18)
@@ -280,7 +280,6 @@ func pour() -> void:
 	pour_ring.visible = false
 	if game.juice:
 		game.juice.ring(POUR_POS + Vector3(0, 0.02, 0), 0.6)
-		game.juice.wet(POUR_POS)
 
 # ------------------------------------------------------------------ East: the pin and the sealed panel
 func _build_pin() -> void:
@@ -414,7 +413,9 @@ func open_secret(id: String, need: String, text: String) -> void:
 		chapter.event.emit("secret", need)
 		var lock: Node3D = nodes[0]
 		if need == "chisel":
-			if game.juice: game.juice.burst(lock.position + Vector3(0, 0.3, 0))
+			if game.juice:
+				game.juice.grit(lock.position + Vector3(0, 0.3, 0), 0.3)
+				game.juice.dust_floor(lock.position, 0.4, 12)
 			lock.visible = false
 		elif need == "amphora" and game.juice: game.juice.ring(lock.position + Vector3(0, 0.02, 0), 0.5)
 		elif game.juice: game.juice.glint(lock.position + Vector3(0, 0.5, 0))

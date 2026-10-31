@@ -1194,6 +1194,8 @@ func _far_ruins() -> void:
 		var a := TAU * i / 22.0 + r.randf_range(-0.1, 0.1)
 		var rr := r.randf_range(48.0, 64.0)
 		var c := Vector3(12.0, 0, -16.0) + Vector3(cos(a) * rr, 0, sin(a) * rr)
+		var cf := _far_from_walks(Vector2(c.x, c.z), 16.0)          # (v1.0: the Atrium and the Balcony reach out toward them)
+		c = Vector3(cf.x, 0.0, cf.y)
 		var hgt := r.randf_range(6.0, 22.0)
 		if r.randf() < 0.6:
 			far.cyl(c + Vector3(0, hgt * 0.5 - 12.0, 0), r.randf_range(1.0, 2.2), r.randf_range(1.4, 2.6), hgt + 12.0, Color(0, 0, 0), 10)

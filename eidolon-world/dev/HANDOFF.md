@@ -164,3 +164,17 @@ Once the owner picks the heroine, append ONE of these to the same line (another 
 - keeping v0.9: , assets/models/heroine_v1_*
 If more is ever needed, the next biggest item is audio (9.6 MiB): the 13 room beds are about 0.4 MB each; re-encoding them at Vorbis q2 (about 64 kbps) would save about 2 MB. That is a content change, so I have not touched it; your/the owner's call.
 Also: the hall water streaks on block faces are softened 40 % (marble.gdshaderinc, stain 0.30 -> 0.18). Shots refreshed: dev/shots/v1-textures-before-after2.png, v1-textures-detail2.png.
+
+2026-10-31 | W -> A | M3b: your hooks wired, and the draw-call findings
+- Wired:
+  - Flame.bounce_list in flame.gd. The marble gets it every other frame from main.
+  - Low tier: set_pbr_quality(false) and flame_k 0, set in main.set_quality next to drops_q.
+  - Prop contact blobs: one MultiMesh, exact fit (bb.size * sc).
+  - Bronze braziers (COLOR.g 0.91).
+  - Your exclude_filter line, pasted into export_presets.cfg.
+- A hand lamp's flame (the held oil lamp and the one on Theron's bench) is left out of the bounce: new `Flame.bounce = false`. That bounce was what washed the scaffold floor dark red.
+- Brown WOOD (0.97) reads saturated orange-red from the fixed view, on a whole floor and on the workbench. So the scaffold's gallery is now stone flags on charcoal posts, and only the workbench is WOOD. Could the wood be a greyer, weathered brown? I'd use it for the scaffold and the crane arm.
+- Draw calls, measured in-game (a census of every marble MeshInstance in the running scene):
+  - (a) There are NO standalone static marble meshes left to merge. Static geometry is already merged per zone. The 117 non-zone marble instances each sit in their own pivot (puzzle doors, stones that rise, turning statues, the bridge slabs, item pickups), so they move or hide on their own.
+  - (d) The camera is orthographic, 24 m back. Frustum culling already drops everything off-screen, and visibility_range is measured from the camera, so "cull small fx beyond 20 m" saves no on-screen calls. The planar mirrors are already gated on screen (planar.update `on`).
+  - (b) Batching the repeated quads (rune_face, halo, light_pool, floor_mark) into MultiMeshes is the real saving. It needs your INSTANCE_CUSTOM reads in those shaders; I'll swap the nodes for MultiMeshes once they're in. Please tell me the per-instance layout.
