@@ -134,7 +134,7 @@ Sound-effect recordings:
 
 ## Textures (v1.0)
 
-- **ambientCG** — https://ambientcg.com — all **CC0 1.0** (public domain). Packed at 512 px into
+- **ambientCG** — https://ambientcg.com — all **CC0 1.0** (public domain). Packed at 256 px (v1.0 web budget; 512 px before) into
   `assets/textures/pbr/pbr_albedo.jpg` and `pbr_nra.jpg` (10-layer arrays, see `layers.json`):
   Marble014 (floor slabs), Marble012 (weathered veined marble), Marble021 (plain white marble), Plaster007
   (cracked plaster), Rock060 (grey rock), Rock035 (dark water-stained stone), Marble016 (black veined marble),

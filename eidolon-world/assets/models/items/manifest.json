@@ -1,5 +1,5 @@
 {
- "conventions": "glTF Y-up, metres, base at y = 0, centred on XZ, front +Z; textured (Tripo PBR, 1024 px). Icons: assets/textures/icons/<name>.png, 128 px, transparent.",
+ "conventions": "glTF Y-up, metres, base at y = 0, centred on XZ, front +Z. Web-slim: base colour only at 256 px (metallic/roughness as constant factors, no normal/AO maps; dev_rig/tools/slim_items.py; full-res Tripo originals are not shipped). Icons: assets/textures/icons/<name>.png, 128 px, transparent.",
  "items": [
   {
    "file": "item_shard.glb",

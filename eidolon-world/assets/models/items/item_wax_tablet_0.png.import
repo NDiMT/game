@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ct85dj3xem10f"
-path="res://.godot/imported/item_memory_shard_1.png-19452d01e6406105cbe7c0c8beadcd49.ctex"
+uid="uid://cnctk0anxrpqj"
+path="res://.godot/imported/item_wax_tablet_0.png-0977fdfd03b5ec2f12d5e67ba79b1dc4.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "a39b4133768e7136f41b204b417fe97a"
+"md5": "1ce9d600185d0823e6880a63929b9392"
 }
 
 [deps]
 
-source_file="res://assets/models/items/item_memory_shard_1.png"
-dest_files=["res://.godot/imported/item_memory_shard_1.png-19452d01e6406105cbe7c0c8beadcd49.ctex"]
+source_file="res://assets/models/items/item_wax_tablet_0.png"
+dest_files=["res://.godot/imported/item_wax_tablet_0.png-0977fdfd03b5ec2f12d5e67ba79b1dc4.ctex"]
 
 [params]
 

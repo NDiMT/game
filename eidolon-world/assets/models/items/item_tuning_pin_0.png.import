@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dqefq0wkg62t2"
-path="res://.godot/imported/item_chisel_1.png-d91ccb5f6c32d3b4949d1d4326fd03f8.ctex"
+uid="uid://i5tv2drtgo2x"
+path="res://.godot/imported/item_tuning_pin_0.png-1cad95eed348d403e7bdda9a4f68ecee.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "1d8987d529274100756d81c123f10fd5"
+"md5": "1ef31864c154b9ba7abe25bf65c2ee93"
 }
 
 [deps]
 
-source_file="res://assets/models/items/item_chisel_1.png"
-dest_files=["res://.godot/imported/item_chisel_1.png-d91ccb5f6c32d3b4949d1d4326fd03f8.ctex"]
+source_file="res://assets/models/items/item_tuning_pin_0.png"
+dest_files=["res://.godot/imported/item_tuning_pin_0.png-1cad95eed348d403e7bdda9a4f68ecee.ctex"]
 
 [params]
 

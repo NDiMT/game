@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://crgxqfa6pwb13"
-path="res://.godot/imported/item_wax_tablet_2.jpg-6c991f53dd5668a638caaa7c8cf4f972.ctex"
+uid="uid://c15sjl6kvk5ye"
+path="res://.godot/imported/item_veil_seal_0.png-cd15a866dfd535c5393c250cbbbd408e.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "d3703477d6dd98aa55df3dc9b315c9fe"
+"md5": "a38e2d5fef9a93addc003aa74ac07106"
 }
 
 [deps]
 
-source_file="res://assets/models/items/item_wax_tablet_2.jpg"
-dest_files=["res://.godot/imported/item_wax_tablet_2.jpg-6c991f53dd5668a638caaa7c8cf4f972.ctex"]
+source_file="res://assets/models/items/item_veil_seal_0.png"
+dest_files=["res://.godot/imported/item_veil_seal_0.png-cd15a866dfd535c5393c250cbbbd408e.ctex"]
 
 [params]
 

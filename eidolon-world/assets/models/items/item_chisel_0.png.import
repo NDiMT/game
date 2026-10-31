@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b26swltiittor"
-path="res://.godot/imported/item_amphora_1.png-fc646fa7c0908e1320eb91cc8077d76f.ctex"
+uid="uid://r4q410e0sxr0"
+path="res://.godot/imported/item_chisel_0.png-74472a74e8444da374f666473f65d560.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "86b43a0bb422ec7a7f26a6886aee8583"
+"md5": "4b3af75c7703022749315aa77c779ebf"
 }
 
 [deps]
 
-source_file="res://assets/models/items/item_amphora_1.png"
-dest_files=["res://.godot/imported/item_amphora_1.png-fc646fa7c0908e1320eb91cc8077d76f.ctex"]
+source_file="res://assets/models/items/item_chisel_0.png"
+dest_files=["res://.godot/imported/item_chisel_0.png-74472a74e8444da374f666473f65d560.ctex"]
 
 [params]
 

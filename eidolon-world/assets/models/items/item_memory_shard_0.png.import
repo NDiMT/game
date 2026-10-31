@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccowa7gq0pwv2"
-path="res://.godot/imported/item_oil_lamp_2.jpg-09d4264ce30b46bbf635e23bd03b6aa9.ctex"
+uid="uid://cikspdchgyakv"
+path="res://.godot/imported/item_memory_shard_0.png-8cdcafa30e46385d843256c73affaf4e.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "9ba6236b883d578d9935fe81cea36e13"
+"md5": "68635f3afa5922e614b2fc29e046cd3d"
 }
 
 [deps]
 
-source_file="res://assets/models/items/item_oil_lamp_2.jpg"
-dest_files=["res://.godot/imported/item_oil_lamp_2.jpg-09d4264ce30b46bbf635e23bd03b6aa9.ctex"]
+source_file="res://assets/models/items/item_memory_shard_0.png"
+dest_files=["res://.godot/imported/item_memory_shard_0.png-8cdcafa30e46385d843256c73affaf4e.ctex"]
 
 [params]
 

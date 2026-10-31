@@ -46,6 +46,7 @@ func build(lv: Level) -> void:
 	name = "Props"
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 808
+	var blob_x: Array[Transform3D] = []
 	for e in PLACE:
 		var asset: String = e[0]
 		var m := _mesh(asset)
@@ -65,6 +66,9 @@ func build(lv: Level) -> void:
 		var wb: AABB = mi.transform * bb
 		var fr := Rect2(wb.position.x, wb.position.z, wb.size.x, wb.size.z)
 		placed.append([asset, mi, fr, e[4]])
+		var bc := mi.transform * bb.get_center()
+		blob_x.append(Transform3D(Basis(Vector3.UP, deg_to_rad(float(e[2]))) * Basis.from_scale(Vector3(bb.size.x * sc.x * 1.15, 1.0, bb.size.z * sc.z * 1.15)),
+			Vector3(bc.x, (e[1] as Vector3).y + 0.012, bc.z)))       # (v1.0 A: a soft contact shadow under it)
 		# the footprint: statues and stumps are round; a turned long piece is a chain of circles
 		var foot := Transform3D(b * Basis.from_scale(Vector3(bb.size.x, 1.0, bb.size.z)), mi.transform * Vector3(bb.get_center().x, 0.0, bb.get_center().z))
 		var chain := Level._turned_footprint(foot)
@@ -75,6 +79,24 @@ func build(lv: Level) -> void:
 		else:
 			for cc in chain: lv.ob_circle(Vector2(cc.x, cc.y), cc.z, "prop:" + asset)
 		if asset in OCCLUDE: lv.occluders.append(wb)
+
+	if not blob_x.is_empty():                       # (v1.0 A) soft contact shadows under every prop, one draw call
+		var pm := PlaneMesh.new()
+		pm.size = Vector2.ONE
+		var bm := ShaderMaterial.new()
+		bm.shader = preload("res://shaders/blob.gdshader")
+		bm.set_shader_parameter("strength", 0.45)
+		pm.material = bm
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = pm
+		mm.instance_count = blob_x.size()
+		for i in blob_x.size(): mm.set_instance_transform(i, blob_x[i])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "PropBlobs"
+		mmi.multimesh = mm
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mmi)
 
 ## the Low tier leaves the small dressing out
 func set_quality(high: bool) -> void:

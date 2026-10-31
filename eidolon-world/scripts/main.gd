@@ -374,6 +374,8 @@ func _process(dt: float) -> void:
 	if highlight: highlight.update(dt)
 	if prof_on: _t0 = _pm("focus+highlight", _t0)
 	Flame.cull(player.position, dt)          # (v0.8.3: one budget for the flames and the aqua lights)
+	if Engine.get_process_frames() % 2 == 0:
+		level.set_flames(Flame.bounce_list(player.position))   # (v1.0 A) crimson bounce on nearby stone
 	sfx.calm = mode != "play" or (player.speed01 < 0.05 and auto_target == Vector3.INF)
 	_update_hum()
 	if prof_on: _t0 = _pm("lights+hum", _t0)
@@ -1010,6 +1012,8 @@ func _apply_tier_extras() -> void:
 	level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
 	Reflector.cloth_bones = world.quality_high          # (v0.8: the Low tier's reflections: cloth at rest)
 	ui.glass_talk.glass_mat.set_shader_parameter("drops_q", 1.0 if world.quality_high else 0.0)      # (v1.0 M1-A: no running drops on Low)
+	level.set_pbr_quality(world.quality_high)                 # (v1.0 A: the Low tier skips the PBR detail)
+	for m in [level.marble_mat, level.marble_occ_mat]: m.set_shader_parameter("flame_k", 1.0 if world.quality_high else 0.0)
 	if props: props.set_quality(world.quality_high)
 	Flame.high = world.quality_high
 	AquaLight.high = world.quality_high

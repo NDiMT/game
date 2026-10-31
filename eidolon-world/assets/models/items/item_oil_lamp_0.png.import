@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dyy84o62pjbjt"
-path="res://.godot/imported/item_tuning_pin_2.jpg-4eec57ffc6f1833cb1cbcdecfd79c09a.ctex"
+uid="uid://ddc5c1k5jj5ih"
+path="res://.godot/imported/item_oil_lamp_0.png-fcdcddc6094357b5fd9012d76d78b07a.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "047a2f22ace504c332bc23c91f073fe1"
+"md5": "b3db7d7765c49e63ef4e4241b7e8178e"
 }
 
 [deps]
 
-source_file="res://assets/models/items/item_tuning_pin_2.jpg"
-dest_files=["res://.godot/imported/item_tuning_pin_2.jpg-4eec57ffc6f1833cb1cbcdecfd79c09a.ctex"]
+source_file="res://assets/models/items/item_oil_lamp_0.png"
+dest_files=["res://.godot/imported/item_oil_lamp_0.png-fcdcddc6094357b5fd9012d76d78b07a.ctex"]
 
 [params]
 

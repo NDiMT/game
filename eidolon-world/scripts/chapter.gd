@@ -49,6 +49,8 @@ var puzzles: Puzzles
 var state := {}
 var calm := 0.0
 var lens_on := false
+const LENS_AREAS := ["shard_gallery", "atrium", "eidolon_ledge"]       # (v1.0 M3b: the lens is back where it shows something)
+var items: Items
 var lens_px := Vector4.ZERO
 var _t := 0.0
 var _moved := false
@@ -130,7 +132,7 @@ func reset_state() -> void:
 		"hollow_done": false,          # (v0.9.2: "Our Steps" solved; the old key kept for saves)
 		"mural": false, "maze": false, "echo_room": false, "memories": [], "scale_w": [-1, -1, -1], "scales": false,
 		"four": false, "ledge_statue": [LEDGE_STATUE.x, LEDGE_STATUE.y],
-		"inv": Hub.fresh_state(), "hub": {"ec_open": false}}            # (v1.0 M3: the satchel, the hub's doors)
+		"inv": Items.fresh_inv(), "hub": Items.fresh_hub()}            # (v1.0 M3: the satchel, the hub's doors and item gates)
 
 # ================================================================== build (before level.commit)
 func build() -> void:
@@ -150,6 +152,10 @@ func build() -> void:
 	hub = Hub.new()                  # (v1.0 M3: after the gate: its sockets are the gate's statues)
 	add_child(hub)
 	hub.setup(game, self)
+	items = Items.new()              # (v1.0 M3b: the satchel's things and the wings' item gates)
+	add_child(items)
+	items.setup(game, self, hub)
+	hub.items = items
 	_build_shrine_pool()
 	_build_wisp()
 
@@ -652,7 +658,7 @@ func _drum_mesh() -> ArrayMesh:
 
 func _brazier_mesh() -> ArrayMesh:
 	var m := MB.new()
-	var br := Color(0.5, 1.0, 0.0)
+	var br := Color(0.5, WorldGeo.BRONZE, 0.0)          # (v1.0 A: bronze)
 	for k in 3:
 		var a := k * TAU / 3.0
 		var foot := Vector3(cos(a) * 0.3, 0.0, sin(a) * 0.3)
@@ -2447,7 +2453,7 @@ func update(dt: float) -> void:
 	_update_hall(dt)
 	_update_gallery(dt)
 	_update_stair_rune(dt)
-	if lens_on and game.area != "shard_gallery" and game.area != "": set_lens(false)
+	if lens_on and not (game.area in LENS_AREAS) and game.area != "": set_lens(false)
 	_update_lens()
 	steps.update(dt)
 	_update_mural(dt)
@@ -2457,6 +2463,7 @@ func update(dt: float) -> void:
 	_update_ledge(dt)
 	_update_four(dt)
 	hub.update(dt)
+	items.update(dt)
 	_update_hints(dt, game.area)
 
 func apply_state() -> void:
@@ -2535,6 +2542,7 @@ func apply_state() -> void:
 	game.ui.set_inventory(state["shard"], false)
 	set_lens(false)
 	hub.apply_state()
+	items.apply_state()
 
 # ================================================================== 13. "The Hand in the Water"
 const POOL_C := Vector3(25.0, 2.155, -32.4)

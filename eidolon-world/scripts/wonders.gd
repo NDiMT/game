@@ -101,6 +101,7 @@ func _build_colossus() -> void:
 	wm.shader = preload("res://shaders/still_water.gdshader")
 	wm.set_shader_parameter("noise_tex", level.noise_tex)
 	wm.set_shader_parameter("area", area)
+	wm.set_shader_parameter("deep", Color(0.21, 0.23, 0.25))      # (v1.0 M3: slate, not ink: the Colonnade's stones read in it)
 	var w := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(area.z - area.x, area.w - area.y)
@@ -124,6 +125,20 @@ func _build_colossus() -> void:
 		mi.position = Vector3(c.x + (i - 1) * 1.6, wy + 0.35 + i * 0.45, c.z + 1.0 - i * 0.8)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(mi)
+	# (v1.0 M3: a thin breath of it over the Flooded Colonnade too, by the Atrium's edge)
+	var tm := ShaderMaterial.new()
+	tm.shader = preload("res://shaders/mist_drift.gdshader")
+	tm.set_shader_parameter("noise_tex", level.noise_tex)
+	tm.set_shader_parameter("density", 0.22)
+	tm.set_shader_parameter("drift", Vector2(0.012, 0.004))
+	var tmi := MeshInstance3D.new()
+	var tp := PlaneMesh.new()
+	tp.size = Vector2(9.0, 7.0)
+	tmi.mesh = tp
+	tmi.material_override = tm
+	tmi.position = Vector3(11.0, wy + 0.3, 6.0)
+	tmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(tmi)
 
 ## the owner's Tripo head (assets/models/props/colossus_head_veiled.glb, normalised to 1 m) when it is
 ## there: about 8 m, tipped back as if looking up, half-sunk, its face toward the stones; the game's

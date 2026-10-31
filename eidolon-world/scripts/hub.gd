@@ -10,6 +10,7 @@ extends Node3D
 
 var game: Game
 var chapter: Chapter
+var items: Items
 # the bridge
 var slabs: Array[Node3D] = []
 var _settled := [false, false, false]
@@ -30,7 +31,7 @@ var t4_s := 0.0                       # (tests) how far along the hidden path sh
 var _t4_pose := Figure.Pose.new()
 var _t4_phase := 0.0
 # the seals
-const SEAL_POS := {"W": Vector3(9.55, 1.0, -8.6), "N": Vector3(10.62, 2.0, -40.1), "E": Vector3(17.15, 2.0, -49.45)}
+const SEAL_POS := {"W": Vector3(9.55, 1.24, -8.98), "N": Vector3(10.62, 2.0, -40.1), "E": Vector3(17.15, 2.0, -49.45)}
 const SEAL_DONE := {"W": "gallery", "N": "maze", "E": "echo_room"}
 var seal_nodes := {}
 var _seal_up := {}
@@ -39,7 +40,7 @@ var ec_bars: Node3D
 var sc_bars: Node3D
 
 static func fresh_state() -> Dictionary:
-	return {"items": [], "seals": [], "socketed": []}
+	return Items.fresh_inv()
 
 func setup(g: Game, ch: Chapter) -> void:
 	game = g
@@ -128,18 +129,20 @@ func _build_lamp() -> void:
 	lamp_flame = Flame.new(0.0, 0.16, Palette.FIRE_LIGHT, game.level.noise_tex)
 	lamp_flame.position = Vector3(0, 0.14, 0)
 	lamp_flame.mat.set_shader_parameter("intensity", 0.85)
+	lamp_flame.bounce = false
 	lamp_held.add_child(lamp_flame)
 	lamp_light = OmniLight3D.new()
-	lamp_light.light_color = Color(1.0, 0.72, 0.45)
-	lamp_light.omni_range = 5.5
-	lamp_light.omni_attenuation = 1.2
-	lamp_light.light_energy = 1.1
+	lamp_light.light_color = Color(1.0, 0.84, 0.66)
+	lamp_light.omni_range = 4.5
+	lamp_light.omni_attenuation = 1.4
+	lamp_light.light_energy = 0.6                # (v1.0 M3 polish: a warm glow round her, not a red wash)
 	lamp_light.shadow_enabled = false
 	lamp_light.position = Vector3(0, 0.3, 0)
 	lamp_held.add_child(lamp_light)
 	var bf := Flame.new(0.0, 0.16, Palette.FIRE_LIGHT, game.level.noise_tex)
 	bf.position = Vector3(0, 0.14, 0)
 	bf.mat.set_shader_parameter("intensity", 0.85)
+	bf.bounce = false
 	lamp_bench.add_child(bf)
 	game.level.add_interact("lamp_take", WorldGeo.LAMP_POS + Vector3(-0.55, 0, 0), "take", take_lamp, 1.0,
 		func() -> bool: return not has_item("lamp"))
@@ -288,7 +291,11 @@ func _build_seals() -> void:
 			func() -> bool: return _seal_up[kk] and not (kk in (inv()["seals"] as Array)))
 
 func seal_ready(k: String) -> bool:
-	return bool(chapter.state[SEAL_DONE[k]])
+	if not bool(chapter.state[SEAL_DONE[k]]): return false
+	match k:                                 # (v1.0 M3b: each wing's item on its critical path)
+		"W": return bool(chapter.state["hub"].get("w_broken", false))       # (the chisel, the reliquary)
+		"N": return bool(chapter.state["hub"].get("n_poured", false))       # (the amphora's puddle mirror)
+	return true
 
 func take_seal(k: String) -> void:
 	if k in (inv()["seals"] as Array): return
@@ -384,7 +391,7 @@ func update(dt: float) -> void:
 func apply_state() -> void:
 	var st: Dictionary = chapter.state
 	if not st.has("inv"): st["inv"] = fresh_state()
-	if not st.has("hub"): st["hub"] = {"ec_open": false}
+	if not st.has("hub"): st["hub"] = Items.fresh_hub()
 	_apply_lamp()
 	if not has_item("lamp") and lamp_held.get_parent() == game.player.fig:
 		game.player.fig.remove_child(lamp_held)

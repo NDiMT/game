@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c62cv4fg5v28b"
-path="res://.godot/imported/item_oil_lamp_0.jpg-599bac93bfd7fc585b9ac1c140afc047.ctex"
+uid="uid://cf2wln0t5obq8"
+path="res://.godot/imported/item_amphora_0.png-d60ac0ea7113bfb097e88bdb6fa6df99.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "250581da3cc09e6f08234b84af2830aa"
+"md5": "c4d8e331b28abc370ae73ca5c4587a9c"
 }
 
 [deps]
 
-source_file="res://assets/models/items/item_oil_lamp_0.jpg"
-dest_files=["res://.godot/imported/item_oil_lamp_0.jpg-599bac93bfd7fc585b9ac1c140afc047.ctex"]
+source_file="res://assets/models/items/item_amphora_0.png"
+dest_files=["res://.godot/imported/item_amphora_0.png-d60ac0ea7113bfb097e88bdb6fa6df99.ctex"]
 
 [params]
 

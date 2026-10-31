@@ -9,6 +9,9 @@ extends RefCounted
 ##   T3 the Wind-swept Balcony up the lake's east shore to the Eidolon Ledge
 ## Coordinates: -z is north (up the screen); the camera looks from the south-west.
 
+## (v1.0 A's material ids, by vertex COLOR.g: 0.87-0.95 bronze, 0.95-0.995 brown wood, 1.0 charcoal)
+const WOOD := 0.97
+const BRONZE := 0.91
 const A_Y := 0.5                         # the Atrium's floor
 const A_RECT := Rect2(-4.0, 9.6, 18.0, 13.4)   # x -4..14, z 9.6..23
 const FOUNTAIN := Vector3(5.0, A_Y, 16.0)
@@ -77,14 +80,14 @@ static func _atrium(lv: Level) -> void:
 	# two blocks waiting to be carved, a fallen crane arm
 	lv.box(z, Vector3(9.9, A_Y + 0.45, 20.6), Vector3(1.0, 0.9, 0.8), 0.25, false, Basis(Vector3.UP, 0.3))
 	lv.ob_rect(R(9.24, 20.0, 10.56, 21.2))
-	lv.box(z, Vector3(-1.0, A_Y + 0.12, 21.6), Vector3(3.2, 0.24, 0.3), 1.0, false, Basis(Vector3.UP, 0.12))
+	lv.box(z, Vector3(-1.0, A_Y + 0.12, 21.6), Vector3(3.2, 0.24, 0.3), WOOD, false, Basis(Vector3.UP, 0.12))
 	lv.ob_rect(R(-2.65, 21.3, 0.65, 21.95))
 	# T2: Theron's scaffold up the east wall: a plank stair, a gallery with his workbench
 	var g := Rect2(11.2, 14.0, 2.75, 3.4)                       # the gallery (x 11.2..13.95, z 14..17.4)
 	lv.walk(g, GAL_Y, NAN, -1, "A_gal")
 	lv.walk(R(11.2, 17.4, 12.6, 22.4), GAL_Y, A_Y, 1, "A_scaf")
 	lv.mb(z).tag = "floor"
-	lv.box(z, Vector3(g.get_center().x, GAL_Y - 0.08, g.get_center().y), Vector3(g.size.x, 0.16, g.size.y), 1.0)
+	lv.box(z, Vector3(g.get_center().x, GAL_Y - 0.08, g.get_center().y), Vector3(g.size.x, 0.16, g.size.y), 0.0)      # (stone flags on his timbers: brown wood read red-orange from the fixed view)
 	lv.mb(z).tag = ""
 	lv.steps(z, R(11.2, 17.4, 12.6, 22.4), 1, A_Y, GAL_Y, false)
 	for px in [11.3, 13.85]:
@@ -93,9 +96,9 @@ static func _atrium(lv: Level) -> void:
 	lv.balustrade(z, Vector2(11.15, 14.05), Vector2(11.15, 17.35), GAL_Y)
 	# (no rail on its north edge: from the fixed view it would stand before the Undercroft's mouth)
 	lv.ob_rect(R(10.95, 17.4, 11.2, 21.8))                       # (the stair's open side; its foot is low enough to step on from the side)
-	lv.box(z, Vector3(13.4, GAL_Y + 0.4, 15.1), Vector3(0.8, 0.08, 1.4), 1.0)            # the workbench
+	lv.box(z, Vector3(13.4, GAL_Y + 0.4, 15.1), Vector3(0.8, 0.08, 1.4), WOOD)            # the workbench
 	for bz in [14.55, 15.65]:
-		lv.box(z, Vector3(13.4, GAL_Y + 0.18, bz), Vector3(0.7, 0.36, 0.08), 1.0)
+		lv.box(z, Vector3(13.4, GAL_Y + 0.18, bz), Vector3(0.7, 0.36, 0.08), WOOD)
 	lv.ob_rect(R(12.95, 14.35, 13.85, 15.85))
 
 ## a half-carved face: a plinth, a rough block, the face emerging on one side

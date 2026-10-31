@@ -15,6 +15,7 @@ var core: ShaderMaterial
 var light: OmniLight3D
 var embers: CPUParticles3D
 var key := false
+var bounce := true          # (v1.0: a hand lamp's tiny flame casts no crimson bounce on the stone)
 var energy := 1.6
 var range_m := 4.0
 var _t := 0.0
@@ -138,3 +139,22 @@ static func cull(p: Vector3, dt := 0.016) -> void:
 
 static func _by_first(x: Array, y: Array) -> bool:
 	return x[0] < y[0]
+
+## (v1.0 A) the 8 nearest lit flames as (x, y, z, strength): fed to the marble for a crimson bounce
+static func bounce_list(p: Vector3) -> PackedVector4Array:
+	var c: Array = []
+	for f in all:
+		var k := f.level()
+		if k > 0.01 and f.bounce and f.is_visible_in_tree():
+			c.append([f.global_position.distance_squared_to(p), f, k])
+	c.sort_custom(_by_first)
+	var out := PackedVector4Array()
+	for i in 8:
+		if i < c.size():
+			var f: Flame = c[i][1]
+			var fl := 0.86 + 0.08 * sin(f._t * 9.1 + f._seed) * sin(f._t * 3.7)
+			var q := f.global_position + Vector3(0, f._ly, 0)
+			out.append(Vector4(q.x, q.y, q.z, float(c[i][2]) * fl))
+		else:
+			out.append(Vector4(0, -999, 0, 0))
+	return out
