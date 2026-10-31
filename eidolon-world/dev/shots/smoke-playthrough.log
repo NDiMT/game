@@ -331,3 +331,61 @@ PASS  sing E song0
 PASS  sing F song2
 PASS  sing E song0
 PASS  the hidden memory memory1
+PASS  hidden memory #1 kept 
+PASS  its line shows 
+PASS  the memory is saved 
+PASS  (v1.0) take the Seal of the High wing seal_E
+  .. sim 500s  real 84s  step 948/1112
+PASS  (v1.0) unbolt the bars: a way back through the Maze (the High wing's shortcut) ec_unbolt
+PASS  (v1.0) three seals in the satchel ["W", "N", "E"]
+PASS  reached the Gate of the Four Veiled gate_four
+PASS  the tholos is closed by veils (25.03823, 2.0, -29.33095)
+PASS  (v1.0) the gate will not count you before the seals are set 
+PASS  (v1.0) set a seal in the first statue's socket socket0
+PASS  (v1.0) set a seal in the second statue's socket socket1
+PASS  (v1.0) set a seal in the third statue's socket socket2
+PASS  (v1.0) the three seals are set: their statues' runes lit 
+PASS  standing on the empty plinth (21.27417, 2.25, -33.92999)
+PASS  wait four_wait
+PASS  the plinths light one by one 
+PASS  the veil before the shrine is gone 
+PASS  the solve jingle again 
+  .. sim 520s  real 87s  step 995/1112
+PASS  reached the First Shrine first_shrine
+PASS  shrine is dark 
+PASS  wake the shrine shrine
+PASS  cinematic: letterbox 
+PASS  cinematic: the shrine wakes 
+PASS  cinematic: near geometry cut away, the crystal lifted out of the shot 
+PASS  cinematic: her reflection in the shrine pool 
+PASS  cinematic: camera looks down into the water 50.0 deg
+  .. sim 540s  real 89s  step 1006/1112
+PASS  cinematic: palm to palm 
+PASS  cinematic: Katoptron lights on you both 
+  .. sim 560s  real 91s  step 1008/1112
+PASS  cinematic: her veil lifts 1.00
+PASS  cinematic: she is gone; the pool shows only you 
+  .. sim 580s  real 93s  step 1012/1112
+PASS  memory fragment shows 
+PASS  cinematic: ~4.5 s awakening + the 59 s score 63.9 s
+PASS  music cues: shrine_awaken, then cinematic_hand 
+PASS  the room beds come back after the scene 
+PASS  the world beyond is revealed 
+PASS  first shrine lights one cloak rune and brightens the hem 
+PASS  the shrine leaves its light on 
+PASS  milestone text names the chapter The Veiled Gate — awakened
+PASS  still playable, controls back, no letterbox 
+PASS  camera back to normal 
+PASS  fog receded 
+PASS  score cues played 
+PASS  (v1.0 juice) the chapter's physical moments all played (dust, grit, sparks, rings, wet stone, glints...) ["dust", "grit", "glint", "ring", "bubbles", "sheet", "wet", "sparks", "dust_fall"]
+PASS  (v1.0 juice) no burst is left alive for long 0
+PASS  the way on is sealed (28.00062, 2.0, -38.53448)
+  .. sim 600s  real 96s  step 1030/1112
+  .. sim 620s  real 99s  step 1032/1112
+  .. sim 640s  real 102s  step 1036/1112
+  .. sim 660s  real 105s  step 1038/1112
+  .. sim 680s  real 109s  step 1042/1112
+  .. sim 700s  real 112s  step 1044/1112
+  .. sim 720s  real 115s  step 1046/1112
+  .. sim 740s  real 119s  step 1050/1112

@@ -5,3 +5,7 @@ PASS  start: a tap on the title starts the game  mode=wake music=waking_pool
 [63.0s] walk-through tier LOW
 PASS  shot waking_pool  area=waking_pool mean=165 sd=35 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-waking_pool.png
 [77.9s] room waking_pool: music=waking_pool rms=-42 dBFS peak=-29.3 ctx=running fps=1 tier=LOW
+PASS  shot stair_breath  area=stair_breath mean=161.6 sd=33 black=0 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-stair_breath.png
+[89.3s] room stair_breath: music=stair_breath rms=-35.3 dBFS peak=-21.5 ctx=running fps=1 tier=LOW
+PASS  shot hall_glass  area=hall_glass mean=127.7 sd=52.8 black=0.001 white=0 -> /home/user/game/eidolon-world/dev/shots/smoke-hall_glass.png
+[104.3s] room hall_glass: music=hall_glass rms=-34.5 dBFS peak=-22.3 ctx=running fps=1 tier=LOW
