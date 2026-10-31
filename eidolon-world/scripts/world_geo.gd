@@ -67,7 +67,7 @@ static func _atrium(lv: Level) -> void:
 	var m := lv.mb(z)
 	m.group = "fountain:1"
 	m.cyl(FOUNTAIN + Vector3(0, 0.25, 0), 1.8, 1.85, 0.5, lv.C(0.25), 28)
-	m.cyl(FOUNTAIN + Vector3(0, 0.52, 0), 1.6, 1.6, 0.04, lv.C(1.0), 28)          # (the dry, stained bed)
+	m.cyl(FOUNTAIN + Vector3(0, 0.52, 0), 1.6, 1.6, 0.04, lv.C(0.0), 28)          # (the dry, stained bed: stone, not a black hole: QA P1-8)
 	m.cyl(FOUNTAIN + Vector3(0, 0.9, 0), 0.35, 0.45, 0.8, lv.C(0.25), 12)
 	m.group = ""
 	lv.ob_circle(Vector2(FOUNTAIN.x, FOUNTAIN.z), 1.9)

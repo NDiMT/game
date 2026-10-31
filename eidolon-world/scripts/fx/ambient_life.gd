@@ -7,6 +7,10 @@ class_name AmbientLife
 ## Gusts: AmbientLife.set_gust(node, 0..1) pulses petals and veils (e.g. with the wind sound).
 ## Test: dev_fx/ambient_test.tscn.
 
+## Low tier (v1.0, set by World.set_tier through apply_tier): moths 2 of each swarm, petals a third, veils with
+## half the segments (when built on Low); drips are kept (tiny). Nodes join the group "q_ambient".
+static var high := true
+
 const MOTHS := preload("res://shaders/moths.gdshader")
 const PETALS := preload("res://shaders/petals.gdshader")
 const DRIPS := preload("res://shaders/drips.gdshader")
@@ -36,6 +40,7 @@ static func moths(centre: Vector3, count := 5, radius := 0.38, seed := 0) -> Mul
 	mi.position = centre
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.custom_aabb = AABB(Vector3(-1, -0.6, -1) * (radius * 2.0 + 0.3), Vector3(2, 1.2, 2) * (radius * 2.0 + 0.3))
+	_tiered(mi, mini(2, count))
 	return mi
 
 ## petals drifting through `box` (world space) on `wind` (m/s); `rose_share` of them faintly rose
@@ -65,6 +70,7 @@ static func petals(box: AABB, count := 60, wind := Vector3(1.1, 0.0, -0.45), ros
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.custom_aabb = box.grow(0.2)
+	_tiered(mi, maxi(count / 3, 1))
 	return mi
 
 ## water drips from `points` (ceiling points, world space), each falling `height` m to the floor
@@ -84,7 +90,7 @@ static func veils(top: Vector3, count := 3, length := 1.6, wind := Vector3(0.8, 
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var B := Basis(Vector3.UP, yaw)
-	var SEG := 12
+	var SEG := 12 if high else 6
 	for k in count:
 		var x0 := (float(k) - (count - 1) * 0.5) * (bar_len / float(maxi(count, 1)))
 		var w := rng.randf_range(0.16, 0.26)
@@ -125,6 +131,19 @@ static func veils(top: Vector3, count := 3, length := 1.6, wind := Vector3(0.8, 
 		bar.position = Vector3(0, 0.02, 0)
 		root.add_child(bar)
 	return root
+
+## the Low path: how many instances a multimesh keeps on Low (all on High)
+static func _tiered(mi: MultiMeshInstance3D, low_count: int) -> void:
+	mi.set_meta("q_low", low_count)
+	mi.add_to_group("q_ambient")
+	mi.multimesh.visible_instance_count = -1 if high else low_count
+
+## called by World.set_tier: every ambient node switches (and new ones are built for the tier)
+static func apply_tier(tree: SceneTree, is_high: bool) -> void:
+	high = is_high
+	for n in tree.get_nodes_in_group("q_ambient"):
+		var mi := n as MultiMeshInstance3D
+		if mi: mi.multimesh.visible_instance_count = -1 if is_high else int(mi.get_meta("q_low", -1))
 
 ## gusts: 0..1 on petals or veils (any node returned above)
 static func set_gust(n: Node, g: float) -> void:

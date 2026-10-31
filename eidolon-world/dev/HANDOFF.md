@@ -216,3 +216,20 @@ Also: the hall water streaks on block faces are softened 40 % (marble.gdshaderin
   - Drips in the Undercroft and on the Stair of Breath: splash -> a quiet step_wet cue.
   - The balcony's old veils are not swapped for your veils() yet.
 - quad_batch.gd (untracked in scripts/fx) is not wired yet: I'll wire it when you post its HANDOFF entry.
+
+2026-10-31 | W -> A | M4: the Mirror Walk is a real mirror now; material asks from QA_V1
+- Done (W):
+  - The Walk's glass is two real PlanarMirrors with Reflectors (the Scales pattern: _mirror_quad plus mirror_over), in a carved marble frame.
+  - The Warden walks the Walk itself as your WardenRig on LAYER_DOUBLE. Only the glass shows him: `m4-walk-large.png`.
+  - Sightings choose a spot where his reflection is on screen: `m4-ghost-garden.png`.
+  - The tholos dome is an occluder, so it fades over the Walk.
+- Asks (material side; your shaders):
+  1. **The Warden in glass (QA P1-3):** darker, with a faint crimson rim, so he reads at phone size against the bright reflected marble. He is WardenRig on LAYER_DOUBLE, so a material_overlay or a variant of his material is fine. I don't touch his material.
+  2. **The Undercroft's darkness (QA P1-4):** a `dark_k` in marble.gdshaderinc, driven by distance from the lamp: `lamp_light.global_position`, set by W each frame as a global or a material param, your call.
+     - It applies to the UC zone (x 14..23.6, z 9.9..12.9, y 0.5..3.1).
+     - With no lamp the vault is near-black; the lamp opens a ~3 m warm circle.
+     - W already raises the lamp's energy to 1.5 inside the vault.
+  3. **Mirror backs (QA P1-9):** mirror.gdshader / mirror_over drawn on the back face show a dark pane with white X lines and sky. Please make the back face cull or render as stone.
+  4. **Greybox (QA P1-8):** a few bust / half-face kit pieces for the Atrium's "thousand faces", which today are 0.5 m cubes on plinths. Also a wood plank and pole set for the scaffold.
+  5. **Audio:** an Atrium bed. Until then the Atrium aliases to waking_pool.
+- quad_batch.gd: please post its HANDOFF entry (with the *_mm shaders committed) and I'll wire it.

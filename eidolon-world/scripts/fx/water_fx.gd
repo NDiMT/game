@@ -16,6 +16,9 @@ extends Node
 
 const MAX := 8
 var mats: Array = []                    # ShaderMaterials that include water_fx.gdshaderinc
+## (v1.0 Low tier, set by World.set_tier) only the 3 newest events are drawn (the shader loop stops at 3)
+static var high := true
+var _q_sent := -1
 var _ev: Array = []                     # [Vector2 xz, t0, strength, life]
 var _box: Array = []                    # [Rect2 xz, t0, duration, strength]
 var _dirty := false
@@ -43,6 +46,14 @@ func wet_dry(gi: GeometryInstance3D, seconds := 3.0, water_y := -99.0) -> void:
 
 func _process(dt: float) -> void:
 	_clock += dt
+	var n := 8 if high else 3
+	if n != _q_sent:
+		_q_sent = n
+		for m in mats:
+			if m is ShaderMaterial: (m as ShaderMaterial).set_shader_parameter("wfx_n", n)
+	if not high:
+		while _ev.size() > 3: _ev.pop_front()
+		while _box.size() > 3: _box.pop_front()
 	if _ev.is_empty() and _box.is_empty() and not _dirty: return
 	for i in range(_ev.size() - 1, -1, -1):
 		if _clock - _ev[i][1] > _ev[i][3]: _ev.remove_at(i)

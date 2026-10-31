@@ -1664,7 +1664,7 @@ func _update_maze(dt: float) -> void:
 		var sg := maze_feet_seg[i]
 		var want := inside and sg >= first and sg <= first + 2
 		var m: ShaderMaterial = maze_feet[i].material_override
-		if want and _maze_still > 0.5:
+		if want and (_maze_still > 0.5 or (hub.has_item("lamp") and inside)):        # (v1.0: the lamp's light shows them as you walk)
 			if maze_feet_t[i] <= 0.0: maze_feet_t[i] = _maze_still + shown * 0.32
 			shown += 1
 			var age := _maze_still - maze_feet_t[i]
@@ -1701,7 +1701,9 @@ func _update_maze(dt: float) -> void:
 			event.emit("maze_bump", null)
 	if inside and not state["maze"] and game.player.position.z < -38.7:
 		pass
-	if not state["maze"] and game.player.position.z < -39.2 and game.player.position.x < 11.5 and game.player.position.x > 8.5 and absf(game.player.position.y - 2.0) < 0.2:
+	# (v1.0 QA P0-1: only by walking out of the maze's last cell; never from the Echo Corridor's side of the bars)
+	var pz := game.player.position
+	if not state["maze"] and maze_prog >= Ch1Geo.MZ_PATH.size() - 2 and pz.z < -39.2 and pz.z > -40.8 and pz.x < 11.5 and pz.x > 8.5 and absf(pz.y - 2.0) < 0.2:
 		state["maze"] = true
 		event.emit("solve", "mist_maze")
 
@@ -2387,6 +2389,26 @@ func _build_wisp() -> void:
 
 ## where the gentle hint should drift (INF: nothing to hint in this space)
 func hint_target(area: String) -> Vector3:
+	# (v1.0 QA P1-6: the hub's and the items' places first)
+	var hs: Dictionary = state["hub"]
+	var pp := game.player.position
+	match area:
+		"atrium":
+			if not hub.has_item("lamp"): return WorldGeo.LAMP_POS + Vector3(0, 0.8, 0)
+			return Vector3.INF
+		"shard_gallery":
+			if state["gallery"] and not hs.get("w_broken", false):
+				return (Items.CHISEL_POS + Vector3(0, 0.6, 0)) if not hub.has_item("chisel") else Items.RELIC_POS + Vector3(0, 1.3, 0)
+		"mist_maze", "echo_corridor":
+			if state["maze"] and pp.z > -41.0 and not hs.get("n_poured", false):
+				return (Items.FILL_POS + Vector3(-0.6, 0.4, 0)) if not state["inv"].get("amph_full", false) else Items.POUR_POS + Vector3(0, 0.5, 0)
+		"eidolon_ledge":
+			if pp.y > 3.0 and hs.get("e_open", false) and not hs.get("wk_crossed", false): return Vector3(31.4, 5.0, Warden.END_Z)
+			if pp.y > 3.0 and not hs.get("e_open", false): return Vector3(31.4, 5.0, Items.PANEL_Z)
+		"gate_four":
+			if (state["inv"]["seals"] as Array).size() > (state["inv"]["socketed"] as Array).size():
+				for i in 3:
+					if not (i in (state["inv"]["socketed"] as Array)): return four_pos(i) + Vector3(0, 1.2, 0)
 	match area:
 		"waking_pool": return Vector3(-4.2, 0.6, 1.7) if not state["stones"] else Vector3.INF
 		"stair_breath": return Vector3(-10.5, 1.6, -5.3) if not state["breath"] else Vector3.INF

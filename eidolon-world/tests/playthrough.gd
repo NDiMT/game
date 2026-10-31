@@ -679,7 +679,7 @@ func _plan() -> void:
 	step_do(func() -> void: ok("take the shard", _focus() == "take_shard" and game.try_interact(), _focus()))
 	step_wait(1.0)
 	step_do(func() -> void: ok("the shard is in the inventory", C().state["shard"] and game.controls.inv_has and not game.controls.inv_on))
-	step_do(func() -> void: C().warden._sight_cool = 0.0; tp(0.0, -16.6, PI))
+	step_do(func() -> void: C().warden._sight_cool = 0.0; tp(2.0, -17.8, PI))
 	step_wait(2.4)
 	step_do(func() -> void:
 		ok("(v1.0 M3c) your back to the great glass: the Warden stands behind you, in the reflection only", C().warden.sight_on and C().warden.ghost_fig.visible and C().warden.sightings >= 1, "%s pl=%s yaw=%.2f vis=%s mode=%s refl=%s" % [C().warden.sight_on, P(), game.player.yaw, game.visited.has("atrium"), game.mode, str(game.puzzles.reflectors.map(func(r: Reflector) -> String: return "%s:%s:%s" % [r.kind, r.planar != null, r.planar_on]))])
@@ -1055,7 +1055,7 @@ func _plan() -> void:
 	mpath.append([10.0, -40.2])
 	walk_path("follow her steps", mpath)
 	step_do(func() -> void:
-		ok("out of the maze", C().state["maze"] and game.area == "echo_corridor", str(P()) + " " + game.area))
+		ok("out of the maze (its end, before the bars, is still the Maze's)", C().state["maze"] and game.area == "mist_maze", str(P()) + " " + game.area))
 	step_wait(4.0)
 	step_do(func() -> void: ok("(v1.0 M3b) the maze walked: no seal yet, the floor here is dry", not C().hub._seal_up["N"]))
 	walk_path("back to her pool's edge", [[10.0, -38.0], [10.0, -36.0]])
@@ -1456,6 +1456,27 @@ func _plan() -> void:
 		ok("new game: save rewritten fresh", d is Dictionary and not d["puzzles"]["shrine"] and not d["chapter"]["stones"])
 		ok("new game: settings kept (quality)", game.world.tier == "low")
 		game.set_quality("auto", true))
+	# ---- (v1.0 QA_V1) the wing order holes are shut: E first never opens N's end or the Court
+	step_do(func() -> void:
+		game.cmd("jump:atrium")
+		ok("(QA P1-2) the Warden is never in plain view: hidden off the Walk", not C().warden.patrol_fig.visible and not C().warden.ghost_fig.visible)
+		C().state["echo_room"] = true; C().state["scales"] = true
+		tp(10.0, -41.75, 0.0))
+	step_wait(0.5)
+	step_do(func() -> void:
+		ok("(QA P0-1) E first: the bars will not unbolt before the Maze is walked", _focus() == "ec_held", _focus())
+		tp(10.0, -40.2, 0.0))
+	step_wait(0.6)
+	step_do(func() -> void:
+		ok("(QA P0-1) standing at the Maze's end from the other side never solves the Maze", not C().state["maze"])
+		tp(22.2, -23.0, 0.0))
+	step_wait(0.5)
+	step_do(func() -> void:
+		ok("(QA P1-1) E first: the Ledge's drawbridge lever is held from the far side", _focus() == "drawbridge_held" and not game.puzzles.state["drawbridge"], _focus())
+		C().state["inv"]["seals"] = ["W", "N", "E"]
+		C().state["inv"]["socketed"] = [0.0, 1.0]
+		C().hub.apply_state()
+		ok("(QA P1-5) sockets restored from JSON floats stay set: no socket asks twice", not C().hub.can_socket(0) and not C().hub.can_socket(1) and C().hub.can_socket(2), str(C().state["inv"]["socketed"])))
 	# ---- (v1.0 M3b) a v2 save (before the hub) loads into the hub: its progress implies the items and seals
 	step_do(func() -> void:
 		var ch2 := {}

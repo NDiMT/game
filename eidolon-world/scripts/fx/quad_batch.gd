@@ -29,32 +29,36 @@ const LAYOUT := {
 }
 
 var sync_every := 1
-var _batches := {}           # kind -> MultiMeshInstance3D
-var _items := {}             # kind -> Array of [node, ShaderMaterial, mesh_fix Transform3D]
+## Low tier (set by World.set_tier): the batch syncs every 2nd frame (the quads' animation is in the shader anyway)
+static var high := true
+var _batches := {}           # "kind@layers" -> MultiMeshInstance3D
+var _items := {}             # "kind@layers" -> Array of [node, ShaderMaterial, mesh_fix Transform3D, original layers]
 var _seen := {}
 var _frame := 0
 
 func absorb(root: Node) -> Dictionary:
 	var found := {}
 	_walk(root, found)
-	for kind in found:
-		if not _batches.has(kind): _make_batch(kind, found[kind][0][1])
-		(_items[kind] as Array).append_array(found[kind])
-		for it in found[kind]: (it[0] as MeshInstance3D).layers = 0
-		_resize(kind)
+	for key in found:
+		if not _batches.has(key): _make_batch(key, found[key][0][1], found[key][0][3])
+		(_items[key] as Array).append_array(found[key])
+		for it in found[key]: (it[0] as MeshInstance3D).layers = 0
+		_resize(key)
 	_sync(true)
 	return stats()
 
 func stats() -> Dictionary:
 	var s := {}
-	for kind in _items: s[kind] = (_items[kind] as Array).size()
+	for key in _items:
+		var kind: String = String(key).get_slice("@", 0)
+		s[kind] = s.get(kind, 0) + (_items[key] as Array).size()
 	return s
 
 func release() -> void:
-	for kind in _items:
-		for it in _items[kind]:
-			if is_instance_valid(it[0]): (it[0] as MeshInstance3D).layers = 1
-		(_batches[kind] as Node).queue_free()
+	for key in _items:
+		for it in _items[key]:
+			if is_instance_valid(it[0]): (it[0] as MeshInstance3D).layers = it[3]
+		(_batches[key] as Node).queue_free()
 	_items.clear(); _batches.clear(); _seen.clear()
 
 func _walk(n: Node, found: Dictionary) -> void:
@@ -66,10 +70,12 @@ func _walk(n: Node, found: Dictionary) -> void:
 			var kind := m.shader.resource_path.get_file().get_basename()
 			if LAYOUT.has(kind):
 				var fix := _fix(mi.mesh as PlaneMesh)
-				if fix != Transform3D():
+				if fix != Transform3D() and mi.layers != 0:
 					_seen[n.get_instance_id()] = true
-					if not found.has(kind): found[kind] = []
-					found[kind].append([mi, m, fix])
+					# (one batch per shader AND render layers: quads only her mirror world sees stay only there)
+					var key := "%s@%d" % [kind, mi.layers]
+					if not found.has(key): found[key] = []
+					found[key].append([mi, m, fix, mi.layers])
 	for c in n.get_children(): _walk(c, found)
 
 ## the unit quad (1 x 1, facing +Z) -> this node's plane / quad mesh
@@ -81,7 +87,8 @@ static func _fix(pm: PlaneMesh) -> Transform3D:
 		PlaneMesh.FACE_Y: return Transform3D(Basis(Vector3(s.x, 0, 0), Vector3(0, 0, -s.y), Vector3(0, 1, 0)), o)
 	return Transform3D()          # (FACE_X: not batched)
 
-func _make_batch(kind: String, src: ShaderMaterial) -> void:
+func _make_batch(key: String, src: ShaderMaterial, layers: int) -> void:
+	var kind := key.get_slice("@", 0)
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
@@ -93,14 +100,15 @@ func _make_batch(kind: String, src: ShaderMaterial) -> void:
 	mat.shader = load("res://shaders/%s_mm.gdshader" % kind)
 	mat.render_priority = src.render_priority
 	var mmi := MultiMeshInstance3D.new()
-	mmi.name = "Batch_" + kind
+	mmi.name = "Batch_" + kind + "_" + str(layers)
+	mmi.layers = layers
 	mmi.multimesh = mm
 	mmi.material_override = mat
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mmi.top_level = true
 	add_child(mmi)
-	_batches[kind] = mmi
-	_items[kind] = []
+	_batches[key] = mmi
+	_items[key] = []
 
 func _resize(kind: String) -> void:
 	var mm := (_batches[kind] as MultiMeshInstance3D).multimesh
@@ -108,14 +116,14 @@ func _resize(kind: String) -> void:
 
 func _process(_dt: float) -> void:
 	_frame += 1
-	if _frame % maxi(sync_every, 1) == 0: _sync(false)
+	if _frame % maxi(sync_every if high else maxi(sync_every, 2), 1) == 0: _sync(false)
 
 func _sync(_all: bool) -> void:
 	const HIDDEN := Transform3D(Basis(Vector3.ZERO, Vector3.ZERO, Vector3.ZERO), Vector3.ZERO)
-	for kind in _items:
-		var mm := (_batches[kind] as MultiMeshInstance3D).multimesh
-		var L: Dictionary = LAYOUT[kind]
-		var items: Array = _items[kind]
+	for key in _items:
+		var mm := (_batches[key] as MultiMeshInstance3D).multimesh
+		var L: Dictionary = LAYOUT[String(key).get_slice("@", 0)]
+		var items: Array = _items[key]
 		for i in items.size():
 			var mi: MeshInstance3D = items[i][0]
 			if not is_instance_valid(mi) or not mi.is_visible_in_tree():

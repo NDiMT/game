@@ -25,6 +25,8 @@ var runes := 0
 var moths := {}                      # Flame -> MultiMeshInstance3D
 var _bell_t := 45.0
 var drips: Array[Drips] = []
+var veils: Array[Node3D] = []
+var _gust_t := 0.0
 # the turned head
 var head: Node3D
 var _head_yaw0 := 0.0
@@ -45,12 +47,24 @@ func setup(g: Game, ch: Chapter) -> void:
 
 func _build_ambient() -> void:
 	for f in Flame.all:
+		# (only this game's own flames: a reload builds the new game while the old one is still queued for
+		# deletion, and its flames are still listed: moths on them were freed under us)
+		if not is_instance_valid(f) or f.is_queued_for_deletion() or not game.is_ancestor_of(f): continue
 		var mm := AmbientLife.moths(Vector3(0, f._ly + 0.25, 0), 4, 0.34)
 		f.add_child(mm)
 		mm.visible = false
 		moths[f] = mm
 	add_child(AmbientLife.petals(AABB(Vector3(10.3, 1.0, -15.0), Vector3(6.7, 3.2, 10.0)), 50))
 	add_child(AmbientLife.petals(AABB(Vector3(26.45, 2.0, -18.95), Vector3(3.15, 3.0, 31.5)), 70, Vector3(-0.3, 0.0, -1.2), 0.1))
+	# torn veils streaming from a bar across each Balcony pole's top (A's veils), the wind across the view
+	var bars := MB.new()
+	for pz in [6.0, -2.0, -10.0]:
+		var top := Vector3(28.95, WorldGeo.BAL_Y + 2.4, pz)
+		bars.box(top + Vector3(0, 0.03, 0), Vector3(0.06, 0.06, 1.0), Color(0.5, 1.0, 0.0))
+		var v := AmbientLife.veils(top + Vector3(0, 0.0, 0), 3, 1.9, Vector3(0.7, 0.0, 0.7), null, NAN, 0.9, PI * 0.5)      # (QA P1-8: long enough to read)
+		add_child(v)
+		veils.append(v)
+	game.puzzles.marble_instance(bars.commit(), self)
 	var uc := AmbientLife.drips([Vector3(15.6, WorldGeo.A_Y + 0.01, 11.0), Vector3(18.3, WorldGeo.A_Y + 0.01, 11.9), Vector3(20.9, WorldGeo.A_Y + 0.01, 11.2), Vector3(22.8, WorldGeo.A_Y + 0.01, 11.6)], 2.35)
 	add_child(uc)
 	var st := AmbientLife.drips([Vector3(-12.1, 0.51, -5.6), Vector3(-10.5, 0.51, -5.0)], 2.6, 2.2, 4.0)
@@ -133,6 +147,9 @@ func _update_ambient(dt: float) -> void:
 				continue
 			var fl: Flame = f
 			(moths[f] as Node3D).visible = fl.level() > 0.3 and fl.global_position.distance_to(p) < 18.0
+	_gust_t += dt
+	var g := clampf(pow(maxf(sin(_gust_t * 0.37) * sin(_gust_t * 0.11 + 1.0), 0.0), 2.0) * 1.4, 0.0, 1.0)      # (slow, uneven gusts)
+	for v in veils: AmbientLife.set_gust(v, g)
 	_bell_t -= dt
 	if _bell_t <= 0.0:
 		_bell_t = randf_range(50.0, 110.0)

@@ -70,6 +70,8 @@ var relic_rune: ShaderMaterial
 var amph_node: Node3D
 var pin_node: Node3D
 var pour_ring: MeshInstance3D
+var pour_disc: MeshInstance3D
+var _glint_t := 0.0
 var puddle: MeshInstance3D
 var puddle_rune: ShaderMaterial
 var panel: Node3D
@@ -204,9 +206,10 @@ func break_relic(instant: bool) -> void:
 # ------------------------------------------------------------------ North: the amphora, her pool, the dry ring
 func _build_amphora() -> void:
 	amph_node = _anchor(AMPH_POS, -0.5)
+	amph_node.scale = Vector3.ONE * 1.6                     # (QA P1-6: it reads from the fixed view)
 	_model("amphora", amph_node, func(mb: MB) -> void:
 		mb.cyl(Vector3(0, 0.18, 0), 0.12, 0.07, 0.36, Color(0.5, 0.25, 0.0), 10))
-	game.level.ob_circle(Vector2(AMPH_POS.x, AMPH_POS.z), 0.18, "amph")
+	game.level.ob_circle(Vector2(AMPH_POS.x, AMPH_POS.z), 0.26, "amph")
 	game.level.add_interact("amph_take", AMPH_POS + Vector3(-0.45, 0, 0.35), "take", func() -> void:
 		hub.give("amphora")
 		amph_node.visible = false
@@ -224,10 +227,23 @@ func fill_amphora() -> void:
 
 func _build_pour() -> void:
 	# a dry, stained ring worn into the floor
+	# (QA P1-6: an inset darker stone disc with a pale salt rim: it reads as a place where water stood)
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.albedo_color = Color(0.26, 0.24, 0.22, 0.5)
+	var dd := CylinderMesh.new()
+	dd.top_radius = 0.42; dd.bottom_radius = 0.42; dd.height = 0.004; dd.radial_segments = 28
+	pour_disc = MeshInstance3D.new()
+	pour_disc.mesh = dd
+	pour_disc.material_override = dm
+	pour_disc.position = POUR_POS + Vector3(0, 0.004, 0)
+	pour_disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(pour_disc)
 	var rm := StandardMaterial3D.new()
 	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	rm.albedo_color = Color(0.22, 0.2, 0.18, 0.35)
+	rm.albedo_color = Color(0.9, 0.87, 0.8, 0.7)
 	var ring := TorusMesh.new()
 	ring.inner_radius = 0.34
 	ring.outer_radius = 0.42
@@ -272,6 +288,7 @@ func pour() -> void:
 		return
 	inv()["amph_full"] = false
 	hs()["n_poured"] = true
+	if game.satchel and game.satchel._toast_tw: game.satchel._toast_tw.kill(); game.satchel.toast.modulate.a = 0.0
 	chapter.event.emit("pour", null)
 	puddle.visible = true
 	puddle.scale = Vector3(0.1, 1.0, 0.1)
@@ -279,6 +296,7 @@ func pour() -> void:
 	tw.tween_property(puddle, "scale", Vector3.ONE, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_method(func(v: float) -> void: puddle_rune.set_shader_parameter("lit", v), 0.0, 1.0, 1.6)
 	pour_ring.visible = false
+	pour_disc.visible = false
 	if game.juice:
 		game.juice.ring(POUR_POS + Vector3(0, 0.02, 0), 0.6)
 
@@ -293,6 +311,7 @@ func _build_pin() -> void:
 	game.puzzles.rune_quad(st, Vector3(0, 0.55, 0.175), Vector2(0.3, 0.3), Basis(), 3.0, 0.35)
 	game.level.ob_rect(Level.R(STELE_POS.x - 0.22, STELE_POS.z - 0.36, STELE_POS.x + 0.22, STELE_POS.z + 0.36))
 	pin_node = _anchor(STELE_POS + Vector3(-0.22, 0.87, 0), 0.0)
+	pin_node.scale = Vector3.ONE * 1.6
 	var pm := _model("tuning_pin", pin_node, func(mb: MB) -> void: mb.box(Vector3(0, 0.08, 0), Vector3(0.03, 0.16, 0.03), Color(0.5, WorldGeo.BRONZE, 0.0)))
 	pm.rotation.z = PI * 0.5
 	game.level.add_interact("pin_take", STELE_POS + Vector3(-0.75, 0, 0), "take", func() -> void:
@@ -440,6 +459,16 @@ func update(dt: float) -> void:
 			game.ui.show_text("A sign in the stone, cut as a hairline crack.", game.player.position, 2.5)
 	chisel_node.visible = chapter.state["gallery"] and not has("chisel")
 	var pp := game.player.position
+	# (QA P1-6: an untaken thing glints now and then when you are near; the dry ring brightens while you carry water)
+	_glint_t -= dt
+	if _glint_t <= 0.0 and game.juice:
+		_glint_t = 6.0
+		for n in [amph_node, pin_node, chisel_node]:
+			if (n as Node3D).visible and (n as Node3D).global_position.distance_to(pp) < 6.0:
+				game.juice.glint((n as Node3D).global_position + Vector3(0, 0.25, 0))
+	if pour_ring.visible:
+		var full: bool = inv()["amph_full"]
+		(pour_ring.material_override as StandardMaterial3D).albedo_color.a = (0.55 + 0.35 * sin(Time.get_ticks_msec() * 0.004)) if full else 0.7
 	for id in tablet_nodes:
 		(tablet_nodes[id] as Node3D).visible = not (id in (inv()["tablets"] as Array)) and pp.distance_to((tablet_nodes[id] as Node3D).position) < 26.0
 
@@ -456,6 +485,7 @@ func apply_state() -> void:
 	amph_node.visible = not has("amphora")
 	game.level.set_enabled("amph", not has("amphora"))
 	pour_ring.visible = not hs()["n_poured"]
+	pour_disc.visible = not hs()["n_poured"]
 	puddle.visible = hs()["n_poured"]
 	puddle.scale = Vector3.ONE
 	puddle_rune.set_shader_parameter("lit", 1.0 if hs()["n_poured"] else 0.0)

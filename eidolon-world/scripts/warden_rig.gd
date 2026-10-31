@@ -11,6 +11,8 @@ extends Node3D
 ## Skeleton: the same 25 body bones as the wanderer/heroine + 8 robe hem chains (Hem*) + 3 cape chains (CapeB*).
 
 const MODEL := "res://assets/models/warden_rigged.glb"
+## Low tier (set by World.set_tier): he casts no shadow (a 13k-tri skinned mesh in the shadow pass); group "q_warden"
+static var high := true
 const UNIT := 1.7                       # the rig's height (metres)
 const WALK_T := 2.4                     # the walk clip: two steps
 const STRIDE := 0.52                    # one step at rig scale (metres)
@@ -38,8 +40,13 @@ func _ready() -> void:
 		anim.play("idle")
 	if skel:
 		for n in ["NeckTwist01", "NeckTwist02", "Head"]: _neck.append(skel.find_bone(n))
-		for mi in model.find_children("*", "MeshInstance3D", true, false):
-			(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		add_to_group("q_warden")
+		set_shadow(high)
+
+func set_shadow(on: bool) -> void:
+	if model == null: return
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 ## the heavy walk on/off (blended)
 func walk(on: bool) -> void:

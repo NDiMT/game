@@ -4,23 +4,23 @@ extends Node3D
 ##  * Sightings: now and then, while your back is to a great mirror, he stands BEHIND you in it (a figure on
 ##    LAYER_DOUBLE: the planar reflection sees him, the camera never does). A cold sting; he is gone when you
 ##    turn, step away, or after a few seconds.
-##  * The Mirror Walk patrol: past the sealed panel, a long glass runs along the Walk's east side and his
-##    reflection paces it. While he faces you, keep to a pillar's shadow (or the Spring's gap, where there is
+##  * The Mirror Walk patrol: past the sealed panel, a long glass (two real planar mirrors) runs along the
+##    Walk's east side. He walks the Walk itself, but only the glass shows him: his reflection paces it. While he faces you, keep to a pillar's shadow (or the Spring's gap, where there is
 ##    no glass); cross while he looks away. Seen: the glass rings, a sigh, and you are back at the Walk's
 ##    start. No death, no fail screen. A mist gathers on the glass where he will look next.
 ##    Once you have crossed (reached the lift) he leaves the Walk.
-## Model: A's assets/models/warden_rigged.glb (walk / idle / turn_head_*), or a plain veiled stand-in.
+## Figure: A's WardenRig (scripts/warden_rig.gd, assets/models/warden_rigged.glb), on LAYER_DOUBLE only.
 
-const MODEL := "res://assets/models/warden_rigged.glb"
-const HEIGHT := 2.1
+const PACE := 2.0                          # (his clip, quickened: he keeps a beat you can cross)
+const GLASS_H := 2.6
 # the Walk
 const GLASS_X := 32.75
+const FIG_X := 31.95                        # (he walks the Walk itself: only the glass shows him)
 const WALK_X := Vector2(30.3, 32.5)
 const WALK_Y := 4.0
 const START_Z := -25.4                      # the Walk's start (north of the panel)
 const END_Z := -43.6                        # the lift: crossed
 const PATROL := Vector2(-43.0, -26.0)       # his beat along the glass (z)
-const SPEED := 1.1
 const PAUSE := 2.0
 const SIGHT := 8.0
 const PILLARS := [-28.6, -36.8, -40.6]
@@ -30,10 +30,9 @@ const PANES := [Vector2(-44.3, -33.6), Vector2(-30.4, -24.9)]
 
 var game: Game
 var chapter: Chapter
-var patrol_fig: Node3D
-var patrol_anim: AnimationPlayer
-var ghost_fig: Node3D                      # (sightings, in reflections only)
-var ghost_anim: AnimationPlayer
+var patrol_fig: WardenRig
+var ghost_fig: WardenRig                   # (sightings, in reflections only)
+var glasses: Array[Reflector] = []
 var mist: MeshInstance3D
 var mist_mat: ShaderMaterial
 var wz := -43.0                            # his place on the beat
@@ -54,68 +53,51 @@ func setup(g: Game, ch: Chapter) -> void:
 	game = g
 	chapter = ch
 	_build_walk()
-	var pf := _figure(false)
-	patrol_fig = pf[0]; patrol_anim = pf[1]
-	var gf := _figure(true)
-	ghost_fig = gf[0]; ghost_anim = gf[1]
+	patrol_fig = _figure()
+	ghost_fig = _figure()
 	ghost_fig.visible = false
 
-func _figure(double: bool) -> Array:
-	var root := Node3D.new()
-	add_child(root)
-	var anim: AnimationPlayer = null
-	if ResourceLoader.exists(MODEL):
-		var n: Node3D = (load(MODEL) as PackedScene).instantiate()
-		root.add_child(n)
-		var top := 0.0
-		for c in n.find_children("*", "MeshInstance3D", true, false):
-			var mi := c as MeshInstance3D
-			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			mi.transparency = 0.3 if not double else 0.15
-			if double: mi.layers = PlanarMirror.LAYER_DOUBLE
-			var ab := mi.get_aabb()
-			top = maxf(top, ab.end.y)
-		if top > 0.1: n.scale = Vector3.ONE * (HEIGHT / top)
-		var aps := n.find_children("*", "AnimationPlayer", true, false)
-		if not aps.is_empty():
-			anim = aps[0]
-			for an in ["walk", "idle"]:
-				if anim.has_animation(an): anim.get_animation(an).loop_mode = Animation.LOOP_LINEAR
-	else:
-		var m := MB.new()
-		m.cyl(Vector3(0, 0.95, 0), 0.16, 0.34, 1.9, Color(0.5, 0.25, 0.0), 12)
-		m.sphere(Vector3(0, 1.98, 0), Vector3(0.13, 0.16, 0.13), Color(0.5, 0.25, 0.0), 10, 6)
-		var mi2 := game.puzzles.marble_instance(m.commit(), root)
-		mi2.transparency = 0.3
-		if double: mi2.layers = PlanarMirror.LAYER_DOUBLE
-	return [root, anim]
-
-func _play(a: AnimationPlayer, name: String) -> void:
-	if a and a.has_animation(name) and a.current_animation != name: a.play(name, 0.3)
+## his figure: A's WardenRig (the rigged model, its walk / idle, a head that turns toward a point), drawn ONLY
+## on LAYER_DOUBLE: the planar reflections see him, the camera never does
+func _figure() -> WardenRig:
+	var w := WardenRig.new()
+	w.visible = false                         # (QA P1-2: never at the title, never outside a glass)
+	add_child(w)
+	for c in w.find_children("*", "MeshInstance3D", true, false):
+		var mi := c as MeshInstance3D
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.layers = PlanarMirror.LAYER_DOUBLE
+	if w.anim: w.anim.speed_scale = PACE
+	return w
 
 # ------------------------------------------------------------------ the Mirror Walk: glass, pillars, mist
 func _build_walk() -> void:
-	var gm := StandardMaterial3D.new()
-	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	gm.albedo_color = Color(0.62, 0.68, 0.72, 0.22)
-	gm.metallic = 0.7
-	gm.roughness = 0.08
-	gm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	for p in PANES:
 		var L: float = p.y - p.x
-		var q := QuadMesh.new()
-		q.size = Vector2(L, 2.9)
-		var mi := MeshInstance3D.new()
-		mi.mesh = q
-		mi.material_override = gm
-		mi.transform = Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(GLASS_X, WALK_Y + 1.45, (p.x + p.y) * 0.5))
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(mi)
-		# its frame: a sill and a cap
+		var gc := Vector3(GLASS_X, WALK_Y + 0.12 + GLASS_H * 0.5, (p.x + p.y) * 0.5)
+		var gsize := Vector2(L - 0.2, GLASS_H)
+		# a real planar mirror (like the Scales' glass): you, and him, in it
+		var mm := game.puzzles._mirror_quad(gc, Basis(Vector3.UP, -PI * 0.5), gsize, false, 1.0)
+		mm.set_shader_parameter("ncols", 0)
+		mm.set_shader_parameter("floor_y", WALK_Y)
+		var pm := PlanarMirror.new()
+		add_child(pm)
+		pm.setup(Vector3.LEFT, -GLASS_X + 0.01, mm, game.world.env)
+		pm.cam.far = 30.0
+		pm.res_k = 0.6
+		var r := Reflector.new()
+		r.kind = "mirror"; r.plane_n = Vector3.LEFT; r.plane_d = -GLASS_X + 0.02
+		r.clip_c = gc; r.clip_u = Vector3.BACK; r.clip_v = Vector3.UP; r.clip_h = gsize * 0.5
+		r.region = Level.R(WALK_X.x, p.x - 2.0, WALK_X.y, p.y + 1.5)
+		r.planar = pm
+		game.puzzles._add_refl(r)
+		glasses.append(r)
+		# its frame: carved marble, a sill, posts and a cornice (not a black line)
 		var fm := MB.new()
-		fm.box(Vector3(GLASS_X, WALK_Y + 0.04, (p.x + p.y) * 0.5), Vector3(0.12, 0.08, L), Color(0.5, 1.0, 0.0))
-		fm.box(Vector3(GLASS_X, WALK_Y + 2.93, (p.x + p.y) * 0.5), Vector3(0.12, 0.08, L), Color(0.5, 1.0, 0.0))
-		for z in [p.x, p.y]: fm.box(Vector3(GLASS_X, WALK_Y + 1.48, z), Vector3(0.12, 2.96, 0.1), Color(0.5, 1.0, 0.0))
+		fm.box(Vector3(GLASS_X + 0.04, WALK_Y + 0.06, gc.z), Vector3(0.24, 0.12, L), Color(0.5, 0.25, 0.0))
+		fm.box(Vector3(GLASS_X + 0.04, WALK_Y + 0.2 + GLASS_H, gc.z), Vector3(0.28, 0.16, L + 0.1), Color(0.5, 0.25, 0.0))
+		fm.box(Vector3(GLASS_X + 0.1, WALK_Y + 0.12 + GLASS_H * 0.5, gc.z), Vector3(0.08, GLASS_H, L), Color(0.5, 0.25, 0.0))     # (its silvered back)
+		for z in [p.x + 0.07, p.y - 0.07]: fm.box(Vector3(GLASS_X + 0.04, WALK_Y + 0.12 + GLASS_H * 0.5, z), Vector3(0.22, GLASS_H + 0.1, 0.14), Color(0.5, 0.25, 0.0))
 		game.puzzles.marble_instance(fm.commit(), self)
 	# the pillars whose shadows hide you from the glass
 	var pm := MB.new()
@@ -128,7 +110,7 @@ func _build_walk() -> void:
 	var sm := StandardMaterial3D.new()
 	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	sm.albedo_color = Color(0.1, 0.1, 0.12, 0.22)
+	sm.albedo_color = Color(0.08, 0.1, 0.16, 0.4)          # (QA P1-3: the safe places read at a glance)
 	for z in PILLARS:
 		var q2 := QuadMesh.new()
 		q2.size = Vector2(1.9, SHADOW * 2.0)
@@ -169,6 +151,12 @@ func sees(p: Vector3) -> bool:
 	var ahead := (p.z - wz) * facing
 	return ahead > 0.0 and ahead < SIGHT
 
+## (his head turns toward you a moment before he sees you)
+func sees_soon(p: Vector3) -> bool:
+	if not active or not on_walk(p): return false
+	var ahead := (p.z - wz) * facing
+	return ahead > 0.0 and ahead < SIGHT + 2.0
+
 func looking_away_from(z: float) -> bool:
 	return (z - wz) * facing <= 0.0
 
@@ -183,22 +171,25 @@ func _update_patrol(dt: float) -> void:
 	if on_walk(p) and p.z < END_Z: hs["wk_crossed"] = true
 	if _pause > 0.0:
 		_pause -= dt
-		_play(patrol_anim, "idle")
+		patrol_fig.walk(false)
 		if _pause <= 0.0: facing = -facing
 	else:
-		wz += facing * SPEED * dt
-		_play(patrol_anim, "walk")
+		wz += facing * patrol_fig.walk_speed() * PACE * dt
+		patrol_fig.walk(true)
 		if wz >= PATROL.y or wz <= PATROL.x:
 			wz = clampf(wz, PATROL.x, PATROL.y)
 			_pause = PAUSE
-	patrol_fig.position = Vector3(2.0 * GLASS_X - 31.4, WALK_Y, wz)
+	patrol_fig.position = Vector3(FIG_X, WALK_Y, wz)
+	patrol_fig.look_at_point(p + Vector3(0, 0.9, 0) if sees_soon(p) else Vector3.INF)
 	var turning := clampf(1.0 - _pause / PAUSE, 0.0, 1.0) if _pause > 0.0 else 0.0
 	var f := -facing if (_pause > 0.0 and turning > 0.5) else facing
 	patrol_fig.rotation.y = 0.0 if f > 0.0 else PI
 	# the mist on the glass: ahead of where he is looking, thick while he is about to turn
 	var look := -facing if _pause > 0.0 else facing
 	mist.transform = Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(GLASS_X - 0.05, WALK_Y + 1.3, clampf(wz + look * 3.0, PANES[0].x, PANES[1].y)))
-	mist_mat.set_shader_parameter("density", 0.25 + (0.35 if _pause > 0.0 else 0.0))
+	var dens := 0.25 + (0.35 if _pause > 0.0 else 0.0)
+	if chapter.hub.has_item("lamp") and mist.position.distance_to(p) < 3.5: dens *= 0.3     # (the lamp keeps his mist back)
+	mist_mat.set_shader_parameter("density", dens)
 	# seen
 	if _catch_t > 0.0:
 		_catch_t -= dt
@@ -239,22 +230,27 @@ func _update_sightings(dt: float) -> void:
 	var pl2 := game.player
 	var fwd2 := Vector3(-sin(pl2.yaw), 0.0, -cos(pl2.yaw))
 	for r in game.puzzles.reflectors:
-		if r.planar == null or not r.planar_on or r.kind != "mirror": continue
+		if r.planar == null or not r.planar_on or r.kind != "mirror" or r in glasses: continue
 		if not r.region.has_point(Vector2(pl2.position.x, pl2.position.z)): continue
 		var d: float = r.plane_n.dot(pl2.position) - r.plane_d
 		if d < 1.2 or d > 7.0: continue
 		if fwd2.dot(r.plane_n) < 0.5 or pl2.speed01 > 0.2:          # (your back to the glass, standing)
 			_sight_wait = 0.0
 			continue
+		# right behind your back, between you and the glass: the camera never draws him, the glass does
+		# (only where his reflection is in the glass from the one view: otherwise nobody would see him)
+		var at := _sight_spot(r, pl2.position, d)
+		if at == Vector3.INF:
+			_sight_wait = 0.0
+			continue
 		_sight_wait += dt
 		if _sight_wait < 1.6: return
 		_sight_wait = 0.0
-		# right behind your back, between you and the glass: the camera never draws him, the glass does
-		var at: Vector3 = pl2.position - r.plane_n * minf(1.0, d * 0.45)
 		ghost_fig.position = at
 		ghost_fig.rotation.y = atan2(r.plane_n.x, r.plane_n.z)          # (looking at you)
 		ghost_fig.visible = true
-		_play(ghost_anim, "idle")
+		ghost_fig.walk(false)
+		ghost_fig.look_at_point(pl2.position + Vector3(0, 0.9, 0))
 		sight_on = true
 		_sight_t = 4.5
 		_sight_from = pl2.position
@@ -262,6 +258,34 @@ func _update_sightings(dt: float) -> void:
 		sightings += 1
 		chapter.event.emit("warden_glimpse", null)
 		return
+
+## where behind you he can stand so that his reflection shows in the glass ON SCREEN (the nearest such place
+## to straight behind you), or INF
+func _sight_spot(r: Reflector, p: Vector3, d: float) -> Vector3:
+	var cam := game.world.cam
+	var cb := cam.global_transform.basis.z
+	var n := r.plane_n
+	var den := n.dot(cb)
+	if absf(den) < 0.05: return Vector3.INF
+	var side := n.cross(Vector3.UP).normalized()
+	var best := Vector3.INF
+	var bd := INF
+	for lat in [0.0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, 2.4, -2.4]:
+		var at: Vector3 = p - n * minf(1.0, d * 0.45) + side * float(lat)
+		var ok := true
+		var mid := Vector3.ZERO
+		for hy in [0.2, 1.0, 1.8]:
+			var q: Vector3 = at + Vector3(0, hy, 0)
+			if not r.seen_in_glass(q, cb): ok = false; break
+			var m: Vector3 = q - 2.0 * (n.dot(q) - r.plane_d) * n
+			var g: Vector3 = m + cb * ((r.plane_d - n.dot(m)) / den)
+			if not cam.is_position_in_frustum(g): ok = false; break
+			mid = g
+		if not ok: continue
+		# (well inside the glass and the screen: nearest the glass's centre, then nearest straight behind you)
+		var score := (mid - r.clip_c).length() + absf(float(lat)) * 0.5
+		if score < bd: bd = score; best = at
+	return best
 
 func update(dt: float) -> void:
 	_update_patrol(dt)
@@ -277,4 +301,5 @@ func apply_state() -> void:
 	_catch_t = 0.0
 	sight_on = false
 	ghost_fig.visible = false
+	patrol_fig.visible = false
 	_sight_cool = 40.0

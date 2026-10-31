@@ -1057,6 +1057,7 @@ func _shrine_platform() -> void:
 	m.cyl(c + Vector3(0, 5.85, 0), 3.05, 3.05, 0.5, C(0.25, true), 32)
 	m.cyl(c + Vector3(0, 6.35, 0), 2.7, 3.0, 0.5, C(0.25, true), 32)
 	m.sphere(c + Vector3(0, 6.6, 0), Vector3(2.6, 1.2, 2.6), C(0.25, true), 24, 8)
+	occluders.append(AABB(c + Vector3(-3.15, 5.6, -3.15), Vector3(6.3, 2.3, 6.3)))     # (v1.0 QA P1-11: it fades over the Mirror Walk)
 	statue(z, c + Vector3(0, 0, -1.8), PI, 0.95, 0.5)
 	# v0.5: a round pool under the crystal, where her hand meets yours
 	m.cyl(c + Vector3(0, 0.07, 0.2), 1.3, 1.34, 0.14, C(0.25), 36)

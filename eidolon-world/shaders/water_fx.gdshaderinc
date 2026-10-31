@@ -7,6 +7,7 @@
 uniform vec4 ev[8];
 uniform vec4 ev_box[8];
 uniform vec4 ev_box_k[8];
+uniform int wfx_n = 8;          // (Low tier: 3; set by scripts/fx/water_fx.gd)
 
 float wfx_box(vec2 p, vec4 b) {
 	vec2 c = 0.5 * (b.xy + b.zw); vec2 h = 0.5 * (b.zw - b.xy);
@@ -18,6 +19,7 @@ float wfx_box(vec2 p, vec4 b) {
 void wfx_events(vec2 p, float nz, out float h, out float foam, out float bulge) {
 	h = 0.0; foam = 0.0; bulge = 0.0;
 	for (int i = 0; i < 8; i++) {
+		if (i >= wfx_n) break;
 		vec4 e = ev[i];
 		if (e.z < 0.0 || e.w <= 0.0) continue;
 		float r = length(p - e.xy);
@@ -32,6 +34,7 @@ void wfx_events(vec2 p, float nz, out float h, out float foam, out float bulge) 
 		foam += exp(-r * r / (0.05 + a * 0.08)) * (1.0 - smoothstep(0.2, 1.6, a)) * e.w * (0.55 + 0.45 * nz);
 	}
 	for (int i = 0; i < 8; i++) {
+		if (i >= wfx_n) break;
 		vec4 k = ev_box_k[i];
 		if (k.x < 0.0 || k.z <= 0.0) continue;
 		float d = wfx_box(p, ev_box[i]);

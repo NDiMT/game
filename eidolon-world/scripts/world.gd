@@ -313,6 +313,12 @@ func set_tier(t: String, step := 0) -> void:
 	for n in get_tree().get_nodes_in_group("f_shafts"): (n as Node3D).visible = high
 	dust_mm.multimesh.visible_instance_count = 50 if low else -1
 	ash_mm.multimesh.visible_instance_count = 25 if low else -1
+	# (v1.0 A) the newer effects' Low paths: ambient life, water events, the Warden's shadow, the quad batching
+	AmbientLife.apply_tier(get_tree(), not low)
+	WaterFX.high = not low
+	QuadBatch.high = not low
+	WardenRig.high = not low
+	for w in get_tree().get_nodes_in_group("q_warden"): (w as WardenRig).set_shadow(not low)
 
 func set_quality(high: bool) -> void:
 	set_tier("high" if high else "low")

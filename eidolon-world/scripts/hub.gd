@@ -159,6 +159,7 @@ func _lamp_model() -> Node3D:
 
 func take_lamp() -> void:
 	give("lamp")
+	game.ui.show_item("lamp")
 	_apply_lamp()
 	if game.juice: game.juice.glint(WorldGeo.LAMP_POS + Vector3(0, 0.6, 0))
 
@@ -200,6 +201,11 @@ func _update_undercroft() -> void:
 		tw.tween_method(func(v: float) -> void: uc_veil.set_shader_parameter("density", v), float(uc_veil.get_shader_parameter("density")), 0.0, 1.6)
 	# (without the lamp you never go INTO the dark from the Atrium; from inside, the way out is always open)
 	uc_ob.enabled = not lamp and game.player.position.x < 14.25
+	# (QA P1-4: under the vault the lamp is the only light: it reads warm on the walls)
+	var pp := game.player.position
+	var inside := pp.x > 14.0 and pp.x < 23.6 and pp.z > 10.0 and pp.z < 12.8
+	lamp_light.light_energy = move_toward(lamp_light.light_energy, 1.5 if inside else 0.6, get_process_delta_time() * 1.5)
+	lamp_light.omni_range = 5.5 if inside else 4.5
 
 # ------------------------------------------------------------------ T4: her reflection walks the hidden stones
 func _build_colonnade() -> void:
@@ -301,6 +307,7 @@ func take_seal(k: String) -> void:
 	if k in (inv()["seals"] as Array): return
 	(inv()["seals"] as Array).append(k)
 	(seal_nodes[k] as Node3D).visible = false
+	game.ui.show_item("seal", k)
 	chapter.event.emit("seal", k)
 	if game.juice: game.juice.glint(SEAL_POS[k] + Vector3(0, 1.0, 0))
 
@@ -341,7 +348,10 @@ func _build_bars() -> void:
 	ec_bars = _bars(Vector3(10.0, 2.0, -41.0), 2.0, false)
 	game.level.ob_rect(Level.R(9.0, -41.15, 11.0, -40.85), "ec_bars")
 	game.level.add_interact("ec_unbolt", Vector3(10.0, 2.0, -41.6), "lever", unbolt_ec, 1.0,
-		func() -> bool: return chapter.state["echo_room"] and game.level.named["ec_bars"].enabled and game.player.position.z < -41.2)
+		func() -> bool: return chapter.state["echo_room"] and chapter.state["maze"] and game.level.named["ec_bars"].enabled and game.player.position.z < -41.2)
+	game.level.add_interact("ec_held", Vector3(10.0, 2.0, -41.6), "locked", func() -> void:
+		game.ui.show_text("The bolt will not draw.\nSomething holds it from the far side.", game.player.position, 2.5), 1.0,
+		func() -> bool: return chapter.state["echo_room"] and not chapter.state["maze"] and game.level.named["ec_bars"].enabled and game.player.position.z < -41.2)
 	game.level.add_interact("ec_bolted", Vector3(9.7, 2.0, -40.75), "locked", func() -> void:
 		game.ui.show_text("Bolted, from the other side.", game.player.position, 2.5), 0.6,
 		func() -> bool: return game.level.named["ec_bars"].enabled and game.player.position.z > -40.85)
@@ -390,6 +400,8 @@ func update(dt: float) -> void:
 
 func apply_state() -> void:
 	var st: Dictionary = chapter.state
+	# (v1.0 QA P1-5: a JSON reload turns the sockets' ints into floats; 0 in [0.0] is false)
+	if st.has("inv"): st["inv"]["socketed"] = (st["inv"]["socketed"] as Array).map(func(v: Variant) -> int: return int(v))
 	if not st.has("inv"): st["inv"] = fresh_state()
 	if not st.has("hub"): st["hub"] = Items.fresh_hub()
 	_apply_lamp()

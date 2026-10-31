@@ -469,6 +469,11 @@ static func _roman(n: int) -> String:
 
 func show_area(title: String) -> void:
 	area_label.text = title.to_upper()
+	# (v1.0 QA P1-12: never under the HUD slots: the title keeps between them, on two lines if it must)
+	var half := clampf((root.size.x - 2.0 * 82.0) * 0.5, 100.0, 180.0)
+	area_label.offset_left = -half; area_label.offset_right = half
+	area_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	area_label.offset_bottom = area_label.offset_top + (20.0 if area_label.get_theme_font("font").get_string_size(area_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x < half * 2.0 - 8.0 else 40.0)
 	area_rule.queue_redraw()
 	if _area_tw: _area_tw.kill()
 	_area_tw = create_tween()

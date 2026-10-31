@@ -56,7 +56,7 @@ const TRAVERSE := {"T1": "The Crumbling Bridge", "A_scaf": "Theron's Scaffold", 
 const WINGS := {"W": ["stair_breath", "hall_glass", "shard_gallery"], "N": ["garden_veiled", "hollow_walk", "court_light", "mist_maze"],
 	"E": ["eidolon_ledge", "scales", "echo_corridor"]}
 ## the audio rooms the new spaces borrow until they have their own beds (assets are Agent A's)
-const AUDIO_ALIAS := {"atrium": "court_light"}
+const AUDIO_ALIAS := {"atrium": "waking_pool"}          # (QA P1-10: the Court keeps its own bed; the Atrium's own is A's)
 
 ## the first awakened space (the slice's milestone)
 const FIRST := "first_shrine"

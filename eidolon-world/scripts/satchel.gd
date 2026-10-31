@@ -6,6 +6,7 @@ extends Control
 const CREAM := Color(0.95, 0.93, 0.88)
 const INK := Color(0.10, 0.10, 0.11)
 const SLOT := 64.0
+const SEAL_NAME := {"W": "Seal of the Glass Wing", "N": "Seal of the Garden Wing", "E": "Seal of the High Wing"}
 
 var game: Game
 var serif: Font
@@ -116,6 +117,7 @@ func build(g: Game, sf: Font, it: Font, host: Control) -> void:
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast.modulate.a = 0.0
 	host.add_child(toast)
+	host.move_child(toast, map_layer.get_index())            # (the toast under the map)
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 10)
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -239,6 +241,11 @@ func open_map() -> void:
 	if is_open:
 		is_open = false
 		visible = false
+	# the shortcuts you have opened are drawn in, walked or not
+	var ps: Dictionary = game.puzzles.state
+	if ps.get("shortcut", false): see_region("shortcut_ramp")
+	if ps.get("drawbridge", false): see_region("LB")
+	if game.chapter.state["hub"].get("ec_open", false): see_region("EC_a")
 	map_open = true
 	map_layer.visible = true
 	game.controls.enabled = false
@@ -281,9 +288,14 @@ func show_item(k: String, extra := "") -> void:
 	toast_icon.texture = game.chapter.items.icons.get(k, null)
 	toast_name.text = Items.NAME.get(k, k) + (" (full)" if extra == "full" else "")
 	toast_line.text = Items.LINE["amphora_full"] if extra == "full" else Items.LINE.get(k, "")
+	if k == "seal":
+		toast_name.text = SEAL_NAME.get(extra, "A Veil Seal")
+		toast_line.text = "%d of 3. The Gate has three empty hands." % (game.chapter.state["inv"]["seals"] as Array).size()
 	var vs := get_viewport_rect().size
 	toast.reset_size()
-	toast.position = Vector2(maxf(80.0, (vs.x - 300.0) * 0.5), 64.0)      # (clear of the shard's and the satchel's slots)
+	# (clear of the slots; below the area's title while it shows; under the map)
+	var y := 150.0 if game.ui.area_label.modulate.a > 0.05 else 64.0
+	toast.position = Vector2(maxf(80.0, (vs.x - 300.0) * 0.5), y)
 	toast.size = Vector2(300, 0)
 	if _toast_tw: _toast_tw.kill()
 	_toast_tw = toast.create_tween()

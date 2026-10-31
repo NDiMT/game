@@ -502,6 +502,10 @@ func _update_area() -> void:
 			ui.show_area(Names.area(area))
 	if g == null or not Names.REGION_AREA.has(g.name): return
 	var key: String = Names.REGION_AREA[g.name]
+	# (v1.0 QA P1-10: the Balcony is the Atrium's until it reaches the Ledge; the dry ring north of the
+	# Maze, before the bars, is the Maze's end)
+	if g.name == "BAL" and player.position.z > -17.0: key = "atrium"
+	if g.name == "EC_a" and player.position.z > -41.0: key = "mist_maze"
 	if key == "gate_four" and Vector2(player.position.x - Puzzles.SHRINE_C.x, player.position.z - Puzzles.SHRINE_C.z).length() < 2.4:
 		key = "first_shrine"
 	if key == area: return
@@ -680,7 +684,10 @@ func _drawbridge_lever() -> void:
 	puzzles.marble_instance(m.commit(), chapter)
 	level.ob_circle(Vector2(21.55, -23.2), 0.25)
 	level.add_interact("drawbridge", Vector3(21.55, 2.0, -23.2), "lever", func() -> void: puzzles.lower_drawbridge(false), 1.0,
-		func() -> bool: return not puzzles.state.get("drawbridge", false) and player.position.x > 21.0)
+		func() -> bool: return chapter.state["maze"] and not puzzles.state.get("drawbridge", false) and player.position.x > 21.0)
+	level.add_interact("drawbridge_held", Vector3(21.55, 2.0, -23.2), "locked", func() -> void:
+		ui.show_text("The lever will not move.\nThe bridge is held from the far side.", player.position, 2.5), 1.0,
+		func() -> bool: return not chapter.state["maze"] and not puzzles.state.get("drawbridge", false) and player.position.x > 21.0)
 
 # ------------------------------------------------------------------ v0.5b: a conversation through the glass
 func open_glass(id: String) -> void:
@@ -843,7 +850,7 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 const ROOM_ENTRY := {
 	"waking_pool": Vector3(1.4, 0.0, 2.3), "stair_breath": Vector3(-11.0, 0.0, 1.6), "hall_glass": Vector3(-2.0, 1.0, -13.5),
 	"atrium": Vector3(0.0, WorldGeo.A_Y, 11.0), "shard_gallery": Vector3(5.8, 1.0, -17.0), "garden_veiled": Vector3(15.5, 1.0, -6.3), "hollow_walk": Vector3(17.9, 1.0, -11.8),
-	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -29.6), "echo_corridor": Vector3(10.0, 2.0, -40.0),
+	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -29.6), "echo_corridor": Vector3(14.0, 2.0, -45.4),
 	"scales": Vector3(26.6, 2.0, -45.5), "eidolon_ledge": Vector3(24.0, 2.0, -22.0), "gate_four": Vector3(27.6, 2.0, -27.0),
 	"first_shrine": Vector3(25.0, 2.0, -30.8),
 }
@@ -1186,7 +1193,7 @@ func cmd(c: String) -> Variant:
 			else: satchel.open()
 		"give": chapter.hub.give(a[1]); ui.show_item(a[1])
 		"map": satchel.open_map()
-		"ghost": chapter.warden._sight_cool = 0.0          # (dev / shots: the next chance at a sighting)
+		"ghost": chapter.warden._sight_cool = 0.0; visited["atrium"] = true          # (dev / shots: the next chance at a sighting)
 		"hintnow":
 			var tg := chapter.hint_target(area)
 			if tg != Vector3.INF: chapter.show_hint(tg)
