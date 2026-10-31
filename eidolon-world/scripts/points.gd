@@ -131,7 +131,7 @@ func _build(p: Array) -> void:
 			game.level.ob_rect(Level.R(at.x - 0.25, at.z - 0.72, at.x + 0.25, at.z + 0.72))
 	if kind != "coin": game.puzzles.marble_instance(m.commit(), self)
 	var line: String = p[4]
-	game.level.add_interact("pt_" + id, at + (Vector3(-0.6, 0, 0) if id == "lookout" else _approach(kind)), p[3], func() -> void: _use(id, kind, line), 1.5 if kind == "coin" else 0.9,
+	game.level.add_interact("pt_" + id, at + ({"lookout": Vector3(-0.6, 0, 0), "votive_n": Vector3(0.45, 0, 0.3)}.get(id, _approach(kind)) as Vector3), p[3], func() -> void: _use(id, kind, line), 1.5 if kind == "coin" else 0.9,
 		func() -> bool: return kind == "bell" or kind == "bench" or not done(id))
 
 func _approach(kind: String) -> Vector3:

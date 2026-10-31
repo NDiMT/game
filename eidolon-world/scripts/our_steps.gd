@@ -155,6 +155,7 @@ var _drag_serial := -1
 var plate_y: Array[ShaderMaterial] = []
 var plate_h: Array[ShaderMaterial] = []
 var pieces: Array[Node3D] = []       # per board: its columns and glyphs
+var her_nodes: Array = []            # per board: her glyph and her column(s) (reflection-only twins)
 var hint_mat: ShaderMaterial
 var reset_rune: ShaderMaterial
 var hint_node: Node3D
@@ -221,6 +222,7 @@ func _build_pieces(i: int, B: Basis) -> void:
 	_last_child_of(n).layers = PlanarMirror.LAYER_MAIN_FX
 	plate_h.append(game.puzzles.rune_quad(n, tile(bd["a"]) + Vector3(0, 0.03, 0), Vector2(0.95, 0.95), flip, 7.0, 0.45))
 	_last_child_of(n).layers = PlanarMirror.LAYER_DOUBLE
+	var hn: Array = [_last_child_of(n)]
 	var mine := MB.new()
 	for c in bd["you_cols"]:
 		mine.cyl(tile(c) + Vector3(0, 0.016 + 0.45, 0), 0.36, 0.4, 0.9, Color(0.5, 0.25, 0.0), 12, Basis(Vector3.UP, 0.5 * float(c.x)))
@@ -231,6 +233,8 @@ func _build_pieces(i: int, B: Basis) -> void:
 	if not (bd["her_cols"] as Array).is_empty():
 		var hm := game.puzzles.marble_instance(hers.commit(), n)
 		hm.layers = PlanarMirror.LAYER_DOUBLE
+		hn.append(hm)
+	her_nodes.append(hn)
 	pieces.append(n)
 
 func _show_board(i: int, instant := true) -> void:
@@ -434,6 +438,11 @@ func update(dt: float) -> void:
 		refl.hold_pose = _pose
 		refl.hold_xf = Transform3D(pl.fig.global_transform.basis, her_pos + Vector3(0, pl.fig.global_position.y - pp.y, 0))
 	reset_rune.set_shader_parameter("lit", 0.9 if (active and (p != b["P"] or h != b["A"])) else 0.35)
+	# (v1.1d) her side of the board is in the glass only while you play it (and while the solved glyphs flare):
+	# before you step on, and once you step off, the glass is a plain mirror
+	var hers_on := active or (_flare > 0.05 and solved())
+	for hn in her_nodes:
+		for nd: Node3D in hn: nd.visible = hers_on
 	# the reset stone's interact follows you on the floor
 	var ri := game.level.interact_by_id("steps_reset")
 	if ri: ri.pos = pp if active else Vector3(0, -99, 0)

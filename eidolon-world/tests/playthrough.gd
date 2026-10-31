@@ -936,7 +936,8 @@ func _plan() -> void:
 			var bd := OurSteps.board(bi)
 			ok("(v1.1d) board %d: at most two columns in all" % (bi + 1), (bd["you_cols"] as Array).size() + (bd["her_cols"] as Array).size() <= 2)
 		ok("(v1.1d) a big real planar mirror (6 x 3.5 m), a 4 x 3 floor before it", C().steps.refl.planar != null and OurSteps.GLASS_HALF * 2.0 >= 6.0 and OurSteps.C == 4 and OurSteps.R == 3)
-		ok("the floor starts unsolved and off; the glass only a mirror (no her) before you step on", not C().steps.active and not C().state["hollow_done"] and not C().steps.refl.hold))
+		ok("the floor starts unsolved and off; the glass only a mirror (no her) before you step on", not C().steps.active and not C().state["hollow_done"] and not C().steps.refl.hold)
+		ok("(v1.1d) before you step on, her glyph and column are not in the glass either", (C().steps.her_nodes as Array).all(func(hn: Array) -> bool: return hn.all(func(nd: Node3D) -> bool: return not nd.visible))))
 	var near_e := OurSteps.at(0.0, OurSteps.EDGE_V - 0.9)
 	walk_path("to the floor's gap", [[near_e.x, near_e.z]])
 	step_do(func() -> void: _stick_dir(OurSteps.V, 0.0))
@@ -945,7 +946,8 @@ func _plan() -> void:
 	step_until("to the first board's start", func() -> bool: return not C().steps.moving, 6.0)
 	step_wait(0.8)
 	step_do(func() -> void:
-		ok("(v1.1d) on the floor: she stands in the glass, on her start", C().steps.refl.hold and C().steps.h == C().steps.b["A"] and C().steps.p == C().steps.b["P"], "p %s h %s" % [C().steps.p, C().steps.h]))
+		ok("(v1.1d) on the floor: she stands in the glass, on her start", C().steps.refl.hold and C().steps.h == C().steps.b["A"] and C().steps.p == C().steps.b["P"], "p %s h %s" % [C().steps.p, C().steps.h])
+		ok("(v1.1d) on the floor: her glyph shows in the glass", (C().steps.her_nodes[0][0] as Node3D).visible))
 	_stick_step(Vector2i(0, 1), 10.0)
 	step_do(func() -> void:
 		ok("(v1.1d) toward the glass: she comes toward it too", C().steps.p == Vector2i(1, 1) and C().steps.h == Vector2i(1, 1), "p %s h %s" % [C().steps.p, C().steps.h]))

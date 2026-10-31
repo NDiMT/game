@@ -87,6 +87,8 @@ func _ready() -> void:
 func _collect(n: Node, skip: Node, body: StaticBody3D, names: Dictionary, count: Array) -> void:
 	if n == skip: return
 	if n is Node3D and not (n as Node3D).visible: return
+	# (QA_V11: the tholos's dome fades out wherever it would stand over the view: on the Mirror Walk, at the sealed door)
+	if n.name == "Zone_Sdome": return
 	if n is CanvasItem or n is CanvasLayer: return
 	if n is GeometryInstance3D and ((n as VisualInstance3D).layers & PlanarMirror.MAIN_MASK) != 0:
 		var xfs: Array = []

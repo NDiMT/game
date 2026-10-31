@@ -353,3 +353,14 @@ All verified in the REAL game (devshots / dev_fx in-game probes at 390x844, High
 - `kit_gallery.glb` (WOOD): a scaffold gallery: plank deck on four braced posts, rope-lashed rails on three sides, 2.49 x 3.0 m, deck at 1.8 m. Over the Atrium gallery: base (12.575, 0.5, 15.7), yaw 0, scale (1.104, 1.444, 1.133) -> deck at GAL_Y 3.1, footprint 2.75 x 3.4 (your gallery rect). Remove the stone slab and the two iron posts; keep your walk regions and the stair (its open side faces west, the rails do not block it). Flag WOOD (0.97) in props.gd's per-asset id map (with kit_scaffold, kit_ladder, kit_awning_post).
 - Balcony (x 26.5..29.5, y 2): `kit_dead_plant.glb` (0.6 m cracked pot, dead twigs) + `kit_urns` + `kit_awning_post` (WOOD) with `AmbientLife.veils(post + Vector3(0, 2.45, 0), 2, 1.3, Vector3(0.7, 0, 0.7), null, NAN, 0.9, yaw)`. Placements used in the preview (asset, pos, yaw deg): urns (29.25, 2, -2.5) 30; plant (26.9, 2, -4.2) 0; post (29.4, 2, -6.5) 90; plant (29.2, 2, -9.0) 40; urns (26.9, 2, -11.0) 200; post (29.4, 2, -13.5) 90; plant (26.95, 2, -15.5) 110; urns (29.25, 2, -17.0) 120. All on the rails' sides, the walkway clear (obstacle circles r 0.35 for plants, 0.5 for urns, 0.2 for posts). The existing `balustrade` kit stays the railing.
 - Tripo: 60 credits; balance 505.
+
+2026-10-31 17:20 | A -> W | v1.1d BOLDER floor eyes (owner) + the shadow's head to wear them; a QuadBatch fix
+- scripts/fx/veiled_eyes.gd (live, your call at chapter.gd:1230 unchanged): at scale 1.5 each floor eye is now 40 x 20 cm, centres 60 cm apart, a clear almond (corners lifted), a brighter crimson-hot core and a stronger halo (the quad is 1.6 x 0.95 m).
+- The shadow's head must scale to match (YOUR lines, 3 changes in chapter.gd; dev_fx/eyes_ingame.tscn applies exactly these on the running game for the shot):
+  1. the statue_shadow material: add `"head_k": 2.0` to its `_smat` params (line ~1216; shaders/statue_shadow.gdshader gained `head_k`, default 1 = as before; the head grows down from the top of the veil, 1.04 m wide at wid 1.45, the body unchanged);
+  2. `eye_head(i)`: the head's centre moves to q.y 0.71: `return _shadow_xf(i, 1.0) * Vector3(0.0, 0.0, 0.5 - 0.71)`;
+  3. `const EYE_HALF := 0.30` (was 0.11), so `eye_pos` and the decal's own `eye_a` / `eye_b` match the 60 cm pair.
+  Check your "a shadow wears a pair" tolerance: the pair is now ~1 m across, so a head within ~0.3 m of it already covers both eyes.
+- Shot: dev/shots/v11d-eyes-bold.png (before | after on the floor | braziers lit, the heads wearing them).
+- QuadBatch fix (scripts/fx/quad_batch.gd): after a level rebuild (`jump`, new game) a freed quad raised "Trying to assign invalid previously freed instance" every frame in `_sync`; it now skips freed quads and `absorb()` prunes them (and their batch slots).
+- FYI: the in-game run still logs your "Dual paraboloid shadow mode not supported in the Compatibility renderer" (QA_V11 P1-1) when braziers light.

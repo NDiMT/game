@@ -33,22 +33,24 @@ static func for_statue(mid: Vector3, forward: Vector3, up := Vector3.UP, k := 1.
 	return _make(Transform3D(Basis(x, y, z), mid + z * 0.01), k, phase, Vector2(0.44, 0.40))
 
 ## on a floor shadow's head: flat on the floor (+Z up), +Y = along the shadow (toward the head's top).
-## v1.1c BOLD (QA_V11 P1-3): at scale 1.5 (W's call) each eye is about 21 x 12 cm, crimson-hot (no white centre:
-## on pale marble a white core reads as a hole) (taller than on a face: the floor is
+## v1.1d BOLDER (owner): at scale 1.5 (W's call) each eye is about 40 x 20 cm, 60 cm apart (centres), a clear almond,
+## a crimson-hot core (only slightly whitened: a white centre reads as a hole on pale marble) and a strong halo.
+## The shadow's head must be big enough to wear them: statue_shadow.gdshader `head_k` 2.0 (see HANDOFF). (taller than on a face: the floor is
 ## seen at 36 deg, so it is foreshortened to about 16 x 5 on screen), 30 cm apart, a strong white-hot core and a wide halo.
 static func for_shadow(mid: Vector3, along: Vector3, k := 1.0, phase := 0.0, scale := 1.0) -> MeshInstance3D:
 	var y := Vector3(along.x, 0.0, along.z).normalized()
 	var z := Vector3.UP
 	var x := y.cross(z).normalized()
 	var f := scale / 1.5
-	var size := Vector2(0.98, 0.62) * f
+	var size := Vector2(1.6, 0.95) * f
 	var mi := _make(Transform3D(Basis(x, y, z), mid + Vector3(0, 0.012, 0)), k, phase, size)
 	var m := mi.material_override as ShaderMaterial
-	m.set_shader_parameter("eye", Vector2(0.21, 0.12) * f)
-	m.set_shader_parameter("gap", 0.38 * f)
-	m.set_shader_parameter("hot_white", 0.0)
-	m.set_shader_parameter("halo_k", 1.0)
-	m.set_shader_parameter("core_k", 1.4)
+	m.set_shader_parameter("eye", Vector2(0.40, 0.20) * f)
+	m.set_shader_parameter("gap", 0.60 * f)
+	m.set_shader_parameter("hot_white", 0.25)
+	m.set_shader_parameter("halo_k", 1.3)
+	m.set_shader_parameter("core_k", 1.7)
+	m.set_shader_parameter("tilt", 0.16)
 	m.set_shader_parameter("tears", 0.35)
 	m.set_shader_parameter("brow", 0.0)
 	return mi

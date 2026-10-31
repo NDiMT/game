@@ -42,6 +42,13 @@ var _frame := 0
 
 func absorb(root: Node) -> Dictionary:
 	_root = root
+	for key in _items:
+		var keep: Array = (_items[key] as Array).filter(func(it: Array) -> bool: return is_instance_valid(it[0]))
+		if keep.size() != (_items[key] as Array).size():
+			_items[key] = keep
+			_resize(key)
+	for id in _seen.keys():
+		if not is_instance_valid(instance_from_id(id)): _seen.erase(id)
 	var found := {}
 	_walk(root, found)
 	for key in found:
@@ -135,8 +142,13 @@ func _sync(_all: bool) -> void:
 		var L: Dictionary = LAYOUT[String(key).get_slice("@", 0)]
 		var items: Array = _items[key]
 		for i in items.size():
-			var mi: MeshInstance3D = items[i][0]
-			if not is_instance_valid(mi) or not mi.is_visible_in_tree():
+			var o: Variant = items[i][0]
+			# (v1.1d fix: a freed quad (a level rebuild, `jump`) must be tested BEFORE a typed assignment)
+			if not is_instance_valid(o):
+				mm.set_instance_transform(i, HIDDEN)
+				continue
+			var mi := o as MeshInstance3D
+			if not mi.is_visible_in_tree():
 				mm.set_instance_transform(i, HIDDEN)
 				continue
 			mm.set_instance_transform(i, mi.global_transform * (items[i][2] as Transform3D))

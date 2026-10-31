@@ -1403,7 +1403,9 @@ func _update_dome(dt: float) -> void:
 		if _dome == null: return
 	var p := player.position
 	var on_walk := mode == "play" and p.x > 29.6 and p.x < 33.2 and p.z > -46.0 and p.z < -23.0 and p.y > 3.4
-	_dome_k = move_toward(_dome_k, 1.0 if on_walk else 0.0, dt / 0.6)
+	# (and behind it, at the sealed way's door: the dome stands between that door and the camera)
+	var behind := mode == "play" and p.x > 25.5 and p.x < 30.5 and p.z > -41.0 and p.z < -35.5 and p.y < 3.0
+	_dome_k = move_toward(_dome_k, 1.0 if (on_walk or behind) else 0.0, dt / 0.6)
 	_dome.transparency = _dome_k
 	_dome.visible = _dome_k < 0.99
 

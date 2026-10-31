@@ -21,6 +21,9 @@ uniform vec2 eye_a = vec2(-0.1, 0.86);     // (v0.9.3) the two eyes in the quad'
 uniform vec2 eye_b = vec2(0.1, 0.86);      // 22 cm apart, side by side as you see them)
 uniform float len = 2.0;
 uniform float wid = 1.45;
+// v1.1d (A): the veiled head's size (1 = as before; 2.0 wears the bold floor eyes: VeiledEyes.for_shadow, 40 x 20 cm, 60 cm
+// apart); the head grows down from the top of the veil, the body below it unchanged
+uniform float head_k = 1.0;
 
 float sd_ell(vec2 p, vec2 r) { return (length(p / r) - 1.0) * min(r.x, r.y); }
 float smin(float a, float b, float kk) { float h = clamp(0.5 + 0.5 * (b - a) / kk, 0.0, 1.0); return mix(b, a, h) - kk * h * (1.0 - h); }
@@ -30,7 +33,7 @@ float her_sd(vec2 q) {
 	float body = sd_ell(q - vec2(0.0, 0.40), vec2(0.40, 0.40));
 	float hips = sd_ell(q - vec2(0.0, 0.12), vec2(0.30, 0.14));
 	float sh = sd_ell(q - vec2(0.0, 0.70), vec2(0.46, 0.10));
-	float head = sd_ell(q - vec2(0.0, 0.86), vec2(0.36, 0.15));     // (v0.9.3: wide enough for eyes 22 cm apart)
+	float head = sd_ell(q - vec2(0.0, 1.01 - 0.15 * head_k), vec2(0.36, 0.15) * head_k);     // (v0.9.3: eyes 22 cm apart; v1.1d head_k)
 	return smin(smin(min(body, hips), sh, 0.08), head, 0.06);
 }
 

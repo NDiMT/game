@@ -148,7 +148,7 @@ Rule: no two puzzle rooms are adjacent without a space between them where nothin
 | **The Hall of Glass** | the way in (x 5..7): *an offering* of stone grapes, a comb, a ribbon | **Where Her Shadow Fell** |
 | **Where Her Shadow Fell** (+ the reliquary) | the west court, then the Sunken Colossus (a wonder) | **Garden of the Veiled** |
 | **Garden of the Veiled** | the doorway and the landing round the board | **Our Steps** (two boards) |
-| **Our Steps** | the ramp up to the Court | **Court of Light** |
+| **Our Steps** | (v1.1d, QA_V11) by the gate at the ramp's foot: *a second votive* to light; then the ramp up | **Court of Light** |
 | **Court of Light** | the mural door and the Tree of Shards (a wonder) | **The Mist Maze** |
 | **The Mist Maze** | its end: the dry ring and the amphora's puddle mirror (an item point), the North seal | **The Echo Corridor** |
 | **The Echo Corridor** | the corridor's carved relief: three panels that speak as you walk past | **The Scales** |
@@ -156,10 +156,12 @@ Rule: no two puzzle rooms are adjacent without a space between them where nothin
 | **The Eidolon Ledge** | the Gate's sockets (the seals) | **The First Shrine** |
 
 **The hub.**
-- The Atrium: *a coin for the dry fountain* (it rings on dry stone), the thousand faces, Theron's ladder.
-- The Undercroft: *Theron's cot*, under his workshop; you find it by lamplight.
-- The Wind-swept Balcony: *a bench with a view*. Sitting turns the view toward the drowned head below. Also urns, veils, and the pin's stele.
+- The Atrium: *a coin for the dry fountain*: it drops into the basin, rings, a ripple and a glint, and the old fountain trickles for a few breaths; the coin stays in the basin.
+- The Undercroft: *Theron's cot*, under his workshop; you find it by lamplight. Sitting by it: the cloth shifts, the lamp at its head gutters, and a wax tablet slides out from under it.
+- The Wind-swept Balcony: *a lookout seat* in its first third (the view turns up the shore to the far dome) and *a bench with a view* half-way (the view turns toward the drowned head below). Also urns, veils, and the pin's stele.
 
-**Seven in-between points** (`Points.POINTS` plus `Points.RELIEF`): bell, votive, offering, coin, cot, bench, relief.
+(QA_V11) Each point changes something in the world, not only a line of text: the offering lights a small flame in its oil dish and petals settle; the relief panels light as each speaks, then a light runs along all three.
+
+**Nine in-between points** (`Points.POINTS` plus `Points.RELIEF`): bell, votive, offering, coin, cot, bench, lookout, the votive by Our Steps' gate, relief.
 - The memory shards and tablets (Items) are collectible spots on top of these.
 - The shortcuts (the drawbridge, the Echo bars, the Walk) count as the wing returns.

@@ -43,7 +43,7 @@ void fragment() {
 		float m = almond(p, eye, lid);
 		float core = 1.0 - smoothstep(0.55, 1.0, m);
 		float inner = 1.0 - smoothstep(0.0, 0.55, length(p / vec2(eye.x * 0.5, max(eye.y * 0.5 * lid, 1e-4))));
-		float halo = exp(-max(length(p / vec2(eye.x * 0.62, eye.y * 0.95)) - 0.75, 0.0) * mix(3.4, 1.8, clamp(halo_k - 0.45, 0.0, 1.0))) * halo_k;
+		float halo = min(exp(-max(length(p / vec2(eye.x * 0.62, eye.y * 0.95)) - 0.75, 0.0) * mix(3.4, 1.8, clamp(halo_k - 0.45, 0.0, 1.0))) * halo_k, 0.95);
 		// the tear: a thin glow trail from the inner lower lid down the cheek, fading
 		float tx = p.x + sg * eye.x * 0.18;
 		float ty = -p.y - eye.y * 0.35;
