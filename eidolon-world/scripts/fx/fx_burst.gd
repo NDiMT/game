@@ -8,7 +8,7 @@ extends MultiMeshInstance3D
 ##   FxBurst.embers(parent, pos)              loop: embers rising from a brazier, swaying, flickering out
 ##   FxBurst.mist(parent, pos, area)          loop: slow wisps of low mist
 ##   FxBurst.footstep(parent, pos, water_fx)  her step in shallow water: a ring (WaterFX) and a few drops
-## Soft particles (depth fade), size and colour over life. Low tier (FxBurst.high = false, set by World.set_tier):
+## Soft particles (web-safe: faded by height above the ground under them, no depth texture), size and colour over life. Low tier (FxBurst.high = false, set by World.set_tier):
 ## a third of the particles and no depth fade. Loops are stopped with `stop()` (they finish their particles first).
 
 static var high := true
@@ -44,8 +44,10 @@ static func _make(parent: Node, pos: Vector3, kind: int, count: int, params: Dic
 	m.set_shader_parameter("kind", kind)
 	m.set_shader_parameter("loop", 1.0 if loop else 0.0)
 	m.set_shader_parameter("soft", float(params.get("soft", 0.25)) if high else 0.0)
+	# (web-safe soft fade: by height above the ground under the burst; "ground" = its y, else `ground_drop` below pos)
+	m.set_shader_parameter("ground_y", float(params.get("ground", pos.y - float(params.get("ground_drop", 0.0)))))
 	for k in params:
-		if k in ["delay", "soft", "reach"]: continue
+		if k in ["delay", "soft", "reach", "ground", "ground_drop"]: continue
 		m.set_shader_parameter(k, params[k])
 	b.material_override = m
 	b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -74,9 +76,11 @@ static func splash(parent: Node, pos: Vector3, strength := 1.0) -> FxBurst:
 	return _make(parent, pos, SPLASH, int(26 * strength), {"life": 0.75, "speed": 2.1 * sqrt(strength), "spread": 0.55, "gravity": 9.8,
 		"size0": 0.035, "size1": 0.02, "stretch": 0.035, "col0": Color(0.9, 0.95, 1.0, 0.85), "col1": Color(0.85, 0.9, 0.95, 0.2), "delay": 0.1, "soft": 0.05, "reach": 1.5})
 
-static func dust(parent: Node, pos: Vector3, size := 1.0) -> FxBurst:
+## `ground`: the floor's y under the lintel (the dust thins out as it settles on it); NAN = pos.y - 2.5
+static func dust(parent: Node, pos: Vector3, size := 1.0, ground := NAN) -> FxBurst:
+	if is_nan(ground): ground = pos.y - 2.5
 	return _make(parent, pos, DUST, int(18 * size), {"life": 2.6, "speed": 0.35, "spread": 1.0, "dir": Vector3(0, -1, 0), "gravity": 0.25, "drag": 1.2,
-		"size0": 0.16 * size, "size1": 0.42 * size, "col0": Color(0.84, 0.82, 0.78, 0.6), "col1": Color(0.8, 0.79, 0.76, 0.0), "delay": 0.5, "soft": 0.35, "reach": 2.0 * size})
+		"size0": 0.16 * size, "size1": 0.42 * size, "col0": Color(0.84, 0.82, 0.78, 0.6), "col1": Color(0.8, 0.79, 0.76, 0.0), "delay": 0.5, "soft": 0.35, "reach": 2.0 * size, "ground": ground})
 
 static func sparks(parent: Node, pos: Vector3) -> FxBurst:
 	return _make(parent, pos, SPARK, 22, {"life": 0.9, "speed": 2.4, "spread": 0.45, "gravity": 3.0, "drag": 0.8,
@@ -90,7 +94,7 @@ static func embers(parent: Node, pos: Vector3) -> FxBurst:
 
 static func mist(parent: Node, pos: Vector3, area := 2.0) -> FxBurst:
 	return _make(parent, pos, MIST, int(8 * area), {"life": 9.0, "speed": 0.1, "spread": 1.0, "dir": Vector3(1, 0, 0), "size0": 0.9 * area * 0.5, "size1": 1.6 * area * 0.5,
-		"col0": Color(0.86, 0.87, 0.88, 0.32), "col1": Color(0.86, 0.87, 0.88, 0.32), "wind": Vector3(0.12, 0.0, -0.05), "soft": 0.6, "reach": area * 2.5}, true)
+		"col0": Color(0.86, 0.87, 0.88, 0.32), "col1": Color(0.86, 0.87, 0.88, 0.32), "wind": Vector3(0.12, 0.0, -0.05), "soft": 0.6, "ground_drop": 0.3, "reach": area * 2.5}, true)
 
 ## her footstep in shallow water: a ripple ring on the surface (WaterFX, if given) and a few drops
 static func footstep(parent: Node, pos: Vector3, water_fx: Object = null) -> FxBurst:

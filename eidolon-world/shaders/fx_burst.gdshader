@@ -3,11 +3,11 @@ shader_type spatial;
 // scripts/fx/fx_burst.gd (FxBurst). Each instance: transform origin = where it starts; INSTANCE_CUSTOM =
 // (random a, random b, random c, start delay 0..1 of life). `kind` picks the look and the motion:
 //   0 SPLASH droplets  1 DUST puff  2 SPARK  3 GLINT twinkle  4 EMBER  5 MIST wisp
-// Soft particles: they fade where they meet the scene (depth fade), so puffs and wisps never cut hard lines into
-// the stone. Size and colour change over life; fast droplets and sparks are stretched along their motion.
+// Soft particles, WEB-SAFE (v1.1b: no depth or screen texture: those break the web Compatibility build): a particle
+// fades as it nears the ground plane `ground_y` (so puffs and wisps never cut hard lines into the floor) and within
+// `near_fade` m of the camera. Size and colour change over life; fast droplets and sparks are stretched along their motion.
 render_mode skip_vertex_transform, unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
 
-uniform sampler2D scene_depth : hint_depth_texture, filter_nearest;
 uniform int kind = 0;
 uniform float clock = 0.0;          // seconds since the burst began (FxBurst drives it)
 uniform float life = 1.2;
@@ -22,7 +22,9 @@ uniform float size1 = 0.02;
 uniform vec4 col0 : source_color = vec4(0.9, 0.95, 1.0, 0.9);
 uniform vec4 col1 : source_color = vec4(0.8, 0.85, 0.9, 0.0);
 uniform float stretch = 0.0;        // seconds of motion a particle is stretched over (0: round)
-uniform float soft = 0.25;          // depth-fade distance (m); 0 = off (the Low tier)
+uniform float soft = 0.25;          // fade distance above the ground (m); 0 = off (the Low tier)
+uniform float ground_y = -1000.0;   // the floor / water height under the burst (FxBurst sets it)
+uniform float near_fade = 0.0;      // fade within this many metres of the camera (0 = off)
 uniform vec3 light_dir = vec3(0.304, -0.819, -0.486);
 uniform vec3 wind = vec3(0.0);
 
@@ -30,6 +32,7 @@ varying float age_k;
 varying vec2 qv;
 varying float vlen;
 varying float vview_z;
+varying float vheight;
 varying vec4 vcol;
 
 vec3 h3(vec3 r) { return fract(sin(r * vec3(12.9898, 78.233, 37.719) + r.yzx * 4.1) * 43758.5453); }
@@ -75,6 +78,7 @@ void vertex() {
 	vec3 w = p + bx * VERTEX.x * s + ax * VERTEX.y * s * lenk;
 	vlen = lenk;
 	qv = VERTEX.xy * 2.0;
+	vheight = p.y - ground_y;
 	vec4 vw = VIEW_MATRIX * vec4(w, 1.0);
 	vview_z = -vw.z;
 	VERTEX = vw.xyz;
@@ -107,12 +111,8 @@ void fragment() {
 	}
 	if (kind == 0) col += vec3(0.3) * (1.0 - smoothstep(0.0, 0.4, length(qv - vec2(-0.25, 0.3))));   // a glint in the drop
 	float fade = 1.0;
-	if (soft > 0.0) {
-		float d = texture(scene_depth, SCREEN_UV).r;
-		vec4 sp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
-		float scene_z = -sp.z / sp.w;
-		fade = clamp((scene_z - vview_z) / soft, 0.0, 1.0);
-	}
+	if (soft > 0.0) fade = clamp(vheight / soft, 0.0, 1.0);
+	if (near_fade > 0.0) fade *= clamp(vview_z / near_fade, 0.0, 1.0);
 	ALBEDO = col;
 	ALPHA = clamp(a * vcol.a * fade, 0.0, 1.0);
 }

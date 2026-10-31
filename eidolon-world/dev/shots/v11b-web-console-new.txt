@@ -1,0 +1,14 @@
+[log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+[log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+[log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
+[log] FXCHECK start gl_compatibility msaa 1 scale 0.80000001192093
+[log] FXCHECK frames 30 draw_calls 29.0
+[log] FXCHECK frames 47 draw_calls 30.0
+[log] FXCHECK frames 63 draw_calls 29.0
+[log] FXCHECK frames 79 draw_calls 31.0
+[log] FXCHECK frames 96 draw_calls 30.0
+[log] FXCHECK frames 112 draw_calls 29.0
+[log] FXCHECK frames 128 draw_calls 28.0
+[log] FXCHECK frames 143 draw_calls 31.0
+[log] FXCHECK frames 158 draw_calls 30.0
+SUMMARY messages 13 errors 0

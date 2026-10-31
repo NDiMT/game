@@ -1,0 +1,12 @@
+SUMMARY messages 378 errors 368
+BAD [error] WARNING: Could not create 3D back buffers, status: 36054
+BAD [error]    at: check_backbuffer (drivers/gles3/storage/render_scene_buffers_gles3.cpp:540)
+BAD [error] WARNING: Could not create 3D back buffers, status: 36054
+BAD [error]    at: check_backbuffer (drivers/gles3/storage/render_scene_buffers_gles3.cpp:540)
+BAD [warning] [.WebGL-0x10f40103d000] GL_INVALID_OPERATION: glTexImage2DRobustANGLE: Invalid combination of format, type and internalFormat.
+BAD [warning] [.WebGL-0x10f40103d000] GL_INVALID_OPERATION: glTexImage2DRobustANGLE: Invalid combination of format, type and internalFormat.
+BAD [error] WARNING: Could not create 3D back buffers, status: 36054
+BAD [error]    at: check_backbuffer (drivers/gles3/storage/render_scene_buffers_gles3.cpp:540)
+BAD [warning] [.WebGL-0x10f40103d000] GL_INVALID_OPERATION: glTexImage2DRobustANGLE: Invalid combination of format, type and internalFormat.
+BAD [error] WARNING: Could not create 3D back buffers, status: 36054
+BAD [error]    at: check_backbuffer (drivers/gles3/storage/render_scene_buffers_gles3.cpp:540)
