@@ -42,6 +42,17 @@ const PLACE := [
 	["kit_face1", Vector3(2.40, 1.4, 18.40), 110.6, 1.0, "atrium"],
 	["kit_face4", Vector3(7.60, 1.4, 18.40), -132.3, 1.0, "atrium"],
 	["kit_fountain", Vector3(5.0, 0.5, 16.0), 0.0, 1.0, "atrium"],
+	# (v1.0: more of his thousand attempts: a row on the low shelf by the south rail (chapter Life builds the
+	# shelf), and some on the floor where they were left, a few toppled on their sides)
+	["kit_face3", Vector3(2.6, 0.95, 22.25), 170.0, 0.9, "atrium"],
+	["kit_face5", Vector3(3.9, 0.95, 22.25), 195.0, 0.9, "atrium"],
+	["kit_face2", Vector3(5.2, 0.95, 22.25), 180.0, 0.9, "atrium"],
+	["kit_face6", Vector3(6.5, 0.95, 22.25), 160.0, 0.9, "atrium"],
+	["kit_face1", Vector3(7.7, 0.95, 22.25), 200.0, 0.9, "atrium"],
+	["kit_face4", Vector3(0.6, 0.5, 12.6), 140.0, 1.0, "atrium"],
+	["kit_face3", Vector3(-1.2, 0.65, 13.0), 60.0, 1.0, "atrium", -90.0],
+	["kit_face6", Vector3(3.6, 0.67, 21.0), 20.0, 1.0, "atrium", 90.0],
+	["kit_face2", Vector3(9.6, 0.67, 21.2), -40.0, 1.0, "atrium", -90.0],
 	# Theron's workshop: his ladder by the crane arm (the scaffold towers cannot stand under his gallery:
 	# a footprint is 2D, it would wall off the gallery's own floor above them)
 	["kit_ladder", Vector3(-0.5, 0.5, 19.7), 0.0, 0.85, "atrium"],
@@ -80,7 +91,8 @@ func build(lv: Level) -> void:
 		var mesh: ArrayMesh = m[0]
 		var bb: AABB = m[1]
 		var sc: Vector3 = e[3] if e[3] is Vector3 else Vector3.ONE * float(e[3])
-		var b := Basis(Vector3.UP, deg_to_rad(float(e[2]))) * Basis.from_scale(sc)
+		var tilt := deg_to_rad(float(e[5])) if e.size() > 5 else 0.0          # (v1.0: a toppled piece lies on its side)
+		var b := Basis(Vector3.UP, deg_to_rad(float(e[2]))) * Basis(Vector3.BACK, tilt) * Basis.from_scale(sc)
 		var mi := MeshInstance3D.new()
 		mi.name = "Prop_%s_%d" % [asset, placed.size()]
 		mi.mesh = mesh
@@ -95,7 +107,7 @@ func build(lv: Level) -> void:
 		placed.append([asset, mi, fr, e[4]])
 		var bc := mi.transform * bb.get_center()
 		blob_x.append(Transform3D(Basis(Vector3.UP, deg_to_rad(float(e[2]))) * Basis.from_scale(Vector3(bb.size.x * sc.x * 1.15, 1.0, bb.size.z * sc.z * 1.15)),
-			Vector3(bc.x, (e[1] as Vector3).y + 0.012, bc.z)))       # (v1.0 A: a soft contact shadow under it)
+			Vector3(bc.x, wb.position.y + 0.012, bc.z)))       # (v1.0 A: a soft contact shadow under it, at its lowest point)
 		# the footprint: statues and stumps are round; a turned long piece is a chain of circles
 		var foot := Transform3D(b * Basis.from_scale(Vector3(bb.size.x, 1.0, bb.size.z)), mi.transform * Vector3(bb.get_center().x, 0.0, bb.get_center().z))
 		var chain := Level._turned_footprint(foot)

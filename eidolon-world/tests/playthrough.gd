@@ -1350,7 +1350,7 @@ func _plan() -> void:
 		ok("cinematic: palm to palm", game.player.extra_reach > 0.9 and C().her.pose.reach > 0.9)
 		ok("cinematic: Katoptron lights on you both", game.player.fig.runes_awake == 1 and C().her.runes_awake == 1))
 	step_wait(16.0)          # t = 38 (veil lift swell)
-	step_do(func() -> void: ok("cinematic: her veil lifts", C().her.veil_lift > 0.8 and C().her.veil.transform != C().her.rig.veil_base, "%.2f" % C().her.veil_lift))
+	step_do(func() -> void: ok("cinematic: her veil lifts: on the porcelain one, her mirror face catches the light", C().her.veil_lift > 0.8 and C().face_k > 0.8 and float(C().face_flare.get_shader_parameter("intensity")) > 0.5, "%.2f" % C().face_k))
 	step_wait(16.0)          # t = 54
 	step_do(func() -> void: ok("cinematic: she is gone; the pool shows only you", not C().her.visible and C().mine.visible))
 	step_wait(3.0)

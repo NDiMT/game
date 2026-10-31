@@ -2585,6 +2585,28 @@ const POOL_R := 1.18
 const STAND := Vector3(25.0, 2.0, -30.8)
 const TOUCH := Vector3(25.0, 2.17, -31.35)
 var her: Figure                 # her shadow, in the water
+## v1.0 (the porcelain heroine): her veil is part of her; at the finale her blank mirror-oval face catches the
+## light instead, and your own runes answer it: the eidolon seeing itself
+var face_flare: ShaderMaterial
+var face_flare_n: Node3D
+var face_k := 0.0
+func _face_light(k: float) -> void:
+	face_k = k
+	if her == null or her.rig == null: return
+	var hr := her.rig as HeroineRig
+	if face_flare_n == null:
+		face_flare = puzzles.glow_quad(self, Vector3.ZERO, 0.42, Color(1.0, 0.93, 0.86), 0.0)
+		face_flare_n = get_child(get_child_count() - 1)
+	var hb: int = hr.bone.get("Head", -1)
+	var at := her.global_position + Vector3(0, 1.0, 0)
+	var fwd := -her.global_transform.basis.z.normalized()
+	if hb >= 0 and hr.sk:
+		at = hr.sk.global_transform * hr.sk.get_bone_global_pose(hb).origin
+	at += fwd * 0.07
+	face_flare_n.position = at
+	face_flare.set_shader_parameter("intensity", sin(clampf(k, 0.0, 1.0) * PI * 0.5) * 0.9)
+	# the light in her face is yours: your runes answer it, as if she had shown you to yourself
+	game.player.fig.set_param("glint", Game.HEM_PER_SHRINE[1] * (1.0 + 1.6 * sin(clampf(k, 0.0, 1.0) * PI)))
 var mine: Figure                # your plain reflection (only at the very end)
 var touch_glow: ShaderMaterial
 var whisper_glow: ShaderMaterial
@@ -2737,11 +2759,15 @@ func hand_in_the_water(c: Cinematic) -> void:
 	# -- 23-30: her voice sings the motif; the camera draws in, slowly
 	c.cam(P + 22.0, 7.5, POOL_C + Vector3(0, 0.2, 0.45), cam_yaw, -deg_to_rad(54.0), 2.7)
 	# -- 30-37.6: her veil lifts: under it, the same unfinished marble face as yours
-	c.anim(P + 30.0, 3.2, func(k: float) -> void: her.set_veil_lift(k))
+	c.anim(P + 30.0, 3.2, func(k: float) -> void:
+		her.set_veil_lift(k)
+		_face_light(k))
 	# -- 37.6: the whisper: her lips, that are not there, say something; the music stops
 	c.anim(P + 37.6, 2.8, func(k: float) -> void:
 		whisper_glow.set_shader_parameter("intensity", sin(k * PI) * (0.35 + 0.15 * sin(k * TAU * 3.0))))
-	c.anim(P + 40.0, 1.4, func(k: float) -> void: her.set_veil_lift(1.0 - k))
+	c.anim(P + 40.0, 1.4, func(k: float) -> void:
+		her.set_veil_lift(1.0 - k)
+		_face_light(1.0 - k))
 	# -- 41-59: she rises, turns, and walks away into the world of reflections
 	c.anim(P + 41.0, 1.8, func(k: float) -> void:
 		var p6 := hp.copy()

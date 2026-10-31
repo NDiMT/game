@@ -44,6 +44,7 @@ func setup(g: Game, ch: Chapter) -> void:
 	rune_node.visible = false
 	_build_ambient()
 	_build_head()
+	_build_shelf()
 	# (QA P1-15: ambient life is for the camera only: the mirrors' cameras skip it)
 	for c in find_children("*", "GeometryInstance3D", true, false):
 		if c != head and not head.is_ancestor_of(c): (c as GeometryInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
@@ -73,6 +74,14 @@ func _build_ambient() -> void:
 	drips = [uc, st]
 	for d in drips: d.splash.connect(func(p: Vector3) -> void:
 		if game.player.position.distance_to(p) < 9.0: game.sfx.play("step_wet", -30.0, 1.6))
+
+## the low shelf by the Atrium's south rail where a row of his attempts waits (the faces are Props)
+func _build_shelf() -> void:
+	var m := MB.new()
+	m.box(Vector3(5.15, WorldGeo.A_Y + 0.2, 22.25), Vector3(6.3, 0.4, 0.5), Color(0.5, 0.25, 0.0))
+	m.box(Vector3(5.15, WorldGeo.A_Y + 0.42, 22.25), Vector3(6.4, 0.04, 0.56), Color(0.5, 0.25, 0.0))
+	game.puzzles.marble_instance(m.commit(), self)
+	game.level.ob_rect(Level.R(1.95, 21.95, 8.35, 22.55))
 
 func _build_head() -> void:
 	var base := Vector3(WorldGeo.TURNED.x, WorldGeo.A_Y, WorldGeo.TURNED.y)

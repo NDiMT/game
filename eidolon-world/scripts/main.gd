@@ -53,6 +53,7 @@ var _finale_t := -1.0
 var _world_block_t := 0.0
 
 func _ready() -> void:
+	HeroineRig.VARIANT = "v1"            # (v1.0: the owner's pick: the porcelain one, her oddness layer with her)
 	if "--autotest" in OS.get_cmdline_user_args(): autotest = true
 	Palette.push()
 	world = World.new()
