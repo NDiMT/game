@@ -17,10 +17,13 @@ float vnoise(vec2 p) {
 	f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
 }
-float rev_at(vec2 uv) {
+// x: how far the ink here is shown (id 0: always), y: how far the fog here is lifted (id 0: never by itself, so the
+// fog lies evenly over everything unknown and gives nothing of the layout away)
+vec2 rev_at(vec2 uv) {
 	float id = floor(texture(id_tex, uv).r * 255.0 + 0.5);
-	if (id < 0.5) return 1.0;
-	return texture(reveal, vec2((id + 0.5) / 256.0, 0.5)).r;
+	if (id < 0.5) return vec2(1.0, 0.0);
+	float r = texture(reveal, vec2((id + 0.5) / 256.0, 0.5)).r;
+	return vec2(r, r);
 }
 
 void fragment() {
@@ -28,15 +31,16 @@ void fragment() {
 	vec2 px = 1.0 / vec2(textureSize(id_tex, 0));
 	// a soft, ragged edge between known and unknown: the region's reveal, blurred over its neighbours and
 	// broken up by noise as it grows in
-	float r = rev_at(UV) * 0.4;
+	vec2 r = rev_at(UV) * 0.4;
 	r += (rev_at(UV + vec2(px.x * 6.0, 0.0)) + rev_at(UV - vec2(px.x * 6.0, 0.0))
 		+ rev_at(UV + vec2(0.0, px.y * 6.0)) + rev_at(UV - vec2(0.0, px.y * 6.0))) * 0.15;
 	float n = vnoise(UV * vec2(40.0, 60.0)) * 0.6 + vnoise(UV * vec2(140.0, 210.0)) * 0.4;
-	float shown = smoothstep(n - 0.12, n + 0.12, r * 1.1 - 0.05);
+	float shown = smoothstep(n - 0.12, n + 0.12, r.x * 1.1 - 0.05);
+	float lifted = smoothstep(n - 0.25, n + 0.25, r.y * 1.4 - 0.1);
 	float ink = texture(ink_tex, UV).r * shown;
 	vec3 col = mix(paper, ink_col, ink);
-	// the fog over what is not known yet
-	float fog = (1.0 - shown) * (0.55 + 0.45 * vnoise(UV * vec2(6.0, 9.0) + TIME * 0.02));
+	// the fog over what is not known yet (and round it)
+	float fog = (1.0 - lifted) * (0.55 + 0.45 * vnoise(UV * vec2(6.0, 9.0) + TIME * 0.02));
 	col = mix(col, col * 0.9 + vec3(0.03, 0.03, 0.035), fog * 0.6);
 	// where you are: a crimson dot with a slow ring
 	if (player_uv.x >= 0.0) {

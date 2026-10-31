@@ -52,7 +52,7 @@ func _ready() -> void:
 	d.splash.connect(func(_p: Vector3) -> void: splashes += 1)
 	add_child(d)
 	# torn veils on a pole (charcoal pole: the marble material with COLOR.g = 1)
-	veils = AmbientLife.veils(Vector3(-1.7, 2.0, 1.2), 3, 1.5, Vector3(0.7, 0.0, 0.7), marble, 0.0, 0.9, -PI * 0.25)
+	veils = AmbientLife.veils(Vector3(0.2, 2.0, 1.9), 3, 1.5, Vector3(0.7, 0.0, 0.7), marble, 0.0, 0.9, -PI * 0.25)
 	add_child(veils)
 	# petals drifting across
 	petals = AmbientLife.petals(AABB(Vector3(-3, 0.05, -3), Vector3(6, 2.5, 6)), 80, Vector3(1.1, 0.0, -0.45), 0.2, 0.09)
