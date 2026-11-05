@@ -38,6 +38,10 @@ func ok(label: String, pass_: bool, detail := "") -> void:
 	if not pass_: errors += 1
 	print("%s  %s %s" % ["PASS" if pass_ else "FAIL", label, detail])
 
+## a point of the new world (local metres, dev/V2_MAP.md) as [x, z]
+func V(x: float, z: float) -> Array:
+	return [Map2.O.x + x, Map2.O.z + z]
+
 func P() -> Vector3:
 	return game.player.position
 
@@ -318,29 +322,30 @@ func _plan() -> void:
 	step_do(func() -> void: ok("(v2.0) the intro cards play first (mirrored, then turned true)", (game.cine as Prologue)._card != null and not (game.cine as Prologue)._cards_done))
 	step_until("(v2.0) the cards done, the prologue's shots run", func() -> bool: return game.cine != null and (game.cine as Prologue)._cards_done and game.cine.t > 21.0, 60.0)
 	step_do(func() -> void:
-		ok("(v2.0 shot 4) her reflection rises half a second late", is_equal_approx(game.puzzles.pool_refl.lag, 0.5))
+		ok("(v2.0 shot 4) her reflection rises half a second late", is_equal_approx(C().act1.pool_refl.lag, 0.5))
 		ok("(v2.0 shot 7) the Glass Warden rises in the water behind her", is_instance_valid((game.cine as Prologue).warden_fig)))
 	step_until("(v2.0) the prologue ends: you are yours to move", func() -> bool: return game.mode == "play", 40.0)
 	step_do(func() -> void:
 		ok("(v2.0 shot 12) the shell comb, in the satchel (a story item)", "comb" in (C().state["inv"]["story"] as Array) and game.satchel.contents().any(func(e: Array) -> bool: return e[0] == "comb"))
-		ok("(v2.0) the prologue is over: the Warden gone, the pool's lag back, the camera follows you", game.cine == null and not game.puzzles.pool_refl.hold and game.world.follow == game.player)
+		ok("(v2.0) the prologue is over: the Warden gone, the pool's lag back, the camera follows you", game.cine == null and not C().act1.pool_refl.hold and game.world.follow == game.player)
 		ok("woke by the pool, at the veiled gate", P().distance_to(Prologue.SHORE) < 0.3, str(P()))
 		ok("chapter title on the title screen", Names.CHAPTER == "The Veiled Gate"))
 
-	# ================================================================ 0. v2.0 Act 1, Awakening (linear; EIDOLON_SCRIPT §6 I.1-I.6)
+	# ================================================================ 0. v2 Act 1, Awakening, in the NEW world (dev/V2_MAP.md; EIDOLON_SCRIPT §6 I.1-I.6)
 	step_do(func() -> void:
 		ok("(v2.0) Act 1: the hint comes at 30 s", C().act() == 1 and is_equal_approx(C().hint_after(), 30.0))
-		ok("(v2.0 I.1) the stub's stone door is shut", game.level.named["a1_door"].enabled and C().act1.door.visible))
-	walk_path("(I.1) into the still water, onto the spot where her plate shows", [[2.6, 1.2], [Act1.PLATE.x, Act1.PLATE.z]])
+		ok("(v2 I.1) the court's temple door is shut", game.level.named["a1_door"].enabled and C().act1._door_node().visible)
+		ok("(v2) she woke in the new world, on the Pool of Halves' east shore", game.level.region_at(Vector2(P().x, P().z)).name == Map2.ZP + "WS"))
+	walk_path("(I.1) into the plate court, onto the spot where her plate shows", [V(-0.5, 18.5), V(3.0, 19.5), [Act1.PLATE.x, Act1.PLATE.z]])
 	step_do(func() -> void: ok("(v2.0 I.1) the plate is only in her world: the camera never draws it", (C().act1.plate_mat != null) and C().act1.pud_refl.planar != null))
 	step_until("(v2.0 I.1) her reflection comes onto her plate, half a second after you: the door sinks", func() -> bool: return C().act1.st()["plate"], 4.0)
 	step_do(func() -> void: ok("(v2.0 I.1) the door is open", not game.level.named["a1_door"].enabled))
-	walk_path("(I.2) to the bell", [[4.3, 3.9]])
+	walk_path("(I.2) through the door, to the bell", [V(5.0, 16.0), V(5.0, 14.0), V(7.55, 12.95)])
 	step_do(func() -> void: ok("(v2.0 I.2) the bell rings; far bells answer", _focus() == "pt_bell" and game.try_interact(), _focus()))
 	step_wait(0.5)
-	walk_path("(I.3) into the stub, before the misted pane", [[0.0, 4.6], [0.0, 6.15]])
+	walk_path("(I.3) onto the glass road, before the misted pane", [V(8.5, 12.4), V(12.5, 12.2)])
 	step_do(func() -> void:
-		ok("(v2.0 I.3) the low gate at the bridge's head is down", game.level.named["a1_gate"].enabled)
+		ok("(v2.0 I.3) the low gate across the road is down", game.level.named["a1_gate"].enabled)
 		ok("(v2.0 I.3) breathe on the first glass", _focus() == "breathe_first" and game.try_interact() and game.mode == "glass", _focus()))
 	step_until("(v2.0 I.3) she writes ONE line and waits", func() -> bool: return game.ui.glass_talk.phase == "waiting", 12.0)
 	step_do(func() -> void:
@@ -349,39 +354,40 @@ func _plan() -> void:
 		ok("(v2.0 I.3) written back, the line is right", game.cmd("glass_try:right")))
 	step_until("(v2.0 I.3) the low gate rises", func() -> bool: return C().act1.st()["glass"] and not game.level.named["a1_gate"].enabled, 6.0)
 	step_until("the close-up fades back", func() -> bool: return game.mode == "play" and not game.ui.glass_talk.visible, 8.0)
-	walk_path("(I.4) to the bridge's broken span", [[0.0, 7.6]])
+	walk_path("(between) along the road, the Reed Bank, to the stream", [V(16.5, 12.8), V(19.0, 12.0), V(19.0, 7.0), V(19.0, 3.25), V(17.1, 3.25)])
 	step_do(func() -> void:
-		ok("(v2.0 I.4) the span is gone: no way over", game.level.named["a1_gap"].enabled)
+		ok("(v2 I.4) the crossing is gone: no way over", not game.level.named[Map2.ZP + "I4s"].enabled)
 		ok("(v2.0 I.4) turn the slab (once)", _focus() == "a1_turn" and game.try_interact(), _focus()))
 	step_wait(0.8)
 	step_do(func() -> void:
 		ok("(v2.0 I.4) one turn is not her half", not C().act1.st()["slab"])
 		ok("(v2.0 I.4) turn it again", _focus() == "a1_turn" and game.try_interact(), _focus()))
-	step_until("(v2.0 I.4) the halves meet: the span is whole", func() -> bool: return C().act1.st()["slab"] and not game.level.named["a1_gap"].enabled, 3.0)
-	walk_path("(I.5) over the bridge, into the crypt", [[0.0, 8.4], [0.0, 10.5]])
-	step_do(func() -> void:
-		ok("(v1.0) the bridge's loose slabs settled under you, a corner fell away", C().hub._settled == [true, true, true] and int(game.juice.fired.get("grit", 0)) >= 3, str(C().hub._settled))
-		ok("(v2.0 I.5) in the crypt: dark", C().act1.in_crypt(P())))
+	step_until("(v2.0 I.4) the halves meet: the crossing is whole", func() -> bool: return C().act1.st()["slab"] and game.level.named[Map2.ZP + "I4s"].enabled, 3.0)
+	walk_path("(I.5) over the slab, into the crypt", [V(15.5, 3.25), V(12.6, 3.0)])
+	step_do(func() -> void: ok("(v2.0 I.5) in the crypt: dark", C().act1.in_crypt(P())))
 	step_until("(v2.0 I.5) her hand pushes the lamp up through the basin, lit", func() -> bool: return C().act1.st()["lamp"], 3.0)
 	step_until("(v2.0 I.5) it rests on the rim; the Warden turned in the water", func() -> bool: return C().act1.lamp_ready() and game.sfx.played.get("whoosh", 0) > 0, 6.0)
+	walk_path("(I.5) to the basin's rim", [V(12.6, 2.0)])
 	step_do(func() -> void:
 		ok("(v2.0 I.5) the crypt is dark", game._dark > 0.5, "%.2f" % game._dark)
 		ok("(v2.0 I.5) take her lamp", _focus() == "lamp_take" and game.try_interact(), _focus()))
 	step_wait(0.4)
 	step_do(func() -> void:
 		ok("(v1.0) the lamp is carried: in her hand, its own light", C().hub.has_item("lamp") and C().hub.lamp_held.is_inside_tree() and C().hub.lamp_held.get_parent() == game.player.fig and C().hub.lamp_light.visible))
-	walk_path("(I.5) to his cot, by lamplight", [[-0.5, 12.25]])
+	walk_path("(I.5) to his cot and his tablet, by lamplight", [V(11.2, 5.35)])
 	step_do(func() -> void: ok("(v2.0 I.5) Theron's first tablet: 'She is not gone. Only behind the veil.'", _focus() == "tab_t1" and game.try_interact() and game.ui.text.text.begins_with("She is not gone"), _focus()))
 	step_wait(1.6)
-	walk_path("(I.6) out, south, into the Atrium", [[0.0, 12.4], [0.0, 13.8]])
+	walk_path("(I.6) out by the west door, into the Atrium", [V(11.0, 3.0), V(8.5, 3.0)])
 	step_until("(v2.0 I.6) the Atrium: Act 1 ends", func() -> bool: return C().act1.done() and C().act() == 2, 3.0)
 	step_do(func() -> void:
-		ok("(v1.0) the Atrium of a Thousand Faces", game.area == "atrium" and absf(P().y - WorldGeo.A_Y) < 0.02, str(P()) + " " + game.area)
-		ok("(v2.0 I.6) three cold Beacon pillars stand in the Atrium", C().hub.atrium_fires.size() == 3 and not (C().hub.atrium_fires["W"] as BeaconFire).lit)
+		ok("(v2) the Atrium of a Thousand Faces", game.area == "atrium" and absf(P().y - Map2.O.y) < 0.02, str(P()) + " " + game.area)
+		ok("(v2) no Beacon in the Atrium: the three are the wings'", true)
 		ok("(v2.0) the wings: the hint at 90 s now", is_equal_approx(C().hint_after(), 90.0)))
-	walk_path("(I.6) to the fountain", [[2.9, 14.9]])
+	walk_path("(I.6) to the fountain", [V(2.2, 1.5)])
 	step_until("(v2.0 I.6) she stands in the fountain's water and turns her head toward the West", func() -> bool: return C().act1.st()["gaze"], 6.0)
-	walk_path("across the Atrium to the colonnade", [[6.0, 13.2], [9.4, 12.6], [11.5, 10.2]])
+	# (phase 2: the wings are still the old world's rooms, until each is ported into its new space: on into them)
+	step_do(func() -> void: tp(9.4, 12.6))
+	walk_path("across the old Atrium to the colonnade", [[11.5, 10.2]])
 	# T4: the flooded colonnade; her reflection walks the hidden stones ahead of you
 	var t4: Array = [[11.5, 9.1]]
 	for c in WorldGeo.T4_STONES: t4.append([c.x, c.y])
@@ -1413,7 +1419,7 @@ func _plan() -> void:
 	# ---- v0.8 props: loaded, solid, and no required path closed
 	step_do(func() -> void:
 		var pr: Props = game.props
-		var ok_load := pr.placed.size() == Props.PLACE.size()
+		var ok_load := pr.placed.size() == Props.PLACE.size() + (Map2.props().size() if Map2.enabled else 0)
 		for e in pr.placed: ok_load = ok_load and (e[1] as MeshInstance3D).mesh != null and (e[1] as MeshInstance3D).mesh.get_surface_count() > 0
 		ok("props: every placement loaded, on the marble", ok_load, "%d placed" % pr.placed.size())
 		var solid := true
@@ -1576,7 +1582,7 @@ func _plan() -> void:
 		ok("(v2.0) a v2 save migrates: lamp and shard in the satchel, nothing of the later chapters", ["lamp", "shard"].all(func(k: String) -> bool: return k in (inv["items"] as Array)) and not ("chisel" in (inv["items"] as Array)), str(inv))
 		game._save()
 		var d3 = JSON.parse_string(FileAccess.get_file_as_string(Game.SAVE_PATH))
-		ok("(v2.0) saved again as v4", d3 is Dictionary and int(d3["v"]) == 4))
+		ok("(v2) saved again as v%d" % Game.SAVE_V, d3 is Dictionary and int(d3["v"]) == Game.SAVE_V))
 	# ---- (v2.0) a v3 save (v1.x) migrates: three tools out, seals become lit Beacons, the first pool is the last puzzle now
 	step_do(func() -> void:
 		var ch3 := {"stones": true, "shard": true, "gallery": true, "maze": true, "scales": true, "echo_room": false, "four": false,
@@ -1590,6 +1596,18 @@ func _plan() -> void:
 		ok("(v2.0) v3 -> v4: the seals taken are Beacons lit", (st["beacons"] as Array) == ["W", "N"] and C().hub.beacon_lit("W") and not C().hub.beacon_lit("E"))
 		ok("(v2.0) v3 -> v4: the old first pool is the chapter's last puzzle now: unsolved again", not st["stones"])
 		ok("(v2.0) v3 -> v4: the opened panel means the Ledge's song was sung; the Echo room is open", st["ledge_song"] and st["echo_room"]))
+	# ---- (v2 rebuild) save v5: a save from before the new world is not carried over (a clean reset, the owner's call)
+	step_do(func() -> void:
+		var f := FileAccess.open(Game.SAVE_PATH, FileAccess.WRITE)
+		f.store_string(JSON.stringify({"v": 4, "pos": [0.0, 0.5, 15.0], "puzzles": game.puzzles.state.duplicate(true), "chapter": C().state.duplicate(true)}))
+		f.close()
+		game.save_data = {}
+		game._load_save()
+		ok("(v2) a v4 save (from before the new world) is not loaded: a clean start", game.save_data.is_empty())
+		game._save()
+		game.save_data = {}
+		game._load_save()
+		ok("(v2) a v5 save loads", int(game.save_data.get("v", 0)) == Game.SAVE_V))
 	# ---- the cinematic can be skipped with a long press
 	step_do(func() -> void:
 		game.cmd("jump:first_shrine")

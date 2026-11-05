@@ -49,6 +49,8 @@ func _init(style := 0.0, size := 0.6, light_col := Color(1.0, 0.68, 0.38), noise
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.extra_cull_margin = 1.0
 		mi.sorting_offset = 0.01 * k
+		# (v2.0) the core layer stands 2 cm toward the camera: the two layers are never coplanar (no sort flicker)
+		if k == 1: mi.position = Vector3(-0.707, 0.0, 0.707) * 0.02
 		add_child(mi)
 	embers = CPUParticles3D.new()
 	var em := QuadMesh.new()

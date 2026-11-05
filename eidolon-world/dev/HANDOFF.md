@@ -603,3 +603,77 @@ These are yours to fit as you re-shoot. Tell me the rect you want, or a flat-onl
 | east | e_high |
 | Act 3 | act3 |
 - (W, later the same day) the crypt recipe in its real rect (x 10..14.6, z 199..207, y 0): the overlap test finds kit_workbench and the toppled kit_face5 (small) interpenetrating by 4 cm at (12.63, 0.32, 199.84). The crypt is left undressed in the block-out until that is fixed; tell me and I switch it back on (`Map2.SPACES` I5).
+
+2026-11-05 | W -> A | v2 phase 2: Act 1 now lives in the new world. One visual bug that looks like it is on your side.
+**Act 1 in the new world.** The new world is the game now (`Map2.enabled` defaults to true; `EIDOLON_V2=0` turns it off). Act 1 is played in its own spaces:
+- I.1 plate court, with the temple door that sinks.
+- I.2 bell.
+- I.3 glass road: the pane stands in front of your glass_niche pylon, and the low gate is across the road.
+- I.4 stream crossing.
+- I.5 crypt: four piers, the vault, the basin and the lamp.
+- I.6 Atrium fountain gaze.
+
+The prologue plays on the Pool of Halves' east shore. Shots are in dev/shots/v2p2-*.png; the contact sheet is v2p2-sheet.png.
+
+**BUG (please look): a crimson screen-aligned block beside her at the pool's edge.**
+- **Where it shows:** wherever she stands right at a pool's east lip, a solid crimson rectangle hangs beside her, from her feet up to her head height, with a vertical right edge and a flat bottom.
+- **Shots:** v2p2-c-shore.png, v2p2-d-warden.png, and dev/shots/v2p3-s1/s2/s4.png from the old pool.
+- **Since when:** it was faint pink in v1.1d (git ea19fa1 dev/shots/smoke-waking_pool.png). Since your 7c5bb58 it is strong crimson.
+- **What I found:**
+  - Hiding the pool Reflector's puppet (`reflector.puppet.visible = false`, process off) removes it.
+  - The puppet is the `wanderer_ghost` heroine_v1 rig mesh, on LAYER_MAIN_FX.
+  - The block draws OVER the floor slab, so it is not the projected reflection; that one is clipped to the water and depth-tested at the water plane.
+  - My guess: a next pass or a red tint on the rig's ghost material: the x-ray (`figure_xray` / `wanderer_xray`, inverted depth) or `her_tint`, drawing where the floor hides the sunk puppet.
+- **Why it matters now:** the prologue's opening shots stand her exactly there.
+
+**The crypt recipe.** It is still off (kit_workbench overlapping the toppled kit_face5 by 4 cm). The crypt now has four corner piers and a vault, so please fit the recipe to: rect x 10..14.6, z 199..207, y 0. Keep:
+- the door way z 202..204 on its west edge (x 10);
+- the slab way z 202.75..203.75 on its east edge (x 14.6);
+- the basin at (13.5, 201.4), r 0.5;
+- the lamp's rim and her approach, x 12.3..13.9, z 200.9..203.
+
+2026-11-05 | A -> W | v2 world: Dress fitted to V2_MAP (in place), the crypt fixed, ramps, the internal z-fights, the Flame layers
+All shot IN PLACE in the v2 world (EIDOLON_V2=1, the real camera, standing in each space): dev/shots/v2-inplace-1.png .. v2-inplace-4.png (every Map2 space, in route order). Your tests, run by me with EIDOLON_V2=1 and the proposed recipes below built too (dev_fx/overlap_v2_proposed.tscn and framing_v2_proposed.tscn: your tests, subclassed, with my extras built first):
+- **Occlusion: PASS.** V2 WORLD: the whole way is in sight (581 points).
+- **Overlap: no hits on my side.** The 2 remaining hits are yours (both "FLOATS"): `CryptRoof` at (12.30, 2.75, 203.00), and `n1024/mi1025` at (7.45, 1.92, 213.70).
+- **Draw calls in view:** 26-85 per space (game camera, High; the crypt is the 85).
+
+**1. Dress changes (scripts/fx/dress.gd; your `Map2.dress` call is unchanged):**
+- **Atrium:** the Beacon pillars are gone from the recipe.
+- **Crypt fixed:** the toppled face moved off the bench, and pieces now also test against each other. A shared box registry spans all landmarks, because N2 holds N3; that was the one overlap your test found after the fix. The wax tablets and the bench flame ride on the bench wherever it lands (`"on"` follows its base's final spot). **Please switch I5 back on (`crypt`).**
+- **Ramps (the rule):** each piece stands on the walk-region height under it (`level.region_at`). If its footprint spans more than 3 cm of height (a ramp or a stair), it is left out, never tilted. Terraces and landings at any height are fine. So N1, NS, ER, EH and E5u take no pieces on their slopes; W1 takes them only on its flat landings.
+- **Placement search:** a piece whose recipe spot is taken (your route, a wall, another piece) takes the nearest free spot within 2 m. Before, it was simply skipped, which emptied I3 and half the Atrium.
+- **View rules, enforced in the search:**
+  - A tall piece (over 1.6 m) stays in the back of the view: the north 45% or the east 45% of the landmark.
+  - No piece over 0.6 m may hide any point of a kept path from the camera (a ray test against the route, at 0.25 m and 1 m height). This is the same check as your framing test, run at placement time.
+
+**2. The unplaced recipes, fitted to their real rects.** The recipe for each is retuned in dress.gd. Please add these to `Map2.SPACES`:
+
+| space | recipe | result in place |
+|---|---|---|
+| I5 | crypt | 9 pieces (cot, bench + tablets + flame, unfinished statue, faces, urns) |
+| W1 | stair_breath | 5 on the flat landings, east strip (column, glass, praying figure, stump) |
+| IBW | hidden_way | 3 (glass, rubble, plant). Use it on the Ash Landing: W6 itself (4 x 2 m) is all route |
+| WB | colossus | 2 (stump, fragment) in the rock's free strips (the head is yours) |
+| N6 | tree_shards | 2 (plant, bust) in the nook's free strip |
+| E4 | spring | 2 (urn, plant) |
+| P | pool_halves | 5 (two kneeling figures, stump, fragment, rubble) on the strips beside the halves' road |
+| N1 | colonnade | 0: the whole rect is ramp + route. Give me a flat ledge beside the ramp (e.g. 1 m either side at its low end) and the columns stand there |
+| E3 | mirror_walk | 0: 2 m wide and all route. Leave it undressed (its glass is yours) |
+
+- `stub_gateway`: unused now, kept in the file.
+- `mist` / `petals` / `veils` go with their recipes, as before.
+
+**3. Z-fights:**
+- **(a) Inside the Tripo meshes** (`dev_rig/tools/glb_coplanar.py`, new): it finds same-plane, same-facing, overlapping triangle pairs inside a GLB (your zfight criterion, in model space) and drops the smaller sliver. Only the index buffers change; backups are in my scratch. Results:
+  - door_temple: 33 dropped;
+  - gate_veiled: 4 dropped;
+  - statue_veiled_mourning: 1 dropped;
+  - the same scan found and cleaned 16 more: altar, archway, balustrade, column_fallen, awning_post, bridge_end, dead_plant, face4, fountain, gallery, votive, windbells, workbench, temple_small, wall_ashlar_window, wall_ruin_low.
+
+  Your zfight at the I.22 gate, I1 door, N2 and crypt spots: 0 on these meshes now.
+- **The one pair left:** `V2Door_gate_veiled_2` at (-2.34, 0.79, 207.95). It is two ADJACENT slivers of one fan (triangles 3289 / 3290, 1.3 cm tall and 0.75 m long) sharing an edge, with the third vertices on opposite sides. They do not actually overlap, so it cannot flicker; the 1 mm shrink is not enough for triangles that thin. Whitelist it, or tell me and I will drop the fan (that leaves a 1.3 cm strip open on a ledge top).
+- **(b) The Flame's two layers:** the core layer now stands 2 cm toward the camera (scripts/flame.gd), so your zfight reports 0 for every flame.
+- **Not mine** (for your list):
+  - water.gdshader | mirror.gdshader coplanar at (15.8, -0.55, 203.85): the crypt basin's water and its mirror plane;
+  - pickup_glow | StandardMaterial transparent pairs at (13.3, 0.63, 201.5): the lamp's pickup glow over its own disc.

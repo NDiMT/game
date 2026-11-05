@@ -1,11 +1,92 @@
-[1.1s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
-[1.3s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
-[1.6s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
-[4.2s log] [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
-[4.7s log] [props] 35 placed
-[4.9s log] [solids] 2522 primitives, 1374 solid footprints, 375 obstacles added (229 ms)
-[5.0s log] [warm-up] 590 mesh/material pairs (of 828 geometry nodes), 12 canvas materials
-[37.1s warning] [.WebGL-0x348c02727800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[41.5s warning] [.WebGL-0x348c02727800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[46.8s warning] [.WebGL-0x348c02727800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[50.4s warning] [.WebGL-0x348c02727800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+[0.8s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+[1.1s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+[1.4s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
+[3.6s error] ERROR: No loader found for resource: res://assets/models/props/door_temple_0.jpg (expected type: Texture2D)
+[3.6s error]    at: _load (core/io/resource_loader.cpp:358)
+[3.6s error] ERROR: No loader found for resource: res://assets/models/props/door_temple_2.jpg (expected type: Texture2D)
+[3.6s error]    at: _load (core/io/resource_loader.cpp:358)
+[3.6s error] ERROR: No loader found for resource: res://assets/models/props/door_temple_1.png (expected type: Texture2D)
+[3.6s error]    at: _load (core/io/resource_loader.cpp:358)
+[3.7s error] ERROR: No loader found for resource: res://assets/models/props/gate_veiled_0.jpg (expected type: Texture2D)
+[3.7s error]    at: _load (core/io/resource_loader.cpp:358)
+[3.7s error] ERROR: No loader found for resource: res://assets/models/props/gate_veiled_2.jpg (expected type: Texture2D)
+[3.7s error]    at: _load (core/io/resource_loader.cpp:358)
+[3.7s error] ERROR: No loader found for resource: res://assets/models/props/gate_veiled_1.png (expected type: Texture2D)
+[3.7s error]    at: _load (core/io/resource_loader.cpp:358)
+[4.6s log] [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[5.1s error] ERROR: No loader found for resource: res://assets/models/props/brazier_0.jpg (expected type: Texture2D)
+[5.1s error]    at: _load (core/io/resource_loader.cpp:358)
+[5.1s error] ERROR: No loader found for resource: res://assets/models/props/brazier_2.jpg (expected type: Texture2D)
+[5.1s error]    at: _load (core/io/resource_loader.cpp:358)
+[5.1s error] ERROR: No loader found for resource: res://assets/models/props/brazier_1.png (expected type: Texture2D)
+[5.1s error]    at: _load (core/io/resource_loader.cpp:358)
+[5.1s log] [props] 45 placed
+[5.2s log] [v2 dress] I3 statue_veiled_bust: outside the landmark
+[5.2s log] [v2 dress] I3 statue_veiled_bust: on a kept path
+[5.2s log] [v2 dress] I3 rubble_pile: outside the landmark
+[5.8s log] [v2 dress] A kit_scaffold: outside the landmark
+[5.8s log] [v2 dress] A kit_ladder: on a kept path
+[5.8s log] [v2 dress] A plinth: on a kept path
+[5.9s log] [v2 dress] W5 pylon_ashlar: outside the landmark
+[5.9s log] [v2 dress] W5 pylon_ashlar: outside the landmark
+[5.9s log] [v2 dress] W5 mirror_frame: on a kept path
+[5.9s log] [v2 dress] W5 column_fallen: outside the landmark
+[6.0s log] [v2 dress] N2 statue_veiled_broken: on a kept path
+[6.1s log] [v2 dress] N3 kit_urns: outside the landmark
+[6.1s log] [v2 dress] N7 column_stump: outside the landmark
+[6.1s log] [v2 dress] E1 balustrade: outside the landmark
+[6.1s log] [v2 dress] E1 balustrade: on a kept path
+[6.1s log] [v2 dress] E1 kit_awning_post: on a kept path
+[6.1s log] [v2 dress] E1 kit_awning_post: outside the landmark
+[6.1s log] [v2 dress] E1 kit_urns: on a kept path
+[6.1s log] [v2 dress] E1 box: outside the landmark
+[6.2s log] [v2 dress] E2 balustrade: outside the landmark
+[6.2s log] [v2 dress] E5 statue_veiled_praying: outside the landmark
+[6.2s log] [v2 dress] I21 kit_bridge_end: outside the landmark
+[6.2s log] [v2 dress] I21 rubble_pile: on a kept path
+[6.2s log] [v2 dress] I21 column_fallen: outside the landmark
+[6.2s log] [v2 dress] I21 column_stump: on a kept path
+[6.3s log] [v2 dress] I22 gate_veiled: outside the landmark
+[6.3s log] [v2 dress] I22 pylon_ashlar: outside the landmark
+[6.9s log] [solids] 5752 primitives, 1538 solid footprints, 522 obstacles added (498 ms)
+[7.1s log] [warm-up] 629 mesh/material pairs (of 958 geometry nodes), 12 canvas materials
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[7.1s error] ERROR: Too many instances using shader instance variables. Consider increasing rendering/limits/global_shader_variables/buffer_size in the Project Settings. Maximum items supported by this hardware is: 4096.
+[7.1s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2041)
+[46.9s warning] [.WebGL-0xc7c01473800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[53.0s warning] [.WebGL-0xc7c01473800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[53.0s error] ERROR: Condition "global_shader_uniforms.instance_buffer_pos.has(p_instance)" is true. Returning: -1
+[53.0s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2038)
+[53.0s error] ERROR: Condition "global_shader_uniforms.instance_buffer_pos.has(p_instance)" is true. Returning: -1
+[53.0s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2038)
+[53.0s error] ERROR: Condition "global_shader_uniforms.instance_buffer_pos.has(p_instance)" is true. Returning: -1
+[53.0s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2038)
+[59.7s warning] [.WebGL-0xc7c01473800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[64.3s warning] [.WebGL-0xc7c01473800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+[64.3s error] ERROR: Condition "global_shader_uniforms.instance_buffer_pos.has(p_instance)" is true. Returning: -1
+[64.3s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2038)
+[64.3s error] ERROR: Condition "global_shader_uniforms.instance_buffer_pos.has(p_instance)" is true. Returning: -1
+[64.3s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2038)
+[64.3s error] ERROR: Condition "global_shader_uniforms.instance_buffer_pos.has(p_instance)" is true. Returning: -1
+[64.3s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2038)
+[64.3s error] ERROR: Condition "global_shader_uniforms.instance_buffer_pos.has(p_instance)" is true. Returning: -1
+[64.3s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2038)
+[64.3s error] ERROR: Condition "global_shader_uniforms.instance_buffer_pos.has(p_instance)" is true. Returning: -1
+[64.3s error]    at: global_shader_parameters_instance_allocate (drivers/gles3/storage/material_storage.cpp:2038)

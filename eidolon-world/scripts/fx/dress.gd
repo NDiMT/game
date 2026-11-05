@@ -4,7 +4,7 @@ extends Node3D
 ## landmark's floor rectangle (world x/z) and its floor height; the recipe fills it with the kit (props, kit_*, a few
 ## primitives) so each space has its own silhouette at the fixed camera:
 ##   var d := Dress.build(level, self, "atrium", Rect2(x0, z0, w, d), floor_y, [path_rect, ...])
-##   d.beacons      (Atrium / wing beacons) the BeaconFire nodes it made, W, N, E order: light them with ignite()
+##   d.beacons      the BeaconFire nodes a recipe made ("beacon" entries; none in the Chapter I recipes now: W places them)
 ##   d.skipped      pieces it left out (they would have hit a wall, an obstacle or a kept-clear path), for the log
 ## Rules it keeps by itself:
 ##  * the camera looks from the south-west: tall pieces only stand on a landmark's NORTH and EAST edges (the back of
@@ -64,10 +64,10 @@ const RECIPES := {
 	"crypt": [
 		["kit_cot", 0.18, 0.2, 90.0, 0.9], ["kit_workbench", 0.68, 0.1, 0.0, 1.0],
 		["item_wax_tablet", 0.6, 0.1, 15.0, 2.2, {"y": 0.97, "on": true}], ["item_wax_tablet", 0.78, 0.11, -20.0, 2.2, {"y": 0.97, "on": true}],
-		["statue_veiled_unfinished", 0.92, 0.38, -60.0, 0.85],
-		["kit_face2", 0.95, 0.72, -90.0, 0.8, {"small": true}], ["kit_face5", 0.42, 0.1, 160.0, 0.75, {"small": true, "tilt": 90.0}],
-		["kit_urns", 0.08, 0.62, 30.0, 0.8, {"small": true}], ["kit_face6", 0.06, 0.88, 120.0, 0.7, {"small": true}],
-		["flame", 0.6, 0.1, 0.0, 0.14, {"y": 0.97}]],
+		["statue_veiled_unfinished", 0.9, 0.86, -60.0, 0.85],
+		["kit_face2", 0.95, 0.3, -90.0, 0.8, {"small": true}], ["kit_face5", 0.35, 0.92, 160.0, 0.75, {"small": true, "tilt": 90.0}],
+		["kit_urns", 0.08, 0.8, 30.0, 0.8, {"small": true}], ["kit_face6", 0.6, 0.94, 120.0, 0.7, {"small": true}],
+		["flame", 0.6, 0.1, 0.0, 0.14, {"y": 0.97, "on": true}]],
 	# the Atrium of a Thousand Faces: his attempts in two rows on plinths along the back (north and east), more
 	# on the floor in front where he left them, scaffolds and a ladder in the back corners, the dry fountain in the
 	# middle (its still water is W's), the three Beacon pillars on the W, N and E sides
@@ -82,15 +82,14 @@ const RECIPES := {
 		["row", 0.82, 0.25, 0.84, 0.4, {"n": 2, "yaw": -70.0, "scale": 0.9, "small": true}],
 		["kit_face1", 0.15, 0.92, 200.0, 0.9, {"small": true}], ["kit_face4", 0.3, 0.95, 160.0, 0.9, {"small": true, "tilt": -90.0}],
 		["kit_face6", 0.72, 0.94, 190.0, 0.9, {"small": true}], ["kit_face3", 0.86, 0.95, 230.0, 0.9, {"small": true, "tilt": 90.0}],
-		["statue_veiled_unfinished", 0.86, 0.16, -45.0, 0.9],
-		["beacon", 0.04, 0.5, 0.0, 1.0], ["beacon", 0.5, 0.04, 0.0, 1.0], ["beacon", 0.96, 0.5, 0.0, 1.0]],
+		["statue_veiled_unfinished", 0.86, 0.16, -45.0, 0.9]],      # (no Beacon pillars: the Beacons are the wings', V2_MAP)
 	# ---------------------------------------------------------------- ACT 2, W wing (glass, cold: "w_glass")
 	# glass everywhere: tall framed panes on the back walls, cold columns, a praying figure
 	"stair_breath": [
-		["column_doric", 0.18, 0.06, 0.0, 0.8], ["column_doric", 0.82, 0.06, 0.0, 0.8],
-		["mirror_frame", 0.5, 0.05, 0.0, 0.9, {"glass": true}],
-		["statue_veiled_praying", 0.94, 0.3, -60.0, 0.85], ["balustrade", 0.97, 0.7, 90.0, 1.0],
-		["rubble_pile", 0.06, 0.8, 0.0, 0.35, {"small": true}]],
+		# (W1, 3.4 x 14.2 m, the stairs: only the flat landings take pieces; the route keeps the west 2/3, so the east strip)
+		["column_doric", 0.88, 0.03, 0.0, 0.75], ["mirror_frame", 0.9, 0.22, -90.0, 0.85, {"glass": true}],
+		["statue_veiled_praying", 0.9, 0.45, -90.0, 0.8], ["column_stump", 0.9, 0.7, 0.0, 0.75],
+		["rubble_pile", 0.9, 0.9, 0.0, 0.3, {"small": true}]],
 	"hall_glass": [
 		["mirror_frame", 0.25, 0.05, 0.0, 1.1, {"glass": true}], ["mirror_frame", 0.5, 0.05, 0.0, 1.1, {"glass": true}],
 		["mirror_frame", 0.75, 0.05, 0.0, 1.1, {"glass": true}],
@@ -103,34 +102,35 @@ const RECIPES := {
 		["statue_veiled_kneeling", 0.95, 0.5, -90.0, 0.8], ["rubble_pile", 0.1, 0.85, 0.0, 0.4, {"small": true}],
 		["column_fallen", 0.82, 0.9, 20.0, 0.5, {"small": true}]],
 	"hidden_way": [
-		["archway_ruined", 0.5, 0.06, 0.0, 0.85],
-		["wall_ruin_low", 0.06, 0.5, 90.0, 0.55], ["wall_ruin_low", 0.94, 0.5, 90.0, 0.55],
-		["mirror_frame", 0.94, 0.15, -90.0, 0.8, {"glass": true}], ["kit_dead_plant", 0.88, 0.88, 0.0, 0.9, {"small": true}]],
+		# (the Ash Landing IBW, 5 x 3.6 m, beside W6's mouth: the east strip and the north edge)
+		["archway_ruined", 0.92, 0.45, -90.0, 0.6], ["mirror_frame", 0.15, 0.06, 0.0, 0.75, {"glass": true}],
+		["rubble_pile", 0.92, 0.9, 0.0, 0.3, {"small": true}], ["kit_dead_plant", 0.35, 0.06, 0.0, 0.8, {"small": true}]],
 	"colossus": [
-		["column_fallen", 0.25, 0.12, 30.0, 1.0], ["rubble_pile", 0.85, 0.12, 0.0, 0.8],
-		["pediment_fragment", 0.92, 0.55, -80.0, 0.9], ["column_stump", 0.08, 0.5, 0.0, 0.9],
-		["column_doric", 0.55, 0.05, 0.0, 1.0, {"tilt": 0.0}], ["rubble_pile", 0.12, 0.88, 40.0, 0.45, {"small": true}]],
+		# (WB, the Glass Beacon rock beside the Observer's face, 3 x 6 m: its free west and east strips; the head is W's)
+		["column_stump", 0.1, 0.12, 0.0, 0.7], ["rubble_pile", 0.1, 0.5, 0.0, 0.3, {"small": true}],
+		["pediment_fragment", 0.1, 0.85, 90.0, 0.5, {"small": true}], ["rubble_pile", 0.92, 0.75, 0.0, 0.25, {"small": true}]],
 	# ---------------------------------------------------------------- ACT 2, N wing (garden mist: "n_garden")
 	# overgrown: columns and stumps, dead shrubs, low drifting mist, petals
 	"colonnade": [
-		["column_doric", 0.1, 0.06, 0.0, 1.0], ["column_doric", 0.3, 0.06, 0.0, 1.0], ["column_doric", 0.5, 0.06, 0.0, 1.0],
-		["column_stump", 0.7, 0.06, 0.0, 1.0], ["column_doric", 0.9, 0.06, 0.0, 1.0],
-		["column_fallen", 0.75, 0.85, 70.0, 0.6, {"small": true}], ["kit_dead_plant", 0.06, 0.9, 0.0, 0.9, {"small": true}],
-		["kit_dead_plant", 0.6, 0.12, 0.0, 0.8, {"small": true}], ["mist", 0.5, 0.5, 0.0, 2.2], ["petals", 0.5, 0.5, 0.0, 0.8]],
+		# (N1 is a ramp: columns only where the floor is flat; edge strips beside the route)
+		["column_doric", 0.12, 0.05, 0.0, 0.9], ["column_doric", 0.88, 0.05, 0.0, 0.9],
+		["column_doric", 0.12, 0.35, 0.0, 0.9], ["column_stump", 0.88, 0.35, 0.0, 0.9],
+		["column_doric", 0.12, 0.65, 0.0, 0.9], ["column_doric", 0.88, 0.65, 0.0, 0.9],
+		["column_stump", 0.12, 0.92, 0.0, 0.9], ["column_doric", 0.88, 0.92, 0.0, 0.9],
+		["mist", 0.5, 0.5, 0.0, 1.6], ["petals", 0.5, 0.5, 0.0, 0.5]],
 	"turned_ones": [
 		["statue_veiled_mourning", 0.2, 0.12, 180.0, 1.0], ["statue_veiled_praying", 0.5, 0.08, 180.0, 1.0],
 		["statue_veiled_mourning", 0.8, 0.12, 180.0, 1.0], ["statue_veiled_broken", 0.94, 0.55, -100.0, 0.9],
 		["kit_dead_plant", 0.08, 0.6, 0.0, 0.9, {"small": true}], ["kit_dead_plant", 0.35, 0.06, 0.0, 0.8, {"small": true}],
 		["mist", 0.5, 0.6, 0.0, 1.8], ["petals", 0.5, 0.5, 0.0, 0.6]],
 	"votive": [
-		["kit_votive", 0.5, 0.08, 0.0, 1.0], ["flame", 0.44, 0.08, 0.0, 0.1, {"y": 0.5}], ["flame", 0.56, 0.08, 0.0, 0.1, {"y": 0.5}],
+		["kit_votive", 0.5, 0.08, 0.0, 1.0], ["flame", 0.44, 0.08, 0.0, 0.1, {"y": 0.5, "on": true}], ["flame", 0.56, 0.08, 0.0, 0.1, {"y": 0.5, "on": true}],
 		["kit_urns", 0.88, 0.2, -30.0, 0.8, {"small": true}], ["kit_dead_plant", 0.12, 0.2, 0.0, 0.8, {"small": true}],
 		["column_stump", 0.9, 0.7, 0.0, 0.7], ["petals", 0.5, 0.5, 0.0, 1.0]],
 	"tree_shards": [
-		["kit_dead_plant", 0.1, 0.12, 0.0, 1.1], ["kit_dead_plant", 0.9, 0.18, 40.0, 1.0],
-		["statue_veiled_bust", 0.94, 0.5, -90.0, 0.8],
-		["balustrade", 0.5, 0.97, 0.0, 1.0], ["rubble_pile", 0.92, 0.82, 0.0, 0.35, {"small": true}],
-		["petals", 0.5, 0.5, 0.0, 1.0]],
+		# (N6, the 3.8 x 2 m nook: its free east strip)
+		["kit_dead_plant", 0.9, 0.2, 0.0, 0.9], ["statue_veiled_bust", 0.9, 0.75, -90.0, 0.7],
+		["petals", 0.5, 0.5, 0.0, 0.4]],
 	"mist_maze": [
 		["statue_veiled_broken", 0.92, 0.1, -135.0, 0.9], ["column_stump", 0.08, 0.08, 0.0, 0.9],
 		["kit_dead_plant", 0.5, 0.06, 0.0, 1.0, {"small": true}], ["kit_urns", 0.92, 0.9, 0.0, 0.8, {"small": true}],
@@ -139,31 +139,32 @@ const RECIPES := {
 	# open to the sky: balustrades on the drop side, posts streaming torn veils, the bells
 	"balcony": [
 		["balustrade", 0.2, 0.97, 0.0, 1.0], ["balustrade", 0.5, 0.97, 0.0, 1.0], ["balustrade", 0.8, 0.97, 0.0, 1.0],
-		["kit_awning_post", 0.94, 0.15, 90.0, 1.0], ["veils", 0.94, 0.15, 90.0, 1.0],
-		["kit_awning_post", 0.3, 0.06, 90.0, 1.0], ["veils", 0.3, 0.06, 90.0, 1.0],
+		["kit_awning_post", 0.94, 0.15, 90.0, 1.0], ["veils", 0.94, 0.15, 90.0, 1.0, {"on": true}],
+		["kit_awning_post", 0.3, 0.06, 90.0, 1.0], ["veils", 0.3, 0.06, 90.0, 1.0, {"on": true}],
 		["kit_urns", 0.75, 0.15, 90.0, 0.9, {"small": true}], ["box", 0.55, 0.12, 0.0, 1.0, {"size": Vector3(1.6, 0.45, 0.5), "mat": 0.25}],
 		["kit_dead_plant", 0.08, 0.12, 0.0, 0.9, {"small": true}]],
 	"singing_stones": [
 		["kit_windbells", 0.85, 0.08, 0.0, 1.0], ["column_stump", 0.08, 0.1, 0.0, 0.8],
-		["kit_awning_post", 0.94, 0.6, 90.0, 0.9], ["veils", 0.94, 0.6, 90.0, 0.9],
+		["kit_awning_post", 0.94, 0.6, 90.0, 0.9], ["veils", 0.94, 0.6, 90.0, 0.9, {"on": true}],
 		["rubble_pile", 0.9, 0.9, 0.0, 0.35, {"small": true}], ["balustrade", 0.3, 0.97, 0.0, 1.0]],
 	"mirror_walk": [
 		["mirror_frame", 0.2, 0.05, 0.0, 1.0, {"glass": true}], ["mirror_frame", 0.5, 0.05, 0.0, 1.0, {"glass": true}],
 		["mirror_frame", 0.8, 0.05, 0.0, 1.0, {"glass": true}],
 		["balustrade", 0.3, 0.97, 0.0, 1.0], ["balustrade", 0.7, 0.97, 0.0, 1.0],
-		["kit_awning_post", 0.96, 0.4, 90.0, 0.9], ["veils", 0.96, 0.4, 90.0, 0.9]],
+		["kit_awning_post", 0.96, 0.4, 90.0, 0.9], ["veils", 0.96, 0.4, 90.0, 0.9, {"on": true}]],
 	"spring": [
-		["statue_veiled_kneeling", 0.88, 0.12, -45.0, 0.9], ["kit_urns", 0.12, 0.12, 20.0, 0.9],
-		["wall_ruin_low", 0.95, 0.6, 90.0, 0.6], ["kit_dead_plant", 0.08, 0.85, 0.0, 0.8, {"small": true}],
-		["balustrade", 0.5, 0.97, 0.0, 1.0]],
+		# (E4, 2 x 2.7 m: the strips north and south of the route)
+		["kit_urns", 0.5, 0.08, 0.0, 0.55, {"small": true}], ["kit_dead_plant", 0.5, 0.94, 0.0, 0.6, {"small": true}]],
 	"scales": [
 		["statue_veiled_praying", 0.1, 0.08, 45.0, 1.0], ["column_stump", 0.92, 0.08, 0.0, 1.0],
 		["pediment_fragment", 0.93, 0.6, -90.0, 0.7, {"small": true}], ["kit_awning_post", 0.94, 0.3, 90.0, 0.9],
-		["veils", 0.94, 0.3, 90.0, 0.9], ["balustrade", 0.5, 0.97, 0.0, 1.0]],
+		["veils", 0.94, 0.3, 90.0, 0.9, {"on": true}], ["balustrade", 0.5, 0.97, 0.0, 1.0]],
 	# ---------------------------------------------------------------- ACT 3 (the convergence, dusk: "act3")
 	"pool_halves": [
-		["statue_veiled_kneeling", 0.08, 0.08, 135.0, 0.9], ["statue_veiled_kneeling", 0.92, 0.08, -135.0, 0.9],
-		["column_stump", 0.95, 0.6, 0.0, 0.8], ["pediment_fragment", 0.5, 0.04, 0.0, 0.8, {"small": true}]],
+		# (P, 8.95 x 3.7 m: the north strip beyond the halves' road; the south strip low only)
+		["statue_veiled_kneeling", 0.1, 0.12, 180.0, 0.8], ["statue_veiled_kneeling", 0.9, 0.12, 180.0, 0.8],
+		["column_stump", 0.5, 0.1, 0.0, 0.7], ["pediment_fragment", 0.3, 0.12, 0.0, 0.5, {"small": true}],
+		["rubble_pile", 0.7, 0.92, 0.0, 0.3, {"small": true}]],
 	"bridge": [
 		["kit_bridge_end", 0.5, 0.05, 0.0, 1.0], ["rubble_pile", 0.9, 0.3, 0.0, 0.4, {"small": true}],
 		["column_fallen", 0.15, 0.82, 60.0, 0.5, {"small": true}], ["column_stump", 0.1, 0.12, 0.0, 0.8]],
@@ -196,6 +197,11 @@ static func build(lv: Level, parent: Node, id: String, rect: Rect2, floor_y: flo
 	d._commit()
 	return d
 
+## the walk-region height under a point (ramps, terraces), else the landmark's floor
+func _floor_at(p: Vector2) -> float:
+	var g = level.region_at(p) if level else null
+	return (g as Level.Region).height(p) if g else _y
+
 func _world(u: float, v: float) -> Vector3:
 	return Vector3(_rect.position.x + u * _rect.size.x, _y, _rect.position.y + v * _rect.size.y)
 
@@ -208,6 +214,10 @@ func _place(e: Array) -> void:
 	var yaw := _yaw(e)
 	var sc: float = float(e[4])
 	var o: Dictionary = e[5] if e.size() > 5 else {}
+	if o.get("on", false) and what in ["flame", "veils"]:
+		if not _last_ok: return                     # (its base was left out)
+		at += _last_shift                           # (on its base, wherever the base ended up)
+	elif what in ["flame", "veils", "mist"]: at.y = _floor_at(Vector2(at.x, at.z))
 	at.y += float(o.get("y", 0.0))
 	match what:
 		"row":                                  # a row of his faces from (u, v) to (e[3], e[4]), on plinths or on the floor
@@ -226,6 +236,11 @@ func _place(e: Array) -> void:
 					_place([face, uu, vv, fy, fs, {"small": o.get("small", false)}])
 			return
 		"flame":
+			if not o.get("on", false):
+				var q := Vector2(at.x, at.z)
+				for k in _keep:
+					if (k as Rect2).grow(0.2).has_point(q): skipped.append([what, "on a kept path"]); return
+				if level.blocked(q, 0.15): skipped.append([what, "hits a wall / obstacle"]); return
 			var f := Flame.new(0.0, sc, Palette.FIRE_LIGHT, level.noise_tex if "noise_tex" in level else null)
 			add_child(f)
 			f.global_position = at
@@ -284,35 +299,46 @@ func _place(e: Array) -> void:
 		_panes.append([pane, Vector2(bb.size.x * 0.7, bb.size.y * 0.84)])
 
 var _last_ok := false
+var _last_shift := Vector3.ZERO
+var _boxes: Array[AABB] = []
+static var _shared := {}              # level id -> every Dress piece's box (landmarks may share ground: N2 holds N3)
 var _xf_last := Transform3D()
 var _panes: Array = []              # [Transform3D, size]: glass panes in mirror frames
 ## test a piece's footprint, then queue it (main / occ / small) with its obstacle, occluder and contact shadow
 func _add_mesh(what: String, mesh: ArrayMesh, xf: Transform3D, rad: float, from_asset: bool, o: Dictionary, size := Vector3.ZERO, bb := AABB()) -> void:
 	_last_ok = false
 	if bb.size == Vector3.ZERO: bb = mesh.get_aabb()
-	var wb: AABB = xf * bb
-	var fr := Rect2(wb.position.x, wb.position.z, wb.size.x, wb.size.z)
 	var on: bool = o.get("on", false)
-	if not on and not _rect.grow(0.02).encloses(fr) and fr.size.x < _rect.size.x and fr.size.y < _rect.size.y:
-		# an edge piece: slid in until it is inside the landmark (recipes put pieces against the edges)
-		var dx := maxf(_rect.position.x + 0.03 - fr.position.x, 0.0) - maxf(fr.end.x - (_rect.end.x - 0.03), 0.0)
-		var dz := maxf(_rect.position.y + 0.03 - fr.position.y, 0.0) - maxf(fr.end.y - (_rect.end.y - 0.03), 0.0)
-		xf.origin += Vector3(dx, 0.0, dz)
+	var wb: AABB
+	if on:
+		xf.origin += _last_shift                    # (rides on its base, wherever the base ended up)
 		wb = xf * bb
-		fr = Rect2(wb.position.x, wb.position.z, wb.size.x, wb.size.z)
-	if not on:
-		if not _rect.grow(0.05).encloses(fr):
-			skipped.append([what, "outside the landmark"]); return
-		for k in _keep:
-			if (k as Rect2).grow(0.12).intersects(fr):
-				skipped.append([what, "on a kept path"]); return
-		var circles := _footprint(xf, bb)
-		for c in circles:
-			if level.blocked(Vector2(c.x, c.y), c.z * 0.92):
-				skipped.append([what, "hits a wall / obstacle"]); return
-		for c in circles: level.ob_circle(Vector2(c.x, c.y), c.z, "dress:" + what)
+	else:
+		# the spot the recipe asks for; if it is taken (a path, a wall, another piece), the nearest free spot within
+		# SEARCH m that keeps the piece's place in the view (a tall piece stays in the back: north / east part)
+		var want := xf.origin
+		var why := ""
+		var found := false
+		for off in _offsets():
+			var t := xf
+			t.origin = want + Vector3(off.x, 0.0, off.y)
+			why = _fits(what, t, bb)
+			if why == "":
+				xf = t; found = true; break
+			if why == "outside the landmark" and off == Vector2.ZERO: pass
+		if not found:
+			skipped.append([what, why]); return
+		var h := _floor_at(Rect2((xf * bb).position.x, (xf * bb).position.z, (xf * bb).size.x, (xf * bb).size.z).get_center())
+		xf.origin.y += h - _y
+		_last_shift = xf.origin - want
+		wb = xf * bb
+		for c in _footprint(xf, bb): level.ob_circle(Vector2(c.x, c.y), c.z, "dress:" + what)
 	_last_ok = true
 	_xf_last = xf
+	if not on:
+		_boxes.append(wb)
+		if not _shared.has(level.get_instance_id()): _shared[level.get_instance_id()] = []
+		_shared[level.get_instance_id()].append(wb)
 	var tall := wb.size.y > TALL
 	var small: bool = o.get("small", false)
 	var slot := "occ" if tall else ("small" if small else "main")
@@ -322,7 +348,85 @@ func _add_mesh(what: String, mesh: ArrayMesh, xf: Transform3D, rad: float, from_
 		var c := wb.get_center()
 		var yaw := xf.basis.get_euler().y
 		_blobs.append(Transform3D(Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(maxf(bb.size.x, 0.3) * xf.basis.get_scale().x * 1.15, 1.0,
-			maxf(bb.size.z, 0.3) * xf.basis.get_scale().z * 1.15)), Vector3(c.x, _y + 0.012, c.z)))
+			maxf(bb.size.z, 0.3) * xf.basis.get_scale().z * 1.15)), Vector3(c.x, wb.position.y + 0.012, c.z)))
+
+const SEARCH := 2.0
+static var _offs: Array[Vector2] = []
+## candidate shifts, nearest first (0 first), on a 25 cm grid out to SEARCH
+static func _offsets() -> Array[Vector2]:
+	if _offs.is_empty():
+		var n := int(SEARCH / 0.25)
+		for gx in range(-n, n + 1):
+			for gz in range(-n, n + 1):
+				var v := Vector2(gx, gz) * 0.25
+				if v.length() <= SEARCH + 0.001: _offs.append(v)
+		_offs.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.length() < b.length())
+	return _offs
+
+## "" if the piece fits at xf (and lifts it to the floor under it), else why not
+func _fits(what: String, xf: Transform3D, bb: AABB) -> String:
+	var wb: AABB = xf * bb
+	var fr := Rect2(wb.position.x, wb.position.z, wb.size.x, wb.size.z)
+	if not _rect.grow(0.05).encloses(fr): return "outside the landmark"
+	# a tall piece only in the back of the view: the north 45% or the east 45% of the landmark
+	if wb.size.y > TALL:
+		var c := fr.get_center()
+		var u := (c.x - _rect.position.x) / maxf(_rect.size.x, 0.01)
+		var v := (c.y - _rect.position.y) / maxf(_rect.size.y, 0.01)
+		if v > 0.45 and u < 0.55: return "tall, would stand in front"
+	for k in _keep:
+		if (k as Rect2).grow(0.12).intersects(fr): return "on a kept path"
+	# the floor under it (ramps, stairs, terraces): never tilted, so not over more than 3 cm of height
+	var c2 := fr.get_center()
+	var h := _floor_at(c2)
+	var ins := fr.grow(-0.06)
+	for q in [ins.position, Vector2(ins.end.x, ins.position.y), ins.end, Vector2(ins.position.x, ins.end.y)]:
+		var g = level.region_at(q)
+		if g and absf((g as Level.Region).height(q) - h) > 0.03: return "on a slope / stairs"
+	var lifted := wb
+	lifted.position.y += h - _y
+	for ob: AABB in _shared.get(level.get_instance_id(), []):
+		var ix := ob.intersection(lifted)
+		if ix.size.x > 0.02 and ix.size.y > 0.02 and ix.size.z > 0.02: return "would touch another piece"
+	for c in _footprint(xf, bb):
+		if level.blocked(Vector2(c.x, c.y), c.z * 0.95): return "hits a wall / obstacle"
+	# it must not hide the way: no point of a kept path (the route) behind it from the camera
+	if lifted.size.y > 0.6 and _hides_route(lifted): return "would hide the route"
+	return ""
+
+const CAM_BACK := Vector3(-0.572, 0.588, 0.572)
+## a route point (the kept paths' centre lines, every 0.5 m, at her height) whose line to the camera crosses the box
+func _hides_route(box: AABB) -> bool:
+	var back := CAM_BACK.normalized()
+	var grown := box.grow(0.05)
+	for k in _keep:
+		var r := k as Rect2
+		# only paths that can lie behind it (north / east of its front, within ~10 m)
+		if r.end.y < box.position.z - 10.0 or r.position.y > box.end.z + 0.5 or r.end.x < box.position.x - 0.5 or r.position.x > box.end.x + 10.0: continue
+		var c := r.get_center()
+		var along_x := r.size.x >= r.size.y
+		var L := r.size.x if along_x else r.size.y
+		var n := maxi(1, int(L / 0.5))
+		for i in n + 1:
+			var t := float(i) / n
+			var q := Vector2(lerpf(r.position.x + 0.4, r.end.x - 0.4, t), c.y) if along_x else Vector2(c.x, lerpf(r.position.y + 0.4, r.end.y - 0.4, t))
+			for lift in [0.25, 1.0]:
+				var p := Vector3(q.x, _floor_at(q) + lift, q.y)
+				if _ray_box(p, back, grown): return true
+	return false
+
+static func _ray_box(o: Vector3, d: Vector3, b: AABB) -> bool:
+	var t0 := 0.0
+	var t1 := 60.0
+	for a in 3:
+		if absf(d[a]) < 1e-6:
+			if o[a] < b.position[a] or o[a] > b.end[a]: return false
+		else:
+			var ta := (b.position[a] - o[a]) / d[a]
+			var tb := (b.end[a] - o[a]) / d[a]
+			t0 = maxf(t0, minf(ta, tb)); t1 = minf(t1, maxf(ta, tb))
+			if t0 > t1: return false
+	return true
 
 ## round pieces: one circle; long turned ones: a chain (as Props does)
 func _footprint(xf: Transform3D, bb: AABB) -> Array:

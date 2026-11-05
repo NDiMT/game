@@ -27,7 +27,7 @@ const PANEL_X := Vector2(30.4, 32.4)
 
 ## Theron's notes: [id, where, text]
 const TABLETS := [
-	["t1", Vector3(-0.5, 0.5, 11.7), "She is not gone. Only behind the veil."],
+	["t1", Map2.O + Vector3(11.2, 0.0, 5.9), "She is not gone. Only behind the veil."],
 	["t2", Vector3(13.6, 3.1, 16.85), "She laughed when I asked her to stand still. 'Then carve me moving,' she said."],
 	["t3", Vector3(9.5, 1.0, -13.5), "I moved the lamps until her shadow fell where I wanted. Even her shadow argued."],
 	["t4", Vector3(7.6, 1.0, -8.0), "Marble first, then a thousand faces, then glass, I told the guild. They thought it a boast."],

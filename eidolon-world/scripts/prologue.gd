@@ -23,10 +23,12 @@ const STANZAS := [
 	"He gave her a veil.\nAnd he hid every mirror.",
 	"One day the Aegean lay still as glass.",
 	"There was no wave to blame."]
-const SHORE := Vector3(-0.3, 0.0, 1.0)           # where she lies, on the pool's marble lip
-const SURF := Vector3(-1.25, Ch1Geo.WATER_Y, 1.45)  # where her palm meets the water (on her reflection's hand)
-const WARDEN_AT := Vector3(-2.55, Ch1Geo.WATER_Y, 1.25)   # behind her reflection, in the water
-const COMB_LAND := Vector3(-0.42, 0.0, 1.6)      # where the comb clinks down on the marble
+## (v2 rebuild) the Pool of Halves' east shore in the new world (dev/V2_MAP.md): she lies at its lip, facing west
+const SHORE := Map2.O + Vector3(-3.6, 0.0, 18.0)           # where she lies, on the pool's marble lip
+const SURF := Map2.O + Vector3(-4.55, Ch1Geo.WATER_Y, 18.45)  # where her palm meets the water (on her reflection's hand)
+const WARDEN_AT := Map2.O + Vector3(-5.85, Ch1Geo.WATER_Y, 18.25)   # behind her reflection, in the water
+const COMB_LAND := Map2.O + Vector3(-3.72, 0.0, 18.6)      # where the comb clinks down on the marble
+const HEAD := Map2.O + Map2.OBSERVER                       # the Observer's veiled head, out in the inlet
 
 var _cl: CanvasLayer
 var _ring_home: Node
@@ -42,6 +44,12 @@ var _drag_from := Transform3D()
 var _hidden: Array = []                          # the pool's stones and their reflection, put away while it plays
 
 ## the pool is black water in the prologue: its stones (and their marks in the water) are put away, and come back
+func _refl() -> Reflector:
+	return game.chapter.act1.pool_refl
+
+func _water() -> ShaderMaterial:
+	return game.chapter.act1.pool_water
+
 func _stones(show: bool) -> void:
 	if not show:
 		_hidden.clear()
@@ -97,12 +105,12 @@ func abort() -> void:
 	_cut = true
 	running = false
 	_end_cards()
-	game.puzzles.pool_refl.hold = false
-	if _lag0 > 0.0: game.puzzles.pool_refl.lag = _lag0
+	_refl().hold = false
+	if _lag0 > 0.0: _refl().lag = _lag0
 	if is_instance_valid(warden_fig): warden_fig.queue_free()
 	if is_instance_valid(comb): comb.queue_free()
 	if is_instance_valid(_palm): _palm.queue_free()
-	OmenFx.murk(game.puzzles.water_mat, 0.0, 0.01)
+	OmenFx.murk(_water(), 0.0, 0.01)
 	_stones(true)
 
 func skip() -> void:
@@ -119,7 +127,9 @@ func _build() -> void:
 	var pz: Puzzles = game.puzzles
 	var ch: Chapter = game.chapter
 	var j: Node3D = game.juice
-	var refl: Reflector = pz.pool_refl
+	var refl: Reflector = _refl()
+	var fx: WaterFX = game.chapter.act1.pool_fx
+	var wm: ShaderMaterial = _water()
 	_lag0 = refl.lag
 	var yaw := -PI * 0.25
 	var pitch := -World.PITCH
@@ -132,7 +142,7 @@ func _build() -> void:
 		game.player.locked = true
 		refl.lag = 0.5
 		game.ui.fade_to(0.0, 2.5))
-	cam(0.0, 0.01, Ch1Geo.CO_HEAD + Vector3(-3.0, 3.5, 4.0), yaw, pitch, size * 1.25)
+	cam(0.0, 0.01, HEAD + Vector3(-3.0, 3.5, 4.0), yaw, pitch, size * 1.25)
 	at(1.0, func() -> void: game.sfx.play("bell", -26.0, 0.6), false)
 	# 2: the marble threshold, the figure lying on it
 	cam(4.0, 5.0, SHORE + Vector3(0.3, 0.6, 0.2), yaw, pitch, size * 0.7)
@@ -144,7 +154,7 @@ func _build() -> void:
 	cam(12.0, 2.5, SHORE + Vector3(-0.9, 0.4, 0.0), yaw, pitch, size * 0.62)
 	at(13.2, func() -> void: game.sfx.note("A", -12.0), false)
 	# 5: her palm on the surface from beneath; two knocks on glass
-	at(15.0, func() -> void: _palm = OmenFx.palm_press(j, SURF, PI * 0.5, pz.pool_fx, 2))
+	at(15.0, func() -> void: _palm = OmenFx.palm_press(j, SURF, PI * 0.5, fx, 2))
 	at(16.0, func() -> void: game.sfx.play("glass_tink", -12.0, 0.9), false)
 	at(16.6, func() -> void: game.sfx.play("glass_tink", -12.0, 0.9), false)
 	# 6: the heroine bends and reaches; Ione's four notes
@@ -157,7 +167,7 @@ func _build() -> void:
 		warden_fig.global_position = WARDEN_AT
 		warden_fig.rotation.y = PI * 0.5
 		warden_fig.set_look("glass")
-		warden_fig.rise_from(Ch1Geo.WATER_Y, 3.2, Ch1Geo.WATER_Y - 0.55, pz.pool_fx))
+		warden_fig.rise_from(Ch1Geo.WATER_Y, 3.2, Ch1Geo.WATER_Y - 0.55, fx))
 	at(20.2, func() -> void: game.sfx.play("glass", -10.0, 0.4), false)
 	cam(20.0, 3.0, SURF + Vector3(-0.6, 0.6, 0.0), yaw, pitch, size * 0.66)
 	# 8: a glass hand on her shoulder; she turns her oval to the heroine for a moment (the melody breaks)
@@ -171,7 +181,7 @@ func _build() -> void:
 	at(26.5, func() -> void:
 		_drag_from = refl.hold_xf
 		if is_instance_valid(_palm): OmenFx.fade_out(_palm, 0.6)
-		OmenFx.murk(pz.water_mat, 1.0, 2.0))
+		OmenFx.murk(wm, 1.0, 2.0))
 	at(26.6, func() -> void: game.sfx.play("whoosh", -9.0, 0.5), false)
 	anim(26.5, 2.2, func(k: float) -> void:
 		refl.hold_xf = Transform3D(_drag_from.basis, _drag_from.origin.lerp(_drag_from.origin + Vector3(-1.6, 1.4, 0.0), k)), 3)
@@ -182,13 +192,13 @@ func _build() -> void:
 		comb = _comb_model()
 		j.add_child(comb)
 		comb.global_position = COMB_LAND
-		PassThrough.water(j, SURF + Vector3(0.25, 0.0, 0.3), comb, pz.pool_fx, 0.35, 1.6, COMB_LAND))
+		PassThrough.water(j, SURF + Vector3(0.25, 0.0, 0.3), comb, fx, 0.35, 1.6, COMB_LAND))
 	at(30.4, func() -> void: game.sfx.play("glass_tink", -10.0, 1.6), false)
 	cam(29.0, 2.0, COMB_LAND + Vector3(-0.3, 0.3, 0.0), yaw, pitch, size * 0.6)
 	# 11: the pool shows only the heroine, half a second late: she is still there, hidden
 	at(32.0, func() -> void:
 		refl.hold = false
-		OmenFx.murk(pz.water_mat, 0.0, 2.5))
+		OmenFx.murk(wm, 0.0, 2.5))
 	anim(32.0, 2.0, func(k: float) -> void: game.player.crouch = 0.38 * (1.0 - k), 1)
 	# 12: the comb glows in the satchel; the first way lights (no text)
 	at(35.0, func() -> void:

@@ -15,8 +15,13 @@ const O := Vector3(0.0, 0.0, 200.0)
 ## (phase 1) the block-out is built only on request, beside the live chapter: `--v2` on the command line (after --)
 ## or EIDOLON_V2=1 in the environment. The tests of the new world (flow_v2, and overlap / occlusion / z-fight run with
 ## it) and the review shots turn it on.
-static var enabled := OS.get_cmdline_user_args().has("--v2") or OS.get_environment("EIDOLON_V2") == "1"
+## (phase 2: the new world is the game; `--no-v2` / EIDOLON_V2=0 leave it out, for old-world comparisons only)
+static var enabled := not (OS.get_cmdline_user_args().has("--no-v2") or OS.get_environment("EIDOLON_V2") == "0")
 const ZP := "V2_"                       # zone / region name prefix
+
+## the beats' anchors (local)
+const OBSERVER := Vector3(-26.6, 0.0, -8.0)    # the Observer's sunk face (W.7; the prologue opens on it)
+const POOL_WATER := [-12.95, 17.0, -4.0, 20.7]   # the Pool of Halves (where she wakes)
 
 ## v1 room -> here (translation only)
 const W_HALL := Vector3(-23.0, 0.0, -4.0)   # Stair of Breath, W_top, W_corr, Hall of Glass
@@ -88,7 +93,7 @@ const WALK := [
 	["I3", 8.0, 10.5, 17.0, 14.5, 0.0, NAN, -1],
 	["IB1", 17.0, 6.0, 21.0, 14.5, 0.0, NAN, -1],
 	["I4", 16.4, -1.0, 21.0, 6.0, 0.0, NAN, -1],
-	["I4s", 14.6, 2.5, 16.4, 4.0, 0.0, NAN, -1],           # the one slab (block-out: in place)
+	["I4s", 14.6, 2.75, 16.4, 3.75, 0.0, NAN, -1],           # the one slab (block-out: in place)
 	["I5", 10.0, -1.0, 14.6, 7.0, 0.0, NAN, -1],
 	# West
 	["WR", -34.0, -1.5, -10.0, 1.5, 0.0, NAN, -1],
@@ -144,6 +149,9 @@ const WALK := [
 	["I23", -51.0, 3.0, -39.0, 13.0, 0.0, NAN, -1],
 ]
 
+## walk regions whose floor a beat builds itself (the one slab, the Pool of Halves' road), shut until it is made
+const NO_FLOOR := ["I4s", "P"]
+
 ## still water and sea: [x0, z0, x1, z1, y, rim] (rim: the design's own water edge: no kerb along it)
 const WATER := [
 	[-12.95, 17.0, -4.0, 20.7, -0.42, true],          # the Pool of Halves (where she wakes)
@@ -158,7 +166,7 @@ const WALLS := [
 	# I.1 -> I.2: the closed door (door_temple stands in the gap)
 	[2.0, 14.85, 3.9, 15.15, 1.1], [6.1, 14.85, 8.0, 15.15, 1.1],
 	# the crypt: its east wall (the slab's gap) and its west wall onto the Atrium (its door)
-	[14.45, -1.0, 14.75, 2.5, 2.6], [14.45, 4.0, 14.75, 7.0, 1.0],
+	[14.45, -1.0, 14.75, 2.75, 2.6], [14.45, 3.75, 14.75, 7.0, 1.0],
 	[9.85, -1.0, 10.15, 2.0, 2.6], [9.85, 4.0, 10.15, 7.0, 1.0],
 	# the Shadow Chamber's south wall: its gate onto the Ash Landing
 	[-14.0, -13.75, -11.55, -13.45, 1.0], [-10.25, -13.75, -9.0, -13.45, 1.0],
@@ -231,6 +239,19 @@ const PART := {"WS": "south", "I1": "south", "I2": "south", "I3": "south", "IB1"
 
 ## the mood of each part (world.set_mood, Agent A)
 const MOOD := {"south": "act1", "hub": "act1", "west": "w_glass", "north": "n_garden", "east": "e_high", "act3": "act3"}
+## each space's area (the game's area keys: its title, its music, its hints)
+const AREA := {"WS": "waking_pool", "P": "waking_pool", "PW": "waking_pool", "I1": "waking_pool", "I2": "waking_pool",
+	"I3": "waking_pool", "IB1": "waking_pool", "I4": "waking_pool", "I4s": "waking_pool", "I5": "waking_pool", "VW": "waking_pool",
+	"A": "atrium", "WR": "stair_breath", "W1": "stair_breath", "W2": "stair_breath", "W2c": "stair_breath", "W3": "hall_glass",
+	"W4": "hall_glass", "W5": "shard_gallery", "IBW": "shard_gallery", "W6": "shard_gallery", "WB": "shard_gallery", "W7": "shard_gallery",
+	"N1": "garden_veiled", "N2": "garden_veiled", "N3": "garden_veiled", "N4": "hollow_walk", "IBN": "court_light", "N5": "court_light",
+	"N6": "court_light", "N7d": "mist_maze", "N7": "mist_maze", "N7x": "mist_maze", "NB": "mist_maze", "NS": "garden_veiled",
+	"ER": "eidolon_ledge", "E1": "eidolon_ledge", "E2": "eidolon_ledge", "IBE": "eidolon_ledge", "E3": "eidolon_ledge", "E4": "eidolon_ledge",
+	"E3l": "scales", "E5": "scales", "E5u": "scales", "EB": "scales", "EH": "eidolon_ledge",
+	"I21": "gate_four", "I22": "gate_four", "I23": "first_shrine"}
+static func area_of_region(name: String) -> String:
+	return str(AREA.get(name.substr(ZP.length()), "")) if name.begins_with(ZP) else ""
+
 static func mood_of_region(name: String) -> String:
 	if not name.begins_with(ZP): return ""
 	return MOOD.get(PART.get(name.substr(ZP.length()), ""), "")
@@ -268,8 +289,9 @@ static func build(lv: Level) -> void:
 		var y0: float = e[5]
 		var y1: float = e[6]
 		var axis: int = e[7]
-		lv.walk(r, y0 + O.y, (y1 + O.y) if not is_nan(y1) else NAN, axis, ZP + str(e[0]))
+		lv.walk(r, y0 + O.y, (y1 + O.y) if not is_nan(y1) else NAN, axis, ZP + str(e[0]), not (str(e[0]) in NO_FLOOR))
 	for e in WALK:
+		if str(e[0]) in NO_FLOOR: continue
 		var r := wr(e[1], e[2], e[3], e[4])
 		var zone := ZP + str(PART.get(str(e[0]), "misc"))
 		var y0: float = e[5]
@@ -346,9 +368,11 @@ static func props() -> Array:
 		out.append([e[0], w(e[1], e[3], e[2]), e[4], e[5], "v2:" + str(e[6])])
 	return out
 
-## the doors: no footprint in the block-out (they open in their phase)
+## the doors: no footprint of their own (each beat closes its doorway with an obstacle and opens it)
+static var door_nodes: Array = []
 static func doors(lv: Level, parent: Node3D) -> Array:
 	var out := []
+	door_nodes = out
 	for e in DOORS:
 		var a := Props._mesh(e[0])
 		if a.is_empty(): continue
@@ -377,10 +401,20 @@ static func _occ_copy(m: ArrayMesh) -> ArrayMesh:
 	_occ_cache[m] = out
 	return out
 
+## the pool's water material (the prologue clouds it; its WaterFX ripples it)
+static var _pool_mat: ShaderMaterial
+static func pool_mat(lv: Level) -> ShaderMaterial:
+	if _pool_mat == null:
+		_pool_mat = ShaderMaterial.new()
+		_pool_mat.shader = preload("res://shaders/water.gdshader")
+		_pool_mat.set_shader_parameter("noise_tex", lv.noise_tex)
+	return _pool_mat
+
 ## the water sheets (the game's water shader)
 static func water(lv: Level, parent: Node3D) -> void:
 	for e in WATER:
 		var m := ShaderMaterial.new()
+		if e == WATER[0]: m = pool_mat(lv)
 		m.shader = preload("res://shaders/water.gdshader")
 		m.set_shader_parameter("noise_tex", lv.noise_tex)
 		var mi := MeshInstance3D.new()

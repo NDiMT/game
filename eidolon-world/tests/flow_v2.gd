@@ -37,6 +37,12 @@ func _process(dt: float) -> void:
 	if not started:
 		if t < 0.5: return
 		game.jump("waking_pool")
+		# (the beats' doors and gaps open: this walks the world, the puzzles have their own tests)
+		var cs: Dictionary = game.chapter.state
+		cs["a1"] = {"plate": true, "glass": true, "slab": true, "lamp": true, "atrium": true, "gaze": true}
+		if not ("lamp" in cs["inv"]["items"]): (cs["inv"]["items"] as Array).append("lamp")
+		game.chapter.apply_state()
+		for n in Map2.NO_FLOOR: game.level.set_enabled(Map2.ZP + n, true)
 		var s: Array = Map2.ROUTE[0]
 		game.cmd("tp:%f:%f:%f" % [Map2.O.x + s[0], Map2.O.z + s[1], PI * 0.5])
 		started = true

@@ -15,7 +15,8 @@ const NO_SUPPORT := ["Wonders", "Colossus", "wonder", "rubble", "debris", "Ink",
 	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile"]
 ## designed contacts, by place: [where (world box), what it is]. Hits inside one are not counted.
 const DESIGNED := [
-	[AABB(Vector3(-3.7, 2.9, 9.9), Vector3(5.7, 0.7, 3.1)), "(v2.0) the crypt's vault rests on its six piers"],
+	[AABB(Vector3(9.9, 2.5, 198.9), Vector3(4.8, 0.7, 8.2)), "(v2 I.5) the crypt's vault rests on its four piers and its walls"],
+	[AABB(Vector3(7.05, 1.4, 213.3), Vector3(0.8, 1.0, 0.8)), "(v2 I.2) the bell HANGS from its post's arm"],
 	[AABB(Vector3(17.6, 1.9, -50.3), Vector3(1.4, 1.8, 0.9)), "(v2.0) the Echo room's memory relief closes its open door's end (the room is open from the start now)"],
 	[AABB(Vector3(26.0, 3.5, -50.2), Vector3(7.5, 5.0, 2.4)), "the Scales: pans and weights HANG from the beam overhead"],
 	[AABB(Vector3(4.9, -0.2, -3.2), Vector3(0.5, 3.0, 2.4)), "the shortcut gate: its bars slide down into a slot in the floor"],

@@ -2539,6 +2539,7 @@ func hint_target(area: String) -> Vector3:
 	# (v1.0 QA P1-6: the hub's and the items' places first)
 	var hs: Dictionary = state["hub"]
 	var pp := game.player.position
+	if act1 != null and not act1.done() and pp.z > Map2.O.z - 20.0: return act1.hint_target()      # (v2: Act 1's next beat)
 	match area:
 		"atrium":
 			if not hub.has_item("lamp"): return WorldGeo.LAMP_POS + Vector3(0, 0.8, 0)

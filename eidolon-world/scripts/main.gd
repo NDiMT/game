@@ -77,6 +77,7 @@ func _ready() -> void:
 	level = Level.new(world.noise_tex)
 	add_child(level)
 	level.build()
+	if Map2.enabled: Map2.doors(level, level)       # (v2: the doors stand before the beats that open them are built)
 	player = Player.new()
 	player.level = level
 	add_child(player)
@@ -111,7 +112,6 @@ func _ready() -> void:
 	# (v2 rebuild, phase 1) the new Chapter I block-out: its water, doors, A's landmark dressing, the beat labels
 	if Map2.enabled:
 		Map2.water(level, level)
-		Map2.doors(level, level)
 		Map2.dress(level, level)
 		Map2.labels(level)
 	highlight = Highlight.new()
@@ -256,7 +256,7 @@ func _end_prologue() -> void:
 	chapter.state["prologue_seen"] = true
 	var story: Array = chapter.state["inv"]["story"]
 	if not ("comb" in story): story.append("comb")
-	puzzles.pool_refl.hold = false
+	chapter.act1.pool_refl.hold = false
 	player.locked = false
 	player.crouch = 0.0
 	world.yaw_index = 0
@@ -595,8 +595,9 @@ func _update_area() -> void:
 		if not visited.has(area):
 			visited[area] = true
 			ui.show_area(Names.area(area))
-	if g == null or not Names.REGION_AREA.has(g.name): return
-	var key: String = Names.REGION_AREA[g.name]
+	if g == null: return
+	var key: String = Map2.area_of_region(g.name) if g.name.begins_with(Map2.ZP) else str(Names.REGION_AREA.get(g.name, ""))
+	if key == "": return
 	# (v1.0 QA P1-10: the Balcony is the Atrium's until it reaches the Ledge; the dry ring north of the
 	# Maze, before the bars, is the Maze's end)
 	if g.name == "BAL" and player.position.z > -17.0: key = "atrium"
@@ -1250,12 +1251,17 @@ func _load_save() -> void:
 	if not FileAccess.file_exists(SAVE_PATH): return
 	var d = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
 	if d is Dictionary and d.has("puzzles"): save_data = d
+	# (v2 rebuild: save v5, a clean reset: a save from before the new world is not carried over; the owner's call)
+	if Map2.enabled and not save_data.is_empty() and int(save_data.get("v", 1)) < SAVE_V:
+		print("[save] v%d from before the new world: starting fresh" % int(save_data.get("v", 1)))
+		save_data = {}
 
+const SAVE_V := 5           # (v2 rebuild: the new world)
 func _save() -> void:
 	if mode == "title": return
 	var p := player.position
 	_last_saved_pos = p
-	save_data = {"v": 4, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
+	save_data = {"v": SAVE_V if Map2.enabled else 4, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
 		"puzzles": puzzles.state.duplicate(true), "chapter": chapter.state.duplicate(true), "area": area, "glimpses": glimpses, "runes_awake": player.fig.runes_awake, "visited": visited.keys()}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify(save_data))
