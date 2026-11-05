@@ -1,0 +1,60 @@
+Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+
+[audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[props] 45 placed
+[v2 dress] I3 pylon_ashlar_niche: on a kept path
+[v2 dress] I3 statue_veiled_bust: on a kept path
+[v2 dress] I3 statue_veiled_bust: on a kept path
+[v2 dress] I3 column_stump: on a kept path
+[v2 dress] I3 rubble_pile: on a kept path
+[v2 dress] A kit_scaffold: on a kept path
+[v2 dress] A kit_scaffold: on a kept path
+[v2 dress] A kit_ladder: on a kept path
+[v2 dress] A plinth: on a kept path
+[v2 dress] A plinth: on a kept path
+[v2 dress] A plinth: on a kept path
+[v2 dress] A plinth: on a kept path
+[v2 dress] A plinth: on a kept path
+[v2 dress] A kit_face3: on a kept path
+[v2 dress] A kit_face6: on a kept path
+[v2 dress] A kit_face4: on a kept path
+[v2 dress] A statue_veiled_unfinished: on a kept path
+[v2 dress] A pillar: on a kept path
+[v2 dress] A pillar: on a kept path
+[v2 dress] A pillar: on a kept path
+[v2 dress] W3 statue_veiled_mourning: on a kept path
+[v2 dress] W3 pediment_fragment: on a kept path
+[v2 dress] W5 pylon_ashlar: on a kept path
+[v2 dress] W5 pylon_ashlar: on a kept path
+[v2 dress] W5 mirror_frame: on a kept path
+[v2 dress] W5 column_fallen: on a kept path
+[v2 dress] N2 statue_veiled_broken: on a kept path
+[v2 dress] N3 kit_votive: hits a wall / obstacle
+[v2 dress] N3 kit_urns: hits a wall / obstacle
+[v2 dress] N3 column_stump: on a kept path
+[v2 dress] N7 column_stump: on a kept path
+[v2 dress] N7 kit_dead_plant: on a kept path
+[v2 dress] E1 balustrade: on a kept path
+[v2 dress] E1 balustrade: on a kept path
+[v2 dress] E1 balustrade: on a kept path
+[v2 dress] E1 kit_awning_post: on a kept path
+[v2 dress] E1 kit_awning_post: on a kept path
+[v2 dress] E1 kit_urns: on a kept path
+[v2 dress] E1 box: on a kept path
+[v2 dress] E2 kit_awning_post: on a kept path
+[v2 dress] E2 balustrade: on a kept path
+[v2 dress] E5 statue_veiled_praying: on a kept path
+[v2 dress] E5 balustrade: on a kept path
+[v2 dress] I21 kit_bridge_end: on a kept path
+[v2 dress] I21 rubble_pile: on a kept path
+[v2 dress] I21 column_fallen: on a kept path
+[v2 dress] I21 column_stump: on a kept path
+[v2 dress] I22 gate_veiled: on a kept path
+[v2 dress] I22 pylon_ashlar: hits a wall / obstacle
+[v2 dress] I22 pylon_ashlar: hits a wall / obstacle
+[v2 dress] I22 statue_veiled_unfinished: on a kept path
+[solids] 5775 primitives, 1545 solid footprints, 523 obstacles added (320 ms)
+[warm-up] 631 mesh/material pairs (of 954 geometry nodes), 12 canvas materials
+FLOW order: WS I1 I2 I3 IB1 I4 I5 A WR W1 W2 W3 W4 W5 IBW W6 WB W7 N1 N2 N3 N4 IBN N5 N6 N7 NB NS ER E1 E2 IBE E3 E4 E5 EB EH VW P PW I21 I22 I23
+FLOW max height change per frame 0.064 m, 112 legs, 227 s walked
+FLOW PASS  checks=267  failed=0

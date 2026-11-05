@@ -126,6 +126,7 @@ func _update_rune(dt: float) -> void:
 		rune_mat.set_shader_parameter("lit", k)
 		if _rune_t <= 0.0: rune_node.visible = false
 		return
+	if game.mode != "play": return           # (v2.0: her runes wait while a cinematic plays: the prologue is not a pause by still water)
 	_rune_cool -= dt
 	var pl := game.player
 	if _rune_cool > 0.0 or game.mode != "play" or pl.still_time < 3.0: return

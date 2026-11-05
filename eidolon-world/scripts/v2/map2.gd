@@ -35,7 +35,7 @@ const SPACES := [
 	["I3", "I.3", "The First Glass", "puzzle", [8.0, 10.5, 17.0, 14.5], 0.0, "glass_niche"],
 	["IB1", "between", "The Reed Bank", "between", [17.0, 6.0, 21.0, 14.5], 0.0, ""],
 	["I4", "I.4", "The One Slab", "puzzle", [14.6, -1.0, 21.0, 6.0], 0.0, ""],
-	["I5", "I.5", "The Crypt (Lamp)", "traversal", [10.0, -1.0, 14.6, 7.0], 0.0, ""],          # ("crypt": when A's kit_cot / kit_workbench exist)
+	["I5", "I.5", "The Crypt (Lamp)", "traversal", [10.0, -1.0, 14.6, 7.0], 0.0, ""],          # ("crypt": back when its bench / toppled face no longer overlap, HANDOFF)
 	["A", "I.6", "The Atrium of a Thousand Faces", "hub", [-10.0, -8.0, 10.0, 8.0], 0.0, "atrium"],
 	# ---- Act 2, WEST: the Glass wing
 	["WR", "W", "The Inlet Road", "traversal", [-34.0, -1.5, -10.0, 1.5], 0.0, ""],
@@ -73,9 +73,9 @@ const SPACES := [
 	["VW", "Act 3", "The Veiled Way (opens: 3 Beacons)", "traversal", [-4.0, 8.0, -1.0, 15.0], 0.0, ""],
 	["P", "I.20", "The Pool of Halves", "puzzle", [-12.95, 17.0, -4.0, 20.7], 0.0, ""],
 	["PW", "I.20", "The Far Shore", "traversal", [-16.15, 16.95, -12.95, 20.75], 0.0, ""],
-	["I21", "I.21", "The Bridge that Gives Way", "traversal", [-30.0, 17.6, -16.15, 20.1], 0.0, "bridge"],
-	["I22", "I.22", "The Gate of the Four", "puzzle", [-40.0, 13.0, -30.0, 24.0], 0.0, "gate_four"],
-	["I23", "I.23", "The First Shrine: \"The Hand in the Water\"", "spectacle", [-52.0, 12.0, -40.0, 25.0], 0.0, "shrine"],
+	["I21", "I.21", "The Bridge that Gives Way", "traversal", [-40.0, 17.6, -16.15, 20.1], 0.0, "bridge"],
+	["I22", "I.22", "The Gate of the Four", "puzzle", [-50.0, 13.0, -40.0, 24.0], 0.0, "gate_four"],
+	["I23", "I.23", "The First Shrine: \"The Hand in the Water\"", "spectacle", [-51.0, 3.0, -39.0, 13.0], 0.0, "shrine"],
 ]
 
 ## walk regions: [space, x0, z0, x1, z1, y0, y1 (NAN flat), axis (0 x, 1 z: y0 at the low end)]
@@ -139,9 +139,9 @@ const WALK := [
 	["VW", -4.0, 8.0, -1.0, 15.0, 0.0, NAN, -1],
 	["P", -12.95, 18.05, -4.0, 19.65, 0.0, NAN, -1],          # the road the joins raise (block-out: in place)
 	["PW", -16.15, 16.95, -12.95, 20.75, 0.0, NAN, -1],
-	["I21", -30.0, 17.6, -16.15, 20.1, 0.0, NAN, -1],
-	["I22", -40.0, 13.0, -30.0, 24.0, 0.0, NAN, -1],
-	["I23", -52.0, 12.0, -40.0, 25.0, 0.0, NAN, -1],
+	["I21", -40.0, 17.6, -16.15, 20.1, 0.0, NAN, -1],
+	["I22", -50.0, 13.0, -40.0, 24.0, 0.0, NAN, -1],
+	["I23", -51.0, 3.0, -39.0, 13.0, 0.0, NAN, -1],
 ]
 
 ## still water and sea: [x0, z0, x1, z1, y, rim] (rim: the design's own water edge: no kerb along it)
@@ -149,7 +149,7 @@ const WATER := [
 	[-12.95, 17.0, -4.0, 20.7, -0.42, true],          # the Pool of Halves (where she wakes)
 	[-32.4, -14.6, -14.0, -1.5, -0.42, true],         # the inlet of the Sunken Colossus
 	[14.6, -1.5, 16.4, 8.0, -0.55, true],             # I.4's stream
-	[-56.0, 8.0, -16.15, 30.0, -0.42, false],         # the open sea of Act 3 (the bridge, the Gate, the Shrine)
+	[-56.0, 2.5, -16.15, 30.0, -0.42, false],         # the open sea of Act 3 (the bridge, the Gate, the Shrine)
 	[-16.15, 22.0, 0.0, 30.0, -0.42, false],
 ]
 
@@ -162,8 +162,8 @@ const WALLS := [
 	[9.85, -1.0, 10.15, 2.0, 2.6], [9.85, 4.0, 10.15, 7.0, 1.0],
 	# the Shadow Chamber's south wall: its gate onto the Ash Landing
 	[-14.0, -13.75, -11.55, -13.45, 1.0], [-10.25, -13.75, -9.0, -13.45, 1.0],
-	# the Gate of the Four: the gate wall west (gate_veiled in the gap)
-	[-40.15, 13.0, -39.85, 16.95, 1.0], [-40.15, 20.75, -39.85, 24.0, 1.0],
+	# the Gate of the Four: its gate in the north wall, the Shrine beyond (gate_veiled in the gap)
+	[-50.0, 12.85, -46.85, 13.15, 1.2], [-43.15, 12.85, -40.0, 13.15, 1.2],
 ]
 
 ## Tripo doors and gates in their doorways: [asset, x, z, y, yaw (deg), scale, note]. Phase 1 (block-out): open (no
@@ -172,17 +172,17 @@ const DOORS := [
 	["door_temple", 5.0, 15.0, 0.0, 0.0, 1.0, "I.1 the closed door"],
 	["door_temple", 10.0, 3.0, 0.0, 90.0, 0.8, "I.5 the crypt's way out into the Atrium"],
 	["gate_veiled", -2.5, 8.0, 0.0, 0.0, 0.85, "the Veiled Way (Act 3: opens when the 3 Beacons burn)"],
-	["gate_veiled", -40.0, 18.85, 0.0, 90.0, 1.0, "I.22 the Gate of the Four"],
+	["gate_veiled", -45.0, 13.0, 0.0, 0.0, 1.0, "I.22 the Gate of the Four (onto the Shrine)"],
 	["door_temple", -10.9, -13.6, 1.0, 0.0, 0.62, "W.5 the chamber's gate onto the Ash Landing"],
 ]
 
 ## other Tripo pieces of the block-out (the landmark statues of each beat): [asset, x, y, z, yaw, scale, note]
 const PIECES := [
 	["colossus_head_veiled", -26.6, -3.6, -8.0, 90.0, 11.0, "W.7 the Sunken Colossus (the Observer)"],
-	["statue_veiled_mourning", -38.5, 0.0, 14.2, 45.0, 1.0, "I.22 veiled one"],
-	["statue_veiled_praying", -38.5, 0.0, 22.8, 135.0, 1.0, "I.22 veiled one"],
-	["statue_veiled_kneeling", -31.3, 0.0, 14.3, -45.0, 1.0, "I.22 veiled one"],
-	["column_stump", -31.3, 0.0, 22.8, 0.0, 1.0, "I.22 the empty plinth's mark (the fourth is you)"],
+	["statue_veiled_mourning", -48.6, 0.0, 15.5, 180.0, 1.0, "I.22 veiled one, facing the gate"],
+	["statue_veiled_praying", -48.6, 0.0, 21.0, 180.0, 1.0, "I.22 veiled one"],
+	["statue_veiled_kneeling", -41.6, 0.0, 15.5, 180.0, 1.0, "I.22 veiled one"],
+	["column_stump", -41.6, 0.0, 21.0, 0.0, 0.5, "I.22 the empty plinth (the fourth is you)"],
 	["brazier", -19.5, 1.0, -12.2, 0.0, 1.0, "W beacon"],
 	["brazier", -3.0, 2.0, -59.2, 0.0, 1.0, "N beacon"],
 	["brazier", 28.8, 6.0, -67.2, 0.0, 1.0, "E beacon"],
@@ -216,8 +216,8 @@ const ROUTE := [
 	[13.5, -4.5, "ER"], [9.0, -4.5, "A"], [-3.0, -4.5, "A"],
 	# Act 3: back to the pool where she woke, over its road, the bridge, the Gate, the Shrine
 	[-3.0, 5.0, "A"], [-2.5, 7.5, "A"], [-2.5, 11.5, "VW"], [-2.5, 17.0, "WS"], [-2.5, 18.85, "WS"],
-	[-5.0, 18.85, "P"], [-12.0, 18.85, "P"], [-14.5, 18.85, "PW"], [-23.0, 18.85, "I21"], [-31.0, 18.85, "I22"],
-	[-38.0, 18.85, "I22"], [-41.0, 18.85, "I23"], [-46.0, 18.5, "I23"],
+	[-5.0, 18.85, "P"], [-12.0, 18.85, "P"], [-14.5, 18.85, "PW"], [-28.0, 18.85, "I21"], [-41.5, 18.85, "I22"],
+	[-45.0, 18.85, "I22"], [-45.0, 14.0, "I22"], [-45.0, 11.0, "I23"], [-45.0, 6.5, "I23"],
 ]
 
 ## which part of the chapter a space belongs to (one merged zone mesh per part: the marble's per-instance
@@ -228,6 +228,12 @@ const PART := {"WS": "south", "I1": "south", "I2": "south", "I3": "south", "IB1"
 	"WB": "west", "W7": "west", "N1": "north", "N2": "north", "N3": "north", "N4": "north", "IBN": "north", "N5": "north",
 	"N6": "north", "N7d": "north", "N7": "north", "N7x": "north", "NB": "north", "NS": "north", "ER": "east", "E1": "east",
 	"E2": "east", "IBE": "east", "E3": "east", "E4": "east", "E3l": "east", "E5": "east", "E5u": "east", "EB": "east", "EH": "east"}
+
+## the mood of each part (world.set_mood, Agent A)
+const MOOD := {"south": "act1", "hub": "act1", "west": "w_glass", "north": "n_garden", "east": "e_high", "act3": "act3"}
+static func mood_of_region(name: String) -> String:
+	if not name.begins_with(ZP): return ""
+	return MOOD.get(PART.get(name.substr(ZP.length()), ""), "")
 
 static func w(x: float, z: float, y := 0.0) -> Vector3:
 	return O + Vector3(x, y, z)
@@ -390,9 +396,7 @@ static func water(lv: Level, parent: Node3D) -> void:
 ## A's landmark dressing (scripts/fx/dress.gd) for every space that has a recipe; the route through it is kept clear
 static func dress(lv: Level, parent: Node3D) -> Array:
 	var keep := route_keep()
-	# (the Atrium's three road mouths and the crypt door stay clear too)
-	for k in [[-10.0, -1.6, -8.0, 1.6], [0.5, -8.0, 4.5, -6.0], [8.0, -6.1, 10.0, -2.9], [8.0, 1.8, 10.0, 4.2], [-4.2, 6.0, -0.8, 8.0], [-8.1, -8.0, -5.9, -6.0], [-10.6, -22.5, -9.0, -20.9],
-			[-9.7, -0.7, -8.5, 0.7], [-0.7, -8.0, 0.7, -6.8], [8.5, -0.7, 9.7, 0.7]]:          # (and no Beacon pillars in the Atrium: the Beacons are the wings')
+	for k in KEEP_EXTRA:
 		keep.append(wr(k[0], k[1], k[2], k[3]))
 	var out := []
 	for s in SPACES:
@@ -401,6 +405,12 @@ static func dress(lv: Level, parent: Node3D) -> Array:
 		out.append(d)
 		for sk in d.skipped: print("[v2 dress] %s %s: %s" % [s[0], sk[0], sk[1]])
 	return out
+
+## kept clear besides the route: the Atrium's road mouths, the crypt door, the Veiled Way, the Cloister Stair's foot,
+## the Shadow Chamber's NE corner (the Cloister Stair runs behind it), and no Beacon pillars in the Atrium (the
+## Beacons are the wings')
+const KEEP_EXTRA := [[-10.0, -1.6, -8.0, 1.6], [0.5, -8.0, 4.5, -6.0], [8.0, -6.1, 10.0, -2.9], [8.0, 1.8, 10.0, 4.2], [-4.2, 6.0, -0.8, 8.0], [-8.1, -8.0, -5.9, -6.0], [-10.6, -22.5, -9.0, -20.9],
+			[-9.7, -0.7, -8.5, 0.7], [-0.7, -8.0, 0.7, -6.8], [8.5, -0.7, 9.7, 0.7]]
 
 ## the route as kept-clear rects (1.6 m wide along each leg)
 static func route_keep() -> Array:
@@ -445,4 +455,14 @@ static func to_json() -> String:
 	var pcs := []
 	for e in PIECES: pcs.append({"asset": e[0], "x": e[1], "z": e[3], "note": e[6]})
 	for e in DOORS: pcs.append({"asset": e[0], "x": e[1], "z": e[2], "note": e[6]})
-	return JSON.stringify({"spaces": sp, "walk": wk, "water": WATER, "origin": [O.x, O.z], "walls": WALLS, "route": rt, "pieces": pcs})
+	var lm := []
+	var keep := route_keep()
+	for k in KEEP_EXTRA: keep.append(wr(k[0], k[1], k[2], k[3]))
+	for s in SPACES:
+		var r := space_rect(s[0])
+		var ks := []
+		for k: Rect2 in keep:
+			var c := k.intersection(r)
+			if c.has_area(): ks.append([snappedf(c.position.x, 0.01), snappedf(c.position.y, 0.01), snappedf(c.end.x, 0.01), snappedf(c.end.y, 0.01)])
+		lm.append({"id": s[0], "recipe": s[6], "rect_world": [r.position.x, r.position.y, r.end.x, r.end.y], "y": float(s[5]) + O.y, "keep_world": ks})
+	return JSON.stringify({"landmarks": lm, "spaces": sp, "walk": wk, "water": WATER, "origin": [O.x, O.z], "walls": WALLS, "route": rt, "pieces": pcs})

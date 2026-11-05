@@ -529,3 +529,77 @@ world.set_mood("prologue", 0.0)
 - kit_votive (1.1 m roadside niche with clay lamps, N wing).
 Dress has fallbacks if any is missing.
 - Ask: please post V2_MAP.md / the landmark list with rects as soon as it exists; I will then re-shoot each landmark in its real place and tune the recipes to your walls and paths (the `keep` rects are how you protect paths and puzzle floors).
+
+2026-11-05 | W -> A | v2 REBUILD: the new Chapter I layout is up. Landmark rects, floors and keep rects are in dev/V2_MAP.md §3
+**Where:**
+- The map is `dev/shots/v2-map.png`. The source is `scripts/v2/map2.gd` (`Map2.SPACES`, `WALK`, `ROUTE`, `DOORS`, `PIECES`).
+- Phase 1 stands BESIDE the live chapter, at `Map2.O = (0, 0, 200)`. It is built only with `EIDOLON_V2=1`, or `--v2` after `--`. Example: `EIDOLON_V2=1 godot --path . res://tests/devshot.tscn -- "begin;jump:waking_pool;tp:3:203;w:3;shot:x"`.
+- World = local + O. The table in V2_MAP.md §3 gives WORLD coordinates.
+- O goes to 0 in phase 2, when the old world comes out. Keep your positions relative to the rects.
+
+**Dressing:**
+- I already call your `Dress.build` for every space that has a recipe. Keep = the play route, 1.6 m wide, plus the doorways and road mouths. This is `Map2.dress`.
+- The `skipped` log goes to stdout as `[v2 dress] <space> <piece>: <reason>`.
+- Landmark → recipe:
+
+| Space | Recipe |
+|---|---|
+| I3 | glass_niche |
+| I5 | crypt |
+| A | atrium |
+| W3 | hall_glass |
+| W5 | shadow_chamber |
+| N2 | turned_ones |
+| N3 | votive |
+| N7 | mist_maze |
+| E1 | balcony |
+| E2 | singing_stones |
+| E5 | scales |
+| I21 | bridge |
+| I22 | gate_four |
+| I23 | shrine |
+
+**Not yet given a recipe:**
+
+| Recipe | Where it would go | Why it waits |
+|---|---|---|
+| stair_breath | W1 | stairs |
+| hidden_way | IBW / W6 | |
+| colossus | WB + W7 | ramp |
+| colonnade | N1 | ramp |
+| tree_shards | N6 | 3.8 x 2 m nook |
+| mirror_walk | E3 | 2 m wide |
+| spring | E4 | |
+| pool_halves | P / WS | |
+| stub_gateway | — | no stub any more; I.1 is a court with its closed door on the north edge |
+
+These are yours to fit as you re-shoot. Tell me the rect you want, or a flat-only variant.
+
+**Please:**
+1. **No Beacon pillars in the Atrium.** The script puts the three Beacons in the wings: W on the rock by the Observer's face, N at the Maze's end, E on the High terrace above the Scales. I keep the recipe's three spots clear for now, so they are skipped.
+2. **Doors and gates are mine:**
+   - the I.1 closed door;
+   - the crypt's way out;
+   - the Veiled Way gate (Act 3);
+   - the Shadow Chamber's gate;
+   - the Gate of the Four, in I.22's NORTH edge with the Shrine north of it.
+
+   They stand in kept doorways, so a recipe's own door or gate there is skipped. Leave them out of the recipes, or keep them decorative and off-centre.
+3. **Ramps:** the following have a sloped floor: N1 (1 → 0), NS (2 → 0), W1 (stairs 0 → 1), ER (0 → 2), EH (6 → 2), E5u (2 → 6). Dress has one height per rect.
+4. **Wax tablets:** in the crypt recipe they float when kit_workbench is skipped (`"on": true` on a missing base). The overlap test caught this. With your kit_workbench now in props/ it should hold; I will re-check.
+5. **Two kinds of z-fight report on your side.** The z-fight test (EIDOLON_V2=1, spots on every space) finds no fights BETWEEN meshes. It does report:
+   - (a) coplanar faces INSIDE the Tripo meshes: door_temple, gate_veiled, statue_veiled_mourning (tiny slivers, gap 0);
+   - (b) every Flame's two coplanar layers (flame.gdshader, transparent).
+
+   If either can flicker, it is yours.
+
+**Moods:** wired. `world.set_mood(Map2.mood_of_region(...))` runs on every new-world region:
+
+| Area | Mood |
+|---|---|
+| south / hub | act1 |
+| west | w_glass |
+| north | n_garden |
+| east | e_high |
+| Act 3 | act3 |
+- (W, later the same day) the crypt recipe in its real rect (x 10..14.6, z 199..207, y 0): the overlap test finds kit_workbench and the toppled kit_face5 (small) interpenetrating by 4 cm at (12.63, 0.32, 199.84). The crypt is left undressed in the block-out until that is fixed; tell me and I switch it back on (`Map2.SPACES` I5).

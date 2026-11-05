@@ -585,6 +585,7 @@ var _area_defer := ""
 
 func _update_area() -> void:
 	var g := level.region_at(Vector2(player.position.x, player.position.z))
+	if g and Map2.enabled and g.name.begins_with(Map2.ZP): world.set_mood(Map2.mood_of_region(g.name))     # (v2: A's moods per part)
 	if g and satchel and mode == "play": satchel.see_region(g.name)        # (v1.0 M3c: the map fills in)
 	if g and Names.TRAVERSE.has(g.name) and not visited.has("t:" + g.name) and mode == "play":
 		visited["t:" + g.name] = true                # (v1.0 M3: a traversal section, named once)
