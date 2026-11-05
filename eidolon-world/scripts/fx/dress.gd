@@ -27,6 +27,8 @@ const MAT := {"kit_scaffold": 0.97, "kit_ladder": 0.97, "kit_awning_post": 0.97,
 ## assets that are not in props/ (full paths)
 const PATHS := {"item_wax_tablet": "res://assets/models/items/item_wax_tablet.glb"}
 const TALL := 1.6
+## a new kit piece not made yet -> the existing asset that stands in for it, at this scale
+const FALLBACK := {"kit_votive": ["altar_shrine", 0.45], "kit_windbells": ["kit_awning_post", 1.0]}
 
 var level: Level
 var skipped: Array = []
@@ -45,117 +47,134 @@ static var _cache := {}
 ## [what, u, v, yaw, scale, {opts}]  opts: y (lift), tilt (deg, toppled), on (sits on the piece before: no overlap test),
 ## small (Low leaves it out), size / mat (primitives), r / h (cylinders)
 const RECIPES := {
-	# ---------------------------------------------------------------- ACT 1
-	# a gateway that goes nowhere: two ashlar pylons and a lintel stub on the north edge, the gable fallen in front
+	# ---------------------------------------------------------------- ACT 1 (the pale morning: "act1")
+	# the stub gateway: a temple door standing alone on the north edge, going nowhere; a pylon, the gable fallen
 	"stub_gateway": [
-		["pylon_ashlar", 0.36, 0.08, 0.0, 0.9], ["pylon_ashlar", 0.64, 0.08, 0.0, 0.9],
-		["box", 0.5, 0.08, 0.0, 1.0, {"size": Vector3(2.6, 0.5, 1.0), "y": 3.55, "on": true, "mat": 0.25}],
+		["door_temple", 0.5, 0.06, 0.0, 1.0], ["pylon_ashlar", 0.2, 0.08, 0.0, 0.8],
 		["pediment_fragment", 0.86, 0.3, 70.0, 0.8, {"small": true}],
 		["column_stump", 0.92, 0.12, 0.0, 0.8], ["rubble_pile", 0.15, 0.2, 30.0, 0.45, {"small": true}],
-		["wall_ruin_low", 0.12, 0.62, 90.0, 0.7]],
-	# the one-stroke glass: a carved niche on the north wall, two veiled busts keep it
+		["wall_ruin_low", 0.1, 0.62, 90.0, 0.6], ["kit_dead_plant", 0.93, 0.62, 0.0, 0.9, {"small": true}]],
+	# the one-stroke glass: a carved niche on the north wall (W's glass goes in it), two veiled busts keep it
 	"glass_niche": [
 		["pylon_ashlar_niche", 0.5, 0.06, 0.0, 1.0],
 		["statue_veiled_bust", 0.2, 0.12, 20.0, 0.85], ["statue_veiled_bust", 0.82, 0.12, -20.0, 0.85],
 		["column_stump", 0.95, 0.45, 0.0, 0.7], ["rubble_pile", 0.08, 0.55, 0.0, 0.35, {"small": true}]],
-	# Theron's dark crypt: his cot, his bench of tools, wax tablets, the faces he abandoned, the unfinished one
+	# Theron's dark crypt: his cot, his bench of tools with wax tablets on it, the faces he gave up on, the
+	# unfinished one in the corner, one small lamp flame on the bench (W's lamp beat lights the rest)
 	"crypt": [
-		["kit_cot", 0.2, 0.18, 90.0, 1.0], ["kit_workbench", 0.72, 0.1, 0.0, 1.0],
-		["item_wax_tablet", 0.6, 0.1, 15.0, 2.2, {"y": 0.92, "on": true}], ["item_wax_tablet", 0.84, 0.12, -20.0, 2.2, {"y": 0.92, "on": true}],
+		["kit_cot", 0.18, 0.2, 90.0, 0.9], ["kit_workbench", 0.68, 0.1, 0.0, 1.0],
+		["item_wax_tablet", 0.6, 0.1, 15.0, 2.2, {"y": 0.97, "on": true}], ["item_wax_tablet", 0.78, 0.11, -20.0, 2.2, {"y": 0.97, "on": true}],
 		["statue_veiled_unfinished", 0.92, 0.38, -60.0, 0.85],
-		["kit_face2", 0.95, 0.7, -90.0, 0.8, {"small": true}], ["kit_face5", 0.4, 0.12, 160.0, 0.75, {"small": true, "tilt": 90.0}],
-		["kit_urns", 0.08, 0.62, 30.0, 0.8, {"small": true}],
-		["flame", 0.72, 0.1, 0.0, 0.18, {"y": 0.95}]],
-	# the Atrium of a Thousand Faces: his attempts in rows on plinths along the back, scaffolds in the back corners,
-	# the dry fountain in the middle (its still water is W's), the three Beacon pillars on the W, N and E sides
+		["kit_face2", 0.95, 0.72, -90.0, 0.8, {"small": true}], ["kit_face5", 0.42, 0.1, 160.0, 0.75, {"small": true, "tilt": 90.0}],
+		["kit_urns", 0.08, 0.62, 30.0, 0.8, {"small": true}], ["kit_face6", 0.06, 0.88, 120.0, 0.7, {"small": true}],
+		["flame", 0.6, 0.1, 0.0, 0.14, {"y": 0.97}]],
+	# the Atrium of a Thousand Faces: his attempts in two rows on plinths along the back (north and east), more
+	# on the floor in front where he left them, scaffolds and a ladder in the back corners, the dry fountain in the
+	# middle (its still water is W's), the three Beacon pillars on the W, N and E sides
 	"atrium": [
-		["kit_scaffold", 0.07, 0.07, 0.0, 1.0], ["kit_scaffold", 0.94, 0.08, 90.0, 1.0],
+		["kit_scaffold", 0.06, 0.07, 0.0, 1.0], ["kit_scaffold", 0.94, 0.08, 90.0, 1.0], ["kit_ladder", 0.16, 0.13, 30.0, 0.85],
 		["kit_fountain", 0.5, 0.5, 0.0, 1.0],
-		["plinth", 0.25, 0.05, 0.0, 1.0], ["kit_face1", 0.25, 0.05, 0.0, 1.0, {"y": 0.9, "on": true}],
-		["plinth", 0.38, 0.05, 0.0, 1.0], ["kit_face3", 0.38, 0.05, 0.0, 1.0, {"y": 0.9, "on": true}],
-		["plinth", 0.62, 0.05, 0.0, 1.0], ["kit_face5", 0.62, 0.05, 0.0, 1.0, {"y": 0.9, "on": true}],
-		["plinth", 0.75, 0.05, 0.0, 1.0], ["kit_face2", 0.75, 0.05, 0.0, 1.0, {"y": 0.9, "on": true}],
-		["plinth", 0.96, 0.3, 0.0, 1.0], ["kit_face4", 0.96, 0.3, -90.0, 1.0, {"y": 0.9, "on": true}],
-		["plinth", 0.96, 0.7, 0.0, 1.0], ["kit_face6", 0.96, 0.7, -90.0, 1.0, {"y": 0.9, "on": true}],
+		["row", 0.22, 0.05, 0.42, 0.05, {"n": 3, "plinth": true, "yaw": 0.0}],
+		["row", 0.58, 0.05, 0.82, 0.05, {"n": 3, "plinth": true, "yaw": 0.0}],
+		["row", 0.95, 0.22, 0.95, 0.4, {"n": 2, "plinth": true, "yaw": -90.0}],
+		["row", 0.95, 0.6, 0.95, 0.85, {"n": 3, "plinth": true, "yaw": -90.0}],
+		["row", 0.3, 0.16, 0.42, 0.16, {"n": 2, "yaw": 20.0, "scale": 0.9, "small": true}],
+		["row", 0.82, 0.25, 0.84, 0.4, {"n": 2, "yaw": -70.0, "scale": 0.9, "small": true}],
 		["kit_face1", 0.15, 0.92, 200.0, 0.9, {"small": true}], ["kit_face4", 0.3, 0.95, 160.0, 0.9, {"small": true, "tilt": -90.0}],
-		["kit_face6", 0.72, 0.94, 190.0, 0.9, {"small": true}], ["kit_ladder", 0.16, 0.12, 30.0, 0.85],
+		["kit_face6", 0.72, 0.94, 190.0, 0.9, {"small": true}], ["kit_face3", 0.86, 0.95, 230.0, 0.9, {"small": true, "tilt": 90.0}],
+		["statue_veiled_unfinished", 0.86, 0.16, -45.0, 0.9],
 		["beacon", 0.04, 0.5, 0.0, 1.0], ["beacon", 0.5, 0.04, 0.0, 1.0], ["beacon", 0.96, 0.5, 0.0, 1.0]],
-	# ---------------------------------------------------------------- ACT 2, W wing (glass, cold)
+	# ---------------------------------------------------------------- ACT 2, W wing (glass, cold: "w_glass")
+	# glass everywhere: tall framed panes on the back walls, cold columns, a praying figure
 	"stair_breath": [
-		["column_doric", 0.2, 0.06, 0.0, 0.8], ["column_doric", 0.8, 0.06, 0.0, 0.8],
+		["column_doric", 0.18, 0.06, 0.0, 0.8], ["column_doric", 0.82, 0.06, 0.0, 0.8],
+		["mirror_frame", 0.5, 0.05, 0.0, 0.9, {"glass": true}],
 		["statue_veiled_praying", 0.94, 0.3, -60.0, 0.85], ["balustrade", 0.97, 0.7, 90.0, 1.0],
 		["rubble_pile", 0.06, 0.8, 0.0, 0.35, {"small": true}]],
 	"hall_glass": [
-		["mirror_frame", 0.3, 0.05, 0.0, 1.1], ["mirror_frame", 0.7, 0.05, 0.0, 1.1],
+		["mirror_frame", 0.25, 0.05, 0.0, 1.1, {"glass": true}], ["mirror_frame", 0.5, 0.05, 0.0, 1.1, {"glass": true}],
+		["mirror_frame", 0.75, 0.05, 0.0, 1.1, {"glass": true}],
 		["column_doric", 0.06, 0.06, 0.0, 1.0], ["column_doric", 0.94, 0.06, 0.0, 1.0],
-		["statue_veiled_mourning", 0.95, 0.4, -90.0, 0.95], ["mirror_frame", 0.96, 0.75, -90.0, 0.9],
+		["statue_veiled_mourning", 0.95, 0.35, -90.0, 0.95], ["mirror_frame", 0.96, 0.7, -90.0, 0.9, {"glass": true}],
 		["pediment_fragment", 0.1, 0.9, 30.0, 0.6, {"small": true}]],
 	"shadow_chamber": [
 		["pylon_ashlar", 0.06, 0.06, 0.0, 0.9], ["pylon_ashlar", 0.94, 0.06, 0.0, 0.9],
+		["mirror_frame", 0.5, 0.04, 0.0, 1.0, {"glass": true}],
 		["statue_veiled_kneeling", 0.95, 0.5, -90.0, 0.8], ["rubble_pile", 0.1, 0.85, 0.0, 0.4, {"small": true}],
-		["column_fallen", 0.82, 0.88, 20.0, 0.6, {"small": true}]],
+		["column_fallen", 0.82, 0.9, 20.0, 0.5, {"small": true}]],
 	"hidden_way": [
 		["archway_ruined", 0.5, 0.06, 0.0, 0.85],
-		["wall_ruin_low", 0.08, 0.5, 90.0, 0.8], ["wall_ruin_low", 0.92, 0.5, 90.0, 0.8],
-		["kit_dead_plant", 0.85, 0.85, 0.0, 0.9, {"small": true}]],
+		["wall_ruin_low", 0.06, 0.5, 90.0, 0.55], ["wall_ruin_low", 0.94, 0.5, 90.0, 0.55],
+		["mirror_frame", 0.94, 0.15, -90.0, 0.8, {"glass": true}], ["kit_dead_plant", 0.88, 0.88, 0.0, 0.9, {"small": true}]],
 	"colossus": [
-		["column_fallen", 0.25, 0.15, 30.0, 1.0], ["rubble_pile", 0.85, 0.12, 0.0, 0.8],
-		["pediment_fragment", 0.92, 0.55, -80.0, 0.9], ["column_stump", 0.1, 0.5, 0.0, 0.9],
-		["rubble_pile", 0.12, 0.88, 40.0, 0.45, {"small": true}]],
-	# ---------------------------------------------------------------- ACT 2, N wing (garden mist)
+		["column_fallen", 0.25, 0.12, 30.0, 1.0], ["rubble_pile", 0.85, 0.12, 0.0, 0.8],
+		["pediment_fragment", 0.92, 0.55, -80.0, 0.9], ["column_stump", 0.08, 0.5, 0.0, 0.9],
+		["column_doric", 0.55, 0.05, 0.0, 1.0, {"tilt": 0.0}], ["rubble_pile", 0.12, 0.88, 40.0, 0.45, {"small": true}]],
+	# ---------------------------------------------------------------- ACT 2, N wing (garden mist: "n_garden")
+	# overgrown: columns and stumps, dead shrubs, low drifting mist, petals
 	"colonnade": [
 		["column_doric", 0.1, 0.06, 0.0, 1.0], ["column_doric", 0.3, 0.06, 0.0, 1.0], ["column_doric", 0.5, 0.06, 0.0, 1.0],
 		["column_stump", 0.7, 0.06, 0.0, 1.0], ["column_doric", 0.9, 0.06, 0.0, 1.0],
-		["column_fallen", 0.75, 0.82, 70.0, 0.7, {"small": true}], ["kit_dead_plant", 0.06, 0.9, 0.0, 0.9, {"small": true}],
-		["mist", 0.5, 0.5, 0.0, 2.2]],
+		["column_fallen", 0.75, 0.85, 70.0, 0.6, {"small": true}], ["kit_dead_plant", 0.06, 0.9, 0.0, 0.9, {"small": true}],
+		["kit_dead_plant", 0.6, 0.12, 0.0, 0.8, {"small": true}], ["mist", 0.5, 0.5, 0.0, 2.2], ["petals", 0.5, 0.5, 0.0, 0.8]],
 	"turned_ones": [
 		["statue_veiled_mourning", 0.2, 0.12, 180.0, 1.0], ["statue_veiled_praying", 0.5, 0.08, 180.0, 1.0],
 		["statue_veiled_mourning", 0.8, 0.12, 180.0, 1.0], ["statue_veiled_broken", 0.94, 0.55, -100.0, 0.9],
-		["kit_dead_plant", 0.08, 0.6, 0.0, 0.9, {"small": true}], ["mist", 0.5, 0.6, 0.0, 1.8]],
+		["kit_dead_plant", 0.08, 0.6, 0.0, 0.9, {"small": true}], ["kit_dead_plant", 0.35, 0.06, 0.0, 0.8, {"small": true}],
+		["mist", 0.5, 0.6, 0.0, 1.8], ["petals", 0.5, 0.5, 0.0, 0.6]],
 	"votive": [
-		["kit_votive", 0.5, 0.1, 0.0, 1.0], ["flame", 0.43, 0.12, 0.0, 0.14, {"y": 0.62}], ["flame", 0.57, 0.12, 0.0, 0.14, {"y": 0.62}],
+		["kit_votive", 0.5, 0.08, 0.0, 1.0], ["flame", 0.44, 0.08, 0.0, 0.1, {"y": 0.5}], ["flame", 0.56, 0.08, 0.0, 0.1, {"y": 0.5}],
 		["kit_urns", 0.88, 0.2, -30.0, 0.8, {"small": true}], ["kit_dead_plant", 0.12, 0.2, 0.0, 0.8, {"small": true}],
-		["petals", 0.5, 0.5, 0.0, 1.0]],
+		["column_stump", 0.9, 0.7, 0.0, 0.7], ["petals", 0.5, 0.5, 0.0, 1.0]],
 	"tree_shards": [
 		["kit_dead_plant", 0.1, 0.12, 0.0, 1.1], ["kit_dead_plant", 0.9, 0.18, 40.0, 1.0],
-		["balustrade", 0.5, 0.97, 0.0, 1.0], ["rubble_pile", 0.92, 0.75, 0.0, 0.35, {"small": true}],
+		["statue_veiled_bust", 0.94, 0.5, -90.0, 0.8],
+		["balustrade", 0.5, 0.97, 0.0, 1.0], ["rubble_pile", 0.92, 0.82, 0.0, 0.35, {"small": true}],
 		["petals", 0.5, 0.5, 0.0, 1.0]],
 	"mist_maze": [
 		["statue_veiled_broken", 0.92, 0.1, -135.0, 0.9], ["column_stump", 0.08, 0.08, 0.0, 0.9],
-		["kit_urns", 0.92, 0.9, 0.0, 0.8, {"small": true}], ["mist", 0.35, 0.4, 0.0, 2.6], ["mist", 0.7, 0.7, 0.0, 2.2]],
-	# ---------------------------------------------------------------- ACT 2, E wing (high, windy)
+		["kit_dead_plant", 0.5, 0.06, 0.0, 1.0, {"small": true}], ["kit_urns", 0.92, 0.9, 0.0, 0.8, {"small": true}],
+		["mist", 0.35, 0.4, 0.0, 2.6], ["mist", 0.7, 0.7, 0.0, 2.2]],
+	# ---------------------------------------------------------------- ACT 2, E wing (high, windy: "e_high")
+	# open to the sky: balustrades on the drop side, posts streaming torn veils, the bells
 	"balcony": [
 		["balustrade", 0.2, 0.97, 0.0, 1.0], ["balustrade", 0.5, 0.97, 0.0, 1.0], ["balustrade", 0.8, 0.97, 0.0, 1.0],
 		["kit_awning_post", 0.94, 0.15, 90.0, 1.0], ["veils", 0.94, 0.15, 90.0, 1.0],
-		["kit_urns", 0.75, 0.15, 90.0, 0.9, {"small": true}], ["box", 0.5, 0.12, 0.0, 1.0, {"size": Vector3(1.6, 0.45, 0.5), "mat": 0.25}],
+		["kit_awning_post", 0.3, 0.06, 90.0, 1.0], ["veils", 0.3, 0.06, 90.0, 1.0],
+		["kit_urns", 0.75, 0.15, 90.0, 0.9, {"small": true}], ["box", 0.55, 0.12, 0.0, 1.0, {"size": Vector3(1.6, 0.45, 0.5), "mat": 0.25}],
 		["kit_dead_plant", 0.08, 0.12, 0.0, 0.9, {"small": true}]],
 	"singing_stones": [
-		["kit_windbells", 0.92, 0.1, -45.0, 1.0], ["column_stump", 0.08, 0.1, 0.0, 0.8],
-		["rubble_pile", 0.9, 0.85, 0.0, 0.35, {"small": true}], ["veils", 0.08, 0.1, 0.0, 0.7]],
+		["kit_windbells", 0.85, 0.08, 0.0, 1.0], ["column_stump", 0.08, 0.1, 0.0, 0.8],
+		["kit_awning_post", 0.94, 0.6, 90.0, 0.9], ["veils", 0.94, 0.6, 90.0, 0.9],
+		["rubble_pile", 0.9, 0.9, 0.0, 0.35, {"small": true}], ["balustrade", 0.3, 0.97, 0.0, 1.0]],
 	"mirror_walk": [
-		["mirror_frame", 0.2, 0.05, 0.0, 1.0], ["mirror_frame", 0.5, 0.05, 0.0, 1.0], ["mirror_frame", 0.8, 0.05, 0.0, 1.0],
-		["balustrade", 0.3, 0.97, 0.0, 1.0], ["balustrade", 0.7, 0.97, 0.0, 1.0]],
+		["mirror_frame", 0.2, 0.05, 0.0, 1.0, {"glass": true}], ["mirror_frame", 0.5, 0.05, 0.0, 1.0, {"glass": true}],
+		["mirror_frame", 0.8, 0.05, 0.0, 1.0, {"glass": true}],
+		["balustrade", 0.3, 0.97, 0.0, 1.0], ["balustrade", 0.7, 0.97, 0.0, 1.0],
+		["kit_awning_post", 0.96, 0.4, 90.0, 0.9], ["veils", 0.96, 0.4, 90.0, 0.9]],
 	"spring": [
 		["statue_veiled_kneeling", 0.88, 0.12, -45.0, 0.9], ["kit_urns", 0.12, 0.12, 20.0, 0.9],
-		["wall_ruin_low", 0.95, 0.6, 90.0, 0.7], ["kit_dead_plant", 0.08, 0.85, 0.0, 0.8, {"small": true}]],
+		["wall_ruin_low", 0.95, 0.6, 90.0, 0.6], ["kit_dead_plant", 0.08, 0.85, 0.0, 0.8, {"small": true}],
+		["balustrade", 0.5, 0.97, 0.0, 1.0]],
 	"scales": [
 		["statue_veiled_praying", 0.1, 0.08, 45.0, 1.0], ["column_stump", 0.92, 0.08, 0.0, 1.0],
-		["pediment_fragment", 0.93, 0.6, -90.0, 0.7, {"small": true}], ["veils", 0.92, 0.08, 0.0, 0.8]],
-	# ---------------------------------------------------------------- ACT 3
+		["pediment_fragment", 0.93, 0.6, -90.0, 0.7, {"small": true}], ["kit_awning_post", 0.94, 0.3, 90.0, 0.9],
+		["veils", 0.94, 0.3, 90.0, 0.9], ["balustrade", 0.5, 0.97, 0.0, 1.0]],
+	# ---------------------------------------------------------------- ACT 3 (the convergence, dusk: "act3")
 	"pool_halves": [
 		["statue_veiled_kneeling", 0.08, 0.08, 135.0, 0.9], ["statue_veiled_kneeling", 0.92, 0.08, -135.0, 0.9],
 		["column_stump", 0.95, 0.6, 0.0, 0.8], ["pediment_fragment", 0.5, 0.04, 0.0, 0.8, {"small": true}]],
 	"bridge": [
 		["kit_bridge_end", 0.5, 0.05, 0.0, 1.0], ["rubble_pile", 0.9, 0.3, 0.0, 0.4, {"small": true}],
-		["column_fallen", 0.1, 0.7, 60.0, 0.6, {"small": true}]],
+		["column_fallen", 0.15, 0.82, 60.0, 0.5, {"small": true}], ["column_stump", 0.1, 0.12, 0.0, 0.8]],
 	"gate_four": [
-		["pylon_ashlar", 0.1, 0.05, 0.0, 1.0], ["pylon_ashlar", 0.9, 0.05, 0.0, 1.0],
+		["gate_veiled", 0.5, 0.05, 0.0, 1.0], ["pylon_ashlar", 0.08, 0.05, 0.0, 1.0], ["pylon_ashlar", 0.92, 0.05, 0.0, 1.0],
 		["statue_veiled_unfinished", 0.95, 0.45, -90.0, 0.95], ["flame", 0.25, 0.08, 0.0, 0.3, {"y": 0.0}],
 		["flame", 0.75, 0.08, 0.0, 0.3, {"y": 0.0}], ["rubble_pile", 0.06, 0.85, 0.0, 0.35, {"small": true}]],
 	"shrine": [
 		["column_doric", 0.12, 0.08, 0.0, 0.9], ["column_doric", 0.88, 0.08, 0.0, 0.9], ["column_stump", 0.94, 0.5, 0.0, 0.9],
-		["statue_veiled_praying", 0.5, 0.05, 0.0, 0.9], ["pediment_fragment", 0.08, 0.6, 60.0, 0.7, {"small": true}],
-		["petals", 0.5, 0.5, 0.0, 0.7]],
+		["altar_shrine", 0.5, 0.06, 0.0, 0.7], ["statue_veiled_praying", 0.06, 0.45, 90.0, 0.85],
+		["pediment_fragment", 0.08, 0.8, 60.0, 0.6, {"small": true}], ["petals", 0.5, 0.5, 0.0, 0.7]],
 	# ---------------------------------------------------------------- PROLOGUE (Dress.prologue_set builds the water + head)
 	"prologue": [
 		["column_stump", 0.1, 0.2, 0.0, 0.8], ["pediment_fragment", 0.85, 0.15, 20.0, 0.7]],
@@ -191,6 +210,21 @@ func _place(e: Array) -> void:
 	var o: Dictionary = e[5] if e.size() > 5 else {}
 	at.y += float(o.get("y", 0.0))
 	match what:
+		"row":                                  # a row of his faces from (u, v) to (e[3], e[4]), on plinths or on the floor
+			var n: int = o.get("n", 3)
+			for k in n:
+				var t := (float(k) + 0.5) / n
+				var uu := lerpf(float(e[1]), float(e[3]), t)
+				var vv := lerpf(float(e[2]), float(e[4]), t)
+				var face := "kit_face%d" % (1 + (int(uu * 37.0 + vv * 53.0) + k) % 6)
+				var fy: float = o.get("yaw", 0.0) + (k % 3 - 1) * 12.0
+				var fs: float = o.get("scale", 1.0)
+				if o.get("plinth", false):
+					_place(["plinth", uu, vv, fy, 1.0])
+					if _last_ok: _place([face, uu, vv, fy, fs, {"y": 0.9, "on": true}])
+				else:
+					_place([face, uu, vv, fy, fs, {"small": o.get("small", false)}])
+			return
 		"flame":
 			var f := Flame.new(0.0, sc, Palette.FIRE_LIGHT, level.noise_tex if "noise_tex" in level else null)
 			add_child(f)
@@ -231,6 +265,8 @@ func _place(e: Array) -> void:
 			_add_mesh("plinth", _prim_box(Vector3(0.62, 0.9, 0.62), 0.25), Transform3D(Basis(Vector3.UP, yaw), at + Vector3(0, 0.45, 0)), 0.33, false, o)
 			return
 	var a := _asset(what)
+	if a.is_empty() and FALLBACK.has(what):
+		a = _asset(FALLBACK[what][0]); sc *= float(FALLBACK[what][1])
 	if a.is_empty():
 		skipped.append([what, "missing"])
 		return
@@ -242,8 +278,14 @@ func _place(e: Array) -> void:
 		lift = -(Transform3D(Basis(Vector3.BACK, tilt) * Basis.from_scale(Vector3.ONE * sc)) * bb).position.y
 	var xf := Transform3D(b, at + Vector3(0, lift, 0))
 	_add_mesh(what, a[0], xf, 0.0, true, o, Vector3.ZERO, bb)
+	if _last_ok and o.get("glass", false):
+		# a pane of the game's glass in the frame (glass.gdshader: faint tint, a sheen, frame lines)
+		var pane := Transform3D(_xf_last.basis, _xf_last * Vector3(bb.get_center().x, bb.position.y + bb.size.y * 0.5, bb.get_center().z))
+		_panes.append([pane, Vector2(bb.size.x * 0.7, bb.size.y * 0.84)])
 
 var _last_ok := false
+var _xf_last := Transform3D()
+var _panes: Array = []              # [Transform3D, size]: glass panes in mirror frames
 ## test a piece's footprint, then queue it (main / occ / small) with its obstacle, occluder and contact shadow
 func _add_mesh(what: String, mesh: ArrayMesh, xf: Transform3D, rad: float, from_asset: bool, o: Dictionary, size := Vector3.ZERO, bb := AABB()) -> void:
 	_last_ok = false
@@ -270,6 +312,7 @@ func _add_mesh(what: String, mesh: ArrayMesh, xf: Transform3D, rad: float, from_
 				skipped.append([what, "hits a wall / obstacle"]); return
 		for c in circles: level.ob_circle(Vector2(c.x, c.y), c.z, "dress:" + what)
 	_last_ok = true
+	_xf_last = xf
 	var tall := wb.size.y > TALL
 	var small: bool = o.get("small", false)
 	var slot := "occ" if tall else ("small" if small else "main")
@@ -388,6 +431,24 @@ func _commit() -> void:
 		if slot == "small":
 			_small_mi = mi
 			mi.visible = high
+	if not _panes.is_empty():
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var size := Vector2.ZERO
+		for pn in _panes:
+			var q := QuadMesh.new(); q.size = pn[1]; size = pn[1]
+			st.append_from(q, 0, pn[0])
+		var gm := ShaderMaterial.new()
+		gm.shader = preload("res://shaders/glass.gdshader")
+		gm.set_shader_parameter("size", size)
+		gm.set_shader_parameter("base_alpha", 0.5)
+		var gmi := MeshInstance3D.new()
+		gmi.name = "Dress_glass"
+		gmi.mesh = st.commit()
+		gmi.material_override = gm
+		gmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		gmi.layers = PlanarMirror.LAYER_MAIN_FX
+		add_child(gmi)
 	if not _blobs.is_empty():
 		var pm := PlaneMesh.new()
 		pm.size = Vector2.ONE

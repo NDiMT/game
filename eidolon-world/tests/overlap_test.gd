@@ -25,6 +25,7 @@ const DESIGNED := [
 	[AABB(Vector3(8.9, 1.9, -41.3), Vector3(2.2, 3.5, 0.6)), "(v1.0) the bolted bars between the Echo Corridor and the Maze: a door, shut until unbolted"],
 	[AABB(Vector3(30.3, 3.9, -24.85), Vector3(2.2, 2.2, 0.5)), "(v1.0 M3b) the sealed panel across the Mirror Walk: a door, shut until the pin rings it"],
 	[AABB(Vector3(3.75, 1.5, 4.5), Vector3(0.6, 0.8, 0.6)), "(v2.0) the wake court's bell HANGS from its post's arm"],
+	[AABB(Vector3(-4.2, -0.1, 207.3), Vector3(3.4, 4.2, 1.4)), "(v2 rebuild) the Veiled Way's gate: shut until the 3 Beacons burn (Act 3)"],
 ]
 const NOT_SOLID := ["veil", "glow", "halo", "beam", "mist", "fog", "ray", "shaft", "water", "pool_mat", "rune", "mark"]
 
@@ -127,6 +128,14 @@ func _gather() -> void:
 		var mdt := mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
 		var step := maxi(1, mdt.size() / 600)
 		for i in range(0, mdt.size(), step): s.verts.append(mi.global_transform * mdt[i])
+	# (v2 rebuild) A's landmark dressing (each piece one thing) and the doors / gates standing in their doorways
+	for dn in lv.find_children("Dress_*", "Node3D", false, false):
+		var parts: Dictionary = dn.get("_parts")
+		for slot in parts:
+			for pr in parts[slot]:
+				_add("Dress/%s/%s#%d" % [dn.name, slot, (parts[slot] as Array).find(pr)], "prop", (pr[1] as Transform3D) * _box_of((pr[0] as Mesh).get_aabb()))
+	for mi in lv.find_children("V2Door_*", "MeshInstance3D", false, false):
+		_add("Doors/" + str(mi.name), "door", (mi as MeshInstance3D).global_transform * _box_of((mi as MeshInstance3D).mesh.get_aabb()))
 	# the puzzle objects and the wonders (each mesh one thing)
 	for root in [game.puzzles, game.chapter, game.wonders]:
 		if root == null: continue

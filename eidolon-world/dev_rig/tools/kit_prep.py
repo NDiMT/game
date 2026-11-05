@@ -17,12 +17,16 @@ SPEC = {
  "awning_post": ("h", 2.6, 256),
  "pickup_cloth": ("w", 0.55, 256), "pickup_plinth": ("h", 0.45, 256),
  "gallery": ("w", 3.0, 512), "dead_plant": ("h", 0.6, 256),
+ # v2.0 Chapter I rebuild (Dress recipes): Theron's crypt, the E wing's wind bells, the N wing's votive
+ "workbench": ("w", 1.6, 256), "cot": ("w", 2.0, 256), "windbells": ("h", 2.4, 256), "votive": ("h", 1.1, 256),
 }
+EXTRA_YAW = {"workbench": 90, "cot": 90}     # (degrees after the usual turn: these came out long along Z; long along X here)
+ONLY = set(sys.argv[3].split(",")) if len(sys.argv) > 3 else None     # (v2.0: prep just these names)
 out = {}
 # (v2, review) NO brute decimation: Tripo's own smart-low-poly mesh is kept; it is welded, cleaned (degenerate and
 # duplicate faces removed, small holes filled, winding made consistent and outward) and shaded with a 35 deg crease
 # (hard edges stay crisp). Only the two heaviest faces are trimmed to 6 000 tris (quadric, on the welded surface).
-MAXT = {"face": 6000}
+MAXT = {"face": 6000, "workbench": 6000, "cot": 6000, "windbells": 6000, "votive": 6000}
 import fast_simplification as fsimp
 def clean(m, cap):
     w = trimesh.Trimesh(np.asarray(m.vertices), np.asarray(m.faces), process=False)
@@ -38,14 +42,15 @@ def clean(m, cap):
     trimesh.repair.fix_inversion(w, multibody=True)
     return trimesh.graph.smooth_shade(w, angle=np.radians(35))
 for name, (fit, size, px) in SPEC.items():
-    f = glob.glob(os.path.join(SRC, name, "**", "*.glb"), recursive=True)
+    if ONLY and name not in ONLY: continue
+    f = glob.glob(os.path.join(SRC, name, "**", "*.glb"), recursive=True) or glob.glob(os.path.join(SRC, "kit_" + name, "**", "*.glb"), recursive=True)
     if not f: print("missing", name); continue
     s = trimesh.load(f[0])
     ms = []
     for node in s.graph.nodes_geometry:
         T, g = s.graph[node]; m = s.geometry[g].copy(); m.apply_transform(T); ms.append(m)
     m = ms[0] if len(ms) == 1 else trimesh.util.concatenate(ms)
-    m.apply_transform(trimesh.transformations.rotation_matrix(-math.pi / 2, [0, 1, 0]))
+    m.apply_transform(trimesh.transformations.rotation_matrix(-math.pi / 2 + math.radians(EXTRA_YAW.get(name, 0)), [0, 1, 0]))
     b = m.bounds
     m.apply_translation([-(b[0][0] + b[1][0]) / 2, -b[0][1], -(b[0][2] + b[1][2]) / 2])
     e = m.extents
@@ -55,7 +60,7 @@ for name, (fit, size, px) in SPEC.items():
     m = clean(m, next((v for k_, v in MAXT.items() if name.startswith(k_)), 0))
     # (drawn by the game's marble shader through props.gd, like every other prop: no textures shipped; the
     # placeholder colour only shows in other viewers. Wood pieces are flagged WOOD in props.gd, see HANDOFF)
-    wood = name in ("scaffold", "ladder", "awning_post", "gallery")
+    wood = name in ("scaffold", "ladder", "awning_post", "gallery", "workbench", "cot", "windbells")
     nm = trimesh.visual.material.PBRMaterial(name="wood_placeholder" if wood else "marble_placeholder",
         baseColorFactor=[0.45, 0.38, 0.30, 1.0] if wood else [0.886, 0.863, 0.816, 1.0], metallicFactor=0.0, roughnessFactor=0.8)
     m.visual = trimesh.visual.TextureVisuals(material=nm)
@@ -65,4 +70,4 @@ for name, (fit, size, px) in SPEC.items():
     out[name] = {"file": "kit_" + name + ".glb", "size_m": [round(float(v), 2) for v in m.extents], "tris": int(len(m.faces)),
                  "tex_px": px, "kb": len(data) // 1024}
     print(name, out[name])
-json.dump(out, open(os.path.join(DST, "prep_report.json"), "w"), indent=1)
+json.dump(out, open(os.path.join(DST, "prep_report%s.json" % ("_" + "_".join(sorted(ONLY)) if ONLY else "")), "w"), indent=1)

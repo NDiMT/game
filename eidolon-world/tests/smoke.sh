@@ -7,6 +7,7 @@
 #   3. (v1.1d, REQUIRED) Our Steps played by touch in the web build (tests/web_oursteps.mjs): both boards solved with
 #      synthetic touch drags on the on-screen joystick (off-axis), then the walk out to the Court; a shot per move
 #      (dev/shots/<tag>-os-step-NN.png). Skip only with --no-oursteps (never for a release).
+#   4. (v2 rebuild, REQUIRED with the headless part) the new Chapter I block-out walked end to end (tests/flow_v2.tscn)
 # Prints a PASS/FAIL summary; exit 0 only when everything passes.
 #
 # Usage:  tests/smoke.sh [--live] [--web-only | --headless-only] [--ref <git-ref>] [--project <dir>] [--tier low|high] [--shot-scale css|device] [--no-oursteps]
@@ -124,6 +125,15 @@ if [ "$RUN_OS" = 1 ]; then
   fi
 fi
 [ "$RUN_PT" = 1 ] && wait "$PT_PID"
+# ------------------------------------------------------------------ 4. (v2 rebuild, REQUIRED) the new world walked end to end
+FLOW_RC=0
+if [ "$RUN_PT" = 1 ]; then
+  echo "$(ts) v2 flow: tests/flow_v2.tscn"
+  FUD="$(mktemp -d "$WORK/userdata.XXXX")"
+  XDG_DATA_HOME="$FUD" timeout 300 "$GODOT" --headless --fixed-fps 60 --path "$PROJECT" res://tests/flow_v2.tscn > "$SHOTS/$TAG-flow.log" 2>&1
+  grep -q "^FLOW PASS" "$SHOTS/$TAG-flow.log" || FLOW_RC=1
+  echo "$(ts) v2 flow: done ($([ $FLOW_RC = 0 ] && echo pass || echo FAIL))"
+fi
 
 # ------------------------------------------------------------------ summary
 FAILS=0
@@ -157,6 +167,11 @@ if [ "$RUN_OS" = 1 ]; then
   grep -E "^WEB OURSTEPS" "$SHOTS/$TAG-os-web.log" 2>/dev/null || echo "oursteps: no summary line (exit $OS_RC), see $SHOTS/$TAG-os-web.log"
   [ "$OS_RC" = 0 ] || FAILS=$((FAILS+1))
   echo "      shots: $SHOTS/$TAG-os-step-NN.png   log: $SHOTS/$TAG-os-web.log"
+fi
+if [ "$RUN_PT" = 1 ]; then
+  if [ "$FLOW_RC" = 0 ]; then echo "PASS  v2 flow (the new Chapter I walked end to end)  $(grep -m1 '^FLOW PASS' "$SHOTS/$TAG-flow.log")"
+  else FAILS=$((FAILS+1)); echo "FAIL  v2 flow  $(grep -m1 '^FLOW ' "$SHOTS/$TAG-flow.log" || echo 'no FLOW line')"; grep "^FAIL" "$SHOTS/$TAG-flow.log" | head -10 | sed 's/^/        /'; fi
+  echo "      log: $SHOTS/$TAG-flow.log"
 fi
 echo "--------------------------------------------------------------"
 WALL=$(( $(date +%s) - T0 ))

@@ -12,7 +12,7 @@ const SPACES := [
 	["stair_breath", Vector2(5, 6), "w_glass", 0.0, Rect2(0.35, 0.15, 0.3, 0.85)],
 	["hall_glass", Vector2(9, 8), "w_glass", 0.0, Rect2(0.3, 0.3, 0.4, 0.4)],
 	["shadow_chamber", Vector2(8, 7), "w_glass", 0.0, Rect2(0.25, 0.25, 0.5, 0.5)],
-	["hidden_way", Vector2(4, 8), "w_glass", 0.0, Rect2(0.3, 0.15, 0.4, 0.85)],
+	["hidden_way", Vector2(4, 8), "w_glass", 0.0, Rect2(0.3, 0.2, 0.4, 0.8)],
 	["colossus", Vector2(9, 7), "w_glass", 0.0, Rect2(0.3, 0.3, 0.45, 0.45)],
 	["colonnade", Vector2(10, 5), "n_garden", 0.0, Rect2(0.0, 0.3, 1.0, 0.25)],
 	["turned_ones", Vector2(8, 6), "n_garden", 0.0, Rect2(0.3, 0.35, 0.4, 0.65)],
@@ -25,9 +25,9 @@ const SPACES := [
 	["spring", Vector2(6, 6), "e_high", 0.0, Rect2(0.25, 0.25, 0.5, 0.5)],
 	["scales", Vector2(7, 7), "e_high", 0.0, Rect2(0.25, 0.25, 0.5, 0.6)],
 	["pool_halves", Vector2(8, 7), "act3", 0.0, Rect2(0.15, 0.2, 0.7, 0.8)],
-	["bridge", Vector2(4, 9), "act3", 0.0, Rect2(0.3, 0.1, 0.4, 0.9)],
+	["bridge", Vector2(4, 9), "act3", 0.0, Rect2(0.3, 0.3, 0.4, 0.7)],
 	["gate_four", Vector2(9, 7), "act3", 0.0, Rect2(0.25, 0.25, 0.5, 0.75)],
-	["shrine", Vector2(8, 8), "act3", 0.0, Rect2(0.25, 0.25, 0.5, 0.75)],
+	["shrine", Vector2(8, 8), "act3", 0.0, Rect2(0.25, 0.3, 0.5, 0.7)],
 ]
 const ORIGIN := Vector3(120.0, 0.0, 120.0)
 var game: Node
@@ -39,6 +39,7 @@ var t := 0.0
 var built := false
 var _report := []
 var _begun := false
+var _wide := false
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -72,10 +73,21 @@ func _process(dt: float) -> void:
 		built = true; t = 0.0
 		_build(i, s)
 		return
-	if t > 3.2:
+	if t > 3.2 and not _wide:
 		var nm := "dress-%s" % s[0]
 		if shots != "": get_viewport().get_texture().get_image().save_png("%s/%s.png" % [shots, nm])
 		print("shot ", nm)
+		_report.append("%s: %d draw calls in view (game camera)" % [s[0], Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)])
+		_wide = true
+		game.cmd("zoom:%f" % (20.0 if s[0] in ["prologue", "atrium"] else 13.0))     # (an overview of the whole landmark)
+		game.world.cam.size = game.world.cam_size_target
+	elif _wide and t > 4.6:
+		var nm := "dress-%s-wide" % s[0]
+		if shots != "": get_viewport().get_texture().get_image().save_png("%s/%s.png" % [shots, nm])
+		print("shot ", nm)
+		game.cmd("zoom:%f" % (zoom if zoom > 0.0 else World.FIXED_SIZE))
+		game.world.cam.size = game.world.cam_size_target
+		_wide = false
 		_next()
 
 func _build(k: int, s: Array) -> void:
@@ -97,7 +109,7 @@ func _build(k: int, s: Array) -> void:
 		keep.append(Rect2(rect.position + f.position * rect.size, f.size * rect.size))
 	var d: Dress
 	if s[0] == "prologue":
-		d = Dress.prologue_set(lv, game.juice, c + Vector3(0, 0, 3.0), c + Vector3(1.5, 0, -11.0), 9.0)
+		d = Dress.prologue_set(lv, game.juice, c + Vector3(0, 0, 3.0), c + Vector3(7.0, 0, -8.0), 12.0)
 	else:
 		d = Dress.build(lv, game.juice, s[0], rect, 0.0, keep)
 	for b in d.beacons: b.ignite() if b != d.beacons[1] else b.set_lit(true)

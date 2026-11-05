@@ -94,6 +94,28 @@ func _ready() -> void:
 				if not r.is_empty(): hide_e.append("pair %d at %s <- %s" % [j, e, names.get(r["shape"], "?")])
 	if not hide_e.is_empty(): fails += 1
 	print("SHADOW EYES %s" % ("every pair in full sight" if hide_e.is_empty() else "HIDDEN: " + "; ".join(hide_e.slice(0, 6))))
+	# (v2 rebuild) the new world: her whole way in sight: every metre of the play route (Map2.ROUTE) and every space's
+	# centre, with nothing between it and the camera
+	if Map2.enabled:
+		var hid2: Array = []
+		var pts2: Array = []
+		for i in Map2.ROUTE.size() - 1:
+			var a := Vector2(Map2.ROUTE[i][0], Map2.ROUTE[i][1])
+			var b := Vector2(Map2.ROUTE[i + 1][0], Map2.ROUTE[i + 1][1])
+			var n := maxi(1, int(a.distance_to(b)))
+			for k in n: pts2.append(["route leg %d (%s)" % [i + 1, Map2.ROUTE[i + 1][2]], a.lerp(b, float(k) / n)])
+		for s in Map2.SPACES:
+			var c: Vector2 = Map2.space_rect(s[0]).get_center() - Vector2(Map2.O.x, Map2.O.z)
+			pts2.append(["space %s centre" % s[0], c])
+		for e in pts2:
+			var q: Vector2 = e[1] + Vector2(Map2.O.x, Map2.O.z)
+			if not lv.on_ground(q) or lv.blocked(q, 0.05): continue          # (where she can stand)
+			total += 1
+			var p := Vector3(q.x, lv.height_at(q) + LIFT, q.y)
+			var r := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + back * OWN, p + back * REACH))
+			if not r.is_empty(): hid2.append("%s at %s <- %s" % [e[0], _v2(p - Map2.O), names.get(r["shape"], "?")])
+		if not hid2.is_empty(): fails += 1
+		print("V2 WORLD %s (%d points)" % ["the whole way in sight" if hid2.is_empty() else "HIDDEN %d: " % hid2.size() + "; ".join(hid2.slice(0, 30)), pts2.size()])
 	print("OCCLUSION %s (%d of %d rooms with a hidden piece; %d pieces, %d meshes)" % ["PASS" if fails == 0 else "FAIL", fails, Framing.ROOMS.size(), total, nshapes[0]])
 	get_tree().quit()
 
@@ -106,6 +128,8 @@ func _collect(n: Node, skip: Node, body: StaticBody3D, names: Dictionary, count:
 	if n.name == "Zone_Sdome": return
 	# (v2.0: the crypt's vault fades whenever you are under it or on the way to it: stub, bridge)
 	if n.name == "CryptRoof": return
+	# (v2 rebuild: the doors and gates in their doorways fade in the see-through as you pass them, as walls do)
+	if str(n.name).begins_with("V2Door_"): return
 	if n is CanvasItem or n is CanvasLayer: return
 	if n is GeometryInstance3D and ((n as VisualInstance3D).layers & PlanarMirror.MAIN_MASK) != 0:
 		var xfs: Array = []
@@ -143,3 +167,6 @@ func _collect(n: Node, skip: Node, body: StaticBody3D, names: Dictionary, count:
 					names[count[0]] = "%s in %s [aabb %s, %s]" % [n.name, n.get_parent().name if n.get_parent() else "-", str(xf * ab), (mat.shader.resource_path.get_file() if mat is ShaderMaterial and mat.shader else str(mat))]
 					count[0] += 1
 	for c in n.get_children(): _collect(c, skip, body, names, count)
+
+func _v2(v: Vector3) -> String:
+	return "(%.1f, %.1f, %.1f)" % [v.x, v.y, v.z]

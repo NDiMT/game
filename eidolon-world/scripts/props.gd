@@ -84,7 +84,7 @@ func build(lv: Level) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 808
 	var blob_x: Array[Transform3D] = []
-	for e in PLACE:
+	for e in PLACE + (Map2.props() if Map2.enabled else []):
 		var asset: String = e[0]
 		var m := _mesh(asset)
 		if m.is_empty(): continue

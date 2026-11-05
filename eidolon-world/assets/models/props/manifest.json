@@ -1,349 +1,405 @@
 {
-  "generator": "Tripo API v3.1 (tripo-cli 0.7), smart_low_poly=true unless noted",
-  "conventions": "glTF Y-up, metres, base at y=0, centred on XZ, front faces +Z. Untextured files carry a placeholder material 'marble_placeholder' (pale cream, roughness 0.8) meant to be overridden; textured statues carry Tripo PBR (baseColor + metallicRoughness JPEG, normal PNG) at 1024 px.",
-  "assets": [
-    {
-      "file": "statue_veiled_praying.glb",
-      "category": "statue",
-      "size_m": {
-        "x": 0.62,
-        "y": 1.9,
-        "z": 0.58
-      },
-      "tris": 7391,
-      "textured": true,
-      "use": "Garden of the Veiled: centrepiece statue on the main path; also a Turned Ones plinth figure (rotate to face away)",
-      "tripo_task": "b6dc9d0a-f2b6-4fd4-94b4-88f50604d00a",
-      "notes": "Smart low-poly + standard texture."
-    },
-    {
-      "file": "statue_veiled_kneeling.glb",
-      "category": "statue",
-      "size_m": {
-        "x": 1.12,
-        "y": 1.35,
-        "z": 0.76
-      },
-      "tris": 8085,
-      "textured": true,
-      "use": "Garden of the Veiled: kneeling figure reaching toward the pool or a shrine; good for a 'reach toward' sightline",
-      "tripo_task": "084d5b04-98de-4172-a8ba-dcf9c1054ca8",
-      "notes": "Smart low-poly + standard texture; tiny loose debris removed."
-    },
-    {
-      "file": "statue_veiled_mourning.glb",
-      "category": "statue",
-      "size_m": {
-        "x": 0.76,
-        "y": 1.9,
-        "z": 0.68
-      },
-      "tris": 8155,
-      "textured": true,
-      "use": "Turned Ones plinths along the Hall approach (head-bowed mourner); Gate of the Four Veiled guardian",
-      "notes": "Round 3 (smart low-poly): heavy opaque veil, no facial features; head only gently bowed.",
-      "tripo_task": "465e7f5b-1e06-4cf2-9f51-d3b781dfc611"
-    },
-    {
-      "file": "statue_veiled_broken.glb",
-      "category": "statue",
-      "size_m": {
-        "x": 1.18,
-        "y": 1.25,
-        "z": 0.97
-      },
-      "tris": 7563,
-      "textured": true,
-      "use": "Garden of the Veiled ruin corner: veiled statue snapped at the waist, legs on the pedestal, toppled upper half on the ground beside it",
-      "notes": "Round 3: one statue in two fragments as briefed. Bounding box includes the fallen half lying on the ground.",
-      "tripo_task": "e951161b-bec8-4aa3-b641-e9ddb356a652"
-    },
-    {
-      "file": "statue_veiled_unfinished.glb",
-      "category": "statue",
-      "size_m": {
-        "x": 1.34,
-        "y": 2.0,
-        "z": 1.14
-      },
-      "tris": 7424,
-      "textured": true,
-      "use": "Sculptor's corner of the Garden / Gate of the Four Veiled: veiled half-figure emerging from a raw chiselled block",
-      "notes": "Round 3: non-finito upper body rising out of a rough block; the face is a smooth veiled form with only a faint relief (no hole/void).",
-      "tripo_task": "58541c16-83e8-4c6b-bb82-c3fdc464691d"
-    },
-    {
-      "file": "statue_veiled_bust.glb",
-      "category": "statue",
-      "size_m": {
-        "x": 0.95,
-        "y": 1.6,
-        "z": 0.67
-      },
-      "tris": 7771,
-      "textured": true,
-      "use": "Hall side niches / plinth tops; votive bust beside the shrine",
-      "notes": "Round 3: re-textured with texture v3.5 (cleaner, less grime); same geometry. Pedestal is short: stand it on column_stump for a taller read.",
-      "tripo_task": "f84f46fd-2c50-49c4-b82c-a16328e178d7"
-    },
-    {
-      "file": "column_doric.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 1.03,
-        "y": 4.0,
-        "z": 1.04
-      },
-      "tris": 3326,
-      "textured": false,
-      "use": "Hall columns (colonnade rows, ~4 m bays)",
-      "notes": "Capital reads slightly Ionic (small volutes).",
-      "tripo_task": "a1a2cd7b-73c1-48dd-a370-34fea9d4dc2c"
-    },
-    {
-      "file": "column_stump.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 0.68,
-        "y": 1.3,
-        "z": 0.68
-      },
-      "tris": 3000,
-      "textured": false,
-      "use": "Garden ruins and Hall broken colonnade; also a low pedestal for the bust",
-      "notes": "Not smart low-poly (first-pass model kept), locally decimated to 3k tris; UVs dropped.",
-      "tripo_task": "0cf490d9-a056-4f69-9a7b-6cc84ad810b5"
-    },
-    {
-      "file": "column_fallen.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 3.6,
-        "y": 1.05,
-        "z": 3.52
-      },
-      "tris": 3602,
-      "textured": false,
-      "use": "Garden of the Veiled ground clutter; collapse beside a Hall column gap",
-      "notes": "Round 3: scattered fluted drums plus a fallen capital (more than three drums). Forms are soft and rounded.",
-      "tripo_task": "b5b27b9e-2d26-41cc-a930-1dd19c581695"
-    },
-    {
-      "file": "archway_ruined.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 3.25,
-        "y": 4.5,
-        "z": 1.1
-      },
-      "tris": 3006,
-      "textured": false,
-      "use": "Gate of the Four Veiled (main gate), or a garden entrance arch",
-      "tripo_task": "744eb779-6859-450f-bb86-9eb73b5e8f98"
-    },
-    {
-      "file": "wall_ashlar_window.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 6.55,
-        "y": 3.0,
-        "z": 1.99
-      },
-      "tris": 2940,
-      "textured": false,
-      "use": "Hall outer wall run with a through window (light shafts into the Hall); Gate of the Four Veiled side wall",
-      "notes": "Round 3: a long ashlar wall with a window cut right through, scaled to 3 m high, so it is 6.55 m long and about 2 m thick. To meet the 0.6 m brief, scale Z by about 0.3 in-engine; the world-space marble survives non-uniform scale.",
-      "tripo_task": "75a97975-9331-43fc-a50f-ec790f2fc51c"
-    },
-    {
-      "file": "wall_ruin_low.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 4.0,
-        "y": 0.85,
-        "z": 1.46
-      },
-      "tris": 3307,
-      "textured": false,
-      "use": "Low ruined wall line in the Garden of the Veiled; terrace edges, half-buried foundations",
-      "notes": "Round 3: the straight 3 m wall attempts came out as a low rubble wall (0.85 m high) or a 10 m pier; the pier was rejected. Build full-height straight walls in-engine from boxes.",
-      "tripo_task": "517089ed-34a3-4597-bfa3-079712d0716e"
-    },
-    {
-      "file": "pylon_ashlar.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 1.44,
-        "y": 4.0,
-        "z": 1.31
-      },
-      "tris": 2519,
-      "textured": false,
-      "use": "Gate of the Four Veiled flanking pylons; Hall wall piers between in-engine wall boxes",
-      "notes": "Replaces 'wall_cornice': Tripo produced a tall pier instead of a long wall in both passes.",
-      "tripo_task": "0897e292-23d8-4ee4-a2b2-bf6597c9aea4"
-    },
-    {
-      "file": "pylon_ashlar_niche.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 1.57,
-        "y": 4.0,
-        "z": 0.71
-      },
-      "tris": 3040,
-      "textured": false,
-      "use": "Hall wall pier with a tall recessed niche (window slot does not pierce through)",
-      "notes": "Replaces 'wall_window': tall pier with a narrow recessed slot instead of a long wall with a through-window.",
-      "tripo_task": "5f5141e2-348c-48ae-b648-9a66498c05dc"
-    },
-    {
-      "file": "stairs_wide.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 1.89,
-        "y": 1.6,
-        "z": 1.95
-      },
-      "tris": 2128,
-      "textured": false,
-      "use": "Steps up to the Hall or the shrine dais (front = bottom step facing +Z)",
-      "notes": "Scale it on X if a wider flight is needed (about 1.9 m wide as is).",
-      "tripo_task": "45df19c1-7a17-4fc4-a799-e4f60e119e4b"
-    },
-    {
-      "file": "balustrade.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 2.0,
-        "y": 0.45,
-        "z": 0.4
-      },
-      "tris": 3571,
-      "textured": false,
-      "use": "Garden terraces, pool edge, Hall balcony; tile along X (2 m module)",
-      "tripo_task": "539a2adb-2441-4b65-bcbf-663a81304d3d"
-    },
-    {
-      "file": "pediment_fragment.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 3.0,
-        "y": 1.32,
-        "z": 0.95
-      },
-      "tris": 2855,
-      "textured": false,
-      "use": "Fallen gable piece in the Garden or Hall forecourt",
-      "tripo_task": "80f6ca3f-67d9-4b1f-8509-11f55dd15f57"
-    },
-    {
-      "file": "rubble_pile.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 2.5,
-        "y": 1.18,
-        "z": 2.37
-      },
-      "tris": 3000,
-      "textured": false,
-      "use": "Collapse heaps at the base of walls and columns; hides seams",
-      "notes": "Not smart low-poly (first-pass model kept), locally decimated to 3k tris; UVs dropped.",
-      "tripo_task": "0dfa88b8-ebba-40b7-ada9-ebba6cbf6936"
-    },
-    {
-      "file": "mirror_frame.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 0.96,
-        "y": 2.4,
-        "z": 0.44
-      },
-      "tris": 2623,
-      "textured": false,
-      "use": "The standing mirror: add the glass/mirror shader quad inside the empty opening in-engine",
-      "notes": "Opening is empty (no glass). Inner opening about 0.6 x 1.9 m; measure in-engine before fitting the quad.",
-      "tripo_task": "239e6731-c221-4a00-8b3d-b9ae63664f3c"
-    },
-    {
-      "file": "altar_shrine.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 3.0,
-        "y": 1.05,
-        "z": 2.99
-      },
-      "tris": 3037,
-      "textured": false,
-      "use": "Shrine of awakening (round dais with basin and 4 short pillars), Garden centre",
-      "tripo_task": "0f1fd50b-c63d-4e66-b08d-9fd5c92b1ea4"
-    },
-    {
-      "file": "colossus_head_veiled.glb",
-      "category": "landmark",
-      "size_m": {
-        "x": 0.61,
-        "y": 1.0,
-        "z": 0.7
-      },
-      "tris": 15650,
-      "textured": true,
-      "use": "The Sunken Colossus: scale about 8x (to ~8 m), tilt and half-sink in the water; the veiled brow, nose and chin should face up toward the camera",
-      "notes": "Normalised to 1 m tall (head and neck, cut at the neck base, no plinth); pale marble PBR texture at 1024 px. Image-to-model from a Tripo concept image after two text-to-model attempts came out with a bare face. The veil wraps the head and lies over the face, but at this polycount the face relief (eye hollows, nose, lips) reads quite strongly: it reads as a weathered veiled head rather than a fully shrouded one.",
-      "tripo_task": "60352233-82b1-47c1-8934-25f0e0eaaf66"
-    },
-    {
-      "file": "temple_small.glb",
-      "category": "landmark",
-      "size_m": {
-        "x": 5.57,
-        "y": 6.0,
-        "z": 5.58
-      },
-      "tris": 8341,
-      "textured": false,
-      "use": "The Upward Spring: hang upside down in the sky (rotate 180 deg about X); the doorway faces +Z",
-      "notes": "Complete tholos: 3-step round platform, 8 columns, entablature, dome with finial and a small cella with a doorway. 6 m tall, about 5.6 m across. Untextured placeholder material; the game's marble shader applies.",
-      "tripo_task": "5eacd6d3-61d8-4e1b-983c-24585faed0df"
-    },
-    {
-      "file": "brazier.glb",
-      "category": "prop",
-      "size_m": {
-        "x": 1.02,
-        "y": 0.9,
-        "z": 1.01
-      },
-      "tris": 8074,
-      "textured": true,
-      "use": "v1.0: textured bronze brazier on three lion-paw legs (0.9 m): replace the procedural braziers; flame at the bowl centre, ~0.85 m",
-      "tripo_task": "56c77381-6575-4ed7-8a9d-92826dd7a0db"
-    },
-    {
-      "file": "door_temple.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 2.17,
-        "y": 3.0,
-        "z": 0.99
-      },
-      "tris": 7614,
-      "textured": true,
-      "use": "v1.0: textured bronze-clad temple double door in a marble frame (3 m): wing doors; the leaves are one mesh with the frame",
-      "tripo_task": "9df63232-d3c4-4a34-af9d-0db710013891"
-    },
-    {
-      "file": "gate_veiled.glb",
-      "category": "architecture",
-      "size_m": {
-        "x": 3.69,
-        "y": 4.0,
-        "z": 1.24
-      },
-      "tris": 8276,
-      "textured": true,
-      "use": "v1.0: textured Gate of the Four Veiled (4 m): marble pillars, lintel, bronze bars with a four-faced medallion",
-      "tripo_task": "ac522feb-ec84-458c-9111-cc435381bfee"
-    }
-  ]
+ "generator": "Tripo API v3.1 (tripo-cli 0.7), smart_low_poly=true unless noted",
+ "conventions": "glTF Y-up, metres, base at y=0, centred on XZ, front faces +Z. Untextured files carry a placeholder material 'marble_placeholder' (pale cream, roughness 0.8) meant to be overridden; textured statues carry Tripo PBR (baseColor + metallicRoughness JPEG, normal PNG) at 1024 px.",
+ "assets": [
+  {
+   "file": "statue_veiled_praying.glb",
+   "category": "statue",
+   "size_m": {
+    "x": 0.62,
+    "y": 1.9,
+    "z": 0.58
+   },
+   "tris": 7391,
+   "textured": true,
+   "use": "Garden of the Veiled: centrepiece statue on the main path; also a Turned Ones plinth figure (rotate to face away)",
+   "tripo_task": "b6dc9d0a-f2b6-4fd4-94b4-88f50604d00a",
+   "notes": "Smart low-poly + standard texture."
+  },
+  {
+   "file": "statue_veiled_kneeling.glb",
+   "category": "statue",
+   "size_m": {
+    "x": 1.12,
+    "y": 1.35,
+    "z": 0.76
+   },
+   "tris": 8085,
+   "textured": true,
+   "use": "Garden of the Veiled: kneeling figure reaching toward the pool or a shrine; good for a 'reach toward' sightline",
+   "tripo_task": "084d5b04-98de-4172-a8ba-dcf9c1054ca8",
+   "notes": "Smart low-poly + standard texture; tiny loose debris removed."
+  },
+  {
+   "file": "statue_veiled_mourning.glb",
+   "category": "statue",
+   "size_m": {
+    "x": 0.76,
+    "y": 1.9,
+    "z": 0.68
+   },
+   "tris": 8155,
+   "textured": true,
+   "use": "Turned Ones plinths along the Hall approach (head-bowed mourner); Gate of the Four Veiled guardian",
+   "notes": "Round 3 (smart low-poly): heavy opaque veil, no facial features; head only gently bowed.",
+   "tripo_task": "465e7f5b-1e06-4cf2-9f51-d3b781dfc611"
+  },
+  {
+   "file": "statue_veiled_broken.glb",
+   "category": "statue",
+   "size_m": {
+    "x": 1.18,
+    "y": 1.25,
+    "z": 0.97
+   },
+   "tris": 7563,
+   "textured": true,
+   "use": "Garden of the Veiled ruin corner: veiled statue snapped at the waist, legs on the pedestal, toppled upper half on the ground beside it",
+   "notes": "Round 3: one statue in two fragments as briefed. Bounding box includes the fallen half lying on the ground.",
+   "tripo_task": "e951161b-bec8-4aa3-b641-e9ddb356a652"
+  },
+  {
+   "file": "statue_veiled_unfinished.glb",
+   "category": "statue",
+   "size_m": {
+    "x": 1.34,
+    "y": 2.0,
+    "z": 1.14
+   },
+   "tris": 7424,
+   "textured": true,
+   "use": "Sculptor's corner of the Garden / Gate of the Four Veiled: veiled half-figure emerging from a raw chiselled block",
+   "notes": "Round 3: non-finito upper body rising out of a rough block; the face is a smooth veiled form with only a faint relief (no hole/void).",
+   "tripo_task": "58541c16-83e8-4c6b-bb82-c3fdc464691d"
+  },
+  {
+   "file": "statue_veiled_bust.glb",
+   "category": "statue",
+   "size_m": {
+    "x": 0.95,
+    "y": 1.6,
+    "z": 0.67
+   },
+   "tris": 7771,
+   "textured": true,
+   "use": "Hall side niches / plinth tops; votive bust beside the shrine",
+   "notes": "Round 3: re-textured with texture v3.5 (cleaner, less grime); same geometry. Pedestal is short: stand it on column_stump for a taller read.",
+   "tripo_task": "f84f46fd-2c50-49c4-b82c-a16328e178d7"
+  },
+  {
+   "file": "column_doric.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 1.03,
+    "y": 4.0,
+    "z": 1.04
+   },
+   "tris": 3326,
+   "textured": false,
+   "use": "Hall columns (colonnade rows, ~4 m bays)",
+   "notes": "Capital reads slightly Ionic (small volutes).",
+   "tripo_task": "a1a2cd7b-73c1-48dd-a370-34fea9d4dc2c"
+  },
+  {
+   "file": "column_stump.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 0.68,
+    "y": 1.3,
+    "z": 0.68
+   },
+   "tris": 3000,
+   "textured": false,
+   "use": "Garden ruins and Hall broken colonnade; also a low pedestal for the bust",
+   "notes": "Not smart low-poly (first-pass model kept), locally decimated to 3k tris; UVs dropped.",
+   "tripo_task": "0cf490d9-a056-4f69-9a7b-6cc84ad810b5"
+  },
+  {
+   "file": "column_fallen.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 3.6,
+    "y": 1.05,
+    "z": 3.52
+   },
+   "tris": 3602,
+   "textured": false,
+   "use": "Garden of the Veiled ground clutter; collapse beside a Hall column gap",
+   "notes": "Round 3: scattered fluted drums plus a fallen capital (more than three drums). Forms are soft and rounded.",
+   "tripo_task": "b5b27b9e-2d26-41cc-a930-1dd19c581695"
+  },
+  {
+   "file": "archway_ruined.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 3.25,
+    "y": 4.5,
+    "z": 1.1
+   },
+   "tris": 3006,
+   "textured": false,
+   "use": "Gate of the Four Veiled (main gate), or a garden entrance arch",
+   "tripo_task": "744eb779-6859-450f-bb86-9eb73b5e8f98"
+  },
+  {
+   "file": "wall_ashlar_window.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 6.55,
+    "y": 3.0,
+    "z": 1.99
+   },
+   "tris": 2940,
+   "textured": false,
+   "use": "Hall outer wall run with a through window (light shafts into the Hall); Gate of the Four Veiled side wall",
+   "notes": "Round 3: a long ashlar wall with a window cut right through, scaled to 3 m high, so it is 6.55 m long and about 2 m thick. To meet the 0.6 m brief, scale Z by about 0.3 in-engine; the world-space marble survives non-uniform scale.",
+   "tripo_task": "75a97975-9331-43fc-a50f-ec790f2fc51c"
+  },
+  {
+   "file": "wall_ruin_low.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 4.0,
+    "y": 0.85,
+    "z": 1.46
+   },
+   "tris": 3307,
+   "textured": false,
+   "use": "Low ruined wall line in the Garden of the Veiled; terrace edges, half-buried foundations",
+   "notes": "Round 3: the straight 3 m wall attempts came out as a low rubble wall (0.85 m high) or a 10 m pier; the pier was rejected. Build full-height straight walls in-engine from boxes.",
+   "tripo_task": "517089ed-34a3-4597-bfa3-079712d0716e"
+  },
+  {
+   "file": "pylon_ashlar.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 1.44,
+    "y": 4.0,
+    "z": 1.31
+   },
+   "tris": 2519,
+   "textured": false,
+   "use": "Gate of the Four Veiled flanking pylons; Hall wall piers between in-engine wall boxes",
+   "notes": "Replaces 'wall_cornice': Tripo produced a tall pier instead of a long wall in both passes.",
+   "tripo_task": "0897e292-23d8-4ee4-a2b2-bf6597c9aea4"
+  },
+  {
+   "file": "pylon_ashlar_niche.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 1.57,
+    "y": 4.0,
+    "z": 0.71
+   },
+   "tris": 3040,
+   "textured": false,
+   "use": "Hall wall pier with a tall recessed niche (window slot does not pierce through)",
+   "notes": "Replaces 'wall_window': tall pier with a narrow recessed slot instead of a long wall with a through-window.",
+   "tripo_task": "5f5141e2-348c-48ae-b648-9a66498c05dc"
+  },
+  {
+   "file": "stairs_wide.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 1.89,
+    "y": 1.6,
+    "z": 1.95
+   },
+   "tris": 2128,
+   "textured": false,
+   "use": "Steps up to the Hall or the shrine dais (front = bottom step facing +Z)",
+   "notes": "Scale it on X if a wider flight is needed (about 1.9 m wide as is).",
+   "tripo_task": "45df19c1-7a17-4fc4-a799-e4f60e119e4b"
+  },
+  {
+   "file": "balustrade.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 2.0,
+    "y": 0.45,
+    "z": 0.4
+   },
+   "tris": 3571,
+   "textured": false,
+   "use": "Garden terraces, pool edge, Hall balcony; tile along X (2 m module)",
+   "tripo_task": "539a2adb-2441-4b65-bcbf-663a81304d3d"
+  },
+  {
+   "file": "pediment_fragment.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 3.0,
+    "y": 1.32,
+    "z": 0.95
+   },
+   "tris": 2855,
+   "textured": false,
+   "use": "Fallen gable piece in the Garden or Hall forecourt",
+   "tripo_task": "80f6ca3f-67d9-4b1f-8509-11f55dd15f57"
+  },
+  {
+   "file": "rubble_pile.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 2.5,
+    "y": 1.18,
+    "z": 2.37
+   },
+   "tris": 3000,
+   "textured": false,
+   "use": "Collapse heaps at the base of walls and columns; hides seams",
+   "notes": "Not smart low-poly (first-pass model kept), locally decimated to 3k tris; UVs dropped.",
+   "tripo_task": "0dfa88b8-ebba-40b7-ada9-ebba6cbf6936"
+  },
+  {
+   "file": "mirror_frame.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 0.96,
+    "y": 2.4,
+    "z": 0.44
+   },
+   "tris": 2623,
+   "textured": false,
+   "use": "The standing mirror: add the glass/mirror shader quad inside the empty opening in-engine",
+   "notes": "Opening is empty (no glass). Inner opening about 0.6 x 1.9 m; measure in-engine before fitting the quad.",
+   "tripo_task": "239e6731-c221-4a00-8b3d-b9ae63664f3c"
+  },
+  {
+   "file": "altar_shrine.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 3.0,
+    "y": 1.05,
+    "z": 2.99
+   },
+   "tris": 3037,
+   "textured": false,
+   "use": "Shrine of awakening (round dais with basin and 4 short pillars), Garden centre",
+   "tripo_task": "0f1fd50b-c63d-4e66-b08d-9fd5c92b1ea4"
+  },
+  {
+   "file": "colossus_head_veiled.glb",
+   "category": "landmark",
+   "size_m": {
+    "x": 0.61,
+    "y": 1.0,
+    "z": 0.7
+   },
+   "tris": 15650,
+   "textured": true,
+   "use": "The Sunken Colossus: scale about 8x (to ~8 m), tilt and half-sink in the water; the veiled brow, nose and chin should face up toward the camera",
+   "notes": "Normalised to 1 m tall (head and neck, cut at the neck base, no plinth); pale marble PBR texture at 1024 px. Image-to-model from a Tripo concept image after two text-to-model attempts came out with a bare face. The veil wraps the head and lies over the face, but at this polycount the face relief (eye hollows, nose, lips) reads quite strongly: it reads as a weathered veiled head rather than a fully shrouded one.",
+   "tripo_task": "60352233-82b1-47c1-8934-25f0e0eaaf66"
+  },
+  {
+   "file": "temple_small.glb",
+   "category": "landmark",
+   "size_m": {
+    "x": 5.57,
+    "y": 6.0,
+    "z": 5.58
+   },
+   "tris": 8341,
+   "textured": false,
+   "use": "The Upward Spring: hang upside down in the sky (rotate 180 deg about X); the doorway faces +Z",
+   "notes": "Complete tholos: 3-step round platform, 8 columns, entablature, dome with finial and a small cella with a doorway. 6 m tall, about 5.6 m across. Untextured placeholder material; the game's marble shader applies.",
+   "tripo_task": "5eacd6d3-61d8-4e1b-983c-24585faed0df"
+  },
+  {
+   "file": "brazier.glb",
+   "category": "prop",
+   "size_m": {
+    "x": 1.02,
+    "y": 0.9,
+    "z": 1.01
+   },
+   "tris": 8074,
+   "textured": true,
+   "use": "v1.0: textured bronze brazier on three lion-paw legs (0.9 m): replace the procedural braziers; flame at the bowl centre, ~0.85 m",
+   "tripo_task": "56c77381-6575-4ed7-8a9d-92826dd7a0db"
+  },
+  {
+   "file": "door_temple.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 2.17,
+    "y": 3.0,
+    "z": 0.99
+   },
+   "tris": 7614,
+   "textured": true,
+   "use": "v1.0: textured bronze-clad temple double door in a marble frame (3 m): wing doors; the leaves are one mesh with the frame",
+   "tripo_task": "9df63232-d3c4-4a34-af9d-0db710013891"
+  },
+  {
+   "file": "gate_veiled.glb",
+   "category": "architecture",
+   "size_m": {
+    "x": 3.69,
+    "y": 4.0,
+    "z": 1.24
+   },
+   "tris": 8276,
+   "textured": true,
+   "use": "v1.0: textured Gate of the Four Veiled (4 m): marble pillars, lintel, bronze bars with a four-faced medallion",
+   "tripo_task": "ac522feb-ec84-458c-9111-cc435381bfee"
+  },
+  {
+   "file": "kit_workbench.glb",
+   "tris": 6015,
+   "tripo_task": "8d963dd5-7baf-4fc3-a658-d71b012184d7",
+   "size_m": {
+    "x": 1.6,
+    "y": 0.96,
+    "z": 0.7
+   },
+   "category": "kit",
+   "textured": false,
+   "use": "Theron's workbench: mallets, chisels, a half-carved face block (crypt). WOOD",
+   "notes": "v2.0 Dress kit (dev_rig/tools/kit_prep.py, marble/wood placeholder, no textures)"
+  },
+  {
+   "file": "kit_cot.glb",
+   "tris": 6002,
+   "tripo_task": "4759edc3-c00d-49a4-9dbf-263b047318e4",
+   "size_m": {
+    "x": 1.14,
+    "y": 0.8,
+    "z": 2.0
+   },
+   "category": "kit",
+   "textured": false,
+   "use": "Theron's cot, rumpled linen and blanket (crypt). WOOD",
+   "notes": "v2.0 Dress kit (dev_rig/tools/kit_prep.py, marble/wood placeholder, no textures)"
+  },
+  {
+   "file": "kit_windbells.glb",
+   "tris": 6051,
+   "tripo_task": "46358874-d408-40ff-99ff-1d4f9070860d",
+   "size_m": {
+    "x": 1.85,
+    "y": 2.4,
+    "z": 0.44
+   },
+   "category": "kit",
+   "textured": false,
+   "use": "a frame of five bronze bells with torn ribbons (E wing, the Singing Stones). WOOD",
+   "notes": "v2.0 Dress kit (dev_rig/tools/kit_prep.py, marble/wood placeholder, no textures)"
+  },
+  {
+   "file": "kit_votive.glb",
+   "tris": 5958,
+   "tripo_task": "434f2e1e-6c07-49a2-81bb-029f908971e0",
+   "size_m": {
+    "x": 0.71,
+    "y": 1.1,
+    "z": 0.43
+   },
+   "category": "kit",
+   "textured": false,
+   "use": "a roadside votive niche with clay lamps and an offering bowl (N wing)",
+   "notes": "v2.0 Dress kit (dev_rig/tools/kit_prep.py, marble/wood placeholder, no textures)"
+  }
+ ]
 }

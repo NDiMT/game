@@ -21,6 +21,10 @@ func _ready() -> void:
 		var v := a.split(",")
 		if v.size() >= 3: spots.append([Vector3(float(v[0]), float(v[1]), float(v[2])), float(v[3]) if v.size() > 3 else RADIUS])
 	if spots.is_empty(): spots = [[Vector3(-4.6, 1.0, -13.5), RADIUS]]
+	# (v2 rebuild) every zone mesh, culled by distance or not (the spots may be far from where she stands)
+	game.level.set("_cull_t", 1e9)
+	for ch in game.level.get_children():
+		if ch is MeshInstance3D and str(ch.name).begins_with("Zone_"): (ch as MeshInstance3D).visible = true
 	for sp in spots:
 		tris.clear()
 		_collect(game, game.player, sp[0], sp[1], game.level)
@@ -29,6 +33,8 @@ func _ready() -> void:
 	get_tree().quit()
 
 func _is_transparent(m: Material) -> bool:
+	# (v2 rebuild: the see-through marble is opaque but while it fades round her: it is checked as stone)
+	if m is ShaderMaterial and (m as ShaderMaterial).shader and (m as ShaderMaterial).shader.resource_path.get_file() == "marble_occ.gdshader": return false
 	if m is ShaderMaterial and (m as ShaderMaterial).shader:
 		var code := (m as ShaderMaterial).shader.code
 		return code.contains("blend_") or code.contains("ALPHA")

@@ -142,6 +142,7 @@ func build() -> void:
 	_sealed_way()
 	Ch1Geo.build(self)
 	WorldGeo.build(self)          # (v1.0 M3: the Atrium hub and the traversal sections)
+	if Map2.enabled: Map2.build(self)             # (v2 rebuild, phase 1: the new Chapter I block-out, at Map2.O)
 	_far_ruins()                 # (after every walk region exists: it keeps clear of them)
 	_beyond()
 

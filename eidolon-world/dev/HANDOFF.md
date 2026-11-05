@@ -477,3 +477,55 @@ cl.queue_free()                          # ic.skip() finishes the current card
 - Test tools (mine): dev_fx/v2_fx_ingame.tscn (`--only=palm,warden,murk,comb,shard,frost,beacon,write,eye,card`, `--low`), dev_fx/v2_global.tscn (`--tag=before|after`), dev_fx/v2_web.tscn, dev_fx/card_test.gd, dev_rig/tools/item_view.gd (item turnaround + 128 px icon).
 - Tripo: 30 credits (the comb); balance 475.
 
+
+2026-11-05 | A -> W | v2.0 Chapter I rebuild: landmark set dressing (Dress), per-space moods (world.set_mood), the prologue set
+No V2_MAP.md / landmark list from you yet, so everything is position-free: you pass each landmark's floor rect and height, and the recipe fills it. Every recipe is shot IN THE GAME (dev_fx/dress_ingame.tscn: each landmark on a bare test floor out in the game's own world, with its camera, fog, mood and tier; the game camera plus an overview). Sheets: dev/shots/v2-dress-act1.png, v2-dress-west.png, v2-dress-north.png, v2-dress-east.png, v2-dress-act3.png, v2-dress-low.png. Built on the existing Tripo assets first (statues, kit_*, door, gate, braziers, altar, mirror frames, columns, items' wax tablets); 4 new kit pieces where nothing existing fitted (below).
+
+**1. Dressing a landmark (scripts/fx/dress.gd, class Dress): one line each, after the landmark's walls / walk regions / puzzle obstacles exist** (it tests against them):
+```gdscript
+var d := Dress.build(level, self, "atrium", Rect2(x0, z0, width_x, depth_z), floor_y, [path_rect, puzzle_rect])
+# d.beacons  (atrium) the three BeaconFire nodes, W, N, E: d.beacons[i].ignite() / set_lit(true)
+# d.flames   votive / bench flames (Flame, crimson, in the shared light budget)
+# d.skipped  pieces it left out, with the reason: print it once while you lay out
+```
+Landmark ids (EIDOLON_SCRIPT §6): Act 1 `stub_gateway`, `glass_niche`, `crypt`, `atrium`; W wing `stair_breath`, `hall_glass`, `shadow_chamber`, `hidden_way`, `colossus`; N wing `colonnade`, `turned_ones`, `votive`, `tree_shards`, `mist_maze`; E wing `balcony`, `singing_stones`, `mirror_walk`, `spring`, `scales`; Act 3 `pool_halves`, `bridge`, `gate_four`, `shrine`.
+What it guarantees:
+- **The view stays clear.** The camera looks from the south-west, so tall pieces only stand on a landmark's NORTH and EAST edges (the back of the view). The south and west edges get low pieces only. Anything taller than 1.6 m joins the see-through (`level.occluders`).
+- **Nothing overlaps.** Each piece is tested against your solids and obstacles, the earlier pieces, the `keep` rects and the landmark rect. Edge pieces slide inward to fit. A piece that still does not fit is skipped, never forced. Every piece gets an obstacle footprint (a circle, or a chain of circles for long pieces).
+- **Budget.** One landmark = 1 merged marble mesh + 1 see-through mesh + 1 small-dressing mesh + 1 glass-pane mesh (mirror frames) + 1 contact-shadow multimesh, plus its flames, veils and mist. Measured in game in the test bays: 30-47 draw calls per view in total (game camera, High; the Atrium with its 3 beacons is the 47), 28-41 on Low.
+- **Low tier** (wired in world.gd set_tier via `Dress.apply_tier`): the small dressing goes; the veils are not built.
+- **One crimson light.** The only lights are Flame votives and BeaconFire; nothing else glows.
+- **The crypt.** The bench flame is small; your lamp beat and `set_darkness` do the rest.
+- **The Atrium.** The fountain recipe piece is the kit_fountain. Your still water goes in its basin.
+- **Shadow Chamber.** I put NO braziers in it: yours are the puzzle.
+- **Glass niche.** The pylon niche on the north edge is the frame for your one-stroke glass.
+
+**2. Moods (scripts/world.gd, live): light and fog per space; the crimson accent is unchanged everywhere.**
+```gdscript
+world.set_mood("w_glass")    # on entering any W-wing space: glass and cold (blue-grey fog, cool light, crisp, desaturated)
+world.set_mood("n_garden")   # N wing: garden mist (green-grey low mist, soft warm light, closer fog)
+world.set_mood("e_high")     # E wing: high and windy (thin bright air, strong sun, fog sheets racing ~3x)
+world.set_mood("act1")       # Act 1 (default), "act3" the convergence (dusk, rose fog), "prologue" (near night)
+```
+- Blends over 2.5 s (second argument). `set_darkness` and `set_awaken` still apply on top.
+- Suggested hook: wherever you change area (main.gd, by `AREA_WIND` / `_area_group`), add `world.set_mood(MOOD_OF[area])` with your new area names.
+- The fog drift is now accumulated by World (fog_sheet `drift_off`), so wind changes never jump.
+
+**3. Prologue set (Dress.prologue_set): the black-water threshold.**
+```gdscript
+var set := Dress.prologue_set(level, self, lip_point, head_point, 12.0)   # lip: her marble lip (water to its north); head: the Observer, half sunk
+world.set_mood("prologue", 0.0)
+# set.water_mat is the black water (OmenFx.murk works on it); free `set` when the prologue ends
+```
+- Black, glassy, still water spreads 60 m north of the lip.
+- The marble lip is two worn slabs stepping down into it.
+- The giant veiled head is the existing `colossus_head_veiled`, 12 m tall, sunk to 42%, seen from the back. Put `head_point` to the lip's north-east (straight up the screen) about 10 m out.
+- Today your prologue uses the waking pool and CO_HEAD. Use this set if the new layout gives the prologue its own space.
+
+**4. New kit pieces (Tripo, 120 credits; balance 355; cap 150 respected).** Prepped like the rest of the kit by `dev_rig/tools/kit_prep.py`: front +Z, base y 0, marble or wood placeholder, no textures. Dress draws them in wood. Listed in the props manifest.json.
+- kit_workbench (1.6 x 0.96 x 0.7 m: mallets, chisels, a half-carved face);
+- kit_cot (2.0 x 1.14 m, rumpled linen);
+- kit_windbells (2.4 m frame of five bronze bells and torn ribbons, the Singing Stones);
+- kit_votive (1.1 m roadside niche with clay lamps, N wing).
+Dress has fallbacks if any is missing.
+- Ask: please post V2_MAP.md / the landmark list with rects as soon as it exists; I will then re-shoot each landmark in its real place and tune the recipes to your walls and paths (the `keep` rects are how you protect paths and puzzle floors).
