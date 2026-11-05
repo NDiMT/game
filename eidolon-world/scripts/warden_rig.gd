@@ -6,7 +6,11 @@ extends Node3D
 ##   w.walk(true)                 the slow heavy walk (w.walk_speed() = how fast to move the node to match)
 ##   w.walk(false)                back to the idle (breathing, head bowed, a slow tilt)
 ##   w.look_at_point(cam_pos)     turns his head (neck + head, up to 80 deg) toward a world point, eased;
-##   w.look_at_point(Vector3.INF) lets go.  ("turn head toward you": pass the camera's or the player's position.)
+##   w.look_at_point(Vector3.INF) lets go.
+##   w.set_look("glass")          v2.0: the Glass Warden of cracked glass (prologue, rising in the pool); "reflection"
+##                                (dark + crimson rim, mirrors only); "" = his own textured look
+##   w.rise_from(water_y, 3.0)    v2.0: he rises up out of the water at his current x/z (glass look; the surface clips
+##                                him, a wet line at it, the cracks light from the feet up). Returns the Tween.  ("turn head toward you": pass the camera's or the player's position.)
 ## Clips also in the GLB: "turn_head_left" / "turn_head_right" (3 s, hold) if a fixed beat is wanted instead.
 ## Skeleton: the same 25 body bones as the wanderer/heroine + 8 robe hem chains (Hem*) + 3 cape chains (CapeB*).
 
@@ -64,6 +68,42 @@ func set_reflection(on: bool) -> void:
 		sm.shader = preload("res://shaders/warden_reflection.gdshader")
 		if src and src.albedo_texture: sm.set_shader_parameter("albedo_tex", src.albedo_texture)
 		m.material_override = sm
+
+## v2.0 "glass" | "reflection" | "" (own look)
+func set_look(look: String) -> void:
+	if look == "reflection":
+		set_reflection(true)
+		return
+	set_reflection(false)
+	if look != "glass" or model == null: return
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		var src := m.get_active_material(0) as BaseMaterial3D
+		var sm := ShaderMaterial.new()
+		sm.shader = preload("res://shaders/warden_glass.gdshader")
+		if src and src.albedo_texture: sm.set_shader_parameter("albedo_tex", src.albedo_texture)
+		m.material_override = sm
+
+func _glass_param(k: String, v: Variant) -> void:
+	if model == null: return
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		var sm := (mi as MeshInstance3D).material_override as ShaderMaterial
+		if sm: sm.set_shader_parameter(k, v)
+
+## v2.0 rise out of still water: from fully under the surface (at water_y) up to standing on `stand_y` (default: his
+## current y), over `seconds`. Set the glass look first (done here if not).
+func rise_from(water_y: float, seconds := 3.0, stand_y := NAN) -> Tween:
+	if is_nan(stand_y): stand_y = global_position.y
+	if model and (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).material_override == null: set_look("glass")
+	_glass_param("clip_y", water_y)
+	_glass_param("rise", 0.0)
+	var p := global_position
+	global_position = Vector3(p.x, water_y - height * 1.02, p.z)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(self, "global_position:y", stand_y, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(v: float) -> void: _glass_param("rise", v), 0.0, 1.0, seconds * 1.1)
+	return tw
 
 ## the heavy walk on/off (blended)
 func walk(on: bool) -> void:

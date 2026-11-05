@@ -15,6 +15,10 @@ uniform float foam_k = 1.0;       // shoreline foam (0: none)
 uniform float ripple_k = 1.0;     // ripple strength (0: glassy still)
 uniform vec3 sun_dir = vec3(0.304, -0.819, -0.486);   // the key light's direction (world.gd's sun)
 uniform float glint_k = 1.0;
+// v2.0 (A, prologue shot 9): the water CLOUDS OVER as he drags her into the fog: 0 clear .. 1 a drifting milky murk
+// (OmenFx.murk tweens it); `murk_c` its colour
+uniform float murk = 0.0;
+uniform vec3 murk_c : source_color = vec3(0.62, 0.64, 0.66);
 #include "res://shaders/water_fx.gdshaderinc"
 varying vec3 wp;
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -56,5 +60,11 @@ void fragment() {
 	float sf = (1.0 - smoothstep(0.0, shore * 0.55, em + (nz - 0.5) * 0.035)) * smoothstep(0.42, 0.72, texture(noise_tex, p * 2.4 + TIME * vec2(0.03, 0.02)).r);
 	float foam = clamp(sf * 0.45 * foam_k + foamE, 0.0, 1.0);
 	c = mix(c, vec3(0.9, 0.92, 0.92), foam * 0.8);
+	if (murk > 0.0) {
+		float sw = texture(noise_tex, p * 0.35 + vec2(sin(TIME * 0.15), cos(TIME * 0.12)) * 0.3 + TIME * vec2(0.02, -0.03)).r;
+		float sw2 = texture(noise_tex, p * 1.1 - TIME * vec2(0.04, 0.025)).r;
+		float m = clamp(murk * 1.3 - (1.0 - sw * 0.7 - sw2 * 0.3) * 0.6, 0.0, 1.0);
+		c = mix(c, murk_c * (0.9 + 0.2 * sw2), m);
+	}
 	ALBEDO = c;
 }

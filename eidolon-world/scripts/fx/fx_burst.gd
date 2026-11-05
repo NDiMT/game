@@ -111,3 +111,15 @@ static func footstep(parent: Node, pos: Vector3, water_fx: Object = null) -> FxB
 	if water_fx and water_fx.has_method("splash"): water_fx.call("splash", pos, 0.45, 2.5)
 	return _make(parent, pos, SPLASH, 12, {"life": 0.55, "speed": 1.5, "spread": 0.7, "gravity": 9.8, "size0": 0.075, "size1": 0.045, "stretch": 0.04,
 		"col0": Color(0.97, 0.99, 1.0, 0.95), "col1": Color(0.9, 0.94, 0.98, 0.0), "delay": 0.05, "soft": 0.02, "reach": 1.0})
+
+## v2.0 a few drops running off something just lifted out of water (PassThrough.water calls it a few times)
+static func drip_off(parent: Node, pos: Vector3) -> FxBurst:
+	return _make(parent, pos, SPLASH, 5, {"life": 0.6, "speed": 0.25, "spread": 0.35, "dir": Vector3(0, -1, 0), "gravity": 9.8, "size0": 0.06, "size1": 0.045, "stretch": 0.03,
+		"col0": Color(0.95, 0.98, 1.0, 1.0), "col1": Color(0.9, 0.94, 0.98, 0.3), "delay": 0.5, "soft": 0.0, "reach": 1.5})
+
+## v2.0 silver sparkles of glass thrown out of a mirror crack along its normal (PassThrough.mirror), with a few twinkles
+static func shards(parent: Node, pos: Vector3, normal := Vector3.BACK) -> FxBurst:
+	var b := _make(parent, pos, SPARK, 22, {"life": 0.9, "speed": 1.8, "spread": 0.45, "dir": normal.normalized(), "gravity": 4.0, "drag": 1.2,
+		"size0": 0.07, "size1": 0.03, "stretch": 0.04, "col0": Color(0.96, 0.98, 1.0, 1.0), "col1": Color(0.7, 0.78, 0.86, 0.0), "delay": 0.15, "soft": 0.0, "reach": 2.0})
+	_make(parent, pos, GLINT, 4, {"life": 0.9, "size0": 0.22, "size1": 0.12, "col0": Color(0.92, 0.95, 1.0, 1.0), "col1": Color(1.0, 1.0, 1.0, 0.0), "delay": 0.4, "soft": 0.0, "reach": 0.6})
+	return b
