@@ -20,6 +20,7 @@ class_name OmenFx
 static var high := true
 const SH := preload("res://shaders/omen_fx.gdshader")
 enum { CAUSTIC, CRACK, FROST, WRITING, EYE, RING }
+const LIFT := 0.025                             # decals on water sit this far above it (clear of its ripples)
 
 ## a flat decal (PlaneMesh, +Y normal) with the omen shader; `normal` turns it to stand on a glass
 static func decal(parent: Node, pos: Vector3, kind: int, size: Vector2, normal := Vector3.UP, yaw := 0.0) -> MeshInstance3D:
@@ -31,6 +32,7 @@ static func decal(parent: Node, pos: Vector3, kind: int, size: Vector2, normal :
 	m.shader = SH
 	m.set_shader_parameter("kind", kind)
 	m.set_shader_parameter("aspect", size.x / maxf(size.y, 0.001))
+	m.render_priority = 10                      # (over the water's own transparent surface, whatever the sort)
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
@@ -68,10 +70,11 @@ static func palm_press(parent: Node, pos: Vector3, yaw := 0.0, water_fx: Object 
 	m.shader = preload("res://shaders/surface_palm.gdshader")
 	m.set_shader_parameter("k", 0.0)
 	m.set_shader_parameter("press", 0.0)
+	m.render_priority = 10
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
-	mi.global_transform = Transform3D(Basis(Vector3.UP, yaw), pos + Vector3(0, 0.004, 0))
+	mi.global_transform = Transform3D(Basis(Vector3.UP, yaw), pos + Vector3(0, LIFT, 0))
 	var tw := mi.create_tween()
 	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("k", v), 0.0, 1.0, 0.8)
 	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("press", v), 0.0, 1.0, 0.9).set_ease(Tween.EASE_OUT)
@@ -86,7 +89,8 @@ static func palm_tap(mi: MeshInstance3D, water_fx: Object = null) -> void:
 	var tw := mi.create_tween()
 	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("tap", v), 1.0, 0.0, 0.45)
 	if water_fx and water_fx.has_method("splash"): water_fx.call("splash", mi.global_position, 0.55, 3.0)
-	var r := decal(mi.get_parent(), mi.global_position + Vector3(0, 0.006, 0), RING, Vector2(1.1, 1.1))
+	if not high: return                                   # (Low: the water's own ring only)
+	var r := decal(mi.get_parent(), mi.global_position + Vector3(0, 0.002, 0), RING, Vector2(1.1, 1.1))
 	var rm := r.material_override as ShaderMaterial
 	var t2 := r.create_tween()
 	t2.tween_method(func(v: float) -> void: rm.set_shader_parameter("grow", v), 0.15, 1.0, 0.9).set_ease(Tween.EASE_OUT)
@@ -156,7 +160,7 @@ static func write_in_water(parent: Node, pos: Vector3, yaw := 0.0, text := "ΒΡ
 		arr.append(Vector4(a.x, a.y, b.x, b.y))
 		acc.append(total)
 		total += a.distance_to(b)
-	var mi := decal(parent, pos + Vector3(0, 0.006, 0), WRITING, Vector2(w, h), Vector3.UP, yaw)
+	var mi := decal(parent, pos + Vector3(0, LIFT + 0.002, 0), WRITING, Vector2(w, h), Vector3.UP, yaw)
 	var m := mi.material_override as ShaderMaterial
 	m.set_shader_parameter("segs", arr)
 	m.set_shader_parameter("seg_acc", acc)
@@ -171,7 +175,7 @@ static func write_in_water(parent: Node, pos: Vector3, yaw := 0.0, text := "ΒΡ
 
 ## a glass eye deep in the water opens for a moment (`hold_s`), then closes and is gone
 static func glass_eye(parent: Node, pos: Vector3, size := 1.4, open_s := 1.6, hold_s := 2.2, yaw := 0.0) -> MeshInstance3D:
-	var mi := decal(parent, pos + Vector3(0, 0.005, 0), EYE, Vector2(size, size * 0.62), Vector3.UP, yaw)
+	var mi := decal(parent, pos + Vector3(0, LIFT, 0), EYE, Vector2(size, size * 0.62), Vector3.UP, yaw)
 	var m := mi.material_override as ShaderMaterial
 	m.set_shader_parameter("open", 0.0)
 	var tw := mi.create_tween()

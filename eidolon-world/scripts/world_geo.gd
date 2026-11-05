@@ -16,7 +16,7 @@ const A_Y := 0.5                         # the Atrium's floor
 const A_RECT := Rect2(-4.0, 9.6, 18.0, 13.4)   # x -4..14, z 9.6..23
 const FOUNTAIN := Vector3(5.0, A_Y, 16.0)
 const GAL_Y := A_Y + 2.6                 # the scaffold gallery
-const LAMP_POS := Vector3(13.25, GAL_Y, 14.7)
+const LAMP_POS := Vector3(0.94, 0.68, 10.9)       # (v2.0 I.5: on the crypt basin's rim, where her hand pushed it up; was Theron's bench)
 const BAL_Y := 2.0                       # the balcony
 ## T4: the hidden path's stones (centres, x z), their top just under the water
 const T4_Y := 0.1

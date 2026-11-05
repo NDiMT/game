@@ -49,8 +49,8 @@ const PLACE := [
 	["kit_face2", Vector3(5.2, 0.95, 22.25), 180.0, 0.9, "atrium"],
 	["kit_face6", Vector3(6.5, 0.95, 22.25), 160.0, 0.9, "atrium"],
 	["kit_face1", Vector3(7.7, 0.95, 22.25), 200.0, 0.9, "atrium"],
-	["kit_face4", Vector3(0.6, 0.5, 12.6), 140.0, 1.0, "atrium"],
-	["kit_face3", Vector3(-1.2, 0.65, 13.0), 60.0, 1.0, "atrium", -90.0],
+	["kit_face4", Vector3(0.9, 0.5, 15.2), 140.0, 1.0, "atrium"],       # (v2.0: out of the crypt's way)
+	["kit_face3", Vector3(-1.4, 0.65, 16.3), 60.0, 1.0, "atrium", -90.0],
 	["kit_face6", Vector3(3.6, 0.67, 21.0), 20.0, 1.0, "atrium", 90.0],
 	["kit_face2", Vector3(9.6, 0.67, 21.2), -40.0, 1.0, "atrium", -90.0],
 	# Theron's workshop: his ladder by the crane arm (the scaffold towers cannot stand under his gallery:

@@ -320,6 +320,8 @@ func set_tier(t: String, step := 0) -> void:
 	PickupMarker.high = not low
 	QuadBatch.high = not low
 	WardenRig.high = not low
+	OmenFx.high = not low
+	BeaconFire.high = not low
 	for w in get_tree().get_nodes_in_group("q_warden"): (w as WardenRig).set_shadow(not low)
 
 func set_quality(high: bool) -> void:

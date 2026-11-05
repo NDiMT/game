@@ -44,21 +44,23 @@ float caustic(vec2 p, float t) {
 	return pow(clamp(1.0 - min(a, b) * 0.5, 0.0, 1.0), 6.0);
 }
 // a radial crack star with a few branches (glass): returns the line strength
-float crack_star(vec2 p, float r_max) {
+float crack_star(vec2 p, float r_max, out float halo) {
 	float r = length(p), an = atan(p.y, p.x);
 	float s = 0.0;
+	halo = 0.0;
 	for (int i = 0; i < 9; i++) {
 		float fi = float(i);
 		float a0 = fi * 0.698 + hash(vec2(fi, 3.1)) * 0.5;
 		float bend = sin(r * (6.0 + fi) + fi) * 0.08;
 		float da = abs(mod(an - a0 - bend + 3.14159, 6.28318) - 3.14159) * r;
 		float len = r_max * (0.55 + 0.45 * hash(vec2(fi, 7.7)));
-		s = max(s, (1.0 - smoothstep(0.004, 0.012 + 0.006 * (1.0 - r), da)) * step(r, len));
+		s = max(s, (1.0 - smoothstep(0.008, 0.02 + 0.012 * (1.0 - r), da)) * step(r, len));
+		halo = max(halo, exp(-da / 0.035) * step(r, len));
 	}
 	// rings of the impact
 	for (int j = 0; j < 2; j++) {
 		float rr = r_max * (0.18 + 0.2 * float(j));
-		s = max(s, (1.0 - smoothstep(0.0, 0.008, abs(r - rr - 0.01 * sin(an * 7.0 + float(j))))) * step(r, r_max) * 0.7);
+		s = max(s, (1.0 - smoothstep(0.0, 0.008, abs(r - rr - 0.01 * sin(an * 7.0 + float(j))) - 0.006)) * step(r, r_max) * 0.75);
 	}
 	return s;
 }
@@ -77,11 +79,12 @@ void fragment() {
 		c = mix(accent.rgb, tint, 0.65 + 0.35 * cs);
 		a = (cs * 0.85 + fall * 0.25) * fall;
 	} else if (kind == 1) {
-		float s = crack_star(pa, grow * 0.95);
+		float halo;
+		float s = crack_star(pa, grow * 0.95, halo);
 		float an = atan(pa.y, pa.x);
 		float glint = exp(-pow(mod(an - t * 1.4, 6.28318) - 3.14159, 2.0) * 3.0);
 		c = mix(vec3(0.9, 0.95, 1.0), vec3(1.0), glint);
-		a = s * (0.55 + 0.45 * glint);
+		a = max(s * (0.7 + 0.3 * glint), halo * (0.22 + 0.35 * glint));     // the lines, and a soft sheen round them
 		float core = (1.0 - smoothstep(0.0, 0.06, length(pa))) * grow;
 		c = mix(c, accent_core.rgb, core * 0.4);
 		a = max(a, core * 0.8);
@@ -113,12 +116,12 @@ void fragment() {
 			if (d < best) { best = d; at = seg_acc[i] + drawn * h; }
 			if (drawn < L) tip = length(pa - b);
 		}
-		float w = 0.022;
-		float line = 1.0 - smoothstep(w * 0.4, w, best);
-		float glow = exp(-best / 0.06) * 0.55;
+		float w = 0.05;
+		float line = 1.0 - smoothstep(w * 0.45, w, best);
+		float glow = exp(-best / 0.11) * 0.6;
 		float shim = 0.75 + 0.25 * caustic(pa * 0.6, t * 1.3);
 		float age = clamp((progress - at) / 1.5, 0.0, 1.0);          // a stroke cools a little after it is drawn
-		float pen = exp(-tip * tip / 0.004);
+		float pen = exp(-tip * tip / 0.008);
 		c = mix(accent.rgb, mix(accent_core.rgb, vec3(1.0, 0.92, 0.9), 0.5), line * (1.0 - age * 0.4));
 		c = mix(c, vec3(1.0), pen * 0.8);
 		a = clamp((line * 0.95 + glow * shim) * (1.0 - age * 0.25) + pen, 0.0, 1.0);
@@ -132,20 +135,20 @@ void fragment() {
 		float inside = 1.0 - smoothstep(0.92, 1.0, max(ax, abs(q.y) / wy));
 		float r = length(q);
 		float iris = 1.0 - smoothstep(0.33, 0.36, r);
-		float ring = (1.0 - smoothstep(0.0, 0.03, abs(r - 0.34))) ;
+		float ring = 1.0 - smoothstep(0.015, 0.05, abs(r - 0.345));
 		float pupil = 1.0 - smoothstep(0.1, 0.13, r * (1.0 + 0.3 * (1.0 - lid)));
 		float rays = 0.5 + 0.5 * sin(atan(q.y, q.x) * 28.0 + r * 30.0);
-		vec3 white = vec3(0.62, 0.68, 0.72);
-		vec3 irc = mix(vec3(0.35, 0.45, 0.52), vec3(0.75, 0.82, 0.88), rays * smoothstep(0.12, 0.33, r));
+		vec3 white = vec3(0.84, 0.87, 0.9);
+		vec3 irc = mix(vec3(0.3, 0.4, 0.48), vec3(0.7, 0.8, 0.88), rays * smoothstep(0.12, 0.33, r));
 		c = mix(white, irc, iris);
-		c = mix(c, accent.rgb * 1.1, ring * 0.9);
+		c = mix(c, accent.rgb, ring);
 		c = mix(c, vec3(0.02, 0.02, 0.03), pupil);
 		c += vec3(0.9) * exp(-dot(q - vec2(-0.14, 0.12), q - vec2(-0.14, 0.12)) / 0.002) * lid;     // the glassy highlight
 		float depth = 0.45 + 0.55 * (1.0 - smoothstep(0.0, 1.0, r));
-		c = mix(vec3(0.28, 0.32, 0.36), c, depth);                                                  // deep in the water
-		float lidline = (1.0 - smoothstep(0.0, 0.03, abs(max(ax, abs(q.y) / wy) - 1.0))) * step(0.02, lid);
-		c = mix(c, accent.rgb * 0.7, lidline * 0.6);
-		a = max(inside * 0.88, lidline * 0.6) * smoothstep(0.0, 0.08, lid);
+		c = mix(vec3(0.42, 0.46, 0.5), c, depth);                                                   // deep in the water
+		float lidline = (1.0 - smoothstep(0.0, 0.06, abs(max(ax, abs(q.y) / wy) - 1.0))) * step(0.02, lid);
+		c = mix(c, vec3(0.1, 0.06, 0.07), lidline * 0.85);
+		a = max(inside * 0.92, lidline * 0.9) * smoothstep(0.0, 0.08, lid);
 		a = max(a, exp(-r * r * 2.0) * 0.18 * lid);                                                 // a faint glow round it
 	} else {
 		float r = length(pa);

@@ -19,7 +19,7 @@ static func water(parent: Node, pos: Vector3, item: Node3D, water_fx: Object = n
 	parent.add_child(root)
 	root.global_position = pos
 	# caustic light under the surface, swelling as it comes
-	var cau := OmenFx.decal(root, pos + Vector3(0, 0.005, 0), OmenFx.CAUSTIC, Vector2(1.4, 1.4))
+	var cau := OmenFx.decal(root, pos + Vector3(0, OmenFx.LIFT, 0), OmenFx.CAUSTIC, Vector2(1.4, 1.4))
 	var cm := cau.material_override as ShaderMaterial
 	cm.set_shader_parameter("k", 0.0)
 	# the item starts under the surface
@@ -39,7 +39,7 @@ static func water(parent: Node, pos: Vector3, item: Node3D, water_fx: Object = n
 	tw.tween_interval(t_break)
 	# the break: meniscus pop, ring, droplets
 	tw.tween_callback(func() -> void:
-		var ring := OmenFx.decal(root, pos + Vector3(0, 0.007, 0), OmenFx.RING, Vector2(1.0, 1.0))
+		var ring := OmenFx.decal(root, pos + Vector3(0, OmenFx.LIFT + 0.003, 0), OmenFx.RING, Vector2(1.0, 1.0))
 		var rm := ring.material_override as ShaderMaterial
 		var t2 := ring.create_tween()
 		t2.tween_method(func(v: float) -> void: rm.set_shader_parameter("grow", v), 0.1, 1.0, 0.8).set_ease(Tween.EASE_OUT)
@@ -67,7 +67,7 @@ static func water(parent: Node, pos: Vector3, item: Node3D, water_fx: Object = n
 	tw.tween_callback(root.queue_free)
 	return root
 
-static func mirror(parent: Node, pos: Vector3, normal: Vector3, item: Node3D, seconds := 1.6, keep_crack := true, crack_size := 1.2) -> Node3D:
+static func mirror(parent: Node, pos: Vector3, normal: Vector3, item: Node3D, seconds := 1.6, keep_crack := true, crack_size := 1.6) -> Node3D:
 	var n := normal.normalized()
 	var root := Node3D.new()
 	root.name = "PassThroughMirror"
@@ -86,7 +86,11 @@ static func mirror(parent: Node, pos: Vector3, normal: Vector3, item: Node3D, se
 		it.tween_interval(seconds * 0.3)
 		it.tween_property(item, "global_position", end, seconds * 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func() -> void:
-		var s := FxBurst.shards(root, pos + n * 0.08, n))
+		FxBurst.shards(root, pos + n * 0.08, n)
+		if item and is_instance_valid(item):
+			var g := FxBurst.glints(root, Vector3.ZERO)          # (the item reads as it comes out: twinkles on it)
+			g.global_position = pos + n * 0.3
+			g.get_tree().create_timer(seconds + 0.8).timeout.connect(g.stop))
 	tw.tween_interval(seconds)
 	if keep_crack:
 		# the crack settles: the glint keeps running, a little dimmer

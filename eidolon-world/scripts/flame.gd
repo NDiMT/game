@@ -52,7 +52,7 @@ func _init(style := 0.0, size := 0.6, light_col := Color(1.0, 0.68, 0.38), noise
 		add_child(mi)
 	embers = CPUParticles3D.new()
 	var em := QuadMesh.new()
-	em.size = Vector2(0.025, 0.025)
+	em.size = Vector2(0.06, 0.06)          # (v2.0 A: 6 cm, so one reads at the phone camera; was 2.5 cm)
 	embers.mesh = em
 	var emm := ShaderMaterial.new()
 	emm.shader = preload("res://shaders/ember.gdshader")

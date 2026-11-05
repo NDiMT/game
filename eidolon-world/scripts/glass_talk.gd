@@ -17,6 +17,9 @@ signal sound(name: String)
 
 ## the stroke library, as SHE writes (her side). On your side x is reversed.
 const TEMPLATES := {
+	# v2.0 I.3 "the first glass": ONE line, a slow wave across the pane; she writes it, you write it back
+	"line": [[Vector2(-0.62, 0.1), Vector2(-0.4, 0.28), Vector2(-0.16, 0.3), Vector2(0.06, 0.12), Vector2(0.24, -0.08),
+		Vector2(0.44, -0.12), Vector2(0.62, 0.04)]],
 	# "follow": v0.6, a letter of the sculptor's script (letter 4, the Greek-key hook on a stem: a stem
 	# rising, a bar, a hook turning back in), written in one stroke as she writes it
 	"follow": [[Vector2(-0.44, -0.5), Vector2(-0.44, 0.38), Vector2(-0.4, 0.47), Vector2(-0.3, 0.5), Vector2(0.34, 0.5),
@@ -332,7 +335,7 @@ func open(spec: Dictionary) -> void:
 		her_half = []
 		target = []
 	else:
-		var first: Array = TEMPLATES[spec.get("first", "follow")]
+		var first: Array = TEMPLATES.get(spec.get("first", "follow"), [])          # (v2.0: "" = she writes only the question)
 		var half: Array = TEMPLATES[spec.get("question", "together_half")]
 		# she writes on HER side: you see it mirrored. Her half of the question sits on the LEFT for you;
 		# the answer, its mirror, on the right.

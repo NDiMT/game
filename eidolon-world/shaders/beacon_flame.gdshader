@@ -1,15 +1,17 @@
 shader_type spatial;
-// v2.0 (Agent A) a wing BEACON's fire (scripts/fx/beacon_fire.gd). `part` 0: the flame column (a cylindrical billboard:
+// v2.0 (Agent A) a wing BEACON's fire (scripts/fx/beacon_fire.gd uses part 1 only: its flame is the game's Flame). `part` 0: a flame column (spare) (a cylindrical billboard:
 // turns about world up to face the camera), 1: the far glow (a big soft disc, camera-facing, fog-free: it shows through
 // the fog from across the Atrium). Web-safe (no depth/screen texture). `k` the fire (0 out .. 1 burning), `flare` the
 // ignition swell (decays), `height` the column at rest (m).
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 global uniform vec4 accent;
+global uniform vec4 accent_core;
+global uniform vec4 accent_tint;
 uniform float part = 0.0;
 uniform float k = 1.0;
 uniform float flare = 0.0;
 uniform float height = 1.2;
-uniform float width = 0.7;
+uniform float width = 0.9;
 uniform float glow_size = 3.0;
 uniform float seed = 0.0;
 
@@ -47,18 +49,21 @@ void fragment() {
 		shape *= smoothstep(0.0, 0.05, y) * (1.0 - smoothstep(0.55 + 0.35 * n2, 1.0, y));
 		float core = 1.0 - smoothstep(0.0, wdt * 0.45, abs(x)) ;
 		core *= 1.0 - smoothstep(0.1, 0.55, y);
-		vec3 hot = vec3(1.0, 0.93, 0.72);
-		vec3 mid = vec3(1.0, 0.55, 0.22);
-		vec3 edge = accent.rgb * 1.05;                         // the crimson licks at its edges and top
-		vec3 c = mix(edge, mid, smoothstep(0.1, 0.6, shape));
-		c = mix(c, hot, core);
+		// (the ONE light: our fire is crimson, Palette: a rose-white heart, the pale core, the crimson body, deep tongues)
+		vec3 hot = vec3(1.0, 0.93, 0.9);
+		vec3 mid = mix(accent.rgb, accent_core.rgb, 0.35);
+		vec3 edge = accent_tint.rgb * 1.1;
+		vec3 c = mix(edge, accent.rgb, smoothstep(0.05, 0.35, shape));
+		c = mix(c, mid, smoothstep(0.35, 0.8, shape));
+		c = mix(c, accent_core.rgb, core * 0.8);
+		c = mix(c, hot, core * core * 0.7);
 		ALBEDO = c * (1.0 + flare * 0.3);
 		ALPHA = clamp(shape * (0.75 + 0.25 * core) * k, 0.0, 1.0);
 	} else {
 		float r = length(UV - 0.5) * 2.0;
-		float g = pow(max(1.0 - r, 0.0), 2.2);
+		float g = pow(max(1.0 - r, 0.0), 1.7);
 		float fl = 0.85 + 0.15 * sin(t * 7.0) * sin(t * 2.3 + 1.0);
-		ALBEDO = mix(accent.rgb, vec3(1.0, 0.62, 0.32), g * 0.6);
-		ALPHA = clamp(g * (0.42 + flare * 0.35) * fl * k, 0.0, 1.0);
+		ALBEDO = mix(accent.rgb, accent_core.rgb, g * g * 0.55);
+		ALPHA = clamp(g * (0.55 + flare * 0.4) * fl * k, 0.0, 0.92);
 	}
 }

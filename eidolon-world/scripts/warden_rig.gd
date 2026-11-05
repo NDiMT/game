@@ -9,7 +9,7 @@ extends Node3D
 ##   w.look_at_point(Vector3.INF) lets go.
 ##   w.set_look("glass")          v2.0: the Glass Warden of cracked glass (prologue, rising in the pool); "reflection"
 ##                                (dark + crimson rim, mirrors only); "" = his own textured look
-##   w.rise_from(water_y, 3.0)    v2.0: he rises up out of the water at his current x/z (glass look; the surface clips
+##   w.rise_from(water_y, 3.0, NAN, pool_fx)  v2.0: he rises up out of the water at his current x/z (glass look; the surface clips
 ##                                him, a wet line at it, the cracks light from the feet up). Returns the Tween.  ("turn head toward you": pass the camera's or the player's position.)
 ## Clips also in the GLB: "turn_head_left" / "turn_head_right" (3 s, hold) if a fixed beat is wanted instead.
 ## Skeleton: the same 25 body bones as the wanderer/heroine + 8 robe hem chains (Hem*) + 3 cape chains (CapeB*).
@@ -84,7 +84,7 @@ func set_look(look: String) -> void:
 		if src and src.albedo_texture: sm.set_shader_parameter("albedo_tex", src.albedo_texture)
 		m.material_override = sm
 
-func _glass_param(k: String, v: Variant) -> void:
+func glass_param(k: String, v: Variant) -> void:
 	if model == null: return
 	for mi in model.find_children("*", "MeshInstance3D", true, false):
 		var sm := (mi as MeshInstance3D).material_override as ShaderMaterial
@@ -92,17 +92,23 @@ func _glass_param(k: String, v: Variant) -> void:
 
 ## v2.0 rise out of still water: from fully under the surface (at water_y) up to standing on `stand_y` (default: his
 ## current y), over `seconds`. Set the glass look first (done here if not).
-func rise_from(water_y: float, seconds := 3.0, stand_y := NAN) -> Tween:
+func rise_from(water_y: float, seconds := 3.0, stand_y := NAN, water_fx: Object = null) -> Tween:
 	if is_nan(stand_y): stand_y = global_position.y
 	if model and (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).material_override == null: set_look("glass")
-	_glass_param("clip_y", water_y)
-	_glass_param("rise", 0.0)
+	glass_param("clip_y", water_y)
+	glass_param("rise", 0.0)
 	var p := global_position
 	global_position = Vector3(p.x, water_y - height * 1.02, p.z)
 	var tw := create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(self, "global_position:y", stand_y, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.tween_method(func(v: float) -> void: _glass_param("rise", v), 0.0, 1.0, seconds * 1.1)
+	tw.tween_method(func(v: float) -> void: glass_param("rise", v), 0.0, 1.0, seconds * 1.1)
+	# the water parts round him: rings as he breaks the surface, and drops as he clears it
+	if water_fx and water_fx.has_method("splash"):
+		var at := Vector3(p.x, water_y, p.z)
+		for k in 3:
+			tw.tween_callback(func() -> void: water_fx.call("splash", at, 0.7, 3.0)).set_delay(seconds * (0.05 + 0.25 * k))
+	tw.tween_callback(func() -> void: FxBurst.splash(get_parent(), Vector3(p.x, water_y + 0.01, p.z), 0.6)).set_delay(seconds * 0.1)
 	return tw
 
 ## the heavy walk on/off (blended)

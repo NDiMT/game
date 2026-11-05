@@ -398,3 +398,82 @@ All verified in the REAL game (devshots / dev_fx in-game probes at 390x844, High
   - the Hall sighting draw calls (could not reproduce a sighting at the spot I measured: 242 → 243);
   - the Court → Maze door at 314;
   - the Gate's two framed panes.
+
+2026-11-05 | A -> W | v2.0 Chapter I effects: prologue, PassThrough, Beacons, the Warden's snuff, the First Shrine finale, intro cards, the comb; global pass (flames)
+Every effect below is verified IN THE GAME (dev_fx/v2_fx_ingame.tscn fires the real builders on the running main.tscn at 390x844, High; dev_fx/v2_global.tscn shoots the before/after). Web-safe: no depth or screen texture anywhere; all decals alpha-blended crimson (additive light vanishes on cream marble). Low tier wired in world.gd set_tier (`OmenFx.high`, `BeaconFire.high`). NOTE: your working tree did not parse while I tested (hub `SEAL_POS`/`BEACON_POS`, items `amphora_full`), so the shots come from a copy with your files at HEAD 2717aed + mine; nothing of yours was touched.
+Sheets (all in-game): dev/shots/v2-fx-prologue.png, v2-fx-passthrough-snuff.png, v2-fx-beacons.png, v2-fx-shrine.png, v2-fx-cards.png, v2-global-before-after.png, v2-fx-low.png. Web: every new effect fired at once in a real Web export (dev_fx/v2_web.tscn as main scene, headless Chromium/WebGL2): 0 console errors.
+
+**1. Prologue (EIDOLON_SCRIPT §5 shots 5-11).** `pool` = the waking pool surface point (y = Ch1Geo.WATER_Y), `fx` = puzzles.pool_fx, `j` = game.juice.
+```gdscript
+# 5. her palm on the surface from beneath, two knocks (returns the print; fade it when she is taken)
+var palm := OmenFx.palm_press(j, pool, yaw, puzzles.pool_fx, 2)          # ~2.3 s: rises into the surface, presses, tap, tap
+# 7. the Glass Warden rises IN the water behind her (cracked glass, pane shimmer, crimson rim, wet line at the surface)
+var w := WardenRig.new(); j.add_child(w); w.global_position = behind_her; w.rotation.y = yaw
+w.set_look("glass")
+await w.rise_from(Ch1Geo.WATER_Y, 3.2, Ch1Geo.WATER_Y - 0.55, puzzles.pool_fx).finished   # (stand_y: waist-deep)
+# 9. dragged into the fog of the water: the pool clouds over (and clears again for shot 11)
+OmenFx.fade_out(palm, 0.6)
+OmenFx.murk(puzzles.water_mat, 1.0, 2.0)        # ... later: OmenFx.murk(puzzles.water_mat, 0.0, 2.5)
+# 10. the comb passes up THROUGH the surface and clinks onto the marble
+var comb: Node3D = load("res://assets/models/items/item_comb.glb").instantiate(); j.add_child(comb)
+PassThrough.water(j, pool, comb, puzzles.pool_fx, 0.35, 1.6, rim_point_on_marble)   # caustics, bulge, meniscus ring, drops, drips, glint
+```
+- If he must be seen upside down IN the glass of the water (a reflected puppet) instead of rising out of it: `w.glass_param("clip_dir", -1.0)` keeps only what is below the surface.
+- `w.set_look("reflection")` is the old mirror-only look; `w.set_look("")` his own.
+
+**2. PassThrough (scripts/fx/pass_through.gd): "only still water and cracked glass let things pass".** The item node is yours, already where it should end up.
+```gdscript
+# I.5 the crypt basin: the LIT lamp pushed up through the still water
+PassThrough.water(crypt_node, BASIN_SURFACE, lamp_node, basin_fx_or_null, 0.45, 1.8)
+# West wing, Hall of Glass solve: the Shard through the crack at one corner of the great mirror (glass faces +Z)
+PassThrough.mirror(self, Vector3(1.9, 2.0, -20.46), Vector3.BACK, shard_node, 1.6, true)     # the crack stays as a scar
+```
+`water_fx` may be null (then the decals and particles alone). `keep_crack` leaves the crack decal (child of `parent`) glinting at 55%.
+
+**3. Beacons (scripts/fx/beacon_fire.gd).** One per wing brazier and one per Atrium pillar:
+```gdscript
+var bf := BeaconFire.new(); bf.noise = level.noise_tex; pillar.add_child(bf); bf.position = Vector3(0, top_of_bowl, 0)
+bf.ignite()          # on lighting: the flame leaps to ~2.4x (0.22 s), holds, settles over 2.2 s; two spark bursts, embers swelling, a fog-free far glow
+bf.set_lit(true)     # on load (no ignition); set_lit(false) puts it out; bf.lit to read
+```
+Its fire IS the game's `Flame` (same crimson fire as the braziers; its light joins the shared light budget, `Flame.cull`; crimson bounce on the marble) at `height` 1.3 m, plus a fog-free crimson far glow (`glow_size` 3.2 m) that reads across the Atrium. `bf.flame` is the Flame if you want its `key`. Low: no extra ember loop or second spark burst (Flame's own Low rules apply).
+
+**4. The Warden snuffs a reflection (mirror or pool):**
+```gdscript
+OmenFx.frost(j, glass_centre, glass_normal, Vector2(glass_w, glass_h), 1.6)   # dark spreads with frost-cracks (0.9 s), holds, clears (1.2 s)
+OmenFx.frost(j, POOL_C, Vector3.UP, Vector2(1.6, 1.6), 1.6)                    # on water
+```
+Hide the reflection puppet yourself at ~0.5 s (under the dark) and show it again (or not) as it clears.
+
+**5. First Shrine finale (I.23):**
+```gdscript
+OmenFx.write_in_water(self, POOL_C, cam_yaw, "ΒΡΕΣ ΜΕ", 4.2, 0.36, 3.0)   # stroke by stroke with a pen-tip glow, lingers 3 s, fades
+await get_tree().create_timer(5.0).timeout
+OmenFx.glass_eye(self, POOL_C + Vector3(0, 0, -0.1), 1.3, 1.1, 2.4)       # opens 1.1 s, holds 2.4 s, closes, gone
+```
+`yaw` turns the line of writing (pass your shrine camera's yaw so it reads upright). Glyphs for Β Ρ Ε Σ Μ Α Ι Ο Ν Η and space.
+
+**6. Intro cards (scripts/fx/intro_card.gd, IntroCard).** One stanza of §5 = one card; `*...*` lines are italic (may span lines):
+```gdscript
+var cl := CanvasLayer.new(); cl.layer = 60; add_child(cl)
+var ic := IntroCard.new(); cl.add_child(ic)
+await ic.play_all(INTRO_STANZAS, 3.0)     # each: ink soaks in mirrored, card flips true, holds, dissolves to fog
+cl.queue_free()                          # ic.skip() finishes the current card
+```
+
+**7. The comb (Tripo, 30 credits):** `assets/models/items/item_comb.glb` (scallop-shell comb, 9 x 9 x 5.8 cm, base y 0, front +Z, 4.9k tris, 256 px base colour) and `assets/textures/icons/comb.png` (128 px); manifest entry added. It glows in the satchel: give it the PickupMarker / glow you use for story items.
+
+**8. Global effects pass (live; none of your calls change). Before/after in game: dev/shots/v2-global-before-after.png; Low: v2-fx-low.png.**
+- FLAMES (scripts/flame.gd, shaders/flame.gdshader, ember.gdshader): every Flame (braziers, votives, hand lamp, beacons) was additive: on cream marble and in fog it read as a pale wisp. Now alpha-blended crimson (deep tongues, crimson body, rose-white heart, a crimson veil of glow), embers 6 cm (were 2.5) and crimson with a rose core. Same timing, same `intensity`/`gutter`, same light budget.
+- MIRRORS (shaders/glass.gdshader): the sheen is a soft band plus a thin bright streak, and a small four-point glint flares on the frame's corner as it passes. Subtle by design.
+- COLOUR: everything new uses the one crimson light (accent / accent_core / accent_tint, Palette.FIRE_LIGHT); the only non-crimson accents are silver glass sparkles (glass) and white water (meniscus, drops).
+- WATER, DUST, MIST, PETALS, PICKUPS: re-shot in game; they already read at 390x844 after v1.1c, kept. New: `FxBurst.drip_off(parent, pos)` (drops off a lifted thing) and `FxBurst.shards(parent, pos, normal)` (glass sparkles), used by PassThrough.
+- DECALS ON WATER sit `OmenFx.LIFT` (2.5 cm) above it with render_priority 10, so the water never swallows them.
+- LOW: OmenFx (no extra ring decals), BeaconFire (above), FxBurst a third of the particles; all wired in world.gd set_tier.
+
+**Notes**
+- The writing and the eye are flat decals: pass the shrine camera's yaw (`get_viewport().get_camera_3d().global_rotation.y`) so the line reads level on screen. At the default 7.5 m camera the pool is small; your shrine cinematic zoom (4.2) is what the shots use.
+- `OmenFx.frost` is a disc inside the quad you give it: pass the glass's (or pool's) own centre and size and it stays on it.
+- Test tools (mine): dev_fx/v2_fx_ingame.tscn (`--only=palm,warden,murk,comb,shard,frost,beacon,write,eye,card`, `--low`), dev_fx/v2_global.tscn (`--tag=before|after`), dev_fx/v2_web.tscn, dev_fx/card_test.gd, dev_rig/tools/item_view.gd (item turnaround + 128 px icon).
+- Tripo: 30 credits (the comb); balance 475.
+

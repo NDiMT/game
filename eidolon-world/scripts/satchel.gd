@@ -6,7 +6,7 @@ extends Control
 const CREAM := Color(0.95, 0.93, 0.88)
 const INK := Color(0.10, 0.10, 0.11)
 const SLOT := 64.0
-const SEAL_NAME := {"W": "Seal of the Glass Wing", "N": "Seal of the Garden Wing", "E": "Seal of the High Wing"}
+const BEACON_NAME := {"W": "The Beacon of Glass", "N": "The Beacon of the Garden", "E": "The Beacon of the High Wing"}
 
 var game: Game
 var serif: Font
@@ -105,7 +105,7 @@ func build(g: Game, sf: Font, it: Font, host: Control) -> void:
 	map.offset_left = 12; map.offset_right = -12; map.offset_top = 24; map.offset_bottom = -24
 	map.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map_layer.add_child(map)
-	for k in Hub.SEAL_POS:
+	for k in Hub.BEACON_POS:
 		var tr := TextureRect.new()
 		tr.texture = load("res://assets/textures/icons/veil_seal.png") if ResourceLoader.exists("res://assets/textures/icons/veil_seal.png") else null
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -163,8 +163,9 @@ func contents() -> Array:
 		match k:
 			"tablet": if (inv["tablets"] as Array).size() > 0: out.append([k, (inv["tablets"] as Array).size()])
 			"mem": if (inv["mem"] as Array).size() > 0: out.append([k, (inv["mem"] as Array).size()])
-			"seal":
-				var n := (inv["seals"] as Array).size() - (inv["socketed"] as Array).size()
+			"comb": if "comb" in (inv.get("story", []) as Array): out.append([k, 1])
+			"beacon":
+				var n := (game.chapter.state.get("beacons", []) as Array).size()
 				if n > 0: out.append([k, n])
 			_: if k in (inv["items"] as Array): out.append([k, 1])
 	return out
@@ -193,7 +194,7 @@ func open() -> void:
 			b.icon = game.chapter.items.icons[k]
 			b.expand_icon = true
 			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		if int(e[1]) > 1 or k in ["tablet", "mem", "seal"]:
+		if int(e[1]) > 1 or k in ["tablet", "mem", "beacon"]:
 			b.text = str(e[1])
 			b.add_theme_font_override("font", serif)
 			b.add_theme_font_size_override("font_size", 13)
@@ -234,7 +235,7 @@ func select(k: String) -> void:
 func describe(k: String) -> String:
 	var inv: Dictionary = game.chapter.state["inv"]
 	match k:
-		"amphora": return Items.LINE["amphora_full" if inv["amph_full"] else "amphora"]
+		"beacon": return "%d of 3 burn. The Gate counts them." % (game.chapter.state.get("beacons", []) as Array).size()
 		"tablet":
 			var t: Array = inv["tablets"]
 			var last: String = t[t.size() - 1]
@@ -278,12 +279,12 @@ func open_map() -> void:
 	var inv: Dictionary = game.chapter.state["inv"]
 	for k in seal_marks:
 		var tr: TextureRect = seal_marks[k]
-		var uv := map.world_to_uv(Hub.SEAL_POS[k])
+		var uv := map.world_to_uv(Hub.BEACON_POS[k])
 		tr.position = o + uv * drawn - tr.size * 0.5 - map_layer.global_position
 		# (QA P2-2/3: a crimson ring until taken, and only where the map already shows the place)
-		var reg := game.level.region_at(Vector2((Hub.SEAL_POS[k] as Vector3).x, (Hub.SEAL_POS[k] as Vector3).z))
+		var reg := game.level.region_at(Vector2((Hub.BEACON_POS[k] as Vector3).x, (Hub.BEACON_POS[k] as Vector3).z))
 		tr.visible = reg != null and map.is_revealed(reg.name)
-		tr.modulate = Color(1, 1, 1, 1.0) if k in (inv["seals"] as Array) else Color(0.75, 0.15, 0.15, 0.8)
+		tr.modulate = Color(1, 1, 1, 1.0) if k in (game.chapter.state.get("beacons", []) as Array) else Color(0.75, 0.15, 0.15, 0.8)
 	game.sfx.play("page", -14.0, 1.0)
 
 func close_map() -> void:
@@ -308,11 +309,11 @@ func load_map() -> void:
 
 func show_item(k: String, extra := "") -> void:
 	toast_icon.texture = game.chapter.items.icons.get(k, null)
-	toast_name.text = Items.NAME.get(k, k) + (" (full)" if extra == "full" else "")
-	toast_line.text = Items.LINE["amphora_full"] if extra == "full" else Items.LINE.get(k, "")
-	if k == "seal":
-		toast_name.text = SEAL_NAME.get(extra, "A Veil Seal")
-		toast_line.text = "%d of 3. The Gate has three empty hands." % (game.chapter.state["inv"]["seals"] as Array).size()
+	toast_name.text = Items.NAME.get(k, k)
+	toast_line.text = Items.LINE.get(k, "")
+	if k == "beacon":
+		toast_name.text = BEACON_NAME.get(extra, "A Beacon")
+		toast_line.text = "%d of 3 burn. The Gate counts them." % (game.chapter.state.get("beacons", []) as Array).size()
 	var vs := get_viewport_rect().size
 	toast.reset_size()
 	# (clear of the slots; below the area's title while it shows; under the map)

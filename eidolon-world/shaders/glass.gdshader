@@ -17,10 +17,17 @@ void fragment() {
 	float aa = fwidth(e) * 1.5;
 	float frame = 1.0 - smoothstep(0.035, 0.035 + aa, e);
 	float inner = (1.0 - smoothstep(0.004, 0.004 + aa, abs(e - 0.09))) * 0.5;
-	float sheen = smoothstep(0.07, 0.0, abs(fract(uv.x * 0.5 - uv.y * 0.3 - TIME * 0.035) - 0.5));
+	// (v2.0 A, global pass) the sheen: a soft wide band with a thin bright streak beside it (glass, not haze), and
+	// now and then a glint: a small four-point star that flares on the frame's corner as the streak passes it
+	float sp = fract(uv.x * 0.5 - uv.y * 0.3 - TIME * 0.035) - 0.5;
+	float sheen = smoothstep(0.09, 0.0, abs(sp)) * 0.7 + smoothstep(0.012, 0.0, abs(sp + 0.06)) * 0.9;
+	vec2 gc = vec2(0.035 / size.x, 1.0 - 0.035 / size.y);                         // top-left corner of the glass
+	vec2 gq = (uv - gc) * size;
+	float gt = smoothstep(0.08, 0.0, abs(fract(gc.x * 0.5 - gc.y * 0.3 - TIME * 0.035) - 0.5));
+	float star = (exp(-abs(gq.x) * 60.0) * exp(-abs(gq.y) * 6.0) + exp(-abs(gq.y) * 60.0) * exp(-abs(gq.x) * 6.0)) * gt;
 	float low = smoothstep(0.0, 0.6, uv.y);
-	float a = base_alpha + frame * 0.75 + inner * 0.4 + sheen * 0.12 + pulse * 0.25;
-	vec3 c = mix(tint * mix(0.85, 1.05, low), vec3(0.93, 0.98, 1.0), frame * 0.7 + sheen * 0.5 + inner * 0.4);
+	float a = base_alpha + frame * 0.75 + inner * 0.4 + sheen * 0.16 + star * 0.8 + pulse * 0.25;
+	vec3 c = mix(tint * mix(0.85, 1.05, low), vec3(0.93, 0.98, 1.0), clamp(frame * 0.7 + sheen * 0.6 + inner * 0.4 + star, 0.0, 1.0));
 	c = mix(c, accent_core.rgb, pulse * 0.6);
 	if (crack > 0.0) {
 		vec2 q = (uv - vec2(0.62, 0.35)) * size;

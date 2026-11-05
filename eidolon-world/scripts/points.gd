@@ -28,11 +28,11 @@ const FOUNTAIN := Vector3(5.0, 0.5, 16.0)          # (Props kit_fountain)
 
 ## [id, where, kind, icon, line]
 const POINTS := [
-	["bell", Vector3(-12.45, 0.0, 1.3), "bell", "ring", "Its note went out over the water and came back from very far."],
+	["bell", Vector3(3.6, 0.0, 4.82), "bell", "ring", "Its note went out over the water and came back from very far."],
 	["votive", Vector3(-10.45, 1.0, -12.0), "votive", "light", "A small flame, for her. Someone kept lighting these."],
 	["offering", Vector3(6.6, 1.0, -18.1), "offering", "touch", "Grapes turned to stone, a comb, a hair ribbon. Gifts no one took."],
 	["coin", Vector3(5.0, 0.5, 14.25), "coin", "touch", "The coin rang on the dry stone. Once, here, it would have splashed."],
-	["cot", Vector3(19.6, 0.5, 10.6), "cot", "read", "His cot, under the floor of his workshop. He slept beside her faces."],
+	["cot", Vector3(-2.2, 0.5, 11.2), "cot", "read", "His cot, in the crypt under his workshop. He slept beside the water she came through."],
 	["bench", Vector3(26.85, 2.0, -4.5), "bench", "wait", "From here the drowned head looks up at the sky, as if listening."],
 	# (QA_V11 pacing: the East wing's long Balcony walk gets a stop in its first third, a seat facing up the shore)
 	["lookout", Vector3(29.05, 2.0, 4.0), "bench", "wait", "Far up the shore, under its dome, a light keeps watch. The way runs there."],

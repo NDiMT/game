@@ -20,10 +20,9 @@ var chapter: Chapter
 var wonders: Wonders
 var satchel: Satchel
 var quad_batch: QuadBatch
-const HOT_ORDER := ["lamp", "shard", "chisel", "amphora", "pin"]
+const HOT_ORDER := ["lamp", "shard"]          # (v2.0: Chapter I's only two tools)
 ## which interacts each carried thing works on (the hotbar uses it there)
-const HOT_USES := {"chisel": ["relic_w", "sec_m1", "sec_m2"], "amphora": ["amph_fill", "pour", "sec_m3"],
-	"pin": ["e_panel", "pin_song", "pin_spring", "sec_m4", "sec_m7"]}
+const HOT_USES := {"lamp": ["beacon_W", "beacon_N", "beacon_E"]}
 
 ## v1.1: a hotbar slot tapped: the shard raises / lowers the lens; a tool is chosen and, where it works
 ## (the place you stand at), used; anywhere else it tells you what it is
@@ -36,7 +35,7 @@ func _on_hot(k: String) -> void:
 	if focus and focus.id in (HOT_USES.get(k, []) as Array):
 		try_interact()
 		return
-	ui.show_item(k, "full" if (k == "amphora" and chapter.state["inv"].get("amph_full", false)) else "")
+	ui.show_item(k, "")
 var _dark := 0.0              # v0.9 the wonder spaces between the puzzles
 var juice: Juice                  # v1.0 M1: the physical little moments (dust, grit, sparks, wet stone)
 var _fade_on := false
@@ -257,6 +256,9 @@ func _continue_from_save() -> void:
 	for k in Items.fresh_hub():
 		if not (chapter.state["hub"] as Dictionary).has(k): chapter.state["hub"][k] = Items.fresh_hub()[k]
 	if int(save_data.get("v", 2)) < 3: chapter.items.migrate_v2()        # (v1.0 M3b: v2 saves load into the hub)
+	if int(save_data.get("v", 2)) < 4: Items.migrate_v3(chapter.state)   # (v2.0: seals -> beacons, three tools out)
+	for k in Items.fresh_inv():
+		if not (chapter.state["inv"] as Dictionary).has(k): chapter.state["inv"][k] = Items.fresh_inv()[k]
 	chapter.apply_state()
 	var p: Array = save_data.get("pos", [Level.WAKE_POS.x, 0.0, Level.WAKE_POS.z])
 	player.teleport(Vector3(p[0], p[1], p[2]), float(save_data.get("yaw", 0.0)))
@@ -437,7 +439,7 @@ func _process(dt: float) -> void:
 		elif controls.hot_sel == "shard": controls.hot_sel = ""
 	# (v1.0 A, QA P1-4: the Undercroft is truly dark; the lamp's warm circle is what you see by)
 	var rg := level.region_at(Vector2(player.position.x, player.position.z))
-	var want_dark := 1.0 if (rg and (rg.name == "UC" or rg.name == "UC_up") and mode == "play") else 0.0
+	var want_dark := 1.0 if (((rg and (rg.name == "UC" or rg.name == "UC_up")) or chapter.act1.in_crypt(player.position)) and mode == "play") else 0.0
 	_dark = move_toward(_dark, want_dark, dt * 1.2)
 	world.set_darkness(_dark)
 	var lp := (player.global_position + Vector3(0, 0.9, 0)) if chapter.hub.has_item("lamp") else Vector3.INF
@@ -763,6 +765,8 @@ func open_glass(id: String) -> void:
 	ui.hide_text()
 	if id == "garden":
 		ui.glass_talk.open({"id": id, "write": ["hook", "wing", "step"]})     # (v0.9.2: she writes her three runes)
+	elif id == "first":
+		ui.glass_talk.open({"id": id, "first": "", "question": "line", "at_q": Vector2(0.0, 0.0)})      # (v2.0 I.3: one line)
 	else:
 		ui.glass_talk.open({"id": id, "first": "follow", "question": "together_half"})
 
@@ -830,12 +834,32 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 			sfx.play("chime", -14.0, 0.9)
 			_save()
 		# v1.0 M3b: the items at work
-		"relic_seen": sfx.play("glass_tink", -16.0, 0.7)
-		"relic_break":
-			sfx.play("thud", -10.0, 0.9)
-			sfx.play("grind", -14.0, 1.3)
+		# (v2.0) Act 1
+		"a1_door":
+			sfx.play("grind", -10.0, 0.7)
+			sfx.play("chime", -18.0, 1.1)
 			_save()
-		"amph_fill": sfx.play("step_wet", -12.0, 0.7); _save()
+		"a1_gate":
+			sfx.play("rattle", -12.0, 0.9)
+			_save()
+		"a1_slab":
+			sfx.play("thud", -12.0, 0.9)
+			sfx.play("chime", -16.0, 1.25)
+			_save()
+		"a1_lamp":
+			sfx.play("step_wet", -10.0, 0.8)
+			get_tree().create_timer(1.6).timeout.connect(func() -> void: sfx.play("chime", -16.0, 1.4))
+		"warden_turn":
+			sfx.play("glass", -12.0, 0.4)
+			sfx.play("whoosh", -18.0, 0.55)
+			if juice: juice.shake(0.06)
+		"a1_atrium":
+			sfx.resolve(1)
+			_save()
+		"hidden_way":
+			sfx.play("glass_tink", -16.0, 0.7)
+			get_tree().create_timer(0.5).timeout.connect(func() -> void: sfx.play("grind", -14.0, 0.9))
+			_save()
 		"warden_seen":
 			sfx.play("chime_hall", -8.0, 0.45)
 			get_tree().create_timer(0.4).timeout.connect(func() -> void: sfx.play("whoosh", -16.0, 0.6))
@@ -843,10 +867,6 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 			sfx.play("glass", -14.0, 0.42)
 			sfx.play("glass_tink", -18.0, 0.5)
 		"her_rune": sfx.play("chime", -22.0, 1.35)
-		"pour":
-			sfx.play("step_wet", -9.0, 0.6)
-			get_tree().create_timer(0.9).timeout.connect(func() -> void: sfx.play("chime", -16.0, 0.75))
-			_save()
 		"pin_ring":
 			sfx.play("chime_hall", -10.0, 1.5)
 			get_tree().create_timer(0.5).timeout.connect(func() -> void: sfx.play("grind", -12.0, 0.7))
@@ -857,16 +877,13 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 		"mem_shard":
 			sfx.play("bell", -16.0, 1.3)
 			_save()
-		"seal_rises":
-			sfx.play("grind", -12.0, 0.6)
-			sfx.play("bell", -18.0, 0.8)
-		"seal":
+		"beacon":
+			# (v2.0) a wing's fire: the whoosh of the catch, a bell, and its twin answering in the Atrium
+			sfx.play("whoosh", -10.0, 0.8)
 			sfx.play("bell", -12.0, 1.0)
 			sfx.resolve(2)
-			_save()
-		"socket":
-			sfx.play("chime_hall", -12.0, 0.6 + data * 0.1)
-			sfx.play("grind", -18.0, 0.9)
+			get_tree().create_timer(1.2).timeout.connect(func() -> void: sfx.play("bell", -24.0, 0.7))
+			if juice: juice.shake(0.08)
 			_save()
 		"ec_unbolt":
 			sfx.play("rattle", -12.0, 0.8)
@@ -928,6 +945,7 @@ func jump(room: String) -> void:
 		match Names.ORDER[i]:
 			"waking_pool":
 				cs["stones"] = true; cs["pool_turns"] = Chapter._pool_solution()
+				cs["a1"] = {"plate": true, "glass": true, "slab": true, "lamp": true, "atrium": true}
 			"stair_breath": cs["breath"] = true
 			"atrium":
 				(cs["inv"]["items"] as Array).append("lamp")
@@ -937,29 +955,29 @@ func jump(room: String) -> void:
 					"bust": Chapter.BUST_GOAL, "locks": [true, true, true]}
 			"shard_gallery":
 				cs["gallery"] = true
-				(cs["inv"]["items"] as Array).append("chisel")
-				cs["hub"]["w_seen"] = true; cs["hub"]["w_broken"] = true
+				cs["hub"]["w_seen"] = true
+				(cs["beacons"] as Array).append("W")
 			"garden_veiled":
-				(cs["inv"]["items"] as Array).append("amphora")
 				cs["turned"] = Chapter.TURN_SOLUTION.duplicate(); cs["turned_done"] = true; cs["garden_breath"] = true
 			"hollow_walk":
 				cs["hollow_done"] = true
 			"court_light":
-				(cs["inv"]["items"] as Array).append("pin")             # (v1.0 M3b: from the Balcony's stele)
-				cs["hub"]["e_open"] = true; cs["hub"]["wk_crossed"] = true
+				cs["hub"]["e_open"] = true; cs["hub"]["wk_crossed"] = true; cs["ledge_song"] = true
 				ps["mirrors"] = Puzzles.MIRROR_SOLUTION.duplicate(); ps["bridge"] = true; cs["mural"] = true
 			"mist_maze":
-				cs["maze"] = true; cs["hub"]["n_poured"] = true
+				cs["maze"] = true
+				(cs["beacons"] as Array).append("N")
 			"echo_corridor": cs["echo_room"] = true
 			"scales":
 				cs["scales"] = true; cs["scale_w"] = [-1, -1, 5]
+				(cs["beacons"] as Array).append("E")
 			"eidolon_ledge":
 				ps["plate"] = true; cs["ledge_statue"] = [Chapter.LEDGE_PLATE.x, Chapter.LEDGE_PLATE.y]
-				# (v1.0 M3: by the Gate, the three wings are done: their seals are in hand, then in the sockets)
-				cs["inv"]["seals"] = ["W", "N", "E"]
+				# (v2.0: by the Gate, the three wings are done: their Beacons burn)
+				cs["beacons"] = ["W", "N", "E"]
 				cs["hub"]["ec_open"] = true
 			"gate_four":
-				cs["four"] = true; cs["inv"]["socketed"] = [0, 1, 2]
+				cs["four"] = true
 	puzzles.apply_state(ps)
 	chapter.apply_state()
 	awake = bool(ps["shrine"])
@@ -1195,7 +1213,7 @@ func _save() -> void:
 	if mode == "title": return
 	var p := player.position
 	_last_saved_pos = p
-	save_data = {"v": 3, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
+	save_data = {"v": 4, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
 		"puzzles": puzzles.state.duplicate(true), "chapter": chapter.state.duplicate(true), "area": area, "glimpses": glimpses, "runes_awake": player.fig.runes_awake, "visited": visited.keys()}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify(save_data))

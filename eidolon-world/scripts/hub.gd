@@ -3,10 +3,10 @@ extends Node3D
 ## v1.0 M3 (dev/V1_WORLD.md): the hub's living parts. The Crumbling Bridge's loose slabs; Theron's oil
 ## lamp (on his workbench up the scaffold; carried, a real light); the Undercroft's dark (only the lamp
 ## parts it); the Flooded Colonnade's guide (HER reflection walks the hidden stones ahead of you); the three
-## Veil Seals (one rises when a wing is done) and the Gate's three sockets; the wings' shortcuts (the Court's
+## Beacons (v2.0: one per wing, lit with the lamp; a twin pillar in the Atrium); the wings' shortcuts (the Court's
 ## lever for the drawbridge, the bolted bars between the Echo Corridor and the Maze); the bars between the
 ## Scales and the Echo Corridor.
-## State lives in chapter.state["inv"] (items, seals, socketed) and chapter.state["hub"].
+## State lives in chapter.state["inv"] (items), chapter.state["beacons"] and chapter.state["hub"].
 
 var game: Game
 var chapter: Chapter
@@ -30,12 +30,13 @@ var t4_pts: Array[Vector3] = []
 var t4_s := 0.0                       # (tests) how far along the hidden path she has walked
 var _t4_pose := Figure.Pose.new()
 var _t4_phase := 0.0
-# the seals
-const SEAL_POS := {"W": Vector3(9.55, 1.24, -8.95), "N": Vector3(10.62, 2.0, -40.1), "E": Vector3(17.15, 2.0, -49.45)}
-const SEAL_DONE := {"W": "gallery", "N": "maze", "E": "echo_room"}
-const SEAL_RUNE := {"W": 2, "N": 7, "E": 3}
-var seal_nodes := {}
-var _seal_up := {}
+## v2.0 (EIDOLON_SCRIPT §6): each wing ends at its BEACON, lit with the lamp (not an item: a fire). Its twin
+## pillar in the Atrium catches with it, so the three fires read from the hub. The Gate wants all three.
+const BEACON_POS := {"W": Vector3(9.55, 1.0, -8.95), "N": Vector3(10.75, 2.0, -40.3), "E": Vector3(32.85, 2.0, -49.9)}
+const BEACON_DONE := {"W": "gallery", "N": "maze", "E": "scales"}
+const ATRIUM_BEACON := {"W": Vector3(-3.35, 0.5, 16.4), "N": Vector3(10.2, 0.5, 10.3), "E": Vector3(13.35, 0.5, 19.6)}
+var beacon_fires := {}                # k -> BeaconFire (in the wing)
+var atrium_fires := {}                # k -> BeaconFire (its twin in the Atrium)
 # the bars
 var ec_bars: Node3D
 var sc_bars: Node3D
@@ -51,13 +52,9 @@ func setup(g: Game, ch: Chapter) -> void:
 	_build_undercroft()
 	_build_uc_roof()
 	_build_colonnade()
-	_build_seals()
+	_build_beacons()
 	_build_bars()
 	# (the North wing's way back: the drawbridge lowered from the Court's side, once the Maze is walked)
-	for i in 3:
-		var idx := i
-		game.level.add_interact("socket%d" % i, chapter.four_pos(i) + Vector3(0, 0.25, 0), "place", func() -> void: socket(idx), 1.25,
-			func() -> bool: return can_socket(idx))
 	game.level.add_interact("drawbridge_w", Vector3(16.55, 2.0, -20.4), "lever", func() -> void: game.puzzles.lower_drawbridge(false), 1.0,
 		func() -> bool: return chapter.state["maze"] and not game.puzzles.state.get("drawbridge", false) and game.player.position.x < 17.2)
 
@@ -146,8 +143,8 @@ func _build_lamp() -> void:
 	bf.mat.set_shader_parameter("intensity", 0.85)
 	bf.bounce = false
 	lamp_bench.add_child(bf)
-	game.level.add_interact("lamp_take", WorldGeo.LAMP_POS + Vector3(-0.55, 0, 0), "take", take_lamp, 1.0,
-		func() -> bool: return not has_item("lamp"))
+	game.level.add_interact("lamp_take", WorldGeo.LAMP_POS + Vector3(-0.55, -0.18, 0.0), "take", take_lamp, 1.0,
+		func() -> bool: return not has_item("lamp") and chapter.act1 != null and chapter.act1.lamp_ready())
 
 func _lamp_model() -> Node3D:
 	var n := Node3D.new()
@@ -163,11 +160,12 @@ func take_lamp() -> void:
 	give("lamp")
 	game.ui.show_item("lamp")
 	_apply_lamp()
+	if chapter.act1: chapter.act1.lamp_taken()
 	if game.juice: game.juice.glint(WorldGeo.LAMP_POS + Vector3(0, 0.6, 0))
 
 func _apply_lamp() -> void:
 	var on := has_item("lamp")
-	lamp_bench.visible = not on
+	lamp_bench.visible = not on and (chapter.act1 == null or bool(chapter.act1.st()["lamp"]))
 	lamp_held.visible = on
 	if on and lamp_held.get_parent() != game.player.fig:
 		lamp_held.get_parent().remove_child(lamp_held)
@@ -302,71 +300,59 @@ func _t4_total() -> float:
 	for i in t4_pts.size() - 1: acc += t4_pts[i].distance_to(t4_pts[i + 1])
 	return acc
 
-# ------------------------------------------------------------------ the Veil Seals and the Gate's sockets
-func _build_seals() -> void:
-	for k in SEAL_POS:
-		var n := Node3D.new()
-		n.position = SEAL_POS[k] + Vector3(0, -1.1, 0)
-		add_child(n)
-		var m := MB.new()
-		m.box(Vector3(0, 0.4, 0), Vector3(0.5, 0.8, 0.5), Color(0.5, 0.25, 0.0))
-		var B := Basis(Vector3.UP, Framing.YAW)          # (the seal's face toward the camera)
-		m.cyl(Vector3(0, 0.98, 0), 0.2, 0.2, 0.05, Color(0.5, 1.0, 0.0), 18, B * Basis(Vector3.RIGHT, PI * 0.5))
-		game.puzzles.marble_instance(m.commit(), n)
-		game.puzzles.rune_quad(n, Vector3(0, 0.98, 0) + B * Vector3(0, 0, 0.03), Vector2(0.3, 0.3), B, float(SEAL_RUNE[k]), 1.0)      # (QA P2-13: its wing's own sign)
-		n.visible = false
-		seal_nodes[k] = n
-		_seal_up[k] = false
-		var kk: String = k
-		game.level.add_interact("seal_" + k, SEAL_POS[k] + Vector3(0, 0, 0), "take", func() -> void: take_seal(kk), 1.0,
-			func() -> bool: return _seal_up[kk] and not (kk in (inv()["seals"] as Array)))
+# ------------------------------------------------------------------ the Beacons (v2.0: the seals and sockets are gone)
+func _beacon_pillar(at: Vector3, h: float) -> BeaconFire:
+	var n := Node3D.new()
+	n.position = at
+	add_child(n)
+	var m := MB.new()
+	m.box(Vector3(0, 0.08, 0), Vector3(0.7, 0.16, 0.7), Color(0.5, 0.25, 0.0))
+	m.box(Vector3(0, 0.16 + h * 0.5, 0), Vector3(0.42, h, 0.42), Color(0.5, 0.25, 0.0))
+	m.cyl(Vector3(0, 0.16 + h + 0.1, 0), 0.24, 0.36, 0.2, Color(0.5, WorldGeo.BRONZE, 0.0), 16)
+	m.cyl(Vector3(0, 0.16 + h + 0.22, 0), 0.38, 0.37, 0.04, Color(0.5, WorldGeo.BRONZE, 0.0), 16)
+	game.puzzles.marble_instance(m.commit(), n)
+	game.level.ob_circle(Vector2(at.x, at.z), 0.4)
+	var f := BeaconFire.new()
+	f.noise = game.level.noise_tex
+	n.add_child(f)
+	f.position = Vector3(0, 0.16 + h + 0.24, 0)
+	return f
 
-func seal_ready(k: String) -> bool:
-	if not bool(chapter.state[SEAL_DONE[k]]): return false
-	match k:                                 # (v1.0 M3b: each wing's item on its critical path)
-		"W": return bool(chapter.state["hub"].get("w_broken", false))       # (the chisel, the reliquary)
-		"N": return bool(chapter.state["hub"].get("n_poured", false))       # (the amphora's puddle mirror)
+func _build_beacons() -> void:
+	for k in BEACON_POS:
+		beacon_fires[k] = _beacon_pillar(BEACON_POS[k], 1.3)
+		atrium_fires[k] = _beacon_pillar(ATRIUM_BEACON[k], 2.6)
+		var kk: String = k
+		game.level.add_interact("beacon_" + k, BEACON_POS[k] + Vector3(0, 0, 0), "light", func() -> void: light_beacon(kk), 1.1,
+			func() -> bool: return beacon_ready(kk) and not beacon_lit(kk))
+
+func beacons() -> Array:
+	if not chapter.state.has("beacons"): chapter.state["beacons"] = []
+	return chapter.state["beacons"]
+
+func beacon_lit(k: String) -> bool:
+	return k in beacons()
+
+func beacons_all() -> bool:
+	return beacon_lit("W") and beacon_lit("N") and beacon_lit("E")
+
+## the wing's last puzzle is answered (West: and its hidden way walked, seen through the Shard)
+func beacon_ready(k: String) -> bool:
+	if not bool(chapter.state[BEACON_DONE[k]]): return false
+	if k == "W": return bool(chapter.state["hub"].get("w_seen", false))
 	return true
 
-func take_seal(k: String) -> void:
-	if k in (inv()["seals"] as Array): return
-	(inv()["seals"] as Array).append(k)
-	(seal_nodes[k] as Node3D).visible = false
-	game.ui.show_item("seal", k)
-	chapter.event.emit("seal", k)
-	if game.juice: game.juice.glint(SEAL_POS[k] + Vector3(0, 1.0, 0))
-
-func _update_seals() -> void:
-	for k in SEAL_POS:
-		var n: Node3D = seal_nodes[k]
-		var owned: bool = k in (inv()["seals"] as Array)
-		if owned:
-			n.visible = false
-			continue
-		if seal_ready(k) and not _seal_up[k]:
-			_seal_up[k] = true
-			n.visible = true
-			var tw := n.create_tween()
-			tw.tween_property(n, "position:y", (SEAL_POS[k] as Vector3).y, 2.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			if game.juice:
-				game.juice.dust_floor(SEAL_POS[k], 0.5, 14)
-				game.juice.shake(0.12)
-			chapter.event.emit("seal_rises", k)
-
-## the Gate of the Four Veiled: a seal into one of the three statues' sockets
-func can_socket(i: int) -> bool:
-	var s: Array = inv()["socketed"]
-	return i < 3 and not (i in s) and (inv()["seals"] as Array).size() > s.size()
-
-func socket(i: int) -> void:
-	if not can_socket(i): return
-	(inv()["socketed"] as Array).append(i)
-	chapter.four_mats[i].set_shader_parameter("lit", 1.0)
-	chapter.event.emit("socket", i)
-	if game.juice: game.juice.glint(chapter.four_pos(i) + Vector3(0, 0.6, 0))
-
-func sockets_full() -> bool:
-	return (inv()["socketed"] as Array).size() >= 3
+func light_beacon(k: String) -> void:
+	if beacon_lit(k): return
+	if not has_item("lamp"):
+		game.ui.show_text("Cold bronze. It wants a flame.", game.player.position, 2.5)
+		return
+	beacons().append(k)
+	(beacon_fires[k] as BeaconFire).ignite()
+	chapter.event.emit("beacon", k)
+	game.ui.show_item("beacon", k)
+	# its twin in the Atrium catches a breath later (seen from the hub)
+	get_tree().create_timer(1.2).timeout.connect(func() -> void: (atrium_fires[k] as BeaconFire).ignite())
 
 # ------------------------------------------------------------------ the bars: Scales -> Echo (the balance opens them), Echo -> Maze (unbolted from the echo side)
 func _build_bars() -> void:
@@ -420,13 +406,10 @@ func update(dt: float) -> void:
 	_update_bridge()
 	_update_undercroft()
 	_update_colonnade(dt)
-	_update_seals()
 	if chapter.state["scales"] and game.level.named["sc_bars"].enabled: open_sc(false)
 
 func apply_state() -> void:
 	var st: Dictionary = chapter.state
-	# (v1.0 QA P1-5: a JSON reload turns the sockets' ints into floats; 0 in [0.0] is false)
-	if st.has("inv"): st["inv"]["socketed"] = (st["inv"]["socketed"] as Array).map(func(v: Variant) -> int: return int(v))
 	if not st.has("inv"): st["inv"] = fresh_state()
 	if not st.has("hub"): st["hub"] = Items.fresh_hub()
 	_apply_lamp()
@@ -437,12 +420,10 @@ func apply_state() -> void:
 	_uc_open = false
 	uc_veil.set_shader_parameter("density", 0.0 if has_item("lamp") else 1.0)
 	if has_item("lamp"): _uc_open = true
-	for k in SEAL_POS:
-		var up: bool = seal_ready(k) and not (k in (inv()["seals"] as Array))
-		_seal_up[k] = up
-		(seal_nodes[k] as Node3D).visible = up
-		(seal_nodes[k] as Node3D).position = SEAL_POS[k] + (Vector3.ZERO if up else Vector3(0, -1.1, 0))
-	for i in 3: chapter.four_mats[i].set_shader_parameter("lit", 1.0 if (i in (inv()["socketed"] as Array)) else 0.15)
+	for k in BEACON_POS:
+		(beacon_fires[k] as BeaconFire).set_lit(beacon_lit(k))
+		(atrium_fires[k] as BeaconFire).set_lit(beacon_lit(k))
+	for i in 3: chapter.four_mats[i].set_shader_parameter("lit", 1.0 if beacon_lit(["W", "N", "E"][i]) else 0.15)
 	if st["hub"].get("ec_open", false): unbolt_ec(true)
 	else:
 		game.level.set_enabled("ec_bars", true)

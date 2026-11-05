@@ -78,6 +78,7 @@ var door_refl: Array[Node3D] = []
 # hollow walk
 var steps: OurSteps
 var hub: Hub                             # v1.0 M3: the hub's living parts (hub.gd)
+var act1: Act1                           # v2.0: Act 1, Awakening (act1.gd)
 var shrine_fx: WaterFX                   # (v1.0 M1-A) the shrine pool's water events                     # v0.9.2: "Our Steps" (the Hollow Walk's room)
 var hw_gate: Node3D
 var _still := 0.0
@@ -133,7 +134,7 @@ func reset_state() -> void:
 		"hall": {"drum": [DRUM_START.x, DRUM_START.y], "brazier": [BRAZ_START.x, BRAZ_START.y], "bust": BUST_START, "locks": [false, false, false]},
 		"turned": TURN_START.duplicate(), "turned_done": false, "garden_breath": false,
 		"hollow_done": false,          # (v0.9.2: "Our Steps" solved; the old key kept for saves)
-		"mural": false, "maze": false, "echo_room": false, "memories": [], "scale_w": [-1, -1, -1], "scales": false,
+		"mural": false, "maze": false, "echo_room": true, "ledge_song": false, "beacons": [], "a1": Act1.fresh(), "memories": [], "scale_w": [-1, -1, -1], "scales": false,
 		"four": false, "ledge_statue": [LEDGE_STATUE.x, LEDGE_STATUE.y],
 		"inv": Items.fresh_inv(), "hub": Items.fresh_hub()}            # (v1.0 M3: the satchel, the hub's doors and item gates)
 
@@ -148,6 +149,7 @@ func build() -> void:
 	_build_mural()
 	_build_maze()
 	_build_echo()
+	_build_ledge_song()
 	_build_scales()
 	_build_ledge_feet()
 	_build_ledge_plate()
@@ -159,6 +161,9 @@ func build() -> void:
 	add_child(items)
 	items.setup(game, self, hub)
 	hub.items = items
+	act1 = Act1.new()                # (v2.0: after the hub: the bridge's span, the lamp)
+	add_child(act1)
+	act1.setup(game, self)
 	warden = Warden.new()            # (v1.0 M3c: the Glass Warden, the Mirror Walk's patrol)
 	add_child(warden)
 	warden.setup(game, self)
@@ -623,6 +628,15 @@ func breathe(id: String) -> void:
 
 ## the conversation through the glass ended well: the pane in the world keeps her writing a while
 func glass_answered(id: String) -> void:
+	if id == "first":
+		var fm: ShaderMaterial = breath_mats[id]
+		fm.set_shader_parameter("fog", 1.0)
+		fm.set_shader_parameter("write", 1.0)
+		var ftw := create_tween()
+		ftw.tween_interval(6.0)
+		ftw.tween_method(func(v: float) -> void: fm.set_shader_parameter("fog", v), 1.0, 0.0, 4.0)
+		act1.glass_done()
+		return
 	if id != "stair" and id != "garden": return
 	if id == "garden": state["garden_breath"] = true
 	var m: ShaderMaterial = breath_mats[id]
@@ -1018,7 +1032,7 @@ func _update_hall(dt: float) -> void:
 	level.interact_by_id("hall_place").pos = pl.position
 	# the hint (after 110 s without the whole set): the memories in the glass pulse
 	if not state["hall_door"]:
-		var pulse := smoothstep(Game.HINT_AFTER, Game.HINT_AFTER + 3.0, hint_t) * (0.4 + 0.6 * (0.5 + 0.5 * sin(_t * 2.2)))      # (v0.8.1: the 110 s hint)
+		var pulse := smoothstep(hint_after(), hint_after() + 3.0, hint_t) * (0.4 + 0.6 * (0.5 + 0.5 * sin(_t * 2.2)))      # (v0.8.1: the 110 s hint)
 		for k in 3:
 			if not hs["locks"][k]:
 				var gi: float = (0.9 if k == 1 else 0.0) + pulse * 0.9
@@ -1290,7 +1304,7 @@ func _update_gallery(dt: float) -> void:
 		sh_shadows[i].set_shader_parameter("k", sh_flames[i].level())
 	# (v0.9.2: the shard is no longer the key here; its slot never calls)
 	if game.controls: game.controls.inv_pulse = false
-	var hint := 1.0 if (not state["gallery"] and hint_t > Game.HINT_AFTER and game.area == "shard_gallery") else 0.0
+	var hint := 1.0 if (not state["gallery"] and hint_t > hint_after() and game.area == "shard_gallery") else 0.0
 	for em in sh_eye_mats: em.set_shader_parameter("pulse", hint)
 	# each lit shadow that wears a pair: those floor eyes brighten (they are its eyes now)
 	for k in SH_SOLUTION.size():
@@ -1335,7 +1349,6 @@ func _update_lens() -> void:
 
 func open_gallery(instant := false) -> void:
 	state["gallery"] = true
-	level.set_enabled("gallery_secret", false)
 	state["gallery_lit"] = SH_SOLUTION.duplicate()
 	for i in sh_flames.size(): sh_flames[i].mat.set_shader_parameter("intensity", 1.0 if i in SH_SOLUTION else 0.0)
 	# her shadows darken into the outlines; her veil stirs
@@ -1347,12 +1360,22 @@ func open_gallery(instant := false) -> void:
 		var vt := create_tween()
 		vt.tween_method(func(v: float) -> void: sh_veil.set_shader_parameter("intensity", v), 0.0, 1.0, 1.2)
 		vt.tween_method(func(v: float) -> void: sh_veil.set_shader_parameter("intensity", v), 1.0, 0.5, 1.6)
+	if instant: return
+	event.emit("solve", "shard_gallery")
+	game.ui.show_text(SH_LORE, game.player.position, 6.0)
+
+## (v2.0, W.6 "the Hidden Way") after her shadows: a door in the south parapet that is only in HER world. Raised
+## near it, the Shard shows it; then it is there for you too (the parapet's stretch sinks away)
+const HIDDEN_WAY := Vector3(8.1, 1.0, -9.6)
+func open_hidden_way(instant := false) -> void:
+	state["hub"]["w_seen"] = true
+	level.set_enabled("gallery_secret", false)
 	var gls := level.get_node_or_null("Zone_GLs") as MeshInstance3D
 	if instant:
 		if gls: gls.visible = false
 		return
-	event.emit("solve", "shard_gallery")
-	game.ui.show_text(SH_LORE, game.player.position, 6.0)
+	event.emit("hidden_way", null)
+	game.ui.show_text("A door, there only in her world.\nSeen, it is there for you too.", game.player.position, 3.5)
 	if gls == null: return
 	var tw := create_tween()
 	tw.tween_property(gls, "position:y", -3.2, 2.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -1816,6 +1839,77 @@ func _build_echo() -> void:
 	puzzles.glow_quad(self, Vector3(18.3, 2.85, -49.7), 1.6, Palette.ACCENT, 0.35)
 	level.add_interact("memory1", Vector3(18.3, 2.0, -49.1), "memory", func() -> void: collect_memory("m1"), 1.0,
 		func() -> bool: return not ("m1" in state["memories"]))
+
+# ------------------------------------------------------------------ v2.0 E.2: the Singing Stones (on the Ledge)
+## Four stones flush in the Ledge's floor, each cut with a note. They sing when stepped on. The first time you come
+## up onto the Ledge her melody plays once by itself, the stones lighting with it. Step them in the melody's order
+## (it uses one stone twice) and the sealed panel at the Mirror Walk's foot answers.
+const LS_X := [22.5, 23.55, 24.6, 25.65]
+const LS_Z := -19.6
+const LS_NOTES := ["E", "A", "F", "D"]
+var ls_mats: Array[ShaderMaterial] = []
+var ls_flash: Array[float] = [0.0, 0.0, 0.0, 0.0]
+var ls_buf: Array[String] = []
+var ls_fails := 0
+var _ls_on := -1
+var _ls_played := false
+func _build_ledge_song() -> void:
+	var m := MB.new()
+	for i in 4:
+		m.box(Vector3(LS_X[i], 2.0 + 0.012, LS_Z), Vector3(0.92, 0.024, 0.92), Color(0.5, 0.25, 0.0))
+		var mat := puzzles.rune_quad(self, Vector3(LS_X[i], 2.0 + 0.026, LS_Z), Vector2(0.7, 0.7), Basis(Vector3.RIGHT, -PI * 0.5), float(4 + i), 0.25)
+		ls_mats.append(mat)
+	puzzles.marble_instance(m.commit(), self)
+
+func ledge_stone_at(p: Vector3) -> int:
+	if absf(p.y - 2.0) > 0.3 or absf(p.z - LS_Z) > 0.46: return -1
+	for i in 4:
+		if absf(p.x - LS_X[i]) < 0.46: return i
+	return -1
+
+func step_ledge_stone(i: int) -> void:
+	if state["ledge_song"]: return
+	var n: String = LS_NOTES[i]
+	ls_flash[i] = 1.0
+	game.sfx.note(n, -9.0, true)
+	event.emit("song_note", n)
+	ls_buf.append(n)
+	var motif: Array = Sfx.MOTIF
+	var k := ls_buf.size() - 1
+	if ls_buf[k] != motif[k]:
+		ls_fails += 1
+		event.emit("song_sour", ls_fails)
+		ls_buf.clear()
+		if n == motif[0]: ls_buf.append(n)
+		if ls_fails % 2 == 0: get_tree().create_timer(1.4).timeout.connect(play_ledge_song)      # (it plays again for you)
+		return
+	if ls_buf.size() == motif.size():
+		ls_buf.clear()
+		state["ledge_song"] = true
+		event.emit("solve", "ledge_song")
+		if game.juice: game.juice.shake(0.1)
+
+## the melody, once, by itself: each stone lights as its note sounds
+func play_ledge_song() -> void:
+	var motif: Array = Sfx.MOTIF
+	for k in motif.size():
+		var idx: int = LS_NOTES.find(motif[k])
+		get_tree().create_timer(0.3 + k * 0.62).timeout.connect(func() -> void:
+			ls_flash[idx] = 1.0
+			game.sfx.note(motif[k], -11.0, true))
+
+func _update_ledge_song(dt: float) -> void:
+	var p := game.player.position
+	if not _ls_played and not state["ledge_song"] and game.mode == "play" and p.x > 21.0 and p.x < 29.0 and p.z > -25.0 and p.z < -19.0 and absf(p.y - 2.0) < 0.3:
+		_ls_played = true
+		play_ledge_song()
+	var on := ledge_stone_at(p) if game.mode == "play" else -1
+	if on != _ls_on:
+		_ls_on = on
+		if on >= 0: step_ledge_stone(on)
+	for i in 4:
+		ls_flash[i] = maxf(0.0, ls_flash[i] - dt * 0.8)
+		ls_mats[i].set_shader_parameter("lit", maxf(ls_flash[i], 0.7 if state["ledge_song"] else 0.25))
 
 ## a footstep in the corridor: the stone hall answers late
 func on_footstep() -> void:
@@ -2362,7 +2456,7 @@ func _build_four() -> void:
 	four_ring = _smat("res://shaders/ring.gdshader", {"lit": 0.0, "sweep": 0.0})
 	_mi(_plane(Vector2(1.5, 1.5)), four_ring, Transform3D(Basis(), four_pos(3) + Vector3(0, 0.262, 0)))
 	level.add_interact("four_wait", four_pos(3) + Vector3(0, 0.25, 0), "wait", wait_still, 0.55,
-		func() -> bool: return not state["four"] and hub != null and hub.sockets_full())
+		func() -> bool: return not state["four"] and hub != null and hub.beacons_all())
 	level.inscription("s_four", Vector3(22.2, 2.0, -29.2), "A thousand of her wait for the one who breathes.\nStand where she stood. Be still, as we are still.", 1.0,
 		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(22.2, 2.012, -29.6)), Vector2(1.0, 0.7))      # (v0.9: east of the court glass's line)
 
@@ -2391,13 +2485,13 @@ func _update_four(dt: float) -> void:
 			waiting = 0.0
 			if game.mode == "play": game.player.locked = false
 	if state["four"]: return
-	if hub and not hub.sockets_full(): return              # (v1.0 M3: three seals in the three sockets first)
+	if hub and not hub.beacons_all(): return              # (v2.0: the three Beacons burn first)
 	var ok := on_four_plinth() and game.player.speed01 < 0.04 and facing_shrine()
 	four_hold = four_hold + dt if ok else maxf(0.0, four_hold - dt * 2.5)
 	four_ring.set_shader_parameter("lit", minf(1.0, four_hold / 3.6) if ok or four_hold > 0.0 else 0.0)
 	four_ring.set_shader_parameter("sweep", clampf(four_hold / 3.6, 0.0, 1.0))
 	for i in 4:
-		var on := four_hold > (i + 1) * 0.9 or (i < 3 and hub != null and i in (state["inv"]["socketed"] as Array))
+		var on := four_hold > (i + 1) * 0.9 or (i < 3 and hub != null and hub.beacon_lit(["W", "N", "E"][i]))
 		four_mats[i].set_shader_parameter("lit", 1.0 if on else 0.15)
 	if four_hold >= 3.6: open_four(false)
 
@@ -2450,18 +2544,16 @@ func hint_target(area: String) -> Vector3:
 			if not hub.has_item("lamp"): return WorldGeo.LAMP_POS + Vector3(0, 0.8, 0)
 			return Vector3.INF
 		"shard_gallery":
-			if state["gallery"] and not hs.get("w_broken", false):
-				return (Items.CHISEL_POS + Vector3(0, 0.6, 0)) if not hub.has_item("chisel") else Items.RELIC_POS + Vector3(0, 1.3, 0)
+			# (v2.0) after her shadows: the hidden way (seen through the Shard), then the West Beacon
+			if state["gallery"] and not hs.get("w_seen", false): return Vector3(8.1, 1.8, -9.45)
+			if state["gallery"] and not hub.beacon_lit("W"): return Hub.BEACON_POS["W"] + Vector3(0, 1.9, 0)
 		"mist_maze", "echo_corridor":
-			if state["maze"] and pp.z > -41.0 and not hs.get("n_poured", false):
-				return (Items.FILL_POS + Vector3(-0.6, 0.4, 0)) if not state["inv"].get("amph_full", false) else Items.POUR_POS + Vector3(0, 0.5, 0)
+			if state["maze"] and not hub.beacon_lit("N"): return Hub.BEACON_POS["N"] + Vector3(0, 2.6, 0)
+		"scales":
+			if state["scales"] and not hub.beacon_lit("E"): return Hub.BEACON_POS["E"] + Vector3(0, 2.6, 0)
 		"eidolon_ledge":
 			if pp.y > 3.0 and hs.get("e_open", false) and not hs.get("wk_crossed", false): return Vector3(31.4, 5.0, Warden.END_Z)
 			if pp.y > 3.0 and not hs.get("e_open", false): return Vector3(31.4, 5.0, Items.PANEL_Z)
-		"gate_four":
-			if (state["inv"]["seals"] as Array).size() > (state["inv"]["socketed"] as Array).size():
-				for i in 3:
-					if not (i in (state["inv"]["socketed"] as Array)): return four_pos(i) + Vector3(0, 1.2, 0)
 	match area:
 		"waking_pool": return Vector3(-4.2, 0.6, 1.7) if not state["stones"] else Vector3.INF
 		"stair_breath": return Vector3(-10.5, 1.6, -5.3) if not state["breath"] else Vector3.INF
@@ -2498,6 +2590,15 @@ func hint_target(area: String) -> Vector3:
 		"first_shrine": return Puzzles.SHRINE_C + Vector3(0, 1.0, 1.85) if not puzzles.state["shrine"] else Vector3.INF
 	return Vector3.INF
 
+## (v2.0, EIDOLON_SCRIPT §4) the help comes at 30 s in Act 1, 90 s in the wings, 150 s at the end
+func act() -> int:
+	if act1 == null or not act1.done(): return 1
+	if hub != null and hub.beacons_all(): return 3
+	return 2
+
+func hint_after() -> float:
+	return [30.0, 90.0, 150.0][act() - 1]
+
 ## after a few minutes without progress in a space, a faint petrol wisp drifts from you toward what
 ## matters (no words, never the answer itself)
 func _update_hints(dt: float, area: String) -> void:
@@ -2507,7 +2608,7 @@ func _update_hints(dt: float, area: String) -> void:
 	if game.mode != "play": return
 	hint_t += dt
 	_hint_cd = maxf(0.0, _hint_cd - dt)
-	if hint_t < Game.HINT_AFTER or _hint_cd > 0.0: return
+	if hint_t < hint_after() or _hint_cd > 0.0: return
 	var tgt := hint_target(area)
 	if tgt == Vector3.INF: return
 	_hint_cd = 45.0
@@ -2542,10 +2643,12 @@ func update(dt: float) -> void:
 	_update_mural(dt)
 	_update_maze(dt)
 	_update_echo(dt)
+	_update_ledge_song(dt)
 	_update_scales(dt)
 	_update_ledge(dt)
 	_update_four(dt)
 	hub.update(dt)
+	act1.update(dt)
 	items.update(dt)
 	warden.update(dt)
 	if life: life.update(dt)
@@ -2571,10 +2674,12 @@ func apply_state() -> void:
 		if hd: hd.visible = true; hd.position.y = 0.0
 	_apply_hall()
 	var gls := level.get_node_or_null("Zone_GLs") as MeshInstance3D
-	if state["gallery"]: open_gallery(true)
+	if state["hub"].get("w_seen", false): open_hidden_way(true)
 	else:
 		level.set_enabled("gallery_secret", true)
 		if gls: gls.visible = true; gls.position.y = 0.0
+	if state["gallery"]: open_gallery(true)
+	else:
 		for k in sh_flames.size(): sh_flames[k].mat.set_shader_parameter("intensity", 1.0 if k in state["gallery_lit"] else 0.0)
 		for s2 in sh_shadows: s2.set_shader_parameter("dark", 0.72)
 		sh_veil.set_shader_parameter("intensity", 0.0)
@@ -2628,6 +2733,7 @@ func apply_state() -> void:
 	game.ui.set_inventory(state["shard"], false)
 	set_lens(false)
 	hub.apply_state()
+	act1.apply_state()
 	items.apply_state()
 	warden.apply_state()
 	if life: life.apply_state()

@@ -1,10 +1,12 @@
 shader_type spatial;
 // v0.8.1: a real-looking flame (a layered, noise-driven fire). Camera-facing about the vertical; two
-// layers (the body with its licking tongues, and the hot inner core) give it depth. Additive, soft edges.
+// layers (the body with its licking tongues, and the hot inner core) give it depth. Soft edges.
+// (v2.0 A, global pass: alpha-blended, not additive: an additive flame vanished on the pale marble and in the fog;
+// now the crimson body is a real colour over any ground, the core rose-white, the glow a crimson veil round it)
 // (v0.8.3: every flame burns in the game's aqua: a near-white heart, a pale aqua core, the aqua body,
 // teal tongues; `style` is kept for compatibility.) `intensity` 0 = out, `gutter`
 // 0..1 shrinks it sputtering to nothing.
-render_mode unshaded, blend_add, depth_draw_never, shadows_disabled, cull_disabled, fog_disabled;
+render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled, cull_disabled, fog_disabled;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
 global uniform vec4 accent_tint;
@@ -49,5 +51,7 @@ void fragment() {
 	// a soft glow round the flame (no hard edge)
 	float glow = exp(-length(vec2(x * 1.4, (uv.y - 0.3 * h) * 1.1)) * 5.5) * 0.25 * (1.0 - core_layer);
 	vec3 gcol = accent.rgb;
-	ALBEDO = (c * body * mix(0.85, 1.3, core_layer) + gcol * glow) * intensity * flick;
+	float gl = glow * 2.2;
+	ALBEDO = mix(gcol, c * mix(1.0, 1.15, core_layer), clamp(body * 1.4, 0.0, 1.0));
+	ALPHA = clamp((body * mix(0.92, 0.85, core_layer) + gl * (1.0 - body)) * intensity * flick, 0.0, 1.0);
 }

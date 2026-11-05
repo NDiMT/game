@@ -15,6 +15,8 @@ const NO_SUPPORT := ["Wonders", "Colossus", "wonder", "rubble", "debris", "Ink",
 	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile"]
 ## designed contacts, by place: [where (world box), what it is]. Hits inside one are not counted.
 const DESIGNED := [
+	[AABB(Vector3(-3.7, 2.9, 9.9), Vector3(5.7, 0.7, 3.1)), "(v2.0) the crypt's vault rests on its six piers"],
+	[AABB(Vector3(17.6, 1.9, -50.3), Vector3(1.4, 1.8, 0.9)), "(v2.0) the Echo room's memory relief closes its open door's end (the room is open from the start now)"],
 	[AABB(Vector3(26.0, 3.5, -50.2), Vector3(7.5, 5.0, 2.4)), "the Scales: pans and weights HANG from the beam overhead"],
 	[AABB(Vector3(4.9, -0.2, -3.2), Vector3(0.5, 3.0, 2.4)), "the shortcut gate: its bars slide down into a slot in the floor"],
 	[AABB(Vector3(17.2, 0.8, -15.45), Vector3(2.6, 3.6, 0.6)), "the Our Steps gate: its bars run in grooves in the two posts and a slot in the floor"],
@@ -22,7 +24,7 @@ const DESIGNED := [
 	[AABB(Vector3(13.0, 1.9, -29.2), Vector3(4.0, 4.0, 2.0)), "the Tree of Shards: its shards hang from the branches; it IS the nook's goal"],
 	[AABB(Vector3(8.9, 1.9, -41.3), Vector3(2.2, 3.5, 0.6)), "(v1.0) the bolted bars between the Echo Corridor and the Maze: a door, shut until unbolted"],
 	[AABB(Vector3(30.3, 3.9, -24.85), Vector3(2.2, 2.2, 0.5)), "(v1.0 M3b) the sealed panel across the Mirror Walk: a door, shut until the pin rings it"],
-	[AABB(Vector3(-12.3, 1.5, 1.0), Vector3(0.6, 0.8, 0.6)), "(v1.1) the landing's bell HANGS from its post's arm"],
+	[AABB(Vector3(3.75, 1.5, 4.5), Vector3(0.6, 0.8, 0.6)), "(v2.0) the wake court's bell HANGS from its post's arm"],
 ]
 const NOT_SOLID := ["veil", "glow", "halo", "beam", "mist", "fog", "ray", "shaft", "water", "pool_mat", "rune", "mark"]
 

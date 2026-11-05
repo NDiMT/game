@@ -108,6 +108,21 @@
    "tris": 4891,
    "use": "wing reward; three open the Gate of the Four Veiled",
    "tripo_task": "a897c019-51db-47fe-ad8c-476d81163694"
+  },
+  {
+   "file": "item_comb.glb",
+   "name": "Ione's Comb",
+   "icon": "res://assets/textures/icons/comb.png",
+   "size_m": [
+    0.09,
+    0.09,
+    0.058
+   ],
+   "tris": 4943,
+   "use": "story item (EIDOLON_SCRIPT §3/§5): passed up through the pool in the prologue; kept in the satchel, glows, does nothing",
+   "tripo_task": "cd2ae423-4a75-44f6-b021-f616faebdc39",
+   "source": "Tripo text_to_model (30 credits); turned front +Z, 9 cm, base colour 256 px, smoothed normals (dev_rig/tools/item_view.gd renders the icon)",
+   "surfaces": 1
   }
  ]
 }

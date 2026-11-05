@@ -7,52 +7,63 @@ extends Control
 ##   await ic.play("Στα Κύθηρα ζούσε ένας γλύπτης που λεγόταν Θήρων.", 3.0)      (one card; returns when it has gone)
 ##   await ic.play_all(lines, 3.0)                                              (a list, one after another)
 ##   ic.skip()                                                                  (finish the current card at once)
-## Font: assets/fonts/LiberationSerif (Greek and Latin); italics for lines wrapped in *...*.
+## Font: assets/fonts/LiberationSerif (Greek and Latin). A card may hold several lines ("\n"); a line wrapped in
+## *...* is set in italics (Aphrodite's words), so one stanza of the script = one card.
 
 signal card_done
 
 const FONT := preload("res://assets/fonts/LiberationSerif-Regular.ttf")
 const FONT_I := preload("res://assets/fonts/LiberationSerif-Italic.ttf")
-@export var font_size := 30
+@export var font_size := 26
 @export var mirrored_hold := 0.55     # how long it reads mirrored before it turns
 @export var flip_time := 0.75
-var _label: Label
+var _label: RichTextLabel
 var _pivot: Control
 var _mat: ShaderMaterial
 var _tw: Tween
 var _skip := false
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bg := ColorRect.new()
 	bg.color = Color(0.0, 0.0, 0.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 	_pivot = Control.new()
-	_pivot.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pivot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pivot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_pivot)
-	_label = Label.new()
-	_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var box := VBoxContainer.new()                  # (centres the text block vertically)
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pivot.add_child(box)
+	_label = RichTextLabel.new()
+	_label.bbcode_enabled = true
+	_label.fit_content = true
+	_label.scroll_active = false
 	_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_label.add_theme_font_override("font", FONT)
-	_label.add_theme_font_size_override("font_size", font_size)
-	_label.add_theme_color_override("font_color", Color(0.93, 0.93, 0.92))
-	_label.add_theme_constant_override("line_spacing", 8)
+	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_label.add_theme_font_override("normal_font", FONT)
+	_label.add_theme_font_override("italics_font", FONT_I)
+	_label.add_theme_font_size_override("normal_font_size", font_size)
+	_label.add_theme_font_size_override("italics_font_size", font_size)
+	_label.add_theme_color_override("default_color", Color(0.93, 0.93, 0.92))
+	_label.add_theme_constant_override("line_separation", 8)
 	_mat = ShaderMaterial.new()
 	_mat.shader = preload("res://shaders/card_ink.gdshader")
 	_label.material = _mat
-	_pivot.add_child(_label)
+	box.add_child(_label)
 	resized.connect(_layout)
 	_layout()
 
 func _layout() -> void:
 	var m := size.x * 0.1
-	_label.offset_left = m; _label.offset_right = -m
+	var box := _label.get_parent() as Control
+	box.offset_left = m; box.offset_right = -m
 	_pivot.pivot_offset = size * 0.5
 
 func skip() -> void:
@@ -61,10 +72,21 @@ func skip() -> void:
 
 ## one card: mirrored, it turns true, holds `hold` s, dissolves; returns when it has gone
 func play(text: String, hold := 3.0) -> void:
+	if not is_node_ready(): await ready
 	_skip = false
-	var it := text.begins_with("*") and text.ends_with("*")
-	_label.text = text.trim_prefix("*").trim_suffix("*") if it else text
-	_label.add_theme_font_override("font", FONT_I if it else FONT)
+	# *...* sets italics, and may span lines (Aphrodite's two-line answer is one *...*)
+	var lines := PackedStringArray()
+	var ital := false
+	for l in text.split("\n"):
+		var e := l.strip_edges().replace("[", "[lb]")
+		var opens := e.begins_with("*")
+		var closes := e.ends_with("*") and (e.length() > 1 or not opens)
+		e = e.trim_prefix("*") if opens else e
+		e = e.trim_suffix("*") if closes else e
+		var on := ital or opens
+		lines.append("[i]%s[/i]" % e if on else e)
+		ital = on and not closes
+	_label.text = "[center]%s[/center]" % "\n".join(lines)
 	_mat.set_shader_parameter("reveal", 0.0)
 	_mat.set_shader_parameter("fade", 0.0)
 	_pivot.scale = Vector2(-1.0, 1.0)              # mirrored: as the glass shows it
