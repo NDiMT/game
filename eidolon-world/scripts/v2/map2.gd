@@ -22,6 +22,12 @@ const ZP := "V2_"                       # zone / region name prefix
 ## the beats' anchors (local)
 const OBSERVER := Vector3(-26.6, 0.0, -8.0)    # the Observer's sunk face (W.7; the prologue opens on it)
 const POOL_WATER := [-12.95, 17.0, -4.0, 20.7]   # the Pool of Halves (where she wakes)
+## N.1 the Flooded Colonnade: stones under murky water, all alike (their tops just under it); only the true ones hold
+## you, and in the water's reflection SHE walks on them ahead of you (hub.gd). The decoys are broken shafts.
+const N1_Y := -0.05
+const N1_WATER_Y := 0.0
+const N1_STONES := [[2.5, -9.45], [1.7, -10.25], [1.9, -11.25], [2.8, -11.9], [3.2, -12.75]]
+const N1_DECOYS := [[3.65, -10.0], [0.85, -11.95], [3.95, -11.35], [1.55, -13.05]]
 
 ## v1 room -> here (translation only)
 const W_HALL := Vector3(-23.0, 0.0, -4.0)   # Stair of Breath, W_top, W_corr, Hall of Glass
@@ -37,7 +43,8 @@ const GN := O + N_MOD                       # Turned Ones, Our Steps, the Wind R
 const GE := O + E_MOD                       # Singing Stones (the v1 Ledge), Veil Stair, Mirror Walk, Spring, Scales
 const GX := O + Vector3(1.0, 4.0, -43.0)    # E.6 the Eidolon Plate: the v1 Ledge's glass and plates, up on the High terrace (EB)
 const GP := O + POOL
-const GWI := Vector2i(Vector2(GW.x, GW.z))             # (the Hall's cells are whole metres: so is its offset)
+const GWI := Vector2i(Vector2(GW.x, GW.z))
+const GXI := Vector2i(Vector2(GX.x, GX.z))             # (E.6's cells too)             # (the Hall's cells are whole metres: so is its offset)
 const GN2 := Vector2(GN.x, GN.z)
 const GE2 := Vector2(GE.x, GE.z)
 const GX2 := Vector2(GX.x, GX.z)
@@ -118,9 +125,11 @@ const WALK := [
 	["WB", -21.0, -13.0, -18.0, -7.0, 1.0, NAN, -1],
 	# (W7: stepping stones over the inlet, beside the Observer's face: W7_STONES)
 	# North
-	["N1", 0.5, -15.0, 4.5, -8.0, 1.0, 0.0, 1],
-	["N1l", -0.5, -10.0, 0.5, -8.0, 0.0, NAN, -1],        # flat ledges either side of its low end (for its columns)
-	["N1l", 4.5, -10.0, 5.5, -8.0, 0.0, NAN, -1],
+	# (N1, the Flooded Colonnade: a landing off the Atrium, the hidden stones (N1_STONES), worn steps up into the garden)
+	["N1", 1.6, -9.0, 3.4, -8.0, 0.0, NAN, -1],
+	["N1", 2.6, -15.0, 3.8, -13.0, 1.0, N1_Y, 1],
+	["N1l", -0.5, -9.0, 0.5, -8.0, 0.0, NAN, -1],        # flat ledges either side of its low end (for its columns)
+	["N1l", 4.5, -9.0, 5.5, -8.0, 0.0, NAN, -1],
 	# (N2 the Turned Ones, N3 their door, N4 Our Steps, IBN the Wind Ramp, N5 the Court, N6 the Tree, N7d / N7 the Maze: the v1 rooms)
 	["N7x", -3.0, -54.4, -1.0, -49.0, 2.0, NAN, -1],
 	["NB", -8.0, -60.0, 1.0, -54.4, 2.0, NAN, -1],
@@ -129,14 +138,9 @@ const WALK := [
 	# East
 	["ER", 10.0, -6.0, 17.0, -3.0, 0.0, 2.0, 0],
 	["E1", 17.0, -25.0, 21.0, -3.0, 2.0, NAN, -1],
-	["E2", 17.0, -31.0, 25.0, -25.0, 2.0, NAN, -1],
-	["IBE", 25.0, -29.4, 26.4, -27.4, 2.0, 4.0, 0],
-	["E3", 26.4, -50.6, 28.4, -27.2, 4.0, NAN, -1],
-	["E4", 28.4, -39.35, 30.4, -36.65, 4.0, NAN, -1],
-	["E3l", 26.4, -52.6, 28.4, -50.6, 2.0, 4.0, 1],          # the lift (v1: in the Scales' corner)
-	["E5", 22.0, -58.0, 29.4, -50.6, 2.0, NAN, -1],
+	# (E2 the Singing Stones, IBE the Veil Stair, E3 the Mirror Walk, E4 the Spring, E3l the lift, E5 the Scales: the v1 rooms)
 	["E5u", 22.0, -62.0, 25.0, -58.0, 6.0, 2.0, 1],          # the scales' platform rises (block-out: a ramp)
-	["EB", 22.0, -68.0, 30.0, -62.0, 6.0, NAN, -1],
+	# (EB: the v1 Ledge again, its great glass and plates: E.6)
 	["EH", 18.5, -66.0, 22.0, -62.0, 6.0, NAN, -1],
 	["EH", 18.5, -62.0, 21.0, -31.0, 6.0, 2.0, 1],
 	# Act 3
@@ -151,6 +155,7 @@ const WALK := [
 ## (phase 3) the v1 rooms' walk regions keep their v1 names: the key of each in WALK's terms (its space, part, area)
 const V1_KEY := {"W_land": "W1", "W_stair1": "W1", "W_breath": "W1", "W_stair2": "W1", "W_top": "W2", "W_corr": "W2c",
 	"H": "W3", "hdoor": "W3", "GL": "W5",
+	"E": "E2", "WK_down": "IBE", "WK": "E3", "SPB": "E4", "lift": "E3l", "SC": "E5", "E6": "EB",
 	"G": "N2", "g_door": "N3", "HW": "N4", "HW_ramp": "IBN", "L_ramp": "IBN", "L": "N5", "TS": "N6", "MZ_door": "N7d", "MZ": "N7"}
 static func key_of_region(name: String) -> String:
 	if name.begins_with(ZP): return name.substr(ZP.length())
@@ -168,6 +173,7 @@ const NO_FLOOR := ["I4s", "P"]
 const WATER := [
 	[-12.95, 17.0, -4.0, 20.7, -0.42, true],          # the Pool of Halves (where she wakes)
 	[-32.4, -14.6, -14.0, -1.5, -0.42, true],         # the inlet of the Sunken Colossus
+	[-0.5, -15.0, 5.5, -9.0, N1_WATER_Y, true],       # N.1 the Flooded Colonnade
 	[14.6, -1.5, 16.4, 8.0, -0.55, true],             # I.4's stream
 	[-56.0, 2.5, -16.15, 30.0, -0.42, false],         # the open sea of Act 3 (the bridge, the Gate, the Shrine)
 	[-16.15, 22.0, 0.0, 30.0, -0.42, false],
@@ -220,14 +226,18 @@ const ROUTE := [
 	[-13.5, -11.5, "IBW"], [-16.0, -11.5, "W6"], [-19.5, -11.5, "WB"], [-19.5, -7.5, "WB"], [-19.5, -5.0, "W7"],
 	[-19.5, -2.5, "W7"], [-19.5, 0.0, "WR"], [-9.5, 0.0, "A"], [-5.0, 0.0, "A"], [-5.0, -4.5, "A"],
 	# North wing
-	[2.5, -4.5, "A"], [2.5, -7.0, "A"], [2.5, -11.5, "N1"], [2.5, -16.5, "N2"], [3.6, -20.0, "N2"], [3.6, -21.8, "N2"], [5.25, -21.8, "N3"],
-	[8.0, -21.8, "N4"], [9.5, -23.5, "N4"], [6.5, -24.6, "N4"], [6.5, -26.2, "IBN"], [5.5, -27.8, "IBN"], [2.5, -30.0, "N5"],
-	[0.0, -34.5, "N5"], [3.0, -34.5, "N5"], [3.0, -38.2, "N6"], [0.0, -38.2, "N7d"], [0.0, -44.0, "N7"], [-2.0, -48.5, "N7"], [-2.0, -51.5, "N7x"],
+	[2.5, -4.5, "A"], [2.5, -7.0, "A"], [2.5, -8.6, "N1"], [2.5, -9.45, "N1"], [1.7, -10.25, "N1"], [1.9, -11.25, "N1"],
+	[2.8, -11.9, "N1"], [3.2, -12.75, "N1"], [3.2, -14.4, "N1"], [2.5, -16.5, "N2"], [3.6, -20.0, "N2"], [3.6, -21.8, "N2"], [5.25, -21.8, "N3"],
+	[5.9, -21.8, "N4"], [6.3, -23.0, "N4"], [6.5, -26.2, "IBN"], [5.5, -27.8, "IBN"], [2.5, -30.0, "N5"],
+	[0.0, -34.5, "N5"], [0.0, -38.2, "N7d"], [3.0, -38.2, "N6"], [0.0, -38.2, "N7d"],
+	# (the Mist Maze: her way through it, cell by cell: Ch1Geo.MZ_PATH)
+	[0.0, -40.0, "N7"], [2.0, -40.0, "N7"], [2.0, -42.0, "N7"], [4.0, -42.0, "N7"], [4.0, -46.0, "N7"], [0.0, -46.0, "N7"],
+	[0.0, -44.0, "N7"], [-2.0, -44.0, "N7"], [-2.0, -48.5, "N7"], [-2.0, -51.5, "N7x"],
 	[-3.0, -57.0, "NB"], [-7.0, -56.0, "NB"], [-7.0, -40.0, "NS"], [-7.0, -20.0, "NS"], [-7.0, -9.0, "NS"], [-7.0, -4.5, "A"],
 	# East wing
 	[6.0, -4.5, "A"], [9.5, -4.5, "A"], [13.5, -4.5, "ER"], [19.0, -4.5, "E1"], [19.0, -17.0, "E1"], [19.0, -27.0, "E2"],
 	[22.0, -28.4, "E2"], [24.6, -28.4, "E2"], [25.7, -28.4, "IBE"], [27.4, -29.0, "E3"], [27.4, -38.0, "E3"],
-	[29.4, -38.0, "E4"], [27.4, -38.0, "E3"], [27.4, -50.0, "E3"], [27.4, -51.6, "E3l"], [25.7, -54.0, "E5"],
+	[29.4, -38.0, "E4"], [27.4, -38.0, "E3"], [27.4, -50.0, "E3"], [27.4, -51.6, "E3l"], [26.6, -51.9, "E5"], [24.0, -51.9, "E5"],
 	[23.5, -57.0, "E5"], [23.5, -60.0, "E5u"], [26.0, -65.0, "EB"], [23.0, -64.0, "EB"], [20.0, -64.0, "EH"],
 	[19.75, -48.0, "EH"], [19.75, -32.0, "EH"], [19.75, -28.0, "E2"], [19.0, -20.0, "E1"], [19.0, -5.0, "E1"],
 	[13.5, -4.5, "ER"], [9.0, -4.5, "A"], [-3.0, -4.5, "A"],
@@ -318,6 +328,18 @@ static func build(lv: Level) -> void:
 		var rr := 0.5 + 0.04 * sin(k * 2.3)
 		var bot := -1.2
 		lv.mb(ZP + "west").cyl(w(s[0], s[1], (float(s[2]) + bot) * 0.5), rr, rr + 0.1, float(s[2]) - bot, lv.C(0.25), 12, Basis(Vector3.UP, k * 0.7))
+	for k in N1_STONES.size():
+		var s: Array = N1_STONES[k]
+		lv.walk(wr(s[0] - 0.48, s[1] - 0.48, s[0] + 0.48, s[1] + 0.48), N1_Y + O.y, NAN, -1, ZP + "N1")
+		lv.mb(ZP + "north").tag = "floor"
+		lv.box(ZP + "north", w(s[0], s[1], N1_Y - 0.45), Vector3(0.9, 0.9, 0.9), 0.25, false, Basis(Vector3.UP, 0.2 * k))
+		lv.mb(ZP + "north").tag = ""
+		if k + 1 < N1_STONES.size():
+			var nx: Array = N1_STONES[k + 1]
+			var m2 := Vector2((s[0] + nx[0]) * 0.5, (s[1] + nx[1]) * 0.5)
+			lv.walk(wr(m2.x - 0.4, m2.y - 0.4, m2.x + 0.4, m2.y + 0.4), N1_Y + O.y, NAN, -1, ZP + "N1")
+	lv.walk(wr(2.1, -9.25, 2.9, -8.9), N1_Y + O.y, NAN, -1, ZP + "N1")          # (off the landing onto the first stone)
+	for d in N1_DECOYS: lv.stump(w(d[0], d[1], -0.9), 1.1, true, 0.04)
 	for e in WALLS:
 		var r := wr(e[0], e[1], e[2], e[3])
 		var y := _floor_near(lv, r)
@@ -370,6 +392,12 @@ static func _on_any(lv: Level, p: Vector2) -> bool:
 	return false
 
 ## (a kerb is not built along water that is part of the design: the pool's own rim is the puzzle's)
+## the still water's surface under a world point (the designed waters: the pool, the inlet, the colonnade), NAN if none
+static func water_y_at(p: Vector2) -> float:
+	for e in WATER:
+		if e[5] and wr(e[0], e[1], e[2], e[3]).has_point(p): return float(e[4]) + O.y
+	return NAN
+
 static func _water_at(p: Vector2) -> bool:
 	for e in WATER:
 		if e[5] and wr(e[0], e[1], e[2], e[3]).has_point(p): return true
@@ -487,7 +515,11 @@ static func dress(lv: Level, parent: Node3D) -> Array:
 ## Beacons are the wings')
 const KEEP_EXTRA := [[-10.0, -1.6, -8.0, 1.6], [0.5, -8.0, 4.5, -6.0], [8.0, -6.1, 10.0, -2.9], [8.0, 1.8, 10.0, 4.2], [-4.2, 6.0, -0.8, 8.0], [-8.1, -8.0, -5.9, -6.0], [-10.6, -22.5, -9.0, -20.9],
 			[-9.7, -0.7, -8.5, 0.7], [-0.7, -8.0, 0.7, -6.8], [8.5, -0.7, 9.7, 0.7],
-			[10.5, 4.6, 12.0, 6.6], [12.1, 0.8, 14.0, 3.4]]          # (the crypt: Theron's tablet and her lamp's rim, and the ways to them)
+			[10.5, 4.6, 12.0, 6.6], [12.1, 0.8, 14.0, 3.4],          # (the crypt: Theron's tablet and her lamp's rim, and the ways to them)
+			# (phase 3) the wings' puzzle floors, whole: the Hall, the Shadow Chamber, the Turned Ones and her glass, Our Steps,
+			# the Court, the Maze, the Singing Stones, the Scales, the Eidolon Plate's terrace
+			[-27.6, -24.6, -18.4, -15.0], [-14.0, -20.9, -9.0, -13.6], [-1.7, -25.0, 5.0, -20.5], [5.5, -25.0, 13.45, -16.0],
+			[-5.0, -37.0, 5.0, -27.0], [-3.0, -49.0, 5.0, -39.0], [20.5, -30.7, 25.0, -28.6], [22.0, -58.0, 29.4, -50.4], [22.0, -68.0, 30.0, -62.0]]
 
 ## the route as kept-clear rects (1.6 m wide along each leg)
 static func route_keep() -> Array:

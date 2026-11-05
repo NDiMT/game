@@ -14,19 +14,20 @@ extends Node3D
 const PACE := 2.0                          # (his clip, quickened: he keeps a beat you can cross)
 const GLASS_H := 2.6
 # the Walk
-const GLASS_X := 32.75
-const FIG_X := 31.95                        # (he walks the Walk itself: only the glass shows him)
-const WALK_X := Vector2(30.3, 32.5)
+## (v2: the Mirror Walk stands at Map2.GE)
+const GLASS_X := Map2.GE.x + 32.75
+const FIG_X := Map2.GE.x + 31.95                        # (he walks the Walk itself: only the glass shows him)
+const WALK_X := Vector2(Map2.GE.x + 30.3, Map2.GE.x + 32.5)
 const WALK_Y := 4.0
-const START_Z := -25.4                      # the Walk's start (north of the panel)
-const END_Z := -43.6                        # the lift: crossed
-const PATROL := Vector2(-43.0, -26.0)       # his beat along the glass (z)
+const START_Z := Map2.GE.z - 25.4                      # the Walk's start (north of the panel)
+const END_Z := Map2.GE.z - 43.6                        # the lift: crossed
+const PATROL := Vector2(Map2.GE.z - 43.0, Map2.GE.z - 26.0)       # his beat along the glass (z)
 const PAUSE := 2.0
 const SIGHT := 8.0
-const PILLARS := [-28.6, -36.8, -40.6]
+const PILLARS := [Map2.GE.z - 28.6, Map2.GE.z - 36.8, Map2.GE.z - 40.6]
 const SHADOW := 0.6
-const SPRING_GAP := Vector2(-33.4, -30.6)   # no glass there
-const PANES := [Vector2(-44.3, -33.6), Vector2(-30.4, -24.9)]
+const SPRING_GAP := Vector2(Map2.GE.z - 33.4, Map2.GE.z - 30.6)   # no glass there
+const PANES := [Vector2(Map2.GE.z - 44.3, Map2.GE.z - 33.6), Vector2(Map2.GE.z - 30.4, Map2.GE.z - 24.9)]
 
 var game: Game
 var chapter: Chapter
@@ -35,7 +36,7 @@ var ghost_fig: WardenRig                   # (sightings, in reflections only)
 var glasses: Array[Reflector] = []
 var mist: MeshInstance3D
 var mist_mat: ShaderMaterial
-var wz := -43.0                            # his place on the beat
+var wz := Map2.GE.z - 43.0                            # his place on the beat
 var facing := 1.0                          # +1: facing south (+z), -1: north
 var _pause := 0.0
 var caught := 0
@@ -103,9 +104,9 @@ func _build_walk() -> void:
 	# the pillars whose shadows hide you from the glass
 	var pm := MB.new()
 	for z in PILLARS:
-		pm.cyl(Vector3(32.12, WALK_Y + 1.3, z), 0.17, 0.2, 2.6, Color(0.5, 0.25, 0.0), 12)
-		pm.box(Vector3(32.12, WALK_Y + 2.66, z), Vector3(0.5, 0.12, 0.5), Color(0.5, 0.25, 0.0))
-		game.level.ob_circle(Vector2(32.12, z), 0.24)
+		pm.cyl(Vector3(Map2.GE.x + 32.12, WALK_Y + 1.3, z), 0.17, 0.2, 2.6, Color(0.5, 0.25, 0.0), 12)
+		pm.box(Vector3(Map2.GE.x + 32.12, WALK_Y + 2.66, z), Vector3(0.5, 0.12, 0.5), Color(0.5, 0.25, 0.0))
+		game.level.ob_circle(Vector2(Map2.GE.x + 32.12, z), 0.24)
 	game.puzzles.marble_instance(pm.commit(), self)
 	# their shadows on the floor (darker bands from the pillar to the walk's west edge)
 	var sm := StandardMaterial3D.new()
@@ -118,7 +119,7 @@ func _build_walk() -> void:
 		var s := MeshInstance3D.new()
 		s.mesh = q2
 		s.material_override = sm
-		s.transform = Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(31.2, WALK_Y + 0.012, z))
+		s.transform = Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(Map2.GE.x + 31.2, WALK_Y + 0.012, z))
 		s.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(s)
 	# the mist where he will look next
@@ -212,7 +213,7 @@ func _catch() -> void:
 	tw.tween_interval(0.75)
 	tw.tween_callback(func() -> void:
 		game.auto_target = Vector3.INF
-		game.player.teleport(Vector3(31.4, WALK_Y, START_Z), 0.0)          # (facing north, up the Walk again)
+		game.player.teleport(Vector3(Map2.GE.x + 31.4, WALK_Y, START_Z), 0.0)          # (facing north, up the Walk again)
 		game.world.snap_to(game.player.position)
 		game.ui.fade_to(0.0, 0.8)
 		game.ui.show_text("He saw you in the glass.", game.player.position, 2.5))

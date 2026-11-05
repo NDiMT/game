@@ -53,7 +53,7 @@ func setup(g: Game, ch: Chapter) -> void:
 	_build_uc_roof()
 	_build_colonnade()
 	_build_beacons()
-	_build_bars()
+	_build_gates()
 
 # ------------------------------------------------------------------ inventory (the satchel's data; its UI is M3b)
 func inv() -> Dictionary:
@@ -211,14 +211,16 @@ func _update_undercroft() -> void:
 
 # ------------------------------------------------------------------ T4: her reflection walks the hidden stones
 func _build_colonnade() -> void:
-	t4_pts = [Vector3(11.5, WorldGeo.T4_Y, 9.2), Vector3(11.5, WorldGeo.T4_Y, 8.6)]
-	for c in WorldGeo.T4_STONES: t4_pts.append(Vector3(c.x, WorldGeo.T4_Y, c.y))
-	t4_pts.append(Vector3(12.15, WorldGeo.T4_Y, 4.6))
+	# (v2: N.1, the Flooded Colonnade north of the Atrium: Map2.N1_STONES)
+	var sy := Map2.N1_Y + Map2.O.y
+	t4_pts = [Map2.w(2.5, -8.3, sy), Map2.w(2.5, -8.9, sy)]
+	for c in Map2.N1_STONES: t4_pts.append(Map2.w(c[0], c[1], sy))
+	t4_pts.append(Map2.w(3.2, -13.4, sy))
 	var r := Reflector.new()
-	r.kind = "pool"; r.plane_n = Vector3.UP; r.plane_d = Ch1Geo.CO_WATER_Y
+	r.kind = "pool"; r.plane_n = Vector3.UP; r.plane_d = Map2.N1_WATER_Y + Map2.O.y
 	r.surface_col = Vector3(0.42, 0.47, 0.5); r.surface_mix = 0.08
-	r.clip_c = Vector3(11.4, Ch1Geo.CO_WATER_Y, 6.9); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(2.6, 2.6)
-	r.region = Level.R(8.5, 3.0, 15.0, 13.0)
+	r.clip_c = Map2.w(2.5, -12.0, Map2.N1_WATER_Y); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(3.0, 3.0)
+	r.region = Map2.wr(-0.5, -15.0, 5.5, -7.0)
 	r.alpha = 0.85
 	r.hold = true
 	game.puzzles._add_refl(r)
@@ -227,17 +229,16 @@ func _build_colonnade() -> void:
 	# the hidden stones, the drowned shafts, the steps down and up
 	var wm := PackedVector4Array()
 	var wy := PackedFloat32Array()
-	for i in WorldGeo.T4_STONES.size():
-		var c: Vector2 = WorldGeo.T4_STONES[i]
-		wm.append(Vector4(c.x, c.y, 0.47, 0.47)); wy.append(0.2 * i)
-	for c in WorldGeo.T4_DECOYS:
-		wm.append(Vector4(c.x, c.y, 0.5, 0.5)); wy.append(0.0)
-	wm.append(Vector4(11.5, 9.12, 0.52, 0.5)); wy.append(0.0)
-	wm.append(Vector4(12.15, 4.5, 0.42, 0.57)); wy.append(0.0)
-	for c in Ch1Geo.CO_STONES:
-		if wm.size() >= 16: break
-		if absf(c.x - 11.4) < 3.2 and absf(c.y - 6.9) < 3.2:
-			wm.append(Vector4(c.x, c.y, 0.56, 0.56)); wy.append(0.0)
+	for i in Map2.N1_STONES.size():
+		var c: Vector3 = Map2.w(Map2.N1_STONES[i][0], Map2.N1_STONES[i][1])
+		wm.append(Vector4(c.x, c.z, 0.47, 0.47)); wy.append(0.2 * i)
+	for d in Map2.N1_DECOYS:
+		var c2: Vector3 = Map2.w(d[0], d[1])
+		wm.append(Vector4(c2.x, c2.z, 0.5, 0.5)); wy.append(0.0)
+	var lc := Map2.w(2.5, -8.5)
+	wm.append(Vector4(lc.x, lc.z, 0.9, 0.5)); wy.append(0.0)
+	var rc := Map2.w(3.2, -14.0)
+	wm.append(Vector4(rc.x, rc.z, 0.6, 1.0)); wy.append(0.0)
 	r.puppet.set_param("wmask", wm)
 	r.puppet.set_param("wmask_yaw", wy)
 	r.puppet.set_param("n_wmask", wm.size())
@@ -272,12 +273,12 @@ func _t4_point(s: float) -> Array:
 func _update_colonnade(dt: float) -> void:
 	var pl := game.player
 	var pp := pl.position
-	var near := Rect2(9.0, 3.5, 5.0, 7.5).has_point(Vector2(pp.x, pp.z))
+	var near := t4_refl.region.has_point(Vector2(pp.x, pp.z))
 	if not near:
 		t4_s = 0.0
 		return
 	# she keeps about two stones ahead of you, and waits
-	var mine := _t4_arc(pp) if pp.z < 9.8 else 0.0
+	var mine := _t4_arc(pp) if pp.z < Map2.O.z - 8.1 else 0.0
 	var goal := minf(mine + 1.9, _t4_total())
 	var moving := t4_s < goal - 0.05
 	t4_s = move_toward(t4_s, goal, dt * 2.4)          # (QA P2-7: she keeps ahead of you)
@@ -352,6 +353,25 @@ func _build_bars() -> void:
 	sc_bars = _bars(Vector3(26.1, 2.0, -45.5), 1.9, true)
 	game.level.ob_rect(Level.R(25.95, -46.45, 26.25, -44.55), "sc_bars")
 
+## (v2) the High wing's two gates: bars across the Scales' way up to the High terrace (they rise when the balance is
+## answered) and across the High Stair's head (they rise when the Eidolon Plate answers: the circle closes)
+var up_bars: Node3D
+var eh_bars: Node3D
+func _build_gates() -> void:
+	up_bars = _bars(Map2.O + Vector3(23.5, 2.0, -57.95), 3.0, false)
+	game.level.ob_rect(Map2.wr(22.0, -58.1, 25.0, -57.8), "up_bars")
+	eh_bars = _bars(Map2.O + Vector3(22.0, 6.0, -64.0), 4.0, true)
+	game.level.ob_rect(Map2.wr(21.85, -66.0, 22.15, -62.0), "eh_bars")
+
+func _gate(n: Node3D, ob: String, y: float, open: bool, instant: bool) -> void:
+	if game.level.named[ob].enabled != open: return
+	game.level.set_enabled(ob, not open)
+	if instant or not open:
+		n.position.y = y + (2.7 if open else 0.0)
+		return
+	chapter.event.emit("bars_up", ob)
+	n.create_tween().tween_property(n, "position:y", y + 2.7, 2.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+
 func _bars(at: Vector3, w: float, along_z: bool) -> Node3D:
 	var n := Node3D.new()
 	n.position = at
@@ -389,7 +409,8 @@ func update(dt: float) -> void:
 	_update_bridge()
 	_update_undercroft()
 	_update_colonnade(dt)
-	if chapter.state["scales"] and game.level.named["sc_bars"].enabled: open_sc(false)
+	if chapter.state["scales"]: _gate(up_bars, "up_bars", 2.0, true, false)
+	if game.puzzles.state["plate"]: _gate(eh_bars, "eh_bars", 6.0, true, false)
 
 func apply_state() -> void:
 	var st: Dictionary = chapter.state
@@ -406,12 +427,6 @@ func apply_state() -> void:
 	for k in BEACON_POS:
 		(beacon_fires[k] as BeaconFire).set_lit(beacon_lit(k))
 	for i in 3: chapter.four_mats[i].set_shader_parameter("lit", 1.0 if beacon_lit(["W", "N", "E"][i]) else 0.15)
-	if st["hub"].get("ec_open", false): unbolt_ec(true)
-	else:
-		game.level.set_enabled("ec_bars", true)
-		ec_bars.position.y = 2.0
-	if st["scales"]: open_sc(true)
-	else:
-		game.level.set_enabled("sc_bars", true)
-		sc_bars.position.y = 2.0
+	_gate(up_bars, "up_bars", 2.0, bool(st["scales"]), true)
+	_gate(eh_bars, "eh_bars", 6.0, bool(game.puzzles.state["plate"]), true)
 	for i in 3: _settled[i] = false

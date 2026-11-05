@@ -17,7 +17,7 @@ const LINES := {
 	"SP": "Up there, they say, the rain falls upward\nand the dead look down into the water\nto see the living.",
 }
 ## where the camera leans on arrival (the thing to look at), and how far (0..1)
-const FOCUS := {"CO": [Ch1Geo.CO_HEAD + Vector3(0, 1.0, 0), 0.45], "TS": [Ch1Geo.TS_TREE + Vector3(0, 3.6, 0), 0.5],
+const FOCUS := {"CO": [Map2.O + Map2.OBSERVER + Vector3(0, 2.0, 0), 0.45], "TS": [Ch1Geo.TS_TREE + Vector3(0, 3.6, 0), 0.5],
 	"SP": [Ch1Geo.SP_BASIN + Vector3(0, 9.0, 0), 0.55]}
 const SHOW_R := 30.0          # each one is hidden beyond this (metres from you)
 
@@ -38,7 +38,7 @@ func C(mat: float) -> Color:
 func setup(g: Game) -> void:
 	game = g
 	level = g.level
-	_build_colossus()
+	# (v2: the Sunken Colossus is the Observer, A's veiled head in the inlet: Map2.pieces / Dress.observer)
 	_build_tree()
 	_build_spring()
 
@@ -319,10 +319,10 @@ func key_at(p: Vector3) -> String:
 	var g := level.region_at(Vector2(p.x, p.z))
 	if g == null: return ""
 	match g.name:
-		"CO": return "CO"
+		"CO", "V2_W7": return "CO"
 		"TS", "MZ_door": return "TS"          # (the way from the Court into the Maze passes it)
 		"SPB": return "SP"
-		"WK": if p.z > -35.5 and p.z < -28.5: return "SP"         # (the high walkway passes it)
+		"WK": if p.z - Map2.GE.z > -35.5 and p.z - Map2.GE.z < -28.5: return "SP"         # (the high walkway passes it)
 	return ""
 
 func update(dt: float) -> void:

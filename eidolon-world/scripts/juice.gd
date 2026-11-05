@@ -271,8 +271,8 @@ func _on_chapter(name: String, data: Variant) -> void:
 			sparks(Chapter.SH_BRAZ[data] + Vector3(0, 1.15, 0))
 			FxBurst.sparks(self, Chapter.SH_BRAZ[data] + Vector3(0, 1.15, 0))          # (v1.1 A: soft sparks)
 		"door_real":
-			dust_fall(Vector3(16.95, 4.4, -11.8), Vector3(0, 0, 0.9))
-			FxBurst.dust(self, Vector3(16.95, 4.2, -11.8), 1.4, 1.0)
+			dust_fall(Map2.GN + Vector3(16.95, 4.4, -11.8), Vector3(0, 0, 0.9))
+			FxBurst.dust(self, Map2.GN + Vector3(16.95, 4.2, -11.8), 1.4, 1.0)
 			shake(0.25)
 		"steps_step":
 			if ch.steps: dust_floor(ch.steps.tile(ch.steps.p), 0.25, 8)
@@ -292,16 +292,16 @@ func _on_chapter(name: String, data: Variant) -> void:
 				"hollow_walk":
 					# the gate grinds up its posts
 					get_tree().create_timer(0.6).timeout.connect(func() -> void:
-						FxBurst.dust(self, Vector3(18.5, 3.6, -15.15), 1.4, 1.0)
-						dust_fall(Vector3(18.5, 3.9, -15.15), Vector3(1.0, 0, 0))
-						dust_floor(Vector3(18.5, 1.0, -15.15), 0.9, 18)
+						FxBurst.dust(self, Map2.GN + Vector3(18.5, 3.6, -15.15), 1.4, 1.0)
+						dust_fall(Map2.GN + Vector3(18.5, 3.9, -15.15), Vector3(1.0, 0, 0))
+						dust_floor(Map2.GN + Vector3(18.5, 1.0, -15.15), 0.9, 18)
 						shake(0.22))
 				"shard_gallery":
-					dust_fall(Vector3(8.1, 3.4, -9.45), Vector3(0.7, 0, 0))
-					FxBurst.dust(self, Vector3(8.1, 3.2, -9.45), 1.2, 1.0)
+					dust_fall(Map2.GG + Vector3(8.1, 3.4, -9.45), Vector3(0.7, 0, 0))
+					FxBurst.dust(self, Map2.GG + Vector3(8.1, 3.2, -9.45), 1.2, 1.0)
 					shake(0.2)
 				"court_light":
-					dust_fall(Vector3(12.0, 5.6, Chapter.MURAL_Z + 0.2), Vector3(2.4, 0, 0), 40)
+					dust_fall(Vector3(Chapter.MURAL_X0 + 2.6, 5.6, Chapter.MURAL_Z + 0.2), Vector3(2.4, 0, 0), 40)
 					shake(0.3)
 
 func _on_puzzles(name: String, data: Variant) -> void:

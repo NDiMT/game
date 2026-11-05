@@ -14,8 +14,7 @@ var chapter: Chapter
 var _gaze_orig := {}                 # Reflector -> its own gaze target (INF for the free ones)
 var _gaze_t := 0.0
 # her rune on the water
-const WATERS := [[Rect2(1.0, -38.6, 7.2, 9.2), 1.96], [Rect2(6.8, -4.9, 15.6, 14.5), Ch1Geo.CO_WATER_Y + 0.01],
-	[Rect2(-9.6, -0.2, 9.0, 3.8), Ch1Geo.WATER_Y + 0.01]]
+const WATERS := [[Rect2(Map2.O.x - 12.95, Map2.O.z + 17.0, 8.95, 3.7), -0.41], [Rect2(Map2.O.x - 32.4, Map2.O.z - 14.6, 18.4, 13.1), -0.41]]          # (v2: the Pool of Halves, the Colossus' inlet)
 var rune_node: Node3D
 var rune_mat: ShaderMaterial
 var _rune_t := 0.0                   # >0: showing
@@ -59,8 +58,8 @@ func _build_ambient() -> void:
 		f.add_child(mm)
 		mm.visible = false
 		moths[f] = mm
-	add_child(AmbientLife.petals(AABB(Vector3(10.3, 1.0, -15.0), Vector3(6.7, 3.2, 10.0)), 50))
-	add_child(AmbientLife.petals(AABB(Vector3(26.45, 2.0, -18.95), Vector3(3.15, 3.0, 31.5)), 70, Vector3(-0.3, 0.0, -1.2), 0.1))
+	add_child(AmbientLife.petals(AABB(Map2.GN + Vector3(10.3, 1.0, -15.0), Vector3(6.7, 3.2, 10.0)), 50))
+	add_child(AmbientLife.petals(AABB(Map2.O + Vector3(17.2, 2.0, -25.0), Vector3(3.6, 3.0, 22.0)), 70, Vector3(-0.3, 0.0, -1.2), 0.1))
 	# torn veils streaming from a bar across each Balcony pole's top (A's veils), the wind across the view
 	for pz in [6.0, -2.0, -10.0]:
 		var top := Vector3(28.95, WorldGeo.BAL_Y + 2.45, pz)          # (A's awning post's cross-arm, Props)
@@ -153,7 +152,7 @@ func _update_rune(dt: float) -> void:
 ## Colonnade and in the Undercroft
 var embers := {}                     # Flame -> FxBurst
 var wisps: Array = []
-const WISPS := [[Vector3(13.0, 2.05, -34.0), 3.0], [Vector3(11.0, 0.2, 6.5), 2.5], [Vector3(19.0, 0.55, 11.4), 2.0]]
+const WISPS := [[Map2.GN + Vector3(13.0, 2.05, -34.0), 3.0], [Map2.O + Vector3(-2.5, 0.2, 11.5), 2.5], [Map2.O + Vector3(19.0, 0.3, 9.0), 2.0]]
 func _update_embers() -> void:
 	var p := game.player.position
 	if wisps.is_empty():

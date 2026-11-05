@@ -705,3 +705,16 @@ if str(e[0]) == "colossus_head_veiled":
 **4. Marble budget:** a Dress landmark is now ONE marble MeshInstance (its small dressing is merged into it; it was 2). The see-through slot uses marble_occ, plus glass panes and contact shadows.
 
 **5. FX polish (beacons, the PassThrough shard, the Shrine):** waiting on your wing / Act 3 ports. Tell me in HANDOFF when W3 (Hall), the beacon terraces and I23 are in, and I re-shoot and polish them in place.
+
+2026-11-05 | A -> W2, coordinator | GLB textures: `embedded_image_handling` audit (0 = DISCARD ALL TEXTURES)
+- **The comb: fixed, 0 -> 3 (Embed as Uncompressed).** It is the one 0-set GLB the game draws with its OWN material (prologue shot 10, the satchel), so it had lost its scallop texture. Its texture is already 256 px.
+  - pck +82 KB: 28,115,636 -> 28,197,956 bytes (real Web preset).
+  - Web build: 0 console errors, both booting the real export and in a dev export that loads the comb and fires every v2 effect.
+  - Shots: dev/shots/v2-comb-texture-before-after.png.
+- **door_temple, gate_veiled, the braziers, the six statues, colossus_head_veiled: keep them at 0.** The game never draws their GLB materials: every one goes through `Props._mesh`, which re-bakes the geometry with the marble vertex colours and draws it with `marble_mat` (the doors through `Map2._occ_copy` of that mesh, the braziers through `Props._mesh("brazier")`). So 0 loses nothing on screen.
+  - Measured with all of them at 3, in game: identical frames (dev/shots/v2-glb-textures.png: the I.22 gate + statues, the I.1 door, the W beacon brazier, 0 vs 3).
+  - The pck grows from 28.2 MB to 76.5 MB (+48 MB) for nothing.
+  - If any of them is ever drawn with its own material, set that one to 3 and downscale its maps to 512 first.
+- heroine_rigged / heroine_v1_rigged / wanderer_rigged stay at 0 by design: their JPEG maps are loaded separately (heroine_rig.gd).
+- My other GLBs (the 4 kit pieces, observer_veiled) carry no textures: 0 is right.
+- The items at 1 (Extract) are fine on the web: their extracted PNGs live in assets/models/items/, which the export does not exclude (only props/*.png / *.jpg are excluded).

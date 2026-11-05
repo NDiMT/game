@@ -22,29 +22,29 @@ const ICON := {"lamp": "oil_lamp", "shard": "shard", "comb": "comb", "tablet": "
 const ORDER := ["lamp", "shard", "comb", "tablet", "mem", "beacon"]
 
 # the places
-const PANEL_Z := -24.6                                      # the sealed panel across the Mirror Walk
-const PANEL_X := Vector2(30.4, 32.4)
+const PANEL_Z := Map2.GE.z - 24.6                                      # the sealed panel across the Mirror Walk
+const PANEL_X := Vector2(Map2.GE.x + 30.4, Map2.GE.x + 32.4)          # (v2: at the Mirror Walk's foot, Map2.GE)
 
 ## Theron's notes: [id, where, text]
 const TABLETS := [
 	["t1", Map2.O + Vector3(11.2, 0.0, 5.9), "She is not gone. Only behind the veil."],
-	["t2", Vector3(13.6, 3.1, 16.85), "She laughed when I asked her to stand still. 'Then carve me moving,' she said."],
-	["t3", Vector3(9.5, 1.0, -13.5), "I moved the lamps until her shadow fell where I wanted. Even her shadow argued."],
-	["t4", Vector3(7.6, 1.0, -8.0), "Marble first, then a thousand faces, then glass, I told the guild. They thought it a boast."],
-	["t5", Vector3(12.0, 1.0, -9.6), "The garden was hers. I let it die so it would keep her shape."],
-	["t6", Vector3(14.8, 2.0, -28.55), "In the maze she walked ahead of me in the water, and I followed the wrong one."],
-	["t7", Vector3(32.85, 2.0, -47.2), "Balance: what I took from her against what I gave. The pans never settle."],
-	["t8", Vector3(31.9, 4.0, -40.2), "If the glass holds her, the glass must be kept. I will keep it. I will keep it."]]
+	["t2", Map2.O + Vector3(20.35, 2.0, -11.0), "She laughed when I asked her to stand still. 'Then carve me moving,' she said."],
+	["t3", Map2.GG + Vector3(9.5, 1.0, -13.5), "I moved the lamps until her shadow fell where I wanted. Even her shadow argued."],
+	["t4", Map2.O + Vector3(-20.4, 1.0, -8.6), "Marble first, then a thousand faces, then glass, I told the guild. They thought it a boast."],
+	["t5", Map2.GN + Vector3(12.0, 1.0, -9.6), "The garden was hers. I let it die so it would keep her shape."],
+	["t6", Map2.GN + Vector3(14.8, 2.0, -28.55), "In the maze she walked ahead of me in the water, and I followed the wrong one."],
+	["t7", Map2.GE + Vector3(32.85, 2.0, -47.2), "Balance: what I took from her against what I gave. The pans never settle."],
+	["t8", Map2.GE + Vector3(31.9, 4.0, -40.2), "If the glass holds her, the glass must be kept. I will keep it. I will keep it."]]
 
 ## memories (Ione's version): [id, where, need ("lens": seen through the Shard), text]
 const SECRETS := [
-	["m1", Vector3(-3.0, 0.5, 20.9), "lens", "Milos, the harbour. She bought him a chisel with her first wages and would not say why."],
-	["m2", Vector3(15.6, 1.0, -7.3), "lens", "The garden in flower. She tucked a petal behind the ear of every statue."],
-	["m3", Vector3(9.4, 1.0, -12.4), "lens", "From above, the chamber floor: her shadow and his, the same length at last."],
-	["m4", Vector3(33.4, 4.0, -32.0), "lens", "The spring sang back the note. She used to hum it while he worked."],
-	["m5", Vector3(2.0, 0.5, 15.5), "lens", "Under the fountain's lip, in her hand: 'Look at me, not at the marble.'"],
-	["m6", Vector3(27.5, 2.0, -24.5), "lens", "On the Ledge she stood at the edge and leaned on the wind, laughing at his fear."],
-	["m7", Vector3(27.15, 2.0, 2.0), "lens", "On the balcony the stone rang back one word of hers. It was his name."]]
+	["m1", Map2.O + Vector3(-3.3, 0.0, 21.3), "lens", "Milos, the harbour. She bought him a chisel with her first wages and would not say why."],
+	["m2", Map2.GN + Vector3(15.6, 1.0, -7.3), "lens", "The garden in flower. She tucked a petal behind the ear of every statue."],
+	["m3", Map2.GG + Vector3(9.4, 1.0, -12.4), "lens", "From above, the chamber floor: her shadow and his, the same length at last."],
+	["m4", Map2.GE + Vector3(33.4, 4.0, -32.0), "lens", "The spring sang back the note. She used to hum it while he worked."],
+	["m5", Map2.O + Vector3(1.4, 0.0, 0.9), "lens", "Under the fountain's lip, in her hand: 'Look at me, not at the marble.'"],
+	["m6", Map2.GE + Vector3(27.5, 2.0, -24.3), "lens", "On the Ledge she stood at the edge and leaned on the wind, laughing at his fear."],
+	["m7", Map2.O + Vector3(20.2, 2.0, -20.0), "lens", "On the balcony the stone rang back one word of hers. It was his name."]]
 
 var game: Game
 var chapter: Chapter
@@ -144,7 +144,7 @@ func _build_panel() -> void:
 	game.puzzles.marble_instance(m.commit(), panel)
 	game.puzzles.rune_quad(panel, Vector3(0, 1.05, 0.145), Vector2(0.36, 0.36), Basis(), 3.0, 0.5)
 	game.level.ob_rect(Level.R(PANEL_X.x - 0.1, PANEL_Z - 0.16, PANEL_X.y + 0.1, PANEL_Z + 0.16), "e_panel")
-	game.level.add_interact("e_panel", Vector3(31.4, 4.0, PANEL_Z + 0.75), "ring", strike_panel, 1.1,
+	game.level.add_interact("e_panel", Vector3((PANEL_X.x + PANEL_X.y) * 0.5, 4.0, PANEL_Z + 0.75), "ring", strike_panel, 1.1,
 		func() -> bool: return not hs()["e_open"])
 
 func strike_panel() -> void:

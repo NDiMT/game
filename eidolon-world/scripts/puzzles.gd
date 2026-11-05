@@ -16,10 +16,11 @@ const MIRROR_SOLUTION := [3, 3, 1, 1]
 const DIAL_X0 := 10.6
 const DIAL_DX := 1.4
 const DIAL_Z := -12.9
-const PLATE_POS := Vector3(23.6, 2.0, -29.6)
-const GLASS_Z := -24.97
+## (v2: E.6, the Eidolon Plate, up on the High terrace: the v1 Ledge at Map2.GX)
+const PLATE_POS := Map2.GX + Vector3(23.6, 2.0, -29.6)
+const GLASS_Z := Map2.GX.z - 24.97
 const SHRINE_C := Vector3(25.0, 2.0, -32.6)
-const TABLET_POS := Vector3(4.35, 1.5, -19.9)
+const TABLET_POS := Map2.GW + Vector3(4.35, 1.5, -19.9)          # (v2: the Hall at Map2.GW)
 
 var level: Level
 var game: Node
@@ -821,10 +822,10 @@ func _eidolon_glass() -> void:
 	var g := MeshInstance3D.new()
 	g.mesh = q
 	g.material_override = eid_glass_mat
-	g.position = Vector3(23.6, 2.0 + 1.82, GLASS_Z)
+	g.position = Vector3(Map2.GX.x + 23.6, Map2.GX.y + 2.0 + 1.82, GLASS_Z)
 	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(g)
-	rune_quad(self, Vector3(23.6, 5.62, GLASS_Z + 0.17), Vector2(0.42, 0.42), Basis(), 2.0, 0.7)
+	rune_quad(self, Vector3(Map2.GX.x + 23.6, Map2.GX.y + 5.62, GLASS_Z + 0.17), Vector2(0.42, 0.42), Basis(), 2.0, 0.7)
 	# stepping stones that exist only on the other side of the glass
 	ghost_path_mat = ShaderMaterial.new()
 	ghost_path_mat.shader = preload("res://shaders/ghostpath.gdshader")
@@ -833,7 +834,7 @@ func _eidolon_glass() -> void:
 	var pmi := MeshInstance3D.new()
 	pmi.mesh = pq
 	pmi.material_override = ghost_path_mat
-	pmi.position = Vector3(25.0, 2.02, -26.5)
+	pmi.position = Map2.GX + Vector3(25.0, 2.02, -26.5)
 	pmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(pmi)
 	# the plate on the shrine platform
@@ -876,7 +877,7 @@ func _eidolon_glass() -> void:
 		add_child(mm)
 		plate_motes.append(mm)
 	# your side of the glass: where you must stand (footprints), and the closeness ring around the plate
-	foot_spot = Vector3(PLATE_POS.x, 2.0, 2.0 * GLASS_Z - PLATE_POS.z)
+	foot_spot = Vector3(PLATE_POS.x, PLATE_POS.y, 2.0 * GLASS_Z - PLATE_POS.z)
 	foot_mat = _decal(foot_spot + Vector3(0, 0.025, 0), 1.6)
 	foot_mat.set_shader_parameter("feet", 1.0)
 	foot_mat.set_shader_parameter("radius", 0.42)
@@ -898,8 +899,8 @@ func _eidolon_glass() -> void:
 	# the bridge that rises when the plate is pressed
 	risen_bridge = MeshInstance3D.new()
 	var rb := MB.new()
-	rb.box(Vector3(27.7, 1.75, -26.5), Vector3(1.8, 0.5, 3.0), Color(0.5, 0.0, 0.0))
-	rb.cyl(Vector3(27.7, 0.3, -26.5), 0.8, 0.1, 2.4, Color(0.5, 0.5, 0.0), 7)
+	rb.box(Map2.GX + Vector3(27.7, 1.75, -26.5), Vector3(1.8, 0.5, 3.0), Color(0.5, 0.0, 0.0))
+	rb.cyl(Map2.GX + Vector3(27.7, 0.3, -26.5), 0.8, 0.1, 2.4, Color(0.5, 0.5, 0.0), 7)
 	risen_bridge.mesh = rb.commit()
 	risen_mat = level.marble_mat.duplicate()
 	risen_mat.set_shader_parameter("fade_y", -99.0)
@@ -907,7 +908,7 @@ func _eidolon_glass() -> void:
 	risen_bridge.position.y = -9.0
 	risen_bridge.visible = false
 	add_child(risen_bridge)
-	level.walk(Level.R(26.8, -28, 28.6, -25), 2.0, NAN, -1, "EB", false)
+	# (v2: no bridge on to the old shrine: the plate opens the High Stair down instead, hub.gd)
 
 func _decal(pos: Vector3, size: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
@@ -986,11 +987,8 @@ var _plate_half := false
 
 func _press_plate(instant: bool) -> void:
 	state["plate"] = true
-	risen_bridge.visible = true
 	ghost_path_mat.set_shader_parameter("solid", 0.0)
 	if instant:
-		level.set_enabled("EB", true)
-		risen_bridge.position.y = 0.0
 		plate_mat.set_shader_parameter("lit", 1.0)
 		return
 	busy = true
@@ -1000,11 +998,8 @@ func _press_plate(instant: bool) -> void:
 	tf.tween_method(func(v: float) -> void: plate_pillar.set_shader_parameter("fade", v), 2.2, 0.9, 2.5)
 	var tw := create_tween()
 	tw.tween_method(func(v: float) -> void: plate_mat.set_shader_parameter("flare", v), 0.4, 1.0, 0.6)
-	tw.tween_callback(func() -> void: event.emit("bridge_rise", null))
-	tw.tween_property(risen_bridge, "position:y", 0.0, 3.2).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_method(func(v: float) -> void: plate_mat.set_shader_parameter("flare", v), 1.0, 0.3, 2.0)
+	tw.tween_method(func(v: float) -> void: plate_mat.set_shader_parameter("flare", v), 1.0, 0.3, 2.0)
 	tw.tween_callback(func() -> void:
-		level.set_enabled("EB", true)
 		busy = false
 		event.emit("plate_open", null))
 
@@ -1074,9 +1069,9 @@ func set_shrine_awake(k: float, sweep: float) -> void:
 # ------------------------------------------------------------------ hidden tablet (glimpse 2 target)
 func _tablet() -> void:
 	tablet_mat = ShaderMaterial.new()      # (v0.3: the tablet carries engraved script instead)
-	level.ob_rect(Level.R(4.15, -20.4, 4.6, -19.4))
-	level.inscription("h_tablet", Vector3(3.85, 1.0, -19.9), "She writes from the far side of the glass.\nRead her as she reads.", 0.95,
-		Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(4.165, 1.38, -19.9)), Vector2(0.8, 0.56))
+	level.ob_rect(Map2.gr(Map2.GW, Level.R(4.15, -20.4, 4.6, -19.4)))
+	level.inscription("h_tablet", Map2.GW + Vector3(3.85, 1.0, -19.9), "She writes from the far side of the glass.\nRead her as she reads.", 0.95,
+		Transform3D(Basis(Vector3.UP, -PI * 0.5), Map2.GW + Vector3(4.165, 1.38, -19.9)), Vector2(0.8, 0.56))
 
 # ------------------------------------------------------------------ reflectors
 func _reflectors() -> void:
@@ -1092,34 +1087,34 @@ func _reflectors() -> void:
 	r = Reflector.new()
 	r.kind = "floor"; r.plane_n = Vector3.UP; r.plane_d = 1.0
 	r.surface_col = Vector3(0.08, 0.085, 0.095); r.surface_mix = 0.62
-	r.clip_c = Vector3(0, 1.0, -15.8); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(4.6, 4.8)
-	r.region = Level.R(-4.6, -20.6, 4.6, -11); r.alpha = 0.26
+	r.clip_c = Map2.GW + Vector3(0, 1.0, -15.8); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(4.6, 4.8)
+	r.region = Map2.gr(Map2.GW, Level.R(-4.6, -20.6, 4.6, -11)); r.alpha = 0.26
 	_add_refl(r)
 	# 3. the great mirror (glimpse 2: it looks toward the hidden tablet)
 	r = Reflector.new()
-	r.kind = "mirror"; r.plane_n = Vector3.BACK; r.plane_d = -20.56
-	r.clip_c = Vector3(0, 3.38, -20.56); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.UP; r.clip_h = Vector2(2.58, 2.2)
-	r.region = Level.R(-4.6, -20.6, 4.6, -14.5); r.alpha = 0.78
+	r.kind = "mirror"; r.plane_n = Vector3.BACK; r.plane_d = Map2.GW.z - 20.56
+	r.clip_c = Map2.GW + Vector3(0, 3.38, -20.56); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.UP; r.clip_h = Vector2(2.58, 2.2)
+	r.region = Map2.gr(Map2.GW, Level.R(-4.6, -20.6, 4.6, -14.5)); r.alpha = 0.78
 	r.gaze_target = TABLET_POS
-	var hm := _mirror_quad(Vector3(0, 3.38, -20.575), Basis(), Vector2(5.2, 4.45))
+	var hm := _mirror_quad(Map2.GW + Vector3(0, 3.38, -20.575), Basis(), Vector2(5.2, 4.45))
 	var pm := PlanarMirror.new()
 	add_child(pm)
-	pm.setup(Vector3.BACK, -20.575, hm, game.world.env)
+	pm.setup(Vector3.BACK, Map2.GW.z - 20.575, hm, game.world.env)
 	r.planar = pm
 	_add_refl(r); hall_mirror = r
-	_pane(Vector3(-2.4, 1.0, -15.6), 0.0, Vector2(1.6, 2.6), false)
-	_pane(Vector3(2.2, 1.0, -14.6), -PI * 0.5, Vector2(1.6, 2.2), true)      # (v0.9: lower, so the shard by the door shows over it)
+	_pane(Map2.GW + Vector3(-2.4, 1.0, -15.6), 0.0, Vector2(1.6, 2.6), false)
+	_pane(Map2.GW + Vector3(2.2, 1.0, -14.6), -PI * 0.5, Vector2(1.6, 2.2), true)      # (v0.9: lower, so the shard by the door shows over it)
 	# 4. the great Eidolon glass: the reflection steps out of the frame and walks the other world
 	r = Reflector.new()
 	r.kind = "eidolon"; r.plane_n = Vector3.BACK; r.plane_d = GLASS_Z
 	r.project = false; r.ghost = 1.0; r.alpha = 0.62
-	r.region = Level.R(21, -25, 29, -19)
+	r.region = Map2.gr(Map2.GX, Level.R(21, -25, 29, -19))
 	_add_refl(r); eidolon_refl = r
 	# 5. v0.6: her great glass in the Court of Light
 	_add_refl(court_refl)
 
-const HALL_COLS := [Vector4(-4.5, -12.2, 0.3, 4.2), Vector4(-4.5, -14.8, 0.3, 4.2), Vector4(-4.5, -17.4, 0.3, 4.2),
-	Vector4(-4.5, -19.9, 0.3, 4.2), Vector4(-3.3, -11.3, 0.3, 4.2), Vector4(3.3, -11.3, 0.3, 4.2)]
+const HALL_COLS := [Vector4(Map2.GW.x - 4.5, Map2.GW.z - 12.2, 0.3, 4.2), Vector4(Map2.GW.x - 4.5, Map2.GW.z - 14.8, 0.3, 4.2), Vector4(Map2.GW.x - 4.5, Map2.GW.z - 17.4, 0.3, 4.2),
+	Vector4(Map2.GW.x - 4.5, Map2.GW.z - 19.9, 0.3, 4.2), Vector4(Map2.GW.x - 3.3, Map2.GW.z - 11.3, 0.3, 4.2), Vector4(Map2.GW.x + 3.3, Map2.GW.z - 11.3, 0.3, 4.2)]
 
 func _mirror_quad(center: Vector3, basis: Basis, size: Vector2, cracked := false, wall_mounted := -1.0) -> ShaderMaterial:
 	var m := ShaderMaterial.new()

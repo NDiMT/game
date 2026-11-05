@@ -53,8 +53,8 @@ func _ready() -> void:
 		print("ROOM %-15s %-26s %s" % [k, Names.area(k), "clear" if hid.is_empty() else "HIDDEN: " + "; ".join(hid)])
 	# (v0.9) the wonder spaces: the way through each must stay in sight too (you walk it)
 	var ways := []
-	for c in Ch1Geo.CO_STONES: ways.append(["colossus stone", Vector3(c.x, 1.0, c.y)])
-	ways.append_array([["tree nook", Vector3(15.0, 2.0, -28.5)], ["spring balcony", Vector3(33.4, 4.0, -32.0)]])
+	for c in Map2.W7_STONES: ways.append(["colossus stone", Map2.w(c[0], c[1], c[2])])
+	ways.append_array([["tree nook", Map2.GN + Vector3(15.0, 2.0, -28.5)], ["spring balcony", Map2.GE + Vector3(33.4, 4.0, -32.0)]])
 	var hidw: Array = []
 	for e in ways:
 		total += 1

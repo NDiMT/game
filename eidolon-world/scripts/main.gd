@@ -98,8 +98,7 @@ func _ready() -> void:
 	chapter.post_commit()
 	# (QA P1-11: the upright drawbridge leaf and the Eidolon glass's frame hide her at the Ledge and the Gate:
 	# they open in the see-through like any wall)
-	level.occluders.append(AABB(Vector3(20.55, 2.0, -21.6), Vector3(0.9, 4.4, 2.4)))
-	level.occluders.append(AABB(Vector3(21.3, 2.0, -25.3), Vector3(4.6, 4.0, 0.7)))
+	level.occluders.append(AABB(Map2.GX + Vector3(21.3, 2.0, -25.3), Vector3(4.6, 4.0, 0.7)))
 	wonders = Wonders.new()
 	add_child(wonders)
 	wonders.setup(self)
@@ -167,10 +166,9 @@ func _ready() -> void:
 			world.set_tier(world.tier, world.auto_step)
 		var q = JavaScriptBridge.eval("String(location.search)")
 		if q is String and "perf" in q: _perf_hud(true)
-	world.add_moths(Vector3(8.2, 3.45, -24.5), 2)
-	world.add_moths(Vector3(25.0, 3.75, -32.25), 3)
+	world.add_moths(Map2.GN + Vector3(8.2, 3.45, -24.5), 2)
 	world.add_moths(Puzzles.PLATE_POS + Vector3(0, 0.8, 0), 2)
-	world.add_moths(Vector3(-2.4, 0.6, 1.7), 1)
+	world.add_moths(Map2.O + Vector3(-3.0, 0.6, 18.8), 1)
 	ui.door_overlay.slot_pressed.connect(door_cycle)
 	ui.door_overlay.slot_back.connect(func(i: int) -> void: door_cycle(i, -1))
 	ui.door_overlay.closed.connect(_door_overlay_closed)
@@ -484,7 +482,7 @@ func _process(dt: float) -> void:
 	if prof_on: _t0 = _pm("lights+hum", _t0)
 	if mode != "title":
 		var p := player.position
-		var wide := p.x > 20.5 and p.z < -18.5     # the eidolon ledge and the shrine: see across the gap
+		var wide := Map2.space_rect("EB").grow(0.5).has_point(Vector2(p.x, p.z))     # (v2) E.6: see across the glass to her plate
 		if area == "hollow_walk" and OurSteps.lean(p) != Vector3.ZERO: wide = true     # (v0.9.2: her room, clear behind the glass)
 		var cs: float = world.zoom                 # v0.9: one fixed view; no per-area zoom
 		if mode != "finale" and mode != "cine": world.cam_size_target = cs
@@ -493,7 +491,7 @@ func _process(dt: float) -> void:
 			var off := Vector3.ZERO
 			if bridge_focus > 0.0:
 				bridge_focus -= dt
-				off = (Vector3(27.7, 2.0, -26.5) - p) * 0.7         # watch the bridge rise
+				off = (Puzzles.PLATE_POS - p) * 0.7         # watch her plate answer
 				off.y = 0.0
 			elif area == "hollow_walk" and not chapter.state["hollow_done"] and OurSteps.lean(p) != Vector3.ZERO:
 				off = OurSteps.lean(p)                             # (v0.9.2) Our Steps: both rooms whole on the screen
@@ -571,6 +569,7 @@ func _surface() -> String:
 	var g := level.region_at(q)
 	if g and g.name == "LB": return "wood"
 	if g and g.name.begins_with("stone"): return "water"
+	if g and not is_nan(Map2.water_y_at(q)) and player.position.y < Map2.water_y_at(q) + 0.9: return "water"          # (v2: the W.7 and N.1 stones)
 	if area in ["hall_glass", "shard_gallery", "echo_corridor"]: return "hall"
 	return "stone"
 
@@ -646,7 +645,8 @@ func _on_footstep(kind: String, strength: float) -> void:
 		if surf == "water" and juice:
 			# (v1.0 juice) wet stepping stones: a small ring on the water by her foot
 			var fp := player.position + player.fig.basis * Vector3(0.12 * (1 if randf() < 0.5 else -1), 0.0, -0.1)
-			var wy := minf(fp.y - 0.02, Ch1Geo.CO_WATER_Y + 0.01)
+			var wy2 := Map2.water_y_at(Vector2(fp.x, fp.z))
+			var wy := (wy2 + 0.01) if not is_nan(wy2) else fp.y - 0.02
 			juice.ring(Vector3(fp.x, wy, fp.z), 0.9, 0.9)
 			# (v1.1 A: a few soft drops kicked up, and A's ring on the pool's own water where there is one)
 			FxBurst.footstep(juice, Vector3(fp.x, wy, fp.z), puzzles.pool_fx if fp.x < 1.0 and fp.z < 6.0 else null)
@@ -1257,7 +1257,7 @@ func _load_save() -> void:
 		print("[save] v%d from before the new world: starting fresh" % int(save_data.get("v", 1)))
 		save_data = {}
 
-const SAVE_V := 5           # (v2 rebuild: the new world)
+const SAVE_V := 6           # (v2 rebuild: the new world; v6, phase 3: the wings moved into it, a clean reset again)
 func _save() -> void:
 	if mode == "title": return
 	var p := player.position

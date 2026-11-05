@@ -24,26 +24,21 @@ var _cot_flick := 0.0
 var relief_mats: Array[ShaderMaterial] = []
 var _relief_glow := [0.0, 0.0, 0.0]
 var _relief_sweep := -1.0
-const FOUNTAIN := Vector3(5.0, 0.5, 16.0)          # (Props kit_fountain)
+const FOUNTAIN := Map2.O + Vector3(0.0, 0.0, 0.0)          # (v2: the Atrium's fountain)
 
 ## [id, where, kind, icon, line]
 const POINTS := [
 	["bell", Map2.O + Vector3(7.0, 0.0, 13.7), "bell", "ring", "Its note went out over the water and came back from very far."],
-	["votive", Vector3(-10.45, 1.0, -12.0), "votive", "light", "A small flame, for her. Someone kept lighting these."],
-	["offering", Vector3(6.6, 1.0, -18.1), "offering", "touch", "Grapes turned to stone, a comb, a hair ribbon. Gifts no one took."],
-	["coin", Vector3(5.0, 0.5, 14.25), "coin", "touch", "The coin rang on the dry stone. Once, here, it would have splashed."],
+	["votive", Map2.GN + Vector3(16.4, 1.0, -9.0), "votive", "light", "A small flame, for her. Someone kept lighting these."],
+	["offering", Map2.GW + Vector3(-12.05, 1.0, -11.3), "offering", "touch", "Grapes turned to stone, a comb, a hair ribbon. Gifts no one took."],
+	["coin", Map2.O + Vector3(0.0, 0.0, 1.9), "coin", "touch", "The coin rang on the dry stone. Once, here, it would have splashed."],
 	["cot", Map2.O + Vector3(11.0, 0.0, 0.2), "cot", "read", "His cot, in the crypt under his workshop. He slept beside the water she came through."],
-	["bench", Vector3(26.85, 2.0, -4.5), "bench", "wait", "From here the drowned head looks up at the sky, as if listening."],
-	# (QA_V11 pacing: the East wing's long Balcony walk gets a stop in its first third, a seat facing up the shore)
-	["lookout", Vector3(29.05, 2.0, 4.0), "bench", "wait", "Far up the shore, under its dome, a light keeps watch. The way runs there."],
+	["bench", Map2.O + Vector3(17.75, 2.0, -14.0), "bench", "wait", "From here the drowned head looks up at the sky, as if listening."],
 	# (QA_V11 pacing: a pause between Our Steps and the Court, where the ramp comes up into the Court)
-	["votive_n", Vector3(16.4, 2.0, -19.7), "votive", "light", "Another of her small flames, at the head of the ramp. Below, the glass keeps the floor you crossed together."],
+	["votive_n", Map2.GN + Vector3(16.4, 2.0, -19.7), "votive", "light", "Another of her small flames, at the head of the ramp. Below, the glass keeps the floor you crossed together."],
 ]
 ## the relief along the Echo Corridor's north wall: its panels speak as you walk past
-const RELIEF := [
-	[Vector3(15.6, 2.0, -46.3), "A sculptor on Milos, and a girl who would not stand still."],
-	[Vector3(17.2, 2.0, -46.3), "He made her in marble. Then in glass, so she could see herself."],
-	[Vector3(20.6, 2.0, -46.3), "The glass kept her. He has been keeping the glass ever since."]]
+const RELIEF := []          # (v2: the Echo Corridor and its relief are gone)
 
 func setup(g: Game, ch: Chapter) -> void:
 	game = g
@@ -141,7 +136,7 @@ func _approach(kind: String) -> Vector3:
 		"offering": return Vector3(0.0, 0, 0.55)
 		"coin": return Vector3(-1.25, 0, 1.25)          # (at the rim, on your side)
 		"cot": return Vector3(0.0, 0, 0.75)
-		"bench": return Vector3(0.6, 0, 0.0)
+		"bench": return Vector3(0.6, 0, 0.0)          # (E.1: the bench on the Balcony's west edge, facing the Observer)
 	return Vector3.ZERO
 
 func _use(id: String, kind: String, line: String) -> void:
@@ -182,7 +177,7 @@ func _use(id: String, kind: String, line: String) -> void:
 		"bench":
 			# sit a while: the view swings toward the drowned head (the lookout: the far dome), and back
 			_bench_t = 4.0
-			_bench_to = Vector3(25.0, 2.0, -32.6) if id == "lookout" else Ch1Geo.CO_HEAD
+			_bench_to = Map2.O + Map2.OBSERVER + Vector3(0, 2.0, 0)
 		_:
 			game.sfx.play("chime", -20.0, 1.2)
 	if first or kind == "bench": game.ui.show_text(line, game.player.position, 4.5)

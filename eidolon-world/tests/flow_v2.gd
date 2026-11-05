@@ -15,9 +15,10 @@ var order: Array = []
 var last_y := NAN
 var max_dy := 0.0
 var started := false
+var _riding := false
 var t := 0.0
 
-const SOLVED := ["breath", "hall_door", "shard", "gallery", "turned_done", "garden_breath", "hollow_done", "mural", "maze"]
+const SOLVED := ["breath", "hall_door", "shard", "gallery", "turned_done", "garden_breath", "hollow_done", "mural", "maze", "ledge_song", "scales"]
 
 func ok(label: String, pass_: bool, detail := "") -> void:
 	checks += 1
@@ -46,13 +47,26 @@ func _process(dt: float) -> void:
 		# (phase 3: the wings' puzzles stand solved: their doors and gates open)
 		for k in SOLVED: cs[k] = true
 		cs["hub"]["w_seen"] = true
+		cs["hub"]["e_open"] = true
+		cs["hub"]["wk_crossed"] = true
+		game.puzzles.state["plate"] = true
 		game.chapter.apply_state()
+		game.chapter.lift_h = 1.0          # (the lift waits up at the Mirror Walk's end, as on a first visit)
+		game.chapter._lift_goal = 1.0
 		for n in Map2.NO_FLOOR: game.level.set_enabled(Map2.ZP + n, true)
 		var s: Array = Map2.ROUTE[0]
 		game.cmd("tp:%f:%f:%f" % [Map2.O.x + s[0], Map2.O.z + s[1], PI * 0.5])
 		started = true
 		i = 1
 		leg_t = 0.0
+		_go()
+		return
+	if _riding:
+		# (the lift: it carries her down while she stands on it; the flow waits for it)
+		if game.chapter.lift_h > 0.001:
+			last_y = game.player.position.y
+			return
+		_riding = false
 		_go()
 		return
 	var p := game.player.position
@@ -72,6 +86,12 @@ func _process(dt: float) -> void:
 		var here := _space_here()
 		ok("waypoint %d is in %s" % [i, e[2]], here == Map2.space_of_region(Map2.ZP + str(e[2])), "in '%s'" % here)
 		if d >= 0.6: game.cmd("tp:%f:%f" % [goal.x, goal.y])         # (carry on from where the route says)
+		if str(e[2]) == "E3l" and game.chapter.lift_h > 0.5:
+			game.chapter._lift_goal = 0.0
+			_riding = true
+			i += 1
+			leg_t = 0.0
+			return
 		_next()
 	elif leg_t > _limit():
 		ok("leg %d -> %s reached in time" % [i, e[2]], false, "%.1f m left at %s; in the way: %s" % [d, p - Map2.O, _blockers(Vector2(p.x, p.z))])

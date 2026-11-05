@@ -134,7 +134,6 @@ func build() -> void:
 	_veiled_gate()
 	_bridge_b1()
 	_shortcut()
-	_ledge()
 	_shrine_platform()
 	_sealed_way()
 	Ch1Geo.build(self)
@@ -867,93 +866,6 @@ func _bridge_b1() -> void:
 		balustrade(z, Vector2(x, -9.6), Vector2(x, -10.8), 1.0)
 	balustrade(z, Vector2(-1.1, -9.45), Vector2(1.1, -9.45), 1.0)
 
-func _hall() -> void:
-	var z := "H"
-	slab(z, R(-5, -21, 5, -11), 1.0, 0.8, 0.75)
-	walk(R(-4.6, -20.6, 4.6, -11), 1.0, NAN, -1, "H")
-	# far walls: north (with the great mirror) and east (with the doorway)
-	wall("Hn", R(-5, -21, 5, -20.6), 1.0, 6.2)
-	wall(z, R(4.6, -21, 5, -18.4), 1.0, 4.6)
-	# v0.9: the east wall south of the door is a parapet: from the one fixed view a full wall here hid half of
-	# the shadow chamber beyond it
-	wall(z, R(4.6, -16.6, 5, -11), 1.0, 2.05)
-	# v0.5: the remembered doorway: a wall today (its own mesh: hidden from the mirror, it opens)
-	wall("Hdoor", R(4.6, -18.4, 5, -16.6), 1.0, 3.7)
-	box(z, Vector3(4.8, 4.15, -17.5), Vector3(0.4, 0.9, 1.8), 0.25, true)
-	walk(R(4.6, -18.2, 5.05, -16.8), 1.0, NAN, -1, "hdoor", false)
-	# mirror frame (dark bronze) around the great glass x[-2.6,2.6] y[1.15,5.6]
-	# (v0.9.1: the side bars 6 mm prouder than the rails: their front faces were coplanar at the corners)
-	for fb in [[Vector3(0, 1.1, -20.52), Vector3(5.5, 0.14, 0.12)], [Vector3(0, 5.66, -20.52), Vector3(5.5, 0.14, 0.12)],
-			[Vector3(-2.68, 3.38, -20.517), Vector3(0.14, 4.6, 0.126)], [Vector3(2.68, 3.38, -20.517), Vector3(0.14, 4.6, 0.126)]]:
-		box("Hn", fb[0], fb[1], 1.0, true)
-	# pilasters on the north wall
-	for x in [-4.0, 4.0]:
-		box("Hn", Vector3(x, 3.6, -20.45), Vector3(0.6, 5.2, 0.3), 0.25, true)
-	# colonnade on the open sides (west + south)
-	# (v0.9: the near columns broken low, so the floor behind them shows from the fixed view)
-	for zz in [-17.4, -19.9]:
-		column(Vector3(-4.5, 1.0, zz), 4.2)
-	stump(Vector3(-4.5, 1.0, -14.8), 0.75)
-	stump(Vector3(-4.5, 1.0, -12.2), 0.6, true, 0.08)
-	column(Vector3(-3.3, 1.0, -11.3), 4.2)
-	stump(Vector3(3.3, 1.0, -11.3), 0.9)
-	# a fallen column across the north-east corner hides the low tablet
-	# (v0.6: the old stump here is gone: the hall keeps only its fallen block and the things the glass remembers)
-	box(z, Vector3(2.7, 1.3, -19.9), Vector3(0.62, 0.62, 1.9), 0.25, false, Basis(Vector3.UP, 1.2))
-	ob_rect(R(1.95, -20.4, 3.4, -19.4))
-	box(z, Vector3(4.35, 1.35, -19.9), Vector3(0.36, 0.7, 0.9), 0.25, false)
-	rubble(Vector3(-3.5, 1.0, -19.6), 0.7, 6)
-	rubble(Vector3(4.05, 1.0, -11.95), 0.3, 4)       # (v0.7: into the corner, off the hall's cells)
-
-
-func _garden() -> void:
-	var z := "G"
-	# (v0.8.1: the shadow chamber takes the garden's north-west corner, x 5..10.3, z -18.4..-9.3)
-	slab(z, R(10.3, -15, 17, -5), 1.0, 0.8, 0.0)
-	slab(z, R(7, -9.3, 10.3, -5), 1.0, 0.8, 0.0)
-	walk(R(10.3, -15, 17, -5), 1.0, NAN, -1, "G")
-	walk(R(7, -9.3, 10.3, -5), 1.0, NAN, -1, "CO_w")         # (v0.9: the way down to the colossus)
-	# v0.5: the Turned Ones' great mirror stands on the north edge (the glass is a puzzle object)
-	wall("Gn", R(10.3, -15.6, 15.3, -15.05), 1.0, 5.9, false)
-	# (v0.9.1: the frame is its own mesh, seen by the main camera only: its rails, proud of the glass,
-	# showed in the planar reflection as a dark bar across the reflected runes)
-	box("Gframe", Vector3(10.45, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
-	box("Gframe", Vector3(15.15, 3.35, -14.95), Vector3(0.32, 4.7, 0.32), 1.0, true)
-	box("Gframe", Vector3(12.8, 5.6, -14.95), Vector3(5.0, 0.3, 0.34), 1.0, true)
-	box("Gframe", Vector3(12.8, 1.06, -14.95), Vector3(4.7, 0.12, 0.3), 1.0, false)
-	ob_rect(R(10.3, -15.3, 15.4, -14.75))
-	wall(z, R(15.3, -15.3, 17, -14.95), 1.0, 2.0, true)
-	# the door east, to the Hollow Walk (its leaves are puzzle objects)
-	box(z, Vector3(16.95, 2.75, -12.85), Vector3(0.5, 3.5, 0.5), 0.25, true)
-	box(z, Vector3(16.95, 2.75, -10.75), Vector3(0.5, 3.5, 0.5), 0.25, true)
-	box(z, Vector3(16.95, 4.7, -11.8), Vector3(0.6, 0.45, 2.7), 0.25, true)
-	# dead trees
-	tree(z, Vector3(11.4, 1.0, -8.1), 11)
-	# v0.9: the west court (from the shadow chamber's south gate) is the way down to the Sunken Colossus: a
-	# parapet parts it from the garden, which you enter from the colossus' stones (south-east)
-	wall(z, R(10.3, -9.3, 10.6, -5.0), 1.0, 1.75, true)
-	ob_rect(R(10.25, -9.3, 10.65, -4.95))
-	tree(z, Vector3(14.4, 1.0, -9.6), 23)
-	# (v1.0, the overlap audit: a third dead tree here grew into the door's post and leaves; nowhere near
-	# could take it without standing in the way up from the colossus: two keep the garden)
-	# veiled statues without runes (the rune statues are placed by the puzzle)
-	statue(z, Vector3(7.9, 1.0, -6.0), PI * 0.75, 0.9)
-	statue(z, Vector3(12.2, 1.0, -5.7), PI, 0.85)
-	# (v0.9: the south-east corner is the way up from the colossus' stones: its stump stands drowned in the
-	# water beside them now, its rubble along the east rail)
-	stump(Vector3(17.0, Ch1Geo.CO_WATER_Y, -3.9), 1.1, false)
-	rubble(Vector3(16.6, 1.0, -6.0), 0.25, 5)
-	rubble(Vector3(11.0, 1.0, -9.0), 0.3, 4)
-	# (v1.0: her small glass stands here, on the rail's line: it is the rail here)
-	balustrade(z, Vector2(16.95, -10.4), Vector2(16.95, -5.2), 1.0)
-	balustrade(z, Vector2(9.7, -4.95), Vector2(14.7, -4.95), 1.0)          # (v0.9: the way up from the stones east of it)
-	balustrade(z, Vector2(7.05, -9.2), Vector2(7.05, -5.1), 1.0)       # (v0.8.1: the garden's new west edge)
-	inscription("g_stele", Vector3(11.0, 1.0, -6.4), "White marble first. Then a thousand faces. Then glass.", 1.2,
-		Transform3D(Basis(), Vector3(11.0, 1.62, -5.635)), Vector2(1.0, 0.9))
-	box(z, Vector3(11.0, 1.55, -5.75), Vector3(1.15, 1.1, 0.22), 0.25)
-	box(z, Vector3(11.0, 2.14, -5.75), Vector3(1.25, 0.08, 0.28), 0.25)
-	ob_rect(R(10.5, -5.9, 11.5, -5.5))
-
 func _shortcut() -> void:
 	var z := "A"
 	slab(z, R(7.5, -5, 9.5, -1), 1.0, 0.7, 0.0)
@@ -974,69 +886,6 @@ func _shortcut() -> void:
 	box(z, Vector3(5.2, -0.3, -0.65), Vector3(0.4, 0.6, 0.4), 0.25)
 	mb(z).tag = ""
 	box(z, Vector3(5.15, 3.0, -2.0), Vector3(0.7, 0.5, 3.4), 0.25, true)
-
-func _passage() -> void:
-	var z := "P"
-	steps(z, R(11, -17, 13, -15), 1, 1.0, 2.0, false)
-	walk(R(11, -17, 13, -15), 2.0, 1.0, 1, "passage")
-	wall(z, R(10.3, -17.2, 10.9, -15.3), 1.0, 3.2, true)
-	wall(z, R(13.1, -17.2, 13.7, -15.3), 1.0, 3.2, true)
-
-func _court() -> void:
-	var z := "L"
-	slab(z, R(7, -27, 17, -17), 2.0, 0.9, 0.0)
-	walk(R(7, -27, 17, -17), 2.0, NAN, -1, "L")
-	# a low parapet round the court (the light stops there)
-	balustrade(z, Vector2(7.1, -26.95), Vector2(9.3, -26.95), 2.0)
-	balustrade(z, Vector2(14.7, -26.95), Vector2(16.9, -26.95), 2.0)
-	balustrade(z, Vector2(7.05, -26.8), Vector2(7.05, -17.2), 2.0)
-	balustrade(z, Vector2(7.2, -17.05), Vector2(15.2, -17.05), 2.0)
-	# v0.6: the east edge is her GREAT GLASS (z -26.6..-21.5, the pane is a puzzle object) and, south of
-	# it, the drawbridge's gap (z -21.4..-19.4)
-	box(z, Vector3(16.98, 4.15, -26.68), Vector3(0.3, 4.3, 0.3), 1.0, true)
-	box(z, Vector3(16.98, 4.15, -21.42), Vector3(0.3, 4.3, 0.3), 1.0, true)
-	box(z, Vector3(16.98, 6.42, -24.05), Vector3(0.34, 0.3, 5.62), 1.0, true)
-	box(z, Vector3(16.98, 2.06, -24.05), Vector3(0.3, 0.12, 5.4), 1.0, false)
-	ob_rect(R(16.8, -26.85, 17.2, -21.25))
-	balustrade(z, Vector2(16.95, -19.25), Vector2(16.95, -18.6), 2.0)
-	# v0.5: the mural wall (her half-erased portrait; its middle is a door) and the Mist Maze beyond
-	# (v0.9: the mural's flanking walls low, so the way on and the Tree of Shards beyond them show)
-	wall(z, R(9.3, -27.3, 10.9, -26.95), 2.0, 3.4, true)
-	wall(z, R(13.1, -27.3, 14.7, -26.95), 2.0, 3.4, true)
-	wall("Mural", R(10.9, -27.3, 13.1, -26.95), 2.0, 5.2, true)
-	box(z, Vector3(12.0, 5.45, -27.12), Vector3(2.4, 0.5, 0.42), 0.25, true)
-	ob_rect(R(9.3, -27.35, 10.9, -26.9))
-	ob_rect(R(13.1, -27.35, 14.7, -26.9))
-	ob_rect(R(10.9, -27.35, 13.1, -26.9), "mural_door")
-	# great columns at the corners, one broken
-	column(Vector3(7.6, 2.0, -26.4), 4.6)
-	stump(Vector3(7.6, 2.0, -17.6), 1.6)
-	rubble(Vector3(8.6, 2.0, -18.4), 0.6, 5)
-	# (v0.9: on the far, north side, its face toward you: from the one fixed view a stele on the west edge
-	# showed only its back)
-	inscription("l_stele", Vector3(15.6, 2.0, -25.9), "Where our light ends, hers goes on.\nShe set her own glasses there, and waited.", 1.2,
-		Transform3D(Basis(), Vector3(15.6, 2.62, -26.465)), Vector2(0.95, 1.0))
-	box(z, Vector3(15.6, 2.6, -26.58), Vector3(1.1, 1.2, 0.22), 0.25)
-
-func _ledge() -> void:
-	var z := "E"
-	slab(z, R(21, -25, 29, -19), 2.0, 0.9, 0.0)
-	walk(R(21, -25, 29, -19), 2.0, NAN, -1, "E")
-	# the great glass stands at the ledge's north edge (frame here, pane + reflector in Puzzles)
-	box(z, Vector3(21.45, 3.75, -24.95), Vector3(0.3, 3.5, 0.3), 1.0, true)
-	box(z, Vector3(25.75, 3.75, -24.95), Vector3(0.3, 3.5, 0.3), 1.0, true)
-	box(z, Vector3(23.6, 5.6, -24.95), Vector3(4.7, 0.28, 0.32), 1.0, true)
-	box(z, Vector3(23.6, 2.08, -24.95), Vector3(4.6, 0.16, 0.3), 1.0, false)
-	ob_rect(R(21.2, -25.15, 26.0, -24.75))
-	balustrade(z, Vector2(21.1, -18.95), Vector2(26.3, -18.95), 2.0)      # (v1.0: the balcony from the Atrium joins east of it)
-	balustrade(z, Vector2(28.95, -19.1), Vector2(28.95, -21.3), 2.0)
-	balustrade(z, Vector2(28.95, -23.5), Vector2(28.95, -24.9), 2.0)
-	balustrade(z, Vector2(21.05, -21.6), Vector2(21.05, -24.9), 2.0)
-	column(Vector3(28.4, 2.0, -19.5), 4.0)
-	inscription("e_stele", Vector3(27.6, 2.0, -20.4), "I asked the goddess once.\nBeyond the glass the other one walks where you cannot.", 1.2,
-		Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(28.335, 2.62, -20.9)), Vector2(0.95, 1.0))
-	box(z, Vector3(28.45, 2.6, -20.9), Vector3(0.22, 1.2, 1.1), 0.25)
-	ob_rect(R(28.3, -21.5, 28.6, -20.3))
 
 func _shrine_platform() -> void:
 	var z := "S"

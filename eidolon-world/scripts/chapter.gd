@@ -51,7 +51,7 @@ var puzzles: Puzzles
 var state := {}
 var calm := 0.0
 var lens_on := false
-const LENS_AREAS := ["shard_gallery", "atrium", "eidolon_ledge", "hall_glass"]       # (v1.0 M3b: the lens is back where it shows something)
+const LENS_AREAS := ["shard_gallery", "atrium", "eidolon_ledge", "hall_glass", "garden_veiled", "waking_pool", "scales"]       # (v1.0 M3b: the lens is back where it shows something)
 var items: Items
 var warden: Warden
 var life: Life
@@ -151,7 +151,6 @@ func build() -> void:
 	_build_hollow()
 	_build_mural()
 	_build_maze()
-	_build_echo()
 	_build_ledge_song()
 	_build_scales()
 	_build_ledge_feet()
@@ -1873,8 +1872,9 @@ func _build_echo() -> void:
 ## Four stones flush in the Ledge's floor, each cut with a note. They sing when stepped on. The first time you come
 ## up onto the Ledge her melody plays once by itself, the stones lighting with it. Step them in the melody's order
 ## (it uses one stone twice) and the sealed panel at the Mirror Walk's foot answers.
-const LS_X := [22.5, 23.55, 24.6, 25.65]
-const LS_Z := -19.6
+## (v2: on the E.2 ledge, Map2.GE: a row across its middle, clear of the ways in and out)
+const LS_X := [Map2.GE.x + 25.3, Map2.GE.x + 26.35, Map2.GE.x + 27.4, Map2.GE.x + 28.45]
+const LS_Z := Map2.GE.z - 23.8
 const LS_NOTES := ["E", "A", "F", "D"]
 var ls_mats: Array[ShaderMaterial] = []
 var ls_flash: Array[float] = [0.0, 0.0, 0.0, 0.0]
@@ -1929,7 +1929,8 @@ func play_ledge_song() -> void:
 
 func _update_ledge_song(dt: float) -> void:
 	var p := game.player.position
-	if not _ls_played and not state["ledge_song"] and game.mode == "play" and p.x > 21.0 and p.x < 29.0 and p.z > -25.0 and p.z < -19.0 and absf(p.y - 2.0) < 0.3:
+	var lq := p - Map2.GE
+	if not _ls_played and not state["ledge_song"] and game.mode == "play" and lq.x > 21.0 and lq.x < 29.0 and lq.z > -25.0 and lq.z < -19.0 and absf(p.y - 2.0) < 0.3:
 		_ls_played = true
 		play_ledge_song()
 	var on := ledge_stone_at(p) if game.mode == "play" else -1
@@ -2020,14 +2021,14 @@ func collect_memory(id: String) -> void:
 ## hook, and the balance counts her: 2 at that hook, on the mirrored side. Level the arm (left = right,
 ## weight x hook), hold still, and it locks; the lift beside it then carries you up to the walkway.
 ## Several settings level it (solve_scales); none without her.
-const SC_X := 29.7                          # the pivot glass (plane x), facing west
-const SC_ARM := Vector3(29.7, 7.75, -49.0)  # the pivot
+const SC_X := Map2.GE.x + 29.7                          # the pivot glass (plane x), facing west
+const SC_ARM := Map2.GE + Vector3(29.7, 7.75, -49.0)  # the pivot
 const SC_GLASS_H := 1.25                    # v0.9: the glass's height over the floor (she stands 1.1 m)
 const SC_UNIT := 0.95                       # metres per hook step
 const SC_PAN_Y := 4.05                      # (overhead: you walk beneath the pans)
-const SC_TILE_Z := -50.2
+const SC_TILE_Z := Map2.GE.z - 50.2
 const SC_URN := 5                           # on L3: left torque 15
-const SC_RACK := [Vector3(27.65, 2.0, -45.0), Vector3(28.35, 2.0, -45.0), Vector3(29.05, 2.0, -45.0)]
+const SC_RACK := [Map2.GE + Vector3(27.65, 2.0, -45.0), Map2.GE + Vector3(28.35, 2.0, -45.0), Map2.GE + Vector3(29.05, 2.0, -45.0)]
 const SC_WEIGHT := [1, 2, 3]
 var sc_arm: Node3D
 var sc_needle: Node3D
@@ -2046,7 +2047,7 @@ var lift_h := 0.0
 var _lift_goal := 0.0
 var _lift_still := 0.0
 var _groan_cd := 0.0
-const LIFT_C := Vector3(31.4, 2.0, -45.6)
+const LIFT_C := Map2.GE + Vector3(31.4, 2.0, -45.6)
 
 static func pan_pos(k: int) -> Vector3:
 	var d := (k % 3 + 1) * SC_UNIT
@@ -2065,15 +2066,15 @@ func _build_scales() -> void:
 	# the pivot glass: a low standing pane (v0.9: it was 5.5 m tall and hid the right-hand pans from the one
 	# fixed view; she still shows whole in it), its back stone; a slender post up to the pivot block
 	var gm := MB.new()
-	gm.box(Vector3(SC_X + 0.12, 2.0 + SC_GLASS_H * 0.5 + 0.05, -48.95), Vector3(0.2, SC_GLASS_H + 0.1, 3.9), Color(0.5, 0.25, 0.0))
-	gm.box(Vector3(SC_X + 0.12, 2.0 + SC_GLASS_H + 0.16, -48.95), Vector3(0.3, 0.12, 4.0), Color(0.5, 0.25, 0.0))
-	gm.box(Vector3(SC_X + 0.12, (2.0 + SC_GLASS_H + 7.4) * 0.5, -48.95), Vector3(0.18, 7.4 - 2.0 - SC_GLASS_H, 0.18), Color(0.5, 0.25, 0.0))
+	gm.box(Vector3(SC_X + 0.12, 2.0 + SC_GLASS_H * 0.5 + 0.05, Map2.GE.z - 48.95), Vector3(0.2, SC_GLASS_H + 0.1, 3.9), Color(0.5, 0.25, 0.0))
+	gm.box(Vector3(SC_X + 0.12, 2.0 + SC_GLASS_H + 0.16, Map2.GE.z - 48.95), Vector3(0.3, 0.12, 4.0), Color(0.5, 0.25, 0.0))
+	gm.box(Vector3(SC_X + 0.12, (2.0 + SC_GLASS_H + 7.4) * 0.5, Map2.GE.z - 48.95), Vector3(0.18, 7.4 - 2.0 - SC_GLASS_H, 0.18), Color(0.5, 0.25, 0.0))
 	gm.box(Vector3(SC_X, 7.62, SC_ARM.z), Vector3(0.6, 0.5, 0.6), Color(0.5, 1.0, 0.0))
-	gm.box(Vector3(SC_X, 2.1, -48.95), Vector3(0.5, 0.2, 4.0), Color(0.5, 0.25, 0.0))
+	gm.box(Vector3(SC_X, 2.1, Map2.GE.z - 48.95), Vector3(0.5, 0.2, 4.0), Color(0.5, 0.25, 0.0))
 	puzzles.marble_instance(gm.commit(), self)
-	level.ob_rect(Level.R(SC_X - 0.2, -50.95, SC_X + 0.25, -46.95))
+	level.ob_rect(Level.R(SC_X - 0.2, Map2.GE.z - 50.95, SC_X + 0.25, Map2.GE.z - 46.95))
 	var gsize := Vector2(3.8, SC_GLASS_H - 0.05)
-	var gc := Vector3(SC_X, 2.0 + SC_GLASS_H * 0.5 + 0.05, -48.95)
+	var gc := Vector3(SC_X, 2.0 + SC_GLASS_H * 0.5 + 0.05, Map2.GE.z - 48.95)
 	var mm := puzzles._mirror_quad(gc, Basis(Vector3.UP, -PI * 0.5), gsize, false, 1.0)
 	mm.set_shader_parameter("ncols", 0)
 	mm.set_shader_parameter("floor_y", 2.0)
@@ -2085,7 +2086,7 @@ func _build_scales() -> void:
 	var r := Reflector.new()
 	r.kind = "mirror"; r.plane_n = Vector3.LEFT; r.plane_d = -SC_X + 0.02
 	r.clip_c = gc; r.clip_u = Vector3.BACK; r.clip_v = Vector3.UP; r.clip_h = gsize * 0.5
-	r.region = Level.R(26.0, -52.0, SC_X, -44.6)
+	r.region = Level.R(Map2.GE.x + 26.0, Map2.GE.z - 52.0, SC_X, Map2.GE.z - 44.6)
 	r.planar = pm
 	puzzles._add_refl(r)
 	# the arm (it tips about the pivot), a hook and a rod down to a pan at each step
@@ -2132,9 +2133,9 @@ func _build_scales() -> void:
 	puzzles.rune_quad(self, Vector3(SC_X, 7.23, SC_ARM.z + 0.305), Vector2(0.16, 0.16), Basis(), -1.0, 0.5)
 	# the three weights on a low bench by the way in
 	var bench := MB.new()
-	bench.box(Vector3(28.35, 2.15, -45.0), Vector3(2.1, 0.3, 0.55), Color(0.5, 0.25, 0.0))
+	bench.box(Map2.GE + Vector3(28.35, 2.15, -45.0), Vector3(2.1, 0.3, 0.55), Color(0.5, 0.25, 0.0))
 	puzzles.marble_instance(bench.commit(), self)
-	level.ob_rect(Level.R(27.3, -45.27, 29.4, -44.73))
+	level.ob_rect(Map2.gr(Map2.GE, Level.R(27.3, -45.27, 29.4, -44.73)))
 	for i in 3:
 		var w := Node3D.new()
 		add_child(w)
@@ -2153,11 +2154,11 @@ func _build_scales() -> void:
 		var tp := Vector3(SC_X - (k + 1) * SC_UNIT, 2.012, SC_TILE_Z)
 		sc_tile_mats.append(puzzles.rune_quad(self, tp, Vector2(0.72, 0.72), Basis(Vector3.RIGHT, -PI * 0.5), 2.0, 0.22, float(k + 1)))
 	# (v0.9: on the far, north side, its face toward you)
-	level.inscription("sc_stele", Vector3(31.6, 2.0, -50.95), "The scale weighs what stands before it, as the glass sees it.\nShe was never as heavy as stone.", 1.1,
-		Transform3D(Basis(), Vector3(31.6, 2.62, -51.5)), Vector2(0.8, 0.75))
-	level.ob_rect(Level.R(31.1, -51.75, 32.1, -51.4))
+	level.inscription("sc_stele", Map2.GE + Vector3(31.6, 2.0, -50.95), "The scale weighs what stands before it, as the glass sees it.\nShe was never as heavy as stone.", 1.1,
+		Transform3D(Basis(), Map2.GE + Vector3(31.6, 2.62, -51.5)), Vector2(0.8, 0.75))
+	level.ob_rect(Map2.gr(Map2.GE, Level.R(31.1, -51.75, 32.1, -51.4)))
 	var sm := MB.new()
-	sm.box(Vector3(31.6, 2.6, -51.6), Vector3(1.0, 1.2, 0.2), Color(0.5, 0.25, 0.0))
+	sm.box(Map2.GE + Vector3(31.6, 2.6, -51.6), Vector3(1.0, 1.2, 0.2), Color(0.5, 0.25, 0.0))
 	puzzles.marble_instance(sm.commit(), self)
 
 func _pan_free(k: int) -> bool:
@@ -2320,7 +2321,7 @@ func _update_scales(dt: float) -> void:
 # ------------------------------------------------------------------ 11. her footprints to the plate
 func _build_ledge_feet() -> void:
 	var fsh := preload("res://shaders/footprint.gdshader")
-	var path := [Vector3(22.1, 2.03, -25.5), Vector3(22.5, 2.03, -26.6), Vector3(22.9, 2.03, -27.7), Vector3(23.3, 2.03, -28.7), Vector3(23.6, 2.03, -29.4)]
+	var path := [Map2.GX + Vector3(22.1, 2.03, -25.5), Map2.GX + Vector3(22.5, 2.03, -26.6), Map2.GX + Vector3(22.9, 2.03, -27.7), Map2.GX + Vector3(23.3, 2.03, -28.7), Map2.GX + Vector3(23.6, 2.03, -29.4)]
 	var side := 1.0
 	for i in path.size() - 1:
 		var a: Vector3 = path[i]
@@ -2347,15 +2348,15 @@ func _build_ledge_feet() -> void:
 ## reflection is nowhere near hers; standing where your reflection stands on hers, your plate is empty.
 ## So the veiled statue on the ledge must hold your plate (push it: it slides a cell at a time), while
 ## you take the place her footprints lead your reflection to.
-const LEDGE_PLATE := Vector2i(26, -23)           # cell (x + 0.5, z + 0.5): your plate
-const LEDGE_STATUE := Vector2i(25, -21)          # where the pushable statue starts
+const LEDGE_PLATE := Map2.GXI + Vector2i(26, -23)           # cell (x + 0.5, z + 0.5): your plate
+const LEDGE_STATUE := Map2.GXI + Vector2i(25, -21)          # where the pushable statue starts
 var ledge_statue: Node3D
 var ledge_statue_ob: Level.Obstacle
 var ledge_plate_mat: ShaderMaterial
 var _ledge_tw: Tween
 
 static func lcell(c: Vector2i) -> Vector3:
-	return Vector3(c.x + 0.5, 2.0, c.y + 0.5)
+	return Vector3(c.x + 0.5, 2.0 + Map2.GX.y, c.y + 0.5)
 
 func _build_ledge_plate() -> void:
 	var pm := MB.new()
@@ -2378,7 +2379,8 @@ func _statue_cell() -> Vector2i:
 
 func _ledge_free(c: Vector2i) -> bool:
 	var q := Vector2(c.x + 0.5, c.y + 0.5)
-	if q.x < 21.45 or q.x > 28.55 or q.y < -24.55 or q.y > -19.45: return false
+	var ql := q - Map2.GX2
+	if ql.x < 21.45 or ql.x > 28.55 or ql.y < -24.55 or ql.y > -19.45: return false
 	ledge_statue_ob.enabled = false
 	var bl := level.blocked(q, 0.42)
 	ledge_statue_ob.enabled = true
@@ -2428,10 +2430,10 @@ func plate_a_down() -> bool:
 	if _statue_cell() == LEDGE_PLATE: return true
 	var p := game.player.position
 	var pc := lcell(LEDGE_PLATE)
-	return Vector2(p.x - pc.x, p.z - pc.z).length() < 0.5 and absf(p.y - 2.0) < 0.2
+	return Vector2(p.x - pc.x, p.z - pc.z).length() < 0.5 and absf(p.y - 2.0 - Map2.GX.y) < 0.2
 
 func _update_ledge(dt: float) -> void:
-	var p := game.player.position
+	var p := game.player.position - Map2.GX
 	var on: bool = p.x > 21.0 and p.x < 29.0 and p.z > -25.0 and p.z < -19.0 and absf(p.y - 2.0) < 0.2 and not puzzles.state["plate"]
 	var n := ledge_feet.size()
 	var period := n * 0.5 + 2.5
@@ -2575,20 +2577,23 @@ func hint_target(area: String) -> Vector3:
 			return Vector3.INF
 		"shard_gallery":
 			# (v2.0) after her shadows: the hidden way (seen through the Shard), then the West Beacon
-			if state["gallery"] and not hs.get("w_seen", false): return Vector3(8.1, 1.8, -9.45)
+			if state["gallery"] and not hs.get("w_seen", false): return HIDDEN_WAY + Vector3(0, 0.8, 0.15)
 			if state["gallery"] and not hub.beacon_lit("W"): return Hub.BEACON_POS["W"] + Vector3(0, 1.9, 0)
 		"mist_maze", "echo_corridor":
 			if state["maze"] and not hub.beacon_lit("N"): return Hub.BEACON_POS["N"] + Vector3(0, 2.6, 0)
 		"scales":
 			if state["scales"] and not hub.beacon_lit("E"): return Hub.BEACON_POS["E"] + Vector3(0, 2.6, 0)
-		"eidolon_ledge":
-			if pp.y > 3.0 and hs.get("e_open", false) and not hs.get("wk_crossed", false): return Vector3(31.4, 5.0, Warden.END_Z)
-			if pp.y > 3.0 and not hs.get("e_open", false): return Vector3(31.4, 5.0, Items.PANEL_Z)
-	match area:
-		"waking_pool": return Vector3(-4.2, 0.6, 1.7) if not state["stones"] else Vector3.INF
-		"stair_breath": return Vector3(-10.5, 1.6, -5.3) if not state["breath"] else Vector3.INF
 		"hall_glass":
-			if not state["hall_door"]: return Vector3(0.0, 2.6, -20.3)        # the glass, never the answer
+			# (v2, W.4) the Shard, first tried in the corridor: the star over your head
+			if state["shard"] and not hs.get("star", false) and in_star_corridor(): return STAR
+		"eidolon_ledge":
+			if pp.y > 3.0 and hs.get("e_open", false) and not hs.get("wk_crossed", false): return Vector3(Warden.FIG_X, 5.0, Warden.END_Z)
+			if pp.y > 3.0 and not hs.get("e_open", false): return Vector3((Items.PANEL_X.x + Items.PANEL_X.y) * 0.5, 5.0, Items.PANEL_Z)
+	match area:
+		"waking_pool": return Vector3.INF
+		"stair_breath": return Map2.GW + Vector3(-10.5, 1.6, -5.3) if not state["breath"] else Vector3.INF
+		"hall_glass":
+			if not state["hall_door"]: return Map2.GW + Vector3(0.0, 2.6, -20.3)        # the glass, never the answer
 			return SHARD_SPOT + Vector3(0, 0.8, 0) if not state["shard"] else Vector3.INF
 		"shard_gallery":
 			if state["gallery"]: return Vector3.INF
@@ -2604,18 +2609,21 @@ func hint_target(area: String) -> Vector3:
 			return steps.goal_her_world() + Vector3(0, 0.6, 0)        # (her glyph)
 		"court_light":
 			# (toward her glass, never to the answer)
-			if not puzzles.state["bridge"]: return Vector3(16.5, 3.6, -24.0)
+			if not puzzles.state["bridge"]: return Map2.GN + Vector3(16.5, 3.6, -24.0)
 			elif not state["mural"]: return mural_spot() + Vector3(0, 0.6, 0)
-		"mist_maze": return Vector3(4.6, 2.6, -34.0) if not state["maze"] else Vector3.INF
-		"echo_corridor": return Vector3(18.3, 3.6, -46.2) if not state["echo_room"] else Vector3.INF
+		"mist_maze":
+			# (v2: her next steps, where the lamp will show them)
+			if state["maze"]: return Vector3.INF
+			return Ch1Geo.mz_cell(Ch1Geo.MZ_PATH[clampi(maze_prog + 1, 0, Ch1Geo.MZ_PATH.size() - 1)]) + Vector3(0, 0.6, 0)
 		"scales":
-			if state["scales"]: return LIFT_C + Vector3(0, 0.8, 0) if lift_h < 0.5 else Vector3.INF
-			return Vector3(SC_X - 0.2, 2.7, -48.95)          # the glass of the balance
-		"eidolon_ledge":
+			if not state["scales"]: return Vector3(SC_X - 0.2, 2.7, Map2.GE.z - 48.95)          # the glass of the balance
+			# (v2, E.6 on the High terrace: the Eidolon Plate)
 			if puzzles.state["plate"]: return Vector3.INF
-			if game.player.position.y > 3.0: return Vector3(29.8, 3.0, -22.4)
+			if pp.y < 5.0: return Map2.O + Vector3(23.5, 3.0, -59.0)          # (up to the terrace)
 			if not plate_a_down(): return lcell(LEDGE_PLATE) + Vector3(0, 0.6, 0)
 			return puzzles.foot_spot + Vector3(0, 0.6, 0)
+		"eidolon_ledge":
+			if not state["ledge_song"] and pp.y < 3.0: return Vector3(LS_X[1], 2.6, LS_Z)          # (E.2: the stones)
 		"gate_four": return four_pos(3) + Vector3(0, 0.9, 0) if not state["four"] else Vector3.INF
 		"first_shrine": return Puzzles.SHRINE_C + Vector3(0, 1.0, 1.85) if not puzzles.state["shrine"] else Vector3.INF
 	return Vector3.INF
@@ -2673,7 +2681,6 @@ func update(dt: float) -> void:
 	steps.update(dt)
 	_update_mural(dt)
 	_update_maze(dt)
-	_update_echo(dt)
 	_update_ledge_song(dt)
 	_update_scales(dt)
 	_update_ledge(dt)
@@ -2738,13 +2745,7 @@ func apply_state() -> void:
 		level.set_enabled("MZ_door", false)
 		mural_mat.set_shader_parameter("complete", 0.0)
 		if mw: mw.visible = true; mw.position.y = 0.0
-	var ec := level.get_node_or_null("Zone_ECs") as MeshInstance3D
-	if state["echo_room"]: open_echo_room(true)
-	else:
-		level.set_enabled("echo_secret", true)
-		level.set_enabled("EC_room_door", false)
-		level.set_enabled("EC_room", false)
-		if ec: ec.visible = true; ec.position.y = 0.0
+	state["echo_room"] = true          # (v2: no Echo Corridor in the new world)
 	ledge_statue.position = lcell(_statue_cell())
 	ledge_statue_ob.c = Vector2(_statue_cell().x + 0.5, _statue_cell().y + 0.5)
 	for i in 3:

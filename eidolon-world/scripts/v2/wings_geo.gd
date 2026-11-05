@@ -17,6 +17,11 @@ static func build(lv: Level) -> void:
 	_court(n)
 	_tree_nook(n)
 	_maze(n)
+	var e := LvOff.new(lv, Map2.GE)
+	_ledge(e, "E", false)
+	_scales(e)
+	_spring_balcony(e)
+	_ledge(LvOff.new(lv, Map2.GX), "E6", true)
 
 # ============================================================================================ WEST: the Glass wing
 ## W.1 the Stair of Breath, W.2 the Offering (v1 W_top), the corridor into the Hall (v1 ch1_geo)
@@ -336,4 +341,76 @@ static func _maze(L: LvOff) -> void:
 	for k in 6:
 		L.stump(Vector3(9.4 + k * 1.45, 2.0, -29.25 - (k % 2) * 9.5), 0.5 + 0.3 * (k % 3), false)
 	# (v2, the script: no pool of hers beside it: her steps show on the maze floor itself, in the lamp's light)
+
+# ============================================================================================ EAST: the High wing
+## E.2 the Singing Stones (the v1 Ledge, GE) and E.6 the Eidolon Plate (the v1 Ledge again, up on the High terrace, GX:
+## its great glass on the north edge); `name` its walk region, `glass` whether its great glass stands there
+static func _ledge(L: LvOff, name: String, glass: bool) -> void:
+	var z := "E"
+	L.slab(z, R(21, -25, 29, -19), 2.0, 0.9, 0.0)
+	L.walk(R(21, -25, 29, -19), 2.0, NAN, -1, name)
+	if glass:
+		# E.6: the great glass stands at the ledge's north edge (frame here, pane + reflector in Puzzles)
+		L.box(z, Vector3(21.45, 3.75, -24.95), Vector3(0.3, 3.5, 0.3), 1.0, true)
+		L.box(z, Vector3(25.75, 3.75, -24.95), Vector3(0.3, 3.5, 0.3), 1.0, true)
+		L.box(z, Vector3(23.6, 5.6, -24.95), Vector3(4.7, 0.28, 0.32), 1.0, true)
+		L.box(z, Vector3(23.6, 2.08, -24.95), Vector3(4.6, 0.16, 0.3), 1.0, false)
+		L.ob_rect(R(21.2, -25.15, 26.0, -24.75))
+		L.balustrade(z, Vector2(26.2, -24.95), Vector2(28.9, -24.95), 2.0)
+		# (the Scales' platform comes up at its south-west; the High Stair leaves by its west edge)
+		L.balustrade(z, Vector2(24.2, -18.95), Vector2(28.9, -18.95), 2.0)
+		L.balustrade(z, Vector2(28.95, -19.1), Vector2(28.95, -24.9), 2.0)
+		L.balustrade(z, Vector2(21.05, -23.1), Vector2(21.05, -24.9), 2.0)
+		L.inscription("e_stele", Vector3(27.6, 2.0, -20.4), "I asked the goddess once.\nBeyond the glass the other one walks where you cannot.", 1.2,
+			Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(28.335, 2.62, -20.9)), Vector2(0.95, 1.0))
+		L.box(z, Vector3(28.45, 2.6, -20.9), Vector3(0.22, 1.2, 1.1), 0.25)
+		L.ob_rect(R(28.3, -21.5, 28.6, -20.3))
+	else:
+		# E.2: the Balcony comes up on its south-west, the High Stair down on its north-west, the Veil Stair leaves east
+		L.balustrade(z, Vector2(25.2, -18.95), Vector2(28.9, -18.95), 2.0)
+		L.balustrade(z, Vector2(25.1, -24.95), Vector2(28.9, -24.95), 2.0)
+		L.balustrade(z, Vector2(28.95, -19.1), Vector2(28.95, -21.3), 2.0)
+		L.balustrade(z, Vector2(28.95, -23.5), Vector2(28.95, -24.9), 2.0)
+		L.balustrade(z, Vector2(21.05, -19.1), Vector2(21.05, -24.9), 2.0)
+	L.column(Vector3(28.4, 2.0, -19.5), 4.0)
+
+## E.3 the Mirror Walk, the lift, E.5 the Scales (v1 ch1_geo._scales)
+static func _scales(L: LvOff) -> void:
+	var z := "SC"
+	L.slab(z, R(26.0, -52.0, 33.4, -44.4), 2.0, 0.9, 0.0)
+	L.walk(R(26.0, -52.0, 33.4, -44.6), 2.0, NAN, -1, "SC")
+	L.balustrade(z, Vector2(29.1, -51.95), Vector2(33.3, -51.95), 2.0)          # (v2: the platform up to the High terrace at its south-west)
+	L.balustrade(z, Vector2(26.05, -44.7), Vector2(26.05, -51.8), 2.0)          # (v2: no Echo Corridor west of it)
+	L.balustrade(z, Vector2(33.35, -51.8), Vector2(33.35, -44.7), 2.0)
+	L.balustrade(z, Vector2(26.2, -44.45), Vector2(30.3, -44.45), 2.0)
+	L.column(Vector3(26.5, 2.0, -51.5), 4.4)
+	L.column(Vector3(32.9, 2.0, -51.5), 4.4)
+	# (v0.6: the balance, its pivot glass and its pans are puzzle objects: chapter.gd)
+	# the lift (pan A) and the high walkway it rises to
+	L.walk(R(30.4, -46.6, 32.4, -44.6), 2.0, NAN, -1, "lift")
+	L.slab("WK", R(30.4, -44.6, 32.4, -21.2), 4.0, 0.5, 0.0, false)
+	L.walk(R(30.4, -44.6, 32.4, -21.2), 4.0, NAN, -1, "WK")
+	L.balustrade("WK", Vector2(32.45, -44.4), Vector2(32.45, -33.45), 4.0)
+	L.balustrade("WK", Vector2(32.45, -30.55), Vector2(32.45, -21.3), 4.0)       # (v0.9: the spring's balcony between)
+	L.balustrade("WK", Vector2(30.35, -44.4), Vector2(30.35, -23.5), 4.0)
+	L.balustrade("WK", Vector2(30.45, -21.15), Vector2(32.4, -21.15), 4.0)
+	for zz in [-41.0, -33.0, -26.0]:
+		var m := L.mb("WK")
+		m.cyl(L.p(Vector3(31.4, 1.0, zz)), 0.55, 0.42, 6.0, L.C(0.25), 12)
+	L.steps("WK", R(29.0, -23.4, 30.4, -21.4), 0, 2.0, 4.0, true)
+	L.walk(R(29.0, -23.4, 30.4, -21.4), 2.0, 4.0, 0, "WK_down")
+	L.balustrade("WK", Vector2(29.05, -23.45), Vector2(30.3, -23.45), 3.0)
+	L.balustrade("WK", Vector2(29.05, -21.35), Vector2(30.3, -21.35), 3.0)
+
+## E.4 the Upward Spring's balcony (v1 ch1_geo._spring_balcony)
+static func _spring_balcony(L: LvOff) -> void:
+	var z := "WK"
+	L.slab(z, R(32.4, -33.4, 34.4, -30.6), 4.0, 0.5, 0.0, false)
+	L.walk(R(32.35, -33.35, 34.35, -30.65), 4.0, NAN, -1, "SPB")
+	L.balustrade(z, Vector2(34.4, -33.3), Vector2(34.4, -30.7), 4.0)
+	L.balustrade(z, Vector2(32.5, -33.4), Vector2(34.3, -33.4), 4.0)
+	L.balustrade(z, Vector2(32.5, -30.6), Vector2(34.3, -30.6), 4.0)
+	L.ob_rect(R(34.35, -33.5, 34.6, -30.5))
+	L.ob_rect(R(32.4, -33.55, 34.5, -33.3))
+	L.ob_rect(R(32.4, -30.7, 34.5, -30.45))
 
