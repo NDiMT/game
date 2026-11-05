@@ -312,9 +312,19 @@ func _stick_step(d: Vector2i, err: float) -> void:
 func _plan() -> void:
 	step_until("title", func() -> bool: return game.mode == "title" and game.sfx.ready_ok, 20.0)
 	step_do(func() -> void: game.cmd("reset_save"); game.cmd("anew"))
-	step_until("wake -> play", func() -> bool: return game.mode == "play", 12.0)
+	# (v2.0, EIDOLON_SCRIPT §5) the intro cards, then the prologue "The Abduction", played through to its end
+	step_until("the intro: cards over black", func() -> bool: return game.mode == "cine" and game.cine is Prologue, 3.0)
+	step_wait(2.0)
+	step_do(func() -> void: ok("(v2.0) the intro cards play first (mirrored, then turned true)", (game.cine as Prologue)._card != null and not (game.cine as Prologue)._cards_done))
+	step_until("(v2.0) the cards done, the prologue's shots run", func() -> bool: return game.cine != null and (game.cine as Prologue)._cards_done and game.cine.t > 21.0, 60.0)
 	step_do(func() -> void:
-		ok("woke at the veiled gate", P().distance_to(Level.WAKE_POS) < 0.2, str(P()))
+		ok("(v2.0 shot 4) her reflection rises half a second late", is_equal_approx(game.puzzles.pool_refl.lag, 0.5))
+		ok("(v2.0 shot 7) the Glass Warden rises in the water behind her", is_instance_valid((game.cine as Prologue).warden_fig)))
+	step_until("(v2.0) the prologue ends: you are yours to move", func() -> bool: return game.mode == "play", 40.0)
+	step_do(func() -> void:
+		ok("(v2.0 shot 12) the shell comb, in the satchel (a story item)", "comb" in (C().state["inv"]["story"] as Array) and game.satchel.contents().any(func(e: Array) -> bool: return e[0] == "comb"))
+		ok("(v2.0) the prologue is over: the Warden gone, the pool's lag back, the camera follows you", game.cine == null and not game.puzzles.pool_refl.hold and game.world.follow == game.player)
+		ok("woke by the pool, at the veiled gate", P().distance_to(Prologue.SHORE) < 0.3, str(P()))
 		ok("chapter title on the title screen", Names.CHAPTER == "The Veiled Gate"))
 
 	# ================================================================ 0. v2.0 Act 1, Awakening (linear; EIDOLON_SCRIPT §6 I.1-I.6)
@@ -1483,7 +1493,19 @@ func _plan() -> void:
 		ok("No keeps the title and the save", not game.ui.confirm.visible and game.mode == "title" and FileAccess.file_exists(Game.SAVE_PATH))
 		game.cmd("newgame_ui:yes")
 		ok("new game: glimpses + areas forgotten", game.glimpses["lag"] == 0 and game.glimpses["gaze"] == 0 and game.visited.is_empty(), str(game.visited)))
-	step_until("new game -> play", func() -> bool: return game.mode == "play", 12.0)
+	# (v2.0) the intro can be skipped with a long press (the real input path: a touch held)
+	step_until("new game: the intro starts", func() -> bool: return game.mode == "cine", 3.0)
+	step_wait(1.0)
+	step_do(func() -> void:
+		var t := InputEventScreenTouch.new()
+		t.index = 3; t.position = Vector2(200, 400); t.pressed = true
+		game.get_viewport().push_input(t, true))
+	step_wait(1.6)
+	step_do(func() -> void:
+		var t := InputEventScreenTouch.new()
+		t.index = 3; t.position = Vector2(200, 400); t.pressed = false
+		game.get_viewport().push_input(t, true))
+	step_until("new game -> play (the intro skipped by a long press)", func() -> bool: return game.mode == "play", 6.0)
 	step_do(func() -> void:
 		var st: Dictionary = game.puzzles.state
 		ok("new game: puzzles reset", not st["bridge"] and not st["plate"] and not st["shrine"] and not st.get("drawbridge", false), str(st))
@@ -1494,7 +1516,8 @@ func _plan() -> void:
 		ok("new game: no shard", not game.controls.inv_has and not C().lens_on)
 		ok("new game: the lift waits at the top (v1.0: you first meet it from the Ledge)", C().lift_h == 1.0)
 		ok("new game: world asleep, runes dormant", game.world.awaken == 0.0 and game.player.fig.runes_awake == 0)
-		ok("new game: woke at the gate", P().distance_to(Level.WAKE_POS) < 0.3, str(P()))
+		ok("new game: woke by the pool", P().distance_to(Prologue.SHORE) < 0.3, str(P()))
+		ok("(v2.0) skipped, the prologue still leaves you the comb", "comb" in (C().state["inv"]["story"] as Array))
 		var d = JSON.parse_string(FileAccess.get_file_as_string(Game.SAVE_PATH))
 		ok("new game: save rewritten fresh", d is Dictionary and not d["puzzles"]["shrine"] and not d["chapter"]["stones"])
 		ok("new game: settings kept (quality)", game.world.tier == "low")

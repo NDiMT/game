@@ -134,7 +134,7 @@ func reset_state() -> void:
 		"hall": {"drum": [DRUM_START.x, DRUM_START.y], "brazier": [BRAZ_START.x, BRAZ_START.y], "bust": BUST_START, "locks": [false, false, false]},
 		"turned": TURN_START.duplicate(), "turned_done": false, "garden_breath": false,
 		"hollow_done": false,          # (v0.9.2: "Our Steps" solved; the old key kept for saves)
-		"mural": false, "maze": false, "echo_room": true, "ledge_song": false, "beacons": [], "a1": Act1.fresh(), "memories": [], "scale_w": [-1, -1, -1], "scales": false,
+		"mural": false, "maze": false, "echo_room": true, "ledge_song": false, "beacons": [], "a1": Act1.fresh(), "prologue_seen": false, "memories": [], "scale_w": [-1, -1, -1], "scales": false,
 		"four": false, "ledge_statue": [LEDGE_STATUE.x, LEDGE_STATUE.y],
 		"inv": Items.fresh_inv(), "hub": Items.fresh_hub()}            # (v1.0 M3: the satchel, the hub's doors and item gates)
 

@@ -225,25 +225,53 @@ func reset_progress() -> void:
 		r.glimpsed = false; r.gazed = false; r.gaze_count = 0; r.skipped = false; r.active = false; r.vis = 0.0; r._hist.clear()
 
 func _start_wake() -> void:
-	mode = "wake"
 	puzzles.reset_state()
 	puzzles.apply_state(puzzles.state)
 	chapter.reset_state()
 	chapter.apply_state()
-	player.teleport(Level.WAKE_POS, 0.0)
+	player.teleport(Prologue.SHORE, PI * 0.5)
 	player.crouch = 1.0
 	player.locked = true
-	_settle_camera(0, Level.WAKE_POS)
-	sfx.play("whoosh", -14.0, 0.7)
-	sfx.chord([-3, 4, 11], -18.0, 0.3)
-	var tw := create_tween()
-	tw.tween_interval(1.2)
-	tw.tween_property(player, "crouch", 0.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_callback(func() -> void:
-		player.locked = false
-		mode = "play"
-		controls.enabled = true
-		_save())
+	_settle_camera(0, Prologue.SHORE)
+	# (v2.0, EIDOLON_SCRIPT §5) the intro cards and the prologue, "The Abduction"; a long press skips
+	mode = "cine"
+	controls.enabled = false
+	controls.reset()
+	_skip_t = 0.0
+	_skip_hold = false
+	ui.fade_to(1.0, 0.01)
+	cine = Prologue.new(self)
+	add_child(cine)
+	cine.cue.connect(func(n: String) -> void: sfx.cue(n))
+	cine.finished.connect(_end_prologue)
+	(cine as Prologue).begin()
+
+func _end_prologue() -> void:
+	chapter.state["prologue_seen"] = true
+	var story: Array = chapter.state["inv"]["story"]
+	if not ("comb" in story): story.append("comb")
+	puzzles.pool_refl.hold = false
+	player.locked = false
+	player.crouch = 0.0
+	world.yaw_index = 0
+	world.rig.rotation.y = -PI * 0.25
+	world.pitch_node.rotation.x = -World.PITCH
+	world.cam_lock = false
+	world.look_offset = Vector3.ZERO
+	world.cam_size_target = world.zoom
+	world.follow = player
+	ui.set_letterbox(0.0)
+	ui.fade_to(0.0, 0.6)
+	ui.set_skip(0.0, false)
+	ui.skip_ring.show_k = 0.0
+	mode = "play"
+	controls.enabled = true
+	controls.block(300)
+	_world_block_t = 0.3
+	if cine:
+		cine.queue_free()
+		cine = null
+	_save()
 
 func _continue_from_save() -> void:
 	puzzles.apply_state(save_data.get("puzzles", {}))
