@@ -96,7 +96,6 @@ func _ready() -> void:
 	add_child(controls)
 	ui.controls = controls
 	chapter.post_commit()
-	_drawbridge_lever()
 	# (QA P1-11: the upright drawbridge leaf and the Eidolon glass's frame hide her at the Ledge and the Gate:
 	# they open in the see-through like any wall)
 	level.occluders.append(AABB(Vector3(20.55, 2.0, -21.6), Vector3(0.9, 4.4, 2.4)))
@@ -586,7 +585,7 @@ var _area_defer := ""
 
 func _update_area() -> void:
 	var g := level.region_at(Vector2(player.position.x, player.position.z))
-	if g and Map2.enabled and g.name.begins_with(Map2.ZP): world.set_mood(Map2.mood_of_region(g.name))     # (v2: A's moods per part)
+	if g and Map2.enabled and Map2.key_of_region(g.name) != "": world.set_mood(Map2.mood_of_region(g.name))     # (v2: A's moods per part)
 	if g and satchel and mode == "play": satchel.see_region(g.name)        # (v1.0 M3c: the map fills in)
 	if g and Names.TRAVERSE.has(g.name) and not visited.has("t:" + g.name) and mode == "play":
 		visited["t:" + g.name] = true                # (v1.0 M3: a traversal section, named once)
@@ -597,7 +596,7 @@ func _update_area() -> void:
 			visited[area] = true
 			ui.show_area(Names.area(area))
 	if g == null: return
-	var key: String = Map2.area_of_region(g.name) if g.name.begins_with(Map2.ZP) else str(Names.REGION_AREA.get(g.name, ""))
+	var key: String = Map2.area_of_region(g.name) if Map2.key_of_region(g.name) != "" else str(Names.REGION_AREA.get(g.name, ""))
 	if key == "": return
 	# (v1.0 QA P1-10: the Balcony is the Atrium's until it reaches the Ledge; the dry ring north of the
 	# Maze, before the bars, is the Maze's end)
@@ -963,10 +962,11 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 ## put the world in the state it has when you first enter `room` (everything before it solved) and
 ## stand at its entrance
 const ROOM_ENTRY := {
-	"waking_pool": Vector3(1.4, 0.0, 2.3), "stair_breath": Vector3(-11.0, 0.0, 1.6), "hall_glass": Vector3(-2.0, 1.0, -13.5),
-	"atrium": Vector3(0.0, WorldGeo.A_Y, 11.0), "shard_gallery": Vector3(5.8, 1.0, -17.0), "garden_veiled": Vector3(15.5, 1.0, -6.3), "hollow_walk": Vector3(17.9, 1.0, -11.8),
-	"court_light": Vector3(18.5, 2.0, -17.8), "mist_maze": Vector3(12.0, 2.0, -29.6), "echo_corridor": Vector3(14.0, 2.0, -45.4),
-	"scales": Vector3(26.6, 2.0, -45.5), "eidolon_ledge": Vector3(24.0, 2.0, -22.0), "gate_four": Vector3(27.6, 2.0, -27.0),
+	"waking_pool": Map2.O + Vector3(-1.0, 0.0, 18.85), "stair_breath": Map2.GW + Vector3(-11.0, 0.0, 1.6), "hall_glass": Map2.GW + Vector3(-2.0, 1.0, -13.5),
+	"atrium": Map2.O + Vector3(0.0, 0.0, 3.0), "shard_gallery": Map2.GG + Vector3(5.8, 1.0, -17.0), "garden_veiled": Map2.GN + Vector3(13.5, 1.0, -5.6),
+	"hollow_walk": Map2.GN + Vector3(17.9, 1.0, -11.8), "court_light": Map2.GN + Vector3(18.5, 2.0, -17.8), "mist_maze": Map2.GN + Vector3(12.0, 2.0, -29.6),
+	"echo_corridor": Map2.GE + Vector3(22.0, 2.0, -20.0),
+	"scales": Map2.GE + Vector3(31.4, 2.0, -45.6), "eidolon_ledge": Map2.GE + Vector3(23.0, 2.0, -19.8), "gate_four": Vector3(27.6, 2.0, -27.0),
 	"first_shrine": Vector3(25.0, 2.0, -30.8),
 }
 func jump(room: String) -> void:

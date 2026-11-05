@@ -27,17 +27,19 @@ extends Node3D
 
 signal event(name: String, data: Variant)
 
-const L_LIGHT := Vector3(15.7, 2.4, -25.6)          # the lit crystal's light falls from here (mural)
-const MURAL_Z := -26.93
-const MURAL_HEAD := Vector2(12.0, 3.3)               # where the head is missing (x, y on the wall)
+## (v2: the North wing's rooms stand at Map2.GN)
+const L_LIGHT := Map2.GN + Vector3(15.7, 2.4, -25.6)          # the lit crystal's light falls from here (mural)
+const MURAL_Z := Map2.GN.z - 26.93
+const MURAL_HEAD := Vector2(Map2.GN.x + 12.0, 3.3)               # where the head is missing (x, y on the wall)
+const MURAL_X0 := Map2.GN.x + 9.4                    # the mural's west edge
 const TURN_FACES := [[[6, 0.0], [6, 1.0], [3, 0.0], [5, 0.0]], [[7, 1.0], [7, 0.0], [4, 0.0], [0, 0.0]],
 	[[8, 0.0], [3, 0.0], [8, 1.0], [5, 0.0]]]        # per statue: faces N, E, S, W at rest: [design, flip]
 const TURN_SOLUTION := [0, 1, 0]                       # orientation that puts the true rune toward the glass
 const TURN_START := [2, 3, 1]
-const TURN_X := [12.25, 13.8, 15.35]        # (v0.9.1: east and a little wider apart: from the fixed view the left one's mirror
+const TURN_X := [Map2.GN.x + 12.25, Map2.GN.x + 13.8, Map2.GN.x + 15.35]        # (v0.9.1: east and a little wider apart: from the fixed view the left one's mirror
                                             # face fell off the glass's left edge, and one statue hid another's rune in it;
                                             # now all three runes show whole in it: garden_mirror_view, tests/framing_test)
-const TURN_Z := -13.5
+const TURN_Z := Map2.GN.z - 13.5
 const FOUR_R := 3.9
 const FOUR_ANGLES := [20.0, 160.0, -20.0, -160.0]      # degrees round the tholos; the last is empty
 # (QA P1-10: memories speak of him in the third person; the inscriptions are his own voice)
@@ -49,7 +51,7 @@ var puzzles: Puzzles
 var state := {}
 var calm := 0.0
 var lens_on := false
-const LENS_AREAS := ["shard_gallery", "atrium", "eidolon_ledge"]       # (v1.0 M3b: the lens is back where it shows something)
+const LENS_AREAS := ["shard_gallery", "atrium", "eidolon_ledge", "hall_glass"]       # (v1.0 M3b: the lens is back where it shows something)
 var items: Items
 var warden: Warden
 var life: Life
@@ -144,6 +146,7 @@ func build() -> void:
 	_build_stair()
 	_build_hall()
 	_build_gallery()
+	_build_star()
 	_build_garden()
 	_build_hollow()
 	_build_mural()
@@ -577,8 +580,8 @@ func _breath_glass(id: String, center: Vector3, basis: Basis, size: Vector2, gly
 
 func _build_stair() -> void:
 	# (v0.8.3, the owner: the glass is back in the stair wall, as in v0.8)
-	_breath_glass("stair", Vector3(-10.345, 1.75, -5.3), Basis(Vector3.UP, -PI * 0.5), Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
-	level.add_interact("breathe_stair", Vector3(-11.1, 0.5, -5.3), "breathe", func() -> void: breathe("stair"), 1.25)
+	_breath_glass("stair", Map2.GW + Vector3(-10.345, 1.75, -5.3), Basis(Vector3.UP, -PI * 0.5), Vector2(1.0, 1.25), Vector3(99, -1, -1), false)
+	level.add_interact("breathe_stair", Map2.GW + Vector3(-11.1, 0.5, -5.3), "breathe", func() -> void: breathe("stair"), 1.25)
 	# v0.7: before the glass, the whole rune she will ask about, carved large in the cliff wall: her half and
 	# its mirror, the half you must give her. (QA P1-11: "together" is mirror-symmetric, so carved as your
 	# world carves all writing, mirrored, it reads the same: it never contradicts the mirror rule)
@@ -586,14 +589,14 @@ func _build_stair() -> void:
 	var gp := PackedVector2Array()
 	for q in GlassTalk.smooth(PackedVector2Array(half), 3): gp.append(q * 1.3 + Vector2(0.0, 0.04))
 	var rw := _smat("res://shaders/rune_wall.gdshader", {"pts": gp, "count": mini(gp.size(), 24), "lit": 0.0})     # (v0.9.4: invisible until you pass)
-	stair_rune = _mi(_quad(Vector2(1.6, 1.6)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(-10.215, 1.75, -2.6)))     # (proud of the wall face at x -10.2)
+	stair_rune = _mi(_quad(Vector2(1.6, 1.6)), rw, Transform3D(Basis(Vector3.UP, -PI * 0.5), STAIR_RUNE))     # (proud of the wall face at x -10.2)
 	# v0.8.1: the carved rune lights the stair beside it (a small culled light, no shadows)
 	var sl := AquaLight.new(2.8, 0.45)
-	sl.position = Vector3(-10.75, 1.75, -2.6)
+	sl.position = Map2.GW + Vector3(-10.75, 1.75, -2.6)
 	sl.follow = rw; sl.follow_param = "lit"; sl.follow_scale = 1.1
 	add_child(sl)
 	stair_veil = _smat("res://shaders/mist_veil.gdshader", {"noise_tex": level.noise_tex, "density": 1.0, "glow": 0.35})
-	_mi(_quad(Vector2(1.9, 3.2)), stair_veil, Transform3D(Basis(), Vector3(-11.3, 0.5 + 1.6, -6.8)))
+	_mi(_quad(Vector2(1.9, 3.2)), stair_veil, Transform3D(Basis(), Map2.GW + Vector3(-11.3, 0.5 + 1.6, -6.8)))
 
 ## breathe on a small glass; from the other side she writes in the fog
 func breathe(id: String) -> void:
@@ -672,14 +675,18 @@ func _open_stair(instant: bool) -> void:
 ## a face it shows you is turned toward the glass. Each thing set right appears in the glass and its
 ## memory fades; when all three are back, the doorway opens and the Mirror Shard lies on its threshold.
 ## Cells are whole metres (x, z); the floor carries a faint bronze grid, seen in the glass as well.
-const DRUM_START := Vector2i(-1, -13)
-const DRUM_GOAL := Vector2i(0, -19)
-const BRAZ_START := Vector2i(3, -13)
-const BRAZ_GOAL := Vector2i(2, -19)
-const BUST_POS := Vector3(1.0, 1.0, -18.0)
+## (v2: the Hall stands at Map2.GW; its cells are world metres)
+const DRUM_START := Map2.GWI + Vector2i(-1, -13)
+const DRUM_GOAL := Map2.GWI + Vector2i(0, -19)
+const BRAZ_START := Map2.GWI + Vector2i(3, -13)
+const BRAZ_GOAL := Map2.GWI + Vector2i(2, -19)
+const BUST_POS := Map2.GW + Vector3(1.0, 1.0, -18.0)
 const BUST_START := 2                   # quarter turns; 0 = facing north (the glass), 2 = south
 const BUST_GOAL := 0
-const SHARD_SPOT := Vector3(4.55, 1.0, -17.5)
+## (v2, the script: when all three are back the glass cracks at a corner and SHE pushes the Shard out through the crack;
+## it comes to rest before the glass, below the crack)
+const SHARD_SPOT := Map2.GW + Vector3(-1.5, 1.0, -19.75)
+const SHARD_CRACK := Map2.GW + Vector3(-1.9, 2.0, -20.46)
 var drum_node: Node3D
 var braz_node: Node3D
 var bust_pivot: Node3D
@@ -754,11 +761,11 @@ func _hall_thing(mesh: Mesh, twin: bool) -> Node3D:
 func _build_hall() -> void:
 	# the doorway as the glass remembers it (seen only in the reflection): warm light in the opening
 	var dm := _smat("res://shaders/mist_veil.gdshader", {"noise_tex": level.noise_tex, "density": 0.55, "glow": 1.0})
-	var d := _mi(_quad(Vector2(1.7, 2.7)), dm, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(4.82, 2.35, -17.5)))
+	var d := _mi(_quad(Vector2(1.7, 2.7)), dm, Transform3D(Basis(Vector3.UP, -PI * 0.5), Map2.GW + Vector3(4.82, 2.35, -17.5)))
 	d.layers = PlanarMirror.LAYER_DOUBLE
 	# a faint bronze grid inlaid in the black floor (whole metres), in the glass as well
-	var gm := _smat("res://shaders/floor_grid.gdshader", {"rect": Vector4(-4.5, -20.5, 4.5, -11.5)})
-	_mi(_plane(Vector2(9.0, 9.0)), gm, Transform3D(Basis(), Vector3(0.0, 1.006, -16.0)))
+	var gm := _smat("res://shaders/floor_grid.gdshader", {"rect": Vector4(-4.5 + Map2.GW.x, -20.5 + Map2.GW.z, 4.5 + Map2.GW.x, -11.5 + Map2.GW.z)})
+	_mi(_plane(Vector2(9.0, 9.0)), gm, Transform3D(Basis(), Map2.GW + Vector3(0.0, 1.006, -16.0)))
 	# today's things (only in your world) and their memories (only in the glass)
 	var dmesh := _drum_mesh()
 	var bmesh := _brazier_mesh()
@@ -814,14 +821,14 @@ func _build_hall() -> void:
 	# (v0.8.1, the owner: no marks of where things go: the glass alone tells it)
 	# the reset altar by the way in: everything not yet set right goes back to where it was found
 	var am := MB.new()
-	am.box(Vector3(-3.9, 1.35, -15.8), Vector3(0.55, 0.7, 0.55), Color(0.5, 0.25, 0.0))
-	am.box(Vector3(-3.9, 1.73, -15.8), Vector3(0.66, 0.06, 0.66), Color(0.5, 0.25, 0.0))
+	am.box(Map2.GW + Vector3(-3.9, 1.35, -15.8), Vector3(0.55, 0.7, 0.55), Color(0.5, 0.25, 0.0))
+	am.box(Map2.GW + Vector3(-3.9, 1.73, -15.8), Vector3(0.66, 0.06, 0.66), Color(0.5, 0.25, 0.0))
 	puzzles.marble_instance(am.commit(), self)
-	puzzles.rune_quad(self, Vector3(-3.9, 1.765, -15.8), Vector2(0.5, 0.5), Basis(Vector3.RIGHT, -PI * 0.5), 1.0, 0.5)
-	level.ob_rect(Level.R(-4.2, -16.1, -3.6, -15.5))
-	level.add_interact("hall_reset", Vector3(-3.9, 1.0, -15.8), "reset", reset_hall, 0.95, func() -> bool: return not state["hall_door"] and not carrying)
-	level.inscription("h_hall", Vector3(-3.4, 1.0, -12.6), "I moved what she loved in this hall, and walled up her door.\nThe glass kept all of it, as it was.", 1.2,
-		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-3.4, 1.012, -12.95)), Vector2(1.15, 0.78))
+	puzzles.rune_quad(self, Map2.GW + Vector3(-3.9, 1.765, -15.8), Vector2(0.5, 0.5), Basis(Vector3.RIGHT, -PI * 0.5), 1.0, 0.5)
+	level.ob_rect(Map2.gr(Map2.GW, Level.R(-4.2, -16.1, -3.6, -15.5)))
+	level.add_interact("hall_reset", Map2.GW + Vector3(-3.9, 1.0, -15.8), "reset", reset_hall, 0.95, func() -> bool: return not state["hall_door"] and not carrying)
+	level.inscription("h_hall", Map2.GW + Vector3(-3.4, 1.0, -12.6), "I moved what she loved in this hall, and walled up her door.\nThe glass kept all of it, as it was.", 1.2,
+		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Map2.GW + Vector3(-3.4, 1.012, -12.95)), Vector2(1.15, 0.78))
 	# the shard: a sliver of mirror, glowing (it lies on the threshold once the door is back)
 	shard_node = Node3D.new()
 	add_child(shard_node)
@@ -854,7 +861,7 @@ func _locked(k: int) -> bool:
 ## a cell the drum or the brazier may stand on: inside the hall, clear of stone and of the other things
 func hall_free(c: Vector2i, rad: float, ignore: int) -> bool:
 	var q := Vector2(c.x, c.y)
-	var hall := Level.R(-4.6, -20.6, 4.6, -11.0)
+	var hall := Map2.gr(Map2.GW, Level.R(-4.6, -20.6, 4.6, -11.0))
 	if q.x - rad < hall.position.x or q.x + rad > hall.end.x or q.y - rad < hall.position.y or q.y + rad > hall.end.y: return false
 	var was: Array[bool] = []
 	for o in hall_obs:
@@ -1001,7 +1008,7 @@ func _lock_thing(k: int, instant: bool) -> void:
 	tw.tween_callback(func() -> void: twins[k].visible = false)
 
 func _in_hall() -> bool:
-	return Level.R(-4.6, -20.6, 4.6, -11.0).has_point(Vector2(game.player.position.x, game.player.position.z))
+	return Map2.gr(Map2.GW, Level.R(-4.6, -20.6, 4.6, -11.0)).has_point(Vector2(game.player.position.x, game.player.position.z))
 
 func _update_hall(dt: float) -> void:
 	var hs := _hall_state()
@@ -1095,6 +1102,7 @@ func _open_hall_door(instant: bool) -> void:
 	level.set_enabled("hdoor", true)
 	shard_node.visible = not state["shard"]
 	shard_node.position = SHARD_SPOT + Vector3(0, 0.55, 0)
+	if not instant and not state["shard"]: PassThrough.mirror(self, SHARD_CRACK, Vector3.BACK, shard_node, 1.6, true)
 	var hd := level.get_node_or_null("Zone_Hdoor") as MeshInstance3D
 	if hd == null: return
 	if instant:
@@ -1116,7 +1124,7 @@ func _open_hall_door(instant: bool) -> void:
 ## v0.9: rebuilt as a framed room (all of it in view at once). The rules teach themselves: ONE brazier
 ## already burns as you come in (not one of hers: its shadow is the first thing you see, and lies in no
 ## outline), and the shard in your hand glints until you first raise it here.
-const SH_STATUE := Vector3(7.5, 1.0, -13.2)
+const SH_STATUE := Map2.GG + Vector3(7.5, 1.0, -13.2)          # (v2: the chamber stands at Map2.GG)
 ## (v0.9.2: brazier 1 stands north of her now and the lit one south-west: from the fixed view the west parapet
 ## hid the eyes of a shadow thrown west, and the old lit brazier stood before another pair)
 ## (v1.1d, the owner: the bold eyes, 40 x 20 cm, 60 cm apart: a tripod stood ON a pair.) The braziers re-placed
@@ -1124,8 +1132,8 @@ const SH_STATUE := Vector3(7.5, 1.0, -13.2)
 ## clear of every brazier and of her plinth, in full sight from the fixed view (no brazier bowl, statue or
 ## parapet between a pair and the camera), each pair clear of every other shadow's head (its 1.04 m disc).
 ## The burning decoy's shadow falls in plain sight onto no eyes.
-const SH_BRAZ := [Vector3(9.21, 1.0, -10.64), Vector3(8.13, 1.0, -15.71), Vector3(9.45, 1.0, -13.4), Vector3(6.1, 1.0, -12.64),
-	Vector3(5.86, 1.0, -14.87)]
+const SH_BRAZ := [Map2.GG + Vector3(9.21, 1.0, -10.64), Map2.GG + Vector3(8.13, 1.0, -15.71), Map2.GG + Vector3(9.45, 1.0, -13.4), Map2.GG + Vector3(6.1, 1.0, -12.64),
+	Map2.GG + Vector3(5.86, 1.0, -14.87)]
 ## her shadows fall on the floor where the camera sees them (nothing hides behind her
 ## from the fixed view; no brazier stands where she would hide it)
 const SH_SOLUTION := [0, 1, 4]
@@ -1194,7 +1202,7 @@ func _build_gallery() -> void:
 		m.set_shader_parameter("design", design)
 		return m
 	# the true gate: the parapet in it is not there (seen through the shard)
-	_mi(_quad(Vector2(1.4, 1.1)), mk.call(2.0, 0.0), Transform3D(Basis(), Vector3(8.1, 1.55, -9.63)))      # (v0.9: the south gate)
+	_mi(_quad(Vector2(1.4, 1.1)), mk.call(2.0, 0.0), Transform3D(Basis(), Map2.GG + Vector3(8.1, 1.55, -9.63)))      # (v0.9: the south gate)
 	# her statue: Theron's Ione, veiled, on a plinth, facing the Hall door
 	var st := Node3D.new()
 	st.position = SH_STATUE
@@ -1287,7 +1295,7 @@ func toggle_brazier(i: int) -> void:
 
 ## (v0.9.1, the owner) the stair's carved rune is dark until you pass in front of it (within 2.5 m, before
 ## its face): it lights in 0.6 s, and goes dark again 1.5 s after you leave (its little light follows)
-const STAIR_RUNE := Vector3(-10.215, 1.75, -2.6)
+const STAIR_RUNE := Map2.GW + Vector3(-10.215, 1.75, -2.6)
 var stair_rune_lit := 0.0
 func _update_stair_rune(dt: float) -> void:
 	if stair_rune == null: return
@@ -1312,7 +1320,7 @@ func _update_gallery(dt: float) -> void:
 		sh_eye_mats[k].set_shader_parameter("k", 0.75 + 0.25 * w)          # (worn by its shadow: brighter)
 
 func _in_gallery() -> bool:
-	var p := game.player.position
+	var p := game.player.position - Map2.GG
 	return p.x > 4.9 and p.x < 10.1 and p.z > -18.5 and p.z < -9.5 and (p.x < 7.0 or p.z > -17.0)
 
 func set_lens(on: bool) -> void:
@@ -1366,7 +1374,32 @@ func open_gallery(instant := false) -> void:
 
 ## (v2.0, W.6 "the Hidden Way") after her shadows: a door in the south parapet that is only in HER world. Raised
 ## near it, the Shard shows it; then it is there for you too (the parapet's stretch sinks away)
-const HIDDEN_WAY := Vector3(8.1, 1.0, -9.6)
+const HIDDEN_WAY := Map2.GG + Vector3(8.1, 1.0, -9.6)
+
+## (v2, W.4 the Corridor) the Shard tried for the first time: through it, a star carved in a ceiling that is not in
+## your world (the corridor is roofed only in hers). Raised in the corridor, the star shows over your head.
+const STAR := Map2.O + Vector3(-16.0, 3.4, -21.5)
+const STAR_RECT := Rect2(Map2.O.x - 18.4, Map2.O.z - 22.4, 4.4, 1.8)
+var star_mat: ShaderMaterial
+func _build_star() -> void:
+	star_mat = ShaderMaterial.new()
+	star_mat.shader = preload("res://shaders/lens_only.gdshader")
+	star_mat.set_shader_parameter("noise_tex", level.noise_tex)
+	star_mat.set_shader_parameter("kind", 0.0)
+	star_mat.set_shader_parameter("design", 5.0)
+	_mi(_quad(Vector2(1.6, 1.6)), star_mat, Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), STAR)).layers = PlanarMirror.LAYER_MAIN_FX
+
+func in_star_corridor() -> bool:
+	return STAR_RECT.has_point(Vector2(game.player.position.x, game.player.position.z))
+
+func _update_star() -> void:
+	if not state["shard"] or state["hub"].get("star", false): return
+	if not in_star_corridor(): return
+	if game.controls: game.controls.inv_pulse = not lens_on          # (the Shard in your hand glints: try it)
+	if lens_on:
+		state["hub"]["star"] = true
+		event.emit("star", null)
+		game.ui.show_text("A star, carved in a ceiling\nthat is not there.", game.player.position, 4.0)
 func open_hidden_way(instant := false) -> void:
 	state["hub"]["w_seen"] = true
 	level.set_enabled("gallery_secret", false)
@@ -1382,10 +1415,10 @@ func open_hidden_way(instant := false) -> void:
 	tw.tween_callback(func() -> void: gls.visible = false)
 
 # ------------------------------------------------------------------ 5. garden: the turned ones
-const GARDEN_GLASS_Z := -14.93
-const GARDEN_GLASS_C := Vector2(12.8, 3.3)        # (x, y) of the glass's centre
+const GARDEN_GLASS_Z := Map2.GN.z - 14.93
+const GARDEN_GLASS_C := Vector2(Map2.GN.x + 12.8, 3.3)        # (x, y) of the glass's centre
 const GARDEN_GLASS_H := Vector2(2.2, 2.15)        # half size of its reflecting rect (the Reflector's clip)
-const GARDEN_SMALL := Vector3(16.88, 1.0, -13.95)  # (v0.9.1, back in v0.9.4) her small glass, on the east rail, facing west
+const GARDEN_SMALL := Map2.GN + Vector3(16.88, 1.0, -13.95)  # (v0.9.1, back in v0.9.4) her small glass, on the east rail, facing west
 
 ## (v0.9.1, tests) the north face of turned one i (the face toward the glass): its rune quad's 4 corners
 static func turn_north_corners(i: int) -> Array:
@@ -1401,8 +1434,9 @@ static func garden_glass_point(p: Vector3) -> Vector3:
 ## (v0.9.1) standing before the turned ones, the camera leans toward the glass so all three runes in it show
 ## from any of the three steps (a pan of the follow target, never a zoom)
 static func garden_lean(p: Vector3) -> Vector3:
-	if p.x < 11.3 or p.x > 16.3 or p.z < -13.3 or p.z > -11.4 or absf(p.y - 1.0) > 0.3: return Vector3.ZERO
-	var off := (Vector3(13.3, p.y, -13.6) - p) * 0.75
+	var q := p - Map2.GN
+	if q.x < 11.3 or q.x > 16.3 or q.z < -13.3 or q.z > -11.4 or absf(q.y - 1.0) > 0.3: return Vector3.ZERO
+	var off := (Vector3(13.3, q.y, -13.6) - q) * 0.75
 	off.y = 0.0
 	return off
 
@@ -1425,15 +1459,15 @@ static func garden_mirror_view(stand: Vector3, size: float, w := 390.0, h := 844
 
 func _build_garden() -> void:
 	# the great glass on the garden's north edge, a real planar reflection (shared with the Hall)
-	var mm := puzzles._mirror_quad(Vector3(12.8, 3.3, -14.93), Basis(), Vector2(4.5, 4.4), false, 1.0)
+	var mm := puzzles._mirror_quad(Vector3(GARDEN_GLASS_C.x, 3.3, GARDEN_GLASS_Z), Basis(), Vector2(4.5, 4.4), false, 1.0)
 	mm.set_shader_parameter("ncols", 0)
 	var pm := PlanarMirror.new()
 	add_child(pm)
-	pm.setup(Vector3.BACK, -14.93, mm, game.world.env)
+	pm.setup(Vector3.BACK, GARDEN_GLASS_Z, mm, game.world.env)
 	var r := Reflector.new()
-	r.kind = "mirror"; r.plane_n = Vector3.BACK; r.plane_d = -14.92
-	r.clip_c = Vector3(12.8, 3.3, -14.92); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.UP; r.clip_h = Vector2(2.2, 2.15)
-	r.region = Level.R(10.3, -15, 17, -5)
+	r.kind = "mirror"; r.plane_n = Vector3.BACK; r.plane_d = GARDEN_GLASS_Z + 0.01
+	r.clip_c = Vector3(GARDEN_GLASS_C.x, 3.3, GARDEN_GLASS_Z + 0.01); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.UP; r.clip_h = Vector2(2.2, 2.15)
+	r.region = Map2.gr(Map2.GN, Level.R(10.3, -15, 17, -5))
 	r.planar = pm
 	puzzles._add_refl(r)
 	garden_refl = r
@@ -1494,7 +1528,7 @@ func _build_garden() -> void:
 	# the door east: its leaves in your world, and their twins only the mirror sees
 	for twin in [false, true]:
 		for s in [-1.0, 1.0]:
-			var hinge := Vector3(16.95, 1.0, -11.8 + s * 0.8)
+			var hinge := Map2.GN + Vector3(16.95, 1.0, -11.8 + s * 0.8)
 			var pv := Node3D.new()
 			pv.position = hinge
 			add_child(pv)
@@ -1504,7 +1538,7 @@ func _build_garden() -> void:
 			var dmi := puzzles.marble_instance(dm.commit(), pv)
 			dmi.layers = PlanarMirror.LAYER_DOUBLE if twin else PlanarMirror.LAYER_MAIN_FX
 			(door_refl if twin else door_real).append(pv)
-	level.ob_rect(Level.R(16.8, -12.6, 17.15, -11.0), "g_door_ob")
+	level.ob_rect(Map2.gr(Map2.GN, Level.R(16.8, -12.6, 17.15, -11.0)), "g_door_ob")
 
 func turn_statue(i: int) -> void:
 	if state["turned_done"]: return
@@ -1577,7 +1611,7 @@ func _build_hollow() -> void:
 		func() -> bool: return steps.active and not steps.moving and steps.p != steps.b["P"])
 	# the gate at the top of the ramp
 	hw_gate = Node3D.new()
-	hw_gate.position = Vector3(18.5, 1.0, -15.15)
+	hw_gate.position = Map2.GN + Vector3(18.5, 1.0, -15.15)
 	add_child(hw_gate)
 	var gm := MB.new()
 	for i in 8:
@@ -1608,16 +1642,16 @@ func _open_hollow_gate(instant: bool) -> void:
 # ------------------------------------------------------------------ 7. court: the mural
 func _build_mural() -> void:
 	mural_mat = _smat("res://shaders/mural.gdshader", {"noise_tex": level.noise_tex, "size": Vector2(5.2, 3.4), "lit": 0.0, "complete": 0.0,
-		"head": Vector2((MURAL_HEAD.x - 9.4) / 5.2, (MURAL_HEAD.y - 2.1) / 3.4)})
-	_mi(_quad(Vector2(5.2, 3.4)), mural_mat, Transform3D(Basis(), Vector3(12.0, 3.8, MURAL_Z)))
-	level.inscription("l_mural", Vector3(9.0, 2.0, -25.6), "The sea took her on a still day.\nThe light remembers where her head was bowed.", 1.0,
-		Transform3D(Basis(), Vector3(9.0, 2.62, -26.9)), Vector2(0.7, 0.7))
+		"head": Vector2((MURAL_HEAD.x - MURAL_X0) / 5.2, (MURAL_HEAD.y - 2.1) / 3.4)})
+	_mi(_quad(Vector2(5.2, 3.4)), mural_mat, Transform3D(Basis(), Vector3(MURAL_X0 + 2.6, 3.8, MURAL_Z)))
+	level.inscription("l_mural", Map2.GN + Vector3(9.0, 2.0, -25.6), "The sea took her on a still day.\nThe light remembers where her head was bowed.", 1.0,
+		Transform3D(Basis(), Map2.GN + Vector3(9.0, 2.62, -26.9)), Vector2(0.7, 0.7))
 
 ## where the lit crystal throws your veil's shadow on the mural wall (INF: no shadow)
 func veil_shadow() -> Vector3:
 	var p := game.player.position
 	if not puzzles.state["bridge"] or absf(p.y - 2.0) > 0.2: return Vector3.INF
-	if p.x < 7.0 or p.x > 17.0 or p.z > L_LIGHT.z - 0.25 or p.z < MURAL_Z: return Vector3.INF
+	if p.x < Map2.GN.x + 7.0 or p.x > Map2.GN.x + 17.0 or p.z > L_LIGHT.z - 0.25 or p.z < MURAL_Z: return Vector3.INF
 	var H := p + Vector3(0, 1.0, 0)
 	var t := (MURAL_Z - L_LIGHT.z) / (H.z - L_LIGHT.z)
 	if t < 1.0: return Vector3.INF
@@ -1642,7 +1676,7 @@ func _update_mural(dt: float) -> void:
 		return
 	var t := (MURAL_Z - L_LIGHT.z) / (game.player.position.z + 0.0 - L_LIGHT.z)
 	var rad := 0.14 * t / 3.4
-	mural_mat.set_shader_parameter("shadow", Vector4((s.x - 9.4) / 5.2, (s.y - 2.1) / 3.4, clampf(rad, 0.03, 0.12), 1.0))
+	mural_mat.set_shader_parameter("shadow", Vector4((s.x - MURAL_X0) / 5.2, (s.y - 2.1) / 3.4, clampf(rad, 0.03, 0.12), 1.0))
 	var fit := Vector2(s.x - MURAL_HEAD.x, s.y - MURAL_HEAD.y).length() < 0.32
 	mural_hold = mural_hold + dt if fit and game.player.speed01 < 0.05 else 0.0
 	if mural_hold > 1.3: complete_mural(false)
@@ -1668,7 +1702,7 @@ func complete_mural(instant: bool) -> void:
 # ------------------------------------------------------------------ 8. mist maze
 func _build_maze() -> void:
 	maze_mist = _smat("res://shaders/maze_mist.gdshader", {"noise_tex": level.noise_tex, "density": 0.92, "clear_r": 1.35})
-	var mmi := _mi(_plane(Vector2(8.6, 10.6)), maze_mist, Transform3D(Basis(), Vector3(13.0, 2.62, -34.0)))
+	var mmi := _mi(_plane(Vector2(8.6, 10.6)), maze_mist, Transform3D(Basis(), Map2.GN + Vector3(13.0, 2.62, -34.0)))
 	mmi.layers = PlanarMirror.LAYER_MAIN_FX
 	var wsh := preload("res://shaders/wall_shimmer.gdshader")
 	for i in 6:
@@ -1679,19 +1713,13 @@ func _build_maze() -> void:
 		var mi := _mi(_quad(Vector2(2.1, 2.2)), m, Transform3D())
 		mi.visible = false
 		shimmers.append(mi)
-	# her pool: still water, and her steps in it
-	var wm := _smat("res://shaders/water.gdshader", {"noise_tex": level.noise_tex})
-	_mi(_plane(Vector2(8.0, 10.0)), wm, Transform3D(Basis(), Vector3(4.6, 1.95, -34.0)))
-	var om := _smat("res://shaders/water_over.gdshader", {"noise_tex": level.noise_tex, "area": Vector4(1.0, -38.6, 8.2, -29.4), "calm": 0.5})
-	_mi(_plane(Vector2(8.0, 10.0)), om, Transform3D(Basis(), Vector3(4.6, 1.975, -34.0)))
-	var mfx := WaterFX.new()                 # (v1.0 M1-A: her pool's water answers splashes)
-	mfx.mats = [wm, om]
-	add_child(mfx)
+	# (v2, the script: "the lamp shows her red footprints on the floor, and only where its light reaches": her way
+	# through the invisible maze, step by step on its own floor; no pool of hers any more)
 	var fsh := preload("res://shaders/footprint.gdshader")
 	var pts: Array[Vector3] = []
-	pts.append(_mirror_maze(Vector3(12.0, 2.0, -27.6)))
-	for rc in Ch1Geo.MZ_PATH: pts.append(_mirror_maze(Ch1Geo.mz_cell(rc)))
-	pts.append(_mirror_maze(Vector3(10.0, 2.0, -40.0)))
+	pts.append(Map2.GN + Vector3(12.0, 2.012, -27.6))
+	for rc in Ch1Geo.MZ_PATH: pts.append(Ch1Geo.mz_cell(rc) + Vector3(0, 0.012, 0))
+	pts.append(Map2.GN + Vector3(10.0, 2.012, -40.0))
 	var side := 1.0
 	for i in pts.size() - 1:
 		var a: Vector3 = pts[i]
@@ -1717,11 +1745,9 @@ func _build_maze() -> void:
 			maze_feet_t.append(0.0)
 			maze_feet_seg.append(i)
 
-func _mirror_maze(p: Vector3) -> Vector3:
-	return Vector3(2.0 * Ch1Geo.MZ_MIRROR_X - p.x, 1.99, p.z)
-
+const MAZE_LAMP_R := 2.6                # (how far the lamp's light shows her steps)
 func _in_maze() -> bool:
-	var p := game.player.position
+	var p := game.player.position - Map2.GN
 	return p.x > 8.5 and p.x < 17.5 and p.z > -40.0 and p.z < -26.5 and absf(p.y - 2.0) < 0.3
 
 func _update_maze(dt: float) -> void:
@@ -1735,17 +1761,20 @@ func _update_maze(dt: float) -> void:
 	_maze_still = _maze_still + dt if still else 0.0
 	var n := maze_feet.size()
 	var first := maze_prog + 1
-	var shown := 0
+	var lamp := hub.has_item("lamp")
+	var pp := game.player.position
 	for i in n:
 		var sg := maze_feet_seg[i]
-		var want := inside and sg >= first and sg <= first + 2
+		# (v2, the script: her steps show only where the lamp's light reaches, brightest under it)
+		var d := Vector2(maze_feet[i].position.x - pp.x, maze_feet[i].position.z - pp.z).length()
+		var want := inside and lamp and d < MAZE_LAMP_R and sg >= first - 1
 		var m: ShaderMaterial = maze_feet[i].material_override
-		if want and (_maze_still > 0.5 or (hub.has_item("lamp") and inside)):        # (v1.0: the lamp's light shows them as you walk)
-			if maze_feet_t[i] <= 0.0: maze_feet_t[i] = _maze_still + shown * 0.32
-			shown += 1
-			var age := _maze_still - maze_feet_t[i]
-			maze_feet[i].visible = age > 0.0
-			m.set_shader_parameter("life", 0.12 + 0.88 * (1.0 - clampf(age / 0.6, 0.0, 1.0)))
+		if want:
+			if not maze_feet[i].visible:
+				maze_feet[i].visible = true
+				m.set_shader_parameter("life", 1.0)
+			var goal := 0.12 + 0.7 * clampf((d - MAZE_LAMP_R * 0.5) / (MAZE_LAMP_R * 0.5), 0.0, 1.0)
+			m.set_shader_parameter("life", move_toward(float(m.get_shader_parameter("life")), goal, dt * 2.5))
 		else:
 			maze_feet_t[i] = 0.0
 			if maze_feet[i].visible:
@@ -1778,7 +1807,7 @@ func _update_maze(dt: float) -> void:
 	if inside and not state["maze"] and game.player.position.z < -38.7:
 		pass
 	# (v1.0 QA P0-1: only by walking out of the maze's last cell; never from the Echo Corridor's side of the bars)
-	var pz := game.player.position
+	var pz := game.player.position - Map2.GN
 	if not state["maze"] and maze_prog >= Ch1Geo.MZ_PATH.size() - 2 and pz.z < -39.2 and pz.z > -40.8 and pz.x < 11.5 and pz.x > 8.5 and absf(pz.y - 2.0) < 0.2:
 		state["maze"] = true
 		event.emit("solve", "mist_maze")
@@ -2637,6 +2666,7 @@ func update(dt: float) -> void:
 	_update_pool(dt)
 	_update_hall(dt)
 	_update_gallery(dt)
+	_update_star()
 	_update_stair_rune(dt)
 	if lens_on and not (game.area in LENS_AREAS) and game.area != "": set_lens(false)
 	_update_lens()

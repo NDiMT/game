@@ -354,16 +354,17 @@ func open_gate(instant := false) -> void:
 ## The crystal passes the light on the way it came: only light that arrives heading toward her mural
 ## (within LIGHT_CONE of it) lights the mural; the beam through her world does, the near way does not.
 ## Exactly one setting of the four stands does it (court.c / the playthrough's solver check).
-const COURT_GX := 16.85                     # the great glass (plane x), facing west
-const COURT_G := Vector2(-26.5, -21.6)      # its span in z
-const SRC := Vector2(8.2, -22.6)            # the source crystal (shines east)
-const TGT := Vector2(15.7, -25.6)           # the dark crystal by the glass
-const STAND_POS := [Vector2(9.7, -22.6), Vector2(9.7, -24.1), Vector2(15.7, -24.1), Vector2(15.7, -22.6)]
+## (v2: the Court stands at Map2.GN)
+const COURT_GX := Map2.GN.x + 16.85                     # the great glass (plane x), facing west
+const COURT_G := Vector2(Map2.GN.z - 26.5, Map2.GN.z - 21.6)      # its span in z
+const SRC := Map2.GN2 + Vector2(8.2, -22.6)            # the source crystal (shines east)
+const TGT := Map2.GN2 + Vector2(15.7, -25.6)           # the dark crystal by the glass
+const STAND_POS := [Map2.GN2 + Vector2(9.7, -22.6), Map2.GN2 + Vector2(9.7, -24.1), Map2.GN2 + Vector2(15.7, -24.1), Map2.GN2 + Vector2(15.7, -22.6)]
 const MIRROR_START := [1, 0, 2, 2]
-const HER_POS := [Vector2(14.6, -24.1), Vector2(14.6, -25.6)]   # her own glasses (folded positions)
+const HER_POS := [Map2.GN2 + Vector2(14.6, -24.1), Map2.GN2 + Vector2(14.6, -25.6)]   # her own glasses (folded positions)
 const HER_K := [1, 3]
 const LIGHT_CONE := 40.0
-const COURT_BOUNDS := Rect2(7.15, -26.85, 9.7, 9.7)
+const COURT_BOUNDS := Rect2(Map2.GN.x + 7.15, Map2.GN.z - 26.85, 9.7, 9.7)
 var her_stands: Array[Node3D] = []
 var her_glows: Array[ShaderMaterial] = []
 var court_refl: Reflector
@@ -405,7 +406,7 @@ func _light_court() -> void:
 	var pm := MB.new()
 	var tpm := MB.new()
 	for p in [Vector3(SRC.x, y, SRC.y), Vector3(TGT.x, y, TGT.y)]:
-		var m: MB = pm if p.x < 12.0 else tpm
+		var m: MB = pm if p.x < Map2.GN.x + 12.0 else tpm
 		m.cyl(p + Vector3(0, 0.45, 0), 0.24, 0.34, 0.9, Color(0.3, 0.25, 0.0), 12)
 		m.cyl(p + Vector3(0, 0.95, 0), 0.34, 0.24, 0.12, Color(0.3, 0.25, 0.0), 12)
 		level.ob_circle(Vector2(p.x, p.z), 0.42)
@@ -479,7 +480,7 @@ func _light_court() -> void:
 	var r := Reflector.new()
 	r.kind = "mirror"; r.plane_n = Vector3.LEFT; r.plane_d = -COURT_GX + 0.02
 	r.clip_c = gc; r.clip_u = Vector3.BACK; r.clip_v = Vector3.UP; r.clip_h = gsize * 0.5
-	r.region = Level.R(7.0, -27.0, 17.0, -17.0)
+	r.region = Map2.gr(Map2.GN, Level.R(7.0, -27.0, 17.0, -17.0))
 	r.planar = pmr
 	court_refl = r
 	# the beam lights the floor: a strip under each segment, a pool at every strike
@@ -544,18 +545,7 @@ func _light_court() -> void:
 		gl.visible = false
 		add_child(gl)
 		beam_glows.append(gl)
-	# the drawbridge: hinged at the Eidolon ledge, standing upright until the light arrives
-	drawbridge = Node3D.new()
-	drawbridge.position = Vector3(21.0, 2.0, -20.4)
-	drawbridge.rotation.z = -PI * 0.5
-	add_child(drawbridge)
-	var bm := MB.new()
-	bm.box(Vector3(-2.0, -0.17, 0), Vector3(4.0, 0.34, 2.0), Color(0.5, 0.0, 0.0))
-	for zz in [-0.95, 0.95]:
-		bm.box(Vector3(-2.0, 0.3, zz), Vector3(3.9, 0.1, 0.14), Color(0.5, 0.25, 0.0))
-		for k in 6: bm.cyl(Vector3(-0.2 - k * 0.72, 0.15, zz), 0.045, 0.06, 0.3, Color(0.5, 0.25, 0.0), 6)
-	marble_instance(bm.commit(), drawbridge)
-	level.walk(Level.R(17, -21.4, 21, -19.4), 2.0, NAN, -1, "LB", false)
+	# (v2: no drawbridge: the Court and the High wing are no longer neighbours)
 
 func turn_mirror(i: int) -> void:
 	if state["bridge"]: return
@@ -817,17 +807,7 @@ func _lower_bridge(instant: bool) -> void:
 		event.emit("beam_done", null))
 
 func lower_drawbridge(instant: bool) -> void:
-	state["drawbridge"] = true
-	if instant:
-		drawbridge.rotation.z = 0.0
-		level.set_enabled("LB", true)
-		return
-	event.emit("bridge_fall", null)
-	var tw := create_tween()
-	tw.tween_property(drawbridge, "rotation:z", 0.0, 2.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(func() -> void:
-		level.set_enabled("LB", true)
-		event.emit("bridge_down", null))
+	state["drawbridge"] = true          # (v2: no drawbridge any more; kept for old saves)
 
 # ------------------------------------------------------------------ c) the eidolon glass and plate
 func _eidolon_glass() -> void:

@@ -104,6 +104,11 @@ void fragment() {
 		float n2 = sin(pp.x * 13.0 - pp.z * 9.0 + TIME * 2.3);
 		wbreak = smoothstep(0.55, 0.95, bnd * 0.75 + n2 * 0.25);
 		if (bayer4(FRAGCOORD.xy) < wbreak * 0.85) discard;
+		// (v2.0: dissolving over the last 30 cm before the pool's edge, as her body's reflection does)
+		vec3 d2 = pp - clip_c;
+		vec2 uv2 = vec2(dot(d2, clip_u), dot(d2, clip_v)) / clip_h;
+		float em = clip_disc > 0.5 ? (1.0 - length(uv2)) * min(clip_h.x, clip_h.y) : min((1.0 - abs(uv2.x)) * clip_h.x, (1.0 - abs(uv2.y)) * clip_h.y);
+		if (bayer4(FRAGCOORD.xy) > smoothstep(0.02, 0.32, em)) discard;
 	}
 	if (vis < 0.999 && bayer4(FRAGCOORD.xy) > vis) discard;
 	vec2 hm = vuv.x < 0.5 ? cloak_holes(rest) : vec2(0.0);

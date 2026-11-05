@@ -19,6 +19,7 @@ SPEC = {
  "gallery": ("w", 3.0, 512), "dead_plant": ("h", 0.6, 256),
  # v2.0 Chapter I rebuild (Dress recipes): Theron's crypt, the E wing's wind bells, the N wing's votive
  "workbench": ("w", 1.6, 256), "cot": ("w", 2.0, 256), "windbells": ("h", 2.4, 256), "votive": ("h", 1.1, 256),
+ "observer_veiled": ("h", 1.0, 256),      # (the Observer: normalised to 1 m like colossus_head_veiled; Dress.observer scales it)
 }
 EXTRA_YAW = {"workbench": 90, "cot": 90}     # (degrees after the usual turn: these came out long along Z; long along X here)
 ONLY = set(sys.argv[3].split(",")) if len(sys.argv) > 3 else None     # (v2.0: prep just these names)

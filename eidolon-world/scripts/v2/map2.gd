@@ -29,6 +29,20 @@ const W_GL := Vector3(-19.0, 0.0, -4.0)     # the Shadow Chamber (a corridor, W.
 const N_MOD := Vector3(-12.0, 0.0, -10.0)   # Turned Ones, Our Steps, Court of Light, Tree, Mist Maze
 const E_MOD := Vector3(-4.0, 0.0, -6.0)     # Ledge, Mirror Walk, Spring, Scales
 const POOL := Vector3(-3.35, 0.0, 17.15)    # the Pool of Halves (v1 waking pool's slab grid)
+## (phase 3) the v1 rooms' WORLD offsets: a v1 coordinate + this = where it stands now (v1 code keeps its numbers,
+## written as `Map2.GW + Vector3(v1 ...)`; O goes to zero later and these follow)
+const GW := O + W_HALL                      # Stair of Breath, the Offering, W_corr, Hall of Glass
+const GG := O + W_GL                        # the Shadow Chamber
+const GN := O + N_MOD                       # Turned Ones, Our Steps, the Wind Ramp, Court of Light, Tree, Mist Maze
+const GE := O + E_MOD                       # Singing Stones (the v1 Ledge), Veil Stair, Mirror Walk, Spring, Scales
+const GX := O + Vector3(1.0, 4.0, -43.0)    # E.6 the Eidolon Plate: the v1 Ledge's glass and plates, up on the High terrace (EB)
+const GP := O + POOL
+const GWI := Vector2i(Vector2(GW.x, GW.z))             # (the Hall's cells are whole metres: so is its offset)
+const GN2 := Vector2(GN.x, GN.z)
+const GE2 := Vector2(GE.x, GE.z)
+const GX2 := Vector2(GX.x, GX.z)
+static func g2(off: Vector3) -> Vector2: return Vector2(off.x, off.z)
+static func gr(off: Vector3, r: Rect2) -> Rect2: return Rect2(r.position + Vector2(off.x, off.z), r.size)
 
 ## kinds (the script's symbols): puzzle 🧩, breath 🌫, traversal 🚶, spectacle ✨, hub, between (an in-between point)
 ## [id, beat, name, kind, rect (x0, z0, x1, z1), floor y, dress recipe ("" none)]
@@ -97,34 +111,17 @@ const WALK := [
 	["I5", 10.0, -1.0, 14.6, 7.0, 0.0, NAN, -1],
 	# West
 	["WR", -34.0, -1.5, -10.0, 1.5, 0.0, NAN, -1],
-	["W1", -35.8, -4.2, -32.4, -0.4, 0.0, NAN, -1],          # v1 W_land
-	["W1", -35.4, -8.0, -33.2, -4.2, 0.5, 0.0, 1],
-	["W1", -35.4, -10.6, -33.2, -8.0, 0.5, NAN, -1],          # the breath glass landing
-	["W1", -35.4, -14.6, -33.2, -10.6, 1.0, 0.5, 1],
-	["W2", -35.4, -18.4, -33.2, -14.6, 1.0, NAN, -1],
-	["W2c", -33.2, -18.2, -27.6, -16.8, 1.0, NAN, -1],        # v1 W_corr
-	["W3", -27.6, -24.6, -18.4, -15.0, 1.0, NAN, -1],
-	["W4", -18.4, -22.3, -14.0, -20.7, 1.0, NAN, -1],
-	["W5", -14.0, -22.4, -12.1, -20.85, 1.0, NAN, -1],        # its way in (v1)
-	["W5", -14.0, -20.9, -9.0, -13.6, 1.0, NAN, -1],
+	# (W1 the Stair of Breath, W2 the Offering, W2c its corridor, W3 the Hall, W5 the Shadow Chamber: the v1 rooms, WingsGeo)
+	["W4", -18.0, -22.2, -14.0, -20.8, 1.0, NAN, -1],          # between the Hall's remembered door and the chamber's way in
 	["IBW", -14.0, -13.6, -9.0, -10.0, 1.0, NAN, -1],
 	["W6", -18.0, -12.5, -14.0, -10.5, 1.0, NAN, -1],
 	["WB", -21.0, -13.0, -18.0, -7.0, 1.0, NAN, -1],
-	["W7", -20.5, -7.0, -18.5, -3.5, 1.0, 0.0, 1],
-	["W7", -20.5, -3.5, -18.5, -1.5, 0.0, NAN, -1],
+	# (W7: stepping stones over the inlet, beside the Observer's face: W7_STONES)
 	# North
 	["N1", 0.5, -15.0, 4.5, -8.0, 1.0, 0.0, 1],
 	["N1l", -0.5, -10.0, 0.5, -8.0, 0.0, NAN, -1],        # flat ledges either side of its low end (for its columns)
 	["N1l", 4.5, -10.0, 5.5, -8.0, 0.0, NAN, -1],
-	["N2", -1.7, -25.0, 5.0, -15.0, 1.0, NAN, -1],
-	["N3", 5.0, -22.5, 5.5, -21.1, 1.0, NAN, -1],             # the garden door (v1 g_door): the votive beside it
-	["N4", 5.5, -25.0, 13.45, -16.0, 1.0, NAN, -1],
-	["IBN", 5.5, -27.2, 7.5, -25.0, 2.0, 1.0, 1],
-	["IBN", 3.4, -28.4, 7.5, -27.2, 2.0, NAN, -1],
-	["N5", -5.0, -37.0, 5.0, -27.0, 2.0, NAN, -1],
-	["N6", 1.1, -39.0, 4.9, -37.0, 2.0, NAN, -1],
-	["N7d", -1.1, -39.2, 1.1, -36.9, 2.0, NAN, -1],
-	["N7", -3.0, -49.0, 5.0, -39.0, 2.0, NAN, -1],
+	# (N2 the Turned Ones, N3 their door, N4 Our Steps, IBN the Wind Ramp, N5 the Court, N6 the Tree, N7d / N7 the Maze: the v1 rooms)
 	["N7x", -3.0, -54.4, -1.0, -49.0, 2.0, NAN, -1],
 	["NB", -8.0, -60.0, 1.0, -54.4, 2.0, NAN, -1],
 	["NS", -8.0, -54.4, -6.0, -27.0, 2.0, NAN, -1],
@@ -151,6 +148,19 @@ const WALK := [
 	["I23", -51.0, 3.0, -39.0, 13.0, 0.0, NAN, -1],
 ]
 
+## (phase 3) the v1 rooms' walk regions keep their v1 names: the key of each in WALK's terms (its space, part, area)
+const V1_KEY := {"W_land": "W1", "W_stair1": "W1", "W_breath": "W1", "W_stair2": "W1", "W_top": "W2", "W_corr": "W2c",
+	"H": "W3", "hdoor": "W3", "GL": "W5",
+	"G": "N2", "g_door": "N3", "HW": "N4", "HW_ramp": "IBN", "L_ramp": "IBN", "L": "N5", "TS": "N6", "MZ_door": "N7d", "MZ": "N7"}
+static func key_of_region(name: String) -> String:
+	if name.begins_with(ZP): return name.substr(ZP.length())
+	return str(V1_KEY.get(name, ""))
+
+## W.7 the Sunken Colossus: drums of marble standing out of the inlet, stepping down from the Beacon's rock to the road,
+## the Observer's 8 m face beside them: [x, z, top y]
+const W7_STONES := [[-19.45, -6.45, 0.84], [-19.7, -5.35, 0.68], [-19.5, -4.25, 0.52], [-19.3, -3.15, 0.36], [-19.5, -2.05, 0.2]]
+const STONE_R := 0.62
+
 ## walk regions whose floor a beat builds itself (the one slab, the Pool of Halves' road), shut until it is made
 const NO_FLOOR := ["I4s", "P"]
 
@@ -170,8 +180,6 @@ const WALLS := [
 	# the crypt: its east wall (the slab's gap) and its west wall onto the Atrium (its door)
 	[14.45, -1.0, 14.75, 2.75, 2.6], [14.45, 3.75, 14.75, 7.0, 1.0],
 	[9.85, -1.0, 10.15, 2.0, 2.6], [9.85, 4.0, 10.15, 7.0, 1.0],
-	# the Shadow Chamber's south wall: its gate onto the Ash Landing
-	[-14.0, -13.75, -11.55, -13.45, 1.0], [-10.25, -13.75, -9.0, -13.45, 1.0],
 	# the Gate of the Four: its gate in the north wall, the Shrine beyond (gate_veiled in the gap)
 	[-50.0, 12.85, -46.85, 13.15, 1.2], [-43.15, 12.85, -40.0, 13.15, 1.2],
 ]
@@ -183,7 +191,6 @@ const DOORS := [
 	["door_temple", 10.0, 3.0, 0.0, 90.0, 0.8, "I.5 the crypt's way out into the Atrium"],
 	["gate_veiled", -2.5, 8.0, 0.0, 0.0, 0.85, "the Veiled Way (Act 3: opens when the 3 Beacons burn)"],
 	["gate_veiled", -45.0, 13.0, 0.0, 0.0, 1.0, "I.22 the Gate of the Four (onto the Shrine)"],
-	["door_temple", -10.9, -13.6, 1.0, 0.0, 0.62, "W.5 the chamber's gate onto the Ash Landing"],
 ]
 
 ## other Tripo pieces of the block-out (the landmark statues of each beat): [asset, x, y, z, yaw, scale, note]
@@ -207,7 +214,7 @@ const ROUTE := [
 	[8.5, 11.2, "I3"], [12.5, 12.8, "I3"], [16.5, 12.8, "I3"], [19.0, 12.0, "IB1"], [19.0, 7.0, "IB1"], [19.0, 3.25, "I4"],
 	[15.5, 3.25, "I4s"], [12.3, 3.0, "I5"], [9.5, 3.0, "A"], [5.0, 3.0, "A"],
 	# West wing
-	[-5.0, 3.0, "A"], [-5.0, 0.0, "A"], [-9.5, 0.0, "A"], [-22.0, 0.0, "WR"], [-33.4, 0.0, "WR"], [-33.4, -1.0, "WR"], [-34.3, -2.5, "W1"], [-34.3, -9.3, "W1"],
+	[-5.0, 3.0, "A"], [-5.0, 0.0, "A"], [-9.5, 0.0, "A"], [-22.0, 0.0, "WR"], [-33.4, 0.0, "WR"], [-33.4, -1.0, "W1"], [-34.3, -2.5, "W1"], [-34.3, -9.3, "W1"],
 	[-34.3, -16.5, "W2"], [-30.4, -17.5, "W2c"], [-26.5, -17.5, "W3"], [-23.0, -21.5, "W3"], [-18.9, -21.5, "W3"],
 	[-16.2, -21.5, "W4"], [-13.0, -21.6, "W5"], [-11.5, -18.0, "W5"], [-10.9, -14.6, "W5"], [-10.9, -12.0, "IBW"],
 	[-13.5, -11.5, "IBW"], [-16.0, -11.5, "W6"], [-19.5, -11.5, "WB"], [-19.5, -7.5, "WB"], [-19.5, -5.0, "W7"],
@@ -252,11 +259,10 @@ const AREA := {"WS": "waking_pool", "P": "waking_pool", "PW": "waking_pool", "I1
 	"E3l": "scales", "E5": "scales", "E5u": "scales", "EB": "scales", "EH": "eidolon_ledge",
 	"I21": "gate_four", "I22": "gate_four", "I23": "first_shrine"}
 static func area_of_region(name: String) -> String:
-	return str(AREA.get(name.substr(ZP.length()), "")) if name.begins_with(ZP) else ""
+	return str(AREA.get(key_of_region(name), ""))
 
 static func mood_of_region(name: String) -> String:
-	if not name.begins_with(ZP): return ""
-	return MOOD.get(PART.get(name.substr(ZP.length()), ""), "")
+	return MOOD.get(PART.get(key_of_region(name), ""), "")
 
 static func w(x: float, z: float, y := 0.0) -> Vector3:
 	return O + Vector3(x, y, z)
@@ -275,8 +281,8 @@ static func space_rect(id: String) -> Rect2:
 
 ## the space id a walk region belongs to (regions are named V2_<space>)
 static func space_of_region(name: String) -> String:
-	if not name.begins_with(ZP): return ""
-	var id := name.substr(ZP.length())
+	var id := key_of_region(name)
+	if id == "": return ""
 	if id in ["I4s"]: return "I4"
 	if id in ["W2c"]: return "W2"
 	if id in ["N7d", "N7x"]: return "N7"
@@ -306,6 +312,12 @@ static func build(lv: Level) -> void:
 		else:
 			# a ramp: stairs over it (y0 at the low end of its axis)
 			lv.steps(zone, r, axis, minf(y0, y1), maxf(y0, y1), y1 > y0)
+	for k in W7_STONES.size():
+		var s: Array = W7_STONES[k]
+		lv.walk(wr(s[0] - STONE_R, s[1] - STONE_R, s[0] + STONE_R, s[1] + STONE_R), float(s[2]) + O.y, NAN, -1, ZP + "W7")
+		var rr := 0.5 + 0.04 * sin(k * 2.3)
+		var bot := -1.2
+		lv.mb(ZP + "west").cyl(w(s[0], s[1], (float(s[2]) + bot) * 0.5), rr, rr + 0.1, float(s[2]) - bot, lv.C(0.25), 12, Basis(Vector3.UP, k * 0.7))
 	for e in WALLS:
 		var r := wr(e[0], e[1], e[2], e[3])
 		var y := _floor_near(lv, r)
@@ -373,6 +385,9 @@ static func pieces(lv: Level, parent: Node3D) -> MeshInstance3D:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var n := 0
 	for e in PIECES:
+		if str(e[0]) == "colossus_head_veiled":          # (A: the veiled Observer, its own model and dressing)
+			Dress.observer(parent, w(e[1], e[3], -0.42), 135.0, 22.0, -0.42 + O.y, 0.7)
+			continue
 		var a := Props._mesh(e[0])
 		if a.is_empty(): continue
 		var xf := Transform3D(Basis(Vector3.UP, deg_to_rad(float(e[4]))) * Basis.from_scale(Vector3.ONE * float(e[5])), w(e[1], e[3], e[2]))

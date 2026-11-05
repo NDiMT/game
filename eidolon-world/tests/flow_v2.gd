@@ -17,6 +17,8 @@ var max_dy := 0.0
 var started := false
 var t := 0.0
 
+const SOLVED := ["breath", "hall_door", "shard", "gallery", "turned_done", "garden_breath", "hollow_done", "mural", "maze"]
+
 func ok(label: String, pass_: bool, detail := "") -> void:
 	checks += 1
 	if not pass_: errors += 1
@@ -41,6 +43,9 @@ func _process(dt: float) -> void:
 		var cs: Dictionary = game.chapter.state
 		cs["a1"] = {"plate": true, "glass": true, "slab": true, "lamp": true, "atrium": true, "gaze": true}
 		if not ("lamp" in cs["inv"]["items"]): (cs["inv"]["items"] as Array).append("lamp")
+		# (phase 3: the wings' puzzles stand solved: their doors and gates open)
+		for k in SOLVED: cs[k] = true
+		cs["hub"]["w_seen"] = true
 		game.chapter.apply_state()
 		for n in Map2.NO_FLOOR: game.level.set_enabled(Map2.ZP + n, true)
 		var s: Array = Map2.ROUTE[0]

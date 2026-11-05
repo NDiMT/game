@@ -32,11 +32,11 @@ var _t4_pose := Figure.Pose.new()
 var _t4_phase := 0.0
 ## v2.0 (EIDOLON_SCRIPT §6): each wing ends at its BEACON, lit with the lamp (not an item: a fire). Its twin
 ## pillar in the Atrium catches with it, so the three fires read from the hub. The Gate wants all three.
-const BEACON_POS := {"W": Vector3(9.55, 1.0, -8.95), "N": Vector3(10.75, 2.0, -40.3), "E": Vector3(32.85, 2.0, -49.9)}
+## (v2 rebuild) each Beacon is the Tripo brazier at its wing's end (Map2.PIECES: WB on the rock by the Observer's face, NB at
+## the Maze's end, EB on the High terrace); no twins in the Atrium (the script puts the fires in the wings)
+const BEACON_POS := {"W": Map2.O + Vector3(-19.5, 1.0, -12.2), "N": Map2.O + Vector3(-3.0, 2.0, -59.2), "E": Map2.O + Vector3(28.8, 6.0, -67.2)}
 const BEACON_DONE := {"W": "gallery", "N": "maze", "E": "scales"}
-const ATRIUM_BEACON := {"W": Vector3(-3.35, 0.5, 16.4), "N": Vector3(10.2, 0.5, 10.3), "E": Vector3(13.35, 0.5, 19.6)}
 var beacon_fires := {}                # k -> BeaconFire (in the wing)
-var atrium_fires := {}                # k -> BeaconFire (its twin in the Atrium)
 # the bars
 var ec_bars: Node3D
 var sc_bars: Node3D
@@ -54,9 +54,6 @@ func setup(g: Game, ch: Chapter) -> void:
 	_build_colonnade()
 	_build_beacons()
 	_build_bars()
-	# (the North wing's way back: the drawbridge lowered from the Court's side, once the Maze is walked)
-	game.level.add_interact("drawbridge_w", Vector3(16.55, 2.0, -20.4), "lever", func() -> void: game.puzzles.lower_drawbridge(false), 1.0,
-		func() -> bool: return chapter.state["maze"] and not game.puzzles.state.get("drawbridge", false) and game.player.position.x < 17.2)
 
 # ------------------------------------------------------------------ inventory (the satchel's data; its UI is M3b)
 func inv() -> Dictionary:
@@ -301,27 +298,15 @@ func _t4_total() -> float:
 	return acc
 
 # ------------------------------------------------------------------ the Beacons (v2.0: the seals and sockets are gone)
-func _beacon_pillar(at: Vector3, h: float) -> BeaconFire:
-	var n := Node3D.new()
-	n.position = at
-	add_child(n)
-	var m := MB.new()
-	m.box(Vector3(0, 0.08, 0), Vector3(0.7, 0.16, 0.7), Color(0.5, 0.25, 0.0))
-	m.box(Vector3(0, 0.16 + h * 0.5, 0), Vector3(0.42, h, 0.42), Color(0.5, 0.25, 0.0))
-	m.cyl(Vector3(0, 0.16 + h + 0.1, 0), 0.24, 0.36, 0.2, Color(0.5, WorldGeo.BRONZE, 0.0), 16)
-	m.cyl(Vector3(0, 0.16 + h + 0.22, 0), 0.38, 0.37, 0.04, Color(0.5, WorldGeo.BRONZE, 0.0), 16)
-	game.puzzles.marble_instance(m.commit(), n)
-	game.level.ob_circle(Vector2(at.x, at.z), 0.4)
-	var f := BeaconFire.new()
-	f.noise = game.level.noise_tex
-	n.add_child(f)
-	f.position = Vector3(0, 0.16 + h + 0.24, 0)
-	return f
-
 func _build_beacons() -> void:
+	var bowl := Props._mesh("brazier")
+	var top := ((bowl[1] as AABB).end.y if not bowl.is_empty() else 1.0) * 0.82          # (the fire stands in the bowl)
 	for k in BEACON_POS:
-		beacon_fires[k] = _beacon_pillar(BEACON_POS[k], 1.3)
-		atrium_fires[k] = _beacon_pillar(ATRIUM_BEACON[k], 2.6)
+		var f := BeaconFire.new()
+		f.noise = game.level.noise_tex
+		add_child(f)
+		f.position = BEACON_POS[k] + Vector3(0, top, 0)
+		beacon_fires[k] = f
 		var kk: String = k
 		game.level.add_interact("beacon_" + k, BEACON_POS[k] + Vector3(0, 0, 0), "light", func() -> void: light_beacon(kk), 1.1,
 			func() -> bool: return beacon_ready(kk) and not beacon_lit(kk))
@@ -351,8 +336,6 @@ func light_beacon(k: String) -> void:
 	(beacon_fires[k] as BeaconFire).ignite()
 	chapter.event.emit("beacon", k)
 	game.ui.show_item("beacon", k)
-	# its twin in the Atrium catches a breath later (seen from the hub)
-	get_tree().create_timer(1.2).timeout.connect(func() -> void: (atrium_fires[k] as BeaconFire).ignite())
 
 # ------------------------------------------------------------------ the bars: Scales -> Echo (the balance opens them), Echo -> Maze (unbolted from the echo side)
 func _build_bars() -> void:
@@ -422,7 +405,6 @@ func apply_state() -> void:
 	if has_item("lamp"): _uc_open = true
 	for k in BEACON_POS:
 		(beacon_fires[k] as BeaconFire).set_lit(beacon_lit(k))
-		(atrium_fires[k] as BeaconFire).set_lit(beacon_lit(k))
 	for i in 3: chapter.four_mats[i].set_shader_parameter("lit", 1.0 if beacon_lit(["W", "N", "E"][i]) else 0.15)
 	if st["hub"].get("ec_open", false): unbolt_ec(true)
 	else:

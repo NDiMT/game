@@ -70,11 +70,25 @@ float bayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75)))
 float bayer4(vec2 fc) { return bayer2(0.5 * fc) * 0.25 + bayer2(fc) + 0.5 / 16.0; }
 
 void fragment() {
+	float edge_m = 9.0;
 	if (project > 0.5) {
 		vec3 d = pp - clip_c;
 		vec2 uv = vec2(dot(d, clip_u), dot(d, clip_v)) / clip_h;
 		if (abs(uv.x) > 1.0 || abs(uv.y) > 1.0) discard;
 		if (clip_disc > 0.5 && length(uv) > 1.0) discard;
+		edge_m = clip_disc > 0.5 ? (1.0 - length(uv)) * min(clip_h.x, clip_h.y) : min((1.0 - abs(uv.x)) * clip_h.x, (1.0 - abs(uv.y)) * clip_h.y);
+	}
+	// v2.0 (A, P1 "the crimson block at the lip"): a reflection ON WATER is the same as her veil's in ghost.gdshader:
+	// broken into drifting ripple bands, sunk darker into the water, and dissolving over the last 30 cm before the
+	// pool's edge (it was a hard, sunlit crimson slab cut flat by the lip, right beside her feet)
+	float wbreak = 0.0;
+	bool in_water = project > 0.5 && ripple_amt > 0.5;
+	if (in_water) {
+		float bnd = sin(pp.z * 21.0 + pp.x * 4.0 + TIME * 1.6 + sin(pp.x * 6.0 - TIME * 1.1) * 1.4);
+		float n2 = sin(pp.x * 13.0 - pp.z * 9.0 + TIME * 2.3);
+		wbreak = smoothstep(0.55, 0.95, bnd * 0.75 + n2 * 0.25);
+		if (bayer4(FRAGCOORD.xy) < wbreak * 0.85) discard;
+		if (bayer4(FRAGCOORD.xy) > smoothstep(0.02, 0.32, edge_m)) discard;
 	}
 	if (vis < 0.999 && bayer4(FRAGCOORD.xy) > vis) discard;
 	vec3 base = wanderer_albedo(UV, vcol.b);
@@ -89,9 +103,11 @@ void fragment() {
 	c = mix(c, surface_col, surface_mix);
 	// (v0.8.1: every reflection of the hero is plain dark too: no hem stripe, no runes, no aqua or rose)
 	if (!FRONT_FACING) { c *= 0.32; }     // (opaque: the inside is dark cloth)
+	if (in_water) c *= 1.0 - 0.15 * wbreak;     // (her red kept: the reflection "wears red", §5 shot 4)
 	ALBEDO = c;
 	NORMAL_MAP = texture(normal_tex, UV).rgb;
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.15;
 	EMISSION = vec3(0.5, 0.52, 0.54) * fres * 0.12 * ghost;
+
 }

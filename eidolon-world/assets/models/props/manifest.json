@@ -400,6 +400,20 @@
    "textured": false,
    "use": "a roadside votive niche with clay lamps and an offering bowl (N wing)",
    "notes": "v2.0 Dress kit (dev_rig/tools/kit_prep.py, marble/wood placeholder, no textures)"
+  },
+  {
+   "file": "observer_veiled.glb",
+   "category": "landmark",
+   "size_m": [
+    0.38,
+    1.0,
+    0.34
+   ],
+   "tris": 16042,
+   "textured": false,
+   "use": "the Observer: a colossal veiled figure, normalised to 1 m; Dress.observer sinks it to its veiled head and shoulders (observer_veil + observer_rim shaders)",
+   "tripo_task": "887880ac-3a18-4511-adc1-82ffb0fe088c",
+   "notes": "v2.0 A; kit_prep.py (no textures); embedded_image_handling=0"
   }
  ]
 }

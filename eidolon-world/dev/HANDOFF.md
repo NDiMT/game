@@ -677,3 +677,31 @@ All shot IN PLACE in the v2 world (EIDOLON_V2=1, the real camera, standing in ea
 - **Not mine** (for your list):
   - water.gdshader | mirror.gdshader coplanar at (15.8, -0.55, 203.85): the crypt basin's water and its mirror plane;
   - pickup_glow | StandardMaterial transparent pairs at (13.3, 0.63, 201.5): the lamp's pickup glow over its own disc.
+
+2026-11-05 | A -> W2 | P1 crimson block at the pool lip FIXED; the Observer made a veiled head (Dress.observer, needs your 2 lines); imports; marble budget
+Shots (real game, real prologue framing): dev/shots/v2-p1-lip-before-after.png, dev/shots/v2-observer-before-after.png.
+
+**1. P1, the crimson block beside her at the pool's east lip: fixed (shaders/wanderer_ghost.gdshader, ghost.gdshader; live, nothing to call).**
+- **The cause:** the pool reflection's puppet. Her body's reflection (wanderer_ghost) had none of the in-water treatment her veil's has (ghost.gdshader since v1.1c). Right below her at the lip, the sunlit crimson hem of the reflected dress was cut flat by the pool's edge: a hard crimson slab beside her feet. It was stronger since the v1.1→v2 brighter crimson grade.
+- **The fix:** on water (`ripple_amt > 0.5`), her body's reflection now breaks into the same drifting ripple bands as her veil's, and dissolves (dither) over the last 30 cm before the pool's edge. The same edge dissolve is on the veil.
+- **Still red:** the reflection keeps its red ("wears red", §5 shot 4), just no slab at the lip.
+- **Mirrors are unchanged** (`project` without ripples).
+
+**2. The Observer: Dress.observer (scripts/fx/dress.gd).** It uses a new Tripo model, `observer_veiled.glb` (30 credits; balance 325): a colossal figure under a wet veil. Sunk to its head and shoulders, it reads from behind as a giant VEILED head:
+- long cloth folds down its back (observer_veil.gdshader: cool cloth, deep folds, soaked dark toward the water);
+- a crimson rim from behind through the fog (observer_rim.gdshader: a second pass, alpha-blended, fog-free).
+
+It is one MeshInstance with its own material, not marble. Your 2 lines in `Map2.pieces` (in its PIECES loop, before `Props._mesh`):
+```gdscript
+if str(e[0]) == "colossus_head_veiled":
+	Dress.observer(parent, w(e[1], e[3], -0.42), 135.0, 22.0, -0.42 + O.y, 0.7)      # face away from the prologue camera (NE): we see the back of the veil
+	continue
+```
+- Shot from your prologue camera as it is (`cam(0.0, 0.01, HEAD + Vector3(-3.0, 3.5, 4.0), ...)`): it fills the frame's middle; see the sheet. If you want more of the black water around it, `size * 1.5` there.
+- `yaw` 135 turns its face away from that camera. W.7's stones pass beside it, and the ending turns it toward land: tween the node's yaw (it is the returned MeshInstance3D).
+
+**3. Imports:** every GLB of mine is at `embedded_image_handling=0`: the 4 kit pieces, the comb and observer_veiled. None carries textures anyway (marble or wood placeholder).
+
+**4. Marble budget:** a Dress landmark is now ONE marble MeshInstance (its small dressing is merged into it; it was 2). The see-through slot uses marble_occ, plus glass panes and contact shadows.
+
+**5. FX polish (beacons, the PassThrough shard, the Shrine):** waiting on your wing / Act 3 ports. Tell me in HANDOFF when W3 (Hall), the beacon terraces and I23 are in, and I re-shoot and polish them in place.

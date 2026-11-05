@@ -12,9 +12,9 @@ extends Node3D
 ##    see-through (it fades if it ever hides her).
 ##  * nothing overlaps: every piece is tested against the level's solids and obstacles (and the earlier pieces), the
 ##    `keep` rects (paths, puzzle floor) and the landmark's own rect; a piece that does not fit is skipped, never forced.
-##  * every piece gets an obstacle footprint; small dressing is left out on Low (Dress.high = false).
-##  * cheap: a landmark is ONE merged marble mesh + one see-through mesh + one small-dressing mesh + one contact-shadow
-##    multimesh (4 draw calls, + its flames / veils / mist if the recipe has them).
+##  * every piece gets an obstacle footprint; on Low the veils are not built (the small dressing is merged in: it costs nothing).
+##  * cheap: a landmark is ONE merged marble mesh + one see-through mesh + one contact-shadow multimesh (+ its glass
+##    panes, flames, veils, mist if the recipe has them). The marble per-instance buffer is tight (256): never more.
 ##  * the one crimson light: the only lights are Flame votives / BeaconFire (crimson), nothing else glows.
 ## Recipe coordinates: u 0 (west edge) .. 1 (east edge), v 0 (north edge) .. 1 (south edge); yaw in degrees, the models
 ## face +Z (south); "cam" = turned to face the camera (-45).
@@ -341,7 +341,8 @@ func _add_mesh(what: String, mesh: ArrayMesh, xf: Transform3D, rad: float, from_
 		_shared[level.get_instance_id()].append(wb)
 	var tall := wb.size.y > TALL
 	var small: bool = o.get("small", false)
-	var slot := "occ" if tall else ("small" if small else "main")
+	# (v2.0, the marble per-instance budget: small dressing merges into the main mesh too: one marble mesh per landmark)
+	var slot := "occ" if tall else "main"
 	_parts[slot].append([mesh, xf])
 	if tall: level.occluders.append(wb)
 	if not on:
@@ -621,3 +622,38 @@ static func prologue_set(lv: Level, parent: Node, lip: Vector3, head_at: Vector3
 	for e in RECIPES["prologue"]: d._place(e)
 	d._commit()
 	return d
+
+# ======================================================================================================== the Observer
+## The Observer (EIDOLON_SCRIPT §5 shot 1, W.7): the giant VEILED head sunk in the inlet, seen from behind in the
+## prologue. Wet veil-cloth (observer_veil.gdshader: pale where lit, deep in the folds, soaked dark toward the water)
+## and a crimson rim from behind through the fog (observer_rim.gdshader, a second pass). `at` = the point on the water
+## under the head's centre, `yaw` (deg) turns its FACE (0: face to +Z, i.e. the back of the veil toward -Z), `height`
+## the whole head and neck (m), `sink` how much of it is under the water. One MeshInstance (2 passes), not marble.
+##   var obs := Dress.observer(parent, Map2.O + Map2.OBSERVER, yaw_deg, 11.0, water_y)
+static func observer(parent: Node, at: Vector3, yaw := 0.0, height := 11.0, water_y := 0.0, sink := 0.38) -> MeshInstance3D:
+	var name := "observer_veiled" if ResourceLoader.exists(PROPS + "observer_veiled.glb") else "colossus_head_veiled"
+	var pm := Props._mesh(name)
+	if pm.is_empty(): return null
+	var mesh: ArrayMesh = _flatten(pm[0])
+	var bb: AABB = pm[1]
+	var s := height / maxf(bb.size.y, 0.01)
+	var b := Basis(Vector3.UP, deg_to_rad(yaw)) * Basis.from_scale(Vector3.ONE * s)
+	var c := bb.get_center()
+	var o := Vector3(at.x, water_y - height * sink, at.z) - b * Vector3(c.x, bb.position.y, c.z)
+	var mi := MeshInstance3D.new()
+	mi.name = "Observer"
+	mi.mesh = mesh
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/observer_veil.gdshader")
+	m.set_shader_parameter("water_y", water_y)
+	var r := ShaderMaterial.new()
+	r.shader = preload("res://shaders/observer_rim.gdshader")
+	r.set_shader_parameter("water_y", water_y)
+	r.set_shader_parameter("push", 0.012 / s)
+	m.next_pass = r
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.transform = Transform3D(b, o)
+	mi.layers = PlanarMirror.LAYER_MAIN_FX
+	parent.add_child(mi)
+	return mi

@@ -67,7 +67,7 @@ static func pool_path(turns: Array) -> bool:
 	return false
 
 # the mist maze: 4 columns x 5 rows of 2 m cells; open passages between cells (row, col)
-const MZ_ORIGIN := Vector2(9.0, -29.0)      # x of column 0's west edge, z of row 0's north edge
+const MZ_ORIGIN := Vector2(9.0 + Map2.GN.x, -29.0 + Map2.GN.z)          # (v2: the maze stands at Map2.GN)      # x of column 0's west edge, z of row 0's north edge
 const MZ_OPEN := [
 	[Vector2i(0, 1), Vector2i(0, 2)], [Vector2i(0, 2), Vector2i(1, 2)], [Vector2i(1, 2), Vector2i(1, 3)],
 	[Vector2i(1, 3), Vector2i(2, 3)], [Vector2i(2, 3), Vector2i(3, 3)], [Vector2i(3, 3), Vector2i(3, 2)],
@@ -79,7 +79,7 @@ const MZ_OPEN := [
 	[Vector2i(4, 3), Vector2i(3, 3)], [Vector2i(4, 3), Vector2i(4, 2)], [Vector2i(4, 2), Vector2i(4, 1)]]
 const MZ_PATH := [Vector2i(0, 1), Vector2i(0, 2), Vector2i(1, 2), Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3),
 	Vector2i(3, 2), Vector2i(3, 1), Vector2i(2, 1), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)]
-const MZ_MIRROR_X := 8.8                    # her pool is the maze mirrored across this line
+const MZ_MIRROR_X := 8.8 + Map2.GN.x                    # her pool is the maze mirrored across this line
 
 static func mz_cell(rc: Vector2i) -> Vector3:
 	return Vector3(MZ_ORIGIN.x + rc.y * 2.0 + 1.0, 2.0, MZ_ORIGIN.y - rc.x * 2.0 - 1.0)
@@ -89,14 +89,9 @@ static func R(x0: float, z0: float, x1: float, z1: float) -> Rect2:
 
 static func build(lv: Level) -> void:
 	_aqueduct(lv)
-	_stair_of_breath(lv)
-	_gallery(lv)
-	_hollow_walk(lv)
-	_maze(lv)
 	_echo(lv)
 	_scales(lv)
 	_colossus(lv)
-	_tree_nook(lv)
 	_spring_balcony(lv)
 
 # ------------------------------------------------------------------ 1. the waking pool's aqueduct
@@ -217,7 +212,7 @@ static func _colossus(lv: Level) -> void:
 	lv.walk(R(14.85, -5.05, 16.25, -3.3), 1.0, NAN, -1, "CO")
 
 ## the Tree of Shards: in a nook beside the way from the Court of Light into the Mist Maze
-const TS_TREE := Vector3(15.9, 2.0, -28.15)
+const TS_TREE := Map2.GN + Vector3(15.9, 2.0, -28.15)
 static func _tree_nook(lv: Level) -> void:
 	var z := "TS"
 	lv.slab(z, R(13.1, -28.9, 16.95, -27.3), 2.0, 0.8, 0.0)

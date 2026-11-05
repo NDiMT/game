@@ -24,7 +24,7 @@ const C := 4
 const R := 3
 const TILE := 1.15
 const GAP := 0.3                     # from the glass to the nearest row's edge
-const GC := Vector3(23.1, 1.0, -11.6)                     # the glass's foot, mid-way
+const GC := Map2.GN + Vector3(23.1, 1.0, -11.6)          # (v2: Our Steps stands at Map2.GN)                     # the glass's foot, mid-way
 const U := Vector3(0.70710678, 0.0, 0.70710678)           # along the glass (screen right)
 const V := Vector3(0.70710678, 0.0, -0.70710678)          # toward the glass, from your side (screen up)
 const EDGE_V := -(GAP + R * TILE)    # your floor's near edge (where you step on and off)
@@ -192,7 +192,7 @@ func setup(g: Game, ch: Chapter) -> void:
 	refl = Reflector.new()
 	refl.kind = "mirror"; refl.plane_n = plane_n(); refl.plane_d = plane_d() + 0.01
 	refl.clip_c = center; refl.clip_u = U; refl.clip_v = Vector3.UP; refl.clip_h = Vector2(GLASS_HALF, GLASS_H * 0.5)
-	refl.region = Level.R(17.5, -15.0, 25.5, -6.0)
+	refl.region = Map2.gr(Map2.GN, Level.R(17.5, -15.0, 25.5, -6.0))
 	refl.planar = pm
 	refl.hold = false
 	game.puzzles._add_refl(refl)
