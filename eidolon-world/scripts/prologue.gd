@@ -23,9 +23,10 @@ const STANZAS := [
 	"He gave her a veil.\nAnd he hid every mirror.",
 	"One day the Aegean lay still as glass.",
 	"There was no wave to blame."]
-const SHORE := Vector3(-0.2, 0.0, 1.75)          # where she lies, on the pool's marble lip
-const SURF := Vector3(-1.05, Ch1Geo.WATER_Y, 1.75)  # where her palm meets the water (in front of her reflection)
-const COMB_LAND := Vector3(-0.45, 0.0, 2.15)     # where the comb clinks down on the marble
+const SHORE := Vector3(-0.3, 0.0, 1.0)           # where she lies, on the pool's marble lip
+const SURF := Vector3(-1.25, Ch1Geo.WATER_Y, 1.45)  # where her palm meets the water (on her reflection's hand)
+const WARDEN_AT := Vector3(-2.55, Ch1Geo.WATER_Y, 1.25)   # behind her reflection, in the water
+const COMB_LAND := Vector3(-0.42, 0.0, 1.6)      # where the comb clinks down on the marble
 
 var _cl: CanvasLayer
 var _ring_home: Node
@@ -38,6 +39,22 @@ var _palm: MeshInstance3D
 var _pose := Figure.Pose.new()
 var _lag0 := 0.0
 var _drag_from := Transform3D()
+var _hidden: Array = []                          # the pool's stones and their reflection, put away while it plays
+
+## the pool is black water in the prologue: its stones (and their marks in the water) are put away, and come back
+func _stones(show: bool) -> void:
+	if not show:
+		_hidden.clear()
+		var ch: Chapter = game.chapter
+		for c in ch.pool_pieces:
+			var n: Node3D = ch.pool_pieces[c]["node"]
+			if n.visible: _hidden.append(n)
+		for n in ch.get_children():
+			if n is MeshInstance3D and (n as MeshInstance3D).material_override == ch.pool_mat: _hidden.append(n)
+		for n in _hidden: (n as Node3D).visible = false
+	else:
+		for n in _hidden: if is_instance_valid(n): (n as Node3D).visible = true
+		_hidden.clear()
 
 func begin() -> void:
 	_cl = CanvasLayer.new()
@@ -66,6 +83,28 @@ func _end_cards() -> void:
 		_cl.queue_free()
 	_cl = null
 
+## (devshots) skip the cards and run the clock to t (forward only)
+func dev_seek(to: float) -> void:
+	if not _cards_done:
+		_cards_done = true
+		if is_instance_valid(_card): _card.skip()
+		_end_cards()
+		start()
+	while to > t + 0.001: _step(minf(0.1, to - t))      # (small steps: a camera key lands only inside its own window)
+
+## (dev jumps / tests) drop it where it stands: no state from it, every piece of it gone
+func abort() -> void:
+	_cut = true
+	running = false
+	_end_cards()
+	game.puzzles.pool_refl.hold = false
+	if _lag0 > 0.0: game.puzzles.pool_refl.lag = _lag0
+	if is_instance_valid(warden_fig): warden_fig.queue_free()
+	if is_instance_valid(comb): comb.queue_free()
+	if is_instance_valid(_palm): _palm.queue_free()
+	OmenFx.murk(game.puzzles.water_mat, 0.0, 0.01)
+	_stones(true)
+
 func skip() -> void:
 	_cut = true
 	if not _cards_done:
@@ -88,6 +127,7 @@ func _build() -> void:
 	# 1: down through the fog onto the black water and the back of the Observer's veiled head
 	at(0.0, func() -> void:
 		game.player.teleport(SHORE, PI * 0.5)
+		_stones(false)
 		game.player.crouch = 1.0
 		game.player.locked = true
 		refl.lag = 0.5
@@ -114,7 +154,7 @@ func _build() -> void:
 	at(20.0, func() -> void:
 		warden_fig = WardenRig.new()
 		j.add_child(warden_fig)
-		warden_fig.global_position = SURF + Vector3(-1.4, 0.0, 0.0)
+		warden_fig.global_position = WARDEN_AT
 		warden_fig.rotation.y = PI * 0.5
 		warden_fig.set_look("glass")
 		warden_fig.rise_from(Ch1Geo.WATER_Y, 3.2, Ch1Geo.WATER_Y - 0.55, pz.pool_fx))
@@ -162,6 +202,7 @@ func _build() -> void:
 	cam(35.0, 3.0, SHORE, yaw, pitch, size)
 	at(38.0, func() -> void:
 		refl.lag = _lag0
+		_stones(true)
 		if is_instance_valid(warden_fig): warden_fig.queue_free()
 		game.player.crouch = 0.0
 		ch.state["prologue_seen"] = true)

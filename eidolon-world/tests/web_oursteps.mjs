@@ -168,7 +168,7 @@ try {
   if (!title) throw new Error('title never reached');
   await cmd('noauto'); await cmd('quality:' + TIER); await cmd('reset_save');
   await page.touchscreen.tap(W / 2, H / 2);
-  if (!(await waitFor((s) => s.mode === 'wake' || s.mode === 'play', 60000))) await cmd('begin');
+  if (!(await waitFor((s) => s.mode === 'cine' || s.mode === 'wake' || s.mode === 'play', 60000))) await cmd('begin');
   await wait(800);
   await cmd('jump:hollow_walk');
   let s = await waitFor((q) => q.area === 'hollow_walk' && q.mode === 'play', 30000);

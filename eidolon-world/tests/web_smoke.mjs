@@ -142,8 +142,8 @@ try {
   // ---------------------------------------------------------------- start (a real tap: unlocks audio)
   await cmd('reset_save');
   await page.touchscreen.tap(W / 2, H / 2);
-  // (the tap starts the waking cinematic: mode "wake", then "play"; the jumps below put it in play directly)
-  const play = await waitFor((s) => s.mode === 'wake' || s.mode === 'play', 60000);
+  // (the tap starts the intro cards and the prologue: mode "cine", then "play"; the jumps below put it in play directly)
+  const play = await waitFor((s) => s.mode === 'cine' || s.mode === 'wake' || s.mode === 'play', 60000);
   check('start: a tap on the title starts the game', !!play, play ? `mode=${play.mode} music=${play.music}` : 'mode stayed ' + (await st())?.mode);
   if (!play) { info('tap did not start the game; falling back to the begin hook'); await cmd('begin'); }
   await wait(1000);

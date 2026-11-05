@@ -965,6 +965,13 @@ func jump(room: String) -> void:
 	if idx < 0: return
 	auto_target = Vector3.INF
 	key_vec = Vector2.ZERO
+	if cine:                                   # (a jump from inside the prologue / a cinematic: drop it)
+		if cine is Prologue: (cine as Prologue).abort()
+		cine.queue_free()
+		cine = null
+		ui.set_letterbox(0.0)
+		ui.set_skip(0.0, false)
+		ui.skip_ring.show_k = 0.0
 	puzzles.reset_state()
 	chapter.reset_state()
 	var cs := chapter.state
@@ -1255,6 +1262,7 @@ func cmd(c: String) -> Variant:
 	var a := c.split(":")
 	match a[0]:
 		"begin": begin()
+		"cine_at": if cine is Prologue: (cine as Prologue).dev_seek(float(a[1]))      # (devshots: a prologue frame)
 		"anew": _on_anew()
 		"tp":
 			var y := float(a[3]) if a.size() > 3 else player.yaw
