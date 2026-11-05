@@ -84,7 +84,7 @@ func build(lv: Level) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 808
 	var blob_x: Array[Transform3D] = []
-	for e in PLACE + (Map2.props() if Map2.enabled else []):
+	for e in placements():
 		var asset: String = e[0]
 		var m := _mesh(asset)
 		if m.is_empty(): continue
@@ -137,6 +137,12 @@ func build(lv: Level) -> void:
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mmi.layers = PlanarMirror.LAYER_MAIN_FX
 		add_child(mmi)
+
+## (v2 rebuild) what stands: with the new world, the old Atrium's and the old waking pool's pieces are gone (Act 1
+## lives in the new world; the GL buffer of the marble's per-instance values holds 256 instances in all)
+static func placements() -> Array:
+	if not Map2.enabled: return PLACE
+	return PLACE.filter(func(e: Array) -> bool: return not (str(e[4]) in ["atrium", "pool"]))
 
 ## the Low tier leaves the small dressing out
 func set_quality(high: bool) -> void:

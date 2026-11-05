@@ -45,7 +45,7 @@ var turns := 0
 # I.5 (the crypt: x 10..14.6, z -1..7; in from the slab on the east, out by the west door into the Atrium)
 const CRYPT := Rect2(O.x + 10.0, O.z - 1.0, 4.6, 8.0)
 const BASIN := O + Vector3(13.5, 0.0, 1.4)
-const BASIN_Y := 0.62                        # its water's surface
+const BASIN_Y := 0.6                         # its water's surface (2 cm under the rim: the lamp's glow sits on the rim)
 const EXIT_GAP := [9.85, 2.0, 10.15, 4.0]
 var basin_water: MeshInstance3D
 var roof: GeometryInstance3D
@@ -219,7 +219,7 @@ func open_gate(instant: bool) -> void:
 func _build_slab() -> void:
 	# the still stream under the crossing; the half of the slab that is only in her world lies where the
 	# crossing's west half should be (at the bank's height): you see it only in the stream
-	stream_refl = _still_water(Vector3(SLAB_C.x, -0.55, SLAB_C.z), Vector2(0.9, 1.8), Rect2(SLAB_C.x - 3.0, SLAB_C.z - 3.0, 6.5, 6.0))
+	stream_refl = _still_water(Vector3(SLAB_C.x, -0.545, SLAB_C.z), Vector2(0.9, 1.8), Rect2(SLAB_C.x - 3.0, SLAB_C.z - 3.0, 6.5, 6.0))
 	var hb := Node3D.new()
 	hb.position = SLAB_C + Vector3(-0.45, -0.15, 0)
 	add_child(hb)
@@ -289,6 +289,7 @@ func _build_crypt() -> void:
 	game.level.ob_circle(Vector2(BASIN.x, BASIN.z), 0.44)
 	var disc := CylinderMesh.new()
 	disc.top_radius = 0.36; disc.bottom_radius = 0.36; disc.height = 0.01; disc.radial_segments = 24
+	disc.cap_bottom = false                     # (one face: a film of water, nothing under it to fight)
 	basin_water = MeshInstance3D.new()
 	basin_water.mesh = disc
 	basin_water.material_override = _water_mat()

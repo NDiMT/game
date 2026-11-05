@@ -100,7 +100,24 @@ func _next() -> void:
 		return
 	_go()
 
+## the marble's per-instance values live in one GL buffer: 4096 slots, 16 per instance on the web = 256 instances
+func _marble_instances() -> int:
+	var total := 0
+	for n in game.find_children("*", "GeometryInstance3D", true, false):
+		var gi := n as GeometryInstance3D
+		var mats: Array = [gi.material_override]
+		if gi is MeshInstance3D and (gi as MeshInstance3D).mesh:
+			for k in (gi as MeshInstance3D).mesh.get_surface_count(): mats.append((gi as MeshInstance3D).get_surface_override_material(k))
+		for m in mats:
+			if m is ShaderMaterial and (m as ShaderMaterial).shader and (m as ShaderMaterial).shader.resource_path.get_file().begins_with("marble"):
+				total += 1
+				break
+	return total
+
 func _finish() -> void:
+	var mc := _marble_instances()
+	ok("the marble's per-instance buffer holds the world (<= 250 of its 256 instances on the web)", mc <= 250, "%d marble instances" % mc)
+	print("FLOW marble instances %d / 256" % mc)
 	for s in Map2.SPACES:
 		ok("space %s (%s) visited" % [s[0], s[1]], visited.has(s[0]))
 	print("FLOW order: " + " ".join(order))

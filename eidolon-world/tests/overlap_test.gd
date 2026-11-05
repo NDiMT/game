@@ -12,7 +12,7 @@ const TOL := 0.02
 const BAND := 0.3                 # a walkway's centreline band (half width)
 ## owners that are meant to hang, lean, be sunk or be passed (by the start of their name)
 const NO_SUPPORT := ["Wonders", "Colossus", "wonder", "rubble", "debris", "Ink", "hw_gate", "Gframe", "Hdoor", "Zone_GLs",
-	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile"]
+	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus"]
 ## designed contacts, by place: [where (world box), what it is]. Hits inside one are not counted.
 const DESIGNED := [
 	[AABB(Vector3(9.9, 2.5, 198.9), Vector3(4.8, 0.7, 8.2)), "(v2 I.5) the crypt's vault rests on its four piers and its walls"],
@@ -135,6 +135,13 @@ func _gather() -> void:
 		for slot in parts:
 			for pr in parts[slot]:
 				_add("Dress/%s/%s#%d" % [dn.name, slot, (parts[slot] as Array).find(pr)], "prop", (pr[1] as Transform3D) * _box_of((pr[0] as Mesh).get_aabb()))
+	for e in Map2.piece_xfs:
+		var a := Props._mesh(e[0])
+		if a.is_empty(): continue
+		var s := _add("V2Pieces/" + str(e[0]), "prop", (e[1] as Transform3D) * _box_of(a[1] as AABB))
+		var mdt := (a[0] as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
+		var step := maxi(1, mdt.size() / 600)
+		for i in range(0, mdt.size(), step): s.verts.append((e[1] as Transform3D) * mdt[i])
 	for mi in lv.find_children("V2Door_*", "MeshInstance3D", false, false):
 		_add("Doors/" + str(mi.name), "door", (mi as MeshInstance3D).global_transform * _box_of((mi as MeshInstance3D).mesh.get_aabb()))
 	# the puzzle objects and the wonders (each mesh one thing)

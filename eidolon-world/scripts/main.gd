@@ -112,6 +112,7 @@ func _ready() -> void:
 	# (v2 rebuild, phase 1) the new Chapter I block-out: its water, doors, A's landmark dressing, the beat labels
 	if Map2.enabled:
 		Map2.water(level, level)
+		Map2.pieces(level, level)
 		Map2.dress(level, level)
 		Map2.labels(level)
 	highlight = Highlight.new()

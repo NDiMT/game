@@ -40,27 +40,27 @@ const SPACES := [
 	["I3", "I.3", "The First Glass", "puzzle", [8.0, 10.5, 17.0, 14.5], 0.0, "glass_niche"],
 	["IB1", "between", "The Reed Bank", "between", [17.0, 6.0, 21.0, 14.5], 0.0, ""],
 	["I4", "I.4", "The One Slab", "puzzle", [14.6, -1.0, 21.0, 6.0], 0.0, ""],
-	["I5", "I.5", "The Crypt (Lamp)", "traversal", [10.0, -1.0, 14.6, 7.0], 0.0, ""],          # ("crypt": back when its bench / toppled face no longer overlap, HANDOFF)
+	["I5", "I.5", "The Crypt (Lamp)", "traversal", [10.0, -1.0, 14.6, 7.0], 0.0, "crypt"],
 	["A", "I.6", "The Atrium of a Thousand Faces", "hub", [-10.0, -8.0, 10.0, 8.0], 0.0, "atrium"],
 	# ---- Act 2, WEST: the Glass wing
 	["WR", "W", "The Inlet Road", "traversal", [-34.0, -1.5, -10.0, 1.5], 0.0, ""],
-	["W1", "W.1", "The Stair of Breath", "puzzle", [-35.8, -14.6, -32.4, -0.4], 0.0, ""],
+	["W1", "W.1", "The Stair of Breath", "puzzle", [-35.8, -14.6, -32.4, -0.4], 0.0, "stair_breath"],
 	["W2", "W.2", "The Offering", "breath", [-35.4, -18.4, -33.2, -14.6], 1.0, ""],
 	["W3", "W.3", "The Hall of Glass (Shard)", "puzzle", [-27.6, -24.6, -18.4, -15.0], 1.0, "hall_glass"],
 	["W4", "W.4", "The Corridor (the star)", "traversal", [-18.4, -22.3, -14.0, -20.7], 1.0, ""],
 	["W5", "W.5", "Where Her Shadow Fell", "puzzle", [-14.0, -22.4, -9.0, -13.6], 1.0, "shadow_chamber"],
-	["IBW", "between", "The Ash Landing", "between", [-14.0, -13.6, -9.0, -10.0], 1.0, ""],
+	["IBW", "between", "The Ash Landing", "between", [-14.0, -13.6, -9.0, -10.0], 1.0, "hidden_way"],
 	["W6", "W.6", "The Hidden Way", "puzzle", [-18.0, -12.5, -14.0, -10.5], 1.0, ""],
-	["WB", "W beacon", "The Glass Beacon", "spectacle", [-21.0, -13.0, -18.0, -7.0], 1.0, ""],
+	["WB", "W beacon", "The Glass Beacon", "spectacle", [-21.0, -13.0, -18.0, -7.0], 1.0, "colossus"],
 	["W7", "W.7", "The Sunken Colossus", "spectacle", [-20.5, -7.0, -18.5, -1.5], 0.0, ""],
 	# ---- Act 2, NORTH: the Garden wing
-	["N1", "N.1", "The Flooded Colonnade", "traversal", [0.5, -15.0, 4.5, -8.0], 0.5, ""],
+	["N1", "N.1", "The Flooded Colonnade", "traversal", [-0.5, -15.0, 5.5, -8.0], 0.5, "colonnade"],
 	["N2", "N.2", "The Turned Ones", "puzzle", [-1.7, -25.0, 5.0, -15.0], 1.0, "turned_ones"],
 	["N3", "N.3", "The Votive Lamp", "breath", [2.2, -24.6, 5.0, -21.6], 1.0, "votive"],
 	["N4", "N.4", "Our Steps", "puzzle", [5.5, -25.0, 13.45, -16.0], 1.0, ""],
 	["IBN", "between", "The Wind Ramp", "between", [3.4, -28.4, 7.5, -25.0], 1.5, ""],
 	["N5", "N.5", "The Court of Light", "puzzle", [-5.0, -37.0, 5.0, -27.0], 2.0, ""],
-	["N6", "N.6", "The Tree of Shards", "spectacle", [1.1, -39.0, 4.9, -37.0], 2.0, ""],
+	["N6", "N.6", "The Tree of Shards", "spectacle", [1.1, -39.0, 4.9, -37.0], 2.0, "tree_shards"],
 	["N7", "N.7", "The Mist Maze", "puzzle", [-3.0, -49.0, 5.0, -39.0], 2.0, "mist_maze"],
 	["NB", "N beacon", "The Garden Beacon", "spectacle", [-8.0, -60.0, 1.0, -54.4], 2.0, ""],
 	["NS", "shortcut", "The Cloister Stair (back to the Atrium)", "traversal", [-8.0, -54.4, -6.0, -8.0], 1.0, ""],
@@ -70,13 +70,13 @@ const SPACES := [
 	["E2", "E.2", "The Singing Stones", "puzzle", [17.0, -31.0, 25.0, -25.0], 2.0, "singing_stones"],
 	["IBE", "between", "The Veil Stair", "between", [25.0, -29.4, 26.4, -27.4], 3.0, ""],
 	["E3", "E.3", "The Mirror Walk", "puzzle", [26.4, -50.6, 28.4, -27.2], 4.0, ""],
-	["E4", "E.4", "The Upward Spring", "spectacle", [28.4, -39.35, 30.4, -36.65], 4.0, ""],
+	["E4", "E.4", "The Upward Spring", "spectacle", [28.4, -39.35, 30.4, -36.65], 4.0, "spring"],
 	["E5", "E.5", "The Scales", "puzzle", [22.0, -58.0, 29.4, -50.6], 2.0, "scales"],
 	["EB", "E beacon + E.6", "The High Beacon, the Eidolon Plate", "puzzle", [22.0, -68.0, 30.0, -62.0], 6.0, ""],
 	["EH", "shortcut", "The High Stair (back down)", "traversal", [18.5, -66.0, 22.0, -31.0], 4.0, ""],
 	# ---- Act 3: the convergence
 	["VW", "Act 3", "The Veiled Way (opens: 3 Beacons)", "traversal", [-4.0, 8.0, -1.0, 15.0], 0.0, ""],
-	["P", "I.20", "The Pool of Halves", "puzzle", [-12.95, 17.0, -4.0, 20.7], 0.0, ""],
+	["P", "I.20", "The Pool of Halves", "puzzle", [-12.95, 17.0, -4.0, 20.7], 0.0, "pool_halves"],
 	["PW", "I.20", "The Far Shore", "traversal", [-16.15, 16.95, -12.95, 20.75], 0.0, ""],
 	["I21", "I.21", "The Bridge that Gives Way", "traversal", [-40.0, 17.6, -16.15, 20.1], 0.0, "bridge"],
 	["I22", "I.22", "The Gate of the Four", "puzzle", [-50.0, 13.0, -40.0, 24.0], 0.0, "gate_four"],
@@ -114,6 +114,8 @@ const WALK := [
 	["W7", -20.5, -3.5, -18.5, -1.5, 0.0, NAN, -1],
 	# North
 	["N1", 0.5, -15.0, 4.5, -8.0, 1.0, 0.0, 1],
+	["N1l", -0.5, -10.0, 0.5, -8.0, 0.0, NAN, -1],        # flat ledges either side of its low end (for its columns)
+	["N1l", 4.5, -10.0, 5.5, -8.0, 0.0, NAN, -1],
 	["N2", -1.7, -25.0, 5.0, -15.0, 1.0, NAN, -1],
 	["N3", 5.0, -22.5, 5.5, -21.1, 1.0, NAN, -1],             # the garden door (v1 g_door): the votive beside it
 	["N4", 5.5, -25.0, 13.45, -16.0, 1.0, NAN, -1],
@@ -233,7 +235,7 @@ const ROUTE := [
 const PART := {"WS": "south", "I1": "south", "I2": "south", "I3": "south", "IB1": "south", "I4": "south", "I4s": "south",
 	"I5": "south", "A": "hub", "VW": "south", "P": "act3", "PW": "act3", "I21": "act3", "I22": "act3", "I23": "act3",
 	"WR": "west", "W1": "west", "W2": "west", "W2c": "west", "W3": "west", "W4": "west", "W5": "west", "IBW": "west", "W6": "west",
-	"WB": "west", "W7": "west", "N1": "north", "N2": "north", "N3": "north", "N4": "north", "IBN": "north", "N5": "north",
+	"WB": "west", "W7": "west", "N1": "north", "N1l": "north", "N2": "north", "N3": "north", "N4": "north", "IBN": "north", "N5": "north",
 	"N6": "north", "N7d": "north", "N7": "north", "N7x": "north", "NB": "north", "NS": "north", "ER": "east", "E1": "east",
 	"E2": "east", "IBE": "east", "E3": "east", "E4": "east", "E3l": "east", "E5": "east", "E5u": "east", "EB": "east", "EH": "east"}
 
@@ -244,7 +246,7 @@ const AREA := {"WS": "waking_pool", "P": "waking_pool", "PW": "waking_pool", "I1
 	"I3": "waking_pool", "IB1": "waking_pool", "I4": "waking_pool", "I4s": "waking_pool", "I5": "waking_pool", "VW": "waking_pool",
 	"A": "atrium", "WR": "stair_breath", "W1": "stair_breath", "W2": "stair_breath", "W2c": "stair_breath", "W3": "hall_glass",
 	"W4": "hall_glass", "W5": "shard_gallery", "IBW": "shard_gallery", "W6": "shard_gallery", "WB": "shard_gallery", "W7": "shard_gallery",
-	"N1": "garden_veiled", "N2": "garden_veiled", "N3": "garden_veiled", "N4": "hollow_walk", "IBN": "court_light", "N5": "court_light",
+	"N1": "garden_veiled", "N1l": "garden_veiled", "N2": "garden_veiled", "N3": "garden_veiled", "N4": "hollow_walk", "IBN": "court_light", "N5": "court_light",
 	"N6": "court_light", "N7d": "mist_maze", "N7": "mist_maze", "N7x": "mist_maze", "NB": "mist_maze", "NS": "garden_veiled",
 	"ER": "eidolon_ledge", "E1": "eidolon_ledge", "E2": "eidolon_ledge", "IBE": "eidolon_ledge", "E3": "eidolon_ledge", "E4": "eidolon_ledge",
 	"E3l": "scales", "E5": "scales", "E5u": "scales", "EB": "scales", "EH": "eidolon_ledge",
@@ -280,6 +282,7 @@ static func space_of_region(name: String) -> String:
 	if id in ["N7d", "N7x"]: return "N7"
 	if id in ["E3l"]: return "E3"
 	if id in ["E5u"]: return "E5"
+	if id in ["N1l"]: return "N1"
 	return id
 
 # ============================================================================================ build (geometry)
@@ -361,12 +364,36 @@ static func _water_at(p: Vector2) -> bool:
 	return false
 
 # ============================================================================================ the Tripo pieces
-## Props placements for the block-out pieces and the doors (Props.build reads these after its own list)
-static func props() -> Array:
-	var out := []
+## the beats' Tripo pieces (PIECES), merged into ONE marble mesh (the web's buffer of per-instance marble values holds
+## 256 instances in all); each keeps its own footprint. `piece_xfs` [asset, Transform3D] for the tests.
+static var piece_xfs: Array = []
+static func pieces(lv: Level, parent: Node3D) -> MeshInstance3D:
+	piece_xfs = []
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := 0
 	for e in PIECES:
-		out.append([e[0], w(e[1], e[3], e[2]), e[4], e[5], "v2:" + str(e[6])])
-	return out
+		var a := Props._mesh(e[0])
+		if a.is_empty(): continue
+		var xf := Transform3D(Basis(Vector3.UP, deg_to_rad(float(e[4]))) * Basis.from_scale(Vector3.ONE * float(e[5])), w(e[1], e[3], e[2]))
+		var m: ArrayMesh = a[0]
+		for si in m.get_surface_count(): st.append_from(m, si, xf)
+		piece_xfs.append([e[0], xf])
+		n += 1
+		var bb: AABB = xf * (a[1] as AABB)
+		if str(e[0]) == "colossus_head_veiled": continue          # (in the water: nothing walks there)
+		var fr := Rect2(bb.position.x, bb.position.z, bb.size.x, bb.size.z)
+		if str(e[0]).begins_with("statue") or str(e[0]) == "column_stump" or str(e[0]) == "brazier":
+			lv.ob_circle(fr.get_center(), minf(fr.size.x, fr.size.y) * 0.5 + 0.03, "v2piece:" + str(e[0]))
+		else:
+			lv.ob_rect(fr, "v2piece:" + str(e[0]))
+	var mi := MeshInstance3D.new()
+	mi.name = "V2Pieces"
+	if n > 0: mi.mesh = st.commit()
+	mi.material_override = lv.marble_mat
+	mi.layers = PlanarMirror.LAYER_MAIN_FX
+	parent.add_child(mi)
+	return mi
 
 ## the doors: no footprint of their own (each beat closes its doorway with an obstacle and opens it)
 static var door_nodes: Array = []
@@ -444,7 +471,8 @@ static func dress(lv: Level, parent: Node3D) -> Array:
 ## the Shadow Chamber's NE corner (the Cloister Stair runs behind it), and no Beacon pillars in the Atrium (the
 ## Beacons are the wings')
 const KEEP_EXTRA := [[-10.0, -1.6, -8.0, 1.6], [0.5, -8.0, 4.5, -6.0], [8.0, -6.1, 10.0, -2.9], [8.0, 1.8, 10.0, 4.2], [-4.2, 6.0, -0.8, 8.0], [-8.1, -8.0, -5.9, -6.0], [-10.6, -22.5, -9.0, -20.9],
-			[-9.7, -0.7, -8.5, 0.7], [-0.7, -8.0, 0.7, -6.8], [8.5, -0.7, 9.7, 0.7]]
+			[-9.7, -0.7, -8.5, 0.7], [-0.7, -8.0, 0.7, -6.8], [8.5, -0.7, 9.7, 0.7],
+			[10.5, 4.6, 12.0, 6.6], [12.1, 0.8, 14.0, 3.4]]          # (the crypt: Theron's tablet and her lamp's rim, and the ways to them)
 
 ## the route as kept-clear rects (1.6 m wide along each leg)
 static func route_keep() -> Array:
@@ -456,8 +484,9 @@ static func route_keep() -> Array:
 	return out
 
 ## a flat label of each space on its floor (block-out review; Map2.labels_on = false hides them)
-static var labels_on := true
+static var labels_on := OS.get_environment("EIDOLON_LABELS") == "1"          # (review shots only: the live game has none)
 static func labels(parent: Node3D) -> void:
+	if not labels_on: return
 	for s in SPACES:
 		var r := space_rect(s[0])
 		var l := Label3D.new()

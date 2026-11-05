@@ -1419,7 +1419,7 @@ func _plan() -> void:
 	# ---- v0.8 props: loaded, solid, and no required path closed
 	step_do(func() -> void:
 		var pr: Props = game.props
-		var ok_load := pr.placed.size() == Props.PLACE.size() + (Map2.props().size() if Map2.enabled else 0)
+		var ok_load := pr.placed.size() == Props.placements().size()
 		for e in pr.placed: ok_load = ok_load and (e[1] as MeshInstance3D).mesh != null and (e[1] as MeshInstance3D).mesh.get_surface_count() > 0
 		ok("props: every placement loaded, on the marble", ok_load, "%d placed" % pr.placed.size())
 		var solid := true

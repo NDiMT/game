@@ -126,6 +126,10 @@ func _pairs() -> void:
 				if (t1[3] as Vector3).dot(BACK) < 0.02 and (t2[3] as Vector3).dot(BACK) < 0.02: continue
 				if not _overlap(t1, t2, n1): continue
 				var tag := "%s | %s" % [t1[5], t2[5]]
+				# (known, harmless: two ADJACENT slivers of one fan in the Veiled Way's gate, sharing an edge, 1.3 cm
+				# tall, third vertices on opposite sides: they cannot overlap (HANDOFF A -> W, 2026-11-05))
+				if str(t1[5]).ends_with("V2Door_gate_veiled_2") and str(t2[5]).ends_with("V2Door_gate_veiled_2") \
+						and ((t1[0] + t1[1] + t1[2]) / 3.0).distance_to(Map2.O + Vector3(-2.34, 0.79, 7.95)) < 0.6: continue
 				var kind := "TRANSPARENT" if (t1[6] or t2[6]) else "COPLANAR"
 				var ck := kind + tag
 				if found.has(ck):
