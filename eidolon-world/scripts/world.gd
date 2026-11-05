@@ -322,6 +322,7 @@ func set_tier(t: String, step := 0) -> void:
 	WardenRig.high = not low
 	OmenFx.high = not low
 	BeaconFire.high = not low
+	Dress.apply_tier(get_tree(), not low)
 	for w in get_tree().get_nodes_in_group("q_warden"): (w as WardenRig).set_shadow(not low)
 
 func set_quality(high: bool) -> void:
@@ -465,6 +466,55 @@ func ground_axes() -> Array:
 ## v1.0 QA P1-4 (Agent A) per-area DARKNESS (0..1), e.g. the Undercroft: the ambient and the sun fall away and the
 ## fog turns near-black and closes in, so only the carried lamp shows the space. Pair it with
 ## level.set_darkness(k, lamp_pos) (the stone itself) and tween k (see HANDOFF).
+# ------------------------------------------------------------------------------------------------ v2.0 (A) space moods
+## Each space of Chapter I has a mood: a light + fog preset blended over `seconds` (the crimson accent is global
+## and unchanged: the one light stays the same in every mood). Call on entering a space:
+##   world.set_mood("w_glass")        W wing: glass and cold (blue-grey fog, cool light, crisp, a little desaturated)
+##   world.set_mood("n_garden")       N wing: garden mist (green-grey low mist, soft warm light)
+##   world.set_mood("e_high")         E wing: high and windy (thin bright air, strong sun, fog racing past)
+##   world.set_mood("act1")           Act 1 (the default: the pale morning of the waking)
+##   world.set_mood("act3")           Act 3 (the convergence: dusk, a faint rose in the fog)
+##   world.set_mood("prologue")       the black-water threshold (near night, the fog dark)
+## (set_darkness / set_awaken still apply on top: the crypt is "act1" + darkness.)
+const MOODS := {
+	"act1":     {"fog": Color(0.78, 0.78, 0.765), "fog_k": 1.0, "hd": 0.0, "amb": Color(0.70, 0.76, 0.86), "amb_e": 1.0,
+				 "sun": Color(1.0, 0.925, 0.80), "sun_e": 1.0, "sat": 0.95, "con": 1.04, "sheet": Color(1, 1, 1), "wind": 1.0},
+	"w_glass":  {"fog": Color(0.70, 0.75, 0.81), "fog_k": 0.85, "hd": 0.04, "amb": Color(0.62, 0.72, 0.92), "amb_e": 1.02,
+				 "sun": Color(0.90, 0.94, 1.0), "sun_e": 0.86, "sat": 0.84, "con": 1.09, "sheet": Color(0.9, 0.95, 1.04), "wind": 0.6},
+	"n_garden": {"fog": Color(0.75, 0.79, 0.73), "fog_k": 0.72, "hd": 0.16, "amb": Color(0.72, 0.80, 0.72), "amb_e": 1.0,
+				 "sun": Color(1.0, 0.95, 0.84), "sun_e": 0.8, "sat": 1.0, "con": 1.0, "sheet": Color(0.96, 1.02, 0.94), "wind": 0.7},
+	"e_high":   {"fog": Color(0.86, 0.86, 0.87), "fog_k": 1.35, "hd": -0.14, "amb": Color(0.78, 0.80, 0.86), "amb_e": 1.1,
+				 "sun": Color(1.0, 0.93, 0.82), "sun_e": 1.16, "sat": 0.97, "con": 1.07, "sheet": Color(1.03, 1.03, 1.03), "wind": 3.2},
+	"act3":     {"fog": Color(0.81, 0.75, 0.75), "fog_k": 0.95, "hd": 0.02, "amb": Color(0.80, 0.70, 0.72), "amb_e": 0.95,
+				 "sun": Color(1.0, 0.83, 0.74), "sun_e": 0.86, "sat": 0.95, "con": 1.06, "sheet": Color(1.04, 0.96, 0.96), "wind": 1.0},
+	"prologue": {"fog": Color(0.16, 0.16, 0.18), "fog_k": 0.6, "hd": 0.1, "amb": Color(0.45, 0.5, 0.62), "amb_e": 0.5,
+				 "sun": Color(0.8, 0.84, 0.95), "sun_e": 0.42, "sat": 0.8, "con": 1.1, "sheet": Color(0.3, 0.3, 0.33), "wind": 0.4},
+}
+var mood_name := "act1"
+var _mood_a: Dictionary = MOODS["act1"]
+var _mood_b: Dictionary = MOODS["act1"]
+var _mood_k := 1.0
+var _mood_rate := 1.0
+var mood: Dictionary = MOODS["act1"]          # (the blended preset in use)
+
+func set_mood(name: String, seconds := 2.5) -> void:
+	if not MOODS.has(name) or name == mood_name: return
+	mood_name = name
+	_mood_a = mood.duplicate()
+	_mood_b = MOODS[name]
+	_mood_k = 0.0 if seconds > 0.0 else 1.0
+	_mood_rate = 1.0 / maxf(seconds, 0.001)
+	if seconds <= 0.0: _blend_mood(1.0)
+
+func _blend_mood(k: float) -> void:
+	var e := k * k * (3.0 - 2.0 * k)
+	var m := {}
+	for key in _mood_b:
+		var va = _mood_a.get(key, _mood_b[key])
+		m[key] = va.lerp(_mood_b[key], e) if va is Color else lerpf(float(va), float(_mood_b[key]), e)
+	mood = m
+	_apply_light()
+
 var dark := 0.0
 func set_darkness(k: float) -> void:
 	dark = clampf(k, 0.0, 1.0)
@@ -472,18 +522,27 @@ func set_darkness(k: float) -> void:
 
 func _apply_light() -> void:
 	var k := awaken
-	env.fog_depth_begin = DIST + lerpf(-1.0, 8.0, k) - 6.0 * dark
-	env.fog_depth_end = DIST + lerpf(20.0, 58.0, k) - 10.0 * dark
-	env.fog_light_color = Color(0.78, 0.78, 0.765).lerp(Color(0.82, 0.84, 0.85), k).lerp(Color(0.05, 0.05, 0.06), dark * 0.92)
-	env.fog_height_density = lerpf(0.40, 0.22, k)
-	env.ambient_light_energy = lerpf(0.55, 0.72, k) * (1.0 - 0.85 * dark)
-	sun.light_energy = lerpf(0.85, 1.0, k) * (1.0 - 0.9 * dark)
+	var md := mood
+	var fk: float = md["fog_k"]               # (the mood: < 1 thicker, closer fog; > 1 thinner, farther)
+	env.fog_depth_begin = DIST + lerpf(-1.0, 8.0, k) * fk - 6.0 * dark
+	env.fog_depth_end = DIST + lerpf(20.0, 58.0, k) * fk - 10.0 * dark
+	var fc: Color = md["fog"]
+	env.fog_light_color = fc.lerp(fc.lerp(Color(0.82, 0.84, 0.85), 0.5), k).lerp(Color(0.05, 0.05, 0.06), dark * 0.92)
+	env.fog_height_density = maxf(lerpf(0.40, 0.22, k) + float(md["hd"]), 0.0)
+	env.ambient_light_color = md["amb"]
+	env.ambient_light_energy = lerpf(0.55, 0.72, k) * float(md["amb_e"]) * (1.0 - 0.85 * dark)
+	sun.light_color = md["sun"]
+	sun.light_energy = lerpf(0.85, 1.0, k) * float(md["sun_e"]) * (1.0 - 0.9 * dark)
+	env.adjustment_saturation = md["sat"]
+	env.adjustment_contrast = md["con"]
 	if backdrop_mat: backdrop_mat.set_shader_parameter("dark", dark)
 	# the fog sheets go dark with it (their own colour, remembered on first use)
 	for m in fog_mats:
 		if not m.has_meta("base_col"): m.set_meta("base_col", m.get_shader_parameter("color"))
 		var bc: Color = m.get_meta("base_col") if m.get_meta("base_col") is Color else Color(0.8, 0.79, 0.76)
-		m.set_shader_parameter("color", bc.lerp(Color(0.04, 0.04, 0.05), dark * 0.9))
+		var tint: Color = mood["sheet"]
+		m.set_shader_parameter("color", Color(bc.r * tint.r, bc.g * tint.g, bc.b * tint.b, bc.a).lerp(Color(0.04, 0.04, 0.05), dark * 0.9))
+
 
 func set_awaken(k: float) -> void:
 	if OS.get_environment("EIDOLON_DEV_AWAKE") == "1": k = 1.0     # (dev only: clear-air material shots)
@@ -496,6 +555,19 @@ func set_awaken(k: float) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	if _mood_k < 1.0:
+		_mood_k = minf(_mood_k + dt * _mood_rate, 1.0)
+		_blend_mood(_mood_k)
+	# (v2.0) the fog sheets' drift, accumulated here so its speed can follow the mood's wind without a jump
+	var wind: float = mood["wind"]
+	for m in fog_mats:
+		var d = m.get_shader_parameter("drift")
+		if d is Vector2:
+			var o: Vector2 = m.get_meta("doff", Vector2(_t, _t) * (d as Vector2))
+			o += (d as Vector2) * wind * dt
+			m.set_meta("doff", o)
+			m.set_shader_parameter("drift_off", o)
+			m.set_shader_parameter("use_off", 1.0)
 	if not cam_lock:
 		cam.size = lerpf(cam.size, cam_size_target, 1.0 - exp(-dt * 2.5))
 	var pc := follow.global_position if follow else rig.position

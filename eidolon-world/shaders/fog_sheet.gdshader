@@ -13,6 +13,8 @@ uniform float density = 0.8;
 uniform float hole_inner = 0.0;
 uniform float hole_outer = 0.0;
 uniform vec2 drift = vec2(0.012, 0.006);
+uniform vec2 drift_off = vec2(0.0);   // v2.0 (A): the drift accumulated by World (its speed follows the mood's wind, no jumps)
+uniform float use_off = 0.0;
 uniform float scale = 0.05;
 uniform vec2 center = vec2(0.0);
 uniform float clear = 0.0;
@@ -28,8 +30,9 @@ void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 
 void fragment() {
 	vec2 p = wp.xz * scale;
-	float a = texture(noise_tex, p + TIME * drift).r;
-	float b = texture(noise_tex, p * 2.3 - TIME * drift * 1.7 + 0.31).r;
+	vec2 dof = use_off > 0.5 ? drift_off : TIME * drift;
+	float a = texture(noise_tex, p + dof).r;
+	float b = texture(noise_tex, p * 2.3 - dof * 1.7 + 0.31).r;
 	float n = smoothstep(0.25, 0.85, a * 0.65 + b * 0.45);
 	float r = length(wp.xz - center);
 	float hole = hole_outer > 0.0 ? smoothstep(hole_inner * (1.0 + clear * 2.5), hole_outer * (1.0 + clear * 2.5), r) : 1.0;
