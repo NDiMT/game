@@ -956,7 +956,7 @@ func _shrine() -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = q
 	mi.material_override = shrine_ring
-	mi.position = c + Vector3(0, 0.03, 0)          # (v2: on the shrine's worn disc, Act3)
+	mi.position = c + Vector3(0, 0.036, 0)          # (v2: on the shrine's worn disc (0.024), Act3; phase 6: clear of it and of the kneeling stone (0.05))
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 	shrine_light = OmniLight3D.new()

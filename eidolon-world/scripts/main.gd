@@ -1073,7 +1073,17 @@ func _warm_up_shaders() -> void:
 			"res://shaders/rune_face_mm.gdshader", "res://shaders/halo_mm.gdshader", "res://shaders/light_pool_mm.gdshader", "res://shaders/floor_mark_mm.gdshader",
 			"res://shaders/moths.gdshader", "res://shaders/petals.gdshader", "res://shaders/drips.gdshader", "res://shaders/veil_strip.gdshader",
 			"res://shaders/warden_reflection.gdshader",
-			"res://shaders/veiled_eyes.gdshader", "res://shaders/pickup_glow.gdshader", "res://shaders/fx_burst.gdshader"]:
+			"res://shaders/veiled_eyes.gdshader", "res://shaders/pickup_glow.gdshader", "res://shaders/fx_burst.gdshader",
+			# (phase 6) the shaders only an event instances, after start-up: Act 3's fog bank, the omens (the writing, the
+			# eye, the palm), the rings and sprays of the juice, the Gate's plinth ring, the waters, the Beacons' fire
+			"res://shaders/fog_bank.gdshader", "res://shaders/omen_fx.gdshader", "res://shaders/surface_palm.gdshader",
+			"res://shaders/ring.gdshader", "res://shaders/water_ring.gdshader", "res://shaders/spray.gdshader",
+			"res://shaders/water.gdshader", "res://shaders/still_water.gdshader", "res://shaders/water_over.gdshader",
+			"res://shaders/beacon_flame.gdshader", "res://shaders/beam.gdshader", "res://shaders/beam_floor.gdshader",
+			"res://shaders/godray.gdshader", "res://shaders/ray.gdshader", "res://shaders/footprint.gdshader",
+			"res://shaders/observer_veil.gdshader", "res://shaders/observer_rim.gdshader", "res://shaders/stone_ghost.gdshader",
+			"res://shaders/pool_stones.gdshader", "res://shaders/mist_drift.gdshader", "res://shaders/fog_sheet.gdshader",
+			"res://shaders/glow.gdshader", "res://shaders/mote.gdshader", "res://shaders/shard_hang.gdshader"]:
 		var m := ShaderMaterial.new()
 		m.shader = load(path)
 		mats.append(m)

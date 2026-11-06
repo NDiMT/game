@@ -16,6 +16,7 @@ var _k := 0
 var fog: FogBank
 var after := false
 var _hide_tests: Array = []
+var _placed := false
 var _ht := 0.0
 
 func _ready() -> void:
@@ -57,6 +58,12 @@ func _process(dt: float) -> void:
 					var m = (n as MeshInstance3D).material_override
 					if m is ShaderMaterial and (m as ShaderMaterial).shader and (m as ShaderMaterial).shader.resource_path.ends_with("beam.gdshader"): n.visible = false
 				"beyond": game.level.beyond.visible = false
+				"beyondmesh": for c in game.level.beyond.get_children(): if c is MeshInstance3D: (c as MeshInstance3D).visible = false
+				"shafts": for n in game.find_children("*", "MeshInstance3D", true, false):
+					var m2 = (n as MeshInstance3D).material_override
+					if m2 is ShaderMaterial and (m2 as ShaderMaterial).shader and (m2 as ShaderMaterial).shader.resource_path.ends_with("shafts.gdshader"): n.visible = false
+				"farest": for n in game.level.get_children(): if str(n.name).begins_with("Far"): (n as Node3D).visible = false
+				"all3d": for n in game.level.get_children(): if n is Node3D and n != game.level.beyond: (n as Node3D).visible = false
 			await get_tree().process_frame
 			await get_tree().process_frame
 			_shot("hide-" + what)
@@ -90,20 +97,20 @@ func _process(dt: float) -> void:
 					for sz in [-1.25, 1.25]: FxBurst.crumble(game.juice, p + Vector3(0, -0.05, sz), 1.3)     # (off both edges of the deck, into the sea)
 					var c: Node3D = a3.chunks[1]
 					FxBurst.crumble(game.juice, c.global_position + Vector3(0, -0.1, 0), 0.6)
-			elif _k == 1 and t > 2.9: _shot("bridge-1"); _k = 2
+			elif _k == 1 and t > 3.2: _shot("bridge-1"); _k = 2
 			elif _k == 2 and t > 3.6: _shot("bridge-2"); _next()
 		"gate":
 			var ch: Node = game.chapter
 			if not _fired:
 				_fired = true; t = 0.0
-				game.cmd("tp:-44.6:16.4")            # (between the near plinths, the gate in view)
+				game.cmd("tp:-45.8:15.2")            # (between the near plinths, the gate in view)
 			elif _k == 0 and t > 2.5:
 				_k = 1; t = 2.5
 				for r in 4:
 					var rp: Vector3 = ch.four_pos(r) + Vector3(0, Map2.PLINTH_H * 0.5, 0.505)
 					get_tree().create_timer(0.6 * r).timeout.connect(func() -> void:
 						(ch.four_mats[r] as ShaderMaterial).set_shader_parameter("lit", 1.0)
-						if after: OmenFx.rune_wake(ch, rp, Vector3.BACK, 0.7))
+						if after: OmenFx.rune_wake(ch, rp, Vector3.BACK))
 				get_tree().create_timer(2.6).timeout.connect(func() -> void:
 					ch.open_four(false)
 					var d: Node3D = ch._four_gate()
@@ -123,11 +130,22 @@ func _process(dt: float) -> void:
 				var P: float = Chapter.CINE_P
 				if _k == 1 and ct > P + 26.5: _shot("write"); _k = 2
 				elif _k == 2 and ct > P + 31.0: _shot("eye"); _k = 3
+				elif _k == 3 and after and ct > P + 52.5 and not _placed:
+					_placed = true
+					# (A, as W3 will do it in Level._far_ruins: the far statues become veiled colossi) here: the one in frame
+					for n in game.level.get_children(): if str(n.name) == "FarRuins": (n as Node3D).visible = false
+					game.ui.silhouette.visible = false        # (the 2D memory silhouette: the pale blob over the beyond; W3 drops it)
+					var cam := get_viewport().get_camera_3d()
+					var vs := get_viewport().get_visible_rect().size
+					var o := cam.project_ray_origin(Vector2(vs.x * 0.42, vs.y * 0.36))
+					var d := cam.project_ray_normal(Vector2(vs.x * 0.42, vs.y * 0.36))
+					var at := o + d * ((-6.0 - o.y) / d.y)
+					Dress.beyond_colossus(game.level, at, 28.0, -30.0)
 				elif _k == 3 and ct > P + 54.0:
 					_shot("beyond"); _k = 4
 					if OS.get_cmdline_user_args().has("--dbg"):
 						_dbg_big()
-						_hide_tests = ["halo", "pillar", "beyond"]
+						_hide_tests = ["beyondmesh", "shafts", "farest", "all3d"]
 					_next()
 			elif _k >= 1 and t > 90.0: _next()
 
@@ -145,16 +163,14 @@ func _apply_hooks() -> void:
 	for m in a3.mists: if is_instance_valid(m): (m as FxBurst).stop()
 	a3.mists.clear()
 	OmenFx.murk(game.chapter.act1.pool_water, 0.4, 0.01)
-	# the beyond: the colossal veiled figure in place of the primitive one
-	var lv: Level = game.level
-	for c in lv.beyond.get_children():
-		if c is MeshInstance3D and (c as MeshInstance3D).material_override is StandardMaterial3D: (c as MeshInstance3D).visible = false
-	var at := Vector3(Level.SHRINE_C.x, -6.0, Level.SHRINE_C.z) + Level.BEYOND_FWD * 40.0 + Level.BEYOND_RIGHT * 3.0
-	Dress.beyond_colossus(lv.beyond, at, 26.0, 20.0)
+
 
 ## (debug) the big things on screen at the "beyond"
 func _dbg_big() -> void:
 	var cam := get_viewport().get_camera_3d()
+	for q in [["second shrine", Level.SECOND_SHRINE], ["observer", Map2.w(Map2.OBSERVER.x, Map2.OBSERVER.z)], ["shrine", Map2.SHRINE_C],
+			["beyond colossus", Vector3(Level.SHRINE_C.x, 6.0, Level.SHRINE_C.z) + Level.BEYOND_FWD * 40.0 + Level.BEYOND_RIGHT * 3.0]]:
+		print("SCREEN ", q[0], " ", cam.unproject_position(q[1]), " cam ", cam.global_position, " size ", cam.size)
 	var vs := get_viewport().get_visible_rect().size
 	for n in game.find_children("*", "GeometryInstance3D", true, false):
 		var g := n as GeometryInstance3D

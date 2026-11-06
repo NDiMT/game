@@ -16,11 +16,11 @@ const ZONE := Map2.ZP + "act3"
 const VW_GAP := [-4.0, 7.85, -1.0, 8.15]             # the Veiled Way's gate, across its top (the Atrium's south edge)
 const LURCH := 6                                     # the span that drops under you
 const FALLS := [[2, 1.0, 3], [8, -1.0, 8], [10, 1.0, 10]]   # [span, side (+1 south, -1 north), falls when you reach this span]
-const MIST_X := [-5.6, -8.4, -11.2]
+const FOG_MURK := 0.4                                # (under A's fog bank: the water darker, not a pale wash)
 
 var vw_gate: Node3D
 var _open_seen := false                              # (the three Beacons burn, and we have answered it)
-var mists: Array = []
+var fog: FogBank
 var _murky := false
 var lurch_node: Node3D
 var chunks: Array[Node3D] = []
@@ -79,24 +79,40 @@ func open_vw(instant: bool) -> void:
 		game.juice.shake(0.12)
 	var tw := d.create_tween()
 	tw.tween_interval(0.6)
+	# (phase 6) as it starts down: a ring of force out over the stone from its foot, and A's dust, crumble and the seam
+	# of light from the far side (the side away from her)
+	var away := Vector3.BACK if game.player.position.z < dp.z else Vector3.FORWARD
+	tw.tween_callback(func() -> void:
+		if game.juice: game.juice.ring(dp + Vector3(0, 0.01, 0), 5.0, 1.8)
+		OmenFx.gate_sink(self, dp, Vector3.RIGHT, 3.0, 3.2, away))
 	tw.tween_property(d, "position:y", O.y - 3.6, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(func() -> void: d.visible = false)
 
 # ------------------------------------------------------------------ the Pool of Halves' fog
+## (phase 6) A's fog bank over the water (FogBank: rolling sheets, curtains, wisps), a light murk under it
 func _fog(on: bool, instant: bool) -> void:
 	var wm: ShaderMaterial = chapter.act1.pool_water
 	if on:
-		if mists.is_empty():
-			for x in MIST_X: mists.append(FxBurst.mist(self, Map2.w(x, 18.85, -0.42), 2.4))
+		if not _fog_alive():
+			var e: Array = Map2.WATER[0]
+			fog = FogBank.make(self, Map2.wr(e[0], e[1], e[2], e[3]), float(e[4]) + O.y)
+			if not instant:
+				fog._set_k(0.0)
+				fog.create_tween().tween_method(fog._set_k, 0.0, 1.0, 3.0).set_trans(Tween.TRANS_SINE)
 		if not _murky:
 			_murky = true
-			OmenFx.murk(wm, 0.85, 0.01 if instant else 3.0)
+			OmenFx.murk(wm, FOG_MURK, 0.01 if instant else 3.0)
 	else:
-		for m in mists: if is_instance_valid(m): (m as FxBurst).stop()
-		mists.clear()
+		if _fog_alive():
+			if instant: fog.queue_free()
+			else: fog.lift(4.5)
+		fog = null
 		if _murky:
 			_murky = false
 			OmenFx.murk(wm, 0.0, 0.01 if instant else 4.0)
+
+func _fog_alive() -> bool:
+	return fog != null and is_instance_valid(fog) and not fog.is_queued_for_deletion()
 
 ## the third fire is lit (wherever you are): far below the Veiled Way's gate sinks, the pool's fog lifts and its four
 ## stones rise into sight
@@ -222,6 +238,7 @@ func _lurch(instant: bool) -> void:
 		for sx in [-1.0, 1.0]:
 			game.juice.dust_fall(p + Vector3(sx * 0.95, -0.1, 0), Vector3(0, 0, 1.0), 18)
 			game.juice.grit(p + Vector3(sx * 0.95, -0.4, 0), 0.5)
+		for sz in [-1.25, 1.25]: FxBurst.crumble(game.juice, p + Vector3(0, -0.05, sz), 1.3)          # (phase 6: A's crumble, off both edges into the sea)
 		get_tree().create_timer(0.9).timeout.connect(func() -> void: FxBurst.splash(game.juice, Vector3(p.x, O.y - 0.42, p.z + 1.6), 0.8))
 
 ## a piece of parapet shivers, breaks away and falls into the sea
@@ -242,6 +259,7 @@ func _fall(i: int, instant: bool) -> void:
 	tw.tween_callback(func() -> void: n.visible = false)
 	if game.juice:
 		game.juice.grit(n.global_position + Vector3(0, -0.2, 0), 0.6)
+		FxBurst.crumble(game.juice, n.global_position + Vector3(0, -0.1, 0), 0.6)          # (phase 6: A's crumble where it breaks away)
 		var wp := n.global_position
 		get_tree().create_timer(1.1).timeout.connect(func() -> void:
 			FxBurst.splash(game.juice, Vector3(wp.x, O.y - 0.42, wp.z + 1.2 * side), 1.0)
@@ -287,12 +305,10 @@ func update(_dt: float) -> void:
 	if open and not _open_seen:
 		_open_seen = true
 		_on_open()
-	if game.mode == "cine" and not mists.is_empty():
+	if game.mode == "cine" and game.cine is Prologue and (_fog_alive() or _murky):
 		# (the prologue plays on this water: no fog over its shots; it settles when you are yours to move)
-		for m in mists: if is_instance_valid(m): m.queue_free()
-		mists.clear()
-		_murky = false
-	if not open and game.mode == "play" and (not _murky or mists.is_empty()): _fog(true, false)
+		_fog(false, true)
+	if not open and game.mode == "play" and (not _murky or not _fog_alive()): _fog(true, false)
 	_update_bridge()
 
 func apply_state() -> void:
@@ -306,8 +322,8 @@ func apply_state() -> void:
 			d.visible = true
 			d.position.y = O.y
 	_murky = false
-	for m in mists: if is_instance_valid(m): m.queue_free()
-	mists.clear()
+	if _fog_alive(): fog.queue_free()
+	fog = null
 	OmenFx.murk(chapter.act1.pool_water, 0.0, 0.01)
 	if not open and game.mode == "play": _fog(true, true)
 	_reset_bridge()

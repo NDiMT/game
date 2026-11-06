@@ -51,28 +51,28 @@ func _build() -> void:
 		mi.global_position = Vector3(big.get_center().x, water_y + float(s[0]), big.get_center().y)
 	if high:
 		# curtains round the edge: every ~2.2 m along it, a camera-facing quad 2.6 m wide
+		# (low billows standing IN the water, 0.6 m inside its edges: they give the bank its height without veiling
+		# her where she walks round it)
 		var pts := []
-		var nx := maxi(2, int(rect.size.x / 2.2))
-		var nz := maxi(1, int(rect.size.y / 2.2))
+		var inner := rect.grow(-0.6)
+		var nx := maxi(2, int(inner.size.x / 1.8))
 		for i in nx + 1:
-			var x := rect.position.x + rect.size.x * float(i) / nx
-			pts.append(Vector3(x, 0, rect.position.y)); pts.append(Vector3(x, 0, rect.end.y))
-		for i in range(1, nz):
-			var z := rect.position.y + rect.size.y * float(i) / nz
-			pts.append(Vector3(rect.position.x, 0, z)); pts.append(Vector3(rect.end.x, 0, z))
+			var x := inner.position.x + inner.size.x * float(i) / nx
+			pts.append(Vector3(x, 0, inner.position.y)); pts.append(Vector3(x, 0, inner.end.y))
+			pts.append(Vector3(x + 0.9, 0, inner.get_center().y))
 		var q := QuadMesh.new()
 		q.size = Vector2.ONE
 		for p in pts:
 			var mi := MeshInstance3D.new()
 			mi.mesh = q
 			var m := _mat(1.0, 0.5, randf() * 10.0)
-			m.set_shader_parameter("height", randf_range(2.4, 3.3))
+			m.set_shader_parameter("height", randf_range(1.0, 1.5))
 			mi.material_override = m
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			mi.extra_cull_margin = 3.0
 			add_child(mi)
 			mi.global_position = Vector3(p.x, water_y, p.z)
-			mi.scale = Vector3(2.6, 1.0, 1.0)
+			mi.scale = Vector3(2.2, 1.0, 1.0)
 	# drifting wisps over it
 	var n := 3 if high else 1
 	for i in n:

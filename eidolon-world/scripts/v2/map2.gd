@@ -203,7 +203,7 @@ const WALLS := [
 ## Tripo doors and gates in their doorways: [asset, x, z, y, yaw (deg), scale, note]. Phase 1 (block-out): open (no
 ## footprint); phases 2-4 give each its mechanism.
 const DOORS := [
-	["door_temple", 5.0, 15.0, 0.0, 0.0, 1.0, "I.1 the closed door"],
+	["door_temple", 5.0, 15.0, 0.003, 0.0, 1.0, "I.1 the closed door"],
 	["door_temple", 10.0, 3.0, 0.0, 90.0, 0.8, "I.5 the crypt's way out into the Atrium"],
 	["gate_veiled", -2.5, 8.0, 0.0, 0.0, 0.85, "the Veiled Way (Act 3: opens when the 3 Beacons burn)"],
 	["gate_veiled", -45.0, 13.0, 0.003, 0.0, 1.0, "I.22 the Gate of the Four (onto the Shrine)"],
@@ -351,7 +351,7 @@ static func build(lv: Level) -> void:
 		var s: Array = N1_STONES[k]
 		lv.walk(wr(s[0] - 0.48, s[1] - 0.48, s[0] + 0.48, s[1] + 0.48), N1_Y + O.y, NAN, -1, ZP + "N1")
 		lv.mb(ZP + "north").tag = "floor"
-		lv.box(ZP + "north", w(s[0], s[1], N1_Y - 0.45), Vector3(0.9, 0.9, 0.9), 0.25, false, Basis(Vector3.UP, 0.2 * k))
+		lv.box(ZP + "north", w(s[0], s[1], N1_Y - 0.45 - 0.004 * (k % 2)), Vector3(0.9, 0.9, 0.9), 0.25, false, Basis(Vector3.UP, 0.2 * k))          # (phase 6: neighbours' tops 4 mm apart)
 		lv.mb(ZP + "north").tag = ""
 		if k + 1 < N1_STONES.size():
 			var nx: Array = N1_STONES[k + 1]
@@ -411,6 +411,15 @@ static func _kerbs(lv: Level, zone: String, r: Rect2, y: float) -> void:
 				if (k1 - k0) * L >= 0.4:
 					var p0 := a.lerp(b, k0)
 					var p1 := a.lerp(b, k1)
+					# (phase 6, the flicker sweep) an end that runs into another space's floor (or its kerb) stops a few
+					# millimetres short, a different few for each side: never in the plane of the kerb it meets there.
+					# Ends where the line runs on into nothing (two kerbs in one line) stay put: their posts are shared.
+					var dirv := (b - a) / L
+					var e := 0.003 * (side + 1)
+					var q0 := p0 - dirv * 0.12 + out * 0.12
+					var q1 := p1 + dirv * 0.12 + out * 0.12
+					if _on_any(lv, q0) or _water_at(q0): p0 += dirv * e
+					if _on_any(lv, q1) or _water_at(q1): p1 -= dirv * e
 					var kr := Rect2(p0, Vector2.ZERO).expand(p1).expand(p1 + out * K).expand(p0 + out * K)
 					# (each side's kerb a few millimetres under the floor, and under the other sides': where the kerbs of two
 					# spaces meet at a corner they are never coplanar, so they cannot flicker)

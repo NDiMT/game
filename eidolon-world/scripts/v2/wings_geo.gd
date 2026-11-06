@@ -119,7 +119,7 @@ static func _gallery(L: LvOff) -> void:
 	L.wall(z, R(5.0, -18.7, 7.0, -18.4), 1.0, 4.4, true)          # (v0.9.1: from the Hall's wall, not into it: their faces were coplanar at the Hall's east door)
 	L.ob_rect(R(4.6, -18.75, 7.05, -18.4))
 	# the near walls: low parapets (east and south), so the floor and her shadows read
-	L.wall(z, R(10.0, -16.9, 10.3, -9.3), 1.0, 2.05, true)
+	L.wall(z, R(10.0, -16.9, 10.3, -9.6), 1.0, 2.05, true)          # (phase 6: to the south parapet, not through it: their faces were coplanar)
 	L.ob_rect(R(10.0, -16.9, 10.35, -9.3))
 	L.wall(z, R(5.0, -9.6, 7.4, -9.3), 1.0, 2.05, true)
 	L.wall(z, R(8.8, -9.6, 10.3, -9.3), 1.0, 2.05, true)
@@ -133,7 +133,7 @@ static func _gallery(L: LvOff) -> void:
 	L.wall("GLs", R(7.4, -9.6, 8.8, -9.3), 1.0, 2.05, true)
 	L.ob_rect(R(7.4, -9.65, 8.8, -9.25), "gallery_secret")
 	# the threshold out
-	L.slab(z, R(7.4, -9.7, 8.8, -9.2), 1.0, 0.7, 0.0)
+	L.slab(z, R(7.4, -9.7, 8.8, -9.2), 0.997, 0.7, 0.0)          # (phase 6: the chamber's floor and IBW's now cover it: 3 mm under them, not in their plane)
 	L.walk(R(7.45, -9.7, 8.75, -9.2), 1.0, NAN, -1, "GL")
 
 # ============================================================================================ NORTH: the Garden wing
@@ -190,7 +190,7 @@ static func _hollow_walk(L: LvOff) -> void:
 	L.wall(z, R(19.6, -15.25, 25.5, -15.0), 1.0, 2.2, true)
 	L.wall(z, R(25.5, -15.25, 25.8, -5.82), 1.0, 2.2, true)
 	# the doorway from the garden (its door is a puzzle object in the garden)
-	L.slab(z, R(16.8, -12.6, 17.4, -11.0), 1.0, 0.6, 0.0)      # (v1.0: up to the room's floor, not over it: their tops were coplanar)
+	L.slab(z, R(17.0, -12.6, 17.4, -11.0), 1.0, 0.6, 0.0)      # (v1.0: up to the room's floor, not over it; phase 6: nor over the garden's, which ends at 17)
 	L.walk(R(16.8, -12.5, 17.6, -11.1), 1.0, NAN, -1, "g_door", false)
 	var __s0 := L.lv.rng.state
 	var B := Basis(Vector3.UP, -PI * 0.25)          # (local x along the glass, local z away from it)
@@ -257,7 +257,7 @@ static func _hollow_walk(L: LvOff) -> void:
 	L.ob_rect(R(17.5, -15.3, 19.5, -15.0), "hw_gate")
 	L.column(Vector3(17.3, 1.0, -15.15), 3.2, false)
 	L.column(Vector3(19.7, 1.0, -15.15), 3.2, false)
-	L.slab("L", R(15.4, -18.4, 19.5, -17.2), 2.0, 0.8, 0.0)
+	L.slab("L", R(17.0, -18.4, 19.5, -17.2), 2.0, 0.8, 0.0)          # (phase 6: from the Court's edge: its west part lay on the Court's floor, coplanar)
 	L.walk(R(15.4, -18.4, 19.5, -17.2), 2.0, NAN, -1, "L_ramp")
 	L.balustrade(z, Vector2(19.55, -15.3), Vector2(19.55, -17.1), 1.0)
 	L.balustrade("L", Vector2(19.45, -17.3), Vector2(19.45, -18.3), 2.0)
@@ -277,7 +277,7 @@ static func _court(L: LvOff) -> void:
 	L.box(z, Vector3(16.98, 4.15, -26.68), Vector3(0.3, 4.3, 0.3), 1.0, true)
 	L.box(z, Vector3(16.98, 4.15, -21.42), Vector3(0.3, 4.3, 0.3), 1.0, true)
 	L.box(z, Vector3(16.98, 6.42, -24.05), Vector3(0.34, 0.3, 5.62), 1.0, true)
-	L.box(z, Vector3(16.98, 2.06, -24.05), Vector3(0.3, 0.12, 5.4), 1.0, false)
+	L.box(z, Vector3(16.98, 2.06, -24.05), Vector3(0.28, 0.12, 5.4), 1.0, false)          # (phase 6: 1 cm in from the posts' faces)
 	L.ob_rect(R(16.8, -26.85, 17.2, -21.25))
 	L.balustrade(z, Vector2(16.95, -21.3), Vector2(16.95, -18.6), 2.0)          # (v2: no drawbridge: the High wing is its own)
 	# v0.5: the mural wall (her half-erased portrait; its middle is a door) and the Mist Maze beyond
@@ -355,7 +355,7 @@ static func _ledge(L: LvOff, name: String, glass: bool) -> void:
 		L.box(z, Vector3(21.45, 3.75, -24.95), Vector3(0.3, 3.5, 0.3), 1.0, true)
 		L.box(z, Vector3(25.75, 3.75, -24.95), Vector3(0.3, 3.5, 0.3), 1.0, true)
 		L.box(z, Vector3(23.6, 5.6, -24.95), Vector3(4.7, 0.28, 0.32), 1.0, true)
-		L.box(z, Vector3(23.6, 2.08, -24.95), Vector3(4.6, 0.16, 0.3), 1.0, false)
+		L.box(z, Vector3(23.6, 2.08, -24.95), Vector3(4.6, 0.16, 0.28), 1.0, false)          # (phase 6: 1 cm in from the posts' faces)
 		L.ob_rect(R(21.2, -25.15, 26.0, -24.75))
 		L.balustrade(z, Vector2(26.2, -24.95), Vector2(28.9, -24.95), 2.0)
 		# (the Scales' platform comes up at its south-west; the High Stair leaves by its west edge)
@@ -384,7 +384,7 @@ static func _scales(L: LvOff) -> void:
 	L.balustrade(z, Vector2(26.05, -44.7), Vector2(26.05, -51.8), 2.0)          # (v2: no Echo Corridor west of it)
 	L.balustrade(z, Vector2(33.35, -51.8), Vector2(33.35, -44.7), 2.0)
 	L.balustrade(z, Vector2(26.2, -44.45), Vector2(30.3, -44.45), 2.0)
-	L.column(Vector3(26.5, 2.0, -51.5), 4.4)
+	L.column(Vector3(26.5, 2.0, -51.44), 4.4)          # (phase 6: its base clear of the Scales' way up)
 	L.column(Vector3(32.9, 2.0, -51.5), 4.4)
 	# (v0.6: the balance, its pivot glass and its pans are puzzle objects: chapter.gd)
 	# the lift (pan A) and the high walkway it rises to

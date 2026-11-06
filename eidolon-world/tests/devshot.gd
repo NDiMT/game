@@ -80,11 +80,22 @@ var _fr_t0 := 0
 var _fr_script := 0
 var _scr_acc := 0.0
 var _scr_max := 0.0
+var _last_p := {}
 func _process(dt: float) -> void:
 	if not _prof.is_empty():
 		_prof[2] += 1
 		_prof[3] += _fr_script / 1000.0
 		_scr_max = maxf(_scr_max, _fr_script / 1000.0)
+		# (phase 6) every frame over 4 ms of script: when (the cinematic's clock too) and which sections
+		var now_p: Dictionary = game.prof.duplicate()
+		if _fr_script > 4000:
+			var d := []
+			for k in now_p: d.append([(int(now_p[k]) - int(_last_p.get(k, 0))) / 1000.0, k])
+			d.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+			var top := ""
+			for e in d.slice(0, 4): top += "%s %.1f  " % [e[1], e[0]]
+			print("SPIKE %-12s %.1f ms  t %.2f  cine %s  area %s | %s" % [_prof[0], _fr_script / 1000.0, _prof[7], ("%.2f" % game.cine.t) if game.cine and "t" in game.cine else "-", game.area, top])
+		_last_p = now_p
 		_prof[4] += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 		var nv := 0
 		for v in _prof[6]:

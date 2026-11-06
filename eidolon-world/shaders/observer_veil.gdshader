@@ -2,10 +2,15 @@ shader_type spatial;
 // v2.0 (Agent A) THE OBSERVER: the giant veiled head sunk in the inlet (Dress.observer). Wet veil-cloth over marble:
 // pale and cool where the light falls, deep in the folds (the shading carries them), darker and wetter toward the
 // water line, the fog taking it with distance like the rest. The crimson rim is a second pass (observer_rim).
-render_mode cull_back, diffuse_lambert_wrap, specular_schlick_ggx;
+render_mode cull_back, diffuse_lambert_wrap, specular_schlick_ggx, fog_disabled;
 uniform float water_y = 0.0;
-uniform vec3 cloth : source_color = vec3(0.56, 0.58, 0.62);
+uniform vec3 cloth : source_color = vec3(0.48, 0.50, 0.55);
 uniform vec3 wet : source_color = vec3(0.24, 0.25, 0.28);
+// (v2.0) its own, lighter fog: the world's fog turned it into a pale blob from afar; it keeps its form (a darker veiled
+// mass against the bright fog) and only fades so far toward the fog colour
+uniform float fog_max = 0.45;
+uniform float fog_dist = 70.0;
+uniform vec3 fog_c : source_color = vec3(0.78, 0.78, 0.765);
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -19,7 +24,8 @@ void fragment() {
 	// the folds: the cloth's own normals do the work; a little extra darkness in the hollows (grazing normals)
 	float hollow = 1.0 - abs(dot(NORMAL, VIEW));
 	c *= 1.0 - 0.4 * smoothstep(0.5, 1.0, hollow);
-	ALBEDO = c;
+	float fd = fog_max * (1.0 - exp(-length(VERTEX) / fog_dist));
+	ALBEDO = mix(c, fog_c * 0.85, fd);
 	ROUGHNESS = mix(0.82, 0.35, wetk);
 	SPECULAR = mix(0.25, 0.6, wetk);
 }

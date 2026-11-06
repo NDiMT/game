@@ -1186,7 +1186,7 @@ func _plan() -> void:
 	walk_path("(v2 Act 3) down the Veiled Way to the pool where she woke", [[Map2.O.x - 2.5, Map2.O.z + 11.5], [Map2.O.x - 2.5, Map2.O.z + 16.0]])
 	step_do(func() -> void:
 		ok("(v2 Act 3) through the Veiled Way, at the Waking Pool", game.area == "waking_pool", game.area)
-		ok("(v2 I.20) no fog over the water now", float(C().act1.pool_water.get_shader_parameter("murk")) < 0.05 and C().act3.mists.is_empty())
+		ok("(v2 I.20) no fog over the water now", float(C().act1.pool_water.get_shader_parameter("murk")) < 0.05 and not C().act3._fog_alive())
 		var up := 0
 		for c in C().pool_pieces:
 			var pc: Dictionary = C().pool_pieces[c]
@@ -1359,9 +1359,10 @@ func _plan() -> void:
 	step_wait(7.0)           # t = 42 (P + 34: the veil lift)
 	step_do(func() -> void: ok("cinematic: her veil lifts: on the porcelain one, her mirror face catches the light", C().her.veil_lift > 0.8 and C().face_k > 0.8 and float(C().face_flare.get_shader_parameter("intensity")) > 0.5, "%.2f" % C().face_k))
 	step_wait(12.0)          # t = 54
-	step_do(func() -> void: ok("cinematic: she is gone; the pool shows only you", not C().her.visible and C().mine.visible))
+	step_do(func() -> void:
+		ok("cinematic: she is gone; the pool shows only you", not C().her.visible and C().mine.visible)
+		ok("memory fragment shows (phase 6: as she walks away, before the last look)", game.ui.memory.modulate.a > 0.3 and game.ui.memory_line.text == Game.MEMORY_LINE, "%.2f" % game.ui.memory.modulate.a))
 	step_wait(3.0)
-	step_do(func() -> void: ok("memory fragment shows", game.ui.memory.modulate.a > 0.3 and game.ui.memory_line.text == Game.MEMORY_LINE))
 	step_until("shrine counter I / VII shows", func() -> bool: return game.ui.end_b.modulate.a > 0.5 and game.ui.end_b.text == "I  /  VII", 12.0)
 	step_until("the cinematic ends", func() -> bool: return game.mode == "play", 10.0)
 	step_do(func() -> void:

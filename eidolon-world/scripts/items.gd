@@ -189,7 +189,7 @@ func _build_secrets() -> void:
 		var at: Vector3 = s[1]
 		var need: String = s[2]
 		var lock := _anchor(at)
-		_lens_rune(lock, Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(0, 0.01, 0)), Vector2(0.45, 0.45), 6.0)
+		_lens_rune(lock, Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(0, 0.022, 0)), Vector2(0.45, 0.45), 6.0)
 		var shard := _anchor(at + Vector3(0, 0.25, 0))
 		_model("memory_shard", shard, func(mb: MB) -> void: mb.box(Vector3(0, 0.08, 0), Vector3(0.06, 0.16, 0.02), Color(0.5, 0.25, 0.0)))
 		shard.visible = false

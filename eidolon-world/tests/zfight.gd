@@ -139,7 +139,7 @@ func _pairs() -> void:
 				if str(t1[5]).ends_with("V2Door_gate_veiled_2") and str(t2[5]).ends_with("V2Door_gate_veiled_2") \
 						and ((t1[0] + t1[1] + t1[2]) / 3.0).distance_to(Map2.O + Vector3(-2.34, 0.79, 7.95)) < 0.6: continue
 				var kind := "TRANSPARENT" if (t1[6] or t2[6]) else "COPLANAR"
-				var ck := kind + tag
+				var ck := kind + tag + str(((t2[0] + t2[1] + t2[2]) / 3.0).snapped(Vector3.ONE * 1.0))          # (phase 6: every site, not one per mesh pair)
 				if found.has(ck):
 					found[ck][0] += 1
 					continue

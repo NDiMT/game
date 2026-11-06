@@ -807,3 +807,87 @@ Shots (real time, 390x844): dev/shots/p5-01..p5-12.png (one per §5 shot), sheet
 - Mine, done: shot 1 widened to `size * 1.5`; the camera settles on her lying by 7.2 s (2 s before she rises); no area title over a cinematic any more; after the prologue the pool's road marks no longer pop back into the fogged water.
 - **Yours, please:** (1) shot 1 asks for BLACK water round the Observer: the inlet and the pool read pale grey-white at the prologue's opening (p5-01.png); (2) the pool's fog after the prologue (p5-12.png, p5-13-play.png) is a soft grey wash: if a low fog bank would read better, it is `Act3._fog()` (three `FxBurst.mist` + `OmenFx.murk` 0.85): tell me what to call.
 - Text per the script: the intro cards already match §5 word for word; the I.5 tablet and the I.23 memory are the script's. Chapter I no longer names Milos (it is Kythira in m1 and the shadow chamber's lore); the shadow chamber's memory no longer tells of the stolen mirror (Chapter IV's): "He hid every mirror in the house. / She found her face in a cup of still water."
+
+2026-11-06 | W4 -> A | W4 takes over from W3 (phase 6: feel, polish, QA). I see your Act 3 hooks in progress; I wire them as soon as you post.
+- **I will wire, when you post "ready" here** (from your act3_probe `_apply_hooks` / comments): `FogBank.make(act3, pool rect, water y)` in place of my three `FxBurst.mist` + murk 0.85 (I keep a light murk under it if you say so, `lift(4.5)` on the third fire, `set_on(false)` on a loaded open pool); `OmenFx.rune_wake` per Gate plinth rune as it lights; `OmenFx.gate_sink` for the Gate of the Four AND the Veiled Way gate as they sink; `FxBurst.crumble` where you want it (bridge spans?); `Dress.beyond_colossus(level.beyond, at, h, yaw)` in place of the primitive statue in `Level._beyond`. Tell me the `at` / height / yaw you want for the colossus; I own the shot's camera (`chapter.hand_in_the_water`, `c.cam(P + 49.0, ...)`) and will frame the second shrine's pillar with it.
+- **Flicker sweep (done, mine):** balustrade posts shared where two rails meet; rail / coping / base of a z-running balustrade 7 mm above an x-running one; kerb ends that butt into another space stop a few mm short; underside cones and wall cornices jittered; a few v1 wing slabs trimmed. zfight over every space centre + W3's spots now finds only YOURS:
+  - `Dress_atrium/Dress_main`: two pieces' tops coplanar at y 0.9, at (5.87, 0.9, -7.14) and (9.03, 0.9, 1.3);
+  - `Dress_balcony/Dress_main`: a sliver at (17.55, 2.29, -6.29);
+  - `Props/Prop_statue_veiled_mourning_1`: internal, at (-18.94, 1.15, -15.42) (the GLB itself; ignore if invisible).
+- Six Scales rods stood at the world origin (the Atrium's centre, 0.5 m up) until the Scales first posed them: hidden now until posed (in case you saw a thin post in Atrium shots).
+
+2026-11-06 | W4 -> A | phase 6: your committed Act 3 hooks are WIRED (as your act3_probe applies them); the "beyond" re-framed; asks
+Shots (real game, 390x844, the cinematic frozen at exact times): dev/shots/w4-cine-27.5.png (writing), -33.5 (eye), -50.0 (memory, now before the last look), -58.5 (the beyond); every space: dev/shots/w4-qa-01..19-*.png.
+- **Wired:**
+  - `FogBank.make(act3, Map2.WATER[0] rect, -0.42)` over the Pool of Halves in place of my mists, faded in over 3 s via `fog._set_k` (please give me a public `fade_in(seconds)` and I switch), murk 0.4 under it (your probe's), `lift(4.5)` on the third fire, freed during the prologue and on a loaded open pool.
+  - `OmenFx.gate_sink`: the Gate of the Four (`dp, RIGHT, 3.7, 3.4, FORWARD`) AND the Veiled Way gate (`dp, RIGHT, 3.0, 3.2`, beyond = the side away from her), plus a `juice.ring` 5 m at the Veiled Way's foot.
+  - `OmenFx.rune_wake(chapter, rune pos, BACK, 0.7)` as each Gate rune lights in the hold; `FxBurst.crumble` off both edges of the lurching span (1.3) and where each parapet piece breaks (0.6).
+  - `Dress.beyond_colossus(level.beyond, at, 18.0, -30.0)` in place of the primitive statue. `at` is placed BY SCREEN (`Level.BEYOND_COLOSSUS` = [screen right of the second shrine 4.2 m, screen up 1.5 m, foot on the cloud line y -6, height 18, yaw -30]): tune those five numbers freely.
+- **What the "pale blob" really was:** (1) `ui.silhouette` of the memory overlay (shown with "The veil was his, not mine." right over the last look; the memory now comes at P+44.5 as her reflection walks away); (2) a `_far_ruins` statue pushed out to just behind the Shrine (removed: your colossus stands in for it); (3) the W.7 Observer, fogged pale, under the camera's slide out and back (hidden from P+48.9 to P+59.3). The last look now slides onto the second shrine (its pillar at full fade) and holds 3 s.
+- **Your look, please:** the beyond colossus reads pink-washed in that fog (w4-cine-58.5.png): a touch darker or a cooler cloth at that range would set it apart from the sky; a faint dark parallelogram floats left of its head (a FarestRuins top?).
+- **The Atrium's turned head (an open item):** the Atrium's plinth statues are merged into your `Dress_main`. If you can give me ONE of them (a "row ... plinth" bust, say the north row's middle) as its own Node3D (e.g. `Dress_atrium/TurnedHead`, pivot at the neck), I bring back v1's life effect (it turns toward where you came in when you return; Life._update_head).
+- **zfight**: as in my last entry, only your three (Dress_atrium x2, Dress_balcony sliver, statue_veiled_mourning internal).
+
+2026-11-07 | A -> W3 | Act 3 polished in place: the pool's fog bank and its lift, the bridge, the Gate, the Shrine, the final image; contacts; WorldGeo
+Shots, in place, BEFORE | AFTER (my hooks applied by `dev_fx/act3_probe.tscn --tag=after`, exactly as below): dev/shots/v2-a3-pool-fog.png, dev/shots/v2-a3-bridge-gate.png, dev/shots/v2-a3-shrine.png.
+- **Tests:** your overlap test, with my Dress changes: OVERLAP PASS (0 hits).
+
+**1. pool_halves:** refit, and it places nothing. Its recipe now keeps your rims' turning band clear (a recipe can declare its own kept rects now). What is left of the rims is a 0.4 m strip, too thin for any piece. **Leave P's recipe OFF:** the pool's identity is its fog bank (2).
+
+**2. The pool's fog: FogBank (scripts/fx/fog_bank.gd, live class).** A rolling bank lies on the water:
+- three stacked sheets of billows, lit on their shoulders and shadowed in their hollows, so it reads as a mass, not a haze;
+- low banks standing in the water;
+- drifting wisps;
+- a slow crimson glow breathing deep in it (something waits there).
+
+**Lift:** a ragged clearing rolls back from her side (east), the billows thin, and a sheen of light runs west over the uncovered water. Then your stones rise. Low tier: one sheet, no standing banks.
+
+In `act3.gd _fog`, in place of your three `FxBurst.mist` and `murk 0.85`:
+```gdscript
+var fog_bank: FogBank
+# on:
+if fog_bank == null:
+	var e: Array = Map2.WATER[0]
+	fog_bank = FogBank.make(self, Map2.wr(e[0], e[1], e[2], e[3]), float(e[4]))
+OmenFx.murk(wm, 0.4, 0.01 if instant else 3.0)          # (a lighter murk under it)
+# off:
+if is_instance_valid(fog_bank):
+	if instant: fog_bank.queue_free()
+	else: fog_bank.lift(4.5)
+fog_bank = null
+OmenFx.murk(wm, 0.0, 0.01 if instant else 4.0)
+```
+
+**3. I.21 the bridge:** `FxBurst.crumble(parent, pos, strength)` (new). Tumbling marble chunks, grit and a falling grey dust plume, into the sea. Your 2 lines:
+- in `_lurch`, after your dust: `for sz in [-1.25, 1.25]: FxBurst.crumble(game.juice, p + Vector3(0, -0.05, sz), 1.3)` (off both edges of the deck; your x ±0.95 is along the bridge, under the deck where the camera cannot see);
+- in `_fall`, at its start: `FxBurst.crumble(game.juice, n.global_position + Vector3(0, -0.1, 0), 0.6)`.
+
+**4. I.22 the Gate of the Four:**
+- **Each rune as it wakes:** `OmenFx.rune_wake(parent, pos, normal)` gives a rose-white flash with a four-point flare on its face, crimson sparks and twinkles. In `_update_four`, where a plinth's rune turns on (off → on):
+```gdscript
+OmenFx.rune_wake(self, four_pos(i) + Vector3(0, Map2.PLINTH_H * 0.5, 0.505), Vector3.BACK)
+```
+- **The sinking:** `OmenFx.gate_sink(...)` keeps grinding dust and grit along the gate's foot as it goes down, and a crimson seam of light spills under it on the far side. In `open_four`, after your tween:
+```gdscript
+OmenFx.gate_sink(self, dp, Vector3.RIGHT, 3.7, 3.4, Vector3.FORWARD)
+```
+
+**5. I.23 the Shrine (live, no call changes):**
+- **ΒΡΕΣ ΜΕ:** now drawn upright for the camera. The decal is 1/sin(pitch) deeper, so the letters stand at their true height on screen. The same applies to the eye, which is round on screen now.
+- **The eye and the writing:** the eye takes the writing away as it opens (it sinks out in 0.6 s): the two no longer overlap. Before, the eye opened over the letters.
+
+**6. The final image (the "beyond").** The pale blob is NOT the statue. It is `ui.gd`'s `Silhouette`, the 2D memory picture that `show_memory` draws over the view: a pale fill with a crimson outline, exactly what p4-o showed. It stays under the scene however the 3D is changed. Please:
+- `ui.show_memory`: drop the silhouette (`silhouette.visible = false`, or remove it): the line alone carries the memory.
+- **The camera misses its subject:** at P+54 your `c.cam(P + 49.0, ..., Level.SECOND_SHRINE.lerp(STAND, 0.62) + ...)` puts the second shrine off-screen (screen x -390 of 400 px). The old primitive colossus is off-screen too (x -715). Re-aim it at what you want seen.
+- **The colossus:** `Dress.beyond_colossus(parent, foot_on_the_cloud, height, yaw)` (new). The veiled Tripo figure, standing out of the cloud: pale veil folds, a crimson rim from behind carried through the fog. In my shot it stands where your camera looks:
+```gdscript
+Dress.beyond_colossus(level.beyond, foot, 28.0, -30.0)     # foot: e.g. the ground under screen (0.42, 0.36) of that shot, y -6
+```
+  It replaces the primitive statue in `Level._beyond` (the `cm` / `cmi` block). The three primitive veiled statues in `_far_ruins` (`sdef`) can be the same call, smaller (8-12 m).
+- **The Observer** gets its own lighter fog now (`observer_veil.gdshader`, fog_disabled with its own falloff): a darker veiled mass against the bright fog from afar, not a pale shape.
+
+**7. Overlap contacts: both gone; please remove your 2 whitelist entries.** Dress pieces now need a floor under their whole body, may never stand in water, and keep 8% clear of walls.
+- The gate_four pylon no longer fits by the gate wall and is left out.
+- N.1's column is not placed. N.1's `colonnade` now places nothing (the rect is ramp and water): switch it off, or give me a dry ledge.
+
+**8. WorldGeo:** `dev_fx/kit_ingame.gd` now uses `Props.WOOD`, `dev_fx/v2_fx_ingame.gd` uses 0.0.

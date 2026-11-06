@@ -280,7 +280,7 @@ func _build_crypt() -> void:
 	var pm := MB.new()
 	for pc in [Vector2(0.18, 0.18), Vector2(CRYPT.size.x - 0.18, 0.18), Vector2(0.18, CRYPT.size.y - 0.18), Vector2(CRYPT.size.x - 0.18, CRYPT.size.y - 0.18)]:
 		var q: Vector2 = CRYPT.position + pc
-		pm.box(Vector3(q.x, O.y + 1.3, q.y), Vector3(0.32, 2.6, 0.32), c)
+		pm.box(Vector3(q.x, O.y + 1.31, q.y), Vector3(0.32, 2.62, 0.32), c)          # (phase 6: into the vault, not flush with the wall tops)
 		game.level.ob_rect(Rect2(q.x - 0.17, q.y - 0.17, 0.34, 0.34))
 	game.puzzles.marble_instance(pm.commit(), self)
 	var rm := MB.new()
@@ -411,7 +411,7 @@ func apply_state() -> void:
 		var d := _door_node()
 		if d:
 			d.visible = true
-			d.position.y = O.y
+			d.position.y = O.y + float(Map2.DOORS[0][3])
 		plate_mat.set_shader_parameter("lit", 0.55)
 	if s["glass"]: open_gate(true)
 	else:

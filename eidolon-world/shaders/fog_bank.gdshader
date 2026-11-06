@@ -43,7 +43,8 @@ void fragment() {
 	float t = TIME * (0.6 + 0.3 * layer) + seed * 13.0;
 	vec2 q = wpos.xz;
 	vec2 drift = vec2(t * 0.07, -t * 0.035) * (1.0 + layer);
-	float n = fbm(q * (0.32 + 0.1 * layer) + drift + seed);
+	float fq = 0.75 + 0.25 * layer;
+	float n = fbm(q * fq + drift + seed);
 	float n2 = fbm(q * 0.9 - drift * 1.7 + 3.0);
 	// soft edges of the bank (a ragged margin)
 	float ex = min(q.x - rect.x, rect.z - q.x), ez = min(q.y - rect.y, rect.w - q.y);
@@ -64,12 +65,16 @@ void fragment() {
 		// shadowed hollows, so it reads as a mass, not a haze
 		float dens = layer < 0.25 ? smoothstep(0.0, 0.35, n * 0.6 + n2 * 0.4 + 0.15) : smoothstep(0.32, 0.7, n * 0.75 + n2 * 0.25);
 		a = dens * mix(0.97, 0.78, layer) * edge;
-		float lit = smoothstep(0.35, 0.8, n) * 0.7 + layer * 0.3;
-		c = mix(col_lo, col_hi, clamp(lit + 0.15 * (n2 - 0.5), 0.0, 1.0));
+		// billows: shaded by the slope of the noise toward the light (upper left on screen), so each roll has a lit
+		// shoulder and a shadowed hollow: it reads as a mass, not a flat haze
+		float ns = fbm((q + vec2(-0.18, -0.12)) * fq + drift + seed);
+		float slope = clamp(0.5 + (ns - n) * 5.5, 0.0, 1.0);
+		float lit = mix(slope, 0.5, 0.25) * (0.7 + 0.3 * layer) + layer * 0.2 + (n - 0.5) * 0.3;
+		c = mix(col_lo, col_hi, clamp(lit, 0.0, 1.0));
 		// something waits in it: a slow crimson glow deep in the lowest sheet
 		float pulse = 0.5 + 0.5 * sin(TIME * 0.55 + seed);
-		float g = (1.0 - layer) * glow * smoothstep(0.55, 0.9, vnoise(q * 0.18 + vec2(TIME * 0.02, 0.0) + 11.0)) * (0.35 + 0.35 * pulse);
-		c = mix(c, accent.rgb * 0.8, g * 0.55);
+		float g = (1.0 - layer) * glow * smoothstep(0.45, 0.85, vnoise(q * 0.18 + vec2(TIME * 0.02, 0.0) + 11.0)) * (0.35 + 0.35 * pulse);
+		c = mix(c, accent.rgb * 0.85, g * 0.8);
 	}
 	ALBEDO = c;
 	ALPHA = clamp(a * k * (1.0 - clear), 0.0, 0.95);

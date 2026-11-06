@@ -585,6 +585,7 @@ func slab(zone: String, r: Rect2, top: float, thick := 0.7, mat := 0.0, under :=
 	if under: underside(zone, r, top - thick)
 	mb(zone).group = ""
 
+var _cone_n := 0
 func underside(zone: String, r: Rect2, y: float) -> void:
 	var m := mb(zone)
 	m.tag = "floor"
@@ -596,7 +597,10 @@ func underside(zone: String, r: Rect2, y: float) -> void:
 		var c := Vector2(rng.randf_range(inset.position.x, inset.end.x), rng.randf_range(inset.position.y, inset.end.y))
 		var rt := minf(r.size.x, r.size.y) * rng.randf_range(0.22, 0.42)
 		var h := rng.randf_range(1.8, 4.8) * clampf(rt, 0.6, 2.0)
-		m.cyl(Vector3(c.x, y - 0.6 - h * 0.5, c.y), rt, rt * 0.12, h, C(0.5), 7, Basis(Vector3.UP, rng.randf() * TAU))
+		# (phase 6: each cone's top a hair apart from its neighbours', from its own spot: two never meet in one plane)
+		_cone_n += 1
+		var jy := float((_cone_n * 7) % 13) * 0.0025
+		m.cyl(Vector3(c.x, y - 0.6 - jy - h * 0.5, c.y), rt, rt * 0.12, h, C(0.5), 7, Basis(Vector3.UP, rng.randf() * TAU))
 	m.tag = ""
 
 func box(zone: String, center: Vector3, size: Vector3, mat := 0.25, occ := false, basis := Basis()) -> void:
@@ -622,7 +626,7 @@ func wall(zone: String, r: Rect2, y0: float, y1: float, occ := true) -> void:
 	# (v0.9.1, the flicker hunt: walls meeting at a corner had their mouldings at exactly the same heights:
 	# coplanar tops and faces fighting. Each wall's mouldings sit a hair (0..4 mm) apart from its neighbour's)
 	_wall_n += 1
-	var jit := float(_wall_n % 7) * 0.002
+	var jit := float(_wall_n % 7) * 0.003          # (phase 6: 3 mm steps: 2 mm sat on the flicker line)
 	# a moulded coping along the top, and a thinner cornice line beneath it
 	box(zone, Vector3(r.get_center().x, y1 + 0.06 + jit, r.get_center().y), Vector3(r.size.x + 0.12 + jit, 0.12, r.size.y + 0.12 + jit), 0.25, occ)
 	box(zone, Vector3(r.get_center().x, y1 - 0.28 + jit, r.get_center().y), Vector3(r.size.x + 0.07 + jit, 0.07, r.size.y + 0.07 + jit), 0.25, occ)
@@ -721,6 +725,17 @@ func _branch(m: MB, r: RandomNumberGenerator, p: Vector3, dir: Vector3, L: float
 		nd.y = maxf(nd.y, -0.1)
 		_branch(m, r, tip - up * 0.02, nd, L * r.randf_range(0.55, 0.75), rad * 0.62, depth - 1, mat)
 
+var _posts := {}
+## (phase 6) a balustrade post already stands within 8 cm of this one (two posts at one corner would fight); else note it
+func _post_near(p: Vector3) -> bool:
+	var k := Vector3i(roundi(p.x * 10.0), roundi(p.y * 10.0), roundi(p.z * 10.0))
+	for dx in [-1, 0, 1]:
+		for dz in [-1, 0, 1]:
+			for q in _posts.get(k + Vector3i(dx, 0, dz), []):
+				if absf((q as Vector3).y - p.y) < 0.05 and Vector2(q.x - p.x, q.z - p.z).length() < 0.08: return true
+	if not _posts.has(k): _posts[k] = []
+	(_posts[k] as Array).append(p)
+	return false
 func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
 	_grp(zone, "rail")
 	var d := b - a
@@ -733,20 +748,27 @@ func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
 		g0 = rng.randf_range(0.25, 0.55)
 		g1 = g0 + rng.randf_range(0.15, 0.3)
 	var segs := [[0.0, minf(g0, 1.0)], [minf(g1, 1.0), 1.0]] if g0 < 1.0 else [[0.0, 1.0]]
+	# (phase 6) a rail along z stands 7 mm higher than one along x: where two meet at a corner (always one of each)
+	# their rails, copings and bases are never one plane (the kerbs' own 4 mm steps per side stay 3 mm clear of it)
+	var bj := 0.007 if absf(d.y) > absf(d.x) else 0.0
 	for sg in segs:
 		var s0: float = sg[0]; var s1: float = sg[1]
 		if s1 - s0 < 0.02: continue
 		var mid := a + d * ((s0 + s1) * 0.5)
 		var sl := L * (s1 - s0)
-		box(zone, Vector3(mid.x, y + 0.5, mid.y), Vector3(sl, 0.1, 0.22), 0.25, false, B)
-		box(zone, Vector3(mid.x, y + 0.565, mid.y), Vector3(sl, 0.03, 0.26), 0.25, false, B)      # (v0.9.1: ON the rail, not 5 mm into it: their ends were coplanar slivers)
+		# (phase 6: each balustrade's rail and coping a few mm higher than the last one's: where two meet at a corner
+		# their copings are no longer one plane)
+		box(zone, Vector3(mid.x, y + 0.5 + bj * 0.5, mid.y), Vector3(sl, 0.1 + bj, 0.22), 0.25, false, B)
+		box(zone, Vector3(mid.x, y + 0.565 + bj, mid.y), Vector3(sl, 0.03, 0.26), 0.25, false, B)      # (v0.9.1: ON the rail, not 5 mm into it: their ends were coplanar slivers)
 	var mid2 := (a + b) * 0.5
-	box(zone, Vector3(mid2.x, y + 0.06, mid2.y), Vector3(L, 0.12, 0.2), 0.25, false, B)
+	box(zone, Vector3(mid2.x, y + 0.06 + bj * 0.5, mid2.y), Vector3(L, 0.12 + bj, 0.2), 0.25, false, B)
 	var posts := maxi(1, int(L / 0.42))
 	for i in posts + 1:
 		var k := float(i) / posts
 		if k > g0 + 0.03 and k < g1 - 0.03: continue
 		var q := a + d * k
+		# (phase 6, the flicker sweep) where two balustrades meet end to end they share ONE post (two would be coplanar)
+		if _post_near(Vector3(q.x, y, q.y)): continue
 		mb(zone).cyl(Vector3(q.x, y + 0.27, q.y), 0.055, 0.075, 0.42, C(0.25), 6)
 	if g0 < 1.0:
 		var fp := a + d * ((g0 + g1) * 0.5)
@@ -779,12 +801,16 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 		var inset := 0.008 if i % 2 == 1 else 0.0
 		if axis == 0:
 			var x0 := r.position.x + k0 * L; var x1 := r.position.x + k1 * L
-			c = Vector3((x0 + x1) * 0.5, (top + y_lo - 0.8) * 0.5, r.get_center().y)
-			s = Vector3(x1 - x0 + 0.01, top - y_lo + 0.8, r.size.y - inset)
+			# (phase 6: the 1 cm overlap between steps stays inside the stair: its end steps no longer run 5 mm past it,
+			# into the plane of the floor it meets)
+			var a0 := maxf(x0 - 0.005, r.position.x); var a1 := minf(x1 + 0.005, r.end.x)
+			c = Vector3((a0 + a1) * 0.5, (top + y_lo - 0.8) * 0.5, r.get_center().y)
+			s = Vector3(a1 - a0, top - y_lo + 0.8, r.size.y - inset)
 		else:
 			var z0 := r.position.y + k0 * L; var z1 := r.position.y + k1 * L
-			c = Vector3(r.get_center().x, (top + y_lo - 0.8) * 0.5, (z0 + z1) * 0.5)
-			s = Vector3(r.size.x - inset, top - y_lo + 0.8, z1 - z0 + 0.01)
+			var b0 := maxf(z0 - 0.005, r.position.y); var b1 := minf(z1 + 0.005, r.end.y)
+			c = Vector3(r.get_center().x, (top + y_lo - 0.8) * 0.5, (b0 + b1) * 0.5)
+			s = Vector3(r.size.x - inset, top - y_lo + 0.8, b1 - b0)
 		mb(zone).tag = "floor"
 		box(zone, c, s, 0.0, occ)          # (occ: a high stair's flank fades as she passes behind it, as walls do)
 		mb(zone).tag = ""
@@ -844,27 +870,23 @@ func _beyond() -> void:
 	_col(m, c5 + BEYOND_RIGHT * -1.0, 3.0, 0.24)
 	_col(m, c5 + BEYOND_RIGHT * 1.0, 3.0, 0.24)
 	m.box(c5 + Vector3(0, 3.3, 0), Vector3(2.9, 0.4, 0.7), C(0.25), Basis(Vector3.UP, atan2(-BEYOND_RIGHT.x, -BEYOND_RIGHT.z) + PI * 0.5))
-	# far away, a colossal veiled statue rising out of the cloud
 	var mi := MeshInstance3D.new()
 	mi.mesh = m.commit()
 	mi.material_override = marble_mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	beyond.add_child(mi)
-	var cm := MB.new()
-	var cc: Vector3 = at.call(40.0, 3.0, -6.0)
-	var s := 5.0
-	cm.cyl(cc + Vector3(0, 0.62 * s, 0), 0.25 * s, 0.36 * s, 1.24 * s, Color(0, 0, 0), 14)
-	cm.cyl(cc + Vector3(0, 1.5 * s, 0), 0.27 * s, 0.23 * s, 0.56 * s, Color(0, 0, 0), 14)
-	cm.cyl(cc + Vector3(0, 1.94 * s, 0), 0.14 * s, 0.25 * s, 0.34 * s, Color(0, 0, 0), 14)
-	cm.sphere(cc + Vector3(0, 2.15 * s, 0), Vector3(0.165, 0.2, 0.17) * s, Color(0, 0, 0), 14, 7)
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.62, 0.63, 0.64)
-	var cmi := MeshInstance3D.new()
-	cmi.mesh = cm.commit()
-	cmi.material_override = mat
-	cmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	beyond.add_child(cmi)
+	# far away, a colossal veiled figure rising out of the cloud (A's Dress.beyond_colossus, the Observer's veiled
+	# Tripo figure). (phase 6) The camera never turns, so "far" is placed on SCREEN: up and to the right of the second
+	# shrine in the cinematic's last shot, then pushed down its view ray to the cloud line, behind everything and deep
+	# in the fog (it was a pale primitive standing between the camera and the shrine)
+	var cb := Framing.basis()
+	var fwd := -cb.z
+	var on_screen := c2 + cb.x * BEYOND_COLOSSUS[0] + cb.y * BEYOND_COLOSSUS[1]
+	var cat := on_screen + fwd * ((BEYOND_COLOSSUS[2] - on_screen.y) / fwd.y)
+	Dress.beyond_colossus(beyond, cat, BEYOND_COLOSSUS[3], BEYOND_COLOSSUS[4])
+
+## the beyond's colossus: [screen right of the second shrine (m), screen up (m), cloud line y (its foot), height, yaw (deg)]
+const BEYOND_COLOSSUS := [4.2, 1.5, -6.0, 18.0, -30.0]
 
 func _far_ruins() -> void:
 	# huge drowned columns and statues around the complex, unlit and swallowed by the fog
@@ -880,7 +902,9 @@ func _far_ruins() -> void:
 		st.cyl(Vector3(p.x, top - 15.0, p.y), rad * 0.92, rad, 30.0, Color(0, 0, 0), 12, Basis(Vector3.BACK, r.randf_range(-0.06, 0.06)))
 		if r.randf() < 0.4:
 			st.box(Vector3(p.x, top + 0.3, p.y), Vector3(rad * 2.6, 0.6, rad * 2.6), Color(0, 0, 0))
-	for sdef in [[Vector2(-15, -6), 2.2], [Vector2(38, -14), 2.6], [Vector2(10, -48), 3.0]]:
+	# (phase 6: the one by (-15, -6) was pushed out to just behind the First Shrine: a pale bell over every shot there and
+	# over the cinematic's last look; A's veiled colossus stands in the cloud beyond instead, Level.BEYOND_COLOSSUS)
+	for sdef in [[Vector2(38, -14), 2.6], [Vector2(10, -48), 3.0]]:
 		var p: Vector2 = _far_from_walks(FAR_C + (sdef[0] - Vector2(10.0, -20.0)) * 1.5, 10.0); var s: float = sdef[1]
 		st.cyl(Vector3(p.x, -6.0, p.y), 0.55 * s, 0.95 * s, 4.2 * s, Color(0, 0, 0), 12)
 		st.sphere(Vector3(p.x, -6.0 + 2.6 * s, p.y), Vector3(0.42, 0.52, 0.42) * s, Color(0, 0, 0), 10, 5)

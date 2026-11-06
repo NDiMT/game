@@ -55,7 +55,8 @@ static func fade_out(node: Node3D, seconds := 0.8) -> void:
 	if not is_instance_valid(node): return
 	var tw := node.create_tween()
 	var m := (node as GeometryInstance3D).material_override as ShaderMaterial if node is GeometryInstance3D else null
-	if m: tw.tween_method(func(v: float) -> void: m.set_shader_parameter("k", v), float(m.get_shader_parameter("k")), 0.0, seconds)
+	var k0 = m.get_shader_parameter("k") if m else null
+	if m: tw.tween_method(func(v: float) -> void: m.set_shader_parameter("k", v), float(k0) if k0 != null else 1.0, 0.0, seconds)
 	else: tw.tween_interval(seconds)
 	tw.tween_callback(node.queue_free)
 
@@ -171,6 +172,7 @@ static func write_in_water(parent: Node, pos: Vector3, yaw := 0.0, text := "ΒΡ
 	m.set_shader_parameter("n_segs", arr.size())
 	m.set_shader_parameter("progress", 0.0)
 	var tw := mi.create_tween()
+	mi.set_meta("tw", tw)
 	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("progress", v), 0.0, total + 0.01, seconds)
 	tw.tween_interval(linger)
 	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("k", v), 1.0, 0.0, 1.6)
@@ -190,6 +192,17 @@ static func glass_eye(parent: Node, pos: Vector3, size := 1.4, open_s := 1.6, ho
 	var m := mi.material_override as ShaderMaterial
 	m.set_shader_parameter("aspect", 1.0 / 0.62)          # (round on screen: the iris is a circle as you see it)
 	m.set_shader_parameter("open", 0.0)
+	# (the words she wrote sink away as the eye opens under them: the two never overlap)
+	for n in parent.get_children():
+		var w := n as MeshInstance3D
+		if w == null or w == mi or not (w.material_override is ShaderMaterial): continue
+		var wm := w.material_override as ShaderMaterial
+		if wm.shader == SH and int(wm.get_shader_parameter("kind")) == WRITING and w.global_position.distance_to(pos) < 2.0:
+			if w.has_meta("tw") and is_instance_valid(w.get_meta("tw")): (w.get_meta("tw") as Tween).kill()
+			var k0 = wm.get_shader_parameter("k")
+			var ft := w.create_tween()
+			ft.tween_method(func(v: float) -> void: wm.set_shader_parameter("k", v), float(k0) if k0 != null else 1.0, 0.0, 0.6)
+			ft.tween_callback(w.queue_free)
 	var tw := mi.create_tween()
 	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("open", v), 0.0, 1.0, open_s).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(hold_s)
@@ -200,30 +213,31 @@ static func glass_eye(parent: Node, pos: Vector3, size := 1.4, open_s := 1.6, ho
 # ------------------------------------------------------------------------------------------------ I.22 the Gate of the Four
 ## one of the Four's runes wakes (call it for each in turn, ~0.6 s apart): a flash on its carved face with a flare,
 ## twinkles round it. `normal` = the rune face's outward normal.
-static func rune_wake(parent: Node, pos: Vector3, normal := Vector3.BACK, size := 0.9) -> void:
+static func rune_wake(parent: Node, pos: Vector3, normal := Vector3.BACK, size := 2.4) -> void:
 	var fl := decal(parent, pos + normal.normalized() * 0.03, FLASH, Vector2(size, size), normal)
 	var fm := fl.material_override as ShaderMaterial
 	var tw := fl.create_tween()
 	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 0.0, 1.0, 0.1)
-	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 1.0, 0.25, 0.9).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(0.6)
-	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 0.25, 0.0, 1.2)
+	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 1.0, 0.6, 1.2).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(1.0)
+	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 0.6, 0.0, 1.4)
 	tw.tween_callback(fl.queue_free)
 	var g := FxBurst.glints(parent, pos + normal.normalized() * 0.1)
 	g.get_tree().create_timer(1.4).timeout.connect(g.stop)
+	FxBurst.sparks(parent, pos + normal.normalized() * 0.15)            # (a crimson spray as it catches)
 
 ## the gate sinks into the floor (the Four answered): dust rolling out along its foot, grit, and light from beyond
 ## spilling under it as it goes: a crimson seam on the floor that widens and fades. `base` = the middle of the gate's
 ## foot on the floor, `along` its width direction, `width` (m), `seconds` how long it sinks; `beyond` points through it.
 static func gate_sink(parent: Node, base: Vector3, along: Vector3, width: float, seconds := 3.4, beyond := Vector3.FORWARD) -> void:
 	var a := along.normalized()
-	var n := 4 if high else 2
+	var n := 5 if high else 2
 	for i in n:
 		var t := (float(i) + 0.5) / n - 0.5
 		var p := base + a * t * width
-		parent.get_tree().create_timer(0.15 * i).timeout.connect(func() -> void:
-			FxBurst.dust(parent, p + Vector3(0, 0.3, 0), 1.1, base.y)
-			FxBurst.crumble(parent, p + Vector3(0, 0.05, 0), 0.4))
+		for rep in 3:                                       # (it keeps grinding down: dust and grit all the way)
+			parent.get_tree().create_timer(0.15 * i + rep * seconds * 0.3).timeout.connect(func() -> void:
+				FxBurst.crumble(parent, p + Vector3(0, 0.3, 0), 0.8))
 	# the seam of light along its foot, on the far side's floor
 	var seam := decal(parent, base + beyond.normalized() * 0.35 + Vector3(0, 0.02, 0), FLASH, Vector2(width * 1.2, 1.2), Vector3.UP, atan2(-a.z, a.x))
 	var sm := seam.material_override as ShaderMaterial
