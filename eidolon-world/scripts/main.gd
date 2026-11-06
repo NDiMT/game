@@ -493,6 +493,8 @@ func _process(dt: float) -> void:
 				bridge_focus -= dt
 				off = (Puzzles.PLATE_POS - p) * 0.7         # watch her plate answer
 				off.y = 0.0
+			elif area == "gate_four" and chapter.four_lean(p) != Vector3.ZERO:
+				off = chapter.four_lean(p)                         # (phase 6) the Gate of the Four: the hold and the sinking in frame
 			elif area == "hollow_walk" and not chapter.state["hollow_done"] and OurSteps.lean(p) != Vector3.ZERO:
 				off = OurSteps.lean(p)                             # (v0.9.2) Our Steps: both rooms whole on the screen
 			elif chapter.points and chapter.points.lean != Vector3.ZERO:

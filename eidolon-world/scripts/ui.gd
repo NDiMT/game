@@ -436,9 +436,12 @@ func show_rune(design: int, numeral: int) -> void:
 	_card_tw.tween_interval(3.6)
 	_card_tw.tween_property(card, "modulate:a", 0.0, 1.2)
 
-func show_memory(line: String, hold: float) -> void:
+## `figure`: the veiled silhouette drawn with the line (phase 6: not over the First Shrine's last look, where its pale
+## fill read as a blank statue across the beyond: the line alone carries that memory)
+func show_memory(line: String, hold: float, figure := true) -> void:
 	memory_line.text = line
 	memory_line.visible_ratio = 1.0
+	silhouette.visible = figure
 	silhouette.reveal = 0.0
 	var tw := create_tween()
 	tw.tween_property(memory, "modulate:a", 1.0, 2.2).set_trans(Tween.TRANS_SINE)

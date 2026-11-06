@@ -277,7 +277,7 @@ static func _court(L: LvOff) -> void:
 	L.box(z, Vector3(16.98, 4.15, -26.68), Vector3(0.3, 4.3, 0.3), 1.0, true)
 	L.box(z, Vector3(16.98, 4.15, -21.42), Vector3(0.3, 4.3, 0.3), 1.0, true)
 	L.box(z, Vector3(16.98, 6.42, -24.05), Vector3(0.34, 0.3, 5.62), 1.0, true)
-	L.box(z, Vector3(16.98, 2.06, -24.05), Vector3(0.28, 0.12, 5.4), 1.0, false)          # (phase 6: 1 cm in from the posts' faces)
+	L.box(z, Vector3(16.98, 2.06, -24.05), Vector3(0.26, 0.12, 5.4), 1.0, false)          # (phase 6: 2 cm in from the posts' faces; the glass stands 1 cm before it)
 	L.ob_rect(R(16.8, -26.85, 17.2, -21.25))
 	L.balustrade(z, Vector2(16.95, -21.3), Vector2(16.95, -18.6), 2.0)          # (v2: no drawbridge: the High wing is its own)
 	# v0.5: the mural wall (her half-erased portrait; its middle is a door) and the Mist Maze beyond

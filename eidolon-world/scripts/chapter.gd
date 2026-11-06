@@ -2561,7 +2561,22 @@ func wait_still() -> void:
 	waiting = FOUR_HOLD + 1.4
 	game.player.locked = true
 
+## (phase 6) the Gate of the Four is wider than the screen: from the empty plinth the gate stands 8 m to the left, two of
+## the runes off the frame. While she holds, the camera leans (slides, never turns) toward the plinths; while the gate
+## sinks, onto the gate, as the Eidolon Plate's answer does (main's camera rules)
+var _four_sink_t := 0.0
+const FOUR_GATE_C := Vector3(-45.0, 0.0, 13.0)
+func four_lean(p: Vector3) -> Vector3:
+	if _four_sink_t > 0.0:
+		var o := (Map2.O + FOUR_GATE_C - p) * 0.75
+		o.y = 0.0
+		return o
+	if not state["four"] and hub != null and hub.beacons_all() and on_four_plinth():
+		return Framing.basis().x * -3.0          # (3 m to screen-left: she stays in frame, the runes and the gate's edge come in)
+	return Vector3.ZERO
+
 func _update_four(dt: float) -> void:
+	_four_sink_t = maxf(0.0, _four_sink_t - dt)
 	if waiting > 0.0:
 		waiting -= dt
 		if waiting <= 0.0 or state["four"]:
@@ -2593,7 +2608,7 @@ func _update_four(dt: float) -> void:
 		four_mats[i].set_shader_parameter("lit", 1.0 if on else 0.15)
 		# (phase 6) each rune that wakes in the hold flares (A's OmenFx.rune_wake)
 		if on and not _four_rune_on[i] and four_hold > 0.0:
-			OmenFx.rune_wake(self, four_pos(i) + Vector3(0, Map2.PLINTH_H * 0.5, 0.505), Vector3.BACK, 0.7)
+			OmenFx.rune_wake(self, four_pos(i) + Vector3(0, Map2.PLINTH_H * 0.5, 0.505), Vector3.BACK)
 			game.sfx.play("chime", -16.0, 0.9 + 0.08 * i)
 		_four_rune_on[i] = on
 	if four_hold >= FOUR_HOLD: open_four(false)
@@ -2609,6 +2624,7 @@ func open_four(instant: bool) -> void:
 		return
 	event.emit("solve", "gate_four")
 	event.emit("four_open", null)
+	_four_sink_t = 5.0
 	var tw := create_tween()
 	tw.tween_method(func(v: float) -> void: four_ring.set_shader_parameter("lit", v), 1.0, 0.0, 2.0)
 	if d == null: return
@@ -2866,6 +2882,7 @@ func apply_state() -> void:
 	lift_h = 0.0 if state["scales"] else 1.0          # (v1.0 M3: it waits at the top until the balance is won)
 	_lift_goal = lift_h
 	four_hold = 0.0
+	_four_sink_t = 0.0
 	waiting = 0.0
 	if state["four"]: open_four(true)
 	else:
@@ -3146,9 +3163,8 @@ func hand_in_the_water(c: Cinematic) -> void:
 		puzzles.shrine_light.light_energy = lerpf(0.7, 2.2, k))
 	c.anim(P + 49.0, 7.0, func(k: float) -> void: w.set_awaken(k))
 	c.anim(P + 50.0, 3.0, func(k: float) -> void: puzzles.far_pillar.set_shader_parameter("fade", lerpf(0.35, 1.0, k)))          # (phase 6: the pillar the last look is framed on)
-	# (phase 6: the memory and its veiled silhouette come as her reflection walks away, not over the last look: the
-	# silhouette's pale bell lay across the beyond, read as a blank statue)
-	c.at(P + 44.5, func() -> void: g.ui.show_memory(Game.MEMORY_LINE, 2.0), true)      # (QA P1-9: kept on a skip)
+	# (phase 6: the line alone, over the last look: the memory's veiled silhouette was the pale bell across the beyond)
+	c.at(P + 49.5, func() -> void: g.ui.show_memory(Game.MEMORY_LINE, 3.0, false), true)      # (QA P1-9: kept on a skip)
 	c.at(P + 57.0, func() -> void:
 		g.ui.show_milestone(1, Game.SHRINES_TOTAL, 3.5)
 		g.sfx.play("bell_far", -12.0, 1.0))

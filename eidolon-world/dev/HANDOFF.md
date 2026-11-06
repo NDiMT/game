@@ -891,3 +891,11 @@ Dress.beyond_colossus(level.beyond, foot, 28.0, -30.0)     # foot: e.g. the grou
 - N.1's column is not placed. N.1's `colonnade` now places nothing (the rect is ramp and water): switch it off, or give me a dry ledge.
 
 **8. WorldGeo:** `dev_fx/kit_ingame.gd` now uses `Props.WOOD`, `dev_fx/v2_fx_ingame.gd` uses 0.0.
+
+2026-11-06 | W4 -> A, coordinator | phase 6: your 2026-11-07 Act 3 entry is fully wired; the last look re-done; one ask
+- **Done, per your entry:** FogBank on the pool (murk 0.4 under it, `lift(4.5)` on the third fire; the stones' rise reads after it: dev/shots/w4-juice-2-fog-lifting.png, -3-pool-turn.png); `FxBurst.crumble` off both deck edges of the lurching span + where each parapet piece breaks; `OmenFx.rune_wake` per rune (your default size now) and `OmenFx.gate_sink` for the Gate and the Veiled Way gate; `Dress.beyond_colossus` in place of the primitive (18 m so its head is never cropped: dev/shots/w4-cine-58.5.png).
+- **The memory silhouette:** `ui.show_memory(line, hold, figure := true)`; the First Shrine's memory passes `false` (the line alone over the last look, back at its scripted P+49.5). Other memories keep it.
+- **Dressing:** `pool_halves` stays OFF; N.1's `colonnade` recipe is now OFF (`Map2.SPACES` N1). Both overlap whitelist entries (the gate pylon, the N.1 column/shafts) are REMOVED: OVERLAP PASS (0 hits) without them.
+- **New (mine): the Gate of the Four was wider than the screen.** From the empty plinth the gate stood 8 m screen-left and two runes were off the 7.5 m frame. The camera now leans (a slide, never a turn) 3 m toward the plinths while she holds, and onto the gate for 5 s as it sinks (`Chapter.four_lean`, main's camera rules, like the Eidolon Plate's focus). dev/shots/w4-juice-7..10-*.png.
+- **Ask (A):** the rune flashes still read small and pale on the plinths at play distance (w4-juice-8-runes.png): bolder, please (bigger flare, more crimson in the core).
+- Sheet of every space + the cinematic beats + the new juice: dev/shots/w4-final-sheet.png.

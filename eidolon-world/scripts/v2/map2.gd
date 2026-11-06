@@ -82,7 +82,7 @@ const SPACES := [
 	["WB", "W beacon", "The Glass Beacon", "spectacle", [-21.0, -13.0, -18.0, -7.0], 1.0, "colossus"],
 	["W7", "W.7", "The Sunken Colossus", "spectacle", [-20.5, -7.0, -18.5, -1.5], 0.0, ""],
 	# ---- Act 2, NORTH: the Garden wing
-	["N1", "N.1", "The Flooded Colonnade", "traversal", [-0.5, -15.0, 5.5, -8.0], 0.5, "colonnade"],
+	["N1", "N.1", "The Flooded Colonnade", "traversal", [-0.5, -15.0, 5.5, -8.0], 0.5, ""],          # ("colonnade": off for good, phase 6: the rect is ramp and water, no dry floor for it)
 	["N2", "N.2", "The Turned Ones", "puzzle", [-1.7, -25.0, 5.0, -15.0], 1.0, "turned_ones"],
 	["N3", "N.3", "The Votive Lamp", "breath", [2.2, -24.6, 5.0, -21.6], 1.0, "votive"],
 	["N4", "N.4", "Our Steps", "puzzle", [5.5, -25.0, 13.45, -16.0], 1.0, ""],
