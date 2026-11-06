@@ -770,3 +770,20 @@ PassThrough.mirror(chapter, Map2.GW + Vector3(0.6, 2.5, -20.46), Vector3.BACK, s
 **Waiting on:**
 - W3 posting that the Act 3 spaces and the Shrine (I23) are in: then I polish the Shrine finale (ΒΡΕΣ ΜΕ, the eye) and the bridge / Gate in place.
 - The satchel map (scripts/fx/map_view.gd) for the new world: next on my list. I will re-draw it from `tests/map2_dump.gd` with `Map2.key_of_region()` names.
+
+2026-11-06 | A -> W3 | the satchel map is the NEW Chapter I (live); please drop the old seal icons
+Shot (in game, EIDOLON_V2=1): dev/shots/v2-satchel-map.png (explored so far | all, three Beacons lit).
+- **Map textures:** assets/textures/map/* are now drawn from the v2 world by `dev_rig/tools/make_map2.py` (same parchment and ink as v1). The layout comes from `dev_rig/tools/map2_layout.tscn`, which dumps every walk region with its Map2 space, the spaces, the water, the Beacons and the Observer.
+  - Regenerate after a layout change: `EIDOLON_V2=1 godot --headless --path . res://dev_rig/tools/map2_layout.tscn | grep ^MAP2LAYOUT | cut -c12- > layout2.json; python3 dev_rig/tools/make_map2.py layout2.json assets/textures/map`.
+  - The v1 textures are backed up in my scratch.
+- **What it shows:** the three wings as titled districts, the Atrium, the Waking Pool, each beat's name, stairs hatched, every water sheet waved, the Observer drawn in the inlet, and each Beacon as a brazier.
+  - Labels never overlap; the in-between spaces carry no label.
+  - Everything is revealed region by region, as before. Your `see_region` keeps working: the region names are the level's walk regions (V2_<space> and the wings' v1 room names). `reveal_area()` now takes a Map2 space id ("W3").
+- **Lit Beacons on the map:** `map.set_beacon("W" | "N" | "E", lit)` (MapView). A lit Beacon's brazier is inked crimson with a slow crimson glow, shown only once its space is revealed.
+- **Please, in scripts/satchel.gd:**
+  - `_build` (≈ line 108): drop the `seal_marks` loop (the old veil_seal icons; one is drawn as a crimson blob over the new brazier).
+  - `open_map` (≈ line 275): in place of its `for k in seal_marks` block,
+```gdscript
+for k in Hub.BEACON_POS: map.set_beacon(k, k in (game.chapter.state.get("beacons", []) as Array))
+```
+- Still waiting on your Act 3 post (I21 bridge, I22 Gate, I23 Shrine) to polish the bridge, the Gate and the Shrine finale in place.

@@ -42,6 +42,10 @@ func ok(label: String, pass_: bool, detail := "") -> void:
 func V(x: float, z: float) -> Array:
 	return [Map2.O.x + x, Map2.O.z + z]
 
+## (v2 phase 4) a point of the v1 waking pool's frame, where the Pool of Halves' grid now lies (Map2.GP)
+func PV(x: float, z: float) -> Array:
+	return [Map2.GP.x + x, Map2.GP.z + z]
+
 func P() -> Vector3:
 	return game.player.position
 
@@ -243,9 +247,9 @@ func _reach(goals: Array) -> Array:
 	var lv: Level = game.level
 	var st := 0.25
 	# (v2: the new world, from where she wakes)
-	var org := Vector2(Map2.O.x - 37.0, Map2.O.z - 70.0)
-	var nx := int(70.0 / st)
-	var nz := int(95.0 / st)
+	var org := Vector2(Map2.O.x - 54.0, Map2.O.z - 72.0)          # (phase 4: Act 3 reaches west to x -51)
+	var nx := int(88.0 / st)
+	var nz := int(98.0 / st)
 	var seen := {}
 	var w0 := Vector2(Map2.O.x + Map2.ROUTE[1][0], Map2.O.z + Map2.ROUTE[1][1])
 	var start := Vector2i(int((w0.x - org.x) / st), int((w0.y - org.y) / st))
@@ -391,124 +395,6 @@ func _plan() -> void:
 		ok("(v1.0 M3b) the satchel open: slots with icons, the chosen one's name and line; play paused under it",
 			game.satchel.is_open and game.satchel.slots.size() >= 1 and game.satchel.name_l.text != "" and game.satchel.line_l.text != "" and not game.controls.enabled, game.satchel.name_l.text)
 		game.satchel.close())
-	# (phase 3: the Pool of Halves is still the old world's, until Act 3 moves into the new one)
-	step_do(func() -> void: tp(0.0, 4.4, PI))
-	step_wait(0.5)
-
-	# ================================================================ 1. the waking pool
-	# glimpse 1: the pool reflection lags
-	step_do(func() -> void: tp(-0.3, 1.9, PI * 0.5))
-	step_wait(0.6)
-	step_do(func() -> void: walk_to(-0.3, -1.5); _lag_samples.clear())
-	step_until("walked past the pool", func() -> bool:
-		var r: Reflector = game.puzzles.pool_refl
-		if r.active and game.player.speed01 > 0.8:
-			var now := r.reflect_point(P())
-			_lag_samples.append(Vector2(now.x - r.puppet.global_position.x, now.z - r.puppet.global_position.z).length())
-		return not game.auto_target != Vector3.INF, 8.0)
-	step_do(func() -> void:
-		var lag := 0.0
-		for v in _lag_samples: lag = maxf(lag, v)
-		ok("pool reflection visible", _lag_samples.size() > 5, "samples=%d" % _lag_samples.size())
-		ok("glimpse 1: reflection lags (~0.42 s at walking speed)", lag > 0.8 and lag < 1.4, "lag distance %.2f m" % lag)
-		ok("glimpse 1 signalled", game.glimpses.get("lag", 0) >= 1))
-	# v0.7 "The Pool of Halves": a broken path of slabs; some exist only in the reflection (hers), four are
-	# real and turn on pivots. Turn yours until real and reflected make one unbroken path: hers become stone.
-	step_do(func() -> void:
-		# (a straight slab turned twice is the same slab: settings are compared by the shapes they make)
-		var shapes := {}
-		var best := 99
-		for sol in Chapter.pool_solutions():
-			var key := ""
-			var presses := 0
-			for i in 4:
-				var cs: String = Ch1Geo.rot_conn(Ch1Geo.POOL_REALS[i][1], int(sol[i]))
-				var arr := cs.split("")
-				arr.sort()
-				key += "".join(arr) + "|"
-				presses += posmod(int(sol[i]) - int(Ch1Geo.POOL_START[i]), 4)
-			shapes[key] = true
-			best = mini(best, presses)
-		ok("solver: exactly one arrangement of the four slabs makes the path whole", shapes.size() == 1, str(shapes.keys()))
-		ok("solver: the pool starts broken", not Ch1Geo.pool_path(Ch1Geo.POOL_START))
-		ok("solver: it takes more than one turn (at least %d presses)" % best, best > 1)
-		var single := false
-		for i in 4:
-			var tt: Array = Ch1Geo.POOL_START.duplicate()
-			tt[i] = (int(tt[i]) + 1) % 4
-			single = single or Ch1Geo.pool_path(tt)
-		ok("solver: no single turn makes it whole (no trivial path)", not single)
-		var info: PackedVector4Array = C().pool_mat.get_shader_parameter("arm_info")
-		var hers := 0
-		for v in info: hers += 1 if v.z > 0.5 else 0
-		ok("the water shows her slabs (reflection only) beside yours", int(C().pool_mat.get_shader_parameter("count")) == info.size() and hers == Ch1Geo.POOL_GHOSTS.size() * 2, "%d arms, %d hers" % [info.size(), hers])
-		var seams := true
-		for c in C().pool_pieces: seams = seams and (C().pool_pieces[c]["seams"] as Array).size() == (C().pool_pieces[c]["base"] as String).length()
-		ok("every slab carries glowing connector inlays", seams)
-		ok("her slabs are not in your world (no ground there)", not game.level.on_ground(Ch1Geo.cell_pos(Vector2i(4, 2))) and not (C().pool_pieces[Vector2i(4, 2)]["node"] as Node3D).visible)
-		ok("no waiting mechanic: the water is always still", C().calm > 0.8)
-		walk_to(-0.35, 1.7))
-	step_until("to the water's edge", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
-	_pool_press(0, "turn the first slab from the shore")
-	step_do(func() -> void:
-		var ry: float = (C().pool_pieces[Vector2i(0, 1)]["node"] as Node3D).rotation.y
-		ok("a turn is a quarter, snapped", C().state["pool_turns"][0] == 1 and absf(ry + PI * 0.5) < 0.01, "%.3f" % ry)
-		ok("turning grinds", game.sfx.played.get("grind", 0) > 0)
-		ok("the first turn answers the shore: its joint lights at once", C().pool_joints_lit.has("0,1,E") and C().pool_joints_lit.size() >= 1, str(C().pool_joints_lit.keys()))
-		walk_to(-1.6, 1.7))
-	step_until("out onto your slab", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
-	step_do(func() -> void: ok("standing on your slab over the water", P().x < -1.5 and absf(P().y) < 0.01, str(P())))
-	for k in 3: _pool_press(1, "turn the second slab from the first (%d)" % (k + 1))
-	walk_path("back ashore and round to the north rim", [[-0.35, 1.7], [-0.25, -0.5], [-3.75, -0.5], [-3.75, -0.4]])
-	_pool_press(2, "turn the third slab from the north rim")
-	walk_path("round to the south rim", [[-0.25, -0.5], [-0.25, 3.75], [-0.5, 4.05], [-4.5, 4.05]])
-	step_do(func() -> void: ok("still broken: hers are not stone yet", not C().state["stones"]))
-	for k in 3: _pool_press(3, "turn the fourth slab from the south rim (%d)" % (k + 1))
-	step_until("the path is whole: her slabs rise as stone", func() -> bool: return C().state["stones"], 2.0)
-	step_wait(0.2)
-	step_do(func() -> void:
-		var low := 0
-		for c in C().pool_pieces:
-			var pc: Dictionary = C().pool_pieces[c]
-			if pc["real"] < 0 and (pc["node"] as Node3D).position.y < -0.5: low += 1
-		ok("(v1.1) her stones start UNDER the water and rise (they never just appear)", low >= 2, "%d under" % low))
-	step_wait(4.5)
-	step_do(func() -> void:
-		var up := true
-		for c in C().pool_pieces:
-			var pc: Dictionary = C().pool_pieces[c]
-			if pc["real"] < 0 and absf((pc["node"] as Node3D).position.y) > 0.01: up = false
-		ok("(v1.1) ...and stand risen, level with yours", up))
-	step_wait(3.5)
-	step_do(func() -> void:
-		var f: Dictionary = game.juice.fired
-		ok("(v1.0 juice) her slabs rise heavily: the water bulges and rings, sheets off their edges, the wet stone dries",
-			int(f.get("ring", 0)) >= 4 and int(f.get("sheet", 0)) >= 4 and int(f.get("wet", 0)) >= 1 and int(f.get("bubbles", 0)) >= 1, str(f)))
-	step_do(func() -> void:
-		var all_lit := true
-		for c in C().pool_pieces:
-			var pc: Dictionary = C().pool_pieces[c]
-			if pc["real"] < 0: continue
-			for k in (pc["seams"] as Array).size():
-				all_lit = all_lit and C()._joint_ok(c, Ch1Geo.rot_conn(pc["dirs"][k], int(C().state["pool_turns"][pc["real"]])))
-		ok("every joint of the whole path is answered (its seam lit)", all_lit and C().pool_joints_lit.size() >= 14, str(C().pool_joints_lit.size()))
-		ok("a joint lighting chimes", game.sfx.played.get("chime", 0) > 0)
-		ok("her stones break the surface: spray and a deep rumble", game.sfx.played.get("grind", 0) > 4))
-	step_wait(2.6)
-	step_do(func() -> void:
-		ok("her slabs are solid now", game.level.on_ground(Ch1Geo.cell_pos(Vector2i(4, 2))) and (C().pool_pieces[Vector2i(4, 2)]["node"] as Node3D).visible)
-		var info: PackedVector4Array = C().pool_mat.get_shader_parameter("arm_info")
-		var hers := 0
-		for v in info: hers += 1 if v.z > 0.5 else 0
-		ok("...and the reflection no longer marks any as hers", hers == 0)
-		ok("solving plays the solve jingle (one motif for every solve)", game.sfx.played.get("cue:solve_jingle", 0) >= 1 and game.sfx.played.get("cue:solve_waking_pool", 0) == 0)
-		ok("the music bed steps back under the jingle, then returns", game.sfx.jingle_duck > -6.01 and ResourceLoader.exists("res://assets/audio/v5/cues/solve_jingle.ogg")))
-	walk_path("across the pool on the whole path", [[-0.5, 4.05], [-0.25, 3.75], [-0.35, 1.7], [-1.275, 1.7], [-2.525, 1.7], [-2.525, 0.5],
-		[-3.775, 0.5], [-5.025, 0.5], [-5.025, 2.9], [-8.775, 2.9]])
-	step_do(func() -> void:
-		ok("crossed the pool", C().state["stones"] and P().x < -8.5 and absf(P().y) < 0.01, str(P()))
-		ok("footsteps on the slabs splash", game.sfx.played.get("step_wet", 0) > 0))
-
 	# ================================================================ 2. the stair of breath
 	step_do(func() -> void: tp(Map2.GW.x - 11.3, Map2.GW.z + 1.6, PI))          # (v2: the West wing is the new world's)
 	step_wait(0.3)
@@ -1289,37 +1175,162 @@ func _plan() -> void:
 	step_do(func() -> void:
 		ok("(v2) the High Stair brings you back to the Ledge", game.area == "eidolon_ledge" and absf(P().y - 2.0) < 0.02, str(P() - Map2.O) + " " + game.area)
 		ok("(v2.0) three Beacons burn", C().hub.beacons_all(), str(C().state["beacons"])))
-	# (Act 3 is still the old world's until phase 4: on to it)
-	step_do(func() -> void: tp(27.7, -28.6, PI))
-	step_wait(0.4)
+	# ================================================================ 12. (v2 phase 4) Act 3 in the new world: the Veiled Way, the Pool of Halves,
+	# the bridge that gives way, the Gate of the Four (EIDOLON_SCRIPT §6 I.20-I.23)
+	step_do(func() -> void:
+		ok("(v2 Act 3) the third fire: the Veiled Way's gate is down", not game.level.named["vw_gate"].enabled and not Map2.door_nodes[2].visible or Map2.door_nodes[2].position.y < -0.5)
+		ok("(v2 Act 3) the pool's fog lifts: its four stones have risen", C().pool_open() and C().pool_plane.visible)
+		tp(Map2.O.x - 2.5, Map2.O.z + 4.5, PI))          # (dev: from the Ledge back to the Atrium, below the Veiled Way)
+	step_wait(0.5)
+	walk_path("(v2 Act 3) down the Veiled Way to the pool where she woke", [[Map2.O.x - 2.5, Map2.O.z + 11.5], [Map2.O.x - 2.5, Map2.O.z + 16.0]])
+	step_do(func() -> void:
+		ok("(v2 Act 3) through the Veiled Way, at the Waking Pool", game.area == "waking_pool", game.area)
+		ok("(v2 I.20) no fog over the water now", float(C().act1.pool_water.get_shader_parameter("murk")) < 0.05 and C().act3.mists.is_empty())
+		var up := 0
+		for c in C().pool_pieces:
+			var pc: Dictionary = C().pool_pieces[c]
+			if pc["real"] >= 0 and (pc["node"] as Node3D).visible and absf((pc["node"] as Node3D).position.y - Map2.GP.y) < 0.01: up += 1
+		ok("(v2 I.20) the four stones stand in the water, risen", up == 4, "%d up" % up)
+		walk_to(Map2.O.x - 3.6, Map2.O.z + 21.3); _lag_samples.clear())
+	# glimpse 1 (in the clear pool, at last): her reflection lags
+	step_until("walked along the pool's lip", func() -> bool:
+		var r: Reflector = game.puzzles.pool_refl
+		if r.active and game.player.speed01 > 0.8:
+			var now := r.reflect_point(P())
+			_lag_samples.append(Vector2(now.x - r.puppet.global_position.x, now.z - r.puppet.global_position.z).length())
+		return game.auto_target == Vector3.INF, 8.0)
+	step_do(func() -> void:
+		var lag := 0.0
+		for v in _lag_samples: lag = maxf(lag, v)
+		ok("pool reflection visible", _lag_samples.size() > 5, "samples=%d" % _lag_samples.size())
+		ok("glimpse 1: reflection lags (~0.42 s at walking speed)", lag > 0.8 and lag < 1.4, "lag distance %.2f m" % lag))
+	# v0.7 "The Pool of Halves": a broken path of slabs; some exist only in the reflection (hers), four are
+	# real and turn on pivots. Turn yours until real and reflected make one unbroken path: hers become stone.
+	step_do(func() -> void:
+		# (a straight slab turned twice is the same slab: settings are compared by the shapes they make)
+		var shapes := {}
+		var best := 99
+		for sol in Chapter.pool_solutions():
+			var key := ""
+			var presses := 0
+			for i in 4:
+				var cs: String = Ch1Geo.rot_conn(Ch1Geo.POOL_REALS[i][1], int(sol[i]))
+				var arr := cs.split("")
+				arr.sort()
+				key += "".join(arr) + "|"
+				presses += posmod(int(sol[i]) - int(Ch1Geo.POOL_START[i]), 4)
+			shapes[key] = true
+			best = mini(best, presses)
+		ok("solver: exactly one arrangement of the four slabs makes the path whole", shapes.size() == 1, str(shapes.keys()))
+		ok("solver: the pool starts broken", not Ch1Geo.pool_path(Ch1Geo.POOL_START))
+		ok("solver: it takes more than one turn (at least %d presses)" % best, best > 1)
+		var single := false
+		for i in 4:
+			var tt: Array = Ch1Geo.POOL_START.duplicate()
+			tt[i] = (int(tt[i]) + 1) % 4
+			single = single or Ch1Geo.pool_path(tt)
+		ok("solver: no single turn makes it whole (no trivial path)", not single)
+		var info: PackedVector4Array = C().pool_mat.get_shader_parameter("arm_info")
+		var hers := 0
+		for v in info: hers += 1 if v.z > 0.5 else 0
+		ok("the water shows her slabs (reflection only) beside yours", int(C().pool_mat.get_shader_parameter("count")) == info.size() and hers == Ch1Geo.POOL_GHOSTS.size() * 2, "%d arms, %d hers" % [info.size(), hers])
+		var seams := true
+		for c in C().pool_pieces: seams = seams and (C().pool_pieces[c]["seams"] as Array).size() == (C().pool_pieces[c]["base"] as String).length()
+		ok("every slab carries glowing connector inlays", seams)
+		ok("her slabs are not in your world (no ground there)", not game.level.on_ground(Ch1Geo.cell_pos(Vector2i(4, 2))) and not (C().pool_pieces[Vector2i(4, 2)]["node"] as Node3D).visible)
+		ok("no waiting mechanic: the water is always still", C().calm > 0.8)
+		walk_to(PV(-0.35, 1.7)[0], PV(-0.35, 1.7)[1]))
+	step_until("to the water's edge", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
+	_pool_press(0, "turn the first slab from the shore")
+	step_do(func() -> void:
+		var ry: float = (C().pool_pieces[Vector2i(0, 1)]["node"] as Node3D).rotation.y
+		ok("a turn is a quarter, snapped", C().state["pool_turns"][0] == 1 and absf(ry + PI * 0.5) < 0.01, "%.3f" % ry)
+		ok("turning grinds", game.sfx.played.get("grind", 0) > 0)
+		ok("the first turn answers the shore: its joint lights at once", C().pool_joints_lit.has("0,1,E") and C().pool_joints_lit.size() >= 1, str(C().pool_joints_lit.keys()))
+		walk_to(PV(-1.6, 1.7)[0], PV(-1.6, 1.7)[1]))
+	step_until("out onto your slab", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
+	step_do(func() -> void: ok("standing on your slab over the water", P().x < Map2.GP.x - 1.5 and absf(P().y - Map2.GP.y) < 0.01, str(P())))
+	for k in 3: _pool_press(1, "turn the second slab from the first (%d)" % (k + 1))
+	walk_path("back ashore and round to the north rim", [PV(-0.35, 1.7), PV(-0.25, -0.5), PV(-3.75, -0.5), PV(-3.75, -0.4)])
+	_pool_press(2, "turn the third slab from the north rim")
+	walk_path("round to the south rim", [PV(-0.25, -0.5), PV(-0.25, 3.75), PV(-0.5, 4.05), PV(-4.5, 4.05)])
+	step_do(func() -> void: ok("still broken: hers are not stone yet", not C().state["stones"]))
+	for k in 3: _pool_press(3, "turn the fourth slab from the south rim (%d)" % (k + 1))
+	step_until("the path is whole: her slabs rise as stone", func() -> bool: return C().state["stones"], 2.0)
+	step_wait(0.2)
+	step_do(func() -> void:
+		var low := 0
+		for c in C().pool_pieces:
+			var pc: Dictionary = C().pool_pieces[c]
+			if pc["real"] < 0 and (pc["node"] as Node3D).position.y < -0.5: low += 1
+		ok("(v1.1) her stones start UNDER the water and rise (they never just appear)", low >= 2, "%d under" % low))
+	step_wait(6.0)
+	step_do(func() -> void:
+		var up := true
+		for c in C().pool_pieces:
+			var pc: Dictionary = C().pool_pieces[c]
+			if pc["real"] < 0 and absf((pc["node"] as Node3D).position.y) > 0.01: up = false
+		ok("(v1.1) ...and stand risen, level with yours", up))
+	step_wait(3.5)
+	step_do(func() -> void:
+		var f: Dictionary = game.juice.fired
+		ok("(v1.0 juice) her slabs rise heavily: the water bulges and rings, sheets off their edges, the wet stone dries",
+			int(f.get("ring", 0)) >= 4 and int(f.get("sheet", 0)) >= 4 and int(f.get("wet", 0)) >= 1 and int(f.get("bubbles", 0)) >= 1, str(f)))
+	step_do(func() -> void:
+		var all_lit := true
+		for c in C().pool_pieces:
+			var pc: Dictionary = C().pool_pieces[c]
+			if pc["real"] < 0: continue
+			for k in (pc["seams"] as Array).size():
+				all_lit = all_lit and C()._joint_ok(c, Ch1Geo.rot_conn(pc["dirs"][k], int(C().state["pool_turns"][pc["real"]])))
+		ok("every joint of the whole path is answered (its seam lit)", all_lit and C().pool_joints_lit.size() >= 14, str(C().pool_joints_lit.size()))
+		ok("a joint lighting chimes", game.sfx.played.get("chime", 0) > 0)
+		ok("her stones break the surface: spray and a deep rumble", game.sfx.played.get("grind", 0) > 4))
+	step_wait(2.6)
+	step_do(func() -> void:
+		ok("her slabs are solid now", game.level.on_ground(Ch1Geo.cell_pos(Vector2i(4, 2))) and (C().pool_pieces[Vector2i(4, 2)]["node"] as Node3D).visible)
+		var info: PackedVector4Array = C().pool_mat.get_shader_parameter("arm_info")
+		var hers := 0
+		for v in info: hers += 1 if v.z > 0.5 else 0
+		ok("...and the reflection no longer marks any as hers", hers == 0)
+		ok("solving plays the solve jingle (one motif for every solve)", game.sfx.played.get("cue:solve_jingle", 0) >= 1 and game.sfx.played.get("cue:solve_waking_pool", 0) == 0)
+		ok("the music bed steps back under the jingle, then returns", game.sfx.jingle_duck > -6.01 and ResourceLoader.exists("res://assets/audio/v5/cues/solve_jingle.ogg")))
+	walk_path("across the pool on the whole path", [PV(-0.5, 4.05), PV(-0.25, 3.75), PV(-0.35, 1.7), PV(-1.275, 1.7), PV(-2.525, 1.7), PV(-2.525, 0.5),
+		PV(-3.775, 0.5), PV(-5.025, 0.5), PV(-5.025, 2.9), PV(-8.775, 2.9)])
+	step_do(func() -> void:
+		ok("crossed the pool", C().state["stones"] and P().x < Map2.GP.x - 8.5 and absf(P().y - Map2.GP.y) < 0.01, str(P()))
+		ok("footsteps on the slabs splash", game.sfx.played.get("step_wet", 0) > 0))
 
-	# ================================================================ 12. gate of the four veiled
+	# ---- I.21 the bridge that gives way
+	walk_path("(v2 I.21) off the far shore onto the bridge", [[Map2.O.x - 13.6, Map2.O.z + 20.05], [Map2.O.x - 14.6, Map2.O.z + 18.85], [Map2.O.x - 22.0, Map2.O.z + 18.85]])
+	step_do(func() -> void: ok("(v2 I.21) its spans settle under her feet", game.sfx.played.get("grind", 0) > 0 and C().act3._settled[2]))
+	walk_path("(v2 I.21) on over the sea", [[Map2.O.x - 27.1, Map2.O.z + 18.85]])
+	step_wait(0.8)
 	step_do(func() -> void:
+		ok("(v2 I.21) a span lurches down under her, and stays (still walkable)", C().act3._lurched and absf(P().y - (Map2.O.y - 0.14)) < 0.02, str(P()))
+		ok("(v2 I.21) pieces of the parapet break away into the sea", C().act3._fell[0]))
+	walk_path("(v2 I.21) to the far end", [[Map2.O.x - 38.0, Map2.O.z + 18.85], [Map2.O.x - 41.5, Map2.O.z + 18.85]])
+	step_wait(1.5)
+	step_do(func() -> void:
+		ok("(v2 I.21) every falling piece fell; the way stays whole behind her", C().act3._fell.all(func(f: bool) -> bool: return f) and game.level.on_ground(Vector2(Map2.O.x - 27.1, Map2.O.z + 18.85)))
 		ok("reached the Gate of the Four Veiled", game.area == "gate_four", game.area)
-		walk_to(25.0, -29.1))
-	step_until("before the veiled gate", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
-	step_do(func() -> void: walk_to(25.0, -31.3))
-	step_wait(0.7)
-	step_until("the veil", func() -> bool: return game.player.still_time > 0.3 or game.auto_target == Vector3.INF, 4.0)
-	step_do(func() -> void:
-		game.cmd("stop")
-		ok("the tholos is closed by veils", P().z > -29.7, str(P())))
-	step_do(func() -> void: ok("(v2.0) the three Beacons burn: their statues' runes lit", C().hub.beacons_all() and float(C().four_mats[2].get_shader_parameter("lit")) > 0.9))
-	step_do(func() -> void: tp(25.0, -28.9, PI))
-	walk_path("round to the empty plinth", [[25.0, -28.9], [20.35, -28.9], [20.35, -33.93], [21.34, -33.93]])
+		ok("(v2 I.22) three veiled ones on their plinths; the gate is shut", game.level.named["four_gate"].enabled and Map2.door_nodes[3].visible)
+		ok("(v2.0) the three Beacons burn: their statues' runes lit", C().hub.beacons_all() and float(C().four_mats[2].get_shader_parameter("lit")) > 0.9))
+	walk_path("(v2 I.22) to the empty plinth", [[Map2.O.x - 41.6, Map2.O.z + 19.8], [Map2.O.x - 41.6, Map2.O.z + 21.0]])
 	step_do(func() -> void:
 		ok("standing on the empty plinth", C().on_four_plinth(), str(P()))
-		var sc := Puzzles.SHRINE_C
-		game.cmd("face:%f" % atan2(-(sc.x - P().x), -(sc.z - P().z)))       # (v0.8: you turn to face it yourself)
-		ok("wait", _focus() == "four_wait" and game.try_interact(), _focus()))
-	step_wait(1.8)
-	step_do(func() -> void: ok("the plinths light one by one", float(C().four_mats[0].get_shader_parameter("lit")) > 0.9 and float(C().four_mats[3].get_shader_parameter("lit")) < 0.5))
+		game.cmd("stop"))
+	step_wait(2.0)
+	step_do(func() -> void:
+		ok("(v2 I.22) still, she turns to the gate as the others do", absf(angle_difference(game.player.yaw, 0.0)) < 0.3, "%.2f" % game.player.yaw)
+		ok("the plinths light one by one", float(C().four_mats[0].get_shader_parameter("lit")) > 0.9 and float(C().four_mats[3].get_shader_parameter("lit")) < 0.5))
 	step_until("the gate counts you as the fourth", func() -> bool: return C().state["four"], 4.0)
 	step_do(func() -> void:
-		ok("the veil before the shrine is gone", not game.level.named["tholos_front"].enabled)
-		ok("the solve jingle again", game.sfx.played.get("jingle", 0) >= 8))
-	step_wait(1.0)
-	walk_path("into the shrine", [[20.35, -33.93], [20.35, -29.0], [25.0, -29.0], [25.0, -30.8]])
+		ok("the gate is open", not game.level.named["four_gate"].enabled)
+		ok("the solve jingle again", game.sfx.played.get("jingle", 0) >= 8 or game.sfx.played.get("cue:solve_jingle", 0) >= 2))
+	step_wait(4.5)
+	step_do(func() -> void: ok("(v2 I.22) the gate has sunk out of sight", not Map2.door_nodes[3].visible))
+	walk_path("into the shrine", [[Map2.O.x - 41.6, Map2.O.z + 19.8], [Map2.O.x - 45.0, Map2.O.z + 18.85], [Map2.O.x - 45.0, Map2.O.z + 11.0], [Chapter.STAND.x, Chapter.STAND.z + 0.1]])
 	step_do(func() -> void: ok("reached the First Shrine", game.area == "first_shrine", game.area))
 
 	# ================================================================ 13. the first shrine + "The Hand in the Water"
@@ -1335,14 +1346,18 @@ func _plan() -> void:
 	step_wait(9.0)
 	step_do(func() -> void:
 		ok("cinematic: her reflection in the shrine pool", C().her.visible and float(C().her.body_mat.get_shader_parameter("vis")) > 0.5)
-		ok("cinematic: camera looks down into the water", -game.world.pitch_node.rotation.x > deg_to_rad(47.0), "%.1f deg" % rad_to_deg(-game.world.pitch_node.rotation.x)))
+		ok("(v2) cinematic: the one fixed view (no turning), centred on the pool", is_equal_approx(game.world.pitch_node.rotation.x, -World.PITCH), "%.1f deg" % rad_to_deg(-game.world.pitch_node.rotation.x)))
 	step_wait(7.0)           # t = 22 (the score: hands touch at 16.5 + 4.5)
 	step_do(func() -> void:
 		ok("cinematic: palm to palm", game.player.extra_reach > 0.9 and C().her.pose.reach > 0.9)
 		ok("cinematic: Katoptron lights on you both", game.player.fig.runes_awake == 1 and C().her.runes_awake == 1))
-	step_wait(16.0)          # t = 38 (veil lift swell)
+	step_wait(6.5)           # t = 28.5 (P + 23: she writes)
+	step_do(func() -> void: ok("(v2 I.23) she writes in the water with her finger: ΒΡΕΣ ΜΕ", is_instance_valid(C().writing)))
+	step_wait(6.5)           # t = 35 (P + 29.6: the eye)
+	step_do(func() -> void: ok("(v2 I.23) deep in the water a glass eye opens", is_instance_valid(C().eye)))
+	step_wait(7.0)           # t = 42 (P + 34: the veil lift)
 	step_do(func() -> void: ok("cinematic: her veil lifts: on the porcelain one, her mirror face catches the light", C().her.veil_lift > 0.8 and C().face_k > 0.8 and float(C().face_flare.get_shader_parameter("intensity")) > 0.5, "%.2f" % C().face_k))
-	step_wait(16.0)          # t = 54
+	step_wait(12.0)          # t = 54
 	step_do(func() -> void: ok("cinematic: she is gone; the pool shows only you", not C().her.visible and C().mine.visible))
 	step_wait(3.0)
 	step_do(func() -> void: ok("memory fragment shows", game.ui.memory.modulate.a > 0.3 and game.ui.memory_line.text == Game.MEMORY_LINE))
@@ -1368,16 +1383,13 @@ func _plan() -> void:
 			f.size() >= 8 and int(f.get("dust_fall", 0)) >= 3 and int(f.get("grit", 0)) >= 3 and int(f.get("sparks", 0)) >= 2, str(f.keys()))
 		ok("(v1.0 juice) no burst is left alive for long", game.juice.live < 40, str(game.juice.live)))
 	# ---- cannot fall: random walks in every space + the sealed way
-	walk_path("to the sealed way", [[25.0, -29.3], [29.6, -29.3], [29.6, -35.6], [28.0, -36.6], [28.0, -38.6]])
-	step_do(func() -> void: ok("the way on is sealed", P().z > -38.9 and _focus() == "sealed" and game.try_interact(), str(P())))
-	# (v2: the old world's Act 3 still, and a walk in every space of the new world, from the first place the route
-	# reaches in it)
-	var zones := [[28.0, -37.5, 14.0], [0.0, 0.0, 10.0]]
+	# ---- cannot fall: (v2) a random walk in every space of the new world, from the first place the route reaches in it
+	var zones := []
 	var seen_sp := {}
 	for e in Map2.ROUTE:
-		if seen_sp.has(e[2]) or str(e[2]) in ["P", "PW", "I21", "I22", "I23", "VW", "I4s"]: continue
+		if seen_sp.has(e[2]) or str(e[2]) in ["I4s"]: continue
 		seen_sp[e[2]] = true
-		zones.append([Map2.O.x + e[0], Map2.O.z + e[1], 5.0])
+		zones.append([Map2.O.x + e[0], Map2.O.z + e[1], 5.0 if str(e[2]) != "P" else 3.0])
 	for zone in zones:
 		step_do(func() -> void: tp(zone[0], zone[1]))
 		step_walk(zone[2])
@@ -1402,7 +1414,7 @@ func _plan() -> void:
 		# (v2: every place the route stops at in the wings, the Atrium and Act 1)
 		var goals := []
 		for e in Map2.ROUTE:
-			if not (str(e[2]) in ["P", "PW", "I21", "I22", "I23", "VW", "WS", "I4s"]): goals.append([Map2.O.x + e[0], Map2.O.z + e[1]])
+			if not (str(e[2]) in ["WS", "I4s"]): goals.append([Map2.O.x + e[0], Map2.O.z + e[1]])
 		var miss := _reach(goals)
 		ok("props: every key place still reachable on foot from the gate", miss.is_empty(), str(miss)))
 	# ---- v0.7 collisions: every prop and piece of architecture is solid
@@ -1450,9 +1462,9 @@ func _plan() -> void:
 	step_until("continue", func() -> bool: return game.mode == "play", 5.0)
 	step_do(func() -> void:
 		ok("restored chapter", C().state["four"] and C().state["scales"] and C().state["shard"] and C().hub.beacons_all())
-		ok("restored regions", game.level.named["pool4_2_0"].enabled and not game.level.named["breath_gate"].enabled and game.level.named["hdoor"].enabled
+		ok("restored regions", (C().pool_pieces[Vector2i(4, 2)]["regions"][0] as Level.Region).enabled and not game.level.named["breath_gate"].enabled and game.level.named["hdoor"].enabled
 			and game.level.named["g_door"].enabled and not game.level.named["hw_gate"].enabled and game.level.named["MZ_door"].enabled
-			and not game.level.named["tholos_front"].enabled and not game.level.named["eh_bars"].enabled and not game.level.named["up_bars"].enabled)
+			and not game.level.named["four_gate"].enabled and not game.level.named["eh_bars"].enabled and not game.level.named["up_bars"].enabled)
 		ok("restored inventory", game.controls.inv_has)
 		ok("restored the won balance", C().state["scales"] and C().state["hall"]["locks"] == [true, true, true])
 		ok("restored awakened world", game.world.awaken == 1.0 and game.player.fig.runes_awake == 1)
@@ -1491,8 +1503,8 @@ func _plan() -> void:
 		ok("new game: puzzles reset", not st["bridge"] and not st["plate"] and not st["shrine"] and not st.get("drawbridge", false), str(st))
 		var cs: Dictionary = C().state
 		ok("new game: chapter reset", not cs["stones"] and not cs["shard"] and not cs["turned_done"] and cs["turned"] == Chapter.TURN_START and not cs["four"] and cs["memories"].is_empty(), str(cs))
-		ok("new game: regions reset", not game.level.named["pool4_2_0"].enabled and not cs["stones"] and cs["pool_turns"] == Ch1Geo.POOL_START and game.level.named["breath_gate"].enabled and not game.level.named["hdoor"].enabled
-			and game.level.named["hw_gate"].enabled and not game.level.named["MZ_door"].enabled and game.level.named["tholos_front"].enabled and game.level.named["eh_bars"].enabled and game.level.named["up_bars"].enabled)
+		ok("new game: regions reset", not (C().pool_pieces[Vector2i(4, 2)]["regions"][0] as Level.Region).enabled and not cs["stones"] and cs["pool_turns"] == Ch1Geo.POOL_START and game.level.named["breath_gate"].enabled and not game.level.named["hdoor"].enabled
+			and game.level.named["hw_gate"].enabled and not game.level.named["MZ_door"].enabled and game.level.named["four_gate"].enabled and game.level.named["eh_bars"].enabled and game.level.named["up_bars"].enabled)
 		ok("new game: no shard", not game.controls.inv_has and not C().lens_on)
 		ok("new game: the lift waits at the top (v1.0: you first meet it from the Ledge)", C().lift_h == 1.0)
 		ok("new game: world asleep, runes dormant", game.world.awaken == 0.0 and game.player.fig.runes_awake == 0)

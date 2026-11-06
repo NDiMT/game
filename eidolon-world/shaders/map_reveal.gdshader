@@ -10,6 +10,10 @@ uniform sampler2D reveal : filter_nearest;
 uniform vec3 ink_col : source_color = vec3(0.17, 0.13, 0.11);
 uniform vec2 player_uv = vec2(-1.0);
 uniform vec3 mark_col : source_color = vec3(0.62, 0.08, 0.10);
+// v2.0 (A): the three Beacons on the map (uv; z = 1 when lit): a lit one burns crimson with a slow glow round it
+uniform vec3 beacon_w = vec3(-1.0);
+uniform vec3 beacon_n = vec3(-1.0);
+uniform vec3 beacon_e = vec3(-1.0);
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p) {
@@ -42,6 +46,17 @@ void fragment() {
 	// the fog over what is not known yet (and round it)
 	float fog = (1.0 - lifted) * (0.55 + 0.45 * vnoise(UV * vec2(6.0, 9.0) + TIME * 0.02));
 	col = mix(col, col * 0.9 + vec3(0.03, 0.03, 0.035), fog * 0.6);
+	// the lit Beacons: the drawn brazier's flame inked crimson, and a soft crimson glow breathing round it
+	for (int i = 0; i < 3; i++) {
+		vec3 bk = i == 0 ? beacon_w : (i == 1 ? beacon_n : beacon_e);
+		if (bk.z < 0.5 || bk.x < 0.0) continue;
+		vec2 d = (UV - bk.xy) / px;
+		float l = length(d);
+		float glow = exp(-l * l / 420.0) * (0.4 + 0.12 * sin(TIME * 2.1 + float(i)));
+		vec2 dl = d - vec2(0.0, -2.0);
+		float flame = step(abs(dl.x), 11.0) * step(abs(dl.y), 14.0) * smoothstep(0.5, 0.8, texture(ink_tex, UV).r) * shown;   // (the drawn brazier only: its strokes, not the room's wash)
+		col = mix(col, mark_col, clamp(glow * 0.7 + flame * 0.9, 0.0, 1.0) * shown);
+	}
 	// where you are: a crimson dot with a slow ring
 	if (player_uv.x >= 0.0) {
 		vec2 d = (UV - player_uv) / px;

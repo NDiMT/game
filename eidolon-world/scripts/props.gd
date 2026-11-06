@@ -18,8 +18,6 @@ const PLACE := [
 	# the Hall of Glass: two mourners keep the far corners ("a thousand faces, all wrong")
 	["statue_veiled_mourning", Map2.GW + Vector3(-3.55, 1.0, -19.95), 45.0, 1.0, "hall"],
 	["statue_veiled_mourning", Map2.GW + Vector3(4.05, 1.0, -11.6), -135.0, 1.0, "hall"],
-	# the Turned Ones' court: a ruined corner
-	["statue_veiled_broken", Map2.GN + Vector3(13.9, 1.0, -6.9), 30.0, 1.0, "garden"],
 	# (the Scales' floor is all puzzle in the new world, and its way up runs where its praying figure stood: it went)
 ]
 ## (v0.8.1: walls and architecture only: statues are never cut by the see-through)

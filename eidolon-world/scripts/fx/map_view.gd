@@ -7,6 +7,9 @@ extends TextureRect
 ##   map.reveal_area("atrium")                           every region of an area (Names.REGION_AREA keys)
 ##   map.set_player(player.position)                     the crimson "you are here" dot (Vector3.INF hides it)
 ##   save: map.get_revealed() -> Array[String]; load: map.set_revealed(names) (instant)
+##   map.set_beacon("W", true)                           v2.0: a lit Beacon (W / N / E) burns crimson on the map
+## v2.0: the map is the NEW Chapter I (dev_rig/tools/make_map2.py from dev_rig/tools/map2_layout.tscn): its regions are
+## the level's walk regions (V2_<space> and the wings' v1 room names), its areas the Map2 space ids (reveal_area("W3")).
 ## Regenerate the textures after the layout changes (see make_map.py; new regions need a re-run to appear).
 
 const DIR := "res://assets/textures/map/"
@@ -40,6 +43,11 @@ func reveal_region(n: String, instant := false) -> void:
 		_write(n)
 	elif _k.get(n, 0.0) < 1.0:
 		_target[n] = true
+
+func set_beacon(k: String, lit: bool) -> void:
+	var uv = meta.get("beacons", {}).get(k)
+	if uv == null: return
+	_mat.set_shader_parameter("beacon_" + k.to_lower(), Vector3(float(uv[0]), float(uv[1]), 1.0 if lit else 0.0))
 
 func reveal_area(key: String, instant := false) -> void:
 	for n in meta["areas"].get(key, []): reveal_region(n, instant)

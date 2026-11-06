@@ -271,7 +271,7 @@ func _build_shrine() -> void:
 	m.cyl(b + Vector3(0, 0.02, 0), 1.18, 1.18, 0.06, lv.C(0.5), 36)
 	lv.ob_circle(Vector2(b.x, b.z), 1.32, "shrine_pool")
 	# a ruined ring of columns, open to the south (the way in from the Gate)
-	var ring := [[-90.0, 3.6], [-30.0, 3.6], [30.0, 2.1], [150.0, 1.3], [210.0, 3.6]]
+	var ring := [[-15.0, 3.6], [35.0, 2.1], [145.0, 1.3], [195.0, 3.6]]          # (the north is A's altar)
 	for e in ring:
 		var a := deg_to_rad(float(e[0]))
 		lv.column(c + Vector3(cos(a) * 2.9, 0, sin(a) * 2.9), float(e[1]))

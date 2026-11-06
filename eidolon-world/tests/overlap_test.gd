@@ -15,18 +15,22 @@ const NO_SUPPORT := ["Wonders", "Colossus", "wonder", "rubble", "debris", "Ink",
 	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus", "BridgeShard"]
 ## designed contacts, by place: [where (world box), what it is]. Hits inside one are not counted.
 const DESIGNED := [
-	[AABB(Vector3(9.9, 2.5, 198.9), Vector3(4.8, 0.7, 8.2)), "(v2 I.5) the crypt's vault rests on its four piers and its walls"],
-	[AABB(Vector3(7.05, 1.4, 213.3), Vector3(0.8, 1.0, 0.8)), "(v2 I.2) the bell HANGS from its post's arm"],
+	[AABB(Map2.O + Vector3(9.9, 2.5, -1.1), Vector3(4.8, 0.7, 8.2)), "(v2 I.5) the crypt's vault rests on its four piers and its walls"],
+	[AABB(Map2.O + Vector3(9.6, -0.1, -1.2), Vector3(1.0, 3.4, 8.4)), "(v2 I.5) the crypt's west wall: its piers are built into it, its door stands in it, the Atrium's rail meets it"],
+	[AABB(Map2.O + Vector3(14.0, -0.1, -1.2), Vector3(1.0, 3.4, 8.4)), "(v2 I.5) the crypt's east wall: its piers are built into it"],
+	[AABB(Map2.O + Vector3(7.05, 1.4, 13.3), Vector3(0.8, 1.0, 0.8)), "(v2 I.2) the bell HANGS from its post's arm"],
+	[AABB(Map2.O + Vector3(3.6, -0.1, 14.6), Vector3(2.8, 3.5, 0.8)), "(v2 I.1) the temple door stands in its doorway, between the wall's ends"],
+	[AABB(Map2.O + Vector3(-0.6, -1.5, -15.1), Vector3(6.2, 5.0, 6.9)), "(v2 N.1) the drowned shafts and A's colonnade stand in the flooded colonnade's water (its floor is under the murk)"],
+	[AABB(Map2.O + Vector3(-47.0, -0.1, 12.6), Vector3(4.0, 4.6, 1.0)), "(v2 I.22) the Gate of the Four's gate stands in its doorway, between the wall's ends"],
+	[AABB(Map2.O + Vector3(-41.6, -0.1, 12.7), Vector3(1.6, 4.6, 1.0)), "(v2 I.22) A's pylon stands against the gate wall's east end"],
 	[AABB(Map2.GE + Vector3(26.0, 3.5, -50.2), Vector3(7.5, 5.0, 2.4)), "the Scales: pans and weights HANG from the beam overhead"],
-	[AABB(Vector3(4.9, -0.2, -3.2), Vector3(0.5, 3.0, 2.4)), "the shortcut gate: its bars slide down into a slot in the floor"],
 	[AABB(Map2.GN + Vector3(17.2, 0.8, -15.45), Vector3(2.6, 3.6, 0.6)), "the Our Steps gate: its bars run in grooves in the two posts and a slot in the floor"],
 	[AABB(Map2.GN + Vector3(9.2, 2.0, -25.0), Vector3(7.0, 1.0, 3.0)), "the Court's mirror stands turn in sockets in their plinths"],
 	[AABB(Map2.GN + Vector3(13.0, 1.9, -29.2), Vector3(4.0, 4.0, 2.0)), "the Tree of Shards: its shards hang from the branches; it IS the nook's goal"],
 	[AABB(Map2.O + Vector3(21.6, 1.9, -58.4), Vector3(3.8, 3.5, 0.9)), "(v2) the bars across the Scales' way up: they rise into the terrace when the balance is won"],
 	[AABB(Map2.O + Vector3(21.5, 5.9, -66.2), Vector3(1.0, 3.5, 4.4)), "(v2) the bars across the High Stair's head: they rise when the Eidolon Plate answers"],
 	[AABB(Map2.GE + Vector3(30.3, 3.9, -24.85), Vector3(2.2, 2.2, 0.5)), "(v1.0 M3b) the sealed panel across the Mirror Walk: a door, shut until the pin rings it"],
-	[AABB(Vector3(3.75, 1.5, 4.5), Vector3(0.6, 0.8, 0.6)), "(v2.0) the wake court's bell HANGS from its post's arm"],
-	[AABB(Vector3(-4.2, -0.1, 207.3), Vector3(3.4, 4.2, 1.4)), "(v2 rebuild) the Veiled Way's gate: shut until the 3 Beacons burn (Act 3)"],
+	[AABB(Map2.O + Vector3(-5.0, -0.1, 7.3), Vector3(6.2, 4.2, 2.7)), "(v2 rebuild) the Veiled Way's gate, across the Atrium's south rail: shut (on the way) until the 3 Beacons burn (Act 3)"],
 ]
 const NOT_SOLID := ["veil", "glow", "halo", "beam", "mist", "fog", "ray", "shaft", "water", "pool_mat", "rune", "mark"]
 

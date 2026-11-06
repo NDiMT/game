@@ -104,7 +104,7 @@ const SPACES := [
 	["EH", "shortcut", "The High Stair (back down)", "traversal", [18.5, -66.0, 22.0, -31.0], 4.0, ""],
 	# ---- Act 3: the convergence
 	["VW", "Act 3", "The Veiled Way (opens: 3 Beacons)", "traversal", [-4.0, 8.0, -1.0, 15.0], 0.0, ""],
-	["P", "I.20", "The Pool of Halves", "puzzle", [-12.75, 15.8, -4.0, 21.9], 0.0, "pool_halves"],
+	["P", "I.20", "The Pool of Halves", "puzzle", [-12.75, 15.8, -4.0, 21.9], 0.0, ""],          # ("pool_halves": off until A refits it to the rims)
 	["PW", "I.20", "The Far Shore", "traversal", [-16.15, 16.95, -12.75, 20.75], 0.0, ""],
 	["I21", "I.21", "The Bridge that Gives Way", "traversal", [-40.0, 17.6, -16.15, 20.1], 0.0, "bridge"],
 	["I22", "I.22", "The Gate of the Four", "puzzle", [-50.0, 13.0, -40.0, 24.0], 0.0, "gate_four"],
@@ -195,7 +195,7 @@ const WALLS := [
 	[2.0, 14.85, 3.9, 15.15, 1.1], [6.1, 14.85, 8.0, 15.15, 1.1],
 	# the crypt: its east wall (the slab's gap) and its west wall onto the Atrium (its door)
 	[14.45, -1.0, 14.75, 2.75, 2.6], [14.45, 3.75, 14.75, 7.0, 1.0],
-	[9.85, -1.0, 10.15, 2.0, 2.6], [9.85, 4.0, 10.15, 7.0, 1.0],
+	[9.85, -1.0, 10.15, 2.0, 1.0], [9.85, 4.0, 10.15, 7.0, 1.0],          # (phase 4: low, as the south half: the cot shows over it)
 	# the Gate of the Four: its gate in the north wall, the Shrine beyond (gate_veiled in the gap)
 	[-50.0, 12.85, -46.85, 13.15, 1.2], [-43.15, 12.85, -40.0, 13.15, 1.2],
 ]
@@ -584,12 +584,22 @@ static func labels(parent: Node3D) -> void:
 		parent.add_child(l)
 
 # ============================================================================================ tools
+## (for A's satchel map, scripts/fx/map_view.gd) every space as drawn on the map: [id, beat, name, kind, Rect2 (world
+## x, z), floor y, part (south / hub / west / north / east / act3)]. The walk regions in a space: Level.regions whose
+## Map2.space_of_region(name) is that id (the v1 rooms keep their v1 region names, mapped by V1_KEY).
+static func map_spaces() -> Array:
+	var out := []
+	for s in SPACES:
+		out.append([s[0], s[1], s[2], s[3], space_rect(s[0]), float(s[5]) + O.y, str(PART.get(s[0], ""))])
+	return out
+
 ## the layout as JSON (tests/map2_dump.gd -> tests/render_map2.py -> dev/shots/v2-map.png)
 static func to_json(extra: Array = []) -> String:
 	var sp := []
 	for s in SPACES: sp.append({"id": s[0], "beat": s[1], "name": s[2], "kind": s[3], "rect": s[4], "y": s[5], "dress": s[6]})
 	var wk := []
 	for e in WALK: wk.append({"space": e[0], "rect": [e[1], e[2], e[3], e[4]], "y0": e[5], "y1": e[5] if is_nan(e[6]) else e[6], "axis": e[7]})
+	wk.append({"space": "I21", "rect": BRIDGE, "y0": 0.0, "y1": 0.0, "axis": -1})          # (its spans, Map2.build)
 	# (phase 3: the v1 rooms' own regions, from a built Level: [key, Rect2 (world), y0, y1, axis])
 	for e in extra:
 		var r: Rect2 = e[1]

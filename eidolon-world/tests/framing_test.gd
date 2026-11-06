@@ -20,7 +20,8 @@ func _ready() -> void:
 	# (v2 rebuild, phase 3: the world with its beats answered: every door, gate and sealed wall open, as you find it
 	# when you walk on through it; the route check below walks the whole way)
 	var cs: Dictionary = game.chapter.state
-	for k in ["breath", "hall_door", "shard", "gallery", "turned_done", "garden_breath", "hollow_done", "mural", "maze", "ledge_song", "scales"]: cs[k] = true
+	for k in ["breath", "hall_door", "shard", "gallery", "turned_done", "garden_breath", "hollow_done", "mural", "maze", "ledge_song", "scales", "stones", "four"]: cs[k] = true
+	cs["beacons"] = ["W", "N", "E"]          # (phase 4: Act 3 open: the Veiled Way, the pool's road, the Gate)
 	cs["hub"]["w_seen"] = true
 	cs["hub"]["e_open"] = true
 	game.puzzles.state["plate"] = true
@@ -128,7 +129,7 @@ func _ready() -> void:
 			total += 1
 			var p := Vector3(q.x, lv.height_at(q) + LIFT, q.y)
 			var r := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + back * OWN, p + back * REACH, 1))
-			if not r.is_empty(): hid2.append("%s at %s <- %s" % [e[0], _v2(p - Map2.O), _nm(names, r)])
+			if not r.is_empty(): hid2.append("%s at %s <- %s (hit at %s)" % [e[0], _v2(p - Map2.O), _nm(names, r), _v2(r.position - Map2.O)])
 		if not hid2.is_empty(): fails += 1
 		print("V2 WORLD %s (%d points)" % ["the whole way in sight" if hid2.is_empty() else "HIDDEN %d: " % hid2.size() + "; ".join(hid2.slice(0, 30)), pts2.size()])
 	print("OCCLUSION %s (%d of %d rooms with a hidden piece; %d pieces, %d meshes)" % ["PASS" if fails == 0 else "FAIL", fails, Framing.ROOMS.size(), total, nshapes[0]])
