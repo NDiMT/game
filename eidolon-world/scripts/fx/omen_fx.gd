@@ -19,6 +19,7 @@ class_name OmenFx
 
 static var high := true
 const SH := preload("res://shaders/omen_fx.gdshader")
+const FLARE := preload("res://shaders/rune_flare.gdshader")
 enum { CAUSTIC, CRACK, FROST, WRITING, EYE, RING, FLASH }
 const LIFT := 0.025                             # decals on water sit this far above it (clear of its ripples)
 
@@ -211,20 +212,63 @@ static func glass_eye(parent: Node, pos: Vector3, size := 1.4, open_s := 1.6, ho
 	return mi
 
 # ------------------------------------------------------------------------------------------------ I.22 the Gate of the Four
-## one of the Four's runes wakes (call it for each in turn, ~0.6 s apart): a flash on its carved face with a flare,
-## twinkles round it. `normal` = the rune face's outward normal.
+## one of the Four's runes wakes (call it for each in turn, ~0.6 s apart). Bold enough to read at play distance:
+## a crimson flare with a white-hot core over the rune (a camera-facing flare drawn over its plinth, a burst ring
+## running out of it), the flash on its carved face, a crimson ring of light running out over the floor in front,
+## a double spray of sparks and twinkles. `normal` = the rune face's outward normal; `size` the flare (m, at least
+## 1.6). The floor ring finds the floor under the point 0.7 m in front of the face (parent.level or parent.game.level), else 13 cm
+## below the rune (Map2.PLINTH_H * 0.5).
 static func rune_wake(parent: Node, pos: Vector3, normal := Vector3.BACK, size := 2.4) -> void:
-	var fl := decal(parent, pos + normal.normalized() * 0.03, FLASH, Vector2(size, size), normal)
+	var n := normal.normalized()
+	size = maxf(size, 1.6)
+	# the face flash (on the carving itself)
+	var fl := decal(parent, pos + n * 0.03, FLASH, Vector2(size, size), n)
 	var fm := fl.material_override as ShaderMaterial
 	var tw := fl.create_tween()
 	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 0.0, 1.0, 0.1)
-	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 1.0, 0.6, 1.2).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 1.0, 0.75, 1.2).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(1.0)
-	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 0.6, 0.0, 1.4)
+	tw.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 0.75, 0.0, 1.4)
 	tw.tween_callback(fl.queue_free)
-	var g := FxBurst.glints(parent, pos + normal.normalized() * 0.1)
-	g.get_tree().create_timer(1.4).timeout.connect(g.stop)
-	FxBurst.sparks(parent, pos + normal.normalized() * 0.15)            # (a crimson spray as it catches)
+	# the flare over it: up in 0.08 s, the burst ring out over 0.7 s, a glow held, gone over 1.6 s
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size) * 0.8
+	var fx := MeshInstance3D.new()
+	fx.mesh = q
+	var m := ShaderMaterial.new()
+	m.shader = FLARE
+	m.render_priority = 11
+	fx.material_override = m
+	fx.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	fx.layers = PlanarMirror.LAYER_MAIN_FX
+	fx.extra_cull_margin = 1.0
+	parent.add_child(fx)
+	fx.global_position = pos + n * 0.12 + Vector3(0, 0.05, 0)
+	var ft := fx.create_tween()
+	ft.tween_method(func(v: float) -> void: m.set_shader_parameter("k", v), 0.0, 1.0, 0.08)
+	ft.parallel().tween_method(func(v: float) -> void: m.set_shader_parameter("grow", v), 0.01, 1.0, 0.7).set_ease(Tween.EASE_OUT)
+	ft.parallel().tween_method(func(v: float) -> void: m.set_shader_parameter("spin", v), 0.0, 0.35, 3.6)
+	ft.tween_method(func(v: float) -> void: m.set_shader_parameter("k", v), 1.0, 0.7, 0.9).set_ease(Tween.EASE_OUT)
+	ft.tween_interval(0.9)
+	ft.tween_method(func(v: float) -> void: m.set_shader_parameter("k", v), 0.7, 0.0, 1.6).set_ease(Tween.EASE_IN)
+	ft.tween_callback(fx.queue_free)
+	# a crimson ring of light runs out over the floor in front of it
+	var front := pos + n * 0.7
+	var gy := pos.y - 0.13
+	var lv = parent.get("level")
+	if not lv is Level and parent.get("game"): lv = parent.get("game").get("level")
+	if lv is Level and (lv as Level).region_at(Vector2(front.x, front.z)): gy = (lv as Level).height_at(Vector2(front.x, front.z))
+	var ring := decal(parent, Vector3(front.x - n.x * 0.4, gy + 0.03, front.z - n.z * 0.4), RING, Vector2(size, size) * 1.25)
+	var rm := ring.material_override as ShaderMaterial
+	rm.set_shader_parameter("tint", Palette.ACCENT)
+	rm.set_shader_parameter("ring_tint", 1.0)
+	var rt := ring.create_tween()
+	rt.tween_method(func(v: float) -> void: rm.set_shader_parameter("grow", v), 0.05, 1.0, 1.0).set_ease(Tween.EASE_OUT)
+	rt.tween_callback(ring.queue_free)
+	var gl := FxBurst.glints(parent, pos + n * 0.1)
+	gl.get_tree().create_timer(1.6).timeout.connect(gl.stop)
+	FxBurst.sparks(parent, pos + n * 0.15)                     # (a crimson spray as it catches)
+	if high: FxBurst.sparks(parent, pos + n * 0.15 + Vector3(0, 0.1, 0))
 
 ## the gate sinks into the floor (the Four answered): dust rolling out along its foot, grit, and light from beyond
 ## spilling under it as it goes: a crimson seam on the floor that widens and fades. `base` = the middle of the gate's

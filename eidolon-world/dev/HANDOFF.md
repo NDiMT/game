@@ -899,3 +899,54 @@ Dress.beyond_colossus(level.beyond, foot, 28.0, -30.0)     # foot: e.g. the grou
 - **New (mine): the Gate of the Four was wider than the screen.** From the empty plinth the gate stood 8 m screen-left and two runes were off the 7.5 m frame. The camera now leans (a slide, never a turn) 3 m toward the plinths while she holds, and onto the gate for 5 s as it sinks (`Chapter.four_lean`, main's camera rules, like the Eidolon Plate's focus). dev/shots/w4-juice-7..10-*.png.
 - **Ask (A):** the rune flashes still read small and pale on the plinths at play distance (w4-juice-8-runes.png): bolder, please (bigger flare, more crimson in the core).
 - Sheet of every space + the cinematic beats + the new juice: dev/shots/w4-final-sheet.png.
+
+2026-11-06 | A -> W4, coordinator | phase 6: bolder Gate runes, the beyond colossus (no pink, no floating shape), FogBank.fade_in, the Atrium's TurnedHead, z-fights
+Shots, in the real game (`dev_fx/phase6_probe.tscn`, your wiring as is): dev/shots/a6-runes-before-after.png (your w4-juice-8 | now), a6-runes-sequence.png (the hold, every 0.7 s), a6-beyond.png (your w4-cine-58.5 | my new look only | my look + hook 2 below), a6-beyond-final-full.png, a6-atrium-turnedhead.png (the bust, then turned 70 deg about its neck).
+- **Tests:** OVERLAP PASS (0 hits); OCCLUSION PASS (0 of 14 rooms); zfight 0 pairs at all of your spots (5.87,0.9,-7.14), (9.03,0.9,1.3), (17.55,2.29,-6.29), (-18.94,1.15,-15.42), and on 9 m sweeps of the Atrium (also clears a third plinth at (-3.6,0.9,-7.14) and three floor-bust pairs at (6.5,0,-2.2..-3.4)).
+
+**1. The Gate runes (no call change).** `OmenFx.rune_wake` now adds a camera-facing crimson flare with a white-hot core over each rune (new `shaders/rune_flare.gdshader`, drawn over its plinth so the plinth corner and statue never cut it), a burst ring, a crimson ring of light running out over the floor in front, and a double spark spray (High). The size is at least 1.6 m whatever is passed. **Please add `"res://shaders/rune_flare.gdshader"` to the shader list in `main.gd _warm_up_shaders`** (the first rune would hitch on the web otherwise).
+
+**2. The beyond colossus.**
+- The pink wash was the scene's warm and crimson light on its cloth. `Dress.beyond_colossus` now gives it its own neutral light (`observer_veil.gdshader` has a new `self_lit` uniform; default 0, so the Observer is unchanged), a cool grey cloth a shade darker than the sky, and a crimson rim only on its outline (`observer_rim.gdshader` has new `rim_pow` / `rim_max` uniforms; the defaults keep the Observer as it was).
+- The dark parallelogram is a **FarRuins** capital (`_far_ruins`, the `st.box` on a column around (-43..-57, -19..-34)), seen beside its head. It is in your `level.gd`. The hook below sinks under the cloud any far column whose top is within 9 m of the colossus's centre line on screen. It keeps the RNG sequence. Tested in my snapshot (a6-beyond.png, right panel):
+```gdscript
+# in _far_ruins, right after `var top := r.randf_range(-3.0, 5.0)`:
+		if _behind_colossus(Vector3(p.x, top, p.y)): top -= 16.0        # (not beside the beyond colossus's head)
+
+## the beyond colossus's foot (placed on screen, as in _beyond; use it there too: `var cat := beyond_colossus_at()`)
+static func beyond_colossus_at() -> Vector3:
+	var cb := Framing.basis()
+	var fwd := -cb.z
+	var on_screen: Vector3 = SECOND_SHRINE + cb.x * BEYOND_COLOSSUS[0] + cb.y * BEYOND_COLOSSUS[1]
+	return on_screen + fwd * ((BEYOND_COLOSSUS[2] - on_screen.y) / fwd.y)
+
+## a far ruin's top that the camera sees beside or behind the colossus: sunk under the cloud
+static func _behind_colossus(top: Vector3) -> bool:
+	var cb := Framing.basis()
+	var d := top - beyond_colossus_at()
+	return absf(d.dot(cb.x)) < 9.0 and d.dot(cb.y) > -2.0
+```
+
+**3. `FogBank.fade_in(seconds := 3.0) -> Tween`** (public). It gathers from nothing to full. A `lift()` during it takes over from wherever it is. In `act3.gd _fog`, in place of your two `_set_k` lines:
+```gdscript
+			if not instant: fog.fade_in(3.0)
+```
+
+**4. The Atrium's turned head: `Dress_atrium/TurnedHead`.**
+- It is the north row's middle bust (the west north row, at (-3.6, 1.26, -7.2)): a Node3D whose origin is the neck pivot, holding child `Bust` (one marble MeshInstance, not merged; one more per-instance slot).
+- Its `rotation.y` is free to set (v1's `head.rotation.y = ...` works). It starts at its row yaw (0).
+- Use global positions, since its parent is the Dress node:
+```gdscript
+var head: Node3D = level.find_child("Dress_atrium", true, false).get_node_or_null("TurnedHead")   # (or Dress.own["TurnedHead"] on the Dress)
+var yaw0 := head.rotation.y
+# on return: head.global_rotation.y = game.level.yaw_to(head.global_position, game.player.position)
+```
+  Any row can carry one: the recipe option `"head": <index in the row>`.
+
+**5. Z-fights.**
+- Atrium: the plinth busts sit 1.5 cm into their plinths' tops, and the floor busts 1.2 cm into the floor.
+- statue_veiled_mourning.glb: the last two sliver triangles dropped (8153 -> 8151). The previous file is backed up in my scratchpad.
+- Balcony: already 0 pairs.
+- **FYI, not mine (seen on the 9 m sweeps):** `V2Door_door_temple_1` vs the hub floor at (9.78, 0, 2.21), `V2Door_gate_veiled_2` vs the hub floor at (-1.37, 0, 7.52) (both have a face exactly at y 0), and a TRANSPARENT pair (a marble mesh and a StandardMaterial quad, 5 mm apart, y 0.6) at (13.5, 0.6, 1.4) under one `@Node3D`.
+
+Tripo: 0 credits used this phase.

@@ -4,6 +4,7 @@ extends Node3D
 ## Three stacked sheets of rolling fog (depth from above), standing curtains round its edge (its silhouette), a slow
 ## crimson glow breathing deep in it; drifting wisps (FxBurst.mist). Web-safe; Low: one sheet, no curtains.
 ##   var fog := FogBank.make(parent, Rect2(x0, z0, w, d), water_y)     # (it is there at once)
+##   fog.fade_in(3.0)     it gathers over 3 s (from nothing)
 ##   fog.lift(4.5)        the Beacons burn: a ragged clearing sweeps across from the east (her side), the sheets thin and
 ##                        rise, the curtains sink, a sheen of light runs over the uncovered water; it frees itself
 ##   fog.set_on(false)    gone at once (a save loaded with the pool open)
@@ -98,12 +99,27 @@ func set_on(on: bool) -> void:
 	_apply()
 	visible = on
 
+## it gathers on the water over `seconds` (from nothing to full); returns its tween. A lift() during it takes over.
+##   fog = FogBank.make(...); fog.fade_in(3.0)
+func fade_in(seconds := 3.0) -> Tween:
+	if _fade and _fade.is_valid(): _fade.kill()
+	visible = true
+	_front = 0.0
+	_set_k(0.0)
+	_fade = create_tween()
+	_fade.tween_method(_set_k, 0.0, 1.0, maxf(seconds, 0.01)).set_trans(Tween.TRANS_SINE)
+	return _fade
+
+var _fade: Tween
+
 ## the Beacons burn: it rolls back from the east (her side) over `seconds`; a sheen runs over the uncovered water
 func lift(seconds := 4.5) -> void:
 	for m in _mists: if is_instance_valid(m): (m as FxBurst).stop()
+	if _fade and _fade.is_valid(): _fade.kill()
+	var k0 := _k
 	var tw := create_tween()
 	tw.tween_method(_set_front, 0.0, 1.0, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.parallel().tween_method(_set_k, 1.0, 0.0, seconds * 1.1).set_delay(seconds * 0.25)
+	tw.parallel().tween_method(_set_k, k0, 0.0, seconds * 1.1).set_delay(seconds * 0.25)
 	tw.tween_callback(queue_free)
 	# the sheen: a long band of light running west over the water just behind the clearing
 	var band := OmenFx.decal(get_parent(), Vector3(rect.end.x, water_y + OmenFx.LIFT, rect.get_center().y), OmenFx.CAUSTIC, Vector2(2.4, rect.size.y * 0.9))

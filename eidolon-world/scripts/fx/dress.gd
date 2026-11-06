@@ -74,14 +74,14 @@ const RECIPES := {
 	"atrium": [
 		["kit_scaffold", 0.06, 0.07, 0.0, 1.0], ["kit_scaffold", 0.94, 0.08, 90.0, 1.0], ["kit_ladder", 0.16, 0.13, 30.0, 0.85],
 		["kit_fountain", 0.5, 0.5, 0.0, 1.0],
-		["row", 0.22, 0.05, 0.42, 0.05, {"n": 3, "plinth": true, "yaw": 0.0}],
+		["row", 0.22, 0.05, 0.42, 0.05, {"n": 3, "plinth": true, "yaw": 0.0, "head": 1}],     # (its middle bust: Dress_atrium/TurnedHead)
 		["row", 0.58, 0.05, 0.82, 0.05, {"n": 3, "plinth": true, "yaw": 0.0}],
 		["row", 0.95, 0.22, 0.95, 0.4, {"n": 2, "plinth": true, "yaw": -90.0}],
 		["row", 0.95, 0.6, 0.95, 0.85, {"n": 3, "plinth": true, "yaw": -90.0}],
 		["row", 0.3, 0.16, 0.42, 0.16, {"n": 2, "yaw": 20.0, "scale": 0.9, "small": true}],
 		["row", 0.82, 0.25, 0.84, 0.4, {"n": 2, "yaw": -70.0, "scale": 0.9, "small": true}],
-		["kit_face1", 0.15, 0.92, 200.0, 0.9, {"small": true}], ["kit_face4", 0.3, 0.95, 160.0, 0.9, {"small": true, "tilt": -90.0}],
-		["kit_face6", 0.72, 0.94, 190.0, 0.9, {"small": true}], ["kit_face3", 0.86, 0.95, 230.0, 0.9, {"small": true, "tilt": 90.0}],
+		["kit_face1", 0.15, 0.92, 200.0, 0.9, {"small": true, "y": -0.012}], ["kit_face4", 0.3, 0.95, 160.0, 0.9, {"small": true, "tilt": -90.0}],
+		["kit_face6", 0.72, 0.94, 190.0, 0.9, {"small": true, "y": -0.012}], ["kit_face3", 0.86, 0.95, 230.0, 0.9, {"small": true, "tilt": 90.0}],
 		["statue_veiled_unfinished", 0.86, 0.16, -45.0, 0.9]],      # (no Beacon pillars: the Beacons are the wings', V2_MAP)
 	# ---------------------------------------------------------------- ACT 2, W wing (glass, cold: "w_glass")
 	# glass everywhere: tall framed panes on the back walls, cold columns, a praying figure
@@ -233,9 +233,12 @@ func _place(e: Array) -> void:
 				var fs: float = o.get("scale", 1.0)
 				if o.get("plinth", false):
 					_place(["plinth", uu, vv, fy, 1.0])
-					if _last_ok: _place([face, uu, vv, fy, fs, {"y": 0.9, "on": true}])
+					# (sunk 1.5 cm into the plinth's top: its base face is no longer coplanar with the top, no z-fight)
+					var po := {"y": 0.885, "on": true}
+					if int(o.get("head", -1)) == k: po["own"] = "TurnedHead"
+					if _last_ok: _place([face, uu, vv, fy, fs, po])
 				else:
-					_place([face, uu, vv, fy, fs, {"small": o.get("small", false)}])
+					_place([face, uu, vv, fy, fs, {"small": o.get("small", false), "y": -0.012}])     # (its base 1.2 cm into the floor: no z-fight)
 			return
 		"flame":
 			if not o.get("on", false):
@@ -346,13 +349,38 @@ func _add_mesh(what: String, mesh: ArrayMesh, xf: Transform3D, rad: float, from_
 	var small: bool = o.get("small", false)
 	# (v2.0, the marble per-instance budget: small dressing merges into the main mesh too: one marble mesh per landmark)
 	var slot := "occ" if tall else "main"
-	_parts[slot].append([mesh, xf])
+	if o.has("own"):
+		_own_node(str(o["own"]), mesh, xf, bb)
+	else:
+		_parts[slot].append([mesh, xf])
 	if tall: level.occluders.append(wb)
 	if not on:
 		var c := wb.get_center()
 		var yaw := xf.basis.get_euler().y
 		_blobs.append(Transform3D(Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(maxf(bb.size.x, 0.3) * xf.basis.get_scale().x * 1.15, 1.0,
 			maxf(bb.size.z, 0.3) * xf.basis.get_scale().z * 1.15)), Vector3(c.x, wb.position.y + 0.012, c.z)))
+
+## a piece as its OWN node (not merged), pivoted at its neck: `<name>` (a Node3D at the pivot, turned only by its yaw,
+## rotation.y free to set) holding the mesh, scaled. One marble MeshInstance (one per-instance slot).
+func _own_node(nm: String, mesh: ArrayMesh, xf: Transform3D, bb: AABB) -> void:
+	var c := bb.get_center()
+	var pivot := Vector3(c.x, bb.position.y + bb.size.y * NECK, c.z)
+	var sc := xf.basis.get_scale()
+	var hn := Node3D.new()
+	hn.name = nm
+	add_child(hn)
+	hn.global_transform = Transform3D(xf.basis.orthonormalized(), xf * pivot)
+	var mi := MeshInstance3D.new()
+	mi.name = "Bust"
+	mi.mesh = mesh
+	mi.material_override = level.marble_mat
+	mi.layers = PlanarMirror.LAYER_MAIN_FX
+	mi.transform = Transform3D(Basis.from_scale(sc), -(pivot * sc))
+	hn.add_child(mi)
+	own[nm] = hn
+
+const NECK := 0.62                # (the neck of his busts, of their height)
+var own := {}                     # name -> Node3D: pieces built as their own node (the Atrium's TurnedHead)
 
 const SEARCH := 2.0
 static var _offs: Array[Vector2] = []
@@ -682,10 +710,17 @@ static func beyond_colossus(parent: Node, at: Vector3, height := 24.0, yaw := 0.
 	if mi == null: return null
 	mi.name = "BeyondColossus"
 	var m := mi.material_override as ShaderMaterial
-	m.set_shader_parameter("cloth", Color(0.74, 0.75, 0.78))         # (paler: far off, in the light)
-	m.set_shader_parameter("wet", Color(0.5, 0.52, 0.56))
+	# (phase 6) its own neutral light (self_lit: the scene's warm / crimson light washed it pink), a cool grey cloth a
+	# shade darker than the sky so it stands apart from the pale cloud; its own fog takes it only part way
+	m.set_shader_parameter("cloth", Color(0.70, 0.71, 0.74))
+	m.set_shader_parameter("wet", Color(0.42, 0.44, 0.48))
+	m.set_shader_parameter("fog_max", 0.3)
+	m.set_shader_parameter("fog_c", Color(0.72, 0.74, 0.78))
+	m.set_shader_parameter("self_lit", 1.0)
 	var r := m.next_pass as ShaderMaterial
 	r.set_shader_parameter("k", 1.0)
+	r.set_shader_parameter("rim_pow", 5.0)            # (the crimson only on its outline, not over its folds)
+	r.set_shader_parameter("rim_max", 0.8)
 	r.set_shader_parameter("push", 0.02 / maxf(mi.transform.basis.get_scale().x, 0.001))
 	mi.extra_cull_margin = 4.0
 	return mi

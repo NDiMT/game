@@ -11,6 +11,10 @@ uniform vec3 wet : source_color = vec3(0.24, 0.25, 0.28);
 uniform float fog_max = 0.45;
 uniform float fog_dist = 70.0;
 uniform vec3 fog_c : source_color = vec3(0.78, 0.78, 0.765);
+// (phase 6) 0: lit by the scene (the Observer); 1: its own neutral light, a key from above-left (the beyond colossus:
+// the scene's warm / crimson light washed it pink at that range)
+uniform float self_lit = 0.0;
+uniform vec3 key_dir = vec3(-0.45, 0.8, 0.4);
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -25,7 +29,12 @@ void fragment() {
 	float hollow = 1.0 - abs(dot(NORMAL, VIEW));
 	c *= 1.0 - 0.4 * smoothstep(0.5, 1.0, hollow);
 	float fd = fog_max * (1.0 - exp(-length(VERTEX) / fog_dist));
-	ALBEDO = mix(c, fog_c * 0.85, fd);
+	vec3 lit_c = mix(c, fog_c * 0.85, fd);
+	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+	float key = 0.5 + 0.5 * clamp(dot(nw, normalize(key_dir)), 0.0, 1.0);
+	vec3 own = mix(c * key, fog_c * 0.85, fd);
+	ALBEDO = lit_c * (1.0 - self_lit);
+	EMISSION = own * self_lit;
 	ROUGHNESS = mix(0.82, 0.35, wetk);
 	SPECULAR = mix(0.25, 0.6, wetk);
 }
