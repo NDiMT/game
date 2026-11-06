@@ -12,7 +12,7 @@ const TOL := 0.02
 const BAND := 0.3                 # a walkway's centreline band (half width)
 ## owners that are meant to hang, lean, be sunk or be passed (by the start of their name)
 const NO_SUPPORT := ["Wonders", "Colossus", "wonder", "rubble", "debris", "Ink", "hw_gate", "Gframe", "Hdoor", "Zone_GLs",
-	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus"]
+	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus", "BridgeShard"]
 ## designed contacts, by place: [where (world box), what it is]. Hits inside one are not counted.
 const DESIGNED := [
 	[AABB(Vector3(9.9, 2.5, 198.9), Vector3(4.8, 0.7, 8.2)), "(v2 I.5) the crypt's vault rests on its four piers and its walls"],

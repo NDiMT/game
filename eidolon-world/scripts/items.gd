@@ -27,7 +27,7 @@ const PANEL_X := Vector2(Map2.GE.x + 30.4, Map2.GE.x + 32.4)          # (v2: at 
 
 ## Theron's notes: [id, where, text]
 const TABLETS := [
-	["t1", Map2.O + Vector3(11.2, 0.0, 5.9), "She is not gone. Only behind the veil."],
+	["t1", Map2.O + Vector3(12.2, 0.0, 5.4), "She is not gone. Only behind the veil."],
 	["t2", Map2.O + Vector3(20.35, 2.0, -11.0), "She laughed when I asked her to stand still. 'Then carve me moving,' she said."],
 	["t3", Map2.GG + Vector3(9.5, 1.0, -13.5), "I moved the lamps until her shadow fell where I wanted. Even her shadow argued."],
 	["t4", Map2.O + Vector3(-20.4, 1.0, -8.6), "Marble first, then a thousand faces, then glass, I told the guild. They thought it a boast."],
@@ -40,7 +40,7 @@ const TABLETS := [
 const SECRETS := [
 	["m1", Map2.O + Vector3(-3.3, 0.0, 21.3), "lens", "Milos, the harbour. She bought him a chisel with her first wages and would not say why."],
 	["m2", Map2.GN + Vector3(15.6, 1.0, -7.3), "lens", "The garden in flower. She tucked a petal behind the ear of every statue."],
-	["m3", Map2.GG + Vector3(9.4, 1.0, -12.4), "lens", "From above, the chamber floor: her shadow and his, the same length at last."],
+	["m3", Map2.GG + Vector3(9.5, 1.0, -16.3), "lens", "From above, the chamber floor: her shadow and his, the same length at last."],
 	["m4", Map2.GE + Vector3(33.4, 4.0, -32.0), "lens", "The spring sang back the note. She used to hum it while he worked."],
 	["m5", Map2.O + Vector3(1.4, 0.0, 0.9), "lens", "Under the fountain's lip, in her hand: 'Look at me, not at the marble.'"],
 	["m6", Map2.GE + Vector3(27.5, 2.0, -24.3), "lens", "On the Ledge she stood at the edge and leaned on the wind, laughing at his fear."],

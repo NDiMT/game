@@ -103,13 +103,8 @@ func _wing_order(order: Array) -> void:
 			"W": it.append("shard"); hs["w_seen"] = true
 			"E": hs["e_open"] = true
 		ok("(QA order %s) %s: its Beacon waits for its puzzles" % [tag, w], not C().hub.beacon_ready(w))
-		# the other wings' shortcuts never open into this one before it is walked
-		if w == "N":
-			ok("(QA order %s) N not walked: the Ledge's drawbridge lever is held" % tag, not _cond_at("drawbridge", Vector3(22.2, 2.0, -23.0)) and _cond_at("drawbridge_held", Vector3(22.2, 2.0, -23.0)))
-			if st["echo_room"]: ok("(QA order %s) N not walked: the Echo bars stay bolted" % tag, not _cond_at("ec_unbolt", Vector3(10.0, 2.0, -41.7)))
 		for k in WING_PUZZLES[w]: st[k] = true
 		ok("(QA order %s) %s walked: its Beacon can be lit" % [tag, w], C().hub.beacon_ready(w))
-		if w == "E" and st["maze"]: ok("(QA order %s) both walked: the Echo bars unbolt" % tag, _cond_at("ec_unbolt", Vector3(10.0, 2.0, -41.7)))
 
 func _focus() -> String:
 	return game.focus.id if game.focus else "none"
@@ -247,13 +242,15 @@ func _collision_audit() -> Dictionary:
 func _reach(goals: Array) -> Array:
 	var lv: Level = game.level
 	var st := 0.25
-	var org := Vector2(-14.0, -54.0)
-	var nx := int(50.0 / st)
-	var nz := int(63.0 / st)
+	# (v2: the new world, from where she wakes)
+	var org := Vector2(Map2.O.x - 37.0, Map2.O.z - 70.0)
+	var nx := int(70.0 / st)
+	var nz := int(95.0 / st)
 	var seen := {}
-	var start := Vector2i(int((Level.WAKE_POS.x - org.x) / st), int((Level.WAKE_POS.z - org.y) / st))
+	var w0 := Vector2(Map2.O.x + Map2.ROUTE[1][0], Map2.O.z + Map2.ROUTE[1][1])
+	var start := Vector2i(int((w0.x - org.x) / st), int((w0.y - org.y) / st))
 	var q := [start]
-	seen[start] = lv.height_at(Vector2(Level.WAKE_POS.x, Level.WAKE_POS.z))
+	seen[start] = lv.height_at(w0)
 	while not q.is_empty():
 		var c: Vector2i = q.pop_back()
 		var h: float = seen[c]
@@ -263,7 +260,7 @@ func _reach(goals: Array) -> Array:
 			var p := org + Vector2(n) * st
 			if not lv.circle_ok(p, Player.RADIUS - 0.02) or lv.blocked(p, Player.RADIUS - 0.02): continue
 			var hn := lv.height_at(p)
-			if absf(hn - h) > 0.3: continue
+			if absf(hn - h) > 0.4: continue          # (v2: the steep little stairs, the Veil Stair's 2 m in 1.4)
 			seen[n] = hn
 			q.append(n)
 	var missing := []
@@ -374,7 +371,7 @@ func _plan() -> void:
 	step_wait(0.4)
 	step_do(func() -> void:
 		ok("(v1.0) the lamp is carried: in her hand, its own light", C().hub.has_item("lamp") and C().hub.lamp_held.is_inside_tree() and C().hub.lamp_held.get_parent() == game.player.fig and C().hub.lamp_light.visible))
-	walk_path("(I.5) to his cot and his tablet, by lamplight", [V(11.2, 5.35)])
+	walk_path("(I.5) to his cot and his tablet, by lamplight", [V(11.7, 5.3)])
 	step_do(func() -> void: ok("(v2.0 I.5) Theron's first tablet: 'She is not gone. Only behind the veil.'", _focus() == "tab_t1" and game.try_interact() and game.ui.text.text.begins_with("She is not gone"), _focus()))
 	step_wait(1.6)
 	walk_path("(I.6) out by the west door, into the Atrium", [V(11.0, 3.0), V(8.5, 3.0)])
@@ -725,7 +722,9 @@ func _plan() -> void:
 		ok("solver: each goal cell is free, and the drum starts away from it", C().hall_free(Chapter.DRUM_GOAL, 0.42, 0) or C()._locked(0))
 		ok("only the whole set answers: all three locked at once, one chime", C()._locked(0) and C()._locked(1) and C()._locked(2))
 		ok("(v2, the script) the glass cracks at a corner and the Shard comes out through it", C().shard_node.visible and not C().state["shard"])
-		walk_to(Map2.GW.x - 1.5, Map2.GW.z - 19.0))
+		walk_to(Map2.GW.x - 2.4, Map2.GW.z - 17.6))
+	step_until("round the drum", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
+	step_do(func() -> void: walk_to(Map2.GW.x - 1.6, Map2.GW.z - 18.95))
 	step_until("to the Shard, before the glass", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
 	step_wait(1.0)
 	step_do(func() -> void: ok("take the shard", _focus() == "take_shard" and game.try_interact(), _focus()))
@@ -858,7 +857,7 @@ func _plan() -> void:
 		ok("(v2.0 W.6) through the raised Shard, her door: then it is there for you too", C().state["hub"]["w_seen"] and not game.level.named["gallery_secret"].enabled)
 		C().set_lens(false))
 	step_wait(2.6)
-	walk_path("through the hidden way, along it to the Beacon's rock", [[Map2.GG.x + 8.1, Map2.GG.z - 8.0], [Map2.O.x - 13.5, Map2.O.z - 11.5], [Map2.O.x - 16.0, Map2.O.z - 11.5], [Map2.O.x - 18.9, Map2.O.z - 11.4]])
+	walk_path("through the hidden way, along it to the Beacon's rock", [[Map2.GG.x + 8.1, Map2.GG.z - 8.0], [Map2.O.x - 13.5, Map2.O.z - 11.5], [Map2.O.x - 16.0, Map2.O.z - 11.5], [Map2.O.x - 19.0, Map2.O.z - 11.5]])
 	step_do(func() -> void:
 		ok("(v2.0) the West Beacon is cold until you light it", not C().hub.beacon_lit("W") and C().hub.beacon_ready("W"))
 		ok("(v2.0) the lamp lights the West Beacon", _focus() == "beacon_W" and game.try_interact() and C().hub.beacon_lit("W"), _focus()))
@@ -883,6 +882,7 @@ func _plan() -> void:
 	for c in Map2.N1_STONES: n1.append([Map2.O.x + c[0], Map2.O.z + c[1]])
 	walk_path("following her over the hidden stones", n1)
 	step_do(func() -> void: ok("(v2 N.1) only the true stones hold you: the decoys and the water do not", not game.level.on_ground(Vector2(Map2.O.x + Map2.N1_DECOYS[0][0], Map2.O.z + Map2.N1_DECOYS[0][1])) and not game.level.on_ground(Vector2(Map2.O.x + 4.5, Map2.O.z - 12.5))))
+	step_do(func() -> void: C().life._rune_cool = 0.0)          # (her last rune was by the Colossus: she writes again here)
 	step_wait(3.6)
 	step_do(func() -> void:
 		ok("(v1.0 M3c) waiting by still water: she writes a rune on it, beside you", C().life.runes >= 1 and C().life.rune_node.visible and C().life.rune_node.position.distance_to(P()) < 2.6, str(C().life.rune_node.position)))
@@ -1081,8 +1081,7 @@ func _plan() -> void:
 	step_do(func() -> void:
 		var w: Array = game.puzzles.beam_world
 		ok("part of the beam runs in her world (seen only in the glass)", 1 in w and game.puzzles.beam_segs[w.find(1)].layers == PlanarMirror.LAYER_DOUBLE)
-		ok("the stands are set as the solver says", game.puzzles.state["mirrors"] == Puzzles.MIRROR_SOLUTION, str(game.puzzles.state["mirrors"]))
-		ok("the drawbridge stays up (the way on is the mural)", not game.level.named["LB"].enabled))
+		ok("the stands are set as the solver says", game.puzzles.state["mirrors"] == Puzzles.MIRROR_SOLUTION, str(game.puzzles.state["mirrors"])))
 	step_until("the crystal lights the mural", func() -> bool: return game.puzzles.state["bridge"] and not game.puzzles.busy, 5.0)
 	step_do(func() -> void: walk_to(Map2.GN.x + 12.0, Map2.GN.z - 26.4))
 	step_until("to the mural", func() -> bool: return game.auto_target == Vector3.INF, 8.0)
@@ -1133,17 +1132,6 @@ func _plan() -> void:
 	walk_path("follow her steps", mpath)
 	step_do(func() -> void:
 		ok("out of the maze (its end, before the bars, is still the Maze's)", C().state["maze"] and game.area == "mist_maze", str((P() - Map2.GN)) + " " + game.area))
-	step_wait(4.0)
-	step_do(func() -> void:
-		ok("(v2.0 N.7) out of the maze: the Garden Beacon waits, cold", not C().hub.beacon_lit("N") and C().hub.beacon_ready("N"))
-		ok("(v2.0) the lamp lights the Garden Beacon", _focus() == "beacon_N" and game.try_interact() and C().hub.beacon_lit("N"), _focus()))
-	step_do(func() -> void:
-		ok("(v1.0) the way on into the Echo Corridor is bolted from the other side", game.level.named["ec_bars"].enabled)
-		walk_to(Map2.GN.x + 10.0, Map2.GN.z - 42.0))
-	step_wait(1.0)
-	step_do(func() -> void:
-		ok("(v1.0) the bars hold", (P() - Map2.GN).z > -40.9, str((P() - Map2.GN)))
-		game.cmd("stop"))
 	# (v2) the Maze's end: on to the Garden Beacon
 	walk_path("out to the Garden Beacon", [[Map2.O.x - 2.0, Map2.O.z - 51.5], [Map2.O.x - 3.0, Map2.O.z - 57.0], [Map2.O.x - 3.0, Map2.O.z - 58.3]])
 	step_do(func() -> void:
@@ -1254,7 +1242,7 @@ func _plan() -> void:
 	step_do(func() -> void: ok("the balance is level", C().scale_torque() == Vector2i(15, 15) and absf(C().sc_angle) < 0.02, str(C().scale_torque())))
 	step_until("(v2 E.5) the balance won, the bars on the way up rise", func() -> bool: return not game.level.named["up_bars"].enabled, 4.0)
 	# (v2) up onto the High terrace: the Beacon, then E.6 the Eidolon Plate
-	walk_path("up the risen platform", [[Map2.O.x + 23.5, Map2.O.z - 57.0], [Map2.O.x + 23.5, Map2.O.z - 60.0], [Map2.O.x + 26.0, Map2.O.z - 64.5], [Map2.O.x + 28.1, Map2.O.z - 66.4]])
+	walk_path("up the risen platform", [[Map2.O.x + 23.5, Map2.O.z - 57.0], [Map2.O.x + 23.5, Map2.O.z - 60.0], [Map2.O.x + 26.0, Map2.O.z - 64.5], [Map2.O.x + 28.1, Map2.O.z - 66.6]])
 	step_do(func() -> void:
 		ok("(v2.0) the lamp lights the High wing's Beacon", _focus() == "beacon_E" and game.try_interact() and C().hub.beacon_lit("E"), _focus())
 		ok("(v2 E.6) the High Stair down is barred until the Eidolon Plate answers", game.level.named["eh_bars"].enabled))
@@ -1382,10 +1370,17 @@ func _plan() -> void:
 	# ---- cannot fall: random walks in every space + the sealed way
 	walk_path("to the sealed way", [[25.0, -29.3], [29.6, -29.3], [29.6, -35.6], [28.0, -36.6], [28.0, -38.6]])
 	step_do(func() -> void: ok("the way on is sealed", P().z > -38.9 and _focus() == "sealed" and game.try_interact(), str(P())))
-	for zone in [[28.0, -37.5], [0.0, 0.0], [-5.0, 1.7], [-11.3, -2.0], [-11.3, -9.0], [-7.0, -13.5], [0.0, -16.0], [6.0, -12.0], [12.0, -10.0],
-			[21.0, -10.0], [12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [18.3, -48.5], [29.0, -49.0], [31.4, -32.0], [19.0, -20.4], [25.0, -22.0], [22.0, -29.0], [0.0, 6.5]]:
+	# (v2: the old world's Act 3 still, and a walk in every space of the new world, from the first place the route
+	# reaches in it)
+	var zones := [[28.0, -37.5, 14.0], [0.0, 0.0, 10.0]]
+	var seen_sp := {}
+	for e in Map2.ROUTE:
+		if seen_sp.has(e[2]) or str(e[2]) in ["P", "PW", "I21", "I22", "I23", "VW", "I4s"]: continue
+		seen_sp[e[2]] = true
+		zones.append([Map2.O.x + e[0], Map2.O.z + e[1], 5.0])
+	for zone in zones:
 		step_do(func() -> void: tp(zone[0], zone[1]))
-		step_walk(14.0)
+		step_walk(zone[2])
 	step_do(func() -> void:
 		ok("random walk: always on walkable ground", walk_violations == 0, "%d samples, %d violations, max step dy %.3f" % [walk_samples, walk_violations, max_dy])
 		ok("random walk: never inside a solid prop's footprint", solid_hits == 0, "%d samples, %d hits" % [walk_samples, solid_hits]))
@@ -1404,8 +1399,10 @@ func _plan() -> void:
 			var c: Vector2 = (e[2] as Rect2).get_center()
 			solid = solid and game.level.blocked(c, 0.05)
 		ok("props: each one is solid (its centre blocked)", solid)
-		var goals := [[-10.6, 1.7], [-11.3, -13.5], [0.0, -16.0], [3.85, -19.15], [8.4, -13.0], [8.6, -7.0], [12.0, -10.0], [11.15, -14.3], [21.0, -10.0],
-			[12.0, -22.0], [13.0, -34.0], [17.0, -45.4], [29.0, -49.0], [25.5, -21.6], [21.34, -33.93], [28.0, -38.6], [25.0, -30.8]]
+		# (v2: every place the route stops at in the wings, the Atrium and Act 1)
+		var goals := []
+		for e in Map2.ROUTE:
+			if not (str(e[2]) in ["P", "PW", "I21", "I22", "I23", "VW", "WS", "I4s"]): goals.append([Map2.O.x + e[0], Map2.O.z + e[1]])
 		var miss := _reach(goals)
 		ok("props: every key place still reachable on foot from the gate", miss.is_empty(), str(miss)))
 	# ---- v0.7 collisions: every prop and piece of architecture is solid
@@ -1419,16 +1416,16 @@ func _plan() -> void:
 		notes.append("collision audit: %d primitives, %d solid footprints, %d obstacles added; %d targets walked into from 4 sides (%d approaches), %d overlaps" % [au["parts"], au["solids"].size(), au["added"], res["targets"], res["approaches"], (res["bad"] as Array).size()])
 		print("  ", notes[-1])
 		ok("collision: walking into every solid prop and obstacle from 4 sides never overlaps it", (res["bad"] as Array).is_empty() and res["approaches"] > 1000, "%d targets, %d approaches, %d overlaps" % [res["targets"], res["approaches"], (res["bad"] as Array).size()])
-		tp(-11.3, -1.0, 0.0))
+		tp(Map2.GW.x - 11.3, Map2.GW.z - 1.0, 0.0))
 	step_do(func() -> void: game.cmd("input:-1:0"))
 	step_wait(1.5)
 	step_do(func() -> void:
 		game.cmd("stop")
-		ok("the first flight: its open side's balustrade stops you", P().x > -12.35 + 0.2, str(P()))
-		var lo := game.level.height_at(Vector2(-11.3, -0.5))
-		var hi := game.level.height_at(Vector2(-11.3, -3.8))
+		ok("the first flight: its open side's balustrade stops you", P().x > Map2.GW.x - 12.35 + 0.2, str(P()))
+		var lo := game.level.height_at(Map2.g2(Map2.GW) + Vector2(-11.3, -0.5))
+		var hi := game.level.height_at(Map2.g2(Map2.GW) + Vector2(-11.3, -3.8))
 		ok("the first flight rises the way its steps are drawn (no walking through raised steps)", hi > lo + 0.4 and not str(game.level.audit["solids"]).contains(":floor"), "%.2f -> %.2f" % [lo, hi])
-		tp(1.0, -16.6, PI))
+		tp(Map2.GW.x + 1.0, Map2.GW.z - 16.6, PI))
 	step_do(func() -> void: game.cmd("input:0:-1"))
 	step_wait(1.5)
 	step_do(func() -> void:
@@ -1452,10 +1449,10 @@ func _plan() -> void:
 	step_do(func() -> void: game.cmd("begin"))
 	step_until("continue", func() -> bool: return game.mode == "play", 5.0)
 	step_do(func() -> void:
-		ok("restored chapter", C().state["four"] and C().state["scales"] and "m1" in C().state["memories"] and C().state["shard"])
+		ok("restored chapter", C().state["four"] and C().state["scales"] and C().state["shard"] and C().hub.beacons_all())
 		ok("restored regions", game.level.named["pool4_2_0"].enabled and not game.level.named["breath_gate"].enabled and game.level.named["hdoor"].enabled
 			and game.level.named["g_door"].enabled and not game.level.named["hw_gate"].enabled and game.level.named["MZ_door"].enabled
-			and game.level.named["EC_room"].enabled and not game.level.named["tholos_front"].enabled and game.level.named["EB"].enabled)
+			and not game.level.named["tholos_front"].enabled and not game.level.named["eh_bars"].enabled and not game.level.named["up_bars"].enabled)
 		ok("restored inventory", game.controls.inv_has)
 		ok("restored the won balance", C().state["scales"] and C().state["hall"]["locks"] == [true, true, true])
 		ok("restored awakened world", game.world.awaken == 1.0 and game.player.fig.runes_awake == 1)
@@ -1495,7 +1492,7 @@ func _plan() -> void:
 		var cs: Dictionary = C().state
 		ok("new game: chapter reset", not cs["stones"] and not cs["shard"] and not cs["turned_done"] and cs["turned"] == Chapter.TURN_START and not cs["four"] and cs["memories"].is_empty(), str(cs))
 		ok("new game: regions reset", not game.level.named["pool4_2_0"].enabled and not cs["stones"] and cs["pool_turns"] == Ch1Geo.POOL_START and game.level.named["breath_gate"].enabled and not game.level.named["hdoor"].enabled
-			and game.level.named["hw_gate"].enabled and not game.level.named["MZ_door"].enabled and game.level.named["tholos_front"].enabled and not game.level.named["LB"].enabled)
+			and game.level.named["hw_gate"].enabled and not game.level.named["MZ_door"].enabled and game.level.named["tholos_front"].enabled and game.level.named["eh_bars"].enabled and game.level.named["up_bars"].enabled)
 		ok("new game: no shard", not game.controls.inv_has and not C().lens_on)
 		ok("new game: the lift waits at the top (v1.0: you first meet it from the Ledge)", C().lift_h == 1.0)
 		ok("new game: world asleep, runes dormant", game.world.awaken == 0.0 and game.player.fig.runes_awake == 0)
@@ -1509,27 +1506,19 @@ func _plan() -> void:
 	step_do(func() -> void:
 		game.cmd("jump:atrium")
 		ok("(QA P1-2) the Warden is never in plain view: hidden off the Walk", not C().warden.patrol_fig.visible and not C().warden.ghost_fig.visible)
-		C().state["echo_room"] = true; C().state["scales"] = true
-		tp(10.0, -41.75, 0.0))
-	step_wait(0.5)
-	step_do(func() -> void:
-		ok("(QA P0-1) E first: the bars will not unbolt before the Maze is walked", _focus() == "ec_held", _focus())
-		tp(10.0, -40.2, 0.0))
+		ok("(v2) E: the High Stair's bars hold until the Eidolon Plate answers, the way up until the balance", game.level.named["eh_bars"].enabled and game.level.named["up_bars"].enabled)
+		tp(Map2.O.x - 2.0, Map2.O.z - 50.5, 0.0))
 	step_wait(0.6)
 	step_do(func() -> void:
 		ok("(QA P0-1) standing at the Maze's end from the other side never solves the Maze", not C().state["maze"])
-		tp(22.2, -23.0, 0.0))
-	step_wait(0.5)
-	step_do(func() -> void:
-		ok("(QA P1-1) E first: the Ledge's drawbridge lever is held from the far side", _focus() == "drawbridge_held" and not game.puzzles.state["drawbridge"], _focus())
 		C().state["beacons"] = ["W", "N"]
 		C().hub.apply_state()
-		ok("(v2.0) Beacons restored from a save burn at once, in the wing and in the Atrium; the Gate still waits", (C().hub.beacon_fires["W"] as BeaconFire).lit and (C().hub.atrium_fires["N"] as BeaconFire).lit and not (C().hub.beacon_fires["E"] as BeaconFire).lit and not C().hub.beacons_all()))
+		ok("(v2.0) Beacons restored from a save burn at once, in their wings; the Gate still waits", (C().hub.beacon_fires["W"] as BeaconFire).lit and (C().hub.beacon_fires["N"] as BeaconFire).lit and not (C().hub.beacon_fires["E"] as BeaconFire).lit and not C().hub.beacons_all()))
 	# ---- (v1.1) the in-between points: each one there, each answers once
 	step_do(func() -> void:
 		var ids := []
 		for it in game.level.interacts: ids.append(it.id)
-		ok("(v1.1) six in-between points and a relief along the Echo Corridor", Points.POINTS.all(func(p: Array) -> bool: return ("pt_" + String(p[0])) in ids) and Points.RELIEF.size() == 3)
+		ok("(v1.1) the in-between points, each there", Points.POINTS.size() >= 6 and Points.POINTS.all(func(p: Array) -> bool: return ("pt_" + String(p[0])) in ids))
 		C().points._use("votive", "votive", "x")
 		ok("(v1.1) the votive, lit, stays lit", C().points.done("votive") and C().points.votive.level() > 0.5 or C().points.done("votive"))
 		# (QA_V11) each point changes the world, not only the text

@@ -223,13 +223,13 @@ const ROUTE := [
 	[-5.0, 3.0, "A"], [-5.0, 0.0, "A"], [-9.5, 0.0, "A"], [-22.0, 0.0, "WR"], [-33.4, 0.0, "WR"], [-33.4, -1.0, "W1"], [-34.3, -2.5, "W1"], [-34.3, -9.3, "W1"],
 	[-34.3, -16.5, "W2"], [-30.4, -17.5, "W2c"], [-26.5, -17.5, "W3"], [-23.0, -21.5, "W3"], [-18.9, -21.5, "W3"],
 	[-16.2, -21.5, "W4"], [-13.0, -21.6, "W5"], [-11.5, -18.0, "W5"], [-10.9, -14.6, "W5"], [-10.9, -12.0, "IBW"],
-	[-13.5, -11.5, "IBW"], [-16.0, -11.5, "W6"], [-19.5, -11.5, "WB"], [-19.5, -7.5, "WB"], [-19.5, -5.0, "W7"],
+	[-13.5, -11.5, "IBW"], [-16.0, -11.5, "W6"], [-19.0, -11.4, "WB"], [-19.5, -7.5, "WB"], [-19.5, -5.0, "W7"],
 	[-19.5, -2.5, "W7"], [-19.5, 0.0, "WR"], [-9.5, 0.0, "A"], [-5.0, 0.0, "A"], [-5.0, -4.5, "A"],
 	# North wing
 	[2.5, -4.5, "A"], [2.5, -7.0, "A"], [2.5, -8.6, "N1"], [2.5, -9.45, "N1"], [1.7, -10.25, "N1"], [1.9, -11.25, "N1"],
 	[2.8, -11.9, "N1"], [3.2, -12.75, "N1"], [3.2, -14.4, "N1"], [2.5, -16.5, "N2"], [3.6, -20.0, "N2"], [3.6, -21.8, "N2"], [5.25, -21.8, "N3"],
-	[5.9, -21.8, "N4"], [6.3, -23.0, "N4"], [6.5, -26.2, "IBN"], [5.5, -27.8, "IBN"], [2.5, -30.0, "N5"],
-	[0.0, -34.5, "N5"], [0.0, -38.2, "N7d"], [3.0, -38.2, "N6"], [0.0, -38.2, "N7d"],
+	[5.9, -21.8, "N4"], [6.9, -23.0, "N4"], [6.9, -26.2, "IBN"], [5.5, -27.8, "IBN"], [2.5, -30.0, "N5"],
+	[0.0, -34.5, "N5"], [0.0, -38.2, "N7d"], [2.5, -38.2, "N6"], [0.0, -38.2, "N7d"],
 	# (the Mist Maze: her way through it, cell by cell: Ch1Geo.MZ_PATH)
 	[0.0, -40.0, "N7"], [2.0, -40.0, "N7"], [2.0, -42.0, "N7"], [4.0, -42.0, "N7"], [4.0, -46.0, "N7"], [0.0, -46.0, "N7"],
 	[0.0, -44.0, "N7"], [-2.0, -44.0, "N7"], [-2.0, -48.5, "N7"], [-2.0, -51.5, "N7x"],
@@ -515,7 +515,7 @@ static func dress(lv: Level, parent: Node3D) -> Array:
 ## Beacons are the wings')
 const KEEP_EXTRA := [[-10.0, -1.6, -8.0, 1.6], [0.5, -8.0, 4.5, -6.0], [8.0, -6.1, 10.0, -2.9], [8.0, 1.8, 10.0, 4.2], [-4.2, 6.0, -0.8, 8.0], [-8.1, -8.0, -5.9, -6.0], [-10.6, -22.5, -9.0, -20.9],
 			[-9.7, -0.7, -8.5, 0.7], [-0.7, -8.0, 0.7, -6.8], [8.5, -0.7, 9.7, 0.7],
-			[10.5, 4.6, 12.0, 6.6], [12.1, 0.8, 14.0, 3.4],          # (the crypt: Theron's tablet and her lamp's rim, and the ways to them)
+			[10.5, 4.6, 12.6, 6.6], [12.1, 0.8, 14.0, 3.4],          # (the crypt: Theron's tablet and her lamp's rim, and the ways to them)
 			# (phase 3) the wings' puzzle floors, whole: the Hall, the Shadow Chamber, the Turned Ones and her glass, Our Steps,
 			# the Court, the Maze, the Singing Stones, the Scales, the Eidolon Plate's terrace
 			[-27.6, -24.6, -18.4, -15.0], [-14.0, -20.9, -9.0, -13.6], [-1.7, -25.0, 5.0, -20.5], [5.5, -25.0, 13.45, -16.0],
@@ -555,11 +555,15 @@ static func labels(parent: Node3D) -> void:
 
 # ============================================================================================ tools
 ## the layout as JSON (tests/map2_dump.gd -> tests/render_map2.py -> dev/shots/v2-map.png)
-static func to_json() -> String:
+static func to_json(extra: Array = []) -> String:
 	var sp := []
 	for s in SPACES: sp.append({"id": s[0], "beat": s[1], "name": s[2], "kind": s[3], "rect": s[4], "y": s[5], "dress": s[6]})
 	var wk := []
 	for e in WALK: wk.append({"space": e[0], "rect": [e[1], e[2], e[3], e[4]], "y0": e[5], "y1": e[5] if is_nan(e[6]) else e[6], "axis": e[7]})
+	# (phase 3: the v1 rooms' own regions, from a built Level: [key, Rect2 (world), y0, y1, axis])
+	for e in extra:
+		var r: Rect2 = e[1]
+		wk.append({"space": e[0], "rect": [r.position.x - O.x, r.position.y - O.z, r.end.x - O.x, r.end.y - O.z], "y0": float(e[2]) - O.y, "y1": float(e[3]) - O.y, "axis": e[4]})
 	var rt := []
 	for e in ROUTE: rt.append([e[0], e[1], e[2]])
 	var pcs := []

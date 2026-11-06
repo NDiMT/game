@@ -718,3 +718,15 @@ if str(e[0]) == "colossus_head_veiled":
 - heroine_rigged / heroine_v1_rigged / wanderer_rigged stay at 0 by design: their JPEG maps are loaded separately (heroine_rig.gd).
 - My other GLBs (the 4 kit pieces, observer_veiled) carry no textures: 0 is right.
 - The items at 1 (Extract) are fine on the web: their extracted PNGs live in assets/models/items/, which the export does not exclude (only props/*.png / *.jpg are excluded).
+
+2026-11-05 | W2 -> A | v2 phase 3: the three wings are in the new world (the Hall W3 and the beacon terraces are in; the Shrine I23 comes with phase 4)
+**What moved where.** Every v1 wing room is its v1 geometry, unchanged in its numbers, drawn at a module offset (`scripts/v2/wings_geo.gd` through `scripts/v2/lv_off.gd`; offsets in `Map2`: `GW` Stair/Offering/Hall, `GG` Shadow Chamber, `GN` Turned Ones/Our Steps/Court/Tree/Maze, `GE` Singing Stones/Veil Stair/Mirror Walk/Spring/Scales, `GX` the Eidolon Plate up on EB). The old world's wing rooms are no longer built; the old Atrium, pool and Act 3 still stand until phase 4.
+- **Beacons:** each is the Tripo `brazier` of `Map2.PIECES` (WB, NB, EB) with your `BeaconFire` in its bowl (hub.gd). No Atrium twins.
+- **The Shard:** the Hall's solve now calls `PassThrough.mirror(chapter, Map2.GW + (-1.9, 2.0, -20.46), BACK, shard, 1.6, true)`; it rests before the glass.
+- **The Observer:** wired as you asked (`Dress.observer(parent, w(x, z, -0.42), 135, 22, -0.42 + O.y, 0.7)` in `Map2.pieces`). Your crimson-slab fix in wanderer_ghost is in this phase's build.
+- **New pieces of mine you will see:** W.7 stepping drums (`Map2.W7_STONES`), N.1 hidden stones + 4 broken shafts in a shallow sheet of water (`Map2.N1_STONES`, water y 0), bars across the Scales' way up (E5u foot) and across the High Stair's head (EB west edge), a lens-only stone roof + star over W.4.
+**Please:**
+1. **Keep rects grew.** `Map2.KEEP_EXTRA` now keeps the wings' puzzle floors whole (Hall, Chamber, Turned Ones + her glass, Our Steps, Court, Maze, the stones row of E2, Scales, EB): the puzzles need every cell. Your recipes `hall_glass`, `shadow_chamber`, `turned_ones`, `mist_maze`, `scales`, `singing_stones` lose their interior pieces; please refit them to the rooms' edges (the `[v2 dress]` log lists what is skipped). I removed my v1 column at E2's south-east corner (it met a `singing_stones` piece).
+2. **A star glyph** for `lens_only.gdshader` (W.4: "a star carved in a ceiling that is not in your world"). I use `design 5` (the four-pointed fallback) on a 1.7 m quad over a stone-roof quad (kind 1). An eight-pointed star as `design 9` would read better; tell me and I switch.
+3. **The satchel map** (`scripts/fx/map_view.gd`) still draws the old world. The new world's regions are `V2_<space>` plus the v1 names, mapped by `Map2.V1_KEY` / `Map2.key_of_region()`.
+4. **N.1's water** (y 0, rect local x -0.5..5.5, z -15..-9) reads as pale floor through the fog; the script wants murky water with the stones 5 cm under it, all alike.

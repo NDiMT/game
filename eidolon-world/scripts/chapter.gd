@@ -1241,7 +1241,7 @@ func _build_gallery() -> void:
 		level.ob_circle(Vector2(SH_BRAZ[i].x, SH_BRAZ[i].z), 0.32)
 		var sm := _smat("res://shaders/statue_shadow.gdshader", {"k": 0.0, "dark": 0.72, "mode": 0.0, "seed": float(i),
 			"eyes": 1.0 if i in SH_SOLUTION else 0.0, "len": float(shadow_of(i)[2]), "wid": 1.45, "head_k": 2.0})
-		sm.render_priority = 1                  # (v0.9: a cast shadow lies OVER her outline: it fills it, its rim around)
+		sm.render_priority = 1 + i              # (v0.9: a cast shadow lies OVER her outline: it fills it, its rim around; v2: each its own order)
 		_mi(_plane(Vector2(1.0, 1.0)), sm, _shadow_xf(i, 1.026 + 0.001 * i)).layers = PlanarMirror.LAYER_MAIN_FX
 		sh_shadows.append(sm)
 		var idx := i
@@ -1255,6 +1255,7 @@ func _build_gallery() -> void:
 		var dd: Vector2 = so[1]
 		var ve := VeiledEyes.for_shadow(eye_head(i), Vector3(dd.x, 0.0, dd.y), 1.0, float(i) * 1.7, 1.5)
 		ve.layers = PlanarMirror.LAYER_MAIN_FX
+		ve.material_override.render_priority = 8 + SH_SOLUTION.find(i)          # (v2: above the shadows, each pair its own order)
 		add_child(ve)
 		sh_eye_mats.append(ve.material_override as ShaderMaterial)
 		# (and the shadow's decal wears them at exactly those points: its quad's own coordinates)
@@ -1377,16 +1378,24 @@ const HIDDEN_WAY := Map2.GG + Vector3(8.1, 1.0, -9.6)
 
 ## (v2, W.4 the Corridor) the Shard tried for the first time: through it, a star carved in a ceiling that is not in
 ## your world (the corridor is roofed only in hers). Raised in the corridor, the star shows over your head.
-const STAR := Map2.O + Vector3(-16.0, 3.4, -21.5)
+const STAR := Map2.O + Vector3(-16.0, 3.0, -21.5)
 const STAR_RECT := Rect2(Map2.O.x - 18.4, Map2.O.z - 22.4, 4.4, 1.8)
 var star_mat: ShaderMaterial
 func _build_star() -> void:
+	# her corridor's roof (a stone slab over it, only through the Shard) and the star carved in it, glowing
+	var roof_mat := ShaderMaterial.new()
+	roof_mat.shader = preload("res://shaders/lens_only.gdshader")
+	roof_mat.set_shader_parameter("noise_tex", level.noise_tex)
+	roof_mat.set_shader_parameter("kind", 1.0)
+	roof_mat.render_priority = 3
+	_mi(_quad(Vector2(4.0, 1.9)), roof_mat, Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), STAR - Vector3(0, 0.01, 0))).layers = PlanarMirror.LAYER_MAIN_FX
 	star_mat = ShaderMaterial.new()
 	star_mat.shader = preload("res://shaders/lens_only.gdshader")
 	star_mat.set_shader_parameter("noise_tex", level.noise_tex)
 	star_mat.set_shader_parameter("kind", 0.0)
-	star_mat.set_shader_parameter("design", 5.0)
-	_mi(_quad(Vector2(1.6, 1.6)), star_mat, Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), STAR)).layers = PlanarMirror.LAYER_MAIN_FX
+	star_mat.set_shader_parameter("design", 5.0)          # (A: a star glyph is asked for in HANDOFF; 5 is the four-pointed one meanwhile)
+	star_mat.render_priority = 4
+	_mi(_quad(Vector2(1.7, 1.7)), star_mat, Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), STAR)).layers = PlanarMirror.LAYER_MAIN_FX
 
 func in_star_corridor() -> bool:
 	return STAR_RECT.has_point(Vector2(game.player.position.x, game.player.position.z))
@@ -1532,12 +1541,13 @@ func _build_garden() -> void:
 			pv.position = hinge
 			add_child(pv)
 			var dm := MB.new()
-			dm.box(Vector3(0, 1.6, -s * 0.4), Vector3(0.12, 3.2, 0.78), Color(0.5, 1.0, 0.0))
-			dm.box(Vector3(0.07, 2.6, -s * 0.4), Vector3(0.03, 0.08, 0.6), Color(0.5, 0.25, 0.0))
-			var dmi := puzzles.marble_instance(dm.commit(), pv)
+			dm.box(Vector3(0, 1.6, -s * 0.4), Vector3(0.12, 3.2, 0.78), Color(0.5, 1.0, 1.0))
+			dm.box(Vector3(0.07, 2.6, -s * 0.4), Vector3(0.03, 0.08, 0.6), Color(0.5, 0.25, 1.0))
+			var dmi := puzzles.marble_instance(dm.commit(), pv)          # (v2: occ-coloured: open, they fade as you pass behind them, as walls do)
 			dmi.layers = PlanarMirror.LAYER_DOUBLE if twin else PlanarMirror.LAYER_MAIN_FX
 			(door_refl if twin else door_real).append(pv)
 	level.ob_rect(Map2.gr(Map2.GN, Level.R(16.8, -12.6, 17.15, -11.0)), "g_door_ob")
+	level.occluders.append(AABB(Map2.GN + Vector3(16.0, 1.0, -12.7), Vector3(1.9, 3.3, 1.8)))
 
 func turn_statue(i: int) -> void:
 	if state["turned_done"]: return

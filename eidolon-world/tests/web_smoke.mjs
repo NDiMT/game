@@ -27,7 +27,7 @@ const W = 390, H = 844;
 const HIGH_ROOMS = arg('--high-rooms', 'shard_gallery').split(',').filter(Boolean);
 const HIGH_WAIT = +arg('--high-wait', 5000);
 const ROOMS = ['waking_pool', 'stair_breath', 'hall_glass', 'shard_gallery', 'garden_veiled', 'hollow_walk', 'court_light',
-  'mist_maze', 'echo_corridor', 'scales', 'eidolon_ledge', 'gate_four', 'first_shrine'];
+  'mist_maze', 'scales', 'eidolon_ledge', 'gate_four', 'first_shrine'];
 // (v0.8.5: main.gd ROOM_ENTRY.mist_maze now lands inside the maze doorway at (12.0, -28.0): no nudge needed)
 const ENTRY_NUDGE = {};
 fs.mkdirSync(OUT, { recursive: true });

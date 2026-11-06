@@ -50,9 +50,9 @@ static func _stair_of_breath(L: LvOff) -> void:
 	L.slab(z, R(-12.4, -14.4, -10.2, -10.6), 1.0, 0.7, 0.0)
 	L.walk(R(-12.4, -14.4, -10.2, -10.6), 1.0, NAN, -1, "W_top")
 	L.ob_rect(R(-12.4, -6.95, -10.2, -6.65), "breath_gate")
-	L.column(Vector3(-12.15, 0.5, -6.8), 3.4)
-	L.column(Vector3(-10.64, 0.5, -6.8), 3.4)      # (v1.0: clear of the wall)
-	L.box(z, Vector3(-11.3, 4.05, -6.8), Vector3(2.2, 0.4, 0.6), 0.25, true)
+	L.column(Vector3(-12.15, 0.5, -6.55), 3.4)          # (v2: on the landing's edge, not the next flight's first step)
+	L.column(Vector3(-10.64, 0.5, -6.55), 3.4)      # (v1.0: clear of the wall)
+	L.box(z, Vector3(-11.3, 4.05, -6.55), Vector3(2.2, 0.4, 0.6), 0.25, true)
 	for x in [-12.35]:
 		L.balustrade(z, Vector2(x, -0.3), Vector2(x, -3.9), 0.25)
 		L.balustrade(z, Vector2(x, -4.1), Vector2(x, -6.5), 0.5)
@@ -339,6 +339,7 @@ static func _maze(L: LvOff) -> void:
 	L.balustrade(z, Vector2(11.0, -39.05), Vector2(16.9, -39.05), 2.0)
 	L.balustrade(z, Vector2(8.95, -29.1), Vector2(8.95, -38.9), 2.0)          # (v2: its west edge, where her pool was)
 	for k in 6:
+		if k == 1 or k == 2: continue          # (v2: none in the doorway in, or the way out)
 		L.stump(Vector3(9.4 + k * 1.45, 2.0, -29.25 - (k % 2) * 9.5), 0.5 + 0.3 * (k % 3), false)
 	# (v2, the script: no pool of hers beside it: her steps show on the maze floor itself, in the lamp's light)
 
@@ -365,6 +366,7 @@ static func _ledge(L: LvOff, name: String, glass: bool) -> void:
 			Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(28.335, 2.62, -20.9)), Vector2(0.95, 1.0))
 		L.box(z, Vector3(28.45, 2.6, -20.9), Vector3(0.22, 1.2, 1.1), 0.25)
 		L.ob_rect(R(28.3, -21.5, 28.6, -20.3))
+		L.column(Vector3(28.4, 2.0, -19.5), 4.0)
 	else:
 		# E.2: the Balcony comes up on its south-west, the High Stair down on its north-west, the Veil Stair leaves east
 		L.balustrade(z, Vector2(25.2, -18.95), Vector2(28.9, -18.95), 2.0)
@@ -372,7 +374,6 @@ static func _ledge(L: LvOff, name: String, glass: bool) -> void:
 		L.balustrade(z, Vector2(28.95, -19.1), Vector2(28.95, -21.3), 2.0)
 		L.balustrade(z, Vector2(28.95, -23.5), Vector2(28.95, -24.9), 2.0)
 		L.balustrade(z, Vector2(21.05, -19.1), Vector2(21.05, -24.9), 2.0)
-	L.column(Vector3(28.4, 2.0, -19.5), 4.0)
 
 ## E.3 the Mirror Walk, the lift, E.5 the Scales (v1 ch1_geo._scales)
 static func _scales(L: LvOff) -> void:

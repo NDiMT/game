@@ -9,40 +9,68 @@ Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
 [v2 dress] A kit_scaffold: outside the landmark
 [v2 dress] A kit_ladder: on a kept path
 [v2 dress] A plinth: on a kept path
+[v2 dress] W3 mirror_frame: outside the landmark
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 column_doric: outside the landmark
+[v2 dress] W3 column_doric: on a kept path
+[v2 dress] W3 statue_veiled_mourning: on a kept path
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 pediment_fragment: outside the landmark
 [v2 dress] W5 pylon_ashlar: outside the landmark
 [v2 dress] W5 pylon_ashlar: outside the landmark
 [v2 dress] W5 mirror_frame: on a kept path
+[v2 dress] W5 statue_veiled_kneeling: on a kept path
+[v2 dress] W5 rubble_pile: outside the landmark
 [v2 dress] W5 column_fallen: outside the landmark
 [v2 dress] IBW archway_ruined: on a kept path
+[v2 dress] IBW mirror_frame: outside the landmark
 [v2 dress] WB rubble_pile: outside the landmark
 [v2 dress] WB rubble_pile: on a kept path
 [v2 dress] N1 column_doric: outside the landmark
 [v2 dress] N1 column_doric: outside the landmark
 [v2 dress] N1 column_doric: outside the landmark
+[v2 dress] N2 statue_veiled_mourning: outside the landmark
+[v2 dress] N2 statue_veiled_praying: on a kept path
+[v2 dress] N2 statue_veiled_mourning: on a kept path
 [v2 dress] N2 statue_veiled_broken: on a kept path
+[v2 dress] N2 kit_dead_plant: on a kept path
+[v2 dress] N3 kit_votive: outside the landmark
 [v2 dress] N3 kit_urns: outside the landmark
+[v2 dress] N3 kit_dead_plant: outside the landmark
+[v2 dress] N3 column_stump: on a kept path
+[v2 dress] N6 statue_veiled_bust: on a kept path
+[v2 dress] N7 statue_veiled_broken: on a kept path
 [v2 dress] N7 column_stump: outside the landmark
+[v2 dress] N7 kit_dead_plant: on a kept path
+[v2 dress] N7 kit_urns: on a kept path
 [v2 dress] E1 balustrade: outside the landmark
 [v2 dress] E1 balustrade: on a kept path
 [v2 dress] E1 kit_awning_post: on a kept path
 [v2 dress] E1 kit_awning_post: outside the landmark
 [v2 dress] E1 kit_urns: on a kept path
 [v2 dress] E1 box: outside the landmark
+[v2 dress] E2 kit_windbells: on a kept path
 [v2 dress] E2 balustrade: outside the landmark
+[v2 dress] E4 kit_urns: outside the landmark
 [v2 dress] E5 statue_veiled_praying: outside the landmark
+[v2 dress] E5 column_stump: on a kept path
+[v2 dress] E5 pediment_fragment: on a kept path
+[v2 dress] E5 kit_awning_post: on a kept path
+[v2 dress] E5 balustrade: on a kept path
 [v2 dress] I21 kit_bridge_end: outside the landmark
 [v2 dress] I21 rubble_pile: on a kept path
 [v2 dress] I21 column_fallen: outside the landmark
 [v2 dress] I21 column_stump: on a kept path
 [v2 dress] I22 gate_veiled: outside the landmark
 [v2 dress] I22 pylon_ashlar: outside the landmark
-[solids] 5766 primitives, 1536 solid footprints, 520 obstacles added (336 ms)
-[warm-up] 645 mesh/material pairs (of 916 geometry nodes), 12 canvas materials
-  .. sim 0s  real 4s  step 0/1118
+[solids] 4436 primitives, 1526 solid footprints, 462 obstacles added (228 ms)
+[warm-up] 596 mesh/material pairs (of 829 geometry nodes), 12 canvas materials
+  .. sim 0s  real 3s  step 0/1100
 PASS  (v2.0) the intro cards play first (mirrored, then turned true) 
-  .. sim 20s  real 6s  step 6/1118
-  .. sim 40s  real 8s  step 6/1118
-  .. sim 60s  real 10s  step 6/1118
+  .. sim 20s  real 5s  step 6/1100
+  .. sim 40s  real 7s  step 6/1100
+  .. sim 60s  real 9s  step 6/1100
 PASS  (v2.0 shot 4) her reflection rises half a second late 
 PASS  (v2.0 shot 7) the Glass Warden rises in the water behind her 
 PASS  (v2.0 shot 12) the shell comb, in the satchel (a story item) 
@@ -52,7 +80,7 @@ PASS  chapter title on the title screen
 PASS  (v2.0) Act 1: the hint comes at 30 s 
 PASS  (v2 I.1) the court's temple door is shut 
 PASS  (v2) she woke in the new world, on the Pool of Halves' east shore 
-  .. sim 80s  real 13s  step 14/1118
+  .. sim 80s  real 11s  step 14/1100
 PASS  (v2.0 I.1) the plate is only in her world: the camera never draws it 
 PASS  (v2.0 I.1) the door is open 
 PASS  (v2.0 I.2) the bell rings; far bells answer pt_bell
@@ -60,7 +88,7 @@ PASS  (v2.0 I.3) the low gate across the road is down
 PASS  (v2.0 I.3) breathe on the first glass breathe_first
 PASS  (v2.0 I.3) one line only: no rune before it 
 PASS  (v2.0 I.3) written back, the line is right 
-  .. sim 100s  real 16s  step 40/1118
+  .. sim 100s  real 14s  step 40/1100
 PASS  (v2 I.4) the crossing is gone: no way over 
 PASS  (v2.0 I.4) turn the slab (once) a1_turn
 PASS  (v2.0 I.4) one turn is not her half 
@@ -70,22 +98,12 @@ PASS  (v2.0 I.5) the crypt is dark 1.00
 PASS  (v2.0 I.5) take her lamp lamp_take
 PASS  (v1.0) the lamp is carried: in her hand, its own light 
 PASS  (v2.0 I.5) Theron's first tablet: 'She is not gone. Only behind the veil.' tab_t1
-PASS  (v2) the Atrium of a Thousand Faces (8.559475, 0.0, 203.0006) atrium
+PASS  (v2) the Atrium of a Thousand Faces (8.557149, 0.0, 203.0005) atrium
 PASS  (v2) no Beacon in the Atrium: the three are the wings' 
 PASS  (v2.0) the wings: the hint at 90 s now 
-  .. sim 120s  real 19s  step 75/1118
-PASS  (v1.0) the Flooded Colonnade: her reflection walks the stones ahead of you s 1.94
-PASS  (v1.0) up onto the colossus' stones: the Garden wing and the Colossus beyond (12.14996, 1.0, 3.6668)
-PASS  (v1.0 M3c) waiting by still water: she writes a rune on it, beside you (12.89996, 0.172, 4.41555)
-PASS  (v1.0) the Colossus named the first time it is reached, from the Atrium side too THE SUNKEN COLOSSUS
-  .. sim 140s  real 23s  step 121/1118
-PASS  (v1.0) the lamp parts the Undercroft's dark (22.93295, 0.5, 11.4)
+  .. sim 120s  real 17s  step 75/1100
 PASS  (v2.0) the satchel: its slot shows; it holds only the chapter's own things (the lamp, the shard, the comb) [["lamp", 1], ["comb", 1], ["tablet", 1]]
 PASS  (v1.0 M3b) the satchel open: slots with icons, the chosen one's name and line; play paused under it Her Oil Lamp
-PASS  (v1.0 M3c) the map has filled in where you walked: the Atrium, the Undercroft, the Balcony; not the Maze ["V2_WS", "V2_I1", "V2_I2", "V2_I3", "V2_IB1", "V2_I4", "V2_I4s", "V2_I5", "V2_A", "A", "T4", "CO", "UC", "UC_up", "BAL", "E"]
-  .. sim 160s  real 26s  step 148/1118
-PASS  (v1.0 M3c) the map opens over the game, the Beacons marked faint until lit 
-PASS  (v1.0) the balcony brings you to the Eidolon Ledge (27.40739, 2.0, -20.135) eidolon_ledge
 PASS  pool reflection visible samples=63
 PASS  glimpse 1: reflection lags (~0.42 s at walking speed) lag distance 1.13 m
 PASS  glimpse 1 signalled 
@@ -108,12 +126,12 @@ PASS  turn the second slab from the first (3) pool_turn1
 PASS  turn the third slab from the north rim pool_turn2
 PASS  still broken: hers are not stone yet 
 PASS  turn the fourth slab from the south rim (1) pool_turn3
+  .. sim 140s  real 20s  step 124/1100
 PASS  turn the fourth slab from the south rim (2) pool_turn3
 PASS  turn the fourth slab from the south rim (3) pool_turn3
-  .. sim 180s  real 30s  step 203/1118
 PASS  (v1.1) her stones start UNDER the water and rise (they never just appear) 7 under
 PASS  (v1.1) ...and stand risen, level with yours 
-PASS  (v1.0 juice) her slabs rise heavily: the water bulges and rings, sheets off their edges, the wet stone dries { "glint": 5, "dust": 4, "grit": 2, "ring": 14, "bubbles": 7, "sheet": 28, "wet": 7 }
+PASS  (v1.0 juice) her slabs rise heavily: the water bulges and rings, sheets off their edges, the wet stone dries { "glint": 5, "dust": 4, "grit": 2, "ring": 15, "bubbles": 7, "sheet": 28, "wet": 7 }
 PASS  every joint of the whole path is answered (its seam lit) 20
 PASS  a joint lighting chimes 
 PASS  her stones break the surface: spray and a deep rumble 
@@ -121,17 +139,16 @@ PASS  her slabs are solid now
 PASS  ...and the reflection no longer marks any as hers 
 PASS  solving plays the solve jingle (one motif for every solve) 
 PASS  the music bed steps back under the jingle, then returns 
-  .. sim 200s  real 34s  step 233/1118
-PASS  crossed the pool (-10.33678, 0.0, 2.422294)
+  .. sim 160s  real 23s  step 159/1100
+PASS  crossed the pool (-8.710231, 0.0, 2.899584)
 PASS  footsteps on the slabs splash 
-PASS  reached the Stair of Breath stair_breath
-PASS  the whole rune is carved large beside the stair, invisible until you pass it (v0.9.4) (-10.33678, 0.0, 2.422294)
+PASS  the whole rune is carved large beside the stair, invisible until you pass it (v0.9.4) (-11.3, 0.0, 1.600006)
 PASS  (v0.9.1) passing before it, the rune lights 0.9
 PASS  (v0.9.1) left behind, it fades away again 0.0
 PASS  the breath glass is back in the stair wall (v0.8) 
 PASS  the whole glyph fits on the pane with a margin 0.42
-PASS  on the breath landing (-11.3, 0.5, -5.232944)
-PASS  the mist veil blocks the stair (-11.3, 0.5, -6.38)
+PASS  on the breath landing (-11.29999, 0.5, -5.232925)
+PASS  the mist veil blocks the stair (-11.29999, 0.5, -6.37999)
 PASS  hint wisp drifts toward the small glass 
 PASS  breathe on the glass breathe_stair
 PASS  the close-up of the pane opens (860.0, 860.0)
@@ -139,7 +156,7 @@ PASS  nothing to answer while she writes
 PASS  x closes the pane 
 PASS  the closing tap does not turn the camera 
 PASS  breathe again breathe_stair
-  .. sim 220s  real 38s  step 271/1118
+  .. sim 180s  real 26s  step 199/1100
 PASS  her writing is mirrored for you (her half on the left, the answer on the right) 
 PASS  recogniser: her half copied is wrong 
 PASS  after one wrong try: a faint dotted ghost of the missing stroke 1
@@ -152,8 +169,8 @@ PASS  breath cue played
 PASS  her answer rings her song (the motif A-D-E-F-E) 
 PASS  her 'follow' rune is a letter of the script, one calligraphic stroke 
 PASS  recogniser unit: resample keeps 32 points 
-  .. sim 240s  real 42s  step 286/1118
-PASS  reached the Hall of Glass by the corridor (-2.06584, 1.0, -13.5) hall_glass
+  .. sim 200s  real 30s  step 212/1100
+PASS  reached the Hall of Glass by the corridor (-2.06584, 1.0, -13.49995) hall_glass
 PASS  area name shown on entering the hall HALL OF GLASS
 PASS  great mirror reflection seen in the glass 
 PASS  glimpse 2: reflection turns its head toward the tablet head=1.00 body=1.00
@@ -172,24 +189,24 @@ PASS  no target outlines or markers on the floor
 PASS  standing square to the drum: an arrow shows which way it will slide 
 PASS  push the drum once hall_push
 PASS  it slides (never rolls or turns) 
-PASS  one cell per push, snapped to the grid (0.0, 1.0, -13.0)
+  .. sim 220s  real 33s  step 245/1100
+PASS  one cell per push, snapped to the grid (-23.0, 1.0, 183.0)
 PASS  the reset altar hall_reset
-PASS  reset: everything goes back where it was found (nothing is locked before the whole set) { "drum": [-1, -13], "brazier": [3, -13], "bust": 2, "locks": [false, false, false] }
-  .. sim 260s  real 45s  step 325/1118
+PASS  reset: everything goes back where it was found (nothing is locked before the whole set) { "drum": [-24, 183], "brazier": [-20, 183], "bust": 2, "locks": [false, false, false] }
 PASS  turn the bust back to the glass (1) hall_turn
 PASS  turn the bust back to the glass (2) hall_turn
-PASS  the bust faces the glass again { "drum": [-1, -13], "brazier": [3, -13], "bust": 0, "locks": [false, false, false] }
+PASS  the bust faces the glass again { "drum": [-24, 183], "brazier": [-20, 183], "bust": 0, "locks": [false, false, false] }
 PASS  push the drum (1) hall_push
 PASS  push the drum (2) hall_push
 PASS  push the drum (3) hall_push
 PASS  push the drum (4) hall_push
 PASS  push the drum (5) hall_push
-PASS  a cell short of where it was: not yet [0, -17]
+PASS  a cell short of where it was: not yet [-23, 179]
 PASS  push the drum (6) hall_push
 PASS  push the drum (7) hall_push
-PASS  the drum lies where the glass remembers it [0, -19]
+PASS  the drum lies where the glass remembers it [-23, 177]
 PASS  two of three right: still nothing, still movable 
-PASS  hint after 110 s: the memories pulse in the glass 0.77813109873329
+PASS  hint after 110 s: the memories pulse in the glass 0.69669508434678
 PASS  take the brazier hall_take
 PASS  the brazier does not leave the Hall: it returns none
 PASS  take the brazier again hall_take
@@ -199,14 +216,17 @@ PASS  take it again hall_take
 PASS  set it down where it stood hall_place
 PASS  solver: each goal cell is free, and the drum starts away from it 
 PASS  only the whole set answers: all three locked at once, one chime 
-PASS  the Mirror Shard lies on the threshold 
+PASS  (v2, the script) the glass cracks at a corner and the Shard comes out through it 
+  .. sim 240s  real 37s  step 315/1100
 PASS  take the shard take_shard
 PASS  the shard is in the inventory 
-  .. sim 280s  real 49s  step 390/1118
 PASS  (v1.0 M3c) your back to the great glass: the Warden stands behind you, in the reflection only true pl=(2.0, 1.0, -17.8) yaw=3.14 vis=true mode=play refl=["pool:false:false", "floor:false:false", "mirror:true:true", "mirror:false:false", "mirror:false:false", "eidolon:false:false", "mirror:true:false", "mirror:true:false", "mirror:true:false", "mirror:true:false", "pool:false:false", "pool:false:false", "pool:true:false", "pool:true:false", "pool:true:false", "mirror:true:false", "mirror:true:false"]
 PASS  (v1.0 M3c) you turn: he is gone 
 PASS  tablet readable h_tablet
-PASS  reached the Shard Gallery (6.270921, 1.0, -16.15657) shard_gallery
+PASS  (v2 W.4) in the corridor, the Shard in your hand glints: try it 
+PASS  (v2 W.4) raised, it shows a star carved in a ceiling that is not there A star, carved in a ceiling
+that is not there.
+PASS  reached the Shard Gallery (6.284883, 1.0, -16.16539) shard_gallery
 PASS  the chamber is named for it 
 PASS  no way on: the wall is whole 
 PASS  her veiled statue in the middle, five braziers round her 
@@ -218,8 +238,8 @@ PASS  (v1.1d) every eye pair (40 x 20 cm eyes, 60 cm apart) is 30 cm or more cle
 PASS  (v0.9) a solution of 2-3 among 4-5 braziers 
 PASS  solver: exactly one set of braziers casts her shadow into the outlines [[0, 1, 4]]
 PASS  solver: each brazier throws her shadow straight away from it, longer when nearer 
-PASS  walking about the chamber (8.119032, 1.0, -10.66431) shard_gallery
-PASS  the gate is a wall in your world (8.101279, 1.0, -9.92)
+PASS  walking about the chamber (8.11902, 1.0, -10.66431) shard_gallery
+PASS  the gate is a wall in your world (8.101278, 1.0, -9.919998)
 PASS  (v0.9.2) the lit one that is not hers casts a shadow without eyes 
 PASS  light brazier 0 brazier0
 PASS  brazier 0: real fire and light; her shadow falls away from it 
@@ -231,6 +251,7 @@ PASS  light brazier 2 brazier2
 PASS  brazier 2: real fire and light; her shadow falls away from it 
 PASS  no answer brazier by brazier 
 PASS  light brazier 4 brazier4
+  .. sim 260s  real 40s  step 376/1100
 PASS  brazier 4: real fire and light; her shadow falls away from it 
 PASS  no answer brazier by brazier 
 PASS  all five lit: NOT the answer 
@@ -244,37 +265,40 @@ he moved the lamps until her shadow lay
 where he wanted her to stand.
 PASS  the solve jingle 
 PASS  her shadows darken; her veil stirs 
-  .. sim 300s  real 53s  step 460/1118
 PASS  (v2.0 W.6) plain parapet to the eye: the way stays shut 
 PASS  (v2.0 W.6) through the raised Shard, her door: then it is there for you too 
 PASS  (v2.0) the West Beacon is cold until you light it 
 PASS  (v2.0) the lamp lights the West Beacon beacon_W
-PASS  (v2.0) its twin pillar in the Atrium catches with it 
-PASS  (v0.9) the gate opens onto the way down, not the garden (8.505451, 1.0, -3.065188) shard_gallery
-  .. sim 320s  real 57s  step 508/1118
-PASS  (v0.9) the Sunken Colossus: named on arrival, the music swells HALL OF GLASS
+PASS  (v2.0) the West Beacon burns, on its brazier in the wing (no twin in the Atrium) 
+  .. sim 280s  real 43s  step 417/1100
+PASS  (v0.9) the Sunken Colossus: named on arrival, the music swells THE SUNKEN COLOSSUS
 PASS  (v0.9) the camera leans toward the head (a pan, never a zoom) 
-PASS  reached the Garden of the Veiled (12.80877, 1.0, -9.933569) garden_veiled
+PASS  (v2) back on the Inlet Road, the West done (-19.49987, 0.0, -0.065842)
+PASS  (v2 N.1) her reflection waits on the first hidden stone, ahead of you s=2.14
+PASS  (v2 N.1) only the true stones hold you: the decoys and the water do not 
+PASS  (v1.0 M3c) waiting by still water: she writes a rune on it, beside you (3.922099, 0.022, 188.0575)
+PASS  reached the Garden of the Veiled (12.82858, 1.0, -9.940994) garden_veiled
 PASS  the shard stays lowered 
 PASS  hint (110 s): the eyes on the floor pulse 
 PASS  (v0.9.1) the great glass shows all three turned ones' north faces whole, from every step []
 PASS  the old rune door panel is gone 
-PASS  the garden door is closed (16.34661, 1.0, -11.77479)
+PASS  the garden door is closed (16.34435, 1.0, -11.77373)
 PASS  (v0.9.4) her small glass is clear at rest 
 PASS  breathe on her small glass breathe_garden
 PASS  (v0.9.4) the close-up opens, as on the stair 
 PASS  (v1.0) a new pane opens clean: no fog, strokes or palm left from the last glass, hidden until its masks render a 0.00 fresh 3
-  .. sim 340s  real 60s  step 533/1118
+  .. sim 300s  real 47s  step 469/1100
 PASS  her message: three asymmetric runes, written from her side (mirrored for you) 
 PASS  (v0.9.4) her small glass keeps her writing a while 
 PASS  statue 1 in reach turn1
 PASS  statue 2 in reach turn2
 PASS  statue 3 in reach turn3
+  .. sim 320s  real 50s  step 493/1100
 PASS  each statue turns her rune to the mirror (reversed in the glass = as she wrote it) [0, 1, 0]
 PASS  the door opens in the reflection first refl -1.31 real 0.00
 PASS  the reflection's door is only in the glass 
-PASS  reached the Hollow Walk (18.13293, 1.0, -11.80055) hollow_walk
-PASS  the hollow walk's gate is closed (18.51622, 1.0, -14.73)
+PASS  reached the Hollow Walk (18.13293, 1.0, -11.80057) hollow_walk
+PASS  the hollow walk's gate is closed (18.51625, 1.0, -14.73)
 PASS  (v1.1d) Our Steps board 1 'The Column': solvable in its par, by BFS { "length": 4, "path": [(0, 1), (0, 1), (-1, 0), (0, -1)], "states": 54 }
 PASS  (v1.1d) board 1: at most two columns in all 
 PASS  (v1.1d) Our Steps board 2 'Two Stones': solvable in its par, by BFS { "length": 6, "path": [(-1, 0), (0, 1), (-1, 0), (0, 1), (1, 0), (1, 0)], "states": 108 }
@@ -282,18 +306,18 @@ PASS  (v1.1d) board 2: at most two columns in all
 PASS  (v1.1d) a big real planar mirror (6 x 3.5 m), a 4 x 3 floor before it 
 PASS  the floor starts unsolved and off; the glass only a mirror (no her) before you step on 
 PASS  (v1.1d) before you step on, her glyph and column are not in the glass either 
-  .. sim 360s  real 64s  step 574/1118
 PASS  (v1.1d) on the floor: she stands in the glass, on her start p (1, 0) h (1, 0)
 PASS  (v1.1d) on the floor: her glyph shows in the glass 
 PASS  (v1.1d) toward the glass: she comes toward it too p (1, 1) h (1, 1)
 PASS  (QA_V11) a fresh drag 38 deg off toward the last way still steps its own way p (2, 1)
+  .. sim 340s  real 53s  step 536/1100
 PASS  (v1.1d) a one-frame flick makes exactly one step, its own way p (2, 1) moves 1
 PASS  (v1.1d) off the floor: the glass is only a mirror again 
 PASS  (v1.1d) board 2 'Two Stones': you both at its start p (2, 0) h (2, 0)
 PASS  (v1.1) Our Steps SOLVED: both boards answered (hollow_done) true 2
 PASS  (v1.1d) solved: both glyphs lit, the glass a plain mirror again 
-  .. sim 380s  real 68s  step 666/1118
-PASS  reached the Court of Light (15.06459, 2.0, -18.38462) court_light
+  .. sim 360s  real 57s  step 616/1100
+PASS  reached the Court of Light (15.06459, 2.0, -18.38463) court_light
 PASS  beam not lit at start 
 PASS  solver: exactly one setting lights the mural, through her world [[3, 3, 1, 1]]
 PASS  solver: the near way lights the crystal the wrong way (a decoy) 4 decoys
@@ -307,55 +331,42 @@ PASS  ...but its light runs away from the mural
 PASS  hint: her own glasses shimmer in the great glass 
 PASS  mirror 3 in reach mirror3
 PASS  mirror 4 in reach mirror4
-  .. sim 400s  real 73s  step 725/1118
 PASS  part of the beam runs in her world (seen only in the glass) 
 PASS  the stands are set as the solver says [3, 3, 1, 1]
-PASS  the drawbridge stays up (the way on is the mural) 
 PASS  your veil's shadow falls on the mural 
 PASS  standing anywhere does not complete it 
-PASS  the shadow of your veil fills the missing head (11.87841, 3.305535, -26.93)
-PASS  (v0.9) beyond the mural door: the Tree of Shards, named, the music swells; the camera leans to it (1.610237, 1.487207, -0.048273)
+PASS  the shadow of your veil fills the missing head (-0.121766, 3.305568, 163.07)
+  .. sim 380s  real 60s  step 673/1100
+PASS  (v0.9) beyond the mural door: the Tree of Shards, named, the music swells; the camera leans to it (1.610236, 1.487207, -0.048274)
 PASS  (v0.9) the Tree of Shards: hundreds of shards, one multimesh 
 PASS  in the Mist Maze mist_maze
-PASS  walking: no footprints 0
-PASS  standing still: her petrol footprints show the next stretch of her path, mirrored in the pool 7 visible
-PASS  the mist hides a wall (11.99207, 2.0, -30.65)
+PASS  (v2 N.7, the script) the lamp shows her red footprints on the maze floor, only where its light reaches 8 visible, 0 far
+PASS  the mist hides a wall (12.00001, 2.0, -30.64999)
 PASS  bumping into it, it shimmers 
-  .. sim 420s  real 76s  step 761/1118
-PASS  out of the maze (its end, before the bars, is still the Maze's) (10.0, 2.0, -40.13438) mist_maze
+PASS  out of the maze (its end, before the bars, is still the Maze's) (10.0, 2.0, -40.13437) mist_maze
+  .. sim 400s  real 64s  step 718/1100
 PASS  (v2.0 N.7) out of the maze: the Garden Beacon waits, cold 
 PASS  (v2.0) the lamp lights the Garden Beacon beacon_N
-PASS  (v1.0) the way on into the Echo Corridor is bolted from the other side 
-PASS  (v1.0) the bars hold (10.0, 2.0, -40.58)
-PASS  (v1.0) the Court's lever for the drawbridge (a way back) drawbridge_w
-PASS  (v1.0) on the Eidolon Ledge (the High wing's foot) eidolon_ledge
-PASS  eidolon reflection walks beyond the glass 
-PASS  her footprints lead toward the plate 7
-  .. sim 440s  real 80s  step 795/1118
-PASS  footprint marker shows where to stand intensity 0.85
-PASS  hers alone is not enough: your plate is empty 
-PASS  standing on yours, your reflection is far from hers 
-PASS  push the statue (1) ledge_push
-PASS  push the statue (2) ledge_push
-PASS  push the statue (3) ledge_push
-PASS  the statue holds your plate 
-  .. sim 460s  real 84s  step 819/1118
+PASS  (v2) the Cloister Stair brings you back into the Atrium atrium
+PASS  (v2 E.1) the Balcony's bench pt_bench
+PASS  (v2 E.1) sitting, the gaze turns to the sunken head (-3.965184, 0.0, 0.516095)
+  .. sim 420s  real 67s  step 741/1100
 PASS  (v2.0 E.2) the stones' melody played by itself when you came up 
 PASS  (v2.0) the panel at the Walk's foot is still sealed 
 PASS  (v2.0) a wrong stone sours the song, nothing opens 
-  .. sim 480s  real 88s  step 864/1118
-PASS  (v1.0) up on the Mirror Walk (31.33291, 4.0, -22.39999)
+  .. sim 440s  real 70s  step 778/1100
+PASS  (v1.0) up on the Mirror Walk (31.33291, 4.0, -22.40005)
 PASS  (v1.0 M3c) past the panel, the Warden's reflection paces the long glass 
-PASS  (v1.0 M3c) seen: back at the Walk's start, no fail screen (31.4, 4.0, -25.4)
-  .. sim 500s  real 92s  step 875/1118
-  .. sim 520s  real 96s  step 878/1118
+PASS  (v1.0 M3c) seen: back at the Walk's start, no fail screen (31.4, 4.0, -25.39999)
+  .. sim 460s  real 74s  step 800/1100
+  .. sim 480s  real 77s  step 803/1100
+  .. sim 500s  real 80s  step 803/1100
 PASS  (v1.0 M3c) in the pillar's shadow he passed you by 
-PASS  (v0.9) on the walkway: the Upward Spring, named, the camera leans up toward the temple (3.189996, 3.079995, -0.314223)
-  .. sim 540s  real 100s  step 885/1118
+PASS  (v0.9) on the walkway: the Upward Spring, named, the camera leans up toward the temple (3.189996, 3.079995, -0.314227)
 PASS  (v1.0 M3c) crossed behind his back: not seen again; he leaves the Walk 
 PASS  solver: several ways to level it, and every one needs her 14
 PASS  left: the urn, 15 
-PASS  (v1.0) the bars to the Echo Corridor are down until the balance is won 
+PASS  (v2) the way up to the High terrace is barred until the balance is won 
 PASS  (v1.0) down here, the lift stays down: the balance is not won 
 PASS  take weight 3 weight2
 PASS  hang it (pan 5) pan5
@@ -368,44 +379,48 @@ PASS  on her tile, her weight counts on the RIGHT: 16, tipped the other way (15,
 PASS  hint after a while: the tiles shine 
 PASS  take the 1 back pan3
 PASS  put it on the bench weight0
+  .. sim 520s  real 83s  step 851/1100
 PASS  the balance is level (15, 15)
 PASS  (v2.0) the lamp lights the High wing's Beacon beacon_E
-  .. sim 560s  real 104s  step 938/1118
-PASS  footsteps echo in the corridor 32
-PASS  the see-through: the corridor's near wall opens round you 1.00
-PASS  (v2.0) the corridor's stones only ring now: the song is the Ledge's 
-PASS  the hidden memory memory1
-PASS  hidden memory #1 kept 
-PASS  its line shows 
-PASS  the memory is saved 
-PASS  (v1.0) unbolt the bars: a way back through the Maze (the High wing's shortcut) ec_unbolt
+PASS  (v2 E.6) the High Stair down is barred until the Eidolon Plate answers 
+PASS  eidolon reflection walks beyond the glass 
+PASS  her footprints lead toward the plate 8
+PASS  footprint marker shows where to stand intensity 0.85
+  .. sim 540s  real 86s  step 873/1100
+PASS  hers alone is not enough: your plate is empty 
+PASS  standing on yours, your reflection is far from hers 
+PASS  push the statue (1) ledge_push
+PASS  push the statue (2) ledge_push
+PASS  push the statue (3) ledge_push
+PASS  the statue holds your plate 
+  .. sim 560s  real 90s  step 900/1100
+PASS  (v2) the High Stair brings you back to the Ledge (19.75, 2.0, -28.06514) eidolon_ledge
 PASS  (v2.0) three Beacons burn ["W", "N", "E"]
-  .. sim 580s  real 108s  step 963/1118
 PASS  reached the Gate of the Four Veiled gate_four
-PASS  the tholos is closed by veils (25.03823, 2.0, -29.33095)
+PASS  the tholos is closed by veils (25.03814, 2.0, -29.33094)
 PASS  (v2.0) the three Beacons burn: their statues' runes lit 
 PASS  standing on the empty plinth (21.27417, 2.25, -33.92999)
 PASS  wait four_wait
 PASS  the plinths light one by one 
 PASS  the veil before the shrine is gone 
 PASS  the solve jingle again 
-  .. sim 600s  real 112s  step 995/1118
 PASS  reached the First Shrine first_shrine
 PASS  shrine is dark 
 PASS  wake the shrine shrine
+  .. sim 580s  real 93s  step 936/1100
 PASS  cinematic: letterbox 
 PASS  cinematic: the shrine wakes 
 PASS  cinematic: near geometry cut away, the crystal lifted out of the shot 
 PASS  cinematic: her reflection in the shrine pool 
 PASS  cinematic: camera looks down into the water 50.0 deg
-  .. sim 620s  real 114s  step 1002/1118
+  .. sim 600s  real 95s  step 940/1100
 PASS  cinematic: palm to palm 
 PASS  cinematic: Katoptron lights on you both 
 PASS  cinematic: her veil lifts: on the porcelain one, her mirror face catches the light 1.00
-  .. sim 640s  real 117s  step 1006/1118
+  .. sim 620s  real 97s  step 944/1100
 PASS  cinematic: she is gone; the pool shows only you 
 PASS  memory fragment shows 
-  .. sim 660s  real 119s  step 1010/1118
+  .. sim 640s  real 99s  step 948/1100
 PASS  cinematic: ~4.5 s awakening + the 59 s score 63.9 s
 PASS  music cues: shrine_awaken, then cinematic_hand 
 PASS  the room beds come back after the scene 
@@ -420,34 +435,32 @@ PASS  score cues played
 PASS  (v1.0 juice) the chapter's physical moments all played (dust, grit, sparks, rings, wet stone, glints...) ["glint", "dust", "grit", "ring", "bubbles", "sheet", "wet", "sparks", "dust_fall"]
 PASS  (v1.0 juice) no burst is left alive for long 0
 PASS  the way on is sealed (28.00062, 2.0, -38.53448)
-  .. sim 680s  real 123s  step 1026/1118
-  .. sim 700s  real 127s  step 1030/1118
-  .. sim 720s  real 131s  step 1032/1118
-  .. sim 740s  real 135s  step 1034/1118
-  .. sim 760s  real 139s  step 1038/1118
-  .. sim 780s  real 143s  step 1040/1118
-  .. sim 800s  real 147s  step 1044/1118
-  .. sim 820s  real 151s  step 1046/1118
-  .. sim 840s  real 155s  step 1050/1118
-  .. sim 860s  real 159s  step 1052/1118
-  .. sim 880s  real 164s  step 1054/1118
-  .. sim 900s  real 168s  step 1058/1118
-  .. sim 920s  real 172s  step 1060/1118
-  .. sim 940s  real 176s  step 1064/1118
-PASS  random walk: always on walkable ground 46044 samples, 0 violations, max step dy 0.250
-PASS  random walk: never inside a solid prop's footprint 46044 samples, 0 hits
-PASS  interaction highlight: always on the target the button resolves to 46044 frames, 6871 with a target, 0 mismatches
+  .. sim 660s  real 103s  step 964/1100
+  .. sim 680s  real 106s  step 968/1100
+  .. sim 700s  real 110s  step 976/1100
+  .. sim 720s  real 113s  step 984/1100
+  .. sim 740s  real 116s  step 992/1100
+  .. sim 760s  real 120s  step 1000/1100
+  .. sim 780s  real 123s  step 1008/1100
+  .. sim 800s  real 127s  step 1016/1100
+  .. sim 820s  real 130s  step 1024/1100
+  .. sim 840s  real 133s  step 1032/1100
+  .. sim 860s  real 137s  step 1040/1100
+  .. sim 880s  real 140s  step 1048/1100
+PASS  random walk: always on walkable ground 42129 samples, 0 violations, max step dy 0.250
+PASS  random walk: never inside a solid prop's footprint 42129 samples, 0 hits
+PASS  interaction highlight: always on the target the button resolves to 42129 frames, 6729 with a target, 0 mismatches
 PASS  interaction highlight: something visibly lit for every target (a mesh glow, or the floor ring) 0
 PASS  props: every placement loaded, on the marble 13 placed
 PASS  props: each one is solid (its centre blocked) 
 PASS  props: every key place still reachable on foot from the gate []
-PASS  collision audit: every primitive classified 5766 primitives, 1536 solid footprints (1325 static), 520 obstacles added
-  collision audit: 5766 primitives, 1536 solid footprints, 520 obstacles added; 1774 targets walked into from 4 sides (2608 approaches), 0 overlaps
-PASS  collision: walking into every solid prop and obstacle from 4 sides never overlaps it 1774 targets, 2608 approaches, 0 overlaps
-PASS  the first flight: its open side's balustrade stops you (-11.95, 0.454862, -3.656955)
+PASS  collision audit: every primitive classified 4436 primitives, 1526 solid footprints (1325 static), 462 obstacles added
+  collision audit: 4436 primitives, 1526 solid footprints, 462 obstacles added; 1706 targets walked into from 4 sides (2301 approaches), 0 overlaps
+PASS  collision: walking into every solid prop and obstacle from 4 sides never overlaps it 1706 targets, 2301 approaches, 0 overlaps
+PASS  the first flight: its open side's balustrade stops you (-35.12831, 0.308866, 193.4526)
 PASS  the first flight rises the way its steps are drawn (no walking through raised steps) 0.04 -> 0.47
-PASS  walking at the hall's bust and the mirror: never inside them  (3.697899, 1.0, -19.14868)
-PASS  checkpoint saved (chapter) { "a1": { "atrium": true, "gaze": true, "glass": true, "lamp": true, "plate": true, "slab": true }, "beacons": ["W", "N", "E"], "breath": true, "echo_room": true, "four": true, "gallery": true, "gallery_lit": [0.0, 1.0, 4.0], "garden_breath": true, "hall": { "brazier": [2.0, -19.0], "bust": 0.0, "drum": [0.0, -19.0], "locks": [true, true, true] }, "hall_door": true, "hollow_done": true, "hub": { "e_open": true, "ec_open": true, "map": ["V2_WS", "V2_I1", "V2_I2", "V2_I3", "V2_IB1", "V2_I4", "V2_I4s", "V2_I5", "V2_A", "A", "T4", "CO", "UC", "UC_up", "BAL", "E", "T", "pool0_1_0", "pool0_1_1", "pool1_1_1", "pool1_1_0", "pool1_0_0", "pool1_0_1", "pool2_0_0", "pool2_0_1", "pool3_0_0", "pool3_0_1", "pool3_1_0", "pool3_1_1", "pool3_2_1", "pool3_2_0", "pool4_2_0", "pool4_2_1", "pool5_2_0", "pool5_2_1", "pool6_2_0", "pool6_2_1", "W_land", "W_stair1", "W_breath", "W_stair2", "W_top", "W_corr", "H", "hdoor", "GL", "CO_w", "G", "g_door", "HW", "HW_ramp", "L_ramp", "L", "MZ_door", "MZ", "EC_a", "LB", "WK_down", "WK", "lift", "SC", "EC", "EC_room_door", "EB", "S", "four_plinth", "sealed_way", "EC_room", "stub", "b1"], "points": ["bell"], "secrets": [], "w_seen": true, "warden_seen": 1.0, "wk_crossed": true }, "inv": { "items": ["lamp", "shard"], "mem": [], "story": ["comb"], "tablets": ["t1"] }, "ledge_song": true, "ledge_statue": [26.0, -23.0], "lens_used": true, "maze": true, "memories": ["m1"], "mural": true, "pool_turns": [1.0, 3.0, 1.0, 3.0], "prologue_seen": true, "scale_w": [-1.0, 4.0, 5.0], "scales": true, "shard": true, "stones": true, "turned": [0.0, 1.0, 0.0], "turned_done": true }
+PASS  walking at the hall's bust and the mirror: never inside them  (-19.30214, 1.0, 176.8513)
+PASS  checkpoint saved (chapter) { "a1": { "atrium": true, "gaze": true, "glass": true, "lamp": true, "plate": true, "slab": true }, "beacons": ["W", "N", "E"], "breath": true, "echo_room": true, "four": true, "gallery": true, "gallery_lit": [0.0, 1.0, 4.0], "garden_breath": true, "hall": { "brazier": [-21.0, 177.0], "bust": 0.0, "drum": [-23.0, 177.0], "locks": [true, true, true] }, "hall_door": true, "hollow_done": true, "hub": { "e_open": true, "ec_open": false, "map": ["V2_WS", "V2_I1", "V2_I2", "V2_I3", "V2_IB1", "V2_I4", "V2_I4s", "V2_I5", "V2_A", "T", "pool0_1_0", "pool0_1_1", "pool1_1_1", "pool1_1_0", "pool1_0_0", "pool1_0_1", "pool2_0_0", "pool2_0_1", "pool3_0_0", "pool3_0_1", "pool3_1_0", "pool3_1_1", "pool3_2_1", "pool3_2_0", "pool4_2_0", "pool4_2_1", "pool5_2_0", "pool5_2_1", "pool6_2_0", "W_land", "W_stair1", "W_breath", "W_stair2", "W_top", "W_corr", "H", "hdoor", "V2_W4", "GL", "V2_IBW", "V2_W6", "V2_WB", "V2_W7", "V2_WR", "V2_N1", "G", "g_door", "HW", "HW_ramp", "L_ramp", "L", "MZ_door", "MZ", "V2_N7x", "V2_NB", "V2_NS", "V2_ER", "V2_E1", "E", "WK_down", "WK", "lift", "SC", "V2_E5u", "E6", "V2_EH", "S", "four_plinth", "sealed_way", "TS", "SPB"], "points": ["bell", "bench"], "secrets": [], "star": true, "w_seen": true, "warden_seen": 1.0, "wk_crossed": true }, "inv": { "items": ["lamp", "shard"], "mem": [], "story": ["comb"], "tablets": ["t1"] }, "ledge_song": true, "ledge_statue": [27.0, 134.0], "lens_used": true, "maze": true, "memories": [], "mural": true, "pool_turns": [1.0, 3.0, 1.0, 3.0], "prologue_seen": true, "scale_w": [-1.0, 4.0, 5.0], "scales": true, "shard": true, "stones": true, "turned": [0.0, 1.0, 0.0], "turned_done": true }
 PASS  checkpoint saved (puzzles) 
 [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
 [props] 13 placed
@@ -458,41 +471,69 @@ PASS  checkpoint saved (puzzles)
 [v2 dress] A kit_scaffold: outside the landmark
 [v2 dress] A kit_ladder: on a kept path
 [v2 dress] A plinth: on a kept path
+[v2 dress] W3 mirror_frame: outside the landmark
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 column_doric: outside the landmark
+[v2 dress] W3 column_doric: on a kept path
+[v2 dress] W3 statue_veiled_mourning: on a kept path
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 pediment_fragment: outside the landmark
 [v2 dress] W5 pylon_ashlar: outside the landmark
 [v2 dress] W5 pylon_ashlar: outside the landmark
 [v2 dress] W5 mirror_frame: on a kept path
+[v2 dress] W5 statue_veiled_kneeling: on a kept path
+[v2 dress] W5 rubble_pile: outside the landmark
 [v2 dress] W5 column_fallen: outside the landmark
 [v2 dress] IBW archway_ruined: on a kept path
+[v2 dress] IBW mirror_frame: outside the landmark
 [v2 dress] WB rubble_pile: outside the landmark
 [v2 dress] WB rubble_pile: on a kept path
 [v2 dress] N1 column_doric: outside the landmark
 [v2 dress] N1 column_doric: outside the landmark
 [v2 dress] N1 column_doric: outside the landmark
+[v2 dress] N2 statue_veiled_mourning: outside the landmark
+[v2 dress] N2 statue_veiled_praying: on a kept path
+[v2 dress] N2 statue_veiled_mourning: on a kept path
 [v2 dress] N2 statue_veiled_broken: on a kept path
+[v2 dress] N2 kit_dead_plant: on a kept path
+[v2 dress] N3 kit_votive: outside the landmark
 [v2 dress] N3 kit_urns: outside the landmark
+[v2 dress] N3 kit_dead_plant: outside the landmark
+[v2 dress] N3 column_stump: on a kept path
+[v2 dress] N6 statue_veiled_bust: on a kept path
+[v2 dress] N7 statue_veiled_broken: on a kept path
 [v2 dress] N7 column_stump: outside the landmark
+[v2 dress] N7 kit_dead_plant: on a kept path
+[v2 dress] N7 kit_urns: on a kept path
 [v2 dress] E1 balustrade: outside the landmark
 [v2 dress] E1 balustrade: on a kept path
 [v2 dress] E1 kit_awning_post: on a kept path
 [v2 dress] E1 kit_awning_post: outside the landmark
 [v2 dress] E1 kit_urns: on a kept path
 [v2 dress] E1 box: outside the landmark
+[v2 dress] E2 kit_windbells: on a kept path
 [v2 dress] E2 balustrade: outside the landmark
+[v2 dress] E4 kit_urns: outside the landmark
 [v2 dress] E5 statue_veiled_praying: outside the landmark
+[v2 dress] E5 column_stump: on a kept path
+[v2 dress] E5 pediment_fragment: on a kept path
+[v2 dress] E5 kit_awning_post: on a kept path
+[v2 dress] E5 balustrade: on a kept path
 [v2 dress] I21 kit_bridge_end: outside the landmark
 [v2 dress] I21 rubble_pile: on a kept path
 [v2 dress] I21 column_fallen: outside the landmark
 [v2 dress] I21 column_stump: on a kept path
 [v2 dress] I22 gate_veiled: outside the landmark
 [v2 dress] I22 pylon_ashlar: outside the landmark
-[solids] 5766 primitives, 1536 solid footprints, 520 obstacles added (328 ms)
-[warm-up] 645 mesh/material pairs (of 916 geometry nodes), 12 canvas materials
+[solids] 4436 primitives, 1526 solid footprints, 462 obstacles added (227 ms)
+[warm-up] 596 mesh/material pairs (of 829 geometry nodes), 12 canvas materials
 PASS  restored chapter 
 PASS  restored regions 
 PASS  restored inventory 
 PASS  restored the won balance 
 PASS  restored awakened world 
-PASS  restored position (3.697899, 1.0, -19.14868)
+PASS  restored position (-19.30214, 1.0, 176.8513)
 [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
 [props] 13 placed
 [v2 dress] I3 statue_veiled_bust: outside the landmark
@@ -502,41 +543,69 @@ PASS  restored position (3.697899, 1.0, -19.14868)
 [v2 dress] A kit_scaffold: outside the landmark
 [v2 dress] A kit_ladder: on a kept path
 [v2 dress] A plinth: on a kept path
+[v2 dress] W3 mirror_frame: outside the landmark
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 column_doric: outside the landmark
+[v2 dress] W3 column_doric: on a kept path
+[v2 dress] W3 statue_veiled_mourning: on a kept path
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 pediment_fragment: outside the landmark
 [v2 dress] W5 pylon_ashlar: outside the landmark
 [v2 dress] W5 pylon_ashlar: outside the landmark
 [v2 dress] W5 mirror_frame: on a kept path
+[v2 dress] W5 statue_veiled_kneeling: on a kept path
+[v2 dress] W5 rubble_pile: outside the landmark
 [v2 dress] W5 column_fallen: outside the landmark
 [v2 dress] IBW archway_ruined: on a kept path
+[v2 dress] IBW mirror_frame: outside the landmark
 [v2 dress] WB rubble_pile: outside the landmark
 [v2 dress] WB rubble_pile: on a kept path
 [v2 dress] N1 column_doric: outside the landmark
 [v2 dress] N1 column_doric: outside the landmark
 [v2 dress] N1 column_doric: outside the landmark
+[v2 dress] N2 statue_veiled_mourning: outside the landmark
+[v2 dress] N2 statue_veiled_praying: on a kept path
+[v2 dress] N2 statue_veiled_mourning: on a kept path
 [v2 dress] N2 statue_veiled_broken: on a kept path
+[v2 dress] N2 kit_dead_plant: on a kept path
+[v2 dress] N3 kit_votive: outside the landmark
 [v2 dress] N3 kit_urns: outside the landmark
+[v2 dress] N3 kit_dead_plant: outside the landmark
+[v2 dress] N3 column_stump: on a kept path
+[v2 dress] N6 statue_veiled_bust: on a kept path
+[v2 dress] N7 statue_veiled_broken: on a kept path
 [v2 dress] N7 column_stump: outside the landmark
+[v2 dress] N7 kit_dead_plant: on a kept path
+[v2 dress] N7 kit_urns: on a kept path
 [v2 dress] E1 balustrade: outside the landmark
 [v2 dress] E1 balustrade: on a kept path
 [v2 dress] E1 kit_awning_post: on a kept path
 [v2 dress] E1 kit_awning_post: outside the landmark
 [v2 dress] E1 kit_urns: on a kept path
 [v2 dress] E1 box: outside the landmark
+[v2 dress] E2 kit_windbells: on a kept path
 [v2 dress] E2 balustrade: outside the landmark
+[v2 dress] E4 kit_urns: outside the landmark
 [v2 dress] E5 statue_veiled_praying: outside the landmark
+[v2 dress] E5 column_stump: on a kept path
+[v2 dress] E5 pediment_fragment: on a kept path
+[v2 dress] E5 kit_awning_post: on a kept path
+[v2 dress] E5 balustrade: on a kept path
 [v2 dress] I21 kit_bridge_end: outside the landmark
 [v2 dress] I21 rubble_pile: on a kept path
 [v2 dress] I21 column_fallen: outside the landmark
 [v2 dress] I21 column_stump: on a kept path
 [v2 dress] I22 gate_veiled: outside the landmark
 [v2 dress] I22 pylon_ashlar: outside the landmark
-[solids] 5766 primitives, 1536 solid footprints, 520 obstacles added (326 ms)
-[warm-up] 642 mesh/material pairs (of 913 geometry nodes), 12 canvas materials
+[solids] 4436 primitives, 1526 solid footprints, 462 obstacles added (245 ms)
+[warm-up] 594 mesh/material pairs (of 827 geometry nodes), 12 canvas materials
 PASS  title offers Continue + New Game 
 PASS  New Game asks to confirm 
 PASS  No keeps the title and the save 
 PASS  new game: glimpses + areas forgotten {  }
 PASS  new game: puzzles reset { "door": [0, 0, 0], "door_open": false, "mirrors": [1, 0, 2, 2], "bridge": false, "plate": false, "shrine": false, "shortcut": false, "tablet": false, "drawbridge": false }
-PASS  new game: chapter reset { "stones": false, "pool_turns": [0, 0, 0, 0], "breath": false, "shard": false, "hall_door": false, "gallery": false, "gallery_lit": [3], "lens_used": false, "hall": { "drum": [-1, -13], "brazier": [3, -13], "bust": 2, "locks": [false, false, false] }, "turned": [2, 3, 1], "turned_done": false, "garden_breath": false, "hollow_done": false, "mural": false, "maze": false, "echo_room": true, "ledge_song": false, "beacons": [], "a1": { "plate": false, "glass": false, "slab": false, "lamp": false, "atrium": false, "gaze": false }, "prologue_seen": true, "memories": [], "scale_w": [-1, -1, -1], "scales": false, "four": false, "ledge_statue": [25, -21], "inv": { "items": [], "story": ["comb"], "tablets": [], "mem": [] }, "hub": { "ec_open": false, "w_seen": false, "e_open": false, "secrets": [], "wk_crossed": false, "warden_seen": 0, "map": ["V2_WS"], "points": [] } }
+PASS  new game: chapter reset { "stones": false, "pool_turns": [0, 0, 0, 0], "breath": false, "shard": false, "hall_door": false, "gallery": false, "gallery_lit": [3], "lens_used": false, "hall": { "drum": [-24, 183], "brazier": [-20, 183], "bust": 2, "locks": [false, false, false] }, "turned": [2, 3, 1], "turned_done": false, "garden_breath": false, "hollow_done": false, "mural": false, "maze": false, "echo_room": true, "ledge_song": false, "beacons": [], "a1": { "plate": false, "glass": false, "slab": false, "lamp": false, "atrium": false, "gaze": false }, "prologue_seen": true, "memories": [], "scale_w": [-1, -1, -1], "scales": false, "four": false, "ledge_statue": [26, 136], "inv": { "items": [], "story": ["comb"], "tablets": [], "mem": [] }, "hub": { "ec_open": false, "w_seen": false, "e_open": false, "secrets": [], "wk_crossed": false, "warden_seen": 0, "map": ["V2_WS"], "points": [] } }
 PASS  new game: regions reset 
 PASS  new game: no shard 
 PASS  new game: the lift waits at the top (v1.0: you first meet it from the Ledge) 
@@ -546,42 +615,32 @@ PASS  (v2.0) skipped, the prologue still leaves you the comb
 PASS  new game: save rewritten fresh 
 PASS  new game: settings kept (quality) 
 PASS  (QA P1-2) the Warden is never in plain view: hidden off the Walk 
-PASS  (QA P0-1) E first: the bars will not unbolt before the Maze is walked ec_held
+PASS  (v2) E: the High Stair's bars hold until the Eidolon Plate answers, the way up until the balance 
 PASS  (QA P0-1) standing at the Maze's end from the other side never solves the Maze 
-PASS  (QA P1-1) E first: the Ledge's drawbridge lever is held from the far side drawbridge_held
-PASS  (v2.0) Beacons restored from a save burn at once, in the wing and in the Atrium; the Gate still waits 
-PASS  (v1.1) six in-between points and a relief along the Echo Corridor 
+PASS  (v2.0) Beacons restored from a save burn at once, in their wings; the Gate still waits 
+PASS  (v1.1) the in-between points, each there 
 PASS  (v1.1) the votive, lit, stays lit 
 PASS  (QA_V11) the offering lights its little flame 
 PASS  (QA_V11) the cot: its cloth shifts and a wax tablet shows 
 PASS  (QA_V11) the coin drops into the dry basin 
 PASS  (QA_V11) a pause point on the landing between Our Steps and the Court 
-  .. sim 960s  real 217s  step 1098/1118
-PASS  (QA_V11) the coin lies on the basin floor (not floating) (5.0, 0.508, 14.985)
+PASS  (QA_V11) the coin lies on the basin floor (not floating) (0.0, 0.008, 201.102)
 PASS  (QA order W-N-E) W: its Beacon waits for its puzzles 
 PASS  (QA order W-N-E) W walked: its Beacon can be lit 
 PASS  (QA order W-N-E) N: its Beacon waits for its puzzles 
-PASS  (QA order W-N-E) N not walked: the Ledge's drawbridge lever is held 
-PASS  (QA order W-N-E) N not walked: the Echo bars stay bolted 
 PASS  (QA order W-N-E) N walked: its Beacon can be lit 
 PASS  (QA order W-N-E) E: its Beacon waits for its puzzles 
 PASS  (QA order W-N-E) E walked: its Beacon can be lit 
-PASS  (QA order W-N-E) both walked: the Echo bars unbolt 
 PASS  (QA order E-N-W) E: its Beacon waits for its puzzles 
 PASS  (QA order E-N-W) E walked: its Beacon can be lit 
 PASS  (QA order E-N-W) N: its Beacon waits for its puzzles 
-PASS  (QA order E-N-W) N not walked: the Ledge's drawbridge lever is held 
-PASS  (QA order E-N-W) N not walked: the Echo bars stay bolted 
 PASS  (QA order E-N-W) N walked: its Beacon can be lit 
 PASS  (QA order E-N-W) W: its Beacon waits for its puzzles 
 PASS  (QA order E-N-W) W walked: its Beacon can be lit 
 PASS  (QA order N-E-W) N: its Beacon waits for its puzzles 
-PASS  (QA order N-E-W) N not walked: the Ledge's drawbridge lever is held 
-PASS  (QA order N-E-W) N not walked: the Echo bars stay bolted 
 PASS  (QA order N-E-W) N walked: its Beacon can be lit 
 PASS  (QA order N-E-W) E: its Beacon waits for its puzzles 
 PASS  (QA order N-E-W) E walked: its Beacon can be lit 
-PASS  (QA order N-E-W) both walked: the Echo bars unbolt 
 PASS  (QA order N-E-W) W: its Beacon waits for its puzzles 
 PASS  (QA order N-E-W) W walked: its Beacon can be lit 
 PASS  (QA order E-W-N) E: its Beacon waits for its puzzles 
@@ -589,30 +648,29 @@ PASS  (QA order E-W-N) E walked: its Beacon can be lit
 PASS  (QA order E-W-N) W: its Beacon waits for its puzzles 
 PASS  (QA order E-W-N) W walked: its Beacon can be lit 
 PASS  (QA order E-W-N) N: its Beacon waits for its puzzles 
-PASS  (QA order E-W-N) N not walked: the Ledge's drawbridge lever is held 
-PASS  (QA order E-W-N) N not walked: the Echo bars stay bolted 
 PASS  (QA order E-W-N) N walked: its Beacon can be lit 
 PASS  (v2.0) a v2 save migrates: lamp and shard in the satchel, nothing of the later chapters { "items": ["lamp", "shard"], "story": ["comb"], "tablets": [], "mem": [] }
-PASS  (v2) saved again as v5 
+PASS  (v2) saved again as v6 
 PASS  (v2.0) v3 -> v4: the chisel, the amphora and the pin leave the satchel; the comb is there { "items": ["lamp", "shard"], "tablets": [], "mem": [], "story": ["comb"] }
 PASS  (v2.0) v3 -> v4: the seals taken are Beacons lit 
 PASS  (v2.0) v3 -> v4: the old first pool is the chapter's last puzzle now: unsolved again 
 PASS  (v2.0) v3 -> v4: the opened panel means the Ledge's song was sung; the Echo room is open 
-[save] v4 from before the new world: starting fresh
-PASS  (v2) a v4 save (from before the new world) is not loaded: a clean start 
-PASS  (v2) a v5 save loads 
+[save] v5 from before the new world: starting fresh
+PASS  (v2) a v5 save (from before the wings moved into the new world) is not loaded: a clean start 
+PASS  (v2) a v6 save loads 
 PASS  jump to the shrine (everything before it solved) 
 PASS  wake the shrine again shrine
 PASS  a short press does not skip 
+  .. sim 900s  real 178s  step 1096/1100
 PASS  a long press skips the cinematic 
 PASS  skipped: the end state is reached anyway 
 PASS  skipped: the shrine counter still shows 
-PLAYTHROUGH OK  checks=440  failed=0  sim_time=966.7s  ground_samples=46507
+PLAYTHROUGH OK  checks=416  failed=0  sim_time=900.4s  ground_samples=42528
 ERROR: Pages in use exist at exit in PagedAllocator: N20RasterizerSceneDummy21GeometryInstanceDummyE
    at: ~PagedAllocator (./core/templates/paged_allocator.h:169)
 ERROR: 16 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
-ERROR: 67 RID allocations of type 'N13RendererDummy11MeshStorage14DummyMultiMeshE' were leaked at exit.
-ERROR: 498 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+ERROR: 59 RID allocations of type 'N13RendererDummy11MeshStorage14DummyMultiMeshE' were leaked at exit.
+ERROR: 449 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
 WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
      at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
 WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
@@ -1389,94 +1447,12 @@ WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted 
      at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
 WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
      at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-ERROR: 593 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
-ERROR: 65 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
-ERROR: 574 RID allocations of type 'N17RendererSceneCull8InstanceE' were leaked at exit.
+ERROR: 545 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 64 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
+ERROR: 525 RID allocations of type 'N17RendererSceneCull8InstanceE' were leaked at exit.
 WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
      at: cleanup (core/object/object.cpp:2514)
-ERROR: 77 resources still in use at exit (run with --verbose for details).
+ERROR: 76 resources still in use at exit (run with --verbose for details).
    at: clear (core/io/resource.cpp:795)
 ERROR: Pages in use exist at exit in PagedAllocator: N7Variant5Pools12BucketMediumE
    at: ~PagedAllocator (./core/templates/paged_allocator.h:169)

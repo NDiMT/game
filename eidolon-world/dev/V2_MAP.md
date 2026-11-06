@@ -152,11 +152,20 @@ The script's order already alternates for most beats. Where it puts two puzzles 
 
 - Save v5: a clean reset. Old progress is not migrated (owner).
 
+## 5b. Phase 3 (W2): the wings in the new world
+
+- **How the v1 rooms are placed:** `scripts/v2/wings_geo.gd` holds the v1 geometry builders, unchanged in their numbers, drawn through `scripts/v2/lv_off.gd` (the Level kit seen through a translation). The runtime code (chapter.gd, puzzles.gd, our_steps.gd, warden.gd, items.gd, ...) writes every v1 position as `Map2.G? + Vector3(v1 ...)`.
+- **Module offsets (world):** `Map2.GW` (Stair, Offering, Hall), `GG` (Shadow Chamber), `GN` (Turned Ones, Our Steps, Court, Tree, Maze), `GE` (Singing Stones = the v1 Ledge, Veil Stair, Mirror Walk, Spring, Scales), `GX` (E.6: the v1 Ledge's glass and plates on the High terrace, EB). Integer cells: `GWI`, `GXI`.
+- **Region names:** the v1 rooms keep their v1 region names; `Map2.V1_KEY` maps them to their space (area, mood, flow test, framing).
+- **New beats:** W.4 the star (lens-only roof + star), W.6 the Shadow Chamber's gate (seen through the Shard, its parapet sinks), the Beacons on the Tripo braziers at WB / NB / EB, W.7 stepping drums, N.1 hidden stones (her reflection walks them ahead of you), N.7 her footprints shown only in the lamp's light, E.1 the bench (the gaze turns to the Observer), E.2 the stones moved to the ledge's middle, E.5 bars on the way up to EB (the balance opens them), E.6 the Eidolon Plate on EB (its answer raises the bars of the High Stair down: the circle closes).
+- **Gone with the old wings:** the Echo Corridor, the drawbridge, the old colonnade's hub code (now N.1), the old Colossus stones.
+- **Save:** v6, a clean reset (the wings' positions moved).
+
 ## 6. Phases
 
 1. **Layout:** this file, the map, the whole chapter blocked out and walkable end to end, the flow test.
 2. **Act 1:** playable and dressed; the old world comes out and O goes to 0.
-3. **Act 2:** the three wings and their Beacons.
+3. **Act 2:** the three wings and their Beacons. (done, phase 3)
 4. **Act 3** and the shrine cinematic.
 5. **Intro cards, the prologue,** and the tablet and memory text.
 6. **Feel and polish,** then the full smoke.

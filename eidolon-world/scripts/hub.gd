@@ -84,6 +84,7 @@ func _build_bridge() -> void:
 		slabs.append(n)
 	# the corner that breaks away (an overhang beside the last slab, outside the way)
 	_shard = Node3D.new()
+	_shard.name = "BridgeShard"          # (an overhang: it hangs off the last slab, over the water; it breaks away)
 	_shard.position = Vector3(1.42, WorldGeo.A_Y - 0.2, 9.1)
 	add_child(_shard)
 	var sm := MB.new()

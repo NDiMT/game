@@ -63,6 +63,10 @@ func _collect(n: Node, skip: Node, c: Vector3, r: float, lv: Level) -> void:
 				if mat == null: mat = mesh.surface_get_material(0)
 			var tr := _is_transparent(mat)
 			var mname: String = (mat.shader.resource_path.get_file() if mat is ShaderMaterial and (mat as ShaderMaterial).shader else str(mat))
+			# (how a transparent surface is ordered: additive blends commute; distinct render priorities are drawn in a fixed order)
+			var order := ""
+			if tr and mat is ShaderMaterial and (mat as ShaderMaterial).shader and (mat as ShaderMaterial).shader.code.contains("blend_add"): order = "add"
+			elif tr and mat: order = "p%d" % mat.render_priority
 			var faces := mesh.get_faces()
 			var owner := "%s/%s" % [n.get_parent().name, n.name]
 			for xf: Transform3D in xfs:
@@ -74,7 +78,7 @@ func _collect(n: Node, skip: Node, c: Vector3, r: float, lv: Level) -> void:
 					var nn := (cc - a).cross(b - a)        # (Godot: clockwise front faces)
 					if nn.length() < 1e-8: continue
 					nn = nn.normalized()
-					tris.append([a, b, cc, nn, nn.dot(a), owner, tr, mname])
+					tris.append([a, b, cc, nn, nn.dot(a), owner, tr, mname, order])
 	for ch in n.get_children(): _collect(ch, skip, c, r, lv)
 
 ## buckets by plane (normal up to sign, offset); overlap in the plane with a 1 mm shrink (shared edges are not overlaps)
@@ -125,6 +129,10 @@ func _pairs() -> void:
 				if not (t1[6] or t2[6]) and (t1[3] as Vector3).dot(t2[3]) < 0.0: continue
 				if (t1[3] as Vector3).dot(BACK) < 0.02 and (t2[3] as Vector3).dot(BACK) < 0.02: continue
 				if not _overlap(t1, t2, n1): continue
+				# (v2 phase 3: never a flicker: two additive glows, or two sheets drawn in a fixed order by their priorities;
+				# a sheet over the hidden underside of something resting on the floor: its back face is culled)
+				if t1[6] and t2[6] and (str(t1[8]) == "add" and str(t2[8]) == "add" or str(t1[8]) != str(t2[8])): continue
+				if t1[6] != t2[6] and ((t2[3] as Vector3).dot(BACK) < 0.02 if t1[6] else (t1[3] as Vector3).dot(BACK) < 0.02): continue
 				var tag := "%s | %s" % [t1[5], t2[5]]
 				# (known, harmless: two ADJACENT slivers of one fan in the Veiled Way's gate, sharing an edge, 1.3 cm
 				# tall, third vertices on opposite sides: they cannot overlap (HANDOFF A -> W, 2026-11-05))

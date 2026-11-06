@@ -8,6 +8,7 @@ const LIFT := 0.5            # the piece's body, not its foot
 const OWN := 0.5             # hits this close are the piece's own body
 const REACH := 22.0          # (the camera stands 24 m back, near plane 1 m)
 var lv_ref: Level
+var occ_body: StaticBody3D
 
 func _ready() -> void:
 	Game.autotest = true
@@ -16,8 +17,22 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var lv: Level = game.level
+	# (v2 rebuild, phase 3: the world with its beats answered: every door, gate and sealed wall open, as you find it
+	# when you walk on through it; the route check below walks the whole way)
+	var cs: Dictionary = game.chapter.state
+	for k in ["breath", "hall_door", "shard", "gallery", "turned_done", "garden_breath", "hollow_done", "mural", "maze", "ledge_song", "scales"]: cs[k] = true
+	cs["hub"]["w_seen"] = true
+	cs["hub"]["e_open"] = true
+	game.puzzles.state["plate"] = true
+	game.puzzles.state["bridge"] = true
+	game.puzzles.apply_state(game.puzzles.state)
+	game.chapter.apply_state()
+	await get_tree().process_frame
 	var body := StaticBody3D.new()
 	add_child(body)
+	occ_body = StaticBody3D.new()          # (the see-through's occluders: they fade round her as she passes behind them)
+	occ_body.collision_layer = 2
+	add_child(occ_body)
 	var names := {}
 	var nshapes := [0]
 	lv_ref = lv
@@ -47,7 +62,7 @@ func _ready() -> void:
 			var q := PhysicsRayQueryParameters3D.create(p + back * own, p + back * REACH)
 			var r := space.intersect_ray(q)
 			if r.is_empty(): continue
-			var nm: String = names.get(r["shape"], "?")
+			var nm: String = _nm(names, r)
 			hid.append("%s <- %s (hit at %.1f, %.1f, %.1f)" % [e[0], nm, r.position.x, r.position.y, r.position.z])
 		if not hid.is_empty(): fails += 1
 		print("ROOM %-15s %-26s %s" % [k, Names.area(k), "clear" if hid.is_empty() else "HIDDEN: " + "; ".join(hid)])
@@ -60,7 +75,7 @@ func _ready() -> void:
 		total += 1
 		var p: Vector3 = e[1] + Vector3(0, LIFT, 0)
 		var r := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + back * OWN, p + back * REACH))
-		if not r.is_empty(): hidw.append("%s %s <- %s at %s" % [e[0], e[1], names.get(r["shape"], "?"), r.position])
+		if not r.is_empty(): hidw.append("%s %s <- %s at %s" % [e[0], e[1], _nm(names, r), r.position])
 	if not hidw.is_empty(): fails += 1
 	print("WONDERS %s" % ("clear" if hidw.is_empty() else "HIDDEN: " + "; ".join(hidw)))
 	# (v0.9.1) the garden's great glass: each turned one's north rune face, seen in it from the fixed view:
@@ -91,7 +106,7 @@ func _ready() -> void:
 				total += 1
 				var e: Vector3 = ch.eye_head(j) + ch.eye_axis(j) * s * 0.5 + Vector3(dn.x, 0, dn.y) * t + Vector3(0, 0.03, 0)
 				var r := space.intersect_ray(PhysicsRayQueryParameters3D.create(e + back * 0.02, e + back * REACH))
-				if not r.is_empty(): hide_e.append("pair %d at %s <- %s" % [j, e, names.get(r["shape"], "?")])
+				if not r.is_empty(): hide_e.append("pair %d at %s <- %s" % [j, e, _nm(names, r)])
 	if not hide_e.is_empty(): fails += 1
 	print("SHADOW EYES %s" % ("every pair in full sight" if hide_e.is_empty() else "HIDDEN: " + "; ".join(hide_e.slice(0, 6))))
 	# (v2 rebuild) the new world: her whole way in sight: every metre of the play route (Map2.ROUTE) and every space's
@@ -112,8 +127,8 @@ func _ready() -> void:
 			if not lv.on_ground(q) or lv.blocked(q, 0.05): continue          # (where she can stand)
 			total += 1
 			var p := Vector3(q.x, lv.height_at(q) + LIFT, q.y)
-			var r := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + back * OWN, p + back * REACH))
-			if not r.is_empty(): hid2.append("%s at %s <- %s" % [e[0], _v2(p - Map2.O), names.get(r["shape"], "?")])
+			var r := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + back * OWN, p + back * REACH, 1))
+			if not r.is_empty(): hid2.append("%s at %s <- %s" % [e[0], _v2(p - Map2.O), _nm(names, r)])
 		if not hid2.is_empty(): fails += 1
 		print("V2 WORLD %s (%d points)" % ["the whole way in sight" if hid2.is_empty() else "HIDDEN %d: " % hid2.size() + "; ".join(hid2.slice(0, 30)), pts2.size()])
 	print("OCCLUSION %s (%d of %d rooms with a hidden piece; %d pieces, %d meshes)" % ["PASS" if fails == 0 else "FAIL", fails, Framing.ROOMS.size(), total, nshapes[0]])
@@ -161,12 +176,18 @@ func _collect(n: Node, skip: Node, body: StaticBody3D, names: Dictionary, count:
 					sh.set_faces(tf)
 					var cs := CollisionShape3D.new()
 					cs.shape = sh
-					body.add_child(cs)
 					var mat = (n as GeometryInstance3D).material_override
+					if mat == null and n is MeshInstance3D and mesh.get_surface_count() > 0: mat = (n as MeshInstance3D).get_surface_override_material(0)
 					if mat == null and n is MeshInstance3D and mesh.get_surface_count() > 0: mat = mesh.surface_get_material(0)
-					names[count[0]] = "%s in %s [aabb %s, %s]" % [n.name, n.get_parent().name if n.get_parent() else "-", str(xf * ab), (mat.shader.resource_path.get_file() if mat is ShaderMaterial and mat.shader else str(mat))]
+					var occ: bool = mat is ShaderMaterial and (mat as ShaderMaterial).shader and (mat as ShaderMaterial).shader.resource_path.get_file() == "marble_occ.gdshader"
+					var ob: StaticBody3D = occ_body if occ else body
+					ob.add_child(cs)
+					names[("o" if occ else "b") + str(ob.get_child_count() - 1)] = "%s in %s [aabb %s, %s]" % [n.name, n.get_parent().name if n.get_parent() else "-", str(xf * ab), (mat.shader.resource_path.get_file() if mat is ShaderMaterial and mat.shader else str(mat))]
 					count[0] += 1
 	for c in n.get_children(): _collect(c, skip, body, names, count)
+
+func _nm(names: Dictionary, r: Dictionary) -> String:
+	return names.get(("o" if r["collider"] == occ_body else "b") + str(r["shape"]), "?")
 
 func _v2(v: Vector3) -> String:
 	return "(%.1f, %.1f, %.1f)" % [v.x, v.y, v.z]

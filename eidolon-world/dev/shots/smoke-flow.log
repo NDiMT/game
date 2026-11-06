@@ -9,36 +9,64 @@ Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
 [v2 dress] A kit_scaffold: outside the landmark
 [v2 dress] A kit_ladder: on a kept path
 [v2 dress] A plinth: on a kept path
+[v2 dress] W3 mirror_frame: outside the landmark
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 column_doric: outside the landmark
+[v2 dress] W3 column_doric: on a kept path
+[v2 dress] W3 statue_veiled_mourning: on a kept path
+[v2 dress] W3 mirror_frame: on a kept path
+[v2 dress] W3 pediment_fragment: outside the landmark
 [v2 dress] W5 pylon_ashlar: outside the landmark
 [v2 dress] W5 pylon_ashlar: outside the landmark
 [v2 dress] W5 mirror_frame: on a kept path
+[v2 dress] W5 statue_veiled_kneeling: on a kept path
+[v2 dress] W5 rubble_pile: outside the landmark
 [v2 dress] W5 column_fallen: outside the landmark
 [v2 dress] IBW archway_ruined: on a kept path
+[v2 dress] IBW mirror_frame: outside the landmark
 [v2 dress] WB rubble_pile: outside the landmark
 [v2 dress] WB rubble_pile: on a kept path
 [v2 dress] N1 column_doric: outside the landmark
 [v2 dress] N1 column_doric: outside the landmark
 [v2 dress] N1 column_doric: outside the landmark
+[v2 dress] N2 statue_veiled_mourning: outside the landmark
+[v2 dress] N2 statue_veiled_praying: on a kept path
+[v2 dress] N2 statue_veiled_mourning: on a kept path
 [v2 dress] N2 statue_veiled_broken: on a kept path
+[v2 dress] N2 kit_dead_plant: on a kept path
+[v2 dress] N3 kit_votive: outside the landmark
 [v2 dress] N3 kit_urns: outside the landmark
+[v2 dress] N3 kit_dead_plant: outside the landmark
+[v2 dress] N3 column_stump: on a kept path
+[v2 dress] N6 statue_veiled_bust: on a kept path
+[v2 dress] N7 statue_veiled_broken: on a kept path
 [v2 dress] N7 column_stump: outside the landmark
+[v2 dress] N7 kit_dead_plant: on a kept path
+[v2 dress] N7 kit_urns: on a kept path
 [v2 dress] E1 balustrade: outside the landmark
 [v2 dress] E1 balustrade: on a kept path
 [v2 dress] E1 kit_awning_post: on a kept path
 [v2 dress] E1 kit_awning_post: outside the landmark
 [v2 dress] E1 kit_urns: on a kept path
 [v2 dress] E1 box: outside the landmark
+[v2 dress] E2 kit_windbells: on a kept path
 [v2 dress] E2 balustrade: outside the landmark
+[v2 dress] E4 kit_urns: outside the landmark
 [v2 dress] E5 statue_veiled_praying: outside the landmark
+[v2 dress] E5 column_stump: on a kept path
+[v2 dress] E5 pediment_fragment: on a kept path
+[v2 dress] E5 kit_awning_post: on a kept path
+[v2 dress] E5 balustrade: on a kept path
 [v2 dress] I21 kit_bridge_end: outside the landmark
 [v2 dress] I21 rubble_pile: on a kept path
 [v2 dress] I21 column_fallen: outside the landmark
 [v2 dress] I21 column_stump: on a kept path
 [v2 dress] I22 gate_veiled: outside the landmark
 [v2 dress] I22 pylon_ashlar: outside the landmark
-[solids] 5766 primitives, 1536 solid footprints, 520 obstacles added (339 ms)
-[warm-up] 645 mesh/material pairs (of 916 geometry nodes), 12 canvas materials
-FLOW marble instances 239 / 256
-FLOW order: WS I1 I2 I3 IB1 I4 I5 A WR W1 W2 W3 W4 W5 IBW W6 WB W7 N1 N2 N3 N4 IBN N5 N6 N7 NB NS ER E1 E2 IBE E3 E4 E5 EB EH VW P PW I21 I22 I23
-FLOW max height change per frame 0.064 m, 112 legs, 227 s walked
-FLOW PASS  checks=268  failed=0
+[solids] 4436 primitives, 1526 solid footprints, 462 obstacles added (222 ms)
+[warm-up] 596 mesh/material pairs (of 829 geometry nodes), 12 canvas materials
+FLOW marble instances 201 / 256
+FLOW order: WS I1 I2 I3 IB1 I4 I5 A WR W1 W2 W3 W4 W5 IBW W6 WB W7 N1 N2 N3 N4 IBN N5 N7 N6 NB NS ER E1 E2 IBE E3 E4 E5 EB EH VW P PW I21 I22 I23
+FLOW max height change per frame 0.200 m, 125 legs, 236 s walked
+FLOW PASS  checks=294  failed=0

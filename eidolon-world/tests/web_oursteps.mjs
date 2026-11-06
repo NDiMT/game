@@ -33,8 +33,10 @@ const info = (...a) => console.log(`[${el()}]`, ...a);
 const SRC = fs.readFileSync(path.join(HERE, '../scripts/our_steps.gd'), 'utf8');
 const num = (k) => +SRC.match(new RegExp(`const ${k} := ([-0-9.]+)`))[1];
 const C = num('C'), R = num('R'), TILE = num('TILE'), GAP = num('GAP');
-const GCm = SRC.match(/const GC := Vector3\(([-0-9.]+), ([-0-9.]+), ([-0-9.]+)\)/);
-const GC = [+GCm[1], +GCm[2], +GCm[3]];
+const GCm = SRC.match(/const GC := (?:Map2\.GN \+ )?Vector3\(([-0-9.]+), ([-0-9.]+), ([-0-9.]+)\)/);
+const GC = [+GCm[1], +GCm[2], +GCm[3]];          // (v2: in the room's own v1 frame; the world offset GN is added once the game reports it)
+let GN = [0, 0, 0];
+const WP = (x, z) => [x + GN[0], z + GN[2]];          // a v1 point of the room, in the world
 const ENTRY_COLS = JSON.parse(SRC.match(/const ENTRY_COLS := (\[[0-9, ]+\])/)[1]);
 const BOARDS = [...SRC.matchAll(/\{"title": "([^"]+)", "par": (\d+), "map": \[([^\]]+)\]\}/g)]
   .map((m) => ({ title: m[1], par: +m[2], map: JSON.parse('[' + m[3] + ']') }));
@@ -73,7 +75,7 @@ function solve(i) {
   return null;
 }
 // the frame: u along the glass (screen right), v toward it (screen up)
-const at = (u, v) => [GC[0] + U[0] * u + V[0] * v, GC[2] + U[2] * u + V[2] * v];
+const at = (u, v) => [GC[0] + GN[0] + U[0] * u + V[0] * v, GC[2] + GN[2] + U[2] * u + V[2] * v];
 const uv = (c) => [(c[0] - (C - 1) / 2) * TILE, -(GAP + TILE / 2 + (R - 1 - c[1]) * TILE)];
 const tile = (c) => at(...uv(c));
 // a world (x, z) direction -> the stick's screen direction (x right, y down): the camera never turns
@@ -172,6 +174,7 @@ try {
   await wait(800);
   await cmd('jump:hollow_walk');
   let s = await waitFor((q) => q.area === 'hollow_walk' && q.mode === 'play', 30000);
+  if (s && s.gn) GN = s.gn;
   check('jump: in Our Steps (hollow_walk), unsolved', s && s.steps && s.steps.done === false && s.steps.active === false, JSON.stringify(s?.steps));
   // ---------------------------------------------------------------- to the gap, by touch
   const nearE = at(0, EDGE_V - 0.9);
@@ -240,7 +243,7 @@ try {
   check('solved: the glass clears (a plain mirror again)', !!s, '');
   // ---------------------------------------------------------------- out, by touch, to the Court
   const t10 = tile([1, 0]);
-  const route = [[t10, 'off the floor'], [nearE, 'the gap'], [[17.85, -10.3], 'the walk'], [[17.85, -11.8], 'by the gate']];
+  const route = [[t10, 'off the floor'], [nearE, 'the gap'], [WP(17.85, -10.3), 'the walk'], [WP(17.85, -11.8), 'by the gate']];
   for (const [pt, label] of route) {
     const ok = await walkTo(pt[0], pt[1], 0.6);
     check(`walk out (touch): ${label}`, ok, `pos ${(await st()).pos}`);
@@ -251,7 +254,7 @@ try {
   check('the exit opens (the gate rises)', !!s, '');
   await wait(1500);
   await shot('the gate open');
-  for (const [pt, label] of [[[18.3, -13.0], 'through the gate'], [[18.5, -16.2], 'up the ramp'], [[17.6, -17.8], 'the top'], [[15.0, -18.4], 'the Court']]) {
+  for (const [pt, label] of [[WP(18.3, -13.0), 'through the gate'], [WP(18.5, -16.2), 'up the ramp'], [WP(17.6, -17.8), 'the top'], [WP(15.0, -18.4), 'the Court']]) {
     const ok = await walkTo(pt[0], pt[1], 0.7);
     if (!ok) { check(`walk out (touch): ${label}`, false, `pos ${(await st()).pos}`); throw new Error('walk stuck at ' + label); }
     if (label === 'the Court' || label === 'up the ramp') await shot(`walk out: ${label}`);

@@ -365,7 +365,7 @@ const MIRROR_START := [1, 0, 2, 2]
 const HER_POS := [Map2.GN2 + Vector2(14.6, -24.1), Map2.GN2 + Vector2(14.6, -25.6)]   # her own glasses (folded positions)
 const HER_K := [1, 3]
 const LIGHT_CONE := 40.0
-const COURT_BOUNDS := Rect2(Map2.GN.x + 7.15, Map2.GN.z - 26.85, 9.7, 9.7)
+const COURT_BOUNDS := Rect2(Map2.GN.x + 7.15, Map2.GN.z - 26.85, 9.72, 9.7)          # (a hair past the glass: the glass, not the edge, takes the beam)
 var her_stands: Array[Node3D] = []
 var her_glows: Array[ShaderMaterial] = []
 var court_refl: Reflector
@@ -380,10 +380,10 @@ const SEGS := 14
 func _stand_mesh() -> ArrayMesh:
 	var fm := MB.new()
 	var fc := Color(0.5, 1.0, 0.0)
-	fm.box(Vector3(-0.56, 0.0, 0), Vector3(0.07, 1.3, 0.07), fc)
-	fm.box(Vector3(0.56, 0.0, 0), Vector3(0.07, 1.3, 0.07), fc)
-	fm.box(Vector3(0, 0.66, 0), Vector3(1.2, 0.07, 0.07), fc)
-	fm.box(Vector3(0, -0.6, 0), Vector3(1.2, 0.07, 0.07), fc)
+	fm.box(Vector3(-0.56, 0.0, 0), Vector3(0.07, 1.3, 0.076), fc)
+	fm.box(Vector3(0.56, 0.0, 0), Vector3(0.07, 1.3, 0.076), fc)
+	fm.box(Vector3(0, 0.66, 0), Vector3(1.2, 0.07, 0.064), fc)          # (v2: the rails a hair thinner than the posts: no coplanar fronts)
+	fm.box(Vector3(0, -0.6, 0), Vector3(1.2, 0.07, 0.064), fc)
 	fm.cyl(Vector3(0, -0.55, 0), 0.05, 0.05, 0.3, fc, 6)
 	return fm.commit()
 
@@ -492,6 +492,7 @@ func _light_court() -> void:
 			fm.shader = fsh
 			fm.set_shader_parameter("kind", kind)
 			fm.set_shader_parameter("phase", i * 1.3 + kind)
+			fm.render_priority = int(kind) * SEGS + i          # (v2: overlapping strips and pools always drawn in one order)
 			var fq := PlaneMesh.new()
 			fq.size = Vector2(1, 1)
 			fq.center_offset = Vector3(0.5, 0, 0) if kind < 0.5 else Vector3.ZERO
@@ -523,6 +524,7 @@ func _light_court() -> void:
 	for i in SEGS:
 		var rm := ShaderMaterial.new()
 		rm.shader = rsh
+		rm.render_priority = 40 + i
 		var q := QuadMesh.new()
 		q.size = Vector2(1, 1)
 		var sg := MeshInstance3D.new()
@@ -541,6 +543,7 @@ func _light_court() -> void:
 		hm.shader = preload("res://shaders/halo.gdshader")
 		hm.set_shader_parameter("color", Palette.ACCENT)
 		hm.set_shader_parameter("intensity", 1.2)
+		hm.render_priority = 60 + i
 		gl.material_override = hm
 		gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		gl.visible = false
@@ -1195,7 +1198,7 @@ func update(dt: float) -> void:
 	# (v0.8.5) the beam only changes in the court (its mirrors turn there): far from it, the beam drawn
 	# last stays as it is and is not traced again every frame
 	var pc: Vector3 = game.player.position
-	if not _beam_once or Vector2(pc.x - 12.0, pc.z + 22.0).length() < 18.0 or busy:
+	if not _beam_once or Vector2(pc.x - Map2.GN.x - 12.0, pc.z - Map2.GN.z + 22.0).length() < 18.0 or busy:
 		_beam_once = true
 		_update_beam(dt)
 	if game.prof_on: tp = game._pm("pz:beam", tp)

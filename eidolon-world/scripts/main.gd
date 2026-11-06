@@ -966,7 +966,7 @@ const ROOM_ENTRY := {
 	"atrium": Map2.O + Vector3(0.0, 0.0, 3.0), "shard_gallery": Map2.GG + Vector3(5.8, 1.0, -17.0), "garden_veiled": Map2.GN + Vector3(13.5, 1.0, -5.6),
 	"hollow_walk": Map2.GN + Vector3(17.9, 1.0, -11.8), "court_light": Map2.GN + Vector3(18.5, 2.0, -17.8), "mist_maze": Map2.GN + Vector3(12.0, 2.0, -29.6),
 	"echo_corridor": Map2.GE + Vector3(22.0, 2.0, -20.0),
-	"scales": Map2.GE + Vector3(31.4, 2.0, -45.6), "eidolon_ledge": Map2.GE + Vector3(23.0, 2.0, -19.8), "gate_four": Vector3(27.6, 2.0, -27.0),
+	"scales": Map2.GE + Vector3(31.4, 2.0, -45.6), "eidolon_ledge": Map2.GE + Vector3(23.0, 2.0, -19.8), "gate_four": Vector3(27.6, 2.0, -28.6),
 	"first_shrine": Vector3(25.0, 2.0, -30.8),
 }
 func jump(room: String) -> void:
@@ -1454,7 +1454,7 @@ func state_dict() -> Dictionary:
 		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "beds": sfx.bed_debug(), "drone": sfx.drone.playing, "music": sfx._music_cur, "speed": player.speed01,
 		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
 		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text.replace("\n", " "), "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
-		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "yaw_index": world.yaw_index, "zoom": snappedf(world.zoom, 0.01), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
+		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "gn": [Map2.GN.x, Map2.GN.y, Map2.GN.z], "yaw_index": world.yaw_index, "zoom": snappedf(world.zoom, 0.01), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
 		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01),
 		"chapter": chapter.state, "lens": chapter.lens_on, "calm": snappedf(chapter.calm, 0.01), "cine_t": snappedf(cine.t, 0.1) if cine else -1.0,
 		"letterbox": snappedf(ui.letterbox, 0.01), "glass": ui.glass_talk.phase, "glass_tries": ui.glass_talk.tries, "glass_score": ui.glass_talk.last_score, "hint_t": snappedf(chapter.hint_t, 0.1), "lift": snappedf(chapter.lift_h, 0.01),

@@ -14,7 +14,8 @@ var chapter: Chapter
 var _gaze_orig := {}                 # Reflector -> its own gaze target (INF for the free ones)
 var _gaze_t := 0.0
 # her rune on the water
-const WATERS := [[Rect2(Map2.O.x - 12.95, Map2.O.z + 17.0, 8.95, 3.7), -0.41], [Rect2(Map2.O.x - 32.4, Map2.O.z - 14.6, 18.4, 13.1), -0.41]]          # (v2: the Pool of Halves, the Colossus' inlet)
+const WATERS := [[Rect2(Map2.O.x - 12.95, Map2.O.z + 17.0, 8.95, 3.7), -0.41], [Rect2(Map2.O.x - 32.4, Map2.O.z - 14.6, 18.4, 13.1), -0.41],
+	[Rect2(Map2.O.x - 0.5, Map2.O.z - 15.0, 6.0, 6.0), Map2.N1_WATER_Y + Map2.O.y + 0.01]]          # (v2: the Pool of Halves, the Colossus' inlet)
 var rune_node: Node3D
 var rune_mat: ShaderMaterial
 var _rune_t := 0.0                   # >0: showing
