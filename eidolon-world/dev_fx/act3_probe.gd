@@ -87,7 +87,7 @@ func _process(dt: float) -> void:
 				a3._fall(1, false)
 				if after:
 					var p: Vector3 = a3.lurch_node.global_position
-					for sx in [-1.0, 1.0]: FxBurst.crumble(game.juice, p + Vector3(sx * 0.95, -0.25, 0), 1.0)
+					for sz in [-1.25, 1.25]: FxBurst.crumble(game.juice, p + Vector3(0, -0.05, sz), 1.3)     # (off both edges of the deck, into the sea)
 					var c: Node3D = a3.chunks[1]
 					FxBurst.crumble(game.juice, c.global_position + Vector3(0, -0.1, 0), 0.6)
 			elif _k == 1 and t > 2.9: _shot("bridge-1"); _k = 2

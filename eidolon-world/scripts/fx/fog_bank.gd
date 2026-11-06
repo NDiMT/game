@@ -39,7 +39,7 @@ func _mat(part: float, layer: float, seed: float) -> ShaderMaterial:
 func _build() -> void:
 	var grow := 1.6
 	var big := rect.grow(grow)
-	var sheets := [[0.12, 0.0], [0.55, 0.5], [1.05, 1.0]] if high else [[0.3, 0.3]]
+	var sheets := [[0.1, 0.0], [0.6, 0.5], [1.15, 1.0]] if high else [[0.3, 0.1]]
 	for s in sheets:
 		var mi := MeshInstance3D.new()
 		var pm := PlaneMesh.new()
@@ -66,7 +66,7 @@ func _build() -> void:
 			var mi := MeshInstance3D.new()
 			mi.mesh = q
 			var m := _mat(1.0, 0.5, randf() * 10.0)
-			m.set_shader_parameter("height", randf_range(1.8, 2.6))
+			m.set_shader_parameter("height", randf_range(2.4, 3.3))
 			mi.material_override = m
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			mi.extra_cull_margin = 3.0

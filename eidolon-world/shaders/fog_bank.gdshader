@@ -14,8 +14,8 @@ uniform vec4 rect = vec4(0.0, 0.0, 10.0, 4.0);   // x0, z0, x1, z1 (world)
 uniform float from_x1 = 1.0;         // 1: the clearing starts at the x1 (east) end
 uniform float height = 2.2;          // curtains
 uniform float seed = 0.0;
-uniform vec3 col_lo : source_color = vec3(0.56, 0.58, 0.61);
-uniform vec3 col_hi : source_color = vec3(0.86, 0.87, 0.88);
+uniform vec3 col_lo : source_color = vec3(0.40, 0.42, 0.46);
+uniform vec3 col_hi : source_color = vec3(0.93, 0.93, 0.94);
 uniform float glow = 1.0;            // the crimson deep in it
 varying vec3 wpos;
 varying float vy;
@@ -57,12 +57,15 @@ void fragment() {
 		float y = 1.0 - vy;                                            // 0 at the water .. 1 at the top
 		float body = smoothstep(0.0, 0.12, y) * (1.0 - smoothstep(0.35 + 0.45 * n, 1.0, y));
 		float w = 1.0 - smoothstep(0.55, 1.0, abs(UV.x - 0.5) * 2.0 + (n2 - 0.5) * 0.4);
-		a = body * w * (0.45 + 0.4 * n) * 0.8;
+		a = body * w * (0.55 + 0.4 * n);
 		c = mix(col_lo, col_hi, y * 0.8 + n * 0.2);
 	} else {
-		float dens = smoothstep(0.25 + 0.12 * layer, 0.75, n * 0.75 + n2 * 0.25);
-		a = dens * mix(0.82, 0.5, layer) * edge;
-		c = mix(col_lo, col_hi, 0.35 + 0.5 * layer + 0.25 * (n - 0.5));
+		// the lowest sheet is a solid bank (the water is gone under it), the upper ones its rolling billows: lit tops,
+		// shadowed hollows, so it reads as a mass, not a haze
+		float dens = layer < 0.25 ? smoothstep(0.0, 0.35, n * 0.6 + n2 * 0.4 + 0.15) : smoothstep(0.32, 0.7, n * 0.75 + n2 * 0.25);
+		a = dens * mix(0.97, 0.78, layer) * edge;
+		float lit = smoothstep(0.35, 0.8, n) * 0.7 + layer * 0.3;
+		c = mix(col_lo, col_hi, clamp(lit + 0.15 * (n2 - 0.5), 0.0, 1.0));
 		// something waits in it: a slow crimson glow deep in the lowest sheet
 		float pulse = 0.5 + 0.5 * sin(TIME * 0.55 + seed);
 		float g = (1.0 - layer) * glow * smoothstep(0.55, 0.9, vnoise(q * 0.18 + vec2(TIME * 0.02, 0.0) + 11.0)) * (0.35 + 0.35 * pulse);
