@@ -40,8 +40,6 @@ const TURN_X := [Map2.GN.x + 12.25, Map2.GN.x + 13.8, Map2.GN.x + 15.35]        
                                             # face fell off the glass's left edge, and one statue hid another's rune in it;
                                             # now all three runes show whole in it: garden_mirror_view, tests/framing_test)
 const TURN_Z := Map2.GN.z - 13.5
-const FOUR_R := 3.9
-const FOUR_ANGLES := [20.0, 160.0, -20.0, -160.0]      # degrees round the tholos; the last is empty
 # (QA P1-10: memories speak of him in the third person; the inscriptions are his own voice)
 const MEMORY_1 := "He took the goddess's mirror from her shrine at Milos.\nShe did not stop him. She only watched."
 
@@ -61,7 +59,6 @@ var _t := 0.0
 var _moved := false
 
 # pool / stair
-const POOL_SHORE := Vector3(-0.3, 0.0, 1.7)
 var breath_mats := {}              # id -> ShaderMaterial
 var stair_veil: ShaderMaterial
 var stair_rune: MeshInstance3D          # v0.7: the whole rune, carved large beside the stair (her half + yours)
@@ -81,6 +78,7 @@ var door_refl: Array[Node3D] = []
 var steps: OurSteps
 var hub: Hub                             # v1.0 M3: the hub's living parts (hub.gd)
 var act1: Act1                           # v2.0: Act 1, Awakening (act1.gd)
+var act3: Act3                           # (v2 phase 4) Act 3, the convergence's spaces (v2/act3.gd)
 var shrine_fx: WaterFX                   # (v1.0 M1-A) the shrine pool's water events                     # v0.9.2: "Our Steps" (the Hollow Walk's room)
 var hw_gate: Node3D
 var _still := 0.0
@@ -111,8 +109,6 @@ var _ledge_loop := 0.0
 var four_mats: Array[ShaderMaterial] = []
 var four_ring: ShaderMaterial
 var four_hold := 0.0
-var gap_veils: Array[ShaderMaterial] = []
-var front_veil: ShaderMaterial
 var waiting := 0.0
 # shrine pool
 var shrine_water: ShaderMaterial
@@ -136,7 +132,7 @@ func reset_state() -> void:
 		"hall": {"drum": [DRUM_START.x, DRUM_START.y], "brazier": [BRAZ_START.x, BRAZ_START.y], "bust": BUST_START, "locks": [false, false, false]},
 		"turned": TURN_START.duplicate(), "turned_done": false, "garden_breath": false,
 		"hollow_done": false,          # (v0.9.2: "Our Steps" solved; the old key kept for saves)
-		"mural": false, "maze": false, "echo_room": true, "ledge_song": false, "beacons": [], "a1": Act1.fresh(), "prologue_seen": false, "memories": [], "scale_w": [-1, -1, -1], "scales": false,
+		"mural": false, "maze": false, "echo_room": true, "ledge_song": false, "beacons": [], "a1": Act1.fresh(), "a3": Act3.fresh(), "prologue_seen": false, "memories": [], "scale_w": [-1, -1, -1], "scales": false,
 		"four": false, "ledge_statue": [LEDGE_STATUE.x, LEDGE_STATUE.y],
 		"inv": Items.fresh_inv(), "hub": Items.fresh_hub()}            # (v1.0 M3: the satchel, the hub's doors and item gates)
 
@@ -166,6 +162,9 @@ func build() -> void:
 	act1 = Act1.new()                # (v2.0: after the hub: the bridge's span, the lamp)
 	add_child(act1)
 	act1.setup(game, self)
+	act3 = Act3.new()                # (v2 phase 4: the Veiled Way, the pool's fog, the bridge, the Shrine's ring)
+	add_child(act3)
+	act3.setup(game, self)
 	warden = Warden.new()            # (v1.0 M3c: the Glass Warden, the Mirror Walk's patrol)
 	add_child(warden)
 	warden.setup(game, self)
@@ -290,7 +289,7 @@ func _build_pool() -> void:
 		var ri: int = pieces[c][1]
 		var p := Ch1Geo.cell_pos(c)
 		var node := Node3D.new()
-		node.position = Vector3(p.x, 0.0, p.y)
+		node.position = Vector3(p.x, Map2.GP.y, p.y)
 		add_child(node)
 		puzzles.marble_instance(_pool_piece_mesh(base), node)
 		# v0.8: the path ENGRAVED into its top: a carved channel from the centre out along each arm, ending
@@ -310,16 +309,73 @@ func _build_pool() -> void:
 			bm.cyl(Vector3(0, 0.012, 0), 0.035, 0.045, 0.03, Color(0.5, 1.0, 0.0), 10)
 			puzzles.marble_instance(bm.commit(), node)
 			var idx := ri
-			level.add_interact("pool_turn%d" % ri, Vector3(p.x, 0.0, p.y), "turn", func() -> void: turn_pool(idx), 1.6,
-				func() -> bool: return not state["stones"] and not _on_pool_piece(idx) and not _pool_tw.has(idx))
+			level.add_interact("pool_turn%d" % ri, Vector3(p.x, Map2.GP.y, p.y), "turn", func() -> void: turn_pool(idx), 1.6,
+				func() -> bool: return pool_open() and not _unveiling and not state["stones"] and not _on_pool_piece(idx) and not _pool_tw.has(idx))
 		var regs := []
-		for k in 2: regs.append(level.walk(Rect2(), 0.0, NAN, -1, "pool%d_%d_%d" % [c.x, c.y, k], false))
+		for k in 2: regs.append(level.walk(Rect2(), Map2.GP.y, NAN, -1, Map2.ZP + "Pp", false))          # (v2: the Pool of Halves' road)
 		pool_pieces[c] = {"node": node, "base": base, "real": ri, "regions": regs, "seams": seams, "dirs": dirs}
 	# the reflections, on the water
 	pool_mat = _smat("res://shaders/pool_stones.gdshader", {"noise_tex": level.noise_tex, "water_y": Ch1Geo.WATER_Y, "top_y": 0.0, "pulse": 0.0})
 	pool_mat.render_priority = -1            # (under the sheen: a fixed order, never a sort flicker)
-	var pm := _mi(_plane(Vector2(9.0, 3.8)), pool_mat, Transform3D(Basis(), Vector3(-5.1, Ch1Geo.WATER_Y + 0.012, 1.7)))
-	pm.layers = PlanarMirror.LAYER_MAIN_FX
+	pool_plane = _mi(_plane(Vector2(9.0, 3.8)), pool_mat, Transform3D(Basis(), Map2.GP + Vector3(-5.1, Ch1Geo.WATER_Y + 0.012, 1.7)))
+	pool_plane.layers = PlanarMirror.LAYER_MAIN_FX
+
+## (v2 phase 4) the Pool of Halves lies in fog until the three Beacons burn: your four stones are under the murk
+var pool_plane: MeshInstance3D
+var _unveiling := false
+const SUNK := -1.15
+func pool_open() -> bool:
+	return hub != null and hub.beacons_all()
+
+## the fog lifts: your four stones rise out of the water one by one, heavily (the road is still broken: hers are
+## only in the reflection)
+func pool_unveil(instant: bool) -> void:
+	pool_plane.visible = true
+	var k := 0
+	for c in pool_pieces:
+		var pc: Dictionary = pool_pieces[c]
+		if pc["real"] < 0: continue
+		var node: Node3D = pc["node"]
+		node.visible = true
+		if instant or state["stones"]:
+			node.position.y = Map2.GP.y
+			continue
+		_unveiling = true
+		_rise(node, c, 1.2 + 0.9 * k, 2.4)
+		k += 1
+	for c in pool_pieces:
+		for g in pool_pieces[c]["regions"]: (g as Level.Region).enabled = false
+	if instant or state["stones"]:
+		_unveiling = false
+		for c in pool_pieces: _pool_apply(c)
+		return
+	var tw := create_tween()
+	tw.tween_interval(1.2 + 0.9 * k + 2.6)
+	tw.tween_callback(func() -> void:
+		_unveiling = false
+		for c in pool_pieces: _pool_apply(c)
+		_pool_reflect())
+
+## a stone rises out of still water as stone would: the water bulges and boils first, it breaks the surface slowly
+## (water sheeting off), overshoots a little as the water lets go, settles with a slight list that rights itself;
+## then its wet top dries
+func _rise(node: Node3D, c: Vector2i, delay: float, dur: float) -> void:
+	node.position.y = Map2.GP.y + SUNK
+	var lean := 0.045 * (1.0 if (c.x + c.y) % 2 == 0 else -1.0)
+	node.rotation.z = lean
+	node.rotation.x = -lean * 0.6
+	var at := Vector3(node.position.x, Ch1Geo.WATER_Y, node.position.z)
+	if game.juice: game.juice.stone_rises(node, Ch1Geo.WATER_Y, dur, delay)
+	var tw := create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(func() -> void:
+		_water_burst(at)
+		event.emit("pool_rise", null))
+	tw.tween_property(node, "position:y", Map2.GP.y + 0.05, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(node, "rotation:z", 0.0, dur + 0.8).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(node, "rotation:x", 0.0, dur + 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "position:y", Map2.GP.y - 0.015, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(node, "position:y", Map2.GP.y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _piece_conn(c: Vector2i) -> String:
 	var pc: Dictionary = pool_pieces[c]
@@ -331,15 +387,19 @@ func _pool_apply(c: Vector2i, keep_y := false) -> void:
 	var pc: Dictionary = pool_pieces[c]
 	var conn := _piece_conn(c)
 	var p := Ch1Geo.cell_pos(c)
-	var solid: bool = pc["real"] >= 0 or state["stones"]
+	var solid: bool = (pc["real"] >= 0 and pool_open() and not _unveiling) or state["stones"]
 	for k in 2:
 		var g: Level.Region = pc["regions"][k]
 		g.r = _arm_rect(p, conn[mini(k, conn.length() - 1)])
 		g.enabled = solid
-	if pc["real"] >= 0: (pc["node"] as Node3D).rotation.y = -float(state["pool_turns"][pc["real"]]) * PI * 0.5
+	if pc["real"] >= 0:
+		(pc["node"] as Node3D).rotation.y = -float(state["pool_turns"][pc["real"]]) * PI * 0.5
+		if not keep_y and not _unveiling:
+			(pc["node"] as Node3D).visible = pool_open() or state["stones"]
+			(pc["node"] as Node3D).position.y = Map2.GP.y if (pool_open() or state["stones"]) else Map2.GP.y + SUNK
 	else:
 		(pc["node"] as Node3D).visible = state["stones"]
-		if not keep_y: (pc["node"] as Node3D).position.y = 0.0
+		if not keep_y: (pc["node"] as Node3D).position.y = Map2.GP.y
 
 func _pool_reflect() -> void:
 	var boxes := PackedVector4Array()
@@ -421,25 +481,10 @@ func _complete_pool(instant: bool) -> void:
 		var node: Node3D = pc["node"]
 		node.visible = true
 		if instant:
-			node.position.y = 0.0
+			node.position.y = Map2.GP.y
 		else:
-			# v0.8: her stones RISE out of the water one after another: a burst of spray and droplets, a
-			# ring spreading on the still water, a deep stone rumble and a splash
-			node.position.y = -0.95
-			var tw := create_tween()
-			var dl: float = 0.35 * (c.x + c.y * 0.3) + 0.35
-			tw.tween_interval(dl)
-			var at := Vector3(node.position.x, Ch1Geo.WATER_Y, node.position.z)
-			# (v1.0 juice: a bulge and a ring first; it breaks the surface heavily, water sheeting off its
-			# edges, a slight list that rights itself; then its wet stone dries)
-			if game.juice: game.juice.stone_rises(node, Ch1Geo.WATER_Y, 1.5, dl)
-			node.rotation.z = 0.05 * (1.0 if (c.x + c.y) % 2 == 0 else -1.0)
-			tw.tween_callback(func() -> void:
-				_water_burst(at)
-				event.emit("pool_rise", null))
-			tw.tween_property(node, "position:y", 0.06, 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			tw.parallel().tween_property(node, "rotation:z", 0.0, 1.9).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-			tw.tween_property(node, "position:y", 0.0, 0.6).set_trans(Tween.TRANS_SINE)
+			# her stones RISE out of the water one after another, from the shore outward (v2: the heavy rise, _rise)
+			_rise(node, c, 0.35 * (c.x + c.y * 0.3) + 0.35, 1.7)
 	# (v1.1: the regions and turns only: a rising stone keeps its height under water until its tween lifts it;
 	# this line used to set them all to 0 at once, so the stones simply appeared)
 	for c in pool_pieces: _pool_apply(c, not instant)
@@ -490,8 +535,7 @@ func _water_burst(at: Vector3) -> void:
 func _update_pool(_dt: float) -> void:
 	# the pool is still now (no waiting: what it shows is always there to read)
 	calm = 0.85
-	puzzles.water_over_mat.set_shader_parameter("calm", calm)
-	if puzzles.pool_refl: puzzles.pool_refl.puppet.set_param("ripple_amt", 0.15)
+	if puzzles.pool_refl and not puzzles.pool_refl.hold: puzzles.pool_refl.puppet.set_param("ripple_amt", 0.15)
 	pool_mat.set_shader_parameter("pulse", smoothstep(12.0, 16.0, float(pool_turns_made)) if not state["stones"] else 0.0)
 
 ## (tests) every setting of your beams that makes the path whole
@@ -512,6 +556,8 @@ func _apply_pool() -> void:
 	for ri in _pool_tw.keys(): (_pool_tw[ri] as Tween).kill()
 	_pool_tw.clear()
 	pool_turns_made = 0
+	_unveiling = false
+	pool_plane.visible = pool_open() or state["stones"]
 	for c in pool_pieces: _pool_apply(c)
 	_pool_reflect()
 	_pool_joints(true)
@@ -685,7 +731,7 @@ const BUST_GOAL := 0
 ## (v2, the script: when all three are back the glass cracks at a corner and SHE pushes the Shard out through the crack;
 ## it comes to rest before the glass, below the crack)
 const SHARD_SPOT := Map2.GW + Vector3(-1.5, 1.0, -19.75)
-const SHARD_CRACK := Map2.GW + Vector3(-1.9, 2.0, -20.46)
+const SHARD_CRACK := Map2.GW + Vector3(0.6, 2.5, -20.46)          # (A: clear of the near column from the Hall camera)
 var drum_node: Node3D
 var braz_node: Node3D
 var bust_pivot: Node3D
@@ -719,7 +765,7 @@ func _drum_mesh() -> ArrayMesh:
 
 func _brazier_mesh() -> ArrayMesh:
 	var m := MB.new()
-	var br := Color(0.5, WorldGeo.BRONZE, 0.0)          # (v1.0 A: bronze)
+	var br := Color(0.5, Props.BRONZE, 0.0)          # (v1.0 A: bronze)
 	for k in 3:
 		var a := k * TAU / 3.0
 		var foot := Vector3(cos(a) * 0.3, 0.0, sin(a) * 0.3)
@@ -1394,6 +1440,7 @@ func _build_star() -> void:
 	star_mat.set_shader_parameter("noise_tex", level.noise_tex)
 	star_mat.set_shader_parameter("kind", 0.0)
 	star_mat.set_shader_parameter("design", 5.0)          # (A: a star glyph is asked for in HANDOFF; 5 is the four-pointed one meanwhile)
+	star_mat.set_shader_parameter("kind", 3.0)            # (A: the W.4 star)
 	star_mat.render_priority = 4
 	_mi(_quad(Vector2(1.7, 1.7)), star_mat, Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), STAR)).layers = PlanarMirror.LAYER_MAIN_FX
 
@@ -2458,65 +2505,43 @@ func _update_ledge(dt: float) -> void:
 	ledge_plate_mat.set_shader_parameter("lit", move_toward(lit, 1.0 if (plate_a_down() or puzzles.state["plate"]) else 0.3, dt * 2.0))
 
 # ------------------------------------------------------------------ 12. gate of the four veiled
+## (v2 phase 4) I.22 the Gate of the Four: three veiled ones on their plinths and an empty fourth, all facing the gate
+## in the court's north wall (Map2.FOUR_PLINTHS). When the three Beacons burn, step onto the empty plinth and stay
+## still: the gate counts you as the fourth statue (its runes light one by one) and sinks. No sockets, no keys.
+const FOUR_HOLD := 3.6
 func four_pos(i: int) -> Vector3:
-	var a := deg_to_rad(FOUR_ANGLES[i])
-	return Puzzles.SHRINE_C + Vector3(cos(a) * FOUR_R, 0.0, sin(a) * FOUR_R)
+	var q: Array = Map2.FOUR_PLINTHS[i]
+	return Map2.w(q[0], q[1])
+
+func _four_gate() -> Node3D:
+	return Map2.door_nodes[3] if Map2.door_nodes.size() > 3 else null
 
 func _build_four() -> void:
-	var c := Puzzles.SHRINE_C
-	# the tholos' gaps are closed by veils of light; the one facing the bridge is the gate
-	var vsh := preload("res://shaders/mist_veil.gdshader")
-	for k in 8:
-		var a := k * PI * 0.25
-		var p := c + Vector3(cos(a) * 2.5, 0.0, sin(a) * 2.5)
-		var front := k == 2
-		level.ob_circle(Vector2(p.x, p.z), 0.5, "tholos_front" if front else "tholos_gap%d" % k)
-		var m := ShaderMaterial.new()
-		m.shader = vsh
-		m.set_shader_parameter("noise_tex", level.noise_tex)
-		m.set_shader_parameter("density", 0.75 if front else 0.45)
-		m.set_shader_parameter("glow", 0.8 if front else 0.4)
-		var tang := Vector3(-sin(a), 0, cos(a))
-		_mi(_quad(Vector2(1.2, 3.2)), m, Transform3D(Basis(tang, Vector3.UP, tang.cross(Vector3.UP)), p + Vector3(0, 1.65, 0)))
-		if front: front_veil = m
-		else: gap_veils.append(m)
-	var pm := MB.new()
+	level.ob_rect(Map2.wr(-46.85, 12.85, -43.15, 13.15), "four_gate")
 	for i in 4:
 		var p := four_pos(i)
-		pm.box(p + Vector3(0, 0.125, 0), Vector3(1.0, 0.25, 1.0), Color(0.5, 0.25, 0.0))
-		var face := (c - p)
-		face.y = 0.0
-		face = face.normalized()
-		var B := Basis(Vector3.UP, atan2(face.x, face.z))
-		four_mats.append(puzzles.rune_quad(self, p + Vector3(0, 0.13, 0) + face * 0.505, Vector2(0.24, 0.24), B, 2.0, 0.15))
-		if i < 3:
-			level.statue("S", p + Vector3(0, 0.25, 0), Level.yaw_to(p, c), 0.9, 0.45)
-		else:
-			level.walk(Level.R(p.x - 0.5, p.z - 0.5, p.x + 0.5, p.z + 0.5), 2.25, NAN, -1, "four_plinth")
-	puzzles.marble_instance(pm.commit(), self)
+		# a rune on each plinth's south face (toward you as you come in), lit for each fire that burns, and yours
+		four_mats.append(puzzles.rune_quad(self, p + Vector3(0, Map2.PLINTH_H * 0.5, 0.505), Vector2(0.2, 0.2), Basis(), 2.0, 0.15))
 	four_ring = _smat("res://shaders/ring.gdshader", {"lit": 0.0, "sweep": 0.0})
-	_mi(_plane(Vector2(1.5, 1.5)), four_ring, Transform3D(Basis(), four_pos(3) + Vector3(0, 0.262, 0)))
-	level.add_interact("four_wait", four_pos(3) + Vector3(0, 0.25, 0), "wait", wait_still, 0.55,
-		func() -> bool: return not state["four"] and hub != null and hub.beacons_all())
-	level.inscription("s_four", Vector3(22.2, 2.0, -29.2), "A thousand of her wait for the one who breathes.\nStand where she stood. Be still, as we are still.", 1.0,
-		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(22.2, 2.012, -29.6)), Vector2(1.0, 0.7))      # (v0.9: east of the court glass's line)
+	_mi(_plane(Vector2(0.95, 0.95)), four_ring, Transform3D(Basis(), four_pos(3) + Vector3(0, Map2.PLINTH_H + 0.04, 0)))
+	level.add_interact("four_wait", four_pos(3) + Vector3(0, Map2.PLINTH_H, 0), "wait", wait_still, 0.55,
+		func() -> bool: return not state["four"] and on_four_plinth() and hub != null and hub.beacons_all())
+	level.inscription("s_four", Map2.w(-43.0, 17.7), "A thousand of her wait for the one who breathes.\nStand where she stood. Be still, as we are still.", 1.0,
+		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Map2.w(-43.0, 17.7, 0.012)), Vector2(1.0, 0.7))
 
 func on_four_plinth() -> bool:
 	var p := game.player.position
 	var q := four_pos(3)
-	return absf(p.x - q.x) < 0.5 and absf(p.z - q.z) < 0.5 and absf(p.y - 2.25) < 0.1
+	return absf(p.x - q.x) < 0.5 and absf(p.z - q.z) < 0.5 and p.y > q.y + Map2.PLINTH_H * 0.5
 
+## (kept for the tests and the old prompt) facing the gate, as the others do
 func facing_shrine() -> bool:
-	var p := game.player.position
-	var d := Vector2(Puzzles.SHRINE_C.x - p.x, Puzzles.SHRINE_C.z - p.z).normalized()
-	var fwd := Vector2(-sin(game.player.yaw), -cos(game.player.yaw))
-	return fwd.dot(d) > cos(deg_to_rad(40.0))
+	return absf(angle_difference(game.player.yaw, 0.0)) < deg_to_rad(40.0)
 
-## "wait": turn to face the shrine as the others do, and hold still
+## "wait": on the empty plinth, be still a while (the button holds you still for you)
 func wait_still() -> void:
 	if not on_four_plinth(): return
-	# (QA P2-15) no auto-facing: you must turn toward the shrine yourself, as the stele says
-	waiting = 5.0
+	waiting = FOUR_HOLD + 1.4
 	game.player.locked = true
 
 func _update_four(dt: float) -> void:
@@ -2527,37 +2552,53 @@ func _update_four(dt: float) -> void:
 			if game.mode == "play": game.player.locked = false
 	if state["four"]: return
 	if hub and not hub.beacons_all(): return              # (v2.0: the three Beacons burn first)
-	var ok := on_four_plinth() and game.player.speed01 < 0.04 and facing_shrine()
+	var ok := on_four_plinth() and game.player.speed01 < 0.04 and game.mode == "play"
 	four_hold = four_hold + dt if ok else maxf(0.0, four_hold - dt * 2.5)
-	four_ring.set_shader_parameter("lit", minf(1.0, four_hold / 3.6) if ok or four_hold > 0.0 else 0.0)
-	four_ring.set_shader_parameter("sweep", clampf(four_hold / 3.6, 0.0, 1.0))
+	if ok and four_hold > 0.5:
+		# still, she turns to the gate as the other three do
+		game.player.yaw = lerp_angle(game.player.yaw, 0.0, minf(1.0, dt * 2.5))
+		game.player.fig.rotation.y = game.player.yaw
+	four_ring.set_shader_parameter("lit", minf(1.0, four_hold / FOUR_HOLD) if ok or four_hold > 0.0 else 0.0)
+	four_ring.set_shader_parameter("sweep", clampf(four_hold / FOUR_HOLD, 0.0, 1.0))
 	for i in 4:
-		var on := four_hold > (i + 1) * 0.9 or (i < 3 and hub != null and hub.beacon_lit(["W", "N", "E"][i]))
+		var on := (i < 3 and hub != null and hub.beacon_lit(["W", "N", "E"][i])) or (i == 3 and four_hold > FOUR_HOLD * 0.75)
+		on = on and (i == 3 or four_hold > (i + 1) * 0.7 or four_hold <= 0.0)
 		four_mats[i].set_shader_parameter("lit", 1.0 if on else 0.15)
-	if four_hold >= 3.6: open_four(false)
+	if four_hold >= FOUR_HOLD: open_four(false)
 
 func open_four(instant: bool) -> void:
 	state["four"] = true
-	level.set_enabled("tholos_front", false)
+	level.set_enabled("four_gate", false)
 	for m in four_mats: m.set_shader_parameter("lit", 1.0)
+	var d := _four_gate()
 	if instant:
-		front_veil.set_shader_parameter("density", 0.0)
+		if d: d.visible = false
+		four_ring.set_shader_parameter("lit", 0.0)
 		return
 	event.emit("solve", "gate_four")
+	event.emit("four_open", null)
 	var tw := create_tween()
-	tw.tween_method(func(v: float) -> void:
-		front_veil.set_shader_parameter("density", v)
-		front_veil.set_shader_parameter("glow", 0.8 + (0.75 - v)), 0.75, 0.0, 3.0)
+	tw.tween_method(func(v: float) -> void: four_ring.set_shader_parameter("lit", v), 1.0, 0.0, 2.0)
+	if d == null: return
+	var dp := d.global_position
+	if game.juice:
+		game.juice.dust_fall(dp + Vector3(0, 3.0, 0), Vector3(1.0, 0, 0), 36)
+		game.juice.dust_floor(dp, 1.4, 24)
+	var gt := d.create_tween()
+	gt.tween_interval(0.8)
+	gt.tween_callback(func() -> void: if game.juice: game.juice.shake(0.18))
+	gt.tween_property(d, "position:y", Map2.O.y - 4.2, 3.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	gt.tween_callback(func() -> void: d.visible = false)
 
 # ------------------------------------------------------------------ 13. the shrine's pool
 func _build_shrine_pool() -> void:
-	var c := Vector3(POOL_C.x, Puzzles.SHRINE_C.y, POOL_C.z)
+	var c := POOL_C
 	var d := POOL_R * 2.0 + 0.02
 	shrine_water = _smat("res://shaders/water.gdshader", {"noise_tex": level.noise_tex, "disc": 1.0})
-	_mi(_plane(Vector2(d, d)), shrine_water, Transform3D(Basis(), c + Vector3(0, 0.15, 0)))
+	_mi(_plane(Vector2(d, d)), shrine_water, Transform3D(Basis(), c + Vector3(0, -0.005, 0)))
 	shrine_over = _smat("res://shaders/water_over.gdshader", {"noise_tex": level.noise_tex, "disc": 1.0,
 		"area": Vector4(c.x - POOL_R, c.z - POOL_R, c.x + POOL_R, c.z + POOL_R), "calm": 0.6})
-	_mi(_plane(Vector2(d, d)), shrine_over, Transform3D(Basis(), c + Vector3(0, 0.165, 0)))
+	_mi(_plane(Vector2(d, d)), shrine_over, Transform3D(Basis(), c + Vector3(0, 0.01, 0)))
 	shrine_fx = WaterFX.new()
 	shrine_fx.mats = [shrine_water, shrine_over]
 	add_child(shrine_fx)
@@ -2583,7 +2624,8 @@ func hint_target(area: String) -> Vector3:
 	if act1 != null and not act1.done() and pp.z > Map2.O.z - 20.0: return act1.hint_target()      # (v2: Act 1's next beat)
 	match area:
 		"atrium":
-			if not hub.has_item("lamp"): return WorldGeo.LAMP_POS + Vector3(0, 0.8, 0)
+			if not hub.has_item("lamp"): return Act1.LAMP_POS + Vector3(0, 0.8, 0)
+			if hub.beacons_all() and not state["stones"]: return Map2.w(-2.5, 9.5, 0.8)          # (Act 3: the Veiled Way is open)
 			return Vector3.INF
 		"shard_gallery":
 			# (v2.0) after her shadows: the hidden way (seen through the Shard), then the West Beacon
@@ -2600,7 +2642,15 @@ func hint_target(area: String) -> Vector3:
 			if pp.y > 3.0 and hs.get("e_open", false) and not hs.get("wk_crossed", false): return Vector3(Warden.FIG_X, 5.0, Warden.END_Z)
 			if pp.y > 3.0 and not hs.get("e_open", false): return Vector3((Items.PANEL_X.x + Items.PANEL_X.y) * 0.5, 5.0, Items.PANEL_Z)
 	match area:
-		"waking_pool": return Vector3.INF
+		"waking_pool":
+			# (Act 3, I.20) the stone that still breaks the road, nearest you
+			if not hub.beacons_all() or state["stones"]: return Vector3.INF
+			var best := Vector3.INF
+			for ri in Ch1Geo.POOL_REALS.size():
+				var q := Ch1Geo.cell_pos(Ch1Geo.POOL_REALS[ri][0])
+				var at := Vector3(q.x, Map2.GP.y + 0.6, q.y)
+				if at.distance_to(pp) < best.distance_to(pp): best = at
+			return best
 		"stair_breath": return Map2.GW + Vector3(-10.5, 1.6, -5.3) if not state["breath"] else Vector3.INF
 		"hall_glass":
 			if not state["hall_door"]: return Map2.GW + Vector3(0.0, 2.6, -20.3)        # the glass, never the answer
@@ -2697,6 +2747,7 @@ func update(dt: float) -> void:
 	_update_four(dt)
 	hub.update(dt)
 	act1.update(dt)
+	act3.update(dt)
 	items.update(dt)
 	warden.update(dt)
 	if life: life.update(dt)
@@ -2768,14 +2819,22 @@ func apply_state() -> void:
 		sc_wnodes[i].position = (sc_pans[k].position + Vector3(0, 0.06, 0)) if k >= 0 else SC_RACK[i] + Vector3(0, 0.3, 0)
 	lift_h = 0.0 if state["scales"] else 1.0          # (v1.0 M3: it waits at the top until the balance is won)
 	_lift_goal = lift_h
+	four_hold = 0.0
+	waiting = 0.0
 	if state["four"]: open_four(true)
 	else:
-		level.set_enabled("tholos_front", true)
-		front_veil.set_shader_parameter("density", 0.75)
+		level.set_enabled("four_gate", true)
+		var gd := _four_gate()
+		if gd:
+			gd.visible = true
+			gd.position.y = Map2.O.y
+		four_ring.set_shader_parameter("lit", 0.0)
+		for i in 4: four_mats[i].set_shader_parameter("lit", 0.15)
 	game.ui.set_inventory(state["shard"], false)
 	set_lens(false)
 	hub.apply_state()
 	act1.apply_state()
+	act3.apply_state()
 	items.apply_state()
 	warden.apply_state()
 	if life: life.apply_state()
@@ -2783,11 +2842,13 @@ func apply_state() -> void:
 	if game.satchel: game.satchel.load_map()
 
 # ================================================================== 13. "The Hand in the Water"
-const POOL_C := Vector3(25.0, 2.155, -32.4)
+const POOL_C := Map2.O + Map2.SHRINE_POOL          # (v2 phase 4: I.23, the First Shrine's round pool)
 const POOL_R := 1.18
-const STAND := Vector3(25.0, 2.0, -30.8)
-const TOUCH := Vector3(25.0, 2.17, -31.35)
+const STAND := Map2.O + Map2.SHRINE_STAND
+const TOUCH := POOL_C + Vector3(0.0, 0.015, 1.05)
 var her: Figure                 # her shadow, in the water
+var writing: Node3D             # (v2 phase 4) ΒΡΕΣ ΜΕ in the water, and the glass eye (A's OmenFx)
+var eye: Node3D
 ## v1.0 (the porcelain heroine): her veil is part of her; at the finale her blank mirror-oval face catches the
 ## light instead, and your own runes answer it: the eidolon seeing itself
 var face_flare: ShaderMaterial
@@ -2870,8 +2931,9 @@ func hand_in_the_water(c: Cinematic) -> void:
 	her_xf = Transform3D(Basis(Vector3.UP, yaw_n), STAND)
 	her_pose = Figure.Pose.new()
 	var hp := her_pose
-	var look := POOL_C + Vector3(0, 0.3, 0.55)
-	var cam_yaw := PI                                      # from beyond the pool, looking back at you
+	var look := POOL_C + Vector3(0, 0.1, 0.3)               # (v2: the camera centres on the pool)
+	var cam_yaw := -PI * 0.25                              # (v2: the game's one fixed view: no turning, even here)
+	var pitch := -World.PITCH
 	# -- prelude: the shrine wakes; you step to the water's edge
 	c.at(0.0, func() -> void:
 		her.visible = true
@@ -2889,14 +2951,14 @@ func hand_in_the_water(c: Cinematic) -> void:
 		pl.fig.rotation.y = pl.yaw)
 	c.anim(0.3, 3.4, func(k: float) -> void: puzzles.set_shrine_awake(k, k))
 	c.anim(0.3, 4.0, func(k: float) -> void: pl.fig.set_hem(lerpf(Game.HEM_PER_SHRINE[0], Game.HEM_PER_SHRINE[1], k)))
-	c.cam(0.3, 4.2, POOL_C + Vector3(0, 1.0, 0.6), -PI * 0.25, -deg_to_rad(40.0), 6.2)
+	c.cam(0.3, 4.2, POOL_C + Vector3(0, 0.6, 0.8), cam_yaw, pitch, 6.2)
 	# -- 0 (P): the music begins in near silence; the letterbox closes, the camera comes round
 	c.audio(P, "cinematic_hand")
 	c.anim(P - 0.5, 1.8, func(k: float) -> void: g.ui.set_letterbox(k))
-	c.cam(P, 4.5, look, cam_yaw, -deg_to_rad(50.0), 3.8)
-	# close shots: everything nearer the camera than the pool's far rim is cut away (the dome, the
-	# columns), and the crystal rises out of the frame
-	c.anim(P - 0.6, 0.6, func(k: float) -> void: w.cam.near = lerpf(1.0, World.DIST - 1.6, k), 0)
+	c.cam(P, 4.5, look, cam_yaw, pitch, 3.9)
+	# close shots: what stands well in front of you (a column, the dressing) is cut away, and the crystal rises out of
+	# the frame
+	c.anim(P - 0.6, 0.6, func(k: float) -> void: w.cam.near = lerpf(1.0, World.DIST - 3.4, k), 0)
 	c.anim(P - 0.5, 3.5, func(k: float) -> void:
 		puzzles.crystal_lift = 2.4 * k
 		puzzles.shrine_halo.set_shader_parameter("intensity", lerpf(0.8, 0.12, k))
@@ -2959,10 +3021,21 @@ func hand_in_the_water(c: Cinematic) -> void:
 		var f := 1.0 + sin(k * PI) * 2.5
 		pl.fig.set_param("glint", Game.HEM_PER_SHRINE[1] * f)
 		her.set_param("glint", Game.HEM_PER_SHRINE[1] * 1.25 * f))
-	# -- 23-30: her voice sings the motif; the camera draws in, slowly
-	c.cam(P + 22.0, 7.5, POOL_C + Vector3(0, 0.2, 0.45), cam_yaw, -deg_to_rad(54.0), 2.7)
-	# -- 30-37.6: her veil lifts: under it, the same unfinished marble face as yours
-	c.anim(P + 30.0, 3.2, func(k: float) -> void:
+	# -- 23-30: her voice sings the motif; the camera draws in on the pool, and with her finger, from under the water,
+	# she writes: ΒΡΕΣ ΜΕ (FIND ME). (A's writing: the line is turned by the camera's own yaw, so it reads level)
+	c.cam(P + 21.0, 4.0, POOL_C, cam_yaw, pitch, 2.9)
+	c.at(P + 23.0, func() -> void:
+		var yaw := g.get_viewport().get_camera_3d().global_rotation.y if g.get_viewport().get_camera_3d() else cam_yaw
+		writing = OmenFx.write_in_water(self, POOL_C, yaw, "ΒΡΕΣ ΜΕ", 4.2, 0.4, 3.2)
+		g.sfx.play("glass_tink", -24.0, 0.8))
+	# -- 29.6: deep in the water, for a moment, a glass eye opens
+	c.at(P + 29.6, func() -> void:
+		var yaw := g.get_viewport().get_camera_3d().global_rotation.y if g.get_viewport().get_camera_3d() else cam_yaw
+		eye = OmenFx.glass_eye(self, POOL_C + Vector3(0, -0.01, -0.1), 1.3, 1.1, 2.4, yaw)
+		g.sfx.play("glimpse", -14.0, 0.7))
+	c.cam(P + 30.0, 4.0, look, cam_yaw, pitch, 3.4)
+	# -- 34-37.6: her veil lifts: under it, the same unfinished marble face as yours
+	c.anim(P + 34.0, 2.6, func(k: float) -> void:
 		her.set_veil_lift(k)
 		_face_light(k))
 	# -- 37.6: the whisper: her lips, that are not there, say something; the music stops

@@ -313,11 +313,6 @@ func _on_puzzles(name: String, data: Variant) -> void:
 				dust_fall(dp + Vector3(0, 3.9, 0), Vector3(1.0, 0, 0.2), 36)
 				dust_floor(dp + Vector3(0, 0.0, 0), 1.0, 20)
 				FxBurst.dust(self, dp + Vector3(0, 3.6, 0), 1.6, dp.y)
-		"gate_open":
-			if pz.gate_bars:
-				dust_fall(pz.gate_bars.global_position + Vector3(0, 2.9, 0), Vector3(0, 0, 1.0))
-				FxBurst.dust(self, pz.gate_bars.global_position + Vector3(0, 2.8, 0), 1.2, pz.gate_bars.global_position.y)
-				shake(0.15)
 		"bridge_fall":
 			get_tree().create_timer(0.85).timeout.connect(func() -> void:
 				if pz.drawbridge: dust_floor(pz.drawbridge.global_position, 1.2, 30))

@@ -27,31 +27,25 @@ const ORDER := ["waking_pool", "atrium", "stair_breath", "hall_glass", "shard_ga
 
 ## walk-region name (Level) -> area key
 const REGION_AREA := {
-	"T": "waking_pool", "stub": "waking_pool", "b1": "waking_pool",
-	# v1.0 M3: the hub and the traversal sections that join it to the wings
-	"T1": "atrium", "A": "atrium", "A_gal": "atrium", "A_scaf": "atrium", "T4": "atrium", "UC": "atrium", "UC_up": "atrium",
-	"BAL": "eidolon_ledge",
+	# (v2: the v1 puzzle rooms keep their region names (Map2.V1_KEY maps them); the new world's are V2_<space>, Map2.AREA)
 	"W_land": "stair_breath", "W_stair1": "stair_breath", "W_breath": "stair_breath", "W_stair2": "stair_breath",
 	"W_top": "stair_breath", "W_corr": "stair_breath",
 	"H": "hall_glass", "hdoor": "hall_glass",
 	"GL": "shard_gallery",
-	"G": "garden_veiled", "shortcut_ramp": "garden_veiled",
+	"G": "garden_veiled",
 	"g_door": "hollow_walk", "HW": "hollow_walk",
-	"HW_ramp": "court_light", "L_ramp": "court_light", "L": "court_light", "LB": "court_light",
+	"HW_ramp": "court_light", "L_ramp": "court_light", "L": "court_light",
 	"MZ_door": "court_light", "MZ": "mist_maze",       # (v0.9: the door's landing is the court's: the Tree of Shards is named there)
-	"EC_a": "echo_corridor", "EC": "echo_corridor", "EC_room_door": "echo_corridor", "EC_room": "echo_corridor",
 	"SC": "scales", "lift": "scales",
 	"WK": "eidolon_ledge", "WK_down": "eidolon_ledge", "E": "eidolon_ledge",
-	"EB": "gate_four", "S": "gate_four", "four_plinth": "gate_four", "sealed_way": "first_shrine",
 	# v0.9 the wonder spaces (no puzzles: they keep the music of the space they open from)
-	"CO_w": "shard_gallery", "CO": "shard_gallery", "TS": "court_light", "SPB": "eidolon_ledge",
+	"TS": "court_light", "SPB": "eidolon_ledge",
 }
 ## v0.9 the wonder spaces between the puzzles: walk-region name -> its name (shown once, on arrival)
 const WONDERS := {"CO": "The Sunken Colossus", "TS": "The Tree of Shards", "SPB": "The Upward Spring"}
 
 ## v1.0 M3 the traversal sections: walk-region name -> its name (shown once, on arrival)
-const TRAVERSE := {"T1": "The Crumbling Bridge", "A_scaf": "Theron's Scaffold", "T4": "The Flooded Colonnade",
-	"UC": "The Undercroft", "BAL": "The Wind-swept Balcony"}
+const TRAVERSE := {}          # (v2: the old world's traversal sections are gone; the new world's spaces are Map2.SPACES)
 ## the wings (dev/V1_WORLD.md): their spaces, and the space whose puzzle completes the wing
 const WINGS := {"W": ["stair_breath", "hall_glass", "shard_gallery"], "N": ["garden_veiled", "hollow_walk", "court_light", "mist_maze"],
 	"E": ["eidolon_ledge", "scales", "echo_corridor"]}

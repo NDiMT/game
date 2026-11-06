@@ -13,65 +13,23 @@ extends Node3D
 const DIR := "res://assets/models/props/"
 ## [asset, position (y = the floor), yaw (degrees: the model faces +Z), uniform scale or Vector3, note]
 const PLACE := [
-	# the Waking Pool: a kneeling veiled figure reaching toward the water; a fallen gable in the far corner
-	["statue_veiled_kneeling", Vector3(-3.8, 0.0, -3.7), 0.0, 1.0, "pool"],
-	["pediment_fragment", Vector3(3.45, 0.0, -3.95), 15.0, 1.0, "pool"],      # (v1.0: clear of the rail)
+	# (v2 phase 4: the v1 rooms' statues, at their rooms' module offsets in the new world; the Atrium, the pool, the
+	# Balcony and Act 3 are dressed by A's recipes, scripts/fx/dress.gd)
 	# the Hall of Glass: two mourners keep the far corners ("a thousand faces, all wrong")
-	["statue_veiled_mourning", Vector3(-3.55, 1.0, -19.95), 45.0, 1.0, "hall"],      # (v1.0: clear of the column and the wall)
-	["statue_veiled_mourning", Vector3(4.05, 1.0, -11.6), -135.0, 1.0, "hall"],
-	# the Garden of the Veiled: a ruined corner, a low broken wall line, a collapse heap
-	["statue_veiled_broken", Vector3(13.9, 1.0, -6.9), 30.0, 1.0, "garden"],
-	# (v1.0, the overlap audit: the low wall ruin ran through a statue and the rail; the rubble heap into the
-	# rail and a tree: both gone)
-	# the Court of Light: a collapse heap in the far corner
-	# (v1.0: its heap of rubble lay over a stump and into the rail: gone)
-	# the Scales: a praying figure watches the balance; a broken column
-	["statue_veiled_praying", Vector3(27.45, 2.0, -51.35), 45.0, 1.0, "scales"],      # (v1.0: beside the column, not in it)
-	["column_stump", Vector3(30.3, 2.0, -51.55), 0.0, 1.0, "scales"],      # (v1.0: clear of the weights' shelf)
-	# the Gate of the Four Veiled: the unfinished one, half out of her block, beside the tholos where the
-	# eidolon is half-carved too
-	["statue_veiled_unfinished", Vector3(20.9, 2.0, -35.2), 40.0, 1.0, "shrine"],
-	# (v1.0 M4, QA P1-8: A's kit dresses the Atrium, the scaffold, the bridge, the Balcony)
-	# the thousand faces on their plinths (WorldGeo.KIT_FACES), turned toward the fountain; two left plain blocks
-	["kit_face1", Vector3(4.60, 1.4, 11.40), -3.8, 1.0, "atrium"],
-	["kit_face2", Vector3(8.60, 1.4, 11.40), -55.5, 1.0, "atrium"],
-	["kit_face3", Vector3(-2.60, 1.4, 14.00), 82.8, 1.0, "atrium"],
-	["kit_face4", Vector3(-2.60, 1.4, 18.80), 88.8, 1.0, "atrium"],
-	["kit_face5", Vector3(2.40, 1.4, 13.60), 49.1, 1.0, "atrium"],
-	["kit_face6", Vector3(7.60, 1.4, 13.60), -54.0, 1.0, "atrium"],
-	["kit_face1", Vector3(2.40, 1.4, 18.40), 110.6, 1.0, "atrium"],
-	["kit_face4", Vector3(7.60, 1.4, 18.40), -132.3, 1.0, "atrium"],
-	["kit_fountain", Vector3(5.0, 0.5, 16.0), 0.0, 1.0, "atrium"],
-	# (v1.0: more of his thousand attempts: a row on the low shelf by the south rail (chapter Life builds the
-	# shelf), and some on the floor where they were left, a few toppled on their sides)
-	["kit_face3", Vector3(2.6, 0.95, 22.25), 170.0, 0.9, "atrium"],
-	["kit_face5", Vector3(3.9, 0.95, 22.25), 195.0, 0.9, "atrium"],
-	["kit_face2", Vector3(5.2, 0.95, 22.25), 180.0, 0.9, "atrium"],
-	["kit_face6", Vector3(6.5, 0.95, 22.25), 160.0, 0.9, "atrium"],
-	["kit_face1", Vector3(7.7, 0.95, 22.25), 200.0, 0.9, "atrium"],
-	["kit_face4", Vector3(0.9, 0.5, 15.2), 140.0, 1.0, "atrium"],       # (v2.0: out of the crypt's way)
-	["kit_face3", Vector3(-1.4, 0.65, 16.3), 60.0, 1.0, "atrium", -90.0],
-	["kit_face6", Vector3(3.6, 0.67, 21.0), 20.0, 1.0, "atrium", 90.0],
-	["kit_face2", Vector3(9.6, 0.67, 21.2), -40.0, 1.0, "atrium", -90.0],
-	# Theron's workshop: his ladder by the crane arm (the scaffold towers cannot stand under his gallery:
-	# a footprint is 2D, it would wall off the gallery's own floor above them)
-	["kit_ladder", Vector3(-0.5, 0.5, 19.7), 0.0, 0.85, "atrium"],
-	# the Crumbling Bridge: a broken walkway end beside it, fallen from the old span
-	["kit_bridge_end", Vector3(2.15, 0.0, 8.2), 0.0, 1.0, "atrium"],
-	# the Balcony: urns on the outer edge, awning posts with their torn cloth (the veils: chapter Life)
-	["kit_urns", Vector3(28.95, 2.0, 9.0), 90.0, 1.0, "balcony"],
-	["kit_urns", Vector3(28.95, 2.0, 2.0), 80.0, 1.0, "balcony"],
-	["kit_urns", Vector3(28.95, 2.0, -6.0), 100.0, 1.0, "balcony"],
-	["kit_urns", Vector3(28.95, 2.0, -13.6), 90.0, 1.0, "balcony"],
-	["kit_awning_post", Vector3(28.95, 2.0, 6.0), 90.0, 1.0, "balcony"],
-	["kit_awning_post", Vector3(28.95, 2.0, -2.0), 90.0, 1.0, "balcony"],
-	["kit_awning_post", Vector3(28.95, 2.0, -10.0), 90.0, 1.0, "balcony"],
+	["statue_veiled_mourning", Map2.GW + Vector3(-3.55, 1.0, -19.95), 45.0, 1.0, "hall"],
+	["statue_veiled_mourning", Map2.GW + Vector3(4.05, 1.0, -11.6), -135.0, 1.0, "hall"],
+	# the Turned Ones' court: a ruined corner
+	["statue_veiled_broken", Map2.GN + Vector3(13.9, 1.0, -6.9), 30.0, 1.0, "garden"],
+	# (the Scales' floor is all puzzle in the new world, and its way up runs where its praying figure stood: it went)
 ]
 ## (v0.8.1: walls and architecture only: statues are never cut by the see-through)
 const OCCLUDE := ["column_doric", "archway_ruined", "pylon_ashlar", "pylon_ashlar_niche", "wall_ashlar_window"]
 const SMALL := ["rubble_pile", "pediment_fragment", "column_fallen"]       # (dropped on the Low tier)
 ## (v1.0: the kit's timber pieces wear A's wood, not the carved marble)
 const MAT := {"kit_scaffold": 0.97, "kit_ladder": 0.97, "kit_awning_post": 0.97}
+## the marble shader's material ids for wood and bronze (vertex colour g)
+const WOOD := 0.97
+const BRONZE := 0.91
 
 static var meshes := {}           # asset -> [ArrayMesh, AABB]
 var level: Level
@@ -141,8 +99,7 @@ func build(lv: Level) -> void:
 ## (v2 rebuild) what stands: with the new world, the old Atrium's and the old waking pool's pieces are gone (Act 1
 ## lives in the new world; the GL buffer of the marble's per-instance values holds 256 instances in all)
 static func placements() -> Array:
-	if not Map2.enabled: return PLACE
-	return PLACE.filter(func(e: Array) -> bool: return not (str(e[4]) in ["atrium", "pool"]))
+	return PLACE
 
 ## the Low tier leaves the small dressing out
 func set_quality(high: bool) -> void:

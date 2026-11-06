@@ -261,11 +261,6 @@ func open_map() -> void:
 	if is_open:
 		is_open = false
 		visible = false
-	# the shortcuts you have opened are drawn in, walked or not
-	var ps: Dictionary = game.puzzles.state
-	if ps.get("shortcut", false): see_region("shortcut_ramp")
-	if ps.get("drawbridge", false): see_region("LB")
-	if game.chapter.state["hub"].get("ec_open", false): see_region("EC_a")
 	map_open = true
 	map_layer.visible = true
 	game.controls.enabled = false

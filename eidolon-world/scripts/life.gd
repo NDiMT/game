@@ -5,16 +5,15 @@ extends Node3D
 ##    she turns her head toward it (the reflections' gaze, aimed at secrets); on still water, if you wait by
 ##    it, she writes a single rune that fades.
 ##  * Ambient life (A's AmbientLife builders): moths at every lit flame, petals drifting in the Garden and
-##    along the Balcony, drips in the Undercroft and on the Stair of Breath, a far bell now and then.
-##  * The turned head: one bust in the Atrium (WorldGeo.TURNED) has, now and then, turned toward where you
-##    came in when you come back.
+##    along the Balcony, drips in the crypt and on the Stair of Breath, a far bell now and then. (v2: the Balcony's
+##    veils are A's balcony recipe now; the Atrium's turned head went with the old Atrium)
 
 var game: Game
 var chapter: Chapter
 var _gaze_orig := {}                 # Reflector -> its own gaze target (INF for the free ones)
 var _gaze_t := 0.0
 # her rune on the water
-const WATERS := [[Rect2(Map2.O.x - 12.95, Map2.O.z + 17.0, 8.95, 3.7), -0.41], [Rect2(Map2.O.x - 32.4, Map2.O.z - 14.6, 18.4, 13.1), -0.41],
+const WATERS := [[Rect2(Map2.O.x - 12.75, Map2.O.z + 17.0, 8.75, 3.7), -0.41], [Rect2(Map2.O.x - 32.4, Map2.O.z - 14.6, 18.4, 13.1), -0.41],
 	[Rect2(Map2.O.x - 0.5, Map2.O.z - 15.0, 6.0, 6.0), Map2.N1_WATER_Y + Map2.O.y + 0.01]]          # (v2: the Pool of Halves, the Colossus' inlet)
 var rune_node: Node3D
 var rune_mat: ShaderMaterial
@@ -27,12 +26,6 @@ var _bell_t := 45.0
 var drips: Array[Drips] = []
 var veils: Array[Node3D] = []
 var _gust_t := 0.0
-# the turned head
-var head: Node3D
-var _head_yaw0 := 0.0
-var _was_in_atrium := false
-var _away := false
-var turned := 0
 
 func setup(g: Game, ch: Chapter) -> void:
 	game = g
@@ -43,11 +36,9 @@ func setup(g: Game, ch: Chapter) -> void:
 	rune_mat = game.puzzles.rune_quad(rune_node, Vector3.ZERO, Vector2(0.55, 0.55), Basis(Vector3.RIGHT, -PI * 0.5), 9.0, 0.0)
 	rune_node.visible = false
 	_build_ambient()
-	_build_head()
-	_build_shelf()
 	# (QA P1-15: ambient life is for the camera only: the mirrors' cameras skip it)
 	for c in find_children("*", "GeometryInstance3D", true, false):
-		if c != head and not head.is_ancestor_of(c): (c as GeometryInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
+		(c as GeometryInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
 	for f in moths: (moths[f] as GeometryInstance3D).layers = PlanarMirror.LAYER_MAIN_FX
 
 func _build_ambient() -> void:
@@ -61,39 +52,14 @@ func _build_ambient() -> void:
 		moths[f] = mm
 	add_child(AmbientLife.petals(AABB(Map2.GN + Vector3(10.3, 1.0, -15.0), Vector3(6.7, 3.2, 10.0)), 50))
 	add_child(AmbientLife.petals(AABB(Map2.O + Vector3(17.2, 2.0, -25.0), Vector3(3.6, 3.0, 22.0)), 70, Vector3(-0.3, 0.0, -1.2), 0.1))
-	# torn veils streaming from a bar across each Balcony pole's top (A's veils), the wind across the view
-	for pz in [6.0, -2.0, -10.0]:
-		var top := Vector3(28.95, WorldGeo.BAL_Y + 2.45, pz)          # (A's awning post's cross-arm, Props)
-		var v := AmbientLife.veils(top, 2, 1.5, Vector3(0.7, 0.0, 0.7), null, NAN, 0.9, PI * 0.5)
-		add_child(v)
-		veils.append(v)
-	var uc := AmbientLife.drips([Vector3(15.6, WorldGeo.A_Y + 0.01, 11.0), Vector3(18.3, WorldGeo.A_Y + 0.01, 11.9), Vector3(20.9, WorldGeo.A_Y + 0.01, 11.2), Vector3(22.8, WorldGeo.A_Y + 0.01, 11.6)], 2.35)
-	add_child(uc)
-	var st := AmbientLife.drips([Vector3(-12.1, 0.51, -5.6), Vector3(-10.5, 0.51, -5.0)], 2.6, 2.2, 4.0)
+	# drips on the Stair of Breath's landing, and in the crypt where she woke the lamp (v2: in the new world)
+	var st := AmbientLife.drips([Map2.GW + Vector3(-12.1, 0.51, -5.6), Map2.GW + Vector3(-10.5, 0.51, -5.0)], 2.6, 2.2, 4.0)
 	add_child(st)
-	drips = [uc, st]
+	var cr := AmbientLife.drips([Map2.w(11.2, 0.6, 0.01), Map2.w(13.9, 5.6, 0.01)], 2.5, 2.4, 4.5)
+	add_child(cr)
+	drips = [st, cr]
 	for d in drips: d.splash.connect(func(p: Vector3) -> void:
 		if game.player.position.distance_to(p) < 9.0: game.sfx.play("step_wet", -30.0, 1.6))
-
-## the low shelf by the Atrium's south rail where a row of his attempts waits (the faces are Props)
-func _build_shelf() -> void:
-	var m := MB.new()
-	m.box(Vector3(5.15, WorldGeo.A_Y + 0.2, 22.25), Vector3(6.3, 0.4, 0.5), Color(0.5, 0.25, 0.0))
-	m.box(Vector3(5.15, WorldGeo.A_Y + 0.42, 22.25), Vector3(6.4, 0.04, 0.56), Color(0.5, 0.25, 0.0))
-	game.puzzles.marble_instance(m.commit(), self)
-	game.level.ob_rect(Level.R(1.95, 21.95, 8.35, 22.55))
-
-func _build_head() -> void:
-	var base := Vector3(WorldGeo.TURNED.x, WorldGeo.A_Y, WorldGeo.TURNED.y)
-	head = Node3D.new()
-	head.position = base + Vector3(0, 0.9, 0)
-	add_child(head)
-	var m := MB.new()
-	m.box(Vector3(0, 0.2, -0.04), Vector3(0.46, 0.42, 0.4), Color(0.5, 0.25, 0.0))
-	m.sphere(Vector3(0, 0.25, 0.12), Vector3(0.16, 0.2, 0.12), Color(0.5, 0.25, 0.0), 10, 6)
-	game.puzzles.marble_instance(m.commit(), head)
-	_head_yaw0 = game.level.yaw_to(base, WorldGeo.FOUNTAIN)
-	head.rotation.y = _head_yaw0
 
 # ------------------------------------------------------------------ her presence
 func _secrets_near(p: Vector3) -> Vector3:
@@ -191,27 +157,11 @@ func _update_ambient(dt: float) -> void:
 		_bell_t = randf_range(50.0, 110.0)
 		if game.mode == "play": game.sfx.play("bell", -32.0, randf_range(0.55, 0.7))
 
-func _update_head() -> void:
-	var inside := game.area == "atrium"
-	if not inside and _was_in_atrium: _away = true
-	if inside and not _was_in_atrium and _away:
-		_away = false
-		if randf() < 0.5 or turned == 0:
-			# toward where you came in (you, now), as if it had watched the way you went
-			var p := game.player.position
-			head.rotation.y = game.level.yaw_to(head.position, p)
-			turned += 1
-	_was_in_atrium = inside
-
 func update(dt: float) -> void:
 	_update_gaze(dt)
 	_update_rune(dt)
 	_update_ambient(dt)
-	_update_head()
 
 func apply_state() -> void:
-	head.rotation.y = _head_yaw0
-	_was_in_atrium = false
-	_away = false
 	rune_node.visible = false
 	_rune_t = 0.0

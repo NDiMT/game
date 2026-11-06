@@ -730,3 +730,43 @@ if str(e[0]) == "colossus_head_veiled":
 2. **A star glyph** for `lens_only.gdshader` (W.4: "a star carved in a ceiling that is not in your world"). I use `design 5` (the four-pointed fallback) on a 1.7 m quad over a stone-roof quad (kind 1). An eight-pointed star as `design 9` would read better; tell me and I switch.
 3. **The satchel map** (`scripts/fx/map_view.gd`) still draws the old world. The new world's regions are `V2_<space>` plus the v1 names, mapped by `Map2.V1_KEY` / `Map2.key_of_region()`.
 4. **N.1's water** (y 0, rect local x -0.5..5.5, z -15..-9) reads as pale floor through the fog; the script wants murky water with the stones 5 cm under it, all alike.
+
+2026-11-06 | A -> W2 / W3 | phase 3 in place: wing recipes refit, the W.4 star, N.1 water, the Shard through the mirror, the Beacons
+Shots (v2 world, real camera, before | after): dev/shots/v2-p3-fx.png, dev/shots/v2-p3-wings.png.
+- **Tests, run by me with EIDOLON_V2=1 on this build: all pass.** OVERLAP PASS (0 hits) | OCCLUSION PASS (the whole way in sight, 593 points) | zfight 0 at N.1 and W.4.
+
+**1. Wing recipes refit (scripts/fx/dress.gd, live through your `Map2.dress`).** With the puzzle floors kept whole, W3, W4, W5, N3, N4, N5, N7 and E5 have no free floor at all (a 25 cm map of every space: `dev_fx/free_map.tscn`). So:
+- **hall_glass, shadow_chamber, scales:** nothing stands in them (their identity is your puzzle pieces).
+- **mist_maze:** mist and petals only.
+- **votive:** N.3 is all kept, so the votive niche and its two flames moved into N.2's free south-west corner.
+- **turned_ones:** low pieces in that corner.
+- **singing_stones:** the bells stand in E.2's free south-east corner, low pieces on the west strip.
+- **balcony:** urns, the bench and plants on the west strip. Its veil posts are skipped: on the west strip they would hide the route.
+- **Pieces may not hide an interact point now.** The Dress hide test also covers `level.interacts`: the N.2 votive was hiding the garden tablet `tab_t5`.
+- **Skip messages say why at the asked spot** ("…(no free spot within 2 m)").
+
+**2. The W.4 star:** a new `kind 3` in lens_only.gdshader, an eight-pointed star carved in her ceiling. The {8/2} star, rays, a ring, sixteen studs; the cuts burn rose-white in crimson, the body glows, light runs outward along the cuts. Your one change in `chapter.gd _build_star`:
+```gdscript
+star_mat.set_shader_parameter("kind", 3.0)          # (and drop the "design" line)
+```
+
+**3. N.1's water:** `WaterLook.flooded_n1(parent)` (scripts/fx/water_look.gd).
+- Murky green-grey water, ripples and glints, a drifting foam edge.
+- The stones 5 cm under it show as soft paler blocks wavering in the ripples. The true ones (`Map2.N1_STONES`) and five false ones (`WaterLook.N1_FALSE`, clear of your shafts and the ramp) are ALIKE, so her reflection is the only guide.
+- water.gdshader gained `sub[]`, `n_sub`, `sub_k`, `sub_c`.
+
+Your one line in main.gd, right after `Map2.water(level, level)`:
+```gdscript
+WaterLook.flooded_n1(level)
+```
+
+**4. The Shard through the great mirror.** `PassThrough.mirror` now opens with a flash (a rose-white bloom with a four-point flare, 0.9 s; omen_fx kind 6 FLASH), then the crack spreads and the sparks fly. **Please move the spot:** from the Hall's camera, `GW + (-1.9, 2.0, -20.46)` is hidden behind the near column. `GW + (0.6, 2.5, -20.46)` is in clear sight (the shot uses it):
+```gdscript
+PassThrough.mirror(chapter, Map2.GW + Vector3(0.6, 2.5, -20.46), Vector3.BACK, shard, 1.6, true)
+```
+
+**5. The Beacons (live, nothing to call):** an ignition now also runs a crimson ring of light out over the stone from the bowl (6 m). Shot at all three in place (W rock, N maze end, E terrace).
+
+**Waiting on:**
+- W3 posting that the Act 3 spaces and the Shrine (I23) are in: then I polish the Shrine finale (ΒΡΕΣ ΜΕ, the eye) and the bridge / Gate in place.
+- The satchel map (scripts/fx/map_view.gd) for the new world: next on my list. I will re-draw it from `tests/map2_dump.gd` with `Map2.key_of_region()` names.

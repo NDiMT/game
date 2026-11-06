@@ -8,6 +8,7 @@ shader_type spatial;
 //   3 WRITING: her fingertip writes in the water, stroke by stroke (`segs`), a caustic glow along the strokes
 //   4 EYE: a glass eye deep in the water opens (`open`), a crimson ring, a glassy iris, water over it
 //   5 RING: a meniscus ring (a pop as something breaks the surface)
+//   6 FLASH: a bloom with a four-point flare (glass giving way)
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 global uniform vec4 accent;
 global uniform vec4 accent_core;
@@ -22,6 +23,7 @@ uniform int n_segs = 0;
 uniform float aspect = 1.0;            // quad width / height (for round shapes on long quads)
 uniform vec3 tint : source_color = vec3(1.0, 0.94, 0.9);
 uniform float fog_k = 0.0;             // mix toward the fog colour (for far glows)
+uniform float ring_tint = 0.0;         // RING: 0 white water .. 1 `tint`
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -150,12 +152,19 @@ void fragment() {
 		c = mix(c, vec3(0.1, 0.06, 0.07), lidline * 0.85);
 		a = max(inside * 0.92, lidline * 0.9) * smoothstep(0.0, 0.08, lid);
 		a = max(a, exp(-r * r * 2.0) * 0.18 * lid);                                                 // a faint glow round it
+	} else if (kind == 6) {
+		// 6 FLASH (v2.0): the moment glass gives: a hot rose-white bloom with crimson round it, a four-point flare
+		float r = length(pa);
+		float bloom = exp(-r * r * 9.0);
+		float flare = exp(-abs(pa.x) * 22.0) * exp(-abs(pa.y) * 2.2) + exp(-abs(pa.y) * 22.0) * exp(-abs(pa.x) * 2.2);
+		c = mix(accent.rgb, vec3(1.0, 0.95, 0.93), clamp(bloom * 1.3 + flare * 0.5, 0.0, 1.0));
+		a = clamp(bloom * 0.9 + flare * 0.7 + exp(-r * 3.0) * 0.25, 0.0, 1.0);
 	} else {
 		float r = length(pa);
 		float rr = grow * 0.95;
 		float ring = exp(-pow((r - rr) / 0.035, 2.0)) * (1.0 - grow);
 		float hl = ring * (0.6 + 0.4 * sin(atan(pa.y, pa.x) * 5.0 + t * 3.0));
-		c = vec3(0.95, 0.97, 1.0);
+		c = mix(vec3(0.95, 0.97, 1.0), tint, ring_tint);     // (white water; a beacon's ignition ring is crimson)
 		a = hl;
 	}
 	c = mix(c, vec3(0.8, 0.8, 0.79), fog_k);

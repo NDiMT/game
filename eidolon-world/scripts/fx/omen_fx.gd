@@ -19,7 +19,7 @@ class_name OmenFx
 
 static var high := true
 const SH := preload("res://shaders/omen_fx.gdshader")
-enum { CAUSTIC, CRACK, FROST, WRITING, EYE, RING }
+enum { CAUSTIC, CRACK, FROST, WRITING, EYE, RING, FLASH }
 const LIFT := 0.025                             # decals on water sit this far above it (clear of its ripples)
 
 ## a flat decal (PlaneMesh, +Y normal) with the omen shader; `normal` turns it to stand on a glass

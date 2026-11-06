@@ -83,6 +83,14 @@ func ignite() -> void:
 	if high: FxBurst.sparks(self, global_position + Vector3(0, height * 0.8, 0))
 	_ensure_embers()
 	if is_instance_valid(_embers): _embers.boost_t = 2.6
+	# (v2.0 polish, in place) the catch: a crimson ring of light runs out over the stone from the bowl
+	var ring := OmenFx.decal(get_parent(), Vector3(global_position.x, _ground_y(), global_position.z) + Vector3(0, 0.03, 0), OmenFx.RING, Vector2(6.0, 6.0))
+	var rm := ring.material_override as ShaderMaterial
+	rm.set_shader_parameter("tint", Palette.ACCENT)
+	rm.set_shader_parameter("ring_tint", 1.0)
+	var rt := ring.create_tween()
+	rt.tween_method(func(v: float) -> void: rm.set_shader_parameter("grow", v), 0.05, 1.0, 1.1).set_ease(Tween.EASE_OUT)
+	rt.tween_callback(ring.queue_free)
 	# the leap: up in a breath (the fire catching), held, then settling over ~2 s into the lit loop
 	if _tw: _tw.kill()
 	_tw = create_tween()
@@ -97,6 +105,14 @@ func _leap(v: float) -> void:
 func _settle(v: float) -> void:
 	_flare = v
 	_apply(1.0)
+
+## the floor under the beacon (the walk region below it, else the bowl's foot ~1 m down)
+func _ground_y() -> float:
+	var p := Vector2(global_position.x, global_position.z)
+	for n in get_tree().root.find_children("*", "Level", true, false):
+		var g = (n as Level).region_at(p)
+		if g: return (g as Level.Region).height(p)
+	return global_position.y - 1.0
 
 func set_lit(on: bool) -> void:
 	lit = on

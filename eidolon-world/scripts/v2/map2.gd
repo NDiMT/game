@@ -11,17 +11,24 @@ class_name Map2
 ## The puzzle rooms that come back from v1 keep their v1 shape and orientation and are only TRANSLATED: their v1
 ## coordinates + the module offset below (W_HALL, W_GL, N_MOD, E_MOD, POOL) give their place here.
 
-const O := Vector3(0.0, 0.0, 200.0)
-## (phase 1) the block-out is built only on request, beside the live chapter: `--v2` on the command line (after --)
-## or EIDOLON_V2=1 in the environment. The tests of the new world (flow_v2, and overlap / occlusion / z-fight run with
-## it) and the review shots turn it on.
-## (phase 2: the new world is the game; `--no-v2` / EIDOLON_V2=0 leave it out, for old-world comparisons only)
-static var enabled := not (OS.get_cmdline_user_args().has("--no-v2") or OS.get_environment("EIDOLON_V2") == "0")
+const O := Vector3.ZERO                # (phase 4: the old world is gone: the new one stands at the origin; everything follows O)
+## (phase 1-3 the new world stood beside the old one at (0, 0, 200) and was switched by --v2 / EIDOLON_V2)
+static var enabled := true
 const ZP := "V2_"                       # zone / region name prefix
 
-## the beats' anchors (local)
+## the beats' anchors (local = world now, O is zero)
 const OBSERVER := Vector3(-26.6, 0.0, -8.0)    # the Observer's sunk face (W.7; the prologue opens on it)
-const POOL_WATER := [-12.95, 17.0, -4.0, 20.7]   # the Pool of Halves (where she wakes)
+const POOL_WATER := [-12.75, 17.0, -4.0, 20.7]   # the Pool of Halves (where she wakes)
+## (phase 4) Act 3. I.23 the First Shrine: its round pool (where her hand meets yours), the crystal over it; you kneel
+## at STAND on its south side, facing north. I.21 the bridge: BRIDGE_N spans that settle and break as you cross.
+## I.22 the Gate of the Four: three veiled ones on plinths and an empty fourth (FOUR_PLINTH), facing the gate.
+const SHRINE_C := Vector3(-45.0, 0.0, 6.8)
+const SHRINE_POOL := SHRINE_C + Vector3(0.0, 0.155, 0.2)
+const SHRINE_STAND := SHRINE_C + Vector3(0.0, 0.0, 1.8)
+const BRIDGE := [-40.0, 17.6, -16.15, 20.1]
+const BRIDGE_N := 12
+const FOUR_PLINTHS := [[-48.6, 15.5], [-48.6, 21.0], [-41.6, 15.5], [-41.6, 21.0]]      # the last is empty: yours
+const PLINTH_H := 0.25
 ## N.1 the Flooded Colonnade: stones under murky water, all alike (their tops just under it); only the true ones hold
 ## you, and in the water's reflection SHE walks on them ahead of you (hub.gd). The decoys are broken shafts.
 const N1_Y := -0.05
@@ -97,8 +104,8 @@ const SPACES := [
 	["EH", "shortcut", "The High Stair (back down)", "traversal", [18.5, -66.0, 22.0, -31.0], 4.0, ""],
 	# ---- Act 3: the convergence
 	["VW", "Act 3", "The Veiled Way (opens: 3 Beacons)", "traversal", [-4.0, 8.0, -1.0, 15.0], 0.0, ""],
-	["P", "I.20", "The Pool of Halves", "puzzle", [-12.95, 17.0, -4.0, 20.7], 0.0, "pool_halves"],
-	["PW", "I.20", "The Far Shore", "traversal", [-16.15, 16.95, -12.95, 20.75], 0.0, ""],
+	["P", "I.20", "The Pool of Halves", "puzzle", [-12.75, 15.8, -4.0, 21.9], 0.0, "pool_halves"],
+	["PW", "I.20", "The Far Shore", "traversal", [-16.15, 16.95, -12.75, 20.75], 0.0, ""],
 	["I21", "I.21", "The Bridge that Gives Way", "traversal", [-40.0, 17.6, -16.15, 20.1], 0.0, "bridge"],
 	["I22", "I.22", "The Gate of the Four", "puzzle", [-50.0, 13.0, -40.0, 24.0], 0.0, "gate_four"],
 	["I23", "I.23", "The First Shrine: \"The Hand in the Water\"", "spectacle", [-51.0, 3.0, -39.0, 13.0], 0.0, "shrine"],
@@ -145,9 +152,11 @@ const WALK := [
 	["EH", 18.5, -62.0, 21.0, -31.0, 6.0, 2.0, 1],
 	# Act 3
 	["VW", -4.0, 8.0, -1.0, 15.0, 0.0, NAN, -1],
-	["P", -12.95, 18.05, -4.0, 19.65, 0.0, NAN, -1],          # the road the joins raise (block-out: in place)
-	["PW", -16.15, 16.95, -12.95, 20.75, 0.0, NAN, -1],
-	["I21", -40.0, 17.6, -16.15, 20.1, 0.0, NAN, -1],
+	# (I.20: the road is the pool's own stones, chapter.gd's; you turn yours from the shore and the two rims)
+	["Pr", -9.4, 15.8, -4.0, 17.0, 0.0, NAN, -1],
+	["Pr", -9.6, 20.7, -4.0, 21.9, 0.0, NAN, -1],
+	["PW", -16.15, 16.95, -12.75, 20.75, 0.0, NAN, -1],
+	# (I.21: its spans are walk regions of their own, built below: they settle as you cross)
 	["I22", -50.0, 13.0, -40.0, 24.0, 0.0, NAN, -1],
 	["I23", -51.0, 3.0, -39.0, 13.0, 0.0, NAN, -1],
 ]
@@ -167,16 +176,17 @@ const W7_STONES := [[-19.45, -6.45, 0.84], [-19.7, -5.35, 0.68], [-19.5, -4.25, 
 const STONE_R := 0.62
 
 ## walk regions whose floor a beat builds itself (the one slab, the Pool of Halves' road), shut until it is made
-const NO_FLOOR := ["I4s", "P"]
+const NO_FLOOR := ["I4s"]
 
 ## still water and sea: [x0, z0, x1, z1, y, rim] (rim: the design's own water edge: no kerb along it)
 const WATER := [
-	[-12.95, 17.0, -4.0, 20.7, -0.42, true],          # the Pool of Halves (where she wakes)
+	[-12.75, 17.0, -4.0, 20.7, -0.42, true],          # the Pool of Halves (where she wakes)
 	[-32.4, -14.6, -14.0, -1.5, -0.42, true],         # the inlet of the Sunken Colossus
 	[-0.5, -15.0, 5.5, -9.0, N1_WATER_Y, true],       # N.1 the Flooded Colonnade
 	[14.6, -1.5, 16.4, 8.0, -0.55, true],             # I.4's stream
 	[-56.0, 2.5, -16.15, 30.0, -0.42, false],         # the open sea of Act 3 (the bridge, the Gate, the Shrine)
-	[-16.15, 22.0, 0.0, 30.0, -0.42, false],
+	[-16.15, 21.9, 0.0, 30.0, -0.42, false],
+	[-16.15, 13.0, -12.75, 16.95, -0.42, false],
 ]
 
 ## walls: [x0, z0, x1, z1, height] (from the floor of the space they stand in), with their doorways left open
@@ -202,10 +212,9 @@ const DOORS := [
 ## other Tripo pieces of the block-out (the landmark statues of each beat): [asset, x, y, z, yaw, scale, note]
 const PIECES := [
 	["colossus_head_veiled", -26.6, -3.6, -8.0, 90.0, 11.0, "W.7 the Sunken Colossus (the Observer)"],
-	["statue_veiled_mourning", -48.6, 0.0, 15.5, 180.0, 1.0, "I.22 veiled one, facing the gate"],
-	["statue_veiled_praying", -48.6, 0.0, 21.0, 180.0, 1.0, "I.22 veiled one"],
-	["statue_veiled_kneeling", -41.6, 0.0, 15.5, 180.0, 1.0, "I.22 veiled one"],
-	["column_stump", -41.6, 0.0, 21.0, 0.0, 0.5, "I.22 the empty plinth (the fourth is you)"],
+	["statue_veiled_mourning", -48.6, PLINTH_H, 15.5, 180.0, 0.95, "I.22 veiled one, on her plinth, facing the gate"],
+	["statue_veiled_praying", -48.6, PLINTH_H, 21.0, 180.0, 0.95, "I.22 veiled one"],
+	["statue_veiled_kneeling", -41.6, PLINTH_H, 15.5, 180.0, 0.95, "I.22 veiled one"],
 	["brazier", -19.5, 1.0, -12.2, 0.0, 1.0, "W beacon"],
 	["brazier", -3.0, 2.0, -59.2, 0.0, 1.0, "N beacon"],
 	["brazier", 28.8, 6.0, -67.2, 0.0, 1.0, "E beacon"],
@@ -243,14 +252,16 @@ const ROUTE := [
 	[13.5, -4.5, "ER"], [9.0, -4.5, "A"], [-3.0, -4.5, "A"],
 	# Act 3: back to the pool where she woke, over its road, the bridge, the Gate, the Shrine
 	[-3.0, 5.0, "A"], [-2.5, 7.5, "A"], [-2.5, 11.5, "VW"], [-2.5, 17.0, "WS"], [-2.5, 18.85, "WS"],
-	[-5.0, 18.85, "P"], [-12.0, 18.85, "P"], [-14.5, 18.85, "PW"], [-28.0, 18.85, "I21"], [-41.5, 18.85, "I22"],
-	[-45.0, 18.85, "I22"], [-45.0, 14.0, "I22"], [-45.0, 11.0, "I23"], [-45.0, 6.5, "I23"],
+	# (the halves' road, stone by stone: Ch1Geo's grid at GP)
+	[-4.625, 18.85, "P"], [-5.875, 18.85, "P"], [-5.875, 17.65, "P"], [-8.375, 17.65, "P"], [-8.375, 20.05, "P"],
+	[-12.125, 20.05, "P"], [-13.6, 20.05, "PW"], [-14.6, 18.85, "PW"], [-28.0, 18.85, "I21"], [-41.5, 18.85, "I22"],
+	[-45.0, 18.85, "I22"], [-45.0, 14.0, "I22"], [-45.0, 11.0, "I23"], [-45.0, 8.6, "I23"],
 ]
 
 ## which part of the chapter a space belongs to (one merged zone mesh per part: the marble's per-instance
 ## uniforms are a scarce buffer on the web's GL)
 const PART := {"WS": "south", "I1": "south", "I2": "south", "I3": "south", "IB1": "south", "I4": "south", "I4s": "south",
-	"I5": "south", "A": "hub", "VW": "south", "P": "act3", "PW": "act3", "I21": "act3", "I22": "act3", "I23": "act3",
+	"I5": "south", "A": "hub", "VW": "south", "P": "act3", "Pp": "act3", "Pr": "act3", "PW": "act3", "I21": "act3", "I22": "act3", "I22f": "act3", "I23": "act3",
 	"WR": "west", "W1": "west", "W2": "west", "W2c": "west", "W3": "west", "W4": "west", "W5": "west", "IBW": "west", "W6": "west",
 	"WB": "west", "W7": "west", "N1": "north", "N1l": "north", "N2": "north", "N3": "north", "N4": "north", "IBN": "north", "N5": "north",
 	"N6": "north", "N7d": "north", "N7": "north", "N7x": "north", "NB": "north", "NS": "north", "ER": "east", "E1": "east",
@@ -259,7 +270,7 @@ const PART := {"WS": "south", "I1": "south", "I2": "south", "I3": "south", "IB1"
 ## the mood of each part (world.set_mood, Agent A)
 const MOOD := {"south": "act1", "hub": "act1", "west": "w_glass", "north": "n_garden", "east": "e_high", "act3": "act3"}
 ## each space's area (the game's area keys: its title, its music, its hints)
-const AREA := {"WS": "waking_pool", "P": "waking_pool", "PW": "waking_pool", "I1": "waking_pool", "I2": "waking_pool",
+const AREA := {"WS": "waking_pool", "P": "waking_pool", "Pp": "waking_pool", "Pr": "waking_pool", "PW": "waking_pool", "I1": "waking_pool", "I2": "waking_pool",
 	"I3": "waking_pool", "IB1": "waking_pool", "I4": "waking_pool", "I4s": "waking_pool", "I5": "waking_pool", "VW": "waking_pool",
 	"A": "atrium", "WR": "stair_breath", "W1": "stair_breath", "W2": "stair_breath", "W2c": "stair_breath", "W3": "hall_glass",
 	"W4": "hall_glass", "W5": "shard_gallery", "IBW": "shard_gallery", "W6": "shard_gallery", "WB": "shard_gallery", "W7": "shard_gallery",
@@ -267,7 +278,7 @@ const AREA := {"WS": "waking_pool", "P": "waking_pool", "PW": "waking_pool", "I1
 	"N6": "court_light", "N7d": "mist_maze", "N7": "mist_maze", "N7x": "mist_maze", "NB": "mist_maze", "NS": "garden_veiled",
 	"ER": "eidolon_ledge", "E1": "eidolon_ledge", "E2": "eidolon_ledge", "IBE": "eidolon_ledge", "E3": "eidolon_ledge", "E4": "eidolon_ledge",
 	"E3l": "scales", "E5": "scales", "E5u": "scales", "EB": "scales", "EH": "eidolon_ledge",
-	"I21": "gate_four", "I22": "gate_four", "I23": "first_shrine"}
+	"I21": "gate_four", "I22": "gate_four", "I22f": "gate_four", "I23": "first_shrine"}
 static func area_of_region(name: String) -> String:
 	return str(AREA.get(key_of_region(name), ""))
 
@@ -293,6 +304,8 @@ static func space_rect(id: String) -> Rect2:
 static func space_of_region(name: String) -> String:
 	var id := key_of_region(name)
 	if id == "": return ""
+	if id in ["Pp", "Pr"]: return "P"
+	if id == "I22f": return "I22"
 	if id in ["I4s"]: return "I4"
 	if id in ["W2c"]: return "W2"
 	if id in ["N7d", "N7x"]: return "N7"
@@ -309,6 +322,12 @@ static func build(lv: Level) -> void:
 		var y1: float = e[6]
 		var axis: int = e[7]
 		lv.walk(r, y0 + O.y, (y1 + O.y) if not is_nan(y1) else NAN, axis, ZP + str(e[0]), not (str(e[0]) in NO_FLOOR))
+	# (phase 4) I.21: the bridge's spans, one walk region each (Act3 builds them and lets them settle; before the kerbs,
+	# so none is built across its ends)
+	bridge_regions = []
+	var bl: float = (BRIDGE[2] - BRIDGE[0]) / BRIDGE_N
+	for k in BRIDGE_N:
+		bridge_regions.append(lv.walk(wr(BRIDGE[0] + bl * k, BRIDGE[1], BRIDGE[0] + bl * (k + 1), BRIDGE[3]), O.y, NAN, -1, ZP + "I21"))
 	for e in WALK:
 		if str(e[0]) in NO_FLOOR: continue
 		var r := wr(e[1], e[2], e[3], e[4])
@@ -339,12 +358,23 @@ static func build(lv: Level) -> void:
 			var m2 := Vector2((s[0] + nx[0]) * 0.5, (s[1] + nx[1]) * 0.5)
 			lv.walk(wr(m2.x - 0.4, m2.y - 0.4, m2.x + 0.4, m2.y + 0.4), N1_Y + O.y, NAN, -1, ZP + "N1")
 	lv.walk(wr(2.1, -9.25, 2.9, -8.9), N1_Y + O.y, NAN, -1, ZP + "N1")          # (off the landing onto the first stone)
+	# (phase 4) I.21: the bridge's spans, one walk region each (Act3 builds them and lets them settle); I.22: the plinths
+	for i in FOUR_PLINTHS.size():
+		var q: Array = FOUR_PLINTHS[i]
+		lv.box(ZP + "act3", w(q[0], q[1], PLINTH_H * 0.5), Vector3(1.0, PLINTH_H, 1.0), 0.25)
+		lv.box(ZP + "act3", w(q[0], q[1], PLINTH_H + 0.015), Vector3(1.08, 0.03, 1.08), 0.25)
+		if i == FOUR_PLINTHS.size() - 1:
+			lv.walk(wr(q[0] - 0.5, q[1] - 0.5, q[0] + 0.5, q[1] + 0.5), PLINTH_H + 0.03 + O.y, NAN, -1, ZP + "I22f")
+		else:
+			lv.ob_rect(wr(q[0] - 0.56, q[1] - 0.56, q[0] + 0.56, q[1] + 0.56), "v2plinth%d" % i)
 	for d in N1_DECOYS: lv.stump(w(d[0], d[1], -0.9), 1.1, true, 0.04)
 	for e in WALLS:
 		var r := wr(e[0], e[1], e[2], e[3])
 		var y := _floor_near(lv, r)
 		lv.wall(ZP + "walls", r, y, y + float(e[4]), true)
 		lv.ob_rect(r, ZP + "wall")
+
+static var bridge_regions: Array = []
 
 ## the floor height beside a wall (the highest walk region touching it)
 static func _floor_near(lv: Level, r: Rect2) -> float:

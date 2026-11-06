@@ -76,6 +76,13 @@ static func mirror(parent: Node, pos: Vector3, normal: Vector3, item: Node3D, se
 	var crack := OmenFx.decal(parent if keep_crack else root, pos + n * 0.05, OmenFx.CRACK, Vector2(crack_size, crack_size), n)
 	var km := crack.material_override as ShaderMaterial
 	km.set_shader_parameter("grow", 0.0)
+	# (v2.0 polish, in place) the moment the glass gives: a bloom with a flare on it, gone in under a second
+	var fl := OmenFx.decal(root, pos + n * 0.07, OmenFx.FLASH, Vector2(crack_size * 1.3, crack_size * 1.3), n)
+	var fm := fl.material_override as ShaderMaterial
+	var ft := fl.create_tween()
+	ft.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 0.0, 1.0, 0.08)
+	ft.tween_method(func(v: float) -> void: fm.set_shader_parameter("k", v), 1.0, 0.0, 0.8).set_ease(Tween.EASE_OUT)
+	ft.tween_callback(fl.queue_free)
 	var tw := root.create_tween()
 	tw.tween_method(func(v: float) -> void: km.set_shader_parameter("grow", v), 0.0, 1.0, seconds * 0.35).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	if item:

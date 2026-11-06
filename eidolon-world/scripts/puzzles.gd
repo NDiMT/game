@@ -19,7 +19,7 @@ const DIAL_Z := -12.9
 ## (v2: E.6, the Eidolon Plate, up on the High terrace: the v1 Ledge at Map2.GX)
 const PLATE_POS := Map2.GX + Vector3(23.6, 2.0, -29.6)
 const GLASS_Z := Map2.GX.z - 24.97
-const SHRINE_C := Vector3(25.0, 2.0, -32.6)
+const SHRINE_C := Map2.SHRINE_C                  # (v2: I.23 the First Shrine)
 const TABLET_POS := Map2.GW + Vector3(4.35, 1.5, -19.9)          # (v2: the Hall at Map2.GW)
 
 var level: Level
@@ -32,7 +32,6 @@ var slot_mats: Array[ShaderMaterial] = []
 var dial_mats: Array[ShaderMaterial] = []
 var statue_mats: Array[ShaderMaterial] = []
 var statue_pos: Array[Vector3] = []
-var gate_bars: Node3D
 var source_crystal: MeshInstance3D
 var target_crystal: MeshInstance3D
 var target_mat: StandardMaterial3D
@@ -93,9 +92,6 @@ func reset_state() -> void:
 		"plate": false, "shrine": false, "shortcut": false, "tablet": false, "drawbridge": false}
 
 func build() -> void:
-	_pool()
-
-	_gate()
 	_light_court()
 	_eidolon_glass()
 	_shrine()
@@ -192,38 +188,6 @@ func set_crystal_lit(mat: StandardMaterial3D, k: float) -> void:
 	mat.emission_energy_multiplier = 1.8 * k
 
 # ------------------------------------------------------------------ veiled gate pool
-func _pool() -> void:
-	water_mat = ShaderMaterial.new()
-	water_mat.shader = preload("res://shaders/water.gdshader")
-	water_mat.set_shader_parameter("noise_tex", level.noise_tex)
-	# v0.5: the Waking Pool runs west off the island as an aqueduct basin
-	var q := PlaneMesh.new()
-	q.size = Vector2(8.95, 3.75)
-	var mi := MeshInstance3D.new()
-	mi.mesh = q
-	mi.material_override = water_mat
-	mi.position = Vector3(-5.125, Ch1Geo.WATER_Y, 1.7)        # v0.6: the water lies 30 cm below the rim
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi)
-	mi.add_to_group("f_water")
-	var om := ShaderMaterial.new()
-	om.shader = preload("res://shaders/water_over.gdshader")
-	om.set_shader_parameter("noise_tex", level.noise_tex)
-	om.set_shader_parameter("area", Vector4(-9.4, -0.1, -0.8, 3.4))
-	water_over_mat = om
-	pool_fx = WaterFX.new()
-	pool_fx.mats = [water_mat, om]
-	add_child(pool_fx)
-	var oq := PlaneMesh.new()
-	oq.size = Vector2(8.95, 3.75)
-	var omi := MeshInstance3D.new()
-	omi.mesh = oq
-	omi.material_override = om
-	omi.position = Vector3(-5.125, Ch1Geo.WATER_Y + 0.025, 1.7)
-	omi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(omi)
-	omi.add_to_group("f_water")
-
 # ------------------------------------------------------------------ a) rune door
 func _rune_statues() -> void:
 	# numbered statues; their order on the door is by numeral, NOT by where they stand
@@ -317,35 +281,6 @@ func _open_door(instant: bool) -> void:
 		event.emit("door_open", null))
 
 # ------------------------------------------------------------------ shortcut gate
-func _gate() -> void:
-	gate_bars = Node3D.new()
-	gate_bars.position = Vector3(5.15, 0.0, -2.0)
-	add_child(gate_bars)
-	var m := MB.new()
-	for i in 9:
-		var z := -1.0 + i * 0.25
-		m.cyl(Vector3(0, 1.3, z), 0.035, 0.035, 2.6, Color(0.5, 1.0, 0.0), 6)
-		m.cyl(Vector3(0, 2.66, z), 0.0, 0.06, 0.16, Color(0.5, 1.0, 0.0), 6)
-	m.box(Vector3(0, 0.5, 0), Vector3(0.08, 0.08, 2.1), Color(0.5, 1.0, 0.0))
-	m.box(Vector3(0, 2.2, 0), Vector3(0.08, 0.08, 2.1), Color(0.5, 1.0, 0.0))
-	marble_instance(m.commit(), gate_bars)
-	level.ob_rect(Level.R(4.85, -3.0, 5.4, -1.0), "gate")
-	level.add_interact("gate_open", Vector3(5.75, 0.25, -2.0), "lever", open_gate, 1.0,
-		func() -> bool: return not state["shortcut"] and game.player.position.x > 5.3)
-	level.add_interact("gate_locked", Vector3(4.45, 0.0, -2.0), "locked", func() -> void: event.emit("gate_locked", null), 0.9,
-		func() -> bool: return not state["shortcut"] and game.player.position.x < 5.0)
-
-func open_gate(instant := false) -> void:
-	if state["shortcut"] and not instant: return
-	state["shortcut"] = true
-	level.set_enabled("gate", false)
-	if instant:
-		gate_bars.position.y = 2.75
-		return
-	event.emit("gate_open", null)
-	var tw := create_tween()
-	tw.tween_property(gate_bars, "position:y", 2.75, 2.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-
 # ------------------------------------------------------------------ b) light court: "Two Worlds of Light"
 ## v0.6. A crystal throws a beam east; four mirror stands turn in 45 degree steps. The court's east edge
 ## is HER great glass: a beam that strikes it does not come back, it goes ON, into her world (we trace
@@ -1021,7 +956,7 @@ func _shrine() -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = q
 	mi.material_override = shrine_ring
-	mi.position = c + Vector3(0, 0.125, 0)
+	mi.position = c + Vector3(0, 0.03, 0)          # (v2: on the shrine's worn disc, Act3)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 	shrine_light = OmniLight3D.new()
@@ -1041,7 +976,6 @@ func _shrine() -> void:
 	glow_quad(level.beyond, c2 + Vector3(0, 1.2, 0), 3.0, Palette.ACCENT, 0.45)
 	far_pillar = _pillar(level.beyond, c2 + Vector3(0, 3.5, 0), 0.9, 22.0)
 	far_pillar.set_shader_parameter("fade", 0.35)
-	level.add_interact("sealed", Vector3(28.0, 2.0, -38.3), "locked", func() -> void: event.emit("sealed", null), 1.0)
 	level.add_interact("shrine", c + Vector3(0, 0, 1.85), "wake", func() -> void: event.emit("shrine", null), 1.2,
 		func() -> bool: return not state["shrine"])
 
@@ -1078,16 +1012,9 @@ func _tablet() -> void:
 
 # ------------------------------------------------------------------ reflectors
 func _reflectors() -> void:
-	# 1. the first pool (glimpse 1: it lags, and something is slightly wrong)
-	var r := Reflector.new()
-	r.kind = "pool"; r.plane_n = Vector3.UP; r.plane_d = Ch1Geo.WATER_Y
-	r.surface_col = Vector3(0.45, 0.5, 0.53); r.surface_mix = 0.12
-	r.clip_c = Vector3(-5.125, Ch1Geo.WATER_Y, 1.7); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(4.47, 1.86)
-	r.region = Level.R(-13, -5, 5, 5); r.near_rect = Level.R(-9.6, -0.2, -0.6, 3.6); r.near = 3.2
-	r.lag = 0.42; r.wrong = 1.0; r.alpha = 0.88
-	_add_refl(r); pool_refl = r
+	# 1. (v2: the first pool, where she wakes, is Act1's: act1.pool_refl, also puzzles.pool_refl)
 	# 2. the polished floor of the hall (faint)
-	r = Reflector.new()
+	var r := Reflector.new()
 	r.kind = "floor"; r.plane_n = Vector3.UP; r.plane_d = 1.0
 	r.surface_col = Vector3(0.08, 0.085, 0.095); r.surface_mix = 0.62
 	r.clip_c = Map2.GW + Vector3(0, 1.0, -15.8); r.clip_u = Vector3.RIGHT; r.clip_v = Vector3.BACK; r.clip_h = Vector2(4.6, 4.8)
@@ -1230,7 +1157,6 @@ func apply_state(s: Dictionary) -> void:
 		if state.has(k): state[k] = s[k]
 	if (state["mirrors"] as Array).size() != STAND_POS.size(): state["mirrors"] = MIRROR_START.duplicate()      # (a v0.5 save)
 	decoy_t = 0.0
-	if state["shortcut"]: open_gate(true)
 	_apply_mirrors(true)
 	if state["bridge"]: _lower_bridge(true)
 	if state.get("drawbridge", false): lower_drawbridge(true)

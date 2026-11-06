@@ -7,7 +7,7 @@ const SHRINES_TOTAL := 7
 ## hem stripe brightness by number of shrines woken
 const HEM_PER_SHRINE := [1.0, 1.8, 2.4, 2.9, 3.3, 3.6, 3.9, 4.2]
 const SAVE_PATH := "user://eidolon_world.json"
-const MEMORY_LINE := "He carved her a thousand times.\nNone of them would breathe."
+const MEMORY_LINE := "The veil was his, not mine."          # (EIDOLON_SCRIPT §6 I.23: the shrine's memory)
 
 static var autotest := false
 
@@ -110,6 +110,7 @@ func _ready() -> void:
 	# (v2 rebuild, phase 1) the new Chapter I block-out: its water, doors, A's landmark dressing, the beat labels
 	if Map2.enabled:
 		Map2.water(level, level)
+		WaterLook.flooded_n1(level)          # (A: N.1's murky water)
 		Map2.pieces(level, level)
 		Map2.dress(level, level)
 		Map2.labels(level)
@@ -469,9 +470,8 @@ func _process(dt: float) -> void:
 		if controls.hot_icons.is_empty(): controls.hot_icons = chapter.items.icons
 		if chapter.lens_on: controls.hot_sel = "shard"
 		elif controls.hot_sel == "shard": controls.hot_sel = ""
-	# (v1.0 A, QA P1-4: the Undercroft is truly dark; the lamp's warm circle is what you see by)
-	var rg := level.region_at(Vector2(player.position.x, player.position.z))
-	var want_dark := 1.0 if (((rg and (rg.name == "UC" or rg.name == "UC_up")) or chapter.act1.in_crypt(player.position)) and mode == "play") else 0.0
+	# (v1.0 A, QA P1-4 / v2.0 I.5: the crypt is truly dark; the lamp's warm circle is what you see by)
+	var want_dark := 1.0 if (chapter.act1.in_crypt(player.position) and mode == "play") else 0.0
 	_dark = move_toward(_dark, want_dark, dt * 1.2)
 	world.set_darkness(_dark)
 	var lp := (player.global_position + Vector3(0, 0.9, 0)) if chapter.hub.has_item("lamp") else Vector3.INF
@@ -503,7 +503,6 @@ func _process(dt: float) -> void:
 				off = wonders.lean(p)                              # (v0.9) a wonder space: lean toward it
 			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
 	level.beyond.visible = world.awaken > 0.01
-	_update_dome(dt)
 	if mode == "play": _auto_quality(dt)
 	if prof_on: _t0 = _pm("camera rules", _t0)
 	level.update_inscriptions(player.position)
@@ -559,7 +558,7 @@ func _update_focus() -> void:
 	# v0.8.1: what the button will act on glows (chosen here, with the prompt)
 	if highlight: highlight.set_target(best)
 
-const EXPOSED := ["stub", "b1", "HG", "LB", "E", "EB", "sealed_way"]
+const EXPOSED := ["HG", "E", "EB", "V2_PW", "V2_I22"]
 const AREA_WIND := {"waking_pool": 0.35, "stair_breath": 0.6, "hall_glass": 0.12, "shard_gallery": 0.1, "garden_veiled": 0.3,
 	"hollow_walk": 0.25, "court_light": 0.4, "mist_maze": 0.15, "echo_corridor": 0.1, "scales": 0.45, "eidolon_ledge": 0.6,
 	"gate_four": 0.5, "first_shrine": 0.4}
@@ -577,7 +576,7 @@ func _update_air() -> void:
 	var q := Vector2(player.position.x, player.position.z)
 	var g := level.region_at(q)
 	var w: float = AREA_WIND.get(area, 0.35)
-	if g and (g.name in EXPOSED or g.name.begins_with("pool") or g.name == "WK"): w = 0.95
+	if g and (g.name in EXPOSED or g.name in [Map2.ZP + "Pp", Map2.ZP + "I21", Map2.ZP + "PW"] or g.name == "WK"): w = 0.95
 	sfx.set_wind(w * (0.7 if awake else 1.0))
 
 var _area_defer := ""
@@ -597,12 +596,6 @@ func _update_area() -> void:
 	if g == null: return
 	var key: String = Map2.area_of_region(g.name) if Map2.key_of_region(g.name) != "" else str(Names.REGION_AREA.get(g.name, ""))
 	if key == "": return
-	# (v1.0 QA P1-10: the Balcony is the Atrium's until it reaches the Ledge; the dry ring north of the
-	# Maze, before the bars, is the Maze's end)
-	if g.name == "BAL" and player.position.z > -17.0: key = "atrium"
-	if g.name == "EC_a" and player.position.z > -41.0: key = "mist_maze"
-	if key == "gate_four" and Vector2(player.position.x - Puzzles.SHRINE_C.x, player.position.z - Puzzles.SHRINE_C.z).length() < 2.4:
-		key = "first_shrine"
 	if key == area: return
 	area = key
 	sfx.set_area(Names.AUDIO_ALIAS.get(key, key))
@@ -649,7 +642,7 @@ func _on_footstep(kind: String, strength: float) -> void:
 			var wy := (wy2 + 0.01) if not is_nan(wy2) else fp.y - 0.02
 			juice.ring(Vector3(fp.x, wy, fp.z), 0.9, 0.9)
 			# (v1.1 A: a few soft drops kicked up, and A's ring on the pool's own water where there is one)
-			FxBurst.footstep(juice, Vector3(fp.x, wy, fp.z), puzzles.pool_fx if fp.x < 1.0 and fp.z < 6.0 else null)
+			FxBurst.footstep(juice, Vector3(fp.x, wy, fp.z), puzzles.pool_fx if Map2.space_rect("P").has_point(Vector2(fp.x, fp.z)) else null)
 		else:
 			player_dust()
 		chapter.on_footstep()
@@ -774,20 +767,6 @@ func _end_cinematic() -> void:
 		cine = null
 	_save()
 
-## the drawbridge from the Court to the ledge stays up until you reach the ledge the long way; a lever
-## there lowers it (a way back)
-func _drawbridge_lever() -> void:
-	var m := MB.new()
-	m.box(Vector3(21.55, 2.3, -23.2), Vector3(0.3, 0.6, 0.3), Color(0.5, 0.25, 0.0))
-	m.cyl(Vector3(21.55, 2.85, -23.2), 0.03, 0.03, 0.7, Color(0.5, 1.0, 0.0), 6, Basis(Vector3.BACK, 0.5))
-	puzzles.marble_instance(m.commit(), chapter)
-	level.ob_circle(Vector2(21.55, -23.2), 0.25)
-	level.add_interact("drawbridge", Vector3(21.55, 2.0, -23.2), "lever", func() -> void: puzzles.lower_drawbridge(false), 1.0,
-		func() -> bool: return chapter.state["maze"] and not puzzles.state.get("drawbridge", false) and player.position.x > 21.0)
-	level.add_interact("drawbridge_held", Vector3(21.55, 2.0, -23.2), "locked", func() -> void:
-		ui.show_text("The lever will not move.\nThe bridge is held from the far side.", player.position, 2.5), 1.0,
-		func() -> bool: return not chapter.state["maze"] and not puzzles.state.get("drawbridge", false) and player.position.x > 21.0)
-
 # ------------------------------------------------------------------ v0.5b: a conversation through the glass
 func open_glass(id: String) -> void:
 	if mode != "play": return
@@ -874,6 +853,13 @@ func _on_chapter_event(name: String, data: Variant) -> void:
 		"a1_door":
 			sfx.play("grind", -10.0, 0.7)
 			sfx.play("chime", -18.0, 1.1)
+			_save()
+		# (v2 phase 4) Act 3
+		"vw_open":
+			sfx.play("grind", -12.0, 0.6)
+		"four_open":
+			sfx.play("grind", -9.0, 0.55)
+			sfx.play("chime", -16.0, 0.9)
 			_save()
 		"a1_gate":
 			sfx.play("rattle", -12.0, 0.9)
@@ -966,8 +952,8 @@ const ROOM_ENTRY := {
 	"atrium": Map2.O + Vector3(0.0, 0.0, 3.0), "shard_gallery": Map2.GG + Vector3(5.8, 1.0, -17.0), "garden_veiled": Map2.GN + Vector3(13.5, 1.0, -5.6),
 	"hollow_walk": Map2.GN + Vector3(17.9, 1.0, -11.8), "court_light": Map2.GN + Vector3(18.5, 2.0, -17.8), "mist_maze": Map2.GN + Vector3(12.0, 2.0, -29.6),
 	"echo_corridor": Map2.GE + Vector3(22.0, 2.0, -20.0),
-	"scales": Map2.GE + Vector3(31.4, 2.0, -45.6), "eidolon_ledge": Map2.GE + Vector3(23.0, 2.0, -19.8), "gate_four": Vector3(27.6, 2.0, -28.6),
-	"first_shrine": Vector3(25.0, 2.0, -30.8),
+	"scales": Map2.GE + Vector3(31.4, 2.0, -45.6), "eidolon_ledge": Map2.GE + Vector3(23.0, 2.0, -19.8), "gate_four": Map2.O + Vector3(-41.5, 0.0, 18.85),
+	"first_shrine": Map2.O + Vector3(-45.0, 0.0, 11.0),
 }
 func jump(room: String) -> void:
 	var idx := Names.ORDER.find(room)
@@ -988,7 +974,6 @@ func jump(room: String) -> void:
 	for i in idx:
 		match Names.ORDER[i]:
 			"waking_pool":
-				cs["stones"] = true; cs["pool_turns"] = Chapter._pool_solution()
 				cs["a1"] = {"plate": true, "glass": true, "slab": true, "lamp": true, "atrium": true}
 			"stair_breath": cs["breath"] = true
 			"atrium":
@@ -1020,6 +1005,8 @@ func jump(room: String) -> void:
 				# (v2.0: by the Gate, the three wings are done: their Beacons burn)
 				cs["beacons"] = ["W", "N", "E"]
 				cs["hub"]["ec_open"] = true
+				# (v2 phase 4: Act 3 comes after the wings: the Pool of Halves' road, then the bridge)
+				cs["stones"] = true; cs["pool_turns"] = Chapter._pool_solution()
 			"gate_four":
 				cs["four"] = true
 	puzzles.apply_state(ps)
@@ -1257,7 +1244,7 @@ func _load_save() -> void:
 		print("[save] v%d from before the new world: starting fresh" % int(save_data.get("v", 1)))
 		save_data = {}
 
-const SAVE_V := 6           # (v2 rebuild: the new world; v6, phase 3: the wings moved into it, a clean reset again)
+const SAVE_V := 7           # (v2 rebuild: the new world; v6 phase 3: the wings moved into it; v7 phase 4: the world moved to the origin, Act 3 in it: a clean reset again)
 func _save() -> void:
 	if mode == "title": return
 	var p := player.position
@@ -1462,23 +1449,6 @@ func state_dict() -> Dictionary:
 		"reveal": snappedf(world.reveal_k, 0.01), "feet": chapter.maze_feet.filter(func(f: MeshInstance3D) -> bool: return f.visible).size(),
 		"steps": _steps_state()}
 
-## (QA_V11 P1-9) up on the Mirror Walk the tholos's entablature and dome sit over the lower half of the view: they
-## fade out while you are up there (and back when you come down)
-var _dome: GeometryInstance3D
-var _dome_k := 0.0
-func _update_dome(dt: float) -> void:
-	if _dome == null:
-		_dome = level.get_node_or_null("Zone_Sdome") as GeometryInstance3D
-		if _dome == null: return
-	var p := player.position
-	var on_walk := mode == "play" and p.x > 29.6 and p.x < 33.2 and p.z > -46.0 and p.z < -23.0 and p.y > 3.4
-	# (and behind it, at the sealed way's door: the dome stands between that door and the camera)
-	var behind := mode == "play" and p.x > 25.5 and p.x < 30.5 and p.z > -41.0 and p.z < -35.5 and p.y < 3.0
-	_dome_k = move_toward(_dome_k, 1.0 if (on_walk or behind) else 0.0, dt / 0.6)
-	_dome.transparency = _dome_k
-	_dome.visible = _dome_k < 0.99
-
-## (v1.1d, the web touch test) the Our Steps floor, as the test reads it (it plays by the touch stick only)
 func _steps_state() -> Dictionary:
 	var s: OurSteps = chapter.steps
 	if s == null: return {}

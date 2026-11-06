@@ -1,29 +1,18 @@
 class_name Hub
 extends Node3D
-## v1.0 M3 (dev/V1_WORLD.md): the hub's living parts. The Crumbling Bridge's loose slabs; Theron's oil
-## lamp (on his workbench up the scaffold; carried, a real light); the Undercroft's dark (only the lamp
-## parts it); the Flooded Colonnade's guide (HER reflection walks the hidden stones ahead of you); the three
-## Beacons (v2.0: one per wing, lit with the lamp; a twin pillar in the Atrium); the wings' shortcuts (the Court's
-## lever for the drawbridge, the bolted bars between the Echo Corridor and the Maze); the bars between the
-## Scales and the Echo Corridor.
+## v1.0 M3 / v2: the hub's living parts: Theron's oil lamp (carried, a real light); the Flooded Colonnade's guide (HER
+## reflection walks N.1's hidden stones ahead of you); the three Beacons (one per wing, lit with the lamp); the High
+## wing's two gates.
 ## State lives in chapter.state["inv"] (items), chapter.state["beacons"] and chapter.state["hub"].
 
 var game: Game
 var chapter: Chapter
 var items: Items
-# the bridge
-var slabs: Array[Node3D] = []
-var _settled := [false, false, false]
-var _shard: Node3D                   # a corner of the last slab that breaks away behind you, once
 # the lamp
 var lamp_bench: Node3D
 var lamp_held: Node3D
 var lamp_light: OmniLight3D
 var lamp_flame: Flame
-# the undercroft
-var uc_veil: ShaderMaterial
-var uc_ob: Level.Obstacle
-var _uc_open := false
 # the colonnade
 var t4_refl: Reflector
 var t4_pts: Array[Vector3] = []
@@ -37,9 +26,6 @@ var _t4_phase := 0.0
 const BEACON_POS := {"W": Map2.O + Vector3(-19.5, 1.0, -12.2), "N": Map2.O + Vector3(-3.0, 2.0, -59.2), "E": Map2.O + Vector3(28.8, 6.0, -67.2)}
 const BEACON_DONE := {"W": "gallery", "N": "maze", "E": "scales"}
 var beacon_fires := {}                # k -> BeaconFire (in the wing)
-# the bars
-var ec_bars: Node3D
-var sc_bars: Node3D
 
 static func fresh_state() -> Dictionary:
 	return Items.fresh_inv()
@@ -47,10 +33,7 @@ static func fresh_state() -> Dictionary:
 func setup(g: Game, ch: Chapter) -> void:
 	game = g
 	chapter = ch
-	_build_bridge()
 	_build_lamp()
-	_build_undercroft()
-	_build_uc_roof()
 	_build_colonnade()
 	_build_beacons()
 	_build_gates()
@@ -66,60 +49,11 @@ func give(k: String) -> void:
 	if not has_item(k): (inv()["items"] as Array).append(k)
 	chapter.event.emit("item", k)
 
-# ------------------------------------------------------------------ T1: the crumbling bridge
-func _build_bridge() -> void:
-	var z0 := 7.3
-	var L := (9.65 - z0) / 3.0
-	var ang := atan2(WorldGeo.A_Y, 9.65 - z0)
-	for i in 3:
-		var n := Node3D.new()
-		var zc := z0 + L * (i + 0.5)
-		n.position = Vector3(0, WorldGeo.A_Y * (zc - z0) / (9.65 - z0) - 0.16, zc)
-		n.rotation.x = -ang
-		add_child(n)
-		var m := MB.new()
-		m.tag = "floor"
-		m.box(Vector3.ZERO, Vector3(1.94, 0.3, L - 0.03), Color(0.5, 0.0, 0.0))
-		game.puzzles.marble_instance(m.commit(), n)
-		slabs.append(n)
-	# the corner that breaks away (an overhang beside the last slab, outside the way)
-	_shard = Node3D.new()
-	_shard.name = "BridgeShard"          # (an overhang: it hangs off the last slab, over the water; it breaks away)
-	_shard.position = Vector3(1.42, WorldGeo.A_Y - 0.2, 9.1)
-	add_child(_shard)
-	var sm := MB.new()
-	sm.box(Vector3.ZERO, Vector3(0.36, 0.22, 0.55), Color(0.5, 0.25, 0.0), Basis(Vector3.UP, 0.3))
-	game.puzzles.marble_instance(sm.commit(), _shard)
-
-func _update_bridge() -> void:
-	var p := game.player.position
-	if absf(p.x) > 1.0 or p.z < 7.3 or p.z > 9.65: return
-	var i := clampi(int((p.z - 7.3) / ((9.65 - 7.3) / 3.0)), 0, 2)
-	if not _settled[i]:
-		_settled[i] = true
-		var n := slabs[i]
-		var y0 := n.position.y
-		var tw := n.create_tween()
-		tw.tween_property(n, "position:y", y0 - 0.045, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.tween_property(n, "position:y", y0 - 0.03, 0.22).set_trans(Tween.TRANS_SINE)
-		if game.juice:
-			game.juice.dust_floor(Vector3(0, n.position.y, n.position.z), 0.6, 10)
-			game.juice.grit(Vector3(randf_range(-0.8, 0.8), n.position.y - 0.2, n.position.z), 0.3)
-		chapter.event.emit("bridge_settle", i)
-	if i == 2 and _shard.visible and _shard.position.y > 0.0:
-		var tw2 := _shard.create_tween()
-		tw2.tween_interval(0.35)
-		tw2.tween_property(_shard, "position:y", -6.0, 1.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw2.parallel().tween_property(_shard, "rotation", Vector3(1.4, 0.4, 0.9), 1.3)
-		tw2.tween_callback(func() -> void: _shard.visible = false)
-		_shard.position.y -= 0.001
-		chapter.event.emit("bridge_crumble", null)
-
 # ------------------------------------------------------------------ T2: the lamp
 func _build_lamp() -> void:
 	lamp_bench = _lamp_model()
 	add_child(lamp_bench)
-	lamp_bench.position = WorldGeo.LAMP_POS + Vector3(0, 0.44, 0)
+	lamp_bench.position = Act1.LAMP_POS + Vector3(0, 0.44, 0)
 	lamp_held = _lamp_model()
 	lamp_held.visible = false
 	add_child(lamp_held)
@@ -141,7 +75,7 @@ func _build_lamp() -> void:
 	bf.mat.set_shader_parameter("intensity", 0.85)
 	bf.bounce = false
 	lamp_bench.add_child(bf)
-	game.level.add_interact("lamp_take", WorldGeo.LAMP_POS + Vector3(-0.55, -0.18, 0.0), "take", take_lamp, 1.0,
+	game.level.add_interact("lamp_take", Act1.LAMP_POS + Vector3(-0.55, -0.18, 0.0), "take", take_lamp, 1.0,
 		func() -> bool: return not has_item("lamp") and chapter.act1 != null and chapter.act1.lamp_ready())
 
 func _lamp_model() -> Node3D:
@@ -159,7 +93,7 @@ func take_lamp() -> void:
 	game.ui.show_item("lamp")
 	_apply_lamp()
 	if chapter.act1: chapter.act1.lamp_taken()
-	if game.juice: game.juice.glint(WorldGeo.LAMP_POS + Vector3(0, 0.6, 0))
+	if game.juice: game.juice.glint(Act1.LAMP_POS + Vector3(0, 0.6, 0))
 
 func _apply_lamp() -> void:
 	var on := has_item("lamp")
@@ -169,46 +103,6 @@ func _apply_lamp() -> void:
 		lamp_held.get_parent().remove_child(lamp_held)
 		game.player.fig.add_child(lamp_held)
 		lamp_held.position = Vector3(0.27, 0.78, -0.16)            # (in her right hand, a little ahead)
-
-# ------------------------------------------------------------------ T5: the undercroft's dark
-func _build_undercroft() -> void:
-	uc_veil = ShaderMaterial.new()
-	uc_veil.shader = preload("res://shaders/mist_veil.gdshader")
-	uc_veil.set_shader_parameter("noise_tex", game.level.noise_tex)
-	uc_veil.set_shader_parameter("density", 1.0)
-	uc_veil.set_shader_parameter("glow", 0.15)
-	var q := QuadMesh.new()
-	q.size = Vector2(2.6, 2.4)
-	var mi := MeshInstance3D.new()
-	mi.mesh = q
-	mi.material_override = uc_veil
-	mi.transform = Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(14.15, WorldGeo.A_Y + 1.2, 11.4))
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.layers = PlanarMirror.LAYER_MAIN_FX
-	add_child(mi)
-	uc_ob = game.level.ob_rect(Level.R(14.0, 10.0, 14.3, 12.8), "uc_dark")
-	game.level.add_interact("uc_dark", Vector3(13.45, WorldGeo.A_Y, 11.4), "locked", func() -> void:
-		game.ui.show_text("Too dark to see your feet.\nA light would part it.", game.player.position, 3.0), 0.9,
-		func() -> bool: return not has_item("lamp"))
-
-var uc_roof: Node3D
-func _build_uc_roof() -> void:
-	uc_roof = Node3D.new()
-	add_child(uc_roof)
-	var m := MB.new()
-	m.box(Vector3(18.975, WorldGeo.A_Y + 2.63, 11.55), Vector3(9.25, 0.3, 2.7), Color(0.5, 0.25, 0.0))       # (between the walls, on the piers)
-	game.puzzles.marble_instance(m.commit(), uc_roof)
-
-func _update_undercroft() -> void:
-	var lamp := has_item("lamp")
-	if lamp and not _uc_open:
-		_uc_open = true
-		var tw := create_tween()
-		tw.tween_method(func(v: float) -> void: uc_veil.set_shader_parameter("density", v), float(uc_veil.get_shader_parameter("density")), 0.0, 1.6)
-	# (without the lamp you never go INTO the dark from the Atrium; from inside, the way out is always open)
-	uc_ob.enabled = not lamp and game.player.position.x < 14.25
-	var pp := game.player.position          # (the lamp's strength in the dark: main, with A's darkness)
-	uc_roof.visible = not (pp.x > 13.6 and pp.x < 24.0 and pp.z > 9.6 and pp.z < 13.2 and pp.y < 1.5)       # (never over you)
 
 # ------------------------------------------------------------------ T4: her reflection walks the hidden stones
 func _build_colonnade() -> void:
@@ -339,21 +233,6 @@ func light_beacon(k: String) -> void:
 	chapter.event.emit("beacon", k)
 	game.ui.show_item("beacon", k)
 
-# ------------------------------------------------------------------ the bars: Scales -> Echo (the balance opens them), Echo -> Maze (unbolted from the echo side)
-func _build_bars() -> void:
-	ec_bars = _bars(Vector3(10.0, 2.0, -41.0), 2.0, false)
-	game.level.ob_rect(Level.R(9.0, -41.15, 11.0, -40.85), "ec_bars")
-	game.level.add_interact("ec_unbolt", Vector3(10.0, 2.0, -41.6), "lever", unbolt_ec, 1.0,
-		func() -> bool: return chapter.state["echo_room"] and chapter.state["maze"] and game.level.named["ec_bars"].enabled and game.player.position.z < -41.2)
-	game.level.add_interact("ec_held", Vector3(10.0, 2.0, -41.6), "locked", func() -> void:
-		game.ui.show_text("The bolt will not draw.\nSomething holds it from the far side.", game.player.position, 2.5), 1.0,
-		func() -> bool: return chapter.state["echo_room"] and not chapter.state["maze"] and game.level.named["ec_bars"].enabled and game.player.position.z < -41.2)
-	game.level.add_interact("ec_bolted", Vector3(9.7, 2.0, -40.75), "locked", func() -> void:
-		game.ui.show_text("Bolted, from the other side.", game.player.position, 2.5), 0.6,
-		func() -> bool: return game.level.named["ec_bars"].enabled and game.player.position.z > -40.85)
-	sc_bars = _bars(Vector3(26.1, 2.0, -45.5), 1.9, true)
-	game.level.ob_rect(Level.R(25.95, -46.45, 26.25, -44.55), "sc_bars")
-
 ## (v2) the High wing's two gates: bars across the Scales' way up to the High terrace (they rise when the balance is
 ## answered) and across the High Stair's head (they rise when the Eidolon Plate answers: the circle closes)
 var up_bars: Node3D
@@ -388,27 +267,8 @@ func _bars(at: Vector3, w: float, along_z: bool) -> Node3D:
 	game.puzzles.marble_instance(m.commit(), n)
 	return n
 
-func unbolt_ec(instant := false) -> void:
-	chapter.state["hub"]["ec_open"] = true
-	game.level.set_enabled("ec_bars", false)
-	if instant:
-		ec_bars.position.y = 2.0 + 2.7
-		return
-	chapter.event.emit("ec_unbolt", null)
-	ec_bars.create_tween().tween_property(ec_bars, "position:y", 2.0 + 2.7, 2.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-
-func open_sc(instant := false) -> void:
-	if not game.level.named["sc_bars"].enabled: return
-	game.level.set_enabled("sc_bars", false)
-	if instant:
-		sc_bars.position.y = 2.0 + 2.7
-		return
-	sc_bars.create_tween().tween_property(sc_bars, "position:y", 2.0 + 2.7, 2.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-
 # ------------------------------------------------------------------ frame, state
 func update(dt: float) -> void:
-	_update_bridge()
-	_update_undercroft()
 	_update_colonnade(dt)
 	if chapter.state["scales"]: _gate(up_bars, "up_bars", 2.0, true, false)
 	if game.puzzles.state["plate"]: _gate(eh_bars, "eh_bars", 6.0, true, false)
@@ -422,12 +282,8 @@ func apply_state() -> void:
 		game.player.fig.remove_child(lamp_held)
 		add_child(lamp_held)
 		lamp_held.visible = false
-	_uc_open = false
-	uc_veil.set_shader_parameter("density", 0.0 if has_item("lamp") else 1.0)
-	if has_item("lamp"): _uc_open = true
 	for k in BEACON_POS:
 		(beacon_fires[k] as BeaconFire).set_lit(beacon_lit(k))
 	for i in 3: chapter.four_mats[i].set_shader_parameter("lit", 1.0 if beacon_lit(["W", "N", "E"][i]) else 0.15)
 	_gate(up_bars, "up_bars", 2.0, bool(st["scales"]), true)
 	_gate(eh_bars, "eh_bars", 6.0, bool(game.puzzles.state["plate"]), true)
-	for i in 3: _settled[i] = false

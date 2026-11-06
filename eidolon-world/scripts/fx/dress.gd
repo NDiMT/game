@@ -91,16 +91,11 @@ const RECIPES := {
 		["statue_veiled_praying", 0.9, 0.45, -90.0, 0.8], ["column_stump", 0.9, 0.7, 0.0, 0.75],
 		["rubble_pile", 0.9, 0.9, 0.0, 0.3, {"small": true}]],
 	"hall_glass": [
-		["mirror_frame", 0.25, 0.05, 0.0, 1.1, {"glass": true}], ["mirror_frame", 0.5, 0.05, 0.0, 1.1, {"glass": true}],
-		["mirror_frame", 0.75, 0.05, 0.0, 1.1, {"glass": true}],
-		["column_doric", 0.06, 0.06, 0.0, 1.0], ["column_doric", 0.94, 0.06, 0.0, 1.0],
-		["statue_veiled_mourning", 0.95, 0.35, -90.0, 0.95], ["mirror_frame", 0.96, 0.7, -90.0, 0.9, {"glass": true}],
-		["pediment_fragment", 0.1, 0.9, 30.0, 0.6, {"small": true}]],
+		# (phase 3: the Hall's floor is all puzzle (kept): no pieces; its identity is W's great mirror and its panes)
+		["mist", 0.5, 0.5, 0.0, 0.0, {"skip": true}]],
 	"shadow_chamber": [
-		["pylon_ashlar", 0.06, 0.06, 0.0, 0.9], ["pylon_ashlar", 0.94, 0.06, 0.0, 0.9],
-		["mirror_frame", 0.5, 0.04, 0.0, 1.0, {"glass": true}],
-		["statue_veiled_kneeling", 0.95, 0.5, -90.0, 0.8], ["rubble_pile", 0.1, 0.85, 0.0, 0.4, {"small": true}],
-		["column_fallen", 0.82, 0.9, 20.0, 0.5, {"small": true}]],
+		# (phase 3: the Chamber's floor is all puzzle (kept): nothing stands in it)
+		["mist", 0.5, 0.5, 0.0, 0.0, {"skip": true}]],
 	"hidden_way": [
 		# (the Ash Landing IBW, 5 x 3.6 m, beside W6's mouth: the east strip and the north edge)
 		["archway_ruined", 0.92, 0.45, -90.0, 0.6], ["mirror_frame", 0.15, 0.06, 0.0, 0.75, {"glass": true}],
@@ -119,34 +114,36 @@ const RECIPES := {
 		["column_stump", 0.12, 0.92, 0.0, 0.9], ["column_doric", 0.88, 0.92, 0.0, 0.9],
 		["mist", 0.5, 0.5, 0.0, 1.6], ["petals", 0.5, 0.5, 0.0, 0.5]],
 	"turned_ones": [
-		["statue_veiled_mourning", 0.2, 0.12, 180.0, 1.0], ["statue_veiled_praying", 0.5, 0.08, 180.0, 1.0],
-		["statue_veiled_mourning", 0.8, 0.12, 180.0, 1.0], ["statue_veiled_broken", 0.94, 0.55, -100.0, 0.9],
-		["kit_dead_plant", 0.08, 0.6, 0.0, 0.9, {"small": true}], ["kit_dead_plant", 0.35, 0.06, 0.0, 0.8, {"small": true}],
+		# (phase 3, N2 6.7 x 10 m: the puzzle floor is kept whole; the free ground is the south-west corner: low pieces,
+		# and the N.3 votive moved here from its own (all-kept) nook)
+		["kit_votive", 0.2, 0.58, 0.0, 1.0], ["flame", 0.13, 0.58, 0.0, 0.1, {"y": 0.5, "on": true}], ["flame", 0.27, 0.58, 0.0, 0.1, {"y": 0.5, "on": true}],
+		["kit_dead_plant", 0.42, 0.62, 0.0, 0.9, {"small": true}], ["kit_urns", 0.1, 0.9, 20.0, 0.8, {"small": true}],
+		["column_fallen", 0.3, 0.96, 80.0, 0.45, {"small": true}], ["rubble_pile", 0.45, 0.9, 0.0, 0.3, {"small": true}],
 		["mist", 0.5, 0.6, 0.0, 1.8], ["petals", 0.5, 0.5, 0.0, 0.6]],
 	"votive": [
-		["kit_votive", 0.5, 0.08, 0.0, 1.0], ["flame", 0.44, 0.08, 0.0, 0.1, {"y": 0.5, "on": true}], ["flame", 0.56, 0.08, 0.0, 0.1, {"y": 0.5, "on": true}],
-		["kit_urns", 0.88, 0.2, -30.0, 0.8, {"small": true}], ["kit_dead_plant", 0.12, 0.2, 0.0, 0.8, {"small": true}],
-		["column_stump", 0.9, 0.7, 0.0, 0.7], ["petals", 0.5, 0.5, 0.0, 1.0]],
+		# (phase 3: N3 is all kept; the votive stands in N2's free corner, see turned_ones)
+		["petals", 0.5, 0.5, 0.0, 0.4]],
 	"tree_shards": [
 		# (N6, the 3.8 x 2 m nook: its free east strip)
 		["kit_dead_plant", 0.9, 0.2, 0.0, 0.9], ["statue_veiled_bust", 0.9, 0.75, -90.0, 0.7],
 		["petals", 0.5, 0.5, 0.0, 0.4]],
 	"mist_maze": [
-		["statue_veiled_broken", 0.92, 0.1, -135.0, 0.9], ["column_stump", 0.08, 0.08, 0.0, 0.9],
-		["kit_dead_plant", 0.5, 0.06, 0.0, 1.0, {"small": true}], ["kit_urns", 0.92, 0.9, 0.0, 0.8, {"small": true}],
-		["mist", 0.35, 0.4, 0.0, 2.6], ["mist", 0.7, 0.7, 0.0, 2.2]],
+		# (phase 3: the maze floor is all puzzle: mist and petals only, nothing solid)
+		["mist", 0.35, 0.4, 0.0, 2.6], ["mist", 0.7, 0.7, 0.0, 2.2], ["petals", 0.5, 0.5, 0.0, 0.6]],
 	# ---------------------------------------------------------------- ACT 2, E wing (high, windy: "e_high")
 	# open to the sky: balustrades on the drop side, posts streaming torn veils, the bells
 	"balcony": [
-		["balustrade", 0.2, 0.97, 0.0, 1.0], ["balustrade", 0.5, 0.97, 0.0, 1.0], ["balustrade", 0.8, 0.97, 0.0, 1.0],
-		["kit_awning_post", 0.94, 0.15, 90.0, 1.0], ["veils", 0.94, 0.15, 90.0, 1.0, {"on": true}],
-		["kit_awning_post", 0.3, 0.06, 90.0, 1.0], ["veils", 0.3, 0.06, 90.0, 1.0, {"on": true}],
-		["kit_urns", 0.75, 0.15, 90.0, 0.9, {"small": true}], ["box", 0.55, 0.12, 0.0, 1.0, {"size": Vector3(1.6, 0.45, 0.5), "mat": 0.25}],
-		["kit_dead_plant", 0.08, 0.12, 0.0, 0.9, {"small": true}]],
+		# (phase 3, E1 4 x 22 m: the route keeps the middle; the west strip takes the pieces, tall ones at its north end)
+		["kit_awning_post", 0.12, 0.06, 90.0, 1.0], ["veils", 0.12, 0.06, 90.0, 1.0, {"on": true}],
+		["kit_awning_post", 0.12, 0.3, 90.0, 1.0], ["veils", 0.12, 0.3, 90.0, 1.0, {"on": true}],
+		["kit_urns", 0.12, 0.5, 90.0, 0.8, {"small": true}], ["box", 0.12, 0.65, 90.0, 1.0, {"size": Vector3(1.6, 0.45, 0.5), "mat": 0.25}],
+		["kit_dead_plant", 0.12, 0.85, 0.0, 0.9, {"small": true}], ["kit_urns", 0.12, 0.96, 60.0, 0.7, {"small": true}],
+		["rubble_pile", 0.84, 0.4, 0.0, 0.2, {"small": true}]],
 	"singing_stones": [
-		["kit_windbells", 0.85, 0.08, 0.0, 1.0], ["column_stump", 0.08, 0.1, 0.0, 0.8],
-		["kit_awning_post", 0.94, 0.6, 90.0, 0.9], ["veils", 0.94, 0.6, 90.0, 0.9, {"on": true}],
-		["rubble_pile", 0.9, 0.9, 0.0, 0.35, {"small": true}], ["balustrade", 0.3, 0.97, 0.0, 1.0]],
+		# (phase 3, E2 8 x 6 m: the stones' row is kept; the bells stand in the free south-east corner, low pieces west)
+		["kit_windbells", 0.82, 0.82, 0.0, 1.0], ["kit_awning_post", 0.09, 0.12, 90.0, 0.9], ["veils", 0.09, 0.12, 90.0, 0.9, {"on": true}],
+		["kit_urns", 0.09, 0.32, 0.0, 0.8, {"small": true}], ["rubble_pile", 0.09, 0.6, 0.0, 0.3, {"small": true}],
+		["kit_dead_plant", 0.09, 0.85, 0.0, 0.8, {"small": true}]],
 	"mirror_walk": [
 		["mirror_frame", 0.2, 0.05, 0.0, 1.0, {"glass": true}], ["mirror_frame", 0.5, 0.05, 0.0, 1.0, {"glass": true}],
 		["mirror_frame", 0.8, 0.05, 0.0, 1.0, {"glass": true}],
@@ -156,9 +153,8 @@ const RECIPES := {
 		# (E4, 2 x 2.7 m: the strips north and south of the route)
 		["kit_urns", 0.5, 0.08, 0.0, 0.55, {"small": true}], ["kit_dead_plant", 0.5, 0.94, 0.0, 0.6, {"small": true}]],
 	"scales": [
-		["statue_veiled_praying", 0.1, 0.08, 45.0, 1.0], ["column_stump", 0.92, 0.08, 0.0, 1.0],
-		["pediment_fragment", 0.93, 0.6, -90.0, 0.7, {"small": true}], ["kit_awning_post", 0.94, 0.3, 90.0, 0.9],
-		["veils", 0.94, 0.3, 90.0, 0.9, {"on": true}], ["balustrade", 0.5, 0.97, 0.0, 1.0]],
+		# (phase 3: the Scales' floor is all puzzle: nothing stands in it)
+		["mist", 0.5, 0.5, 0.0, 0.0, {"skip": true}]],
 	# ---------------------------------------------------------------- ACT 3 (the convergence, dusk: "act3")
 	"pool_halves": [
 		# (P, 8.95 x 3.7 m: the north strip beyond the halves' road; the south strip low only)
@@ -214,6 +210,7 @@ func _place(e: Array) -> void:
 	var yaw := _yaw(e)
 	var sc: float = float(e[4])
 	var o: Dictionary = e[5] if e.size() > 5 else {}
+	if o.get("skip", false): return                     # (a recipe kept for its id, with nothing in it)
 	if o.get("on", false) and what in ["flame", "veils"]:
 		if not _last_ok: return                     # (its base was left out)
 		at += _last_shift                           # (on its base, wherever the base ended up)
@@ -318,6 +315,7 @@ func _add_mesh(what: String, mesh: ArrayMesh, xf: Transform3D, rad: float, from_
 		# SEARCH m that keeps the piece's place in the view (a tall piece stays in the back: north / east part)
 		var want := xf.origin
 		var why := ""
+		var why0 := ""
 		var found := false
 		for off in _offsets():
 			var t := xf
@@ -325,9 +323,9 @@ func _add_mesh(what: String, mesh: ArrayMesh, xf: Transform3D, rad: float, from_
 			why = _fits(what, t, bb)
 			if why == "":
 				xf = t; found = true; break
-			if why == "outside the landmark" and off == Vector2.ZERO: pass
+			if off == Vector2.ZERO: why0 = why
 		if not found:
-			skipped.append([what, why]); return
+			skipped.append([what, why0 + " (no free spot within %.0f m)" % SEARCH]); return
 		var h := _floor_at(Rect2((xf * bb).position.x, (xf * bb).position.z, (xf * bb).size.x, (xf * bb).size.z).get_center())
 		xf.origin.y += h - _y
 		_last_shift = xf.origin - want
@@ -414,6 +412,12 @@ func _hides_route(box: AABB) -> bool:
 			for lift in [0.25, 1.0]:
 				var p := Vector3(q.x, _floor_at(q) + lift, q.y)
 				if _ray_box(p, back, grown): return true
+	# nor anything she can use (the interact points: tablets, levers, the lamp)
+	for it in level.interacts:
+		var ip: Vector3 = (it as Level.Interact).pos
+		if ip.z < box.position.z - 10.0 or ip.z > box.end.z + 0.5 or ip.x < box.position.x - 0.5 or ip.x > box.end.x + 10.0: continue
+		for lift in [0.0, 0.5]:
+			if _ray_box(ip + Vector3(0, lift, 0) + back * 0.3, back, grown): return true
 	return false
 
 static func _ray_box(o: Vector3, d: Vector3, b: AABB) -> bool:

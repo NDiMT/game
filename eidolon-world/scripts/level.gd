@@ -81,12 +81,12 @@ var _grid := {}
 const GRID := 3.0
 var audit := {}
 
-const WAKE_POS := Vector3(1.4, 0.0, 2.3)
-const SHRINE_C := Vector3(25.0, 2.0, -32.6)
-## "up the screen" at the default view: where the journey goes on
-const BEYOND_FWD := Vector3(0.7071, 0.0, -0.7071)
-const BEYOND_RIGHT := Vector3(0.7071, 0.0, 0.7071)
-const SECOND_SHRINE := Vector3(45.5, 2.5, -54.5)
+const WAKE_POS := Map2.O + Vector3(-2.5, 0.0, 18.85)          # (v2: the Pool of Halves' east shore, where she wakes)
+const SHRINE_C := Map2.SHRINE_C
+## (v2) where the journey goes on: out over the sea west of the First Shrine (BEYOND_RIGHT: its right hand)
+const BEYOND_FWD := Vector3(-0.866, 0.0, -0.5)
+const BEYOND_RIGHT := Vector3(0.5, 0.0, -0.866)
+const SECOND_SHRINE := Map2.SHRINE_C + Vector3(-26.0, 2.5, -15.0)
 
 var beyond: Node3D
 var grass_mmi: MMGroup
@@ -131,15 +131,9 @@ func _init(tex: ImageTexture) -> void:
 	_pbr_textures()          # (v1.0, Agent A: rendering)
 
 func build() -> void:
-	_veiled_gate()
-	_bridge_b1()
-	_shortcut()
-	_shrine_platform()
-	_sealed_way()
-	Ch1Geo.build(self)
-	WorldGeo.build(self)          # (v1.0 M3: the Atrium hub and the traversal sections)
+	# (v2 phase 4: the old world is gone: every space is Map2's, the v1 puzzle rooms WingsGeo's)
 	WingsGeo.build(self)          # (v2 rebuild, phase 3: the v1 puzzle rooms, in their places in the new world; before Map2's kerbs)
-	if Map2.enabled: Map2.build(self)             # (v2 rebuild, phase 1: the new Chapter I block-out, at Map2.O)
+	Map2.build(self)                 # (v2: Chapter I's world, dev/V2_MAP.md)
 	_far_ruins()                 # (after every walk region exists: it keeps clear of them)
 	_beyond()
 
@@ -799,154 +793,6 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 # ================================================================== the spaces
 	mb(zone).group = ""
 
-func _veiled_gate() -> void:
-	var z := "T"
-	# floor around the pool (the pool is a sunken basin)
-	for r in [R(-5, -5, 5, -0.2), R(-5, 3.6, 5, 5), R(-0.6, -0.2, 5, 3.6)]:
-		slab(z, r, 0.0, 0.7, 0.0, false)
-	underside(z, R(-5, -5, 5, 5), -0.7)
-	box(z, Vector3(-2.82, -0.75, 1.7), Vector3(4.44, 0.3, 3.8), 0.5)          # basin floor (v0.6: deeper)
-	# v0.5: the pool is the Waking Pool: water from the island's middle out over the west edge
-	walk(R(-5, -5, 5, -0.15), 0.0, NAN, -1, "T")
-	walk(R(-5, 3.55, 5, 5), 0.0, NAN, -1, "T")
-	walk(R(-0.65, -0.15, 5, 3.55), 0.0, NAN, -1, "T")
-	# the broken stub of a bridge you came by, ending in the fog
-	slab(z, R(-1, 5, 1, 7.3), 0.0, 0.5, 0.0)          # (v1.0: it meets the Crumbling Bridge to the Atrium)
-	walk(R(-1, 5, 1, 7.3), 0.0, NAN, -1, "stub")
-	rubble(Vector3(0, -0.6, 7.9), 0.8, 6)
-	balustrade(z, Vector2(-1.05, 5.1), Vector2(-1.05, 7.0), 0.0)
-	# the broken gateway you wake beneath
-	column(Vector3(-1.5, 0, 5.0), 3.6)          # (v0.7: back, so the south rim is a way round to the pool)
-	column(Vector3(1.5, 0, 5.0), 3.6)
-	box(z, Vector3(-0.75, 3.85, 5.0), Vector3(2.1, 0.5, 0.7), 0.25, true, Basis(Vector3.BACK, 0.06))
-	box(z, Vector3(2.75, 0.24, 3.25), Vector3(1.7, 0.48, 0.66), 0.25, false, Basis(Vector3.UP, 0.55))      # (v1.0: off the south rim's way)
-	ob_rect(R(2.0, 2.75, 3.5, 3.75))
-	rubble(Vector3(2.35, 0, 2.95), 0.45, 5)
-	# veiled statues, all with the same face, all turned toward the pool
-	var pc := Vector3(-2.4, 0, 1.7)
-	# (v1.0, the overlap audit: two of the four stood inside the kneeling figure and the fallen gable that
-	# took their places in v0.8; the fourth stood on the south rim's way round)
-	for sp in [[Vector3(4.0, 0, 1.2), 0.95]]:
-		statue(z, sp[0], yaw_to(sp[0], pc), sp[1])
-	stump(Vector3(4.3, 0, -1.4), 1.3)
-	stump(Vector3(-4.4, 0, -1.6), 0.7)
-	for zz in [-0.45, 3.85]:
-		box(z, Vector3(-4.95, 0.08, zz), Vector3(0.3, 0.16, 0.34), 0.25)
-	stump(Vector3(1.9, 0, -4.4), 1.7, true, 0.05)
-	rubble(Vector3(-4.4, 0, -1.8), 0.5, 5)
-	# inscriptions
-	box(z, Vector3(3.05, 0.62, 2.5), Vector3(0.95, 1.24, 0.24), 0.25, false, Basis(Vector3.UP, -0.5))
-	box(z, Vector3(3.05, 1.28, 2.5), Vector3(1.05, 0.08, 0.3), 0.25, false, Basis(Vector3.UP, -0.5))
-	ob_rect(R(2.62, 2.25, 3.48, 2.75))
-	inscription("t_stele", Vector3(2.6, 0, 2.0), "Her face is not yours to carve.\nI broke the vow. Every face I gave her was wrong.", 1.3,
-		Transform3D(Basis(Vector3.UP, -0.5), Vector3(3.05, 0.64, 2.5) + Basis(Vector3.UP, -0.5) * Vector3(0, 0, 0.125)), Vector2(0.84, 1.08))
-	inscription("t_pool", Vector3(-0.1, 0, -0.5), "The water keeps my half of the way.\nTurn yours, until it shows the path whole.", 1.1,
-		Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(-0.1, 0.012, -0.62)), Vector2(1.15, 0.78))
-	# exits: the arch to the north bridge, columns flanking
-	column(Vector3(-1.6, 0, -5.0), 3.6, true)
-	column(Vector3(1.6, 0, -5.0), 3.6, true)
-	box(z, Vector3(0, 3.82, -5.0), Vector3(4.0, 0.55, 0.8), 0.25, true)
-	# edge balustrades (low) where there is no exit
-	balustrade(z, Vector2(-4.9, -4.9), Vector2(-2.2, -4.9), 0.0)
-	balustrade(z, Vector2(2.2, -4.9), Vector2(4.9, -4.9), 0.0)
-	balustrade(z, Vector2(4.95, -4.8), Vector2(4.95, -3.5), 0.0)
-	balustrade(z, Vector2(4.95, -0.5), Vector2(4.95, 4.8), 0.0)
-
-func _bridge_b1() -> void:
-	## v0.5: the old way north has fallen: a stub, a gap, the top of the stair hanging from the hall
-	var z := "B1"
-	slab(z, R(-1.2, -6.3, 1.2, -5), 0.0, 0.6, 0.0)
-	walk(R(-1.2, -6.3, 1.2, -5), 0.0, NAN, -1, "b1")
-	rubble(Vector3(0, -0.5, -6.8), 0.7, 5)
-	steps(z, R(-1.2, -9.5, 1.2, -8.2), 1, 0.4, 1.0, false)
-	slab(z, R(-1.2, -11, 1.2, -9.5), 1.0, 0.6, 0.0)
-	walk(R(-1.2, -11, 1.2, -9.5), 1.0)
-	for x in [-1.3, 1.3]:
-		balustrade(z, Vector2(x, -5.3), Vector2(x, -6.2), 0.0)
-		balustrade(z, Vector2(x, -9.6), Vector2(x, -10.8), 1.0)
-	balustrade(z, Vector2(-1.1, -9.45), Vector2(1.1, -9.45), 1.0)
-
-func _shortcut() -> void:
-	var z := "A"
-	slab(z, R(7.5, -5, 9.5, -1), 1.0, 0.7, 0.0)
-	walk(R(7.5, -5, 9.5, -1), 1.0, NAN, -1, "CO_w")
-	steps(z, R(5, -3, 7.5, -1), 0, 0.0, 1.0, true)
-	walk(R(5, -3, 7.5, -1), 0.0, 1.0, 0, "shortcut_ramp")
-	balustrade(z, Vector2(9.55, -4.9), Vector2(9.55, -1.1), 1.0)
-	# (v0.9: the south edge opens onto the colossus' stones, between two posts)
-	for px in [7.72, 9.28]:
-		box(z, Vector3(px, 1.55, -0.98), Vector3(0.28, 1.1, 0.28), 0.25, true)
-	balustrade(z, Vector2(7.45, -4.9), Vector2(7.45, -3.1), 1.0)
-	# gate posts at the Veiled Gate's east edge (the bars are a puzzle object)
-	column(Vector3(5.15, 0, -3.35), 2.9, true)
-	column(Vector3(5.15, 0, -0.65), 2.9, true)
-	# (v1.0, the overlap audit: the north post stood over the gap past the ramp's edge: a footing under it,
-	# within its own base, so no new face meets the floors beside it)
-	mb(z).tag = "floor"
-	box(z, Vector3(5.2, -0.3, -0.65), Vector3(0.4, 0.6, 0.4), 0.25)
-	mb(z).tag = ""
-	box(z, Vector3(5.15, 3.0, -2.0), Vector3(0.7, 0.5, 3.4), 0.25, true)
-
-func _shrine_platform() -> void:
-	var z := "S"
-	slab(z, R(20, -36, 30, -28), 2.0, 0.9, 0.0)
-	walk(R(20, -36, 30, -28), 2.0, NAN, -1, "S")
-	balustrade(z, Vector2(20.1, -35.95), Vector2(26.8, -35.95), 2.0)
-	balustrade(z, Vector2(29.2, -35.95), Vector2(29.9, -35.95), 2.0)
-	balustrade(z, Vector2(29.95, -35.8), Vector2(29.95, -28.2), 2.0)
-	balustrade(z, Vector2(20.05, -35.8), Vector2(20.05, -28.2), 2.0)
-	# the tholos: a ring of columns, entablature and a shallow dome
-	var c := Vector3(25.0, 2.0, -32.6)
-	for i in 8:
-		var a := TAU * (i + 0.5) / 8.0
-		column(c + Vector3(cos(a) * 2.5, 0, sin(a) * 2.5), 3.6)
-	var m := mb(z)
-	m.cyl(c + Vector3(0, 0.06, 0), 3.05, 3.15, 0.12, C(0.25), 32)
-	# (QA_V11 P1-9: the entablature and dome are a zone of their own, "Sdome": seen from the Mirror Walk they sit
-	# over the lower half of the view, so main.gd fades them out while you are up there)
-	var dm := mb("Sdome")
-	dm.cyl(c + Vector3(0, 5.85, 0), 3.05, 3.05, 0.5, C(0.25, true), 32)
-	dm.cyl(c + Vector3(0, 6.35, 0), 2.7, 3.0, 0.5, C(0.25, true), 32)
-	dm.sphere(c + Vector3(0, 6.6, 0), Vector3(2.6, 1.2, 2.6), C(0.25, true), 24, 8)
-	occluders.append(AABB(c + Vector3(-3.15, 5.6, -3.15), Vector3(6.3, 2.3, 6.3)))     # (v1.0 QA P1-11: it fades over the Mirror Walk)
-	statue(z, c + Vector3(0, 0, -1.8), PI, 0.95, 0.5)
-	# v0.5: a round pool under the crystal, where her hand meets yours
-	m.cyl(c + Vector3(0, 0.07, 0.2), 1.3, 1.34, 0.14, C(0.25), 36)
-	m.cyl(c + Vector3(0, 0.02, 0.2), 1.18, 1.18, 0.06, C(0.5), 36)
-	ob_circle(Vector2(c.x, c.z + 0.2), 1.3)
-	rubble(Vector3(23.4, 2.0, -35.5), 0.3, 3)      # (v0.8: the unfinished veiled one stands in this corner now)
-	stump(Vector3(22.0, 2.0, -30.0), 0.9)          # (v0.7: off the way round the platform's edge)
-
-## the way on: a bridge from the shrine platform toward the next shrine, sealed by a dark rune door,
-## its far spans broken and drowned in fog
-func _sealed_way() -> void:
-	var z := "S"
-	slab(z, R(27, -39.4, 29, -36), 2.0, 0.6, 0.0)
-	walk(R(27, -39.0, 29, -36), 2.0, NAN, -1, "sealed_way")
-	balustrade(z, Vector2(26.95, -36.1), Vector2(26.95, -38.8), 2.0)
-	balustrade(z, Vector2(29.05, -36.1), Vector2(29.05, -38.8), 2.0)
-	box(z, Vector3(26.7, 3.8, -39.2), Vector3(0.6, 3.6, 0.7), 0.25, true)
-	box(z, Vector3(29.3, 3.8, -39.2), Vector3(0.6, 3.6, 0.7), 0.25, true)
-	box(z, Vector3(28.0, 5.85, -39.2), Vector3(3.4, 0.55, 0.85), 0.25, true)
-	box(z, Vector3(28.0, 3.5, -39.25), Vector3(2.0, 3.0, 0.3), 0.25, true)
-	ob_rect(R(26.4, -39.6, 29.6, -38.85), "sealed_gate")
-	var st := Vector3(28.0, 2.0, -40.3)
-	var dir := (SECOND_SHRINE - st)
-	dir.y = 0.0
-	var L := dir.length()
-	dir = dir.normalized()
-	var B := Basis(Vector3.UP, atan2(-dir.x, -dir.z))
-	var k := 0.0
-	while k < L - 4.0:
-		var seg := 1.6
-		if fmod(k, 7.0) > 4.5: k += 1.4      # gaps where the spans fell
-		var p := st + dir * (k + seg * 0.5)
-		var sink := clampf((k - 5.0) * 0.05, 0.0, 0.8)
-		var tilt := Basis(Vector3.RIGHT, rng.randf_range(-0.05, 0.05)) * Basis(Vector3.BACK, rng.randf_range(-0.08, 0.08))
-		mb(z).box(p + Vector3(0, -0.3 - sink, 0), Vector3(1.9, 0.5, seg), C(0.0), B * tilt)
-		if rng.randf() < 0.5: mb(z).box(p + B * Vector3(-0.9, 0.05 - sink, 0), Vector3(0.18, 0.5, seg), C(0.25), B * tilt)
-		k += seg + 0.05
-
 func _island(m: MB, c: Vector3, size: Vector2) -> void:
 	m.box(c + Vector3(0, -0.4, 0), Vector3(size.x, 0.8, size.y), C(0.0))
 	var r := R(c.x - size.x * 0.5, c.z - size.y * 0.5, c.x + size.x * 0.5, c.z + size.y * 0.5)
@@ -1028,14 +874,14 @@ func _far_ruins() -> void:
 	var pts := [Vector2(-14, 4), Vector2(-16, -14), Vector2(-12, -30), Vector2(2, -40), Vector2(16, -44), Vector2(36, -38),
 		Vector2(40, -22), Vector2(36, -6), Vector2(22, 6), Vector2(8, 14), Vector2(-6, 16), Vector2(-20, -22), Vector2(30, 12), Vector2(44, -30)]
 	for p0 in pts:
-		var p := _far_from_walks(p0, 9.0)
+		var p := _far_from_walks(FAR_C + (p0 - Vector2(10.0, -20.0)) * 1.5, 9.0)          # (v2: spread round the new world)
 		var rad := r.randf_range(0.9, 1.6)
 		var top := r.randf_range(-3.0, 5.0)
 		st.cyl(Vector3(p.x, top - 15.0, p.y), rad * 0.92, rad, 30.0, Color(0, 0, 0), 12, Basis(Vector3.BACK, r.randf_range(-0.06, 0.06)))
 		if r.randf() < 0.4:
 			st.box(Vector3(p.x, top + 0.3, p.y), Vector3(rad * 2.6, 0.6, rad * 2.6), Color(0, 0, 0))
 	for sdef in [[Vector2(-15, -6), 2.2], [Vector2(38, -14), 2.6], [Vector2(10, -48), 3.0]]:
-		var p: Vector2 = _far_from_walks(sdef[0], 10.0); var s: float = sdef[1]
+		var p: Vector2 = _far_from_walks(FAR_C + (sdef[0] - Vector2(10.0, -20.0)) * 1.5, 10.0); var s: float = sdef[1]
 		st.cyl(Vector3(p.x, -6.0, p.y), 0.55 * s, 0.95 * s, 4.2 * s, Color(0, 0, 0), 12)
 		st.sphere(Vector3(p.x, -6.0 + 2.6 * s, p.y), Vector3(0.42, 0.52, 0.42) * s, Color(0, 0, 0), 10, 5)
 		st.cyl(Vector3(p.x, -6.0 + 2.3 * s, p.y), 0.15 * s, 0.75 * s, 1.4 * s, Color(0, 0, 0), 12)
@@ -1045,7 +891,7 @@ func _far_ruins() -> void:
 	for i in 22:
 		var a := TAU * i / 22.0 + r.randf_range(-0.1, 0.1)
 		var rr := r.randf_range(48.0, 64.0)
-		var c := Vector3(12.0, 0, -16.0) + Vector3(cos(a) * rr, 0, sin(a) * rr)
+		var c := Vector3(FAR_C.x, 0, FAR_C.y) + Vector3(cos(a) * rr, 0, sin(a) * rr) * 1.25
 		var cf := _far_from_walks(Vector2(c.x, c.z), 16.0)          # (v1.0: the Atrium and the Balcony reach out toward them)
 		c = Vector3(cf.x, 0.0, cf.y)
 		var hgt := r.randf_range(6.0, 22.0)
@@ -1056,8 +902,9 @@ func _far_ruins() -> void:
 	_silhouette_layer(far, Color(0.70, 0.705, 0.71), "FarestRuins")
 
 ## (QA P1-3) a far ruin stands at least `d` metres from every walk region: pushed out from the complex
+const FAR_C := Vector2(Map2.O.x - 10.0, Map2.O.z - 18.0)          # (v2: the new world's middle)
 func _far_from_walks(p: Vector2, d: float) -> Vector2:
-	var c := Vector2(10.0, -20.0)
+	var c := FAR_C
 	var dir := (p - c).normalized() if p.distance_to(c) > 0.1 else Vector2.RIGHT
 	for k in 60:
 		var near := INF
@@ -1134,8 +981,10 @@ func _decor() -> void:
 	r.seed = 4040
 	var tufts: Array[Transform3D] = []
 	var leaves: Array[Transform3D] = []
-	var zones_w := [["CO_w", 170, 150], ["T", 45, 25], ["L", 30, 10], ["E", 15, 6], ["S", 25, 12], ["H", 0, 6]]
+	# (v2: the new world's spaces: the Atrium, the shore where she wakes, the Court, the Ledge, the Gate, the Shrine)
+	var zones_w := [["V2_A", 120, 90], ["V2_WS", 40, 22], ["L", 30, 10], ["E", 15, 6], ["V2_I22", 22, 12], ["V2_I23", 28, 14], ["H", 0, 6]]
 	for zw in zones_w:
+		if not named.has(zw[0]): continue
 		var g: Region = named[zw[0]]
 		var want_t: int = zw[1]
 		var want_l: int = zw[2]
@@ -1215,8 +1064,9 @@ func _vines() -> void:
 func _godrays() -> void:
 	var sun := Basis.from_euler(Vector3(deg_to_rad(-55.0), deg_to_rad(-32.0), 0.0))
 	var dir := -(sun * Vector3.BACK)          # direction the light travels
-	var spots := [[Vector3(0, 0.0, 4.6), 9.0], [Vector3(0, 0.0, -5.0), 9.0], [Vector3(4.8, 1.0, -13.0), 8.0],
-		[Vector3(12.0, 1.0, -15.1), 9.0], [Vector3(-4.5, 1.0, -16.0), 8.0], [Vector3(28.0, 2.0, -39.2), 9.0], [Vector3(25.0, 2.0, -32.6), 7.0]]
+	# (v2: the new world: the Atrium, the shore where she wakes, the Hall of Glass, the colonnade, the Balcony, the Shrine)
+	var spots := [[Map2.w(1.5, 2.5), 9.0], [Map2.w(-1.8, 18.2), 8.0], [Map2.GW + Vector3(0.0, 1.0, -15.5), 8.0],
+		[Map2.w(2.5, -11.5), 8.0], [Map2.w(19.0, -14.0, 2.0), 9.0], [Map2.O + Map2.SHRINE_C, 7.0]]
 	var i := 0
 	for sp in spots:
 		var floor_p: Vector3 = sp[0]

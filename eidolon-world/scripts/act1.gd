@@ -45,6 +45,7 @@ var turns := 0
 # I.5 (the crypt: x 10..14.6, z -1..7; in from the slab on the east, out by the west door into the Atrium)
 const CRYPT := Rect2(O.x + 10.0, O.z - 1.0, 4.6, 8.0)
 const BASIN := O + Vector3(13.5, 0.0, 1.4)
+const LAMP_POS := O + Vector3(13.39, 0.18, 1.35)       # (I.5: on the crypt basin's rim, where her hand pushed it up)
 const BASIN_Y := 0.6                         # its water's surface (2 cm under the rim: the lamp's glow sits on the rim)
 const EXIT_GAP := [9.85, 2.0, 10.15, 4.0]
 var basin_water: MeshInstance3D
@@ -135,6 +136,10 @@ func _build_pool() -> void:
 	pool_fx = WaterFX.new()
 	pool_fx.mats = [pool_water]
 	add_child(pool_fx)
+	# (v2: the one pool of the chapter's start and end: the juice, the footsteps and the Pool of Halves use it)
+	game.puzzles.pool_refl = r
+	game.puzzles.pool_fx = pool_fx
+	game.puzzles.water_mat = pool_water
 
 # ------------------------------------------------------------------ I.1 the plate only she stands on
 func _build_puddle() -> void:
@@ -312,7 +317,7 @@ func _lamp_rises() -> void:
 	chapter.event.emit("a1_lamp", null)
 	var palm := OmenFx.palm_press(self, surf, 0.0, null, 1)
 	hub.lamp_bench.visible = true
-	PassThrough.water(self, surf, hub.lamp_bench, null, 0.0, 1.8, WorldGeo.LAMP_POS + Vector3(0, 0.44, 0))
+	PassThrough.water(self, surf, hub.lamp_bench, null, 0.0, 1.8, Act1.LAMP_POS + Vector3(0, 0.44, 0))
 	get_tree().create_timer(2.0).timeout.connect(func() -> void:
 		# the Warden, deep in the water, turns sharply: the dark spreads over the basin; the hand is gone
 		chapter.event.emit("warden_turn", null)
@@ -372,7 +377,7 @@ func hint_target() -> Vector3:
 	if not s["glass"]: return PANE + Vector3(0, 1.2, 0.3)
 	if not s["slab"]: return SLAB_C + Vector3(0.45, 0.5, 0)
 	if not s["lamp"]: return BASIN + Vector3(0, 1.0, 0)
-	if not chapter.hub.has_item("lamp"): return WorldGeo.LAMP_POS + Vector3(0, 0.8, 0)
+	if not chapter.hub.has_item("lamp"): return Act1.LAMP_POS + Vector3(0, 0.8, 0)
 	return O + Vector3(9.0, 1.0, 3.0)
 
 func lamp_ready() -> bool:

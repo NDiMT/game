@@ -19,6 +19,12 @@ uniform float glint_k = 1.0;
 // (OmenFx.murk tweens it); `murk_c` its colour
 uniform float murk = 0.0;
 uniform vec3 murk_c : source_color = vec3(0.62, 0.64, 0.66);
+// v2.0 (A, N.1 the Flooded Colonnade): stones a few cm under murky water, the true and the false alike: soft paler
+// squares that waver with the ripples (WaterLook.flooded sets them): (x, z, half size, yaw)
+uniform vec4 sub[24];
+uniform int n_sub = 0;
+uniform float sub_k = 0.0;
+uniform vec3 sub_c : source_color = vec3(0.56, 0.58, 0.50);
 #include "res://shaders/water_fx.gdshaderinc"
 varying vec3 wp;
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -49,6 +55,20 @@ void fragment() {
 	float sheen = clamp(0.4 + F * 1.8 + (a1 - 0.5) * 0.25, 0.0, 0.8);
 	vec3 c = mix(body, skyc, sheen);
 	c = mix(c, deep * 0.62, (1.0 - smoothstep(0.0, shore * 0.35, em)) * 0.65);
+	if (n_sub > 0) {
+		vec2 pw = p + g * 0.35 + vec2(sin(p.y * 5.0 + TIME * 1.3), cos(p.x * 4.0 - TIME * 1.1)) * 0.012;   // seen through the ripples
+		float st = 0.0;
+		for (int i = 0; i < 24; i++) {
+			if (i >= n_sub) break;
+			vec2 q = pw - sub[i].xy;
+			float cs = cos(sub[i].w), sn = sin(sub[i].w);
+			q = vec2(cs * q.x - sn * q.y, sn * q.x + cs * q.y);
+			vec2 dd = abs(q) - vec2(sub[i].z);
+			float d = length(max(dd, 0.0)) + min(max(dd.x, dd.y), 0.0);
+			st = max(st, 1.0 - smoothstep(-0.05, 0.07, d));
+		}
+		c = mix(c, sub_c * (0.9 + 0.15 * a1), st * sub_k * (1.0 - sheen * 0.3));
+	}
 	// the event ripples catch the light (a bright crest, a dark trough), the bulge glows a little
 	c *= 1.0 + 0.12 * clamp(hE, -1.0, 1.0);
 	c += vec3(0.05) * bulge;

@@ -1,16 +1,7 @@
 class_name Ch1Geo
 extends RefCounted
-## v0.5 Chapter I: the geometry of the new spaces, built with the Level kit (slabs, walls,
-## balustrades, columns, statues, stairs). Puzzle objects live in chapter.gd.
-##
-##   Waking Pool      the Veiled Gate island; the pool now runs west as a wide aqueduct basin
-##   Stair of Breath  x[-12.8,-9.4]  z[-14.4,3.6]  y 0 -> 0.5 -> 1, corridor into the Hall
-##   Shard Gallery    x[5,7]         z[-18.4,-5.6] y 1   (behind the Hall's remembered door)
-##   Hollow Walk      x[17.4,25.6]   z[-15,-6]     y 1   (8 x 9 cells of 1 m), ramp up to the Court
-##   Mist Maze        x[9,17]        z[-39,-29]    y 2   (4 x 5 cells of 2 m), her pool x[0.6,8.6]
-##   Echo Corridor    x[9,26.2]      z[-46.4,-39]  y 2   (hidden room x[16.4,20.2] z[-50.2,-46.4])
-##   The Scales       x[26,33.4]     z[-52,-44.6]  y 2   (the lift rises to the high walkway, y 4)
-##   High walkway     x[30.4,32.4]   z[-44.6,-23.4] y 4, stair down to the Eidolon Ledge
+## Chapter I's puzzle data shared by chapter.gd and the tests: the Pool of Halves' grid (I.20, at Map2.GP), the Mist
+## Maze (N.7, at Map2.GN), the Tree of Shards and the Upward Spring. (v2: the geometry is Map2's and WingsGeo's.)
 
 # v0.7 "The Pool of Halves": a broken path of stone beams across the pool, a 7 x 3 grid of cells (col
 # grows WEST from the island, row grows south). Some pieces stand in YOUR world and turn on pivots (L and
@@ -31,8 +22,9 @@ const POOL_OUT := Vector2i(6, 2)            # left by its W edge (the far landin
 const BEAM_W := 0.82                        # a beam's width
 const WATER_Y := -0.42
 
+## (v2: the grid lies in the Pool of Halves, at Map2.GP)
 static func cell_pos(c: Vector2i) -> Vector2:
-	return Vector2(POOL_X0 + POOL_DX * c.x, POOL_Z0 + POOL_DZ * c.y)
+	return Vector2(Map2.GP.x + POOL_X0 + POOL_DX * c.x, Map2.GP.z + POOL_Z0 + POOL_DZ * c.y)
 
 ## a quarter turn (clockwise seen from above): N -> E -> S -> W
 static func rot_conn(conn: String, k: int) -> String:
@@ -87,36 +79,7 @@ static func mz_cell(rc: Vector2i) -> Vector3:
 static func R(x0: float, z0: float, x1: float, z1: float) -> Rect2:
 	return Level.R(x0, z0, x1, z1)
 
-static func build(lv: Level) -> void:
-	_aqueduct(lv)
-
-# ------------------------------------------------------------------ 1. the waking pool's aqueduct
-static func _aqueduct(lv: Level) -> void:
-	var z := "T"
-	# the basin continues west off the island as a wide stone channel full of still water
-	lv.box(z, Vector3(-7.3, -0.75, 1.7), Vector3(4.7, 0.3, 3.75), 0.5)
-	lv.box(z, Vector3(-7.3, -1.15, 1.7), Vector3(4.7, 0.6, 4.4), 0.0)
-	lv.underside(z, R(-9.6, -0.45, -5.0, 3.85), -1.25)
-	for zz in [-0.3, 3.7]:
-		lv.box(z, Vector3(-7.3, -0.2, zz), Vector3(4.7, 0.5, 0.32), 0.25)
-		lv.box(z, Vector3(-7.3, 0.08, zz), Vector3(4.8, 0.08, 0.38), 0.25)
-	# the inner west strip of the old island is water now too (no floor there)
-
-# ------------------------------------------------------------------ 4. the shadow chamber (v0.8.1)
-## The old narrow Shard Gallery is a readable chamber now: "Where Her Shadow Fell". It opens off the Hall's
-## east door; the true arch on its east side (seen through the shard) leads into the Garden. The walls
-## toward the camera (east and south) are low parapets, so the whole floor reads from the iso view.
-const SC_ROOM := Rect2(5.0, -16.9, 5.0, 7.3)          # x 5..10, z -16.9..-9.6 (+ the way in from the Hall, x 5..7 to z -18.4)
 # ------------------------------------------------------------------ v0.9 the wonder spaces (no puzzles)
-## the Sunken Colossus: from the shadow chamber's south gate, down the garden's west court and out over
-## still black water on stepping stones that run along the cheek of a giant veiled head, up into the
-## Garden of the Veiled from the south
-const CO_HEAD := Vector3(19.3, 0.0, 0.0)          # the head's centre at the water line
-const CO_WATER_Y := 0.15
-## (the head stands EAST of the whole way: from the one fixed view it never hides the stones)
-const CO_STONES := [Vector2(8.5, -0.9), Vector2(8.7, 0.2), Vector2(9.0, 1.3), Vector2(9.6, 2.3), Vector2(10.5, 3.0),
-	Vector2(11.6, 3.4), Vector2(12.7, 3.3), Vector2(13.6, 2.7), Vector2(14.4, 1.9), Vector2(14.95, 1.0), Vector2(15.3, 0.0),
-	Vector2(15.5, -1.0), Vector2(15.55, -2.0), Vector2(15.55, -3.0), Vector2(15.55, -3.7)]
 ## the Tree of Shards: in a nook beside the way from the Court of Light into the Mist Maze
 const TS_TREE := Map2.GN + Vector3(15.9, 2.0, -28.15)
 ## the Upward Spring: a balcony off the high walkway, over the void where a fountain falls upward

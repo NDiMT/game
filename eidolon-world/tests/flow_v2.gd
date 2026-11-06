@@ -18,7 +18,8 @@ var started := false
 var _riding := false
 var t := 0.0
 
-const SOLVED := ["breath", "hall_door", "shard", "gallery", "turned_done", "garden_breath", "hollow_done", "mural", "maze", "ledge_song", "scales"]
+const SOLVED := ["breath", "hall_door", "shard", "gallery", "turned_done", "garden_breath", "hollow_done", "mural", "maze", "ledge_song", "scales",
+	"stones", "four"]          # (phase 4: Act 3's pool road and the Gate of the Four)
 
 func ok(label: String, pass_: bool, detail := "") -> void:
 	checks += 1
@@ -46,6 +47,7 @@ func _process(dt: float) -> void:
 		if not ("lamp" in cs["inv"]["items"]): (cs["inv"]["items"] as Array).append("lamp")
 		# (phase 3: the wings' puzzles stand solved: their doors and gates open)
 		for k in SOLVED: cs[k] = true
+		cs["beacons"] = ["W", "N", "E"]          # (the three fires burn: the Veiled Way and the pool are open)
 		cs["hub"]["w_seen"] = true
 		cs["hub"]["e_open"] = true
 		cs["hub"]["wk_crossed"] = true

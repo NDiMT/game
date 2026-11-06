@@ -75,7 +75,7 @@ func setup(g: Game, ch: Chapter, h: Hub) -> void:
 	_build_tablets()
 	_build_secrets()
 	# (v1.1: every thing to take reads from 8 m: a cloth under it, a soft pillar of light, a slow bob and turn)
-	for e in [[hub.lamp_bench, WorldGeo.LAMP_POS + Vector3(0, 0.44, 0), false]]:
+	for e in [[hub.lamp_bench, Act1.LAMP_POS + Vector3(0, 0.44, 0), false]]:
 		beacons.append([e[0], _beacon(e[1], e[2]), e[1], e[2]])
 
 func inv() -> Dictionary: return chapter.state["inv"]
@@ -140,7 +140,7 @@ func _build_panel() -> void:
 	panel = _anchor(Vector3((PANEL_X.x + PANEL_X.y) * 0.5, 4.0, PANEL_Z))
 	var m := MB.new()
 	m.box(Vector3(0, 0.95, 0), Vector3(w - 0.04, 1.9, 0.22), Color(0.5, 0.25, 0.0))
-	m.cyl(Vector3(0, 1.05, 0.12), 0.26, 0.26, 0.04, Color(0.5, WorldGeo.BRONZE, 0.0), 20, Basis(Vector3.RIGHT, PI * 0.5))
+	m.cyl(Vector3(0, 1.05, 0.12), 0.26, 0.26, 0.04, Color(0.5, Props.BRONZE, 0.0), 20, Basis(Vector3.RIGHT, PI * 0.5))
 	game.puzzles.marble_instance(m.commit(), panel)
 	game.puzzles.rune_quad(panel, Vector3(0, 1.05, 0.145), Vector2(0.36, 0.36), Basis(), 3.0, 0.5)
 	game.level.ob_rect(Level.R(PANEL_X.x - 0.1, PANEL_Z - 0.16, PANEL_X.y + 0.1, PANEL_Z + 0.16), "e_panel")
@@ -171,7 +171,7 @@ func _build_tablets() -> void:
 		var id: String = t[0]
 		var at: Vector3 = t[1]
 		var n := _anchor(at, float(absi(id.hash()) % 628) / 100.0)
-		_model("wax_tablet", n, func(mb: MB) -> void: mb.box(Vector3(0, 0.015, 0), Vector3(0.22, 0.03, 0.16), Color(0.5, WorldGeo.WOOD, 0.0)))
+		_model("wax_tablet", n, func(mb: MB) -> void: mb.box(Vector3(0, 0.015, 0), Vector3(0.22, 0.03, 0.16), Color(0.5, Props.WOOD, 0.0)))
 		tablet_nodes[id] = n
 		var text: String = t[2]
 		game.level.add_interact("tab_" + id, at, "read", func() -> void: take_tablet(id, text), 0.9,

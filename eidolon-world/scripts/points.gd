@@ -65,12 +65,12 @@ func _build(p: Array) -> void:
 			bell.position = at + Vector3(0.45, 2.12, 0)
 			add_child(bell)
 			var bm := MB.new()
-			bm.cyl(Vector3(0, -0.2, 0), 0.07, 0.17, 0.3, Color(0.5, WorldGeo.BRONZE, 0.0), 14)
+			bm.cyl(Vector3(0, -0.2, 0), 0.07, 0.17, 0.3, Color(0.5, Props.BRONZE, 0.0), 14)
 			game.puzzles.marble_instance(bm.commit(), bell)
 			game.level.ob_circle(Vector2(at.x, at.z), 0.14)
 		"votive":
 			m.cyl(at + Vector3(0, 0.45, 0), 0.12, 0.16, 0.9, c, 10)
-			m.cyl(at + Vector3(0, 0.93, 0), 0.16, 0.12, 0.06, Color(0.5, WorldGeo.BRONZE, 0.0), 12)
+			m.cyl(at + Vector3(0, 0.93, 0), 0.16, 0.12, 0.06, Color(0.5, Props.BRONZE, 0.0), 12)
 			var vf := Flame.new(0.0, 0.14, Palette.FIRE_LIGHT, game.level.noise_tex)
 			vf.position = at + Vector3(0, 0.97, 0)
 			vf.bounce = false
@@ -82,16 +82,16 @@ func _build(p: Array) -> void:
 			m.cyl(at + Vector3(0, 0.12, 0), 0.24, 0.28, 0.24, c, 12)
 			m.sphere(at + Vector3(-0.06, 0.29, 0.02), Vector3(0.06, 0.05, 0.06), c, 6, 4)
 			m.sphere(at + Vector3(0.07, 0.28, -0.03), Vector3(0.05, 0.04, 0.05), c, 6, 4)
-			m.cyl(at + Vector3(-0.1, 0.255, -0.12), 0.065, 0.05, 0.03, Color(0.5, WorldGeo.BRONZE, 0.0), 10)     # (a little oil dish)
+			m.cyl(at + Vector3(-0.1, 0.255, -0.12), 0.065, 0.05, 0.03, Color(0.5, Props.BRONZE, 0.0), 10)     # (a little oil dish)
 			offer_flame = Flame.new(0.0, 0.07, Palette.FIRE_LIGHT, game.level.noise_tex)
 			offer_flame.position = at + Vector3(-0.1, 0.28, -0.12)
 			offer_flame.bounce = false
 			add_child(offer_flame)
 			game.level.ob_circle(Vector2(at.x, at.z), 0.3)
 		"cot":
-			m.box(at + Vector3(0, 0.18, 0), Vector3(1.8, 0.12, 0.7), Color(0.5, WorldGeo.WOOD, 0.0))
+			m.box(at + Vector3(0, 0.18, 0), Vector3(1.8, 0.12, 0.7), Color(0.5, Props.WOOD, 0.0))
 			for dx in [-0.8, 0.8]:
-				for dz in [-0.28, 0.28]: m.box(at + Vector3(dx, 0.06, dz), Vector3(0.08, 0.12, 0.08), Color(0.5, WorldGeo.WOOD, 0.0))
+				for dz in [-0.28, 0.28]: m.box(at + Vector3(dx, 0.06, dz), Vector3(0.08, 0.12, 0.08), Color(0.5, Props.WOOD, 0.0))
 			blanket = Node3D.new()
 			blanket.position = at + Vector3(0.1, 0.27, 0)
 			add_child(blanket)
@@ -102,7 +102,7 @@ func _build(p: Array) -> void:
 			tablet.position = at + Vector3(-0.5, 0.006, 0.55)                         # (on the floor by the cot, once it slides out)
 			add_child(tablet)
 			var tm := MB.new()
-			tm.box(Vector3.ZERO, Vector3(0.26, 0.012, 0.18), Color(0.5, WorldGeo.WOOD, 0.0))
+			tm.box(Vector3.ZERO, Vector3(0.26, 0.012, 0.18), Color(0.5, Props.WOOD, 0.0))
 			tm.box(Vector3(0, 0.008, 0), Vector3(0.22, 0.006, 0.14), Color(0.5, 0.55, 0.0))   # (the wax)
 			game.puzzles.marble_instance(tm.commit(), tablet)
 			tablet.visible = false
@@ -117,7 +117,7 @@ func _build(p: Array) -> void:
 			coin = Node3D.new()
 			add_child(coin)
 			var cm := MB.new()
-			cm.cyl(Vector3.ZERO, 0.045, 0.045, 0.01, Color(0.5, WorldGeo.BRONZE, 0.0), 14)
+			cm.cyl(Vector3.ZERO, 0.045, 0.045, 0.01, Color(0.5, Props.BRONZE, 0.0), 14)
 			game.puzzles.marble_instance(cm.commit(), coin)
 			coin.visible = false
 		"bench":
