@@ -1,39 +1,48 @@
-[20.9s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
-[21.4s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
-[22.2s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
-[26.0s log] [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
-[26.2s log] [props] 2 placed
-[26.5s log] [v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
-[26.5s log] [v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
-[26.5s log] [v2 dress] I3 rubble_pile: on a kept path (no free spot within 2 m)
-[26.7s log] [v2 dress] I5 kit_cot: outside the landmark (no free spot within 2 m)
-[26.7s log] [v2 dress] I5 kit_urns: outside the landmark (no free spot within 2 m)
-[27.5s log] [v2 dress] A kit_scaffold: on a kept path (no free spot within 2 m)
-[27.5s log] [v2 dress] A kit_ladder: on a kept path (no free spot within 2 m)
-[27.5s log] [v2 dress] A plinth: on a kept path (no free spot within 2 m)
-[27.6s log] [v2 dress] IBW archway_ruined: would hide the route (no free spot within 2 m)
-[27.6s log] [v2 dress] IBW mirror_frame: on a kept path (no free spot within 2 m)
-[27.7s log] [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
-[27.7s log] [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
-[27.9s log] [v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
-[27.9s log] [v2 dress] N1 column_doric: would hide the route (no free spot within 2 m)
-[27.9s log] [v2 dress] N1 column_doric: tall, would stand in front (no free spot within 2 m)
-[28.0s log] [v2 dress] N2 column_fallen: outside the landmark (no free spot within 2 m)
-[28.0s log] [v2 dress] N6 statue_veiled_bust: would touch another piece (no free spot within 2 m)
-[28.2s log] [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
-[28.2s log] [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
-[28.2s log] [v2 dress] E1 kit_urns: on a kept path (no free spot within 2 m)
-[28.5s log] [v2 dress] E2 kit_awning_post: would hide the route (no free spot within 2 m)
-[28.5s log] [v2 dress] E4 kit_urns: hits a wall / obstacle (no free spot within 2 m)
-[28.5s log] [v2 dress] I21 kit_bridge_end: outside the landmark (no free spot within 2 m)
-[28.5s log] [v2 dress] I21 rubble_pile: on a kept path (no free spot within 2 m)
-[28.5s log] [v2 dress] I21 column_fallen: outside the landmark (no free spot within 2 m)
-[28.5s log] [v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
-[28.5s log] [v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
-[28.5s log] [v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
-[28.8s log] [solids] 3492 primitives, 1052 solid footprints, 326 obstacles added (222 ms)
-[29.0s log] [warm-up] 583 mesh/material pairs (of 788 geometry nodes), 12 canvas materials
-[54.1s warning] [.WebGL-0x1f409660400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[57.2s warning] [.WebGL-0x1f409660400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[61.4s warning] [.WebGL-0x1f409660400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[64.5s warning] [.WebGL-0x1f409660400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+[0.6s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+[0.9s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+[1.2s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
+[4.1s log] [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[4.3s log] [props] 2 placed
+[4.5s log] [v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[4.5s log] [v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[4.5s log] [v2 dress] I3 rubble_pile: on a kept path (no free spot within 2 m)
+[4.7s log] [v2 dress] I5 kit_cot: outside the landmark (no free spot within 2 m)
+[4.7s log] [v2 dress] I5 kit_urns: outside the landmark (no free spot within 2 m)
+[5.4s log] [v2 dress] A kit_scaffold: on a kept path (no free spot within 2 m)
+[5.4s log] [v2 dress] A kit_ladder: on a kept path (no free spot within 2 m)
+[5.4s log] [v2 dress] A plinth: on a kept path (no free spot within 2 m)
+[5.5s log] [v2 dress] W1 column_doric: not on solid floor (no free spot within 2 m)
+[5.5s log] [v2 dress] W1 mirror_frame: not on solid floor (no free spot within 2 m)
+[5.5s log] [v2 dress] W1 statue_veiled_praying: not on solid floor (no free spot within 2 m)
+[5.5s log] [v2 dress] W1 rubble_pile: on a kept path (no free spot within 2 m)
+[5.6s log] [v2 dress] IBW archway_ruined: would hide the route (no free spot within 2 m)
+[5.6s log] [v2 dress] IBW mirror_frame: on a kept path (no free spot within 2 m)
+[5.6s log] [v2 dress] IBW kit_dead_plant: on a kept path (no free spot within 2 m)
+[5.7s log] [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[5.7s log] [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[5.7s log] [v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
+[5.7s log] [v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
+[5.7s log] [v2 dress] N1 column_doric: not on solid floor (no free spot within 2 m)
+[5.7s log] [v2 dress] N1 column_stump: not on solid floor (no free spot within 2 m)
+[5.7s log] [v2 dress] N1 column_doric: tall, would stand in front (no free spot within 2 m)
+[5.7s log] [v2 dress] N1 column_doric: on a kept path (no free spot within 2 m)
+[5.9s log] [v2 dress] N2 column_fallen: outside the landmark (no free spot within 2 m)
+[5.9s log] [v2 dress] N6 kit_dead_plant: hits a wall / obstacle (no free spot within 2 m)
+[5.9s log] [v2 dress] N6 statue_veiled_bust: not on solid floor (no free spot within 2 m)
+[6.0s log] [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[6.0s log] [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[6.0s log] [v2 dress] E1 kit_urns: on a kept path (no free spot within 2 m)
+[6.3s log] [v2 dress] E2 kit_awning_post: would hide the route (no free spot within 2 m)
+[6.3s log] [v2 dress] E4 kit_urns: hits a wall / obstacle (no free spot within 2 m)
+[6.3s log] [v2 dress] I21 kit_bridge_end: outside the landmark (no free spot within 2 m)
+[6.3s log] [v2 dress] I21 rubble_pile: on a kept path (no free spot within 2 m)
+[6.3s log] [v2 dress] I21 column_fallen: outside the landmark (no free spot within 2 m)
+[6.3s log] [v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
+[6.4s log] [v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
+[6.4s log] [v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
+[6.6s log] [solids] 3492 primitives, 1052 solid footprints, 326 obstacles added (179 ms)
+[6.7s log] [warm-up] 581 mesh/material pairs (of 784 geometry nodes), 12 canvas materials
+[28.2s warning] [.WebGL-0x220402780400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[30.4s warning] [.WebGL-0x220402780400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[33.4s warning] [.WebGL-0x220402780400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[36.0s warning] [.WebGL-0x220402780400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)

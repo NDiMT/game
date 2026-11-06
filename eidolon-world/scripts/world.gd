@@ -323,6 +323,7 @@ func set_tier(t: String, step := 0) -> void:
 	OmenFx.high = not low
 	BeaconFire.high = not low
 	Dress.apply_tier(get_tree(), not low)
+	FogBank.high = not low
 	for w in get_tree().get_nodes_in_group("q_warden"): (w as WardenRig).set_shadow(not low)
 
 func set_quality(high: bool) -> void:

@@ -2,7 +2,7 @@ class_name V2Proposed
 ## (Agent A, dev) the recipes proposed for the v2 spaces W has not switched on yet (see HANDOFF): built the way
 ## Map2.dress builds the others, for the in-place shots and for W's overlap / occlusion tests run with them.
 const PROPOSE := [["I5", "crypt"], ["W1", "stair_breath"], ["IBW", "hidden_way"], ["WB", "colossus"], ["N1", "colonnade"],
-	["N6", "tree_shards"], ["E3", "mirror_walk"], ["E4", "spring"], ["P", "pool_halves"]]
+	["N6", "tree_shards"], ["E3", "mirror_walk"], ["E4", "spring"], ["P", "pool_halves"]]  # (P: proposed again, refit to the rims)
 static func build(lv: Level) -> Array:
 	var keep := Map2.route_keep()
 	for k in Map2.KEEP_EXTRA: keep.append(Map2.wr(k[0], k[1], k[2], k[3]))

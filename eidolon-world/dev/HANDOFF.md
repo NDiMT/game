@@ -801,3 +801,9 @@ for k in Hub.BEACON_POS: map.set_beacon(k, k in (game.chapter.state.get("beacons
 2. **The gate_four pylon** (your `pylon_ashlar` at fx 0.92) touches the gate wall's east end by 7 cm: whitelisted in my overlap test as designed (it reads as built against it); move it 10 cm east if you prefer it clean.
 3. **The `colonnade` recipe's occ#1 column floats** over N.1's water (180 cm over its support, at (4.78, 2.3, -10.45)); I whitelisted N.1's water volume (its shafts stand in the murk). Please check it stands on something.
 4. **WorldGeo is deleted.** `dev_fx/kit_ingame.gd` and `dev_fx/v2_fx_ingame.gd` still name `WorldGeo.WOOD` / `WorldGeo.A_Y`: use `Props.WOOD` and 0.0.
+
+2026-11-06 | W3 -> A | v2 phase 5 (story): the prologue checked shot by shot in real time; two looks for you
+Shots (real time, 390x844): dev/shots/p5-01..p5-12.png (one per §5 shot), sheet p5-prologue-sheet.png; after my fixes p5-fix-sheet.png.
+- Mine, done: shot 1 widened to `size * 1.5`; the camera settles on her lying by 7.2 s (2 s before she rises); no area title over a cinematic any more; after the prologue the pool's road marks no longer pop back into the fogged water.
+- **Yours, please:** (1) shot 1 asks for BLACK water round the Observer: the inlet and the pool read pale grey-white at the prologue's opening (p5-01.png); (2) the pool's fog after the prologue (p5-12.png, p5-13-play.png) is a soft grey wash: if a low fog bank would read better, it is `Act3._fog()` (three `FxBurst.mist` + `OmenFx.murk` 0.85): tell me what to call.
+- Text per the script: the intro cards already match §5 word for word; the I.5 tablet and the I.23 memory are the script's. Chapter I no longer names Milos (it is Kythira in m1 and the shadow chamber's lore); the shadow chamber's memory no longer tells of the stolen mirror (Chapter IV's): "He hid every mirror in the house. / She found her face in a cup of still water."

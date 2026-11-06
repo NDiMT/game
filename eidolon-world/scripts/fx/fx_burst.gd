@@ -123,3 +123,12 @@ static func shards(parent: Node, pos: Vector3, normal := Vector3.BACK) -> FxBurs
 		"size0": 0.07, "size1": 0.03, "stretch": 0.04, "col0": Color(0.96, 0.98, 1.0, 1.0), "col1": Color(0.7, 0.78, 0.86, 0.0), "delay": 0.15, "soft": 0.0, "reach": 2.0})
 	_make(parent, pos, GLINT, 4, {"life": 0.9, "size0": 0.22, "size1": 0.12, "col0": Color(0.92, 0.95, 1.0, 1.0), "col1": Color(1.0, 1.0, 1.0, 0.0), "delay": 0.4, "soft": 0.0, "reach": 0.6})
 	return b
+
+## v2.0 (I.21) stone giving way: chunks of marble and grit falling (tumbling grey-cream bits, a few big ones), and a
+## dust plume that falls with them. `strength` 1 = a span lurching; 0.6 a piece of parapet breaking off.
+static func crumble(parent: Node, pos: Vector3, strength := 1.0) -> FxBurst:
+	var b := _make(parent, pos, SPARK, int(26 * strength), {"life": 1.3, "speed": 1.4, "spread": 0.8, "dir": Vector3(0, -0.3, 0), "gravity": 9.8, "drag": 0.2,
+		"size0": 0.11, "size1": 0.08, "stretch": 0.0, "col0": Color(0.78, 0.75, 0.70, 1.0), "col1": Color(0.55, 0.53, 0.50, 0.9), "delay": 0.3, "soft": 0.0, "reach": 6.0})
+	_make(parent, pos + Vector3(0, -0.2, 0), DUST, int(18 * strength), {"life": 2.2, "speed": 0.7, "spread": 1.0, "dir": Vector3(0, -1, 0), "gravity": 0.6, "drag": 0.9,
+		"size0": 0.35 * strength, "size1": 0.9 * strength, "col0": Color(0.62, 0.60, 0.57, 0.75), "col1": Color(0.70, 0.68, 0.64, 0.0), "delay": 0.4, "soft": 0.0, "reach": 5.0})
+	return b

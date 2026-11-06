@@ -157,10 +157,11 @@ const RECIPES := {
 		["mist", 0.5, 0.5, 0.0, 0.0, {"skip": true}]],
 	# ---------------------------------------------------------------- ACT 3 (the convergence, dusk: "act3")
 	"pool_halves": [
-		# (P, 8.95 x 3.7 m: the north strip beyond the halves' road; the south strip low only)
-		["statue_veiled_kneeling", 0.1, 0.12, 180.0, 0.8], ["statue_veiled_kneeling", 0.9, 0.12, 180.0, 0.8],
-		["column_stump", 0.5, 0.1, 0.0, 0.7], ["pediment_fragment", 0.3, 0.12, 0.0, 0.5, {"small": true}],
-		["rubble_pile", 0.7, 0.92, 0.0, 0.3, {"small": true}]],
+		# (phase 4, P x -12.75..-4, z 15..22 with W3's rims: the rims' middle 1.2 m is where you turn stones 3 and 4, kept
+		# clear; only the north rim's back strip (0.4 m) takes low pieces, nothing tall anywhere: the fog is its identity)
+		["keep", 0.0, 0.057, 1.0, 0.229], ["keep", 0.0, 0.821, 1.0, 1.0], ["keep", 0.0, 0.229, 1.0, 0.821],
+		["rubble_pile", 0.47, 0.025, 0.0, 0.22, {"small": true}], ["column_stump", 0.62, 0.03, 0.0, 0.5],
+		["kit_urns", 0.8, 0.03, 30.0, 0.5, {"small": true}], ["kit_dead_plant", 0.95, 0.03, 0.0, 0.6, {"small": true}]],
 	"bridge": [
 		["kit_bridge_end", 0.5, 0.05, 0.0, 1.0], ["rubble_pile", 0.9, 0.3, 0.0, 0.4, {"small": true}],
 		["column_fallen", 0.15, 0.82, 60.0, 0.5, {"small": true}], ["column_stump", 0.1, 0.12, 0.0, 0.8]],
@@ -184,7 +185,7 @@ static func build(lv: Level, parent: Node, id: String, rect: Rect2, floor_y: flo
 	d.level = lv
 	d._rect = rect
 	d._y = floor_y
-	d._keep = keep
+	d._keep = keep.duplicate()          # (a recipe may add its own kept rects)
 	parent.add_child(d)
 	if not RECIPES.has(id):
 		push_warning("Dress: no recipe " + id)
@@ -217,6 +218,10 @@ func _place(e: Array) -> void:
 	elif what in ["flame", "veils", "mist"]: at.y = _floor_at(Vector2(at.x, at.z))
 	at.y += float(o.get("y", 0.0))
 	match what:
+		"keep":                                 # a kept rect of the landmark (u0, v0, u1, v1): nothing is placed in it
+			var a0 := _world(float(e[1]), float(e[2])); var a1 := _world(float(e[3]), float(e[4]))
+			_keep.append(Rect2(Vector2(a0.x, a0.z), Vector2(a1.x - a0.x, a1.z - a0.z)))
+			return
 		"row":                                  # a row of his faces from (u, v) to (e[3], e[4]), on plinths or on the floor
 			var n: int = o.get("n", 3)
 			for k in n:
@@ -379,16 +384,21 @@ func _fits(what: String, xf: Transform3D, bb: AABB) -> String:
 	var c2 := fr.get_center()
 	var h := _floor_at(c2)
 	var ins := fr.grow(-0.06)
-	for q in [ins.position, Vector2(ins.end.x, ins.position.y), ins.end, Vector2(ins.position.x, ins.end.y)]:
+	var ins2 := fr.grow(-minf(0.18, minf(fr.size.x, fr.size.y) * 0.3))      # (its solid body, not its overhangs)
+	for q in [ins2.position, Vector2(ins2.end.x, ins2.position.y), ins2.end, Vector2(ins2.position.x, ins2.end.y)]:
+		if level.region_at(q) == null: return "not on solid floor"         # (v2.0: it stands on a floor all round)
+	for q in [ins.position, Vector2(ins.end.x, ins.position.y), ins.end, Vector2(ins.position.x, ins.end.y), c2]:
 		var g = level.region_at(q)
-		if g and absf((g as Level.Region).height(q) - h) > 0.03: return "on a slope / stairs"
+		if g == null: continue
+		if absf((g as Level.Region).height(q) - h) > 0.03: return "on a slope / stairs"
+		if not is_nan(Map2.water_y_at(q)) and Map2.water_y_at(q) >= h - 0.3: return "in the water"   # (stones in water are not a floor for a column)
 	var lifted := wb
 	lifted.position.y += h - _y
 	for ob: AABB in _shared.get(level.get_instance_id(), []):
 		var ix := ob.intersection(lifted)
 		if ix.size.x > 0.02 and ix.size.y > 0.02 and ix.size.z > 0.02: return "would touch another piece"
 	for c in _footprint(xf, bb):
-		if level.blocked(Vector2(c.x, c.y), c.z * 0.95): return "hits a wall / obstacle"
+		if level.blocked(Vector2(c.x, c.y), c.z * 1.08): return "hits a wall / obstacle"     # (a hand's breadth clear of walls)
 	# it must not hide the way: no point of a kept path (the route) behind it from the camera
 	if lifted.size.y > 0.6 and _hides_route(lifted): return "would hide the route"
 	return ""
@@ -660,4 +670,22 @@ static func observer(parent: Node, at: Vector3, yaw := 0.0, height := 11.0, wate
 	mi.transform = Transform3D(b, o)
 	mi.layers = PlanarMirror.LAYER_MAIN_FX
 	parent.add_child(mi)
+	return mi
+
+## The final image of the First Shrine's cinematic (the "beyond"): far out over the sea, a colossal VEILED figure rising out
+## of the cloud, its veil's folds caught by the light, a crimson rim along its silhouette that carries through the fog.
+## The same veiled Tripo figure as the Observer, standing (sunk only to the knees in the cloud). `at` = its foot on the
+## cloud line, `yaw` (deg) turns its face (0: toward +Z), `height` its full height (m).
+##   Dress.beyond_colossus(level.beyond, at, 24.0, -150.0)      (in Level._beyond, in place of the primitive statue)
+static func beyond_colossus(parent: Node, at: Vector3, height := 24.0, yaw := 0.0) -> MeshInstance3D:
+	var mi := observer(parent, at, yaw, height, at.y, 0.18)
+	if mi == null: return null
+	mi.name = "BeyondColossus"
+	var m := mi.material_override as ShaderMaterial
+	m.set_shader_parameter("cloth", Color(0.74, 0.75, 0.78))         # (paler: far off, in the light)
+	m.set_shader_parameter("wet", Color(0.5, 0.52, 0.56))
+	var r := m.next_pass as ShaderMaterial
+	r.set_shader_parameter("k", 1.0)
+	r.set_shader_parameter("push", 0.02 / maxf(mi.transform.basis.get_scale().x, 0.001))
+	mi.extra_cull_margin = 4.0
 	return mi

@@ -728,7 +728,7 @@ func _plan() -> void:
 	step_until("only her shadows: the chamber answers", func() -> bool: return C().state["gallery"], 4.0)
 	step_do(func() -> void: ok("(v2.0) the hidden way is not there yet in your world", game.level.named["gallery_secret"].enabled))
 	step_do(func() -> void:
-		ok("the lore line, in the third person", game.ui.text.text.begins_with("On Milos, in the evening,") and game.ui.text.text.contains("he moved the lamps"), game.ui.text.text)
+		ok("the lore line, in the third person", game.ui.text.text.begins_with("On Kythira, in the evening,") and game.ui.text.text.contains("he moved the lamps"), game.ui.text.text)
 		ok("the solve jingle", game.sfx.played.get("cue:solve_jingle", 0) >= 3))
 	step_wait(1.8)
 	step_do(func() -> void:

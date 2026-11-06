@@ -602,8 +602,8 @@ func _update_area() -> void:
 	if mode == "play" and area != "": _save_pending = true        # a checkpoint in every space (v0.8.5: written at the next still moment)
 	_area_defer = ""
 	if not visited.has(key):
-		if wonders.here != "" or wonders.key_at(player.position) != "":
-			_area_defer = key                         # (reached by way of a wonder: the wonder is named first)
+		if wonders.here != "" or wonders.key_at(player.position) != "" or mode == "cine":
+			_area_defer = key                         # (reached by way of a wonder: the wonder is named first; v2: never over a cinematic)
 			return
 		visited[key] = true
 		ui.show_area(Names.area(key))

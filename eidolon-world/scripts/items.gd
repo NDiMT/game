@@ -38,7 +38,7 @@ const TABLETS := [
 
 ## memories (Ione's version): [id, where, need ("lens": seen through the Shard), text]
 const SECRETS := [
-	["m1", Map2.O + Vector3(-3.3, 0.0, 21.3), "lens", "Milos, the harbour. She bought him a chisel with her first wages and would not say why."],
+	["m1", Map2.O + Vector3(-3.3, 0.0, 21.3), "lens", "Kythira, the harbour. She bought him a chisel with her first wages and would not say why."],
 	["m2", Map2.GN + Vector3(15.6, 1.0, -7.3), "lens", "The garden in flower. She tucked a petal behind the ear of every statue."],
 	["m3", Map2.GG + Vector3(9.5, 1.0, -16.3), "lens", "From above, the chamber floor: her shadow and his, the same length at last."],
 	["m4", Map2.GE + Vector3(33.4, 4.0, -32.0), "lens", "The spring sang back the note. She used to hum it while he worked."],

@@ -58,7 +58,7 @@ func _stones(show: bool) -> void:
 			var n: Node3D = ch.pool_pieces[c]["node"]
 			if n.visible: _hidden.append(n)
 		for n in ch.get_children():
-			if n is MeshInstance3D and (n as MeshInstance3D).material_override == ch.pool_mat: _hidden.append(n)
+			if n is MeshInstance3D and (n as MeshInstance3D).material_override == ch.pool_mat and (n as MeshInstance3D).visible: _hidden.append(n)          # (v2: only what showed: in the fog the road's marks are put away)
 		for n in _hidden: (n as Node3D).visible = false
 	else:
 		for n in _hidden: if is_instance_valid(n): (n as Node3D).visible = true
@@ -142,10 +142,10 @@ func _build() -> void:
 		game.player.locked = true
 		refl.lag = 0.5
 		game.ui.fade_to(0.0, 2.5))
-	cam(0.0, 0.01, HEAD + Vector3(-3.0, 3.5, 4.0), yaw, pitch, size * 1.25)
+	cam(0.0, 0.01, HEAD + Vector3(-3.0, 3.5, 4.0), yaw, pitch, size * 1.5)          # (owner: wide, black water all round the veiled head)
 	at(1.0, func() -> void: game.sfx.play("bell", -26.0, 0.6), false)
 	# 2: the marble threshold, the figure lying on it
-	cam(4.0, 5.0, SHORE + Vector3(0.3, 0.6, 0.2), yaw, pitch, size * 0.7)
+	cam(4.0, 3.2, SHORE + Vector3(0.3, 0.6, 0.2), yaw, pitch, size * 0.7)          # (it settles on her by 7.2 s: two seconds of her lying there)
 	at(8.0, func() -> void: game.sfx.play("step_wet", -22.0, 0.6), false)
 	# 3: she rises, slowly, unnaturally (stone creaks)
 	at(9.0, func() -> void: game.sfx.play("grind", -18.0, 0.55), false)

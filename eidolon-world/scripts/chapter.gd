@@ -41,7 +41,7 @@ const TURN_X := [Map2.GN.x + 12.25, Map2.GN.x + 13.8, Map2.GN.x + 15.35]        
                                             # now all three runes show whole in it: garden_mirror_view, tests/framing_test)
 const TURN_Z := Map2.GN.z - 13.5
 # (QA P1-10: memories speak of him in the third person; the inscriptions are his own voice)
-const MEMORY_1 := "He took the goddess's mirror from her shrine at Milos.\nShe did not stop him. She only watched."
+const MEMORY_1 := "He hid every mirror in the house.\nShe found her face in a cup of still water."          # (v2, EIDOLON_SCRIPT §1: the mirror of Milos is Chapter IV's to tell)
 
 var game: Game
 var level: Level
@@ -1183,7 +1183,7 @@ const SH_BRAZ := [Map2.GG + Vector3(9.21, 1.0, -10.64), Map2.GG + Vector3(8.13, 
 ## from the fixed view; no brazier stands where she would hide it)
 const SH_SOLUTION := [0, 1, 4]
 const SH_PRELIT := 3                    # burning when you arrive (its shadow falls east, onto no eyes)
-const SH_LORE := "On Milos, in the evening,\nhe moved the lamps until her shadow lay\nwhere he wanted her to stand."
+const SH_LORE := "On Kythira, in the evening,\nhe moved the lamps until her shadow lay\nwhere he wanted her to stand."
 var sh_flames: Array[Flame] = []
 var sh_shadows: Array[ShaderMaterial] = []
 var sh_outlines: Array[ShaderMaterial] = []      # (v0.9.2: none: the eyes replace them)

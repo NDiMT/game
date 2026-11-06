@@ -120,7 +120,7 @@ func _fire(what: String) -> void:
 		"beacon":
 			var xs := [2.0, 5.0, 8.0]
 			for k in 3:
-				var base := Vector3(xs[k], WorldGeo.A_Y, 13.4 if k == 1 else 14.2)
+				var base := Vector3(xs[k], 0.0, 13.4 if k == 1 else 14.2)
 				var col := MeshInstance3D.new()
 				var cy := CylinderMesh.new(); cy.top_radius = 0.38; cy.bottom_radius = 0.45; cy.height = 1.3
 				col.mesh = cy

@@ -10,15 +10,24 @@ Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
 [v2 dress] A kit_scaffold: on a kept path (no free spot within 2 m)
 [v2 dress] A kit_ladder: on a kept path (no free spot within 2 m)
 [v2 dress] A plinth: on a kept path (no free spot within 2 m)
+[v2 dress] W1 column_doric: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 mirror_frame: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 statue_veiled_praying: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 rubble_pile: on a kept path (no free spot within 2 m)
 [v2 dress] IBW archway_ruined: would hide the route (no free spot within 2 m)
 [v2 dress] IBW mirror_frame: on a kept path (no free spot within 2 m)
+[v2 dress] IBW kit_dead_plant: on a kept path (no free spot within 2 m)
 [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
 [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
 [v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
-[v2 dress] N1 column_doric: would hide the route (no free spot within 2 m)
+[v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
+[v2 dress] N1 column_doric: not on solid floor (no free spot within 2 m)
+[v2 dress] N1 column_stump: not on solid floor (no free spot within 2 m)
 [v2 dress] N1 column_doric: tall, would stand in front (no free spot within 2 m)
+[v2 dress] N1 column_doric: on a kept path (no free spot within 2 m)
 [v2 dress] N2 column_fallen: outside the landmark (no free spot within 2 m)
-[v2 dress] N6 statue_veiled_bust: would touch another piece (no free spot within 2 m)
+[v2 dress] N6 kit_dead_plant: hits a wall / obstacle (no free spot within 2 m)
+[v2 dress] N6 statue_veiled_bust: not on solid floor (no free spot within 2 m)
 [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
 [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
 [v2 dress] E1 kit_urns: on a kept path (no free spot within 2 m)
@@ -30,13 +39,13 @@ Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
 [v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
 [v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
 [v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
-[solids] 3492 primitives, 1052 solid footprints, 326 obstacles added (153 ms)
-[warm-up] 583 mesh/material pairs (of 788 geometry nodes), 12 canvas materials
-  .. sim 0s  real 28s  step 0/1111
+[solids] 3492 primitives, 1052 solid footprints, 326 obstacles added (126 ms)
+[warm-up] 581 mesh/material pairs (of 784 geometry nodes), 12 canvas materials
+  .. sim 0s  real 3s  step 0/1111
 PASS  (v2.0) the intro cards play first (mirrored, then turned true) 
-  .. sim 20s  real 32s  step 6/1111
-  .. sim 40s  real 34s  step 6/1111
-  .. sim 60s  real 36s  step 6/1111
+  .. sim 20s  real 5s  step 6/1111
+  .. sim 40s  real 7s  step 6/1111
+  .. sim 60s  real 9s  step 6/1111
 PASS  (v2.0 shot 4) her reflection rises half a second late 
 PASS  (v2.0 shot 7) the Glass Warden rises in the water behind her 
 PASS  (v2.0 shot 12) the shell comb, in the satchel (a story item) 
@@ -46,7 +55,7 @@ PASS  chapter title on the title screen
 PASS  (v2.0) Act 1: the hint comes at 30 s 
 PASS  (v2 I.1) the court's temple door is shut 
 PASS  (v2) she woke in the new world, on the Pool of Halves' east shore 
-  .. sim 80s  real 38s  step 14/1111
+  .. sim 80s  real 11s  step 14/1111
 PASS  (v2.0 I.1) the plate is only in her world: the camera never draws it 
 PASS  (v2.0 I.1) the door is open 
 PASS  (v2.0 I.2) the bell rings; far bells answer pt_bell
@@ -54,7 +63,7 @@ PASS  (v2.0 I.3) the low gate across the road is down
 PASS  (v2.0 I.3) breathe on the first glass breathe_first
 PASS  (v2.0 I.3) one line only: no rune before it 
 PASS  (v2.0 I.3) written back, the line is right 
-  .. sim 100s  real 41s  step 40/1111
+  .. sim 100s  real 14s  step 40/1111
 PASS  (v2 I.4) the crossing is gone: no way over 
 PASS  (v2.0 I.4) turn the slab (once) a1_turn
 PASS  (v2.0 I.4) one turn is not her half 
@@ -67,7 +76,7 @@ PASS  (v2.0 I.5) Theron's first tablet: 'She is not gone. Only behind the veil.'
 PASS  (v2) the Atrium of a Thousand Faces (8.557151, 0.0, 3.000555) atrium
 PASS  (v2) no Beacon in the Atrium: the three are the wings' 
 PASS  (v2.0) the wings: the hint at 90 s now 
-  .. sim 120s  real 45s  step 75/1111
+  .. sim 120s  real 18s  step 75/1111
 PASS  (v2.0) the satchel: its slot shows; it holds only the chapter's own things (the lamp, the shard, the comb) [["lamp", 1], ["comb", 1], ["tablet", 1]]
 PASS  (v1.0 M3b) the satchel open: slots with icons, the chosen one's name and line; play paused under it Her Oil Lamp
 PASS  the whole rune is carved large beside the stair, invisible until you pass it (v0.9.4) (-11.3, 0.0, 1.6)
@@ -84,7 +93,7 @@ PASS  nothing to answer while she writes
 PASS  x closes the pane 
 PASS  the closing tap does not turn the camera 
 PASS  breathe again breathe_stair
-  .. sim 140s  real 48s  step 115/1111
+  .. sim 140s  real 21s  step 115/1111
 PASS  her writing is mirrored for you (her half on the left, the answer on the right) 
 PASS  recogniser: her half copied is wrong 
 PASS  after one wrong try: a faint dotted ghost of the missing stroke 1
@@ -97,7 +106,7 @@ PASS  breath cue played
 PASS  her answer rings her song (the motif A-D-E-F-E) 
 PASS  her 'follow' rune is a letter of the script, one calligraphic stroke 
 PASS  recogniser unit: resample keeps 32 points 
-  .. sim 160s  real 52s  step 128/1111
+  .. sim 160s  real 24s  step 128/1111
 PASS  reached the Hall of Glass by the corridor (-2.06584, 1.0, -13.49999) hall_glass
 PASS  area name shown on entering the hall HALL OF GLASS
 PASS  great mirror reflection seen in the glass 
@@ -117,7 +126,7 @@ PASS  no target outlines or markers on the floor
 PASS  standing square to the drum: an arrow shows which way it will slide 
 PASS  push the drum once hall_push
 PASS  it slides (never rolls or turns) 
-  .. sim 180s  real 55s  step 161/1111
+  .. sim 180s  real 27s  step 161/1111
 PASS  one cell per push, snapped to the grid (-23.0, 1.0, -17.0)
 PASS  the reset altar hall_reset
 PASS  reset: everything goes back where it was found (nothing is locked before the whole set) { "drum": [-24, -17], "brazier": [-20, -17], "bust": 2, "locks": [false, false, false] }
@@ -145,7 +154,7 @@ PASS  set it down where it stood hall_place
 PASS  solver: each goal cell is free, and the drum starts away from it 
 PASS  only the whole set answers: all three locked at once, one chime 
 PASS  (v2, the script) the glass cracks at a corner and the Shard comes out through it 
-  .. sim 200s  real 59s  step 231/1111
+  .. sim 200s  real 31s  step 231/1111
 PASS  take the shard take_shard
 PASS  the shard is in the inventory 
 PASS  (v1.0 M3c) your back to the great glass: the Warden stands behind you, in the reflection only true pl=(2.0, 1.0, -17.8) yaw=3.14 vis=true mode=play refl=["floor:false:false", "mirror:true:true", "mirror:false:false", "mirror:false:false", "eidolon:false:false", "mirror:true:false", "mirror:true:false", "mirror:true:false", "mirror:true:false", "pool:false:false", "pool:false:false", "pool:true:false", "pool:true:false", "pool:true:false", "mirror:true:false", "mirror:true:false"]
@@ -179,7 +188,7 @@ PASS  light brazier 2 brazier2
 PASS  brazier 2: real fire and light; her shadow falls away from it 
 PASS  no answer brazier by brazier 
 PASS  light brazier 4 brazier4
-  .. sim 220s  real 63s  step 292/1111
+  .. sim 220s  real 34s  step 292/1111
 PASS  brazier 4: real fire and light; her shadow falls away from it 
 PASS  no answer brazier by brazier 
 PASS  all five lit: NOT the answer 
@@ -188,7 +197,7 @@ PASS  put out: its fire dies, its shadow goes
 PASS  still shut with the wrong set 
 PASS  put out brazier 3 brazier3
 PASS  (v2.0) the hidden way is not there yet in your world 
-PASS  the lore line, in the third person On Milos, in the evening,
+PASS  the lore line, in the third person On Kythira, in the evening,
 he moved the lamps until her shadow lay
 where he wanted her to stand.
 PASS  the solve jingle 
@@ -198,7 +207,7 @@ PASS  (v2.0 W.6) through the raised Shard, her door: then it is there for you to
 PASS  (v2.0) the West Beacon is cold until you light it 
 PASS  (v2.0) the lamp lights the West Beacon beacon_W
 PASS  (v2.0) the West Beacon burns, on its brazier in the wing (no twin in the Atrium) 
-  .. sim 240s  real 66s  step 333/1111
+  .. sim 240s  real 37s  step 333/1111
 PASS  (v0.9) the Sunken Colossus: named on arrival, the music swells THE SUNKEN COLOSSUS
 PASS  (v0.9) the camera leans toward the head (a pan, never a zoom) 
 PASS  (v2) back on the Inlet Road, the West done (-19.49987, 0.0, -0.06583)
@@ -211,7 +220,7 @@ PASS  hint (110 s): the eyes on the floor pulse
 PASS  (v0.9.1) the great glass shows all three turned ones' north faces whole, from every step []
 PASS  the old rune door panel is gone 
 PASS  the garden door is closed (16.33949, 1.0, -11.77141)
-  .. sim 260s  real 70s  step 386/1111
+  .. sim 260s  real 41s  step 386/1111
 PASS  (v0.9.4) her small glass is clear at rest 
 PASS  breathe on her small glass breathe_garden
 PASS  (v0.9.4) the close-up opens, as on the stair 
@@ -221,7 +230,7 @@ PASS  (v0.9.4) her small glass keeps her writing a while
 PASS  statue 1 in reach turn1
 PASS  statue 2 in reach turn2
 PASS  statue 3 in reach turn3
-  .. sim 280s  real 73s  step 411/1111
+  .. sim 280s  real 44s  step 411/1111
 PASS  each statue turns her rune to the mirror (reversed in the glass = as she wrote it) [0, 1, 0]
 PASS  the door opens in the reflection first refl -1.31 real 0.00
 PASS  the reflection's door is only in the glass 
@@ -238,13 +247,13 @@ PASS  (v1.1d) on the floor: she stands in the glass, on her start p (1, 0) h (1,
 PASS  (v1.1d) on the floor: her glyph shows in the glass 
 PASS  (v1.1d) toward the glass: she comes toward it too p (1, 1) h (1, 1)
 PASS  (QA_V11) a fresh drag 38 deg off toward the last way still steps its own way p (2, 1)
-  .. sim 300s  real 77s  step 455/1111
+  .. sim 300s  real 47s  step 455/1111
 PASS  (v1.1d) a one-frame flick makes exactly one step, its own way p (2, 1) moves 1
 PASS  (v1.1d) off the floor: the glass is only a mirror again 
 PASS  (v1.1d) board 2 'Two Stones': you both at its start p (2, 0) h (2, 0)
 PASS  (v1.1) Our Steps SOLVED: both boards answered (hollow_done) true 2
 PASS  (v1.1d) solved: both glyphs lit, the glass a plain mirror again 
-  .. sim 320s  real 81s  step 534/1111
+  .. sim 320s  real 51s  step 534/1111
 PASS  reached the Court of Light (15.06459, 2.0, -18.38462) court_light
 PASS  beam not lit at start 
 PASS  solver: exactly one setting lights the mural, through her world [[3, 3, 1, 1]]
@@ -264,7 +273,7 @@ PASS  the stands are set as the solver says [3, 3, 1, 1]
 PASS  your veil's shadow falls on the mural 
 PASS  standing anywhere does not complete it 
 PASS  the shadow of your veil fills the missing head (-0.121596, 3.305538, -36.93)
-  .. sim 340s  real 84s  step 593/1111
+  .. sim 340s  real 54s  step 593/1111
 PASS  (v0.9) beyond the mural door: the Tree of Shards, named, the music swells; the camera leans to it (1.610236, 1.487207, -0.048274)
 PASS  (v0.9) the Tree of Shards: hundreds of shards, one multimesh 
 PASS  in the Mist Maze mist_maze
@@ -272,23 +281,23 @@ PASS  (v2 N.7, the script) the lamp shows her red footprints on the maze floor, 
 PASS  the mist hides a wall (12.00001, 2.0, -30.65)
 PASS  bumping into it, it shimmers 
 PASS  out of the maze (its end, before the bars, is still the Maze's) (10.0, 2.0, -40.13438) mist_maze
-  .. sim 360s  real 88s  step 638/1111
+  .. sim 360s  real 58s  step 638/1111
 PASS  (v2.0 N.7) out of the maze: the Garden Beacon waits, cold 
 PASS  (v2.0) the lamp lights the Garden Beacon beacon_N
 PASS  (v2) the Cloister Stair brings you back into the Atrium atrium
 PASS  (v2 E.1) the Balcony's bench pt_bench
 PASS  (v2 E.1) sitting, the gaze turns to the sunken head (-3.965184, 0.0, 0.516093)
-  .. sim 380s  real 91s  step 661/1111
+  .. sim 380s  real 61s  step 661/1111
 PASS  (v2.0 E.2) the stones' melody played by itself when you came up 
 PASS  (v2.0) the panel at the Walk's foot is still sealed 
 PASS  (v2.0) a wrong stone sours the song, nothing opens 
-  .. sim 400s  real 95s  step 694/1111
+  .. sim 400s  real 64s  step 694/1111
 PASS  (v1.0) up on the Mirror Walk (31.33291, 4.0, -22.40001)
 PASS  (v1.0 M3c) past the panel, the Warden's reflection paces the long glass 
 PASS  (v1.0 M3c) seen: back at the Walk's start, no fail screen (31.4, 4.0, -25.4)
-  .. sim 420s  real 98s  step 720/1111
-  .. sim 440s  real 101s  step 723/1111
-  .. sim 460s  real 104s  step 723/1111
+  .. sim 420s  real 68s  step 720/1111
+  .. sim 440s  real 71s  step 723/1111
+  .. sim 460s  real 74s  step 723/1111
 PASS  (v1.0 M3c) in the pillar's shadow he passed you by 
 PASS  (v0.9) on the walkway: the Upward Spring, named, the camera leans up toward the temple (3.189996, 3.079995, -0.314228)
 PASS  (v1.0 M3c) crossed behind his back: not seen again; he leaves the Walk 
@@ -303,7 +312,7 @@ PASS  hang it (pan 4) pan4
 PASS  take weight 1 weight0
 PASS  hang it (pan 3) pan3
 PASS  all three on the right: 14 against 15, still tipped (15, 14)
-  .. sim 480s  real 107s  step 762/1111
+  .. sim 480s  real 78s  step 762/1111
 PASS  on her tile, her weight counts on the RIGHT: 16, tipped the other way (15, 16)
 PASS  hint after a while: the tiles shine 
 PASS  take the 1 back pan3
@@ -314,14 +323,14 @@ PASS  (v2 E.6) the High Stair down is barred until the Eidolon Plate answers
 PASS  eidolon reflection walks beyond the glass 
 PASS  her footprints lead toward the plate 8
 PASS  footprint marker shows where to stand intensity 0.85
-  .. sim 500s  real 111s  step 793/1111
+  .. sim 500s  real 81s  step 793/1111
 PASS  hers alone is not enough: your plate is empty 
 PASS  standing on yours, your reflection is far from hers 
 PASS  push the statue (1) ledge_push
 PASS  push the statue (2) ledge_push
 PASS  push the statue (3) ledge_push
 PASS  the statue holds your plate 
-  .. sim 520s  real 115s  step 817/1111
+  .. sim 520s  real 84s  step 817/1111
 PASS  (v2) the High Stair brings you back to the Ledge (19.75, 2.0, -28.06516) eidolon_ledge
 PASS  (v2.0) three Beacons burn ["W", "N", "E"]
 PASS  (v2 Act 3) the third fire: the Veiled Way's gate is down 
@@ -348,7 +357,7 @@ PASS  turn the second slab from the first (1) pool_turn1
 PASS  turn the second slab from the first (2) pool_turn1
 PASS  turn the second slab from the first (3) pool_turn1
 PASS  turn the third slab from the north rim pool_turn2
-  .. sim 540s  real 119s  step 860/1111
+  .. sim 540s  real 88s  step 860/1111
 PASS  still broken: hers are not stone yet 
 PASS  turn the fourth slab from the south rim (1) pool_turn3
 PASS  turn the fourth slab from the south rim (2) pool_turn3
@@ -363,13 +372,13 @@ PASS  her slabs are solid now
 PASS  ...and the reflection no longer marks any as hers 
 PASS  solving plays the solve jingle (one motif for every solve) 
 PASS  the music bed steps back under the jingle, then returns 
-  .. sim 560s  real 122s  step 888/1111
+  .. sim 560s  real 91s  step 888/1111
 PASS  crossed the pool (-12.06023, 0.0, 20.04958)
 PASS  footsteps on the slabs splash 
 PASS  (v2 I.21) its spans settle under her feet 
 PASS  (v2 I.21) a span lurches down under her, and stays (still walkable) (-27.03489, -0.14, 18.85001)
 PASS  (v2 I.21) pieces of the parapet break away into the sea 
-  .. sim 580s  real 126s  step 920/1111
+  .. sim 580s  real 95s  step 920/1111
 PASS  (v2 I.21) every falling piece fell; the way stays whole behind her 
 PASS  reached the Gate of the Four Veiled gate_four
 PASS  (v2 I.22) three veiled ones on their plinths; the gate is shut 
@@ -383,22 +392,22 @@ PASS  (v2 I.22) the gate has sunk out of sight
 PASS  reached the First Shrine first_shrine
 PASS  shrine is dark 
 PASS  wake the shrine shrine
-  .. sim 600s  real 129s  step 946/1111
+  .. sim 600s  real 98s  step 946/1111
 PASS  cinematic: letterbox 
 PASS  cinematic: the shrine wakes 
 PASS  cinematic: near geometry cut away, the crystal lifted out of the shot 
 PASS  cinematic: her reflection in the shrine pool 
 PASS  (v2) cinematic: the one fixed view (no turning), centred on the pool 36.0 deg
-  .. sim 620s  real 132s  step 950/1111
+  .. sim 620s  real 100s  step 950/1111
 PASS  cinematic: palm to palm 
 PASS  cinematic: Katoptron lights on you both 
 PASS  (v2 I.23) she writes in the water with her finger: ΒΡΕΣ ΜΕ 
 PASS  (v2 I.23) deep in the water a glass eye opens 
-  .. sim 640s  real 134s  step 956/1111
+  .. sim 640s  real 103s  step 956/1111
 PASS  cinematic: her veil lifts: on the porcelain one, her mirror face catches the light 1.00
 PASS  cinematic: she is gone; the pool shows only you 
 PASS  memory fragment shows 
-  .. sim 660s  real 136s  step 962/1111
+  .. sim 660s  real 105s  step 962/1111
 PASS  cinematic: ~4.5 s awakening + the 59 s score 63.9 s
 PASS  music cues: shrine_awaken, then cinematic_hand 
 PASS  the room beds come back after the scene 
@@ -412,18 +421,18 @@ PASS  fog receded
 PASS  score cues played 
 PASS  (v1.0 juice) the chapter's physical moments all played (dust, grit, sparks, rings, wet stone, glints...) ["glint", "dust", "grit", "ring", "sparks", "dust_fall", "bubbles", "sheet", "wet"]
 PASS  (v1.0 juice) no burst is left alive for long 0
-  .. sim 680s  real 140s  step 973/1111
-  .. sim 700s  real 144s  step 981/1111
-  .. sim 720s  real 147s  step 989/1111
-  .. sim 740s  real 151s  step 997/1111
-  .. sim 760s  real 155s  step 1005/1111
-  .. sim 780s  real 159s  step 1013/1111
-  .. sim 800s  real 163s  step 1021/1111
-  .. sim 820s  real 167s  step 1029/1111
-  .. sim 840s  real 170s  step 1037/1111
-  .. sim 860s  real 174s  step 1045/1111
-  .. sim 880s  real 178s  step 1053/1111
-  .. sim 900s  real 182s  step 1061/1111
+  .. sim 680s  real 109s  step 973/1111
+  .. sim 700s  real 112s  step 981/1111
+  .. sim 720s  real 116s  step 989/1111
+  .. sim 740s  real 119s  step 997/1111
+  .. sim 760s  real 123s  step 1005/1111
+  .. sim 780s  real 126s  step 1013/1111
+  .. sim 800s  real 130s  step 1021/1111
+  .. sim 820s  real 133s  step 1029/1111
+  .. sim 840s  real 137s  step 1037/1111
+  .. sim 860s  real 141s  step 1045/1111
+  .. sim 880s  real 145s  step 1053/1111
+  .. sim 900s  real 148s  step 1061/1111
 PASS  random walk: always on walkable ground 43126 samples, 0 violations, max step dy 0.280
 PASS  random walk: never inside a solid prop's footprint 43126 samples, 0 hits
 PASS  interaction highlight: always on the target the button resolves to 43126 frames, 5154 with a target, 0 mismatches
@@ -432,8 +441,8 @@ PASS  props: every placement loaded, on the marble 2 placed
 PASS  props: each one is solid (its centre blocked) 
 PASS  props: every key place still reachable on foot from the gate []
 PASS  collision audit: every primitive classified 3492 primitives, 1052 solid footprints (865 static), 326 obstacles added
-  collision audit: 3492 primitives, 1052 solid footprints, 326 obstacles added; 1162 targets walked into from 4 sides (1692 approaches), 0 overlaps
-PASS  collision: walking into every solid prop and obstacle from 4 sides never overlaps it 1162 targets, 1692 approaches, 0 overlaps
+  collision audit: 3492 primitives, 1052 solid footprints, 326 obstacles added; 1151 targets walked into from 4 sides (1681 approaches), 0 overlaps
+PASS  collision: walking into every solid prop and obstacle from 4 sides never overlaps it 1151 targets, 1681 approaches, 0 overlaps
 PASS  the first flight: its open side's balustrade stops you (-34.95, 0.454862, -7.656955)
 PASS  the first flight rises the way its steps are drawn (no walking through raised steps) 0.04 -> 0.47
 PASS  walking at the hall's bust and the mirror: never inside them  (-19.30207, 1.0, -23.1487)
@@ -449,15 +458,24 @@ PASS  checkpoint saved (puzzles)
 [v2 dress] A kit_scaffold: on a kept path (no free spot within 2 m)
 [v2 dress] A kit_ladder: on a kept path (no free spot within 2 m)
 [v2 dress] A plinth: on a kept path (no free spot within 2 m)
+[v2 dress] W1 column_doric: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 mirror_frame: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 statue_veiled_praying: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 rubble_pile: on a kept path (no free spot within 2 m)
 [v2 dress] IBW archway_ruined: would hide the route (no free spot within 2 m)
 [v2 dress] IBW mirror_frame: on a kept path (no free spot within 2 m)
+[v2 dress] IBW kit_dead_plant: on a kept path (no free spot within 2 m)
 [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
 [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
 [v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
-[v2 dress] N1 column_doric: would hide the route (no free spot within 2 m)
+[v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
+[v2 dress] N1 column_doric: not on solid floor (no free spot within 2 m)
+[v2 dress] N1 column_stump: not on solid floor (no free spot within 2 m)
 [v2 dress] N1 column_doric: tall, would stand in front (no free spot within 2 m)
+[v2 dress] N1 column_doric: on a kept path (no free spot within 2 m)
 [v2 dress] N2 column_fallen: outside the landmark (no free spot within 2 m)
-[v2 dress] N6 statue_veiled_bust: would touch another piece (no free spot within 2 m)
+[v2 dress] N6 kit_dead_plant: hits a wall / obstacle (no free spot within 2 m)
+[v2 dress] N6 statue_veiled_bust: not on solid floor (no free spot within 2 m)
 [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
 [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
 [v2 dress] E1 kit_urns: on a kept path (no free spot within 2 m)
@@ -469,8 +487,8 @@ PASS  checkpoint saved (puzzles)
 [v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
 [v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
 [v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
-[solids] 3492 primitives, 1052 solid footprints, 326 obstacles added (157 ms)
-[warm-up] 583 mesh/material pairs (of 788 geometry nodes), 12 canvas materials
+[solids] 3492 primitives, 1052 solid footprints, 326 obstacles added (130 ms)
+[warm-up] 581 mesh/material pairs (of 784 geometry nodes), 12 canvas materials
 PASS  restored chapter 
 PASS  restored regions 
 PASS  restored inventory 
@@ -487,15 +505,24 @@ PASS  restored position (-19.30207, 1.0, -23.1487)
 [v2 dress] A kit_scaffold: on a kept path (no free spot within 2 m)
 [v2 dress] A kit_ladder: on a kept path (no free spot within 2 m)
 [v2 dress] A plinth: on a kept path (no free spot within 2 m)
+[v2 dress] W1 column_doric: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 mirror_frame: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 statue_veiled_praying: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 rubble_pile: on a kept path (no free spot within 2 m)
 [v2 dress] IBW archway_ruined: would hide the route (no free spot within 2 m)
 [v2 dress] IBW mirror_frame: on a kept path (no free spot within 2 m)
+[v2 dress] IBW kit_dead_plant: on a kept path (no free spot within 2 m)
 [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
 [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
 [v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
-[v2 dress] N1 column_doric: would hide the route (no free spot within 2 m)
+[v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
+[v2 dress] N1 column_doric: not on solid floor (no free spot within 2 m)
+[v2 dress] N1 column_stump: not on solid floor (no free spot within 2 m)
 [v2 dress] N1 column_doric: tall, would stand in front (no free spot within 2 m)
+[v2 dress] N1 column_doric: on a kept path (no free spot within 2 m)
 [v2 dress] N2 column_fallen: outside the landmark (no free spot within 2 m)
-[v2 dress] N6 statue_veiled_bust: would touch another piece (no free spot within 2 m)
+[v2 dress] N6 kit_dead_plant: hits a wall / obstacle (no free spot within 2 m)
+[v2 dress] N6 statue_veiled_bust: not on solid floor (no free spot within 2 m)
 [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
 [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
 [v2 dress] E1 kit_urns: on a kept path (no free spot within 2 m)
@@ -507,8 +534,8 @@ PASS  restored position (-19.30207, 1.0, -23.1487)
 [v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
 [v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
 [v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
-[solids] 3492 primitives, 1052 solid footprints, 326 obstacles added (163 ms)
-[warm-up] 582 mesh/material pairs (of 787 geometry nodes), 12 canvas materials
+[solids] 3492 primitives, 1052 solid footprints, 326 obstacles added (136 ms)
+[warm-up] 580 mesh/material pairs (of 783 geometry nodes), 12 canvas materials
 PASS  title offers Continue + New Game 
 PASS  New Game asks to confirm 
 PASS  No keeps the title and the save 
@@ -577,8 +604,8 @@ PLAYTHROUGH OK  checks=426  failed=0  sim_time=917.5s  ground_samples=43558
 ERROR: Pages in use exist at exit in PagedAllocator: N20RasterizerSceneDummy21GeometryInstanceDummyE
    at: ~PagedAllocator (./core/templates/paged_allocator.h:169)
 ERROR: 16 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
-ERROR: 57 RID allocations of type 'N13RendererDummy11MeshStorage14DummyMultiMeshE' were leaked at exit.
-ERROR: 437 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+ERROR: 56 RID allocations of type 'N13RendererDummy11MeshStorage14DummyMultiMeshE' were leaked at exit.
+ERROR: 435 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
 WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
      at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
 WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
@@ -1333,14 +1360,12 @@ WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted 
      at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
 WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
      at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
-     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
-ERROR: 531 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 529 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
 ERROR: 61 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
-ERROR: 512 RID allocations of type 'N17RendererSceneCull8InstanceE' were leaked at exit.
+ERROR: 510 RID allocations of type 'N17RendererSceneCull8InstanceE' were leaked at exit.
 WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
      at: cleanup (core/object/object.cpp:2514)
-ERROR: 100 resources still in use at exit (run with --verbose for details).
+ERROR: 72 resources still in use at exit (run with --verbose for details).
    at: clear (core/io/resource.cpp:795)
 ERROR: Pages in use exist at exit in PagedAllocator: N7Variant5Pools12BucketMediumE
    at: ~PagedAllocator (./core/templates/paged_allocator.h:169)

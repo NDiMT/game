@@ -27,7 +27,7 @@ func _place(asset: String, pos: Vector3, yaw_deg: float, sc := Vector3.ONE, wood
 	var mesh: ArrayMesh = res[0]
 	if wood:
 		var arr := mesh.surface_get_arrays(0); var c: PackedColorArray = arr[Mesh.ARRAY_COLOR]
-		for i in c.size(): c[i] = Color(c[i].r, WorldGeo.WOOD, c[i].b, c[i].a)
+		for i in c.size(): c[i] = Color(c[i].r, Props.WOOD, c[i].b, c[i].a)
 		arr[Mesh.ARRAY_COLOR] = c; mesh = ArrayMesh.new(); mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	var mi := MeshInstance3D.new(); mi.mesh = mesh; mi.material_override = game.level.marble_mat
 	mi.transform = Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)) * Basis.from_scale(sc), pos)
