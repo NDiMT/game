@@ -21,7 +21,7 @@ const ROOMS := {
 	"echo_corridor": {"y": 2.0, "extra": []},
 	"scales": {"y": 2.0, "extra": [Map2.GE + Vector3(30.65, 3.6, -49.0), Map2.GE + Vector3(31.6, 3.6, -49.0), Map2.GE + Vector3(32.55, 3.6, -49.0)]},
 	"eidolon_ledge": {"y": 2.0, "extra": []},
-	"gate_four": {"y": 0.0, "extra": [Map2.w(-41.6, 21.0, Map2.PLINTH_H)]},          # (v2 I.22: the empty plinth)
+	"gate_four": {"y": 0.0, "extra": [Map2.O + Vector3(-41.6, Map2.PLINTH_H, 21.0)]},          # (v2 I.22: the empty plinth)
 	"first_shrine": {"y": 0.0, "extra": [Map2.O + Map2.SHRINE_POOL]},          # (v2 I.23: the pool)
 }
 ## an interact whose piece is not where you stand to use it: the piece itself (its centre, 0.5 m below: the

@@ -161,12 +161,26 @@ The script's order already alternates for most beats. Where it puts two puzzles 
 - **Gone with the old wings:** the Echo Corridor, the drawbridge, the old colonnade's hub code (now N.1), the old Colossus stones.
 - **Save:** v6, a clean reset (the wings' positions moved).
 
+## 5c. Phase 4 (W3): Act 3, and the old world gone
+
+- **O is zero.** The old world (WorldGeo, level's `_veiled_gate` / `_bridge_b1` / `_shortcut` / `_shrine_platform` / `_sealed_way`, `Ch1Geo._aqueduct`, the old pool, Gate and Shrine, the old Atrium's hub parts, the old props) is deleted. `scripts/world_geo.gd` is gone (WOOD / BRONZE are `Props.WOOD` / `Props.BRONZE`, the lamp's spot is `Act1.LAMP_POS`). World coordinates = the local ones above. `tests/old_world_scan.tscn` lists anything built outside the new spaces (it finds nothing but the Eidolon Plate's reflected plate, which is designed).
+- **Save v7**, a clean reset.
+- **`scripts/v2/act3.gd` (class `Act3`, `chapter.act3`)**:
+  - the Veiled Way's gate (`Map2.door_nodes[2]`, obstacle `vw_gate`): shut, with a "locked" prompt on each side, until the third Beacon burns; then it sinks (wherever you are, with a line: "Far off, something heavy gives way.");
+  - the Pool of Halves' fog: until then the water is murky (`OmenFx.murk` 0.85) with A's mist over it, and your four stones lie sunk under it (no turning, no walking). The prologue plays on clear water; the fog settles once you are yours to move. When the fires burn, the fog lifts and the four stones rise (`chapter.pool_unveil`, the heavy rise `chapter._rise`: bubbles and a bulge first, a slow break through the surface with water sheeting off, a small overshoot and settle, a list that rights itself, the wet top drying). Her stones rise the same way when the road is whole;
+  - I.21 the bridge: `Map2.BRIDGE_N` = 12 spans, one walk region each (`Map2.bridge_regions`). Each settles with dust and grit as you first step on it; span 6 lurches 14 cm down under you and stays (walkable); three pieces of parapet break off and fall into the sea (splash, ring). The way never closes behind you. Saved as `state.a3.bridge`;
+  - I.23's ruined ring of four columns (open south, A's altar on the north) round the brimming round pool (`Map2.SHRINE_POOL`), on a worn marble disc.
+- **I.20** (chapter.gd): v1's grid at `Map2.GP` (`Ch1Geo.cell_pos` adds it). You turn your stones from the shore, the north rim (`Pr`, z 15.8..17) and the south rim (`Pr`, z 20.7..21.9); her stones' regions are `V2_Pp`. The far shore `PW` meets the out stone.
+- **I.22** (chapter.gd): three Tripo veiled ones on 1 m plinths (`Map2.FOUR_PLINTHS`, `PIECES`), the fourth plinth empty (its walk region `V2_I22f`, 0.28 m up). With the three Beacons burning, stand on it and stay still 3.6 s: she turns to the gate as the others do, the plinths' runes light one by one, the Tripo gate (`Map2.door_nodes[3]`, obstacle `four_gate`) sinks. No sockets. A "wait" button holds you still for touch.
+- **I.23** (chapter.gd `hand_in_the_water`): the camera keeps the one fixed view (yaw -45 deg, pitch 36 deg: no turning even here), centred on the pool; she writes ΒΡΕΣ ΜΕ (A's `OmenFx.write_in_water`, the camera's own yaw passed) at P+23, and a glass eye opens deep in the water at P+29.6 (`OmenFx.glass_eye`, same yaw); her veil lifts at P+34; the memory is the script's ("The veil was his, not mine.").
+- **The route** (Map2.ROUTE) crosses the pool stone by stone; `flow_v2` walks it with the pool and the Gate answered.
+
 ## 6. Phases
 
 1. **Layout:** this file, the map, the whole chapter blocked out and walkable end to end, the flow test.
 2. **Act 1:** playable and dressed; the old world comes out and O goes to 0.
 3. **Act 2:** the three wings and their Beacons. (done, phase 3)
-4. **Act 3** and the shrine cinematic.
+4. **Act 3** and the shrine cinematic. (done, phase 4: §5c)
 5. **Intro cards, the prologue,** and the tablet and memory text.
 6. **Feel and polish,** then the full smoke.
 

@@ -1,73 +1,39 @@
 [0.6s log] Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
-[0.9s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+[0.8s log] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
 [1.1s log] Build configuration: Emscripten 4.0.10, single-threaded, no GDExtension support.
-[3.7s log] [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
-[4.0s log] [props] 13 placed
-[4.1s log] [v2 dress] I3 statue_veiled_bust: outside the landmark
-[4.1s log] [v2 dress] I3 statue_veiled_bust: on a kept path
-[4.1s log] [v2 dress] I3 rubble_pile: outside the landmark
-[4.2s log] [v2 dress] I5 kit_urns: outside the landmark
-[4.8s log] [v2 dress] A kit_scaffold: outside the landmark
-[4.8s log] [v2 dress] A kit_ladder: on a kept path
-[4.8s log] [v2 dress] A plinth: on a kept path
-[4.8s log] [v2 dress] W3 mirror_frame: outside the landmark
-[4.8s log] [v2 dress] W3 mirror_frame: on a kept path
-[4.8s log] [v2 dress] W3 mirror_frame: on a kept path
-[4.8s log] [v2 dress] W3 column_doric: outside the landmark
-[4.8s log] [v2 dress] W3 column_doric: on a kept path
-[4.8s log] [v2 dress] W3 statue_veiled_mourning: on a kept path
-[4.8s log] [v2 dress] W3 mirror_frame: on a kept path
-[4.8s log] [v2 dress] W3 pediment_fragment: outside the landmark
-[4.8s log] [v2 dress] W5 pylon_ashlar: outside the landmark
-[4.8s log] [v2 dress] W5 pylon_ashlar: outside the landmark
-[4.8s log] [v2 dress] W5 mirror_frame: on a kept path
-[4.8s log] [v2 dress] W5 statue_veiled_kneeling: on a kept path
-[4.8s log] [v2 dress] W5 rubble_pile: outside the landmark
-[4.8s log] [v2 dress] W5 column_fallen: outside the landmark
-[4.9s log] [v2 dress] IBW archway_ruined: on a kept path
-[4.9s log] [v2 dress] IBW mirror_frame: outside the landmark
-[5.0s log] [v2 dress] WB rubble_pile: outside the landmark
-[5.0s log] [v2 dress] WB rubble_pile: on a kept path
-[5.1s log] [v2 dress] N1 column_doric: outside the landmark
-[5.1s log] [v2 dress] N1 column_doric: outside the landmark
-[5.1s log] [v2 dress] N1 column_doric: outside the landmark
-[5.1s log] [v2 dress] N2 statue_veiled_mourning: outside the landmark
-[5.1s log] [v2 dress] N2 statue_veiled_praying: on a kept path
-[5.1s log] [v2 dress] N2 statue_veiled_mourning: on a kept path
-[5.1s log] [v2 dress] N2 statue_veiled_broken: on a kept path
-[5.1s log] [v2 dress] N2 kit_dead_plant: on a kept path
-[5.2s log] [v2 dress] N3 kit_votive: outside the landmark
-[5.2s log] [v2 dress] N3 kit_urns: outside the landmark
-[5.2s log] [v2 dress] N3 kit_dead_plant: outside the landmark
-[5.2s log] [v2 dress] N3 column_stump: on a kept path
-[5.2s log] [v2 dress] N6 statue_veiled_bust: on a kept path
-[5.2s log] [v2 dress] N7 statue_veiled_broken: on a kept path
-[5.2s log] [v2 dress] N7 column_stump: outside the landmark
-[5.2s log] [v2 dress] N7 kit_dead_plant: on a kept path
-[5.2s log] [v2 dress] N7 kit_urns: on a kept path
-[5.2s log] [v2 dress] E1 balustrade: outside the landmark
-[5.2s log] [v2 dress] E1 balustrade: on a kept path
-[5.2s log] [v2 dress] E1 kit_awning_post: on a kept path
-[5.2s log] [v2 dress] E1 kit_awning_post: outside the landmark
-[5.2s log] [v2 dress] E1 kit_urns: on a kept path
-[5.2s log] [v2 dress] E1 box: outside the landmark
-[5.3s log] [v2 dress] E2 kit_windbells: on a kept path
-[5.3s log] [v2 dress] E2 balustrade: outside the landmark
-[5.3s log] [v2 dress] E4 kit_urns: outside the landmark
-[5.3s log] [v2 dress] E5 statue_veiled_praying: outside the landmark
-[5.3s log] [v2 dress] E5 column_stump: on a kept path
-[5.3s log] [v2 dress] E5 pediment_fragment: on a kept path
-[5.3s log] [v2 dress] E5 kit_awning_post: on a kept path
-[5.3s log] [v2 dress] E5 balustrade: on a kept path
-[5.4s log] [v2 dress] I21 kit_bridge_end: outside the landmark
-[5.4s log] [v2 dress] I21 rubble_pile: on a kept path
-[5.4s log] [v2 dress] I21 column_fallen: outside the landmark
-[5.4s log] [v2 dress] I21 column_stump: on a kept path
-[5.4s log] [v2 dress] I22 gate_veiled: outside the landmark
-[5.4s log] [v2 dress] I22 pylon_ashlar: outside the landmark
-[5.8s log] [solids] 4436 primitives, 1526 solid footprints, 462 obstacles added (322 ms)
-[5.9s log] [warm-up] 596 mesh/material pairs (of 829 geometry nodes), 12 canvas materials
-[26.9s warning] [.WebGL-0x311c0286c400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[29.8s warning] [.WebGL-0x311c0286c400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[33.5s warning] [.WebGL-0x311c0286c400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-[36.4s warning] [.WebGL-0x311c0286c400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+[3.6s log] [audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[3.8s log] [props] 2 placed
+[3.9s log] [v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[3.9s log] [v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[3.9s log] [v2 dress] I3 rubble_pile: on a kept path (no free spot within 2 m)
+[4.0s log] [v2 dress] I5 kit_cot: outside the landmark (no free spot within 2 m)
+[4.0s log] [v2 dress] I5 kit_urns: outside the landmark (no free spot within 2 m)
+[4.7s log] [v2 dress] A kit_scaffold: on a kept path (no free spot within 2 m)
+[4.7s log] [v2 dress] A kit_ladder: on a kept path (no free spot within 2 m)
+[4.7s log] [v2 dress] A plinth: on a kept path (no free spot within 2 m)
+[4.9s log] [v2 dress] IBW archway_ruined: would hide the route (no free spot within 2 m)
+[4.9s log] [v2 dress] IBW mirror_frame: on a kept path (no free spot within 2 m)
+[4.9s log] [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[4.9s log] [v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[5.1s log] [v2 dress] N1 column_doric: outside the landmark (no free spot within 2 m)
+[5.1s log] [v2 dress] N1 column_doric: would hide the route (no free spot within 2 m)
+[5.1s log] [v2 dress] N1 column_doric: tall, would stand in front (no free spot within 2 m)
+[5.2s log] [v2 dress] N2 column_fallen: outside the landmark (no free spot within 2 m)
+[5.3s log] [v2 dress] N6 statue_veiled_bust: would touch another piece (no free spot within 2 m)
+[5.4s log] [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[5.4s log] [v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[5.4s log] [v2 dress] E1 kit_urns: on a kept path (no free spot within 2 m)
+[5.7s log] [v2 dress] E2 kit_awning_post: would hide the route (no free spot within 2 m)
+[5.7s log] [v2 dress] E4 kit_urns: hits a wall / obstacle (no free spot within 2 m)
+[5.7s log] [v2 dress] I21 kit_bridge_end: outside the landmark (no free spot within 2 m)
+[5.7s log] [v2 dress] I21 rubble_pile: on a kept path (no free spot within 2 m)
+[5.7s log] [v2 dress] I21 column_fallen: outside the landmark (no free spot within 2 m)
+[5.7s log] [v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
+[5.7s log] [v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
+[5.7s log] [v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
+[6.0s log] [solids] 3492 primitives, 1052 solid footprints, 326 obstacles added (183 ms)
+[6.1s log] [warm-up] 583 mesh/material pairs (of 788 geometry nodes), 12 canvas materials
+[26.3s warning] [.WebGL-0x180408a6c400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[29.2s warning] [.WebGL-0x180408a6c400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[32.9s warning] [.WebGL-0x180408a6c400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[35.5s warning] [.WebGL-0x180408a6c400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)

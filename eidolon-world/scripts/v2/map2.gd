@@ -104,7 +104,7 @@ const SPACES := [
 	["EH", "shortcut", "The High Stair (back down)", "traversal", [18.5, -66.0, 22.0, -31.0], 4.0, ""],
 	# ---- Act 3: the convergence
 	["VW", "Act 3", "The Veiled Way (opens: 3 Beacons)", "traversal", [-4.0, 8.0, -1.0, 15.0], 0.0, ""],
-	["P", "I.20", "The Pool of Halves", "puzzle", [-12.75, 15.8, -4.0, 21.9], 0.0, ""],          # ("pool_halves": off until A refits it to the rims)
+	["P", "I.20", "The Pool of Halves", "puzzle", [-12.75, 15.0, -4.0, 22.0], 0.0, ""],          # ("pool_halves": off until A refits it to the rims)
 	["PW", "I.20", "The Far Shore", "traversal", [-16.15, 16.95, -12.75, 20.75], 0.0, ""],
 	["I21", "I.21", "The Bridge that Gives Way", "traversal", [-40.0, 17.6, -16.15, 20.1], 0.0, "bridge"],
 	["I22", "I.22", "The Gate of the Four", "puzzle", [-50.0, 13.0, -40.0, 24.0], 0.0, "gate_four"],
@@ -149,12 +149,12 @@ const WALK := [
 	["E5u", 22.0, -62.0, 25.0, -58.0, 6.0, 2.0, 1],          # the scales' platform rises (block-out: a ramp)
 	# (EB: the v1 Ledge again, its great glass and plates: E.6)
 	["EH", 18.5, -66.0, 22.0, -62.0, 6.0, NAN, -1],
-	["EH", 18.5, -62.0, 21.0, -31.0, 6.0, 2.0, 1],
+	["EH", 18.5, -62.0, 20.7, -31.0, 6.0, 2.0, 1],          # (phase 4: 30 cm narrower: its flank no longer hides the foot of the Scales' way up)
 	# Act 3
 	["VW", -4.0, 8.0, -1.0, 15.0, 0.0, NAN, -1],
 	# (I.20: the road is the pool's own stones, chapter.gd's; you turn yours from the shore and the two rims)
-	["Pr", -9.4, 15.8, -4.0, 17.0, 0.0, NAN, -1],
-	["Pr", -9.6, 20.7, -4.0, 21.9, 0.0, NAN, -1],
+	["Pr", -9.4, 15.0, -4.0, 17.0, 0.0, NAN, -1],          # (flush with the shore's ends: their kerbs run on in one line)
+	["Pr", -9.6, 20.7, -4.0, 22.0, 0.0, NAN, -1],
 	["PW", -16.15, 16.95, -12.75, 20.75, 0.0, NAN, -1],
 	# (I.21: its spans are walk regions of their own, built below: they settle as you cross)
 	["I22", -50.0, 13.0, -40.0, 24.0, 0.0, NAN, -1],
@@ -185,7 +185,7 @@ const WATER := [
 	[-0.5, -15.0, 5.5, -9.0, N1_WATER_Y, true],       # N.1 the Flooded Colonnade
 	[14.6, -1.5, 16.4, 8.0, -0.55, true],             # I.4's stream
 	[-56.0, 2.5, -16.15, 30.0, -0.42, false],         # the open sea of Act 3 (the bridge, the Gate, the Shrine)
-	[-16.15, 21.9, 0.0, 30.0, -0.42, false],
+	[-16.15, 22.0, 0.0, 30.0, -0.42, false],
 	[-16.15, 13.0, -12.75, 16.95, -0.42, false],
 ]
 
@@ -206,7 +206,7 @@ const DOORS := [
 	["door_temple", 5.0, 15.0, 0.0, 0.0, 1.0, "I.1 the closed door"],
 	["door_temple", 10.0, 3.0, 0.0, 90.0, 0.8, "I.5 the crypt's way out into the Atrium"],
 	["gate_veiled", -2.5, 8.0, 0.0, 0.0, 0.85, "the Veiled Way (Act 3: opens when the 3 Beacons burn)"],
-	["gate_veiled", -45.0, 13.0, 0.0, 0.0, 1.0, "I.22 the Gate of the Four (onto the Shrine)"],
+	["gate_veiled", -45.0, 13.0, 0.003, 0.0, 1.0, "I.22 the Gate of the Four (onto the Shrine)"],
 ]
 
 ## other Tripo pieces of the block-out (the landmark statues of each beat): [asset, x, y, z, yaw, scale, note]
@@ -340,7 +340,7 @@ static func build(lv: Level) -> void:
 			_kerbs(lv, zone, r, y0)
 		else:
 			# a ramp: stairs over it (y0 at the low end of its axis)
-			lv.steps(zone, r, axis, minf(y0, y1), maxf(y0, y1), y1 > y0)
+			lv.steps(zone, r, axis, minf(y0, y1), maxf(y0, y1), y1 > y0, str(e[0]) == "EH")          # (the High Stair stands 3-4 m over the Scales' way up: its flank fades)
 	for k in W7_STONES.size():
 		var s: Array = W7_STONES[k]
 		lv.walk(wr(s[0] - STONE_R, s[1] - STONE_R, s[0] + STONE_R, s[1] + STONE_R), float(s[2]) + O.y, NAN, -1, ZP + "W7")
@@ -412,8 +412,10 @@ static func _kerbs(lv: Level, zone: String, r: Rect2, y: float) -> void:
 					var p0 := a.lerp(b, k0)
 					var p1 := a.lerp(b, k1)
 					var kr := Rect2(p0, Vector2.ZERO).expand(p1).expand(p1 + out * K).expand(p0 + out * K)
-					lv.slab(zone, kr, y, 0.5, 0.25, false)
-					lv.balustrade(zone, p0 + out * K * 0.5, p1 + out * K * 0.5, y)
+					# (each side's kerb a few millimetres under the floor, and under the other sides': where the kerbs of two
+					# spaces meet at a corner they are never coplanar, so they cannot flicker)
+					lv.slab(zone, kr, y - 0.004 * (side + 1), 0.5, 0.25, false)
+					lv.balustrade(zone, p0 + out * K * 0.5, p1 + out * K * 0.5, y - 0.004 * (side + 1))
 				run_start = -1
 
 static func _on_any(lv: Level, p: Vector2) -> bool:

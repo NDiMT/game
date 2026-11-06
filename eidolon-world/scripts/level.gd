@@ -761,7 +761,7 @@ func balustrade(zone: String, a: Vector2, b: Vector2, y: float) -> void:
 			rubble(Vector3(fp.x + side.x, y, fp.y + side.y), 0.25, 3)
 	mb(zone).group = ""
 
-func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_max: bool) -> void:
+func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_max: bool, occ := false) -> void:
 	_grp(zone, "steps")
 	## visual stairs over a ramp region (the walk region is the ramp itself)
 	var L := r.size.x if axis == 0 else r.size.y
@@ -786,7 +786,7 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 			c = Vector3(r.get_center().x, (top + y_lo - 0.8) * 0.5, (z0 + z1) * 0.5)
 			s = Vector3(r.size.x - inset, top - y_lo + 0.8, z1 - z0 + 0.01)
 		mb(zone).tag = "floor"
-		box(zone, c, s, 0.0)
+		box(zone, c, s, 0.0, occ)          # (occ: a high stair's flank fades as she passes behind it, as walls do)
 		mb(zone).tag = ""
 	underside(zone, r, y_lo - 0.8)
 

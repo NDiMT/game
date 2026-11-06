@@ -27,7 +27,6 @@ var is_open := false
 var map_layer: Control
 var map: MapView
 var map_btn: Button
-var seal_marks := {}
 var map_open := false
 
 func build(g: Game, sf: Font, it: Font, host: Control) -> void:
@@ -105,15 +104,6 @@ func build(g: Game, sf: Font, it: Font, host: Control) -> void:
 	map.offset_left = 12; map.offset_right = -12; map.offset_top = 24; map.offset_bottom = -24
 	map.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map_layer.add_child(map)
-	for k in Hub.BEACON_POS:
-		var tr := TextureRect.new()
-		tr.texture = load("res://assets/textures/icons/veil_seal.png") if ResourceLoader.exists("res://assets/textures/icons/veil_seal.png") else null
-		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.size = Vector2(26, 26)
-		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		map_layer.add_child(tr)
-		seal_marks[k] = tr
 	map_layer.gui_input.connect(func(e: InputEvent) -> void:
 		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed): close_map())
 	# the toast
@@ -256,7 +246,7 @@ func _gui_input(e: InputEvent) -> void:
 		if not card.get_global_rect().has_point(p + global_position): close()
 		accept_event()
 
-## the map: the regions you have walked, you, and the three seals (faint until taken)
+## the map: the regions you have walked, you, and the three Beacons (cold until lit)
 func open_map() -> void:
 	if is_open:
 		is_open = false
@@ -265,21 +255,8 @@ func open_map() -> void:
 	map_layer.visible = true
 	game.controls.enabled = false
 	map.set_player(game.player.position)
-	await get_tree().process_frame
-	var r := map.get_global_rect()
-	var tex := Vector2(1024, 1536)
-	var sc := minf(r.size.x / tex.x, r.size.y / tex.y)
-	var drawn := tex * sc
-	var o := r.position + (r.size - drawn) * 0.5
-	var inv: Dictionary = game.chapter.state["inv"]
-	for k in seal_marks:
-		var tr: TextureRect = seal_marks[k]
-		var uv := map.world_to_uv(Hub.BEACON_POS[k])
-		tr.position = o + uv * drawn - tr.size * 0.5 - map_layer.global_position
-		# (QA P2-2/3: a crimson ring until taken, and only where the map already shows the place)
-		var reg := game.level.region_at(Vector2((Hub.BEACON_POS[k] as Vector3).x, (Hub.BEACON_POS[k] as Vector3).z))
-		tr.visible = reg != null and map.is_revealed(reg.name)
-		tr.modulate = Color(1, 1, 1, 1.0) if k in (game.chapter.state.get("beacons", []) as Array) else Color(0.75, 0.15, 0.15, 0.8)
+	# (v2, A's map: each wing's Beacon is drawn on it; lit or cold)
+	for k in ["W", "N", "E"]: map.set_beacon(k, k in (game.chapter.state.get("beacons", []) as Array))
 	game.sfx.play("page", -14.0, 1.0)
 
 func close_map() -> void:

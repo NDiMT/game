@@ -57,6 +57,7 @@ func targets(it: Level.Interact) -> Array[MeshInstance3D]:
 	var q := Vector2(it.pos.x, it.pos.z)
 	for mi in cands:
 		if not is_instance_valid(mi) or not mi.is_visible_in_tree(): continue      # (a freed pickup marker's bed)
+		if _carried(mi): continue          # (the lamp in her hand is never what a place's prompt acts on)
 		var bb := mi.global_transform * mi.get_aabb()
 		if bb.size.x > 4.6 or bb.size.z > 4.6 or bb.size.y > 6.0: continue
 		if bb.end.y < it.pos.y - 0.6 or bb.position.y > it.pos.y + 2.6: continue
@@ -74,6 +75,13 @@ func targets(it: Level.Interact) -> Array[MeshInstance3D]:
 		for ch in par.get_children():
 			if ch is MeshInstance3D and ch != best and cands.has(ch): out.append(ch as MeshInstance3D)
 	return out
+
+static func _carried(n: Node) -> bool:
+	var p := n.get_parent()
+	while p:
+		if p is Player: return true
+		p = p.get_parent()
+	return false
 
 func set_target(it: Level.Interact) -> void:
 	var nid := it.id if it else ""

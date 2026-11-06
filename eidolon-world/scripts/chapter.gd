@@ -2827,7 +2827,7 @@ func apply_state() -> void:
 		var gd := _four_gate()
 		if gd:
 			gd.visible = true
-			gd.position.y = Map2.O.y
+			gd.position.y = Map2.O.y + float(Map2.DOORS[3][3])
 		four_ring.set_shader_parameter("lit", 0.0)
 		for i in 4: four_mats[i].set_shader_parameter("lit", 0.15)
 	game.ui.set_inventory(state["shard"], false)

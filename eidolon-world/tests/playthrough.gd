@@ -772,7 +772,8 @@ func _plan() -> void:
 	step_wait(3.6)
 	step_do(func() -> void:
 		ok("(v1.0 M3c) waiting by still water: she writes a rune on it, beside you", C().life.runes >= 1 and C().life.rune_node.visible and C().life.rune_node.position.distance_to(P()) < 2.6, str(C().life.rune_node.position)))
-	walk_path("up the worn steps into the garden", [[Map2.O.x + 3.2, Map2.O.z - 14.4], [Map2.GN.x + 14.5, Map2.GN.z - 6.5], [Map2.GN.x + 12.8, Map2.GN.z - 10.0]])
+	walk_path("up the worn steps into the garden", [[Map2.O.x + 3.2, Map2.O.z - 14.4], [Map2.GN.x + 14.5, Map2.GN.z - 6.5], [Map2.GN.x + 12.3, Map2.GN.z - 7.6],
+		[Map2.GN.x + 12.3, Map2.GN.z - 9.6], [Map2.GN.x + 12.8, Map2.GN.z - 10.0]])          # (round A's dead plant by the steps' head)
 	step_do(func() -> void:
 		ok("reached the Garden of the Veiled", game.area == "garden_veiled" and (P() - Map2.GN).x > 10.3, str((P() - Map2.GN)) + " " + game.area)
 		ok("the shard stays lowered", not C().lens_on))
@@ -1303,7 +1304,7 @@ func _plan() -> void:
 
 	# ---- I.21 the bridge that gives way
 	walk_path("(v2 I.21) off the far shore onto the bridge", [[Map2.O.x - 13.6, Map2.O.z + 20.05], [Map2.O.x - 14.6, Map2.O.z + 18.85], [Map2.O.x - 22.0, Map2.O.z + 18.85]])
-	step_do(func() -> void: ok("(v2 I.21) its spans settle under her feet", game.sfx.played.get("grind", 0) > 0 and C().act3._settled[2]))
+	step_do(func() -> void: ok("(v2 I.21) its spans settle under her feet", game.sfx.played.get("grind", 0) > 0 and C().act3._settled[Map2.BRIDGE_N - 2]))
 	walk_path("(v2 I.21) on over the sea", [[Map2.O.x - 27.1, Map2.O.z + 18.85]])
 	step_wait(0.8)
 	step_do(func() -> void:
@@ -1589,8 +1590,9 @@ func _plan() -> void:
 	# ---- the cinematic can be skipped with a long press
 	step_do(func() -> void:
 		game.cmd("jump:first_shrine")
-		ok("jump to the shrine (everything before it solved)", C().state["four"] and game.puzzles.state["plate"]))
-	step_wait(0.5)
+		ok("jump to the shrine (everything before it solved)", C().state["four"] and game.puzzles.state["plate"])
+		walk_to(Chapter.STAND.x, Chapter.STAND.z + 0.1))
+	step_until("to the shrine's pool", func() -> bool: return game.auto_target == Vector3.INF, 6.0)
 	step_do(func() -> void: ok("wake the shrine again", _focus() == "shrine" and game.try_interact(), _focus()))
 	step_wait(4.0)
 	step_do(func() -> void:
@@ -1686,7 +1688,7 @@ func _check_ground() -> void:
 	if not lv.on_ground(q): bad = "off ground"
 	elif not lv.circle_ok(q, Player.RADIUS - 0.01): bad = "over an edge"
 	elif lv.blocked(q, Player.RADIUS - 0.02): bad = "inside an obstacle"
-	elif absf(p.y - lv.height_at(q)) > 0.001: bad = "floating"
+	elif absf(p.y - lv.height_at(q)) > 0.001 and not _at_step(q, absf(p.y - lv.height_at(q))): bad = "floating"
 	if _last != Vector3.INF and p.distance_to(_last) < 0.5: max_dy = maxf(max_dy, absf(p.y - _last.y))
 	_last = p
 	if bad == "":
@@ -1697,6 +1699,16 @@ func _check_ground() -> void:
 	if bad != "":
 		walk_violations += 1
 		if walk_violations < 12: print("  violation: ", bad, " at ", p, " step ", si)
+
+## (phase 4) right at a low step's edge (I.21's sunken span, a plinth) one frame may still hold the other side's
+## height: allowed when the step is low and the other floor is within her radius
+func _at_step(q: Vector2, dy: float) -> bool:
+	if dy > 0.3: return false
+	var h := game.level.height_at(q)
+	for k in 8:
+		var a := TAU * k / 8.0
+		if absf(game.level.height_at(q + Vector2(cos(a), sin(a)) * Player.RADIUS) - h) > 0.05: return true
+	return false
 
 func _finish() -> void:
 	print("PLAYTHROUGH %s  checks=%d  failed=%d  sim_time=%.1fs  ground_samples=%d" % ["OK" if errors == 0 else "FAILED", checks, errors, t, walk_samples])

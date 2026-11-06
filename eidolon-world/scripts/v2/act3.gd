@@ -114,12 +114,13 @@ func _span_x(k: int, f := 0.5) -> float:
 
 func _span_mesh(m: MB, c: Vector3, bl: float, parapets: Array) -> void:
 	var hw: float = (Map2.BRIDGE[3] - Map2.BRIDGE[1]) * 0.5
+	# (the deck's body stops a centimetre under the walking course: nothing of it is coplanar with the kerbs it meets)
 	m.tag = "floor"
-	m.box(c + Vector3(0, -0.21, 0), Vector3(bl - 0.04, 0.42, hw * 2.0 + 0.36), Color(0.5, 0.0, 0.0))
-	m.box(c + Vector3(0, -0.02, 0), Vector3(bl - 0.08, 0.04, hw * 2.0 - 0.06), Color(0.5, 0.0, 0.0))
+	m.box(c + Vector3(0, -0.22, 0), Vector3(bl - 0.04, 0.42, hw * 2.0 + 0.34), Color(0.5, 0.0, 0.0))          # (its sides 1 cm in from the parapets' faces)
+	m.box(c + Vector3(0, -0.015, 0), Vector3(bl - 0.08, 0.03, hw * 2.0 - 0.06), Color(0.5, 0.0, 0.0))
 	m.tag = ""
 	for side in parapets:
-		m.box(c + Vector3(0, 0.19, (hw + 0.09) * float(side)), Vector3(bl - 0.06, 0.38, 0.18), Color(0.5, 0.25, 0.0))
+		m.box(c + Vector3(0, 0.17, (hw + 0.09) * float(side)), Vector3(bl - 0.06, 0.4, 0.18), Color(0.5, 0.25, 0.0))
 
 func _build_bridge() -> void:
 	var bl: float = (Map2.BRIDGE[2] - Map2.BRIDGE[0]) / Map2.BRIDGE_N
@@ -139,9 +140,9 @@ func _build_bridge() -> void:
 		if k % 4 == 1:
 			# a pier down into the sea, its cutwater toward the open water
 			lv.mb(ZONE).box(c + Vector3(0, -1.95, 0), Vector3(1.0, 3.1, hw * 2.0 - 0.2), Color(0.5, 0.0, 0.0))
-			lv.mb(ZONE).box(c + Vector3(0, -1.95, hw - 0.1 + 0.35), Vector3(0.7, 3.1, 0.7), Color(0.5, 0.0, 0.0), Basis(Vector3.UP, PI * 0.25))
+			lv.mb(ZONE).box(c + Vector3(0, -2.0, hw - 0.1 + 0.35), Vector3(0.7, 3.0, 0.7), Color(0.5, 0.0, 0.0), Basis(Vector3.UP, PI * 0.25))
 	# (the parapet left broken at span 4: its stub and rubble)
-	lv.mb(ZONE).box(Vector3(_span_x(4, 0.15), O.y + 0.12, zc - hw - 0.09), Vector3(0.4, 0.24, 0.18), Color(0.5, 0.25, 0.0))
+	lv.mb(ZONE).box(Vector3(_span_x(4, 0.15), O.y + 0.1, zc - hw - 0.09), Vector3(0.4, 0.26, 0.18), Color(0.5, 0.25, 0.0))
 	# the span that lurches down under you
 	lurch_node = Node3D.new()
 	lurch_node.name = "BridgeLurch"
@@ -157,8 +158,7 @@ func _build_bridge() -> void:
 		n.position = Vector3(_span_x(int(f[0])), O.y, zc + (hw + 0.09) * float(f[1]))
 		add_child(n)
 		var fm := MB.new()
-		fm.box(Vector3(0, 0.19, 0), Vector3(bl - 0.06, 0.38, 0.18), Color(0.5, 0.25, 0.0))
-		fm.box(Vector3(0, -0.21, 0.0), Vector3(bl - 0.3, 0.42, 0.18), Color(0.5, 0.0, 0.0))
+		fm.box(Vector3(0, 0.17, 0), Vector3(bl - 0.06, 0.4, 0.18), Color(0.5, 0.25, 0.0))
 		game.puzzles.marble_instance(fm.commit(), n)
 		chunks.append(n)
 		_chunk_rest.append(n.transform)
@@ -177,6 +177,11 @@ func _span_at(p: Vector3) -> int:
 func _update_bridge() -> void:
 	if game.mode != "play": return
 	var k := _span_at(game.player.position)
+	if _lurched and absf(k - LURCH) <= 1:
+		# (the span sank under her: she goes down with it, even standing still)
+		var pp := game.player.position
+		pp.y = game.level.height_at(Vector2(pp.x, pp.z))
+		game.player.position = pp
 	if k == _span: return
 	_span = k
 	if k < 0: return
@@ -271,7 +276,7 @@ func _build_shrine() -> void:
 	m.cyl(b + Vector3(0, 0.02, 0), 1.18, 1.18, 0.06, lv.C(0.5), 36)
 	lv.ob_circle(Vector2(b.x, b.z), 1.32, "shrine_pool")
 	# a ruined ring of columns, open to the south (the way in from the Gate)
-	var ring := [[-15.0, 3.6], [35.0, 2.1], [145.0, 1.3], [195.0, 3.6]]          # (the north is A's altar)
+	var ring := [[-15.0, 3.6], [35.0, 2.1], [195.0, 3.6]]          # (the north is A's altar; nothing on the south-west: the camera's side)
 	for e in ring:
 		var a := deg_to_rad(float(e[0]))
 		lv.column(c + Vector3(cos(a) * 2.9, 0, sin(a) * 2.9), float(e[1]))
