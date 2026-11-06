@@ -298,7 +298,7 @@ func _build_crypt() -> void:
 	basin_water = MeshInstance3D.new()
 	basin_water.mesh = disc
 	basin_water.material_override = _water_mat()
-	basin_water.position = Vector3(BASIN.x, BASIN.y + BASIN_Y, BASIN.z)
+	basin_water.position = Vector3(BASIN.x, BASIN.y + BASIN_Y + 0.01, BASIN.z)          # (phase 6: its film 1.5 cm over the bowl's cap, not 5 mm: they flickered)
 	basin_water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(basin_water)
 	# the way out, west into the Atrium: the temple door in its doorway (Map2.DOORS[1]), down once you hold her lamp
@@ -430,5 +430,5 @@ func apply_state() -> void:
 		var e := _exit_node()
 		if e:
 			e.visible = true
-			e.position.y = O.y
+			e.position.y = O.y + float(Map2.DOORS[1][3])          # (phase 6: 3 mm up: its foot's face was in the floor's plane)
 	chapter.hub.lamp_bench.visible = s["lamp"] and not chapter.hub.has_item("lamp")

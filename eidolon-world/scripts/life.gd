@@ -161,7 +161,46 @@ func update(dt: float) -> void:
 	_update_gaze(dt)
 	_update_rune(dt)
 	_update_ambient(dt)
+	_update_head()
+
+# ------------------------------------------------------------------ the turned head (phase 6: back on A's Atrium bust)
+## One bust in the Atrium (A's Dress_atrium/TurnedHead, pivot at its neck) has, now and then, turned toward where you
+## came in when you come back. Never while you see it: it turns only while it is off the screen.
+var head: Node3D
+var _head_yaw0 := NAN
+var _was_in_atrium := false
+var _away := false
+var _head_goal := NAN
+var head_turns := 0
+
+func _find_head() -> Node3D:
+	if head == null or not is_instance_valid(head):
+		var d := game.level.find_child("Dress_atrium", true, false)
+		head = d.get_node_or_null("TurnedHead") as Node3D if d else null
+		if head and is_nan(_head_yaw0): _head_yaw0 = head.rotation.y
+	return head
+
+func _update_head() -> void:
+	if _find_head() == null: return
+	var inside := game.area == "atrium"
+	if not inside and _was_in_atrium: _away = true
+	if inside and not _was_in_atrium and _away and game.mode == "play":
+		_away = false
+		# (rare: the first time you come back, then one return in three)
+		if head_turns == 0 or randf() < 0.33:
+			var p := game.player.position
+			var hp := head.global_position
+			_head_goal = atan2(p.x - hp.x, p.z - hp.z)          # (its face toward where you came in: you, now)
+	_was_in_atrium = inside
+	if not is_nan(_head_goal) and not game.world.cam.is_position_in_frustum(head.global_position):
+		head.global_rotation.y = _head_goal
+		_head_goal = NAN
+		head_turns += 1
 
 func apply_state() -> void:
+	if _find_head() and not is_nan(_head_yaw0): head.rotation.y = _head_yaw0
+	_head_goal = NAN
+	_was_in_atrium = false
+	_away = false
 	rune_node.visible = false
 	_rune_t = 0.0

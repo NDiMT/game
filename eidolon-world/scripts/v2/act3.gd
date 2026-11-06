@@ -96,9 +96,7 @@ func _fog(on: bool, instant: bool) -> void:
 		if not _fog_alive():
 			var e: Array = Map2.WATER[0]
 			fog = FogBank.make(self, Map2.wr(e[0], e[1], e[2], e[3]), float(e[4]) + O.y)
-			if not instant:
-				fog._set_k(0.0)
-				fog.create_tween().tween_method(fog._set_k, 0.0, 1.0, 3.0).set_trans(Tween.TRANS_SINE)
+			if not instant: fog.fade_in(3.0)
 		if not _murky:
 			_murky = true
 			OmenFx.murk(wm, FOG_MURK, 0.01 if instant else 3.0)
@@ -320,7 +318,7 @@ func apply_state() -> void:
 		game.level.set_enabled("vw_gate", true)
 		if d:
 			d.visible = true
-			d.position.y = O.y
+			d.position.y = O.y + float(Map2.DOORS[2][3])          # (phase 6: 3 mm up: its foot's face was in the floor's plane)
 	_murky = false
 	if _fog_alive(): fog.queue_free()
 	fog = null

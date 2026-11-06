@@ -204,8 +204,8 @@ const WALLS := [
 ## footprint); phases 2-4 give each its mechanism.
 const DOORS := [
 	["door_temple", 5.0, 15.0, 0.003, 0.0, 1.0, "I.1 the closed door"],
-	["door_temple", 10.0, 3.0, 0.0, 90.0, 0.8, "I.5 the crypt's way out into the Atrium"],
-	["gate_veiled", -2.5, 8.0, 0.0, 0.0, 0.85, "the Veiled Way (Act 3: opens when the 3 Beacons burn)"],
+	["door_temple", 10.0, 3.0, 0.003, 90.0, 0.8, "I.5 the crypt's way out into the Atrium"],
+	["gate_veiled", -2.5, 8.0, 0.003, 0.0, 0.85, "the Veiled Way (Act 3: opens when the 3 Beacons burn)"],
 	["gate_veiled", -45.0, 13.0, 0.003, 0.0, 1.0, "I.22 the Gate of the Four (onto the Shrine)"],
 ]
 

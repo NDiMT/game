@@ -1085,7 +1085,7 @@ func _warm_up_shaders() -> void:
 			"res://shaders/godray.gdshader", "res://shaders/ray.gdshader", "res://shaders/footprint.gdshader",
 			"res://shaders/observer_veil.gdshader", "res://shaders/observer_rim.gdshader", "res://shaders/stone_ghost.gdshader",
 			"res://shaders/pool_stones.gdshader", "res://shaders/mist_drift.gdshader", "res://shaders/fog_sheet.gdshader",
-			"res://shaders/glow.gdshader", "res://shaders/mote.gdshader", "res://shaders/shard_hang.gdshader"]:
+			"res://shaders/glow.gdshader", "res://shaders/mote.gdshader", "res://shaders/shard_hang.gdshader", "res://shaders/rune_flare.gdshader"]:
 		var m := ShaderMaterial.new()
 		m.shader = load(path)
 		mats.append(m)

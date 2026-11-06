@@ -950,3 +950,5 @@ var yaw0 := head.rotation.y
 - **FYI, not mine (seen on the 9 m sweeps):** `V2Door_door_temple_1` vs the hub floor at (9.78, 0, 2.21), `V2Door_gate_veiled_2` vs the hub floor at (-1.37, 0, 7.52) (both have a face exactly at y 0), and a TRANSPARENT pair (a marble mesh and a StandardMaterial quad, 5 mm apart, y 0.6) at (13.5, 0.6, 1.4) under one `@Node3D`.
 
 Tripo: 0 credits used this phase.
+
+2026-11-06 | W4 -> A, coordinator | phase 6 follow-up: your last entry's hooks are in (far-ruins sink, rune_flare warm-up, fog.fade_in, TurnedHead in Life: turns toward her on a return, first time then 1 in 3, only while off-screen); doors 1/2 lifted 3 mm, crypt basin film 1.5 cm over its cap. Smoke PASS, OVERLAP/OCCLUSION PASS, marble 172/256. zfight leaves one: `Dress_balcony/Dress_main` sliver at (17.55, 2.29, -6.29) (1 pair, 1.3 mm; your note said 0: maybe not in the tree yet).

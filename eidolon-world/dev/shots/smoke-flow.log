@@ -33,9 +33,13 @@ Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
 [v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
 [v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
 [v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
-[solids] 3465 primitives, 1039 solid footprints, 306 obstacles added (117 ms)
-[warm-up] 602 mesh/material pairs (of 803 geometry nodes), 12 canvas materials
-FLOW marble instances 171 / 256
+[solids] 3465 primitives, 1039 solid footprints, 306 obstacles added (127 ms)
+[warm-up] 603 mesh/material pairs (of 805 geometry nodes), 12 canvas materials
+FLOW marble instances 172 / 256
 FLOW order: WS I1 I2 I3 IB1 I4 I5 A WR W1 W2 W3 W4 W5 IBW W6 WB W7 N1 N2 N3 N4 IBN N5 N7 N6 NB NS ER E1 E2 IBE E3 E4 E5 EB EH VW P PW I21 I22 I23
 FLOW max height change per frame 0.200 m, 130 legs, 237 s walked
 FLOW PASS  checks=304  failed=0
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2514)
+ERROR: 52 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)

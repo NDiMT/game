@@ -1,0 +1,1355 @@
+Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+
+[audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[props] 2 placed
+[v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[v2 dress] I3 rubble_pile: on a kept path (no free spot within 2 m)
+[v2 dress] I5 kit_cot: outside the landmark (no free spot within 2 m)
+[v2 dress] I5 kit_urns: outside the landmark (no free spot within 2 m)
+[v2 dress] A kit_scaffold: on a kept path (no free spot within 2 m)
+[v2 dress] A kit_ladder: on a kept path (no free spot within 2 m)
+[v2 dress] A plinth: on a kept path (no free spot within 2 m)
+[v2 dress] W1 column_doric: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 mirror_frame: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 statue_veiled_praying: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 rubble_pile: on a kept path (no free spot within 2 m)
+[v2 dress] IBW archway_ruined: would hide the route (no free spot within 2 m)
+[v2 dress] IBW mirror_frame: on a kept path (no free spot within 2 m)
+[v2 dress] IBW kit_dead_plant: on a kept path (no free spot within 2 m)
+[v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[v2 dress] N2 column_fallen: outside the landmark (no free spot within 2 m)
+[v2 dress] N6 kit_dead_plant: hits a wall / obstacle (no free spot within 2 m)
+[v2 dress] N6 statue_veiled_bust: not on solid floor (no free spot within 2 m)
+[v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[v2 dress] E1 kit_urns: on a kept path (no free spot within 2 m)
+[v2 dress] E2 kit_awning_post: would hide the route (no free spot within 2 m)
+[v2 dress] E4 kit_urns: hits a wall / obstacle (no free spot within 2 m)
+[v2 dress] I21 kit_bridge_end: outside the landmark (no free spot within 2 m)
+[v2 dress] I21 rubble_pile: on a kept path (no free spot within 2 m)
+[v2 dress] I21 column_fallen: outside the landmark (no free spot within 2 m)
+[v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
+[v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
+[v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
+[solids] 3465 primitives, 1039 solid footprints, 306 obstacles added (158 ms)
+[warm-up] 603 mesh/material pairs (of 805 geometry nodes), 12 canvas materials
+  .. sim 0s  real 4s  step 0/1111
+PASS  (v2.0) the intro cards play first (mirrored, then turned true) 
+  .. sim 20s  real 6s  step 6/1111
+  .. sim 40s  real 8s  step 6/1111
+  .. sim 60s  real 10s  step 6/1111
+PASS  (v2.0 shot 4) her reflection rises half a second late 
+PASS  (v2.0 shot 7) the Glass Warden rises in the water behind her 
+PASS  (v2.0 shot 12) the shell comb, in the satchel (a story item) 
+PASS  (v2.0) the prologue is over: the Warden gone, the pool's lag back, the camera follows you 
+PASS  woke by the pool, at the veiled gate (-3.6, 0.0, 18.0)
+PASS  chapter title on the title screen 
+PASS  (v2.0) Act 1: the hint comes at 30 s 
+PASS  (v2 I.1) the court's temple door is shut 
+PASS  (v2) she woke in the new world, on the Pool of Halves' east shore 
+  .. sim 80s  real 12s  step 14/1111
+PASS  (v2.0 I.1) the plate is only in her world: the camera never draws it 
+PASS  (v2.0 I.1) the door is open 
+PASS  (v2.0 I.2) the bell rings; far bells answer pt_bell
+PASS  (v2.0 I.3) the low gate across the road is down 
+PASS  (v2.0 I.3) breathe on the first glass breathe_first
+PASS  (v2.0 I.3) one line only: no rune before it 
+PASS  (v2.0 I.3) written back, the line is right 
+  .. sim 100s  real 15s  step 40/1111
+PASS  (v2 I.4) the crossing is gone: no way over 
+PASS  (v2.0 I.4) turn the slab (once) a1_turn
+PASS  (v2.0 I.4) one turn is not her half 
+PASS  (v2.0 I.4) turn it again a1_turn
+PASS  (v2.0 I.5) in the crypt: dark 
+PASS  (v2.0 I.5) the crypt is dark 1.00
+PASS  (v2.0 I.5) take her lamp lamp_take
+PASS  (v1.0) the lamp is carried: in her hand, its own light 
+PASS  (v2.0 I.5) Theron's first tablet: 'She is not gone. Only behind the veil.' tab_t1
+PASS  (v2) the Atrium of a Thousand Faces (8.557151, 0.0, 3.000555) atrium
+PASS  (v2) no Beacon in the Atrium: the three are the wings' 
+PASS  (v2.0) the wings: the hint at 90 s now 
+  .. sim 120s  real 19s  step 75/1111
+PASS  (v2.0) the satchel: its slot shows; it holds only the chapter's own things (the lamp, the shard, the comb) [["lamp", 1], ["comb", 1], ["tablet", 1]]
+PASS  (v1.0 M3b) the satchel open: slots with icons, the chosen one's name and line; play paused under it Her Oil Lamp
+PASS  the whole rune is carved large beside the stair, invisible until you pass it (v0.9.4) (-11.3, 0.0, 1.6)
+PASS  (v0.9.1) passing before it, the rune lights 0.9
+PASS  (v0.9.1) left behind, it fades away again 0.0
+PASS  the breath glass is back in the stair wall (v0.8) 
+PASS  the whole glyph fits on the pane with a margin 0.42
+PASS  on the breath landing (-11.29999, 0.5, -5.232944)
+PASS  the mist veil blocks the stair (-11.29999, 0.5, -6.379999)
+PASS  hint wisp drifts toward the small glass 
+PASS  breathe on the glass breathe_stair
+PASS  the close-up of the pane opens (860.0, 860.0)
+PASS  nothing to answer while she writes 
+PASS  x closes the pane 
+PASS  the closing tap does not turn the camera 
+PASS  breathe again breathe_stair
+  .. sim 140s  real 22s  step 115/1111
+PASS  her writing is mirrored for you (her half on the left, the answer on the right) 
+PASS  recogniser: her half copied is wrong 
+PASS  after one wrong try: a faint dotted ghost of the missing stroke 1
+PASS  recogniser: a straight stroke is wrong 
+PASS  after two wrong tries she traces the missing part, faintly 
+PASS  the fog crept back over your strokes 
+PASS  recogniser: the mirrored stroke, drawn backwards with a shaky hand, is right 
+PASS  her writing stays on the fogged glass 
+PASS  breath cue played 
+PASS  her answer rings her song (the motif A-D-E-F-E) 
+PASS  her 'follow' rune is a letter of the script, one calligraphic stroke 
+PASS  recogniser unit: resample keeps 32 points 
+  .. sim 160s  real 25s  step 128/1111
+PASS  reached the Hall of Glass by the corridor (-2.06584, 1.0, -13.49999) hall_glass
+PASS  area name shown on entering the hall HALL OF GLASS
+PASS  great mirror reflection seen in the glass 
+PASS  glimpse 2: reflection turns its head toward the tablet head=1.00 body=1.00
+PASS  glimpse 2: snaps back when you move 
+PASS  the remembered door: a wall in your world, an opening in the glass 
+PASS  the glass remembers a drum, a brazier and a bust where they were (only in the glass) 
+PASS  today's hall is not in the glass 
+PASS  no touching the glass any more 
+PASS  the veiled bust turns hall_turn
+PASS  a quarter turn is not as the glass remembers 
+PASS  turn it again 
+PASS  a visible arc sweeps the quarter turn on the floor 
+PASS  facing the glass: right (the solver sees it) 
+PASS  but nothing tells you so: no chime, no glow, no lock, it stays out of the glass 
+PASS  no target outlines or markers on the floor 
+PASS  standing square to the drum: an arrow shows which way it will slide 
+PASS  push the drum once hall_push
+PASS  it slides (never rolls or turns) 
+  .. sim 180s  real 29s  step 161/1111
+PASS  one cell per push, snapped to the grid (-23.0, 1.0, -17.0)
+PASS  the reset altar hall_reset
+PASS  reset: everything goes back where it was found (nothing is locked before the whole set) { "drum": [-24, -17], "brazier": [-20, -17], "bust": 2, "locks": [false, false, false] }
+PASS  turn the bust back to the glass (1) hall_turn
+PASS  turn the bust back to the glass (2) hall_turn
+PASS  the bust faces the glass again { "drum": [-24, -17], "brazier": [-20, -17], "bust": 0, "locks": [false, false, false] }
+PASS  push the drum (1) hall_push
+PASS  push the drum (2) hall_push
+PASS  push the drum (3) hall_push
+PASS  push the drum (4) hall_push
+PASS  push the drum (5) hall_push
+PASS  a cell short of where it was: not yet [-23, -21]
+PASS  push the drum (6) hall_push
+PASS  push the drum (7) hall_push
+PASS  the drum lies where the glass remembers it [-23, -23]
+PASS  two of three right: still nothing, still movable 
+PASS  hint after 110 s: the memories pulse in the glass 0.58831956985946
+PASS  take the brazier hall_take
+PASS  the brazier does not leave the Hall: it returns none
+PASS  take the brazier again hall_take
+PASS  set it down hall_place
+PASS  a brazier in the wrong place: nothing happens 
+PASS  take it again hall_take
+PASS  set it down where it stood hall_place
+PASS  solver: each goal cell is free, and the drum starts away from it 
+PASS  only the whole set answers: all three locked at once, one chime 
+PASS  (v2, the script) the glass cracks at a corner and the Shard comes out through it 
+  .. sim 200s  real 33s  step 231/1111
+PASS  take the shard take_shard
+PASS  the shard is in the inventory 
+PASS  (v1.0 M3c) your back to the great glass: the Warden stands behind you, in the reflection only true pl=(2.0, 1.0, -17.8) yaw=3.14 vis=true mode=play refl=["floor:false:false", "mirror:true:true", "mirror:false:false", "mirror:false:false", "eidolon:false:false", "mirror:true:false", "mirror:true:false", "mirror:true:false", "mirror:true:false", "pool:false:false", "pool:false:false", "pool:true:false", "pool:true:false", "pool:true:false", "mirror:true:false", "mirror:true:false"]
+PASS  (v1.0 M3c) you turn: he is gone 
+PASS  tablet readable h_tablet
+PASS  (v2 W.4) in the corridor, the Shard in your hand glints: try it 
+PASS  (v2 W.4) raised, it shows a star carved in a ceiling that is not there A star, carved in a ceiling
+that is not there.
+PASS  reached the Shard Gallery (6.284882, 1.0, -16.16537) shard_gallery
+PASS  the chamber is named for it 
+PASS  no way on: the wall is whole 
+PASS  her veiled statue in the middle, five braziers round her 
+PASS  (v0.9) one already burns as you come in, and it is not one of hers 
+PASS  (v0.9.2) no shard here: its slot does not call 
+PASS  (v0.9.2) on the floor before her, pairs of glowing eyes, one pair per shadow of hers 
+PASS  (v0.9.2) each eye-pair sits exactly at one shadow's head, and at no other's 
+PASS  (v1.1d) every eye pair (40 x 20 cm eyes, 60 cm apart) is 30 cm or more clear of every brazier and her plinth closest 0.48 m
+PASS  (v0.9) a solution of 2-3 among 4-5 braziers 
+PASS  solver: exactly one set of braziers casts her shadow into the outlines [[0, 1, 4]]
+PASS  solver: each brazier throws her shadow straight away from it, longer when nearer 
+PASS  walking about the chamber (8.119018, 1.0, -10.66431) shard_gallery
+PASS  the gate is a wall in your world (8.101278, 1.0, -9.92)
+PASS  (v0.9.2) the lit one that is not hers casts a shadow without eyes 
+PASS  light brazier 0 brazier0
+PASS  brazier 0: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 1 brazier1
+PASS  brazier 1: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 2 brazier2
+PASS  brazier 2: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  light brazier 4 brazier4
+  .. sim 220s  real 36s  step 292/1111
+PASS  brazier 4: real fire and light; her shadow falls away from it 
+PASS  no answer brazier by brazier 
+PASS  all five lit: NOT the answer 
+PASS  put out brazier 2 brazier2
+PASS  put out: its fire dies, its shadow goes 
+PASS  still shut with the wrong set 
+PASS  put out brazier 3 brazier3
+PASS  (v2.0) the hidden way is not there yet in your world 
+PASS  the lore line, in the third person On Kythira, in the evening,
+he moved the lamps until her shadow lay
+where he wanted her to stand.
+PASS  the solve jingle 
+PASS  her shadows darken; her veil stirs 
+PASS  (v2.0 W.6) plain parapet to the eye: the way stays shut 
+PASS  (v2.0 W.6) through the raised Shard, her door: then it is there for you too 
+PASS  (v2.0) the West Beacon is cold until you light it 
+PASS  (v2.0) the lamp lights the West Beacon beacon_W
+PASS  (v2.0) the West Beacon burns, on its brazier in the wing (no twin in the Atrium) 
+  .. sim 240s  real 39s  step 333/1111
+PASS  (v0.9) the Sunken Colossus: named on arrival, the music swells THE SUNKEN COLOSSUS
+PASS  (v0.9) the camera leans toward the head (a pan, never a zoom) 
+PASS  (v2) back on the Inlet Road, the West done (-19.49987, 0.0, -0.06583)
+PASS  (v2 N.1) her reflection waits on the first hidden stone, ahead of you s=2.14
+PASS  (v2 N.1) only the true stones hold you: the decoys and the water do not 
+PASS  (v1.0 M3c) waiting by still water: she writes a rune on it, beside you (3.922105, 0.022, -11.94251)
+PASS  reached the Garden of the Veiled (12.75075, 1.0, -9.9585) garden_veiled
+PASS  the shard stays lowered 
+PASS  hint (110 s): the eyes on the floor pulse 
+PASS  (v0.9.1) the great glass shows all three turned ones' north faces whole, from every step []
+PASS  the old rune door panel is gone 
+PASS  the garden door is closed (16.33949, 1.0, -11.77141)
+  .. sim 260s  real 43s  step 386/1111
+PASS  (v0.9.4) her small glass is clear at rest 
+PASS  breathe on her small glass breathe_garden
+PASS  (v0.9.4) the close-up opens, as on the stair 
+PASS  (v1.0) a new pane opens clean: no fog, strokes or palm left from the last glass, hidden until its masks render a 0.00 fresh 3
+PASS  her message: three asymmetric runes, written from her side (mirrored for you) 
+PASS  (v0.9.4) her small glass keeps her writing a while 
+PASS  statue 1 in reach turn1
+PASS  statue 2 in reach turn2
+PASS  statue 3 in reach turn3
+  .. sim 280s  real 46s  step 411/1111
+PASS  each statue turns her rune to the mirror (reversed in the glass = as she wrote it) [0, 1, 0]
+PASS  the door opens in the reflection first refl -1.31 real 0.00
+PASS  the reflection's door is only in the glass 
+PASS  reached the Hollow Walk (18.13293, 1.0, -11.80055) hollow_walk
+PASS  the hollow walk's gate is closed (18.51625, 1.0, -14.73)
+PASS  (v1.1d) Our Steps board 1 'The Column': solvable in its par, by BFS { "length": 4, "path": [(0, 1), (0, 1), (-1, 0), (0, -1)], "states": 54 }
+PASS  (v1.1d) board 1: at most two columns in all 
+PASS  (v1.1d) Our Steps board 2 'Two Stones': solvable in its par, by BFS { "length": 6, "path": [(-1, 0), (0, 1), (-1, 0), (0, 1), (1, 0), (1, 0)], "states": 108 }
+PASS  (v1.1d) board 2: at most two columns in all 
+PASS  (v1.1d) a big real planar mirror (6 x 3.5 m), a 4 x 3 floor before it 
+PASS  the floor starts unsolved and off; the glass only a mirror (no her) before you step on 
+PASS  (v1.1d) before you step on, her glyph and column are not in the glass either 
+PASS  (v1.1d) on the floor: she stands in the glass, on her start p (1, 0) h (1, 0)
+PASS  (v1.1d) on the floor: her glyph shows in the glass 
+PASS  (v1.1d) toward the glass: she comes toward it too p (1, 1) h (1, 1)
+PASS  (QA_V11) a fresh drag 38 deg off toward the last way still steps its own way p (2, 1)
+  .. sim 300s  real 50s  step 455/1111
+PASS  (v1.1d) a one-frame flick makes exactly one step, its own way p (2, 1) moves 1
+PASS  (v1.1d) off the floor: the glass is only a mirror again 
+PASS  (v1.1d) board 2 'Two Stones': you both at its start p (2, 0) h (2, 0)
+PASS  (v1.1) Our Steps SOLVED: both boards answered (hollow_done) true 2
+PASS  (v1.1d) solved: both glyphs lit, the glass a plain mirror again 
+  .. sim 320s  real 53s  step 534/1111
+PASS  reached the Court of Light (15.06459, 2.0, -18.38462) court_light
+PASS  beam not lit at start 
+PASS  solver: exactly one setting lights the mural, through her world [[3, 3, 1, 1]]
+PASS  solver: the near way lights the crystal the wrong way (a decoy) 4 decoys
+PASS  solver: no single turn from the start lights anything 
+PASS  her glass is a real reflection here 
+PASS  mirror 1 in reach mirror1
+PASS  mirror 2 in reach mirror2
+PASS  mirror 3 in reach mirror3
+PASS  the near way: the crystal lights... 
+PASS  ...but its light runs away from the mural 
+PASS  hint: her own glasses shimmer in the great glass 
+PASS  mirror 3 in reach mirror3
+PASS  mirror 4 in reach mirror4
+PASS  part of the beam runs in her world (seen only in the glass) 
+PASS  the stands are set as the solver says [3, 3, 1, 1]
+PASS  your veil's shadow falls on the mural 
+PASS  standing anywhere does not complete it 
+PASS  the shadow of your veil fills the missing head (-0.121596, 3.305538, -36.93)
+  .. sim 340s  real 57s  step 593/1111
+PASS  (v0.9) beyond the mural door: the Tree of Shards, named, the music swells; the camera leans to it (1.610236, 1.487207, -0.048274)
+PASS  (v0.9) the Tree of Shards: hundreds of shards, one multimesh 
+PASS  in the Mist Maze mist_maze
+PASS  (v2 N.7, the script) the lamp shows her red footprints on the maze floor, only where its light reaches 8 visible, 0 far
+PASS  the mist hides a wall (12.00001, 2.0, -30.65)
+PASS  bumping into it, it shimmers 
+PASS  out of the maze (its end, before the bars, is still the Maze's) (10.0, 2.0, -40.13438) mist_maze
+  .. sim 360s  real 61s  step 638/1111
+PASS  (v2.0 N.7) out of the maze: the Garden Beacon waits, cold 
+PASS  (v2.0) the lamp lights the Garden Beacon beacon_N
+PASS  (v2) the Cloister Stair brings you back into the Atrium atrium
+PASS  (v2 E.1) the Balcony's bench pt_bench
+PASS  (v2 E.1) sitting, the gaze turns to the sunken head (-3.965184, 0.0, 0.516093)
+  .. sim 380s  real 64s  step 661/1111
+PASS  (v2.0 E.2) the stones' melody played by itself when you came up 
+PASS  (v2.0) the panel at the Walk's foot is still sealed 
+PASS  (v2.0) a wrong stone sours the song, nothing opens 
+  .. sim 400s  real 67s  step 694/1111
+PASS  (v1.0) up on the Mirror Walk (31.33291, 4.0, -22.40001)
+PASS  (v1.0 M3c) past the panel, the Warden's reflection paces the long glass 
+PASS  (v1.0 M3c) seen: back at the Walk's start, no fail screen (31.4, 4.0, -25.4)
+  .. sim 420s  real 70s  step 720/1111
+  .. sim 440s  real 74s  step 723/1111
+  .. sim 460s  real 77s  step 723/1111
+PASS  (v1.0 M3c) in the pillar's shadow he passed you by 
+PASS  (v0.9) on the walkway: the Upward Spring, named, the camera leans up toward the temple (3.189996, 3.079995, -0.314228)
+PASS  (v1.0 M3c) crossed behind his back: not seen again; he leaves the Walk 
+PASS  solver: several ways to level it, and every one needs her 14
+PASS  left: the urn, 15 
+PASS  (v2) the way up to the High terrace is barred until the balance is won 
+PASS  (v1.0) down here, the lift stays down: the balance is not won 
+PASS  take weight 3 weight2
+PASS  hang it (pan 5) pan5
+PASS  take weight 2 weight1
+PASS  hang it (pan 4) pan4
+PASS  take weight 1 weight0
+PASS  hang it (pan 3) pan3
+PASS  all three on the right: 14 against 15, still tipped (15, 14)
+  .. sim 480s  real 80s  step 762/1111
+PASS  on her tile, her weight counts on the RIGHT: 16, tipped the other way (15, 16)
+PASS  hint after a while: the tiles shine 
+PASS  take the 1 back pan3
+PASS  put it on the bench weight0
+PASS  the balance is level (15, 15)
+PASS  (v2.0) the lamp lights the High wing's Beacon beacon_E
+PASS  (v2 E.6) the High Stair down is barred until the Eidolon Plate answers 
+PASS  eidolon reflection walks beyond the glass 
+PASS  her footprints lead toward the plate 8
+PASS  footprint marker shows where to stand intensity 0.85
+  .. sim 500s  real 84s  step 793/1111
+PASS  hers alone is not enough: your plate is empty 
+PASS  standing on yours, your reflection is far from hers 
+PASS  push the statue (1) ledge_push
+PASS  push the statue (2) ledge_push
+PASS  push the statue (3) ledge_push
+PASS  the statue holds your plate 
+  .. sim 520s  real 87s  step 817/1111
+PASS  (v2) the High Stair brings you back to the Ledge (19.75, 2.0, -28.06516) eidolon_ledge
+PASS  (v2.0) three Beacons burn ["W", "N", "E"]
+PASS  (v2 Act 3) the third fire: the Veiled Way's gate is down 
+PASS  (v2 Act 3) the pool's fog lifts: its four stones have risen 
+PASS  (v2 Act 3) through the Veiled Way, at the Waking Pool waking_pool
+PASS  (v2 I.20) no fog over the water now 
+PASS  (v2 I.20) the four stones stand in the water, risen 4 up
+PASS  pool reflection visible samples=109
+PASS  glimpse 1: reflection lags (~0.42 s at walking speed) lag distance 1.13 m
+PASS  solver: exactly one arrangement of the four slabs makes the path whole ["EW|EN|EW|NW|"]
+PASS  solver: the pool starts broken 
+PASS  solver: it takes more than one turn (at least 8 presses) 
+PASS  solver: no single turn makes it whole (no trivial path) 
+PASS  the water shows her slabs (reflection only) beside yours 22 arms, 14 hers
+PASS  every slab carries glowing connector inlays 
+PASS  her slabs are not in your world (no ground there) 
+PASS  no waiting mechanic: the water is always still 
+PASS  turn the first slab from the shore pool_turn0
+PASS  a turn is a quarter, snapped -1.571
+PASS  turning grinds 
+PASS  the first turn answers the shore: its joint lights at once ["3,0,S", "3,1,N", "3,1,S", "4,2,W", "5,2,E", "5,2,W", "6,2,E", "6,2,W", "1,2,N", "0,1,E", "0,1,W", "1,1,E", "1,1,S", "3,2,N"]
+PASS  standing on your slab over the water (-4.883036, 0.0, 18.85352)
+PASS  turn the second slab from the first (1) pool_turn1
+PASS  turn the second slab from the first (2) pool_turn1
+PASS  turn the second slab from the first (3) pool_turn1
+PASS  turn the third slab from the north rim pool_turn2
+  .. sim 540s  real 91s  step 860/1111
+PASS  still broken: hers are not stone yet 
+PASS  turn the fourth slab from the south rim (1) pool_turn3
+PASS  turn the fourth slab from the south rim (2) pool_turn3
+PASS  turn the fourth slab from the south rim (3) pool_turn3
+PASS  (v1.1) her stones start UNDER the water and rise (they never just appear) 7 under
+PASS  (v1.1) ...and stand risen, level with yours 
+PASS  (v1.0 juice) her slabs rise heavily: the water bulges and rings, sheets off their edges, the wet stone dries { "glint": 6, "dust": 46, "grit": 26, "ring": 43, "sparks": 4, "dust_fall": 5, "bubbles": 11, "sheet": 44, "wet": 11 }
+PASS  every joint of the whole path is answered (its seam lit) 20
+PASS  a joint lighting chimes 
+PASS  her stones break the surface: spray and a deep rumble 
+PASS  her slabs are solid now 
+PASS  ...and the reflection no longer marks any as hers 
+PASS  solving plays the solve jingle (one motif for every solve) 
+PASS  the music bed steps back under the jingle, then returns 
+  .. sim 560s  real 94s  step 888/1111
+PASS  crossed the pool (-12.06023, 0.0, 20.04958)
+PASS  footsteps on the slabs splash 
+PASS  (v2 I.21) its spans settle under her feet 
+PASS  (v2 I.21) a span lurches down under her, and stays (still walkable) (-27.03489, -0.14, 18.85001)
+PASS  (v2 I.21) pieces of the parapet break away into the sea 
+  .. sim 580s  real 98s  step 920/1111
+PASS  (v2 I.21) every falling piece fell; the way stays whole behind her 
+PASS  reached the Gate of the Four Veiled gate_four
+PASS  (v2 I.22) three veiled ones on their plinths; the gate is shut 
+PASS  (v2.0) the three Beacons burn: their statues' runes lit 
+PASS  standing on the empty plinth (-41.59976, 0.28, 20.93338)
+PASS  (v2 I.22) still, she turns to the gate as the others do 6.37
+PASS  the plinths light one by one 
+PASS  the gate is open 
+PASS  the solve jingle again 
+PASS  (v2 I.22) the gate has sunk out of sight 
+PASS  reached the First Shrine first_shrine
+PASS  shrine is dark 
+PASS  wake the shrine shrine
+  .. sim 600s  real 101s  step 946/1111
+PASS  cinematic: letterbox 
+PASS  cinematic: the shrine wakes 
+PASS  cinematic: near geometry cut away, the crystal lifted out of the shot 
+PASS  cinematic: her reflection in the shrine pool 
+PASS  (v2) cinematic: the one fixed view (no turning), centred on the pool 36.0 deg
+  .. sim 620s  real 104s  step 950/1111
+PASS  cinematic: palm to palm 
+PASS  cinematic: Katoptron lights on you both 
+PASS  (v2 I.23) she writes in the water with her finger: ΒΡΕΣ ΜΕ 
+PASS  (v2 I.23) deep in the water a glass eye opens 
+  .. sim 640s  real 106s  step 956/1111
+PASS  cinematic: her veil lifts: on the porcelain one, her mirror face catches the light 1.00
+PASS  cinematic: she is gone; the pool shows only you 
+PASS  memory fragment shows: the line alone, no silhouette over the last look (phase 6) 
+  .. sim 660s  real 108s  step 962/1111
+PASS  cinematic: ~4.5 s awakening + the 59 s score 63.9 s
+PASS  music cues: shrine_awaken, then cinematic_hand 
+PASS  the room beds come back after the scene 
+PASS  the world beyond is revealed 
+PASS  first shrine lights one cloak rune and brightens the hem 
+PASS  the shrine leaves its light on 
+PASS  milestone text names the chapter The Veiled Gate — awakened
+PASS  still playable, controls back, no letterbox 
+PASS  camera back to normal 
+PASS  fog receded 
+PASS  score cues played 
+PASS  (v1.0 juice) the chapter's physical moments all played (dust, grit, sparks, rings, wet stone, glints...) ["glint", "dust", "grit", "ring", "sparks", "dust_fall", "bubbles", "sheet", "wet"]
+PASS  (v1.0 juice) no burst is left alive for long 0
+  .. sim 680s  real 112s  step 973/1111
+  .. sim 700s  real 115s  step 981/1111
+  .. sim 720s  real 119s  step 989/1111
+  .. sim 740s  real 122s  step 997/1111
+  .. sim 760s  real 126s  step 1005/1111
+  .. sim 780s  real 129s  step 1013/1111
+  .. sim 800s  real 133s  step 1021/1111
+  .. sim 820s  real 137s  step 1029/1111
+  .. sim 840s  real 141s  step 1037/1111
+  .. sim 860s  real 144s  step 1045/1111
+  .. sim 880s  real 148s  step 1053/1111
+  .. sim 900s  real 151s  step 1061/1111
+PASS  random walk: always on walkable ground 43126 samples, 0 violations, max step dy 0.280
+PASS  random walk: never inside a solid prop's footprint 43126 samples, 0 hits
+PASS  interaction highlight: always on the target the button resolves to 43126 frames, 5154 with a target, 0 mismatches
+PASS  interaction highlight: something visibly lit for every target (a mesh glow, or the floor ring) 0
+PASS  props: every placement loaded, on the marble 2 placed
+PASS  props: each one is solid (its centre blocked) 
+PASS  props: every key place still reachable on foot from the gate []
+PASS  collision audit: every primitive classified 3465 primitives, 1039 solid footprints (852 static), 306 obstacles added
+  collision audit: 3465 primitives, 1039 solid footprints, 306 obstacles added; 1136 targets walked into from 4 sides (1650 approaches), 0 overlaps
+PASS  collision: walking into every solid prop and obstacle from 4 sides never overlaps it 1136 targets, 1650 approaches, 0 overlaps
+PASS  the first flight: its open side's balustrade stops you (-34.95, 0.454862, -7.656955)
+PASS  the first flight rises the way its steps are drawn (no walking through raised steps) 0.04 -> 0.47
+PASS  walking at the hall's bust and the mirror: never inside them  (-19.30207, 1.0, -23.1487)
+PASS  checkpoint saved (chapter) { "a1": { "atrium": true, "gaze": true, "glass": true, "lamp": true, "plate": true, "slab": true }, "a3": { "bridge": true }, "beacons": ["W", "N", "E"], "breath": true, "echo_room": true, "four": true, "gallery": true, "gallery_lit": [0.0, 1.0, 4.0], "garden_breath": true, "hall": { "brazier": [-21.0, -23.0], "bust": 0.0, "drum": [-23.0, -23.0], "locks": [true, true, true] }, "hall_door": true, "hollow_done": true, "hub": { "e_open": true, "ec_open": false, "map": ["V2_WS", "V2_I1", "V2_I2", "V2_I3", "V2_IB1", "V2_I4", "V2_I4s", "V2_I5", "V2_A", "W_land", "W_stair1", "W_breath", "W_stair2", "W_top", "W_corr", "H", "hdoor", "V2_W4", "GL", "V2_IBW", "V2_W6", "V2_WB", "V2_W7", "V2_WR", "V2_N1", "G", "g_door", "HW", "HW_ramp", "L_ramp", "L", "MZ_door", "MZ", "V2_N7x", "V2_NB", "V2_NS", "V2_ER", "V2_E1", "E", "WK_down", "WK", "lift", "SC", "V2_E5u", "E6", "V2_EH", "V2_VW", "V2_Pp", "V2_Pr", "V2_PW", "V2_I21", "V2_I22", "V2_I22f", "V2_I23", "TS", "SPB"], "points": ["bell", "bench"], "secrets": [], "star": true, "w_seen": true, "warden_seen": 1.0, "wk_crossed": true }, "inv": { "items": ["lamp", "shard"], "mem": [], "story": ["comb"], "tablets": ["t1"] }, "ledge_song": true, "ledge_statue": [27.0, -66.0], "lens_used": true, "maze": true, "memories": [], "mural": true, "pool_turns": [1.0, 3.0, 1.0, 3.0], "prologue_seen": true, "scale_w": [-1.0, 4.0, 5.0], "scales": true, "shard": true, "stones": true, "turned": [0.0, 1.0, 0.0], "turned_done": true }
+PASS  checkpoint saved (puzzles) 
+[audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[props] 2 placed
+[v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[v2 dress] I3 rubble_pile: on a kept path (no free spot within 2 m)
+[v2 dress] I5 kit_cot: outside the landmark (no free spot within 2 m)
+[v2 dress] I5 kit_urns: outside the landmark (no free spot within 2 m)
+[v2 dress] A kit_scaffold: on a kept path (no free spot within 2 m)
+[v2 dress] A kit_ladder: on a kept path (no free spot within 2 m)
+[v2 dress] A plinth: on a kept path (no free spot within 2 m)
+[v2 dress] W1 column_doric: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 mirror_frame: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 statue_veiled_praying: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 rubble_pile: on a kept path (no free spot within 2 m)
+[v2 dress] IBW archway_ruined: would hide the route (no free spot within 2 m)
+[v2 dress] IBW mirror_frame: on a kept path (no free spot within 2 m)
+[v2 dress] IBW kit_dead_plant: on a kept path (no free spot within 2 m)
+[v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[v2 dress] N2 column_fallen: outside the landmark (no free spot within 2 m)
+[v2 dress] N6 kit_dead_plant: hits a wall / obstacle (no free spot within 2 m)
+[v2 dress] N6 statue_veiled_bust: not on solid floor (no free spot within 2 m)
+[v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[v2 dress] E1 kit_urns: on a kept path (no free spot within 2 m)
+[v2 dress] E2 kit_awning_post: would hide the route (no free spot within 2 m)
+[v2 dress] E4 kit_urns: hits a wall / obstacle (no free spot within 2 m)
+[v2 dress] I21 kit_bridge_end: outside the landmark (no free spot within 2 m)
+[v2 dress] I21 rubble_pile: on a kept path (no free spot within 2 m)
+[v2 dress] I21 column_fallen: outside the landmark (no free spot within 2 m)
+[v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
+[v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
+[v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
+[solids] 3465 primitives, 1039 solid footprints, 306 obstacles added (129 ms)
+[warm-up] 603 mesh/material pairs (of 805 geometry nodes), 12 canvas materials
+PASS  restored chapter 
+PASS  restored regions 
+PASS  restored inventory 
+PASS  restored the won balance 
+PASS  restored awakened world 
+PASS  restored position (-19.30207, 1.0, -23.1487)
+[audio] v5 manifest: 14 rooms, 34 cues, 98/98 room events
+[props] 2 placed
+[v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[v2 dress] I3 statue_veiled_bust: on a kept path (no free spot within 2 m)
+[v2 dress] I3 rubble_pile: on a kept path (no free spot within 2 m)
+[v2 dress] I5 kit_cot: outside the landmark (no free spot within 2 m)
+[v2 dress] I5 kit_urns: outside the landmark (no free spot within 2 m)
+[v2 dress] A kit_scaffold: on a kept path (no free spot within 2 m)
+[v2 dress] A kit_ladder: on a kept path (no free spot within 2 m)
+[v2 dress] A plinth: on a kept path (no free spot within 2 m)
+[v2 dress] W1 column_doric: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 mirror_frame: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 statue_veiled_praying: not on solid floor (no free spot within 2 m)
+[v2 dress] W1 rubble_pile: on a kept path (no free spot within 2 m)
+[v2 dress] IBW archway_ruined: would hide the route (no free spot within 2 m)
+[v2 dress] IBW mirror_frame: on a kept path (no free spot within 2 m)
+[v2 dress] IBW kit_dead_plant: on a kept path (no free spot within 2 m)
+[v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[v2 dress] WB rubble_pile: outside the landmark (no free spot within 2 m)
+[v2 dress] N2 column_fallen: outside the landmark (no free spot within 2 m)
+[v2 dress] N6 kit_dead_plant: hits a wall / obstacle (no free spot within 2 m)
+[v2 dress] N6 statue_veiled_bust: not on solid floor (no free spot within 2 m)
+[v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[v2 dress] E1 kit_awning_post: would hide the route (no free spot within 2 m)
+[v2 dress] E1 kit_urns: on a kept path (no free spot within 2 m)
+[v2 dress] E2 kit_awning_post: would hide the route (no free spot within 2 m)
+[v2 dress] E4 kit_urns: hits a wall / obstacle (no free spot within 2 m)
+[v2 dress] I21 kit_bridge_end: outside the landmark (no free spot within 2 m)
+[v2 dress] I21 rubble_pile: on a kept path (no free spot within 2 m)
+[v2 dress] I21 column_fallen: outside the landmark (no free spot within 2 m)
+[v2 dress] I21 column_stump: on a kept path (no free spot within 2 m)
+[v2 dress] I22 gate_veiled: outside the landmark (no free spot within 2 m)
+[v2 dress] I22 pylon_ashlar: outside the landmark (no free spot within 2 m)
+[solids] 3465 primitives, 1039 solid footprints, 306 obstacles added (148 ms)
+[warm-up] 602 mesh/material pairs (of 804 geometry nodes), 12 canvas materials
+PASS  title offers Continue + New Game 
+PASS  New Game asks to confirm 
+PASS  No keeps the title and the save 
+PASS  new game: glimpses + areas forgotten {  }
+PASS  new game: puzzles reset { "door": [0, 0, 0], "door_open": false, "mirrors": [1, 0, 2, 2], "bridge": false, "plate": false, "shrine": false, "shortcut": false, "tablet": false, "drawbridge": false }
+PASS  new game: chapter reset { "stones": false, "pool_turns": [0, 0, 0, 0], "breath": false, "shard": false, "hall_door": false, "gallery": false, "gallery_lit": [3], "lens_used": false, "hall": { "drum": [-24, -17], "brazier": [-20, -17], "bust": 2, "locks": [false, false, false] }, "turned": [2, 3, 1], "turned_done": false, "garden_breath": false, "hollow_done": false, "mural": false, "maze": false, "echo_room": true, "ledge_song": false, "beacons": [], "a1": { "plate": false, "glass": false, "slab": false, "lamp": false, "atrium": false, "gaze": false }, "a3": { "bridge": false }, "prologue_seen": true, "memories": [], "scale_w": [-1, -1, -1], "scales": false, "four": false, "ledge_statue": [26, -64], "inv": { "items": [], "story": ["comb"], "tablets": [], "mem": [] }, "hub": { "ec_open": false, "w_seen": false, "e_open": false, "secrets": [], "wk_crossed": false, "warden_seen": 0, "map": ["V2_WS"], "points": [] } }
+PASS  new game: regions reset 
+PASS  new game: no shard 
+PASS  new game: the lift waits at the top (v1.0: you first meet it from the Ledge) 
+PASS  new game: world asleep, runes dormant 
+PASS  new game: woke by the pool (-3.6, 0.0, 18.0)
+PASS  (v2.0) skipped, the prologue still leaves you the comb 
+PASS  new game: save rewritten fresh 
+PASS  new game: settings kept (quality) 
+PASS  (QA P1-2) the Warden is never in plain view: hidden off the Walk 
+PASS  (v2) E: the High Stair's bars hold until the Eidolon Plate answers, the way up until the balance 
+PASS  (QA P0-1) standing at the Maze's end from the other side never solves the Maze 
+PASS  (v2.0) Beacons restored from a save burn at once, in their wings; the Gate still waits 
+PASS  (v1.1) the in-between points, each there 
+PASS  (v1.1) the votive, lit, stays lit 
+PASS  (QA_V11) the offering lights its little flame 
+PASS  (QA_V11) the cot: its cloth shifts and a wax tablet shows 
+PASS  (QA_V11) the coin drops into the dry basin 
+PASS  (QA_V11) a pause point on the landing between Our Steps and the Court 
+PASS  (QA_V11) the coin lies on the basin floor (not floating) (0.0, 0.008, 1.102)
+PASS  (QA order W-N-E) W: its Beacon waits for its puzzles 
+PASS  (QA order W-N-E) W walked: its Beacon can be lit 
+PASS  (QA order W-N-E) N: its Beacon waits for its puzzles 
+PASS  (QA order W-N-E) N walked: its Beacon can be lit 
+PASS  (QA order W-N-E) E: its Beacon waits for its puzzles 
+PASS  (QA order W-N-E) E walked: its Beacon can be lit 
+PASS  (QA order E-N-W) E: its Beacon waits for its puzzles 
+PASS  (QA order E-N-W) E walked: its Beacon can be lit 
+PASS  (QA order E-N-W) N: its Beacon waits for its puzzles 
+PASS  (QA order E-N-W) N walked: its Beacon can be lit 
+PASS  (QA order E-N-W) W: its Beacon waits for its puzzles 
+PASS  (QA order E-N-W) W walked: its Beacon can be lit 
+PASS  (QA order N-E-W) N: its Beacon waits for its puzzles 
+PASS  (QA order N-E-W) N walked: its Beacon can be lit 
+PASS  (QA order N-E-W) E: its Beacon waits for its puzzles 
+PASS  (QA order N-E-W) E walked: its Beacon can be lit 
+PASS  (QA order N-E-W) W: its Beacon waits for its puzzles 
+PASS  (QA order N-E-W) W walked: its Beacon can be lit 
+PASS  (QA order E-W-N) E: its Beacon waits for its puzzles 
+PASS  (QA order E-W-N) E walked: its Beacon can be lit 
+PASS  (QA order E-W-N) W: its Beacon waits for its puzzles 
+PASS  (QA order E-W-N) W walked: its Beacon can be lit 
+PASS  (QA order E-W-N) N: its Beacon waits for its puzzles 
+PASS  (QA order E-W-N) N walked: its Beacon can be lit 
+PASS  (v2.0) a v2 save migrates: lamp and shard in the satchel, nothing of the later chapters { "items": ["lamp", "shard"], "story": ["comb"], "tablets": [], "mem": [] }
+PASS  (v2) saved again as v7 
+PASS  (v2.0) v3 -> v4: the chisel, the amphora and the pin leave the satchel; the comb is there { "items": ["lamp", "shard"], "tablets": [], "mem": [], "story": ["comb"] }
+PASS  (v2.0) v3 -> v4: the seals taken are Beacons lit 
+PASS  (v2.0) v3 -> v4: the old first pool is the chapter's last puzzle now: unsolved again 
+PASS  (v2.0) v3 -> v4: the opened panel means the Ledge's song was sung; the Echo room is open 
+[save] v5 from before the new world: starting fresh
+PASS  (v2) a v5 save (from before the wings moved into the new world) is not loaded: a clean start 
+PASS  (v2) a v7 save loads 
+PASS  jump to the shrine (everything before it solved) 
+PASS  wake the shrine again shrine
+PASS  a short press does not skip 
+PASS  a long press skips the cinematic 
+PASS  skipped: the end state is reached anyway 
+PASS  skipped: the shrine counter still shows 
+PLAYTHROUGH OK  checks=426  failed=0  sim_time=917.5s  ground_samples=43558
+ERROR: Pages in use exist at exit in PagedAllocator: N20RasterizerSceneDummy21GeometryInstanceDummyE
+   at: ~PagedAllocator (./core/templates/paged_allocator.h:169)
+ERROR: 16 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 53 RID allocations of type 'N13RendererDummy11MeshStorage14DummyMultiMeshE' were leaked at exit.
+ERROR: 432 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+     at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+ERROR: 551 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 73 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
+ERROR: 507 RID allocations of type 'N17RendererSceneCull8InstanceE' were leaked at exit.
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2514)
+ERROR: 84 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)
+ERROR: Pages in use exist at exit in PagedAllocator: N7Variant5Pools12BucketMediumE
+   at: ~PagedAllocator (./core/templates/paged_allocator.h:169)
+ERROR: Pages in use exist at exit in PagedAllocator: N7Variant5Pools11BucketSmallE
+   at: ~PagedAllocator (./core/templates/paged_allocator.h:169)

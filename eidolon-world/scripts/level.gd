@@ -879,14 +879,23 @@ func _beyond() -> void:
 	# Tripo figure). (phase 6) The camera never turns, so "far" is placed on SCREEN: up and to the right of the second
 	# shrine in the cinematic's last shot, then pushed down its view ray to the cloud line, behind everything and deep
 	# in the fog (it was a pale primitive standing between the camera and the shrine)
-	var cb := Framing.basis()
-	var fwd := -cb.z
-	var on_screen := c2 + cb.x * BEYOND_COLOSSUS[0] + cb.y * BEYOND_COLOSSUS[1]
-	var cat := on_screen + fwd * ((BEYOND_COLOSSUS[2] - on_screen.y) / fwd.y)
-	Dress.beyond_colossus(beyond, cat, BEYOND_COLOSSUS[3], BEYOND_COLOSSUS[4])
+	Dress.beyond_colossus(beyond, beyond_colossus_at(), BEYOND_COLOSSUS[3], BEYOND_COLOSSUS[4])
 
 ## the beyond's colossus: [screen right of the second shrine (m), screen up (m), cloud line y (its foot), height, yaw (deg)]
 const BEYOND_COLOSSUS := [4.2, 1.5, -6.0, 18.0, -30.0]
+
+## the beyond colossus's foot: placed on SCREEN beside the second shrine, then down its view ray to the cloud line
+static func beyond_colossus_at() -> Vector3:
+	var cb := Framing.basis()
+	var fwd := -cb.z
+	var on_screen: Vector3 = SECOND_SHRINE + cb.x * BEYOND_COLOSSUS[0] + cb.y * BEYOND_COLOSSUS[1]
+	return on_screen + fwd * ((BEYOND_COLOSSUS[2] - on_screen.y) / fwd.y)
+
+## (A, phase 6) a far ruin's top that the camera sees beside or behind the colossus: sunk under the cloud
+static func _behind_colossus(top: Vector3) -> bool:
+	var cb := Framing.basis()
+	var d := top - beyond_colossus_at()
+	return absf(d.dot(cb.x)) < 9.0 and d.dot(cb.y) > -2.0
 
 func _far_ruins() -> void:
 	# huge drowned columns and statues around the complex, unlit and swallowed by the fog
@@ -899,6 +908,7 @@ func _far_ruins() -> void:
 		var p := _far_from_walks(FAR_C + (p0 - Vector2(10.0, -20.0)) * 1.5, 9.0)          # (v2: spread round the new world)
 		var rad := r.randf_range(0.9, 1.6)
 		var top := r.randf_range(-3.0, 5.0)
+		if _behind_colossus(Vector3(p.x, top, p.y)): top -= 16.0        # (A, phase 6: not beside the beyond colossus's head; the RNG sequence kept)
 		st.cyl(Vector3(p.x, top - 15.0, p.y), rad * 0.92, rad, 30.0, Color(0, 0, 0), 12, Basis(Vector3.BACK, r.randf_range(-0.06, 0.06)))
 		if r.randf() < 0.4:
 			st.box(Vector3(p.x, top + 0.3, p.y), Vector3(rad * 2.6, 0.6, rad * 2.6), Color(0, 0, 0))
