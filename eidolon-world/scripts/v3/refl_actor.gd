@@ -58,7 +58,9 @@ func cancel() -> void:
 func detach() -> void: _queue.append(["detach", null, BLEND_IN])
 func go(points: Array) -> void: _queue.append(["walk", points, 0.0])
 ## `then` is called once the gesture is `at_k` of the way through (the knot gives, the hand lands)
-func act(gesture: String, dur := 2.5, then := Callable(), at_k := 0.6) -> void: _queue.append(["act", gesture, dur, then, at_k])
+## (a5) a gesture A has a real clip for (HeroineClips, e.g. "turn_half") plays on her double's rig too; `at` = the
+## point it acts on ("@" in the clip), in her world
+func act(gesture: String, dur := 2.5, then := Callable(), at_k := 0.6, at := Vector3.INF) -> void: _queue.append(["act", gesture, dur, then, at_k, at])
 func call_back(f: Callable) -> void: _queue.append(["call", f, 0.0])
 func rejoin() -> void: _queue.append(["rejoin", null, BLEND_OUT])
 
@@ -138,6 +140,11 @@ func _next() -> void:
 			_act_then = q[3] if q.size() > 3 else Callable()
 			_act_at = q[4] if q.size() > 4 else 0.6
 			state = "act"
+			var pr = r.puppet.get("rig") if r.puppet else null
+			if pr is HeroineRig and HeroineClips.has(_act):
+				var o := {}
+				if q.size() > 5 and q[5] != Vector3.INF: o["at"] = q[5]
+				(pr as HeroineRig).play(_act, o)
 		"rejoin":
 			state = "rejoin"
 

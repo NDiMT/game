@@ -9,7 +9,7 @@ extends Puzzle
 
 const POOL_C := Vector3(-40.0, 0.0, 15.6)
 const HALF := Vector2(2.1, 2.1)
-const KNEEL := Vector3(-40.0, 0.0, 18.25)        # where she kneels (the lip's middle), facing north into the pool
+const KNEEL := Vector3(-40.0, 0.0, 18.0)        # where she kneels (the lip's middle), facing north into the pool
 const TOUCH := Vector3(-40.0, 0.05, 17.42)      # where the palms meet
 const STELE := Vector3(-40.0, 0.0, 11.0)
 var water: Reflector
@@ -73,8 +73,7 @@ func _ending() -> void:
 		if water:
 			water.hold = true
 			water.hold_k = 1.0
-			water.hold_xf = Transform3D(Basis(Vector3.UP, 0.0), KNEEL + Vector3(0, 0.0, -0.05))
-			water.reach_override = 1.0, false)
+			water.hold_xf = Transform3D(Basis(Vector3.UP, 0.0), KNEEL + Vector3(0, 0.0, -0.05)), false)     # (A: her double plays palm_to_palm on its own rig)
 	c.path(6.0, 8.0, [TOUCH + Vector3(1.0, 1.35, 0.85), TOUCH + Vector3(0.62, 1.0, 0.55)], [TOUCH + Vector3(0, -0.1, 0)], 38.0, 30.0)
 	c.at(6.6, func() -> void:
 		OmenFx.palm_press(game.juice, TOUCH + Vector3(0, -0.035, 0), PI, null, 2)

@@ -52,22 +52,16 @@ Old docs are in `dev/archive/` (history only; don't read them unless told). The 
 - **Marble instances:** the per-instance GL buffer allows at most 256 marble MeshInstances, and the flow test fails above 250. Merge meshes.
 - **Audio:** static bus layout, Sample playback, short loops.
 
-## Architecture (current v2; check before you change)
-- **World:** `scripts/v2/map2.gd` (Map2) is the layout source of truth: spaces, beats, walk regions, water, walls, doors, pieces, route, moods.
-- **Act and chapter logic:**
-  - `scripts/act1.gd`, `scripts/v2/act3.gd`, `scripts/chapter.gd` (wings, pool, Gate, Shrine), `scripts/prologue.gd`.
-  - `scripts/v2/wings_geo.gd` and `lv_off.gd`: the v1 rooms, shown at offsets.
-  - `scripts/our_steps.gd`: the mirror board puzzle.
-- **Systems:** `main.gd`, `player.gd`, `controls.gd`, `cinematic.gd`, `items.gd`, `satchel.gd`, `ui.gd`, `audio.gd`, `juice.gd`, `life.gd`, `warden.gd`, `planar.gd` / `reflector.gd` (mirrors).
-- **A's fx:** `scripts/fx/`, including `dress.gd` (landmark dressing), `omen_fx.gd`, `pass_through.gd`, `beacon_fire.gd`, `intro_card.gd`, `fog_bank.gd` and `map_view.gd`.
+## Architecture (v3 is live; check before you change)
+- Entry: `scenes/main3.tscn` (Game3 extends the lean base `main.gd`). Layout data `scripts/v3/map3.gd` -> built by `world3.gd`; dressing `dress3.gd`, kit `kit3.gd`.
+- Two worlds: `two_world.gd` (set_her/set_mine), her reflection actor `refl_actor.gd`; prologue `prologue3.gd`; beats `scripts/v3/pz/pz_<beat>.gd` on `puzzle.gd`; `Game3.perform(clip, at, ...)`, `Game3.MUSIC`.
+- Systems: player, controls, cinematic (CineCam path/handoff), ui, audio, juice, planar/reflector (mirrors), save.
+- A's fx: `scripts/fx/` (cine_fx, heroine_clips, rig_ik, still_room, wing_art, polish_art, ending_fx, dress, omen_fx, ...).
+- Design: `dev/CH1_V3.md`. Live hooks: last entries of `dev/HANDOFF.md`.
 
 ## Tests
 - **`tests/quick.sh`:** parse check plus targeted checks, about 2 min. Use it while iterating.
-- **`tests/smoke.sh`:** the full suite, about 13–20 min. It covers:
-  - the headless playthrough;
-  - the web smoke;
-  - the Our Steps real-touch test (`web_oursteps.mjs`);
-  - `flow_v2`.
+- **`tests/smoke.sh`:** the full suite, about 16 min (wrap in `timeout 1800`): pz_test all, web smoke (v3), `web_still.mjs`, flow_v3, save_v3. Run `web_v3.mjs --act1-touch` separately.
 - **Also before a phase ends:**
   - `tests/overlap_test.tscn`
   - `tests/framing_test.tscn` (occlusion)

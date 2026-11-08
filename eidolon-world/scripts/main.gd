@@ -441,6 +441,7 @@ func cmd(c: String) -> Variant:
 		"runes": player.fig.set_runes(int(a[1]))
 		"credits": ui.show_credits(a[1] == "1")
 		"perf": _perf_hud(a[1] == "1")
+		"frameprof": frameprof(a[1] == "1")
 		"feat": set_feature(a[1], a[2] == "1")
 		"newgame_ui":
 			# the title's New Game -> confirmation -> Yes, through the real buttons
@@ -449,6 +450,35 @@ func cmd(c: String) -> Variant:
 		"fogd": world.fog_mats[int(a[1])].set_shader_parameter("density", float(a[2]))
 		"envfog": world.env.fog_enabled = a[1] == "1"
 	return true
+
+## (phase 5, perf probe; web: ewCmd("frameprof:1")) every frame's script time (every node's _process, bracketed by a
+## first and a last node), the worst per space and the frames over 4 ms, in state_dict()["frame"]
+var frame_worst := {}
+var frame_over := 0
+var frame_n := 0
+var _fp_t0 := 0
+class FrameBracket extends Node:
+	var first := true
+	var game
+	func _process(_dt: float) -> void:
+		if first:
+			game._fp_t0 = Time.get_ticks_usec()
+			return
+		var ms: float = (Time.get_ticks_usec() - game._fp_t0) / 1000.0
+		var k := str(game.get("space")).get_slice("~", 0)
+		game.frame_worst[k] = snappedf(maxf(float(game.frame_worst.get(k, 0.0)), ms), 0.01)
+		game.frame_n += 1
+		if ms > 4.0: game.frame_over += 1
+func frameprof(on: bool) -> void:
+	for c in get_children(): if c is FrameBracket: c.queue_free()
+	frame_worst = {}; frame_over = 0; frame_n = 0
+	if not on: return
+	for f in [true, false]:
+		var b := FrameBracket.new()
+		b.first = f
+		b.game = self
+		b.process_priority = -100000 if f else 100000
+		add_child(b)
 
 var perf_hud: PerfHud
 func _perf_hud(on: bool) -> void:

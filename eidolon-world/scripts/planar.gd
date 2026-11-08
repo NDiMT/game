@@ -25,6 +25,8 @@ var plane_d := 0.0
 var mat: ShaderMaterial          # the mirror quad's material
 var enabled := true              # false on the LOW tier
 var active := false
+const RELEASE_S := 20.0
+var _idle_t := 0.0
 var scale := 1.0                 # v0.5b: x the REAL 3D render resolution (window pixels x render scale)
 var res_k := 1.0                 # v0.6: per glass (a smaller glass needs fewer pixels)
 const MAX_H := 1400
@@ -91,7 +93,14 @@ func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 			if current == self:
 				current = null
 				RenderingServer.global_shader_parameter_set("refl_clip", Vector4.ZERO)
-	if not active: return
+	if not active:
+		# (phase 5, web memory) a glass left off for a while lets its full-size render target go (13 were held after a
+		# full run); it is sized again the frame it comes back on (an allocation, never a shader compile)
+		_idle_t += main_cam.get_process_delta_time()
+		if _idle_t > RELEASE_S and vp.size != Vector2i(8, 8) and vp.render_target_update_mode == SubViewport.UPDATE_DISABLED:
+			vp.size = Vector2i(8, 8)
+		return
+	_idle_t = 0.0
 	_frame += 1
 	if _frame == 3: mat.set_shader_parameter("planar", 1.0)
 	var main_vp := main_cam.get_viewport()

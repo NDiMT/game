@@ -513,7 +513,8 @@ func state3() -> Dictionary:
 		"seen": seen, "end": bool(seen.get("ch1_end", false)), "acting": _acting, "lens": lens_on, "cine_t": snappedf(cine.t, 0.1) if cine else -1.0, "glass": _glass_state(),
 		# (web smoke) the tier, the frame rate, the audio state
 		"tier": world.tier_name(), "quality_high": world.quality_high, "fps": Engine.get_frames_per_second(),
-		"sfx_ready": sfx.ready_ok, "played": sfx.played, "music": sfx._music_cur, "drone": sfx.drone.playing, "beds": sfx.bed_debug()}
+		"sfx_ready": sfx.ready_ok, "played": sfx.played, "music": sfx._music_cur, "drone": sfx.drone.playing, "beds": sfx.bed_debug(),
+		"frame": {"worst": frame_worst, "over4": frame_over, "n": frame_n}}
 
 ## (web touch test) the open glass: its phase and the stroke to trace, in viewport pixels
 func _glass_state() -> Dictionary:

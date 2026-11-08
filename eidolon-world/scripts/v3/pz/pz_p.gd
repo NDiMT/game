@@ -208,7 +208,10 @@ func tick(dt: float) -> void:
 		var her_at: Vector3 = hers[k].global_position
 		actor.detach()
 		actor.go([Vector3(spot.x, 0.0, spot.y).lerp(Vector3(her_at.x, 0.0, her_at.z), 0.35)])
-	actor.act("reach", 1.3, func() -> void: _turn_hers(k, false), 0.55)
+	var top := hers[k].global_position
+	var hm := hers[k] as MeshInstance3D
+	if hm and hm.mesh: top.y = (hm.global_transform * hm.mesh.get_aabb()).end.y
+	actor.act("turn_half", 3.6, func() -> void: _turn_hers(k, false), 0.35, top)          # (A: her clip, "turn" at 1.25 s)
 
 func hint() -> void:
 	var k := _slab_now()

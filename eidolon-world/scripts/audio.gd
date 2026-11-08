@@ -154,10 +154,10 @@ func _layer(f: String) -> AudioStreamPlayer:
 	return layer_p[f]
 
 func _target(f: String) -> float:
-	var room: Dictionary = rooms.get(area, {})
+	var room: Dictionary = rooms.get(_music_cur, {})          # (the room whose beds play: see set_area)
 	if not room.has(f): return -60.0
 	var db: float = room[f] + duck + jingle_duck + cue_duck
-	if area in ["first_shrine", "gate_four", "court_light"]: db += swell_boost * 0.5
+	if _music_cur in ["first_shrine", "gate_four", "court_light"]: db += swell_boost * 0.5
 	return db
 
 func start_music() -> void:
@@ -198,7 +198,7 @@ func _pw_fill() -> void:
 
 func _pw_step() -> void:
 	_pw_t += 1
-	if _pw_t % 40 == 0: _bed_step()
+	if _pw_t % (10 if _pending != "" else 40) == 0: _bed_step()
 	if _pw_t % 2 != 0: return
 	if not _pw.is_empty():
 		var f: String = _pw.pop_front()
@@ -334,7 +334,7 @@ func _bed_step() -> void:
 		return
 	# decoded ahead (a web sample) while you are still in the room next door: entering never decodes
 	if OS.has_feature("web") and not AudioServer.is_stream_registered_as_sample(st):
-		if not calm:
+		if not calm and not (_pending != "" and _pending_t > PENDING_MAX and rooms.get(_pending, {}).has(f)):
 			_bed_q.push_front(f)          # (a decode is a short stall: only while you stand still)
 			return
 		AudioServer.register_stream_as_sample(st)
@@ -355,10 +355,33 @@ func set_music(on: bool) -> void:
 	music_on = on
 	AudioServer.set_bus_mute(music_bus, not on)
 
+## (phase 5) on the web a bed must be decoded (a web sample) before it can play, and decoding is a stall: a room whose
+## beds are not decoded yet keeps the music it has; its beds go first in the queue and are decoded at the next still
+## moment (or after PENDING_MAX s), then it crossfades in. Never a decode on the spot when a room is entered.
+const PENDING_MAX := 8.0
+var _pending := ""
+var _pending_t := 0.0
 func set_area(key: String) -> void:
 	area = key
 	_bed_plan()
-	if _started and rooms.has(key): _enter(key)
+	if not (_started and rooms.has(key)): return
+	if _decoded(key):
+		_pending = ""
+		_enter(key)
+		return
+	_pending = key
+	_pending_t = 0.0
+	for f in rooms[key]:
+		_bed_q.erase(f)
+		_bed_q.push_front(f)
+
+func _decoded(key: String) -> bool:
+	if not OS.has_feature("web"): return true
+	for f in rooms.get(key, {}):
+		if layer_p.has(f): continue
+		var st: AudioStream = _pw_keep.get(f, null)
+		if st == null or not AudioServer.is_stream_registered_as_sample(st): return false
+	return true
 
 ## exposed bridges and ledges: the gusts rise (0..1)
 func set_wind(k: float) -> void:
@@ -376,6 +399,12 @@ func _process(dt: float) -> void:
 	cue_duck = cd
 	# (v0.8.3) a bed that should be heard but is not playing (on the web a play() can be dropped while
 	# the stream's sample is still being decoded) is started again, once a second at most
+	if _pending != "":
+		_pending_t += dt
+		if _pending != area: _pending = ""
+		elif _decoded(_pending):
+			_enter(_pending)
+			_pending = ""
 	_bed_check -= dt
 	if _bed_check <= 0.0:
 		_bed_check = 1.0
