@@ -3,11 +3,11 @@ extends Puzzle
 ## Its pieces serve the prologue (Prologue3): the pool's real planar reflection (her double, half a second late), the
 ## Observer's veiled head far out in the inlet, the path lanterns that light when it ends. Done = the prologue seen.
 
-const LIE := Vector3(-4.6, 0.0, 32.15)          # where she lies, on the lip, facing the water (north)
+const LIE := Vector3(-4.6, 0.0, 31.3)            # where she lies, on the lip, facing the water (north)
 const LIE_YAW := 0.0
 const LIP_Z := 31.0
 const SURF_Y := -0.35                           # the pool's surface (Map3.WATER)
-const COMB_LAND := Vector3(-3.95, 0.0, 31.55)   # where the comb clinks down on the marble
+const COMB_LAND := Vector3(-4.1, 0.0, 30.95)    # where the comb clinks down on the marble
 ## the path lanterns, in the order they light (toward the door into I.1)
 const LANTERNS := [Vector3(-2.4, 0.0, 34.45), Vector3(-0.3, 0.0, 34.45), Vector3(1.55, 0.0, 34.4), Vector3(1.55, 0.0, 31.6)]
 var pool: Reflector

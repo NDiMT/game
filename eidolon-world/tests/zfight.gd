@@ -11,7 +11,7 @@ var tris: Array = []          # [a, b, c, n, d, owner, transparent]
 
 func _ready() -> void:
 	Game.autotest = true
-	var game: Game = load("res://scenes/main.tscn").instantiate()
+	var game: Game = load("res://scenes/main3.tscn" if OS.get_environment("EIDOLON_V3") == "1" else "res://scenes/main.tscn").instantiate()          # (v3: EIDOLON_V3=1)
 	add_child(game)
 	await get_tree().process_frame
 	await get_tree().process_frame

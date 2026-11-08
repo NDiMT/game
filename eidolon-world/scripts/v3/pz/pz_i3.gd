@@ -3,7 +3,7 @@ extends Puzzle
 ## fogs, and on the other side HER finger writes one stroke; trace it (GlassTalk "first": direction-free, generous).
 ## A wrong trace fades and she writes it again, slower. Solved: the low bars across the way north rise.
 
-const PANE := Vector3(19.72, 1.3, 23.0)         # on the east wall, facing west into the corridor
+const PANE := Vector3(19.66, 1.3, 23.0)         # on the east wall, facing west into the corridor
 const SIZE := Vector2(0.8, 1.1)
 var breath: ShaderMaterial
 var bars: Node3D
@@ -15,15 +15,15 @@ func build() -> void:
 	g.mi.set_meta("hide", true)
 	var d := Map3.door("I3", "IB1")
 	var c: Vector2 = d["c"]
-	bars = Kit3.bars(game, self, Vector3(c.x, 0.0, c.y + 0.12), float(d["w"]) + 0.2, false)
+	bars = Kit3.bars(game, self, Vector3(c.x, 0.0, c.y + 0.12), float(d["w"]), false)
 	var m := MB.new()
 	var col := Color(0.5, 0.25, 0.0)
-	m.box(PANE + Vector3(0.06, -0.92, 0), Vector3(0.3, 0.6, 1.1), col)                   # (its sill)
-	m.box(PANE + Vector3(0.04, 0, -0.48), Vector3(0.14, 1.3, 0.1), Color(0.5, 1.0, 0.0))
-	m.box(PANE + Vector3(0.04, 0, 0.48), Vector3(0.14, 1.3, 0.1), Color(0.5, 1.0, 0.0))
-	m.box(PANE + Vector3(0.04, 0.62, 0), Vector3(0.16, 0.1, 1.06), Color(0.5, 1.0, 0.0))
+	m.box(PANE + Vector3(-0.03, -0.92, 0), Vector3(0.24, 0.6, 1.1), col)                  # (its sill, against the wall)
+	m.box(PANE + Vector3(0.0, 0, -0.48), Vector3(0.12, 1.3, 0.1), Color(0.5, 1.0, 0.0))
+	m.box(PANE + Vector3(0.0, 0, 0.48), Vector3(0.12, 1.3, 0.1), Color(0.5, 1.0, 0.0))
+	m.box(PANE + Vector3(0.0, 0.62, 0), Vector3(0.12, 0.1, 1.06), Color(0.5, 1.0, 0.0))
 	Kit3.marble(game, m.commit(), self)
-	game.level.ob_rect(Rect2(PANE.x - 0.12, PANE.z - 0.56, 0.4, 1.12))
+	game.level.ob_rect(Rect2(PANE.x - 0.16, PANE.z - 0.56, 0.34, 1.12))
 	game.level.add_interact("i3_pane", Vector3(PANE.x - 0.85, 0.0, PANE.z), "breathe", breathe, 1.1,
 		func() -> bool: return not done)
 

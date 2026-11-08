@@ -103,18 +103,17 @@ func gate(a: String, b: String) -> Gate:
 	var sz := (n * 0.5 + al * w).abs()
 	g.ob = game.level.ob_rect(Rect2(c - sz * 0.5, sz), "gate_%s_%s" % [a, b])
 	var y := maxf(Map3.height(a, c - n * 0.8), Map3.height(b, c + n * 0.8))
-	var bm := BoxMesh.new()
-	bm.size = Vector3(maxf(sz.x, 0.3), 2.2, maxf(sz.y, 0.3))
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.32, 0.27, 0.22)
-	m.roughness = 0.6
-	m.metallic = 0.4
-	g.mi = MeshInstance3D.new()
-	g.mi.mesh = bm
-	g.mi.material_override = m
+	# a carved marble leaf (a panel framed by a raised border), sunk into the floor when it opens
+	var mb := MB.new()
+	var along_x := absf(al.x) > 0.5
+	var th := Vector3(w - 0.16 if along_x else 0.3, 2.2, 0.3 if along_x else w - 0.16)        # (a hair inside the wall ends)
+	mb.box(Vector3.ZERO, th, Color(0.5, 0.25, 0.0))
+	var face := th + (Vector3(-0.03, 0, 0.06) if along_x else Vector3(0.06, 0, -0.03))          # (its ends inside the leaf's: no shared face)
+	face.y = 0.12
+	for yy in [-1.0, 1.0]: mb.box(Vector3(0, yy * 1.0, 0), face, Color(0.5, 0.5, 0.0))
+	g.mi = Kit3.marble(game, mb.commit(), self)
 	g.mi.position = Vector3(c.x, y + 1.1, c.y)
 	g.mi.set_meta("base_y", y + 1.1)
-	add_child(g.mi)
 	gates.append(g)
 	return g
 

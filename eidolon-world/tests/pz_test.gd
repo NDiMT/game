@@ -31,11 +31,11 @@ func _ready() -> void:
 	game = load("res://scenes/main3.tscn").instantiate()
 	add_child(game)
 	match want:
-		"all": jobs = game.ch.pz.keys() + ["cine", "actor"]
-		"foundations": jobs = ["cine", "actor"]
+		"all": jobs = game.ch.pz.keys() + ["cine", "actor", "prologue"]
+		"foundations": jobs = ["cine", "actor", "prologue"]
 		_: jobs = [want]
 	for j in jobs:
-		if not (j in ["cine", "actor"]) and not game.ch.pz.has(j):
+		if not (j in ["cine", "actor", "prologue"]) and not game.ch.pz.has(j):
 			print("PZ FAIL  unknown puzzle '%s' (registered: %s)" % [j, ", ".join(game.ch.pz.keys())])
 			set_process(false)
 			get_tree().quit(1)
@@ -57,6 +57,7 @@ func _process(dt: float) -> void:
 	match job:
 		"cine": _cine()
 		"actor": _actor()
+		"prologue": _prologue()
 		_: _puzzle(job)
 
 func _done() -> void:
@@ -190,4 +191,57 @@ func _actor() -> void:
 		ok("actor: the gesture played to its end", "untie_cleat" in (data["acted"] as Array))
 		ok("actor: she rejoined you (copying again)", data.has("rejoined") and not r.hold and a.state == "follow")
 		a.queue_free()
+		_done()
+
+## the prologue: the first time it cannot be skipped; once seen, a long press skips it and lands in play at the
+## shore, the comb in hand, the fixed camera on, her world's pieces gone
+func _prologue() -> void:
+	if step == 0:
+		game.cmd("seen:0")
+		game.cmd("pz_reset:WS")
+		game.cmd("prologue")
+		data["t0"] = job_t
+		step = 1
+		return
+	if step == 1:
+		if job_t - data["t0"] < 1.0: return
+		game.set("_skip_hold", true)
+		data["t1"] = job_t
+		step = 2
+		return
+	if step == 2:
+		if job_t - data["t1"] < 1.8: return
+		ok("prologue: the first view is not skipped by a long press", game.mode == "cine" and game.cine is Prologue3)
+		game.set("_skip_hold", false)
+		game.cmd("cine_at:20")
+		ok("prologue: it runs on the perspective CineCam", get_viewport().get_camera_3d() != game.world.cam)
+		ok("prologue: Ione stands in her world (only the glass draws her)", game.cine.ione != null and game.cine.ione.rig != null)
+		data["ione"] = game.cine.ione
+		game.cmd("seen:1")
+		game.set("_skip_hold", true)
+		data["t2"] = job_t
+		step = 3
+		return
+	if step == 3:
+		if game.mode == "cine" and job_t - data["t2"] < 4.0: return
+		game.set("_skip_hold", false)
+		data["t3"] = job_t
+		step = 4
+		return
+	if step == 4:
+		if job_t - data["t3"] < 0.5: return
+		ok("prologue: once seen, a long press skips it into play", game.mode == "play" and game.cine == null)
+		ok("prologue: the fixed camera is back", get_viewport().get_camera_3d() == game.world.cam)
+		ok("prologue: she has the comb and the shore is done", game.has_item("comb") and game.ch.pz["WS"].done)
+		ok("prologue: she stands at the shore", Map3.rect("WS").has_point(Vector2(game.player.position.x, game.player.position.z)))
+		ok("prologue: her world's pieces are put away", not is_instance_valid(data.get("ione")) and game.level.marble_mat.get_shader_parameter("dark_k") == 0.0)
+		data["p0"] = game.player.position
+		data["t4"] = job_t
+		game.cmd("input:1:-1")
+		step = 5
+		return
+	if step == 5:
+		if job_t - data["t4"] < 1.2: return
+		game.cmd("stop")
+		ok("prologue: she can walk off the lip at once", game.player.position.distance_to(data["p0"]) > 1.0, "%.2f m" % game.player.position.distance_to(data["p0"]))
 		_done()

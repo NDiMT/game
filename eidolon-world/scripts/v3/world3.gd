@@ -4,8 +4,9 @@ class_name World3
 ## (high on N / E sides, low parapets on S / W: they face the camera and never hide her), water, the great mirrors and
 ## block-out labels. One merged zone per part (the web's marble buffer holds 256 instances).
 
-static var labels_on := true
+static var labels_on := OS.get_environment("EIDOLON_LABELS") == "1"          # (block-out review shots only)
 static var mirrors := {}          # space id -> Reflector (the great glass)
+static var _wall_n := 0
 static var waters: Array[MeshInstance3D] = []     # the water sheets (Map3.WATER order)
 
 static func zone(part: String) -> String:
@@ -78,6 +79,13 @@ static func _doorway(lv: Level, a: String, b: String) -> void:
 	var y_lo := ha if pos else hb
 	var y_hi := hb if pos else ha
 	lv.walk(r, y_lo, y_hi, ax if not is_equal_approx(ha, hb) else -1, Map3.ZP + a + "~" + b, not (a in Map3.POOLS or b in Map3.POOLS))
+	# a pool's lip: the land side walks right to the water's edge (she wakes there; the pool itself is shut)
+	if a in Map3.POOLS or b in Map3.POOLS:
+		var land := b if a in Map3.POOLS else a
+		var nl := n if a in Map3.POOLS else -n          # (from the pool toward the land)
+		var q0 := c - al * w * 0.5
+		var q1 := c + al * w * 0.5 + nl * (Map3.WALL_IN + 0.05)
+		lv.walk(Rect2(minf(q0.x, q1.x), minf(q0.y, q1.y), absf(q1.x - q0.x), absf(q1.y - q0.y)), Map3.height(land, c), NAN, -1, Map3.ZP + land)
 	# the threshold: a slab under the gap in the wall
 	var thr := Rect2(c - (n * Map3.WALL_IN + al * w * 0.5).abs(), (n * Map3.WALL_IN * 2.0 + al * w).abs())
 	lv.slab(zone(Map3.part_of(a)), thr, maxf(ha, hb) - 0.004, 0.5, 0.3, false)
@@ -117,7 +125,9 @@ static func _walls(lv: Level, s: Array) -> void:
 			var wr: Rect2
 			if e[1] == 0: wr = Rect2(seg[0], e[0] - 0.2, seg[1] - seg[0], 0.4)
 			else: wr = Rect2(e[0] - 0.2, seg[0], 0.4, seg[1] - seg[0])
-			lv.wall(zone(s[8]), wr, ylo - 0.05, yhi + h, h > 1.0)
+			_wall_n += 1
+			lv.wall(zone(s[8]), wr, ylo - 0.05, yhi + h + 0.004 * (_wall_n % 4), h > 1.0)          # (tops a hair apart: two walls meeting at a corner never share a plane)
+			lv.ob_rect(wr)          # (outside every walk region anyway: it tells the dressing where the walls stand)
 
 ## the stretch [from, to] of an edge that lies along another rect's border, [] if none
 static func _edge_overlap(e: Array, ro: Rect2) -> Array:

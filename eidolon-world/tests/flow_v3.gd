@@ -48,6 +48,8 @@ func _process(dt: float) -> void:
 	if not started:
 		if t < 0.5: return
 		for id in game.ch.pz: game.cmd("pz_solve:" + id)
+		game.cmd("pool_road:1")                       # (phase 2: the pool is water and the wing roads barred; walk the whole map)
+		game.ch.pz["A"].open_roads(true)
 		var s: Array = route[0]
 		game.cmd("tp:%f:%f" % [s[0], s[1]])
 		started = true
@@ -111,6 +113,8 @@ func _marble_instances() -> int:
 func _finish() -> void:
 	var mc := _marble_instances()
 	ok("marble instances <= 250", mc <= 250, "%d" % mc)
+	var st: int = game.sfx.played.get("step", 0)
+	ok("footsteps come from her real foot plants (HeroineRig.step)", st > 20, "%d steps" % st)
 	for s in Map3.SPACES:
 		if area != "all" and s[8] != area and not (s[0] == "A"): continue
 		ok("space %s (%s) visited" % [s[0], s[2]], visited.has(s[0]))

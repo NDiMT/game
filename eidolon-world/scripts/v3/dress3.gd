@@ -13,16 +13,16 @@ const SETS := {
 	"I2": [["statue_veiled_mourning", 0.88, 0.1, -30.0, 0.8], ["kit_urns", 0.08, 0.9, 0.0, 0.6, {"small": true}],
 		["rubble_pile", 0.9, 0.9, 0.0, 0.3, {"small": true}]],
 	"I3": [["statue_veiled_bust", 0.9, 0.41, -90.0, 0.8], ["statue_veiled_bust", 0.9, 0.62, -90.0, 0.8],
-		["column_stump", 0.9, 0.06, 0.0, 0.7], ["column_fallen", 0.1, 0.78, 10.0, 0.5, {"small": true}],
+		["column_stump", 0.9, 0.06, 0.0, 0.7], ["rubble_pile", 0.85, 0.96, 0.0, 0.3, {"small": true}],
 		["rubble_pile", 0.1, 0.3, 0.0, 0.35, {"small": true}]],
 	"IB1": [["statue_veiled_kneeling", 0.45, 0.1, 90.0, 0.75], ["column_fallen", 0.18, 0.13, 80.0, 0.55, {"small": true}],
 		["kit_dead_plant", 0.08, 0.85, 0.0, 0.8, {"small": true}], ["rubble_pile", 0.55, 0.92, 0.0, 0.3, {"small": true}]],
-	"I4": [["column_stump", 0.05, 0.1, 0.0, 0.8], ["column_doric", 0.95, 0.07, 0.0, 0.8], ["kit_dead_plant", 0.7, 0.08, 0.0, 0.8, {"small": true}],
+	"I4": [["column_stump", 0.08, 0.13, 0.0, 0.8], ["column_doric", 0.95, 0.07, 0.0, 0.8], ["kit_dead_plant", 0.7, 0.08, 0.0, 0.8, {"small": true}],
 		["rubble_pile", 0.5, 0.92, 0.0, 0.35, {"small": true}], ["column_fallen", 0.25, 0.86, 20.0, 0.5, {"small": true}],
 		["rubble_pile", 0.95, 0.9, 40.0, 0.3, {"small": true}]],
 	"I5": [["kit_workbench", 0.2, 0.07, 0.0, 1.0], ["item_wax_tablet", 0.15, 0.08, 15.0, 2.2, {"y": 0.97, "on": true}],
 		["item_wax_tablet", 0.26, 0.085, -20.0, 2.2, {"y": 0.97, "on": true}], ["flame", 0.22, 0.07, 0.0, 0.14, {"y": 0.97, "on": true}],
-		["kit_cot", 0.1, 0.62, 90.0, 0.9], ["statue_veiled_unfinished", 0.92, 0.1, -60.0, 0.85],
+		["kit_cot", 0.1, 0.62, 90.0, 0.9], ["statue_veiled_unfinished", 0.86, 0.13, -60.0, 0.8],
 		["kit_face2", 0.94, 0.66, -90.0, 0.8, {"small": true}], ["kit_face5", 0.42, 0.94, 160.0, 0.75, {"small": true, "tilt": 90.0}],
 		["kit_urns", 0.06, 0.92, 30.0, 0.8, {"small": true}], ["kit_face6", 0.78, 0.94, 120.0, 0.7, {"small": true}]],
 	"A": "atrium",
@@ -35,7 +35,6 @@ const KEEP := [[-6.6, 31.0, -2.0, 33.6],            # WS: where she lies, the co
 	[18.0, 10.2, 21.0, 15.0],                          # IB1: the shallow and its reeds
 	[7.6, 10.0, 10.4, 17.0], [6.5, 12.6, 12.0, 14.4],  # I4: the stream, the crossing and its approach
 	[-0.6, 14.6, 2.0, 17.4], [0.0, 10.0, 4.0, 14.4],   # I5: the basin, the way from the east door to the north one
-	[-2.8, -2.8, 2.8, 2.8],                            # A: round the fountain (the gaze)
 	[-9.2, -3.4, -7.4, -1.6], [1.6, -9.2, 3.4, -7.4], [7.4, -3.4, 9.2, -1.6]]   # A: the three Beacons (pz_a)
 
 static func dress_all(lv: Level, parent: Node3D) -> Array:
@@ -51,14 +50,26 @@ static func dress_all(lv: Level, parent: Node3D) -> Array:
 		var a := c - n * 2.6 - al * w * 0.5
 		var b := c + n * 2.6 + al * w * 0.5
 		keep.append(Rect2(minf(a.x, b.x), minf(a.y, b.y), absf(b.x - a.x), absf(b.y - a.y)))
+	# the walked route: a chain of 1.3 m squares along every leg (diagonals too); not across the hub, whose legs
+	# are only the test walk's straight lines (its own mouths are kept)
+	var hub_keep := keep.duplicate()
+	var rt := Map3.route("all")
+	for i in rt.size() - 1:
+		var a := Vector2(rt[i][0], rt[i][1])
+		var b := Vector2(rt[i + 1][0], rt[i + 1][1])
+		var n := maxi(1, int(a.distance_to(b) / 0.6))
+		for j in n + 1:
+			var q := a.lerp(b, float(j) / n)
+			keep.append(Rect2(q - Vector2(0.65, 0.65), Vector2(1.3, 1.3)))
 	var out: Array = []
 	for id in SETS:
 		var r := Map3.rect(id)
 		var y := float(Map3.space(id)[5])
 		var e: Variant = SETS[id]
 		var d: Dress
-		if e is String: d = Dress.build(lv, parent, e, r, y, keep)
-		else: d = custom(lv, parent, id, r, y, e, keep)
+		var kp: Array = hub_keep if id == "A" else keep
+		if e is String: d = Dress.build(lv, parent, e, r, y, kp)
+		else: d = custom(lv, parent, id, r, y, e, kp)
 		out.append(d)
 		for sk in d.skipped: print("[v3 dress] %s %s: %s" % [id, sk[0], sk[1]])
 	return out

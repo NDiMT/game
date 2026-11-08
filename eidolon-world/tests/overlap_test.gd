@@ -9,10 +9,11 @@ extends Node
 ## Prints every hit and OVERLAP PASS / OVERLAP FAIL.
 
 const TOL := 0.02
+var V3 := OS.get_environment("EIDOLON_V3") == "1"
 const BAND := 0.3                 # a walkway's centreline band (half width)
 ## owners that are meant to hang, lean, be sunk or be passed (by the start of their name)
 const NO_SUPPORT := ["Wonders", "Colossus", "wonder", "rubble", "debris", "Ink", "hw_gate", "Gframe", "Hdoor", "Zone_GLs",
-	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus", "BridgeShard"]
+	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus", "BridgeShard", "Ch1v3/BellHang"]
 ## designed contacts, by place: [where (world box), what it is]. Hits inside one are not counted.
 const DESIGNED := [
 	[AABB(Map2.O + Vector3(9.9, 2.5, -1.1), Vector3(4.8, 0.7, 8.2)), "(v2 I.5) the crypt's vault rests on its four piers and its walls"],
@@ -47,7 +48,7 @@ var hits: Array[String] = []
 
 func _ready() -> void:
 	Game.autotest = true
-	game = load("res://scenes/main.tscn").instantiate()
+	game = load("res://scenes/main3.tscn" if V3 else "res://scenes/main.tscn").instantiate()          # (v3: EIDOLON_V3=1)
 	add_child(game)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -124,7 +125,7 @@ func _gather() -> void:
 		_add("rubble#%d" % k, "rubble", xf * Transform3D(Basis.from_scale(Vector3.ONE * 0.8), Vector3.ZERO))
 		k += 1
 	# the props (Tripo): their bounds, refined by their own vertices
-	for e in game.props.placed:
+	for e in (game.props.placed if game.props else []):
 		var mi: MeshInstance3D = e[1]
 		var ab: AABB = mi.mesh.get_aabb()
 		var s := _add("Props/" + str(mi.name), "prop", mi.global_transform * _box_of(ab))
@@ -137,7 +138,7 @@ func _gather() -> void:
 		for slot in parts:
 			for pr in parts[slot]:
 				_add("Dress/%s/%s#%d" % [dn.name, slot, (parts[slot] as Array).find(pr)], "prop", (pr[1] as Transform3D) * _box_of((pr[0] as Mesh).get_aabb()))
-	for e in Map2.piece_xfs:
+	for e in ([] if V3 else Map2.piece_xfs):
 		var a := Props._mesh(e[0])
 		if a.is_empty(): continue
 		var s := _add("V2Pieces/" + str(e[0]), "prop", (e[1] as Transform3D) * _box_of(a[1] as AABB))
@@ -147,7 +148,7 @@ func _gather() -> void:
 	for mi in lv.find_children("V2Door_*", "MeshInstance3D", false, false):
 		_add("Doors/" + str(mi.name), "door", (mi as MeshInstance3D).global_transform * _box_of((mi as MeshInstance3D).mesh.get_aabb()))
 	# the puzzle objects and the wonders (each mesh one thing)
-	for root in [game.puzzles, game.chapter, game.wonders]:
+	for root in ([game.get("ch")] if V3 else [game.puzzles, game.chapter, game.wonders]):
 		if root == null: continue
 		for mi in (root as Node).find_children("*", "MeshInstance3D", true, false):
 			_from_parts(mi as MeshInstance3D, str(root.name) + "/" + str((mi as Node).get_parent().name) + "/" + str(mi.name), false)
@@ -361,6 +362,7 @@ func _check_centrelines() -> void:
 ## no brazier, statue or prop on a pair: every solid's footprint 30 cm or more clear of each pair (the two
 ## 40 x 20 cm eyes, 60 cm apart: a 1.0 x 0.2 m strip across the shadow's head)
 func _check_eyes() -> void:
+	if V3: return                   # (v3: the Shadow Chamber comes in phase 3)
 	var ch: Chapter = game.chapter
 	for j in Chapter.SH_SOLUTION:
 		var so: Array = Chapter.shadow_of(j)

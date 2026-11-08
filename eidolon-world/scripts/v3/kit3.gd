@@ -63,6 +63,7 @@ static func bars(game: Game, parent: Node3D, at: Vector3, w: float, along_z: boo
 	n.position = at
 	parent.add_child(n)
 	var m := MB.new()
+	w -= 0.16                        # (a hair inside the doorway's wall ends)
 	var cnt := int(w / 0.24)
 	for i in cnt + 1:
 		var o := -w * 0.5 + w * float(i) / cnt

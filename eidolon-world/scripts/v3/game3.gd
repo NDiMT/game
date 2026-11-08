@@ -74,8 +74,7 @@ func _ready() -> void:
 		ui.fade_to(0.0, 0.6)
 		return
 	# the title: she lies curled on the marble lip of the black pool (the prologue's first frame, from above)
-	var ws: Puzzle = ch.pz["WS"]
-	player.teleport(ws.get("LIE"), ws.get("LIE_YAW"))
+	player.teleport(Prologue3.WS.LIE, Prologue3.WS.LIE_YAW)
 	if player.fig.rig: player.fig.rig.play("lie_side")
 	world.snap_to(player.position)
 	mode = "title"
@@ -195,7 +194,7 @@ func _process(dt: float) -> void:
 		if not r.has_meta("cine"): r.update(dt, player, world.cam_back)
 	ch.update(dt)
 	if mode == "cine":
-		var can := cine != null and (seen.get("prologue", false) or not (cine is Prologue3))
+		var can: bool = cine != null and (bool(seen.get("prologue", false)) or not (cine is Prologue3))
 		_skip_t = _skip_t + dt if (_skip_hold and can) else maxf(0.0, _skip_t - dt * 3.0)
 		ui.set_skip(clampf(_skip_t / 1.1, 0.0, 1.0), can and (_skip_hold or _skip_t > 0.0))
 		if _skip_t >= 1.1 and cine:
@@ -367,7 +366,12 @@ func cmd(c: String) -> Variant:
 		"v3jump":
 			var at: Vector2
 			if a[1] in Map3.PARTS: at = Map3.start_of(a[1])
-			else: at = Map3.walk_rect(a[1]).get_center()
+			else:
+				at = Map3.walk_rect(a[1]).get_center()
+				for e in Map3.route("all"):          # (where the route enters it: a space's middle may be water or a plinth)
+					if e[2] == a[1]:
+						at = Vector2(e[0], e[1])
+						break
 			return super.cmd("tp:%f:%f" % [at.x, at.y])
 		"pz_solve": (ch.pz[a[1]] as Puzzle).solve(); return true
 		"pz_auto": (ch.pz[a[1]] as Puzzle).autosolve(); return true
@@ -384,7 +388,17 @@ func cmd(c: String) -> Variant:
 func state3() -> Dictionary:
 	var p := player.position
 	return {"pos": [p.x, p.y, p.z], "space": space, "part": part, "mode": mode, "pz": ch.save_state(), "items": items,
-		"seen": seen, "acting": _acting}
+		"seen": seen, "acting": _acting, "cine_t": snappedf(cine.t, 0.1) if cine else -1.0, "glass": _glass_state()}
+
+## (web touch test) the open glass: its phase and the stroke to trace, in viewport pixels
+func _glass_state() -> Dictionary:
+	var gt := ui.glass_talk
+	if mode != "glass" or gt.target.is_empty(): return {}
+	var px := []
+	for q in GlassTalk.resample(gt.target[0], 12):          # (panel units -> screen: the inverse of GlassTalk.to_panel)
+		var sp: Vector2 = gt.panel.global_position + Vector2(q.x * 0.5 + 0.5, 0.5 - q.y * 0.5) * gt.panel.size
+		px.append([snappedf(sp.x, 0.1), snappedf(sp.y, 0.1)])
+	return {"phase": gt.phase, "px": px, "vp": [get_viewport().get_visible_rect().size.x, get_viewport().get_visible_rect().size.y]}
 
 # ------------------------------------------------------------------ save (its own file: the live v2 save is untouched)
 func save3() -> void:

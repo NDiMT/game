@@ -16,13 +16,14 @@ func build() -> void:
 	m.box(BELL + Vector3(0, 2.15, 0), Vector3(1.75, 0.2, 0.26), Color(0.5, 0.25, 0.0))
 	Kit3.marble(game, m.commit(), self)
 	bell = Node3D.new()
+	bell.name = "BellHang"
 	bell.position = BELL + Vector3(0, 2.05, 0)          # (it swings about its hook)
 	add_child(bell)
 	var b := MB.new()
 	b.cyl(Vector3(0, -0.36, 0), 0.08, 0.25, 0.5, Color(0.5, 0.9, 0.0), 14)
 	b.cyl(Vector3(0, -0.63, 0), 0.25, 0.27, 0.05, Color(0.5, 0.9, 0.0), 14)
 	b.cyl(Vector3(0, -0.07, 0), 0.03, 0.03, 0.14, Color(0.5, 0.9, 0.0), 6)
-	Kit3.marble(game, b.commit(), bell)
+	Kit3.marble(game, b.commit(), bell).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	game.level.add_interact("i2_bell", BELL + Vector3(0, 0, 0.75), "ring", ring, 1.1)
 
 func ring() -> void:

@@ -28,7 +28,7 @@ func build() -> void:
 		var along_z := absf(n.x) > 0.5
 		var w: float = d["w"]
 		var at := Vector3(c.x + n.x * 0.35, 0.0, c.y + n.y * 0.35)
-		var b := Kit3.bars(game, self, at, w + 0.2, along_z)
+		var b := Kit3.bars(game, self, at, w, along_z)
 		var r := Rect2(at.x - (0.12 if along_z else w * 0.5), at.z - (w * 0.5 if along_z else 0.12), 0.24 if along_z else w, w if along_z else 0.24)
 		lv.ob_rect(r, "a_road_" + k)
 		_bars[k] = [b, "a_road_" + k]

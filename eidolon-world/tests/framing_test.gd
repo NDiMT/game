@@ -9,14 +9,19 @@ const OWN := 0.5             # hits this close are the piece's own body
 const REACH := 22.0          # (the camera stands 24 m back, near plane 1 m)
 var lv_ref: Level
 var occ_body: StaticBody3D
+var _per_surface := false        # (v3: a zone's see-through walls are a surface of its split mesh)
 
 func _ready() -> void:
 	Game.autotest = true
-	var game: Game = load("res://scenes/main.tscn").instantiate()
+	var v3 := OS.get_environment("EIDOLON_V3") == "1"
+	var game: Game = load("res://scenes/main3.tscn" if v3 else "res://scenes/main.tscn").instantiate()
 	add_child(game)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var lv: Level = game.level
+	if v3:
+		await _v3(game, lv)
+		return
 	# (v2 rebuild, phase 3: the world with its beats answered: every door, gate and sealed wall open, as you find it
 	# when you walk on through it; the route check below walks the whole way)
 	var cs: Dictionary = game.chapter.state
@@ -168,6 +173,9 @@ func _collect(n: Node, skip: Node, body: StaticBody3D, names: Dictionary, count:
 			var ab := mesh.get_aabb()
 			var thin := minf(ab.size.x, minf(ab.size.y, ab.size.z)) < 0.003
 			var faces := mesh.get_faces() if not thin else PackedVector3Array()
+			if _per_surface and n is MeshInstance3D and mesh is ArrayMesh and mesh.get_surface_count() > 1:
+				_surfaces(n as MeshInstance3D, body, names, count)
+				faces = PackedVector3Array()
 			if faces.size() >= 3:
 				for xf: Transform3D in xfs:
 					var sh := ConcavePolygonShape3D.new()
@@ -192,3 +200,71 @@ func _nm(names: Dictionary, r: Dictionary) -> String:
 
 func _v2(v: Vector3) -> String:
 	return "(%.1f, %.1f, %.1f)" % [v.x, v.y, v.z]
+
+## (v3, EIDOLON_V3=1) the built parts of Chapter I: every interact point and every metre of the walked route
+## (Map3.route, Act 1 + the hub's mouths) in clear sight of the fixed camera; the occluders that fade round her
+## (the see-through) are not counted, as in v2
+func _v3(game: Game, lv: Level) -> void:
+	var body := StaticBody3D.new()
+	add_child(body)
+	occ_body = StaticBody3D.new()
+	occ_body.collision_layer = 2
+	add_child(occ_body)
+	var names := {}
+	var nshapes := [0]
+	lv_ref = lv
+	_per_surface = true
+	for fz in lv.fade_zones:
+		var zm: MeshInstance3D = fz[0]
+		zm.mesh = fz[2]
+		for si in zm.mesh.get_surface_count():
+			zm.set_surface_override_material(si, lv.marble_occ_mat if zm.mesh.surface_get_name(si) == "occ" else lv.marble_mat)
+	for id in game.get("ch").pz: game.cmd("pz_solve:" + id)          # (every gate open: the way as walked)
+	await get_tree().create_timer(2.0).timeout
+	_collect(game, game.player, body, names, nshapes)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var space := body.get_world_3d().direct_space_state
+	var back := Framing.basis().z.normalized()
+	print("back ", back)
+	var pts: Array = []
+	for it: Level.Interact in lv.interacts: pts.append(["interact " + it.id, it.pos])
+	var rt: Array = Map3.route("act1")
+	for i in rt.size() - 1:
+		var a := Vector2(rt[i][0], rt[i][1])
+		var b := Vector2(rt[i + 1][0], rt[i + 1][1])
+		var n := maxi(1, int(a.distance_to(b) / 0.5))
+		for k in n:
+			var q := a.lerp(b, float(k) / n)
+			pts.append(["route to %s" % rt[i + 1][2], Vector3(q.x, lv.height_at(q), q.y)])
+	var hid: Array = []
+	for e in pts:
+		var p: Vector3 = e[1] + Vector3(0, LIFT, 0)
+		var r := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + back * OWN, p + back * REACH, 1))
+		if not r.is_empty(): hid.append("%s at %s <- %s (hit at %s)" % [e[0], e[1], _nm(names, r).get_slice(" [", 0), r.position])
+	for h in hid.slice(0, 30): print("HIDDEN ", h)
+	print("OCCLUSION %s (v3: %d points, %d hidden, %d meshes)" % ["PASS" if hid.is_empty() else "FAIL", pts.size(), hid.size(), nshapes[0]])
+	get_tree().quit()
+
+## (v3) one shape per surface, each on the body its own material says (see-through occluders on layer 2)
+func _surfaces(mi: MeshInstance3D, body: StaticBody3D, names: Dictionary, count: Array) -> void:
+	var am := mi.mesh as ArrayMesh
+	for si in am.get_surface_count():
+		var a := am.surface_get_arrays(si)
+		var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+		var idx: PackedInt32Array = a[Mesh.ARRAY_INDEX] if a[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+		var tf := PackedVector3Array()
+		if idx.is_empty():
+			for p in v: tf.append(mi.global_transform * p)
+		else:
+			for i in idx: tf.append(mi.global_transform * v[i])
+		if tf.size() < 3: continue
+		var sh := ConcavePolygonShape3D.new()
+		sh.set_faces(tf)
+		var cs := CollisionShape3D.new()
+		cs.shape = sh
+		var occ := am.surface_get_name(si) == "occ"
+		var ob: StaticBody3D = occ_body if occ else body
+		ob.add_child(cs)
+		names[("o" if occ else "b") + str(ob.get_child_count() - 1)] = "%s/%s in %s" % [mi.name, am.surface_get_name(si), mi.get_parent().name]
+		count[0] += 1
