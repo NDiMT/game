@@ -3,14 +3,17 @@ extends Puzzle
 ## with the Lamp: it catches, and far off in the Atrium the west Beacon answers (pz_a) and the North road opens. The
 ## stones home past the Observer's face (W.7) open with it.
 
-const BEACON := Vector3(-45.6, 1.0, -4.6)
+var BEACON := Vector3(-45.6, 0.0, -5.0)
 var fire: BeaconFire
 
 func build() -> void:
 	gate("W7", "WR")
 	var m := MB.new()
 	var col := Color(0.5, 0.25, 0.0)
-	m.cyl(BEACON + Vector3(0, 0.2, 0), 0.62, 0.7, 0.4, col, 16)
+	# (it stands on the stair: its foot reaches down to the lowest step under it)
+	var lo := Map3.height("WB", Vector2(BEACON.x, BEACON.z + 0.75))
+	BEACON.y = Map3.height("WB", Vector2(BEACON.x, BEACON.z - 0.75)) + 0.02
+	m.cyl(Vector3(BEACON.x, (lo + BEACON.y + 0.4) * 0.5, BEACON.z), 0.62, 0.7, BEACON.y + 0.4 - lo + 0.02, col, 16)
 	m.cyl(BEACON + Vector3(0, 1.05, 0), 0.3, 0.38, 1.3, col, 12)
 	m.cyl(BEACON + Vector3(0, 1.78, 0), 0.5, 0.3, 0.2, Color(0.5, 0.9, 0.0), 14)
 	Kit3.marble(game, m.commit(), self).name = "WB_Beacon"
