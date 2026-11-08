@@ -39,8 +39,6 @@ func setup(g: Game) -> void:
 		_sprite_mat.no_depth_test = false
 		_quad = QuadMesh.new()
 		_quad.size = Vector2(1, 1)
-	if game.chapter: game.chapter.event.connect(_on_chapter)          # (v3 has neither: Game3 calls the moments itself)
-	if game.puzzles: game.puzzles.event.connect(_on_puzzles)
 	_prewarm.call_deferred()
 
 ## (smoothness) every material a burst uses is drawn once, far below the world, while the game warms up:
@@ -239,7 +237,7 @@ func stone_rises(node: Node3D, water_y: float, rise_t: float, delay: float) -> v
 		ring(at, 1.8, 1.0)
 		burst(at, "bubbles", 10, Vector3(half.x * 0.6, 0.01, half.y * 0.6), Vector3.UP, 15.0, Vector2(0.2, 0.5), Vector2(0.02, 0.05), Color(0.9, 0.95, 1.0, 0.7), 0.5, Vector3(0, -1.0, 0)))
 	tw.tween_interval(0.35)
-	var fx: WaterFX = game.puzzles.pool_fx if game.puzzles else null
+	var fx: WaterFX = game.get("pool_fx") as WaterFX
 	tw.tween_callback(func() -> void:
 		ring(at, 3.4, 2.2)
 		sheet(node, half, 0.0, rise_t * 0.9)
@@ -259,69 +257,3 @@ func stone_rises(node: Node3D, water_y: float, rise_t: float, delay: float) -> v
 
 func shake(a: float) -> void:
 	if game.world: game.world.shake(a)
-
-# ------------------------------------------------------------------ the hooks
-func _on_chapter(name: String, data: Variant) -> void:
-	var ch := game.chapter
-	match name:
-		"statue_turn":
-			if data is int and data >= 0 and data < 3:
-				grit(Vector3(Chapter.TURN_X[data], 1.05, Chapter.TURN_Z), 0.45)
-		"brazier":
-			sparks(Chapter.SH_BRAZ[data] + Vector3(0, 1.15, 0))
-			FxBurst.sparks(self, Chapter.SH_BRAZ[data] + Vector3(0, 1.15, 0))          # (v1.1 A: soft sparks)
-		"door_real":
-			dust_fall(Map2.GN + Vector3(16.95, 4.4, -11.8), Vector3(0, 0, 0.9))
-			FxBurst.dust(self, Map2.GN + Vector3(16.95, 4.2, -11.8), 1.4, 1.0)
-			shake(0.25)
-		"steps_step":
-			if ch.steps: dust_floor(ch.steps.tile(ch.steps.p), 0.25, 8)
-		"steps_blocked":
-			if ch.steps: grit(ch.steps.tile(ch.steps.p) + Vector3(0, 0.3, 0), 0.2)
-		"weight_hang":
-			shake(0.18)
-			dust_floor(game.player.position, 0.5, 12)
-		"lift":
-			shake(0.2)
-		"shard", "memory":
-			glint(game.player.position + Vector3(0, 1.1, 0))
-		"hall_lock":
-			grit(game.player.position + Vector3(0, 0.6, 0) - game.player.fig.global_transform.basis.z * 0.8, 0.3)
-		"solve":
-			match str(data):
-				"hollow_walk":
-					# the gate grinds up its posts
-					get_tree().create_timer(0.6).timeout.connect(func() -> void:
-						FxBurst.dust(self, Map2.GN + Vector3(18.5, 3.6, -15.15), 1.4, 1.0)
-						dust_fall(Map2.GN + Vector3(18.5, 3.9, -15.15), Vector3(1.0, 0, 0))
-						dust_floor(Map2.GN + Vector3(18.5, 1.0, -15.15), 0.9, 18)
-						shake(0.22))
-				"shard_gallery":
-					dust_fall(Map2.GG + Vector3(8.1, 3.4, -9.45), Vector3(0.7, 0, 0))
-					FxBurst.dust(self, Map2.GG + Vector3(8.1, 3.2, -9.45), 1.2, 1.0)
-					shake(0.2)
-				"court_light":
-					dust_fall(Vector3(Chapter.MURAL_X0 + 2.6, 5.6, Chapter.MURAL_Z + 0.2), Vector3(2.4, 0, 0), 40)
-					shake(0.3)
-
-func _on_puzzles(name: String, data: Variant) -> void:
-	var pz := game.puzzles
-	match name:
-		"door_grind":
-			if pz.door:
-				var dp: Vector3 = pz.door.global_position
-				dust_fall(dp + Vector3(0, 3.9, 0), Vector3(1.0, 0, 0.2), 36)
-				dust_floor(dp + Vector3(0, 0.0, 0), 1.0, 20)
-				FxBurst.dust(self, dp + Vector3(0, 3.6, 0), 1.6, dp.y)
-		"bridge_fall":
-			get_tree().create_timer(0.85).timeout.connect(func() -> void:
-				if pz.drawbridge: dust_floor(pz.drawbridge.global_position, 1.2, 30))
-		"bridge_rise":
-			if pz.risen_bridge: dust_floor(pz.risen_bridge.global_position + Vector3(0, 0.1, 0), 1.2, 30)
-			shake(0.25)
-		"plate_touch":
-			dust_floor(game.player.position, 0.35, 10)
-		"mirror_turn":
-			grit(game.player.position + Vector3(0, 0.4, 0) - game.player.fig.global_transform.basis.z * 0.7, 0.3)
-		"dial":
-			grit(game.player.position + Vector3(0, 0.9, 0) - game.player.fig.global_transform.basis.z * 0.6, 0.2)

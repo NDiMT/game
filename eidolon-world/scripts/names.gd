@@ -1,19 +1,18 @@
 class_name Names
 extends RefCounted
-## Every place name in ONE table, so the spaces are easy to rename.
-## v0.5: Chapter I, "The Veiled Gate", is thirteen spaces; the keys are the audio room ids
-## (dev/ROOMS.md, assets/audio/v5/manifest.json).
+## The chapter's name and the audio rooms (assets/audio/v5/manifest.json). (v3: the spaces' own names live in
+## Map3.SPACES; Game3.MUSIC picks a room per part.)
 
 const CHAPTER := "The Veiled Gate"
 
 const AREAS := {
 	"waking_pool": "The Waking Pool",
-	"atrium": "The Atrium of a Thousand Faces",    # (v1.0 M3: the hub)
+	"atrium": "The Atrium of a Thousand Faces",
 	"stair_breath": "The Stair of Breath",
 	"hall_glass": "Hall of Glass",
-	"shard_gallery": "Where Her Shadow Fell",          # (v0.8.1: the Shard Gallery is gone)
+	"shard_gallery": "Where Her Shadow Fell",
 	"garden_veiled": "Garden of the Veiled",
-	"hollow_walk": "Our Steps",                 # (v0.9.2: the Hollow Walk's room, a new puzzle)
+	"hollow_walk": "The Hollow Walk",
 	"court_light": "Court of Light",
 	"mist_maze": "The Mist Maze",
 	"echo_corridor": "The Echo Corridor",
@@ -22,35 +21,9 @@ const AREAS := {
 	"gate_four": "Gate of the Four Veiled",
 	"first_shrine": "The First Shrine",
 }
+## the audio rooms in score order (Sfx: a room not in Sfx.near pre-loads its neighbours here)
 const ORDER := ["waking_pool", "atrium", "stair_breath", "hall_glass", "shard_gallery", "garden_veiled", "hollow_walk",
 	"court_light", "mist_maze", "echo_corridor", "scales", "eidolon_ledge", "gate_four", "first_shrine"]
-
-## walk-region name (Level) -> area key
-const REGION_AREA := {
-	# (v2: the v1 puzzle rooms keep their region names (Map2.V1_KEY maps them); the new world's are V2_<space>, Map2.AREA)
-	"W_land": "stair_breath", "W_stair1": "stair_breath", "W_breath": "stair_breath", "W_stair2": "stair_breath",
-	"W_top": "stair_breath", "W_corr": "stair_breath",
-	"H": "hall_glass", "hdoor": "hall_glass",
-	"GL": "shard_gallery",
-	"G": "garden_veiled",
-	"g_door": "hollow_walk", "HW": "hollow_walk",
-	"HW_ramp": "court_light", "L_ramp": "court_light", "L": "court_light",
-	"MZ_door": "court_light", "MZ": "mist_maze",       # (v0.9: the door's landing is the court's: the Tree of Shards is named there)
-	"SC": "scales", "lift": "scales",
-	"WK": "eidolon_ledge", "WK_down": "eidolon_ledge", "E": "eidolon_ledge",
-	# v0.9 the wonder spaces (no puzzles: they keep the music of the space they open from)
-	"TS": "court_light", "SPB": "eidolon_ledge",
-}
-## v0.9 the wonder spaces between the puzzles: walk-region name -> its name (shown once, on arrival)
-const WONDERS := {"CO": "The Sunken Colossus", "TS": "The Tree of Shards", "SPB": "The Upward Spring"}
-
-## v1.0 M3 the traversal sections: walk-region name -> its name (shown once, on arrival)
-const TRAVERSE := {}          # (v2: the old world's traversal sections are gone; the new world's spaces are Map2.SPACES)
-## the wings (dev/V1_WORLD.md): their spaces, and the space whose puzzle completes the wing
-const WINGS := {"W": ["stair_breath", "hall_glass", "shard_gallery"], "N": ["garden_veiled", "hollow_walk", "court_light", "mist_maze"],
-	"E": ["eidolon_ledge", "scales", "echo_corridor"]}
-## the audio rooms the new spaces borrow until they have their own beds (assets are Agent A's)
-const AUDIO_ALIAS := {}          # (v1.0: the Atrium has its own bed now, A's atrium.ogg)
 
 ## the first awakened space (the slice's milestone)
 const FIRST := "first_shrine"

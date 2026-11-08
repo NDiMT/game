@@ -9,29 +9,15 @@ extends Node
 ## Prints every hit and OVERLAP PASS / OVERLAP FAIL.
 
 const TOL := 0.02
-var V3 := OS.get_environment("EIDOLON_V3") == "1"
+const WATER_Y := -0.42           # (the lowest water: hits under it are out of sight)
 const BAND := 0.3                 # a walkway's centreline band (half width)
 ## owners that are meant to hang, lean, be sunk or be passed (by the start of their name)
-const NO_SUPPORT := ["Wonders", "Colossus", "wonder", "rubble", "debris", "Ink", "hw_gate", "Gframe", "Hdoor", "Zone_GLs",
-	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus", "BridgeShard", "Ch1v3/BellHang",
+const NO_SUPPORT := ["rubble", "debris",
+	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "BridgeShard", "Ch1v3/BellHang",
 	"Ch1v3/N1_Stone",          # (v3 N.1: the stepping-stones stand in the flood, their feet in the water)
 	"E4_Temple"]               # (v3 E.4: the temple that hangs upside-down over the Upward Spring: the wonder IS that it hangs)
 ## designed contacts, by place: [where (world box), what it is]. Hits inside one are not counted.
 const DESIGNED := [
-	[AABB(Map2.O + Vector3(9.9, 2.5, -1.1), Vector3(4.8, 0.7, 8.2)), "(v2 I.5) the crypt's vault rests on its four piers and its walls"],
-	[AABB(Map2.O + Vector3(9.6, -0.1, -1.2), Vector3(1.0, 3.4, 8.4)), "(v2 I.5) the crypt's west wall: its piers are built into it, its door stands in it, the Atrium's rail meets it"],
-	[AABB(Map2.O + Vector3(14.0, -0.1, -1.2), Vector3(1.0, 3.4, 8.4)), "(v2 I.5) the crypt's east wall: its piers are built into it"],
-	[AABB(Map2.O + Vector3(7.05, 1.4, 13.3), Vector3(0.8, 1.0, 0.8)), "(v2 I.2) the bell HANGS from its post's arm"],
-	[AABB(Map2.O + Vector3(3.6, -0.1, 14.6), Vector3(2.8, 3.5, 0.8)), "(v2 I.1) the temple door stands in its doorway, between the wall's ends"],
-	[AABB(Map2.O + Vector3(-47.0, -0.1, 12.6), Vector3(4.0, 4.6, 1.0)), "(v2 I.22) the Gate of the Four's gate stands in its doorway, between the wall's ends"],
-	[AABB(Map2.GE + Vector3(26.0, 3.5, -50.2), Vector3(7.5, 5.0, 2.4)), "the Scales: pans and weights HANG from the beam overhead"],
-	[AABB(Map2.GN + Vector3(17.2, 0.8, -15.45), Vector3(2.6, 3.6, 0.6)), "the Our Steps gate: its bars run in grooves in the two posts and a slot in the floor"],
-	[AABB(Map2.GN + Vector3(9.2, 2.0, -25.0), Vector3(7.0, 1.0, 3.0)), "the Court's mirror stands turn in sockets in their plinths"],
-	[AABB(Map2.GN + Vector3(13.0, 1.9, -29.2), Vector3(4.0, 4.0, 2.0)), "the Tree of Shards: its shards hang from the branches; it IS the nook's goal"],
-	[AABB(Map2.O + Vector3(21.6, 1.9, -58.4), Vector3(3.8, 3.5, 0.9)), "(v2) the bars across the Scales' way up: they rise into the terrace when the balance is won"],
-	[AABB(Map2.O + Vector3(21.5, 5.9, -66.2), Vector3(1.0, 3.5, 4.4)), "(v2) the bars across the High Stair's head: they rise when the Eidolon Plate answers"],
-	[AABB(Map2.GE + Vector3(30.3, 3.9, -24.85), Vector3(2.2, 2.2, 0.5)), "(v1.0 M3b) the sealed panel across the Mirror Walk: a door, shut until the pin rings it"],
-	[AABB(Map2.O + Vector3(-5.0, -0.1, 7.3), Vector3(6.2, 4.2, 2.7)), "(v2 rebuild) the Veiled Way's gate, across the Atrium's south rail: shut (on the way) until the 3 Beacons burn (Act 3)"],
 	[AABB(Vector3(24.4, 2.9, -63.1), Vector3(10.0, 3.0, 2.2)), "(v3 E.5) the balance: its beam rests on the post's head, the pans and the weights HANG from it"],
 ]
 const NOT_SOLID := ["veil", "glow", "halo", "beam", "mist", "fog", "ray", "shaft", "water", "pool_mat", "rune", "mark"]
@@ -51,7 +37,7 @@ var hits: Array[String] = []
 
 func _ready() -> void:
 	Game.autotest = true
-	game = load("res://scenes/main3.tscn" if V3 else "res://scenes/main.tscn").instantiate()          # (v3: EIDOLON_V3=1)
+	game = load("res://scenes/main3.tscn").instantiate()
 	add_child(game)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -61,7 +47,6 @@ func _ready() -> void:
 	_check_pairs()
 	_check_support()
 	_check_centrelines()
-	_check_eyes()
 	var seen := {}
 	var uniq: Array[String] = []
 	for h in hits:
@@ -127,31 +112,14 @@ func _gather() -> void:
 	for xf: Transform3D in lv.debris:
 		_add("rubble#%d" % k, "rubble", xf * Transform3D(Basis.from_scale(Vector3.ONE * 0.8), Vector3.ZERO))
 		k += 1
-	# the props (Tripo): their bounds, refined by their own vertices
-	for e in (game.props.placed if game.props else []):
-		var mi: MeshInstance3D = e[1]
-		var ab: AABB = mi.mesh.get_aabb()
-		var s := _add("Props/" + str(mi.name), "prop", mi.global_transform * _box_of(ab))
-		var mdt := mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
-		var step := maxi(1, mdt.size() / 600)
-		for i in range(0, mdt.size(), step): s.verts.append(mi.global_transform * mdt[i])
-	# (v2 rebuild) A's landmark dressing (each piece one thing) and the doors / gates standing in their doorways
+	# A's landmark dressing (each piece one thing)
 	for dn in lv.find_children("Dress_*", "Node3D", false, false):
 		var parts: Dictionary = dn.get("_parts")
 		for slot in parts:
 			for pr in parts[slot]:
 				_add("Dress/%s/%s#%d" % [dn.name, slot, (parts[slot] as Array).find(pr)], "prop", (pr[1] as Transform3D) * _box_of((pr[0] as Mesh).get_aabb()))
-	for e in ([] if V3 else Map2.piece_xfs):
-		var a := Props._mesh(e[0])
-		if a.is_empty(): continue
-		var s := _add("V2Pieces/" + str(e[0]), "prop", (e[1] as Transform3D) * _box_of(a[1] as AABB))
-		var mdt := (a[0] as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
-		var step := maxi(1, mdt.size() / 600)
-		for i in range(0, mdt.size(), step): s.verts.append((e[1] as Transform3D) * mdt[i])
-	for mi in lv.find_children("V2Door_*", "MeshInstance3D", false, false):
-		_add("Doors/" + str(mi.name), "door", (mi as MeshInstance3D).global_transform * _box_of((mi as MeshInstance3D).mesh.get_aabb()))
 	# the puzzle objects and the wonders (each mesh one thing)
-	for root in ([game.get("ch")] if V3 else [game.puzzles, game.chapter, game.wonders]):
+	for root in [game.get("ch")]:
 		if root == null: continue
 		for mi in (root as Node).find_children("*", "MeshInstance3D", true, false):
 			_from_parts(mi as MeshInstance3D, str(root.name) + "/" + str((mi as Node).get_parent().name) + "/" + str(mi.name), false)
@@ -261,7 +229,7 @@ func _check_pairs() -> void:
 				var mid := Vector3((maxf(a.lo.x, b.lo.x) + minf(a.hi.x, b.hi.x)) * 0.5, minf(a.hi.y, b.hi.y), (maxf(a.lo.z, b.lo.z) + minf(a.hi.z, b.hi.z)) * 0.5)
 				var fg := lv.region_at(Vector2(mid.x, mid.z))
 				var floor_y := fg.height(Vector2(mid.x, mid.z)) if fg else -INF
-				if mid.y < minf(floor_y, Ch1Geo.WATER_Y + 0.6) - 0.02 and fg: continue
+				if mid.y < minf(floor_y, WATER_Y + 0.6) - 0.02 and fg: continue
 				# a Tripo prop: its bounds are loose; its own vertices must really be inside
 				if not a.verts.is_empty() or not b.verts.is_empty():
 					var n := 0
@@ -360,41 +328,3 @@ func _check_centrelines() -> void:
 			var bq := Vector2(clampf(cen.x, band.position.x, band.end.x), clampf(cen.z, band.position.y, band.end.y))
 			var hit := depth(s.xf, Transform3D(Basis.from_scale(Vector3(band.size.x, 1.6, band.size.y)), Vector3(band.get_center().x, h + 0.8, band.get_center().y))) > TOL
 			if hit: hits.append("ON THE WAY %s on %s's centreline at %s" % [_short(s.owner), g.name, _v(Vector3(bq.x, h, bq.y))])
-
-# ------------------------------------------------------------------ 5 (v1.1d, the owner): the Shadow Chamber's floor eyes
-## no brazier, statue or prop on a pair: every solid's footprint 30 cm or more clear of each pair (the two
-## 40 x 20 cm eyes, 60 cm apart: a 1.0 x 0.2 m strip across the shadow's head)
-func _check_eyes() -> void:
-	if V3: return                   # (v3: the Shadow Chamber comes in phase 3)
-	var ch: Chapter = game.chapter
-	for j in Chapter.SH_SOLUTION:
-		var so: Array = Chapter.shadow_of(j)
-		var dn: Vector2 = so[1]
-		var pts: Array[Vector3] = []
-		for s in [-1.0, -0.5, 0.0, 0.5, 1.0]:
-			for t in [-0.1, 0.0, 0.1]:
-				pts.append(ch.eye_head(j) + ch.eye_axis(j) * s * 0.5 + Vector3(dn.x, 0, dn.y) * t)
-		for b: Vector3 in Chapter.SH_BRAZ:
-			for e in pts:
-				if Vector2(e.x - b.x, e.z - b.z).length() < 0.36 + 0.3:
-					hits.append("EYES pair %d within 30 cm of the brazier at %s" % [j, _v(b)])
-					break
-		for e in pts:
-			if Vector2(e.x - Chapter.SH_STATUE.x, e.z - Chapter.SH_STATUE.z).length() < 0.55 + 0.3:
-				hits.append("EYES pair %d within 30 cm of her plinth" % j)
-				break
-		# any other solid standing on the strip (props, rubble, walls), its true bounds grown by 30 cm
-		for sd in solids:
-			if sd.cat == "floor": continue
-			if sd.hi.y <= 1.0 + 0.05 or sd.lo.y > 1.0 + 1.5: continue
-			# (her statue and the braziers: their true round footprints are checked above, not their boxes)
-			var oc := Vector2((sd.lo.x + sd.hi.x) * 0.5, (sd.lo.z + sd.hi.z) * 0.5)
-			var round_one := oc.distance_to(Vector2(Chapter.SH_STATUE.x, Chapter.SH_STATUE.z)) < 0.9
-			for b: Vector3 in Chapter.SH_BRAZ: round_one = round_one or oc.distance_to(Vector2(b.x, b.z)) < 0.2
-			if round_one: continue
-			var fr := Rect2(sd.lo.x - 0.3, sd.lo.z - 0.3, sd.hi.x - sd.lo.x + 0.6, sd.hi.z - sd.lo.z + 0.6)
-			for e in pts:
-				if fr.has_point(Vector2(e.x, e.z)):
-					hits.append("EYES pair %d under %s at %s" % [j, _short(sd.owner), _v(sd.xf.origin)])
-					break
-

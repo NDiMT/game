@@ -55,6 +55,7 @@ var area := "waking_pool"
 var wind_target := 0.0
 var swell_boost := 0.0
 var duck := 0.0              # the cinematic: room beds step back (dB, <= 0)
+var cue_duck := 0.0          # (v3) a long scored cue plays (the prologue's hand, the shrine): the beds step back
 var _event_t := 14.0
 var _last_event := ""
 var _rng := RandomNumberGenerator.new()
@@ -155,7 +156,7 @@ func _layer(f: String) -> AudioStreamPlayer:
 func _target(f: String) -> float:
 	var room: Dictionary = rooms.get(area, {})
 	if not room.has(f): return -60.0
-	var db: float = room[f] + duck + jingle_duck
+	var db: float = room[f] + duck + jingle_duck + cue_duck
 	if area in ["first_shrine", "gate_four", "court_light"]: db += swell_boost * 0.5
 	return db
 
@@ -215,15 +216,6 @@ func _pw_step() -> void:
 	elif not OS.has_feature("web"):
 		_pw_reg.clear()
 
-## (v0.8.5) the beds of this room and its neighbours are loaded (and held) ahead of time, one at a time,
-## so walking into a room never reads its bed from the pack on the spot (the music streams: see _player)
-func _neighbours(key: String) -> Array:
-	var i := Names.ORDER.find(key)
-	var out := []
-	for j in [i + 1, i - 1]:
-		if j >= 0 and j < Names.ORDER.size(): out.append(Names.ORDER[j])
-	return out
-
 var _hook := -1
 func _hook_ok() -> bool:
 	if _hook < 0: _hook = 1 if JavaScriptBridge.eval("typeof window.__eidRelease === 'function' && !!window.__eidSamples") else 0
@@ -268,8 +260,15 @@ func _playing_stream(st: AudioStream) -> bool:
 		if p.playing and p.stream == st: return true
 	return false
 
+## (v3 phase 5) room -> the rooms reached from it (their beds are loaded and decoded ahead with it); a room not
+## listed takes its Names.ORDER neighbours
+var near := {}
 func _wanted_beds(key: String) -> Dictionary:
 	var out := {}
+	if near.has(key):
+		for r in [key] + (near[key] as Array):
+			for f in rooms.get(r, {}): out[f] = true
+		return out
 	var i := Names.ORDER.find(key)
 	for j in [i, i + 1, i - 1]:
 		if j < 0 or j >= Names.ORDER.size(): continue
@@ -370,6 +369,11 @@ func _process(dt: float) -> void:
 	if not _started: return
 	var step := dt * 60.0 / XFADE              # dB per second so a full fade takes ~XFADE s
 	jingle_duck = _jingle_duck_now()
+	var cd := 0.0
+	for k in ["cinematic_hand", "shrine_awaken"]:
+		var cp: AudioStreamPlayer = cue_now.get(k, null)
+		if cp and cp.playing and streams.has(k) and (streams[k] as Array).has(cp.stream): cd = -9.0
+	cue_duck = cd
 	# (v0.8.3) a bed that should be heard but is not playing (on the web a play() can be dropped while
 	# the stream's sample is still being decoded) is started again, once a second at most
 	_bed_check -= dt

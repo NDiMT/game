@@ -24,19 +24,6 @@ static func flooded(mat: ShaderMaterial, stones: Array, decoys: Array = [], half
 	mat.set_shader_parameter("n_sub", mini(stones.size() + decoys.size(), 24))
 	mat.set_shader_parameter("sub_k", 0.7)
 
-## N.1's false stones (Map2 local x, z): under the water like the true ones, off the true path and clear of the shafts
-const N1_FALSE := [[0.6, -9.8], [4.6, -10.4], [0.4, -12.6], [4.8, -12.4], [1.4, -14.2]]
-## the N.1 sheet as Map2 builds it: call once after Map2.water (finds the sheet by its place)
-static func flooded_n1(parent: Node) -> void:
-	var c := Map2.w(2.5, -12.0, Map2.N1_WATER_Y)
-	for n in parent.get_children():          # (Map2.water's sheets: the same name each, so Godot renames all but the first)
-		var mi := n as MeshInstance3D
-		if mi == null or not (mi.material_override is ShaderMaterial): continue
-		if (mi.material_override as ShaderMaterial).shader != preload("res://shaders/water.gdshader"): continue
-		if Vector2(mi.global_position.x - c.x, mi.global_position.z - c.z).length() < 0.6:
-			var st := []
-			for s in Map2.N1_STONES: st.append(Map2.w(s[0], s[1], Map2.N1_Y))
-			var fs := []
-			for s in N1_FALSE: fs.append(Map2.w(s[0], s[1], Map2.N1_Y))
-			flooded(mi.material_override as ShaderMaterial, st, fs)
-			return
+## (a5) v2's N.1 is gone (Map2 deleted): kept as a no-op so an old call still parses; v3's N.1 dresses itself
+static func flooded_n1(_parent: Node) -> void:
+	pass

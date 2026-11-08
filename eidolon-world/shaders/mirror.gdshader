@@ -111,10 +111,18 @@ void fragment() {
 		}
 		// silvering
 		c = c * vec3(0.84, 0.89, 0.94) + vec3(0.03, 0.04, 0.05);
+		bool water = abs(n.y) > 0.5;
+		if (water) {
+			// (a5) still water reads as WATER, not ice: deep and dark under the reflection; the pale sky in it is held
+			// down, the colours (her crimson double) kept and a touch richer
+			float lum = dot(c, vec3(0.3, 0.59, 0.11));
+			c = mix(vec3(lum), c, 1.18);
+			c = mix(vec3(0.075, 0.10, 0.115), c, mix(0.74, 0.58, smoothstep(0.45, 0.85, lum)));
+		}
 		// (v1.0) a visible glass surface: a soft broad sheen that slides with the view, and a faint dust film
 		float sh_ = smoothstep(0.22, 0.0, abs(fract(UV.x * 0.5 - UV.y * 0.3 + (cam_back.x - cam_back.z) * 0.35) - 0.5));
 		c += vec3(0.07, 0.075, 0.08) * sh_;
-		c = mix(c, vec3(0.70, 0.71, 0.70), 0.06 * smoothstep(0.4, 0.8, texture(noise_tex, UV * size * 0.35 + 7.0).r));
+		if (!water) c = mix(c, vec3(0.70, 0.71, 0.70), 0.06 * smoothstep(0.4, 0.8, texture(noise_tex, UV * size * 0.35 + 7.0).r));
 		vec2 uv = UV;
 		vec2 m = vec2(min(uv.x, 1.0 - uv.x) * size.x, min(uv.y, 1.0 - uv.y) * size.y);
 		float em = min(m.x, m.y);
@@ -122,10 +130,15 @@ void fragment() {
 		float streak = texture(noise_tex, vec2(uv.x * 3.0, uv.y * 0.15)).r;
 		c *= 0.97 + 0.06 * smoothstep(0.45, 0.75, streak);
 		float fox = smoothstep(0.42, 0.0, em) * smoothstep(0.58, 0.72, texture(noise_tex, uv * size * 0.9 + 3.1).r);
-		c = mix(c, vec3(0.42, 0.38, 0.31), fox * 0.55);
-		c = mix(c, c * 0.8, smoothstep(0.3, 0.0, em) * 0.5);
 		float edge = 1.0 - smoothstep(0.0, 0.025, em);
-		c = mix(c, vec3(0.97, 0.99, 1.0), edge * 0.85);
+		if (water) {
+			c = mix(c, c * 0.7, smoothstep(0.35, 0.0, em) * 0.6);          // (a5) darker where it meets the stone
+			c = mix(c, vec3(0.62, 0.66, 0.68), edge * 0.35);                // a thin wet meniscus, not a glass edge
+		} else {
+			c = mix(c, vec3(0.42, 0.38, 0.31), fox * 0.55);
+			c = mix(c, c * 0.8, smoothstep(0.3, 0.0, em) * 0.5);
+			c = mix(c, vec3(0.97, 0.99, 1.0), edge * 0.85);
+		}
 		if (crack > 0.0) {
 			vec2 q = (uv - vec2(0.62, 0.35)) * size;
 			float an = atan(q.y, q.x);

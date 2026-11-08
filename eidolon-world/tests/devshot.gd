@@ -11,7 +11,7 @@ func _ready() -> void:
 	Game.autotest = true
 	var args := OS.get_cmdline_user_args()
 	steps = (args[0] if args.size() > 0 else "w:3;shot:dev;quit").split(";")
-	game = load("res://scenes/main3.tscn" if OS.get_environment("EIDOLON_V3") == "1" else "res://scenes/main.tscn").instantiate()          # (v3: EIDOLON_V3=1)
+	game = load("res://scenes/main3.tscn").instantiate()          # (v3: EIDOLON_V3=1)
 	add_child(game)
 	var b1 := Bracket.new(); b1.host = self; b1.first = true; b1.process_priority = -100000; add_child(b1)
 	var b2 := Bracket.new(); b2.host = self; b2.first = false; b2.process_priority = 100000; add_child(b2)
@@ -94,7 +94,7 @@ func _process(dt: float) -> void:
 			d.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
 			var top := ""
 			for e in d.slice(0, 4): top += "%s %.1f  " % [e[1], e[0]]
-			print("SPIKE %-12s %.1f ms  t %.2f  cine %s  area %s | %s" % [_prof[0], _fr_script / 1000.0, _prof[7], ("%.2f" % game.cine.t) if game.cine and "t" in game.cine else "-", game.area, top])
+			print("SPIKE %-12s %.1f ms  t %.2f  cine %s  area %s | %s" % [_prof[0], _fr_script / 1000.0, _prof[7], ("%.2f" % game.cine.t) if game.cine and "t" in game.cine else "-", game.get("space"), top])
 		_last_p = now_p
 		_prof[4] += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 		var nv := 0
@@ -174,25 +174,10 @@ func _process(dt: float) -> void:
 			game.prof_on = true
 			return
 		elif s.begins_with("vpshot:"):
-			var pm: PlanarMirror = PlanarMirror.current if PlanarMirror.current else game.puzzles.hall_mirror.planar
+			var pm: PlanarMirror = PlanarMirror.current
+			if pm == null: return
 			print("planar current ", PlanarMirror.current, " active ", pm.active)
 			pm.vp.get_texture().get_image().save_png("res://dev/shots/" + s.substr(7) + ".png")
-		elif s == "vpdbg":
-			var pm: PlanarMirror = game.puzzles.hall_mirror.planar
-			var P := game.player.global_position + Vector3(0, 0.6, 0)
-			var vpm: Projection = Projection(pm.cam.get_camera_projection()) * Projection(pm.cam.global_transform.affine_inverse())
-			var c := vpm * Vector4(P.x, P.y, P.z, 1.0)
-			print("double ndc ", Vector2(c.x, c.y) / c.w, " unproject ", pm.cam.unproject_position(P) / Vector2(pm.vp.size))
-			var Pp := Vector3(P.x, P.y, -41.15 - P.z)
-			var cb := game.world.cam_back
-			var t := (-20.575 - Pp.z) / cb.z
-			var M := Pp + cb * t
-			var c2 := vpm * Vector4(M.x, M.y, M.z, 1.0)
-			print("mirror pt ", M, " ndc ", Vector2(c2.x, c2.y) / c2.w, " unproject ", pm.cam.unproject_position(M) / Vector2(pm.vp.size))
-		elif s == "beamdbg":
-			var pz = game.puzzles
-			print("pts ", pz.beam_points)
-			for i in pz.beam_floor.size(): print(i, " floor vis=", pz.beam_floor[i].visible, " at ", pz.beam_floor[i].global_position, " pool vis=", pz.beam_pools[i].visible, " at ", pz.beam_pools[i].global_position)
 		elif s.begins_with("fdiff:"):
 			# fdiff:LABEL:N  N consecutive frames standing still: per frame, the pixels that changed a lot from
 			# the frame before (max channel diff > 48 / 255) and where; the frame with the most is saved with

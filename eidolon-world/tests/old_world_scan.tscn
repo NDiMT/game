@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3]
-
-[ext_resource type="Script" path="res://tests/old_world_scan.gd" id="1"]
-
-[node name="Scan" type="Node"]
-script = ExtResource("1")

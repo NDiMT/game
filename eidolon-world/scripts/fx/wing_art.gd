@@ -22,6 +22,7 @@ static func dress_all(game: Game) -> void:
 		if p.has_meta("a4_dressed"): continue
 		p.set_meta("a4_dressed", true)
 		for c in p.get_children(): _dress(c, p, game)
+	PolishArt.dress_all(game)          # (a5: the last placeholders, the veils, the ending)
 
 static func _dress(c: Node, p: Node3D, game: Game) -> void:
 	var nm := str(c.name)

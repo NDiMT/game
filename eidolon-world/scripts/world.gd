@@ -51,6 +51,11 @@ var puffs: Array[MeshInstance3D] = []
 var _puff_i := 0
 var birds: Array[MeshInstance3D] = []
 var moths: Array = []                # [node, center, phase]
+var _grade_hi: GradientTexture1D
+var _grade_lo: GradientTexture1D
+var grain_mat: ShaderMaterial
+var tier_con := 1.0                  # (a5) the Low tier's extra contrast / saturation on top of the mood's
+var tier_sat := 1.0
 
 func _ready() -> void:
 	var fn := FastNoiseLite.new()
@@ -112,6 +117,19 @@ func _build_env() -> void:
 	gt.gradient = grad
 	gt.width = 256
 	env.adjustment_color_correction = gt
+	_grade_hi = gt
+	# (a5) the LOW tier's grade: Low has no bloom, no light shafts, no PBR detail and renders at 1x CSS (soft on a 3x
+	# phone), so the same curve read washed out. A deeper S-curve (true darks under the walls, the marble's top
+	# kept below white), a touch more saturation for the crimson and a heavier vignette: free (the post pass runs anyway)
+	var gl := Gradient.new()
+	gl.set_color(0, Color(0.0, 0.006, 0.03))
+	gl.set_color(1, Color(0.965, 0.945, 0.905))
+	gl.add_point(0.22, Color(0.115, 0.12, 0.145))
+	gl.add_point(0.5, Color(0.43, 0.43, 0.445))
+	gl.add_point(0.78, Color(0.80, 0.79, 0.765))
+	_grade_lo = GradientTexture1D.new()
+	_grade_lo.gradient = gl
+	_grade_lo.width = 256
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -324,7 +342,79 @@ func set_tier(t: String, step := 0) -> void:
 	BeaconFire.high = not low
 	Dress.apply_tier(get_tree(), not low)
 	FogBank.high = not low
+	# (a5) Low keeps the look: its own deeper grade, a heavier vignette (see _build_env)
+	env.adjustment_color_correction = _grade_lo if low else _grade_hi
+	tier_con = 1.10 if low else 1.0
+	tier_sat = 1.10 if low else 1.0
+	if grain_mat: grain_mat.set_shader_parameter("vignette", 0.80 if low else 0.62)
+	_apply_light()
 	for w in get_tree().get_nodes_in_group("q_warden"): (w as WardenRig).set_shadow(not low)
+	warm_reflections()
+
+# ------------------------------------------------------------------ (a5) the planar reflections, pre-warmed
+## Entering a room with a glass or still water used to cost one long frame (4-5 ms on the web, E.5's water): the
+## first draw of its SubViewport compiled every material it sees (and her double) in the reflection pass's own shader
+## variant (linear tonemap, no glow, its own fog), the main view's being of no use there. Here each reflection is drawn
+## ONCE at start-up (from where you would stand before it, her double in it), one per frame, a few frames after the
+## first tier is set, at its current small size: the variants are compiled and nothing more is held in memory (the
+## render target still grows to full size on first use, as before: an allocation, not a compile).
+## The reflections come from get_parent()._tier_refls() (Game). Dev: `A5_NOWARM=1` turns it off (before/after).
+var _warm: Array = []                # reflectors still to draw once
+var _warm_wait := 0
+var _warm_back: Array = []           # [reflector] whose double was shown for the warm frame: put back next frame
+func warm_reflections(delay := 12) -> void:
+	if OS.get_environment("A5_NOWARM") == "1": return
+	_warm.clear()
+	_warm_wait = delay
+
+func _warm_step() -> void:
+	for r in _warm_back:
+		if is_instance_valid(r) and r.puppet:
+			r.puppet.set_layers(PlanarMirror.LAYER_DOUBLE if r.planar_on else PlanarMirror.LAYER_MAIN_FX)
+			r.puppet.visible = r.active
+	_warm_back.clear()
+	if _warm_wait > 0:
+		_warm_wait -= 1
+		if _warm_wait == 0:
+			var g := get_parent()
+			if g and "ch" in g and g.get("ch") == null:
+				_warm_wait = 30                   # (the chapter is not built yet: ask again in half a second)
+				return
+			if g and g.has_method("_tier_refls"):
+				for r in g.call("_tier_refls"):
+					if r and is_instance_valid(r) and r.get("planar") != null: _warm.append(r)
+		return
+	while not _warm.is_empty():
+		var r = _warm.pop_front()
+		if not is_instance_valid(r) or r.planar == null or not is_instance_valid(r.planar): continue
+		if _warm_one(r): return               # (one draw per frame)
+
+func _warm_one(r) -> bool:
+	var pm: PlanarMirror = r.planar
+	if pm.active or pm.vp == null or pm.has_meta("a5_warm"): return false
+	pm.set_meta("a5_warm", true)
+	# the main camera as it would frame you standing a metre before the glass / at the water's edge
+	var n: Vector3 = pm.plane_n
+	var c: Vector3 = r.clip_c
+	var foot := Vector3(c.x, c.y - (r.clip_h.y if absf(n.y) < 0.5 else 0.0), c.z) + Vector3(n.x, 0.0, n.z).normalized() * 1.0
+	var mx := cam.global_transform
+	var off := mx.origin + mx.basis.x * cam.h_offset + mx.basis.y * cam.v_offset - rig.position
+	var p := foot + Vector3(0, 0.6, 0) + off
+	var H := Basis(Vector3(1, 0, 0) - 2.0 * n.x * n, Vector3(0, 1, 0) - 2.0 * n.y * n, Vector3(0, 0, 1) - 2.0 * n.z * n)
+	var rb := H * mx.basis
+	rb.x = -rb.x
+	pm.cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	pm.cam.keep_aspect = Camera3D.KEEP_WIDTH
+	pm.cam.size = cam.size
+	pm.cam.global_transform = Transform3D(rb, H * p + 2.0 * pm.plane_d * n)
+	pm.vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	# her double in it too (its skin and cloth materials in the reflection pass), for this one frame
+	if r.puppet and not r.active and PlanarMirror.current == null:
+		r.puppet.set_layers(PlanarMirror.LAYER_DOUBLE)
+		r.puppet.global_transform = Transform3D(Basis(), foot)
+		r.puppet.visible = true
+		_warm_back.append(r)
+	return true
 
 func set_quality(high: bool) -> void:
 	set_tier("high" if high else "low")
@@ -379,6 +469,7 @@ func _build_overlays() -> void:
 	gr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var gm := ShaderMaterial.new()
 	gm.shader = preload("res://shaders/grain.gdshader")
+	grain_mat = gm
 	gr.material = gm
 	front.add_child(gr)
 	gr.add_to_group("f_grain")
@@ -580,8 +671,8 @@ func _apply_light() -> void:
 	env.ambient_light_energy = lerpf(0.55, 0.72, k) * float(md["amb_e"]) * (1.0 - 0.85 * dark)
 	sun.light_color = md["sun"]
 	sun.light_energy = lerpf(0.85, 1.0, k) * float(md["sun_e"]) * (1.0 - 0.9 * dark)
-	env.adjustment_saturation = md["sat"]
-	env.adjustment_contrast = md["con"]
+	env.adjustment_saturation = float(md["sat"]) * tier_sat
+	env.adjustment_contrast = float(md["con"]) * tier_con
 	if backdrop_mat: backdrop_mat.set_shader_parameter("dark", dark)
 	# the fog sheets go dark with it (their own colour, remembered on first use)
 	for m in fog_mats:
@@ -602,6 +693,7 @@ func set_awaken(k: float) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	if _warm_wait > 0 or not _warm.is_empty() or not _warm_back.is_empty(): _warm_step()
 	if _mood_k < 1.0:
 		_mood_k = minf(_mood_k + dt * _mood_rate, 1.0)
 		_blend_mood(_mood_k)

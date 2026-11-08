@@ -364,9 +364,9 @@ const AT_DEFAULT := {"reach": Vector3(-0.12, 1.12, 0.44), "pickup": Vector3(-0.1
 	"push": Vector3(0.0, 0.92, 0.46), "light_with_lamp": Vector3(-0.15, 0.95, 0.62), "untie_cleat": Vector3(-0.08, 1.05, 0.42),
 	"reach_high": Vector3(-0.10, 2.05, 0.30), "reach_fail_shake": Vector3(-0.10, 2.20, 0.32), "knock_glass_twice": Vector3(-0.10, 1.30, 0.42),
 	"climb_block": Vector3(0.0, 0.60, 0.40), "ring_bell": Vector3(-0.12, 1.75, 0.30), "reach_low": Vector3(-0.12, 0.45, 0.50),
-	"palm_to_palm": Vector3(-0.10, 0.12, 0.78), "hang_weight": Vector3(0.0, 2.0, 0.30)}
+	"palm_to_palm": Vector3(-0.10, 0.12, 0.78), "hang_weight": Vector3(0.0, 2.0, 0.30), "turn_half": Vector3(0.0, 0.10, 0.62)}
 const N_DEFAULT := {"touch_glass": Vector3(0, 0, -1), "kneel_touch": Vector3.UP, "kneel_reach": Vector3.UP, "refl_press": Vector3.DOWN,
-	"push": Vector3(0, 0, -1), "knock_glass_twice": Vector3(0, 0, -1), "reach_low": Vector3.UP, "palm_to_palm": Vector3.UP}
+	"push": Vector3(0, 0, -1), "knock_glass_twice": Vector3(0, 0, -1), "reach_low": Vector3.UP, "palm_to_palm": Vector3.UP, "turn_half": Vector3.UP}
 
 ## play a clip (HeroineClips): opts {"at": Vector3 world | Node3D, "n": world normal of the touched surface (toward her),
 ## "hold": true (wait at the clip's hold point until release()), "speed": 1.0, "fade": seconds}. Returns its length (s).

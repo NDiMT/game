@@ -52,14 +52,17 @@ func update(dt: float) -> void:
 	for g in gates: _gate_anim(g, dt)
 	if not done and here():
 		idle_t += dt
-		if idle_t > hint_after and not hint_given:
+		# (phase 5: a player still stuck is helped again, every twice as long, until the beat moves on)
+		if idle_t > (hint_after * 2.0 if hint_given else hint_after):
 			hint_given = true
+			idle_t = 0.0
 			hint()
 			hinted.emit(id)
 	tick(dt)
 
 func progress() -> void:
 	idle_t = 0.0
+	hint_given = false
 	progressed.emit(id)
 
 func solve() -> void:

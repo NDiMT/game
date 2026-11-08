@@ -14,6 +14,14 @@ const LAG := 0.5
 const SURF := Vector3(-4.6, -0.35, 30.5)          # where the two palms meet
 const W := -0.35                                 # the surface's height
 const I_SEEN := Vector3(-4.62, -1.52, 30.42)      # Ione, seen: upright under the surface, her raised hand at SURF
+## the text cards (EIDOLON_SCRIPT §5), each first mirrored, then turned
+const STANZAS := [
+	"On Kythira there lived a sculptor named Theron.\nFrom white marble he carved a woman,\nand loved her more than stone should be loved.",
+	"Aphrodite gave her life, on one condition:\n*\"Leave her face smooth.\nA face is carved by living, from within.\"*",
+	"They called her Ione.\nAnd life began to carve her a face,\na face the sculptor had never imagined.",
+	"He gave her a veil.\nAnd he hid every mirror.",
+	"One day the Aegean lay still as glass.",
+	"There was no wave to blame."]
 const WD_SEEN := Vector3(-4.95, -2.06, 29.5)      # the Warden, seen: behind her, his hood just under the surface
 var ws                                           # (pz_ws.gd: the shore, its pool, its lanterns)
 var fx: CineFx
@@ -57,7 +65,7 @@ func begin() -> void:
 	game.ui.skip_ring.reparent(_cl, false)
 	_setup()
 	_build()
-	await _card.play_all(Prologue.STANZAS, 3.0)
+	await _card.play_all(STANZAS, 3.0)
 	if _cut or _cards_done: return
 	_cards_done = true
 	_end_cards()

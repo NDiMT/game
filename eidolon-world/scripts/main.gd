@@ -1,11 +1,10 @@
 class_name Game
 extends Node
-## EIDOLON, first slice (area names: scripts/names.gd). Title -> wake -> free exploration -> shrine finale. Input, interaction,
-## events -> sound / text, checkpoint saving to user://, and test hooks (web: window.ewCmd / ewState).
+## EIDOLON's game base (v3: scenes/main3.tscn runs Game3, which builds Chapter I; v2's chapter code is gone).
+## Here: the shared systems' fields, the title tap, keyboard input, interaction, the glass close-up's mode, the
+## quality tiers and settings, the shader warm-up, the dev / test commands (web: window.ewCmd / ewState).
 
 const SHRINES_TOTAL := 7
-## hem stripe brightness by number of shrines woken
-const HEM_PER_SHRINE := [1.0, 1.8, 2.4, 2.9, 3.3, 3.6, 3.9, 4.2]
 const SAVE_PATH := "user://eidolon_world.json"
 const MEMORY_LINE := "The veil was his, not mine."          # (EIDOLON_SCRIPT §6 I.23: the shrine's memory)
 
@@ -13,152 +12,37 @@ static var autotest := false
 
 var world: World
 var level: Level
-var props: Props
 var highlight: Highlight
-var puzzles: Puzzles
-var chapter: Chapter
-var wonders: Wonders
-var satchel: Satchel
-var quad_batch: QuadBatch
-const HOT_ORDER := ["lamp", "shard"]          # (v2.0: Chapter I's only two tools)
-## which interacts each carried thing works on (the hotbar uses it there)
-const HOT_USES := {"lamp": ["beacon_W", "beacon_N", "beacon_E"]}
-
-## v1.1: a hotbar slot tapped: the shard raises / lowers the lens; a tool is chosen and, where it works
-## (the place you stand at), used; anywhere else it tells you what it is
-func _on_hot(k: String) -> void:
-	if mode != "play": return
-	controls.hot_sel = k
-	if k == "shard":
-		chapter.toggle_lens()
-		return
-	if focus and focus.id in (HOT_USES.get(k, []) as Array):
-		try_interact()
-		return
-	ui.show_item(k, "")
-var _dark := 0.0              # v0.9 the wonder spaces between the puzzles
-var juice: Juice                  # v1.0 M1: the physical little moments (dust, grit, sparks, wet stone)
+var juice: Juice                  # the physical little moments (dust, grit, sparks, wet stone)
 var _fade_on := false
 var _fade_off_t := 0.0
 var cine: Cinematic
 var _skip_hold := false
 var _skip_t := 0.0
-const HINT_AFTER := 110.0        # seconds without progress in a space before a gentle hint
 var player: Player
 var sfx: Sfx
 var ui: GameUI
 var controls: Controls
-var mode := "boot"           # boot, title, wake, play, finale
+var mode := "boot"           # boot, title, play, cine, glass
 var focus: Level.Interact
 var auto_target := Vector3.INF
 var key_vec := Vector2.ZERO
 var save_data := {}
-var awake := false
-var bridge_focus := 0.0
-var area := ""
-var visited := {}
-var glimpses := {"lag": 0, "gaze": 0}
 var interactions := 0
 var _save_t := 0.0
 var _last_saved_pos := Vector3.INF
 var _js_cb: JavaScriptObject
 var _js_t := 0.0
-var _title_t := 0.0
 var _keys := {}
-var _finale_t := -1.0
 var _world_block_t := 0.0
+var prof_on := false
+var prof := {}
+var prof_max := {}                 # the worst single frame per section (us)
 
-func _ready() -> void:
-	HeroineRig.VARIANT = "v1"            # (v1.0: the owner's pick: the porcelain one, her oddness layer with her)
-	if "--autotest" in OS.get_cmdline_user_args(): autotest = true
-	Palette.push()
-	world = World.new()
-	add_child(world)
-	level = Level.new(world.noise_tex)
-	add_child(level)
-	level.build()
-	if Map2.enabled: Map2.doors(level, level)       # (v2: the doors stand before the beats that open them are built)
-	player = Player.new()
-	player.level = level
-	add_child(player)
-	puzzles = Puzzles.new(level, self)
-	add_child(puzzles)
-	puzzles.build()
-	chapter = Chapter.new(self)
-	add_child(chapter)
-	chapter.build()
-	level.commit()
-	sfx = Sfx.new()
-	add_child(sfx)
-	ui = GameUI.new()
-	add_child(ui)
-	controls = Controls.new()
-	add_child(controls)
-	ui.controls = controls
-	chapter.post_commit()
-	# (QA P1-11: the upright drawbridge leaf and the Eidolon glass's frame hide her at the Ledge and the Gate:
-	# they open in the see-through like any wall)
-	level.occluders.append(AABB(Map2.GX + Vector3(21.3, 2.0, -25.3), Vector3(4.6, 4.0, 0.7)))
-	wonders = Wonders.new()
-	add_child(wonders)
-	wonders.setup(self)
-	# v0.8: the owner's props, set into the chapter (their footprints join the obstacles before the audit)
-	props = Props.new()
-	level.add_child(props)
-	props.build(level)
-	print("[props] %d placed" % props.placed.size())
-	# (v2 rebuild, phase 1) the new Chapter I block-out: its water, doors, A's landmark dressing, the beat labels
-	if Map2.enabled:
-		Map2.water(level, level)
-		WaterLook.flooded_n1(level)          # (A: N.1's murky water)
-		Map2.pieces(level, level)
-		Map2.dress(level, level)
-		Map2.labels(level)
-	highlight = Highlight.new()
-	add_child(highlight)
-	highlight.setup([puzzles, chapter, props], [level.marble_mat, level.marble_occ_mat])
-	_warm_up_shaders.call_deferred()
-	# v0.7: every prop and piece of architecture is solid (see Level.auto_solids)
-	var au := level.auto_solids([puzzles, chapter])
-	print("[solids] %d primitives, %d solid footprints, %d obstacles added (%d ms)" % [au["parts"], au["solids"].size(), au["added"], au["ms"]])
-	chapter.event.connect(_on_chapter_event)
-	juice = Juice.new()
-	add_child(juice)
-	juice.setup(self)
-	var gt := ui.glass_talk
-	gt.solved.connect(func(id: String) -> void: chapter.glass_answered(id))
-	gt.closed.connect(func(_id: String) -> void: _glass_closed())
-	gt.solved.connect(func(_id: String) -> void: get_tree().create_timer(3.4).timeout.connect(_glass_closed))
-	gt.sound.connect(_glass_sound)
-	controls.shard.connect(func() -> void: if mode == "play": chapter.toggle_lens())
-	satchel = Satchel.new()                 # (v1.0 M3b: the satchel)
-	ui.root.add_child(satchel)
-	satchel.build(self, ui.serif, ui.italic, ui.root)
-	ui.satchel = satchel
-	controls.satchel.connect(func() -> void: if mode == "play" and not satchel.is_open: satchel.open())
-	controls.hot.connect(_on_hot)
-	level.read.connect(_on_read)
-	puzzles.event.connect(_on_event)
-	player.footstep.connect(_on_footstep)
-	for r in puzzles.reflectors:
-		if not r.glimpse.is_connected(_on_glimpse): r.glimpse.connect(_on_glimpse)
-	controls.interact.connect(try_interact)
-	ui.anew_pressed.connect(_on_anew)
+## (v3) the systems every game sets up after its world is built: the settings and the tier, the web's pixel
+## ratio, the quality button, the shared shader warm-up (no compile hitch the first time a room is seen)
+func _setup_common() -> void:
 	ui.quality_pressed.connect(func() -> void: set_quality({"auto": "high", "high": "low", "low": "auto"}[world.tier], true))
-	# (v1.0 M4, QA P1-15: A's QuadBatch folds the repeated glowing quads into one MultiMesh per shader and layer)
-	if OS.get_environment("EIDOLON_NOBATCH") != "1":
-		quad_batch = QuadBatch.new()
-		add_child(quad_batch)
-		quad_batch.absorb(self)
-		quad_batch.rescan_s = 2.0                   # (picks up quads built later)
-	# (QA P1-15 / A: small moving pieces cast no shadow: each caster costs a call in every shadow pass, and
-	# their contact blobs already ground them)
-	for root in [puzzles, chapter]:
-		for c in root.find_children("*", "MeshInstance3D", true, false):
-			var mi := c as MeshInstance3D
-			if mi.mesh == null or mi.skin != null: continue
-			var sz := mi.mesh.get_aabb().size * mi.global_transform.basis.get_scale()
-			if maxf(sz.x, maxf(sz.y, sz.z)) < 1.3: mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_load_settings()
 	if OS.has_feature("web"):
 		var r = JavaScriptBridge.eval("window.devicePixelRatio || 1")
@@ -167,33 +51,16 @@ func _ready() -> void:
 			world.set_tier(world.tier, world.auto_step)
 		var q = JavaScriptBridge.eval("String(location.search)")
 		if q is String and "perf" in q: _perf_hud(true)
-	world.add_moths(Map2.GN + Vector3(8.2, 3.45, -24.5), 2)
-	world.add_moths(Puzzles.PLATE_POS + Vector3(0, 0.8, 0), 2)
-	world.add_moths(Map2.O + Vector3(-3.0, 0.6, 18.8), 1)
-	ui.door_overlay.slot_pressed.connect(door_cycle)
-	ui.door_overlay.slot_back.connect(func(i: int) -> void: door_cycle(i, -1))
-	ui.door_overlay.closed.connect(_door_overlay_closed)
-	_setup_js()
-	_load_save()
-	# title: the wanderer lies curled beneath the broken gate, the camera drifts round the Veiled Gate
-	player.teleport(Level.WAKE_POS, 0.0)
-	player.crouch = 1.0
-	player.step(0.016)
-	world.rig.position = Level.WAKE_POS + Vector3(-0.6, 0.6, 0.4)
-	world.cam.size = 8.0
-	world.cam_size_target = 8.0
-	world.fog_hole = Vector2(1.6, 5.2)
-	world.fog_hole_target = world.fog_hole
-	mode = "title"
-	ui.set_continue(not save_data.is_empty())
-	ui.fade_to(0.0, 1.8)
-	ui.title_word.reveal = 0.0
-	var tw := create_tween()
-	tw.tween_method(func(v: float) -> void:
-		ui.title_word.reveal = v
-		ui.title_word.queue_redraw(), 0.0, 1.0, 2.4).set_delay(0.8)
+	_warm_up_shaders.call_deferred()
 
-# ------------------------------------------------------------------ flow
+## (profiling, devshot "prof") the time of one section of the frame
+func _pm(label: String, t0: int) -> int:
+	var now := Time.get_ticks_usec()
+	prof[label] = prof.get(label, 0) + (now - t0)
+	prof_max[label] = maxi(int(prof_max.get(label, 0)), now - t0)
+	return now
+
+# ------------------------------------------------------------------ flow (Game3 fills these in)
 func begin(fresh := false) -> void:
 	if mode != "title": return
 	sfx.start_music()
@@ -204,119 +71,20 @@ func begin(fresh := false) -> void:
 	else:
 		_continue_from_save()
 
-## New Game (confirmed on the title): forget all progress, keep the settings (music, quality, zoom
-## live in their own file / in memory) and start again at the waking scene.
+## New Game (confirmed on the title): forget all progress, keep the settings, start again
 func _on_anew() -> void:
 	save_data = {}
 	_delete_save()
 	reset_progress()
 	begin(true)
 
-func reset_progress() -> void:
-	puzzles.reset_state()
-	puzzles.apply_state(puzzles.state)
-	chapter.reset_state()
-	chapter.apply_state()
-	sfx.far_voice = false
-	visited = {}
-	area = ""
-	glimpses = {"lag": 0, "gaze": 0}
-	interactions = 0
-	awake = false
-	world.set_awaken(0.0)
-	player.fig.set_hem(HEM_PER_SHRINE[0])
-	player.fig.set_runes(0)
-	for r in _tier_refls():
-		r.glimpsed = false; r.gazed = false; r.gaze_count = 0; r.skipped = false; r.active = false; r.vis = 0.0; r._hist.clear()
+func reset_progress() -> void: pass
+func _start_wake() -> void: pass
+func _continue_from_save() -> void: pass
+func _save() -> void: pass
+func _delete_save() -> void: pass
+func state_dict() -> Dictionary: return {}
 
-func _start_wake() -> void:
-	puzzles.reset_state()
-	puzzles.apply_state(puzzles.state)
-	chapter.reset_state()
-	chapter.apply_state()
-	player.teleport(Prologue.SHORE, PI * 0.5)
-	player.crouch = 1.0
-	player.locked = true
-	_settle_camera(0, Prologue.SHORE)
-	# (v2.0, EIDOLON_SCRIPT §5) the intro cards and the prologue, "The Abduction"; a long press skips
-	mode = "cine"
-	controls.enabled = false
-	controls.reset()
-	_skip_t = 0.0
-	_skip_hold = false
-	ui.fade_to(1.0, 0.01)
-	cine = Prologue.new(self)
-	add_child(cine)
-	cine.cue.connect(func(n: String) -> void: sfx.cue(n))
-	cine.finished.connect(_end_prologue)
-	(cine as Prologue).begin()
-
-func _end_prologue() -> void:
-	chapter.state["prologue_seen"] = true
-	var story: Array = chapter.state["inv"]["story"]
-	if not ("comb" in story): story.append("comb")
-	chapter.act1.pool_refl.hold = false
-	player.locked = false
-	player.crouch = 0.0
-	world.yaw_index = 0
-	world.rig.rotation.y = -PI * 0.25
-	world.pitch_node.rotation.x = -World.PITCH
-	world.cam_lock = false
-	world.look_offset = Vector3.ZERO
-	world.cam_size_target = world.zoom
-	world.follow = player
-	ui.set_letterbox(0.0)
-	ui.fade_to(0.0, 0.6)
-	ui.set_skip(0.0, false)
-	ui.skip_ring.show_k = 0.0
-	mode = "play"
-	controls.enabled = true
-	controls.block(300)
-	_world_block_t = 0.3
-	if cine:
-		cine.queue_free()
-		cine = null
-	_save()
-
-func _continue_from_save() -> void:
-	puzzles.apply_state(save_data.get("puzzles", {}))
-	var cs: Dictionary = save_data.get("chapter", {})
-	chapter.reset_state()
-	for k in cs:
-		if chapter.state.has(k): chapter.state[k] = cs[k]
-	for k in Items.fresh_inv():                 # (a v2 or early-v3 save: the keys it lacks)
-		if not (chapter.state["inv"] as Dictionary).has(k): chapter.state["inv"][k] = Items.fresh_inv()[k]
-	for k in Items.fresh_hub():
-		if not (chapter.state["hub"] as Dictionary).has(k): chapter.state["hub"][k] = Items.fresh_hub()[k]
-	if int(save_data.get("v", 2)) < 3: chapter.items.migrate_v2()        # (v1.0 M3b: v2 saves load into the hub)
-	if int(save_data.get("v", 2)) < 4: Items.migrate_v3(chapter.state)   # (v2.0: seals -> beacons, three tools out)
-	for k in Items.fresh_inv():
-		if not (chapter.state["inv"] as Dictionary).has(k): chapter.state["inv"][k] = Items.fresh_inv()[k]
-	chapter.apply_state()
-	var p: Array = save_data.get("pos", [Level.WAKE_POS.x, 0.0, Level.WAKE_POS.z])
-	player.teleport(Vector3(p[0], p[1], p[2]), float(save_data.get("yaw", 0.0)))
-	player.crouch = 0.0
-	awake = bool(puzzles.state["shrine"])
-	world.set_awaken(1.0 if awake else 0.0)
-	sfx.far_voice = awake
-	player.fig.set_hem(HEM_PER_SHRINE[1 if awake else 0])
-	player.fig.set_runes(int(save_data.get("runes_awake", 1 if awake else 0)))
-	var g: Dictionary = save_data.get("glimpses", {})
-	for k in g: glimpses[k] = int(g[k])
-	for k in save_data.get("visited", []): visited[k] = true
-	_settle_camera(0, player.position)        # (v0.9: the one view; old saves' camera turn is ignored)
-	mode = "play"
-	controls.enabled = true
-
-func _settle_camera(yaw_i: int, at: Vector3) -> void:
-	world.follow = null
-	world.cam_size_target = world.zoom
-	world.set_yaw_index(yaw_i)
-	var tw := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(world.rig, "position", at + Vector3(0, 0.6, 0), 2.0)
-	tw.tween_callback(func() -> void: world.follow = player)
-
-# ------------------------------------------------------------------ input
 func _input(e: InputEvent) -> void:
 	if mode == "title":
 		var tap := false
@@ -324,17 +92,6 @@ func _input(e: InputEvent) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not ui.over_anew(e.position): tap = true
 		if e is InputEventKey and e.pressed and not e.echo and e.keycode in [KEY_SPACE, KEY_ENTER, KEY_E]: tap = true
 		if tap and not (ui.confirm.visible or ui.credits_panel.visible): begin()
-		return
-	if mode == "door":
-		if e is InputEventKey and e.pressed and not e.echo:
-			var ov := ui.door_overlay
-			match e.keycode:
-				KEY_LEFT, KEY_A: ov.select((ov.selected + 2) % 3)
-				KEY_RIGHT, KEY_D: ov.select((ov.selected + 1) % 3)
-				KEY_UP, KEY_W: door_cycle(ov.selected)
-				KEY_DOWN, KEY_S: door_cycle(ov.selected, -1)
-				KEY_E, KEY_SPACE, KEY_ENTER: door_cycle(ov.selected)
-				KEY_ESCAPE, KEY_Q: ov.close()
 		return
 	if mode == "glass":
 		if e is InputEventKey and e.pressed and not e.echo and e.keycode in [KEY_ESCAPE, KEY_Q]: ui.glass_talk.close()
@@ -346,10 +103,7 @@ func _input(e: InputEvent) -> void:
 	if _world_block_t > 0.0 and not (e is InputEventKey and not e.pressed): return
 	if e is InputEventKey and not e.echo:
 		_keys[e.keycode] = e.pressed
-		if e.pressed:
-			match e.keycode:
-				KEY_E, KEY_SPACE, KEY_ENTER: try_interact()
-				KEY_F: if mode == "play": chapter.toggle_lens()
+		if e.pressed and e.keycode in [KEY_E, KEY_SPACE, KEY_ENTER]: try_interact()
 
 func _key_vector() -> Vector2:
 	var v := Vector2.ZERO
@@ -359,33 +113,6 @@ func _key_vector() -> Vector2:
 	if _keys.get(KEY_D, false) or _keys.get(KEY_RIGHT, false): v.x += 1.0
 	return v.normalized()
 
-# ------------------------------------------------------------------ the rune door close-up
-func open_door_overlay(sel: int) -> void:
-	if puzzles.state["door_open"] or mode != "play": return
-	mode = "door"
-	player.input_dir = Vector2.ZERO
-	auto_target = Vector3.INF
-	controls.enabled = false
-	controls.reset()
-	controls.show_interact("")
-	ui.door_overlay.open(puzzles.state["door"], sel)
-	sfx.play("page", -14.0, 0.9)
-
-## a slot tapped (or E on the selected slot): the rune turns over
-func door_cycle(i: int, dir := 1) -> void:
-	if mode != "door": return
-	ui.door_overlay.select(i)
-	puzzles.turn_dial(i, dir)
-	ui.door_overlay.flip(i, puzzles.state["door"][i])
-	if puzzles.state["door_open"]: ui.door_overlay.flare()
-
-func _door_overlay_closed() -> void:
-	if mode == "door":
-		mode = "play"
-		controls.enabled = true
-		controls.block(250)              # the closing tap (and anything right after) never reaches the world
-		_world_block_t = 0.25
-
 func try_interact() -> bool:
 	if mode != "play" or focus == null or _world_block_t > 0.0: return false
 	interactions += 1
@@ -393,383 +120,11 @@ func try_interact() -> bool:
 	focus.action.call()
 	return true
 
-# ------------------------------------------------------------------ frame
-func _process(dt: float) -> void:
-	_world_block_t = maxf(0.0, _world_block_t - dt)
-	if mode == "title":
-		_title_t += dt
-	if mode == "play" or mode == "wake" or mode == "finale":
-		var sv := controls.vec
-		var kv := _key_vector()
-		if kv != Vector2.ZERO: sv = kv
-		if key_vec != Vector2.ZERO: sv = key_vec
-		var axes := world.ground_axes()
-		var dir: Vector3 = axes[0] * sv.x + axes[1] * (-sv.y)
-		# (v0.9.2) on the Our Steps floor the stick steps you slab to slab (the floor walks you there)
-		if chapter.steps and chapter.steps.active and mode == "play":
-			if auto_target == Vector3.INF: chapter.steps.input(dir)
-			dir = Vector3.ZERO
-		if auto_target != Vector3.INF:
-			var d := auto_target - player.position
-			d.y = 0.0
-			if d.length() < 0.08:
-				auto_target = Vector3.INF
-				dir = Vector3.ZERO
-			else:
-				dir = d.normalized() * clampf(d.length() * 2.5, 0.25, 1.0)
-		player.input_dir = Vector2(dir.x, dir.z) if mode == "play" else Vector2.ZERO
-		# (QA P1-6) only a light touch of the stick turns in place; keys and the auto-walk always step
-		player.stick_turn = auto_target == Vector3.INF and kv == Vector2.ZERO and key_vec == Vector2.ZERO
-	var _t0 := Time.get_ticks_usec() if prof_on else 0
-	player.step(dt)
-	if prof_on: _t0 = _pm("player", _t0)
-	world.update_reveal(level.occluders, player.position, dt)
-	# (v0.9.1, the flicker hunt: the zones' faded copies swap in once the see-through opens and swap back
-	# only after it has been fully closed for 0.6 s, never flickering between the two at the threshold)
-	if world.reveal_k > 0.02:
-		_fade_on = true
-		_fade_off_t = 0.6
-	elif world.reveal_k <= 0.001:
-		_fade_off_t -= dt
-		if _fade_off_t <= 0.0: _fade_on = false
-	level.set_fade(player.position, _fade_on)
-	if mode != "cine" and mode != "finale": level.cull_far(player.position, dt)
-	if prof_on: _t0 = _pm("reveal+fade+cull", _t0)
-	puzzles.update(dt)
-	if prof_on: _t0 = _pm("puzzles", _t0)
-	if mode != "title": chapter.update(dt)
-	if mode != "title": wonders.update(dt)
-	if prof_on: _t0 = _pm("chapter", _t0)
-	if mode == "cine":
-		_skip_t = _skip_t + dt if _skip_hold else maxf(0.0, _skip_t - dt * 3.0)
-		ui.set_skip(clampf(_skip_t / 1.1, 0.0, 1.0), _skip_hold or _skip_t > 0.0)
-		if _skip_t >= 1.1 and cine:
-			_skip_t = 0.0
-			_skip_hold = false
-			sfx.stop_cue("cinematic_hand", 1.2)
-			sfx.stop_cue("shrine_awaken", 1.2)
-			cine.skip()
-	if mode == "play": _update_focus()
-	else:
-		controls.show_interact("")
-		if player: player.anticipate = 0.0
-		if highlight and highlight.id != "":
-			focus = null
-			highlight.set_target(null)
-	if highlight: highlight.update(dt)
-	if prof_on: _t0 = _pm("focus+highlight", _t0)
-	Flame.cull(player.position, dt)          # (v0.8.3: one budget for the flames and the aqua lights)
-	if Engine.get_process_frames() % 2 == 0:
-		level.set_flames(Flame.bounce_list(player.position))   # (v1.0 A) crimson bounce on nearby stone
-	if satchel and Engine.get_process_frames() % 10 == 0:
-		controls.bag_has = not satchel.contents().is_empty()
-		# (v1.1: the hotbar shows what you carry; the satchel keeps the tablets, memories and the map)
-		var hot: Array[String] = []
-		for k in HOT_ORDER: if chapter.hub.has_item(k): hot.append(k)
-		controls.hot_items = hot
-		if controls.hot_icons.is_empty(): controls.hot_icons = chapter.items.icons
-		if chapter.lens_on: controls.hot_sel = "shard"
-		elif controls.hot_sel == "shard": controls.hot_sel = ""
-	# (v1.0 A, QA P1-4 / v2.0 I.5: the crypt is truly dark; the lamp's warm circle is what you see by)
-	var want_dark := 1.0 if (chapter.act1.in_crypt(player.position) and mode == "play") else 0.0
-	_dark = move_toward(_dark, want_dark, dt * 1.2)
-	world.set_darkness(_dark)
-	var lp := (player.global_position + Vector3(0, 0.9, 0)) if chapter.hub.has_item("lamp") else Vector3.INF
-	level.set_darkness(_dark, lp, 3.4)
-	chapter.hub.lamp_light.light_energy = lerpf(0.6, 1.6, _dark); chapter.hub.lamp_light.omni_range = lerpf(4.5, 5.5, _dark)
-	sfx.calm = mode != "play" or (player.speed01 < 0.05 and auto_target == Vector3.INF)
-	_update_hum()
-	if prof_on: _t0 = _pm("lights+hum", _t0)
-	if mode != "title":
-		var p := player.position
-		var wide := Map2.space_rect("EB").grow(0.5).has_point(Vector2(p.x, p.z))     # (v2) E.6: see across the glass to her plate
-		if area == "hollow_walk" and OurSteps.lean(p) != Vector3.ZERO: wide = true     # (v0.9.2: her room, clear behind the glass)
-		var cs: float = world.zoom                 # v0.9: one fixed view; no per-area zoom
-		if mode != "finale" and mode != "cine": world.cam_size_target = cs
-		world.fog_hole_target = Vector2(12.5, 21.0) if wide else Vector2(0.55, 1.3) * cs
-		if mode == "play":
-			var off := Vector3.ZERO
-			if bridge_focus > 0.0:
-				bridge_focus -= dt
-				off = (Puzzles.PLATE_POS - p) * 0.7         # watch her plate answer
-				off.y = 0.0
-			elif area == "gate_four" and chapter.four_lean(p) != Vector3.ZERO:
-				off = chapter.four_lean(p)                         # (phase 6) the Gate of the Four: the hold and the sinking in frame
-			elif area == "hollow_walk" and not chapter.state["hollow_done"] and OurSteps.lean(p) != Vector3.ZERO:
-				off = OurSteps.lean(p)                             # (v0.9.2) Our Steps: both rooms whole on the screen
-			elif chapter.points and chapter.points.lean != Vector3.ZERO:
-				off = chapter.points.lean                          # (v1.1) a bench with a view: the camera leans toward it
-			elif area == "garden_veiled" and not chapter.state["turned_done"] and Chapter.garden_lean(p) != Vector3.ZERO:
-				off = Chapter.garden_lean(p)                       # (v0.9.1) before the turned ones: lean toward the glass
-			else:
-				off = wonders.lean(p)                              # (v0.9) a wonder space: lean toward it
-			world.look_offset = world.look_offset.lerp(off, 1.0 - exp(-dt * 1.5))
-	level.beyond.visible = world.awaken > 0.01
-	if mode == "play": _auto_quality(dt)
-	if prof_on: _t0 = _pm("camera rules", _t0)
-	level.update_inscriptions(player.position)
-	if mode == "play" or mode == "finale" or mode == "cine":
-		_update_area()
-		_update_air()
-	if prof_on: _t0 = _pm("inscr+area+air", _t0)
-	if ui.text_source != Vector3.INF and player.position.distance_to(ui.text_source) > 3.2: ui.hide_text()
-	if mode == "play":
-		_save_t += dt
-		# (v0.8.5) the periodic position save waits for a still moment: a save is a few ms of JSON and a
-		# file write, never during a walk (solves and checkpoints still save at once)
-		if _save_pending:
-			_save_wait += dt
-			if (player.speed01 < 0.05 and auto_target == Vector3.INF) or _save_wait > 8.0:
-				_save_pending = false
-				_save_wait = 0.0
-				_save_t = 0.0
-				_save()
-		if _save_t > 6.0 and player.speed01 < 0.05 and auto_target == Vector3.INF:
-			_save_t = 0.0
-			if _last_saved_pos == Vector3.INF or player.position.distance_to(_last_saved_pos) > 0.5: _save()
-	_js_state(dt)
-	if prof_on: _t0 = _pm("save+js", _t0)
-
-## (v0.8.5, tests) per-section script time in main._process, microseconds accumulated while prof_on
-var prof_on := false
-var _save_pending := false
-var _save_wait := 0.0
-var prof := {}
-var prof_max := {}                 # (v1.0) the worst single frame per section (us)
-func _pm(label: String, t0: int) -> int:
-	var now := Time.get_ticks_usec()
-	prof[label] = prof.get(label, 0) + (now - t0)
-	prof_max[label] = maxi(int(prof_max.get(label, 0)), now - t0)
-	return now
-
-func _update_focus() -> void:
-	var best: Level.Interact = null
-	var bd := INF
-	var p := player.position
-	for it in level.interacts:
-		if not it.enabled: continue
-		if it.cond.is_valid() and not it.cond.call(): continue
-		if absf(it.pos.y - p.y) > 1.3: continue
-		var d := Vector2(it.pos.x - p.x, it.pos.z - p.z).length()
-		if d < it.radius and d < bd:
-			bd = d; best = it
-	if puzzles.busy: best = null
-	focus = best
-	player.anticipate = 1.0 if (best and best.id != "steps_reset") else 0.0       # (v1.0 juice: she leans toward it)
-	controls.show_interact(best.icon if best else "")
-	# v0.8.1: what the button will act on glows (chosen here, with the prompt)
-	if highlight: highlight.set_target(best)
-
-const EXPOSED := ["HG", "E", "EB", "V2_PW", "V2_I22"]
-const AREA_WIND := {"waking_pool": 0.35, "stair_breath": 0.6, "hall_glass": 0.12, "shard_gallery": 0.1, "garden_veiled": 0.3,
-	"hollow_walk": 0.25, "court_light": 0.4, "mist_maze": 0.15, "echo_corridor": 0.1, "scales": 0.45, "eidolon_ledge": 0.6,
-	"gate_four": 0.5, "first_shrine": 0.4}
-
-func _surface() -> String:
-	var q := Vector2(player.position.x, player.position.z)
-	var g := level.region_at(q)
-	if g and g.name == "LB": return "wood"
-	if g and g.name.begins_with("stone"): return "water"
-	if g and not is_nan(Map2.water_y_at(q)) and player.position.y < Map2.water_y_at(q) + 0.9: return "water"          # (v2: the W.7 and N.1 stones)
-	if area in ["hall_glass", "shard_gallery", "echo_corridor"]: return "hall"
-	return "stone"
-
-func _update_air() -> void:
-	var q := Vector2(player.position.x, player.position.z)
-	var g := level.region_at(q)
-	var w: float = AREA_WIND.get(area, 0.35)
-	if g and (g.name in EXPOSED or g.name in [Map2.ZP + "Pp", Map2.ZP + "I21", Map2.ZP + "PW"] or g.name == "WK"): w = 0.95
-	sfx.set_wind(w * (0.7 if awake else 1.0))
-
-var _area_defer := ""
-
-func _update_area() -> void:
-	var g := level.region_at(Vector2(player.position.x, player.position.z))
-	if g and Map2.enabled and Map2.key_of_region(g.name) != "": world.set_mood(Map2.mood_of_region(g.name))     # (v2: A's moods per part)
-	if g and satchel and mode == "play": satchel.see_region(g.name)        # (v1.0 M3c: the map fills in)
-	if g and Names.TRAVERSE.has(g.name) and not visited.has("t:" + g.name) and mode == "play":
-		visited["t:" + g.name] = true                # (v1.0 M3: a traversal section, named once)
-		ui.show_area(Names.TRAVERSE[g.name])
-	if _area_defer != "" and _area_defer == area and wonders.here == "" and mode == "play":
-		_area_defer = ""                              # (v1.0 M3: the space's own name, once you step off the wonder)
-		if not visited.has(area):
-			visited[area] = true
-			ui.show_area(Names.area(area))
-	if g == null: return
-	var key: String = Map2.area_of_region(g.name) if Map2.key_of_region(g.name) != "" else str(Names.REGION_AREA.get(g.name, ""))
-	if key == "": return
-	if key == area: return
-	area = key
-	sfx.set_area(Names.AUDIO_ALIAS.get(key, key))
-	if mode == "play" and area != "": _save_pending = true        # a checkpoint in every space (v0.8.5: written at the next still moment)
-	_area_defer = ""
-	if not visited.has(key):
-		if wonders.here != "" or wonders.key_at(player.position) != "" or mode == "cine":
-			_area_defer = key                         # (reached by way of a wonder: the wonder is named first; v2: never over a cinematic)
-			return
-		visited[key] = true
-		ui.show_area(Names.area(key))
-
-func _update_hum() -> void:
-	var pts := puzzles.beam_points
-	if pts.size() < 2:
-		sfx.set_hum(0.0)
-		return
-	var p := player.position + Vector3(0, 1, 0)
-	var bd := INF
-	for i in pts.size() - 1:
-		var a := pts[i]; var b := pts[i + 1]
-		var ab := b - a
-		var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
-		bd = minf(bd, p.distance_to(a + ab * t))
-	sfx.set_hum(clampf(1.0 - (bd - 1.0) / 7.0, 0.0, 1.0) * (1.0 if puzzles.beam_lit else 0.6))
-
-# ------------------------------------------------------------------ events
-func _on_read(text: String, script: Array) -> void:
-	ui.show_inscription(text, script, player.position)
-	sfx.play("chime_hall" if area == "hall" else "chime", -23.0, 0.5)
-	chapter.progress()
-	if focus and focus.id == "h_tablet":
-		puzzles.state["tablet"] = true
-		_save()
-
-func _on_footstep(kind: String, strength: float) -> void:
-	if kind == "step":
-		var surf := _surface()
-		sfx.footstep(surf, strength)
-		if surf == "water" and juice:
-			# (v1.0 juice) wet stepping stones: a small ring on the water by her foot
-			var fp := player.position + player.fig.basis * Vector3(0.12 * (1 if randf() < 0.5 else -1), 0.0, -0.1)
-			var wy2 := Map2.water_y_at(Vector2(fp.x, fp.z))
-			var wy := (wy2 + 0.01) if not is_nan(wy2) else fp.y - 0.02
-			juice.ring(Vector3(fp.x, wy, fp.z), 0.9, 0.9)
-			# (v1.1 A: a few soft drops kicked up, and A's ring on the pool's own water where there is one)
-			FxBurst.footstep(juice, Vector3(fp.x, wy, fp.z), puzzles.pool_fx if Map2.space_rect("P").has_point(Vector2(fp.x, fp.z)) else null)
-		else:
-			player_dust()
-		chapter.on_footstep()
-	else:
-		sfx.play("cloth", -34.0 + strength * 3.0, randf_range(0.85, 1.15))         # (v0.8.5: quieter, with the steps)
-
-## a small puff of dust where the foot lands
+## a puff of dust at her heel (a footfall on stone)
 func player_dust() -> void:
 	if world: world.dust_puff(player.position + player.fig.basis * Vector3(0.09 * (1 if randf() < 0.5 else -1), 0.02, -0.12))
 
-func _on_glimpse(kind: String) -> void:
-	glimpses[kind] = glimpses.get(kind, 0) + 1
-	if kind == "gaze":
-		# a faint glass chime as the reflection turns away from you
-		sfx.play("chime_hall", -22.0, 0.62)
-		get_tree().create_timer(0.9).timeout.connect(func() -> void: sfx.play("chime_hall", -27.0, 0.47))
-
-func _on_event(name: String, data: Variant) -> void:
-	match name:
-		"statue":
-			ui.show_rune(data[0], data[1])
-			sfx.play("glass", -17.0, 0.5 * pow(2.0, [0, 4, 7][data[1] - 1] / 12.0))
-		"dial":
-			sfx.play("flip", -13.0, 0.95 + data * 0.05)
-			sfx.play("grind", -20.0, 1.6)
-		"door_solved":
-			sfx.resolve(0)
-		"door_grind":
-			sfx.play("door", 0.0, 0.9)
-			world.shake(0.45)
-		"door_open":
-			_save()
-		"gate_locked":
-			sfx.play("rattle", -16.0, 1.0)
-			ui.show_text("It will not open from this side.", player.position, 2.5)
-		"gate_open":
-			sfx.play("rattle", -14.0, 0.8)
-			sfx.play("grind", -10.0, 0.7)
-			sfx.resolve(-2)
-			_save()
-		"mirror_turn":
-			sfx.play("turn", -6.0, 1.25)
-		"beam_lit":
-			sfx.resolve(4)
-			sfx.play("bell", -16.0, 1.0)
-		"bridge_fall":
-			sfx.play("whoosh", -14.0, 0.6)
-			get_tree().create_timer(0.85).timeout.connect(func() -> void:
-				sfx.play("thud", -5.0, 0.8)
-				world.shake(0.4))
-		"bridge_down":
-			_save()
-		"plate_touch":
-			sfx.play("chime_hall", -20.0, 0.75)
-		"plate_half":
-			sfx.play("glass_tink", -21.0, 0.6)          # (hers stirs, but yours is empty)
-		"plate_glow":
-			sfx.solve_jingle()
-		"bridge_rise":
-			bridge_focus = 5.0
-			sfx.play("door", -1.0, 0.8)
-			world.shake(0.35)
-		"plate_open":
-			_save()
-		"shrine":
-			start_finale()
-		"sealed":
-			sfx.play("rattle", -20.0, 0.6)
-			ui.show_text("The way on is sealed.\nAnother shrine still sleeps beyond the fog." if awake else "The way on is sealed.", player.position, 3.0)
-
-# ------------------------------------------------------------------ the finale
-func start_finale() -> void:
-	if puzzles.state["shrine"]: return
-	puzzles.state["shrine"] = true
-	mode = "cine"
-	player.locked = true
-	player.input_dir = Vector2.ZERO
-	auto_target = Vector3.INF
-	key_vec = Vector2.ZERO
-	controls.show_interact("")
-	controls.enabled = false
-	controls.reset()
-	chapter.set_lens(false)
-	ui.hide_text()
-	_skip_t = 0.0
-	_skip_hold = false
-	sfx.swell()
-	cine = Cinematic.new(self)
-	add_child(cine)
-	cine.cue.connect(func(n: String) -> void: sfx.cue(n))
-	chapter.hand_in_the_water(cine)
-	cine.finished.connect(_end_cinematic)
-	cine.start()
-
-func _end_cinematic() -> void:
-	awake = true
-	sfx.far_voice = true
-	sfx._voice_t = 12.0
-	world.set_awaken(1.0)
-	puzzles.set_shrine_awake(1.0, 1.0)
-	player.fig.set_runes(1)
-	player.fig.set_hem(HEM_PER_SHRINE[1])
-	player.locked = false
-	player.crouch = 0.0
-	world.yaw_index = 0
-	world.rig.rotation.y = -PI * 0.25
-	world.pitch_node.rotation.x = -World.PITCH
-	world.cam_lock = false
-	world.cam.near = 1.0
-	world.look_offset = Vector3.ZERO
-	world.cam_size_target = world.zoom
-	world.follow = player
-	ui.set_letterbox(0.0)
-	ui.set_skip(0.0, false)
-	ui.skip_ring.show_k = 0.0
-	mode = "play"
-	controls.enabled = true
-	controls.block(300)
-	_world_block_t = 0.3
-	if cine:
-		cine.queue_free()
-		cine = null
-	_save()
-
-# ------------------------------------------------------------------ v0.5b: a conversation through the glass
+# ------------------------------------------------------------------ the glass close-up (Game3 opens it with its pane)
 func open_glass(id: String) -> void:
 	if mode != "play": return
 	mode = "glass"
@@ -780,10 +135,8 @@ func open_glass(id: String) -> void:
 	controls.reset()
 	controls.show_interact("")
 	ui.hide_text()
-	if id == "garden":
-		ui.glass_talk.open({"id": id, "write": ["hook", "wing", "step"]})     # (v0.9.2: she writes her three runes)
-	elif id == "first":
-		ui.glass_talk.open({"id": id, "first": "", "question": "line", "at_q": Vector2(0.0, 0.0)})      # (v2.0 I.3: one line)
+	if id == "first":
+		ui.glass_talk.open({"id": id, "first": "", "question": "line", "at_q": Vector2(0.0, 0.0)})      # (I.3: one line)
 	else:
 		ui.glass_talk.open({"id": id, "first": "follow", "question": "together_half"})
 
@@ -793,248 +146,15 @@ func _glass_sound(n: String) -> void:
 		"writing": sfx.play("glass_tink", -24.0, 0.8)
 		"chime":
 			sfx.play("chime", -14.0, 1.0)
-			sfx.motif(-10.0)                 # v0.6: her answer rings with her song (heard again in the Echo Corridor)
+			sfx.motif(-10.0)                 # her answer rings with her song
 		"wrong": sfx.play("glass_tink", -16.0, 0.53)        # a low, slightly sour glass tone
 
 func _glass_closed() -> void:
 	if mode != "glass": return
 	mode = "play"
 	controls.enabled = true
-	controls.block(250)                # the closing tap never reaches the world (as the door panel)
+	controls.block(250)                # the closing tap never reaches the world
 	_world_block_t = 0.25
-
-# ------------------------------------------------------------------ v0.5 chapter events
-func _on_chapter_event(name: String, data: Variant) -> void:
-	match name:
-		"solve":
-			chapter.progress()
-			sfx.solve_jingle()             # (v0.8.1: one jingle on every solve; solve_<room> cues retired)
-			_save()
-		"breath": sfx.cue("breath")
-		"writing": sfx.play("glass_tink", -24.0, 0.8)
-		"touch_glass": sfx.cue("touch_glass")
-		"shard":
-			sfx.play("shard", 0.0, 1.0)
-			_save()
-		"lens": sfx.play("glass_tink", -20.0, 1.25 if data else 0.85)
-		"statue_turn": sfx.cue("statue_turn")
-		"door_reflection": sfx.play("chime_hall", -16.0, 0.7)
-		"door_real":
-			sfx.play("door", -3.0, 0.9)
-			world.shake(0.3)
-		# v0.9.2 "Our Steps"
-		"steps_step":
-			sfx.play("hollow", -6.0, 1.15)
-			if data: sfx.play("glass_tink", -16.0, 0.75)       # (she was held by a stone of hers)
-		"steps_blocked": sfx.play("glass_tink", -20.0, 0.55)
-		"steps_on": sfx.play("glass", -14.0, 0.9)
-		"steps_reset", "steps_exit": sfx.play("whoosh", -20.0, 1.2)
-		"maze_bump": sfx.play("glass_tink", -21.0, 0.7)
-		"memory":
-			ui.show_memory(Chapter.MEMORY_1, 4.0)
-			sfx.cue("glimpse")
-			_save()
-		"scale_groan": sfx.play("creak", -4.0, 1.0 + clampf(float(data) * 0.02, -0.2, 0.2))
-		"hint": sfx.play("glass_tink", -30.0, 1.4)
-		# v0.6
-		"pool_turn":
-			sfx.play("grind", -9.0, 1.15)
-			sfx.play("step_wet", -12.0, 0.8)
-		"pool_joint": sfx.play("chime", -21.0, 1.25 + 0.05 * float(data))
-		# v1.0 M3: the hub
-		"bridge_settle":
-			sfx.play("grind", -22.0, 1.4 + data * 0.1)
-		"bridge_crumble":
-			sfx.play("grind", -14.0, 1.1)
-			get_tree().create_timer(1.3).timeout.connect(func() -> void: sfx.play("thud", -20.0, 0.7))
-		"item":
-			sfx.play("chime", -14.0, 0.9)
-			_save()
-		# v1.0 M3b: the items at work
-		# (v2.0) Act 1
-		"a1_door":
-			sfx.play("grind", -10.0, 0.7)
-			sfx.play("chime", -18.0, 1.1)
-			_save()
-		# (v2 phase 4) Act 3
-		"vw_open":
-			sfx.play("grind", -12.0, 0.6)
-		"four_open":
-			sfx.play("grind", -9.0, 0.55)
-			sfx.play("chime", -16.0, 0.9)
-			_save()
-		"a1_gate":
-			sfx.play("rattle", -12.0, 0.9)
-			_save()
-		"a1_slab":
-			sfx.play("thud", -12.0, 0.9)
-			sfx.play("chime", -16.0, 1.25)
-			_save()
-		"a1_lamp":
-			sfx.play("step_wet", -10.0, 0.8)
-			get_tree().create_timer(1.6).timeout.connect(func() -> void: sfx.play("chime", -16.0, 1.4))
-		"warden_turn":
-			sfx.play("glass", -12.0, 0.4)
-			sfx.play("whoosh", -18.0, 0.55)
-			if juice: juice.shake(0.06)
-		"a1_atrium":
-			sfx.resolve(1)
-			_save()
-		"hidden_way":
-			sfx.play("glass_tink", -16.0, 0.7)
-			get_tree().create_timer(0.5).timeout.connect(func() -> void: sfx.play("grind", -14.0, 0.9))
-			_save()
-		"warden_seen":
-			sfx.play("chime_hall", -8.0, 0.45)
-			get_tree().create_timer(0.4).timeout.connect(func() -> void: sfx.play("whoosh", -16.0, 0.6))
-		"warden_glimpse":
-			sfx.play("glass", -14.0, 0.42)
-			sfx.play("glass_tink", -18.0, 0.5)
-		"her_rune": sfx.play("chime", -22.0, 1.35)
-		"pin_ring":
-			sfx.play("chime_hall", -10.0, 1.5)
-			get_tree().create_timer(0.5).timeout.connect(func() -> void: sfx.play("grind", -12.0, 0.7))
-			_save()
-		"secret":
-			sfx.play("chime", -15.0, 1.2)
-			_save()
-		"mem_shard":
-			sfx.play("bell", -16.0, 1.3)
-			_save()
-		"beacon":
-			# (v2.0) a wing's fire: the whoosh of the catch, a bell, and its twin answering in the Atrium
-			sfx.play("whoosh", -10.0, 0.8)
-			sfx.play("bell", -12.0, 1.0)
-			sfx.resolve(2)
-			get_tree().create_timer(1.2).timeout.connect(func() -> void: sfx.play("bell", -24.0, 0.7))
-			if juice: juice.shake(0.08)
-			_save()
-		"ec_unbolt":
-			sfx.play("rattle", -12.0, 0.8)
-			sfx.play("grind", -12.0, 0.7)
-			_save()
-		"pool_rise":
-			sfx.play("grind", -6.0, 0.55)
-			sfx.play("step_wet", -4.0, 0.7)
-			sfx.play("whoosh", -16.0, 0.6)
-		"pool_whole":
-			sfx.play("chime", -14.0, 0.8)
-			sfx.play("step_wet", -6.0, 0.55)
-		"hall_push": sfx.play("grind", -8.0, 0.9)
-		"hall_take": sfx.play("cloth", -16.0, 1.1)
-		"hall_place": sfx.play("grind", -14.0, 1.4)
-		"hall_nope": sfx.play("glass_tink", -22.0, 0.5)
-		"hall_reset":
-			sfx.play("grind", -10.0, 0.7)
-			sfx.play("chime_hall", -20.0, 0.6)
-		"hall_lock":
-			sfx.note(["A", "D", "E"][int(data) % 3], -11.0)
-			sfx.play("chime_hall", -16.0, 1.0)
-			chapter.progress()
-		"brazier": sfx.play("whoosh", -17.0, 1.7)
-		"brazier_out": sfx.play("whoosh", -21.0, 0.6)
-		"gutter":
-			sfx.play("whoosh", -15.0, 0.55)
-			sfx.sour(-20.0)
-		"song_note": sfx.note(str(data), -5.0, true)
-		"song_sour": sfx.sour(-11.0)
-		"song_remember": sfx.motif(-21.0, 0.55, true)
-		"weight_take": sfx.play("grind", -18.0, 1.6)
-		"weight_hang": sfx.play("creak", -8.0, 1.2)
-		"lift":
-			sfx.play("door", -6.0, 1.1)
-			world.shake(0.15)
-		"plate_a": sfx.play("thud", -12.0, 0.9)
-
-# ------------------------------------------------------------------ jump (tests, screenshots)
-## put the world in the state it has when you first enter `room` (everything before it solved) and
-## stand at its entrance
-const ROOM_ENTRY := {
-	"waking_pool": Map2.O + Vector3(-1.0, 0.0, 18.85), "stair_breath": Map2.GW + Vector3(-11.0, 0.0, 1.6), "hall_glass": Map2.GW + Vector3(-2.0, 1.0, -13.5),
-	"atrium": Map2.O + Vector3(0.0, 0.0, 3.0), "shard_gallery": Map2.GG + Vector3(5.8, 1.0, -17.0), "garden_veiled": Map2.GN + Vector3(13.5, 1.0, -5.6),
-	"hollow_walk": Map2.GN + Vector3(17.9, 1.0, -11.8), "court_light": Map2.GN + Vector3(18.5, 2.0, -17.8), "mist_maze": Map2.GN + Vector3(12.0, 2.0, -29.6),
-	"echo_corridor": Map2.GE + Vector3(22.0, 2.0, -20.0),
-	"scales": Map2.GE + Vector3(31.4, 2.0, -45.6), "eidolon_ledge": Map2.GE + Vector3(23.0, 2.0, -19.8), "gate_four": Map2.O + Vector3(-41.5, 0.0, 18.85),
-	"first_shrine": Map2.O + Vector3(-45.0, 0.0, 11.0),
-}
-func jump(room: String) -> void:
-	var idx := Names.ORDER.find(room)
-	if idx < 0: return
-	auto_target = Vector3.INF
-	key_vec = Vector2.ZERO
-	if cine:                                   # (a jump from inside the prologue / a cinematic: drop it)
-		if cine is Prologue: (cine as Prologue).abort()
-		cine.queue_free()
-		cine = null
-		ui.set_letterbox(0.0)
-		ui.set_skip(0.0, false)
-		ui.skip_ring.show_k = 0.0
-	puzzles.reset_state()
-	chapter.reset_state()
-	var cs := chapter.state
-	var ps := puzzles.state
-	for i in idx:
-		match Names.ORDER[i]:
-			"waking_pool":
-				cs["a1"] = {"plate": true, "glass": true, "slab": true, "lamp": true, "atrium": true}
-			"stair_breath": cs["breath"] = true
-			"atrium":
-				(cs["inv"]["items"] as Array).append("lamp")
-			"hall_glass":
-				cs["shard"] = true; cs["hall_door"] = true
-				cs["hall"] = {"drum": [Chapter.DRUM_GOAL.x, Chapter.DRUM_GOAL.y], "brazier": [Chapter.BRAZ_GOAL.x, Chapter.BRAZ_GOAL.y],
-					"bust": Chapter.BUST_GOAL, "locks": [true, true, true]}
-			"shard_gallery":
-				cs["gallery"] = true
-				cs["hub"]["w_seen"] = true
-				(cs["beacons"] as Array).append("W")
-			"garden_veiled":
-				cs["turned"] = Chapter.TURN_SOLUTION.duplicate(); cs["turned_done"] = true; cs["garden_breath"] = true
-			"hollow_walk":
-				cs["hollow_done"] = true
-			"court_light":
-				cs["hub"]["e_open"] = true; cs["hub"]["wk_crossed"] = true; cs["ledge_song"] = true
-				ps["mirrors"] = Puzzles.MIRROR_SOLUTION.duplicate(); ps["bridge"] = true; cs["mural"] = true
-			"mist_maze":
-				cs["maze"] = true
-				(cs["beacons"] as Array).append("N")
-			"echo_corridor": cs["echo_room"] = true
-			"scales":
-				cs["scales"] = true; cs["scale_w"] = [-1, -1, 5]
-				(cs["beacons"] as Array).append("E")
-			"eidolon_ledge":
-				ps["plate"] = true; cs["ledge_statue"] = [Chapter.LEDGE_PLATE.x, Chapter.LEDGE_PLATE.y]
-				# (v2.0: by the Gate, the three wings are done: their Beacons burn)
-				cs["beacons"] = ["W", "N", "E"]
-				cs["hub"]["ec_open"] = true
-				# (v2 phase 4: Act 3 comes after the wings: the Pool of Halves' road, then the bridge)
-				cs["stones"] = true; cs["pool_turns"] = Chapter._pool_solution()
-			"gate_four":
-				cs["four"] = true
-	puzzles.apply_state(ps)
-	chapter.apply_state()
-	awake = bool(ps["shrine"])
-	world.set_awaken(1.0 if awake else 0.0)
-	puzzles.set_shrine_awake(1.0 if awake else 0.0, 1.0 if awake else 0.0)
-	player.fig.set_hem(HEM_PER_SHRINE[1 if awake else 0])
-	player.fig.set_runes(1 if awake else 0)
-	var p: Vector3 = ROOM_ENTRY[room]
-	player.teleport(p, player.yaw)
-	world.snap_to(player.position)
-	if mode == "title":
-		sfx.start_music()
-		ui.hide_title()
-	ui.fade_to(0.0, 0.01)
-	world.follow = player
-	world.cam_lock = false
-	world.cam.near = 1.0
-	world.cam_size_target = world.zoom
-	mode = "play"
-	controls.enabled = true
-	player.locked = false
-	player.crouch = 0.0
-	visited[room] = true
-	chapter.hint_t = 0.0
 
 # ------------------------------------------------------------------ quality
 const SETTINGS_PATH := "user://eidolon_settings.json"
@@ -1052,15 +172,65 @@ func set_quality(t: Variant, save := false) -> void:
 	_aq_t = 0.0; _aq_frames = 0; _aq_time = 0.0
 	if save: _save_settings()
 
-## settings file v2 (v0.4): quality tier + zoom. Older files keep their quality but the zoom resets
-## to the new default once. v3 (v0.8.4): High is the default tier; a saved "auto" from before moves to High once.
+## settings file v3: the quality tier (High is the default; a saved "auto" from before v3 moves to High once)
 const SETTINGS_V := 3
 func _save_settings() -> void:
 	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify({"v": SETTINGS_V, "quality": world.tier}))
 
-## v0.8.3: draw every new v0.8.x material once, a few pixels in front of the camera, for a few frames at
-## start-up, so no shader is compiled (a hitch) the first time a flame is lit, a glow lands or a print shows
+func _load_settings() -> void:
+	var tier := "high"
+	if FileAccess.file_exists(SETTINGS_PATH) and not autotest:
+		var d = JSON.parse_string(FileAccess.get_file_as_string(SETTINGS_PATH))
+		if d is Dictionary:
+			if d.has("quality"): tier = str(d["quality"])
+			elif d.has("quality_high") and not bool(d["quality_high"]): tier = "low"
+			if int(d.get("v", 1)) < 3 and tier == "auto": tier = "high"
+	if not tier in ["auto", "high", "low"]: tier = "high"
+	set_quality(tier)
+
+## AUTO: judge the first seconds of play from real frame times (4 s windows after a 2 s settle); a slow window
+## steps the tier down one gentle notch, at most three times; a window at or above 45 fps ends the judging.
+func _auto_quality(dt: float) -> void:
+	if quality_auto_dropped or world.tier != "auto" or autotest or world.auto_step >= 3: return
+	_aq_t += dt
+	if _aq_t < 2.0: return
+	_aq_frames += 1
+	_aq_time += dt
+	if _aq_time < 4.0: return
+	var fps := _aq_frames / _aq_time
+	_aq_t = 0.0; _aq_frames = 0; _aq_time = 0.0
+	if fps >= 45.0:
+		quality_auto_dropped = true
+		return
+	world.set_tier("auto", world.auto_step + 1)
+	_apply_tier_extras()
+	print("[quality] auto step %d (%.0f fps)" % [world.auto_step, fps])
+
+## the reflectors the tier setup tunes (Game3 overrides it)
+func _tier_refls() -> Array:
+	return []
+
+func _apply_tier_extras() -> void:
+	for r in _tier_refls():
+		if r.planar:
+			r.planar.enabled = true
+			# the low tier keeps a half-resolution reflection; high / auto a full one, antialiased
+			r.planar.scale = 1.0 if world.quality_high else 0.5
+			r.planar.vp.msaa_3d = Viewport.MSAA_2X if world.quality_high and world.auto_step < 2 else Viewport.MSAA_DISABLED
+	if level.grass_mmi: level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
+	Reflector.cloth_bones = world.quality_high          # (the Low tier's reflections: cloth at rest)
+	if ui.glass_talk and ui.glass_talk.glass_mat: ui.glass_talk.glass_mat.set_shader_parameter("drops_q", 1.0 if world.quality_high else 0.0)
+	level.set_pbr_quality(world.quality_high)                 # (A: the Low tier skips the PBR detail)
+	for m in [level.marble_mat, level.marble_occ_mat]: m.set_shader_parameter("flame_k", 1.0 if world.quality_high else 0.0)
+	Flame.high = world.quality_high
+	AquaLight.high = world.quality_high
+	Flame.budget = 3 if world.tier == "high" else (2 if world.quality_high else 1)
+	Flame.shadows = world.tier == "high"             # (no dynamic-light shadows on Auto / Low)
+
+# ------------------------------------------------------------------ the shader warm-up
+## draw every material once, a few pixels in front of the camera, for a few frames at start-up, so no shader is
+## compiled (a hitch) the first time a flame is lit, a glow lands or a room is entered
 const WARM_CHUNK := 48
 var warm_done := false              # (tests) the warm-up has drawn every pair
 func _warm_up_shaders() -> void:
@@ -1069,23 +239,15 @@ func _warm_up_shaders() -> void:
 	holder.position = Vector3(0, 0, -(world.cam.near + 0.5))
 	holder.scale = Vector3.ONE * 0.0003            # (sub-pixel: drawn, never seen)
 	var mats: Array[Material] = [highlight._in, highlight._ring_mat, level.marble_mat, level.marble_occ_mat]
-	for path in ["res://shaders/light_pool.gdshader", "res://shaders/statue_shadow.gdshader", "res://shaders/ember.gdshader",
-			"res://shaders/flame.gdshader", "res://shaders/lens_only.gdshader", "res://shaders/veil_glow.gdshader", "res://shaders/halo.gdshader",
-			# (v1.0 A: the batches, ambient life, the Warden in glass)
-			"res://shaders/rune_face_mm.gdshader", "res://shaders/halo_mm.gdshader", "res://shaders/light_pool_mm.gdshader", "res://shaders/floor_mark_mm.gdshader",
-			"res://shaders/moths.gdshader", "res://shaders/petals.gdshader", "res://shaders/drips.gdshader", "res://shaders/veil_strip.gdshader",
-			"res://shaders/warden_reflection.gdshader",
-			"res://shaders/veiled_eyes.gdshader", "res://shaders/pickup_glow.gdshader", "res://shaders/fx_burst.gdshader",
-			# (phase 6) the shaders only an event instances, after start-up: Act 3's fog bank, the omens (the writing, the
-			# eye, the palm), the rings and sprays of the juice, the Gate's plinth ring, the waters, the Beacons' fire
-			"res://shaders/fog_bank.gdshader", "res://shaders/omen_fx.gdshader", "res://shaders/surface_palm.gdshader",
-			"res://shaders/ring.gdshader", "res://shaders/water_ring.gdshader", "res://shaders/spray.gdshader",
-			"res://shaders/water.gdshader", "res://shaders/still_water.gdshader", "res://shaders/water_over.gdshader",
-			"res://shaders/beacon_flame.gdshader", "res://shaders/beam.gdshader", "res://shaders/beam_floor.gdshader",
-			"res://shaders/godray.gdshader", "res://shaders/ray.gdshader", "res://shaders/footprint.gdshader",
-			"res://shaders/observer_veil.gdshader", "res://shaders/observer_rim.gdshader", "res://shaders/stone_ghost.gdshader",
-			"res://shaders/pool_stones.gdshader", "res://shaders/mist_drift.gdshader", "res://shaders/fog_sheet.gdshader",
-			"res://shaders/glow.gdshader", "res://shaders/mote.gdshader", "res://shaders/shard_hang.gdshader", "res://shaders/rune_flare.gdshader"]:
+	# the shaders only an event instances, after start-up: the omens, the rings and sprays of the juice, the waters,
+	# the fire, the fog, the glows (the scene's own pairs are found below)
+	for nm in ["light_pool", "statue_shadow", "ember", "flame", "lens_only", "veil_glow", "halo", "rune_face_mm", "halo_mm",
+			"light_pool_mm", "floor_mark_mm", "moths", "petals", "drips", "veil_strip", "warden_reflection", "veiled_eyes",
+			"pickup_glow", "fx_burst", "fog_bank", "omen_fx", "surface_palm", "ring", "water_ring", "spray", "water",
+			"still_water", "water_over", "beacon_flame", "beam", "beam_floor", "godray", "ray", "footprint", "observer_veil",
+			"observer_rim", "stone_ghost", "pool_stones", "mist_drift", "fog_sheet", "glow", "mote", "shard_hang", "rune_flare"]:
+		var path := "res://shaders/%s.gdshader" % nm
+		if not ResourceLoader.exists(path): continue
 		var m := ShaderMaterial.new()
 		m.shader = load(path)
 		mats.append(m)
@@ -1100,8 +262,8 @@ func _warm_up_shaders() -> void:
 		n += 1
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		holder.add_child(mi)
-	# v0.8.5: EVERY mesh + material pair in the chapter (hidden ones too: the cinematic, the solved states,
-	# the props), drawn once, tiny, in front of the camera: no shader is compiled the first time it is seen
+	# EVERY mesh + material pair in the game (hidden ones too: the cinematics, the solved states), drawn once,
+	# tiny, in front of the camera: no shader is compiled the first time it is seen
 	var seen := {}
 	var pending: Array[GeometryInstance3D] = []
 	for g in find_children("*", "GeometryInstance3D", true, false):
@@ -1109,7 +271,7 @@ func _warm_up_shaders() -> void:
 		var mesh: Mesh = null
 		var multi := false
 		if g is MeshInstance3D:
-			if (g as MeshInstance3D).skin != null: continue     # (skinned: the hero is always on screen)
+			if (g as MeshInstance3D).skin != null: continue     # (skinned: the heroine is always on screen)
 			mesh = (g as MeshInstance3D).mesh
 		elif g is MultiMeshInstance3D and (g as MultiMeshInstance3D).multimesh:
 			mesh = (g as MultiMeshInstance3D).multimesh.mesh
@@ -1179,9 +341,8 @@ func _warm_up_shaders() -> void:
 		if v and v.render_target_update_mode == SubViewport.UPDATE_DISABLED: v.render_target_update_mode = SubViewport.UPDATE_ONCE
 	print("[warm-up] %d mesh/material pairs (of %d geometry nodes), %d canvas materials" % [n, find_children("*", "GeometryInstance3D", true, false).size(), cseen.size()])
 	for k in 4: await get_tree().process_frame
-	# (QA_V11 P1-8: the load got slow: every pair compiled in ONE frame before the title could show. Now the
-	# title draws first, then the pairs go in a few dozen a frame while it is up; each batch is dropped after
-	# it has been drawn twice)
+	# the title draws first, then the pairs go in a few dozen a frame while it is up; each batch is dropped after
+	# it has been drawn twice
 	for i in range(0, pending.size(), WARM_CHUNK):
 		if not is_instance_valid(holder): return
 		var batch := pending.slice(i, i + WARM_CHUNK)
@@ -1192,94 +353,15 @@ func _warm_up_shaders() -> void:
 	await get_tree().create_timer(0.4).timeout
 	holder.queue_free()
 	cl.queue_free()
-	cl.queue_free()
-	# (the one-off renders above are done: nothing is left asking to render)
 	for r in _tier_refls():
 		if r.planar and not r.planar.active: r.planar.vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	if gtk.her_vp and not gtk.visible: gtk.her_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
-## the reflectors the tier setup tunes (v3: Game3 overrides it)
-func _tier_refls() -> Array:
-	return puzzles.reflectors if puzzles else []
-
-func _apply_tier_extras() -> void:
-	for r in _tier_refls():
-		if r.planar:
-			r.planar.enabled = true
-			# the low tier keeps a half-resolution reflection; high / auto a full one, antialiased
-			r.planar.scale = 1.0 if world.quality_high else 0.5
-			r.planar.vp.msaa_3d = Viewport.MSAA_2X if world.quality_high and world.auto_step < 2 else Viewport.MSAA_DISABLED
-	if level.grass_mmi: level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
-	Reflector.cloth_bones = world.quality_high          # (v0.8: the Low tier's reflections: cloth at rest)
-	if ui.glass_talk and ui.glass_talk.glass_mat: ui.glass_talk.glass_mat.set_shader_parameter("drops_q", 1.0 if world.quality_high else 0.0)      # (v1.0 M1-A: no running drops on Low)
-	level.set_pbr_quality(world.quality_high)                 # (v1.0 A: the Low tier skips the PBR detail)
-	for m in [level.marble_mat, level.marble_occ_mat]: m.set_shader_parameter("flame_k", 1.0 if world.quality_high else 0.0)
-	if props: props.set_quality(world.quality_high)
-	Flame.high = world.quality_high
-	AquaLight.high = world.quality_high
-	Flame.budget = 3 if world.tier == "high" else (2 if world.quality_high else 1)
-	Flame.shadows = world.tier == "high"             # (no dynamic-light shadows on Auto / Low)
-
-func _load_settings() -> void:
-	var tier := "high"
-	if FileAccess.file_exists(SETTINGS_PATH):
-		var d = JSON.parse_string(FileAccess.get_file_as_string(SETTINGS_PATH))
-		if d is Dictionary:
-			if d.has("quality"): tier = str(d["quality"])
-			elif d.has("quality_high") and not bool(d["quality_high"]): tier = "low"
-			if int(d.get("v", 1)) < 3 and tier == "auto": tier = "high"
-	if not tier in ["auto", "high", "low"]: tier = "high"
-	set_quality(tier)
-
-## AUTO: judge the first seconds of play from real frame times (4 s windows after a 2 s settle);
-## a slow window steps the tier down one gentle notch (1.25x render cap -> no MSAA -> low set), at most
-## three times, never further; a window at or above 45 fps ends the judging.
-func _auto_quality(dt: float) -> void:
-	if quality_auto_dropped or world.tier != "auto" or autotest or world.auto_step >= 3: return
-	_aq_t += dt
-	if _aq_t < 2.0: return
-	_aq_frames += 1
-	_aq_time += dt
-	if _aq_time < 4.0: return
-	var fps := _aq_frames / _aq_time
-	_aq_t = 0.0; _aq_frames = 0; _aq_time = 0.0
-	if fps >= 45.0:
-		quality_auto_dropped = true          # good enough: stay here
-		return
-	world.set_tier("auto", world.auto_step + 1)
-	_apply_tier_extras()
-	print("[quality] auto step %d (%.0f fps)" % [world.auto_step, fps])
-
-# ------------------------------------------------------------------ save
-func _load_save() -> void:
-	if not FileAccess.file_exists(SAVE_PATH): return
-	var d = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
-	if d is Dictionary and d.has("puzzles"): save_data = d
-	# (v2 rebuild: save v5, a clean reset: a save from before the new world is not carried over; the owner's call)
-	if Map2.enabled and not save_data.is_empty() and int(save_data.get("v", 1)) < SAVE_V:
-		print("[save] v%d from before the new world: starting fresh" % int(save_data.get("v", 1)))
-		save_data = {}
-
-const SAVE_V := 7           # (v2 rebuild: the new world; v6 phase 3: the wings moved into it; v7 phase 4: the world moved to the origin, Act 3 in it: a clean reset again)
-func _save() -> void:
-	if mode == "title": return
-	var p := player.position
-	_last_saved_pos = p
-	save_data = {"v": SAVE_V if Map2.enabled else 4, "pos": [p.x, p.y, p.z], "yaw": player.yaw, "cam": world.yaw_index,
-		"puzzles": puzzles.state.duplicate(true), "chapter": chapter.state.duplicate(true), "area": area, "glimpses": glimpses, "runes_awake": player.fig.runes_awake, "visited": visited.keys()}
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if f: f.store_string(JSON.stringify(save_data))
-
-func _delete_save() -> void:
-	if FileAccess.file_exists(SAVE_PATH): DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
-
-# ------------------------------------------------------------------ test hooks
-## Shared by the headless playthrough and the web harness.
+# ------------------------------------------------------------------ dev / test commands
 func cmd(c: String) -> Variant:
 	var a := c.split(":")
 	match a[0]:
 		"begin": begin()
-		"cine_at": if cine is Prologue: (cine as Prologue).dev_seek(float(a[1]))      # (devshots: a prologue frame)
 		"anew": _on_anew()
 		"tp":
 			var y := float(a[3]) if a.size() > 3 else player.yaw
@@ -1290,9 +372,7 @@ func cmd(c: String) -> Variant:
 		"face": player.yaw = float(a[1]); player.fig.rotation.y = player.yaw
 		"input": key_vec = Vector2(float(a[1]), float(a[2]))
 		"stop": key_vec = Vector2.ZERO; auto_target = Vector3.INF
-		"steps": return chapter.steps.try_step(Vector2i(int(a[1]), int(a[2])))      # (dev / tests: one Our Steps step, (dc, dr))
 		"interact": return try_interact()
-		"yaw": world.set_yaw_index(int(a[1]))
 		"zoom":
 			# (dev only: another width, for screenshots)
 			world.zoom = float(a[1])
@@ -1302,8 +382,6 @@ func cmd(c: String) -> Variant:
 		"snd": sfx.play(a[1], float(a[2]) if a.size() > 2 else 0.0)
 		"reset_save": _delete_save(); save_data = {}
 		"save": _save()
-		"finale": start_finale()
-		"jump": jump(a[1])
 		"glass_answer":
 			# glass_answer:x,y;x,y;... (panel units) -> the recogniser (tests)
 			var pts := PackedVector2Array()
@@ -1325,43 +403,11 @@ func cmd(c: String) -> Variant:
 				"left": st = gt.her_half[0]
 				"line": st = PackedVector2Array([Vector2(0.4, 0.3), Vector2(0.4, -0.9)])
 			return gt.answer(GlassTalk.resample(st, 24))
-		"glass_preview":
-			# show part of the answer as your stroke, mid-draw (screenshots)
-			var gt2 := ui.glass_talk
-			var pts: PackedVector2Array = GlassTalk.resample(gt2.target[0], 40)
-			var part := PackedVector2Array()
-			for i in int(40 * float(a[1])): part.append(pts[i])
-			gt2.ink.mine = [[gt2._px(part), 1.0]]
-			gt2.phase = "drawing"
-			gt2.ink.queue_redraw()
 		"skip":
 			if cine:
 				sfx.stop_cue("cinematic_hand", 1.2)
 				cine.skip()
-		"lens": chapter.set_lens(a[1] == "1")
-		"satchel":                                  # (dev / shots)
-			if a.size() > 1 and a[1] == "0": satchel.close()
-			else: satchel.open()
-		"give": chapter.hub.give(a[1]); ui.show_item(a[1])
-		"map": satchel.open_map()
-		"poolrise": chapter._complete_pool(false)          # (dev / shots: the pool's real completion, its stones rising)
-		"ghost": chapter.warden._sight_cool = 0.0; visited["atrium"] = true          # (dev / shots: the next chance at a sighting)
-		"hintnow":
-			var tg := chapter.hint_target(area)
-			if tg != Vector3.INF: chapter.show_hint(tg)
-		"cs":
-			# set one chapter state key from JSON (cs:key:json)
-			chapter.state[a[1]] = JSON.parse_string(c.substr(c.find(":", 3) + 1))
-			chapter.apply_state()
-		"ps":
-			puzzles.state[a[1]] = JSON.parse_string(c.substr(c.find(":", 3) + 1))
-			puzzles.apply_state(puzzles.state)
-		"title": ui.show_area(Names.area(a[1]))          # (dev / shots: show a space's name, title:atrium)
-		"call":
-			# call a chapter method with int args (tests): call:turn_statue:0
-			var args := []
-			for k in range(2, a.size()): args.append(int(a[k]))
-			return chapter.callv(a[1], args)
+		"title": ui.show_area(a[1])          # (dev / shots: show a title)
 		"pitch": world.pitch_node.rotation.x = -deg_to_rad(float(a[1]))
 		"camyaw": world.rig.rotation.y = float(a[1])
 		"freecam":
@@ -1379,11 +425,6 @@ func cmd(c: String) -> Variant:
 		"lights":                                # dev / bench: lights:<budget>:<shadows 0|1>
 			Flame.budget = int(a[1]); Flame.shadows = a.size() > 2 and a[2] == "1"
 		"near": world.cam.near = float(a[1])      # dev: a near cut (shots inside narrow rooms)
-		"clasp":
-			# dev: the reflections' clasped hands (0..1), now
-			for r in puzzles.reflectors:
-				r.set("_clasp", float(a[1]))
-				r.set("_clasp_t", 999.0)
 		"shadow":
 			# dev: shadow:atlas:filter(0..5):blur:max_distance
 			RenderingServer.directional_shadow_atlas_set_size(int(a[1]), true)
@@ -1396,15 +437,9 @@ func cmd(c: String) -> Variant:
 		"closeup":
 			world.cam_lock = float(a[1]) > 0.0
 			if world.cam_lock: world.cam.size = float(a[1])
-		"door_tap": ui.door_overlay.slot_pressed.emit(int(a[1]))
-		"door_close": ui.door_overlay.close()
 		"veil": player.fig.veil.visible = a[1] == "1"
 		"runes": player.fig.set_runes(int(a[1]))
 		"credits": ui.show_credits(a[1] == "1")
-		"hint":
-			# show a reflection hint now (screenshots): clasp = hands at the chest
-			var r: Reflector = puzzles.hall_mirror
-			if a[1] == "clasp": r._clasp = 1.0; r._clasp_t = 60.0
 		"perf": _perf_hud(a[1] == "1")
 		"feat": set_feature(a[1], a[2] == "1")
 		"newgame_ui":
@@ -1413,12 +448,6 @@ func cmd(c: String) -> Variant:
 			if a.size() > 1 and a[1] == "yes": ui.confirm_yes.pressed.emit()
 		"fogd": world.fog_mats[int(a[1])].set_shader_parameter("density", float(a[2]))
 		"envfog": world.env.fog_enabled = a[1] == "1"
-		"rp": puzzles.reflectors[int(a[1])].puppet.set_param(a[2], float(a[3]))
-		"rpv": puzzles.reflectors[int(a[1])].puppet.set_param(a[2], Vector2(float(a[3]), float(a[4])))
-		"refl":
-			for r in puzzles.reflectors:
-				print(r.kind, " clip_c=", r.puppet.body_mat.get_shader_parameter("clip_c"), " clip_h=", r.puppet.body_mat.get_shader_parameter("clip_h"), " u=", r.puppet.body_mat.get_shader_parameter("clip_u"), " v=", r.puppet.body_mat.get_shader_parameter("clip_v"), " n=", r.puppet.body_mat.get_shader_parameter("plane_n"), " d=", r.puppet.body_mat.get_shader_parameter("plane_d"))
-				print(r.kind, " active=", r.active, " vis=", snappedf(r.vis, 0.01), " puppet=", r.puppet.global_position, " vis_node=", r.puppet.is_visible_in_tree(), " basis_det=", r.puppet.global_transform.basis.determinant())
 	return true
 
 var perf_hud: PerfHud
@@ -1442,56 +471,18 @@ func set_feature(f: String, on: bool) -> void:
 		_:
 			for n in get_tree().get_nodes_in_group("f_" + f): n.visible = on
 
-func state_dict() -> Dictionary:
-	var p := player.position
-	var buses := []
-	for b in AudioServer.bus_count:
-		buses.append("%s:%.0fdB" % [AudioServer.get_bus_name(b), AudioServer.get_bus_volume_db(b)])
-	var refl := []
-	for r in puzzles.reflectors:
-		if r.active: refl.append(r.kind + ("*" if r.planar_on else ""))
-	return {"mode": mode, "pos": [snappedf(p.x, 0.01), snappedf(p.y, 0.01), snappedf(p.z, 0.01)], "focus": focus.id if focus else "",
-		"puzzles": puzzles.state, "beam_lit": puzzles.beam_lit, "busy": puzzles.busy, "auto": auto_target != Vector3.INF,
-		"refl": refl, "gaze": puzzles.hall_mirror.gaze_head, "glimpses": glimpses, "awaken": world.awaken,
-		"fps": Engine.get_frames_per_second(), "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
-		"sfx_ready": sfx.ready_ok, "played": sfx.played, "buses": buses, "beds": sfx.bed_debug(), "drone": sfx.drone.playing, "music": sfx._music_cur, "speed": player.speed01,
-		"joy": controls.joy_index, "touches": controls._touches.size(), "vec": [snappedf(controls.vec.x, 0.01), snappedf(controls.vec.y, 0.01)], "ctl": controls.enabled,
-		"memory": snappedf(ui.memory.modulate.a, 0.01), "counter": snappedf(ui.end_b.modulate.a, 0.01), "title_reveal": ui.title_word.reveal, "runes_awake": player.fig.runes_awake, "hem": player.fig.hem, "area": area, "area_label": ui.area_label.text.replace("\n", " "), "card": snappedf(ui.card.modulate.a, 0.01), "door_ui": ui.door_overlay.visible,
-		"door_slots": _door_slot_centers(), "quality_high": world.quality_high, "tier": world.tier_name(), "gn": [Map2.GN.x, Map2.GN.y, Map2.GN.z], "yaw_index": world.yaw_index, "zoom": snappedf(world.zoom, 0.01), "scale3d": snappedf(get_viewport().scaling_3d_scale, 0.01), "vp": get_viewport().get_visible_rect().size, "msaa": get_viewport().msaa_3d, "foot": snappedf(float(puzzles.foot_mat.get_shader_parameter("intensity")), 0.01),
-		"near_ring": snappedf(float(puzzles.near_mat.get_shader_parameter("radius")), 0.01),
-		"chapter": chapter.state, "lens": chapter.lens_on, "calm": snappedf(chapter.calm, 0.01), "cine_t": snappedf(cine.t, 0.1) if cine else -1.0,
-		"letterbox": snappedf(ui.letterbox, 0.01), "glass": ui.glass_talk.phase, "glass_tries": ui.glass_talk.tries, "glass_score": ui.glass_talk.last_score, "hint_t": snappedf(chapter.hint_t, 0.1), "lift": snappedf(chapter.lift_h, 0.01),
-		"beam_good": puzzles.beam_good, "carry": chapter.carrying, "sc_carry": chapter.sc_carry, "torque": [chapter.scale_torque().x, chapter.scale_torque().y],
-		"reveal": snappedf(world.reveal_k, 0.01), "feet": chapter.maze_feet.filter(func(f: MeshInstance3D) -> bool: return f.visible).size(),
-		"steps": _steps_state()}
-
-func _steps_state() -> Dictionary:
-	var s: OurSteps = chapter.steps
-	if s == null: return {}
-	return {"active": s.active, "p": [s.p.x, s.p.y], "h": [s.h.x, s.h.y], "bi": s.bi, "moves": s.moves, "blocked": s.blocked_n,
-		"boards_done": s.boards_done, "moving": s.moving, "between": snappedf(s._between, 0.01), "leaving": s._leaving,
-		"hold": s.refl.hold if s.refl else false, "done": s.solved(),
-		"gate_open": not level.named["hw_gate"].enabled if level.named.has("hw_gate") else false}
-
-func _door_slot_centers() -> Array:
-	var out := []
-	if not ui.door_overlay.visible: return out
-	var xf := ui.door_overlay.get_global_transform_with_canvas()
-	for c in ui.door_overlay.slots:
-		var p: Vector2 = xf * (c.position + c.size * 0.5)
-		out.append([snappedf(p.x, 0.1), snappedf(p.y, 0.1)])
-	var b: Vector2 = xf * ui.door_overlay.big_center()
-	out.append([snappedf(b.x, 0.1), snappedf(b.y, 0.1)])     # [3] = the big card
-	return out
-
 func _setup_js() -> void:
 	if not OS.has_feature("web"): return
 	_js_cb = JavaScriptBridge.create_callback(func(args: Array) -> void: cmd(str(args[0]) if args.size() > 0 else ""))
 	var win := JavaScriptBridge.get_interface("window")
 	win.ewCmd = _js_cb
+	# (phase 5, perf) the state is published only for a test browser or a probe URL: building and handing it to the
+	# page costs a frame a spike of script time five times a second that a player never needs
+	_js_live = bool(JavaScriptBridge.eval("!!(navigator.webdriver || /probe|perf|state/.test(location.search))"))
 
+var _js_live := false
 func _js_state(dt: float) -> void:
-	if _js_cb == null: return
+	if _js_cb == null or not _js_live: return
 	_js_t -= dt
 	if _js_t > 0.0: return
 	_js_t = 0.2

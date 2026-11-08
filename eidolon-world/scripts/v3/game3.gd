@@ -1,7 +1,6 @@
 class_name Game3
 extends Game
-## v3 (dev/CH1_V3.md): the new Chapter I, run in PARALLEL with the live v2 (scenes/main3.tscn; the web export still
-## starts scenes/main.tscn until v3 swaps in). It reuses the kept systems as they are (World, Level's walking and
+## v3 (dev/CH1_V3.md): Chapter I, the game (scenes/main3.tscn). It reuses the kept systems as they are (World, Level's walking and
 ## kit, Player, Controls, UI, Sfx, Juice, Highlight, Cinematic, Reflector / PlanarMirror) and none of v2's chapter
 ## code: the world is World3 (from Map3), the beats are Ch1v3's (one Puzzle each), the save is its own file.
 ## Flow: title -> (first time) the cards + the prologue "Η Αρπαγή" (Prologue3; unskippable the first time, then a
@@ -19,6 +18,7 @@ var seen := {}                    # "prologue"
 var lamp_node: Node3D
 var _acting := false
 var lens_on := false              # (phase 3) the Shard raised: her world shows through its circle (lens_only shaders)
+var _save_soon := false          # (phase 5) a beat solved or a new space entered: saved at the end of this frame
 var lens_at := Vector3.INF        # a beat may hold the lens over a point (the W.4 star, the W.6 door); else over her head
 
 func _ready() -> void:
@@ -36,6 +36,8 @@ func _ready() -> void:
 	player.rig_steps = true
 	add_child(player)
 	sfx = Sfx.new()
+	sfx.area = MUSIC["prologue"]          # (the title and the prologue; set before its _ready pre-loads)
+	sfx.near = MUSIC_NEAR.duplicate(true)
 	add_child(sfx)
 	ui = GameUI.new()
 	add_child(ui)
@@ -48,6 +50,7 @@ func _ready() -> void:
 	level.commit()
 	World3.post(level, self, level)
 	ch.post()
+	for id in ch.pz: (ch.pz[id] as Puzzle).solved.connect(func(_i: String) -> void: _save_soon = true)     # (a solve is never lost)
 	WingArt.dress_all(self)          # (A: swaps the beats' placeholders by name; idempotent)
 	Dress3.dress_all(level, level)
 	highlight = Highlight.new()
@@ -68,6 +71,7 @@ func _ready() -> void:
 	gt.closed.connect(func(_id: String) -> void: _glass_closed())
 	gt.sound.connect(_glass_sound)
 	ui.anew_pressed.connect(_on_anew)
+	_setup_common()
 	_setup_js()
 	_load3()
 	if autotest and not ("--title" in OS.get_cmdline_user_args()):
@@ -186,7 +190,9 @@ func _process(dt: float) -> void:
 		player.stick_turn = auto_target == Vector3.INF and kv == Vector2.ZERO and key_vec == Vector2.ZERO
 	else:
 		player.input_dir = Vector2.ZERO
+	var t0 := Time.get_ticks_usec()
 	player.step(dt)
+	if prof_on: t0 = _pm("player", t0)
 	world.update_reveal(level.occluders, player.position, dt)
 	if world.reveal_k > 0.02:
 		_fade_on = true
@@ -195,12 +201,18 @@ func _process(dt: float) -> void:
 		_fade_off_t -= dt
 		if _fade_off_t <= 0.0: _fade_on = false
 	level.set_fade(player.position, _fade_on)
+	if prof_on: t0 = _pm("reveal_fade", t0)
 	if mode != "cine": level.cull_far(player.position, dt)
+	if prof_on: t0 = _pm("cull_far", t0)
 	for r in World3.mirrors.values(): (r as Reflector).update(dt, player, world.cam_back)
 	for r in ch.reflectors:
 		if not r.has_meta("cine"): r.update(dt, player, world.cam_back)
+	if prof_on: t0 = _pm("reflectors", t0)
 	_area3()
+	_music3()
+	if prof_on: t0 = _pm("area_music", t0)
 	ch.update(dt)
+	if prof_on: t0 = _pm("beats", t0)
 	if mode == "cine":
 		var can: bool = cine != null and (bool(seen.get("prologue", false)) or not (cine is Prologue3))
 		_skip_t = _skip_t + dt if (_skip_hold and can) else maxf(0.0, _skip_t - dt * 3.0)
@@ -213,14 +225,22 @@ func _process(dt: float) -> void:
 	else: controls.show_interact("")
 	_update_lens()
 	highlight.update(dt)
+	if prof_on: t0 = _pm("focus_lens_hl", t0)
 	Flame.cull(player.position, dt)
+	if prof_on: t0 = _pm("flames", t0)
 	if mode == "play": world.cam_size_target = world.zoom
 	_js_state(dt)
+	_auto_quality(dt)
+	if prof_on: t0 = _pm("js_quality", t0)
+	if _save_soon and mode != "title" and seen.get("prologue", false):
+		_save_soon = false
+		save3()
 	if mode == "play":
 		_save_t += dt
 		if _save_t > 6.0 and player.speed01 < 0.05 and auto_target == Vector3.INF:
 			_save_t = 0.0
 			if _last_saved_pos == Vector3.INF or player.position.distance_to(_last_saved_pos) > 0.5: save3()
+	if prof_on: _pm("save", t0)
 
 func _focus3() -> void:
 	var best: Level.Interact = null
@@ -254,6 +274,7 @@ func _area3() -> void:
 	var first := not ch.visited.has(k)
 	ch.visited[k] = true
 	space = k
+	if mode == "play" and not k.contains("~"): _save_soon = true          # (a checkpoint in every space)
 	var pt := Map3.part_of(k)
 	if k == "A": pt = "hub"
 	if pt != part:
@@ -262,6 +283,31 @@ func _area3() -> void:
 	if first and mode == "play" and not k.contains("~"):
 		var sp := Map3.space(k)
 		if sp.size() > 3 and str(sp[3]) in ["hub", "landmark"]: ui.show_area(str(sp[2]))
+
+# ------------------------------------------------------------------ music (phase 5)
+## a bed per part of the chapter (A's v5 score, all D dorian: any bed crossfades into any other in ~3 s);
+## the beds of the rooms reached next are decoded ahead (Sfx.near), only while she stands still
+const MUSIC := {"prologue": "mist_maze", "act1": "waking_pool", "hub": "atrium", "west": "hall_glass",
+	"north": "garden_veiled", "east": "eidolon_ledge", "act3": "gate_four", "end": "first_shrine"}
+const MUSIC_NEAR := {"mist_maze": ["waking_pool"], "waking_pool": ["atrium"], "atrium": ["hall_glass"],
+	"hall_glass": ["atrium"], "garden_veiled": ["atrium"], "eidolon_ledge": ["atrium"],
+	"gate_four": ["first_shrine", "atrium"], "first_shrine": ["gate_four"]}
+
+func music_key() -> String:
+	if mode == "title" or cine is Prologue3: return MUSIC["prologue"]
+	if space == "I23" or bool(seen.get("ch1_end", false)): return MUSIC["end"]
+	return str(MUSIC.get(part, ""))
+
+func _music3() -> void:
+	sfx.calm = mode != "play" or (player.speed01 < 0.05 and auto_target == Vector3.INF)
+	var k := music_key()
+	if k == "" or k == sfx.area: return
+	# the Atrium readies the wing that opens next (West, North, East, then the Veiled Way)
+	var nxt := "hall_glass"
+	for w in [["WB", "garden_veiled"], ["NB", "eidolon_ledge"], ["EB", "gate_four"]]:
+		if ch.pz.has(w[0]) and (ch.pz[w[0]] as Puzzle).done: nxt = w[1]
+	sfx.near["atrium"] = [nxt]
+	sfx.set_area(k)
 
 # ------------------------------------------------------------------ the heroine acts (A's clips at each interaction)
 ## she turns to `at`, plays `clip` (reach, pickup, kneel_touch, touch_glass) and calls `then` at the clip's contact
@@ -492,9 +538,13 @@ func save3() -> void:
 func _save() -> void:
 	save3()
 
-func _load3() -> void:
+## (tests/save_v3) read the save even under autotest
+func _load3_force() -> void:
+	_load3(true)
+
+func _load3(force := false) -> void:
 	save_data = {}
-	if Game.autotest and not ("--keep-save" in OS.get_cmdline_user_args()): return
+	if Game.autotest and not force and not ("--keep-save" in OS.get_cmdline_user_args()): return
 	if not FileAccess.file_exists(SAVE3_PATH): return
 	var j = JSON.parse_string(FileAccess.get_file_as_string(SAVE3_PATH))
 	if not (j is Dictionary): return

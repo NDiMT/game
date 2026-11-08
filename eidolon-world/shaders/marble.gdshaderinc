@@ -31,6 +31,9 @@ uniform float pbr_normal_k = 0.55;
 uniform vec4 flames[8];
 uniform vec3 flame_col : source_color = vec3(0.95, 0.32, 0.22);
 uniform float flame_k = 1.0;
+// (a5) LOW tier (Level.set_pbr_quality(false)): no PBR fetches, but the stone keeps a cheap one-fetch mottle and the
+// flames' crimson bounce (the accent), so Low reads like High
+uniform float low_k = 0.0;
 // v1.0 QA P1-4 (Agent A) per-area DARKNESS (the Undercroft): `dark_k` 0..1 (Level.set_darkness tweens it), the
 // stone falls to near-black except within `dark_lamp.w` m of the carried lamp (xyz), which shows it warm
 uniform float dark_k = 0.0;
@@ -352,9 +355,14 @@ void fragment() {
 		col *= mix(1.0, mix(0.05, 1.0, seen * seen), dark_k);
 		col *= mix(vec3(1.0), vec3(1.1, 0.95, 0.78), seen * dark_k * 0.7);      // the lamp's warm cast
 	}
+	if (low_k > 0.0) {
+		float mt = texture(noise_tex, wp.xz * 0.42 + wp.y * vec2(0.5, 0.3)).r;
+		col *= mix(1.0, 0.88 + 0.22 * mt, low_k);
+	}
 	ALBEDO = col;
 	vec3 fb = vec3(0.0);
-	if (flame_k > 0.0) {
+	float fk = max(flame_k, low_k);
+	if (fk > 0.0) {
 		for (int i = 0; i < 8; i++) {
 			vec4 fl = flames[i];
 			if (fl.w <= 0.0) continue;
@@ -366,7 +374,7 @@ void fragment() {
 			fb += flame_col * fall * lam;
 		}
 	}
-	EMISSION = accent.rgb * cut_rim * 0.75 + col * fb * 0.55 * flame_k;
+	EMISSION = accent.rgb * cut_rim * 0.75 + col * fb * 0.55 * fk;
 #ifdef OCC_ALPHA
 	ALPHA = cut_alpha;
 #endif

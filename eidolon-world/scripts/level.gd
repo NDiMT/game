@@ -81,14 +81,6 @@ var _grid := {}
 const GRID := 3.0
 var audit := {}
 
-const WAKE_POS := Map2.O + Vector3(-2.5, 0.0, 18.85)          # (v2: the Pool of Halves' east shore, where she wakes)
-const SHRINE_C := Map2.SHRINE_C
-## (v2) where the journey goes on: out over the sea west of the First Shrine (BEYOND_RIGHT: its right hand)
-const BEYOND_FWD := Vector3(-0.866, 0.0, -0.5)
-const BEYOND_RIGHT := Vector3(0.5, 0.0, -0.866)
-const SECOND_SHRINE := Map2.SHRINE_C + Vector3(-26.0, 2.5, -15.0)
-
-var beyond: Node3D
 var grass_mmi: MMGroup
 
 ## A MultiMesh split into spatial cells (v0.3 perf): each cell is its own MultiMeshInstance3D with a
@@ -129,13 +121,6 @@ func _init(tex: ImageTexture) -> void:
 	marble_occ_mat.shader = preload("res://shaders/marble_occ.gdshader")
 	marble_occ_mat.set_shader_parameter("noise_tex", noise_tex)
 	_pbr_textures()          # (v1.0, Agent A: rendering)
-
-func build() -> void:
-	# (v2 phase 4: the old world is gone: every space is Map2's, the v1 puzzle rooms WingsGeo's)
-	WingsGeo.build(self)          # (v2 rebuild, phase 3: the v1 puzzle rooms, in their places in the new world; before Map2's kerbs)
-	Map2.build(self)                 # (v2: Chapter I's world, dev/V2_MAP.md)
-	_far_ruins()                 # (after every walk region exists: it keeps clear of them)
-	_beyond()
 
 ## called after the puzzles have added their pieces
 func commit() -> void:
@@ -819,148 +804,6 @@ func steps(zone: String, r: Rect2, axis: int, y_lo: float, y_hi: float, hi_at_ma
 # ================================================================== the spaces
 	mb(zone).group = ""
 
-func _island(m: MB, c: Vector3, size: Vector2) -> void:
-	m.box(c + Vector3(0, -0.4, 0), Vector3(size.x, 0.8, size.y), C(0.0))
-	var r := R(c.x - size.x * 0.5, c.z - size.y * 0.5, c.x + size.x * 0.5, c.z + size.y * 0.5)
-	var area := r.size.x * r.size.y
-	for i in clampi(int(area / 6.0), 2, 7):
-		var q := Vector2(rng.randf_range(r.position.x + 0.8, r.end.x - 0.8), rng.randf_range(r.position.y + 0.8, r.end.y - 0.8))
-		var rt := minf(size.x, size.y) * rng.randf_range(0.25, 0.42)
-		var h := rng.randf_range(2.5, 6.0)
-		m.cyl(Vector3(q.x, c.y - 0.8 - h * 0.5, q.y), rt, rt * 0.1, h, C(0.5), 7)
-
-func _col(m: MB, base: Vector3, h: float, r := 0.28, broken := false) -> void:
-	m.cyl(base + Vector3(0, 0.1, 0), r * 1.3, r * 1.4, 0.2, C(0.25), 10)
-	m.cyl(base + Vector3(0, h * 0.5, 0), r * 0.9, r, h, C(0.25), 10)
-	if not broken: m.box(base + Vector3(0, h + 0.08, 0), Vector3(r * 2.8, 0.16, r * 2.8), C(0.25))
-
-## islands and temples beyond the Veiled Gate, hidden in fog until the shrine wakes
-func _beyond() -> void:
-	beyond = Node3D.new()
-	beyond.name = "Beyond"
-	beyond.visible = false
-	add_child(beyond)
-	var m := MB.new()
-	var at := func(f: float, l: float, y: float) -> Vector3: return Vector3(SHRINE_C.x, y, SHRINE_C.z) + BEYOND_FWD * f + BEYOND_RIGHT * l
-	# the second shrine: a small tholos on its own island (its light is added by Puzzles)
-	var c2: Vector3 = SECOND_SHRINE
-	_island(m, c2, Vector2(6.0, 6.0))
-	for i in 6:
-		var a := TAU * i / 6.0
-		_col(m, c2 + Vector3(cos(a) * 1.7, 0, sin(a) * 1.7), 2.8, 0.22)
-	m.cyl(c2 + Vector3(0, 3.05, 0), 2.1, 2.1, 0.3, C(0.25), 20)
-	m.sphere(c2 + Vector3(0, 3.2, 0), Vector3(1.8, 0.9, 1.8), C(0.25), 16, 6)
-	# a long temple on a higher island to the left
-	var c3: Vector3 = at.call(24.0, -6.5, 4.0)
-	_island(m, c3, Vector2(8.0, 6.0))
-	for i in 5:
-		for side in [-1.0, 1.0]:
-			_col(m, c3 + BEYOND_FWD * (i * 1.4 - 2.8) + BEYOND_RIGHT * side * 1.8, 3.2, 0.24, i == 4 and side > 0.0)
-	var B3 := Basis(Vector3.UP, atan2(-BEYOND_FWD.x, -BEYOND_FWD.z))
-	m.box(c3 + Vector3(0, 3.45, 0) + BEYOND_FWD * -0.7, Vector3(4.4, 0.4, 5.4), C(0.25), B3)
-	m.cyl(c3 + Vector3(0, 4.05, 0) + BEYOND_FWD * -0.7, 0.05, 2.4, 0.8, C(0.25), 4, B3 * Basis(Vector3.UP, PI * 0.25))
-	# a rock with broken columns to the right, low in the fog
-	var c4: Vector3 = at.call(15.0, 9.5, 0.6)
-	_island(m, c4, Vector2(4.5, 4.0))
-	_col(m, c4 + Vector3(-1.0, 0, 0.6), 1.4, 0.26, true)
-	_col(m, c4 + Vector3(0.9, 0, -0.8), 2.6, 0.26)
-	# a high islet with a lone arch
-	var c5: Vector3 = at.call(32.0, 11.0, 6.0)
-	_island(m, c5, Vector2(4.0, 3.5))
-	_col(m, c5 + BEYOND_RIGHT * -1.0, 3.0, 0.24)
-	_col(m, c5 + BEYOND_RIGHT * 1.0, 3.0, 0.24)
-	m.box(c5 + Vector3(0, 3.3, 0), Vector3(2.9, 0.4, 0.7), C(0.25), Basis(Vector3.UP, atan2(-BEYOND_RIGHT.x, -BEYOND_RIGHT.z) + PI * 0.5))
-	var mi := MeshInstance3D.new()
-	mi.mesh = m.commit()
-	mi.material_override = marble_mat
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	beyond.add_child(mi)
-	# far away, a colossal veiled figure rising out of the cloud (A's Dress.beyond_colossus, the Observer's veiled
-	# Tripo figure). (phase 6) The camera never turns, so "far" is placed on SCREEN: up and to the right of the second
-	# shrine in the cinematic's last shot, then pushed down its view ray to the cloud line, behind everything and deep
-	# in the fog (it was a pale primitive standing between the camera and the shrine)
-	Dress.beyond_colossus(beyond, beyond_colossus_at(), BEYOND_COLOSSUS[3], BEYOND_COLOSSUS[4])
-
-## the beyond's colossus: [screen right of the second shrine (m), screen up (m), cloud line y (its foot), height, yaw (deg)]
-const BEYOND_COLOSSUS := [4.2, 1.5, -6.0, 18.0, -30.0]
-
-## the beyond colossus's foot: placed on SCREEN beside the second shrine, then down its view ray to the cloud line
-static func beyond_colossus_at() -> Vector3:
-	var cb := Framing.basis()
-	var fwd := -cb.z
-	var on_screen: Vector3 = SECOND_SHRINE + cb.x * BEYOND_COLOSSUS[0] + cb.y * BEYOND_COLOSSUS[1]
-	return on_screen + fwd * ((BEYOND_COLOSSUS[2] - on_screen.y) / fwd.y)
-
-## (A, phase 6) a far ruin's top that the camera sees beside or behind the colossus: sunk under the cloud
-static func _behind_colossus(top: Vector3) -> bool:
-	var cb := Framing.basis()
-	var d := top - beyond_colossus_at()
-	return absf(d.dot(cb.x)) < 9.0 and d.dot(cb.y) > -2.0
-
-func _far_ruins() -> void:
-	# huge drowned columns and statues around the complex, unlit and swallowed by the fog
-	var st := MB.new()
-	var r := RandomNumberGenerator.new()
-	r.seed = 77
-	var pts := [Vector2(-14, 4), Vector2(-16, -14), Vector2(-12, -30), Vector2(2, -40), Vector2(16, -44), Vector2(36, -38),
-		Vector2(40, -22), Vector2(36, -6), Vector2(22, 6), Vector2(8, 14), Vector2(-6, 16), Vector2(-20, -22), Vector2(30, 12), Vector2(44, -30)]
-	for p0 in pts:
-		var p := _far_from_walks(FAR_C + (p0 - Vector2(10.0, -20.0)) * 1.5, 9.0)          # (v2: spread round the new world)
-		var rad := r.randf_range(0.9, 1.6)
-		var top := r.randf_range(-3.0, 5.0)
-		if _behind_colossus(Vector3(p.x, top, p.y)): top -= 16.0        # (A, phase 6: not beside the beyond colossus's head; the RNG sequence kept)
-		st.cyl(Vector3(p.x, top - 15.0, p.y), rad * 0.92, rad, 30.0, Color(0, 0, 0), 12, Basis(Vector3.BACK, r.randf_range(-0.06, 0.06)))
-		if r.randf() < 0.4:
-			st.box(Vector3(p.x, top + 0.3, p.y), Vector3(rad * 2.6, 0.6, rad * 2.6), Color(0, 0, 0))
-	# (phase 6: the one by (-15, -6) was pushed out to just behind the First Shrine: a pale bell over every shot there and
-	# over the cinematic's last look; A's veiled colossus stands in the cloud beyond instead, Level.BEYOND_COLOSSUS)
-	for sdef in [[Vector2(38, -14), 2.6], [Vector2(10, -48), 3.0]]:
-		var p: Vector2 = _far_from_walks(FAR_C + (sdef[0] - Vector2(10.0, -20.0)) * 1.5, 10.0); var s: float = sdef[1]
-		st.cyl(Vector3(p.x, -6.0, p.y), 0.55 * s, 0.95 * s, 4.2 * s, Color(0, 0, 0), 12)
-		st.sphere(Vector3(p.x, -6.0 + 2.6 * s, p.y), Vector3(0.42, 0.52, 0.42) * s, Color(0, 0, 0), 10, 5)
-		st.cyl(Vector3(p.x, -6.0 + 2.3 * s, p.y), 0.15 * s, 0.75 * s, 1.4 * s, Color(0, 0, 0), 12)
-	_silhouette_layer(st, Color(0.60, 0.605, 0.615), "FarRuins")
-	# a second, paler layer much further out: drowned towers and rocks in the cloud
-	var far := MB.new()
-	for i in 22:
-		var a := TAU * i / 22.0 + r.randf_range(-0.1, 0.1)
-		var rr := r.randf_range(48.0, 64.0)
-		var c := Vector3(FAR_C.x, 0, FAR_C.y) + Vector3(cos(a) * rr, 0, sin(a) * rr) * 1.25
-		var cf := _far_from_walks(Vector2(c.x, c.z), 16.0)          # (v1.0: the Atrium and the Balcony reach out toward them)
-		c = Vector3(cf.x, 0.0, cf.y)
-		var hgt := r.randf_range(6.0, 22.0)
-		if r.randf() < 0.6:
-			far.cyl(c + Vector3(0, hgt * 0.5 - 12.0, 0), r.randf_range(1.0, 2.2), r.randf_range(1.4, 2.6), hgt + 12.0, Color(0, 0, 0), 10)
-		else:
-			far.cyl(c + Vector3(0, r.randf_range(-2.0, 6.0), 0), r.randf_range(3.0, 6.0), r.randf_range(0.5, 1.5), r.randf_range(5.0, 9.0), Color(0, 0, 0), 7)
-	_silhouette_layer(far, Color(0.70, 0.705, 0.71), "FarestRuins")
-
-## (QA P1-3) a far ruin stands at least `d` metres from every walk region: pushed out from the complex
-const FAR_C := Vector2(Map2.O.x - 10.0, Map2.O.z - 18.0)          # (v2: the new world's middle)
-func _far_from_walks(p: Vector2, d: float) -> Vector2:
-	var c := FAR_C
-	var dir := (p - c).normalized() if p.distance_to(c) > 0.1 else Vector2.RIGHT
-	for k in 60:
-		var near := INF
-		for g in regions:
-			var q := Vector2(clampf(p.x, g.r.position.x, g.r.end.x), clampf(p.y, g.r.position.y, g.r.end.y))
-			near = minf(near, q.distance_to(p))
-		if near >= d: break
-		p += dir
-	return p
-
-func _silhouette_layer(m: MB, col: Color, nm: String) -> void:
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = col
-	var mi := MeshInstance3D.new()
-	mi.mesh = m.commit()
-	mi.material_override = mat
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.name = nm
-	add_child(mi)
-
-# ================================================================== commit
 func _commit() -> void:
 	for k in zones.keys():
 		var m: MB = zones[k]
@@ -982,7 +825,6 @@ func _commit() -> void:
 	_decal_mm("WallAO", strips, 1.0, 0.30)
 	_cloth_mm()
 	_vines()
-	_godrays()
 	_multimesh("Columns", _column_mesh(), col_full).material_override = marble_occ_mat      # (columns fade in the see-through)
 	_multimesh("Stumps", _stump_mesh(), col_stump)
 	_multimesh("Debris", _debris_mesh(), debris)
@@ -1094,37 +936,6 @@ func _vines() -> void:
 	mmi.material_override = m
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-## light falling through the arches and doorways
-func _godrays() -> void:
-	var sun := Basis.from_euler(Vector3(deg_to_rad(-55.0), deg_to_rad(-32.0), 0.0))
-	var dir := -(sun * Vector3.BACK)          # direction the light travels
-	# (v2: the new world: the Atrium, the shore where she wakes, the Hall of Glass, the colonnade, the Balcony, the Shrine)
-	var spots := [[Map2.w(1.5, 2.5), 9.0], [Map2.w(-1.8, 18.2), 8.0], [Map2.GW + Vector3(0.0, 1.0, -15.5), 8.0],
-		[Map2.w(2.5, -11.5), 8.0], [Map2.w(19.0, -14.0, 2.0), 9.0], [Map2.O + Map2.SHRINE_C, 7.0]]
-	var i := 0
-	for sp in spots:
-		var floor_p: Vector3 = sp[0]
-		var L: float = sp[1]
-		var top := floor_p - dir * L
-		var m := ShaderMaterial.new()
-		m.shader = preload("res://shaders/godray.gdshader")
-		m.set_shader_parameter("phase", i * 1.7)
-		var q := QuadMesh.new()
-		q.size = Vector2(1, 1)
-		q.center_offset = Vector3(0, 0.5, 0)
-		var mi := MeshInstance3D.new()
-		mi.mesh = q
-		mi.material_override = m
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.extra_cull_margin = 12.0
-		var y := dir * L
-		var x := y.cross(Vector3.UP).normalized()
-		mi.transform = Transform3D(Basis(x, y, x.cross(y).normalized()), top)
-		add_child(mi)
-		mi.layers = PlanarMirror.LAYER_MAIN_FX
-		mi.add_to_group("f_godrays")
-		i += 1
-
 ## chunk: split into cells (only worth it for heavy, shadow-casting meshes: columns, stumps, debris;
 ## the cheap decals / grass / leaves stay one draw call each)
 func _multimesh(nm: String, mesh: Mesh, xfs: Array[Transform3D], chunk := false) -> MMGroup:
@@ -1190,7 +1001,9 @@ func _pbr_textures() -> void:
 
 ## the Low tier skips the texture detail (two fewer fetches per marble pixel)
 func set_pbr_quality(high: bool) -> void:
-	for m in [marble_mat, marble_occ_mat]: m.set_shader_parameter("pbr_k", 1.0 if high else 0.0)
+	for m in [marble_mat, marble_occ_mat]:
+		m.set_shader_parameter("pbr_k", 1.0 if high else 0.0)
+		m.set_shader_parameter("low_k", 0.0 if high else 1.0)      # (a5) Low's cheap mottle + the crimson bounce
 
 ## (Agent A, rendering) v1.0: the flames' crimson bounce on the marble. `fl`: up to 8 Vector4(x, y, z, level)
 ## (Flame.bounce_list, see HANDOFF); cheap: one uniform array, no lights.

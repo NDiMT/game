@@ -17,6 +17,7 @@ var flames: Array[Flame] = []
 
 func build() -> void:
 	hint_after = 1.0e9          # (a story space: no hint)
+	jingle = false              # (the prologue ends on its own theme: no solve jingle over it)
 	var m := MB.new()
 	for p: Vector3 in LANTERNS:
 		m.cyl(p + Vector3(0, 0.36, 0), 0.11, 0.14, 0.72, Color(0.5, 0.25, 0.0), 8)

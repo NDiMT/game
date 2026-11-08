@@ -117,6 +117,12 @@ static func rect(id: String) -> Rect2:
 static func walk_rect(id: String) -> Rect2:
 	return rect(id).grow(-WALL_IN)
 
+## the water's surface height at a point (NAN: no water there)
+static func water_y_at(p: Vector2) -> float:
+	for e in WATER:
+		if p.x >= e[0] and p.x <= e[2] and p.y >= e[1] and p.y <= e[3]: return float(e[4])
+	return NAN
+
 static func part_of(id: String) -> String:
 	var s := space(id)
 	return str(s[8]) if not s.is_empty() else ""

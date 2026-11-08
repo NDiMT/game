@@ -74,6 +74,12 @@ func post() -> void:
 	for id in pz: (pz[id] as Puzzle).post()
 
 func update(dt: float) -> void:
+	if game.prof_on:                     # (profiling: each beat's tick is its own section)
+		for id in pz:
+			var t0 := Time.get_ticks_usec()
+			(pz[id] as Puzzle).update(dt)
+			game._pm("pz_" + str(id), t0)
+		return
 	for id in pz: (pz[id] as Puzzle).update(dt)
 
 func save_state() -> Dictionary:

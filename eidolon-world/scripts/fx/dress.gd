@@ -419,7 +419,7 @@ func _fits(what: String, xf: Transform3D, bb: AABB) -> String:
 		var g = level.region_at(q)
 		if g == null: continue
 		if absf((g as Level.Region).height(q) - h) > 0.03: return "on a slope / stairs"
-		if not is_nan(Map2.water_y_at(q)) and Map2.water_y_at(q) >= h - 0.3: return "in the water"   # (stones in water are not a floor for a column)
+		if not is_nan(Map3.water_y_at(q)) and Map3.water_y_at(q) >= h - 0.3: return "in the water"   # (stones in water are not a floor for a column)
 	var lifted := wb
 	lifted.position.y += h - _y
 	for ob: AABB in _shared.get(level.get_instance_id(), []):

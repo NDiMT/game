@@ -19,6 +19,23 @@ var max_dy := 0.0
 var max_at := ""
 var started := false
 var t := 0.0
+# (phase 5) frame cost while walking: per space [frames, sum ms, worst ms], the frames over 4 ms (and those in the
+# first second after a space is entered: the room-enter hitch); report only (headless timings are not the web's)
+var perf := {}
+var spikes: Array = []
+var _sp_prev := ""
+var _enter_n := 0
+var _enter_worst := {}
+var _last_p := {}
+var _fr_t0 := 0
+var _fr_us := 0
+## brackets every node's _process in a frame (first / last by process_priority): that frame's script time
+class Bracket extends Node:
+	var first := true
+	var host
+	func _process(_dt: float) -> void:
+		if first: host._fr_t0 = Time.get_ticks_usec()
+		else: host._fr_us = Time.get_ticks_usec() - host._fr_t0
 
 func ok(label: String, pass_: bool, detail := "") -> void:
 	checks += 1
@@ -38,6 +55,13 @@ func _ready() -> void:
 	route = Map3.route(area)
 	game = load("res://scenes/main3.tscn").instantiate()
 	add_child(game)
+	game.prof_on = true
+	for f in [true, false]:
+		var b := Bracket.new()
+		b.first = f
+		b.host = self
+		b.process_priority = -100000 if f else 100000
+		add_child(b)
 
 func _space_here() -> String:
 	var g := game.level.region_at(Vector2(game.player.position.x, game.player.position.z))
@@ -68,6 +92,26 @@ func _process(dt: float) -> void:
 	last_y = p.y
 	var sp := _space_here()
 	if sp != "" and not sp.contains("~"): visited[sp] = true
+	var ms := _fr_us / 1000.0          # (the frame before: this node runs mid-frame)
+	if sp != "":
+		var k := sp.get_slice("~", 0)
+		if k != _sp_prev:
+			_sp_prev = k
+			_enter_n = 60
+		var pe: Array = perf.get(k, [0, 0.0, 0.0])
+		pe[0] += 1; pe[1] += ms; pe[2] = maxf(pe[2], ms)
+		perf[k] = pe
+		if _enter_n > 0:
+			_enter_n -= 1
+			_enter_worst[k] = maxf(float(_enter_worst.get(k, 0.0)), ms)
+		if ms > 4.0:
+			var top := ""
+			var d := []
+			for q in game.prof: d.append([(int(game.prof[q]) - int(_last_p.get(q, 0))) / 1000.0, q])
+			d.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+			for q in d.slice(0, 3): top += " %s %.1f" % [q[1], q[0]]
+			spikes.append("%s %.1f ms%s |%s" % [k, ms, " (entering)" if _enter_n > 0 else "", top])
+	_last_p = game.prof.duplicate()
 	leg_t += dt
 	var e: Array = route[i]
 	var goal := Vector2(e[0], e[1])
@@ -121,6 +165,13 @@ func _finish() -> void:
 	for s in Map3.SPACES:
 		if area != "all" and s[8] != area and not (s[0] == "A"): continue
 		ok("space %s (%s) visited" % [s[0], s[2]], visited.has(s[0]))
+	var worst := []
+	for k in perf: worst.append([perf[k][2], k, perf[k][1] / maxf(perf[k][0], 1.0), _enter_worst.get(k, 0.0)])
+	worst.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	var top := ""
+	for w in worst.slice(0, 8): top += "%s max %.1f avg %.2f enter %.1f; " % [w[1], w[0], w[2], w[3]]
+	print("FLOW3 PERF frames>4ms %d  worst: %s" % [spikes.size(), top])
+	for sk in spikes.slice(0, 60): print("FLOW3 SPIKE ", sk)
 	print("FLOW3 marble %d, max dy/frame %.3f m at %s, %d legs, %.0f s walked" % [mc, max_dy, max_at, route.size() - 1, t])
 	print("FLOW3 %s  area=%s checks=%d  failed=%d" % ["PASS" if errors == 0 else "FAIL", area, checks, errors])
 	set_process(false)

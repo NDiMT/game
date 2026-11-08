@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # EIDOLON one-command smoke test, v3 (Chapter I v3 is the game: scenes/main3.tscn). Runs, in parallel:
 #   1. (headless) every Chapter I v3 beat solved the way a player would, its contract checked (tests/pz_test.tscn
-#      --pz=all; replaces the v2 playthrough), retried ONCE on an engine crash (known flake: "Caller thread can't call
+#      --pz=all), retried ONCE on an engine crash (known flake: "Caller thread can't call
 #      this function" / signal 11) and reported as a flake if the retry passes
 #   2. the web smoke (tests/web_smoke.mjs, v3: title, the prologue, I.1 by touch, a shot per part, the jingle, THE END by
 #      touch; Playwright + SwiftShader, mobile 390x844 DPR 2) on build/web served by python3 -m http.server from
 #      /home/user/game, or on the live site with --live
 #   3. (REQUIRED) real touch in the web build: the mirror puzzle N.4 The Still Room (tests/web_still.mjs; replaces Our
 #      Steps); with --act1-touch also Act 1 I.1-I.4 (tests/web_v3.mjs). Skip only with --no-touch (never for a release).
-#   4. (REQUIRED with the headless part) the v3 world walked end to end, every part (tests/flow_v3.tscn; replaces flow_v2)
+#   4. (REQUIRED with the headless part) the v3 world walked end to end, every part (tests/flow_v3.tscn), and the
+#      save / continue at every part (tests/save_v3.tscn)
 # Prints a PASS/FAIL summary; exit 0 only when everything passes. Run it under `timeout 1800`.
 #
 # Usage:  tests/smoke.sh [--live] [--web-only | --headless-only] [--project <dir>] [--tier low|high] [--shot-scale css|device] [--no-touch] [--act1-touch]
@@ -115,13 +116,17 @@ if [ "$RUN_OS" = 1 ]; then
 fi
 [ "$RUN_PT" = 1 ] && wait "$PT_PID"
 # ------------------------------------------------------------------ 4. (REQUIRED) the v3 world walked end to end
-FLOW_RC=0
+FLOW_RC=0; SAVE_RC=0
 if [ "$RUN_PT" = 1 ]; then
   echo "$(ts) v3 flow: tests/flow_v3.tscn"
   FUD="$(mktemp -d "$WORK/userdata.XXXX")"
   XDG_DATA_HOME="$FUD" timeout 400 "$GODOT" --headless --fixed-fps 60 --path "$PROJECT" res://tests/flow_v3.tscn > "$SHOTS/$TAG-flow.log" 2>&1
   { grep -q "^FLOW3 PASS" "$SHOTS/$TAG-flow.log" && ! grep -q "SCRIPT ERROR" "$SHOTS/$TAG-flow.log"; } || FLOW_RC=1
   echo "$(ts) v3 flow: done ($([ $FLOW_RC = 0 ] && echo pass || echo FAIL))"
+  echo "$(ts) v3 save/continue: tests/save_v3.tscn"
+  SUD="$(mktemp -d "$WORK/userdata.XXXX")"
+  XDG_DATA_HOME="$SUD" timeout 600 "$GODOT" --headless --fixed-fps 60 --path "$PROJECT" res://tests/save_v3.tscn > "$SHOTS/$TAG-save.log" 2>&1
+  { grep -q "^SAVE3 PASS" "$SHOTS/$TAG-save.log" && ! grep -q "SCRIPT ERROR" "$SHOTS/$TAG-save.log"; } || SAVE_RC=1
 fi
 
 # ------------------------------------------------------------------ summary
@@ -161,6 +166,8 @@ if [ "$RUN_PT" = 1 ]; then
   if [ "$FLOW_RC" = 0 ]; then echo "PASS  v3 flow (Chapter I v3 walked end to end)  $(grep -m1 '^FLOW3 PASS' "$SHOTS/$TAG-flow.log")"
   else FAILS=$((FAILS+1)); echo "FAIL  v3 flow  $(grep -m1 '^FLOW3 ' "$SHOTS/$TAG-flow.log" || echo 'no FLOW3 line')"; grep "^FAIL" "$SHOTS/$TAG-flow.log" | head -10 | sed 's/^/        /'; fi
   echo "      log: $SHOTS/$TAG-flow.log"
+  if [ "$SAVE_RC" = 0 ]; then echo "PASS  save/continue at every part  $(grep -m1 '^SAVE3' "$SHOTS/$TAG-save.log")"
+  else FAILS=$((FAILS+1)); echo "FAIL  save/continue  $(grep -m1 '^SAVE3' "$SHOTS/$TAG-save.log" || echo 'no SAVE3 line')"; grep "^FAIL" "$SHOTS/$TAG-save.log" | head -10 | sed 's/^/        /'; fi
 fi
 echo "--------------------------------------------------------------"
 WALL=$(( $(date +%s) - T0 ))

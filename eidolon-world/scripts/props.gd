@@ -8,18 +8,10 @@ extends Node3D
 ##  * each placement gets a footprint in the level's obstacles (a circle, a box, or a chain of circles
 ##    for a turned long piece) and, if it may hide you, an occluder box for the see-through.
 ##  * the small dressing (rubble, fragments) is left out on the Low tier.
-## Placements avoid every required path; the playthrough walks them and checks they stay clear.
 
 const DIR := "res://assets/models/props/"
 ## [asset, position (y = the floor), yaw (degrees: the model faces +Z), uniform scale or Vector3, note]
-const PLACE := [
-	# (v2 phase 4: the v1 rooms' statues, at their rooms' module offsets in the new world; the Atrium, the pool, the
-	# Balcony and Act 3 are dressed by A's recipes, scripts/fx/dress.gd)
-	# the Hall of Glass: two mourners keep the far corners ("a thousand faces, all wrong")
-	["statue_veiled_mourning", Map2.GW + Vector3(-3.55, 1.0, -19.95), 45.0, 1.0, "hall"],
-	["statue_veiled_mourning", Map2.GW + Vector3(4.05, 1.0, -11.6), -135.0, 1.0, "hall"],
-	# (the Scales' floor is all puzzle in the new world, and its way up runs where its praying figure stood: it went)
-]
+const PLACE := []          # (v3: no free placements; the spaces are dressed by A's recipes, fx/dress.gd, and Kit3)
 ## (v0.8.1: walls and architecture only: statues are never cut by the see-through)
 const OCCLUDE := ["column_doric", "archway_ruined", "pylon_ashlar", "pylon_ashlar_niche", "wall_ashlar_window"]
 const SMALL := ["rubble_pile", "pediment_fragment", "column_fallen"]       # (dropped on the Low tier)

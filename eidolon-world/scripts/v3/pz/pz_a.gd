@@ -33,7 +33,13 @@ func build() -> void:
 		var along_z := absf(n.x) > 0.5
 		var w: float = d["w"]
 		var at := Vector3(c.x + n.x * 0.35, 0.0, c.y + n.y * 0.35)
+		var fy := -INF                   # (a road that climbs: the bars stand on its highest floor under them)
+		for q in [-0.12, 0.0, 0.12]:
+			var qp := Vector2(at.x + n.x * q, at.z + n.y * q)
+			if game.level.on_ground(qp): fy = maxf(fy, game.level.height_at(qp))
+		at.y = fy if fy > -INF else 0.0
 		var b := Kit3.bars(game, self, at, w, along_z)
+		b.set_meta("y0", at.y)
 		var r := Rect2(at.x - (0.12 if along_z else w * 0.5), at.z - (w * 0.5 if along_z else 0.12), 0.24 if along_z else w, w if along_z else 0.24)
 		lv.ob_rect(r, "a_road_" + k)
 		_bars[k] = [b, "a_road_" + k]
@@ -83,14 +89,14 @@ func _roads(snap: bool) -> void:
 		game.level.set_enabled(_bars[k][1], not open)
 		if snap or not open:
 			b.visible = not open
-			b.position.y = 0.0
+			b.position.y = float(b.get_meta("y0", 0.0))
 		else:
 			b.visible = true
 			var tw := b.create_tween()
-			tw.tween_property(b, "position:y", 2.7, 1.6).set_trans(Tween.TRANS_SINE)
+			tw.tween_property(b, "position:y", float(b.get_meta("y0", 0.0)) + 2.7, 1.6).set_trans(Tween.TRANS_SINE)
 			tw.tween_callback(func() -> void:
 				b.visible = false
-				b.position.y = 0.0)
+				b.position.y = float(b.get_meta("y0", 0.0)))
 			if game.sfx: game.sfx.play("rattle", -12.0, 0.85)
 			if game.juice: game.juice.dust_floor(b.global_position, 0.8, 12)
 	for k in beacons:

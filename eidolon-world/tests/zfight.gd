@@ -11,7 +11,7 @@ var tris: Array = []          # [a, b, c, n, d, owner, transparent]
 
 func _ready() -> void:
 	Game.autotest = true
-	var game: Game = load("res://scenes/main3.tscn" if OS.get_environment("EIDOLON_V3") == "1" else "res://scenes/main.tscn").instantiate()          # (v3: EIDOLON_V3=1)
+	var game: Game = load("res://scenes/main3.tscn").instantiate()
 	add_child(game)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -134,10 +134,6 @@ func _pairs() -> void:
 				if t1[6] and t2[6] and (str(t1[8]) == "add" and str(t2[8]) == "add" or str(t1[8]) != str(t2[8])): continue
 				if t1[6] != t2[6] and ((t2[3] as Vector3).dot(BACK) < 0.02 if t1[6] else (t1[3] as Vector3).dot(BACK) < 0.02): continue
 				var tag := "%s | %s" % [t1[5], t2[5]]
-				# (known, harmless: two ADJACENT slivers of one fan in the Veiled Way's gate, sharing an edge, 1.3 cm
-				# tall, third vertices on opposite sides: they cannot overlap (HANDOFF A -> W, 2026-11-05))
-				if str(t1[5]).ends_with("V2Door_gate_veiled_2") and str(t2[5]).ends_with("V2Door_gate_veiled_2") \
-						and ((t1[0] + t1[1] + t1[2]) / 3.0).distance_to(Map2.O + Vector3(-2.34, 0.79, 7.95)) < 0.6: continue
 				var kind := "TRANSPARENT" if (t1[6] or t2[6]) else "COPLANAR"
 				var ck := kind + tag + str(((t2[0] + t2[1] + t2[2]) / 3.0).snapped(Vector3.ONE * 1.0))          # (phase 6: every site, not one per mesh pair)
 				if found.has(ck):

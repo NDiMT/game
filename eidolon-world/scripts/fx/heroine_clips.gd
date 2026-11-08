@@ -378,6 +378,28 @@ static func _build() -> void:
 	var ptp: Dictionary = (_lib["kneel_reach"] as Dictionary).duplicate(true)
 	ptp["ev"] = {"palm": 1.9}
 	ptp["keys"][0][1].merge({"Rpw": 0.0, "Lpw": 0.0, "Rsh": Vector2.ZERO}, true)
-	ptp["keys"][3][1].merge({"Rpw": 1.0, "Rpn": V(0, -1, 0), "Rel": V(-0.5, -0.3, -0.6)}, true)
-	ptp["keys"][4][1].merge({"Rh": "@", "hd": V(0.30, 0.0, 0.0)}, true)
+	# (a5) the long reach of I.23 (the palms meet ~0.8 m before her knees): the hips go forward over the knees, the back
+	# bows deeper and the left hand braces flat on the lip, so the right palm truly lies on the water
+	ptp["keys"][3][1].merge({"Rpw": 1.0, "Rpn": V(0, -1, 0), "Rel": V(-0.5, -0.3, -0.6), "r": V(-0.02, -0.44, 0.24), "sp": V(1.08, 0.10, 0.0),
+		"hd": V(0.22, 0.04, 0.0), "Lik": 1.0, "Lh": V(0.22, 0.10, 0.42), "Lel": EL_L, "Lpw": 0.85, "Lpn": V(0, -1, 0.1), "Rsh": Vector2(0.10, 0.22)}, true)
+	ptp["keys"][4][1].merge({"Rh": "@", "hd": V(0.30, 0.0, 0.0), "r": V(-0.02, -0.45, 0.25), "sp": V(1.10, 0.10, 0.0)}, true)
 	_lib["palm_to_palm"] = ptp
+	# (a5) I.20, her side alone: the crimson double kneels at the pool's edge, both palms on the rim of HER slab half
+	# ("@": its centre, at its top), and turns it a quarter: the hands sweep round "@" (about 60 degrees, the body
+	# twisting with them), a push at the end, then she sits back and rises. ev: turn (hands on, it starts to
+	# move: the first event, the `then`), set (it lands)
+	var KNEEL := {"r": V(-0.02, -0.48, 0.04), "fw": 1.0, "Rf": V(-0.10, 0.10, -0.36), "Rfp": 1.05, "Lf": V(0.11, 0.085, 0.22), "Rel": EL_R, "Lel": EL_L,
+		"Lkn": KN, "Rkn": KN}
+	_lib["turn_half"] = {"len": 3.6, "blend": [0.25, 0.35], "ev": {"turn": 1.25, "set": 2.25}, "keys": [
+		[0.0, {"r": Z, "sp": Z, "hd": Z, "Rik": 0.0, "Rh": HANG_R, "Lik": 0.0, "Lh": HANG_L, "fw": 0.0, "Lf": FOOT_L, "Rf": FOOT_R, "Rfp": 0.0, "Rpw": 0.0, "Lpw": 0.0}],
+		[0.45, {"r": V(0.0, -0.10, 0.0), "fw": 1.0, "Rf": V(-0.10, 0.10, -0.20), "Lf": V(0.10, 0.085, 0.16), "sp": V(0.25, 0, 0), "hd": V(0.30, 0, 0)}],
+		[0.95, KNEEL.merged({"sp": V(0.70, 0.18, 0.0), "hd": V(0.35, 0.10, 0.0), "Rik": 1.0, "Lik": 1.0,
+			"Rh": ["@", V(-0.22, 0.02, -0.06)], "Lh": ["@", V(0.22, 0.02, -0.06)], "Rpw": 0.9, "Lpw": 0.9, "Rpn": V(0.4, -1, 0), "Lpn": V(-0.4, -1, 0)}), "e"],
+		[1.25, {"Rh": ["@", V(-0.22, -0.01, -0.06)], "Lh": ["@", V(0.22, -0.01, -0.06)], "sp": V(0.74, 0.20, 0.0)}, "i"],
+		[1.8, {"Rh": ["@", V(-0.20, -0.01, 0.10)], "Lh": ["@", V(0.16, -0.01, -0.17)], "sp": V(0.78, -0.10, -0.06), "hd": V(0.38, -0.12, -0.05),
+			"r": V(0.03, -0.49, 0.06), "Rpn": V(0.1, -1, -0.3), "Lpn": V(-0.1, -1, 0.4)}, "e"],
+		[2.25, {"Rh": ["@", V(-0.17, -0.01, 0.15)], "Lh": ["@", V(0.07, -0.01, -0.21)], "sp": V(0.82, -0.26, -0.08), "hd": V(0.40, -0.20, -0.06),
+			"r": V(0.04, -0.50, 0.08)}, "e"],
+		[2.45, {"Rh": ["@", V(-0.17, 0.03, 0.15)], "Lh": ["@", V(0.07, 0.03, -0.21)], "sp": V(0.70, -0.20, -0.04)}, "e"],
+		[2.85, {"Rik": 0.0, "Lik": 0.0, "Rh": HANG_R, "Lh": HANG_L, "Rpw": 0.0, "Lpw": 0.0, "sp": V(0.30, 0, 0), "hd": V(0.15, 0, 0), "r": V(0, -0.20, 0.0)}, "e"],
+		[3.6, {"r": Z, "sp": Z, "hd": Z, "fw": 0.0, "Lf": FOOT_L, "Rf": FOOT_R, "Rfp": 0.0}, "e"]]}
