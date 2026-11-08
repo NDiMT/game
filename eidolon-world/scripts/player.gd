@@ -7,6 +7,8 @@ extends Node3D
 signal footstep(kind: String, strength: float)
 
 const SPEED := 2.7
+var speed := SPEED                # (v3: Game3 sets the calm walk, A's gown at ~2 steps/s)
+var rig_steps := false           # (v3: the footsteps come from the rig's real foot plants: HeroineRig.step)
 const ACCEL := 9.0
 const DECEL := 12.0
 const RADIUS := 0.27
@@ -99,7 +101,7 @@ func step(dt: float) -> void:
 		yaw = lerp_angle(yaw, atan2(-want.x, -want.z), 1.0 - exp(-dt * 9.0))
 		want = Vector3.ZERO
 	if want.length() > 1.0: want = want.normalized()
-	var target := want * SPEED
+	var target := want * speed
 	var rate := ACCEL if target.length() > vel.length() else DECEL
 	vel = vel.move_toward(target, rate * dt)
 	if vel.length() < 0.01 and target == Vector3.ZERO: vel = Vector3.ZERO
@@ -112,7 +114,7 @@ func step(dt: float) -> void:
 		if real.length() < vel.length() * 0.5: vel = vel.lerp(real, 1.0 - exp(-dt * 41.6))      # (0.5 at 60 Hz, the same at any refresh)
 		position = np
 	# animation speed follows the ACTUAL displacement (no moonwalking against a wall)
-	speed01 = lerpf(speed01, clampf(real.length() / SPEED, 0.0, 1.0), 1.0 - exp(-dt * 14.0))
+	speed01 = lerpf(speed01, clampf(real.length() / speed, 0.0, 1.0), 1.0 - exp(-dt * 14.0))
 	if speed01 < 0.002: speed01 = 0.0
 	still_time = still_time + dt if speed01 < 0.05 else 0.0
 	# facing: turn toward the movement direction, measure the turn rate for the lean
@@ -174,7 +176,7 @@ func _animate(dt: float) -> void:
 	p.head_yaw += head_yaw_add
 	fig.apply_pose(p)
 	# footsteps on each half stride
-	if speed01 > 0.12 and signf(s) != signf(_last_s) and _last_s != 0.0:
+	if not rig_steps and speed01 > 0.12 and signf(s) != signf(_last_s) and _last_s != 0.0:
 		_step_n += 1
 		footstep.emit("step", speed01)
 		if _step_n % 2 == 0: footstep.emit("cloth", speed01)

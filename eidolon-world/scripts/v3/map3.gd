@@ -83,7 +83,11 @@ const PATH := {
 }
 const PARTS := ["act1", "west", "north", "east", "act3"]
 ## water (not walkable unless a space stands over it): [x0, z0, x1, z1, y]
-const WATER := [[-34, 5, -14, 32, -0.35], [-10, 24, -1, 31, -0.35]]
+const WATER := [[-34, 5, -14, 32, -0.35], [-10, 24, -1, 31, -0.35], [8.2, 10, 9.8, 17, -0.35]]
+## (phase 2) spaces that are WATER (no floor: a sunk bed under the sheet, a low rim, no walking until a beat opens a
+## road over them: Game3.set_pool_road) and holes cut out of a space's floor (the I.4 stream): [x0, z0, x1, z1]
+const POOLS := ["P"]
+const CUTS := {"I4": [[8.2, 10.0, 9.8, 17.0]]}
 const OBSERVER := Vector3(-24.0, 0.0, 13.0)      # the sunk veiled head (prologue shot 1, W.7)
 ## the great mirrors: [space, wall ("N" or "E"), from, to (along the wall), bottom y over the floor, height]
 const MIRRORS := [["W3", "N", -31.0, -23.0, 0.3, 3.4], ["N2", "N", -7.0, 3.0, 0.3, 3.4], ["N4", "N", 9.0, 17.0, 0.2, 3.5],

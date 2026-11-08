@@ -21,6 +21,7 @@ var hint_after := 45.0
 var idle_t := 0.0
 var hint_given := false
 var gates: Array = []           # [Gate]: closed doorways this puzzle opens
+var jingle := true              # (between beats and story spaces: no solve jingle)
 
 ## a doorway shut by a block (walk-blocking obstacle + a stone leaf that sinks when it opens)
 class Gate:
@@ -66,7 +67,7 @@ func solve() -> void:
 	state["done"] = true
 	idle_t = 0.0
 	for g in gates: _set_gate(g, true, false)
-	if game.sfx and game.sfx.has_method("solve_jingle"): game.sfx.solve_jingle()
+	if jingle and game.sfx and game.sfx.has_method("solve_jingle"): game.sfx.solve_jingle()
 	on_solved()
 	solved.emit(id)
 

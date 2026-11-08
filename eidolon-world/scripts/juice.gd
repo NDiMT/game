@@ -39,8 +39,8 @@ func setup(g: Game) -> void:
 		_sprite_mat.no_depth_test = false
 		_quad = QuadMesh.new()
 		_quad.size = Vector2(1, 1)
-	game.chapter.event.connect(_on_chapter)
-	game.puzzles.event.connect(_on_puzzles)
+	if game.chapter: game.chapter.event.connect(_on_chapter)          # (v3 has neither: Game3 calls the moments itself)
+	if game.puzzles: game.puzzles.event.connect(_on_puzzles)
 	_prewarm.call_deferred()
 
 ## (smoothness) every material a burst uses is drawn once, far below the world, while the game warms up:

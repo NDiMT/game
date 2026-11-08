@@ -6,12 +6,14 @@ class_name World3
 
 static var labels_on := true
 static var mirrors := {}          # space id -> Reflector (the great glass)
+static var waters: Array[MeshInstance3D] = []     # the water sheets (Map3.WATER order)
 
 static func zone(part: String) -> String:
 	return "v3_" + part
 
 static func build(lv: Level) -> void:
 	mirrors.clear()
+	waters.clear()
 	for s in Map3.SPACES: _space(lv, s)
 	for l in Map3.LINKS: _doorway(lv, l[0], l[1])
 	for s in Map3.SPACES: _walls(lv, s)
@@ -30,11 +32,33 @@ static func _space(lv: Level, s: Array) -> void:
 	var ax: int = s[7]
 	var wr := Map3.walk_rect(id)
 	# (a ramp's walk rect is inset: its ends take the space's slope at those points, so doorways meet it level)
-	lv.walk(wr, Map3.height(id, wr.position), Map3.height(id, wr.end), ax, Map3.ZP + id)
+	var pool := id in Map3.POOLS
+	lv.walk(wr, Map3.height(id, wr.position), Map3.height(id, wr.end), ax, Map3.ZP + id, not pool)
 	var z := zone(s[8])
 	var mat := 0.0 if s[3] != "hub" else 0.15
-	if ax < 0 or is_equal_approx(y0, y1): lv.slab(z, r, y0, 0.6, mat)
+	if pool: lv.slab(z, r, y0 - 1.1, 0.4, 0.5)          # (the pool's bed, under the sheet)
+	elif ax < 0 or is_equal_approx(y0, y1):
+		for rr in _cut(r, Map3.CUTS.get(id, [])): lv.slab(z, rr, y0, 0.6, mat)
 	else: lv.steps(z, r, ax, minf(y0, y1), maxf(y0, y1), y1 > y0)
+
+## a floor rect less its holes (each hole spans the rect along one axis: the strips either side of it)
+static func _cut(r: Rect2, holes: Array) -> Array:
+	var out: Array = [r]
+	for h in holes:
+		var hr := Rect2(h[0], h[1], h[2] - h[0], h[3] - h[1])
+		var nxt: Array = []
+		for q: Rect2 in out:
+			if not q.intersects(hr):
+				nxt.append(q)
+				continue
+			if hr.position.x > q.position.x: nxt.append(Rect2(q.position.x, q.position.y, hr.position.x - q.position.x, q.size.y))
+			if hr.end.x < q.end.x: nxt.append(Rect2(hr.end.x, q.position.y, q.end.x - hr.end.x, q.size.y))
+			var x0 := maxf(q.position.x, hr.position.x)
+			var x1 := minf(q.end.x, hr.end.x)
+			if hr.position.y > q.position.y: nxt.append(Rect2(x0, q.position.y, x1 - x0, hr.position.y - q.position.y))
+			if hr.end.y < q.end.y: nxt.append(Rect2(x0, hr.end.y, x1 - x0, q.end.y - hr.end.y))
+		out = nxt
+	return out
 
 static func _doorway(lv: Level, a: String, b: String) -> void:
 	var d := Map3.door(a, b)
@@ -53,7 +77,7 @@ static func _doorway(lv: Level, a: String, b: String) -> void:
 	var pos := (n.x if ax == 0 else n.y) > 0.0          # b lies at the higher coordinate
 	var y_lo := ha if pos else hb
 	var y_hi := hb if pos else ha
-	lv.walk(r, y_lo, y_hi, ax if not is_equal_approx(ha, hb) else -1, Map3.ZP + a + "~" + b)
+	lv.walk(r, y_lo, y_hi, ax if not is_equal_approx(ha, hb) else -1, Map3.ZP + a + "~" + b, not (a in Map3.POOLS or b in Map3.POOLS))
 	# the threshold: a slab under the gap in the wall
 	var thr := Rect2(c - (n * Map3.WALL_IN + al * w * 0.5).abs(), (n * Map3.WALL_IN * 2.0 + al * w).abs())
 	lv.slab(zone(Map3.part_of(a)), thr, maxf(ha, hb) - 0.004, 0.5, 0.3, false)
@@ -87,6 +111,7 @@ static func _walls(lv: Level, s: Array) -> void:
 			if j < idx: cuts.append(ov)          # the first-listed space walls the shared stretch
 		var h := Map3.WALL_HI if e[4] == "N" or e[4] == "E" else Map3.WALL_LO
 		if shared and (e[4] == "N" or e[4] == "E"): h = 1.8          # between two rooms: mid height (fades for her)
+		if id in Map3.POOLS: h = 0.25                                # (a pool: a low rim, the water open to the sky)
 		for seg in _subtract([e[2], e[3]], cuts):
 			if seg[1] - seg[0] < 0.25: continue
 			var wr: Rect2
@@ -135,6 +160,7 @@ static func _water(lv: Level, parent: Node3D) -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.position = Vector3((e[0] + e[2]) * 0.5, e[4], (e[1] + e[3]) * 0.5)
 		parent.add_child(mi)
+		waters.append(mi)
 
 ## a great glass on a space's N or E wall, facing into the room
 static func _mirror(game: Game, parent: Node3D, m: Array) -> void:
