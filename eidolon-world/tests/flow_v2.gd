@@ -4,9 +4,12 @@ extends Node
 ## every waypoint must land in the space the route names, no frame may pop the floor height by more than 0.4 m,
 ## and every space of Map2.SPACES must be visited. Prints FLOW PASS / FLOW FAIL.
 ## (block-out phase: doors and gates stand open; later phases close them and solve them on the way)
+## Optional user arg `-- --area=<part>` (a Map2.PART value: south, hub, west, north, east, act3): walks only that part's
+## stretch of the route (from the waypoint before it to its last one) and checks only that part's spaces (tests/quick.sh).
 
 var game: Game
 var i := 0
+var i_start := 0
 var leg_t := 0.0
 var errors := 0
 var checks := 0
@@ -17,6 +20,8 @@ var max_dy := 0.0
 var started := false
 var _riding := false
 var t := 0.0
+var area := ""
+var i_end := -1          # (last route index walked; -1 the whole route)
 
 const SOLVED := ["breath", "hall_door", "shard", "gallery", "turned_done", "garden_breath", "hollow_done", "mural", "maze", "ledge_song", "scales",
 	"stones", "four"]          # (phase 4: Act 3's pool road and the Gate of the Four)
@@ -29,6 +34,20 @@ func ok(label: String, pass_: bool, detail := "") -> void:
 func _ready() -> void:
 	Game.autotest = true
 	Map2.enabled = true
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--area="): area = a.substr(7)
+	if area != "":
+		var i0 := -1
+		for k in Map2.ROUTE.size():
+			if _part(str(Map2.ROUTE[k][2])) == area:
+				if i0 < 0: i0 = k
+				i_end = k
+		if i0 < 0:
+			print("FLOW FAIL  unknown area '%s'" % area)
+			set_process(false)
+			get_tree().quit(1)
+			return
+		i_start = maxi(i0 - 1, 0)
 	game = load("res://scenes/main.tscn").instantiate()
 	add_child(game)
 
@@ -56,10 +75,10 @@ func _process(dt: float) -> void:
 		game.chapter.lift_h = 1.0          # (the lift waits up at the Mirror Walk's end, as on a first visit)
 		game.chapter._lift_goal = 1.0
 		for n in Map2.NO_FLOOR: game.level.set_enabled(Map2.ZP + n, true)
-		var s: Array = Map2.ROUTE[0]
+		var s: Array = Map2.ROUTE[i_start]
 		game.cmd("tp:%f:%f:%f" % [Map2.O.x + s[0], Map2.O.z + s[1], PI * 0.5])
 		started = true
-		i = 1
+		i = i_start + 1
 		leg_t = 0.0
 		_go()
 		return
@@ -110,6 +129,10 @@ func _blockers(q: Vector2) -> String:
 		if dd < 1.0: out.append("%s %s" % [ob.name, (str(ob.c - Vector2(Map2.O.x, Map2.O.z)) + " r%.2f" % ob.rad) if ob.circle else str(Rect2(ob.r.position - Vector2(Map2.O.x, Map2.O.z), ob.r.size))])
 	return ", ".join(out)
 
+## the part of the chapter a route/space key belongs to (route keys like "N7d" are sub-keys of Map2.PART)
+func _part(key: String) -> String:
+	return str(Map2.PART.get(key, ""))
+
 func _limit() -> float:
 	var a: Array = Map2.ROUTE[i - 1]
 	var b: Array = Map2.ROUTE[i]
@@ -122,7 +145,7 @@ func _go() -> void:
 func _next() -> void:
 	i += 1
 	leg_t = 0.0
-	if i >= Map2.ROUTE.size():
+	if i >= Map2.ROUTE.size() or (i_end >= 0 and i > i_end):
 		_finish()
 		return
 	_go()
@@ -146,9 +169,10 @@ func _finish() -> void:
 	ok("the marble's per-instance buffer holds the world (<= 250 of its 256 instances on the web)", mc <= 250, "%d marble instances" % mc)
 	print("FLOW marble instances %d / 256" % mc)
 	for s in Map2.SPACES:
+		if area != "" and _part(str(s[0])) != area: continue
 		ok("space %s (%s) visited" % [s[0], s[1]], visited.has(s[0]))
 	print("FLOW order: " + " ".join(order))
 	print("FLOW max height change per frame %.3f m, %d legs, %.0f s walked" % [max_dy, Map2.ROUTE.size() - 1, t])
-	print("FLOW %s  checks=%d  failed=%d" % ["PASS" if errors == 0 else "FAIL", checks, errors])
+	print("FLOW %s  %s checks=%d  failed=%d" % ["PASS" if errors == 0 else "FAIL", ("area=" + area) if area != "" else "all", checks, errors])
 	set_process(false)
 	get_tree().quit(0 if errors == 0 else 1)
