@@ -119,3 +119,40 @@ static func comb(game: Game) -> Node3D:
 	var root := Node3D.new()
 	marble(game, m.commit(), root)
 	return root
+
+## one of the kit's Tripo props (assets/models/props/<name>.glb), scaled to `height` m, standing at `at`
+static func prop(parent: Node3D, name: String, at: Vector3, height: float, yaw_deg := 0.0) -> Node3D:
+	var p := "res://assets/models/props/%s.glb" % name
+	var root := Node3D.new()
+	root.name = "Prop_" + name
+	parent.add_child(root)
+	root.position = at
+	root.rotation.y = deg_to_rad(yaw_deg)
+	if not ResourceLoader.exists(p): return root
+	var n: Node3D = (load(p) as PackedScene).instantiate()
+	var ab := AABB()
+	var first := true
+	for mi in n.find_children("*", "MeshInstance3D", true, false):
+		var xf := Transform3D()
+		var q: Node = mi
+		while q != n and q is Node3D:
+			xf = (q as Node3D).transform * xf
+			q = q.get_parent()
+		var bb: AABB = xf * (mi as MeshInstance3D).get_aabb()
+		ab = bb if first else ab.merge(bb)
+		first = false
+	if not first and ab.size.y > 0.01:
+		var k := height / ab.size.y
+		n.scale = Vector3.ONE * k
+		n.position = Vector3(-ab.get_center().x, -ab.position.y, -ab.get_center().z) * k
+	root.add_child(n)
+	return root
+
+## a small flame (A's Flame), lit or not (its `intensity`)
+static func flame(game: Game, parent: Node3D, at: Vector3, size := 0.22, lit := true) -> Flame:
+	var f := Flame.new(0.0, size, Palette.FIRE_LIGHT, game.level.noise_tex)
+	f.position = at
+	f.bounce = false
+	parent.add_child(f)
+	f.mat.set_shader_parameter("intensity", 0.9 if lit else 0.0)
+	return f

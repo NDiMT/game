@@ -22,6 +22,7 @@ var idle_t := 0.0
 var hint_given := false
 var gates: Array = []           # [Gate]: closed doorways this puzzle opens
 var jingle := true              # (between beats and story spaces: no solve jingle)
+var test_s := 30.0              # (tests/pz_test) how long its autosolve may take
 
 ## a doorway shut by a block (walk-blocking obstacle + a stone leaf that sinks when it opens)
 class Gate:

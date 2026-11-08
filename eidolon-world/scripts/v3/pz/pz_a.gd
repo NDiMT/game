@@ -1,8 +1,9 @@
 extends Puzzle
 ## I.6 "The Atrium of a Thousand Faces" (CH1_V3 §1 #8, the hub): his attempts on plinths (A's "atrium" dressing), a
-## dry fountain with a little still water in its bowl, three dead Beacons (one by each wing's road). The roads are
-## barred until phase 3 opens them (beyond the bars the road runs on into the fog: a tease); the Veiled Way south is
-## shut until the three Beacons burn (Act 3). The first time you come to the fountain with the Lamp: she stands in
+## dry fountain with a little still water in its bowl, three dead Beacons (one by each wing's road). The roads open
+## soft to hard: the West road when she has looked West (this beat), the North road once the Glass Beacon (WB) burns;
+## the East road waits for phase 4. Each wing's Beacon here catches when its far Beacon is lit. The Veiled Way south
+## is shut until the three Beacons burn (Act 3). The first time you come to the fountain with the Lamp: she stands in
 ## its water, looks at you, then turns her head to the WEST (a suggestion, not an order). Done = that gaze.
 
 const FOUNT := Vector3(0.0, 0.88, 0.0)
@@ -13,7 +14,11 @@ var beacons := {}               # road -> BeaconFire
 var _bars := {}                 # road -> [Node3D, obstacle name]
 var _gaze_t := -1.0
 var _pose := Figure.Pose.new()
-var roads_open := false
+var roads_open := false         # (tests / flow) every road open
+## the wing whose far Beacon lights this road's Beacon
+const FAR := {"WR": "WB", "N1": "NB", "ER": "EB"}
+var _open := {}
+var _snap := true                # (after a load: the next check snaps, as the other beats load after this one)
 
 func build() -> void:
 	jingle = false
@@ -50,17 +55,53 @@ func post() -> void:
 	fount = TwoWorld.still_water(self, game, FOUNT, Vector2(0.75, 0.75), Rect2(FOUNT.x - 3.4, FOUNT.z - 3.4, 6.8, 6.8), 0.5)
 	(game.get("ch") as Ch1v3).add_refl(fount)
 
-## (phase 3 / tests) the wing roads open (the Veiled Way stays for the Beacons)
+## (tests) every wing road open (the Veiled Way too, under autotest)
 func open_roads(on: bool) -> void:
 	roads_open = on
+	_roads(true)
+
+func _want(k: String) -> bool:
+	if roads_open: return k != "VW" or Game.autotest
+	match k:
+		"WR": return done
+		"N1": return _far_done("WB")
+	return false
+
+func _far_done(id: String) -> bool:
+	var ch: Ch1v3 = game.get("ch")
+	return ch != null and ch.pz.has(id) and (ch.pz[id] as Puzzle).done
+
+## the bars follow progress (they rise with dust when it changes in play); the wing Beacons follow their far ones
+func _roads(snap: bool) -> void:
 	for k in _bars:
-		var open := on if k != "VW" else on and Game.autotest
+		var open := _want(k)
+		if _open.get(k, null) == open: continue
+		_open[k] = open
 		var b: Node3D = _bars[k][0]
 		game.level.set_enabled(_bars[k][1], not open)
-		b.visible = not open
+		if snap or not open:
+			b.visible = not open
+			b.position.y = 0.0
+		else:
+			b.visible = true
+			var tw := b.create_tween()
+			tw.tween_property(b, "position:y", 2.7, 1.6).set_trans(Tween.TRANS_SINE)
+			tw.tween_callback(func() -> void:
+				b.visible = false
+				b.position.y = 0.0)
+			if game.sfx: game.sfx.play("rattle", -12.0, 0.85)
+			if game.juice: game.juice.dust_floor(b.global_position, 0.8, 12)
+	for k in beacons:
+		var lit := FAR.has(k) and _far_done(FAR[k])
+		var f: BeaconFire = beacons[k]
+		if f.lit == lit: continue
+		if lit and not snap and f.is_inside_tree(): f.ignite()
+		else: f.set_lit(lit)
 
 ## the first time at the fountain, with her Lamp: she looks at you, then West
 func tick(dt: float) -> void:
+	_roads(_snap)
+	_snap = false
 	var p := game.player.position
 	if _gaze_t < 0.0:
 		if not done and game.mode == "play" and game.call("has_item", "lamp") and Vector2(p.x - FOUNT.x, p.z - FOUNT.z).length() < 2.6:
@@ -89,7 +130,9 @@ func apply() -> void:
 	super.apply()
 	_gaze_t = -1.0
 	if fount: fount.hold = false
-	open_roads(roads_open)
+	_open.clear()
+	_roads(true)
+	_snap = true
 
 func autosolve() -> void:
 	if not game.call("has_item", "lamp"): game.call("give", "lamp", false)

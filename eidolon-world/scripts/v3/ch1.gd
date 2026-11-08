@@ -13,6 +13,7 @@ const REGISTRY := {
 	"I4": preload("res://scripts/v3/pz/pz_i4.gd"),
 	"I5": preload("res://scripts/v3/pz/pz_i5.gd"),
 	"A": preload("res://scripts/v3/pz/pz_a.gd"),
+	"N4": preload("res://scripts/v3/pz/pz_n4.gd"),
 }
 
 var game: Game

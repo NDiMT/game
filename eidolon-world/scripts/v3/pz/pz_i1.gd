@@ -14,7 +14,9 @@ func build() -> void:
 	gate("I1", "I2")
 
 func post() -> void:
-	water = TwoWorld.still_water(self, game, PLATE + Vector3(0, 0.012, 0), WATER_HALF, Map3.rect("I1"), 0.5)
+	# (4.5 cm over the floor: the mirror camera drops marble only 3 cm or more below the plane; nearer, the floor
+	# under the sheet hid her double)
+	water = TwoWorld.still_water(self, game, PLATE + Vector3(0, 0.045, 0), WATER_HALF, Map3.rect("I1"), 0.5)
 	(game.get("ch") as Ch1v3).add_refl(water)
 	plate = MeshInstance3D.new()
 	var cm := CylinderMesh.new()
@@ -28,7 +30,7 @@ func post() -> void:
 	m.emission = Color(0.9, 0.1, 0.15)
 	m.emission_energy_multiplier = 1.6
 	plate.material_override = m
-	plate.position = PLATE + Vector3(0, 0.03, 0)
+	plate.position = PLATE + Vector3(0, 0.012, 0)
 	add_child(plate)
 	TwoWorld.set_her(plate)
 

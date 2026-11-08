@@ -60,6 +60,7 @@ static var body_mesh: ArrayMesh
 static var veil_mesh: ArrayMesh
 static var _albedo: Texture2D
 static var _normal: Texture2D
+static var trail_cancel := 1.0          # (a3) x the gown's trail cancelling (0 = the old long trail; dev A/B)
 static var sims := 0                     # (perf HUD / bench) simulated rigs alive
 
 var body: Node3D
@@ -693,7 +694,11 @@ func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 	elif cloth_mode == "sim" and sim:
 		# a gentle, uneven breath of wind through the cloth
 		var g := 0.035 + 0.025 * sin(_t * 0.7) * sin(_t * 0.23 + 1.0)
-		sim.external_force = Vector3(0.6, 0.0, 0.8).normalized() * g
+		# (a3) the gown trailed long at full speed: the sim reads the walk as a wind from ahead. A force WITH her motion
+		# cancels part of that (external_force = the skeleton moving the other way): a walk keeps a little lag, a run
+		# more of its shape
+		var cancel := lerpf(0.22, 0.4, clampf((speed_m - 0.8) / 1.6, 0.0, 1.0)) * trail_cancel
+		sim.external_force = Vector3(0.6, 0.0, 0.8).normalized() * g + Vector3(_vel.x, 0.0, _vel.z) * cancel
 	_bp("sway", p.sway)
 	_bp("flare", p.flare)
 	_bp("ripple", p.ripple)

@@ -18,8 +18,17 @@ uniform float wall_mounted = 0.0;   // its back is inside a wall: only ever seen
 uniform float planar = 0.0;
 uniform sampler2D refl_tex : source_color, filter_linear, repeat_disable;
 uniform mat4 refl_vp;
+// a3: a Venetian BEVEL round the glass (metres; 0 = none): in it the reflection is displaced and brighter, with a
+// bright line at the facet's fold: thick real glass (StillRoomFx.mirror sets it)
+uniform float bevel = 0.0;
 varying vec3 wp;
-void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+varying vec3 tu;
+varying vec3 tv;
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	tu = normalize(MODEL_MATRIX[0].xyz);
+	tv = normalize(MODEL_MATRIX[1].xyz);
+}
 
 void fragment() {
 	if (!FRONT_FACING && wall_mounted > 0.5) discard;
@@ -41,10 +50,22 @@ void fragment() {
 		vec3 fog = mix(vec3(0.60, 0.63, 0.66), vec3(0.80, 0.80, 0.79), smoothstep(-0.4, 0.5, r.y));
 		vec3 c = fog;
 		float best = 1e5;
+		float bv = 0.0;
 		if (planar > 0.5) {
-			vec4 cl = refl_vp * vec4(wp, 1.0);
+			vec3 sp = wp;
+			if (bevel > 0.0) {
+				vec2 mb = vec2(min(UV.x, 1.0 - UV.x) * size.x, min(UV.y, 1.0 - UV.y) * size.y);
+				bv = 1.0 - clamp(min(mb.x, mb.y) / bevel, 0.0, 1.0);
+				vec3 ed = mb.x < mb.y ? (UV.x < 0.5 ? -tu : tu) : (UV.y < 0.5 ? tv : -tv);
+				sp += ed * step(0.001, bv) * (0.10 + 0.25 * bv);
+			}
+			vec4 cl = refl_vp * vec4(sp, 1.0);
 			vec2 ndc = cl.xy / cl.w;
-			c = texture(refl_tex, vec2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5)).rgb;
+			c = texture(refl_tex, clamp(vec2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5), vec2(0.002), vec2(0.998))).rgb;
+			if (bevel > 0.0 && bv > 0.0) {
+				c = c * 1.1 + vec3(0.035, 0.04, 0.045);
+				c += vec3(0.5, 0.52, 0.55) * (1.0 - smoothstep(0.0, 0.06, abs(bv - 0.02))) * 0.6;    // the fold
+			}
 			best = -1.0;
 		}
 		if (best > 0.0 && r.y < -0.01) {

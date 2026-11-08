@@ -43,7 +43,9 @@ void fragment() {
 	c += vec3(0.5, 0.6, 0.72) * pow(pane, 6.0) * 0.22 * k;
 	float line = 1.0 - smoothstep(0.0, 0.085, cr);
 	float sweep = exp(-pow((fract(wpos.y * 0.35 - TIME * 0.22) - 0.5) * 5.0, 2.0));
-	float lit = rise >= 0.999 ? 1.0 : 1.0 - smoothstep(rise * 2.4 - 0.3, rise * 2.4, wpos.y - MODEL_MATRIX[3].y);
+	// (a3) the height up HIS body (his own up axis): right side up, or hung upside-down in the water world
+	float hb = dot(wpos - MODEL_MATRIX[3].xyz, normalize(MODEL_MATRIX[1].xyz));
+	float lit = rise >= 0.999 ? 1.0 : 1.0 - smoothstep(rise * 2.4 - 0.3, rise * 2.4, hb);
 	c += vec3(0.7, 0.8, 0.9) * line * (0.4 + 0.6 * sweep) * 0.75 * k * lit;
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	c += vec3(0.55, 0.65, 0.75) * fres * 0.35 * k;                                // the glass edge

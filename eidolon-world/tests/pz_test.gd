@@ -79,7 +79,7 @@ func _puzzle(id: String) -> void:
 		step = 2
 		return
 	if step == 2:
-		if not pz.done and job_t < 30.0: return
+		if not pz.done and job_t < pz.test_s: return
 		ok("%s solved by its autosolve" % id, pz.done, "after %.1f s" % job_t)
 		ok("%s opened its gates" % id, pz.gates.all(func(g: Puzzle.Gate) -> bool: return not g.ob.enabled))
 		var saved := pz.save_state()

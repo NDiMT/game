@@ -7,6 +7,9 @@ class_name World3
 static var labels_on := OS.get_environment("EIDOLON_LABELS") == "1"          # (block-out review shots only)
 static var mirrors := {}          # space id -> Reflector (the great glass)
 static var _wall_n := 0
+## a great glass stands this far out from its wall's middle: its face is 0.2 m out, and the mirror camera keeps marble only
+## 3 cm or more in front of the glass (marble.gdshaderinc refl_clip), so the wall behind must sit further back than that
+const GLASS_OFF := 0.27
 static var waters: Array[MeshInstance3D] = []     # the water sheets (Map3.WATER order)
 
 static func zone(part: String) -> String:
@@ -181,10 +184,10 @@ static func _mirror(game: Game, parent: Node3D, m: Array) -> void:
 	var c: Vector3
 	var n: Vector3
 	if m[1] == "N":
-		c = Vector3((m[2] + m[3]) * 0.5, y + m[4] + m[5] * 0.5, r.position.y + 0.22)
+		c = Vector3((m[2] + m[3]) * 0.5, y + m[4] + m[5] * 0.5, r.position.y + GLASS_OFF)
 		n = Vector3.BACK
 	else:
-		c = Vector3(r.end.x - 0.22, y + m[4] + m[5] * 0.5, (m[2] + m[3]) * 0.5)
+		c = Vector3(r.end.x - GLASS_OFF, y + m[4] + m[5] * 0.5, (m[2] + m[3]) * 0.5)
 		n = Vector3.LEFT
 	mirrors[id] = TwoWorld.wall_mirror(parent, game, c, n, size, r)
 

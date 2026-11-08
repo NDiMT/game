@@ -34,10 +34,10 @@ const SPACES := [
 	["W7", "W.7", "The Colossus Stones", "landmark", [-44, 2, -14, 5], 0.0, 0.0, -1, "west"],
 	["N1", "N.1", "The Flooded Colonnade", "puzzle", [-3, -20, 3, -10], 0.0, 0.0, -1, "north"],
 	["NG", "-", "The Garden Landing", "between", [-4, -24, 6, -20], 1.0, 0.0, 1, "north"],
-	["N2", "N.2", "The Turned Ones", "puzzle", [-8, -36, 4, -24], 1.0, 1.0, -1, "north"],
-	["N3", "N.3", "The Votive", "between", [4, -30, 8, -24], 1.0, 1.0, -1, "north"],
-	["N4", "N.4", "The Still Room", "puzzle", [8, -36, 18, -26], 1.0, 1.0, -1, "north"],
-	["IBN", "-", "The Wind Ramp", "between", [13, -42, 18, -36], 2.0, 1.0, 1, "north"],
+	["N2", "N.2", "The Turned Ones", "puzzle", [-8, -36, 2, -24], 1.0, 1.0, -1, "north"],
+	["N3", "N.3", "The Votive", "between", [2, -30, 6, -24], 1.0, 1.0, -1, "north"],
+	["N4", "N.4", "The Still Room", "puzzle", [6, -36, 16, -26], 1.0, 1.0, -1, "north"],
+	["IBN", "-", "The Wind Ramp", "between", [16, -46, 20, -32], 2.0, 1.0, 1, "north"],
 	["N5", "N.5", "The Court of Light", "puzzle", [2, -54, 16, -42], 2.0, 2.0, -1, "north"],
 	["N6", "N.6", "The Tree of Shards", "landmark", [-4, -54, 2, -44], 2.0, 2.0, -1, "north"],
 	["N7", "N.7", "The Mist Maze", "puzzle", [-10, -66, 2, -54], 2.0, 2.0, -1, "north"],
@@ -66,7 +66,7 @@ const LINKS := [
 	["WS", "I1", 0], ["I1", "I2", 0], ["I2", "I3", 0], ["I3", "IB1", 0], ["IB1", "I4", 0], ["I4", "I5", 0], ["I5", "A", 0],
 	["A", "WR", 0], ["WR", "W1", 0], ["W1", "W2", 0], ["W2", "W3", 0], ["W3", "W4", 0], ["W4", "W5", 0], ["W5", "IBW", 0],
 	["IBW", "W6", 0], ["W6", "WB", 0], ["WB", "W7", 0], ["W7", "WR", 0],
-	["A", "N1", 0], ["N1", "NG", 0], ["NG", "N2", 0], ["N2", "N3", 0], ["N3", "N4", 0], ["N4", "IBN", 0], ["IBN", "N5", 0],
+	["A", "N1", 0], ["N1", "NG", 0], ["NG", "N2", 0], ["N2", "N3", 0], ["N3", "N4", 0], ["N4", "IBN", 0, -34.6], ["IBN", "N5", 0],
 	["N5", "N6", 0], ["N6", "N7", 0], ["N7", "NB", 0], ["NB", "NS", 0], ["NS", "A", 0],
 	["A", "ER", 0], ["ER", "E1", 0], ["E1", "E2", 0], ["E2", "IBE", 0], ["IBE", "E3", 0], ["E3", "E4", 0], ["E3", "E5", 0],
 	["E5", "EB", 0], ["EB", "EH", 0], ["EH", "E2", 0],
@@ -90,7 +90,7 @@ const POOLS := ["P"]
 const CUTS := {"I4": [[8.2, 10.0, 9.8, 17.0]]}
 const OBSERVER := Vector3(-24.0, 0.0, 13.0)      # the sunk veiled head (prologue shot 1, W.7)
 ## the great mirrors: [space, wall ("N" or "E"), from, to (along the wall), bottom y over the floor, height]
-const MIRRORS := [["W3", "N", -31.0, -23.0, 0.3, 3.4], ["N2", "N", -7.0, 3.0, 0.3, 3.4], ["N4", "N", 9.0, 17.0, 0.2, 3.5],
+const MIRRORS := [["W3", "N", -31.0, -23.0, 0.3, 3.4], ["N2", "N", -7.0, 1.0, 0.3, 3.4], ["N4", "N", 7.4, 15.6, 0.2, 3.5],
 	["E3", "E", -54.0, -23.0, 0.3, 3.0]]
 ## A's moods per part (world.set_mood)
 const MOOD := {"act1": "act1", "hub": "act1", "west": "w_glass", "north": "n_garden", "east": "e_high", "act3": "act3"}
@@ -172,6 +172,9 @@ static func route(part := "all") -> Array:
 		var path: Array = PATH[pt]
 		if out.is_empty():
 			var c0 := walk_rect(path[0]).get_center()
+			if path[0] == "A":          # (the hub's middle is the dry fountain: start 3 m inside the first road's mouth)
+				var d0 := door(path[0], path[1])
+				c0 = (d0["c"] as Vector2) - (d0["n"] as Vector2) * 3.0
 			out.append([c0.x, c0.y, path[0]])
 		for i in path.size() - 1:
 			var a: String = path[i]

@@ -31,6 +31,11 @@ const TEMPLATES := {
 	# large across the garden's great glass (rune units: -1..1)
 	"hook": [[Vector2(-0.18, -0.6), Vector2(-0.18, 0.46), Vector2(0.34, 0.46), Vector2(0.34, 0.14)], [Vector2(0.280, -0.345), Vector2(0.227, -0.367), Vector2(0.205, -0.420), Vector2(0.227, -0.473), Vector2(0.280, -0.495), Vector2(0.333, -0.473), Vector2(0.355, -0.420), Vector2(0.333, -0.367), Vector2(0.280, -0.345)]],
 	"wing": [[Vector2(-0.160, 0.130), Vector2(-0.263, 0.109), Vector2(-0.351, 0.051), Vector2(-0.409, -0.037), Vector2(-0.430, -0.140), Vector2(-0.409, -0.243), Vector2(-0.351, -0.331), Vector2(-0.263, -0.389), Vector2(-0.160, -0.410), Vector2(-0.057, -0.389), Vector2(0.031, -0.331), Vector2(0.089, -0.243), Vector2(0.110, -0.140), Vector2(0.089, -0.037), Vector2(0.031, 0.051), Vector2(-0.057, 0.109), Vector2(-0.160, 0.130)], [Vector2(0.03, 0.06), Vector2(0.46, 0.5), Vector2(0.46, 0.18)]],
+	# v3 W.1 "the Stair of Breath": the rune of the rising stair, one stroke per glass (her side): a stem with its
+	# foot turned, the steps, the lintel's hook. The third she writes as you SEE it (you are inside the glass now)
+	"w1_a": [[Vector2(-0.3, -0.6), Vector2(-0.3, 0.5), Vector2(0.05, 0.62), Vector2(0.35, 0.5)]],
+	"w1_b": [[Vector2(-0.6, -0.5), Vector2(-0.6, -0.15), Vector2(-0.2, -0.15), Vector2(-0.2, 0.2), Vector2(0.2, 0.2), Vector2(0.2, 0.55), Vector2(0.6, 0.55)]],
+	"w1_c": [[Vector2(-0.55, 0.45), Vector2(0.4, 0.45), Vector2(0.55, 0.3), Vector2(0.5, 0.05), Vector2(0.2, -0.05), Vector2(0.2, -0.6)]],
 	"step": [[Vector2(-0.5, -0.52), Vector2(-0.5, -0.12), Vector2(-0.1, -0.12), Vector2(-0.1, 0.28), Vector2(0.3, 0.28), Vector2(0.3, 0.6)], [Vector2(0.380, -0.325), Vector2(0.327, -0.347), Vector2(0.305, -0.400), Vector2(0.327, -0.453), Vector2(0.380, -0.475), Vector2(0.433, -0.453), Vector2(0.455, -0.400), Vector2(0.433, -0.347), Vector2(0.380, -0.325)]],
 }
 const N := 32                     # resample points
@@ -341,7 +346,8 @@ func open(spec: Dictionary) -> void:
 		# the answer, its mirror, on the right.
 		her_first = place(first, true, 0.42, spec.get("at_first", Vector2(0.0, 0.5)))
 		her_half = place(half, true, 0.75, spec.get("at_q", Vector2(0.0, -0.32)))
-		target = place(half, false, 0.75, spec.get("at_q", Vector2(0.0, -0.32)))
+		# (v3 W.1's twist, "seen": you trace what you SEE, her reversed stroke as it is, not its mirror)
+		target = place(half, bool(spec.get("seen", false)), 0.75, spec.get("at_q", Vector2(0.0, -0.32)))
 	# (v1.0 M1, the stale-fog bug) everything the last pane left behind is reset BEFORE anything shows: the
 	# wipe masks are redrawn empty (their viewports only render while a pane is up, so they still held the
 	# previous glass's strokes), every uniform the shader reads goes back to rest, and the pane stays fully

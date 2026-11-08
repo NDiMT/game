@@ -18,6 +18,8 @@ var items: Array = []             # "comb" (story), "lamp" (tool)
 var seen := {}                    # "prologue"
 var lamp_node: Node3D
 var _acting := false
+var lens_on := false              # (phase 3) the Shard raised: her world shows through its circle (lens_only shaders)
+var lens_at := Vector3.INF        # a beat may hold the lens over a point (the W.4 star, the W.6 door); else over her head
 
 func _ready() -> void:
 	HeroineRig.VARIANT = "v1"
@@ -56,6 +58,7 @@ func _ready() -> void:
 	add_child(juice)
 	juice.setup(self)
 	controls.interact.connect(try_interact)
+	controls.shard.connect(func() -> void: if mode == "play": set_lens(not lens_on))
 	if player.fig.rig: player.fig.rig.step.connect(_on_rig_step)
 	var gt := ui.glass_talk
 	gt.solved.connect(func(id: String) -> void:
@@ -87,7 +90,9 @@ func _ready() -> void:
 		ui.title_word.queue_redraw(), 0.0, 1.0, 2.4).set_delay(0.8)
 
 func _input(e: InputEvent) -> void:
-	if e is InputEventKey and e.keycode == KEY_F: return          # (v2's lens: the Shard comes in phase 3)
+	if e is InputEventKey and e.keycode == KEY_F:
+		if e.pressed and not e.echo and mode == "play": set_lens(not lens_on)
+		return
 	super._input(e)
 
 # ------------------------------------------------------------------ flow
@@ -121,6 +126,7 @@ func reset_progress() -> void:
 	ch.load_state({})
 	items = []
 	seen = {}
+	set_lens(false)
 	_apply_items()
 
 ## the cards + "Η Αρπαγή"; the first time it cannot be skipped
@@ -203,6 +209,7 @@ func _process(dt: float) -> void:
 			cine.skip()
 	if mode == "play": _focus3()
 	else: controls.show_interact("")
+	_update_lens()
 	highlight.update(dt)
 	Flame.cull(player.position, dt)
 	if mode == "play": world.cam_size_target = world.zoom
@@ -325,6 +332,51 @@ func _apply_items() -> void:
 		lamp_node.position = Vector3(0.0, -0.02, 0.0)
 	if lamp_node: lamp_node.visible = lamp
 	if rig: rig.hold("lamp" if lamp else "")
+	ui.set_inventory(has_item("shard"), lens_on)
+
+# ------------------------------------------------------------------ the Shard (W.3 gives it; W.4 teaches it; W.6 uses it)
+func set_lens(on: bool) -> void:
+	if on and not has_item("shard"): return
+	if on == lens_on: return
+	lens_on = on
+	sfx.play("glass_tink", -20.0, 1.25 if on else 0.85)
+	ui.set_inventory(has_item("shard"), on)
+	if not on:
+		RenderingServer.global_shader_parameter_set("shard_lens", Vector4.ZERO)
+		ui.set_lens(false, Vector2.ZERO, 0.0)
+
+func _update_lens() -> void:
+	if not lens_on: return
+	if mode != "play" and mode != "glass":
+		set_lens(false)
+		return
+	var vp := get_viewport()
+	var cam := world.cam
+	var vis := vp.get_visible_rect().size
+	var sp := cam.unproject_position(player.position + Vector3(0, 1.5, 0))
+	var r := vis.x * 0.42
+	if lens_at != Vector3.INF: sp = sp.lerp(cam.unproject_position(lens_at), 0.7)
+	# (3D shaders see FRAGCOORD in render-target pixels: the window size x the 3D render scale)
+	var k := Vector2(vp.size) * vp.scaling_3d_scale / vis
+	RenderingServer.global_shader_parameter_set("shard_lens", Vector4(sp.x * k.x, sp.y * k.y, r * k.x, 1.0))
+	ui.set_lens(true, sp, r)
+
+## (W.1) the Stair of Breath's three glasses: one stroke each; the third is traced as SEEN
+func open_glass(id: String) -> void:
+	if not id.begins_with("w1_"):
+		super.open_glass(id)
+		return
+	if mode != "play": return
+	mode = "glass"
+	player.input_dir = Vector2.ZERO
+	auto_target = Vector3.INF
+	key_vec = Vector2.ZERO
+	controls.enabled = false
+	controls.reset()
+	controls.show_interact("")
+	ui.hide_text()
+	var k := clampi(int(id.substr(3)), 1, 3)
+	ui.glass_talk.open({"id": id, "first": "", "question": ["w1_a", "w1_b", "w1_c"][k - 1], "at_q": Vector2.ZERO, "seen": k == 3})
 
 ## the Lamp's world position (crypt darkness, Beacons later), or INF
 func lamp_pos() -> Vector3:
@@ -382,13 +434,14 @@ func cmd(c: String) -> Variant:
 		"seen": seen["prologue"] = a[1] == "1"; return true
 		"cine_at": if cine is Prologue3: (cine as Prologue3).dev_seek(float(a[1])); return true
 		"pool_road": set_pool_road(a[1] == "1"); return true
-		"finale", "jump", "steps", "poolrise", "ghost", "lens", "satchel", "map", "hintnow": return false   # (v2 only)
+		"lens": set_lens(a[1] == "1"); return true
+		"finale", "jump", "steps", "poolrise", "ghost", "satchel", "map", "hintnow": return false   # (v2 only)
 	return super.cmd(c)
 
 func state3() -> Dictionary:
 	var p := player.position
 	return {"pos": [p.x, p.y, p.z], "space": space, "part": part, "mode": mode, "pz": ch.save_state(), "items": items,
-		"seen": seen, "acting": _acting, "cine_t": snappedf(cine.t, 0.1) if cine else -1.0, "glass": _glass_state()}
+		"seen": seen, "acting": _acting, "lens": lens_on, "cine_t": snappedf(cine.t, 0.1) if cine else -1.0, "glass": _glass_state()}
 
 ## (web touch test) the open glass: its phase and the stroke to trace, in viewport pixels
 func _glass_state() -> Dictionary:

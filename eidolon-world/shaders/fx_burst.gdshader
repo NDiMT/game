@@ -28,6 +28,8 @@ uniform float near_fade = 0.0;      // fade within this many metres of the camer
 uniform vec3 light_dir = vec3(0.304, -0.819, -0.486);
 uniform vec3 wind = vec3(0.0);
 uniform float boost = 0.0;          // v1.1c: a brief swell (embers right after ignition; FxBurst decays it)
+uniform vec3 glint_r = vec3(0.18, 0.12, 0.18);   // a3: how far round the node the twinkles sit (glints)
+uniform float crown = 0.0;          // a3: > 0 = a crown splash: every drop leaves at this elevation (rad), evenly round the ring
 
 varying float age_k;
 varying vec2 qv;
@@ -50,6 +52,11 @@ void vertex() {
 	vec3 r = h3(c.rgb + 0.37) * 2.0 - 1.0;
 	vec3 d0 = normalize(dir);
 	vec3 v0 = normalize(mix(d0, normalize(d0 + r * 1.2), spread)) * speed * (0.6 + 0.6 * c.b);
+	if (crown > 0.0) {
+		float az = c.r * 6.28318;
+		float el = crown + (c.g - 0.5) * 0.25;
+		v0 = vec3(cos(az) * cos(el), sin(el), sin(az) * cos(el)) * speed * (0.85 + 0.3 * c.b);
+	}
 	float tt = max(t, 0.0);
 	vec3 p, v;
 	if (kind == 5) {                       // mist: a slow drift that swells
@@ -60,7 +67,7 @@ void vertex() {
 		p = origin + v * tt + vec3(sin(tt * 3.1 + c.r * 9.0), 0.0, cos(tt * 2.7 + c.g * 9.0)) * 0.06 * tt;
 	} else if (kind == 3) {                // glint: stays, twinkles
 		v = vec3(0.0);
-		p = origin + r * vec3(0.18, 0.12, 0.18) + vec3(0.0, 0.08 * sin(tt * 1.3 + c.r * 6.0), 0.0);
+		p = origin + r * glint_r + vec3(0.0, glint_r.y * 0.66 * sin(tt * 1.3 + c.r * 6.0), 0.0);
 	} else {
 		float k = drag > 0.0 ? (1.0 - exp(-drag * tt)) / drag : tt;
 		v = v0 * exp(-drag * tt) + vec3(0.0, -gravity, 0.0) * tt + wind;

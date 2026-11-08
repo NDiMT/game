@@ -13,7 +13,7 @@ func build() -> void:
 
 func post() -> void:
 	var c := POOL.get_center()
-	refl = TwoWorld.still_water(self, game, Vector3(c.x, 0.012, c.y), POOL.size * 0.5, Map3.rect("IB1"), 0.9)
+	refl = TwoWorld.still_water(self, game, Vector3(c.x, 0.045, c.y), POOL.size * 0.5, Map3.rect("IB1"), 0.9)
 	(game.get("ch") as Ch1v3).add_refl(refl)
 
 ## clumps of reeds round the shallow (one mesh, a dull olive-grey, no shadow)

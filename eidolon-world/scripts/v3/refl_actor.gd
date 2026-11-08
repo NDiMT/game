@@ -28,6 +28,8 @@ var _t := 0.0
 var _act := ""
 var _act_t := 0.0
 var _act_dur := 0.0
+var _act_then := Callable()
+var _act_at := 0.6
 var _pose := Figure.Pose.new()
 
 func _init(refl: Reflector) -> void:
@@ -36,9 +38,20 @@ func _init(refl: Reflector) -> void:
 func busy() -> bool:
 	return state != "follow" or not _queue.is_empty()
 
+## (a reset / load) drop everything queued and give her back to the mirror at once
+func stop() -> void:
+	_queue.clear()
+	_path.clear()
+	_act_then = Callable()
+	state = "follow"
+	r.hold = false
+	r.hold_k = 0.0
+
 func detach() -> void: _queue.append(["detach", null, BLEND_IN])
 func go(points: Array) -> void: _queue.append(["walk", points, 0.0])
-func act(gesture: String, dur := 2.5) -> void: _queue.append(["act", gesture, dur])
+## `then` is called once the gesture is `at_k` of the way through (the knot gives, the hand lands)
+func act(gesture: String, dur := 2.5, then := Callable(), at_k := 0.6) -> void: _queue.append(["act", gesture, dur, then, at_k])
+func call_back(f: Callable) -> void: _queue.append(["call", f, 0.0])
 func rejoin() -> void: _queue.append(["rejoin", null, BLEND_OUT])
 
 func _process(dt: float) -> void:
@@ -53,7 +66,12 @@ func _process(dt: float) -> void:
 		"walk": _walk_step(dt)
 		"act":
 			_act_t += dt
-			_gesture(_act, clampf(_act_t / _act_dur, 0.0, 1.0))
+			var k := clampf(_act_t / _act_dur, 0.0, 1.0)
+			_gesture(_act, k)
+			if _act_then.is_valid() and k >= _act_at:
+				var f := _act_then
+				_act_then = Callable()
+				f.call()
 		"rejoin":
 			r.hold_k = maxf(0.0, r.hold_k - dt / BLEND_OUT)
 			_idle_pose()
@@ -73,13 +91,24 @@ func _step_done() -> bool:
 	return false
 
 func _next() -> void:
-	if state == "act": acted.emit(_act)
+	if state == "act":
+		if _act_then.is_valid():
+			var f := _act_then
+			_act_then = Callable()
+			f.call()
+		acted.emit(_act)
 	if state == "walk": arrived.emit()
 	if state == "rejoin": return
 	if _queue.is_empty():
 		if state != "follow" and state != "rejoin": state = "hold"
 		return
 	var q: Array = _queue.pop_front()
+	while q[0] == "call":
+		(q[1] as Callable).call()
+		if _queue.is_empty():
+			state = "hold" if state != "follow" else "follow"
+			return
+		q = _queue.pop_front()
 	match q[0]:
 		"detach":
 			# from wherever her double stands now (your delayed transform)
@@ -98,6 +127,8 @@ func _next() -> void:
 			_act = q[1]
 			_act_t = 0.0
 			_act_dur = maxf(0.1, q[2])
+			_act_then = q[3] if q.size() > 3 else Callable()
+			_act_at = q[4] if q.size() > 4 else 0.6
 			state = "act"
 		"rejoin":
 			state = "rejoin"
