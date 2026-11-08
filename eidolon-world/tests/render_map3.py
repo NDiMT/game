@@ -1,71 +1,25 @@
 #!/usr/bin/env python3
-"""EIDOLON v3 (dev/CH1_V3.md): the Chapter I block plan, top-down. A DRAFT layout (phase 1 moves it into map3.gd).
-Usage: python3 tests/render_map3.py dev/shots/v3-map.png
+"""EIDOLON v3 (dev/CH1_V3.md): the Chapter I block plan, top-down, drawn from Map3 (scripts/v3/map3.gd).
+Usage: godot --headless --path . -s res://tests/map3_dump.gd | grep ^MAP3JSON | cut -c10- > /tmp/map3.json
+       python3 tests/render_map3.py /tmp/map3.json dev/shots/v3-map.png   (scripts/v3/map3.gd is the source)
 North is up (-z), metres, the Atrium's centre is 0,0. The camera looks from the south-west: mirrors only on N or E walls."""
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
-out = sys.argv[1] if len(sys.argv) > 1 else "dev/shots/v3-map.png"
-# [id, beat, name, kind, (x0, z0, x1, z1), group]
-S = [
-    ("WS", "P", "Waking Shore", "story", (-10, 31, 2, 35), "act1"),
-    ("I1", "I.1", "Plate She Treads", "puzzle", (2, 24, 10, 33), "act1"),
-    ("I2", "I.2", "The Bell", "between", (10, 26, 15, 32), "act1"),
-    ("I3", "I.3", "First Glass", "puzzle", (15, 16, 20, 30), "act1"),
-    ("IB1", "-", "Reed Bank", "between", (14, 10, 21, 16), "act1"),
-    ("I4", "I.4", "One Slab", "puzzle", (4, 10, 14, 17), "act1"),
-    ("I5", "I.5", "Crypt (Lamp)", "story", (-3, 10, 4, 19), "act1"),
-    ("A", "I.6", "Atrium of a Thousand Faces", "hub", (-10, -10, 10, 10), "hub"),
-    ("WR", "-", "Inlet Road", "between", (-18, -1.5, -10, 1.5), "west"),
-    ("W1", "W.1", "Stair of Breath", "puzzle", (-22, -12, -18, 2), "west"),
-    ("W2", "W.2", "Offering", "between", (-22, -16, -18, -12), "west"),
-    ("W3", "W.3", "Hall of Glass (Shard)", "puzzle", (-32, -27, -22, -16), "west"),
-    ("W4", "W.4", "Star Corridor", "story", (-38, -23, -32, -20), "west"),
-    ("W5", "W.5", "Where Her Shadow Fell", "puzzle", (-48, -28, -38, -17), "west"),
-    ("IBW", "-", "Ash Landing", "between", (-46, -17, -40, -12), "west"),
-    ("W6", "W.6", "Hidden Way", "between", (-46, -12, -40, -6), "west"),
-    ("WB", "W*", "Glass Beacon", "landmark", (-48, -6, -38, 2), "west"),
-    ("W7", "W.7", "Colossus Stones", "landmark", (-38, 2, -17, 5), "west"),
-    ("N1", "N.1", "Flooded Colonnade", "puzzle", (-3, -20, 3, -10), "north"),
-    ("NG", "-", "Garden Landing", "between", (-4, -24, 6, -20), "north"),
-    ("N2", "N.2", "The Turned Ones", "puzzle", (-8, -36, 4, -24), "north"),
-    ("N3", "N.3", "Votive", "between", (4, -30, 8, -24), "north"),
-    ("N4", "N.4", "THE STILL ROOM (new)", "puzzle", (8, -36, 18, -26), "north"),
-    ("IBN", "-", "Wind Ramp", "between", (13, -42, 18, -36), "north"),
-    ("N5", "N.5", "Court of Light", "puzzle", (2, -54, 16, -42), "north"),
-    ("N6", "N.6", "Tree of Shards", "landmark", (-4, -50, 2, -44), "north"),
-    ("N7", "N.7", "Mist Maze", "puzzle", (-10, -66, 2, -54), "north"),
-    ("NB", "N*", "Garden Beacon", "landmark", (-11, -74, -1, -66), "north"),
-    ("NS", "-", "Cloister Stair", "between", (-14, -72, -11, -9), "north"),
-    ("ER", "-", "Climbing Road", "between", (10, -1.5, 18, 1.5), "east"),
-    ("E1", "E.1", "Balcony", "landmark", (18, -18, 23, 2), "east"),
-    ("E2", "E.2", "Singing Stones", "puzzle", (18, -28, 28, -18), "east"),
-    ("IBE", "-", "Veil Stair", "between", (28, -27, 31, -21), "east"),
-    ("E3", "E.3", "Mirror Walk", "puzzle", (31, -56, 35, -21), "east"),
-    ("E4", "E.4", "Upward Spring", "landmark", (27, -42, 31, -36), "east"),
-    ("E5", "E.5", "The Scales", "puzzle", (24, -68, 36, -56), "east"),
-    ("EB", "E.6*", "High Beacon + Plate", "landmark", (24, -78, 34, -68), "east"),
-    ("EH", "-", "High Stair", "between", (20, -76, 24, -28), "east"),
-    ("VW", "-", "Veiled Way", "between", (-9, 10, -5, 24), "act3"),
-    ("P", "I.20", "Pool of Halves", "puzzle", (-10, 24, -1, 31), "act3"),
-    ("PW", "-", "Far Shore", "between", (-14, 24, -10, 31), "act3"),
-    ("I21", "I.21", "Bridge that Gives Way", "story", (-34, 26, -14, 29), "act3"),
-    ("I22", "I.22", "Gate of the Four", "puzzle", (-46, 22, -34, 33), "act3"),
-    ("I23", "I.23", "First Shrine", "story", (-46, 10, -34, 22), "act3"),
-]
-WATER = [(-34, 5, -14, 26, "the Lagoon"), (-10, 24, -1, 31, ""), (8.4, 10, 9.6, 17, "")]
-OBSERVER = (-24, 13)
-MIRRORS = [((-31, -27), (-23, -27)), ((-7, -36), (3, -36)), ((9, -36), (17, -36)), ((35, -54), (35, -23))]
-ROUTE = {
-    "act1": [(-4, 33), (6, 28), (12, 29), (17.5, 27), (17.5, 18), (17.5, 13), (9, 13.5), (3, 13.5), (0.5, 15), (0.5, 9)],
-    "west": [(-9, 0), (-20, 0), (-20, -14), (-23, -18), (-29, -21), (-35, -21.5), (-43, -22), (-43, -14), (-43, -9),
-             (-43, -2), (-36, 3.5), (-18, 3.5), (-18, 0)],
-    "north": [(0, -9), (0, -19), (1, -22), (-2, -27), (-2, -33), (6, -27), (13, -30), (15.5, -37), (15.5, -41), (9, -48),
-              (0, -47), (-4, -56), (-4, -64), (-6, -69), (-12.5, -60), (-12.5, -10), (-9, -9)],
-    "east": [(9, 0), (20.5, 0), (20.5, -19), (23, -23), (29.5, -24), (33, -26), (33, -39), (29, -39), (33, -39), (33, -55),
-             (30, -60), (29, -70), (22, -70), (22, -30), (20.5, -19)],
-    "act3": [(-7, 9), (-7, 24), (-5, 27.5), (-9, 27.5), (-12, 27.5), (-24, 27.5), (-40, 27.5), (-40, 22), (-40, 16)],
-}
+import json
+src, out = sys.argv[1], sys.argv[2]
+M = json.load(open(src))
+# Map3.SPACES rows: [id, beat, name, kind, [x0, z0, x1, z1], y0, y1, axis, part] -> (id, beat, name, kind, rect, group)
+S = [(s[0], s[1], s[2] + ("" if s[0] != "N4" else " (new)"), s[3], tuple(s[4]), s[8] if s[0] != "A" else "hub") for s in M["spaces"]]
+PART = {s[0]: s[5] for s in S}
+WATER = [(w[0], w[1], w[2], w[3], "the Lagoon" if i == 0 else "") for i, w in enumerate(M["water"])]
+OBSERVER = tuple(M["observer"])
+RECT = {s[0]: s[4] for s in S}
+MIRRORS = []
+for m in M["mirrors"]:
+    x0, z0, x1, z1 = RECT[m[0]]
+    MIRRORS.append(((m[2], z0), (m[3], z0)) if m[1] == "N" else ((x1, m[2]), (x1, m[3])))
+ROUTE = {pt: [(e[0], e[1]) for e in pts] for pt, pts in M["route_parts"].items()}
 KIND = {"puzzle": (214, 140, 140), "between": (200, 192, 222), "landmark": (226, 205, 150), "story": (176, 206, 186),
         "hub": (238, 226, 200)}
 GCOL = {"act1": (60, 120, 70), "hub": (90, 90, 90), "west": (60, 90, 170), "north": (60, 140, 60), "east": (170, 110, 40),

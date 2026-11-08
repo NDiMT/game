@@ -64,6 +64,8 @@ var reach_override := -1.0      # v0.5: >= 0 the double's hand reaches out by th
 var hold := false
 var hold_xf := Transform3D()
 var hold_pose: Figure.Pose = null
+var hold_k := 1.0                  # (v3 ReflActor) how far the hold overrides the copy (blends her off / back on)
+var last_src_xf := Transform3D()   # (v3) the (delayed) transform she copies, before any hold
 static var foot_shader: Shader
 static var ghost_shader: Shader
 static var enabled := true          # perf bench: all reflections off
@@ -220,9 +222,14 @@ func update(dt: float, player: Player, cam_back: Vector3) -> void:
 			src_pose.head_roll += wrong * (0.10 + 0.04 * sin(_t * 0.7)) * smoothstep(0.5, 2.5, player.still_time)
 			src_pose.head_yaw += wrong * 0.06 * sin(_t * 0.43)
 	if not active: return
+	last_src_xf = src_xf
 	if hold:
-		src_xf = hold_xf
-		if hold_pose != null: src_pose = hold_pose
+		if hold_k >= 1.0:
+			src_xf = hold_xf
+			if hold_pose != null: src_pose = hold_pose
+		else:
+			src_xf = src_xf.interpolate_with(hold_xf, hold_k)
+			if hold_pose != null: src_pose = src_pose.blend(hold_pose, hold_k)
 	if gaze_target != Vector3.INF:
 		var r := _gaze(dt, player, src_xf, src_pose, seen_in_glass(player.global_position + Vector3(0, 0.7, 0), cam_back))
 		src_xf = r[0]

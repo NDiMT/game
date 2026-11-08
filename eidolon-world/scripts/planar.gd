@@ -107,7 +107,16 @@ func update(main_cam: Camera3D, on: bool, moving: bool) -> void:
 	var rb := _H * mx.basis
 	rb.x = -rb.x                     # back to a proper rotation (the image is mirrored, as it should be)
 	cam.global_transform = Transform3D(rb, rp)
-	cam.size = main_cam.size
+	# (v3) the cinematics' perspective camera (Cinematic.path) reflects as a perspective
+	if main_cam.projection == Camera3D.PROJECTION_PERSPECTIVE:
+		if cam.projection != Camera3D.PROJECTION_PERSPECTIVE: cam.projection = Camera3D.PROJECTION_PERSPECTIVE
+		cam.fov = main_cam.fov
+		cam.keep_aspect = main_cam.keep_aspect
+	else:
+		if cam.projection != Camera3D.PROJECTION_ORTHOGONAL:
+			cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+			cam.keep_aspect = Camera3D.KEEP_WIDTH
+		cam.size = main_cam.size
 	var view := cam.global_transform.affine_inverse()
 	var proj := cam.get_camera_projection()
 	mat.set_shader_parameter("refl_vp", Projection(proj) * Projection(view))

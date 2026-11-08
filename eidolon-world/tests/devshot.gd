@@ -11,7 +11,7 @@ func _ready() -> void:
 	Game.autotest = true
 	var args := OS.get_cmdline_user_args()
 	steps = (args[0] if args.size() > 0 else "w:3;shot:dev;quit").split(";")
-	game = load("res://scenes/main.tscn").instantiate()
+	game = load("res://scenes/main3.tscn" if OS.get_environment("EIDOLON_V3") == "1" else "res://scenes/main.tscn").instantiate()          # (v3: EIDOLON_V3=1)
 	add_child(game)
 	var b1 := Bracket.new(); b1.host = self; b1.first = true; b1.process_priority = -100000; add_child(b1)
 	var b2 := Bracket.new(); b2.host = self; b2.first = false; b2.process_priority = 100000; add_child(b2)

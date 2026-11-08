@@ -157,6 +157,10 @@ Built from `EIDOLON_SCRIPT.md` §1, §5, §6 (Ch I) and §10. Map: `dev/shots/v3
 | 4 East + Act 3 | E.1–E.6, I.20–I.23, Beacons, ending | quick all + full smoke | L ≈2.5k |
 | 5 Polish | A's P1 fx/anims, audio pass, perf (≤4 ms script, no room-enter hitch), overlap/framing/zfight, export | full smoke, live check | M ≈0.8k |
 
+**Phase 1 status (2026-11-08): done.**
+- Code: `scripts/v3/` (map3, world3, two_world, refl_actor, puzzle, ch1, game3, pz/pz_i1 as the reference puzzle) and `scenes/main3.tscn`.
+- v2 stays live. Tests: `quick.sh`, `flow_v3`, `pz_test`.
+
 ## 8. Kept and replaced (v2 → v3)
 | keep (systems; small edits only) | rewrite / remove | why |
 |---|---|---|

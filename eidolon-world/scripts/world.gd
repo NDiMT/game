@@ -457,6 +457,52 @@ func update_reveal(occ: Array[AABB], p: Vector3, dt: float) -> void:
 func shake(amount: float) -> void:
 	_shake = maxf(_shake, amount)
 
+## v3 (Agent A) camera-shake CURVES (cinematics; stackable; see CineFx.shake): "thud" (an impact: a drop and a
+## bounce), "crack" (one sharp sideways jolt), "tremor" (a fine high shiver, `seconds` long), "rumble" (a low
+## roll that swells and ebbs over `seconds`), "taps" (two small knocks, 0.45 s apart). strength 1 = about 6 cm of
+## the 7.5 m view (a clear hit, never nauseous); a touch of roll on the big ones.
+var _shakes: Array = []          # [kind, strength, t, seconds]
+func shake_curve(kind: String, strength := 1.0, seconds := -1.0) -> void:
+	var dur: float = {"thud": 0.7, "crack": 0.45, "tremor": 1.2, "rumble": 2.5, "taps": 1.0}.get(kind, 0.7)
+	_shakes.append([kind, strength, 0.0, seconds if seconds > 0.0 else dur])
+
+static func _sn(t: float, f: float, s: float) -> float:
+	# smooth deterministic noise in -1..1 (incommensurate sines)
+	return (sin(t * f + s) * 0.55 + sin(t * f * 2.31 + s * 1.7) * 0.3 + sin(t * f * 4.07 + s * 3.1) * 0.15)
+
+func _shake_curves(dt: float) -> Vector3:
+	var o := Vector3.ZERO
+	var i := 0
+	while i < _shakes.size():
+		var sh: Array = _shakes[i]
+		sh[2] += dt
+		var t: float = sh[2]
+		var T: float = sh[3]
+		var a: float = sh[1] * 0.06
+		if t >= T:
+			_shakes.remove_at(i)
+			continue
+		var e := 0.0
+		match sh[0]:
+			"thud":
+				e = exp(-t * 7.0) * a
+				o += Vector3(_sn(t, 40.0, 1.0) * 0.4, -sin(t * 30.0) * 1.2, _sn(t, 23.0, 4.0) * 0.012 / 0.06) * e
+			"crack":
+				e = exp(-t * 11.0) * a
+				o += Vector3(sin(t * 55.0) * 1.3, _sn(t, 61.0, 2.0) * 0.3, sin(t * 55.0) * 0.015 / 0.06) * e
+			"tremor":
+				e = a * 0.25 * smoothstep(0.0, 0.1, t) * (1.0 - smoothstep(T - 0.3, T, t))
+				o += Vector3(_sn(t, 150.0, 0.3), _sn(t, 131.0, 5.0), 0.0) * e
+			"rumble":
+				e = a * 0.6 * sin(PI * clampf(t / T, 0.0, 1.0))
+				o += Vector3(_sn(t, 17.0, 2.0), _sn(t, 13.0, 7.0) * 0.8, _sn(t, 7.0, 3.0) * 0.006 / 0.06) * e
+			"taps":
+				for k in 2:
+					var u := t - k * 0.45
+					if u > 0.0: o += Vector3(0.0, -sin(u * 42.0) * exp(-u * 16.0) * a * 0.55, 0.0)
+		i += 1
+	return o
+
 ## camera-relative input: screen-right / screen-up vectors on the ground plane
 func ground_axes() -> Array:
 	var y := rig.rotation.y
@@ -589,13 +635,15 @@ func _process(dt: float) -> void:
 		_rig_smooth = _rig_smooth.lerp(target, 1.0 - exp(-dt * 4.0))
 		rig.position = _pixel_snap(_rig_smooth)
 	_was_following = follow != null
+	var sc := _shake_curves(dt) if not _shakes.is_empty() else Vector3.ZERO
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - dt * 0.6)
-		cam.h_offset = sin(_t * 91.0) * _shake * 0.3
-		cam.v_offset = base_v_offset * cam.size / CAM_SIZE + cos(_t * 77.0) * _shake * 0.3
+		cam.h_offset = sin(_t * 91.0) * _shake * 0.3 + sc.x
+		cam.v_offset = base_v_offset * cam.size / CAM_SIZE + cos(_t * 77.0) * _shake * 0.3 + sc.y
 	else:
-		cam.h_offset = 0.0
-		cam.v_offset = base_v_offset * cam.size / CAM_SIZE
+		cam.h_offset = sc.x
+		cam.v_offset = base_v_offset * cam.size / CAM_SIZE + sc.y
+	cam.rotation.z = sc.z
 	fog_hole = fog_hole.lerp(fog_hole_target, 1.0 - exp(-dt * 1.2))
 	fog_mats[VEIL].set_shader_parameter("hole_inner", fog_hole.x)
 	fog_mats[VEIL].set_shader_parameter("hole_outer", fog_hole.y)

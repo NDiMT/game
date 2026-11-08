@@ -111,6 +111,82 @@ func rise_from(water_y: float, seconds := 3.0, stand_y := NAN, water_fx: Object 
 	tw.tween_callback(func() -> void: FxBurst.splash(get_parent(), Vector3(p.x, water_y + 0.01, p.z), 0.6)).set_delay(seconds * 0.1)
 	return tw
 
+## v3 (Agent A) THE GRAB: his hand (side "R"/"L") closes on a world point or a moving one (a Callable -> Vector3, e.g.
+## func(): return ione.rig.bone_world("R_Clavicle")), over `seconds`; he leans into it. ungrab() lets go.
+##   w.grab(func() -> Vector3: return her.rig.bone_world("R_Clavicle") + Vector3(0, 0.03, 0), "R", 1.1)
+##   w.pull_under(water_y, 2.2, her_node)   he sinks back into the water, dragging her node after him (returns the Tween;
+##                                           play her rig's "refl_dragged" with it)
+var _grab_src: Variant = null
+var _grab_side := "R"
+var _grab_w := 0.0
+var _grab_rate := 1.0
+var _grab_on := false
+func grab(target: Variant, side := "R", seconds := 1.1) -> void:
+	_grab_src = target
+	_grab_side = side
+	_grab_on = true
+	_grab_rate = 1.0 / maxf(seconds, 0.05)
+
+func ungrab(seconds := 0.8) -> void:
+	_grab_on = false
+	_grab_rate = 1.0 / maxf(seconds, 0.05)
+
+func pull_under(water_y: float, seconds := 2.2, victim: Node3D = null) -> Tween:
+	var tw := create_tween()
+	tw.set_parallel(true)
+	# a short heave up first (the weight taken), then down hard, easing in
+	tw.tween_property(self, "global_position:y", global_position.y + 0.06, 0.25).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(self, "global_position:y", water_y - height * 1.05, seconds).set_delay(0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if victim:
+		var vy := victim.global_position.y
+		var dy := global_position.y - vy
+		tw.tween_property(victim, "global_position:y", water_y - height * 1.05 - dy - 0.3, seconds * 1.05).set_delay(0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	return tw
+
+func _grab_point() -> Vector3:
+	if _grab_src is Callable: return (_grab_src as Callable).call()
+	if _grab_src is Node3D and is_instance_valid(_grab_src): return (_grab_src as Node3D).global_position
+	if _grab_src is Vector3: return _grab_src
+	return Vector3.INF
+
+func _apply_grab(dt: float) -> void:
+	_grab_w = move_toward(_grab_w, 1.0 if _grab_on else 0.0, dt * _grab_rate)
+	if _grab_w <= 0.0: return
+	var tp := _grab_point()
+	if tp == Vector3.INF: return
+	var w := smoothstep(0.0, 1.0, _grab_w)
+	var Xi := skel.global_transform.affine_inverse()
+	var T := Xi * tp
+	var sg := 1.0 if _grab_side == "L" else -1.0
+	# he leans into the grab (the upper spine bows toward it)
+	var sp := skel.find_bone("Spine02")
+	var gs := skel.get_bone_global_pose(sp)
+	var to := T - gs.origin
+	to.y = 0.0
+	if to.length() > 0.01:
+		var ax := Vector3.UP.cross(to.normalized())
+		skel.set_bone_global_pose(sp, Transform3D(Basis(ax.normalized(), 0.28 * w) * gs.basis, gs.origin))
+	var up := skel.find_bone(_grab_side + "_Upperarm")
+	var fo := skel.find_bone(_grab_side + "_Forearm")
+	var ha := skel.find_bone(_grab_side + "_Hand")
+	var gu := skel.get_bone_global_pose(up)
+	var gf := skel.get_bone_global_pose(fo)
+	var gh := skel.get_bone_global_pose(ha)
+	var l1 := gu.origin.distance_to(gf.origin)
+	var l2 := gf.origin.distance_to(gh.origin)
+	var cur_pole := gf.origin - (gu.origin + (gh.origin - gu.origin) * 0.5)
+	var pole := cur_pole.normalized().lerp(Vector3(sg * 0.6, -0.5, -0.5).normalized(), w)
+	var sol := RigIK.solve2(gu.origin, l1, l2, gh.origin.lerp(T, w), pole)
+	var q1 := RigIK.frame_rot(gf.origin - gu.origin, pole, (sol[0] as Vector3) - gu.origin, pole)
+	skel.set_bone_global_pose(up, Transform3D(Basis(q1) * gu.basis, gu.origin))
+	gf = skel.get_bone_global_pose(fo)
+	gh = skel.get_bone_global_pose(ha)
+	var q2 := RigIK.frame_rot(gh.origin - gf.origin, pole, (sol[1] as Vector3) - (sol[0] as Vector3), pole)
+	skel.set_bone_global_pose(fo, Transform3D(Basis(q2) * gf.basis, gf.origin))
+	# the hand closes over the shoulder: the palm turned down onto it
+	gh = skel.get_bone_global_pose(ha)
+	skel.set_bone_global_pose(ha, Transform3D(Basis(Vector3.RIGHT.rotated(Vector3.UP, 0.0), 0.5 * w) * gh.basis, gh.origin))
+
 ## the heavy walk on/off (blended)
 func walk(on: bool) -> void:
 	if not anim or on == _walking: return
@@ -142,6 +218,7 @@ func _process(dt: float) -> void:
 	_look_k = move_toward(_look_k, 1.0 if _look_target != Vector3.INF else 0.0, dt * 0.8)
 	_yaw = lerpf(_yaw, want, 1.0 - exp(-dt * 2.2))
 	var y := _yaw * smoothstep(0.0, 1.0, _look_k)
+	_apply_grab(dt)
 	if absf(y) < 0.001: return
 	var share := [0.2, 0.25, 0.55]
 	var up_sk := skel.global_transform.basis.inverse() * Vector3.UP
