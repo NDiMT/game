@@ -74,17 +74,20 @@ static func mirror(parent: Node3D, glass_mat: ShaderMaterial, center: Vector3, n
 		var L := size.x + wl + wr if horiz else size.y + wb + wt
 		var mid := (wr - wl) * 0.5 if horiz else (wt - wb) * 0.5
 		var off := hy if horiz else hx
+		# (a4 zfight) the vertical rails sit 2.5 mm deeper than the horizontal ones: where they cross at the corners no
+		# two faces share a plane; within a rail every piece has its own back / front / edge depths
+		var dz := 0.0 if horiz else 0.0025
 		var rail := func(across: float, rw: float, d: float, z: float, col: Color, length: float, centred: bool) -> void:
 			var a0 := 0.0 if centred else mid
-			var c := Vector3(a0, sg * (off + across), z) if horiz else Vector3(sg * (off + across), a0, z)
+			var c := Vector3(a0, sg * (off + across), z + dz) if horiz else Vector3(sg * (off + across), a0, z + dz)
 			var sz := Vector3(length, rw, d) if horiz else Vector3(rw, length, d)
 			m.box(c, sz, col)
-		rail.call(w * 0.5, w + 0.02, 0.05, 0.025, _c(SILVER, 0.9), L, false)                    # the back plate
+		rail.call((w + 0.013) * 0.5, w + 0.007, 0.062, 0.019, _c(SILVER, 0.9), L, false)         # the back plate (off the glass)
 		if f > 0.45:
 			rail.call(0.13 * f, 0.17 * f, 0.11, 0.07, _c(SILVER, 0.35), L - 0.1, false)        # the main roll
 			rail.call(w - 0.025, 0.04, 0.09, 0.075, _c(SILVER, 0.0), L - 0.05, false)          # the outer bead
-		rail.call(0.015, 0.05, 0.14, 0.07, _c(SILVER, 0.0), (size.x if horiz else size.y) + 0.02, true)   # the inner lip
-		rail.call(0.06 * minf(f, 1.0), 0.03, 0.12, 0.08, _c(SILVER, 0.8), (size.x if horiz else size.y) + 0.1, true)
+		rail.call(0.015, 0.05, 0.146, 0.067, _c(SILVER, 0.0), (size.x if horiz else size.y) + 0.02, true)   # the inner lip
+		rail.call(0.02 + 0.045 * minf(f, 1.0), 0.03, 0.114, 0.077, _c(SILVER, 0.8), (size.x if horiz else size.y) + 0.13, true)
 	# the corner blocks, each with a rosette
 	for sx in [-1.0, 1.0]:
 		for sy in [-1.0, 1.0]:
@@ -99,7 +102,7 @@ static func mirror(parent: Node3D, glass_mat: ShaderMaterial, center: Vector3, n
 	# the crest: a stepped cartouche over the top rail with a crimson enamel boss (the accent)
 	var top := hy + wt
 	m.box(Vector3(0, top + 0.07, 0.05), Vector3(1.5, 0.14, 0.1), _c(SILVER, 0.4))
-	m.box(Vector3(0, top + 0.19, 0.06), Vector3(0.9, 0.12, 0.12), _c(SILVER, 0.2))
+	m.box(Vector3(0, top + 0.19, 0.064), Vector3(0.9, 0.12, 0.12), _c(SILVER, 0.2))
 	m.box(Vector3(0, top + 0.12, 0.12), Vector3(0.34, 0.3, 0.06), _c(SILVER, 0.6))
 	m.cyl(Vector3(0, top + 0.12, 0.16), 0.075, 0.09, 0.03, _c(SILVER, 0.0), 16, Basis(Vector3.RIGHT, PI * 0.5))
 	m.sphere(Vector3(0, top + 0.12, 0.175), Vector3(0.055, 0.055, 0.03), _c(ENAMEL), 12, 6)
@@ -284,21 +287,26 @@ static func block_mesh(size: Vector3) -> ArrayMesh:
 	var bh := 0.1
 	var ch := 0.07
 	m.box(Vector3(0, bh * 0.5, 0), Vector3(size.x, bh, size.z), MB.col(0.75, false, 0.3))                       # the black base course
-	m.box(Vector3(0, bh + (size.y - bh - ch) * 0.5, 0), Vector3(size.x - 0.05, size.y - bh - ch, size.z - 0.05), cream)   # the body
+	# (a4 zfight) the body runs 1 cm into the base course and the cap, the inlay 6 mm into the cap: no shared faces
+	m.box(Vector3(0, (bh + size.y - ch) * 0.5, 0), Vector3(size.x - 0.05, size.y - bh - ch + 0.02, size.z - 0.05), cream)   # the body
 	m.box(Vector3(0, size.y - ch * 0.5, 0), Vector3(size.x - 0.01, ch, size.z - 0.01), cream)                    # the cap
-	m.box(Vector3(0, size.y + 0.008, 0), Vector3(size.x - 0.16, 0.016, size.z - 0.16), MB.col(0.25, false, 0.55))
+	m.box(Vector3(0, size.y + 0.002, 0), Vector3(size.x - 0.16, 0.016, size.z - 0.16), MB.col(0.25, false, 0.55))
 	var ph := size.y - bh - ch - 0.14
 	for k in 4:
 		var bs := Basis(Vector3.UP, k * PI * 0.5)
 		var half: float = (size.z if k % 2 == 0 else size.x) * 0.5
 		var wide: float = (size.x if k % 2 == 0 else size.z)
-		m.box(bs * Vector3(0, bh + 0.07 + ph * 0.5, half - 0.03), Vector3(wide - 0.22, ph, 0.012), MB.col(0.75, false, 0.5), bs)   # a sunk dark panel
-		m.box(bs * Vector3(0, bh + 0.07 + ph * 0.5, half - 0.02), Vector3(wide - 0.3, ph - 0.08, 0.012), MB.col(0.25, false, 0.5), bs)
-		var rc := bs * Vector3(0, bh + 0.07 + ph * 0.62, half - 0.005)
-		m.box(rc + bs * Vector3(0, 0.06, -0.005), Vector3(0.09, 0.05, 0.016), MB.col(0.9), bs)
-		for i in 10:
-			var a0 := TAU * i / 10.0
-			m.box(rc + bs * Vector3(cos(a0) * 0.055, sin(a0) * 0.055 - 0.01, 0.0), Vector3(0.026, 0.04, 0.016), MB.col(0.9), bs * Basis(Vector3.BACK, a0))
+		# (face f = half - 0.025: dark panel f-0.01..f+0.004, its light field f-0.005..f+0.01, the ring's mount
+		# f+0.0125..f+0.0265, the ring a round tube (flats at f+0.0025, f+0.0215): no two faces within 2 mm)
+		m.box(bs * Vector3(0, bh + 0.07 + ph * 0.5, half - 0.028), Vector3(wide - 0.22, ph, 0.014), MB.col(0.75, false, 0.5), bs)   # a sunk dark panel
+		m.box(bs * Vector3(0, bh + 0.07 + ph * 0.5, half - 0.0225), Vector3(wide - 0.3, ph - 0.08, 0.015), MB.col(0.25, false, 0.5), bs)
+		var rc := bs * Vector3(0, bh + 0.07 + ph * 0.62, half - 0.013)
+		m.box(rc + bs * Vector3(0, 0.06, 0.0075), Vector3(0.09, 0.05, 0.014), MB.col(0.9), bs)
+		var ring := PackedVector3Array()
+		for i in 13:          # (open at the top, under its mount: a closed tube's seam overlaps itself)
+			var a := PI * 0.5 + TAU * (i + 0.5) / 14.0
+			ring.append(rc + bs * Vector3(cos(a) * 0.055, sin(a) * 0.055 - 0.01, 0.0))
+		_tube(m, ring, 0.011, MB.col(0.9), 6)
 	return m.commit()
 
 static func block(parent: Node3D, game: Game, pos: Vector3, yaw := 0.0, size := Vector3(0.8, 0.6, 0.8)) -> Node3D:
@@ -326,7 +334,7 @@ static func _contact_shadow(root: Node3D, size: Vector3) -> void:
 	sm.set_shader_parameter("half_in", Vector2(size.x, size.z) * 0.5 / (Vector2(size.x, size.z) + Vector2(0.5, 0.5)))
 	sh.material_override = sm
 	sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	sh.position = Vector3(0, 0.006, 0)
+	sh.position = Vector3(0, 0.024, 0)          # (a4 zfight: over the 1.2 cm rune rugs by 1.2 cm; sub-pixel at 7.5 m view)
 	root.add_child(sh)
 
 ## push it to `to` (its new floor centre): it heaves, grinds over (dust off its foot), thuds and rocks back.

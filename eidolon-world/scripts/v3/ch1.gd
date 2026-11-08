@@ -33,6 +33,22 @@ const REGISTRY := {
 	"N6": preload("res://scripts/v3/pz/pz_n6.gd"),
 	"N7": preload("res://scripts/v3/pz/pz_n7.gd"),
 	"NB": preload("res://scripts/v3/pz/pz_nb.gd"),
+	# ---- phase 4: the East wing (height and sound), Act 3 (the convergence) and the chapter's end
+	"ER": preload("res://scripts/v3/pz/pz_er.gd"),
+	"E1": preload("res://scripts/v3/pz/pz_e1.gd"),
+	"E2": preload("res://scripts/v3/pz/pz_e2.gd"),
+	"IBE": preload("res://scripts/v3/pz/pz_ibe.gd"),
+	"E3": preload("res://scripts/v3/pz/pz_e3.gd"),
+	"E4": preload("res://scripts/v3/pz/pz_e4.gd"),
+	"E5": preload("res://scripts/v3/pz/pz_e5.gd"),
+	"EB": preload("res://scripts/v3/pz/pz_eb.gd"),
+	"EH": preload("res://scripts/v3/pz/pz_eh.gd"),
+	"VW": preload("res://scripts/v3/pz/pz_vw.gd"),
+	"P": preload("res://scripts/v3/pz/pz_p.gd"),
+	"PW": preload("res://scripts/v3/pz/pz_pw.gd"),
+	"I21": preload("res://scripts/v3/pz/pz_i21.gd"),
+	"I22": preload("res://scripts/v3/pz/pz_i22.gd"),
+	"I23": preload("res://scripts/v3/pz/pz_i23.gd"),
 }
 
 var game: Game

@@ -27,7 +27,7 @@ func build() -> void:
 func post() -> void:
 	var r := Map3.rect("P")
 	var c := Vector3(r.get_center().x, SURF_Y + 0.012, r.get_center().y)
-	pool = TwoWorld.still_water(self, game, c, r.size * 0.5 - Vector2(0.25, 0.25), Rect2(r.position.x, r.position.y, 12.0, 11.0), 0.5)
+	pool = TwoWorld.still_water(self, game, c, r.size * 0.5 - Vector2(0.25, 0.25), Rect2(r.position.x, r.position.y - 2.0, 12.0, 13.0), 0.5)          # (from the Veiled Way's lip: I.20)
 	pool.planar.cam.far = 60.0          # (the prologue looks far across it: the Observer is 25 m out)
 	(game.get("ch") as Ch1v3).add_refl(pool)
 	pool_fx = WaterFX.new()

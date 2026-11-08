@@ -5,7 +5,7 @@ extends Node
 ##   cine   a CineCam path + handoff: the perspective camera takes the view, then the fixed camera is back, framed
 ##          the same; a skipped one also ends on the fixed camera
 ##   actor  her reflection in the N.4 glass detaches, walks in her world, gestures, and rejoins you (ReflActor)
-##   godot --headless --fixed-fps 60 --path . res://tests/pz_test.tscn -- --pz=<id|all|cine|actor|foundations>
+##   godot --headless --fixed-fps 60 --path . res://tests/pz_test.tscn -- --pz=<id[,id...]|all|cine|actor|foundations>
 ## Prints PZ PASS / PZ FAIL.
 
 var game: Game3
@@ -33,7 +33,7 @@ func _ready() -> void:
 	match want:
 		"all": jobs = game.ch.pz.keys() + ["cine", "actor", "prologue"]
 		"foundations": jobs = ["cine", "actor", "prologue"]
-		_: jobs = [want]
+		_: jobs = Array(want.split(","))          # (one id, or a comma list)
 	for j in jobs:
 		if not (j in ["cine", "actor", "prologue"]) and not game.ch.pz.has(j):
 			print("PZ FAIL  unknown puzzle '%s' (registered: %s)" % [j, ", ".join(game.ch.pz.keys())])

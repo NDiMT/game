@@ -360,8 +360,13 @@ var _layers: Array = []
 const KIND_ORDER := {"idle": 0, "hold": 1, "action": 2}
 ## default targets (model space) of the clips that aim at "@"
 const AT_DEFAULT := {"reach": Vector3(-0.12, 1.12, 0.44), "pickup": Vector3(-0.10, 0.10, 0.34), "kneel_touch": Vector3(-0.08, 0.10, 0.56),
-	"touch_glass": Vector3(-0.10, 1.20, 0.40), "kneel_reach": Vector3(-0.10, 0.12, 0.78), "refl_press": Vector3(-0.08, 1.78, 0.12)}
-const N_DEFAULT := {"touch_glass": Vector3(0, 0, -1), "kneel_touch": Vector3.UP, "kneel_reach": Vector3.UP, "refl_press": Vector3.DOWN}
+	"touch_glass": Vector3(-0.10, 1.20, 0.40), "kneel_reach": Vector3(-0.10, 0.12, 0.78), "refl_press": Vector3(-0.08, 1.78, 0.12),
+	"push": Vector3(0.0, 0.92, 0.46), "light_with_lamp": Vector3(-0.15, 0.95, 0.62), "untie_cleat": Vector3(-0.08, 1.05, 0.42),
+	"reach_high": Vector3(-0.10, 2.05, 0.30), "reach_fail_shake": Vector3(-0.10, 2.20, 0.32), "knock_glass_twice": Vector3(-0.10, 1.30, 0.42),
+	"climb_block": Vector3(0.0, 0.60, 0.40), "ring_bell": Vector3(-0.12, 1.75, 0.30), "reach_low": Vector3(-0.12, 0.45, 0.50),
+	"palm_to_palm": Vector3(-0.10, 0.12, 0.78), "hang_weight": Vector3(0.0, 2.0, 0.30)}
+const N_DEFAULT := {"touch_glass": Vector3(0, 0, -1), "kneel_touch": Vector3.UP, "kneel_reach": Vector3.UP, "refl_press": Vector3.DOWN,
+	"push": Vector3(0, 0, -1), "knock_glass_twice": Vector3(0, 0, -1), "reach_low": Vector3.UP, "palm_to_palm": Vector3.UP}
 
 ## play a clip (HeroineClips): opts {"at": Vector3 world | Node3D, "n": world normal of the touched surface (toward her),
 ## "hold": true (wait at the clip's hold point until release()), "speed": 1.0, "fade": seconds}. Returns its length (s).
@@ -759,7 +764,7 @@ func _apply_layer(L: Layer, w: float, Mi: Transform3D) -> void:
 	L.pn_m = -n.normalized()
 	var res := func(v: Variant) -> Variant:
 		if v is String: return L.at_m if v == "@" else L.pn_m
-		if v is Array: return L.at_m + (v[1] as Vector3)
+		if v is Array: return L.at_m - L.pn_m * float(v[1]) if v[0] == "@n" else L.at_m + (v[1] as Vector3)    # (["@n", d]: d m off the surface, toward her)
 		return v
 	var chs: Dictionary = c["ch"]
 	for ch in chs:

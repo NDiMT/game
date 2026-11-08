@@ -40,6 +40,7 @@ static func _space(lv: Level, s: Array) -> void:
 	lv.walk(wr, Map3.height(id, wr.position), Map3.height(id, wr.end), ax, Map3.ZP + id, not pool)
 	var z := zone(s[8])
 	var mat := 0.0 if s[3] != "hub" else 0.15
+	if id in Map3.BRIDGES: return                       # (its beat builds the spans)
 	if pool: lv.slab(z, r, y0 - 1.1, 0.4, 0.5)          # (the pool's bed, under the sheet)
 	elif ax < 0 or is_equal_approx(y0, y1):
 		for rr in _cut(r, Map3.CUTS.get(id, [])): lv.slab(z, rr, y0, 0.6, mat)
@@ -96,6 +97,7 @@ static func _doorway(lv: Level, a: String, b: String) -> void:
 ## each edge of a space: wall it, but leave its doorways open and leave shared stretches to the space listed first
 static func _walls(lv: Level, s: Array) -> void:
 	var id: String = s[0]
+	if id in Map3.BRIDGES: return                       # (open to the lagoon: its beat builds a balustrade per span)
 	var r := Map3.rect(id)
 	var ylo := minf(s[5], s[6])
 	var yhi := maxf(s[5], s[6])
@@ -119,7 +121,7 @@ static func _walls(lv: Level, s: Array) -> void:
 				var cc: float = c.x if e[1] == 0 else c.y
 				var hw: float = d["w"] * 0.5
 				cuts.append([cc - hw, cc + hw])
-			if j < idx: cuts.append(ov)          # the first-listed space walls the shared stretch
+			if j < idx and not (o[0] in Map3.BRIDGES): cuts.append(ov)          # the first-listed space walls the shared stretch (a bridge walls nothing)
 		var h := Map3.WALL_HI if e[4] == "N" or e[4] == "E" else Map3.WALL_LO
 		if shared and (e[4] == "N" or e[4] == "E"): h = 1.8          # between two rooms: mid height (fades for her)
 		if id in Map3.POOLS: h = 0.25                                # (a pool: a low rim, the water open to the sky)

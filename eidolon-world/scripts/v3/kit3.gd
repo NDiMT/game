@@ -156,3 +156,64 @@ static func flame(game: Game, parent: Node3D, at: Vector3, size := 0.22, lit := 
 	parent.add_child(f)
 	f.mat.set_shader_parameter("intensity", 0.9 if lit else 0.0)
 	return f
+
+## (phase 4) a torn veil hanging from its top edge, stirring in the wind (A: swap any "<beat>_Veil_*" by name). `wind`
+## (shader param) 0 calm .. 3 a gust; the quad faces +z of `basis`; it is cut ragged along its foot
+const VEIL_SHADER := """
+shader_type spatial;
+render_mode cull_disabled, diffuse_lambert, specular_disabled;
+uniform vec4 tint : source_color = vec4(0.80, 0.78, 0.76, 1.0);
+uniform vec4 hem : source_color = vec4(0.48, 0.05, 0.08, 1.0);
+uniform float wind = 1.0;
+uniform float phase = 0.0;
+varying float drop;
+void vertex() {
+	drop = UV.y;
+	float w = wind * drop * drop;
+	float t = TIME * (1.4 + 0.35 * wind) + phase;
+	VERTEX.z += (sin(t + VERTEX.x * 3.1 + drop * 2.4) * 0.09 + sin(t * 2.3 + drop * 5.0) * 0.03) * w;
+	VERTEX.x += sin(t * 0.7 + phase) * 0.05 * w;
+	VERTEX.y += (1.0 - cos(clamp(w * 0.25, 0.0, 1.0))) * 0.2;
+}
+void fragment() {
+	float rag = 0.86 + 0.07 * sin(UV.x * 37.0 + phase * 3.0) + 0.05 * sin(UV.x * 91.0 + phase);
+	if (UV.y > rag) discard;
+	float h = smoothstep(rag - 0.12, rag - 0.02, UV.y);
+	ALBEDO = mix(tint.rgb, hem.rgb, h * 0.55);
+	ROUGHNESS = 0.92;
+	BACKLIGHT = vec3(0.35);
+}
+"""
+static var _veil_shader: Shader
+
+static func veil(parent: Node3D, nm: String, top: Vector3, size: Vector2, basis := Basis(), wind := 1.0) -> MeshInstance3D:
+	if _veil_shader == null:
+		_veil_shader = Shader.new()
+		_veil_shader.code = VEIL_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = _veil_shader
+	m.set_shader_parameter("wind", wind)
+	m.set_shader_parameter("phase", randf() * TAU)
+	var q := QuadMesh.new()
+	q.size = size
+	q.subdivide_width = 4
+	q.subdivide_depth = 8
+	q.center_offset = Vector3(0, -size.y * 0.5, 0)
+	var mi := MeshInstance3D.new()
+	mi.name = nm
+	mi.mesh = q
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.transform = Transform3D(basis, top)
+	parent.add_child(mi)
+	return mi
+
+## blow on a set of veils: up to `to` and back to `calm` over `seconds`
+static func gust(veils: Array, to := 3.0, seconds := 2.6, calm := 1.0) -> void:
+	for v in veils:
+		var mi := v as MeshInstance3D
+		if mi == null or not is_instance_valid(mi): continue
+		var m := mi.material_override as ShaderMaterial
+		var tw := mi.create_tween()
+		tw.tween_method(func(x: float) -> void: m.set_shader_parameter("wind", x), calm, to, seconds * 0.3).set_trans(Tween.TRANS_SINE)
+		tw.tween_method(func(x: float) -> void: m.set_shader_parameter("wind", x), to, calm, seconds * 0.7).set_trans(Tween.TRANS_SINE)

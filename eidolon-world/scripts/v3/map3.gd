@@ -90,6 +90,8 @@ const WATER := [[-34, 5, -14, 32, -0.35], [-10, 24, -1, 31, -0.35], [8.2, 10, 9.
 ## (phase 2) spaces that are WATER (no floor: a sunk bed under the sheet, a low rim, no walking until a beat opens a
 ## road over them: Game3.set_pool_road) and holes cut out of a space's floor (the I.4 stream): [x0, z0, x1, z1]
 const POOLS := ["P"]
+## (phase 4) spaces that are a BRIDGE: World3 builds no floor and no walls for them; their beat builds the spans (I.21)
+const BRIDGES := ["I21"]
 const CUTS := {"I4": [[8.2, 10.0, 9.8, 17.0]], "N1": [[-3.0, -18.0, 3.0, -12.0]]}
 const OBSERVER := Vector3(-24.0, 0.0, 13.0)      # the sunk veiled head (prologue shot 1, W.7)
 ## (phase 3) the North wing is shifted 2 m west from the draft (N2 10x12, N3, N4 at x 6..16) and IBN runs north up the

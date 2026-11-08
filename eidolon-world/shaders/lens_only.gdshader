@@ -56,7 +56,13 @@ void fragment() {
 		ALPHA = clamp(m.x + m.y * 0.75 + core * 0.4, 0.0, 1.0) * edge;
 	} else if (kind < 1.5) {
 		float n = texture(noise_tex, UV * vec2(1.5, 2.5)).r;
-		ALBEDO = vec3(0.56, 0.55, 0.53) * (0.85 + 0.25 * n);
+		// (a4) ceiling stone: coffered ashlar, each block a little different, the joints dark, a worn edge light
+		vec2 g = UV * vec2(5.0, 2.5);
+		vec2 f = abs(fract(g) - 0.5);
+		float jn = smoothstep(0.455, 0.49, max(f.x, f.y));
+		float lip = smoothstep(0.36, 0.42, max(f.x, f.y)) * (1.0 - jn);
+		float blk = texture(noise_tex, floor(g) * 0.173).r;
+		ALBEDO = vec3(0.56, 0.55, 0.53) * (0.8 + 0.25 * n + 0.12 * blk) * (1.0 - 0.45 * jn) + vec3(0.04) * lip;
 		ALPHA = edge;
 	} else {
 		vec2 p = (UV - vec2(0.5, 0.0)) * vec2(2.0, 1.0);

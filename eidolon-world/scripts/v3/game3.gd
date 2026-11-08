@@ -261,8 +261,15 @@ func _area3() -> void:
 ## she turns to `at`, plays `clip` (reach, pickup, kneel_touch, touch_glass) and calls `then` at the clip's contact
 ## event (or at its end); input waits until the clip is done. `hold`: a held clip waits at its hold point until
 ## the returned release is called (or for hold_s seconds).
+## (phase 4) the clips W asks A for, by name; until A's clip lands, the nearest one there is plays ("" = none: the
+## beat's own motion carries it). A's clip replaces the stand-in by name, with no change here.
+const CLIP_STANDIN := {"push": "reach", "light_with_lamp": "reach", "reach_high": "reach", "ring_bell": "reach",
+	"reach_low": "kneel_touch", "sit_bench": "", "hide_column": "", "flinch_seen": "recoil", "statue_still": "",
+	"palm_to_palm": "kneel_reach", "hang_weight": "reach"}
+
 func perform(clip: String, at: Vector3, then: Callable = Callable(), n := Vector3.ZERO, hold_s := 0.0) -> void:
 	if _acting: return
+	if not HeroineClips.has(clip) and CLIP_STANDIN.has(clip): clip = str(CLIP_STANDIN[clip])
 	var rig := player.fig.rig
 	auto_target = Vector3.INF
 	key_vec = Vector2.ZERO
@@ -435,13 +442,14 @@ func cmd(c: String) -> Variant:
 		"cine_at": if cine is Prologue3: (cine as Prologue3).dev_seek(float(a[1])); return true
 		"pool_road": set_pool_road(a[1] == "1"); return true
 		"lens": set_lens(a[1] == "1"); return true
+		"end": return bool(seen.get("ch1_end", false))
 		"finale", "jump", "steps", "poolrise", "ghost", "satchel", "map", "hintnow": return false   # (v2 only)
 	return super.cmd(c)
 
 func state3() -> Dictionary:
 	var p := player.position
 	return {"pos": [p.x, p.y, p.z], "space": space, "part": part, "mode": mode, "pz": ch.save_state(), "items": items,
-		"seen": seen, "acting": _acting, "lens": lens_on, "cine_t": snappedf(cine.t, 0.1) if cine else -1.0, "glass": _glass_state()}
+		"seen": seen, "end": bool(seen.get("ch1_end", false)), "acting": _acting, "lens": lens_on, "cine_t": snappedf(cine.t, 0.1) if cine else -1.0, "glass": _glass_state()}
 
 ## (web touch test) the open glass: its phase and the stroke to trace, in viewport pixels
 func _glass_state() -> Dictionary:

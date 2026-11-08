@@ -47,6 +47,14 @@ func stop() -> void:
 	r.hold = false
 	r.hold_k = 0.0
 
+## (phase 4) let go softly: drop what is queued and blend her back onto your reflection (no pop)
+func cancel() -> void:
+	_queue.clear()
+	_path.clear()
+	_act_then = Callable()
+	if state == "follow": return
+	state = "rejoin" if r.hold else "follow"
+
 func detach() -> void: _queue.append(["detach", null, BLEND_IN])
 func go(points: Array) -> void: _queue.append(["walk", points, 0.0])
 ## `then` is called once the gesture is `at_k` of the way through (the knot gives, the hand lands)

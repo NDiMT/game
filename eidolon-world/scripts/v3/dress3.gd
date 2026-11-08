@@ -45,6 +45,18 @@ const SETS := {
 	"N6": "tree_shards",
 	"N7": "mist_maze",
 	"NB": [["kit_dead_plant", 0.1, 0.1, 0.0, 0.9], ["kit_urns", 0.9, 0.85, 30.0, 0.7, {"small": true}], ["petals", 0.5, 0.5, 0.0, 0.5]],
+	# ---- phase 4: the East wing (high, windswept: veils, petals) and Act 3 (the convergence)
+	"E2": [["statue_veiled_bust", 0.08, 0.1, 45.0, 0.75], ["kit_urns", 0.92, 0.9, 20.0, 0.6, {"small": true}],
+		["petals", 0.5, 0.5, 0.0, 0.5]],
+	"E3": [["rubble_pile", 0.2, 0.02, 0.0, 0.25, {"small": true}], ["petals", 0.4, 0.5, 0.0, 0.4]],
+	"E4": [["kit_dead_plant", 0.12, 0.12, 0.0, 0.7, {"small": true}], ["mist", 0.5, 0.5, 0.0, 1.0]],
+	"E5": [["column_stump", 0.06, 0.08, 0.0, 0.8], ["column_stump", 0.94, 0.92, 0.0, 0.8], ["kit_urns", 0.08, 0.92, 30.0, 0.6, {"small": true}]],
+	"EB": [["column_doric", 0.08, 0.08, 0.0, 0.9], ["pediment_fragment", 0.1, 0.9, 20.0, 0.5, {"small": true}], ["petals", 0.5, 0.5, 0.0, 0.5]],
+	"PW": [["column_fallen", 0.3, 0.9, 80.0, 0.45, {"small": true}], ["rubble_pile", 0.85, 0.1, 0.0, 0.25, {"small": true}]],
+	"I22": [["column_doric", 0.04, 0.06, 0.0, 0.9], ["column_doric", 0.96, 0.06, 0.0, 0.9], ["kit_urns", 0.08, 0.92, 30.0, 0.6, {"small": true}],
+		["rubble_pile", 0.92, 0.94, 0.0, 0.3, {"small": true}]],
+	"I23": [["statue_veiled_kneeling", 0.1, 0.12, 60.0, 0.8], ["statue_veiled_mourning", 0.9, 0.12, -60.0, 0.8],
+		["kit_urns", 0.08, 0.9, 20.0, 0.6, {"small": true}], ["mist", 0.5, 0.45, 0.0, 1.2]],
 }
 ## the beats' own floors, kept clear (x0, z0, x1, z1)
 const KEEP := [[-6.6, 31.0, -2.0, 33.6],            # WS: where she lies, the comb, the camera's view of her
@@ -60,7 +72,16 @@ const KEEP := [[-6.6, 31.0, -2.0, 33.6],            # WS: where she lies, the co
 	[-47.0, -6.0, -44.2, -3.6],                        # WB: the Beacon and its lighter's place
 	[-3.0, -18.2, 3.0, -11.8],                         # N1: the flooded band
 	[-8.0, -36.0, 2.0, -32.6],                         # N2: the statues before the glass
-	[-4.0, -73.8, -1.2, -70.0]]                        # NB: the Beacon
+	[-4.0, -73.8, -1.2, -70.0],                        # NB: the Beacon
+	# ---- phase 4
+	[22.6, -28.0, 28.0, -22.0],                        # E2: the stones, the bell
+	[31.0, -56.0, 35.0, -21.0],                        # E3: the gallery (the walk, the columns, the glass)
+	[27.0, -40.2, 30.2, -37.8],                        # E4: the basin
+	[24.0, -63.4, 36.0, -60.6],                        # E5: the balance, its pans
+	[27.0, -77.6, 34.0, -72.6],                        # EB: the water, the plate, the Beacon
+	[-14.0, 24.0, -10.0, 26.4],                        # PW: the stele
+	[-46.0, 22.0, -34.0, 26.0],                        # I22: the plinths, the gate
+	[-43.0, 10.0, -37.0, 19.0]]                        # I23: the pool, the stele, where she kneels
 
 static func dress_all(lv: Level, parent: Node3D) -> Array:
 	var keep: Array = []

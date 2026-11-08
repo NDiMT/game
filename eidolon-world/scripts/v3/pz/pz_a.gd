@@ -2,7 +2,7 @@ extends Puzzle
 ## I.6 "The Atrium of a Thousand Faces" (CH1_V3 §1 #8, the hub): his attempts on plinths (A's "atrium" dressing), a
 ## dry fountain with a little still water in its bowl, three dead Beacons (one by each wing's road). The roads open
 ## soft to hard: the West road when she has looked West (this beat), the North road once the Glass Beacon (WB) burns;
-## the East road waits for phase 4. Each wing's Beacon here catches when its far Beacon is lit. The Veiled Way south
+## the East road once the Garden Beacon (NB) burns. Each wing's Beacon here catches when its far Beacon is lit. The Veiled Way south
 ## is shut until the three Beacons burn (Act 3). The first time you come to the fountain with the Lamp: she stands in
 ## its water, looks at you, then turns her head to the WEST (a suggestion, not an order). Done = that gaze.
 
@@ -65,6 +65,8 @@ func _want(k: String) -> bool:
 	match k:
 		"WR": return done
 		"N1": return _far_done("WB")
+		"ER": return _far_done("NB")
+		"VW": return _far_done("WB") and _far_done("NB") and _far_done("EB")
 	return false
 
 func _far_done(id: String) -> bool:
