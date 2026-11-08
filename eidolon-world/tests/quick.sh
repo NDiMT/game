@@ -20,6 +20,6 @@ if [ "$V2" != none ]; then A=(); [ "$V2" != all ] && A=(-- "--area=$V2")
 if [ "$V3" != none ]; then A=(); [ "$V3" != all ] && A=(-- "--area=$V3")
   run "v3 flow ($V3)" "$OUT/quick-flow3.log" "^FLOW3 PASS" 240 --fixed-fps 60 --path "$REPO" res://tests/flow_v3.tscn "${A[@]}"; fi
 if [ "$PZ" != none ]; then
-  run "v3 puzzles ($PZ)" "$OUT/quick-pz.log" "^PZ PASS" 240 --fixed-fps 60 --path "$REPO" res://tests/pz_test.tscn -- "--pz=$PZ"; fi
+  run "v3 puzzles ($PZ)" "$OUT/quick-pz.log" "^PZ PASS" 900 --fixed-fps 60 --path "$REPO" res://tests/pz_test.tscn -- "--pz=$PZ"; fi
 echo "QUICK $([ $RC = 0 ] && echo PASS || echo FAIL)  wall=$(( $(date +%s) - T0 ))s"
 exit $RC

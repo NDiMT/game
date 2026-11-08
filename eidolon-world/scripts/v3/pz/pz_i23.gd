@@ -119,7 +119,7 @@ func _ending() -> void:
 	c.at(43.6, func() -> void:
 		game.world.snap_to(pl.position)
 		var fr := c._gameplay_frame(30.0)
-		c.path(43.6, 1.4, [(fr[0] as Vector3).lerp(fr[1], 0.25), fr[0]], [fr[1]], 32.0, 30.0))
+		c.path(43.6, 1.4, [(fr[0] as Vector3).lerp(fr[1], 0.25), fr[0]], [fr[1]], 32.0, 30.0), false)          # (not on a skip: it would take the view back)
 	c.handoff(45.0, 1.5)
 	c.at(46.6, func() -> void: _close(), true)
 	c.finished.connect(func() -> void: _close(), CONNECT_ONE_SHOT)
@@ -153,6 +153,8 @@ func _close() -> void:
 	game.sfx.stop_cue("shrine_awaken", 1.5)
 	var pl := game.player
 	if pl.fig.rig and pl.fig.rig.is_playing(): pl.fig.rig.stop(0.4)
+	game.set("_acting", false)          # (the held palm clip: she is free the moment the film ends or is skipped)
+	pl.locked = false
 	var seen: Dictionary = game.get("seen")
 	seen["ch1_end"] = true
 	game.call("save3")

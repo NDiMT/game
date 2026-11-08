@@ -199,6 +199,7 @@ func update(dt: float) -> void:
 	if _auto.is_empty() or done: return
 	_auto_t += dt
 	if game.auto_target != Vector3.INF or _auto_t < 0.5 or _moving > 0 or game.get("_acting"): return
+	if _auto[0] is String and game.focus == null: return
 	var q: Variant = _auto.pop_front()
 	_auto_t = 0.0
 	if q is String:

@@ -13,7 +13,13 @@ func build() -> void:
 	jingle = false
 	hint_after = 1.0e9
 	var m := MB.new()
-	for z: float in RODS_Z: m.box(Vector3((X0 + X1) * 0.5, 2.42, z), Vector3(X1 - X0 + 0.1, 0.05, 0.05), Color(0.5, 0.9, 0.0))
+	# each rod is set in the east wall and carried on a slim post by the low west parapet
+	const XE := -5.21
+	const XW := -8.66
+	for z: float in RODS_Z:
+		m.box(Vector3((XW + XE) * 0.5, 2.42, z), Vector3(XE - XW + 0.04, 0.05, 0.05), Color(0.5, 0.9, 0.0))
+		m.cyl(Vector3(XW, 1.235, z), 0.04, 0.05, 2.47, Color(0.5, 0.9, 0.0), 6)
+		game.level.ob_circle(Vector2(XW, z), 0.08)
 	Kit3.marble(game, m.commit(), self).name = "VW_Rods"
 
 func post() -> void:

@@ -12,7 +12,7 @@ const TOP_LOW := -0.28                     # a half's top before it rises (just 
 ## [centre of the slab, direction from your half to hers, rune design, your goal (quarters), her goal (-1: fixed),
 ##  where you stand to turn it]
 const SLABS := [
-	[Vector2(-6.4, 24.85), Vector2(0, 1), 3.0, 1, -1, Vector2(-6.4, 23.82)],
+	[Vector2(-6.4, 24.85), Vector2(0, 1), 3.0, 1, -1, Vector2(-6.4, 23.66)],
 	[Vector2(-6.4, 26.45), Vector2(0, 1), 1.0, 3, -1, Vector2(-6.4, 25.35)],
 	[Vector2(-7.6, 27.65), Vector2(-1, 0), 2.0, 2, 3, Vector2(-6.4, 27.65)],
 	[Vector2(-9.2, 27.65), Vector2(-1, 0), 4.0, 1, 3, Vector2(-8.05, 27.65)],
@@ -46,7 +46,9 @@ func build() -> void:
 		runes.append(a[1])
 		hers.append(b[0])
 		seams.append(Kit3.glow(self, Vector3(c.x, 0.05, c.y), 0.9, Palette.HER, 0.0))
-		var r := Rect2(c - Vector2(HALF * 0.5, HALF * 0.5) - d.abs() * HALF * 0.5, Vector2(HALF, HALF) + d.abs() * HALF).grow(0.03)
+		if absf(d.y) > 0.5:          # (the glow's quad stands across the road, never in the seam's own plane)
+			(get_child(get_child_count() - 1) as Node3D).rotation.y = PI * 0.5
+		var r := Rect2(c - Vector2(HALF * 0.5, HALF * 0.5) - d.abs() * HALF * 0.5, Vector2(HALF, HALF) + d.abs() * HALF).grow(0.12)
 		lv.walk(r, 0.0, NAN, -1, Map3.ZP + "P~s%d" % k, false)
 		var kk := k
 		lv.add_interact("p_turn%d" % k, Vector3(s[5].x, 0.0, s[5].y), "turn", func() -> void: turn(kk), 0.75,
@@ -59,7 +61,7 @@ func build() -> void:
 	im.tag = "floor"
 	im.box(Vector3.ZERO, Vector3(HALF + 0.02, 0.3, HALF + 0.02), Color(0.5, 0.25, 0.0))
 	Kit3.marble(game, im.commit(), island)
-	lv.walk(Rect2(ISLAND - Vector2(HALF, HALF) * 0.5, Vector2(HALF, HALF)).grow(0.03), 0.0, NAN, -1, Map3.ZP + "P~isle", false)
+	lv.walk(Rect2(ISLAND - Vector2(HALF, HALF) * 0.5, Vector2(HALF, HALF)).grow(0.12), 0.0, NAN, -1, Map3.ZP + "P~isle", false)
 
 ## one half: a stone with a carved half-rune on its top, the rune toward the seam
 func _half(at: Vector2, nm: String, design: float, to_seam: Vector2, lit: float) -> Array:
@@ -71,7 +73,7 @@ func _half(at: Vector2, nm: String, design: float, to_seam: Vector2, lit: float)
 	m.tag = "floor"
 	m.box(Vector3.ZERO, Vector3(HALF, 0.3, HALF), Color(0.5, 0.25, 0.0))
 	Kit3.marble(game, m.commit(), n)
-	var rm := Kit3.rune(n, Vector3(to_seam.x * 0.2, 0.158, to_seam.y * 0.2), Vector2(0.42, 0.42), Basis(Vector3.RIGHT, -PI * 0.5), design, lit)
+	var rm := Kit3.rune(n, Vector3(to_seam.x * 0.2, 0.162, to_seam.y * 0.2), Vector2(0.42, 0.42), Basis(Vector3.RIGHT, -PI * 0.5), design, lit)
 	return [n, rm]
 
 func post() -> void:
@@ -220,6 +222,8 @@ func hint() -> void:
 
 func on_solved() -> void:
 	if game.sfx: game.sfx.play_later("chime", 0.4, -16.0, 0.9)
+	for k in SLABS.size():          # (a solve by hook: the road stands whole)
+		if not joined[k]: _join(k, true)
 
 func apply() -> void:
 	super.apply()
@@ -249,6 +253,8 @@ func apply() -> void:
 
 ## as a player would: tap each slab round; at the copying two, tap yours right, then stand still till hers comes round
 func autosolve() -> void:
+	if not game.level.on_ground(Vector2(game.player.position.x, game.player.position.z)):
+		game.cmd("tp:-6.6:22.6:0")          # (the test's jump lands in the water: start on the Veiled Way)
 	_auto = []
 	for k in SLABS.size():
 		var s: Array = SLABS[k]
@@ -263,6 +269,7 @@ func update(dt: float) -> void:
 	_auto_t += dt
 	if game.auto_target != Vector3.INF or _auto_t < 0.6 or _turning or bool(game.get("_acting")): return
 	var q: Variant = _auto[0]
+	if q is String and game.focus == null: return
 	if q is Array:
 		if not joined[int(q[1])]: return
 		if _auto_t < 1.8: return

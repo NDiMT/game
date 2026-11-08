@@ -87,7 +87,7 @@ static func still_water(parent: Node3D, game: Game, center: Vector3, half: Vecto
 	var pm := PlanarMirror.new()
 	parent.add_child(pm)
 	pm.setup(Vector3.UP, center.y, gm, game.world.env)
-	pm.cam.far = 24.0
+	pm.cam.far = World.DIST + 16.0          # (A4: at 24 = World.DIST it culled everything above the water)
 	pm.res_k = 0.5
 	var r := Reflector.new()
 	r.kind = "pool"

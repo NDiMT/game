@@ -226,7 +226,7 @@ func reset_progress() -> void:
 	world.set_awaken(0.0)
 	player.fig.set_hem(HEM_PER_SHRINE[0])
 	player.fig.set_runes(0)
-	for r in puzzles.reflectors:
+	for r in _tier_refls():
 		r.glimpsed = false; r.gazed = false; r.gaze_count = 0; r.skipped = false; r.active = false; r.vis = 0.0; r._hist.clear()
 
 func _start_wake() -> void:
@@ -1171,7 +1171,7 @@ func _warm_up_shaders() -> void:
 	holder.add_child(f)
 	f._allowed = true
 	# the planar mirrors' and the glass close-up's own render passes, once each
-	for r in puzzles.reflectors:
+	for r in _tier_refls():
 		if r.planar and r.planar.vp.render_target_update_mode == SubViewport.UPDATE_DISABLED:
 			r.planar.vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	var gtk := ui.glass_talk
@@ -1194,20 +1194,24 @@ func _warm_up_shaders() -> void:
 	cl.queue_free()
 	cl.queue_free()
 	# (the one-off renders above are done: nothing is left asking to render)
-	for r in puzzles.reflectors:
+	for r in _tier_refls():
 		if r.planar and not r.planar.active: r.planar.vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	if gtk.her_vp and not gtk.visible: gtk.her_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
+## the reflectors the tier setup tunes (v3: Game3 overrides it)
+func _tier_refls() -> Array:
+	return puzzles.reflectors if puzzles else []
+
 func _apply_tier_extras() -> void:
-	for r in puzzles.reflectors:
+	for r in _tier_refls():
 		if r.planar:
 			r.planar.enabled = true
 			# the low tier keeps a half-resolution reflection; high / auto a full one, antialiased
 			r.planar.scale = 1.0 if world.quality_high else 0.5
 			r.planar.vp.msaa_3d = Viewport.MSAA_2X if world.quality_high and world.auto_step < 2 else Viewport.MSAA_DISABLED
-	level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
+	if level.grass_mmi: level.grass_mmi.set_fraction(1.0 if world.quality_high else 0.5)
 	Reflector.cloth_bones = world.quality_high          # (v0.8: the Low tier's reflections: cloth at rest)
-	ui.glass_talk.glass_mat.set_shader_parameter("drops_q", 1.0 if world.quality_high else 0.0)      # (v1.0 M1-A: no running drops on Low)
+	if ui.glass_talk and ui.glass_talk.glass_mat: ui.glass_talk.glass_mat.set_shader_parameter("drops_q", 1.0 if world.quality_high else 0.0)      # (v1.0 M1-A: no running drops on Low)
 	level.set_pbr_quality(world.quality_high)                 # (v1.0 A: the Low tier skips the PBR detail)
 	for m in [level.marble_mat, level.marble_occ_mat]: m.set_shader_parameter("flame_k", 1.0 if world.quality_high else 0.0)
 	if props: props.set_quality(world.quality_high)

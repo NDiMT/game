@@ -13,9 +13,14 @@ func build() -> void:
 	hint_after = 1.0e9
 	var m := MB.new()
 	var top := Map3.height("IBE", Vector2(31.0, ROD_Z)) + 2.35
-	m.box(Vector3(29.5, top, ROD_Z - 1.45), Vector3(3.0, 0.05, 0.05), Color(0.5, 0.9, 0.0))
-	m.box(Vector3(29.5, top, ROD_Z + 1.45), Vector3(3.0, 0.05, 0.05), Color(0.5, 0.9, 0.0))
-	for x: float in XS: m.box(Vector3(x, top + 0.02, ROD_Z), Vector3(0.04, 0.04, 2.95), Color(0.5, 0.9, 0.0))
+	# a bronze rod across the flight at each curtain: set in the north wall, carried on a slim post by the south rail
+	const ZN := -26.8
+	const ZS := -21.55
+	for x: float in XS:
+		var fy := Map3.height("IBE", Vector2(x, ZS))
+		m.box(Vector3(x, top + 0.02, (ZN + ZS) * 0.5), Vector3(0.04, 0.04, ZS - ZN + 0.02), Color(0.5, 0.9, 0.0))
+		m.cyl(Vector3(x, (fy + top + 0.04) * 0.5, ZS), 0.04, 0.05, top + 0.04 - fy, Color(0.5, 0.9, 0.0), 6)
+		game.level.ob_circle(Vector2(x, ZS), 0.08)
 	Kit3.marble(game, m.commit(), self).name = "IBE_Rods"
 
 func post() -> void:

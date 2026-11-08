@@ -86,7 +86,10 @@ func reset() -> void:
 	load_state({})
 
 ## the player stands in this puzzle's space
+## (phase 4: from Game3.space, found once a frame, not one region search per beat per frame)
 func here() -> bool:
+	var sp: Variant = game.get("space")
+	if sp is String: return (sp as String).get_slice("~", 0) == space
 	var p := game.player.position
 	var g := game.level.region_at(Vector2(p.x, p.z))
 	return g != null and Map3.key_of_region(g.name).get_slice("~", 0) == space

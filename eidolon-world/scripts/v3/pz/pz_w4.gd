@@ -36,6 +36,7 @@ func _lens_quad(size: Vector2, at: Vector3, kind: float, prio: int) -> ShaderMat
 	return m
 
 func tick(_dt: float) -> void:
+	if _auto and not done and here() and game.mode == "play" and not game.get("lens_on"): game.cmd("lens:1")          # (tests: raise it once there)
 	var h := here()
 	if h and not done:
 		game.set("lens_at", STAR)
@@ -48,7 +49,9 @@ func tick(_dt: float) -> void:
 		game.set("lens_at", Vector3.INF)
 		if game.controls: game.controls.inv_pulse = false
 
+var _auto := false
+
 func autosolve() -> void:
 	if not game.call("has_item", "shard"): game.call("give", "shard", false)
 	game.cmd("walk:%f:%f" % [STAR.x, STAR.z])
-	get_tree().create_timer(3.5).timeout.connect(func() -> void: game.cmd("lens:1"))
+	_auto = true

@@ -28,7 +28,7 @@ func build() -> void:
 	sm.tag = "floor"
 	sm.box(Vector3.ZERO, Vector3(0.78, 0.3, 0.96), col)
 	Kit3.marble(game, sm.commit(), slab)
-	mine_mat = Kit3.rune(slab, Vector3(-0.18, 0.158, 0), Vector2(0.42, 0.42), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.35)
+	mine_mat = Kit3.rune(slab, Vector3(-0.18, 0.162, 0), Vector2(0.42, 0.42), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.35)
 	# her half: where the crossing's west half should be, at the bank's height: only the stream shows it
 	her_half = Node3D.new()
 	her_half.position = C + Vector3(-0.4, -0.15, 0)
@@ -37,7 +37,7 @@ func build() -> void:
 	hm.tag = "floor"
 	hm.box(Vector3.ZERO, Vector3(0.78, 0.3, 0.96), col)
 	Kit3.marble(game, hm.commit(), her_half)
-	her_mat = Kit3.rune(her_half, Vector3(0.18, 0.158, 0), Vector2(0.42, 0.42), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.9)
+	her_mat = Kit3.rune(her_half, Vector3(0.18, 0.162, 0), Vector2(0.42, 0.42), Basis(Vector3.RIGHT, -PI * 0.5), 3.0, 0.9)
 	seam = Kit3.glow(self, C + Vector3(0, 0.05, 0), 0.9, Palette.HER, 0.0)
 	game.level.add_interact("i4_turn", C + Vector3(1.45, 0.0, 0.0), "turn", turn, 1.1, func() -> bool: return not done)
 

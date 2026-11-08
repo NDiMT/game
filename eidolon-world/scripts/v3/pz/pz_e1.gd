@@ -15,8 +15,9 @@ func build() -> void:
 	var y := Map3.height("E1", BENCH)
 	var m := MB.new()
 	var col := Color(0.5, 0.25, 0.0)
-	for dz in [-0.62, 0.62]:
-		m.box(Vector3(BENCH.x, y + 0.2, BENCH.y + dz), Vector3(0.42, 0.42, 0.16), col)
+	for dz in [-0.62, 0.62]:          # (the floor is a ramp: each leg stands on its own step of it)
+		var ly := Map3.height("E1", Vector2(BENCH.x, BENCH.y + dz))
+		m.box(Vector3(BENCH.x, (ly + y + 0.41) * 0.5, BENCH.y + dz), Vector3(0.42, y + 0.41 - ly, 0.16), col)
 	m.box(Vector3(BENCH.x, y + 0.45, BENCH.y), Vector3(0.56, 0.1, 1.62), Color(0.5, 0.0, 0.0))
 	Kit3.marble(game, m.commit(), self).name = "E1_Bench"
 	game.level.ob_rect(Rect2(BENCH.x - 0.3, BENCH.y - 0.82, 0.6, 1.64))
@@ -33,12 +34,12 @@ func sit() -> void:
 	if _sit or game.mode != "play": return
 	_sit = true
 	var y := Map3.height("E1", SEAT)
-	game.call("perform", "sit_bench", Vector3(SEAT.x - 1.0, y + 0.5, SEAT.y), func() -> void: _look())
+	game.player.teleport(Vector3(SEAT.x, 0.0, SEAT.y), PI * 0.5)          # (on the bench's edge, facing out west)
+	game.call("perform", "sit_bench", Vector3(SEAT.x - 1.0, y + 0.5, SEAT.y), func() -> void: _look(), Vector3.ZERO, 9.0)
 
 ## she sits; the view slides out west over the Atrium's roofs to the veiled head in the inlet, and back
 func _look() -> void:
 	var pl := game.player
-	pl.teleport(Vector3(SEAT.x, 0.0, SEAT.y), PI * 0.5)
 	var stand_in := not HeroineClips.has("sit_bench")
 	if stand_in: pl.crouch = 0.42
 	var p := pl.position
@@ -65,6 +66,15 @@ func apply() -> void:
 	super.apply()
 	_sit = false
 
+var _auto := false
+
 func autosolve() -> void:
+	_auto = true
 	game.cmd("walk:%f:%f" % [SEAT.x - 0.35, SEAT.y])
-	get_tree().create_timer(4.0).timeout.connect(func() -> void: game.try_interact())
+
+func update(dt: float) -> void:
+	super.update(dt)
+	if not _auto or done or _sit:
+		_auto = _auto and not done
+		return
+	if game.mode == "play" and game.auto_target == Vector3.INF: game.try_interact()

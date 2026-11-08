@@ -47,7 +47,10 @@ func _process(dt: float) -> void:
 	t += dt
 	if not started:
 		if t < 0.5: return
-		for id in game.ch.pz: game.cmd("pz_solve:" + id)
+		# (the bridge stands while unwalked: it falls behind her as she crosses; its stagger and look are a story
+		# moment, not the walk's; the shrine's film is the chapter's end, not the walk's)
+		for id in game.ch.pz: if not (id in ["I21", "I23"]): game.cmd("pz_solve:" + id)
+		game.ch.pz["I21"].set("_sagged", true)
 		game.cmd("pool_road:1")                       # (phase 2: the pool is water and the wing roads barred; walk the whole map)
 		game.ch.pz["A"].open_roads(true)
 		var s: Array = route[0]

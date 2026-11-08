@@ -1,10 +1,14 @@
-// EIDOLON web smoke test (Playwright + SwiftShader, mobile 390x844 DPR 2). Run through tests/smoke.sh, or:
-//   flock /home/user/game/realms/dev/.shotlock timeout 600 node tests/web_smoke.mjs --url <index url> [--out <dir>] [--tag smoke]
-// Checks: load + title within a timeout, 0 console errors, 0 WebGL errors, default tier HIGH on a fresh profile,
-// music RMS above -40 dBFS in >= 3 rooms (AnalyserNode spliced before the destination), the audio state dump,
-// one screenshot per Chapter I space (sanity: not black / white / blank) and a puzzle solve that counts the jingle.
-// The game renders at ~1 fps under SwiftShader, so everything goes through the dev hooks (window.ewCmd / ewState).
-// Exit 0 = all checks pass. A JSON summary is printed on the last line, prefixed "SMOKE_JSON ".
+// EIDOLON web smoke test, v3 (Chapter I v3: scenes/main3.tscn is the main scene). Playwright + SwiftShader, mobile
+// 390x844 DPR 2. Run through tests/smoke.sh, or:
+//   flock /home/user/game/realms/dev/.shotlock timeout 900 node tests/web_smoke.mjs --url <index url> [--out <dir>] [--tag smoke]
+// Checks: load + title, 0 console / WebGL errors, default tier HIGH on a fresh profile; a real tap starts the cards +
+// the prologue (its first view cannot be skipped), a long press skips it once seen; I.1 by REAL TOUCH (the thumb walks
+// her onto the plate only the water shows); one screenshot per landmark space of every part (sanity: not black /
+// white / blank; music RMS above -40 dBFS in >= 3); a solve through the hooks counts the jingle (E.5); the Veiled Way
+// opens on the three Beacons; THE CHAPTER'S END by touch (walk to the shrine's lip, tap: the film runs, a long press
+// skips it: state.end); a High-tier stretch. Frames run at ~1 fps under SwiftShader: jumps and solves go through the
+// dev hooks (window.ewCmd / ewState); the inputs that are tested are real touch.
+// Exit 0 = all checks pass. Last lines: "WEB SMOKE OK|FAILED ..." and "SMOKE_JSON {...}".
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import fs from 'node:fs';
 import zlib from 'node:zlib';
@@ -16,25 +20,19 @@ const OUT = arg('--out', '/home/user/game/eidolon-world/dev/shots/').replace(/\/
 const TAG = arg('--tag', 'smoke');
 const LOAD_TIMEOUT = +arg('--load-timeout', 240) * 1000;
 const ROOM_WAIT = +arg('--room-wait', 2500);
-
 const RMS_MIN_DB = -40;
-// the walk-through renders on this tier (after the default-tier check): SwiftShader at DPR 2 on High (full-res,
-// MSAA, 4096 shadow atlas) takes minutes per frame-heavy room; Low keeps the run inside the time budget
 const RENDER_TIER = arg('--tier', 'low');
-const SHOT_SCALE = arg('--shot-scale', 'css');       // css = 390x844 PNGs (4x cheaper to encode than DPR 2), device
-const BUDGET = +arg('--budget', 430) * 1000;        // the room loop stops here (the solve + checks must still fit in 10 min)
+const SHOT_SCALE = arg('--shot-scale', 'css');
+const BUDGET = +arg('--budget', 520) * 1000;        // the room loop stops here
 const W = 390, H = 844;
-const HIGH_ROOMS = arg('--high-rooms', 'shard_gallery').split(',').filter(Boolean);
 const HIGH_WAIT = +arg('--high-wait', 5000);
-const ROOMS = ['waking_pool', 'stair_breath', 'hall_glass', 'shard_gallery', 'garden_veiled', 'hollow_walk', 'court_light',
-  'mist_maze', 'scales', 'eidolon_ledge', 'gate_four', 'first_shrine'];
-// (v0.8.5: main.gd ROOM_ENTRY.mist_maze now lands inside the maze doorway at (12.0, -28.0): no nudge needed)
-const ENTRY_NUDGE = {};
+// one landmark space per part (Map3 ids): the hub, the West, the North, the East, Act 3
+const ROOMS = ['I3', 'A', 'W3', 'W5', 'N2', 'N4', 'E1', 'E2', 'E3', 'E5', 'EB', 'P', 'I21', 'I22', 'I23'];
 fs.mkdirSync(OUT, { recursive: true });
 
 const T0 = Date.now();
 const el = () => ((Date.now() - T0) / 1000).toFixed(1) + 's';
-const results = [];            // {name, pass, detail}
+const results = [];
 const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, detail }); console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}  ${detail}`); };
 const info = (...a) => console.log(`[${el()}]`, ...a);
 
@@ -98,6 +96,7 @@ await ctx.addInitScript(() => {
 });
 const page = await ctx.newPage();
 page.setDefaultTimeout(180000);
+const cdp = await ctx.newCDPSession(page);
 const consoleLog = [], errors = [], glErrors = [];
 const GL_RX = /webgl|GL_INVALID|GL ERROR|CONTEXT_LOST|INVALID_(ENUM|VALUE|OPERATION|FRAMEBUFFER)/i;
 page.on('console', (m) => {
@@ -125,6 +124,37 @@ async function rms() {
 }
 const dB = (x) => (x > 0 ? +(10 * Math.log10(x)).toFixed(1) : -200);   // (power -> dBFS)
 
+const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1, radiusX: 8, radiusY: 8, force: 1 }] });
+// the camera never turns: screen right is world (+x, +z), screen up is world (+x, -z)
+const screenDir = (dx, dz) => { const r = (dx + dz) * Math.SQRT1_2, u = (dx - dz) * Math.SQRT1_2; const l = Math.hypot(r, u) || 1; return [r / l, -u / l]; };
+const BASE = [Math.round(W * 0.22), Math.round(H * 0.70)];
+const REACH = 62;
+async function walk(pts, tol = 0.4, ms = 240000) {
+  const t = Date.now(); let down = false, last = null;
+  for (const g of pts) {
+    for (;;) {
+      if (Date.now() - t > ms) { if (down) await touch('touchEnd'); info('walk: out of time'); return false; }
+      const s = await st();
+      const dx = g[0] - s.pos[0], dz = g[1] - s.pos[2], d = Math.hypot(dx, dz);
+      if (d < tol) break;
+      const sd = screenDir(dx, dz), k = d < 1.2 ? 0.55 : 1.0;
+      const x = BASE[0] + sd[0] * REACH * k, y = BASE[1] + sd[1] * REACH * k;
+      if (!down) { await touch('touchStart', BASE[0], BASE[1]); down = true; await wait(60); }
+      if (!last || Math.hypot(x - last[0], y - last[1]) > 4) { await touch('touchMove', x, y); last = [x, y]; }
+      await wait(150);
+    }
+  }
+  if (down) await touch('touchEnd');
+  await wait(400);
+  return true;
+}
+const BTN = [W - 66, H - 118];
+const tapButton = async () => { await touch('touchStart', BTN[0], BTN[1]); await wait(120); await touch('touchEnd'); };
+const pz = (s, id) => !!(s && s.pz && s.pz[id] && s.pz[id].done);
+const near = (s, x, z, r) => Math.hypot(s.pos[0] - x, s.pos[2] - z) < r;
+const BEATS = ['WS', 'I1', 'I2', 'I3', 'IB1', 'I4', 'I5', 'A', 'WR', 'W1', 'W2', 'W3', 'W4', 'W5', 'IBW', 'W6', 'WB', 'W7', 'N1', 'NG', 'N2', 'N3',
+  'N4', 'IBN', 'N5', 'N6', 'N7', 'NB', 'ER', 'E1', 'E2', 'IBE', 'E3', 'E4', 'E5', 'EB', 'EH', 'VW', 'P', 'PW', 'I21', 'I22'];
+
 let fatal = null;
 const summary = { url: URL, rooms: {}, audio: {}, shots: [] };
 try {
@@ -133,80 +163,87 @@ try {
   await page.goto(URL, { waitUntil: 'load', timeout: LOAD_TIMEOUT });
   const title = await waitFor((s) => s.mode === 'title', LOAD_TIMEOUT);
   summary.load_s = +((Date.now() - T0) / 1000).toFixed(1);
-  check('load: title screen reached', !!title, `in ${summary.load_s}s (limit ${LOAD_TIMEOUT / 1000}s)`);
+  check('load: title screen reached (v3)', !!title && Array.isArray(title.items) && title.pz && title.pz.I23, `in ${summary.load_s}s`);
   if (!title) throw new Error('title never reached');
-  // ---------------------------------------------------------------- default quality on a fresh profile
   check('quality: default tier is HIGH on a fresh profile', title.tier === 'HIGH' && title.quality_high === true, `tier=${title.tier} quality_high=${title.quality_high}`);
-  // the walk-through tier (frames on High at DPR 2 take many seconds under SwiftShader), set before the tap
-  await cmd('noauto'); await cmd('quality:' + RENDER_TIER);
-  // ---------------------------------------------------------------- start (a real tap: unlocks audio)
-  await cmd('reset_save');
+  await cmd('noauto'); await cmd('quality:' + RENDER_TIER); await cmd('reset_save');
+  // ---------------------------------------------------------------- a real tap: the cards + the prologue
   await page.touchscreen.tap(W / 2, H / 2);
-  // (the tap starts the intro cards and the prologue: mode "cine", then "play"; the jumps below put it in play directly)
-  const play = await waitFor((s) => s.mode === 'cine' || s.mode === 'wake' || s.mode === 'play', 60000);
-  check('start: a tap on the title starts the game', !!play, play ? `mode=${play.mode} music=${play.music}` : 'mode stayed ' + (await st())?.mode);
-  if (!play) { info('tap did not start the game; falling back to the begin hook'); await cmd('begin'); }
-  await wait(1000);
-  info('walk-through tier', (await st()).tier);
-  // ---------------------------------------------------------------- every Chapter I space: screenshot + music RMS
+  const c0 = await waitFor((s) => s.mode === 'cine', 60000);
+  check('start: a tap on the title starts the cards + the prologue', !!c0, c0 ? '' : 'mode ' + (await st())?.mode);
+  await touch('touchStart', W / 2, H / 2); await wait(5000); await touch('touchEnd'); await wait(1200);
+  let s = await st();
+  check('prologue: the first view cannot be skipped', s.mode === 'cine' && !s.seen.prologue, `mode ${s.mode}`);
+  await cmd('seen:1');
+  await touch('touchStart', W / 2, H / 2);
+  s = await waitFor((s) => s.mode === 'play', 90000);
+  await touch('touchEnd');
+  check('prologue: once seen, a long press skips it into play at the shore with the comb', s && near(s, -4.6, 31.3, 1.5) && s.items.includes('comb'), s ? JSON.stringify(s.pos) : 'no');
+  await wait(1500);
+  // ---------------------------------------------------------------- I.1 by real touch
+  await walk([[0.8, 33.0], [3.5, 32.0], [6.0, 28.5]], 0.3);
+  s = await waitFor((s) => pz(s, 'I1'), 30000);
+  check('I.1 (touch): standing on the plate the water shows opens the door', !!s);
+  // ---------------------------------------------------------------- every part: a landmark space each, shot + music
   const loud = [];
   for (const room of ROOMS) {
     if (Date.now() - T0 > BUDGET) { check(`shot ${room}`, false, `skipped: time budget ${BUDGET / 1000}s used up`); continue; }
-    await cmd('jump:' + room);
-    if (ENTRY_NUDGE[room]) { await wait(800); await cmd(`tp:${ENTRY_NUDGE[room][0]}:${ENTRY_NUDGE[room][1]}`); }
+    if (room === 'P') { await cmd('pz_solve:P'); await wait(2500); await cmd('tp:-6.4:25.2:0'); }          // (the pool is water: on its risen road)
+    else await cmd('v3jump:' + room);
+    await waitFor((s) => s.space === room || s.space.startsWith(room + '~'), 20000);
     await wait(ROOM_WAIT);
     const path = `${OUT}${TAG}-${room}.png`;
     const r1 = await rms();
     const buf = await page.screenshot({ path, timeout: 120000, scale: SHOT_SCALE });
-    const s = await st();
+    const s2 = await st();
     const im = imageStats(buf);
     const r2 = await rms();
     const r = { rms_db: dB((r1.p + r2.p) / 2), max_db: dB(Math.max(r1.peak, r2.peak) ** 2), ctx: r2.ctx };
-    summary.rooms[room] = { area: s.area, pos: s.pos, fps: s.fps, music: s.music, img: im, rms_db: r.rms_db, peak_db: r.max_db, ctx: r.ctx };
+    summary.rooms[room] = { space: s2.space, pos: s2.pos, fps: s2.fps, music: s2.music, img: im, rms_db: r.rms_db };
     summary.shots.push(path);
     if (r.rms_db > RMS_MIN_DB) loud.push(room);
-    check(`shot ${room}`, imageOk(im) && s.area === room, `area=${s.area} mean=${im.mean} sd=${im.sd} black=${im.black} white=${im.white} -> ${path}`);
-    info(`room ${room}: music=${s.music} rms=${r.rms_db} dBFS peak=${r.max_db} ctx=${r.ctx} fps=${s.fps} tier=${s.tier}`);
+    check(`shot ${room}`, imageOk(im) && s2.space.split('~')[0] === room, `space=${s2.space} mean=${im.mean} sd=${im.sd} black=${im.black} white=${im.white} -> ${path}`);
+    info(`room ${room}: music=${s2.music} rms=${r.rms_db} dBFS fps=${s2.fps} tier=${s2.tier}`);
   }
-  check(`audio: music RMS > ${RMS_MIN_DB} dBFS in >= 3 rooms`, loud.length >= 3, `${loud.length}/${ROOMS.length} rooms: ${loud.join(', ')}`);
-  // ---------------------------------------------------------------- audio state dump
+  check(`audio: music RMS > ${RMS_MIN_DB} dBFS in >= 3 rooms`, loud.length >= 3, `${loud.length}/${ROOMS.length}: ${loud.join(', ')}`);
   const a = await st();
   const beds = a.beds || {};
-  const bedFiles = Object.keys(beds).filter((k) => Array.isArray(beds[k]));
-  const playingBeds = bedFiles.filter((k) => beds[k][2] === true && beds[k][0] > -40);
-  summary.audio = { sfx_ready: a.sfx_ready, music: a.music, drone: a.drone, buses: a.buses, beds, played: a.played };
+  const playingBeds = Object.keys(beds).filter((k) => Array.isArray(beds[k]) && beds[k][2] === true && beds[k][0] > -40);
+  summary.audio = { sfx_ready: a.sfx_ready, music: a.music, drone: a.drone, played: a.played };
   check('audio: state dump (sfx ready, music set, an audible bed playing)', a.sfx_ready === true && !!a.music && playingBeds.length > 0,
-    `sfx_ready=${a.sfx_ready} music=${a.music} drone=${a.drone} beds=${bedFiles.length} audible+playing=${playingBeds.join(',')} jingle_duck=${beds.jingle_duck} bed_restart=${a.played?.bed_restart || 0}`);
-  // ---------------------------------------------------------------- one puzzle solve through the hooks: the shadow chamber
-  info('solve: jump to the shadow chamber');
-  await cmd('jump:shard_gallery'); await wait(2000);
+    `sfx_ready=${a.sfx_ready} music=${a.music} beds=${playingBeds.join(',')}`);
+  // ---------------------------------------------------------------- a solve through the hooks: the jingle (E.5, the Scales)
+  await cmd('v3jump:E5'); await wait(1500);
   const j0 = (await st()).played?.jingle || 0;
-  for (const b of [3, 0, 1, 4]) { await cmd('call:toggle_brazier:' + b); await wait(800); }
-  const solved = await waitFor((s) => s.chapter?.gallery === true, 30000);
-  const jg = await waitFor((s) => (s.played?.jingle || 0) > j0, 15000);
-  const rj = await rms(); rj.rms_db = dB(rj.p);
-  info('solve: done');
-  const sj = await st();
-  check('puzzle: shadow chamber solves via hooks and the jingle is counted', !!solved && !!jg,
-    `gallery=${sj.chapter?.gallery} jingle ${j0} -> ${sj.played?.jingle || 0} rms_during=${rj.rms_db} dBFS duck=${sj.beds?.jingle_duck}`);
-  summary.solve = { gallery: sj.chapter?.gallery, jingle_before: j0, jingle_after: sj.played?.jingle || 0, rms_during: rj.rms_db };
-  // ---------------------------------------------------------------- (QA_V11 P1-1) a stretch on HIGH: the console check must see
-  // the High-tier passes too (the flame shadows flooded it there and nowhere else); no shots (frames are slow on High)
-  if (HIGH_ROOMS.length) {
-    await cmd('quality:high');
-    // (after the solve: the chamber's braziers are lit, so the shadowed key flame renders)
-    // (the first High frames take many seconds under SwiftShader: wait for the state to report the tier, then
-    // let a few frames render on it)
-    await waitFor((s) => s.tier === 'HIGH', 90000);
-    for (const room of HIGH_ROOMS) { if (room !== 'shard_gallery') await cmd('jump:' + room); await wait(HIGH_WAIT); }
-    const sh = await st();
-    check('quality: a High-tier stretch ran (flames, shadows) for the console checks', sh.tier === 'HIGH', `tier=${sh.tier} rooms=${HIGH_ROOMS.join(',')} fps=${sh.fps}`);
-    await cmd('quality:' + RENDER_TIER);
-  }
-  if (argv.includes('--solve-shot')) {        // (opt-in: the first frames after this solve take ~1.5 min under SwiftShader)
-    await page.screenshot({ path: `${OUT}${TAG}-solve-shard_gallery.png`, timeout: 150000, scale: SHOT_SCALE });
-    info('solve: shot saved');
-  }
+  await cmd('pz_solve:E5');
+  const jg = await waitFor((s) => pz(s, 'E5') && (s.played?.jingle || 0) > j0, 20000);
+  check('puzzle: E.5 solves through the hooks and the jingle is counted', !!jg, `jingle ${j0} -> ${(await st()).played?.jingle || 0}`);
+  // ---------------------------------------------------------------- the three Beacons open the Veiled Way; THE END by touch
+  for (const b of BEATS) await cmd('pz_solve:' + b);
+  await cmd('give:lamp');
+  await wait(1500);
+  await cmd('tp:-40.0:20.6:0');
+  await waitFor((s) => s.space === 'I23', 20000);
+  await wait(1500);
+  await walk([[-40.0, 18.3]], 0.25, 90000);
+  await tapButton();
+  s = await waitFor((s) => s.mode === 'cine', 60000);
+  check('the end (touch): at the shrine\'s lip a tap starts the film (I.23 done, saved)', !!s && pz(s, 'I23'), s ? `cine_t ${s.cine_t}` : 'mode ' + (await st()).mode);
+  await wait(4000);
+  const film = await page.screenshot({ path: `${OUT}${TAG}-end.png`, timeout: 120000, scale: SHOT_SCALE });
+  summary.shots.push(`${OUT}${TAG}-end.png`);
+  check('the end: the film frame is not blank', imageOk(imageStats(film)));
+  await touch('touchStart', W / 2, H / 2);
+  s = await waitFor((s) => s.mode === 'play' && s.end === true, 120000);
+  await touch('touchEnd');
+  check('the end: a long press skips the film; Chapter I is marked ended and she is free', !!s, s ? `end=${s.end} mode=${s.mode}` : JSON.stringify({ mode: (await st()).mode, end: (await st()).end }));
+  // ---------------------------------------------------------------- a stretch on HIGH (for the console checks)
+  await cmd('quality:high');
+  await waitFor((s) => s.tier === 'HIGH', 90000);
+  await cmd('v3jump:W5'); await wait(HIGH_WAIT);
+  const sh = await st();
+  check('quality: a High-tier stretch ran for the console checks', sh.tier === 'HIGH', `tier=${sh.tier} fps=${sh.fps}`);
+  await cmd('quality:' + RENDER_TIER);
 } catch (e) {
   fatal = String(e && e.stack || e);
   check('harness: run completed without an exception', false, fatal.split('\n')[0]);

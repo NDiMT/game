@@ -14,7 +14,8 @@ const BAND := 0.3                 # a walkway's centreline band (half width)
 ## owners that are meant to hang, lean, be sunk or be passed (by the start of their name)
 const NO_SUPPORT := ["Wonders", "Colossus", "wonder", "rubble", "debris", "Ink", "hw_gate", "Gframe", "Hdoor", "Zone_GLs",
 	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus", "BridgeShard", "Ch1v3/BellHang",
-	"Ch1v3/N1_Stone"]          # (v3 N.1: the stepping-stones stand in the flood, their feet in the water)
+	"Ch1v3/N1_Stone",          # (v3 N.1: the stepping-stones stand in the flood, their feet in the water)
+	"E4_Temple"]               # (v3 E.4: the temple that hangs upside-down over the Upward Spring: the wonder IS that it hangs)
 ## designed contacts, by place: [where (world box), what it is]. Hits inside one are not counted.
 const DESIGNED := [
 	[AABB(Map2.O + Vector3(9.9, 2.5, -1.1), Vector3(4.8, 0.7, 8.2)), "(v2 I.5) the crypt's vault rests on its four piers and its walls"],
@@ -31,6 +32,7 @@ const DESIGNED := [
 	[AABB(Map2.O + Vector3(21.5, 5.9, -66.2), Vector3(1.0, 3.5, 4.4)), "(v2) the bars across the High Stair's head: they rise when the Eidolon Plate answers"],
 	[AABB(Map2.GE + Vector3(30.3, 3.9, -24.85), Vector3(2.2, 2.2, 0.5)), "(v1.0 M3b) the sealed panel across the Mirror Walk: a door, shut until the pin rings it"],
 	[AABB(Map2.O + Vector3(-5.0, -0.1, 7.3), Vector3(6.2, 4.2, 2.7)), "(v2 rebuild) the Veiled Way's gate, across the Atrium's south rail: shut (on the way) until the 3 Beacons burn (Act 3)"],
+	[AABB(Vector3(24.4, 2.9, -63.1), Vector3(10.0, 3.0, 2.2)), "(v3 E.5) the balance: its beam rests on the post's head, the pans and the weights HANG from it"],
 ]
 const NOT_SOLID := ["veil", "glow", "halo", "beam", "mist", "fog", "ray", "shaft", "water", "pool_mat", "rune", "mark"]
 

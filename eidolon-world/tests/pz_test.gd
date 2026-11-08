@@ -49,7 +49,18 @@ func _process(dt: float) -> void:
 			set_process(false)
 			get_tree().quit(0 if errors == 0 else 1)
 			return
+		if game.mode == "cine" and game.cine:          # (the last beat's film, e.g. I.23's: skip it before the next job)
+			game.cine.skip()
+			return
+		if game.mode != "play" or bool(game.get("_acting")): return          # (a clip that starts a film at its contact)
 		job = jobs.pop_front()
+		game.cmd("lens:0")          # (each job starts with the Shard lowered)
+		for k in game.ch.pz:           # (and no beat's test walker left running from the last job)
+			var o: Puzzle = game.ch.pz[k]
+			if not ("_auto" in o): continue
+			var v: Variant = o.get("_auto")
+			o.set("_auto", [] if v is Array else (-1 if v is int else false))
+		game.cmd("stop")
 		job_t = 0.0
 		step = 0
 		data = {}

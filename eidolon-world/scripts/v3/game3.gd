@@ -48,6 +48,7 @@ func _ready() -> void:
 	level.commit()
 	World3.post(level, self, level)
 	ch.post()
+	WingArt.dress_all(self)          # (A: swaps the beats' placeholders by name; idempotent)
 	Dress3.dress_all(level, level)
 	highlight = Highlight.new()
 	add_child(highlight)
@@ -198,6 +199,7 @@ func _process(dt: float) -> void:
 	for r in World3.mirrors.values(): (r as Reflector).update(dt, player, world.cam_back)
 	for r in ch.reflectors:
 		if not r.has_meta("cine"): r.update(dt, player, world.cam_back)
+	_area3()
 	ch.update(dt)
 	if mode == "cine":
 		var can: bool = cine != null and (bool(seen.get("prologue", false)) or not (cine is Prologue3))
@@ -213,7 +215,6 @@ func _process(dt: float) -> void:
 	highlight.update(dt)
 	Flame.cull(player.position, dt)
 	if mode == "play": world.cam_size_target = world.zoom
-	_area3()
 	_js_state(dt)
 	if mode == "play":
 		_save_t += dt
@@ -242,9 +243,14 @@ func _focus3() -> void:
 ## the space she stands in (doorways count as the space they lead from), its part and A's mood for it
 func _area3() -> void:
 	var g := level.region_at(Vector2(player.position.x, player.position.z))
-	if g == null: return
+	if g == null:
+		space = ""
+		return
 	var k := Map3.key_of_region(g.name)
-	if k == "" or k == space: return
+	if k == space: return
+	if k == "":
+		space = ""
+		return
 	var first := not ch.visited.has(k)
 	ch.visited[k] = true
 	space = k
@@ -385,6 +391,10 @@ func open_glass(id: String) -> void:
 	var k := clampi(int(id.substr(3)), 1, 3)
 	ui.glass_talk.open({"id": id, "first": "", "question": ["w1_a", "w1_b", "w1_c"][k - 1], "at_q": Vector2.ZERO, "seen": k == 3})
 
+## (A4) the tier setup's reflectors: the great glasses and the beats' water
+func _tier_refls() -> Array:
+	return World3.mirrors.values() + (ch.reflectors as Array) if ch else World3.mirrors.values()
+
 ## the Lamp's world position (crypt darkness, Beacons later), or INF
 func lamp_pos() -> Vector3:
 	return lamp_node.global_position if lamp_node and lamp_node.visible else Vector3.INF
@@ -427,15 +437,20 @@ func cmd(c: String) -> Variant:
 			if a[1] in Map3.PARTS: at = Map3.start_of(a[1])
 			else:
 				at = Map3.walk_rect(a[1]).get_center()
+				var prev: Variant = null
 				for e in Map3.route("all"):          # (where the route enters it: a space's middle may be water or a plinth)
 					if e[2] == a[1]:
 						at = Vector2(e[0], e[1])
+						# (a pool: no floor there yet; land on the bank the route comes from)
+						if level.region_at(at) == null and prev != null: at = Vector2(prev[0], prev[1])
 						break
+					prev = e
 			return super.cmd("tp:%f:%f" % [at.x, at.y])
 		"pz_solve": (ch.pz[a[1]] as Puzzle).solve(); return true
 		"pz_auto": (ch.pz[a[1]] as Puzzle).autosolve(); return true
 		"pz_reset": (ch.pz[a[1]] as Puzzle).reset(); return true
 		"save": save3(); return true
+		"reset_save": _delete_save(); save_data = {}; return true
 		"give": give(a[1]); return true
 		"prologue": mode = "play"; play_prologue(); return true
 		"seen": seen["prologue"] = a[1] == "1"; return true
@@ -449,7 +464,10 @@ func cmd(c: String) -> Variant:
 func state3() -> Dictionary:
 	var p := player.position
 	return {"pos": [p.x, p.y, p.z], "space": space, "part": part, "mode": mode, "pz": ch.save_state(), "items": items,
-		"seen": seen, "end": bool(seen.get("ch1_end", false)), "acting": _acting, "lens": lens_on, "cine_t": snappedf(cine.t, 0.1) if cine else -1.0, "glass": _glass_state()}
+		"seen": seen, "end": bool(seen.get("ch1_end", false)), "acting": _acting, "lens": lens_on, "cine_t": snappedf(cine.t, 0.1) if cine else -1.0, "glass": _glass_state(),
+		# (web smoke) the tier, the frame rate, the audio state
+		"tier": world.tier_name(), "quality_high": world.quality_high, "fps": Engine.get_frames_per_second(),
+		"sfx_ready": sfx.ready_ok, "played": sfx.played, "music": sfx._music_cur, "drone": sfx.drone.playing, "beds": sfx.bed_debug()}
 
 ## (web touch test) the open glass: its phase and the stroke to trace, in viewport pixels
 func _glass_state() -> Dictionary:
