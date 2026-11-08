@@ -20,7 +20,9 @@ func build() -> void:
 	var m := MB.new()
 	var col := Color(0.5, 0.25, 0.0)
 	var c := Vector3(PANE.x, y + 1.35, PANE.z)
-	m.box(c + Vector3(-0.03, -0.92, 0), Vector3(0.24, 0.6, 1.1), col)
+	var lo := game.level.height_at(Vector2(PANE.x - 0.03, PANE.z))          # (it stands on the step under its middle)
+	var top := c.y - 0.62
+	m.box(Vector3(PANE.x - 0.03, (lo + top) * 0.5, PANE.z), Vector3(0.24, top - lo, 1.1), col)
 	for dz in [-0.48, 0.48]: m.box(c + Vector3(0.0, 0, dz), Vector3(0.12, 1.3, 0.1), Color(0.5, 1.0, 0.0))
 	m.box(c + Vector3(0.0, 0.62, 0), Vector3(0.12, 0.1, 1.06), Color(0.5, 1.0, 0.0))
 	Kit3.marble(game, m.commit(), self).name = "W1_Pane"

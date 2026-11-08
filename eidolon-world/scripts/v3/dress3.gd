@@ -26,6 +26,25 @@ const SETS := {
 		["kit_face2", 0.94, 0.66, -90.0, 0.8, {"small": true}], ["kit_face5", 0.42, 0.94, 160.0, 0.75, {"small": true, "tilt": 90.0}],
 		["kit_urns", 0.06, 0.92, 30.0, 0.8, {"small": true}], ["kit_face6", 0.78, 0.94, 120.0, 0.7, {"small": true}]],
 	"A": "atrium",
+	# ---- phase 3: the West wing (glass, cold) and the North wing (garden mist)
+	"WR": [["column_fallen", 0.35, 0.12, 80.0, 0.5, {"small": true}], ["rubble_pile", 0.7, 0.1, 0.0, 0.3, {"small": true}],
+		["kit_dead_plant", 0.92, 0.1, 0.0, 0.7, {"small": true}]],
+	"W1": "stair_breath",
+	"W2": [["kit_urns", 0.12, 0.12, 20.0, 0.6, {"small": true}], ["rubble_pile", 0.12, 0.9, 0.0, 0.25, {"small": true}]],
+	"W3": "hall_glass",
+	"W5": "shadow_chamber",
+	"IBW": "hidden_way",
+	"W6": [["column_stump", 0.9, 0.12, 0.0, 0.7], ["rubble_pile", 0.1, 0.85, 0.0, 0.3, {"small": true}]],
+	"WB": "colossus",
+	"W7": [["column_fallen", 0.3, 0.5, 85.0, 0.45, {"small": true}], ["rubble_pile", 0.55, 0.2, 0.0, 0.25, {"small": true}],
+		["pediment_fragment", 0.8, 0.25, 30.0, 0.45, {"small": true}]],
+	"N1": [["column_doric", 0.12, 0.05, 0.0, 0.9], ["column_doric", 0.88, 0.05, 0.0, 0.9], ["column_stump", 0.12, 0.95, 0.0, 0.8],
+		["column_stump", 0.88, 0.95, 0.0, 0.8], ["mist", 0.5, 0.5, 0.0, 1.4], ["petals", 0.5, 0.5, 0.0, 0.5]],
+	"N2": [["kit_dead_plant", 0.08, 0.9, 0.0, 0.8, {"small": true}], ["kit_urns", 0.92, 0.92, 20.0, 0.7, {"small": true}],
+		["petals", 0.5, 0.5, 0.0, 0.5]],
+	"N6": "tree_shards",
+	"N7": "mist_maze",
+	"NB": [["kit_dead_plant", 0.1, 0.1, 0.0, 0.9], ["kit_urns", 0.9, 0.85, 30.0, 0.7, {"small": true}], ["petals", 0.5, 0.5, 0.0, 0.5]],
 }
 ## the beats' own floors, kept clear (x0, z0, x1, z1)
 const KEEP := [[-6.6, 31.0, -2.0, 33.6],            # WS: where she lies, the comb, the camera's view of her
@@ -35,7 +54,13 @@ const KEEP := [[-6.6, 31.0, -2.0, 33.6],            # WS: where she lies, the co
 	[18.0, 10.2, 21.0, 15.0],                          # IB1: the shallow and its reeds
 	[7.6, 10.0, 10.4, 17.0], [6.5, 12.6, 12.0, 14.4],  # I4: the stream, the crossing and its approach
 	[-0.6, 14.6, 2.0, 17.4], [0.0, 10.0, 4.0, 14.4],   # I5: the basin, the way from the east door to the north one
-	[-9.2, -3.4, -7.4, -1.6], [1.6, -9.2, 3.4, -7.4], [7.4, -3.4, 9.2, -1.6]]   # A: the three Beacons (pz_a)
+	[-9.2, -3.4, -7.4, -1.6], [1.6, -9.2, 3.4, -7.4], [7.4, -3.4, 9.2, -1.6],   # A: the three Beacons (pz_a)
+	[-19.6, -6.0, -18.2, -1.6],                        # W1: the pane, its wall rune and where you stand
+	[-20.0, -16.2, -18.2, -14.2],                      # W2: the altar
+	[-47.0, -6.0, -44.2, -3.6],                        # WB: the Beacon and its lighter's place
+	[-3.0, -18.2, 3.0, -11.8],                         # N1: the flooded band
+	[-8.0, -36.0, 2.0, -32.6],                         # N2: the statues before the glass
+	[-4.0, -73.8, -1.2, -70.0]]                        # NB: the Beacon
 
 static func dress_all(lv: Level, parent: Node3D) -> Array:
 	var keep: Array = []

@@ -104,6 +104,7 @@ func gate(a: String, b: String) -> Gate:
 	var sz := (n * 0.5 + al * w).abs()
 	g.ob = game.level.ob_rect(Rect2(c - sz * 0.5, sz), "gate_%s_%s" % [a, b])
 	var y := maxf(Map3.height(a, c - n * 0.8), Map3.height(b, c + n * 0.8))
+	if game.level.region_at(c) != null: y = game.level.height_at(c)          # (on a stair's head: the doorway's own floor)
 	# a carved marble leaf (a panel framed by a raised border), sunk into the floor when it opens
 	var mb := MB.new()
 	var along_x := absf(al.x) > 0.5

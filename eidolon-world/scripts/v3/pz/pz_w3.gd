@@ -10,7 +10,7 @@ extends Puzzle
 ## sets everything back. Nothing jams (rails only); no fail.
 
 const Y := 1.0
-const GZ := -26.73                       # the glass (World3: the N wall + GLASS_OFF)
+const GZ := -26.71                       # the glass (World3: the N wall + GLASS_OFF)
 ## thing -> [rail z, slot xs, start slot, remembered slot]
 const THINGS := {
 	"bust": [-25.7, [-29.6], 0, 0],
@@ -41,12 +41,13 @@ func build() -> void:
 		nodes[k] = n
 		obs[k] = lv.ob_rect(Rect2(), "w3_" + k)
 		if k != "bust":
-			lv.add_interact("w3_" + k, n.position, "push", func() -> void: push(k), 1.2, func() -> bool: return not done)
+			lv.add_interact("w3_" + k, n.position, "push", func() -> void: push(k), 1.4, func() -> bool: return not done)
 	# the rope by the door (it resets the hall)
 	var m := MB.new()
 	m.cyl(ROPE + Vector3(0, 0.7, 0), 0.06, 0.08, 1.4, Color(0.5, 0.9, 0.0), 8)
 	Kit3.marble(game, m.commit(), self).name = "W3_RopePost"
 	lv.ob_circle(Vector2(ROPE.x, ROPE.z), 0.14)
+	for k in THINGS: _place(k, THINGS[k][2], true)          # (where they stand before any load)
 	lv.add_interact("w3_rope", ROPE + Vector3(-0.6, 0, 0.0), "reset", reset_hall, 1.0, func() -> bool: return not done and _moved())
 
 ## a thing as a node (its own mesh), placed later on its rail
@@ -81,6 +82,7 @@ func post() -> void:
 	brazier_flame = Kit3.flame(game, nodes["brazier"], Vector3(0, 1.08, 0), 0.26, false)
 	ghost_flame = Kit3.flame(game, ghosts["brazier"], Vector3(0, 1.08, 0), 0.26, true)
 	TwoWorld.set_her(ghost_flame)
+	for k in THINGS: _fuse_look(k, true)
 	# the Shard, pushed through the crack (hidden until then)
 	shard = Node3D.new()
 	shard.name = "W3_Shard"
@@ -164,7 +166,7 @@ func _place(k: String, i: int, snap: bool) -> void:
 	var r := 0.38 if k != "bust" else 0.3
 	(obs[k] as Level.Obstacle).r = Rect2(to.x - r, to.z - r, r * 2.0, r * 2.0)
 	for it in game.level.interacts:
-		if it.id == "w3_" + k: it.pos = to
+		if it.id == "w3_" + k: it.pos = to + Vector3(0, 0, 0.6)          # (its south side, in sight)
 	var was: bool = fused.get(k, false)
 	fused[k] = i == t[3]
 	if snap:
@@ -187,6 +189,7 @@ func _place(k: String, i: int, snap: bool) -> void:
 
 ## fused: her memory and the thing are one (the glow round it, the brazier catches)
 func _fuse_look(k: String, snap: bool) -> void:
+	if not glows.has(k): return          # (before post: nothing to light yet)
 	var on: bool = fused.get(k, false)
 	var g: ShaderMaterial = glows[k]
 	if k == "brazier": brazier_flame.mat.set_shader_parameter("intensity", 0.9 if on else 0.0)

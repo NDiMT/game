@@ -11,7 +11,7 @@ func build() -> void:
 	var m := MB.new()
 	var col := Color(0.5, 0.25, 0.0)
 	# (it stands on the stair: its foot reaches down to the lowest step under it)
-	var lo := Map3.height("WB", Vector2(BEACON.x, BEACON.z + 0.75))
+	var lo := game.level.height_at(Vector2(BEACON.x, BEACON.z))
 	BEACON.y = Map3.height("WB", Vector2(BEACON.x, BEACON.z - 0.75)) + 0.02
 	m.cyl(Vector3(BEACON.x, (lo + BEACON.y + 0.4) * 0.5, BEACON.z), 0.62, 0.7, BEACON.y + 0.4 - lo + 0.02, col, 16)
 	m.cyl(BEACON + Vector3(0, 1.05, 0), 0.3, 0.38, 1.3, col, 12)

@@ -14,7 +14,7 @@ func build() -> void:
 		m.box(BELL + Vector3(dx, 1.05, 0), Vector3(0.2, 2.1, 0.2), Color(0.5, 0.25, 0.0))
 		game.level.ob_rect(Rect2(BELL.x + dx - 0.12, BELL.z - 0.12, 0.24, 0.24))
 	m.box(BELL + Vector3(0, 2.15, 0), Vector3(1.75, 0.2, 0.26), Color(0.5, 0.25, 0.0))
-	Kit3.marble(game, m.commit(), self)
+	Kit3.marble(game, m.commit(), self).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF          # (A: its shadow made a dark disc on the N wall)
 	bell = Node3D.new()
 	bell.name = "BellHang"
 	bell.position = BELL + Vector3(0, 2.05, 0)          # (it swings about its hook)

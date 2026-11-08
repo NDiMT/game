@@ -13,7 +13,8 @@ var V3 := OS.get_environment("EIDOLON_V3") == "1"
 const BAND := 0.3                 # a walkway's centreline band (half width)
 ## owners that are meant to hang, lean, be sunk or be passed (by the start of their name)
 const NO_SUPPORT := ["Wonders", "Colossus", "wonder", "rubble", "debris", "Ink", "hw_gate", "Gframe", "Hdoor", "Zone_GLs",
-	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus", "BridgeShard", "Ch1v3/BellHang"]
+	"shard_hang", "lamp", "veil", "glow", "beam", "halo", "Props/Prop_column_fallen", "Prop_pediment_fragment", "Prop_rubble_pile", "V2Pieces/colossus", "BridgeShard", "Ch1v3/BellHang",
+	"Ch1v3/N1_Stone"]          # (v3 N.1: the stepping-stones stand in the flood, their feet in the water)
 ## designed contacts, by place: [where (world box), what it is]. Hits inside one are not counted.
 const DESIGNED := [
 	[AABB(Map2.O + Vector3(9.9, 2.5, -1.1), Vector3(4.8, 0.7, 8.2)), "(v2 I.5) the crypt's vault rests on its four piers and its walls"],

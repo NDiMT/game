@@ -67,6 +67,9 @@ func _done() -> void:
 func _puzzle(id: String) -> void:
 	var pz: Puzzle = game.ch.pz[id]
 	if step == 0:
+		if game.mode == "cine" and game.cine: game.cine.skip()          # (the last beat's cinematic: WR's look)
+		if game.mode != "play" and job_t < 10.0: return
+		job_t = 0.0
 		pz.reset()
 		ok("%s starts unsolved, its gates shut" % id, not pz.done and pz.gates.all(func(g: Puzzle.Gate) -> bool: return g.ob.enabled))
 		game.cmd("v3jump:" + pz.space)

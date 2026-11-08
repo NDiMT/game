@@ -16,16 +16,16 @@ extends Puzzle
 ## A's look swaps these by name: N4_Cleat_*, N4_Rope_*, N4_Bar_*, N4_Block, N4_Gate_*, N4_DoorPane, N4_Rug_*, still_ring.
 
 const Y := 1.0
-const GZ := -35.73                       # the glass (World3: the N wall's middle + GLASS_OFF)
+const GZ := -35.71                       # the glass (World3: the N wall's middle + GLASS_OFF)
 const BAYS := {"W": [6.0, 9.4], "C": [9.4, 12.6], "E": [12.6, 16.0]}
 const STRIP := [-35.7, -32.75]           # the bays' depth: the glass to the low screen
 const SCREEN_Z := -32.6
 const PLANT_X := [9.4, 12.6]
 const GATE_Z := [-35.78, -34.0]          # the side gates: the planters' line from the glass to the planters
 const SLOTS := [7.9, 11.0, 14.5]         # the block's rail, one slot per bay
-const RAIL_Z := -34.85
+const RAIL_Z := -35.0
 const BLOCK := Vector3(0.8, 0.6, 0.8)
-const DOOR := Vector3(15.85, Y, -34.6)   # the exit's middle (E wall; Map3 link N4-IBN at -34.6)
+const DOOR := Vector3(15.85, Y, -34.2)   # the exit's middle (E wall; Map3 link N4-IBN at -34.2)
 const WALK_Z := -33.95                   # her lane in her world (south of the rail: the block never stands in it)
 ## the cleats (her world only): key -> [bay, the cleat, where she stands to untie it, the bar's height or -1 (the lintel)]
 const CLEATS := {
@@ -56,6 +56,7 @@ var still_t := 0.0
 var _fired := false
 var _ring_k := 0.0
 var _flash := 0.0
+var _pop_t := 0.0
 var _auto := -1
 var _auto_t := 0.0
 
@@ -194,6 +195,7 @@ func post() -> void:
 	knock_mat = Kit3.glow(self, Vector3(11.0, Y + 1.3, GZ + 0.06), 1.1, Palette.HER, 0.0)
 	knock_mi = get_child(get_child_count() - 1)
 	knock_mi.name = "N4_Knock"
+	StillRoomFx.dress_n4(self, game)          # (A's look: swaps the placeholders above by name)
 
 static var _rs: Shader
 static func _ring_shader() -> Shader:
@@ -296,7 +298,17 @@ func tick(dt: float) -> void:
 	else:
 		still_t = 0.0
 		_fired = false
-	# the ring: it closes over the second; it flashes when she breaks free, and fades if you move on
+	# the ring: it closes over the second; it pops when she breaks free (A's ring_pop), and fades if you move on
+	if _pop_t > 0.0:
+		_pop_t -= dt
+		if _pop_t <= 0.0: ring.visible = false
+	else:
+		_ring(dt, p)
+	if still_t >= 1.0 and not _fired:
+		_fired = true
+		_free_her(b, p)
+
+func _ring(dt: float, p: Vector3) -> void:
 	var want := clampf((still_t - 0.15) / 0.85, 0.0, 1.0)
 	if _fired: want = 0.0
 	_ring_k = want if want > _ring_k else move_toward(_ring_k, want, dt * 3.0)
@@ -304,25 +316,22 @@ func tick(dt: float) -> void:
 	if ring.visible:
 		ring.global_position = Vector3(p.x, p.y + 0.02, p.z)
 		ring_mat.set_shader_parameter("k", _ring_k)
-	if still_t >= 1.0 and not _fired:
-		_fired = true
-		_free_her(b, p)
 
 ## she breaks off your reflection where you stand and goes about the bay's work; then she comes back to you
 func _free_her(b: String, p0: Vector3) -> void:
 	var list := tasks(b)
 	progress()
-	var tw := create_tween()
-	tw.tween_method(func(v: float) -> void:
-		_flash = v
-		ring_mat.set_shader_parameter("flash", v), 1.0, 0.0, 0.7)
+	_ring_k = 0.0
+	_pop_t = 0.9
+	ring.global_position = Vector3(p0.x, p0.y + 0.02, p0.z)
+	StillRoomFx.ring_pop(ring)
+	StillRoomFx.detach(self, glass.clip_c, glass.plane_n, p0, game.world.cam)
 	if game.sfx:
 		game.sfx.play("glass", -16.0, 1.35)
 		game.sfx.play_later("chime", 0.15, -22.0, 1.6)
 	if game.juice: game.juice.glint(p0 + Vector3(0, 1.1, 0))
 	var home := Vector3(p0.x, Y, p0.z)
 	actor.detach()
-	actor.call_back(func() -> void: _shimmer(home))
 	var lane := Vector3(home.x, Y, maxf(home.z, WALK_Z))
 	for k in list:
 		var c: Array = CLEATS[k]
@@ -330,7 +339,8 @@ func _free_her(b: String, p0: Vector3) -> void:
 		if k == "eh" and slot == 2:
 			# the twist: she climbs the block's reflection and reaches the high cleat
 			actor.go([lane, Vector3(SLOTS[2], Y, WALK_Z), Vector3(SLOTS[2], Y, RAIL_Z + 0.62), Vector3(SLOTS[2], Y + BLOCK.y, RAIL_Z)])
-			actor.act("reach_high", 2.6, func() -> void: _untie(k), 0.55)
+			actor.call_back(func() -> void: StillRoomFx.untie(cleats[k], 2.6, ropes[k]))
+			actor.act("reach_high", 2.6, func() -> void: _untie(k), 0.72)
 			actor.go([Vector3(SLOTS[2], Y, RAIL_Z + 0.62), Vector3(SLOTS[2], Y, WALK_Z)])
 			lane = Vector3(SLOTS[2], Y, WALK_Z)
 		elif k == "eh":
@@ -342,22 +352,12 @@ func _free_her(b: String, p0: Vector3) -> void:
 			lane = Vector3(stand.x, Y, WALK_Z)
 		else:
 			actor.go([lane, Vector3(stand.x, Y, WALK_Z), stand])
-			actor.act("untie_cleat", 2.5, func() -> void: _untie(k), 0.62)
+			actor.call_back(func() -> void: StillRoomFx.untie(cleats[k], 2.5, ropes[k]))
+			actor.act("untie_cleat", 2.5, func() -> void: _untie(k), 0.72)
 			actor.go([Vector3(stand.x, Y, WALK_Z)])
 			lane = Vector3(stand.x, Y, WALK_Z)
 	actor.go([Vector3(home.x, Y, maxf(home.z, WALK_Z)), home])
 	actor.rejoin()
-
-## (placeholder: A's detach shimmer) a breath of crimson light where she leaves you, in her world
-func _shimmer(at: Vector3) -> void:
-	var m := Kit3.glow(self, at + Vector3(0, 1.0, 0), 1.6, Palette.HER, 0.0)
-	var mi: MeshInstance3D = get_child(get_child_count() - 1)
-	mi.name = "N4_Shimmer"
-	mi.layers = TwoWorld.HER
-	var tw := mi.create_tween()
-	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), 0.0, 1.2, 0.18)
-	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("intensity", v), 1.2, 0.0, 0.9)
-	tw.tween_callback(mi.queue_free)
 
 func _fail_high() -> void:
 	if game.sfx: game.sfx.play("glass_tink", -22.0, 0.75)
@@ -382,25 +382,21 @@ func _untie(k: String) -> void:
 		game.juice.glint(DOOR + Vector3(-0.2, 1.3, 0))          # (the real door hears its reflection)
 	if state.get("w", false) and state.get("e", false) and state.get("eh", false): get_tree().create_timer(1.3).timeout.connect(func() -> void: solve())
 
+## the bar (A's timber bar) lifts in its brackets and stays up; the rope ran off with the untie (StillRoomFx.untie)
 func _lift(k: String, snap: bool) -> void:
-	var bn: Node3D = bars[k]
-	var rp: Node3D = ropes[k]
-	var cn: Node3D = cleats[k]
 	if snap:
-		bn.visible = false
-		rp.visible = false
+		StillRoomFx.set_lifted(bars[k], true)
+		StillRoomFx.set_untied(cleats[k], ropes[k])
 		return
-	var base := bn.position
-	var tw := bn.create_tween()
-	tw.tween_property(bn, "position", base + Vector3(0, 0.12, 0), 0.25).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(bn, "position", base + Vector3(0, 1.6, 0), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tw.tween_callback(func() -> void: bn.visible = false)
-	var rt := rp.create_tween()
-	rt.tween_property(rp, "position:y", -0.35, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	rt.tween_callback(func() -> void: rp.visible = false)
-	var ct := cn.create_tween()
-	ct.tween_property(cn, "rotation:z", 0.25, 0.12)
-	ct.tween_property(cn, "rotation:z", 0.0, 0.3).set_trans(Tween.TRANS_ELASTIC)
+	StillRoomFx.lift(bars[k], 1.1, 0.9)
+
+## (a reset / load) bound again: the bar down, the wraps on, the rope back
+func _bind(k: String) -> void:
+	StillRoomFx.set_lifted(bars[k], false)
+	var cm: Variant = (cleats[k] as Node3D).get_meta("mat", null)
+	if cm is ShaderMaterial: (cm as ShaderMaterial).set_shader_parameter("unwrap", 0.0)
+	var rm: Variant = (ropes[k] as Node3D).get_meta("rope_mat", null)
+	if rm is ShaderMaterial: (rm as ShaderMaterial).set_shader_parameter("rope_gone", 0.0)
 
 func _rug(b: String, snap: bool) -> void:
 	var m: ShaderMaterial = rugs[b]
@@ -448,8 +444,7 @@ func _place_block(i: int, snap: bool) -> void:
 		block.position = to
 		return
 	progress()
-	var tw := block.create_tween()
-	tw.tween_property(block, "position", to, 0.75).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	StillRoomFx.push(block, to, 0.9)
 	if game.sfx: game.sfx.play("grind", -12.0, 0.9)
 	if game.juice: game.juice.grit(to + Vector3(0, 0.05, 0), 0.45)
 
@@ -461,14 +456,9 @@ func apply() -> void:
 	_fired = false
 	_auto = -1
 	for k in CLEATS:
-		var untied := bool(state.get(k, false))
-		if bars.has(k):
-			bars[k].visible = not untied
-			ropes[k].visible = not untied
-			ropes[k].position.y = 0.0
-		if bars.has(k) and not untied:
-			var c: Array = CLEATS[k]
-			bars[k].position = Vector3(11.0, Y + 1.95, RAIL_Z + 0.02) if c[3] < 0.0 else Vector3(DOOR.x - 0.12, c[3], DOOR.z)
+		if not bars.has(k): continue
+		if state.get(k, false): _lift(k, true)
+		else: _bind(k)
 	for b in rugs: rugs[b].set_shader_parameter("lit", 0.12)
 	if state.get("c", false): _rug("C", true)
 	if state.get("w", false): _rug("W", true)
@@ -481,6 +471,7 @@ func apply() -> void:
 	_place_block(int(state.get("slot", 0)), true)
 
 func on_solved() -> void:
+	if not state.get("c", false): _open_side_gates(true)
 	for k in CLEATS: state[k] = true
 	if game.juice:
 		game.juice.dust_floor(DOOR, 0.8, 14)
@@ -524,8 +515,8 @@ func hint() -> void:
 
 ## as a player would: stand still in C; then in W; push the block twice (into E); stand still in E
 const AUTO := [["walk", 11.0, -33.6], ["state", "c"], ["walk", 9.9, -35.0], ["walk", 8.85, -35.0], ["walk", 8.85, -33.6],
-	["walk", 7.3, -33.6], ["state", "w"], ["walk", 7.0, -34.85], ["interact"], ["slot", 1], ["walk", 8.9, -33.9],
-	["walk", 9.95, -34.85], ["interact"], ["slot", 2], ["walk", 12.0, -34.95], ["walk", 13.3, -34.95], ["walk", 13.3, -33.5], ["state", "eh"]]
+	["walk", 7.3, -33.6], ["state", "w"], ["walk", 7.0, -35.0], ["interact"], ["slot", 1], ["walk", 8.9, -33.9],
+	["walk", 9.95, -35.0], ["interact"], ["slot", 2], ["walk", 12.0, -34.95], ["walk", 13.3, -34.95], ["walk", 13.3, -33.5], ["state", "eh"]]
 
 func autosolve() -> void:
 	_auto = 0

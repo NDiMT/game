@@ -9,7 +9,7 @@ static var mirrors := {}          # space id -> Reflector (the great glass)
 static var _wall_n := 0
 ## a great glass stands this far out from its wall's middle: its face is 0.2 m out, and the mirror camera keeps marble only
 ## 3 cm or more in front of the glass (marble.gdshaderinc refl_clip), so the wall behind must sit further back than that
-const GLASS_OFF := 0.27
+const GLASS_OFF := 0.29          # (and 2 cm proud of the wall's coping, which juts 7 cm)
 static var waters: Array[MeshInstance3D] = []     # the water sheets (Map3.WATER order)
 
 static func zone(part: String) -> String:

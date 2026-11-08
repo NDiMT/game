@@ -262,9 +262,11 @@ func _build() -> void:
 	# 4 (22-25.5): her hand, the fingers move (the rise begins with them)
 	both(22.0, "rise", {"fade": 0.3})
 	at(22.0, func() -> void:
-		var h := game.player.fig.rig.bone_world("L_Hand")
+		var h := game.player.fig.rig.bone_world("R_Hand")          # (A: the left hand lies under her veil)
 		path(22.0, 3.5, [h + Vector3(1.0, 0.55, 1.3), h + Vector3(0.92, 0.5, 1.2)], [h + Vector3(0, 0.02, 0)], 16.0, 15.0))
 	_snd(22.4, "glass_tink", -26.0, 1.6)
+	at(22.4, func() -> void: fx.finger_glints(game.player.fig.rig), false)
+	at(26.0, func() -> void: fx.joint_dust(game.player.fig.rig, 2.0), false)
 	# 5 (25.5-30): low angle, craning up with her as she sits, kneels (stone grinding at the joints)
 	path(25.5, 4.5, [LIE + Vector3(-1.0, 0.12, -1.5), LIE + Vector3(-1.1, 0.5, -1.7)],
 		[LIE + Vector3(0, 0.35, 0), LIE + Vector3(0, 0.75, 0)], 44.0, 40.0)
@@ -349,9 +351,13 @@ func _build() -> void:
 		comb = Kit3.comb(game)
 		game.juice.add_child(comb)
 		PassThrough.water(game.juice, SURF + Vector3(0.3, 0.0, 0.02), comb, ws.pool_fx, 0.42, 2.6, COMB)
+		fx.hero_item(comb)
 		for c in _cards3: _card_to(c[2], 0.0, 3.0))
-	path(71.0, 6.0, [SURF + Vector3(1.4, 0.75, -0.3), SURF + Vector3(0.95, 0.85, 0.1)], [SURF + Vector3(0.3, 0.15, 0.0), SURF + Vector3(0.3, 0.4, 0.1), COMB + Vector3(0, 0.05, 0)], 32.0, 28.0)
-	at(73.3, func() -> void:
+	# (it lands at 74.1: the view is on its landing by then, and holds there)
+	path(71.0, 3.1, [SURF + Vector3(1.4, 0.75, -0.3), SURF + Vector3(1.05, 0.82, 0.0)], [SURF + Vector3(0.3, 0.15, 0.0), SURF + Vector3(0.3, 0.4, 0.1), COMB + Vector3(0, 0.05, 0)], 32.0, 29.0)
+	path(74.1, 2.9, [SURF + Vector3(1.05, 0.82, 0.0), SURF + Vector3(0.95, 0.85, 0.1)], [COMB + Vector3(0, 0.05, 0)], 29.0, 28.0)
+	at(74.1, func() -> void:          # (A: PassThrough lands it at 71.0 + 2.6 + 0.5)
+		fx.droplet_crown(COMB)
 		game.sfx.play("glass_tink", -8.0, 1.6)
 		game.sfx.play_later("glass_tink", 0.18, -16.0, 1.75), false)
 	# 13 (77-83): wide and still: the pool shows only her now, half a second late. She is still there, hidden.
@@ -371,6 +377,7 @@ func _build() -> void:
 	at(77.5, func() -> void: if is_instance_valid(ione): ione.rig.release())
 	path(77.0, 6.0, [LIE + Vector3(-3.4, 1.3, -5.6), LIE + Vector3(-3.3, 1.25, -5.4)], [LIE + Vector3(0, -0.2, -0.4)], 44.0, 42.0)
 	# 14 (83-90): she takes the comb; it glows; the first path lights; the camera cranes back onto the play view
+	at(83.0, func() -> void: if is_instance_valid(comb): fx.hero_item(comb, 0.0), false)
 	at(83.0, func() -> void:
 		var pr := game.player
 		var to := COMB - pr.position

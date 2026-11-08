@@ -66,13 +66,16 @@ const LINKS := [
 	["WS", "I1", 0], ["I1", "I2", 0], ["I2", "I3", 0], ["I3", "IB1", 0], ["IB1", "I4", 0], ["I4", "I5", 0], ["I5", "A", 0],
 	["A", "WR", 0], ["WR", "W1", 0], ["W1", "W2", 0], ["W2", "W3", 0], ["W3", "W4", 0], ["W4", "W5", 0], ["W5", "IBW", 0],
 	["IBW", "W6", 0], ["W6", "WB", 0], ["WB", "W7", 0], ["W7", "WR", 0],
-	["A", "N1", 0], ["N1", "NG", 0], ["NG", "N2", 0], ["N2", "N3", 0], ["N3", "N4", 0], ["N4", "IBN", 0, -34.6], ["IBN", "N5", 0],
+	["A", "N1", 0], ["N1", "NG", 0], ["NG", "N2", 0], ["N2", "N3", 0], ["N3", "N4", 0], ["N4", "IBN", 0, -34.2], ["IBN", "N5", 0],
 	["N5", "N6", 0], ["N6", "N7", 0], ["N7", "NB", 0], ["NB", "NS", 0], ["NS", "A", 0],
 	["A", "ER", 0], ["ER", "E1", 0], ["E1", "E2", 0], ["E2", "IBE", 0], ["IBE", "E3", 0], ["E3", "E4", 0], ["E3", "E5", 0],
 	["E5", "EB", 0], ["EB", "EH", 0], ["EH", "E2", 0],
 	["A", "VW", 0], ["VW", "P", 0], ["P", "WS", -1], ["P", "PW", 0], ["PW", "I21", 0], ["I21", "I22", 0], ["I22", "I23", 0],
 ]
 
+## (phase 3) points a route walks through inside a space between its doors, where a straight line would hit the
+## puzzle's furniture (N.4: in at the antechamber's gap, out by the east bay, south of the block's rail)
+const VIA := {"N4": [[11.0, -31.0], [11.0, -33.4], [12.6, -34.6], [13.4, -33.8]]}
 ## the play path (space ids in order; flow_v3 walks it door to door). One list per part, walked in this order.
 const PATH := {
 	"act1": ["WS", "I1", "I2", "I3", "IB1", "I4", "I5", "A"],
@@ -83,12 +86,15 @@ const PATH := {
 }
 const PARTS := ["act1", "west", "north", "east", "act3"]
 ## water (not walkable unless a space stands over it): [x0, z0, x1, z1, y]
-const WATER := [[-34, 5, -14, 32, -0.35], [-10, 24, -1, 31, -0.35], [8.2, 10, 9.8, 17, -0.35]]
+const WATER := [[-34, 5, -14, 32, -0.35], [-10, 24, -1, 31, -0.35], [8.2, 10, 9.8, 17, -0.35], [-3, -18, 3, -12, -0.35]]
 ## (phase 2) spaces that are WATER (no floor: a sunk bed under the sheet, a low rim, no walking until a beat opens a
 ## road over them: Game3.set_pool_road) and holes cut out of a space's floor (the I.4 stream): [x0, z0, x1, z1]
 const POOLS := ["P"]
-const CUTS := {"I4": [[8.2, 10.0, 9.8, 17.0]]}
+const CUTS := {"I4": [[8.2, 10.0, 9.8, 17.0]], "N1": [[-3.0, -18.0, 3.0, -12.0]]}
 const OBSERVER := Vector3(-24.0, 0.0, 13.0)      # the sunk veiled head (prologue shot 1, W.7)
+## (phase 3) the North wing is shifted 2 m west from the draft (N2 10x12, N3, N4 at x 6..16) and IBN runs north up the
+## Still Room's EAST side, so N.4's exit stands in its east wall right beside the glass: the camera looks down 36 deg, so
+## a north glass shows only ~3.4 m of floor and things within ~2 m of it; the exit's reflection must be there (CH1_V3 §3)
 ## the great mirrors: [space, wall ("N" or "E"), from, to (along the wall), bottom y over the floor, height]
 const MIRRORS := [["W3", "N", -31.0, -23.0, 0.3, 3.4], ["N2", "N", -7.0, 1.0, 0.3, 3.4], ["N4", "N", 7.4, 15.6, 0.2, 3.5],
 	["E3", "E", -54.0, -23.0, 0.3, 3.0]]
@@ -185,6 +191,8 @@ static func route(part := "all") -> Array:
 				continue
 			var c: Vector2 = d["c"]
 			var n: Vector2 = d["n"]
+			if i > 0 and VIA.has(a):
+				for v in VIA[a]: out.append([v[0], v[1], a])
 			out.append([c.x - n.x, c.y - n.y, a])
 			out.append([c.x + n.x, c.y + n.y, b])
 	return out
