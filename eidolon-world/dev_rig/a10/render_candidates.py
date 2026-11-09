@@ -69,6 +69,8 @@ def load(path):
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     me = ob.data
     co = np.empty(len(me.vertices) * 3); me.vertices.foreach_get('co', co); co = co.reshape(-1, 3)
+    if np.ptp(co[:, 1]) > np.ptp(co[:, 0]):        # (Tripo's v3.1 GLBs face +x here: turned to face -y, her left +x)
+        co = co[:, [1, 0, 2]] * [1, -1, 1]
     h = co[:, 2].max() - co[:, 2].min()
     s = 1.70 / h
     co = (co - [0.5 * (co[:, 0].max() + co[:, 0].min()), 0.5 * (co[:, 1].max() + co[:, 1].min()), co[:, 2].min()]) * s

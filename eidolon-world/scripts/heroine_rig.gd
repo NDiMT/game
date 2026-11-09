@@ -22,13 +22,15 @@ extends Node3D
 static var VARIANT := "v1"               # (kept: W sets it; the v2 rig is the v1 porcelain heroine re-rigged)
 const MODEL := "res://assets/models/heroine_v2.glb"
 const MESH := "res://assets/models/heroine_v2_mesh.res"     # (dev_rig/a7/prep_heroine_v2.gd: the shader's vertex data)
-const ALBEDO := "res://assets/models/heroine_v1_basecolor.jpg"
-const NORMAL := "res://assets/models/heroine_v1_normal.jpg"
+## (a10) her mesh is the v3 Tripo heroine (685c8a46, made for animation: real legs under a separate skirt shell, bare
+## arms apart from the body, a short hood); the rig, the bone names and every clip are the a7/a9 ones
+const ALBEDO := "res://assets/models/heroine_v3_basecolor.jpg"
+const NORMAL := "res://assets/models/heroine_v3_normal.jpg"
 const UNIT := 1.7                        # her GLB's height (metres)
 const HEIGHT := 1.12 / UNIT              # -> the game's 1.12 m hero
-const AXIS_Z := 0.0172
-const SKIN_LUM := 0.5
-const CLOTH_K := 1.0
+const AXIS_Z := 0.035
+const SKIN_LUM := 0.12                   # (v3: COLOR.b is her skin; only the dark hair under the hood is kept out)
+const CLOTH_K := 0.6                     # (v3's grey is a lighter dove grey: darkened to the v1 mid grey)
 
 static var model: PackedScene
 static var body_mesh: ArrayMesh

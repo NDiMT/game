@@ -1,0 +1,21 @@
+{
+ "task_id": "685c8a46-fcef-4564-b9f7-a69218483026",
+ "type": "text_to_model",
+ "status": "success",
+ "input": {
+  "pbr": true,
+  "prompt": "Full body 3D game character for animation: a slender young woman of natural adult proportions, life size, standing in a clean symmetric A-pose for rigging: both arms straight, angled about 45 degrees down from the shoulders, clearly separated from the torso with open space under the armpits and between the arms and the dress; legs slightly apart. She wears a plain neutral grey sleeveless fitted bodice with bare slender arms and bare hands, and a plain grey ankle-length A-line skirt that flares gently and ends just above the ankles, clear of the ground, her bare feet fully visible beneath the hem. A short close-fitting grey veil covers the head like a hood and ends at the shoulders. Her face is a smooth blank featureless oval. Smooth simple cloth with few folds, clean silhouette. Front view, symmetric. Single character, full body, no base, no background.",
+  "texture": true,
+  "export_uv": true,
+  "face_limit": 15000,
+  "model_seed": 1295512823,
+  "model_version": "v3.1-20260211",
+  "smart_low_poly": true,
+  "negative_prompt": "long veil, cape, cloak, sash, ribbons, scarf, long hair, sleeves, shoes, floor-length dress, trailing hem, arms touching body, T-pose, visible face, eyes, jewelry, base, pedestal, ground, props, multiple figures, background, cartoon",
+  "geometry_quality": "standard",
+  "texture_alignment": "geometry"
+ },
+ "credits_consumed": 30,
+ "created_at": "2026-11-09T19:46:42.735809Z",
+ "completed_at": "2026-11-09T19:53:05.054834Z"
+}

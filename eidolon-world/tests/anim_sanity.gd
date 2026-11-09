@@ -264,9 +264,10 @@ func _step_her(n: int, cb := Callable()) -> void:
 # frame the mean |ln(length / rest length)| of each zone's edges must stay under DEF_LIM (a candy-wrapper, a collapsed
 # elbow, a sheared or torn gown all lift it); no gown vertex the chains carry may sit inside the ankle / foot capsules
 # (the feet are drawn: a foot never shows through the gown).
-const DEF_LIM := {"elbow": 0.25, "shoulder": 0.40, "hips": 0.90, "knees": 0.80}
-const DEF_CAPS := [["LowerLeg", "Foot", 0.7, 1.0, 0.03], ["Foot", "Toes", 0.0, 0.6, 0.025]]
-const DEF_DEEP := 0.025      # (the deep kneels leave <= 2.4 cm: the gown never reaches the bone line itself)
+const DEF_LIM := {"elbow": 0.25, "shoulder": 0.40, "hips": 0.90, "knees": 0.80, "knee_skin": 0.40}
+## (a10) her v3 mesh has real legs under the skirt: the thigh and the knee must stay inside it too (the a9 mesh had none)
+const DEF_CAPS := [["LowerLeg", "Foot", 0.7, 1.0, 0.03], ["Foot", "Toes", 0.0, 0.6, 0.025], ["UpperLeg", "LowerLeg", 0.3, 1.0, 0.065], ["LowerLeg", "Foot", 0.0, 0.14, 0.05]]
+const DEF_DEEP := 0.010      # (a10: back to 1 cm; a9 needed 2.5 cm for its deep kneels)
 var _df := false
 var _df_v := []              # sampled vertices: [rest pos, bind idx PackedInt32Array, weights PackedFloat32Array]
 var _df_e := {}              # zone -> [[vi, vj, rest length], ...] (indices into _df_v)
@@ -285,7 +286,7 @@ func _deform_data(sk: Skeleton3D, mi: MeshInstance3D, d: RigData) -> void:
 	var per := B.size() / V.size()
 	var bname := func(k: int) -> String: return sk.get_bone_name(d.binds[k][0])
 	var cent := {}
-	for z in [["elbow", "LowerArm", 0.06], ["shoulder", "UpperArm", 0.08], ["hips", "UpperLeg", 0.14], ["knees", "LowerLeg", 0.14]]:
+	for z in [["elbow", "LowerArm", 0.06], ["shoulder", "UpperArm", 0.08], ["hips", "UpperLeg", 0.14], ["knees", "LowerLeg", 0.14], ["knee_skin", "LowerLeg", 0.08]]:
 		cent[z[0]] = [sk.get_bone_global_rest(_bn(sk, "Left" + z[1])).origin, sk.get_bone_global_rest(_bn(sk, "Right" + z[1])).origin, z[2]]
 	var idx := {}
 	var add := func(vi: int) -> int:
@@ -313,7 +314,7 @@ func _deform_data(sk: Skeleton3D, mi: MeshInstance3D, d: RigData) -> void:
 			var skin := C[a].b > 0.5 and C[b].b > 0.5
 			for z in cent:
 				var c: Array = cent[z]
-				if (z == "elbow" or z == "shoulder") != skin: continue
+				if (z == "elbow" or z == "shoulder" or z == "knee_skin") != skin: continue
 				var r: float = c[2]
 				if (V[a].distance_to(c[0]) < r and V[b].distance_to(c[0]) < r) or (V[a].distance_to(c[1]) < r and V[b].distance_to(c[1]) < r):
 					cand[z].append([a, b, l0])
@@ -331,7 +332,7 @@ func _deform_data(sk: Skeleton3D, mi: MeshInstance3D, d: RigData) -> void:
 			if nm.begins_with("Skirt"): wsk += W[vi * per + k]
 			elif nm.contains("Leg") or nm.contains("Foot") or nm.contains("Toes"): wleg += W[vi * per + k]
 		# (its outer face only: the gown's inside and the hem's underside are never seen)
-		var rad := Vector3(V[vi].x, 0.0, V[vi].z - 0.029)
+		var rad := Vector3(V[vi].x, 0.0, V[vi].z - HeroineRig.AXIS_Z)
 		if wsk > 0.45 and wleg < 0.05 and N[vi].dot(rad.normalized()) > 0.15: _df_g.append(add.call(vi))
 	_df = true
 	if verbose: print("deform: verts ", _df_v.size(), " gown ", _df_g.size(), " edges ", _df_e.keys().map(func(z: String) -> int: return (_df_e[z] as Array).size()))
@@ -371,9 +372,10 @@ func _deform() -> void:
 				var q: Vector3 = X[gi]
 				var cp := Geometry3D.get_closest_point_to_segment(q, a, b)
 				deep = maxf(deep, float(c[4]) - q.distance_to(cp))
-			_df_worst["gown in " + str(c[0])] = maxf(_df_worst.get("gown in " + str(c[0]), -1.0), deep)
-			_df_case[_case]["in" + str(c[0])] = maxf(_df_case[_case].get("in" + str(c[0]), -1.0), deep)
-			if deep > DEF_DEEP: _fail("deform gown through the " + sd + str(c[0]), deep * 100.0, "cm inside")
+			var cn := "%s-%s%.1f" % [c[0], c[1], c[2]]
+			_df_worst["gown in " + cn] = maxf(_df_worst.get("gown in " + cn, -1.0), deep)
+			_df_case[_case]["in" + cn] = maxf(_df_case[_case].get("in" + cn, -1.0), deep)
+			if deep > DEF_DEEP: _fail("deform gown through the " + sd + cn, deep * 100.0, "cm inside")
 
 func _settle(fade := 0.35) -> void:
 	_her.stop(fade)
