@@ -9,7 +9,7 @@ extends Game
 ## "give:<item>"; state3() for tests. `--autotest` starts in play at Act 1's start (no title, no prologue).
 
 const SAVE3_PATH := "user://eidolon_v3.json"
-const WALK_SPEED := 1.95          # (A: 2.7 m/s made her scurry under the gown; ~2 steps/s reads calm)
+const WALK_SPEED := 1.4          # (A: 2.7 m/s made her scurry under the gown; ~2 steps/s reads calm)
 var ch: Ch1v3
 var space := ""
 var part := ""
