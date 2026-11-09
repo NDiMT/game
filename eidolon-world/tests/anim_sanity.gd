@@ -16,7 +16,8 @@ const LIM := {"el_lo": -5.0, "el_hi": 150.0, "el_off": 25.0, "kn_lo": -5.0, "kn_
 	"tw_fore": 90.0, "tw_wrist": 90.0, "wr_bend": 85.0, "sh_tw": 95.0, "flip": 30.0, "skin_mean": 0.75, "skin_min": 0.12}
 const SIDES := ["L", "R"]
 ## clips the game only plays out of another one's held pose: [predecessor, seconds into it, play opts]
-const PRE := {"recoil": ["kneel_reach", 2.6, {}], "refl_dragged": ["refl_press", 4.2, {"hold": true}], "rise": ["lie_side", 1.0, {"fade": 0.3}]}
+## (a7: the prologue that played recoil out of a held kneel_reach is gone; recoil is a standing clip now)
+const PRE := {"refl_dragged": ["refl_press", 4.2, {"hold": true}], "rise": ["lie_side", 1.0, {"fade": 0.3}]}
 
 var only := ""
 var verbose := false
@@ -177,9 +178,10 @@ func _measure(d: RigData, with_skin: bool) -> void:
 		if dl.z < -0.72: _fail(s + " shoulder behind", dl.z)
 		if lat < -0.35 and dl.z < 0.35: _fail(s + " arm through torso", lat)
 		var tw_u := _twist_y(Quaternion((d.chest0.inverse() * d.rest[up]).inverse() * (chest.inverse() * Bu)))
-		# (a7) the aim grid's hand straight out to the side / overhead: the humerus turns ~100 deg from the A-pose rest
-		# there (the arm rotates outward as it rises past the shoulder), so those cases allow 115
-		var sh_lim: float = LIM["sh_tw"] if not _case.begins_with("aim_hand") else 115.0
+		# (a7) a raised arm: the humerus turns outward as the arm rises past the shoulder (~100+ deg from the A-pose rest
+		# overhead), so the twist allowance grows with the arm's elevation in the chest frame, up to 120
+		# (and the aim grid's free targets straight out to her side at shoulder height: 120 there)
+		var sh_lim: float = 120.0 if _case.begins_with("aim_hand") else LIM["sh_tw"] + 25.0 * smoothstep(-0.2, 0.6, dl.y)
 		if absf(tw_u) > sh_lim: _fail(s + " upper-arm twist", tw_u, "U=%s elbow=%s" % [dl.snapped(Vector3.ONE * 0.01), (cd.inverse() * (U - F)).normalized().snapped(Vector3.ONE * 0.01)] if verbose else "")
 		# legs
 		var th := s + "_Thigh"

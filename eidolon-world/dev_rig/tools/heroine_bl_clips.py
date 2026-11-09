@@ -296,7 +296,8 @@ class Lib:
               ik=[dict(side='R', t=[0.4, 0.95, 2.45, 2.85], off=[-0.22, 0.03, -0.06]), dict(side='L', t=[0.4, 0.95, 2.45, 2.85], off=[0.22, 0.03, -0.06])])
 
         # ---------------------------------------------------------------- standing hand-on-a-surface gestures
-        def stand_reach(name, length, tgt, kpts, palm, fingers, lean=0.0, look=0.7, extra=None, side='Right', toes=0.0):
+        POLE_UP_R = Vector((-0.8, -0.35, -0.3))     # an overhead reach: the elbow out and a little forward
+        def stand_reach(name, length, tgt, kpts, palm, fingers, lean=0.0, look=0.7, extra=None, side='Right', toes=0.0, pole=None):
             def f(t):
                 T = c.idle(t + 0.4)
                 k = env(t, kpts)
@@ -306,7 +307,7 @@ class Lib:
                         P.rot_local(sk, T, sd + 'Foot', 'x', -toes * 4.5 * k)
                 c.spine(T, fwd=lean * k)
                 tt = tgt(t) if callable(tgt) else tgt
-                c.arm(T, side, tt, c.POLE_R if side == 'Right' else c.POLE_L, k, palm=palm, fingers=fingers)
+                c.arm(T, side, tt, pole if pole is not None else (c.POLE_R if side == 'Right' else c.POLE_L), k, palm=palm, fingers=fingers)
                 c.curl(T, side, -0.12 * k)
                 if extra:
                     extra(T, t, k)
@@ -332,7 +333,7 @@ class Lib:
         def high_x(T, t, k):
             c.spine(T, fwd=-0.12 * k)
         c.add('reach_high', 2.0, stand_reach('reach_high', 2.0, AT['reach_high'], [(0.05, 0), (0.8, 1), (1.3, 1), (1.85, 0)],
-              M(0, 1, 0.6), M(0, 1, 0.1), toes=0.045, look=0.8, extra=high_x),
+              M(0, 1, 0.6), M(0, 1, 0.1), toes=0.045, look=0.8, extra=high_x, pole=POLE_UP_R),
               hold_t=1.0, blend=[0.2, 0.3], ev={'contact': 0.8}, ik=[dict(side='R', t=[0.05, 0.8, 1.3, 1.85])])
 
         def fail_t(t):
@@ -345,7 +346,7 @@ class Lib:
             P.rot(sk, T, 'Neck', Quaternion(T['Neck'].to_3x3().col[1].normalized(), 0.28 * ph * s))
             P.rot(sk, T, 'Head', Quaternion(T['Head'].to_3x3().col[0].normalized(), 0.18 * s))
         c.add('reach_fail_shake', 3.2, stand_reach('fail', 3.2, fail_t, [(0.05, 0), (0.8, 1), (1.2, 1), (1.8, 0)],
-              M(0, 1, 0.6), M(0, 1, 0.1), toes=0.05, look=0.8, extra=fail_x),
+              M(0, 1, 0.6), M(0, 1, 0.1), toes=0.05, look=0.8, extra=fail_x, pole=POLE_UP_R),
               blend=[0.2, 0.35], ev={'short': 0.8, 'drop': 1.5}, ik=[dict(side='R', t=[0.05, 0.8, 1.2, 1.8], off_free=True)])
 
         def bell_t(t):
@@ -354,7 +355,7 @@ class Lib:
         def bell_x(T, t, k):
             c.curl(T, 'Right', 1.1 * k)
         c.add('ring_bell', 2.6, stand_reach('bell', 2.6, bell_t, [(0.05, 0), (0.7, 1), (1.9, 1), (2.45, 0)],
-              M(0.8, 0, 0.3), M(0, 1, 0.2), toes=0.02, look=0.8, extra=bell_x),
+              M(0.8, 0, 0.3), M(0, 1, 0.2), toes=0.02, look=0.8, extra=bell_x, pole=POLE_UP_R),
               blend=[0.2, 0.3], ev={'ring': 0.95, 'ring2': 1.55}, ik=[dict(side='R', t=[0.05, 0.7, 1.9, 2.45])])
 
         # reach_low: PickUp_Table (mirrored), deeper: the knees give, the right hand to "@"
@@ -379,7 +380,7 @@ class Lib:
             st = c.swarp(t, [(0.0, 0.0), (0.45, 0.2), (0.6, 0.5), (1.5, 1.6)])
             Tp = c.mo(I1, 'Push_Loop', st)
             k = env(t, [(0.0, 0), (0.45, 1), (1.5, 1), (2.0, 0)])
-            T = c.blend(Ti, Tp, k)
+            T = c.blend(Ti, Tp, 0.55 * k)              # (the mannequin's push is a full-body heave: hers is lighter)
             ka = env(t, [(0.1, 0), (0.45, 1), (1.5, 1), (1.9, 0)])
             for sd, x in (('Right', -0.17), ('Left', 0.17)):
                 c.arm(T, sd, AT['push'] + Vector((x, 0.06, 0.12)), c.POLE_R if sd == 'Right' else c.POLE_L, ka,
@@ -508,15 +509,22 @@ class Lib:
 
         HC = c.dur(I1, 'Hit_Chest')
         def recoil(t):
-            st = c.swarp(t, [(0.0, 0.0), (0.3, HC * 0.5), (1.4, HC * 0.62), (3.2, HC * 0.9)])
-            T = c.mo(I1, 'Hit_Chest', st)
+            st = c.swarp(t, [(0.0, 0.0), (0.3, HC * 0.5), (1.4, HC * 0.6)])
             k = env(t, [(0.0, 0), (0.3, 1), (1.4, 1), (3.0, 0)])
+            T = c.blend(c.idle(t), c.mo(I1, 'Hit_Chest', st), max(k, smooth_t(t, 0.0, 0.12)) if t < 0.3 else k)
             c.hips(T, dfwd=-0.05 * k)
             c.spine(T, fwd=-0.12 * k, twist=0.15 * k)
-            c.arm(T, 'Right', M(-0.12, 1.22, 0.24), c.POLE_R, 0.85 * k, palm=M(0, 0, 1), fingers=M(0, 1, 0.2))
-            c.arm(T, 'Left', M(0.10, 1.10, 0.22), c.POLE_L, 0.6 * k, palm=M(0, 0, 1), fingers=M(0, 1, 0.2))
+            c.arm(T, 'Right', M(-0.12, 1.22, 0.24), c.POLE_R, 0.85 * k)
+            c.arm(T, 'Left', M(0.10, 1.10, 0.22), c.POLE_L, 0.6 * k)
             P.rot(sk, T, 'Head', Quaternion(Vector((0, 0, 1)), 0.3 * k))
-            return T
+            # (the mocap's fingers snap in this short hit: hers stay softly curled)
+            FG = ('LeftFingers1', 'LeftFingers2', 'RightFingers1', 'RightFingers2')
+            B = sk.local(T)
+            for f_ in FG:
+                B[f_] = Matrix.Identity(4)
+            Tf = sk.absolute(B)
+            c.curl(Tf, 'Right', 0.35); c.curl(Tf, 'Left', 0.35)
+            return c.blend(T, Tf, smooth_t(t, 0.05, 0.6), bones=list(FG))
         c.add('recoil', 3.2, recoil, hold_t=1.4, blend=[0.08, 0.4], ev={'flinch': 0.12})
 
         # ---------------------------------------------------------------- statue-still (hands clasped at the chest, head bowed)

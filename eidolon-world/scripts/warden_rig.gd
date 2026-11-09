@@ -13,14 +13,18 @@ extends Node3D
 ##   w.rise_from(water_y, 3.0, NAN, pool_fx)  v2.0: he rises up out of the water at his current x/z (glass look; the surface clips
 ##                                him, a wet line at it, the cracks light from the feet up). Returns the Tween.  ("turn head toward you": pass the camera's or the player's position.)
 ## Clips also in the GLB: "turn_head_left" / "turn_head_right" (3 s, hold) if a fixed beat is wanted instead.
-## Skeleton: the same 25 body bones as the wanderer/heroine + 8 robe hem chains (Hem*) + 3 cape chains (CapeB*).
+## Skeleton (a7): the heroine's humanoid skeleton (SkeletonProfileHumanoid names), bone-heat weights, the robe on 8
+## two-bone chains baked from the legs; clips = retargeted CC0 mocap (Quaternius UAL), see WardenClipData.
 
-const MODEL := "res://assets/models/warden_rigged.glb"
+const MODEL := "res://assets/models/warden_v2.glb"         # (a7) the real rig: dev_rig/tools/heroine_bl_rig.py (RIG=warden)
+## (a7) his maps (the v1 GLB's extracted JPEGs; the v2 GLB carries none)
+const TEX := ["res://assets/models/warden_rigged_warden_basecolor.jpg", "res://assets/models/warden_rigged_warden_normal.jpg",
+	"res://assets/models/warden_rigged_warden_metal_rough.jpg"]
+static var _mat: StandardMaterial3D
 ## Low tier (set by World.set_tier): he casts no shadow (a 13k-tri skinned mesh in the shadow pass); group "q_warden"
 static var high := true
 const UNIT := 1.7                       # the rig's height (metres)
-const WALK_T := 2.4                     # the walk clip: two steps
-const STRIDE := 0.52                    # one step at rig scale (metres)
+const SIDE_NAME := {"L": "Left", "R": "Right"}
 
 @export var height := 1.65              # in the game's metres (the hero is 1.12): very tall, gaunt
 @export var reflection := false        # dark + crimson rim (seen only in mirrors); set_reflection()
@@ -39,13 +43,26 @@ func _ready() -> void:
 	model.scale = Vector3.ONE * (height / UNIT)
 	anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	skel = model.find_child("Skeleton3D", true, false) as Skeleton3D
+	if _mat == null:
+		_mat = StandardMaterial3D.new()
+		_mat.albedo_texture = load(TEX[0])
+		_mat.normal_enabled = true
+		_mat.normal_texture = load(TEX[1])
+		_mat.metallic = 1.0
+		_mat.roughness = 1.0
+		_mat.metallic_texture = load(TEX[2])
+		_mat.metallic_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_BLUE
+		_mat.roughness_texture = load(TEX[2])
+		_mat.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_GREEN
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).set_surface_override_material(0, _mat)
 	if anim:
 		for n in ["walk", "idle"]:
 			if anim.has_animation(n): anim.get_animation(n).loop_mode = Animation.LOOP_LINEAR
 		anim.callback_mode_process = AnimationPlayer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 		anim.play("idle")
 	if skel:
-		for n in ["NeckTwist01", "NeckTwist02", "Head"]: _neck.append(skel.find_bone(n))
+		for n in ["Chest", "Neck", "Head"]: _neck.append(skel.find_bone(n))
 		add_to_group("q_warden")
 		set_shadow(high)
 	if reflection: set_reflection(true)
@@ -223,41 +240,42 @@ func _apply_grab(dt: float) -> void:
 	var Xi := skel.global_transform.affine_inverse()
 	var T := Xi * tp
 	var sg := 1.0 if _grab_side == "L" else -1.0
-	# he leans into the grab (the upper spine bows toward it)
-	var sp := skel.find_bone("Spine02")
+	# (a7) he leans into the grab: the upper chest bows toward it (a turn in skeleton space, set as a local pose)
+	var sp := skel.find_bone("UpperChest")
 	var gs := skel.get_bone_global_pose(sp)
 	var to := T - gs.origin
 	to.y = 0.0
 	if to.length() > 0.01:
-		var ax := Vector3.UP.cross(to.normalized())
-		skel.set_bone_global_pose(sp, Transform3D(Basis(ax.normalized(), 0.28 * w) * gs.basis, gs.origin))
-	var up := skel.find_bone(_grab_side + "_Upperarm")
-	var fo := skel.find_bone(_grab_side + "_Forearm")
-	var ha := skel.find_bone(_grab_side + "_Hand")
+		var ax := Vector3.UP.cross(to.normalized()).normalized()
+		var pg := skel.get_bone_global_pose(skel.get_bone_parent(sp)).basis.orthonormalized()
+		skel.set_bone_pose_rotation(sp, (pg.inverse() * Basis(ax, 0.22 * w) * gs.basis.orthonormalized()).get_rotation_quaternion())
+	var n: String = SIDE_NAME[_grab_side]
+	var up := skel.find_bone(n + "UpperArm")
+	var fo := skel.find_bone(n + "LowerArm")
+	var ha := skel.find_bone(n + "Hand")
+	var gp := skel.get_bone_global_pose(skel.get_bone_parent(up))
 	var gu := skel.get_bone_global_pose(up)
 	var gf := skel.get_bone_global_pose(fo)
 	var gh := skel.get_bone_global_pose(ha)
 	var l1 := gu.origin.distance_to(gf.origin)
 	var l2 := gf.origin.distance_to(gh.origin)
-	# (a6) a hinge-consistent solve: both bones keep the animated elbow's hinge (the upper arm's bone x), the pole eases
-	# from the animated elbow to out / down / back; the old per-bone frames twisted the forearm off the hinge (40 deg)
-	# and flipped it 180 deg on a deep bend
-	var h0 := (gu.basis * Vector3.RIGHT).normalized()
-	var tgt := gh.origin.lerp(T, w)
-	var dn := (tgt - gu.origin).normalized()
-	var cur_pole := dn.cross(h0)
-	var want := RigIK.pole(dn, Vector3(sg * 0.6, -0.5, -0.5), Vector3(sg * 0.35, -0.25, -1.0)).normalized()
-	var sol := RigIK.solve2(gu.origin, l1, l2, tgt, cur_pole.normalized().lerp(want, w), 1.92)
-	var q1 := RigIK.hinge_rot(gf.origin - gu.origin, h0, (sol[0] as Vector3) - gu.origin, sol[2])
-	skel.set_bone_global_pose(up, Transform3D(Basis(q1) * gu.basis, gu.origin))
-	gf = skel.get_bone_global_pose(fo)
-	gh = skel.get_bone_global_pose(ha)
-	var q2 := RigIK.hinge_rot(gh.origin - gf.origin, q1 * h0, (sol[1] as Vector3) - (sol[0] as Vector3), sol[2])
-	skel.set_bone_global_pose(fo, Transform3D(Basis(q2) * gf.basis, gf.origin))
-	# the hand closes over the shoulder: the palm turned down onto it
-	gh = skel.get_bone_global_pose(ha)
-	# (a6) about the hand's own hinge (its bone x: a wrist flexion), not the skeleton's x (that bent it sideways)
-	skel.set_bone_global_pose(ha, Transform3D(gh.basis * Basis(Vector3.RIGHT, -0.3 * w), gh.origin))
+	# a hinge solve (bone X = the bend axis): the elbow out, down and back in his chest's frame, eased in by w
+	var uc := skel.get_bone_global_pose(sp).basis.orthonormalized() * skel.get_bone_global_rest(sp).basis.orthonormalized().inverse()
+	var dn := (T - gu.origin).normalized()
+	var pole := RigIK.pole(dn, uc * Vector3(sg * 0.75, -0.45, -0.45), uc * Vector3(sg * 0.3, -0.2, -0.3))
+	var sol := RigIK.solve2(gu.origin, l1, l2, T, pole, 2.1)
+	var qu := gu.basis.get_rotation_quaternion().slerp(_hframe((sol[0] as Vector3) - gu.origin, sol[2]), w)
+	var qf := gf.basis.get_rotation_quaternion().slerp(_hframe((sol[1] as Vector3) - (sol[0] as Vector3), sol[2]), w)
+	var qh := (qf * gf.basis.get_rotation_quaternion().inverse()) * gh.basis.get_rotation_quaternion()
+	skel.set_bone_pose_rotation(up, (Quaternion(gp.basis.orthonormalized()).inverse() * qu).normalized())
+	skel.set_bone_pose_rotation(fo, (qu.inverse() * qf).normalized())
+	# the hand closes over the shoulder: a wrist flexion about its own bend axis
+	skel.set_bone_pose_rotation(ha, (qf.inverse() * qh * Quaternion(Vector3.RIGHT, 0.3 * w)).normalized())
+
+static func _hframe(y_dir: Vector3, hx: Vector3) -> Quaternion:
+	var y := y_dir.normalized()
+	var x := (hx - y * hx.dot(y)).normalized()
+	return Basis(x, y, x.cross(y)).get_rotation_quaternion()
 
 ## the heavy walk on/off (blended)
 func walk(on: bool) -> void:
@@ -267,7 +285,7 @@ func walk(on: bool) -> void:
 
 ## metres per second to move the node at so his feet do not slide (at `height`)
 func walk_speed() -> float:
-	return 2.0 * STRIDE / WALK_T * (height / UNIT)
+	return float(WardenClipData.CLIPS["walk"]["speed"]) * (height / UNIT)
 
 ## turn his head toward a world point (Vector3.INF: let go)
 func look_at_point(p: Vector3) -> void:

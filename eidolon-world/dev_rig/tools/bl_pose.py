@@ -273,6 +273,14 @@ def anatomy(sk, T, prev=None):
             tw = _twist_y(q)
             twq = Quaternion((0, 1, 0), tw)
             swq = twq.inverted() @ q
+            if prev is not None:                    # unwrap across +-180 (a clamp there would flip the hand over)
+                key = E
+                if key in prev:
+                    while tw - prev[key] > math.pi:
+                        tw -= 2 * math.pi
+                    while tw - prev[key] < -math.pi:
+                        tw += 2 * math.pi
+                prev[key] = tw
             tw = max(-tw_lim, min(tw_lim, tw))
             if swq.angle > sw_lim:
                 swq = Quaternion(swq.axis, sw_lim)

@@ -86,7 +86,7 @@ func _ready() -> void:
 		return
 	# the title: she lies curled on the marble lip of the black pool (the prologue's first frame, from above)
 	player.teleport(Vector3(-4.6, 0.0, 31.3), 0.0)        # (WS.LIE: curled on the pool lip)
-	if player.fig.rig: player.fig.rig.play("lie_side")
+	if player.fig.rig and HeroineClips.has("lie_side"): player.fig.rig.play("lie_side")      # (A's new rig may not have it yet)
 	world.snap_to(player.position)
 	mode = "title"
 	ui.set_continue(not save_data.is_empty())

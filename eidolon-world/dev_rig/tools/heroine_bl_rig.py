@@ -24,12 +24,15 @@ import bl_rig_lib as L
 from bl_rig_lib import ss
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# RIG=warden builds the Glass Warden (assets/models/warden_v2.glb) with the same pipeline
+RIG = os.environ.get('RIG', 'heroine')
+WARDEN = RIG == 'warden'
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 ap = argparse.ArgumentParser()
-ap.add_argument('--src', default=os.path.join(ROOT, 'assets/models/heroine_v1_rigged.glb'))
+ap.add_argument('--src', default=os.path.join(ROOT, 'assets/models/warden_rigged.glb' if WARDEN else 'assets/models/heroine_v1_rigged.glb'))
 ap.add_argument('--ual1', default=os.path.join(ROOT, 'dev_rig/ual/UAL1_Standard.glb'))
 ap.add_argument('--ual2', default=os.path.join(ROOT, 'dev_rig/ual/UAL2_Standard.glb'))
-ap.add_argument('--out', default=os.path.join(ROOT, 'assets/models/heroine_v2.glb'))
+ap.add_argument('--out', default=os.path.join(ROOT, 'assets/models/warden_v2.glb' if WARDEN else 'assets/models/heroine_v2.glb'))
 ap.add_argument('--clips', default='')
 ap.add_argument('--blend', default='')
 ap.add_argument('--noexport', action='store_true')
@@ -41,10 +44,12 @@ bpy.context.scene.render.fps = FPS
 
 # ------------------------------------------------------------------ the mesh
 objs = L.import_glb(args.src)
-body = [o for o in objs if o.type == 'MESH' and o.name == 'Heroine'][0]
+body = [o for o in objs if o.type == 'MESH' and o.name == ('Warden' if WARDEN else 'Heroine')][0]
 for o in objs:
     if o is not body:
         bpy.data.objects.remove(o, do_unlink=True)
+for a_ in list(bpy.data.actions):          # (the old GLB's own clips: never mixed with the new ones)
+    bpy.data.actions.remove(a_)
 for m in list(body.modifiers):
     body.modifiers.remove(m)
 body.parent = None
@@ -82,6 +87,12 @@ S = {  # her left side; the right mirrors x
     'UpperLeg': V(0.085, 0.0, 0.860), 'LowerLeg': V(0.075, -0.020, 0.470), 'Foot': V(0.070, -0.030, 0.085),
     'Toes': V(0.070, -0.130, 0.025), 'ToeTip': V(0.070, -0.235, 0.010),
 }
+if WARDEN:   # (his old A6-checked joints: gaunt, long arms, the robe to the knees, bare legs and feet below)
+    J = {'Hips': V(0, 0.02, 0.90), 'Spine': V(0, 0.02, 0.98), 'Chest': V(0, 0.03, 1.08), 'UpperChest': V(0, 0.04, 1.22),
+         'Neck': V(0, 0.045, 1.40), 'Head': V(0, 0.025, 1.50), 'HeadTop': V(0, 0.015, 1.64)}
+    S = {'Shoulder': V(0.040, 0.050, 1.360), 'UpperArm': V(0.200, 0.060, 1.330), 'LowerArm': V(0.314, 0.062, 1.107),
+         'Hand': V(0.405, 0.024, 0.903), 'UpperLeg': V(0.100, 0.030, 0.840), 'LowerLeg': V(0.160, 0.060, 0.465),
+         'Foot': V(0.172, 0.070, 0.090), 'Toes': V(0.190, -0.040, 0.025), 'ToeTip': V(0.211, -0.166, 0.004)}
 # the hand: its tip from the mesh (the farthest skin past the wrist along the forearm line)
 fa = (S['Hand'] - S['LowerArm']).normalized()
 w0 = np.array(S['Hand'])
@@ -125,7 +136,7 @@ for side, f in (('Left', lambda v: v), ('Right', mir)):
 # ------------------------------------------------------------------ the gown chains (8 around, 2 segments: hips > knee > hem)
 AX_Y = float(np.mean(uy[(uz > 0.9) & (uz < 1.3) & (np.abs(ux) < 0.15)]))     # the body axis (y)
 SK_ANG = [0, 45, 90, 135, 180, -135, -90, -45]          # degrees, 0 = front (-y), +90 = her left (+x)
-SK_Z = [0.90, 0.48, 0.03]
+SK_Z = [0.92, 0.62, 0.36] if WARDEN else [0.90, 0.48, 0.03]
 def surf_r(phi, zz, band=0.03, cone=12.0):
     a = np.degrees(np.arctan2(ux, -(uy - AX_Y)))
     m = (np.abs(uz - zz) < band) & (np.abs((a - phi + 180) % 360 - 180) < cone) & (np.abs(ux) < 0.7)
@@ -146,7 +157,7 @@ for k, phi in enumerate(SK_ANG):
     bones += [('Skirt%d_1' % k, 'Hips', pts[0], pts[1], None, False), ('Skirt%d_2' % k, 'Hips', pts[1], pts[2], None, False)]   # (both under the hips: their scale never shears a child)
 print('skirt chains', [[tuple(round(c, 2) for c in p) for p in c] for c in SK][:3], '...')
 
-arm = L.build_armature('HeroineArmature', bones)
+arm = L.build_armature('WardenArmature' if WARDEN else 'HeroineArmature', bones)
 # skirt rolls: Z outward (bend axis X tangential)
 bpy.context.view_layer.objects.active = arm
 bpy.ops.object.mode_set(mode='EDIT')
@@ -185,7 +196,7 @@ foot_m = np.zeros(NU, bool)
 def near_foot(i):
     sg = 1 if ux[i] > 0 else -1
     return math.hypot((ux[i] - sg * 0.07) / 0.06, (uy[i] + 0.07) / 0.14) < 1.0 and uz[i] < 0.14
-seeds = [i for i in np.where(uz < 0.06)[0] if near_foot(i)]
+seeds = [] if WARDEN else [i for i in np.where(uz < 0.06)[0] if near_foot(i)]
 foot_m[seeds] = True
 import collections
 q = collections.deque(seeds)
@@ -238,12 +249,17 @@ foot_w = L.smooth_weights(foot_m.astype(float)[:, None], A, 2)[:, 0]
 
 # the gown: below the waist, not the arms/hands, not the feet
 gown_m = ss(1.0, 0.88, uz) * (1 - arm_m) * (1 - foot_w)
+if WARDEN:
+    # his robe ends at the knees: the bare legs (near each leg's line, under the robe's inside) keep their heat weights
+    legd = np.minimum(L.seg_dist(U, np.array(S['UpperLeg']), np.array(S['LowerLeg'])), L.seg_dist(U, np.array(mir(S['UpperLeg'])), np.array(mir(S['LowerLeg']))))
+    legd = np.minimum(legd, np.minimum(L.seg_dist(U, np.array(S['LowerLeg']), np.array(S['Foot'])), L.seg_dist(U, np.array(mir(S['LowerLeg'])), np.array(mir(S['Foot'])))))
+    gown_m = gown_m * ss(0.055, 0.085, legd) * ss(0.24, 0.32, uz)
 # the veil's back panel (behind the shoulder blades) and side flaps: follow the head/neck/chest by height
 ax = np.abs(ux)
 BACK_Y = AX_Y + 0.09
 veil_back = ss(BACK_Y - 0.01, BACK_Y + 0.02, uy) * ss(0.9, 0.98, uz) * ss(1.48, 1.42, uz) * ss(0.26, 0.2, ax) * (1 - arm_m)
 veil_side = ss(0.095, 0.125, ax) * ss(1.30, 1.34, uz) * ss(1.60, 1.50, uz) * (1 - arm_m) * (1 - veil_back) * ss(0.1, 0.06, uy - AX_Y)
-veil_m = np.clip(veil_back + veil_side, 0, 1) * (1 - gown_m)
+veil_m = np.clip(veil_back + veil_side, 0, 1) * (1 - gown_m) * (0.0 if WARDEN else 1.0)
 
 def ladder(zz, stops):
     """vertical blend over (z, bone) stops (descending z) -> (NU, NB)"""
@@ -290,7 +306,8 @@ W = WH * body_m[:, None] + W_gown * gown_m[:, None] + W_veil * veil_m[:, None] +
 # no leg bone above the hem in the gown band (the legs are inside the gown; the gown rides the chains)
 for sd in ('Left', 'Right'):
     for b in ('UpperLeg', 'LowerLeg'):
-        W[:, BI[sd + b]] *= foot_w
+        if not WARDEN:
+            W[:, BI[sd + b]] *= foot_w
 # forearm twist: the distal half of the forearm takes the twist bone (the hand's roll split along the forearm)
 for sd, sg in (('Left', 1), ('Right', -1)):
     f = (lambda v: v) if sg > 0 else mir
@@ -315,6 +332,7 @@ print('weights done; max influences', int((WS > 0).sum(1).max()))
 
 # ------------------------------------------------------------------ the gown solver (baked into every frame)
 SK_REST = [[p.copy() for p in c] for c in SK]
+KNEE_R, SHIN_R = 0.075, 0.06            # the leg's half-thickness at the knee / the shin (the gown's inner margin)
 SK_LEN = [[(c[1] - c[0]).length, (c[2] - c[1]).length] for c in SK]
 def skirt_pose(T):
     """T: armature-space pose matrices (body done). Adds Skirt<k>_<i>."""
@@ -341,10 +359,12 @@ def skirt_pose(T):
             near = ss(-0.75, 0.2, sg * math.sin(pa))       # the left leg pushes the front/left/back, not the right side
             kr, kp, ar, apos = legs[sd]
             dk = kp - kr; da = apos - ar
-            # the knee/ankle moves; the chain at this azimuth is pushed by its outward part (and dragged a little sideways)
-            o1 = max(0.0, dk.dot(n)) * near; o2 = max(0.0, da.dot(n)) * near
-            push1 += n * o1 + (dk - n * dk.dot(n)) * 0.35 * near
-            push2 += n * o2 + (da - n * da.dot(n)) * 0.25 * near
+            # a knee / shin only pushes the gown where it would come through it: past the gown's own surface at this
+            # azimuth (less a body margin); it drags it a little sideways
+            o1 = max(0.0, (kp - p1).dot(n) + KNEE_R) * near
+            o2 = max(0.0, (apos - p2).dot(n) + SHIN_R) * near
+            push1 += n * o1 + (dk - n * dk.dot(n)) * 0.15 * near
+            push2 += n * o2 + (da - n * da.dot(n)) * 0.10 * near
         p1n = p1 + push1
         d1 = (p1n - p0).normalized(); p1n = p0 + d1 * SK_LEN[k][0]
         # the lower segment: carried by the knee push, pushed by the shin/foot, hangs toward the floor
@@ -353,17 +373,24 @@ def skirt_pose(T):
         down = V(0, 0, -1)
         d2 = d2.normalized().lerp(down, 0.15).normalized()
         p2n = p1n + d2 * SK_LEN[k][1]
-        # the floor: the gown pools (the lower segment shortens, spreading a little) instead of going under it
+        # the floor: the gown lies on it, spreading outward (each segment may shorten by a quarter as it piles up),
+        # never under it and never folded back through itself
         FL = 0.012
-        if p1n.z < FL + 0.03:
-            p1n.z = FL + 0.03
-        h = p1n.z - FL
-        L2 = SK_LEN[k][1]
-        if p2n.z < FL:
-            hz = V(d2.x, d2.y, 0)
+        L1, L2 = SK_LEN[k]
+        def onto_floor(a_, b_, Ls, lift):
+            if b_.z >= FL + lift:
+                return b_
+            h_ = max(a_.z - (FL + lift), 0.0)
+            hz = V(b_.x - a_.x, b_.y - a_.y, 0)
+            if hz.length < 1e-4 or hz.normalized().dot(V(n.x, n.y, 0).normalized()) < 0.2:
+                hz = hz + V(n.x, n.y, 0) * 0.5
             hz = hz.normalized() if hz.length > 1e-4 else V(n.x, n.y, 0).normalized()
-            off = min(math.sqrt(max(L2 * L2 - h * h, 0.0)), 0.10 + 0.30 * max(L2 - h, 0.0))
-            p2n = p1n + hz * off + V(0, 0, -h)
+            Lt = max(h_, 0.75 * Ls)
+            off = math.sqrt(max(Lt * Lt - h_ * h_, 0.0))
+            return a_ + hz * off + V(0, 0, -h_)
+        p1n = onto_floor(p0, p1n, L1, 0.03)
+        p2n = p1n + (p2n - p1n).normalized() * L2
+        p2n = onto_floor(p1n, p2n, L2, 0.0)
         for i, (a_, b_) in enumerate(((p0, p1n), (p1n, p2n)), 1):
             nm = 'Skirt%d_%d' % (k, i)
             R0 = RESTM[nm].to_3x3()
@@ -417,7 +444,7 @@ def load_sources():
         src[key] = a_
     return src
 
-HIP_SCALE = 0.86 / 0.932             # her hip joint height / the UAL mannequin's
+HIP_SCALE = (0.84 if WARDEN else 0.86) / 0.932             # her hip joint height / the UAL mannequin's
 
 def retargeter(src_arm):
     mp = {k: v for k, v in L.UAL_MAP.items()}
@@ -460,7 +487,7 @@ def g(v):
 def build_all():
     import time
     import bl_pose as P
-    import heroine_bl_clips as HC
+    HC = __import__('warden_bl_clips' if WARDEN else 'heroine_bl_clips')
     t_start = time.time()
     bpy.context.scene.collection.objects.unlink(body)
     src = load_sources()
@@ -482,7 +509,8 @@ def build_all():
         fn, meta = clips[name]
         n = int(round(meta['len'] * FPS)) + 1
         poses = [fn(min(i / FPS, meta['len'])) for i in range(n)]
-        poses = [P.anatomy(sk, T) for T in poses]
+        st_ = {}
+        poses = [P.anatomy(sk, T, st_) for T in poses]
         fb = [L.to_basis(arm, finish(T)) for T in poses]
         L.write_action(arm, name, fb, FPS)
         m = dict(meta)
@@ -530,7 +558,8 @@ def export(meta_out):
     bpy.ops.object.select_all(action='DESELECT')
     arm.select_set(True); body.select_set(True)
     bpy.context.view_layer.objects.active = arm
-    body.data.color_attributes.active_color = body.data.color_attributes['Color']
+    if 'Color' in body.data.color_attributes:
+        body.data.color_attributes.active_color = body.data.color_attributes['Color']
     bpy.ops.export_scene.gltf(filepath=args.out, export_format='GLB', use_selection=True, export_image_format='NONE',
                               export_vertex_color='ACTIVE', export_animations=True, export_animation_mode='ACTIONS',
                               export_force_sampling=True, export_optimize_animation_size=False, export_def_bones=False,
@@ -554,7 +583,7 @@ def write_gd(meta_out, path):
         if isinstance(v, dict):
             return '{' + ', '.join('"%s": %s' % (k, gd(x)) for k, x in v.items()) + '}'
         raise TypeError(type(v))
-    lines = ['class_name HeroineClipData', 'extends RefCounted',
+    lines = ['class_name ' + ('WardenClipData' if WARDEN else 'HeroineClipData'), 'extends RefCounted',
              '## GENERATED by dev_rig/tools/heroine_bl_rig.py (a7): her clips in assets/models/heroine_v2.glb. Do not edit by hand.',
              '## per clip: len (s), frames, loop, hold_t (-1: none), blend [in, out], ev {name: t}, idle (an idle variant), layer',
              '## ("arm_r": an upper-body hold), ik [{side, t: [in0, in1, out0, out1], hand (authored wrist at in1, model space),',
@@ -584,4 +613,4 @@ if __name__ == '__main__' and os.environ.get('HR_STAGE', '') != 'rig':
         bpy.ops.wm.save_as_mainfile(filepath=args.blend)
     if not args.noexport:
         export(meta_out)
-        write_gd(meta_out, os.path.join(ROOT, 'scripts/fx/heroine_clip_data.gd'))
+        write_gd(meta_out, os.path.join(ROOT, 'scripts/fx/warden_clip_data.gd' if WARDEN else 'scripts/fx/heroine_clip_data.gd'))

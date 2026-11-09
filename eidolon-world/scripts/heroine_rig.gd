@@ -639,7 +639,7 @@ func _arm_to(s: String, tgt: Vector3, k: float, nq: Quaternion, anim_pole: float
 	var R0 := Gp.basis.orthonormalized() * sk.get_bone_rest(u).basis.orthonormalized()
 	var zs := RigIK.arc(R0.y.normalized(), dn) * -R0.z
 	anat = (anat.normalized() + zs.normalized() * (1.0 - behind)).normalized()
-	var pv := RigIK.pole(dn, (E - S).normalized() * anim_pole + anat * (1.0 - anim_pole), anat * 0.3)
+	var pv := RigIK.pole(dn, (E - S).normalized() * anim_pole + anat * (1.0 - anim_pole * 0.7), anat * 0.3)
 	pv = (pv - dn * pv.dot(dn)).normalized()
 	# the elbow swivels round the arm's line no faster than a real arm (a straight arm's pole is unsteady)
 	var pp: Vector3 = _pole_prev[s]
