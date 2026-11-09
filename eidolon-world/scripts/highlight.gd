@@ -141,7 +141,7 @@ void vertex() {
 void fragment() {
 	vec2 q = UV * 2.0 - 1.0;
 	float r = length(q);
-	float tw = 0.6 + 0.4 * pow(0.5 + 0.5 * sin(TIME * 2.2 + ph), 2.0);
+	float tw = 0.75 + 0.25 * pow(0.5 + 0.5 * sin(TIME * 2.2 + ph), 2.0);
 	// a four-point star (arms thin out to the tips), a bright heart, a faint ring: reads at ~30 px on a phone
 	float star = max(0.0, 1.0 - abs(q.x) * 5.0 - abs(q.y) * 1.05) + max(0.0, 1.0 - abs(q.y) * 5.0 - abs(q.x) * 1.05);
 	float core = exp(-r * r * 30.0);
@@ -167,7 +167,7 @@ func anchor(it: Level.Interact) -> Vector3:
 	var a := it.pos + Vector3(0, 0.95, 0)
 	if not ms.is_empty():
 		var bb := ms[0].global_transform * ms[0].get_aabb()
-		if bb.size.y < 2.4: a = Vector3(bb.get_center().x, bb.end.y + 0.18, bb.get_center().z)
+		if bb.size.y < 2.4: a = Vector3(bb.get_center().x, bb.end.y + 0.32, bb.get_center().z)
 	_gl_anchor[it.id] = a
 	return a
 
@@ -195,7 +195,7 @@ func glints(level: Level, p: Vector3, dt: float, space_key: String, on: bool) ->
 		var mi: MeshInstance3D = _gl_of[gid]
 		var m := mi.material_override as ShaderMaterial
 		var kk: float = m.get_shader_parameter("k")
-		if want.has(gid): kk = move_toward(kk, 0.7 * fl, dt * 2.5)
+		if want.has(gid): kk = move_toward(kk, 0.95 * fl, dt * 2.5)
 		else: kk = move_toward(kk, 0.0, dt * 3.0)
 		m.set_shader_parameter("k", kk)
 		if kk <= 0.0 and not want.has(gid):
@@ -222,7 +222,7 @@ func _gl_get() -> MeshInstance3D:
 	m.render_priority = 4
 	m.set_shader_parameter("k", 0.0)
 	var q := QuadMesh.new()
-	q.size = Vector2(0.62, 0.62)
+	q.size = Vector2(0.8, 0.8)
 	var mi := MeshInstance3D.new()
 	mi.mesh = q
 	mi.material_override = m

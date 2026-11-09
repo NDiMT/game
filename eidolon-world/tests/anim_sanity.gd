@@ -61,7 +61,7 @@ func _data(sk: Skeleton3D, mi: MeshInstance3D, flip_re: String) -> RigData:
 	d.sk = sk
 	for nm in ["Spine02", "L_Upperarm", "L_Forearm", "L_Hand", "R_Upperarm", "R_Forearm", "R_Hand",
 			"L_Thigh", "L_Calf", "L_Foot", "R_Thigh", "R_Calf", "R_Foot", "L_Clavicle", "R_Clavicle"]:
-		d.bi[nm] = sk.find_bone(nm)
+		d.bi[nm] = _bn(sk, nm)
 		d.rest[nm] = sk.get_bone_global_rest(d.bi[nm]).basis.orthonormalized()
 	d.chest0 = d.rest["Spine02"]
 	var re := RegEx.create_from_string(flip_re)
@@ -71,7 +71,7 @@ func _data(sk: Skeleton3D, mi: MeshInstance3D, flip_re: String) -> RigData:
 	var sknres := mi.skin
 	for i in sknres.get_bind_count():
 		var nm := sknres.get_bind_name(i)
-		var b := sk.find_bone(nm) if nm != "" else sknres.get_bind_bone(i)
+		var b := _bn(sk, nm) if nm != "" else sknres.get_bind_bone(i)
 		d.binds.append([b, sknres.get_bind_pose(i)])
 	var arr := mi.mesh.surface_get_arrays(0)
 	var V: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
@@ -84,8 +84,8 @@ func _data(sk: Skeleton3D, mi: MeshInstance3D, flip_re: String) -> RigData:
 		joints.append(["%s_wrist" % s, s + "_Forearm", s + "_Hand", ""])
 		joints.append(["%s_knee" % s, s + "_Thigh", s + "_Calf", s + "_Foot"])
 	for j in joints:
-		var b1: int = sk.find_bone(j[1])
-		var b2: int = sk.find_bone(j[2])
+		var b1: int = _bn(sk, j[1])
+		var b2: int = _bn(sk, j[2])
 		var cand := []
 		for vi in range(0, V.size()):
 			var w1 := 0.0
@@ -103,14 +103,19 @@ func _data(sk: Skeleton3D, mi: MeshInstance3D, flip_re: String) -> RigData:
 					ws.append(W[vi * per + k])
 			var pa: Vector3 = sk.get_bone_global_rest(b1).origin
 			var pb: Vector3 = sk.get_bone_global_rest(b2).origin
-			var pc: Vector3 = sk.get_bone_global_rest(sk.find_bone(j[3])).origin if j[3] != "" else pb + sk.get_bone_global_rest(b2).basis.y.normalized() * (pb - pa).length() * 0.4
+			var pc: Vector3 = sk.get_bone_global_rest(_bn(sk, j[3])).origin if j[3] != "" else pb + sk.get_bone_global_rest(b2).basis.y.normalized() * (pb - pa).length() * 0.4
 			var rd := _seg_dist(V[vi], pa, pb, pc)
 			if rd < 0.012: continue
-			cand.append([j[0], V[vi], bs, ws, b1, b2, sk.find_bone(j[3]) if j[3] != "" else -1, rd])
+			cand.append([j[0], V[vi], bs, ws, b1, b2, _bn(sk, j[3]) if j[3] != "" else -1, rd])
 		# an even spread over the whole band (every k-th), at most 120 vertices
 		var stride := maxi(1, ceili(cand.size() / 120.0))
 		for ci in range(0, cand.size(), stride): d.skin_v.append(cand[ci])
 	return d
+
+## (a7) the rigs' bones carry Godot SkeletonProfileHumanoid names now; the test keeps the old short names
+static func _bn(sk: Skeleton3D, nm: String) -> int:
+	var i := sk.find_bone(nm)
+	return i if i >= 0 else sk.find_bone(str(HeroineRig.ALIAS.get(nm, nm)))
 
 static func _seg_dist(p: Vector3, a: Vector3, b: Vector3, c: Vector3) -> float:
 	return minf(p.distance_to(Geometry3D.get_closest_point_to_segment(p, a, b)), p.distance_to(Geometry3D.get_closest_point_to_segment(p, b, c)))
@@ -172,7 +177,10 @@ func _measure(d: RigData, with_skin: bool) -> void:
 		if dl.z < -0.72: _fail(s + " shoulder behind", dl.z)
 		if lat < -0.35 and dl.z < 0.35: _fail(s + " arm through torso", lat)
 		var tw_u := _twist_y(Quaternion((d.chest0.inverse() * d.rest[up]).inverse() * (chest.inverse() * Bu)))
-		if absf(tw_u) > LIM["sh_tw"]: _fail(s + " upper-arm twist", tw_u, "U=%s elbow=%s" % [dl.snapped(Vector3.ONE * 0.01), (cd.inverse() * (U - F)).normalized().snapped(Vector3.ONE * 0.01)] if verbose else "")
+		# (a7) the aim grid's hand straight out to the side / overhead: the humerus turns ~100 deg from the A-pose rest
+		# there (the arm rotates outward as it rises past the shoulder), so those cases allow 115
+		var sh_lim: float = LIM["sh_tw"] if not _case.begins_with("aim_hand") else 115.0
+		if absf(tw_u) > sh_lim: _fail(s + " upper-arm twist", tw_u, "U=%s elbow=%s" % [dl.snapped(Vector3.ONE * 0.01), (cd.inverse() * (U - F)).normalized().snapped(Vector3.ONE * 0.01)] if verbose else "")
 		# legs
 		var th := s + "_Thigh"
 		var ca := s + "_Calf"
@@ -263,7 +271,7 @@ func _heroine() -> void:
 	add_child(_her)
 	await get_tree().process_frame
 	_her.apply_pose(_pose, 0.0, false)
-	_hd = _data(_her.sk, _her.mesh_mi, "^(Hem|Veil|Cape)")
+	_hd = _data(_her.sk, _her.mesh_mi, "^(Skirt|Hem|Veil|Cape)")
 	if verbose: print("heroine skin band verts: ", _hd.skin_v.size())
 	if _begin("her idle"): await _step_her(240)
 	for sp in [0.6, 1.3, 2.4]:
@@ -363,7 +371,7 @@ func _warden() -> void:
 	add_child(_wd)
 	await get_tree().process_frame
 	var mi: MeshInstance3D = _wd.model.find_children("*", "MeshInstance3D", true, false)[0]
-	_wdd = _data(_wd.skel, mi, "^(Hem|Cape)")
+	_wdd = _data(_wd.skel, mi, "^(Skirt|Hem|Cape)")
 	if _begin("warden idle"): await _step_w(300)
 	if _begin("warden walk"):
 		_wd.walk(true)

@@ -351,8 +351,10 @@ void fragment() {
 	}
 	if (dark_k > 0.001) {
 		float lr = length(wp - dark_lamp.xyz);
-		float seen = dark_lamp.w > 0.0 ? 1.0 - smoothstep(dark_lamp.w * 0.3, dark_lamp.w, lr) : 0.0;
-		col *= mix(1.0, mix(0.05, 1.0, seen * seen), dark_k);
+		// (a8) a lamp's falloff, not a lit disc: an inverse-square-like roll-off with a long soft tail (no edge)
+		float lx = lr / max(dark_lamp.w, 0.01);
+		float seen = dark_lamp.w > 0.0 ? min(1.0, 1.25 / (1.0 + 5.0 * lx * lx)) * (1.0 - smoothstep(0.75, 1.5, lx)) : 0.0;
+		col *= mix(1.0, mix(0.06, 1.0, seen), dark_k);
 		col *= mix(vec3(1.0), vec3(1.1, 0.95, 0.78), seen * dark_k * 0.7);      // the lamp's warm cast
 	}
 	if (low_k > 0.0) {

@@ -86,3 +86,16 @@ Older log: dev/archive/HANDOFF_2026-10-11.md (grep it, don't read whole).
 - Test: `tests/anim_sanity.tscn` (102 cases, every clip x3 targets, walk, holds, aim grid, look, Pose clasp/reach, Warden) in quick.sh. Before 66/100 failing, now PASS.
 - W ask: game3.gd:390-391 `rig.hand_node("R").add_child(lamp_node)` -> `rig.upright_node("R").add_child(lamp_node)` and `lamp_node.position = Vector3.ZERO` (the lamp lay along the fingers; upright_node stays level on the palm).
 - Hooks unchanged (play/hold/aim_hand/look_at_point). Elbow max 120 deg (LBS pinch beyond); a reach closer than that stops short.
+
+## 2026-11-09 W -> A, main: intro without the film; clarity pass (glints, feedback, hints)
+- Intro (owner): the prologue film is unhooked. `Game3.play_prologue()` now plays only the text cards (`Game3.INTRO`, IntroCard on black, long press skips) then fades in at `Game3.SHORE` (WS, standing, comb given, WS solved). `seen.prologue` kept as the save key: old saves continue. prologue3.gd kept (unused; A's `dev_rig/still/a3_demo.gd` still loads it). `cine_at` hook gone.
+- Glints: `Highlight.glints()` (every play frame): each usable interact within 6.5 m, not yet in reach, wears a crimson star over its target mesh (`Highlight.anchor(it)`, max 4, alpha-mixed, fog off, LAYER_MAIN_FX). A beat's `hinted` flares its space's glints (`Highlight.flare`).
+- Feedback: `Game3.try_interact` adds a soft click + `juice.glint` at the anchor on every act. Hints: `Puzzle.hint_after` 45 -> 30 s; I.1 15 s, its hint ripples the water over the plate, stepping on it rings + chimes.
+- Tests: pz_test `prologue` job -> `intro`; web_smoke / web_v3 no longer wait for or skip the film. A: the glint is an inline shader in highlight.gd; restyle freely (keep it alpha-mixed, unfogged).
+
+## 2026-11-09 A -> W: a8 fx/lighting pass, dark-disc hunt (sheet dev/shots/a8-fx-sheet.png)
+- Dark discs fixed (by name in `PolishArt._dress`, no new marble): `E2_Stones` black-marble discs + `N5_Plinth`/`N5_Mirror_*` rough-stone bases re-tagged cream (`PolishArt.remark`); `E2_Stone_*` inlays aged bronze (your emission tween kept); `E4_Water` + I5 `basin_mat` clear pale water (`clear_water`; Kit3.water_mat was a near-black metallic disc).
+- Crypt (`dark_lamp`, marble.gdshaderinc) lamp falloff is a soft roll-off, not a lit disc with a hard edge; StillRoom block ContactShadow softer/warmer.
+- Lighting: `world.rim_light` (cool omni, cull mask = player layer, follows her, behind vs camera); key +, fill - in `_apply_light`. X-ray outline is now true crimson (blend_mix, figure_xray/wanderer_xray). Flame omni shadow mode CUBE (no dual-paraboloid). water_ring.gdshader: three thin crests.
+- W ASK (your files): the interact/action button and joystick are dark discs (`controls.gd:242,273,302` fill Color(0.06,0.07,0.08,0.34-0.40); `:291` knob). That pops up near every interactable and is the likeliest "black circle". Suggest an ivory frosted fill `Color(0.95,0.93,0.90,0.30)` + the crimson hairline, glyph in charcoal.
+- Harness: `dev_fx/a8_look.tscn -- <label> <high|low> [spaces] | scan | pick SPACE px py y|screen | reveal`. quick: parse/flow/pz PASS; anim sanity FAILs are the rig agent's WIP.

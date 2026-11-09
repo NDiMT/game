@@ -586,8 +586,9 @@ void fragment() {
 	vec2 q = abs(UV - 0.5);
 	vec2 o = max(q - half_in, vec2(0.0));
 	float d = length(o) / max(0.5 - half_in.x, 0.01);
-	ALBEDO = vec3(0.04, 0.04, 0.05);
-	ALPHA = 0.55 * (1.0 - smoothstep(0.0, 1.0, d));
+	ALBEDO = vec3(0.07, 0.065, 0.06);          // (a8: a warm, soft occlusion, not a black slab)
+	float f = 1.0 - smoothstep(0.0, 1.0, d);
+	ALPHA = 0.42 * f * f;
 }
 """
 

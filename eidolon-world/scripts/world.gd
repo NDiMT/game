@@ -56,6 +56,7 @@ var _grade_lo: GradientTexture1D
 var grain_mat: ShaderMaterial
 var tier_con := 1.0                  # (a5) the Low tier's extra contrast / saturation on top of the mood's
 var tier_sat := 1.0
+var rim_light: OmniLight3D             # (a8) her rim (see _build_light)
 
 func _ready() -> void:
 	var fn := FastNoiseLite.new()
@@ -170,6 +171,18 @@ func _build_light() -> void:
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	sun.directional_shadow_max_distance = DIST + 16.0
 	add_child(sun)
+	# (a8) her RIM: a cool light behind her (away from the camera) that lights only her (light_cull_mask = the
+	# player layer): a thin pale edge on her veil and shoulders so she reads against the pale floor. Warm key, cold rim.
+	rim_light = OmniLight3D.new()
+	rim_light.name = "HerRim"
+	rim_light.light_cull_mask = 2              # (PlanarMirror.LAYER_PLAYER: her body / veil only, never the floor)
+	rim_light.light_color = Color(0.78, 0.86, 1.0)
+	rim_light.light_energy = 2.4
+	rim_light.light_specular = 0.35
+	rim_light.omni_range = 3.4
+	rim_light.omni_attenuation = 0.8
+	rim_light.shadow_enabled = false
+	add_child(rim_light)
 
 func _fog_sheet(y: float, density: float, hole_in: float, hole_out: float, drift: Vector2, scale: float, col: Color) -> void:
 	var m := ShaderMaterial.new()
@@ -668,9 +681,10 @@ func _apply_light() -> void:
 	env.fog_light_color = fc.lerp(fc.lerp(Color(0.82, 0.84, 0.85), 0.5), k).lerp(Color(0.05, 0.05, 0.06), dark * 0.92)
 	env.fog_height_density = maxf(lerpf(0.40, 0.22, k) + float(md["hd"]), 0.0)
 	env.ambient_light_color = md["amb"]
-	env.ambient_light_energy = lerpf(0.55, 0.72, k) * float(md["amb_e"]) * (1.0 - 0.85 * dark)
+	# (a8) a little more key, a little less fill: the marble is modelled by the light (warm key on a cool fill)
+	env.ambient_light_energy = lerpf(0.48, 0.66, k) * float(md["amb_e"]) * (1.0 - 0.85 * dark)
 	sun.light_color = md["sun"]
-	sun.light_energy = lerpf(0.85, 1.0, k) * float(md["sun_e"]) * (1.0 - 0.9 * dark)
+	sun.light_energy = lerpf(0.93, 1.06, k) * float(md["sun_e"]) * (1.0 - 0.9 * dark)
 	env.adjustment_saturation = float(md["sat"]) * tier_sat
 	env.adjustment_contrast = float(md["con"]) * tier_con
 	if backdrop_mat: backdrop_mat.set_shader_parameter("dark", dark)
@@ -727,6 +741,10 @@ func _process(dt: float) -> void:
 		_rig_smooth = _rig_smooth.lerp(target, 1.0 - exp(-dt * 4.0))
 		rig.position = _pixel_snap(_rig_smooth)
 	_was_following = follow != null
+	if rim_light:
+		var fp := follow.global_position if follow else rig.position
+		var bk := Vector3(cam_back.x, 0.0, cam_back.z).normalized()
+		rim_light.position = fp + Vector3(0, 2.0, 0) - bk * 1.25
 	var sc := _shake_curves(dt) if not _shakes.is_empty() else Vector3.ZERO
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - dt * 0.6)

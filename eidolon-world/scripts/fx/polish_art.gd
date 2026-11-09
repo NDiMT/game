@@ -12,6 +12,9 @@ class_name PolishArt
 ##   E3_Mist_*        breath-mist on the glass where he looks (`k` 0..1): beads, a blooming edge
 ##   E4_Spring        the rope of water rising: clear, bright streaks running up, a fresnel rim
 ##   I23              the chapter's end: EndingFx (a light rig, crimson under the palms, the shrine's light returning)
+##   (a8) NO DARK DISCS: E2_Stones (black polished marble) and N5_Plinth / N5_Mirror_* bases (rough cliff stone) are
+##   re-tagged honed cream marble (same mesh, same instance); the E2_Stone_* inlays are aged bronze (W's crimson
+##   emission tween kept); E4_Water / I5's basin water is clear and pale (it was a near-black metallic disc)
 
 static func dress_all(game: Game) -> void:
 	var ch: Variant = game.get("ch")
@@ -22,6 +25,7 @@ static func dress_all(game: Game) -> void:
 		if p.has_meta("a5_dressed"): continue
 		p.set_meta("a5_dressed", true)
 		for c in p.get_children(): _dress(c, p, game)
+		if p.get("basin_mat") is StandardMaterial3D: clear_water(p.get("basin_mat"))
 		match str(id):
 			"IBN": _ibn(p, game)
 			"N4": _n4_rugs(p)
@@ -34,11 +38,48 @@ static func _dress(c: Node, p: Node3D, game: Game) -> void:
 	elif nm == "N5_Beam": _beam(c as MeshInstance3D, p)
 	elif nm == "N5_Fresco": _fresco(c as Node3D, game)
 	elif nm.begins_with("E3_Mist_"): _swap(c as MeshInstance3D, MIST_SH)
+	elif nm == "E2_Stones" or nm == "N5_Plinth": remark(c as MeshInstance3D, 0.37, 0.87, 0.25)
+	elif nm.begins_with("N5_Mirror_"):
+		for k in c.get_children(): if k is MeshInstance3D and str(k.name) != "Glass": remark(k as MeshInstance3D, 0.37, 0.62, 0.25)
+	elif nm.begins_with("E2_Stone_") and (c as MeshInstance3D).material_override is StandardMaterial3D:
+		var im := (c as MeshInstance3D).material_override as StandardMaterial3D
+		im.albedo_color = Color(0.50, 0.33, 0.22)          # aged bronze set in the stone (was a near-black maroon)
+		im.metallic = 0.35
+		im.roughness = 0.4
+	elif nm == "E4_Water" and (c as MeshInstance3D).material_override is StandardMaterial3D: clear_water((c as MeshInstance3D).material_override)
 	elif nm == "E4_Spring":
 		_swap(c as MeshInstance3D, SPRING_SH)
 		(c as Node3D).scale = Vector3(1.7, 1.0, 1.7)      # (a rope of water that can hold the temple up, not a wire)
 
 # ------------------------------------------------------------------ helpers
+## (a8) re-tag a marble mesh's material id (vertex COLOR.g in [lo, hi) -> to): same surfaces / names / overrides
+static func remark(mi: MeshInstance3D, lo: float, hi: float, to: float) -> void:
+	if mi == null or not (mi.mesh is ArrayMesh): return
+	var src := mi.mesh as ArrayMesh
+	var out := ArrayMesh.new()
+	for si in src.get_surface_count():
+		var a := src.surface_get_arrays(si)
+		var col = a[Mesh.ARRAY_COLOR]
+		if col is PackedColorArray:
+			var cc: PackedColorArray = col
+			for i in cc.size():
+				if cc[i].g >= lo and cc[i].g < hi: cc[i].g = to
+			a[Mesh.ARRAY_COLOR] = cc
+		out.add_surface_from_arrays(src.surface_get_primitive_type(si), a)
+		out.surface_set_name(si, src.surface_get_name(si))
+		out.surface_set_material(si, src.surface_get_material(si))
+	mi.mesh = out
+
+## (a8) a small still water surface (a basin): clear and pale, the sun's glint on it, the stone showing through
+static func clear_water(m: StandardMaterial3D) -> void:
+	m.albedo_color = Color(0.62, 0.70, 0.74, 0.42)
+	m.metallic = 0.0
+	m.roughness = 0.06
+	m.metallic_specular = 0.9
+	m.rim_enabled = true
+	m.rim = 0.5
+	m.rim_tint = 0.2
+
 static var _shaders := {}
 static func shader(code: String) -> Shader:
 	if not _shaders.has(code):

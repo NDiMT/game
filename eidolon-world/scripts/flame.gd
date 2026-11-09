@@ -86,7 +86,7 @@ func _init(style := 0.0, size := 0.6, light_col := Color(1.0, 0.68, 0.38), noise
 	_ly = size * 0.45
 	light.position = Vector3(0, _ly, 0)
 	light.visible = false
-	light.omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID      # (QA P1-15: 2 shadow passes, not 6)
+	light.omni_shadow_mode = OmniLight3D.SHADOW_CUBE      # (a8: no dual-paraboloid anywhere; the one shadowed flame is desktop-only)
 	add_child(light)
 	all.append(self)
 
