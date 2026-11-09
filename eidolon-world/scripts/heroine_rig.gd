@@ -118,6 +118,7 @@ func _init(ghost := false) -> void:
 	for i in sk.get_bone_count():
 		bone[sk.get_bone_name(i)] = i
 	_has_helpers = bone.has("LeftDeltoid")
+	_has_knees = bone.has("LeftKneeHelper")
 	_rest_data()
 	_build_tree()
 	# the old procedural face veil (hidden; her own veil is in the mesh)
@@ -139,6 +140,7 @@ func _init(ghost := false) -> void:
 		veil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 var _has_helpers := false               # (a9) the arm's deformation helper bones (UpperArmTwist, Deltoid, ElbowHelper, ForeTwist2)
+var _has_knees := false                 # (a10) the knee helpers (KneeHelper: half the knee's bend)
 var _len := {}                           # bone -> length to its child joint (model m)
 var _rest_q := {}                        # bone -> rest local rotation
 var _sh_rest := {}                       # side -> the shoulder (upper arm head) at rest, model space
@@ -431,6 +433,8 @@ func _locomotion(dt: float) -> void:
 	var ve := maxf(speed_m, absf(_yr) * 0.16)
 	var acting := is_playing()
 	var gw_t := smoothstep(WALK_ON * 0.5, WALK_ON * 1.6, ve) if not acting else 0.0
+	if _gw <= 0.0 and gw_t > 0.0 and walk.has("pass"):
+		_walk_t = float(walk["pass"])        # (a10) from standing, the walk starts at its passing pose (feet together)
 	_gw = move_toward(_gw, gw_t, dt * (4.0 if gw_t > _gw else 3.0))
 	var native: float = walk.get("speed", 0.7)
 	var ln: float = walk["len"]
@@ -613,6 +617,9 @@ func _helpers() -> void:
 		var th := RigIK.twist((_rest_q[h] as Quaternion).inverse() * sk.get_bone_pose_rotation(h), Vector3.UP)
 		_set_helper(n + "ForeTwist", Quaternion(Vector3.UP, th / 3.0))
 		_set_helper(n + "ForeTwist2", Quaternion(Vector3.UP, th * 2.0 / 3.0))
+		if _has_knees:       # (a10) the knee ring at half the knee's bend (her v3 legs show)
+			var c: int = bone[n + "LowerLeg"]
+			_set_helper(n + "KneeHelper", Quaternion().slerp((_rest_q[c] as Quaternion).inverse() * sk.get_bone_pose_rotation(c), 0.5))
 
 func _set_helper(nm: String, rel: Quaternion) -> void:
 	var i: int = bone[nm]

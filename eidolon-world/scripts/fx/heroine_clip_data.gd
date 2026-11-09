@@ -6,7 +6,7 @@ extends RefCounted
 ## off}] (the runtime moves the hand by "@" - at), at (the authored default "@", model space), n (its normal).
 const CLIPS := {
 	"idle": {"len": 3.125, "frames": 95.0, "loop": true, "hold_t": -1.0, "blend": [0.2, 0.3], "ev": {}, "idle": false, "layer": ""},
-	"walk": {"len": 1.6667, "frames": 51.0, "loop": true, "hold_t": -1.0, "blend": [0.2, 0.3], "ev": {"step_l": 0.0, "step_r": 0.833}, "idle": false, "layer": "", "speed": 0.9454},
+	"walk": {"len": 1.6667, "frames": 51.0, "loop": true, "hold_t": -1.0, "blend": [0.2, 0.3], "ev": {"step_l": 0.0, "step_r": 0.833}, "idle": false, "layer": "", "speed": 0.9454, "pass": 1.267},
 	"idle_tilt": {"len": 6.0, "frames": 181.0, "loop": false, "hold_t": -1.0, "blend": [0.8, 0.6], "ev": {}, "idle": true, "layer": ""},
 	"idle_fingers": {"len": 5.0, "frames": 151.0, "loop": false, "hold_t": -1.0, "blend": [0.6, 0.6], "ev": {}, "idle": true, "layer": ""},
 	"reach": {"len": 1.25, "frames": 39.0, "loop": false, "hold_t": -1.0, "blend": [0.15, 0.25], "ev": {"contact": 0.42}, "idle": false, "layer": "", "ik": [{"side": "R", "t": [0.05, 0.42, 0.62, 1.1], "hand": Vector3(-0.1254, 1.1451, 0.3802)}], "at": Vector3(-0.12, 1.12, 0.44)},

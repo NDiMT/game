@@ -235,7 +235,7 @@ for side, f in (('Left', lambda v: v), ('Right', mir)):
 # deltoid at half the shoulder's swing, the elbow at half the elbow's bend, the forearm's roll in thirds (ForeTwist,
 # ForeTwist2). Each has its driver bone's rest orientation (same direction, same roll).
 HELPERS = []
-KNEE_OFF, KNEE_W = 0.02, 0.035   # (a10) the knee blend's front/back offset and half-width (m)
+KNEE_K, KNEE_RW = 0.7, 0.07     # (a10) the knee helper's share at the joint / its half-width along the leg (m)
 ELB_K, ELB_W = 0.7, 0.35          # the elbow helper's share at the joint / its half-width (par)
 DLT_K, DLT_W = 0.8, 0.5          # the deltoid's
 if not WARDEN:
@@ -247,6 +247,9 @@ if not WARDEN:
             (side + 'ElbowHelper', side + 'UpperArm', el_, el_.lerp(wr_, 0.3), FWD, False),
             (side + 'ForeTwist2', side + 'LowerArm', el_.lerp(wr_, 2 / 3), wr_, FWD, False),
         ]
+        if V3:      # (a10) her knees show now: the knee ring at half the knee's bend (the elbow helper's twin)
+            kn_, an_ = f(S['LowerLeg']), f(S['Foot'])
+            HELPERS += [(side + 'KneeHelper', side + 'UpperLeg', kn_, kn_.lerp(an_, 0.3), FWD, False)]
     bones += HELPERS
 
 # ------------------------------------------------------------------ the gown chains (8 around, 2 segments: hips > knee > hem)
@@ -559,21 +562,18 @@ if not WARDEN:      # (a9) no foot/leg weight leaks across to the other side's h
             W[ux * sg < -0.005, BI[sd + b_]] = 0.0
     W = L.limit_normalize(W, 4, 0.02)
 if V3:
-    # (a10) her knees (the a9 mesh had none to show): the blend thigh > shin is narrow and offset - the kneecap rides
-    # the thigh, the back of the knee the shin - so a deep bend (a kneel) keeps the knee's volume instead of averaging
-    # it to the bone (LBS's collapse); the shin's front takes the stretch
+    # (a10) her knees (the a9 mesh had none to show): the knee ring's heat weights shared with the half-bend helper
+    # (LBS averages a 150 deg kneel to the bone; two 75 deg halves keep the knee's volume)
     for sd, sg in (('Left', 1), ('Right', -1)):
         f_ = (lambda v: v) if sg > 0 else mir
         kn_ = np.array(f_(S['LowerLeg'])); th_ = np.array(f_(S['UpperLeg'])); an_ = np.array(f_(S['Foot']))
         nd_ = (an_ - kn_) / np.linalg.norm(an_ - kn_) + (kn_ - th_) / np.linalg.norm(kn_ - th_); nd_ /= np.linalg.norm(nd_)
         sd_ = (U - kn_) @ nd_
-        fw_ = -(U[:, 1] - kn_[1])                                   # + in front of the knee's axis
-        iu, il = BI[sd + 'UpperLeg'], BI[sd + 'LowerLeg']
-        tot = W[:, iu] + W[:, il]
-        m_ = (tot > 0.3) & (np.abs(sd_) < 0.12) & (ux * sg > -0.01)
-        c_ = np.clip(fw_ / 0.05, -1, 1) * KNEE_OFF
-        wl = ss(c_ - KNEE_W, c_ + KNEE_W, sd_)
-        W[m_, iu] = (tot * (1 - wl))[m_]; W[m_, il] = (tot * wl)[m_]
+        iu, il, ih = BI[sd + 'UpperLeg'], BI[sd + 'LowerLeg'], BI[sd + 'KneeHelper']
+        k_ = KNEE_K * np.clip(1 - np.abs(sd_) / KNEE_RW, 0, 1) * (ux * sg > -0.01) * (L.seg_dist(U, th_, an_) < 0.12)
+        for b_ in (iu, il):
+            tk = W[:, b_] * k_
+            W[:, b_] -= tk; W[:, ih] += tk
     W = L.limit_normalize(W, 4, 0.02)
 WU = W
 # back to the split vertices
@@ -683,7 +683,7 @@ def _np4(M): return np.array(M)
 # 60% (the toes may peek out under the hem); radii fitted below the rest gown
 CAPS = [('LowerLeg', 'Foot', 0.7, 1.0, 0.040), ('Foot', 'Toes', 0.0, 0.6, 0.035)]     # (the toes may peek out under the hem)
 if V3:      # (a10) her legs ARE drawn: the thigh and the knee stay inside the skirt; the shin below the hem shows
-    CAPS = [('UpperLeg', 'LowerLeg', 0.3, 1.0, 0.075), ('LowerLeg', 'Foot', 0.0, 0.14, 0.058),
+    CAPS = [('UpperLeg', 'LowerLeg', 0.3, 1.0, 0.085), ('LowerLeg', 'Foot', 0.0, 0.14, 0.062),
             ('LowerLeg', 'Foot', 0.14, 1.0, 0.045), ('Foot', 'Toes', 0.0, 0.6, 0.035)]     # (a kneel lays the hem on the shins)
 CAP_N = [c[0] for c in CAPS] * 2
 def _caps(T):
@@ -941,6 +941,8 @@ def helper_pose(T):
         put(sd + 'UpperArmTwist', Quaternion((0, 1, 0), -0.5 * tu))
         put(sd + 'Deltoid', Quaternion().slerp(qu @ Quaternion((0, 1, 0), -0.5 * tu), 0.5))
         put(sd + 'ElbowHelper', Quaternion().slerp(rel(sd + 'LowerArm'), 0.5))
+        if V3:
+            put(sd + 'KneeHelper', Quaternion().slerp(rel(sd + 'LowerLeg'), 0.5))
         th = tw(rel(sd + 'Hand'))
         put(sd + 'ForeTwist', Quaternion((0, 1, 0), th / 3))
         put(sd + 'ForeTwist2', Quaternion((0, 1, 0), th * 2 / 3))
@@ -1135,6 +1137,9 @@ def build_all():
                 v = np.diff(y_) * FPS
                 sp += list(v[st[:-1] & (v > 0)])
             m['ev'] = ev
+            # (a10) the passing pose (the feet side by side): a walk from standing starts here, so its blend-in mixes
+            # two near-standing poses (a stride blended half-in pushed her thigh through the gown)
+            m['pass'] = round(float(np.argmin(np.abs(np.array(ys['Left']) - np.array(ys['Right'])))) / FPS, 3)
             m['speed'] = round(float(np.median(sp)), 4) if sp else 1.0
             print('walk: steps', ev, 'native speed (model m/s)', m['speed'])
         meta_out[name] = m
@@ -1197,7 +1202,7 @@ def write_gd(meta_out, path):
         d['layer'] = m.get('layer', '')
         if 'ik' in m:
             d['ik'] = [{k: (tuple(v) if k == 'off' else v) for k, v in ik.items() if k != 'off_free'} for ik in m['ik']]
-        for k in ('at', 'n', 'speed'):
+        for k in ('at', 'n', 'speed', 'pass'):
             if k in m:
                 d[k] = m[k]
         lines.append('\t"%s": %s,' % (name, gd(d)))
