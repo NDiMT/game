@@ -41,11 +41,11 @@ co = co - [0.5 * (co[:, 0].max() + co[:, 0].min()), 0.5 * (co[:, 1].max() + co[:
 co *= 1.70 / co[:, 2].max()
 me.vertices.foreach_set('co', co.ravel()); me.update()
 
-# (a10) her arms come ~6 deg below horizontal: turned down ARM_DEG more about each shoulder joint (to ~44 deg, the
+# (a10) her arms come ~6 deg below horizontal: turned down ARM_DEG more about each shoulder joint (to ~50 deg, the
 # A-pose the rig wants: every clip's hanging arm then turns half as far from the rest, and the shoulder stretches less).
 # A smooth field along the arm (nothing on the torso side of the joint, all of it 10 cm past it); the normals turn too.
 from mathutils import Matrix as _M, Vector as _V
-ARM_DEG = float(os.environ.get('ARM_DEG', 38.0))
+ARM_DEG = float(os.environ.get('ARM_DEG', 44.0))
 SH = np.array([float(v) for v in os.environ.get('ARM_SH', '0.17,0.05,1.32').split(',')])                       # her left shoulder joint (the rig's UpperArm head)
 ARM_D = np.array([float(v) for v in os.environ.get('ARM_D', '0.995,-0.054,-0.09').split(',')]); ARM_D /= np.linalg.norm(ARM_D)
 ln = np.empty(len(me.loops) * 3); me.corner_normals.foreach_get('vector', ln); ln = ln.reshape(-1, 3)
@@ -96,12 +96,6 @@ deg = np.asarray(A.sum(1)).ravel()
 nb = (A @ su) / np.maximum(deg, 1)
 su = np.where(nb > 0.75, 1.0, np.where(nb < 0.25, 0.0, su))
 skin = su[lab]
-# (a10) her hem lifted ~3.5 cm (the dress's lowest 30 cm squeezed to 80%): more air over the feet in a stride
-HEM_K = float(os.environ.get('HEM_K', 0.8))
-co = np.empty(len(me.vertices) * 3); me.vertices.foreach_get('co', co); co = co.reshape(-1, 3)
-lo = (skin < 0.5) & (co[:, 2] < 0.30)
-co[lo, 2] = 0.30 - (0.30 - co[lo, 2]) * HEM_K
-me.vertices.foreach_set('co', co.ravel()); me.update()
 if 'Color' in me.color_attributes:
     me.color_attributes.remove(me.color_attributes['Color'])
 ca = me.color_attributes.new('Color', 'FLOAT_COLOR', 'POINT')

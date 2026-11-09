@@ -600,6 +600,39 @@ func _post(p: Figure.Pose, dt: float) -> void:
 		_turn_global("Head", Quaternion().slerp(_look_q, 0.6))
 		_turn_local("Head", hq.get_euler())
 	_helpers()
+	_hem_guard()
+
+## (a10) her hem over her feet: the clips' gowns are baked clear of the ankles and feet, but a cross-fade between two
+## clips (a walk starting or stopping, a clip blending in) mixes a leg and a gown from different frames. Each hem handle
+## near a foot is lifted to keep HEM_CLR over its ankle / toes. 8 handles x 2 feet, ~0.01 ms.
+const HEM_CLR := 0.085                   # model m: the rest hem's height over the ankle
+const HEM_NEAR := 0.14                   # model m: a hem handle this close (horizontally) to the foot's line feels it
+const HEM_LEN := 0.33                    # model m: the hem handle bones' length (her knee ring 0.50 > hem 0.17)
+var _hem_b := PackedInt32Array()
+func _hem_guard() -> void:
+	if _hem_b.is_empty():
+		for k in 8:
+			_hem_b.append(bone.get("Skirt%d_2" % k, -1))
+	if _hem_b[0] < 0: return
+	var hips: int = bone["Hips"]
+	var hb := sk.get_bone_global_pose(hips).basis
+	var feet := []
+	for s in SIDES:
+		var n: String = SIDE_NAME[s]
+		feet.append([sk.get_bone_global_pose(bone[n + "Foot"]).origin, sk.get_bone_global_pose(bone[n + "Toes"]).origin])
+	for b in _hem_b:
+		var p := sk.get_bone_global_pose(b) * Vector3(0, HEM_LEN, 0)     # (the handle bone runs knee ring > hem: its tail)
+		var lift := 0.0
+		for f in feet:
+			var a: Vector3 = f[0]
+			var c: Vector3 = f[1]
+			var q := Geometry2D.get_closest_point_to_segment(Vector2(p.x, p.z), Vector2(a.x, a.z), Vector2(c.x, c.z))
+			var d := q.distance_to(Vector2(p.x, p.z))
+			if d >= HEM_NEAR: continue
+			var need := maxf(a.y, c.y) + HEM_CLR - p.y
+			if need > 0.0: lift = maxf(lift, need * smoothstep(HEM_NEAR, HEM_NEAR * 0.45, d))
+		if lift > 0.0:
+			sk.set_bone_pose_position(b, sk.get_bone_pose_position(b) + hb.inverse() * Vector3(0, lift, 0))
 
 ## (a9) the arm's deformation helpers, from the arm's own bones after every layer and IK (the bake's twin:
 ## dev_rig/tools/heroine_bl_rig.py helper_pose): the upper arm's shoulder end keeps half its twist, the deltoid takes half

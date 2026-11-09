@@ -140,6 +140,7 @@ Sound-effect recordings:
   (cracked plaster), Rock060 (grey rock), Rock035 (dark water-stained stone), Marble016 (black veined marble),
   Wood051 (old wood), Ground037 (moss), Metal013 (worn bronze).
 - **v1.0 heroine** — Tripo (text to model, task af708ae1), generated for the project: `assets/models/heroine_v1_rigged.glb`.
+- **v3 heroine (a10)** — Tripo (text to model, task f157f78f-cbb3-4969-bec2-f4a3bf741f94, v3.1 smart low-poly), generated for the project: raw `dev_rig/tools/heroine_v3_tripo.glb`, prepared source `assets/models/heroine_v3_src.glb` + `assets/models/heroine_v3_basecolor.jpg` / `heroine_v3_normal.jpg`; rigged into `assets/models/heroine_v2.glb`.
 
 ## Unused in the build (kept in the repo)
 

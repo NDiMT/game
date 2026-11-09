@@ -38,8 +38,8 @@ ap.add_argument('--blend', default='')
 ap.add_argument('--noexport', action='store_true')
 args = ap.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:])
 # (a10) V3: the Tripo heroine f157f78f (dev_rig/a10/prep_v3_src.py): her head and face under a veil to the shoulders
-# (a panel down the back to the belt), a belted grey dress to the ankles (hem lifted to 0.16-0.19 m in the prep), bare arms clear of the body
-# (generated ~6 deg below horizontal, turned down to ~44 deg in the prep), bare feet. The a9 source (heroine_v1_rigged.glb) still builds with --src.
+# (a panel down the back to the belt), a belted grey dress to the ankles (hem 0.13-0.15 m), bare arms clear of the body
+# (generated ~6 deg below horizontal, turned down to ~50 deg in the prep), bare feet. The a9 source (heroine_v1_rigged.glb) still builds with --src.
 # LEGS: a source whose legs run whole up to the hips under a separate skirt shell (the a10 try 685c8a46) - the legs are
 # drawn, keep their heat weights, knee helpers, the skirt collides with thigh and knee. The f157f78f dress is one
 # surface with the legs below its hem (as a9's): LEGS is off, the feet are cut free and the legs never drawn.
@@ -111,6 +111,15 @@ def split_feet():
     hi_c = np.zeros(ncg, bool); hi_c[lg[used & (u0[:, 2] > 0.10)]] = True
     scrap = used & (lg != main) & ~hi_c[lg]
     td = (~tf) & scrap[lb[tri0]].all(1)
+    if V3:
+        # (a10) her dress's hem cap (the annulus that closed the dress round her ankles, underneath) goes: with the feet
+        # free its inner rim between the legs was dragged by every stride into the feet. The dress is an open tube.
+        P3 = u0[lb[tri0]]
+        fcn = np.cross(P3[:, 1] - P3[:, 0], P3[:, 2] - P3[:, 0]); fcn /= np.maximum(np.linalg.norm(fcn, axis=1, keepdims=True), 1e-12)
+        fcc = P3.mean(1)
+        cap = (~tf) & (fcc[:, 2] < 0.24) & (fcn[:, 2] < -0.35) & (np.hypot(fcc[:, 0], fcc[:, 1]) < 0.17)
+        td = td | cap
+        print('hem cap faces dropped:', int(cap.sum()))
     pdel = np.zeros(len(me.polygons), bool); np.logical_or.at(pdel, pi, td)
     pf = np.ones(len(me.polygons), bool)
     np.logical_and.at(pf, pi, tf)
@@ -187,9 +196,10 @@ S = {  # her left side; the right mirrors x
 if V3:       # (a10: fitted on her mesh, dev_rig/a10: front / side / arm plots)
     J = {'Hips': V(0, 0.0, 0.92), 'Spine': V(0, -0.01, 1.02), 'Chest': V(0, -0.02, 1.12), 'UpperChest': V(0, -0.01, 1.25),
          'Neck': V(0, 0.0, 1.42), 'Head': V(0, 0.0, 1.49), 'HeadTop': V(0, 0.0, 1.66)}
-    # (her arms turned down 38 deg about the shoulder in prep_v3_src.py: the elbow and wrist turned with them)
-    S = {'Shoulder': V(0.030, 0.020, 1.345), 'UpperArm': V(0.170, 0.050, 1.320), 'LowerArm': V(0.380, 0.055, 1.126),
-         'Hand': V(0.552, 0.024, 0.962), 'UpperLeg': V(0.080, 0.0, 0.860), 'LowerLeg': V(0.080, 0.010, 0.470),
+    # (her arms turned down 44 deg about the shoulder in prep_v3_src.py, to ~50 deg like a9's rest: the elbow and wrist
+    # turned with them)
+    S = {'Shoulder': V(0.030, 0.020, 1.345), 'UpperArm': V(0.170, 0.050, 1.320), 'LowerArm': V(0.359, 0.056, 1.105),
+         'Hand': V(0.513, 0.026, 0.924), 'UpperLeg': V(0.080, 0.0, 0.860), 'LowerLeg': V(0.080, 0.010, 0.470),
          'Foot': V(0.080, 0.015, 0.085), 'Toes': V(0.090, -0.100, 0.025), 'ToeTip': V(0.095, -0.175, 0.010)}
 if WARDEN:   # (his old A6-checked joints: gaunt, long arms, the robe to the knees, bare legs and feet below)
     J = {'Hips': V(0, 0.02, 0.90), 'Spine': V(0, 0.02, 0.98), 'Chest': V(0, 0.03, 1.08), 'UpperChest': V(0, 0.04, 1.22),
@@ -261,7 +271,7 @@ if not WARDEN:
 # ------------------------------------------------------------------ the gown chains (8 around, 2 segments: hips > knee > hem)
 AX_Y = float(np.mean(uy[(uz > 0.9) & (uz < 1.3) & (np.abs(ux) < 0.15)]))     # the body axis (y)
 SK_ANG = [0, 45, 90, 135, 180, -135, -90, -45]          # degrees, 0 = front (-y), +90 = her left (+x)
-SK_Z = [0.92, 0.62, 0.36] if WARDEN else (([0.90, 0.66, 0.44] if LEGS else [0.90, 0.50, 0.20]) if V3 else [0.90, 0.48, 0.03])
+SK_Z = [0.92, 0.62, 0.36] if WARDEN else (([0.90, 0.66, 0.44] if LEGS else [0.90, 0.50, 0.17]) if V3 else [0.90, 0.48, 0.03])
 HEM_FLOOR = 0.012 if V3 else SK_Z[2]      # (a10) the lowest a hem handle may go (a9: its own rest height, on the floor)
 def surf_r(phi, zz, band=0.03, cone=12.0):
     a = np.degrees(np.arctan2(ux, -(uy - AX_Y)))
@@ -352,6 +362,8 @@ for sg in (1, -1):
     am_ = (1 - ss(0.05, 0.08, dist_)) * side_ok * ss(0.6, 1.0, par_) * (ux * sg > 0)
     if V3:      # (a10) her arms are bare skin: the veil's edge and the bodice over the shoulder are not arm
         am_ = am_ * np.clip(SKIN_U + ss(1.25, 1.6, par_), 0, 1)
+        # (and her whole hand, its spread fingers and dark creases too: they hang beside the dress now)
+        am_ = np.maximum(am_, (1 - ss(0.08, 0.11, dist_)) * ss(2.7, 3.0, par_) * (ux * sg > 0.2))
     arm_side[sg] = (am_, par_)
     arm_m = np.maximum(arm_m, am_)
 # feet: grown from the soles, near each ankle axis
@@ -422,6 +434,8 @@ foot_w = L.smooth_weights(foot_m.astype(float)[:, None], A, 2)[:, 0]
 
 # the gown: below the waist, not the arms/hands, not the feet
 gown_m = ss(1.0, 0.88, uz) * (1 - arm_m) * (1 - foot_w)
+if V3:      # (a10) her hands hang below the waist now (the arms at ~50 deg): skin is never dress
+    gown_m = gown_m * (1 - SKIN_U)
 if LEGS:
     # (a10) the skirt shell only: cloth (not her skin) below the waist, clear of the legs (the cloth round the crotch,
     # inside, rides the hips and thighs); the legs keep their own heat weights
@@ -853,7 +867,7 @@ def gown_check(T, R):
 
 PUSH_MAX = 0.0
 DUMP = []
-GOWN_SMOOTH = 0.3
+GOWN_SMOOTH = 0.6 if V3 else 0.3     # (a10: her dress lies on the floor in a kneel: the push spread wider)
 SK_LAP = np.zeros((16, 16))                          # the handles' graph Laplacian (8 round x 2 down)
 for k in range(8):
     for i in (0, 1):
@@ -876,11 +890,12 @@ def gown_collide(T, tgt, R):
     t0_ = t.copy()
     hem_lift = 0.01 + max(0.0, 0.6 * (RESTM['Hips'].translation.z - T['Hips'].translation.z) - 0.03)
     if V3:      # (a10) her hem hangs above the ankles: it never rises above its own knee ring
-        hem_lift = np.maximum(t[[i - 1 for i in HEM_I], 2] + 0.02, 0.15)
+        hem_lift = np.maximum(t[[i - 1 for i in HEM_I], 2] + 0.02,
+                              max(0.15, max(T['LeftFoot'].translation.z, T['RightFoot'].translation.z) + 0.12))     # (a foot up: over it)
     t[HEM_I, 2] = np.minimum(t[HEM_I, 2], hem_lift)
     if os.environ.get('GDUMP'):
         DUMP.append(dict(base=base.copy(), t=t.copy(), caps=[(c[0], c[1]) for c in caps], R=Rn.copy()))
-    for it in range(30):
+    for it in range(60 if V3 else 30):
         X = base + G_WSK @ t
         d = np.zeros_like(X)
         pen_max = 0.0
@@ -915,7 +930,7 @@ def gown_collide(T, tgt, R):
             pen_max = max(pen_max, float(fl[m].max()))
         if pen_max < 0.0015:
             break
-        if os.environ.get("GDEBUG") and it == 29:
+        if os.environ.get("GDEBUG") and it == (59 if V3 else 29):
             pn = np.linalg.norm(d, axis=1); w_ = int(np.argmax(pn))
             print('   dbg worst', round(float(pn[w_]), 3), 'rest', np.round(G_P[w_], 3), 'free', round(float(G_FREE[w_]), 2),
                   'floor', round(float(fl[w_]), 3), 'z', round(float(X[w_, 2]), 3), 'n>1cm', int((pn > 0.01).sum()))
