@@ -11,6 +11,9 @@ const DX := -12.0
 const TEAL_D := Color("13283a")
 const CRIMSON := Color("b8232f")
 const FOG := Color("eab99c")
+const WATER := -1.3
+const SEA := Color("3c7d92")
+const MIST := Color("cdb8c6")
 const PALS := {
 	"stone": ["f8efe1", "e8d5c5", "ada5c0"], "shade": ["ebdecc", "d7c1b1", "9c94b0"],
 	"sand": ["f6e3c6", "e3c7a6", "a8959d"], "rose": ["f0c4b5", "dca696", "a47e93"],
@@ -19,16 +22,22 @@ const PALS := {
 	"teal": ["13283a", "13283a", "13283a"], "cream": ["fff3d2", "fff3d2", "fff3d2"],
 	"gold": ["f0cf86", "d2a962", "94775a"], "trunk": ["a58a82", "8a6f6c", "63506a"],
 	"leaf": ["7cc7a6", "4f9f8c", "2f6d74"], "leaf2": ["a5d9a8", "6fb793", "3f8480"], "leaf3": ["e6a3a0", "cf7f86", "93577a"],
-	"dress": ["c5c8e4", "a7aad0", "7d80ad"], "dress2": ["dfe1f3", "c3c6e2", "9799c0"],
-	"veil": ["fcf9f3", "ede4dc", "c4bccd"], "skin": ["ead9cc", "d3c0b6", "a898a8"],
+	"dress": ["b4b8cc", "969ab5", "70749a"], "dress2": ["cfd2e0", "b0b3c9", "888bab"],
+	"veil": ["4a5078", "3a3f66", "2b2f52"], "skin": ["fbf6ee", "e9ddd6", "b9b1ca"],
+	"marble": ["fffaf3", "efe4dd", "c9c1d6"], "crim2": ["ee5a60", "cf3640", "8f2238"],
 }
 const SH := """shader_type spatial;
 render_mode unshaded;
 uniform vec3 c_top : source_color; uniform vec3 c_z : source_color; uniform vec3 c_x : source_color;
 uniform vec3 fog_col : source_color;
 uniform vec4 l0; uniform vec4 l1; uniform vec4 l2; uniform vec4 l3; uniform vec4 l4; uniform vec4 l5;
-uniform float sway = 0.0; uniform float time_s = 0.0;
+uniform float sway = 0.0; uniform float time_s = 0.0; uniform float marble = 0.0; uniform float rim = 0.0; uniform vec3 centre; uniform float mist_r = 7.0; uniform vec3 mist_col : source_color;
 varying vec3 wp; varying vec3 wn;
+float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y),
+		mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+float fbm(vec3 p){ return vn(p) * 0.55 + vn(p * 2.1 + 3.1) * 0.3 + vn(p * 4.3 + 7.7) * 0.15; }
 float lit(vec4 l, vec3 p){ vec3 v = vec3(0.57735); vec3 d = p - l.xyz; return l.w * pow(clamp(1.0 - length(d - v * dot(d, v)) / 2.7, 0.0, 1.0), 2.0); }
 void vertex(){
 	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -41,9 +50,20 @@ void fragment(){
 	float s = wt * wt + wz * wz + wx * wx;
 	vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));
 	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));
+	if (marble > 0.0) {
+		vec3 q = wp * 1.25;
+		float w = fbm(q + vec3(fbm(q * 0.6 + 11.0), 0.0, fbm(q * 0.6 + 5.0)) * 1.6);
+		float vein = smoothstep(0.022, 0.0, abs(w - 0.5));
+		float vein2 = smoothstep(0.012, 0.0, abs(fbm(q * 2.6 + 20.0) - 0.47));
+		col = mix(col, col * vec3(0.80, 0.81, 0.91), (vein * 0.34 + vein2 * 0.16) * marble);
+		col *= 1.0 + (w - 0.5) * 0.06 * marble;
+	}
+	if (rim > 0.0) { float ndv = clamp(dot(n, vec3(0.57735)), 0.0, 1.0); col *= mix(1.0 - 0.2 * rim, 1.0, pow(ndv, 0.8)); }
 	float l = lit(l0, wp) + lit(l1, wp) + lit(l2, wp) + lit(l3, wp) + lit(l4, wp) + lit(l5, wp);
 	col = mix(col, col * vec3(1.06, 0.97, 0.80) + vec3(0.09, 0.055, 0.0), clamp(l, 0.0, 1.0) * 0.85);
-	col = mix(col, fog_col, smoothstep(-0.6, -3.3, wp.y) * 0.8);
+	col = mix(col, fog_col, smoothstep(-1.35, -4.6, wp.y) * 0.9);
+	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
+	col = mix(col, mist_col, smoothstep(mist_r, mist_r * 1.9, md) * 0.94);
 	ALBEDO = col;
 }"""
 const SH_WATER := """shader_type spatial;
@@ -72,6 +92,30 @@ void fragment(){
 	float sh = 0.8 + 0.2 * clamp(dot(n, normalize(vec3(-0.25, 0.7, 0.66))) * 0.5 + 0.5, 0.0, 1.0);
 	ALBEDO = mix(ca, cb, UV.y) * sh;
 }"""
+const SH_SEA := """shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform vec3 near_col : source_color; uniform vec3 far_col : source_color; uniform vec3 centre; uniform float mist_r = 7.0; uniform float time_s = 0.0;
+varying vec3 wp;
+void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment(){
+	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
+	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md);
+	vec2 p = wp.xz * 1.1;
+	float lines = smoothstep(0.93, 0.995, sin(p.x * 2.3 + sin(p.y * 1.7 + time_s * 0.45) * 1.9 + time_s * 0.2) * 0.5 + 0.5);
+	float sp = smoothstep(0.985, 1.0, sin(p.x * 9.1 + time_s * 1.3) * sin(p.y * 8.3 - time_s * 1.1));
+	float brk = smoothstep(0.35, 0.75, sin(p.x * 0.63 + p.y * 0.41) * sin(p.y * 0.57 - p.x * 0.29 + 1.3) * 0.5 + 0.5);
+	vec3 col = mix(near_col, far_col, m) + vec3(0.5, 0.6, 0.6) * (lines * 0.1 * brk + sp * 0.35) * (1.0 - m);
+	ALBEDO = col; ALPHA = mix(0.6, 1.0, m);
+}"""
+const SH_FACE := """shader_type spatial;
+render_mode unshaded;
+uniform float time_s = 0.0;
+varying vec3 lp;
+void vertex(){ lp = VERTEX; }
+void fragment(){
+	float g = smoothstep(0.022, 0.0, abs(lp.x * 0.8 + lp.y - 0.02 - sin(time_s * 0.5) * 0.07));
+	ALBEDO = mix(vec3(1.0, 0.99, 0.97), vec3(0.80, 0.85, 0.97), smoothstep(0.07, -0.09, lp.y)) + g * 0.2;
+}"""
 const SH_RING := "shader_type spatial;\nrender_mode unshaded, blend_add, cull_disabled;\nuniform float p = 1.0; uniform vec3 tint = vec3(1.0, 0.36, 0.40);\nvoid fragment(){ float d = distance(UV, vec2(0.5)) * 2.0; float ring = smoothstep(0.05, 0.0, abs(d - p)) + 0.5 * smoothstep(0.035, 0.0, abs(d - p * 0.6)); ALBEDO = tint; ALPHA = ring * (1.0 - p); }"
 
 var shaders := {}
@@ -95,6 +139,11 @@ var cam: Camera3D
 var sky: MeshInstance3D
 var mist: MeshInstance3D
 var cam_t := Vector3.ZERO
+var world: Node3D
+var refl: Node3D
+var wfig: Node3D
+var sea_mat: ShaderMaterial
+var shot = null
 var pulse_p := 1.0
 var tap_p := 1.0
 var ripple_p := 1.0
@@ -153,8 +202,10 @@ func pal(n: String, variant := "") -> ShaderMaterial:
 	if pmats.has(key): return pmats[key]
 	var m := ShaderMaterial.new(); m.shader = shaders["two" if variant == "2" else "base"]
 	m.set_shader_parameter("c_top", Color(PALS[n][0])); m.set_shader_parameter("c_z", Color(PALS[n][1]))
-	m.set_shader_parameter("c_x", Color(PALS[n][2])); m.set_shader_parameter("fog_col", FOG)
+	m.set_shader_parameter("c_x", Color(PALS[n][2])); m.set_shader_parameter("fog_col", SEA); m.set_shader_parameter("mist_col", MIST)
 	if variant == "sway": m.set_shader_parameter("sway", 1.0); timed.append(m)
+	if n in ["stone", "shade", "sand", "rose"]: m.set_shader_parameter("marble", 1.0)
+	if n in ["marble", "skin"]: m.set_shader_parameter("marble", 0.55); m.set_shader_parameter("rim", 1.0)
 	pmats[key] = m
 	return m
 
@@ -227,10 +278,9 @@ func slab(x0: float, z0: float, x1: float, z1: float, y: float, p := "stone", pa
 
 func pier(x: float, z: float, top: float, w := 0.5, p := "stone") -> void:
 	var h := w * 0.5
-	blk(Vector3(x - h, -2.2, z - h), Vector3(x + h, top, z + h), p)
-	blk(Vector3(x - h * 0.6, -2.7, z - h * 0.6), Vector3(x + h * 0.6, -2.2, z + h * 0.6), "shade")
-	win_z(x, top - 1.35, z + h, w * 0.46, 0.8); win_x(x + h, top - 1.35, z, w * 0.46, 0.8)
-	cornice(x - h, z - h, x + h, z + h, top - 1.75, 0.035, 0.06)
+	blk(Vector3(x - h, -2.45, z - h), Vector3(x + h, top, z + h), p)
+	blk(Vector3(x - h - 0.06, -2.45, z - h - 0.06), Vector3(x + h + 0.06, WATER + 0.06, z + h + 0.06), "shade")
+	win_z(x, -1.15, z + h, w * 0.46, 0.6); win_x(x + h, -1.15, z, w * 0.46, 0.6)
 
 func col_faces(c: Vector3, hw: float, y0: float, y1: float, p := "stone") -> void:
 	var v := PackedVector3Array(); var n := PackedVector3Array()
@@ -267,14 +317,13 @@ func decal(p: Vector3, sx: float, sz: float, a := 0.26, rot := 0.0) -> void:
 	mi.scale = Vector3(sx, 1, sz); mi.rotation.y = rot
 
 func under(x0: float, z0: float, x1: float, z1: float, inset := 0.22, p := "stone") -> void:
-	var a := Vector3(x0 + inset, -2.3, z0 + inset); var b := Vector3(x1 - inset, -0.18, z1 - inset)
+	var a := Vector3(x0 + inset, -2.45, z0 + inset); var b := Vector3(x1 - inset, -0.18, z1 - inset)
 	blk(a, b, p)
-	blk(Vector3(a.x + 0.3, -2.9, a.z + 0.3), Vector3(b.x - 0.3, -2.3, b.z - 0.3), "shade")
-	blk(Vector3(a.x + 0.7, -3.4, a.z + 0.7), Vector3(b.x - 0.7, -2.9, b.z - 0.7), p)
+	blk(Vector3(a.x - 0.1, -2.45, a.z - 0.1), Vector3(b.x + 0.1, WATER + 0.07, b.z + 0.1), "shade")
 	cornice(a.x, a.z, b.x, b.z, -0.42, 0.1, 0.12, "shade")
 	var nx := maxi(1, int((b.x - a.x) / 1.05)); var nz := maxi(1, int((b.z - a.z) / 1.05))
-	for i in nx: win_z(a.x + (b.x - a.x) * (i + 0.5) / nx, -1.55, b.z, 0.4, 0.9)
-	for i in nz: win_x(b.x, -1.55, a.z + (b.z - a.z) * (i + 0.5) / nz, 0.4, 0.9)
+	for i in nx: win_z(a.x + (b.x - a.x) * (i + 0.5) / nx, -1.2, b.z, 0.4, 0.74)
+	for i in nz: win_x(b.x, -1.2, a.z + (b.z - a.z) * (i + 0.5) / nz, 0.4, 0.74)
 
 func tiles(x0: float, z0: float, x1: float, z1: float, step := 0.8) -> void:
 	var x := x0 + step
@@ -360,18 +409,110 @@ func islet(o: Vector3, p := "far", q := "far2") -> void:
 	cyl(o + Vector3(0.55, 0, 0.3), 0.04, 0.03, 0.6, pal(q), 8); ball(o + Vector3(0.55, 0.8, 0.3), 0.3, pal("leaf", "sway"))
 	for i in 4: blk(o + Vector3(-0.9 - 0.3 * (i + 1), -0.14 - 0.24 * (i + 1), 0.1), o + Vector3(-0.9 - 0.3 * i, -0.24 * (i + 1), 0.5), q)
 
+var model_cache := {}
+func _xf(n: Node3D, root: Node) -> Transform3D:
+	var tr := n.transform
+	var q := n.get_parent()
+	while q != null and q != root and q is Node3D:
+		tr = (q as Node3D).transform * tr; q = q.get_parent()
+	return tr
+
+## a marble model from our library, set on the ground at `pos`, scaled to `height`
+func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.ZERO, p := "marble") -> Node3D:
+	if not model_cache.has(nm):
+		var st := GLTFState.new(); var doc := GLTFDocument.new()
+		if doc.append_from_file(ProjectSettings.globalize_path("res://models/%s.glb" % nm), st) != OK:
+			push_warning("model missing: " + nm); return null
+		model_cache[nm] = doc.generate_scene(st)
+	var src: Node3D = model_cache[nm].duplicate()
+	var bb := AABB(); var first := true
+	for m in src.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		mi.material_override = pal(p)
+		var a: AABB = (src.transform * _xf(mi, src)) * mi.get_aabb()
+		if first: bb = a; first = false
+		else: bb = bb.merge(a)
+	var h := Node3D.new(); h.position = pos; h.rotation = Vector3(tilt.x, yaw, tilt.z); add_child(h)
+	var sc := height / maxf(bb.size.y, 0.001)
+	src.scale *= sc
+	src.position = src.position * sc - Vector3(bb.get_center().x, bb.position.y, bb.get_center().z) * sc
+	h.add_child(src)
+	return h
+
 # ---------------------------------------------------------------- setup
 func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode unshaded;", "render_mode unshaded, cull_disabled;")],
-			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING]]:
+			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["face", SH_FACE]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
 	auto = "auto" in OS.get_cmdline_user_args()
-	_env(); _world(); _actors(); _nav(); _ui()
+	_env()
+	var n0 := get_child_count()
+	_world()
+	world = Node3D.new(); world.name = "World"; add_child(world)
+	for c in get_children().slice(n0):
+		if c != world: c.reparent(world)
+	refl = world.duplicate(); refl.name = "Refl"; add_child(refl)
+	refl.scale = Vector3(1, -1, 1); refl.position.y = 2.0 * WATER
+	_actors(); _nav(); _ui()
 	cam_t = pos
 	get_viewport().size_changed.connect(_fit)
 	_fit()
+	if "gallery" in OS.get_cmdline_user_args(): _gallery()
+	if "shots" in OS.get_cmdline_user_args(): _shots()
 	if "zoom" in OS.get_cmdline_user_args(): cam.size = 3.3
 	if auto: _auto()
+
+func _gallery() -> void:
+	var names := ["kit_face1", "kit_face2", "kit_face3", "kit_face4", "kit_face5", "kit_face6", "colossus_head_veiled", "observer_veiled",
+		"statue_veiled_broken", "statue_veiled_bust", "statue_veiled_kneeling", "statue_veiled_mourning", "statue_veiled_praying", "statue_veiled_unfinished",
+		"column_doric", "column_fallen", "column_stump", "pediment_fragment", "rubble_pile", "kit_urns", "kit_fountain", "archway_ruined"]
+	var o := Vector3(60, 0, 60)
+	blk(o + Vector3(-9, -0.2, -9), o + Vector3(9, 0, 9), "shade")
+	for i in names.size():
+		var c := o + Vector3(-4.2 + (i % 4) * 2.8, 0, 5.5 - (i / 4) * 2.4) + Vector3(1, 0, -1) * ((i / 4) * 1.1)
+		model(names[i], c, 1.6)
+		var l := Label3D.new(); l.text = "%d %s" % [i, names[i].replace("statue_veiled_", "st_").replace("kit_", "")]; l.font_size = 40; l.pixel_size = 0.004
+		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED; l.position = c + Vector3(0.9, 0.1, 0.9); l.modulate = Color(0.2, 0.1, 0.2); l.no_depth_test = true; add_child(l)
+	started = true; title_box.hide()
+	cam.size = 16.0
+	set_process(false)
+	cam.position = o + Vector3(0, 1.0, 0) + cam.basis.z * 50.0
+	await get_tree().create_timer(0.5).timeout
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(OS.get_environment("SHOT_DIR") + "/gallery.png")
+	get_tree().quit()
+
+func _shots() -> void:
+	started = true; title_box.hide(); hint.hide()
+	var dir := OS.get_environment("SHOT_DIR")
+	var list := [
+		{"n": "01-map", "p": Vector3(0.4, 0, 1.6), "y": 0.6, "c": Vector3(-5.6, 0, -5.4), "s": 27.0},
+		{"n": "02-first-court", "p": Vector3(0.5, 0, 1.7), "y": 0.5, "c": Vector3(1.2, 0.6, 0.4), "s": 11.0},
+		{"n": "03-colossus", "p": Vector3(2.95, 0, 1.2), "y": 1.3, "c": Vector3(3.6, 1.2, 1.0), "s": 9.0},
+		{"n": "04-lever-bridge", "p": Vector3(0.45, 0, -4.5), "y": -1.5, "c": Vector3(-1.2, 0.4, -5.0), "s": 9.5},
+		{"n": "05-lamp-island", "p": Vector3(-7.9, 0, -5.5), "y": 0.7, "c": Vector3(-8.4, 0.9, -5.6), "s": 8.5, "lamp": true},
+		{"n": "06-water-that-returns", "p": Vector3(-11.68, 0, -7.5), "y": 0.9, "c": Vector3(-9.9, 0.6, -6.2), "s": 9.0, "lamp": true},
+		{"n": "07-mirror-garden", "p": Vector3(MX + 0.52, 0, MZ), "y": -PI * 0.5, "c": Vector3(-11.7, 1.0, -11.2), "s": 8.5, "lamp": true, "touch": true},
+		{"n": "08-heroine", "p": Vector3(0.6, 0, 1.9), "y": 0.78, "c": Vector3(0.6, 0.95, 1.9), "s": 3.1},
+		{"n": "09-heroine-veil", "p": Vector3(0.6, 0, 1.9), "y": -2.3, "c": Vector3(0.6, 0.95, 1.9), "s": 3.1, "lamp": true},
+		{"n": "10-strange-heads", "p": Vector3(-1.2, 0, 1.4), "y": -1.2, "c": Vector3(-1.9, 0.7, 1.4), "s": 4.6},
+		{"n": "11-statues", "p": Vector3(-11.6, 0, -10.6), "y": 0.4, "c": Vector3(-11.6, 0.9, -11.3), "s": 6.5, "lamp": true},
+	]
+	for sh in list:
+		shot = sh
+		route.clear(); pos = sh.p; yaw = sh.y; cam.size = sh.s; cam_t = pos
+		if sh.get("lamp", false): lamp_held = true; a_hold = 1.0; lamp_energy = 1.0
+		a_wL = 0.0
+		if sh.get("touch", false):
+			tgtL = Vector3(MX + 0.012, 1.30, MZ + 0.13); a_wL = 1.0; a_lean = 0.09
+			door.position.y = 1.05 - 2.15; door_energy = 1.0; ripple.position = Vector3(MX - 0.03, 1.30, MZ + 0.13); ripple_p = 0.3; flash = 0.6
+		fig.veil_ready = false; wfig.veil_ready = false; ghost.veil_ready = false
+		await get_tree().create_timer(1.2).timeout
+		if sh.get("touch", false): ripple_p = 0.3
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, sh.n])
+		print("SHOT ", sh.n)
+	get_tree().quit()
 
 func ring_mat(tint: Vector3) -> ShaderMaterial:
 	var m := ShaderMaterial.new(); m.shader = shaders["ring"]; m.set_shader_parameter("tint", tint); m.render_priority = 2
@@ -379,32 +520,16 @@ func ring_mat(tint: Vector3) -> ShaderMaterial:
 
 func _env() -> void:
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR; env.background_color = Color("1b2748")
+	env.background_mode = Environment.BG_COLOR; env.background_color = Color("2c6379")
 	var we := WorldEnvironment.new(); we.environment = env; add_child(we)
 	cam = Camera3D.new(); cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = 11.0; cam.near = 0.1; cam.far = 150.0
 	cam.rotation_degrees = Vector3(-35.264, 45, 0)
 	add_child(cam); cam.current = true
-	var g := Gradient.new()
-	g.offsets = PackedFloat32Array([0.0, 0.4, 0.76, 1.0])
-	g.colors = PackedColorArray([Color("1b2748"), Color("41507c"), Color("bd8e94"), FOG])
-	var gt := GradientTexture2D.new(); gt.gradient = g; gt.fill_from = Vector2(0, 0); gt.fill_to = Vector2(0, 1); gt.width = 8; gt.height = 256
-	var qm := QuadMesh.new(); qm.size = Vector2(1, 1)
-	var bm := StandardMaterial3D.new(); bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; bm.albedo_texture = gt
-	sky = prim(qm, Vector3(0, 0, -140), bm, cam)
-	var g2 := Gradient.new()
-	g2.offsets = PackedFloat32Array([0.0, 0.72, 0.94, 1.0])
-	g2.colors = PackedColorArray([Color(FOG.r, FOG.g, FOG.b, 0), Color(FOG.r, FOG.g, FOG.b, 0), Color(FOG.r, FOG.g, FOG.b, 0.86), Color(FOG.r, FOG.g, FOG.b, 1)])
-	var gt2 := GradientTexture2D.new(); gt2.gradient = g2; gt2.fill_from = Vector2(0, 0); gt2.fill_to = Vector2(0, 1); gt2.width = 8; gt2.height = 256
-	var mm := StandardMaterial3D.new(); mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; mm.albedo_texture = gt2
-	mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; mm.no_depth_test = true; mm.render_priority = 10
-	mist = prim(qm, Vector3(0, 0, -1), mm, cam)
-	# moon
-	var moon := halo(1.5, Color(1.0, 0.96, 0.86, 0.9)); moon.position = Vector3(3.2, 7.6, -138); cam.add_child(moon)
-	var moon2 := halo(5.0, Color(0.75, 0.8, 1.0, 0.16)); moon2.position = Vector3(3.2, 7.6, -137); cam.add_child(moon2)
-	# stars, fireflies, petals
-	var stars := _particles(90, 12.0, Vector3(6, 0.5, 13), 0.028, Color(1, 0.95, 0.86, 0.6), Vector3.ZERO, 0.0)
-	stars.position = Vector3(0, 2.0, -120); stars.rotation.x = PI * 0.5; cam.add_child(stars)
+	var sq := QuadMesh.new(); sq.size = Vector2(260, 260); sq.orientation = PlaneMesh.FACE_Y
+	sea_mat = ShaderMaterial.new(); sea_mat.shader = shaders["sea"]
+	sea_mat.set_shader_parameter("near_col", SEA); sea_mat.set_shader_parameter("far_col", MIST)
+	prim(sq, Vector3(0, WATER, 0), sea_mat)
 	var flies := _particles(26, 7.0, Vector3(5, 0.6, 9), 0.05, Color(1.0, 0.82, 0.45, 0.85), Vector3(0, 0.02, 0), 0.12, true)
 	flies.position = Vector3(0, 0.5, -48); flies.rotation.x = PI * 0.5; cam.add_child(flies)
 	var petals := _particles(16, 9.0, Vector3(5, 0.5, 9), 0.05, Color(0.86, 0.25, 0.3, 0.85), Vector3(0.06, -0.12, 0), 0.05)
@@ -427,16 +552,14 @@ func _particles(n: int, life: float, ext: Vector3, size: float, c: Color, grav: 
 	return p
 
 func _fit() -> void:
-	var vs := get_viewport().get_visible_rect().size
-	var hh := 11.0 * vs.y / maxf(vs.x, 1.0)
-	sky.scale = Vector3(11.4, hh * 1.04, 1); mist.scale = Vector3(11.4, hh * 1.04, 1)
+	pass
 
 func _world() -> void:
 	# ---- A. the first court
 	slab(-2.6, -1.4, 2.2, 3.2, 0.0); under(-2.6, -1.4, 2.2, 3.2)
 	tiles(-2.6, -1.4, 2.2, 3.2, 0.8); rosette(Vector3(0, 0, 1.1), 0.95)
 	parapet(Vector3(-2.5, 0, -1.3), Vector3(-2.5, 0, 3.1)); parapet(Vector3(-2.5, 0, -1.3), Vector3(-0.75, 0, -1.3)); parapet(Vector3(0.75, 0, -1.3), Vector3(2.1, 0, -1.3))
-	tree(Vector3(-2.05, 0, -0.85), 1.15); bush(Vector3(-2.15, 0, 0.1)); bush(Vector3(-2.15, 0, 2.6), 0.9, "leaf3")
+	tree(Vector3(-2.05, 0, -0.85), 1.15); bush(Vector3(-2.15, 0, 0.1), 0.8); bush(Vector3(-2.15, 0, 2.7), 0.8, "leaf3")
 	lantern(Vector3(1.05, 0, -1.02), 2)
 	# gate
 	for gx in [-0.68, 0.68]:
@@ -463,19 +586,19 @@ func _world() -> void:
 	crenels(Vector3(-1.5, 1.56, -6.42), Vector3(1.7, 1.56, -6.42), 0.32)
 	for wx in [-0.9, 0.1, 1.1]: win_z(wx, 0.25, -6.38, 0.4, 0.95)
 	banner(Vector3(-0.4, 1.4, -6.365), 0.3, 0.9)
-	bush(Vector3(-1.35, 0, -6.2)); bush(Vector3(1.55, 0, -6.2), 0.9, "leaf3"); lantern(Vector3(1.6, 0, -3.8), 3, -1.0)
+	bush(Vector3(-0.2, 0, -6.2), 0.8); lantern(Vector3(1.6, 0, -3.8), 3, -1.0)
 	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32); cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16)
-	cap_rot = Node3D.new(); cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; add_child(cap_rot)
+	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; add_child(cap_rot)
 	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
 	ball(Vector3(0, 0, 0.86), 0.045, pal("crim"), cap_rot); ball(Vector3(0, 0.06, 0), 0.045, pal("crim"), cap_rot)
 	decal(CAP + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.22, 0.78)
 	# ---- the turning bridge
 	slab(-2.4, -5.6, -1.6, -4.6, 0.0)
-	bridge = Node3D.new(); bridge.position = PIV; bridge.rotation.y = PI * 0.5; add_child(bridge)
+	bridge = Node3D.new(); bridge.name = "Bridge"; bridge.position = PIV; bridge.rotation.y = PI * 0.5; add_child(bridge)
 	slab(-1.2, -0.5, 1.2, 0.5, 0.0, "stone", bridge)
 	blk(Vector3(-1.1, 0, -0.03), Vector3(1.1, 0.004, 0.03), "crim", bridge)
 	for e in [-1.0, 1.0]: blk(Vector3(-1.15, 0, e * 0.44 - 0.03), Vector3(1.15, 0.06, e * 0.44 + 0.03), "shade", bridge)
-	cyl(PIV + Vector3(0, -2.4, 0), 0.12, 0.22, 2.2, pal("stone"), 24); cyl(PIV + Vector3(0, -0.32, 0), 0.24, 0.34, 0.14, pal("shade"), 24)
+	cyl(PIV + Vector3(0, -2.45, 0), 0.24, 0.22, 2.25, pal("stone"), 24); cyl(PIV + Vector3(0, -2.45, 0), 0.3, 0.3, 2.45 + WATER + 0.06, pal("shade"), 24); cyl(PIV + Vector3(0, -0.32, 0), 0.24, 0.34, 0.14, pal("shade"), 24)
 	slab(-6.6, -5.6, -4.8, -4.6, 0.0); pier(-5.7, -5.1, -0.18, 0.6)
 	# ---- E. the lamp island and the water that falls back to its own spring
 	slab(-9.0, -7.0, -6.6, -3.8, 0.0); under(-9.0, -7.0, -6.6, -3.8)
@@ -519,7 +642,7 @@ func _world() -> void:
 	add_child(w2)
 	cornice(-13.1, -13.0, -9.4, -12.6, 2.7); crenels(Vector3(-12.95, 2.76, -12.63), Vector3(-9.5, 2.76, -12.63), 0.3136)
 	blk(Vector3(DX - 0.47, 0, -12.99), Vector3(DX + 0.47, 2.1, -12.98), "cream")
-	door = blk(Vector3(DX - 0.47, 0, -12.84), Vector3(DX + 0.47, 2.1, -12.76), "crim")
+	door = blk(Vector3(DX - 0.47, 0, -12.84), Vector3(DX + 0.47, 2.1, -12.76), "crim"); door.name = "Door"
 	banner(Vector3(-10.5, 2.25, -12.585), 0.34, 1.15); banner(Vector3(-13.0, 2.25, -12.585)+Vector3(0.45,0,0), 0.34, 1.15)
 	pool(-10.25, -12.0, -9.65, -10.0); lantern(Vector3(-10.4, 0, -9.52), 5)
 	for lp in [Vector3(-10.0, 0.016, -11.5), Vector3(-9.85, 0.016, -10.6), Vector3(-10.1, 0.016, -10.3)]:
@@ -530,19 +653,46 @@ func _world() -> void:
 	# beyond the door: a bed of trees whose crowns show over the wall
 	slab(-14.2, -14.6, -9.4, -13.0, 0.0, "sand"); under(-14.2, -14.6, -9.4, -13.0, 0.22, "sand")
 	tree(Vector3(-13.3, 0, -13.7), 1.5); tree(Vector3(-10.4, 0, -13.75), 1.35, "leaf3"); tree(Vector3(-9.8, 0, -13.5), 1.0)
-	# ---- adrift in the distance
-	islet(Vector3(4.8, -0.8, -5.2)); islet(Vector3(-15.6, 0.6, -3.2), "far2", "far"); islet(Vector3(-5.6, 1.4, -13.8), "far2", "far")
-	islet(Vector3(-18.0, 0.2, -13.0)); islet(Vector3(1.4, -0.4, -11.2), "far2", "far"); islet(Vector3(-2.4, 2.0, -17.0))
+	# ---- our marble: strange heads on plinths, veiled statues, a colossus in the sea, ruins in the water
+	for f in [["kit_face2", Vector3(-2.2, 0, 0.95), PI * 0.5], ["kit_face3", Vector3(-2.2, 0, 1.85), PI * 0.5],
+			["kit_face6", Vector3(-1.2, 0, -6.08), 0.3], ["kit_face4", Vector3(1.45, 0, -6.08), -0.3],
+			["kit_face1", Vector3(-6.85, 0, -4.0), 0.5], ["kit_face5", Vector3(-10.5, 0, -9.5), 0.9]]:
+		var fp: Vector3 = f[1]
+		blk(fp + Vector3(-0.19, 0, -0.19), fp + Vector3(0.19, 0.72, 0.19), "stone")
+		blk(fp + Vector3(-0.23, 0, -0.23), fp + Vector3(0.23, 0.08, 0.23), "shade"); blk(fp + Vector3(-0.23, 0.72, -0.23), fp + Vector3(0.23, 0.78, 0.23), "shade")
+		model(f[0], fp + Vector3(0, 0.78, 0), 0.62, f[2])
+		decal(fp + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.2, 0.78)
+	model("colossus_head_veiled", Vector3(5.9, WATER - 1.15, 0.7), 4.9, 0.25, Vector3(0.06, 0, 0.1))
+	model("statue_veiled_unfinished", Vector3(-8.72, 0, -4.02), 1.5, 0.8)
+	model("statue_veiled_mourning", Vector3(-12.85, 0, -9.72), 1.9, 0.8)
+	model("statue_veiled_praying", Vector3(-10.9, 0, -12.36), 1.9, 0.2)
+	model("statue_veiled_bust", Vector3(-12.9, 0.78, -12.36), 0.8, 0.3)
+	blk(Vector3(-13.08, 0, -12.54), Vector3(-12.72, 0.78, -12.18), "stone")
+	model("statue_veiled_kneeling", Vector3(-10.44, 0, -11.3), 1.1, PI * 0.5)
+	slab(-6.4, -8.4, -5.0, -7.0, 0.0); under(-6.4, -8.4, -5.0, -7.0, 0.2, "sand")
+	model("statue_veiled_broken", Vector3(-5.7, 0, -7.7), 2.0, 0.6)
+	model("observer_veiled", Vector3(-7.5, WATER - 1.2, -19.5), 11.0, 0.75)
+	model("kit_face5", Vector3(-18.2, WATER - 1.15, -8.2), 4.6, 1.1, Vector3(0.2, 0, -0.15))
+	model("kit_face2", Vector3(3.4, WATER - 1.15, -9.6), 4.1, 0.5, Vector3(-0.15, 0, 0.12))
+	model("pediment_fragment", Vector3(3.4, WATER - 0.35, 5.4), 1.3, 0.5, Vector3(0.1, 0, 0.06))
+	model("column_stump", Vector3(-3.0, WATER - 0.3, -2.6), 1.5, 0.3); model("column_stump", Vector3(-4.6, WATER - 0.5, -2.2), 1.3, 1.3, Vector3(0.12, 0, 0))
+	model("column_fallen", Vector3(-9.6, WATER - 0.2, -2.4), 0.9, 0.9)
+	for cp in [Vector3(4.2, 0, -3.4), Vector3(5.0, 0, -4.4), Vector3(-15.6, 0, -6.2), Vector3(-2.2, 0, -10.4), Vector3(-3.1, 0, -11.2), Vector3(-14.4, 0, -1.6)]:
+		cyl(Vector3(cp.x, -2.45, cp.z), 0.2, 0.17, 2.45 + 2.2 + 0.4 * sin(cp.x * 3.0), pal("stone"), 20)
+		cyl(Vector3(cp.x, -2.45, cp.z), 0.27, 0.27, 2.45 + WATER + 0.1, pal("shade"), 20)
 	for mi in find_children("*", "GeometryInstance3D", true, false):
 		(mi as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _actors() -> void:
-	var veil := cloth(Color("fdfaf5"), Color("f1cfd0"))
-	fig = Fig.new(); add_child(fig); fig.build(false, pal, veil)
+	var veil := cloth(Color("3a4068"), Color("8a2338"))
+	var face := ShaderMaterial.new(); face.shader = shaders["face"]; timed.append(face)
+	fig = Fig.new(); add_child(fig); fig.build(0, pal, veil, face)
+	var wm := Node3D.new(); wm.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3(0, 2.0 * WATER, 0)); add_child(wm)
+	wfig = Fig.new(); wm.add_child(wfig); wfig.build(2, pal, cloth(Color("3a4068"), Color("8a2338")), face)
 	var mir := Node3D.new()
 	mir.transform = Transform3D(Basis(Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)), Vector3(2.0 * MX, 0, 0))
 	add_child(mir)
-	ghost = Fig.new(); mir.add_child(ghost); ghost.build(true, pal, veil)
+	ghost = Fig.new(); mir.add_child(ghost); ghost.build(1, pal, veil, face)
 	var bq := QuadMesh.new(); bq.size = Vector2(0.95, 0.95); bq.orientation = PlaneMesh.FACE_Y
 	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
 	g.colors = PackedColorArray([Color(0.2, 0.17, 0.33, 0.36), Color(0.2, 0.17, 0.33, 0.2), Color(0.2, 0.17, 0.33, 0)])
@@ -766,7 +916,8 @@ func _process(dt: float) -> void:
 		"swingL": (0.12 + 0.1 * rk) * wk * sin(phase) * (1.0 - a_wL), "swingR": -(0.12 + 0.1 * rk) * wk * sin(phase),
 		"hold": a_hold, "raise": a_raise, "open": a_open, "wL": a_wL, "wR": a_wR, "tL": tgtL, "tR": tgtR,
 	}
-	fig.apply(st)
+	fig.apply(st); wfig.apply(st)
+	for k in ["Bridge", "Cap", "Door"]: (refl.get_node(k) as Node3D).transform = (world.get_node(k) as Node3D).transform
 	var near := smoothstep(-10.9, -11.6, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
 	ghost.visible = near > 0.01
 	if ghost.visible: ghost.apply(st)
@@ -785,17 +936,21 @@ func _process(dt: float) -> void:
 	door_halo.scale = Vector3.ONE * door_energy; door_halo.visible = door_energy > 0.01
 	lights[0] = Vector4(lamp.position.x, lamp.position.y, lamp.position.z, le)
 	lights[1] = Vector4(DX, 0.8, -12.5, door_energy)
+	var cc := cam_t if shot == null else (shot.c as Vector3)
 	for m in pmats.values():
 		for i in 6: m.set_shader_parameter("l%d" % i, lights[i])
+		m.set_shader_parameter("centre", cc); m.set_shader_parameter("mist_r", cam.size * 0.64)
+	sea_mat.set_shader_parameter("centre", cc); sea_mat.set_shader_parameter("mist_r", cam.size * 0.64); sea_mat.set_shader_parameter("time_s", t)
 	for m in timed: m.set_shader_parameter("time_s", t)
 	blob.position = Vector3(pos.x, 0.012, pos.z); blob.scale = Vector3.ONE * (1.0 + a_pool * 0.6)
 	for k in markers:
 		var n: Node3D = markers[k]
-		n.visible = started and not done.has(k)
+		n.visible = started and not done.has(k) and shot == null
 		n.position.y = objs[k].at.y + (0.55 if k != "mirror" else 1.35) + 0.05 * sin(t * 2.4)
 		n.rotation.y = t * 1.2
 	cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 50.0
+	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * 50.0
 	if started and not ended and pos.z < -13.2: _end()
 
 # ---------------------------------------------------------------- what she can do

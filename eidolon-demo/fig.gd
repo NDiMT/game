@@ -25,8 +25,9 @@ var hand_ul := {"L": Vector3.ZERO, "R": Vector3.ZERO}
 var vp := PackedVector3Array()
 var veil_ready := false
 
+var remap := {}
 func _m(c: String) -> Material:
-	return ghost_mat if ghost else mk.call(c)
+	return ghost_mat if ghost else mk.call(remap.get(c, c))
 
 static func lathe(cs: PackedVector3Array, rs: PackedFloat32Array, segs := 32) -> Array:
 	var v := PackedVector3Array(); var n := PackedVector3Array(); var idx := PackedInt32Array()
@@ -72,8 +73,9 @@ func _ball(parent: Node3D, r: float, h: float, c: String, p: Vector3) -> MeshIns
 	var mi := _prim(parent, s, c); mi.position = p
 	return mi
 
-func build(is_ghost: bool, maker: Callable, cloth_mat: Material) -> void:
-	ghost = is_ghost; mk = maker; cloth = cloth_mat
+func build(kind: int, maker: Callable, cloth_mat: Material, face_mat: Material) -> void:
+	ghost = kind == 1; mk = maker; cloth = cloth_mat
+	if kind == 2: remap = {"dress": "crim", "dress2": "crim2", "crim": "gold"}
 	if ghost:
 		ghost_mat = StandardMaterial3D.new()
 		ghost_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -95,8 +97,9 @@ func build(is_ghost: bool, maker: Callable, cloth_mat: Material) -> void:
 	head = Node3D.new(); head.position = Vector3(0, 0.535, 0); upper.add_child(head)
 	_ball(head, 0.088, 0.208, "veil", Vector3.ZERO)
 	_ball(head, 0.058, 0.116, "veil", Vector3(0, 0.07, -0.072))
-	# the veil over the face ends in a soft point at the collarbone; the long part hangs behind (simulated)
-	_lathe_node(head, [[0.030, -0.215], [0.066, -0.14], [0.086, -0.06], [0.0895, 0.0]], "veil", -0.03)
+	# her face was never carved: a smooth porcelain oval that catches the light like a mirror
+	var fp := _ball(head, 0.066, 0.178, "skin", Vector3(0, -0.008, 0.05)); fp.scale = Vector3(1, 1, 0.62)
+	if not ghost: fp.material_override = face_mat
 	for side in ["L", "R"]:
 		var sx := 1.0 if side == "L" else -1.0
 		var ua := CylinderMesh.new(); ua.height = A_LEN; ua.top_radius = 0.026; ua.bottom_radius = 0.033; ua.radial_segments = 14
