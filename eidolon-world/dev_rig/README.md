@@ -143,3 +143,11 @@ are in `dev_rig/tools/`, which has a `.gdignore`:
 
 To rebuild, run `python3 eidolon-world/dev_rig/tools/rig_export.py eidolon-world/assets/models/wanderer_rigged.glb`.
 The output is byte-identical to the committed GLB.
+
+## a7: the real rig (Blender) for the heroine and the Warden
+    python3.11 -m pip install bpy scipy                                  # (once; Blender 5.0 as a module)
+    python3.11 dev_rig/tools/heroine_bl_rig.py                           # -> assets/models/heroine_v2.glb + scripts/fx/heroine_clip_data.gd
+    RIG=warden python3.11 dev_rig/tools/heroine_bl_rig.py                # -> assets/models/warden_v2.glb + scripts/fx/warden_clip_data.gd
+    /opt/godot/godot --headless --import && /opt/godot/godot --headless --path . -s dev_rig/a7/prep_heroine_v2.gd   # her mesh.res
+    xvfb-run -a godot --path . --rendering-driver opengl3 --fixed-fps 30 res://dev_rig/a7/a7_demo.tscn -- --sheet=reach:0.42,walk:0.5:1.2 --out=/abs/x.png
+Clips: dev_rig/tools/heroine_bl_clips.py (mocap from dev_rig/ual/, CC0, assets/anim/LICENSE.txt); helpers bl_rig_lib.py, bl_pose.py.

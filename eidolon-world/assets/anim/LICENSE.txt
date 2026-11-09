@@ -1,0 +1,16 @@
+EIDOLON: animation sources (a7, Agent A)
+
+The heroine's and the Warden's motion is retargeted motion capture from:
+
+  Universal Animation Library (Standard), by Quaternius   https://quaternius.com/packs/universalanimationlibrary.html
+  Universal Animation Library 2 (Standard), by Quaternius https://quaternius.itch.io/universal-animation-library-2
+  Downloaded 2026-11-09 from itch.io (quaternius.itch.io/universal-animation-library, .../universal-animation-library-2).
+  Licence (from the packs' License.txt, verified): CC0 1.0 Universal (CC0 1.0) Public Domain Dedication
+  https://creativecommons.org/publicdomain/zero/1.0/   No attribution required; credited here anyway.
+
+Source files kept for the pipeline (not shipped; dev_rig/ual/.gdignore): dev_rig/ual/UAL1_Standard.glb, dev_rig/ual/UAL2_Standard.glb
+UAL clips used: Idle_Loop, Walk_Loop, Interact, PickUp_Table, Fixing_Kneeling, Push_Loop, Idle_Torch_Loop, Sitting_Enter,
+Sitting_Idle_Loop, Sitting_Exit, Hit_Head, Hit_Chest (UAL1); Farm_PlantSeed, Idle_Lantern_Loop, Consume, ClimbUp_1m (UAL2).
+Gestures the libraries lack (touch_glass, knock, reach_high, ring_bell, hang_weight, hide_column, statue_still, turn_half,
+palm_to_palm, shard_eye, untie_cleat, ...) are keyed on those mocap base poses in dev_rig/tools/heroine_bl_clips.py.
+Pipeline: dev_rig/tools/heroine_bl_rig.py (Blender 5 bpy, headless; RIG=warden for the Warden).

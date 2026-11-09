@@ -361,12 +361,19 @@ def skirt_pose(T):
             dk = kp - kr; da = apos - ar
             # a knee / shin only pushes the gown where it would come through it: past the gown's own surface at this
             # azimuth (less a body margin); it drags it a little sideways
-            o1 = max(0.0, (kp - p1).dot(n) + KNEE_R) * near
-            o2 = max(0.0, (apos - p2).dot(n) + SHIN_R) * near
+            o1 = min(max(0.0, (kp - p1).dot(n) + KNEE_R), 0.22) * near
+            o2 = min(max(0.0, (apos - p2).dot(n) + SHIN_R), 0.15) * near
             push1 += n * o1 + (dk - n * dk.dot(n)) * 0.15 * near
             push2 += n * o2 + (da - n * da.dot(n)) * 0.10 * near
         p1n = p1 + push1
-        d1 = (p1n - p0).normalized(); p1n = p0 + d1 * SK_LEN[k][0]
+        d1 = (p1n - p0).normalized()
+        # (a knee drawn up to the chest - a climb - lifts the gown, never flips it up into a sheet: 65 deg at most)
+        d1r = (p1 - p0).normalized()
+        if d1r.angle(d1, 0.0) > math.radians(65):
+            ax_ = d1r.cross(d1)
+            if ax_.length > 1e-6:
+                d1 = Quaternion(ax_.normalized(), math.radians(65)) @ d1r
+        p1n = p0 + d1 * SK_LEN[k][0]
         # the lower segment: carried by the knee push, pushed by the shin/foot, hangs toward the floor
         p2n = p2 + push1 + push2
         d2 = (p2n - p1n)
@@ -385,8 +392,11 @@ def skirt_pose(T):
             if hz.length < 1e-4 or hz.normalized().dot(V(n.x, n.y, 0).normalized()) < 0.2:
                 hz = hz + V(n.x, n.y, 0) * 0.5
             hz = hz.normalized() if hz.length > 1e-4 else V(n.x, n.y, 0).normalized()
+            # the segment keeps its own flare (horizontal reach) and only drops onto the floor, shortening; when the
+            # body sinks further the length allowed (3/4) spreads it outward on the floor
+            off0 = V(b_.x - a_.x, b_.y - a_.y, 0).length
             Lt = max(h_, 0.75 * Ls)
-            off = math.sqrt(max(Lt * Lt - h_ * h_, 0.0))
+            off = max(off0, math.sqrt(max(Lt * Lt - h_ * h_, 0.0)))
             return a_ + hz * off + V(0, 0, -h_)
         p1n = onto_floor(p0, p1n, L1, 0.03)
         p2n = p1n + (p2n - p1n).normalized() * L2

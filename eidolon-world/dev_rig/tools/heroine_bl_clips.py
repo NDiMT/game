@@ -544,6 +544,11 @@ class Lib:
         def climb(t):
             st = c.swarp(t, [(0.0, 0.0), (2.4, CU)])
             T = c.mo(I2, 'ClimbUp_1m', st)
+            # the mannequin climbs 1 m (0.92 m on her): her block is 0.6 m, so the rise is scaled to it (W moves her
+            # up onto the block at "top" and stops the clip)
+            T0 = c.mo(I2, 'ClimbUp_1m', 0.0)
+            rise = T['Hips'].translation.z - T0['Hips'].translation.z
+            c.hips(T, dz=-rise * (1.0 - 0.6 / 0.92))
             return T
         c.add('climb_block', 2.6, climb, hold_t=2.4, blend=[0.2, 0.1], ev={'top': 2.4})
 
