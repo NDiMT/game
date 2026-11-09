@@ -373,7 +373,7 @@ func _deform() -> void:
 				var q: Vector3 = X[gi]
 				var cp := Geometry3D.get_closest_point_to_segment(q, a, b)
 				deep = maxf(deep, float(c[4]) - q.distance_to(cp))
-			var cn := "%s-%s%.1f" % [c[0], c[1], c[2]]
+			var cn := "%s-%s%.2f" % [c[0], c[1], c[2]]
 			_df_worst["gown in " + cn] = maxf(_df_worst.get("gown in " + cn, -1.0), deep)
 			_df_case[_case]["in" + cn] = maxf(_df_case[_case].get("in" + cn, -1.0), deep)
 			if deep > (DEF_DEEP_STUB if c[2] == 0.55 else DEF_DEEP): _fail("deform gown through the " + sd + cn, deep * 100.0, "cm inside")
