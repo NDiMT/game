@@ -53,6 +53,9 @@ func _ready() -> void:
 			var f: Array = fails[c][k]
 			parts.append("%s x%d worst %.1f @%.2fs %s" % [k, f[0], f[1], f[2], f[3]])
 		print("FAIL %s: %s" % [c, "; ".join(parts)])
+	for c in _df_case:
+		var zs: Dictionary = _df_case[c]
+		print("DEFCASE %s | %s" % [c, " ".join(zs.keys().map(func(k: String) -> String: return "%s %.3f" % [k, zs[k]]))])
 	print("DEFORM worst: " + ", ".join(_df_worst.keys().map(func(k: String) -> String: return "%s %.3f" % [k, _df_worst[k]])))
 	print("ANIM %s cases=%d failing=%d frames=%d" % ["PASS" if rc == 0 else "FAIL", ncases, fails.size(), frames])
 	get_tree().quit(rc)
@@ -269,6 +272,7 @@ var _df_v := []              # sampled vertices: [rest pos, bind idx PackedInt32
 var _df_e := {}              # zone -> [[vi, vj, rest length], ...] (indices into _df_v)
 var _df_g := PackedInt32Array()     # the chain-carried gown vertices (indices into _df_v)
 var _df_worst := {}
+var _df_case := {}           # (a10) case -> zone -> worst (printed as DEFCASE lines)
 
 func _deform_data(sk: Skeleton3D, mi: MeshInstance3D, d: RigData) -> void:
 	var arr := mi.mesh.surface_get_arrays(0)
@@ -353,6 +357,8 @@ func _deform() -> void:
 		for e in lst: s += absf(log(maxf(X[e[0]].distance_to(X[e[1]]), 1e-6) / float(e[2])))
 		var m := s / maxf(lst.size(), 1)
 		_df_worst[z] = maxf(_df_worst.get(z, 0.0), m)
+		if not _df_case.has(_case): _df_case[_case] = {}
+		_df_case[_case][z] = maxf(_df_case[_case].get(z, 0.0), m)
 		if m > DEF_LIM[z]: _fail("deform " + z + " stretch", m, "mean |ln stretch|")
 	for sd in ["Left", "Right"]:
 		for c in DEF_CAPS:
@@ -366,6 +372,7 @@ func _deform() -> void:
 				var cp := Geometry3D.get_closest_point_to_segment(q, a, b)
 				deep = maxf(deep, float(c[4]) - q.distance_to(cp))
 			_df_worst["gown in " + str(c[0])] = maxf(_df_worst.get("gown in " + str(c[0]), -1.0), deep)
+			_df_case[_case]["in" + str(c[0])] = maxf(_df_case[_case].get("in" + str(c[0]), -1.0), deep)
 			if deep > DEF_DEEP: _fail("deform gown through the " + sd + str(c[0]), deep * 100.0, "cm inside")
 
 func _settle(fade := 0.35) -> void:
