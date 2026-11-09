@@ -118,7 +118,8 @@ func apply(s: Dictionary) -> void:
 		var sx := 1.0 if side == "L" else -1.0
 		var sh := Vector3(sx * 0.135, 0.31, 0)
 		var tg := Vector3(sx * 0.205, -0.15, 0.045 + s["swing" + side])
-		if side == "R": tg = tg.lerp(Vector3(-0.185, 0.07, 0.25), s.hold)
+		if side == "R": tg = tg.lerp(Vector3(-0.185, 0.07, 0.25), s.hold).lerp(Vector3(-0.22, 0.74, 0.16), s.raise)
+		tg += Vector3(sx * 0.14, 0.04, 0.02) * s.open
 		var w: float = s["w" + side]
 		if w > 0.0: tg = tg.lerp(inv * s["t" + side], w)
 		var dv := tg - sh
