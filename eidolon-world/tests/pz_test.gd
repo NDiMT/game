@@ -238,7 +238,7 @@ func _intro() -> void:
 		ok("intro: she stands at the shore", Map3.rect("WS").has_point(Vector2(game.player.position.x, game.player.position.z)))
 		data["p0"] = game.player.position
 		data["t4"] = job_t
-		game.cmd("input:1:0")
+		game.cmd("input:1:-1")
 		step = 4
 		return
 	if step == 4:
