@@ -1,4 +1,4 @@
-"""EIDOLON a10 (Agent A): the v3 heroine's rig source from the raw Tripo mesh (task 685c8a46, v3.1 smart low-poly,
+"""EIDOLON a10 (Agent A): the v3 heroine's rig source from the raw Tripo mesh (task 17a43efe, v3.1 smart low-poly,
 built for animation: A-pose ~45 deg, bare arms apart from the body, real legs to the hips under a separate skirt shell,
 a short hood).
   python3.11 dev_rig/a10/prep_v3_src.py [--src dev_rig/tools/heroine_v3_tripo.glb] [--out assets/models/heroine_v3_src.glb]
@@ -40,6 +40,32 @@ if np.ptp(co[:, 1]) > np.ptp(co[:, 0]):          # facing +x: turn -90 deg about
 co = co - [0.5 * (co[:, 0].max() + co[:, 0].min()), 0.5 * (co[:, 1].max() + co[:, 1].min()), co[:, 2].min()]
 co *= 1.70 / co[:, 2].max()
 me.vertices.foreach_set('co', co.ravel()); me.update()
+
+# (a10) her arms come 15-20 deg below horizontal: turned down ARM_DEG more about each shoulder joint (to ~45 deg, the
+# A-pose the rig wants: every clip's hanging arm then turns half as far from the rest, and the shoulder stretches less).
+# A smooth field along the arm (nothing on the torso side of the joint, all of it 10 cm past it); the normals turn too.
+from mathutils import Matrix as _M, Vector as _V
+ARM_DEG = 28.0
+SH = np.array([0.168, 0.035, 1.325])                       # her left shoulder joint (the rig's UpperArm head)
+ARM_D = np.array([0.95, -0.02, -0.30]); ARM_D /= np.linalg.norm(ARM_D)
+ln = np.empty(len(me.loops) * 3); me.corner_normals.foreach_get('vector', ln); ln = ln.reshape(-1, 3)
+lvi = np.empty(len(me.loops), np.int64); me.loops.foreach_get('vertex_index', lvi)
+R_v = np.tile(np.eye(3), (len(co), 1, 1))
+for sg in (1, -1):
+    P = SH * [sg, 1, 1]; d = ARM_D * [sg, 1, 1]
+    ax = np.cross(d, [0, 0, 1.0]); ax /= np.linalg.norm(ax)        # (down: about the horizontal axis square to the arm)
+    rel = co - P
+    t = rel @ d
+    perp = np.linalg.norm(rel - np.outer(t, d), axis=1)
+    w = np.clip((t + 0.02) / 0.12, 0, 1); w = w * w * (3 - 2 * w)
+    w *= (co[:, 0] * sg > 0.05) * np.maximum(np.clip((0.16 - perp) / 0.04, 0, 1), ((t > 0.15) & (co[:, 2] > 0.95)).astype(float))
+    for i in np.where(w > 1e-4)[0]:
+        Rm = np.array(_M.Rotation(np.radians(ARM_DEG) * w[i], 3, _V(-ax)))
+        R_v[i] = Rm
+        co[i] = P + Rm @ (co[i] - P)
+me.vertices.foreach_set('co', co.ravel()); me.update()
+ln = np.einsum('nij,nj->ni', R_v[lvi], ln)
+me.normals_split_custom_set([tuple(v) for v in ln])
 ob.name = 'Heroine'; me.name = 'Heroine'
 
 # her skin: the albedo's warm, saturated texels (Tripo paints the bare skin flesh-toned, the cloth neutral grey)

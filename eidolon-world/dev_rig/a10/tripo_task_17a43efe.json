@@ -1,0 +1,21 @@
+{
+ "task_id": "17a43efe-4348-4d66-b9a0-4de5e0e834fc",
+ "type": "text_to_model",
+ "status": "success",
+ "input": {
+  "pbr": true,
+  "prompt": "Full body 3D game character for animation: a slender, graceful young woman, a living statue come to life, life size. Her whole head and face are covered by an opaque soft light grey veil of fine fabric draped over the head and face, ending at the shoulders all round, not falling down the back; no face, no eyes, no hair visible, only the rounded shape of the head under the cloth. She wears a plain light grey ancient Greek long dress with realistic sculpted cloth folds: a fitted sleeveless bodice, a simple narrow belt at the waist with no hanging ends, and a gently flared A-line skirt to the ankles, its hem a few centimetres above the floor, bare feet visible. Bare slender arms with natural skin. Standing in a clean symmetric A-pose for rigging: arms straight, held about 45 degrees down from the shoulders, clearly apart from the torso and the dress, legs slightly apart. Front view. Single character, no base, no background.",
+  "texture": true,
+  "export_uv": true,
+  "face_limit": 15000,
+  "model_seed": 2070268052,
+  "model_version": "v3.1-20260211",
+  "smart_low_poly": true,
+  "negative_prompt": "visible face, eyes, hair, hood, cape, cloak, sash, ribbons, long veil down the back, train, dress touching the floor, sleeves, shoes, T-pose, arms touching body, jewelry, base, pedestal, ground, props, multiple figures, background, cartoon",
+  "geometry_quality": "standard",
+  "texture_alignment": "geometry"
+ },
+ "credits_consumed": 30,
+ "created_at": "2026-11-09T20:34:51.135578Z",
+ "completed_at": "2026-11-09T20:41:33.617935Z"
+}

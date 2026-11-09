@@ -22,15 +22,15 @@ extends Node3D
 static var VARIANT := "v1"               # (kept: W sets it; the v2 rig is the v1 porcelain heroine re-rigged)
 const MODEL := "res://assets/models/heroine_v2.glb"
 const MESH := "res://assets/models/heroine_v2_mesh.res"     # (dev_rig/a7/prep_heroine_v2.gd: the shader's vertex data)
-## (a10) her mesh is the v3 Tripo heroine (685c8a46, made for animation: real legs under a separate skirt shell, bare
-## arms apart from the body, a short hood); the rig, the bone names and every clip are the a7/a9 ones
+## (a10) her mesh is the v3 Tripo heroine (17a43efe: the veil over her head and face to the shoulders, a belted A-line
+## dress to the lower shin, bare arms clear of the body); the rig, the bone names and every clip are the a7/a9 ones
 const ALBEDO := "res://assets/models/heroine_v3_basecolor.jpg"
 const NORMAL := "res://assets/models/heroine_v3_normal.jpg"
 const UNIT := 1.7                        # her GLB's height (metres)
 const HEIGHT := 1.12 / UNIT              # -> the game's 1.12 m hero
-const AXIS_Z := 0.035
-const SKIN_LUM := 0.12                   # (v3: COLOR.b is her skin; only the dark hair under the hood is kept out)
-const CLOTH_K := 0.6                     # (v3's grey is a lighter dove grey: darkened to the v1 mid grey)
+const AXIS_Z := 0.014
+const SKIN_LUM := 0.12                   # (v3: COLOR.b is her skin mask; its texels are all marbled)
+const CLOTH_K := 0.6                     # (v3's cloth is a light grey: darkened toward the v1 mid grey)
 
 static var model: PackedScene
 static var body_mesh: ArrayMesh
@@ -440,7 +440,8 @@ func _locomotion(dt: float) -> void:
 	var ln: float = walk["len"]
 	var t0 := _walk_t
 	if _gw > 0.0:
-		_walk_t = fposmod(_walk_t + dt * maxf(ve, WALK_ON * 0.8 * _gw) / native, ln)
+		# (a10: the walk plays at most 3.9x its native rate - above ~2 m/s she glides a little rather than snap her feet)
+		_walk_t = fposmod(_walk_t + dt * minf(maxf(ve, WALK_ON * 0.8 * _gw) / native, 3.9), ln)
 	# the foot plants: step(0) left, step(1) right
 	var ev: Dictionary = walk["ev"]
 	if _gw > 0.3:

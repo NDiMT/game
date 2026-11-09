@@ -172,14 +172,16 @@ class Lib:
 
         def walk(t):
             T = c.mo(I1, 'Walk_Loop', t % WD)
-            # a longer, gliding stride (her speed is high for her size): the legs' swing x1.3, the knees x1.12,
-            # the hips a little lower to keep the feet on the floor
+            # a longer, gliding stride (her speed is high for her size): the legs' swing x1.15 (a10: was x1.3; her
+            # dress's hem is narrow front to back), the knees x1.12, the hips a little lower to keep the feet down
             B = sk.local(T)
             for sd in ('Left', 'Right'):
-                for bn, f in (('UpperLeg', 1.3), ('LowerLeg', 1.12)):
+                for bn, f in (('UpperLeg', 1.15), ('LowerLeg', 1.12)):
                     l_, q_, s_ = B[sd + bn].decompose()
                     e = q_.to_euler('XYZ'); e.x *= f
                     B[sd + bn] = Matrix.LocRotScale(l_, e.to_quaternion(), s_)
+                l_, q_, s_ = B[sd + 'Toes'].decompose()          # (a10: the toes' roll at half: no snap at a fast walk)
+                B[sd + 'Toes'] = Matrix.LocRotScale(l_, Quaternion().slerp(q_, 0.5), s_)
             T = sk.absolute(B)
             c.hips(T, dz=-0.012)
             # a calmer arm swing than the mannequin's: the arms part-way to her idle hang

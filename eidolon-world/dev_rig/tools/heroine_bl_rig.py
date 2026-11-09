@@ -37,10 +37,14 @@ ap.add_argument('--clips', default='')
 ap.add_argument('--blend', default='')
 ap.add_argument('--noexport', action='store_true')
 args = ap.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:])
-# (a10) V3: the Tripo heroine 685c8a46 made for animation (dev_rig/a10/prep_v3_src.py): real legs to the hips under a
-# separate skirt shell (hem at 0.42 m, mid-calf), bare arms in a 45 deg A-pose, a short hood. The a9 source
-# (heroine_v1_rigged.glb: the gown fused to the legs and feet, a waist-long veil) still builds with --src.
+# (a10) V3: the Tripo heroine 17a43efe (dev_rig/a10/prep_v3_src.py): her head and face under a veil to the shoulders
+# (a short panel down the back), a belted A-line dress to the lower shin (hem 0.22 m), bare arms clear of the body
+# (generated 15-20 deg below horizontal, turned down to ~45 deg in the prep), bare feet. The a9 source (heroine_v1_rigged.glb) still builds with --src.
+# LEGS: a source whose legs run whole up to the hips under a separate skirt shell (the a10 try 685c8a46) - the legs are
+# drawn, keep their heat weights, knee helpers, the skirt collides with thigh and knee. The 17a43efe dress is one
+# surface with the legs below its hem (as a9's): LEGS is off, the feet are cut free and the legs never drawn.
 V3 = (not WARDEN) and 'v3' in os.path.basename(args.src)
+LEGS = False
 
 FPS = 30
 L.reset()
@@ -80,7 +84,8 @@ def split_feet():
         lv = np.empty(len(body.data.loops), np.int64); body.data.loops.foreach_get('vertex_index', lv)
         skin_v = np.zeros(len(co0)); np.maximum.at(skin_v, lv, cl.reshape(-1, 4)[:, 0])
     sk_u = np.zeros(nc); np.maximum.at(sk_u, lb, skin_v)
-    fm = (sk_u > 0.5) & (u0[:, 2] < 0.17)
+    FZ = 0.30 if V3 else 0.17          # (a10: her legs show below the hem, 0.22 m; their stubs inside it go too)
+    fm = (sk_u > 0.5) & (u0[:, 2] < FZ)
     me = body.data
     me.calc_loop_triangles()
     pi = np.empty(len(me.loop_triangles), np.int64); me.loop_triangles.foreach_get('polygon_index', pi)
@@ -93,9 +98,9 @@ def split_feet():
         used = np.zeros(nc, bool); used[tg_.ravel()] = True
         sz = np.bincount(lg[used], minlength=ncg)
         main = int(np.argmax(sz))
-        nearf = np.hypot((np.abs(u0[:, 0]) - 0.07) / 0.07, (u0[:, 1] + 0.07) / 0.16) < 1.0
+        nearf = (np.hypot((np.abs(u0[:, 0]) - 0.21) / 0.08, u0[:, 1] / 0.16) < 1.0) if V3 else (np.hypot((np.abs(u0[:, 0]) - 0.07) / 0.07, (u0[:, 1] + 0.07) / 0.16) < 1.0)
         far_c = np.zeros(ncg, bool); far_c[lg[used & ~nearf]] = True       # (an island reaching beyond a foot stays gown)
-        isl = used & (lg != main) & ~far_c[lg] & (u0[:, 2] < 0.25)
+        isl = used & (lg != main) & ~far_c[lg] & (u0[:, 2] < (0.34 if V3 else 0.25))
         tf = tf | isl[lb[tri0]].any(1)
     # (and the loose scraps of the old hem cap under the gown - flat on the floor, between the feet - are dropped: with the
     # feet free they showed as a dark sheet whenever a step opened the hem)
@@ -133,7 +138,7 @@ def split_feet():
     # the gown's side of the cut is gown, not skin (its rim verts carried the foot's skin colour)
     ca = me.color_attributes['Color']
     co1 = np.empty(len(me.vertices) * 3); me.vertices.foreach_get('co', co1); co1 = co1.reshape(-1, 3)
-    gown_low = (side == 0) & (co1[:, 2] < 0.17)
+    gown_low = (side == 0) & (co1[:, 2] < FZ)
     if ca.domain == 'POINT':
         cv = np.empty(len(ca.data) * 4); ca.data.foreach_get('color', cv); cv = cv.reshape(-1, 4)
         cv[gown_low, 0] = 0.0; ca.data.foreach_set('color', cv.ravel())
@@ -143,7 +148,7 @@ def split_feet():
         cl[gown_low[lv], 0] = 0.0; ca.data.foreach_set('color', cl.ravel())
     print('feet cut free: foot faces', int(pf.sum()), 'edges split', len(cut))
     return side
-FOOT_SIDE = None if (WARDEN or V3) else split_feet()
+FOOT_SIDE = None if (WARDEN or LEGS) else split_feet()
 CO, TRI = L.mesh_arrays(body)
 N = len(CO)
 x, y, z = CO[:, 0], CO[:, 1], CO[:, 2]          # Blender: y = -forward (her back is +y), z up
@@ -180,11 +185,12 @@ S = {  # her left side; the right mirrors x
     'Toes': V(0.070, -0.130, 0.025), 'ToeTip': V(0.070, -0.235, 0.010),
 }
 if V3:       # (a10: fitted on her mesh, dev_rig/a10: front / side / arm plots)
-    J = {'Hips': V(0, 0.0, 0.92), 'Spine': V(0, -0.02, 1.02), 'Chest': V(0, -0.035, 1.12), 'UpperChest': V(0, -0.035, 1.25),
-         'Neck': V(0, -0.015, 1.415), 'Head': V(0, -0.02, 1.485), 'HeadTop': V(0, -0.03, 1.67)}
-    S = {'Shoulder': V(0.030, -0.010, 1.335), 'UpperArm': V(0.172, 0.008, 1.305), 'LowerArm': V(0.335, -0.004, 1.138),
-         'Hand': V(0.468, -0.065, 1.015), 'UpperLeg': V(0.080, 0.0, 0.860), 'LowerLeg': V(0.056, 0.017, 0.465),
-         'Foot': V(0.034, 0.025, 0.080), 'Toes': V(0.040, -0.115, 0.025), 'ToeTip': V(0.043, -0.195, 0.010)}
+    J = {'Hips': V(0, -0.02, 0.92), 'Spine': V(0, -0.03, 1.02), 'Chest': V(0, -0.04, 1.12), 'UpperChest': V(0, -0.03, 1.25),
+         'Neck': V(0, -0.02, 1.42), 'Head': V(0, -0.025, 1.49), 'HeadTop': V(0, -0.03, 1.66)}
+    # (the arm turned down 28 deg in prep_v3_src.py: elbow and wrist turned with it)
+    S = {'Shoulder': V(0.030, 0.0, 1.345), 'UpperArm': V(0.168, 0.035, 1.325), 'LowerArm': V(0.364, 0.016, 1.136),
+         'Hand': V(0.510, -0.083, 1.006), 'UpperLeg': V(0.086, -0.005, 0.860), 'LowerLeg': V(0.150, 0.015, 0.470),
+         'Foot': V(0.216, 0.060, 0.085), 'Toes': V(0.240, -0.040, 0.025), 'ToeTip': V(0.260, -0.105, 0.010)}
 if WARDEN:   # (his old A6-checked joints: gaunt, long arms, the robe to the knees, bare legs and feet below)
     J = {'Hips': V(0, 0.02, 0.90), 'Spine': V(0, 0.02, 0.98), 'Chest': V(0, 0.03, 1.08), 'UpperChest': V(0, 0.04, 1.22),
          'Neck': V(0, 0.045, 1.40), 'Head': V(0, 0.025, 1.50), 'HeadTop': V(0, 0.015, 1.64)}
@@ -247,7 +253,7 @@ if not WARDEN:
             (side + 'ElbowHelper', side + 'UpperArm', el_, el_.lerp(wr_, 0.3), FWD, False),
             (side + 'ForeTwist2', side + 'LowerArm', el_.lerp(wr_, 2 / 3), wr_, FWD, False),
         ]
-        if V3:      # (a10) her knees show now: the knee ring at half the knee's bend (the elbow helper's twin)
+        if LEGS:    # (a10) her knees show: the knee ring at half the knee's bend (the elbow helper's twin)
             kn_, an_ = f(S['LowerLeg']), f(S['Foot'])
             HELPERS += [(side + 'KneeHelper', side + 'UpperLeg', kn_, kn_.lerp(an_, 0.3), FWD, False)]
     bones += HELPERS
@@ -255,7 +261,7 @@ if not WARDEN:
 # ------------------------------------------------------------------ the gown chains (8 around, 2 segments: hips > knee > hem)
 AX_Y = float(np.mean(uy[(uz > 0.9) & (uz < 1.3) & (np.abs(ux) < 0.15)]))     # the body axis (y)
 SK_ANG = [0, 45, 90, 135, 180, -135, -90, -45]          # degrees, 0 = front (-y), +90 = her left (+x)
-SK_Z = [0.92, 0.62, 0.36] if WARDEN else ([0.90, 0.66, 0.44] if V3 else [0.90, 0.48, 0.03])
+SK_Z = [0.92, 0.62, 0.36] if WARDEN else (([0.90, 0.66, 0.44] if LEGS else [0.90, 0.52, 0.28]) if V3 else [0.90, 0.48, 0.03])
 HEM_FLOOR = 0.012 if V3 else SK_Z[2]      # (a10) the lowest a hem handle may go (a9: its own rest height, on the floor)
 def surf_r(phi, zz, band=0.03, cone=12.0):
     a = np.degrees(np.arctan2(ux, -(uy - AX_Y)))
@@ -344,6 +350,8 @@ for sg in (1, -1):
     par_, dist_ = poly_near(U, poly)
     side_ok = np.maximum(ss(0.135, 0.17, ux * sg), ss(1.3, 1.6, par_))
     am_ = (1 - ss(0.05, 0.08, dist_)) * side_ok * ss(0.6, 1.0, par_) * (ux * sg > 0)
+    if V3:      # (a10) her arms are bare skin: the veil's edge and the bodice over the shoulder are not arm
+        am_ = am_ * np.clip(SKIN_U + ss(1.25, 1.6, par_), 0, 1)
     arm_side[sg] = (am_, par_)
     arm_m = np.maximum(arm_m, am_)
 # feet: grown from the soles, near each ankle axis
@@ -352,7 +360,7 @@ def near_foot(i):
     sg = 1 if ux[i] > 0 else -1
     return math.hypot((ux[i] - sg * 0.07) / 0.06, (uy[i] + 0.07) / 0.14) < 1.0 and uz[i] < 0.14
 seeds = [] if (WARDEN or V3) else [i for i in np.where(uz < 0.06)[0] if near_foot(i)]
-if not WARDEN and not V3:      # (a9) the cut-free feet, exactly
+if FOOT_SIDE is not None:      # (a9) the cut-free feet, exactly
     foot_m[:] = False
     np.logical_or.at(foot_m, lab, FOOT_SIDE.astype(bool))
     seeds = []
@@ -383,7 +391,7 @@ def heat_weights():
                 allowed[:, j] = ok
         if not any(k in n for k in ('UpperArm', 'LowerArm', 'Hand', 'Fingers')):
             allowed[:, j] = arm_m < 0.7
-            if V3 and any(k in n for k in ('Leg', 'Foot', 'Toes')):     # (a10) her thighs touch: a leg binds its own side
+            if LEGS and any(k in n for k in ('Leg', 'Foot', 'Toes')):     # (a10) her thighs touch: a leg binds its own side
                 sg_ = 1 if n.startswith('Left') else -1
                 allowed[:, j] &= (ux * sg_ > -0.004)
             if n.endswith('Shoulder'):
@@ -414,7 +422,7 @@ foot_w = L.smooth_weights(foot_m.astype(float)[:, None], A, 2)[:, 0]
 
 # the gown: below the waist, not the arms/hands, not the feet
 gown_m = ss(1.0, 0.88, uz) * (1 - arm_m) * (1 - foot_w)
-if V3:
+if LEGS:
     # (a10) the skirt shell only: cloth (not her skin) below the waist, clear of the legs (the cloth round the crotch,
     # inside, rides the hips and thighs); the legs keep their own heat weights
     legd = np.full(NU, np.inf)
@@ -432,7 +440,7 @@ ax = np.abs(ux)
 BACK_Y = AX_Y + 0.09
 veil_back = ss(BACK_Y - 0.01, BACK_Y + 0.02, uy) * ss(0.9, 0.98, uz) * ss(1.48, 1.42, uz) * ss(0.26, 0.2, ax) * (1 - arm_m)
 veil_side = ss(0.095, 0.125, ax) * ss(1.30, 1.34, uz) * ss(1.60, 1.50, uz) * (1 - arm_m) * (1 - veil_back) * ss(0.1, 0.06, uy - AX_Y)
-veil_m = np.clip(veil_back + veil_side, 0, 1) * (1 - gown_m) * (0.0 if (WARDEN or V3) else 1.0)     # (a10: her short hood is on the heat weights)
+veil_m = np.clip(veil_back + veil_side, 0, 1) * (1 - gown_m) * (0.0 if (WARDEN or LEGS) else 1.0)     # (a10: a short hood rides the heat weights)
 
 def ladder(zz, stops):
     """vertical blend over (z, bone) stops (descending z) -> (NU, NB)"""
@@ -480,7 +488,7 @@ else:
     wmid = 1 - wtop - wbot
     t_ = ((ang - SK_ANG[0]) / step) - np.floor((ang - SK_ANG[0]) / step)
     t_ = 0.5 * t_ + 0.5 * t_ * t_ * (3 - 2 * t_)
-    if V3:      # (a10) the skirt's top rides her body's own (heat) weights: over the thighs it follows them a little
+    if LEGS:    # (a10) the skirt's top rides her body's own (heat) weights: over the thighs it follows them a little
         W_gown += WH * wtop[:, None]
     else:
         W_gown[:, BI['Hips']] = wtop
@@ -491,15 +499,17 @@ else:
 W_foot = np.zeros((NU, len(BN)))
 for i in np.where(foot_w > 0)[0]:
     sd = 'Left' if ux[i] > 0 else 'Right'
-    tt = ss(-0.03, -0.12, uy[i])
-    W_foot[i, BI[sd + 'Foot']] = 1 - tt; W_foot[i, BI[sd + 'Toes']] = tt
+    tt = ss(0.0, -0.07, uy[i]) if V3 else ss(-0.03, -0.12, uy[i])
+    sh_ = ss(0.10, 0.16, uz[i]) if V3 else 0.0      # (a10: her shins show below the hem: the shin rides the lower leg)
+    W_foot[i, BI[sd + 'LowerLeg']] = sh_
+    W_foot[i, BI[sd + 'Foot']] = (1 - tt) * (1 - sh_); W_foot[i, BI[sd + 'Toes']] = tt * (1 - sh_)
 
 body_m = np.clip(1 - gown_m - veil_m - foot_w, 0, 1)
 W = WH * body_m[:, None] + W_gown * gown_m[:, None] + W_veil * veil_m[:, None] + W_foot * foot_w[:, None]
 # no leg bone above the hem in the gown band (the legs are inside the gown; the gown rides the chains)
 for sd in ('Left', 'Right'):
     for b in ('UpperLeg', 'LowerLeg'):
-        if not WARDEN and not V3:
+        if not WARDEN and not LEGS:
             W[:, BI[sd + b]] *= foot_w
 if WARDEN:
     # forearm twist: the distal half of the forearm takes the twist bone (the hand's roll split along the forearm)
@@ -561,7 +571,7 @@ if not WARDEN:      # (a9) no foot/leg weight leaks across to the other side's h
         for b_ in ('UpperLeg', 'LowerLeg', 'Foot', 'Toes'):
             W[ux * sg < -0.005, BI[sd + b_]] = 0.0
     W = L.limit_normalize(W, 4, 0.02)
-if V3:
+if LEGS:
     # (a10) her knees (the a9 mesh had none to show): the knee ring's heat weights shared with the half-bend helper
     # (LBS averages a 150 deg kneel to the bone; two 75 deg halves keep the knee's volume)
     for sd, sg in (('Left', 1), ('Right', -1)):
@@ -682,7 +692,9 @@ def _np4(M): return np.array(M)
 # what must stay covered (the legs are never drawn; the feet are): the ankle (the shin's last 30%) and the foot's back
 # 60% (the toes may peek out under the hem); radii fitted below the rest gown
 CAPS = [('LowerLeg', 'Foot', 0.7, 1.0, 0.040), ('Foot', 'Toes', 0.0, 0.6, 0.035)]     # (the toes may peek out under the hem)
-if V3:      # (a10) her legs ARE drawn: the thigh and the knee stay inside the skirt; the shin below the hem shows
+if V3 and not LEGS:     # (a10) her shins show below the hem (0.22 m): the stubs' cut tops (0.23-0.30) stay under it
+    CAPS = [('LowerLeg', 'Foot', 0.40, 0.62, 0.050), ('LowerLeg', 'Foot', 0.7, 1.0, 0.050), ('Foot', 'Toes', 0.0, 0.6, 0.040)]
+if LEGS:    # (a10) her legs ARE drawn: the thigh and the knee stay inside the skirt; the shin below the hem shows
     CAPS = [('UpperLeg', 'LowerLeg', 0.3, 1.0, 0.085), ('LowerLeg', 'Foot', 0.0, 0.14, 0.062),
             ('LowerLeg', 'Foot', 0.14, 1.0, 0.045), ('Foot', 'Toes', 0.0, 0.6, 0.035)]     # (a kneel lays the hem on the shins)
 CAP_N = [c[0] for c in CAPS] * 2
@@ -701,10 +713,15 @@ def _seg(P_, a_, b_):
 if not WARDEN:
     # each capsule's radius: never more than the rest gown's clearance (less 6 mm) where the handles move it
     _rc = []
+    CAP_OK = []         # (a10) per capsule: the gown vertices it may push (V3: those clear of it at rest)
     for (pa, pb, r, sd), (a_, b_, f0, f1, rn) in zip(_caps(RESTM), CAPS * 2):
         c, v, n = _seg(G_P, pa, pb)
         m = (G_FREE > 0.3) & (G_FOOT < 0.05)
-        _rc.append(max(min(rn, float(n[m].min()) - 0.006), 0.035) if np.any(m) else rn)     # (the toes come out under the hem: 3.5 cm at least)
+        if V3:      # (a10) the full radius (a margin over the test's), never the hem cap's own ring round the stub
+            _rc.append(rn); CAP_OK.append(n > rn + 0.004)
+        else:
+            _rc.append(max(min(rn, float(n[m].min()) - 0.006), 0.035) if np.any(m) else rn)     # (the toes come out under the hem: 3.5 cm at least)
+            CAP_OK.append(np.ones(len(G_P), bool))
     CAP_R = _rc
     print('gown: verts', len(GOWN_V), 'capsule radii', [round(r, 3) for r in CAP_R])
 G_FLOOR = np.minimum(G_P[:, 2], 0.004)
@@ -766,7 +783,7 @@ def gown_push(T, hang, R):
     for sd in ('Left', 'Right'):
         kn, an = T[sd + 'LowerLeg'].translation, T[sd + 'Foot'].translation
         legs[sd] = (kn, an, kn.lerp(an, 0.5), Hrel @ RESTM[sd + 'LowerLeg'].translation, Hrel @ RESTM[sd + 'Foot'].translation)
-        if V3:      # (a10) the rings sit at the thigh (mid ring) and the knee (hem): they follow those
+        if LEGS:    # (a10) the rings sit at the thigh (mid ring) and the knee (hem): they follow those
             th, th0 = T[sd + 'UpperLeg'].translation.lerp(kn, 0.55), (Hrel @ RESTM[sd + 'UpperLeg'].translation).lerp(Hrel @ RESTM[sd + 'LowerLeg'].translation, 0.55)
             legs[sd] = (th, kn, kn.lerp(an, 0.1), th0, Hrel @ RESTM[sd + 'LowerLeg'].translation)
     def hz(v): return Vector((v.x, v.y, 0.0))
@@ -778,7 +795,12 @@ def gown_push(T, hang, R):
     for k, phi in enumerate(SK_ANG):
         pa = math.radians(phi)
         ns.append((R @ V(math.sin(pa), -math.cos(pa), 0)).normalized())
-        P0.append(Hrel @ SK_REST[k][0]); P1.append(hang[SKN[k][0]] + sh1); P2.append(hang[SKN[k][1]] + sh1 * 0.5 + sh2)
+        if V3 and not LEGS:     # (a10) only the chains facing where the legs went shift (a sit's back panel stays behind)
+            f1 = 0.5 + 0.5 * max(-1.0, min(1.0, ns[k].dot(sh1.normalized()))) if sh1.length > 1e-4 else 1.0
+            f2 = 0.5 + 0.5 * max(-1.0, min(1.0, ns[k].dot((sh1 * 0.5 + sh2).normalized()))) if (sh1 * 0.5 + sh2).length > 1e-4 else 1.0
+        else:
+            f1 = f2 = 1.0
+        P0.append(Hrel @ SK_REST[k][0]); P1.append(hang[SKN[k][0]] + sh1 * f1); P2.append(hang[SKN[k][1]] + (sh1 * 0.5 + sh2) * f2)
     D1 = [Vector() for _ in range(8)]; D2 = [Vector() for _ in range(8)]
     for sd, sg in (('Left', 1), ('Right', -1)):
         kn, an, mid, _, _ = legs[sd]
@@ -788,7 +810,7 @@ def gown_push(T, hang, R):
             if near <= 0.0:
                 continue
             n = ns[k]; p0, p1, p2 = P0[k], P1[k], P2[k]
-            for q, m in (((kn, 0.03), (an, 0.03), (mid, 0.02)) if V3 else ((kn, KNEE_M), (mid, SHIN_M), (an, 0.045))):
+            for q, m in (((kn, 0.03), (an, 0.03), (mid, 0.02)) if LEGS else ((kn, KNEE_M), (mid, SHIN_M), (an, 0.045))):
                 if q.z >= p1.z:
                     continue        # (a knee raised above the knee ring - a climb, a sit - is never drawn: no tent)
                 if V3 and q.z < p2.z - 0.03:
@@ -824,9 +846,9 @@ def gown_check(T, R):
         X += w_[:, None] * (Ph @ K.T)[:, :3]
     act = (G_FREE > GOWN_ACT) & (G_FOOT < 0.05) & G_OUTER
     worst = 0.0
-    for (pa, pb, _, sd), r in zip(_caps(T), CAP_R):
+    for ((pa, pb, _, sd), r), ok_ in zip(zip(_caps(T), CAP_R), CAP_OK):
         c, v, nrm = _seg(X, pa, pb)
-        worst = max(worst, float(((r - nrm) * act).max()))
+        worst = max(worst, float(((r - nrm) * act * ok_).max()))
     return worst
 
 PUSH_MAX = 0.0
@@ -853,7 +875,7 @@ def gown_collide(T, tgt, R):
     pen_max = 0.0
     t0_ = t.copy()
     hem_lift = 0.01 + max(0.0, 0.6 * (RESTM['Hips'].translation.z - T['Hips'].translation.z) - 0.03)
-    if V3:      # (a10) her hem hangs at mid-calf: it never rises above its own knee ring
+    if V3:      # (a10) her hem hangs above the ankles: it never rises above its own knee ring
         hem_lift = np.maximum(t[[i - 1 for i in HEM_I], 2] + 0.02, 0.15)
     t[HEM_I, 2] = np.minimum(t[HEM_I, 2], hem_lift)
     if os.environ.get('GDUMP'):
@@ -871,7 +893,7 @@ def gown_collide(T, tgt, R):
             dr = G_OUT_R + np.array([0.0, 0.0, 0.6 if CAP_N[ci_] != 'Foot' and ('Upper' in CAP_N[ci_] or abs(pb[2] - pa[2]) < 0.5 * np.linalg.norm(pb - pa)) else 0.0])
             dr -= np.outer(dr @ ax_, ax_)
             dr /= np.maximum(np.linalg.norm(dr, axis=1, keepdims=True), 1e-6)
-            if V3:      # (a10) under a raised thigh (a sit): straight down out of it, not back along it
+            if LEGS:    # (a10) under a raised thigh (a sit): straight down out of it, not back along it
                 rad_ = v / np.maximum(nrm[:, None], 1e-6)
                 ur_ = ((rad_ * G_OUT_R).sum(1) > -0.2) & (nrm > 1e-4) & (rad_[:, 2] < -0.4)
                 dr[ur_] = rad_[ur_]
@@ -881,7 +903,7 @@ def gown_collide(T, tgt, R):
                     dr[ub_] = dn_
             s_ = (v * dr).sum(1)
             lat = np.sqrt(np.maximum(nrm * nrm - s_ * s_, 0.0))
-            pen = (np.sqrt(np.maximum(r * r - lat * lat, 0.0)) - s_) * act * (lat < r) * ((nrm < r) | (s_ > -0.12))
+            pen = (np.sqrt(np.maximum(r * r - lat * lat, 0.0)) - s_) * act * CAP_OK[ci_] * (lat < r) * ((nrm < r) | (s_ > -0.12))
             m = pen > 0
             if m.any():
                 d[m] += dr[m] * pen[m, None]
@@ -941,7 +963,7 @@ def helper_pose(T):
         put(sd + 'UpperArmTwist', Quaternion((0, 1, 0), -0.5 * tu))
         put(sd + 'Deltoid', Quaternion().slerp(qu @ Quaternion((0, 1, 0), -0.5 * tu), 0.5))
         put(sd + 'ElbowHelper', Quaternion().slerp(rel(sd + 'LowerArm'), 0.5))
-        if V3:
+        if LEGS:
             put(sd + 'KneeHelper', Quaternion().slerp(rel(sd + 'LowerLeg'), 0.5))
         th = tw(rel(sd + 'Hand'))
         put(sd + 'ForeTwist', Quaternion((0, 1, 0), th / 3))

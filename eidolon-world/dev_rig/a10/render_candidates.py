@@ -150,7 +150,7 @@ def main():
     bar = 26
     sheet = Image.new('RGB', (W * 4, (H + bar) * len(rows) + bar), (30, 30, 34))
     dr = ImageDraw.Draw(sheet)
-    dr.text((8, 6), 'EIDOLON a10 heroine candidates (Tripo v3.1 smart low-poly) - front / side / back / wireframe; red pole = 1.8 m; each scaled to 1.70 m', fill=(235, 235, 235))
+    dr.text((8, 6), 'EIDOLON a10 heroine candidates (Tripo v3.1 smart low-poly; h1, h2 = the old Oct-25 tasks, re-downloaded) - front / side / back / wireframe; red pole = 1.8 m; each scaled to 1.70 m', fill=(235, 235, 235))
     for r, (label, ntri, st, imgs) in enumerate(rows):
         y0 = bar + r * (H + bar)
         for c, p in enumerate(imgs):

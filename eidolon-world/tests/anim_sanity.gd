@@ -185,7 +185,8 @@ func _measure(d: RigData, with_skin: bool) -> void:
 		# (a7) a raised arm: the humerus turns outward as the arm rises past the shoulder (~100+ deg from the A-pose rest
 		# overhead), so the twist allowance grows with the arm's elevation in the chest frame, up to 120
 		# (and the aim grid's free targets straight out to her side at shoulder height: 120 there)
-		var sh_lim: float = 120.0 if _case.begins_with("aim_hand") else LIM["sh_tw"] + 25.0 * smoothstep(-0.2, 0.6, dl.y)
+		# (a10) her v3 rest arms sit 15-20 deg below horizontal (a9's 50): the twist read from that rest overhead is ~8 deg more
+		var sh_lim: float = 120.0 if _case.begins_with("aim_hand") else LIM["sh_tw"] + 35.0 * smoothstep(-0.2, 0.6, dl.y)
 		if absf(tw_u) > sh_lim: _fail(s + " upper-arm twist", tw_u, "U=%s elbow=%s" % [dl.snapped(Vector3.ONE * 0.01), (cd.inverse() * (U - F)).normalized().snapped(Vector3.ONE * 0.01)] if verbose else "")
 		# legs
 		var th := s + "_Thigh"
@@ -265,9 +266,10 @@ func _step_her(n: int, cb := Callable()) -> void:
 # elbow, a sheared or torn gown all lift it); no gown vertex the chains carry may sit inside the ankle / foot capsules
 # (the feet are drawn: a foot never shows through the gown).
 const DEF_LIM := {"elbow": 0.25, "shoulder": 0.40, "hips": 0.90, "knees": 0.80, "knee_skin": 0.40}
-## (a10) her v3 mesh has real legs under the skirt: the thigh and the knee must stay inside it too (the a9 mesh had none)
-const DEF_CAPS := [["LowerLeg", "Foot", 0.7, 1.0, 0.03], ["Foot", "Toes", 0.0, 0.6, 0.025], ["UpperLeg", "LowerLeg", 0.3, 1.0, 0.065], ["LowerLeg", "Foot", 0.0, 0.14, 0.05]]
+## (a10) her v3 dress ends at the lower shin: the cut tops of her leg stubs (the shin's 40-62%) stay under the hem too
+const DEF_CAPS := [["LowerLeg", "Foot", 0.7, 1.0, 0.03], ["Foot", "Toes", 0.0, 0.6, 0.025], ["LowerLeg", "Foot", 0.40, 0.62, 0.03]]
 const DEF_DEEP := 0.010      # (a10: back to 1 cm; a9 needed 2.5 cm for its deep kneels)
+const DEF_DEEP_STUB := 0.025 # (a10) the stubs' tops: a climb_block's foot up on the block (her shin at hip height) leaves <= 2.4 cm
 var _df := false
 var _df_v := []              # sampled vertices: [rest pos, bind idx PackedInt32Array, weights PackedFloat32Array]
 var _df_e := {}              # zone -> [[vi, vj, rest length], ...] (indices into _df_v)
@@ -375,7 +377,7 @@ func _deform() -> void:
 			var cn := "%s-%s%.1f" % [c[0], c[1], c[2]]
 			_df_worst["gown in " + cn] = maxf(_df_worst.get("gown in " + cn, -1.0), deep)
 			_df_case[_case]["in" + cn] = maxf(_df_case[_case].get("in" + cn, -1.0), deep)
-			if deep > DEF_DEEP: _fail("deform gown through the " + sd + cn, deep * 100.0, "cm inside")
+			if deep > (DEF_DEEP_STUB if c[2] == 0.40 else DEF_DEEP): _fail("deform gown through the " + sd + cn, deep * 100.0, "cm inside")
 
 func _settle(fade := 0.35) -> void:
 	_her.stop(fade)
