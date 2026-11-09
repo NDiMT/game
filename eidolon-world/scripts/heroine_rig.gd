@@ -73,7 +73,8 @@ const ALIAS := {"Hip": "Hips", "Pelvis": "Hips", "BoneRoot": "Hips", "Waist": "S
 	"L_Upperarm": "LeftUpperArm", "R_Upperarm": "RightUpperArm", "L_Forearm": "LeftLowerArm", "R_Forearm": "RightLowerArm",
 	"L_Hand": "LeftHand", "R_Hand": "RightHand", "L_Thigh": "LeftUpperLeg", "R_Thigh": "RightUpperLeg", "L_Calf": "LeftLowerLeg",
 	"R_Calf": "RightLowerLeg", "L_Foot": "LeftFoot", "R_Foot": "RightFoot", "L_ToeBase": "LeftToes", "R_ToeBase": "RightToes"}
-const HOLD_BONES := ["RightShoulder", "RightUpperArm", "RightLowerArm", "RightForeTwist", "RightHand", "RightFingers1", "RightFingers2"]
+const HOLD_BONES := ["RightShoulder", "RightUpperArm", "RightLowerArm", "RightForeTwist", "RightHand", "RightFingers1", "RightFingers2",
+	"RightUpperArmTwist", "RightDeltoid", "RightElbowHelper", "RightForeTwist2"]
 const EL_MAX := 2.27                     # 130 deg: the elbow's deepest flex in the IK (deeper, the inner elbow pinches)
 const SWIVEL_RATE := 6.0                 # rad/s: the elbow's swivel round the arm's line
 const WALK_ON := 0.18                    # model m/s: she walks above this
@@ -114,6 +115,7 @@ func _init(ghost := false) -> void:
 	mesh_mi.material_override = body_mat
 	for i in sk.get_bone_count():
 		bone[sk.get_bone_name(i)] = i
+	_has_helpers = bone.has("LeftDeltoid")
 	_rest_data()
 	_build_tree()
 	# the old procedural face veil (hidden; her own veil is in the mesh)
@@ -134,6 +136,7 @@ func _init(ghost := false) -> void:
 		mesh_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		veil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
+var _has_helpers := false               # (a9) the arm's deformation helper bones (UpperArmTwist, Deltoid, ElbowHelper, ForeTwist2)
 var _len := {}                           # bone -> length to its child joint (model m)
 var _rest_q := {}                        # bone -> rest local rotation
 var _sh_rest := {}                       # side -> the shoulder (upper arm head) at rest, model space
@@ -579,6 +582,40 @@ func _post(p: Figure.Pose, dt: float) -> void:
 		_turn_global("Neck", Quaternion().slerp(_look_q, 0.4))
 		_turn_global("Head", Quaternion().slerp(_look_q, 0.6))
 		_turn_local("Head", hq.get_euler())
+	_helpers()
+
+## (a9) the arm's deformation helpers, from the arm's own bones after every layer and IK (the bake's twin:
+## dev_rig/tools/heroine_bl_rig.py helper_pose): the upper arm's shoulder end keeps half its twist, the deltoid takes half
+## the shoulder's swing, the elbow ring half the elbow's bend, the forearm the hand's roll in thirds. ~10 quaternion ops/side.
+func _helpers() -> void:
+	if not _has_helpers:
+		for s in SIDES:      # (an old skeleton without them: the one forearm twist bone at half the roll)
+			var n0: String = SIDE_NAME[s]
+			if not bone.has(n0 + "ForeTwist"): continue
+			var h0: int = bone[n0 + "Hand"]
+			var tw0: int = bone[n0 + "ForeTwist"]
+			var a0 := RigIK.twist((_rest_q[h0] as Quaternion).inverse() * sk.get_bone_pose_rotation(h0), Vector3.UP)
+			sk.set_bone_pose_rotation(tw0, (_rest_q[tw0] as Quaternion) * Quaternion(Vector3.UP, a0 * 0.5))
+		return
+	for s in SIDES:
+		var n: String = SIDE_NAME[s]
+		var u: int = bone[n + "UpperArm"]
+		var f: int = bone[n + "LowerArm"]
+		var h: int = bone[n + "Hand"]
+		var qu: Quaternion = (_rest_q[u] as Quaternion).inverse() * sk.get_bone_pose_rotation(u)
+		var tu := RigIK.twist(qu, Vector3.UP)
+		var unt := Quaternion(Vector3.UP, -0.5 * tu)
+		_set_helper(n + "UpperArmTwist", unt)
+		_set_helper(n + "Deltoid", Quaternion().slerp(qu * unt, 0.5))
+		_set_helper(n + "ElbowHelper", Quaternion().slerp((_rest_q[f] as Quaternion).inverse() * sk.get_bone_pose_rotation(f), 0.5))
+		var th := RigIK.twist((_rest_q[h] as Quaternion).inverse() * sk.get_bone_pose_rotation(h), Vector3.UP)
+		_set_helper(n + "ForeTwist", Quaternion(Vector3.UP, th / 3.0))
+		_set_helper(n + "ForeTwist2", Quaternion(Vector3.UP, th * 2.0 / 3.0))
+
+func _set_helper(nm: String, rel: Quaternion) -> void:
+	var i: int = bone[nm]
+	sk.set_bone_pose_rotation(i, (_rest_q[i] as Quaternion) * rel)
+	sk.set_bone_pose_position(i, sk.get_bone_rest(i).origin)
 
 static func _env(t: float, tt: Array) -> float:
 	if t <= tt[0] or t >= tt[3]: return 0.0
@@ -616,7 +653,6 @@ func _arm_to(s: String, tgt: Vector3, k: float, nq: Quaternion, anim_pole: float
 	var u: int = bone[n + "UpperArm"]
 	var f: int = bone[n + "LowerArm"]
 	var h: int = bone[n + "Hand"]
-	var tw: int = bone[n + "ForeTwist"]
 	var Gp := sk.get_bone_global_pose(sk.get_bone_parent(u))
 	var Gu := sk.get_bone_global_pose(u)
 	var Gf := sk.get_bone_global_pose(f)
@@ -674,7 +710,4 @@ func _arm_to(s: String, tgt: Vector3, k: float, nq: Quaternion, anim_pole: float
 	var lim := RigIK.limit((_rest_q[h] as Quaternion).inverse() * hl, Vector3.UP, WR_TWIST, WR_SWING)
 	hl = (_rest_q[h] as Quaternion) * Quaternion(Vector3.UP, lim[1]) * (lim[0] as Quaternion)
 	sk.set_bone_pose_rotation(h, hl)
-	# the forearm twist bone: half the hand's roll about the forearm (rest-relative)
-	var rel: Quaternion = (_rest_q[h] as Quaternion).inverse() * hl
-	var twa := RigIK.twist(rel, Vector3.UP)
-	sk.set_bone_pose_rotation(tw, (_rest_q[tw] as Quaternion) * Quaternion(Vector3.UP, twa * 0.5))
+	# (the forearm's twist bones: _helpers(), after every IK)

@@ -53,6 +53,7 @@ func _ready() -> void:
 			var f: Array = fails[c][k]
 			parts.append("%s x%d worst %.1f @%.2fs %s" % [k, f[0], f[1], f[2], f[3]])
 		print("FAIL %s: %s" % [c, "; ".join(parts)])
+	print("DEFORM worst: " + ", ".join(_df_worst.keys().map(func(k: String) -> String: return "%s %.3f" % [k, _df_worst[k]])))
 	print("ANIM %s cases=%d failing=%d frames=%d" % ["PASS" if rc == 0 else "FAIL", ncases, fails.size(), frames])
 	get_tree().quit(rc)
 
@@ -253,6 +254,119 @@ func _step_her(n: int, cb := Callable()) -> void:
 		if cb.is_valid(): cb.call(_t)
 		_her.apply_pose(_pose, 0.0, false)
 		_measure(_hd, f % 6 == 0)
+		if f % 15 == 7 and _df: _deform()
+
+# ------------------------------------------------------------------ (a9) her deformation: stretch near the joints, the gown
+# vs the legs. Edges sampled near the elbows / shoulders (her skin) and round the hips / knees (the gown); per sampled
+# frame the mean |ln(length / rest length)| of each zone's edges must stay under DEF_LIM (a candy-wrapper, a collapsed
+# elbow, a sheared or torn gown all lift it); no gown vertex the chains carry may sit inside the ankle / foot capsules
+# (the feet are drawn: a foot never shows through the gown).
+const DEF_LIM := {"elbow": 0.25, "shoulder": 0.40, "hips": 0.90, "knees": 0.80}
+const DEF_CAPS := [["LowerLeg", "Foot", 0.7, 1.0, 0.03], ["Foot", "Toes", 0.0, 0.6, 0.025]]
+const DEF_DEEP := 0.025      # (the deep kneels leave <= 2.4 cm: the gown never reaches the bone line itself)
+var _df := false
+var _df_v := []              # sampled vertices: [rest pos, bind idx PackedInt32Array, weights PackedFloat32Array]
+var _df_e := {}              # zone -> [[vi, vj, rest length], ...] (indices into _df_v)
+var _df_g := PackedInt32Array()     # the chain-carried gown vertices (indices into _df_v)
+var _df_worst := {}
+
+func _deform_data(sk: Skeleton3D, mi: MeshInstance3D, d: RigData) -> void:
+	var arr := mi.mesh.surface_get_arrays(0)
+	var V: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var B: PackedInt32Array = arr[Mesh.ARRAY_BONES]
+	var W: PackedFloat32Array = arr[Mesh.ARRAY_WEIGHTS]
+	var C: PackedColorArray = arr[Mesh.ARRAY_COLOR]
+	var I: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+	var N: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var per := B.size() / V.size()
+	var bname := func(k: int) -> String: return sk.get_bone_name(d.binds[k][0])
+	var cent := {}
+	for z in [["elbow", "LowerArm", 0.06], ["shoulder", "UpperArm", 0.08], ["hips", "UpperLeg", 0.14], ["knees", "LowerLeg", 0.14]]:
+		cent[z[0]] = [sk.get_bone_global_rest(_bn(sk, "Left" + z[1])).origin, sk.get_bone_global_rest(_bn(sk, "Right" + z[1])).origin, z[2]]
+	var idx := {}
+	var add := func(vi: int) -> int:
+		if idx.has(vi): return idx[vi]
+		var bs := PackedInt32Array()
+		var ws := PackedFloat32Array()
+		for k in per:
+			if W[vi * per + k] > 0.0:
+				bs.append(B[vi * per + k]); ws.append(W[vi * per + k])
+		_df_v.append([V[vi], bs, ws])
+		idx[vi] = _df_v.size() - 1
+		return idx[vi]
+	var seen := {}
+	var cand := {}
+	for z in cent: cand[z] = []
+	for t in range(0, I.size(), 3):
+		for e in 3:
+			var a := I[t + e]
+			var b := I[t + (e + 1) % 3]
+			var key := mini(a, b) * 1000003 + maxi(a, b)
+			if seen.has(key): continue
+			seen[key] = true
+			var l0 := V[a].distance_to(V[b])
+			if l0 < 0.004: continue
+			var skin := C[a].b > 0.5 and C[b].b > 0.5
+			for z in cent:
+				var c: Array = cent[z]
+				if (z == "elbow" or z == "shoulder") != skin: continue
+				var r: float = c[2]
+				if (V[a].distance_to(c[0]) < r and V[b].distance_to(c[0]) < r) or (V[a].distance_to(c[1]) < r and V[b].distance_to(c[1]) < r):
+					cand[z].append([a, b, l0])
+	for z in cand:
+		var lst: Array = cand[z]
+		var stride := maxi(1, ceili(lst.size() / 160.0))
+		_df_e[z] = []
+		for i in range(0, lst.size(), stride):
+			_df_e[z].append([add.call(lst[i][0]), add.call(lst[i][1]), lst[i][2]])
+	for vi in range(0, V.size(), 5):
+		var wsk := 0.0
+		var wleg := 0.0
+		for k in per:
+			var nm: String = bname.call(B[vi * per + k])
+			if nm.begins_with("Skirt"): wsk += W[vi * per + k]
+			elif nm.contains("Leg") or nm.contains("Foot") or nm.contains("Toes"): wleg += W[vi * per + k]
+		# (its outer face only: the gown's inside and the hem's underside are never seen)
+		var rad := Vector3(V[vi].x, 0.0, V[vi].z - 0.029)
+		if wsk > 0.45 and wleg < 0.05 and N[vi].dot(rad.normalized()) > 0.15: _df_g.append(add.call(vi))
+	_df = true
+	if verbose: print("deform: verts ", _df_v.size(), " gown ", _df_g.size(), " edges ", _df_e.keys().map(func(z: String) -> int: return (_df_e[z] as Array).size()))
+
+func _deform() -> void:
+	var d := _hd
+	var M := []
+	M.resize(d.binds.size())
+	for k in d.binds.size():
+		M[k] = d.sk.get_bone_global_pose(d.binds[k][0]) * (d.binds[k][1] as Transform3D)
+	var X := PackedVector3Array()
+	X.resize(_df_v.size())
+	for i in _df_v.size():
+		var v: Array = _df_v[i]
+		var bs: PackedInt32Array = v[1]
+		var ws: PackedFloat32Array = v[2]
+		var p := Vector3.ZERO
+		for k in bs.size(): p += ((M[bs[k]] as Transform3D) * (v[0] as Vector3)) * ws[k]
+		X[i] = p
+	for z in _df_e:
+		var s := 0.0
+		var lst: Array = _df_e[z]
+		for e in lst: s += absf(log(maxf(X[e[0]].distance_to(X[e[1]]), 1e-6) / float(e[2])))
+		var m := s / maxf(lst.size(), 1)
+		_df_worst[z] = maxf(_df_worst.get(z, 0.0), m)
+		if m > DEF_LIM[z]: _fail("deform " + z + " stretch", m, "mean |ln stretch|")
+	for sd in ["Left", "Right"]:
+		for c in DEF_CAPS:
+			var pa := d.sk.get_bone_global_pose(_bn(d.sk, sd + c[0])).origin
+			var pb := d.sk.get_bone_global_pose(_bn(d.sk, sd + c[1])).origin
+			var a := pa.lerp(pb, c[2])
+			var b := pa.lerp(pb, c[3])
+			var deep := 0.0
+			for gi in _df_g:
+				var q: Vector3 = X[gi]
+				var cp := Geometry3D.get_closest_point_to_segment(q, a, b)
+				deep = maxf(deep, float(c[4]) - q.distance_to(cp))
+			_df_worst["gown in " + str(c[0])] = maxf(_df_worst.get("gown in " + str(c[0]), -1.0), deep)
+			if deep > DEF_DEEP: _fail("deform gown through the " + sd + str(c[0]), deep * 100.0, "cm inside")
 
 func _settle(fade := 0.35) -> void:
 	_her.stop(fade)
@@ -274,6 +388,7 @@ func _heroine() -> void:
 	await get_tree().process_frame
 	_her.apply_pose(_pose, 0.0, false)
 	_hd = _data(_her.sk, _her.mesh_mi, "^(Skirt|Hem|Veil|Cape)")
+	_deform_data(_her.sk, _her.mesh_mi, _hd)
 	if verbose: print("heroine skin band verts: ", _hd.skin_v.size())
 	if _begin("her idle"): await _step_her(240)
 	for sp in [0.6, 1.3, 2.4]:
