@@ -3,9 +3,9 @@ extends Game
 ## v3 (dev/CH1_V3.md): Chapter I, the game (scenes/main3.tscn). It reuses the kept systems as they are (World, Level's walking and
 ## kit, Player, Controls, UI, Sfx, Juice, Highlight, Cinematic, Reflector / PlanarMirror) and none of v2's chapter
 ## code: the world is World3 (from Map3), the beats are Ch1v3's (one Puzzle each), the save is its own file.
-## Flow: title -> (first time) the cards + the prologue "Η Αρπαγή" (Prologue3; unskippable the first time, then a
-## long press skips it) -> Act 1 (I.1..I.5) -> the Atrium (I.6). Footsteps come from the rig's real foot plants.
-## Test hooks: cmd() adds "v3jump:<space or part>", "pz_solve:<id>", "pz_auto:<id>", "prologue", "cine_at:<s>",
+## Flow: title -> (new game) the intro text cards (a long press skips them; no prologue film, the owner) -> a fade-in on
+## the waking shore -> Act 1 (I.1..I.5) -> the Atrium (I.6). Footsteps come from the rig's real foot plants.
+## Test hooks: cmd() adds "v3jump:<space or part>", "pz_solve:<id>", "pz_auto:<id>", "prologue" (the cards),
 ## "give:<item>"; state3() for tests. `--autotest` starts in play at Act 1's start (no title, no prologue).
 
 const SAVE3_PATH := "user://eidolon_v3.json"
@@ -82,7 +82,7 @@ func _ready() -> void:
 		ui.fade_to(0.0, 0.6)
 		return
 	# the title: she lies curled on the marble lip of the black pool (the prologue's first frame, from above)
-	player.teleport(Prologue3.WS.LIE, Prologue3.WS.LIE_YAW)
+	player.teleport(Vector3(-4.6, 0.0, 31.3), 0.0)        # (WS.LIE: curled on the pool lip)
 	if player.fig.rig: player.fig.rig.play("lie_side")
 	world.snap_to(player.position)
 	mode = "title"
@@ -134,35 +134,73 @@ func reset_progress() -> void:
 	set_lens(false)
 	_apply_items()
 
-## the cards + "Η Αρπαγή"; the first time it cannot be skipped
+## the intro text cards (EIDOLON_SCRIPT §5; the owner: no prologue film): black, the cards (a long press skips them),
+## then a short fade-in on the waking shore: she stands on the lip, the comb hers, the path lanterns lit toward I.1
+const INTRO := [
+	"On Kythira there lived a sculptor named Theron.\nFrom white marble he carved a woman,\nand loved her more than stone should be loved.",
+	"Aphrodite gave her life, on one condition:\n*\"Leave her face smooth.\nA face is carved by living, from within.\"*",
+	"They called her Ione.\nAnd life began to carve her a face,\na face the sculptor had never imagined.",
+	"He gave her a veil.\nAnd he hid every mirror.",
+	"One day the Aegean lay still as glass.",
+	"There was no wave to blame."]
+const SHORE := Vector3(-4.6, 0.0, 31.75)        # (WS: a step back from the lip, toward the lanterns and I.1's door)
+var _intro_cl: CanvasLayer
+var _intro_card: IntroCard
+
 func play_prologue() -> void:
-	var p := Prologue3.new(self)
-	p.finished.connect(_end_prologue, CONNECT_ONE_SHOT)
-	cine = p
-	add_child(p)
+	_end_intro_layer()
 	mode = "cine"
 	controls.enabled = false
 	controls.reset()
 	_skip_t = 0.0
 	_skip_hold = false
-	p.begin()
+	_intro_cl = CanvasLayer.new()
+	_intro_cl.layer = 60
+	add_child(_intro_cl)
+	var bg := ColorRect.new()
+	bg.color = Color.BLACK
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_intro_cl.add_child(bg)
+	_intro_card = IntroCard.new()
+	_intro_cl.add_child(_intro_card)
+	ui.skip_ring.reparent(_intro_cl, false)
+	var card := _intro_card
+	await card.play_all(INTRO, 3.0)
+	if card == _intro_card and mode == "cine": _end_prologue()
+
+func _end_intro_layer() -> void:
+	if is_instance_valid(_intro_cl):
+		if ui.skip_ring.get_parent() == _intro_cl: ui.skip_ring.reparent(ui, false)
+		_intro_cl.queue_free()
+	_intro_cl = null
+	_intro_card = null
 
 func _end_prologue() -> void:
-	seen["prologue"] = true
+	_end_intro_layer()
+	seen["prologue"] = true          # (the save key stays: old saves continue as before)
 	if not ("comb" in items): items.append("comb")
+	_apply_items()
 	(ch.pz["WS"] as Puzzle).solve()
+	if player.fig.rig: player.fig.rig.stop(0.01)
+	player.teleport(SHORE, -PI * 0.5)
 	player.locked = false
 	world.cam_lock = false
 	world.follow = player
 	world.look_offset = Vector3.ZERO
 	world.cam_size_target = world.zoom
+	world.set_mood("act1", 0.01)
+	world.snap_to(player.position)
 	ui.set_letterbox(0.0)
 	ui.set_skip(0.0, false)
 	ui.skip_ring.show_k = 0.0
+	ui.fade_to(1.0, 0.01)
+	ui.fade_to(0.0, 1.2)
 	mode = "play"
 	controls.enabled = true
 	controls.block(300)
 	_world_block_t = 0.3
+	_save_soon = true
 	if cine:
 		cine.queue_free()
 		cine = null
@@ -214,13 +252,16 @@ func _process(dt: float) -> void:
 	ch.update(dt)
 	if prof_on: t0 = _pm("beats", t0)
 	if mode == "cine":
-		var can: bool = cine != null and (bool(seen.get("prologue", false)) or not (cine is Prologue3))
+		var can: bool = cine != null or _intro_card != null
 		_skip_t = _skip_t + dt if (_skip_hold and can) else maxf(0.0, _skip_t - dt * 3.0)
 		ui.set_skip(clampf(_skip_t / 1.1, 0.0, 1.0), can and (_skip_hold or _skip_t > 0.0))
-		if _skip_t >= 1.1 and cine:
+		if _skip_t >= 1.1 and can:
 			_skip_t = 0.0
 			_skip_hold = false
-			cine.skip()
+			if _intro_card:
+				_intro_card.skip()
+				_end_prologue()
+			elif cine: cine.skip()
 	if mode == "play": _focus3()
 	else: controls.show_interact("")
 	_update_lens()
@@ -294,7 +335,7 @@ const MUSIC_NEAR := {"mist_maze": ["waking_pool"], "waking_pool": ["atrium"], "a
 	"gate_four": ["first_shrine", "atrium"], "first_shrine": ["gate_four"]}
 
 func music_key() -> String:
-	if mode == "title" or cine is Prologue3: return MUSIC["prologue"]
+	if mode == "title" or _intro_card != null: return MUSIC["prologue"]
 	if space == "I23" or bool(seen.get("ch1_end", false)): return MUSIC["end"]
 	return str(MUSIC.get(part, ""))
 
@@ -500,7 +541,6 @@ func cmd(c: String) -> Variant:
 		"give": give(a[1]); return true
 		"prologue": mode = "play"; play_prologue(); return true
 		"seen": seen["prologue"] = a[1] == "1"; return true
-		"cine_at": if cine is Prologue3: (cine as Prologue3).dev_seek(float(a[1])); return true
 		"pool_road": set_pool_road(a[1] == "1"); return true
 		"lens": set_lens(a[1] == "1"); return true
 		"end": return bool(seen.get("ch1_end", false))
