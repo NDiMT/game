@@ -1,5 +1,5 @@
 {
- "task_id": "17a43efe-4348-4d66-b9a0-4de5e0e834fc",
+ "task_id": "f157f78f-cbb3-4969-bec2-f4a3bf741f94",
  "type": "text_to_model",
  "status": "success",
  "input": {
@@ -8,7 +8,7 @@
   "texture": true,
   "export_uv": true,
   "face_limit": 15000,
-  "model_seed": 2070268052,
+  "model_seed": 1164834938,
   "model_version": "v3.1-20260211",
   "smart_low_poly": true,
   "negative_prompt": "visible face, eyes, hair, hood, cape, cloak, sash, ribbons, long veil down the back, train, dress touching the floor, sleeves, shoes, T-pose, arms touching body, jewelry, base, pedestal, ground, props, multiple figures, background, cartoon",
@@ -16,6 +16,6 @@
   "texture_alignment": "geometry"
  },
  "credits_consumed": 30,
- "created_at": "2026-11-09T20:34:51.135578Z",
- "completed_at": "2026-11-09T20:41:33.617935Z"
+ "created_at": "2026-11-09T20:34:51.447651Z",
+ "completed_at": "2026-11-09T20:41:46.827553Z"
 }

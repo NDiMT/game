@@ -1,6 +1,6 @@
-"""EIDOLON a10 (Agent A): the v3 heroine's rig source from the raw Tripo mesh (task 17a43efe, v3.1 smart low-poly,
-built for animation: A-pose ~45 deg, bare arms apart from the body, real legs to the hips under a separate skirt shell,
-a short hood).
+"""EIDOLON a10 (Agent A): the v3 heroine's rig source from the raw Tripo mesh (task f157f78f, v3.1 smart low-poly,
+picked by the owner: the veil over her head and face, a belted floor-length grey dress, bare arms ~10 deg below
+horizontal and clear of the body, bare feet).
   python3.11 dev_rig/a10/prep_v3_src.py [--src dev_rig/tools/heroine_v3_tripo.glb] [--out assets/models/heroine_v3_src.glb]
 - turned to face -Y (Blender; the Tripo GLB faces +X), centred, feet on z = 0, scaled to 1.70 m (her rig's UNIT);
 - COLOR_0.r = her bare skin (arms, hands, legs, feet, face, chest above the neckline) from the albedo's warm texels;
@@ -45,9 +45,9 @@ me.vertices.foreach_set('co', co.ravel()); me.update()
 # A-pose the rig wants: every clip's hanging arm then turns half as far from the rest, and the shoulder stretches less).
 # A smooth field along the arm (nothing on the torso side of the joint, all of it 10 cm past it); the normals turn too.
 from mathutils import Matrix as _M, Vector as _V
-ARM_DEG = 28.0
-SH = np.array([0.168, 0.035, 1.325])                       # her left shoulder joint (the rig's UpperArm head)
-ARM_D = np.array([0.95, -0.02, -0.30]); ARM_D /= np.linalg.norm(ARM_D)
+ARM_DEG = float(os.environ.get('ARM_DEG', 28.0))
+SH = np.array([float(v) for v in os.environ.get('ARM_SH', '0.168,0.035,1.325').split(',')])                       # her left shoulder joint (the rig's UpperArm head)
+ARM_D = np.array([float(v) for v in os.environ.get('ARM_D', '0.95,-0.02,-0.30').split(',')]); ARM_D /= np.linalg.norm(ARM_D)
 ln = np.empty(len(me.loops) * 3); me.corner_normals.foreach_get('vector', ln); ln = ln.reshape(-1, 3)
 lvi = np.empty(len(me.loops), np.int64); me.loops.foreach_get('vertex_index', lvi)
 R_v = np.tile(np.eye(3), (len(co), 1, 1))
