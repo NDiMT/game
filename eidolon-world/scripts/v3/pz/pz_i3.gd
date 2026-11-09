@@ -67,7 +67,7 @@ func hint() -> void:
 func autosolve() -> void:
 	game.cmd("walk:%f:%f" % [PANE.x - 0.85, PANE.z])
 	var tw := create_tween()
-	tw.tween_interval(3.0)
+	tw.tween_interval(4.5)   # walk at 1.4 m/s needs longer to reach the pane
 	tw.tween_callback(func() -> void: game.try_interact())
 	tw.tween_interval(9.0)
 	tw.tween_callback(func() -> void: game.cmd("glass_try:right"))

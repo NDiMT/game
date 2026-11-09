@@ -394,6 +394,7 @@ func cmd(c: String) -> Variant:
 			# synthetic strokes (tests): right = her half mirrored (the answer), right_rev = the same drawn
 			# backwards with a shaky hand, left = her half copied, line = a straight stroke
 			var gt := ui.glass_talk
+			if gt.target.is_empty(): return false   # not open (yet)
 			var st := PackedVector2Array()
 			match a[1]:
 				"right": st = gt.target[0]
