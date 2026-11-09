@@ -1,9 +1,8 @@
 // EIDOLON v3 web touch test (Playwright + SwiftShader, mobile 390x844 DPR 2) on a v3 export (scenes/main3.tscn as the
 // main scene). Real touch for Act 1's first beats, the dev hooks only to READ the state (window.ewState) and to frame
-// the prologue's shots (they run on real time at ~1 fps otherwise):
-//   load + title, 0 console / WebGL errors; tap -> the cards + the prologue; its first view cannot be skipped (a long
-//   press does nothing); two prologue frames (CineFx: letterbox, vignette, fog cards; her world in the planar water);
-//   once seen, a long press skips it into play at the shore;
+// nothing else:
+//   load + title, 0 console / WebGL errors; tap -> the intro cards (no prologue film); a long press skips them into
+//   play at the shore;
 //   I.1: the thumb walks her onto the plate in the water -> the door opens (no hook);
 //   I.2: walk to the bell, tap the button -> it rings (she reaches);
 //   I.3: walk to the pane, tap -> the glass opens; trace her stroke with a finger -> the bars rise;
@@ -79,19 +78,12 @@ try {
   await wait(1500);
   await page.touchscreen.tap(W / 2, H / 2);
   const c0 = await waitFor((s) => s.mode === 'cine', 60000);
-  ok('a tap starts the cards + the prologue', c0);
-  await longPress(9000);
-  await wait(1500);
-  let s = await st();
-  ok('the first view cannot be skipped', s.mode === 'cine' && !s.seen.prologue, `mode ${s.mode}`);
-  await cmd('cine_at:3'); await wait(2500); await shot('prologue-03');
-  await cmd('cine_at:55'); await wait(2500); await shot('prologue-55');
-  await cmd('seen:1');
-  // (under SwiftShader a prologue frame takes seconds: the thumb stays down until the game has seen the hold)
+  ok('a tap starts the intro cards', c0);
+  await wait(2500); await shot('intro-card');
   await touch('touchStart', W / 2, H / 2);
-  s = await waitFor((s) => s.mode === 'play', 90000);
+  let s = await waitFor((s) => s.mode === 'play', 90000);
   await touch('touchEnd');
-  ok('once seen, a long press skips it into play at the shore', s && near(s, -4.6, 31.3, 1.5) && s.items.includes('comb'), s ? JSON.stringify(s.pos) : 'no');
+  ok('a long press skips the cards into play at the shore', s && near(s, -4.6, 31.3, 1.5) && s.items.includes('comb'), s ? JSON.stringify(s.pos) : 'no');
   await cmd('quality:low');          // (the walk-through renders on Low under SwiftShader, as web_smoke does)
   await wait(1500);
   await shot('shore');

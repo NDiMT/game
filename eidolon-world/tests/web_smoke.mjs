@@ -2,7 +2,7 @@
 // 390x844 DPR 2. Run through tests/smoke.sh, or:
 //   flock /home/user/game/realms/dev/.shotlock timeout 900 node tests/web_smoke.mjs --url <index url> [--out <dir>] [--tag smoke]
 // Checks: load + title, 0 console / WebGL errors, default tier HIGH on a fresh profile; a real tap starts the cards +
-// the prologue (its first view cannot be skipped), a long press skips it once seen; I.1 by REAL TOUCH (the thumb walks
+// the intro cards (a long press skips them; no prologue film); I.1 by REAL TOUCH (the thumb walks
 // her onto the plate only the water shows); one screenshot per landmark space of every part (sanity: not black /
 // white / blank; music RMS above -40 dBFS in >= 3); a solve through the hooks counts the jingle (E.5); the Veiled Way
 // opens on the three Beacons; THE CHAPTER'S END by touch (walk to the shrine's lip, tap: the film runs, a long press
@@ -167,18 +167,14 @@ try {
   if (!title) throw new Error('title never reached');
   check('quality: default tier is HIGH on a fresh profile', title.tier === 'HIGH' && title.quality_high === true, `tier=${title.tier} quality_high=${title.quality_high}`);
   await cmd('noauto'); await cmd('quality:' + RENDER_TIER); await cmd('reset_save');
-  // ---------------------------------------------------------------- a real tap: the cards + the prologue
+  // ---------------------------------------------------------------- a real tap: the intro cards (no prologue film)
   await page.touchscreen.tap(W / 2, H / 2);
   const c0 = await waitFor((s) => s.mode === 'cine', 60000);
-  check('start: a tap on the title starts the cards + the prologue', !!c0, c0 ? '' : 'mode ' + (await st())?.mode);
-  await touch('touchStart', W / 2, H / 2); await wait(5000); await touch('touchEnd'); await wait(1200);
-  let s = await st();
-  check('prologue: the first view cannot be skipped', s.mode === 'cine' && !s.seen.prologue, `mode ${s.mode}`);
-  await cmd('seen:1');
+  check('start: a tap on the title starts the intro cards', !!c0, c0 ? '' : 'mode ' + (await st())?.mode);
   await touch('touchStart', W / 2, H / 2);
-  s = await waitFor((s) => s.mode === 'play', 90000);
+  let s = await waitFor((s) => s.mode === 'play', 90000);
   await touch('touchEnd');
-  check('prologue: once seen, a long press skips it into play at the shore with the comb', s && near(s, -4.6, 31.3, 1.5) && s.items.includes('comb'), s ? JSON.stringify(s.pos) : 'no');
+  check('intro: a long press skips the cards into play at the shore with the comb', s && near(s, -4.6, 31.3, 1.5) && s.items.includes('comb'), s ? JSON.stringify(s.pos) : 'no');
   await wait(1500);
   // ---------------------------------------------------------------- I.1 by real touch
   await walk([[0.8, 33.0], [3.5, 32.0], [6.0, 28.5]], 0.3);

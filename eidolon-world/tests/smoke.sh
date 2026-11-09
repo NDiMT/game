@@ -3,7 +3,7 @@
 #   1. (headless) every Chapter I v3 beat solved the way a player would, its contract checked (tests/pz_test.tscn
 #      --pz=all), retried ONCE on an engine crash (known flake: "Caller thread can't call
 #      this function" / signal 11) and reported as a flake if the retry passes
-#   2. the web smoke (tests/web_smoke.mjs, v3: title, the prologue, I.1 by touch, a shot per part, the jingle, THE END by
+#   2. the web smoke (tests/web_smoke.mjs, v3: title, the intro cards, I.1 by touch, a shot per part, the jingle, THE END by
 #      touch; Playwright + SwiftShader, mobile 390x844 DPR 2) on build/web served by python3 -m http.server from
 #      /home/user/game, or on the live site with --live
 #   3. (REQUIRED) real touch in the web build: the mirror puzzle N.4 The Still Room (tests/web_still.mjs; replaces Our
