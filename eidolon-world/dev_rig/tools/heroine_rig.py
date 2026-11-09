@@ -315,14 +315,14 @@ for s, sg in (('L', 1), ('R', -1)):
 # --- arms: envelope along x
 for side, sg in (('L', 1), ('R', -1)):
     am = arm_m * ((x * sg) > 0)
-    cen = np.array([0.10, 0.295, 0.51, 0.66])
     bn = [side + '_Clavicle', side + '_Upperarm', side + '_Forearm', side + '_Hand']
-    wa = np.zeros((NU, 4))
-    for i in range(4):
-        lo = cen[i - 1] if i > 0 else -1e9; hi = cen[i + 1] if i < 3 else 1e9
-        up = np.clip((ax - lo) / (cen[i] - lo), 0, 1) if i > 0 else np.ones(NU)
-        dn = np.clip((hi - ax) / (hi - cen[i]), 0, 1) if i < 3 else np.ones(NU)
-        wa[:, i] = np.minimum(up, dn)
+    # (a6) joint-centred blends: the weight changes hands only near each joint (the elbow at 0.42 +-4.5 cm, the wrist
+    # at 0.60 +-3 cm). The old tents (centres 0.10 / 0.295 / 0.51 / 0.66) blended from mid upper arm to mid forearm:
+    # a bent elbow pulled the whole inner forearm into the bone (LBS collapse, "the arms break")
+    t_cu = ss(0.10, 0.24, ax)
+    t_uf = ss(0.375, 0.465, ax)
+    t_fh = ss(0.57, 0.625, ax)
+    wa = np.stack([1 - t_cu, t_cu * (1 - t_uf), t_uf * (1 - t_fh), t_fh], 1)
     wa /= wa.sum(1, keepdims=True)
     sh = ss(0.23, 0.15, ax)
     arm_w = np.zeros((NU, NB))

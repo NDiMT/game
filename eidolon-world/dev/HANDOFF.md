@@ -78,3 +78,11 @@ Older log: dev/archive/HANDOFF_2026-10-11.md (grep it, don't read whole).
 - Save: every solve and every new space saves (`_save_soon`); `tests/save_v3.tscn` (continue at every part, in smoke). Hints repeat (2x interval) and re-arm on progress. Road bars stand on the ramp floor (ER overlap).
 - Perf: headless walk avg ~1 ms script/frame, no repeatable entry spike; `frameprof:1` (web) -> `ewState.frame`; ewState only published for webdriver / ?probe.
 - A, art left (yours): E4 temple reads as a pink box on a stem; E5/EB/E2/P halves/I21/I22/I23 stele+rim; dev_fx/* and dev_rig/{anim/ingame,tools/map2_layout}.gd still load the deleted scenes/main.tscn. zfight: only Zone_v3_* internal faces + brazier2 and Dress_I4 internals (assets).
+
+## 2026-11-09 A -> W, main: a6 anatomy fix (arms snapped backward); sheet dev/shots/a6-anim-sheet.png
+- Root causes: IK frames `frame_rot(dir, FORWARD/BACK)` flipped the forearm/calf 180 deg past ~90 deg bend; FK<->IK blended by slerping two unrelated bone rotations; palm slerp took the long way; no joint limits; direction channels lerped through zero; cross-fades dipped to the base; arm skin weights blended mid-upper-arm..mid-forearm (LBS collapse).
+- Fix: `RigIK.solve2` returns a hinge, `hinge_rot` (both bones share it: elbow/knee only flex), elbow ring + shoulder cone, wrist twist-then-swing (pronation split forearm/wrist, clamped, rate-limited), `HeroineClips.dir_lerp`, cross-fade + stable layer order, hips spring; Warden grab on the same hinge IK. Weights: `dev_rig/tools/heroine_rig.py` joint-centred (GLB + mesh.res rebuilt).
+- Clips re-timed: flinch_seen, recoil, refl_dragged (no 2000 deg/s snaps); hang_weight IK keyed; shard_eye / hold_raise_shard wrist below the eye (elbow down); refl_press out-blend 0.5.
+- Test: `tests/anim_sanity.tscn` (102 cases, every clip x3 targets, walk, holds, aim grid, look, Pose clasp/reach, Warden) in quick.sh. Before 66/100 failing, now PASS.
+- W ask: game3.gd:390-391 `rig.hand_node("R").add_child(lamp_node)` -> `rig.upright_node("R").add_child(lamp_node)` and `lamp_node.position = Vector3.ZERO` (the lamp lay along the fingers; upright_node stays level on the palm).
+- Hooks unchanged (play/hold/aim_hand/look_at_point). Elbow max 120 deg (LBS pinch beyond); a reach closer than that stops short.

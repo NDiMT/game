@@ -61,8 +61,23 @@ static func get_clip(n: String) -> Dictionary:
 	_compiled[n] = c2
 	return c2
 
-## a channel at time t (resolve: Callable(v) -> concrete value, for "@" targets)
-static func sample(keys: Array, t: float, resolve: Callable) -> Variant:
+## (a6) the direction channels (palm normals, elbow / knee poles): sampled by angle, never through zero
+const DIRS := ["Lpn", "Rpn", "Lel", "Rel", "Lkn", "Rkn"]
+
+## two directions blended by angle (unit result); a near half turn goes round a fixed side instead of through zero
+static func dir_lerp(a: Vector3, b: Vector3, k: float) -> Vector3:
+	var an := a.normalized()
+	var bn := b.normalized()
+	if k <= 0.0: return an
+	if k >= 1.0: return bn
+	var ax := an.cross(bn)
+	if ax.length() < 0.05 and an.dot(bn) < 0.0:
+		ax = an.cross(Vector3.BACK if absf(an.z) < 0.9 else Vector3.RIGHT)
+	if ax.length() < 1e-6: return an.lerp(bn, k).normalized()
+	return an.rotated(ax.normalized(), an.angle_to(bn) * k)
+
+## a channel at time t (resolve: Callable(v) -> concrete value, for "@" targets); dir: a direction channel (by angle)
+static func sample(keys: Array, t: float, resolve: Callable, dir := false) -> Variant:
 	var n := keys.size()
 	if n == 1 or t <= keys[0][0]: return resolve.call(keys[0][1])
 	if t >= keys[n - 1][0]: return resolve.call(keys[n - 1][1])
@@ -74,6 +89,15 @@ static func sample(keys: Array, t: float, resolve: Callable) -> Variant:
 	var a: Variant = resolve.call(keys[i][1])
 	var b: Variant = resolve.call(keys[i + 1][1])
 	var e: String = keys[i + 1][2]
+	if dir:
+		var k := u
+		match e:
+			"s": k = 1.0 - pow(1.0 - u, 4.0)
+			"i": k = u * u
+			"l": k = u
+			"h": k = 0.0 if u < 1.0 else 1.0
+			_: k = 0.5 - 0.5 * cos(PI * u)
+		return dir_lerp(a, b, k)
 	match e:
 		"s": return _lerp(a, b, 1.0 - pow(1.0 - u, 4.0))
 		"e": return _lerp(a, b, 0.5 - 0.5 * cos(PI * u))
@@ -152,9 +176,9 @@ static func _build() -> void:
 	# the Shard raised to her eye (right hand), looked through; hold_t: she keeps looking
 	_lib["shard_eye"] = {"len": 2.6, "hold_t": 1.3, "blend": [0.2, 0.3], "ev": {"at_eye": 0.9}, "keys": [
 		[0.0, {"Rik": 0.0, "Rh": V(-0.20, 0.95, 0.25), "hd": Z, "sp": Z, "Rpw": 0.0, "Lik": 0.0, "Lh": HANG_L}],
-		[0.9, {"Rik": 1.0, "Rh": V(-0.045, 1.50, 0.20), "Rel": V(-0.6, -0.7, -0.1), "Rpw": 0.8, "Rpn": V(0.3, 0.0, -1.0), "hd": V(-0.06, 0.0, -0.12), "sp": V(-0.04, 0, 0),
+		[0.9, {"Rik": 1.0, "Rh": V(-0.06, 1.37, 0.24), "Rel": V(-0.6, -0.7, -0.1), "Rpw": 0.8, "Rpn": V(0.3, 0.0, -1.0), "hd": V(-0.06, 0.0, -0.12), "sp": V(-0.04, 0, 0),
 			"Lik": 0.6, "Lh": V(0.06, 1.05, 0.20), "Lel": EL_L}],
-		[1.3, {"Rh": V(-0.04, 1.51, 0.19), "hd": V(-0.08, 0.02, -0.14)}],
+		[1.3, {"Rh": V(-0.055, 1.38, 0.23), "hd": V(-0.08, 0.02, -0.14)}],
 		[2.6, {"Rik": 0.0, "Rh": V(-0.20, 0.95, 0.25), "hd": Z, "sp": Z, "Rpw": 0.0, "Lik": 0.0}, "e"]]}
 	# holds (a layer that stays: hold("lamp") / hold("shard") / hold("")): the arm only, over the walk
 	_lib["hold_lamp"] = {"len": 4.0, "loop": true, "blend": [0.45, 0.45], "keys": [
@@ -184,10 +208,10 @@ static func _build() -> void:
 		[2.6, {"Rh": V(-0.17, 1.30, 0.30), "Rel": V(-0.6, -0.8, -0.1), "Rw": Z, "Rpn": V(0, 1, 0.2), "sp": Z, "hd": Z}, "e"]]}
 	# hold("raise_shard"): the Shard kept up at her eye while she walks (the lens on); the left hand steadies it
 	_lib["hold_raise_shard"] = {"len": 4.0, "loop": true, "blend": [0.45, 0.4], "keys": [
-		[0.0, {"Rik": 1.0, "Rh": V(-0.05, 1.49, 0.21), "Rel": V(-0.6, -0.7, -0.1), "Rpw": 0.8, "Rpn": V(0.3, 0.0, -1.0), "hd": V(-0.05, 0.0, -0.10),
+		[0.0, {"Rik": 1.0, "Rh": V(-0.06, 1.37, 0.24), "Rel": V(-0.6, -0.7, -0.1), "Rpw": 0.8, "Rpn": V(0.3, 0.0, -1.0), "hd": V(-0.05, 0.0, -0.10),
 			"Lik": 0.5, "Lh": V(0.05, 1.10, 0.22), "Lel": EL_L}],
-		[2.0, {"Rh": V(-0.05, 1.495, 0.215), "hd": V(-0.06, 0.01, -0.11)}],
-		[4.0, {"Rh": V(-0.05, 1.49, 0.21), "hd": V(-0.05, 0.0, -0.10)}]]}
+		[2.0, {"Rh": V(-0.06, 1.375, 0.245), "hd": V(-0.06, 0.01, -0.11)}],
+		[4.0, {"Rh": V(-0.06, 1.37, 0.24), "hd": V(-0.05, 0.0, -0.10)}]]}
 	# untie a horn cleat at "@" (2.5 s, StillRoomFx.untie's wraps): the left hand holds the standing part, the right
 	# unwinds three turns over the horns, then flicks the rope free
 	var UW := []
@@ -271,10 +295,11 @@ static func _build() -> void:
 		[2.6, HIDE.merged({"hd": V(-0.04, 0.80, 0.05)})],
 		[4.0, {"r": Z, "sp": Z, "hd": Z, "Lik": 0.0, "Rik": 0.0, "Lh": HANG_L, "Rh": HANG_R, "Lpw": 0.0, "Rpw": 0.0, "Lsh": Vector2.ZERO, "Rsh": Vector2.ZERO}, "e"]]}
 	# flinch: she is seen. The shoulders jump, both hands come up before the face, she turns her head away, then lowers them
-	_lib["flinch_seen"] = {"len": 2.2, "blend": [0.03, 0.4], "ev": {"flinch": 0.1}, "keys": [
+	_lib["flinch_seen"] = {"len": 2.2, "blend": [0.08, 0.4], "ev": {"flinch": 0.1}, "keys": [
 		[0.0, {"r": Z, "sp": Z, "hd": Z, "Lik": 0.0, "Rik": 0.0, "Lh": HANG_L, "Rh": HANG_R, "Lsh": Vector2.ZERO, "Rsh": Vector2.ZERO, "Lpw": 0.0, "Rpw": 0.0}],
-		[0.16, {"r": V(0, -0.05, -0.08), "sp": V(0.10, -0.15, 0), "hd": V(0.25, -0.55, 0.12), "Lik": 1.0, "Rik": 1.0, "Lh": V(0.08, 1.42, 0.24), "Rh": V(-0.10, 1.36, 0.26),
-			"Lel": EL_L, "Rel": EL_R, "Lpw": 0.8, "Rpw": 0.8, "Lpn": V(0, 0, 1), "Rpn": V(0, 0, 1), "Lsh": Vector2(0.16, 0.06), "Rsh": Vector2(0.16, 0.06)}, "s"],
+		# (a6) 0.22 s, eased: the hands still fly up, but no joint turns faster than a real arm can (it was 0.16 s, snapped)
+		[0.22, {"r": V(0, -0.05, -0.08), "sp": V(0.10, -0.15, 0), "hd": V(0.25, -0.55, 0.12), "Lik": 1.0, "Rik": 1.0, "Lh": V(0.08, 1.42, 0.24), "Rh": V(-0.10, 1.36, 0.26),
+			"Lel": EL_L, "Rel": EL_R, "Lpw": 0.8, "Rpw": 0.8, "Lpn": V(0, 0, 1), "Rpn": V(0, 0, 1), "Lsh": Vector2(0.16, 0.06), "Rsh": Vector2(0.16, 0.06)}, "e"],
 		[0.8, {"sp": V(0.12, -0.18, 0), "hd": V(0.30, -0.6, 0.15)}],
 		[2.2, {"r": Z, "sp": Z, "hd": Z, "Lik": 0.0, "Rik": 0.0, "Lh": HANG_L, "Rh": HANG_R, "Lpw": 0.0, "Rpw": 0.0, "Lsh": Vector2.ZERO, "Rsh": Vector2.ZERO}, "e"]]}
 	# statue-still (like the veiled statues): the hands clasped at her chest, the head bowed; held until release()
@@ -291,7 +316,8 @@ static func _build() -> void:
 		[1.0, {"r": V(0, 0.05, 0), "sp": V(-0.10, 0, 0), "hd": V(-0.40, 0, 0), "Rh": ["@", V(-0.07, -0.06, 0)], "Lh": ["@", V(0.07, -0.06, 0)], "Rel": V(-0.6, -0.3, 0), "Lel": V(0.6, -0.3, 0),
 			"Rsh": Vector2(0.14, 0.04), "Lsh": Vector2(0.14, 0.04), "Rfp": 0.45, "Lfp": 0.45}, "e"],
 		[1.3, {"Rh": ["@", V(-0.07, -0.02, 0)], "Lh": ["@", V(0.07, -0.02, 0)]}, "i"],
-		[1.6, {"Rh": ["@", V(-0.10, -0.12, 0.05)], "Lh": ["@", V(0.10, -0.12, 0.05)], "r": Z, "Rfp": 0.0, "Lfp": 0.0}, "e"],
+		[1.6, {"Rh": ["@", V(-0.10, -0.12, 0.05)], "Lh": ["@", V(0.10, -0.12, 0.05)], "r": Z, "Rfp": 0.0, "Lfp": 0.0,
+			"Rik": 1.0, "Lik": 1.0, "Rpw": 0.5, "Lpw": 0.5}, "e"],          # (a6: the IK was unkeyed here and sagged all clip long)
 		[2.8, {"r": Z, "sp": Z, "hd": Z, "Rik": 0.0, "Lik": 0.0, "Rh": HANG_R, "Lh": HANG_L, "Rpw": 0.0, "Lpw": 0.0, "Rsh": Vector2.ZERO, "Lsh": Vector2.ZERO}, "e"]]}
 	# ---------------------------------------------------------------- the prologue (cinematic)
 	# lying on her right side on the marble, knees drawn up, the left hand loose in front of her (a loop: breath only)
@@ -347,17 +373,18 @@ static func _build() -> void:
 		[2.4, {"Rh": ["@", V(0, -0.01, 0.015)], "sp": V(0.88, 0.12, 0.0)}],
 		[4.0, {"r": Z, "sp": Z, "hd": Z, "Rik": 0.0, "Rh": HANG_R, "Lik": 0.0, "fw": 0.0, "Lf": FOOT_L, "Rf": FOOT_R, "Rfp": 0.0, "Rpw": 0.0, "Rsh": Vector2.ZERO}, "e"]]}
 	# recoil (from the kneel): the hand snaps back to her chest, she jerks back onto her left hand, the face turns away
-	_lib["recoil"] = {"len": 3.2, "hold_t": 1.4, "blend": [0.02, 0.4], "ev": {"flinch": 0.12}, "keys": [
+	_lib["recoil"] = {"len": 3.2, "hold_t": 1.4, "blend": [0.08, 0.4], "ev": {"flinch": 0.12}, "keys": [
 		[0.0, {"r": V(-0.02, -0.50, 0.06), "sp": V(0.85, 0.12, 0.0), "hd": V(0.10, 0.05, 0.0), "Rik": 1.0, "Rh": V(-0.10, 0.30, 0.70), "Rel": V(-0.4, -0.5, -0.5),
 			"Lik": 0.9, "Lh": V(0.18, 0.45, 0.42), "Lel": EL_L, "fw": 1.0, "Rf": V(-0.10, 0.10, -0.36), "Rfp": 1.05, "Lf": V(0.11, 0.085, 0.22), "Rpw": 0.0, "Lpw": 0.0}],
-		[0.22, {"r": V(0.0, -0.52, -0.10), "sp": V(-0.20, -0.15, 0.05), "hd": V(-0.30, -0.45, 0.10), "Rh": V(-0.02, 1.0, 0.16), "Rel": V(-0.6, -0.8, 0.0),
-			"Lh": V(0.30, 0.20, -0.20), "Lel": V(0.3, 0.2, -1.0), "Lpw": 1.0, "Lpn": V(0, -1, 0)}, "s"],
+		# (a6) 0.3 s, eased (was 0.22 s snapped: the hand crossed 0.75 m faster than an arm can)
+		[0.3, {"r": V(0.0, -0.52, -0.10), "sp": V(-0.20, -0.15, 0.05), "hd": V(-0.30, -0.45, 0.10), "Rh": V(-0.02, 1.0, 0.16), "Rel": V(-0.6, -0.8, 0.0),
+			"Lh": V(0.30, 0.20, -0.20), "Lel": V(0.3, 0.2, -1.0), "Lpw": 1.0, "Lpn": V(0, -1, 0)}, "e"],
 		[0.6, {"r": V(0.0, -0.53, -0.12), "sp": V(-0.25, -0.18, 0.06), "hd": V(-0.22, -0.55, 0.15), "Rh": V(0.0, 1.02, 0.15)}],
 		[1.4, {"sp": V(-0.20, -0.16, 0.05), "hd": V(-0.10, -0.50, 0.12)}],
 		[3.2, {"r": Z, "sp": Z, "hd": Z, "Rik": 0.0, "Rh": HANG_R, "Lik": 0.0, "Lh": HANG_L, "fw": 0.0, "Lf": FOOT_L, "Rf": FOOT_R, "Rfp": 0.0, "Lpw": 0.0}, "e"]]}
 	# ---------------------------------------------------------------- the crimson reflection (Ione) in the pool
 	# under the surface, her palm pressed up flat on it ("@": the point on the surface; default above her), then two taps
-	_lib["refl_press"] = {"len": 4.6, "hold_t": 4.0, "blend": [0.3, 0.3], "ev": {"press": 1.4, "tap1": 2.35, "tap2": 2.95}, "keys": [
+	_lib["refl_press"] = {"len": 4.6, "hold_t": 4.0, "blend": [0.3, 0.5], "ev": {"press": 1.4, "tap1": 2.35, "tap2": 2.95}, "keys": [
 		[0.0, {"Rik": 0.0, "Rh": HANG_R, "hd": Z, "sp": Z, "Rpw": 0.0, "Lik": 0.0, "Lh": HANG_L}],
 		[1.1, {"Rik": 1.0, "Rh": ["@", V(0, -0.08, 0)], "Rel": V(-0.7, -0.3, -0.4), "Rpw": 1.0, "Rpn": V(0, 1, 0), "hd": V(-0.45, 0.0, 0.10), "sp": V(-0.08, 0.0, -0.04), "Rsh": Vector2(0.12, 0.0),
 			"Lik": 0.7, "Lh": V(0.10, 1.10, 0.20), "Lel": EL_L}, "e"],
@@ -368,10 +395,10 @@ static func _build() -> void:
 		[4.0, {"Rh": "@", "hd": V(-0.40, 0.05, 0.16)}],
 		[4.6, {"Rh": "@"}]]}
 	# dragged down (the Warden's pull): a jerk downward, the arms flung up to the surface, the head thrown back
-	_lib["refl_dragged"] = {"len": 2.8, "hold_t": 2.8, "blend": [0.02, 0.3], "ev": {"jerk": 0.1}, "keys": [
+	_lib["refl_dragged"] = {"len": 2.8, "hold_t": 2.8, "blend": [0.08, 0.3], "ev": {"jerk": 0.1}, "keys": [
 		[0.0, {"r": Z, "sp": Z, "hd": V(-0.40, 0.05, 0.16), "Rik": 1.0, "Rh": V(-0.10, 1.78, 0.12), "Rpw": 1.0, "Rpn": V(0, 1, 0), "Lik": 0.7, "Lh": V(0.10, 1.10, 0.20), "Lel": EL_L}],
-		[0.18, {"r": V(0.0, -0.10, -0.04), "sp": V(-0.25, 0.05, 0.06), "hd": V(-0.55, 0.10, 0.10), "Rh": V(-0.16, 1.80, 0.20), "Rel": V(-0.8, 0, -0.3), "Rpn": V(0, 1, 0.3),
-			"Lik": 1.0, "Lh": V(0.20, 1.72, 0.22), "Lel": V(0.8, 0, -0.3), "Lpw": 0.8, "Lpn": V(0, 1, 0.3), "fw": 1.0, "Lf": V(0.10, 0.12, 0.10), "Rf": V(-0.12, 0.10, -0.06), "Rfp": 0.6, "Lfp": 0.5}, "s"],
+		[0.36, {"r": V(0.0, -0.10, -0.04), "sp": V(-0.25, 0.05, 0.06), "hd": V(-0.55, 0.10, 0.10), "Rh": V(-0.16, 1.80, 0.20), "Rel": V(-0.8, 0, -0.3), "Rpn": V(0, 1, 0.3),
+			"Lik": 1.0, "Lh": V(0.20, 1.72, 0.22), "Lel": V(0.8, 0, -0.3), "Lpw": 0.8, "Lpn": V(0, 1, 0.3), "fw": 1.0, "Lf": V(0.10, 0.12, 0.10), "Rf": V(-0.12, 0.10, -0.06), "Rfp": 0.6, "Lfp": 0.5}, "e"],
 		[1.2, {"sp": V(-0.30, 0.10, 0.04), "hd": V(-0.5, 0.2, 0.05), "Rh": V(-0.20, 1.82, 0.26), "Lh": V(0.24, 1.76, 0.26), "Lf": V(0.10, 0.20, 0.0), "Rf": V(-0.10, 0.10, 0.02)}],
 		[2.8, {"sp": V(-0.32, 0.08, 0.02), "hd": V(-0.45, 0.1, 0.0), "Rh": V(-0.22, 1.84, 0.28), "Lh": V(0.26, 1.80, 0.28)}]]}
 	# (a4, after kneel_reach) kneel and lay the palm flat on the water at "@", palm to her reflection's palm; held until release()

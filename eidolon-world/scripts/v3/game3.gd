@@ -387,8 +387,8 @@ func _apply_items() -> void:
 	var lamp := has_item("lamp")
 	if lamp and lamp_node == null and rig:
 		lamp_node = Kit3.lamp(self, true)
-		rig.hand_node("R").add_child(lamp_node)
-		lamp_node.position = Vector3(0.0, -0.02, 0.0)
+		rig.upright_node("R").add_child(lamp_node)
+		lamp_node.position = Vector3.ZERO
 	if lamp_node: lamp_node.visible = lamp
 	if rig: rig.hold("lamp" if lamp else "")
 	ui.set_inventory(has_item("shard"), lens_on)

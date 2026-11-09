@@ -167,12 +167,23 @@ static func _arc(a: Vector3, b: Vector3) -> Quaternion:
 	if ax.length() < 1e-6: return Quaternion()
 	return Quaternion(ax.normalized(), a.angle_to(b))
 
+## (a6) the base arm poses as hinge-consistent rotations: both bones of an arm share one hinge (the elbow's axis,
+## taken from the rest pose), so the elbow only ever flexes forward and the forearm never twists against the upper arm
+var _h0: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO]     # the rest elbow hinges (flexion = a positive turn about them)
 func _build_arms() -> void:
-	for s in ["L", "R"]:
+	for si in 2:
+		var s: String = SIDES[si]
 		var m := Vector3(1, 1, 1) if s == "L" else Vector3(-1, 1, 1)
 		var d0 := (_gpos(s + "_Forearm") - _gpos(s + "_Upperarm")).normalized()
 		var d1 := (_gpos(s + "_Hand") - _gpos(s + "_Forearm")).normalized()
-		var f := func(a: Vector3, b: Vector3) -> Array: return [_arc(d0, (a * m).normalized()), _arc(d1, (b * m).normalized())]
+		var h0 := d0.cross(d1).normalized()
+		_h0[si] = h0
+		var f := func(a: Vector3, b: Vector3) -> Array:
+			var A := (a * m).normalized()
+			var F := (b * m).normalized()
+			var H := A.cross(F)
+			H = H.normalized() if H.length() > 0.05 else _arc(d0, A) * h0
+			return [RigIK.hinge_rot(d0, h0, A, H), RigIK.hinge_rot(d1, h0, F, H)]
 		_q[s] = {"rest": f.call(ARM_DIR, FORE_DIR), "clasp": f.call(CLASP_ARM, CLASP_FORE), "reach": f.call(REACH_ARM, REACH_FORE)}
 
 # ------------------------------------------------------------------ cloth
@@ -328,6 +339,20 @@ var _leg_l := Vector2.ZERO               # thigh, shin
 var _arm_l := Vector2.ZERO               # upper arm, forearm
 const PALM0 := [Vector3(-0.7, -0.7, 0.0), Vector3(0.7, -0.7, 0.0)]     # the rest palm normals (A-pose: toward the thighs)
 var _hip_loc0 := Vector3.ZERO
+var _hk0: Array[Vector3] = [Vector3.RIGHT, Vector3.RIGHT]
+var _hax: Array[Vector3] = [Vector3.DOWN, Vector3.DOWN]   # the hands' rest axes (the wrist's twist axis)
+var _tw_prev: Array[float] = [0.0, 0.0]                   # the hands' last (unwrapped) twist wish
+var _tw_out: Array[float] = [0.0, 0.0]                    # ... and the twist / swing given (rate-limited)
+var _sw_out: Array[Quaternion] = [Quaternion(), Quaternion()]
+var _pole_prev: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO]   # the elbows' last pole (chest frame)
+const SWIVEL_RATE := 9.0                 # rad/s: the elbow's swivel round the arm's line
+const WRIST_RATE := 8.0                 # rad/s: the hand's turn on the forearm
+## (a6) joint limits (rad): the elbow / knee fold, the wrist's swing, the twist shared by forearm and wrist
+const EL_MAX := 2.09                     # 120 deg (deeper, the skin of the inner elbow pinches through)
+const KN_MAX := 2.70                     # 155 deg
+const WR_SWING := 1.25                   # 72 deg
+const TW_FORE := 0.90                    # the forearm takes half the hand's turn (pronation), up to 52 deg
+const TW_WRIST := 1.10                   # the wrist the rest, up to 63 deg
 
 func _rest_data() -> void:
 	for nm in ["Hip", "Waist", "Spine01", "Spine02", "NeckTwist01", "Head", "L_Clavicle", "R_Clavicle", "L_Upperarm", "R_Upperarm",
@@ -338,6 +363,11 @@ func _rest_data() -> void:
 	_arm_l = Vector2((P0["L_Forearm"] - P0["L_Upperarm"]).length(), (P0["L_Hand"] - P0["L_Forearm"]).length())
 	_hip_loc0 = sk.get_bone_rest(bone["Hip"]).origin
 	_foot0 = [P0["L_Foot"], P0["R_Foot"]]
+	for si in 2:
+		var s: String = SIDES[si]
+		var t0: Vector3 = (P0[s + "_Calf"] - P0[s + "_Thigh"]).normalized()
+		_hk0[si] = (Vector3.RIGHT - t0 * t0.x).normalized()          # the knee's rest hinge (flexion: the shin goes back)
+		_hax[si] = sk.get_bone_global_rest(bone[s + "_Hand"]).basis.y.normalized()
 
 # ---- layers
 class Layer:
@@ -425,8 +455,14 @@ func hold(what: String) -> void:
 	_add_layer(L)
 
 func _add_layer(L: Layer) -> void:
-	_layers.append(L)
-	_layers.sort_custom(func(a: Layer, b: Layer) -> bool: return KIND_ORDER[a.kind] < KIND_ORDER[b.kind])
+	# (a6) a stable insert (after every layer of its kind or lower): the newest of a kind is applied last. sort_custom
+	# is not stable and could put an outgoing clip over the incoming one
+	var at := _layers.size()
+	for i in _layers.size():
+		if KIND_ORDER[(_layers[i] as Layer).kind] > KIND_ORDER[L.kind]:
+			at = i
+			break
+	_layers.insert(at, L)
 
 ## walk on the spot at this speed (m/s, the game's metres; she must not be moved meanwhile); NAN: measure her motion
 var _virt := NAN
@@ -437,6 +473,7 @@ func set_locomotion(speed: float) -> void:
 var _look := Vector3.INF
 var _look_w := 0.0
 var _look_target_w := 1.0
+var _look_yp := Vector2.ZERO             # (a6) the look's applied yaw / pitch (rate-limited)
 func look_at_point(p: Vector3, w := 1.0) -> void:
 	_look = p if p != Vector3.INF else _look
 	_look_target_w = w if p != Vector3.INF else 0.0
@@ -464,6 +501,26 @@ func hand_node(side := "R") -> Node3D:
 		_hand_nodes[side] = a
 	return _hand_nodes[side]
 
+## (a6) a node on a hand's palm that stays level (her up, her facing) however the wrist turns: a lamp carried on the
+## palm. (hand_node follows the hand bone's own axes: a lamp on it lies along the fingers.) Made once
+var _upright := {}
+func upright_node(side := "R") -> Node3D:
+	if not _upright.has(side):
+		var n := Node3D.new()
+		n.name = side + "_HandLevel"
+		hand_node(side).add_child(n)
+		_upright[side] = n
+	return _upright[side]
+
+func _level_uprights() -> void:
+	var rb := rig.global_transform.basis
+	for side in _upright:
+		var n: Node3D = _upright[side]
+		if not is_instance_valid(n): continue
+		var hb := sk.get_bone_global_pose(bone[side + "_Hand"]).basis.orthonormalized()
+		# in the socket's frame (the hand bone, under the skeleton): her own up / facing, at the palm's centre
+		n.transform = Transform3D(hb.inverse() * (sk.global_transform.basis.orthonormalized().inverse() * rb.orthonormalized()), Vector3(0, 0.07, 0))
+
 # ---- the walk (planted feet)
 var _foot0: Array = []
 var _feet: Array = [{"w": Vector3.ZERO, "sw": false, "lift": Vector3.ZERO, "tgt": Vector3.ZERO, "yaw": 0.0, "lift_yaw": 0.0, "tyaw": 0.0, "s": 0.0},
@@ -476,6 +533,7 @@ var _yr := 0.0
 var _gw := 0.0
 var _lean := 0.0
 var _lean_v := 0.0
+var _ry_s := 0.0
 var _vf := 0.0
 var _acc := 0.0
 var _rx_s := 0.0
@@ -607,6 +665,11 @@ func _gait(dt: float, p: Figure.Pose) -> void:
 		var d := Vector2((fm[i] as Vector3).x - hj.x, (fm[i] as Vector3).z - hj.z).length()
 		var allow := (fm[i] as Vector3).y + sqrt(maxf(0.0, reach * reach - d * d)) - hj.y
 		ry = minf(ry, allow)
+	# (a6) the hips never drop more than 10 cm for a trailing foot (the leg's IK takes the rest), and they come back up
+	# on a spring: the old instant value dropped 30 cm at a walk's start and popped back up in one frame
+	ry = maxf(ry, -0.10)
+	_ry_s = ry if dt <= 0.0 else lerpf(_ry_s, ry, 1.0 - exp(-dt * (30.0 if ry < _ry_s else 10.0)))
+	ry = _ry_s
 	var asw := clampf(((fm[1] as Vector3).z - (fm[0] as Vector3).z) * 0.42, -0.3, 0.3) * (1.0 - 0.35 * odd)
 	_loco = {"r": Vector3(_rx_s, ry, 0.0), "rr": Vector3(0.0, pyaw, proll),
 		"sp": Vector3(_lean + 0.03 * _gw, -pyaw * 0.85, -proll * 0.7),
@@ -677,10 +740,21 @@ func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 	C["fol"] = 0.0
 	# ---- the clips
 	var Mi := rig.global_transform.affine_inverse()
-	for L in lay:
-		var w := smoothstep(0.0, 1.0, (L as Layer).w)
+	for li in lay.size():
+		var L: Layer = lay[li]
+		var w := smoothstep(0.0, 1.0, L.w)
 		if w <= 0.0: continue
-		_apply_layer(L, w, Mi)
+		# (a6) a cross-fade: a layer fading out under a newer one of its kind keeps its absolute channels whole (the
+		# newer one blends over it), else the pose dipped back toward the base mid-fade (a lying arm swung up to
+		# "hanging" for a few frames); its additive channels still fade (they sum)
+		var wa := w
+		if L.out:
+			for lj in range(li + 1, lay.size()):
+				var L2: Layer = lay[lj]
+				if L2.kind == L.kind and not L2.out:
+					wa = minf(1.0, w + smoothstep(0.0, 1.0, L2.w))
+					break
+		_apply_layer(L, w, Mi, wa)
 	# ---- direct aims (W's choreography)
 	for side in SIDES:
 		var a: Array = _aim[side]
@@ -693,6 +767,7 @@ func apply_pose(p: Figure.Pose, slim: float, veil_contrary: bool) -> void:
 			C[side + "pw"] = lerpf(C[side + "pw"], 1.0, k)
 			C[side + "pn"] = -(Mi.basis * (a[1] as Vector3)).normalized()
 	_solve(p, Mi, dt)
+	if not _upright.is_empty(): _level_uprights()
 	if cloth_mode == "copy" and cloth_src:
 		var srcp := cloth_src.cloth_pose
 		for k in cloth_bones.size(): sk.set_bone_pose_rotation(cloth_bones[k], srcp[k])
@@ -753,7 +828,45 @@ func _tick_layers(dt: float) -> void:
 			continue
 		i += 1
 
-func _apply_layer(L: Layer, w: float, Mi: Transform3D) -> void:
+## (a6) direction channels (palm normals, elbow / knee poles) blend by angle: a straight lerp between two opposed
+## directions passed through zero and the palm / elbow frame spun round mid-blend
+const DIR_CH := HeroineClips.DIRS
+## (a6) a pole (unit, across the limb's line dn) kept where pole . ax >= m: turned round dn just enough, to the side
+## nearer it (ties broken toward `pref`); unchanged when already inside, the best it can do when out of reach
+static func _ring(pl: Vector3, dn: Vector3, ax: Vector3, m: float, pref: Vector3) -> Vector3:
+	var f := ax - dn * ax.dot(dn)
+	var s := f.length()
+	if s < 0.05: return pl
+	f /= s
+	var need := minf(m / s, 1.0)
+	if pl.dot(f) >= need: return pl
+	var g := dn.cross(f)
+	var b := pl.dot(g) + 0.2 * g.dot(pref.normalized())
+	return f * need + g * (1.0 if b >= 0.0 else -1.0) * sqrt(maxf(0.0, 1.0 - need * need))
+
+## (a6) a point blended round a centre (the shoulder): by angle and distance, not along the straight line
+static func _sph(a: Vector3, b: Vector3, k: float, c: Vector3) -> Vector3:
+	if k <= 0.0: return a
+	if k >= 1.0: return b
+	var va := a - c
+	var vb := b - c
+	var an := va.normalized()
+	var bn := vb.normalized()
+	var dd := an.dot(bn)
+	var dir: Vector3
+	if dd > -0.2:
+		dir = HeroineClips.dir_lerp(an, bn, k)
+	else:
+		# far apart (a raised hand coming down to hang): by way of the front, as an arm swings, never across her face
+		var m := (an + bn + Vector3.BACK * (-dd - 0.2) * 2.0).normalized()
+		dir = HeroineClips.dir_lerp(an, m, k * 2.0) if k < 0.5 else HeroineClips.dir_lerp(m, bn, k * 2.0 - 1.0)
+	return c + dir * lerpf(va.length(), vb.length(), k)
+
+static func _dir_blend(a: Vector3, b: Vector3, w: float) -> Vector3:
+	return HeroineClips.dir_lerp(a, b, w)
+
+func _apply_layer(L: Layer, w: float, Mi: Transform3D, wa := -1.0) -> void:
+	if wa < 0.0: wa = w
 	var c: Dictionary = L.clip
 	var nm: String = c["name"]
 	# the "@" target and normal, in her model space this frame
@@ -767,14 +880,21 @@ func _apply_layer(L: Layer, w: float, Mi: Transform3D) -> void:
 		if v is Array: return L.at_m - L.pn_m * float(v[1]) if v[0] == "@n" else L.at_m + (v[1] as Vector3)    # (["@n", d]: d m off the surface, toward her)
 		return v
 	var chs: Dictionary = c["ch"]
+	# (a6) a direction under no weight below (a palm normal with the palm off, an elbow pole with the IK off) is taken
+	# whole: blending it from the unused base default swept it through the limb and spun the hand / elbow round
+	var below := {"Lpn": C["Lpw"], "Rpn": C["Rpw"], "Lel": C["Lik"], "Rel": C["Rik"], "Lkn": C["fw"], "Rkn": C["fw"]}
 	for ch in chs:
-		var val: Variant = HeroineClips.sample(chs[ch], L.t, res)
+		var val: Variant = HeroineClips.sample(chs[ch], L.t, res, DIR_CH.has(ch))
 		if HeroineClips.ADDITIVE.has(ch):
 			C[ch] = C[ch] + val * w
 		elif typeof(val) == TYPE_FLOAT:
-			C[ch] = lerpf(C[ch], val, w)
+			C[ch] = lerpf(C[ch], val, wa)
+		elif ch == "Lh" or ch == "Rh":
+			C[ch] = _sph(C[ch], val, wa, P0[ch[0] + "_Upperarm"] + (C["r"] as Vector3))
+		elif DIR_CH.has(ch):
+			C[ch] = _dir_blend(C[ch], val, wa if float(below[ch]) > 0.001 else 1.0)
 		else:
-			C[ch] = (C[ch] as Vector3).lerp(val, w)
+			C[ch] = (C[ch] as Vector3).lerp(val, wa)
 
 func _solve(p: Figure.Pose, Mi: Transform3D, dt: float) -> void:
 	var r: Vector3 = C["r"]
@@ -798,10 +918,15 @@ func _solve(p: Figure.Pose, Mi: Transform3D, dt: float) -> void:
 	if _look_w > 0.0 and _look != Vector3.INF:
 		var headP: Vector3 = s2P + dS2 * (P0["Head"] - P0["Spine02"])
 		var lv: Vector3 = dS2.inverse() * (Mi * _look - headP)
-		var yaw := clampf(atan2(lv.x, lv.z), -1.25, 1.25)
+		var raw := atan2(lv.x, lv.z)
 		var pitch := clampf(atan2(-lv.y, Vector2(lv.x, lv.z).length()), -0.6, 0.7)
+		# (a6) a point passing behind her: the head eases back to the front instead of whipping from one shoulder to the
+		# other; and the turn itself is rate-limited (no neck snaps)
+		var away := 1.0 - smoothstep(1.75, 2.6, absf(raw))
+		var want := Vector2(clampf(raw, -1.25, 1.25), pitch) * away
+		_look_yp = _look_yp.move_toward(want, maxf(dt, 1e-4) * 3.2) if dt > 0.0 else _look_yp
 		var k := smoothstep(0.0, 1.0, _look_w)
-		hdv = hdv.lerp(Vector3(pitch, yaw, hdv.z), k)
+		hdv = hdv.lerp(Vector3(_look_yp.y, _look_yp.x, hdv.z), k)
 	var dN := dS2 * _qe(hdv * 0.4)
 	D[_bi["NeckTwist01"]] = dN
 	D[_bi["Head"]] = dN * _qe(hdv * 0.6)
@@ -835,23 +960,121 @@ func _solve(p: Figure.Pose, Mi: Transform3D, dt: float) -> void:
 		var dF := dC * _rx(-swing * 1.3 - 0.10 * _gw) * fore
 		var a0: Vector3 = P0[fo] - P0[up]
 		var f0: Vector3 = P0[ha] - P0[fo]
+		var h0: Vector3 = _h0[si]
 		var ik := clampf(C[side + "ik"], 0.0, 1.0)
 		if ik > 0.001:
-			var el: Vector3 = C[side + "el"]
-			var sol := RigIK.solve2(upP, _arm_l.x, _arm_l.y, C[side + "h"], el)
-			dU = dU.slerp(RigIK.frame_rot(a0, Vector3.FORWARD, (sol[0] as Vector3) - upP, el), ik)
-			dF = dF.slerp(RigIK.frame_rot(f0, Vector3.FORWARD, (sol[1] as Vector3) - (sol[0] as Vector3), el), ik)
-		D[_bi[up]] = dU
-		D[_bi[fo]] = dF
-		var dH := dF
+			# (a6) one hinge-consistent solve: the IK weight moves the TARGET (from the FK hand) and the POLE (from the FK
+			# elbow), never slerps two unrelated bone rotations (that tore the forearm off the elbow's hinge)
+			# (the hand swings round the shoulder between the two, as an arm does: a straight line from a hanging hand
+			# to a raised one ran through the shoulder and the elbow whipped round)
+			var tgt: Vector3 = _sph(upP + dU * a0 + dF * f0, C[side + "h"], ik, upP)
+			# the shoulder's cone, in the chest's frame: not far behind her, never in through the torso
+			var dl: Vector3 = dS2.inverse() * (tgt - upP)
+			var lat := dl.x * sg / maxf(dl.length(), 1e-4)
+			dl = RigIK.cone(dl, [[Vector3.BACK, lerpf(-0.62, 0.5, smoothstep(0.05, 0.35, -lat))]])
+			tgt = upP + dS2 * dl
+			var dn := dl.normalized()
+			# the elbow points out / down / back (relative to the chest): the clip's wish, sanitised (never toward the
+			# torso, never forward), with the hanging arm's "back" as the fallback where the wish runs along the arm
+			var e: Vector3 = dS2.inverse() * (C[side + "el"] as Vector3)
+			e = Vector3(sg * maxf(e.x * sg, 0.1), e.y, minf(e.z, 0.2))
+			var bk := Vector3(sg * 0.35, -0.25, -1.0)
+			# reaching back: the elbow goes out to the side, not further back (the shoulder's extension is short)
+			var bh := smoothstep(0.05, 0.55, -dn.z)
+			e = e.lerp(Vector3(sg * 0.7, -0.45, -0.6), bh)
+			bk = bk.lerp(Vector3(sg * 0.7, -0.45, -0.6), bh)
+			var p_ik := RigIK.pole(dn, e, bk).normalized()
+			var p_fk := dn.cross(dS2.inverse() * (dU * h0))        # the FK elbow's own direction (pn = dn x hinge)
+			var pl := p_fk.normalized().lerp(p_ik, ik) + (bk - dn * bk.dot(dn)) * 0.05
+			pl -= dn * pl.dot(dn)
+			pl = pl.normalized() if pl.length() > 1e-5 else (bk - dn * bk.dot(dn)).normalized()
+			# the elbow's swivel round the arm's line is rate-limited (no whip round in a frame)
+			var pp: Vector3 = _pole_prev[si]
+			pp -= dn * pp.dot(dn)
+			if pp.length() > 1e-3 and dt > 0.0:
+				pp = pp.normalized()
+				var sa := pp.signed_angle_to(pl, dn)
+				var mx := dt * SWIVEL_RATE
+				if absf(sa) > mx: pl = pp.rotated(dn, signf(sa) * mx)
+			# the elbow's side, held in its anatomical ring: never toward the torso (it points out of the body's side),
+			# and never so far back that the upper arm leaves the shoulder's cone (back past its reach, or in through the
+			# torso): a turn round the arm's line just enough, to the nearer side (out / down preferred: no flip)
+			var l1 := _arm_l.x
+			var l2 := _arm_l.y
+			var dist := clampf(dl.length(), maxf(absf(l1 - l2) + 1e-4, sqrt(maxf(0.0, l1 * l1 + l2 * l2 + 2.0 * l1 * l2 * cos(EL_MAX)))), (l1 + l2) * 0.9995)
+			var cz := clampf((l1 * l1 + dist * dist - l2 * l2) / (2.0 * l1 * dist), -1.0, 1.0)
+			var snz := sqrt(maxf(0.0, 1.0 - cz * cz))
+			var pref := Vector3(sg * 0.5, -1.0, 0.0)
+			pl = _ring(pl, dn, Vector3(sg, 0.0, 0.0), -0.25, pref)
+			if snz > 0.05:
+				var ul := dn * cz + pl * snz
+				var zmin := lerpf(-0.62, 0.5, smoothstep(0.05, 0.35, -ul.x * sg)) + 0.03
+				pl = _ring(pl, dn, Vector3.BACK, (zmin - dn.z * cz) / snz, pref)
+			_pole_prev[si] = pl
+			var sol := RigIK.solve2(upP, l1, l2, tgt, dS2 * pl, EL_MAX)
+			var hn: Vector3 = sol[2]
+			dU = RigIK.hinge_rot(a0, h0, (sol[0] as Vector3) - upP, hn)
+			dF = RigIK.hinge_rot(f0, h0, (sol[1] as Vector3) - (sol[0] as Vector3), hn)
+		else:
+			_pole_prev[si] = Vector3.ZERO
+		# (a6) the hand, relative to the forearm, built as twist-then-swing (weighted by pw) instead of slerping toward a
+		# palm frame (that took the long way round / flipped near a half turn); then the limits: the swing to WR_SWING,
+		# the twist shared out like a real forearm (pronation: the forearm takes half, the wrist the rest), each
+		# clamped: no candy-wrapper wrists
+		var hx: Vector3 = _hax[si]
+		var sw := Quaternion()
+		var tw := 0.0
 		var pw := clampf(C[side + "pw"], 0.0, 1.0)
 		if pw > 0.001:
+			# the hand wanted: the palm on n1, the fingers along the forearm (laid into the surface); where the forearm
+			# runs into the surface (a palm pressed on glass ahead, on the floor below) the fingers point up it, or away
+			# from her: a pressing hand, never a limp supinated one. Then, seen from the forearm, its twist about the
+			# hand's axis (unwrapped against last frame's) and its swing
 			var n1: Vector3 = (C[side + "pn"] as Vector3).normalized()
-			var fd := dF * f0.normalized()
-			var h1 := fd - n1 * fd.dot(n1)
-			if h1.length() < 0.2: h1 = fd
-			dH = dH.slerp(RigIK.frame_rot(f0, PALM0[si], h1, n1), pw)
-		D[_bi[ha]] = dH * _qe(C[side + "w"])
+			var fd := (dF * f0).normalized()
+			var base := fd - n1 * fd.dot(n1)
+			var aux := Vector3(0.0, 1.0, 0.5) - n1 * Vector3(0.0, 1.0, 0.5).dot(n1)
+			var h1 := base + aux * (0.8 * (1.0 - smoothstep(0.3, 0.8, base.length())))
+			if h1.length() < 1e-4: h1 = fd
+			var p0: Vector3 = (PALM0[si] as Vector3).normalized()
+			var dec := RigIK.limit(dF.inverse() * RigIK.frame_rot(hx, p0, h1, n1), hx, TAU, TAU)
+			# of the two ways round, the one the forearm can do (inside +-the twist range), last frame's on a near tie
+			# (a hysteresis: no chatter at the half turn; a real side change is then eased by the WRIST_RATE)
+			var c1: float = dec[1]
+			var c2 := c1 - signf(c1) * TAU
+			var lt := TW_FORE + TW_WRIST
+			var pv: float = _tw_prev[si]
+			var tq := c1 if maxf(0.0, absf(c1) - lt) + 0.25 * absf(c1 - pv) <= maxf(0.0, absf(c2) - lt) + 0.25 * absf(c2 - pv) else c2
+			_tw_prev[si] = tq
+			var tcl := clampf(tq, -(TW_FORE + TW_WRIST), TW_FORE + TW_WRIST)
+			var sw_full: Quaternion = dec[0]
+			tw = tcl * pw
+			sw = Quaternion().slerp(sw_full, pw)
+		else:
+			_tw_prev[si] = 0.0
+		var rel := Quaternion(hx, tw) * sw
+		var wv: Vector3 = C[side + "w"]
+		if wv != Vector3.ZERO: rel = rel * _qe(wv)
+		var lim := RigIK.limit(rel, hx, TAU, WR_SWING)
+		tw += wrapf(float(lim[1]) - tw, -PI, PI)
+		tw = clampf(tw, -(TW_FORE + TW_WRIST), TW_FORE + TW_WRIST)
+		# the hand's turn (relative to the forearm) is rate-limited too: a real wrist never spins in a frame
+		var swq: Quaternion = lim[0]
+		if dt > 0.0:
+			var mr := dt * WRIST_RATE
+			tw = move_toward(_tw_out[si], tw, mr)
+			var sp: Quaternion = _sw_out[si]
+			var sa2 := sp.angle_to(swq)
+			if sa2 > mr: swq = sp.slerp(swq, mr / sa2)
+		_tw_out[si] = tw
+		_sw_out[si] = swq
+		# (the forearm's share shrinks in a deep bend: twisting the forearm bone there wrings the inner elbow)
+		var fmax := TW_FORE * (1.0 - 0.6 * smoothstep(1.6, EL_MAX, (dU * a0).angle_to(dF * f0)))
+		var tf := clampf(tw * 0.5, -fmax, fmax)
+		dF = dF * Quaternion(f0.normalized(), tf)
+		D[_bi[up]] = dU
+		D[_bi[fo]] = dF
+		D[_bi[ha]] = dF * Quaternion(hx, clampf(tw - tf, -TW_WRIST, TW_WRIST)) * swq
 	# legs: always IK (the walk's planted feet, or a clip's)
 	var fw := clampf(C["fw"], 0.0, 1.0)
 	var fol := clampf(C["fol"], 0.0, 1.0)
@@ -865,9 +1088,12 @@ func _solve(p: Figure.Pose, Mi: Transform3D, dt: float) -> void:
 		var tgt: Vector3 = C[side + "f"]
 		var fyw: float = _loco["fy"][si] * (1.0 - fw)
 		var pole := Vector3(sin(fyw) + sg * 0.10, 0.0, cos(fyw)).lerp(C[side + "kn"], fw)
-		var sol := RigIK.solve2(hj, _leg_l.x, _leg_l.y, tgt, pole)
-		var dT := RigIK.frame_rot(P0[ca] - P0[th], Vector3.BACK, (sol[0] as Vector3) - hj, pole)
-		var dK := RigIK.frame_rot(P0[ft] - P0[ca], Vector3.BACK, (sol[1] as Vector3) - (sol[0] as Vector3), pole)
+		# (a6) the knee points forward (of the hips) even where the wish runs along the leg; both bones share the hinge
+		pole = RigIK.pole((tgt - hj).normalized(), pole, Rr * Vector3(sg * 0.10, 0.0, 1.0))
+		var sol := RigIK.solve2(hj, _leg_l.x, _leg_l.y, tgt, pole, KN_MAX)
+		var hk: Vector3 = sol[2]
+		var dT := RigIK.hinge_rot(P0[ca] - P0[th], _hk0[si], (sol[0] as Vector3) - hj, hk)
+		var dK := RigIK.hinge_rot(P0[ft] - P0[ca], _hk0[si], (sol[1] as Vector3) - (sol[0] as Vector3), hk)
 		D[_bi[th]] = dT
 		D[_bi[ca]] = dK
 		var fpv: float = C[side + "fp"]

@@ -239,18 +239,25 @@ func _apply_grab(dt: float) -> void:
 	var gh := skel.get_bone_global_pose(ha)
 	var l1 := gu.origin.distance_to(gf.origin)
 	var l2 := gf.origin.distance_to(gh.origin)
-	var cur_pole := gf.origin - (gu.origin + (gh.origin - gu.origin) * 0.5)
-	var pole := cur_pole.normalized().lerp(Vector3(sg * 0.6, -0.5, -0.5).normalized(), w)
-	var sol := RigIK.solve2(gu.origin, l1, l2, gh.origin.lerp(T, w), pole)
-	var q1 := RigIK.frame_rot(gf.origin - gu.origin, pole, (sol[0] as Vector3) - gu.origin, pole)
+	# (a6) a hinge-consistent solve: both bones keep the animated elbow's hinge (the upper arm's bone x), the pole eases
+	# from the animated elbow to out / down / back; the old per-bone frames twisted the forearm off the hinge (40 deg)
+	# and flipped it 180 deg on a deep bend
+	var h0 := (gu.basis * Vector3.RIGHT).normalized()
+	var tgt := gh.origin.lerp(T, w)
+	var dn := (tgt - gu.origin).normalized()
+	var cur_pole := dn.cross(h0)
+	var want := RigIK.pole(dn, Vector3(sg * 0.6, -0.5, -0.5), Vector3(sg * 0.35, -0.25, -1.0)).normalized()
+	var sol := RigIK.solve2(gu.origin, l1, l2, tgt, cur_pole.normalized().lerp(want, w), 1.92)
+	var q1 := RigIK.hinge_rot(gf.origin - gu.origin, h0, (sol[0] as Vector3) - gu.origin, sol[2])
 	skel.set_bone_global_pose(up, Transform3D(Basis(q1) * gu.basis, gu.origin))
 	gf = skel.get_bone_global_pose(fo)
 	gh = skel.get_bone_global_pose(ha)
-	var q2 := RigIK.frame_rot(gh.origin - gf.origin, pole, (sol[1] as Vector3) - (sol[0] as Vector3), pole)
+	var q2 := RigIK.hinge_rot(gh.origin - gf.origin, q1 * h0, (sol[1] as Vector3) - (sol[0] as Vector3), sol[2])
 	skel.set_bone_global_pose(fo, Transform3D(Basis(q2) * gf.basis, gf.origin))
 	# the hand closes over the shoulder: the palm turned down onto it
 	gh = skel.get_bone_global_pose(ha)
-	skel.set_bone_global_pose(ha, Transform3D(Basis(Vector3.RIGHT.rotated(Vector3.UP, 0.0), 0.5 * w) * gh.basis, gh.origin))
+	# (a6) about the hand's own hinge (its bone x: a wrist flexion), not the skeleton's x (that bent it sideways)
+	skel.set_bone_global_pose(ha, Transform3D(gh.basis * Basis(Vector3.RIGHT, -0.3 * w), gh.origin))
 
 ## the heavy walk on/off (blended)
 func walk(on: bool) -> void:
