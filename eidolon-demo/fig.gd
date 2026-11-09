@@ -5,8 +5,8 @@ const A_LEN := 0.27
 const B_LEN := 0.26
 const WAIST := 1.04
 const HEM := 0.05
-const DRESS := [Vector2(0.100, 1.04), Vector2(0.126, 0.93), Vector2(0.154, 0.77), Vector2(0.172, 0.58),
-	Vector2(0.190, 0.38), Vector2(0.220, 0.19), Vector2(0.256, 0.05)]
+const DRESS := [Vector2(0.102, 1.04), Vector2(0.128, 0.93), Vector2(0.156, 0.77), Vector2(0.176, 0.58),
+	Vector2(0.196, 0.38), Vector2(0.222, 0.19), Vector2(0.246, 0.05)]
 const VN := 8
 const VL := 0.17
 var mk: Callable
@@ -14,8 +14,6 @@ var cloth: Material
 var ghost := false
 var ghost_mat: StandardMaterial3D
 var dress_mi: MeshInstance3D
-var over_mi: MeshInstance3D
-var trim_mi: MeshInstance3D
 var veil_mi: MeshInstance3D
 var upper: Node3D
 var head: Node3D
@@ -29,18 +27,22 @@ var remap := {}
 func _m(c: String) -> Material:
 	return ghost_mat if ghost else mk.call(remap.get(c, c))
 
-static func lathe(cs: PackedVector3Array, rs: PackedFloat32Array, segs := 32) -> Array:
+static func lathe(cs: PackedVector3Array, rs: PackedFloat32Array, segs := 32, amps := PackedFloat32Array(), npl := 0, dips := PackedFloat32Array()) -> Array:
 	var v := PackedVector3Array(); var n := PackedVector3Array(); var idx := PackedInt32Array()
 	var m := cs.size()
 	var s := 1.0 if cs[m - 1].y >= cs[0].y else -1.0
 	for i in m:
 		var i0 := maxi(i - 1, 0); var i1 := mini(i + 1, m - 1)
 		var dy := absf(cs[i1].y - cs[i0].y); var dr := (rs[i1] - rs[i0]) * s
+		var amp := amps[i] if amps.size() > i else 0.0
+		var dip := dips[i] if dips.size() > i else 0.0
 		for j in segs + 1:
 			var a := TAU * j / segs
 			var d := Vector3(cos(a), 0, sin(a))
-			v.append(cs[i] + d * rs[i])
-			var nn := d * dy + Vector3.UP * -dr
+			var k := 1.0 + amp * cos(npl * a)
+			v.append(cs[i] + d * rs[i] * k - Vector3(0, dip * pow(maxf(0.0, sin(a)), 2.0), 0))
+			var nx := (d * k + Vector3(-sin(a), 0, cos(a)) * (amp * npl * sin(npl * a))).normalized()
+			var nn := nx * dy + Vector3.UP * -dr
 			n.append(nn.normalized() if nn.length() > 0.0001 else d)
 	for i in m - 1:
 		for j in segs:
@@ -75,31 +77,24 @@ func _ball(parent: Node3D, r: float, h: float, c: String, p: Vector3) -> MeshIns
 
 func build(kind: int, maker: Callable, cloth_mat: Material, face_mat: Material) -> void:
 	ghost = kind == 1; mk = maker; cloth = cloth_mat
-	if kind == 2: remap = {"dress": "crim", "dress2": "crim2", "crim": "gold"}
+	if kind == 2: remap = {"dress": "crim", "crim": "gold"}
 	if ghost:
 		ghost_mat = StandardMaterial3D.new()
 		ghost_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		ghost_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 		ghost_mat.albedo_color = Color("b8232f")
-	dress_mi = _dyn("dress"); over_mi = _dyn("dress2"); trim_mi = _dyn("crim")
-	veil_mi = _dyn("veil")
-	if not ghost: veil_mi.material_override = cloth
+	dress_mi = _dyn("dress")
 	for side in ["L", "R"]:
-		var f := _ball(self, 0.042, 0.07, "veil", Vector3.ZERO); f.scale = Vector3(1, 1, 1.9)
-		foot[side] = f
+		var ft := _ball(self, 0.04, 0.066, "skin", Vector3.ZERO); ft.scale = Vector3(1, 1, 1.9)
+		foot[side] = ft
 	upper = Node3D.new(); add_child(upper)
-	_lathe_node(upper, [[0.100, 0.0], [0.110, 0.09], [0.126, 0.20], [0.118, 0.265], [0.082, 0.318], [0.036, 0.348]], "dress")
-	_lathe_node(upper, [[0.097, -0.036], [0.112, -0.03], [0.117, 0.0], [0.112, 0.03], [0.097, 0.036]], "crim")
-	var tail := BoxMesh.new(); tail.size = Vector3(0.04, 0.36, 0.01)
-	var tl := _prim(upper, tail, "crim"); tl.position = Vector3(0.066, -0.20, 0.104); tl.rotation = Vector3(-0.15, 0.5, 0.05)
+	_lathe_node(upper, [[0.102, 0.0], [0.122, 0.045], [0.119, 0.11], [0.127, 0.20], [0.118, 0.265], [0.082, 0.318], [0.036, 0.348]], "dress")
+	_lathe_node(upper, [[0.100, -0.022], [0.110, -0.016], [0.113, 0.0], [0.110, 0.016], [0.100, 0.022]], "crim")
 	var nk := CylinderMesh.new(); nk.top_radius = 0.027; nk.bottom_radius = 0.033; nk.height = 0.12; nk.radial_segments = 12
 	_prim(upper, nk, "skin").position = Vector3(0, 0.40, 0)
 	head = Node3D.new(); head.position = Vector3(0, 0.535, 0); upper.add_child(head)
-	_ball(head, 0.088, 0.208, "veil", Vector3.ZERO)
-	_ball(head, 0.058, 0.116, "veil", Vector3(0, 0.07, -0.072))
-	# her face was never carved: a smooth porcelain oval that catches the light like a mirror
-	var fp := _ball(head, 0.066, 0.178, "skin", Vector3(0, -0.008, 0.05)); fp.scale = Vector3(1, 1, 0.62)
-	if not ghost: fp.material_override = face_mat
+	# a fine grey veil over the head and the face, falling in folds to the shoulders
+	veil_mi = _prim(head, ArrayMesh.new(), "veil")
 	for side in ["L", "R"]:
 		var sx := 1.0 if side == "L" else -1.0
 		var ua := CylinderMesh.new(); ua.height = A_LEN; ua.top_radius = 0.026; ua.bottom_radius = 0.033; ua.radial_segments = 14
@@ -133,26 +128,19 @@ func apply(s: Dictionary) -> void:
 	rotation.y = s.yaw
 	var wy: float = WAIST - s.drop
 	var k := (wy - HEM) / (WAIST - HEM)
-	var cs := PackedVector3Array(); var rs := PackedFloat32Array()
-	var co := PackedVector3Array(); var ro := PackedFloat32Array()
+	var cs := PackedVector3Array(); var rs := PackedFloat32Array(); var am := PackedFloat32Array()
 	for p in DRESS:
 		var t: float = (WAIST - p.y) / (WAIST - HEM)
 		var t2 := t * t
-		var c := Vector3(s.sway.x * t2, HEM + (p.y - HEM) * k,
-			s.sway.y * t2 + s.kick * 0.05 * sin(PI * minf(t * 1.15, 1.0)) - s.pool * 0.12 * t)
-		var r: float = p.x * (1.0 + s.pool * 0.9 * pow(t, 1.3))
-		cs.append(c); rs.append(r)
-		if t <= 0.5:
-			co.append(c + Vector3(0, 0.0, 0)); ro.append(r * 1.07 + 0.012 + (0.016 if t > 0.42 else 0.0))
-	_put(dress_mi, lathe(cs, rs))
-	_put(over_mi, lathe(co, ro))
-	var n := cs.size()
-	_put(trim_mi, lathe(PackedVector3Array([cs[n - 1] + Vector3(0, 0.045, 0) + (cs[n - 2] - cs[n - 1]) * 0.3, cs[n - 1]]),
-		PackedFloat32Array([lerpf(rs[n - 1], rs[n - 2], 0.3) + 0.004, rs[n - 1] + 0.004])))
+		cs.append(Vector3(s.sway.x * t2, HEM + (p.y - HEM) * k,
+			s.sway.y * t2 + s.kick * 0.05 * sin(PI * minf(t * 1.15, 1.0)) - s.pool * 0.12 * t))
+		rs.append(p.x * (1.0 + s.pool * 0.9 * pow(t, 1.3)))
+		am.append(0.07 * smoothstep(0.0, 0.55, t))
+	_put(dress_mi, lathe(cs, rs, 56, am, 14))
 	for side in ["L", "R"]:
 		var sg := 1.0 if side == "L" else -1.0
 		var ph: float = s.phase + (0.0 if side == "L" else PI)
-		foot[side].position = Vector3(sg * 0.062, 0.035 + 0.05 * maxf(0.0, cos(ph)) * s.wk - s.bob, 0.05 + 0.19 * sin(ph) * s.wk)
+		foot[side].position = Vector3(sg * 0.062, 0.032 + 0.05 * maxf(0.0, cos(ph)) * s.wk - s.bob, 0.05 + 0.19 * sin(ph) * s.wk)
 		foot[side].visible = s.pool < 0.2
 	upper.position = Vector3(0, wy, 0)
 	upper.basis = Basis.from_euler(Vector3(s.lean, s.twist, s.roll))
@@ -180,50 +168,17 @@ func apply(s: Dictionary) -> void:
 		hand_ul[side] = hd
 	_veil(s)
 
-## the long veil: a chain hung from the back of the head, each link trailing the one above it (parent space)
+const VEIL := [Vector2(0.004, 0.122), Vector2(0.060, 0.108), Vector2(0.093, 0.066), Vector2(0.102, 0.008), Vector2(0.099, -0.055),
+	Vector2(0.094, -0.115), Vector2(0.112, -0.175), Vector2(0.152, -0.235), Vector2(0.180, -0.305)]
+const VEIL_AMP := [0.0, 0.0, 0.0, 0.004, 0.012, 0.03, 0.05, 0.065, 0.075]
 func _veil(s: Dictionary) -> void:
-	var ht := transform * upper.transform * head.transform
-	var anchor := ht * Vector3(0, 0.075, -0.07)
-	var back := -Vector3(sin(s.yaw), 0, cos(s.yaw))
-	var right := Vector3(cos(s.yaw), 0, -sin(s.yaw))
-	if not veil_ready:
-		vp.resize(VN)
-		for i in VN: vp[i] = anchor + (Vector3.DOWN + back * 0.25).normalized() * VL * i
-		veil_ready = true
-	var dt: float = s.dt
-	var wind: Vector3 = s.wind
-	vp[0] = anchor
-	for i in range(1, VN):
-		var want := vp[i - 1] + (Vector3.DOWN + back * (0.34 if i < 3 else 0.12) + wind * (0.15 + 0.1 * i)).normalized() * VL
-		vp[i] = vp[i].lerp(want, 1.0 - exp(-(20.0 - 1.7 * i) * dt))
-		vp[i] = vp[i - 1] + (vp[i] - vp[i - 1]).normalized() * VL
-		# keep it behind the body
-		var lp := vp[i] - position
-		var lz := lp.dot(-back); var lx := lp.dot(right)
-		var need: float = -(body_r(lp.y + s.drop * 0.6) * (1.0 + s.pool * 0.6) + 0.035) + absf(lx) * 0.4
-		if lz > need:
-			vp[i] += -back * (need - lz)
-			vp[i] = vp[i - 1] + (vp[i] - vp[i - 1]).normalized() * VL
-	var inv := transform.affine_inverse()
-	var v := PackedVector3Array(); var nrm := PackedVector3Array(); var uv := PackedVector2Array(); var idx := PackedInt32Array()
-	for i in VN:
-		var f := float(i) / (VN - 1)
-		var w := lerpf(0.075, 0.2, smoothstep(0.0, 0.45, f)) * (1.0 - 0.25 * smoothstep(0.75, 1.0, f))
-		var tng := (vp[mini(i + 1, VN - 1)] - vp[maxi(i - 1, 0)]).normalized()
-		var nb := right.cross(tng).normalized()
-		if nb.dot(back) < 0.0: nb = -nb
-		for j in 3:
-			var u := j - 1.0
-			v.append(inv * (vp[i] + right * (u * w) + nb * (0.03 * (1.0 - absf(u)) + 0.012)))
-			nrm.append(inv.basis * (nb + right * u * 0.7).normalized())
-			uv.append(Vector2(j * 0.5, f))
-	for i in VN - 1:
-		for j in 2:
-			var a := i * 3 + j
-			idx.append_array([a, a + 1, a + 4, a, a + 4, a + 3])
-	var arr := []; arr.resize(Mesh.ARRAY_MAX)
-	arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_NORMAL] = nrm; arr[Mesh.ARRAY_TEX_UV] = uv; arr[Mesh.ARRAY_INDEX] = idx
-	_put(veil_mi, arr)
+	var cs := PackedVector3Array(); var rs := PackedFloat32Array()
+	for i in VEIL.size():
+		var t := clampf((i - 5.0) / 3.0, 0.0, 1.0)
+		var fwd := 0.012 if (i >= 3 and i <= 5) else 0.0
+		cs.append(Vector3(s.sway.x * 0.7 * t * t, VEIL[i].y, fwd - 0.02 * t + s.sway.y * 0.7 * t * t - s.lean * 0.05 * t))
+		rs.append(VEIL[i].x)
+	_put(veil_mi, lathe(cs, rs, 54, PackedFloat32Array(VEIL_AMP), 9, PackedFloat32Array([0, 0, 0, 0, 0, 0, 0.004, 0.018, 0.04])))
 
 func hand_pos(side: String) -> Vector3:
 	return upper.global_transform * hand_ul[side]
