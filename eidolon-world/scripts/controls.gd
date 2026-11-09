@@ -220,6 +220,10 @@ class Pad extends Control:
 	var ctl: Controls
 	const INK := Color(0.97, 0.96, 0.92)
 	const CY := Palette.CORE
+	## (owner: "a black circle appears") the slots and the button are ivory frosted glass with a crimson hairline, never
+	## dark discs; their icons are drawn in a dark ink on it
+	const FROST := Color(0.965, 0.95, 0.915)
+	const DARK := Color(0.16, 0.13, 0.13)
 
 	func _draw() -> void:
 		if ctl == null: return
@@ -239,12 +243,12 @@ class Pad extends Control:
 				draw_circle(ic, ir - 1.0, Color(CY, (0.10 + 0.08 * sin(ctl._t * 3.4)) * ia))
 			if ctl.inv_on:
 				for i in 5: draw_circle(ic, ir + 3.0 + i * 3.0, Color(CY, 0.05 * ia * (1.0 - i / 5.0)))
-			draw_circle(ic, ir, Color(0.06, 0.07, 0.08, 0.34 * ia))
-			draw_arc(ic, ir, 0, TAU, 48, Color(CY if ctl.inv_on else INK, (0.85 if ctl.inv_on else 0.5) * ia), 1.3, true)
+			draw_circle(ic, ir, Color(FROST, 0.62 * ia))
+			draw_arc(ic, ir, 0, TAU, 48, Color(CY, (0.95 if ctl.inv_on else 0.7) * ia), 1.2, true)
 			for k in 4:
 				var dv3 := Vector2(cos(PI * 0.5 * k + PI * 0.25), sin(PI * 0.5 * k + PI * 0.25))
 				draw_line(ic + dv3 * (ir - 1.0), ic + dv3 * (ir + 3.5), Color(INK, 0.35 * ia), 1.0, true)
-			_icon("shard", ic, 11.0, Color(INK, 0.95 * ia), Color(CY, ia))
+			_icon("shard", ic, 11.0, Color(DARK, 0.9 * ia), Color(CY, ia))
 		# the hotbar: a box per carried thing, the chosen one ringed in crimson
 		if ctl.enabled:
 			var hr := ctl.hot_rects()
@@ -253,9 +257,9 @@ class Pad extends Control:
 				var r: Rect2 = hr[i]
 				var pr: float = ctl._hot_press.get(k, 0.0)
 				var rr := r.grow(pr * 2.0)
-				draw_rect(rr, Color(0.06, 0.07, 0.08, 0.42), true)
+				draw_rect(rr, Color(FROST, 0.6), true)
 				var sel := k == ctl.hot_sel
-				draw_rect(rr, Color(CY, 0.95) if sel else Color(INK, 0.55), false, 2.0 if sel else 1.2)
+				draw_rect(rr, Color(CY, 0.95) if sel else Color(CY, 0.55), false, 2.0 if sel else 1.0)
 				var tex: Texture2D = ctl.hot_icons.get(k, null)
 				if tex: draw_texture_rect(tex, rr.grow(-5.0), false)
 				if k == "shard" and ctl.inv_pulse and not ctl.inv_on:
@@ -270,17 +274,17 @@ class Pad extends Control:
 			var ba := ctl.bag_alpha
 			var bc := ctl.bag_center()
 			var br := 19.0 * (1.0 + ctl._bag_press * 0.1)
-			draw_circle(bc, br, Color(0.06, 0.07, 0.08, 0.34 * ba))
-			draw_arc(bc, br, 0, TAU, 40, Color(INK, 0.5 * ba), 1.3, true)
+			draw_circle(bc, br, Color(FROST, 0.62 * ba))
+			draw_arc(bc, br, 0, TAU, 40, Color(CY, 0.7 * ba), 1.2, true)
 			var bag := PackedVector2Array([bc + Vector2(-8, -3), bc + Vector2(8, -3), bc + Vector2(9, 8), bc + Vector2(-9, 8), bc + Vector2(-8, -3)])
-			draw_polyline(bag, Color(INK, 0.9 * ba), 1.4, true)
-			draw_arc(bc + Vector2(0, -4), 5.0, PI, TAU, 12, Color(INK, 0.9 * ba), 1.4, true)
-			draw_line(bc + Vector2(-8, 1), bc + Vector2(8, 1), Color(INK, 0.6 * ba), 1.0, true)
+			draw_polyline(bag, Color(DARK, 0.9 * ba), 1.4, true)
+			draw_arc(bc + Vector2(0, -4), 5.0, PI, TAU, 12, Color(DARK, 0.9 * ba), 1.4, true)
+			draw_line(bc + Vector2(-8, 1), bc + Vector2(8, 1), Color(DARK, 0.6 * ba), 1.0, true)
 		# floating joystick
 		if ctl.joy_alpha > 0.0:
 			var a := ctl.joy_alpha
 			var b := ctl.joy_base
-			draw_circle(b, Controls.JOY_R + 6.0, Color(0.06, 0.06, 0.07, 0.10 * a))
+			draw_circle(b, Controls.JOY_R + 6.0, Color(FROST, 0.12 * a))
 			draw_arc(b, Controls.JOY_R, 0, TAU, 64, Color(INK, 0.55 * a), 1.2, true)
 			draw_arc(b, Controls.JOY_R - 6.0, 0, TAU, 64, Color(INK, 0.16 * a), 1.0, true)
 			for k in 4:
@@ -288,8 +292,8 @@ class Pad extends Control:
 				var dir := Vector2(cos(an), sin(an))
 				draw_line(b + dir * (Controls.JOY_R - 3.0), b + dir * (Controls.JOY_R + 4.0), Color(INK, 0.5 * a), 1.0, true)
 			var kp := b + (ctl.joy_knob - b).limit_length(Controls.JOY_R)
-			draw_circle(kp, 21.0, Color(0.07, 0.07, 0.08, 0.30 * a))
-			draw_arc(kp, 21.0, 0, TAU, 40, Color(INK, 0.85 * a), 1.3, true)
+			draw_circle(kp, 21.0, Color(FROST, 0.5 * a))
+			draw_arc(kp, 21.0, 0, TAU, 40, Color(CY, 0.85 * a), 1.2, true)
 			draw_circle(kp, 3.0, Color(CY, 0.8 * a))
 		# interact button
 		if ctl.icon_alpha > 0.0:
@@ -299,14 +303,14 @@ class Pad extends Control:
 			var r := Controls.BTN_R * (1.0 + ctl._press * 0.08)
 			for i in 6:
 				draw_circle(c2, r + 4.0 + i * 3.0, Color(CY, (0.035 + 0.02 * breathe) * a2 * (1.0 - i / 6.0)))
-			draw_circle(c2, r, Color(0.06, 0.07, 0.08, 0.40 * a2))
+			draw_circle(c2, r, Color(FROST, 0.72 * a2))
 			# the rune frame: a ring with four cardinal ticks, as every rune of the sculptor has
-			draw_arc(c2, r, 0, TAU, 64, Color(CY, (0.55 + 0.35 * breathe) * a2), 1.5, true)
-			draw_arc(c2, r - 5.0, 0, TAU, 64, Color(INK, 0.16 * a2), 1.0, true)
+			draw_arc(c2, r, 0, TAU, 64, Color(CY, (0.7 + 0.25 * breathe) * a2), 1.2, true)
+			draw_arc(c2, r - 5.0, 0, TAU, 64, Color(CY, 0.18 * a2), 1.0, true)
 			for k in 4:
 				var dv := Vector2(cos(PI * 0.5 * k), sin(PI * 0.5 * k))
 				draw_line(c2 + dv * (r + 2.0), c2 + dv * (r + 8.0), Color(CY, (0.6 + 0.3 * breathe) * a2), 1.4, true)
-			_icon(ctl.icon, c2, 13.0, Color(INK, 0.95 * a2), Color(CY, a2))
+			_icon(ctl.icon, c2, 13.0, Color(DARK, 0.92 * a2), Color(CY, a2))
 
 	func _icon(name: String, c: Vector2, s: float, col: Color, cy: Color) -> void:
 		match name:

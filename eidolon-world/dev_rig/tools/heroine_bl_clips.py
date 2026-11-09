@@ -508,7 +508,7 @@ class Lib:
 
         HC = c.dur(I1, 'Hit_Chest')
         def recoil(t):
-            st = c.swarp(t, [(0.0, 0.0), (0.3, HC * 0.5), (1.4, HC * 0.62), (3.2, HC)])
+            st = c.swarp(t, [(0.0, 0.0), (0.3, HC * 0.5), (1.4, HC * 0.62), (3.2, HC * 0.9)])
             T = c.mo(I1, 'Hit_Chest', st)
             k = env(t, [(0.0, 0), (0.3, 1), (1.4, 1), (3.0, 0)])
             c.hips(T, dfwd=-0.05 * k)

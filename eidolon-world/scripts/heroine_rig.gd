@@ -634,12 +634,12 @@ func _arm_to(s: String, tgt: Vector3, k: float, nq: Quaternion, anim_pole: float
 	var uc: int = bone["UpperChest"]
 	var cb := sk.get_bone_global_pose(uc).basis.orthonormalized() * sk.get_bone_global_rest(uc).basis.orthonormalized().inverse()
 	var behind := smoothstep(-0.15, 0.35, -(cb.inverse() * dn).z)
-	var anat := cb * Vector3(0.75 * sg, -0.45, -0.45).lerp(Vector3(0.85 * sg, -0.15, -0.5), behind)
+	var anat := cb * Vector3(0.75 * sg, -0.45, -0.45).lerp(Vector3(0.9 * sg, -0.15, -0.4), behind)
 	# ... half of it the least-twist side: the rest arm swung onto the target's line (its back, -Z, is the elbow's side)
 	var R0 := Gp.basis.orthonormalized() * sk.get_bone_rest(u).basis.orthonormalized()
 	var zs := RigIK.arc(R0.y.normalized(), dn) * -R0.z
 	anat = (anat.normalized() + zs.normalized() * (1.0 - behind)).normalized()
-	var pv := RigIK.pole(dn, (E - S).normalized() * anim_pole + anat * (1.0 - anim_pole * 0.7), anat * 0.3)
+	var pv := RigIK.pole(dn, (E - S).normalized() * anim_pole + anat * (1.0 - anim_pole), anat * 0.3)
 	pv = (pv - dn * pv.dot(dn)).normalized()
 	# the elbow swivels round the arm's line no faster than a real arm (a straight arm's pole is unsteady)
 	var pp: Vector3 = _pole_prev[s]
