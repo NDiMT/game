@@ -50,7 +50,10 @@ func _ready() -> void:
 	level.commit()
 	World3.post(level, self, level)
 	ch.post()
-	for id in ch.pz: (ch.pz[id] as Puzzle).solved.connect(func(_i: String) -> void: _save_soon = true)     # (a solve is never lost)
+	for id in ch.pz:
+		var pz := ch.pz[id] as Puzzle
+		pz.solved.connect(func(_i: String) -> void: _save_soon = true)     # (a solve is never lost)
+		pz.hinted.connect(func(_i: String) -> void: highlight.flare(space, 3.0))      # (a hint: the space's glints flare)
 	WingArt.dress_all(self)          # (A: swaps the beats' placeholders by name; idempotent)
 	Dress3.dress_all(level, level)
 	highlight = Highlight.new()
@@ -266,6 +269,7 @@ func _process(dt: float) -> void:
 	else: controls.show_interact("")
 	_update_lens()
 	highlight.update(dt)
+	highlight.glints(level, player.position, dt, space, mode == "play" and not _acting)
 	if prof_on: t0 = _pm("focus_lens_hl", t0)
 	Flame.cull(player.position, dt)
 	if prof_on: t0 = _pm("flames", t0)
@@ -349,6 +353,15 @@ func _music3() -> void:
 		if ch.pz.has(w[0]) and (ch.pz[w[0]] as Puzzle).done: nxt = w[1]
 	sfx.near["atrium"] = [nxt]
 	sfx.set_area(k)
+
+## (clarity pass) every tap that acts answers at once: a soft click and a glint over the thing, before her clip lands
+func try_interact() -> bool:
+	var it := focus
+	if not super.try_interact(): return false
+	if it:
+		if sfx: sfx.play("click", -22.0, 1.25)
+		if juice: juice.glint(highlight.anchor(it))
+	return true
 
 # ------------------------------------------------------------------ the heroine acts (A's clips at each interaction)
 ## she turns to `at`, plays `clip` (reach, pickup, kneel_touch, touch_glass) and calls `then` at the clip's contact

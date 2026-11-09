@@ -124,3 +124,109 @@ func update(dt: float) -> void:
 	rk = minf(1.0, rk + dt / FADE) if ring_on else maxf(0.0, rk - dt / FADE)
 	_ring_mat.set_shader_parameter("k", rk)
 	_ring.visible = rk > 0.0
+
+# ---------------------------------------------------------------- (v3 clarity) the glints: what can be touched reads from afar
+## Every interact she can use now, within GLINT_R but not yet in reach, wears a small crimson twinkle over the thing it
+## acts on (the nearest MAX_GLINTS; the one in reach has the overlay instead). A beat's hint flares its space's glints.
+const GLINT_R := 6.5
+const MAX_GLINTS := 4
+const GLINT_SH := """shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
+global uniform vec4 accent;
+uniform float k = 0.0;
+uniform float ph = 0.0;
+void vertex() {
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
+}
+void fragment() {
+	vec2 q = UV * 2.0 - 1.0;
+	float r = length(q);
+	float tw = 0.6 + 0.4 * pow(0.5 + 0.5 * sin(TIME * 2.2 + ph), 2.0);
+	// a four-point star (arms thin out to the tips), a bright heart, a faint ring: reads at ~30 px on a phone
+	float star = max(0.0, 1.0 - abs(q.x) * 5.0 - abs(q.y) * 1.05) + max(0.0, 1.0 - abs(q.y) * 5.0 - abs(q.x) * 1.05);
+	float core = exp(-r * r * 30.0);
+	float ring = smoothstep(0.1, 0.0, abs(r - 0.42 - 0.08 * tw)) * 0.45;
+	float a = clamp(star * 1.2 + core + ring, 0.0, 1.0);
+	// (mixed, not added: an added crimson vanishes on the pale marble) a deep crimson star with a pale heart
+	ALBEDO = mix(accent.rgb * 0.95, vec3(1.0, 0.82, 0.8), clamp(core * 1.3, 0.0, 1.0));
+	ALPHA = a * clamp(k, 0.0, 1.0) * tw;
+}
+"""
+var _gl_sh: Shader
+var _gl_pool: Array[MeshInstance3D] = []
+var _gl_of := {}                  # interact id -> its glint mesh (this frame's)
+var _gl_anchor := {}              # interact id -> the point over the thing it acts on (found once)
+var _flare := {}                  # space key -> seconds of hint flare left
+
+func flare(space_key: String, s := 2.5) -> void:
+	_flare[space_key] = s
+
+func anchor(it: Level.Interact) -> Vector3:
+	if _gl_anchor.has(it.id): return _gl_anchor[it.id]
+	var ms := targets(it)
+	var a := it.pos + Vector3(0, 0.95, 0)
+	if not ms.is_empty():
+		var bb := ms[0].global_transform * ms[0].get_aabb()
+		if bb.size.y < 2.4: a = Vector3(bb.get_center().x, bb.end.y + 0.18, bb.get_center().z)
+	_gl_anchor[it.id] = a
+	return a
+
+## called each play frame by the game (after the focus is chosen), with the space she stands in
+func glints(level: Level, p: Vector3, dt: float, space_key: String, on: bool) -> void:
+	for s in _flare.keys():
+		_flare[s] = float(_flare[s]) - dt
+		if _flare[s] <= 0.0: _flare.erase(s)
+	var pick: Array = []
+	if on:
+		for it in level.interacts:
+			if not it.enabled or it.id == id: continue
+			if absf(it.pos.y - p.y) > 2.0: continue
+			var d := Vector2(it.pos.x - p.x, it.pos.z - p.z).length()
+			if d > GLINT_R or d < it.radius * 0.8: continue
+			if it.cond.is_valid() and not it.cond.call(): continue
+			pick.append([d, it])
+		pick.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+		pick.resize(mini(pick.size(), MAX_GLINTS))
+	var want := {}
+	for e in pick: want[(e[1] as Level.Interact).id] = e[1]
+	var fl := 1.0 + (1.2 if _flare.has(space_key) else 0.0)
+	# fade out the ones no longer wanted, in the ones that are
+	for gid in _gl_of.keys():
+		var mi: MeshInstance3D = _gl_of[gid]
+		var m := mi.material_override as ShaderMaterial
+		var kk: float = m.get_shader_parameter("k")
+		if want.has(gid): kk = move_toward(kk, 0.7 * fl, dt * 2.5)
+		else: kk = move_toward(kk, 0.0, dt * 3.0)
+		m.set_shader_parameter("k", kk)
+		if kk <= 0.0 and not want.has(gid):
+			mi.visible = false
+			_gl_pool.append(mi)
+			_gl_of.erase(gid)
+	for gid in want:
+		if _gl_of.has(gid): continue
+		var mi := _gl_get()
+		if mi == null: break
+		mi.global_position = anchor(want[gid])
+		(mi.material_override as ShaderMaterial).set_shader_parameter("ph", float(hash(gid) % 628) / 100.0)
+		mi.visible = true
+		_gl_of[gid] = mi
+
+func _gl_get() -> MeshInstance3D:
+	if not _gl_pool.is_empty(): return _gl_pool.pop_back()
+	if _gl_of.size() >= MAX_GLINTS + 2: return null
+	if _gl_sh == null:
+		_gl_sh = Shader.new()
+		_gl_sh.code = GLINT_SH
+	var m := ShaderMaterial.new()
+	m.shader = _gl_sh
+	m.render_priority = 4
+	m.set_shader_parameter("k", 0.0)
+	var q := QuadMesh.new()
+	q.size = Vector2(0.62, 0.62)
+	var mi := MeshInstance3D.new()
+	mi.mesh = q
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.layers = PlanarMirror.LAYER_MAIN_FX
+	add_child(mi)
+	return mi

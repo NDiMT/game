@@ -17,7 +17,7 @@ var space := ""
 var game: Game
 var done := false
 var state := {}
-var hint_after := 45.0
+var hint_after := 30.0           # (clarity pass: 45 s was long; the space's glints flare with it)
 var idle_t := 0.0
 var hint_given := false
 var gates: Array = []           # [Gate]: closed doorways this puzzle opens

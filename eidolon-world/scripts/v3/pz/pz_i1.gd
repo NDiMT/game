@@ -12,6 +12,7 @@ var _on := 0.0
 
 func build() -> void:
 	gate("I1", "I2")
+	hint_after = 15.0            # (the first beat: the water ripples over the plate early)
 
 func post() -> void:
 	# (4.5 cm over the floor: the mirror camera drops marble only 3 cm or more below the plane; nearer, the floor
@@ -37,7 +38,11 @@ func post() -> void:
 func tick(dt: float) -> void:
 	if done: return
 	if near(PLATE, 0.55):
-		if _on == 0.0: progress()
+		if _on == 0.0:
+			progress()
+			# (clarity) the water answers her step onto the plate at once: a ring, a low glass note
+			if game.juice: game.juice.ring(PLATE + Vector3(0, 0.05, 0), 1.6, 1.2)
+			if game.sfx: game.sfx.play("chime", -18.0, 0.9)
 		_on += dt
 		if _on >= HOLD: solve()
 	else:
@@ -45,6 +50,9 @@ func tick(dt: float) -> void:
 
 func hint() -> void:
 	if water: water.reach_override = 0.6          # her hand points down at the plate
+	if game.juice:                                  # and the water ripples where it lies
+		game.juice.ring(PLATE + Vector3(0, 0.05, 0), 1.4, 1.6)
+		get_tree().create_timer(0.7).timeout.connect(func() -> void: game.juice.ring(PLATE + Vector3(0, 0.05, 0), 1.0, 1.4))
 
 func on_solved() -> void:
 	if water: water.reach_override = -1.0
