@@ -20,6 +20,8 @@ var bg_c := Color("2c6379")
 var pals := {}
 var shadow_c := Vector3(0.66, 0.66, 0.86)
 var hero_style := 1
+var mist_k := 0.96
+var fog_k := 1.0
 var face_m: ShaderMaterial
 var veil_m: ShaderMaterial
 const PALS := {
@@ -41,7 +43,7 @@ render_mode ambient_light_disabled, specular_disabled;
 uniform vec3 c_top : source_color; uniform vec3 c_z : source_color; uniform vec3 c_x : source_color;
 uniform vec3 fog_col : source_color;
 uniform vec4 l0; uniform vec4 l1; uniform vec4 l2; uniform vec4 l3; uniform vec4 l4; uniform vec4 l5;
-uniform float sway = 0.0; uniform float time_s = 0.0; uniform float marble = 0.0; uniform float rim = 0.0; uniform float flat_n = 0.0; uniform vec3 shadow_col = vec3(0.66, 0.66, 0.86); uniform vec3 centre; uniform float mist_r = 7.0; uniform vec3 mist_col : source_color;
+uniform float sway = 0.0; uniform float time_s = 0.0; uniform float marble = 0.0; uniform float rim = 0.0; uniform float flat_n = 0.0; uniform vec3 shadow_col = vec3(0.66, 0.66, 0.86); uniform float mist_k = 0.96; uniform vec3 centre; uniform float mist_r = 7.0; uniform vec3 mist_col : source_color;
 varying vec3 wp; varying vec3 wn;
 float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -74,7 +76,7 @@ void fragment(){
 	col = mix(col, col * vec3(1.06, 0.97, 0.80) + vec3(0.09, 0.055, 0.0), clamp(l, 0.0, 1.0) * 0.85);
 	col = mix(col, fog_col, smoothstep(-1.35, -4.6, wp.y) * 0.9);
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
-	col = mix(col, mist_col, smoothstep(mist_r * 0.8, mist_r * 1.7, md) * 0.96);
+	col = mix(col, mist_col, smoothstep(mist_r * 0.8, mist_r * 1.7, md) * mist_k);
 	ALBEDO = col; ROUGHNESS = 1.0;
 }
 void light(){
@@ -109,12 +111,12 @@ void fragment(){
 }"""
 const SH_SEA := """shader_type spatial;
 render_mode unshaded, cull_disabled;
-uniform vec3 near_col : source_color; uniform vec3 far_col : source_color; uniform vec3 centre; uniform float mist_r = 7.0; uniform float time_s = 0.0;
+uniform vec3 near_col : source_color; uniform vec3 far_col : source_color; uniform vec3 centre; uniform float mist_r = 7.0; uniform float time_s = 0.0; uniform float mist_k = 1.0;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
-	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md);
+	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
 	float lines = smoothstep(0.93, 0.995, sin(p.x * 2.3 + sin(p.y * 1.7 + time_s * 0.45) * 1.9 + time_s * 0.2) * 0.5 + 0.5);
 	float sp = smoothstep(0.985, 1.0, sin(p.x * 9.1 + time_s * 1.3) * sin(p.y * 8.3 - time_s * 1.1));
@@ -261,7 +263,7 @@ func pal(n: String, variant := "") -> ShaderMaterial:
 	if pmats.has(key): return pmats[key]
 	var m := ShaderMaterial.new(); m.shader = shaders["two" if variant in ["2", "flat2"] else "base"]
 	m.set_shader_parameter("c_top", Color(pals[n][0])); m.set_shader_parameter("c_z", Color(pals[n][1]))
-	m.set_shader_parameter("c_x", Color(pals[n][2])); m.set_shader_parameter("fog_col", sea_c); m.set_shader_parameter("mist_col", mist_c); m.set_shader_parameter("shadow_col", shadow_c)
+	m.set_shader_parameter("c_x", Color(pals[n][2])); m.set_shader_parameter("fog_col", sea_c); m.set_shader_parameter("mist_col", mist_c); m.set_shader_parameter("shadow_col", shadow_c); m.set_shader_parameter("mist_k", mist_k)
 	if variant == "sway": m.set_shader_parameter("sway", 1.0); m.set_shader_parameter("flat_n", 1.0); timed.append(m)
 	if variant == "flat" or variant == "flat2": m.set_shader_parameter("flat_n", 1.0)
 	if n in ["stone", "shade", "sand", "rose"]: m.set_shader_parameter("marble", 1.0)
@@ -299,7 +301,7 @@ func blk(a: Vector3, b: Vector3, p := "stone", parent: Node = self) -> MeshInsta
 
 func prim(mesh: Mesh, p: Vector3, m: Material, parent: Node = self) -> MeshInstance3D:
 	var mi := MeshInstance3D.new(); mi.mesh = mesh; mi.position = p; mi.material_override = m; parent.add_child(mi)
-	var solid: bool = m is ShaderMaterial and ((m as ShaderMaterial).shader == shaders["base"] or (m as ShaderMaterial).shader == shaders["two"] or (m as ShaderMaterial).shader == shaders["cloth"])
+	var solid: bool = m is ShaderMaterial and ((m as ShaderMaterial).shader == shaders["base"] or (shaders.has("tex") and (m as ShaderMaterial).shader == shaders["tex"]) or (m as ShaderMaterial).shader == shaders["two"] or (m as ShaderMaterial).shader == shaders["cloth"])
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if solid else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
@@ -763,6 +765,19 @@ func _ready() -> void:
 		"jade": [["fbf3e3", "ecdcc6", "b3a9a6"], ["f1e7d4", "dccab2", "a39a98"], "2f8f7f", "cfe6d6", "2a9a86", "9fe6cf", Vector3(0.64, 0.74, 0.76), ["3f7f6a", "2c6457", "1f4a48"], ["a5caa4", "7dab89", "56877b"]],
 		"dawn": [["fffaf4", "fbe3dc", "d9b9cf"], ["fbf0e8", "f1d3cc", "c8a8c0"], "e8a6a4", "fde3d6", "e39a9c", "ffd9cc", Vector3(0.84, 0.68, 0.82), ["9a9ab8", "7c7ca6", "5e5e8e"], ["cdbac9", "ae9cb5", "8c7b9e"]],
 	}
+	var bold := {
+		"coral": [["ffe9d2", "ff9f8a", "b0527e"], ["ffd9bd", "f08874", "9a4470"], "1f6f8f", "8fc0cc", "1f8fa0", "8fe6dc", Vector3(0.62, 0.5, 0.78), ["2f7a6a", "1f6058", "154648"], ["8fd0a8", "5fae8c", "3a8474"]],
+		"citrus": [["fff3c4", "ffc24a", "e0703c"], ["ffe7a8", "f2ae36", "c85e30"], "2b4a9b", "8ea6dc", "2f5fb8", "9fc4ff", Vector3(0.72, 0.55, 0.62), ["2f7f5a", "226648", "164c3a"], ["9fd27a", "74b05a", "4c8848"]],
+		"lagoon": [["eafff4", "7fe0c4", "3a9aa8"], ["d6f7e6", "68cdb2", "2f8696"], "20306e", "7f8fc8", "2a3f8c", "8fb0ff", Vector3(0.5, 0.62, 0.8), ["2a6a7a", "1f5466", "153e52"], ["bfeec0", "8fd09c", "5fa884"]],
+		"rosewater": [["fff0f3", "f7a8c4", "9a6ad0"], ["ffe0e8", "e892b2", "865abc"], "3fb8c8", "b9e6ea", "36a8ba", "b6f2ee", Vector3(0.7, 0.56, 0.84), ["5a6ab0", "46549a", "343f80"], ["cfe0a8", "a6c486", "7ea070"]],
+	}
+	var bn := OS.get_environment("PAL")
+	if bold.has(bn):
+		var tb: Array = bold[bn]
+		pals["stone"] = tb[0]; pals["sand"] = tb[0]; pals["shade"] = tb[1]; pals["terra"] = tb[1]; pals["rose"] = tb[1]
+		sea_c = Color(tb[2]); mist_c = Color(tb[3]); water_deep = Color(tb[4]); water_shallow = Color(tb[5]); bg_c = Color(tb[2]).darkened(0.2); shadow_c = tb[6]
+		pals["cyp"] = tb[7]; pals["leaf"] = tb[8]; pals["leaf2"] = tb[8]; pals["leaf3"] = tb[8]
+		mist_k = 0.55; fog_k = 0.4
 	var pn := OS.get_environment("PAL")
 	if tones.has(pn):
 		var tn: Array = tones[pn]
@@ -772,6 +787,11 @@ func _ready() -> void:
 		pals["dress"] = [Color(tn[1][0]).darkened(0.08).to_html(false), Color(tn[1][1]).darkened(0.1).to_html(false), Color(tn[1][2]).darkened(0.1).to_html(false)]
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
+	var st2 := Shader.new()
+	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;").replace(
+		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
+		"vec3 tx = texture(albedo_tex, UV).rgb; float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
+	shaders["tex"] = st2
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
 	var n0 := get_child_count()
@@ -790,6 +810,7 @@ func _ready() -> void:
 	if "gallery" in OS.get_cmdline_user_args(): _gallery()
 	if "shots" in OS.get_cmdline_user_args(): _shots()
 	if "lineup" in OS.get_cmdline_user_args(): _lineup()
+	if "reals" in OS.get_cmdline_user_args(): _real_lineup()
 	if "zoom" in OS.get_cmdline_user_args(): cam.size = 3.3
 	if auto:
 		get_viewport().msaa_3d = Viewport.MSAA_2X
@@ -859,9 +880,75 @@ func _fog() -> void:
 	var q := QuadMesh.new(); q.size = Vector2(260, 260); q.orientation = PlaneMesh.FACE_Y
 	for L in [[WATER + 0.18, 0.5, 0.02, Vector2(0.006, 0.003), 0.0, 1], [WATER + 0.8, 0.42, 0.015, Vector2(-0.004, 0.005), 0.0, 2], [0.25, 0.3, 0.02, Vector2(0.008, -0.005), 0.0, 3]]:
 		var m := ShaderMaterial.new(); m.shader = shaders["fog"]; m.render_priority = L[5]
-		m.set_shader_parameter("noise_tex", nt); m.set_shader_parameter("dens", L[1]); m.set_shader_parameter("scale", L[2])
+		m.set_shader_parameter("noise_tex", nt); m.set_shader_parameter("dens", L[1] * fog_k); m.set_shader_parameter("scale", L[2])
 		m.set_shader_parameter("vel", L[3]); m.set_shader_parameter("clear_r", L[4]); m.set_shader_parameter("col", Color("f1e8ef"))
 		prim(q, Vector3(0, L[0], 0), m); fogs.append(m); timed.append(m)
+
+## one of the real sculpted heroine models, dressed in the flat style of this world
+func real_hero(file: String, at: Vector3, yaw: float, anim := "", arms_down := false) -> Node3D:
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) != OK: return null
+	var src := doc.generate_scene(st) as Node3D
+	var holder := Node3D.new(); holder.position = at; holder.rotation.y = yaw; add_child(holder); holder.add_child(src)
+	if file == "tripo_v1": src.rotation.y = -PI * 0.5
+	var bb := AABB(); var first := true
+	for m in src.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		for si in mi.mesh.get_surface_count():
+			var om := mi.mesh.surface_get_material(si)
+			var sm := ShaderMaterial.new(); sm.shader = shaders["tex"]
+			sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
+			if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
+			mi.set_surface_override_material(si, sm); pmats["tex|%s|%d" % [file, si]] = sm
+		var a: AABB = mi.global_transform * mi.get_aabb()
+		if first: bb = a; first = false
+		else: bb = bb.merge(a)
+	var a2 := holder.global_transform.affine_inverse() * bb
+	var sc := 1.72 / maxf(a2.size.y, 0.001)
+	src.scale *= sc; src.position -= Vector3(a2.get_center().x, a2.position.y, a2.get_center().z) * sc
+	var ap := src.find_children("*", "AnimationPlayer", true, false)
+	if anim != "" and not ap.is_empty():
+		var pl := ap[0] as AnimationPlayer
+		if pl.has_animation(anim):
+			pl.get_animation(anim).loop_mode = Animation.LOOP_LINEAR; pl.play(anim)
+	if arms_down:
+		for sk in src.find_children("*", "Skeleton3D", true, false):
+			var skel := sk as Skeleton3D
+			for side in [["L_Upperarm", "L_Forearm", 1.0], ["R_Upperarm", "R_Forearm", -1.0]]:
+				var bi := skel.find_bone(side[0]); var ci := skel.find_bone(side[1])
+				if bi < 0 or ci < 0: continue
+				var g := skel.get_bone_global_rest(bi); var c := skel.get_bone_global_rest(ci)
+				var cur := (c.origin - g.origin).normalized()
+				var side_dir := signf(cur.x) if absf(cur.x) > 0.2 else float(side[2])
+				var want := Vector3(side_dir * 0.2, -1.0, 0.06).normalized()
+				var q := Quaternion(cur, want)
+				skel.set_bone_global_pose(bi, Transform3D(Basis(q) * g.basis, g.origin))
+	return holder
+
+func _real_lineup() -> void:
+	started = true; title_box.hide(); hint.hide()
+	pos = Vector3(60, 0, 60)
+	var c := Vector3(0.2, 0, 0.3)
+	var dir := Vector3(1, 0, -1).normalized()
+	var names := [["tripo_v1", "idle", false], ["porcelain", "", true], ["h4", "", true]]
+	var hs := []
+	for i in 3:
+		hs.append(real_hero(names[i][0], c + dir * ((i - 1) * 1.5), PI * 0.25, names[i][1], names[i][2]))
+		var l := Label3D.new(); l.text = ["A", "B", "C"][i]; l.font_size = 96; l.pixel_size = 0.004; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		l.modulate = Color(0.72, 0.14, 0.18); l.outline_modulate = Color(1, 1, 1, 0.9); l.no_depth_test = true
+		l.position = c + dir * ((i - 1) * 1.5) + Vector3(0.75, 0.05, 0.75); add_child(l)
+	var dirn := OS.get_environment("SHOT_DIR")
+	await get_tree().create_timer(2.5).timeout
+	for view in [["real-front", PI * 0.25], ["real-back", PI * 1.12]]:
+		shot = {"c": c + Vector3(0, 0.95, 0), "s": 5.4}
+		cam.size = 5.4
+		for h in hs:
+			if h != null: (h as Node3D).rotation.y = view[1]
+		await get_tree().create_timer(0.8).timeout
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dirn, view[0]])
+		print("SHOT ", view[0])
+	get_tree().quit()
 
 func _lineup() -> void:
 	started = true; title_box.hide(); hint.hide()
@@ -909,7 +996,7 @@ func _env() -> void:
 	var sq := QuadMesh.new(); sq.size = Vector2(260, 260); sq.orientation = PlaneMesh.FACE_Y
 	foam_mat = ShaderMaterial.new(); foam_mat.shader = shaders["foam"]; timed.append(foam_mat)
 	sea_mat = ShaderMaterial.new(); sea_mat.shader = shaders["sea"]
-	sea_mat.set_shader_parameter("near_col", sea_c); sea_mat.set_shader_parameter("far_col", mist_c)
+	sea_mat.set_shader_parameter("near_col", sea_c); sea_mat.set_shader_parameter("far_col", mist_c); sea_mat.set_shader_parameter("mist_k", clampf(mist_k + 0.15, 0.0, 1.0))
 	prim(sq, Vector3(0, WATER, 0), sea_mat)
 	var flies := _particles(26, 7.0, Vector3(5, 0.6, 9), 0.05, Color(1.0, 0.82, 0.45, 0.85), Vector3(0, 0.02, 0), 0.12, true)
 	flies.position = Vector3(0, 0.5, -48); flies.rotation.x = PI * 0.5; cam.add_child(flies)
