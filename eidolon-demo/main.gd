@@ -19,12 +19,12 @@ var water_shallow := Color("79d8c6")
 var bg_c := Color("2c6379")
 var pals := {}
 var shadow_c := Vector3(0.66, 0.66, 0.86)
-var hero_style := 1
+var hero_style := 5
 var hero_src: Node3D
 var H := {}
 var ghost_flat: StandardMaterial3D
 var walk_on := false
-var hero_real := true
+var hero_real := false
 
 ## arms that reach for a point and a spine that bows, on top of whatever animation is playing
 class HerMod extends SkeletonModifier3D:
@@ -845,7 +845,7 @@ func _ready() -> void:
 		pals["dress"] = [Color(tn[1][0]).darkened(0.08).to_html(false), Color(tn[1][1]).darkened(0.1).to_html(false), Color(tn[1][2]).darkened(0.1).to_html(false)]
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
-	hero_real = OS.get_environment("REAL") != "0"
+	hero_real = OS.get_environment("REAL") == "1"
 	var st2 := Shader.new()
 	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
