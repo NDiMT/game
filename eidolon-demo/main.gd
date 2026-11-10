@@ -864,16 +864,18 @@ func _ready() -> void:
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	var sb := Shader.new()
 	sb.code = SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;").replace(
-		"uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform vec3 trail = vec3(0.0); uniform vec3 grad_lo = vec3(0.82, 0.83, 0.9); varying float hv;").replace(
+		"uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform vec3 trail = vec3(0.0); uniform vec3 grad_lo = vec3(0.74, 0.75, 0.84); varying float hv;").replace(
 		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", """	float hh = clamp(VERTEX.y / 1.72, 0.0, 1.0); hv = hh;
 	float wgt = pow(1.0 - smoothstep(0.0, 0.62, hh), 1.5);
 	float rr = length(VERTEX.xz); vec2 rad = VERTEX.xz / max(rr, 0.001); float ang = atan(VERTEX.x, VERTEX.z);
 	float edge = smoothstep(0.03, 0.16, rr);
 	VERTEX.xz += trail.xz * wgt;
+	vec2 tv = trail.xz * 0.35; tv.y = max(tv.y, -0.012);
+	VERTEX.xz += (tv + vec2(sin(time_s * 1.3 + VERTEX.y * 9.0), 0.6 + cos(time_s * 1.05 + VERTEX.x * 14.0)) * 0.006) * COLOR.r;
 	VERTEX.xz += rad * (sin(time_s * 1.4 + ang * 3.0 + hh * 5.0) * 0.016 + sin(time_s * 0.8 - ang * 2.0) * 0.01) * wgt * edge;
 	VERTEX.y += trail.y * wgt * edge * (0.6 + 0.4 * sin(time_s * 1.1 + ang * 2.0));
 	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;""").replace(
-		"	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));", "	col *= mix(grad_lo, vec3(1.0), smoothstep(0.08, 0.8, hv));")
+		"	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));", "	col *= mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv));")
 	shaders["body"] = sb
 	var st2 := Shader.new()
 	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
@@ -1127,10 +1129,55 @@ func bake_shape(file: String) -> ArrayMesh:
 	var sc := 1.72 / maxf(hi.y - lo.y, 0.001)
 	var c := Vector3(cx / maxf(cn, 1.0), lo.y, cz / maxf(cn, 1.0))
 	for i in vs.size(): vs[i] = (vs[i] - c) * sc
-	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_INDEX] = ix
+	var cols := PackedColorArray(); cols.resize(vs.size()); cols.fill(Color(0, 0, 0))
+	if FACE_VEIL.has(file) and OS.get_environment("NOVEIL") != "1": add_face_veil(FACE_VEIL[file], vs, ns, cols, ix)
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_COLOR] = cols; arr[Mesh.ARRAY_INDEX] = ix
 	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	print("SHAPE ", file, " verts ", vs.size(), " tris ", ix.size() / 3)
 	return am
+
+## where the head of each figure is, so a cloth can be laid over the face
+const FACE_VEIL := {"min9": {"cx": -0.008, "cz": 0.03, "rx": 0.108, "rzf": 0.139, "rzb": 0.12, "top": 1.752, "eq": 1.62, "chin": 1.5, "hem": 1.365}}
+
+func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array, cols: PackedColorArray, ix: PackedInt32Array) -> void:
+	var NT := 30; var NV := 20; var TH := deg_to_rad(104.0)
+	var base := vs.size()
+	var pts: Array = []; var wts: Array = []
+	for iv in NV + 1:
+		var v := float(iv) / NV
+		for it in NT + 1:
+			var th := lerpf(-TH, TH, float(it) / NT)
+			var a := absf(th) / TH
+			var hem: float = d.hem + 0.11 * a * a + 0.006 * cos(th * 9.0)
+			var f := 1.0; var y := 0.0; var w := 0.0
+			var tuck := 0.14 * smoothstep(0.62, 1.0, a)
+			if v < 0.4:
+				var ph := v / 0.4 * PI * 0.5
+				f = pow(sin(ph), 0.6) * (1.0 - tuck)
+				y = d.top - (d.top - d.eq) * (1.0 - cos(ph))
+			else:
+				var q := (v - 0.4) / 0.6
+				y = lerpf(d.eq, hem, q)
+				var below := clampf((d.eq - y) / (d.eq - d.chin), 0.0, 1.0)
+				f = (1.0 - tuck * (1.0 - below)) * (1.0 + 0.05 * q + 0.012 * cos(th * 8.0) * q)
+				w = q
+			var rz: float = d.rzf if cos(th) > 0.0 else d.rzb
+			pts.append(Vector3(d.cx + d.rx * f * sin(th), y, d.cz + rz * f * cos(th))); wts.append(w)
+	var W := NT + 1
+	for iv in NV + 1:
+		for it in NT + 1:
+			var pp: Vector3 = pts[iv * W + it]
+			var du: Vector3 = pts[iv * W + mini(it + 1, NT)] - pts[iv * W + maxi(it - 1, 0)]
+			var dv: Vector3 = pts[mini(iv + 1, NV) * W + it] - pts[maxi(iv - 1, 0) * W + it]
+			var n := dv.cross(du)
+			var out := Vector3(pp.x - d.cx, 0.0, pp.z - d.cz)
+			if n.length() < 1e-7: n = Vector3.UP
+			elif n.dot(out) < 0.0: n = -n
+			vs.append(pp); ns.append(n.normalized()); cols.append(Color(wts[iv * W + it], 0, 0))
+	for iv in NV:
+		for it in NT:
+			var a0 := base + iv * W + it
+			ix.append_array(PackedInt32Array([a0, a0 + 1, a0 + W, a0 + 1, a0 + W + 1, a0 + W]))
 
 func body_mat(pl: String, key: String) -> ShaderMaterial:
 	var m := ShaderMaterial.new(); m.shader = shaders["body"]
