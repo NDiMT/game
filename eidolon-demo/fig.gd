@@ -64,7 +64,7 @@ func _lathe_node(parent: Node3D, prof: Array, c: String, back := 0.0) -> MeshIns
 
 func _prim(parent: Node3D, mesh: Mesh, c: String) -> MeshInstance3D:
 	var mi := MeshInstance3D.new(); mi.mesh = mesh; mi.material_override = _m(c); parent.add_child(mi)
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if ghost else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	return mi
 
 func _dyn(c: String) -> MeshInstance3D:
@@ -78,6 +78,7 @@ func _ball(parent: Node3D, r: float, h: float, c: String, p: Vector3) -> MeshIns
 func build(kind: int, maker: Callable, cloth_mat: Material, face_mat: Material) -> void:
 	ghost = kind == 1; mk = maker; cloth = cloth_mat
 	if kind == 2: remap = {"dress": "crim", "crim": "gold"}
+	if kind == 3: remap = {"dress": "marble", "veil": "marble", "skin": "marble", "crim": "shade"}
 	if ghost:
 		ghost_mat = StandardMaterial3D.new()
 		ghost_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
