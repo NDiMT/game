@@ -1129,7 +1129,10 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	world = Node3D.new(); world.name = "World"; add_child(world)
 	for c in get_children().slice(n0):
 		if c != world: c.reparent(world)
-	refl = world.duplicate(); refl.name = "Refl"; add_child(refl)
+	# the old upside-down copy of the whole world under the sea is gone: it fought with the dark reflections
+	# that now lie on the water, and it doubled the scene. The node stays for the few things made only for it
+	refl = world.duplicate() if OS.get_environment("OLDREFL") == "1" else Node3D.new()
+	refl.name = "Refl"; add_child(refl)
 	for nm in ["MirrorPool", "PoolSky"]:   # the copy of the world under the sea must not repeat the pool's own mirror
 		var extra := refl.get_node_or_null(nm)
 		if extra != null: refl.remove_child(extra); extra.queue_free()
@@ -1211,6 +1214,7 @@ func _shots() -> void:
 		{"n": "17-shadow-bridge", "p": Vector3(5.42, 0, 1.0), "y": 1.57, "c": Vector3(6.3, -0.2, 1.3), "s": 7.6},
 		{"n": "18-mirror-pool", "p": Vector3(CX, 0, -1.14), "y": 0.0, "c": Vector3(-0.6, 0.1, -0.1), "s": 5.2},
 		{"n": "19-mirror-pool-wide", "p": Vector3(CX, 0, -1.14), "y": 0.0, "c": Vector3(-1.4, 0.3, 0.7), "s": 13.5},
+		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
 	var only := OS.get_environment("SHOT_ONLY")
@@ -2639,7 +2643,8 @@ func _process(dt: float) -> void:
 		"hold": a_hold, "raise": a_raise, "open": a_open, "wL": a_wL, "wR": a_wR, "tL": tgtL, "tR": tgtR,
 	}
 	fig.apply(st); wfig.apply(st)
-	for k in ["Bridge", "Cap", "Door", "Boat"]: (refl.get_node(k) as Node3D).transform = (world.get_node(k) as Node3D).transform
+	for k in ["Bridge", "Cap", "Door", "Boat"]:
+		if refl.has_node(k): (refl.get_node(k) as Node3D).transform = (world.get_node(k) as Node3D).transform
 	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
 	ghost.visible = (not hero_real) and shape_file == "" and near > 0.01
 	if shape_file != "":
