@@ -27,6 +27,7 @@ var walk_on := false
 var rem_dist := 0.0
 var floor_mats: Array = []
 var rig_norm := {}
+var hero_src_yaw_note := true
 var hero_real := false
 var shape_file := ""
 var rig_file := ""
@@ -870,7 +871,7 @@ func _ready() -> void:
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	hero_real = OS.get_environment("REAL") == "1"
-	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp") or OS.get_environment("RIG").begins_with("sr")) else "min" + OS.get_environment("RIG"); hero_real = true
+	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp") or OS.get_environment("RIG").begins_with("sr") or OS.get_environment("RIG").begins_with("nb")) else "min" + OS.get_environment("RIG"); hero_real = true
 	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "sr3r"; hero_real = true
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	elif not hero_real and OS.get_environment("HERO") == "": shape_file = "min9t"
@@ -1274,6 +1275,18 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 	var src: Node3D = hero_src.duplicate()
 	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
 	src.scale = Vector3.ONE * 1.72; src.rotation.y = float(OS.get_environment("RIG_YAW")) if OS.get_environment("RIG_YAW") != "" else (PI * 0.5 if rig_file == "lp1r" else -PI * 0.5)
+	if rig_file != "" and OS.get_environment("RIG_YAW") == "":
+		var sk0 := src.find_children("*", "Skeleton3D", true, false)
+		if not sk0.is_empty():
+			var skq: Skeleton3D = sk0[0]; var fb := _bone(skq, "LeftFoot"); var tb := _bone(skq, "LeftToeBase")
+			if fb >= 0 and tb >= 0:
+				var fw := skq.get_bone_global_rest(tb).origin - skq.get_bone_global_rest(fb).origin
+				var fb2 := _bone(skq, "RightFoot"); var tb2 := _bone(skq, "RightToeBase")
+				if fb2 >= 0 and tb2 >= 0: fw += skq.get_bone_global_rest(tb2).origin - skq.get_bone_global_rest(fb2).origin
+				fw.y = 0.0
+				if fw.length() > 0.001:
+					src.rotation.y = -atan2(fw.x, fw.z)
+					if hero_src_yaw_note: print("RIG faces ", fw.normalized(), " -> yaw ", src.rotation.y); hero_src_yaw_note = false
 	for m in src.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if mode in ["tex", "marble"] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -1293,7 +1306,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
 				if mode == "tex": floor_mats.append(sm)
-				if rig_file.begins_with("lp") or rig_file.begins_with("sr"): sm.set_shader_parameter("flat_n", 1.0)
+				if rig_file.begins_with("lp") or rig_file.begins_with("sr") or rig_file.begins_with("nb"): sm.set_shader_parameter("flat_n", 1.0)
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
 				var rcid := int(OS.get_environment("RECOL")) if OS.get_environment("RECOL") != "" else 0
 				if RECOLS.has(rcid) and mode == "tex":
