@@ -2559,6 +2559,8 @@ func _arrive() -> void:
 
 # ---------------------------------------------------------------- frame
 func _process(dt: float) -> void:
+	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "1":
+		print("STATS objects ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME), " triangles ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), " draw calls ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), " texture MB ", snappedf(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / 1048576.0, 0.1), " mesh instances ", find_children("*", "MeshInstance3D", true, false).size())
 	t += dt
 	var target := 0.0
 	var want_yaw := yaw
