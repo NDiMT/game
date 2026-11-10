@@ -873,6 +873,7 @@ func _ready() -> void:
 uniform vec3 hipL; uniform vec3 kneeL; uniform vec3 footL; uniform vec3 hipR; uniform vec3 kneeR; uniform vec3 footR;
 uniform vec3 rkneeL; uniform vec3 rfootL; uniform vec3 rkneeR; uniform vec3 rfootR;
 uniform vec4 armp = vec4(0.17, 1.4, -0.01, -0.012); uniform float arm_on = 0.0; uniform float adduct = 0.0; uniform vec2 swing = vec2(0.0);
+uniform float design = 0.0; uniform vec3 o_rim : source_color = vec3(1.0, 0.95, 0.85); uniform vec3 d_shade = vec3(0.64, 0.62, 0.8); uniform float d_sheen = 0.14; uniform float trim = 1.0;
 uniform float orn = 0.0; uniform float plain = 0.0; uniform sampler2D veil_mask : source_color, filter_linear_mipmap; uniform float use_mask = 0.0; uniform float fore_y = -1.0; uniform float key_n = 24.0; uniform float sash_y = -1.0; uniform float brace_y = -1.0; uniform float veil_y = 1.46;
 uniform vec3 o_dress_hi : source_color = vec3(0.8, 0.81, 0.86); uniform vec3 o_dress_lo : source_color = vec3(0.55, 0.57, 0.68);
 uniform vec3 o_veil : source_color = vec3(0.97, 0.96, 0.93); uniform vec3 o_marble : source_color = vec3(0.99, 0.97, 0.94);
@@ -910,7 +911,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	VERTEX.y += trail.y * wgt * edge * (0.6 + 0.4 * sin(time_s * 1.1 + ang * 2.0));
 	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;""").replace(
 		"	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));",
-		"	if (use_tex > 0.0) { vec3 t0 = texture(albedo_tex, UV).rgb; float fl = smoothstep(0.035, 0.09, t0.r - t0.g) * (1.0 - smoothstep(0.24, 0.34, t0.r - t0.g)) * smoothstep(0.02, 0.07, t0.g - t0.b) * smoothstep(0.45, 0.6, t0.r); t0 = mix(t0, vec3(0.95, 0.94, 0.93) * (0.86 + 0.14 * dot(t0, vec3(0.34))), fl); vec3 tx = mix(t0, veil_col, notex); tx = mix(tx, vec3(dot(tx, vec3(0.3, 0.55, 0.15))), 0.08); col = tx * tex_gain * (wt * wt + 0.95 * wz * wz + 0.82 * wx * wx + 0.74 * (1.0 - min(s, 1.0))); }\n	col *= mix(mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv)), vec3(1.0), use_tex);\n" + ORN_FRAG)
+		"	if (use_tex > 0.0) { vec3 t0 = texture(albedo_tex, UV).rgb; float fl = smoothstep(0.035, 0.09, t0.r - t0.g) * (1.0 - smoothstep(0.24, 0.34, t0.r - t0.g)) * smoothstep(0.02, 0.07, t0.g - t0.b) * smoothstep(0.45, 0.6, t0.r); t0 = mix(t0, vec3(0.95, 0.94, 0.93) * (0.86 + 0.14 * dot(t0, vec3(0.34))), fl); vec3 tx = mix(t0, veil_col, notex); tx = mix(tx, vec3(dot(tx, vec3(0.3, 0.55, 0.15))), 0.08); col = tx * tex_gain * (wt * wt + 0.95 * wz * wz + 0.82 * wx * wx + 0.74 * (1.0 - min(s, 1.0))); }\n	col *= mix(mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv)), vec3(1.0), use_tex);\n" + ORN_FRAG + DESIGN_FRAG)
 	shaders["body"] = sb
 	var st2 := Shader.new()
 	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
@@ -1178,6 +1179,54 @@ func bake_shape(file: String) -> ArrayMesh:
 	print("SHAPE ", file, " verts ", vs.size(), " tris ", ix.size() / 3)
 	return am
 
+## the costume, redesigned: soft two-tone shading, a light on the outline, a satin sheen, one thin gold line
+const DESIGN_FRAG := """	if (design > 0.5) {
+		vec3 L = normalize(vec3(-0.62, 0.56, 0.5)); vec3 V = vec3(0.57735);
+		float kf = 0.0; float kw = smoothstep(veil_y - 0.015, veil_y + 0.015, mp.y); float fold = 1.0;
+		if (use_tex > 0.0) {
+			vec3 t1 = texture(albedo_tex, UV).rgb; float lum = dot(t1, vec3(0.3, 0.55, 0.15)); float rg = t1.r - t1.g; float kc = smoothstep(0.2, 0.34, rg);
+			kf = smoothstep(0.035, 0.09, rg) * (1.0 - kc) * smoothstep(0.02, 0.07, t1.g - t1.b) * smoothstep(0.45, 0.6, t1.r);
+			kw = smoothstep(0.7, 0.8, lum) * (1.0 - kc) * (1.0 - kf);
+			fold = clamp(mix(lum / 0.56, lum / 0.92, kw), 0.8, 1.08);
+			if (use_mask > 0.5) { vec3 t2 = texture(veil_mask, UV).rgb; kw = smoothstep(0.2, 0.34, t2.r - t2.g); kf *= 1.0 - kw; }
+		}
+		kf = max(kf, step(0.5, armw) * step(mp.y, fore_y));
+		float isveil = max(notex, kw); float ismar = kf * (1.0 - isveil);
+		float ndl = dot(n, L); float ramp = smoothstep(-0.2, 0.55, ndl);
+		float fres = pow(1.0 - clamp(dot(n, V), 0.0, 1.0), 2.4);
+		float sheen = pow(clamp(dot(n, normalize(L + V)), 0.0, 1.0), 14.0);
+		vec3 dc = mix(o_dress_lo, o_dress_hi, smoothstep(0.0, 1.0, mp.y));
+		dc *= mix(d_shade, vec3(1.0), ramp) * mix(1.0, fold, 0.6 * (1.0 - notex));
+		dc += o_rim * fres * 0.38 + vec3(1.0, 0.96, 0.9) * sheen * d_sheen;
+		vec3 gold = o_gold * (0.82 + 0.34 * ramp) + vec3(1.0, 0.9, 0.6) * sheen * 0.3;
+		dc = mix(dc, gold, step(abs(mp.y - 0.052), 0.008) * trim);
+		vec3 vc = o_veil * mix(mix(d_shade, vec3(1.0), 0.25), vec3(1.0), ramp) * mix(1.0, fold, 0.35 * (1.0 - notex)) + o_rim * fres * 0.3;
+		vc = mix(vc, gold, step(0.93, vw) * trim);
+		vec3 q2 = mp * 7.0; float w2 = fbm(q2 + vec3(fbm(q2 * 0.6 + 11.0), 0.0, fbm(q2 * 0.6 + 5.0)) * 1.6);
+		vec3 mc = o_marble * (1.0 + (w2 - 0.5) * 0.08) * mix(vec3(0.76, 0.76, 0.9), vec3(1.0), ramp);
+		mc = mix(mc, mc * vec3(0.72, 0.75, 0.88), (1.0 - smoothstep(0.0, 0.035, abs(w2 - 0.5))) * 0.65);
+		mc = mix(mc, mc * vec3(0.8, 0.81, 0.9), (1.0 - smoothstep(0.0, 0.007, abs(fbm(q2 * 1.7 + 20.0) - 0.47))) * 0.8);
+		mc += vec3(0.92, 0.94, 1.0) * fres * 0.12;
+		col = mix(mix(dc, mc, step(0.5, ismar)), vc, step(0.5, isveil));
+	}
+"""
+const DESIGNS := {
+	1: {"hi": "f1ebe1", "lo": "c9beb6", "veil": "fdfbf6", "rim": "fff4dc", "sheen": 0.1},
+	2: {"hi": "23808a", "lo": "144a59", "veil": "c9ebe6", "rim": "9fe8e0", "sheen": 0.2},
+	3: {"hi": "363d80", "lo": "1c2050", "veil": "d3d7f6", "rim": "a9b4ff", "sheen": 0.22},
+	4: {"hi": "8c2239", "lo": "50162e", "veil": "f4deda", "rim": "ff9aa0", "sheen": 0.2},
+	5: {"hi": "302d3a", "lo": "16151d", "veil": "f6f3eb", "rim": "9a94c8", "sheen": 0.24},
+	6: {"hi": "d37050", "lo": "9a4536", "veil": "f9e9d6", "rim": "ffc79a", "sheen": 0.14},
+	7: {"hi": "8c9e76", "lo": "596a4f", "veil": "f0f3e2", "rim": "dff0b8", "sheen": 0.14},
+	8: {"hi": "dfae47", "lo": "a6762a", "veil": "fff6da", "rim": "ffe9a0", "sheen": 0.18},
+}
+
+func apply_design(m: ShaderMaterial, id: int, file: String) -> void:
+	var d: Dictionary = DESIGNS[id]; var rr := rig_of(file)
+	m.set_shader_parameter("design", 1.0); m.set_shader_parameter("orn", 0.0); m.set_shader_parameter("marble", 0.0)
+	m.set_shader_parameter("o_dress_hi", Color(d.hi)); m.set_shader_parameter("o_dress_lo", Color(d.lo)); m.set_shader_parameter("o_veil", Color(d.veil))
+	m.set_shader_parameter("o_rim", Color(d.rim)); m.set_shader_parameter("d_sheen", d.sheen); m.set_shader_parameter("fore_y", rr.get("fore", -1.0))
+
 ## the drawn-on costume: marble limbs with gold seams, a pleated gown with a meander hem, a trimmed veil
 const ORN_FRAG := """	if (orn > 0.5) {
 		float shd = wt * wt + 0.95 * wz * wz + 0.84 * wx * wx + 0.76 * (1.0 - min(s, 1.0));
@@ -1290,7 +1339,7 @@ func body_mat(pl: String, key: String) -> ShaderMaterial:
 	pmats["body|" + key] = m; timed.append(m); body_mats.append(m)
 	return m
 
-func spawn_shape(parent: Node, mode: String, file := "") -> Dictionary:
+func spawn_shape(parent: Node, mode: String, file := "", design_id := -1) -> Dictionary:
 	if file == "": file = shape_file
 	if not shape_cache.has(file):
 		var bm := bake_shape(file); shape_cache[file] = {"mesh": bm, "tex": shape_tex}
@@ -1315,6 +1364,8 @@ func spawn_shape(parent: Node, mode: String, file := "") -> Dictionary:
 						if not shape_cache.has(rr.mask):
 							var mm := bake_shape(rr.mask); shape_cache[rr.mask] = {"mesh": mm, "tex": shape_tex}
 						if shape_cache[rr.mask].tex != null: m.set_shader_parameter("veil_mask", shape_cache[rr.mask].tex); m.set_shader_parameter("use_mask", 1.0)
+			if design_id < 0 and OS.get_environment("DESIGN") != "": design_id = int(OS.get_environment("DESIGN"))
+			if design_id > 0: apply_design(m, design_id, file)
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		"crim":
 			var m2 := body_mat("crim", "refl"); m2.set_shader_parameter("grad_lo", Vector3(0.8, 0.8, 0.85)); mi.material_override = m2
@@ -1351,19 +1402,23 @@ func _min_lineup() -> void:
 	var hs := []
 	var names := (OS.get_environment("MINS") if OS.get_environment("MINS") != "" else "1,2,3,4").split(",")
 	var tag := OS.get_environment("MIN_TAG")
+	var dz := OS.get_environment("DESIGNS").split(",") if OS.get_environment("DESIGNS") != "" else PackedStringArray()
+	var gap := float(OS.get_environment("MIN_SPACE")) if OS.get_environment("MIN_SPACE") != "" else 1.35
+	var vsz := float(OS.get_environment("MIN_SIZE")) if OS.get_environment("MIN_SIZE") != "" else 6.4
 	for i in names.size():
+		var off := (i - (names.size() - 1) * 0.5) * gap
 		if OS.get_environment("TEX") == "1":
-			var sd := spawn_shape(self, "main", "min" + names[i]); (sd.holder as Node3D).position = c + dir * ((i - 1.5) * 1.35); hs.append(sd.holder)
+			var sd := spawn_shape(self, "main", "min" + names[i], int(dz[i]) if i < dz.size() else -1); (sd.holder as Node3D).position = c + dir * off; hs.append(sd.holder)
 		else:
-			hs.append(load_shape("min" + names[i], c + dir * ((i - 1.5) * 1.35), PI * 0.25))
-		var l := Label3D.new(); l.text = names[i] if OS.get_environment("TEX") != "1" else "ABCDEF"[i]; l.font_size = 96; l.pixel_size = 0.004; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			hs.append(load_shape("min" + names[i], c + dir * off, PI * 0.25))
+		var l := Label3D.new(); l.text = names[i] if OS.get_environment("TEX") != "1" else (dz[i] if i < dz.size() else "ABCDEF"[i]); l.font_size = 96; l.pixel_size = 0.004 * vsz / 6.4; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		l.modulate = Color(0.72, 0.14, 0.18); l.outline_modulate = Color(1, 1, 1, 0.9); l.no_depth_test = true
-		l.position = c + dir * ((i - 1.5) * 1.35) + Vector3(0.75, 0.05, 0.75); add_child(l)
+		l.position = c + dir * off + Vector3(0.75, 0.05, 0.75) * (vsz / 6.4); add_child(l)
 	var dirn := OS.get_environment("SHOT_DIR")
 	await get_tree().create_timer(2.5).timeout
 	for view in [["minimal-front", PI * 0.25], ["minimal-back", PI * 1.12], ["minimal-side", -PI * 0.2]]:
-		shot = {"c": c + Vector3(0, 0.95, 0), "s": 6.4}
-		cam.size = 6.4
+		shot = {"c": c + Vector3(0, 0.95 if vsz > 5.0 else 0.6, 0), "s": vsz}
+		cam.size = vsz
 		for h in hs:
 			if h != null: (h as Node3D).rotation.y = view[1]
 		await get_tree().create_timer(0.8).timeout
