@@ -2071,10 +2071,12 @@ func _start_zone() -> void:
 		var spk := blk(Vector3(-0.46, -0.02, -0.022), Vector3(0.46, 0.02, 0.022), "wood", winch_a); spk.position = Vector3(0, 0.56, 0); spk.rotation.y = PI * 0.25 * i
 	for i in 7: blk(Vector3(7.7 - 0.012, 0.3 - 0.0 * i, 0.95 - 0.16 - 0.1 * i - 0.04), Vector3(7.7 + 0.012, 0.33, 0.95 - 0.16 - 0.1 * i), "dark")
 	lantern(Vector3(8.0, 0, 0.45), 1)
-	if refl_mat != null:   # what is gone above the water still lies on it as a shadow
+	if refl_mat != null:   # what is gone above the water still lies on it, pale as the marble it was
+		var refl_lost := ShaderMaterial.new(); refl_lost.shader = shaders["refl"]; refl_lost.set_shader_parameter("water_y", WATER)
+		refl_lost.set_shader_parameter("tint", Vector3(0.9, 0.84, 0.72)); refl_lost.set_shader_parameter("lift", 0.003); timed.append(refl_lost)
 		for g in [[Vector3(5.62, -0.14, 0.62), Vector3(6.95, 0.0, 1.38)], [Vector3(5.62, 0.0, 0.62), Vector3(6.95, 0.34, 0.68)], [Vector3(5.62, 0.0, 1.32), Vector3(6.95, 0.34, 1.38)]]:
-			var gm := blk(g[0], g[1], "stone"); gm.material_override = refl_mat
-		var gp := blk(Vector3(6.05, WATER, 0.75), Vector3(6.55, -0.14, 1.25), "stone"); gp.material_override = refl_mat
+			var gm := blk(g[0], g[1], "stone"); gm.material_override = refl_lost
+		var gp := blk(Vector3(6.05, WATER, 0.75), Vector3(6.55, -0.14, 1.25), "stone"); gp.material_override = refl_lost
 	# the gate of the court is a bronze grille until the winch is turned
 	gate_a = Node3D.new(); gate_a.position = Vector3(0, 0, -3.9); add_child(gate_a)
 	for i in 7: blk(Vector3(-0.54 + 0.18 * i - 0.018, 0, -0.018), Vector3(-0.54 + 0.18 * i + 0.018, 2.02, 0.018), "dark", gate_a)
@@ -2698,6 +2700,9 @@ func _eid_go(e: Dictionary, to: Vector3, speed := 0.8) -> void:
 
 func _solve1() -> void:
 	started = true; title_box.hide(); hint.show(); hint.modulate.a = 0.0
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; hint.add_theme_font_size_override("font_size", 30)
+	hint.add_theme_color_override("font_color", Color(1.0, 0.98, 0.93)); hint.add_theme_color_override("font_outline_color", Color(0.06, 0.2, 0.26)); hint.add_theme_constant_override("outline_size", 10)
+	hint.anchor_top = 0; hint.anchor_bottom = 0; hint.offset_top = 56; hint.offset_bottom = 190; hint.offset_left = 44; hint.offset_right = -44
 	gate_a.position.y = 0.0
 	pos = Vector3(2.4, 0, 1.0); yaw = PI * 0.5; cam_t = pos; cam.size = 5.4
 	await wait(1.2)
@@ -2719,7 +2724,7 @@ func _solve1() -> void:
 	cam_focus = Vector3(6.3, -0.9, 1.9); cam_focus_on = true
 	create_tween().tween_property(cam, "size", 6.6, 1.6)
 	await wait(2.0)
-	say("2 · Η αντανάκλασή της περνάει από την αντανάκλαση του χαμένου γεφυριού")
+	say("2 · Η αντανάκλασή της περνάει πάνω στην αντανάκλαση του χαμένου γεφυριού")
 	await _eid_go(e, Vector3(7.22, 0, 0.98))
 	await wait(0.5)
 	say("3 · Γυρίζει το βαρούλκο μέσα στο νερό")
