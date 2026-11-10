@@ -218,6 +218,7 @@ void fragment(){
 const SH_GLASS := """shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never;
 uniform float time_s = 0.0; uniform float blur_px = 3.2; uniform float wave = 1.0;
+uniform vec4 lost_rect = vec4(0.0); uniform float lost_a = 0.0;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap, repeat_disable;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -233,6 +234,13 @@ void fragment(){
 	}
 	float l = smoothstep(0.9, 1.0, sin(wp.x * 2.3 + sin(wp.z * 1.7 + time_s * 0.45) * 1.8 + time_s * 0.22) * 0.5 + 0.5);
 	float l2 = smoothstep(0.965, 1.0, sin((wp.x - wp.z) * 5.1 + time_s * 0.6) * sin(wp.z * 3.3 - time_s * 0.4) * 0.5 + 0.5);
+	if (lost_a > 0.0) {   // the lost crossing: no clear shape, only a soft shadow that the water still holds
+		vec2 q2 = wp.xz + vec2(sin(wp.z * 9.0 + time_s * 1.2) + 0.5 * sin(wp.z * 21.0 - time_s * 0.7), sin(wp.x * 7.0 + time_s * 0.9)) * 0.03 * wave;
+		float sx = smoothstep(lost_rect.x - 0.12, lost_rect.x + 0.1, q2.x) * (1.0 - smoothstep(lost_rect.z - 0.1, lost_rect.z + 0.12, q2.x));
+		float sz = smoothstep(lost_rect.y - 0.02, lost_rect.y + 0.1, q2.y) * (1.0 - smoothstep(lost_rect.w - 0.12, lost_rect.w + 0.04, q2.y));
+		float seg = 0.86 + 0.14 * smoothstep(-0.3, 0.5, sin((q2.y - lost_rect.y) * 19.6));
+		c = mix(c, vec3(0.12, 0.29, 0.39), sx * sz * seg * lost_a * 0.62);
+	}
 	c = mix(c, vec3(0.6, 0.85, 0.88), 0.24);
 	c = mix(c, vec3(1.0), clamp(l * 0.3 + l2 * 0.45, 0.0, 1.0));
 	ALBEDO = c;
@@ -2175,13 +2183,11 @@ func _start_zone() -> void:
 			var cp := Vector3(cx, 0, PZ0 - 0.22)
 			cyl(cp, 0.17, 0.15, 0.08, pal("shade"), 16, both); cyl(cp + Vector3(0, 0.08, 0), 0.1, 0.09, 0.82, pal("stone"), 16, both); cyl(cp + Vector3(0, 0.9, 0), 0.15, 0.15, 0.06, pal("shade"), 16, both)
 			var bl := ball(cp + Vector3(0, 1.06, 0), 0.1, pal("gold"), both)
-	for i in 4:   # the lost stepping slabs: they exist only in the water
-		var sz := PZ0 + 0.03 + 0.32 * i
-		blk(Vector3(PED.x - 0.3, 0.012, sz), Vector3(PED.x + 0.3, 0.08, sz + 0.26), "stone", mroot)
 	_strip_refl(mroot)
 	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(PX1 - PX0, PZ1 - PZ0); wq.orientation = PlaneMesh.FACE_Y
 	var gm2 := ShaderMaterial.new(); gm2.shader = shaders["glass"]; timed.append(gm2)
+	gm2.set_shader_parameter("lost_rect", Vector4(PED.x - 0.3, PZ0, PED.x + 0.3, PED.z - 0.44)); gm2.set_shader_parameter("lost_a", 1.0)
 	prim(wq, Vector3((PX0 + PX1) * 0.5, 0.012, (PZ0 + PZ1) * 0.5), gm2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# the carved feet at the rim, where she may stand still
 	var fn := Node3D.new(); fn.position = Vector3(PED.x, 0, PZ0 - 0.16); add_child(fn)
@@ -2828,9 +2834,8 @@ func _solve1() -> void:
 	posing = true
 	var e: Dictionary = H["mir"]; H.erase("mir")
 	await wait(0.6)
-	say("2 · Η αντανάκλασή της προχωρά μόνη της, πάνω σε πατήματα που υπάρχουν μόνο μέσα στο νερό")
-	await _eid_go(e, Vector3(PED.x, 0.08, PZ0 + 0.16), 0.5)
-	await _eid_go(e, Vector3(PED.x, 0.08, PZ0 + 1.1), 0.55)
+	say("2 · Η αντανάκλασή της προχωρά μόνη της, πάνω στη σκιά ενός περάσματος που το νερό θυμάται ακόμα")
+	await _eid_go(e, Vector3(PED.x, 0.0, PZ0 + 1.08), 0.5)
 	await wait(0.5)
 	say("3 · Γυρίζει το βαρούλκο μέσα στο νερό, και γυρίζει και το αληθινό")
 	var wt := create_tween().set_parallel(); wt.tween_property(winch_a, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE); wt.tween_property(winch_m, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
@@ -2842,8 +2847,7 @@ func _solve1() -> void:
 	var gt := create_tween(); gt.tween_property(gate_a, "position:y", -2.4, 2.4).set_trans(Tween.TRANS_SINE)
 	await gt.finished
 	await wait(1.0)
-	await _eid_go(e, Vector3(PED.x, 0.08, PZ0 + 0.16), 0.6)
-	await _eid_go(e, feet, 0.5)
+	await _eid_go(e, feet, 0.55)
 	(e.holder as Node3D).rotation.y = yaw
 	H["mir"] = e; posing = false
 	await wait(0.9)
