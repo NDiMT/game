@@ -898,7 +898,7 @@ func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
-	if OS.get_environment("MOOD") != "bright":
+	if OS.get_environment("MOOD") == "moody":
 		sea_c = Color("3a6a7b"); mist_c = Color("b9b4c4"); bg_c = Color("29586a"); shadow_c = Vector3(0.6, 0.61, 0.82); water_deep = Color("2a7d88"); water_shallow = Color("6fc4b8")
 	pals = PALS.duplicate(true)
 	if OS.get_environment("PAL") == "mono":
@@ -938,7 +938,7 @@ func _ready() -> void:
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	hero_real = OS.get_environment("REAL") == "1"
-	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp") or OS.get_environment("RIG").begins_with("sr") or OS.get_environment("RIG").begins_with("nb")) else "min" + OS.get_environment("RIG"); hero_real = true
+	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp") or OS.get_environment("RIG").begins_with("sr") or OS.get_environment("RIG").begins_with("nb") or OS.get_environment("RIG").begins_with("ione")) else "min" + OS.get_environment("RIG"); hero_real = true
 	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "w2r"; hero_real = true
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	elif not hero_real and OS.get_environment("HERO") == "": shape_file = "min9t"
@@ -1785,7 +1785,7 @@ func ring_mat(tint: Vector3) -> ShaderMaterial:
 func _env() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR; env.background_color = bg_c
-	if OS.get_environment("MOOD") != "bright":
+	if OS.get_environment("MOOD") == "moody":
 		env.adjustment_enabled = true; env.adjustment_brightness = 0.94; env.adjustment_contrast = 1.04; env.adjustment_saturation = 0.84
 	var we := WorldEnvironment.new(); we.environment = env; add_child(we)
 	var sunl := DirectionalLight3D.new()
