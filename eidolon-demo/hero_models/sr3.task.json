@@ -1,0 +1,29 @@
+{
+  "task_id": "39fb2f33-80e8-4965-a245-7f7b94695137",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Surreal minimal low poly game character, large flat facets, flat matte colours, no fine detail, like a folded paper sculpture, not realistic. A column woman: her floor-length gown is a white fluted Greek marble column with vertical grooves that widens slightly at the floor, her shoulders are the flat capital of the column trimmed with gold, and a deep crimson veil is draped over her small head hiding the face and falling over one shoulder. Thin white marble arms. She stands straight and symmetrical in an A-pose with two thin simple arms held away from the body. Full body, single character, no base.",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 3000,
+    "model_version": "P1-20260311",
+    "negative_prompt": "face, eyes, nose, mouth, hair, shoes, bare feet, weapon, base, pedestal, text, multiple figures, extra arms, realistic detail, wrinkles, noise",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 40,
+  "created_at": "2026-11-10T16:51:11.455995Z",
+  "completed_at": "2026-11-10T16:52:24.837305Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

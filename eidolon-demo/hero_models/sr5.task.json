@@ -1,0 +1,29 @@
+{
+  "task_id": "143d6a2e-b7ce-4dc6-946e-111221291cac",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Surreal minimal low poly game character, large flat facets, flat matte colours, no fine detail, like a folded paper sculpture, not realistic. A tiered sea woman: her floor-length gown is made of four stacked flat tiers like a stepped pagoda, each tier a different shade from deep sea green at the bottom to pale aqua at the top, with a coral red sash. Her head is hidden under a stiff white triangular veil shaped like a small sail with a gold tip. Thin white marble arms. She stands straight and symmetrical in an A-pose with two thin simple arms held away from the body. Full body, single character, no base.",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 3000,
+    "model_version": "P1-20260311",
+    "negative_prompt": "face, eyes, nose, mouth, hair, shoes, bare feet, weapon, base, pedestal, text, multiple figures, extra arms, realistic detail, wrinkles, noise",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 40,
+  "created_at": "2026-11-10T16:51:11.109945Z",
+  "completed_at": "2026-11-10T16:52:05.639705Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}
