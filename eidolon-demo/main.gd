@@ -26,7 +26,7 @@ var ghost_flat: StandardMaterial3D
 var walk_on := false
 var hero_real := false
 var shape_file := ""
-var shape_mesh: ArrayMesh
+var shape_cache := {}
 var shape_tex: Texture2D
 var SHP := {}
 var body_mats: Array = []
@@ -886,7 +886,7 @@ func _ready() -> void:
 	VERTEX.y += trail.y * wgt * edge * (0.6 + 0.4 * sin(time_s * 1.1 + ang * 2.0));
 	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;""").replace(
 		"	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));",
-		"	if (use_tex > 0.0) { vec3 tx = mix(texture(albedo_tex, UV).rgb, veil_col, notex); tx = mix(tx, vec3(dot(tx, vec3(0.3, 0.55, 0.15))), 0.08); col = tx * tex_gain * (wt * wt + 0.95 * wz * wz + 0.82 * wx * wx + 0.74 * (1.0 - min(s, 1.0))); }\n	col *= mix(mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv)), vec3(1.0), use_tex);")
+		"	if (use_tex > 0.0) { vec3 t0 = texture(albedo_tex, UV).rgb; float fl = smoothstep(0.035, 0.09, t0.r - t0.g) * (1.0 - smoothstep(0.24, 0.34, t0.r - t0.g)) * smoothstep(0.02, 0.07, t0.g - t0.b) * smoothstep(0.45, 0.6, t0.r); t0 = mix(t0, vec3(0.95, 0.94, 0.93) * (0.86 + 0.14 * dot(t0, vec3(0.34))), fl); vec3 tx = mix(t0, veil_col, notex); tx = mix(tx, vec3(dot(tx, vec3(0.3, 0.55, 0.15))), 0.08); col = tx * tex_gain * (wt * wt + 0.95 * wz * wz + 0.82 * wx * wx + 0.74 * (1.0 - min(s, 1.0))); }\n	col *= mix(mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv)), vec3(1.0), use_tex);")
 	shaders["body"] = sb
 	var st2 := Shader.new()
 	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
@@ -1106,6 +1106,7 @@ func _real_lineup() -> void:
 	get_tree().quit()
 
 func bake_shape(file: String) -> ArrayMesh:
+	shape_tex = null
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) != OK: return null
 	var src := doc.generate_scene(st) as Node3D
@@ -1145,7 +1146,7 @@ func bake_shape(file: String) -> ArrayMesh:
 	var c := Vector3(cx / maxf(cn, 1.0), lo.y, cz / maxf(cn, 1.0))
 	for i in vs.size(): vs[i] = (vs[i] - c) * sc
 	var cols := PackedColorArray(); cols.resize(vs.size()); cols.fill(Color(0, 0, 0))
-	var vk := file.trim_suffix("t")
+	var vk := file.substr(0, file.find("t")) if file.find("t") > 0 else file
 	if FACE_VEIL.has(vk) and OS.get_environment("NOVEIL") != "1": add_face_veil(FACE_VEIL[vk], vs, ns, cols, ix)
 	uvs.resize(vs.size())
 	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_COLOR] = cols; arr[Mesh.ARRAY_TEX_UV] = uvs; arr[Mesh.ARRAY_INDEX] = ix
@@ -1154,7 +1155,9 @@ func bake_shape(file: String) -> ArrayMesh:
 	return am
 
 ## where the head of each figure is, so a cloth can be laid over the face
-const FACE_VEIL := {"min9": {"cx": -0.008, "cz": 0.03, "rx": 0.108, "rzf": 0.139, "rzb": 0.12, "top": 1.752, "eq": 1.62, "chin": 1.5, "hem": 1.365}}
+const FACE_VEIL := {"min9": {"cx": -0.008, "cz": 0.03, "rx": 0.108, "rzf": 0.139, "rzb": 0.12, "top": 1.752, "eq": 1.62, "chin": 1.5, "hem": 1.365},
+	"min13": {"cx": 0.006, "cz": -0.03, "rx": 0.116, "rzf": 0.14, "rzb": 0.125, "top": 1.756, "eq": 1.62, "chin": 1.5, "hem": 1.41}}
+const VEIL_COL := {"min13tb": Vector3(0.80, 0.11, 0.14), "min13ta": Vector3(0.93, 0.91, 0.86)}
 
 func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array, cols: PackedColorArray, ix: PackedInt32Array) -> void:
 	var NT := 30; var NV := 20; var TH := deg_to_rad(104.0)
@@ -1204,15 +1207,20 @@ func body_mat(pl: String, key: String) -> ShaderMaterial:
 	pmats["body|" + key] = m; timed.append(m); body_mats.append(m)
 	return m
 
-func spawn_shape(parent: Node, mode: String) -> Dictionary:
-	if shape_mesh == null: shape_mesh = bake_shape(shape_file)
+func spawn_shape(parent: Node, mode: String, file := "") -> Dictionary:
+	if file == "": file = shape_file
+	if not shape_cache.has(file):
+		var bm := bake_shape(file); shape_cache[file] = {"mesh": bm, "tex": shape_tex}
+	var stex: Texture2D = shape_cache[file].tex
 	var holder := Node3D.new(); parent.add_child(holder)
-	var mi := MeshInstance3D.new(); mi.mesh = shape_mesh; holder.add_child(mi)
+	var mi := MeshInstance3D.new(); mi.mesh = shape_cache[file].mesh; holder.add_child(mi)
 	mi.extra_cull_margin = 1.0
 	match mode:
 		"main":
-			var m := body_mat("veil", "main"); m.set_shader_parameter("marble", 0.22); mi.material_override = m
-			if shape_tex != null: m.set_shader_parameter("albedo_tex", shape_tex); m.set_shader_parameter("use_tex", 1.0); m.set_shader_parameter("marble", 0.0)
+			var m := body_mat("veil", "main" + file + str(holder.get_instance_id())); m.set_shader_parameter("marble", 0.22); mi.material_override = m
+			if stex != null:
+				m.set_shader_parameter("albedo_tex", stex); m.set_shader_parameter("use_tex", 1.0); m.set_shader_parameter("marble", 0.0)
+				if VEIL_COL.has(file): m.set_shader_parameter("veil_col", VEIL_COL[file])
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		"crim":
 			var m2 := body_mat("crim", "refl"); m2.set_shader_parameter("grad_lo", Vector3(0.8, 0.8, 0.85)); mi.material_override = m2
@@ -1250,8 +1258,11 @@ func _min_lineup() -> void:
 	var names := (OS.get_environment("MINS") if OS.get_environment("MINS") != "" else "1,2,3,4").split(",")
 	var tag := OS.get_environment("MIN_TAG")
 	for i in names.size():
-		hs.append(load_shape("min" + names[i], c + dir * ((i - 1.5) * 1.35), PI * 0.25))
-		var l := Label3D.new(); l.text = names[i]; l.font_size = 96; l.pixel_size = 0.004; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		if OS.get_environment("TEX") == "1":
+			var sd := spawn_shape(self, "main", "min" + names[i]); (sd.holder as Node3D).position = c + dir * ((i - 1.5) * 1.35); hs.append(sd.holder)
+		else:
+			hs.append(load_shape("min" + names[i], c + dir * ((i - 1.5) * 1.35), PI * 0.25))
+		var l := Label3D.new(); l.text = names[i] if OS.get_environment("TEX") != "1" else "ABCDEF"[i]; l.font_size = 96; l.pixel_size = 0.004; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		l.modulate = Color(0.72, 0.14, 0.18); l.outline_modulate = Color(1, 1, 1, 0.9); l.no_depth_test = true
 		l.position = c + dir * ((i - 1.5) * 1.35) + Vector3(0.75, 0.05, 0.75); add_child(l)
 	var dirn := OS.get_environment("SHOT_DIR")
