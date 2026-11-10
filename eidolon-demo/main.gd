@@ -12,9 +12,14 @@ const TEAL_D := Color("13283a")
 const CRIMSON := Color("b8232f")
 const FOG := Color("eab99c")
 const WATER := -1.3
-const SEA := Color("3c7d92")
-const MIST := Color("cdb8c6")
+var sea_c := Color("3c7d92")
+var mist_c := Color("cdb8c6")
+var water_deep := Color("2a8790")
+var water_shallow := Color("79d8c6")
+var bg_c := Color("2c6379")
+var pals := {}
 const PALS := {
+	"_": ["ffffff", "ffffff", "ffffff"],
 	"stone": ["f8efe1", "e8d5c5", "ada5c0"], "shade": ["ebdecc", "d7c1b1", "9c94b0"],
 	"sand": ["f6e3c6", "e3c7a6", "a8959d"], "rose": ["f1dccf", "dcc0b2", "a892a4"],
 	"far": ["cfcbd6", "bab5c9", "9896b4"], "far2": ["b4b3c9", "a3a1bf", "8a8aad"],
@@ -251,8 +256,8 @@ func pal(n: String, variant := "") -> ShaderMaterial:
 	var key := n + "|" + variant
 	if pmats.has(key): return pmats[key]
 	var m := ShaderMaterial.new(); m.shader = shaders["two" if variant in ["2", "flat2"] else "base"]
-	m.set_shader_parameter("c_top", Color(PALS[n][0])); m.set_shader_parameter("c_z", Color(PALS[n][1]))
-	m.set_shader_parameter("c_x", Color(PALS[n][2])); m.set_shader_parameter("fog_col", SEA); m.set_shader_parameter("mist_col", MIST)
+	m.set_shader_parameter("c_top", Color(pals[n][0])); m.set_shader_parameter("c_z", Color(pals[n][1]))
+	m.set_shader_parameter("c_x", Color(pals[n][2])); m.set_shader_parameter("fog_col", sea_c); m.set_shader_parameter("mist_col", mist_c)
 	if variant == "sway": m.set_shader_parameter("sway", 1.0); m.set_shader_parameter("flat_n", 1.0); timed.append(m)
 	if variant == "flat" or variant == "flat2": m.set_shader_parameter("flat_n", 1.0)
 	if n in ["stone", "shade", "sand", "rose"]: m.set_shader_parameter("marble", 1.0)
@@ -262,7 +267,7 @@ func pal(n: String, variant := "") -> ShaderMaterial:
 
 func water(flow := Vector2.ZERO, vert := false) -> ShaderMaterial:
 	var m := ShaderMaterial.new(); m.shader = shaders["water"]
-	m.set_shader_parameter("deep", Color("2a8790")); m.set_shader_parameter("shallow", Color("79d8c6"))
+	m.set_shader_parameter("deep", water_deep); m.set_shader_parameter("shallow", water_shallow)
 	m.set_shader_parameter("flow", flow); m.set_shader_parameter("vert", 1.0 if vert else 0.0)
 	timed.append(m)
 	return m
@@ -739,6 +744,15 @@ func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
+	pals = PALS.duplicate(true)
+	if OS.get_environment("PAL") == "mono":
+		for k in ["leaf", "leaf2", "leaf3"]: pals[k] = ["e6e4e3", "d0ced2", "a8a7b8"]
+		pals["cyp"] = ["bfc2ca", "9fa3b1", "787c92"]; pals["trunk"] = ["b3acae", "958e95", "6f6b7d"]
+		pals["gold"] = ["ece7de", "d5cfc9", "a4a0b0"]; pals["terra"] = ["f3ede6", "dfd6d0", "aca6b8"]; pals["rose"] = ["f3ede6", "dfd6d0", "aca6b8"]
+		pals["wood"] = ["cbc4c2", "aca5a8", "827d8e"]; pals["dark"] = ["9796aa", "86859e", "767592"]; pals["teal"] = ["66728a", "66728a", "66728a"]
+		pals["stone"] = ["fbf8f3", "ebe4e0", "b7b2c6"]; pals["shade"] = ["efeae4", "dcd4d0", "a6a1b6"]; pals["sand"] = ["f7f2ec", "e6ddd8", "b0aabf"]
+		pals["dress"] = ["dfe0e5", "c5c6d0", "9a9bb0"]; pals["veil"] = ["f6f5f4", "e0dfe3", "b2b2c2"]; pals["skin"] = ["fbf6f0", "e9e0da", "bcb5c6"]
+		sea_c = Color("a7b8c1"); mist_c = Color("e4e0e3"); water_deep = Color("a3b6be"); water_shallow = Color("dbe5e6"); bg_c = Color("9dafb9")
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
 	var n0 := get_child_count()
@@ -835,7 +849,7 @@ func ring_mat(tint: Vector3) -> ShaderMaterial:
 
 func _env() -> void:
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR; env.background_color = Color("2c6379")
+	env.background_mode = Environment.BG_COLOR; env.background_color = bg_c
 	var we := WorldEnvironment.new(); we.environment = env; add_child(we)
 	var sunl := DirectionalLight3D.new()
 	sunl.look_at_from_position(Vector3.ZERO, Vector3(0.62, -0.56, -0.5), Vector3.UP)
@@ -849,7 +863,7 @@ func _env() -> void:
 	var sq := QuadMesh.new(); sq.size = Vector2(260, 260); sq.orientation = PlaneMesh.FACE_Y
 	foam_mat = ShaderMaterial.new(); foam_mat.shader = shaders["foam"]; timed.append(foam_mat)
 	sea_mat = ShaderMaterial.new(); sea_mat.shader = shaders["sea"]
-	sea_mat.set_shader_parameter("near_col", SEA); sea_mat.set_shader_parameter("far_col", MIST)
+	sea_mat.set_shader_parameter("near_col", sea_c); sea_mat.set_shader_parameter("far_col", mist_c)
 	prim(sq, Vector3(0, WATER, 0), sea_mat)
 	var flies := _particles(26, 7.0, Vector3(5, 0.6, 9), 0.05, Color(1.0, 0.82, 0.45, 0.85), Vector3(0, 0.02, 0), 0.12, true)
 	flies.position = Vector3(0, 0.5, -48); flies.rotation.x = PI * 0.5; cam.add_child(flies)
@@ -1035,7 +1049,7 @@ func _world() -> void:
 	rock(Vector3(6.0, 0, 4.2), 1.2); rock(Vector3(6.9, 0, 3.6), 0.7); rock(Vector3(-6.4, 0, -7.2), 1.0); rock(Vector3(-22.0, 0, -13.2), 1.3); rock(Vector3(-10.8, 0, -22.8), 0.9); rock(Vector3(5.6, 0, -8.8), 1.0)
 	for mp in [Vector3(6.5, WATER + 0.3, 8.5), Vector3(-13.0, WATER + 0.3, 3.5), Vector3(9.5, WATER + 0.4, -12.0), Vector3(-25.0, WATER + 0.3, -4.0),
 			Vector3(-4.0, WATER + 0.4, -26.0), Vector3(-27.0, WATER + 0.3, -18.0), Vector3(-2.0, WATER + 0.2, 9.5), Vector3(-9.0, WATER + 0.3, -31.0)]:
-		var mh := halo(11.0 + 2.0 * sin(mp.x), Color(MIST.r, MIST.g, MIST.b, 0.14))
+		var mh := halo(11.0 + 2.0 * sin(mp.x), Color(mist_c.r, mist_c.g, mist_c.b, 0.14))
 		(mh.material_override as StandardMaterial3D).blend_mode = BaseMaterial3D.BLEND_MODE_MIX
 		mh.position = mp; add_child(mh)
 
