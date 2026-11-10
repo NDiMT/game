@@ -750,7 +750,7 @@ func idol_head(p: Vector3, h: float, yaw := 0.0, tilt := Vector3(-0.22, 0, 0), w
 ## a sculpted marble head with some detail, for the large decorative faces
 var head_cache := {}
 ## extra turn for each head so that all of them face the same way
-var HEAD_TURN := {1: 0.3, 2: 0.0, 3: 0.0, 4: 0.0}
+var HEAD_TURN := {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0}
 func _heads_lineup() -> void:
 	started = true; title_box.hide(); hint.hide()
 	pos = Vector3(60, 0, 60)
