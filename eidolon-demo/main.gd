@@ -229,7 +229,7 @@ void fragment(){
 ## what the pool shows where nothing stands over it: the sky
 const SH_PIT := """shader_type spatial;
 render_mode unshaded, cull_front;
-uniform vec3 top_c = vec3(0.69, 0.88, 0.89); uniform vec3 low_c = vec3(0.66, 0.86, 0.88); uniform float y0 = -0.2; uniform float y1 = -2.4;
+uniform vec3 top_c = vec3(0.73, 0.87, 0.89); uniform vec3 low_c = vec3(0.7, 0.85, 0.88); uniform float y0 = -0.2; uniform float y1 = -2.4;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){ ALBEDO = mix(top_c, low_c, clamp((wp.y - y0) / (y1 - y0), 0.0, 1.0)); }"""
@@ -2102,7 +2102,7 @@ func _court_a() -> void:
 	var nx := maxi(1, int((b.x - a.x) / 1.05)); var nz := maxi(1, int((b.z - a.z) / 1.05))
 	for i in nx: win_z(a.x + (b.x - a.x) * (i + 0.5) / nx, -1.2, b.z, 0.4, 0.74)
 	for i in nz: win_x(b.x, -1.2, a.z + (b.z - a.z) * (i + 0.5) / nz, 0.4, 0.74)
-	var pit := MeshInstance3D.new(); pit.name = "PoolSky"; var pm := BoxMesh.new(); pm.size = Vector3(b.x - a.x - th * 2.0 + 0.02, 2.24, b.z - a.z - th * 2.0 + 0.02); pit.mesh = pm
+	var pit := MeshInstance3D.new(); pit.name = "PoolSky"; var pm := BoxMesh.new(); pm.size = Vector3(b.x - a.x - th * 2.0 - 0.03, 2.24, b.z - a.z - th * 2.0 - 0.03); pit.mesh = pm
 	pit.position = Vector3((a.x + b.x) * 0.5, -0.185 - 1.12, (a.z + b.z) * 0.5)
 	var pmat := ShaderMaterial.new(); pmat.shader = shaders["pit"]; pit.material_override = pmat; pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(pit)
 	if OS.get_environment("NOPIT") == "1": pit.visible = false
