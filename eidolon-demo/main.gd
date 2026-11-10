@@ -65,7 +65,7 @@ void fragment(){
 	col = mix(col, col * vec3(1.06, 0.97, 0.80) + vec3(0.09, 0.055, 0.0), clamp(l, 0.0, 1.0) * 0.85);
 	col = mix(col, fog_col, smoothstep(-1.35, -4.6, wp.y) * 0.9);
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
-	col = mix(col, mist_col, smoothstep(mist_r, mist_r * 1.9, md) * 0.94);
+	col = mix(col, mist_col, smoothstep(mist_r * 0.8, mist_r * 1.7, md) * 0.96);
 	ALBEDO = col;
 }"""
 const SH_WATER := """shader_type spatial;
@@ -106,7 +106,12 @@ void fragment(){
 	float lines = smoothstep(0.93, 0.995, sin(p.x * 2.3 + sin(p.y * 1.7 + time_s * 0.45) * 1.9 + time_s * 0.2) * 0.5 + 0.5);
 	float sp = smoothstep(0.985, 1.0, sin(p.x * 9.1 + time_s * 1.3) * sin(p.y * 8.3 - time_s * 1.1));
 	float brk = smoothstep(0.35, 0.75, sin(p.x * 0.63 + p.y * 0.41) * sin(p.y * 0.57 - p.x * 0.29 + 1.3) * 0.5 + 0.5);
+	float road = smoothstep(2.4, 0.0, abs((wp.x - wp.z) - (centre.x - centre.z) - 4.2));
+	vec2 cell = floor(wp.xz * 11.0);
+	float tw = fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(time_s * 2.5) * 0.37) * 43758.5453);
+	float glit = step(0.93, tw) * road * smoothstep(0.38, 0.08, length(fract(wp.xz * 11.0) - 0.5));
 	vec3 col = mix(near_col, far_col, m) + vec3(0.5, 0.6, 0.6) * (lines * 0.1 * brk + sp * 0.35) * (1.0 - m);
+	col += (vec3(1.0, 0.93, 0.78) * glit * 0.55 + vec3(0.9, 0.8, 0.7) * road * 0.07) * (1.0 - m * 0.6);
 	ALBEDO = col; ALPHA = mix(0.6, 1.0, m);
 }"""
 const SH_FACE := """shader_type spatial;
@@ -130,6 +135,24 @@ void fragment(){
 	float wave = smoothstep(0.07, 0.0, abs(d - ph * 0.95 - wob)) * (1.0 - ph) * 0.8;
 	ALBEDO = vec3(0.93, 0.98, 0.97); ALPHA = clamp(edge * 0.75 + wave, 0.0, 1.0) * 0.8;
 }"""
+const SH_FOG := """shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform sampler2D noise_tex : repeat_enable, filter_linear;
+uniform float time_s = 0.0; uniform vec3 hero; uniform float dens = 0.5; uniform float scale = 0.05; uniform vec2 vel = vec2(0.02, 0.01);
+uniform float clear_r = 0.0; uniform vec3 col : source_color;
+varying vec3 wp;
+void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment(){
+	vec2 uv = wp.xz * scale;
+	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
+	float a = smoothstep(0.40, 0.72, n) * dens;
+	if (clear_r > 0.0) a *= smoothstep(clear_r * 0.3, clear_r, distance(wp.xz, hero.xz));
+	ALBEDO = col; ALPHA = a;
+}"""
+const SH_SHARD := """shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform float time_s = 0.0; uniform float ph = 0.0;
+void fragment(){ float g = pow(abs(sin(time_s * 1.7 + ph)), 6.0); ALBEDO = mix(vec3(0.70, 0.86, 0.93), vec3(1.0, 1.0, 0.98), g); }"""
 const SH_RING := "shader_type spatial;\nrender_mode unshaded, blend_add, cull_disabled;\nuniform float p = 1.0; uniform vec3 tint = vec3(1.0, 0.36, 0.40);\nvoid fragment(){ float d = distance(UV, vec2(0.5)) * 2.0; float ring = smoothstep(0.05, 0.0, abs(d - p)) + 0.5 * smoothstep(0.035, 0.0, abs(d - p * 0.6)); ALBEDO = tint; ALPHA = ring * (1.0 - p); }"
 
 var shaders := {}
@@ -163,6 +186,9 @@ var bn := PackedVector3Array()
 var foam_mat: ShaderMaterial
 var gulls: Array = []
 var boat: Node3D
+var fogs: Array = []
+var red_cloth: ShaderMaterial
+var shard_mats: Array = []
 var pulse_p := 1.0
 var tap_p := 1.0
 var ripple_p := 1.0
@@ -219,11 +245,11 @@ signal settled
 func pal(n: String, variant := "") -> ShaderMaterial:
 	var key := n + "|" + variant
 	if pmats.has(key): return pmats[key]
-	var m := ShaderMaterial.new(); m.shader = shaders["two" if variant == "2" else "base"]
+	var m := ShaderMaterial.new(); m.shader = shaders["two" if variant in ["2", "flat2"] else "base"]
 	m.set_shader_parameter("c_top", Color(PALS[n][0])); m.set_shader_parameter("c_z", Color(PALS[n][1]))
 	m.set_shader_parameter("c_x", Color(PALS[n][2])); m.set_shader_parameter("fog_col", SEA); m.set_shader_parameter("mist_col", MIST)
 	if variant == "sway": m.set_shader_parameter("sway", 1.0); m.set_shader_parameter("flat_n", 1.0); timed.append(m)
-	if variant == "flat": m.set_shader_parameter("flat_n", 1.0)
+	if variant == "flat" or variant == "flat2": m.set_shader_parameter("flat_n", 1.0)
 	if n in ["stone", "shade", "sand", "rose"]: m.set_shader_parameter("marble", 1.0)
 	if n == "marble": m.set_shader_parameter("marble", 0.3)
 	pmats[key] = m
@@ -418,6 +444,92 @@ func vine(x: float, z: float, along_x: bool, length: float) -> void:
 			var l := 0.25 + 0.2 * absf(sin(i * 0.9))
 			blk(c + Vector3(-0.012, -l, -0.012), c + Vector3(0.012, 0, 0.012), "leaf")
 
+func streamer(p: Vector3, length: float, w := 0.3, yaw := 3.67) -> void:
+	if red_cloth == null: red_cloth = cloth(Color("e3454e"), Color("9a1e2f"), 3.2)
+	var v := PackedVector3Array(); var n := PackedVector3Array(); var uv := PackedVector2Array(); var idx := PackedInt32Array()
+	var segs := 14
+	for i in segs + 1:
+		var tt := float(i) / segs
+		var ww := w * (1.0 - 0.5 * tt)
+		for j in 2:
+			v.append(Vector3(tt * length, (0.5 - j) * ww - 0.09 * tt * tt * length, 0)); n.append(Vector3(0, 0, 1)); uv.append(Vector2(j, tt))
+	for i in segs:
+		var a := i * 2
+		idx.append_array([a, a + 1, a + 3, a, a + 3, a + 2])
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_NORMAL] = n; arr[Mesh.ARRAY_TEX_UV] = uv; arr[Mesh.ARRAY_INDEX] = idx
+	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	prim(am, p, red_cloth).rotation.y = yaw
+
+func shard_tree(p: Vector3) -> void:
+	if shard_mats.is_empty():
+		for i in 4:
+			var m := ShaderMaterial.new(); m.shader = shaders["shard"]; m.set_shader_parameter("ph", i * 1.3); timed.append(m); shard_mats.append(m)
+	blk(p + Vector3(-0.3, 0, -0.3), p + Vector3(0.3, 0.22, 0.3), "shade"); blk(p + Vector3(-0.34, 0.22, -0.34), p + Vector3(0.34, 0.27, 0.34), "stone")
+	cyl(p + Vector3(0, 0.27, 0), 0.07, 0.04, 1.5, pal("trunk"), 7)
+	for i in 7:
+		var a := i * 0.9
+		var br := blk(Vector3(-0.018, 0, -0.018), Vector3(0.018, 0.85 + 0.2 * sin(i * 2.0), 0.018), "trunk")
+		br.position = p + Vector3(0, 1.3 + 0.07 * i, 0); br.rotation = Vector3(0.75 + 0.2 * sin(i * 1.3), a, 0)
+	var q := QuadMesh.new(); q.size = Vector2(0.075, 0.13)
+	for i in 44:
+		var a := i * 2.399
+		var rr := 0.25 + 0.75 * sqrt(float(i % 11 + 1) / 11.0)
+		var c := p + Vector3(cos(a) * rr, 2.25 - 0.9 * absf(sin(i * 1.7)) - rr * 0.25, sin(a) * rr)
+		blk(c + Vector3(-0.004, 0.06, -0.004), c + Vector3(0.004, 0.32, 0.004), "dark")
+		var sh := prim(q, c, shard_mats[i % 4]); sh.rotation = Vector3(0.2 * sin(i * 3.1), a * 1.7, PI * 0.25)
+	decal(p + Vector3(0.35, 0, -0.35), 2.2, 1.6, 0.2, 0.78)
+
+func mirror_stand(p: Vector3, yaw := 0.0) -> void:
+	var n := Node3D.new(); n.position = p; n.rotation.y = yaw; add_child(n)
+	blk(Vector3(-0.42, 0, -0.14), Vector3(0.42, 0.1, 0.14), "shade", n)
+	for sx in [-1.0, 1.0]: blk(Vector3(sx * 0.4 - 0.03, 0.1, -0.03), Vector3(sx * 0.4 + 0.03, 1.9, 0.03), "gold", n)
+	blk(Vector3(-0.43, 1.87, -0.03), Vector3(0.43, 1.94, 0.03), "gold", n); blk(Vector3(-0.08, 1.94, -0.03), Vector3(0.08, 2.04, 0.03), "crim", n)
+	var g := Gradient.new(); g.colors = PackedColorArray([Color("f6fbfb"), Color("9fd0d6")])
+	var gt := GradientTexture2D.new(); gt.gradient = g; gt.fill_from = Vector2(0.2, 0); gt.fill_to = Vector2(0.8, 1); gt.width = 32; gt.height = 64
+	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = gt
+	var q := QuadMesh.new(); q.size = Vector2(0.74, 1.76)
+	prim(q, Vector3(0, 1.0, 0.012), gm, n)
+	var q2 := QuadMesh.new(); q2.size = Vector2(0.06, 1.5)
+	prim(q2, Vector3(-0.14, 1.0, 0.016), mat(Color(1, 1, 1, 0.55)), n).rotation.z = -0.32
+
+func reeds(p: Vector3, n := 9) -> void:
+	for i in n:
+		var o := Vector3(0.22 * cos(i * 2.4) * (1.0 + 0.1 * i), 0, 0.22 * sin(i * 2.4) * (1.0 + 0.1 * i))
+		var h := 0.5 + 0.35 * absf(sin(i * 1.9))
+		var r := blk(Vector3(-0.012, 0, -0.012), Vector3(0.012, h, 0.012), "leaf" if i % 3 else "cyp")
+		r.position = Vector3(p.x, WATER - 0.05, p.z) + o; r.rotation = Vector3(0.1 * sin(i * 3.0), 0, 0.12 * cos(i * 2.0))
+		if i % 4 == 0: blk(r.position + Vector3(-0.02, h, -0.02), r.position + Vector3(0.02, h + 0.1, 0.02), "trunk")
+	for i in 3:
+		cyl(Vector3(p.x + 0.5 * cos(i * 2.1 + 1.0), WATER + 0.012, p.z + 0.5 * sin(i * 2.1 + 1.0)), 0.11, 0.11, 0.004, pal("leaf2"), 9)
+
+func rock(p: Vector3, s := 1.0) -> void:
+	var m := SphereMesh.new(); m.radius = 0.5; m.height = 1.0; m.radial_segments = 6; m.rings = 3
+	var r := prim(m, Vector3(p.x, WATER + 0.05 * s, p.z), pal("shade", "flat")); r.scale = Vector3(1.5, 0.8, 1.1) * s; r.rotation = Vector3(0.2, p.x * 1.3, 0.15)
+	foam(p.x - 0.55 * s, p.z - 0.45 * s, p.x + 0.55 * s, p.z + 0.45 * s, 0.3)
+
+## her boat: a small hull built from seven ribs
+func build_boat(parent: Node3D) -> void:
+	var v := PackedVector3Array(); var n := PackedVector3Array()
+	var st := 8
+	var ribs := []
+	for i in st + 1:
+		var tt := -1.0 + 2.0 * i / st
+		var w := 0.36 * pow(maxf(0.0, 1.0 - tt * tt), 0.55); var d := 0.26 * pow(maxf(0.0, 1.0 - tt * tt), 0.45)
+		var gy := 0.3 + 0.1 * tt * tt
+		ribs.append([Vector3(-w, gy, tt * 1.15), Vector3(0, gy - d - 0.02, tt * 1.15), Vector3(w, gy, tt * 1.15)])
+	for i in st:
+		for side in 2:
+			var a: Vector3 = ribs[i][side]; var b: Vector3 = ribs[i][side + 1]; var c: Vector3 = ribs[i + 1][side]; var d2: Vector3 = ribs[i + 1][side + 1]
+			for q in [a, b, d2, a, d2, c]:
+				v.append(q); n.append(Vector3.UP)
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_NORMAL] = n
+	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	prim(am, Vector3.ZERO, pal("wood", "flat2"), parent)
+	for tz in [-0.35, 0.4]: blk(Vector3(-0.3, 0.24, tz - 0.06), Vector3(0.3, 0.27, tz + 0.06), "trunk", parent)
+	var oar := blk(Vector3(-0.015, 0, -0.9), Vector3(0.015, 0.03, 0.9), "trunk", parent); oar.position = Vector3(0.12, 0.3, 0.1); oar.rotation = Vector3(0.06, 0.25, 0)
+	blk(Vector3(-0.16, 0.2, 0.62), Vector3(0.16, 0.3, 0.86), "crim", parent)
+	for sx in [-1.0, 1.0]: blk(Vector3(sx * 0.33 - 0.012, 0.3, -0.5), Vector3(sx * 0.33 + 0.012, 0.325, 0.5), "crim", parent)
+
 func _lowball(r: float) -> SphereMesh:
 	var m := SphereMesh.new(); m.radius = r; m.height = r * 2.0; m.radial_segments = 7; m.rings = 4
 	return m
@@ -464,8 +576,9 @@ func tiles(x0: float, z0: float, x1: float, z1: float, step := 0.8) -> void:
 func rosette(c: Vector3, r: float) -> void:
 	var names := ["shade", "stone", "rose", "stone", "crim"]
 	var radii := [1.0, 0.9, 0.62, 0.5, 0.16]
-	for i in 5:
+	for i in 4:
 		cyl(c + Vector3(0, 0.002 * i, 0), r * radii[i], r * radii[i], 0.005, pal(names[i]), 48)
+	cyl(c + Vector3(0, 0.008, 0), r * 0.3, r * 0.3, 0.004, pal("gold"), 40); cyl(c + Vector3(0, 0.01, 0), r * 0.25, r * 0.25, 0.004, water(), 40)
 	for i in 8:
 		var a := TAU * i / 8.0
 		var d := blk(Vector3(-0.07, 0.008, -0.07), Vector3(0.07, 0.014, 0.07), "crim" if i % 2 == 0 else "gold")
@@ -580,7 +693,7 @@ func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.
 # ---------------------------------------------------------------- setup
 func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode unshaded;", "render_mode unshaded, cull_disabled;")],
-			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["face", SH_FACE], ["foam", SH_FOAM]]:
+			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
@@ -593,7 +706,7 @@ func _ready() -> void:
 	refl.scale = Vector3(1, -1, 1); refl.position.y = 2.0 * WATER
 	slab(-0.6, -7.8, 0.6, -5.8, 0.0, "stone", refl)
 	for e in [-1.0, 1.0]: blk(Vector3(e * 0.54 - 0.03, 0, -7.8), Vector3(e * 0.54 + 0.03, 0.06, -5.8), "shade", refl)
-	_actors(); _nav(); _ui()
+	_actors(); _fog(); _nav(); _ui()
 	cam_t = pos
 	get_viewport().size_changed.connect(_fit)
 	_fit()
@@ -625,6 +738,7 @@ func _gallery() -> void:
 func _shots() -> void:
 	started = true; title_box.hide(); hint.hide()
 	var dir := OS.get_environment("SHOT_DIR")
+	await get_tree().create_timer(2.0).timeout
 	var list := [
 		{"n": "01-map", "p": Vector3(0.5, 0, 2.0), "y": 0.6, "c": Vector3(-8.5, 0, -11.5), "s": 36.0},
 		{"n": "02-arrival-court", "p": Vector3(0.6, 0, 1.4), "y": 0.5, "c": Vector3(0.2, 0.4, 0.0), "s": 13.0},
@@ -654,6 +768,16 @@ func _shots() -> void:
 		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, sh.n])
 		print("SHOT ", sh.n)
 	get_tree().quit()
+
+func _fog() -> void:
+	var fn := FastNoiseLite.new(); fn.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH; fn.frequency = 0.012; fn.fractal_octaves = 3
+	var nt := NoiseTexture2D.new(); nt.noise = fn; nt.seamless = true; nt.width = 256; nt.height = 256
+	var q := QuadMesh.new(); q.size = Vector2(260, 260); q.orientation = PlaneMesh.FACE_Y
+	for L in [[WATER + 0.18, 0.78, 0.045, Vector2(0.012, 0.006), 0.0, 1], [WATER + 0.8, 0.4, 0.03, Vector2(-0.008, 0.01), 0.0, 2], [0.2, 0.24, 0.07, Vector2(0.02, -0.012), 3.0, 3]]:
+		var m := ShaderMaterial.new(); m.shader = shaders["fog"]; m.render_priority = L[5]
+		m.set_shader_parameter("noise_tex", nt); m.set_shader_parameter("dens", L[1]); m.set_shader_parameter("scale", L[2])
+		m.set_shader_parameter("vel", L[3]); m.set_shader_parameter("clear_r", L[4]); m.set_shader_parameter("col", Color("f1e8ef"))
+		prim(q, Vector3(0, L[0], 0), m); fogs.append(m); timed.append(m)
 
 func ring_mat(tint: Vector3) -> ShaderMaterial:
 	var m := ShaderMaterial.new(); m.shader = shaders["ring"]; m.set_shader_parameter("tint", tint); m.render_priority = 2
@@ -736,13 +860,8 @@ func _world() -> void:
 		blk(Vector3(-0.8, -0.26 * (i + 1) - 0.2, 3.5 + 0.26 * i), Vector3(0.8, -0.26 * (i + 1), 3.5 + 0.26 * (i + 1)), "stone")
 	blk(Vector3(-0.95, -2.45, 3.5), Vector3(-0.8, -0.05, 4.8), "shade"); blk(Vector3(0.8, -2.45, 3.5), Vector3(0.95, -0.05, 4.8), "shade")
 	foam(-0.95, 3.55, 0.95, 4.8, 0.3)
-	boat = Node3D.new(); boat.name = "Boat"; boat.position = Vector3(2.3, WATER, 4.7); boat.rotation.y = 0.5; add_child(boat)
-	var hull := SphereMesh.new(); hull.radius = 1.0; hull.height = 1.0; hull.is_hemisphere = true; hull.radial_segments = 8; hull.rings = 3
-	var hm := prim(hull, Vector3(0, 0.3, 0), pal("wood", "flat"), boat); hm.scale = Vector3(0.36, 0.36, 1.0); hm.rotation.x = PI
-	var deck := cyl(Vector3(0, 0.22, 0), 1.0, 1.0, 0.012, pal("trunk"), 8, boat); deck.scale = Vector3(0.33, 1, 0.93)
-	var rim := cyl(Vector3(0, 0.285, 0), 1.0, 1.0, 0.03, pal("crim"), 8, boat); rim.scale = Vector3(0.375, 1, 1.02)
-	var rim2 := cyl(Vector3(0, 0.29, 0), 1.0, 1.0, 0.03, pal("trunk"), 8, boat); rim2.scale = Vector3(0.33, 1, 0.95)
-	blk(Vector3(-0.3, 0.26, -0.08), Vector3(0.3, 0.3, 0.08), "wood", boat)
+	boat = Node3D.new(); boat.name = "Boat"; boat.position = Vector3(2.5, WATER - 0.12, 4.9); boat.rotation.y = 1.0; add_child(boat)
+	build_boat(boat)
 	cyl(Vector3(1.2, -0.2, 4.2), 0.045, 0.045, 0.75, pal("wood"), 8)
 	slab(3.5, -0.3, 5.1, 2.3, 0.0); under(3.5, -0.3, 5.1, 2.3, 0.2, "sand"); parapet(Vector3(5.0, 0, -0.2), Vector3(5.0, 0, 2.2))
 	blk(Vector3(3.9, 0, 1.9), Vector3(4.6, 0.22, 2.12), "shade")
@@ -827,7 +946,7 @@ func _world() -> void:
 	pool(-14.4, -25.4, -13.2, -22.0); model("statue_veiled_kneeling", Vector3(-14.72, 0, -23.7), 1.1, PI * 0.5)
 	for lp in [Vector3(-13.9, 0.016, -24.6), Vector3(-13.6, 0.016, -23.2), Vector3(-14.1, 0.016, -22.5)]:
 		cyl(lp, 0.09, 0.09, 0.004, pal("leaf2"), 14); ball(lp + Vector3(0.02, 0.02, 0), 0.025, pal("leaf3"))
-	lantern(Vector3(-15.2, 0, -20.25), 5, -1.0); urn(Vector3(-12.9, 0, -20.4), 1.0); urn(Vector3(-13.15, 0, -20.3), 0.7, "rose"); cypress(Vector3(-12.95, 0, -26.2), 2.3)
+	lantern(Vector3(-15.2, 0, -20.25), 5, -1.0); cypress(Vector3(-12.95, 0, -26.2), 2.3)
 	blk(Vector3(MX + 0.1, 0, MZ - 0.45), Vector3(MX + 0.95, 0.004, MZ + 0.45), "shade"); blk(Vector3(MX + 0.15, 0, MZ - 0.4), Vector3(MX + 0.9, 0.006, MZ + 0.4), "stone")
 	blk(Vector3(DX - 0.03, 0, -26.6), Vector3(DX + 0.03, 0.005, -25.2), "crim")
 	slab(-20.5, -28.8, -12.5, -27.0, 0.0, "sand"); under(-20.5, -28.8, -12.5, -27.0, 0.22, "sand")
@@ -844,6 +963,15 @@ func _world() -> void:
 		foam(cp.x - 0.3, cp.z - 0.3, cp.x + 0.3, cp.z + 0.3, 0.3)
 	vine(-3.6, 3.52, true, 1.8); vine(3.52, -3.4, false, 1.4); vine(-3.2, -9.98, true, 1.6); vine(3.52, -15.6, false, 2.0)
 	vine(-19.6, -10.48, true, 2.4); vine(-12.98, -16.4, false, 1.6); vine(-20.2, -19.98, true, 2.6); vine(-12.48, -25.6, false, 2.2)
+	# crimson veils in the wind, mirrors, the tree of shards, reeds and rocks
+	for sp in [[Vector3(-7.3, 2.72, 1.9), 2.6], [Vector3(0.0, 2.95, -3.9), 1.9], [Vector3(-16.3, WATER + 2.72, -18.4), 2.4], [Vector3(MX - 0.5, 3.12, MZ + 0.9), 2.2],
+			[Vector3(6.6, WATER + 2.3, -4.8), 2.0], [Vector3(-9.0, WATER + 3.0, -17.4), 2.3], [Vector3(-22.6, WATER + 2.5, -8.8), 2.1], [Vector3(3.4, 1.75, -16.3), 1.8]]:
+		streamer(sp[0], sp[1], 0.32)
+		cyl(sp[0] + Vector3(0, -0.2, 0), 0.012, 0.012, 0.4, pal("dark"), 6)
+	mirror_stand(Vector3(-17.9, 0, -16.5), 0.2); mirror_stand(Vector3(-14.7, 0, -16.5), -0.2); mirror_stand(Vector3(-3.05, 0, -14.6), PI * 0.5)
+	shard_tree(Vector3(-13.7, 0, -20.9))
+	reeds(Vector3(-1.9, 0, 4.4)); reeds(Vector3(4.4, 0, 3.0), 7); reeds(Vector3(-4.6, 0, -11.2)); reeds(Vector3(-12.2, 0, -10.0), 8); reeds(Vector3(-20.8, 0, -18.6)); reeds(Vector3(-11.8, 0, -21.6), 7)
+	rock(Vector3(6.0, 0, 4.2), 1.2); rock(Vector3(6.9, 0, 3.6), 0.7); rock(Vector3(-6.4, 0, -7.2), 1.0); rock(Vector3(-22.0, 0, -13.2), 1.3); rock(Vector3(-10.8, 0, -22.8), 0.9); rock(Vector3(5.6, 0, -8.8), 1.0)
 	for mp in [Vector3(6.5, WATER + 0.3, 8.5), Vector3(-13.0, WATER + 0.3, 3.5), Vector3(9.5, WATER + 0.4, -12.0), Vector3(-25.0, WATER + 0.3, -4.0),
 			Vector3(-4.0, WATER + 0.4, -26.0), Vector3(-27.0, WATER + 0.3, -18.0), Vector3(-2.0, WATER + 0.2, 9.5), Vector3(-9.0, WATER + 0.3, -31.0)]:
 		var mh := halo(9.0 + 2.0 * sin(mp.x), Color(MIST.r, MIST.g, MIST.b, 0.34))
@@ -959,6 +1087,12 @@ func _ui() -> void:
 		ray.size = Vector2(190 + 70 * i, 2600); ray.position = Vector2(430 - 250 * i, -500); ray.rotation = 0.42
 		var cm := CanvasItemMaterial.new(); cm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; ray.material = cm
 		ray.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(ray)
+	var sg := Gradient.new(); sg.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	sg.colors = PackedColorArray([Color(1.0, 0.9, 0.74, 0.22), Color(1.0, 0.86, 0.72, 0.08), Color(1.0, 0.86, 0.72, 0)])
+	var sgt := GradientTexture2D.new(); sgt.gradient = sg; sgt.fill = GradientTexture2D.FILL_RADIAL; sgt.fill_from = Vector2(0.5, 0.5); sgt.fill_to = Vector2(1.0, 0.5); sgt.width = 128; sgt.height = 128
+	var sun := TextureRect.new(); sun.texture = sgt; sun.stretch_mode = TextureRect.STRETCH_SCALE; sun.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	sun.size = Vector2(1300, 1300); sun.position = Vector2(180, -560)
+	var scm := CanvasItemMaterial.new(); scm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; sun.material = scm; sun.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(sun)
 	hint = Label.new(); hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 24); hint.add_theme_color_override("font_color", Color(0.24, 0.16, 0.22, 0.9))
 	hint.anchor_left = 0; hint.anchor_right = 1; hint.anchor_top = 1; hint.anchor_bottom = 1; hint.offset_top = -92; hint.offset_bottom = -52
@@ -1123,6 +1257,7 @@ func _process(dt: float) -> void:
 	for m in pmats.values():
 		for i in 6: m.set_shader_parameter("l%d" % i, lights[i])
 		m.set_shader_parameter("centre", cc); m.set_shader_parameter("mist_r", cam.size * 0.64)
+	for fm in fogs: fm.set_shader_parameter("hero", pos)
 	sea_mat.set_shader_parameter("centre", cc); sea_mat.set_shader_parameter("mist_r", cam.size * 0.64); sea_mat.set_shader_parameter("time_s", t)
 	for m in timed: m.set_shader_parameter("time_s", t)
 	for i in gulls.size():
@@ -1132,7 +1267,7 @@ func _process(dt: float) -> void:
 		gn.rotation.y = -ga
 		var flap := sin(t * 5.0 + i) * 0.45
 		(gn.get_child(0) as Node3D).rotation.z = -flap; (gn.get_child(1) as Node3D).rotation.z = flap
-	boat.position.y = WATER + 0.03 * sin(t * 1.1); boat.rotation.z = 0.04 * sin(t * 0.8)
+	boat.position.y = WATER - 0.12 + 0.03 * sin(t * 1.1); boat.rotation.z = 0.04 * sin(t * 0.8)
 	blob.position = Vector3(pos.x, 0.012, pos.z); blob.scale = Vector3.ONE * (1.0 + a_pool * 0.6)
 	for k in markers:
 		var n: Node3D = markers[k]
