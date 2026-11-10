@@ -36,6 +36,8 @@ var tilt_r := 0.0
 var yaw_prev := 0.0
 var spd_prev := 0.0
 var gph := 0.0
+## how she walks: no forward lean, short steps, a small sway of the hips
+var GT := {"lean": 0.0, "trail": 0.06, "stride": 0.9, "arm": 0.15, "step": 0.56, "shift": 0.016, "bob": 0.009, "pelv": 0.07, "shtw": 0.04}
 var gait := 0.0
 
 ## arms that reach for a point and a spine that bows, on top of whatever animation is playing
@@ -869,7 +871,7 @@ func _ready() -> void:
 	var sb := Shader.new()
 	sb.code = SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;").replace(
 		"void fragment(){", "float bx(vec2 p, vec2 a, vec2 b){ vec2 q = step(a, p) * step(p, b); return q.x * q.y; }\nfloat key(vec2 p){ float m = bx(p, vec2(0.0, 0.76), vec2(0.86, 0.9)); m = max(m, bx(p, vec2(0.72, 0.24), vec2(0.86, 0.9))); m = max(m, bx(p, vec2(0.3, 0.24), vec2(0.86, 0.38))); m = max(m, bx(p, vec2(0.3, 0.24), vec2(0.44, 0.62))); m = max(m, bx(p, vec2(0.3, 0.48), vec2(0.58, 0.62))); m = max(m, bx(p, vec2(0.0, 0.06), vec2(0.14, 0.9))); m = max(m, bx(p, vec2(0.0, 0.06), vec2(1.0, 0.14))); return m; }\nvoid fragment(){").replace(
-		"void vertex(){", "void pull(vec3 p, vec3 ra, vec3 rb, vec3 na, vec3 nb, float sig, inout vec3 acc, inout float ws){ vec3 ab = rb - ra; float tt = clamp(dot(p - ra, ab) / max(dot(ab, ab), 1e-5), 0.0, 1.0); vec3 c = ra + ab * tt; float d = length(p - c); float w = exp(-d * d / (sig * sig)); acc += w * (mix(na, nb, tt) - c); ws += w; }\nvoid vertex(){").replace(
+		"void vertex(){", "void pull(vec3 p, vec3 ra, vec3 rb, vec3 na, vec3 nb, float sig, inout vec3 acc, inout float ws){ vec3 ab = rb - ra; float tt = clamp(dot(p - ra, ab) / max(dot(ab, ab), 1e-5), 0.0, 1.0); vec3 c = ra + ab * tt; float d = length(p - c); float w = exp(-d * d / (sig * sig)); vec3 dl = mix(na, nb, tt) - c; float fr = smoothstep(-0.05, 0.05, p.z - leg_zc); dl.z = mix(min(dl.z, 0.0), max(dl.z, 0.0), fr); acc += w * dl; ws += w * mix(0.35, 1.0, step(0.0001, abs(dl.z))); }\nvoid vertex(){").replace(
 		"uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform float use_tex = 0.0; uniform float tex_gain = 1.22; uniform vec3 veil_col = vec3(0.9, 0.9, 0.92); varying float notex; uniform vec3 trail = vec3(0.0);
 uniform vec3 hipL; uniform vec3 kneeL; uniform vec3 footL; uniform vec3 hipR; uniform vec3 kneeR; uniform vec3 footR;
 uniform vec3 rkneeL; uniform vec3 rfootL; uniform vec3 rkneeR; uniform vec3 rfootR;
@@ -880,7 +882,7 @@ uniform vec3 o_dress_hi : source_color = vec3(0.8, 0.81, 0.86); uniform vec3 o_d
 uniform vec3 o_veil : source_color = vec3(0.97, 0.96, 0.93); uniform vec3 o_marble : source_color = vec3(0.99, 0.97, 0.94);
 uniform vec3 o_crim : source_color = vec3(0.72, 0.13, 0.18); uniform vec3 o_gold : source_color = vec3(0.87, 0.7, 0.34);
 varying vec3 mp; varying float armw; varying float vw;
-uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(0.2, 0.1); uniform vec2 leg_hang = vec2(0.12, 0.3); uniform vec3 grad_lo = vec3(0.74, 0.75, 0.84); varying float hv;").replace(
+uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(0.3, 0.11); uniform vec2 leg_hang = vec2(0.06, 0.25); uniform float leg_zc = 0.0; uniform vec3 grad_lo = vec3(0.74, 0.75, 0.84); varying float hv;").replace(
 		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", """	float hh = clamp(VERTEX.y / 1.72, 0.0, 1.0); hv = hh; notex = COLOR.g; mp = VERTEX; vw = COLOR.r;
 	float wgt = pow(1.0 - smoothstep(0.0, 0.62, hh), 1.5);
 	float rr = length(VERTEX.xz); vec2 rad = VERTEX.xz / max(rr, 0.001); float ang = atan(VERTEX.x, VERTEX.z);
@@ -1314,7 +1316,7 @@ func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array
 			ix.append_array(PackedInt32Array([a0, a0 + 1, a0 + W, a0 + 1, a0 + W + 1, a0 + W]))
 
 ## where the joints are inside each figure (model space, 1.72 m tall, facing +Z)
-const RIGS := {"min9": {"cx": -0.012, "hx": 0.065, "hy": 0.9, "zc": -0.02, "A": 0.26, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, -0.01, -0.012), "arm_on": 1.0, "adduct": 0.07, "sash": 1.09, "brace": 0.835, "fore": 1.0},
+const RIGS := {"min9": {"cx": -0.012, "hx": 0.065, "hy": 0.9, "zc": -0.02, "A": 0.26, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, -0.01, -0.012), "arm_on": 1.0, "adduct": 0.1, "sash": 1.09, "brace": 0.835, "fore": 1.0},
 	"min13": {"cx": 0.0, "hx": 0.065, "hy": 0.9, "zc": 0.03, "A": 0.24, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, 0.0, 0.0), "arm_on": 0.0, "adduct": 0.0, "sash": -1.0, "brace": -1.0, "keys": 44.0, "mask": "min13tb"}}
 
 func rig_of(file: String) -> Dictionary:
@@ -1371,7 +1373,7 @@ func spawn_shape(parent: Node, mode: String, file := "", design_id := -1) -> Dic
 							var mm := bake_shape(rr.mask); shape_cache[rr.mask] = {"mesh": mm, "tex": shape_tex}
 						if shape_cache[rr.mask].tex != null: m.set_shader_parameter("veil_mask", shape_cache[rr.mask].tex); m.set_shader_parameter("use_mask", 1.0)
 			if design_id < 0 and OS.get_environment("DESIGN") != "": design_id = int(OS.get_environment("DESIGN"))
-			if design_id < 0 and OS.get_environment("COSTUME") == "": design_id = 3
+			if design_id < 0 and OS.get_environment("COSTUME") == "": design_id = 32
 			if design_id > 0: apply_design(m, design_id, file)
 			var r0 := rig_of(file)
 			m.set_shader_parameter("armp", r0.arm); m.set_shader_parameter("arm_on", r0.arm_on)
@@ -1947,27 +1949,28 @@ func _process(dt: float) -> void:
 	ghost.visible = (not hero_real) and shape_file == "" and near > 0.01
 	if shape_file != "":
 		var R := rig_of(shape_file)
-		gph += spd * dt / lerpf(0.6, 0.85, rk) * PI
+		gph += spd * dt / lerpf(GT.step, 0.85, rk) * PI
 		gait = lerpf(gait, clampf(spd / 0.8, 0.0, 1.0) * (1.0 + 0.3 * rk), 1.0 - exp(-9.0 * dt))
 		var gp := gph - 0.37
-		hover = 0.003 * sin(t * 1.3) - 0.011 * gait * cos(2.0 * gp)
+		hover = 0.003 * sin(t * 1.3) - GT.bob * gait * cos(2.0 * gp)
 		var turn := angle_difference(yaw_prev, yaw) / maxf(dt, 0.001); yaw_prev = yaw
 		tilt_r = lerpf(tilt_r, clampf(-turn * 0.02, -0.05, 0.05), 1.0 - exp(-5.0 * dt))
-		tilt_f = lerpf(tilt_f, 0.035 * wk + 0.05 * rk + clampf((spd - spd_prev) / maxf(dt, 0.001) * 0.012, -0.03, 0.03) + a_lean, 1.0 - exp(-5.0 * dt)); spd_prev = spd
-		var side := Vector3(cos(yaw), 0, -sin(yaw)) * (0.014 * gait * sin(gp))
+		tilt_f = lerpf(tilt_f, GT.lean * wk + 0.04 * rk + clampf((spd - spd_prev) / maxf(dt, 0.001) * 0.005, -0.012, 0.012) + a_lean, 1.0 - exp(-5.0 * dt)); spd_prev = spd
+		var side: Vector3 = Vector3(cos(yaw), 0, -sin(yaw)) * (float(GT.shift) * gait * sin(gp))
 		for k in SHP:
 			var sh: Node3D = SHP[k].holder
 			sh.position = pos + side + Vector3(0, hover, 0); sh.rotation = Vector3(tilt_f, yaw + head_yaw * 0.4, tilt_r - 0.012 * gait * sin(gp))
-		var lg := leg_pose(gph, 1.0, gait, R); var rg := leg_pose(gph + PI, -1.0, gait, R)
+		var lg := leg_pose(gph, 1.0, gait * GT.stride, R); var rg := leg_pose(gph + PI, -1.0, gait * GT.stride, R)
 		var l0 := leg_pose(0.0, 1.0, 0.0, R); var r0 := leg_pose(0.0, -1.0, 0.0, R)
 		for bm in body_mats:
-			bm.set_shader_parameter("trail", Vector3(sway.x * 0.3, 0.0, sway.y * 0.3))
+			bm.set_shader_parameter("trail", Vector3(sway.x, 0.0, sway.y) * GT.trail)
 			bm.set_shader_parameter("hipL", lg[0]); bm.set_shader_parameter("kneeL", lg[1]); bm.set_shader_parameter("footL", lg[2])
 			bm.set_shader_parameter("hipR", rg[0]); bm.set_shader_parameter("kneeR", rg[1]); bm.set_shader_parameter("footR", rg[2])
 			bm.set_shader_parameter("rkneeL", l0[1]); bm.set_shader_parameter("rfootL", l0[2]); bm.set_shader_parameter("rkneeR", r0[1]); bm.set_shader_parameter("rfootR", r0[2])
+			bm.set_shader_parameter("leg_zc", R.zc)
 			bm.set_shader_parameter("armp", R.arm); bm.set_shader_parameter("arm_on", R.arm_on); bm.set_shader_parameter("adduct", R.adduct)
-			bm.set_shader_parameter("swing", Vector2(-0.2 * gait * cos(gph), 0.2 * gait * cos(gph)) + Vector2(0.012 * sin(t * 0.9), 0.012 * sin(t * 0.9 + 1.7)))
-			bm.set_shader_parameter("pelv", -0.07 * gait * cos(gph)); bm.set_shader_parameter("shtw", 0.045 * gait * cos(gph))
+			bm.set_shader_parameter("swing", Vector2(-GT.arm * gait * cos(gph), GT.arm * gait * cos(gph)) + Vector2(0.012 * sin(t * 0.9), 0.012 * sin(t * 0.9 + 1.7)))
+			bm.set_shader_parameter("pelv", -GT.pelv * gait * cos(gph)); bm.set_shader_parameter("shtw", GT.shtw * gait * cos(gph))
 		(SHP["ghost"].holder as Node3D).visible = near > 0.01
 	if ghost.visible: ghost.apply(st)
 	var moving := spd > 0.15
@@ -2131,6 +2134,13 @@ func _auto() -> void:
 func _glide() -> void:
 	started = true; title_box.hide(); hint.hide()
 	pos = Vector3(0.9, 0, 1.2); yaw = 0.78; cam_t = pos; cam.size = 4.8
+	for kv in OS.get_environment("GT").split(",", false): GT[kv.split("=")[0]] = float(kv.split("=")[1])
+	if OS.get_environment("PROFILE") == "1":
+		pos = Vector3(-2.6, 0, 1.7); yaw = atan2(1.0, -1.0); cam_t = pos + Vector3(1.2, 0, -1.2); cam.size = 3.6
+		await wait(0.6)
+		await go([Vector3(1.6, 0, -2.5)])
+		await wait(0.5)
+		get_tree().quit(); return
 	await wait(1.4)
 	await go([Vector3(-1.9, 0, 1.7), Vector3(-2.1, 0, -1.5)])
 	await wait(1.3)
