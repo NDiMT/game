@@ -874,7 +874,7 @@ func _ready() -> void:
 uniform vec3 hipL; uniform vec3 kneeL; uniform vec3 footL; uniform vec3 hipR; uniform vec3 kneeR; uniform vec3 footR;
 uniform vec3 rkneeL; uniform vec3 rfootL; uniform vec3 rkneeR; uniform vec3 rfootR;
 uniform vec4 armp = vec4(0.17, 1.4, -0.01, -0.012); uniform float arm_on = 0.0; uniform float adduct = 0.0; uniform vec2 swing = vec2(0.0);
-uniform float design = 0.0; uniform vec3 o_rim : source_color = vec3(1.0, 0.95, 0.85); uniform vec3 d_shade = vec3(0.64, 0.62, 0.8); uniform float d_sheen = 0.14; uniform float trim = 1.0;
+uniform float design = 0.0; uniform float crim_line = 0.0; uniform vec3 o_rim : source_color = vec3(1.0, 0.95, 0.85); uniform vec3 d_shade = vec3(0.64, 0.62, 0.8); uniform float d_sheen = 0.14; uniform float trim = 1.0;
 uniform float orn = 0.0; uniform float plain = 0.0; uniform sampler2D veil_mask : source_color, filter_linear_mipmap; uniform float use_mask = 0.0; uniform float fore_y = -1.0; uniform float key_n = 24.0; uniform float sash_y = -1.0; uniform float brace_y = -1.0; uniform float veil_y = 1.46;
 uniform vec3 o_dress_hi : source_color = vec3(0.8, 0.81, 0.86); uniform vec3 o_dress_lo : source_color = vec3(0.55, 0.57, 0.68);
 uniform vec3 o_veil : source_color = vec3(0.97, 0.96, 0.93); uniform vec3 o_marble : source_color = vec3(0.99, 0.97, 0.94);
@@ -1201,6 +1201,7 @@ const DESIGN_FRAG := """	if (design > 0.5) {
 		dc += o_rim * fres * 0.38 + vec3(1.0, 0.96, 0.9) * sheen * d_sheen;
 		vec3 gold = o_gold * (0.82 + 0.34 * ramp) + vec3(1.0, 0.9, 0.6) * sheen * 0.3;
 		dc = mix(dc, gold, step(abs(mp.y - 0.052), 0.008) * trim);
+		dc = mix(dc, o_crim * (0.8 + 0.3 * ramp), step(abs(mp.y - 0.075), 0.006) * crim_line);
 		vec3 vc = o_veil * mix(mix(d_shade, vec3(1.0), 0.25), vec3(1.0), ramp) * mix(1.0, fold, 0.35 * (1.0 - notex)) + o_rim * fres * 0.3;
 		vc = mix(vc, gold, step(0.93, vw) * trim);
 		vec3 q2 = mp * 7.0; float w2 = fbm(q2 + vec3(fbm(q2 * 0.6 + 11.0), 0.0, fbm(q2 * 0.6 + 5.0)) * 1.6);
@@ -1220,13 +1221,17 @@ const DESIGNS := {
 	6: {"hi": "d37050", "lo": "9a4536", "veil": "f9e9d6", "rim": "ffc79a", "sheen": 0.14},
 	7: {"hi": "8c9e76", "lo": "596a4f", "veil": "f0f3e2", "rim": "dff0b8", "sheen": 0.14},
 	8: {"hi": "dfae47", "lo": "a6762a", "veil": "fff6da", "rim": "ffe9a0", "sheen": 0.18},
+	31: {"hi": "4f4c8c", "lo": "2e2b5c", "veil": "ece7f6", "rim": "cbc4ff", "sheen": 0.2},
+	32: {"hi": "2d5f7b", "lo": "1a3a55", "veil": "dceeee", "rim": "a5e6e6", "sheen": 0.2},
+	33: {"hi": "5d3c7a", "lo": "361f50", "veil": "f3e6ef", "rim": "e3b8ff", "sheen": 0.2},
+	34: {"hi": "484e86", "lo": "2a2e5e", "veil": "f7f1e6", "rim": "ffe9c8", "sheen": 0.2, "crim": 1.0},
 }
 
 func apply_design(m: ShaderMaterial, id: int, file: String) -> void:
 	var d: Dictionary = DESIGNS[id]; var rr := rig_of(file)
 	m.set_shader_parameter("design", 1.0); m.set_shader_parameter("orn", 0.0); m.set_shader_parameter("marble", 0.0)
 	m.set_shader_parameter("o_dress_hi", Color(d.hi)); m.set_shader_parameter("o_dress_lo", Color(d.lo)); m.set_shader_parameter("o_veil", Color(d.veil))
-	m.set_shader_parameter("o_rim", Color(d.rim)); m.set_shader_parameter("d_sheen", d.sheen); m.set_shader_parameter("fore_y", rr.get("fore", -1.0))
+	m.set_shader_parameter("o_rim", Color(d.rim)); m.set_shader_parameter("d_sheen", d.sheen); m.set_shader_parameter("crim_line", d.get("crim", 0.0)); m.set_shader_parameter("fore_y", rr.get("fore", -1.0))
 
 ## the drawn-on costume: marble limbs with gold seams, a pleated gown with a meander hem, a trimmed veil
 const ORN_FRAG := """	if (orn > 0.5) {
@@ -1415,7 +1420,9 @@ func _min_lineup() -> void:
 			var sd := spawn_shape(self, "main", "min" + names[i], int(dz[i]) if i < dz.size() else -1); (sd.holder as Node3D).position = c + dir * off; hs.append(sd.holder)
 		else:
 			hs.append(load_shape("min" + names[i], c + dir * off, PI * 0.25))
-		var l := Label3D.new(); l.text = names[i] if OS.get_environment("TEX") != "1" else (dz[i] if i < dz.size() else "ABCDEF"[i]); l.font_size = 96; l.pixel_size = 0.004 * vsz / 6.4; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		var l := Label3D.new(); l.text = names[i] if OS.get_environment("TEX") != "1" else (dz[i] if i < dz.size() else "ABCDEF"[i])
+		if OS.get_environment("MIN_LABELS") != "": l.text = OS.get_environment("MIN_LABELS").split(",")[i]
+		l.font_size = 96; l.pixel_size = 0.004 * vsz / 6.4; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		l.modulate = Color(0.72, 0.14, 0.18); l.outline_modulate = Color(1, 1, 1, 0.9); l.no_depth_test = true
 		l.position = c + dir * off + Vector3(0.75, 0.05, 0.75) * (vsz / 6.4); add_child(l)
 	var dirn := OS.get_environment("SHOT_DIR")
