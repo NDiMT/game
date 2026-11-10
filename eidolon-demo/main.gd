@@ -24,6 +24,7 @@ var hero_src: Node3D
 var H := {}
 var ghost_flat: StandardMaterial3D
 var walk_on := false
+var hero_real := true
 
 ## arms that reach for a point and a spine that bows, on top of whatever animation is playing
 class HerMod extends SkeletonModifier3D:
@@ -750,6 +751,23 @@ func pose_state(p: Vector3, yaw: float) -> Dictionary:
 
 ## the sculptor carved her again and again: a veiled figure in marble, in one of a few poses
 func her_statue(p: Vector3, yaw: float, pose := "calm", sc := 1.0) -> Node3D:
+	if not hero_real:
+		var f = Fig.new(); add_child(f); f.set_style(hero_style); f.build(3, pal, null, null)
+		f.scale = Vector3.ONE * sc
+		var ps := pose_state(p, yaw)
+		var bas := Basis(Vector3.UP, yaw) * sc
+		match pose:
+			"mourn":
+				ps.lean = 0.26; ps.head_pitch = 0.5; ps.drop = 0.06; ps.wL = 1.0; ps.wR = 1.0
+				ps.tL = p + bas * Vector3(0.06, 1.5, 0.17); ps.tR = p + bas * Vector3(-0.06, 1.5, 0.17)
+			"pray":
+				ps.head_pitch = 0.3; ps.wL = 1.0; ps.wR = 1.0
+				ps.tL = p + bas * Vector3(0.025, 1.26, 0.2); ps.tR = p + bas * Vector3(-0.025, 1.26, 0.2)
+			"kneel": ps.drop = 0.55; ps.pool = 1.0; ps.lean = 0.22; ps.head_pitch = 0.32
+			"reach": ps.raise = 1.0; ps.head_pitch = -0.25
+			"offer": ps.hold = 1.0; ps.open = 0.25; ps.head_pitch = 0.18
+		f.apply(ps)
+		return f
 	var d := spawn_her(self, "marble")
 	var holder: Node3D = d.holder
 	holder.position = p; holder.rotation.y = yaw; holder.scale = Vector3.ONE * sc
@@ -827,6 +845,7 @@ func _ready() -> void:
 		pals["dress"] = [Color(tn[1][0]).darkened(0.08).to_html(false), Color(tn[1][1]).darkened(0.1).to_html(false), Color(tn[1][2]).darkened(0.1).to_html(false)]
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
+	hero_real = OS.get_environment("REAL") != "0"
 	var st2 := Shader.new()
 	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
@@ -899,7 +918,11 @@ func _shots() -> void:
 	]
 	var only := OS.get_environment("SHOT_ONLY")
 	for sh in list:
-		if only != "" and not (sh.n as String).begins_with(only): continue
+		if only != "":
+			var hit := false
+			for pre in only.split(","):
+				if (sh.n as String).begins_with(pre): hit = true
+			if not hit: continue
 		shot = sh
 		route.clear(); pos = sh.p; yaw = sh.y; cam.size = sh.s; cam_t = pos
 		a_wL = 0.0
@@ -1310,13 +1333,14 @@ func _actors() -> void:
 		gulls.append(gn)
 	ghost_flat = StandardMaterial3D.new(); ghost_flat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	ghost_flat.cull_mode = BaseMaterial3D.CULL_DISABLED; ghost_flat.albedo_color = Color("b8232f")
-	H["main"] = spawn_her(self, "tex"); H["refl"] = spawn_her(wm, "crim"); H["ghost"] = spawn_her(mir, "flat")
-	for k in H:
-		var sk: Skeleton3D = H[k].sk
-		if sk != null:
-			var hm := HerMod.new(); hm.main = self; sk.add_child(hm)
-		if H[k].ap != null: H[k].ap.play("idle")
-	fig.visible = false; wfig.visible = false
+	if hero_real:
+		H["main"] = spawn_her(self, "tex"); H["refl"] = spawn_her(wm, "crim"); H["ghost"] = spawn_her(mir, "flat")
+		for k in H:
+			var sk: Skeleton3D = H[k].sk
+			if sk != null:
+				var hm := HerMod.new(); hm.main = self; sk.add_child(hm)
+			if H[k].ap != null: H[k].ap.play("idle")
+		fig.visible = false; wfig.visible = false
 	# things to tap
 	objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
@@ -1537,7 +1561,8 @@ func _process(dt: float) -> void:
 	fig.apply(st); wfig.apply(st)
 	for k in ["Bridge", "Cap", "Door", "Boat"]: (refl.get_node(k) as Node3D).transform = (world.get_node(k) as Node3D).transform
 	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
-	ghost.visible = false
+	ghost.visible = (not hero_real) and near > 0.01
+	if ghost.visible: ghost.apply(st)
 	var moving := spd > 0.15
 	if moving != walk_on:
 		walk_on = moving
@@ -1547,10 +1572,11 @@ func _process(dt: float) -> void:
 		var hd: Node3D = H[k].holder
 		hd.position = pos; hd.rotation.y = yaw
 		if H[k].ap != null: H[k].ap.speed_scale = clampf(spd / 1.1, 0.7, 2.3) if moving else 1.0
-	(H["ghost"].holder as Node3D).visible = near > 0.01
+	if hero_real: (H["ghost"].holder as Node3D).visible = near > 0.01
 	var prox := clampf(1.0 - (pos.x - MX - 0.5) / 1.4, 0.0, 1.0)
 	flash = move_toward(flash, 0.0, dt * 0.7)
 	ghost_flat.albedo_color = TEAL_D.lerp(CRIMSON, near * (0.3 + 0.7 * prox)).lerp(Color("ff5a62"), flash)
+	ghost.ghost_mat.albedo_color = ghost_flat.albedo_color
 	ripple_p = move_toward(ripple_p, 1.0, dt * 0.75); (ripple.material_override as ShaderMaterial).set_shader_parameter("p", ripple_p)
 	pulse_p = move_toward(pulse_p, 1.0, dt * 0.6); (pulse.material_override as ShaderMaterial).set_shader_parameter("p", pulse_p)
 	tap_p = move_toward(tap_p, 1.0, dt * 1.6); (tapring.material_override as ShaderMaterial).set_shader_parameter("p", tap_p)
