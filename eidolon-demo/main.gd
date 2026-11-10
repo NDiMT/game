@@ -1323,9 +1323,9 @@ func add_rest_coords(src: Node3D) -> void:
 						if bn.contains(key): legs[bi] = true
 				var keep_mid := float(OS.get_environment("SK_MID")) if OS.get_environment("SK_MID") != "" else 0.45
 				var keep_low := float(OS.get_environment("SK_LOW")) if OS.get_environment("SK_LOW") != "" else 0.15
-				if rig_file.begins_with("wrap"):   # a fitted wrap follows the legs far more than a loose gown
-					if OS.get_environment("SK_MID") == "": keep_mid = 0.75
-					if OS.get_environment("SK_LOW") == "": keep_low = 0.65
+				if rig_file.begins_with("wrap"):   # a fitted wrap moves with the legs, or the bare legs push through the cloth
+					if OS.get_environment("SK_MID") == "": keep_mid = 1.0
+					if OS.get_environment("SK_LOW") == "": keep_low = 1.0
 				if hips >= 0:
 					for i in av.size():
 						var y := cu[i * 4 + 1]
