@@ -867,13 +867,19 @@ func _ready() -> void:
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	var sb := Shader.new()
 	sb.code = SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;").replace(
+		"void fragment(){", "float bx(vec2 p, vec2 a, vec2 b){ vec2 q = step(a, p) * step(p, b); return q.x * q.y; }\nfloat key(vec2 p){ float m = bx(p, vec2(0.0, 0.76), vec2(0.86, 0.9)); m = max(m, bx(p, vec2(0.72, 0.24), vec2(0.86, 0.9))); m = max(m, bx(p, vec2(0.3, 0.24), vec2(0.86, 0.38))); m = max(m, bx(p, vec2(0.3, 0.24), vec2(0.44, 0.62))); m = max(m, bx(p, vec2(0.3, 0.48), vec2(0.58, 0.62))); m = max(m, bx(p, vec2(0.0, 0.06), vec2(0.14, 0.9))); m = max(m, bx(p, vec2(0.0, 0.06), vec2(1.0, 0.14))); return m; }\nvoid fragment(){").replace(
 		"void vertex(){", "void pull(vec3 p, vec3 ra, vec3 rb, vec3 na, vec3 nb, float sig, inout vec3 acc, inout float ws){ vec3 ab = rb - ra; float tt = clamp(dot(p - ra, ab) / max(dot(ab, ab), 1e-5), 0.0, 1.0); vec3 c = ra + ab * tt; float d = length(p - c); float w = exp(-d * d / (sig * sig)); acc += w * (mix(na, nb, tt) - c); ws += w; }\nvoid vertex(){").replace(
 		"uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform float use_tex = 0.0; uniform float tex_gain = 1.22; uniform vec3 veil_col = vec3(0.9, 0.9, 0.92); varying float notex; uniform vec3 trail = vec3(0.0);
 uniform vec3 hipL; uniform vec3 kneeL; uniform vec3 footL; uniform vec3 hipR; uniform vec3 kneeR; uniform vec3 footR;
 uniform vec3 rkneeL; uniform vec3 rfootL; uniform vec3 rkneeR; uniform vec3 rfootR;
 uniform vec4 armp = vec4(0.17, 1.4, -0.01, -0.012); uniform float arm_on = 0.0; uniform float adduct = 0.0; uniform vec2 swing = vec2(0.0);
+uniform float orn = 0.0; uniform float key_n = 24.0; uniform float sash_y = -1.0; uniform float brace_y = -1.0; uniform float veil_y = 1.46;
+uniform vec3 o_dress_hi : source_color = vec3(0.8, 0.81, 0.86); uniform vec3 o_dress_lo : source_color = vec3(0.55, 0.57, 0.68);
+uniform vec3 o_veil : source_color = vec3(0.97, 0.96, 0.93); uniform vec3 o_marble : source_color = vec3(0.99, 0.97, 0.94);
+uniform vec3 o_crim : source_color = vec3(0.72, 0.13, 0.18); uniform vec3 o_gold : source_color = vec3(0.87, 0.7, 0.34);
+varying vec3 mp; varying float armw; varying float vw;
 uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(0.2, 0.1); uniform vec2 leg_hang = vec2(0.12, 0.3); uniform vec3 grad_lo = vec3(0.74, 0.75, 0.84); varying float hv;").replace(
-		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", """	float hh = clamp(VERTEX.y / 1.72, 0.0, 1.0); hv = hh; notex = COLOR.g;
+		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", """	float hh = clamp(VERTEX.y / 1.72, 0.0, 1.0); hv = hh; notex = COLOR.g; mp = VERTEX; vw = COLOR.r;
 	float wgt = pow(1.0 - smoothstep(0.0, 0.62, hh), 1.5);
 	float rr = length(VERTEX.xz); vec2 rad = VERTEX.xz / max(rr, 0.001); float ang = atan(VERTEX.x, VERTEX.z);
 	float edge = smoothstep(0.03, 0.16, rr);
@@ -882,7 +888,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		float bl = mix(0.215, 0.127, smoothstep(0.92, 1.16, VERTEX.y));
 		float wl = smoothstep(bl - 0.015, bl + 0.015, axx) * step(0.6, VERTEX.y);
 		float wu = smoothstep(0.115, 0.19, axx) * (1.0 - smoothstep(1.3, 1.47, VERTEX.y));
-		float aw = mix(wl, wu, smoothstep(1.14, 1.26, VERTEX.y)) * arm_on;
+		float aw = mix(wl, wu, smoothstep(1.14, 1.26, VERTEX.y)) * arm_on; armw = aw;
 		vec3 pv = vec3(armp.w + sd * armp.x, armp.y, armp.z); vec3 q = VERTEX - pv;
 		float bb = -adduct * sd * aw; q.xy = vec2(q.x * cos(bb) - q.y * sin(bb), q.x * sin(bb) + q.y * cos(bb));
 		float aa = -(sd > 0.0 ? swing.x : swing.y) * aw; q.yz = vec2(q.y * cos(aa) - q.z * sin(aa), q.y * sin(aa) + q.z * cos(aa));
@@ -904,7 +910,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	VERTEX.y += trail.y * wgt * edge * (0.6 + 0.4 * sin(time_s * 1.1 + ang * 2.0));
 	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;""").replace(
 		"	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));",
-		"	if (use_tex > 0.0) { vec3 t0 = texture(albedo_tex, UV).rgb; float fl = smoothstep(0.035, 0.09, t0.r - t0.g) * (1.0 - smoothstep(0.24, 0.34, t0.r - t0.g)) * smoothstep(0.02, 0.07, t0.g - t0.b) * smoothstep(0.45, 0.6, t0.r); t0 = mix(t0, vec3(0.95, 0.94, 0.93) * (0.86 + 0.14 * dot(t0, vec3(0.34))), fl); vec3 tx = mix(t0, veil_col, notex); tx = mix(tx, vec3(dot(tx, vec3(0.3, 0.55, 0.15))), 0.08); col = tx * tex_gain * (wt * wt + 0.95 * wz * wz + 0.82 * wx * wx + 0.74 * (1.0 - min(s, 1.0))); }\n	col *= mix(mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv)), vec3(1.0), use_tex);")
+		"	if (use_tex > 0.0) { vec3 t0 = texture(albedo_tex, UV).rgb; float fl = smoothstep(0.035, 0.09, t0.r - t0.g) * (1.0 - smoothstep(0.24, 0.34, t0.r - t0.g)) * smoothstep(0.02, 0.07, t0.g - t0.b) * smoothstep(0.45, 0.6, t0.r); t0 = mix(t0, vec3(0.95, 0.94, 0.93) * (0.86 + 0.14 * dot(t0, vec3(0.34))), fl); vec3 tx = mix(t0, veil_col, notex); tx = mix(tx, vec3(dot(tx, vec3(0.3, 0.55, 0.15))), 0.08); col = tx * tex_gain * (wt * wt + 0.95 * wz * wz + 0.82 * wx * wx + 0.74 * (1.0 - min(s, 1.0))); }\n	col *= mix(mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv)), vec3(1.0), use_tex);\n" + ORN_FRAG)
 	shaders["body"] = sb
 	var st2 := Shader.new()
 	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
@@ -1172,6 +1178,39 @@ func bake_shape(file: String) -> ArrayMesh:
 	print("SHAPE ", file, " verts ", vs.size(), " tris ", ix.size() / 3)
 	return am
 
+## the drawn-on costume: marble limbs with gold seams, a pleated gown with a meander hem, a trimmed veil
+const ORN_FRAG := """	if (orn > 0.5) {
+		float shd = wt * wt + 0.95 * wz * wz + 0.84 * wx * wx + 0.76 * (1.0 - min(s, 1.0));
+		float ang = atan(mp.x, mp.z);
+		float kc = 0.0; float kf = armw; float kw = smoothstep(veil_y - 0.015, veil_y + 0.015, mp.y); float fold = 1.0;
+		if (use_tex > 0.0) {
+			vec3 t1 = texture(albedo_tex, UV).rgb; float lum = dot(t1, vec3(0.3, 0.55, 0.15)); float rg = t1.r - t1.g;
+			kc = smoothstep(0.2, 0.34, rg);
+			kf = smoothstep(0.035, 0.09, rg) * (1.0 - kc) * smoothstep(0.02, 0.07, t1.g - t1.b) * smoothstep(0.45, 0.6, t1.r);
+			kw = smoothstep(0.7, 0.8, lum) * (1.0 - kc) * (1.0 - kf);
+			fold = clamp(mix(lum / 0.56, lum / 0.92, kw), 0.86, 1.06);
+		}
+		float isveil = max(notex, kw); float ismar = kf * (1.0 - isveil);
+		float pl = smoothstep(0.2, 0.95, sin(ang * 44.0) * 0.5 + 0.5);
+		vec3 dc = mix(o_dress_lo, o_dress_hi, smoothstep(0.1, 1.25, mp.y)) * (1.0 - 0.08 * pl * (1.0 - smoothstep(0.35, 0.9, mp.y))) * mix(1.0, fold, 1.0 - notex);
+		dc = mix(dc, o_crim * 0.92, kc);
+		float bv = (mp.y - 0.05) / 0.1;
+		if (bv > 0.0 && bv < 1.0) dc = mix(o_crim, o_gold, key(vec2(fract(ang / 6.28318 * key_n), bv)));
+		float ln = step(abs(mp.y - 0.046), 0.004) + step(abs(mp.y - 0.154), 0.004) + step(abs(mp.y - 0.172), 0.0025);
+		dc = mix(dc, o_gold, clamp(ln, 0.0, 1.0));
+		float sv = abs(mp.y - sash_y);
+		if (sv < 0.032 && armw < 0.5) dc = mix(o_crim, o_gold, step(0.024, sv));
+		vec3 q2 = mp * 7.0; float w2 = fbm(q2 + vec3(fbm(q2 * 0.6 + 11.0), 0.0, fbm(q2 * 0.6 + 5.0)) * 1.6);
+		vec3 mc = o_marble * (1.0 + (w2 - 0.5) * 0.08);
+		mc = mix(mc, mc * vec3(0.78, 0.8, 0.9), (1.0 - smoothstep(0.0, 0.03, abs(w2 - 0.5))) * 0.5);
+		mc = mix(mc, o_gold, (1.0 - smoothstep(0.0, 0.007, abs(fbm(q2 * 1.7 + 20.0) - 0.47))) * 0.9);
+		mc = mix(mc, o_gold, step(abs(mp.y - brace_y), 0.011) * step(0.5, armw));
+		vec3 vc = o_veil * mix(1.0, fold, 1.0 - notex);
+		vc = mix(vc, o_crim, step(0.8, vw) * step(vw, 0.86)); vc = mix(vc, o_gold, step(0.92, vw));
+		col = mix(mix(dc, mc, step(0.5, ismar)), vc, step(0.5, isveil)) * shd * 1.05;
+	}
+"""
+
 ## where the head of each figure is, so a cloth can be laid over the face
 const FACE_VEIL := {"min9": {"cx": -0.008, "cz": 0.03, "rx": 0.108, "rzf": 0.139, "rzb": 0.12, "top": 1.731, "eq": 1.62, "chin": 1.5, "hem": 1.365},
 	"min13": {"cx": 0.006, "cz": -0.03, "rx": 0.116, "rzf": 0.14, "rzb": 0.125, "top": 1.732, "eq": 1.62, "chin": 1.5, "hem": 1.41}}
@@ -1218,8 +1257,8 @@ func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array
 			ix.append_array(PackedInt32Array([a0, a0 + 1, a0 + W, a0 + 1, a0 + W + 1, a0 + W]))
 
 ## where the joints are inside each figure (model space, 1.72 m tall, facing +Z)
-const RIGS := {"min9": {"cx": -0.012, "hx": 0.065, "hy": 0.9, "zc": -0.02, "A": 0.26, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, -0.01, -0.012), "arm_on": 1.0, "adduct": 0.07},
-	"min13": {"cx": 0.0, "hx": 0.065, "hy": 0.9, "zc": 0.03, "A": 0.24, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, 0.0, 0.0), "arm_on": 0.0, "adduct": 0.0}}
+const RIGS := {"min9": {"cx": -0.012, "hx": 0.065, "hy": 0.9, "zc": -0.02, "A": 0.26, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, -0.01, -0.012), "arm_on": 1.0, "adduct": 0.07, "sash": 1.09, "brace": 0.835},
+	"min13": {"cx": 0.0, "hx": 0.065, "hy": 0.9, "zc": 0.03, "A": 0.24, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, 0.0, 0.0), "arm_on": 0.0, "adduct": 0.0, "sash": -1.0, "brace": -1.0, "keys": 44.0}}
 
 func rig_of(file: String) -> Dictionary:
 	var k := file.substr(0, file.find("t")) if file.find("t") > 0 else file
@@ -1263,6 +1302,9 @@ func spawn_shape(parent: Node, mode: String, file := "") -> Dictionary:
 			if stex != null:
 				m.set_shader_parameter("albedo_tex", stex); m.set_shader_parameter("use_tex", 1.0); m.set_shader_parameter("marble", 0.0)
 				if VEIL_COL.has(file): m.set_shader_parameter("veil_col", VEIL_COL[file])
+			if OS.get_environment("ORN") != "0":
+				var rr := rig_of(file)
+				m.set_shader_parameter("orn", 1.0); m.set_shader_parameter("marble", 0.0); m.set_shader_parameter("sash_y", rr.sash); m.set_shader_parameter("brace_y", rr.brace); m.set_shader_parameter("key_n", rr.get("keys", 24.0))
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		"crim":
 			var m2 := body_mat("crim", "refl"); m2.set_shader_parameter("grad_lo", Vector3(0.8, 0.8, 0.85)); mi.material_override = m2
