@@ -20,6 +20,11 @@ var bg_c := Color("2c6379")
 var pals := {}
 var sepia_var := 0.0
 var gate_a: Node3D
+var winch_a: Node3D
+var her_mats: Array = []
+var posing := false
+var cam_focus_on := false
+var cam_focus := Vector3.ZERO
 var refl_mat: ShaderMaterial
 var shadow_c := Vector3(0.66, 0.66, 0.86)
 var hero_style := 5
@@ -178,6 +183,7 @@ void fragment(){
 const SH_REFL := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform float water_y = -1.3; uniform float time_s = 0.0; uniform vec3 tint = vec3(0.04, 0.12, 0.2); uniform float strength = 1.0;
+uniform float lift = 0.0; uniform float use_tex = 0.0; uniform float gain = 1.5; uniform float fade_a = 1.0; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
 varying float hh; varying vec3 q;
 void vertex(){
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -187,15 +193,17 @@ void vertex(){
 	float k = clamp(h * 0.45, 0.0, 1.6);
 	p.x += (sin(p.z * 2.3 + time_s * 1.2) + 0.5 * sin(p.z * 6.1 - time_s * 1.7)) * 0.05 * k;
 	p.z += (sin(p.x * 2.1 + time_s * 1.0) + 0.5 * sin(p.x * 5.3 + time_s * 1.5)) * 0.05 * k;
-	p.y = water_y - 0.015; q = p;
+	p.y = water_y - 0.015 + lift; q = p;
 	VERTEX = (inverse(MODEL_MATRIX) * vec4(p, 1.0)).xyz;
 }
 void fragment(){
 	if (hh < 0.03) discard;
-	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength;
+	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
 	float d = fract(dot(floor(FRAGCOORD.xy), vec2(0.7548776662, 0.56984029)));
 	if (d > fade) discard;
-	ALBEDO = tint;
+	vec3 c = tint;
+	if (use_tex > 0.5) { vec3 tx = texture(albedo_tex, UV).rgb; float rw = smoothstep(0.08, 0.2, tx.r - tx.b); c = mix(tx * 0.92, clamp(tx * gain, 0.0, 1.0), rw); }
+	ALBEDO = c;
 }"""
 const SH_SEA := """shader_type spatial;
 render_mode unshaded, cull_disabled;
@@ -1074,6 +1082,9 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	if "mins" in OS.get_cmdline_user_args(): _min_lineup()
 	if "heads" in OS.get_cmdline_user_args(): _heads_lineup()
 	if "zoom" in OS.get_cmdline_user_args(): cam.size = 3.3
+	if "solve1" in OS.get_cmdline_user_args():
+		get_viewport().msaa_3d = Viewport.MSAA_2X
+		_solve1()
 	if "glide" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		RenderingServer.directional_shadow_atlas_set_size(2048, true)
@@ -1508,7 +1519,11 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				mi.set_surface_override_material(si, bm)
 			else:
 				var sm := ShaderMaterial.new(); sm.shader = shaders["tex"]
-				if refl_mat != null: sm.next_pass = refl_mat
+				if refl_mat != null:   # her own reflection keeps her colours and lies over the others
+					var rm := ShaderMaterial.new(); rm.shader = shaders["refl"]; rm.set_shader_parameter("water_y", WATER); rm.set_shader_parameter("lift", 0.006); rm.set_shader_parameter("use_tex", 1.0)
+					if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: rm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
+					timed.append(rm); sm.next_pass = rm
+					if mode == "tex": her_mats.append(sm)
 				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
@@ -2051,8 +2066,9 @@ func _start_zone() -> void:
 	parapet(Vector3(8.25, 0, 0.35), Vector3(8.25, 0, 1.65)); parapet(Vector3(7.05, 0, 1.65), Vector3(8.25, 0, 1.65))
 	var wc := Vector3(7.7, 0, 0.95)
 	cyl(wc, 0.3, 0.28, 0.08, pal("shade"), 20); cyl(wc + Vector3(0, 0.08, 0), 0.13, 0.11, 0.62, pal("wood"), 12); cyl(wc + Vector3(0, 0.7, 0), 0.15, 0.15, 0.07, pal("gold"), 12)
+	winch_a = Node3D.new(); winch_a.position = wc; add_child(winch_a)
 	for i in 4:
-		var spk := blk(Vector3(-0.42, 0.5, -0.02), Vector3(0.42, 0.54, 0.02), "wood"); spk.position = wc; spk.rotation.y = PI * 0.25 * i
+		var spk := blk(Vector3(-0.46, -0.02, -0.022), Vector3(0.46, 0.02, 0.022), "wood", winch_a); spk.position = Vector3(0, 0.56, 0); spk.rotation.y = PI * 0.25 * i
 	for i in 7: blk(Vector3(7.7 - 0.012, 0.3 - 0.0 * i, 0.95 - 0.16 - 0.1 * i - 0.04), Vector3(7.7 + 0.012, 0.33, 0.95 - 0.16 - 0.1 * i), "dark")
 	lantern(Vector3(8.0, 0, 0.45), 1)
 	if refl_mat != null:   # what is gone above the water still lies on it as a shadow
@@ -2518,7 +2534,7 @@ func _process(dt: float) -> void:
 	for k in H:
 		var hd: Node3D = H[k].holder
 		hd.position = pos; hd.rotation.y = yaw
-		if H[k].ap != null: H[k].ap.speed_scale = clampf(spd / 1.1, 0.45 if rig_file != "" else 0.7, 2.3) if moving else 1.0
+		if H[k].ap != null: H[k].ap.speed_scale = 0.0 if posing else (clampf(spd / 1.1, 0.45 if rig_file != "" else 0.7, 2.3) if moving else 1.0)
 	if hero_real: (H["ghost"].holder as Node3D).visible = near > 0.01
 	var prox := clampf(1.0 - (pos.x - MX - 0.5) / 1.4, 0.0, 1.0)
 	flash = move_toward(flash, 0.0, dt * 0.7)
@@ -2558,7 +2574,8 @@ func _process(dt: float) -> void:
 		n.visible = started and not done.has(k) and shot == null
 		n.position.y = objs[k].at.y + (0.55 if k != "mirror" else 1.35) + 0.05 * sin(t * 2.4)
 		n.rotation.y = t * 1.2
-	if rig_file != "": cam_t = cam_t.lerp(pos + vel * 0.25, 1.0 - exp(-4.0 * dt))
+	if cam_focus_on: cam_t = cam_t.lerp(cam_focus, 1.0 - exp(-1.8 * dt))
+	elif rig_file != "": cam_t = cam_t.lerp(pos + vel * 0.25, 1.0 - exp(-4.0 * dt))
 	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 34.0
 	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * 34.0
@@ -2667,6 +2684,65 @@ func _auto() -> void:
 	await _a_walk(Vector3(DX, 0, -28.2))
 	await wait(3.0)
 	print("AUTO done ended=", ended, " done=", done)
+	get_tree().quit()
+
+## the solution of the first puzzle, played out: she stands on the carved feet, her reflection
+## leaves her, crosses on the reflection of the lost footbridge and turns the winch in the water
+func _eid_go(e: Dictionary, to: Vector3, speed := 0.8) -> void:
+	var hd: Node3D = e.holder; var d := to - hd.position; d.y = 0.0
+	hd.rotation.y = atan2(d.x, d.z)
+	(e.ap as AnimationPlayer).play("walk", 0.25); (e.ap as AnimationPlayer).speed_scale = clampf(speed / 1.1, 0.45, 2.3)
+	var t := create_tween(); t.tween_property(hd, "position", to, d.length() / speed)
+	await t.finished
+	(e.ap as AnimationPlayer).play("idle", 0.4); (e.ap as AnimationPlayer).speed_scale = 1.0
+
+func _solve1() -> void:
+	started = true; title_box.hide(); hint.show(); hint.modulate.a = 0.0
+	gate_a.position.y = 0.0
+	pos = Vector3(2.4, 0, 1.0); yaw = PI * 0.5; cam_t = pos; cam.size = 5.4
+	await wait(1.2)
+	await go([Vector3(4.6, 0, 1.0), Vector3(5.42, 0, 1.0)])
+	await face(Vector3(8.0, 0, 1.0))
+	say("1 · Στέκεται στα πατήματα και μένει ακίνητη")
+	await wait(0.8)
+	posing = true
+	var mine := her_mats.duplicate()
+	var e := spawn_her(self, "tex")
+	for mm in (e.holder as Node3D).find_children("*", "MeshInstance3D", true, false):
+		var mi := mm as MeshInstance3D
+		for si in mi.mesh.get_surface_count():
+			var m0 := mi.get_surface_override_material(si) as ShaderMaterial
+			if m0 != null and m0.next_pass != null: mi.set_surface_override_material(si, m0.next_pass)
+	(e.holder as Node3D).position = pos; (e.holder as Node3D).rotation.y = yaw; (e.ap as AnimationPlayer).play("idle")
+	var kept := []
+	for m in mine: kept.append((m as ShaderMaterial).next_pass); (m as ShaderMaterial).next_pass = null
+	cam_focus = Vector3(6.3, -0.9, 1.9); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 6.6, 1.6)
+	await wait(2.0)
+	say("2 · Η αντανάκλασή της περνάει από την αντανάκλαση του χαμένου γεφυριού")
+	await _eid_go(e, Vector3(7.22, 0, 0.98))
+	await wait(0.5)
+	say("3 · Γυρίζει το βαρούλκο μέσα στο νερό")
+	var wt := create_tween(); wt.tween_property(winch_a, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
+	await wait(1.6)
+	cam_focus = Vector3(0.6, 0.6, -2.6)
+	create_tween().tween_property(cam, "size", 7.4, 1.6)
+	await wait(2.2)
+	say("Η σιδεριά ανοίγει")
+	var gt := create_tween(); gt.tween_property(gate_a, "position:y", -2.4, 2.4).set_trans(Tween.TRANS_SINE)
+	await gt.finished
+	await wait(1.4)
+	cam_focus = Vector3(6.0, -0.7, 1.7)
+	create_tween().tween_property(cam, "size", 6.6, 1.6)
+	await wait(2.2)
+	await _eid_go(e, Vector3(5.42, 0, 1.0))
+	(e.holder as Node3D).rotation.y = yaw
+	await wait(0.6)
+	(e.holder as Node3D).queue_free()
+	for i in mine.size(): (mine[i] as ShaderMaterial).next_pass = kept[i]
+	posing = false; cam_focus_on = false
+	create_tween().tween_property(cam, "size", 5.4, 1.4)
+	await wait(2.0)
 	get_tree().quit()
 
 func _glide() -> void:
