@@ -747,6 +747,53 @@ func idol_head(p: Vector3, h: float, yaw := 0.0, tilt := Vector3(-0.22, 0, 0), w
 	cyl(Vector3(0, -0.42 * h, -0.02 * h), 0.17 * h, 0.14 * h, 0.5 * h, pal("marble"), 24, n)
 	return n
 
+## a sculpted marble head with some detail, for the large decorative faces
+var head_cache := {}
+func sculpt_head(p: Vector3, h: float, yaw := 0.0, tilt := Vector3(-0.12, 0, 0), variant := 1, parent: Node = self) -> Node3D:
+	var file := "head%d" % variant
+	if not head_cache.has(file):
+		head_cache[file] = null
+		var st := GLTFState.new(); var doc := GLTFDocument.new()
+		if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) == OK:
+			var src := doc.generate_scene(st) as Node3D
+			var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array()
+			var turn := Basis(Vector3.UP, float(OS.get_environment("HEAD_YAW")) if OS.get_environment("HEAD_YAW") != "" else 0.0)
+			for m in src.find_children("*", "MeshInstance3D", true, false):
+				var mi := m as MeshInstance3D
+				var xf := Transform3D.IDENTITY
+				var nd: Node = mi
+				while nd != null and nd is Node3D:
+					xf = (nd as Node3D).transform * xf
+					if nd == src: break
+					nd = nd.get_parent()
+				xf = Transform3D(turn, Vector3.ZERO) * xf
+				for si in mi.mesh.get_surface_count():
+					var a := mi.mesh.surface_get_arrays(si)
+					var base := vs.size()
+					var av: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+					var has_n: bool = a[Mesh.ARRAY_NORMAL] != null
+					for i in av.size():
+						vs.append(xf * av[i]); ns.append((xf.basis * (a[Mesh.ARRAY_NORMAL][i] as Vector3)).normalized() if has_n else Vector3.UP)
+					if a[Mesh.ARRAY_INDEX] != null:
+						for j in (a[Mesh.ARRAY_INDEX] as PackedInt32Array): ix.append(base + j)
+					else:
+						for j in av.size(): ix.append(base + j)
+			src.free()
+			var lo := Vector3.INF; var hi := -Vector3.INF
+			for v in vs: lo = lo.min(v); hi = hi.max(v)
+			var sc := 1.0 / maxf(hi.y - lo.y, 0.001)
+			var c := Vector3((lo.x + hi.x) * 0.5, lo.y, (lo.z + hi.z) * 0.5)
+			for i in vs.size(): vs[i] = (vs[i] - c) * sc
+			var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_INDEX] = ix
+			var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+			head_cache[file] = am
+			print("HEAD ", file, " verts ", vs.size())
+	if head_cache[file] == null: return null
+	var n := Node3D.new(); n.position = p; n.rotation = Vector3(tilt.x, yaw, tilt.z); parent.add_child(n)
+	var mi2 := prim(head_cache[file], Vector3(0, -0.45 * h, 0), pal("marble", "2"), n)
+	mi2.scale = Vector3.ONE * 1.45 * h
+	return n
+
 ## a Cycladic figure with folded arms
 func idol(p: Vector3, h: float, yaw := 0.0) -> Node3D:
 	var n := Node3D.new(); n.position = p; n.rotation.y = yaw; add_child(n)
@@ -819,6 +866,10 @@ func her_statue(p: Vector3, yaw: float, pose := "calm", sc := 1.0) -> Node3D:
 func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.ZERO, _p := "marble") -> Node3D:
 	if nm.begins_with("kit_face") or nm == "colossus_head_veiled":
 		var k := float(nm.unicode_at(nm.length() - 1) % 5)
+		if OS.get_environment("HEADS") != "old":
+			var hv := 2 if nm == "colossus_head_veiled" else 1 + int(k) % 4
+			var sh := sculpt_head(pos + Vector3(0, height * 0.3, 0), height * 0.7, yaw, Vector3(-0.12 + tilt.x, 0, tilt.z), hv)
+			if sh != null: return sh
 		return idol_head(pos + Vector3(0, height * 0.3, 0), height * 0.7, yaw, Vector3(-0.2 + tilt.x, 0, tilt.z), 0.9 + 0.05 * k, 0.85 + 0.07 * k)
 	if nm == "observer_veiled": return her_statue(pos, yaw, "calm", height / 1.7)
 	if nm == "statue_veiled_broken": return idol(pos, height, yaw)
