@@ -873,7 +873,7 @@ func _ready() -> void:
 uniform vec3 hipL; uniform vec3 kneeL; uniform vec3 footL; uniform vec3 hipR; uniform vec3 kneeR; uniform vec3 footR;
 uniform vec3 rkneeL; uniform vec3 rfootL; uniform vec3 rkneeR; uniform vec3 rfootR;
 uniform vec4 armp = vec4(0.17, 1.4, -0.01, -0.012); uniform float arm_on = 0.0; uniform float adduct = 0.0; uniform vec2 swing = vec2(0.0);
-uniform float orn = 0.0; uniform float key_n = 24.0; uniform float sash_y = -1.0; uniform float brace_y = -1.0; uniform float veil_y = 1.46;
+uniform float orn = 0.0; uniform float plain = 0.0; uniform sampler2D veil_mask : source_color, filter_linear_mipmap; uniform float use_mask = 0.0; uniform float fore_y = -1.0; uniform float key_n = 24.0; uniform float sash_y = -1.0; uniform float brace_y = -1.0; uniform float veil_y = 1.46;
 uniform vec3 o_dress_hi : source_color = vec3(0.8, 0.81, 0.86); uniform vec3 o_dress_lo : source_color = vec3(0.55, 0.57, 0.68);
 uniform vec3 o_veil : source_color = vec3(0.97, 0.96, 0.93); uniform vec3 o_marble : source_color = vec3(0.99, 0.97, 0.94);
 uniform vec3 o_crim : source_color = vec3(0.72, 0.13, 0.18); uniform vec3 o_gold : source_color = vec3(0.87, 0.7, 0.34);
@@ -1189,24 +1189,26 @@ const ORN_FRAG := """	if (orn > 0.5) {
 			kf = smoothstep(0.035, 0.09, rg) * (1.0 - kc) * smoothstep(0.02, 0.07, t1.g - t1.b) * smoothstep(0.45, 0.6, t1.r);
 			kw = smoothstep(0.7, 0.8, lum) * (1.0 - kc) * (1.0 - kf);
 			fold = clamp(mix(lum / 0.56, lum / 0.92, kw), 0.86, 1.06);
+			if (use_mask > 0.5) { vec3 t2 = texture(veil_mask, UV).rgb; kw = smoothstep(0.2, 0.34, t2.r - t2.g); kf *= 1.0 - kw; }
 		}
+		kf = max(kf, step(0.5, armw) * step(mp.y, fore_y));
 		float isveil = max(notex, kw); float ismar = kf * (1.0 - isveil);
 		float pl = smoothstep(0.2, 0.95, sin(ang * 44.0) * 0.5 + 0.5);
-		vec3 dc = mix(o_dress_lo, o_dress_hi, smoothstep(0.1, 1.25, mp.y)) * (1.0 - 0.08 * pl * (1.0 - smoothstep(0.35, 0.9, mp.y))) * mix(1.0, fold, 1.0 - notex);
-		dc = mix(dc, o_crim * 0.92, kc);
+		vec3 dc = mix(o_dress_lo, o_dress_hi, smoothstep(0.1, 1.25, mp.y)) * (1.0 - 0.08 * (1.0 - plain) * pl * (1.0 - smoothstep(0.35, 0.9, mp.y))) * mix(1.0, mix(fold, 1.0, plain * 0.5), 1.0 - notex);
+		dc = mix(dc, o_crim * 0.92, kc * (1.0 - plain));
 		float bv = (mp.y - 0.05) / 0.1;
-		if (bv > 0.0 && bv < 1.0) dc = mix(o_crim, o_gold, key(vec2(fract(ang / 6.28318 * key_n), bv)));
+		if (bv > 0.0 && bv < 1.0 && plain < 0.5) dc = mix(o_crim, o_gold, key(vec2(fract(ang / 6.28318 * key_n), bv)));
 		float ln = step(abs(mp.y - 0.046), 0.004) + step(abs(mp.y - 0.154), 0.004) + step(abs(mp.y - 0.172), 0.0025);
-		dc = mix(dc, o_gold, clamp(ln, 0.0, 1.0));
+		dc = mix(dc, o_gold, clamp(ln, 0.0, 1.0) * (1.0 - plain));
 		float sv = abs(mp.y - sash_y);
-		if (sv < 0.032 && armw < 0.5) dc = mix(o_crim, o_gold, step(0.024, sv));
+		if (sv < 0.032 && armw < 0.5 && plain < 0.5) dc = mix(o_crim, o_gold, step(0.024, sv));
 		vec3 q2 = mp * 7.0; float w2 = fbm(q2 + vec3(fbm(q2 * 0.6 + 11.0), 0.0, fbm(q2 * 0.6 + 5.0)) * 1.6);
 		vec3 mc = o_marble * (1.0 + (w2 - 0.5) * 0.08);
-		mc = mix(mc, mc * vec3(0.78, 0.8, 0.9), (1.0 - smoothstep(0.0, 0.03, abs(w2 - 0.5))) * 0.5);
-		mc = mix(mc, o_gold, (1.0 - smoothstep(0.0, 0.007, abs(fbm(q2 * 1.7 + 20.0) - 0.47))) * 0.9);
-		mc = mix(mc, o_gold, step(abs(mp.y - brace_y), 0.011) * step(0.5, armw));
+		mc = mix(mc, mc * vec3(0.74, 0.76, 0.88), (1.0 - smoothstep(0.0, 0.035, abs(w2 - 0.5))) * mix(0.5, 0.7, plain));
+		mc = mix(mc, mix(o_gold, mc * vec3(0.8, 0.81, 0.9), plain), (1.0 - smoothstep(0.0, 0.007, abs(fbm(q2 * 1.7 + 20.0) - 0.47))) * 0.9);
+		mc = mix(mc, o_gold, step(abs(mp.y - brace_y), 0.011) * step(0.5, armw) * (1.0 - plain));
 		vec3 vc = o_veil * mix(1.0, fold, 1.0 - notex);
-		vc = mix(vc, o_crim, step(0.8, vw) * step(vw, 0.86)); vc = mix(vc, o_gold, step(0.92, vw));
+		vc = mix(vc, o_crim, step(0.8, vw) * step(vw, 0.86) * (1.0 - plain)); vc = mix(vc, o_gold, step(0.92, vw) * (1.0 - plain));
 		col = mix(mix(dc, mc, step(0.5, ismar)), vc, step(0.5, isveil)) * shd * 1.05;
 	}
 """
@@ -1257,8 +1259,8 @@ func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array
 			ix.append_array(PackedInt32Array([a0, a0 + 1, a0 + W, a0 + 1, a0 + W + 1, a0 + W]))
 
 ## where the joints are inside each figure (model space, 1.72 m tall, facing +Z)
-const RIGS := {"min9": {"cx": -0.012, "hx": 0.065, "hy": 0.9, "zc": -0.02, "A": 0.26, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, -0.01, -0.012), "arm_on": 1.0, "adduct": 0.07, "sash": 1.09, "brace": 0.835},
-	"min13": {"cx": 0.0, "hx": 0.065, "hy": 0.9, "zc": 0.03, "A": 0.24, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, 0.0, 0.0), "arm_on": 0.0, "adduct": 0.0, "sash": -1.0, "brace": -1.0, "keys": 44.0}}
+const RIGS := {"min9": {"cx": -0.012, "hx": 0.065, "hy": 0.9, "zc": -0.02, "A": 0.26, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, -0.01, -0.012), "arm_on": 1.0, "adduct": 0.07, "sash": 1.09, "brace": 0.835, "fore": 1.0},
+	"min13": {"cx": 0.0, "hx": 0.065, "hy": 0.9, "zc": 0.03, "A": 0.24, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, 0.0, 0.0), "arm_on": 0.0, "adduct": 0.0, "sash": -1.0, "brace": -1.0, "keys": 44.0, "mask": "min13tb"}}
 
 func rig_of(file: String) -> Dictionary:
 	var k := file.substr(0, file.find("t")) if file.find("t") > 0 else file
@@ -1305,6 +1307,14 @@ func spawn_shape(parent: Node, mode: String, file := "") -> Dictionary:
 			if OS.get_environment("ORN") != "0":
 				var rr := rig_of(file)
 				m.set_shader_parameter("orn", 1.0); m.set_shader_parameter("marble", 0.0); m.set_shader_parameter("sash_y", rr.sash); m.set_shader_parameter("brace_y", rr.brace); m.set_shader_parameter("key_n", rr.get("keys", 24.0))
+				if OS.get_environment("COSTUME") != "ornate":
+					m.set_shader_parameter("plain", 1.0)
+					m.set_shader_parameter("o_dress_hi", Color("c22a35")); m.set_shader_parameter("o_dress_lo", Color("ad202c")); m.set_shader_parameter("o_veil", Color("e0656e"))
+					m.set_shader_parameter("fore_y", rr.get("fore", -1.0))
+					if rr.has("mask") and stex != null:
+						if not shape_cache.has(rr.mask):
+							var mm := bake_shape(rr.mask); shape_cache[rr.mask] = {"mesh": mm, "tex": shape_tex}
+						if shape_cache[rr.mask].tex != null: m.set_shader_parameter("veil_mask", shape_cache[rr.mask].tex); m.set_shader_parameter("use_mask", 1.0)
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		"crim":
 			var m2 := body_mat("crim", "refl"); m2.set_shader_parameter("grad_lo", Vector3(0.8, 0.8, 0.85)); mi.material_override = m2
