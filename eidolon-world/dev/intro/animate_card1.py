@@ -1,14 +1,20 @@
 """Animates the first intro card (Theron and the marble woman) from its painted layers.
 
-usage: python3 animate_card1.py <layers dir> <out.mp4> [seconds]
+usage: python3 animate_card1.py <layers dir> <out.mp4> [seconds] [font.ttf | notext]
 Layers (all 941x1672, in place): bg, theron (no arm), arm, statue, tools, branch, waves.
+The card's words form letter by letter in the empty clay under the ground line.
 """
 import sys, math, subprocess
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageDraw, ImageFont
 
 src, out = sys.argv[1], sys.argv[2]
-DUR = float(sys.argv[3]) if len(sys.argv) > 3 else 11.0
+DUR = float(sys.argv[3]) if len(sys.argv) > 3 else 12.5
+FONT = sys.argv[4] if len(sys.argv) > 4 else '../../assets/fonts/LiberationSerif-Regular.ttf'
+LINES = [("On Kythira there lived a sculptor named Theron.", 1.3),      # (text, the second its first letter appears)
+         ("From white marble he carved a woman,", 4.0),
+         ("and loved her more than stone should be loved.", 7.1)]
+PER_CHAR, CHAR_FADE = 0.05, 0.55
 FPS = 30
 OW, OH = 1080, 1920
 
@@ -45,6 +51,30 @@ def carve_in(layer, p, top, bottom):
 
 def shifted(layer, dx, dy):
     c = Image.new('RGBA', (W, H), (0, 0, 0, 0)); c.paste(layer, (int(round(dx)), int(round(dy)))); return c
+
+# the words: one painted layer, and for every pixel the moment its letter begins to appear
+TEXT = None
+if FONT != 'notext':
+    size = 50
+    while True:
+        font = ImageFont.truetype(FONT, size)
+        if max(font.getlength(l) for l, _ in LINES) <= W - 100 or size <= 24: break
+        size -= 1
+    txt = Image.new('L', (W, H), 0); dr = ImageDraw.Draw(txt)
+    TMAP = np.full((H, W), 1e9, dtype=np.float32)
+    y = 1262
+    for line, t0 in LINES:
+        x = (W - font.getlength(line)) / 2.0
+        dr.text((x, y), line, font=font, fill=255)
+        for k in range(len(line)):
+            x0 = int(x + font.getlength(line[:k])); x1 = int(math.ceil(x + font.getlength(line[:k + 1])))
+            TMAP[y - 6:y + int(size * 1.35), x0:x1] = t0 + k * PER_CHAR
+        y += int(size * 1.5)
+    worn = 0.84 + 0.16 * smooth_noise(7)   # a little uneven, like slip on clay, but never so worn that a letter is lost
+    TEXT_A = np.asarray(txt, dtype=np.float32) / 255.0 * worn
+    TEXT_RGB = np.array([58.0, 34.0, 23.0], dtype=np.float32)
+    TEXT = True
+    FINE = smooth_noise(4)
 
 # the shoulder: centre of the arm's blunt end
 A = np.asarray(arm)[..., 3] > 40
@@ -115,6 +145,13 @@ for f in range(N):
                         r, g, b, _ = px[xi, yi]
                         px[xi, yi] = (int(r + (238 - r) * al), int(g + (214 - g) * al), int(b + (184 - b) * al), 255)
         dust = keep
+    # the words soak into the clay, letter after letter
+    if TEXT:
+        al = TEXT_A * np.clip(((t - TMAP) / CHAR_FADE * 1.3 - FINE) * 4.0, 0.0, 1.0)
+        if al.max() > 0.0:
+            a = np.asarray(frame).astype(np.float32)
+            a[..., :3] = a[..., :3] * (1.0 - al[..., None]) + TEXT_RGB * al[..., None]
+            frame = Image.fromarray(a.astype(np.uint8), 'RGBA')
     # a slow push in, and the opening out of black
     z = 1.0 + 0.04 * ease(t / DUR)
     cw, ch = W / z, H / z; cx = W * 0.5; cy = min(max(H * 0.53, ch / 2), H - ch / 2)
