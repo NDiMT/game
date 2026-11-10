@@ -998,11 +998,11 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	sk2.code = sb.code.substr(0, i0) + "void vertex(){\n	mp = CUSTOM0.xyz; hv = clamp(mp.y / 1.72, 0.0, 1.0); notex = 0.0; vw = 0.0; armw = 0.0;\n	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);\n}\n" + sb.code.substr(i1)
 	shaders["bodyskin"] = sk2
 	var st2 := Shader.new()
-	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0; uniform float snap = 0.0; uniform float recol3 = 0.0; uniform float rc_detail = 1.0; uniform float rc_split = 1.26; uniform float recol2 = 0.0; uniform float recol = 0.0; uniform vec3 rc_gown = vec3(0.8); uniform vec3 rc_veil = vec3(0.6, 0.13, 0.2); uniform vec3 rc_trim = vec3(0.87, 0.7, 0.3); varying vec3 mpos;").replace(
+	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0; uniform float snap = 0.0; uniform float recol3 = 0.0; uniform float rc_detail = 1.0; uniform float rc_split = 1.26; uniform float recol2 = 0.0; uniform float recol = 0.0; uniform vec3 rc_gown = vec3(0.8); uniform vec3 rc_veil = vec3(0.6, 0.13, 0.2); uniform vec3 rc_trim = vec3(0.87, 0.7, 0.3); varying vec3 mpos; varying float mveil;").replace(
 		"void fragment(){", "vec3 snapc(vec3 lin){ vec3 c = lin; vec3 best = vec3(0.165, 0.54, 0.58); float bd = distance(c, vec3(0.24, 0.61, 0.65)); float d = distance(c, vec3(0.9, 0.82, 0.65)); if (d < bd) { bd = d; best = vec3(0.955, 0.935, 0.885); } d = distance(c, vec3(0.89, 0.725, 0.3)); if (d < bd) { bd = d; best = vec3(0.86, 0.68, 0.29); } d = distance(c, vec3(0.89, 0.89, 0.88)); if (d < bd) { bd = d; best = vec3(0.965, 0.955, 0.94); } d = distance(c, vec3(0.78, 0.2, 0.18)); if (d < bd) { bd = d; best = vec3(0.75, 0.19, 0.23); } return best; }\nvoid fragment(){").replace(
-		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", "	mpos = CUSTOM0.xyz;\n	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n	if (w0.y < floor_y + 0.012) { VERTEX += (inverse(MODEL_MATRIX) * vec4(0.0, floor_y + 0.012 - w0.y, 0.0, 0.0)).xyz; w0.y = floor_y + 0.012; }").replace(
+		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", "	mpos = CUSTOM0.xyz; mveil = CUSTOM0.w;\n	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n	if (w0.y < floor_y + 0.012) { VERTEX += (inverse(MODEL_MATRIX) * vec4(0.0, floor_y + 0.012 - w0.y, 0.0, 0.0)).xyz; w0.y = floor_y + 0.012; }").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
-		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (recol3 > 0.5) { float lum3 = dot(tx, vec3(0.3, 0.55, 0.15)); float cl3 = smoothstep(0.02, 0.06, tx.b - tx.r); vec3 cc3 = mix(rc_gown, rc_veil, smoothstep(rc_split - 0.04, rc_split + 0.04, mpos.y)); float gw3 = 1.0 - smoothstep(rc_split - 0.04, rc_split + 0.04, mpos.y); float ang3 = atan(mpos.z, mpos.x); float fold3 = clamp(1.0 + (lum3 - 0.66) * 1.5, 0.74, 1.14); float pl3 = smoothstep(-0.35, 0.35, sin(ang3 * 24.0 + sin(mpos.y * 6.0) * 0.7)); float plw3 = gw3 * smoothstep(1.02, 0.55, mpos.y) * rc_detail; float mot3 = sin(mpos.x * 37.0 + mpos.y * 11.0) * sin(mpos.y * 29.0 + mpos.z * 17.0) * sin(mpos.z * 41.0 + mpos.x * 7.0); float thr3 = sin(ang3 * 70.0 + mpos.y * 3.0) * (1.0 - gw3); float rim3 = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 2.2); cc3 *= mix(1.0, mix(0.9, 1.04, pl3), plw3) * (1.0 + (0.035 * mot3 + 0.03 * thr3) * rc_detail); cc3 *= 1.0 - 0.1 * rc_detail * gw3 * smoothstep(rc_split - 0.13, rc_split - 0.03, mpos.y); float hb3 = (1.0 - smoothstep(0.05, 0.062, mpos.y)) * rc_detail; float hl3 = smoothstep(0.078, 0.088, mpos.y) * (1.0 - smoothstep(0.104, 0.114, mpos.y)) * rc_detail; cc3 = mix(cc3, rc_gown * vec3(0.72, 0.78, 0.92), hb3); cc3 = mix(cc3, rc_veil, hl3 * 0.85); cc3 = mix(cc3, vec3(1.0), rim3 * mix(0.3, 0.14, gw3) * rc_detail); tx = mix(tx, cc3 * mix(clamp(0.6 + lum3 * 0.5, 0.86, 1.08), fold3, rc_detail), cl3); } if (recol2 > 0.5) { float lv = dot(tx, vec3(0.3, 0.55, 0.15)); float mx = max(tx.r, max(tx.g, tx.b)); float mn = min(tx.r, min(tx.g, tx.b)); float sat = (mx - mn) / max(mx, 0.001); float gold = step(0.5, tx.r) * step(0.38, tx.g) * step(0.22, tx.r - tx.b); float crim = smoothstep(0.2, 0.3, tx.r - tx.g) * (1.0 - step(0.4, tx.g)); float body = step(mpos.y, 1.16) * step(abs(mpos.x), 0.3); float teal = smoothstep(0.02, 0.1, min(tx.g, tx.b) - tx.r) * (1.0 - smoothstep(0.75, 0.9, lv)); float gown = max(max(teal, body), crim); tx = mix(tx, rc_gown * clamp(0.95 + (lv - 0.35) * 0.3, 0.92, 1.08), gown); float lowsat = (1.0 - smoothstep(0.12, 0.26, sat)) * smoothstep(0.45, 0.62, lv); float top = step(1.56, mpos.y); float isveil = max(max(lowsat, gold), top) * step(abs(mpos.x), 0.27) * step(1.16, mpos.y) * (1.0 - gown * (1.0 - top)); tx = mix(tx, rc_veil * mix(0.93, clamp(lv / 0.8, 0.78, 1.08), lowsat), isveil); } if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
+		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (recol3 > 0.5) { float lum3 = dot(tx, vec3(0.3, 0.55, 0.15)); float cl3 = smoothstep(0.02, 0.06, tx.b - tx.r); float vw3 = mveil < -0.5 ? smoothstep(rc_split - 0.04, rc_split + 0.04, mpos.y) : smoothstep(0.3, 0.6, mveil); vec3 cc3 = mix(rc_gown, rc_veil, vw3); float gw3 = 1.0 - vw3; float vd3 = mveil - 1.0; float vb3 = step(0.0, vd3) * smoothstep(0.016, 0.022, vd3) * (1.0 - smoothstep(0.034, 0.04, vd3)) * rc_detail; cc3 = mix(cc3, rc_gown, vb3 * 0.5); cc3 *= mix(1.0, 0.9, step(0.5, mveil) * (1.0 - step(0.9, mveil))); float ang3 = atan(mpos.z, mpos.x); float fold3 = clamp(1.0 + (lum3 - 0.66) * 1.5, 0.74, 1.14); float pl3 = smoothstep(-0.35, 0.35, sin(ang3 * 24.0 + sin(mpos.y * 6.0) * 0.7)); float plw3 = gw3 * smoothstep(1.02, 0.55, mpos.y) * rc_detail; float mot3 = sin(mpos.x * 37.0 + mpos.y * 11.0) * sin(mpos.y * 29.0 + mpos.z * 17.0) * sin(mpos.z * 41.0 + mpos.x * 7.0); float thr3 = sin(ang3 * 70.0 + mpos.y * 3.0) * (1.0 - gw3); float rim3 = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 2.2); cc3 *= mix(1.0, mix(0.9, 1.04, pl3), plw3) * (1.0 + (0.035 * mot3 + 0.03 * thr3) * rc_detail); cc3 *= 1.0 - 0.1 * rc_detail * gw3 * smoothstep(rc_split - 0.13, rc_split - 0.03, mpos.y) * step(abs(mpos.x), 0.26); float hb3 = (1.0 - smoothstep(0.05, 0.062, mpos.y)) * rc_detail; float hl3 = smoothstep(0.078, 0.088, mpos.y) * (1.0 - smoothstep(0.104, 0.114, mpos.y)) * rc_detail; cc3 = mix(cc3, rc_gown * vec3(0.72, 0.78, 0.92), hb3); cc3 = mix(cc3, rc_veil, hl3 * 0.85); cc3 = mix(cc3, vec3(1.0), rim3 * mix(0.3, 0.14, gw3) * rc_detail); tx = mix(tx, cc3 * mix(clamp(0.6 + lum3 * 0.5, 0.86, 1.08), fold3, rc_detail), cl3); } if (recol2 > 0.5) { float lv = dot(tx, vec3(0.3, 0.55, 0.15)); float mx = max(tx.r, max(tx.g, tx.b)); float mn = min(tx.r, min(tx.g, tx.b)); float sat = (mx - mn) / max(mx, 0.001); float gold = step(0.5, tx.r) * step(0.38, tx.g) * step(0.22, tx.r - tx.b); float crim = smoothstep(0.2, 0.3, tx.r - tx.g) * (1.0 - step(0.4, tx.g)); float body = step(mpos.y, 1.16) * step(abs(mpos.x), 0.3); float teal = smoothstep(0.02, 0.1, min(tx.g, tx.b) - tx.r) * (1.0 - smoothstep(0.75, 0.9, lv)); float gown = max(max(teal, body), crim); tx = mix(tx, rc_gown * clamp(0.95 + (lv - 0.35) * 0.3, 0.92, 1.08), gown); float lowsat = (1.0 - smoothstep(0.12, 0.26, sat)) * smoothstep(0.45, 0.62, lv); float top = step(1.56, mpos.y); float isveil = max(max(lowsat, gold), top) * step(abs(mpos.x), 0.27) * step(1.16, mpos.y) * (1.0 - gown * (1.0 - top)); tx = mix(tx, rc_veil * mix(0.93, clamp(lv / 0.8, 0.78, 1.08), lowsat), isveil); } if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
@@ -1178,6 +1178,79 @@ const RECOLS := {
 	7: [Vector3(0.36, 0.2, 0.46), Vector3(0.86, 0.82, 0.95)],
 }
 
+# Finds the veil on the mesh itself: spread from the top of the head across the surface and stop
+# where the cloth turns under at its hem. cu.w becomes 1 + distance to the hem (veil), 0.75 (its
+# underside) or 0 (everything else); -1 everywhere if the spread escapes onto the gown.
+func veil_mask(cu: PackedFloat32Array, a: Array) -> void:
+	var nrm: PackedVector3Array = a[Mesh.ARRAY_NORMAL]; var idx: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	var n: int = cu.size() / 4
+	if nrm.size() != n or idx.is_empty(): return
+	var ids := {}; var wid := PackedInt32Array(); wid.resize(n); var wy := PackedFloat32Array(); var wny := PackedFloat32Array(); var wc := PackedFloat32Array(); var wp := PackedVector3Array()
+	for i in n:
+		var pv := Vector3(cu[i * 4], cu[i * 4 + 1], cu[i * 4 + 2])
+		var k := Vector3i(roundi(pv.x * 8000.0), roundi(pv.y * 8000.0), roundi(pv.z * 8000.0))
+		if not ids.has(k): ids[k] = wp.size(); wp.append(pv); wy.append(pv.y); wny.append(0.0); wc.append(0.0)
+		wid[i] = ids[k]; wny[wid[i]] += nrm[i].y; wc[wid[i]] += 1.0
+	var nw := wp.size(); var adj: Array = []; adj.resize(nw)
+	for i in nw: adj[i] = []
+	for t in range(0, idx.size(), 3):
+		var v0 := wid[idx[t]]; var v1 := wid[idx[t + 1]]; var v2 := wid[idx[t + 2]]
+		adj[v0].append(v1); adj[v0].append(v2); adj[v1].append(v0); adj[v1].append(v2); adj[v2].append(v0); adj[v2].append(v1)
+	var blocked := PackedByteArray(); blocked.resize(nw); var seed := 0
+	for i in nw:
+		blocked[i] = 1 if wny[i] / maxf(wc[i], 1.0) < -0.25 else 0
+		if wy[i] > wy[seed]: seed = i
+	var seen := PackedByteArray(); seen.resize(nw); seen[seed] = 1
+	var q := PackedInt32Array([seed]); var qi := 0; var low := 9.0
+	while qi < q.size():
+		var v := q[qi]; qi += 1; low = minf(low, wy[v])
+		for nb in adj[v]:
+			if seen[nb] == 0 and blocked[nb] == 0: seen[nb] = 1; q.append(nb)
+	print("VEIL mask: ", q.size(), " of ", nw, " verts, hem at ", snappedf(low, 0.001))
+	if low < 0.8:
+		for i in n: cu[i * 4 + 3] = -1.0
+		print("VEIL mask leaked onto the gown, using the height split")
+		return
+	# small pockets the spread skipped (folds turned downwards) belong to the veil too:
+	# everything not reached, except the one big remainder (body, gown, underside), joins it
+	var comp := PackedInt32Array(); comp.resize(nw); comp.fill(-1); var sizes := PackedInt32Array(); var big := 0
+	for i in nw:
+		if seen[i] == 1 or comp[i] >= 0: continue
+		var c := sizes.size(); var st := PackedInt32Array([i]); comp[i] = c; var cnt := 0
+		while not st.is_empty():
+			var v: int = st[st.size() - 1]; st.remove_at(st.size() - 1); cnt += 1
+			for nb in adj[v]:
+				if seen[nb] == 0 and comp[nb] < 0: comp[nb] = c; st.append(nb)
+		sizes.append(cnt)
+		if cnt > sizes[big]: big = c
+	for i in nw:
+		if seen[i] == 0 and comp[i] != big and sizes[comp[i]] < 400: seen[i] = 1; q.append(i)
+	# distance from the hem, measured along the veil
+	var dist := PackedFloat32Array(); dist.resize(nw); dist.fill(9.0)
+	var under := PackedInt32Array(); under.resize(nw); under.fill(-1)
+	var q2 := PackedInt32Array(); var q3 := PackedInt32Array()
+	for v in q:
+		for nb in adj[v]:
+			if seen[nb] == 0:
+				if dist[v] > 0.0: dist[v] = 0.0; q2.append(v)
+				if under[nb] < 0: under[nb] = 0; q3.append(nb)
+	qi = 0
+	while qi < q2.size():
+		var v := q2[qi]; qi += 1
+		for nb in adj[v]:
+			if seen[nb] == 1:
+				var d := dist[v] + wp[v].distance_to(wp[nb])
+				if d < dist[nb] - 0.0005: dist[nb] = d; q2.append(nb)
+	qi = 0
+	while qi < q3.size():
+		var v := q3[qi]; qi += 1
+		if under[v] >= 7: continue
+		for nb in adj[v]:
+			if seen[nb] == 0 and blocked[nb] == 1 and under[nb] < 0 and wy[nb] > low - 0.06: under[nb] = under[v] + 1; q3.append(nb)
+	for i in n:
+		var w := wid[i]
+		cu[i * 4 + 3] = 1.0 + minf(dist[w], 0.6) if seen[w] == 1 else (0.75 if under[w] >= 0 else 0.0)
+
 func add_rest_coords(src: Node3D) -> void:
 	for m in src.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
@@ -1197,6 +1270,7 @@ func add_rest_coords(src: Node3D) -> void:
 			var cu := PackedFloat32Array(); cu.resize(av.size() * 4)
 			for i in av.size():
 				cu[i * 4] = (av[i].x - cx) * sc; cu[i * 4 + 1] = (av[i].y - lo.y) * sc; cu[i * 4 + 2] = (av[i].z - cz) * sc; cu[i * 4 + 3] = 0.0
+			if rig_file.begins_with("ione") and OS.get_environment("VEILMASK") != "0": veil_mask(cu, a)
 			a[Mesh.ARRAY_CUSTOM0] = cu
 			rig_norm = {"cx": cx, "lo": lo.y, "cz": cz, "sc": sc, "veil": Color("e8e2d2")}
 			var om0 := mi.mesh.surface_get_material(si)
