@@ -1454,7 +1454,8 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				if rig_file.begins_with("lp") or rig_file.begins_with("sr") or rig_file.begins_with("nb"): sm.set_shader_parameter("flat_n", 1.0)
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
 				if rig_file.begins_with("ione") and mode == "tex" and OS.get_environment("IONE") != "old":
-					sm.set_shader_parameter("recol3", 1.0); sm.set_shader_parameter("rc_gown", Vector3(0.42, 0.63, 0.87)); sm.set_shader_parameter("rc_veil", Vector3(0.75, 0.89, 0.98))
+					var dark_veil := OS.get_environment("IONE") == "dark"
+					sm.set_shader_parameter("recol3", 1.0); sm.set_shader_parameter("rc_gown", Vector3(0.7, 0.84, 0.96) if dark_veil else Vector3(0.42, 0.63, 0.87)); sm.set_shader_parameter("rc_veil", Vector3(0.15, 0.28, 0.53) if dark_veil else Vector3(0.75, 0.89, 0.98))
 					sm.set_shader_parameter("rc_split", {"ione1r": 1.27, "ione2r": 1.2, "ione3r": 1.27}.get(rig_file, 1.26))
 				if rig_file == "w2r" and mode == "tex" and OS.get_environment("IONE") != "old":
 					sm.set_shader_parameter("recol2", 1.0); sm.set_shader_parameter("rc_gown", Vector3(0.42, 0.63, 0.87)); sm.set_shader_parameter("rc_veil", Vector3(0.72, 0.87, 0.97))
