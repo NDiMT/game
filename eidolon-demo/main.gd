@@ -1455,7 +1455,9 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
 				if rig_file.begins_with("ione") and mode == "tex" and OS.get_environment("IONE") != "old":
 					var dark_veil := OS.get_environment("IONE") == "dark"
-					var gown_c := Vector3(0.7, 0.84, 0.96) if dark_veil else Vector3(0.42, 0.63, 0.87); var veil_c := Vector3(0.15, 0.28, 0.53) if dark_veil else Vector3(0.75, 0.89, 0.98)
+					var gown_c := Vector3(0.184, 0.702, 0.678); var veil_c := Vector3(0.827, 0.953, 0.941)   # turquoise gown, pale veil
+					if dark_veil: gown_c = Vector3(0.7, 0.84, 0.96); veil_c = Vector3(0.15, 0.28, 0.53)
+					elif OS.get_environment("IONE") == "blue": gown_c = Vector3(0.42, 0.63, 0.87); veil_c = Vector3(0.75, 0.89, 0.98)
 					var ione_col := OS.get_environment("IONE_COL").split(",")   # "gownhex,veilhex"
 					if ione_col.size() == 2: var cg := Color(ione_col[0]); var cv := Color(ione_col[1]); gown_c = Vector3(cg.r, cg.g, cg.b); veil_c = Vector3(cv.r, cv.g, cv.b)
 					sm.set_shader_parameter("recol3", 1.0); sm.set_shader_parameter("rc_gown", gown_c); sm.set_shader_parameter("rc_veil", veil_c)
