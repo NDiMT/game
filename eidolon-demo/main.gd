@@ -25,6 +25,7 @@ var H := {}
 var ghost_flat: StandardMaterial3D
 var walk_on := false
 var rem_dist := 0.0
+var floor_mats: Array = []
 var hero_real := false
 var shape_file := ""
 var rig_file := ""
@@ -925,7 +926,8 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	sk2.code = sb.code.substr(0, i0) + "void vertex(){\n	mp = CUSTOM0.xyz; hv = clamp(mp.y / 1.72, 0.0, 1.0); notex = 0.0; vw = 0.0; armw = 0.0;\n	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);\n}\n" + sb.code.substr(i1)
 	shaders["bodyskin"] = sk2
 	var st2 := Shader.new()
-	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
+	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0;").replace(
+		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", "	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n	if (w0.y < floor_y + 0.012) { VERTEX += (inverse(MODEL_MATRIX) * vec4(0.0, floor_y + 0.012 - w0.y, 0.0, 0.0)).xyz; w0.y = floor_y + 0.012; }").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
 		"vec3 tx = texture(albedo_tex, UV).rgb; float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
@@ -1214,6 +1216,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
+				if mode == "tex": floor_mats.append(sm)
 				mi.set_surface_override_material(si, sm); pmats["her|%d|%d" % [holder.get_instance_id(), si]] = sm
 	var aps := src.find_children("*", "AnimationPlayer", true, false); var sks := src.find_children("*", "Skeleton3D", true, false)
 	var ap: AnimationPlayer = aps[0] if not aps.is_empty() else null
@@ -2120,6 +2123,7 @@ func _process(dt: float) -> void:
 	if ghost.visible: ghost.apply(st)
 	var moving := spd > 0.15
 	if rig_file != "": moving = spd > 0.2 if walk_on else (not route.is_empty() and rem_dist > 0.05)
+	for fm in floor_mats: fm.set_shader_parameter("floor_y", pos.y)
 	if moving != walk_on:
 		walk_on = moving
 		for h in H.values():
