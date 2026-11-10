@@ -927,11 +927,11 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	sk2.code = sb.code.substr(0, i0) + "void vertex(){\n	mp = CUSTOM0.xyz; hv = clamp(mp.y / 1.72, 0.0, 1.0); notex = 0.0; vw = 0.0; armw = 0.0;\n	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);\n}\n" + sb.code.substr(i1)
 	shaders["bodyskin"] = sk2
 	var st2 := Shader.new()
-	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0; uniform float snap = 0.0;").replace(
+	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0; uniform float snap = 0.0; uniform float recol = 0.0; uniform vec3 rc_gown = vec3(0.8); uniform vec3 rc_veil = vec3(0.6, 0.13, 0.2); uniform vec3 rc_trim = vec3(0.87, 0.7, 0.3); varying vec3 mpos;").replace(
 		"void fragment(){", "vec3 snapc(vec3 lin){ vec3 c = lin; vec3 best = vec3(0.165, 0.54, 0.58); float bd = distance(c, vec3(0.24, 0.61, 0.65)); float d = distance(c, vec3(0.9, 0.82, 0.65)); if (d < bd) { bd = d; best = vec3(0.955, 0.935, 0.885); } d = distance(c, vec3(0.89, 0.725, 0.3)); if (d < bd) { bd = d; best = vec3(0.86, 0.68, 0.29); } d = distance(c, vec3(0.89, 0.89, 0.88)); if (d < bd) { bd = d; best = vec3(0.965, 0.955, 0.94); } d = distance(c, vec3(0.78, 0.2, 0.18)); if (d < bd) { bd = d; best = vec3(0.75, 0.19, 0.23); } return best; }\nvoid fragment(){").replace(
-		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", "	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n	if (w0.y < floor_y + 0.012) { VERTEX += (inverse(MODEL_MATRIX) * vec4(0.0, floor_y + 0.012 - w0.y, 0.0, 0.0)).xyz; w0.y = floor_y + 0.012; }").replace(
+		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", "	mpos = CUSTOM0.xyz;\n	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n	if (w0.y < floor_y + 0.012) { VERTEX += (inverse(MODEL_MATRIX) * vec4(0.0, floor_y + 0.012 - w0.y, 0.0, 0.0)).xyz; w0.y = floor_y + 0.012; }").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
-		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
+		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
@@ -1094,6 +1094,17 @@ func align_clips(src: Node3D) -> void:
 	var ia := ap.get_animation("idle"); var it: int = mean["idle"][0]
 	for ki in ia.track_get_key_count(it): ia.track_set_key_value(it, ki, (ia.track_get_key_value(it, ki) as Vector3) - d)
 	print("RIG clips aligned, idle moved by ", -d)
+
+## colourways for the column woman: [gown, veil]
+const RECOLS := {
+	1: [Vector3(0.2, 0.22, 0.48), Vector3(0.62, 0.13, 0.2)],
+	2: [Vector3(0.14, 0.48, 0.52), Vector3(0.95, 0.93, 0.88)],
+	3: [Vector3(0.66, 0.14, 0.2), Vector3(0.95, 0.93, 0.88)],
+	4: [Vector3(0.17, 0.16, 0.21), Vector3(0.62, 0.13, 0.2)],
+	5: [Vector3(0.8, 0.42, 0.3), Vector3(0.12, 0.42, 0.47)],
+	6: [Vector3(0.85, 0.65, 0.27), Vector3(0.62, 0.13, 0.2)],
+	7: [Vector3(0.36, 0.2, 0.46), Vector3(0.86, 0.82, 0.95)],
+}
 
 func add_rest_coords(src: Node3D) -> void:
 	for m in src.find_children("*", "MeshInstance3D", true, false):
@@ -1284,6 +1295,9 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				if mode == "tex": floor_mats.append(sm)
 				if rig_file.begins_with("lp") or rig_file.begins_with("sr"): sm.set_shader_parameter("flat_n", 1.0)
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
+				var rcid := int(OS.get_environment("RECOL")) if OS.get_environment("RECOL") != "" else 0
+				if RECOLS.has(rcid) and mode == "tex":
+					sm.set_shader_parameter("recol", 1.0); sm.set_shader_parameter("rc_gown", RECOLS[rcid][0]); sm.set_shader_parameter("rc_veil", RECOLS[rcid][1])
 				mi.set_surface_override_material(si, sm); pmats["her|%d|%d" % [holder.get_instance_id(), si]] = sm
 	if rig_file == "lp3r" and OS.get_environment("NOPANEL") != "1": add_face_panel(src, mode)
 	var aps := src.find_children("*", "AnimationPlayer", true, false); var sks := src.find_children("*", "Skeleton3D", true, false)

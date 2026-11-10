@@ -1,0 +1,29 @@
+{
+  "task_id": "e46cc25a-4a4a-4a41-9261-14fdfb291bd4",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Surreal minimal low poly game character, large flat facets, bold flat matte colours with strong contrast, no fine detail, like a folded paper sculpture, not realistic. A raven woman: her floor-length gown is made of large overlapping black feather-shaped facets with a blue sheen, a white veil covers her head and face and ends in a sharp point on the chest like a beak, and a thin gold ring crowns the head. Thin white marble arms. She stands straight and symmetrical in an A-pose with two thin simple arms held away from the body. Full body, single character, no base.",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 3000,
+    "model_version": "P1-20260311",
+    "negative_prompt": "face, eyes, nose, mouth, hair, shoes, bare feet, weapon, base, pedestal, text, multiple figures, extra arms, realistic detail, wrinkles, noise, white dress",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 40,
+  "created_at": "2026-11-10T17:06:23.277628Z",
+  "completed_at": "2026-11-10T17:07:24.272710Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}
