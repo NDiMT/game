@@ -1,7 +1,7 @@
 extends Node3D
 ## EIDOLON demo: one flat, continuous map in a clean isometric look. Tap to walk, tap things to use them.
 const Fig := preload("res://fig.gd")
-const WALK := 1.4
+const WALK := 1.25
 const CAP := Vector3(1.6, 0.0, -12.5)
 const PIV := Vector3(-5.9, 0.0, -13.0)
 const LAMP0 := Vector3(-7.8, 0.17, -6.75)
@@ -69,7 +69,7 @@ const PALS := {
 	"gold": ["f0cf86", "d2a962", "94775a"], "trunk": ["a58a82", "8a6f6c", "63506a"],
 	"leaf": ["9dbfa6", "76a08e", "4f7a7c"], "leaf2": ["b9d2b4", "8fb39a", "5f8a86"], "leaf3": ["aac3a4", "86a48c", "5d7d7c"],
 	"dress": ["cdd0da", "b0b3c5", "8789a6"], "dress2": ["e4e5ea", "cacbd6", "9fa0b6"],
-	"veil": ["f1f1f4", "d9d9e0", "acadc0"], "skin": ["f4e1d4", "dfc7ba", "b59da9"],
+	"veil": ["f1f1f4", "d9d9e0", "acadc0"], "skin": ["fffbf5", "f0e5de", "bfb6d0"],
 	"cyp": ["4a8576", "316863", "214858"], "terra": ["ecd6c6", "d6b8a8", "a08a9e"], "wood": ["b98f7a", "9a7064", "6c4e5e"],
 	"marble": ["fffbf5", "f0e5de", "bfb6d0"], "crim2": ["ee5a60", "cf3640", "8f2238"],
 }
@@ -302,7 +302,7 @@ func pal(n: String, variant := "") -> ShaderMaterial:
 	if variant == "sway": m.set_shader_parameter("sway", 1.0); m.set_shader_parameter("flat_n", 1.0); timed.append(m)
 	if variant == "flat" or variant == "flat2": m.set_shader_parameter("flat_n", 1.0)
 	if n in ["stone", "shade", "sand", "rose"]: m.set_shader_parameter("marble", 1.0)
-	if n == "marble": m.set_shader_parameter("marble", 0.3)
+	if n == "marble" or n == "skin": m.set_shader_parameter("marble", 0.3)
 	pmats[key] = m
 	return m
 
@@ -746,7 +746,7 @@ func idol(p: Vector3, h: float, yaw := 0.0) -> Node3D:
 
 func pose_state(p: Vector3, yaw: float) -> Dictionary:
 	return {"pos": p, "yaw": yaw, "dt": 0.016, "phase": 0.0, "wk": 0.0, "wind": Vector3.ZERO, "bob": 0.0, "drop": 0.0, "lean": 0.0, "roll": 0.0, "twist": 0.0,
-		"sway": Vector2.ZERO, "pool": 0.0, "kick": 0.0, "head_yaw": 0.0, "head_pitch": 0.12, "swingL": 0.0, "swingR": 0.0, "hold": 0.0, "raise": 0.0, "open": 0.0,
+		"tm": 0.0, "sway": Vector2.ZERO, "pool": 0.0, "kick": 0.0, "head_yaw": 0.0, "head_pitch": 0.12, "swingL": 0.0, "swingR": 0.0, "hold": 0.0, "raise": 0.0, "open": 0.0,
 		"wL": 0.0, "wR": 0.0, "tL": Vector3.ZERO, "tR": Vector3.ZERO}
 
 ## the sculptor carved her again and again: a veiled figure in marble, in one of a few poses
@@ -1512,10 +1512,10 @@ func _process(dt: float) -> void:
 		var to := Vector3(p3.x - pos.x, 0, p3.z - pos.z)
 		var left := to.length()
 		for i in range(1, mini(route.size(), 5)): left += Vector2(route[i].p.x - route[i - 1].p.x, route[i].p.z - route[i - 1].p.z).length()
-		target = minf(speed_cap, sqrt(2.0 * 2.6 * left) + 0.04)
+		target = minf(speed_cap, sqrt(2.0 * 1.1 * left) + 0.03)
 		if to.length() > 0.02: want_yaw = atan2(to.x, to.z)
 		target *= clampf(1.25 - absf(angle_difference(yaw, want_yaw)) * 0.8, 0.25, 1.0)
-		spd = move_toward(spd, target, (3.2 if speed_cap <= WALK else 5.0) * dt)
+		spd = move_toward(spd, target, (1.5 if speed_cap <= WALK else 2.6) * dt)
 		var step := spd * dt
 		if step >= to.length():
 			pos.x = p3.x; pos.z = p3.z
@@ -1529,10 +1529,10 @@ func _process(dt: float) -> void:
 		if face_to != null:
 			want_yaw = atan2(face_to.x - pos.x, face_to.z - pos.z)
 			if absf(angle_difference(yaw, want_yaw)) < 0.02: face_to = null; faced.emit()
-	yaw = lerp_angle(yaw, want_yaw, 1.0 - exp(-8.0 * dt))
+	yaw = lerp_angle(yaw, want_yaw, 1.0 - exp(-4.2 * dt))
 	var wk := clampf(spd / WALK, 0.0, 1.0)
 	var rk := clampf((spd - WALK) / 1.2, 0.0, 1.0)
-	phase += spd * dt / lerpf(0.60, 0.92, rk) * PI
+	phase += spd * dt / lerpf(0.92, 1.15, rk) * PI
 	if pushing:
 		var ph := atan2(pos.x - CAP.x, pos.z - CAP.z)
 		var th := ph - 0.42
@@ -1541,7 +1541,7 @@ func _process(dt: float) -> void:
 		var dir := Vector3(sin(th), 0, cos(th))
 		tgtR = CAP + Vector3(0, 0.98, 0) + dir * 0.5; tgtL = CAP + Vector3(0, 0.98, 0) + dir * 0.74
 	var lv := Vector2(vel.x * cos(yaw) - vel.z * sin(yaw), vel.x * sin(yaw) + vel.z * cos(yaw))
-	sway_v += ((-lv * 0.105 - sway) * 60.0 - sway_v * 7.0) * dt
+	sway_v += ((-lv * 0.17 + Vector2(sin(t * 0.6), cos(t * 0.45)) * 0.02 - sway) * 16.0 - sway_v * 3.4) * dt
 	sway += sway_v * dt
 	var hy := a_hy
 	if look_at_pt != null: hy += clampf(angle_difference(yaw, atan2(look_at_pt.x - pos.x, look_at_pt.z - pos.z)), -1.0, 1.0)
@@ -1550,12 +1550,12 @@ func _process(dt: float) -> void:
 	var st := {
 		"pos": pos, "yaw": yaw, "dt": dt, "phase": phase, "wk": wk,
 		"wind": Vector3(0.10 + 0.07 * sin(t * 0.7), 0, -0.05 + 0.05 * sin(t * 1.1 + 1.0)) - vel * 0.16,
-		"bob": 0.02 * (wk + 0.9 * rk) * (0.5 - 0.5 * cos(2.0 * phase)) + 0.004 * breath * (1.0 - wk),
-		"drop": a_drop, "lean": 0.07 * wk + 0.14 * rk + a_lean + 0.008 * breath,
-		"roll": 0.026 * wk * sin(phase) + 0.01 * sin(t * 0.8) * (1.0 - wk), "twist": (0.07 + 0.05 * rk) * wk * sin(phase) + head_yaw * 0.18,
-		"sway": sway, "pool": a_pool, "kick": wk * sin(phase),
+		"bob": 0.02 + 0.013 * sin(t * 1.3) + 0.005 * (wk + rk) * (0.5 - 0.5 * cos(2.0 * phase)), "tm": t,
+		"drop": a_drop, "lean": 0.045 * wk + 0.1 * rk + a_lean + 0.008 * breath,
+		"roll": 0.012 * wk * sin(phase) + 0.012 * sin(t * 0.8), "twist": (0.02 + 0.04 * rk) * wk * sin(phase) + head_yaw * 0.18,
+		"sway": sway, "pool": a_pool, "kick": 0.5 * wk * sin(phase),
 		"head_yaw": head_yaw * 0.82, "head_pitch": a_headp + 0.03 * wk,
-		"swingL": (0.12 + 0.1 * rk) * wk * sin(phase) * (1.0 - a_wL), "swingR": -(0.12 + 0.1 * rk) * wk * sin(phase),
+		"swingL": ((0.03 + 0.08 * rk) * wk * sin(phase) + 0.012 * sin(t * 0.9)) * (1.0 - a_wL), "swingR": (-(0.03 + 0.08 * rk) * wk * sin(phase) + 0.012 * sin(t * 0.9 + 1.7)) * (1.0 - a_wR),
 		"hold": a_hold, "raise": a_raise, "open": a_open, "wL": a_wL, "wR": a_wR, "tL": tgtL, "tR": tgtR,
 	}
 	fig.apply(st); wfig.apply(st)
@@ -1631,7 +1631,7 @@ func face(p: Vector3) -> void:
 	await faced
 
 func tw() -> Tween:
-	return create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_speed_scale(0.7)
 
 func _self() -> void:
 	busy = true

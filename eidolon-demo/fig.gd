@@ -224,7 +224,7 @@ func apply(s: Dictionary) -> void:
 	for side in ["L", "R"]:
 		var sg := 1.0 if side == "L" else -1.0
 		var ph: float = s.phase + (0.0 if side == "L" else PI)
-		foot[side].position = Vector3(sg * 0.055, 0.032 + 0.05 * maxf(0.0, cos(ph)) * s.wk - s.bob, 0.05 + 0.19 * sin(ph) * s.wk)
+		foot[side].position = Vector3(sg * 0.055, 0.032 + 0.025 * maxf(0.0, cos(ph)) * s.wk - s.bob, 0.05 + 0.11 * sin(ph) * s.wk)
 		foot[side].visible = s.pool < 0.2
 	upper.position = Vector3(0, wy, 0)
 	upper.basis = Basis.from_euler(Vector3(s.lean, s.twist, s.roll))
@@ -233,7 +233,7 @@ func apply(s: Dictionary) -> void:
 	for side in ["L", "R"]:
 		var sx := 1.0 if side == "L" else -1.0
 		var sh := Vector3(sx * SH, SH_Y, 0)
-		var tg := Vector3(sx * (SH + 0.062), -0.16, 0.05 + s["swing" + side])
+		var tg := Vector3(sx * (SH + 0.05), -0.2, 0.03 + s["swing" + side])
 		if side == "R": tg = tg.lerp(Vector3(-0.17, 0.07, 0.25), s.hold).lerp(Vector3(-0.2, 0.74, 0.16), s.raise)
 		tg += Vector3(sx * 0.14, 0.04, 0.02) * s.open
 		var w: float = s["w" + side]
@@ -265,7 +265,8 @@ func _veil(s: Dictionary) -> void:
 	var cc := PackedVector3Array(); var cr := PackedFloat32Array()
 	for i in CAPE.size():
 		var t := float(i) / (CAPE.size() - 1)
-		cc.append(Vector3(s.sway.x * 0.8 * t * t, CAPE[i].y, -0.015 * t + s.sway.y * 0.8 * t * t - s.lean * 0.1 * t))
+		var tm: float = s.get("tm", 0.0)
+		cc.append(Vector3(s.sway.x * 1.25 * t * t + sin(tm * 1.1 + i) * 0.01 * t, CAPE[i].y, -0.015 * t + s.sway.y * 1.25 * t * t - s.lean * 0.1 * t + cos(tm * 0.9 + i * 0.7) * 0.01 * t))
 		cr.append(CAPE[i].x)
 	_put(cape_mi, lathe(cc, cr, 54, PackedFloat32Array(CAPE_AMP), 9, PackedFloat32Array(CAPE_DIPS)))
 
