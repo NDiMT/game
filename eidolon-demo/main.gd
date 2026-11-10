@@ -1131,7 +1131,7 @@ func add_rest_coords(src: Node3D) -> void:
 				var ay := 0.0; var az := 0.0; var an := 0.0
 				for i in av.size():
 					if absf(cu[i * 4]) > 0.55 and cu[i * 4 + 1] > 1.0: ay += cu[i * 4 + 1]; az += cu[i * 4 + 2]; an += 1.0
-				if an > 20.0 and spine.size() == 6:
+				if an > 20.0 and spine.size() == 6 and OS.get_environment("ARM_FIX") == "1":
 					ay /= an; az /= an
 					var tube := float(OS.get_environment("ARM_TUBE")) if OS.get_environment("ARM_TUBE") != "" else 0.085
 					var fixed := 0
