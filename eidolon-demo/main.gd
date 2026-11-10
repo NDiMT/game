@@ -19,6 +19,7 @@ var water_shallow := Color("79d8c6")
 var bg_c := Color("2c6379")
 var pals := {}
 var sepia_var := 0.0
+var gate_a: Node3D
 var refl_mat: ShaderMaterial
 var shadow_c := Vector3(0.66, 0.66, 0.86)
 var hero_style := 5
@@ -92,7 +93,7 @@ const PALS := {
 	"leaf": ["9dbfa6", "76a08e", "4f7a7c"], "leaf2": ["b9d2b4", "8fb39a", "5f8a86"], "leaf3": ["aac3a4", "86a48c", "5d7d7c"],
 	"dress": ["cdd0da", "b0b3c5", "8789a6"], "dress2": ["e4e5ea", "cacbd6", "9fa0b6"],
 	"veil": ["f1f1f4", "d9d9e0", "acadc0"], "skin": ["fffbf5", "f0e5de", "bfb6d0"],
-	"cyp": ["4a8576", "316863", "214858"], "terra": ["ecd6c6", "d6b8a8", "a08a9e"], "wood": ["b98f7a", "9a7064", "6c4e5e"],
+	"cyp": ["4a8576", "316863", "214858"], "terra": ["ecd6c6", "d6b8a8", "a08a9e"], "wood": ["b98f7a", "9a7064", "6c4e5e"], "clay": ["d2603f", "ad4732", "7c302d"],
 	"marble": ["fffbf5", "f0e5de", "bfb6d0"], "crim2": ["ee5a60", "cf3640", "8f2238"],
 }
 const SH := """shader_type spatial;
@@ -1120,6 +1121,10 @@ func _shots() -> void:
 		{"n": "10-heroine", "p": Vector3(0.9, 0, 1.2), "y": 0.78, "c": Vector3(0.9, 0.95, 1.2), "s": 3.1},
 		{"n": "11-heroine-back", "p": Vector3(0.9, 0, 1.2), "y": -2.3, "c": Vector3(0.9, 0.95, 1.2), "s": 3.1},
 		{"n": "12-strange-heads", "p": Vector3(-2.2, 0, 0.3), "y": -1.2, "c": Vector3(-3.1, 0.7, 0.0), "s": 5.0},
+		{"n": "14-start-zone", "p": Vector3(-2.55, 0, 1.75), "y": 1.2, "c": Vector3(0.2, 0.5, -0.3), "s": 11.5},
+		{"n": "15-statue-row", "p": Vector3(-2.55, 0, 1.75), "y": 1.2, "c": Vector3(-2.7, 0.8, -0.4), "s": 6.6},
+		{"n": "16-sculptors-corner", "p": Vector3(1.9, 0, -2.2), "y": 2.6, "c": Vector3(2.4, 0.8, -3.0), "s": 5.6},
+		{"n": "17-shadow-bridge", "p": Vector3(5.42, 0, 1.0), "y": 1.57, "c": Vector3(6.3, -0.2, 1.3), "s": 7.6},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
 	var only := OS.get_environment("SHOT_ONLY")
@@ -1991,6 +1996,76 @@ func statue_on(nm: String, sp: Vector3, h: float, yaw: float) -> void:
 	model(nm, sp + Vector3(0, 0.17, 0), h, yaw)
 	decal(sp + Vector3(0.15, 0, -0.15), 1.1, 0.8, 0.2, 0.78)
 
+## the first zone, "the quay of the last statues": she wakes on the one empty plinth of a row of
+## statues of herself, passes the sculptor's corner, and meets the footbridge that is only a shadow
+func _start_zone() -> void:
+	# the row along the west wall: four finished statues, and the plinth she stepped down from
+	var poses := ["calm", "pray", "offer", "mourn"]
+	for i in 5:
+		var sp := Vector3(-3.42, 0, -2.75 + 1.16 * i)
+		cyl(sp, 0.33, 0.31, 0.07, pal("shade"), 20); cyl(sp + Vector3(0, 0.07, 0), 0.27, 0.27, 0.1, pal("stone"), 20)
+		blk(sp + Vector3(0.2, 0, -0.1), sp + Vector3(0.212, 0.1, 0.1), "gold")           # a small name plate, blank
+		if i < 4: her_statue(sp + Vector3(0, 0.17, 0), PI * 0.5, poses[i], 0.96)
+	var ep := Vector3(-3.42, 0, -2.75 + 1.16 * 4)
+	for c in [[0.42, 0.1, 0.4], [0.55, -0.22, 1.1], [0.3, 0.34, 2.0], [0.7, 0.05, 0.2], [0.48, 0.4, 2.7], [0.62, -0.38, 1.6], [0.36, -0.3, 0.7]]:
+		var ch := blk(Vector3(-0.07, 0, -0.05), Vector3(0.07, 0.07, 0.05), "stone"); ch.position = ep + Vector3(c[0], 0.0, c[1]); ch.rotation = Vector3(0.3, c[2], 0.2)
+	var cs := blk(Vector3(-0.34, 0, -0.07), Vector3(0.34, 0.012, 0.07), "clay"); cs.position = ep + Vector3(0.5, 0.004, 0.12); cs.rotation.y = 0.5
+	var cs2 := blk(Vector3(-0.2, 0, -0.06), Vector3(0.2, 0.012, 0.06), "clay"); cs2.position = ep + Vector3(0.12, 0.172, 0.0); cs2.rotation = Vector3(0, -0.4, 0.0)
+	# a stele with the sculptor's first lines, at the head of the row
+	blk(Vector3(-2.72, 0, -3.62), Vector3(-2.12, 0.08, -3.38), "shade"); blk(Vector3(-2.66, 0.08, -3.58), Vector3(-2.18, 1.02, -3.44), "stone")
+	for i in 6: blk(Vector3(-2.58, 0.86 - 0.11 * i, -3.438), Vector3(-2.26 - 0.07 * (i % 3), 0.875 - 0.11 * i, -3.43), "shade")
+	# the sculptor's corner: a block with a figure half out of it, a scaffold, a bench with his tools
+	blk(Vector3(2.45, 0, -3.62), Vector3(3.28, 1.36, -2.92), "stone"); blk(Vector3(2.4, 0, -3.66), Vector3(3.32, 0.09, -2.88), "shade")
+	blk(Vector3(2.45, 1.36, -3.62), Vector3(2.95, 1.62, -3.2), "stone"); blk(Vector3(2.95, 1.36, -3.62), Vector3(3.28, 1.5, -3.36), "shade")
+	her_statue(Vector3(2.86, 0.02, -3.0), 0.0, "offer", 0.9)
+	for sx in [2.32, 3.36]:
+		for sz in [-3.72, -2.82]: blk(Vector3(sx - 0.03, 0, sz - 0.03), Vector3(sx + 0.03, 2.05, sz + 0.03), "wood")
+	blk(Vector3(2.29, 1.98, -3.75), Vector3(3.39, 2.05, -3.69), "wood"); blk(Vector3(2.29, 1.98, -2.85), Vector3(3.39, 2.05, -2.79), "wood")
+	blk(Vector3(2.29, 1.1, -3.75), Vector3(2.35, 1.16, -2.79), "wood"); blk(Vector3(2.26, 1.16, -3.7), Vector3(2.6, 1.2, -2.84), "wood")
+	var lad := Node3D.new(); lad.position = Vector3(2.18, 0, -2.6); lad.rotation = Vector3(0, 0, -0.22); add_child(lad)
+	for lz in [-0.14, 0.14]: blk(Vector3(-0.02, 0, lz - 0.02), Vector3(0.02, 1.35, lz + 0.02), "wood", lad)
+	for i in 5: blk(Vector3(-0.015, 0.2 + 0.24 * i, -0.14), Vector3(0.015, 0.23 + 0.24 * i, 0.14), "wood", lad)
+	blk(Vector3(1.5, 0.44, -3.66), Vector3(2.2, 0.49, -3.3), "wood")
+	for bx in [1.54, 2.16]:
+		for bz in [-3.62, -3.34]: blk(Vector3(bx - 0.025, 0, bz - 0.025), Vector3(bx + 0.025, 0.44, bz + 0.025), "wood")
+	var mal := cyl(Vector3(1.66, 0.49, -3.5), 0.05, 0.05, 0.1, pal("wood"), 10); mal.rotation.z = 0.0
+	blk(Vector3(1.64, 0.53, -3.5), Vector3(1.9, 0.555, -3.48), "trunk")
+	for i in 3:
+		var chz := blk(Vector3(-0.09, 0, -0.008), Vector3(0.09, 0.016, 0.008), "dark"); chz.position = Vector3(1.98, 0.49, -3.56 + 0.07 * i); chz.rotation.y = 0.5 - 0.3 * i
+	for c in [[2.0, -2.75, 0.3, 1.0], [2.25, -2.6, 1.2, 0.8], [2.7, -2.55, 2.2, 1.2], [3.05, -2.62, 0.7, 0.7], [2.45, -2.4, 1.9, 0.6], [1.85, -2.95, 2.6, 0.9], [2.95, -2.36, 0.1, 0.5], [2.15, -3.05, 1.5, 1.1]]:
+		var rb := blk(Vector3(-0.08, 0, -0.06), Vector3(0.08, 0.08, 0.06), "stone" if int(c[2] * 10.0) % 2 == 0 else "shade"); rb.position = Vector3(c[0], 0, c[1]); rb.rotation = Vector3(0.25, c[2], 0.15); rb.scale = Vector3.ONE * c[3]
+	urn(Vector3(1.45, 0, -3.0), 0.8, "terra")
+	# the two strange heads now watch the gate from either side
+	plinth_head("kit_face2", Vector3(-1.5, 0, -3.5), 0.0); plinth_head("kit_face3", Vector3(-2.0, 0, 3.02), PI)
+	# a pair of feet carved into the floor wherever she may stand and pose: by the basin and at the broken end of the quay
+	for fp in [[Vector3(0.0, 0, 0.86), 0.0], [Vector3(5.42, 0, 1.0), PI * 0.5]]:
+		var fn := Node3D.new(); fn.position = fp[0]; fn.rotation.y = fp[1]; add_child(fn)
+		for fx in [-0.075, 0.075]:
+			blk(Vector3(fx - 0.04, 0.0, -0.11), Vector3(fx + 0.04, 0.006, 0.07), "shade", fn); blk(Vector3(fx - 0.033, 0.0, 0.07), Vector3(fx + 0.033, 0.006, 0.12), "shade", fn)
+		blk(Vector3(-0.2, 0.0, -0.2), Vector3(0.2, 0.004, -0.185), "gold", fn); blk(Vector3(-0.2, 0.0, 0.185), Vector3(0.2, 0.004, 0.2), "gold", fn)
+	# the footbridge east of the quay: a broken stub, a gap, and the islet of the winch
+	slab(5.1, 0.6, 5.62, 1.4, 0.0); pier(5.36, 1.0, -0.18, 0.5)
+	for rb2 in [[Vector3(5.66, -0.05, 0.78), 0.4], [Vector3(5.7, -0.02, 1.22), -0.3]]:
+		var bk2 := blk(Vector3(-0.14, -0.13, -0.12), Vector3(0.14, 0, 0.12), "stone"); bk2.position = rb2[0]; bk2.rotation = Vector3(0.14, rb2[1], 0.12)
+	slab(6.95, 0.25, 8.35, 1.75, 0.0); under(6.95, 0.25, 8.35, 1.75, 0.18, "sand")
+	parapet(Vector3(8.25, 0, 0.35), Vector3(8.25, 0, 1.65)); parapet(Vector3(7.05, 0, 1.65), Vector3(8.25, 0, 1.65))
+	var wc := Vector3(7.7, 0, 0.95)
+	cyl(wc, 0.3, 0.28, 0.08, pal("shade"), 20); cyl(wc + Vector3(0, 0.08, 0), 0.13, 0.11, 0.62, pal("wood"), 12); cyl(wc + Vector3(0, 0.7, 0), 0.15, 0.15, 0.07, pal("gold"), 12)
+	for i in 4:
+		var spk := blk(Vector3(-0.42, 0.5, -0.02), Vector3(0.42, 0.54, 0.02), "wood"); spk.position = wc; spk.rotation.y = PI * 0.25 * i
+	for i in 7: blk(Vector3(7.7 - 0.012, 0.3 - 0.0 * i, 0.95 - 0.16 - 0.1 * i - 0.04), Vector3(7.7 + 0.012, 0.33, 0.95 - 0.16 - 0.1 * i), "dark")
+	lantern(Vector3(8.0, 0, 0.45), 1)
+	if refl_mat != null:   # what is gone above the water still lies on it as a shadow
+		for g in [[Vector3(5.62, -0.14, 0.62), Vector3(6.95, 0.0, 1.38)], [Vector3(5.62, 0.0, 0.62), Vector3(6.95, 0.34, 0.68)], [Vector3(5.62, 0.0, 1.32), Vector3(6.95, 0.34, 1.38)]]:
+			var gm := blk(g[0], g[1], "stone"); gm.material_override = refl_mat
+		var gp := blk(Vector3(6.05, WATER, 0.75), Vector3(6.55, -0.14, 1.25), "stone"); gp.material_override = refl_mat
+	# the gate of the court is a bronze grille until the winch is turned
+	gate_a = Node3D.new(); gate_a.position = Vector3(0, 0, -3.9); add_child(gate_a)
+	for i in 7: blk(Vector3(-0.54 + 0.18 * i - 0.018, 0, -0.018), Vector3(-0.54 + 0.18 * i + 0.018, 2.02, 0.018), "dark", gate_a)
+	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.58, gy, -0.024), Vector3(0.58, gy + 0.04, 0.024), "gold", gate_a)
+	if not ("shots" in OS.get_cmdline_user_args()) or OS.get_environment("GATE_A") == "open": gate_a.position.y = -2.4
+	vine(-3.3, 3.42, true, 2.0); vine(1.2, 3.42, true, 1.9)
+
 func _world() -> void:
 	# ---- A. the arrival court (7 x 7 m of open floor)
 	slab(-4.0, -4.0, 3.5, 3.5, 0.0); under(-4.0, -4.0, 3.5, 3.5)
@@ -1998,8 +2073,8 @@ func _world() -> void:
 	parapet(Vector3(-3.9, 0, -3.9), Vector3(-3.9, 0, 3.4)); parapet(Vector3(-3.9, 0, -3.9), Vector3(-0.85, 0, -3.9)); parapet(Vector3(0.85, 0, -3.9), Vector3(3.4, 0, -3.9))
 	parapet(Vector3(3.4, 0, -3.9), Vector3(3.4, 0, -0.3)); parapet(Vector3(3.4, 0, 2.3), Vector3(3.4, 0, 3.4))
 	parapet(Vector3(-3.9, 0, 3.4), Vector3(-0.95, 0, 3.4)); parapet(Vector3(0.95, 0, 3.4), Vector3(3.4, 0, 3.4))
-	tree(Vector3(-3.5, 0, 2.85), 1.35); cypress(Vector3(-3.55, 0, -3.5), 2.6); cypress(Vector3(-3.55, 0, -2.6), 2.0)
-	plinth_head("kit_face2", Vector3(-3.55, 0, -1.1), PI * 0.5); plinth_head("kit_face3", Vector3(-3.55, 0, 1.1), PI * 0.5)
+	tree(Vector3(-3.5, 0, 2.95), 1.2); cypress(Vector3(-3.55, 0, -3.5), 2.6)
+	_start_zone()
 	lantern(Vector3(1.15, 0, -3.72), 2); urn(Vector3(2.9, 0, 3.0), 1.0); urn(Vector3(3.1, 0, 2.72), 0.7, "rose")
 	for gx in [-0.72, 0.72]:
 		blk(Vector3(gx - 0.14, 0, -4.04), Vector3(gx + 0.14, 2.1, -3.76), "stone"); blk(Vector3(gx - 0.17, 0, -4.07), Vector3(gx + 0.17, 0.1, -3.73), "shade")
@@ -2014,7 +2089,7 @@ func _world() -> void:
 	boat = Node3D.new(); boat.name = "Boat"; boat.position = Vector3(2.5, WATER - 0.12, 4.9); boat.rotation.y = 1.0; add_child(boat)
 	build_boat(boat)
 	cyl(Vector3(1.2, -0.2, 4.2), 0.045, 0.045, 0.75, pal("wood"), 8)
-	slab(3.5, -0.3, 5.1, 2.3, 0.0); under(3.5, -0.3, 5.1, 2.3, 0.2, "sand"); parapet(Vector3(5.0, 0, -0.2), Vector3(5.0, 0, 2.2))
+	slab(3.5, -0.3, 5.1, 2.3, 0.0); under(3.5, -0.3, 5.1, 2.3, 0.2, "sand"); parapet(Vector3(5.0, 0, -0.2), Vector3(5.0, 0, 0.5)); parapet(Vector3(5.0, 0, 1.5), Vector3(5.0, 0, 2.2))
 	blk(Vector3(3.9, 0, 1.9), Vector3(4.6, 0.22, 2.12), "shade")
 	model("colossus_head_veiled", Vector3(8.6, WATER - 1.15, -2.2), 6.6, 0.55, Vector3(-0.08, 0, 0.14))
 	slab(-8.0, -2.2, -6.6, 2.2, 0.0); under(-8.0, -2.2, -6.6, 2.2, 0.18, "sand")
