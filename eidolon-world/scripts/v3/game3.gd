@@ -142,10 +142,11 @@ func reset_progress() -> void:
 const INTRO := [
 	"On Kythira there lived a sculptor named Theron.\nFrom white marble he carved a woman,\nand loved her more than stone should be loved.",
 	"Aphrodite gave her life, on one condition:\n*\"Leave her face smooth.\nA face is carved by living, from within.\"*",
-	"They called her Ione.\nAnd life began to carve her a face,\na face the sculptor had never imagined.",
-	"He gave her a veil.\nAnd he hid every mirror.",
-	"One day the Aegean lay still as glass.",
-	"There was no wave to blame."]
+	"They called her Ione.\nAnd life began to carve her a face,\na face the sculptor had never imagined.\nHe could not bear a face he had not carved himself.",
+	"So he covered her face with a veil.\nAnd he hid every mirror,\nso she would never learn that her face was her own.",
+	"But there was one mirror he could not hide.\nOne morning the Aegean lay still as glass.",
+	"That morning Ione rowed out alone.",
+	"The sea took her.\nThere was no wave to blame."]
 const SHORE := Vector3(-4.6, 0.0, 31.75)        # (WS: a step back from the lip, toward the lanterns and I.1's door)
 var _intro_cl: CanvasLayer
 var _intro_card: IntroCard

@@ -18,10 +18,11 @@ const I_SEEN := Vector3(-4.62, -1.52, 30.42)      # Ione, seen: upright under th
 const STANZAS := [
 	"On Kythira there lived a sculptor named Theron.\nFrom white marble he carved a woman,\nand loved her more than stone should be loved.",
 	"Aphrodite gave her life, on one condition:\n*\"Leave her face smooth.\nA face is carved by living, from within.\"*",
-	"They called her Ione.\nAnd life began to carve her a face,\na face the sculptor had never imagined.",
-	"He gave her a veil.\nAnd he hid every mirror.",
-	"One day the Aegean lay still as glass.",
-	"There was no wave to blame."]
+	"They called her Ione.\nAnd life began to carve her a face,\na face the sculptor had never imagined.\nHe could not bear a face he had not carved himself.",
+	"So he covered her face with a veil.\nAnd he hid every mirror,\nso she would never learn that her face was her own.",
+	"But there was one mirror he could not hide.\nOne morning the Aegean lay still as glass.",
+	"That morning Ione rowed out alone.",
+	"The sea took her.\nThere was no wave to blame."]
 const WD_SEEN := Vector3(-4.95, -2.06, 29.5)      # the Warden, seen: behind her, his hood just under the surface
 var ws                                           # (pz_ws.gd: the shore, its pool, its lanterns)
 var fx: CineFx
