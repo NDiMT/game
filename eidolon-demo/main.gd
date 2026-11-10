@@ -867,7 +867,7 @@ func _ready() -> void:
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	hero_real = OS.get_environment("REAL") == "1"
-	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil")) else "min" + OS.get_environment("RIG"); hero_real = true
+	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w")) else "min" + OS.get_environment("RIG"); hero_real = true
 	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "min14r"; hero_real = true
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	elif not hero_real and OS.get_environment("HERO") == "": shape_file = "min9t"
@@ -1120,6 +1120,43 @@ func add_rest_coords(src: Node3D) -> void:
 						if hslot < 0:
 							hslot = minslot; moved += wts[i * per + hslot]; bones[i * per + hslot] = hips; wts[i * per + hslot] = 0.0
 						wts[i * per + hslot] += moved
+				# the veil hangs from the head and the back: nothing outside the arms themselves may follow the arm bones
+				var arms := {}; var spine := {}
+				for bi in skin.get_bind_count():
+					var bn2 := String(skin.get_bind_name(bi))
+					if bn2 == "" and not sks.is_empty(): bn2 = (sks[0] as Skeleton3D).get_bone_name(skin.get_bind_bone(bi))
+					if bn2.contains("Shoulder") or bn2.contains("Arm") or bn2.contains("Hand"): arms[bi] = true
+					for key in ["Head", "Neck", "Spine2", "Spine1", "Spine", "Hips"]:
+						if bn2.ends_with(key): spine[key] = bi
+				var ay := 0.0; var az := 0.0; var an := 0.0
+				for i in av.size():
+					if absf(cu[i * 4]) > 0.55 and cu[i * 4 + 1] > 1.0: ay += cu[i * 4 + 1]; az += cu[i * 4 + 2]; an += 1.0
+				if an > 20.0 and spine.size() == 6:
+					ay /= an; az /= an
+					var tube := float(OS.get_environment("ARM_TUBE")) if OS.get_environment("ARM_TUBE") != "" else 0.085
+					var fixed := 0
+					for i in av.size():
+						var x := cu[i * 4]; var y := cu[i * 4 + 1]; var z := cu[i * 4 + 2]
+						var dist := Vector2(y - ay, z - az).length()
+						var t := smoothstep(tube, tube + 0.04, dist) if absf(x) > 0.13 else 1.0
+						if t <= 0.0: continue
+						var moved := 0.0; var slot := -1
+						for k in per:
+							var o := i * per + k
+							if arms.has(bones[o]) and wts[o] > 0.0:
+								moved += wts[o] * t; wts[o] *= 1.0 - t
+								if slot < 0 and t >= 0.999: slot = k
+						if moved <= 0.0: continue
+						var tgt: int = spine["Head"] if y > 1.52 else spine["Neck"] if y > 1.42 else spine["Spine2"] if y > 1.2 else spine["Spine1"] if y > 1.05 else spine["Spine"] if y > 0.95 else spine["Hips"]
+						for k in per:
+							if bones[i * per + k] == tgt: slot = k
+						if slot < 0:
+							slot = 0
+							for k in per:
+								if wts[i * per + k] < wts[i * per + slot]: slot = k
+							moved += wts[i * per + slot]; wts[i * per + slot] = 0.0
+						bones[i * per + slot] = tgt; wts[i * per + slot] += moved; fixed += 1
+					print("RIG veil freed from the arms: ", fixed, " verts, arm height ", ay)
 				a[Mesh.ARRAY_BONES] = bones; a[Mesh.ARRAY_WEIGHTS] = wts
 				print("RIG skirt reweighted, hips bind ", hips, " leg binds ", legs.size(), " per ", per)
 			var fl: int = Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
