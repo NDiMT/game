@@ -1137,7 +1137,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 		if rig_file != "": add_rest_coords(hero_src)
 	var src: Node3D = hero_src.duplicate()
 	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
-	src.scale = Vector3.ONE * 1.72; src.rotation.y = 0.0 if rig_file.begins_with("hq") else -PI * 0.5
+	src.scale = Vector3.ONE * 1.72; src.rotation.y = float(OS.get_environment("RIG_YAW")) if OS.get_environment("RIG_YAW") != "" else -PI * 0.5
 	for m in src.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if mode in ["tex", "marble"] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
