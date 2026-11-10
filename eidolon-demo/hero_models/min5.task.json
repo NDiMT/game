@@ -1,0 +1,29 @@
+{
+  "task_id": "db2ef665-0b76-4f99-b796-5fedd05d1e19",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Minimal stylized figurine: a tall slender woman reduced to simple shapes, long thin neck, tilted oval head completely covered by a smooth veil that hides the face, the veil draped asymmetrically over the head and one shoulder and falling to the ground as a long smooth panel, two long thin simple arms at her sides, narrow floor-length dress that flares open at the hem into a wide trumpet bell hiding the feet. Matte pale grey stone, low poly, clean planes, modern minimalist sculpture, not realistic, full body, single object.",
+    "texture": false,
+    "export_uv": true,
+    "face_limit": 6000,
+    "model_version": "P1-20260311",
+    "negative_prompt": "face, eyes, nose, mouth, hair, realistic anatomy, realistic detail, feet, shoes, fingers, pointed hood, cone hat, base, pedestal, text, multiple figures",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-10T08:56:00.217086Z",
+  "completed_at": "2026-11-10T08:56:18.878013Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

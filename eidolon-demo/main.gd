@@ -25,6 +25,15 @@ var H := {}
 var ghost_flat: StandardMaterial3D
 var walk_on := false
 var hero_real := false
+var shape_file := ""
+var shape_mesh: ArrayMesh
+var SHP := {}
+var body_mats: Array = []
+var hover := 0.0
+var tilt_f := 0.0
+var tilt_r := 0.0
+var yaw_prev := 0.0
+var spd_prev := 0.0
 
 ## arms that reach for a point and a spine that bows, on top of whatever animation is playing
 class HerMod extends SkeletonModifier3D:
@@ -751,6 +760,12 @@ func pose_state(p: Vector3, yaw: float) -> Dictionary:
 
 ## the sculptor carved her again and again: a veiled figure in marble, in one of a few poses
 func her_statue(p: Vector3, yaw: float, pose := "calm", sc := 1.0) -> Node3D:
+	if shape_file != "":
+		var d := spawn_shape(self, "marble")
+		var hd: Node3D = d.holder
+		hd.position = p; hd.scale = Vector3.ONE * sc
+		hd.rotation = Vector3({"mourn": 0.1, "kneel": 0.08, "reach": -0.05}.get(pose, 0.0), yaw, 0.0)
+		return hd
 	if not hero_real:
 		var f = Fig.new(); add_child(f); f.set_style(hero_style); f.build(3, pal, null, null)
 		f.scale = Vector3.ONE * sc
@@ -846,6 +861,20 @@ func _ready() -> void:
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	hero_real = OS.get_environment("REAL") == "1"
+	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
+	var sb := Shader.new()
+	sb.code = SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;").replace(
+		"uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform vec3 trail = vec3(0.0); uniform vec3 grad_lo = vec3(0.82, 0.83, 0.9); varying float hv;").replace(
+		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", """	float hh = clamp(VERTEX.y / 1.72, 0.0, 1.0); hv = hh;
+	float wgt = pow(1.0 - smoothstep(0.0, 0.62, hh), 1.5);
+	float rr = length(VERTEX.xz); vec2 rad = VERTEX.xz / max(rr, 0.001); float ang = atan(VERTEX.x, VERTEX.z);
+	float edge = smoothstep(0.03, 0.16, rr);
+	VERTEX.xz += trail.xz * wgt;
+	VERTEX.xz += rad * (sin(time_s * 1.4 + ang * 3.0 + hh * 5.0) * 0.016 + sin(time_s * 0.8 - ang * 2.0) * 0.01) * wgt * edge;
+	VERTEX.y += trail.y * wgt * edge * (0.6 + 0.4 * sin(time_s * 1.1 + ang * 2.0));
+	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;""").replace(
+		"	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));", "	col *= mix(grad_lo, vec3(1.0), smoothstep(0.08, 0.8, hv));")
+	shaders["body"] = sb
 	var st2 := Shader.new()
 	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
@@ -870,7 +899,12 @@ func _ready() -> void:
 	if "shots" in OS.get_cmdline_user_args(): _shots()
 	if "lineup" in OS.get_cmdline_user_args(): _lineup()
 	if "reals" in OS.get_cmdline_user_args(): _real_lineup()
+	if "mins" in OS.get_cmdline_user_args(): _min_lineup()
 	if "zoom" in OS.get_cmdline_user_args(): cam.size = 3.3
+	if "glide" in OS.get_cmdline_user_args():
+		get_viewport().msaa_3d = Viewport.MSAA_2X
+		RenderingServer.directional_shadow_atlas_set_size(2048, true)
+		_glide()
 	if auto:
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		RenderingServer.directional_shadow_atlas_set_size(2048, true)
@@ -1055,6 +1089,116 @@ func _real_lineup() -> void:
 		await get_tree().create_timer(0.8).timeout
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dirn, view[0]])
+		print("SHOT ", view[0])
+	get_tree().quit()
+
+func bake_shape(file: String) -> ArrayMesh:
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) != OK: return null
+	var src := doc.generate_scene(st) as Node3D
+	var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array()
+	for m in src.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		var xf := Transform3D.IDENTITY
+		var n: Node = mi
+		while n != null and n is Node3D:
+			xf = (n as Node3D).transform * xf
+			if n == src: break
+			n = n.get_parent()
+		xf = Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3.ZERO) * xf
+		for si in mi.mesh.get_surface_count():
+			var a := mi.mesh.surface_get_arrays(si)
+			var base := vs.size()
+			var av: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+			var has_n: bool = a[Mesh.ARRAY_NORMAL] != null
+			for i in av.size():
+				vs.append(xf * av[i])
+				ns.append((xf.basis * (a[Mesh.ARRAY_NORMAL][i] as Vector3)).normalized() if has_n else Vector3.UP)
+			if a[Mesh.ARRAY_INDEX] != null:
+				for j in (a[Mesh.ARRAY_INDEX] as PackedInt32Array): ix.append(base + j)
+			else:
+				for j in av.size(): ix.append(base + j)
+	src.free()
+	var lo := Vector3.INF; var hi := -Vector3.INF
+	for v in vs: lo = lo.min(v); hi = hi.max(v)
+	var cx := 0.0; var cz := 0.0; var cn := 0.0
+	for v in vs:
+		if v.y > lo.y + (hi.y - lo.y) * 0.62: cx += v.x; cz += v.z; cn += 1.0
+	var sc := 1.72 / maxf(hi.y - lo.y, 0.001)
+	var c := Vector3(cx / maxf(cn, 1.0), lo.y, cz / maxf(cn, 1.0))
+	for i in vs.size(): vs[i] = (vs[i] - c) * sc
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_INDEX] = ix
+	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	print("SHAPE ", file, " verts ", vs.size(), " tris ", ix.size() / 3)
+	return am
+
+func body_mat(pl: String, key: String) -> ShaderMaterial:
+	var m := ShaderMaterial.new(); m.shader = shaders["body"]
+	m.set_shader_parameter("c_top", Color(pals[pl][0])); m.set_shader_parameter("c_z", Color(pals[pl][1])); m.set_shader_parameter("c_x", Color(pals[pl][2]))
+	m.set_shader_parameter("fog_col", sea_c); m.set_shader_parameter("mist_col", mist_c); m.set_shader_parameter("shadow_col", shadow_c); m.set_shader_parameter("mist_k", mist_k)
+	if OS.get_environment("FACET") == "1": m.set_shader_parameter("flat_n", 1.0)
+	pmats["body|" + key] = m; timed.append(m); body_mats.append(m)
+	return m
+
+func spawn_shape(parent: Node, mode: String) -> Dictionary:
+	if shape_mesh == null: shape_mesh = bake_shape(shape_file)
+	var holder := Node3D.new(); parent.add_child(holder)
+	var mi := MeshInstance3D.new(); mi.mesh = shape_mesh; holder.add_child(mi)
+	mi.extra_cull_margin = 1.0
+	match mode:
+		"main":
+			var m := body_mat("veil", "main"); m.set_shader_parameter("marble", 0.22); mi.material_override = m
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		"crim":
+			var m2 := body_mat("crim", "refl"); m2.set_shader_parameter("grad_lo", Vector3(0.8, 0.8, 0.85)); mi.material_override = m2
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		"flat":
+			mi.material_override = ghost_flat; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		"marble":
+			mi.material_override = pal("marble", "2"); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	return {"holder": holder, "mi": mi}
+
+func load_shape(file: String, at: Vector3, yaw: float, pl := "veil") -> Node3D:
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) != OK: return null
+	var src := doc.generate_scene(st) as Node3D
+	var holder := Node3D.new(); holder.position = at; holder.rotation.y = yaw; add_child(holder); holder.add_child(src)
+	src.rotation.y = -PI * 0.5
+	var bb := AABB(); var first := true
+	for m in src.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		for si in mi.mesh.get_surface_count(): mi.set_surface_override_material(si, pal(pl, "2"))
+		var a: AABB = mi.global_transform * mi.get_aabb()
+		if first: bb = a; first = false
+		else: bb = bb.merge(a)
+	var a2 := holder.global_transform.affine_inverse() * bb
+	var sc := 1.72 / maxf(a2.size.y, 0.001)
+	src.scale *= sc; src.position -= Vector3(a2.get_center().x, a2.position.y, a2.get_center().z) * sc
+	return holder
+
+func _min_lineup() -> void:
+	started = true; title_box.hide(); hint.hide()
+	pos = Vector3(60, 0, 60)
+	var c := Vector3(0.2, 0, 0.3)
+	var dir := Vector3(1, 0, -1).normalized()
+	var hs := []
+	var names := (OS.get_environment("MINS") if OS.get_environment("MINS") != "" else "1,2,3,4").split(",")
+	var tag := OS.get_environment("MIN_TAG")
+	for i in names.size():
+		hs.append(load_shape("min" + names[i], c + dir * ((i - 1.5) * 1.35), PI * 0.25))
+		var l := Label3D.new(); l.text = names[i]; l.font_size = 96; l.pixel_size = 0.004; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		l.modulate = Color(0.72, 0.14, 0.18); l.outline_modulate = Color(1, 1, 1, 0.9); l.no_depth_test = true
+		l.position = c + dir * ((i - 1.5) * 1.35) + Vector3(0.75, 0.05, 0.75); add_child(l)
+	var dirn := OS.get_environment("SHOT_DIR")
+	await get_tree().create_timer(2.5).timeout
+	for view in [["minimal-front", PI * 0.25], ["minimal-back", PI * 1.12], ["minimal-side", -PI * 0.2]]:
+		shot = {"c": c + Vector3(0, 0.95, 0), "s": 6.4}
+		cam.size = 6.4
+		for h in hs:
+			if h != null: (h as Node3D).rotation.y = view[1]
+		await get_tree().create_timer(0.8).timeout
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("%s/%s%s.png" % [dirn, view[0], tag])
 		print("SHOT ", view[0])
 	get_tree().quit()
 
@@ -1341,6 +1485,9 @@ func _actors() -> void:
 				var hm := HerMod.new(); hm.main = self; sk.add_child(hm)
 			if H[k].ap != null: H[k].ap.play("idle")
 		fig.visible = false; wfig.visible = false
+	if shape_file != "":
+		SHP["main"] = spawn_shape(self, "main"); SHP["refl"] = spawn_shape(wm, "crim"); SHP["ghost"] = spawn_shape(mir, "flat")
+		fig.visible = false; wfig.visible = false
 	# things to tap
 	objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
@@ -1561,7 +1708,17 @@ func _process(dt: float) -> void:
 	fig.apply(st); wfig.apply(st)
 	for k in ["Bridge", "Cap", "Door", "Boat"]: (refl.get_node(k) as Node3D).transform = (world.get_node(k) as Node3D).transform
 	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
-	ghost.visible = (not hero_real) and near > 0.01
+	ghost.visible = (not hero_real) and shape_file == "" and near > 0.01
+	if shape_file != "":
+		hover = 0.03 + 0.016 * sin(t * 1.25)
+		var turn := angle_difference(yaw_prev, yaw) / maxf(dt, 0.001); yaw_prev = yaw
+		tilt_r = lerpf(tilt_r, clampf(-turn * 0.04, -0.1, 0.1), 1.0 - exp(-4.0 * dt))
+		tilt_f = lerpf(tilt_f, 0.045 * wk + 0.05 * rk + clampf((spd - spd_prev) / maxf(dt, 0.001) * 0.035, -0.07, 0.07) + a_lean, 1.0 - exp(-3.5 * dt)); spd_prev = spd
+		for k in SHP:
+			var sh: Node3D = SHP[k].holder
+			sh.position = pos + Vector3(0, hover, 0); sh.rotation = Vector3(tilt_f, yaw + head_yaw * 0.4, tilt_r)
+		for bm in body_mats: bm.set_shader_parameter("trail", Vector3(sway.x * 1.15, 0.05 * wk + 0.05 * rk, sway.y * 1.15))
+		(SHP["ghost"].holder as Node3D).visible = near > 0.01
 	if ghost.visible: ghost.apply(st)
 	var moving := spd > 0.15
 	if moving != walk_on:
@@ -1719,6 +1876,16 @@ func _auto() -> void:
 	await _a_walk(Vector3(DX, 0, -28.2))
 	await wait(3.0)
 	print("AUTO done ended=", ended, " done=", done)
+	get_tree().quit()
+
+func _glide() -> void:
+	started = true; title_box.hide(); hint.hide()
+	pos = Vector3(0.9, 0, 1.2); yaw = 0.78; cam_t = pos; cam.size = 4.8
+	await wait(1.4)
+	await go([Vector3(-1.9, 0, 1.7), Vector3(-2.1, 0, -1.5)])
+	await wait(1.3)
+	await go([Vector3(1.7, 0, -1.3), Vector3(1.3, 0, 1.5)])
+	await wait(1.6)
 	get_tree().quit()
 
 func _a_walk(p: Vector3, cap := WALK) -> void:

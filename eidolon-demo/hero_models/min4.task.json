@@ -1,0 +1,29 @@
+{
+  "task_id": "b0e8155d-e26f-4b4a-89a6-7d218745029a",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Abstract minimal chess-piece-like figure of a veiled bride: a teardrop-shaped veiled head leaning slightly back, a narrow waist ring, a long trumpet-shaped dress flaring at the floor with deep smooth folds. No face, no arms, no feet. Smooth matte ivory, low poly, minimalist monument-like character, full body, single object.",
+    "texture": false,
+    "export_uv": true,
+    "face_limit": 6000,
+    "model_version": "P1-20260311",
+    "negative_prompt": "face, eyes, hands, arms, feet, shoes, pointed hood, cone hat, base, pedestal, text, multiple figures, realistic detail",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-10T08:49:29.176325Z",
+  "completed_at": "2026-11-10T08:49:47.356620Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}
