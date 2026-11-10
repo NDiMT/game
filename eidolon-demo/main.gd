@@ -27,6 +27,7 @@ var walk_on := false
 var hero_real := false
 var shape_file := ""
 var shape_mesh: ArrayMesh
+var shape_tex: Texture2D
 var SHP := {}
 var body_mats: Array = []
 var hover := 0.0
@@ -34,6 +35,8 @@ var tilt_f := 0.0
 var tilt_r := 0.0
 var yaw_prev := 0.0
 var spd_prev := 0.0
+var gph := 0.0
+var gait := 0.0
 
 ## arms that reach for a point and a spine that bows, on top of whatever animation is playing
 class HerMod extends SkeletonModifier3D:
@@ -864,18 +867,26 @@ func _ready() -> void:
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	var sb := Shader.new()
 	sb.code = SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;").replace(
-		"uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform vec3 trail = vec3(0.0); uniform vec3 grad_lo = vec3(0.74, 0.75, 0.84); varying float hv;").replace(
-		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", """	float hh = clamp(VERTEX.y / 1.72, 0.0, 1.0); hv = hh;
+		"uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform float use_tex = 0.0; uniform float tex_gain = 1.22; uniform vec3 veil_col = vec3(0.9, 0.9, 0.92); varying float notex; uniform vec3 trail = vec3(0.0); uniform float gait = 0.0; uniform float gph = 0.0; uniform vec3 grad_lo = vec3(0.74, 0.75, 0.84); varying float hv;").replace(
+		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", """	float hh = clamp(VERTEX.y / 1.72, 0.0, 1.0); hv = hh; notex = COLOR.g;
 	float wgt = pow(1.0 - smoothstep(0.0, 0.62, hh), 1.5);
 	float rr = length(VERTEX.xz); vec2 rad = VERTEX.xz / max(rr, 0.001); float ang = atan(VERTEX.x, VERTEX.z);
 	float edge = smoothstep(0.03, 0.16, rr);
+	float sx = clamp(VERTEX.x / 0.09, -1.0, 1.0); float sp = sin(gph); float cp = cos(gph);
+	float leg = 1.0 - smoothstep(0.05, 0.54, hh);
+	float hipa = -0.1 * gait * sp * smoothstep(0.62, 0.3, hh) * smoothstep(0.02, 0.3, hh);
+	float sha = 0.055 * gait * sp * smoothstep(0.5, 0.78, hh);
+	float ta = hipa + sha; VERTEX.xz = vec2(VERTEX.x * cos(ta) + VERTEX.z * sin(ta), -VERTEX.x * sin(ta) + VERTEX.z * cos(ta));
+	VERTEX.z += sx * sp * 0.13 * gait * leg;
+	VERTEX.y += max(0.0, sx * cp) * 0.035 * gait * (1.0 - smoothstep(0.0, 0.2, hh)) * smoothstep(0.0, 0.06, VERTEX.z + 0.05);
 	VERTEX.xz += trail.xz * wgt;
 	vec2 tv = trail.xz * 0.35; tv.y = max(tv.y, -0.012);
 	VERTEX.xz += (tv + vec2(sin(time_s * 1.3 + VERTEX.y * 9.0), 0.6 + cos(time_s * 1.05 + VERTEX.x * 14.0)) * 0.006) * COLOR.r;
 	VERTEX.xz += rad * (sin(time_s * 1.4 + ang * 3.0 + hh * 5.0) * 0.016 + sin(time_s * 0.8 - ang * 2.0) * 0.01) * wgt * edge;
 	VERTEX.y += trail.y * wgt * edge * (0.6 + 0.4 * sin(time_s * 1.1 + ang * 2.0));
 	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;""").replace(
-		"	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));", "	col *= mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv));")
+		"	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));",
+		"	if (use_tex > 0.0) { vec3 tx = mix(texture(albedo_tex, UV).rgb, veil_col, notex); tx = mix(tx, vec3(dot(tx, vec3(0.3, 0.55, 0.15))), 0.08); col = tx * tex_gain * (wt * wt + 0.95 * wz * wz + 0.82 * wx * wx + 0.74 * (1.0 - min(s, 1.0))); }\n	col *= mix(mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv)), vec3(1.0), use_tex);")
 	shaders["body"] = sb
 	var st2 := Shader.new()
 	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
@@ -1098,7 +1109,7 @@ func bake_shape(file: String) -> ArrayMesh:
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) != OK: return null
 	var src := doc.generate_scene(st) as Node3D
-	var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array()
+	var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array(); var uvs := PackedVector2Array()
 	for m in src.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
 		var xf := Transform3D.IDENTITY
@@ -1113,7 +1124,11 @@ func bake_shape(file: String) -> ArrayMesh:
 			var base := vs.size()
 			var av: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
 			var has_n: bool = a[Mesh.ARRAY_NORMAL] != null
+			var has_uv: bool = a[Mesh.ARRAY_TEX_UV] != null
+			var om := mi.mesh.surface_get_material(si)
+			if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: shape_tex = (om as BaseMaterial3D).albedo_texture
 			for i in av.size():
+				uvs.append((a[Mesh.ARRAY_TEX_UV][i] as Vector2) if has_uv else Vector2.ZERO)
 				vs.append(xf * av[i])
 				ns.append((xf.basis * (a[Mesh.ARRAY_NORMAL][i] as Vector3)).normalized() if has_n else Vector3.UP)
 			if a[Mesh.ARRAY_INDEX] != null:
@@ -1130,8 +1145,10 @@ func bake_shape(file: String) -> ArrayMesh:
 	var c := Vector3(cx / maxf(cn, 1.0), lo.y, cz / maxf(cn, 1.0))
 	for i in vs.size(): vs[i] = (vs[i] - c) * sc
 	var cols := PackedColorArray(); cols.resize(vs.size()); cols.fill(Color(0, 0, 0))
-	if FACE_VEIL.has(file) and OS.get_environment("NOVEIL") != "1": add_face_veil(FACE_VEIL[file], vs, ns, cols, ix)
-	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_COLOR] = cols; arr[Mesh.ARRAY_INDEX] = ix
+	var vk := file.trim_suffix("t")
+	if FACE_VEIL.has(vk) and OS.get_environment("NOVEIL") != "1": add_face_veil(FACE_VEIL[vk], vs, ns, cols, ix)
+	uvs.resize(vs.size())
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_COLOR] = cols; arr[Mesh.ARRAY_TEX_UV] = uvs; arr[Mesh.ARRAY_INDEX] = ix
 	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	print("SHAPE ", file, " verts ", vs.size(), " tris ", ix.size() / 3)
 	return am
@@ -1173,7 +1190,7 @@ func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array
 			var out := Vector3(pp.x - d.cx, 0.0, pp.z - d.cz)
 			if n.length() < 1e-7: n = Vector3.UP
 			elif n.dot(out) < 0.0: n = -n
-			vs.append(pp); ns.append(n.normalized()); cols.append(Color(wts[iv * W + it], 0, 0))
+			vs.append(pp); ns.append(n.normalized()); cols.append(Color(wts[iv * W + it], 1, 0))
 	for iv in NV:
 		for it in NT:
 			var a0 := base + iv * W + it
@@ -1195,6 +1212,7 @@ func spawn_shape(parent: Node, mode: String) -> Dictionary:
 	match mode:
 		"main":
 			var m := body_mat("veil", "main"); m.set_shader_parameter("marble", 0.22); mi.material_override = m
+			if shape_tex != null: m.set_shader_parameter("albedo_tex", shape_tex); m.set_shader_parameter("use_tex", 1.0); m.set_shader_parameter("marble", 0.0)
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		"crim":
 			var m2 := body_mat("crim", "refl"); m2.set_shader_parameter("grad_lo", Vector3(0.8, 0.8, 0.85)); mi.material_override = m2
@@ -1757,14 +1775,19 @@ func _process(dt: float) -> void:
 	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
 	ghost.visible = (not hero_real) and shape_file == "" and near > 0.01
 	if shape_file != "":
-		hover = 0.03 + 0.016 * sin(t * 1.25)
+		gph += spd * dt / lerpf(0.56, 0.8, rk) * PI
+		gait = lerpf(gait, clampf(spd / 0.9, 0.0, 1.0) * (1.0 + 0.25 * rk), 1.0 - exp(-6.0 * dt))
+		hover = 0.004 * sin(t * 1.3) + 0.007 * gait * (1.0 + cos(2.0 * gph))
 		var turn := angle_difference(yaw_prev, yaw) / maxf(dt, 0.001); yaw_prev = yaw
-		tilt_r = lerpf(tilt_r, clampf(-turn * 0.04, -0.1, 0.1), 1.0 - exp(-4.0 * dt))
-		tilt_f = lerpf(tilt_f, 0.045 * wk + 0.05 * rk + clampf((spd - spd_prev) / maxf(dt, 0.001) * 0.035, -0.07, 0.07) + a_lean, 1.0 - exp(-3.5 * dt)); spd_prev = spd
+		tilt_r = lerpf(tilt_r, clampf(-turn * 0.03, -0.07, 0.07), 1.0 - exp(-4.0 * dt))
+		tilt_f = lerpf(tilt_f, 0.03 * wk + 0.05 * rk + clampf((spd - spd_prev) / maxf(dt, 0.001) * 0.02, -0.04, 0.04) + a_lean, 1.0 - exp(-3.5 * dt)); spd_prev = spd
+		var side := Vector3(cos(yaw), 0, -sin(yaw)) * (-0.016 * gait * cos(gph))
 		for k in SHP:
 			var sh: Node3D = SHP[k].holder
-			sh.position = pos + Vector3(0, hover, 0); sh.rotation = Vector3(tilt_f, yaw + head_yaw * 0.4, tilt_r)
-		for bm in body_mats: bm.set_shader_parameter("trail", Vector3(sway.x * 1.15, 0.05 * wk + 0.05 * rk, sway.y * 1.15))
+			sh.position = pos + side + Vector3(0, hover, 0); sh.rotation = Vector3(tilt_f, yaw + head_yaw * 0.4, tilt_r + 0.02 * gait * cos(gph))
+		for bm in body_mats:
+			bm.set_shader_parameter("trail", Vector3(sway.x * 0.55, 0.02 * wk + 0.04 * rk, sway.y * 0.55))
+			bm.set_shader_parameter("gait", gait); bm.set_shader_parameter("gph", gph)
 		(SHP["ghost"].holder as Node3D).visible = near > 0.01
 	if ghost.visible: ghost.apply(st)
 	var moving := spd > 0.15
