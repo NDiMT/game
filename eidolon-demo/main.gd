@@ -867,7 +867,7 @@ func _ready() -> void:
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	hero_real = OS.get_environment("REAL") == "1"
-	if OS.get_environment("RIG") != "": rig_file = "min" + OS.get_environment("RIG"); hero_real = true
+	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if OS.get_environment("RIG").begins_with("hq") else "min" + OS.get_environment("RIG"); hero_real = true
 	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "min14r"; hero_real = true
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	elif not hero_real and OS.get_environment("HERO") == "": shape_file = "min9t"
@@ -1137,7 +1137,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 		if rig_file != "": add_rest_coords(hero_src)
 	var src: Node3D = hero_src.duplicate()
 	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
-	src.scale = Vector3.ONE * 1.72; src.rotation.y = -PI * 0.5
+	src.scale = Vector3.ONE * 1.72; src.rotation.y = 0.0 if rig_file.begins_with("hq") else -PI * 0.5
 	for m in src.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if mode in ["tex", "marble"] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -1146,7 +1146,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 			if mode == "flat": mi.set_surface_override_material(si, ghost_flat)
 			elif mode == "marble": mi.set_surface_override_material(si, pal("marble", "2" if rig_file != "" else ""))
 			elif rig_file != "" and mode == "crim": mi.set_surface_override_material(si, pal("crim", "2"))
-			elif rig_file != "":
+			elif rig_file == "min14r":
 				var bm := body_mat("veil", "rig" + str(holder.get_instance_id())); bm.shader = shaders["bodyskin"]
 				var did := int(OS.get_environment("DESIGN")) if OS.get_environment("DESIGN") != "" else 32
 				apply_design(bm, did, rig_file); bm.set_shader_parameter("geo", 1.0)
@@ -1187,19 +1187,24 @@ func _real_lineup() -> void:
 	var c := Vector3(0.2, 0, 0.3)
 	var dir := Vector3(1, 0, -1).normalized()
 	var names := [["tripo_v1", "idle", false], ["porcelain", "", true], ["h4", "", true]]
+	var labels := ["A", "B", "C"]; var gap := 1.5; var vs := 5.4
+	if OS.get_environment("REALS") != "":
+		names = []; labels = []
+		for nm in OS.get_environment("REALS").split(","): names.append([nm, "", true]); labels.append(nm.right(1))
+		gap = 2.0; vs = 7.6
 	var hs := []
-	for i in 3:
-		hs.append(real_hero(names[i][0], c + dir * ((i - 1) * 1.5), PI * 0.25, names[i][1], names[i][2]))
-		var l := Label3D.new(); l.text = ["A", "B", "C"][i]; l.font_size = 96; l.pixel_size = 0.004; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	for i in names.size():
+		hs.append(real_hero(names[i][0], c + dir * ((i - (names.size() - 1) * 0.5) * gap), PI * 0.25, names[i][1], names[i][2]))
+		var l := Label3D.new(); l.text = labels[i]; l.font_size = 96; l.pixel_size = 0.004 * vs / 5.4; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		l.modulate = Color(0.72, 0.14, 0.18); l.outline_modulate = Color(1, 1, 1, 0.9); l.no_depth_test = true
-		l.position = c + dir * ((i - 1) * 1.5) + Vector3(0.75, 0.05, 0.75); add_child(l)
+		l.position = c + dir * ((i - (names.size() - 1) * 0.5) * gap) + Vector3(0.75, 0.05, 0.75) * (vs / 5.4); add_child(l)
 	var dirn := OS.get_environment("SHOT_DIR")
 	await get_tree().create_timer(2.5).timeout
 	for view in [["real-front", PI * 0.25], ["real-back", PI * 1.12]]:
-		shot = {"c": c + Vector3(0, 0.95, 0), "s": 5.4}
-		cam.size = 5.4
+		shot = {"c": c + Vector3(0, 0.95, 0), "s": vs}
+		cam.size = vs
 		for h in hs:
-			if h != null: (h as Node3D).rotation.y = view[1]
+			if h != null: (h as Node3D).rotation.y = view[1] + (float(OS.get_environment("REAL_OFF")) if OS.get_environment("REAL_OFF") != "" else 0.0)
 		await get_tree().create_timer(0.8).timeout
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dirn, view[0]])

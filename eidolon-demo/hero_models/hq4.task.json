@@ -1,0 +1,30 @@
+{
+  "task_id": "fb334945-a8b2-4568-9169-d796d223d44c",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "A veiled woman from an ancient Aegean myth. A pale aqua veil with a thin gold trim covers her head and whole face and drapes over the shoulders. Floor-length petrol teal gown with elbow-length sleeves, a crimson silk sash at the waist and a gold Greek key meander border along the hem, the skirt falling straight then widening slightly, feet hidden. Forearms and hands of white marble with soft grey veins. Stylised game character with clean elegant shapes and smooth surfaces, soft hand-painted matte colours, not realistic, no face visible. She stands straight and symmetrical in an A-pose, both arms straight and held away from the body. Full body, single character.",
+    "texture": true,
+    "export_uv": true,
+    "model_version": "v3.1-20260211",
+    "negative_prompt": "face, eyes, nose, mouth, hair, shoes, bare feet, weapon, base, pedestal, text, multiple figures, photorealistic skin",
+    "texture_quality": "detailed",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-10T12:14:00.942343Z",
+  "completed_at": "2026-11-10T12:16:14.239701Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}
