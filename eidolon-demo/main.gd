@@ -20,6 +20,14 @@ var bg_c := Color("2c6379")
 var pals := {}
 var sepia_var := 0.0
 var gate_a: Node3D
+var mroot: Node3D
+var winch_m: Node3D
+var tile_hole := Rect2()
+const PX0 := -1.6
+const PX1 := 2.3
+const PZ0 := -2.2
+const PZ1 := 1.2
+const PED := Vector3(-0.2, 0, -0.55)
 var winch_a: Node3D
 var her_mats: Array = []
 var posing := false
@@ -198,6 +206,7 @@ void vertex(){
 }
 void fragment(){
 	if (hh < 0.03) discard;
+	if (q.x > -3.5 && q.x < 3.0 && q.z > -3.5 && q.z < 3.0) discard;   // nothing lies on the sea inside the hollow of the first court
 	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
 	float d = fract(dot(floor(FRAGCOORD.xy), vec2(0.7548776662, 0.56984029)));
 	if (d > fade) discard;
@@ -205,12 +214,32 @@ void fragment(){
 	if (use_tex > 0.5) { vec3 tx = texture(albedo_tex, UV).rgb; float rw = smoothstep(0.08, 0.2, tx.r - tx.b); c = mix(tx * 0.92, clamp(tx * gain, 0.0, 1.0), rw); }
 	ALBEDO = c;
 }"""
+## the still water of the mirror pool: almost clear, with a few slow glints
+const SH_GLASS := """shader_type spatial;
+render_mode unshaded, blend_mix, cull_disabled, depth_draw_never;
+uniform float time_s = 0.0;
+varying vec3 wp;
+void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment(){
+	float l = smoothstep(0.9, 1.0, sin(wp.x * 2.3 + sin(wp.z * 1.7 + time_s * 0.45) * 1.8 + time_s * 0.22) * 0.5 + 0.5);
+	float l2 = smoothstep(0.965, 1.0, sin((wp.x - wp.z) * 5.1 + time_s * 0.6) * sin(wp.z * 3.3 - time_s * 0.4) * 0.5 + 0.5);
+	ALBEDO = mix(vec3(0.55, 0.84, 0.86), vec3(1.0), clamp(l * 0.55 + l2 * 0.7, 0.0, 1.0));
+	ALPHA = 0.26 + l * 0.2 + l2 * 0.3;
+}"""
+## what the pool shows where nothing stands over it: the sky
+const SH_PIT := """shader_type spatial;
+render_mode unshaded, cull_front;
+uniform vec3 top_c = vec3(0.69, 0.88, 0.89); uniform vec3 low_c = vec3(0.66, 0.86, 0.88); uniform float y0 = -0.2; uniform float y1 = -2.4;
+varying vec3 wp;
+void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment(){ ALBEDO = mix(top_c, low_c, clamp((wp.y - y0) / (y1 - y0), 0.0, 1.0)); }"""
 const SH_SEA := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform vec3 near_col : source_color; uniform vec3 far_col : source_color; uniform vec3 centre; uniform float mist_r = 7.0; uniform float time_s = 0.0; uniform float mist_k = 1.0;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
+	if (wp.x > -3.5 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 3.0 && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
 	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
@@ -254,6 +283,7 @@ uniform float clear_r = 0.0; uniform vec3 col : source_color; uniform float far_
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
+	if (wp.x > -3.5 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 3.0 && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec2 uv = wp.xz * scale;
 	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
 	vec3 d3 = wp - hero; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
@@ -683,12 +713,19 @@ func under(x0: float, z0: float, x1: float, z1: float, inset := 0.22, p := "ston
 	for i in nz: win_x(b.x, -1.2, a.z + (b.z - a.z) * (i + 0.5) / nz, 0.4, 0.74)
 
 func tiles(x0: float, z0: float, x1: float, z1: float, step := 0.8) -> void:
+	var hx0 := tile_hole.position.x; var hz0 := tile_hole.position.y; var hx1 := tile_hole.end.x; var hz1 := tile_hole.end.y; var hole := tile_hole.size.x > 0.0
 	var x := x0 + step
 	while x < x1 - 0.1:
-		blk(Vector3(x - 0.008, 0, z0 + 0.1), Vector3(x + 0.008, 0.003, z1 - 0.1), "shade"); x += step
+		if hole and x > hx0 and x < hx1:
+			blk(Vector3(x - 0.008, 0, z0 + 0.1), Vector3(x + 0.008, 0.003, hz0), "shade"); blk(Vector3(x - 0.008, 0, hz1), Vector3(x + 0.008, 0.003, z1 - 0.1), "shade")
+		else: blk(Vector3(x - 0.008, 0, z0 + 0.1), Vector3(x + 0.008, 0.003, z1 - 0.1), "shade")
+		x += step
 	var z := z0 + step
 	while z < z1 - 0.1:
-		blk(Vector3(x0 + 0.1, 0, z - 0.008), Vector3(x1 - 0.1, 0.003, z + 0.008), "shade"); z += step
+		if hole and z > hz0 and z < hz1:
+			blk(Vector3(x0 + 0.1, 0, z - 0.008), Vector3(hx0, 0.003, z + 0.008), "shade"); blk(Vector3(hx1, 0, z - 0.008), Vector3(x1 - 0.1, 0.003, z + 0.008), "shade")
+		else: blk(Vector3(x0 + 0.1, 0, z - 0.008), Vector3(x1 - 0.1, 0.003, z + 0.008), "shade")
+		z += step
 
 func rosette(c: Vector3, r: float) -> void:
 	var names := ["shade", "stone", "rose", "stone", "crim"]
@@ -940,7 +977,7 @@ func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.
 # ---------------------------------------------------------------- setup
 func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
-			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
+			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
 	if OS.get_environment("MOOD") == "moody":
 		sea_c = Color("3a6a7b"); mist_c = Color("b9b4c4"); bg_c = Color("29586a"); shadow_c = Vector3(0.6, 0.61, 0.82); water_deep = Color("2a7d88"); water_shallow = Color("6fc4b8")
@@ -1060,6 +1097,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
 		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (wrap_lift > 0.5) { float rw9 = smoothstep(0.08, 0.2, tx.r - tx.b); float tl9 = dot(tx, vec3(0.3, 0.55, 0.15)); float fc9 = wt * wt * 1.1 + wz * wz * 0.96 + wx * wx * 0.7; float gr9 = n3(mpos * 150.0) - 0.5; float mo9 = n3(mpos * 8.0) - 0.5; vec3 cl9 = wrap_col * clamp(tl9 / wrap_ref, 0.72, 1.14) * mix(1.0, fc9, 0.75) * (1.0 + gr9 * 0.09 + mo9 * 0.1); float vn9 = abs(sin((mpos.x * 1.3 + mpos.y * 0.9 + mpos.z * 0.7) * 8.0 + n3(mpos * 5.0) * 6.0)); float vm9 = (1.0 - smoothstep(0.0, 0.07, vn9)) * smoothstep(0.3, 0.55, n3(mpos * 2.3 + 7.0)); float vn8 = abs(sin((mpos.x * -1.1 + mpos.y * 1.2 + mpos.z * 0.5) * 5.0 + n3(mpos * 4.0 + 3.0) * 7.0)); vm9 = max(vm9, (1.0 - smoothstep(0.0, 0.045, vn8)) * 0.7); vec3 mb9 = vec3(0.975, 0.97, 0.962) * clamp(tl9 / 0.84, 0.86, 1.03); mb9 = mix(mb9, vec3(0.6, 0.61, 0.66), vm9 * 0.55); mb9 = mix(mb9, tx, 1.0 - smoothstep(0.3, 0.5, tl9)); tx = mix(mb9, cl9, rw9); } if (recol3 > 0.5) { float lum3 = dot(tx, vec3(0.3, 0.55, 0.15)); float cl3 = smoothstep(0.02, 0.06, tx.b - tx.r); float vw3 = mveil < -0.5 ? smoothstep(rc_split - 0.04, rc_split + 0.04, mpos.y) : smoothstep(0.3, 0.6, mveil); vec3 cc3 = mix(rc_gown, rc_veil, vw3); float gw3 = 1.0 - vw3; float vd3 = mveil - 1.0; float vb3 = step(0.0, vd3) * smoothstep(0.016, 0.022, vd3) * (1.0 - smoothstep(0.034, 0.04, vd3)) * rc_detail; cc3 = mix(cc3, rc_gown, vb3 * 0.5); cc3 *= mix(1.0, 0.9, step(0.5, mveil) * (1.0 - step(0.9, mveil))); float ang3 = atan(mpos.z, mpos.x); float fold3 = clamp(1.0 + (lum3 - 0.66) * 1.5, 0.74, 1.14); float pl3 = smoothstep(-0.35, 0.35, sin(ang3 * 24.0 + sin(mpos.y * 6.0) * 0.7)); float plw3 = gw3 * smoothstep(1.02, 0.55, mpos.y) * rc_detail; float mot3 = sin(mpos.x * 37.0 + mpos.y * 11.0) * sin(mpos.y * 29.0 + mpos.z * 17.0) * sin(mpos.z * 41.0 + mpos.x * 7.0); float thr3 = sin(ang3 * 70.0 + mpos.y * 3.0) * (1.0 - gw3); float rim3 = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 2.2); cc3 *= mix(1.0, mix(0.9, 1.04, pl3), plw3) * (1.0 + (0.035 * mot3 + 0.03 * thr3) * rc_detail); cc3 *= 1.0 - 0.1 * rc_detail * gw3 * smoothstep(rc_split - 0.13, rc_split - 0.03, mpos.y) * step(abs(mpos.x), 0.26); float hb3 = (1.0 - smoothstep(0.05, 0.062, mpos.y)) * rc_detail; float hl3 = smoothstep(0.078, 0.088, mpos.y) * (1.0 - smoothstep(0.104, 0.114, mpos.y)) * rc_detail; cc3 = mix(cc3, rc_gown * vec3(0.72, 0.78, 0.92), hb3); cc3 = mix(cc3, rc_veil, hl3 * 0.85); cc3 = mix(cc3, vec3(1.0), rim3 * mix(0.3, 0.14, gw3) * rc_detail); tx = mix(tx, cc3 * mix(clamp(0.6 + lum3 * 0.5, 0.86, 1.08), fold3, rc_detail), cl3); } if (recol2 > 0.5) { float lv = dot(tx, vec3(0.3, 0.55, 0.15)); float mx = max(tx.r, max(tx.g, tx.b)); float mn = min(tx.r, min(tx.g, tx.b)); float sat = (mx - mn) / max(mx, 0.001); float gold = step(0.5, tx.r) * step(0.38, tx.g) * step(0.22, tx.r - tx.b); float crim = smoothstep(0.2, 0.3, tx.r - tx.g) * (1.0 - step(0.4, tx.g)); float body = step(mpos.y, 1.16) * step(abs(mpos.x), 0.3); float teal = smoothstep(0.02, 0.1, min(tx.g, tx.b) - tx.r) * (1.0 - smoothstep(0.75, 0.9, lv)); float gown = max(max(teal, body), crim); tx = mix(tx, rc_gown * clamp(0.95 + (lv - 0.35) * 0.3, 0.92, 1.08), gown); float lowsat = (1.0 - smoothstep(0.12, 0.26, sat)) * smoothstep(0.45, 0.62, lv); float top = step(1.56, mpos.y); float isveil = max(max(lowsat, gold), top) * step(abs(mpos.x), 0.27) * step(1.16, mpos.y) * (1.0 - gown * (1.0 - top)); tx = mix(tx, rc_veil * mix(0.93, clamp(lv / 0.8, 0.78, 1.08), lowsat), isveil); } if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
+	var st3 := Shader.new(); st3.code = st2.code.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;"); shaders["tex2"] = st3
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
 	var n0 := get_child_count()
@@ -1068,6 +1106,9 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	for c in get_children().slice(n0):
 		if c != world: c.reparent(world)
 	refl = world.duplicate(); refl.name = "Refl"; add_child(refl)
+	for nm in ["MirrorPool", "PoolSky"]:   # the copy of the world under the sea must not repeat the pool's own mirror
+		var extra := refl.get_node_or_null(nm)
+		if extra != null: refl.remove_child(extra); extra.queue_free()
 	refl.scale = Vector3(1, -1, 1); refl.position.y = 2.0 * WATER
 	slab(-0.6, -7.8, 0.6, -5.8, 0.0, "stone", refl)
 	for e in [-1.0, 1.0]: blk(Vector3(e * 0.54 - 0.03, 0, -7.8), Vector3(e * 0.54 + 0.03, 0.06, -5.8), "shade", refl)
@@ -1076,6 +1117,14 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	get_viewport().size_changed.connect(_fit)
 	_fit()
 	if "gallery" in OS.get_cmdline_user_args(): _gallery()
+	if OS.get_environment("DEBUG_POOL") == "1":
+		for mm in find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			if mi.mesh == null: continue
+			var bb: AABB = mi.global_transform * mi.mesh.get_aabb()
+			if bb.position.x < 0.6 and bb.end.x > 0.9 and bb.position.z < 0.3 and bb.end.z > 0.6 and bb.end.y > -2.3 and bb.position.y < 0.05:
+				var mo := mi.material_override
+				print("POOLDBG ", mi.get_path(), " y ", snappedf(bb.position.y, 0.01), "..", snappedf(bb.end.y, 0.01), " size ", bb.size.snapped(Vector3.ONE * 0.1), " mat ", (mo as ShaderMaterial).shader.resource_path if mo is ShaderMaterial else str(mo), " ", shaders.find_key((mo as ShaderMaterial).shader) if mo is ShaderMaterial else "")
 	if "shots" in OS.get_cmdline_user_args(): _shots()
 	if "lineup" in OS.get_cmdline_user_args(): _lineup()
 	if "reals" in OS.get_cmdline_user_args(): _real_lineup()
@@ -1136,6 +1185,8 @@ func _shots() -> void:
 		{"n": "15-statue-row", "p": Vector3(-2.55, 0, 1.75), "y": 1.2, "c": Vector3(-2.7, 0.8, -0.4), "s": 6.6},
 		{"n": "16-sculptors-corner", "p": Vector3(1.9, 0, -2.2), "y": 2.6, "c": Vector3(2.4, 0.8, -3.0), "s": 5.6},
 		{"n": "17-shadow-bridge", "p": Vector3(5.42, 0, 1.0), "y": 1.57, "c": Vector3(6.3, -0.2, 1.3), "s": 7.6},
+		{"n": "18-mirror-pool", "p": Vector3(-0.2, 0, -2.36), "y": 0.0, "c": Vector3(0.45, 0.1, -1.35), "s": 5.2},
+		{"n": "19-mirror-pool-wide", "p": Vector3(-0.2, 0, -2.36), "y": 0.0, "c": Vector3(0.2, 0.4, -1.0), "s": 9.5},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
 	var only := OS.get_environment("SHOT_ONLY")
@@ -1518,8 +1569,8 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				apply_design(bm, did, rig_file); bm.set_shader_parameter("geo", 1.0)
 				mi.set_surface_override_material(si, bm)
 			else:
-				var sm := ShaderMaterial.new(); sm.shader = shaders["tex"]
-				if refl_mat != null:   # her own reflection keeps her colours and lies over the others
+				var sm := ShaderMaterial.new(); sm.shader = shaders["tex2" if mode == "mirror" else "tex"]
+				if refl_mat != null and mode == "tex":   # her own reflection keeps her colours and lies over the others
 					var rm := ShaderMaterial.new(); rm.shader = shaders["refl"]; rm.set_shader_parameter("water_y", WATER); rm.set_shader_parameter("lift", 0.006); rm.set_shader_parameter("use_tex", 1.0)
 					if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: rm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 					timed.append(rm); sm.next_pass = rm
@@ -1527,6 +1578,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
+				if mode == "mirror": sm.set_shader_parameter("tint", Vector3(1.12, 1.3, 1.36))
 				if mode == "tex": floor_mats.append(sm)
 				if rig_file.begins_with("lp") or rig_file.begins_with("sr") or rig_file.begins_with("nb") or (rig_file.begins_with("wrap") and OS.get_environment("WRAP_SMOOTH") == ""): sm.set_shader_parameter("flat_n", 1.0)
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
@@ -2011,6 +2063,50 @@ func statue_on(nm: String, sp: Vector3, h: float, yaw: float) -> void:
 	model(nm, sp + Vector3(0, 0.17, 0), h, yaw)
 	decal(sp + Vector3(0.15, 0, -0.15), 1.1, 0.8, 0.2, 0.78)
 
+## mirrored things need their own materials: two-sided, and without the pass that lays a reflection on the sea
+func _strip_refl(root: Node) -> void:
+	var cache := {}
+	for mm in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := mm as MeshInstance3D
+		var m := mi.material_override as ShaderMaterial
+		if m == null: continue
+		if not cache.has(m):
+			var d: ShaderMaterial = m.duplicate(); d.next_pass = null
+			if m.shader == shaders["base"]: d.shader = shaders["two"]
+			for cn in ["c_top", "c_z", "c_x"]:   # what stands in the water takes some of the water's colour
+				var c0 = d.get_shader_parameter(cn)
+				if c0 is Color: d.set_shader_parameter(cn, (c0 as Color).lerp(Color(0.5, 0.78, 0.83), 0.38).darkened(0.06))
+			cache[m] = d
+		mi.material_override = cache[m]; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## the arrival court: its floor has an opening for the mirror pool and its base is hollow, so that
+## the court can stand upside down inside it
+func _court_a() -> void:
+	var x0 := -4.0; var z0 := -4.0; var x1 := 3.5; var z1 := 3.5
+	for r in [[x0, z0, x1, PZ0], [x0, PZ1, x1, z1], [x0, PZ0, PX0, PZ1], [PX1, PZ0, x1, PZ1]]:
+		blk(Vector3(r[0], -0.13, r[1]), Vector3(r[2], 0.0, r[3]), "stone")
+	for r in [[x0 - 0.03, z0 - 0.03, x1 + 0.03, PZ0], [x0 - 0.03, PZ1, x1 + 0.03, z1 + 0.03], [x0 - 0.03, PZ0, PX0, PZ1], [PX1, PZ0, x1 + 0.03, PZ1]]:
+		blk(Vector3(r[0], -0.18, r[1]), Vector3(r[2], -0.13, r[3]), "shade")
+	dentils(x0, z0, x1, z1, -0.18)
+	var kr := 0.07   # the kerb of the pool
+	blk(Vector3(PX0 - kr, 0, PZ0 - kr), Vector3(PX1 + kr, 0.04, PZ0), "shade"); blk(Vector3(PX0 - kr, 0, PZ1), Vector3(PX1 + kr, 0.04, PZ1 + kr), "shade")
+	blk(Vector3(PX0 - kr, 0, PZ0), Vector3(PX0, 0.04, PZ1), "shade"); blk(Vector3(PX1, 0, PZ0), Vector3(PX1 + kr, 0.04, PZ1), "shade")
+	var ins := 0.22; var a := Vector3(x0 + ins, -2.45, z0 + ins); var b := Vector3(x1 - ins, -0.18, z1 - ins); var th := 0.3
+	for w in [[a.x, a.z, b.x, a.z + th], [a.x, b.z - th, b.x, b.z], [a.x, a.z + th, a.x + th, b.z - th], [b.x - th, a.z + th, b.x, b.z - th]]:
+		blk(Vector3(w[0], a.y, w[1]), Vector3(w[2], b.y, w[3]), "stone")
+	for w in [[a.x - 0.1, a.z - 0.1, b.x + 0.1, a.z + th], [a.x - 0.1, b.z - th, b.x + 0.1, b.z + 0.1], [a.x - 0.1, a.z + th, a.x + th, b.z - th], [b.x - th, a.z + th, b.x + 0.1, b.z - th]]:
+		blk(Vector3(w[0], -2.45, w[1]), Vector3(w[2], WATER + 0.07, w[3]), "shade")
+	for w in [[a.x - 0.1, a.z - 0.1, b.x + 0.1, a.z + th], [a.x - 0.1, b.z - th, b.x + 0.1, b.z + 0.1], [a.x - 0.1, a.z + th, a.x + th, b.z - th], [b.x - th, a.z + th, b.x + 0.1, b.z - th]]:
+		blk(Vector3(w[0], -0.42, w[1]), Vector3(w[2], -0.3, w[3]), "shade")   # the cornice, as a ring: a full plate would close the pool from below
+	foam(a.x - 0.1, a.z - 0.1, b.x + 0.1, b.z + 0.1)
+	var nx := maxi(1, int((b.x - a.x) / 1.05)); var nz := maxi(1, int((b.z - a.z) / 1.05))
+	for i in nx: win_z(a.x + (b.x - a.x) * (i + 0.5) / nx, -1.2, b.z, 0.4, 0.74)
+	for i in nz: win_x(b.x, -1.2, a.z + (b.z - a.z) * (i + 0.5) / nz, 0.4, 0.74)
+	var pit := MeshInstance3D.new(); pit.name = "PoolSky"; var pm := BoxMesh.new(); pm.size = Vector3(b.x - a.x - th * 2.0 + 0.02, 2.24, b.z - a.z - th * 2.0 + 0.02); pit.mesh = pm
+	pit.position = Vector3((a.x + b.x) * 0.5, -0.185 - 1.12, (a.z + b.z) * 0.5)
+	var pmat := ShaderMaterial.new(); pmat.shader = shaders["pit"]; pit.material_override = pmat; pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(pit)
+	if OS.get_environment("NOPIT") == "1": pit.visible = false
+
 ## the first zone, "the quay of the last statues": she wakes on the one empty plinth of a row of
 ## statues of herself, passes the sculptor's corner, and meets the footbridge that is only a shadow
 func _start_zone() -> void:
@@ -2052,31 +2148,34 @@ func _start_zone() -> void:
 	urn(Vector3(1.45, 0, -3.0), 0.8, "terra")
 	# the two strange heads now watch the gate from either side
 	plinth_head("kit_face2", Vector3(-1.5, 0, -3.5), 0.0); plinth_head("kit_face3", Vector3(-2.0, 0, 3.02), PI)
-	# a pair of feet carved into the floor wherever she may stand and pose: by the basin and at the broken end of the quay
-	for fp in [[Vector3(0.0, 0, 0.86), 0.0], [Vector3(5.42, 0, 1.0), PI * 0.5]]:
-		var fn := Node3D.new(); fn.position = fp[0]; fn.rotation.y = fp[1]; add_child(fn)
-		for fx in [-0.075, 0.075]:
-			blk(Vector3(fx - 0.04, 0.0, -0.11), Vector3(fx + 0.04, 0.006, 0.07), "shade", fn); blk(Vector3(fx - 0.033, 0.0, 0.07), Vector3(fx + 0.033, 0.006, 0.12), "shade", fn)
-		blk(Vector3(-0.2, 0.0, -0.2), Vector3(0.2, 0.004, -0.185), "gold", fn); blk(Vector3(-0.2, 0.0, 0.185), Vector3(0.2, 0.004, 0.2), "gold", fn)
-	# the footbridge east of the quay: a broken stub, a gap, and the islet of the winch
-	slab(5.1, 0.6, 5.62, 1.4, 0.0); pier(5.36, 1.0, -0.18, 0.5)
-	for rb2 in [[Vector3(5.66, -0.05, 0.78), 0.4], [Vector3(5.7, -0.02, 1.22), -0.3]]:
-		var bk2 := blk(Vector3(-0.14, -0.13, -0.12), Vector3(0.14, 0, 0.12), "stone"); bk2.position = rb2[0]; bk2.rotation = Vector3(0.14, rb2[1], 0.12)
-	slab(6.95, 0.25, 8.35, 1.75, 0.0); under(6.95, 0.25, 8.35, 1.75, 0.18, "sand")
-	parapet(Vector3(8.25, 0, 0.35), Vector3(8.25, 0, 1.65)); parapet(Vector3(7.05, 0, 1.65), Vector3(8.25, 0, 1.65))
-	var wc := Vector3(7.7, 0, 0.95)
-	cyl(wc, 0.3, 0.28, 0.08, pal("shade"), 20); cyl(wc + Vector3(0, 0.08, 0), 0.13, 0.11, 0.62, pal("wood"), 12); cyl(wc + Vector3(0, 0.7, 0), 0.15, 0.15, 0.07, pal("gold"), 12)
-	winch_a = Node3D.new(); winch_a.position = wc; add_child(winch_a)
-	for i in 4:
-		var spk := blk(Vector3(-0.46, -0.02, -0.022), Vector3(0.46, 0.02, 0.022), "wood", winch_a); spk.position = Vector3(0, 0.56, 0); spk.rotation.y = PI * 0.25 * i
-	for i in 7: blk(Vector3(7.7 - 0.012, 0.3 - 0.0 * i, 0.95 - 0.16 - 0.1 * i - 0.04), Vector3(7.7 + 0.012, 0.33, 0.95 - 0.16 - 0.1 * i), "dark")
-	lantern(Vector3(8.0, 0, 0.45), 1)
-	if refl_mat != null:   # what is gone above the water still lies on it, pale as the marble it was
-		var refl_lost := ShaderMaterial.new(); refl_lost.shader = shaders["refl"]; refl_lost.set_shader_parameter("water_y", WATER)
-		refl_lost.set_shader_parameter("tint", Vector3(0.9, 0.84, 0.72)); refl_lost.set_shader_parameter("lift", 0.003); timed.append(refl_lost)
-		for g in [[Vector3(5.62, -0.14, 0.62), Vector3(6.95, 0.0, 1.38)], [Vector3(5.62, 0.0, 0.62), Vector3(6.95, 0.34, 0.68)], [Vector3(5.62, 0.0, 1.32), Vector3(6.95, 0.34, 1.38)]]:
-			var gm := blk(g[0], g[1], "stone"); gm.material_override = refl_lost
-		var gp := blk(Vector3(6.05, WATER, 0.75), Vector3(6.55, -0.14, 1.25), "stone"); gp.material_override = refl_lost
+	# the mirror pool: a still basin in which the court stands upside down. In it, and only in it,
+	# a row of stepping slabs still leads to the pedestal of the winch
+	mroot = Node3D.new(); mroot.name = "MirrorPool"; mroot.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO); add_child(mroot)
+	for both in [self, mroot]:
+		blk(PED + Vector3(-0.44, 0.0, -0.44), PED + Vector3(0.44, 0.07, 0.44), "shade", both); blk(PED + Vector3(-0.38, 0.07, -0.38), PED + Vector3(0.38, 0.4, 0.38), "stone", both)
+		blk(PED + Vector3(-0.42, 0.4, -0.42), PED + Vector3(0.42, 0.46, 0.42), "shade", both)
+		cyl(PED + Vector3(0, 0.46, 0), 0.13, 0.11, 0.6, pal("wood"), 12, both); cyl(PED + Vector3(0, 1.06, 0), 0.15, 0.15, 0.07, pal("gold"), 12, both)
+		var wn := Node3D.new(); wn.position = PED + Vector3(0, 0.9, 0); both.add_child(wn)
+		for i in 4:
+			var spk := blk(Vector3(-0.44, -0.02, -0.022), Vector3(0.44, 0.02, 0.022), "wood", wn); spk.position = Vector3.ZERO; spk.rotation.y = PI * 0.25 * i
+		if both == self: winch_a = wn
+		else: winch_m = wn
+		for cx in [-1.25, 0.85]:   # two low posts on the far rim, to give the water something to show
+			var cp := Vector3(cx, 0, PZ0 - 0.22)
+			cyl(cp, 0.17, 0.15, 0.08, pal("shade"), 16, both); cyl(cp + Vector3(0, 0.08, 0), 0.1, 0.09, 0.82, pal("stone"), 16, both); cyl(cp + Vector3(0, 0.9, 0), 0.15, 0.15, 0.06, pal("shade"), 16, both)
+			var bl := ball(cp + Vector3(0, 1.06, 0), 0.1, pal("gold"), both)
+	for i in 4:   # the lost stepping slabs: they exist only in the water
+		var sz := PZ0 + 0.03 + 0.32 * i
+		blk(Vector3(PED.x - 0.3, 0.012, sz), Vector3(PED.x + 0.3, 0.08, sz + 0.26), "stone", mroot)
+	_strip_refl(mroot)
+	var wq := QuadMesh.new(); wq.size = Vector2(PX1 - PX0, PZ1 - PZ0); wq.orientation = PlaneMesh.FACE_Y
+	var gm2 := ShaderMaterial.new(); gm2.shader = shaders["glass"]; timed.append(gm2)
+	prim(wq, Vector3((PX0 + PX1) * 0.5, 0.012, (PZ0 + PZ1) * 0.5), gm2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# the carved feet at the rim, where she may stand still
+	var fn := Node3D.new(); fn.position = Vector3(PED.x, 0, PZ0 - 0.16); add_child(fn)
+	for fx in [-0.075, 0.075]:
+		blk(Vector3(fx - 0.04, 0.0, -0.11), Vector3(fx + 0.04, 0.006, 0.07), "shade", fn); blk(Vector3(fx - 0.033, 0.0, 0.07), Vector3(fx + 0.033, 0.006, 0.12), "shade", fn)
+	blk(Vector3(-0.2, 0.0, -0.2), Vector3(0.2, 0.004, -0.185), "gold", fn); blk(Vector3(-0.2, 0.0, 0.185), Vector3(0.2, 0.004, 0.2), "gold", fn)
 	# the gate of the court is a bronze grille until the winch is turned
 	gate_a = Node3D.new(); gate_a.position = Vector3(0, 0, -3.9); add_child(gate_a)
 	for i in 7: blk(Vector3(-0.54 + 0.18 * i - 0.018, 0, -0.018), Vector3(-0.54 + 0.18 * i + 0.018, 2.02, 0.018), "dark", gate_a)
@@ -2086,8 +2185,8 @@ func _start_zone() -> void:
 
 func _world() -> void:
 	# ---- A. the arrival court (7 x 7 m of open floor)
-	slab(-4.0, -4.0, 3.5, 3.5, 0.0); under(-4.0, -4.0, 3.5, 3.5)
-	tiles(-4.0, -4.0, 3.5, 3.5, 1.0); rosette(Vector3(0, 0, 0), 1.5); meander(-3.3, -3.3, 3.3, 3.3)
+	_court_a()
+	tile_hole = Rect2(PX0 - 0.08, PZ0 - 0.08, PX1 - PX0 + 0.16, PZ1 - PZ0 + 0.16); tiles(-4.0, -4.0, 3.5, 3.5, 1.0); tile_hole = Rect2(); meander(-3.3, -3.3, 3.3, 3.3)
 	parapet(Vector3(-3.9, 0, -3.9), Vector3(-3.9, 0, 3.4)); parapet(Vector3(-3.9, 0, -3.9), Vector3(-0.85, 0, -3.9)); parapet(Vector3(0.85, 0, -3.9), Vector3(3.4, 0, -3.9))
 	parapet(Vector3(3.4, 0, -3.9), Vector3(3.4, 0, -0.3)); parapet(Vector3(3.4, 0, 2.3), Vector3(3.4, 0, 3.4))
 	parapet(Vector3(-3.9, 0, 3.4), Vector3(-0.95, 0, 3.4)); parapet(Vector3(0.95, 0, 3.4), Vector3(3.4, 0, 3.4))
@@ -2107,7 +2206,7 @@ func _world() -> void:
 	boat = Node3D.new(); boat.name = "Boat"; boat.position = Vector3(2.5, WATER - 0.12, 4.9); boat.rotation.y = 1.0; add_child(boat)
 	build_boat(boat)
 	cyl(Vector3(1.2, -0.2, 4.2), 0.045, 0.045, 0.75, pal("wood"), 8)
-	slab(3.5, -0.3, 5.1, 2.3, 0.0); under(3.5, -0.3, 5.1, 2.3, 0.2, "sand"); parapet(Vector3(5.0, 0, -0.2), Vector3(5.0, 0, 0.5)); parapet(Vector3(5.0, 0, 1.5), Vector3(5.0, 0, 2.2))
+	slab(3.5, -0.3, 5.1, 2.3, 0.0); under(3.5, -0.3, 5.1, 2.3, 0.2, "sand"); parapet(Vector3(5.0, 0, -0.2), Vector3(5.0, 0, 2.2))
 	blk(Vector3(3.9, 0, 1.9), Vector3(4.6, 0.22, 2.12), "shade")
 	model("colossus_head_veiled", Vector3(8.6, WATER - 1.15, -2.2), 6.6, 0.55, Vector3(-0.08, 0, 0.14))
 	slab(-8.0, -2.2, -6.6, 2.2, 0.0); under(-8.0, -2.2, -6.6, 2.2, 0.18, "sand")
@@ -2269,6 +2368,7 @@ func _actors() -> void:
 	ghost_flat.cull_mode = BaseMaterial3D.CULL_DISABLED; ghost_flat.albedo_color = Color("b8232f")
 	if hero_real:
 		H["main"] = spawn_her(self, "tex"); H["refl"] = spawn_her(wm, "crim"); H["ghost"] = spawn_her(mir, "flat")
+		if mroot != null and rig_file != "": H["mir"] = spawn_her(mroot, "mirror")
 		for k in H:
 			var sk: Skeleton3D = H[k].sk
 			if sk != null:
@@ -2704,50 +2804,41 @@ func _solve1() -> void:
 	hint.add_theme_color_override("font_color", Color(1.0, 0.98, 0.93)); hint.add_theme_color_override("font_outline_color", Color(0.06, 0.2, 0.26)); hint.add_theme_constant_override("outline_size", 10)
 	hint.anchor_top = 0; hint.anchor_bottom = 0; hint.offset_top = 56; hint.offset_bottom = 190; hint.offset_left = 44; hint.offset_right = -44
 	gate_a.position.y = 0.0
-	pos = Vector3(2.4, 0, 1.0); yaw = PI * 0.5; cam_t = pos; cam.size = 5.4
-	await wait(1.2)
-	await go([Vector3(4.6, 0, 1.0), Vector3(5.42, 0, 1.0)])
-	await face(Vector3(8.0, 0, 1.0))
-	say("1 · Στέκεται στα πατήματα και μένει ακίνητη")
-	await wait(0.8)
-	posing = true
-	var mine := her_mats.duplicate()
-	var e := spawn_her(self, "tex")
-	for mm in (e.holder as Node3D).find_children("*", "MeshInstance3D", true, false):
-		var mi := mm as MeshInstance3D
-		for si in mi.mesh.get_surface_count():
-			var m0 := mi.get_surface_override_material(si) as ShaderMaterial
-			if m0 != null and m0.next_pass != null: mi.set_surface_override_material(si, m0.next_pass)
-	(e.holder as Node3D).position = pos; (e.holder as Node3D).rotation.y = yaw; (e.ap as AnimationPlayer).play("idle")
-	var kept := []
-	for m in mine: kept.append((m as ShaderMaterial).next_pass); (m as ShaderMaterial).next_pass = null
-	cam_focus = Vector3(6.3, -0.9, 1.9); cam_focus_on = true
-	create_tween().tween_property(cam, "size", 6.6, 1.6)
-	await wait(2.0)
-	say("2 · Η αντανάκλασή της περνάει πάνω στην αντανάκλαση του χαμένου γεφυριού")
-	await _eid_go(e, Vector3(7.22, 0, 0.98))
-	await wait(0.5)
-	say("3 · Γυρίζει το βαρούλκο μέσα στο νερό")
-	var wt := create_tween(); wt.tween_property(winch_a, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
-	await wait(1.6)
-	cam_focus = Vector3(0.6, 0.6, -2.6)
-	create_tween().tween_property(cam, "size", 7.4, 1.6)
+	var feet := Vector3(PED.x, 0, PZ0 - 0.16)
+	pos = Vector3(-2.5, 0, 0.6); yaw = PI; cam_t = pos; cam.size = 5.6
+	await wait(1.0)
+	await go([Vector3(-2.45, 0, -2.7), feet])
+	await face(Vector3(PED.x, 0, 2.0))
+	say("1 · Στέκεται στα πατήματα, στην άκρη της λιμνούλας, και μένει ακίνητη")
+	cam_focus = Vector3(0.45, 0.1, -1.35); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 5.0, 1.6)
 	await wait(2.2)
+	posing = true
+	var e: Dictionary = H["mir"]; H.erase("mir")
+	await wait(0.6)
+	say("2 · Η αντανάκλασή της προχωρά μόνη της, πάνω σε πατήματα που υπάρχουν μόνο μέσα στο νερό")
+	await _eid_go(e, Vector3(PED.x, 0.08, PZ0 + 0.16), 0.5)
+	await _eid_go(e, Vector3(PED.x, 0.08, PZ0 + 1.1), 0.55)
+	await wait(0.5)
+	say("3 · Γυρίζει το βαρούλκο μέσα στο νερό, και γυρίζει και το αληθινό")
+	var wt := create_tween().set_parallel(); wt.tween_property(winch_a, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE); wt.tween_property(winch_m, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
+	await wait(1.4)
+	cam_focus = Vector3(0.3, 0.5, -2.3)
+	create_tween().tween_property(cam, "size", 6.8, 1.6)
+	await wait(2.0)
 	say("Η σιδεριά ανοίγει")
 	var gt := create_tween(); gt.tween_property(gate_a, "position:y", -2.4, 2.4).set_trans(Tween.TRANS_SINE)
 	await gt.finished
-	await wait(1.4)
-	cam_focus = Vector3(6.0, -0.7, 1.7)
-	create_tween().tween_property(cam, "size", 6.6, 1.6)
-	await wait(2.2)
-	await _eid_go(e, Vector3(5.42, 0, 1.0))
+	await wait(1.0)
+	await _eid_go(e, Vector3(PED.x, 0.08, PZ0 + 0.16), 0.6)
+	await _eid_go(e, feet, 0.5)
 	(e.holder as Node3D).rotation.y = yaw
-	await wait(0.6)
-	(e.holder as Node3D).queue_free()
-	for i in mine.size(): (mine[i] as ShaderMaterial).next_pass = kept[i]
-	posing = false; cam_focus_on = false
-	create_tween().tween_property(cam, "size", 5.4, 1.4)
-	await wait(2.0)
+	H["mir"] = e; posing = false
+	await wait(0.9)
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", 5.6, 1.4)
+	await go([Vector3(0, 0, -3.3), Vector3(0, 0, -4.8)])
+	await wait(0.8)
 	get_tree().quit()
 
 func _glide() -> void:
