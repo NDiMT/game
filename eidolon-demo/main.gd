@@ -1130,6 +1130,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	world = Node3D.new(); world.name = "World"; add_child(world)
 	for c in get_children().slice(n0):
 		if c != world: c.reparent(world)
+	_refl_margins(world)
 	# the old upside-down copy of the whole world under the sea is gone: it fought with the dark reflections
 	# that now lie on the water, and it doubled the scene. The node stays for the few things made only for it
 	refl = world.duplicate() if OS.get_environment("OLDREFL") == "1" else Node3D.new()
@@ -1912,7 +1913,7 @@ func spawn_shape(parent: Node, mode: String, file := "", design_id := -1) -> Dic
 	var stex: Texture2D = shape_cache[file].tex
 	var holder := Node3D.new(); parent.add_child(holder)
 	var mi := MeshInstance3D.new(); mi.mesh = shape_cache[file].mesh; holder.add_child(mi)
-	mi.extra_cull_margin = 1.0
+	mi.extra_cull_margin = 6.0   # her reflection lies on the water beside her
 	match mode:
 		"main":
 			var m := body_mat("veil", "main" + file + str(holder.get_instance_id())); m.set_shader_parameter("marble", 0.22); mi.material_override = m
@@ -2093,6 +2094,15 @@ func statue_on(nm: String, sp: Vector3, h: float, yaw: float) -> void:
 	decal(sp + Vector3(0.15, 0, -0.15), 1.1, 0.8, 0.2, 0.78)
 
 ## mirrored things need their own materials: two-sided, and without the pass that lays a reflection on the sea
+## A reflection lies on the water well away from the thing that casts it, so that thing must still be drawn when
+## it is itself just off the screen. Without this, each piece's reflection came and went as the camera moved.
+func _refl_margins(n: Node) -> void:
+	if n is GeometryInstance3D and n.is_inside_tree():
+		var g := n as GeometryInstance3D
+		var top := (g.global_transform * g.get_aabb()).end.y
+		g.extra_cull_margin = maxf(g.extra_cull_margin, clampf((top - WATER) * 2.0, 0.0, 40.0))
+	for c in n.get_children(): _refl_margins(c)
+
 func _strip_refl(root: Node) -> void:
 	var cache := {}
 	for mm in root.find_children("*", "MeshInstance3D", true, false):
