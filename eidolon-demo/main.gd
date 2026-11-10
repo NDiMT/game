@@ -679,7 +679,7 @@ func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.
 	var bb := AABB(); var first := true
 	for m in src.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
-		mi.material_override = pal(p, "flat")
+		mi.material_override = pal(p, "flat2")
 		var a: AABB = (src.transform * _xf(mi, src)) * mi.get_aabb()
 		if first: bb = a; first = false
 		else: bb = bb.merge(a)
@@ -955,7 +955,13 @@ func _world() -> void:
 	model("observer_veiled", Vector3(-31.0, WATER - 1.2, -27.0), 11.0, 0.75)
 	model("kit_face5", Vector3(-4.5, WATER - 1.15, -21.5), 4.4, 0.7, Vector3(0.2, 0, -0.15))
 	model("kit_face2", Vector3(-10.0, WATER - 1.15, -4.2), 4.1, 0.5, Vector3(-0.15, 0, 0.12))
-	model("pediment_fragment", Vector3(5.2, WATER - 0.35, 5.9), 1.3, 0.5, Vector3(0.1, 0, 0.06))
+	var ped := Node3D.new(); ped.position = Vector3(5.2, WATER - 0.12, 5.9); ped.rotation = Vector3(0.1, 0.5, 0.14); add_child(ped)
+	var pm := PrismMesh.new(); pm.size = Vector3(2.4, 0.7, 0.5)
+	prim(pm, Vector3(0, 0.53, 0), pal("stone"), ped)
+	blk(Vector3(-1.28, 0.0, -0.3), Vector3(1.28, 0.18, 0.3), "shade", ped); blk(Vector3(-1.22, 0.1, -0.27), Vector3(1.22, 0.2, 0.27), "stone", ped)
+	var pm2 := PrismMesh.new(); pm2.size = Vector3(1.5, 0.4, 0.02)
+	prim(pm2, Vector3(0, 0.44, 0.255), pal("shade"), ped)
+	foam(4.1, 5.4, 6.3, 6.4, 0.3)
 	model("column_fallen", Vector3(-24.5, WATER - 0.25, -12.5), 0.6, 0.9)
 	for cp in [Vector3(6.6, 0, -4.8), Vector3(7.6, 0, -6.0), Vector3(-4.6, 0, -9.2), Vector3(-9.0, 0, -17.4), Vector3(-10.2, 0, -18.4), Vector3(-22.6, 0, -8.8), Vector3(-23.6, 0, -19.6), Vector3(-9.0, 0, -24.4)]:
 		cyl(Vector3(cp.x, -2.45, cp.z), 0.3, 0.3, 2.45 + WATER + 0.12, pal("shade"), 20)
