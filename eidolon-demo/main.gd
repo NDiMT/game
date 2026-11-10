@@ -27,6 +27,7 @@ var walk_on := false
 var rem_dist := 0.0
 var floor_mats: Array = []
 var rig_norm := {}
+var statue_cream := true
 var hero_src_yaw_note := true
 var hero_real := false
 var shape_file := ""
@@ -901,6 +902,7 @@ func _ready() -> void:
 	if OS.get_environment("MOOD") == "moody":
 		sea_c = Color("3a6a7b"); mist_c = Color("b9b4c4"); bg_c = Color("29586a"); shadow_c = Vector3(0.6, 0.61, 0.82); water_deep = Color("2a7d88"); water_shallow = Color("6fc4b8")
 	pals = PALS.duplicate(true)
+	statue_cream = OS.get_environment("STATUES") != "white"
 	if OS.get_environment("PAL") == "mono":
 		for k in ["leaf", "leaf2", "leaf3"]: pals[k] = ["e6e4e3", "d0ced2", "a8a7b8"]
 		pals["cyp"] = ["bfc2ca", "9fa3b1", "787c92"]; pals["trunk"] = ["b3acae", "958e95", "6f6b7d"]
@@ -937,6 +939,7 @@ func _ready() -> void:
 		pals["dress"] = [Color(tn[1][0]).darkened(0.08).to_html(false), Color(tn[1][1]).darkened(0.1).to_html(false), Color(tn[1][2]).darkened(0.1).to_html(false)]
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
+	if statue_cream: pals["marble"] = (pals["stone"] as Array).duplicate(); pals["skin"] = (pals["stone"] as Array).duplicate()
 	hero_real = OS.get_environment("REAL") == "1"
 	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp") or OS.get_environment("RIG").begins_with("sr") or OS.get_environment("RIG").begins_with("nb") or OS.get_environment("RIG").begins_with("ione")) else "min" + OS.get_environment("RIG"); hero_real = true
 	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "w2r"; hero_real = true
