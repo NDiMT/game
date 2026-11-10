@@ -20,6 +20,40 @@ var bg_c := Color("2c6379")
 var pals := {}
 var shadow_c := Vector3(0.66, 0.66, 0.86)
 var hero_style := 1
+var hero_src: Node3D
+var H := {}
+var ghost_flat: StandardMaterial3D
+var walk_on := false
+
+## arms that reach for a point and a spine that bows, on top of whatever animation is playing
+class HerMod extends SkeletonModifier3D:
+	var main
+	func _b(sk: Skeleton3D, n: String) -> int:
+		var i := sk.find_bone("mixamorig:" + n)
+		return i if i >= 0 else sk.find_bone("mixamorig_" + n)
+	func _process_modification() -> void:
+		var sk := get_skeleton()
+		if sk == null or main == null: return
+		var la := _b(sk, "LeftArm"); var ra := _b(sk, "RightArm")
+		if la < 0 or ra < 0: return
+		var lean: float = main.a_lean
+		if absf(lean) > 0.001:
+			var sp := _b(sk, "Spine")
+			if sp >= 0:
+				var axis := (sk.get_bone_global_pose(la).origin - sk.get_bone_global_pose(ra).origin).normalized()
+				var g := sk.get_bone_global_pose(sp)
+				sk.set_bone_global_pose(sp, Transform3D(Basis(axis, lean * 0.9) * g.basis, g.origin))
+		var inv := sk.global_transform.affine_inverse()
+		for side in [["Left", main.a_wL, main.tgtL], ["Right", main.a_wR, main.tgtR]]:
+			var w: float = side[1]
+			if w <= 0.001: continue
+			var bi := _b(sk, side[0] + "Arm"); var ci := _b(sk, side[0] + "ForeArm")
+			if bi < 0 or ci < 0: continue
+			var g2 := sk.get_bone_global_pose(bi); var c := sk.get_bone_global_pose(ci).origin
+			var cur := (c - g2.origin).normalized(); var want := ((inv * (side[2] as Vector3)) - g2.origin).normalized()
+			var q := Quaternion.IDENTITY.slerp(Quaternion(cur, want), w)
+			sk.set_bone_global_pose(bi, Transform3D(Basis(q) * g2.basis, g2.origin))
+
 var mist_k := 0.96
 var fog_k := 1.0
 var face_m: ShaderMaterial
@@ -716,22 +750,28 @@ func pose_state(p: Vector3, yaw: float) -> Dictionary:
 
 ## the sculptor carved her again and again: a veiled figure in marble, in one of a few poses
 func her_statue(p: Vector3, yaw: float, pose := "calm", sc := 1.0) -> Node3D:
-	var f = Fig.new(); add_child(f); f.set_style(hero_style); f.build(3, pal, null, null)
-	f.scale = Vector3.ONE * sc
-	var st := pose_state(p, yaw)
-	var bas := Basis(Vector3.UP, yaw) * sc
+	var d := spawn_her(self, "marble")
+	var holder: Node3D = d.holder
+	holder.position = p; holder.rotation.y = yaw; holder.scale = Vector3.ONE * sc
+	var ap: AnimationPlayer = d.ap; var sk: Skeleton3D = d.sk
+	if ap != null and ap.has_animation("idle"):
+		ap.play("idle"); ap.seek(fmod(absf(p.x * 1.7 + p.z * 0.9), 12.0), true); ap.stop(true)
+	if sk == null: return holder
+	var la := _bone(sk, "LeftArm"); var ra := _bone(sk, "RightArm")
+	if la < 0 or ra < 0: return holder
+	var left := (sk.get_bone_global_pose(la).origin - sk.get_bone_global_pose(ra).origin).normalized()
+	var up := Vector3.UP; var fwd := left.cross(up).normalized()
 	match pose:
-		"mourn":
-			st.lean = 0.26; st.head_pitch = 0.5; st.drop = 0.06; st.wL = 1.0; st.wR = 1.0
-			st.tL = p + bas * Vector3(0.06, 1.5, 0.17); st.tR = p + bas * Vector3(-0.06, 1.5, 0.17)
-		"pray":
-			st.head_pitch = 0.3; st.wL = 1.0; st.wR = 1.0
-			st.tL = p + bas * Vector3(0.025, 1.26, 0.2); st.tR = p + bas * Vector3(-0.025, 1.26, 0.2)
-		"kneel": st.drop = 0.55; st.pool = 1.0; st.lean = 0.22; st.head_pitch = 0.32
-		"reach": st.raise = 1.0; st.head_pitch = -0.25
-		"offer": st.hold = 1.0; st.open = 0.25; st.head_pitch = 0.18
-	f.apply(st)
-	return f
+		"pray", "offer":
+			_aim(sk, "LeftArm", "LeftForeArm", fwd * 0.8 - up * 0.5 - left * 0.25); _aim(sk, "RightArm", "RightForeArm", fwd * 0.8 - up * 0.5 + left * 0.25)
+			_bend(sk, "Head", left, 0.3)
+		"reach":
+			_aim(sk, "RightArm", "RightForeArm", up * 0.9 + fwd * 0.45); _bend(sk, "Head", left, -0.25)
+		"mourn", "kneel":
+			_bend(sk, "Spine", left, 0.3 if pose == "mourn" else 0.45)
+			_aim(sk, "LeftArm", "LeftForeArm", fwd * 0.7 + up * 0.25 - left * 0.3); _aim(sk, "RightArm", "RightForeArm", fwd * 0.7 + up * 0.25 + left * 0.3)
+			_bend(sk, "Head", left, 0.45)
+	return holder
 
 func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.ZERO, _p := "marble") -> Node3D:
 	if nm.begins_with("kit_face") or nm == "colossus_head_veiled":
@@ -788,9 +828,9 @@ func _ready() -> void:
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	var st2 := Shader.new()
-	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;").replace(
+	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
-		"vec3 tx = texture(albedo_tex, UV).rgb; float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
+		"vec3 tx = texture(albedo_tex, UV).rgb; float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
@@ -924,6 +964,51 @@ func real_hero(file: String, at: Vector3, yaw: float, anim := "", arms_down := f
 				var q := Quaternion(cur, want)
 				skel.set_bone_global_pose(bi, Transform3D(Basis(q) * g.basis, g.origin))
 	return holder
+
+func spawn_her(parent: Node, mode: String) -> Dictionary:
+	if hero_src == null:
+		var st := GLTFState.new(); var doc := GLTFDocument.new()
+		doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/tripo_v1.glb"), st)
+		hero_src = doc.generate_scene(st) as Node3D
+	var src: Node3D = hero_src.duplicate()
+	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
+	src.scale = Vector3.ONE * 1.72; src.rotation.y = -PI * 0.5
+	for m in src.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if mode in ["tex", "marble"] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for si in mi.mesh.get_surface_count():
+			var om := mi.mesh.surface_get_material(si)
+			if mode == "flat": mi.set_surface_override_material(si, ghost_flat)
+			elif mode == "marble": mi.set_surface_override_material(si, pal("marble"))
+			else:
+				var sm := ShaderMaterial.new(); sm.shader = shaders["tex"]
+				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
+				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
+				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
+				mi.set_surface_override_material(si, sm); pmats["her|%d|%d" % [holder.get_instance_id(), si]] = sm
+	var aps := src.find_children("*", "AnimationPlayer", true, false); var sks := src.find_children("*", "Skeleton3D", true, false)
+	var ap: AnimationPlayer = aps[0] if not aps.is_empty() else null
+	var sk: Skeleton3D = sks[0] if not sks.is_empty() else null
+	if ap != null:
+		for an in ["idle", "walk"]:
+			if ap.has_animation(an): ap.get_animation(an).loop_mode = Animation.LOOP_LINEAR
+	return {"holder": holder, "ap": ap, "sk": sk}
+
+func _bone(sk: Skeleton3D, n: String) -> int:
+	var i := sk.find_bone("mixamorig:" + n)
+	return i if i >= 0 else sk.find_bone("mixamorig_" + n)
+
+func _aim(sk: Skeleton3D, bone: String, child: String, want: Vector3) -> void:
+	var bi := _bone(sk, bone); var ci := _bone(sk, child)
+	if bi < 0 or ci < 0: return
+	var g := sk.get_bone_global_pose(bi); var c := sk.get_bone_global_pose(ci).origin
+	sk.set_bone_global_pose(bi, Transform3D(Basis(Quaternion((c - g.origin).normalized(), want.normalized())) * g.basis, g.origin))
+
+func _bend(sk: Skeleton3D, bone: String, axis: Vector3, ang: float) -> void:
+	var bi := _bone(sk, bone)
+	if bi < 0: return
+	var g := sk.get_bone_global_pose(bi)
+	sk.set_bone_global_pose(bi, Transform3D(Basis(axis, ang) * g.basis, g.origin))
 
 func _real_lineup() -> void:
 	started = true; title_box.hide(); hint.hide()
@@ -1223,6 +1308,15 @@ func _actors() -> void:
 			var wn2 := Node3D.new(); gn.add_child(wn2)
 			prim(wq, Vector3(sgn * 0.15, 0, 0), mat(Color(0.98, 0.97, 0.95)), wn2).rotation.x = -PI * 0.5
 		gulls.append(gn)
+	ghost_flat = StandardMaterial3D.new(); ghost_flat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ghost_flat.cull_mode = BaseMaterial3D.CULL_DISABLED; ghost_flat.albedo_color = Color("b8232f")
+	H["main"] = spawn_her(self, "tex"); H["refl"] = spawn_her(wm, "crim"); H["ghost"] = spawn_her(mir, "flat")
+	for k in H:
+		var sk: Skeleton3D = H[k].sk
+		if sk != null:
+			var hm := HerMod.new(); hm.main = self; sk.add_child(hm)
+		if H[k].ap != null: H[k].ap.play("idle")
+	fig.visible = false; wfig.visible = false
 	# things to tap
 	objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
@@ -1443,11 +1537,20 @@ func _process(dt: float) -> void:
 	fig.apply(st); wfig.apply(st)
 	for k in ["Bridge", "Cap", "Door", "Boat"]: (refl.get_node(k) as Node3D).transform = (world.get_node(k) as Node3D).transform
 	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
-	ghost.visible = near > 0.01
-	if ghost.visible: ghost.apply(st)
+	ghost.visible = false
+	var moving := spd > 0.15
+	if moving != walk_on:
+		walk_on = moving
+		for h in H.values():
+			if h.ap != null: h.ap.play("walk" if moving else "idle", 0.25)
+	for k in H:
+		var hd: Node3D = H[k].holder
+		hd.position = pos; hd.rotation.y = yaw
+		if H[k].ap != null: H[k].ap.speed_scale = clampf(spd / 1.1, 0.7, 2.3) if moving else 1.0
+	(H["ghost"].holder as Node3D).visible = near > 0.01
 	var prox := clampf(1.0 - (pos.x - MX - 0.5) / 1.4, 0.0, 1.0)
 	flash = move_toward(flash, 0.0, dt * 0.7)
-	ghost.ghost_mat.albedo_color = TEAL_D.lerp(CRIMSON, near * (0.3 + 0.7 * prox)).lerp(Color("ff5a62"), flash)
+	ghost_flat.albedo_color = TEAL_D.lerp(CRIMSON, near * (0.3 + 0.7 * prox)).lerp(Color("ff5a62"), flash)
 	ripple_p = move_toward(ripple_p, 1.0, dt * 0.75); (ripple.material_override as ShaderMaterial).set_shader_parameter("p", ripple_p)
 	pulse_p = move_toward(pulse_p, 1.0, dt * 0.6); (pulse.material_override as ShaderMaterial).set_shader_parameter("p", pulse_p)
 	tap_p = move_toward(tap_p, 1.0, dt * 1.6); (tapring.material_override as ShaderMaterial).set_shader_parameter("p", tap_p)
