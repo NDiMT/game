@@ -24,6 +24,7 @@ var hero_src: Node3D
 var H := {}
 var ghost_flat: StandardMaterial3D
 var walk_on := false
+var rem_dist := 0.0
 var hero_real := false
 var shape_file := ""
 var rig_file := ""
@@ -868,7 +869,7 @@ func _ready() -> void:
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	hero_real = OS.get_environment("REAL") == "1"
 	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w")) else "min" + OS.get_environment("RIG"); hero_real = true
-	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "min14r"; hero_real = true
+	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "w2r"; hero_real = true
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	elif not hero_real and OS.get_environment("HERO") == "": shape_file = "min9t"
 	var sb := Shader.new()
@@ -2020,7 +2021,8 @@ func _process(dt: float) -> void:
 		var to := Vector3(p3.x - pos.x, 0, p3.z - pos.z)
 		var left := to.length()
 		for i in range(1, mini(route.size(), 5)): left += Vector2(route[i].p.x - route[i - 1].p.x, route[i].p.z - route[i - 1].p.z).length()
-		target = minf(speed_cap, sqrt(2.0 * (2.4 if shape_file != "" else 1.1) * left) + 0.03)
+		rem_dist = left
+		target = minf(speed_cap, sqrt(2.0 * (2.4 if shape_file != "" else 2.0 if rig_file != "" else 1.1) * left) + 0.03)
 		if to.length() > 0.02: want_yaw = atan2(to.x, to.z)
 		target *= clampf(1.25 - absf(angle_difference(yaw, want_yaw)) * 0.8, 0.25, 1.0)
 		spd = move_toward(spd, target, (3.4 if shape_file != "" else (1.5 if speed_cap <= WALK else 2.6)) * dt)
@@ -2033,7 +2035,7 @@ func _process(dt: float) -> void:
 			var d := to.normalized(); pos.x += d.x * step; pos.z += d.z * step
 		vel = Vector3(sin(yaw), 0, cos(yaw)) * spd
 	else:
-		spd = move_toward(spd, 0.0, 6.0 * dt); vel = Vector3.ZERO
+		spd = move_toward(spd, 0.0, 6.0 * dt); vel = Vector3.ZERO; rem_dist = 0.0
 		if face_to != null:
 			want_yaw = atan2(face_to.x - pos.x, face_to.z - pos.z)
 			if absf(angle_difference(yaw, want_yaw)) < 0.02: face_to = null; faced.emit()
@@ -2097,14 +2099,15 @@ func _process(dt: float) -> void:
 		(SHP["ghost"].holder as Node3D).visible = near > 0.01
 	if ghost.visible: ghost.apply(st)
 	var moving := spd > 0.15
+	if rig_file != "": moving = rem_dist > 0.3
 	if moving != walk_on:
 		walk_on = moving
 		for h in H.values():
-			if h.ap != null: h.ap.play("walk" if moving else "idle", 0.25)
+			if h.ap != null: h.ap.play("walk" if moving else "idle", (0.3 if moving else 0.55) if rig_file != "" else 0.25)
 	for k in H:
 		var hd: Node3D = H[k].holder
 		hd.position = pos; hd.rotation.y = yaw
-		if H[k].ap != null: H[k].ap.speed_scale = clampf(spd / 1.1, 0.7, 2.3) if moving else 1.0
+		if H[k].ap != null: H[k].ap.speed_scale = clampf(spd / 1.1, 0.85 if rig_file != "" else 0.7, 2.3) if moving else 1.0
 	if hero_real: (H["ghost"].holder as Node3D).visible = near > 0.01
 	var prox := clampf(1.0 - (pos.x - MX - 0.5) / 1.4, 0.0, 1.0)
 	flash = move_toward(flash, 0.0, dt * 0.7)
@@ -2267,8 +2270,10 @@ func _glide() -> void:
 	await wait(1.4)
 	await go([Vector3(-1.9, 0, 1.7), Vector3(-2.1, 0, -1.5)])
 	await wait(1.3)
-	await go([Vector3(1.7, 0, -1.3), Vector3(1.3, 0, 1.5)])
-	await wait(1.6)
+	await go([Vector3(1.7, 0, -1.3)])
+	await wait(1.4)
+	await go([Vector3(1.3, 0, 1.5)])
+	await wait(1.8)
 	get_tree().quit()
 
 func _a_walk(p: Vector3, cap := WALK) -> void:
