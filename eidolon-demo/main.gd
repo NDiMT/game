@@ -139,13 +139,14 @@ const SH_FOG := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform sampler2D noise_tex : repeat_enable, filter_linear;
 uniform float time_s = 0.0; uniform vec3 hero; uniform float dens = 0.5; uniform float scale = 0.05; uniform vec2 vel = vec2(0.02, 0.01);
-uniform float clear_r = 0.0; uniform vec3 col : source_color;
+uniform float clear_r = 0.0; uniform vec3 col : source_color; uniform float far_a = 2.0; uniform float far_b = 9.0;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
 	vec2 uv = wp.xz * scale;
 	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
-	float a = smoothstep(0.40, 0.72, n) * dens;
+	vec3 d3 = wp - hero; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
+	float a = mix(0.72, 1.0, n) * dens * smoothstep(far_a, far_b, md);
 	if (clear_r > 0.0) a *= smoothstep(clear_r * 0.3, clear_r, distance(wp.xz, hero.xz));
 	ALBEDO = col; ALPHA = a;
 }"""
@@ -773,7 +774,7 @@ func _fog() -> void:
 	var fn := FastNoiseLite.new(); fn.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH; fn.frequency = 0.012; fn.fractal_octaves = 3
 	var nt := NoiseTexture2D.new(); nt.noise = fn; nt.seamless = true; nt.width = 256; nt.height = 256
 	var q := QuadMesh.new(); q.size = Vector2(260, 260); q.orientation = PlaneMesh.FACE_Y
-	for L in [[WATER + 0.18, 0.78, 0.045, Vector2(0.012, 0.006), 0.0, 1], [WATER + 0.8, 0.4, 0.03, Vector2(-0.008, 0.01), 0.0, 2], [0.2, 0.24, 0.07, Vector2(0.02, -0.012), 3.0, 3]]:
+	for L in [[WATER + 0.18, 0.5, 0.02, Vector2(0.006, 0.003), 0.0, 1], [WATER + 0.8, 0.42, 0.015, Vector2(-0.004, 0.005), 0.0, 2], [0.25, 0.3, 0.02, Vector2(0.008, -0.005), 0.0, 3]]:
 		var m := ShaderMaterial.new(); m.shader = shaders["fog"]; m.render_priority = L[5]
 		m.set_shader_parameter("noise_tex", nt); m.set_shader_parameter("dens", L[1]); m.set_shader_parameter("scale", L[2])
 		m.set_shader_parameter("vel", L[3]); m.set_shader_parameter("clear_r", L[4]); m.set_shader_parameter("col", Color("f1e8ef"))
@@ -980,7 +981,7 @@ func _world() -> void:
 	rock(Vector3(6.0, 0, 4.2), 1.2); rock(Vector3(6.9, 0, 3.6), 0.7); rock(Vector3(-6.4, 0, -7.2), 1.0); rock(Vector3(-22.0, 0, -13.2), 1.3); rock(Vector3(-10.8, 0, -22.8), 0.9); rock(Vector3(5.6, 0, -8.8), 1.0)
 	for mp in [Vector3(6.5, WATER + 0.3, 8.5), Vector3(-13.0, WATER + 0.3, 3.5), Vector3(9.5, WATER + 0.4, -12.0), Vector3(-25.0, WATER + 0.3, -4.0),
 			Vector3(-4.0, WATER + 0.4, -26.0), Vector3(-27.0, WATER + 0.3, -18.0), Vector3(-2.0, WATER + 0.2, 9.5), Vector3(-9.0, WATER + 0.3, -31.0)]:
-		var mh := halo(9.0 + 2.0 * sin(mp.x), Color(MIST.r, MIST.g, MIST.b, 0.34))
+		var mh := halo(11.0 + 2.0 * sin(mp.x), Color(MIST.r, MIST.g, MIST.b, 0.14))
 		(mh.material_override as StandardMaterial3D).blend_mode = BaseMaterial3D.BLEND_MODE_MIX
 		mh.position = mp; add_child(mh)
 	for mi in find_children("*", "GeometryInstance3D", true, false):
@@ -1263,7 +1264,8 @@ func _process(dt: float) -> void:
 	for m in pmats.values():
 		for i in 6: m.set_shader_parameter("l%d" % i, lights[i])
 		m.set_shader_parameter("centre", cc); m.set_shader_parameter("mist_r", cam.size * 0.64)
-	for fm in fogs: fm.set_shader_parameter("hero", pos)
+	for fm in fogs:
+		fm.set_shader_parameter("hero", cc); fm.set_shader_parameter("far_a", cam.size * 0.3); fm.set_shader_parameter("far_b", cam.size * 0.95)
 	sea_mat.set_shader_parameter("centre", cc); sea_mat.set_shader_parameter("mist_r", cam.size * 0.64); sea_mat.set_shader_parameter("time_s", t)
 	for m in timed: m.set_shader_parameter("time_s", t)
 	for i in gulls.size():
