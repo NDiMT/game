@@ -128,8 +128,8 @@ void fragment(){
 		col *= 1.0 + (w - 0.5) * 0.06 * marble;
 		if (tone_var > 0.0) {
 			float tv = fbm(wp * 0.33 + 31.0); float tv2 = fbm(wp * 0.9 + vec3(57.0, 3.0, 9.0));
-			vec3 tone = mix(vec3(1.05, 1.055, 1.075), vec3(0.94, 0.885, 0.78), smoothstep(0.3, 0.7, tv));
-			tone *= mix(vec3(1.0), vec3(0.965, 0.925, 0.86), smoothstep(0.52, 0.78, tv2) * 0.75);
+			vec3 tone = mix(vec3(1.04, 1.045, 1.06), vec3(0.96, 0.92, 0.845), smoothstep(0.3, 0.7, tv));
+			tone *= mix(vec3(1.0), vec3(0.975, 0.945, 0.895), smoothstep(0.52, 0.78, tv2) * 0.75);
 			col *= mix(vec3(1.0), tone, tone_var);
 		}
 	}
@@ -948,7 +948,7 @@ func _ready() -> void:
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	if OS.get_environment("SEPIA") != "0":   # warm sepia cast on the world's marble so a white figure stands out
-		var sep := float(OS.get_environment("SEPIA")) if OS.get_environment("SEPIA") != "" else 0.55
+		var sep := float(OS.get_environment("SEPIA")) if OS.get_environment("SEPIA") != "" else 0.34
 		sepia_var = float(OS.get_environment("SEPIA_VAR")) if OS.get_environment("SEPIA_VAR") != "" else 1.0
 		for sep_name in ["stone", "shade", "sand", "marble"]:
 			var src_p: Array = pals[sep_name]; var out_p := []
