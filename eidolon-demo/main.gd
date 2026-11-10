@@ -2,12 +2,12 @@ extends Node3D
 ## EIDOLON demo: one flat, continuous map in a clean isometric look. Tap to walk, tap things to use them.
 const Fig := preload("res://fig.gd")
 const WALK := 1.4
-const CAP := Vector3(0.9, 0.0, -5.0)
-const PIV := Vector3(-3.6, 0.0, -5.1)
+const CAP := Vector3(1.6, 0.0, -12.5)
+const PIV := Vector3(-5.9, 0.0, -13.0)
 const LAMP0 := Vector3(-7.8, 0.17, -6.75)
-const MX := -13.1
-const MZ := -11.2
-const DX := -12.0
+const MX := -19.4
+const MZ := -23.5
+const DX := -16.3
 const TEAL_D := Color("13283a")
 const CRIMSON := Color("b8232f")
 const FOG := Color("eab99c")
@@ -187,7 +187,7 @@ var title_box: Control
 var end_box: Control
 var last_tap := -9.0
 
-var pos := Vector3(0.6, 0, 2.1)
+var pos := Vector3(0.6, 0, 2.2)
 var yaw := -2.4
 var spd := 0.0
 var vel := Vector3.ZERO
@@ -591,6 +591,8 @@ func _ready() -> void:
 		if c != world: c.reparent(world)
 	refl = world.duplicate(); refl.name = "Refl"; add_child(refl)
 	refl.scale = Vector3(1, -1, 1); refl.position.y = 2.0 * WATER
+	slab(-0.6, -7.8, 0.6, -5.8, 0.0, "stone", refl)
+	for e in [-1.0, 1.0]: blk(Vector3(e * 0.54 - 0.03, 0, -7.8), Vector3(e * 0.54 + 0.03, 0.06, -5.8), "shade", refl)
 	_actors(); _nav(); _ui()
 	cam_t = pos
 	get_viewport().size_changed.connect(_fit)
@@ -624,23 +626,23 @@ func _shots() -> void:
 	started = true; title_box.hide(); hint.hide()
 	var dir := OS.get_environment("SHOT_DIR")
 	var list := [
-		{"n": "01-map", "p": Vector3(0.4, 0, 1.6), "y": 0.6, "c": Vector3(-5.6, 0, -5.4), "s": 27.0},
-		{"n": "02-first-court", "p": Vector3(0.5, 0, 1.7), "y": 0.5, "c": Vector3(1.2, 0.6, 0.4), "s": 11.0},
-		{"n": "03-colossus", "p": Vector3(2.95, 0, 1.2), "y": 1.3, "c": Vector3(3.6, 1.2, 1.0), "s": 9.0},
-		{"n": "04-lever-bridge", "p": Vector3(0.45, 0, -4.5), "y": -1.5, "c": Vector3(-1.2, 0.4, -5.0), "s": 9.5},
-		{"n": "05-lamp-island", "p": Vector3(-7.9, 0, -5.5), "y": 0.7, "c": Vector3(-8.4, 0.9, -5.6), "s": 8.5, "lamp": true},
-		{"n": "06-water-that-returns", "p": Vector3(-11.68, 0, -7.5), "y": 0.9, "c": Vector3(-9.9, 0.6, -6.2), "s": 9.0, "lamp": true},
-		{"n": "07-mirror-garden", "p": Vector3(MX + 0.52, 0, MZ), "y": -PI * 0.5, "c": Vector3(-11.7, 1.0, -11.2), "s": 8.5, "lamp": true, "touch": true},
-		{"n": "07b-steps-and-boat", "p": Vector3(0.3, 0, 2.7), "y": 0.3, "c": Vector3(0.9, 0.2, 3.4), "s": 6.5, "lamp": true},
-		{"n": "08-heroine", "p": Vector3(0.6, 0, 1.9), "y": 0.78, "c": Vector3(0.6, 0.95, 1.9), "s": 3.1},
-		{"n": "09-heroine-veil", "p": Vector3(0.6, 0, 1.9), "y": -2.3, "c": Vector3(0.6, 0.95, 1.9), "s": 3.1, "lamp": true},
-		{"n": "10-strange-heads", "p": Vector3(-1.2, 0, 1.4), "y": -1.2, "c": Vector3(-1.9, 0.7, 1.4), "s": 4.6},
-		{"n": "11-statues", "p": Vector3(-11.6, 0, -10.6), "y": 0.4, "c": Vector3(-11.6, 0.9, -11.3), "s": 6.5, "lamp": true},
+		{"n": "01-map", "p": Vector3(0.5, 0, 2.0), "y": 0.6, "c": Vector3(-8.5, 0, -11.5), "s": 36.0},
+		{"n": "02-arrival-court", "p": Vector3(0.6, 0, 1.4), "y": 0.5, "c": Vector3(0.2, 0.4, 0.0), "s": 13.0},
+		{"n": "03-colossus", "p": Vector3(4.4, 0, 1.0), "y": 1.3, "c": Vector3(6.2, 0.9, 1.0), "s": 10.5},
+		{"n": "04-steps-and-boat", "p": Vector3(0.3, 0, 2.9), "y": 0.3, "c": Vector3(1.0, 0.0, 3.8), "s": 7.0},
+		{"n": "05-bridge-only-in-the-water", "p": Vector3(0.0, 0, -5.5), "y": PI, "c": Vector3(0.0, 0.0, -6.8), "s": 8.5},
+		{"n": "06-lever-court", "p": Vector3(0.4, 0, -11.8), "y": -1.2, "c": Vector3(-0.6, 0.4, -13.2), "s": 12.5},
+		{"n": "07-turning-bridge", "p": Vector3(-3.2, 0, -13.0), "y": -1.57, "c": Vector3(-7.0, 0.2, -13.0), "s": 11.0},
+		{"n": "08-half-gate", "p": Vector3(-16.3, 0, -15.0), "y": PI, "c": Vector3(-16.3, 0.4, -16.6), "s": 12.5},
+		{"n": "09-mirror-garden", "p": Vector3(MX + 0.52, 0, MZ), "y": -PI * 0.5, "c": Vector3(-16.6, 0.8, -23.6), "s": 12.5, "touch": true},
+		{"n": "10-heroine", "p": Vector3(0.9, 0, 1.2), "y": 0.78, "c": Vector3(0.9, 0.95, 1.2), "s": 3.1},
+		{"n": "11-heroine-back", "p": Vector3(0.9, 0, 1.2), "y": -2.3, "c": Vector3(0.9, 0.95, 1.2), "s": 3.1},
+		{"n": "12-strange-heads", "p": Vector3(-2.2, 0, 0.3), "y": -1.2, "c": Vector3(-3.1, 0.7, 0.0), "s": 5.0},
+		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
 	for sh in list:
 		shot = sh
 		route.clear(); pos = sh.p; yaw = sh.y; cam.size = sh.s; cam_t = pos
-		if sh.get("lamp", false): lamp_held = true; a_hold = 1.0; lamp_energy = 1.0
 		a_wL = 0.0
 		if sh.get("touch", false):
 			tgtL = Vector3(MX + 0.012, 1.30, MZ + 0.13); a_wL = 1.0; a_lean = 0.09
@@ -694,166 +696,157 @@ func _particles(n: int, life: float, ext: Vector3, size: float, c: Color, grav: 
 func _fit() -> void:
 	pass
 
+func ring_gate(c: Vector3, rad: float, n := 17) -> void:
+	for i in n:
+		var th := PI * (i + 0.5) / n
+		var bx := blk(Vector3(-0.21, -0.2, -0.21), Vector3(0.21, 0.2, 0.21), "stone" if i % 2 == 0 else "shade")
+		bx.position = c + Vector3(cos(th) * rad, sin(th) * rad, 0); bx.rotation.z = th
+		bx.scale = Vector3(1.0, PI * rad / n / 0.4 * 1.02, 1.0)
+	for sx in [-1.0, 1.0]:
+		cyl(c + Vector3(sx * rad, -1.2, 0), 0.34, 0.3, 1.25, pal("shade"), 16); foam(c.x + sx * rad - 0.34, c.z - 0.34, c.x + sx * rad + 0.34, c.z + 0.34, 0.3)
+
+func plinth_head(nm: String, fp: Vector3, yaw: float) -> void:
+	blk(fp + Vector3(-0.19, 0, -0.19), fp + Vector3(0.19, 0.72, 0.19), "stone")
+	blk(fp + Vector3(-0.23, 0, -0.23), fp + Vector3(0.23, 0.08, 0.23), "shade"); blk(fp + Vector3(-0.23, 0.72, -0.23), fp + Vector3(0.23, 0.78, 0.23), "shade")
+	model(nm, fp + Vector3(0, 0.78, 0), 0.62, yaw)
+	decal(fp + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.2, 0.78)
+
+func statue_on(nm: String, sp: Vector3, h: float, yaw: float) -> void:
+	cyl(sp, 0.32, 0.3, 0.07, pal("shade"), 20); cyl(sp + Vector3(0, 0.07, 0), 0.26, 0.26, 0.1, pal("stone"), 20)
+	model(nm, sp + Vector3(0, 0.17, 0), h, yaw)
+	decal(sp + Vector3(0.15, 0, -0.15), 1.1, 0.8, 0.2, 0.78)
+
 func _world() -> void:
-	# ---- A. the first court
-	slab(-2.6, -1.4, 2.2, 3.2, 0.0); under(-2.6, -1.4, 2.2, 3.2)
-	tiles(-2.6, -1.4, 2.2, 3.2, 0.8); rosette(Vector3(0, 0, 1.1), 0.95); meander(-2.3, -1.1, 2.0, 3.0)
-	parapet(Vector3(-2.5, 0, -1.3), Vector3(-2.5, 0, 3.1)); parapet(Vector3(-2.5, 0, -1.3), Vector3(-0.75, 0, -1.3)); parapet(Vector3(0.75, 0, -1.3), Vector3(2.1, 0, -1.3))
-	tree(Vector3(-2.05, 0, -0.85), 1.15); bush(Vector3(-2.15, 0, 0.1), 0.8); bush(Vector3(-2.15, 0, 2.7), 0.8, "leaf3")
-	lantern(Vector3(1.05, 0, -1.02), 2)
-	# gate
-	for gx in [-0.68, 0.68]:
-		blk(Vector3(gx - 0.13, 0, -1.43), Vector3(gx + 0.13, 2.0, -1.17), "stone")
-		blk(Vector3(gx - 0.16, 0, -1.46), Vector3(gx + 0.16, 0.1, -1.14), "shade")
-	var gw := CSGBox3D.new(); gw.size = Vector3(1.62, 0.62, 0.26); gw.position = Vector3(0, 2.31, -1.3); gw.material = pal("stone")
-	var gc := CSGCylinder3D.new(); gc.operation = CSGShape3D.OPERATION_SUBTRACTION; gc.radius = 0.55; gc.height = 0.5; gc.sides = 32
-	gc.rotation.x = PI * 0.5; gc.position = Vector3(0, -0.31, 0); gc.material = pal("shade"); gw.add_child(gc); add_child(gw)
-	cornice(-0.81, -1.43, 0.81, -1.17, 2.62, 0.04, 0.06)
-	blk(Vector3(-0.06, 2.68, -1.34), Vector3(0.06, 2.8, -1.26), "crim")
-	# pool + balcony on the east side
-	slab(2.2, -1.0, 3.5, 1.9, 0.0); under(2.2, -1.0, 3.5, 1.9, 0.25, "sand")
-	pool(2.45, -0.75, 3.25, 0.35); bush(Vector3(3.2, 0, 1.65), 0.8)
-	blk(Vector3(2.5, 0, 1.55), Vector3(3.0, 0.22, 1.75), "shade")
-	parapet(Vector3(3.4, 0, 0.6), Vector3(3.4, 0, 1.8))
-	# ---- B. path with a rill of water
-	slab(-0.5, -3.6, 0.5, -1.4, 0.0)
-	for pz in [-2.0, -3.0]: pier(0.0, pz, -0.18, 0.6)
-	strip(0.36, -3.6, 0.46, -1.4, Vector2(0, -1.0))
-	# ---- C. the capstan court
-	slab(-1.6, -6.6, 1.8, -3.6, 0.0); under(-1.6, -6.6, 1.8, -3.6, 0.22, "sand")
-	tiles(-1.6, -6.6, 1.8, -3.6, 0.85); meander(-1.45, -6.25, 1.65, -3.75)
-	blk(Vector3(-1.6, 0, -6.6), Vector3(1.8, 1.5, -6.38), "stone"); cornice(-1.6, -6.6, 1.8, -6.38, 1.5)
-	crenels(Vector3(-1.5, 1.56, -6.42), Vector3(1.7, 1.56, -6.42), 0.32)
-	for wx in [-0.9, 0.1, 1.1]: win_z(wx, 0.25, -6.38, 0.4, 0.95)
-	banner(Vector3(-0.4, 1.4, -6.365), 0.3, 0.9)
-	bush(Vector3(-0.2, 0, -6.2), 0.8); lantern(Vector3(1.6, 0, -3.8), 3, -1.0)
-	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32); cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16)
-	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; add_child(cap_rot)
-	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
-	ball(Vector3(0, 0, 0.86), 0.045, pal("crim"), cap_rot); ball(Vector3(0, 0.06, 0), 0.045, pal("crim"), cap_rot)
-	decal(CAP + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.22, 0.78)
-	# ---- the turning bridge
-	slab(-2.4, -5.6, -1.6, -4.6, 0.0)
-	bridge = Node3D.new(); bridge.name = "Bridge"; bridge.position = PIV; bridge.rotation.y = PI * 0.5; add_child(bridge)
-	slab(-1.2, -0.5, 1.2, 0.5, 0.0, "stone", bridge)
-	blk(Vector3(-1.1, 0, -0.03), Vector3(1.1, 0.004, 0.03), "crim", bridge)
-	for e in [-1.0, 1.0]: blk(Vector3(-1.15, 0, e * 0.44 - 0.03), Vector3(1.15, 0.06, e * 0.44 + 0.03), "shade", bridge)
-	cyl(PIV + Vector3(0, -2.45, 0), 0.24, 0.22, 2.25, pal("stone"), 24); cyl(PIV + Vector3(0, -2.45, 0), 0.3, 0.3, 2.45 + WATER + 0.06, pal("shade"), 24); cyl(PIV + Vector3(0, -0.32, 0), 0.24, 0.34, 0.14, pal("shade"), 24)
-	slab(-6.6, -5.6, -4.8, -4.6, 0.0); pier(-5.7, -5.1, -0.18, 0.6)
-	# ---- E. the lamp island and the water that falls back to its own spring
-	slab(-9.0, -7.0, -6.6, -3.8, 0.0); under(-9.0, -7.0, -6.6, -3.8)
-	tiles(-9.0, -7.0, -6.6, -3.8, 0.8); meander(-8.85, -6.8, -6.75, -3.95)
-	blk(Vector3(-8.45, 0, -7.0), Vector3(-7.15, 1.15, -6.9), "stone"); cornice(-8.45, -7.0, -7.15, -6.9, 1.15, 0.03, 0.05)
-	win_z(LAMP0.x, 0.2, -6.9, 0.5, 0.8, "teal")
-	for cx in [-8.5, -7.1]:
-		column(Vector3(cx, 0, -6.9), 1.7, 0.085)
-		ball(Vector3(cx, 1.84, -6.9), 0.07, pal("crim"))
-	cyl(Vector3(LAMP0.x, 0, LAMP0.z), 0.2, 0.15, 0.12, pal("shade"), 28)
-	tree(Vector3(-6.95, 0, -6.6), 1.0, "leaf3"); lantern(Vector3(-8.85, 0, -6.8), 4)
-	pool(-8.42, -5.2, -7.74, -4.5)
-	strip(-9.0, -5.18, -8.42, -5.04, Vector2(1.2, 0))
-	slab(-12.0, -5.9, -9.0, -5.0, 0.0); slab(-12.0, -9.4, -11.1, -5.9, 0.0)
-	pier(-10.0, -5.45, -0.18, 0.5); pier(-11.55, -5.45, -0.18, 0.6); pier(-11.55, -7.0, -0.18, 0.5)
-	strip(-11.3, -5.18, -9.0, -5.04, Vector2(1.2, 0)); strip(-11.3, -7.67, -11.16, -5.04, Vector2(0, 1.2))
-	strip(-11.3, -8.03, -11.1, -7.67, Vector2(0, 1.2))
-	blk(Vector3(-11.1, -0.2, -8.05), Vector3(-11.04, 0.02, -7.65), "shade")
-	fall(-8.085, -4.85, 0.02, 1.5); fall(-11.085, -7.85, -1.5, 0.0)
-	# ---- F. the mirror garden
-	slab(-14.2, -13.0, -9.4, -9.4, 0.0); under(-14.2, -13.0, -9.4, -9.4)
-	tiles(-13.1, -12.6, -9.4, -9.4, 0.8); rosette(Vector3(-11.8, 0, -10.6), 0.8); meander(-13.0, -12.5, -10.4, -9.5)
-	var w1 := CSGBox3D.new(); w1.size = Vector3(1.1, 3.0, 1.9); w1.position = Vector3(MX - 0.55, 1.5, MZ); w1.material = pal("stone")
-	var n1 := CSGBox3D.new(); n1.operation = CSGShape3D.OPERATION_SUBTRACTION; n1.size = Vector3(1.0, 2.2, 1.2)
-	n1.position = Vector3(0.06, -0.4, 0.0); n1.material = pal("teal"); w1.add_child(n1); add_child(w1)
-	cornice(MX - 1.1, MZ - 0.95, MX, MZ + 0.95, 3.0); crenels(Vector3(MX, 3.06, MZ - 0.85), Vector3(MX, 3.06, MZ + 0.87), 0.287)
-	for fz in [MZ - 0.64, MZ + 0.6]: blk(Vector3(MX - 0.02, 0, fz), Vector3(MX + 0.03, 2.24, fz + 0.04), "gold")
-	blk(Vector3(MX - 0.02, 2.2, MZ - 0.64), Vector3(MX + 0.03, 2.24, MZ + 0.64), "gold")
-	var gq := QuadMesh.new(); gq.size = Vector2(1.2, 2.2)
-	prim(gq, Vector3(MX - 0.012, 1.1, MZ), mat(Color(0.62, 0.86, 0.92, 0.09))).rotation.y = PI * 0.5
-	blk(Vector3(MX, 0, MZ + 0.95), Vector3(MX + 0.0, 0.0, MZ + 0.95), "stone")
-	blk(Vector3(MX - 1.1, 0, -13.0), Vector3(MX, 2.2, MZ - 0.95), "stone"); blk(Vector3(MX - 1.1, 0, MZ + 0.95), Vector3(MX, 1.2, -9.4), "stone")
-	cornice(MX - 1.1, MZ + 0.95, MX, -9.4, 1.2, 0.03, 0.05); bush(Vector3(MX - 0.5, 1.2, -9.9), 1.1); bush(Vector3(MX - 0.55, 1.2, -9.55), 0.9, "leaf3")
-	var rq := QuadMesh.new(); rq.size = Vector2(2.4, 2.4)
-	ripple = prim(rq, Vector3.ZERO, ring_mat(Vector3(1.0, 0.36, 0.40))); ripple.rotation.y = PI * 0.5
-	var w2 := CSGBox3D.new(); w2.size = Vector3(3.7, 2.7, 0.4); w2.position = Vector3(-11.25, 1.35, -12.8); w2.material = pal("stone")
-	var d1 := CSGBox3D.new(); d1.operation = CSGShape3D.OPERATION_SUBTRACTION; d1.size = Vector3(0.9, 1.6, 0.6)
-	d1.position = Vector3(DX + 11.25, -0.55, 0); d1.material = pal("shade"); w2.add_child(d1)
-	var d2 := CSGCylinder3D.new(); d2.operation = CSGShape3D.OPERATION_SUBTRACTION; d2.radius = 0.45; d2.height = 0.6; d2.sides = 32
-	d2.rotation.x = PI * 0.5; d2.position = Vector3(DX + 11.25, 0.25, 0); d2.material = pal("shade"); w2.add_child(d2)
-	add_child(w2)
-	cornice(-13.1, -13.0, -9.4, -12.6, 2.7); crenels(Vector3(-12.95, 2.76, -12.63), Vector3(-9.5, 2.76, -12.63), 0.3136)
-	blk(Vector3(DX - 0.47, 0, -12.99), Vector3(DX + 0.47, 2.1, -12.98), "cream")
-	door = blk(Vector3(DX - 0.47, 0, -12.84), Vector3(DX + 0.47, 2.1, -12.76), "crim"); door.name = "Door"
-	banner(Vector3(-10.5, 2.25, -12.585), 0.34, 1.15); banner(Vector3(-13.0, 2.25, -12.585)+Vector3(0.45,0,0), 0.34, 1.15)
-	pool(-10.25, -12.0, -9.65, -10.0); lantern(Vector3(-10.4, 0, -9.52), 5)
-	for lp in [Vector3(-10.0, 0.016, -11.5), Vector3(-9.85, 0.016, -10.6), Vector3(-10.1, 0.016, -10.3)]:
-		cyl(lp, 0.09, 0.09, 0.004, pal("leaf2"), 14); ball(lp + Vector3(0.02, 0.02, 0), 0.025, pal("leaf3"))
-	blk(Vector3(MX + 0.1, 0, MZ - 0.45), Vector3(MX + 0.95, 0.004, MZ + 0.45), "shade")
-	blk(Vector3(MX + 0.15, 0, MZ - 0.4), Vector3(MX + 0.9, 0.006, MZ + 0.4), "stone")
-	blk(Vector3(DX - 0.03, 0, -12.6), Vector3(DX + 0.03, 0.005, -11.4), "crim")
-	# beyond the door: a bed of trees whose crowns show over the wall
-	slab(-14.2, -14.6, -9.4, -13.0, 0.0, "sand"); under(-14.2, -14.6, -9.4, -13.0, 0.22, "sand")
-	tree(Vector3(-13.3, 0, -13.7), 1.5); tree(Vector3(-10.4, 0, -13.75), 1.35, "leaf3"); tree(Vector3(-9.8, 0, -13.5), 1.0)
-	# ---- our marble: strange heads on plinths, veiled statues, a colossus in the sea, ruins in the water
-	for f in [["kit_face2", Vector3(-2.2, 0, 0.95), PI * 0.5], ["kit_face3", Vector3(-2.2, 0, 1.85), PI * 0.5],
-			["kit_face6", Vector3(-1.2, 0, -6.08), 0.3], ["kit_face4", Vector3(1.45, 0, -6.08), -0.3],
-			["kit_face1", Vector3(-6.85, 0, -4.0), 0.5], ["kit_face5", Vector3(-10.5, 0, -9.5), 0.9]]:
-		var fp: Vector3 = f[1]
-		blk(fp + Vector3(-0.19, 0, -0.19), fp + Vector3(0.19, 0.72, 0.19), "stone")
-		blk(fp + Vector3(-0.23, 0, -0.23), fp + Vector3(0.23, 0.08, 0.23), "shade"); blk(fp + Vector3(-0.23, 0.72, -0.23), fp + Vector3(0.23, 0.78, 0.23), "shade")
-		model(f[0], fp + Vector3(0, 0.78, 0), 0.62, f[2])
-		decal(fp + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.2, 0.78)
-	model("colossus_head_veiled", Vector3(5.9, WATER - 1.15, 0.7), 4.9, 0.25, Vector3(0.06, 0, 0.1))
-	for sp in [["statue_veiled_unfinished", Vector3(-8.72, 0, -4.02), 1.5, 0.8], ["statue_veiled_mourning", Vector3(-12.85, 0, -9.72), 1.8, 0.8], ["statue_veiled_praying", Vector3(-10.9, 0, -12.36), 1.8, 0.2]]:
-		cyl(sp[1], 0.32, 0.3, 0.07, pal("shade"), 20); cyl(sp[1] + Vector3(0, 0.07, 0), 0.26, 0.26, 0.1, pal("stone"), 20)
-		model(sp[0], sp[1] + Vector3(0, 0.17, 0), sp[2], sp[3])
-	model("statue_veiled_bust", Vector3(-12.9, 0.78, -12.36), 0.8, 0.3)
-	blk(Vector3(-13.08, 0, -12.54), Vector3(-12.72, 0.78, -12.18), "stone")
-	model("statue_veiled_kneeling", Vector3(-10.44, 0, -11.3), 1.1, PI * 0.5)
-	slab(-6.4, -8.4, -5.0, -7.0, 0.0); under(-6.4, -8.4, -5.0, -7.0, 0.2, "sand")
-	model("statue_veiled_broken", Vector3(-5.7, 0, -7.7), 2.0, 0.6)
-	model("observer_veiled", Vector3(-7.5, WATER - 1.2, -19.5), 11.0, 0.75)
-	model("kit_face5", Vector3(-18.2, WATER - 1.15, -8.2), 4.6, 1.1, Vector3(0.2, 0, -0.15))
-	model("kit_face2", Vector3(3.4, WATER - 1.15, -9.6), 4.1, 0.5, Vector3(-0.15, 0, 0.12))
-	model("pediment_fragment", Vector3(3.4, WATER - 0.35, 5.4), 1.3, 0.5, Vector3(0.1, 0, 0.06))
-	model("column_stump", Vector3(-3.0, WATER - 0.3, -2.6), 1.5, 0.3); model("column_stump", Vector3(-4.6, WATER - 0.5, -2.2), 1.3, 1.3, Vector3(0.12, 0, 0))
-	model("column_fallen", Vector3(-9.6, WATER - 0.2, -2.4), 0.9, 0.9)
-	for cp in [Vector3(4.2, 0, -3.4), Vector3(5.0, 0, -4.4), Vector3(-15.6, 0, -6.2), Vector3(-2.2, 0, -10.4), Vector3(-3.1, 0, -11.2), Vector3(-14.4, 0, -1.6)]:
-		cyl(Vector3(cp.x, -2.45, cp.z), 0.3, 0.3, 2.45 + WATER + 0.12, pal("shade"), 20)
-		column(Vector3(cp.x, WATER + 0.12, cp.z), 2.6 + 0.9 * sin(cp.x * 3.0), 0.19, int(absf(cp.x * 10.0)) % 2 == 0)
-		foam(cp.x - 0.3, cp.z - 0.3, cp.x + 0.3, cp.z + 0.3, 0.3)
-	# ---- small life: steps to the water and her boat, urns, cypresses, vines, a colonnade
+	# ---- A. the arrival court (7 x 7 m of open floor)
+	slab(-4.0, -4.0, 3.5, 3.5, 0.0); under(-4.0, -4.0, 3.5, 3.5)
+	tiles(-4.0, -4.0, 3.5, 3.5, 1.0); rosette(Vector3(0, 0, 0), 1.5); meander(-3.3, -3.3, 3.3, 3.3)
+	parapet(Vector3(-3.9, 0, -3.9), Vector3(-3.9, 0, 3.4)); parapet(Vector3(-3.9, 0, -3.9), Vector3(-0.85, 0, -3.9)); parapet(Vector3(0.85, 0, -3.9), Vector3(3.4, 0, -3.9))
+	parapet(Vector3(3.4, 0, -3.9), Vector3(3.4, 0, -0.3)); parapet(Vector3(3.4, 0, 2.3), Vector3(3.4, 0, 3.4))
+	parapet(Vector3(-3.9, 0, 3.4), Vector3(-0.95, 0, 3.4)); parapet(Vector3(0.95, 0, 3.4), Vector3(3.4, 0, 3.4))
+	tree(Vector3(-3.5, 0, -3.5), 1.25); cypress(Vector3(-3.55, 0, 2.9), 2.4)
+	plinth_head("kit_face2", Vector3(-3.55, 0, -1.1), PI * 0.5); plinth_head("kit_face3", Vector3(-3.55, 0, 1.1), PI * 0.5)
+	lantern(Vector3(1.15, 0, -3.72), 2); urn(Vector3(2.9, 0, 3.0), 1.0); urn(Vector3(3.1, 0, 2.72), 0.7, "rose")
+	for gx in [-0.72, 0.72]:
+		blk(Vector3(gx - 0.14, 0, -4.04), Vector3(gx + 0.14, 2.1, -3.76), "stone"); blk(Vector3(gx - 0.17, 0, -4.07), Vector3(gx + 0.17, 0.1, -3.73), "shade")
+	var gw := CSGBox3D.new(); gw.size = Vector3(1.72, 0.66, 0.28); gw.position = Vector3(0, 2.43, -3.9); gw.material = pal("stone")
+	var gc := CSGCylinder3D.new(); gc.operation = CSGShape3D.OPERATION_SUBTRACTION; gc.radius = 0.58; gc.height = 0.5; gc.sides = 32
+	gc.rotation.x = PI * 0.5; gc.position = Vector3(0, -0.33, 0); gc.material = pal("shade"); gw.add_child(gc); add_child(gw)
+	cornice(-0.86, -4.04, 0.86, -3.76, 2.76, 0.04, 0.06); dentils(-0.86, -4.04, 0.86, -3.76, 2.76); blk(Vector3(-0.06, 2.82, -3.94), Vector3(0.06, 2.94, -3.86), "crim")
 	for i in 5:
-		blk(Vector3(-0.7, -0.26 * (i + 1) - 0.2, 3.2 + 0.26 * i), Vector3(0.7, -0.26 * (i + 1), 3.2 + 0.26 * (i + 1)), "stone")
-	blk(Vector3(-0.85, -2.45, 3.2), Vector3(-0.7, -0.05, 4.5), "shade"); blk(Vector3(0.7, -2.45, 3.2), Vector3(0.85, -0.05, 4.5), "shade")
-	foam(-0.85, 3.25, 0.85, 4.5, 0.3)
-	boat = Node3D.new(); boat.name = "Boat"; boat.position = Vector3(1.75, WATER, 4.25); boat.rotation.y = 0.5; add_child(boat)
+		blk(Vector3(-0.8, -0.26 * (i + 1) - 0.2, 3.5 + 0.26 * i), Vector3(0.8, -0.26 * (i + 1), 3.5 + 0.26 * (i + 1)), "stone")
+	blk(Vector3(-0.95, -2.45, 3.5), Vector3(-0.8, -0.05, 4.8), "shade"); blk(Vector3(0.8, -2.45, 3.5), Vector3(0.95, -0.05, 4.8), "shade")
+	foam(-0.95, 3.55, 0.95, 4.8, 0.3)
+	boat = Node3D.new(); boat.name = "Boat"; boat.position = Vector3(2.3, WATER, 4.7); boat.rotation.y = 0.5; add_child(boat)
 	var hull := SphereMesh.new(); hull.radius = 1.0; hull.height = 1.0; hull.is_hemisphere = true; hull.radial_segments = 8; hull.rings = 3
 	var hm := prim(hull, Vector3(0, 0.3, 0), pal("wood", "flat"), boat); hm.scale = Vector3(0.36, 0.36, 1.0); hm.rotation.x = PI
 	var deck := cyl(Vector3(0, 0.22, 0), 1.0, 1.0, 0.012, pal("trunk"), 8, boat); deck.scale = Vector3(0.33, 1, 0.93)
 	var rim := cyl(Vector3(0, 0.285, 0), 1.0, 1.0, 0.03, pal("crim"), 8, boat); rim.scale = Vector3(0.375, 1, 1.02)
 	var rim2 := cyl(Vector3(0, 0.29, 0), 1.0, 1.0, 0.03, pal("trunk"), 8, boat); rim2.scale = Vector3(0.33, 1, 0.95)
 	blk(Vector3(-0.3, 0.26, -0.08), Vector3(0.3, 0.3, 0.08), "wood", boat)
-	cyl(Vector3(1.0, -0.2, 3.9), 0.045, 0.045, 0.75, pal("wood"), 8)
-	for u in [[Vector3(1.95, 0, 2.95), 1.0, "terra"], [Vector3(1.72, 0, 3.0), 0.7, "rose"], [Vector3(-1.2, 0, -6.1), 0.9, "terra"], [Vector3(1.2, 0, -6.12), 0.75, "terra"],
-			[Vector3(-8.8, 0, -6.4), 1.0, "terra"], [Vector3(-8.62, 0, -6.62), 0.7, "rose"], [Vector3(-10.6, 0, -12.35), 1.0, "terra"], [Vector3(-12.2, 0, -9.6), 0.8, "rose"]]:
-		urn(u[0], u[1], u[2])
-	cypress(Vector3(-2.3, 0, -1.15), 2.4); cypress(Vector3(1.55, 0, -6.15), 2.0); cypress(Vector3(-13.6, 0, -9.7) + Vector3(0, 1.2, 0), 2.2)
-	cypress(Vector3(-11.9, 0, -13.9), 2.9); cypress(Vector3(-12.6, 0, -14.2), 2.3)
-	vine(-2.2, 3.22, true, 1.3); vine(2.22, 1.9, false, 1.0); vine(-1.2, -3.58, true, 1.4); vine(-6.58, -6.6, false, 1.2); vine(-13.4, -9.38, true, 2.2); vine(-9.38, -12.4, false, 1.6)
-	slab(-4.2, 0.6, -3.2, 3.0, 0.0); under(-4.2, 0.6, -3.2, 3.0, 0.18, "sand")
-	for cz in [0.95, 1.8, 2.65]:
-		column(Vector3(-3.7, 0, cz), 2.3, 0.14)
-	blk(Vector3(-3.92, 2.35, 0.7), Vector3(-3.48, 2.55, 2.9), "stone"); cornice(-3.92, 0.7, -3.48, 2.9, 2.55, 0.04, 0.06); dentils(-3.92, 0.7, -3.48, 2.9, 2.35)
-	# door furniture
+	cyl(Vector3(1.2, -0.2, 4.2), 0.045, 0.045, 0.75, pal("wood"), 8)
+	slab(3.5, -0.3, 5.1, 2.3, 0.0); under(3.5, -0.3, 5.1, 2.3, 0.2, "sand"); parapet(Vector3(5.0, 0, -0.2), Vector3(5.0, 0, 2.2))
+	blk(Vector3(3.9, 0, 1.9), Vector3(4.6, 0.22, 2.12), "shade")
+	model("colossus_head_veiled", Vector3(9.4, WATER - 1.15, 1.0), 4.9, 0.25, Vector3(0.06, 0, 0.1))
+	slab(-8.0, -2.2, -6.6, 2.2, 0.0); under(-8.0, -2.2, -6.6, 2.2, 0.18, "sand")
+	for cz in [-1.6, -0.55, 0.55, 1.6]: column(Vector3(-7.3, 0, cz), 2.4, 0.15)
+	blk(Vector3(-7.54, 2.45, -1.9), Vector3(-7.06, 2.66, 1.9), "stone"); cornice(-7.54, -1.9, -7.06, 1.9, 2.66, 0.04, 0.06); dentils(-7.54, -1.9, -7.06, 1.9, 2.45)
+	# ---- B. the causeway: its middle is gone above the water, yet whole in the reflection
+	slab(-0.6, -5.8, 0.6, -4.0, 0.0); slab(-0.6, -10.0, 0.6, -7.8, 0.0)
+	pier(0.0, -5.0, -0.18, 0.7); pier(0.0, -8.8, -0.18, 0.7)
+	for rb in [[Vector3(-0.35, 0, -5.95), 0.3], [Vector3(0.3, -0.05, -6.0), -0.4], [Vector3(-0.2, -0.04, -7.7), 0.5], [Vector3(0.38, 0, -7.62), -0.2]]:
+		var bk := blk(Vector3(-0.2, -0.13, -0.16), Vector3(0.2, 0, 0.16), "stone"); bk.position = rb[0]; bk.rotation = Vector3(0.12, rb[1], 0.1)
+	# ---- C. the lever court (6.5 x 6 m)
+	slab(-3.4, -16.4, 3.5, -10.0, 0.0); under(-3.4, -16.4, 3.5, -10.0, 0.22, "sand")
+	tiles(-3.4, -16.4, 3.5, -10.0, 1.0); rosette(Vector3(-0.6, 0, -13.0), 1.2); meander(-2.85, -15.85, 3.3, -10.2)
+	blk(Vector3(-3.4, 0, -16.4), Vector3(3.5, 1.6, -16.18), "stone"); cornice(-3.4, -16.4, 3.5, -16.18, 1.6); dentils(-3.4, -16.4, 3.5, -16.18, 1.6)
+	crenels(Vector3(-3.3, 1.66, -16.22), Vector3(3.4, 1.66, -16.22), 0.335)
+	for wx in [-2.4, -1.0, 0.4, 1.8]: win_z(wx, 0.25, -16.18, 0.5, 1.05)
+	banner(Vector3(-0.3, 1.5, -16.165), 0.34, 0.95); banner(Vector3(2.55, 1.5, -16.165), 0.34, 0.95)
+	plinth_head("kit_face6", Vector3(-2.95, 0, -15.95), 0.5); plinth_head("kit_face4", Vector3(3.2, 0, -15.9), -0.4)
+	parapet(Vector3(-3.3, 0, -16.0), Vector3(-3.3, 0, -13.75)); parapet(Vector3(-3.3, 0, -12.25), Vector3(-3.3, 0, -10.1)); parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
+	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(3.4, 0, -10.1))
+	lantern(Vector3(3.15, 0, -10.35), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
+	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32); cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16)
+	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; add_child(cap_rot)
+	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
+	ball(Vector3(0, 0, 0.86), 0.045, pal("crim"), cap_rot); ball(Vector3(0, 0.06, 0), 0.045, pal("crim"), cap_rot)
+	decal(CAP + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.22, 0.78)
+	# ---- the turning bridge and the long walk west
+	slab(-4.2, -13.6, -3.4, -12.4, 0.0)
+	bridge = Node3D.new(); bridge.name = "Bridge"; bridge.position = PIV; bridge.rotation.y = PI * 0.5; add_child(bridge)
+	slab(-1.7, -0.6, 1.7, 0.6, 0.0, "stone", bridge)
+	blk(Vector3(-1.6, 0, -0.03), Vector3(1.6, 0.004, 0.03), "crim", bridge)
+	for e in [-1.0, 1.0]: blk(Vector3(-1.65, 0, e * 0.54 - 0.03), Vector3(1.65, 0.06, e * 0.54 + 0.03), "shade", bridge)
+	cyl(PIV + Vector3(0, -2.45, 0), 0.26, 0.24, 2.25, pal("stone"), 24); cyl(PIV + Vector3(0, -2.45, 0), 0.34, 0.34, 2.45 + WATER + 0.06, pal("shade"), 24)
+	foam(PIV.x - 0.34, PIV.z - 0.34, PIV.x + 0.34, PIV.z + 0.34, 0.3)
+	slab(-13.0, -13.6, -7.6, -12.4, 0.0)
+	for px in [-8.6, -10.3, -12.0]: pier(px, -13.0, -0.18, 0.7)
+	slab(-11.1, -10.6, -9.5, -9.0, 0.0); under(-11.1, -10.6, -9.5, -9.0, 0.2, "sand")
+	model("statue_veiled_broken", Vector3(-10.3, 0, -9.8), 2.0, 0.6)
+	# ---- E. the court of the half gate (6.5 x 6 m): half an arch in the sea, a whole ring with its reflection
+	slab(-19.9, -16.9, -13.0, -10.5, 0.0); under(-19.9, -16.9, -13.0, -10.5)
+	tiles(-19.9, -16.9, -13.0, -10.5, 1.0); rosette(Vector3(-16.3, 0, -13.5), 1.3); meander(-19.35, -16.35, -13.2, -10.7)
+	parapet(Vector3(-19.8, 0, -16.8), Vector3(-19.8, 0, -10.6)); parapet(Vector3(-19.8, 0, -16.8), Vector3(-17.15, 0, -16.8)); parapet(Vector3(-15.45, 0, -16.8), Vector3(-13.1, 0, -16.8))
+	parapet(Vector3(-19.8, 0, -10.6), Vector3(-13.1, 0, -10.6)); parapet(Vector3(-13.1, 0, -16.8), Vector3(-13.1, 0, -13.75)); parapet(Vector3(-13.1, 0, -12.25), Vector3(-13.1, 0, -10.6))
+	statue_on("statue_veiled_unfinished", Vector3(-19.45, 0, -11.1), 1.5, 0.8); plinth_head("kit_face1", Vector3(-19.45, 0, -14.6), PI * 0.5)
+	tree(Vector3(-19.4, 0, -16.4), 1.1, "leaf3"); lantern(Vector3(-13.35, 0, -10.85), 4, -1.0); cypress(Vector3(-13.5, 0, -16.45), 2.2)
+	urn(Vector3(-18.6, 0, -16.4), 1.0); urn(Vector3(-18.35, 0, -16.25), 0.7, "rose")
+	slab(-16.9, -20.0, -15.7, -16.9, 0.0); pier(-16.3, -18.4, -0.18, 0.8)
+	ring_gate(Vector3(-16.3, WATER, -18.4), 2.5)
+	# ---- F. the mirror garden (8 x 7 m)
+	slab(-20.5, -27.0, -12.5, -20.0, 0.0); under(-20.5, -27.0, -12.5, -20.0)
+	tiles(-19.4, -26.6, -12.5, -20.0, 1.0); rosette(Vector3(-17.0, 0, -23.5), 1.3); meander(-19.25, -26.45, -15.0, -20.2)
+	var w1 := CSGBox3D.new(); w1.size = Vector3(1.1, 3.0, 1.9); w1.position = Vector3(MX - 0.55, 1.5, MZ); w1.material = pal("stone")
+	var n1 := CSGBox3D.new(); n1.operation = CSGShape3D.OPERATION_SUBTRACTION; n1.size = Vector3(1.0, 2.2, 1.2)
+	n1.position = Vector3(0.06, -0.4, 0.0); n1.material = pal("teal"); w1.add_child(n1); add_child(w1)
+	cornice(MX - 1.1, MZ - 0.95, MX, MZ + 0.95, 3.0); dentils(MX - 1.1, MZ - 0.95, MX, MZ + 0.95, 3.0); crenels(Vector3(MX, 3.06, MZ - 0.85), Vector3(MX, 3.06, MZ + 0.87), 0.287)
+	for fz in [MZ - 0.64, MZ + 0.6]: blk(Vector3(MX - 0.02, 0, fz), Vector3(MX + 0.03, 2.24, fz + 0.04), "gold")
+	blk(Vector3(MX - 0.02, 2.2, MZ - 0.64), Vector3(MX + 0.03, 2.24, MZ + 0.64), "gold")
+	var gq := QuadMesh.new(); gq.size = Vector2(1.2, 2.2)
+	prim(gq, Vector3(MX - 0.012, 1.1, MZ), mat(Color(0.62, 0.86, 0.92, 0.09))).rotation.y = PI * 0.5
+	blk(Vector3(MX - 1.1, 0, -27.0), Vector3(MX, 2.2, MZ - 0.95), "stone"); blk(Vector3(MX - 1.1, 0, MZ + 0.95), Vector3(MX, 1.2, -20.0), "stone")
+	cornice(MX - 1.1, MZ + 0.95, MX, -20.0, 1.2, 0.03, 0.05); cornice(MX - 1.1, -27.0, MX, MZ - 0.95, 2.2, 0.03, 0.05)
+	bush(Vector3(MX - 0.5, 1.2, -20.5), 1.1); bush(Vector3(MX - 0.55, 1.2, -21.4), 0.9, "leaf3"); cypress(Vector3(MX - 0.55, 1.2, -22.1), 2.0)
+	var rq := QuadMesh.new(); rq.size = Vector2(2.4, 2.4)
+	ripple = prim(rq, Vector3.ZERO, ring_mat(Vector3(1.0, 0.36, 0.40))); ripple.rotation.y = PI * 0.5
+	var w2 := CSGBox3D.new(); w2.size = Vector3(6.9, 2.7, 0.4); w2.position = Vector3(-15.95, 1.35, -26.8); w2.material = pal("stone")
+	var d1 := CSGBox3D.new(); d1.operation = CSGShape3D.OPERATION_SUBTRACTION; d1.size = Vector3(0.9, 1.6, 0.6)
+	d1.position = Vector3(DX + 15.95, -0.55, 0); d1.material = pal("shade"); w2.add_child(d1)
+	var d2 := CSGCylinder3D.new(); d2.operation = CSGShape3D.OPERATION_SUBTRACTION; d2.radius = 0.45; d2.height = 0.6; d2.sides = 32
+	d2.rotation.x = PI * 0.5; d2.position = Vector3(DX + 15.95, 0.25, 0); d2.material = pal("shade"); w2.add_child(d2)
+	add_child(w2)
+	cornice(MX, -27.0, -12.5, -26.6, 2.7); dentils(MX, -27.0, -12.5, -26.6, 2.7); crenels(Vector3(MX + 0.15, 2.76, -26.63), Vector3(-12.6, 2.76, -26.63), 0.31)
+	blk(Vector3(DX - 0.47, 0, -26.99), Vector3(DX + 0.47, 2.1, -26.98), "cream")
+	door = blk(Vector3(DX - 0.47, 0, -26.84), Vector3(DX + 0.47, 2.1, -26.76), "crim"); door.name = "Door"
 	for py in [0.25, 1.15]:
-		for px in [-0.36, 0.04]:
-			blk(Vector3(DX + px, py, -12.755), Vector3(DX + px + 0.32, py + 0.7, -12.745), "crim2")
-	var rg := TorusMesh.new(); rg.inner_radius = 0.045; rg.outer_radius = 0.065
-	prim(rg, Vector3(DX + 0.3, 1.0, -12.74), pal("gold")).rotation.x = PI * 0.5
-	# drifting mist
-	for mp in [Vector3(4.5, WATER + 0.3, 6.5), Vector3(-9.0, WATER + 0.3, 1.5), Vector3(-17.0, WATER + 0.4, -5.0), Vector3(4.0, WATER + 0.3, -8.0),
-			Vector3(-4.0, WATER + 0.4, -14.0), Vector3(-17.5, WATER + 0.3, -13.5), Vector3(-1.0, WATER + 0.2, 7.5), Vector3(-12.0, WATER + 0.3, 0.5)]:
-		var mh := halo(8.0 + 2.0 * sin(mp.x), Color(MIST.r, MIST.g, MIST.b, 0.34))
+		for px in [-0.36, 0.04]: blk(Vector3(px, py - 1.05, 0.04), Vector3(px + 0.32, py - 0.35, 0.05), "crim2", door)
+	banner(Vector3(-14.3, 2.25, -26.585), 0.34, 1.15); banner(Vector3(-18.3, 2.25, -26.585), 0.34, 1.15)
+	for wx in [-13.3, -17.5]: win_z(wx, 0.3, -26.6, 0.4, 0.9)
+	statue_on("statue_veiled_mourning", Vector3(-18.9, 0, -20.45), 1.8, 0.8); statue_on("statue_veiled_praying", Vector3(-15.2, 0, -26.3), 1.8, 0.2)
+	plinth_head("kit_face5", Vector3(-19.0, 0, -26.25), 0.6)
+	pool(-14.4, -25.4, -13.2, -22.0); model("statue_veiled_kneeling", Vector3(-14.72, 0, -23.7), 1.1, PI * 0.5)
+	for lp in [Vector3(-13.9, 0.016, -24.6), Vector3(-13.6, 0.016, -23.2), Vector3(-14.1, 0.016, -22.5)]:
+		cyl(lp, 0.09, 0.09, 0.004, pal("leaf2"), 14); ball(lp + Vector3(0.02, 0.02, 0), 0.025, pal("leaf3"))
+	lantern(Vector3(-15.2, 0, -20.25), 5, -1.0); urn(Vector3(-12.9, 0, -20.4), 1.0); urn(Vector3(-13.15, 0, -20.3), 0.7, "rose"); cypress(Vector3(-12.95, 0, -26.2), 2.3)
+	blk(Vector3(MX + 0.1, 0, MZ - 0.45), Vector3(MX + 0.95, 0.004, MZ + 0.45), "shade"); blk(Vector3(MX + 0.15, 0, MZ - 0.4), Vector3(MX + 0.9, 0.006, MZ + 0.4), "stone")
+	blk(Vector3(DX - 0.03, 0, -26.6), Vector3(DX + 0.03, 0.005, -25.2), "crim")
+	slab(-20.5, -28.8, -12.5, -27.0, 0.0, "sand"); under(-20.5, -28.8, -12.5, -27.0, 0.22, "sand")
+	tree(Vector3(-18.6, 0, -27.8), 1.5); tree(Vector3(-13.6, 0, -27.9), 1.35, "leaf3"); cypress(Vector3(-15.0, 0, -28.2), 2.9); cypress(Vector3(-17.4, 0, -28.3), 2.4)
+	# ---- the sea around: colossi, ruins, vines, mist
+	model("observer_veiled", Vector3(-31.0, WATER - 1.2, -27.0), 11.0, 0.75)
+	model("kit_face5", Vector3(-4.5, WATER - 1.15, -21.5), 4.4, 0.7, Vector3(0.2, 0, -0.15))
+	model("kit_face2", Vector3(-10.0, WATER - 1.15, -4.2), 4.1, 0.5, Vector3(-0.15, 0, 0.12))
+	model("pediment_fragment", Vector3(5.2, WATER - 0.35, 5.9), 1.3, 0.5, Vector3(0.1, 0, 0.06))
+	model("column_fallen", Vector3(-24.5, WATER - 0.25, -12.5), 0.6, 0.9)
+	for cp in [Vector3(6.6, 0, -4.8), Vector3(7.6, 0, -6.0), Vector3(-4.6, 0, -9.2), Vector3(-9.0, 0, -17.4), Vector3(-10.2, 0, -18.4), Vector3(-22.6, 0, -8.8), Vector3(-23.6, 0, -19.6), Vector3(-9.0, 0, -24.4)]:
+		cyl(Vector3(cp.x, -2.45, cp.z), 0.3, 0.3, 2.45 + WATER + 0.12, pal("shade"), 20)
+		column(Vector3(cp.x, WATER + 0.12, cp.z), 2.6 + 0.9 * sin(cp.x * 3.0), 0.19, int(absf(cp.x * 10.0)) % 2 == 0)
+		foam(cp.x - 0.3, cp.z - 0.3, cp.x + 0.3, cp.z + 0.3, 0.3)
+	vine(-3.6, 3.52, true, 1.8); vine(3.52, -3.4, false, 1.4); vine(-3.2, -9.98, true, 1.6); vine(3.52, -15.6, false, 2.0)
+	vine(-19.6, -10.48, true, 2.4); vine(-12.98, -16.4, false, 1.6); vine(-20.2, -19.98, true, 2.6); vine(-12.48, -25.6, false, 2.2)
+	for mp in [Vector3(6.5, WATER + 0.3, 8.5), Vector3(-13.0, WATER + 0.3, 3.5), Vector3(9.5, WATER + 0.4, -12.0), Vector3(-25.0, WATER + 0.3, -4.0),
+			Vector3(-4.0, WATER + 0.4, -26.0), Vector3(-27.0, WATER + 0.3, -18.0), Vector3(-2.0, WATER + 0.2, 9.5), Vector3(-9.0, WATER + 0.3, -31.0)]:
+		var mh := halo(9.0 + 2.0 * sin(mp.x), Color(MIST.r, MIST.g, MIST.b, 0.34))
 		(mh.material_override as StandardMaterial3D).blend_mode = BaseMaterial3D.BLEND_MODE_MIX
 		mh.position = mp; add_child(mh)
 	for mi in find_children("*", "GeometryInstance3D", true, false):
@@ -881,13 +874,13 @@ func _actors() -> void:
 	pulse = prim(pq, Vector3.ZERO, ring_mat(Vector3(1.0, 0.8, 0.45)))
 	var tq := QuadMesh.new(); tq.size = Vector2(1.1, 1.1); tq.orientation = PlaneMesh.FACE_Y
 	tapring = prim(tq, Vector3.ZERO, ring_mat(Vector3(1.0, 0.9, 0.7)))
-	lamp = Node3D.new(); add_child(lamp); lamp.position = LAMP0
+	lamp = Node3D.new(); add_child(lamp); lamp.position = Vector3(0, -50, 0); lamp.visible = false; lamp_energy = 0.0
 	ball(Vector3.ZERO, 0.055, mat(Color("ffd98a")), lamp)
 	cyl(Vector3(0, 0.055, 0), 0.07, 0.01, 0.055, pal("gold"), 16, lamp); cyl(Vector3(0, -0.082, 0), 0.04, 0.055, 0.028, pal("gold"), 16, lamp)
 	var ring := TorusMesh.new(); ring.inner_radius = 0.02; ring.outer_radius = 0.031
 	prim(ring, Vector3(0, 0.14, 0), pal("gold"), lamp).rotation.x = PI * 0.5
 	lamp_halo = halo(1.0, Color(1.0, 0.78, 0.42, 0.55)); lamp.add_child(lamp_halo)
-	door_halo = halo(3.2, Color(1.0, 0.86, 0.6, 0.5)); door_halo.position = Vector3(DX, 1.0, -12.7); add_child(door_halo)
+	door_halo = halo(3.2, Color(1.0, 0.86, 0.6, 0.5)); door_halo.position = Vector3(DX, 1.0, -26.7); add_child(door_halo)
 	for i in 3:
 		var gn := Node3D.new(); add_child(gn)
 		for sgn in [-1.0, 1.0]:
@@ -897,7 +890,6 @@ func _actors() -> void:
 		gulls.append(gn)
 	# things to tap
 	objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}
-	objs["lamp"] = {"at": LAMP0 + Vector3(0, 0.1, 0), "stand": Vector3(LAMP0.x, 0, LAMP0.z + 0.45)}
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
@@ -907,9 +899,9 @@ func _actors() -> void:
 		markers[k] = n
 
 func _nav() -> void:
-	for r in [["A", -1.9, -0.7, 1.9, 2.9], ["S", 1.9, 0.75, 3.1, 1.35], ["B", -0.2, -3.9, 0.2, -0.7], ["C", -1.3, -6.0, 1.5, -3.9],
-			["Cw", -2.4, -5.3, -1.3, -4.9], ["BR", -4.8, -5.3, -2.4, -4.9], ["D", -6.9, -5.3, -4.8, -4.9], ["E", -8.7, -6.3, -6.9, -4.1],
-			["P1", -11.75, -5.65, -8.7, -5.45], ["P2", -11.75, -9.6, -11.6, -5.45], ["F", -12.6, -12.2, -10.6, -9.6], ["G", -12.2, -14.1, -11.8, -12.2]]:
+	for r in [["A", -3.15, -3.15, 3.15, 3.15], ["S", 3.15, 0.7, 4.6, 1.3], ["B1", -0.25, -5.8, 0.25, -3.15], ["Bg", -0.25, -7.8, 0.25, -5.8], ["B2", -0.25, -10.35, 0.25, -7.8],
+			["C", -2.65, -15.65, 3.0, -10.35], ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
+			["E", -19.15, -16.15, -13.35, -10.85], ["G1", -16.55, -20.35, -16.05, -16.15], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
 	rects["BR"].on = false; rects["G"].on = false
 
@@ -1109,7 +1101,7 @@ func _process(dt: float) -> void:
 	}
 	fig.apply(st); wfig.apply(st)
 	for k in ["Bridge", "Cap", "Door", "Boat"]: (refl.get_node(k) as Node3D).transform = (world.get_node(k) as Node3D).transform
-	var near := smoothstep(-10.9, -11.6, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
+	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
 	ghost.visible = near > 0.01
 	if ghost.visible: ghost.apply(st)
 	var prox := clampf(1.0 - (pos.x - MX - 0.5) / 1.4, 0.0, 1.0)
@@ -1126,7 +1118,7 @@ func _process(dt: float) -> void:
 	lamp_halo.scale = Vector3.ONE * (0.35 + le * 1.5)
 	door_halo.scale = Vector3.ONE * door_energy; door_halo.visible = door_energy > 0.01
 	lights[0] = Vector4(lamp.position.x, lamp.position.y, lamp.position.z, le)
-	lights[1] = Vector4(DX, 0.8, -12.5, door_energy)
+	lights[1] = Vector4(DX, 0.8, -26.5, door_energy)
 	var cc := cam_t if shot == null else (shot.c as Vector3)
 	for m in pmats.values():
 		for i in 6: m.set_shader_parameter("l%d" % i, lights[i])
@@ -1150,7 +1142,7 @@ func _process(dt: float) -> void:
 	cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 50.0
 	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * 50.0
-	if started and not ended and pos.z < -13.2: _end()
+	if started and not ended and pos.z < -27.2: _end()
 
 # ---------------------------------------------------------------- what she can do
 func wait(s: float) -> void:
@@ -1205,34 +1197,8 @@ func _do_capstan() -> void:
 	rects["BR"].on = true; done["capstan"] = true
 	say("η γέφυρα γύρισε")
 
-func _do_lamp() -> void:
-	await face(LAMP0)
-	tgtR = LAMP0 + Vector3(0, 0.15, 0)
-	var c := tw()
-	c.tween_property(self, "a_drop", 0.55, 0.85); c.tween_property(self, "a_lean", 0.50, 0.85)
-	c.tween_property(self, "a_pool", 1.0, 0.85); c.tween_property(self, "a_headp", 0.35, 0.7)
-	c.tween_property(self, "a_wR", 1.0, 0.75).set_delay(0.2)
-	await c.finished
-	await wait(0.2)
-	lamp_held = true; done["lamp"] = true
-	var d := tw()
-	d.tween_property(self, "lamp_energy", 1.0, 0.9)
-	d.tween_property(self, "a_drop", 0.0, 0.95); d.tween_property(self, "a_lean", 0.0, 0.95)
-	d.tween_property(self, "a_pool", 0.0, 0.95); d.tween_property(self, "a_headp", 0.0, 0.8)
-	d.tween_property(self, "a_wR", 0.0, 0.8); d.tween_property(self, "a_hold", 1.0, 0.8)
-	await d.finished
-	say("πάτα πάνω της για να σηκώσει τη λάμπα")
-
 func _do_mirror() -> void:
 	await face(Vector3(MX, 0, MZ))
-	if not lamp_held:
-		var h := tw(); h.tween_property(self, "a_headp", -0.12, 0.5)
-		await h.finished
-		say("το γυαλί είναι σκοτεινό · χρειάζεται φως")
-		await wait(0.8)
-		var h2 := tw(); h2.tween_property(self, "a_headp", 0.0, 0.5)
-		await h2.finished
-		return
 	var i := tw()
 	i.tween_property(self, "a_drop", 0.16, 0.6); i.tween_property(self, "a_lean", 0.36, 0.6); i.tween_property(self, "a_headp", 0.3, 0.6)
 	i.tween_property(self, "a_open", 1.0, 0.6); i.tween_property(self, "a_pool", 0.3, 0.6)
@@ -1269,18 +1235,16 @@ func _auto() -> void:
 	await wait(1.2)
 	tap(Vector2(360, 600))
 	await wait(1.0)
-	await _a_walk(Vector3(-1.2, 0, 1.6))
+	await _a_walk(Vector3(-1.8, 0, 1.6))
 	_self(); await settled
-	await _a_walk(Vector3(3.0, 0, 1.05))
+	await _a_walk(Vector3(4.4, 0, 1.0))
 	await wait(0.5)
 	await _a_use("capstan")
-	await _a_use("lamp")
-	await wait(0.4)
-	await _a_walk(Vector3(-7.4, 0, -4.6), 2.7)
+	await _a_walk(Vector3(-16.3, 0, -13.5), 2.7)
 	_self(); await settled
 	await _a_use("mirror")
 	await wait(0.5)
-	await _a_walk(Vector3(DX, 0, -14.0))
+	await _a_walk(Vector3(DX, 0, -28.2))
 	await wait(3.0)
 	print("AUTO done ended=", ended, " done=", done)
 	get_tree().quit()
