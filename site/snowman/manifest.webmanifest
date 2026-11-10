@@ -1,0 +1,17 @@
+{
+  "name": "Χιονάνθρωπος: Σκοποβολή με Χιονόμπαλες",
+  "short_name": "Χιονάνθρωπος",
+  "description": "Πέτα χιονόμπαλες, πέτυχε τους στόχους σε 10 πίστες και κέρδισε το κόκκινο κασκόλ!",
+  "lang": "el",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0f1c33",
+  "theme_color": "#5aa9ff",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icons/icon-192.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
