@@ -867,18 +867,36 @@ func _ready() -> void:
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	var sb := Shader.new()
 	sb.code = SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;").replace(
-		"uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform float use_tex = 0.0; uniform float tex_gain = 1.22; uniform vec3 veil_col = vec3(0.9, 0.9, 0.92); varying float notex; uniform vec3 trail = vec3(0.0); uniform float gait = 0.0; uniform float gph = 0.0; uniform vec3 grad_lo = vec3(0.74, 0.75, 0.84); varying float hv;").replace(
+		"void vertex(){", "void pull(vec3 p, vec3 ra, vec3 rb, vec3 na, vec3 nb, float sig, inout vec3 acc, inout float ws){ vec3 ab = rb - ra; float tt = clamp(dot(p - ra, ab) / max(dot(ab, ab), 1e-5), 0.0, 1.0); vec3 c = ra + ab * tt; float d = length(p - c); float w = exp(-d * d / (sig * sig)); acc += w * (mix(na, nb, tt) - c); ws += w; }\nvoid vertex(){").replace(
+		"uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform float use_tex = 0.0; uniform float tex_gain = 1.22; uniform vec3 veil_col = vec3(0.9, 0.9, 0.92); varying float notex; uniform vec3 trail = vec3(0.0);
+uniform vec3 hipL; uniform vec3 kneeL; uniform vec3 footL; uniform vec3 hipR; uniform vec3 kneeR; uniform vec3 footR;
+uniform vec3 rkneeL; uniform vec3 rfootL; uniform vec3 rkneeR; uniform vec3 rfootR;
+uniform vec4 armp = vec4(0.17, 1.4, -0.01, -0.012); uniform float arm_on = 0.0; uniform float adduct = 0.0; uniform vec2 swing = vec2(0.0);
+uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(0.2, 0.1); uniform vec2 leg_hang = vec2(0.12, 0.3); uniform vec3 grad_lo = vec3(0.74, 0.75, 0.84); varying float hv;").replace(
 		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", """	float hh = clamp(VERTEX.y / 1.72, 0.0, 1.0); hv = hh; notex = COLOR.g;
 	float wgt = pow(1.0 - smoothstep(0.0, 0.62, hh), 1.5);
 	float rr = length(VERTEX.xz); vec2 rad = VERTEX.xz / max(rr, 0.001); float ang = atan(VERTEX.x, VERTEX.z);
 	float edge = smoothstep(0.03, 0.16, rr);
-	float sx = clamp(VERTEX.x / 0.09, -1.0, 1.0); float sp = sin(gph); float cp = cos(gph);
-	float leg = 1.0 - smoothstep(0.05, 0.54, hh);
-	float hipa = -0.1 * gait * sp * smoothstep(0.62, 0.3, hh) * smoothstep(0.02, 0.3, hh);
-	float sha = 0.055 * gait * sp * smoothstep(0.5, 0.78, hh);
-	float ta = hipa + sha; VERTEX.xz = vec2(VERTEX.x * cos(ta) + VERTEX.z * sin(ta), -VERTEX.x * sin(ta) + VERTEX.z * cos(ta));
-	VERTEX.z += sx * sp * 0.13 * gait * leg;
-	VERTEX.y += max(0.0, sx * cp) * 0.035 * gait * (1.0 - smoothstep(0.0, 0.2, hh)) * smoothstep(0.0, 0.06, VERTEX.z + 0.05);
+	{
+		float axx = abs(VERTEX.x - armp.w); float sd = sign(VERTEX.x - armp.w);
+		float bl = mix(0.215, 0.127, smoothstep(0.92, 1.16, VERTEX.y));
+		float wl = smoothstep(bl - 0.015, bl + 0.015, axx) * step(0.6, VERTEX.y);
+		float wu = smoothstep(0.115, 0.19, axx) * (1.0 - smoothstep(1.3, 1.47, VERTEX.y));
+		float aw = mix(wl, wu, smoothstep(1.14, 1.26, VERTEX.y)) * arm_on;
+		vec3 pv = vec3(armp.w + sd * armp.x, armp.y, armp.z); vec3 q = VERTEX - pv;
+		float bb = -adduct * sd * aw; q.xy = vec2(q.x * cos(bb) - q.y * sin(bb), q.x * sin(bb) + q.y * cos(bb));
+		float aa = -(sd > 0.0 ? swing.x : swing.y) * aw; q.yz = vec2(q.y * cos(aa) - q.z * sin(aa), q.y * sin(aa) + q.z * cos(aa));
+		VERTEX = pv + q;
+		float ta = shtw * smoothstep(0.95, 1.3, VERTEX.y) + pelv * smoothstep(0.5, 0.85, VERTEX.y) * (1.0 - smoothstep(1.0, 1.25, VERTEX.y));
+		VERTEX.xz = vec2(VERTEX.x * cos(ta) + VERTEX.z * sin(ta), -VERTEX.x * sin(ta) + VERTEX.z * cos(ta));
+		if (VERTEX.y < 1.0) {
+			vec3 p0 = VERTEX; vec3 acc = vec3(0.0); float ws = 0.0; float lo = smoothstep(0.05, 0.4, p0.y);
+			float sig = mix(leg_sig.x, leg_sig.y, lo);
+			pull(p0, hipL, rkneeL, hipL, kneeL, sig, acc, ws); pull(p0, rkneeL, rfootL, kneeL, footL, sig, acc, ws);
+			pull(p0, hipR, rkneeR, hipR, kneeR, sig, acc, ws); pull(p0, rkneeR, rfootR, kneeR, footR, sig, acc, ws);
+			VERTEX += acc / (ws + mix(leg_hang.x, leg_hang.y, lo)) * (1.0 - smoothstep(0.78, 1.0, p0.y));
+		}
+	}
 	VERTEX.xz += trail.xz * wgt;
 	vec2 tv = trail.xz * 0.35; tv.y = max(tv.y, -0.012);
 	VERTEX.xz += (tv + vec2(sin(time_s * 1.3 + VERTEX.y * 9.0), 0.6 + cos(time_s * 1.05 + VERTEX.x * 14.0)) * 0.006) * COLOR.r;
@@ -1155,8 +1173,8 @@ func bake_shape(file: String) -> ArrayMesh:
 	return am
 
 ## where the head of each figure is, so a cloth can be laid over the face
-const FACE_VEIL := {"min9": {"cx": -0.008, "cz": 0.03, "rx": 0.108, "rzf": 0.139, "rzb": 0.12, "top": 1.752, "eq": 1.62, "chin": 1.5, "hem": 1.365},
-	"min13": {"cx": 0.006, "cz": -0.03, "rx": 0.116, "rzf": 0.14, "rzb": 0.125, "top": 1.756, "eq": 1.62, "chin": 1.5, "hem": 1.41}}
+const FACE_VEIL := {"min9": {"cx": -0.008, "cz": 0.03, "rx": 0.108, "rzf": 0.139, "rzb": 0.12, "top": 1.731, "eq": 1.62, "chin": 1.5, "hem": 1.365},
+	"min13": {"cx": 0.006, "cz": -0.03, "rx": 0.116, "rzf": 0.14, "rzb": 0.125, "top": 1.732, "eq": 1.62, "chin": 1.5, "hem": 1.41}}
 const VEIL_COL := {"min13tb": Vector3(0.80, 0.11, 0.14), "min13ta": Vector3(0.93, 0.91, 0.86)}
 
 func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array, cols: PackedColorArray, ix: PackedInt32Array) -> void:
@@ -1170,10 +1188,10 @@ func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array
 			var a := absf(th) / TH
 			var hem: float = d.hem + 0.11 * a * a + 0.006 * cos(th * 9.0)
 			var f := 1.0; var y := 0.0; var w := 0.0
-			var tuck := 0.14 * smoothstep(0.62, 1.0, a)
+			var tuck := 0.2 * smoothstep(0.55, 1.0, a)
 			if v < 0.4:
 				var ph := v / 0.4 * PI * 0.5
-				f = pow(sin(ph), 0.6) * (1.0 - tuck)
+				f = pow(sin(ph), 0.36) * (1.0 - tuck)
 				y = d.top - (d.top - d.eq) * (1.0 - cos(ph))
 			else:
 				var q := (v - 0.4) / 0.6
@@ -1198,6 +1216,30 @@ func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array
 		for it in NT:
 			var a0 := base + iv * W + it
 			ix.append_array(PackedInt32Array([a0, a0 + 1, a0 + W, a0 + 1, a0 + W + 1, a0 + W]))
+
+## where the joints are inside each figure (model space, 1.72 m tall, facing +Z)
+const RIGS := {"min9": {"cx": -0.012, "hx": 0.065, "hy": 0.9, "zc": -0.02, "A": 0.26, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, -0.01, -0.012), "arm_on": 1.0, "adduct": 0.07},
+	"min13": {"cx": 0.0, "hx": 0.065, "hy": 0.9, "zc": 0.03, "A": 0.24, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, 0.0, 0.0), "arm_on": 0.0, "adduct": 0.0}}
+
+func rig_of(file: String) -> Dictionary:
+	var k := file.substr(0, file.find("t")) if file.find("t") > 0 else file
+	return RIGS.get(k, RIGS["min13"])
+
+func leg_pose(ph: float, side: float, amt: float, R: Dictionary) -> Array:
+	var hip := Vector3(R.cx + side * R.hx, R.hy, R.zc)
+	var u := fposmod(ph, TAU) / TAU
+	var z := 0.0; var lift := 0.0
+	if u < 0.62: z = lerpf(1.0, -1.0, u / 0.62)
+	else:
+		var q := (u - 0.62) / 0.38
+		z = -cos(q * PI); lift = sin(q * PI)
+	var foot := Vector3(hip.x - side * 0.012, 0.06 + 0.08 * lift * amt, R.zc + z * R.A * amt)
+	var d := foot - hip
+	var L := minf(d.length(), R.l1 + R.l2 - 0.002)
+	var a := acos(clampf((R.l1 * R.l1 + L * L - R.l2 * R.l2) / (2.0 * R.l1 * L), -1.0, 1.0))
+	var dn := d.normalized()
+	var fw := (Vector3(0, 0, 1) - dn * dn.z).normalized()
+	return [hip, hip + (dn * cos(a) + fw * sin(a)) * R.l1, foot]
 
 func body_mat(pl: String, key: String) -> ShaderMaterial:
 	var m := ShaderMaterial.new(); m.shader = shaders["body"]
@@ -1735,10 +1777,10 @@ func _process(dt: float) -> void:
 		var to := Vector3(p3.x - pos.x, 0, p3.z - pos.z)
 		var left := to.length()
 		for i in range(1, mini(route.size(), 5)): left += Vector2(route[i].p.x - route[i - 1].p.x, route[i].p.z - route[i - 1].p.z).length()
-		target = minf(speed_cap, sqrt(2.0 * 1.1 * left) + 0.03)
+		target = minf(speed_cap, sqrt(2.0 * (2.4 if shape_file != "" else 1.1) * left) + 0.03)
 		if to.length() > 0.02: want_yaw = atan2(to.x, to.z)
 		target *= clampf(1.25 - absf(angle_difference(yaw, want_yaw)) * 0.8, 0.25, 1.0)
-		spd = move_toward(spd, target, (1.5 if speed_cap <= WALK else 2.6) * dt)
+		spd = move_toward(spd, target, (3.4 if shape_file != "" else (1.5 if speed_cap <= WALK else 2.6)) * dt)
 		var step := spd * dt
 		if step >= to.length():
 			pos.x = p3.x; pos.z = p3.z
@@ -1752,7 +1794,7 @@ func _process(dt: float) -> void:
 		if face_to != null:
 			want_yaw = atan2(face_to.x - pos.x, face_to.z - pos.z)
 			if absf(angle_difference(yaw, want_yaw)) < 0.02: face_to = null; faced.emit()
-	yaw = lerp_angle(yaw, want_yaw, 1.0 - exp(-4.2 * dt))
+	yaw = lerp_angle(yaw, want_yaw, 1.0 - exp(-(7.5 if shape_file != "" else 4.2) * dt))
 	var wk := clampf(spd / WALK, 0.0, 1.0)
 	var rk := clampf((spd - WALK) / 1.2, 0.0, 1.0)
 	phase += spd * dt / lerpf(0.92, 1.15, rk) * PI
@@ -1786,19 +1828,28 @@ func _process(dt: float) -> void:
 	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
 	ghost.visible = (not hero_real) and shape_file == "" and near > 0.01
 	if shape_file != "":
-		gph += spd * dt / lerpf(0.56, 0.8, rk) * PI
-		gait = lerpf(gait, clampf(spd / 0.9, 0.0, 1.0) * (1.0 + 0.25 * rk), 1.0 - exp(-6.0 * dt))
-		hover = 0.004 * sin(t * 1.3) + 0.007 * gait * (1.0 + cos(2.0 * gph))
+		var R := rig_of(shape_file)
+		gph += spd * dt / lerpf(0.6, 0.85, rk) * PI
+		gait = lerpf(gait, clampf(spd / 0.8, 0.0, 1.0) * (1.0 + 0.3 * rk), 1.0 - exp(-9.0 * dt))
+		var gp := gph - 0.37
+		hover = 0.003 * sin(t * 1.3) - 0.011 * gait * cos(2.0 * gp)
 		var turn := angle_difference(yaw_prev, yaw) / maxf(dt, 0.001); yaw_prev = yaw
-		tilt_r = lerpf(tilt_r, clampf(-turn * 0.03, -0.07, 0.07), 1.0 - exp(-4.0 * dt))
-		tilt_f = lerpf(tilt_f, 0.03 * wk + 0.05 * rk + clampf((spd - spd_prev) / maxf(dt, 0.001) * 0.02, -0.04, 0.04) + a_lean, 1.0 - exp(-3.5 * dt)); spd_prev = spd
-		var side := Vector3(cos(yaw), 0, -sin(yaw)) * (-0.016 * gait * cos(gph))
+		tilt_r = lerpf(tilt_r, clampf(-turn * 0.02, -0.05, 0.05), 1.0 - exp(-5.0 * dt))
+		tilt_f = lerpf(tilt_f, 0.035 * wk + 0.05 * rk + clampf((spd - spd_prev) / maxf(dt, 0.001) * 0.012, -0.03, 0.03) + a_lean, 1.0 - exp(-5.0 * dt)); spd_prev = spd
+		var side := Vector3(cos(yaw), 0, -sin(yaw)) * (0.014 * gait * sin(gp))
 		for k in SHP:
 			var sh: Node3D = SHP[k].holder
-			sh.position = pos + side + Vector3(0, hover, 0); sh.rotation = Vector3(tilt_f, yaw + head_yaw * 0.4, tilt_r + 0.02 * gait * cos(gph))
+			sh.position = pos + side + Vector3(0, hover, 0); sh.rotation = Vector3(tilt_f, yaw + head_yaw * 0.4, tilt_r - 0.012 * gait * sin(gp))
+		var lg := leg_pose(gph, 1.0, gait, R); var rg := leg_pose(gph + PI, -1.0, gait, R)
+		var l0 := leg_pose(0.0, 1.0, 0.0, R); var r0 := leg_pose(0.0, -1.0, 0.0, R)
 		for bm in body_mats:
-			bm.set_shader_parameter("trail", Vector3(sway.x * 0.55, 0.02 * wk + 0.04 * rk, sway.y * 0.55))
-			bm.set_shader_parameter("gait", gait); bm.set_shader_parameter("gph", gph)
+			bm.set_shader_parameter("trail", Vector3(sway.x * 0.3, 0.0, sway.y * 0.3))
+			bm.set_shader_parameter("hipL", lg[0]); bm.set_shader_parameter("kneeL", lg[1]); bm.set_shader_parameter("footL", lg[2])
+			bm.set_shader_parameter("hipR", rg[0]); bm.set_shader_parameter("kneeR", rg[1]); bm.set_shader_parameter("footR", rg[2])
+			bm.set_shader_parameter("rkneeL", l0[1]); bm.set_shader_parameter("rfootL", l0[2]); bm.set_shader_parameter("rkneeR", r0[1]); bm.set_shader_parameter("rfootR", r0[2])
+			bm.set_shader_parameter("armp", R.arm); bm.set_shader_parameter("arm_on", R.arm_on); bm.set_shader_parameter("adduct", R.adduct)
+			bm.set_shader_parameter("swing", Vector2(-0.2 * gait * cos(gph), 0.2 * gait * cos(gph)) + Vector2(0.012 * sin(t * 0.9), 0.012 * sin(t * 0.9 + 1.7)))
+			bm.set_shader_parameter("pelv", -0.07 * gait * cos(gph)); bm.set_shader_parameter("shtw", 0.045 * gait * cos(gph))
 		(SHP["ghost"].holder as Node3D).visible = near > 0.01
 	if ghost.visible: ghost.apply(st)
 	var moving := spd > 0.15
