@@ -197,6 +197,7 @@ const SH_REFL := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform float water_y = -1.3; uniform float time_s = 0.0; uniform vec3 tint = vec3(0.04, 0.12, 0.2); uniform float strength = 1.0;
 uniform float lift = 0.0; uniform float use_tex = 0.0; uniform float gain = 1.5; uniform float fade_a = 1.0; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
+uniform vec3 under_col = vec3(0.17, 0.39, 0.47);
 varying float hh; varying vec3 q;
 void vertex(){
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -206,18 +207,18 @@ void vertex(){
 	float k = clamp(h * 0.45, 0.0, 1.6);
 	p.x += (sin(p.z * 2.3 + time_s * 1.2) + 0.5 * sin(p.z * 6.1 - time_s * 1.7)) * 0.05 * k;
 	p.z += (sin(p.x * 2.1 + time_s * 1.0) + 0.5 * sin(p.x * 5.3 + time_s * 1.5)) * 0.05 * k;
-	p.y = water_y - 0.015 + lift; q = p;
+	p.y = water_y - 0.015 + lift - min(h, 8.0) * 0.0006; q = p;   // low parts lie over high ones, always: no two shapes fight for a pixel
 	VERTEX = (inverse(MODEL_MATRIX) * vec4(p, 1.0)).xyz;
 }
 void fragment(){
 	if (hh < 0.03) discard;
 	if (q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) discard;   // nothing lies on the sea inside the hollow of the first court
+	// the reflection thins out with height by blending into the colour of the deep water. (It used to be cut
+	// into a pattern of dots, which shimmered whenever the camera moved.)
 	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
-	float d = fract(dot(floor(FRAGCOORD.xy), vec2(0.7548776662, 0.56984029)));
-	if (d > fade) discard;
 	vec3 c = tint;
 	if (use_tex > 0.5) { vec3 tx = texture(albedo_tex, UV).rgb; float rw = smoothstep(0.08, 0.2, tx.r - tx.b); c = mix(tx * 0.92, clamp(tx * gain, 0.0, 1.0), rw); }
-	ALBEDO = c;
+	ALBEDO = mix(under_col, c, fade);
 }"""
 ## the still water of the mirror pool: almost clear, with a few slow glints
 const SH_GLASS := """shader_type spatial;
@@ -1007,6 +1008,7 @@ func _ready() -> void:
 		sea_c = Color("3a6a7b"); mist_c = Color("b9b4c4"); bg_c = Color("29586a"); shadow_c = Vector3(0.6, 0.61, 0.82); water_deep = Color("2a7d88"); water_shallow = Color("6fc4b8")
 	if OS.get_environment("REFL") != "0":
 		refl_mat = ShaderMaterial.new(); refl_mat.shader = shaders["refl"]; refl_mat.set_shader_parameter("water_y", WATER)
+		refl_mat.set_shader_parameter("under_col", Vector3(bg_c.r, bg_c.g, bg_c.b))
 		if OS.get_environment("REFL") != "": refl_mat.set_shader_parameter("strength", float(OS.get_environment("REFL")))
 		timed.append(refl_mat)
 	pals = PALS.duplicate(true)
