@@ -31,7 +31,8 @@ const PX0 := -3.4
 const PX1 := 0.6
 const PZ0 := -1.0
 const PZ1 := 2.4
-const PED := Vector3(-1.4, 0, 0.75)
+const CX := -1.1                       # the line of the lost crossing, from the north rim into the pool
+const PED := Vector3(-1.9, 0, 0.45)    # the pedestal stands beside its end, so that her reflection is never cut by it
 var winch_a: Node3D
 var her_mats: Array = []
 var posing := false
@@ -1208,8 +1209,8 @@ func _shots() -> void:
 		{"n": "15-statue-row", "p": Vector3(-2.55, 0, 1.75), "y": 1.2, "c": Vector3(-2.7, 0.8, -0.4), "s": 6.6},
 		{"n": "16-sculptors-corner", "p": Vector3(1.9, 0, -2.2), "y": 2.6, "c": Vector3(2.4, 0.8, -3.0), "s": 5.6},
 		{"n": "17-shadow-bridge", "p": Vector3(5.42, 0, 1.0), "y": 1.57, "c": Vector3(6.3, -0.2, 1.3), "s": 7.6},
-		{"n": "18-mirror-pool", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-0.8, 0.1, -0.1), "s": 5.2},
-		{"n": "19-mirror-pool-wide", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-1.4, 0.3, 0.7), "s": 13.5},
+		{"n": "18-mirror-pool", "p": Vector3(CX, 0, -1.14), "y": 0.0, "c": Vector3(-0.6, 0.1, -0.1), "s": 5.2},
+		{"n": "19-mirror-pool-wide", "p": Vector3(CX, 0, -1.14), "y": 0.0, "c": Vector3(-1.4, 0.3, 0.7), "s": 13.5},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
 	var only := OS.get_environment("SHOT_ONLY")
@@ -2183,10 +2184,10 @@ func _start_zone() -> void:
 			var spk := blk(Vector3(-0.44, -0.02, -0.022), Vector3(0.44, 0.02, 0.022), "wood", wn); spk.position = Vector3.ZERO; spk.rotation.y = PI * 0.25 * i
 		if both == self: winch_a = wn
 		else: winch_m = wn
-		blk(Vector3(PED.x - 0.3, 0.0, PZ0), Vector3(PED.x + 0.3, 0.07, PZ0 + 0.2), "stone", both)   # what is left of the crossing: a stub at the rim
-		for rb3 in [[Vector3(PED.x - 0.16, 0.035, PZ0 + 0.27), 0.5], [Vector3(PED.x + 0.2, 0.03, PZ0 + 0.24), -0.4]]:
+		blk(Vector3(CX - 0.3, 0.0, PZ0), Vector3(CX + 0.3, 0.07, PZ0 + 0.2), "stone", both)   # what is left of the crossing: a stub at the rim
+		for rb3 in [[Vector3(CX - 0.16, 0.035, PZ0 + 0.27), 0.5], [Vector3(CX + 0.2, 0.03, PZ0 + 0.24), -0.4]]:
 			var bk3 := blk(Vector3(-0.1, -0.035, -0.07), Vector3(0.1, 0.035, 0.07), "stone", both); bk3.position = rb3[0]; bk3.rotation.y = rb3[1]
-		for cx in [PED.x - 1.05, PED.x + 1.05]:   # two low posts on the far rim: the head of the old crossing
+		for cx in [CX - 1.05, CX + 1.05]:   # two low posts on the far rim: the head of the old crossing
 			var cp := Vector3(cx, 0, PZ0 - 0.22)
 			cyl(cp, 0.17, 0.15, 0.08, pal("shade"), 16, both); cyl(cp + Vector3(0, 0.08, 0), 0.1, 0.09, 0.82, pal("stone"), 16, both); cyl(cp + Vector3(0, 0.9, 0), 0.15, 0.15, 0.06, pal("shade"), 16, both)
 			var bl := ball(cp + Vector3(0, 1.06, 0), 0.1, pal("gold"), both)
@@ -2194,7 +2195,7 @@ func _start_zone() -> void:
 	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(PX1 - PX0, PZ1 - PZ0); wq.orientation = PlaneMesh.FACE_Y
 	var gm2 := ShaderMaterial.new(); gm2.shader = shaders["glass"]; timed.append(gm2)
-	gm2.set_shader_parameter("lost_rect", Vector4(PED.x - 0.3, PZ0 + 0.16, PED.x + 0.3, PED.z - 0.44)); gm2.set_shader_parameter("lost_a", 1.0)
+	gm2.set_shader_parameter("lost_rect", Vector4(CX - 0.34, PZ0 + 0.16, CX + 0.3, 0.44)); gm2.set_shader_parameter("lost_a", 1.0)
 	prim(wq, Vector3((PX0 + PX1) * 0.5, 0.012, (PZ0 + PZ1) * 0.5), gm2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# the gate of the court is a bronze grille until the winch is turned
 	gate_a = Node3D.new(); gate_a.position = Vector3(0, 0, -3.9); add_child(gate_a)
@@ -2842,22 +2843,25 @@ func _eid_go(e: Dictionary, to: Vector3, speed := 0.8) -> void:
 func _solve1() -> void:
 	started = true; title_box.hide(); hint.hide()
 	gate_a.position.y = 0.0
-	var rim := Vector3(PED.x, 0, PZ0 - 0.14)
+	var rim := Vector3(CX, 0, PZ0 - 0.14)
+	var at_winch := Vector3(CX, 0.0, 0.1)
 	pos = Vector3(AX0 + 1.5, 0, 3.2); yaw = PI; cam_t = pos; cam.size = 6.2
 	await wait(1.0)
-	await go([Vector3(AX0 + 1.6, 0, -2.3), Vector3(PED.x, 0, -2.5)])
+	await go([Vector3(AX0 + 1.6, 0, -2.3), Vector3(CX, 0, -2.5)])
 	await wait(0.5)
 	# she walks on toward the winch. At the rim her body can go no further; her reflection does not stop
-	cam_focus = Vector3(PED.x + 0.5, 0.1, PZ0 + 0.7); cam_focus_on = true
+	cam_focus = Vector3(CX + 0.5, 0.1, PZ0 + 0.8); cam_focus_on = true
 	create_tween().tween_property(cam, "size", 5.2, 2.0)
 	go([rim])
 	while pos.z < rim.z - 0.3: await get_tree().process_frame
 	var e: Dictionary = H["mir"]; H.erase("mir")
-	await _eid_go(e, Vector3(PED.x, 0.0, PED.z - 0.62), 0.72)
-	await wait(0.5)
+	await _eid_go(e, at_winch, 0.72)
+	var turn := create_tween(); turn.tween_property(e.holder, "rotation:y", atan2(PED.x - CX, PED.z - at_winch.z) - TAU, 0.5)
+	await turn.finished
+	await wait(0.3)
 	var wt := create_tween().set_parallel(); wt.tween_property(winch_a, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE); wt.tween_property(winch_m, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
 	await wait(1.4)
-	cam_focus = Vector3(-0.9, 0.5, -1.4)
+	cam_focus = Vector3(-0.7, 0.5, -1.3)
 	create_tween().tween_property(cam, "size", 7.6, 1.6)
 	await wait(2.0)
 	var gt := create_tween(); gt.tween_property(gate_a, "position:y", -2.4, 2.4).set_trans(Tween.TRANS_SINE)
