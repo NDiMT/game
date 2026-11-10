@@ -1,0 +1,31 @@
+{
+  "task_id": "18cbb450-8092-4170-b9cd-5c7237f08fe2",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "A veiled woman. A large square of light white gauze is thrown over her head like a mourning veil, hanging evenly all around to the elbows with a soft wavy hem, the cloth hanging straight in front of the hidden face without touching it, many fine vertical folds, thin gold trim. She wears a floor-length petrol teal gown with elbow-length sleeves, a crimson silk sash at the waist and a gold Greek key meander border along the hem, the skirt widening gently so the feet are hidden. Forearms and hands of white marble with soft grey veins, like a statue. Stylised game character with clean elegant shapes, soft hand-painted matte colours, not realistic, the face is never visible. She stands straight and symmetrical in an A-pose, both arms straight and held away from the body. Full body, single character.",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 60000,
+    "model_version": "v3.1-20260211",
+    "negative_prompt": "face, eyes, nose, mouth, hair, hood, hijab, headscarf, helmet, shoes, bare feet, weapon, base, pedestal, text, multiple figures, extra arms",
+    "texture_quality": "detailed",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-10T13:02:01.761582Z",
+  "completed_at": "2026-11-10T13:03:56.151080Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}
