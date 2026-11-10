@@ -757,7 +757,7 @@ func sculpt_head(p: Vector3, h: float, yaw := 0.0, tilt := Vector3(-0.12, 0, 0),
 		if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) == OK:
 			var src := doc.generate_scene(st) as Node3D
 			var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array()
-			var turn := Basis(Vector3.UP, float(OS.get_environment("HEAD_YAW")) if OS.get_environment("HEAD_YAW") != "" else 0.0)
+			var turn := Basis(Vector3.UP, float(OS.get_environment("HEAD_YAW")) if OS.get_environment("HEAD_YAW") != "" else PI)
 			for m in src.find_children("*", "MeshInstance3D", true, false):
 				var mi := m as MeshInstance3D
 				var xf := Transform3D.IDENTITY
