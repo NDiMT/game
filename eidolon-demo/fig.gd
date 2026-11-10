@@ -3,10 +3,80 @@ extends Node3D
 ## layered bell dress rebuilt per frame from a ring spine, analytic two-bone arms, a long veil simulated as a chain.
 const A_LEN := 0.27
 const B_LEN := 0.26
-const WAIST := 1.12
 const HEM := 0.05
-const DRESS := [Vector2(0.086, 1.12), Vector2(0.112, 1.0), Vector2(0.118, 0.82), Vector2(0.104, 0.58),
-	Vector2(0.118, 0.34), Vector2(0.176, 0.15), Vector2(0.262, 0.05)]
+var WAIST := 1.04
+var DRESS := []
+var PLEAT := 0.07
+var PLEAT_T := 0.55
+var NPL := 14
+var TORSO := []
+var BELT := true
+var NECK := [0.12, 0.03, 0.40]
+var HEAD_Y := 0.535
+var SH := 0.118
+var SH_Y := 0.305
+var HOOD := []
+var HOOD_AMP := []
+var HOOD_DIPS := []
+var HOOD_OFF := []
+var HOOD_Z := 1.0
+var HOOD_TILT := 0.0
+var HOOD_SWAY := 99.0
+var CAPE := []
+var CAPE_AMP := []
+var CAPE_DIPS := []
+var CAPE_Y := 0.45
+var CORD := false
+var FACE := false
+var CROWN := false
+var style := 0
+
+const A_LINE := [Vector2(0.102, 1.04), Vector2(0.128, 0.93), Vector2(0.156, 0.77), Vector2(0.176, 0.58), Vector2(0.196, 0.38), Vector2(0.222, 0.19), Vector2(0.246, 0.05)]
+const TORSO_A := [[0.102, 0.0], [0.122, 0.045], [0.119, 0.11], [0.127, 0.20], [0.118, 0.265], [0.082, 0.318], [0.036, 0.348]]
+const TORSO_S := [[0.09, 0.0], [0.10, 0.05], [0.098, 0.12], [0.104, 0.20], [0.094, 0.265], [0.06, 0.31], [0.026, 0.335]]
+const CAP := [Vector2(0.004, 0.112), Vector2(0.07, 0.097), Vector2(0.10, 0.042), Vector2(0.103, -0.02), Vector2(0.088, -0.08), Vector2(0.05, -0.118), Vector2(0.036, -0.15)]
+
+## 1 kore (pleated dress, veil to the shoulders)  2 bell (one long bell, a smooth oval for a face)
+## 3 mantle (long mantle behind, open in front)   4 caryatid (tall fluted column, a capital on her head)
+## 5 cowl (pointed veil, knee cloak)              6 idol (shield head, long neck, bell cape)
+func set_style(id: int) -> void:
+	style = id
+	DRESS = A_LINE.duplicate(); TORSO = TORSO_A.duplicate()
+	HOOD = [Vector2(0.004, 0.122), Vector2(0.060, 0.108), Vector2(0.093, 0.066), Vector2(0.102, 0.008), Vector2(0.099, -0.055),
+		Vector2(0.094, -0.115), Vector2(0.112, -0.175), Vector2(0.152, -0.235), Vector2(0.180, -0.305)]
+	HOOD_AMP = [0.0, 0.0, 0.0, 0.004, 0.012, 0.03, 0.05, 0.065, 0.075]; HOOD_DIPS = [0, 0, 0, 0, 0, 0, 0.004, 0.018, 0.04]; HOOD_SWAY = 5.0
+	match id:
+		2:
+			WAIST = 1.0; DRESS = [Vector2(0.09, 1.0), Vector2(0.11, 0.9), Vector2(0.13, 0.74), Vector2(0.15, 0.56), Vector2(0.17, 0.37), Vector2(0.19, 0.18), Vector2(0.2, 0.05)]
+			TORSO = TORSO_S.duplicate(); BELT = false; NECK = [0.1, 0.028, 0.385]; HEAD_Y = 0.5; SH = 0.09; SH_Y = 0.29
+			HOOD = CAP.slice(0, 6); HOOD_AMP = []; HOOD_DIPS = []; HOOD_SWAY = 99.0; FACE = true; CORD = true; CAPE_Y = 0.40
+			CAPE = [Vector2(0.05, 0.0), Vector2(0.12, -0.09), Vector2(0.185, -0.38), Vector2(0.25, -0.78), Vector2(0.305, -1.14), Vector2(0.34, -1.36)]
+			CAPE_AMP = [0.0, 0.01, 0.03, 0.045, 0.055, 0.06]; CAPE_DIPS = [0, 0, 0, 0, 0, 0]
+		3:
+			WAIST = 1.06; DRESS = [Vector2(0.09, 1.06), Vector2(0.115, 0.95), Vector2(0.135, 0.78), Vector2(0.15, 0.58), Vector2(0.168, 0.38), Vector2(0.195, 0.19), Vector2(0.225, 0.05)]
+			PLEAT = 0.06; TORSO = TORSO_S.duplicate(); NECK = [0.14, 0.026, 0.405]; HEAD_Y = 0.55; SH = 0.1; SH_Y = 0.295
+			HOOD = CAP.duplicate(); HOOD_AMP = []; HOOD_DIPS = []; HOOD_SWAY = 99.0; CORD = true; CAPE_Y = 0.43
+			CAPE = [Vector2(0.04, 0.0), Vector2(0.11, -0.08), Vector2(0.17, -0.3), Vector2(0.21, -0.65), Vector2(0.25, -1.0), Vector2(0.28, -1.3)]
+			CAPE_AMP = [0.0, 0.02, 0.04, 0.06, 0.07, 0.08]; CAPE_DIPS = [0, 0, -0.18, -0.5, -0.82, -1.1]
+		4:
+			WAIST = 1.22; DRESS = [Vector2(0.082, 1.22), Vector2(0.1, 1.1), Vector2(0.104, 0.9), Vector2(0.106, 0.6), Vector2(0.11, 0.3), Vector2(0.122, 0.12), Vector2(0.14, 0.05)]
+			PLEAT = 0.085; PLEAT_T = 0.1; NPL = 12; TORSO = TORSO_S.duplicate(); NECK = [0.2, 0.022, 0.435]; HEAD_Y = 0.63; SH = 0.09; SH_Y = 0.29
+			HOOD = CAP.duplicate(); HOOD_AMP = []; HOOD_DIPS = []; HOOD_SWAY = 99.0; CROWN = true
+		5:
+			SH = 0.11; SH_Y = 0.3; CAPE_Y = 0.37
+			HOOD = [Vector2(0.004, 0.2), Vector2(0.045, 0.155), Vector2(0.09, 0.09), Vector2(0.108, 0.02), Vector2(0.104, -0.05), Vector2(0.096, -0.11), Vector2(0.114, -0.17)]
+			HOOD_OFF = [-0.1, -0.065, -0.02, 0, 0, 0, 0]; HOOD_AMP = []; HOOD_DIPS = []; HOOD_SWAY = 99.0
+			CAPE = [Vector2(0.11, 0.0), Vector2(0.16, -0.12), Vector2(0.2, -0.4), Vector2(0.23, -0.75), Vector2(0.25, -0.95)]
+			CAPE_AMP = [0.0, 0.02, 0.04, 0.06, 0.07]; CAPE_DIPS = [0, -0.02, -0.2, -0.5, -0.68]
+		6:
+			WAIST = 1.12; DRESS = [Vector2(0.086, 1.12), Vector2(0.112, 1.0), Vector2(0.118, 0.82), Vector2(0.104, 0.58), Vector2(0.118, 0.34), Vector2(0.176, 0.15), Vector2(0.262, 0.05)]
+			TORSO = [[0.088, 0.0], [0.102, 0.05], [0.100, 0.12], [0.106, 0.20], [0.096, 0.265], [0.062, 0.31], [0.026, 0.335]]
+			BELT = false; NECK = [0.26, 0.022, 0.45]; HEAD_Y = 0.69; SH = 0.092; SH_Y = 0.292; CORD = true; CAPE_Y = 0.55
+			HOOD = [Vector2(0.004, 0.128), Vector2(0.086, 0.122), Vector2(0.126, 0.086), Vector2(0.130, 0.02), Vector2(0.112, -0.05), Vector2(0.074, -0.105), Vector2(0.034, -0.142)]
+			HOOD_AMP = []; HOOD_DIPS = []; HOOD_SWAY = 99.0; HOOD_Z = 0.66; HOOD_TILT = -0.2
+			CAPE = [Vector2(0.034, 0.0), Vector2(0.05, -0.05), Vector2(0.112, -0.12), Vector2(0.158, -0.24), Vector2(0.182, -0.4), Vector2(0.198, -0.56)]
+			CAPE_AMP = [0.0, 0.0, 0.02, 0.05, 0.075, 0.09]; CAPE_DIPS = [0, 0, 0, -0.02, -0.07, -0.13]
+
 const VN := 8
 const VL := 0.17
 var mk: Callable
@@ -78,6 +148,7 @@ func _ball(parent: Node3D, r: float, h: float, c: String, p: Vector3) -> MeshIns
 
 func build(kind: int, maker: Callable, cloth_mat: Material, face_mat: Material) -> void:
 	ghost = kind == 1; mk = maker; cloth = cloth_mat
+	if style == 0: set_style(1)
 	if kind == 2: remap = {"dress": "crim", "crim": "gold"}
 	if kind == 3: remap = {"dress": "marble", "veil": "marble", "skin": "marble", "crim": "shade"}
 	if ghost:
@@ -90,21 +161,31 @@ func build(kind: int, maker: Callable, cloth_mat: Material, face_mat: Material) 
 		var ft := _ball(self, 0.04, 0.066, "skin", Vector3.ZERO); ft.scale = Vector3(1, 1, 1.9)
 		foot[side] = ft
 	upper = Node3D.new(); add_child(upper)
-	_lathe_node(upper, [[0.088, 0.0], [0.102, 0.05], [0.100, 0.12], [0.106, 0.20], [0.096, 0.265], [0.062, 0.31], [0.026, 0.335]], "dress")
-	var nk := CylinderMesh.new(); nk.top_radius = 0.02; nk.bottom_radius = 0.026; nk.height = 0.26; nk.radial_segments = 12
-	_prim(upper, nk, "skin").position = Vector3(0, 0.45, 0)
-	_lathe_node(upper, [[0.028, 0.538], [0.036, 0.548], [0.028, 0.558]], "crim")
-	cape_mi = _prim(upper, ArrayMesh.new(), "veil"); cape_mi.position = Vector3(0, 0.55, 0)
-	head = Node3D.new(); head.position = Vector3(0, 0.69, 0); upper.add_child(head)
-	# under the veil her head has the shape of the old island idols: a shield, tilted back, with no face carved
-	veil_mi = _prim(head, ArrayMesh.new(), "veil"); veil_mi.scale = Vector3(1, 1, 0.66); veil_mi.rotation.x = -0.2
+	_lathe_node(upper, TORSO, "dress")
+	var w0: float = TORSO[0][0]
+	if BELT: _lathe_node(upper, [[w0 - 0.002, -0.022], [w0 + 0.008, -0.016], [w0 + 0.011, 0.0], [w0 + 0.008, 0.016], [w0 - 0.002, 0.022]], "crim")
+	var nk := CylinderMesh.new(); nk.top_radius = NECK[1] * 0.9; nk.bottom_radius = NECK[1] * 1.15; nk.height = NECK[0]; nk.radial_segments = 12
+	_prim(upper, nk, "skin").position = Vector3(0, NECK[2], 0)
+	if CORD: _lathe_node(upper, [[0.03, CAPE_Y - 0.014], [0.04, CAPE_Y - 0.003], [0.03, CAPE_Y + 0.008]], "crim")
+	cape_mi = _prim(upper, ArrayMesh.new(), "veil"); cape_mi.position = Vector3(0, CAPE_Y, 0)
+	head = Node3D.new(); head.position = Vector3(0, HEAD_Y, 0); upper.add_child(head)
+	veil_mi = _prim(head, ArrayMesh.new(), "veil"); veil_mi.scale = Vector3(1, 1, HOOD_Z); veil_mi.rotation.x = HOOD_TILT
+	if FACE:
+		var fp := _ball(head, 0.062, 0.168, "skin", Vector3(0, -0.008, 0.078)); fp.scale = Vector3(1, 1, 0.6)
+		if kind == 0 and face_mat != null: fp.material_override = face_mat
+	if CROWN:
+		var ec := CylinderMesh.new(); ec.bottom_radius = 0.075; ec.top_radius = 0.115; ec.height = 0.05; ec.radial_segments = 20
+		_prim(head, ec, "skin").position = Vector3(0, 0.13, 0)
+		var ab := BoxMesh.new(); ab.size = Vector3(0.26, 0.045, 0.26)
+		_prim(head, ab, "skin").position = Vector3(0, 0.178, 0)
+	var thick := 1.25 if SH > 0.105 else 1.0
 	for side in ["L", "R"]:
 		var sx := 1.0 if side == "L" else -1.0
-		var ua := CylinderMesh.new(); ua.height = A_LEN; ua.top_radius = 0.02; ua.bottom_radius = 0.026; ua.radial_segments = 14
-		var fa := CylinderMesh.new(); fa.height = B_LEN; fa.top_radius = 0.016; fa.bottom_radius = 0.02; fa.radial_segments = 14
-		_ball(upper, 0.03, 0.06, "skin", Vector3(sx * 0.092, 0.292, 0))
-		arm[side] = [_prim(upper, ua, "skin"), _prim(upper, fa, "skin"), _ball(upper, 0.026, 0.07, "skin", Vector3.ZERO),
-			_ball(upper, 0.02, 0.04, "skin", Vector3.ZERO)]
+		var ua := CylinderMesh.new(); ua.height = A_LEN; ua.top_radius = 0.02 * thick; ua.bottom_radius = 0.026 * thick; ua.radial_segments = 14
+		var fa := CylinderMesh.new(); fa.height = B_LEN; fa.top_radius = 0.016 * thick; fa.bottom_radius = 0.02 * thick; fa.radial_segments = 14
+		_ball(upper, 0.03 * thick, 0.06 * thick, "skin", Vector3(sx * SH, SH_Y, 0))
+		arm[side] = [_prim(upper, ua, "skin"), _prim(upper, fa, "skin"), _ball(upper, 0.026 * thick, 0.07 * thick, "skin", Vector3.ZERO),
+			_ball(upper, 0.02 * thick, 0.04 * thick, "skin", Vector3.ZERO)]
 
 func _seg(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void:
 	var y := (b - a).normalized()
@@ -138,8 +219,8 @@ func apply(s: Dictionary) -> void:
 		cs.append(Vector3(s.sway.x * t2, HEM + (p.y - HEM) * k,
 			s.sway.y * t2 + s.kick * 0.05 * sin(PI * minf(t * 1.15, 1.0)) - s.pool * 0.12 * t))
 		rs.append(p.x * (1.0 + s.pool * 0.9 * pow(t, 1.3)))
-		am.append(0.07 * smoothstep(0.0, 0.55, t))
-	_put(dress_mi, lathe(cs, rs, 56, am, 14))
+		am.append(PLEAT * smoothstep(0.0, PLEAT_T, t))
+	_put(dress_mi, lathe(cs, rs, 56, am, NPL))
 	for side in ["L", "R"]:
 		var sg := 1.0 if side == "L" else -1.0
 		var ph: float = s.phase + (0.0 if side == "L" else PI)
@@ -151,8 +232,8 @@ func apply(s: Dictionary) -> void:
 	var inv := (transform * upper.transform).affine_inverse()
 	for side in ["L", "R"]:
 		var sx := 1.0 if side == "L" else -1.0
-		var sh := Vector3(sx * 0.092, 0.292, 0)
-		var tg := Vector3(sx * 0.15, -0.17, 0.05 + s["swing" + side])
+		var sh := Vector3(sx * SH, SH_Y, 0)
+		var tg := Vector3(sx * (SH + 0.062), -0.16, 0.05 + s["swing" + side])
 		if side == "R": tg = tg.lerp(Vector3(-0.17, 0.07, 0.25), s.hold).lerp(Vector3(-0.2, 0.74, 0.16), s.raise)
 		tg += Vector3(sx * 0.14, 0.04, 0.02) * s.open
 		var w: float = s["w" + side]
@@ -171,21 +252,22 @@ func apply(s: Dictionary) -> void:
 		hand_ul[side] = hd
 	_veil(s)
 
-const HOOD := [Vector2(0.004, 0.128), Vector2(0.086, 0.122), Vector2(0.126, 0.086), Vector2(0.130, 0.02), Vector2(0.112, -0.05),
-	Vector2(0.074, -0.105), Vector2(0.034, -0.142)]
-const CAPE := [Vector2(0.034, 0.0), Vector2(0.05, -0.05), Vector2(0.112, -0.12), Vector2(0.158, -0.24), Vector2(0.182, -0.4), Vector2(0.198, -0.56)]
-const CAPE_AMP := [0.0, 0.0, 0.02, 0.05, 0.075, 0.09]
 func _veil(s: Dictionary) -> void:
 	var cs := PackedVector3Array(); var rs := PackedFloat32Array()
-	for q in HOOD:
-		cs.append(Vector3(0, q.y, 0)); rs.append(q.x)
-	_put(veil_mi, lathe(cs, rs, 40))
+	for i in HOOD.size():
+		var t := clampf((i - HOOD_SWAY) / 3.0, 0.0, 1.0)
+		var off: float = HOOD_OFF[i] if HOOD_OFF.size() > i else 0.0
+		var fwd := 0.012 if (style == 1 and i >= 3 and i <= 5) else 0.0
+		cs.append(Vector3(s.sway.x * 0.7 * t * t, HOOD[i].y, off + fwd - 0.02 * t + s.sway.y * 0.7 * t * t - s.lean * 0.05 * t))
+		rs.append(HOOD[i].x)
+	_put(veil_mi, lathe(cs, rs, 54, PackedFloat32Array(HOOD_AMP), 9, PackedFloat32Array(HOOD_DIPS)))
+	if CAPE.is_empty(): return
 	var cc := PackedVector3Array(); var cr := PackedFloat32Array()
 	for i in CAPE.size():
 		var t := float(i) / (CAPE.size() - 1)
 		cc.append(Vector3(s.sway.x * 0.8 * t * t, CAPE[i].y, -0.015 * t + s.sway.y * 0.8 * t * t - s.lean * 0.1 * t))
 		cr.append(CAPE[i].x)
-	_put(cape_mi, lathe(cc, cr, 54, PackedFloat32Array(CAPE_AMP), 9, PackedFloat32Array([0, 0, 0, -0.02, -0.07, -0.13])))
+	_put(cape_mi, lathe(cc, cr, 54, PackedFloat32Array(CAPE_AMP), 9, PackedFloat32Array(CAPE_DIPS)))
 
 func hand_pos(side: String) -> Vector3:
 	return upper.global_transform * hand_ul[side]

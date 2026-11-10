@@ -18,6 +18,10 @@ var water_deep := Color("2a8790")
 var water_shallow := Color("79d8c6")
 var bg_c := Color("2c6379")
 var pals := {}
+var shadow_c := Vector3(0.66, 0.66, 0.86)
+var hero_style := 1
+var face_m: ShaderMaterial
+var veil_m: ShaderMaterial
 const PALS := {
 	"_": ["ffffff", "ffffff", "ffffff"],
 	"stone": ["f8efe1", "e8d5c5", "ada5c0"], "shade": ["ebdecc", "d7c1b1", "9c94b0"],
@@ -37,7 +41,7 @@ render_mode ambient_light_disabled, specular_disabled;
 uniform vec3 c_top : source_color; uniform vec3 c_z : source_color; uniform vec3 c_x : source_color;
 uniform vec3 fog_col : source_color;
 uniform vec4 l0; uniform vec4 l1; uniform vec4 l2; uniform vec4 l3; uniform vec4 l4; uniform vec4 l5;
-uniform float sway = 0.0; uniform float time_s = 0.0; uniform float marble = 0.0; uniform float rim = 0.0; uniform float flat_n = 0.0; uniform vec3 centre; uniform float mist_r = 7.0; uniform vec3 mist_col : source_color;
+uniform float sway = 0.0; uniform float time_s = 0.0; uniform float marble = 0.0; uniform float rim = 0.0; uniform float flat_n = 0.0; uniform vec3 shadow_col = vec3(0.66, 0.66, 0.86); uniform vec3 centre; uniform float mist_r = 7.0; uniform vec3 mist_col : source_color;
 varying vec3 wp; varying vec3 wn;
 float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -75,7 +79,7 @@ void fragment(){
 }
 void light(){
 	float facing = smoothstep(0.0, 0.12, dot(NORMAL, LIGHT));
-	DIFFUSE_LIGHT += mix(vec3(0.66, 0.66, 0.86), vec3(1.0), mix(1.0, ATTENUATION, facing));
+	DIFFUSE_LIGHT += mix(shadow_col, vec3(1.0), mix(1.0, ATTENUATION, facing));
 }"""
 const SH_WATER := """shader_type spatial;
 render_mode unshaded, cull_disabled;
@@ -257,7 +261,7 @@ func pal(n: String, variant := "") -> ShaderMaterial:
 	if pmats.has(key): return pmats[key]
 	var m := ShaderMaterial.new(); m.shader = shaders["two" if variant in ["2", "flat2"] else "base"]
 	m.set_shader_parameter("c_top", Color(pals[n][0])); m.set_shader_parameter("c_z", Color(pals[n][1]))
-	m.set_shader_parameter("c_x", Color(pals[n][2])); m.set_shader_parameter("fog_col", sea_c); m.set_shader_parameter("mist_col", mist_c)
+	m.set_shader_parameter("c_x", Color(pals[n][2])); m.set_shader_parameter("fog_col", sea_c); m.set_shader_parameter("mist_col", mist_c); m.set_shader_parameter("shadow_col", shadow_c)
 	if variant == "sway": m.set_shader_parameter("sway", 1.0); m.set_shader_parameter("flat_n", 1.0); timed.append(m)
 	if variant == "flat" or variant == "flat2": m.set_shader_parameter("flat_n", 1.0)
 	if n in ["stone", "shade", "sand", "rose"]: m.set_shader_parameter("marble", 1.0)
@@ -710,7 +714,7 @@ func pose_state(p: Vector3, yaw: float) -> Dictionary:
 
 ## the sculptor carved her again and again: a veiled figure in marble, in one of a few poses
 func her_statue(p: Vector3, yaw: float, pose := "calm", sc := 1.0) -> Node3D:
-	var f = Fig.new(); add_child(f); f.build(3, pal, null, null)
+	var f = Fig.new(); add_child(f); f.set_style(hero_style); f.build(3, pal, null, null)
 	f.scale = Vector3.ONE * sc
 	var st := pose_state(p, yaw)
 	var bas := Basis(Vector3.UP, yaw) * sc
@@ -751,8 +755,23 @@ func _ready() -> void:
 		pals["gold"] = ["ece7de", "d5cfc9", "a4a0b0"]; pals["terra"] = ["f3ede6", "dfd6d0", "aca6b8"]; pals["rose"] = ["f3ede6", "dfd6d0", "aca6b8"]
 		pals["wood"] = ["cbc4c2", "aca5a8", "827d8e"]; pals["dark"] = ["9796aa", "86859e", "767592"]; pals["teal"] = ["66728a", "66728a", "66728a"]
 		pals["stone"] = ["fbf8f3", "ebe4e0", "b7b2c6"]; pals["shade"] = ["efeae4", "dcd4d0", "a6a1b6"]; pals["sand"] = ["f7f2ec", "e6ddd8", "b0aabf"]
-		pals["dress"] = ["dfe0e5", "c5c6d0", "9a9bb0"]; pals["veil"] = ["f6f5f4", "e0dfe3", "b2b2c2"]; pals["skin"] = ["fbf6f0", "e9e0da", "bcb5c6"]
+		pals["dress"] = ["dfe0e5", "c5c6d0", "9a9bb0"]; pals["veil"] = ["f6f5f4", "e0dfe3", "b2b2c2"]; pals["skin"] = ["fbf6f0", "e9e0da", "bcb5c6"]; shadow_c = Vector3(0.7, 0.7, 0.84)
 		sea_c = Color("a7b8c1"); mist_c = Color("e4e0e3"); water_deep = Color("a3b6be"); water_shallow = Color("dbe5e6"); bg_c = Color("9dafb9")
+	var tones := {
+		"dusk": [["fbe9d9", "f0cdb8", "b98fa0"], ["f3dcc9", "e2bba6", "a57f94"], "5f4a78", "e9bba9", "8a6a94", "f0b7a6", Vector3(0.74, 0.58, 0.74), ["77708f", "5b567c", "433f66"], ["b9a0ab", "988392", "72617a"]],
+		"night": [["dfe6f4", "b9c5e0", "7f8ab8"], ["cfd8ec", "a9b6d6", "7480ae"], "1f2f5c", "3d4d7e", "24407a", "6a90cc", Vector3(0.52, 0.58, 0.84), ["3f5f7a", "2f4a66", "213552"], ["6f8fa8", "567690", "3d5a78"]],
+		"jade": [["fbf3e3", "ecdcc6", "b3a9a6"], ["f1e7d4", "dccab2", "a39a98"], "2f8f7f", "cfe6d6", "2a9a86", "9fe6cf", Vector3(0.64, 0.74, 0.76), ["3f7f6a", "2c6457", "1f4a48"], ["a5caa4", "7dab89", "56877b"]],
+		"dawn": [["fffaf4", "fbe3dc", "d9b9cf"], ["fbf0e8", "f1d3cc", "c8a8c0"], "e8a6a4", "fde3d6", "e39a9c", "ffd9cc", Vector3(0.84, 0.68, 0.82), ["9a9ab8", "7c7ca6", "5e5e8e"], ["cdbac9", "ae9cb5", "8c7b9e"]],
+	}
+	var pn := OS.get_environment("PAL")
+	if tones.has(pn):
+		var tn: Array = tones[pn]
+		pals["stone"] = tn[0]; pals["sand"] = tn[0]; pals["marble"] = tn[0]; pals["skin"] = tn[0]; pals["shade"] = tn[1]; pals["terra"] = tn[1]; pals["rose"] = tn[1]
+		sea_c = Color(tn[2]); mist_c = Color(tn[3]); water_deep = Color(tn[4]); water_shallow = Color(tn[5]); bg_c = Color(tn[2]).darkened(0.15); shadow_c = tn[6]
+		pals["cyp"] = tn[7]; pals["leaf"] = tn[8]; pals["leaf2"] = tn[8]; pals["leaf3"] = tn[8]
+		pals["dress"] = [Color(tn[1][0]).darkened(0.08).to_html(false), Color(tn[1][1]).darkened(0.1).to_html(false), Color(tn[1][2]).darkened(0.1).to_html(false)]
+		pals["veil"] = tn[0]
+	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
 	var n0 := get_child_count()
@@ -770,6 +789,7 @@ func _ready() -> void:
 	_fit()
 	if "gallery" in OS.get_cmdline_user_args(): _gallery()
 	if "shots" in OS.get_cmdline_user_args(): _shots()
+	if "lineup" in OS.get_cmdline_user_args(): _lineup()
 	if "zoom" in OS.get_cmdline_user_args(): cam.size = 3.3
 	if auto:
 		get_viewport().msaa_3d = Viewport.MSAA_2X
@@ -842,6 +862,32 @@ func _fog() -> void:
 		m.set_shader_parameter("noise_tex", nt); m.set_shader_parameter("dens", L[1]); m.set_shader_parameter("scale", L[2])
 		m.set_shader_parameter("vel", L[3]); m.set_shader_parameter("clear_r", L[4]); m.set_shader_parameter("col", Color("f1e8ef"))
 		prim(q, Vector3(0, L[0], 0), m); fogs.append(m); timed.append(m)
+
+func _lineup() -> void:
+	started = true; title_box.hide(); hint.hide()
+	pos = Vector3(60, 0, 60)
+	var c := Vector3(0.2, 0, 0.3)
+	var dir := Vector3(1, 0, -1).normalized()
+	var figs := []
+	for i in 5:
+		var f = Fig.new(); add_child(f); f.set_style(i + 1); f.build(0, pal, veil_m, face_m)
+		figs.append(f)
+		var l := Label3D.new(); l.text = str(i + 1); l.font_size = 96; l.pixel_size = 0.004; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		l.modulate = Color(0.72, 0.14, 0.18); l.outline_modulate = Color(1, 1, 1, 0.9); l.no_depth_test = true
+		l.position = c + dir * ((i - 2) * 1.3) + Vector3(0.75, 0.05, 0.75); add_child(l)
+	var dirn := OS.get_environment("SHOT_DIR")
+	await get_tree().create_timer(2.0).timeout
+	for view in [["heroines-front", PI * 0.25], ["heroines-back", PI * 1.12], ["heroines-side", -PI * 0.25]]:
+		shot = {"c": c + Vector3(0, 1.0, 0), "s": 7.6}
+		cam.size = 7.6
+		for i in 5:
+			figs[i].veil_ready = false
+			figs[i].apply(pose_state(c + dir * ((i - 2) * 1.3), view[1]))
+		await get_tree().create_timer(0.6).timeout
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dirn, view[0]])
+		print("SHOT ", view[0])
+	get_tree().quit()
 
 func ring_mat(tint: Vector3) -> ShaderMaterial:
 	var m := ShaderMaterial.new(); m.shader = shaders["ring"]; m.set_shader_parameter("tint", tint); m.render_priority = 2
@@ -1056,13 +1102,14 @@ func _world() -> void:
 func _actors() -> void:
 	var veil := cloth(Color("f1f1f4"), Color("dcdce4"))
 	var face := ShaderMaterial.new(); face.shader = shaders["face"]; timed.append(face)
-	fig = Fig.new(); add_child(fig); fig.build(0, pal, veil, face)
+	face_m = face; veil_m = veil
+	fig = Fig.new(); add_child(fig); fig.set_style(hero_style); fig.build(0, pal, veil, face)
 	var wm := Node3D.new(); wm.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3(0, 2.0 * WATER, 0)); add_child(wm)
-	wfig = Fig.new(); wm.add_child(wfig); wfig.build(2, pal, veil, face)
+	wfig = Fig.new(); wm.add_child(wfig); wfig.set_style(hero_style); wfig.build(2, pal, veil, face)
 	var mir := Node3D.new()
 	mir.transform = Transform3D(Basis(Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)), Vector3(2.0 * MX, 0, 0))
 	add_child(mir)
-	ghost = Fig.new(); mir.add_child(ghost); ghost.build(1, pal, veil, face)
+	ghost = Fig.new(); mir.add_child(ghost); ghost.set_style(hero_style); ghost.build(1, pal, veil, face)
 	var bq := QuadMesh.new(); bq.size = Vector2(0.95, 0.95); bq.orientation = PlaneMesh.FACE_Y
 	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
 	g.colors = PackedColorArray([Color(0.2, 0.17, 0.33, 0.36), Color(0.2, 0.17, 0.33, 0.2), Color(0.2, 0.17, 0.33, 0)])
