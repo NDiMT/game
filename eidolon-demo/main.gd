@@ -1071,6 +1071,26 @@ func real_hero(file: String, at: Vector3, yaw: float, anim := "", arms_down := f
 				skel.set_bone_global_pose(bi, Transform3D(Basis(q) * g.basis, g.origin))
 	return holder
 
+## the idle and walk clips must stand on the same spot, or she slides sideways whenever she stops
+func align_clips(src: Node3D) -> void:
+	var aps := src.find_children("*", "AnimationPlayer", true, false)
+	if aps.is_empty(): return
+	var ap: AnimationPlayer = aps[0]
+	var mean := {}
+	for an in ["walk", "idle"]:
+		if not ap.has_animation(an): return
+		var a := ap.get_animation(an)
+		for ti in a.get_track_count():
+			if a.track_get_type(ti) == Animation.TYPE_POSITION_3D and String(a.track_get_path(ti)).ends_with("Hips"):
+				var m := Vector3.ZERO
+				for ki in a.track_get_key_count(ti): m += a.track_get_key_value(ti, ki)
+				mean[an] = [ti, m / maxf(a.track_get_key_count(ti), 1.0)]
+	if mean.size() < 2: return
+	var d: Vector3 = mean["idle"][1] - mean["walk"][1]; d.y = 0.0
+	var ia := ap.get_animation("idle"); var it: int = mean["idle"][0]
+	for ki in ia.track_get_key_count(it): ia.track_set_key_value(it, ki, (ia.track_get_key_value(it, ki) as Vector3) - d)
+	print("RIG clips aligned, idle moved by ", -d)
+
 func add_rest_coords(src: Node3D) -> void:
 	for m in src.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
@@ -1172,7 +1192,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 		var st := GLTFState.new(); var doc := GLTFDocument.new()
 		doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % (rig_file if rig_file != "" else "tripo_v1")), st)
 		hero_src = doc.generate_scene(st) as Node3D
-		if rig_file != "": add_rest_coords(hero_src)
+		if rig_file != "": add_rest_coords(hero_src); align_clips(hero_src)
 	var src: Node3D = hero_src.duplicate()
 	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
 	src.scale = Vector3.ONE * 1.72; src.rotation.y = float(OS.get_environment("RIG_YAW")) if OS.get_environment("RIG_YAW") != "" else -PI * 0.5
@@ -2022,7 +2042,7 @@ func _process(dt: float) -> void:
 		var left := to.length()
 		for i in range(1, mini(route.size(), 5)): left += Vector2(route[i].p.x - route[i - 1].p.x, route[i].p.z - route[i - 1].p.z).length()
 		rem_dist = left
-		target = minf(speed_cap, sqrt(2.0 * (2.4 if shape_file != "" else 2.0 if rig_file != "" else 1.1) * left) + 0.03)
+		target = minf(speed_cap, sqrt(2.0 * (2.4 if shape_file != "" else 3.0 if rig_file != "" else 1.1) * left) + 0.03)
 		if to.length() > 0.02: want_yaw = atan2(to.x, to.z)
 		target *= clampf(1.25 - absf(angle_difference(yaw, want_yaw)) * 0.8, 0.25, 1.0)
 		spd = move_toward(spd, target, (3.4 if shape_file != "" else (1.5 if speed_cap <= WALK else 2.6)) * dt)
@@ -2099,15 +2119,15 @@ func _process(dt: float) -> void:
 		(SHP["ghost"].holder as Node3D).visible = near > 0.01
 	if ghost.visible: ghost.apply(st)
 	var moving := spd > 0.15
-	if rig_file != "": moving = rem_dist > 0.3
+	if rig_file != "": moving = spd > 0.2 if walk_on else (not route.is_empty() and rem_dist > 0.05)
 	if moving != walk_on:
 		walk_on = moving
 		for h in H.values():
-			if h.ap != null: h.ap.play("walk" if moving else "idle", (0.3 if moving else 0.55) if rig_file != "" else 0.25)
+			if h.ap != null: h.ap.play("walk" if moving else "idle", (0.25 if moving else 0.4) if rig_file != "" else 0.25)
 	for k in H:
 		var hd: Node3D = H[k].holder
 		hd.position = pos; hd.rotation.y = yaw
-		if H[k].ap != null: H[k].ap.speed_scale = clampf(spd / 1.1, 0.85 if rig_file != "" else 0.7, 2.3) if moving else 1.0
+		if H[k].ap != null: H[k].ap.speed_scale = clampf(spd / 1.1, 0.45 if rig_file != "" else 0.7, 2.3) if moving else 1.0
 	if hero_real: (H["ghost"].holder as Node3D).visible = near > 0.01
 	var prox := clampf(1.0 - (pos.x - MX - 0.5) / 1.4, 0.0, 1.0)
 	flash = move_toward(flash, 0.0, dt * 0.7)
@@ -2147,7 +2167,8 @@ func _process(dt: float) -> void:
 		n.visible = started and not done.has(k) and shot == null
 		n.position.y = objs[k].at.y + (0.55 if k != "mirror" else 1.35) + 0.05 * sin(t * 2.4)
 		n.rotation.y = t * 1.2
-	cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
+	if rig_file != "": cam_t = cam_t.lerp(pos + vel * 0.25, 1.0 - exp(-4.0 * dt))
+	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 34.0
 	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * 34.0
 	if started and not ended and pos.z < -27.2: _end()
@@ -2268,7 +2289,14 @@ func _glide() -> void:
 		await wait(0.5)
 		get_tree().quit(); return
 	await wait(1.4)
+	if OS.get_environment("HIPS") == "1" and H.has("main") and H["main"].sk != null:
+		var skd: Skeleton3D = H["main"].sk; var hb := _bone(skd, "Hips")
+		print("HIPS idle ", skd.get_bone_global_pose(hb).origin)
+		get_tree().create_timer(2.6).timeout.connect(func() -> void: print("HIPS walk ", skd.get_bone_global_pose(hb).origin, " spd ", spd))
+		get_tree().create_timer(3.1).timeout.connect(func() -> void: print("HIPS walk ", skd.get_bone_global_pose(hb).origin, " spd ", spd))
 	await go([Vector3(-1.9, 0, 1.7), Vector3(-2.1, 0, -1.5)])
+	if OS.get_environment("HIPS") == "1" and H.has("main") and H["main"].sk != null:
+		get_tree().create_timer(1.0).timeout.connect(func() -> void: print("HIPS idle after stop ", (H["main"].sk as Skeleton3D).get_bone_global_pose(_bone(H["main"].sk, "Hips")).origin))
 	await wait(1.3)
 	await go([Vector3(1.7, 0, -1.3)])
 	await wait(1.4)
