@@ -2559,6 +2559,25 @@ func _arrive() -> void:
 
 # ---------------------------------------------------------------- frame
 func _process(dt: float) -> void:
+	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "2":
+		var g := {"figures": 0, "figures_n": 0, "heads": 0, "world": 0, "world_n": 0, "copy_under_sea": 0, "second_pass": 0}
+		var cache := {}
+		for mm in find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			if mi.mesh == null or not mi.is_visible_in_tree(): continue
+			if not cache.has(mi.mesh): cache[mi.mesh] = mi.mesh.get_faces().size() / 3
+			var t: int = cache[mi.mesh]
+			var in_copy := refl != null and refl.is_ancestor_of(mi)
+			var two := false
+			var mo := mi.material_override
+			if mo == null and mi.mesh.get_surface_count() > 0: mo = mi.get_surface_override_material(0)
+			if mo is ShaderMaterial and (mo as ShaderMaterial).next_pass != null: two = true
+			if in_copy: g.copy_under_sea += t
+			elif t > 20000: g.figures += t; g.figures_n += 1
+			elif t > 1500: g.heads += t
+			else: g.world += t; g.world_n += 1
+			if two: g.second_pass += t
+		print("STATS2 ", g)
 	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "1":
 		print("STATS objects ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME), " triangles ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), " draw calls ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), " texture MB ", snappedf(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / 1048576.0, 0.1), " mesh instances ", find_children("*", "MeshInstance3D", true, false).size())
 	t += dt
