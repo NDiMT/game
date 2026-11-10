@@ -26,6 +26,7 @@ var ghost_flat: StandardMaterial3D
 var walk_on := false
 var hero_real := false
 var shape_file := ""
+var rig_file := ""
 var shape_cache := {}
 var shape_tex: Texture2D
 var SHP := {}
@@ -866,6 +867,8 @@ func _ready() -> void:
 		pals["veil"] = tn[0]
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	hero_real = OS.get_environment("REAL") == "1"
+	if OS.get_environment("RIG") != "": rig_file = "min" + OS.get_environment("RIG"); hero_real = true
+	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "min14r"; hero_real = true
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	elif not hero_real and OS.get_environment("HERO") == "": shape_file = "min9t"
 	var sb := Shader.new()
@@ -876,7 +879,7 @@ func _ready() -> void:
 uniform vec3 hipL; uniform vec3 kneeL; uniform vec3 footL; uniform vec3 hipR; uniform vec3 kneeR; uniform vec3 footR;
 uniform vec3 rkneeL; uniform vec3 rfootL; uniform vec3 rkneeR; uniform vec3 rfootR;
 uniform vec4 armp = vec4(0.17, 1.4, -0.01, -0.012); uniform float arm_on = 0.0; uniform float adduct = 0.0; uniform vec2 swing = vec2(0.0);
-uniform float design = 0.0; uniform float crim_line = 0.0; uniform vec3 o_rim : source_color = vec3(1.0, 0.95, 0.85); uniform vec3 d_shade = vec3(0.64, 0.62, 0.8); uniform float d_sheen = 0.14; uniform float trim = 1.0;
+uniform float design = 0.0; uniform float geo = 0.0; uniform float crim_line = 0.0; uniform vec3 o_rim : source_color = vec3(1.0, 0.95, 0.85); uniform vec3 d_shade = vec3(0.64, 0.62, 0.8); uniform float d_sheen = 0.14; uniform float trim = 1.0;
 uniform float orn = 0.0; uniform float plain = 0.0; uniform sampler2D veil_mask : source_color, filter_linear_mipmap; uniform float use_mask = 0.0; uniform float fore_y = -1.0; uniform float key_n = 24.0; uniform float sash_y = -1.0; uniform float brace_y = -1.0; uniform float veil_y = 1.46;
 uniform vec3 o_dress_hi : source_color = vec3(0.8, 0.81, 0.86); uniform vec3 o_dress_lo : source_color = vec3(0.55, 0.57, 0.68);
 uniform vec3 o_veil : source_color = vec3(0.97, 0.96, 0.93); uniform vec3 o_marble : source_color = vec3(0.99, 0.97, 0.94);
@@ -916,6 +919,10 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		"	col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));",
 		"	if (use_tex > 0.0) { vec3 t0 = texture(albedo_tex, UV).rgb; float fl = smoothstep(0.035, 0.09, t0.r - t0.g) * (1.0 - smoothstep(0.24, 0.34, t0.r - t0.g)) * smoothstep(0.02, 0.07, t0.g - t0.b) * smoothstep(0.45, 0.6, t0.r); t0 = mix(t0, vec3(0.95, 0.94, 0.93) * (0.86 + 0.14 * dot(t0, vec3(0.34))), fl); vec3 tx = mix(t0, veil_col, notex); tx = mix(tx, vec3(dot(tx, vec3(0.3, 0.55, 0.15))), 0.08); col = tx * tex_gain * (wt * wt + 0.95 * wz * wz + 0.82 * wx * wx + 0.74 * (1.0 - min(s, 1.0))); }\n	col *= mix(mix(grad_lo, vec3(1.0), smoothstep(0.0, 0.86, hv)), vec3(1.0), use_tex);\n" + ORN_FRAG + DESIGN_FRAG)
 	shaders["body"] = sb
+	var sk2 := Shader.new()
+	var i0 := sb.code.find("void pull("); var i1 := sb.code.find("float bx(vec2 p")
+	sk2.code = sb.code.substr(0, i0) + "void vertex(){\n	mp = CUSTOM0.xyz; hv = clamp(mp.y / 1.72, 0.0, 1.0); notex = 0.0; vw = 0.0; armw = 0.0;\n	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);\n}\n" + sb.code.substr(i1)
+	shaders["bodyskin"] = sk2
 	var st2 := Shader.new()
 	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0);").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
@@ -1063,11 +1070,71 @@ func real_hero(file: String, at: Vector3, yaw: float, anim := "", arms_down := f
 				skel.set_bone_global_pose(bi, Transform3D(Basis(q) * g.basis, g.origin))
 	return holder
 
+func add_rest_coords(src: Node3D) -> void:
+	for m in src.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		var am := ArrayMesh.new()
+		for si in mi.mesh.get_surface_count():
+			var a := mi.mesh.surface_get_arrays(si)
+			var raw: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+			var av := PackedVector3Array(); av.resize(raw.size())
+			for i in raw.size(): av[i] = Vector3(-raw[i].z, raw[i].y, raw[i].x)
+			var lo := Vector3.INF; var hi := -Vector3.INF
+			for v in av: lo = lo.min(v); hi = hi.max(v)
+			var hgt := hi.y - lo.y; var cx := 0.0; var cz := 0.0; var cn := 0.0
+			for v in av:
+				if v.y > lo.y + hgt * 0.62: cx += v.x; cz += v.z; cn += 1.0
+			cx /= maxf(cn, 1.0); cz /= maxf(cn, 1.0)
+			var sc := 1.72 / maxf(hgt, 0.001)
+			var cu := PackedFloat32Array(); cu.resize(av.size() * 4)
+			for i in av.size():
+				cu[i * 4] = (av[i].x - cx) * sc; cu[i * 4 + 1] = (av[i].y - lo.y) * sc; cu[i * 4 + 2] = (av[i].z - cz) * sc; cu[i * 4 + 3] = 0.0
+			a[Mesh.ARRAY_CUSTOM0] = cu
+			# the gown hangs from the hips: take most of the leg bones' pull out of the skirt
+			var bones: PackedInt32Array = a[Mesh.ARRAY_BONES]; var wts: PackedFloat32Array = a[Mesh.ARRAY_WEIGHTS]
+			var per: int = bones.size() / maxi(av.size(), 1)
+			var skin := mi.skin; var hips := -1; var legs := {}
+			var sks := src.find_children("*", "Skeleton3D", true, false)
+			if skin != null and per > 0:
+				for bi in skin.get_bind_count():
+					var bn := String(skin.get_bind_name(bi))
+					if bn == "" and not sks.is_empty(): bn = (sks[0] as Skeleton3D).get_bone_name(skin.get_bind_bone(bi))
+					if bn.ends_with("Hips"): hips = bi
+					for key in ["UpLeg", "Leg", "Foot", "Toe"]:
+						if bn.contains(key): legs[bi] = true
+				var keep_mid := float(OS.get_environment("SK_MID")) if OS.get_environment("SK_MID") != "" else 0.45
+				var keep_low := float(OS.get_environment("SK_LOW")) if OS.get_environment("SK_LOW") != "" else 0.15
+				if hips >= 0:
+					for i in av.size():
+						var y := cu[i * 4 + 1]
+						var keep := 1.0
+						if y < 0.98: keep = lerpf(keep_mid, 1.0, smoothstep(0.6, 0.98, y)) if y > 0.6 else lerpf(keep_low, keep_mid, smoothstep(0.05, 0.6, y))
+						if keep >= 0.999: continue
+						var moved := 0.0; var hslot := -1; var minslot := 0
+						for k in per:
+							var o := i * per + k
+							if legs.has(bones[o]): moved += wts[o] * (1.0 - keep); wts[o] *= keep
+							if bones[o] == hips: hslot = k
+							if wts[o] < wts[i * per + minslot]: minslot = k
+						if moved <= 0.0: continue
+						if hslot < 0:
+							hslot = minslot; moved += wts[i * per + hslot]; bones[i * per + hslot] = hips; wts[i * per + hslot] = 0.0
+						wts[i * per + hslot] += moved
+				a[Mesh.ARRAY_BONES] = bones; a[Mesh.ARRAY_WEIGHTS] = wts
+				print("RIG skirt reweighted, hips bind ", hips, " leg binds ", legs.size(), " per ", per)
+			var fl: int = Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+			if a[Mesh.ARRAY_BONES] != null and (a[Mesh.ARRAY_BONES] as PackedInt32Array).size() == av.size() * 8: fl |= Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
+			am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a, [], {}, fl)
+			am.surface_set_material(si, mi.mesh.surface_get_material(si))
+			print("RIG mesh verts ", av.size(), " size ", hi - lo)
+		mi.mesh = am
+
 func spawn_her(parent: Node, mode: String) -> Dictionary:
 	if hero_src == null:
 		var st := GLTFState.new(); var doc := GLTFDocument.new()
-		doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/tripo_v1.glb"), st)
+		doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % (rig_file if rig_file != "" else "tripo_v1")), st)
 		hero_src = doc.generate_scene(st) as Node3D
+		if rig_file != "": add_rest_coords(hero_src)
 	var src: Node3D = hero_src.duplicate()
 	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
 	src.scale = Vector3.ONE * 1.72; src.rotation.y = -PI * 0.5
@@ -1077,7 +1144,13 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 		for si in mi.mesh.get_surface_count():
 			var om := mi.mesh.surface_get_material(si)
 			if mode == "flat": mi.set_surface_override_material(si, ghost_flat)
-			elif mode == "marble": mi.set_surface_override_material(si, pal("marble"))
+			elif mode == "marble": mi.set_surface_override_material(si, pal("marble", "2" if rig_file != "" else ""))
+			elif rig_file != "" and mode == "crim": mi.set_surface_override_material(si, pal("crim", "2"))
+			elif rig_file != "":
+				var bm := body_mat("veil", "rig" + str(holder.get_instance_id())); bm.shader = shaders["bodyskin"]
+				var did := int(OS.get_environment("DESIGN")) if OS.get_environment("DESIGN") != "" else 32
+				apply_design(bm, did, rig_file); bm.set_shader_parameter("geo", 1.0)
+				mi.set_surface_override_material(si, bm)
 			else:
 				var sm := ShaderMaterial.new(); sm.shader = shaders["tex"]
 				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
@@ -1192,6 +1265,13 @@ const DESIGN_FRAG := """	if (design > 0.5) {
 			kw = smoothstep(0.7, 0.8, lum) * (1.0 - kc) * (1.0 - kf);
 			fold = clamp(mix(lum / 0.56, lum / 0.92, kw), 0.8, 1.08);
 			if (use_mask > 0.5) { vec3 t2 = texture(veil_mask, UV).rgb; kw = smoothstep(0.2, 0.34, t2.r - t2.g); kf *= 1.0 - kw; }
+		}
+		if (geo > 0.5) {
+			float ax = abs(mp.x);
+			float isarm = smoothstep(0.165, 0.18, ax) * (1.0 - smoothstep(1.3, 1.42, mp.y)) * step(0.6, mp.y);
+			float vth = mix(1.33, 1.43 - 0.21 * max(0.0, 1.0 - ax / 0.12), step(0.02, mp.z));
+			kw = step(vth, mp.y) * (1.0 - isarm);
+			kf = isarm * step(mp.y, 1.02);
 		}
 		kf = max(kf, step(0.5, armw) * step(mp.y, fore_y));
 		float isveil = max(notex, kw); float ismar = kf * (1.0 - isveil);
@@ -1317,6 +1397,7 @@ func add_face_veil(d: Dictionary, vs: PackedVector3Array, ns: PackedVector3Array
 
 ## where the joints are inside each figure (model space, 1.72 m tall, facing +Z)
 const RIGS := {"min9": {"cx": -0.012, "hx": 0.065, "hy": 0.9, "zc": -0.02, "A": 0.26, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, -0.01, -0.012), "arm_on": 1.0, "adduct": 0.1, "sash": 1.09, "brace": 0.835, "fore": 1.0},
+	"min14": {"cx": 0.0, "hx": 0.06, "hy": 0.9, "zc": 0.0, "A": 0.24, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.19, 1.38, 0.0, 0.0), "arm_on": 0.0, "adduct": 0.0, "sash": -1.0, "brace": -1.0},
 	"min13": {"cx": 0.0, "hx": 0.065, "hy": 0.9, "zc": 0.03, "A": 0.24, "l1": 0.43, "l2": 0.43, "arm": Vector4(0.17, 1.4, 0.0, 0.0), "arm_on": 0.0, "adduct": 0.0, "sash": -1.0, "brace": -1.0, "keys": 44.0, "mask": "min13tb"}}
 
 func rig_of(file: String) -> Dictionary:
