@@ -216,15 +216,26 @@ void fragment(){
 }"""
 ## the still water of the mirror pool: almost clear, with a few slow glints
 const SH_GLASS := """shader_type spatial;
-render_mode unshaded, blend_mix, cull_disabled, depth_draw_never;
-uniform float time_s = 0.0;
+render_mode unshaded, cull_disabled, depth_draw_never;
+uniform float time_s = 0.0; uniform float blur_px = 3.2; uniform float wave = 1.0;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap, repeat_disable;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
+	vec2 px = 1.0 / VIEWPORT_SIZE;
+	// slow ripples bend what the water shows, and a small blur softens it: a reflection, not a thing to step on
+	vec2 rip = vec2(sin(wp.z * 7.0 + time_s * 1.1) + 0.6 * sin(wp.x * 11.0 - time_s * 0.8), sin(wp.x * 6.0 + time_s * 0.9) + 0.6 * sin(wp.z * 13.0 + time_s * 1.3)) * px * 3.0 * wave;
+	vec2 uv = SCREEN_UV + rip;
+	vec3 c = textureLod(screen_tex, uv, 1.0).rgb * 0.2;
+	for (int i = 0; i < 8; i++) {
+		float a = float(i) * 0.7854;
+		c += textureLod(screen_tex, uv + vec2(cos(a), sin(a)) * px * blur_px * (1.0 + 0.5 * float(i % 2)), 1.0).rgb * 0.1;
+	}
 	float l = smoothstep(0.9, 1.0, sin(wp.x * 2.3 + sin(wp.z * 1.7 + time_s * 0.45) * 1.8 + time_s * 0.22) * 0.5 + 0.5);
 	float l2 = smoothstep(0.965, 1.0, sin((wp.x - wp.z) * 5.1 + time_s * 0.6) * sin(wp.z * 3.3 - time_s * 0.4) * 0.5 + 0.5);
-	ALBEDO = mix(vec3(0.55, 0.84, 0.86), vec3(1.0), clamp(l * 0.55 + l2 * 0.7, 0.0, 1.0));
-	ALPHA = 0.26 + l * 0.2 + l2 * 0.3;
+	c = mix(c, vec3(0.6, 0.85, 0.88), 0.24);
+	c = mix(c, vec3(1.0), clamp(l * 0.3 + l2 * 0.45, 0.0, 1.0));
+	ALBEDO = c;
 }"""
 ## what the pool shows where nothing stands over it: the sky
 const SH_PIT := """shader_type spatial;
@@ -2102,8 +2113,8 @@ func _court_a() -> void:
 	var nx := maxi(1, int((b.x - a.x) / 1.05)); var nz := maxi(1, int((b.z - a.z) / 1.05))
 	for i in nx: win_z(a.x + (b.x - a.x) * (i + 0.5) / nx, -1.2, b.z, 0.4, 0.74)
 	for i in nz: win_x(b.x, -1.2, a.z + (b.z - a.z) * (i + 0.5) / nz, 0.4, 0.74)
-	var pit := MeshInstance3D.new(); pit.name = "PoolSky"; var pm := BoxMesh.new(); pm.size = Vector3(b.x - a.x - th * 2.0 - 0.03, 2.24, b.z - a.z - th * 2.0 - 0.03); pit.mesh = pm
-	pit.position = Vector3((a.x + b.x) * 0.5, -0.185 - 1.12, (a.z + b.z) * 0.5)
+	var pit := MeshInstance3D.new(); pit.name = "PoolSky"; var pm := BoxMesh.new(); pm.size = Vector3(b.x - a.x - th * 2.0 - 0.03, 2.16, b.z - a.z - th * 2.0 - 0.03); pit.mesh = pm
+	pit.position = Vector3((a.x + b.x) * 0.5, -0.185 - 1.08, (a.z + b.z) * 0.5)   # its floor stays above the copy of the court that lies under the sea
 	var pmat := ShaderMaterial.new(); pmat.shader = shaders["pit"]; pit.material_override = pmat; pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(pit)
 	if OS.get_environment("NOPIT") == "1": pit.visible = false
 
@@ -2168,6 +2179,7 @@ func _start_zone() -> void:
 		var sz := PZ0 + 0.03 + 0.32 * i
 		blk(Vector3(PED.x - 0.3, 0.012, sz), Vector3(PED.x + 0.3, 0.08, sz + 0.26), "stone", mroot)
 	_strip_refl(mroot)
+	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(PX1 - PX0, PZ1 - PZ0); wq.orientation = PlaneMesh.FACE_Y
 	var gm2 := ShaderMaterial.new(); gm2.shader = shaders["glass"]; timed.append(gm2)
 	prim(wq, Vector3((PX0 + PX1) * 0.5, 0.012, (PZ0 + PZ1) * 0.5), gm2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
