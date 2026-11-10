@@ -19,6 +19,7 @@ var water_shallow := Color("79d8c6")
 var bg_c := Color("2c6379")
 var pals := {}
 var sepia_var := 0.0
+var refl_mat: ShaderMaterial
 var shadow_c := Vector3(0.66, 0.66, 0.86)
 var hero_style := 5
 var hero_src: Node3D
@@ -170,6 +171,30 @@ void fragment(){
 	vec3 n = normalize(wn); if (!FRONT_FACING) n = -n;
 	float sh = 0.8 + 0.2 * clamp(dot(n, normalize(vec3(-0.25, 0.7, 0.66))) * 0.5 + 0.5, 0.0, 1.0);
 	ALBEDO = mix(ca, cb, UV.y) * sh;
+}"""
+## the reflection, drawn as a soft dark shape lying on the water: every vertex is mirrored in the
+## water plane and slid along the view direction until it meets the surface
+const SH_REFL := """shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform float water_y = -1.3; uniform float time_s = 0.0; uniform vec3 tint = vec3(0.04, 0.12, 0.2); uniform float strength = 1.0;
+varying float hh; varying vec3 q;
+void vertex(){
+	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float h = max(w.y - water_y, 0.0); hh = w.y - water_y;
+	vec3 f = -normalize(INV_VIEW_MATRIX[2].xyz);
+	vec3 p = vec3(w.x, water_y - h, w.z) + f * (h / min(f.y, -0.05));
+	float k = clamp(h * 0.45, 0.0, 1.6);
+	p.x += (sin(p.z * 2.3 + time_s * 1.2) + 0.5 * sin(p.z * 6.1 - time_s * 1.7)) * 0.05 * k;
+	p.z += (sin(p.x * 2.1 + time_s * 1.0) + 0.5 * sin(p.x * 5.3 + time_s * 1.5)) * 0.05 * k;
+	p.y = water_y - 0.015; q = p;
+	VERTEX = (inverse(MODEL_MATRIX) * vec4(p, 1.0)).xyz;
+}
+void fragment(){
+	if (hh < 0.03) discard;
+	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength;
+	float d = fract(dot(floor(FRAGCOORD.xy), vec2(0.7548776662, 0.56984029)));
+	if (d > fade) discard;
+	ALBEDO = tint;
 }"""
 const SH_SEA := """shader_type spatial;
 render_mode unshaded, cull_disabled;
@@ -331,6 +356,7 @@ func pal(n: String, variant := "") -> ShaderMaterial:
 	if n in ["stone", "shade", "sand", "rose"]: m.set_shader_parameter("marble", 1.0)
 	if n == "marble" or n == "skin": m.set_shader_parameter("marble", 0.3)
 	if sepia_var > 0.0 and n in ["stone", "shade", "sand", "marble"]: m.set_shader_parameter("tone_var", sepia_var)
+	if refl_mat != null and variant != "sway": m.next_pass = refl_mat
 	pmats[key] = m
 	return m
 
@@ -905,10 +931,14 @@ func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.
 # ---------------------------------------------------------------- setup
 func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
-			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
+			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
 	if OS.get_environment("MOOD") == "moody":
 		sea_c = Color("3a6a7b"); mist_c = Color("b9b4c4"); bg_c = Color("29586a"); shadow_c = Vector3(0.6, 0.61, 0.82); water_deep = Color("2a7d88"); water_shallow = Color("6fc4b8")
+	if OS.get_environment("REFL") != "0":
+		refl_mat = ShaderMaterial.new(); refl_mat.shader = shaders["refl"]; refl_mat.set_shader_parameter("water_y", WATER)
+		if OS.get_environment("REFL") != "": refl_mat.set_shader_parameter("strength", float(OS.get_environment("REFL")))
+		timed.append(refl_mat)
 	pals = PALS.duplicate(true)
 	statue_cream = OS.get_environment("STATUES") != "white"
 	if OS.get_environment("PAL") == "mono":
@@ -1473,6 +1503,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				mi.set_surface_override_material(si, bm)
 			else:
 				var sm := ShaderMaterial.new(); sm.shader = shaders["tex"]
+				if refl_mat != null: sm.next_pass = refl_mat
 				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
