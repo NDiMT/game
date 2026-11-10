@@ -749,15 +749,29 @@ func idol_head(p: Vector3, h: float, yaw := 0.0, tilt := Vector3(-0.22, 0, 0), w
 
 ## a sculpted marble head with some detail, for the large decorative faces
 var head_cache := {}
+## extra turn for each head so that all of them face the same way
+var HEAD_TURN := {1: 0.3, 2: 0.0, 3: 0.0, 4: 0.0}
+func _heads_lineup() -> void:
+	started = true; title_box.hide(); hint.hide()
+	pos = Vector3(60, 0, 60)
+	var c := Vector3(0.2, 0, 0.3); var dir := Vector3(1, 0, -1).normalized()
+	for i in 4:
+		sculpt_head(c + dir * ((i - 1.5) * 1.5) + Vector3(0, 0.6, 0), 1.0, PI * 0.25, Vector3.ZERO, i + 1)
+	await get_tree().create_timer(2.0).timeout
+	shot = {"c": c + Vector3(0, 0.9, 0), "s": 7.0}; cam.size = 7.0
+	await get_tree().create_timer(0.8).timeout
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/heads.png" % OS.get_environment("SHOT_DIR"))
+	get_tree().quit()
 func sculpt_head(p: Vector3, h: float, yaw := 0.0, tilt := Vector3(-0.12, 0, 0), variant := 1, parent: Node = self) -> Node3D:
-	var file := "head%d" % variant
+	var file := ("head%dlp" if OS.get_environment("HEADS") != "smooth" else "head%d") % variant
 	if not head_cache.has(file):
 		head_cache[file] = null
 		var st := GLTFState.new(); var doc := GLTFDocument.new()
 		if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) == OK:
 			var src := doc.generate_scene(st) as Node3D
 			var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array()
-			var turn := Basis(Vector3.UP, float(OS.get_environment("HEAD_YAW")) if OS.get_environment("HEAD_YAW") != "" else PI)
+			var turn := Basis(Vector3.UP, (float(OS.get_environment("HEAD_YAW")) if OS.get_environment("HEAD_YAW") != "" else -PI * 0.5) + float(HEAD_TURN.get(variant, 0.0)))
 			for m in src.find_children("*", "MeshInstance3D", true, false):
 				var mi := m as MeshInstance3D
 				var xf := Transform3D.IDENTITY
@@ -790,7 +804,7 @@ func sculpt_head(p: Vector3, h: float, yaw := 0.0, tilt := Vector3(-0.12, 0, 0),
 			print("HEAD ", file, " verts ", vs.size())
 	if head_cache[file] == null: return null
 	var n := Node3D.new(); n.position = p; n.rotation = Vector3(tilt.x, yaw, tilt.z); parent.add_child(n)
-	var mi2 := prim(head_cache[file], Vector3(0, -0.45 * h, 0), pal("marble", "2"), n)
+	var mi2 := prim(head_cache[file], Vector3(0, -0.45 * h, 0), pal("marble", "flat2" if file.ends_with("lp") else "2"), n)
 	mi2.scale = Vector3.ONE * 1.45 * h
 	return n
 
@@ -884,6 +898,8 @@ func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
+	if OS.get_environment("MOOD") != "bright":
+		sea_c = Color("3a6a7b"); mist_c = Color("b9b4c4"); bg_c = Color("29586a"); shadow_c = Vector3(0.6, 0.61, 0.82); water_deep = Color("2a7d88"); water_shallow = Color("6fc4b8")
 	pals = PALS.duplicate(true)
 	if OS.get_environment("PAL") == "mono":
 		for k in ["leaf", "leaf2", "leaf3"]: pals[k] = ["e6e4e3", "d0ced2", "a8a7b8"]
@@ -979,11 +995,11 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	sk2.code = sb.code.substr(0, i0) + "void vertex(){\n	mp = CUSTOM0.xyz; hv = clamp(mp.y / 1.72, 0.0, 1.0); notex = 0.0; vw = 0.0; armw = 0.0;\n	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);\n}\n" + sb.code.substr(i1)
 	shaders["bodyskin"] = sk2
 	var st2 := Shader.new()
-	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0; uniform float snap = 0.0; uniform float recol = 0.0; uniform vec3 rc_gown = vec3(0.8); uniform vec3 rc_veil = vec3(0.6, 0.13, 0.2); uniform vec3 rc_trim = vec3(0.87, 0.7, 0.3); varying vec3 mpos;").replace(
+	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0; uniform float snap = 0.0; uniform float recol2 = 0.0; uniform float recol = 0.0; uniform vec3 rc_gown = vec3(0.8); uniform vec3 rc_veil = vec3(0.6, 0.13, 0.2); uniform vec3 rc_trim = vec3(0.87, 0.7, 0.3); varying vec3 mpos;").replace(
 		"void fragment(){", "vec3 snapc(vec3 lin){ vec3 c = lin; vec3 best = vec3(0.165, 0.54, 0.58); float bd = distance(c, vec3(0.24, 0.61, 0.65)); float d = distance(c, vec3(0.9, 0.82, 0.65)); if (d < bd) { bd = d; best = vec3(0.955, 0.935, 0.885); } d = distance(c, vec3(0.89, 0.725, 0.3)); if (d < bd) { bd = d; best = vec3(0.86, 0.68, 0.29); } d = distance(c, vec3(0.89, 0.89, 0.88)); if (d < bd) { bd = d; best = vec3(0.965, 0.955, 0.94); } d = distance(c, vec3(0.78, 0.2, 0.18)); if (d < bd) { bd = d; best = vec3(0.75, 0.19, 0.23); } return best; }\nvoid fragment(){").replace(
 		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", "	mpos = CUSTOM0.xyz;\n	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n	if (w0.y < floor_y + 0.012) { VERTEX += (inverse(MODEL_MATRIX) * vec4(0.0, floor_y + 0.012 - w0.y, 0.0, 0.0)).xyz; w0.y = floor_y + 0.012; }").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
-		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
+		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (recol2 > 0.5) { float lv = dot(tx, vec3(0.3, 0.55, 0.15)); float mx = max(tx.r, max(tx.g, tx.b)); float mn = min(tx.r, min(tx.g, tx.b)); float sat = (mx - mn) / max(mx, 0.001); float teal = smoothstep(0.02, 0.1, min(tx.g, tx.b) - tx.r) * (1.0 - smoothstep(0.75, 0.9, lv)); tx = mix(tx, rc_gown * clamp(0.62 + lv * 1.1, 0.84, 1.14), teal); float isveil = (1.0 - smoothstep(0.12, 0.26, sat)) * smoothstep(0.45, 0.62, lv) * step(abs(mpos.x), 0.27) * step(1.18, mpos.y) * (1.0 - teal); tx = mix(tx, rc_veil * clamp(lv / 0.8, 0.72, 1.1), isveil); } if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
@@ -1005,6 +1021,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	if "lineup" in OS.get_cmdline_user_args(): _lineup()
 	if "reals" in OS.get_cmdline_user_args(): _real_lineup()
 	if "mins" in OS.get_cmdline_user_args(): _min_lineup()
+	if "heads" in OS.get_cmdline_user_args(): _heads_lineup()
 	if "zoom" in OS.get_cmdline_user_args(): cam.size = 3.3
 	if "glide" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
@@ -1359,6 +1376,8 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				if mode == "tex": floor_mats.append(sm)
 				if rig_file.begins_with("lp") or rig_file.begins_with("sr") or rig_file.begins_with("nb"): sm.set_shader_parameter("flat_n", 1.0)
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
+				if rig_file == "w2r" and mode == "tex" and OS.get_environment("IONE") != "old":
+					sm.set_shader_parameter("recol2", 1.0); sm.set_shader_parameter("rc_gown", Vector3(0.42, 0.63, 0.87)); sm.set_shader_parameter("rc_veil", Vector3(0.72, 0.87, 0.97))
 				var rcid := int(OS.get_environment("RECOL")) if OS.get_environment("RECOL") != "" else 0
 				if RECOLS.has(rcid) and mode == "tex":
 					sm.set_shader_parameter("recol", 1.0); sm.set_shader_parameter("rc_gown", RECOLS[rcid][0]); sm.set_shader_parameter("rc_veil", RECOLS[rcid][1])
@@ -1766,6 +1785,8 @@ func ring_mat(tint: Vector3) -> ShaderMaterial:
 func _env() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR; env.background_color = bg_c
+	if OS.get_environment("MOOD") != "bright":
+		env.adjustment_enabled = true; env.adjustment_brightness = 0.94; env.adjustment_contrast = 1.04; env.adjustment_saturation = 0.84
 	var we := WorldEnvironment.new(); we.environment = env; add_child(we)
 	var sunl := DirectionalLight3D.new()
 	sunl.look_at_from_position(Vector3.ZERO, Vector3(0.62, -0.56, -0.5), Vector3.UP)
