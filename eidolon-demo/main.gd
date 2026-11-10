@@ -26,6 +26,7 @@ var ghost_flat: StandardMaterial3D
 var walk_on := false
 var rem_dist := 0.0
 var floor_mats: Array = []
+var rig_norm := {}
 var hero_real := false
 var shape_file := ""
 var rig_file := ""
@@ -870,7 +871,7 @@ func _ready() -> void:
 	if OS.get_environment("HERO") != "": hero_style = int(OS.get_environment("HERO"))
 	hero_real = OS.get_environment("REAL") == "1"
 	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp")) else "min" + OS.get_environment("RIG"); hero_real = true
-	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "w2r"; hero_real = true
+	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "lp1r"; hero_real = true
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	elif not hero_real and OS.get_environment("HERO") == "": shape_file = "min9t"
 	var sb := Shader.new()
@@ -926,10 +927,11 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	sk2.code = sb.code.substr(0, i0) + "void vertex(){\n	mp = CUSTOM0.xyz; hv = clamp(mp.y / 1.72, 0.0, 1.0); notex = 0.0; vw = 0.0; armw = 0.0;\n	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);\n}\n" + sb.code.substr(i1)
 	shaders["bodyskin"] = sk2
 	var st2 := Shader.new()
-	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0;").replace(
+	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0; uniform float snap = 0.0;").replace(
+		"void fragment(){", "vec3 snapc(vec3 lin){ vec3 c = lin; vec3 best = vec3(0.165, 0.54, 0.58); float bd = distance(c, vec3(0.24, 0.61, 0.65)); float d = distance(c, vec3(0.9, 0.82, 0.65)); if (d < bd) { bd = d; best = vec3(0.955, 0.935, 0.885); } d = distance(c, vec3(0.89, 0.725, 0.3)); if (d < bd) { bd = d; best = vec3(0.86, 0.68, 0.29); } d = distance(c, vec3(0.89, 0.89, 0.88)); if (d < bd) { bd = d; best = vec3(0.965, 0.955, 0.94); } d = distance(c, vec3(0.78, 0.2, 0.18)); if (d < bd) { bd = d; best = vec3(0.75, 0.19, 0.23); } return best; }\nvoid fragment(){").replace(
 		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", "	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n	if (w0.y < floor_y + 0.012) { VERTEX += (inverse(MODEL_MATRIX) * vec4(0.0, floor_y + 0.012 - w0.y, 0.0, 0.0)).xyz; w0.y = floor_y + 0.012; }").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
-		"vec3 tx = texture(albedo_tex, UV).rgb; float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
+		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
@@ -1113,6 +1115,20 @@ func add_rest_coords(src: Node3D) -> void:
 			for i in av.size():
 				cu[i * 4] = (av[i].x - cx) * sc; cu[i * 4 + 1] = (av[i].y - lo.y) * sc; cu[i * 4 + 2] = (av[i].z - cz) * sc; cu[i * 4 + 3] = 0.0
 			a[Mesh.ARRAY_CUSTOM0] = cu
+			rig_norm = {"cx": cx, "lo": lo.y, "cz": cz, "sc": sc, "veil": Color("e8e2d2")}
+			var om0 := mi.mesh.surface_get_material(si)
+			if a[Mesh.ARRAY_TEX_UV] != null and om0 is BaseMaterial3D and (om0 as BaseMaterial3D).albedo_texture != null:
+				var img := (om0 as BaseMaterial3D).albedo_texture.get_image()
+				if img != null:
+					if img.is_compressed(): img.decompress()
+					var best := -1; var bd := 9.0
+					for i in av.size():
+						var yy := cu[i * 4 + 1]; var zz := cu[i * 4 + 2]
+						if yy > 1.5 and yy < 1.66 and zz < -0.04 and absf(cu[i * 4]) < bd: bd = absf(cu[i * 4]); best = i
+					if best >= 0:
+						var uv: Vector2 = (a[Mesh.ARRAY_TEX_UV] as PackedVector2Array)[best]
+						rig_norm.veil = img.get_pixel(clampi(int(fposmod(uv.x, 1.0) * img.get_width()), 0, img.get_width() - 1), clampi(int(fposmod(uv.y, 1.0) * img.get_height()), 0, img.get_height() - 1))
+						print("RIG veil colour ", rig_norm.veil)
 			# the gown hangs from the hips: take most of the leg bones' pull out of the skirt
 			var bones: PackedInt32Array = a[Mesh.ARRAY_BONES]; var wts: PackedFloat32Array = a[Mesh.ARRAY_WEIGHTS]
 			var per: int = bones.size() / maxi(av.size(), 1)
@@ -1189,6 +1205,55 @@ func add_rest_coords(src: Node3D) -> void:
 			print("RIG mesh verts ", av.size(), " size ", hi - lo)
 		mi.mesh = am
 
+## a small faceted cloth that hangs from the circlet in front of the face, so the veil really hides it
+func add_face_panel(src: Node3D, mode: String) -> void:
+	var sks := src.find_children("*", "Skeleton3D", true, false)
+	if sks.is_empty() or rig_norm.is_empty(): return
+	var sk: Skeleton3D = sks[0]
+	var hb := _bone(sk, "Head")
+	if hb < 0: return
+	var inv := sk.get_bone_global_rest(hb).affine_inverse()
+	var to_local := func(n: Vector3) -> Vector3:
+		var avx: float = n.x / rig_norm.sc + rig_norm.cx; var avy: float = n.y / rig_norm.sc + rig_norm.lo; var avz: float = n.z / rig_norm.sc + rig_norm.cz
+		return inv * Vector3(avz, avy, -avx)
+	# rows from the circlet down to the chest: [height, half width, forward at the edge, forward at the ridge]
+	var rows := [[1.705, 0.07, 0.085, 0.112], [1.63, 0.092, 0.125, 0.158], [1.53, 0.108, 0.135, 0.176], [1.405, 0.118, 0.15, 0.19]]
+	var vs := PackedVector3Array(); var ns := PackedVector3Array()
+	var gv := PackedVector3Array(); var gn := PackedVector3Array()
+	var tri := func(a: Vector3, b: Vector3, c: Vector3, arr_v: PackedVector3Array, arr_n: PackedVector3Array) -> void:
+		var nn := (b - a).cross(c - a).normalized()
+		for q in [a, b, c]: arr_v.append(q); arr_n.append(nn)
+	for r in rows.size() - 1:
+		var t: Array = rows[r]; var b2: Array = rows[r + 1]
+		var tl: Vector3 = to_local.call(Vector3(-t[1], t[0], t[2])); var tm: Vector3 = to_local.call(Vector3(0, t[0], t[3])); var tr: Vector3 = to_local.call(Vector3(t[1], t[0], t[2]))
+		var bl: Vector3 = to_local.call(Vector3(-b2[1], b2[0], b2[2])); var bm: Vector3 = to_local.call(Vector3(0, b2[0] - (0.03 if r == rows.size() - 2 else 0.0), b2[3])); var br: Vector3 = to_local.call(Vector3(b2[1], b2[0], b2[2]))
+		tri.call(tl, bl, tm, vs, ns); tri.call(tm, bl, bm, vs, ns); tri.call(tm, bm, tr, vs, ns); tri.call(tr, bm, br, vs, ns)
+		# wings that tuck back into the veil at the sides
+		var tlb: Vector3 = to_local.call(Vector3(-t[1] - 0.012, t[0], t[2] - 0.09)); var blb: Vector3 = to_local.call(Vector3(-b2[1] - 0.012, b2[0], b2[2] - 0.09))
+		var trb: Vector3 = to_local.call(Vector3(t[1] + 0.012, t[0], t[2] - 0.09)); var brb: Vector3 = to_local.call(Vector3(b2[1] + 0.012, b2[0], b2[2] - 0.09))
+		tri.call(tlb, blb, tl, vs, ns); tri.call(tl, blb, bl, vs, ns); tri.call(tr, br, trb, vs, ns); tri.call(trb, br, brb, vs, ns)
+	var l: Array = rows[rows.size() - 1]
+	for sd in [-1.0, 1.0]:
+		var e0 := Vector3(sd * l[1], l[0], l[2] + 0.004); var e1 := Vector3(0, l[0] - 0.03, l[3] + 0.004)
+		var up := Vector3(0, 0.02, 0)
+		tri.call(to_local.call(e0), to_local.call(e1), to_local.call(e0 + up), gv, gn); tri.call(to_local.call(e0 + up), to_local.call(e1), to_local.call(e1 + up), gv, gn)
+	var ba := BoneAttachment3D.new(); sk.add_child(ba); ba.bone_idx = hb
+	var vc: Color = rig_norm.veil
+	for part in [[vs, ns, "cloth"], [gv, gn, "gold"]]:
+		var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = part[0]; arr[Mesh.ARRAY_NORMAL] = part[1]
+		var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		var mi := MeshInstance3D.new(); mi.mesh = am; ba.add_child(mi)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if mode in ["tex", "marble"] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if mode == "flat": mi.material_override = ghost_flat
+		elif mode == "marble": mi.material_override = pal("marble", "2")
+		elif mode == "crim": mi.material_override = pal("crim", "2")
+		elif part[2] == "gold": mi.material_override = pal("gold", "2")
+		else:
+			var m := ShaderMaterial.new(); m.shader = shaders["two"]
+			m.set_shader_parameter("c_top", Color(minf(vc.r * 1.1, 1.0), minf(vc.g * 1.1, 1.0), minf(vc.b * 1.1, 1.0))); m.set_shader_parameter("c_z", vc); m.set_shader_parameter("c_x", Color(vc.r * 0.84, vc.g * 0.84, vc.b * 0.86))
+			m.set_shader_parameter("fog_col", sea_c); m.set_shader_parameter("mist_col", mist_c); m.set_shader_parameter("shadow_col", shadow_c); m.set_shader_parameter("mist_k", mist_k)
+			pmats["panel|%d" % mi.get_instance_id()] = m; mi.material_override = m
+
 func spawn_her(parent: Node, mode: String) -> Dictionary:
 	if hero_src == null:
 		var st := GLTFState.new(); var doc := GLTFDocument.new()
@@ -1197,7 +1262,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 		if rig_file != "": add_rest_coords(hero_src); align_clips(hero_src)
 	var src: Node3D = hero_src.duplicate()
 	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
-	src.scale = Vector3.ONE * 1.72; src.rotation.y = float(OS.get_environment("RIG_YAW")) if OS.get_environment("RIG_YAW") != "" else -PI * 0.5
+	src.scale = Vector3.ONE * 1.72; src.rotation.y = float(OS.get_environment("RIG_YAW")) if OS.get_environment("RIG_YAW") != "" else (PI * 0.5 if rig_file == "lp1r" else -PI * 0.5)
 	for m in src.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if mode in ["tex", "marble"] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -1217,7 +1282,10 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
 				if mode == "tex": floor_mats.append(sm)
+				if rig_file.begins_with("lp"): sm.set_shader_parameter("flat_n", 1.0)
+				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
 				mi.set_surface_override_material(si, sm); pmats["her|%d|%d" % [holder.get_instance_id(), si]] = sm
+	if rig_file == "lp3r" and OS.get_environment("NOPANEL") != "1": add_face_panel(src, mode)
 	var aps := src.find_children("*", "AnimationPlayer", true, false); var sks := src.find_children("*", "Skeleton3D", true, false)
 	var ap: AnimationPlayer = aps[0] if not aps.is_empty() else null
 	var sk: Skeleton3D = sks[0] if not sks.is_empty() else null
