@@ -224,6 +224,56 @@ void fragment(){
 	float sh = 0.8 + 0.2 * clamp(dot(n, normalize(vec3(-0.25, 0.7, 0.66))) * 0.5 + 0.5, 0.0, 1.0);
 	ALBEDO = mix(ca, cb, UV.y) * sh;
 }"""
+## the glass of a standing mirror. It shows what stands before it: the ray from the eye is turned back off the glass and
+## followed step by step through the picture already drawn, until it meets something (the floor, a post, her). What the
+## screen shows there is what the glass shows, a little cool and a little pale, with two slow glints across it
+const SH_MIRROR := """shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap, repeat_disable;
+uniform sampler2D depth_tex : hint_depth_texture, filter_nearest, repeat_disable;
+uniform float ground_y = 0.0; uniform float time_s = 0.0;
+varying vec3 wp; varying vec3 wn;
+void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz); }
+void fragment(){
+	vec3 v = -normalize(INV_VIEW_MATRIX[2].xyz);
+	vec3 n = normalize(wn); if (dot(n, v) > 0.0) n = -n;
+	vec3 r = reflect(v, n);
+	vec2 wob = vec2(sin(wp.y * 9.0 + time_s * 0.7), cos(wp.x * 7.0 + time_s * 0.5)) * 0.0009;
+	float hit = 0.0; vec2 huv = vec2(0.0); float t = 0.12; float st = 0.07; float t0 = 0.0;
+	for (int i = 0; i < 40; i++) {
+		vec4 vq = VIEW_MATRIX * vec4(wp + r * t, 1.0);
+		vec4 cq = PROJECTION_MATRIX * vq; vec2 uv = cq.xy / cq.w * 0.5 + 0.5;
+		if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) break;
+		vec4 sv = INV_PROJECTION_MATRIX * vec4(uv * 2.0 - 1.0, textureLod(depth_tex, uv, 0.0).r * 2.0 - 1.0, 1.0);
+		float dz = sv.z / sv.w - vq.z;                                     // how far behind what is drawn there the ray now is
+		if (dz > 0.0 && dz < 1.1) { hit = 1.0; huv = uv; break; }
+		t0 = t; t += st; st *= 1.06;
+	}
+	if (hit > 0.5) {                                                         // close in on the place it went behind
+		float a = t0; float b = t;
+		for (int k = 0; k < 5; k++) {
+			float m = (a + b) * 0.5;
+			vec4 vq = VIEW_MATRIX * vec4(wp + r * m, 1.0);
+			vec4 cq = PROJECTION_MATRIX * vq; vec2 uv = cq.xy / cq.w * 0.5 + 0.5;
+			vec4 sv = INV_PROJECTION_MATRIX * vec4(uv * 2.0 - 1.0, textureLod(depth_tex, uv, 0.0).r * 2.0 - 1.0, 1.0);
+			if (sv.z / sv.w - vq.z > 0.0) { b = m; huv = uv; } else a = m;
+		}
+	} else {                                                                 // nothing met: the ground (or the sea) further off
+		vec3 q = wp + r * clamp((wp.y - ground_y) / max(-r.y, 0.08), 0.25, 9.0);
+		vec4 cp = PROJECTION_MATRIX * (VIEW_MATRIX * vec4(q, 1.0));
+		huv = cp.xy / cp.w * 0.5 + 0.5;
+		hit = step(0.0, huv.x) * step(huv.x, 1.0) * step(0.0, huv.y) * step(huv.y, 1.0);
+	}
+	vec3 sky = mix(vec3(0.52, 0.74, 0.84), vec3(0.8, 0.92, 0.96), UV.y);
+	vec3 c = mix(sky, textureLod(screen_tex, clamp(huv + wob, 0.0, 1.0), 0.6).rgb, hit);
+	c = (c - 0.62) * 1.25 + 0.62;                                                          // silvered glass: deeper than the day it shows,
+	c = mix(c, sky, 0.14 + 0.2 * smoothstep(0.4, 1.0, UV.y)) * vec3(0.8, 0.91, 0.98);      // cooler, and paler towards its head
+	vec2 e = min(UV, 1.0 - UV);
+	c *= 0.8 + 0.2 * smoothstep(0.0, 0.07, min(e.x * 2.2, e.y));                           // the frame's shadow round the edge
+	float d = UV.x * 0.62 - UV.y * 0.5 + time_s * 0.012;
+	float g = smoothstep(0.085, 0.07, abs(fract(d) - 0.42)) * 0.13 + smoothstep(0.022, 0.014, abs(fract(d) - 0.6)) * 0.2;
+	ALBEDO = c + vec3(g);
+}"""
 ## the cloth over the pool: its folds come from a simulation, so the shader only has to light them
 const SH_SHEET := """shader_type spatial;
 render_mode unshaded, cull_disabled;
@@ -701,18 +751,12 @@ func shard_tree(p: Vector3) -> void:
 		var sh := prim(q, c, shard_mats[i % 4]); sh.rotation = Vector3(0.2 * sin(i * 3.1), a * 1.7, PI * 0.25)
 	decal(p + Vector3(0.35, 0, -0.35), 2.2, 1.6, 0.2, 0.78)
 
-func mirror_stand(p: Vector3, yaw := 0.0, parent: Node = self) -> Node3D:
+## a standing mirror: a pane in a gilt frame with a small pediment, on lion feet. kind: "bare", or hidden under a sheet:
+## "tied" (wholly covered and bound with rope), "bound" (bound, the sheet parted down the front), "slip" (the sheet sliding off)
+const MIRROR_H := {"bare": 2.1, "tied": 2.14, "bound": 2.3, "slip": 2.08}
+func mirror_stand(p: Vector3, yaw := 0.0, parent: Node = self, ground_y := 0.0, kind := "bare", sea := false) -> Node3D:
 	var n := Node3D.new(); n.position = p; n.rotation.y = yaw; parent.add_child(n)
-	blk(Vector3(-0.42, 0, -0.14), Vector3(0.42, 0.1, 0.14), "shade", n)
-	for sx in [-1.0, 1.0]: blk(Vector3(sx * 0.4 - 0.03, 0.1, -0.03), Vector3(sx * 0.4 + 0.03, 1.9, 0.03), "gold", n)
-	blk(Vector3(-0.43, 1.87, -0.03), Vector3(0.43, 1.94, 0.03), "gold", n); blk(Vector3(-0.08, 1.94, -0.03), Vector3(0.08, 2.04, 0.03), "crim", n)
-	var g := Gradient.new(); g.colors = PackedColorArray([Color("f6fbfb"), Color("9fd0d6")])
-	var gt := GradientTexture2D.new(); gt.gradient = g; gt.fill_from = Vector2(0.2, 0); gt.fill_to = Vector2(0.8, 1); gt.width = 32; gt.height = 64
-	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = gt
-	var q := QuadMesh.new(); q.size = Vector2(0.74, 1.76)
-	prim(q, Vector3(0, 1.0, 0.012), gm, n)
-	var q2 := QuadMesh.new(); q2.size = Vector2(0.06, 1.5)
-	prim(q2, Vector3(-0.14, 1.0, 0.016), mat(Color(1, 1, 1, 0.55)), n).rotation.z = -0.32
+	prop_model("mirror_" + kind, n, MIRROR_H[kind], 0.0, false, sea, "", ground_y)
 	return n
 
 func reeds(p: Vector3, n := 9) -> void:
@@ -1055,7 +1099,7 @@ func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.
 func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
-			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
+			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
 	if OS.get_environment("MOOD") == "moody":
 		sea_c = Color("3a6a7b"); mist_c = Color("b9b4c4"); bg_c = Color("29586a"); shadow_c = Vector3(0.6, 0.61, 0.82); water_deep = Color("2a7d88"); water_shallow = Color("6fc4b8")
@@ -2332,7 +2376,7 @@ func niche_x(x: float, y: float, z: float, w: float, h: float, parent: Node) -> 
 ## a detailed prop (a Tripo model in props/): loaded, given the lit textured material of the world, scaled so that its
 ## height (or, with across > 0, its width) is as asked, and set with its foot at the origin of the node returned.
 ## mirror: the copy that stands in the water
-func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror := false, sea_refl := false, flat_pal := "") -> Node3D:
+func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror := false, sea_refl := false, flat_pal := "", ground_y := 0.0) -> Node3D:
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	doc.append_from_file(ProjectSettings.globalize_path("res://props/%s.glb" % file), st)
 	var src := doc.generate_scene(st) as Node3D
@@ -2356,6 +2400,9 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 			continue
 		for si in mi.mesh.get_surface_count():
 			var om := mi.mesh.surface_get_material(si)
+			if om != null and om.resource_name == "glass":   # the pane of a mirror shows what lies before it
+				var gm := ShaderMaterial.new(); gm.shader = shaders["mirror"]; gm.set_shader_parameter("ground_y", ground_y); timed.append(gm)
+				mi.set_surface_override_material(si, gm); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; continue
 			var sm := ShaderMaterial.new(); sm.shader = shaders["tex2" if mirror else "tex"]
 			sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 			if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
@@ -2372,21 +2419,19 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 ## the sight between the first two courts: "he hid every mirror". Tall mirrors stand in the sea on either side of the
 ## causeway, each wrapped in a sheet and tied round with rope, like shrouded figures. One or two have begun to come undone
 func _shrouds() -> void:
-	if not FileAccess.file_exists("res://props/drape_1.glb"): return
-	var have3 := FileAccess.file_exists("res://props/drape_3.glb")
-	var spots := [[-2.1, -5.3, 0.4, 1.05, 1], [-3.7, -6.5, -0.3, 1.2, 2], [-1.9, -7.7, 1.2, 1.0, 3], [-4.5, -8.4, 0.8, 1.12, 1], [-2.9, -9.2, -0.6, 0.98, 2], [-5.7, -5.5, 1.9, 1.16, 2], [-5.9, -7.5, 0.1, 1.02, 1],
-		[2.0, -5.5, 2.6, 1.1, 2], [3.5, -7.0, 3.4, 1.2, 1], [1.9, -8.5, 2.0, 1.0, 3], [4.7, -5.3, 4.0, 1.06, 1], [4.5, -8.8, 2.9, 1.15, 2], [5.9, -6.7, 3.6, 1.02, 1], [3.1, -9.4, 4.4, 0.97, 2]]   # x, z, turn, size, which sheet (3 = coming undone)
+	if not FileAccess.file_exists("res://props/mirror_tied.glb"): return
+	# x, z, turn, size, kind. Those whose sheet lies spread on the ground stand on a wider footing
+	var spots := [[-2.3, -5.6, 0.75, 1.0, "slip"], [-4.3, -7.4, 0.5, 1.1, "tied"], [-2.0, -8.3, 0.6, 1.0, "bound"], [-5.7, -9.6, 1.15, 0.98, "tied"], [-5.9, -5.5, 0.35, 1.12, "tied"], [-6.3, -7.9, 0.85, 1.02, "tied"], [-4.3, -5.2, 0.95, 0.96, "tied"],
+		[2.2, -6.0, 0.9, 1.0, "bound"], [4.3, -7.2, 1.25, 1.12, "tied"], [2.1, -8.6, 0.55, 1.0, "slip"], [4.7, -5.2, 0.5, 1.04, "tied"], [4.6, -9.2, 1.1, 1.1, "tied"], [6.1, -6.6, 0.7, 1.0, "tied"], [6.4, -8.4, 0.6, 0.97, "tied"]]
 	for sp in spots:
 		var base := Vector3(sp[0], WATER + 0.22, sp[1])
-		cyl(Vector3(sp[0], WATER - 0.5, sp[1]), 0.62, 0.7, 0.72, pal("stone"), 14); cyl(base - Vector3(0, 0.05, 0), 0.68, 0.68, 0.05, pal("shade"), 14)
-		var hold := Node3D.new(); hold.position = base; hold.rotation.y = sp[2]; hold.scale = Vector3.ONE * sp[3]; add_child(hold)
-		mirror_stand(Vector3.ZERO, 0.0, hold)                          # the mirror itself, the same as those that stand in the courts
-		var v: int = sp[4] if (sp[4] != 3 or have3) else 1
-		prop_model("drape_%d" % v, hold, 0.0, 0.0, false, false, "linen")   # and the sheet over it
-		if v != 3:   # the rope that ties it, twice round
-			for rh in [0.72, 1.36]:
-				var tm := TorusMesh.new(); tm.inner_radius = 0.5; tm.outer_radius = 0.56; tm.rings = 14; tm.ring_segments = 5
-				var rr := prim(tm, Vector3(0, rh, 0), pal("rope", "flat"), hold); rr.scale = Vector3(1.0, 1.0, 0.3); rr.rotation = Vector3(0.05 * sin(rh * 9.0 + sp[0]), 0, 0.04 * cos(rh * 7.0 + sp[1]))
+		var m := mirror_stand(base, sp[2], self, WATER, sp[4], true); m.scale = Vector3.ONE * sp[3]
+		if sp[4] == "tied":
+			var r: float = 0.66 * sp[3]
+			cyl(Vector3(sp[0], WATER - 0.5, sp[1]), r - 0.06, r + 0.02, 0.72, pal("stone"), 14); cyl(base - Vector3(0, 0.05, 0), r, r, 0.05, pal("shade"), 14)
+		else:   # a long plinth, turned with the mirror, under the sheet that lies spread
+			var hx := 1.2 if sp[4] == "slip" else 1.22; var hz := 0.74 if sp[4] == "slip" else 0.8
+			blk(Vector3(-hx + 0.06, -1.0, -hz + 0.06), Vector3(hx - 0.06, -0.05, hz - 0.06), "stone", m); blk(Vector3(-hx, -0.05, -hz), Vector3(hx, 0.0, hz), "shade", m)
 
 ## the second court, "the crossing the water keeps". In its pool stands the winch of the west gate, on a pedestal no
 ## one can reach: the crossing to it fell long ago. The water still holds its shadow, and her reflection can walk it
