@@ -467,6 +467,7 @@ var boat: Node3D
 var fogs: Array = []
 var red_cloth: ShaderMaterial
 var shard_mats: Array = []
+var blockers: Array = []   # things that stand on walkable floor (the lamp stands): x, z and a radius she does not stop within
 var pulse_p := 1.0
 var tap_p := 1.0
 var ripple_p := 1.0
@@ -671,7 +672,7 @@ func meander(x0: float, z0: float, x1: float, z1: float, p := "shade") -> void:
 				else: bb(Vector3(base + seg[1], y0, o + seg[0]), Vector3(base + seg[3], y1, o + seg[2]))
 	bb_end(p)
 
-func foam(x0: float, z0: float, x1: float, z1: float, wdt := 0.42) -> void:
+func foam(x0: float, z0: float, x1: float, z1: float, wdt := 0.42) -> MeshInstance3D:
 	var v := PackedVector3Array(); var uv := PackedVector2Array()
 	var y := WATER + 0.012
 	var inn := [Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1), Vector3(x0, y, z1)]
@@ -682,7 +683,7 @@ func foam(x0: float, z0: float, x1: float, z1: float, wdt := 0.42) -> void:
 			v.append(q[0]); uv.append(Vector2(q[1], i * 0.25))
 	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_TEX_UV] = uv
 	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-	prim(am, Vector3.ZERO, foam_mat)
+	return prim(am, Vector3.ZERO, foam_mat)
 
 ## a fluted column with base and capital
 func column(p: Vector3, h: float, r := 0.15, broken := false) -> void:
@@ -763,23 +764,45 @@ func streamer(p: Vector3, length: float, w := 0.3, yaw := 3.67) -> void:
 	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	prim(am, p, red_cloth).rotation.y = yaw
 
+## a stick from one point to another (a bough, a twig)
+func stick(a: Vector3, b: Vector3, r: float, p: String) -> void:
+	var y := (b - a).normalized()
+	var x := y.cross(Vector3.UP if absf(y.y) < 0.99 else Vector3.RIGHT).normalized()
+	blk(Vector3(-r, 0, -r), Vector3(r, a.distance_to(b), r), p).transform = Transform3D(Basis(x, y, x.cross(y)), (a + b) * 0.5)
+
+## the tree of shards: a bare tree whose boughs are hung with splinters of mirror, each on its own thread. Every thread
+## hangs from a bough or a twig (they used to hang in the air around a tree too small to reach them)
 func shard_tree(p: Vector3) -> void:
 	if shard_mats.is_empty():
 		for i in 4:
 			var m := ShaderMaterial.new(); m.shader = shaders["shard"]; m.set_shader_parameter("ph", i * 1.3); timed.append(m); shard_mats.append(m)
 	blk(p + Vector3(-0.3, 0, -0.3), p + Vector3(0.3, 0.22, 0.3), "shade"); blk(p + Vector3(-0.34, 0.22, -0.34), p + Vector3(0.34, 0.27, 0.34), "stone")
-	cyl(p + Vector3(0, 0.27, 0), 0.07, 0.04, 1.5, pal("trunk"), 7)
-	for i in 7:
-		var a := i * 0.9
-		var br := blk(Vector3(-0.018, 0, -0.018), Vector3(0.018, 0.85 + 0.2 * sin(i * 2.0), 0.018), "trunk")
-		br.position = p + Vector3(0, 1.3 + 0.07 * i, 0); br.rotation = Vector3(0.75 + 0.2 * sin(i * 1.3), a, 0)
-	var q := QuadMesh.new(); q.size = Vector2(0.075, 0.13)
+	cyl(p + Vector3(0, 0.27, 0), 0.075, 0.048, 1.3, pal("trunk"), 7)
+	var limbs := []   # seven boughs rise from the head of the trunk and reach out; each forks once and ends in a twig
+	for j in 7:
+		var a := TAU * j / 7.0 + 0.3 * sin(j * 2.1)
+		var dir := Vector3(cos(a), 0, sin(a)); var side := Vector3(-sin(a), 0, cos(a)) * (1.0 if j % 2 == 0 else -1.0)
+		var b0 := p + dir * 0.02 + Vector3(0, 1.28 + 0.04 * j, 0)
+		var b1 := p + dir * (0.5 + 0.08 * sin(j * 1.9)) + Vector3(0, 2.0 + 0.14 * sin(j * 2.0 + 1.0), 0)
+		var b2 := p + dir * (0.93 + 0.05 * cos(j * 1.3)) + Vector3(0, 2.27 + 0.1 * sin(j * 1.1), 0)
+		var f0 := b0.lerp(b1, 0.6); var f1 := p + dir * 0.66 + side * 0.36 + Vector3(0, 2.3 + 0.1 * cos(j * 1.7), 0)
+		stick(b0, b1, 0.022, "trunk"); stick(b1, b2, 0.014, "trunk"); stick(f0, f1, 0.012, "trunk")
+		limbs.append([b0.lerp(b1, 0.5), b1]); limbs.append([b1, b2]); limbs.append([f0.lerp(f1, 0.3), f1])
+	var sv: Array[PackedVector3Array] = [PackedVector3Array(), PackedVector3Array(), PackedVector3Array(), PackedVector3Array()]   # the shards, one mesh for each of their four glints
 	for i in 44:
-		var a := i * 2.399
-		var rr := 0.25 + 0.75 * sqrt(float(i % 11 + 1) / 11.0)
-		var c := p + Vector3(cos(a) * rr, 2.25 - 0.9 * absf(sin(i * 1.7)) - rr * 0.25, sin(a) * rr)
-		blk(c + Vector3(-0.004, 0.06, -0.004), c + Vector3(0.004, 0.32, 0.004), "dark")
-		var sh := prim(q, c, shard_mats[i % 4]); sh.rotation = Vector3(0.2 * sin(i * 3.1), a * 1.7, PI * 0.25)
+		var lm: Array = limbs[i % limbs.size()]
+		var hp: Vector3 = (lm[0] as Vector3).lerp(lm[1], clampf(0.2 + 0.42 * (i / limbs.size()) + 0.3 * fposmod(i * 0.618, 1.0), 0.0, 1.0))   # where on its limb the thread is tied
+		var ln := minf(0.14 + 0.52 * fposmod(i * 0.437, 1.0), hp.y - p.y - 1.12)
+		blk(hp + Vector3(-0.004, -ln, -0.004), hp + Vector3(0.004, 0, 0.004), "dark")
+		var bs := Basis.from_euler(Vector3(0.2 * sin(i * 3.1), i * 4.08, PI * 0.25)); var c := hp - Vector3(0, ln + 0.05, 0)
+		var q := [c + bs * Vector3(-0.0375, -0.065, 0), c + bs * Vector3(0.0375, -0.065, 0), c + bs * Vector3(0.0375, 0.065, 0), c + bs * Vector3(-0.0375, 0.065, 0)]
+		var sq: PackedVector3Array = sv[i % 4]
+		for k in [0, 1, 2, 0, 2, 3]: sq.append(q[k])
+		sv[i % 4] = sq
+	for i in 4:
+		var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = sv[i]
+		var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		prim(am, Vector3.ZERO, shard_mats[i])
 	decal(p + Vector3(0.35, 0, -0.35), 2.2, 1.6, 0.2, 0.78)
 
 ## a standing mirror: a pane in a gilt frame with a small pediment, on lion feet. Modelled in Tripo, then sorted by
@@ -914,13 +937,29 @@ func lantern(p: Vector3, li: int, dirx := 1.0) -> void:
 	var c := p + Vector3(0.327 * k * dirx, 0.692 * k, 0)      # where the lantern hangs
 	var h := halo(0.9, Color(1.0, 0.8, 0.45, 0.5)); h.position = c; add_child(h)
 	lights[li] = Vector4(c.x, 0.2, c.z, 0.5)
+	blockers.append(Vector3(p.x + 0.26 * dirx, p.z, 0.62))   # the stand and the lantern on its arm: a tap on them sends her beside them, not into them
 	decal(p + Vector3(0.1, 0, -0.1), 0.5, 0.36, 0.2, 0.78)
 
 func banner(p: Vector3, w: float, h: float, facing_x := false) -> void:
 	var q := QuadMesh.new(); q.size = Vector2(w, h); q.subdivide_depth = 8; q.subdivide_width = 2
-	var mi := prim(q, p + Vector3(0, -h * 0.5, 0), cloth(Color("d63a44"), Color("a81f2c"), 1.0))
+	var off := Vector3(0.035, 0, 0) if facing_x else Vector3(0, 0, 0.035)   # clear of the wall: the cloth waves 4 cm either way, and used to dip into the stone
+	var mi := prim(q, p + off + Vector3(0, -h * 0.5, 0), cloth(Color("d63a44"), Color("a81f2c"), 1.0))
 	if facing_x: mi.rotation.y = PI * 0.5
-	blk(p + Vector3(-0.02 if facing_x else -w * 0.5 - 0.03, 0, -w * 0.5 - 0.03 if facing_x else -0.02), p + Vector3(0.03 if facing_x else w * 0.5 + 0.03, 0.04, w * 0.5 + 0.03 if facing_x else 0.03), "gold")
+	blk(p + Vector3(-0.02 if facing_x else -w * 0.5 - 0.03, 0, -w * 0.5 - 0.03 if facing_x else -0.02), p + Vector3(0.055 if facing_x else w * 0.5 + 0.03, 0.04, w * 0.5 + 0.03 if facing_x else 0.055), "gold")
+
+## a lily pad lying on a pool: a round leaf with its notch, and on some a bud
+func lily(p: Vector3, r: float, yaw: float, bud: bool) -> void:
+	var v := PackedVector3Array(); var n := PackedVector3Array()
+	for i in 11:
+		var a0 := yaw + 0.27 + (TAU - 0.54) * i / 11.0; var a1 := yaw + 0.27 + (TAU - 0.54) * (i + 1) / 11.0
+		for q in [Vector3.ZERO, Vector3(cos(a1), 0, sin(a1)) * r, Vector3(cos(a0), 0, sin(a0)) * r]:
+			v.append(q); n.append(Vector3.UP)
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_NORMAL] = n
+	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	prim(am, p, pal("leaf2", "2"))
+	if bud:
+		var bd := Vector3(cos(yaw + PI), 0, sin(yaw + PI)) * r * 0.3
+		cyl(p + bd, 0.03, 0.012, 0.045, pal("rose"), 6); cyl(p + bd, 0.045, 0.03, 0.012, pal("leaf3"), 6)
 
 func pool(x0: float, z0: float, x1: float, z1: float, flow := Vector2.ZERO) -> void:
 	var q := QuadMesh.new(); q.size = Vector2(x1 - x0, z1 - z0); q.orientation = PlaneMesh.FACE_Y
@@ -1345,6 +1384,7 @@ func _gallery() -> void:
 
 func _shots() -> void:
 	started = true; title_box.hide(); hint.hide()
+	if OS.get_environment("SHOT_HINT") != "": hint.show(); hint.text = OS.get_environment("SHOT_HINT"); hint.modulate.a = 1.0   # to look at the hint line in a still
 	var dir := OS.get_environment("SHOT_DIR")
 	await get_tree().create_timer(2.0).timeout
 	var list := [
@@ -1364,7 +1404,7 @@ func _shots() -> void:
 		{"n": "14-start-zone", "p": Vector3(-2.55, 0, 1.75), "y": 1.2, "c": Vector3(0.2, 0.5, -0.3), "s": 11.5},
 		{"n": "15-statue-row", "p": Vector3(-2.55, 0, 1.75), "y": 1.2, "c": Vector3(-2.7, 0.8, -0.4), "s": 6.6},
 		{"n": "16-sculptors-corner", "p": Vector3(1.9, 0, -2.2), "y": 2.6, "c": Vector3(2.4, 0.8, -3.0), "s": 5.6},
-		{"n": "17-shadow-bridge", "p": Vector3(5.42, 0, 1.0), "y": 1.57, "c": Vector3(6.3, -0.2, 1.3), "s": 7.6},
+		{"n": "17-east-landing", "p": Vector3(4.3, 0, 1.0), "y": 1.57, "c": Vector3(5.2, -0.2, 1.3), "s": 7.6},
 		{"n": "18-mirror-pool", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-0.8, 0.1, -0.1), "s": 5.2},
 		{"n": "19-mirror-pool-wide", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-1.4, 0.3, 0.7), "s": 13.5},
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
@@ -1389,6 +1429,7 @@ func _shots() -> void:
 		route.clear(); pos = sh.p; yaw = sh.y; cam.size = sh.s; cam_t = pos
 		a_wL = 0.0
 		if sheet != null: sheet.visible = not sh.get("nosheet", false)
+		quote_box.visible = (sh.n as String).begins_with("26")   # the line of the causeway shows in the causeway's own still, not over the five that follow it
 		if sh.get("touch", false):
 			tgtL = Vector3(MX + 0.012, 1.30, MZ + 0.13); a_wL = 1.0; a_lean = 0.09
 			door.position.y = 1.05 - 2.15; door_energy = 1.0; ripple.position = Vector3(MX - 0.03, 1.30, MZ + 0.13); ripple_p = 0.3; flash = 0.6
@@ -2918,21 +2959,25 @@ func _world() -> void:
 	parapet(Vector3(AX0 + 0.1, 0, AZ1 - 0.1), Vector3(-0.95, 0, AZ1 - 0.1)); parapet(Vector3(0.95, 0, AZ1 - 0.1), Vector3(3.4, 0, AZ1 - 0.1))
 	tree(Vector3(AX0 + 0.5, 0, AZ1 - 0.55), 1.2); cypress(Vector3(AX0 + 0.45, 0, -3.5), 2.6)
 	_start_zone()
-	lantern(Vector3(1.15, 0, -3.72), 2); urn(Vector3(2.9, 0, AZ1 - 0.5), 1.0); urn(Vector3(3.1, 0, AZ1 - 0.78), 0.7, "rose")
+	lantern(Vector3(1.0, 0, -3.46), 2); urn(Vector3(2.9, 0, AZ1 - 0.5), 1.0); urn(Vector3(3.1, 0, AZ1 - 0.78), 0.7, "rose")
 	for gx in [-0.72, 0.72]:
 		blk(Vector3(gx - 0.14, 0, -4.04), Vector3(gx + 0.14, 2.1, -3.76), "stone"); blk(Vector3(gx - 0.17, 0, -4.07), Vector3(gx + 0.17, 0.1, -3.73), "shade")
 	var gw := CSGBox3D.new(); gw.size = Vector3(1.72, 0.66, 0.28); gw.position = Vector3(0, 2.43, -3.9); gw.material = pal("stone")
 	var gc := CSGCylinder3D.new(); gc.operation = CSGShape3D.OPERATION_SUBTRACTION; gc.radius = 0.58; gc.height = 0.5; gc.sides = 32
 	gc.rotation.x = PI * 0.5; gc.position = Vector3(0, -0.33, 0); gc.material = pal("shade"); gw.add_child(gc); add_child(gw)
 	cornice(-0.86, -4.04, 0.86, -3.76, 2.76, 0.04, 0.06); dentils(-0.86, -4.04, 0.86, -3.76, 2.76); blk(Vector3(-0.06, 2.82, -3.94), Vector3(0.06, 2.94, -3.86), "crim")
-	for i in 5:
-		blk(Vector3(-0.8, -0.26 * (i + 1) - 0.2, AZ1 + 0.26 * i), Vector3(0.8, -0.26 * (i + 1), AZ1 + 0.26 * (i + 1)), "stone")
+	for i in 5:   # solid stone steps, each standing on the one below; the last is a hand above the water, not level with it
+		blk(Vector3(-0.8, -0.25 * (i + 1) - 0.6, AZ1 + 0.26 * i), Vector3(0.8, -0.25 * (i + 1), AZ1 + 0.26 * (i + 1)), "stone")
 	blk(Vector3(-0.95, -2.45, AZ1), Vector3(-0.8, -0.05, AZ1 + 1.3), "shade"); blk(Vector3(0.8, -2.45, AZ1), Vector3(0.95, -0.05, AZ1 + 1.3), "shade")
 	foam(-0.95, AZ1 + 0.05, 0.95, AZ1 + 1.3, 0.3)
 	boat = Node3D.new(); boat.name = "Boat"; boat.position = Vector3(2.5, WATER - 0.12, AZ1 + 1.4); boat.rotation.y = 1.0; add_child(boat)
 	build_boat(boat)
-	cyl(Vector3(1.2, -0.2, AZ1 + 0.7), 0.045, 0.045, 0.75, pal("wood"), 8)
+	# the mooring pile of her boat: it stands in the sea beside the steps, with the boat's line coiled round it
+	cyl(Vector3(1.32, -2.45, AZ1 + 0.72), 0.065, 0.055, 2.45 - 0.5, pal("wood"), 8); cyl(Vector3(1.32, -0.5, AZ1 + 0.72), 0.068, 0.05, 0.03, pal("trunk"), 8)
+	for ry in 3: cyl(Vector3(1.32, -0.78 + 0.035 * ry, AZ1 + 0.72), 0.074, 0.074, 0.03, pal("rope"), 8)
+	foam(1.32 - 0.06, AZ1 + 0.72 - 0.06, 1.32 + 0.06, AZ1 + 0.72 + 0.06, 0.22)
 	slab(3.5, -0.3, 5.1, 2.3, 0.0); under(3.5, -0.3, 5.1, 2.3, 0.2, "sand"); parapet(Vector3(5.0, 0, -0.2), Vector3(5.0, 0, 2.2))
+	parapet(Vector3(3.4, 0, -0.2), Vector3(5.0, 0, -0.2)); parapet(Vector3(3.4, 0, 2.2), Vector3(5.0, 0, 2.2))   # the landing is a lookout now: railed on its two open sides as well
 	blk(Vector3(3.9, 0, 1.9), Vector3(4.6, 0.22, 2.12), "shade")
 	# (the great veiled head that lay here is taken out of this view: it is kept for another place)
 	slab(-10.6, -2.2, -9.2, 2.2, 0.0); under(-10.6, -2.2, -9.2, 2.2, 0.18, "sand")
@@ -2955,7 +3000,7 @@ func _world() -> void:
 	else: parapet(Vector3(-3.3, 0, -16.0), Vector3(-3.3, 0, -13.75)); parapet(Vector3(-3.3, 0, -12.25), Vector3(-3.3, 0, -10.1))
 	parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
 	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(3.4, 0, -10.1))
-	lantern(Vector3(3.15, 0, -10.35), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
+	lantern(Vector3(3.1, 0, -10.56), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
 	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32).visible = SHOW_CAPSTAN; cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16).visible = SHOW_CAPSTAN
 	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; cap_rot.visible = SHOW_CAPSTAN; add_child(cap_rot)
 	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
@@ -3018,9 +3063,9 @@ func _world() -> void:
 	statue_on("statue_veiled_mourning", Vector3(-18.9, 0, -20.45), 1.8, 0.8); statue_on("statue_veiled_praying", Vector3(-15.2, 0, -26.3), 1.8, 0.2)
 	plinth_head("kit_face5", Vector3(-19.0, 0, -26.25), 0.6)
 	pool(-14.4, -25.4, -13.2, -22.0); model("statue_veiled_kneeling", Vector3(-14.72, 0, -23.7), 1.1, PI * 0.5)
-	for lp in [Vector3(-13.9, 0.016, -24.6), Vector3(-13.6, 0.016, -23.2), Vector3(-14.1, 0.016, -22.5)]:
-		cyl(lp, 0.09, 0.09, 0.004, pal("leaf2"), 14); ball(lp + Vector3(0.02, 0.02, 0), 0.025, pal("leaf3"))
-	lantern(Vector3(-15.2, 0, -20.25), 5, -1.0); cypress(Vector3(-12.95, 0, -26.2), 2.3)
+	for lp in [Vector3(-13.9, 0.021, -24.6), Vector3(-13.6, 0.021, -23.2), Vector3(-14.1, 0.021, -22.5)]:   # lily pads on the pool, in twos, one of each pair in bud
+		lily(lp, 0.13, lp.z * 2.3, true); lily(lp + Vector3(0.19 * cos(lp.z * 1.7), 0, 0.19 * sin(lp.z * 1.7)), 0.085, lp.z * 5.1, false)
+	lantern(Vector3(-15.2, 0, -20.38), 5, -1.0); cypress(Vector3(-12.95, 0, -26.2), 2.3)
 	blk(Vector3(MX + 0.1, 0, MZ - 0.45), Vector3(MX + 0.95, 0.004, MZ + 0.45), "shade"); blk(Vector3(MX + 0.15, 0, MZ - 0.4), Vector3(MX + 0.9, 0.006, MZ + 0.4), "stone")
 	blk(Vector3(DX - 0.03, 0, -26.6), Vector3(DX + 0.03, 0.005, -25.2), "crim")
 	slab(-20.5, -28.8, -12.5, -27.0, 0.0, "sand"); under(-20.5, -28.8, -12.5, -27.0, 0.22, "sand")
@@ -3035,7 +3080,7 @@ func _world() -> void:
 	blk(Vector3(-1.28, 0.0, -0.3), Vector3(1.28, 0.18, 0.3), "shade", ped); blk(Vector3(-1.22, 0.1, -0.27), Vector3(1.22, 0.2, 0.27), "stone", ped)
 	var pm2 := PrismMesh.new(); pm2.size = Vector3(1.5, 0.4, 0.02)
 	prim(pm2, Vector3(0, 0.44, 0.255), pal("shade"), ped)
-	foam(4.1, 5.4, 6.3, 6.4, 0.3)
+	var pf := foam(-1.3, -0.33, 1.3, 0.33, 0.3); pf.position = Vector3(5.2, 0, 5.9); pf.rotation.y = 0.5   # the foam lies round the stone as it lies, turned
 	model("column_fallen", Vector3(-24.5, WATER - 0.25, -12.5), 0.6, 0.9)
 	for cp in [Vector3(6.6, 0, -4.8), Vector3(7.6, 0, -6.0), Vector3(-4.6, 0, -9.2), Vector3(-9.0, 0, -17.4), Vector3(-10.2, 0, -18.4), Vector3(-22.6, 0, -8.8), Vector3(-23.6, 0, -19.6), Vector3(-9.0, 0, -24.4)]:
 		cyl(Vector3(cp.x, -2.45, cp.z), 0.3, 0.3, 2.45 + WATER + 0.12, pal("shade"), 20)
@@ -3044,13 +3089,13 @@ func _world() -> void:
 	vine(-3.6, AZ1 - 0.08, true, 1.8); vine(3.52, -3.4, false, 1.4); vine(-3.2, -9.98, true, 1.6); vine(3.52, -15.6, false, 2.0)
 	vine(-21.4, EZ1 + 0.02, true, 2.4); vine(-12.98, -16.4, false, 1.6); vine(-20.2, -19.98, true, 2.6); vine(-12.48, -25.6, false, 2.2)
 	# crimson veils in the wind, mirrors, the tree of shards, reeds and rocks
-	for sp in [[Vector3(-7.3, 2.72, 1.9), 2.6], [Vector3(0.0, 2.95, -3.9), 1.9], [Vector3(-16.3, WATER + 2.72, -18.4), 2.4], [Vector3(MX - 0.5, 3.12, MZ + 0.9), 2.2],
-			[Vector3(6.6, WATER + 2.3, -4.8), 2.0], [Vector3(-9.0, WATER + 3.0, -17.4), 2.3], [Vector3(-22.6, WATER + 2.5, -8.8), 2.1], [Vector3(3.4, 1.75, -16.3), 1.8]]:
+	for sp in [[Vector3(-9.9, 2.92, 1.9), 2.6], [Vector3(0.0, 2.95, -3.9), 1.9], [Vector3(-16.3, WATER + 2.72, -18.4), 2.4], [Vector3(MX - 0.5, 3.12, MZ + 0.9), 2.2],
+			[Vector3(6.6, WATER + 2.3, -4.8), 2.0], [Vector3(-10.2, WATER + 2.7, -18.4), 2.3], [Vector3(-22.6, WATER + 2.5, -8.8), 2.1], [Vector3(3.4, 1.75, -16.3), 1.8]]:
 		streamer(sp[0], sp[1], 0.32)
 		cyl(sp[0] + Vector3(0, -0.2, 0), 0.012, 0.012, 0.4, pal("dark"), 6)
 	mirror_stand(Vector3(-17.9, 0, -16.5), 0.32); mirror_stand(Vector3(-14.7, 0, -16.5), -0.18); mirror_stand(Vector3(3.05, 0, -14.6) if COVERED else Vector3(-3.05, 0, -14.6), -PI * 0.5 if COVERED else PI * 0.5)
 	shard_tree(Vector3(-13.7, 0, -20.9))
-	reeds(Vector3(-1.9, 0, 4.4)); reeds(Vector3(4.4, 0, 3.0), 7); reeds(Vector3(-4.6, 0, -11.2)); reeds(Vector3(-12.2, 0, -10.0), 8); reeds(Vector3(-20.8, 0, -18.6)); reeds(Vector3(-11.8, 0, -21.6), 7)
+	reeds(Vector3(-2.35, 0, 6.4)); reeds(Vector3(4.4, 0, 3.0), 7); reeds(Vector3(-4.6, 0, -11.2)); reeds(Vector3(-12.2, 0, -10.0), 8); reeds(Vector3(-20.8, 0, -18.6)); reeds(Vector3(-11.8, 0, -21.6), 7)
 	rock(Vector3(6.0, 0, 4.2), 1.2); rock(Vector3(6.9, 0, 3.6), 0.7); rock(Vector3(-6.4, 0, -7.2), 1.0); rock(Vector3(-24.2, 0, -13.2), 1.3); rock(Vector3(-10.8, 0, -22.8), 0.9); rock(Vector3(5.6, 0, -8.8), 1.0)
 	for mp in [Vector3(6.5, WATER + 0.3, 8.5), Vector3(-13.0, WATER + 0.3, 3.5), Vector3(9.5, WATER + 0.4, -12.0), Vector3(-25.0, WATER + 0.3, -4.0),
 			Vector3(-4.0, WATER + 0.4, -26.0), Vector3(-27.0, WATER + 0.3, -18.0), Vector3(-2.0, WATER + 0.2, 9.5), Vector3(-9.0, WATER + 0.3, -31.0)]:
@@ -3200,6 +3245,8 @@ func _ui() -> void:
 	if FileAccess.file_exists("res://fonts/EBGaramond-Italic.ttf"):
 		var ff := FontFile.new(); ff.data = FileAccess.get_file_as_bytes("res://fonts/EBGaramond-Italic.ttf")
 		var fv := FontVariation.new(); fv.base_font = ff; fv.variation_opentype = {"wght": 560}; qfont = fv
+	if qfont != null: hint.add_theme_font_override("font", qfont); hint.add_theme_font_size_override("font_size", 32)
+	hint.add_theme_color_override("font_color", Color(1.0, 0.985, 0.94)); hint.add_theme_color_override("font_outline_color", Color(0.06, 0.1, 0.25, 0.4)); hint.add_theme_constant_override("outline_size", 12)   # pale with a dark edge: it used to be dark, and was lost over the sea
 	var qr := ColorRect.new(); qr.color = Color("e8525a"); qr.anchor_left = 0.5; qr.anchor_right = 0.5; qr.anchor_top = 0.13; qr.anchor_bottom = 0.13
 	qr.offset_left = -34; qr.offset_right = 34; qr.offset_top = -4; qr.offset_bottom = -1; quote_box.add_child(qr)
 	quote_glow = Control.new(); quote_glow.set_anchors_preset(Control.PRESET_FULL_RECT); quote_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE; quote_box.add_child(quote_glow)
@@ -3221,19 +3268,23 @@ func _ui() -> void:
 		ql.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		(quote_glow if lay[3] else quote_box).add_child(ql); quote_lbls.append(ql)
 	quote_box.move_child(quote_glow, quote_box.get_child_count() - 2)   # the light lies under the letters, over the haze
-	title_box = _card("EIDOLON", "demo  ·  πάτα για να ξεκινήσεις", cl)
-	end_box = _card("EIDOLON", "τέλος του demo  ·  πάτα για ξανά", cl); end_box.modulate.a = 0.0; end_box.visible = false
+	title_box = _card("EIDOLON", "demo  ·  tap to begin", cl, qfont)
+	end_box = _card("EIDOLON", "end of the demo  ·  tap to play again", cl, qfont); end_box.modulate.a = 0.0; end_box.visible = false
 
-func _card(big: String, small: String, cl: CanvasLayer) -> Control:
+## the title and the end card. f: the typeface of the lines of the story (EB Garamond italic), so that the cards and those lines are set alike
+func _card(big: String, small: String, cl: CanvasLayer, f: Font = null) -> Control:
 	var c := Control.new(); c.set_anchors_preset(Control.PRESET_FULL_RECT); c.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(c)
 	var bg := ColorRect.new(); bg.color = Color(0.09, 0.12, 0.25, 0.5); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; c.add_child(bg)
 	var a := Label.new(); a.text = big; a.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	a.add_theme_font_size_override("font_size", 76); a.add_theme_color_override("font_color", Color(0.98, 0.95, 0.88))
+	a.add_theme_font_size_override("font_size", 76 if f == null else 92); a.add_theme_color_override("font_color", Color(0.98, 0.95, 0.88))
+	if f != null:
+		var tf := FontVariation.new(); tf.base_font = (f as FontVariation).base_font; tf.variation_opentype = {"wght": 500}; tf.spacing_glyph = 7; a.add_theme_font_override("font", tf)
 	a.anchor_left = 0; a.anchor_right = 1; a.anchor_top = 0.33; a.anchor_bottom = 0.33; a.offset_bottom = 110; c.add_child(a)
 	var ln := ColorRect.new(); ln.color = Color("dc3d46"); ln.anchor_left = 0.5; ln.anchor_right = 0.5; ln.anchor_top = 0.33; ln.anchor_bottom = 0.33
 	ln.offset_left = -60; ln.offset_right = 60; ln.offset_top = 118; ln.offset_bottom = 121; c.add_child(ln)
 	var b := Label.new(); b.text = small; b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	b.add_theme_font_size_override("font_size", 24); b.add_theme_color_override("font_color", Color(0.98, 0.92, 0.84, 0.9))
+	b.add_theme_font_size_override("font_size", 24 if f == null else 34); b.add_theme_color_override("font_color", Color(0.98, 0.92, 0.84, 0.9))
+	if f != null: b.add_theme_font_override("font", f)
 	b.anchor_left = 0; b.anchor_right = 1; b.anchor_top = 0.33; b.anchor_bottom = 0.33; b.offset_top = 140; b.offset_bottom = 180; c.add_child(b)
 	return c
 
@@ -3262,7 +3313,7 @@ func tap(sp: Vector2) -> void:
 	if not started:
 		started = true
 		var tw2 := create_tween(); tw2.tween_property(title_box, "modulate:a", 0.0, 0.7); tw2.tween_callback(title_box.hide)
-		say("πάτα στο έδαφος για να περπατήσεις")
+		say("tap the ground to walk")
 		return
 	if busy: return
 	var px := get_viewport().get_visible_rect().size.x / 720.0
@@ -3282,6 +3333,13 @@ func tap(sp: Vector2) -> void:
 		var dd := cam.unproject_position(c).distance_to(sp)
 		if dd < bd: bd = dd; best = n; bp = c
 	if best == "" or bd > 150.0 * px: return
+	for b in blockers:   # sent into a lamp stand, she stops beside it: on the side of the tap if that is floor, else towards the middle of the place
+		var bc := Vector3(b.x, 0, b.y); var off: Vector3 = bp - bc; var br: float = b.z
+		if off.length() >= br: continue
+		var rr: Dictionary = rects[best]
+		var cand: Vector3 = bc + off.normalized() * br
+		if off.length() < 0.01 or not in_rect(rr, cand): cand = bc + (Vector3((rr.x0 + rr.x1) * 0.5, 0, (rr.z0 + rr.z1) * 0.5) - bc).normalized() * br
+		if in_rect(rr, cand): bp = cand
 	var run := (t - last_tap) < 0.38
 	last_tap = t
 	pending = ""
@@ -3298,7 +3356,7 @@ func walk_to(p: Vector3, cap := WALK) -> bool:
 
 func use(k: String) -> void:
 	if not walk_to(objs[k].stand):
-		say("δεν υπάρχει δρόμος ακόμα"); return
+		say("there is no way there yet"); return
 	pending = k
 
 func _arrive() -> void:
@@ -3534,7 +3592,7 @@ func _process(dt: float) -> void:
 	elif rig_file != "": cam_t = cam_t.lerp(pos + vel * 0.25, 1.0 - exp(-4.0 * dt))
 	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 34.0
-	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * 34.0
+	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * maxf(34.0, cam.size * 1.33)   # a very wide still (the map) from further back, or the sea at its foot falls behind the eye and is cut off
 	if started and not ended and pos.z < -27.2: _end()
 
 # ---------------------------------------------------------------- what she can do
@@ -3651,7 +3709,7 @@ func _do_mirror() -> void:
 	m.tween_property(self, "a_wL", 0.0, 0.7); m.tween_property(self, "a_lean", 0.0, 0.7)
 	await m.finished
 	rects["G"].on = true; done["mirror"] = true
-	say("η πόρτα άνοιξε")
+	say("the door has opened")
 
 func _end() -> void:
 	ended = true
