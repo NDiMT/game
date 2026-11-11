@@ -36,18 +36,24 @@ const CX0 := -3.4   # the second court, and its pool
 const CZ0 := -16.4
 const CX1 := 3.5
 const CZ1 := -10.0
-const QX0 := -2.7   # a channel of still water that cuts the court from north to south
-const QX1 := -0.3
-const QZ0 := -15.88
-const QZ1 := -10.52
-const PIV2 := Vector3(-1.5, 0, -13.0)   # the pivot of the half slab, in the middle of the channel
+const QX0 := -2.15   # the pool of the second court, close under its west wall
+const QX1 := -0.15
+const QZ0 := -15.0
+const QZ1 := -11.4
+const WALLX := -2.85   # the face of the west wall
+const WALLH := 2.3
+const DOORZ := -14.0   # where the door is, in the water; on the wall itself there is plain stone
+const SHEET_EX := 0.15   # the east edge of the cloth that lies over the pool
+const SHEET_L := 2.6
 var winch_a: Node3D
 var glass2: ShaderMaterial
-var half_a: Node3D       # the half slab that turns, and its image in the water
-var half_m: Node3D
-var half_w: Node3D       # the other half: at first only a shadow in the water
-var half_wm: Node3D
-var cap_turns_bridge := true
+var door_a: Node3D        # the leaf of plain stone in the west wall, and the door the water shows in its place
+var door_m: Node3D
+var seam_a: Node3D        # the joints of the leaf: they show only once the door has been seen in the water
+var door_seen := false    # the wall can be pushed only after the cloth is off and the door has been seen
+var sheet: Node3D
+var sheet_mats: Array = []
+var sheet_held := false
 var her_mats: Array = []
 var posing := false
 var cam_focus_on := false
@@ -204,6 +210,31 @@ void fragment(){
 	vec3 n = normalize(wn); if (!FRONT_FACING) n = -n;
 	float sh = 0.8 + 0.2 * clamp(dot(n, normalize(vec3(-0.25, 0.7, 0.66))) * 0.5 + 0.5, 0.0, 1.0);
 	ALBEDO = mix(ca, cb, UV.y) * sh;
+}"""
+## a sheet of cloth lying on the ground that can be dragged by one edge: the edge goes with the hand that holds it,
+## and the rest is drawn after it and gathers into folds
+const SH_SHEET := """shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
+uniform vec3 tint = vec3(1.0); uniform float ex = 0.0; uniform float len = 2.6;
+uniform vec3 grab = vec3(0.0); uniform float pull = 0.0; uniform float lift = 0.0;
+varying vec3 wn; varying float fold;
+void vertex(){
+	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float u = clamp((ex - w.x) / len, 0.0, 1.0);          // 0 at the edge she holds, 1 at the far edge
+	float wave = 0.5 + 0.5 * sin(u * 44.0 + w.z * 2.3 + sin(w.z * 5.0) * 0.8);
+	fold = pull * wave;
+	w.x = mix(w.x, grab.x - u * len * mix(1.0, 0.3, pull), step(0.0001, pull + lift));
+	w.y = w.y * (1.0 + pull * 0.6) + pull * (0.03 + 0.09 * wave);
+	float dz = (w.z - grab.z) / 0.95;   // (squared by hand: pow() of a negative number is not a number, and the cloth vanished)
+	w.y += (1.0 - smoothstep(0.0, 0.4, u)) * lift * (grab.y - 0.05) * exp(-dz * dz);
+	VERTEX = (inverse(MODEL_MATRIX) * vec4(w, 1.0)).xyz;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+void fragment(){
+	vec3 n = normalize(wn); if (!FRONT_FACING) n = -n;
+	float sh = 0.74 + 0.26 * clamp(dot(n, normalize(vec3(-0.25, 0.7, 0.66))) * 0.5 + 0.5, 0.0, 1.0);
+	ALBEDO = texture(albedo_tex, UV).rgb * tint * sh * mix(1.0, 0.82 + 0.3 * fold, clamp(pull * 2.0, 0.0, 1.0));
 }"""
 ## the reflection, drawn as a soft dark shape lying on the water: every vertex is mirrored in the
 ## water plane and slid along the view direction until it meets the surface
@@ -1018,7 +1049,8 @@ func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.
 # ---------------------------------------------------------------- setup
 func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
-			["water", SH_WATER], ["cloth", SH_CLOTH], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
+			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
+			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
 	if OS.get_environment("MOOD") == "moody":
 		sea_c = Color("3a6a7b"); mist_c = Color("b9b4c4"); bg_c = Color("29586a"); shadow_c = Vector3(0.6, 0.61, 0.82); water_deep = Color("2a7d88"); water_shallow = Color("6fc4b8")
@@ -1237,8 +1269,8 @@ func _shots() -> void:
 		{"n": "18-mirror-pool", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-0.8, 0.1, -0.1), "s": 5.2},
 		{"n": "19-mirror-pool-wide", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-1.4, 0.3, 0.7), "s": 13.5},
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
-		{"n": "22-one-slab", "p": Vector3(QX1 + 0.4, 0, PIV2.z + 0.85), "y": -PI * 0.65, "c": Vector3(-0.5, 0.3, -12.8), "s": 7.5},
-		{"n": "23-slab-court", "p": Vector3(QX1 + 0.3, 0, PIV2.z), "y": -PI * 0.5, "c": Vector3(0.0, 0.6, -13.0), "s": 13.0},
+		{"n": "22-covered-pool", "p": Vector3(0.7, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
+		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
 	var only := OS.get_environment("SHOT_ONLY")
@@ -1251,6 +1283,7 @@ func _shots() -> void:
 		shot = sh
 		route.clear(); pos = sh.p; yaw = sh.y; cam.size = sh.s; cam_t = pos
 		a_wL = 0.0
+		if sheet != null: sheet.visible = not sh.get("nosheet", false)
 		if sh.get("touch", false):
 			tgtL = Vector3(MX + 0.012, 1.30, MZ + 0.13); a_wL = 1.0; a_lean = 0.09
 			door.position.y = 1.05 - 2.15; door_energy = 1.0; ripple.position = Vector3(MX - 0.03, 1.30, MZ + 0.13); ripple_p = 0.3; flash = 0.6
@@ -2125,18 +2158,24 @@ func _refl_margins(n: Node) -> void:
 		g.extra_cull_margin = maxf(g.extra_cull_margin, clampf((top - WATER) * 2.0, 0.0, 40.0))
 	for c in n.get_children(): _refl_margins(c)
 
-func _strip_refl(root: Node) -> void:
+## skip: how many of the root's children were already done. sh: the shader the copies get ("mir" takes no shadows:
+## a thing that hangs under the floor must not be darkened by that floor). k: how much of the water's colour they take
+func _strip_refl(root: Node, skip := 0, sh := "two", k := 0.38) -> void:
 	var cache := {}
-	for mm in root.find_children("*", "MeshInstance3D", true, false):
+	var list: Array = []
+	for c in root.get_children().slice(skip):
+		if c is MeshInstance3D: list.append(c)
+		list.append_array(c.find_children("*", "MeshInstance3D", true, false))
+	for mm in list:
 		var mi := mm as MeshInstance3D
 		var m := mi.material_override as ShaderMaterial
 		if m == null: continue
 		if not cache.has(m):
 			var d: ShaderMaterial = m.duplicate(); d.next_pass = null
-			if m.shader == shaders["base"]: d.shader = shaders["two"]
+			if m.shader == shaders["base"]: d.shader = shaders[sh]
 			for cn in ["c_top", "c_z", "c_x"]:   # what stands in the water takes some of the water's colour
 				var c0 = d.get_shader_parameter(cn)
-				if c0 is Color: d.set_shader_parameter(cn, (c0 as Color).lerp(Color(0.5, 0.78, 0.83), 0.38).darkened(0.06))
+				if c0 is Color: d.set_shader_parameter(cn, (c0 as Color).lerp(Color(0.5, 0.78, 0.83), k).darkened(0.06 if k > 0.2 else 0.0))
 			cache[m] = d
 		mi.material_override = cache[m]; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
@@ -2238,40 +2277,68 @@ func _start_zone() -> void:
 	if not ("shots" in OS.get_cmdline_user_args()) or OS.get_environment("GATE_A") == "open": gate_a.position.y = -2.4
 	vine(AX0 + 0.7, AZ1 - 0.08, true, 2.0); vine(1.2, AZ1 - 0.08, true, 1.9)
 
-## the second court, "the one slab". A channel of still water cuts it in two. On a pivot in the middle lies half of a
-## footbridge, turned the wrong way; the other half is only a shadow that the water keeps. The capstan turns the
-## half that is left, and when it lies in line with its lost half the two are one bridge again
+## a dark arched niche on a wall that faces east
+func niche_x(x: float, y: float, z: float, w: float, h: float, parent: Node) -> void:
+	blk(Vector3(x, y, z - w * 0.5), Vector3(x + 0.012, y + h - w * 0.5, z + w * 0.5), "dark", parent)
+	var d := cyl(Vector3(x + 0.006, y + h - w * 0.5, z), w * 0.5, w * 0.5, 0.012, pal("dark"), 24, parent); d.rotation.z = PI * 0.5
+
+## the second court, "the mirror he covered". Its pool lies under a great cloth, as the sculptor covered every mirror.
+## With the cloth drawn off, the water shows the west wall with a door in it, where the wall itself is plain stone.
+## Only after that has been seen can the stone be pushed
 func _pool_c() -> void:
 	var args := OS.get_cmdline_user_args()
-	for both in [self, mroot]:
-		cyl(PIV2, 0.42, 0.4, 0.03, pal("shade"), 24, both)                               # the pivot, standing in the water
-		var hn := Node3D.new(); hn.position = PIV2; hn.rotation.y = PI * 0.5; both.add_child(hn)   # it points north, along the channel
-		blk(Vector3(-0.34, 0.03, -0.45), Vector3(1.22, 0.075, 0.45), "stone", hn)
-		for e in [-1.0, 1.0]: blk(Vector3(-0.34, 0.075, e * 0.42 - 0.03), Vector3(1.22, 0.105, e * 0.42 + 0.03), "shade", hn)
-		blk(Vector3(-0.3, 0.076, -0.035), Vector3(1.2, 0.08, 0.035), "crim", hn)
-		cyl(Vector3(0, 0.075, 0), 0.12, 0.12, 0.035, pal("gold"), 16, hn)
-		# the lost half, in its place: it stays out of sight until the two halves meet
-		var wn := Node3D.new(); wn.position = PIV2 + Vector3(0, -0.16, 0); wn.visible = false; both.add_child(wn)
-		blk(Vector3(-1.22, 0.03, -0.45), Vector3(-0.34, 0.075, 0.45), "stone", wn)
-		for e in [-1.0, 1.0]: blk(Vector3(-1.22, 0.075, e * 0.42 - 0.03), Vector3(-0.34, 0.105, e * 0.42 + 0.03), "shade", wn)
-		blk(Vector3(-1.2, 0.076, -0.035), Vector3(-0.34, 0.08, 0.035), "crim", wn)
-		if both == self: half_a = hn; half_w = wn
-		else: half_m = hn; half_wm = wn
-		for bx in [QX0, QX1 - 0.16]:   # what is left of the bridge heads on either bank
-			blk(Vector3(bx, 0.0, PIV2.z - 0.45), Vector3(bx + 0.16, 0.07, PIV2.z + 0.45), "stone", both)
 	_strip_refl(mroot)
+	var m0 := mroot.get_child_count()
+	var x := WALLX; var h := WALLH; var z0 := -16.18; var z1 := -11.6; var da := DOORZ - 0.45; var db := DOORZ + 0.45; var dh := 1.85
+	# the wall itself: three masses round the place of the door, and a leaf of the same stone that closes it
+	blk(Vector3(CX0, 0, z0), Vector3(x, h, da), "stone"); blk(Vector3(CX0, 0, db), Vector3(x, h, z1), "stone"); blk(Vector3(CX0, dh, da), Vector3(x, h, db), "stone")
+	blk(Vector3(CX0 - 0.03, 0, z0), Vector3(x + 0.03, 0.1, da), "shade"); blk(Vector3(CX0 - 0.03, 0, db), Vector3(x + 0.03, 0.1, z1 + 0.03), "shade")
+	cornice(CX0, z0, x, z1, h); dentils(CX0, z0, x, z1, h); crenels(Vector3(x - 0.09, h + 0.06, z0 + 0.1), Vector3(x - 0.09, h + 0.06, z1 - 0.1), 0.335)
+	door_a = Node3D.new(); add_child(door_a)
+	blk(Vector3(x - 0.16, 0, da), Vector3(x, dh, db), "stone", door_a)
+	seam_a = Node3D.new(); seam_a.position = Vector3(x + 0.003, 0, DOORZ); seam_a.scale = Vector3(1, 0.001, 1); seam_a.visible = false; door_a.add_child(seam_a)
+	for sz in [-0.45, 0.45]: blk(Vector3(0, 0, sz - 0.008), Vector3(0.004, dh, sz + 0.008), "shade", seam_a)
+	blk(Vector3(0, dh - 0.016, -0.45), Vector3(0.004, dh, 0.45), "shade", seam_a)
+	# in the water the same wall hangs upside down, and there the bay that is blank above has a door
+	var xm := x - 0.012
+	blk(Vector3(xm, 0, -15.86), Vector3(x, h, da), "stone", mroot); blk(Vector3(xm, 0, db), Vector3(x, h, z1), "stone", mroot); blk(Vector3(xm, dh, da), Vector3(x, h, db), "stone", mroot)
+	blk(Vector3(xm, h, -15.86), Vector3(x + 0.03, h + 0.07, z1), "shade", mroot)
+	for i in 13: blk(Vector3(xm, h + 0.07, -15.8 + 0.335 * i), Vector3(x, h + 0.19, -15.8 + 0.335 * i + 0.13), "stone", mroot)
+	blk(Vector3(x, 0, -15.86), Vector3(x + 0.03, 0.1, da), "shade", mroot); blk(Vector3(x, 0, db), Vector3(x + 0.03, 0.1, z1), "shade", mroot)
+	for jz in [da - 0.06, db + 0.06]: blk(Vector3(x, 0, jz - 0.06), Vector3(x + 0.04, dh + 0.12, jz + 0.06), "dark", mroot)   # the frame of the door
+	blk(Vector3(x, dh, da - 0.12), Vector3(x + 0.05, dh + 0.14, db + 0.12), "dark", mroot)
+	blk(Vector3(x, dh + 0.14, da - 0.18), Vector3(x + 0.06, dh + 0.2, db + 0.18), "gold", mroot)
+	door_m = Node3D.new()
+	blk(Vector3(x - 0.01, 0, da), Vector3(x + 0.02, dh, db), "crim", door_m)
+	blk(Vector3(x + 0.02, 0, DOORZ - 0.02), Vector3(x + 0.026, dh, DOORZ + 0.02), "dark", door_m)
+	for sy in [0.4, 0.95, 1.5]:
+		for sz in [-0.24, 0.24]: blk(Vector3(x + 0.02, sy - 0.05, DOORZ + sz - 0.05), Vector3(x + 0.034, sy + 0.05, DOORZ + sz + 0.05), "gold", door_m)
+	for both in [self, mroot]:
+		for nz in [-15.3, -12.7]: niche_x(x, 0.35, nz, 0.5, 1.05, both)
+	_strip_refl(mroot, m0, "mir", 0.2)
+	_strip_refl(door_m, 0, "mir", 0.06)   # the door keeps its own colour: it is the thing to be seen
+	mroot.add_child(door_m)
 	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(QX1 - QX0, QZ1 - QZ0); wq.orientation = PlaneMesh.FACE_Y
 	glass2 = ShaderMaterial.new(); glass2.shader = shaders["glass"]; timed.append(glass2)
-	glass2.set_shader_parameter("lost_rect", Vector4(QX0 + 0.14, PIV2.z - 0.45, PIV2.x - 0.3, PIV2.z + 0.45)); glass2.set_shader_parameter("lost_a", 1.0); glass2.set_shader_parameter("lost_x", 1.0)
+	glass2.set_shader_parameter("blur_px", 1.9); glass2.set_shader_parameter("wave", 0.7)   # a little clearer than the first pool: here there is something to read
 	prim(wq, Vector3((QX0 + QX1) * 0.5, 0.012, (QZ0 + QZ1) * 0.5), glass2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	urn(Vector3(-1.5, 0, -10.31), 0.85, "terra")
-	# the way out west: two piers and a lintel
-	for gz in [-13.86, -12.14]:
-		blk(Vector3(CX0 - 0.04, 0, gz - 0.14), Vector3(CX0 + 0.24, 2.1, gz + 0.14), "stone"); blk(Vector3(CX0 - 0.07, 0, gz - 0.17), Vector3(CX0 + 0.27, 0.1, gz + 0.17), "shade")
-	blk(Vector3(CX0 - 0.04, 2.1, -14.0), Vector3(CX0 + 0.24, 2.42, -12.0), "stone")
-	cornice(CX0 - 0.04, -14.0, CX0 + 0.24, -12.0, 2.42, 0.04, 0.06); dentils(CX0 - 0.04, -14.0, CX0 + 0.24, -12.0, 2.42)
-	if "solve2" in args or "shots" in args: cap_turns_bridge = false
+	# the cloth over the pool
+	var cf := "res://props/cloth.glb"
+	if FileAccess.file_exists(cf) and OS.get_environment("NOSHEET") != "1":
+		var st := GLTFState.new(); var doc := GLTFDocument.new()
+		doc.append_from_file(ProjectSettings.globalize_path(cf), st)
+		sheet = doc.generate_scene(st) as Node3D
+		sheet.position = Vector3(SHEET_EX - SHEET_L * 0.5, 0.075, (QZ0 + QZ1) * 0.5); sheet.scale = Vector3(SHEET_L / 0.782, 0.62, (QZ1 - QZ0 + 0.6) / 1.0); add_child(sheet)
+		for m in sheet.find_children("*", "MeshInstance3D", true, false):
+			var mi := m as MeshInstance3D
+			for si in mi.mesh.get_surface_count():
+				var om := mi.mesh.surface_get_material(si)
+				var sm := ShaderMaterial.new(); sm.shader = shaders["sheet"]
+				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
+				sm.set_shader_parameter("ex", SHEET_EX); sm.set_shader_parameter("len", SHEET_L); sm.set_shader_parameter("tint", Vector3(1.16, 1.0, 0.92))
+				mi.set_surface_override_material(si, sm); sheet_mats.append(sm)
+			mi.extra_cull_margin = 3.0
 
 func _world() -> void:
 	# ---- A. the arrival court (10 x 9.5 m, open floor all round the mirror pool)
@@ -2314,8 +2381,8 @@ func _world() -> void:
 	crenels(Vector3(-3.3, 1.66, -16.22), Vector3(3.4, 1.66, -16.22), 0.335)
 	for wx in [-2.4, -1.0, 0.4, 1.8]: win_z(wx, 0.25, -16.18, 0.5, 1.05)
 	banner(Vector3(-0.3, 1.5, -16.165), 0.34, 0.95); banner(Vector3(2.55, 1.5, -16.165), 0.34, 0.95)
-	plinth_head("kit_face6", Vector3(-2.95, 0, -15.95), 0.5); plinth_head("kit_face4", Vector3(3.2, 0, -15.9), -0.4)
-	parapet(Vector3(-3.3, 0, -16.0), Vector3(-3.3, 0, -13.75)); parapet(Vector3(-3.3, 0, -12.25), Vector3(-3.3, 0, -10.1)); parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
+	plinth_head("kit_face6", Vector3(-2.42, 0, -15.72), 0.5); plinth_head("kit_face4", Vector3(3.2, 0, -15.9), -0.4)
+	parapet(Vector3(-3.3, 0, -11.6), Vector3(-3.3, 0, -10.1)); parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
 	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(3.4, 0, -10.1))
 	lantern(Vector3(3.15, 0, -10.35), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
 	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32); cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16)
@@ -2325,7 +2392,7 @@ func _world() -> void:
 	decal(CAP + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.22, 0.78)
 	_pool_c()
 	# ---- the turning bridge and the long walk west
-	slab(-4.2, -13.6, -3.4, -12.4, 0.0)
+	slab(-4.2, -13.6, -3.4, -12.4, 0.0); slab(-4.2, -14.6, -3.4, -13.6, 0.0)
 	bridge = Node3D.new(); bridge.name = "Bridge"; bridge.position = PIV; bridge.rotation.y = PI * 0.5; add_child(bridge)
 	slab(-1.7, -0.6, 1.7, 0.6, 0.0, "stone", bridge)
 	blk(Vector3(-1.6, 0, -0.03), Vector3(1.6, 0.004, 0.03), "crim", bridge)
@@ -2408,7 +2475,7 @@ func _world() -> void:
 			[Vector3(6.6, WATER + 2.3, -4.8), 2.0], [Vector3(-9.0, WATER + 3.0, -17.4), 2.3], [Vector3(-22.6, WATER + 2.5, -8.8), 2.1], [Vector3(3.4, 1.75, -16.3), 1.8]]:
 		streamer(sp[0], sp[1], 0.32)
 		cyl(sp[0] + Vector3(0, -0.2, 0), 0.012, 0.012, 0.4, pal("dark"), 6)
-	mirror_stand(Vector3(-17.9, 0, -16.5), 0.2); mirror_stand(Vector3(-14.7, 0, -16.5), -0.2); mirror_stand(Vector3(-3.05, 0, -14.6), PI * 0.5)
+	mirror_stand(Vector3(-17.9, 0, -16.5), 0.2); mirror_stand(Vector3(-14.7, 0, -16.5), -0.2); mirror_stand(Vector3(3.05, 0, -14.6), -PI * 0.5)
 	shard_tree(Vector3(-13.7, 0, -20.9))
 	reeds(Vector3(-1.9, 0, 4.4)); reeds(Vector3(4.4, 0, 3.0), 7); reeds(Vector3(-4.6, 0, -11.2)); reeds(Vector3(-12.2, 0, -10.0), 8); reeds(Vector3(-20.8, 0, -18.6)); reeds(Vector3(-11.8, 0, -21.6), 7)
 	rock(Vector3(6.0, 0, 4.2), 1.2); rock(Vector3(6.9, 0, 3.6), 0.7); rock(Vector3(-6.4, 0, -7.2), 1.0); rock(Vector3(-22.0, 0, -13.2), 1.3); rock(Vector3(-10.8, 0, -22.8), 0.9); rock(Vector3(5.6, 0, -8.8), 1.0)
@@ -2687,11 +2754,13 @@ func _process(dt: float) -> void:
 		var ph := atan2(pos.x - CAP.x, pos.z - CAP.z)
 		var th := ph - 0.42
 		cap_rot.rotation.y = th
-		var turn := PI * 0.5 * (1.0 - smoothstep(0.0, 1.0, clampf(-ph / (PI * 0.5), 0.0, 1.0)))
-		if cap_turns_bridge: bridge.rotation.y = turn
-		elif half_a != null: half_a.rotation.y = turn; half_m.rotation.y = turn
+		bridge.rotation.y = PI * 0.5 * (1.0 - smoothstep(0.0, 1.0, clampf(-ph / (PI * 0.5), 0.0, 1.0)))
 		var dir := Vector3(sin(th), 0, cos(th))
 		tgtR = CAP + Vector3(0, 0.98, 0) + dir * 0.5; tgtL = CAP + Vector3(0, 0.98, 0) + dir * 0.74
+	if sheet_held:   # she drags the cloth by its edge: the edge follows her hand and the rest gathers behind it
+		var gp := Vector3(maxf(pos.x - 0.34, SHEET_EX), 0.74, pos.z)
+		for sm2 in sheet_mats: (sm2 as ShaderMaterial).set_shader_parameter("grab", gp); (sm2 as ShaderMaterial).set_shader_parameter("pull", clampf((gp.x - SHEET_EX) / 0.95, 0.0, 1.0))
+		tgtR = gp + Vector3(0.03, 0.03, 0.0)
 	var lv := Vector2(vel.x * cos(yaw) - vel.z * sin(yaw), vel.x * sin(yaw) + vel.z * cos(yaw))
 	sway_v += ((-lv * 0.17 + Vector2(sin(t * 0.6), cos(t * 0.45)) * 0.02 - sway) * 16.0 - sway_v * 3.4) * dt
 	sway += sway_v * dt
@@ -2947,45 +3016,54 @@ func _solve1() -> void:
 	await wait(0.8)
 	get_tree().quit()
 
-## the one slab, solved. No captions: she comes to the water and sees half a bridge and the shadow of the other half,
-## turns the capstan until the half that is left lies in line with it, and the bridge is whole
+## the covered mirror, solved. No captions: she finds the court closed, draws the cloth off the pool, sees in the
+## water a door that the wall does not have, goes to that place on the wall and pushes
 func _solve2() -> void:
 	started = true; title_box.hide(); hint.hide()
-	cap_turns_bridge = false
-	var head := Vector3(QX1 + 0.3, 0, PIV2.z)
-	pos = Vector3(0.2, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.6
+	pos = Vector3(0.3, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.8
 	await wait(1.0)
-	cam_focus = Vector3(-0.7, 0.1, -12.7); cam_focus_on = true
-	await go([Vector3(0.25, 0, -11.9), head + Vector3(0.1, 0, 0.85)])
-	await face(PIV2 + Vector3(-0.6, 0, 0))
-	create_tween().tween_property(cam, "size", 5.2, 1.6)
-	await wait(2.2)                                    # half a bridge, pointing the wrong way; and a shadow in the water
-	cam_focus = Vector3(0.15, 0.1, -12.5); create_tween().tween_property(cam, "size", 6.0, 1.4)   # the capstan and the slab, both in view
-	await go([CAP + Vector3(0, 0, 0.66)])
-	await face(CAP + Vector3(-1.4, 0, 0.66))
-	pushing = true
-	var a := tw()
-	a.tween_property(self, "a_wL", 1.0, 0.45); a.tween_property(self, "a_wR", 1.0, 0.45); a.tween_property(self, "a_lean", 0.2, 0.45)
-	await a.finished
-	var arc := []
-	for i in range(1, 10): arc.append(CAP + Vector3(sin(-PI * 0.5 * i / 9.0), 0, cos(-PI * 0.5 * i / 9.0)) * 0.66)
-	await go(arc, 0.34)
-	await wait(0.15)
-	pushing = false
-	half_a.rotation.y = 0.0; half_m.rotation.y = 0.0
-	var b := tw()
-	b.tween_property(self, "a_wL", 0.0, 0.45); b.tween_property(self, "a_wR", 0.0, 0.45); b.tween_property(self, "a_lean", 0.0, 0.45)
-	# the two halves lie in line: the shadow takes body and rises out of the water
-	await wait(0.5)
-	half_w.visible = true; half_wm.visible = true
-	var rt := create_tween().set_parallel()
-	rt.tween_property(half_w, "position:y", 0.0, 1.8).set_trans(Tween.TRANS_SINE); rt.tween_property(half_wm, "position:y", 0.0, 1.8).set_trans(Tween.TRANS_SINE)
-	rt.tween_method(func(v: float): glass2.set_shader_parameter("lost_a", v), 1.0, 0.0, 1.8)
-	await rt.finished
-	await wait(1.2)
-	create_tween().tween_property(cam, "size", 6.6, 1.6)
-	cam_focus = Vector3(-1.4, 0.3, -12.9)
-	await go([head, Vector3(QX0 - 0.3, 0, PIV2.z), Vector3(-3.95, 0, -13.0)])
+	cam_focus = Vector3(-1.2, 0.4, -13.0); cam_focus_on = true
+	await go([Vector3(0.75, 0, -12.2), Vector3(SHEET_EX + 0.55, 0, -13.2)])
+	await face(Vector3(-1.0, 0, -13.2))
+	await wait(0.6)
+	# she takes the edge of the cloth and draws it off the water
+	sheet_held = true
+	var g := tw(); g.tween_property(self, "a_wR", 1.0, 0.5); g.tween_property(self, "a_lean", 0.16, 0.5)
+	for sm in sheet_mats: g.tween_method(func(v: float): (sm as ShaderMaterial).set_shader_parameter("lift", v), 0.0, 1.0, 0.7)
+	await g.finished
+	await wait(0.2)
+	create_tween().tween_property(self, "a_lean", 0.05, 0.5)
+	await go([Vector3(1.45, 0, -13.2)], 0.55)
+	await wait(0.3)
+	sheet_held = false
+	var r := tw(); r.tween_property(self, "a_wR", 0.0, 0.5); r.tween_property(self, "a_lean", 0.0, 0.5)
+	for sm in sheet_mats: r.tween_method(func(v: float): (sm as ShaderMaterial).set_shader_parameter("lift", v), 1.0, 0.0, 0.6)
+	await r.finished
+	# the water: the wall upside down, and in it a door
+	await go([Vector3(0.25, 0, -12.4)])
+	await face(Vector3(-1.5, 0, -12.9))
+	create_tween().tween_property(cam, "size", 5.6, 1.6)
+	await wait(2.6)
+	door_seen = true; seam_a.visible = true
+	create_tween().tween_property(seam_a, "scale:y", 1.0, 1.4).set_trans(Tween.TRANS_SINE)   # now the joints show on the stone
+	await wait(1.8)
+	create_tween().tween_property(cam, "size", 6.2, 1.6)
+	await go([Vector3(0.3, 0, -10.95), Vector3(-2.55, 0, -10.95), Vector3(-2.5, 0, DOORZ)])
+	await face(Vector3(WALLX, 0, DOORZ))
+	tgtL = Vector3(WALLX + 0.02, 1.12, DOORZ + 0.16); tgtR = Vector3(WALLX + 0.02, 1.12, DOORZ - 0.16)
+	var ph := tw(); ph.tween_property(self, "a_wL", 1.0, 0.5); ph.tween_property(self, "a_wR", 1.0, 0.5); ph.tween_property(self, "a_lean", 0.18, 0.5)
+	await ph.finished
+	if door_seen:   # the stone gives way: it goes back into the wall, then down
+		var dt1 := create_tween().set_parallel()
+		dt1.tween_property(door_a, "position:x", -0.3, 1.1).set_trans(Tween.TRANS_SINE); dt1.tween_property(door_m, "position:x", -0.3, 1.1).set_trans(Tween.TRANS_SINE)
+		await wait(0.7)
+		var pb := tw(); pb.tween_property(self, "a_wL", 0.0, 0.5); pb.tween_property(self, "a_wR", 0.0, 0.5); pb.tween_property(self, "a_lean", 0.0, 0.5)
+		await wait(0.6)
+		var dt2 := create_tween().set_parallel()
+		dt2.tween_property(door_a, "position:y", -1.95, 2.0).set_trans(Tween.TRANS_SINE); dt2.tween_property(door_m, "position:y", -1.95, 2.0).set_trans(Tween.TRANS_SINE)
+		await dt2.finished
+	await wait(0.6)
+	await go([Vector3(-3.95, 0, DOORZ)])
 	await wait(0.8)
 	get_tree().quit()
 
