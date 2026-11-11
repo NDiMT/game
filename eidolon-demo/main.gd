@@ -228,13 +228,15 @@ void fragment(){
 	float sh = 0.8 + 0.2 * clamp(dot(n, normalize(vec3(-0.25, 0.7, 0.66))) * 0.5 + 0.5, 0.0, 1.0);
 	ALBEDO = mix(ca, cb, UV.y) * sh;
 }"""
-## the glass of a standing mirror. It shows what stands before it: the ray from the eye is turned back off the glass and
-## followed step by step through the picture already drawn, until it meets something (the floor, a post, her). What the
-## screen shows there is what the glass shows, a little cool and a little pale, with two slow glints across it
+## the glass of a standing mirror. It shows what lies before it: the ray from the eye is turned back off the glass and
+## followed down to the ground before the mirror (the floor of a court, or the sea), and what the screen shows at that
+## place is what the glass shows, a little cool and a little pale, with two slow glints across it.
+## (It used to follow the ray step by step through the drawn picture, to catch things that stand before the mirror.
+## That flickered: whether the ray met a gate pier or a post changed from frame to frame as the eye moved. The place
+## on the ground is fixed in the world, so this picture holds still.)
 const SH_MIRROR := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap, repeat_disable;
-uniform sampler2D depth_tex : hint_depth_texture, filter_nearest, repeat_disable;
 uniform float ground_y = 0.0; uniform float time_s = 0.0;
 varying vec3 wp; varying vec3 wn;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz); }
@@ -242,39 +244,14 @@ void fragment(){
 	vec3 v = -normalize(INV_VIEW_MATRIX[2].xyz);
 	vec3 n = normalize(wn); if (dot(n, v) > 0.0) n = -n;
 	vec3 r = reflect(v, n);
+	vec3 q = wp + r * clamp((wp.y - ground_y) / max(-r.y, 0.08), 0.25, 9.0);
+	vec4 cp = PROJECTION_MATRIX * (VIEW_MATRIX * vec4(q, 1.0));
+	vec2 huv = cp.xy / cp.w * 0.5 + 0.5;
+	vec2 inb = smoothstep(vec2(0.0), vec2(0.04), huv) * smoothstep(vec2(0.0), vec2(0.04), 1.0 - huv);   // near the edge of the screen it fades to sky, it does not pop
+	float hit = inb.x * inb.y;
 	vec2 wob = vec2(sin(wp.y * 9.0 + time_s * 0.7), cos(wp.x * 7.0 + time_s * 0.5)) * 0.0009;
-	float hit = 0.0; vec2 huv = vec2(0.0); float t = 0.12; float st = 0.06; float t0 = 0.0; float ta = 0.0; float run = 0.0;
-	for (int i = 0; i < 56; i++) {
-		vec4 vq = VIEW_MATRIX * vec4(wp + r * t, 1.0);
-		vec4 cq = PROJECTION_MATRIX * vq; vec2 uv = cq.xy / cq.w * 0.5 + 0.5;
-		if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) break;
-		vec4 sv = INV_PROJECTION_MATRIX * vec4(uv * 2.0 - 1.0, textureLod(depth_tex, uv, 0.0).r * 2.0 - 1.0, 1.0);
-		float dz = sv.z / sv.w - vq.z;                                     // how far behind what is drawn there the ray now is
-		if (dz > 0.0 && dz < 1.1) {
-			// it must stay behind for two steps running: a thin bar or baluster is passed by, or it would flick in
-			// and out of the glass with every small move of the eye
-			if (run > 0.5) { hit = 1.0; huv = uv; t0 = ta; break; }
-			run = 1.0; ta = t0;
-		} else run = 0.0;
-		t0 = t; t += st; st *= 1.035;
-	}
-	if (hit > 0.5) {                                                         // close in on the place it went behind
-		float a = t0; float b = t;
-		for (int k = 0; k < 5; k++) {
-			float m = (a + b) * 0.5;
-			vec4 vq = VIEW_MATRIX * vec4(wp + r * m, 1.0);
-			vec4 cq = PROJECTION_MATRIX * vq; vec2 uv = cq.xy / cq.w * 0.5 + 0.5;
-			vec4 sv = INV_PROJECTION_MATRIX * vec4(uv * 2.0 - 1.0, textureLod(depth_tex, uv, 0.0).r * 2.0 - 1.0, 1.0);
-			if (sv.z / sv.w - vq.z > 0.0) { b = m; huv = uv; } else a = m;
-		}
-	} else {                                                                 // nothing met: the ground (or the sea) further off
-		vec3 q = wp + r * clamp((wp.y - ground_y) / max(-r.y, 0.08), 0.25, 9.0);
-		vec4 cp = PROJECTION_MATRIX * (VIEW_MATRIX * vec4(q, 1.0));
-		huv = cp.xy / cp.w * 0.5 + 0.5;
-		hit = step(0.0, huv.x) * step(huv.x, 1.0) * step(0.0, huv.y) * step(huv.y, 1.0);
-	}
 	vec3 sky = mix(vec3(0.52, 0.74, 0.84), vec3(0.8, 0.92, 0.96), UV.y);
-	vec3 c = mix(sky, textureLod(screen_tex, clamp(huv + wob, 0.0, 1.0), 1.3).rgb, hit);
+	vec3 c = mix(sky, textureLod(screen_tex, clamp(huv + wob, 0.0, 1.0), 1.6).rgb, hit);
 	c = (c - 0.62) * 1.2 + 0.62;                                                           // silvered glass: deeper than the day it shows,
 	c = mix(c, sky, 0.5 * (1.0 - smoothstep(0.15, 0.6, dot(c, vec3(0.3, 0.5, 0.2)))));     // but never a dark hole: the dark sea comes back pale,
 	c = mix(c, sky, 0.14 + 0.2 * smoothstep(0.4, 1.0, UV.y)) * vec3(0.8, 0.91, 0.98);      // cooler, and paler towards its head
