@@ -1,9 +1,11 @@
 """Animates the second intro card (Aphrodite's condition) from its painted layers.
 
 usage: python3 animate_card2.py <layers dir> <out.mp4> [seconds] [notext]
-Layers (all 941x1672, in place): bg, theron (kneeling), statue (hands already flushed), aphrodite, mirror (with her hands), rays.
-The light comes down, life runs through the marble from the head to the feet, her hands flush, and she shifts her weight
-for the first time. The goddess lifts the mirror as she names her condition. The words form under the ground line.
+Layers (all 941x1672, in place): bg, theron (kneeling), aphrodite, mirror (with her hands), rays, and three drawings of the
+marble woman: statue (hands already flushed), statue_stone and statue_alt (981x1602, drawn larger). The three are the
+frames of her movement. The light comes down, life runs through the marble from the head to the feet, her hands flush,
+and she begins to move. The goddess holds the mirror, never quite still, and lifts it as she names her condition. The
+words form under the ground line.
 """
 import sys, math, subprocess, os
 import numpy as np
@@ -51,21 +53,49 @@ def ink_in(layer, p):
     a = np.asarray(layer).astype(np.float32); a[..., 3] *= np.clip((p * 1.35 - NOISE) * 5.0, 0.0, 1.0)
     return img(a)
 
-# the marble woman before the goddess touches her: duller, and her hands are stone like the rest of her
+# the marble woman. Her paint comes from one drawing (statue); the other two give only their outlines, so that when the
+# frames change it is she who moves and not the grain of the marble
 ST = np.asarray(statue).astype(np.float32)
 solid = ST[..., 3] > 200
 HANDS = (ST[..., 3] > 0) & ((ST[..., 1] < 138) | (ST[..., 0] - ST[..., 2] > 118)) & (YY > 985) & (YY < 1060)
 HANDS_SOFT = np.asarray(Image.fromarray((HANDS * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.7)), dtype=np.float32) / 255.0
 body = ST[solid & ~HANDS][:, :3].mean(0)
-STONE = ST.copy()
 lum = ST[..., :3].mean(2, keepdims=True)
 HAND_STONE = body * np.clip(lum / ST[HANDS & solid][:, :3].mean(), 0.78, 1.18)   # the same hands, painted in the colour of the rest of her
-STONE[..., :3] = ST[..., :3] * (1.0 - HANDS_SOFT[..., None]) + HAND_STONE * HANDS_SOFT[..., None]
-grey = STONE[..., :3].mean(2, keepdims=True)
-STONE[..., :3] = (STONE[..., :3] * 0.8 + grey * 0.2) * 0.93
-ALIVE = ST.copy(); ALIVE[..., :3] = np.clip(ALIVE[..., :3] * 1.05 + np.array([6.0, 4.0, 2.0]), 0, 255)
+PALE = ST[..., :3] * (1.0 - HANDS_SOFT[..., None]) + HAND_STONE * HANDS_SOFT[..., None]
+
+def spread(rgb, n=18):
+    """carries the paint outwards past its own edge, so an outline a few pixels off still finds paint under it"""
+    m = solid.astype(np.float32); c = rgb * m[..., None]
+    def box(a):
+        q = np.pad(a, ((1, 1), (1, 1)) + ((0, 0),) * (a.ndim - 2), mode='edge'); o = np.zeros_like(a)
+        for dy in range(3):
+            for dx in range(3): o += q[dy:dy + a.shape[0], dx:dx + a.shape[1]]
+        return o
+    for _ in range(n):
+        cb, mb = box(c), box(m)
+        new = (m < 0.5) & (mb > 0.5)
+        c[new] = cb[new] / mb[new][:, None]; m[new] = 1.0
+    return c
+def lift(c): return np.clip(c * 1.05 + np.array([6.0, 4.0, 2.0]), 0, 255)
+_pale, _red = spread(PALE), spread(ST[..., :3])
+_grey = _pale.mean(2, keepdims=True)
+TEX_STONE = (_pale * 0.8 + _grey * 0.2) * 0.93      # before the goddess touches her: duller, hands of stone
+TEX_PALE, TEX_RED = lift(_pale), lift(_red)         # alive, before and after her hands flush
+
+def outline(layer):
+    return np.asarray(layer).astype(np.float32)[..., 3] / 255.0
+def in_register(layer):
+    """the drawing made at another size, brought to the size and place of the others"""
+    a = np.asarray(layer)[..., 3]; ys, xs = np.where(a > 40)
+    ys0, xs0 = np.where(ST[..., 3] > 40)
+    box_ = (xs0.min(), ys0.min(), xs0.max() + 1, ys0.max() + 1)
+    c = layer.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)).resize((box_[2] - box_[0], box_[3] - box_[1]), Image.LANCZOS)
+    o = Image.new('RGBA', (W, H), (0, 0, 0, 0)); o.paste(c, (box_[0], box_[1])); return o
+F_C, F_A, F_B = outline(statue), outline(load('statue_stone')), outline(in_register(load('statue_alt')))
+CYCLE = [F_C, F_B, F_A, F_B]      # upright, a little forward, leaning forward with her head lifted, and back
+HOLD, XF = 0.42, 0.15             # seconds a drawing is held, and the time it takes to give way to the next
 ST_TOP, ST_BOT = 769.0, 1239.0
-FOOT = (505.0, 1236.0)            # her leading foot: she rocks about it when she first moves
 
 # the rays, each drawn from the pediment downwards
 RA = np.asarray(rays.filter(ImageFilter.MaxFilter(3))).astype(np.float32)      # a touch broader and brighter than painted, so they read as light
@@ -75,8 +105,29 @@ RAYS = [(0, 395, 445.0, 520.0, 3.2), (395, 455, 445.0, 602.0, 3.45), (455, W, 44
 RAY_T = 0.9
 
 DISC = (640.0, 640.0, 66.0)       # the mirror's face
-DISC_M = np.clip((DISC[2] - np.hypot(XX - DISC[0], YY - DISC[1])) / 3.0, 0.0, 1.0)
-ELBOW = (792.0, 735.0)            # the mirror turns a little about her right elbow
+
+class Piece:
+    """a painted piece that can be moved by a different amount at every point: here the mirror and the hands that hold
+    it move freely, while the forearm stays joined to her sleeve at the elbow"""
+    def __init__(self, layer, pad=30):
+        a = np.asarray(layer).astype(np.float32)
+        ys, xs = np.where(a[..., 3] > 0)
+        self.x0, self.x1 = max(xs.min() - pad, 0), min(xs.max() + pad + 1, W)
+        self.y0, self.y1 = max(ys.min() - pad, 0), min(ys.max() + pad + 1, H)
+        c = a[self.y0:self.y1, self.x0:self.x1]
+        self.pm = c.copy(); self.pm[..., :3] *= c[..., 3:4] / 255.0
+        self.X = np.arange(self.x0, self.x1, dtype=np.float32)[None, :] + np.zeros((self.y1 - self.y0, 1), dtype=np.float32)
+        self.Y = np.arange(self.y0, self.y1, dtype=np.float32)[:, None] + np.zeros((1, self.x1 - self.x0), dtype=np.float32)
+    def draw(self, dx, dy):
+        sx = np.clip(self.X - dx - self.x0, 0.0, self.pm.shape[1] - 1.001); sy = np.clip(self.Y - dy - self.y0, 0.0, self.pm.shape[0] - 1.001)
+        ix, iy = sx.astype(np.int32), sy.astype(np.int32); fx, fy = (sx - ix)[..., None], (sy - iy)[..., None]
+        p = self.pm
+        o = (p[iy, ix] * (1 - fx) + p[iy, ix + 1] * fx) * (1 - fy) + (p[iy + 1, ix] * (1 - fx) + p[iy + 1, ix + 1] * fx) * fy
+        al = np.maximum(o[..., 3:4], 1e-3); o[..., :3] = o[..., :3] * 255.0 / al
+        full = np.zeros((H, W, 4), dtype=np.float32); full[self.y0:self.y1, self.x0:self.x1] = o
+        return img(full)
+MIRROR = Piece(mirror)
+_u = np.clip((800.0 - MIRROR.X) / 95.0, 0.0, 1.0); MIRROR_W = _u * _u * (3 - 2 * _u)   # nothing at the elbow, everything from the hands on
 HIP = (175.0, 1150.0)             # the sculptor bows from here
 
 # the words: one painted layer, and for every pixel the moment its letter begins to appear
@@ -106,7 +157,7 @@ if TEXT:
 T_BG, T_MAN, T_STATUE, T_GOD = 1.0, 0.5, 0.9, 1.5
 T_LIFE0, T_LIFE1 = 4.5, 6.0        # life runs down her
 T_HANDS0, T_HANDS1 = 5.6, 6.8      # her hands flush
-T_MOVE = 6.2                       # she shifts her weight
+T_MOVE = 6.0                       # she begins to move
 T_LIFT0, T_LIFT1 = 5.3, 6.3        # the goddess lifts the mirror
 GLINTS = (5.9, 9.9)
 T_BOW0, T_BOW1 = 6.6, 8.2
@@ -144,32 +195,39 @@ for f in range(N):
         front = ST_TOP - 40.0 + (ST_BOT - ST_TOP + 90.0) * pl
         k = np.clip((front + (NOISE - 0.5) * 60.0 - YY) / 26.0, 0.0, 1.0)[..., None] if pl > 0.0 else 0.0
         ph = ease(seg(t, T_HANDS0, T_HANDS1))
-        alive = ALIVE.copy()
-        if ph < 1.0:   # until they flush, her hands are the colour of the rest of her
-            hs = (HANDS_SOFT * (1.0 - ph))[..., None]
-            alive[..., :3] = alive[..., :3] * (1.0 - hs) + np.clip(HAND_STONE * 1.05 + np.array([6.0, 4.0, 2.0]), 0, 255) * hs
-        a = STONE * (1.0 - k) + alive * k
+        col = TEX_STONE * (1.0 - k) + (TEX_PALE * (1.0 - ph) + TEX_RED * ph) * k
         if 0.0 < pl < 1.0:   # the bright edge of it
             band = np.exp(-((YY - front) / 20.0) ** 2) * 0.55
-            a[..., :3] += (255.0 - a[..., :3]) * band[..., None]
-        st = img(a)
+            col = col + (255.0 - col) * band[..., None]
+        # once she lives she does not stand still: the drawings follow one another
+        tm = t - T_MOVE
+        if tm <= 0.0: al = CYCLE[0]
+        else:
+            n = int(tm / HOLD); u = ease(seg(tm - n * HOLD, HOLD - XF, HOLD))
+            al = CYCLE[n % len(CYCLE)] * (1.0 - u) + CYCLE[(n + 1) % len(CYCLE)] * u
+        st = img(np.dstack([col, al * 255.0]))
         if ps < 1.0: st = ink_in(st, ps)
-        mv = ease(seg(t, T_MOVE, T_MOVE + 1.6))
-        rock = -1.6 * mv + 0.55 * math.sin((t - T_MOVE) * 1.15) * mv
-        frame.alpha_composite(st.rotate(rock, resample=Image.BICUBIC, center=FOOT) if mv > 0.0 else st)
+        # and she comes a little way forward, from the sculptor towards the goddess
+        o = Image.new('RGBA', (W, H), (0, 0, 0, 0)); o.paste(st, (int(round(-20.0 + 30.0 * ease(seg(t, T_MOVE, T_MOVE + 5.5)))), 0))
+        frame.alpha_composite(o)
     # the goddess and her mirror
     pg = ease(seg(t, T_GOD, T_GOD + 1.6))
     god = ink_in(aphrodite, pg)
     if god is not None:
         frame.alpha_composite(god)
-        lift = ease(seg(t, T_LIFT0, T_LIFT1))
-        m = mirror.rotate(-2.6 * lift + 0.35 * math.sin(t * 0.9) * lift, resample=Image.BICUBIC, center=ELBOW)
+        up = ease(seg(t, T_LIFT0, T_LIFT1))
+        # her hands are never quite still, and they lift the mirror as she speaks
+        mdy = -(11.0 * up + 5.0 * math.sin(t * 1.25) + 2.0 * math.sin(t * 2.9 + 0.7))
+        mdx = -5.0 * up + 3.5 * math.sin(t * 0.95 + 1.3)
+        tilt = 0.035 * math.sin(t * 1.25 + 0.9) - 0.03 * up
+        m = MIRROR.draw((mdx + tilt * (MIRROR.Y - 705.0)) * MIRROR_W, (mdy - tilt * (MIRROR.X - 640.0)) * MIRROR_W)
         frame.alpha_composite(ink_in(m, pg) if pg < 1.0 else m)
+        dcx, dcy = DISC[0] + mdx + tilt * (DISC[1] - 705.0), DISC[1] + mdy
         for g0 in GLINTS:   # light crossing the bronze
             pgl = seg(t, g0, g0 + 1.1)
             if 0.0 < pgl < 1.0:
-                d = (XX - DISC[0]) * 0.8 + (YY - DISC[1]) * 0.6 - (pgl * 2.0 - 1.0) * (DISC[2] + 30.0)
-                gl = np.exp(-(d / 13.0) ** 2) * DISC_M * 0.5 * math.sin(pgl * math.pi)
+                d = (XX - dcx) * 0.8 + (YY - dcy) * 0.6 - (pgl * 2.0 - 1.0) * (DISC[2] + 30.0)
+                gl = np.exp(-(d / 13.0) ** 2) * np.clip((DISC[2] - np.hypot(XX - dcx, YY - dcy)) / 3.0, 0.0, 1.0) * 0.5 * math.sin(pgl * math.pi)
                 a = np.asarray(frame).astype(np.float32); a[..., :3] += (np.array([255.0, 240.0, 205.0]) - a[..., :3]) * gl[..., None]; frame = img(a)
     # motes of light drift down the rays onto her
     if lit > 0.3 and t < DUR - 1.0 and f % 2 == 0:
