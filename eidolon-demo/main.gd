@@ -12,6 +12,19 @@ const TEAL_D := Color("13283a")
 const CRIMSON := Color("b8232f")
 const FOG := Color("eab99c")
 const WATER := -1.3
+# the third court, "the turned ones": three statues of her on turning plinths stand at the far rim of a pool. The
+# water shows each of them turned another way; she turns the real ones until each stands as the water shows it
+const EX0 := -19.9
+const EZ0 := -16.9
+const EX1 := -13.0
+const EZ1 := -10.5
+const RX0 := -18.9      # its pool
+const RZ0 := -14.7
+const RX1 := -13.75
+const RZ1 := -12.6
+const TURN_AT := [Vector3(-18.6, 0, -15.3), Vector3(-17.1, 0, -15.3), Vector3(-15.6, 0, -15.3)]
+const TURN_GOAL := [1, 3, 2]      # how many quarter turns (clockwise from above) the water shows each one turned
+const TURN_YAW0 := 0.0            # the way a statue faces before any turn
 const WINCH_K := 1.55                       # the capstan's size: its model is one unit tall
 const WINCH_HUB := Vector2(0.497, 0.731)    # where the hub of its handwheel sits in the model: out along the axle, and up
 const WORLD_DEPTH := 0.4   # how much deeper the stone of the world is than the palette says (0 = as written, 1 = far too dark)
@@ -55,6 +68,12 @@ var ped_a: Node3D         # the pedestal of the winch, which rises out of the po
 var ped_m: Node3D
 var glass2: ShaderMaterial
 var gate_c: Node3D         # the grille of the second court's west gate
+var gate_e: Node3D         # the grille of the third court's south gate
+var turn_n := []           # the turning part of each plinth, with its statue
+var turn_pin := []         # the small bronze pinion beside each plinth, which turns the other way
+var turn_gem := []         # the stud on each plinth's ring: red, and gold when the statue stands as the water shows
+var turn_q := [0, 0, 0]    # how many quarter turns each has been given
+var turned_done := false
 var door_a: Node3D        # the leaf of plain stone in the west wall, and the door the water shows in its place
 var door_m: Node3D
 var seam_a: Node3D        # the joints of the leaf: they show only once the door has been seen in the water
@@ -298,7 +317,7 @@ void vertex(){
 }
 void fragment(){
 	if (hh < 0.03) discard;
-	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 3.0 && q.z > -15.9 && q.z < -10.5)) discard;   // nothing lies on the sea inside the hollow of the first court
+	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 3.0 && q.z > -15.9 && q.z < -10.5) || (q.x > -19.4 && q.x < -13.5 && q.z > -16.4 && q.z < -11.0)) discard;   // nothing lies on the sea inside the hollow of a court with a pool
 	// the reflection thins out with height by blending into the colour of the deep water. (It used to be cut
 	// into a pattern of dots, which shimmered whenever the camera moved.)
 	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
@@ -352,7 +371,7 @@ uniform vec3 near_col : source_color; uniform vec3 far_col : source_color; unifo
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5) || (wp.x > -19.4 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -11.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
 	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
@@ -396,7 +415,7 @@ uniform float clear_r = 0.0; uniform vec3 col : source_color; uniform float far_
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5) || (wp.x > -19.4 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -11.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec2 uv = wp.xz * scale;
 	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
 	vec3 d3 = wp - hero; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
@@ -1070,6 +1089,8 @@ func her_statue(p: Vector3, yaw: float, pose := "calm", sc := 1.0, parent: Node 
 			_bend(sk, "Head", left, 0.3)
 		"reach":
 			_aim(sk, "RightArm", "RightForeArm", up * 0.9 + fwd * 0.45); _bend(sk, "Head", left, -0.25)
+		"point":     # one arm held straight out before her: the way she faces is plain from any side
+			_aim(sk, "RightArm", "RightForeArm", fwd * 1.0 + up * 0.08 + left * 0.05); _aim(sk, "RightForeArm", "RightHand", fwd * 1.0 + up * 0.08)
 		"mourn", "kneel":
 			_bend(sk, "Spine", left, 0.3 if pose == "mourn" else 0.45)
 			_aim(sk, "LeftArm", "LeftForeArm", fwd * 0.7 + up * 0.25 - left * 0.3); _aim(sk, "RightArm", "RightForeArm", fwd * 0.7 + up * 0.25 + left * 0.3)
@@ -1286,6 +1307,9 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	if "solve2" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve2()
+	if "solve3" in OS.get_cmdline_user_args():
+		get_viewport().msaa_3d = Viewport.MSAA_2X
+		_solve3()
 	if "covered" in OS.get_cmdline_user_args() and COVERED:
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve_covered()
@@ -1345,6 +1369,7 @@ func _shots() -> void:
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(QX0 - 0.14, 0, PED.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
+		{"n": "28-turned-ones", "p": Vector3(-14.85, 0, -15.3), "y": PI * 0.5, "c": Vector3(-16.1, 0.2, -13.9), "s": 8.0},
 		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(0.0, 0.2, -7.0), "s": 9.0},
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
@@ -2724,6 +2749,54 @@ func _pool_c() -> void:
 	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.024, gy, -0.7), Vector3(0.024, gy + 0.04, 0.7), "gold", gate_c)
 	if not ("shots" in args or "solve2" in args or "tour" in args): gate_c.position.y = -2.4
 
+## A turning plinth with a statue of her on it. Fixed: a stone base and a bronze ring ticked at the four quarters.
+## Turning: a drum with a bronze band, a toothed bronze rim and a red pointer at its front, and the statue. Beside
+## it a small bronze pinion meshes with the rim and turns the other way. Returns [the turning part, the pinion]
+func _turn_plinth(parent: Node, p: Vector3, q: int, pose := "point") -> Array:
+	cyl(p, 0.52, 0.49, 0.07, pal("shade"), 24, parent)
+	cyl(p + Vector3(0, 0.07, 0), 0.47, 0.47, 0.016, pal("gold"), 28, parent)
+	for k in 4:      # the four quarters, ticked on the ring
+		var tk := blk(Vector3(-0.012, 0.0, 0.4), Vector3(0.012, 0.022, 0.47), "dark", parent); tk.position = p + Vector3(0, 0.08, 0); tk.rotation.y = k * PI * 0.5
+		tk.position += Vector3(sin(k * PI * 0.5), 0, cos(k * PI * 0.5)) * 0.435
+		(tk.mesh as BoxMesh).size = Vector3(0.024, 0.022, 0.07)
+	var n := Node3D.new(); n.position = p + Vector3(0, 0.07, 0); n.rotation.y = TURN_YAW0 - q * PI * 0.5; parent.add_child(n)
+	cyl(Vector3.ZERO, 0.37, 0.35, 0.2, pal("stone"), 20, n); cyl(Vector3(0, 0.2, 0), 0.39, 0.39, 0.03, pal("shade"), 20, n)
+	cyl(Vector3(0, 0.1, 0), 0.375, 0.375, 0.03, pal("gold"), 20, n)
+	for k in 16:     # the teeth of its rim
+		var th := blk(Vector3(-0.022, 0.0, 0.0), Vector3(0.022, 0.035, 0.05), "gold", n); th.rotation.y = k * TAU / 16.0
+		th.position = Vector3(sin(k * TAU / 16.0), 0, cos(k * TAU / 16.0)) * 0.385 + Vector3(0, 0.035, 0)
+	var ptr := blk(Vector3(-0.03, 0.0, 0.0), Vector3(0.03, 0.05, 0.1), "crim", n); ptr.position = Vector3(0, 0.185, 0.36)   # the pointer: the way she faces
+	her_statue(Vector3(0, 0.23, 0), 0.0, pose, 0.9, n)
+	var pin := Node3D.new(); pin.position = p + Vector3(-0.385 - 0.1, 0.07, 0.0).rotated(Vector3.UP, -0.9); parent.add_child(pin)
+	cyl(Vector3(0, 0.0, 0), 0.075, 0.075, 0.06, pal("gold"), 12, pin); cyl(Vector3(0, 0.06, 0), 0.03, 0.03, 0.03, pal("dark"), 8, pin)
+	for k in 6:
+		var pt := blk(Vector3(-0.018, 0.0, 0.0), Vector3(0.018, 0.035, 0.04), "gold", pin); pt.rotation.y = k * TAU / 6.0
+		pt.position = Vector3(sin(k * TAU / 6.0), 0, cos(k * TAU / 6.0)) * 0.08 + Vector3(0, 0.012, 0)
+	return [n, pin]
+
+func _turned_ones() -> void:
+	var m0 := mroot.get_child_count()
+	for i in 3:
+		var pose: String = ["point", "mourn", "offer"][i]
+		var made := _turn_plinth(self, TURN_AT[i], 0, pose)
+		turn_n.append(made[0]); turn_pin.append(made[1])
+		var gem := ball(TURN_AT[i] + Vector3(0.33, 0.1, 0.33), 0.036, mat(Color("ff5a62"))); turn_gem.append(gem)
+		_turn_plinth(mroot, TURN_AT[i], TURN_GOAL[i], pose)      # in the water she stands as she should
+	_strip_refl(mroot, m0, "mir", 0.3)
+	var wq := QuadMesh.new(); wq.size = Vector2(RX1 - RX0, RZ1 - RZ0); wq.orientation = PlaneMesh.FACE_Y
+	var g3 := ShaderMaterial.new(); g3.shader = shaders["glass"]; timed.append(g3)
+	g3.set_shader_parameter("lost_a", 0.0); g3.set_shader_parameter("blur_px", 1.2); g3.set_shader_parameter("lod", 0.4)   # this water shows them clearly
+	prim(wq, Vector3((RX0 + RX1) * 0.5, 0.012, (RZ0 + RZ1) * 0.5), g3).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# the south gate: two piers, a lintel, and a bronze grille that sinks into its slot when the three stand right
+	for gx in [-17.02, -15.58]:
+		blk(Vector3(gx - 0.14, 0, EZ0 - 0.04), Vector3(gx + 0.14, 2.1, EZ0 + 0.24), "stone"); blk(Vector3(gx - 0.17, 0, EZ0 - 0.07), Vector3(gx + 0.17, 0.1, EZ0 + 0.27), "shade")
+	blk(Vector3(-17.16, 2.1, EZ0 - 0.04), Vector3(-15.44, 2.42, EZ0 + 0.24), "stone")
+	cornice(-17.16, EZ0 - 0.04, -15.44, EZ0 + 0.24, 2.42, 0.04, 0.06); dentils(-17.16, EZ0 - 0.04, -15.44, EZ0 + 0.24, 2.42)
+	gate_slot(Vector3(-16.3, 0, EZ0 + 0.1), 0.58, true)
+	gate_e = Node3D.new(); gate_e.position = Vector3(-16.3, 0, EZ0 + 0.1); add_child(gate_e)
+	for i in 7: blk(Vector3(-0.54 + 0.18 * i - 0.018, 0, -0.018), Vector3(-0.54 + 0.18 * i + 0.018, 2.02, 0.018), "dark", gate_e)
+	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.58, gy, -0.024), Vector3(0.58, gy + 0.04, 0.024), "gold", gate_e)
+
 ## the second court, "the mirror he covered". Its pool lies under a great cloth, as the sculptor covered every mirror.
 ## With the cloth drawn off, the water shows the west wall with a door in it, where the wall itself is plain stone.
 ## Only after that has been seen can the stone be pushed
@@ -2903,8 +2976,9 @@ func _world() -> void:
 	slab(-11.1, -10.6, -9.5, -9.0, 0.0); under(-11.1, -10.6, -9.5, -9.0, 0.2, "sand")
 	model("statue_veiled_broken", Vector3(-10.3, 0, -9.8), 2.0, 0.6)
 	# ---- E. the court of the half gate (6.5 x 6 m): half an arch in the sea, a whole ring with its reflection
-	slab(-19.9, -16.9, -13.0, -10.5, 0.0); under(-19.9, -16.9, -13.0, -10.5)
-	tiles(-19.9, -16.9, -13.0, -10.5, 1.0); rosette(Vector3(-16.3, 0, -13.5), 1.3); meander(-19.35, -16.35, -13.2, -10.7)
+	_pool_court(EX0, EZ0, EX1, EZ1, RX0, RZ0, RX1, RZ1, "stone", "PoolSky3")
+	tile_hole = Rect2(RX0 - 0.08, RZ0 - 0.08, RX1 - RX0 + 0.16, RZ1 - RZ0 + 0.16); tiles(-19.9, -16.9, -13.0, -10.5, 1.0); tile_hole = Rect2(); meander(-19.35, -16.35, -13.2, -10.7)
+	_turned_ones()
 	parapet(Vector3(-19.8, 0, -16.8), Vector3(-19.8, 0, -10.6)); parapet(Vector3(-19.8, 0, -16.8), Vector3(-17.15, 0, -16.8)); parapet(Vector3(-15.45, 0, -16.8), Vector3(-13.1, 0, -16.8))
 	parapet(Vector3(-19.8, 0, -10.6), Vector3(-13.1, 0, -10.6)); parapet(Vector3(-13.1, 0, -16.8), Vector3(-13.1, 0, -13.75)); parapet(Vector3(-13.1, 0, -12.25), Vector3(-13.1, 0, -10.6))
 	statue_on("statue_veiled_unfinished", Vector3(-19.45, 0, -11.1), 1.5, 0.8); plinth_head("kit_face1", Vector3(-19.45, 0, -14.6), PI * 0.5)
@@ -3038,6 +3112,7 @@ func _actors() -> void:
 	# things to tap
 	objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
+	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.5, 0), "stand": TURN_AT[i] + Vector3(0.75, 0, 0)}
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
 		var d := blk(Vector3(-0.05, -0.05, -0.05), Vector3(0.05, 0.05, 0.05), "crim", n)
@@ -3048,9 +3123,10 @@ func _actors() -> void:
 func _nav() -> void:
 	for r in [["A", AX0 + 0.85, -3.15, 3.15, AZ1 - 0.35], ["S", 3.15, 0.7, 4.6, 1.3], ["B1", -0.25, -5.8, 0.25, -3.15], ["Bg", -0.25, -7.8, 0.25, -5.8], ["B2", -0.25, -10.35, 0.25, -7.8],
 			["C", -2.65, -15.65, 3.0, -10.35], ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
-			["E", -19.15, -16.15, -13.35, -10.85], ["G1", -16.55, -20.35, -16.05, -16.15], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
+			["E", -19.15, -12.3, -13.35, -10.85], ["Ee", -13.62, -16.25, -13.3, -11.5], ["Es", -19.15, -16.25, -13.3, -15.95], ["Ew", -19.4, -16.25, -19.15, -10.85],
+			["T1", -17.97, -15.95, -17.73, -15.2], ["T2", -16.47, -15.95, -16.23, -15.2], ["T3", -14.97, -15.95, -14.73, -15.2], ["G1", -16.55, -20.35, -16.05, -16.15], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
-	rects["BR"].on = false; rects["G"].on = false
+	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false   # (G1: the way south, behind the third court's gate)
 
 func in_rect(r: Dictionary, p: Vector3, m := 0.0) -> bool:
 	return p.x >= r.x0 - m and p.x <= r.x1 + m and p.z >= r.z0 - m and p.z <= r.z1 + m
@@ -3514,6 +3590,42 @@ func _do_capstan() -> void:
 	rects["BR"].on = true; done["capstan"] = true
 	say("η γέφυρα γύρισε")
 
+func _do_turn1() -> void: await _turn(0)
+func _do_turn2() -> void: await _turn(1)
+func _do_turn3() -> void: await _turn(2)
+
+## she lays her hands on a statue and turns it a quarter round on its plinth; the pinion beside it runs the other way
+func _turn(i: int) -> void:
+	if turned_done: return
+	var at: Vector3 = TURN_AT[i]
+	await face(at)
+	tgtL = at + Vector3(0.27, 1.22, 0.1); tgtR = at + Vector3(0.27, 1.22, -0.1)
+	var up := tw(); up.tween_property(self, "a_wL", 1.0, 0.55); up.tween_property(self, "a_wR", 1.0, 0.55); up.tween_property(self, "a_lean", 0.14, 0.55)
+	await up.finished
+	var n: Node3D = turn_n[i]; var pn: Node3D = turn_pin[i]
+	var rt := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	rt.tween_property(n, "rotation:y", n.rotation.y - PI * 0.5, 1.5); rt.tween_property(pn, "rotation:y", pn.rotation.y + PI * 0.5 * 4.6, 1.5)
+	await rt.finished
+	turn_q[i] = (turn_q[i] + 1) % 4
+	var dn := tw(); dn.tween_property(self, "a_wL", 0.0, 0.5); dn.tween_property(self, "a_wR", 0.0, 0.5); dn.tween_property(self, "a_lean", 0.0, 0.5)
+	await dn.finished
+	await _turned_check()
+
+## each stud turns gold when its statue stands as the water shows; when all three do, the south gate goes down
+func _turned_check() -> void:
+	var all := true
+	for i in 3:
+		var ok: bool = turn_q[i] == TURN_GOAL[i]
+		(turn_gem[i] as MeshInstance3D).material_override = mat(Color("ffd36b") if ok else Color("ff5a62"))
+		if not ok: all = false
+	if not all or turned_done: return
+	turned_done = true
+	for i in 3: done["turn%d" % (i + 1)] = true
+	await wait(0.7)
+	var gt := create_tween(); gt.tween_property(gate_e, "position:y", -2.4, 2.4).set_trans(Tween.TRANS_SINE)
+	await gt.finished
+	rects["G1"].on = true
+
 func _do_mirror() -> void:
 	await face(Vector3(MX, 0, MZ))
 	var i := tw()
@@ -3639,6 +3751,32 @@ func _tour() -> void:
 	await face(Vector3(-4.0, 0, -7.6))                   # she stops among them, while the line about them is on the screen
 	await wait(4.6)
 	await _solve2(false)
+	await wait(0.8)
+	get_tree().quit()
+
+## the third puzzle, "the turned ones", solved. No captions: she comes in from the bridge, sees the three statues and
+## the three in the water that stand otherwise, and turns each until it matches; the south gate goes down
+func _solve3() -> void:
+	started = true; title_box.hide(); hint.hide()
+	pos = Vector3(-11.6, 0, -13.0); yaw = -PI * 0.5; cam_t = pos; cam.size = 7.2
+	await wait(1.0)
+	cam_focus = Vector3(-16.1, 0.2, -13.9); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 8.0, 2.4).set_trans(Tween.TRANS_SINE)
+	await go([Vector3(-13.46, 0, -13.0), Vector3(-13.46, 0, -16.1), Vector3(-14.85, 0, -16.1), Vector3(-14.85, 0, -15.3)])
+	await face(Vector3(-16.0, 0, -13.6))                # the water, and what stands in it
+	await wait(2.4)
+	var stand := [Vector3(-17.85, 0, -15.3), Vector3(-16.35, 0, -15.3), Vector3(-14.85, 0, -15.3)]
+	for i in [2, 1, 0]:
+		if i != 2: await go([Vector3(pos.x, 0, -16.1), Vector3(stand[i].x, 0, -16.1), stand[i]])
+		for k in TURN_GOAL[i]:
+			await _turn(i)
+			await wait(0.25)
+	await wait(0.6)
+	cam_focus = Vector3(-16.3, 0.4, -15.4)
+	create_tween().tween_property(cam, "size", 6.6, 1.6)
+	while not rects["G1"].on: await get_tree().process_frame
+	await wait(0.5)
+	await go([Vector3(pos.x, 0, -16.1), Vector3(-16.3, 0, -16.1), Vector3(-16.3, 0, -18.2)])
 	await wait(0.8)
 	get_tree().quit()
 
