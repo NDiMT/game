@@ -27,7 +27,7 @@ const TURN_GOAL := [1, 3, 2]      # how many quarter turns (clockwise from above
 const TURN_YAW0 := 0.0            # the way a statue faces before any turn
 const WINCH_K := 1.55                       # the capstan's size: its model is one unit tall
 const WINCH_HUB := Vector2(0.497, 0.731)    # where the hub of its handwheel sits in the model: out along the axle, and up
-const WORLD_DEPTH := 0.4   # how much deeper the stone of the world is than the palette says (0 = as written, 1 = far too dark)
+const WORLD_DEPTH := 0.7   # how much deeper the stone of the world is than the palette says (0 = as written, 1 = far too dark)
 var sea_c := Color("3c7d92")
 var mist_c := Color("cdb8c6")
 var water_deep := Color("2a8790")
@@ -161,7 +161,7 @@ const PALS := {
 	"stone": ["f8efe1", "e8d5c5", "ada5c0"], "shade": ["ebdecc", "d7c1b1", "9c94b0"],
 	"sand": ["f6e3c6", "e3c7a6", "a8959d"], "rose": ["f1dccf", "dcc0b2", "a892a4"],
 	"far": ["cfcbd6", "bab5c9", "9896b4"], "far2": ["b4b3c9", "a3a1bf", "8a8aad"],
-	"dark": ["5a5678", "4d4a6e", "44416a"], "crim": ["dc3d46", "bb2530", "7e1c31"],
+	"dark": ["5a5678", "4d4a6e", "44416a"], "lamp": ["fff3c4", "ffe7a0", "ffd884"], "crim": ["dc3d46", "bb2530", "7e1c31"],
 	"teal": ["13283a", "13283a", "13283a"], "cream": ["fff3d2", "fff3d2", "fff3d2"],
 	"gold": ["f0cf86", "d2a962", "94775a"], "trunk": ["a58a82", "8a6f6c", "63506a"],
 	"leaf": ["9dbfa6", "76a08e", "4f7a7c"], "leaf2": ["b9d2b4", "8fb39a", "5f8a86"], "leaf3": ["aac3a4", "86a48c", "5d7d7c"],
@@ -906,14 +906,12 @@ func tree(p: Vector3, s := 1.0, leaf := "leaf") -> void:
 func bush(p: Vector3, s := 1.0, leaf := "leaf2") -> void:
 	thing("bush", p, 0.0, "leaf:%s~,flower:crim" % leaf, p.z * 1.9, 0.82 * s)
 
+## a bronze lamp stand: lion paws on a marble footing, a fluted column, a swan-neck arm, and a lantern hanging from it
 func lantern(p: Vector3, li: int, dirx := 1.0) -> void:
-	cyl(p, 0.035, 0.02, 1.45, pal("dark"), 10)
-	blk(p + Vector3(-0.07, 0, -0.07), p + Vector3(0.07, 0.06, 0.07), "shade")
-	blk(p + Vector3(minf(0, 0.3 * dirx), 1.42, -0.012), p + Vector3(maxf(0, 0.3 * dirx), 1.45, 0.012), "dark")
-	var c := p + Vector3(0.28 * dirx, 1.26, 0)
-	ball(c, 0.055, mat(Color("ffdf94")))
-	cyl(c + Vector3(0, 0.05, 0), 0.07, 0.012, 0.06, pal("gold"), 12)
-	cyl(c + Vector3(0, -0.085, 0), 0.03, 0.05, 0.03, pal("gold"), 12)
+	var k := 1.78
+	var n := Node3D.new(); n.position = p; n.rotation.y = -PI * 0.5 * dirx; add_child(n)      # as made its arm reaches to -Z
+	prop_model("lamp", n, 0.0, 0.0, false, false, "gold:gold,stone:marble,glow:lamp,frame:wood").scale = Vector3.ONE * k
+	var c := p + Vector3(0.327 * k * dirx, 0.692 * k, 0)      # where the lantern hangs
 	var h := halo(0.9, Color(1.0, 0.8, 0.45, 0.5)); h.position = c; add_child(h)
 	lights[li] = Vector4(c.x, 0.2, c.z, 0.5)
 	decal(p + Vector3(0.1, 0, -0.1), 0.5, 0.36, 0.2, 0.78)
@@ -1193,7 +1191,7 @@ func _ready() -> void:
 		for dn in ["stone", "shade", "sand", "rose", "terra"]:
 			var deep := []
 			for hx in pals[dn]:
-				var c0 := Color(hx); deep.append(c0.lerp(c0.srgb_to_linear(), depth).to_html(false))
+				var c0 := Color(hx); var c1 := c0.lerp(c0.srgb_to_linear(), depth) * (1.0 - 0.24 * depth); c1.a = 1.0; deep.append(c1.to_html(false))   # the pale tops too, which the curve alone hardly touches
 			pals[dn] = deep
 	hero_real = OS.get_environment("REAL") == "1"
 	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp") or OS.get_environment("RIG").begins_with("sr") or OS.get_environment("RIG").begins_with("nb") or OS.get_environment("RIG").begins_with("ione")) else "min" + OS.get_environment("RIG"); hero_real = true
@@ -2752,26 +2750,27 @@ func _pool_c() -> void:
 ## A turning plinth with a statue of her on it. Fixed: a stone base and a bronze ring ticked at the four quarters.
 ## Turning: a drum with a bronze band, a toothed bronze rim and a red pointer at its front, and the statue. Beside
 ## it a small bronze pinion meshes with the rim and turns the other way. Returns [the turning part, the pinion]
+const PLINTH_K := 1.05     # the turning plinth: a marble base, and on it a bronze gear wheel that carries the drum and the statue
+const PLINTH_TOP := 0.619   # as made: how high the drum stands, where the wheel lies on the base, how wide the wheel is
+const PLINTH_CUT := 0.138
+const PLINTH_GEAR := 0.419
+const PLINTH_PARTS := "stone:marble,gold:gold,crim:crim"     # the statues' own marble, paler than the court it stands in
 func _turn_plinth(parent: Node, p: Vector3, q: int, pose := "point") -> Array:
-	cyl(p, 0.52, 0.49, 0.07, pal("shade"), 24, parent)
-	cyl(p + Vector3(0, 0.07, 0), 0.47, 0.47, 0.016, pal("gold"), 28, parent)
-	for k in 4:      # the four quarters, ticked on the ring
-		var tk := blk(Vector3(-0.012, 0.0, 0.4), Vector3(0.012, 0.022, 0.47), "dark", parent); tk.position = p + Vector3(0, 0.08, 0); tk.rotation.y = k * PI * 0.5
-		tk.position += Vector3(sin(k * PI * 0.5), 0, cos(k * PI * 0.5)) * 0.435
-		(tk.mesh as BoxMesh).size = Vector3(0.024, 0.022, 0.07)
-	var n := Node3D.new(); n.position = p + Vector3(0, 0.07, 0); n.rotation.y = TURN_YAW0 - q * PI * 0.5; parent.add_child(n)
-	cyl(Vector3.ZERO, 0.37, 0.35, 0.2, pal("stone"), 20, n); cyl(Vector3(0, 0.2, 0), 0.39, 0.39, 0.03, pal("shade"), 20, n)
-	cyl(Vector3(0, 0.1, 0), 0.375, 0.375, 0.03, pal("gold"), 20, n)
-	for k in 16:     # the teeth of its rim
-		var th := blk(Vector3(-0.022, 0.0, 0.0), Vector3(0.022, 0.035, 0.05), "gold", n); th.rotation.y = k * TAU / 16.0
-		th.position = Vector3(sin(k * TAU / 16.0), 0, cos(k * TAU / 16.0)) * 0.385 + Vector3(0, 0.035, 0)
-	var ptr := blk(Vector3(-0.03, 0.0, 0.0), Vector3(0.03, 0.05, 0.1), "crim", n); ptr.position = Vector3(0, 0.185, 0.36)   # the pointer: the way she faces
-	her_statue(Vector3(0, 0.23, 0), 0.0, pose, 0.9, n)
-	var pin := Node3D.new(); pin.position = p + Vector3(-0.385 - 0.1, 0.07, 0.0).rotated(Vector3.UP, -0.9); parent.add_child(pin)
-	cyl(Vector3(0, 0.0, 0), 0.075, 0.075, 0.06, pal("gold"), 12, pin); cyl(Vector3(0, 0.06, 0), 0.03, 0.03, 0.03, pal("dark"), 8, pin)
-	for k in 6:
-		var pt := blk(Vector3(-0.018, 0.0, 0.0), Vector3(0.018, 0.035, 0.04), "gold", pin); pt.rotation.y = k * TAU / 6.0
-		pt.position = Vector3(sin(k * TAU / 6.0), 0, cos(k * TAU / 6.0)) * 0.08 + Vector3(0, 0.012, 0)
+	var twin := parent == mroot
+	var k := PLINTH_K
+	var pb := prop_model("plinth_base", parent, 0.0, 0.0, twin, false, PLINTH_PARTS); pb.position = p; pb.scale = Vector3.ONE * k
+	for t in 4:      # the four quarters, marked in bronze on the lower step
+		var tk := blk(Vector3(-0.016, 0.0, -0.02), Vector3(0.016, 0.016, 0.02), "gold", parent); tk.rotation.y = t * PI * 0.5
+		tk.position = p + Vector3(sin(t * PI * 0.5), 0, cos(t * PI * 0.5)) * 0.483 * k + Vector3(0, 0.048 * k, 0)
+	var n := Node3D.new(); n.position = p; n.rotation.y = TURN_YAW0 - q * PI * 0.5; parent.add_child(n)
+	prop_model("plinth_top", n, 0.0, 0.0, twin, false, PLINTH_PARTS).scale = Vector3.ONE * k    # its red pointer looks the way she does
+	her_statue(Vector3(0, PLINTH_TOP * k - 0.006, 0), 0.0, pose, 0.9, n)
+	# the pinion: a small wheel on its own post beside the base, its teeth in the great wheel's, turning the other way
+	var pr := 0.155 * k
+	var at := p + Vector3(-(PLINTH_GEAR * k + pr - 0.06), 0.0, 0.0).rotated(Vector3.UP, PI * 0.25)      # on the side one sees
+	cyl(at, 0.085, 0.1, PLINTH_CUT * k, pal("shade"), 12, parent); cyl(at, 0.125, 0.125, 0.035, pal("stone"), 12, parent)
+	var pin := Node3D.new(); pin.position = at + Vector3(0, PLINTH_CUT * k, 0); parent.add_child(pin)
+	prop_model("pinion", pin, 0.0, 0.0, twin, false, "stone:gold,gold:gold").scale = Vector3(pr * 2.0, pr * 2.0 * 0.66, pr * 2.0)
 	return [n, pin]
 
 func _turned_ones() -> void:
@@ -2780,7 +2779,7 @@ func _turned_ones() -> void:
 		var pose: String = ["point", "mourn", "offer"][i]
 		var made := _turn_plinth(self, TURN_AT[i], 0, pose)
 		turn_n.append(made[0]); turn_pin.append(made[1])
-		var gem := ball(TURN_AT[i] + Vector3(0.33, 0.1, 0.33), 0.036, mat(Color("ff5a62"))); turn_gem.append(gem)
+		var gem := ball(TURN_AT[i] + Vector3(0.341 * PLINTH_K, 0.048 * PLINTH_K + 0.03, 0.341 * PLINTH_K), 0.036, mat(Color("ff5a62"))); turn_gem.append(gem)
 		_turn_plinth(mroot, TURN_AT[i], TURN_GOAL[i], pose)      # in the water she stands as she should
 	_strip_refl(mroot, m0, "mir", 0.3)
 	var wq := QuadMesh.new(); wq.size = Vector2(RX1 - RX0, RZ1 - RZ0); wq.orientation = PlaneMesh.FACE_Y
@@ -3604,7 +3603,7 @@ func _turn(i: int) -> void:
 	await up.finished
 	var n: Node3D = turn_n[i]; var pn: Node3D = turn_pin[i]
 	var rt := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	rt.tween_property(n, "rotation:y", n.rotation.y - PI * 0.5, 1.5); rt.tween_property(pn, "rotation:y", pn.rotation.y + PI * 0.5 * 4.6, 1.5)
+	rt.tween_property(n, "rotation:y", n.rotation.y - PI * 0.5, 1.5); rt.tween_property(pn, "rotation:y", pn.rotation.y + PI * 0.5 * 2.8, 1.5)
 	await rt.finished
 	turn_q[i] = (turn_q[i] + 1) % 4
 	var dn := tw(); dn.tween_property(self, "a_wL", 0.0, 0.5); dn.tween_property(self, "a_wR", 0.0, 0.5); dn.tween_property(self, "a_lean", 0.0, 0.5)
