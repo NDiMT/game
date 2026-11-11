@@ -73,9 +73,10 @@ Empty clay for text: the upper third, between the meander and her head.
 
 ## Card 4
 
-> So he covered her face with a veil.
-> And he hid every mirror,
-> so she would never learn that her face was her own.
+> So he covered her face with a veil, so that he need not see it.
+> And he hid every mirror, so that she never would.
+> For as long as she had not seen her own face,
+> she was still only what he had made.
 
 ```
 An interior: a plain wall with a shelf and two pegs. The sculptor stands behind the young woman in the red
