@@ -2,7 +2,7 @@ extends Node3D
 ## EIDOLON demo: one flat, continuous map in a clean isometric look. Tap to walk, tap things to use them.
 const Fig := preload("res://fig.gd")
 const WALK := 1.25
-const CAP := Vector3(-2.3, 0.0, -11.2)   # moved to the west side: the second pool lies where it stood
+const CAP := Vector3(1.6, 0.0, -12.5)
 const PIV := Vector3(-5.9, 0.0, -13.0)
 const LAMP0 := Vector3(-7.8, 0.17, -6.75)
 const MX := -19.4
@@ -36,25 +36,19 @@ const CX0 := -3.4   # the second court, and its pool
 const CZ0 := -16.4
 const CX1 := 3.5
 const CZ1 := -10.0
-const QX0 := -1.3
-const QX1 := 2.5
-const QZ0 := -15.0
-const QZ1 := -11.6
-const PED2 := Vector3(0.9, 0, -13.2)        # the winch of the west gate
-const LPOST := Vector3(-1.5, 0, -12.25)     # the lantern's post, on the west rim
-const LAMP2 := Vector3(-0.4, 1.12, -13.2)   # its flame, out over the lost crossing
+const QX0 := -2.7   # a channel of still water that cuts the court from north to south
+const QX1 := -0.3
+const QZ0 := -15.88
+const QZ1 := -10.52
+const PIV2 := Vector3(-1.5, 0, -13.0)   # the pivot of the half slab, in the middle of the channel
 var winch_a: Node3D
-var winch2_a: Node3D
-var winch2_m: Node3D
-var gate_c: Node3D
 var glass2: ShaderMaterial
-var hoods: Array = []
-var lamp2_halo: MeshInstance3D
-var pull2: Node3D
+var half_a: Node3D       # the half slab that turns, and its image in the water
+var half_m: Node3D
+var half_w: Node3D       # the other half: at first only a shadow in the water
+var half_wm: Node3D
+var cap_turns_bridge := true
 var her_mats: Array = []
-var mir_mats: Array = []      # the materials of her reflection in the pools
-var mir_e: Dictionary = {}    # her reflection, kept here also while it walks alone
-var glare2 := 1.0             # how bright the second court's lantern lies on its pool
 var posing := false
 var cam_focus_on := false
 var cam_focus := Vector3.ZERO
@@ -245,7 +239,6 @@ const SH_GLASS := """shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never;
 uniform float time_s = 0.0; uniform float blur_px = 3.2; uniform float wave = 1.0;
 uniform vec4 lost_rect = vec4(0.0); uniform float lost_a = 0.0; uniform float lost_x = 0.0;   // lost_x: the crossing runs along x
-uniform vec4 glare = vec4(0.0);   // lantern light lying on the water: x, z, radius, strength
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap, repeat_disable;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -271,14 +264,6 @@ void fragment(){
 		c = mix(c, vec3(0.12, 0.29, 0.39), sx * sz * seg * lost_a * 0.62);
 	}
 	c = mix(c, vec3(0.6, 0.85, 0.88), 0.24);
-	if (glare.w > 0.0) {   // where the lantern's light lies on the water nothing else can be seen in it
-		float gd = distance(wp.xz + vec2(sin(wp.z * 8.0 + time_s * 1.3), sin(wp.x * 7.0 - time_s * 1.1)) * 0.025, glare.xy) / glare.z;
-		float g = 1.0 - smoothstep(0.42, 1.0, gd);
-		float shim = 0.95 + 0.05 * sin((wp.x + wp.z) * 6.0 + time_s * 1.7 + sin(wp.z * 4.0 - time_s * 0.9) * 1.5);
-		c = mix(c, vec3(1.0, 0.92, 0.7) * shim, g * 0.94 * glare.w);
-		c = mix(c, vec3(1.0, 0.98, 0.9), (1.0 - smoothstep(0.0, 0.45, gd)) * 0.75 * glare.w);
-		c += vec3(0.16, 0.11, 0.02) * (1.0 - smoothstep(0.7, 1.7, gd)) * glare.w;
-	}
 	c = mix(c, vec3(1.0), clamp(l * 0.3 + l2 * 0.45, 0.0, 1.0));
 	ALBEDO = c;
 }"""
@@ -1154,11 +1139,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
 		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (wrap_lift > 0.5) { float rw9 = smoothstep(0.08, 0.2, tx.r - tx.b); float tl9 = dot(tx, vec3(0.3, 0.55, 0.15)); float fc9 = wt * wt * 1.1 + wz * wz * 0.96 + wx * wx * 0.7; float gr9 = n3(mpos * 150.0) - 0.5; float mo9 = n3(mpos * 8.0) - 0.5; vec3 cl9 = wrap_col * clamp(tl9 / wrap_ref, 0.72, 1.14) * mix(1.0, fc9, 0.75) * (1.0 + gr9 * 0.09 + mo9 * 0.1); float vn9 = abs(sin((mpos.x * 1.3 + mpos.y * 0.9 + mpos.z * 0.7) * 8.0 + n3(mpos * 5.0) * 6.0)); float vm9 = (1.0 - smoothstep(0.0, 0.07, vn9)) * smoothstep(0.3, 0.55, n3(mpos * 2.3 + 7.0)); float vn8 = abs(sin((mpos.x * -1.1 + mpos.y * 1.2 + mpos.z * 0.5) * 5.0 + n3(mpos * 4.0 + 3.0) * 7.0)); vm9 = max(vm9, (1.0 - smoothstep(0.0, 0.045, vn8)) * 0.7); vec3 mb9 = vec3(0.975, 0.97, 0.962) * clamp(tl9 / 0.84, 0.86, 1.03); mb9 = mix(mb9, vec3(0.6, 0.61, 0.66), vm9 * 0.55); mb9 = mix(mb9, tx, 1.0 - smoothstep(0.3, 0.5, tl9)); tx = mix(mb9, cl9, rw9); } if (recol3 > 0.5) { float lum3 = dot(tx, vec3(0.3, 0.55, 0.15)); float cl3 = smoothstep(0.02, 0.06, tx.b - tx.r); float vw3 = mveil < -0.5 ? smoothstep(rc_split - 0.04, rc_split + 0.04, mpos.y) : smoothstep(0.3, 0.6, mveil); vec3 cc3 = mix(rc_gown, rc_veil, vw3); float gw3 = 1.0 - vw3; float vd3 = mveil - 1.0; float vb3 = step(0.0, vd3) * smoothstep(0.016, 0.022, vd3) * (1.0 - smoothstep(0.034, 0.04, vd3)) * rc_detail; cc3 = mix(cc3, rc_gown, vb3 * 0.5); cc3 *= mix(1.0, 0.9, step(0.5, mveil) * (1.0 - step(0.9, mveil))); float ang3 = atan(mpos.z, mpos.x); float fold3 = clamp(1.0 + (lum3 - 0.66) * 1.5, 0.74, 1.14); float pl3 = smoothstep(-0.35, 0.35, sin(ang3 * 24.0 + sin(mpos.y * 6.0) * 0.7)); float plw3 = gw3 * smoothstep(1.02, 0.55, mpos.y) * rc_detail; float mot3 = sin(mpos.x * 37.0 + mpos.y * 11.0) * sin(mpos.y * 29.0 + mpos.z * 17.0) * sin(mpos.z * 41.0 + mpos.x * 7.0); float thr3 = sin(ang3 * 70.0 + mpos.y * 3.0) * (1.0 - gw3); float rim3 = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 2.2); cc3 *= mix(1.0, mix(0.9, 1.04, pl3), plw3) * (1.0 + (0.035 * mot3 + 0.03 * thr3) * rc_detail); cc3 *= 1.0 - 0.1 * rc_detail * gw3 * smoothstep(rc_split - 0.13, rc_split - 0.03, mpos.y) * step(abs(mpos.x), 0.26); float hb3 = (1.0 - smoothstep(0.05, 0.062, mpos.y)) * rc_detail; float hl3 = smoothstep(0.078, 0.088, mpos.y) * (1.0 - smoothstep(0.104, 0.114, mpos.y)) * rc_detail; cc3 = mix(cc3, rc_gown * vec3(0.72, 0.78, 0.92), hb3); cc3 = mix(cc3, rc_veil, hl3 * 0.85); cc3 = mix(cc3, vec3(1.0), rim3 * mix(0.3, 0.14, gw3) * rc_detail); tx = mix(tx, cc3 * mix(clamp(0.6 + lum3 * 0.5, 0.86, 1.08), fold3, rc_detail), cl3); } if (recol2 > 0.5) { float lv = dot(tx, vec3(0.3, 0.55, 0.15)); float mx = max(tx.r, max(tx.g, tx.b)); float mn = min(tx.r, min(tx.g, tx.b)); float sat = (mx - mn) / max(mx, 0.001); float gold = step(0.5, tx.r) * step(0.38, tx.g) * step(0.22, tx.r - tx.b); float crim = smoothstep(0.2, 0.3, tx.r - tx.g) * (1.0 - step(0.4, tx.g)); float body = step(mpos.y, 1.16) * step(abs(mpos.x), 0.3); float teal = smoothstep(0.02, 0.1, min(tx.g, tx.b) - tx.r) * (1.0 - smoothstep(0.75, 0.9, lv)); float gown = max(max(teal, body), crim); tx = mix(tx, rc_gown * clamp(0.95 + (lv - 0.35) * 0.3, 0.92, 1.08), gown); float lowsat = (1.0 - smoothstep(0.12, 0.26, sat)) * smoothstep(0.45, 0.62, lv); float top = step(1.56, mpos.y); float isveil = max(max(lowsat, gold), top) * step(abs(mpos.x), 0.27) * step(1.16, mpos.y) * (1.0 - gown * (1.0 - top)); tx = mix(tx, rc_veil * mix(0.93, clamp(lv / 0.8, 0.78, 1.08), lowsat), isveil); } if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
-	var st3 := Shader.new(); st3.code = st2.code.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;\nuniform float gone = 0.0;")
-	# the reflection can thin away to nothing (in the light of a lantern): more and more of its pixels are left out, and the
-	# water's own blur turns that into a fade
-	assert(st3.code.count("ALBEDO = col;") == 1)
-	st3.code = st3.code.replace("ALBEDO = col;", "if (gone > 0.0 && fract(52.9829189 * fract(dot(FRAGCOORD.xy, vec2(0.06711056, 0.00583715)))) < gone * 1.02) discard;\n\tALBEDO = col;"); shaders["tex2"] = st3
+	var st3 := Shader.new(); st3.code = st2.code.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;"); shaders["tex2"] = st3
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
 	var n0 := get_child_count()
@@ -1256,8 +1237,8 @@ func _shots() -> void:
 		{"n": "18-mirror-pool", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-0.8, 0.1, -0.1), "s": 5.2},
 		{"n": "19-mirror-pool-wide", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-1.4, 0.3, 0.7), "s": 13.5},
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
-		{"n": "22-lantern-pool", "p": Vector3(QX0 - 0.14, 0, PED2.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
-		{"n": "23-lantern-court", "p": Vector3(QX0 - 0.14, 0, PED2.z), "y": PI * 0.5, "c": Vector3(0.0, 0.6, -13.0), "s": 13.0},
+		{"n": "22-one-slab", "p": Vector3(QX1 + 0.4, 0, PIV2.z + 0.85), "y": -PI * 0.65, "c": Vector3(-0.5, 0.3, -12.8), "s": 7.5},
+		{"n": "23-slab-court", "p": Vector3(QX1 + 0.3, 0, PIV2.z), "y": -PI * 0.5, "c": Vector3(0.0, 0.6, -13.0), "s": 13.0},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
 	var only := OS.get_environment("SHOT_ONLY")
@@ -1649,7 +1630,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
-				if mode == "mirror": sm.set_shader_parameter("tint", Vector3(1.12, 1.3, 1.36)); mir_mats.append(sm)
+				if mode == "mirror": sm.set_shader_parameter("tint", Vector3(1.12, 1.3, 1.36))
 				if mode == "tex": floor_mats.append(sm)
 				if rig_file.begins_with("lp") or rig_file.begins_with("sr") or rig_file.begins_with("nb") or (rig_file.begins_with("wrap") and OS.get_environment("WRAP_SMOOTH") == ""): sm.set_shader_parameter("flat_n", 1.0)
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
@@ -2257,57 +2238,40 @@ func _start_zone() -> void:
 	if not ("shots" in OS.get_cmdline_user_args()) or OS.get_environment("GATE_A") == "open": gate_a.position.y = -2.4
 	vine(AX0 + 0.7, AZ1 - 0.08, true, 2.0); vine(1.2, AZ1 - 0.08, true, 1.9)
 
-## the second court, "the lantern". The same lost crossing, from the west rim to the winch of the west gate, but a
-## lantern hangs over it and its light on the water hides whatever the water would show. Only when the lantern is
-## shut can a reflection cross
+## the second court, "the one slab". A channel of still water cuts it in two. On a pivot in the middle lies half of a
+## footbridge, turned the wrong way; the other half is only a shadow that the water keeps. The capstan turns the
+## half that is left, and when it lies in line with its lost half the two are one bridge again
 func _pool_c() -> void:
 	var args := OS.get_cmdline_user_args()
-	var ad := Vector2(LAMP2.x - LPOST.x, LAMP2.z - LPOST.z)
 	for both in [self, mroot]:
-		blk(PED2 + Vector3(-0.44, 0.0, -0.44), PED2 + Vector3(0.44, 0.07, 0.44), "shade", both); blk(PED2 + Vector3(-0.38, 0.07, -0.38), PED2 + Vector3(0.38, 0.4, 0.38), "stone", both)
-		blk(PED2 + Vector3(-0.42, 0.4, -0.42), PED2 + Vector3(0.42, 0.46, 0.42), "shade", both)
-		cyl(PED2 + Vector3(0, 0.46, 0), 0.13, 0.11, 0.6, pal("wood"), 12, both); cyl(PED2 + Vector3(0, 1.06, 0), 0.15, 0.15, 0.07, pal("gold"), 12, both)
-		var wn := Node3D.new(); wn.position = PED2 + Vector3(0, 0.9, 0); both.add_child(wn)
-		for i in 4:
-			var spk := blk(Vector3(-0.44, -0.02, -0.022), Vector3(0.44, 0.02, 0.022), "wood", wn); spk.position = Vector3.ZERO; spk.rotation.y = PI * 0.25 * i
-		if both == self: winch2_a = wn
-		else: winch2_m = wn
-		blk(Vector3(QX0, 0.0, PED2.z - 0.3), Vector3(QX0 + 0.2, 0.07, PED2.z + 0.3), "stone", both)   # the stub of the crossing at the west rim
-		for rb3 in [[Vector3(QX0 + 0.27, 0.035, PED2.z - 0.16), 0.5], [Vector3(QX0 + 0.24, 0.03, PED2.z + 0.2), -0.4]]:
-			var bk3 := blk(Vector3(-0.07, -0.035, -0.1), Vector3(0.07, 0.035, 0.1), "stone", both); bk3.position = rb3[0]; bk3.rotation.y = rb3[1]
-		# the lantern: a post on the rim and a long bracket that carries the flame out over the water
-		blk(LPOST + Vector3(-0.1, 0, -0.1), LPOST + Vector3(0.1, 0.08, 0.1), "shade", both); cyl(LPOST, 0.045, 0.032, 1.5, pal("dark"), 10, both)
-		ball(LPOST + Vector3(0, 1.54, 0), 0.05, pal("gold"), both)
-		var arm := Node3D.new(); arm.position = LPOST + Vector3(0, 1.46, 0); arm.rotation.y = atan2(-ad.y, ad.x); both.add_child(arm)
-		blk(Vector3(-0.05, -0.016, -0.016), Vector3(ad.length() + 0.05, 0.016, 0.016), "dark", arm)
-		var br := blk(Vector3(-0.31, -0.012, -0.012), Vector3(0.31, 0.012, 0.012), "dark", arm); br.position = Vector3(0.22, -0.22, 0); br.rotation.z = PI * 0.25
-		var lp := Vector3(ad.length(), 0, 0)
-		cyl(lp + Vector3(0, -0.2, 0), 0.008, 0.008, 0.2, pal("dark"), 6, arm)
-		cyl(lp + Vector3(0, -0.27, 0), 0.1, 0.02, 0.07, pal("gold"), 14, arm)                 # the cap
-		ball(lp + Vector3(0, -0.34, 0), 0.06, mat(Color("ffdf94")), arm)                     # the flame
-		cyl(lp + Vector3(0, -0.44, 0), 0.035, 0.06, 0.035, pal("gold"), 12, arm)
-		var hood := cyl(Vector3(0, -0.085, 0), 0.082, 0.082, 0.17, pal("gold"), 14, arm); hood.position = lp + Vector3(0, -0.105, 0); hoods.append(hood)   # the shutter, raised
-		if both == self:
-			lamp2_halo = halo(1.1, Color(1.0, 0.8, 0.45, 0.55)); lamp2_halo.position = LAMP2; add_child(lamp2_halo)
-			pull2 = Node3D.new(); pull2.position = Vector3(0.16, 0, 0); arm.add_child(pull2)   # the chain that shuts it
-			cyl(Vector3(0, -0.62, 0), 0.006, 0.006, 0.62, pal("dark"), 6, pull2); ball(Vector3(0, -0.65, 0), 0.04, pal("gold"), pull2)
-	lights[3] = Vector4(LAMP2.x, 0.2, LAMP2.z, 0.5)
+		cyl(PIV2, 0.42, 0.4, 0.03, pal("shade"), 24, both)                               # the pivot, standing in the water
+		var hn := Node3D.new(); hn.position = PIV2; hn.rotation.y = PI * 0.5; both.add_child(hn)   # it points north, along the channel
+		blk(Vector3(-0.34, 0.03, -0.45), Vector3(1.22, 0.075, 0.45), "stone", hn)
+		for e in [-1.0, 1.0]: blk(Vector3(-0.34, 0.075, e * 0.42 - 0.03), Vector3(1.22, 0.105, e * 0.42 + 0.03), "shade", hn)
+		blk(Vector3(-0.3, 0.076, -0.035), Vector3(1.2, 0.08, 0.035), "crim", hn)
+		cyl(Vector3(0, 0.075, 0), 0.12, 0.12, 0.035, pal("gold"), 16, hn)
+		# the lost half, in its place: it stays out of sight until the two halves meet
+		var wn := Node3D.new(); wn.position = PIV2 + Vector3(0, -0.16, 0); wn.visible = false; both.add_child(wn)
+		blk(Vector3(-1.22, 0.03, -0.45), Vector3(-0.34, 0.075, 0.45), "stone", wn)
+		for e in [-1.0, 1.0]: blk(Vector3(-1.22, 0.075, e * 0.42 - 0.03), Vector3(-0.34, 0.105, e * 0.42 + 0.03), "shade", wn)
+		blk(Vector3(-1.2, 0.076, -0.035), Vector3(-0.34, 0.08, 0.035), "crim", wn)
+		if both == self: half_a = hn; half_w = wn
+		else: half_m = hn; half_wm = wn
+		for bx in [QX0, QX1 - 0.16]:   # what is left of the bridge heads on either bank
+			blk(Vector3(bx, 0.0, PIV2.z - 0.45), Vector3(bx + 0.16, 0.07, PIV2.z + 0.45), "stone", both)
 	_strip_refl(mroot)
 	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(QX1 - QX0, QZ1 - QZ0); wq.orientation = PlaneMesh.FACE_Y
 	glass2 = ShaderMaterial.new(); glass2.shader = shaders["glass"]; timed.append(glass2)
-	glass2.set_shader_parameter("lost_rect", Vector4(QX0 + 0.16, PED2.z - 0.3, PED2.x - 0.44, PED2.z + 0.3)); glass2.set_shader_parameter("lost_a", 1.0); glass2.set_shader_parameter("lost_x", 1.0)
-	glass2.set_shader_parameter("glare", Vector4(LAMP2.x, LAMP2.z, 0.9, 1.0))
+	glass2.set_shader_parameter("lost_rect", Vector4(QX0 + 0.14, PIV2.z - 0.45, PIV2.x - 0.3, PIV2.z + 0.45)); glass2.set_shader_parameter("lost_a", 1.0); glass2.set_shader_parameter("lost_x", 1.0)
 	prim(wq, Vector3((QX0 + QX1) * 0.5, 0.012, (QZ0 + QZ1) * 0.5), glass2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# the west gate: two piers, a lintel, and a bronze grille until the winch is turned
+	urn(Vector3(-1.5, 0, -10.31), 0.85, "terra")
+	# the way out west: two piers and a lintel
 	for gz in [-13.86, -12.14]:
 		blk(Vector3(CX0 - 0.04, 0, gz - 0.14), Vector3(CX0 + 0.24, 2.1, gz + 0.14), "stone"); blk(Vector3(CX0 - 0.07, 0, gz - 0.17), Vector3(CX0 + 0.27, 0.1, gz + 0.17), "shade")
 	blk(Vector3(CX0 - 0.04, 2.1, -14.0), Vector3(CX0 + 0.24, 2.42, -12.0), "stone")
 	cornice(CX0 - 0.04, -14.0, CX0 + 0.24, -12.0, 2.42, 0.04, 0.06); dentils(CX0 - 0.04, -14.0, CX0 + 0.24, -12.0, 2.42)
-	gate_c = Node3D.new(); gate_c.position = Vector3(CX0 + 0.1, 0, -13.0); add_child(gate_c)
-	for i in 8: blk(Vector3(-0.018, 0, -0.63 + 0.18 * i - 0.018), Vector3(0.018, 2.02, -0.63 + 0.18 * i + 0.018), "dark", gate_c)
-	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.024, gy, -0.7), Vector3(0.024, gy + 0.04, 0.7), "gold", gate_c)
-	if not ("shots" in args or "solve2" in args): gate_c.position.y = -2.4
+	if "solve2" in args or "shots" in args: cap_turns_bridge = false
 
 func _world() -> void:
 	# ---- A. the arrival court (10 x 9.5 m, open floor all round the mirror pool)
@@ -2345,7 +2309,7 @@ func _world() -> void:
 		var bk := blk(Vector3(-0.2, -0.13, -0.16), Vector3(0.2, 0, 0.16), "stone"); bk.position = rb[0]; bk.rotation = Vector3(0.12, rb[1], 0.1)
 	# ---- C. the lever court (6.5 x 6 m)
 	_pool_court(CX0, CZ0, CX1, CZ1, QX0, QZ0, QX1, QZ1, "sand", "PoolSky2")
-	tile_hole = Rect2(QX0 - 0.08, QZ0 - 0.08, QX1 - QX0 + 0.16, QZ1 - QZ0 + 0.16); tiles(-3.4, -16.4, 3.5, -10.0, 1.0); tile_hole = Rect2(); meander(-2.85, -15.85, 3.3, -10.2)
+	tile_hole = Rect2(QX0 - 0.08, QZ0 - 0.08, QX1 - QX0 + 0.16, QZ1 - QZ0 + 0.16); tiles(-3.4, -16.4, 3.5, -10.0, 1.0); tile_hole = Rect2(); rosette(Vector3(1.3, 0, -13.0), 1.2)
 	blk(Vector3(-3.4, 0, -16.4), Vector3(3.5, 1.6, -16.18), "stone"); cornice(-3.4, -16.4, 3.5, -16.18, 1.6); dentils(-3.4, -16.4, 3.5, -16.18, 1.6)
 	crenels(Vector3(-3.3, 1.66, -16.22), Vector3(3.4, 1.66, -16.22), 0.335)
 	for wx in [-2.4, -1.0, 0.4, 1.8]: win_z(wx, 0.25, -16.18, 0.5, 1.05)
@@ -2353,7 +2317,7 @@ func _world() -> void:
 	plinth_head("kit_face6", Vector3(-2.95, 0, -15.95), 0.5); plinth_head("kit_face4", Vector3(3.2, 0, -15.9), -0.4)
 	parapet(Vector3(-3.3, 0, -16.0), Vector3(-3.3, 0, -13.75)); parapet(Vector3(-3.3, 0, -12.25), Vector3(-3.3, 0, -10.1)); parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
 	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(3.4, 0, -10.1))
-	cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
+	lantern(Vector3(3.15, 0, -10.35), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
 	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32); cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16)
 	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; add_child(cap_rot)
 	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
@@ -2495,7 +2459,7 @@ func _actors() -> void:
 	ghost_flat.cull_mode = BaseMaterial3D.CULL_DISABLED; ghost_flat.albedo_color = Color("b8232f")
 	if hero_real:
 		H["main"] = spawn_her(self, "tex"); H["refl"] = spawn_her(wm, "crim"); H["ghost"] = spawn_her(mir, "flat")
-		if mroot != null and rig_file != "": H["mir"] = spawn_her(mroot, "mirror"); mir_e = H["mir"]
+		if mroot != null and rig_file != "": H["mir"] = spawn_her(mroot, "mirror")
 		for k in H:
 			var sk: Skeleton3D = H[k].sk
 			if sk != null:
@@ -2723,7 +2687,9 @@ func _process(dt: float) -> void:
 		var ph := atan2(pos.x - CAP.x, pos.z - CAP.z)
 		var th := ph - 0.42
 		cap_rot.rotation.y = th
-		bridge.rotation.y = PI * 0.5 * (1.0 - smoothstep(0.0, 1.0, clampf(-ph / (PI * 0.5), 0.0, 1.0)))
+		var turn := PI * 0.5 * (1.0 - smoothstep(0.0, 1.0, clampf(-ph / (PI * 0.5), 0.0, 1.0)))
+		if cap_turns_bridge: bridge.rotation.y = turn
+		elif half_a != null: half_a.rotation.y = turn; half_m.rotation.y = turn
 		var dir := Vector3(sin(th), 0, cos(th))
 		tgtR = CAP + Vector3(0, 0.98, 0) + dir * 0.5; tgtL = CAP + Vector3(0, 0.98, 0) + dir * 0.74
 	var lv := Vector2(vel.x * cos(yaw) - vel.z * sin(yaw), vel.x * sin(yaw) + vel.z * cos(yaw))
@@ -2811,10 +2777,6 @@ func _process(dt: float) -> void:
 		fm.set_shader_parameter("hero", cc); fm.set_shader_parameter("far_a", maxf(cam.size * 0.3, 3.5)); fm.set_shader_parameter("far_b", maxf(cam.size * 0.95, 10.0))
 	sea_mat.set_shader_parameter("centre", cc); sea_mat.set_shader_parameter("mist_r", maxf(cam.size * 0.64, 6.5)); sea_mat.set_shader_parameter("time_s", t)
 	for m in timed: m.set_shader_parameter("time_s", t)
-	if not mir_e.is_empty():   # in the lantern's light on the water her reflection cannot be seen
-		var mp: Vector3 = (mir_e.holder as Node3D).position
-		var gone := glare2 * (1.0 - smoothstep(0.5, 1.05, Vector2(mp.x - LAMP2.x, mp.z - LAMP2.z).length() / 0.9))
-		for mm2 in mir_mats: (mm2 as ShaderMaterial).set_shader_parameter("gone", gone)
 	for i in gulls.size():
 		var gn: Node3D = gulls[i]
 		var ga := t * (0.16 + 0.03 * i) + i * 2.1
@@ -2985,63 +2947,44 @@ func _solve1() -> void:
 	await wait(0.8)
 	get_tree().quit()
 
-## the lantern, solved. No captions: she tries the crossing, her reflection walks into the light and is lost, she
-## shuts the lantern, and then it can cross
+## the one slab, solved. No captions: she comes to the water and sees half a bridge and the shadow of the other half,
+## turns the capstan until the half that is left lies in line with it, and the bridge is whole
 func _solve2() -> void:
 	started = true; title_box.hide(); hint.hide()
-	gate_c.position.y = 0.0
-	var rim := Vector3(QX0 - 0.14, 0, PED2.z)
-	pos = Vector3(0.0, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.4
+	cap_turns_bridge = false
+	var head := Vector3(QX1 + 0.3, 0, PIV2.z)
+	pos = Vector3(0.2, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.6
 	await wait(1.0)
-	cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
-	await go([Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED2.z), Vector3(rim.x - 0.25, 0, PED2.z)])
-	await wait(0.4)
-	create_tween().tween_property(cam, "size", 5.4, 2.0)
-	# she walks on toward the winch. Her reflection steps out over the lost crossing, into the lantern's light
-	go([rim])
-	while pos.x < rim.x - 0.12: await get_tree().process_frame
-	var e: Dictionary = H["mir"]; H.erase("mir")
-	await _eid_go(e, Vector3(LAMP2.x + 0.1, 0.0, PED2.z), 0.72)
-	await wait(1.8)                                   # nothing: it is lost in the light
-	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.72)
-	(e.holder as Node3D).rotation.y = yaw
-	H["mir"] = e
+	cam_focus = Vector3(-0.7, 0.1, -12.7); cam_focus_on = true
+	await go([Vector3(0.25, 0, -11.9), head + Vector3(0.1, 0, 0.85)])
+	await face(PIV2 + Vector3(-0.6, 0, 0))
+	create_tween().tween_property(cam, "size", 5.2, 1.6)
+	await wait(2.2)                                    # half a bridge, pointing the wrong way; and a shadow in the water
+	await go([CAP + Vector3(0, 0, 0.66)])
+	await face(CAP + Vector3(-1.4, 0, 0.66))
+	pushing = true
+	var a := tw()
+	a.tween_property(self, "a_wL", 1.0, 0.45); a.tween_property(self, "a_wR", 1.0, 0.45); a.tween_property(self, "a_lean", 0.2, 0.45)
+	await a.finished
+	var arc := []
+	for i in range(1, 10): arc.append(CAP + Vector3(sin(-PI * 0.5 * i / 9.0), 0, cos(-PI * 0.5 * i / 9.0)) * 0.66)
+	await go(arc, 0.4)
+	await wait(0.15)
+	pushing = false
+	half_a.rotation.y = 0.0; half_m.rotation.y = 0.0
+	var b := tw()
+	b.tween_property(self, "a_wL", 0.0, 0.45); b.tween_property(self, "a_wR", 0.0, 0.45); b.tween_property(self, "a_lean", 0.0, 0.45)
+	# the two halves lie in line: the shadow takes body and rises out of the water
 	await wait(0.5)
-	await face(LAMP2)
-	await wait(0.9)
-	# the lantern
-	await go([Vector3(LPOST.x - 0.5, 0, PED2.z + 0.45), Vector3(LPOST.x - 0.42, 0, LPOST.z - 0.06)])
-	await face(LPOST + Vector3(0.3, 0, -0.1))
-	await wait(0.5)
-	var lt := create_tween().set_parallel()
-	lt.tween_property(pull2, "position:y", -0.16, 0.5).set_trans(Tween.TRANS_SINE)
-	for hd in hoods: lt.tween_property(hd, "position:y", (hd as Node3D).position.y - 0.235, 0.7).set_trans(Tween.TRANS_SINE).set_delay(0.25)
-	lt.tween_property(lamp2_halo, "scale", Vector3.ONE * 0.01, 1.0).set_delay(0.45)
-	lt.tween_method(func(v: float): glare2 = v; glass2.set_shader_parameter("glare", Vector4(LAMP2.x, LAMP2.z, 0.9, v)); lights[3] = Vector4(LAMP2.x, 0.2, LAMP2.z, 0.5 * v), 1.0, 0.0, 1.3).set_delay(0.45)
-	await wait(2.6)
-	# and now the crossing shows, and her reflection can take it
-	await go([Vector3(LPOST.x - 0.5, 0, PED2.z + 0.45), Vector3(rim.x - 0.3, 0, PED2.z)])
-	await wait(0.3)
-	go([rim])
-	while pos.x < rim.x - 0.12: await get_tree().process_frame
-	e = H["mir"]; H.erase("mir")
-	await _eid_go(e, Vector3(PED2.x - 0.62, 0.0, PED2.z), 0.72)
-	await wait(0.5)
-	var wt := create_tween().set_parallel(); wt.tween_property(winch2_a, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE); wt.tween_property(winch2_m, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
-	await wait(1.4)
-	cam_focus = Vector3(-1.5, 0.5, -12.8)
-	create_tween().tween_property(cam, "size", 7.2, 1.6)
-	await wait(2.0)
-	var gt := create_tween(); gt.tween_property(gate_c, "position:y", -2.4, 2.4).set_trans(Tween.TRANS_SINE)
-	await gt.finished
-	await wait(1.0)
-	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.72)
-	(e.holder as Node3D).rotation.y = yaw
-	H["mir"] = e
-	await wait(0.9)
-	cam_focus_on = false
-	create_tween().tween_property(cam, "size", 6.4, 1.4)
-	await go([Vector3(-2.3, 0, -13.0), Vector3(-3.95, 0, -13.0)])
+	half_w.visible = true; half_wm.visible = true
+	var rt := create_tween().set_parallel()
+	rt.tween_property(half_w, "position:y", 0.0, 1.8).set_trans(Tween.TRANS_SINE); rt.tween_property(half_wm, "position:y", 0.0, 1.8).set_trans(Tween.TRANS_SINE)
+	rt.tween_method(func(v: float): glass2.set_shader_parameter("lost_a", v), 1.0, 0.0, 1.8)
+	await rt.finished
+	await wait(0.8)
+	create_tween().tween_property(cam, "size", 6.6, 1.6)
+	cam_focus = Vector3(-1.4, 0.3, -12.9)
+	await go([head, Vector3(QX0 - 0.3, 0, PIV2.z), Vector3(-3.95, 0, -13.0)])
 	await wait(0.8)
 	get_tree().quit()
 
