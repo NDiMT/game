@@ -2960,6 +2960,7 @@ func _solve2() -> void:
 	await face(PIV2 + Vector3(-0.6, 0, 0))
 	create_tween().tween_property(cam, "size", 5.2, 1.6)
 	await wait(2.2)                                    # half a bridge, pointing the wrong way; and a shadow in the water
+	cam_focus = Vector3(0.15, 0.1, -12.5); create_tween().tween_property(cam, "size", 6.0, 1.4)   # the capstan and the slab, both in view
 	await go([CAP + Vector3(0, 0, 0.66)])
 	await face(CAP + Vector3(-1.4, 0, 0.66))
 	pushing = true
@@ -2968,7 +2969,7 @@ func _solve2() -> void:
 	await a.finished
 	var arc := []
 	for i in range(1, 10): arc.append(CAP + Vector3(sin(-PI * 0.5 * i / 9.0), 0, cos(-PI * 0.5 * i / 9.0)) * 0.66)
-	await go(arc, 0.4)
+	await go(arc, 0.34)
 	await wait(0.15)
 	pushing = false
 	half_a.rotation.y = 0.0; half_m.rotation.y = 0.0
@@ -2981,7 +2982,7 @@ func _solve2() -> void:
 	rt.tween_property(half_w, "position:y", 0.0, 1.8).set_trans(Tween.TRANS_SINE); rt.tween_property(half_wm, "position:y", 0.0, 1.8).set_trans(Tween.TRANS_SINE)
 	rt.tween_method(func(v: float): glass2.set_shader_parameter("lost_a", v), 1.0, 0.0, 1.8)
 	await rt.finished
-	await wait(0.8)
+	await wait(1.2)
 	create_tween().tween_property(cam, "size", 6.6, 1.6)
 	cam_focus = Vector3(-1.4, 0.3, -12.9)
 	await go([head, Vector3(QX0 - 0.3, 0, PIV2.z), Vector3(-3.95, 0, -13.0)])
