@@ -86,6 +86,7 @@ var hero_src_yaw_note := true
 var hero_real := false
 var shape_file := ""
 var rig_file := ""
+var hero_srcs := {}
 var shape_cache := {}
 var shape_tex: Texture2D
 var SHP := {}
@@ -296,7 +297,7 @@ void fragment(){
 const SH_REFL := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform float water_y = -1.3; uniform float time_s = 0.0; uniform vec3 tint = vec3(0.04, 0.12, 0.2); uniform float strength = 1.0;
-uniform float lift = 0.0; uniform float use_tex = 0.0; uniform float gain = 1.5; uniform float fade_a = 1.0; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
+uniform float lift = 0.0; uniform float use_tex = 0.0; uniform float vcol = 0.0; uniform float gain = 1.5; uniform float fade_a = 1.0; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
 uniform vec3 under_col = vec3(0.17, 0.39, 0.47);
 varying float hh; varying vec3 q;
 void vertex(){
@@ -317,7 +318,7 @@ void fragment(){
 	// into a pattern of dots, which shimmered whenever the camera moved.)
 	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
 	vec3 c = tint;
-	if (use_tex > 0.5) { vec3 tx = texture(albedo_tex, UV).rgb; float rw = smoothstep(0.08, 0.2, tx.r - tx.b); c = mix(tx * 0.92, clamp(tx * gain, 0.0, 1.0), rw); }
+	if (use_tex > 0.5) { vec3 tx = vcol > 0.5 ? mix(vec3(0.77, 0.765, 0.76), vec3(0.59, 0.246, 0.162), smoothstep(0.47, 0.53, COLOR.a)) : texture(albedo_tex, UV).rgb; float rw = smoothstep(0.08, 0.2, tx.r - tx.b); c = mix(tx * 0.92, clamp(tx * gain, 0.0, 1.0), rw); }
 	ALBEDO = mix(under_col, c, fade);
 }"""
 ## the still water of the mirror pool: almost clear, with a few slow glints
@@ -1217,11 +1218,11 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	sk2.code = sb.code.substr(0, i0) + "void vertex(){\n	mp = CUSTOM0.xyz; hv = clamp(mp.y / 1.72, 0.0, 1.0); notex = 0.0; vw = 0.0; armw = 0.0;\n	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);\n}\n" + sb.code.substr(i1)
 	shaders["bodyskin"] = sk2
 	var st2 := Shader.new()
-	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0; uniform float snap = 0.0; uniform float recol3 = 0.0; uniform float rc_detail = 1.0; uniform float wrap_lift = 0.0; uniform vec3 wrap_col = vec3(0.76, 0.32, 0.235); uniform float wrap_ref = 0.27; uniform float rc_split = 1.26; uniform float recol2 = 0.0; uniform float recol = 0.0; uniform vec3 rc_gown = vec3(0.8); uniform vec3 rc_veil = vec3(0.6, 0.13, 0.2); uniform vec3 rc_trim = vec3(0.87, 0.7, 0.3); varying vec3 mpos; varying float mveil;").replace(
+	st2.code = SH.replace("uniform vec3 fog_col : source_color;", "uniform vec3 fog_col : source_color; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap; uniform float vcol = 0.0; uniform vec3 tint = vec3(1.0); uniform float floor_y = -1000.0; uniform float snap = 0.0; uniform float recol3 = 0.0; uniform float rc_detail = 1.0; uniform float wrap_lift = 0.0; uniform vec3 wrap_col = vec3(0.76, 0.32, 0.235); uniform float wrap_ref = 0.27; uniform float rc_split = 1.26; uniform float recol2 = 0.0; uniform float recol = 0.0; uniform vec3 rc_gown = vec3(0.8); uniform vec3 rc_veil = vec3(0.6, 0.13, 0.2); uniform vec3 rc_trim = vec3(0.87, 0.7, 0.3); varying vec3 mpos; varying float mveil;").replace(
 		"void fragment(){", "float h31(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); } float n3(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(mix(h31(i), h31(i + vec3(1.0, 0.0, 0.0)), f.x), mix(h31(i + vec3(0.0, 1.0, 0.0)), h31(i + vec3(1.0, 1.0, 0.0)), f.x), f.y), mix(mix(h31(i + vec3(0.0, 0.0, 1.0)), h31(i + vec3(1.0, 0.0, 1.0)), f.x), mix(h31(i + vec3(0.0, 1.0, 1.0)), h31(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z); }\nvec3 snapc(vec3 lin){ vec3 c = lin; vec3 best = vec3(0.165, 0.54, 0.58); float bd = distance(c, vec3(0.24, 0.61, 0.65)); float d = distance(c, vec3(0.9, 0.82, 0.65)); if (d < bd) { bd = d; best = vec3(0.955, 0.935, 0.885); } d = distance(c, vec3(0.89, 0.725, 0.3)); if (d < bd) { bd = d; best = vec3(0.86, 0.68, 0.29); } d = distance(c, vec3(0.89, 0.89, 0.88)); if (d < bd) { bd = d; best = vec3(0.965, 0.955, 0.94); } d = distance(c, vec3(0.78, 0.2, 0.18)); if (d < bd) { bd = d; best = vec3(0.75, 0.19, 0.23); } return best; }\nvoid fragment(){").replace(
 		"	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", "	mpos = CUSTOM0.xyz; mveil = CUSTOM0.w;\n	vec3 w0 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n	if (w0.y < floor_y + 0.012) { VERTEX += (inverse(MODEL_MATRIX) * vec4(0.0, floor_y + 0.012 - w0.y, 0.0, 0.0)).xyz; w0.y = floor_y + 0.012; }").replace(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
-		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (wrap_lift > 0.5) { float rw9 = smoothstep(0.08, 0.2, tx.r - tx.b); float tl9 = dot(tx, vec3(0.3, 0.55, 0.15)); float fc9 = wt * wt * 1.1 + wz * wz * 0.96 + wx * wx * 0.7; float gr9 = n3(mpos * 150.0) - 0.5; float mo9 = n3(mpos * 8.0) - 0.5; vec3 cl9 = wrap_col * clamp(tl9 / wrap_ref, 0.72, 1.14) * mix(1.0, fc9, 0.75) * (1.0 + gr9 * 0.09 + mo9 * 0.1); float vn9 = abs(sin((mpos.x * 1.3 + mpos.y * 0.9 + mpos.z * 0.7) * 8.0 + n3(mpos * 5.0) * 6.0)); float vm9 = (1.0 - smoothstep(0.0, 0.07, vn9)) * smoothstep(0.3, 0.55, n3(mpos * 2.3 + 7.0)); float vn8 = abs(sin((mpos.x * -1.1 + mpos.y * 1.2 + mpos.z * 0.5) * 5.0 + n3(mpos * 4.0 + 3.0) * 7.0)); vm9 = max(vm9, (1.0 - smoothstep(0.0, 0.045, vn8)) * 0.7); vec3 mb9 = vec3(0.975, 0.97, 0.962) * clamp(tl9 / 0.84, 0.86, 1.03); mb9 = mix(mb9, vec3(0.6, 0.61, 0.66), vm9 * 0.55); mb9 = mix(mb9, tx, 1.0 - smoothstep(0.3, 0.5, tl9)); tx = mix(mb9, cl9, rw9); } if (recol3 > 0.5) { float lum3 = dot(tx, vec3(0.3, 0.55, 0.15)); float cl3 = smoothstep(0.02, 0.06, tx.b - tx.r); float vw3 = mveil < -0.5 ? smoothstep(rc_split - 0.04, rc_split + 0.04, mpos.y) : smoothstep(0.3, 0.6, mveil); vec3 cc3 = mix(rc_gown, rc_veil, vw3); float gw3 = 1.0 - vw3; float vd3 = mveil - 1.0; float vb3 = step(0.0, vd3) * smoothstep(0.016, 0.022, vd3) * (1.0 - smoothstep(0.034, 0.04, vd3)) * rc_detail; cc3 = mix(cc3, rc_gown, vb3 * 0.5); cc3 *= mix(1.0, 0.9, step(0.5, mveil) * (1.0 - step(0.9, mveil))); float ang3 = atan(mpos.z, mpos.x); float fold3 = clamp(1.0 + (lum3 - 0.66) * 1.5, 0.74, 1.14); float pl3 = smoothstep(-0.35, 0.35, sin(ang3 * 24.0 + sin(mpos.y * 6.0) * 0.7)); float plw3 = gw3 * smoothstep(1.02, 0.55, mpos.y) * rc_detail; float mot3 = sin(mpos.x * 37.0 + mpos.y * 11.0) * sin(mpos.y * 29.0 + mpos.z * 17.0) * sin(mpos.z * 41.0 + mpos.x * 7.0); float thr3 = sin(ang3 * 70.0 + mpos.y * 3.0) * (1.0 - gw3); float rim3 = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 2.2); cc3 *= mix(1.0, mix(0.9, 1.04, pl3), plw3) * (1.0 + (0.035 * mot3 + 0.03 * thr3) * rc_detail); cc3 *= 1.0 - 0.1 * rc_detail * gw3 * smoothstep(rc_split - 0.13, rc_split - 0.03, mpos.y) * step(abs(mpos.x), 0.26); float hb3 = (1.0 - smoothstep(0.05, 0.062, mpos.y)) * rc_detail; float hl3 = smoothstep(0.078, 0.088, mpos.y) * (1.0 - smoothstep(0.104, 0.114, mpos.y)) * rc_detail; cc3 = mix(cc3, rc_gown * vec3(0.72, 0.78, 0.92), hb3); cc3 = mix(cc3, rc_veil, hl3 * 0.85); cc3 = mix(cc3, vec3(1.0), rim3 * mix(0.3, 0.14, gw3) * rc_detail); tx = mix(tx, cc3 * mix(clamp(0.6 + lum3 * 0.5, 0.86, 1.08), fold3, rc_detail), cl3); } if (recol2 > 0.5) { float lv = dot(tx, vec3(0.3, 0.55, 0.15)); float mx = max(tx.r, max(tx.g, tx.b)); float mn = min(tx.r, min(tx.g, tx.b)); float sat = (mx - mn) / max(mx, 0.001); float gold = step(0.5, tx.r) * step(0.38, tx.g) * step(0.22, tx.r - tx.b); float crim = smoothstep(0.2, 0.3, tx.r - tx.g) * (1.0 - step(0.4, tx.g)); float body = step(mpos.y, 1.16) * step(abs(mpos.x), 0.3); float teal = smoothstep(0.02, 0.1, min(tx.g, tx.b) - tx.r) * (1.0 - smoothstep(0.75, 0.9, lv)); float gown = max(max(teal, body), crim); tx = mix(tx, rc_gown * clamp(0.95 + (lv - 0.35) * 0.3, 0.92, 1.08), gown); float lowsat = (1.0 - smoothstep(0.12, 0.26, sat)) * smoothstep(0.45, 0.62, lv); float top = step(1.56, mpos.y); float isveil = max(max(lowsat, gold), top) * step(abs(mpos.x), 0.27) * step(1.16, mpos.y) * (1.0 - gown * (1.0 - top)); tx = mix(tx, rc_veil * mix(0.93, clamp(lv / 0.8, 0.78, 1.08), lowsat), isveil); } if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
+		"vec3 tx = vcol > 0.5 ? mix(vec3(0.77, 0.765, 0.76), vec3(0.59, 0.246, 0.162), step(0.5, COLOR.a)) : texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (wrap_lift > 0.5) { float rw9 = smoothstep(0.08, 0.2, tx.r - tx.b); float tl9 = dot(tx, vec3(0.3, 0.55, 0.15)); float cr9 = tl9 / wrap_ref; float sr9 = tl9 / 0.84; float ao9 = 1.0; if (vcol > 0.5) { float w9 = clamp(fwidth(COLOR.a) * 0.8, 0.003, 0.2); rw9 = smoothstep(0.5 - w9, 0.5 + w9, COLOR.a); cr9 = COLOR.r * 2.0; sr9 = COLOR.g * 1.824; ao9 = COLOR.b; } float fc9 = wt * wt * 1.1 + wz * wz * 0.96 + wx * wx * 0.7; float gr9 = n3(mpos * 150.0) - 0.5; float mo9 = n3(mpos * 8.0) - 0.5; vec3 cl9 = wrap_col * clamp(cr9, 0.72, 1.14) * mix(1.0, fc9, 0.75) * (1.0 + gr9 * mix(0.09, 0.035, vcol) + mo9 * mix(0.1, 0.06, vcol)); float vn9 = abs(sin((mpos.x * 1.3 + mpos.y * 0.9 + mpos.z * 0.7) * 8.0 + n3(mpos * 5.0) * 6.0)); float vm9 = (1.0 - smoothstep(0.0, 0.07, vn9)) * smoothstep(0.3, 0.55, n3(mpos * 2.3 + 7.0)); float vn8 = abs(sin((mpos.x * -1.1 + mpos.y * 1.2 + mpos.z * 0.5) * 5.0 + n3(mpos * 4.0 + 3.0) * 7.0)); vm9 = max(vm9, (1.0 - smoothstep(0.0, 0.045, vn8)) * 0.7); vec3 mb9 = vec3(0.975, 0.97, 0.962) * clamp(sr9, 0.86, 1.03); mb9 = mix(mb9, mix(vec3(0.6, 0.61, 0.66), vec3(0.74, 0.735, 0.75), vcol), vm9 * mix(0.55, 0.34, vcol)); mb9 = mix(mb9, tx, (1.0 - smoothstep(0.3, 0.5, tl9)) * (1.0 - vcol)); tx = mix(mb9 * mix(0.84, 1.0, ao9), cl9 * mix(0.88, 1.0, smoothstep(0.0, 0.6, ao9)), rw9); } if (recol3 > 0.5) { float lum3 = dot(tx, vec3(0.3, 0.55, 0.15)); float cl3 = smoothstep(0.02, 0.06, tx.b - tx.r); float vw3 = mveil < -0.5 ? smoothstep(rc_split - 0.04, rc_split + 0.04, mpos.y) : smoothstep(0.3, 0.6, mveil); vec3 cc3 = mix(rc_gown, rc_veil, vw3); float gw3 = 1.0 - vw3; float vd3 = mveil - 1.0; float vb3 = step(0.0, vd3) * smoothstep(0.016, 0.022, vd3) * (1.0 - smoothstep(0.034, 0.04, vd3)) * rc_detail; cc3 = mix(cc3, rc_gown, vb3 * 0.5); cc3 *= mix(1.0, 0.9, step(0.5, mveil) * (1.0 - step(0.9, mveil))); float ang3 = atan(mpos.z, mpos.x); float fold3 = clamp(1.0 + (lum3 - 0.66) * 1.5, 0.74, 1.14); float pl3 = smoothstep(-0.35, 0.35, sin(ang3 * 24.0 + sin(mpos.y * 6.0) * 0.7)); float plw3 = gw3 * smoothstep(1.02, 0.55, mpos.y) * rc_detail; float mot3 = sin(mpos.x * 37.0 + mpos.y * 11.0) * sin(mpos.y * 29.0 + mpos.z * 17.0) * sin(mpos.z * 41.0 + mpos.x * 7.0); float thr3 = sin(ang3 * 70.0 + mpos.y * 3.0) * (1.0 - gw3); float rim3 = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 2.2); cc3 *= mix(1.0, mix(0.9, 1.04, pl3), plw3) * (1.0 + (0.035 * mot3 + 0.03 * thr3) * rc_detail); cc3 *= 1.0 - 0.1 * rc_detail * gw3 * smoothstep(rc_split - 0.13, rc_split - 0.03, mpos.y) * step(abs(mpos.x), 0.26); float hb3 = (1.0 - smoothstep(0.05, 0.062, mpos.y)) * rc_detail; float hl3 = smoothstep(0.078, 0.088, mpos.y) * (1.0 - smoothstep(0.104, 0.114, mpos.y)) * rc_detail; cc3 = mix(cc3, rc_gown * vec3(0.72, 0.78, 0.92), hb3); cc3 = mix(cc3, rc_veil, hl3 * 0.85); cc3 = mix(cc3, vec3(1.0), rim3 * mix(0.3, 0.14, gw3) * rc_detail); tx = mix(tx, cc3 * mix(clamp(0.6 + lum3 * 0.5, 0.86, 1.08), fold3, rc_detail), cl3); } if (recol2 > 0.5) { float lv = dot(tx, vec3(0.3, 0.55, 0.15)); float mx = max(tx.r, max(tx.g, tx.b)); float mn = min(tx.r, min(tx.g, tx.b)); float sat = (mx - mn) / max(mx, 0.001); float gold = step(0.5, tx.r) * step(0.38, tx.g) * step(0.22, tx.r - tx.b); float crim = smoothstep(0.2, 0.3, tx.r - tx.g) * (1.0 - step(0.4, tx.g)); float body = step(mpos.y, 1.16) * step(abs(mpos.x), 0.3); float teal = smoothstep(0.02, 0.1, min(tx.g, tx.b) - tx.r) * (1.0 - smoothstep(0.75, 0.9, lv)); float gown = max(max(teal, body), crim); tx = mix(tx, rc_gown * clamp(0.95 + (lv - 0.35) * 0.3, 0.92, 1.08), gown); float lowsat = (1.0 - smoothstep(0.12, 0.26, sat)) * smoothstep(0.45, 0.62, lv); float top = step(1.56, mpos.y); float isveil = max(max(lowsat, gold), top) * step(abs(mpos.x), 0.27) * step(1.16, mpos.y) * (1.0 - gown * (1.0 - top)); tx = mix(tx, rc_veil * mix(0.93, clamp(lv / 0.8, 0.78, 1.08), lowsat), isveil); } if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
 	var st3 := Shader.new(); st3.code = st2.code.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;"); shaders["tex2"] = st3
 	auto = "auto" in OS.get_cmdline_user_args()
@@ -1535,6 +1536,9 @@ func add_rest_coords(src: Node3D) -> void:
 			rig_norm = {"cx": cx, "lo": lo.y, "cz": cz, "sc": sc, "veil": Color("e8e2d2")}
 			var om0 := mi.mesh.surface_get_material(si)
 			var bare := PackedByteArray(); bare.resize(av.size())   # 1 = bare marble body (wrapped figure), follows the leg bones fully
+			if a[Mesh.ARRAY_COLOR] != null and rig_file.begins_with("wrap") and not (om0 is BaseMaterial3D and (om0 as BaseMaterial3D).albedo_texture != null):
+				var vcs: PackedColorArray = a[Mesh.ARRAY_COLOR]   # the light model carries her colours in its vertices
+				for i in av.size(): bare[i] = 1 if vcs[i].a <= 0.5 else 0
 			if a[Mesh.ARRAY_TEX_UV] != null and om0 is BaseMaterial3D and (om0 as BaseMaterial3D).albedo_texture != null:
 				var img := (om0 as BaseMaterial3D).albedo_texture.get_image()
 				if img != null:
@@ -1681,11 +1685,18 @@ func add_face_panel(src: Node3D, mode: String) -> void:
 			pmats["panel|%d" % mi.get_instance_id()] = m; mi.material_override = m
 
 func spawn_her(parent: Node, mode: String) -> Dictionary:
-	if hero_src == null:
+	# two weights of the same rigged model: "_m" for her (about 14,000 triangles), "_s" for every copy of her that is
+	# marble, a reflection or a ghost (about 5,000). HERO_FULL=1 loads the heavy original, to compare
+	var hf := rig_file if rig_file != "" else "tripo_v1"
+	if OS.get_environment("HERO_FULL") != "1":
+		var lod := "_m" if mode == "tex" else "_s"
+		if FileAccess.file_exists("res://hero_models/%s%s.glb" % [hf, lod]): hf += lod
+	if not hero_srcs.has(hf):
 		var st := GLTFState.new(); var doc := GLTFDocument.new()
-		doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % (rig_file if rig_file != "" else "tripo_v1")), st)
-		hero_src = doc.generate_scene(st) as Node3D
-		if rig_file != "": add_rest_coords(hero_src); align_clips(hero_src)
+		doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % hf), st)
+		hero_srcs[hf] = doc.generate_scene(st) as Node3D
+		if rig_file != "": add_rest_coords(hero_srcs[hf]); align_clips(hero_srcs[hf])
+	hero_src = hero_srcs[hf]
 	var src: Node3D = hero_src.duplicate()
 	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
 	src.scale = Vector3.ONE * 1.72; src.rotation.y = float(OS.get_environment("RIG_YAW")) if OS.get_environment("RIG_YAW") != "" else (PI * 0.5 if rig_file == "lp1r" else -PI * 0.5)
@@ -1719,14 +1730,16 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				if refl_mat != null and mode == "tex":   # her own reflection keeps her colours and lies over the others
 					var rm := ShaderMaterial.new(); rm.shader = shaders["refl"]; rm.set_shader_parameter("water_y", WATER); rm.set_shader_parameter("lift", 0.006); rm.set_shader_parameter("use_tex", 1.0)
 					if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: rm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
+					elif mi.mesh.surface_get_format(si) & Mesh.ARRAY_FORMAT_COLOR: rm.set_shader_parameter("vcol", 1.0)   # her colours are in the vertices
 					timed.append(rm); sm.next_pass = rm
 					if mode == "tex": her_mats.append(sm)
 				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
+				elif mi.mesh.surface_get_format(si) & Mesh.ARRAY_FORMAT_COLOR: sm.set_shader_parameter("vcol", 1.0)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
 				if mode == "mirror": sm.set_shader_parameter("tint", Vector3(0.4, 0.48, 0.62))   # her reflection is dark, and the water blurs it
 				if mode == "tex": floor_mats.append(sm)
-				if rig_file.begins_with("lp") or rig_file.begins_with("sr") or rig_file.begins_with("nb") or (rig_file.begins_with("wrap") and OS.get_environment("WRAP_SMOOTH") == ""): sm.set_shader_parameter("flat_n", 1.0)
+				if rig_file.begins_with("lp") or rig_file.begins_with("sr") or rig_file.begins_with("nb") or (rig_file.begins_with("wrap") and OS.get_environment("WRAP_FLAT") == "1"): sm.set_shader_parameter("flat_n", 1.0)
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
 				if rig_file == "wrap3r" and mode == "tex": sm.set_shader_parameter("wrap_col", Vector3(0.82, 0.31, 0.215)); sm.set_shader_parameter("wrap_ref", 0.34)
 				if rig_file.begins_with("wrap") and mode == "tex": sm.set_shader_parameter("wrap_lift", float(OS.get_environment("WRAP_LIFT")) if OS.get_environment("WRAP_LIFT") != "" else 1.55)
@@ -2952,6 +2965,33 @@ func _arrive() -> void:
 
 # ---------------------------------------------------------------- frame
 func _process(dt: float) -> void:
+	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "3":   # what the frame is made of: the heaviest meshes, and every texture
+		var rows := {}; var texs := {}
+		for mm in find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			if mi.mesh == null or not mi.is_visible_in_tree(): continue
+			var id := mi.mesh.get_instance_id()
+			if not rows.has(id): rows[id] = {"t": mi.mesh.get_faces().size() / 3, "n": 0, "who": str(mi.get_path()).right(70), "surf": mi.mesh.get_surface_count(), "two": 0, "skin": mi.skin != null}
+			rows[id].n += 1
+			for si in mi.mesh.get_surface_count():
+				var mo: Material = mi.material_override if mi.material_override != null else (mi.get_surface_override_material(si) if mi.get_surface_override_material(si) != null else mi.mesh.surface_get_material(si))
+				if mo is ShaderMaterial:
+					if (mo as ShaderMaterial).next_pass != null: rows[id].two += 1
+					for u in (mo as ShaderMaterial).shader.get_shader_uniform_list():
+						var v = (mo as ShaderMaterial).get_shader_parameter(u.name)
+						if v is Texture2D: texs[(v as Texture2D).get_rid().get_id()] = "%dx%d %s" % [(v as Texture2D).get_width(), (v as Texture2D).get_height(), u.name]
+				elif mo is BaseMaterial3D and (mo as BaseMaterial3D).albedo_texture != null:
+					var v2 := (mo as BaseMaterial3D).albedo_texture; texs[v2.get_rid().get_id()] = "%dx%d albedo(std)" % [v2.get_width(), v2.get_height()]
+		var list := rows.values(); list.sort_custom(func(x, y): return x.t * x.n > y.t * y.n)
+		var tot := 0; var draws := 0
+		for r in list: tot += r.t * r.n; draws += r.n * r.surf + r.two * r.n
+		print("STATS3 total tris ", tot, " in ", list.size(), " meshes; draws about ", draws)
+		for r in list.slice(0, 28): print("STATS3 ", r.t * r.n, " = ", r.t, " x ", r.n, "  surf ", r.surf, " refl ", r.two, " skin ", r.skin, "  ", r.who)
+		var small := 0; var small_n := 0
+		for r in list:
+			if r.t <= 200: small += r.n; small_n += 1
+		print("STATS3 instances of meshes of 200 triangles or fewer: ", small, " (", small_n, " meshes)")
+		for k in texs: print("STATS3 tex ", texs[k])
 	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "2":
 		var g := {"figures": 0, "figures_n": 0, "heads": 0, "world": 0, "world_n": 0, "copy_under_sea": 0, "second_pass": 0}
 		var cache := {}
