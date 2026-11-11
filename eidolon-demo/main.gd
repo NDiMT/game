@@ -14,15 +14,15 @@ const FOG := Color("eab99c")
 const WATER := -1.3
 # the third court, "the turned ones": three statues of her on turning plinths stand at the far rim of a pool. The
 # water shows each of them turned another way; she turns the real ones until each stands as the water shows it
-const EX0 := -19.9
+const EX0 := -22.3
 const EZ0 := -16.9
 const EX1 := -13.0
-const EZ1 := -10.5
-const RX0 := -19.13     # its pool: as long as the row of statues, from the first plinth's rim to the last one's
+const EZ1 := -9.5
+const RX0 := -20.8      # its pool: long and deep enough to hold the whole reflection of all three, the last one's too
 const RZ0 := -13.8
-const RX1 := -15.07
-const RZ1 := -11.7
-const TURN_AT := [Vector3(-18.6, 0, -14.4), Vector3(-17.1, 0, -14.4), Vector3(-15.6, 0, -14.4)]     # well clear of the gate behind them
+const RX1 := -13.9
+const RZ1 := -11.0
+const TURN_AT := [Vector3(-20.0, 0, -14.4), Vector3(-18.5, 0, -14.4), Vector3(-17.0, 0, -14.4)]     # well clear of the gate behind them
 const TURN_GOAL := [1, 3, 2]      # how many quarter turns (clockwise from above) the water shows each one turned
 const TURN_YAW0 := 0.0            # the way a statue faces before any turn
 const WINCH_K := 1.55                       # the capstan's size: its model is one unit tall
@@ -317,7 +317,7 @@ void vertex(){
 }
 void fragment(){
 	if (hh < 0.03) discard;
-	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 3.0 && q.z > -15.9 && q.z < -10.5) || (q.x > -19.4 && q.x < -13.5 && q.z > -16.4 && q.z < -11.0)) discard;   // nothing lies on the sea inside the hollow of a court with a pool
+	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 3.0 && q.z > -15.9 && q.z < -10.5) || (q.x > -21.8 && q.x < -13.5 && q.z > -16.4 && q.z < -10.0)) discard;   // nothing lies on the sea inside the hollow of a court with a pool
 	// the reflection thins out with height by blending into the colour of the deep water. (It used to be cut
 	// into a pattern of dots, which shimmered whenever the camera moved.)
 	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
@@ -371,7 +371,7 @@ uniform vec3 near_col : source_color; uniform vec3 far_col : source_color; unifo
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5) || (wp.x > -19.4 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -11.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
 	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
@@ -415,7 +415,7 @@ uniform float clear_r = 0.0; uniform vec3 col : source_color; uniform float far_
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5) || (wp.x > -19.4 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -11.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec2 uv = wp.xz * scale;
 	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
 	vec3 d3 = wp - hero; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
@@ -1367,7 +1367,7 @@ func _shots() -> void:
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(QX0 - 0.14, 0, PED.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
-		{"n": "28-turned-ones", "p": Vector3(-14.85, 0, -14.4), "y": PI * 0.5, "c": Vector3(-16.3, 0.2, -13.6), "s": 8.0},
+		{"n": "28-turned-ones", "p": Vector3(-16.25, 0, -14.4), "y": PI * 0.5, "c": Vector3(-17.9, 0.2, -13.0), "s": 9.8},
 		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(0.0, 0.2, -7.0), "s": 9.0},
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
@@ -2972,15 +2972,15 @@ func _world() -> void:
 	for px in [-8.6, -10.3, -12.0]: pier(px, -13.0, -0.18, 0.7)
 	slab(-11.1, -10.6, -9.5, -9.0, 0.0); under(-11.1, -10.6, -9.5, -9.0, 0.2, "sand")
 	model("statue_veiled_broken", Vector3(-10.3, 0, -9.8), 2.0, 0.6)
-	# ---- E. the court of the half gate (6.5 x 6 m): half an arch in the sea, a whole ring with its reflection
+	# ---- E. the court of the turned ones (9.3 x 7.4 m): three statues on turning plinths at the far rim of a wide pool
 	_pool_court(EX0, EZ0, EX1, EZ1, RX0, RZ0, RX1, RZ1, "stone", "PoolSky3")
-	tile_hole = Rect2(RX0 - 0.08, RZ0 - 0.08, RX1 - RX0 + 0.16, RZ1 - RZ0 + 0.16); tiles(-19.9, -16.9, -13.0, -10.5, 1.0); tile_hole = Rect2(); meander(-19.35, -16.35, -13.2, -10.7)
+	tile_hole = Rect2(RX0 - 0.08, RZ0 - 0.08, RX1 - RX0 + 0.16, RZ1 - RZ0 + 0.16); tiles(EX0, EZ0, EX1, EZ1, 1.0); tile_hole = Rect2(); meander(EX0 + 0.55, -16.35, -13.2, EZ1 - 0.2)
 	_turned_ones()
-	parapet(Vector3(-19.8, 0, -16.8), Vector3(-19.8, 0, -10.6)); parapet(Vector3(-19.8, 0, -16.8), Vector3(-17.15, 0, -16.8)); parapet(Vector3(-15.45, 0, -16.8), Vector3(-13.1, 0, -16.8))
-	parapet(Vector3(-19.8, 0, -10.6), Vector3(-13.1, 0, -10.6)); parapet(Vector3(-13.1, 0, -16.8), Vector3(-13.1, 0, -13.75)); parapet(Vector3(-13.1, 0, -12.25), Vector3(-13.1, 0, -10.6))
-	statue_on("statue_veiled_unfinished", Vector3(-19.45, 0, -11.1), 1.5, 0.8); plinth_head("kit_face1", Vector3(-19.45, 0, -15.75), PI * 0.5)
-	tree(Vector3(-19.4, 0, -16.4), 1.1, "leaf3"); lantern(Vector3(-13.35, 0, -10.85), 4, -1.0); cypress(Vector3(-13.5, 0, -16.45), 2.2)
-	urn(Vector3(-18.6, 0, -16.4), 1.0); urn(Vector3(-18.35, 0, -16.25), 0.7, "rose")
+	parapet(Vector3(EX0 + 0.1, 0, -16.8), Vector3(EX0 + 0.1, 0, EZ1 - 0.1)); parapet(Vector3(EX0 + 0.1, 0, -16.8), Vector3(-17.15, 0, -16.8)); parapet(Vector3(-15.45, 0, -16.8), Vector3(-13.1, 0, -16.8))
+	parapet(Vector3(EX0 + 0.1, 0, EZ1 - 0.1), Vector3(-13.1, 0, EZ1 - 0.1)); parapet(Vector3(-13.1, 0, -16.8), Vector3(-13.1, 0, -13.75)); parapet(Vector3(-13.1, 0, -12.25), Vector3(-13.1, 0, EZ1 - 0.1))
+	statue_on("statue_veiled_unfinished", Vector3(-21.7, 0, -10.15), 1.5, 0.8); plinth_head("kit_face1", Vector3(-21.8, 0, -15.3), PI * 0.5)
+	tree(Vector3(-21.8, 0, -16.4), 1.1, "leaf3"); lantern(Vector3(-20.3, 0, -9.85), 4, 1.0); cypress(Vector3(-13.5, 0, -16.45), 2.2)
+	urn(Vector3(-21.0, 0, -16.4), 1.0); urn(Vector3(-20.75, 0, -16.25), 0.7, "rose")
 	slab(-16.9, -20.0, -15.7, -16.9, 0.0); pier(-16.3, -18.4, -0.18, 0.8)
 	ring_gate(Vector3(-16.3, WATER, -18.4), 2.5)
 	# ---- F. the mirror garden (8 x 7 m)
@@ -3039,7 +3039,7 @@ func _world() -> void:
 		column(Vector3(cp.x, WATER + 0.12, cp.z), 2.6 + 0.9 * sin(cp.x * 3.0), 0.19, int(absf(cp.x * 10.0)) % 2 == 0)
 		foam(cp.x - 0.3, cp.z - 0.3, cp.x + 0.3, cp.z + 0.3, 0.3)
 	vine(-3.6, AZ1 - 0.08, true, 1.8); vine(3.52, -3.4, false, 1.4); vine(-3.2, -9.98, true, 1.6); vine(3.52, -15.6, false, 2.0)
-	vine(-19.6, -10.48, true, 2.4); vine(-12.98, -16.4, false, 1.6); vine(-20.2, -19.98, true, 2.6); vine(-12.48, -25.6, false, 2.2)
+	vine(-21.4, EZ1 + 0.02, true, 2.4); vine(-12.98, -16.4, false, 1.6); vine(-20.2, -19.98, true, 2.6); vine(-12.48, -25.6, false, 2.2)
 	# crimson veils in the wind, mirrors, the tree of shards, reeds and rocks
 	for sp in [[Vector3(-7.3, 2.72, 1.9), 2.6], [Vector3(0.0, 2.95, -3.9), 1.9], [Vector3(-16.3, WATER + 2.72, -18.4), 2.4], [Vector3(MX - 0.5, 3.12, MZ + 0.9), 2.2],
 			[Vector3(6.6, WATER + 2.3, -4.8), 2.0], [Vector3(-9.0, WATER + 3.0, -17.4), 2.3], [Vector3(-22.6, WATER + 2.5, -8.8), 2.1], [Vector3(3.4, 1.75, -16.3), 1.8]]:
@@ -3048,7 +3048,7 @@ func _world() -> void:
 	mirror_stand(Vector3(-17.9, 0, -16.5), 0.32); mirror_stand(Vector3(-14.7, 0, -16.5), -0.18); mirror_stand(Vector3(3.05, 0, -14.6) if COVERED else Vector3(-3.05, 0, -14.6), -PI * 0.5 if COVERED else PI * 0.5)
 	shard_tree(Vector3(-13.7, 0, -20.9))
 	reeds(Vector3(-1.9, 0, 4.4)); reeds(Vector3(4.4, 0, 3.0), 7); reeds(Vector3(-4.6, 0, -11.2)); reeds(Vector3(-12.2, 0, -10.0), 8); reeds(Vector3(-20.8, 0, -18.6)); reeds(Vector3(-11.8, 0, -21.6), 7)
-	rock(Vector3(6.0, 0, 4.2), 1.2); rock(Vector3(6.9, 0, 3.6), 0.7); rock(Vector3(-6.4, 0, -7.2), 1.0); rock(Vector3(-22.0, 0, -13.2), 1.3); rock(Vector3(-10.8, 0, -22.8), 0.9); rock(Vector3(5.6, 0, -8.8), 1.0)
+	rock(Vector3(6.0, 0, 4.2), 1.2); rock(Vector3(6.9, 0, 3.6), 0.7); rock(Vector3(-6.4, 0, -7.2), 1.0); rock(Vector3(-24.2, 0, -13.2), 1.3); rock(Vector3(-10.8, 0, -22.8), 0.9); rock(Vector3(5.6, 0, -8.8), 1.0)
 	for mp in [Vector3(6.5, WATER + 0.3, 8.5), Vector3(-13.0, WATER + 0.3, 3.5), Vector3(9.5, WATER + 0.4, -12.0), Vector3(-25.0, WATER + 0.3, -4.0),
 			Vector3(-4.0, WATER + 0.4, -26.0), Vector3(-27.0, WATER + 0.3, -18.0), Vector3(-2.0, WATER + 0.2, 9.5), Vector3(-9.0, WATER + 0.3, -31.0)]:
 		var mh := halo(11.0 + 2.0 * sin(mp.x), Color(mist_c.r, mist_c.g, mist_c.b, 0.14))
@@ -3120,8 +3120,8 @@ func _actors() -> void:
 func _nav() -> void:
 	for r in [["A", AX0 + 0.85, -3.15, 3.15, AZ1 - 0.35], ["S", 3.15, 0.7, 4.6, 1.3], ["B1", -0.25, -5.8, 0.25, -3.15], ["Bg", -0.25, -7.8, 0.25, -5.8], ["B2", -0.25, -10.35, 0.25, -7.8],
 			["C", -2.65, -15.65, 3.0, -10.35], ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
-			["E", -18.9, -11.45, -13.35, -10.85], ["Ee", -14.9, -16.25, -13.3, -10.85], ["Es", -19.0, -16.25, -13.3, -15.08],
-			["T1", -17.97, -15.1, -17.73, -14.3], ["T2", -16.47, -15.1, -16.23, -14.3], ["T3", -14.97, -15.1, -14.73, -14.3], ["G1", -16.55, -20.35, -16.05, -16.15], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
+			["E", -21.2, -10.75, -13.3, -10.05], ["Ee", -13.7, -16.1, -13.3, -10.05], ["Es", -21.1, -16.1, -13.3, -15.08], ["Em", -16.4, -15.1, -13.5, -14.05], ["Ew", -21.5, -15.08, -21.05, -10.6],
+			["T1", -19.37, -15.1, -19.13, -14.3], ["T2", -17.87, -15.1, -17.63, -14.3], ["T3", -16.37, -15.1, -16.13, -14.3], ["G1", -16.55, -20.35, -16.05, -16.0], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
 	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false   # (G1: the way south, behind the third court's gate)
 
@@ -3757,21 +3757,21 @@ func _solve3() -> void:
 	started = true; title_box.hide(); hint.hide()
 	pos = Vector3(-11.6, 0, -13.0); yaw = -PI * 0.5; cam_t = pos; cam.size = 7.2
 	await wait(1.0)
-	cam_focus = Vector3(-16.3, 0.2, -13.4); cam_focus_on = true
-	create_tween().tween_property(cam, "size", 8.0, 2.4).set_trans(Tween.TRANS_SINE)
-	await go([Vector3(-13.6, 0, -13.0), Vector3(-14.6, 0, -12.75)])
-	await face(Vector3(-17.0, 0, -12.9))                # the water, and what stands in it
+	cam_focus = Vector3(-17.9, 0.2, -13.0); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 9.8, 2.4).set_trans(Tween.TRANS_SINE)
+	await go([Vector3(-13.5, 0, -13.0)])
+	await face(Vector3(-17.0, 0, -12.8))                # the water, and what stands in it
 	await wait(2.4)
-	var stand := [Vector3(-17.85, 0, -14.4), Vector3(-16.35, 0, -14.4), Vector3(-14.85, 0, -14.4)]
+	var stand := [Vector3(-19.25, 0, -14.4), Vector3(-17.75, 0, -14.4), Vector3(-16.25, 0, -14.4)]
 	for i in [2, 1, 0]:
 		if i != 2: await go([Vector3(pos.x, 0, -15.5), Vector3(stand[i].x, 0, -15.5), stand[i]])
-		else: await go([Vector3(-14.85, 0, -13.2), stand[i]])
+		else: await go([Vector3(-13.5, 0, -14.5), stand[i]])
 		for k in TURN_GOAL[i]:
 			await _turn(i)
 			await wait(0.25)
 	await wait(0.6)
-	cam_focus = Vector3(-16.3, 0.4, -15.0)
-	create_tween().tween_property(cam, "size", 6.6, 1.6)
+	cam_focus = Vector3(-16.6, 0.4, -15.0)
+	create_tween().tween_property(cam, "size", 7.2, 1.6)
 	while not rects["G1"].on: await get_tree().process_frame
 	await wait(0.5)
 	await go([Vector3(pos.x, 0, -15.6), Vector3(-16.3, 0, -15.6), Vector3(-16.3, 0, -18.2)])
