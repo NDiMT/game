@@ -2,6 +2,7 @@
 # it so its red pointer looks along the game's +Z, and cuts it level where the bronze gear lies on the marble base.
 # Saves two models about the same upright axis: the base, standing on the ground, closed by a disc where the gear
 # covered it, and the top (gear and drum), which the game turns on it.
+# After this, gear_even.py must be run once on the top: it spaces the wheel's teeth evenly, so that the pinion meshes.
 # usage: python3.11 -I plinth_prop.py -- <in.glb> <out base.glb> <out top.glb> [check.png]
 import bpy, sys, math, colorsys, mathutils, bmesh
 a = sys.argv[sys.argv.index('--') + 1:]
