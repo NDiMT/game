@@ -1,6 +1,5 @@
-"""Weaves the rug of the first court: a long deep-teal carpet with a meander border and, along it, the five figures
-of the row of statues. The middle one, in front of her empty plinth, has one arm raised: that is the stance she
-has to take.
+"""Weaves the rug of the first court: a long deep-teal carpet with a meander border, a medallion in the middle and
+small ornaments in the corners of its field.
 
 usage: python3 make_rug.py <out.png>
 The picture's x runs east (0 = the edge under the statues), its y runs south; 400 px to the metre, 2.6 x 4.7 m.
@@ -46,55 +45,23 @@ for _ in range(150):
     d.polygon([(px(x), px(y - r)), (px(x + r * 0.35), px(y)), (px(x), px(y + r)), (px(x - r * 0.35), px(y))], fill=TEAL_L)
     d.polygon([(px(x - r), px(y)), (px(x), px(y + r * 0.35)), (px(x + r), px(y)), (px(x), px(y - r * 0.35))], fill=TEAL_L)
 
-# the five figures. Each is drawn upright in its own frame (u across, v up, metres) and laid on the rug with its
-# head towards the statues (west = the picture's x = 0) and its feet towards the east
-def lay(cy, u, v):   # figure frame -> picture pixels; cy: where its middle line lies along the rug
-    return (px(2.08 - v), px(cy + u))
-def poly(cy, pts, fill): d.polygon([lay(cy, u, v) for u, v in pts], fill=fill)
-def limb(cy, pts, w, fill):
-    for a, b in zip(pts, pts[1:]):
-        (x0, y0), (x1, y1) = lay(cy, *a), lay(cy, *b)
-        d.line([x0, y0, x1, y1], fill=fill, width=px(w))
-    for p in pts:
-        x, y = lay(cy, *p); r = px(w) / 2
-        d.ellipse([x - r, y - r, x + r, y + r], fill=fill)
-def figure(cy, pose):
-    lean = 0.07 if pose in ('mourn', 'bow') else 0.0
-    # the skirt and body, wound in cloth
-    poly(cy, [(-0.17, 1.06), (0.17, 1.06), (0.13, 0.74), (0.2, 0.3), (0.25, 0.0), (-0.25, 0.0), (-0.2, 0.3), (-0.13, 0.74)], CREAM)
-    for k in range(5):   # the bands of her wrap
-        v0 = 0.12 + 0.19 * k
-        poly(cy, [(-0.26, v0), (0.26, v0 + 0.11), (0.26, v0 + 0.15), (-0.26, v0 + 0.04)], GOLD)
-    poly(cy, [(-0.27, 1.07), (-0.165, 1.07), (-0.125, 0.74), (-0.195, 0.3), (-0.245, 0.0), (-0.3, 0.0)], TEAL)   # trim the bands to the body
-    poly(cy, [(0.27, 1.07), (0.165, 1.07), (0.125, 0.74), (0.195, 0.3), (0.245, 0.0), (0.3, 0.0)], TEAL)
-    # the head, wrapped
-    hx, hy = lean, 1.22 - lean * 0.4
-    x, y = lay(cy, hx, hy); r = px(0.115)
-    d.ellipse([x - r * 1.12, y - r * 0.92, x + r * 1.12, y + r * 0.92], fill=CREAM)
-    poly(cy, [(-0.05 + hx * 0.5, 1.02), (0.05 + hx * 0.5, 1.02), (0.06 + hx, 1.14), (-0.06 + hx, 1.14)], CREAM)
-    limb(cy, [(hx - 0.1, hy + 0.035), (hx + 0.1, hy - 0.02)], 0.022, GOLD)
-    # the arms
-    a = 0.062
-    if pose == 'calm':
-        limb(cy, [(-0.17, 1.02), (-0.24, 0.78), (-0.25, 0.52)], a, CREAM); limb(cy, [(0.17, 1.02), (0.24, 0.78), (0.25, 0.52)], a, CREAM)
-    elif pose == 'pray':
-        limb(cy, [(-0.17, 1.02), (-0.25, 0.82), (-0.03, 0.93)], a, CREAM); limb(cy, [(0.17, 1.02), (0.25, 0.82), (0.03, 0.93)], a, CREAM)
-    elif pose == 'reach':
-        limb(cy, [(-0.17, 1.02), (-0.24, 0.78), (-0.25, 0.52)], a, CREAM)
-        limb(cy, [(0.17, 1.03), (0.3, 1.25), (0.33, 1.58)], a, CREAM)
-        x, y = lay(cy, 0.33, 1.7)   # a small sun over the raised hand
-        for k in range(8):
-            an = k * math.pi / 4
-            d.line([x + px(0.05) * math.cos(an), y + px(0.05) * math.sin(an), x + px(0.095) * math.cos(an), y + px(0.095) * math.sin(an)], fill=GOLD, width=px(0.016))
-        d.ellipse([x - px(0.032), y - px(0.032), x + px(0.032), y + px(0.032)], fill=GOLD)
-    elif pose == 'mourn':
-        limb(cy, [(-0.17, 1.02), (-0.24, 0.9), (-0.04 + hx, 1.17)], a, CREAM); limb(cy, [(0.17, 1.02), (0.25, 0.9), (0.1 + hx, 1.17)], a, CREAM)
-    elif pose == 'bow':
-        limb(cy, [(-0.17, 1.02), (-0.22, 0.84), (0.1, 0.98)], a, CREAM); limb(cy, [(0.17, 1.02), (0.22, 0.84), (-0.1, 0.98)], a, CREAM)
-    # the plinth it stands on
-    poly(cy, [(-0.3, 0.0), (0.3, 0.0), (0.3, -0.05), (-0.3, -0.05)], GOLD); poly(cy, [(-0.34, -0.05), (0.34, -0.05), (0.34, -0.1), (-0.34, -0.1)], CREAM)
-for i, pose in enumerate(['calm', 'pray', 'reach', 'mourn', 'bow']):
-    figure(0.55 + 0.9 * i, pose)     # 0.9 m apart, as the plinths are
+# the medallion: a long lozenge in cream and gold with a rosette at its heart, and a small one above and below it
+def lozenge(cx, cy, rx, ry, fill): d.polygon([(px(cx), px(cy - ry)), (px(cx + rx), px(cy)), (px(cx), px(cy + ry)), (px(cx - rx), px(cy))], fill=fill)
+cx, cy = Wm / 2, Hm / 2
+lozenge(cx, cy, 0.78, 1.5, CREAM); lozenge(cx, cy, 0.7, 1.38, TEAL_D); lozenge(cx, cy, 0.64, 1.28, GOLD); lozenge(cx, cy, 0.6, 1.2, TEAL)
+lozenge(cx, cy, 0.4, 0.8, CREAM); lozenge(cx, cy, 0.34, 0.7, TEAL_D)
+for k in range(12):   # the rosette
+    an = k * math.pi / 6
+    x, y = cx + 0.17 * math.cos(an), cy + 0.17 * math.sin(an)
+    d.ellipse([px(x - 0.06), px(y - 0.06), px(x + 0.06), px(y + 0.06)], fill=CREAM if k % 2 == 0 else GOLD)
+d.ellipse([px(cx - 0.1), px(cy - 0.1), px(cx + 0.1), px(cy + 0.1)], fill=GOLD); d.ellipse([px(cx - 0.05), px(cy - 0.05), px(cx + 0.05), px(cy + 0.05)], fill=RUST)
+for sy in (-1, 1):
+    lozenge(cx, cy + sy * 1.78, 0.2, 0.22, CREAM); lozenge(cx, cy + sy * 1.78, 0.13, 0.15, RUST)
+    for sx in (-1, 1):   # the corners of the field
+        ox, oy = cx + sx * 0.72, cy + sy * 1.72
+        lozenge(ox, oy, 0.13, 0.13, GOLD); lozenge(ox, oy, 0.07, 0.07, TEAL_D)
+        for t in range(3):
+            lozenge(ox - sx * (0.2 + 0.13 * t), oy, 0.035, 0.035, CREAM); lozenge(ox, oy - sy * (0.2 + 0.13 * t), 0.035, 0.035, CREAM)
 
 im = im.resize((W // SS, H // SS), Image.LANCZOS)
 # the weave: fine threads both ways, and a little unevenness of dye

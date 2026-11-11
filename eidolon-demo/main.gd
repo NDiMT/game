@@ -2235,8 +2235,7 @@ func _pool_court(x0: float, z0: float, x1: float, z1: float, qx0: float, qz0: fl
 ## statues of herself, passes the sculptor's corner, and meets the footbridge that is only a shadow
 func _start_zone() -> void:
 	# the row of statues of her: four finished ones, and in the middle the plinth she stepped down from. Before them
-	# lies a long rug, as long as the row. The five of them are woven into it, each in front of its own plinth, and
-	# the one in the middle, where no statue stands, has one arm raised
+	# lies a long rug, as long as the row, a little rucked up where feet have dragged it
 	var poses := ["calm", "pray", "", "mourn", "kneel"]
 	mroot = Node3D.new(); mroot.name = "MirrorPool"; mroot.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO); add_child(mroot)
 	for i in 5:
@@ -2248,9 +2247,32 @@ func _start_zone() -> void:
 	var rim2 := Image.load_from_file(ProjectSettings.globalize_path("res://props/rug.png")); rim2.generate_mipmaps()
 	var rm := ShaderMaterial.new(); rm.shader = shaders["tex"]; rm.set_shader_parameter("albedo_tex", ImageTexture.create_from_image(rim2))
 	rm.set_shader_parameter("fog_col", sea_c); rm.set_shader_parameter("mist_col", mist_c); rm.set_shader_parameter("shadow_col", shadow_c); rm.set_shader_parameter("mist_k", mist_k); pmats["rug"] = rm
-	var rq := PlaneMesh.new(); rq.size = Vector2(rx1 - rx0, rz1 - rz0)
-	prim(rq, Vector3((rx0 + rx1) * 0.5, 0.017, (rz0 + rz1) * 0.5), rm).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	blk(Vector3(rx0 - 0.006, 0, rz0 - 0.006), Vector3(rx1 + 0.006, 0.015, rz1 + 0.006), "teal")   # its thickness
+	# the rug is not flat: a few long rucks run across it, one corner is turned up, and it lies unevenly everywhere
+	var gx := 44; var gz := 80; var rv := PackedVector3Array(); var ruv := PackedVector2Array(); var rix := PackedInt32Array()
+	var rucks := [[Vector2(0.9, 1.1), 0.5, 0.1, 0.13, 1.5], [Vector2(1.7, 3.3), -0.35, 0.085, 0.12, 1.3], [Vector2(1.3, 2.3), 1.2, 0.06, 0.16, 1.0], [Vector2(0.5, 3.9), 0.9, 0.07, 0.1, 0.8], [Vector2(2.1, 0.8), -1.0, 0.06, 0.1, 0.7], [Vector2(0.6, 2.9), -0.2, 0.05, 0.09, 0.6]]   # a point on it, its direction, height, width, half length
+	for j in gz + 1:
+		for i in gx + 1:
+			var u := (rx1 - rx0) * i / gx; var v := (rz1 - rz0) * j / gz; var h := 0.0
+			for rk in rucks:
+				var dir := Vector2(cos(rk[1]), sin(rk[1])); var rel := Vector2(u, v) - (rk[0] as Vector2)
+				var along := rel.dot(dir); var across := rel.dot(Vector2(-dir.y, dir.x)) + 0.05 * sin(along * 3.0)
+				h += rk[2] * exp(-pow(across / rk[3], 2)) * smoothstep(rk[4], rk[4] * 0.4, absf(along))
+			h += 0.085 * pow(clampf(1.0 - Vector2(u - (rx1 - rx0), v - (rz1 - rz0)).length() / 0.55, 0.0, 1.0), 2.0)   # the turned-up corner
+			h += 0.005 * (2.0 + sin(u * 7.0 + v * 3.0) + sin(v * 9.0 - u * 2.0))
+			rv.append(Vector3(rx0 + u, 0.016 + h, rz0 + v)); ruv.append(Vector2(float(i) / gx, float(j) / gz))
+	var rn := PackedVector3Array(); rn.resize(rv.size())
+	for j in gz + 1:
+		for i in gx + 1:
+			var k := j * (gx + 1) + i
+			rn[k] = (rv[k + ((gx + 1) if j < gz else 0)] - rv[k - ((gx + 1) if j > 0 else 0)]).cross(rv[k + (1 if i < gx else 0)] - rv[k - (1 if i > 0 else 0)]).normalized()
+	for j in gz:
+		for i in gx:
+			var k := j * (gx + 1) + i
+			rix.append_array(PackedInt32Array([k, k + 1, k + gx + 1, k + 1, k + gx + 2, k + gx + 1]))
+	var ra := []; ra.resize(Mesh.ARRAY_MAX); ra[Mesh.ARRAY_VERTEX] = rv; ra[Mesh.ARRAY_NORMAL] = rn; ra[Mesh.ARRAY_TEX_UV] = ruv; ra[Mesh.ARRAY_INDEX] = rix
+	var rmesh := ArrayMesh.new(); rmesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, ra)
+	prim(rmesh, Vector3.ZERO, rm)
+	blk(Vector3(rx0 - 0.004, 0, rz0 - 0.004), Vector3(rx1 + 0.004, 0.011, rz1 + 0.004), "teal")   # its thickness
 	var fr := mat(Color("eadcbe"))
 	for i in 52:   # the fringe at its two ends
 		var fx := rx0 + 0.03 + (rx1 - rx0 - 0.06) * i / 51.0
@@ -3132,7 +3154,7 @@ func _solve_statue() -> void:
 	await go([Vector3(-0.35, 0, 1.2), Vector3(-0.5, 0, MYPL.z)])
 	await face(Vector3(-3.0, 0, MYPL.z))
 	create_tween().tween_property(cam, "size", 5.2, 1.8)
-	await wait(3.4)                                     # five are woven into the rug; four stand
+	await wait(2.6)                                     # four statues, and one plinth with nobody on it
 	# back to her own plinth, across the rug, and up onto it
 	create_tween().tween_property(cam, "size", 5.8, 1.6)
 	await go([Vector3(MYPL.x + 0.44, 0, MYPL.z)])
@@ -3140,9 +3162,9 @@ func _solve_statue() -> void:
 	twin.visible = false
 	await go([Vector3(MYPL.x, 0, MYPL.z)], 0.5)
 	await face(Vector3(0.0, 0, MYPL.z))
-	await wait(2.0)                                     # standing there is not enough
-	tgtR = MYPL + Vector3(0.27, 2.1, 0.19)              # the hand of the woven figure: up, and a little forward
-	var up := tw(); up.tween_property(self, "a_wR", 1.0, 1.2)
+	await wait(1.2)
+	tgtL = MYPL + Vector3(0.21, 1.44, -0.03); tgtR = MYPL + Vector3(0.21, 1.44, 0.03)   # her hands come together before her, as the statue's beside her
+	var up := tw(); up.tween_property(self, "a_wR", 1.0, 1.2); up.tween_property(self, "a_wL", 1.0, 1.2)
 	await up.finished
 	await wait(0.3)
 	posing = true                                       # and she is still
@@ -3155,7 +3177,7 @@ func _solve_statue() -> void:
 	await gt.finished
 	await wait(0.8)
 	posing = false
-	var dn := tw(); dn.tween_property(self, "a_wR", 0.0, 0.8)
+	var dn := tw(); dn.tween_property(self, "a_wR", 0.0, 0.8); dn.tween_property(self, "a_wL", 0.0, 0.8)
 	await dn.finished
 	create_tween().tween_property(self, "pos:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
 	await go([Vector3(MYPL.x + 0.5, 0, MYPL.z)], 0.5)
