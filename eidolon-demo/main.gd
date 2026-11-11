@@ -12,6 +12,7 @@ const TEAL_D := Color("13283a")
 const CRIMSON := Color("b8232f")
 const FOG := Color("eab99c")
 const WATER := -1.3
+const WORLD_DEPTH := 0.4   # how much deeper the stone of the world is than the palette says (0 = as written, 1 = far too dark)
 var sea_c := Color("3c7d92")
 var mist_c := Color("cdb8c6")
 var water_deep := Color("2a8790")
@@ -1161,6 +1162,15 @@ func _ready() -> void:
 				out_p.append(Color(lerpf(c0.r, c0.r * tn0.r, sep), lerpf(c0.g, c0.g * tn0.g, sep), lerpf(c0.b, c0.b * tn0.b, sep)).to_html(false))
 			pals[sep_name] = out_p
 	if statue_cream: pals["marble"] = (pals["stone"] as Array).duplicate(); pals["skin"] = (pals["stone"] as Array).duplicate()
+	# the built world a shade deeper than its statues and its heroine, so that they stand out against it. (Found by
+	# accident, when the joined world came out much darker; this is a part of that. DEPTH=0 is the old pale world.)
+	var depth := float(OS.get_environment("DEPTH")) if OS.get_environment("DEPTH") != "" else WORLD_DEPTH
+	if depth > 0.0:
+		for dn in ["stone", "shade", "sand", "rose", "terra"]:
+			var deep := []
+			for hx in pals[dn]:
+				var c0 := Color(hx); deep.append(c0.lerp(c0.srgb_to_linear(), depth).to_html(false))
+			pals[dn] = deep
 	hero_real = OS.get_environment("REAL") == "1"
 	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp") or OS.get_environment("RIG").begins_with("sr") or OS.get_environment("RIG").begins_with("nb") or OS.get_environment("RIG").begins_with("ione")) else "min" + OS.get_environment("RIG"); hero_real = true
 	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "wrap3r"; hero_real = true
