@@ -3101,6 +3101,8 @@ func _world() -> void:
 	_turned_ones()
 	parapet(Vector3(EX0 + 0.1, 0, -16.8), Vector3(EX0 + 0.1, 0, EZ1 - 0.1)); parapet(Vector3(EX0 + 0.1, 0, -16.8), Vector3(-17.15, 0, -16.8)); parapet(Vector3(-15.45, 0, -16.8), Vector3(-13.1, 0, -16.8))
 	parapet(Vector3(EX0 + 0.1, 0, EZ1 - 0.1), Vector3(-13.1, 0, EZ1 - 0.1)); parapet(Vector3(-13.1, 0, -16.8), Vector3(-13.1, 0, -13.75)); parapet(Vector3(-13.1, 0, -12.25), Vector3(-13.1, 0, EZ1 - 0.1))
+	for pp in [Vector3(-13.1, 0, -13.75), Vector3(-13.1, 0, EZ1 - 0.1)]:      # a post where the balusters would otherwise end on a thin one: the north jamb of the east entry, the south-east corner
+		blk(pp + Vector3(-0.07, 0.05, -0.07), pp + Vector3(0.07, 0.34, 0.07), "stone")
 	statue_on("statue_veiled_unfinished", Vector3(-21.7, 0, -10.15), 1.5, 0.8); plinth_head("kit_face1", Vector3(-21.845, 0, -15.38), PI * 0.5)   # its plinth close against the west parapet, and over the whole width of the border
 	# the planter sits square in the north-west corner, its two back faces against the two parapets (its box is 0.82 m and lies off the tree's own middle);
 	# the lamp stand keeps its lion paws inside the south parapet; the cypress stands clear of the rails of its corner
@@ -3234,7 +3236,7 @@ func _actors() -> void:
 	# things to tap
 	objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
-	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.95, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0)}   # (its mark floats 0.55 above "at": clear of the statue's head)
+	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.88, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0)}   # (its mark floats 0.55 above "at": clear of the statue's head)
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
 		var d := blk(Vector3(-0.05, -0.05, -0.05), Vector3(0.05, 0.05, 0.05), "crim", n)
@@ -3957,7 +3959,10 @@ func _solve3(alone := true) -> void:
 		pos = Vector3(-3.95, 0, -13.0); yaw = -PI * 0.5; cam_t = pos; cam.size = 6.4
 		await wait(0.6)
 		create_tween().tween_property(cam, "size", 7.4, 2.0).set_trans(Tween.TRANS_SINE)
-		await go([Vector3(-7.6, 0, -13.0), Vector3(-11.6, 0, -13.0)])
+		if OS.get_environment("S3_HALT") == "1": await go([Vector3(-7.6, 0, -13.0), Vector3(-11.6, 0, -13.0)])      # exactly as _tour has it: she comes to a stand on the slab before going on
+		else:      # without that halt: she walks on while the court's run takes over
+			go([Vector3(-7.6, 0, -13.0), Vector3(-13.5, 0, -13.0)])
+			while pos.x > -11.6: await get_tree().process_frame
 	elif alone:
 		pos = Vector3(-11.6, 0, -13.0); yaw = -PI * 0.5; cam_t = pos; cam.size = 7.2
 		await wait(1.0)
@@ -3971,10 +3976,14 @@ func _solve3(alone := true) -> void:
 	# next she goes round the back of the plinth between, a step clear of its base
 	for i in range(first, 3):
 		# the picture closes on the one she turns and on its twin in the water under it; the other two stay in it
-		_cam3(Vector3(-18.38 + 0.45 * (i - 1), 0, -14.56 - 0.455 * (i - 1)), 5.6, 1.5 if i == 0 else 1.9)
+		var near := Vector3(-18.38 + 0.45 * (i - 1), 0, -14.56 - 0.455 * (i - 1))
 		if i == 0:
-			await go([Vector3(-13.5, 0, -14.3), Vector3(-13.9, 0, -15.0), Vector3(-14.6, 0, -15.35), Vector3(-18.55, 0, -15.35), Vector3(-19.1, 0, -15.15), Vector3(-19.32, 0, -14.8), stand[0]])
+			go([Vector3(-13.5, 0, -14.3), Vector3(-13.9, 0, -15.0), Vector3(-14.6, 0, -15.35), Vector3(-18.55, 0, -15.35), Vector3(-19.1, 0, -15.15), Vector3(-19.32, 0, -14.8), stand[0]])
+			while pos.x > -15.0: await get_tree().process_frame      # (the picture stays wide until she is well into the court: it must not close and leave her outside it)
+			_cam3(near, 5.6, 1.5)
+			await arrived
 		else:
+			_cam3(near, 5.6, 1.9)
 			var c: Vector3 = TURN_AT[i]; var arc := []
 			for a in [150.0, 120.0, 90.0, 60.0, 30.0]:
 				var ra := deg_to_rad(a); arc.append(c + Vector3(cos(ra), 0, -sin(ra)) * (lerpf(1.5 - TURN_STAND, TURN_STAND, (180.0 - a) / 180.0) + 0.15 * sin(ra)))      # from where she stood by the last one, out round its back, in to where she stands by this one
