@@ -1462,7 +1462,7 @@ func _shots() -> void:
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(QX0 - 0.14, 0, PED.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
-		{"n": "28-turned-ones", "p": Vector3(-16.25, 0, -14.4), "y": PI * 0.5, "c": Vector3(-17.9, 0.2, -13.0), "s": 9.8},
+		{"n": "28-turned-ones", "p": Vector3(-16.32, 0, -14.4), "y": -PI * 0.5, "c": Vector3(-17.9, 0.2, -13.0), "s": 9.8},
 		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(0.0, 0.2, -7.0), "s": 9.0},
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
@@ -3775,7 +3775,7 @@ func _do_capstan() -> void:
 	b.tween_property(self, "a_wL", 0.0, 0.45); b.tween_property(self, "a_wR", 0.0, 0.45); b.tween_property(self, "a_lean", 0.0, 0.45)
 	await b.finished
 	rects["BR"].on = true; done["capstan"] = true
-	say("η γέφυρα γύρισε")
+	say("the bridge has turned")
 
 func _do_turn1() -> void: await _turn(0)
 func _do_turn2() -> void: await _turn(1)
@@ -3969,7 +3969,8 @@ func _tour(all := false) -> void:
 	await _solve2(false)
 	if all:
 		create_tween().tween_property(cam, "size", 7.4, 2.0).set_trans(Tween.TRANS_SINE)
-		await go([Vector3(-7.6, 0, -13.0), Vector3(-11.6, 0, -13.0)])
+		go([Vector3(-7.6, 0, -13.0), Vector3(-13.5, 0, -13.0)])      # one walk, without a halt where the third court's run takes over
+		while pos.x > -11.6: await get_tree().process_frame
 		await _solve3(false)
 	await wait(0.8)
 	get_tree().quit()
