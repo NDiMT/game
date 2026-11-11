@@ -12,6 +12,8 @@ const TEAL_D := Color("13283a")
 const CRIMSON := Color("b8232f")
 const FOG := Color("eab99c")
 const WATER := -1.3
+const WINCH_K := 1.55                       # the capstan's size: its model is one unit tall
+const WINCH_HUB := Vector2(0.497, 0.731)    # where the hub of its handwheel sits in the model: out along the axle, and up
 const WORLD_DEPTH := 0.4   # how much deeper the stone of the world is than the palette says (0 = as written, 1 = far too dark)
 var sea_c := Color("3c7d92")
 var mist_c := Color("cdb8c6")
@@ -241,15 +243,20 @@ void fragment(){
 	vec3 n = normalize(wn); if (dot(n, v) > 0.0) n = -n;
 	vec3 r = reflect(v, n);
 	vec2 wob = vec2(sin(wp.y * 9.0 + time_s * 0.7), cos(wp.x * 7.0 + time_s * 0.5)) * 0.0009;
-	float hit = 0.0; vec2 huv = vec2(0.0); float t = 0.12; float st = 0.07; float t0 = 0.0;
-	for (int i = 0; i < 40; i++) {
+	float hit = 0.0; vec2 huv = vec2(0.0); float t = 0.12; float st = 0.06; float t0 = 0.0; float ta = 0.0; float run = 0.0;
+	for (int i = 0; i < 56; i++) {
 		vec4 vq = VIEW_MATRIX * vec4(wp + r * t, 1.0);
 		vec4 cq = PROJECTION_MATRIX * vq; vec2 uv = cq.xy / cq.w * 0.5 + 0.5;
 		if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) break;
 		vec4 sv = INV_PROJECTION_MATRIX * vec4(uv * 2.0 - 1.0, textureLod(depth_tex, uv, 0.0).r * 2.0 - 1.0, 1.0);
 		float dz = sv.z / sv.w - vq.z;                                     // how far behind what is drawn there the ray now is
-		if (dz > 0.0 && dz < 1.1) { hit = 1.0; huv = uv; break; }
-		t0 = t; t += st; st *= 1.06;
+		if (dz > 0.0 && dz < 1.1) {
+			// it must stay behind for two steps running: a thin bar or baluster is passed by, or it would flick in
+			// and out of the glass with every small move of the eye
+			if (run > 0.5) { hit = 1.0; huv = uv; t0 = ta; break; }
+			run = 1.0; ta = t0;
+		} else run = 0.0;
+		t0 = t; t += st; st *= 1.035;
 	}
 	if (hit > 0.5) {                                                         // close in on the place it went behind
 		float a = t0; float b = t;
@@ -267,7 +274,7 @@ void fragment(){
 		hit = step(0.0, huv.x) * step(huv.x, 1.0) * step(0.0, huv.y) * step(huv.y, 1.0);
 	}
 	vec3 sky = mix(vec3(0.52, 0.74, 0.84), vec3(0.8, 0.92, 0.96), UV.y);
-	vec3 c = mix(sky, textureLod(screen_tex, clamp(huv + wob, 0.0, 1.0), 0.6).rgb, hit);
+	vec3 c = mix(sky, textureLod(screen_tex, clamp(huv + wob, 0.0, 1.0), 1.3).rgb, hit);
 	c = (c - 0.62) * 1.2 + 0.62;                                                           // silvered glass: deeper than the day it shows,
 	c = mix(c, sky, 0.5 * (1.0 - smoothstep(0.15, 0.6, dot(c, vec3(0.3, 0.5, 0.2)))));     // but never a dark hole: the dark sea comes back pale,
 	c = mix(c, sky, 0.14 + 0.2 * smoothstep(0.4, 1.0, UV.y)) * vec3(0.8, 0.91, 0.98);      // cooler, and paler towards its head
@@ -710,6 +717,21 @@ func thing(file: String, p: Vector3, height: float, parts: String, yaw := 0.0, a
 	prop_model(file, n, height, across, false, false, parts)
 	return n
 
+## the slot in the floor that a gate's grille sinks into: a dark cut lined with bronze, with the lit inner wall of
+## its far side showing, so that one sees where the gate goes
+func gate_slot(c: Vector3, half: float, along_x: bool) -> void:
+	var n := Node3D.new(); n.position = c; n.rotation.y = 0.0 if along_x else -PI * 0.5; add_child(n)
+	var w := 0.062; var l := half + 0.05
+	prim(_box(Vector3(l * 2.0, 0.004, w * 2.0)), Vector3(0, 0.003, 0), mat(Color("23213c")), n)                  # the dark of the cut
+	prim(_box(Vector3(l * 2.0, 0.004, 0.034)), Vector3(0, 0.0045, -w + 0.017 if along_x else w - 0.017), mat(Color("6d6889")), n)   # its far wall, lit
+	for e in [-1.0, 1.0]:
+		blk(Vector3(-l - 0.022, 0, e * (w + 0.011) - 0.011), Vector3(l + 0.022, 0.014, e * (w + 0.011) + 0.011), "gold", n)
+		blk(Vector3(e * (l + 0.011) - 0.011, 0, -w), Vector3(e * (l + 0.011) + 0.011, 0.014, w), "gold", n)
+
+func _box(sz: Vector3) -> BoxMesh:
+	var bm := BoxMesh.new(); bm.size = sz
+	return bm
+
 func cypress(p: Vector3, h := 2.2) -> void:
 	thing("cypress", p, h * 1.04, "leaf:cyp~,trunk:trunk", p.x * 1.7 + p.z)
 	decal(p + Vector3(0.14, 0, -0.14), 0.8, 0.6, 0.2, 0.78)
@@ -762,8 +784,8 @@ func shard_tree(p: Vector3) -> void:
 
 ## a standing mirror: a pane in a gilt frame with a small pediment, on lion feet. Modelled in Tripo, then sorted by
 ## material (tools/mirror_prop.py) and painted here flat, with the world's own colours. kind: "bare", or hidden under a
-## sheet: wholly ("tied", "round", "oval") or in part ("hem", "half", "low", "wide", "slip")
-const MIRROR_H := {"bare": 2.1, "tied": 2.14, "hem": 2.14, "half": 2.1, "low": 2.1, "slip": 2.08, "round": 1.95, "oval": 2.0, "wide": 1.5}
+## sheet: wholly ("tied", "round", "oval") or in part ("hem", "low", "wide", "slip", "ovalh")
+const MIRROR_H := {"bare": 2.1, "tied": 2.14, "hem": 2.14, "low": 2.1, "slip": 2.08, "round": 1.95, "oval": 2.0, "ovalh": 2.0, "wide": 1.5}
 func mirror_stand(p: Vector3, yaw := 0.0, parent: Node = self, ground_y := 0.0, kind := "bare", _sea := false) -> Node3D:
 	var n := Node3D.new(); n.position = p; n.rotation.y = yaw; parent.add_child(n)
 	var m := prop_model("mirror_" + kind, n, MIRROR_H[kind], 0.0, false, false, "cloth:linen,rope:rope,gold:gold,stone:stone,gem:crim,pane:shade", ground_y)
@@ -2544,6 +2566,7 @@ func _start_zone() -> void:
 	# the two strange heads now watch the gate from either side
 	plinth_head("kit_face2", Vector3(-1.5, 0, -3.5), 0.0); plinth_head("kit_face3", Vector3(-4.0, 0, AZ1 - 0.48), PI)
 	# the gate of the court is a bronze grille until the row of statues is whole
+	gate_slot(Vector3(0, 0, -3.9), 0.58, true)
 	gate_a = Node3D.new(); gate_a.position = Vector3(0, 0, -3.9); add_child(gate_a)
 	for i in 7: blk(Vector3(-0.54 + 0.18 * i - 0.018, 0, -0.018), Vector3(-0.54 + 0.18 * i + 0.018, 2.02, 0.018), "dark", gate_a)
 	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.58, gy, -0.024), Vector3(0.58, gy + 0.04, 0.024), "gold", gate_a)
@@ -2666,7 +2689,7 @@ func _shrouds() -> void:
 	if not FileAccess.file_exists("res://props/mirror_tied.glb"): return
 	# x, z, turn, size, kind. Those whose sheet lies spread on the ground stand on a wider footing
 	var spots := [[-2.6, -5.9, 0.75, 1.0, "slip"], [-5.7, -5.3, 0.3, 1.04, "oval"], [-4.6, -7.7, 0.4, 1.08, "tied"], [-2.3, -8.9, 0.62, 1.0, "low"], [-7.2, -8.1, 1.15, 1.05, "round"],
-		[2.4, -6.2, 0.95, 1.0, "wide"], [3.9, -8.0, 1.3, 1.1, "tied"], [7.3, -8.3, 0.5, 1.0, "hem"], [4.3, -10.2, 1.0, 1.0, "half"]]   # no two of a kind turned alike
+		[2.4, -6.2, 0.95, 1.0, "wide"], [3.9, -8.0, 1.3, 1.1, "tied"], [7.3, -8.3, 0.5, 1.0, "hem"], [4.3, -10.2, 1.0, 1.0, "ovalh"]]   # no two of a kind turned alike
 	for sp in spots:
 		var base := Vector3(sp[0], WATER + 0.22, sp[1])
 		var m := mirror_stand(base, sp[2], self, WATER, sp[4], true); m.scale = Vector3.ONE * sp[3]
@@ -2685,11 +2708,14 @@ func _pool_c() -> void:
 	var args := OS.get_cmdline_user_args()
 	for both in [self, mroot]:
 		var pg := Node3D.new(); both.add_child(pg)
-		# the winch: a marble pedestal with its bronze fittings, and on it the wheel with its turned handles
-		prop_model("winch_base", pg, 0.74, 0.0, both == mroot).position = PED
-		cyl(PED + Vector3(0, 0.72, 0), 0.075, 0.075, 0.1, pal("gold"), 10, pg)
-		var wn := Node3D.new(); wn.position = PED + Vector3(0, 0.8, 0); pg.add_child(wn)
-		prop_model("winch_wheel", wn, 0.0, 1.22, both == mroot)
+		# the winch, a capstan: a marble pedestal with a lion ring, a wooden drum wound with rope under a bronze gear,
+		# and on a rope-wound axle the handwheel that turns it. Two models cut from one (tools/winch_prop.py): the base,
+		# and the wheel with its hub at its own origin and its axle along x. It stands turned about, the wheel to the
+		# west, where the lost crossing comes up to it
+		var parts := "wood:wood,rope:linen,gold:gold,stone:stone"
+		var wb := prop_model("winch_base", pg, 0.0, 0.0, both == mroot, false, parts); wb.position = PED; wb.rotation.y = PI; wb.scale = Vector3.ONE * WINCH_K
+		var wn := Node3D.new(); wn.position = PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K; wn.rotation.y = PI; pg.add_child(wn)
+		prop_model("winch_wheel", wn, 0.0, 0.0, both == mroot, false, parts).scale = Vector3.ONE * WINCH_K
 		if both == self: winch_a = wn; ped_a = pg
 		else: winch_m = wn; ped_m = pg
 		blk(Vector3(QX0, 0.0, PED.z - 0.3), Vector3(QX0 + 0.2, 0.07, PED.z + 0.3), "stone", both)   # the stub of the crossing at the west rim
@@ -2703,7 +2729,7 @@ func _pool_c() -> void:
 	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(QX1 - QX0, QZ1 - QZ0); wq.orientation = PlaneMesh.FACE_Y
 	glass2 = ShaderMaterial.new(); glass2.shader = shaders["glass"]; timed.append(glass2)
-	glass2.set_shader_parameter("lost_rect", Vector4(QX0 + 0.16, PED.z - 0.3, PED.x - 0.34, PED.z + 0.3)); glass2.set_shader_parameter("lost_a", 1.0); glass2.set_shader_parameter("lost_x", 1.0)
+	glass2.set_shader_parameter("lost_rect", Vector4(QX0 + 0.16, PED.z - 0.3, PED.x - 0.46, PED.z + 0.3)); glass2.set_shader_parameter("lost_a", 1.0); glass2.set_shader_parameter("lost_x", 1.0)
 	glass2.set_shader_parameter("blur_px", 4.4); glass2.set_shader_parameter("lod", 2.0)   # what this water shows is soft
 	prim(wq, Vector3((QX0 + QX1) * 0.5, 0.012, (QZ0 + QZ1) * 0.5), glass2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# the west gate: two piers, a lintel, and a bronze grille until the winch is turned
@@ -2711,6 +2737,7 @@ func _pool_c() -> void:
 		blk(Vector3(CX0 - 0.04, 0, gz - 0.14), Vector3(CX0 + 0.24, 2.1, gz + 0.14), "stone"); blk(Vector3(CX0 - 0.07, 0, gz - 0.17), Vector3(CX0 + 0.27, 0.1, gz + 0.17), "shade")
 	blk(Vector3(CX0 - 0.04, 2.1, -14.0), Vector3(CX0 + 0.24, 2.42, -12.0), "stone")
 	cornice(CX0 - 0.04, -14.0, CX0 + 0.24, -12.0, 2.42, 0.04, 0.06); dentils(CX0 - 0.04, -14.0, CX0 + 0.24, -12.0, 2.42)
+	gate_slot(Vector3(CX0 + 0.1, 0, -13.0), 0.7, false)
 	gate_c = Node3D.new(); gate_c.position = Vector3(CX0 + 0.1, 0, -13.0); add_child(gate_c)
 	for i in 8: blk(Vector3(-0.018, 0, -0.63 + 0.18 * i - 0.018), Vector3(0.018, 2.02, -0.63 + 0.18 * i + 0.018), "dark", gate_c)
 	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.024, gy, -0.7), Vector3(0.024, gy + 0.04, 0.7), "gold", gate_c)
@@ -3615,9 +3642,9 @@ func _solve2(alone := true) -> void:
 	go([rim])
 	while pos.x < rim.x - 0.12: await get_tree().process_frame
 	var e: Dictionary = H["mir"]; H.erase("mir")
-	await _eid_go(e, Vector3(PED.x - 0.62, 0.0, PED.z), 0.72)
+	await _eid_go(e, Vector3(PED.x - WINCH_HUB.x * WINCH_K - 0.3, 0.0, PED.z), 0.72)
 	await wait(0.5)
-	var wt := create_tween().set_parallel(); wt.tween_property(winch_a, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE); wt.tween_property(winch_m, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
+	var wt := create_tween().set_parallel(); wt.tween_property(winch_a, "rotation:x", PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE); wt.tween_property(winch_m, "rotation:x", PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
 	await wait(1.4)
 	cam_focus = Vector3(-1.5, 0.5, -12.8)
 	create_tween().tween_property(cam, "size", 7.2, 1.6)
