@@ -2,7 +2,7 @@ extends Node3D
 ## EIDOLON demo: one flat, continuous map in a clean isometric look. Tap to walk, tap things to use them.
 const Fig := preload("res://fig.gd")
 const WALK := 1.25
-const CAP := Vector3(1.6, 0.0, -12.5)
+const CAP := Vector3(-2.3, 0.0, -11.2)   # moved to the west side: the second pool lies where it stood
 const PIV := Vector3(-5.9, 0.0, -13.0)
 const LAMP0 := Vector3(-7.8, 0.17, -6.75)
 const MX := -19.4
@@ -32,7 +32,25 @@ const PX1 := 0.6
 const PZ0 := -1.0
 const PZ1 := 2.4
 const PED := Vector3(-1.4, 0, 0.75)
+const CX0 := -3.4   # the second court, and its pool
+const CZ0 := -16.4
+const CX1 := 3.5
+const CZ1 := -10.0
+const QX0 := -1.3
+const QX1 := 2.5
+const QZ0 := -15.0
+const QZ1 := -11.6
+const PED2 := Vector3(0.9, 0, -13.2)        # the winch of the west gate
+const LPOST := Vector3(-1.5, 0, -12.25)     # the lantern's post, on the west rim
+const LAMP2 := Vector3(-0.4, 1.12, -13.2)   # its flame, out over the lost crossing
 var winch_a: Node3D
+var winch2_a: Node3D
+var winch2_m: Node3D
+var gate_c: Node3D
+var glass2: ShaderMaterial
+var hoods: Array = []
+var lamp2_halo: MeshInstance3D
+var pull2: Node3D
 var her_mats: Array = []
 var posing := false
 var cam_focus_on := false
@@ -211,7 +229,7 @@ void vertex(){
 }
 void fragment(){
 	if (hh < 0.03) discard;
-	if (q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) discard;   // nothing lies on the sea inside the hollow of the first court
+	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 3.0 && q.z > -15.9 && q.z < -10.5)) discard;   // nothing lies on the sea inside the hollow of the first court
 	// the reflection thins out with height by blending into the colour of the deep water. (It used to be cut
 	// into a pattern of dots, which shimmered whenever the camera moved.)
 	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
@@ -223,7 +241,8 @@ void fragment(){
 const SH_GLASS := """shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never;
 uniform float time_s = 0.0; uniform float blur_px = 3.2; uniform float wave = 1.0;
-uniform vec4 lost_rect = vec4(0.0); uniform float lost_a = 0.0;
+uniform vec4 lost_rect = vec4(0.0); uniform float lost_a = 0.0; uniform float lost_x = 0.0;   // lost_x: the crossing runs along x
+uniform vec4 glare = vec4(0.0);   // lantern light lying on the water: x, z, radius, strength
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap, repeat_disable;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -241,12 +260,22 @@ void fragment(){
 	float l2 = smoothstep(0.965, 1.0, sin((wp.x - wp.z) * 5.1 + time_s * 0.6) * sin(wp.z * 3.3 - time_s * 0.4) * 0.5 + 0.5);
 	if (lost_a > 0.0) {   // the lost crossing: no clear shape, only a soft shadow that the water still holds
 		vec2 q2 = wp.xz + vec2(sin(wp.z * 9.0 + time_s * 1.2) + 0.5 * sin(wp.z * 21.0 - time_s * 0.7), sin(wp.x * 7.0 + time_s * 0.9)) * 0.03 * wave;
-		float sx = smoothstep(lost_rect.x - 0.12, lost_rect.x + 0.1, q2.x) * (1.0 - smoothstep(lost_rect.z - 0.1, lost_rect.z + 0.12, q2.x));
-		float sz = smoothstep(lost_rect.y - 0.02, lost_rect.y + 0.1, q2.y) * (1.0 - smoothstep(lost_rect.w - 0.12, lost_rect.w + 0.04, q2.y));
-		float seg = 0.86 + 0.14 * smoothstep(-0.3, 0.5, sin((q2.y - lost_rect.y) * 19.6));
+		vec4 lr = lost_rect;
+		if (lost_x > 0.5) { q2 = q2.yx; lr = lost_rect.yxwz; }
+		float sx = smoothstep(lr.x - 0.12, lr.x + 0.1, q2.x) * (1.0 - smoothstep(lr.z - 0.1, lr.z + 0.12, q2.x));
+		float sz = smoothstep(lr.y - 0.02, lr.y + 0.1, q2.y) * (1.0 - smoothstep(lr.w - 0.12, lr.w + 0.04, q2.y));
+		float seg = 0.86 + 0.14 * smoothstep(-0.3, 0.5, sin((q2.y - lr.y) * 19.6));
 		c = mix(c, vec3(0.12, 0.29, 0.39), sx * sz * seg * lost_a * 0.62);
 	}
 	c = mix(c, vec3(0.6, 0.85, 0.88), 0.24);
+	if (glare.w > 0.0) {   // where the lantern's light lies on the water nothing else can be seen in it
+		float gd = distance(wp.xz + vec2(sin(wp.z * 8.0 + time_s * 1.3), sin(wp.x * 7.0 - time_s * 1.1)) * 0.025, glare.xy) / glare.z;
+		float g = 1.0 - smoothstep(0.42, 1.0, gd);
+		float shim = 0.95 + 0.05 * sin((wp.x + wp.z) * 6.0 + time_s * 1.7 + sin(wp.z * 4.0 - time_s * 0.9) * 1.5);
+		c = mix(c, vec3(1.0, 0.92, 0.7) * shim, g * 0.94 * glare.w);
+		c = mix(c, vec3(1.0, 0.98, 0.9), (1.0 - smoothstep(0.0, 0.45, gd)) * 0.75 * glare.w);
+		c += vec3(0.16, 0.11, 0.02) * (1.0 - smoothstep(0.7, 1.7, gd)) * glare.w;
+	}
 	c = mix(c, vec3(1.0), clamp(l * 0.3 + l2 * 0.45, 0.0, 1.0));
 	ALBEDO = c;
 }"""
@@ -263,7 +292,7 @@ uniform vec3 near_col : source_color; uniform vec3 far_col : source_color; unifo
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0 && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
 	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
@@ -307,7 +336,7 @@ uniform float clear_r = 0.0; uniform vec3 col : source_color; uniform float far_
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0 && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec2 uv = wp.xz * scale;
 	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
 	vec3 d3 = wp - hero; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
@@ -1163,6 +1192,9 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	if "solve1" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve1()
+	if "solve2" in OS.get_cmdline_user_args():
+		get_viewport().msaa_3d = Viewport.MSAA_2X
+		_solve2()
 	if "glide" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		RenderingServer.directional_shadow_atlas_set_size(2048, true)
@@ -1217,6 +1249,8 @@ func _shots() -> void:
 		{"n": "18-mirror-pool", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-0.8, 0.1, -0.1), "s": 5.2},
 		{"n": "19-mirror-pool-wide", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-1.4, 0.3, 0.7), "s": 13.5},
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
+		{"n": "22-lantern-pool", "p": Vector3(QX0 - 0.14, 0, PED2.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
+		{"n": "23-lantern-court", "p": Vector3(QX0 - 0.14, 0, PED2.z), "y": PI * 0.5, "c": Vector3(0.0, 0.6, -13.0), "s": 13.0},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
 	var only := OS.get_environment("SHOT_ONLY")
@@ -2120,19 +2154,18 @@ func _strip_refl(root: Node) -> void:
 
 ## the arrival court: its floor has an opening for the mirror pool and its base is hollow, so that
 ## the court can stand upside down inside it
-func _court_a() -> void:
-	var x0 := AX0; var z0 := AZ0; var x1 := AX1; var z1 := AZ1
-	for r in [[x0, z0, x1, PZ0], [x0, PZ1, x1, z1], [x0, PZ0, PX0, PZ1], [PX1, PZ0, x1, PZ1]]:
+func _pool_court(x0: float, z0: float, x1: float, z1: float, qx0: float, qz0: float, qx1: float, qz1: float, wall_p := "stone", sky_name := "PoolSky") -> void:
+	for r in [[x0, z0, x1, qz0], [x0, qz1, x1, z1], [x0, qz0, qx0, qz1], [qx1, qz0, x1, qz1]]:
 		blk(Vector3(r[0], -0.13, r[1]), Vector3(r[2], 0.0, r[3]), "stone")
-	for r in [[x0 - 0.03, z0 - 0.03, x1 + 0.03, PZ0], [x0 - 0.03, PZ1, x1 + 0.03, z1 + 0.03], [x0 - 0.03, PZ0, PX0, PZ1], [PX1, PZ0, x1 + 0.03, PZ1]]:
+	for r in [[x0 - 0.03, z0 - 0.03, x1 + 0.03, qz0], [x0 - 0.03, qz1, x1 + 0.03, z1 + 0.03], [x0 - 0.03, qz0, qx0, qz1], [qx1, qz0, x1 + 0.03, qz1]]:
 		blk(Vector3(r[0], -0.18, r[1]), Vector3(r[2], -0.13, r[3]), "shade")
 	dentils(x0, z0, x1, z1, -0.18)
 	var kr := 0.07   # the kerb of the pool
-	blk(Vector3(PX0 - kr, 0, PZ0 - kr), Vector3(PX1 + kr, 0.04, PZ0), "shade"); blk(Vector3(PX0 - kr, 0, PZ1), Vector3(PX1 + kr, 0.04, PZ1 + kr), "shade")
-	blk(Vector3(PX0 - kr, 0, PZ0), Vector3(PX0, 0.04, PZ1), "shade"); blk(Vector3(PX1, 0, PZ0), Vector3(PX1 + kr, 0.04, PZ1), "shade")
+	blk(Vector3(qx0 - kr, 0, qz0 - kr), Vector3(qx1 + kr, 0.04, qz0), "shade"); blk(Vector3(qx0 - kr, 0, qz1), Vector3(qx1 + kr, 0.04, qz1 + kr), "shade")
+	blk(Vector3(qx0 - kr, 0, qz0), Vector3(qx0, 0.04, qz1), "shade"); blk(Vector3(qx1, 0, qz0), Vector3(qx1 + kr, 0.04, qz1), "shade")
 	var ins := 0.22; var a := Vector3(x0 + ins, -2.45, z0 + ins); var b := Vector3(x1 - ins, -0.18, z1 - ins); var th := 0.3
 	for w in [[a.x, a.z, b.x, a.z + th], [a.x, b.z - th, b.x, b.z], [a.x, a.z + th, a.x + th, b.z - th], [b.x - th, a.z + th, b.x, b.z - th]]:
-		blk(Vector3(w[0], a.y, w[1]), Vector3(w[2], b.y, w[3]), "stone")
+		blk(Vector3(w[0], a.y, w[1]), Vector3(w[2], b.y, w[3]), wall_p)
 	for w in [[a.x - 0.1, a.z - 0.1, b.x + 0.1, a.z + th], [a.x - 0.1, b.z - th, b.x + 0.1, b.z + 0.1], [a.x - 0.1, a.z + th, a.x + th, b.z - th], [b.x - th, a.z + th, b.x + 0.1, b.z - th]]:
 		blk(Vector3(w[0], -2.45, w[1]), Vector3(w[2], WATER + 0.07, w[3]), "shade")
 	for w in [[a.x - 0.1, a.z - 0.1, b.x + 0.1, a.z + th], [a.x - 0.1, b.z - th, b.x + 0.1, b.z + 0.1], [a.x - 0.1, a.z + th, a.x + th, b.z - th], [b.x - th, a.z + th, b.x + 0.1, b.z - th]]:
@@ -2141,7 +2174,7 @@ func _court_a() -> void:
 	var nx := maxi(1, int((b.x - a.x) / 1.05)); var nz := maxi(1, int((b.z - a.z) / 1.05))
 	for i in nx: win_z(a.x + (b.x - a.x) * (i + 0.5) / nx, -1.2, b.z, 0.4, 0.74)
 	for i in nz: win_x(b.x, -1.2, a.z + (b.z - a.z) * (i + 0.5) / nz, 0.4, 0.74)
-	var pit := MeshInstance3D.new(); pit.name = "PoolSky"; var pm := BoxMesh.new(); pm.size = Vector3(b.x - a.x - th * 2.0 - 0.03, 2.16, b.z - a.z - th * 2.0 - 0.03); pit.mesh = pm
+	var pit := MeshInstance3D.new(); pit.name = sky_name; var pm := BoxMesh.new(); pm.size = Vector3(b.x - a.x - th * 2.0 - 0.03, 2.16, b.z - a.z - th * 2.0 - 0.03); pit.mesh = pm
 	pit.position = Vector3((a.x + b.x) * 0.5, -0.185 - 1.08, (a.z + b.z) * 0.5)   # its floor stays above the copy of the court that lies under the sea
 	var pmat := ShaderMaterial.new(); pmat.shader = shaders["pit"]; pit.material_override = pmat; pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(pit)
 	if OS.get_environment("NOPIT") == "1": pit.visible = false
@@ -2206,8 +2239,6 @@ func _start_zone() -> void:
 			var cp := Vector3(cx, 0, PZ0 - 0.22)
 			cyl(cp, 0.17, 0.15, 0.08, pal("shade"), 16, both); cyl(cp + Vector3(0, 0.08, 0), 0.1, 0.09, 0.82, pal("stone"), 16, both); cyl(cp + Vector3(0, 0.9, 0), 0.15, 0.15, 0.06, pal("shade"), 16, both)
 			var bl := ball(cp + Vector3(0, 1.06, 0), 0.1, pal("gold"), both)
-	_strip_refl(mroot)
-	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(PX1 - PX0, PZ1 - PZ0); wq.orientation = PlaneMesh.FACE_Y
 	var gm2 := ShaderMaterial.new(); gm2.shader = shaders["glass"]; timed.append(gm2)
 	gm2.set_shader_parameter("lost_rect", Vector4(PED.x - 0.3, PZ0 + 0.16, PED.x + 0.3, PED.z - 0.44)); gm2.set_shader_parameter("lost_a", 1.0)
@@ -2219,9 +2250,61 @@ func _start_zone() -> void:
 	if not ("shots" in OS.get_cmdline_user_args()) or OS.get_environment("GATE_A") == "open": gate_a.position.y = -2.4
 	vine(AX0 + 0.7, AZ1 - 0.08, true, 2.0); vine(1.2, AZ1 - 0.08, true, 1.9)
 
+## the second court, "the lantern". The same lost crossing, from the west rim to the winch of the west gate, but a
+## lantern hangs over it and its light on the water hides whatever the water would show. Only when the lantern is
+## shut can a reflection cross
+func _pool_c() -> void:
+	var args := OS.get_cmdline_user_args()
+	var ad := Vector2(LAMP2.x - LPOST.x, LAMP2.z - LPOST.z)
+	for both in [self, mroot]:
+		blk(PED2 + Vector3(-0.44, 0.0, -0.44), PED2 + Vector3(0.44, 0.07, 0.44), "shade", both); blk(PED2 + Vector3(-0.38, 0.07, -0.38), PED2 + Vector3(0.38, 0.4, 0.38), "stone", both)
+		blk(PED2 + Vector3(-0.42, 0.4, -0.42), PED2 + Vector3(0.42, 0.46, 0.42), "shade", both)
+		cyl(PED2 + Vector3(0, 0.46, 0), 0.13, 0.11, 0.6, pal("wood"), 12, both); cyl(PED2 + Vector3(0, 1.06, 0), 0.15, 0.15, 0.07, pal("gold"), 12, both)
+		var wn := Node3D.new(); wn.position = PED2 + Vector3(0, 0.9, 0); both.add_child(wn)
+		for i in 4:
+			var spk := blk(Vector3(-0.44, -0.02, -0.022), Vector3(0.44, 0.02, 0.022), "wood", wn); spk.position = Vector3.ZERO; spk.rotation.y = PI * 0.25 * i
+		if both == self: winch2_a = wn
+		else: winch2_m = wn
+		blk(Vector3(QX0, 0.0, PED2.z - 0.3), Vector3(QX0 + 0.2, 0.07, PED2.z + 0.3), "stone", both)   # the stub of the crossing at the west rim
+		for rb3 in [[Vector3(QX0 + 0.27, 0.035, PED2.z - 0.16), 0.5], [Vector3(QX0 + 0.24, 0.03, PED2.z + 0.2), -0.4]]:
+			var bk3 := blk(Vector3(-0.07, -0.035, -0.1), Vector3(0.07, 0.035, 0.1), "stone", both); bk3.position = rb3[0]; bk3.rotation.y = rb3[1]
+		# the lantern: a post on the rim and a long bracket that carries the flame out over the water
+		blk(LPOST + Vector3(-0.1, 0, -0.1), LPOST + Vector3(0.1, 0.08, 0.1), "shade", both); cyl(LPOST, 0.045, 0.032, 1.5, pal("dark"), 10, both)
+		ball(LPOST + Vector3(0, 1.54, 0), 0.05, pal("gold"), both)
+		var arm := Node3D.new(); arm.position = LPOST + Vector3(0, 1.46, 0); arm.rotation.y = atan2(-ad.y, ad.x); both.add_child(arm)
+		blk(Vector3(-0.05, -0.016, -0.016), Vector3(ad.length() + 0.05, 0.016, 0.016), "dark", arm)
+		var br := blk(Vector3(-0.31, -0.012, -0.012), Vector3(0.31, 0.012, 0.012), "dark", arm); br.position = Vector3(0.22, -0.22, 0); br.rotation.z = PI * 0.25
+		var lp := Vector3(ad.length(), 0, 0)
+		cyl(lp + Vector3(0, -0.2, 0), 0.008, 0.008, 0.2, pal("dark"), 6, arm)
+		cyl(lp + Vector3(0, -0.27, 0), 0.1, 0.02, 0.07, pal("gold"), 14, arm)                 # the cap
+		ball(lp + Vector3(0, -0.34, 0), 0.06, mat(Color("ffdf94")), arm)                     # the flame
+		cyl(lp + Vector3(0, -0.44, 0), 0.035, 0.06, 0.035, pal("gold"), 12, arm)
+		var hood := cyl(Vector3(0, -0.085, 0), 0.082, 0.082, 0.17, pal("gold"), 14, arm); hood.position = lp + Vector3(0, -0.105, 0); hoods.append(hood)   # the shutter, raised
+		if both == self:
+			lamp2_halo = halo(1.1, Color(1.0, 0.8, 0.45, 0.55)); lamp2_halo.position = LAMP2; add_child(lamp2_halo)
+			pull2 = Node3D.new(); pull2.position = Vector3(0.16, 0, 0); arm.add_child(pull2)   # the chain that shuts it
+			cyl(Vector3(0, -0.62, 0), 0.006, 0.006, 0.62, pal("dark"), 6, pull2); ball(Vector3(0, -0.65, 0), 0.04, pal("gold"), pull2)
+	lights[3] = Vector4(LAMP2.x, 0.2, LAMP2.z, 0.5)
+	_strip_refl(mroot)
+	if OS.get_environment("NOMIR") == "1": mroot.visible = false
+	var wq := QuadMesh.new(); wq.size = Vector2(QX1 - QX0, QZ1 - QZ0); wq.orientation = PlaneMesh.FACE_Y
+	glass2 = ShaderMaterial.new(); glass2.shader = shaders["glass"]; timed.append(glass2)
+	glass2.set_shader_parameter("lost_rect", Vector4(QX0 + 0.16, PED2.z - 0.3, PED2.x - 0.44, PED2.z + 0.3)); glass2.set_shader_parameter("lost_a", 1.0); glass2.set_shader_parameter("lost_x", 1.0)
+	glass2.set_shader_parameter("glare", Vector4(LAMP2.x, LAMP2.z, 0.9, 1.0))
+	prim(wq, Vector3((QX0 + QX1) * 0.5, 0.012, (QZ0 + QZ1) * 0.5), glass2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# the west gate: two piers, a lintel, and a bronze grille until the winch is turned
+	for gz in [-13.86, -12.14]:
+		blk(Vector3(CX0 - 0.04, 0, gz - 0.14), Vector3(CX0 + 0.24, 2.1, gz + 0.14), "stone"); blk(Vector3(CX0 - 0.07, 0, gz - 0.17), Vector3(CX0 + 0.27, 0.1, gz + 0.17), "shade")
+	blk(Vector3(CX0 - 0.04, 2.1, -14.0), Vector3(CX0 + 0.24, 2.42, -12.0), "stone")
+	cornice(CX0 - 0.04, -14.0, CX0 + 0.24, -12.0, 2.42, 0.04, 0.06); dentils(CX0 - 0.04, -14.0, CX0 + 0.24, -12.0, 2.42)
+	gate_c = Node3D.new(); gate_c.position = Vector3(CX0 + 0.1, 0, -13.0); add_child(gate_c)
+	for i in 8: blk(Vector3(-0.018, 0, -0.63 + 0.18 * i - 0.018), Vector3(0.018, 2.02, -0.63 + 0.18 * i + 0.018), "dark", gate_c)
+	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.024, gy, -0.7), Vector3(0.024, gy + 0.04, 0.7), "gold", gate_c)
+	if not ("shots" in args or "solve2" in args): gate_c.position.y = -2.4
+
 func _world() -> void:
 	# ---- A. the arrival court (10 x 9.5 m, open floor all round the mirror pool)
-	_court_a()
+	_pool_court(AX0, AZ0, AX1, AZ1, PX0, PZ0, PX1, PZ1)
 	tile_hole = Rect2(PX0 - 0.08, PZ0 - 0.08, PX1 - PX0 + 0.16, PZ1 - PZ0 + 0.16); tiles(AX0, AZ0, AX1, AZ1, 1.0); tile_hole = Rect2(); meander(AX0 + 0.7, AZ0 + 0.7, AX1 - 0.2, AZ1 - 0.2)
 	parapet(Vector3(AX0 + 0.1, 0, -3.9), Vector3(AX0 + 0.1, 0, AZ1 - 0.1)); parapet(Vector3(AX0 + 0.1, 0, -3.9), Vector3(-0.85, 0, -3.9)); parapet(Vector3(0.85, 0, -3.9), Vector3(3.4, 0, -3.9))
 	parapet(Vector3(3.4, 0, -3.9), Vector3(3.4, 0, -0.3)); parapet(Vector3(3.4, 0, 2.3), Vector3(3.4, 0, AZ1 - 0.1))
@@ -2254,8 +2337,8 @@ func _world() -> void:
 	for rb in [[Vector3(-0.35, 0, -5.95), 0.3], [Vector3(0.3, -0.05, -6.0), -0.4], [Vector3(-0.2, -0.04, -7.7), 0.5], [Vector3(0.38, 0, -7.62), -0.2]]:
 		var bk := blk(Vector3(-0.2, -0.13, -0.16), Vector3(0.2, 0, 0.16), "stone"); bk.position = rb[0]; bk.rotation = Vector3(0.12, rb[1], 0.1)
 	# ---- C. the lever court (6.5 x 6 m)
-	slab(-3.4, -16.4, 3.5, -10.0, 0.0); under(-3.4, -16.4, 3.5, -10.0, 0.22, "sand")
-	tiles(-3.4, -16.4, 3.5, -10.0, 1.0); rosette(Vector3(-0.6, 0, -13.0), 1.2); meander(-2.85, -15.85, 3.3, -10.2)
+	_pool_court(CX0, CZ0, CX1, CZ1, QX0, QZ0, QX1, QZ1, "sand", "PoolSky2")
+	tile_hole = Rect2(QX0 - 0.08, QZ0 - 0.08, QX1 - QX0 + 0.16, QZ1 - QZ0 + 0.16); tiles(-3.4, -16.4, 3.5, -10.0, 1.0); tile_hole = Rect2(); meander(-2.85, -15.85, 3.3, -10.2)
 	blk(Vector3(-3.4, 0, -16.4), Vector3(3.5, 1.6, -16.18), "stone"); cornice(-3.4, -16.4, 3.5, -16.18, 1.6); dentils(-3.4, -16.4, 3.5, -16.18, 1.6)
 	crenels(Vector3(-3.3, 1.66, -16.22), Vector3(3.4, 1.66, -16.22), 0.335)
 	for wx in [-2.4, -1.0, 0.4, 1.8]: win_z(wx, 0.25, -16.18, 0.5, 1.05)
@@ -2263,12 +2346,13 @@ func _world() -> void:
 	plinth_head("kit_face6", Vector3(-2.95, 0, -15.95), 0.5); plinth_head("kit_face4", Vector3(3.2, 0, -15.9), -0.4)
 	parapet(Vector3(-3.3, 0, -16.0), Vector3(-3.3, 0, -13.75)); parapet(Vector3(-3.3, 0, -12.25), Vector3(-3.3, 0, -10.1)); parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
 	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(3.4, 0, -10.1))
-	lantern(Vector3(3.15, 0, -10.35), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
+	cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
 	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32); cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16)
 	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; add_child(cap_rot)
 	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
 	ball(Vector3(0, 0, 0.86), 0.045, pal("crim"), cap_rot); ball(Vector3(0, 0.06, 0), 0.045, pal("crim"), cap_rot)
 	decal(CAP + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.22, 0.78)
+	_pool_c()
 	# ---- the turning bridge and the long walk west
 	slab(-4.2, -13.6, -3.4, -12.4, 0.0)
 	bridge = Node3D.new(); bridge.name = "Bridge"; bridge.position = PIV; bridge.rotation.y = PI * 0.5; add_child(bridge)
@@ -2887,6 +2971,66 @@ func _solve1() -> void:
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", 6.2, 1.4)
 	await go([Vector3(0, 0, -3.2), Vector3(0, 0, -4.9)])
+	await wait(0.8)
+	get_tree().quit()
+
+## the lantern, solved. No captions: she tries the crossing, her reflection walks into the light and is lost, she
+## shuts the lantern, and then it can cross
+func _solve2() -> void:
+	started = true; title_box.hide(); hint.hide()
+	gate_c.position.y = 0.0
+	var rim := Vector3(QX0 - 0.14, 0, PED2.z)
+	pos = Vector3(0.0, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.4
+	await wait(1.0)
+	cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
+	await go([Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED2.z), Vector3(rim.x - 0.25, 0, PED2.z)])
+	await wait(0.4)
+	create_tween().tween_property(cam, "size", 5.4, 2.0)
+	# she walks on toward the winch. Her reflection steps out over the lost crossing, into the lantern's light
+	go([rim])
+	while pos.x < rim.x - 0.12: await get_tree().process_frame
+	var e: Dictionary = H["mir"]; H.erase("mir")
+	await _eid_go(e, Vector3(LAMP2.x + 0.1, 0.0, PED2.z), 0.72)
+	await wait(1.6)                                   # nothing: it is lost in the light
+	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.72)
+	(e.holder as Node3D).rotation.y = yaw
+	H["mir"] = e
+	await wait(0.5)
+	await face(LAMP2)
+	await wait(0.9)
+	# the lantern
+	await go([Vector3(LPOST.x - 0.5, 0, PED2.z + 0.45), Vector3(LPOST.x - 0.42, 0, LPOST.z - 0.06)])
+	await face(LPOST + Vector3(0.3, 0, -0.1))
+	await wait(0.5)
+	var lt := create_tween().set_parallel()
+	lt.tween_property(pull2, "position:y", -0.16, 0.5).set_trans(Tween.TRANS_SINE)
+	for hd in hoods: lt.tween_property(hd, "position:y", (hd as Node3D).position.y - 0.235, 0.7).set_trans(Tween.TRANS_SINE).set_delay(0.25)
+	lt.tween_property(lamp2_halo, "scale", Vector3.ONE * 0.01, 1.0).set_delay(0.45)
+	lt.tween_method(func(v: float): glass2.set_shader_parameter("glare", Vector4(LAMP2.x, LAMP2.z, 0.9, v)); lights[3] = Vector4(LAMP2.x, 0.2, LAMP2.z, 0.5 * v), 1.0, 0.0, 1.3).set_delay(0.45)
+	await wait(2.6)
+	# and now the crossing shows, and her reflection can take it
+	await go([Vector3(LPOST.x - 0.5, 0, PED2.z + 0.45), Vector3(rim.x - 0.3, 0, PED2.z)])
+	await wait(0.3)
+	go([rim])
+	while pos.x < rim.x - 0.12: await get_tree().process_frame
+	e = H["mir"]; H.erase("mir")
+	await _eid_go(e, Vector3(PED2.x - 0.62, 0.0, PED2.z), 0.72)
+	await wait(0.5)
+	var wt := create_tween().set_parallel(); wt.tween_property(winch2_a, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE); wt.tween_property(winch2_m, "rotation:y", -PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
+	await wait(1.4)
+	cam_focus = Vector3(-1.5, 0.5, -12.8)
+	create_tween().tween_property(cam, "size", 7.2, 1.6)
+	await wait(2.0)
+	var gt := create_tween(); gt.tween_property(gate_c, "position:y", -2.4, 2.4).set_trans(Tween.TRANS_SINE)
+	await gt.finished
+	await wait(1.0)
+	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.72)
+	(e.holder as Node3D).rotation.y = yaw
+	H["mir"] = e
+	await wait(0.9)
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", 6.4, 1.4)
+	await go([Vector3(-2.3, 0, -13.0), Vector3(-3.95, 0, -13.0)])
 	await wait(0.8)
 	get_tree().quit()
 
