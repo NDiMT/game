@@ -74,6 +74,11 @@ var turn_pin := []         # the small bronze pinion beside each plinth, which t
 var turn_gem := []         # the stud on each plinth's ring: red, and gold when the statue stands as the water shows
 var turn_q := [0, 0, 0]    # how many quarter turns each has been given
 var turned_done := false
+var turn_girth := []       # for each statue, how far its marble stands out from the plinth's axis at the height of her hands, every 10 degrees round
+var palm_on := false       # her palms lie flat on a surface: tgtL and tgtR are the points under them, palm_nL and palm_nR the way it faces there
+var palm_nL := Vector3.RIGHT
+var palm_nR := Vector3.RIGHT
+var palm_gap := 0.0        # (a check) the most an arm fell short of such a point, in hand lengths
 var door_a: Node3D        # the leaf of plain stone in the west wall, and the door the water shows in its place
 var door_m: Node3D
 var seam_a: Node3D        # the joints of the leaf: they show only once the door has been seen in the water
@@ -129,6 +134,42 @@ class HerMod extends SkeletonModifier3D:
 	func _b(sk: Skeleton3D, n: String) -> int:
 		var i := sk.find_bone("mixamorig:" + n)
 		return i if i >= 0 else sk.find_bone("mixamorig_" + n)
+	## A palm laid flat on a surface. p: the point of the surface under the middle of the palm, n: the way the surface
+	## faces there, up: upward (all in the skeleton's own frame). The arm's two bones turn until the wrist is where that
+	## asks (the elbow down and out, bent as much as the distance needs), then the hand is set against the surface:
+	## fingers upward where the surface faces her, more and more forward where it runs away from her. w blends from the
+	## pose the animation gave. note: she herself leaves in main.palm_gap how far short of the point an arm was
+	func _palm(sk: Skeleton3D, sd: String, w: float, p: Vector3, n: Vector3, up: Vector3, note: bool) -> void:
+		if w <= 0.001: return
+		var bi := _b(sk, sd + "Arm"); var ci := _b(sk, sd + "ForeArm"); var hi := _b(sk, sd + "Hand")
+		var mi := _b(sk, sd + "HandMiddle1"); var ii := _b(sk, sd + "HandIndex1"); var pi := _b(sk, sd + "HandPinky1")
+		if bi < 0 or ci < 0 or hi < 0 or mi < 0 or ii < 0 or pi < 0: return
+		var g := sk.get_bone_global_pose(bi); var s := g.origin
+		var e := sk.get_bone_global_pose(ci).origin; var h := sk.get_bone_global_pose(hi).origin
+		var l1 := (e - s).length(); var l2 := (h - e).length(); var hl := (sk.get_bone_global_pose(mi).origin - h).length()
+		var fwd := p - s; fwd -= up * fwd.dot(up); fwd = fwd.normalized()
+		var ft := fwd - n * fwd.dot(n)                       # forward, as far as it lies in the surface
+		var fing := (up - n * up.dot(n) + ft * 1.6).normalized()
+		var t := p + n * (hl * 0.3) - fing * (hl * 0.62)       # the wrist: back along the hand from the middle of the palm, and off the stone by the heel of the hand
+		var to := t - s; var d := clampf(to.length(), absf(l1 - l2) + hl * 0.05, (l1 + l2) * 0.999); var dir := to.normalized()
+		if note: main.palm_gap = maxf(main.palm_gap, (to.length() - d) / maxf(hl, 0.0001))
+		var ca := clampf((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d), -1.0, 1.0)
+		var out := (sk.get_bone_global_pose(_b(sk, "LeftArm")).origin - sk.get_bone_global_pose(_b(sk, "RightArm")).origin).normalized() * (1.0 if sd == "Left" else -1.0)
+		var hint := out * 0.7 - up
+		var perp := hint - dir * hint.dot(dir)
+		perp = perp.normalized() if perp.length() > 0.001 else -up
+		var e2 := s + dir * (l1 * ca) + perp * (l1 * sqrt(maxf(1.0 - ca * ca, 0.0)))
+		sk.set_bone_global_pose(bi, Transform3D(Basis(Quaternion.IDENTITY.slerp(Quaternion((e - s).normalized(), (e2 - s).normalized()), w)) * g.basis, s))
+		var gf := sk.get_bone_global_pose(ci); var h2 := sk.get_bone_global_pose(hi).origin
+		var aim := s + dir * d                                # (the wrist's place, or as near to it as the arm reaches)
+		sk.set_bone_global_pose(ci, Transform3D(Basis(Quaternion.IDENTITY.slerp(Quaternion((h2 - gf.origin).normalized(), (aim - gf.origin).normalized()), w)) * gf.basis, gf.origin))
+		# the hand: its own three axes (along the fingers, out of the palm, across it) are turned onto those the surface asks
+		var gh := sk.get_bone_global_pose(hi)
+		var a := (sk.get_bone_global_pose(mi).origin - gh.origin).normalized()
+		var c := sk.get_bone_global_pose(ii).origin - sk.get_bone_global_pose(pi).origin
+		var pn := (a.cross(c) if sd == "Left" else c.cross(a)).normalized()
+		var have := Basis(a, pn, a.cross(pn)); var want := Basis(fing, -n, fing.cross(-n))
+		sk.set_bone_global_pose(hi, Transform3D(Basis(Quaternion.IDENTITY.slerp((want * have.inverse()).get_rotation_quaternion(), w)) * gh.basis, gh.origin))
 	func _process_modification() -> void:
 		var sk := get_skeleton()
 		if sk == null or main == null: return
@@ -142,6 +183,12 @@ class HerMod extends SkeletonModifier3D:
 				var g := sk.get_bone_global_pose(sp)
 				sk.set_bone_global_pose(sp, Transform3D(Basis(axis, lean * 0.9) * g.basis, g.origin))
 		var inv := sk.global_transform.affine_inverse()
+		if main.palm_on:      # (the turned ones) palms laid on a surface: see _palm
+			var ref: Skeleton3D = main.H["main"].sk if main.H.has("main") and main.H["main"].sk != null else sk
+			var rinv := ref.global_transform.affine_inverse()      # every copy of her takes the pose she takes, in its own space
+			_palm(sk, "Left", main.a_wL, rinv * (main.tgtL as Vector3), (rinv.basis * (main.palm_nL as Vector3)).normalized(), (rinv.basis * Vector3.UP).normalized(), sk == ref)
+			_palm(sk, "Right", main.a_wR, rinv * (main.tgtR as Vector3), (rinv.basis * (main.palm_nR as Vector3)).normalized(), (rinv.basis * Vector3.UP).normalized(), sk == ref)
+			return
 		for side in [["Left", main.a_wL, main.tgtL], ["Right", main.a_wR, main.tgtR]]:
 			var w: float = side[1]
 			if w <= 0.001: continue
@@ -2756,30 +2803,103 @@ const PLINTH_TOP := 0.619   # as made: how high the drum stands, where the wheel
 const PLINTH_CUT := 0.138
 const PLINTH_GEAR := 0.419
 const PLINTH_PARTS := "stone:marble,gold:gold,crim:crim"     # the statues' own marble, paler than the court it stands in
+# The gearing. The great wheel has 28 teeth, the pinion 10: for a quarter turn of the statue (7 teeth) the pinion goes
+# 0.7 of a turn the other way. As made (tools/gear_even.py, which prints it) a tooth of the great wheel is centred at
+# yaw PLINTH_TOOTH0 of its model and the rest follow every 360/28 degrees; a tooth of the pinion at PINION_TOOTH0 and
+# every 36. The pinion stands off at yaw PINION_SIDE from the plinth's axis, as far out as lets the teeth of each
+# reach 2.3 cm into the gaps of the other without touching their floor
+const PLINTH_RATIO := 2.8
+const PLINTH_TOOTH0 := 5.373
+const PINION_TOOTH0 := 5.7
+const PINION_SIDE := -45.0
+const PINION_R := 0.155         # half the pinion's width over its teeth, before PLINTH_K
+const PINION_OFF := 0.5524      # from the plinth's axis to the pinion's, before PLINTH_K (0.58 m)
+
+## how the pinion stands when the great wheel stands at yaw th: one of its teeth in the middle of the gap that faces it.
+## (With the wheel at rest the gap nearest the pinion lies off the line between the two axes by some angle; the same
+## length of rim on the pinion is 2.8 times that angle, the other way round.)
+func _pinion_yaw(th: float) -> float:
+	var gap := PLINTH_TOOTH0 + 180.0 / 28.0 - PINION_SIDE      # (degrees) a gap of the wheel, measured from the line of axes, when th = 0
+	return deg_to_rad(PINION_SIDE + 180.0 - PINION_TOOTH0 - PLINTH_RATIO * gap) - PLINTH_RATIO * th
+
 func _turn_plinth(parent: Node, p: Vector3, q: int, pose := "point") -> Array:
 	var twin := parent == mroot
 	var k := PLINTH_K
-	var pb := prop_model("plinth_base", parent, 0.0, 0.0, twin, false, PLINTH_PARTS); pb.position = p; pb.scale = Vector3.ONE * k
+	# (the base as made has only scraps of its bronze ring: they are painted as the marble, and the ring is laid whole round the upper step)
+	var pb := prop_model("plinth_base", parent, 0.0, 0.0, twin, false, "stone:marble,gold:marble,crim:crim"); pb.position = p; pb.scale = Vector3.ONE * k
+	cyl(p + Vector3(0, 0.078 * k, 0), 0.4615 * k + 0.004, 0.4615 * k + 0.004, 0.02 * k, pal("gold", "flat2" if twin else "flat"), 32, parent)
 	for t in 4:      # the four quarters, marked in bronze on the lower step
 		var tk := blk(Vector3(-0.016, 0.0, -0.02), Vector3(0.016, 0.016, 0.02), "gold", parent); tk.rotation.y = t * PI * 0.5
 		tk.position = p + Vector3(sin(t * PI * 0.5), 0, cos(t * PI * 0.5)) * 0.483 * k + Vector3(0, 0.048 * k, 0)
 	var n := Node3D.new(); n.position = p; n.rotation.y = TURN_YAW0 - q * PI * 0.5; parent.add_child(n)
 	prop_model("plinth_top", n, 0.0, 0.0, twin, false, PLINTH_PARTS).scale = Vector3.ONE * k    # its red pointer looks the way she does
 	her_statue(Vector3(0, PLINTH_TOP * k - 0.006, 0), 0.0, pose, 0.9, n)
-	# the pinion: a small wheel on its own post beside the base, its teeth in the great wheel's, turning the other way
-	var pr := 0.155 * k
-	var at := p + Vector3(-(PLINTH_GEAR * k + pr - 0.06), 0.0, 0.0).rotated(Vector3.UP, PI * 0.25)      # on the side one sees
-	cyl(at, 0.085, 0.1, PLINTH_CUT * k, pal("shade"), 12, parent); cyl(at, 0.125, 0.125, 0.035, pal("stone"), 12, parent)
-	var pin := Node3D.new(); pin.position = at + Vector3(0, PLINTH_CUT * k, 0); parent.add_child(pin)
+	# the pinion: a small wheel on its own post beside the base, its teeth in the great wheel's, turning the other way.
+	# The post stands on a lug of the base's lower step, of the same marble and level with it
+	var pr := PINION_R * k
+	var sd := deg_to_rad(PINION_SIDE)
+	var at := p + Vector3(sin(sd), 0.0, cos(sd)) * PINION_OFF * k      # on the side one sees
+	var lug := 0.047 * k
+	cyl(at, 0.12, 0.12, lug, pal("marble", "flat2" if twin else "flat"), 20, parent); cyl(at + Vector3(0, lug, 0), 0.085, 0.1, PLINTH_CUT * k - lug, pal("shade"), 12, parent)
+	var pin := Node3D.new(); pin.position = at + Vector3(0, PLINTH_CUT * k, 0); pin.rotation.y = _pinion_yaw(n.rotation.y); parent.add_child(pin)
 	prop_model("pinion", pin, 0.0, 0.0, twin, false, "stone:gold,gold:gold").scale = Vector3(pr * 2.0, pr * 2.0 * 0.66, pr * 2.0)
 	return [n, pin]
+
+## How far the marble of a statue stands out from the axis of its plinth at the height of her hands, for every 10
+## degrees round it (a yaw in the turning part's own frame), so that her palms can lie on it wherever it has got to.
+## Read off the statue as it is posed: every face of it that crosses that height
+const TURN_HAND_Y := 1.34
+const TURN_STAND := 0.68      # how far from a plinth's axis she stands to turn it: a hand's breadth clear of its base, and her arms reach the marble
+func _statue_girth(frame: Node3D) -> PackedFloat32Array:
+	var g := PackedFloat32Array(); g.resize(36); g.fill(0.0)
+	var inv := frame.global_transform.affine_inverse()
+	for m in frame.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		if mi.skin == null: continue
+		var bk: ArrayMesh = mi.bake_mesh_from_current_skeleton_pose()
+		if bk == null: continue
+		var xf := inv * mi.global_transform
+		for si in bk.get_surface_count():
+			var a := bk.surface_get_arrays(si); var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+			var ix: PackedInt32Array = a[Mesh.ARRAY_INDEX] if a[Mesh.ARRAY_INDEX] != null else PackedInt32Array(range(v.size()))
+			var w := PackedVector3Array(); w.resize(v.size())
+			for j in v.size(): w[j] = xf * v[j]
+			for t in range(0, ix.size() - 2, 3):
+				var p0 := w[ix[t]]; var p1 := w[ix[t + 1]]; var p2 := w[ix[t + 2]]
+				if minf(p0.y, minf(p1.y, p2.y)) > TURN_HAND_Y + 0.06 or maxf(p0.y, maxf(p1.y, p2.y)) < TURN_HAND_Y - 0.06: continue
+				for q in [p0, p1, p2, (p0 + p1) * 0.5, (p1 + p2) * 0.5, (p2 + p0) * 0.5, (p0 + p1 + p2) / 3.0]:
+					if absf(q.y - TURN_HAND_Y) > 0.045: continue
+					var b := int(fposmod(atan2(q.x, q.z), TAU) / TAU * 36.0) % 36
+					g[b] = maxf(g[b], Vector2(q.x, q.z).length())
+	var mean := 0.0; var got := 0
+	for b in 36:
+		if g[b] > 0.0: mean += g[b]; got += 1
+	mean = mean / got if got > 0 else 0.13
+	var out := PackedFloat32Array(); out.resize(36)
+	for b in 36:      # a bin nothing fell in takes its neighbours'; then each is evened a little with those beside it
+		var c := g[b]
+		if c <= 0.0:
+			var l := g[(b + 35) % 36]; var r := g[(b + 1) % 36]
+			c = maxf(l, r) if maxf(l, r) > 0.0 else mean
+		out[b] = c
+	for b in 36: g[b] = out[(b + 35) % 36] * 0.25 + out[b] * 0.5 + out[(b + 1) % 36] * 0.25
+	if OS.get_environment("S3_ONE") != "": print("GIRTH at ", TURN_HAND_Y, " faces hit ", got, "/36 mean ", snappedf(mean, 0.001), " ", g)
+	return g
+
+## the point of a statue's marble that lies at world yaw `wy` from its plinth's axis, at the height of her hands
+func _girth_at(i: int, wy: float) -> Vector3:
+	var g: PackedFloat32Array = turn_girth[i]
+	var f := fposmod(wy - (turn_n[i] as Node3D).rotation.y, TAU) / TAU * 36.0 - 0.5
+	var b := int(floor(f)); var k := f - b
+	var r := lerpf(g[(b + 36) % 36], g[(b + 1) % 36], k)
+	return (TURN_AT[i] as Vector3) + Vector3(sin(wy) * r, TURN_HAND_Y, cos(wy) * r)
 
 func _turned_ones() -> void:
 	var m0 := mroot.get_child_count()
 	for i in 3:
 		var pose: String = ["point", "mourn", "offer"][i]
 		var made := _turn_plinth(self, TURN_AT[i], 0, pose)
-		turn_n.append(made[0]); turn_pin.append(made[1])
+		turn_n.append(made[0]); turn_pin.append(made[1]); turn_girth.append(_statue_girth(made[0]))
 		var gem := ball(TURN_AT[i] + Vector3(0.341 * PLINTH_K, 0.048 * PLINTH_K + 0.03, 0.341 * PLINTH_K), 0.036, mat(Color("ff5a62"))); turn_gem.append(gem)
 		_turn_plinth(mroot, TURN_AT[i], TURN_GOAL[i], pose)      # in the water she stands as she should
 	_strip_refl(mroot, m0, "mir", 0.3)
@@ -2981,8 +3101,10 @@ func _world() -> void:
 	_turned_ones()
 	parapet(Vector3(EX0 + 0.1, 0, -16.8), Vector3(EX0 + 0.1, 0, EZ1 - 0.1)); parapet(Vector3(EX0 + 0.1, 0, -16.8), Vector3(-17.15, 0, -16.8)); parapet(Vector3(-15.45, 0, -16.8), Vector3(-13.1, 0, -16.8))
 	parapet(Vector3(EX0 + 0.1, 0, EZ1 - 0.1), Vector3(-13.1, 0, EZ1 - 0.1)); parapet(Vector3(-13.1, 0, -16.8), Vector3(-13.1, 0, -13.75)); parapet(Vector3(-13.1, 0, -12.25), Vector3(-13.1, 0, EZ1 - 0.1))
-	statue_on("statue_veiled_unfinished", Vector3(-21.7, 0, -10.15), 1.5, 0.8); plinth_head("kit_face1", Vector3(-21.8, 0, -15.3), PI * 0.5)
-	tree(Vector3(-21.8, 0, -16.4), 1.1, "leaf3"); lantern(Vector3(-20.3, 0, -9.85), 4, 1.0); cypress(Vector3(-13.5, 0, -16.45), 2.2)
+	statue_on("statue_veiled_unfinished", Vector3(-21.7, 0, -10.15), 1.5, 0.8); plinth_head("kit_face1", Vector3(-21.845, 0, -15.38), PI * 0.5)   # its plinth close against the west parapet, and over the whole width of the border
+	# the planter sits square in the north-west corner, its two back faces against the two parapets (its box is 0.82 m and lies off the tree's own middle);
+	# the lamp stand keeps its lion paws inside the south parapet; the cypress stands clear of the rails of its corner
+	tree(Vector3(-21.912, 0, -16.251), 1.1, "leaf3"); lantern(Vector3(-20.3, 0, -10.12), 4, 1.0); cypress(Vector3(-13.5, 0, -16.41), 2.2)
 	urn(Vector3(-21.0, 0, -16.4), 1.0); urn(Vector3(-20.75, 0, -16.25), 0.7, "rose")
 	slab(-16.9, -20.0, -15.7, -16.9, 0.0); pier(-16.3, -18.4, -0.18, 0.8)
 	ring_gate(Vector3(-16.3, WATER, -18.4), 2.5)
@@ -3112,7 +3234,7 @@ func _actors() -> void:
 	# things to tap
 	objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
-	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.5, 0), "stand": TURN_AT[i] + Vector3(0.75, 0, 0)}
+	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.95, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0)}   # (its mark floats 0.55 above "at": clear of the statue's head)
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
 		var d := blk(Vector3(-0.05, -0.05, -0.05), Vector3(0.05, 0.05, 0.05), "crim", n)
@@ -3123,8 +3245,8 @@ func _actors() -> void:
 func _nav() -> void:
 	for r in [["A", AX0 + 0.85, -3.15, 3.15, AZ1 - 0.35], ["S", 3.15, 0.7, 4.6, 1.3], ["B1", -0.25, -5.8, 0.25, -3.15], ["Bg", -0.25, -7.8, 0.25, -5.8], ["B2", -0.25, -10.35, 0.25, -7.8],
 			["C", -2.65, -15.65, 3.0, -10.35], ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
-			["E", -21.2, -10.75, -13.3, -10.05], ["Ee", -13.7, -16.1, -13.3, -10.05], ["Es", -21.1, -16.1, -13.3, -15.08], ["Em", -16.4, -15.1, -13.5, -14.05], ["Ew", -21.5, -15.08, -21.05, -10.6],
-			["T1", -19.37, -15.1, -19.13, -14.3], ["T2", -17.87, -15.1, -17.63, -14.3], ["T3", -16.37, -15.1, -16.13, -14.3], ["G1", -16.55, -20.35, -16.05, -16.0], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
+			["E", -21.2, -10.75, -13.33, -10.64], ["Ee", -13.65, -15.9, -13.33, -10.05], ["Es", -21.1, -15.9, -13.33, -15.08], ["Em", -16.32, -15.1, -13.5, -14.05], ["Ew", -21.5, -15.5, -21.05, -10.6],
+			["T1", -19.34, -15.1, -19.2, -14.3], ["T2", -17.84, -15.1, -17.7, -14.3], ["T3", -16.34, -15.1, -16.2, -14.3], ["G1", -16.55, -20.35, -16.05, -15.88], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
 	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false   # (G1: the way south, behind the third court's gate)
 
@@ -3594,21 +3716,49 @@ func _do_turn1() -> void: await _turn(0)
 func _do_turn2() -> void: await _turn(1)
 func _do_turn3() -> void: await _turn(2)
 
-## she lays her hands on a statue and turns it a quarter round on its plinth; the pinion beside it runs the other way
-func _turn(i: int) -> void:
+## Her palms lie flat on the marble, on the side of it that faces her, and go round with it: the statue turns clockwise
+## (seen from above), so what she pushes passes from her right to her left. s: how far the quarter turn has got, 0..1.
+## Each palm stays on the marble (see _statue_girth) and faces the way the marble faces there
+func _turn_hands(i: int, hy: float, s: float) -> void:
+	for sd in 2:
+		var wy := hy + deg_to_rad((34.0 if sd == 1 else 8.0) - 42.0 * s)      # the right hand begins well to her right, the left ends well to her left
+		var p := _girth_at(i, wy); var a := _girth_at(i, wy - 0.12); var b := _girth_at(i, wy + 0.12)
+		var along := b - a; var nrm := Vector3(-along.z, 0, along.x).normalized()      # square to the marble's outline there, outward
+		if nrm.dot(p - (TURN_AT[i] as Vector3)) < 0.0: nrm = -nrm
+		if sd == 1: tgtR = p; palm_nR = nrm
+		else: tgtL = p; palm_nL = nrm
+
+## she lays her hands on a statue and turns it a quarter round on its plinth; the pinion beside it runs the other way.
+## more: another quarter of the same statue follows at once, so her hands stay up and only come back across it
+func _turn(i: int, more := false) -> void:
 	if turned_done: return
 	var at: Vector3 = TURN_AT[i]
 	await face(at)
-	tgtL = at + Vector3(0.27, 1.22, 0.1); tgtR = at + Vector3(0.27, 1.22, -0.1)
-	var up := tw(); up.tween_property(self, "a_wL", 1.0, 0.55); up.tween_property(self, "a_wR", 1.0, 0.55); up.tween_property(self, "a_lean", 0.14, 0.55)
-	await up.finished
+	var hy := atan2(pos.x - at.x, pos.z - at.z)      # where she stands, as a yaw about the plinth's axis
+	if palm_on and a_wL > 0.5:      # her hands are still on it from the quarter before: they let go a little and come back to her right
+		var back := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		back.tween_method(func(s: float) -> void: _turn_hands(i, hy, s), 1.0, 0.0, 0.5)
+		var off := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+		off.tween_property(self, "a_wL", 0.8, 0.25); off.tween_property(self, "a_wR", 0.8, 0.25)
+		off.chain().tween_property(self, "a_wL", 1.0, 0.25); off.parallel().tween_property(self, "a_wR", 1.0, 0.25)
+		await back.finished
+	else:
+		_turn_hands(i, hy, 0.0); palm_on = true; palm_gap = 0.0
+		var up := tw(); up.tween_property(self, "a_wL", 1.0, 0.55); up.tween_property(self, "a_wR", 1.0, 0.55); up.tween_property(self, "a_lean", 0.4, 0.55)
+		await up.finished
 	var n: Node3D = turn_n[i]; var pn: Node3D = turn_pin[i]
-	var rt := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	rt.tween_property(n, "rotation:y", n.rotation.y - PI * 0.5, 1.5); rt.tween_property(pn, "rotation:y", pn.rotation.y + PI * 0.5 * 2.8, 1.5)
+	var y0 := n.rotation.y
+	var step := func(a: float) -> void:      # the wheel carries drum and statue; the pinion keeps its teeth in the wheel's; her palms go with the marble
+		n.rotation.y = a; pn.rotation.y = _pinion_yaw(a); _turn_hands(i, hy, (y0 - a) / (PI * 0.5))
+	var rt := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	rt.tween_method(step, y0, y0 - PI * 0.5, 1.5)
 	await rt.finished
 	turn_q[i] = (turn_q[i] + 1) % 4
-	var dn := tw(); dn.tween_property(self, "a_wL", 0.0, 0.5); dn.tween_property(self, "a_wR", 0.0, 0.5); dn.tween_property(self, "a_lean", 0.0, 0.5)
-	await dn.finished
+	if OS.get_environment("S3_ONE") != "": print("TURN ", i, " palms fell short by at most ", snappedf(palm_gap, 0.01), " hand lengths")
+	if not more:
+		var dn := tw(); dn.tween_property(self, "a_wL", 0.0, 0.5); dn.tween_property(self, "a_wR", 0.0, 0.5); dn.tween_property(self, "a_lean", 0.0, 0.5)
+		await dn.finished
+		palm_on = false
 	await _turned_check()
 
 ## each stud turns gold when its statue stands as the water shows; when all three do, the south gate goes down
@@ -3759,31 +3909,89 @@ func _tour(all := false) -> void:
 	await wait(0.8)
 	get_tree().quit()
 
+## The camera of the third court. It looks at a point of the floor (mid: what lies in the middle of the picture) from
+## as far as `size` says, and goes there the way a damped spring would: it starts gently, never overshoots, and a new
+## aim given while it is still moving bends its way instead of cutting it. quick: how fast (about 4.7 / quick seconds)
+var cam3_on := false
+var cam3_to := Vector3.ZERO
+var cam3_size := 7.0
+var cam3_quick := 1.7
+func _cam3(mid: Vector3, size: float, quick := 1.7) -> void:
+	if OS.get_environment("S3_CAM") != "": return      # a view held still, to look closely
+	cam3_to = mid + Vector3(1, 0, 1) * (1.9 / 0.8165)      # the middle of the picture lies 1.9 m up the screen from the point the camera keeps
+	cam3_size = size; cam3_quick = quick
+	if cam3_on: return
+	cam3_on = true
+	var v := Vector3.ZERO; var sv := 0.0
+	if not cam_focus_on:      # until now it followed her: it goes on as it was going
+		v = vel; cam_focus = cam_t + v / 1.8; cam_focus_on = true
+	while cam3_on:
+		var dt := get_process_delta_time(); var w := cam3_quick
+		v += ((cam3_to - cam_focus) * w * w - v * 2.0 * w) * dt; cam_focus += v * dt
+		sv += ((cam3_size - cam.size) * w * w - sv * 2.0 * w) * dt; cam.size += sv * dt
+		await get_tree().process_frame
+
 ## the third puzzle, "the turned ones", solved. No captions: she comes in from the bridge, sees the three statues and
 ## the three in the water that stand otherwise, and turns each until it matches; the south gate goes down
 func _solve3(alone := true) -> void:
 	started = true; title_box.hide(); hint.hide()
-	if alone:
+	if OS.get_environment("S3_ONE") != "":      # to look closely: S3_ONE=<0..2> turns that one statue (S3_N times), S3_CAM="x,z,size" holds the view
+		var cv := OS.get_environment("S3_CAM").split(",")
+		var oi := int(OS.get_environment("S3_ONE")); var on := maxi(1, int(OS.get_environment("S3_N")))
+		pos = TURN_AT[oi] + Vector3(TURN_STAND, 0, 0); yaw = -PI * 0.5; cam.size = float(cv[2]); cam_focus = Vector3(float(cv[0]), 0, float(cv[1])); cam_focus_on = true; cam_t = cam_focus
+		await wait(0.5)
+		for k in on: await _turn(oi, k < on - 1)
+		await wait(0.3)
+		get_tree().quit(); return
+	var stand := []
+	for i in 3: stand.append(TURN_AT[i] + Vector3(TURN_STAND, 0, 0))
+	var first := 0
+	if alone and OS.get_environment("S3_END") == "1":      # only the end of it: the first two stand right already, and she is by the third
+		for i in 2:
+			(turn_n[i] as Node3D).rotation.y -= PI * 0.5 * TURN_GOAL[i]; (turn_pin[i] as Node3D).rotation.y = _pinion_yaw((turn_n[i] as Node3D).rotation.y); turn_q[i] = TURN_GOAL[i]
+		_turned_check()
+		first = 2; pos = stand[1]; yaw = -PI * 0.5; cam.size = 5.6; cam_t = Vector3(-18.38, 0, -14.56) + Vector3(1, 0, 1) * (1.9 / 0.8165); cam_focus = cam_t; cam_focus_on = true
+		await wait(0.5)
+	elif alone and OS.get_environment("S3_WALK") == "1":      # the way here as the long run walks it: out of the second court's gate, over the bridge, along the slab
+		bridge.rotation.y = 0.0; rects["BR"].on = true
+		pos = Vector3(-3.95, 0, -13.0); yaw = -PI * 0.5; cam_t = pos; cam.size = 6.4
+		await wait(0.6)
+		create_tween().tween_property(cam, "size", 7.4, 2.0).set_trans(Tween.TRANS_SINE)
+		await go([Vector3(-7.6, 0, -13.0), Vector3(-11.6, 0, -13.0)])
+	elif alone:
 		pos = Vector3(-11.6, 0, -13.0); yaw = -PI * 0.5; cam_t = pos; cam.size = 7.2
 		await wait(1.0)
-	cam_focus = Vector3(-17.9, 0.2, -13.0); cam_focus_on = true
-	create_tween().tween_property(cam, "size", 9.8, 2.4).set_trans(Tween.TRANS_SINE)
-	await go([Vector3(-13.5, 0, -13.0)])
-	await face(Vector3(-17.0, 0, -12.8))                # the water, and what stands in it
-	await wait(2.4)
-	var stand := [Vector3(-19.25, 0, -14.4), Vector3(-17.75, 0, -14.4), Vector3(-16.25, 0, -14.4)]
-	for i in [2, 1, 0]:
-		if i != 2: await go([Vector3(pos.x, 0, -15.5), Vector3(stand[i].x, 0, -15.5), stand[i]])
-		else: await go([Vector3(-13.5, 0, -14.5), stand[i]])
+	if first == 0:
+		# the court opens before her: the three statues along the far rim, the pool, and the three in the water
+		_cam3(Vector3(-17.5, 0, -14.1), 8.6, 1.3)
+		await go([Vector3(-13.5, 0, -13.0)])
+		await face(Vector3(-17.0, 0, -12.8))                # the water, and what stands in it
+		await wait(2.4)
+	# She begins with the farthest and works back toward the gate. Round behind the row to the first; from one to the
+	# next she goes round the back of the plinth between, a step clear of its base
+	for i in range(first, 3):
+		# the picture closes on the one she turns and on its twin in the water under it; the other two stay in it
+		_cam3(Vector3(-18.38 + 0.45 * (i - 1), 0, -14.56 - 0.455 * (i - 1)), 5.6, 1.5 if i == 0 else 1.9)
+		if i == 0:
+			await go([Vector3(-13.5, 0, -14.3), Vector3(-13.9, 0, -15.0), Vector3(-14.6, 0, -15.35), Vector3(-18.55, 0, -15.35), Vector3(-19.1, 0, -15.15), Vector3(-19.32, 0, -14.8), stand[0]])
+		else:
+			var c: Vector3 = TURN_AT[i]; var arc := []
+			for a in [150.0, 120.0, 90.0, 60.0, 30.0]:
+				var ra := deg_to_rad(a); arc.append(c + Vector3(cos(ra), 0, -sin(ra)) * (lerpf(1.5 - TURN_STAND, TURN_STAND, (180.0 - a) / 180.0) + 0.15 * sin(ra)))      # from where she stood by the last one, out round its back, in to where she stands by this one
+			arc.append(stand[i])
+			await go(arc)
 		for k in TURN_GOAL[i]:
-			await _turn(i)
-			await wait(0.25)
-	await wait(0.6)
-	cam_focus = Vector3(-16.6, 0.4, -15.0)
-	create_tween().tween_property(cam, "size", 7.2, 1.6)
+			if i == 2 and k == TURN_GOAL[i] - 1: break      # the last quarter of the last one: see below
+			await _turn(i, k < TURN_GOAL[i] - 1)
+		if i < 2: await wait(0.3)
+	# the last quarter. As the third comes to stand like its twin the gate behind her starts down, and she turns to it
+	_turn(2)
+	while not turned_done: await get_tree().process_frame
+	_cam3(Vector3(-17.3, 0, -16.75), 5.8, 1.5)
+	await face(Vector3(-16.3, 0, -16.8))
 	while not rects["G1"].on: await get_tree().process_frame
 	await wait(0.5)
-	await go([Vector3(pos.x, 0, -15.6), Vector3(-16.3, 0, -15.6), Vector3(-16.3, 0, -18.2)])
+	await go([Vector3(-16.28, 0, -15.2), Vector3(-16.3, 0, -16.0), Vector3(-16.3, 0, -18.2)])
 	if alone:
 		await wait(0.8)
 		get_tree().quit()
