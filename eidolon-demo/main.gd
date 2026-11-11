@@ -468,6 +468,9 @@ var rects := {}
 var objs := {}
 var markers := {}
 var hint: Label
+var quote_box: Control    # a line of the story, shown once over the scene (see quote())
+var quote_lbl: Label
+var quotes_shown := {}
 var title_box: Control
 var end_box: Control
 var last_tap := -9.0
@@ -3112,6 +3115,15 @@ func _ui() -> void:
 	hint.add_theme_font_size_override("font_size", 24); hint.add_theme_color_override("font_color", Color(0.24, 0.16, 0.22, 0.9))
 	hint.anchor_left = 0; hint.anchor_right = 1; hint.anchor_top = 1; hint.anchor_bottom = 1; hint.offset_top = -92; hint.offset_bottom = -52
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; hint.modulate.a = 0.0; cl.add_child(hint)
+	# a line of the story over the scene: pale letters with a soft dark edge, under a short red rule
+	quote_box = Control.new(); quote_box.set_anchors_preset(Control.PRESET_FULL_RECT); quote_box.mouse_filter = Control.MOUSE_FILTER_IGNORE; quote_box.modulate.a = 0.0; cl.add_child(quote_box)
+	var qr := ColorRect.new(); qr.color = Color("dc3d46"); qr.anchor_left = 0.5; qr.anchor_right = 0.5; qr.anchor_top = 0.13; qr.anchor_bottom = 0.13
+	qr.offset_left = -34; qr.offset_right = 34; qr.offset_top = -3; qr.offset_bottom = 0; quote_box.add_child(qr)
+	quote_lbl = Label.new(); quote_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; quote_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	quote_lbl.add_theme_font_size_override("font_size", 31); quote_lbl.add_theme_color_override("font_color", Color(0.995, 0.97, 0.91))
+	quote_lbl.add_theme_color_override("font_outline_color", Color(0.09, 0.13, 0.27, 0.6)); quote_lbl.add_theme_constant_override("outline_size", 9); quote_lbl.add_theme_constant_override("line_spacing", 8)
+	quote_lbl.anchor_left = 0.08; quote_lbl.anchor_right = 0.92; quote_lbl.anchor_top = 0.13; quote_lbl.anchor_bottom = 0.13; quote_lbl.offset_top = 16; quote_lbl.offset_bottom = 220
+	quote_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE; quote_box.add_child(quote_lbl)
 	title_box = _card("EIDOLON", "demo  ·  πάτα για να ξεκινήσεις", cl)
 	end_box = _card("EIDOLON", "τέλος του demo  ·  πάτα για ξανά", cl); end_box.modulate.a = 0.0; end_box.visible = false
 
@@ -3127,6 +3139,13 @@ func _card(big: String, small: String, cl: CanvasLayer) -> Control:
 	b.add_theme_font_size_override("font_size", 24); b.add_theme_color_override("font_color", Color(0.98, 0.92, 0.84, 0.9))
 	b.anchor_left = 0; b.anchor_right = 1; b.anchor_top = 0.33; b.anchor_bottom = 0.33; b.offset_top = 140; b.offset_bottom = 180; c.add_child(b)
 	return c
+
+## a line of the story, once: it comes up over the scene, stays long enough to be read, and goes
+func quote(key: String, text: String, hold := 5.0) -> void:
+	if quotes_shown.has(key): return
+	quotes_shown[key] = true
+	quote_lbl.text = text
+	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 1.1); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 1.5)
 
 func say(s: String) -> void:
 	hint.text = s
@@ -3267,6 +3286,8 @@ func _process(dt: float) -> void:
 	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "1":
 		print("STATS objects ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME), " triangles ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), " draw calls ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), " texture MB ", snappedf(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / 1048576.0, 0.1), " mesh instances ", find_children("*", "MeshInstance3D", true, false).size())
 	t += dt
+	if started and absf(pos.x) < 0.8 and pos.z < -5.2 and pos.z > -9.6:   # on the causeway, among the hidden mirrors
+		quote("mirrors", "He hid every mirror,\nso she would never learn\nthat her face was her own.")
 	var target := 0.0
 	var want_yaw := yaw
 	if not route.is_empty():
@@ -3591,8 +3612,8 @@ func _solve_statue(alone := true) -> void:
 ## the crossing the water keeps
 func _tour() -> void:
 	await _solve_statue(false)
-	await face(Vector3(-4.0, 0, -7.6))                   # she stops among them
-	await wait(2.6)
+	await face(Vector3(-4.0, 0, -7.6))                   # she stops among them, while the line about them is on the screen
+	await wait(4.6)
 	await _solve2(false)
 	await wait(0.8)
 	get_tree().quit()
