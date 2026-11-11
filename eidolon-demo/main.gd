@@ -144,7 +144,7 @@ const PALS := {
 	"leaf": ["9dbfa6", "76a08e", "4f7a7c"], "leaf2": ["b9d2b4", "8fb39a", "5f8a86"], "leaf3": ["aac3a4", "86a48c", "5d7d7c"],
 	"dress": ["cdd0da", "b0b3c5", "8789a6"], "dress2": ["e4e5ea", "cacbd6", "9fa0b6"],
 	"veil": ["f1f1f4", "d9d9e0", "acadc0"], "skin": ["fffbf5", "f0e5de", "bfb6d0"],
-	"cyp": ["4a8576", "316863", "214858"], "terra": ["ecd6c6", "d6b8a8", "a08a9e"], "linen": ["f3ecdc", "ddd0bd", "a99db2"], "rope": ["dcb47e", "b98e5c", "86685c"], "wood": ["b98f7a", "9a7064", "6c4e5e"], "clay": ["d2603f", "ad4732", "7c302d"],
+	"cyp": ["4a8576", "316863", "214858"], "terra": ["ecd6c6", "d6b8a8", "a08a9e"], "linen": ["f3ecdc", "ddd0bd", "a99db2"], "rope": ["c99f76", "a67d5c", "7a5e5e"], "wood": ["b98f7a", "9a7064", "6c4e5e"], "clay": ["d2603f", "ad4732", "7c302d"],
 	"marble": ["fffbf5", "f0e5de", "bfb6d0"], "crim2": ["ee5a60", "cf3640", "8f2238"],
 }
 const SH := """shader_type spatial;
@@ -266,7 +266,8 @@ void fragment(){
 	}
 	vec3 sky = mix(vec3(0.52, 0.74, 0.84), vec3(0.8, 0.92, 0.96), UV.y);
 	vec3 c = mix(sky, textureLod(screen_tex, clamp(huv + wob, 0.0, 1.0), 0.6).rgb, hit);
-	c = (c - 0.62) * 1.25 + 0.62;                                                          // silvered glass: deeper than the day it shows,
+	c = (c - 0.62) * 1.2 + 0.62;                                                           // silvered glass: deeper than the day it shows,
+	c = mix(c, sky, 0.5 * (1.0 - smoothstep(0.15, 0.6, dot(c, vec3(0.3, 0.5, 0.2)))));     // but never a dark hole: the dark sea comes back pale,
 	c = mix(c, sky, 0.14 + 0.2 * smoothstep(0.4, 1.0, UV.y)) * vec3(0.8, 0.91, 0.98);      // cooler, and paler towards its head
 	vec2 e = min(UV, 1.0 - UV);
 	c *= 0.8 + 0.2 * smoothstep(0.0, 0.07, min(e.x * 2.2, e.y));                           // the frame's shadow round the edge
@@ -751,12 +752,14 @@ func shard_tree(p: Vector3) -> void:
 		var sh := prim(q, c, shard_mats[i % 4]); sh.rotation = Vector3(0.2 * sin(i * 3.1), a * 1.7, PI * 0.25)
 	decal(p + Vector3(0.35, 0, -0.35), 2.2, 1.6, 0.2, 0.78)
 
-## a standing mirror: a pane in a gilt frame with a small pediment, on lion feet. kind: "bare", or hidden under a sheet:
-## "tied" (wholly covered and bound with rope), "bound" (bound, the sheet parted down the front), "slip" (the sheet sliding off)
-const MIRROR_H := {"bare": 2.1, "tied": 2.14, "bound": 2.3, "slip": 2.08}
-func mirror_stand(p: Vector3, yaw := 0.0, parent: Node = self, ground_y := 0.0, kind := "bare", sea := false) -> Node3D:
+## a standing mirror: a pane in a gilt frame with a small pediment, on lion feet. Modelled in Tripo, then sorted by
+## material (tools/mirror_prop.py) and painted here flat, with the world's own colours. kind: "bare", or hidden under a
+## sheet: wholly ("tied", "round", "oval") or in part ("hem", "half", "low", "wide", "slip")
+const MIRROR_H := {"bare": 2.1, "tied": 2.14, "hem": 2.14, "half": 2.1, "low": 2.1, "slip": 2.08, "round": 1.95, "oval": 2.0, "wide": 1.5}
+func mirror_stand(p: Vector3, yaw := 0.0, parent: Node = self, ground_y := 0.0, kind := "bare", _sea := false) -> Node3D:
 	var n := Node3D.new(); n.position = p; n.rotation.y = yaw; parent.add_child(n)
-	prop_model("mirror_" + kind, n, MIRROR_H[kind], 0.0, false, sea, "", ground_y)
+	var m := prop_model("mirror_" + kind, n, MIRROR_H[kind], 0.0, false, false, "cloth:linen,rope:rope,gold:gold,stone:stone,gem:crim,pane:shade", ground_y)
+	_refl_margins(m)
 	return n
 
 func reeds(p: Vector3, n := 9) -> void:
@@ -2396,7 +2399,10 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 				for si in mi.mesh.get_surface_count():
 					var om2 := mi.mesh.surface_get_material(si)
 					var nm := om2.resource_name if om2 != null else ""
-					mi.set_surface_override_material(si, pal(by_part.get(nm, by_part.values()[0]), "flat2" if mirror else "flat"))
+					if nm == "glass":   # the pane of a mirror shows what stands before it
+						var gm2 := ShaderMaterial.new(); gm2.shader = shaders["mirror"]; gm2.set_shader_parameter("ground_y", ground_y); timed.append(gm2)
+						mi.set_surface_override_material(si, gm2); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; continue
+					mi.set_surface_override_material(si, pal(by_part.get(nm, by_part.values()[0]), "flat2" if (mirror or nm == "cloth") else "flat"))   # cloth is seen from within too
 			continue
 		for si in mi.mesh.get_surface_count():
 			var om := mi.mesh.surface_get_material(si)
@@ -2421,17 +2427,17 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 func _shrouds() -> void:
 	if not FileAccess.file_exists("res://props/mirror_tied.glb"): return
 	# x, z, turn, size, kind. Those whose sheet lies spread on the ground stand on a wider footing
-	var spots := [[-2.3, -5.6, 0.75, 1.0, "slip"], [-4.3, -7.4, 0.5, 1.1, "tied"], [-2.0, -8.3, 0.6, 1.0, "bound"], [-5.7, -9.6, 1.15, 0.98, "tied"], [-5.9, -5.5, 0.35, 1.12, "tied"], [-6.3, -7.9, 0.85, 1.02, "tied"], [-4.3, -5.2, 0.95, 0.96, "tied"],
-		[2.2, -6.0, 0.9, 1.0, "bound"], [4.3, -7.2, 1.25, 1.12, "tied"], [2.1, -8.6, 0.55, 1.0, "slip"], [4.7, -5.2, 0.5, 1.04, "tied"], [4.6, -9.2, 1.1, 1.1, "tied"], [6.1, -6.6, 0.7, 1.0, "tied"], [6.4, -8.4, 0.6, 0.97, "tied"]]
+	var spots := [[-2.6, -5.9, 0.75, 1.0, "slip"], [-5.7, -5.3, 0.45, 1.04, "oval"], [-4.6, -7.7, 1.0, 1.08, "tied"], [-2.3, -8.9, 0.6, 1.0, "low"], [-7.2, -8.1, 0.85, 1.05, "round"],
+		[2.4, -6.2, 0.95, 1.0, "wide"], [4.9, -7.4, 1.1, 1.1, "tied"], [7.3, -8.3, 0.7, 1.0, "hem"], [4.3, -9.8, 0.55, 1.0, "half"]]
 	for sp in spots:
 		var base := Vector3(sp[0], WATER + 0.22, sp[1])
 		var m := mirror_stand(base, sp[2], self, WATER, sp[4], true); m.scale = Vector3.ONE * sp[3]
-		if sp[4] == "tied":
+		if sp[4] == "slip" or sp[4] == "wide":   # a long plinth, turned with the mirror
+			var hx := 1.2 if sp[4] == "slip" else 1.0; var hz := 0.74 if sp[4] == "slip" else 0.46
+			blk(Vector3(-hx + 0.06, -1.0, -hz + 0.06), Vector3(hx - 0.06, -0.05, hz - 0.06), "stone", m); blk(Vector3(-hx, -0.05, -hz), Vector3(hx, 0.0, hz), "shade", m)
+		else:
 			var r: float = 0.66 * sp[3]
 			cyl(Vector3(sp[0], WATER - 0.5, sp[1]), r - 0.06, r + 0.02, 0.72, pal("stone"), 14); cyl(base - Vector3(0, 0.05, 0), r, r, 0.05, pal("shade"), 14)
-		else:   # a long plinth, turned with the mirror, under the sheet that lies spread
-			var hx := 1.2 if sp[4] == "slip" else 1.22; var hz := 0.74 if sp[4] == "slip" else 0.8
-			blk(Vector3(-hx + 0.06, -1.0, -hz + 0.06), Vector3(hx - 0.06, -0.05, hz - 0.06), "stone", m); blk(Vector3(-hx, -0.05, -hz), Vector3(hx, 0.0, hz), "shade", m)
 
 ## the second court, "the crossing the water keeps". In its pool stands the winch of the west gate, on a pedestal no
 ## one can reach: the crossing to it fell long ago. The water still holds its shadow, and her reflection can walk it
@@ -2609,7 +2615,7 @@ func _world() -> void:
 	cyl(Vector3(1.2, -0.2, AZ1 + 0.7), 0.045, 0.045, 0.75, pal("wood"), 8)
 	slab(3.5, -0.3, 5.1, 2.3, 0.0); under(3.5, -0.3, 5.1, 2.3, 0.2, "sand"); parapet(Vector3(5.0, 0, -0.2), Vector3(5.0, 0, 2.2))
 	blk(Vector3(3.9, 0, 1.9), Vector3(4.6, 0.22, 2.12), "shade")
-	model("colossus_head_veiled", Vector3(8.6, WATER - 1.15, -2.2), 6.6, 0.55, Vector3(-0.08, 0, 0.14))
+	# (the great veiled head that lay here is taken out of this view: it is kept for another place)
 	slab(-10.6, -2.2, -9.2, 2.2, 0.0); under(-10.6, -2.2, -9.2, 2.2, 0.18, "sand")
 	for cz in [-1.6, -0.55, 0.55, 1.6]: column(Vector3(-9.9, 0, cz), 2.4, 0.15)
 	blk(Vector3(-10.14, 2.45, -1.9), Vector3(-9.66, 2.66, 1.9), "stone"); cornice(-10.14, -1.9, -9.66, 1.9, 2.66, 0.04, 0.06); dentils(-10.14, -1.9, -9.66, 1.9, 2.45)

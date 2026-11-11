@@ -91,8 +91,10 @@ Empty clay for text: the lower third, under the ground line.
 
 ## Card 5
 
-> But there was one mirror he could not hide.
-> One morning the Aegean lay still as glass.
+> But there was one mirror he could not hide: the sea.
+> One morning the Aegean lay still as glass,
+> and at the water's edge Ione saw a veiled woman looking up at her.
+> She had never seen her before.
 
 ```
 A wide, completely still sea fills the lower half, drawn as a flat pale band with only two or three thin
@@ -107,12 +109,14 @@ Empty clay for text: the upper third, between the meander and the horizon.
 
 ## Card 6
 
-> That morning Ione rowed out alone.
+> She wanted to see her closer.
+> So that morning Ione rowed out alone, to where the water lay stillest,
+> and leaned over the side to look.
 
 ```
 A small rowing boat on the same still sea, seen in profile, moving left, away from the shore. The veiled woman
-in the red dress sits in it and rows, leaning forward. The boat and the rower are mirrored upside down in the
-flat water. Thin ring-shaped ripples spread from the oar blades. Far behind at the right, small, the shore
+in the red dress sits in it and rows, her head turned down towards the water beside the boat. The boat and the rower are mirrored upside
+down in the flat water, and the mirrored woman seems to look back up at her. Thin ring-shaped ripples spread from the oar blades. Far behind at the right, small, the shore
 with the house and its dark doorway; the low sun at the left.
 Layers: background (clay, meander, sky, sun) · the still sea band · shore and house, small · boat hull ·
 the woman's body, seated · her two arms with the oars as one layer · the reflection of boat and rower as one
@@ -140,4 +144,5 @@ Empty clay for text: the lower third, under the water.
 ## What the intro holds back
 
 The lifting of the veil, and the goddess stilling the sea, are not shown here: they belong to Chapters III and IV.
-In cards 5 to 7 the woman stays veiled, and the sea is simply, strangely, still.
+In cards 5 to 7 the woman stays veiled, and the sea is simply, strangely, still. What cards 5 and 6 do say is why she
+goes: the sea is the one mirror left, she sees a woman in it for the first time, and she rows out to look closer.
