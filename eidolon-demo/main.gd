@@ -131,6 +131,8 @@ var gait := 0.0
 ## arms that reach for a point and a spine that bows, on top of whatever animation is playing
 class HerMod extends SkeletonModifier3D:
 	var main
+	var own := false     # this copy reaches for points of its own (her reflection at the winch) instead of doing as she does
+	var wL := 0.0; var wR := 0.0; var tL := Vector3.ZERO; var tR := Vector3.ZERO; var bow := 0.0
 	func _b(sk: Skeleton3D, n: String) -> int:
 		var i := sk.find_bone("mixamorig:" + n)
 		return i if i >= 0 else sk.find_bone("mixamorig_" + n)
@@ -175,7 +177,7 @@ class HerMod extends SkeletonModifier3D:
 		if sk == null or main == null: return
 		var la := _b(sk, "LeftArm"); var ra := _b(sk, "RightArm")
 		if la < 0 or ra < 0: return
-		var lean: float = main.a_lean
+		var lean: float = bow if own else main.a_lean
 		if absf(lean) > 0.001:
 			var sp := _b(sk, "Spine")
 			if sp >= 0:
@@ -189,7 +191,7 @@ class HerMod extends SkeletonModifier3D:
 			_palm(sk, "Left", main.a_wL, rinv * (main.tgtL as Vector3), (rinv.basis * (main.palm_nL as Vector3)).normalized(), (rinv.basis * Vector3.UP).normalized(), sk == ref)
 			_palm(sk, "Right", main.a_wR, rinv * (main.tgtR as Vector3), (rinv.basis * (main.palm_nR as Vector3)).normalized(), (rinv.basis * Vector3.UP).normalized(), sk == ref)
 			return
-		for side in [["Left", main.a_wL, main.tgtL], ["Right", main.a_wR, main.tgtR]]:
+		for side in ([["Left", wL, tL], ["Right", wR, tR]] if own else [["Left", main.a_wL, main.tgtL], ["Right", main.a_wR, main.tgtR]]):
 			var w: float = side[1]
 			if w <= 0.001: continue
 			var bi := _b(sk, side[0] + "Arm"); var ci := _b(sk, side[0] + "ForeArm")
@@ -1446,8 +1448,8 @@ func _shots() -> void:
 		{"n": "03-colossus", "p": Vector3(4.4, 0, 1.0), "y": 1.3, "c": Vector3(6.2, 0.9, 1.0), "s": 10.5},
 		{"n": "04-steps-and-boat", "p": Vector3(0.3, 0, 2.9), "y": 0.3, "c": Vector3(1.0, 0.0, 3.8), "s": 7.0},
 		{"n": "05-bridge-only-in-the-water", "p": Vector3(0.0, 0, -5.5), "y": PI, "c": Vector3(0.0, 0.0, -6.8), "s": 8.5},
-		{"n": "06-lever-court", "p": Vector3(0.4, 0, -11.8), "y": -1.2, "c": Vector3(-0.6, 0.4, -13.2), "s": 12.5},
-		{"n": "07-turning-bridge", "p": Vector3(-3.2, 0, -13.0), "y": -1.57, "c": Vector3(-7.0, 0.2, -13.0), "s": 11.0},
+		{"n": "06-lever-court", "p": Vector3(0.4, 0, -11.1), "y": -1.2, "c": Vector3(-0.6, 0.4, -13.2), "s": 12.5},
+		{"n": "07-turning-bridge", "p": Vector3(-2.6, 0, -13.0), "y": -1.57, "c": Vector3(-7.0, 0.2, -13.0), "s": 11.0},
 		{"n": "08-half-gate", "p": Vector3(-16.3, 0, -15.0), "y": PI, "c": Vector3(-16.3, 0.4, -16.6), "s": 12.5},
 		{"n": "09-mirror-garden", "p": Vector3(MX + 0.52, 0, MZ), "y": -PI * 0.5, "c": Vector3(-16.6, 0.8, -23.6), "s": 12.5, "touch": true},
 		{"n": "10-heroine", "p": Vector3(0.9, 0, 1.2), "y": 0.78, "c": Vector3(0.9, 0.95, 1.2), "s": 3.1},
@@ -1463,7 +1465,7 @@ func _shots() -> void:
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(QX0 - 0.14, 0, PED.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
 		{"n": "28-turned-ones", "p": Vector3(-16.32, 0, -14.4), "y": -PI * 0.5, "c": Vector3(-17.9, 0.2, -13.0), "s": 9.8},
-		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(0.0, 0.2, -7.0), "s": 9.0},
+		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(-0.8, 1.75, -7.8), "s": 8.6, "quote": true},   # framed as the run frames it
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
@@ -1478,6 +1480,8 @@ func _shots() -> void:
 				if (sh.n as String).begins_with(pre): hit = true
 			if not hit: continue
 		shot = sh
+		quote_box.visible = sh.get("quote", false)   # the line about the mirrors belongs to one still: it used to hang over those taken after any still on the causeway
+		if sh.get("quote", false): quotes_shown.clear()
 		route.clear(); pos = sh.p; yaw = sh.y; cam.size = sh.s; cam_t = pos
 		a_wL = 0.0
 		if sheet != null: sheet.visible = not sh.get("nosheet", false)
@@ -3111,6 +3115,8 @@ func _world() -> void:
 	# ---- B. the causeway between the two courts, whole. On either side of it, in the sea, stand the mirrors he hid
 	slab(-0.6, -10.0, 0.6, -4.0, 0.0)
 	pier(0.0, -5.0, -0.18, 0.7); pier(0.0, -7.0, -0.18, 0.7); pier(0.0, -8.9, -0.18, 0.7)
+	for e in [-1.0, 1.0]: blk(Vector3(e * 0.54 - 0.03, 0, -9.94), Vector3(e * 0.54 + 0.03, 0.06, -4.06), "shade")   # a low kerb along either edge, as on the turning bridge, and the joints of its paving
+	for jz in [-5.0, -6.0, -7.0, -8.0, -9.0]: blk(Vector3(-0.51, 0, jz - 0.008), Vector3(0.51, 0.003, jz + 0.008), "shade")
 	_shrouds()
 	# ---- C. the lever court (6.5 x 6 m)
 	_pool_court(CX0, CZ0, CX1, CZ1, QX0, QZ0, QX1, QZ1, "sand", "PoolSky2")
@@ -3119,13 +3125,13 @@ func _world() -> void:
 	blk(Vector3(-3.4, 0, -16.4), Vector3(3.5, 1.6, -16.18), "stone"); cornice(-3.4, -16.4, 3.5, -16.18, 1.6); dentils(-3.4, -16.4, 3.5, -16.18, 1.6)
 	crenels(Vector3(-3.3, 1.66, -16.22), Vector3(3.4, 1.66, -16.22), 0.335)
 	for wx in [-2.4, -1.0, 0.4, 1.8]: win_z(wx, 0.25, -16.18, 0.5, 1.05)
-	banner(Vector3(-0.3, 1.5, -16.165), 0.34, 0.95); banner(Vector3(2.55, 1.5, -16.165), 0.34, 0.95)
-	plinth_head("kit_face6", Vector3(-2.42, 0, -15.72) if COVERED else Vector3(-2.95, 0, -15.95), 0.5); plinth_head("kit_face4", Vector3(3.2, 0, -15.9), -0.4)
+	banner(Vector3(-0.3, 1.5, -16.132), 0.34, 0.95); banner(Vector3(2.55, 1.5, -16.132), 0.34, 0.95)   # clear of the wall by more than the cloth waves: it used to dip into the stone
+	plinth_head("kit_face6", Vector3(-2.42, 0, -15.72) if COVERED else Vector3(-2.95, 0, -15.95), 0.5); plinth_head("kit_face4", Vector3(3.05, 0, -15.9), -0.4)
 	if COVERED: parapet(Vector3(-3.3, 0, -11.6), Vector3(-3.3, 0, -10.1))
-	else: parapet(Vector3(-3.3, 0, -16.0), Vector3(-3.3, 0, -13.75)); parapet(Vector3(-3.3, 0, -12.25), Vector3(-3.3, 0, -10.1))
+	else: parapet(Vector3(-3.3, 0, -16.0), Vector3(-3.3, 0, -13.82)); parapet(Vector3(-3.3, 0, -12.18), Vector3(-3.3, 0, -10.1))   # they end inside the gate's piers (their ends used to stick out into the gateway)
 	parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
 	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(3.4, 0, -10.1))
-	lantern(Vector3(3.1, 0, -10.56), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
+	lantern(Vector3(3.05, 0, -12.6), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")   # (the lamp stands half way up the east rail: in the corner it hid the wheel in the water, and the hands on it)
 	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32).visible = SHOW_CAPSTAN; cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16).visible = SHOW_CAPSTAN
 	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; cap_rot.visible = SHOW_CAPSTAN; add_child(cap_rot)
 	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
@@ -3262,12 +3268,24 @@ func _actors() -> void:
 	prim(ring, Vector3(0, 0.14, 0), pal("gold"), lamp).rotation.x = PI * 0.5
 	lamp_halo = halo(1.0, Color(1.0, 0.78, 0.42, 0.55)); lamp.add_child(lamp_halo)
 	door_halo = halo(3.2, Color(1.0, 0.86, 0.6, 0.5)); door_halo.position = Vector3(DX, 1.0, -26.7); add_child(door_halo)
+	# gulls: two swept wings with grey tips and a small body, so that from above each reads as a bird (they were two plain
+	# white strips, which read as scraps of paper over the scene)
+	var gwm := StandardMaterial3D.new(); gwm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gwm.albedo_color = Color(0.98, 0.97, 0.95); gwm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var gtm: StandardMaterial3D = gwm.duplicate(); gtm.albedo_color = Color(0.5, 0.53, 0.64)
 	for i in 3:
 		var gn := Node3D.new(); add_child(gn)
 		for sgn in [-1.0, 1.0]:
-			var wq := QuadMesh.new(); wq.size = Vector2(0.3, 0.09)
 			var wn2 := Node3D.new(); gn.add_child(wn2)
-			prim(wq, Vector3(sgn * 0.15, 0, 0), mat(Color(0.98, 0.97, 0.95)), wn2).rotation.x = -PI * 0.5
+			var r0 := Vector3(0, 0, 0.06); var r1 := Vector3(0, 0, -0.05); var m0 := Vector3(sgn * 0.17, 0, 0.085); var m1 := Vector3(sgn * 0.17, 0, -0.015)
+			var t0 := Vector3(sgn * 0.3, 0, 0.02); var t1 := Vector3(sgn * 0.29, 0, -0.05); var tip := Vector3(sgn * 0.39, 0, -0.07)
+			for part in [[[r0, m0, m1, r0, m1, r1, m0, t0, t1, m0, t1, m1], gwm], [[t0, tip, t1], gtm]]:
+				var ga2 := []; ga2.resize(Mesh.ARRAY_MAX); ga2[Mesh.ARRAY_VERTEX] = PackedVector3Array(part[0])
+				var gam := ArrayMesh.new(); gam.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, ga2)
+				prim(gam, Vector3.ZERO, part[1], wn2)
+		var gb := []; gb.resize(Mesh.ARRAY_MAX)
+		gb[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3(0, 0.004, 0.14), Vector3(0.036, 0.004, 0.03), Vector3(-0.036, 0.004, 0.03), Vector3(0.036, 0.004, 0.03), Vector3(0.03, 0.004, -0.1), Vector3(-0.03, 0.004, -0.1), Vector3(0.036, 0.004, 0.03), Vector3(-0.03, 0.004, -0.1), Vector3(-0.036, 0.004, 0.03), Vector3(0.03, 0.004, -0.1), Vector3(0.0, 0.004, -0.17), Vector3(-0.03, 0.004, -0.1)])
+		var gbm := ArrayMesh.new(); gbm.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, gb)
+		prim(gbm, Vector3.ZERO, gwm, gn)
 		gulls.append(gn)
 	ghost_flat = StandardMaterial3D.new(); ghost_flat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	ghost_flat.cull_mode = BaseMaterial3D.CULL_DISABLED; ghost_flat.albedo_color = Color("b8232f")
@@ -3376,12 +3394,14 @@ func _ui() -> void:
 		var fv := FontVariation.new(); fv.base_font = ff; fv.variation_opentype = {"wght": 560}; qfont = fv
 	if qfont != null: hint.add_theme_font_override("font", qfont); hint.add_theme_font_size_override("font_size", 32)
 	hint.add_theme_color_override("font_color", Color(1.0, 0.985, 0.94)); hint.add_theme_color_override("font_outline_color", Color(0.06, 0.1, 0.25, 0.4)); hint.add_theme_constant_override("outline_size", 12)   # pale with a dark edge: it used to be dark, and was lost over the sea
-	var qr := ColorRect.new(); qr.color = Color("e8525a"); qr.anchor_left = 0.5; qr.anchor_right = 0.5; qr.anchor_top = 0.13; qr.anchor_bottom = 0.13
+	var qr := ColorRect.new(); qr.color = Color("e8525a"); qr.anchor_left = 0.5; qr.anchor_right = 0.5; qr.anchor_top = 0.095; qr.anchor_bottom = 0.095
 	qr.offset_left = -34; qr.offset_right = 34; qr.offset_top = -4; qr.offset_bottom = -1; quote_box.add_child(qr)
 	quote_glow = Control.new(); quote_glow.set_anchors_preset(Control.PRESET_FULL_RECT); quote_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE; quote_box.add_child(quote_glow)
 	quote_lbls = []
 	# [width of the edge, its colour, added to the picture?, does it breathe?]
-	for lay in [[32, Color(0.06, 0.1, 0.25, 0.12), false, false], [22, Color(0.06, 0.1, 0.25, 0.16), false, false], [13, Color(0.06, 0.1, 0.25, 0.22), false, false], [6, Color(0.06, 0.1, 0.25, 0.26), false, false],
+	# (the haze in many thin steps: in four it showed as rings round the letters)
+	for lay in [[36, Color(0.06, 0.1, 0.25, 0.045), false, false], [30, Color(0.06, 0.1, 0.25, 0.05), false, false], [25, Color(0.06, 0.1, 0.25, 0.055), false, false], [20, Color(0.06, 0.1, 0.25, 0.06), false, false], [16, Color(0.06, 0.1, 0.25, 0.07), false, false],
+			[12, Color(0.06, 0.1, 0.25, 0.08), false, false], [9, Color(0.06, 0.1, 0.25, 0.09), false, false], [6, Color(0.06, 0.1, 0.25, 0.1), false, false], [4, Color(0.06, 0.1, 0.25, 0.12), false, false], [2, Color(0.06, 0.1, 0.25, 0.14), false, false],
 			[26, Color(1.0, 0.8, 0.5, 0.05), true, true], [17, Color(1.0, 0.84, 0.56, 0.08), true, true], [10, Color(1.0, 0.88, 0.66, 0.13), true, true], [5, Color(1.0, 0.93, 0.8, 0.2), true, true],
 			[0, Color(1.0, 0.985, 0.94, 1.0), false, false]]:
 		var ql := Label.new(); ql.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; ql.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -3393,7 +3413,7 @@ func _ui() -> void:
 		else: ql.add_theme_color_override("font_color", lay[1])
 		if lay[2]:
 			var qm := CanvasItemMaterial.new(); qm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; ql.material = qm
-		ql.anchor_left = 0.07; ql.anchor_right = 0.93; ql.anchor_top = 0.13; ql.anchor_bottom = 0.13; ql.offset_top = 14; ql.offset_bottom = 260
+		ql.anchor_left = 0.07; ql.anchor_right = 0.93; ql.anchor_top = 0.095; ql.anchor_bottom = 0.095; ql.offset_top = 14; ql.offset_bottom = 260
 		ql.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		(quote_glow if lay[3] else quote_box).add_child(ql); quote_lbls.append(ql)
 	quote_box.move_child(quote_glow, quote_box.get_child_count() - 2)   # the light lies under the letters, over the haze
@@ -3574,7 +3594,7 @@ func _process(dt: float) -> void:
 		print("STATS objects ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME), " triangles ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), " draw calls ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), " texture MB ", snappedf(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / 1048576.0, 0.1), " mesh instances ", find_children("*", "MeshInstance3D", true, false).size())
 	t += dt
 	if started and absf(pos.x) < 0.8 and pos.z < -5.2 and pos.z > -9.6:   # on the causeway, among the hidden mirrors
-		quote("mirrors", "He hid every mirror,\nso she would never learn\nthat her face was her own.")
+		quote("mirrors", "He hid every mirror.\nAs long as she had not seen her face,\nshe was still only what he had made.")
 	var target := 0.0
 	var want_yaw := yaw
 	if not route.is_empty():
@@ -3706,7 +3726,8 @@ func _process(dt: float) -> void:
 	for i in gulls.size():
 		var gn: Node3D = gulls[i]
 		var ga := t * (0.16 + 0.03 * i) + i * 2.1
-		gn.position = cam_t + Vector3(cos(ga) * (4.0 + i), 3.2 + i * 0.6 + 0.3 * sin(t * 0.7 + i), sin(ga) * (3.0 + i * 0.8)) + Vector3(-1.5, 0, -1.5)
+		var gk := 1.9 + 0.27 * cam.size + 0.18 * i   # their rings lie over the far (upper) part of the picture: they used to cross its very middle, over her head
+		gn.position = cam_t + Vector3(cos(ga) * (4.0 + i), 3.2 + i * 0.6 + 0.3 * sin(t * 0.7 + i), sin(ga) * (3.0 + i * 0.8)) + Vector3(-gk, 0, -gk)
 		gn.rotation.y = -ga
 		var flap := sin(t * 5.0 + i) * 0.45
 		(gn.get_child(0) as Node3D).rotation.z = -flap; (gn.get_child(1) as Node3D).rotation.z = flap
@@ -3909,6 +3930,7 @@ func _eid_go(e: Dictionary, to: Vector3, speed := 0.8) -> void:
 func _solve_statue(alone := true) -> void:
 	started = true; title_box.hide(); hint.hide()
 	gate_a.position.y = 0.0
+	done["capstan"] = true        # (no mark over the old capstan of the second court: it is not there any more)
 	var twin: Node3D = H["mir"].holder
 	pos = Vector3(0.9, 0, 3.4); yaw = PI * 1.2; cam_t = pos; cam.size = 6.6
 	await wait(1.0)
@@ -3920,8 +3942,8 @@ func _solve_statue(alone := true) -> void:
 	# back to her own plinth, across the rug, and up onto it: one walk, with the step up in it
 	create_tween().tween_property(cam, "size", 5.8, 1.6)
 	go([Vector3(MYPL.x, 0, MYPL.z)], 0.8)
-	while pos.x > MYPL.x + 0.5: await get_tree().process_frame
-	create_tween().tween_property(self, "pos:y", 0.17, 0.6).set_trans(Tween.TRANS_SINE)
+	while pos.x > MYPL.x + 0.66: await get_tree().process_frame
+	create_tween().tween_property(self, "pos:y", 0.17, 0.45).set_trans(Tween.TRANS_SINE)   # she is up before the hem of her dress is over the plinth's rim
 	twin.visible = false
 	await arrived
 	await wait(0.3)
@@ -3935,7 +3957,7 @@ func _solve_statue(alone := true) -> void:
 	await wait(2.6)
 	# the row is whole: the gate of the court goes down
 	cam_focus = Vector3(-1.6, 0.6, -1.6)
-	create_tween().tween_property(cam, "size", 7.2, 1.6)
+	create_tween().tween_property(cam, "size", 7.8, 1.6)   # wide enough to hold her and the whole gate, both piers
 	await wait(1.4)
 	var gt := create_tween(); gt.tween_property(gate_a, "position:y", -2.4, 2.6).set_trans(Tween.TRANS_SINE)
 	await gt.finished
@@ -4074,6 +4096,7 @@ func _solve3(alone := true) -> void:
 func _solve2(alone := true) -> void:
 	started = true; title_box.hide(); hint.hide()
 	gate_c.position.y = 0.0
+	done["capstan"] = true        # (no mark over the old capstan of this court: it is not there any more)
 	var rim := Vector3(QX0 - 0.14, 0, PED.z)
 	if alone:
 		pos = Vector3(0.0, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.4
@@ -4091,22 +4114,48 @@ func _solve2(alone := true) -> void:
 	go([rim])
 	while pos.x < rim.x - 0.12: await get_tree().process_frame
 	var e: Dictionary = H["mir"]; H.erase("mir")
-	await _eid_go(e, Vector3(PED.x - WINCH_HUB.x * WINCH_K - 0.3, 0.0, PED.z), 0.72)
-	await wait(0.5)
-	var wt := create_tween().set_parallel(); wt.tween_property(winch_a, "rotation:x", PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE); wt.tween_property(winch_m, "rotation:x", PI * 2.5, 3.0).set_trans(Tween.TRANS_SINE)
+	var hub := PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K     # the hub of the handwheel
+	await _eid_go(e, Vector3(hub.x - 0.56, 0.0, PED.z), 0.72)                 # an arm's length from the wheel
+	# her reflection lays its hands on the wheel and turns it hand over hand: each hand goes round with the rim for a
+	# part of a turn, lets go, and comes back for the next hold. The gate and the bridge move while the wheel turns
+	var hm: HerMod = null
+	for c in (e.sk as Skeleton3D).get_children():
+		if c is HerMod: hm = c
+	var crank := func(_v: float) -> void:
+		var a: float = winch_m.rotation.x
+		for sd in 2:
+			var u := fposmod(a / 2.8 + 0.5 * sd, 1.0)
+			var hold := u < 0.57
+			var k := (u / 0.57) if hold else smoothstep(1.0, 0.0, (u - 0.57) / 0.43)
+			var psi := (0.4 + 1.6 * k) if sd == 0 else (-2.0 + 1.6 * k)       # the left hand draws its side of the rim down, the right pushes its side up
+			var off := 0.0 if hold else 0.08 * sin(PI * (u - 0.57) / 0.43)     # off the rim on the way back
+			var pt := Vector3(hub.x - 0.06 - off, -(hub.y + 0.35 * cos(psi)), hub.z - 0.35 * sin(psi))   # (under the water: the mirrored wheel)
+			if sd == 0: hm.tL = pt
+			else: hm.tR = pt
+	crank.call(0.0); hm.own = true
+	var hu := create_tween().set_parallel(); hu.tween_property(hm, "wL", 1.0, 0.5); hu.tween_property(hm, "wR", 1.0, 0.5); hu.tween_property(hm, "bow", 0.1, 0.5)
+	await hu.finished
+	var wt := create_tween().set_parallel(); wt.tween_property(winch_a, "rotation:x", PI * 3.5, 5.6).set_trans(Tween.TRANS_SINE); wt.tween_property(winch_m, "rotation:x", PI * 3.5, 5.6).set_trans(Tween.TRANS_SINE)
+	wt.tween_method(crank, 0.0, 1.0, 5.6)
 	await wait(1.4)
-	cam_focus = Vector3(-1.5, 0.5, -12.8)
-	create_tween().tween_property(cam, "size", 7.2, 1.6)
-	await wait(2.0)
-	var gt := create_tween(); gt.tween_property(gate_c, "position:y", -2.4, 2.4).set_trans(Tween.TRANS_SINE)
+	cam_focus = Vector3(-2.3, 0.5, -12.6)                 # the view opens on the gate and the whole of the bridge beyond it
+	create_tween().tween_property(cam, "size", 7.8, 1.6)
+	await wait(1.0)
+	var gt := create_tween(); gt.tween_property(gate_c, "position:y", -2.4, 2.6).set_trans(Tween.TRANS_SINE)
 	create_tween().tween_property(bridge, "rotation:y", 0.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)   # and the bridge beyond it swings into place
 	await gt.finished
 	rects["BR"].on = true
-	await wait(1.0)
+	await wt.finished                                   # the wheel and the bridge come to rest together
+	var hd2 := create_tween().set_parallel(); hd2.tween_property(hm, "wL", 0.0, 0.5); hd2.tween_property(hm, "wR", 0.0, 0.5); hd2.tween_property(hm, "bow", 0.0, 0.5)
+	await hd2.finished
+	hm.own = false
+	await wait(0.3)
 	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.72)
-	(e.holder as Node3D).rotation.y = yaw
+	var hd3: Node3D = e.holder     # back under her feet it turns to stand as she stands (it used to flip round in one frame)
+	var rt := create_tween(); rt.tween_property(hd3, "rotation:y", hd3.rotation.y + angle_difference(hd3.rotation.y, yaw), 0.5).set_trans(Tween.TRANS_SINE)
+	await rt.finished
 	H["mir"] = e
-	await wait(0.9)
+	await wait(0.5)
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", 6.4, 1.4)
 	await go([Vector3(-2.3, 0, -13.0), Vector3(-3.95, 0, -13.0)])

@@ -210,9 +210,10 @@
 > a face the sculptor had never imagined.
 > He could not bear a face he had not carved himself.
 >
-> So he covered her face with a veil.
-> And he hid every mirror,
-> so she would never learn that her face was her own.
+> So he covered her face with a veil, so that he need not see it.
+> And he hid every mirror, so that she never would.
+> For as long as she had not seen her own face,
+> she was still only what he had made.
 >
 > But there was one mirror he could not hide.
 > One morning the Aegean lay still as glass.
