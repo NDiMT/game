@@ -2297,8 +2297,9 @@ func _pool_c() -> void:
 	door_a = Node3D.new(); add_child(door_a)
 	blk(Vector3(x - 0.16, 0, da), Vector3(x, dh, db), "stone", door_a)
 	seam_a = Node3D.new(); seam_a.position = Vector3(x + 0.003, 0, DOORZ); seam_a.scale = Vector3(1, 0.001, 1); seam_a.visible = false; door_a.add_child(seam_a)
-	for sz in [-0.45, 0.45]: blk(Vector3(0, 0, sz - 0.008), Vector3(0.004, dh, sz + 0.008), "shade", seam_a)
-	blk(Vector3(0, dh - 0.016, -0.45), Vector3(0.004, dh, 0.45), "shade", seam_a)
+	for sz in [-0.45, 0.45]: blk(Vector3(0, 0, sz - 0.014), Vector3(0.004, dh, sz + 0.014), "dark", seam_a)
+	blk(Vector3(0, dh - 0.028, -0.45), Vector3(0.004, dh, 0.45), "dark", seam_a)
+	blk(Vector3(0, 0, -0.01), Vector3(0.004, dh - 0.028, 0.01), "dark", seam_a)
 	# in the water the same wall hangs upside down, and there the bay that is blank above has a door
 	var xm := x - 0.012
 	blk(Vector3(xm, 0, -15.86), Vector3(x, h, da), "stone", mroot); blk(Vector3(xm, 0, db), Vector3(x, h, z1), "stone", mroot); blk(Vector3(xm, dh, da), Vector3(x, h, db), "stone", mroot)
@@ -2316,7 +2317,9 @@ func _pool_c() -> void:
 	for both in [self, mroot]:
 		for nz in [-15.3, -12.7]: niche_x(x, 0.35, nz, 0.5, 1.05, both)
 	_strip_refl(mroot, m0, "mir", 0.2)
-	_strip_refl(door_m, 0, "mir", 0.06)   # the door keeps its own colour: it is the thing to be seen
+	_strip_refl(door_m, 0, "mir", 0.0)   # the door keeps its own colour: it is the thing to be seen
+	var leaf_m := (door_m.get_child(0) as MeshInstance3D).material_override as ShaderMaterial
+	for cn in ["c_top", "c_z", "c_x"]: leaf_m.set_shader_parameter(cn, Color("cf1f2d"))   # deep enough to stay red through the water
 	mroot.add_child(door_m)
 	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(QX1 - QX0, QZ1 - QZ0); wq.orientation = PlaneMesh.FACE_Y
@@ -3022,7 +3025,7 @@ func _solve2() -> void:
 	started = true; title_box.hide(); hint.hide()
 	pos = Vector3(0.3, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.8
 	await wait(1.0)
-	cam_focus = Vector3(-1.2, 0.4, -13.0); cam_focus_on = true
+	cam_focus = Vector3(-0.5, 0.2, -12.5); cam_focus_on = true
 	await go([Vector3(0.75, 0, -12.2), Vector3(SHEET_EX + 0.55, 0, -13.2)])
 	await face(Vector3(-1.0, 0, -13.2))
 	await wait(0.6)
@@ -3042,12 +3045,14 @@ func _solve2() -> void:
 	# the water: the wall upside down, and in it a door
 	await go([Vector3(0.25, 0, -12.4)])
 	await face(Vector3(-1.5, 0, -12.9))
-	create_tween().tween_property(cam, "size", 5.6, 1.6)
-	await wait(2.6)
+	cam_focus = Vector3(-1.1, 0.3, -12.7)
+	create_tween().tween_property(cam, "size", 4.8, 1.6)
+	await wait(3.0)
 	door_seen = true; seam_a.visible = true
 	create_tween().tween_property(seam_a, "scale:y", 1.0, 1.4).set_trans(Tween.TRANS_SINE)   # now the joints show on the stone
-	await wait(1.8)
-	create_tween().tween_property(cam, "size", 6.2, 1.6)
+	await wait(2.0)
+	create_tween().tween_property(cam, "size", 6.0, 1.6)
+	cam_focus = Vector3(-1.3, 0.4, -13.0)
 	await go([Vector3(0.3, 0, -10.95), Vector3(-2.55, 0, -10.95), Vector3(-2.5, 0, DOORZ)])
 	await face(Vector3(WALLX, 0, DOORZ))
 	tgtL = Vector3(WALLX + 0.02, 1.12, DOORZ + 0.16); tgtR = Vector3(WALLX + 0.02, 1.12, DOORZ - 0.16)
