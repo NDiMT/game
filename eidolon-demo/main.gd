@@ -1373,7 +1373,7 @@ func _shots() -> void:
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(QX0 - 0.14, 0, PED.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
 		{"n": "28-turned-ones", "p": Vector3(-16.25, 0, -14.4), "y": PI * 0.5, "c": Vector3(-17.9, 0.2, -13.0), "s": 9.8},
-		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(0.0, 0.2, -7.0), "s": 9.0, "quote": true},
+		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(-0.8, 1.75, -7.8), "s": 8.6, "quote": true},   # framed as the run frames it
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
@@ -2946,6 +2946,8 @@ func _world() -> void:
 	# ---- B. the causeway between the two courts, whole. On either side of it, in the sea, stand the mirrors he hid
 	slab(-0.6, -10.0, 0.6, -4.0, 0.0)
 	pier(0.0, -5.0, -0.18, 0.7); pier(0.0, -7.0, -0.18, 0.7); pier(0.0, -8.9, -0.18, 0.7)
+	for e in [-1.0, 1.0]: blk(Vector3(e * 0.54 - 0.03, 0, -9.94), Vector3(e * 0.54 + 0.03, 0.06, -4.06), "shade")   # a low kerb along either edge, as on the turning bridge, and the joints of its paving
+	for jz in [-5.0, -6.0, -7.0, -8.0, -9.0]: blk(Vector3(-0.51, 0, jz - 0.008), Vector3(0.51, 0.003, jz + 0.008), "shade")
 	_shrouds()
 	# ---- C. the lever court (6.5 x 6 m)
 	_pool_court(CX0, CZ0, CX1, CZ1, QX0, QZ0, QX1, QZ1, "sand", "PoolSky2")
@@ -3869,9 +3871,11 @@ func _solve2(alone := true) -> void:
 	hm.own = false
 	await wait(0.3)
 	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.72)
-	(e.holder as Node3D).rotation.y = yaw
+	var hd3: Node3D = e.holder     # back under her feet it turns to stand as she stands (it used to flip round in one frame)
+	var rt := create_tween(); rt.tween_property(hd3, "rotation:y", hd3.rotation.y + angle_difference(hd3.rotation.y, yaw), 0.5).set_trans(Tween.TRANS_SINE)
+	await rt.finished
 	H["mir"] = e
-	await wait(0.9)
+	await wait(0.5)
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", 6.4, 1.4)
 	await go([Vector3(-2.3, 0, -13.0), Vector3(-3.95, 0, -13.0)])
