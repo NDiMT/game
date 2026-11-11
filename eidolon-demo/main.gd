@@ -469,7 +469,8 @@ var objs := {}
 var markers := {}
 var hint: Label
 var quote_box: Control    # a line of the story, shown once over the scene (see quote())
-var quote_lbl: Label
+var quote_lbls := []       # the same line several times over: its haze, its glow, its letters
+var quote_glow: Control
 var quotes_shown := {}
 var title_box: Control
 var end_box: Control
@@ -3115,15 +3116,35 @@ func _ui() -> void:
 	hint.add_theme_font_size_override("font_size", 24); hint.add_theme_color_override("font_color", Color(0.24, 0.16, 0.22, 0.9))
 	hint.anchor_left = 0; hint.anchor_right = 1; hint.anchor_top = 1; hint.anchor_bottom = 1; hint.offset_top = -92; hint.offset_bottom = -52
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; hint.modulate.a = 0.0; cl.add_child(hint)
-	# a line of the story over the scene: pale letters with a soft dark edge, under a short red rule
+	# a line of the story over the scene: luminous italic letters (EB Garamond) with a glow about them, under a short
+	# red rule. The glow is the same text drawn several times behind itself, each wider and fainter: first a dark
+	# haze, so the words read over pale stone as well as over the sea, then warm light, added to the picture
 	quote_box = Control.new(); quote_box.set_anchors_preset(Control.PRESET_FULL_RECT); quote_box.mouse_filter = Control.MOUSE_FILTER_IGNORE; quote_box.modulate.a = 0.0; cl.add_child(quote_box)
-	var qr := ColorRect.new(); qr.color = Color("dc3d46"); qr.anchor_left = 0.5; qr.anchor_right = 0.5; qr.anchor_top = 0.13; qr.anchor_bottom = 0.13
-	qr.offset_left = -34; qr.offset_right = 34; qr.offset_top = -3; qr.offset_bottom = 0; quote_box.add_child(qr)
-	quote_lbl = Label.new(); quote_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; quote_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	quote_lbl.add_theme_font_size_override("font_size", 31); quote_lbl.add_theme_color_override("font_color", Color(0.995, 0.97, 0.91))
-	quote_lbl.add_theme_color_override("font_outline_color", Color(0.09, 0.13, 0.27, 0.6)); quote_lbl.add_theme_constant_override("outline_size", 9); quote_lbl.add_theme_constant_override("line_spacing", 8)
-	quote_lbl.anchor_left = 0.08; quote_lbl.anchor_right = 0.92; quote_lbl.anchor_top = 0.13; quote_lbl.anchor_bottom = 0.13; quote_lbl.offset_top = 16; quote_lbl.offset_bottom = 220
-	quote_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE; quote_box.add_child(quote_lbl)
+	var qfont: Font = null
+	if FileAccess.file_exists("res://fonts/EBGaramond-Italic.ttf"):
+		var ff := FontFile.new(); ff.data = FileAccess.get_file_as_bytes("res://fonts/EBGaramond-Italic.ttf")
+		var fv := FontVariation.new(); fv.base_font = ff; fv.variation_opentype = {"wght": 560}; qfont = fv
+	var qr := ColorRect.new(); qr.color = Color("e8525a"); qr.anchor_left = 0.5; qr.anchor_right = 0.5; qr.anchor_top = 0.13; qr.anchor_bottom = 0.13
+	qr.offset_left = -34; qr.offset_right = 34; qr.offset_top = -4; qr.offset_bottom = -1; quote_box.add_child(qr)
+	quote_glow = Control.new(); quote_glow.set_anchors_preset(Control.PRESET_FULL_RECT); quote_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE; quote_box.add_child(quote_glow)
+	quote_lbls = []
+	# [width of the edge, its colour, added to the picture?, does it breathe?]
+	for lay in [[32, Color(0.06, 0.1, 0.25, 0.12), false, false], [22, Color(0.06, 0.1, 0.25, 0.16), false, false], [13, Color(0.06, 0.1, 0.25, 0.22), false, false], [6, Color(0.06, 0.1, 0.25, 0.26), false, false],
+			[26, Color(1.0, 0.8, 0.5, 0.05), true, true], [17, Color(1.0, 0.84, 0.56, 0.08), true, true], [10, Color(1.0, 0.88, 0.66, 0.13), true, true], [5, Color(1.0, 0.93, 0.8, 0.2), true, true],
+			[0, Color(1.0, 0.985, 0.94, 1.0), false, false]]:
+		var ql := Label.new(); ql.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; ql.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		if qfont != null: ql.add_theme_font_override("font", qfont)
+		ql.add_theme_font_size_override("font_size", 40 if qfont != null else 31); ql.add_theme_constant_override("line_spacing", 4 if qfont != null else 8)
+		if lay[0] > 0:
+			ql.add_theme_color_override("font_color", Color(lay[1].r, lay[1].g, lay[1].b, 0.0))
+			ql.add_theme_color_override("font_outline_color", lay[1]); ql.add_theme_constant_override("outline_size", lay[0])
+		else: ql.add_theme_color_override("font_color", lay[1])
+		if lay[2]:
+			var qm := CanvasItemMaterial.new(); qm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; ql.material = qm
+		ql.anchor_left = 0.07; ql.anchor_right = 0.93; ql.anchor_top = 0.13; ql.anchor_bottom = 0.13; ql.offset_top = 14; ql.offset_bottom = 260
+		ql.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		(quote_glow if lay[3] else quote_box).add_child(ql); quote_lbls.append(ql)
+	quote_box.move_child(quote_glow, quote_box.get_child_count() - 2)   # the light lies under the letters, over the haze
 	title_box = _card("EIDOLON", "demo  ·  πάτα για να ξεκινήσεις", cl)
 	end_box = _card("EIDOLON", "τέλος του demo  ·  πάτα για ξανά", cl); end_box.modulate.a = 0.0; end_box.visible = false
 
@@ -3144,8 +3165,11 @@ func _card(big: String, small: String, cl: CanvasLayer) -> Control:
 func quote(key: String, text: String, hold := 5.0) -> void:
 	if quotes_shown.has(key): return
 	quotes_shown[key] = true
-	quote_lbl.text = text
-	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 1.1); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 1.5)
+	for ql in quote_lbls: (ql as Label).text = text
+	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 1.3); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 1.6)
+	quote_glow.modulate.a = 1.0     # the light about the letters breathes while they are up
+	var gl := create_tween().set_loops(int(ceil((hold + 3.0) / 2.4)))
+	gl.tween_property(quote_glow, "modulate:a", 0.62, 1.2).set_trans(Tween.TRANS_SINE); gl.tween_property(quote_glow, "modulate:a", 1.0, 1.2).set_trans(Tween.TRANS_SINE)
 
 func say(s: String) -> void:
 	hint.text = s
