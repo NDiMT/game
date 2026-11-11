@@ -75,6 +75,9 @@ var hero_src: Node3D
 var H := {}
 var ghost_flat: StandardMaterial3D
 var walk_on := false
+var yaw_v := 0.0          # how fast she is turning: her turns start and end gently
+var turn_amt := 0.0       # how far she still has to turn on the spot
+var pose_k := 0.0         # 0 moving as usual .. 1 held still as a statue
 var rem_dist := 0.0
 var floor_mats: Array = []
 var rig_norm := {}
@@ -1213,6 +1216,9 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	if "statue" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve_statue()
+	if "tour" in OS.get_cmdline_user_args():
+		get_viewport().msaa_3d = Viewport.MSAA_2X
+		_tour()
 	if "solve2" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve2()
@@ -1275,6 +1281,7 @@ func _shots() -> void:
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(QX0 - 0.14, 0, PED.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
+		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(0.0, 0.2, -7.0), "s": 9.0},
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
@@ -2324,7 +2331,7 @@ func niche_x(x: float, y: float, z: float, w: float, h: float, parent: Node) -> 
 ## a detailed prop (a Tripo model in props/): loaded, given the lit textured material of the world, scaled so that its
 ## height (or, with across > 0, its width) is as asked, and set with its foot at the origin of the node returned.
 ## mirror: the copy that stands in the water
-func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror := false) -> Node3D:
+func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror := false, sea_refl := false) -> Node3D:
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	doc.append_from_file(ProjectSettings.globalize_path("res://props/%s.glb" % file), st)
 	var src := doc.generate_scene(st) as Node3D
@@ -2341,11 +2348,30 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 			sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 			if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 			if mirror: sm.set_shader_parameter("tint", Vector3(1.0, 1.14, 1.2))
+			if sea_refl and refl_mat != null: sm.next_pass = refl_mat   # what stands in the sea lies dark on it, like everything else
 			mi.set_surface_override_material(si, sm); pmats["prop|%d|%d" % [holder.get_instance_id(), si]] = sm
 	var k := (across / maxf(box.size.x, box.size.z)) if across > 0.0 else (height / box.size.y)
 	src.scale = Vector3.ONE * k
 	src.position = -Vector3(box.position.x + box.size.x * 0.5, box.position.y, box.position.z + box.size.z * 0.5) * k
 	return holder
+
+## the sight between the first two courts: "he hid every mirror". Tall mirrors stand in the sea on either side of the
+## causeway, each wrapped in a sheet and tied round with rope, like shrouded figures. One or two have begun to come undone
+func _shrouds() -> void:
+	if not FileAccess.file_exists("res://props/shroud_a.glb"): return
+	var have_b := FileAccess.file_exists("res://props/shroud_b.glb")
+	var pale := cloth(Color("efe6d2"), Color("cdbfa6"), 2.6)
+	var spots := [[-2.1, -5.3, 0.4, 2.3, 0], [-3.7, -6.5, -0.3, 2.6, 0], [-1.9, -7.7, 1.2, 2.2, 1], [-4.5, -8.4, 0.8, 2.4, 0], [-2.9, -9.2, -0.6, 2.1, 0], [-5.7, -5.5, 1.9, 2.5, 0], [-5.9, -7.5, 0.1, 2.2, 0],
+		[2.0, -5.5, 2.6, 2.4, 0], [3.5, -7.0, 3.4, 2.6, 0], [1.9, -8.5, 2.0, 2.2, 1], [4.7, -5.3, 4.0, 2.3, 0], [4.5, -8.8, 2.9, 2.5, 0], [5.9, -6.7, 3.6, 2.2, 0], [3.1, -9.4, 4.4, 2.1, 0]]   # x, z, turn, height, 1 = coming undone
+	for sp in spots:
+		var base := Vector3(sp[0], WATER + 0.22, sp[1])
+		cyl(Vector3(sp[0], WATER - 0.5, sp[1]), 0.36, 0.42, 0.72, pal("stone"), 14); cyl(base - Vector3(0, 0.05, 0), 0.4, 0.4, 0.05, pal("shade"), 14)
+		var undone: bool = sp[4] == 1 and have_b
+		var m := prop_model("shroud_b" if undone else "shroud_a", self, sp[3], 0.0, false, true)
+		m.position = base; m.rotation.y = sp[2]
+		if undone:   # a loose end of its sheet, lifting in the air
+			var q := QuadMesh.new(); q.size = Vector2(0.34, 1.0); q.subdivide_depth = 10; q.subdivide_width = 2
+			var fl := prim(q, base + Vector3(0, sp[3] * 0.62, 0) + Vector3(sin(sp[2] + 1.2), 0, cos(sp[2] + 1.2)) * 0.34, pale); fl.rotation.y = sp[2] + 1.2
 
 ## the second court, "the crossing the water keeps". In its pool stands the winch of the west gate, on a pedestal no
 ## one can reach: the crossing to it fell long ago. The water still holds its shadow, and her reflection can walk it
@@ -2384,7 +2410,7 @@ func _pool_c() -> void:
 	gate_c = Node3D.new(); gate_c.position = Vector3(CX0 + 0.1, 0, -13.0); add_child(gate_c)
 	for i in 8: blk(Vector3(-0.018, 0, -0.63 + 0.18 * i - 0.018), Vector3(0.018, 2.02, -0.63 + 0.18 * i + 0.018), "dark", gate_c)
 	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.024, gy, -0.7), Vector3(0.024, gy + 0.04, 0.7), "gold", gate_c)
-	if not ("shots" in args or "solve2" in args): gate_c.position.y = -2.4
+	if not ("shots" in args or "solve2" in args or "tour" in args): gate_c.position.y = -2.4
 
 ## the second court, "the mirror he covered". Its pool lies under a great cloth, as the sculptor covered every mirror.
 ## With the cloth drawn off, the water shows the west wall with a door in it, where the wall itself is plain stone.
@@ -2527,11 +2553,10 @@ func _world() -> void:
 	slab(-10.6, -2.2, -9.2, 2.2, 0.0); under(-10.6, -2.2, -9.2, 2.2, 0.18, "sand")
 	for cz in [-1.6, -0.55, 0.55, 1.6]: column(Vector3(-9.9, 0, cz), 2.4, 0.15)
 	blk(Vector3(-10.14, 2.45, -1.9), Vector3(-9.66, 2.66, 1.9), "stone"); cornice(-10.14, -1.9, -9.66, 1.9, 2.66, 0.04, 0.06); dentils(-10.14, -1.9, -9.66, 1.9, 2.45)
-	# ---- B. the causeway: its middle is gone above the water, yet whole in the reflection
-	slab(-0.6, -5.8, 0.6, -4.0, 0.0); slab(-0.6, -10.0, 0.6, -7.8, 0.0)
-	pier(0.0, -5.0, -0.18, 0.7); pier(0.0, -8.8, -0.18, 0.7)
-	for rb in [[Vector3(-0.35, 0, -5.95), 0.3], [Vector3(0.3, -0.05, -6.0), -0.4], [Vector3(-0.2, -0.04, -7.7), 0.5], [Vector3(0.38, 0, -7.62), -0.2]]:
-		var bk := blk(Vector3(-0.2, -0.13, -0.16), Vector3(0.2, 0, 0.16), "stone"); bk.position = rb[0]; bk.rotation = Vector3(0.12, rb[1], 0.1)
+	# ---- B. the causeway between the two courts, whole. On either side of it, in the sea, stand the mirrors he hid
+	slab(-0.6, -10.0, 0.6, -4.0, 0.0)
+	pier(0.0, -5.0, -0.18, 0.7); pier(0.0, -7.0, -0.18, 0.7); pier(0.0, -8.9, -0.18, 0.7)
+	_shrouds()
 	# ---- C. the lever court (6.5 x 6 m)
 	_pool_court(CX0, CZ0, CX1, CZ1, QX0, QZ0, QX1, QZ1, "sand", "PoolSky2")
 	tile_hole = Rect2(QX0 - 0.08, QZ0 - 0.08, QX1 - QX0 + 0.16, QZ1 - QZ0 + 0.16); tiles(-3.4, -16.4, 3.5, -10.0, 1.0); tile_hole = Rect2()
@@ -2891,7 +2916,7 @@ func _process(dt: float) -> void:
 		var left := to.length()
 		for i in range(1, mini(route.size(), 5)): left += Vector2(route[i].p.x - route[i - 1].p.x, route[i].p.z - route[i - 1].p.z).length()
 		rem_dist = left
-		target = minf(speed_cap, sqrt(2.0 * (2.4 if shape_file != "" else 3.0 if rig_file != "" else 1.1) * left) + 0.03)
+		target = minf(speed_cap, sqrt(2.0 * (2.4 if shape_file != "" else 1.25 if rig_file != "" else 1.1) * left) + 0.03)   # she slows over a good pace or two, not in one
 		if to.length() > 0.02: want_yaw = atan2(to.x, to.z)
 		target *= clampf(1.25 - absf(angle_difference(yaw, want_yaw)) * 0.8, 0.25, 1.0)
 		spd = move_toward(spd, target, (3.4 if shape_file != "" else (1.5 if speed_cap <= WALK else 2.6)) * dt)
@@ -2908,7 +2933,12 @@ func _process(dt: float) -> void:
 		if face_to != null:
 			want_yaw = atan2(face_to.x - pos.x, face_to.z - pos.z)
 			if absf(angle_difference(yaw, want_yaw)) < 0.02: face_to = null; faced.emit()
-	yaw = lerp_angle(yaw, want_yaw, 1.0 - exp(-(7.5 if shape_file != "" else 4.2) * dt))
+	turn_amt = absf(angle_difference(yaw, want_yaw)) if (route.is_empty() and face_to != null) else 0.0
+	if rig_file != "" and shape_file == "":   # a turn that gathers and settles, instead of one that starts at full speed
+		yaw_v += (angle_difference(yaw, want_yaw) * 34.0 - yaw_v * 11.8) * dt
+		yaw_v = clampf(yaw_v, -3.2, 3.2); yaw += yaw_v * dt
+	else:
+		yaw = lerp_angle(yaw, want_yaw, 1.0 - exp(-(7.5 if shape_file != "" else 4.2) * dt))
 	var wk := clampf(spd / WALK, 0.0, 1.0)
 	var rk := clampf((spd - WALK) / 1.2, 0.0, 1.0)
 	phase += spd * dt / lerpf(0.92, 1.15, rk) * PI
@@ -2970,16 +3000,17 @@ func _process(dt: float) -> void:
 		(SHP["ghost"].holder as Node3D).visible = near > 0.01
 	if ghost.visible: ghost.apply(st)
 	var moving := spd > 0.15
-	if rig_file != "": moving = spd > 0.2 if walk_on else (not route.is_empty() and rem_dist > 0.05)
+	if rig_file != "": moving = (spd > 0.2 if walk_on else (not route.is_empty() and rem_dist > 0.05)) or turn_amt > (0.3 if walk_on else 0.7)   # a big turn on the spot is made with steps
 	for fm in floor_mats: fm.set_shader_parameter("floor_y", pos.y)
 	if moving != walk_on:
 		walk_on = moving
 		for h in H.values():
-			if h.ap != null: h.ap.play("walk" if moving else "idle", (0.25 if moving else 0.4) if rig_file != "" else 0.25)
+			if h.ap != null: h.ap.play("walk" if moving else "idle", (0.38 if moving else 0.6) if rig_file != "" else 0.25)
+	pose_k = move_toward(pose_k, 1.0 if posing else 0.0, dt / 0.9)   # she comes to stillness, and out of it, over most of a second
 	for k in H:
 		var hd: Node3D = H[k].holder
 		hd.position = pos; hd.rotation.y = yaw
-		if H[k].ap != null: H[k].ap.speed_scale = 0.0 if posing else (clampf(spd / 1.1, 0.45 if rig_file != "" else 0.7, 2.3) if moving else 1.0)
+		if H[k].ap != null: H[k].ap.speed_scale = (1.0 - smoothstep(0.0, 1.0, pose_k)) * (clampf(spd / 1.1, 0.4 if rig_file != "" else 0.7, 2.3) if moving else 1.0)
 	if hero_real: (H["ghost"].holder as Node3D).visible = near > 0.01
 	var prox := clampf(1.0 - (pos.x - MX - 0.5) / 1.4, 0.0, 1.0)
 	flash = move_toward(flash, 0.0, dt * 0.7)
@@ -3144,7 +3175,7 @@ func _eid_go(e: Dictionary, to: Vector3, speed := 0.8) -> void:
 ## the first puzzle, "become the statue", solved. No captions: the gate is shut and the pool is empty of any way
 ## across. The water shows the row of statues whole, the fifth with one arm raised, where her own plinth stands
 ## empty. She goes back up onto it, raises her arm, and is still. Then the winch rises out of the water
-func _solve_statue() -> void:
+func _solve_statue(alone := true) -> void:
 	started = true; title_box.hide(); hint.hide()
 	gate_a.position.y = 0.0
 	var twin: Node3D = H["mir"].holder
@@ -3155,14 +3186,16 @@ func _solve_statue() -> void:
 	await face(Vector3(-3.0, 0, MYPL.z))
 	create_tween().tween_property(cam, "size", 5.2, 1.8)
 	await wait(2.6)                                     # four statues, and one plinth with nobody on it
-	# back to her own plinth, across the rug, and up onto it
+	# back to her own plinth, across the rug, and up onto it: one walk, with the step up in it
 	create_tween().tween_property(cam, "size", 5.8, 1.6)
-	await go([Vector3(MYPL.x + 0.44, 0, MYPL.z)])
-	create_tween().tween_property(self, "pos:y", 0.17, 0.55).set_trans(Tween.TRANS_SINE)
+	go([Vector3(MYPL.x, 0, MYPL.z)], 0.8)
+	while pos.x > MYPL.x + 0.5: await get_tree().process_frame
+	create_tween().tween_property(self, "pos:y", 0.17, 0.6).set_trans(Tween.TRANS_SINE)
 	twin.visible = false
-	await go([Vector3(MYPL.x, 0, MYPL.z)], 0.5)
+	await arrived
+	await wait(0.3)
 	await face(Vector3(0.0, 0, MYPL.z))
-	await wait(1.2)
+	await wait(1.4)
 	tgtL = MYPL + Vector3(0.21, 1.44, -0.03); tgtR = MYPL + Vector3(0.21, 1.44, 0.03)   # her hands come together before her, as the statue's beside her
 	var up := tw(); up.tween_property(self, "a_wR", 1.0, 1.2); up.tween_property(self, "a_wL", 1.0, 1.2)
 	await up.finished
@@ -3179,25 +3212,49 @@ func _solve_statue() -> void:
 	posing = false
 	var dn := tw(); dn.tween_property(self, "a_wR", 0.0, 0.8); dn.tween_property(self, "a_wL", 0.0, 0.8)
 	await dn.finished
-	create_tween().tween_property(self, "pos:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
-	await go([Vector3(MYPL.x + 0.5, 0, MYPL.z)], 0.5)
-	twin.visible = true
+	await wait(0.4)
+	# down from the plinth and out through the gate, in one walk
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", 6.4, 1.4)
-	await go([Vector3(-0.4, 0, -2.2), Vector3(0, 0, -3.1), Vector3(0, 0, -4.9)])
+	go([Vector3(MYPL.x + 0.7, 0, MYPL.z), Vector3(-0.4, 0, -2.2), Vector3(0, 0, -3.1), Vector3(0, 0, -4.9 if alone else -7.0)])
+	while pos.x < MYPL.x + 0.14: await get_tree().process_frame
+	create_tween().tween_property(self, "pos:y", 0.0, 0.55).set_trans(Tween.TRANS_SINE)
+	twin.visible = true
+	if not alone:   # on to the causeway: the view opens on the sea and what stands in it
+		while pos.z > -3.6: await get_tree().process_frame
+		create_tween().tween_property(cam, "size", 8.6, 3.0).set_trans(Tween.TRANS_SINE)
+	await arrived
+	if alone:
+		await wait(0.8)
+		get_tree().quit()
+
+## the first two puzzles and the walk between them, in one piece: the statue, the causeway among the hidden mirrors,
+## the crossing the water keeps
+func _tour() -> void:
+	await _solve_statue(false)
+	await face(Vector3(-4.0, 0, -7.6))                   # she stops among them
+	await wait(2.6)
+	await _solve2(false)
 	await wait(0.8)
 	get_tree().quit()
 
 ## the second puzzle, "the crossing the water keeps", solved. No captions: she walks on toward the winch; at the rim
 ## her body can go no further, and her reflection does not stop
-func _solve2() -> void:
+func _solve2(alone := true) -> void:
 	started = true; title_box.hide(); hint.hide()
 	gate_c.position.y = 0.0
 	var rim := Vector3(QX0 - 0.14, 0, PED.z)
-	pos = Vector3(0.0, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.4
-	await wait(1.0)
-	cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
-	await go([Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED.z), Vector3(rim.x - 0.25, 0, PED.z)])
+	if alone:
+		pos = Vector3(0.0, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.4
+		await wait(1.0)
+		cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
+		await go([Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED.z), Vector3(rim.x - 0.25, 0, PED.z)])
+	else:   # she comes in from the causeway: the camera closes on the court as she reaches it
+		go([Vector3(0, 0, -10.2), Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED.z), Vector3(rim.x - 0.25, 0, PED.z)])
+		while pos.z > -9.3: await get_tree().process_frame
+		cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
+		create_tween().tween_property(cam, "size", 6.4, 2.4).set_trans(Tween.TRANS_SINE)
+		await arrived
 	await wait(0.5)
 	create_tween().tween_property(cam, "size", 5.4, 2.0)
 	go([rim])
@@ -3220,8 +3277,9 @@ func _solve2() -> void:
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", 6.4, 1.4)
 	await go([Vector3(-2.3, 0, -13.0), Vector3(-3.95, 0, -13.0)])
-	await wait(0.8)
-	get_tree().quit()
+	if alone:
+		await wait(0.8)
+		get_tree().quit()
 
 ## the covered mirror, solved. No captions: she finds the court closed, draws the cloth off the pool, sees in the
 ## water a door that the wall does not have, goes to that place on the wall and lays her hands on it. Only then do the
