@@ -27,7 +27,7 @@ const TURN_GOAL := [1, 3, 2]      # how many quarter turns (clockwise from above
 const TURN_YAW0 := 0.0            # the way a statue faces before any turn
 const WINCH_K := 1.55                       # the capstan's size: its model is one unit tall
 const WINCH_HUB := Vector2(0.497, 0.731)    # where the hub of its handwheel sits in the model: out along the axle, and up
-const WORLD_DEPTH := 0.7   # how much deeper the stone of the world is than the palette says (0 = as written, 1 = far too dark)
+const WORLD_DEPTH := 0.4   # how much deeper the stone of the world is than the palette says (0 = as written, 1 = far too dark)
 var sea_c := Color("3c7d92")
 var mist_c := Color("cdb8c6")
 var water_deep := Color("2a8790")
@@ -1191,7 +1191,7 @@ func _ready() -> void:
 		for dn in ["stone", "shade", "sand", "rose", "terra"]:
 			var deep := []
 			for hx in pals[dn]:
-				var c0 := Color(hx); var c1 := c0.lerp(c0.srgb_to_linear(), depth) * (1.0 - 0.24 * depth); c1.a = 1.0; deep.append(c1.to_html(false))   # the pale tops too, which the curve alone hardly touches
+				var c0 := Color(hx); deep.append(c0.lerp(c0.srgb_to_linear(), depth).to_html(false))
 			pals[dn] = deep
 	hero_real = OS.get_environment("REAL") == "1"
 	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp") or OS.get_environment("RIG").begins_with("sr") or OS.get_environment("RIG").begins_with("nb") or OS.get_environment("RIG").begins_with("ione")) else "min" + OS.get_environment("RIG"); hero_real = true
