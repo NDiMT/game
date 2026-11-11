@@ -701,8 +701,8 @@ func shard_tree(p: Vector3) -> void:
 		var sh := prim(q, c, shard_mats[i % 4]); sh.rotation = Vector3(0.2 * sin(i * 3.1), a * 1.7, PI * 0.25)
 	decal(p + Vector3(0.35, 0, -0.35), 2.2, 1.6, 0.2, 0.78)
 
-func mirror_stand(p: Vector3, yaw := 0.0) -> void:
-	var n := Node3D.new(); n.position = p; n.rotation.y = yaw; add_child(n)
+func mirror_stand(p: Vector3, yaw := 0.0, parent: Node = self) -> Node3D:
+	var n := Node3D.new(); n.position = p; n.rotation.y = yaw; parent.add_child(n)
 	blk(Vector3(-0.42, 0, -0.14), Vector3(0.42, 0.1, 0.14), "shade", n)
 	for sx in [-1.0, 1.0]: blk(Vector3(sx * 0.4 - 0.03, 0.1, -0.03), Vector3(sx * 0.4 + 0.03, 1.9, 0.03), "gold", n)
 	blk(Vector3(-0.43, 1.87, -0.03), Vector3(0.43, 1.94, 0.03), "gold", n); blk(Vector3(-0.08, 1.94, -0.03), Vector3(0.08, 2.04, 0.03), "crim", n)
@@ -713,6 +713,7 @@ func mirror_stand(p: Vector3, yaw := 0.0) -> void:
 	prim(q, Vector3(0, 1.0, 0.012), gm, n)
 	var q2 := QuadMesh.new(); q2.size = Vector2(0.06, 1.5)
 	prim(q2, Vector3(-0.14, 1.0, 0.016), mat(Color(1, 1, 1, 0.55)), n).rotation.z = -0.32
+	return n
 
 func reeds(p: Vector3, n := 9) -> void:
 	for i in n:
@@ -2362,6 +2363,7 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 			sm.set_shader_parameter("tint", Vector3(1.0, 1.14, 1.2) if mirror else Vector3(1.0, 0.96, 0.9))   # a little of the world's warm cast
 			if sea_refl and refl_mat != null: sm.next_pass = refl_mat   # what stands in the sea lies dark on it, like everything else
 			mi.set_surface_override_material(si, sm); pmats["prop|%d|%d" % [holder.get_instance_id(), si]] = sm
+	if height <= 0.0 and across <= 0.0: return holder   # as it was made: its own size and place
 	var k := (across / maxf(box.size.x, box.size.z)) if across > 0.0 else (height / box.size.y)
 	src.scale = Vector3.ONE * k
 	src.position = -Vector3(box.position.x + box.size.x * 0.5, box.position.y, box.position.z + box.size.z * 0.5) * k
@@ -2370,20 +2372,21 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 ## the sight between the first two courts: "he hid every mirror". Tall mirrors stand in the sea on either side of the
 ## causeway, each wrapped in a sheet and tied round with rope, like shrouded figures. One or two have begun to come undone
 func _shrouds() -> void:
-	if not FileAccess.file_exists("res://props/shroud_a.glb"): return
-	var have_b := FileAccess.file_exists("res://props/shroud_b.glb")
-	var pale := cloth(Color("efe6d2"), Color("cdbfa6"), 2.6)
-	var spots := [[-2.1, -5.3, 0.4, 2.3, 0], [-3.7, -6.5, -0.3, 2.6, 0], [-1.9, -7.7, 1.2, 2.2, 1], [-4.5, -8.4, 0.8, 2.4, 0], [-2.9, -9.2, -0.6, 2.1, 0], [-5.7, -5.5, 1.9, 2.5, 0], [-5.9, -7.5, 0.1, 2.2, 0],
-		[2.0, -5.5, 2.6, 2.4, 0], [3.5, -7.0, 3.4, 2.6, 0], [1.9, -8.5, 2.0, 2.2, 1], [4.7, -5.3, 4.0, 2.3, 0], [4.5, -8.8, 2.9, 2.5, 0], [5.9, -6.7, 3.6, 2.2, 0], [3.1, -9.4, 4.4, 2.1, 0]]   # x, z, turn, height, 1 = coming undone
+	if not FileAccess.file_exists("res://props/drape_1.glb"): return
+	var have3 := FileAccess.file_exists("res://props/drape_3.glb")
+	var spots := [[-2.1, -5.3, 0.4, 1.05, 1], [-3.7, -6.5, -0.3, 1.2, 2], [-1.9, -7.7, 1.2, 1.0, 3], [-4.5, -8.4, 0.8, 1.12, 1], [-2.9, -9.2, -0.6, 0.98, 2], [-5.7, -5.5, 1.9, 1.16, 2], [-5.9, -7.5, 0.1, 1.02, 1],
+		[2.0, -5.5, 2.6, 1.1, 2], [3.5, -7.0, 3.4, 1.2, 1], [1.9, -8.5, 2.0, 1.0, 3], [4.7, -5.3, 4.0, 1.06, 1], [4.5, -8.8, 2.9, 1.15, 2], [5.9, -6.7, 3.6, 1.02, 1], [3.1, -9.4, 4.4, 0.97, 2]]   # x, z, turn, size, which sheet (3 = coming undone)
 	for sp in spots:
 		var base := Vector3(sp[0], WATER + 0.22, sp[1])
-		cyl(Vector3(sp[0], WATER - 0.5, sp[1]), 0.36, 0.42, 0.72, pal("stone"), 14); cyl(base - Vector3(0, 0.05, 0), 0.4, 0.4, 0.05, pal("shade"), 14)
-		var undone: bool = sp[4] == 1 and have_b
-		var m := prop_model("shroud_b" if undone else "shroud_a", self, sp[3], 0.0, false, true)
-		m.position = base; m.rotation.y = sp[2]
-		if undone:   # a loose end of its sheet, lifting in the air
-			var q := QuadMesh.new(); q.size = Vector2(0.34, 1.0); q.subdivide_depth = 10; q.subdivide_width = 2
-			var fl := prim(q, base + Vector3(0, sp[3] * 0.62, 0) + Vector3(sin(sp[2] + 1.2), 0, cos(sp[2] + 1.2)) * 0.34, pale); fl.rotation.y = sp[2] + 1.2
+		cyl(Vector3(sp[0], WATER - 0.5, sp[1]), 0.62, 0.7, 0.72, pal("stone"), 14); cyl(base - Vector3(0, 0.05, 0), 0.68, 0.68, 0.05, pal("shade"), 14)
+		var hold := Node3D.new(); hold.position = base; hold.rotation.y = sp[2]; hold.scale = Vector3.ONE * sp[3]; add_child(hold)
+		mirror_stand(Vector3.ZERO, 0.0, hold)                          # the mirror itself, the same as those that stand in the courts
+		var v: int = sp[4] if (sp[4] != 3 or have3) else 1
+		prop_model("drape_%d" % v, hold, 0.0, 0.0, false, false, "linen")   # and the sheet over it
+		if v != 3:   # the rope that ties it, twice round
+			for rh in [0.72, 1.36]:
+				var tm := TorusMesh.new(); tm.inner_radius = 0.5; tm.outer_radius = 0.56; tm.rings = 14; tm.ring_segments = 5
+				var rr := prim(tm, Vector3(0, rh, 0), pal("rope", "flat"), hold); rr.scale = Vector3(1.0, 1.0, 0.3); rr.rotation = Vector3(0.05 * sin(rh * 9.0 + sp[0]), 0, 0.04 * cos(rh * 7.0 + sp[1]))
 
 ## the second court, "the crossing the water keeps". In its pool stands the winch of the west gate, on a pedestal no
 ## one can reach: the crossing to it fell long ago. The water still holds its shadow, and her reflection can walk it
