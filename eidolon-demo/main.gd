@@ -1302,6 +1302,9 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	if "tour" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_tour()
+	if "flow" in OS.get_cmdline_user_args():
+		get_viewport().msaa_3d = Viewport.MSAA_2X
+		_tour(true)
 	if "solve2" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve2()
@@ -2743,7 +2746,7 @@ func _pool_c() -> void:
 	gate_c = Node3D.new(); gate_c.position = Vector3(CX0 + 0.1, 0, -13.0); add_child(gate_c)
 	for i in 8: blk(Vector3(-0.018, 0, -0.63 + 0.18 * i - 0.018), Vector3(0.018, 2.02, -0.63 + 0.18 * i + 0.018), "dark", gate_c)
 	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.024, gy, -0.7), Vector3(0.024, gy + 0.04, 0.7), "gold", gate_c)
-	if not ("shots" in args or "solve2" in args or "tour" in args): gate_c.position.y = -2.4
+	if not ("shots" in args or "solve2" in args or "tour" in args or "flow" in args): gate_c.position.y = -2.4
 
 ## A turning plinth with a statue of her on it. Fixed: a stone base and a bronze ring ticked at the four quarters.
 ## Turning: a drum with a bronze band, a toothed bronze rim and a red pointer at its front, and the statue. Beside
@@ -3743,20 +3746,26 @@ func _solve_statue(alone := true) -> void:
 
 ## the first two puzzles and the walk between them, in one piece: the statue, the causeway among the hidden mirrors,
 ## the crossing the water keeps
-func _tour() -> void:
+## With all = true it goes on: over the bridge that the winch swings into place, and through the third puzzle
+func _tour(all := false) -> void:
 	await _solve_statue(false)
 	await face(Vector3(-4.0, 0, -7.6))                   # she stops among them, while the line about them is on the screen
 	await wait(4.6)
 	await _solve2(false)
+	if all:
+		create_tween().tween_property(cam, "size", 7.4, 2.0).set_trans(Tween.TRANS_SINE)
+		await go([Vector3(-7.6, 0, -13.0), Vector3(-11.6, 0, -13.0)])
+		await _solve3(false)
 	await wait(0.8)
 	get_tree().quit()
 
 ## the third puzzle, "the turned ones", solved. No captions: she comes in from the bridge, sees the three statues and
 ## the three in the water that stand otherwise, and turns each until it matches; the south gate goes down
-func _solve3() -> void:
+func _solve3(alone := true) -> void:
 	started = true; title_box.hide(); hint.hide()
-	pos = Vector3(-11.6, 0, -13.0); yaw = -PI * 0.5; cam_t = pos; cam.size = 7.2
-	await wait(1.0)
+	if alone:
+		pos = Vector3(-11.6, 0, -13.0); yaw = -PI * 0.5; cam_t = pos; cam.size = 7.2
+		await wait(1.0)
 	cam_focus = Vector3(-17.9, 0.2, -13.0); cam_focus_on = true
 	create_tween().tween_property(cam, "size", 9.8, 2.4).set_trans(Tween.TRANS_SINE)
 	await go([Vector3(-13.5, 0, -13.0)])
@@ -3775,8 +3784,9 @@ func _solve3() -> void:
 	while not rects["G1"].on: await get_tree().process_frame
 	await wait(0.5)
 	await go([Vector3(pos.x, 0, -15.6), Vector3(-16.3, 0, -15.6), Vector3(-16.3, 0, -18.2)])
-	await wait(0.8)
-	get_tree().quit()
+	if alone:
+		await wait(0.8)
+		get_tree().quit()
 
 ## the second puzzle, "the crossing the water keeps", solved. No captions: she walks on toward the winch; at the rim
 ## her body can go no further, and her reflection does not stop
@@ -3808,7 +3818,9 @@ func _solve2(alone := true) -> void:
 	create_tween().tween_property(cam, "size", 7.2, 1.6)
 	await wait(2.0)
 	var gt := create_tween(); gt.tween_property(gate_c, "position:y", -2.4, 2.4).set_trans(Tween.TRANS_SINE)
+	create_tween().tween_property(bridge, "rotation:y", 0.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)   # and the bridge beyond it swings into place
 	await gt.finished
+	rects["BR"].on = true
 	await wait(1.0)
 	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.72)
 	(e.holder as Node3D).rotation.y = yaw
