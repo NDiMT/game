@@ -52,6 +52,9 @@ var hoods: Array = []
 var lamp2_halo: MeshInstance3D
 var pull2: Node3D
 var her_mats: Array = []
+var mir_mats: Array = []      # the materials of her reflection in the pools
+var mir_e: Dictionary = {}    # her reflection, kept here also while it walks alone
+var glare2 := 1.0             # how bright the second court's lantern lies on its pool
 var posing := false
 var cam_focus_on := false
 var cam_focus := Vector3.ZERO
@@ -1151,7 +1154,11 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		"vec3 col = c_top * wt * wt + c_z * wz * wz + c_x * wx * wx + c_x * 0.86 * (1.0 - min(s, 1.0));",
 		"vec3 tx = texture(albedo_tex, UV).rgb; if (snap > 0.5) tx = snapc(tx); if (wrap_lift > 0.5) { float rw9 = smoothstep(0.08, 0.2, tx.r - tx.b); float tl9 = dot(tx, vec3(0.3, 0.55, 0.15)); float fc9 = wt * wt * 1.1 + wz * wz * 0.96 + wx * wx * 0.7; float gr9 = n3(mpos * 150.0) - 0.5; float mo9 = n3(mpos * 8.0) - 0.5; vec3 cl9 = wrap_col * clamp(tl9 / wrap_ref, 0.72, 1.14) * mix(1.0, fc9, 0.75) * (1.0 + gr9 * 0.09 + mo9 * 0.1); float vn9 = abs(sin((mpos.x * 1.3 + mpos.y * 0.9 + mpos.z * 0.7) * 8.0 + n3(mpos * 5.0) * 6.0)); float vm9 = (1.0 - smoothstep(0.0, 0.07, vn9)) * smoothstep(0.3, 0.55, n3(mpos * 2.3 + 7.0)); float vn8 = abs(sin((mpos.x * -1.1 + mpos.y * 1.2 + mpos.z * 0.5) * 5.0 + n3(mpos * 4.0 + 3.0) * 7.0)); vm9 = max(vm9, (1.0 - smoothstep(0.0, 0.045, vn8)) * 0.7); vec3 mb9 = vec3(0.975, 0.97, 0.962) * clamp(tl9 / 0.84, 0.86, 1.03); mb9 = mix(mb9, vec3(0.6, 0.61, 0.66), vm9 * 0.55); mb9 = mix(mb9, tx, 1.0 - smoothstep(0.3, 0.5, tl9)); tx = mix(mb9, cl9, rw9); } if (recol3 > 0.5) { float lum3 = dot(tx, vec3(0.3, 0.55, 0.15)); float cl3 = smoothstep(0.02, 0.06, tx.b - tx.r); float vw3 = mveil < -0.5 ? smoothstep(rc_split - 0.04, rc_split + 0.04, mpos.y) : smoothstep(0.3, 0.6, mveil); vec3 cc3 = mix(rc_gown, rc_veil, vw3); float gw3 = 1.0 - vw3; float vd3 = mveil - 1.0; float vb3 = step(0.0, vd3) * smoothstep(0.016, 0.022, vd3) * (1.0 - smoothstep(0.034, 0.04, vd3)) * rc_detail; cc3 = mix(cc3, rc_gown, vb3 * 0.5); cc3 *= mix(1.0, 0.9, step(0.5, mveil) * (1.0 - step(0.9, mveil))); float ang3 = atan(mpos.z, mpos.x); float fold3 = clamp(1.0 + (lum3 - 0.66) * 1.5, 0.74, 1.14); float pl3 = smoothstep(-0.35, 0.35, sin(ang3 * 24.0 + sin(mpos.y * 6.0) * 0.7)); float plw3 = gw3 * smoothstep(1.02, 0.55, mpos.y) * rc_detail; float mot3 = sin(mpos.x * 37.0 + mpos.y * 11.0) * sin(mpos.y * 29.0 + mpos.z * 17.0) * sin(mpos.z * 41.0 + mpos.x * 7.0); float thr3 = sin(ang3 * 70.0 + mpos.y * 3.0) * (1.0 - gw3); float rim3 = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 2.2); cc3 *= mix(1.0, mix(0.9, 1.04, pl3), plw3) * (1.0 + (0.035 * mot3 + 0.03 * thr3) * rc_detail); cc3 *= 1.0 - 0.1 * rc_detail * gw3 * smoothstep(rc_split - 0.13, rc_split - 0.03, mpos.y) * step(abs(mpos.x), 0.26); float hb3 = (1.0 - smoothstep(0.05, 0.062, mpos.y)) * rc_detail; float hl3 = smoothstep(0.078, 0.088, mpos.y) * (1.0 - smoothstep(0.104, 0.114, mpos.y)) * rc_detail; cc3 = mix(cc3, rc_gown * vec3(0.72, 0.78, 0.92), hb3); cc3 = mix(cc3, rc_veil, hl3 * 0.85); cc3 = mix(cc3, vec3(1.0), rim3 * mix(0.3, 0.14, gw3) * rc_detail); tx = mix(tx, cc3 * mix(clamp(0.6 + lum3 * 0.5, 0.86, 1.08), fold3, rc_detail), cl3); } if (recol2 > 0.5) { float lv = dot(tx, vec3(0.3, 0.55, 0.15)); float mx = max(tx.r, max(tx.g, tx.b)); float mn = min(tx.r, min(tx.g, tx.b)); float sat = (mx - mn) / max(mx, 0.001); float gold = step(0.5, tx.r) * step(0.38, tx.g) * step(0.22, tx.r - tx.b); float crim = smoothstep(0.2, 0.3, tx.r - tx.g) * (1.0 - step(0.4, tx.g)); float body = step(mpos.y, 1.16) * step(abs(mpos.x), 0.3); float teal = smoothstep(0.02, 0.1, min(tx.g, tx.b) - tx.r) * (1.0 - smoothstep(0.75, 0.9, lv)); float gown = max(max(teal, body), crim); tx = mix(tx, rc_gown * clamp(0.95 + (lv - 0.35) * 0.3, 0.92, 1.08), gown); float lowsat = (1.0 - smoothstep(0.12, 0.26, sat)) * smoothstep(0.45, 0.62, lv); float top = step(1.56, mpos.y); float isveil = max(max(lowsat, gold), top) * step(abs(mpos.x), 0.27) * step(1.16, mpos.y) * (1.0 - gown * (1.0 - top)); tx = mix(tx, rc_veil * mix(0.93, clamp(lv / 0.8, 0.78, 1.08), lowsat), isveil); } if (recol > 0.5) { float rg0 = tx.r - tx.g; float lz0 = dot(tx, vec3(0.3, 0.55, 0.15)); float isv = smoothstep(0.18, 0.3, rg0) * (1.0 - step(0.35, tx.g)); float isg = step(0.5, tx.g) * step(0.25, tx.r - tx.b); float arm = step(0.19, abs(mpos.x)) * step(1.2, mpos.y); vec3 oo = mix(rc_gown * clamp(lz0 / 0.8, 0.8, 1.12), vec3(0.96, 0.955, 0.94) * clamp(lz0 / 0.8, 0.85, 1.1), arm); oo = mix(oo, rc_veil * clamp(lz0 / 0.28, 0.8, 1.15), isv); tx = mix(oo, rc_trim, isg * (1.0 - isv)); } float lum = dot(tx, vec3(0.3, 0.55, 0.15)); vec3 col = mix(vec3(lum), tx, 0.85) * 1.12 * tint * (wt * wt + 0.94 * wz * wz + 0.76 * wx * wx + 0.68 * (1.0 - min(s, 1.0)));")
 	shaders["tex"] = st2
-	var st3 := Shader.new(); st3.code = st2.code.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;"); shaders["tex2"] = st3
+	var st3 := Shader.new(); st3.code = st2.code.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;\nuniform float gone = 0.0;")
+	# the reflection can thin away to nothing (in the light of a lantern): more and more of its pixels are left out, and the
+	# water's own blur turns that into a fade
+	assert(st3.code.count("ALBEDO = col;") == 1)
+	st3.code = st3.code.replace("ALBEDO = col;", "if (gone > 0.0 && fract(52.9829189 * fract(dot(FRAGCOORD.xy, vec2(0.06711056, 0.00583715)))) < gone * 1.02) discard;\n\tALBEDO = col;"); shaders["tex2"] = st3
 	auto = "auto" in OS.get_cmdline_user_args()
 	_env()
 	var n0 := get_child_count()
@@ -1642,7 +1649,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
-				if mode == "mirror": sm.set_shader_parameter("tint", Vector3(1.12, 1.3, 1.36))
+				if mode == "mirror": sm.set_shader_parameter("tint", Vector3(1.12, 1.3, 1.36)); mir_mats.append(sm)
 				if mode == "tex": floor_mats.append(sm)
 				if rig_file.begins_with("lp") or rig_file.begins_with("sr") or rig_file.begins_with("nb") or (rig_file.begins_with("wrap") and OS.get_environment("WRAP_SMOOTH") == ""): sm.set_shader_parameter("flat_n", 1.0)
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
@@ -2488,7 +2495,7 @@ func _actors() -> void:
 	ghost_flat.cull_mode = BaseMaterial3D.CULL_DISABLED; ghost_flat.albedo_color = Color("b8232f")
 	if hero_real:
 		H["main"] = spawn_her(self, "tex"); H["refl"] = spawn_her(wm, "crim"); H["ghost"] = spawn_her(mir, "flat")
-		if mroot != null and rig_file != "": H["mir"] = spawn_her(mroot, "mirror")
+		if mroot != null and rig_file != "": H["mir"] = spawn_her(mroot, "mirror"); mir_e = H["mir"]
 		for k in H:
 			var sk: Skeleton3D = H[k].sk
 			if sk != null:
@@ -2804,6 +2811,10 @@ func _process(dt: float) -> void:
 		fm.set_shader_parameter("hero", cc); fm.set_shader_parameter("far_a", maxf(cam.size * 0.3, 3.5)); fm.set_shader_parameter("far_b", maxf(cam.size * 0.95, 10.0))
 	sea_mat.set_shader_parameter("centre", cc); sea_mat.set_shader_parameter("mist_r", maxf(cam.size * 0.64, 6.5)); sea_mat.set_shader_parameter("time_s", t)
 	for m in timed: m.set_shader_parameter("time_s", t)
+	if not mir_e.is_empty():   # in the lantern's light on the water her reflection cannot be seen
+		var mp: Vector3 = (mir_e.holder as Node3D).position
+		var gone := glare2 * (1.0 - smoothstep(0.5, 1.05, Vector2(mp.x - LAMP2.x, mp.z - LAMP2.z).length() / 0.9))
+		for mm2 in mir_mats: (mm2 as ShaderMaterial).set_shader_parameter("gone", gone)
 	for i in gulls.size():
 		var gn: Node3D = gulls[i]
 		var ga := t * (0.16 + 0.03 * i) + i * 2.1
@@ -2991,7 +3002,7 @@ func _solve2() -> void:
 	while pos.x < rim.x - 0.12: await get_tree().process_frame
 	var e: Dictionary = H["mir"]; H.erase("mir")
 	await _eid_go(e, Vector3(LAMP2.x + 0.1, 0.0, PED2.z), 0.72)
-	await wait(1.6)                                   # nothing: it is lost in the light
+	await wait(1.8)                                   # nothing: it is lost in the light
 	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.72)
 	(e.holder as Node3D).rotation.y = yaw
 	H["mir"] = e
@@ -3006,7 +3017,7 @@ func _solve2() -> void:
 	lt.tween_property(pull2, "position:y", -0.16, 0.5).set_trans(Tween.TRANS_SINE)
 	for hd in hoods: lt.tween_property(hd, "position:y", (hd as Node3D).position.y - 0.235, 0.7).set_trans(Tween.TRANS_SINE).set_delay(0.25)
 	lt.tween_property(lamp2_halo, "scale", Vector3.ONE * 0.01, 1.0).set_delay(0.45)
-	lt.tween_method(func(v: float): glass2.set_shader_parameter("glare", Vector4(LAMP2.x, LAMP2.z, 0.9, v)); lights[3] = Vector4(LAMP2.x, 0.2, LAMP2.z, 0.5 * v), 1.0, 0.0, 1.3).set_delay(0.45)
+	lt.tween_method(func(v: float): glare2 = v; glass2.set_shader_parameter("glare", Vector4(LAMP2.x, LAMP2.z, 0.9, v)); lights[3] = Vector4(LAMP2.x, 0.2, LAMP2.z, 0.5 * v), 1.0, 0.0, 1.3).set_delay(0.45)
 	await wait(2.6)
 	# and now the crossing shows, and her reflection can take it
 	await go([Vector3(LPOST.x - 0.5, 0, PED2.z + 0.45), Vector3(rim.x - 0.3, 0, PED2.z)])
