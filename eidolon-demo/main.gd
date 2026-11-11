@@ -18,11 +18,11 @@ const EX0 := -19.9
 const EZ0 := -16.9
 const EX1 := -13.0
 const EZ1 := -10.5
-const RX0 := -18.9      # its pool
-const RZ0 := -14.7
-const RX1 := -13.75
-const RZ1 := -12.6
-const TURN_AT := [Vector3(-18.6, 0, -15.3), Vector3(-17.1, 0, -15.3), Vector3(-15.6, 0, -15.3)]
+const RX0 := -19.13     # its pool: as long as the row of statues, from the first plinth's rim to the last one's
+const RZ0 := -13.8
+const RX1 := -15.07
+const RZ1 := -11.7
+const TURN_AT := [Vector3(-18.6, 0, -14.4), Vector3(-17.1, 0, -14.4), Vector3(-15.6, 0, -14.4)]     # well clear of the gate behind them
 const TURN_GOAL := [1, 3, 2]      # how many quarter turns (clockwise from above) the water shows each one turned
 const TURN_YAW0 := 0.0            # the way a statue faces before any turn
 const WINCH_K := 1.55                       # the capstan's size: its model is one unit tall
@@ -1367,7 +1367,7 @@ func _shots() -> void:
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(QX0 - 0.14, 0, PED.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
-		{"n": "28-turned-ones", "p": Vector3(-14.85, 0, -15.3), "y": PI * 0.5, "c": Vector3(-16.1, 0.2, -13.9), "s": 8.0},
+		{"n": "28-turned-ones", "p": Vector3(-14.85, 0, -14.4), "y": PI * 0.5, "c": Vector3(-16.3, 0.2, -13.6), "s": 8.0},
 		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(0.0, 0.2, -7.0), "s": 9.0},
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
@@ -2541,8 +2541,6 @@ func _start_zone() -> void:
 	var ep := MYPL
 	for c in [[-0.42, 0.1, 0.4], [-0.55, -0.22, 1.1], [-0.3, 0.34, 2.0], [-0.7, 0.05, 0.2], [-0.48, 0.4, 2.7], [-0.62, -0.38, 1.6], [-0.36, -0.3, 0.7]]:
 		var ch := blk(Vector3(-0.07, 0, -0.05), Vector3(0.07, 0.07, 0.05), "stone"); ch.position = ep + Vector3(c[0], 0.0, c[1]); ch.rotation = Vector3(0.3, c[2], 0.2)
-	var cs := blk(Vector3(-0.34, 0, -0.07), Vector3(0.34, 0.012, 0.07), "clay"); cs.position = ep + Vector3(-0.5, 0.004, 0.12); cs.rotation.y = 0.5
-	var cs2 := blk(Vector3(-0.2, 0, -0.06), Vector3(0.2, 0.012, 0.06), "clay"); cs2.position = ep + Vector3(-0.12, 0.172, 0.0); cs2.rotation = Vector3(0, -0.4, 0.0)
 	# a stele with the sculptor's first lines, at the head of the row
 	blk(Vector3(-5.22, 0, -3.62), Vector3(-4.62, 0.08, -3.38), "shade"); blk(Vector3(-5.16, 0.08, -3.58), Vector3(-4.68, 1.02, -3.44), "stone")
 	for i in 6: blk(Vector3(-5.08, 0.86 - 0.11 * i, -3.438), Vector3(-4.76 - 0.07 * (i % 3), 0.875 - 0.11 * i, -3.43), "shade")
@@ -2980,7 +2978,7 @@ func _world() -> void:
 	_turned_ones()
 	parapet(Vector3(-19.8, 0, -16.8), Vector3(-19.8, 0, -10.6)); parapet(Vector3(-19.8, 0, -16.8), Vector3(-17.15, 0, -16.8)); parapet(Vector3(-15.45, 0, -16.8), Vector3(-13.1, 0, -16.8))
 	parapet(Vector3(-19.8, 0, -10.6), Vector3(-13.1, 0, -10.6)); parapet(Vector3(-13.1, 0, -16.8), Vector3(-13.1, 0, -13.75)); parapet(Vector3(-13.1, 0, -12.25), Vector3(-13.1, 0, -10.6))
-	statue_on("statue_veiled_unfinished", Vector3(-19.45, 0, -11.1), 1.5, 0.8); plinth_head("kit_face1", Vector3(-19.45, 0, -14.6), PI * 0.5)
+	statue_on("statue_veiled_unfinished", Vector3(-19.45, 0, -11.1), 1.5, 0.8); plinth_head("kit_face1", Vector3(-19.45, 0, -15.75), PI * 0.5)
 	tree(Vector3(-19.4, 0, -16.4), 1.1, "leaf3"); lantern(Vector3(-13.35, 0, -10.85), 4, -1.0); cypress(Vector3(-13.5, 0, -16.45), 2.2)
 	urn(Vector3(-18.6, 0, -16.4), 1.0); urn(Vector3(-18.35, 0, -16.25), 0.7, "rose")
 	slab(-16.9, -20.0, -15.7, -16.9, 0.0); pier(-16.3, -18.4, -0.18, 0.8)
@@ -3122,8 +3120,8 @@ func _actors() -> void:
 func _nav() -> void:
 	for r in [["A", AX0 + 0.85, -3.15, 3.15, AZ1 - 0.35], ["S", 3.15, 0.7, 4.6, 1.3], ["B1", -0.25, -5.8, 0.25, -3.15], ["Bg", -0.25, -7.8, 0.25, -5.8], ["B2", -0.25, -10.35, 0.25, -7.8],
 			["C", -2.65, -15.65, 3.0, -10.35], ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
-			["E", -19.15, -12.3, -13.35, -10.85], ["Ee", -13.62, -16.25, -13.3, -11.5], ["Es", -19.15, -16.25, -13.3, -15.95], ["Ew", -19.4, -16.25, -19.15, -10.85],
-			["T1", -17.97, -15.95, -17.73, -15.2], ["T2", -16.47, -15.95, -16.23, -15.2], ["T3", -14.97, -15.95, -14.73, -15.2], ["G1", -16.55, -20.35, -16.05, -16.15], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
+			["E", -18.9, -11.45, -13.35, -10.85], ["Ee", -14.9, -16.25, -13.3, -10.85], ["Es", -19.0, -16.25, -13.3, -15.08],
+			["T1", -17.97, -15.1, -17.73, -14.3], ["T2", -16.47, -15.1, -16.23, -14.3], ["T3", -14.97, -15.1, -14.73, -14.3], ["G1", -16.55, -20.35, -16.05, -16.15], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
 	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false   # (G1: the way south, behind the third court's gate)
 
@@ -3759,23 +3757,24 @@ func _solve3() -> void:
 	started = true; title_box.hide(); hint.hide()
 	pos = Vector3(-11.6, 0, -13.0); yaw = -PI * 0.5; cam_t = pos; cam.size = 7.2
 	await wait(1.0)
-	cam_focus = Vector3(-16.1, 0.2, -13.9); cam_focus_on = true
+	cam_focus = Vector3(-16.3, 0.2, -13.4); cam_focus_on = true
 	create_tween().tween_property(cam, "size", 8.0, 2.4).set_trans(Tween.TRANS_SINE)
-	await go([Vector3(-13.46, 0, -13.0), Vector3(-13.46, 0, -16.1), Vector3(-14.85, 0, -16.1), Vector3(-14.85, 0, -15.3)])
-	await face(Vector3(-16.0, 0, -13.6))                # the water, and what stands in it
+	await go([Vector3(-13.6, 0, -13.0), Vector3(-14.6, 0, -12.75)])
+	await face(Vector3(-17.0, 0, -12.9))                # the water, and what stands in it
 	await wait(2.4)
-	var stand := [Vector3(-17.85, 0, -15.3), Vector3(-16.35, 0, -15.3), Vector3(-14.85, 0, -15.3)]
+	var stand := [Vector3(-17.85, 0, -14.4), Vector3(-16.35, 0, -14.4), Vector3(-14.85, 0, -14.4)]
 	for i in [2, 1, 0]:
-		if i != 2: await go([Vector3(pos.x, 0, -16.1), Vector3(stand[i].x, 0, -16.1), stand[i]])
+		if i != 2: await go([Vector3(pos.x, 0, -15.5), Vector3(stand[i].x, 0, -15.5), stand[i]])
+		else: await go([Vector3(-14.85, 0, -13.2), stand[i]])
 		for k in TURN_GOAL[i]:
 			await _turn(i)
 			await wait(0.25)
 	await wait(0.6)
-	cam_focus = Vector3(-16.3, 0.4, -15.4)
+	cam_focus = Vector3(-16.3, 0.4, -15.0)
 	create_tween().tween_property(cam, "size", 6.6, 1.6)
 	while not rects["G1"].on: await get_tree().process_frame
 	await wait(0.5)
-	await go([Vector3(pos.x, 0, -16.1), Vector3(-16.3, 0, -16.1), Vector3(-16.3, 0, -18.2)])
+	await go([Vector3(pos.x, 0, -15.6), Vector3(-16.3, 0, -15.6), Vector3(-16.3, 0, -18.2)])
 	await wait(0.8)
 	get_tree().quit()
 
