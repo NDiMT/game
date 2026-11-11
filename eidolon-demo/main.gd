@@ -447,6 +447,10 @@ var sky: MeshInstance3D
 var mist: MeshInstance3D
 var cam_t := Vector3.ZERO
 var world: Node3D
+var prop_src := {}        # the models of props/, each read once
+var prop_fused := {}      # and their palette-painted surfaces fused into one
+var floors := []          # the footprints of the floors: [x0, z0, x1, z1, height of the underside]
+var lighten_check := []   # LIGHTEN=check: the pieces that would be joined, to see that none of them ever moves
 var refl: Node3D
 var wfig: Node3D
 var sea_mat: ShaderMaterial
@@ -593,6 +597,7 @@ func halo(size: float, c: Color) -> MeshInstance3D:
 	return mi
 
 func slab(x0: float, z0: float, x1: float, z1: float, y: float, p := "stone", parent: Node = self) -> void:
+	if parent == self: floors.append([x0, z0, x1, z1, y - 0.18])   # what lies between the sea under it and the eye (see _lighten)
 	blk(Vector3(x0, y - 0.13, z0), Vector3(x1, y, z1), p, parent)
 	blk(Vector3(x0 - 0.03, y - 0.18, z0 - 0.03), Vector3(x1 + 0.03, y - 0.13, z1 + 0.03), "shade", parent)
 	dentils(x0, z0, x1, z1, y - 0.18, parent)
@@ -974,7 +979,7 @@ func sculpt_head(p: Vector3, h: float, yaw := 0.0, tilt := Vector3(-0.12, 0, 0),
 	if not head_cache.has(file):
 		head_cache[file] = null
 		var st := GLTFState.new(); var doc := GLTFDocument.new()
-		if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) == OK:
+		if doc.append_from_buffer(FileAccess.get_file_as_bytes("res://hero_models/%s.glb" % file), "", st) == OK:
 			var src := doc.generate_scene(st) as Node3D
 			var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array()
 			var turn := Basis(Vector3.UP, (float(OS.get_environment("HEAD_YAW")) if OS.get_environment("HEAD_YAW") != "" else -PI * 0.5) + float(HEAD_TURN.get(variant, 0.0)))
@@ -1105,6 +1110,17 @@ func _ready() -> void:
 			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
 		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
+	# the joined world (see _lighten): one material for every still piece, whatever its colour. The three tones of its
+	# palette and its marble, tone and flat-face settings ride in the vertices instead of in the material
+	for two in [false, true]:
+		var parts := (shaders["two" if two else "base"] as Shader).code.split("void fragment(){")
+		var head := parts[0].replace("uniform vec3 c_top : source_color; uniform vec3 c_z : source_color; uniform vec3 c_x : source_color;", "varying vec3 c_top; varying vec3 c_z; varying vec3 c_x; varying vec3 v_par;")
+		head = head.replace("void vertex(){\n", "void vertex(){\n	c_top = CUSTOM0.rgb; c_z = CUSTOM1.rgb; c_x = CUSTOM2.rgb; v_par = vec3(CUSTOM0.a, CUSTOM1.a, CUSTOM2.a);\n")
+		var body := parts[1]
+		var rx := RegEx.new()
+		for pair in [["marble", "v_par.x"], ["tone_var", "v_par.y"], ["flat_n", "v_par.z"]]:
+			rx.compile("\\b%s\\b" % pair[0]); body = rx.sub(body, pair[1], true)
+		var so := Shader.new(); so.code = head + "void fragment(){" + body; shaders["one2" if two else "one"] = so
 	if OS.get_environment("MOOD") == "moody":
 		sea_c = Color("3a6a7b"); mist_c = Color("b9b4c4"); bg_c = Color("29586a"); shadow_c = Vector3(0.6, 0.61, 0.82); water_deep = Color("2a7d88"); water_shallow = Color("6fc4b8")
 	if OS.get_environment("REFL") != "0":
@@ -1233,6 +1249,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	for c in get_children().slice(n0):
 		if c != world: c.reparent(world)
 	_refl_margins(world)
+	_lighten(world)
 	# the old upside-down copy of the whole world under the sea is gone: it fought with the dark reflections
 	# that now lie on the water, and it doubled the scene. The node stays for the few things made only for it
 	refl = world.duplicate() if OS.get_environment("OLDREFL") == "1" else Node3D.new()
@@ -1370,7 +1387,7 @@ func _fog() -> void:
 ## one of the real sculpted heroine models, dressed in the flat style of this world
 func real_hero(file: String, at: Vector3, yaw: float, anim := "", arms_down := false) -> Node3D:
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
-	if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) != OK: return null
+	if doc.append_from_buffer(FileAccess.get_file_as_bytes("res://hero_models/%s.glb" % file), "", st) != OK: return null
 	var src := doc.generate_scene(st) as Node3D
 	var holder := Node3D.new(); holder.position = at; holder.rotation.y = yaw; add_child(holder); holder.add_child(src)
 	if file == "tripo_v1": src.rotation.y = -PI * 0.5
@@ -1693,7 +1710,7 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 		if FileAccess.file_exists("res://hero_models/%s%s.glb" % [hf, lod]): hf += lod
 	if not hero_srcs.has(hf):
 		var st := GLTFState.new(); var doc := GLTFDocument.new()
-		doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % hf), st)
+		doc.append_from_buffer(FileAccess.get_file_as_bytes("res://hero_models/%s.glb" % hf), "", st)
 		hero_srcs[hf] = doc.generate_scene(st) as Node3D
 		if rig_file != "": add_rest_coords(hero_srcs[hf]); align_clips(hero_srcs[hf])
 	hero_src = hero_srcs[hf]
@@ -1816,7 +1833,7 @@ func _real_lineup() -> void:
 func bake_shape(file: String) -> ArrayMesh:
 	shape_tex = null
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
-	if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) != OK: return null
+	if doc.append_from_buffer(FileAccess.get_file_as_bytes("res://hero_models/%s.glb" % file), "", st) != OK: return null
 	var src := doc.generate_scene(st) as Node3D
 	var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array(); var uvs := PackedVector2Array()
 	for m in src.find_children("*", "MeshInstance3D", true, false):
@@ -2077,7 +2094,7 @@ func spawn_shape(parent: Node, mode: String, file := "", design_id := -1) -> Dic
 
 func load_shape(file: String, at: Vector3, yaw: float, pl := "veil") -> Node3D:
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
-	if doc.append_from_file(ProjectSettings.globalize_path("res://hero_models/%s.glb" % file), st) != OK: return null
+	if doc.append_from_buffer(FileAccess.get_file_as_bytes("res://hero_models/%s.glb" % file), "", st) != OK: return null
 	var src := doc.generate_scene(st) as Node3D
 	var holder := Node3D.new(); holder.position = at; holder.rotation.y = yaw; add_child(holder); holder.add_child(src)
 	src.rotation.y = -PI * 0.5
@@ -2225,6 +2242,157 @@ func statue_on(nm: String, sp: Vector3, h: float, yaw: float) -> void:
 ## mirrored things need their own materials: two-sided, and without the pass that lays a reflection on the sea
 ## A reflection lies on the water well away from the thing that casts it, so that thing must still be drawn when
 ## it is itself just off the screen. Without this, each piece's reflection came and went as the camera moved.
+## Makes the built world cheap to draw, without changing how it looks.
+## 1. The dark reflection on the sea is a second drawing of every piece. A piece whose reflection would fall wholly
+##    under a floor (seen from the fixed eye) is never seen there, so it loses that second drawing.
+## 2. The world is thousands of small boxes and cylinders, each drawn by a call of its own. Those that never move and
+##    share a material are joined into one mesh per material and per square of ground.
+## A piece is left alone if any variable of this script holds it (or a node above it): gates, wheels, doors, the pools'
+## mirrored halves, anything named. LIGHTEN=0 turns this off; LIGHTEN=check joins nothing and reports any piece that
+## would have been joined and later moved or hid.
+func _lighten(root: Node3D) -> void:
+	var mode := OS.get_environment("LIGHTEN")
+	if mode == "0": return
+	var held := {}
+	for pi in get_script().get_script_property_list():
+		if pi.name in ["world", "lighten_check"]: continue
+		_held(get(pi.name), held, 0)
+	var groups := {}; var stripped := 0; var seen := 0
+	for mm in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := mm as MeshInstance3D
+		if mi.mesh == null or mi.skin != null or mi.get_child_count() > 0 or not mi.is_visible_in_tree(): continue
+		if not (mi.mesh is ArrayMesh or mi.mesh is PrimitiveMesh): continue
+		var m := mi.material_override
+		var pal_m: bool = m is ShaderMaterial and ((m as ShaderMaterial).shader == shaders["base"] or (m as ShaderMaterial).shader == shaders["two"])
+		var plain: bool = m is StandardMaterial3D and (m as StandardMaterial3D).albedo_texture == null
+		if not pal_m and not plain: continue
+		if pal_m:
+			var sw = (m as ShaderMaterial).get_shader_parameter("sway")
+			if sw != null and float(sw) > 0.0: continue
+		var fixed := true; var up: Node = mi
+		while up != root and up != null:
+			if held.has(up) or not String(up.name).begins_with("@"): fixed = false; break
+			up = up.get_parent()
+		if not fixed: continue
+		var tri := true
+		for si in mi.mesh.get_surface_count():
+			if mi.mesh is ArrayMesh and (mi.mesh as ArrayMesh).surface_get_primitive_type(si) != Mesh.PRIMITIVE_TRIANGLES: tri = false
+		if not tri: continue
+		seen += 1
+		var box: AABB = mi.global_transform * mi.get_aabb()
+		var refl_on: bool = pal_m and refl_mat != null and (m as ShaderMaterial).next_pass == refl_mat
+		if refl_on:
+			var shows := false
+			for i in 10:
+				var c := (box.get_center() + Vector3(0, box.size.y * (0.5 if i == 8 else -0.5), 0)) if i >= 8 else box.get_endpoint(i)
+				var h := c.y - WATER
+				if h < 0.03: continue
+				var hid := false
+				for f in floors:     # the place on the sea where this point is mirrored, followed up to the floor's underside
+					var k: float = h + (f[4] - WATER)
+					if c.x + k > f[0] + 0.04 and c.x + k < f[2] - 0.04 and c.z + k > f[1] + 0.04 and c.z + k < f[3] - 0.04: hid = true; break
+				if not hid: shows = true; break
+			if not shows: refl_on = false; stripped += 1
+		var ce := box.get_center()
+		var two_m: bool = pal_m and (m as ShaderMaterial).shader == shaders["two"]
+		var key := ""
+		if pal_m: key = "pal|%s|%s|%d|%d|%d|%d" % [two_m, refl_on, mi.cast_shadow, mi.layers, floori(ce.x / 12.0), floori(ce.z / 12.0)]
+		else: key = "plain|%d|%d|%d|%d|%d" % [m.get_instance_id(), mi.cast_shadow, mi.layers, floori(ce.x / 12.0), floori(ce.z / 12.0)]
+		if not groups.has(key): groups[key] = {"m": m, "pal": pal_m, "two": two_m, "refl": refl_on, "list": []}
+		groups[key].list.append(mi)
+	# pieces that stay their own (statues, models): they too lose the sea reflection where it could never be seen
+	var own := 0
+	for mm in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := mm as MeshInstance3D
+		if mi.mesh == null or not mi.is_visible_in_tree() or refl_mat == null: continue
+		var moves := false; var up2: Node = mi
+		while up2 != root and up2 != null:
+			if held.has(up2): moves = true; break
+			up2 = up2.get_parent()
+		if moves: continue
+		var box2: AABB = (mi.global_transform * mi.get_aabb()).grow(0.5 if mi.skin != null else 0.0)
+		var shows2 := false
+		for i in 8:
+			var c2p := box2.get_endpoint(i); var h2 := c2p.y - WATER
+			if h2 < 0.03: continue
+			var hid2 := false
+			for f in floors:
+				var k2: float = h2 + (f[4] - WATER)
+				if c2p.x + k2 > f[0] + 0.04 and c2p.x + k2 < f[2] - 0.04 and c2p.z + k2 > f[1] + 0.04 and c2p.z + k2 < f[3] - 0.04: hid2 = true; break
+			if not hid2: shows2 = true; break
+		if shows2: continue
+		var ov := mi.material_override as ShaderMaterial
+		if ov != null and ov.next_pass == refl_mat: mi.material_override = _norefl(ov); own += 1
+		for si in mi.mesh.get_surface_count():
+			var so := mi.get_surface_override_material(si) as ShaderMaterial
+			if so != null and so.next_pass == refl_mat: mi.set_surface_override_material(si, _norefl(so)); own += 1
+	var joined := 0; var made := 0
+	var lin := false   # the tones go in as the palette writes them: this renderer hands a colour to the shader unchanged
+	for key in groups:
+		var g: Dictionary = groups[key]
+		if mode == "check":
+			for mi in g.list: lighten_check.append([mi, (mi as MeshInstance3D).global_transform, (mi as MeshInstance3D).get_path()])
+			joined += g.list.size(); continue
+		var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array(); var margin := 0.0
+		var c0 := PackedFloat32Array(); var c1 := PackedFloat32Array(); var c2 := PackedFloat32Array()
+		var inv := root.global_transform.affine_inverse()
+		for mi2 in g.list:
+			var mi := mi2 as MeshInstance3D
+			var xf := inv * mi.global_transform; var nb := xf.basis.inverse().transposed(); var flip := xf.basis.determinant() < 0.0
+			var tone := [Color.WHITE, Color.WHITE, Color.WHITE]; var par := [0.0, 0.0, 0.0]
+			if g.pal:
+				var sm := mi.material_override as ShaderMaterial
+				for ti in 3:
+					var cc = sm.get_shader_parameter(["c_top", "c_z", "c_x"][ti])
+					var col: Color = Color(cc.x, cc.y, cc.z) if cc is Vector3 else (cc as Color)
+					tone[ti] = col.srgb_to_linear() if lin else col
+				for pi2 in 3:
+					var pv = sm.get_shader_parameter(["marble", "tone_var", "flat_n"][pi2])
+					par[pi2] = float(pv) if pv != null else 0.0
+			for si in mi.mesh.get_surface_count():
+				var a := mi.mesh.surface_get_arrays(si)
+				var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]; var n = a[Mesh.ARRAY_NORMAL]; var id = a[Mesh.ARRAY_INDEX]
+				var base := vs.size()
+				for i in v.size():
+					vs.append(xf * v[i]); ns.append((nb * (n[i] if n != null else Vector3.UP)).normalized())
+					if g.pal:
+						c0.append(tone[0].r); c0.append(tone[0].g); c0.append(tone[0].b); c0.append(par[0])
+						c1.append(tone[1].r); c1.append(tone[1].g); c1.append(tone[1].b); c1.append(par[1])
+						c2.append(tone[2].r); c2.append(tone[2].g); c2.append(tone[2].b); c2.append(par[2])
+				var cnt: int = id.size() if id != null else v.size()
+				for i in range(0, cnt, 3):
+					var i0: int = id[i] if id != null else i; var i1: int = id[i + 1] if id != null else i + 1; var i2: int = id[i + 2] if id != null else i + 2
+					ix.append(base + i0); ix.append(base + (i2 if flip else i1)); ix.append(base + (i1 if flip else i2))
+			margin = maxf(margin, mi.extra_cull_margin)
+		var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_INDEX] = ix
+		var am := ArrayMesh.new(); var out_m: Material = g.m
+		if g.pal:
+			arr[Mesh.ARRAY_CUSTOM0] = c0; arr[Mesh.ARRAY_CUSTOM1] = c1; arr[Mesh.ARRAY_CUSTOM2] = c2
+			var fl := (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM2_SHIFT)
+			am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr, [], {}, fl)
+			out_m = _one_mat(g.two, g.refl)
+		else: am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		var out := MeshInstance3D.new(); out.mesh = am; out.material_override = out_m; out.cast_shadow = (g.list[0] as MeshInstance3D).cast_shadow; out.layers = (g.list[0] as MeshInstance3D).layers
+		out.extra_cull_margin = margin; root.add_child(out); made += 1
+		for mi3 in g.list:
+			joined += 1; (mi3 as Node).get_parent().remove_child(mi3); (mi3 as Node).queue_free()
+	print("LIGHTEN ", seen, " still pieces; ", stripped, " lose their sea reflection (and ", own, " statues and models); ", joined, " joined into ", made, " meshes")
+
+## the same material without the second drawing on the sea (kept among the materials that follow the lights and the mist)
+func _norefl(m: ShaderMaterial) -> ShaderMaterial:
+	var k := "norefl|%d" % m.get_instance_id()
+	if not pmats.has(k):
+		var m2 := m.duplicate() as ShaderMaterial; m2.next_pass = null; pmats[k] = m2
+	return pmats[k]
+
+func _held(v, held: Dictionary, depth: int) -> void:
+	if depth > 4: return
+	if v is Node: held[v] = true
+	elif v is Array:
+		for e in v: _held(e, held, depth + 1)
+	elif v is Dictionary:
+		for k in v: _held(k, held, depth + 1); _held(v[k], held, depth + 1)
+
 func _refl_margins(n: Node) -> void:
 	if n is GeometryInstance3D and n.is_inside_tree():
 		var g := n as GeometryInstance3D
@@ -2275,6 +2443,7 @@ func _strip_refl(root: Node, skip := 0, sh := "two", k := 0.38) -> void:
 ## the arrival court: its floor has an opening for the mirror pool and its base is hollow, so that
 ## the court can stand upside down inside it
 func _pool_court(x0: float, z0: float, x1: float, z1: float, qx0: float, qz0: float, qx1: float, qz1: float, wall_p := "stone", sky_name := "PoolSky") -> void:
+	floors.append([x0, z0, x1, z1, -0.18])   # the pool's hollow hides the sea as the floor does
 	for r in [[x0, z0, x1, qz0], [x0, qz1, x1, z1], [x0, qz0, qx0, qz1], [qx1, qz0, x1, qz1]]:
 		blk(Vector3(r[0], -0.13, r[1]), Vector3(r[2], 0.0, r[3]), "stone")
 	for r in [[x0 - 0.03, z0 - 0.03, x1 + 0.03, qz0], [x0 - 0.03, qz1, x1 + 0.03, z1 + 0.03], [x0 - 0.03, qz0, qx0, qz1], [qx1, qz0, x1 + 0.03, qz1]]:
@@ -2312,7 +2481,7 @@ func _start_zone() -> void:
 		blk(sp + Vector3(0.2, 0, -0.1), sp + Vector3(0.212, 0.1, 0.1), "gold")           # a small name plate, blank
 		if poses[i] != "": her_statue(sp + Vector3(0, 0.17, 0), PI * 0.5, poses[i], 0.96)
 	var rx0 := MYPL.x + 0.55; var rx1 := rx0 + 2.6; var rz0 := MYPL.z - 2.35; var rz1 := rz0 + 4.7
-	var rim2 := Image.load_from_file(ProjectSettings.globalize_path("res://props/rug.png")); rim2.generate_mipmaps()
+	var rim2 := _png("res://props/rug.png"); rim2.generate_mipmaps()
 	var rm := ShaderMaterial.new(); rm.shader = shaders["tex"]; rm.set_shader_parameter("albedo_tex", ImageTexture.create_from_image(rim2))
 	rm.set_shader_parameter("fog_col", sea_c); rm.set_shader_parameter("mist_col", mist_c); rm.set_shader_parameter("shadow_col", shadow_c); rm.set_shader_parameter("mist_k", mist_k); pmats["rug"] = rm
 	# the rug is not flat: a few long rucks run across it, one corner is turned up, and it lies unevenly everywhere
@@ -2392,10 +2561,56 @@ func niche_x(x: float, y: float, z: float, w: float, h: float, parent: Node) -> 
 ## a detailed prop (a Tripo model in props/): loaded, given the lit textured material of the world, scaled so that its
 ## height (or, with across > 0, its width) is as asked, and set with its foot at the origin of the node returned.
 ## mirror: the copy that stands in the water
+## a picture file, read through the engine's file layer (so it is found inside an exported package as well)
+func _png(path: String) -> Image:
+	var im := Image.new(); im.load_png_from_buffer(FileAccess.get_file_as_bytes(path))
+	return im
+
+## the one material of the joined world (see _lighten), two-sided or not, with or without the dark reflection on the sea
+func _one_mat(two: bool, with_refl: bool) -> ShaderMaterial:
+	var k := "one|%s|%s" % [two, with_refl]
+	if pmats.has(k): return pmats[k]
+	var om := pal("stone").duplicate() as ShaderMaterial; om.shader = shaders["one2" if two else "one"]
+	om.next_pass = refl_mat if with_refl else null
+	pmats[k] = om
+	return om
+
+## The surfaces of a model that are painted with palettes, fused into one surface that the one material draws:
+## pal_of gives for each surface its palette name, or "" to leave it as it is (the glass of a mirror)
+func _fuse_pal(mesh: Mesh, pal_of: Array) -> ArrayMesh:
+	var am := ArrayMesh.new()
+	var vs := PackedVector3Array(); var ns := PackedVector3Array(); var ix := PackedInt32Array()
+	var c0 := PackedFloat32Array(); var c1 := PackedFloat32Array(); var c2 := PackedFloat32Array()
+	for si in mesh.get_surface_count():
+		if pal_of[si] == "": continue
+		var a := mesh.surface_get_arrays(si); var t: Array = pals[pal_of[si]]
+		var tone := [Color(t[0]), Color(t[1]), Color(t[2])]
+		var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]; var n = a[Mesh.ARRAY_NORMAL]; var id = a[Mesh.ARRAY_INDEX]; var base := vs.size()
+		for i in v.size():
+			vs.append(v[i]); ns.append(n[i] if n != null else Vector3.UP)
+			c0.append(tone[0].r); c0.append(tone[0].g); c0.append(tone[0].b); c0.append(1.0 if pal_of[si] in ["stone", "shade", "sand", "rose"] else 0.0)
+			c1.append(tone[1].r); c1.append(tone[1].g); c1.append(tone[1].b); c1.append(0.0)
+			c2.append(tone[2].r); c2.append(tone[2].g); c2.append(tone[2].b); c2.append(1.0)   # flat faces
+		if id != null:
+			for i in id: ix.append(base + i)
+		else:
+			for i in v.size(): ix.append(base + i)
+	if not vs.is_empty():
+		var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_INDEX] = ix
+		arr[Mesh.ARRAY_CUSTOM0] = c0; arr[Mesh.ARRAY_CUSTOM1] = c1; arr[Mesh.ARRAY_CUSTOM2] = c2
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr, [], {}, (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM2_SHIFT))
+	for si in mesh.get_surface_count():   # the rest, as it was
+		if pal_of[si] != "": continue
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mesh.surface_get_arrays(si))
+		am.surface_set_material(am.get_surface_count() - 1, mesh.surface_get_material(si))
+	return am
+
 func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror := false, sea_refl := false, flat_pal := "", ground_y := 0.0) -> Node3D:
-	var st := GLTFState.new(); var doc := GLTFDocument.new()
-	doc.append_from_file(ProjectSettings.globalize_path("res://props/%s.glb" % file), st)
-	var src := doc.generate_scene(st) as Node3D
+	if not prop_src.has(file):   # each file is read once; every use of it is a copy that shares its meshes and pictures
+		var st := GLTFState.new(); var doc := GLTFDocument.new()
+		doc.append_from_buffer(FileAccess.get_file_as_bytes("res://props/%s.glb" % file), "", st)
+		prop_src[file] = doc.generate_scene(st)
+	var src := (prop_src[file] as Node3D).duplicate() as Node3D
 	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
 	var box := AABB(); var first := true
 	for m in src.find_children("*", "MeshInstance3D", true, false):
@@ -2409,12 +2624,23 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 				if ":" in kv: by_part[kv.get_slice(":", 0)] = kv.get_slice(":", 1)
 			if by_part.is_empty(): mi.material_override = pal(flat_pal, "flat2" if mirror else "flat")
 			else:
+				var fk := "%s|%s|%d" % [file, flat_pal, mi.mesh.get_instance_id()]
+				if not prop_fused.has(fk):   # its palette-painted surfaces become one surface, drawn by the one material
+					var pal_of := []
+					for si in mi.mesh.get_surface_count():
+						var om3 := mi.mesh.surface_get_material(si)
+						var nm3 := om3.resource_name if om3 != null else ""
+						pal_of.append("" if nm3 == "glass" else by_part.get(nm3, by_part.values()[0]))
+					prop_fused[fk] = _fuse_pal(mi.mesh, pal_of) if not mirror else mi.mesh
+				mi.mesh = prop_fused[fk]
 				for si in mi.mesh.get_surface_count():
 					var om2 := mi.mesh.surface_get_material(si)
 					var nm := om2.resource_name if om2 != null else ""
 					if nm == "glass":   # the pane of a mirror shows what stands before it
 						var gm2 := ShaderMaterial.new(); gm2.shader = shaders["mirror"]; gm2.set_shader_parameter("ground_y", ground_y); timed.append(gm2)
 						mi.set_surface_override_material(si, gm2); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; continue
+					if om2 == null and not mirror:
+						mi.set_surface_override_material(si, _one_mat(true, true)); continue
 					mi.set_surface_override_material(si, pal(by_part.get(nm, by_part.values()[0]), "flat2" if (mirror or nm == "cloth") else "flat"))   # cloth is seen from within too
 			continue
 		for si in mi.mesh.get_surface_count():
@@ -2440,8 +2666,8 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 func _shrouds() -> void:
 	if not FileAccess.file_exists("res://props/mirror_tied.glb"): return
 	# x, z, turn, size, kind. Those whose sheet lies spread on the ground stand on a wider footing
-	var spots := [[-2.6, -5.9, 0.75, 1.0, "slip"], [-5.7, -5.3, 0.45, 1.04, "oval"], [-4.6, -7.7, 1.0, 1.08, "tied"], [-2.3, -8.9, 0.6, 1.0, "low"], [-7.2, -8.1, 0.85, 1.05, "round"],
-		[2.4, -6.2, 0.95, 1.0, "wide"], [4.9, -7.4, 1.1, 1.1, "tied"], [7.3, -8.3, 0.7, 1.0, "hem"], [4.3, -9.8, 0.55, 1.0, "half"]]
+	var spots := [[-2.6, -5.9, 0.75, 1.0, "slip"], [-5.7, -5.3, 0.3, 1.04, "oval"], [-4.6, -7.7, 0.4, 1.08, "tied"], [-2.3, -8.9, 0.62, 1.0, "low"], [-7.2, -8.1, 1.15, 1.05, "round"],
+		[2.4, -6.2, 0.95, 1.0, "wide"], [3.9, -8.0, 1.3, 1.1, "tied"], [7.3, -8.3, 0.5, 1.0, "hem"], [4.3, -10.2, 1.0, 1.0, "half"]]   # no two of a kind turned alike
 	for sp in spots:
 		var base := Vector3(sp[0], WATER + 0.22, sp[1])
 		var m := mirror_stand(base, sp[2], self, WATER, sp[4], true); m.scale = Vector3.ONE * sp[3]
@@ -2548,7 +2774,7 @@ func _pool_c_covered() -> void:
 			for i in nx:
 				var k := j * (nx + 1) + i
 				sheet_ix.append_array(PackedInt32Array([k, k + nx + 1, k + 1, k + 1, k + nx + 1, k + nx + 2]))
-		var im := Image.load_from_file(ProjectSettings.globalize_path("res://props/sheet.png"))
+		var im := _png("res://props/sheet.png")
 		var small: Image = im.duplicate(); small.resize(1, 1, Image.INTERPOLATE_LANCZOS); var mean := small.get_pixel(0, 0)   # tinted so that on the whole it is the terracotta of her own cloth
 		im.generate_mipmaps()
 		var sm := ShaderMaterial.new(); sm.shader = shaders["sheet"]; sm.set_shader_parameter("albedo_tex", ImageTexture.create_from_image(im))
@@ -2741,7 +2967,7 @@ func _world() -> void:
 			[Vector3(6.6, WATER + 2.3, -4.8), 2.0], [Vector3(-9.0, WATER + 3.0, -17.4), 2.3], [Vector3(-22.6, WATER + 2.5, -8.8), 2.1], [Vector3(3.4, 1.75, -16.3), 1.8]]:
 		streamer(sp[0], sp[1], 0.32)
 		cyl(sp[0] + Vector3(0, -0.2, 0), 0.012, 0.012, 0.4, pal("dark"), 6)
-	mirror_stand(Vector3(-17.9, 0, -16.5), 0.2); mirror_stand(Vector3(-14.7, 0, -16.5), -0.2); mirror_stand(Vector3(3.05, 0, -14.6) if COVERED else Vector3(-3.05, 0, -14.6), -PI * 0.5 if COVERED else PI * 0.5)
+	mirror_stand(Vector3(-17.9, 0, -16.5), 0.32); mirror_stand(Vector3(-14.7, 0, -16.5), -0.18); mirror_stand(Vector3(3.05, 0, -14.6) if COVERED else Vector3(-3.05, 0, -14.6), -PI * 0.5 if COVERED else PI * 0.5)
 	shard_tree(Vector3(-13.7, 0, -20.9))
 	reeds(Vector3(-1.9, 0, 4.4)); reeds(Vector3(4.4, 0, 3.0), 7); reeds(Vector3(-4.6, 0, -11.2)); reeds(Vector3(-12.2, 0, -10.0), 8); reeds(Vector3(-20.8, 0, -18.6)); reeds(Vector3(-11.8, 0, -21.6), 7)
 	rock(Vector3(6.0, 0, 4.2), 1.2); rock(Vector3(6.9, 0, 3.6), 0.7); rock(Vector3(-6.4, 0, -7.2), 1.0); rock(Vector3(-22.0, 0, -13.2), 1.3); rock(Vector3(-10.8, 0, -22.8), 0.9); rock(Vector3(5.6, 0, -8.8), 1.0)
@@ -2965,6 +3191,13 @@ func _arrive() -> void:
 
 # ---------------------------------------------------------------- frame
 func _process(dt: float) -> void:
+	if not lighten_check.is_empty() and Engine.get_frames_drawn() % 400 == 399:
+		var moved := 0; var names := []
+		for r in lighten_check:
+			if not is_instance_valid(r[0]) or not (r[0] as MeshInstance3D).is_visible_in_tree() or not (r[0] as MeshInstance3D).global_transform.is_equal_approx(r[1]):
+				moved += 1
+				if names.size() < 6: names.append(str(r[2]).right(60))
+		print("LIGHTEN check at frame ", Engine.get_frames_drawn(), ": ", moved, " of ", lighten_check.size(), " moved or hid ", names)
 	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "3":   # what the frame is made of: the heaviest meshes, and every texture
 		var rows := {}; var texs := {}
 		for mm in find_children("*", "MeshInstance3D", true, false):
@@ -2992,6 +3225,23 @@ func _process(dt: float) -> void:
 			if r.t <= 200: small += r.n; small_n += 1
 		print("STATS3 instances of meshes of 200 triangles or fewer: ", small, " (", small_n, " meshes)")
 		for k in texs: print("STATS3 tex ", texs[k])
+		var tops := {}    # where the separate pieces hang: the child of the world (or of the scene) each one is under
+		for mm in find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			if mi.mesh == null or not mi.is_visible_in_tree(): continue
+			var up: Node = mi
+			while up.get_parent() != null and up.get_parent() != world and up.get_parent() != self: up = up.get_parent()
+			var nm := "%s/%s" % [up.get_parent().name if up.get_parent() != null else "", "(mesh)" if up == mi else String(up.name)]
+			var mo2: Material = mi.material_override
+			var sh := "std"
+			if mo2 is ShaderMaterial:
+				for kk in shaders:
+					if shaders[kk] == (mo2 as ShaderMaterial).shader: sh = kk
+			elif mo2 == null: sh = "surface"
+			var k2 := nm if up != mi else "%s %s" % [nm, sh]
+			tops[k2] = tops.get(k2, 0) + 1
+		var tl := tops.keys(); tl.sort_custom(func(x, y): return tops[x] > tops[y])
+		for k3 in tl.slice(0, 24): print("STATS3 where ", tops[k3], "  ", k3)
 	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "2":
 		var g := {"figures": 0, "figures_n": 0, "heads": 0, "world": 0, "world_n": 0, "copy_under_sea": 0, "second_pass": 0}
 		var cache := {}
