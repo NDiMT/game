@@ -702,26 +702,27 @@ func column(p: Vector3, h: float, r := 0.15, broken := false) -> void:
 		cyl(p + Vector3(0, h - 0.1, 0), r * 0.86, r * 1.25, 0.08, pal("stone"), 24)
 		blk(p + Vector3(-r * 1.35, h - 0.02, -r * 1.35), p + Vector3(r * 1.35, h + 0.05, r * 1.35), "shade")
 
+## The plants and small things of the courts are low-poly models made in Tripo (props/), sorted into parts by
+## tools/flat_prop.py and painted here with the palettes, flat-faced like the rest. Leaves sway a little.
+func thing(file: String, p: Vector3, height: float, parts: String, yaw := 0.0, across := 0.0) -> Node3D:
+	var n := Node3D.new(); n.position = p; n.rotation.y = yaw; add_child(n)
+	prop_model(file, n, height, across, false, false, parts)
+	return n
+
 func cypress(p: Vector3, h := 2.2) -> void:
-	cyl(p, 0.05, 0.04, h * 0.2, pal("trunk"), 6)
-	cyl(p + Vector3(0, h * 0.14, 0), 0.26, 0.2, h * 0.32, pal("cyp", "sway"), 7)
-	cyl(p + Vector3(0, h * 0.46, 0), 0.2, 0.02, h * 0.54, pal("cyp", "sway"), 7)
+	thing("cypress", p, h * 1.04, "leaf:cyp~,trunk:trunk", p.x * 1.7 + p.z)
 	decal(p + Vector3(0.14, 0, -0.14), 0.8, 0.6, 0.2, 0.78)
 
 func urn(p: Vector3, sc := 1.0, pl := "terra") -> void:
-	var prof := [[0.05, 0.0], [0.11, 0.05], [0.14, 0.16], [0.12, 0.27], [0.06, 0.33], [0.055, 0.38], [0.085, 0.41]]
-	for i in prof.size() - 1:
-		cyl(p + Vector3(0, prof[i][1] * sc, 0), prof[i][0] * sc, prof[i + 1][0] * sc, (prof[i + 1][1] - prof[i][1]) * sc, pal(pl, "flat"), 8)
+	thing("amphora", p, 0.52 * sc, "terra:%s,band:wood" % pl, p.x * 2.3 + p.z * 1.1)
 
 func vine(x: float, z: float, along_x: bool, length: float) -> void:
-	var n := int(length / 0.16)
+	var n := maxi(1, int(round(length / 0.85)))   # ivy over the edge of the floor, hanging down the wall below it
 	for i in n:
-		var o := i * 0.16
-		var c := Vector3(x + (o if along_x else 0.02), -0.02 - 0.09 * absf(sin(i * 1.7)), z + (0.02 if along_x else o))
-		var b := ball(c, 0.07 + 0.03 * sin(i * 2.3), pal("leaf" if i % 3 else "leaf2", "sway")); b.mesh = _lowball(0.07 + 0.03 * sin(i * 2.3))
-		if i % 2 == 0:
-			var l := 0.25 + 0.2 * absf(sin(i * 0.9))
-			blk(c + Vector3(-0.012, -l, -0.012), c + Vector3(0.012, 0, 0.012), "leaf")
+		var o := (i + 0.5) * length / n
+		var w := 0.8 + 0.14 * sin(i * 2.1 + x)
+		var t := thing("ivy", Vector3(x + (o if along_x else 0.13), 0.03 - 0.62 * w, z + (0.13 if along_x else o)), 0.0, "leaf:%s~" % ("leaf" if i % 2 == 0 else "leaf2"), 0.0 if along_x else PI * 0.5, w)
+		t.scale.y = 0.7 + 0.12 * cos(i * 1.3 + z)
 
 func streamer(p: Vector3, length: float, w := 0.3, yaw := 3.67) -> void:
 	if red_cloth == null: red_cloth = cloth(Color("e3454e"), Color("9a1e2f"), 3.2)
@@ -769,18 +770,10 @@ func mirror_stand(p: Vector3, yaw := 0.0, parent: Node = self, ground_y := 0.0, 
 	return n
 
 func reeds(p: Vector3, n := 9) -> void:
-	for i in n:
-		var o := Vector3(0.22 * cos(i * 2.4) * (1.0 + 0.1 * i), 0, 0.22 * sin(i * 2.4) * (1.0 + 0.1 * i))
-		var h := 0.5 + 0.35 * absf(sin(i * 1.9))
-		var r := blk(Vector3(-0.012, 0, -0.012), Vector3(0.012, h, 0.012), "leaf" if i % 3 else "cyp")
-		r.position = Vector3(p.x, WATER - 0.05, p.z) + o; r.rotation = Vector3(0.1 * sin(i * 3.0), 0, 0.12 * cos(i * 2.0))
-		if i % 4 == 0: blk(r.position + Vector3(-0.02, h, -0.02), r.position + Vector3(0.02, h + 0.1, 0.02), "trunk")
-	for i in 3:
-		cyl(Vector3(p.x + 0.5 * cos(i * 2.1 + 1.0), WATER + 0.012, p.z + 0.5 * sin(i * 2.1 + 1.0)), 0.11, 0.11, 0.004, pal("leaf2"), 9)
+	thing("reeds", Vector3(p.x, WATER + 0.004, p.z), 0.0, "leaf:leaf~,trunk:wood~,pad:leaf2,flower:rose", p.x * 0.9 + p.z * 1.7, 0.95 + 0.04 * n)
 
 func rock(p: Vector3, s := 1.0) -> void:
-	var m := SphereMesh.new(); m.radius = 0.5; m.height = 1.0; m.radial_segments = 6; m.rings = 3
-	var r := prim(m, Vector3(p.x, WATER + 0.05 * s, p.z), pal("shade", "flat")); r.scale = Vector3(1.5, 0.8, 1.1) * s; r.rotation = Vector3(0.2, p.x * 1.3, 0.15)
+	thing("rocks", Vector3(p.x, WATER - 0.1 * s, p.z), 0.0, "stone:shade", p.x * 1.3, 1.45 * s)
 	foam(p.x - 0.55 * s, p.z - 0.45 * s, p.x + 0.55 * s, p.z + 0.45 * s, 0.3)
 
 ## her boat: a small hull built from seven ribs
@@ -884,20 +877,11 @@ func parapet(a: Vector3, b: Vector3, h := 0.34) -> void:
 	bb_end("stone")
 
 func tree(p: Vector3, s := 1.0, leaf := "leaf") -> void:
-	blk(p + Vector3(-0.3, 0, -0.3), p + Vector3(0.3, 0.22, 0.3), "shade")
-	blk(p + Vector3(-0.34, 0.22, -0.34), p + Vector3(0.34, 0.27, 0.34), "stone")
-	cyl(p + Vector3(0, 0.27, 0), 0.06 * s, 0.04 * s, 1.0 * s, pal("trunk"), 10)
-	var n := Node3D.new(); n.position = p + Vector3(0, 0.27 + 1.0 * s, 0); add_child(n)
-	for q in [[Vector3(0, 0.2, 0), 0.46], [Vector3(0.24, 0.5, 0.1), 0.34], [Vector3(-0.22, 0.56, -0.08), 0.3], [Vector3(0.02, 0.86, 0.02), 0.27]]:
-		ball(q[0] * s, q[1] * s, pal(leaf, "sway"), n).mesh = _lowball(q[1] * s)
+	thing("olive", p, 1.8 * s + 0.25, "leaf:%s~,trunk:trunk,stone:stone,soil:trunk" % leaf, PI * 0.5 * (int(absf(p.x * 3.0 + p.z)) % 4))   # its planter stays square to the court
 	decal(p + Vector3(0.3, 0, -0.3), 1.5 * s, 1.1 * s, 0.2, 0.78)
 
 func bush(p: Vector3, s := 1.0, leaf := "leaf2") -> void:
-	var n := Node3D.new(); n.position = p; add_child(n)
-	ball(Vector3(0, 0.14 * s, 0), 0.2 * s, pal(leaf, "sway"), n).mesh = _lowball(0.2 * s)
-	ball(Vector3(0.16 * s, 0.1 * s, 0.06 * s), 0.14 * s, pal(leaf, "sway"), n).mesh = _lowball(0.14 * s)
-	ball(Vector3(-0.13 * s, 0.09 * s, -0.05 * s), 0.13 * s, pal("leaf", "sway"), n).mesh = _lowball(0.13 * s)
-	for i in 3: ball(Vector3(0.12 * cos(i * 2.1), 0.2 * s + 0.05 * sin(i * 3.0), 0.12 * sin(i * 2.1)) * s, 0.03, pal("crim", "sway"), n)
+	thing("bush", p, 0.0, "leaf:%s~,flower:crim" % leaf, p.z * 1.9, 0.82 * s)
 
 func lantern(p: Vector3, li: int, dirx := 1.0) -> void:
 	cyl(p, 0.035, 0.02, 1.45, pal("dark"), 10)
@@ -1116,6 +1100,7 @@ func _ready() -> void:
 		var parts := (shaders["two" if two else "base"] as Shader).code.split("void fragment(){")
 		var head := parts[0].replace("uniform vec3 c_top : source_color; uniform vec3 c_z : source_color; uniform vec3 c_x : source_color;", "varying vec3 c_top; varying vec3 c_z; varying vec3 c_x; varying vec3 v_par;")
 		head = head.replace("void vertex(){\n", "void vertex(){\n	c_top = CUSTOM0.rgb; c_z = CUSTOM1.rgb; c_x = CUSTOM2.rgb; v_par = vec3(CUSTOM0.a, CUSTOM1.a, CUSTOM2.a);\n")
+		head = head.replace("if (sway > 0.0) { float k = sway * clamp(VERTEX.y + 0.3, 0.0, 2.0);", "float sw1 = max(CUSTOM2.a - 1.0, 0.0); if (sw1 > 0.0) { float k = sw1 * clamp(VERTEX.y + 0.3, 0.0, 2.0);")
 		var body := parts[1]
 		var rx := RegEx.new()
 		for pair in [["marble", "v_par.x"], ["tone_var", "v_par.y"], ["flat_n", "v_par.z"]]:
@@ -1352,6 +1337,8 @@ func _shots() -> void:
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
+	for at in OS.get_environment("SHOT_AT").split(";", false):   # extra views: "name,x,z,size;..." (she stands aside)
+		var f := at.split(","); list.append({"n": f[0], "p": Vector3(60, 0, 60), "y": 0.0, "c": Vector3(float(f[1]), 0.6, float(f[2])), "s": float(f[3])})
 	var only := OS.get_environment("SHOT_ONLY")
 	for sh in list:
 		if only != "":
@@ -2572,7 +2559,7 @@ func _one_mat(two: bool, with_refl: bool) -> ShaderMaterial:
 	if pmats.has(k): return pmats[k]
 	var om := pal("stone").duplicate() as ShaderMaterial; om.shader = shaders["one2" if two else "one"]
 	om.next_pass = refl_mat if with_refl else null
-	pmats[k] = om
+	pmats[k] = om; timed.append(om)   # (timed: the leaves it draws sway)
 	return om
 
 ## The surfaces of a model that are painted with palettes, fused into one surface that the one material draws:
@@ -2583,14 +2570,16 @@ func _fuse_pal(mesh: Mesh, pal_of: Array) -> ArrayMesh:
 	var c0 := PackedFloat32Array(); var c1 := PackedFloat32Array(); var c2 := PackedFloat32Array()
 	for si in mesh.get_surface_count():
 		if pal_of[si] == "": continue
-		var a := mesh.surface_get_arrays(si); var t: Array = pals[pal_of[si]]
+		var pn: String = pal_of[si]; var sways := pn.ends_with("~")   # "leaf~": this part sways in the wind
+		if sways: pn = pn.trim_suffix("~")
+		var a := mesh.surface_get_arrays(si); var t: Array = pals[pn]
 		var tone := [Color(t[0]), Color(t[1]), Color(t[2])]
 		var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]; var n = a[Mesh.ARRAY_NORMAL]; var id = a[Mesh.ARRAY_INDEX]; var base := vs.size()
 		for i in v.size():
 			vs.append(v[i]); ns.append(n[i] if n != null else Vector3.UP)
-			c0.append(tone[0].r); c0.append(tone[0].g); c0.append(tone[0].b); c0.append(1.0 if pal_of[si] in ["stone", "shade", "sand", "rose"] else 0.0)
+			c0.append(tone[0].r); c0.append(tone[0].g); c0.append(tone[0].b); c0.append(1.0 if pn in ["stone", "shade", "sand", "rose"] else 0.0)
 			c1.append(tone[1].r); c1.append(tone[1].g); c1.append(tone[1].b); c1.append(0.0)
-			c2.append(tone[2].r); c2.append(tone[2].g); c2.append(tone[2].b); c2.append(1.0)   # flat faces
+			c2.append(tone[2].r); c2.append(tone[2].g); c2.append(tone[2].b); c2.append(1.3 if sways else 1.0)   # flat faces; and a little wind
 		if id != null:
 			for i in id: ix.append(base + i)
 		else:
@@ -2960,7 +2949,7 @@ func _world() -> void:
 		cyl(Vector3(cp.x, -2.45, cp.z), 0.3, 0.3, 2.45 + WATER + 0.12, pal("shade"), 20)
 		column(Vector3(cp.x, WATER + 0.12, cp.z), 2.6 + 0.9 * sin(cp.x * 3.0), 0.19, int(absf(cp.x * 10.0)) % 2 == 0)
 		foam(cp.x - 0.3, cp.z - 0.3, cp.x + 0.3, cp.z + 0.3, 0.3)
-	vine(-3.6, 3.52, true, 1.8); vine(3.52, -3.4, false, 1.4); vine(-3.2, -9.98, true, 1.6); vine(3.52, -15.6, false, 2.0)
+	vine(-3.6, AZ1 - 0.08, true, 1.8); vine(3.52, -3.4, false, 1.4); vine(-3.2, -9.98, true, 1.6); vine(3.52, -15.6, false, 2.0)
 	vine(-19.6, -10.48, true, 2.4); vine(-12.98, -16.4, false, 1.6); vine(-20.2, -19.98, true, 2.6); vine(-12.48, -25.6, false, 2.2)
 	# crimson veils in the wind, mirrors, the tree of shards, reeds and rocks
 	for sp in [[Vector3(-7.3, 2.72, 1.9), 2.6], [Vector3(0.0, 2.95, -3.9), 1.9], [Vector3(-16.3, WATER + 2.72, -18.4), 2.4], [Vector3(MX - 0.5, 3.12, MZ + 0.9), 2.2],
