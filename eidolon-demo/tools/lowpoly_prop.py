@@ -16,10 +16,17 @@ if len(objs) > 1: bpy.ops.object.join()
 o = bpy.context.view_layer.objects.active
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 if 'remesh' in a:   # thin, open cloth breaks into shards when it is reduced: first make one closed skin of it
-    r = o.modifiers.new('r', 'REMESH'); r.mode = 'VOXEL'; r.voxel_size = 0.022; r.adaptivity = 0.0
+    r = o.modifiers.new('r', 'REMESH'); r.mode = 'VOXEL'; r.voxel_size = 0.016; r.adaptivity = 0.0
     bpy.ops.object.modifier_apply(modifier='r')
-    sm = o.modifiers.new('s', 'SMOOTH'); sm.factor = 0.8; sm.iterations = 6
+    sm = o.modifiers.new('s', 'SMOOTH'); sm.factor = 0.6; sm.iterations = 2
     bpy.ops.object.modifier_apply(modifier='s')
+    # and keep only the one big piece: the scraps that come loose would float about it as splinters
+    bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT'); bpy.ops.mesh.separate(type='LOOSE'); bpy.ops.object.mode_set(mode='OBJECT')
+    parts = [p for p in bpy.context.scene.objects if p.type == 'MESH']
+    parts.sort(key=lambda p: len(p.data.vertices), reverse=True)
+    for p in parts[1:]: bpy.data.objects.remove(p, do_unlink=True)
+    o = parts[0]; bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
+    print('PARTS', len(parts))
 tris = sum(len(p.vertices) - 2 for p in o.data.polygons)
 m = o.modifiers.new('d', 'DECIMATE'); m.ratio = min(1.0, target / max(tris, 1))
 bpy.ops.object.modifier_apply(modifier='d')

@@ -2372,10 +2372,6 @@ func _shrouds() -> void:
 		var undone: bool = sp[4] == 1 and have_b
 		var m := prop_model("shroud_b" if undone else "shroud_a", self, sp[3], 0.0, false, true, "linen")
 		m.position = base; m.rotation.y = sp[2]
-		if not undone:   # the rope that ties it: three turns
-			for rh in [0.44, 0.6, 0.76]:
-				var tm := TorusMesh.new(); tm.inner_radius = sp[3] * 0.118; tm.outer_radius = sp[3] * 0.142; tm.rings = 10; tm.ring_segments = 5
-				var rr := prim(tm, base + Vector3(0, sp[3] * rh, 0), pal("trunk", "flat")); rr.rotation = Vector3(0.1 * sin(rh * 20.0 + sp[0]), sp[2], 0.09 * cos(rh * 17.0 + sp[1])); rr.scale = Vector3(1.0, 1.0, 1.25)
 		if undone:   # a loose end of its sheet, lifting in the air
 			var q := QuadMesh.new(); q.size = Vector2(0.34, 1.0); q.subdivide_depth = 10; q.subdivide_width = 2
 			var fl := prim(q, base + Vector3(0, sp[3] * 0.62, 0) + Vector3(sin(sp[2] + 1.2), 0, cos(sp[2] + 1.2)) * 0.34, pale); fl.rotation.y = sp[2] + 1.2
