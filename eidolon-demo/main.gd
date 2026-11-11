@@ -144,7 +144,7 @@ const PALS := {
 	"leaf": ["9dbfa6", "76a08e", "4f7a7c"], "leaf2": ["b9d2b4", "8fb39a", "5f8a86"], "leaf3": ["aac3a4", "86a48c", "5d7d7c"],
 	"dress": ["cdd0da", "b0b3c5", "8789a6"], "dress2": ["e4e5ea", "cacbd6", "9fa0b6"],
 	"veil": ["f1f1f4", "d9d9e0", "acadc0"], "skin": ["fffbf5", "f0e5de", "bfb6d0"],
-	"cyp": ["4a8576", "316863", "214858"], "terra": ["ecd6c6", "d6b8a8", "a08a9e"], "wood": ["b98f7a", "9a7064", "6c4e5e"], "clay": ["d2603f", "ad4732", "7c302d"],
+	"cyp": ["4a8576", "316863", "214858"], "terra": ["ecd6c6", "d6b8a8", "a08a9e"], "linen": ["f3ecdc", "ddd0bd", "a99db2"], "wood": ["b98f7a", "9a7064", "6c4e5e"], "clay": ["d2603f", "ad4732", "7c302d"],
 	"marble": ["fffbf5", "f0e5de", "bfb6d0"], "crim2": ["ee5a60", "cf3640", "8f2238"],
 }
 const SH := """shader_type spatial;
@@ -2331,7 +2331,7 @@ func niche_x(x: float, y: float, z: float, w: float, h: float, parent: Node) -> 
 ## a detailed prop (a Tripo model in props/): loaded, given the lit textured material of the world, scaled so that its
 ## height (or, with across > 0, its width) is as asked, and set with its foot at the origin of the node returned.
 ## mirror: the copy that stands in the water
-func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror := false, sea_refl := false) -> Node3D:
+func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror := false, sea_refl := false, flat_pal := "") -> Node3D:
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	doc.append_from_file(ProjectSettings.globalize_path("res://props/%s.glb" % file), st)
 	var src := doc.generate_scene(st) as Node3D
@@ -2342,11 +2342,14 @@ func prop_model(file: String, parent: Node, height: float, across := 0.0, mirror
 		var b: AABB = mi.transform * mi.mesh.get_aabb()
 		box = b if first else box.merge(b); first = false
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if mirror else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if flat_pal != "":   # no texture: one colour of the world's own palette, flat faces, like its marbles
+			mi.material_override = pal(flat_pal, "flat2" if mirror else "flat"); continue
 		for si in mi.mesh.get_surface_count():
 			var om := mi.mesh.surface_get_material(si)
 			var sm := ShaderMaterial.new(); sm.shader = shaders["tex2" if mirror else "tex"]
 			sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 			if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
+			sm.set_shader_parameter("flat_n", 1.0)   # flat faces, like everything else in this world
 			if mirror: sm.set_shader_parameter("tint", Vector3(1.0, 1.14, 1.2))
 			if sea_refl and refl_mat != null: sm.next_pass = refl_mat   # what stands in the sea lies dark on it, like everything else
 			mi.set_surface_override_material(si, sm); pmats["prop|%d|%d" % [holder.get_instance_id(), si]] = sm
@@ -2367,8 +2370,12 @@ func _shrouds() -> void:
 		var base := Vector3(sp[0], WATER + 0.22, sp[1])
 		cyl(Vector3(sp[0], WATER - 0.5, sp[1]), 0.36, 0.42, 0.72, pal("stone"), 14); cyl(base - Vector3(0, 0.05, 0), 0.4, 0.4, 0.05, pal("shade"), 14)
 		var undone: bool = sp[4] == 1 and have_b
-		var m := prop_model("shroud_b" if undone else "shroud_a", self, sp[3], 0.0, false, true)
+		var m := prop_model("shroud_b" if undone else "shroud_a", self, sp[3], 0.0, false, true, "linen")
 		m.position = base; m.rotation.y = sp[2]
+		if not undone:   # the rope that ties it: three turns
+			for rh in [0.44, 0.6, 0.76]:
+				var tm := TorusMesh.new(); tm.inner_radius = sp[3] * 0.118; tm.outer_radius = sp[3] * 0.142; tm.rings = 10; tm.ring_segments = 5
+				var rr := prim(tm, base + Vector3(0, sp[3] * rh, 0), pal("trunk", "flat")); rr.rotation = Vector3(0.1 * sin(rh * 20.0 + sp[0]), sp[2], 0.09 * cos(rh * 17.0 + sp[1])); rr.scale = Vector3(1.0, 1.0, 1.25)
 		if undone:   # a loose end of its sheet, lifting in the air
 			var q := QuadMesh.new(); q.size = Vector2(0.34, 1.0); q.subdivide_depth = 10; q.subdivide_width = 2
 			var fl := prim(q, base + Vector3(0, sp[3] * 0.62, 0) + Vector3(sin(sp[2] + 1.2), 0, cos(sp[2] + 1.2)) * 0.34, pale); fl.rotation.y = sp[2] + 1.2
@@ -2382,10 +2389,12 @@ func _pool_c() -> void:
 	for both in [self, mroot]:
 		var pg := Node3D.new(); both.add_child(pg)
 		# the winch: a marble pedestal with its bronze fittings, and on it the wheel with its turned handles
-		prop_model("winch_base", pg, 0.74, 0.0, both == mroot).position = PED
-		cyl(PED + Vector3(0, 0.72, 0), 0.075, 0.075, 0.1, pal("gold"), 16, pg)
+		prop_model("winch_base", pg, 0.74, 0.0, both == mroot, false, "stone").position = PED
+		blk(PED + Vector3(-0.31, 0.5, -0.31), PED + Vector3(0.31, 0.56, 0.31), "gold", pg)   # a band of bronze round its head
+		cyl(PED + Vector3(0, 0.72, 0), 0.075, 0.075, 0.1, pal("gold"), 10, pg)
 		var wn := Node3D.new(); wn.position = PED + Vector3(0, 0.8, 0); pg.add_child(wn)
-		prop_model("winch_wheel", wn, 0.0, 1.22, both == mroot)
+		prop_model("winch_wheel", wn, 0.0, 1.22, both == mroot, false, "wood")
+		cyl(Vector3(0, 0.06, 0), 0.13, 0.1, 0.16, pal("gold"), 10, wn)   # its bronze hub
 		if both == self: winch_a = wn; ped_a = pg
 		else: winch_m = wn; ped_m = pg
 		blk(Vector3(QX0, 0.0, PED.z - 0.3), Vector3(QX0 + 0.2, 0.07, PED.z + 0.3), "stone", both)   # the stub of the crossing at the west rim
